@@ -190,7 +190,7 @@ export function FormularioDeReclamo({ variante, politica, onReclamar, tambienArm
       {intentado && lista.length > 0 && (
         <div ref={resumen} className="silice-bienvenida__resumen" role="alert" tabIndex={-1}>
           <p className="cds--type-heading-compact-01">Revise estos datos antes de seguir:</p>
-          <ul>
+          <ul className="cds--type-body-compact-01">
             {lista.map((mensaje) => (
               <li key={mensaje}>{mensaje}</li>
             ))}

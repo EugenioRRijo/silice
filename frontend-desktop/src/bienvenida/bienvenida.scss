@@ -1,7 +1,7 @@
 // Bienvenida de primera vez y recuperar acceso (BCP-4). Todo en rem: sigue la escala de letra (--silice-escala-letra) y las
 // dos columnas de campos pasan a una por el ancho que haya, no por un punto de corte. Sin alto fijo, sin animación.
 
-.silice-bienvenida {
+.silice-entrada.silice-bienvenida {
   // Más ancha que «Entrar» (36 rem): lleva texto de ayuda y dos columnas de campos.
   max-inline-size: 46rem;
   min-inline-size: 0;
