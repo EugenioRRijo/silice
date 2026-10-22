@@ -41,7 +41,10 @@ def _rutas(router) -> Iterator[APIRoute]:
 RUTAS = list(_rutas(app.router))
 #: Sin clave a propósito: el ping y el acceso del navegador por cuenta (RT-9, sesión 2), que se
 #: protege con la contraseña, el freno y el bloqueo de `seguridad.cuentas`.
-SIN_CLAVE = frozenset({"/salud", "/v1/sesion"})
+#: BCP-1: `/v1/primer-arranque*` tampoco (solo el propio equipo, `Origin` y un código).
+SIN_CLAVE = frozenset(
+    {"/salud", "/v1/sesion", "/v1/primer-arranque", "/v1/primer-arranque/reclamo"}
+)
 PROTEGIDAS = [
     (ruta, metodo)
     for ruta in RUTAS

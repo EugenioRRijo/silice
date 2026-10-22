@@ -75,4 +75,13 @@ el acceso y gana el rol administrador (D-6); las cuentas ajenas no cambian.
 
 ## Desviaciones respecto del diseño
 
-(ninguna todavía)
+1. **Texto del 503 por la base de la instalación (`ErrorDeBase`)**: no se devuelve el texto de la base (puede traer rutas del servidor); es fijo:
+   `No se pudo abrir la base de la instalación: avise al administrador del equipo.` El 503 por una escritura ajena que no termina sigue siendo
+   `La base está ocupada; reintente en unos segundos.` (corrige la línea «o el texto de la base» de P0 y P1).
+2. **La puerta (`Origin` y propio equipo) no es una dependencia de FastAPI sino un paso de la clase de ruta que corre antes de leer el cuerpo.**
+   Es más fuerte que lo pedido: FastAPI lee el JSON antes de resolver las dependencias, así que con una dependencia un JSON roto desde fuera daba 422
+   en lugar de 403. Resultado visible: cualquier cuerpo (vacío, roto, inválido) sin `Origin` propio o desde otra IP es 403; el `Origin` se mira antes que el equipo.
+3. Cuerpo: `tambien_arma` es booleano estricto (`"si"` no se convierte) y todos los textos son estrictos (un número en `contrasena` es 422, no se pasa a texto).
+4. El 422 de forma del cuerpo también cubre una contraseña de 129 o más caracteres: lleva el texto fijo del punto 3 (que dice «hasta 128»), no el de la política.
+5. El restablecimiento sobre una cuenta ya existente deja un evento `cambio de roles` con «promovida a administrador por restablecimiento» (sin el código).
+
