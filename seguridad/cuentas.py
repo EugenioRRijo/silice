@@ -386,6 +386,10 @@ def reclamar_instalacion(
     espera = freno.espera(ahora)
     if espera:
         dormir(espera)
+    # Bloqueo de escritura ANTES de leer si el código sigue vivo y si hay cuentas: dos reclamos
+    # simultáneos del mismo código se serializan (el segundo espera y ve `usado` fijado). Si
+    # vence la espera, `ValueError(MENSAJE_BASE_OCUPADA)`: la ruta lo responde con un 503.
+    _tomar_escritura(session)
     fila = _intento(session, CLAVE_INTENTOS_CODIGO)
     if _bloqueado(fila, ahora):
         session.commit()
