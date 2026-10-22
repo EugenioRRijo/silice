@@ -1,0 +1,59 @@
+// Índices del BCV. Sin tarjetas con sombra ni animaciones (DESIGN.md).
+
+.silice-indices {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  min-inline-size: 0;
+}
+
+.silice-indices__formulario,
+.silice-indices__informe,
+.silice-indices__avisos {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-indices__campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.silice-indices__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.silice-indices__datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  margin: 0;
+
+  dd {
+    margin: 0;
+  }
+}
+
+.silice-indices__serie {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.75rem 0 0;
+  border: 0;
+  border-block-start: 1px solid var(--cds-border-subtle, #c6c6c6);
+  min-inline-size: 0;
+}
+
+.silice-indices__advertencias {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.silice-indices__nota {
+  color: var(--silice-texto-secundario);
+}

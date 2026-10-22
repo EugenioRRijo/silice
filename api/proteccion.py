@@ -135,18 +135,27 @@ class LimiteDeCuerpo:
             return
         total = 0
         empezo = False
+        excedido = False
 
         async def recibir() -> Message:
-            nonlocal total
+            nonlocal total, excedido
             mensaje = await receive()
             if mensaje["type"] == "http.request":
                 total += len(mensaje.get("body", b""))
                 if total > self.limite:
+                    excedido = True
                     raise _CuerpoExcedido
             return mensaje
 
         async def enviar(mensaje: Message) -> None:
             nonlocal empezo
+            if excedido:
+                # FastAPI convierte la excepcion del tope en un 400 al leer un cuerpo JSON: lo que
+                # la aplicacion conteste despues de exceder el tope se sustituye por el 413 fijo
+                if not empezo:
+                    empezo = True
+                    await self._rechazar(send)
+                return
             empezo = empezo or mensaje["type"] == "http.response.start"
             await send(mensaje)
 

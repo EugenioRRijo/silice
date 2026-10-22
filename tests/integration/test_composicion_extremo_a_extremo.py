@@ -39,6 +39,7 @@ from decimal import Decimal
 import pytest
 from openpyxl import load_workbook
 
+from aplicacion.composicion import composicion_desde_tablas
 from core.budget import con_curva, elaborar, exportar_excel, generar_presupuesto, plan_secuencial
 from core.budget.excel import HOJA_APU, HOJA_AUDITORIA, HOJA_CURVA, HOJA_PRESUPUESTO
 from core.contracts import ComposicionAPU, ModalidadManoObra, Presupuesto
@@ -58,7 +59,6 @@ from tests.fixtures.presupuesto_auditado import (
     items_con_trazas,
     presupuesto_con_siete_inconsistencias,
 )
-from ui.composicion import composicion_desde_tablas
 
 #: Tolerancia del total contra `TOTAL_PRESUPUESTO_AUDITADO`: un presupuesto se lee en centavos y
 #: los `Decimal` del modelo no se redondean hasta presentarlos (NORMAS.md §2.3 y §4). No se
@@ -134,9 +134,7 @@ def _presupuesto_tecleado() -> Presupuesto:
     return con_curva(borrador, linea_base.CURVA_AUDITADA)
 
 
-@pytest.mark.parametrize(
-    "apu", linea_base.APUS_LINEA_BASE, ids=lambda apu: apu.codigo_partida
-)
+@pytest.mark.parametrize("apu", linea_base.APUS_LINEA_BASE, ids=lambda apu: apu.codigo_partida)
 def test_la_composicion_tecleada_es_la_de_la_linea_base(apu: ComposicionAPU) -> None:
     """Cada uno de los cinco APU, tecleado en la pantalla, es el APU de la fixture.
 

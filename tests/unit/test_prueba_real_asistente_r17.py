@@ -19,8 +19,8 @@ from adapters.espacio.modelo import (
     TipoPunto,
 )
 from adapters.espacio.origen import OrigenMedida, TipoOrigen
+from aplicacion import hoja
 from scripts import prueba_real_asistente as script
-from ui import hoja
 
 D = Decimal
 LEV = OrigenMedida(

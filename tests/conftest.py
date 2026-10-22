@@ -13,13 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from aplicacion.entorno import ALIAS_ANTERIORES, VARIABLE_CASO, VARIABLE_MODO_ENTREGA
 from tests.fixtures import apu_linea_base as linea_base
-from ui.entorno import ALIAS_ANTERIORES, VARIABLE_CASO, VARIABLE_MODO_ENTREGA
-
-#: AppTest lee el `.streamlit/config.toml` del directorio de trabajo, que oculta los detalles de los
-#: errores (`client.showErrorDetails = "none"`, S5 §10.1). Las variables `STREAMLIT_*` mandan sobre
-#: el archivo: la suite conserva el mensaje completo de cada excepcion de AppTest.
-os.environ["STREAMLIT_CLIENT_SHOW_ERROR_DETAILS"] = "full"
 
 #: La suite corre sin red: Hugging Face lee esta variable al importarse y la guardia de red
 #: bloquearia cualquier descarga. El modelo se baja antes, una vez, con

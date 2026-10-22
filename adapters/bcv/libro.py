@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import re
 import zipfile
 import zlib
 from dataclasses import dataclass
@@ -23,6 +24,68 @@ MAX_ENTRADAS = 5000
 MAX_DESCOMPRIMIDO = 60 * 1024 * 1024
 MAX_PIEZA = 30 * 1024 * 1024
 MAX_RAZON = 200
+MAX_CELDAS_XLS = 2_000_000  # filas x columnas declaradas por hoja de un .xls
+MAX_CELDAS_TOTAL = 20_000_000  # celdas leidas entre TODAS las hojas (xls: declaradas; xlsx: vistas)
+MAX_NOMBRES_AJENOS = 10  # nombres de hojas ignoradas que el aviso enumera (el resto se cuenta)
+MAX_LARGO_NOMBRE = 40
+# Hojas del libro: una por dia en la tasa (un trimestre trae hasta 92) y una en el INPC. Solo se
+# leen las necesarias (nombre DDMMAAAA o la hoja del INPC); el tope se mide sobre las LEIDAS y,
+# aparte, el total declarado se acota para no recorrer los indices de un libro hostil.
+MAX_HOJAS_LEIDAS = 100
+MAX_HOJAS_DECLARADAS = 256
+_HOJA_DE_FECHA = re.compile(r"\d{8}")
+
+
+def _es_necesaria(nombre: str, hoja_inpc: str) -> bool:
+    limpio = nombre.strip()
+    return bool(_HOJA_DE_FECHA.fullmatch(limpio)) or limpio.casefold() == hoja_inpc
+
+
+def _elegir_hojas(nombres: list[str], archivo: str) -> tuple[list[int], tuple[str, ...]]:
+    """Indices de las hojas necesarias y avisos; decide sin abrir ninguna hoja."""
+    if len(nombres) > MAX_HOJAS_DECLARADAS:
+        raise FormatoNoReconocido(
+            f"{archivo}: tiene {len(nombres)} hojas; supera el maximo de {MAX_HOJAS_DECLARADAS}"
+        )
+    from adapters.bcv.formatos import cargar_formatos
+
+    hoja_inpc = cargar_formatos().inpc.hoja.strip().casefold()
+    elegidas = [i for i, n in enumerate(nombres) if _es_necesaria(n, hoja_inpc)]
+    if not elegidas:
+        raise FormatoNoReconocido(
+            f"{archivo}: ninguna hoja necesaria (las de fecha DDMMAAAA de la tasa o la del INPC) "
+            f"entre sus {len(nombres)} hojas"
+        )
+    if len(elegidas) > MAX_HOJAS_LEIDAS:
+        raise FormatoNoReconocido(
+            f"{archivo}: tiene {len(elegidas)} hojas necesarias; supera el maximo de "
+            f"{MAX_HOJAS_LEIDAS}"
+        )
+    usadas = set(elegidas)
+    return elegidas, _aviso_de_ajenas([n for i, n in enumerate(nombres) if i not in usadas])
+
+
+def _nombre_para_aviso(nombre: str) -> str:
+    """El nombre de una hoja ajena como se muestra: viene del libro (no es de fiar), asi que sin
+    caracteres de control y acotado."""
+    limpio = "".join(c for c in nombre if c.isprintable()).strip()
+    return limpio[:MAX_LARGO_NOMBRE] + ("..." if len(limpio) > MAX_LARGO_NOMBRE else "")
+
+
+def _aviso_de_ajenas(ajenas: list[str]) -> tuple[str, ...]:
+    """«hojas ajenas no leidas: N (a, b, ...)»: cuales se ignoraron, hasta `MAX_NOMBRES_AJENOS`."""
+    if not ajenas:
+        return ()
+    nombres = ", ".join(_nombre_para_aviso(n) for n in ajenas[:MAX_NOMBRES_AJENOS])
+    resto = len(ajenas) - MAX_NOMBRES_AJENOS
+    cola = f" y {resto} mas" if resto > 0 else ""
+    return (f"hojas ajenas no leidas: {len(ajenas)} ({nombres}{cola})",)
+
+
+def _demasiadas_celdas(archivo: str) -> FormatoNoReconocido:
+    return FormatoNoReconocido(
+        f"{archivo}: supera el maximo de {MAX_CELDAS_TOTAL} celdas leidas entre todas las hojas"
+    )
 
 
 def _verificar_xlsx_seguro(contenido: bytes, nombre: str) -> None:
@@ -101,66 +164,88 @@ def abrir_libro(ruta: Path) -> Libro:
             raise FormatoNoReconocido(
                 f"{ruta.name}: la extension .xls no coincide con el contenido{extra}"
             )
-        hojas, floats = _xls(contenido, ruta.name)
+        hojas, floats, avisos_hojas = _xls(contenido, ruta.name)
     elif sufijo == ".xlsx":
         if not contenido.startswith(FIRMA_ZIP):
             raise FormatoNoReconocido(
                 f"{ruta.name}: la extension .xlsx no coincide con el contenido"
             )
         _verificar_xlsx_seguro(contenido, ruta.name)
-        hojas, floats = _xlsx(ruta)
+        hojas, floats, avisos_hojas = _xlsx(ruta)
     else:
         raise FormatoNoReconocido(f"{ruta.name}: se leen .xls y .xlsx")
     avisos = (
-        (f"{floats} celdas numericas leidas como float y llevadas a Decimal con repr",)
-        if floats
-        else ()
+        *avisos_hojas,
+        *(
+            (f"{floats} celdas numericas leidas como float y llevadas a Decimal con repr",)
+            if floats
+            else ()
+        ),
     )
     return Libro(ruta.name, hashlib.sha256(contenido).hexdigest(), hojas, avisos)
 
 
-def _xls(contenido: bytes, nombre: str) -> tuple[tuple[Hoja, ...], int]:
+def _xls(contenido: bytes, nombre: str) -> tuple[tuple[Hoja, ...], int, tuple[str, ...]]:
     import xlrd  # extra `bcv` (RV‑24), importación diferida
 
     try:
-        libro = xlrd.open_workbook(file_contents=contenido)
+        libro = xlrd.open_workbook(file_contents=contenido, on_demand=True)
     except Exception as error:  # xlrd lanza varias clases ante un archivo dañado
         raise FormatoNoReconocido(f"{nombre}: no se pudo abrir ({error})") from None
-    floats, hojas = 0, []
-    for hoja in libro.sheets():
-        filas = []
-        for r in range(hoja.nrows):
-            fila: list[Celda] = []
-            for c in range(hoja.ncols):
-                celda = hoja.cell(r, c)
-                if celda.ctype in (xlrd.XL_CELL_EMPTY, xlrd.XL_CELL_BLANK):
-                    fila.append(None)
-                elif celda.ctype == xlrd.XL_CELL_TEXT:
-                    fila.append(celda.value.strip() or None)
-                elif celda.ctype == xlrd.XL_CELL_NUMBER:
-                    floats += 1
-                    fila.append(Decimal(repr(celda.value)))
-                elif celda.ctype == xlrd.XL_CELL_DATE:
-                    fila.append(xlrd.xldate_as_datetime(celda.value, libro.datemode).date())
-                else:
-                    fila.append(str(celda.value))
-            filas.append(tuple(fila))
-        hojas.append(Hoja(hoja.name, tuple(filas)))
-    return tuple(hojas), floats
+    try:
+        elegidas, avisos_hojas = _elegir_hojas(list(libro.sheet_names()), nombre)
+        floats, hojas, declaradas = 0, [], 0
+        for indice in elegidas:
+            hoja = libro.sheet_by_index(indice)
+            if hoja.nrows * hoja.ncols > MAX_CELDAS_XLS:
+                raise FormatoNoReconocido(
+                    f"{nombre}: la hoja {hoja.name!r} declara {hoja.nrows} filas x {hoja.ncols} "
+                    f"columnas; supera el maximo de {MAX_CELDAS_XLS} celdas"
+                )
+            declaradas += hoja.nrows * hoja.ncols
+            if declaradas > MAX_CELDAS_TOTAL:
+                raise _demasiadas_celdas(nombre)
+            filas = []
+            for r in range(hoja.nrows):
+                fila: list[Celda] = []
+                for c in range(hoja.ncols):
+                    celda = hoja.cell(r, c)
+                    if celda.ctype in (xlrd.XL_CELL_EMPTY, xlrd.XL_CELL_BLANK):
+                        fila.append(None)
+                    elif celda.ctype == xlrd.XL_CELL_TEXT:
+                        fila.append(celda.value.strip() or None)
+                    elif celda.ctype == xlrd.XL_CELL_NUMBER:
+                        floats += 1
+                        fila.append(Decimal(repr(celda.value)))
+                    elif celda.ctype == xlrd.XL_CELL_DATE:
+                        fila.append(xlrd.xldate_as_datetime(celda.value, libro.datemode).date())
+                    else:
+                        fila.append(str(celda.value))
+                filas.append(tuple(fila))
+            hojas.append(Hoja(hoja.name, tuple(filas)))
+            libro.unload_sheet(indice)
+    finally:
+        libro.release_resources()
+    return tuple(hojas), floats, avisos_hojas
 
 
-def _xlsx(ruta: Path) -> tuple[tuple[Hoja, ...], int]:
+def _xlsx(ruta: Path) -> tuple[tuple[Hoja, ...], int, tuple[str, ...]]:
     import openpyxl
 
     try:
         libro = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
     except Exception as error:
         raise FormatoNoReconocido(f"{ruta.name}: no se pudo abrir ({error})") from error
-    floats, hojas = 0, []
+    floats, hojas, vistas = 0, [], 0
     try:
-        for hoja in libro.worksheets:
+        elegidas, avisos_hojas = _elegir_hojas(list(libro.sheetnames), ruta.name)
+        for indice in elegidas:
+            hoja = libro[libro.sheetnames[indice]]
             filas = []
             for valores in hoja.iter_rows(values_only=True):
+                vistas += len(valores)
+                if vistas > MAX_CELDAS_TOTAL:  # se corta al pasarse, no al terminar de leer
+                    raise _demasiadas_celdas(ruta.name)
                 fila: list[Celda] = []
                 for v in valores:
                     if isinstance(v, float):
@@ -178,4 +263,4 @@ def _xlsx(ruta: Path) -> tuple[tuple[Hoja, ...], int]:
             hojas.append(Hoja(hoja.title, tuple(filas)))
     finally:
         libro.close()
-    return tuple(hojas), floats
+    return tuple(hojas), floats, avisos_hojas

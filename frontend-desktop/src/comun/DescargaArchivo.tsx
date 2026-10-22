@@ -1,0 +1,83 @@
+import { Button } from "@carbon/react";
+import { Download } from "@carbon/icons-react";
+import { useEffect, useRef, useState } from "react";
+import { ErrorDeApi, pedirBinario } from "../api/cliente";
+import { AvisoError } from "./AvisoError";
+
+interface Props {
+  ruta: string;
+  metodo?: "GET" | "POST";
+  cuerpo?: object;
+  etiqueta: string;
+  // Nombre si la API no manda Content-Disposition.
+  nombrePorOmision: string;
+  // La API contesto 401: la sesion vencio.
+  alExpirar?: () => void;
+  kind?: "primary" | "secondary" | "tertiary" | "ghost";
+  // Tamano del boton: "sm" (32 px, densidad de las tablas) o "md".
+  size?: "sm" | "md";
+}
+
+// Guarda un blob en la carpeta de descargas. El enlace se crea y se descarta sin tocar la pagina.
+export function guardarBlob(blob: Blob, nombre: string): void {
+  const direccion = URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+  enlace.href = direccion;
+  enlace.download = nombre;
+  enlace.rel = "noopener";
+  enlace.click();
+  URL.revokeObjectURL(direccion);
+}
+
+// Boton que baja una respuesta binaria de la API (PDF, xlsx, zip) con el nombre que ella propone.
+export function DescargaArchivo({
+  ruta,
+  metodo = "GET",
+  cuerpo,
+  etiqueta,
+  nombrePorOmision,
+  alExpirar,
+  kind = "tertiary",
+  size = "md",
+}: Props) {
+  const [bajando, setBajando] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const boton = useRef<HTMLButtonElement>(null);
+  const habiaFoco = useRef(false);
+
+  // El boton se deshabilita mientras baja y el navegador le quita el foco (H-5): al terminar se lo devolvemos, salvo que
+  // la persona ya lo haya llevado a otro control.
+  // Limite conocido (MENOR-6, aceptado): si durante la descarga la persona hace clic en el cuerpo de la pagina (no en un
+  // control), el foco ya esta en el body y tambien se le devuelve al boton. Distinguirlo exigiria seguir cada clic; no se
+  // cambia la conducta.
+  useEffect(() => {
+    if (bajando || !habiaFoco.current) return;
+    habiaFoco.current = false;
+    const activo = document.activeElement;
+    if (activo === null || activo === document.body) boton.current?.focus();
+  }, [bajando]);
+
+  async function bajar() {
+    habiaFoco.current = true;
+    setBajando(true);
+    setError(null);
+    try {
+      const { blob, nombre } = await pedirBinario(ruta, { metodo, cuerpo, respaldo: nombrePorOmision });
+      guardarBlob(blob, nombre);
+    } catch (e) {
+      if (e instanceof ErrorDeApi && e.estado === 401) alExpirar?.();
+      setError(e);
+    } finally {
+      setBajando(false);
+    }
+  }
+
+  return (
+    <div className="silice-descarga">
+      <Button ref={boton} kind={kind} size={size} renderIcon={Download} disabled={bajando} onClick={() => void bajar()}>
+        {bajando ? "Descargando…" : etiqueta}
+      </Button>
+      <AvisoError error={error} titulo="No se pudo descargar" alCerrar={() => setError(null)} />
+    </div>
+  );
+}

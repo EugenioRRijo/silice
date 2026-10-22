@@ -3,7 +3,8 @@
 **Que es.** Un corpus de composiciones **simulado** para probar la interfaz con volumen: abrir la
 pantalla de composicion (`ui/paginas/componer.py`) contra una base con cientos de partidas. Cada
 composicion combina, con un unico `random.Random(semilla)`, filas de la referencia MaPreX de julio
-de 2026 (`ui.composicion.buscar_referencia`) con cantidades y rendimientos sorteados desde enteros,
+de 2026 (`aplicacion.composicion.buscar_referencia`) con cantidades y rendimientos sorteados
+desde enteros,
 y se arma con la **misma** capa pura que usa la pantalla (`fila_*_desde_referencia` y
 `composicion_desde_tablas`): el corpus ejercita ese codigo, no una copia de el.
 
@@ -45,10 +46,7 @@ if str(RAIZ) not in sys.path:
 
 from sqlalchemy.orm import Session  # noqa: E402
 
-from core import models  # noqa: E402
-from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor  # noqa: E402
-from core.contracts import ComposicionAPU, Dominio  # noqa: E402
-from ui.composicion import (  # noqa: E402
+from aplicacion.composicion import (  # noqa: E402
     FilaReferencia,
     buscar_referencia,
     composicion_desde_tablas,
@@ -56,6 +54,9 @@ from ui.composicion import (  # noqa: E402
     fila_mano_obra_desde_referencia,
     fila_materiales_desde_referencia,
 )
+from core import models  # noqa: E402
+from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor  # noqa: E402
+from core.contracts import ComposicionAPU, Dominio  # noqa: E402
 
 #: Fecha fija del corpus (vigencia de su lista y de sus rendimientos): una constante y no
 #: `date.today()`, para que dos corridas con la misma semilla dejen la misma base.

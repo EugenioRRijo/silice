@@ -1,0 +1,536 @@
+// Visor de solo lectura (DESIGN.md): hoja a la izquierda, lista de hallazgos de 320 px a la derecha, franja de
+// indicadores arriba. Esquinas rectas, divisores de 1 px, sin sombras ni animacion. A 1366x768 la pagina no
+// tiene desplazamiento horizontal: la hoja desplaza dentro de su propio lienzo.
+
+// La cabecera de Carbon es fija (48 px).
+body {
+  padding-block-start: 3rem;
+}
+
+.silice-usuario {
+  display: inline-flex;
+  align-items: center;
+  block-size: 3rem;
+  padding-inline: 1rem;
+  color: var(--silice-texto);
+}
+
+.silice-salir {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  block-size: 3rem;
+  padding-inline: 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--silice-texto);
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.silice-entrada__formulario {
+  display: grid;
+  gap: 1rem;
+  max-inline-size: 20rem;
+}
+
+.visor {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 100vw;
+  block-size: calc(100vh - 3rem);
+  min-block-size: 0;
+}
+
+// Fecha de devolucion, nombre del libro y Cambiar libro van en la cabecera de 48 px (el visor los pinta alli con un
+// portal, en esta ranura). La barra propia solo existe cuando el visor se usa suelto, sin cabecera.
+.silice-cabecera__libro {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 1rem;
+  min-inline-size: 0;
+  block-size: 3rem;
+  padding-inline: 1rem;
+}
+
+// La barra global de Carbon (usuario y Salir) cede el ancho a la ranura.
+.silice-cabecera__libro ~ .cds--header__global {
+  flex: none;
+}
+
+.visor__barra {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 1rem;
+  block-size: 3rem;
+  box-sizing: border-box;
+  padding: 0 1rem;
+  background: var(--cds-layer);
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.visor__fecha {
+  flex: none;
+  inline-size: 20rem;
+
+  label {
+    white-space: nowrap;
+  }
+}
+
+.visor__archivo {
+  display: block;
+  flex: 1 1 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visor__error {
+  flex: none;
+  max-inline-size: none;
+  inline-size: 100%;
+}
+
+.visor__soltar {
+  display: grid;
+  inline-size: 100%;
+  box-sizing: border-box;
+  align-content: start;
+  gap: 1rem;
+  max-inline-size: 48rem;
+  padding: 2rem 1rem;
+}
+
+.visor__soltar .cds--file,
+.visor__soltar .cds--file-browse-btn {
+  inline-size: 100%;
+  max-inline-size: none;
+}
+
+.visor__soltar .cds--file-browse-btn {
+  min-block-size: 10rem;
+}
+
+.visor__ayuda-fecha {
+  color: var(--silice-texto-secundario);
+  max-inline-size: 65ch;
+}
+
+.visor__ayuda {
+  color: var(--silice-texto-secundario);
+  max-inline-size: 65ch;
+}
+
+.visor__cuerpo {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) min(20rem, 40vw);
+  min-block-size: 0;
+}
+
+.visor__hoja {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  min-block-size: 0;
+  border-inline-end: 1px solid var(--silice-divisor);
+}
+
+// Fila de pestanas de las hojas y control de zoom: una sola fila; las pestanas (Carbon) ceden y desplazan por dentro
+// cuando el espacio no alcanza, el control conserva su tamano.
+.visor__pestanas {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  min-inline-size: 0;
+  background: var(--cds-layer);
+  border-block-end: 1px solid var(--silice-divisor);
+
+  > .cds--tabs {
+    flex: 1 1 0;
+    min-inline-size: 0;
+  }
+}
+
+.zoom-hoja {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding-inline: 0.25rem;
+}
+
+.zoom-hoja__valor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-inline-size: 3.5rem;
+  text-align: center;
+  color: var(--silice-texto);
+  font-variant-numeric: tabular-nums;
+}
+
+// Lo dibujado cuando no es el zoom propio (factor de letra o tope de Univer): visible, en la etiqueta pequena.
+.zoom-hoja__dibujado {
+  color: var(--silice-texto-secundario);
+  white-space: nowrap;
+}
+
+// En su tope el boton sigue siendo enfocable (aria-disabled, no disabled); solo se ve apagado.
+.zoom-hoja__boton[aria-disabled="true"] {
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
+.visor__lienzo {
+  position: relative;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: hidden;
+  background: var(--cds-background);
+}
+
+.hoja-lienzo {
+  position: absolute;
+  inset: 0;
+  // Todo lo de Univer (z-index de 1 a 100 adentro) forma un solo plano: la capa de halos, hermana de este
+  // elemento, se compara con el plano entero y no con cada pieza suelta.
+  isolation: isolate;
+}
+
+// La lista no desplaza entera: el encabezado y los filtros quedan fijos y solo el cuerpo desplaza.
+.visor__lista {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  overflow: hidden;
+  background: var(--cds-layer);
+}
+
+// Esqueletos de Carbon sin el brillo que recorre la pieza: nada se anima (DESIGN.md, Movimiento).
+.visor__esqueleto {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) min(20rem, 40vw);
+  min-block-size: 0;
+  overflow: hidden;
+
+  [class*="cds--skeleton"],
+  [class*="cds--skeleton"]::before,
+  [class*="cds--skeleton"]::after {
+    animation: none !important;
+  }
+}
+
+.visor__esqueleto-hoja {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  overflow: hidden;
+  padding: 0;
+  border-inline-end: 1px solid var(--silice-divisor);
+}
+
+.visor__esqueleto-lienzo {
+  flex: 1 1 auto;
+  inline-size: 100%;
+  block-size: auto;
+  min-block-size: 0;
+  background: var(--cds-skeleton-background);
+}
+
+// Lo que esta pasando, dicho con texto: un esqueleto solo no explica por que se espera.
+.visor__cargando {
+  padding: 1rem;
+  color: var(--silice-texto-secundario);
+}
+
+// Pestana de una hoja con hallazgos: icono de la severidad mas grave y numero (el color nunca va solo; el texto
+// completo va en un span oculto).
+.pestana__conteo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-inline-start: 0.5rem;
+  color: var(--silice-texto);
+}
+
+// Mientras Univer prepara la hoja, el lienzo muestra el esqueleto (sin brillo, como los demas).
+.visor__esqueleto-sobre {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  block-size: 100%;
+
+  &,
+  &::before {
+    animation: none !important;
+  }
+}
+
+.visor__esqueleto-lista {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.visor__franja-esqueleto {
+  flex: none;
+  min-block-size: 4rem;
+  padding: 1.25rem 1rem;
+  background: var(--cds-layer);
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+// --- Capa de halos (RS2-8) ---------------------------------------------------------------------------
+// Encima del lienzo; no recibe el puntero, salvo la insignia, para no estorbar a la hoja.
+// El lienzo de Univer tiene z-index 8 (su capa de contenido): sin z-index propio la capa quedaba DEBAJO y los halos
+// no se veian sobre las celdas con relleno. 20 la deja por encima del lienzo y por debajo de los popups y menus
+// (de Carbon y de Univer, de 1000 en adelante). visor.estilos.test.ts lo vigila.
+.capa-halos {
+  position: absolute;
+  z-index: 20;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.halo {
+  position: absolute;
+  box-sizing: border-box;
+  // Solo contorno: el valor de la celda se lee entero. El color es la severidad; el icono y el texto la repiten.
+  outline: 2px solid var(--halo-color);
+  outline-offset: -2px;
+}
+
+.halo--elegido {
+  z-index: 1;
+  outline-width: 3px;
+  outline-offset: -3px;
+}
+
+// El amarillo no alcanza 3:1 sobre el fondo claro: un segundo contorno oscuro de 1 px, pegado por dentro al amarillo.
+.halo--advertencia {
+  box-shadow: inset 0 0 0 3px var(--cds-text-primary);
+}
+
+.halo--advertencia.halo--elegido {
+  box-shadow: inset 0 0 0 4px var(--cds-text-primary);
+}
+
+// La insignia va a caballo de la esquina superior derecha: dentro de la celda taparia el final de los numeros.
+.halo__insignia {
+  position: absolute;
+  inset-block-start: -7px;
+  inset-inline-end: -7px;
+  display: block;
+  box-sizing: border-box;
+  inline-size: 14px;
+  block-size: 14px;
+  padding: 1px;
+  border: 0;
+  line-height: 0;
+  background: var(--cds-background);
+  color: var(--halo-color);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.halo__icono {
+  display: block;
+  line-height: 0;
+}
+
+// --- Lista de hallazgos ------------------------------------------------------------------------------
+.lista-hallazgos {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
+.lista-hallazgos__cuerpo {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.lista-hallazgos__aviso {
+  max-inline-size: none;
+  inline-size: 100%;
+}
+
+.hallazgo__contexto {
+  color: var(--silice-texto);
+  overflow-wrap: anywhere;
+}
+
+.hallazgo__motivo {
+  color: var(--silice-texto-secundario);
+}
+
+.lista-hallazgos__cabecera {
+  flex: none;
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.lista-hallazgos__filtro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.lista-hallazgos__vacio {
+  padding: 1rem 0.75rem;
+  color: var(--silice-texto-secundario);
+}
+
+.lista-hallazgos__subtitulo {
+  padding: 0.75rem 0.75rem 0.5rem;
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
+.lista-hallazgos__tabla {
+  td,
+  th {
+    padding-inline: 0.5rem;
+    vertical-align: top;
+  }
+
+  td {
+    padding-block: 0.5rem;
+  }
+}
+
+.lista-hallazgos__fila {
+  cursor: pointer;
+
+  &:hover td {
+    background: var(--cds-layer-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.lista-hallazgos__fila--elegida td {
+  background: var(--cds-layer-selected);
+}
+
+.hallazgo {
+  display: grid;
+  gap: 0.125rem;
+  min-inline-size: 0;
+}
+
+.hallazgo__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.25rem;
+  color: var(--silice-texto-secundario);
+}
+
+.hallazgo__severidad {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--silice-texto);
+}
+
+.hallazgo__icono {
+  flex: none;
+  color: var(--halo-color);
+  fill: var(--halo-color);
+}
+
+// Tres lineas por hallazgo: la fila elegida es la unica que muestra el texto completo (la fila queda entre 80 y
+// 110 px en vez de 250 y el auditor ve cuatro o cinco hallazgos a la vez).
+.hallazgo__descripcion {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.lista-hallazgos__fila--elegida .hallazgo__descripcion {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+// La tabla es de una sola columna y su cabecera ("Hallazgo") ya la dice el titulo de la lista: se queda solo para
+// los lectores de pantalla.
+.lista-hallazgos__tabla thead {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+// El triangulo amarillo de advertencia (WarningAltFilled): su borde amarillo no alcanza 3:1 sobre fondo claro, asi
+// que el signo de exclamacion va con la tinta principal (#161616 sobre amarillo-30: unos 10:1), como promete
+// DESIGN.md. Aplica a la insignia de la hoja, a la lista y a los conteos de la franja.
+.icono-sev[data-icono="WarningAltFilled"] [data-icon-path="inner-path"] {
+  fill: var(--cds-text-primary);
+  opacity: 1;
+}
+
+// Pagina «Libro de la empresa»: el titulo va sobre el visor, con el mismo margen de 16 px que las demas paginas, y
+// el visor ocupa el resto del alto (sin desplazamiento de la pagina).
+.silice-pagina-libro {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  block-size: calc(100vh - 3rem);
+  min-block-size: 0;
+
+  > h1 {
+    flex: none;
+    margin: 0;
+    padding: 1.5rem 1rem 0.75rem;
+  }
+
+  .visor {
+    flex: 1;
+    block-size: auto;
+  }
+
+  .visor__barra {
+    margin-inline: 1rem;
+  }
+}
+
+// La franja de indicadores conserva su alto propio y todo el ancho: dentro del visor (flex en columna, con
+// overflow oculto) se encogia y recortaba las cifras.
+.visor > .franja-indicadores {
+  flex: none;
+  inline-size: 100%;
+  box-sizing: border-box;
+}

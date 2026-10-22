@@ -12,7 +12,6 @@ import json
 import os
 import subprocess
 import sys
-import tomllib
 from dataclasses import replace
 from pathlib import Path
 
@@ -42,7 +41,6 @@ def test_el_manifiesto_declara_lo_que_decide_el_spec() -> None:
     assert m.python == "3.13.13"
     assert "xgboost" not in m.extras_basica and "ml" not in m.extras_basica
     assert set(m.extras_basica) == {
-        "ui",
         "api",
         "planos",
         "informes",
@@ -58,7 +56,6 @@ def test_el_manifiesto_declara_lo_que_decide_el_spec() -> None:
         "core",
         "adapters",
         "ml",
-        "ui",
         "api",
         "operacion",
         "migraciones",
@@ -67,6 +64,8 @@ def test_el_manifiesto_declara_lo_que_decide_el_spec() -> None:
         "paquete",
         "auditoria",
         "fusion",
+        "aplicacion",  # RM-1 (sesion 2b): la api la importa
+        "produccion",
     }
     assert "instalador" not in m.paquetes  # herramienta de construcción: no viaja
     assert set(m.archivos) == {"pyproject.toml", "LICENSE"}
@@ -160,45 +159,35 @@ def test_nunca_viajan_fixtures_bcv_bases_ni_db(arbol: Path) -> None:
     assert all(p.endswith(".csv") for p in viajan if p.startswith("data/precios/maprex_2026-07/"))
 
 
-def test_un_unico_config_toml_y_es_el_oficial(arbol: Path) -> None:
-    assert [p.relative_to(arbol).as_posix() for p in arbol.rglob("config.toml")] == [
-        ".streamlit/config.toml"
-    ]
-    assert (
-        arbol / ".streamlit" / "config.toml"
-    ).read_bytes() == mf.RUTA_CONFIG_OFICIAL.read_bytes()
+def test_el_producto_no_lleva_nada_de_streamlit(arbol: Path) -> None:
+    """Un solo proceso Uvicorn sirve la API y la interfaz: ni `ui/`, ni `.streamlit/`, ni
+    `config.toml`, ni la copia oficial del tema que armaba el instalador."""
+    assert list(arbol.rglob("config.toml")) == []
+    assert not (arbol / ".streamlit").exists() and not (arbol / "ui").exists()
+    assert not hasattr(mf, "RUTA_CONFIG_OFICIAL")
+    assert not (RAIZ / "instalador" / "streamlit_config.toml").exists()
+    assert "ui" not in mf.cargar().paquetes and "ui" not in mf.RAICES_PROPIAS
+    assert "ui" not in mf.cargar().extras_basica
 
 
-def test_la_configuracion_oficial_incluye_la_del_repositorio_y_las_opciones_fijas() -> None:
-    oficial = tomllib.loads(mf.RUTA_CONFIG_OFICIAL.read_text(encoding="utf-8"))
-    desarrollo = tomllib.loads((RAIZ / ".streamlit" / "config.toml").read_text(encoding="utf-8"))
-    faltan = [
-        f"{seccion}.{clave}"
-        for seccion, claves in desarrollo.items()
-        for clave, valor in claves.items()
-        if oficial.get(seccion, {}).get(clave) != valor
-    ]
-    assert faltan == []
-    assert oficial["server"]["address"] == "127.0.0.1" and oficial["server"]["headless"] is True
-    assert (
-        oficial["server"]["fileWatcherType"] == "none" and oficial["server"]["runOnSave"] is False
-    )
-    assert (
-        oficial["client"]["toolbarMode"] == "minimal"
-        and oficial["global"]["developmentMode"] is False
-    )
-    assert oficial["browser"]["gatherUsageStats"] is False
+def test_armar_arbol_devuelve_solo_lo_copiado(arbol: Path, tmp_path: Path) -> None:
+    copiados = mf.armar_arbol(RAIZ, tmp_path / "otro", mf.cargar())
+    assert Path(".streamlit/config.toml") not in copiados
+    assert all((tmp_path / "otro" / p).is_file() for p in copiados)
 
 
-def test_ui_y_api_se_importan_solo_con_el_arbol_del_manifiesto(arbol: Path) -> None:
+def test_la_api_y_la_interfaz_se_importan_solo_con_el_arbol_del_manifiesto(arbol: Path) -> None:
     modulos = [
-        "ui.app",
         "api.main",
+        "api.interfaz",
+        "aplicacion.hoja",
         "operacion.__main__",
         "migraciones.comun",
         "scripts.seed",
         "scripts.seed_demo",
         "scripts.simular_lista",
+        # el cierre de importaciones que empaqueta el manifiesto (RV-25): nada de `ui`
+        *mf.cargar().cierre_desde,
     ]
     # Además de los pedidos, todo módulo cargado que venga del repositorio delata un hueco del
     # manifiesto (el repositorio no está en sys.path del hijo, pero un .pth podría ponerlo).
@@ -266,7 +255,7 @@ def test_un_paquete_declarado_que_no_existe_falla(tmp_path: Path) -> None:
 def test_un_archivo_o_un_dato_declarado_que_no_existe_falla(tmp_path: Path) -> None:
     (tmp_path / "pkg").mkdir()
     (tmp_path / "pkg" / "__init__.py").write_text("", encoding="utf-8")
-    m = mf.Manifiesto("3.13.13", (), False, (), ("pkg",), (), (), (), ())
+    m = mf.Manifiesto("3.13.13", (), False, (), ("pkg",), (), (), (), (), "")
     with pytest.raises(mf.ManifiestoInvalido, match="NO_EXISTE.txt"):
         mf.archivos_de_codigo(tmp_path, replace(m, archivos=("NO_EXISTE.txt",)))
     with pytest.raises(mf.ManifiestoInvalido, match="data/no_existe"):
@@ -296,6 +285,7 @@ def test_las_bases_de_prueba_no_viajan_aunque_se_declaren(tmp_path: Path) -> Non
         cierre_desde=(),
         datos_incluir=("tests/fixtures/bases",),
         datos_excluir_sufijos=(".db",),
+        interfaz_dist="",
     )
     with pytest.raises(mf.ManifiestoInvalido, match="tests/fixtures/bases/v0_5_0/ficha.json"):
         mf.archivos_de_codigo(tmp_path, m)
@@ -308,7 +298,9 @@ def test_los_sufijos_excluidos_se_quedan_fuera_de_los_datos(tmp_path: Path) -> N
     for relativa in ("data/x/a.csv", "data/x/b.pdf", "data/x/c.DB", "data/x/d.xlsx"):
         (tmp_path / relativa).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / relativa).write_bytes(b"x")
-    m = mf.Manifiesto("3.13.13", (), False, (), (), (), (), ("data/x",), (".pdf", ".db", ".xlsx"))
+    m = mf.Manifiesto(
+        "3.13.13", (), False, (), (), (), (), ("data/x",), (".pdf", ".db", ".xlsx"), ""
+    )
     assert mf.archivos_de_codigo(tmp_path, m) == [Path("data/x/a.csv")]
 
 

@@ -1,0 +1,27 @@
+// Partidas similares. Sin tarjetas con sombra ni animaciones (DESIGN.md).
+
+.silice-similares {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+}
+
+.silice-similares__formulario {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.silice-similares__campo {
+  flex: 1 1 24rem;
+}
+
+.silice-similares__detalle {
+  display: grid;
+  gap: 1rem;
+}
+
+.silice-similares__nota {
+  color: var(--silice-texto-secundario);
+}

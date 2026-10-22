@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from aplicacion.composicion import buscar_referencia
 from core.catalog import Catalogo
 from core.contracts import (
     ComposicionAPU,
@@ -29,7 +30,6 @@ from core.contracts import (
 from core.costing import calcular_apu
 from core.verification.reglas import CriterioDepreciacion
 from tests.fixtures import apu_linea_base as linea_base
-from ui.composicion import buscar_referencia
 
 FECHA = linea_base.FECHA_LINEA_BASE
 
@@ -92,9 +92,7 @@ def _presupuesto_persistido(sesion, composiciones: dict[str, ComposicionAPU]) ->
         )
         for codigo, composicion in composiciones.items()
     )
-    return Presupuesto(
-        codigo="PRUEBA-R6", fecha=FECHA, moneda=linea_base.MONEDA, partidas=partidas
-    )
+    return Presupuesto(codigo="PRUEBA-R6", fecha=FECHA, moneda=linea_base.MONEDA, partidas=partidas)
 
 
 def test_mismo_factor_de_la_referencia_r6_no_emite_hallazgo(sesion):

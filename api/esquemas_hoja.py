@@ -1,0 +1,799 @@
+"""Esquemas de `/v1/hoja` (T10, 3b-1; diseño §4.2 y §4.3).
+
+Los montos viajan como `Monto {texto, exacto}`: `texto` a dos decimales (como la página clásica) y
+`exacto` sin redondear; ningún `float` en el JSON. Los conteos son enteros. Las rebanadas 3b-2 y
+3b-3 añaden aquí las vistas de cada pestaña; la 3c-1, el cuerpo y la respuesta de la edición del
+espacio (E1).
+"""
+
+from __future__ import annotations
+
+import re
+from datetime import date
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
+
+from aplicacion.entrega import EstadoDeLaCadena
+from aplicacion.hoja import CambioEditado, FilaInsumo, FilaVersion
+from aplicacion.hoja_borradores import BorradorVivo
+from aplicacion.hoja_guardado import Guardado
+from aplicacion.hoja_versiones import VersionNueva
+from aplicacion.hoja_vista import (
+    BaseAbierta,
+    Monto,
+    ResumenHoja,
+    VistaApu,
+    VistaEquilibrio,
+    VistaEspacio,
+    VistaParametros,
+    VistaPlan,
+    VistaPrecios,
+    VistaPresupuesto,
+    VistaTrazabilidad,
+    monto,
+)
+
+#: Cada texto de celda o de código llega acotado (diseño §4.1): ≤ 500 caracteres.
+Texto500 = Annotated[str, Field(max_length=500)]
+
+
+class MontoHojaRespuesta(BaseModel):
+    texto: str
+    exacto: str
+
+
+class HallazgosHojaRespuesta(BaseModel):
+    severidad: str
+    total: int
+
+
+class BaseAbiertaRespuesta(BaseModel):
+    proyecto: str
+    version: str | None
+    vigente: str | None
+    lista: str | None
+    espacio_de: str | None
+    solo_lectura: bool
+    moneda: str
+
+
+class ResumenHojaRespuesta(BaseModel):
+    rev: int
+    moneda: str
+    total: MontoHojaRespuesta
+    cambios: int
+    pendientes_catalogo: int
+    hallazgos: list[HallazgosHojaRespuesta]
+    hay_plan: bool
+    version_mas_nueva: str | None
+    guardado_como: str | None
+
+
+class VersionHojaRespuesta(BaseModel):
+    codigo: str
+    fecha: str
+    motivo: str
+    origen: str
+    vigente: bool
+    descartada: bool
+    cambios: int
+
+
+def version_a_respuesta(fila: FilaVersion) -> VersionHojaRespuesta:
+    return VersionHojaRespuesta(
+        codigo=fila.codigo,
+        fecha=fila.fecha.isoformat(),
+        motivo=fila.motivo,
+        origen=fila.origen,
+        vigente=fila.vigente,
+        descartada=fila.descartada,
+        cambios=fila.cambios,
+    )
+
+
+class VersionesHojaRespuesta(BaseModel):
+    proyecto: str
+    moneda: str
+    por_omision: str | None
+    versiones: list[VersionHojaRespuesta]
+
+
+class BorradorNuevo(BaseModel):
+    """`version: null` abre un borrador en blanco para un proyecto que aún no tiene versiones."""
+
+    proyecto: Annotated[str, Field(min_length=1, max_length=500)]
+    version: Texto500 | None = None
+    #: E11: descartar el borrador de esa version que ya tenga cambios sin guardar (sin esto, 409).
+    reemplazar: StrictBool = False
+
+
+class InstantaneaHojaRespuesta(BaseModel):
+    creadas: int
+    mensaje: str | None
+
+
+class BorradorHojaRespuesta(BaseModel):
+    id: str
+    base: BaseAbiertaRespuesta
+    resumen: ResumenHojaRespuesta
+
+
+class BorradorAbierto(BorradorHojaRespuesta):
+    instantanea: InstantaneaHojaRespuesta
+
+
+def monto_a_respuesta(monto: Monto) -> MontoHojaRespuesta:
+    return MontoHojaRespuesta(texto=monto.texto, exacto=monto.exacto)
+
+
+def base_a_respuesta(base: BaseAbierta) -> BaseAbiertaRespuesta:
+    return BaseAbiertaRespuesta(
+        proyecto=base.proyecto,
+        version=base.version,
+        vigente=base.vigente,
+        lista=base.lista,
+        espacio_de=base.espacio_de,
+        solo_lectura=base.solo_lectura,
+        moneda=base.moneda,
+    )
+
+
+def resumen_a_respuesta(resumen: ResumenHoja) -> ResumenHojaRespuesta:
+    return ResumenHojaRespuesta(
+        rev=resumen.rev,
+        moneda=resumen.moneda,
+        total=monto_a_respuesta(resumen.total),
+        cambios=resumen.cambios,
+        pendientes_catalogo=resumen.pendientes_catalogo,
+        hallazgos=[
+            HallazgosHojaRespuesta(severidad=h.severidad, total=h.total) for h in resumen.hallazgos
+        ],
+        hay_plan=resumen.hay_plan,
+        version_mas_nueva=resumen.version_mas_nueva,
+        guardado_como=resumen.guardado_como,
+    )
+
+
+# --- las vistas de las pestanas (3b-2) -------------------------------------------------------
+
+
+class EstadoFilaRespuesta(BaseModel):
+    severidad: str | None
+    texto: str
+
+
+class OpcionListaRespuesta(BaseModel):
+    valor: str
+    rotulo: str
+
+
+class ColumnaTablaRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+    lista: list[OpcionListaRespuesta] | None
+
+
+class TablaEspacioRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+    columnas: list[ColumnaTablaRespuesta]
+    con_estado: bool
+
+
+class CantidadDerivadaRespuesta(BaseModel):
+    partida: str
+    descripcion: str
+    unidad: str
+    cantidad: MontoHojaRespuesta
+    origen: str
+
+
+class VistaEspacioRespuesta(BaseModel):
+    ayuda: str
+    tablas: list[TablaEspacioRespuesta]
+    filas: dict[str, list[dict[str, str]]]
+    estado: dict[str, EstadoFilaRespuesta]
+    derivadas: list[CantidadDerivadaRespuesta]
+    total: MontoHojaRespuesta
+    moneda: str
+    pendientes: int
+    vacio_mensaje: str | None
+
+
+def vista_espacio_a_respuesta(vista: VistaEspacio) -> VistaEspacioRespuesta:
+    return VistaEspacioRespuesta.model_validate(vista, from_attributes=True)
+
+
+class FilaPresupuestoRespuesta(BaseModel):
+    clave: str
+    partida: str
+    descripcion: str
+    unidad: str
+    cantidad: str
+    cantidad_calculada: str
+    escrita: bool
+    pu: MontoHojaRespuesta | None
+    total: MontoHojaRespuesta | None
+    estado: EstadoFilaRespuesta
+
+
+class VistaPresupuestoRespuesta(BaseModel):
+    filas: list[FilaPresupuestoRespuesta]
+    total: MontoHojaRespuesta
+    moneda: str
+    vacio_mensaje: str | None
+
+
+def vista_presupuesto_a_respuesta(vista: VistaPresupuesto) -> VistaPresupuestoRespuesta:
+    return VistaPresupuestoRespuesta.model_validate(vista, from_attributes=True)
+
+
+class PartidaListaRespuesta(BaseModel):
+    codigo: str
+    descripcion: str
+
+
+class ColumnaApuRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+
+
+class GrupoApuRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+    columnas: list[ColumnaApuRespuesta]
+    filas: list[dict[str, str]]
+    subtotal: MontoHojaRespuesta
+
+
+class FilaCierreRespuesta(BaseModel):
+    concepto: str
+    monto: MontoHojaRespuesta
+    nota: str
+
+
+class MetricasApuRespuesta(BaseModel):
+    materiales: MontoHojaRespuesta
+    equipos: MontoHojaRespuesta
+    mano_obra: MontoHojaRespuesta
+    precio_unitario: MontoHojaRespuesta
+
+
+class DetalleApuRespuesta(BaseModel):
+    codigo: str
+    descripcion: str
+    unidad: str
+    rendimiento: str
+    grupos: list[GrupoApuRespuesta]
+    cierre: list[FilaCierreRespuesta]
+    metricas: MetricasApuRespuesta
+    estados: list[str]
+    solo_lectura_insumos: bool
+
+
+class VistaApuRespuesta(BaseModel):
+    partidas: list[PartidaListaRespuesta]
+    sin_coincidencias: bool
+    seleccionada: str | None
+    detalle: DetalleApuRespuesta | None
+    vacio_mensaje: str | None
+
+
+def vista_apu_a_respuesta(vista: VistaApu) -> VistaApuRespuesta:
+    return VistaApuRespuesta.model_validate(vista, from_attributes=True)
+
+
+class FilaPlanRespuesta(BaseModel):
+    partida: str
+    valores: dict[str, str]
+
+
+class PuntoCurvaRespuesta(BaseModel):
+    periodo: str
+    monto: MontoHojaRespuesta
+    acumulado: MontoHojaRespuesta
+    porcentaje: MontoHojaRespuesta
+
+
+class VistaPlanRespuesta(BaseModel):
+    hay_plan: bool
+    etiquetas: list[str]
+    filas: list[FilaPlanRespuesta]
+    curva: list[PuntoCurvaRespuesta]
+    moneda: str
+    mensaje: str | None
+
+
+def vista_plan_a_respuesta(vista: VistaPlan) -> VistaPlanRespuesta:
+    return VistaPlanRespuesta.model_validate(vista, from_attributes=True)
+
+
+class VistaEquilibrioRespuesta(BaseModel):
+    estado: str
+    moneda: str
+    venta: MontoHojaRespuesta
+    costo_variable: MontoHojaRespuesta
+    costo_fijo: MontoHojaRespuesta
+    utilidad: MontoHojaRespuesta
+    punto: MontoHojaRespuesta | None
+    porcentaje: MontoHojaRespuesta | None
+    periodo: str | None
+    fraccion_periodo: str | None
+    mensaje: str
+
+
+def vista_equilibrio_a_respuesta(vista: VistaEquilibrio) -> VistaEquilibrioRespuesta:
+    return VistaEquilibrioRespuesta.model_validate(vista, from_attributes=True)
+
+
+class CampoParametroRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+    valor: str
+
+
+class VistaParametrosRespuesta(BaseModel):
+    campos: list[CampoParametroRespuesta]
+    moneda_proyecto: str | None
+    total: MontoHojaRespuesta
+    puede_convertir: bool
+
+
+def vista_parametros_a_respuesta(vista: VistaParametros) -> VistaParametrosRespuesta:
+    return VistaParametrosRespuesta.model_validate(vista, from_attributes=True)
+
+
+class RegistroCambioRespuesta(BaseModel):
+    objeto: str
+    clave: str
+    campo: str
+    antes: str
+    despues: str
+    fuente: str
+    responsable: str
+    fecha_hora: str
+
+
+class TrazabilidadHojaRespuesta(BaseModel):
+    versiones: list[VersionHojaRespuesta]
+    registros: list[RegistroCambioRespuesta]
+    vacio_mensaje: str | None
+
+
+def trazabilidad_a_respuesta(vista: VistaTrazabilidad) -> TrazabilidadHojaRespuesta:
+    return TrazabilidadHojaRespuesta(
+        versiones=[version_a_respuesta(v) for v in vista.versiones],
+        registros=[
+            RegistroCambioRespuesta.model_validate(r, from_attributes=True) for r in vista.registros
+        ],
+        vacio_mensaje=vista.vacio_mensaje,
+    )
+
+
+class ColumnaPrecioRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+    numerica: bool
+
+
+class FilaPrecioRespuesta(BaseModel):
+    insumo: str
+    codigo: str
+    tipo: str
+    precio: MontoHojaRespuesta
+    lista: str
+    moneda: str
+    fecha_precio: str
+    tasa: MontoHojaRespuesta | None
+    fecha_tasa: str | None
+    referencia: str
+    cotizacion: str
+    moneda_original: str
+    precio_original: MontoHojaRespuesta | None
+    fuente_tasa: str
+    fuente: str
+    propio: str
+    erosion_usd: MontoHojaRespuesta | None
+    erosion_bs: MontoHojaRespuesta | None
+    erosion_pct: MontoHojaRespuesta | None
+    erosion_indice: MontoHojaRespuesta | None
+    estado: str
+
+
+class PreciosHojaRespuesta(BaseModel):
+    moneda: str
+    fecha_evaluacion: str
+    columnas: list[ColumnaPrecioRespuesta]
+    filas: list[FilaPrecioRespuesta]
+
+
+def precios_a_respuesta(vista: VistaPrecios) -> PreciosHojaRespuesta:
+    return PreciosHojaRespuesta.model_validate(vista, from_attributes=True)
+
+
+# --- la edicion del espacio (3c-1, E1) ---------------------------------------------------------
+#
+# Topes del diseño (§4.1, D-9, SUPUESTOS declarados): una celda ≤ 500 caracteres y filas por tabla
+# ≤ 5000 orígenes, 1000 ambientes, 1000 fuentes, 5000 puntos y 20000 vértices. Una fila admite
+# hasta 40 columnas de nombre ≤ 64 caracteres (hardening: la mayor tiene 13).
+
+NombreDeColumna = Annotated[str, Field(max_length=64)]
+FilaDeTabla = Annotated[dict[NombreDeColumna, Texto500], Field(max_length=40)]
+
+
+class TablasEspacioCuerpo(BaseModel):
+    """Las cinco tablas del editor del espacio, completas; una ausente cuenta como vacía."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    origenes: Annotated[list[FilaDeTabla], Field(max_length=5000)] = Field(default_factory=list)
+    ambientes: Annotated[list[FilaDeTabla], Field(max_length=1000)] = Field(default_factory=list)
+    fuentes: Annotated[list[FilaDeTabla], Field(max_length=1000)] = Field(default_factory=list)
+    puntos: Annotated[list[FilaDeTabla], Field(max_length=5000)] = Field(default_factory=list)
+    tramos: Annotated[list[FilaDeTabla], Field(max_length=20000)] = Field(default_factory=list)
+
+    def como_filas(self) -> dict[str, list[dict[str, str]]]:
+        return {nombre: getattr(self, nombre) for nombre in type(self).model_fields}
+
+
+class EdicionEspacio(BaseModel):
+    """`rev` es el que la persona vio (`ResumenHoja.rev`); un entero, no texto ni decimal."""
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    tablas: TablasEspacioCuerpo
+
+
+class EdicionEspacioRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del espacio (como R5)."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    espacio: VistaEspacioRespuesta
+
+
+# --- la edicion de las cantidades, los parametros y el plan (3c-2, E2 a E5) ---------------------
+#
+# Topes (D-9, SUPUESTOS declarados): cada texto ≤ 500 caracteres; hasta 20000 renglones de
+# cantidades (más que los 5000 puntos del espacio: un punto deriva varias partidas); de 1 a 500
+# periodos y hasta 5000 filas de plan (una por partida). `extra` prohibido: un campo desconocido es
+# un cuerpo con otra forma.
+
+
+class FilaDeCantidad(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    clave: Texto500
+    cantidad: Texto500
+
+
+class EdicionCantidades(BaseModel):
+    """Solo los renglones TOCADOS: el servidor arma la tabla completa del presupuesto."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    filas: Annotated[list[FilaDeCantidad], Field(max_length=20000)]
+
+    def como_filas(self) -> list[dict[str, str]]:
+        return [{"clave": f.clave, "cantidad": f.cantidad} for f in self.filas]
+
+
+class EdicionCantidadesRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del presupuesto (R6)."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    presupuesto: VistaPresupuestoRespuesta
+
+
+class EdicionParametros(BaseModel):
+    """Los CUATRO parametros de costo, como los textos de los cuadros de la clásica."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    fcas: Texto500
+    bono_alimentacion: Texto500
+    administracion: Texto500
+    utilidad: Texto500
+
+    def como_textos(self) -> dict[str, str]:
+        return {
+            "fcas": self.fcas,
+            "bono_alimentacion": self.bono_alimentacion,
+            "administracion": self.administracion,
+            "utilidad": self.utilidad,
+        }
+
+
+class EdicionParametrosRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la vista de parámetros (R10)."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    parametros: VistaParametrosRespuesta
+
+
+class FilaDePlanCuerpo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    partida: Texto500
+    valores: Annotated[dict[Texto500, Texto500], Field(max_length=500)]
+
+
+class EdicionPlan(BaseModel):
+    """La matriz partida por periodo. Las etiquetas son distintas entre sí y ninguna es «partida»
+    (es la columna de la partida en la matriz de la clásica)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    etiquetas: Annotated[list[Texto500], Field(min_length=1, max_length=500)]
+    filas: Annotated[list[FilaDePlanCuerpo], Field(max_length=5000)]
+
+    @field_validator("etiquetas")
+    @classmethod
+    def _distintas(cls, etiquetas: list[str]) -> list[str]:
+        if len(set(etiquetas)) != len(etiquetas) or "partida" in etiquetas:
+            raise ValueError("etiquetas repetidas o reservadas")
+        return etiquetas
+
+    def como_filas(self) -> list[dict[str, str]]:
+        return [{**f.valores, "partida": f.partida} for f in self.filas]
+
+
+class EdicionPlanRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del plan (R8)."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    plan: VistaPlanRespuesta
+
+
+class EdicionSecuencial(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+
+
+# --- el APU, el cambio de insumo, los cambios y retomar (3c-3, E6 a E11) -----------------------
+#
+# Topes (D-9, SUPUESTOS declarados): cada texto ≤ 500 caracteres y a lo sumo 500 lineas por rubro de
+# un APU (el mayor del caso medido tiene 4). `extra` prohibido.
+
+LineasDeApu = Annotated[list[Texto500], Field(max_length=500)]
+
+
+class EdicionApu(BaseModel):
+    """El rendimiento y UNA cantidad por linea de cada rubro, en el orden del APU."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    rendimiento: Texto500
+    materiales: LineasDeApu
+    equipos: LineasDeApu
+    mano_obra: LineasDeApu
+
+
+class EdicionApuRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del APU (como R7)."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    apu: VistaApuRespuesta
+
+
+class CambioDeInsumo(BaseModel):
+    """`tipo` y `indice` los valida la hoja con el texto de la clasica; aqui solo la forma."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    tipo: Texto500
+    indice: Annotated[int, Field(strict=True, ge=0, le=1_000_000)]
+    insumo: Texto500
+
+
+class InsumoHojaRespuesta(BaseModel):
+    codigo: str
+    descripcion: str
+    unidad: str
+    precio: MontoHojaRespuesta
+
+
+class InsumosHojaRespuesta(BaseModel):
+    insumos: list[InsumoHojaRespuesta]
+    hay_mas: bool
+
+
+def insumos_a_respuesta(filas: list[FilaInsumo], hay_mas: bool) -> InsumosHojaRespuesta:
+    return InsumosHojaRespuesta(
+        insumos=[
+            InsumoHojaRespuesta(
+                codigo=f.codigo,
+                descripcion=f.descripcion,
+                unidad=f.unidad,
+                precio=monto_a_respuesta(monto(f.precio)),
+            )
+            for f in filas
+        ],
+        hay_mas=hay_mas,
+    )
+
+
+class CambioHojaRespuesta(BaseModel):
+    objeto: str
+    clave: str
+    campo: str
+    antes: str
+    despues: str
+
+
+class CambiosHojaRespuesta(BaseModel):
+    rev: int
+    cambios: list[CambioHojaRespuesta]
+
+
+def cambios_a_respuesta(rev: int, cambios: list[CambioEditado]) -> CambiosHojaRespuesta:
+    return CambiosHojaRespuesta(
+        rev=rev,
+        cambios=[
+            CambioHojaRespuesta(
+                objeto=c.objeto,
+                clave=c.clave,
+                campo=c.campo,
+                antes=c.valor_anterior,
+                despues=c.valor_nuevo,
+            )
+            for c in cambios
+        ],
+    )
+
+
+class BorradorRetomableRespuesta(BaseModel):
+    id: str
+    proyecto: str
+    version: str | None
+    cambios: int
+    rev: int
+    tocado: str
+
+
+class BorradoresHojaRespuesta(BaseModel):
+    borradores: list[BorradorRetomableRespuesta]
+
+
+def borradores_a_respuesta(filas: list[tuple[BorradorVivo, int]]) -> BorradoresHojaRespuesta:
+    return BorradoresHojaRespuesta(
+        borradores=[
+            BorradorRetomableRespuesta(
+                id=vivo.id,
+                proyecto=vivo.proyecto,
+                version=vivo.version,
+                cambios=cambios,
+                rev=vivo.rev,
+                tocado=vivo.tocado.isoformat(timespec="seconds"),
+            )
+            for vivo, cambios in filas
+        ]
+    )
+
+
+# --- guardar el borrador como version (3d-1, S1) ----------------------------------------------
+#
+# Tope (D-9, SUPUESTO declarado): la fuente del cambio llega acotada a 300 caracteres, el ancho de
+# `RegistroCambio.fuente`. `extra` prohibido: el responsable NO viaja en el cuerpo (RF-82).
+
+
+class GuardarVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    fuente: Annotated[str, Field(strict=True, max_length=300)]
+    confirmar_version_mas_nueva: StrictBool = False
+
+
+class GuardadoRespuesta(BaseModel):
+    codigo: str
+    proyecto: str
+    cambios: int
+    total: MontoHojaRespuesta
+    primera: bool
+    mensaje: str
+
+
+def guardado_a_respuesta(guardado: Guardado) -> GuardadoRespuesta:
+    return GuardadoRespuesta(
+        codigo=guardado.codigo,
+        proyecto=guardado.proyecto,
+        cambios=guardado.cambios,
+        total=monto_a_respuesta(guardado.total),
+        primera=guardado.primera,
+        mensaje=guardado.mensaje,
+    )
+
+
+# --- S2 a S6 (3d-2): versiones nuevas desde una guardada y la cadena -----------------------------
+#
+# Topes (D-9, SUPUESTO declarado): `fuente` y `motivo` 300 (el ancho de `RegistroCambio.fuente`),
+# `proveedor` 120 y `numero` 60 (las columnas de `cotizacion`) y `evidencia` 90, para que la fuente
+# que arma el nucleo ("Cotizacion {numero} de {proveedor} ({fecha}). {evidencia}") no pase de 300.
+# `extra` prohibido: el responsable NO viaja en el cuerpo (RF-82). Los textos van en `strict`: un
+# numero donde se espera texto (un precio `12.5`) es de otra forma, no un dato.
+
+Referencia = Annotated[str, Field(strict=True, min_length=1, max_length=500)]
+_AAAA_MM_DD = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
+class RestaurarVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proyecto: Referencia
+    version: Referencia
+    fuente: Annotated[str, Field(strict=True, max_length=300)]
+
+
+class CotizarVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proyecto: Referencia
+    version: Referencia
+    insumo: Referencia
+    precio: Annotated[str, Field(strict=True, max_length=500)]
+    proveedor: Annotated[str, Field(strict=True, max_length=120)]
+    numero: Annotated[str, Field(strict=True, max_length=60)]
+    fecha: date
+    evidencia: Annotated[str, Field(strict=True, max_length=90)] | None = None
+
+    @field_validator("fecha", mode="before")
+    @classmethod
+    def _fecha_aaaa_mm_dd(cls, valor: object) -> date:
+        """Solo `AAAA-MM-DD` y una fecha que exista (nada de marcas de tiempo ni enteros)."""
+        if not isinstance(valor, str) or not _AAAA_MM_DD.fullmatch(valor):
+            raise ValueError("fecha")
+        return date.fromisoformat(valor)  # ValueError si el dia no existe
+
+
+class RetirarCotizacion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proyecto: Referencia
+    version: Referencia
+    insumo: Referencia
+    motivo: Annotated[str, Field(strict=True, max_length=300)]
+
+
+class ConvertirVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proyecto: Referencia
+    version: Referencia
+    moneda: Annotated[str, Field(strict=True, min_length=1, max_length=20)]
+    lado: Literal["venta", "compra"]
+    fuente: Annotated[str, Field(strict=True, max_length=300)]
+
+
+class VersionNuevaRespuesta(BaseModel):
+    codigo: str
+    proyecto: str
+    mensaje: str
+
+
+def version_nueva_a_respuesta(nueva: VersionNueva) -> VersionNuevaRespuesta:
+    return VersionNuevaRespuesta(
+        codigo=nueva.codigo, proyecto=nueva.proyecto, mensaje=nueva.mensaje
+    )
+
+
+class CadenaHojaRespuesta(BaseModel):
+    integra: bool
+    mensaje: str
+    declaracion: str | None
+
+
+def cadena_a_respuesta(estado: EstadoDeLaCadena) -> CadenaHojaRespuesta:
+    return CadenaHojaRespuesta(
+        integra=estado.integra, mensaje=estado.mensaje, declaracion=estado.declaracion
+    )

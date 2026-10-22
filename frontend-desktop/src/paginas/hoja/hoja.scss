@@ -1,0 +1,324 @@
+// Hoja del proyecto. Sin tarjetas con sombra ni animaciones (DESIGN.md): bloques separados por un divisor.
+
+.silice-hoja {
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+  padding: 1.5rem 1rem 2rem;
+}
+
+.silice-hoja__estado {
+  display: grid;
+  gap: 0.5rem;
+  padding-block-end: 1rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.silice-hoja__total {
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-hoja__ausente {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+}
+
+.silice-hoja__pestana {
+  display: grid;
+  gap: 1.5rem;
+  min-inline-size: 0;
+}
+
+.silice-hoja__seccion {
+  display: grid;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-hoja__titulo-tabla {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+// Una tabla ancha (13 columnas) se desplaza dentro de su región; la página no. La primera columna queda fija.
+.silice-hoja__desplazable {
+  min-inline-size: 0;
+  overflow-x: auto;
+  // Las etiquetas ocultas de Carbon (position: absolute) de las celdas se quedan dentro de la región y no alargan la página.
+  position: relative;
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus, #0f62fe);
+    outline-offset: -2px;
+  }
+
+  // El desplazador es esta región (la que recibe el foco y responde a las flechas): ni el contenedor de `TablaDensa`
+  // (`.silice-tabla`) ni el de Carbon desplazan por su cuenta, o las flechas no mueven nada (auditoría visual 3e-3, H-1).
+  .silice-tabla,
+  .cds--data-table-content {
+    overflow-x: visible;
+  }
+
+  th:first-child,
+  td:first-child {
+    position: sticky;
+    inset-inline-start: 0;
+    background: var(--cds-layer, #fff);
+  }
+}
+
+.silice-hoja__estado-fila {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-hoja__estado-texto {
+  // El texto completo se ve y se lee con el teclado: envuelve, no se recorta.
+  max-inline-size: 28rem;
+  overflow-wrap: anywhere;
+}
+
+// APU: lista · tabla · cierre. Bajo ~1200 px se apilan en vez de comprimirse.
+.silice-hoja__apu {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr) 18rem;
+  gap: 1.5rem;
+  align-items: start;
+
+  @media (max-width: 75rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.silice-hoja__apu-lista {
+  display: grid;
+  gap: 0.5rem;
+  max-block-size: 32rem;
+  overflow-y: auto;
+}
+
+.silice-hoja__apu-centro,
+.silice-hoja__apu-cierre {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-hoja__metricas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+
+  dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.silice-hoja__filtro {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus, #0f62fe);
+    outline-offset: 2px;
+  }
+}
+
+// Tablas editables del espacio (3c-1). La primera columna es fija; el desplazamiento por foco deja un margen del ancho de
+// esa columna para que el campo enfocado no quede detrás de ella (WCAG 2.4.11, foco no oculto).
+.silice-hoja__editable {
+  scroll-padding-inline-start: 9rem;
+
+  th:first-child,
+  td:first-child {
+    z-index: 1;
+    inline-size: 8rem;
+    min-inline-size: 8rem;
+    max-inline-size: 8rem;
+  }
+
+  td {
+    padding-block: 0.25rem;
+    vertical-align: top;
+    min-inline-size: 7rem;
+  }
+
+  .cds--form-item {
+    min-inline-size: 0;
+  }
+}
+
+.silice-hoja__sin-evaluar {
+  opacity: 0.6;
+}
+
+.silice-hoja__agregar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.silice-hoja__aviso-edicion,
+.silice-hoja__confirmar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+
+  > :first-child {
+    flex-basis: 100%;
+  }
+}
+
+// Parámetros editables (3c-2): los cuatro campos en dos columnas, con su etiqueta a la vista.
+.silice-hoja__campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+// La cantidad editable de un renglón del Presupuesto: el campo y, debajo, la calculada y el atajo para volver a ella.
+.silice-hoja__cantidad {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  min-inline-size: 7rem;
+}
+
+// APU editable (3c-3): el cambio de insumo se pliega; sus campos se apilan.
+.silice-hoja__insumo-cuerpo {
+  display: grid;
+  gap: 0.75rem;
+  max-inline-size: 32rem;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.silice-hoja__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+// Retomar un borrador (3c-3): un bloque con el borde de acción, sin sombra ni animación.
+.silice-hoja__retomar {
+  display: grid;
+  gap: 0.75rem;
+  max-inline-size: 48rem;
+  padding: 1rem;
+  border: 1px solid var(--silice-divisor);
+  border-inline-start: 4px solid var(--silice-interactivo);
+}
+
+// Diálogo de confirmación al cambiar de versión con cambios sin guardar: cubre la página, sin animación.
+.silice-hoja__dialogo-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(22 22 22 / 50%);
+}
+
+.silice-hoja__dialogo {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  max-inline-size: 36rem;
+  // Cabe siempre en la ventana (a 1366x768 y con la letra grande): el cuerpo se desplaza y el pie queda fijo (H-4).
+  max-block-size: calc(100vh - 2rem);
+  max-block-size: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.5rem 0;
+  background: var(--cds-layer, #fff);
+  border-inline-start: 4px solid var(--silice-sev-critico, #da1e28);
+
+  &:focus {
+    outline: 2px solid var(--silice-interactivo, #0f62fe);
+  }
+}
+
+// El pie con Cancelar y la acción principal no se desplaza con el cuerpo: siempre a la vista, sobre fondo opaco y con un
+// divisor (H-4). Es el último hijo directo del diálogo; los avisos de error con acciones propias no son el pie.
+.silice-hoja__dialogo > .silice-hoja__acciones:last-child {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  margin-inline: -1.5rem;
+  padding: 0.75rem 1.5rem 1rem;
+  background: var(--cds-layer, #fff);
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
+// El modal «Guardar versión»: más ancho que la confirmación, con borde de acción (no de peligro) y desplazamiento propio.
+.silice-hoja__dialogo--guardar {
+  inline-size: min(56rem, 100%);
+  max-inline-size: none;
+  border-inline-start-color: var(--silice-interactivo, #0f62fe);
+}
+
+.silice-hoja__cambios {
+  max-block-size: 40vh;
+  overflow: auto;
+}
+
+.silice-hoja__cambios-guardar {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.silice-hoja__contenido {
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+  min-inline-size: 0;
+}
+
+// El lugar donde se pintan los diálogos de las operaciones sobre versiones (3d-2): no ocupa lugar en la rejilla de la página.
+.silice-hoja__anfitrion {
+  display: contents;
+}
+
+// Restaurar, cotizar, retirar y convertir: un formulario corto, de una columna, con desplazamiento propio.
+.silice-hoja__dialogo--operacion {
+  inline-size: min(32rem, 100%);
+  border-inline-start-color: var(--silice-interactivo, #0f62fe);
+}
+
+.silice-hoja__campos-operacion {
+  display: grid;
+  gap: 1rem;
+}
+
+// Estado de la cadena de sellos: ícono y texto en la misma línea; el color solo acompaña.
+.silice-hoja__cadena {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.silice-hoja__cadena-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.silice-hoja__cadena-integra {
+  fill: var(--silice-verificado);
+}
+
+.silice-hoja__cadena-rota {
+  fill: var(--silice-sev-critico, #da1e28);
+}

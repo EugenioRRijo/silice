@@ -1,0 +1,261 @@
+// Franja de indicadores Fiori (DESIGN.md): 64 px como minimo, divisores de 1 px, esquinas rectas, sin sombra ni animacion.
+// Texto solo para lectores de pantalla (el patron visually-hidden de Carbon): sin salto de linea ni espacio propio.
+.silice-oculto {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+// La franja mide 64 px como minimo y solo crece con la etiqueta del libro menor (V-16): los indicadores se reparten el ancho que queda y cada texto recorta con elipsis
+// lo que no cabe (el valor completo esta en el tooltip, que se abre con el teclado); los conteos por severidad no
+// se encogen ni se mueven, asi que se ven siempre, a 1366 y a 1920. NADA de la franja ni de sus contenedores
+// recorta (overflow): el tooltip con las cifras exactas se abre por debajo de ella y quedaria cortado.
+.franja-indicadores {
+  display: flex;
+  flex: none; // la pantalla es una columna: sin esto la franja se encoge y se come los 64 px
+  flex-wrap: nowrap;
+  align-items: stretch;
+  min-block-size: 4rem; // 64 px; solo crece si un indicador lleva la etiqueta del libro menor (V-16), que se ve completa
+  background: var(--cds-layer);
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.franja-indicadores__lista {
+  display: flex;
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.fiori-kpi {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: center;
+  row-gap: 0.125rem;
+  min-inline-size: 0;
+  padding: 0.25rem 0.75rem;
+  border-inline-end: 1px solid var(--silice-divisor);
+}
+
+// Cada par (titulo y meta; cifra y variacion) comparte una fila que baja de linea cuando no caben: antes eran dos
+// columnas de rejilla y, con la letra Muy grande, la variacion se comia la columna de la cifra (0 px, V-16).
+.fiori-kpi__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+// La tarjeta con la frase completa del libro menor (V-16) se lleva mas ancho que las del marcador breve: la frase es larga
+// y en un tercio de la franja bajaria a muchas lineas y le quitaria alto a la hoja.
+.fiori-kpi--frase {
+  flex: 2.5 1 0;
+}
+
+.fiori-kpi:last-child {
+  border-inline-end: 0;
+}
+
+// Cada texto de la tarjeta se recorta con elipsis dentro de su celda.
+.fiori-kpi__titulo,
+.fiori-kpi__meta,
+.fiori-kpi__actual,
+.fiori-kpi__delta {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fiori-kpi__titulo {
+  color: var(--silice-texto-secundario);
+}
+
+.fiori-kpi__meta {
+  color: var(--silice-texto-secundario);
+}
+
+.fiori-kpi__actual {
+  color: var(--silice-texto);
+  text-align: start;
+}
+
+// El valor es un <button> solo para que el teclado lo alcance: se pinta como texto, con la tipografia y el color de
+// la cifra. Lo que senala que revela algo es el subrayado punteado y el cursor de ayuda (sin iconos).
+// El contenedor del tooltip ocupa la celda de la cifra; no recorta (el popover cuelga de el).
+.fiori-kpi__tooltip {
+  display: block;
+  overflow: visible;
+}
+
+// Las dos cifras exactas, una debajo de la otra (si no, corren en una linea y se salen de la caja del tooltip).
+.fiori-kpi__exacto {
+  display: grid;
+  gap: 0.25rem;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.fiori-kpi__valor {
+  display: block;
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25rem;
+  cursor: help;
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+  }
+}
+
+.fiori-kpi__delta {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: auto;
+  gap: 0.125rem;
+  // La variacion no se recorta: en las tarjetas estrechas (las del marcador breve del libro menor) baja de linea.
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+// V-16, etiqueta de advertencia pegada: el libro menor sale en verde, pero un libro que omite costos tambien sale menor.
+// Va dentro del indicador, bajo la cifra, siempre visible: icono, texto en la tinta normal (AA sobre el fondo amarillo
+// claro) y franja ambar de 4 px; el verde solo no basta. Sin boton de cierre. El texto baja de linea y no se recorta.
+.fiori-kpi__aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-inline-size: 0;
+  margin-block-start: 0.125rem;
+  padding: 0.125rem 0.5rem;
+  color: var(--silice-texto);
+  background: var(--silice-aviso-fondo);
+  border-inline-start: 4px solid var(--silice-aviso-borde);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.fiori-kpi__aviso-icono {
+  flex: none;
+  margin-block-start: 0.125rem;
+  fill: var(--silice-aviso-borde);
+}
+
+.fiori-kpi__aviso-texto {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+// Con colores forzados (alto contraste de Windows) el fondo y la franja se pierden: el borde propio conserva la forma.
+@media (forced-colors: active) {
+  .fiori-kpi__aviso {
+    border: 1px solid CanvasText;
+    border-inline-start-width: 4px;
+  }
+}
+
+// Barras IBCS: real con relleno sólido, meta con contorno.
+.fiori-kpi__barra {
+  position: relative;
+  display: block;
+  block-size: 6px;
+}
+
+.fiori-kpi__barra-real,
+.fiori-kpi__barra-meta {
+  position: absolute;
+  inset-inline-start: 0;
+  block-size: 3px;
+  box-sizing: border-box;
+}
+
+.fiori-kpi__barra-real {
+  inset-block-start: 0;
+  background: var(--silice-texto);
+}
+
+.fiori-kpi__barra-meta {
+  inset-block-start: 3px;
+  border: 1px solid var(--silice-texto);
+  background: transparent;
+}
+
+// Favorable (verde): la cifra en green-60 (4.5:1 como texto) y el icono en el token del sistema, --silice-verificado (3:1
+// como grafico). La palabra «favorable» va siempre visible: el color no es el unico portador (V-16).
+.ibcs-favorable {
+  color: var(--silice-ibcs-favorable-texto);
+
+  svg {
+    fill: var(--silice-verificado);
+  }
+}
+
+.ibcs-desfavorable {
+  color: var(--silice-ibcs-desfavorable);
+}
+
+.ibcs-neutro {
+  color: var(--silice-ibcs-neutro);
+}
+
+// Conteos por severidad: el color va solo en el ícono; texto y número en la tinta normal.
+.silice-sev {
+  border-radius: 0;
+}
+
+// El conteo no debe pegarse al nombre de la severidad ("Crítico 1", no "Crítico1").
+.silice-sev .silice-cifra {
+  margin-inline-start: 0.25rem;
+}
+
+.silice-sev__icono {
+  flex: none;
+  margin-inline-end: 0.25rem;
+}
+
+.silice-sev--critico .silice-sev__icono {
+  color: var(--silice-sev-critico);
+}
+
+.silice-sev--error .silice-sev__icono {
+  color: var(--silice-sev-error);
+}
+
+.silice-sev--advertencia .silice-sev__icono {
+  color: var(--silice-sev-advertencia);
+}
+
+.silice-sev--info .silice-sev__icono {
+  color: var(--silice-sev-info);
+}
+
+// 1366 px: los indicadores se estrechan y, si aun no caben, bajan de fila (nunca se cortan).
+@media (max-width: 1440px) {
+  .fiori-kpi {
+    min-inline-size: 11.5rem;
+    padding-inline: 0.75rem;
+  }
+}

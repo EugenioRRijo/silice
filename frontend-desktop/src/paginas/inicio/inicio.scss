@@ -1,0 +1,48 @@
+// Inicio «panel del dia». Sin tarjetas con sombra ni animaciones (DESIGN.md): bloques separados por un divisor.
+
+.silice-inicio {
+  display: grid;
+  gap: 2rem;
+  padding: 1.5rem 1rem 2rem;
+}
+
+.silice-inicio__bloque {
+  display: grid;
+  gap: 0.75rem;
+  padding-block-end: 1.5rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.silice-inicio__bloque:last-child {
+  border-block-end: 0;
+}
+
+.silice-inicio__nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-inicio__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.silice-inicio__estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.silice-inicio__icono--error {
+  fill: var(--silice-sev-error);
+}
+
+.silice-inicio__icono--advertencia {
+  fill: var(--silice-sev-advertencia);
+}
+
+.silice-inicio__sinquiebre {
+  white-space: nowrap;
+}

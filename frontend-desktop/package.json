@@ -1,0 +1,54 @@
+{
+  "name": "silice-interfaz",
+  "private": true,
+  "version": "1.2.0",
+  "description": "Interfaz nueva de Silice: visor de solo lectura de libros de presupuesto",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/inicio_rapido.mjs",
+    "dev:vite": "vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "lint": "eslint . && tsc -b --noEmit",
+    "licencias": "node scripts/verificar_licencias.mjs",
+    "dist": "node scripts/verificar_dist.mjs"
+  },
+  "dependencies": {
+    "@carbon/charts": "1.27.20",
+    "@carbon/charts-react": "1.27.20",
+    "@carbon/icons-react": "11.89.0",
+    "@carbon/react": "1.117.0",
+    "@carbon/styles": "1.116.0",
+    "@ibm/plex-mono": "2.5.0",
+    "@ibm/plex-sans": "1.1.0",
+    "@univerjs/preset-sheets-core": "1.0.3",
+    "@univerjs/presets": "1.0.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router": "7.18.4",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "eslint": "10.12.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "jsdom": "30.1.1",
+    "sass": "1.105.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vite": "8.3.2",
+    "vitest": "5.0.3"
+  }
+}

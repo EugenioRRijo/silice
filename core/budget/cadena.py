@@ -28,6 +28,7 @@ import hashlib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 from sqlalchemy import event, select
 from sqlalchemy.exc import IntegrityError
@@ -46,6 +47,7 @@ __all__ = [
     "SelladoEnConflicto",
     "SelladoSinUsuario",
     "eslabones_de",
+    "formato_de_sellado",
     "fila_de_cambio",
     "huella_de_anexos",
     "huella_de_cambios",
@@ -386,6 +388,28 @@ def mensaje_de_cadena(resultado: ResultadoCadena) -> str:
     )
 
 
+FormatoDeSellado = Literal["actual", "legado", "roto"]
+
+
+def _formato_de_sellado(
+    session: Session, version: models.Presupuesto, eslabon: EslabonVersion
+) -> FormatoDeSellado:
+    if canonico.huella(canonico.documento(session, version)) == eslabon.huella_contenido:
+        return "actual"
+    with canonico.formato_legado():
+        legado = canonico.huella(canonico.documento(session, version))
+    return "legado" if legado == eslabon.huella_contenido else "roto"
+
+
+def formato_de_sellado(session: Session, version: models.Presupuesto) -> FormatoDeSellado:
+    """Con qué serialización se selló `version`: `"actual"` (la huella de `documento()` coincide
+    con el eslabón), `"legado"` (coincide solo sin cuantizar a 28 decimales: sellada antes de VB-1;
+    abre, pero su `presupuesto.json` actual no tendría la huella sellada) o `"roto"` (no coincide
+    con ninguna forma, o no está sellada)."""
+    eslabon = session.get(EslabonVersion, version.id)
+    return "roto" if eslabon is None else _formato_de_sellado(session, version, eslabon)
+
+
 def verificar_cadena(
     session: Session, proyecto: models.Proyecto, *, anexos_de: AnexosDe = anexos_ninguno
 ) -> ResultadoCadena:
@@ -397,11 +421,13 @@ def verificar_cadena(
         eslabon = por_version.get(version.id)
         if eslabon is None:
             return _roto(numero, version, "sin_sellar")
-        contenido = canonico.huella(canonico.documento(session, version))
+        # Sellada antes de VB-1 (formato "legado") se acepta SOLO si coincide con esa forma; una
+        # alteración no coincide con ninguna (expediente 2026-10-21-VB1).
+        if _formato_de_sellado(session, version, eslabon) == "roto":
+            return _roto(numero, version, "contenido")
+        contenido = eslabon.huella_contenido
         cambios = huella_de_cambios(_registros(session, version))
         anexos = huella_de_anexos(anexos_de(session, version))
-        if contenido != eslabon.huella_contenido:
-            return _roto(numero, version, "contenido")
         if cambios != eslabon.huella_cambios:
             return _roto(numero, version, "registro")
         if anexos != eslabon.huella_anexos:

@@ -31,13 +31,13 @@ HUMO = RAIZ / "instalador" / "humo.ps1"
 def test_externos_ignora_el_bucle_local_y_los_esquemas_que_no_son_red() -> None:
     urls = [
         "http://127.0.0.1:8501/",
-        "ws://127.0.0.1:8501/_stcore/stream",
+        "ws://127.0.0.1:8501/app/stream",
         "http://localhost:8501/x",
         "http://[::1]:8501/x",
         "data:image/png;base64,AAAA",
         "blob:http://127.0.0.1:8501/abc",
         "about:srcdoc",
-        "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/otra/biblioteca.min.js",
         "https://browser.events.data.microsoft.com/x",
         "https://cdnjs.cloudflare.com/otro.js",  # el mismo anfitrión una sola vez
         "wss://otro.ejemplo/socket",
@@ -67,7 +67,7 @@ def test_navegador_main_escribe_el_json_y_sale_con_1_si_hay_externos(
     salida = tmp_path / "peticiones.json"
     codigo = navegador.main(["--url", "http://127.0.0.1:8501/", "--salida", str(salida)])
     assert codigo == 1
-    assert pedidas == [("http://127.0.0.1:8501", ["", "visor", "similares"])]
+    assert pedidas == [("http://127.0.0.1:8501", ["", "#/similares", "#/simulador"])]
     datos = json.loads(salida.read_text(encoding="utf-8"))
     assert datos == {"peticiones": 2, "externos": ["cdnjs.cloudflare.com"], "urls": vistas}
     monkeypatch.setattr(navegador, "recorrer", lambda url, paginas: vistas[:1])
@@ -209,7 +209,8 @@ def test_humo_cubre_cada_comprobacion_del_spec() -> None:
         "Get-NetTCPConnection -State Listen",
         "'0.0.0.0'",
         "'::'",  # escucha
-        "_stcore/health",
+        "/salud",
+        "$UrlApp",
         "navegador.py",
         "proxy_testigo.py",
         "HTTP_PROXY",

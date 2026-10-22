@@ -1,0 +1,66 @@
+// Estilos propios de la aplicacion. Carbon pone la gramatica visual; aqui solo van los ajustes minimos.
+@use "./fuentes";
+@use "./tokens";
+@use "../indicadores/indicadores";
+@use "../visor/visor";
+@use "../shell/shell";
+@use "../comun/comun";
+@use "../paginas/inicio/inicio";
+@use "../paginas/existencias/existencias";
+
+html {
+  // Tamano base para presbicia: 116,6667 % de la letra del navegador (el cuerpo de 14 px de Carbon pasa a 16 px y la
+  // etiqueta de 12 px a 14 px) por la escala que eligio la persona. Todo lo propio y lo de Carbon va en rem, asi que
+  // crece junto; al ir en porcentaje, la letra y el zoom del navegador se siguen respetando.
+  font-size: calc(116.6667% * var(--silice-escala-letra));
+  // Barras de desplazamiento y seleccion con la paleta, no con los valores del navegador.
+  scrollbar-color: var(--cds-border-strong) var(--cds-layer);
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--silice-fondo);
+  color: var(--silice-texto);
+  caret-color: var(--silice-interactivo);
+}
+
+::selection {
+  background: var(--cds-highlight);
+  color: var(--silice-texto);
+}
+
+// Cifras: tabulares y alineadas a la derecha donde se usen. Referencias de celda y reglas en Plex Mono.
+.silice-cifra {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.silice-codigo {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.silice-entrada {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  max-inline-size: 36rem;
+  padding: 2rem 1rem;
+}
+
+.silice-entrada__texto {
+  color: var(--silice-texto-secundario);
+  max-inline-size: 65ch;
+}
+
+// Sin animacion decorativa (DESIGN.md, Movimiento). Con prefers-reduced-motion se quitan tambien las
+// transiciones de estado propias de los componentes Carbon.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

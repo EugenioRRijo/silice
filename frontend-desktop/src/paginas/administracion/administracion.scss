@@ -1,0 +1,67 @@
+// Administracion. Sin tarjetas con sombra ni animaciones (DESIGN.md).
+
+.silice-adm {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+}
+
+.silice-adm__secciones {
+  display: grid;
+  gap: 1.5rem;
+  padding-block-start: 1rem;
+}
+
+.silice-adm__tabla {
+  display: grid;
+  gap: 1rem;
+}
+
+.silice-adm__seccion {
+  display: grid;
+  gap: 1rem;
+  max-inline-size: 36rem;
+}
+
+.silice-adm__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.silice-adm__nota {
+  color: var(--silice-texto-secundario);
+}
+
+.silice-adm__resultado:focus {
+  outline: 2px solid var(--silice-interactivo);
+}
+
+.silice-adm__reintento {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+}
+
+// Detalles e IP largos (un detalle puede traer una cadena sin espacios) no ensanchan la pagina.
+.silice-adm__tabla td {
+  overflow-wrap: anywhere;
+}
+
+// Confirmacion con comportamiento de dialogo. Solo desactivar es rojo (DESIGN.md: dos semanticas de color).
+.silice-adm__confirmar {
+  display: grid;
+  gap: 0.75rem;
+  max-inline-size: 36rem;
+  padding: 1rem;
+  border: 1px solid var(--silice-divisor);
+  border-inline-start: 4px solid var(--silice-interactivo);
+}
+
+.silice-adm__confirmar--peligro {
+  border-inline-start-color: var(--silice-sev-critico);
+}
+
+.silice-adm__confirmar:focus {
+  outline: 2px solid var(--silice-interactivo);
+}

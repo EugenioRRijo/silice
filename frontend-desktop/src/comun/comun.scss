@@ -1,0 +1,182 @@
+// Componentes compartidos de las pantallas migradas.
+
+.silice-vacio {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  max-inline-size: 40rem;
+  padding: 2rem 1rem;
+}
+
+.silice-vacio__texto {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+}
+
+// Tabla de datos: encabezados y celdas numericas a la derecha, con cifras tabulares (el ancho de cada digito es el
+// mismo, las columnas de montos quedan alineadas).
+.silice-tabla {
+  min-inline-size: 0;
+  overflow-x: auto;
+
+  .silice-cifra {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th.silice-cifra .cds--table-sort__flex,
+  th.silice-cifra .cds--table-header-label {
+    justify-content: flex-end;
+    text-align: end;
+  }
+}
+
+// Zona de soltar archivo en densidad `sm`: 96 px de alto (Carbon la deja de 160), texto centrado. El foco sigue
+// siendo el del boton de Carbon (anillo visible) y se llega con el teclado.
+.silice-subida {
+  display: grid;
+  gap: 0.5rem;
+
+  // El MISMO boton lleva `cds--file__drop-container` y `cds--file-browse-btn`: el alto se fija en UNA regla que nombra
+  // las dos clases (mayor especificidad que cualquiera de las dos sueltas de Carbon). Una regla aparte solo de
+  // `.cds--file-browse-btn` con alto en porcentaje anulaba los 6rem y la zona medía 36 px (VB-2).
+  .cds--file__drop-container.cds--file-browse-btn {
+    box-sizing: border-box;
+    block-size: 6rem;
+    min-block-size: 6rem;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .cds--file,
+  .cds--file-browse-btn {
+    inline-size: 100%;
+    max-inline-size: none;
+  }
+}
+
+.silice-descarga {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+}
+
+// Celdas con semantica propia (TablaDensa `celda`): la severidad lleva icono y nombre; la variacion de costo,
+// flecha, color IBCS y texto accesible. El color nunca va solo.
+.silice-sev--celda,
+.silice-variacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.silice-variacion {
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-informe {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.silice-informe__veredicto {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.silice-informe__ok {
+  color: var(--silice-verificado);
+}
+
+// Marco de una pagina de lectura: el mismo margen de 16 px y el mismo ritmo vertical en todas.
+.silice-pagina {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem 1rem 2rem;
+  min-inline-size: 0;
+  max-inline-size: 90rem;
+}
+
+// Los parrafos de lectura no pasan de ~70 caracteres en ninguna pagina; tablas y formularios usan el ancho.
+.silice-pagina p {
+  max-inline-size: 70ch;
+}
+
+.silice-pagina > p {
+  margin: 0;
+}
+
+// Anillo de foco de Carbon (2 px, token de foco, separado 2 px) en los controles que no son de Carbon y mostraban el del
+// navegador (`outline: auto 1px`, esquinas redondeadas): los `<summary>` de Control y de la curva y el boton que abre
+// el exacto en el Historial (VD-4). Una sola regla, sin tocar las paginas.
+summary:focus-visible,
+.silice-historial__monto-valor:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+
+// «Tamaño de letra» de la cabecera: tres botones cuadrados con una A de tamaño creciente. El elegido lleva fondo y una raya
+// inferior de 2 px (no solo color) y el foco usa el anillo de Carbon. Los tamaños de la A van en rem, como todo el texto.
+.silice-letra {
+  display: inline-flex;
+  align-items: stretch;
+  block-size: 3rem;
+  padding-inline: 0.25rem;
+  border-inline-start: 1px solid var(--silice-divisor);
+}
+
+.silice-letra__opcion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-block-end: 2px solid transparent;
+  background: transparent;
+  color: var(--silice-texto);
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+
+  &[aria-pressed="true"] {
+    background: var(--cds-layer-selected);
+    border-block-end-color: var(--silice-interactivo);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.silice-letra__opcion--normal {
+  font-size: 0.875rem;
+}
+
+.silice-letra__opcion--grande {
+  font-size: 1.125rem;
+}
+
+.silice-letra__opcion--muy-grande {
+  font-size: 1.375rem;
+}
+
+// Carbon Charts fija el texto de sus graficos en 12 px (leyendas, ejes, tooltips, rotulos del anillo): no crece con la
+// letra. Se pasa a rem (0,75 rem = 12 px con la letra de Carbon, 14 px con el tamano base de Silice) para que siga al
+// control «Tamano de letra». `!important` porque la libreria escribe tambien estilos en linea en el SVG.
+html .cds--cc--chart-wrapper text,
+html .cds--cc--chart-wrapper p,
+html div.cds--cc--legend div.legend-item p,
+html .cds--cc--tooltip p {
+  font-size: 0.75rem !important;
+}

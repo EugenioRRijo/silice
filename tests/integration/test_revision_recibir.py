@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import func, select
 
+from aplicacion import revision
 from core.budget.canonico import json_canonico
 from core.catalog import abrir_sesion, crear_motor
 from paquete import modelo as paq
@@ -22,7 +23,6 @@ from seguridad.modelo import EmpresaRegistrada
 from tests.fixtures.canonico.ejemplo_v1 import EJEMPLO_V1
 from tests.fixtures.instalacion import AHORA, instalacion
 from tests.fixtures.paquetes import EMPRESA, paquete
-from ui import revision
 
 PAR = firma.generar_par()
 ANTES = datetime(2026, 11, 3, 9, 0)

@@ -22,6 +22,7 @@ from adapters.espacio import (
     TipoOrigen,
     crear_esquema_espacio,
 )
+from aplicacion import hoja
 from core.budget import elaborar, plan_secuencial
 from core.catalog import abrir_sesion, crear_motor
 from core.contracts import ComposicionAPU, ItemComputo, ParametrosCosto
@@ -30,7 +31,6 @@ from core.contracts.verificacion import Severidad
 from tests.fixtures.apu_linea_base import FECHA_LINEA_BASE, MONEDA, PARAMETROS_LINEA_BASE
 from tests.fixtures.computo_auditado import composiciones_linea_base, items_auditados
 from tests.fixtures.espacio_bano import espacio_bano
-from ui import hoja
 
 D = Decimal
 MEMORIA = Path(__file__).resolve().parents[1] / "fixtures" / "memorias" / "bano_of001.md"

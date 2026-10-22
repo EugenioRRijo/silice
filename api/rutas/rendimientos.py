@@ -17,6 +17,7 @@ from decimal import Decimal
 from fastapi import APIRouter, status
 from sqlalchemy import select
 
+from api.acceso import EDITAR, LEER
 from api.dependencias import SesionDep
 from api.esquemas import (
     DispersionRespuesta,
@@ -46,7 +47,12 @@ from core.contracts.apu import Rendimiento, TipoRendimiento
 router = APIRouter(tags=["rendimientos"])
 
 
-@router.post("/ejecuciones", response_model=EjecucionRespuesta, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/ejecuciones",
+    response_model=EjecucionRespuesta,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=EDITAR,
+)
 def crear_ejecucion(sesion: SesionDep, peticion: EjecucionPeticion) -> EjecucionRespuesta:
     """Registra una obra ejecutada (referencia unica) y confirma la transaccion."""
     ejecucion = registrar_ejecucion(
@@ -60,14 +66,16 @@ def crear_ejecucion(sesion: SesionDep, peticion: EjecucionPeticion) -> Ejecucion
     return EjecucionRespuesta.model_validate(ejecucion)
 
 
-@router.get("/ejecuciones", response_model=list[EjecucionRespuesta])
+@router.get("/ejecuciones", response_model=list[EjecucionRespuesta], dependencies=LEER)
 def listar_ejecuciones(sesion: SesionDep) -> list[EjecucionRespuesta]:
     """Obras ejecutadas registradas, de la mas antigua a la mas reciente."""
     consulta = select(models.Ejecucion).order_by(models.Ejecucion.fecha_inicio, models.Ejecucion.id)
     return [EjecucionRespuesta.model_validate(e) for e in sesion.scalars(consulta)]
 
 
-@router.get("/partidas/{codigo}/rendimientos", response_model=RendimientosRespuesta)
+@router.get(
+    "/partidas/{codigo}/rendimientos", response_model=RendimientosRespuesta, dependencies=LEER
+)
 def obtener_rendimientos(sesion: SesionDep, codigo: str) -> RendimientosRespuesta:
     """El historico de la partida con su dispersion y su propuesta (RF-26)."""
     historico = Catalogo(sesion).rendimientos(codigo)  # KeyError -> 404 si la partida no existe
@@ -83,6 +91,7 @@ def obtener_rendimientos(sesion: SesionDep, codigo: str) -> RendimientosRespuest
     "/partidas/{codigo}/rendimientos",
     response_model=RegistroRendimientoRespuesta,
     status_code=status.HTTP_201_CREATED,
+    dependencies=EDITAR,
 )
 def crear_rendimiento(
     sesion: SesionDep, codigo: str, peticion: RendimientoPeticion

@@ -107,7 +107,7 @@ aparte, con su número.
   si cita una fila con error, como falsa alarma si no). Por eso `core/budget/presupuesto.py` entra
   en el congelado.
 - **Congelado (ruling I5).** `archivos_del_auditor` cubre las reglas y sus umbrales (`LIMITE_*`),
-  la elaboración (`core/budget/presupuesto.py`), la hoja (`ui/hoja.py`), la derivación y las
+  la elaboración (`core/budget/presupuesto.py`), la hoja (`aplicacion/hoja.py`), la derivación y las
   cantidades por especialidad, el instrumento de medición (banco, modelo, comparador, métricas,
   mutaciones, corrida, congelado, `scripts/evaluar_asistente.py`, `scripts/_experimento.py`, el
   catálogo y las composiciones del experimento) y lo que hace iguales las condiciones de los dos

@@ -21,6 +21,7 @@ from openpyxl import load_workbook
 from sqlalchemy import func, select
 
 from adapters.espacio import cargar_espacio, guardar_espacio
+from aplicacion import hoja
 from core import models
 from core.budget import cargar_elaboracion
 from core.catalog import Catalogo, abrir_sesion, crear_motor
@@ -38,7 +39,6 @@ from tests.fixtures.hoja_en_base import (
     plantilla_ti001,
 )
 from tests.fixtures.versiones import elaborar_001, guardar_001
-from ui import hoja
 
 D = Decimal
 AHORA = datetime(2026, 10, 5, 14, 0, 0)

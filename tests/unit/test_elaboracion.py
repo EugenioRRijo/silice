@@ -1,7 +1,8 @@
 """La orquestacion de la elaboracion fuera de la pagina de componer (INV-043, 11b y 11c).
 
-`ui/elaboracion.py` no importa Streamlit: se prueba como funciones sobre una base en `tmp_path`
-sembrada con `scripts.seed.sembrar` (la salvaguarda de `tests/conftest.py` vigila `data/apu.db`).
+`aplicacion/elaboracion.py` no importa Streamlit: se prueba como funciones sobre una base en
+`tmp_path` sembrada con `scripts.seed.sembrar` (la salvaguarda de `tests/conftest.py` vigila
+`data/apu.db`).
 Los oraculos son la fixture de la linea base, no el nucleo que se orquesta.
 """
 
@@ -19,6 +20,12 @@ import openpyxl
 import pytest
 from sqlalchemy.orm import Session
 
+from aplicacion.composicion import Guardado, desglose, guardar_composicion
+from aplicacion.elaboracion import (
+    elaborar_desde_catalogo,
+    items_desde_filas,
+    libro_excel,
+)
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import Dominio
 from scripts.seed import sembrar
@@ -30,14 +37,6 @@ from tests.fixtures.apu_linea_base import (
     TOTAL_EXACTO_LINEA_BASE,
 )
 from tests.fixtures.computo_auditado import items_auditados
-from ui.composicion import desglose
-from ui.elaboracion import (
-    Guardado,
-    elaborar_desde_catalogo,
-    guardar_composicion,
-    items_desde_filas,
-    libro_excel,
-)
 
 
 def _sembrar(base: Path) -> Path:
@@ -177,8 +176,9 @@ def test_una_partida_nueva_se_persiste_y_se_relee(tmp_path: Path) -> None:
         )
         sesion.commit()  # la prueba confirma, como la pagina: guardar_composicion no lo hace
     assert guardado.motivo is None
-    assert guardado.resultado.precio_unitario.quantize(Decimal("0.01")) == (
-        PRECIO_UNITARIO_ESPERADO["LB-02-TUB"]
+    assert (
+        guardado.resultado.precio_unitario.quantize(Decimal("0.01"))
+        == (PRECIO_UNITARIO_ESPERADO["LB-02-TUB"])
     )
     with _catalogo(base) as catalogo:  # motor propio: relee lo confirmado
         releida = catalogo.composicion("XX-01-NUE", fecha=FECHA_LINEA_BASE)

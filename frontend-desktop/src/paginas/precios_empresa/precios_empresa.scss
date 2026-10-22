@@ -1,0 +1,42 @@
+// Precios de la empresa. Sin tarjetas con sombra ni animaciones (DESIGN.md).
+
+.silice-precios-empresa {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  min-inline-size: 0;
+}
+
+.silice-precios-empresa__seccion {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-precios-empresa__formulario {
+  display: grid;
+  gap: 1rem;
+}
+
+.silice-precios-empresa__campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.silice-precios-empresa__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.silice-precios-empresa__atipicos {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-precios-empresa__nota {
+  color: var(--silice-texto-secundario);
+}

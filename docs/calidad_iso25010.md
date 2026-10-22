@@ -171,8 +171,8 @@ enteramente local (SQLite en el equipo del usuario, API y UI en localhost). En o
 excepciones de red, ambas declaradas** (RNF‑08, redacción final de la 1.0.0): la descarga inicial
 del modelo de `sentence-transformers` (I2) en el camino de desarrollo, que queda en caché (el
 instalador completo lo trae incluido), y el asistente de IA en modo nube, apagado por defecto, que
-solo activa el administrador. three.js ya no se descarga: el Visor 3D lo incrusta desde
-`ui/estaticos/three.min.js` con su SHA‑256 fijado (RP10‑5, Tarea 11 de la 1.0.0). Que la suite
+solo activa el administrador. three.js ya no se descarga ni se distribuye: el Visor 3D, que lo incrustaba
+(RP10‑5, Tarea 11 de la 1.0.0), se retiró el 2026-10-19. Que la suite
 pase sin red una vez poblada la caché **no se ha verificado con la red cortada**. Hay solo un
 indicio: con `HF_HUB_OFFLINE=1` y `TRANSFORMERS_OFFLINE=1`, `tests/unit/test_normalizacion.py` pasa
 (revisión de pruebas de GC4). La corrida sin red se mide en Med.
@@ -199,7 +199,7 @@ p. ej. Revit y Bonsai) sigue abierta; la alternativa tabular documentada existe 
 | Usabilidad | RNF‑04 Likert ≥ 4/5 sobre el informe; RNF‑10 CP‑07 sin ayuda en ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 | RNF‑04: por medir en Med ([protocolo_rnf04.md](protocolo_rnf04.md)); RNF‑10: CP‑07 por ejecutar (GU1b, Med) | pendiente |
 | Mantenibilidad | `core/` intacto al agregar un dominio; cobertura de `core/` ≥ 80 % | diff vacío tras I5 + `test_arquitectura.py`; la CI exige ≥ 80 % (cifra en [plan_pruebas.md §10](plan_pruebas.md)) | cumple |
 | Portabilidad | 0 pasos manuales, Windows y Linux | Windows ✔ (local y CI); Linux ✔ (CI) | cumple |
-| Seguridad | 0 y 0 (credenciales versionadas; llamadas de red durante la operación), con dos excepciones declaradas | 0 credenciales; dos llamadas de red declaradas (modelo de ML en caché, three.js del visor) | cumple |
+| Seguridad | 0 y 0 (credenciales versionadas; llamadas de red durante la operación), con dos excepciones declaradas | 0 credenciales; dos llamadas de red declaradas (modelo de ML en caché, asistente de IA en modo nube) | cumple |
 | Compatibilidad | IFC de ≥ 2 modeladores | exacto contra modelo programático | parcial |
 
 Cinco características cumplen su meta con evidencia automatizada o medida; una espera una medición

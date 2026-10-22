@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from aplicacion.hoja import PREFIJO_ORIGEN_IA, estado_de_items, rotulo_de_valor
 from core.contracts import ItemComputo
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import OrigenTipo
 from core.verification.informe import InformeAuditoria
-from ui.hoja import PREFIJO_ORIGEN_IA, estado_de_items, rotulo_de_valor
 
 
 def item(origen_id: str) -> ItemComputo:

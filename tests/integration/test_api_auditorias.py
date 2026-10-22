@@ -149,22 +149,24 @@ def test_r11_usa_los_servicios_de_la_instalacion_que_revisa(api) -> None:
 
 
 def test_sin_clave_o_con_una_mala_o_revocada_es_401_con_el_mismo_mensaje(api) -> None:
+    """Ola 0a (sesión 2b, RM-3): la ruta acepta la clave o la sesión del navegador. Con la
+    cabecera de la clave (vacía, mala o revocada) responde y registra como antes; sin cabecera ni
+    cookie es el 401 de la sesión (`exigir_clave_o_sesion`, RS2-5), sin evento: nadie presentó una
+    clave. Antes de la ola 0a ese caso también era «clave ausente» con su evento."""
     cliente, clave = api
     with sesion_de_instalacion() as bd:
         revocada, fila = claves_api.crear(bd, "otra", "admin", datetime(2026, 11, 10, 9))
         claves_api.revocar(bd, fila.id, "admin", datetime(2026, 11, 10, 9))
     antes = _eventos()
     mensajes = set()
-    for presentada in (None, "", "no-es-una-clave", "ABCDEFGH.inventada", revocada):
-        r = cliente.post(
-            "/v1/auditorias",
-            content=cuerpo(),
-            headers={CABECERA: presentada} if presentada is not None else {},
-        )
+    for presentada in ("", "no-es-una-clave", "ABCDEFGH.inventada", revocada):
+        r = cliente.post("/v1/auditorias", content=cuerpo(), headers={CABECERA: presentada})
         assert r.status_code == 401, presentada
         mensajes.add(r.json()["detalle"])
     assert mensajes == {proteccion.MENSAJE_SIN_CLAVE}
-    assert _eventos() == antes + 5  # cada rechazo queda en el registro
+    assert _eventos() == antes + 4  # cada rechazo de una clave queda en el registro
+    sin_nada = cliente.post("/v1/auditorias", content=cuerpo())
+    assert sin_nada.status_code == 401 and _eventos() == antes + 4
     assert post(cliente, clave, cuerpo()).status_code == 200  # la buena sigue sirviendo
 
 
@@ -174,7 +176,9 @@ def test_toda_ruta_menos_salud_exige_la_clave(api) -> None:
     rutas = [
         (p, m)
         for p, ops in app.openapi()["paths"].items()
-        if p != "/salud"
+        # /v1/sesion: acceso por cuenta (RT-9); /v1/primer-arranque*: públicas, solo el propio
+        # equipo, con `Origin` y código (BCP-1; sus pruebas: test_api_primer_arranque.py)
+        if p not in {"/salud", "/v1/sesion", "/v1/primer-arranque", "/v1/primer-arranque/reclamo"}
         for m in ops
         if m in {"get", "post", "put", "patch", "delete"}
     ]

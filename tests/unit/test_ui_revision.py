@@ -19,6 +19,8 @@ import openpyxl
 import pytest
 
 from adapters.espacio.serie import espacio_a_objeto
+from aplicacion import revision
+from aplicacion.revision import ReferenciaDeMercado, Servicios
 from auditoria import reauditoria
 from core.budget.canonico import json_canonico
 from core.contracts.verificacion import Severidad
@@ -28,8 +30,6 @@ from seguridad import firma
 from tests.fixtures.canonico.ejemplo_v1 import EJEMPLO_V1
 from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.paquetes import EMPRESA, paquete
-from ui import revision
-from ui.revision import ReferenciaDeMercado, Servicios
 
 PAR = firma.generar_par()
 RECIBIDO = datetime(2026, 11, 12, 10, 0)

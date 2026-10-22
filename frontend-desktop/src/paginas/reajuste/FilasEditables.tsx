@@ -1,0 +1,103 @@
+import { Button } from "@carbon/react";
+import { Add, TrashCan } from "@carbon/icons-react";
+import { filasVacias } from "./logica";
+import type { Fila } from "./logica";
+import { CampoTexto } from "../../comun/CampoTexto";
+
+export interface ColumnaEditable {
+  clave: string;
+  titulo: string;
+  // Texto de ayuda dentro del campo vacio (por ejemplo el formato de una fecha).
+  ayuda?: string;
+  // «fecha»: el selector de fecha del navegador (el valor sigue siendo AAAA-MM-DD, tal como lo espera la API).
+  tipo?: "fecha";
+  // Solo se lee: el nombre de un componente no se escribe.
+  fija?: boolean;
+  // Como se lee el valor de una columna fija (su rotulo en español); el valor de la fila no cambia.
+  presentar?: (valor: string) => string;
+}
+
+interface Props {
+  // Nombre de la tabla: va en el aria-label y en el nombre de cada campo.
+  etiqueta: string;
+  columnas: ColumnaEditable[];
+  filas: Fila[];
+  alCambiar: (filas: Fila[]) => void;
+  // Con `fijas` no se agregan ni se quitan filas (los tres componentes).
+  fijas?: boolean;
+}
+
+// Tabla de campos de texto: cada celda es un campo con nombre accesible «<columna>, <tabla> fila <n>». Los valores
+// se mandan a la API tal como se escriben (RB-2): aqui no se interpreta nada.
+export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = false }: Props) {
+  const cambiar = (indice: number, clave: string, valor: string) =>
+    alCambiar(filas.map((fila, i) => (i === indice ? { ...fila, [clave]: valor } : fila)));
+  const quitar = (indice: number) => {
+    const resto = filas.filter((_, i) => i !== indice);
+    alCambiar(resto.length > 0 ? resto : filasVacias(columnas.map((c) => c.clave), 1));
+  };
+
+  return (
+    <div className="silice-filas">
+      <table className="silice-filas__tabla" aria-label={etiqueta}>
+        <thead>
+          <tr>
+            {columnas.map((c) => (
+              <th key={c.clave} className="cds--type-label-01">
+                {c.titulo}
+              </th>
+            ))}
+            {!fijas && <th aria-hidden="true" className="silice-filas__quitar" />}
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((fila, i) => (
+            <tr key={i}>
+              {columnas.map((c) => (
+                <td key={c.clave}>
+                  <CampoTexto
+                    id={`${etiqueta}-${c.clave}-${i}`}
+                    labelText={`${c.titulo}, ${etiqueta} fila ${i + 1}`}
+                    hideLabel
+                    size="sm"
+                    type={c.tipo === "fecha" ? "date" : undefined}
+                    value={c.fija && c.presentar ? c.presentar(fila[c.clave] ?? "") : (fila[c.clave] ?? "")}
+                    placeholder={c.ayuda}
+                    readOnly={c.fija}
+                    onChange={(e) => cambiar(i, c.clave, e.target.value)}
+                  />
+                </td>
+              ))}
+              {!fijas && (
+                // VD-11: la papelera en su columna angosta (sin el minimo de 9rem de las celdas de campo).
+                <td className="silice-filas__quitar">
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    hasIconOnly
+                    renderIcon={TrashCan}
+                    iconDescription={`Quitar ${etiqueta} fila ${i + 1}`}
+                    // VD-11, ronda 1: pegada al borde derecho del contenedor con desplazamiento, la papelera abre su
+                    // tooltip hacia la izquierda (sobre la fila); centrado arriba salia del contenedor y lo desplazaba.
+                    tooltipPosition="left"
+                    onClick={() => quitar(i)}
+                  />
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {!fijas && (
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Add}
+          onClick={() => alCambiar([...filas, ...filasVacias(columnas.map((c) => c.clave), 1)])}
+        >
+          {`Agregar fila a ${etiqueta}`}
+        </Button>
+      )}
+    </div>
+  );
+}

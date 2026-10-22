@@ -4,31 +4,51 @@ El caso se abre por `operacion.base_datos.preparar_base` (RV-5, spec S5 §5.2): 
 en el producto fija el lanzador) o, sin ella, el caso por defecto de la carpeta de datos. Una base
 que no se puede preparar (mas nueva, ilegible, bloqueada, no adoptable) responde 503 con el mensaje,
 sin crear tablas.
+
+Caso por sesion web (RM-2, sesion 2b): una peticion con la cookie de una ficha que eligio caso
+(`api.caso_web`) trabaja en ese caso; con la clave de API (`X-Silice-Clave`), o sin eleccion, en el
+del proceso. El motor de SQLAlchemy se guarda **uno por ruta de caso** (`obtener_motor`): la base se
+prepara una sola vez por proceso y caso. Quien llega aqui ya paso la dependencia de acceso de su
+ruta (`api.sesion_web.exigir_clave_o_sesion`), que valido la ficha.
 """
 
 from __future__ import annotations
 
 import os
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from core.catalog import abrir_sesion, crear_motor
+from api import caso_web
+from api.sesion_web import COOKIE
+from core.catalog import abrir_sesion, abrir_sesion_de_escritura, crear_motor
 from operacion.base_datos import ErrorDeBase, preparar_base
 from operacion.config import ruta_caso_por_defecto
+from operacion.instalacion import motor_de_instalacion, sesion_de_instalacion
+from seguridad import claves_api, sesiones
 
 VARIABLE_BASE = "APU_BASE"
 _PREFIJO_ARCHIVO = "sqlite:///"
 #: El `usuario` de lo que crean las rutas antiguas, que S3 no protege con clave (S5 decide).
 USUARIO_SIN_CLAVE = "api (sin clave)"
-_motor = None
+#: El `usuario` de lo que escriben las rutas con clave (RT-S4-4): `exigir_clave_api` no entrega la
+#: identidad de la clave a la ruta, así que la bitácora dice solo que fue por la API.
+USUARIO_API = "api (clave de API)"
+_motores: dict[str, Engine] = {}
+_cerrojo = threading.Lock()
 
 
 def url_por_defecto() -> str:
-    return f"{_PREFIJO_ARCHIVO}{ruta_caso_por_defecto().as_posix()}"
+    return url_de_ruta(ruta_caso_por_defecto())
+
+
+def url_de_ruta(ruta: Path) -> str:
+    return f"{_PREFIJO_ARCHIVO}{Path(ruta).as_posix()}"
 
 
 def ruta_de_url(url: str) -> Path | None:
@@ -39,25 +59,98 @@ def ruta_de_url(url: str) -> Path | None:
     return Path(ruta) if ruta and ruta != ":memory:" else None
 
 
-def _obtener_motor():
-    global _motor
-    if _motor is None:
-        url = os.environ.get(VARIABLE_BASE, "").strip() or url_por_defecto()
-        ruta = ruta_de_url(url)
+def url_del_proceso() -> str:
+    """El caso del proceso: `APU_BASE` o el por defecto de la carpeta de datos."""
+    return os.environ.get(VARIABLE_BASE, "").strip() or url_por_defecto()
+
+
+def url_de_la_peticion(request: Request) -> str:
+    """El caso de esta peticion: el elegido por su ficha (RM-2) o, con la clave de API o sin
+    eleccion, el del proceso. No abre la base."""
+    if claves_api.CABECERA in request.headers:
+        return url_del_proceso()
+    ficha = request.cookies.get(COOKIE)
+    if ficha:
+        ruta = caso_web.elegido(sesiones.huella_de(ficha))
         if ruta is not None:
-            try:
-                preparar_base(ruta)
-            except ErrorDeBase as error:
-                raise HTTPException(status_code=503, detail=str(error)) from error
-        _motor = crear_motor(url)
-    return _motor
+            return url_de_ruta(ruta)
+    return url_del_proceso()
 
 
-def sesion_api() -> Iterator[Session]:
-    with abrir_sesion(_obtener_motor()) as sesion:
+def obtener_motor(url: str) -> Engine:
+    """El motor del caso `url`, uno por proceso: la primera vez prepara la base (503 si no se
+    puede, sin guardar el motor)."""
+    with _cerrojo:
+        motor = _motores.get(url)
+        if motor is None:
+            ruta = ruta_de_url(url)
+            if ruta is not None:
+                try:
+                    preparar_base(ruta)
+                except ErrorDeBase as error:
+                    raise HTTPException(status_code=503, detail=str(error)) from error
+            motor = _motores[url] = crear_motor(url)
+        return motor
+
+
+def cerrar_motores() -> None:
+    """Cierra y olvida todos los motores (las pruebas; en Windows un motor abierto retiene el
+    archivo del caso)."""
+    with _cerrojo:
+        for motor in _motores.values():
+            motor.dispose()
+        _motores.clear()
+
+
+def sesion_api(request: Request) -> Iterator[Session]:
+    with abrir_sesion(obtener_motor(url_de_la_peticion(request))) as sesion:
+        yield sesion
+
+
+def sesion_de_escritura_api(request: Request) -> Iterator[Session]:
+    """La sesion de una ruta que CREA UNA VERSION (SL-E12, diseno §4.5): su transaccion empieza con
+    `BEGIN IMMEDIATE` en la primera sentencia, asi que quien guarda toma el bloqueo de escritura
+    antes de leer la version vigente y el ultimo codigo (el otro espera). No confirma por si
+    misma: confirma o deshace la funcion de aplicacion que escribe (todo o nada), y al salir se
+    cierra (lo que quede sin confirmar se deshace). Quien la usa envuelve la cadena de anexos."""
+    with abrir_sesion_de_escritura(obtener_motor(url_de_la_peticion(request))) as sesion:
         yield sesion
 
 
 #: Alias de tipo para inyectar la sesion en las rutas sin disparar B008 (ruff): un `Depends(...)`
 #: como valor por defecto es una llamada en la firma; dentro de `Annotated` no lo es.
 SesionDep = Annotated[Session, Depends(sesion_api)]
+#: La de escritura (`BEGIN IMMEDIATE`): solo para las rutas que crean versiones.
+SesionDeEscrituraDep = Annotated[Session, Depends(sesion_de_escritura_api)]
+
+
+def sesion_instalacion_api() -> Iterator[Session]:
+    """Sesión de `instalacion.db` por petición (arenera, RT-S4-1). Cada petición es una transacción:
+    al terminar bien hace `commit`; si la ruta lanza cualquier excepción (un 4xx incluido), hace
+    `rollback` y la vuelve a lanzar. Los servicios de `produccion/` solo hacen `flush`.
+
+    Se abre la transacción con un `BEGIN` explícito: `pysqlite` no emite `BEGIN` antes de un
+    `SAVEPOINT` (solo antes de un `INSERT`/`UPDATE`/`DELETE`) y, sin él, el `RELEASE` del primer
+    `begin_nested()` de un servicio confirmaría todo y el `rollback` posterior no deshace nada.
+
+    Las rutas bajo esta dependencia no deben convertir una `HTTPException` en respuesta
+    (`RutaSinCache` la relanza): si lo hacen, la sesión ve una salida normal y confirma lo
+    escrito a medias."""
+    try:
+        motor_de_instalacion()  # la prepara y migra una vez por proceso; una base mala es un 503
+    except ErrorDeBase as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    with sesion_de_instalacion() as sesion:
+        sesion.connection().exec_driver_sql("BEGIN")
+        try:
+            yield sesion
+            sesion.commit()
+        except BaseException:
+            sesion.rollback()
+            raise
+
+
+#: `scope="function"`: la salida del generador (el `commit`) corre al volver la ruta, ANTES de
+#: enviar la respuesta; con el alcance por omisión correría después y un cliente podría leer antes
+#: del commit.
+SesionInstalacionDep = Annotated[Session, Depends(sesion_instalacion_api, scope="function")]

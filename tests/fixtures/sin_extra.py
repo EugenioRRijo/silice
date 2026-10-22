@@ -64,9 +64,9 @@ class SinExtra:
             sys.modules.pop(nombre, None)
         sys.modules.update(self._respaldo)
         # `sys.modules.pop`/`.update` restauran la entrada del diccionario, pero NO el atributo del
-        # paquete padre (p. ej. `ui.paginas.visor`, el atributo). El import hecho dentro del `with`
+        # paquete padre (p. ej. `ui.paginas.hoja`, el atributo). El import hecho dentro del `with`
         # lo deja apuntando a la copia fria sin el extra, y una prueba posterior que resuelva por
-        # ruta de texto (`monkeypatch.setattr("ui.paginas.visor.X", ...)`, que usa `getattr`)
+        # ruta de texto (`monkeypatch.setattr("ui.paginas.hoja.X", ...)`, que usa `getattr`)
         # parcharia la copia huerfana. Se sincroniza cada atributo con lo que quedo en
         # `sys.modules`, o se borra si el modulo no estaba cargado antes de `__enter__`.
         for nombre in self._relacionados:

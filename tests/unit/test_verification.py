@@ -415,9 +415,7 @@ def test_r1_reporta_la_regla_que_no_puede_evaluar(presupuesto):
         regla="longitud * inexistente",
     )
     origen = origen_de(linea_base.APU_EXCAVACION.codigo_partida)
-    hallazgos = [
-        h for h in TrazabilidadGeometrica().evaluar(roto) if h.origen_ids == (origen,)
-    ]
+    hallazgos = [h for h in TrazabilidadGeometrica().evaluar(roto) if h.origen_ids == (origen,)]
     assert [h.severidad for h in hallazgos] == [Severidad.INFO]  # RF‑23, UC‑05 3a
     assert REGLA_NO_EVALUABLE in hallazgos[0].descripcion
     assert "no se puede evaluar" in hallazgos[0].descripcion

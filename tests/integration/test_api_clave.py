@@ -39,10 +39,16 @@ def _rutas(router) -> Iterator[APIRoute]:
 
 
 RUTAS = list(_rutas(app.router))
+#: Sin clave a propósito: el ping y el acceso del navegador por cuenta (RT-9, sesión 2), que se
+#: protege con la contraseña, el freno y el bloqueo de `seguridad.cuentas`.
+#: BCP-1: `/v1/primer-arranque*` tampoco (solo el propio equipo, `Origin` y un código).
+SIN_CLAVE = frozenset(
+    {"/salud", "/v1/sesion", "/v1/primer-arranque", "/v1/primer-arranque/reclamo"}
+)
 PROTEGIDAS = [
     (ruta, metodo)
     for ruta in RUTAS
-    if ruta.path != "/salud"
+    if ruta.path not in SIN_CLAVE
     for metodo in sorted(ruta.methods - {"HEAD", "OPTIONS"})
 ]
 
@@ -89,7 +95,12 @@ def test_hay_rutas_que_proteger_y_estan_las_de_s3() -> None:
 
 def test_el_recorrido_ve_todas_las_rutas_del_esquema() -> None:
     """Ninguna ruta del OpenAPI queda fuera del recorrido (y la única sin clave es `/salud`)."""
-    recorridas = {(r.path, m.lower()) for r in RUTAS for m in r.methods - {"HEAD", "OPTIONS"}}
+    # El OpenAPI no lleva el convertidor: `{partida:path}` sale como `{partida}`.
+    recorridas = {
+        (re.sub(r"\{([^}:]+):[^}]+\}", r"{\1}", r.path), m.lower())
+        for r in RUTAS
+        for m in r.methods - {"HEAD", "OPTIONS"}
+    }
     esquema = {
         (camino, metodo)
         for camino, operaciones in app.openapi()["paths"].items()
@@ -197,8 +208,13 @@ def test_la_clave_nunca_queda_en_claro_en_la_base_ni_en_los_registros(clave_api:
 
 
 def test_un_intento_fallido_queda_en_el_registro_de_accesos() -> None:
+    """Ola 0a (RM-3): el intento fallido es el de una clave presentada; sin cabecera ni cookie la
+    ruta responde el 401 de la sesión y no hay clave que registrar."""
     crear_clave_de_prueba()  # la instalación existe
-    assert _cliente(ip="192.168.1.30").get(_get_sin_parametros().path).status_code == 401
+    respuesta = _cliente(ip="192.168.1.30").get(
+        _get_sin_parametros().path, headers={CABECERA: "AB12CD34.no-es-la-clave"}
+    )
+    assert respuesta.status_code == 401
     with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
         filas = conexion.execute(
             "SELECT tipo, login_intentado, ip_cliente, detalle FROM evento_acceso "

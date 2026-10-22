@@ -3,7 +3,7 @@
 Construye, con ifcopenshell, un unico elemento (`IfcBuildingElementProxy` "Tanquilla") que
 representa una tanquilla cuadrada de paredes macizas: lado exterior `a`, altura `h` y espesor de
 pared `e`. El solido es la extrusion del anillo cuadrado (cuadrado exterior a x a menos el hueco
-interior (a-2e) x (a-2e)) usando `IfcArbitraryProfileDefWithVoids`, para que el visor 3D de la
+interior (a-2e) x (a-2e)) usando `IfcArbitraryProfileDefWithVoids`, para que el modelo de la
 Sesion T7 tenga geometria real que teselar.
 
 El elemento lleva:

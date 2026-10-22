@@ -29,18 +29,17 @@ MB = 1_000_000
 LIMITE_BASICO_MB = 150.0
 FIJAS = ("basica", "bcv", "civil", "anomalias", "ia", "pdf")
 ORDEN_DE_RECORTE = ("civil", "anomalias")
-#: capa -> extras acumulados (el spec §7.2: «base + ui + api + planos + informes», luego cada extra)
+#: capa -> extras acumulados (el spec §7.2: «base + api + planos + informes», luego cada extra)
 CAPAS: dict[str, list[str]] = {
     "base": [],
-    "basica": ["ui", "api", "planos", "informes"],
-    "bcv": ["ui", "api", "planos", "informes", "bcv"],
-    "civil": ["ui", "api", "planos", "informes", "bcv", "civil"],
-    "anomalias": ["ui", "api", "planos", "informes", "bcv", "civil", "anomalias"],
-    "ia": ["ui", "api", "planos", "informes", "bcv", "civil", "anomalias", "ia"],
+    "basica": ["api", "planos", "informes"],
+    "bcv": ["api", "planos", "informes", "bcv"],
+    "civil": ["api", "planos", "informes", "bcv", "civil"],
+    "anomalias": ["api", "planos", "informes", "bcv", "civil", "anomalias"],
+    "ia": ["api", "planos", "informes", "bcv", "civil", "anomalias", "ia"],
     # 1.5: el extra `pdf` entra en la básica (manifiesto.toml); se mide como una capa más.
-    "pdf": ["ui", "api", "planos", "informes", "bcv", "civil", "anomalias", "ia", "pdf"],
+    "pdf": ["api", "planos", "informes", "bcv", "civil", "anomalias", "ia", "pdf"],
     "similitud": [
-        "ui",
         "api",
         "planos",
         "informes",
@@ -216,7 +215,7 @@ def medir(version_python: str) -> dict:
                 "comprimido_mb": estimar_xz(archivos) / MB,
             }
     mb = {c: d["comprimido_mb"] for c, d in resultado["capas"].items()}
-    mb["basica"] += mb["base"]  # la «básica» del spec es la base más ui, api, planos e informes
+    mb["basica"] += mb["base"]  # la «básica» del spec es la base más api, planos e informes
     resultado["recorte"] = decidir_recorte(resultado["python"]["comprimido_mb"], mb)
     return resultado
 
