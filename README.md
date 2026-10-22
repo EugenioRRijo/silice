@@ -43,6 +43,19 @@ uv run python -m streamlit run ui/app.py --server.address 127.0.0.1  # la interf
 uv run uvicorn api.main:app --host 127.0.0.1            # la API (documentación interactiva en http://127.0.0.1:8000/docs)
 ```
 
+**Inicio rápido para el equipo de desarrollo** (un solo comando, para que otras máquinas prueben en esta):
+
+```powershell
+.venv\Scripts\Activate.ps1               # el entorno de siempre; el comando no crea ninguno
+cd frontend-desktop; npm run dev          # compila la interfaz si hace falta y sirve API + /app en un puerto
+```
+
+Imprime la URL para esta máquina (`http://127.0.0.1:8000/app/`) y la de las otras (`http://<IP-LAN>:8000/app/`),
+enciende la red local con el mecanismo del producto y avisa de la seguridad y del Firewall de Windows. Opciones:
+`-- --ip <dir>`, `-- --puerto <n>`, `-- --abrir`, `-- --compilar`. Para el desarrollo con recarga en caliente (solo
+este equipo, proxy a la API en el 8000): `npm run dev:vite`. Detalle en
+[la bitácora](docs/bitacora/2026-10-21-inicio-rapido-npm-dev.md).
+
 La interfaz escucha solo en 127.0.0.1 y sin telemetría: lo fija `.streamlit/config.toml`, versionado.
 
 La operación completa está en el [manual de usuario](docs/manual_usuario.md); cómo mantener y

@@ -14,7 +14,8 @@ Node 22 (el mismo de la CI) y npm. No hace falta nada más: las fuentes IBM Plex
 ```bash
 cd frontend-desktop
 npm ci            # instala exactamente lo que dice package-lock.json
-npm run dev       # servidor de desarrollo; /v1 se reenvía a http://127.0.0.1:8000 (la API encendida)
+npm run dev       # inicio rápido: compila y sirve API + /app en un puerto, visible en la red local (scripts/inicio_rapido.mjs)
+npm run dev:vite  # servidor de desarrollo con recarga en caliente; /v1 se reenvía a http://127.0.0.1:8000 (la API encendida)
 ```
 
 La interfaz compilada la sirve el FastAPI en `/app` (`http://127.0.0.1:<puerto_api>/app/`).
