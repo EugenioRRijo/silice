@@ -8,7 +8,9 @@ por consulta, para probar la frontera exacta (salud en la consulta 59 → arranc
 
 from __future__ import annotations
 
+import inspect
 import logging
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -154,6 +156,7 @@ class Escenario:
         self.entornos: list[dict[str, str]] = []
         self.hijos: list[Hijo] = []
         self.abiertas: list[str] = []
+        self.archivos: list[Path] = []
         self.salida: list[str] = []
         self.sondeadas: list[str] = []
         self.salud = list(salud if salud is not None else [True])
@@ -188,8 +191,14 @@ class Escenario:
             dormir=self.dormir,
             reloj=iter(range(0, 1000, 1)).__next__,
             salida=self.salida.append,
+            asegurar=extra.pop("asegurar", self.asegurar),
+            abrir_archivo=extra.pop("abrir_archivo", self.archivos.append),
             **extra,
         )
+
+    def asegurar(self, _entorno) -> bool:
+        """Por omisión no emite nada (las bases de estas pruebas no se migran)."""
+        return False
 
 
 @pytest.fixture
@@ -361,6 +370,82 @@ def test_el_codigo_de_instalacion_se_muestra_y_no_llega_al_registro(entorno) -> 
     logging.getLogger(registro.NOMBRE_LOGGER).error("código K7QFM9XRA2PTW4HNC8DV")
     texto = (config.carpeta_registros(entorno) / "silice.log").read_text(encoding="utf-8")
     assert "K7QFM9XRA2PTW4HNC8DV" not in texto and registro.MARCA in texto
+
+
+def test_el_lanzador_emite_el_codigo_antes_de_imprimirlo(entorno) -> None:
+    """Primer arranque: el archivo aún no existe cuando arranca; `asegurar` lo crea y entonces se
+    imprime (antes se miraba el archivo sin que nadie lo hubiera emitido)."""
+    ruta = config.ruta_codigo_instalacion(entorno)
+    orden: list[str] = []
+
+    def asegurar(recibido) -> bool:
+        assert recibido is entorno
+        assert not ruta.exists()
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        ruta.write_text("ABCD-EFGH-IJKL-MNOP-QRST", encoding="utf-8")
+        orden.append("asegurar")
+        return True
+
+    escenario = Escenario()
+    assert escenario.correr(entorno, asegurar=asegurar) == 0
+    assert orden == ["asegurar"]
+    assert any("ABCD-EFGH-IJKL-MNOP-QRST" in linea for linea in escenario.salida)
+
+
+def test_el_bloc_de_notas_se_abre_solo_en_el_producto_y_solo_si_se_emitio(
+    entorno, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ruta = config.ruta_codigo_instalacion(entorno)
+
+    def emite(_entorno) -> bool:
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        ruta.write_text("ABCD-EFGH-IJKL-MNOP-QRST", encoding="utf-8")
+        return True
+
+    monkeypatch.setattr(config, "es_producto", lambda raiz=None: False)
+    desarrollo = Escenario()
+    assert desarrollo.correr(entorno, asegurar=emite) == 0
+    assert desarrollo.archivos == []  # en desarrollo y en pruebas nunca se abre nada
+
+    monkeypatch.setattr(config, "es_producto", lambda raiz=None: True)
+    producto = Escenario()
+    assert producto.correr(entorno, asegurar=emite) == 0
+    assert producto.archivos == [ruta]
+
+    ya_estaba = Escenario()
+    assert ya_estaba.correr(entorno, asegurar=lambda _e: False) == 0
+    assert ya_estaba.archivos == []  # no se emitió ahora: no se abre otra vez
+
+
+def test_el_gancho_por_omision_es_el_de_la_instalacion_real() -> None:
+    parametro = inspect.signature(lanzador.arrancar).parameters["asegurar"]
+    assert parametro.default is lanzador.primer_arranque.asegurar_codigo_de_la_instalacion
+
+
+def test_si_no_se_puede_emitir_el_codigo_el_arranque_sigue(entorno) -> None:
+    def falla(_entorno) -> bool:
+        raise OSError("disco lleno")
+
+    escenario = Escenario()
+    assert escenario.correr(entorno, asegurar=falla) == 0
+    assert len(escenario.lanzados) == 1 and escenario.archivos == []
+    texto = (config.carpeta_registros(entorno) / "silice.log").read_text(encoding="utf-8")
+    assert "código de instalación" in texto and "OSError" in texto
+
+
+def test_arrancar_sin_cuentas_deja_el_codigo_en_el_archivo_y_en_la_consola(
+    entorno, bases_reales
+) -> None:
+    """De punta a punta con las bases reales: el primer arranque no tenía código y ahora sí."""
+    escenario = Escenario()
+    real = lanzador.primer_arranque.asegurar_codigo_de_la_instalacion
+    assert escenario.correr(entorno, asegurar=real) == 0
+    archivo = config.ruta_codigo_instalacion(entorno)
+    escrito = archivo.read_text(encoding="ascii").strip()
+    assert re.fullmatch(r"(?:[A-Z2-7]{4}-){4}[A-Z2-7]{4}", escrito)
+    assert any(escrito in linea for linea in escenario.salida)
+    texto = (config.carpeta_registros(entorno) / "silice.log").read_text(encoding="utf-8")
+    assert escrito not in texto and escrito.replace("-", "") not in texto
 
 
 def test_parar_no_mata_nada_si_la_salud_no_responde(entorno) -> None:
