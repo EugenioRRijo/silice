@@ -104,4 +104,28 @@ describe("Entrar", () => {
     await usuario.click(screen.getByRole("button", { name: "Entrar" }));
     expect(onEntrar).not.toHaveBeenCalled();
   });
+
+  // F1: con cuentas creadas, «Entrar» ofrece el camino para quien perdió el acceso de administrador.
+  test("con alRecuperar ofrece «Perdí el acceso de administrador» y lo llama sin entrar", async () => {
+    const usuario = userEvent.setup();
+    const alRecuperar = vi.fn();
+    const onEntrar = vi.fn();
+    render(<Entrar onEntrar={onEntrar} alRecuperar={alRecuperar} />);
+    await usuario.click(screen.getByRole("button", { name: "Perdí el acceso de administrador" }));
+    expect(alRecuperar).toHaveBeenCalledTimes(1);
+    expect(onEntrar).not.toHaveBeenCalled();
+  });
+
+  test("sin alRecuperar no pinta el enlace", () => {
+    render(<Entrar onEntrar={vi.fn()} />);
+    expect(screen.queryByText(/Perdí el acceso/)).not.toBeInTheDocument();
+  });
+
+  test("el enlace es un botón que no envía el formulario y viene después de «Entrar»", () => {
+    render(<Entrar onEntrar={vi.fn()} alRecuperar={vi.fn()} />);
+    const enlace = screen.getByRole("button", { name: "Perdí el acceso de administrador" });
+    expect(enlace).toHaveAttribute("type", "button");
+    const entrar = screen.getByRole("button", { name: "Entrar" });
+    expect(entrar.compareDocumentPosition(enlace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
