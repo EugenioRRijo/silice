@@ -47,6 +47,8 @@ puerto de `[servidor]` de `silice.toml` (8501 por omisión con `start.py`), y es
 127.0.0.1. La interfaz está en `frontend-desktop/` y se compila con `npm run build` (la carpeta
 `dist/` es lo que sirve Uvicorn). Streamlit ya no forma parte del producto.
 
+> **Pendiente:** una instalación nueva (sin cuentas) aún no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» de React no está construido (véase el [manual de instalación](docs/manual_instalacion.md#primer-arranque)).
+
 La operación completa está en el [manual de usuario](docs/manual_usuario.md); cómo mantener y
 extender el sistema, en el [manual técnico](docs/manual_tecnico.md).
 

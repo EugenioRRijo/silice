@@ -21,6 +21,8 @@ detenerla, cierre la ventana minimizada «Sílice» o use «Detener Sílice».
 > La instalación para desarrollo pasó al [manual
   técnico](manual_tecnico.md#2-entorno-de-desarrollo).
 
+> **Pendiente (primer ingreso):** en una instalación nueva, sin cuentas, la pantalla de acceso aún no permite crear el primer administrador con el código de instalación; el flujo de «primera vez» está pendiente. Véase [Primer arranque](manual_instalacion.md#primer-arranque) en el manual de instalación.
+
 ## 2. Puesta en marcha
 
 Con el instalador no hace falta sembrar nada a mano; Inicio ofrece el caso de demostración.
