@@ -104,13 +104,13 @@ que diga otra cosa).
 | H-10 | La Hoja ya tiene búsqueda de insumos de **una versión abierta** (`GET /v1/hoja/borradores/{id}/insumos`, E8, `api/rutas/hoja.py:717`): `texto` en la descripción, a lo sumo 300, ordenado por descripción, 409 sin versión abierta. La interfaz la usa con un campo de búsqueda **más** un `Select` nativo (`hoja/CambioDeInsumo.tsx:142-171`). Cotizar usa un `Select` nativo con **todos** los insumos de la lista (`hoja/OperacionesDePrecios.tsx:73-77`). | Cambiar de insumo **reutiliza E8** (cero backend nuevo). Cotizar filtra en el navegador la lista que la pestaña ya cargó (modo local del componente). |
 | H-11 | No existe ningún `ComboBox`, `datalist` ni autocompletado en el front (`grep` de `ComboBox\|FilterableMultiSelect\|Dropdown\|Autocomp\|datalist` en `src/**/*.tsx` → ningún componente propio). Carbon 1.117.0 trae `ComboBox`, pero la ronda 1 del árbitro mostró, sobre Carbon 1.117.0 y downshift 9.4.0, que **no sirve como base** (§4.1). Yo no lo ejecuté. | Es un componente propio nuevo en `src/comun/`. Lo que jsdom no puede medir (posición del menú en una celda, letra Muy grande) se verifica en navegador real en F0 (§4.3). |
 | H-12 | Regla VB-18: `TextInput` y `TextArea` de Carbon solo se importan en `comun/CampoTexto.tsx` y `AreaTexto.tsx`; `comun/regionesVivasVacias.test.tsx` lo vigila por ruta exacta porque montan un `<span role="alert" aria-live>` vacío por campo. | `CampoConBusqueda` **no puede importar `TextInput`**. Por eso el componente es propio sobre `CampoTexto` (§4) y su región viva existe **solo con contenido** (§3.6). |
-| H-13 | `pedir` (`src/api/cliente.ts`) no acepta `AbortSignal`: `fetch(ruta, { method, headers, body, credentials })`, y su `catch` convierte **cualquier** fallo de `fetch` en `ErrorDeApi(0, "No se pudo hablar con el programa de Sílice…")` (`cliente.ts:68-72`). Un aborto deliberado se mostraría como un servidor caído. Los buscadores actuales descartan por «turno» (`BuscadorReferencia.tsx:26-47`), pero la petición vieja sigue viva. | «Una sola petición en vuelo» necesita que `pedir` acepte `senal?: AbortSignal` (aditivo) **y** que ante un aborto relance el `AbortError` original sin envolverlo en `ErrorDeApi` (prueba P-20). |
+| H-13 | `pedir` (`src/api/cliente.ts`) no acepta `AbortSignal`: `fetch(ruta, { method, headers, body, credentials })`, y su `catch` convierte **cualquier** fallo de `fetch` en `ErrorDeApi(0, "No se pudo hablar con el programa de Sílice…")` (`cliente.ts:73-77`). Un aborto deliberado se mostraría como un servidor caído. Los buscadores actuales descartan por «turno» (`BuscadorReferencia.tsx:26-47`), pero la petición vieja sigue viva. | «Una sola petición en vuelo» necesita que `pedir` acepte `senal?: AbortSignal` (aditivo) **y** que ante un aborto relance el `AbortError` original sin envolverlo en `ErrorDeApi` (prueba P-20). |
 | H-14 | Acceso: `/v1/composicion/*` exige `EDITAR_HOJA` (arma); `GET /partidas` e `/insumos`, `LEER_PROYECTO` (arma y revisa); `GET /v1/precios-empresa` exige `ADMINISTRAR_PRECIOS` (`api/acceso.py`, `precios_empresa.py:73-77`). | El buscador hereda la acción de la pantalla que lo usa (§5.1). Las listas de la empresa no se exponen a quien arma. |
 | H-15 | Códigos de insumo asignados: `PREFIJO-NNN` (`repositorio.py:455-464`); variantes con sufijo si el precio difiere (`_codigo_variante`). Partidas de prueba usan `LB-01-EXC`, `LB-02-TUB` (`tests/fixtures/apu_linea_base.py`). El sistema **no impone** un formato al código de una partida (no encontré validación; no leí `composicion_desde_tablas` entera). | La sugerencia de código (§5.4) es una **ayuda**, nunca una regla. |
 | H-16 | El buscador de la Hoja (E8, `candidatos_de_insumo`, `aplicacion/hoja_edicion.py:384-395`) busca `texto` **solo en la descripción**, ordena por descripción y no por relevancia, y no busca por código. | Cambiar insumo (H-A6) gana el combobox y la lista de resultados, **no** la relevancia ni la búsqueda por código: diferencia declarada. Mejorar E8 (aditivo) queda como mejora aparte. |
 | H-17 | Acceso real (`seguridad/permisos.py:58-64`): `LEER_PROYECTO` = arma y revisa; `EDITAR_HOJA` y `CONTROL_DE_OBRA` = solo arma; el **administrador no tiene ninguna de las tres**. Las pantallas de Control usan `CONTROL_DE_OBRA`. Las rutas de control resuelven el proyecto con `_existe` (`api/rutas/control.py:66-72`), cuyo 404 **repite el nombre** que llegó. | Cada ruta de búsqueda declara su acción (§5.1); el administrador recibe 403 en todas; las que reciben `proyecto` devuelven un 404 de mensaje fijo, sin repetirlo (no se reutiliza `_existe`). |
 | H-18 | Los insumos del catálogo **no llevan depreciación**: vive en la línea de la composición (`core/models/entidades.py:116`, `ComposicionAPU.depreciacion`; `Insumo` no la tiene). Solo MaPreX la trae (`factor_depreciacion`). | Un equipo elegido del catálogo rellena `depreciacion` en **blanco** y la persona la declara (la ayuda de C-10 la explica); uno de MaPreX la rellena. |
-| H-19 | Origen de los datos de las pantallas de Control, Histórico y Escenarios (lo que pidió el árbitro verificar): las partidas **de la línea base** salen de `instantanea_control(sesion, proyecto, catalogo=…).presupuesto.partidas[].item.codigo_partida` (`aplicacion/control.py:436-440`); las de **un presupuesto de la versión**, de `cargar_presupuesto` (`core/budget/persistencia.py:255`, la misma que sirve `GET /presupuestos/{codigo}`); los insumos con historial de precio, de `cambios_precio` (`core/catalog/precios.py:575`, que compara la descripción **exacta**). **No encontré** una función que dé los insumos de un presupuesto (Escenarios). | Define HI-1, CO-1 y CO-2 (§5.4, §5.8) y **retira ES-1** de F5 hasta que B4 fije su fuente. |
+| H-19 | Origen de los datos de las pantallas de Control, Histórico y Escenarios: las partidas **de la línea base** salen de `linea_base_vigente` (`core/budget/valuaciones.py:1023`) y de los renglones de su versión (`PartidaPresupuestada`, `entidades.py:367`), **no** de `instantanea_control`, que falla sin valuaciones, sin línea base o con la moneda cambiada y revalora todo (§5.4); los insumos con historial de precio, de `cambios_precio` (`core/catalog/precios.py:575`, que compara la descripción **exacta**). **No encontré** una función que dé los insumos de un presupuesto (Escenarios). | Define HI-1, CO-1 y CO-2 (§5.4, §5.8) y **retira ES-1** de F5 hasta que B4 fije su fuente. |
 | H-20 | `buscar_referencia` la usan `scripts/simular_corpus.py` (líneas 99, 110 y 112) y la reexportación de `ui/composicion.py:14,37`, además de `sugerencias_de_referencia`. | **Se deja intacta** (m-3): la búsqueda nueva es otra función; ambas leen los CSV con un lector común (§5.2). |
 
 ---
@@ -171,7 +171,7 @@ cerrada o corta con ayuda en lenguaje llano (el campo ya es un `Select`, o debe 
 | HI-1 | `historico/index.tsx:61-67` | Insumo (descripción exacta) | Texto: hay que escribir la descripción **exacta** (`cambios_precio` compara por igualdad, `core/catalog/precios.py:593-594`) | **A** | Combobox de `GET /v1/buscar/insumos-con-historial` (§5.8): solo insumos con al menos un cambio de precio; al elegir se escribe la descripción exacta | F5 |
 | ES-1 | `escenarios/index.tsx:289-296` | Insumo (descripción exacta), por fila | Texto exacto | **C** (se queda) | **Retirado de F5** hasta que B4 fije su fuente: no encontré una función que dé los insumos de un presupuesto (H-19). Mientras tanto conserva su ejemplo (`escenarios/logica.ts:20`, `EJEMPLO_PRECIOS`) | — |
 | SI-1 | `simulador/index.tsx:116-123` | Insumos («separados por coma; vacío = todos») | Texto con comas | **A** (múltiple) | Combobox de selección múltiple; diferido (D-9) | — |
-| CO-1 | `control/PestanaValuaciones.tsx:59` | Partida n (valuación) | Texto | **A** | Combobox de las partidas **de la línea base** del proyecto (`GET /v1/buscar/partidas-linea-base`, §5.4; acción `CONTROL_DE_OBRA`) | F5 |
+| CO-1 | `control/PestanaValuaciones.tsx:59` | Partida n (valuación) | Texto; sirve para registrar la **primera** valuación, sin valuaciones previas | **A** (modo local) | Combobox de las partidas **de la línea base** del proyecto (`GET /v1/buscar/partidas-linea-base`, §5.4; acción `CONTROL_DE_OBRA`), cargadas una vez y filtradas en el navegador | F5 |
 | CO-2 | `control/PestanaValuaciones.tsx:201` | Partida (opcional) del costo real | Texto (`codigo_partida` opcional, `core/models/control.py:167`) | **A** | Igual que CO-1; el campo sigue siendo opcional y se puede dejar vacío | F5 |
 | CO-3 | `control/PestanaValuaciones.tsx:196` | Moneda del costo | `Select` | **D** | Se queda | — |
 | CO-4 | `control/PestanaLineaBase.tsx:83`; `PestanasDeResultados.tsx:83`, `:333` | Fuentes (línea base, Km y R, decisión) | Texto | **C** | Ejemplo en cada una: «Contrato N.º 123, cláusula 8, firmado el 01/10/2026» | F5 |
@@ -235,7 +235,8 @@ interface Props<T> {
     alUsar: (texto: string) => void;
   };
   vacio: { titulo: string; pasos: string };  // "¿No lo encuentra?" + qué hacer (§3.5)
-  minimoDeLetras?: number;          // 2
+  minimoDeLetras?: number;          // 2 por omisión; 0 en el campo de unidad (q vacío = lista completa, §5.7)
+  alSalir?: () => void;             // `onBlur` del campo: la página decide qué significa el texto escrito (§7.1)
   pausaMs?: number;                 // 300 (el mismo retardo que los demás buscadores de la interfaz)
   limiteInicial?: number;           // 8 por grupo; «Ver más resultados» pide 20 (§3.3-5)
   enCelda?: boolean;                // true: la lista se pinta en un portal con `position: fixed` (§3.7)
@@ -260,8 +261,11 @@ escrito es la prop `texto`.
 4. **Texto normalizado en el servidor**, no en el navegador; el navegador solo recorta espacios de los bordes. (El modo local usa
    `coincide`/`normalizar` de `catalogo/filtro.ts`, que se mueve a `comun/` sin cambiar su comportamiento; es una función pura ya probada.)
 5. **Límite: una sola regla, por grupo.** El parámetro `limite` del servidor es **por grupo** (por omisión 20, tope 50) y `hay_mas` también es por grupo (§5.1).
-   El componente pide `limite=8` y muestra hasta 8 opciones por grupo; si un grupo trae `hayMas`, bajo ese grupo (dentro de la lista, pero **no** como opción)
-   hay un botón «Ver más resultados» que repite la misma búsqueda con `limite=20`. Con 20 y `hayMas`, se muestra «Hay más resultados: escriba más letras para acotar».
+   El componente pide `limite=8` y muestra hasta 8 opciones por grupo. Si un grupo trae `hayMas`, el componente añade **al final de ese grupo una opción más**
+   (`role="option"`, texto «Ver más resultados», clave propia `ver_mas:{fuente}`), de modo que se alcanza con las flechas y con `aria-activedescendant` (un `listbox` solo contiene
+   `group` y `option`; un botón dentro no sería alcanzable porque el foco nunca sale del campo). Al elegirla (`Enter` o clic) **no** llama `alElegir`: repite la búsqueda con `limite=20`
+   **para ese grupo**, mantiene el foco en el campo y deja activa la primera opción nueva; la región de estado anuncia «Se muestran 20 resultados». Con 20 y `hayMas` la opción ya no se ofrece
+   y bajo el grupo se muestra, como texto fuera del `listbox`, «Hay más resultados: escriba más letras para acotar».
 6. **Orden:** el que manda el servidor (relevancia, §5.2). El componente no reordena.
 7. **Elegir:** `Enter` elige **solo si la persona navegó con las flechas** hasta una opción (hay opción activa); sin opción activa, `Enter` no elige nada y no
    cambia el texto (con la lista cerrada sigue su curso normal en el formulario). Un clic sobre una opción también elige. Al elegir se llama `alElegir(opcion)`,
@@ -286,10 +290,10 @@ PLOA38 · m · 13,9291 USD · MaPreX jul-2026 · 09/07/2026      ← secundaria 
 - El **precio** va como `formatoEsVe(precio) + " " + moneda`, exacto tal como llega (sin redondear). Si la API manda dos
   monedas (MaPreX), se muestra **la de la lista del caso** y la otra queda en la descripción accesible (`aria-describedby`).
 - **Fuente y fecha siempre visibles** (nunca solo en un `Tooltip`); la fecha como `dd/mm/aaaa`, construida **troceando la cadena**
+  `AAAA-MM-DD` (sin `new Date`, que corre el día por zona horaria).
 - **Conversión a la vista:** un precio MaPreX en USD no es un dato del PDF, es `precio_bs / tasa` redondeado a 4 decimales. La línea de procedencia de la fila elegida lo
   dice: «13,9291 USD · precio del 09/07/2026 · convertido a 633,3644 Bs/USD del 01/07/2026». Si la lista del caso está en Bs se muestra el precio en Bs, que es el del PDF, y no hay conversión. En la lista de
   resultados la tasa va en la descripción accesible de la opción (`aria-describedby`).
-  `AAAA-MM-DD` (sin `new Date`, que corre el día por zona horaria).
 - Un resultado sin precio dice «sin precio en la lista vigente» en vez de dejar un hueco.
 - El texto de la API es siempre un **nodo de texto de React**; no se usa `dangerouslySetInnerHTML` ni se interpreta Markdown. El resaltado
   de la parte coincidente (negrita) se hace partiendo la cadena por posiciones calculadas sobre el mismo texto y envolviendo los
@@ -319,7 +323,7 @@ La frase «tubo en vez de tubería» es un hecho de los datos (H-4), no un chist
 | Elemento | Atributos |
 |---|---|
 | Campo | `role="combobox"`, `aria-expanded`, `aria-controls` (id del listbox), `aria-autocomplete="list"`, `aria-activedescendant` (id de la opción activa; el foco **no** sale del campo), `aria-describedby` (ayuda + región de estado), `aria-invalid` si procede |
-| Lista | `role="listbox"`, `aria-label` con la etiqueta del campo; con dos grupos, `role="group"` con `aria-labelledby` al rótulo del grupo |
+| Lista | (nota: «Ver más resultados» es una `option` más, §3.3-5) `role="listbox"`, `aria-label` con la etiqueta del campo; con dos grupos, `role="group"` con `aria-labelledby` al rótulo del grupo |
 | Opción | `role="option"`, `aria-selected` (solo la activa), `id` estable; `aria-setsize` y `aria-posinset` cuando hay más de las visibles |
 | Región de estado | `role="status"` (`aria-live="polite"`, `aria-atomic="true"`) **presente solo mientras el campo tiene el foco o la lista está abierta, y siempre con texto** (cumple VB-18: ninguna región viva vacía; al perder el foco se desmonta, no se vacía). El texto cambia con un **retardo corto de 400 ms** después de pintar la lista, para no pisar la lectura del campo, y se deja puesto hasta que cambia el resultado. Dice, una vez por búsqueda terminada: «12 resultados. Use las flechas para recorrerlos.», «1 resultado.», «Sin resultados para «{texto}».», «Buscando…» (solo si pasan 700 ms), «No se pudo buscar: …». No anuncia cada tecla. El texto del usuario se inserta como texto (`textContent`), recortado a 60 caracteres. |
 
@@ -368,7 +372,7 @@ pruebas ≈ 500. El mayor riesgo es el posicionamiento del portal dentro de celd
 
 F0 construye un esqueleto mínimo (campo + lista con datos fijos, sin red) y comprueba, **en jsdom y en un navegador real** (perfil propio en el scratchpad, servidor solo en `127.0.0.1`, cierre por PID):
 
-1. ninguna región viva vacía, ni `[aria-live]` ni `role=status`/`alert` sin texto (VB-18) y la región de estado cambia con el retardo de §3.6;
+1. ninguna región viva vacía, ni `[aria-live]` ni `role=status`/`alert` sin texto (VB-18); la región de estado cambia con el retardo de §3.6; **y una región viva insertada ya con contenido sí se anuncia** (un lector de pantalla puede ignorar el contenido inicial de una región recién insertada): se comprueba con el retardo y con una persona usando NVDA, no solo en jsdom;
 2. todos los textos en español;
 3. los grupos se anuncian con su encabezado;
 4. el texto lo controla la página (no hay `inputValue` interno);
@@ -398,7 +402,7 @@ jsdom no mide diseño: 7 y 8 solo se verifican en navegador real. El resultado v
 
   Un revisor que abre Componer recibe 403 en lo que Componer ya le negaba. La clave de API no se distingue: ninguna ruta escribe.
 - **Parámetros y validación (todos con respuesta 422 de mensaje fijo si no se cumplen):**
-  - `q`: `Query(max_length=80)`; se recorta; vacío o de menos de 2 caracteres → **200 con resultados vacíos** (un campo que se está tecleando no es un error). El campo del front lleva `maxLength=80`.
+  - `q`: `Query(max_length=80)`; se recorta; vacío o de menos de 2 caracteres → **200 con resultados vacíos** (un campo que se está tecleando no es un error). **Excepción: `/unidades`**, donde `q` vacío devuelve la lista completa (el campo de unidad usa `minimoDeLetras: 0`). El campo del front lleva `maxLength=80`.
   - `limite`: **por grupo**, 1..50, por omisión 20; `hay_mas` también es por grupo. Es la única regla de límite del contrato (la repiten §3.3-5 y §8.1).
   - `fecha`: opcional, `AAAA-MM-DD` válida; se pasa a `Catalogo.lista_vigente(fecha)` (`core/catalog/repositorio.py:101`). Sin ella, la fecha de hoy.
   - `proyecto`: 1..120 caracteres, sin caracteres de control; se resuelve con `resolver_proyecto` (`aplicacion/proyectos.py:129`, código o nombre exacto). `version`: el `PATRON_CODIGO` de `api/esquemas_ola2.py:129`.
@@ -407,8 +411,7 @@ jsdom no mide diseño: 7 y 8 solo se verifican en navegador real. El resultado v
 - Un error de base (`SQLAlchemyError`) → 503 con mensaje fijo, sin SQL ni rutas (patrón `_caso_legible`, `precios_empresa.py`).
 - Las rutas operan sobre el caso de la sesión (`SesionDep`); no hay parámetro de caso. La referencia MaPreX son archivos del repositorio (no abre la base).
 - **Costo:** la búsqueda del catálogo se normaliza en Python sobre **todas** las filas del tipo del caso (con `normalizar_texto`; no se usa `LIKE` de SQL porque no normaliza acentos ni pulgadas). `Catalogo.insumos()` ya
-  carga el catálogo completo en `GET /insumos`, así que el costo es del mismo orden: lineal en el tamaño del catálogo, esperado de cientos a pocos miles de filas. **No lo medí**: B2 siembra 5 000 insumos, comprueba que responde 200 y
-  anota el tiempo en la bitácora; el umbral lo fija B2 con esa medición, no este documento.
+  carga el catálogo completo en `GET /insumos`, así que el costo es del mismo orden: lineal en el tamaño del catálogo, esperado de cientos a pocos miles de filas. **No lo medí.** Umbral de diseño, verificable: con **5 000 insumos** sembrados, `/v1/buscar/insumos` responde en **menos de 150 ms** en la máquina de desarrollo; B2 lo mide y lo anota en la bitácora (si no se cumple, se vuelve a este diseño; no se relaja en silencio). **El aborto del cliente no cancela el trabajo del servidor:** una petición abortada se sigue calculando hasta terminar; el aborto solo evita que el navegador la procese, y por eso el costo importa.
 - **Moneda de respaldo:** la lista del caso puede tener cualquier moneda (la columna admite 10 caracteres, `entidades.py:196`), pero el contrato solo conoce `Bs` y `USD` (`MONEDAS`, `core/catalog/moneda.py:20`). Si la moneda de la lista no es ninguna de las dos,
   `fila.precio` va en USD (como hoy) y el grupo trae `aviso`: «La lista del caso está en {moneda}; el precio de MaPreX se muestra en USD.» (la moneda como texto).
 
@@ -458,7 +461,7 @@ Parámetros: `tipo` (`material|equipo|mano_obra`, obligatorio), `q`, `fuentes` (
 }
 ```
 
-- **Fecha de la lista (M-2):** el grupo `catalogo` toma la lista de `Catalogo.lista_vigente(fecha)`. La pantalla de Componer envía el valor de su campo **Fecha** (cuando es una fecha completa y válida), de modo que el precio sugerido es el de la lista que el guardado usará (`guardar_composicion` llama a `lista_vigente(fecha)`, `aplicacion/composicion.py:828`). Prueba con **dos listas de vigencias distintas**: la misma consulta con dos `fecha` devuelve el precio de cada una.
+- **Fecha de la lista (M-2):** el grupo `catalogo` toma la lista de `Catalogo.lista_vigente(fecha)`. La pantalla de Componer envía el valor de su campo **Fecha** (cuando es una fecha completa y válida), de modo que el precio sugerido es el de la lista que el guardado usará (`guardar_composicion` llama a `lista_vigente(fecha)`, `aplicacion/composicion.py:830`). Prueba con **dos listas de vigencias distintas**: la misma consulta con dos `fecha` devuelve el precio de cada una.
 - **Tasa (M-5):** `lista.tasa` y `lista.fecha_tasa` del grupo MaPreX son las de la fuente (633,3644 Bs/USD al 01/07/2026, `README.md` de MaPreX). Viven como constantes de `aplicacion/busqueda.py` (los scripts no se importan) y una prueba comprueba que el README contiene esa cifra. La interfaz las muestra en la línea de procedencia (§3.4).
 - **Qué se rellena al elegir** (`fila`, armado en el servidor con las funciones que ya existen, `fila_materiales_desde_referencia`, `fila_equipos_desde_referencia`, `fila_mano_obra_desde_referencia`):
   materiales: descripción, unidad, precio; equipos: descripción, precio y **factor de depreciación** (la regla R6 depende de que el factor venga de una sola fuente); mano de obra: descripción y sueldo (el jornal).
@@ -470,9 +473,8 @@ Parámetros: `tipo` (`material|equipo|mano_obra`, obligatorio), `q`, `fuentes` (
 
 ### 5.4 `GET /v1/buscar/partidas`, `GET /v1/buscar/partidas-linea-base` y `GET /v1/buscar/codigo-sugerido`
 
-Dos cosas distintas que no deben confundirse: las **partidas del presupuesto de una versión** y las **partidas de la línea base** de un proyecto.
-
-`/partidas`: `q`, `dominio` (opcional), `ambito` (`catalogo` por omisión | `version`), `proyecto` y `version` (obligatorios con `ambito=version`), `limite`. Acción `LEER_PROYECTO`.
+`/partidas`: `q`, `dominio` (opcional), `limite`. Acción `LEER_PROYECTO`. Solo el **catálogo** (`Catalogo.partidas(dominio)` filtradas): ningún campo del inventario usa otro ámbito (CO-1 y CO-2 van a `/partidas-linea-base`,
+HI-1 al historial, E-3 es local, ES-1 está retirado), así que **no hay** `ambito=version` ni se usa `cargar_presupuesto`.
 
 ```jsonc
 { "rotulo": "Partidas del catálogo", "resultados": [
@@ -481,11 +483,17 @@ Dos cosas distintas que no deben confundirse: las **partidas del presupuesto de 
   "hay_mas": false }
 ```
 
-- `ambito=catalogo`: `Catalogo.partidas(dominio)` filtradas. `ambito=version`: las partidas del presupuesto de esa versión, con la misma lectura que `GET /presupuestos/{codigo}` (`cargar_presupuesto`, `core/budget/persistencia.py:255`, H-19); B4 fija la llamada exacta (cómo se pasa el proyecto) y no la leí.
-- `tiene_composicion` = existe al menos una línea. Una partida sin composición **se puede elegir**, con la etiqueta «sin composición todavía».
+`tiene_composicion` = existe al menos una línea. Una partida sin composición **se puede elegir**, con la etiqueta «sin composición todavía».
 
-`/partidas-linea-base`: `q`, `proyecto` (obligatorio), `limite`. Acción **`CONTROL_DE_OBRA`**. Devuelve las partidas de la línea base del proyecto, de `instantanea_control(sesion, proyecto, catalogo=…).presupuesto.partidas[].item.codigo_partida`
-(`aplicacion/control.py:436-440`), con su descripción y unidad. Un proyecto sin línea base devuelve 200 con resultados vacíos y `aviso`: «Este proyecto todavía no tiene línea base.» (si `instantanea_control` lanza en ese caso, B4 usa `tiene_linea_base`, `control.py:147-155`; no lo probé).
+`/partidas-linea-base`: `proyecto` (obligatorio, §5.1). Acción **`CONTROL_DE_OBRA`**. **Sin `q` ni `limite`**: devuelve **todas** las partidas de la línea base (ordenadas por código, a lo sumo 2 000) y el combobox las **carga una vez y filtra en modo local**
+(no hay petición por tecla). **No usa `instantanea_control`**, que falla justo en el uso principal: sin `corte` lanza `ValueError` si no hay valuaciones (`core/budget/valuaciones.py:480-483`), `ValueError` si no hay línea base (`:486`),
+`LineaBaseInvalidada` si cambió la moneda (`:492`) y revalora todo el presupuesto con `cargar_presupuesto` (`:498`); y CO-1 sirve para registrar la **primera** valuación, cuando aún no hay ninguna. En su lugar:
+
+1. `linea_base_vigente(sesion, proyecto, date.max)` (`core/budget/valuaciones.py:1023`; es lo que usa `tiene_linea_base`, `aplicacion/control.py:1219`) da la fila de la línea base, con su `presupuesto_id`. No lee valuaciones ni revalora.
+2. Las partidas son los renglones de **esa** versión: una consulta ligera `select(Partida.codigo, Partida.descripcion, Partida.unidad).join(PartidaPresupuestada)` con `PartidaPresupuestada.presupuesto_id == fila.presupuesto_id` (`core/models/entidades.py:367-375`),
+   una sola consulta, sin curva, composiciones ni cálculo. *(La forma exacta de la consulta la fija B4 sobre estas tablas; leí los modelos y `linea_base_vigente`, no escribí la consulta.)*
+3. Respuestas, **nunca 500**: con línea base → 200 con las partidas (haya o no valuaciones: **«sin valuaciones» SÍ devuelve las partidas**); **sin línea base** → 200, `resultados: []` y `aviso` fijo «Este proyecto todavía no tiene línea base.»;
+   **moneda invalidada** (la moneda del proyecto ya no es la de la versión de la línea base, comparación de `valuaciones.py:489-492`, pero **sin lanzar**) → 200 con las partidas y `aviso` fijo «La moneda del proyecto cambió: declare la línea base de nuevo.».
 
 `/codigo-sugerido?dominio=`: devuelve `{ "sugerido": "LB-06" | null, "patron": "LB-NN" | null }`. Se calcula **solo** si todos los códigos de partida del dominio siguen el patrón `^([A-Z]+)-(\d+)(-[A-Za-z0-9]+)?$` con **el mismo prefijo**: toma el máximo del número y le suma 1, **sin** sufijo. Si los prefijos difieren o no hay partidas, `sugerido: null` y la interfaz solo muestra el ejemplo. Es una **ayuda**, no una regla (H-15); la persona la edita o la ignora (D-5).
 
@@ -495,30 +503,31 @@ Dos cosas distintas que no deben confundirse: las **partidas del presupuesto de 
   - se añaden `descripcion: str | None`, `unidad: str | None`, `dominio: str | None`, rellenos **siempre que la partida exista en el catálogo** (aunque no haya lista vigente);
   - se añade `tiene_composicion_vigente: bool`;
   - **`existe` cambia de significado** y es el único cambio de comportamiento: pasa a ser «la partida está en el catálogo» (hoy es falso también si no hay lista vigente, `aplicacion/composicion.py:1062-1063`). Con una partida existente sin lista vigente: `existe=true`, `tiene_composicion_vigente=false`, tablas vacías y rendimiento propuesto si lo hay.
-  - Las pruebas existentes que afirman `existe` falso usan un código inexistente (`test_api_composicion.py:267`, `:376`, `:383`, `:403`), así que no cambian; se añade una nueva con una **lista de inicio futuro** (la partida existe, no hay lista vigente a hoy).
+  - Las pruebas existentes que afirman `existe` falso usan un código inexistente (`test_api_composicion.py:267`, `:376`, `:383`, `:403`), así que no cambian; **sí hay que reescribir** `test_la_precarga_de_un_codigo_nuevo_es_200_con_las_tablas_vacias` (`test_api_composicion.py:263-268`), que compara el cuerpo **completo** con un diccionario de 4 claves y falla al añadir `descripcion`, `unidad`, `dominio` y `tiene_composicion_vigente`; se añade una nueva con una **lista de inicio futuro** (la partida existe, no hay lista vigente a hoy).
   - En el front, `existe && !tiene_composicion_vigente` bloquea la cabecera y muestra «Esta partida existe, pero no tiene composición vigente a la fecha elegida»; el guardado seguirá dando el 409 de siempre.
 - Ninguna otra ruta existente cambia de acceso ni de semántica. `GET /v1/composicion/referencia` **se conserva** durante la migración y se marca como reemplazada; se retira en un cambio aparte cuando F2 esté fusionado (D-8).
 
 ### 5.6 `GET /v1/buscar/proveedores`
 
-`q`, `proyecto`; devuelve `{ "resultados": [{ "texto": "Ferretería Demo, C.A." }] }`: los proveedores ya cotizados **en ese proyecto**, distintos, por orden de uso reciente, a lo sumo 8. `EDITAR_HOJA`. Nunca mira otros proyectos ni otros casos (D-12).
-*(No leí la tabla de cotizaciones para fijar la consulta; B4 lo hace. Si la columna del proveedor se llama distinto, el contrato no cambia.)*
+`q`, `proyecto`; devuelve `{ "resultados": [{ "texto": "Ferretería Demo, C.A." }] }`: los proveedores de las cotizaciones **activas** de ese proyecto, distintos, por orden de uso reciente, a lo sumo 8. `EDITAR_HOJA`. Nunca mira otros proyectos ni otros casos (D-12).
+**Solo activas (decisión del orquestador):** la fuente es `cotizaciones_activas(session, lista)` (`core/catalog/origen.py:191`, campo `proveedor` del `Cotizado`) sobre la lista de proyecto de la versión vigente; una cotización **retirada** no sugiere su proveedor.
+Prueba: dos cotizaciones sembradas, una retirada, y solo se sugiere el proveedor de la activa. *(La lista de proyecto exacta de la que se leen las activas la fija B4; no la leí.)*
 
 ### 5.7 `GET /v1/buscar/unidades`
 
-`q`, `limite`. Acción `LEER_PROYECTO`. Entrega la unión de tres orígenes, **sin repetir** la misma unidad (la clave es `normalizar_unidad`, `core/contracts/unidades.py`):
+`q` (puede ir vacío: devuelve todas), `limite`. Acción `LEER_PROYECTO`. Entrega la unión de tres orígenes, **sin repetir** la misma unidad (la clave es `normalizar_unidad`, `core/contracts/unidades.py`):
 las unidades distintas de las partidas y los insumos **del caso**; las de la referencia MaPreX; y una **glosa fija** de las comunes (`aplicacion/unidades_glosa.py`, §7.3).
 
 ```jsonc
 { "resultados": [ { "unidad": "m3", "glosa": "metro cúbico", "origenes": ["glosa", "maprex"], "variantes": [] } ], "hay_mas": false }
 ```
 
-Oráculo a mano (§8.1): con el caso vacío, `q="m3"` devuelve `m3` con glosa «metro cúbico» y origen `maprex` y `glosa`; `q="pza"` devuelve la unidad canónica `pieza` con la variante `pza`. El conjunto de unidades de MaPreX es `{dia, pza, und, m, m3, env, lt, sco, rll, sg}` (contado a mano de los CSV).
+Oráculo a mano (§8.1): con el caso vacío, `q="m3"` devuelve `m3` con glosa «metro cúbico» y origen `maprex` y `glosa`; `q="pza"` devuelve la unidad canónica `pieza` con la variante `pza`. Las unidades de origen `maprex` son **exactamente** las grafías crudas `{dia, pza, und, m, m3, env, lt, sco, rll, sg}` (contado a mano de los CSV); en la respuesta, `pza` y `und` aparecen bajo sus formas canónicas `pieza` y `unidad` con la grafía cruda en `variantes`, y `dia`, `m`, `m3`, `env`, `lt`, `sco`, `rll` y `sg` se quedan igual.
 
 ### 5.8 `GET /v1/buscar/insumos-con-historial`
 
 `q`, `limite`. Acción `LEER_PROYECTO` (la de `GET /cambios-precio`). Devuelve las descripciones distintas de los insumos que tienen al menos un `CambioPrecio` (fuente: `cambios_precio`, `core/catalog/precios.py:575`), ordenadas por relevancia (§5.2).
-Cada resultado trae la **descripción exacta** (que es lo que `cambios_precio` compara por igualdad), el tipo y la unidad.
+Deduplica y limita **en una sola pasada** sobre el resultado de `cambios_precio` (una consulta para todos los cambios, no una consulta por fila). Cada resultado trae la **descripción exacta** (que es lo que `cambios_precio` compara por igualdad), el tipo y la unidad.
 
 ## 6. Reglas de datos y presentación
 
@@ -563,7 +572,7 @@ Esa línea es **estado de la página** (no se guarda en la composición; D-6) y 
 | **nueva confirmada** | se pulsó «Crear una partida nueva con el código …» | editable; aviso `partida_nueva` ya existente | habilitado según las condiciones, como hoy |
 | **escrita, sin confirmar** | hay un código escrito que no se eligió ni se confirmó, y al salir del campo no coincide con una partida existente | editable | **deshabilitado**; motivo visible: «Elija una partida de la lista o confirme «Crear una partida nueva con el código …»» |
 
-El motivo es un párrafo de texto (`<p>`), no una región viva. Es un cambio de comportamiento de la pantalla (hoy se puede guardar con cualquier código escrito) y D-3 lo pide a Eugenio. Se evalúa al salir del campo: `partida(codigo)` decide entre **existente** y **escrita, sin confirmar**; si `existe`, la cabecera se rellena aunque la persona no haya abierto la lista.
+El motivo es un párrafo de texto (`<p>`), no una región viva. Es un cambio de comportamiento de la pantalla (hoy se puede guardar con cualquier código escrito) y D-3 lo pide a Eugenio. **Editar el código después** (n-3): si la persona edita el código estando en **nueva confirmada** o **existente**, el estado vuelve a **escrita, sin confirmar** y la cabecera se desbloquea; se conservan las tablas y lo escrito (solo se pierde la confirmación), y la cabecera que estaba rellena conserva sus valores como texto editable con la nota «Cambió el código: elija o confirme de nuevo». El campo avisa al padre con `alCambiarTexto` y `alSalir`. Se evalúa al salir del campo: `partida(codigo)` decide entre **existente** y **escrita, sin confirmar**; si `existe`, la cabecera se rellena aunque la persona no haya abierto la lista.
 
 Flujo, paso a paso:
 
@@ -583,7 +592,7 @@ Flujo, paso a paso:
 **Qué se retira:** `BuscadorReferencia.tsx` y su prueba (sustituida por las del componente nuevo, P-2) y el botón «Agregar fila» en favor de «Agregar insumo».
 **Qué no cambia:** `tablas.ts` (estado de texto), `PanelDesglose`, `Similares`, `cliente.ts` salvo funciones nuevas. `Guardar.tsx` gana una propiedad (`motivoDeLaCabecera`).
 
-**Pruebas existentes que se rompen y F2 debe reescribir** (las nombro para que el árbitro vea que no se esconden):
+**Pruebas existentes que se rompen y F2/B3 deben reescribir** (las nombro para que el árbitro vea que no se esconden): `tests/unit/test_api_composicion.py:263-268` (B3);
 `componer/regiones.test.tsx` (cuenta regiones vivas de la página con la lista de campos de hoy); `componer/TablaInsumos.test.tsx:13` y `:86` (buscan el botón «Agregar fila a Materiales» y «Borrar fila …»);
 `componer/index.test.tsx:155` y `:222` (teclean el código «FIC-1» y «NUEVA-1» y siguen: con el estado **escrita, sin confirmar** Guardar queda deshabilitado, así que esas pruebas deben pasar por «Crear una partida nueva»), y `componer/BuscadorReferencia.test.tsx` (se retira).
 
@@ -600,7 +609,7 @@ en `componer/index.tsx`, que se reajusta al borrar/agregar filas (función pura 
 
 ### 7.3 Unidad (C-3, C-9)
 
-La unidad no tiene una lista maestra en el código (la tabla `_ALIAS` solo unifica grafías, `core/contracts/unidades.py`). El combobox de unidad usa `GET /v1/buscar/unidades` (§5.7): las unidades del caso, las de MaPreX y una **glosa fija** de
+La unidad no tiene una lista maestra en el código (la tabla `_ALIAS` solo unifica grafías, `core/contracts/unidades.py`). El combobox de unidad (`minimoDeLetras: 0`: al enfocarlo ya ofrece la lista completa) usa `GET /v1/buscar/unidades` (§5.7): las unidades del caso, las de MaPreX y una **glosa fija** de
 las más comunes en `aplicacion/unidades_glosa.py`: `m` metro, `m2` metro cuadrado, `m3` metro cúbico, `pieza`, `unidad`, `dia`, `h`, `kg`, `saco`, `sg` suma global. Las de MaPreX que no tienen alias son `lt`, `env`, `rll` y `sco`;
 sus glosas (`lt` litro, `env` envase, `rll` rollo, `sco` saco) **son mi lectura** de la abreviatura y las confirma Eugenio (D-11). Se acepta cualquier otra unidad escrita a mano **con el aviso**: «Esa unidad no está en la lista; si es la misma que otra con distinto nombre, el programa puede marcarla como diferente.»
 
@@ -641,8 +650,9 @@ Todas con TDD de **rojo visto**, `-W error` en Python, sin `skip`/`xfail`. Los o
 | `no-store` y sin eco | `Cache-Control: no-store` en 200, 401, 403, 422; el cuerpo del 422 no contiene el texto enviado (probar con `q` de 81 «X» y con `tipo=<script>`) |
 | 503 | con la sesión forzada a `SQLAlchemyError`, 503 y el cuerpo no contiene `SELECT` ni la ruta de la base |
 | Fecha de la lista | dos listas sembradas a mano (vigencias 2026-08-01 con precio `10.00` y 2026-09-01 con `12.00` para el mismo insumo): `fecha=2026-08-15` devuelve `10.00`; `fecha=2026-09-15` devuelve `12.00`; sin `fecha`, la de hoy; `fecha=2026-13-40` → 422 |
-| Unidades | con el caso vacío, `q="m3"` → `m3`, glosa «metro cúbico», orígenes `glosa` y `maprex`; `q="pza"` → `pieza` con variante `pza`; el conjunto sin filtro contiene exactamente `{dia, pza, und, m, m3, env, lt, sco, rll, sg}` de MaPreX |
-| Partidas por ámbito | `ambito=version` con una versión de 2 partidas sembradas devuelve esas 2 y no las otras del catálogo; `/partidas-linea-base` devuelve las de la línea base del proyecto y 403 a `rita`; proyecto inexistente → 404 con mensaje fijo que **no** contiene el nombre enviado |
+| Unidades | `q` vacío devuelve la lista completa; con el caso vacío, `q="m3"` → `m3`, glosa «metro cúbico», orígenes `glosa` y `maprex`; `q="pza"` → `pieza` con variante `pza`; las unidades de origen `maprex` son exactamente `{dia, pza, und, m, m3, env, lt, sco, rll, sg}` como grafías crudas (canónicas: `dia, pieza, unidad, m, m3, env, lt, sco, rll, sg`) |
+| Partidas | siembra de 3 partidas (`LB-01-EXC`, `LB-02-TUB`, `LB-05-REL`) → `/partidas?q=tub` devuelve solo `LB-02-TUB` |
+| Línea base | proyecto con línea base y **sin valuaciones** → 200 con las partidas de la versión de esa línea base (oráculo: las 2 sembradas); sin línea base → 200, `resultados: []` y el aviso fijo; con la moneda del proyecto cambiada → 200 con las partidas y el aviso fijo, nunca 500; `rita` → 403; proyecto inexistente → 404 con mensaje fijo que **no** contiene el nombre enviado; la respuesta no ejecuta `cargar_presupuesto` (prueba con contador de consultas: una sola consulta de renglones) |
 | Historial | `/insumos-con-historial` devuelve solo los insumos con un `CambioPrecio` sembrado y su descripción exacta |
 | Validación de `proyecto`/`version` | `proyecto` de 121 caracteres o con un carácter de control → 422; `version` fuera de `PATRON_CODIGO` → 422; ambos sin eco |
 | Precarga con lista futura | partida existente + única lista con inicio futuro → `existe: true`, `tiene_composicion_vigente: false`, `descripcion/unidad/dominio` de la base, tablas vacías |
@@ -659,6 +669,7 @@ Todas con TDD de **rojo visto**, `-W error` en Python, sin `skip`/`xfail`. Los o
 - Mínimo de letras: con 1 carácter, **cero** peticiones; con 2, una tras 300 ms (temporizadores falsos).
 - Debounce y carrera: teclear «t», «tu», «tub», «tubo» en 100 ms → **una** petición con `q=tubo`; respuesta tardía de «tu» llega después de la de «tubo» → se descarta; con `AbortController` simulado, se verifica `signal.aborted` en la petición vieja. En ningún instante hay dos peticiones abiertas.
 - Teclado: `↓` abre y activa la 1.ª; `↓↓` la 2.ª; `Enter` entrega esa opción y **no** envía el formulario; `Esc` cierra; `Tab` no elige; `Alt+↓` abre sin mover.
+- «Ver más resultados»: con 8 por grupo y `hayMas`, `↓` hasta la última opción del grupo llega a «Ver más resultados» (`aria-activedescendant` apunta a ella); `Enter` repite la búsqueda con `limite=20` solo para ese grupo, el foco sigue en el campo y no se llama `alElegir`.
 - ARIA: el campo tiene `role=combobox`, `aria-expanded` verdadero/falso, `aria-controls` existente, `aria-activedescendant` que apunta al `id` de una opción presente; la opción activa tiene `aria-selected="true"` y las demás no.
 - Región viva: sin foco no hay región; con foco y 12 resultados contiene «12 resultados…»; con 0, «Sin resultados para «x»»; **nunca** hay un `[role=status]` ni `[aria-live]` vacío en el documento (VB-18); el anuncio se emite **una vez** por búsqueda terminada.
 - Estado vacío: se ve el título «No encontramos «x»» y los pasos del uso; el campo conserva lo escrito.
@@ -687,7 +698,7 @@ Con el programa corriendo (perfil propio del navegador, solo `127.0.0.1`): recor
 
 | P | Criterio |
 |---|---|
-| P-1 | `CampoConBusqueda` cumple el patrón combobox ARIA 1.2 y las pruebas de §8.3 (teclado, `aria-activedescendant`, región viva con contenido, ninguna región vacía). |
+| P-1 | `CampoConBusqueda` cumple el patrón combobox ARIA 1.2 y las pruebas de §8.3 (teclado, `aria-activedescendant`, región viva con contenido, ninguna región vacía, y «Ver más resultados» alcanzable con el teclado como `option`). |
 | P-2 | `BuscadorReferencia` queda retirado y todo lo que su prueba cubría (busca, muestra la referencia, entrega la fila, vacío, 401, otros errores) lo cubre una prueba del componente nuevo. |
 | P-3 | La búsqueda de insumos es un **superconjunto** de `buscar_referencia` para las consultas de §8.1 y halla por código; `q=tuberia` da vacío con el mensaje de ayuda. |
 | P-4 | Los oráculos de §8.1 (`PLOA38`, `MOV027`, `1-1.2`, 29 «ingeniero» con 20 devueltas por omisión y 8 con `limite=8`, orden de `PLO`, fecha de lista, unidades) pasan con rojo visto previo. `limite` es por grupo y `hay_mas` por grupo, igual en §3.3-5, §5.1 y §8.1. |
@@ -727,7 +738,7 @@ B4 ─┘┘   (B1-B3 en paralelo con F0/F1; F2 necesita B1+B2+B3; F3 solo B4 pa
 | **B1** | `aplicacion/busqueda.py`: normalización, ranking, lector común de los CSV (`buscar_referencia` intacta, H-20), `buscar_insumos_maprex` (con `precio_alternativo`, `tasa`, `fila` y moneda del caso, claves por tipo); `GET /v1/buscar/insumos?fuentes=maprex`; JSON de referencia en `docs/api_ejemplos/buscar/` | router vacío en `api/main.py` (orquestador) | F0, B2-B4 | `python-development:python-development-fastapi-pro` |
 | **B2** | Fuente `catalogo` de insumos con su lista y `fecha`; `GET /v1/buscar/partidas` (ámbito `catalogo`); medición de costo con 5 000 insumos | B1 (módulo) | F0, B3 | ídem |
 | **B3** | `PrecargaRespuesta` ampliada (`descripcion`, `unidad`, `dominio`, `tiene_composicion_vigente`, `existe` redefinido); `GET /v1/buscar/codigo-sugerido`; `GET /v1/buscar/unidades` y `aplicacion/unidades_glosa.py` | — | B1, B2 | ídem |
-| **B4** | `GET /v1/buscar/proveedores`; `ambito=version` de partidas; `GET /v1/buscar/partidas-linea-base`; `GET /v1/buscar/insumos-con-historial`; y propone la fuente de los insumos de un presupuesto (ES-1) | B2 | F2 | ídem |
+| **B4** | `GET /v1/buscar/proveedores`; `GET /v1/buscar/partidas-linea-base`; `GET /v1/buscar/insumos-con-historial`; y propone la fuente de los insumos de un presupuesto (ES-1) | B2 | F2 | ídem |
 | **F1** | `CampoConBusqueda` completo + `logicaBusqueda.ts` + estilos + pruebas de §8.3 (con los JSON de referencia como mocks) | F0 | B1-B4 | `javascript-typescript:typescript-pro` + `sf-ingeniero-pruebas` (revisa que las pruebas no sean circulares) |
 | **F2** | Componer: combobox de código, de descripción por tabla, de unidad, procedencia, «Agregar insumo», cuatro estados de la cabecera, ayudas C-2 a C-12; retira `BuscadorReferencia`; reescribe las pruebas que se rompen (§7.1) | F1, B1, B2, B3 | B4 | ídem |
 | **F3** | Hoja: cotizar (local), proveedor, cambiar insumo (E8), ayudas H-A*; **no** toca `hoja/index.tsx`, `useBorrador.ts` ni los mocks de `Hoja.test.tsx` (§0.1) | F1 (y B4 solo para proveedor) | F2 (no comparten archivos) | ídem |
@@ -803,7 +814,7 @@ Cada rebanada entrega con su informe del manual §5 y **un commit por tarea** (C
 
 - **Cómo se comporta el `ComboBox` de Carbon 1.117.0:** no lo ejecuté; cito la evidencia de la ronda 1 del árbitro (§4.1). Lo que sí queda por medir es el componente propio en navegador real (F0, §4.3).
 - Si `RutaSinCache` + `RutaSinEco` combinan bien en el orden propuesto (la spec de la hoja lo afirma; no lo probé).
-- Cómo se pasa el proyecto a `cargar_presupuesto` para `ambito=version`, la consulta exacta de proveedores en cotizaciones y qué función da los insumos de un presupuesto (Escenarios, ES-1): no los leí o no existen; B4 los fija.
+- La consulta exacta de renglones de la línea base (§5.4), la de proveedores sobre `cotizaciones_activas` (§5.6) y qué función da los insumos de un presupuesto (Escenarios, ES-1): no las escribí o no existen; B4 las fija.
 - Si R3 marca como diferentes las unidades MaPreX sin alias (`sco`, `env`, `lt`, `rll`): medición P-9.
 - Si el sistema valida de algún modo el formato del código de una partida: no encontré validación en lo que leí, pero no leí `composicion_desde_tablas` (líneas 219-267) entero.
 - La glosa correcta de `lt`, `env`, `rll` y `sco`: es mi lectura de las abreviaturas (D-11).
