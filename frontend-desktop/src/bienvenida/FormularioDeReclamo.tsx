@@ -100,6 +100,7 @@ export function FormularioDeReclamo({ variante, politica, onReclamar, tambienArm
   // Una sola petición en vuelo: el estado `enviando` llega tarde a un segundo envío con Intro; la ref no.
   const enEnvio = useRef(false);
   const resumen = useRef<HTMLDivElement>(null);
+  const avisoDelServidor = useRef<HTMLDivElement>(null);
   const resumenYaEnfocado = useRef(false);
   const entradaContrasena = useRef<HTMLInputElement>(null);
   const entradaRepetida = useRef<HTMLInputElement>(null);
@@ -123,6 +124,12 @@ export function FormularioDeReclamo({ variante, politica, onReclamar, tambienArm
       resumen.current?.focus();
     }
   });
+
+  // El aviso del servidor va arriba, junto al campo que recibe el foco; además se acerca lo mínimo si quedó fuera de la
+  // vista (sin animación, así que prefers-reduced-motion se respeta siempre). jsdom no trae scrollIntoView.
+  useEffect(() => {
+    if (errorDelServidor) avisoDelServidor.current?.scrollIntoView?.({ block: "nearest", behavior: "auto" });
+  }, [errorDelServidor]);
 
   // 429: la cuenta regresiva corre por intervalo, no por una cadena de temporizadores, para no depender del render.
   useEffect(() => {
@@ -195,6 +202,11 @@ export function FormularioDeReclamo({ variante, politica, onReclamar, tambienArm
               <li key={mensaje}>{mensaje}</li>
             ))}
           </ul>
+        </div>
+      )}
+      {errorDelServidor && (
+        <div ref={avisoDelServidor}>
+          <InlineNotification kind="error" role="alert" title={t.titulo} subtitle={errorDelServidor} hideCloseButton lowContrast />
         </div>
       )}
       <div className="silice-bienvenida__campos">
@@ -283,9 +295,6 @@ export function FormularioDeReclamo({ variante, politica, onReclamar, tambienArm
           checked={tambienArma}
           onChange={(_, { checked }) => alCambiarTambienArma?.(checked)}
         />
-      )}
-      {errorDelServidor && (
-        <InlineNotification kind="error" role="alert" title={t.titulo} subtitle={errorDelServidor} hideCloseButton lowContrast />
       )}
       <Button type="submit" disabled={enviando || hayEspera}>
         {textoDelBoton}

@@ -267,6 +267,21 @@ describe("Bienvenida: el reclamo (F3)", () => {
     expect(crear()).toBeEnabled();
   });
 
+  test("el aviso del servidor va arriba del formulario y se acerca a la vista con block nearest", async () => {
+    const usuario = userEvent.setup();
+    const acercar = vi.fn();
+    Element.prototype.scrollIntoView = acercar;
+    const onReclamar = vi.fn().mockRejectedValue(new ErrorDeApi(401, "El código no es válido o ya se usó."));
+    render(<Bienvenida info={info} onReclamar={onReclamar} />);
+    await llenar(usuario);
+    await usuario.click(crear());
+    const alerta = await alertaConTexto();
+    const codigo = screen.getByLabelText("Código de instalación");
+    expect(alerta.compareDocumentPosition(codigo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(acercar).toHaveBeenCalledWith({ block: "nearest", behavior: "auto" });
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
   test("un 423 muestra el bloqueo tal cual y borra código y contraseñas", async () => {
     const usuario = userEvent.setup();
     const detalle = "Demasiados intentos con el código. Espere 15 minutos.";

@@ -46,21 +46,26 @@ describe("RecuperarAcceso", () => {
     expect(screen.getByText(/24 horas/)).toBeInTheDocument();
   });
 
-  test("en el producto instalado dice el acceso directo y la orden; en desarrollo, el script", () => {
-    const { unmount } = render(<RecuperarAcceso info={info} onReclamar={vi.fn()} alVolver={vi.fn()} />);
-    expect(screen.getByText(/Sílice: recuperar acceso de administrador/)).toBeInTheDocument();
-    expect(screen.getByText("python -m operacion restablecer-administrador")).toBeInTheDocument();
-    expect(screen.queryByText("uv run python scripts/restablecer_administrador.py")).not.toBeInTheDocument();
-    unmount();
-    render(<RecuperarAcceso info={{ ...info, modo: "desarrollo" }} onReclamar={vi.fn()} alVolver={vi.fn()} />);
-    expect(screen.getByText("uv run python scripts/restablecer_administrador.py")).toBeInTheDocument();
-    expect(screen.queryByText("python -m operacion restablecer-administrador")).not.toBeInTheDocument();
+  test("en el producto instalado dice el acceso directo y a quién pedirlo, sin comandos de Python", () => {
+    render(<RecuperarAcceso info={info} onReclamar={vi.fn()} alVolver={vi.fn()} />);
+    expect(screen.getByText(/«Sílice: recuperar acceso de administrador»/)).toBeInTheDocument();
+    expect(screen.getByText(/pida a quien administra el equipo que lo ejecute/)).toBeInTheDocument();
+    expect(screen.queryByText(/python/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/restablecer_administrador/)).not.toBeInTheDocument();
   });
 
-  test("si no se pudo leer el estado de la instalación, da las dos formas", () => {
-    render(<RecuperarAcceso info={null} onReclamar={vi.fn()} alVolver={vi.fn()} />);
-    expect(screen.getByText("python -m operacion restablecer-administrador")).toBeInTheDocument();
+  test("en desarrollo da el script y la orden de Python, sin el acceso directo", () => {
+    render(<RecuperarAcceso info={{ ...info, modo: "desarrollo" }} onReclamar={vi.fn()} alVolver={vi.fn()} />);
     expect(screen.getByText("uv run python scripts/restablecer_administrador.py")).toBeInTheDocument();
+    expect(screen.getByText("python -m operacion restablecer-administrador")).toBeInTheDocument();
+    expect(screen.queryByText(/acceso directo/)).not.toBeInTheDocument();
+  });
+
+  test("si no se pudo leer el estado, da el acceso directo y el script, y nunca el comando de Python", () => {
+    render(<RecuperarAcceso info={null} onReclamar={vi.fn()} alVolver={vi.fn()} />);
+    expect(screen.getByText(/«Sílice: recuperar acceso de administrador»/)).toBeInTheDocument();
+    expect(screen.getByText("uv run python scripts/restablecer_administrador.py")).toBeInTheDocument();
+    expect(screen.queryByText("python -m operacion restablecer-administrador")).not.toBeInTheDocument();
   });
 
   test("avisa qué pasa si el usuario ya existe y si no existe", () => {

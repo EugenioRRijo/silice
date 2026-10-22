@@ -31,7 +31,7 @@ def _demostracion(_argumentos: argparse.Namespace) -> int:
     return int(sembrar(["--db", str(ruta)]))
 
 
-def _restablecer_administrador(_argumentos: argparse.Namespace) -> int:
+def _restablecer_administrador(argumentos: argparse.Namespace) -> int:
     """Devuelve el acceso de un administrador con acceso al equipo (S3 §5.4; BCP-1): un código de
     un solo uso que caduca a las 24 horas y cierra las sesiones de los administradores."""
     codigo, archivo = primer_arranque.restablecer_administrador()
@@ -41,6 +41,8 @@ def _restablecer_administrador(_argumentos: argparse.Namespace) -> int:
     print(f"También está en {archivo}. Sirve {horas} horas.")
     print("Las sesiones de los administradores quedaron cerradas.")
     print("Abra Sílice y escríbalo en «Perdí el acceso de administrador».")
+    if argumentos.esperar:  # lanzada desde el acceso directo: la ventana se cerraría sola
+        input("Cópielo y pulse Enter para cerrar esta ventana. ")
     return 0
 
 
@@ -248,7 +250,7 @@ def registrar(
     ordenes.add_parser(
         "restablecer-administrador",
         help="emite un código de un solo uso para recuperar el acceso de administrador",
-    )
+    ).add_argument("--esperar", action="store_true", help="espera Enter antes de cerrar")
     local = ordenes.add_parser("red-local", help="activa, apaga o describe la red local")
     acciones = local.add_subparsers(dest="accion", required=True)
     activar = acciones.add_parser("activar", help="elegir una interfaz y abrir el cortafuegos")

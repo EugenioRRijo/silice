@@ -12,7 +12,7 @@ interface Props {
 }
 
 const POLITICA_POR_OMISION: Politica = { minimo: 10, maximo: 128 };
-const ORDEN_DEL_PRODUCTO = "python -m operacion restablecer-administrador";
+const ORDEN_PYTHON = "python -m operacion restablecer-administrador";
 const ORDEN_DE_DESARROLLO = "uv run python scripts/restablecer_administrador.py";
 
 // Con cuentas creadas: el código de restablecimiento lo emite un administrador del equipo (§3.4). La misma forma que la
@@ -35,14 +35,19 @@ export function RecuperarAcceso({ info, onReclamar, alVolver }: Props) {
         </h2>
         {modo !== "desarrollo" && (
           <p className="cds--type-body-compact-01">
-            En Sílice instalado: el acceso directo «Sílice: recuperar acceso de administrador» del menú Inicio, o esta orden:{" "}
-            <code className="silice-codigo silice-bienvenida__ruta">{ORDEN_DEL_PRODUCTO}</code>
+            En Sílice instalado: abra el acceso directo «Sílice: recuperar acceso de administrador» del menú Inicio; en su
+            ventana aparece el código nuevo. Si no ve ese acceso, pida a quien administra el equipo que lo ejecute.
           </p>
         )}
         {modo !== "producto" && (
           <p className="cds--type-body-compact-01">
             Desde la carpeta del programa:{" "}
             <code className="silice-codigo silice-bienvenida__ruta">{ORDEN_DE_DESARROLLO}</code>
+            {modo === "desarrollo" && (
+              <>
+                {" "}o <code className="silice-codigo silice-bienvenida__ruta">{ORDEN_PYTHON}</code>
+              </>
+            )}
           </p>
         )}
       </section>

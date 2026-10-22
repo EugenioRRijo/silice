@@ -23,6 +23,7 @@
 #define OpA "-E -s -B -X utf8 -m operacion arrancar"
 #define OpP "-E -s -B -X utf8 -m operacion parar"
 #define OpR "-E -s -B -X utf8 -m operacion red-local activar"
+#define OpRestablecer "-E -s -B -X utf8 -m operacion restablecer-administrador --esperar"
 #define OpD "-E -s -B -X utf8 -m operacion demostracion"
 #define Ej "Filename: {app}\python\python.exe; WorkingDir: {app}\codigo;"
 #define Rec "recursesubdirs createallsubdirs ignoreversion"
@@ -90,6 +91,7 @@ Type: filesandordirs; Name: "{app}\LICENCIAS"
 Name: "{autoprograms}\Sílice"; {#Ej} Parameters: "{#OpA}"; Flags: runminimized
 Name: "{autoprograms}\Detener Sílice"; {#Ej} Parameters: "{#OpP}"; Flags: runminimized
 Name: "{autoprograms}\Sílice: red local (administrador)"; {#Ej} Parameters: "{#OpR}"
+Name: "{autoprograms}\Sílice: recuperar acceso de administrador"; {#Ej} Parameters: "{#OpRestablecer}"
 Name: "{autodesktop}\Sílice"; {#Ej} Parameters: "{#OpA}"; Flags: runminimized; Tasks: escritorio
 
 [Run]
