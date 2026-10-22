@@ -525,6 +525,13 @@ uv run --active --no-sync ruff check <archivos>
 
 ---
 
+### 7.9 Deuda BLOQUEANTE descubierta durante la ejecución (2026-10-21): entrar a una instalación nueva
+
+`ui/acceso.py` emitía el código de instalación (`preparar_primera_vez`) y creaba el primer administrador (`reclamar_instalacion`); la interfaz
+React no tiene ninguno de los dos pasos y nada en `api/` ni en `operacion/` los llama. Con `ui/` borrada, una instalación nueva no puede entrar.
+Pendiente de Eugenio (flujo de bienvenida y home de primera vez; lo construye tesis-d9 con árbitro). Bloquea empaquetar el instalador.
+Detalle y alcance mínimo: `docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8.
+
 ## 8. Preguntas abiertas para Eugenio
 
 - **Q1 (F2).** ¿Un solo proceso Uvicorn con `/app` y un único puerto? ¿Qué pasa con `[api] activa` y con los `silice.toml` ya

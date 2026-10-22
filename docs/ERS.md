@@ -1621,6 +1621,10 @@ RNF‑28 → Sílice 1.2.0 (sesión 4 de la ruta). Pruebas: `tests/integration/t
 Plan: [PLAN_RETIRO_STREAMLIT.md](planes/PLAN_RETIRO_STREAMLIT.md). La enmienda cambia solo la tecnología y la superficie donde se
 miden o se realizan los requisitos; **no agrega requisitos ni cambia ninguna cifra o umbral**.
 
+> **Estado provisional de UC‑12 y UC‑21 (2026-10-21):** el paso de «Primera vez» (21a: emitir el código de instalación y crear el primer
+> administrador con él) lo daba la pantalla de acceso de Streamlit y la interfaz React aún no lo tiene. Es una deuda **bloqueante para el
+> instalador**, pendiente de Eugenio (flujo de bienvenida). Detalle: `docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8.
+
 | Requisito | Antes | Ahora |
 |---|---|---|
 | RT‑4 (ruling) | «Streamlit sigue siendo la principal» | la interfaz es React sobre la API, servida por el mismo proceso Uvicorn en `/app/`; Streamlit no existe en el producto ni en las dependencias |

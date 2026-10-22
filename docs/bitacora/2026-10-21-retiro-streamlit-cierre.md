@@ -75,3 +75,23 @@
 - `manual_usuario`, `arquitectura` y el guion de pruebas: repasarlos con la interfaz final.
 - Unos 20 comentarios «la clásica» en `frontend-desktop/src/paginas` quedan como registro de paridad con la interfaz anterior (no son código vivo).
 - El árbol de `NORMAS.md` §6 omite `auditoria/`, `instalador/`, `migraciones/`, `paquete/`, `produccion/`, `seguridad/` y `start.py`, desde antes del retiro.
+
+## 8. Deuda BLOQUEANTE para el instalador: entrar a una instalación nueva (hallazgo de tesis-d9, verificado)
+
+`ui/acceso.py` (borrada en F4) hacía dos cosas que la interfaz React **no** hace:
+1. `cuentas.preparar_primera_vez(...)` (línea 108 de la versión de `f2cd316d`): emitía el código de instalación de un solo uso la
+   primera vez y lo dejaba en `<datos>/codigo_instalacion.txt`.
+2. `cuentas.reclamar_instalacion(...)` (línea 144): con ese código, creaba el primer administrador.
+
+Comprobado en `HEAD`: ninguna ruta de `api/`, ninguna pantalla de `frontend-desktop/` ni el lanzador llama a ninguna de las dos
+(solo las pruebas). `operacion/lanzador.py:255-259` solo imprime el código **si el archivo ya existe**. Consecuencia: una instalación
+nueva, sin cuentas, no recibe código y no puede crear su primer administrador; `scripts/restablecer_administrador.py` emite un
+código de restablecimiento, pero tampoco hay pantalla donde usarlo. La carencia ya existía en React antes del retiro (la clásica la
+tapaba); con `ui/` borrada deja de haber salida.
+
+- **Estado:** pendiente de Eugenio (quiere un flujo de bienvenida y una home de «primera vez»); lo diseña y construye tesis-d9 con
+  árbitro, aparte. **No hacer en esta rama.**
+- **Bloquea:** el empaquetado y la entrega del instalador, y la prueba del producto instalado en un equipo nuevo.
+- **Lo mínimo que habrá que cubrir:** emitir el código en el primer arranque (o al abrir la pantalla de acceso), una ruta
+  `POST` para reclamarlo con el mismo freno que el acceso, la pantalla, y la prueba de extremo a extremo con una base vacía.
+- Anotado en `docs/manual_instalacion.md` («Estado provisional») y en `docs/planes/PLAN_RETIRO_STREAMLIT.md` §7.
