@@ -1636,6 +1636,7 @@ miden o se realizan los requisitos; **no agrega requisitos ni cambia ninguna cif
 | RF‑98 (criterio) | la prueba por defecto también cubría la orden de Streamlit | texto de criterio de aceptación ajustado por el retiro (sin cambiar cifras ni umbrales): la orden de Uvicorn es la única que se comprueba |
 | RF‑98 («API apagada») | red local apagada y API apagada, activable por separado | **PENDIENTE DE DECISIÓN (Eugenio / tutor):** con un solo proceso Uvicorn que sirve API y front, ya no existe una «API apagada»; este documento no fija su texto nuevo |
 | RF‑81 (criterio) | la verificación de la sesión se hacía con AppTest | texto de criterio de aceptación ajustado por el retiro (sin cambiar cifras ni umbrales): la verificación pasa a las pruebas de la API |
+| Protocolo del experimento (RS‑9) | la guardia del congelado estaba rota por el retiro de `ui/composicion.py` y `ui/hoja.py` (pendiente de Eugenio, opciones A/B/C) | re‑congelado a propósito el 2026‑10‑21, opción A; solo cambian las rutas del auditor; el banco queda intacto (`docs/bitacora/2026-10-21-recongelado-del-experimento.md`) |
 
 Lectura del resto del documento: las menciones de Streamlit, `ui/`, `AppTest` y «pantalla» en UC‑12, RF‑36 a RF‑43, RF‑60, RF‑82,
 RF‑97, RF‑98, RF‑100 y los criterios que de ellas dependen describen la interfaz anterior y se leen sobre la interfaz de React
