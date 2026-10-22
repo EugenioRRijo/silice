@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ErrorDeApi, fijarCsrf, pedir } from "../api/cliente";
 import type { SesionRespuesta } from "../api/tipos";
+import type { CuerpoDeReclamo } from "../bienvenida/FormularioDeReclamo";
 
 export type EstadoDeSesion =
   | { tipo: "cargando" }
@@ -46,6 +47,16 @@ export function useSesion() {
     setEstado({ tipo: "activa", sesion });
   }, []);
 
+  // Primer arranque y restablecimiento (BCP-4): el código de un solo uso crea (o recupera) la cuenta administradora y la API
+  // abre la sesión con el mismo cuerpo que POST /v1/sesion (201). El cuerpo no se guarda aquí: pasa de largo a la API.
+  const reclamar = useCallback(async (cuerpo: CuerpoDeReclamo) => {
+    const sesion = normalizar(
+      await pedir<SesionRespuesta>("/v1/primer-arranque/reclamo", { metodo: "POST", cuerpo }),
+    );
+    fijarCsrf(sesion.csrf);
+    setEstado({ tipo: "activa", sesion });
+  }, []);
+
   // Cambio obligatorio: la API acepta la clave nueva y la persona entra con la sesion ya completa, que se vuelve
   // a leer (acciones, modo entrega y un token anti-CSRF nuevo si la API lo rota).
   const cambiarContrasena = useCallback(async (actual: string, nueva: string) => {
@@ -72,5 +83,5 @@ export function useSesion() {
     setEstado({ tipo: "sin_sesion", expirada: true });
   }, []);
 
-  return { estado, entrar, cambiarContrasena, salir, expirar };
+  return { estado, entrar, reclamar, cambiarContrasena, salir, expirar };
 }

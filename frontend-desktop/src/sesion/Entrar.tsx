@@ -9,9 +9,12 @@ interface Props {
   onEntrar: (login: string, contrasena: string) => Promise<void>;
   // Para decir por que se volvio a esta pantalla (por ejemplo, la sesion vencio).
   aviso?: string;
+  // Con cuentas creadas: lleva a la pantalla de «recuperar acceso» con un código de restablecimiento (BCP-4). Sin él,
+  // el enlace no se pinta.
+  alRecuperar?: () => void;
 }
 
-export function Entrar({ onEntrar, aviso }: Props) {
+export function Entrar({ onEntrar, aviso, alRecuperar }: Props) {
   useTituloDelDocumento("Entrar");
   const [login, setLogin] = useState("");
   const [contrasena, setContrasena] = useState("");
@@ -72,6 +75,11 @@ export function Entrar({ onEntrar, aviso }: Props) {
         <Button type="submit" disabled={enviando}>
           {enviando ? "Entrando…" : "Entrar"}
         </Button>
+        {alRecuperar && (
+          <Button kind="ghost" size="sm" type="button" onClick={alRecuperar}>
+            Perdí el acceso de administrador
+          </Button>
+        )}
       </Form>
     </main>
   );

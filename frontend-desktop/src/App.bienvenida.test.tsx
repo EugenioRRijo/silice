@@ -99,7 +99,7 @@ describe("App: primer arranque y recuperar acceso", () => {
       return base(entrada, init);
     });
     render(<App />);
-    expect(await screen.findByText(/Comprobando/)).toBeInTheDocument();
+    expect(await screen.findByText("Comprobando su instalación…")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Bienvenida a Sílice" })).not.toBeInTheDocument();
     contestar(json({ ...estadoSinCuentas, sin_cuentas: false }));
@@ -142,9 +142,9 @@ describe("App: primer arranque y recuperar acceso", () => {
     fetchFalso.mockImplementation(async (entrada, init) => {
       const ruta = String(entrada);
       if (ruta === "/v1/sesion" && (init?.method ?? "GET") === "GET") {
-        return dentro ? json(sesionNueva) : json({ detalle: "Sin sesión." }, 401);
+        return dentro ? json({ ...sesionNueva, acciones: ["leer_proyecto", "operar_arenera"] }) : json({ detalle: "Sin sesión." }, 401);
       }
-      if (ruta === "/v1/proyectos") {
+      if (ruta === "/v1/produccion/existencias") {
         dentro = false;
         return json({ detalle: "Su sesión venció." }, 401);
       }

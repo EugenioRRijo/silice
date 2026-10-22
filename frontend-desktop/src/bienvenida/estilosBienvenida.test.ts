@@ -20,9 +20,11 @@ const fuentes = fs
 
 // jsdom no calcula el diseño: aquí solo se comprueba que las reglas estén escritas; el efecto se MIDE en navegador (F16, BCP-10).
 describe("estilos de la bienvenida (F16, parte de BCP-4)", () => {
-  test("ningún tamaño de texto ni de caja está en px: todo en rem, para seguir la escala de letra", () => {
+  test("ningún tamaño de texto ni de caja está en px: todo en rem (solo filetes y anillos de foco, que no escalan)", () => {
     const sinComentarios = estilos.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
-    expect(sinComentarios).not.toMatch(/\d\s*px\b/);
+    const conPx = sinComentarios.split("\n").filter((linea) => /\d\s*px\b/.test(linea));
+    expect(conPx.length).toBeGreaterThan(0); // la regla se aplica: hay filetes y anillos en px
+    for (const linea of conPx) expect(linea).toMatch(/^\s*(?:border[\w-]*|outline[\w-]*):/);
   });
 
   test("las columnas y los textos largos no desbordan: min-inline-size 0 y overflow-wrap anywhere", () => {

@@ -1,0 +1,94 @@
+// Bienvenida de primera vez y recuperar acceso (BCP-4). Todo en rem: sigue la escala de letra (--silice-escala-letra) y las
+// dos columnas de campos pasan a una por el ancho que haya, no por un punto de corte. Sin alto fijo, sin animación.
+
+.silice-bienvenida {
+  // Más ancha que «Entrar» (36 rem): lleva texto de ayuda y dos columnas de campos.
+  max-inline-size: 46rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.silice-bienvenida__seccion {
+  display: grid;
+  gap: 0.75rem;
+  min-inline-size: 0;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--cds-border-subtle);
+}
+
+.silice-bienvenida__lista {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  list-style: disc;
+
+  li + li {
+    margin-block-start: 0.5rem;
+  }
+}
+
+// Ruta o comando: se parte donde haga falta, nunca ensancha la página.
+.silice-bienvenida__ruta {
+  overflow-wrap: anywhere;
+}
+
+.silice-bienvenida__nota {
+  padding: 0.75rem 1rem;
+  border-inline-start: 4px solid var(--silice-aviso-borde);
+  background: var(--silice-aviso-fondo);
+}
+
+.silice-bienvenida__formulario {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-bienvenida__campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+  min-inline-size: 0;
+
+  > * {
+    min-inline-size: 0;
+  }
+}
+
+.silice-bienvenida__ancho-completo {
+  grid-column: 1 / -1;
+}
+
+.silice-bienvenida__politica {
+  padding: 0.75rem 1rem;
+  border-inline-start: 4px solid var(--cds-border-strong);
+  background: var(--cds-layer);
+
+  ul {
+    margin: 0.5rem 0 0;
+    padding-inline-start: 1.25rem;
+    list-style: disc;
+  }
+}
+
+.silice-bienvenida__resumen {
+  padding: 0.75rem 1rem;
+  border-inline-start: 4px solid var(--cds-support-error);
+  background: var(--cds-layer);
+
+  ul {
+    margin: 0.5rem 0 0;
+    padding-inline-start: 1.25rem;
+    list-style: disc;
+  }
+
+  // El foco que le da el programa al enviar con fallos se ve siempre, no solo con el teclado.
+  &:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+  }
+}
+
+.silice-bienvenida__estado {
+  min-block-size: 1.5rem;
+  color: var(--silice-texto-secundario);
+}

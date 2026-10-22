@@ -166,9 +166,9 @@ describe("Bienvenida: validación en el cliente (F2)", () => {
     await usuario.click(crear());
     const resumen = await alertaConTexto();
     expect(resumen).toHaveFocus();
-    await usuario.click(screen.getByLabelText("Usuario"));
     await usuario.click(crear());
-    expect(screen.getByLabelText("Usuario")).toHaveFocus();
+    expect(resumen).not.toHaveFocus(); // el foco se queda donde estaba: en el botón que se pulsó
+    expect(crear()).toHaveFocus();
   });
 });
 
