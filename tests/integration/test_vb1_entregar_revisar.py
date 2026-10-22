@@ -18,6 +18,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
+from aplicacion import entrega
 from auditoria.reauditoria import leer_documento
 from core import models
 from core.budget import (
@@ -35,7 +36,6 @@ from tests.fixtures.vb1_fraccionario import (
     UN_DOCEAVO_29,
     sembrar_fraccionaria,
 )
-from ui import entrega
 
 CLAVE = "frase de firma larga y propia"
 EMPRESA = "Contratista Demo, C.A."

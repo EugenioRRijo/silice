@@ -34,7 +34,7 @@ interfaz no calcula montos.
 - Libros de la plantilla de la empresa: PORTADA, INSUMOS, `APU-nn`, PRESUPUESTO, RESUMEN, MEDICIONES, CRONOGRAMA…
   (`tests/fixtures/libros_empresa.py`). Los libros reales son confidenciales y nunca entran al repositorio.
 - Navegador de la propia PC o de otra PC de la red local; el FastAPI de la instalación sirve la interfaz en `/app`.
-- La interfaz Streamlit de la 1.0.0 sigue siendo la principal mientras se migra (RT-4).
+- Es la única interfaz de Sílice: la de Streamlit se retiró (decisión de Eugenio, 2026-10-21).
 
 ## Capabilities and Constraints
 
@@ -66,7 +66,7 @@ interfaz no calcula montos.
 2. Ninguna cifra escondida: todo hallazgo muestra su celda, su valor y su impacto a la vista. La franja presenta en
    centésimas (RS2-12) y el valor exacto está siempre a un toque, en el tooltip.
 3. El color significa algo: severidad en la hoja, favorable/desfavorable en las variaciones; nunca decoración.
-4. Lo que funciona no se rompe: Streamlit convive hasta que la interfaz nueva cubra lo mismo.
+4. Lo que funciona no se rompe: cada cambio de la interfaz conserva lo que ya hacía.
 
 ## Accessibility & Inclusion
 

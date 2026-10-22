@@ -1,23 +1,23 @@
 """La base de las vistas de la hoja (T10, 3b-1): montos, version por omision, resumen y R17.
 
-Oraculos a mano: la regla de la version por omision es la de la pagina clasica (P:417-421: las no
-descartadas, o todas si todas lo estan; la vigente, o la ultima); los montos, `formatear_decimal`
-a dos decimales (NORMAS.md §2) y el exacto con `format(x, "f")`; el resumen de OF-001 usa los
-literales de la memoria (total 2 703,86 USD).
+Oraculos a mano: la regla de la version por omision (las no descartadas, o todas si todas lo estan;
+la vigente, o la ultima); los montos, `formatear_decimal` a dos decimales (NORMAS.md §2) y el
+exacto con `format(x, "f")`; el resumen de OF-001 usa los literales de la memoria (total
+2 703,86 USD; las 30 cantidades de `of001.md` §2.4, §3.4 y §4.5) y el precio unitario de cada
+partida se recalcula en la propia prueba con la formula de NORMAS.md §4 (`_pu_a_mano`), no con el
+motor. Ya no compara contra `ui.hoja` (retiro de Streamlit, F6).
 """
 
 from __future__ import annotations
 
-import dataclasses
 import shutil
 from dataclasses import replace
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pytest
 
-from adapters.espacio.conexion import con_conexion
 from adapters.espacio.modelo import (
     Ambiente,
     Coord,
@@ -32,8 +32,8 @@ from aplicacion import hoja, hoja_vista
 from aplicacion.hoja_borradores import Registro
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.contracts import Severidad
+from tests.fixtures import caso_of001
 from tests.fixtures.hoja_en_base import NOMBRE_OF001, plantilla_of001
-from ui import hoja as clasica
 
 D = Decimal
 HOY = date(2026, 10, 19)
@@ -245,22 +245,102 @@ def _vivo(abierta, borrador=None, version="001"):
     )
 
 
-def _elaborada_por_la_clasica(borrador):
-    """La elaboracion de la pagina clasica (P:286-296): `elaborar_borrador` con R17 ligada al
-    espacio vigente. Se arma aqui a mano con `ui.hoja`, no con `hoja_vista.elaborar`."""
-    ligado = replace(borrador, reglas_extra=con_conexion(borrador.reglas_extra, borrador.espacio))
-    return clasica.elaborar_borrador(ligado)
+#: Las 30 cantidades finales de OF-001, escritas desde la memoria `of001.md`: §2.4 (agua, con 10 %
+#: de desperdicio en tuberia), §3.4 (datos) y §4.5 (electricidad).
+CANTIDADES_DE_LA_MEMORIA = {
+    "AF-TUB-PVC-3/4": D("6.930"),
+    "AF-TUB-PVC-1/2": D("8.250"),
+    "AF-CODO-3/4": D("2"),
+    "AF-CODO-1/2": D("3"),
+    "AF-TEE-3/4": D("1"),
+    "AF-LLAVE": D("3"),
+    "AF-PICADO-PARED": D("9.800"),
+    "AF-SALIDA": D("3"),
+    "DR-TUB-PVC-2": D("4.345"),
+    "DR-TUB-PVC-1-1/2": D("1.925"),
+    "DR-CODO-2": D("3"),
+    "DR-CODO-1-1/2": D("2"),
+    "DR-PICADO-PISO": D("4.750"),
+    "DR-PICADO-PARED": D("0.950"),
+    "DR-SALIDA": D("3"),
+    "DT-UTP-CAT-6": D("101.640"),
+    "DT-CAN-EMT-3/4": D("23.200"),
+    "DT-CAN-EMT-1/2": D("8.200"),
+    "DT-CAJA": D("7"),
+    "DT-FACEPLATE": D("7"),
+    "DT-JACK": D("7"),
+    "DT-CERT": D("7"),
+    "EL-COND-12-AWG": D("75.570"),
+    "EL-COND-14-AWG": D("33.000"),
+    "EL-TUB-EMT-3/4": D("16.300"),
+    "EL-TUB-EMT-1/2": D("9.000"),
+    "EL-CAJA": D("8"),
+    "EL-SALIDA-TOMA": D("4"),
+    "EL-SALIDA-ILUM": D("4"),
+    "EL-PROT": D("2"),
+}
+CONCEPTOS_DEL_CIERRE = [
+    "Materiales",
+    "Equipos",
+    "Mano de obra",
+    "= Costo directo",
+    "+ Administracion",
+    "= Con administracion",
+    "+ Utilidad",
+    "= Precio unitario",
+]
+CENTAVO = D("0.01")
 
 
-def _como_clasica(borrador):
-    """El borrador de `aplicacion.hoja` como el `Borrador` de `ui.hoja` (mismos campos)."""
-    return clasica.Borrador(
-        **{c.name: getattr(borrador, c.name) for c in dataclasses.fields(borrador)}
+def _a_mano(composicion):
+    """Los ocho montos del cierre de un APU de OF-001, con la formula de NORMAS.md §4 y los
+    parametros de la memoria (FCAS 6,00, bono 5,81, administracion 0,15, utilidad 0,10): materiales
+    completos; equipos con su depreciacion entre el rendimiento; mano de obra a jornal con
+    FCAS y bono entre el rendimiento; administracion y utilidad en cascada. Sin redondeos."""
+    materiales = sum((m.cantidad * m.precio for m in composicion.materiales), D(0))
+    equipos = (
+        sum((e.cantidad * e.precio * e.depreciacion for e in composicion.equipos), D(0))
+        / composicion.rendimiento
     )
+    obreros = sum((o.cantidad for o in composicion.mano_obra), D(0))
+    sueldos = sum((o.cantidad * o.sueldo * (1 + D("6.00")) for o in composicion.mano_obra), D(0))
+    mano_obra = (sueldos + D("5.81") * obreros) / composicion.rendimiento
+    costo_directo = materiales + equipos + mano_obra
+    administracion = costo_directo * D("0.15")
+    con_administracion = costo_directo + administracion
+    utilidad = con_administracion * D("0.10")
+    return [
+        materiales,
+        equipos,
+        mano_obra,
+        costo_directo,
+        administracion,
+        con_administracion,
+        utilidad,
+        con_administracion + utilidad,
+    ]
 
 
-#: Las columnas de cada tabla editable, escritas a mano desde `ui/hoja.py:148-177`.
-COLUMNAS_DE_LA_CLASICA = {
+def _pu_a_mano(codigo: str) -> Decimal:
+    return _a_mano(caso_of001.COMPOSICIONES[codigo])[-1]
+
+
+def _a_dos_decimales(valor: Decimal) -> str:
+    return str(valor.quantize(CENTAVO, rounding=ROUND_HALF_UP))
+
+
+def test_la_formula_a_mano_da_los_literales_de_af_llave_y_el_total_de_la_memoria():
+    """Valida el oraculo de esta prueba contra los literales de la memoria: AF-LLAVE (costo
+    directo 10,433785; precio unitario 13,198738025) y el total de OF-001 (2 703,86)."""
+    llave = _a_mano(caso_of001.COMPOSICIONES["AF-LLAVE"])
+    assert llave[3] == D("10.433785") and llave[-1] == D("13.198738025")
+    total = sum((c * _pu_a_mano(k) for k, c in CANTIDADES_DE_LA_MEMORIA.items()), D(0))
+    assert abs(total - D("2703.86")) <= D("0.01")
+    assert set(CANTIDADES_DE_LA_MEMORIA) == set(caso_of001.COMPOSICIONES)
+
+
+#: Las columnas de cada tabla editable, escritas a mano.
+COLUMNAS_DE_LAS_TABLAS = {
     "origenes": ["id", "tipo", "referencia"],
     "ambientes": ["id", "nombre", "x0", "y0", "largo", "ancho", "alto", "origen_id"],
     "fuentes": ["id", "especialidad", "tipo", "ambiente_id", "x", "y", "z", "origen_id"],
@@ -292,11 +372,11 @@ COLUMNAS_DE_LA_CLASICA = {
 }
 
 
-def test_la_vista_del_espacio_trae_las_cinco_tablas_con_las_columnas_de_la_clasica(_of001):
+def test_la_vista_del_espacio_trae_las_cinco_tablas_con_sus_columnas(_of001):
     v = hoja_vista.vista_espacio(_vivo(_of001))
-    assert [t.clave for t in v.tablas] == list(COLUMNAS_DE_LA_CLASICA)
+    assert [t.clave for t in v.tablas] == list(COLUMNAS_DE_LAS_TABLAS)
     for tabla in v.tablas:
-        assert [c.clave for c in tabla.columnas] == COLUMNAS_DE_LA_CLASICA[tabla.clave]
+        assert [c.clave for c in tabla.columnas] == COLUMNAS_DE_LAS_TABLAS[tabla.clave]
     assert [(t.clave, t.con_estado) for t in v.tablas] == [
         ("origenes", False),
         ("ambientes", True),
@@ -313,7 +393,7 @@ def test_la_vista_del_espacio_trae_las_cinco_tablas_con_las_columnas_de_la_clasi
     ]
 
 
-def test_los_rotulos_de_columna_son_los_de_la_clasica_a_mano(_of001):
+def test_los_rotulos_de_columna_son_los_escritos_a_mano(_of001):
     v = hoja_vista.vista_espacio(_vivo(_of001))
     ambientes = next(t for t in v.tablas if t.clave == "ambientes")
     assert [c.rotulo for c in ambientes.columnas] == [
@@ -369,11 +449,21 @@ def test_las_listas_cerradas_llevan_el_valor_interno_y_su_rotulo_para_la_persona
     assert _lista(v, "ambientes", "nombre") is None  # el texto libre no lleva lista
 
 
-def test_las_filas_del_espacio_son_las_de_la_clasica_y_un_ambiente_de_of001_es_el_de_la_memoria(
-    _of001,
-):
+def test_las_filas_del_espacio_son_las_de_la_memoria_de_of001(_of001):
     v = hoja_vista.vista_espacio(_vivo(_of001))
-    assert v.filas == clasica.filas_desde_espacio(_of001.borrador.espacio)
+    assert (len(v.filas["ambientes"]), len(v.filas["fuentes"]), len(v.filas["puntos"])) == (
+        6,
+        6,
+        21,
+    )
+    f1 = next(f for f in v.filas["fuentes"] if f["id"] == "F1")  # memoria §1.2: agua en BAN-01
+    assert (f1["especialidad"], f1["ambiente_id"], f1["x"], f1["y"], f1["z"]) == (
+        "agua",
+        "BAN-01",
+        "0",
+        "0",
+        "0",
+    )
     # memoria de OF-001, plano de planta: el baño BAN-01 va de (0; 0) y mide 2 × 1,5 × 2,5
     bano = next(f for f in v.filas["ambientes"] if f["id"] == "BAN-01")
     assert (bano["x0"], bano["y0"], bano["largo"], bano["ancho"], bano["alto"]) == (
@@ -387,18 +477,21 @@ def test_las_filas_del_espacio_son_las_de_la_clasica_y_un_ambiente_de_of001_es_e
     assert v.filas["tramos"] == []  # los recorridos de OF-001 son propuestos, no declarados
 
 
-def test_el_estado_por_fila_es_el_de_la_clasica_con_severidad_y_texto(_of001):
+def test_el_estado_por_fila_es_advertencia_de_origen_supuesto_en_las_33_filas(_of001):
+    """Memoria §1: todo OF-001 declara un origen «supuesto» (O1), que es ADVERTENCIA en cada uno de
+    sus 6 ambientes, 6 fuentes y 21 puntos (33 filas, una por hallazgo R8)."""
     v = hoja_vista.vista_espacio(_vivo(_of001))
-    informe = _elaborada_por_la_clasica(_como_clasica(_of001.borrador)).elaboracion.informe
-    esperado = clasica.estado_de_filas(_of001.borrador.espacio, informe)
-    assert {k: (e.severidad, e.texto) for k, e in v.estado.items()} == {
-        k: (None if e.severidad is None else e.severidad.name, e.texto) for k, e in esperado.items()
-    }
-    # a mano: todo OF-001 declara un origen «supuesto», que es ADVERTENCIA en cada fila que lo cita
-    assert v.estado["esp_ambientes:BAN-01"].severidad == "ADVERTENCIA"
+    assert len(v.estado) == 6 + 6 + 21
+    assert {e.severidad for e in v.estado.values()} == {"ADVERTENCIA"}
+    assert all(e.texto.startswith("ADVERTENCIA: ") for e in v.estado.values())
+    assert all(
+        "la medida es un supuesto declarado (origen O1: " in e.texto for e in v.estado.values()
+    )
     assert v.estado["esp_ambientes:BAN-01"].texto.startswith(
         "ADVERTENCIA: ambiente BAN-01: la medida es un supuesto declarado (origen O1: "
     )
+    assert v.estado["esp_fuentes:F1"].texto.startswith("ADVERTENCIA: fuente F1: la medida es un")
+    assert v.estado["esp_puntos:P1"].texto.startswith("ADVERTENCIA: punto P1: la medida es un")
     assert all(k.startswith(("esp_ambientes:", "esp_fuentes:", "esp_puntos:")) for k in v.estado)
 
 
@@ -443,6 +536,7 @@ def test_las_cantidades_derivadas_de_of001_son_las_de_la_memoria(_of001):
     assert por_partida["AF-LLAVE"].cantidad.texto == "3.00"
     assert por_partida["AF-TUB-PVC-1/2"].cantidad.texto == "8.25"  # dos decimales, como la clásica
     assert len(v.derivadas) == 30
+    assert {d.partida: Decimal(d.cantidad.exacto) for d in v.derivadas} == CANTIDADES_DE_LA_MEMORIA
     assert all(d.origen and d.descripcion for d in v.derivadas)
 
 
@@ -479,20 +573,18 @@ def _fila_de(vista, partida):
     return next(f for f in vista.filas if f.partida == partida)
 
 
-def test_las_filas_del_presupuesto_son_las_de_la_clasica_con_su_monto_exacto(_of001):
+def test_las_filas_del_presupuesto_son_las_de_la_memoria_con_su_monto_exacto(_of001):
     v = hoja_vista.vista_presupuesto(_vivo(_of001))
-    clasicas = clasica.filas_del_presupuesto(
-        _elaborada_por_la_clasica(_como_clasica(_of001.borrador))
-    )
-    assert [
-        (f.clave, f.partida, f.descripcion, f.unidad, f.cantidad, f.estado.texto) for f in v.filas
-    ] == [
-        (c["clave"], c["partida"], c["descripcion"], c["unidad"], c["cantidad"], c["estado"])
-        for c in clasicas
-    ]
-    assert [(f.pu.texto, f.total.texto) for f in v.filas] == [
-        (c["pu"], c["total"]) for c in clasicas
-    ]
+    assert [f.partida for f in v.filas] == CODIGOS_DE_OF001
+    assert all(f.clave.startswith(f"{f.partida}|") for f in v.filas)
+    assert {f.partida: Decimal(f.cantidad) for f in v.filas} == CANTIDADES_DE_LA_MEMORIA
+    for f in v.filas:
+        pu = _pu_a_mano(f.partida)
+        total = CANTIDADES_DE_LA_MEMORIA[f.partida] * pu
+        assert abs(Decimal(f.pu.exacto) - pu) <= D("0.000001"), f.partida
+        assert abs(Decimal(f.total.exacto) - total) <= D("0.000001"), f.partida
+        assert (f.pu.texto, f.total.texto) == (_a_dos_decimales(pu), _a_dos_decimales(total))
+    assert (_fila_de(v, "AF-LLAVE").unidad, _fila_de(v, "DR-TUB-PVC-2").unidad) == ("unidad", "m")
     assert len(v.filas) == 30
     assert abs(Decimal(v.total.exacto) - D("2703.86")) <= D("0.01")
     assert (v.moneda, v.vacio_mensaje) == ("USD", None)
@@ -510,7 +602,7 @@ def test_el_precio_unitario_de_una_partida_es_el_de_la_cascada_a_mano(_of001):
 def test_una_cantidad_escrita_a_mano_se_marca_y_conserva_la_calculada(_of001):
     clave = next(
         c
-        for c in clasica.claves_de_items(clasica.items_sin_escribir(_como_clasica(_of001.borrador)))
+        for c in hoja.claves_de_items(hoja.items_sin_escribir(_of001.borrador))
         if c.startswith("AF-LLAVE|")
     )
     editado = replace(_of001.borrador, cantidades={clave: D("5")})
@@ -701,21 +793,40 @@ def test_los_subtotales_y_el_cierre_de_af_llave_son_la_cascada_a_mano(_of001):
     assert abs(Decimal(m.precio_unitario.exacto) - D("13.198738025")) <= D("0.000001")
 
 
-def test_el_cierre_y_las_tablas_son_los_de_la_clasica_en_todas_las_partidas(_of001):
+def test_el_cierre_y_las_tablas_de_cada_partida_son_los_de_la_formula_a_mano(_of001):
+    """Las 30 partidas: tablas = lineas de la fixture; cierre = los ocho montos de NORMAS.md §4."""
     vivo = _vivo(_of001)
-    elaborada = _elaborada_por_la_clasica(_como_clasica(_of001.borrador))
-    renglones = {p.item.codigo_partida: p for p in elaborada.elaboracion.presupuesto.partidas}
     for codigo in CODIGOS_DE_OF001:
         d = hoja_vista.vista_apu(vivo, partida=codigo).detalle
-        composicion = _of001.borrador.composiciones[codigo]
-        materiales, equipos, mano_obra = clasica.filas_de_apu(composicion)
-        assert [g.filas for g in d.grupos] == [materiales, equipos, mano_obra], codigo
-        assert d.rendimiento == clasica.texto_numero(composicion.rendimiento), codigo
-        cierre = clasica.filas_de_cierre(
-            renglones[codigo].resultado, _of001.borrador.parametros, "USD"
-        )
-        assert [(c.concepto, c.nota, c.monto.texto + " USD") for c in d.cierre] == [
-            (f["Concepto"], f["Nota"], f["Monto"]) for f in cierre
+        composicion = caso_of001.COMPOSICIONES[codigo]
+        materiales, equipos, mano_obra = (g.filas for g in d.grupos)
+        assert [(f["descripcion"], f["unidad"]) for f in materiales] == [
+            (m.descripcion, m.unidad) for m in composicion.materiales
+        ], codigo
+        assert [Decimal(f["precio"]) for f in materiales] == [
+            m.precio for m in composicion.materiales
+        ], codigo
+        assert [Decimal(f["cantidad"]) for f in equipos] == [
+            e.cantidad for e in composicion.equipos
+        ]
+        assert [Decimal(f["depreciacion"]) for f in equipos] == [
+            e.depreciacion for e in composicion.equipos
+        ], codigo
+        assert [Decimal(f["sueldo"]) for f in mano_obra] == [
+            o.sueldo for o in composicion.mano_obra
+        ]
+        assert d.rendimiento == format(composicion.rendimiento, "f"), codigo
+        esperado = _a_mano(composicion)
+        assert [c.concepto for c in d.cierre] == CONCEPTOS_DEL_CIERRE, codigo
+        for fila, monto in zip(d.cierre, esperado, strict=True):
+            assert abs(Decimal(fila.monto.exacto) - monto) <= D("0.000001"), (codigo, fila.concepto)
+            assert fila.monto.texto == _a_dos_decimales(monto), (codigo, fila.concepto)
+        assert [c.nota for c in d.cierre][3:] == [
+            "",
+            "15.0 % del costo directo",
+            "",
+            "10.0 % en cascada",
+            "",
         ], codigo
 
 
@@ -747,7 +858,7 @@ def test_sin_partidas_valoradas_no_hay_detalle_y_se_dice():
 # --- 3b-2 · vista del plan y la curva (R8) ----------------------------------------------------
 
 
-def test_el_plan_de_of001_es_secuencial_una_partida_por_dia_y_es_el_de_la_clasica(_of001):
+def test_el_plan_de_of001_es_secuencial_una_partida_por_dia(_of001):
     v = hoja_vista.vista_plan(_vivo(_of001))
     assert v.hay_plan is True and v.mensaje is None and v.moneda == "USD"
     assert list(v.etiquetas) == [f"Dia {n}" for n in range(1, 31)]
@@ -758,10 +869,8 @@ def test_el_plan_de_of001_es_secuencial_una_partida_por_dia_y_es_el_de_la_clasic
     assert primera.valores["Dia 1"] == "1" and primera.valores["Dia 2"] == "0"
     assert segunda.valores["Dia 2"] == "1" and segunda.valores["Dia 1"] == "0"
     assert [f.partida for f in v.filas] == CODIGOS_DE_OF001
-    plan = _elaborada_por_la_clasica(_como_clasica(_of001.borrador)).plan
-    etiquetas, filas = clasica.plan_como_filas(plan, CODIGOS_DE_OF001)
-    assert list(v.etiquetas) == etiquetas
-    assert [{"partida": f.partida, **f.valores} for f in v.filas] == filas
+    for i, fila in enumerate(v.filas, start=1):  # la partida i va entera en el dia i
+        assert fila.valores == {f"Dia {n}": "1" if n == i else "0" for n in range(1, 31)}
 
 
 def test_la_curva_de_of001_acumula_los_montos_y_cierra_en_el_total_y_en_100(_of001):
@@ -780,17 +889,22 @@ def test_la_curva_de_of001_acumula_los_montos_y_cierra_en_el_total_y_en_100(_of0
     assert v.curva[22].periodo == "Dia 23"
 
 
-def test_la_curva_muestra_los_mismos_textos_que_la_clasica(_of001):
+def test_la_curva_muestra_los_montos_de_cada_dia_calculados_a_mano(_of001):
+    """Plan secuencial: el monto del dia i es cantidad x precio unitario de la partida i."""
     v = hoja_vista.vista_plan(_vivo(_of001))
-    elaborada = _elaborada_por_la_clasica(_como_clasica(_of001.borrador))
-    esperado = clasica.filas_de_curva(elaborada.elaboracion.presupuesto)
-    assert [(p.periodo, p.monto.texto, p.acumulado.texto, p.porcentaje.texto) for p in v.curva] == [
-        (f["periodo"], f["monto"], f["acumulado"], f["porcentaje"]) for f in esperado
-    ]
+    montos = [CANTIDADES_DE_LA_MEMORIA[c] * _pu_a_mano(c) for c in CODIGOS_DE_OF001]
+    total = sum(montos, D(0))
+    acumulado = D(0)
+    for punto, codigo, monto in zip(v.curva, CODIGOS_DE_OF001, montos, strict=True):
+        acumulado += monto
+        assert punto.periodo.split(" [")[0] == f"Dia {CODIGOS_DE_OF001.index(codigo) + 1}"
+        assert punto.monto.texto == _a_dos_decimales(monto), codigo
+        assert punto.acumulado.texto == _a_dos_decimales(acumulado), codigo
+        assert punto.porcentaje.texto == _a_dos_decimales(acumulado / total * 100), codigo
     assert v.curva[0].monto.texto == "11.18" and v.curva[1].acumulado.texto == "21.05"
 
 
-def test_sin_plan_no_hay_curva_y_el_mensaje_es_el_de_la_clasica():
+def test_sin_plan_no_hay_curva_y_lo_dice():
     v = hoja_vista.vista_plan(Registro().crear("f", "c", "N", None, hoja.Borrador(fecha=HOY), None))
     assert (v.hay_plan, v.etiquetas, v.filas, v.curva) == (False, (), (), ())
     assert v.mensaje == (
@@ -832,23 +946,6 @@ def test_con_administracion_020_el_equilibrio_sube_a_la_memoria(_of001):
     assert abs(Decimal(v.venta.exacto) - D("2821.42")) <= D("0.01")
     assert abs(Decimal(v.punto.exacto) - D("1763.39")) <= D("0.01")
     assert abs(Decimal(v.porcentaje.exacto) - D("62.50")) <= D("0.01")
-
-
-def test_el_equilibrio_de_of001_es_el_de_la_clasica_con_la_misma_frase(_of001):
-    v = hoja_vista.vista_equilibrio(_vivo(_of001))
-    pe = _elaborada_por_la_clasica(_como_clasica(_of001.borrador)).equilibrio
-    assert v.mensaje == clasica.texto_equilibrio(pe)
-    assert (v.venta.exacto, v.costo_variable.exacto, v.costo_fijo.exacto, v.utilidad.exacto) == (
-        format(pe.venta, "f"),
-        format(pe.costo_variable, "f"),
-        format(pe.costo_fijo, "f"),
-        format(pe.utilidad, "f"),
-    )
-    assert (v.punto.exacto, v.porcentaje.exacto, v.periodo) == (
-        format(pe.punto, "f"),
-        format(pe.porcentaje, "f"),
-        pe.periodo,
-    )
 
 
 CURVA = (
@@ -914,7 +1011,6 @@ def test_los_cuatro_casos_limite_del_equilibrio_dicen_su_frase(venta, cv, cf, cu
     pe = _pe_de_core(venta, cv, cf, curva)
     v = hoja_vista.equilibrio_a_vista(pe, "USD")
     assert v.estado == estado and v.mensaje == frase
-    assert v.mensaje == clasica.texto_equilibrio(pe)  # y es la de la clásica
 
 
 def test_sin_punto_no_hay_punto_ni_porcentaje_ni_periodo():
@@ -934,9 +1030,9 @@ def test_el_equilibrio_de_un_borrador_en_blanco_no_aplica():
 
 # --- 3b-3 · vista de los parametros (R10) ---------------------------------------------------------
 
-#: Los rotulos de la pagina clasica (`ui/paginas/hoja.py:2030-2035`), escritos a mano y sin tildes;
+#: Los rotulos de los parametros, escritos a mano y sin tildes;
 #: la nueva los lleva con tildes (D-3), asi que se comparan normalizados.
-ROTULOS_DE_LA_CLASICA = {
+ROTULOS_DE_LOS_PARAMETROS = {
     "fcas": "FCAS (fraccion: 6.00 = prestaciones del 600 %)",
     "bono_alimentacion": "Bono de alimentacion (por obrero y dia)",
     "administracion": "Administracion (fraccion del costo directo)",
@@ -944,7 +1040,7 @@ ROTULOS_DE_LA_CLASICA = {
 }
 
 
-def test_los_parametros_de_of001_son_los_cuatro_de_la_clasica_con_su_texto_exacto(_of001):
+def test_los_parametros_de_of001_son_los_cuatro_de_la_memoria_con_su_texto_exacto(_of001):
     from tests.fixtures import caso_ti001
 
     v = hoja_vista.vista_parametros(_vivo(_of001), "USD", True)
@@ -962,12 +1058,12 @@ def test_los_parametros_de_of001_son_los_cuatro_de_la_clasica_con_su_texto_exact
     assert (v.moneda_proyecto, v.puede_convertir) == ("USD", True)
 
 
-def test_los_rotulos_de_los_parametros_son_los_de_la_clasica_con_tildes(_of001):
+def test_los_rotulos_de_los_parametros_llevan_tildes(_of001):
     from core.verification.texto import normalizar_texto
 
     v = hoja_vista.vista_parametros(_vivo(_of001), "USD", True)
     assert {c.clave: normalizar_texto(c.rotulo) for c in v.campos} == {
-        k: normalizar_texto(r) for k, r in ROTULOS_DE_LA_CLASICA.items()
+        k: normalizar_texto(r) for k, r in ROTULOS_DE_LOS_PARAMETROS.items()
     }
     assert v.campos[2].rotulo == "Administración (fracción del costo directo)"  # con tildes
 
@@ -995,13 +1091,17 @@ def test_sin_el_permiso_de_convertir_la_vista_no_lo_ofrece(_of001):
 # --- 3b-3 · informe de auditoria (R11) y R17 ------------------------------------------------------
 
 
-def test_el_informe_de_la_auditoria_es_el_de_la_clasica_y_evalua_r17(_of001):
-    """3b-B21 (segunda clausula): la auditoria sale de `elaborar` (con R17) y no de la base."""
+def test_el_informe_de_la_auditoria_de_of001_trae_sus_34_hallazgos_y_evalua_r17(_of001):
+    """3b-B21 (segunda clausula): la auditoria sale de `elaborar` (con R17) y no de la base.
+    Memoria: 33 hallazgos R8 (origen «supuesto» en 6 ambientes + 6 fuentes + 21 puntos) y el R11
+    informativo de los 49 insumos sin referencia MaPreX (38 materiales + 6 equipos + 5 oficios)."""
     informe = hoja_vista.informe_de_auditoria(_vivo(_of001))
-    esperado = _elaborada_por_la_clasica(_como_clasica(_of001.borrador)).elaboracion.informe
-    assert [(h.regla, h.severidad, h.descripcion) for h in informe.hallazgos] == [
-        (h.regla, h.severidad, h.descripcion) for h in esperado.hallazgos
-    ]
+    reglas = [h.regla for h in informe.hallazgos]
+    assert (reglas.count("R8"), reglas.count("R11"), len(reglas)) == (33, 1, 34)
+    assert {h.severidad for h in informe.hallazgos if h.regla == "R8"} == {Severidad.ADVERTENCIA}
+    (r11,) = [h for h in informe.hallazgos if h.regla == "R11"]
+    assert r11.severidad == Severidad.INFO
+    assert r11.descripcion.startswith("49 insumos no contrastables: 49 sin referencia MaPreX")
     assert "R17" in [codigo for codigo, _, _ in informe.cuenta_por_regla_evaluada()]
 
 
@@ -1073,7 +1173,7 @@ def test_un_precio_heredado_de_la_lista_de_empresa_dice_heredado():
     assert f.propio == "heredado"
 
 
-def test_las_columnas_de_precios_son_las_21_de_la_clasica_con_sus_rotulos():
+def test_las_columnas_de_precios_son_las_21_con_sus_rotulos():
     columnas = hoja_vista.vista_precios([], "USD", HOY).columnas
     assert [c.rotulo for c in columnas] == [
         "Insumo", "Código", "Tipo", "Precio", "Lista", "Moneda", "Fecha del precio", "Tasa",
@@ -1081,7 +1181,6 @@ def test_las_columnas_de_precios_son_las_21_de_la_clasica_con_sus_rotulos():
         "Fuente de la tasa", "Fuente", "Propio/heredado", "Erosión USD", "Erosión Bs",
         "Erosión %", "Erosión por índice", "Estado",
     ]  # fmt: skip
-    assert [c.rotulo for c in columnas] == list(clasica.COLUMNAS_PRECIOS)  # y las de H
     assert [c.clave for c in columnas if c.numerica] == [
         "precio", "tasa", "precio_original", "erosion_usd", "erosion_bs", "erosion_pct",
         "erosion_indice",

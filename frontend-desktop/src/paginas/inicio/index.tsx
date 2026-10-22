@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { useAplicacion } from "../../shell/contexto";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, pasoDeRuta, useRecorrido } from "../../shell/recorrido";
-import { PAGINAS, estaMigrada, paginaPorId, rutaDe, visible } from "../../shell/rutas";
+import { PAGINAS, paginaPorId, rutaDe, visible } from "../../shell/rutas";
 import { fijarArchivoPendiente } from "./archivoPendiente";
 import type { ModoDeAuditoria } from "./archivoPendiente";
 import { PanelArenera } from "./PanelArenera";
@@ -39,7 +39,6 @@ export default function PaginaInicio() {
   const paginaSiguiente = siguiente ? paginaPorId(siguiente.pagina, PAGINAS) : undefined;
   const puedeSeguir =
     paginaSiguiente !== undefined &&
-    estaMigrada(paginaSiguiente) &&
     visible(paginaSiguiente, sesion.acciones, sesion.modo_entrega);
 
   const auditar = (modo: ModoDeAuditoria) => {

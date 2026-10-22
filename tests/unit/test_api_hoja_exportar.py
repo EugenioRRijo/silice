@@ -1,14 +1,15 @@
 """X1 `GET /v1/hoja/borradores/{id}/excel`: exportar el borrador vivo a Excel (T10, 3e-1).
 
 Contrato: `docs/bitacora/2026-10-20-hoja-3e-contrato-rutas.md` (diseno §4.1, §6.4 filas 3e-B1 a B4,
-B12 parte X1 y 3e-F4; la clasica es `ui/paginas/hoja.py:556-573`, `_preparar_excel`).
+B12 parte X1 y 3e-F4).
 
 Oraculos a mano (ninguno sale del codigo bajo prueba): el total de OF-001 es 2 703,86 y con
 administracion 0,20 es 2 821,42 (memoria de OF-001, aceptacion SF); las nueve hojas de pestanas
 y su orden son los de `test_aceptacion_sf.py:419-429`; el nombre seguro de `a"<CR><LF>c/d\\eé;x` es
 `hoja_a___c_d_e__x.xlsx` (cada caracter fuera de A-Z a-z 0-9 . _ - pasa a «_», uno por uno).
-La PARIDAD se prueba contra `ui.hoja` y `ui.paginas.hoja` VIVOS (las pruebas si pueden importar
-`ui`): se comparan las celdas con openpyxl, no los bytes, que llevan marcas de tiempo.
+Las cifras de cada libro (hojas, filas y totales) se fijan con literales a mano; ya no se comparan
+celda por celda con `ui.hoja` (retiro de Streamlit, F6). Se leen con openpyxl, no los bytes, que
+llevan marcas de tiempo.
 
 La ruta no esta montada en `api.main` (la monta el orquestador): aqui se arma con
 `tests/fixtures/app_de_prueba.py`.
@@ -24,7 +25,7 @@ import time
 from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -36,7 +37,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api import caso_web, dependencias
 from api.rutas import hoja as hoja_ruta
-from aplicacion import entrega, hoja_borradores
+from aplicacion import entrega, hoja, hoja_borradores
 from core.budget import crear_proyecto
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from operacion import config
@@ -113,15 +114,13 @@ def _plantilla_ob_s2(ruta: Path) -> Path:
 def _con_tres_versiones(ruta: Path) -> Path:
     """OF-001 con la 002 (administracion 0,20, un cambio) y la 003 (restauracion de la 001):
     versiones con filas de trazabilidad. Mismo armado que `test_api_hoja.py`, sobre una copia."""
-    from ui import hoja as clasica
-
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
             entrega.con_anexos_de_cadena(sesion)
             catalogo = Catalogo(sesion)
-            abierta = clasica.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
-            clasica.guardar_version(
+            abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
+            hoja.guardar_version(
                 sesion,
                 catalogo,
                 abierta,
@@ -132,7 +131,7 @@ def _con_tres_versiones(ruta: Path) -> Path:
                 fuente="criterio del residente, acta 12",
                 responsable="Ing. Prueba",
             )
-            clasica.restaurar(
+            hoja.restaurar(
                 sesion, catalogo, NOMBRE_OF001, "001", fuente="volver a la 001", responsable="X"
             )
     finally:
@@ -320,18 +319,21 @@ def test_b3_lleva_el_espacio_los_precios_y_el_estado_de_las_filas_de_la_vista(
     assert libro.sheetnames[9:] == HOJAS_DEL_ESPACIO
     assert "Precios" in libro.sheetnames
     vista = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/espacio").json()
-    for hoja, prefijo in (
+    for pestana, prefijo in (
         ("Esp ambientes", "esp_ambientes"),
         ("Esp fuentes", "esp_fuentes"),
         ("Esp puntos", "esp_puntos"),
     ):
-        filas = list(libro[hoja].iter_rows(values_only=True))
+        filas = list(libro[pestana].iter_rows(values_only=True))
         encabezado = list(filas[0])
         assert encabezado[-1] == "Estado"
         colocados = {fila[0]: fila[-1] for fila in filas[1:]}
-        assert colocados, hoja
+        assert colocados, pestana
         for identidad, estado in colocados.items():
-            assert estado == vista["estado"][f"{prefijo}:{identidad}"]["texto"], (hoja, identidad)
+            assert estado == vista["estado"][f"{prefijo}:{identidad}"]["texto"], (
+                pestana,
+                identidad,
+            )
     todos = {e["texto"] for e in vista["estado"].values()}
     assert len(todos) >= 2  # no todo es «OK»: la prueba distingue estados
 
@@ -479,7 +481,7 @@ def test_un_borrador_abierto_en_otro_caso_es_409_y_no_toca_ninguna_base(
 # --- errores propios ---
 
 
-def test_un_valueerror_del_libro_es_422_con_el_texto_de_la_clasica(
+def test_un_valueerror_del_libro_es_422_con_el_texto_escrito(
     app: FastAPI, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     navegador, ficha = _ana(app)
@@ -562,71 +564,70 @@ def test_exportar_no_deja_archivos_temporales(
     assert list(propio.iterdir()) == []
 
 
-# --- paridad contra ui.hoja VIVO ---
+# --- las cifras de cada libro, a mano (antes: paridad celda por celda contra `ui.hoja`) ---------
+
+#: (caso, proyecto, version, filas de Esp ambientes / fuentes / puntos, filas de Precios, total).
+#: Filas con el encabezado: OF-001 trae 6 ambientes, 6 fuentes y 21 puntos (memoria of001.md §1) y
+#: 49 insumos (38 materiales, 6 equipos y 5 oficios); TI-001 no tiene espacio y trae 39 insumos
+#: (28 + 7 + 4); el total de OF-001 es 2 703,86, con administracion 0,20 es 2 821,42 y el de TI-001
+#: es 50 503,27 (RF-58).
+LIBROS = [
+    pytest.param("of001", NOMBRE_OF001, "001", (7, 7, 22), 50, "2703.86", id="OF-001"),
+    pytest.param("ti001", NOMBRE_TI001, "TI-001", (1, 1, 1), 40, "50503.27", id="TI-001"),
+    pytest.param("of001_tres", NOMBRE_OF001, "002", (7, 7, 22), 50, "2821.42", id="OF-001 v002"),
+    pytest.param("of001_tres", NOMBRE_OF001, "003", (7, 7, 22), 50, "2703.86", id="OF-001 v003"),
+]
 
 
-def _libro_de_la_clasica(
-    origen: Path, destino: Path, proyecto: str, version: str, hoy: date | None = None
-) -> bytes:
-    """Lo que hace `_preparar_excel` (P:556-573) sobre una COPIA del caso, con `ui.hoja` vivo."""
-    from ui import control
-    from ui import hoja as clasica
-    from ui.paginas import hoja as pagina
-
-    hoy = hoy or date.today()
-    shutil.copyfile(origen, destino)
-    motor = crear_motor(f"sqlite:///{destino.as_posix()}")
-    try:
-        with abrir_sesion(motor) as sesion:
-            abierta = clasica.abrir_version(
-                sesion,
-                Catalogo(sesion),
-                proyecto,
-                version,
-                fecha_evaluacion=hoy,
-                responsable="ana",
-            )
-            resultado = pagina._elaborar(abierta.borrador)
-            trazabilidad = clasica.tabla_de_trazabilidad(sesion, abierta.proyecto, abierta.codigo)
-            precios = clasica.precios_de_version(
-                sesion, abierta.proyecto, abierta.codigo, fecha_evaluacion=hoy
-            )
-            hojas = control.tablas_de_control(sesion, abierta.proyecto, Catalogo(sesion))
-            return clasica.excel_de_hoja_en_bytes(
-                resultado,
-                abierta.borrador,
-                trazabilidad=trazabilidad,
-                precios=precios,
-                control=hojas,
-            )
-    finally:
-        motor.dispose()
-
-
-@pytest.mark.parametrize(
-    ("caso", "proyecto", "version"),
-    [
-        ("of001", NOMBRE_OF001, "001"),
-        ("ti001", NOMBRE_TI001, "TI-001"),
-        ("ob", ob.NOMBRE, ob.CODIGO),
-        ("of001_tres", NOMBRE_OF001, "002"),
-        ("of001_tres", NOMBRE_OF001, "003"),
-    ],
-)
-def test_paridad_el_libro_es_celda_por_celda_el_de_la_clasica(
-    app: FastAPI, _casos: dict[str, Path], tmp_path: Path, caso: str, proyecto: str, version: str
+@pytest.mark.parametrize(("caso", "proyecto", "version", "espacio", "precios", "total"), LIBROS)
+def test_el_libro_trae_las_filas_y_el_total_de_la_memoria(
+    app: FastAPI,
+    _casos: dict[str, Path],
+    tmp_path: Path,
+    caso: str,
+    proyecto: str,
+    version: str,
+    espacio: tuple[int, int, int],
+    precios: int,
+    total: str,
 ) -> None:
-    esperado = _celdas(
-        _libro_de_la_clasica(_casos[caso], tmp_path / "clasica.db", proyecto, version)
-    )
     _poner(_casos[caso])
     navegador, ficha = _ana(app)
     id_ = _abrir(navegador, ficha, proyecto=proyecto, version=version)
-    obtenido = _celdas(_excel(navegador, id_).content)
-    assert list(obtenido) == list(esperado)
-    for hoja in esperado:
-        assert obtenido[hoja] == esperado[hoja], hoja
-    assert sum(len(f) for f in esperado.values()) > 50  # no se compararon libros vacios
+    contenido = _excel(navegador, id_).content
+    ruta = tmp_path / "libro.xlsx"
+    ruta.write_bytes(contenido)
+    celdas = _celdas(contenido)
+    assert list(celdas) == [*NUEVE_HOJAS, *HOJAS_DEL_ESPACIO]
+    assert (
+        len(celdas["Esp ambientes"]),
+        len(celdas["Esp fuentes"]),
+        len(celdas["Esp puntos"]),
+    ) == espacio
+    assert len(celdas["Precios"]) == precios
+    assert len(celdas["Parametros"]) == 5  # encabezado + fcas, bono, administracion y utilidad
+    libro = load_workbook(ruta)
+    total_xl = D(str(evaluar(ruta)[("PRESUPUESTO", _celda(libro, "Presupuesto", "TOTAL", "G"))]))
+    assert abs(total_xl - D(total)) <= D("0.01")
+
+
+def test_el_libro_de_ob_s2_trae_las_valuaciones_y_el_valor_ganado_de_la_memoria(
+    app: FastAPI, _casos: dict[str, Path]
+) -> None:
+    """`control_ob_s2.md`: V-01 A 40, V-02 A 50 y B 60; BAC 4 000, PV 1 500, EV 1 200, AC 1 280."""
+    _poner(_casos["ob"])
+    navegador, ficha = _ana(app)
+    id_ = _abrir(navegador, ficha, proyecto=ob.NOMBRE, version=ob.CODIGO)
+    celdas = _celdas(_excel(navegador, id_).content)
+    assert list(celdas) == [*NUEVE_HOJAS, *HOJAS_DEL_ESPACIO, *HOJAS_DE_CONTROL]
+    valuaciones = [(f[0], f[5], f[6]) for f in celdas["Valuaciones"][1:]]
+    assert valuaciones == [("V-01", "OB-A", 40), ("V-02", "OB-A", 50), ("V-02", "OB-B", 60)]
+    ganado = {f[0]: f[1] for f in celdas["Valor ganado"][1:]}
+    assert ganado["BAC (USD)"] == "4000.00" and ganado["PV (USD)"] == "1500.00"
+    assert ganado["EV (USD)"] == "1200.00" and ganado["AC (USD)"] == "1280.00"
+    assert (ganado["SV (plazo) (USD)"], ganado["CV (USD)"]) == ("-300.00", "-80.00")  # EV-PV, EV-AC
+    assert (ganado["SPI"], ganado["CPI"]) == ("0.8000", "0.9375")  # 1 200 / 1 500 y 1 200 / 1 280
+    assert ganado["EAC (índice BAC/CPI) (USD)"] == "4266.67"  # 4 000 / 0,9375
 
 
 # --- ronda 1 del arbitro: trazabilidad de la version abierta, fecha de los precios, caracteres ---
@@ -640,31 +641,27 @@ CAMBIO_DE_LA_002 = ("001", "002", "parametro", "administracion", "valor", "0.15"
 def test_la_trazabilidad_de_una_version_con_cambios_llega_al_libro(
     app: FastAPI, _casos: dict[str, Path], tmp_path: Path
 ) -> None:
-    from ui import hoja as clasica
-
     _poner(_casos["of001_tres"])
     navegador, ficha = _ana(app)
     id_ = _abrir(navegador, ficha, version="002")
     filas = list(load_workbook(io.BytesIO(_excel(navegador, id_).content))["Trazabilidad"].values)
-    assert len(filas) >= 2, "la hoja Trazabilidad solo trae el encabezado"
+    assert len(filas) == 2, "la hoja Trazabilidad trae el encabezado y el cambio de la 002"
     assert tuple(str(c) for c in filas[1][:7]) == CAMBIO_DE_LA_002
-    # y es, celda por celda, la tabla de la clasica VIVA para esa version
-    copia = tmp_path / "clasica.db"
-    shutil.copyfile(_casos["of001_tres"], copia)
-    motor = crear_motor(f"sqlite:///{copia.as_posix()}")
-    try:
-        with abrir_sesion(motor) as sesion:
-            tabla = clasica.tabla_de_trazabilidad(sesion, NOMBRE_OF001, "002")
-    finally:
-        motor.dispose()
-
-    esperado = [list(tabla.columnas)] + [list(f) for f in tabla.filas]
-    assert len(filas) == len(esperado)
-    for obtenida, buscada in zip(filas[1:], esperado[1:], strict=True):
-        assert list(obtenida[:-1]) == buscada[:-1]
-        # la marca de tiempo: Excel la guarda al milisegundo (redondea)
-        assert abs((obtenida[-1] - buscada[-1]).total_seconds()) <= 0.001
-    assert list(filas[0]) == esperado[0]
+    assert list(filas[0]) == [
+        "Versión de origen",
+        "Versión resultante",
+        "Objeto",
+        "Clave",
+        "Campo",
+        "Valor anterior",
+        "Valor nuevo",
+        "Fuente del cambio",
+        "Responsable",
+        "Fecha y hora",
+    ]
+    # fuente y responsable de `_con_tres_versiones`; la hora la pone el reloj de la siembra
+    assert tuple(filas[1][7:9]) == ("criterio del residente, acta 12", "Ing. Prueba")
+    assert isinstance(filas[1][9], datetime)
 
 
 def test_la_trazabilidad_de_la_restauracion_tambien_llega_al_libro(
@@ -679,20 +676,24 @@ def test_la_trazabilidad_de_la_restauracion_tambien_llega_al_libro(
 
 
 def test_los_precios_se_evaluan_a_la_fecha_de_hoy_de_la_ruta(
-    app: FastAPI, _casos: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    app: FastAPI, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    lejana, pasada = date(2035, 1, 1), date(2000, 1, 1)
-    monkeypatch.setattr(hoja_ruta, "_hoy", lambda: lejana)
+    """El precio de EQU-001 es del 05/10/2026: a 2035-01-01 lleva 3 010 dias (9 anos de 365 d mas
+    2 bisiestos = 3 287 d hasta 2035-10-05, menos 277 d) y el plazo es 30; a 2000 es futuro."""
     navegador, ficha = _ana(app)
-    obtenido = _celdas(_excel(navegador, _abrir(navegador, ficha)).content)["Precios"]
-    de_lejana = _celdas(
-        _libro_de_la_clasica(_casos["of001"], tmp_path / "a.db", NOMBRE_OF001, "001", lejana)
-    )["Precios"]
-    de_pasada = _celdas(
-        _libro_de_la_clasica(_casos["of001"], tmp_path / "b.db", NOMBRE_OF001, "001", pasada)
-    )["Precios"]
-    assert de_lejana != de_pasada, "la fecha no cambia la hoja Precios: la prueba no distingue"
-    assert obtenido == de_lejana
+    id_ = _abrir(navegador, ficha)
+    estados = {}
+    for nombre, hoy in (("lejana", date(2035, 1, 1)), ("pasada", date(2000, 1, 1))):
+        monkeypatch.setattr(hoja_ruta, "_hoy", lambda hoy=hoy: hoy)
+        fila = _celdas(_excel(navegador, id_).content)["Precios"][1]
+        assert fila[1] == "EQU-001"
+        estados[nombre] = fila[20]
+    sin_fuente = "Sin referencia ni cotización: el precio no tiene fuente"
+    assert estados["pasada"] == sin_fuente
+    assert estados["lejana"] == (
+        f"{sin_fuente}; R12 ADVERTENCIA: Herramientas menores [ALB213]: precio del 05/10/2026 "
+        "con 3010 dias al 01/01/2035 (plazo 30)"
+    )
 
 
 @pytest.mark.parametrize(

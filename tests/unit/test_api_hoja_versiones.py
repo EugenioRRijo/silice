@@ -12,7 +12,7 @@ la historia de la aceptacion SF 001 / 002 (edicion) / 003 (restauracion) de
 restauracion, <vigente de antes>, <nueva>); el de una cotizacion (precio, <insumo>, cotizacion,
 <antes>, <despues>); la 002 con administracion 0,20 vale 2 137,44 x 1,20 x 1,10 = 2 821,4208.
 "Nada escrito" se comprueba con el volcado completo de la base antes y despues; las versiones
-sembradas las guarda la clasica (`ui.hoja`), no las rutas que se prueban.
+sembradas las guarda `aplicacion.hoja`, no las rutas que se prueban.
 """
 
 from __future__ import annotations
@@ -72,7 +72,6 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
-from ui import hoja as clasica
 
 D = Decimal
 SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
@@ -179,9 +178,9 @@ def _sembrar(destino: Path, origen: Path, accion) -> Path:
 
 
 def _con_002_de_administracion(sesion, catalogo) -> None:
-    abierta = clasica.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
+    abierta = copia.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
     parametros = replace(abierta.borrador.parametros, administracion=D("0.20"))
-    clasica.guardar_version(
+    copia.guardar_version(
         sesion,
         catalogo,
         abierta,
@@ -193,7 +192,7 @@ def _con_002_de_administracion(sesion, catalogo) -> None:
 
 
 def _con_002_cotizada(sesion, catalogo) -> None:
-    clasica.cotizar(
+    copia.cotizar(
         sesion,
         catalogo,
         NOMBRE_OF001,
@@ -328,7 +327,7 @@ def _cerca(texto: str, esperado: Decimal) -> bool:
 def test_restaurar_la_001_crea_la_003_copia_de_la_001_y_la_deja_vigente(_casos) -> None:
     ruta = _poner(_casos["dos"])
     antes = cadena(ruta, NOMBRE_OF001)
-    assert antes.integra, antes.mensaje  # la siembra de la clasica deja una cadena sana
+    assert antes.integra, antes.mensaje  # la siembra deja una cadena sana
     navegador, ficha = _ana()
     assert _codigos(navegador) == ["001", "002"]
 
@@ -408,7 +407,7 @@ def test_el_proyecto_se_puede_dar_por_su_codigo_como_lo_ofrece_la_cabecera(_ento
     assert respuesta.json()["codigo"] == "002"
 
 
-def test_restaurar_una_version_descartada_se_permite_como_en_la_clasica(_casos) -> None:
+def test_restaurar_una_version_descartada_se_permite(_casos) -> None:
     ruta = _poner(_casos["dos"])
     with base(ruta) as sesion:
         descartar_version(sesion, NOMBRE_OF001, "002", date(2026, 10, 6))

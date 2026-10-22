@@ -21,7 +21,6 @@ const SESION: SesionRespuesta = {
   debe_cambiar_clave: false,
   acciones: ["administrar_cuentas", "administrar_empresa"],
   modo_entrega: false,
-  url_clasica: "http://127.0.0.1:8501",
 };
 const ADMIN: Cuenta = { id: 1, login: "admin", nombre: "Admin Ficticio", roles: ["administrador"], activa: true };
 const ANA: Cuenta = { id: 2, login: "ana", nombre: "Ana", roles: ["arma"], activa: true };

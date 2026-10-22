@@ -1,0 +1,178 @@
+"""A-1 (INV-123, RNF-12): guardado seguro de las subidas en `aplicacion/subidas.py`.
+
+`UploadedFile.name` lo manda el navegador y llega tal cual: `..\\..\\x`, `/etc/passwd`, `C:\\...`,
+`CON.csv`. Los oraculos son literales escritos a mano (el nombre que debe quedar), no la salida de
+la propia funcion. (Retiro de Streamlit, F4: se fueron con las paginas `actualizacion` y
+`elaborar` las dos pruebas que vigilaban que usaran `guardar_subida` y no unieran el nombre del
+cliente a una carpeta.)
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from aplicacion.subidas import LONGITUD_MAXIMA, guardar_subida, nombre_seguro
+
+RAIZ = Path(__file__).resolve().parents[2]
+
+
+class Subida:
+    """Lo que las pantallas usan de un `UploadedFile`: `name` y `getvalue()`."""
+
+    def __init__(self, name, contenido: bytes = b"a,b\n1,2\n") -> None:
+        self.name = name
+        self._contenido = contenido
+
+    def getvalue(self) -> bytes:
+        return self._contenido
+
+
+@pytest.mark.parametrize(
+    ("entrada", "esperado"),
+    [
+        ("lista.csv", "lista.csv"),
+        ("Lista de precios 2026.xlsx", "Lista de precios 2026.xlsx"),
+        ("..\\..\\evil.csv", "evil.csv"),
+        ("../../evil.csv", "evil.csv"),
+        ("../x.csv", "x.csv"),
+        ("..\\x.csv", "x.csv"),
+        ("carpeta/sub\\mezcla.csv", "mezcla.csv"),
+        ("/etc/passwd", "passwd"),
+        ("C:\\Windows\\win.ini", "win.ini"),
+        ("\\\\servidor\\recurso\\datos.csv", "datos.csv"),
+        ("C:datos.csv", "C"),  # el `:` corta: lo que sigue seria un flujo de datos de NTFS
+        ('a<b>c|d?e*f"g.csv', "a_b_c_d_e_f_g.csv"),
+        ("con\x00trol\x1f.csv", "con_trol_.csv"),
+        ("  espacios.csv  ", "espacios.csv"),
+        ("termina_en_punto.csv.", "termina_en_punto.csv"),
+        ("termina.csv. . ", "termina.csv"),
+    ],
+)
+def test_nombre_seguro_deja_un_solo_componente_limpio(entrada, esperado):
+    assert nombre_seguro(entrada) == esperado
+
+
+@pytest.mark.parametrize(
+    ("entrada", "esperado"),
+    [
+        ("CON", "_CON"),
+        ("con.csv", "_con.csv"),
+        ("NUL.txt", "_NUL.txt"),
+        ("Prn.xlsx", "_Prn.xlsx"),
+        ("AUX", "_AUX"),
+        ("COM1", "_COM1"),
+        ("com9.csv", "_com9.csv"),
+        ("LPT1.csv", "_LPT1.csv"),
+        ("LPT9", "_LPT9"),
+        ("NUL.tar.gz", "_NUL.tar.gz"),
+        ("..\\CON.csv", "_CON.csv"),
+        ("COM10.csv", "COM10.csv"),  # no es reservado
+        ("CONSOLA.csv", "CONSOLA.csv"),
+        ("COM.csv", "COM.csv"),
+        ("LPT0.csv", "LPT0.csv"),
+    ],
+)
+def test_nombres_reservados_de_windows_se_renombran_y_los_demas_no(entrada, esperado):
+    assert nombre_seguro(entrada) == esperado
+
+
+@pytest.mark.parametrize("entrada", [None, "", "   ", ".", "..", "...", "../", "..\\", "/", "\\"])
+def test_nombre_vacio_o_sin_componente_utilizable_se_rechaza(entrada):
+    with pytest.raises(ValueError, match="nombre utilizable"):
+        nombre_seguro(entrada)
+
+
+def test_un_nombre_larguisimo_se_acorta_y_conserva_la_extension():
+    resultado = nombre_seguro("a" * 5000 + ".xlsx")
+    assert len(resultado) == LONGITUD_MAXIMA
+    assert resultado == "a" * (LONGITUD_MAXIMA - len(".xlsx")) + ".xlsx"
+
+
+def test_el_limite_exacto_no_se_toca_y_uno_mas_si():
+    justo = "b" * (LONGITUD_MAXIMA - 4) + ".csv"
+    assert nombre_seguro(justo) == justo
+    uno_mas = "b" * (LONGITUD_MAXIMA - 3) + ".csv"
+    assert len(nombre_seguro(uno_mas)) == LONGITUD_MAXIMA
+
+
+def test_una_extension_larguisima_tambien_se_acota():
+    resultado = nombre_seguro("x." + "e" * 5000)
+    assert len(resultado) <= LONGITUD_MAXIMA
+
+
+def test_guardar_escribe_dentro_de_la_carpeta_y_devuelve_la_ruta(tmp_path):
+    carpeta = tmp_path / "destino"
+    carpeta.mkdir()
+    ruta = guardar_subida(carpeta, Subida("..\\..\\evil.csv", b"hola"))
+    assert ruta == carpeta / "evil.csv"
+    assert ruta.read_bytes() == b"hola"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["destino"]  # nada se escapo
+
+
+@pytest.mark.parametrize(
+    "nombre", ["../fuera.csv", "..\\fuera.csv", "/tmp/fuera.csv", "C:\\fuera.csv", "CON.csv"]
+)
+def test_guardar_nunca_deja_archivos_fuera_de_la_carpeta(tmp_path, nombre):
+    carpeta = tmp_path / "destino"
+    carpeta.mkdir()
+    ruta = guardar_subida(carpeta, Subida(nombre))
+    assert ruta.parent == carpeta
+    assert ruta.is_file()
+    assert [p.name for p in tmp_path.iterdir()] == ["destino"]
+    assert len(list(carpeta.iterdir())) == 1
+
+
+def test_guardar_con_nombre_vacio_no_escribe_nada(tmp_path):
+    with pytest.raises(ValueError, match="nombre utilizable"):
+        guardar_subida(tmp_path, Subida(""))
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("entrada", "esperado"),
+    [
+        ("a.csv:x", "a.csv"),
+        ("a.csv::$DATA", "a.csv"),
+        ("carpeta/a.csv:flujo:otro", "a.csv"),
+        ("../a.xlsx:Zone.Identifier", "a.xlsx"),
+        ("CON:x.csv", "_CON"),  # tras cortar queda un reservado
+    ],
+)
+def test_los_flujos_alternos_de_datos_no_cambian_la_extension(entrada, esperado):
+    assert nombre_seguro(entrada) == esperado
+
+
+@pytest.mark.parametrize("entrada", [":x", "::$DATA", "carpeta/:x.csv"])
+def test_un_nombre_que_empieza_en_dos_puntos_se_rechaza(entrada):
+    with pytest.raises(ValueError, match="nombre utilizable"):
+        nombre_seguro(entrada)
+
+
+@pytest.mark.parametrize(
+    ("entrada", "esperado"),
+    [
+        ("CONIN$", "_CONIN$"),
+        ("conin$.csv", "_conin$.csv"),
+        ("CONOUT$.txt", "_CONOUT$.txt"),
+        ("ConOut$", "_ConOut$"),
+        ("COM¹", "_COM¹"),
+        ("com².csv", "_com².csv"),
+        ("COM³.tar.gz", "_COM³.tar.gz"),
+        ("LPT¹", "_LPT¹"),
+        ("lpt².csv", "_lpt².csv"),
+        ("LPT³.xlsx", "_LPT³.xlsx"),
+        ("CONIN.csv", "CONIN.csv"),  # sin el `$` no es reservado
+        ("COM⁴.csv", "COM⁴.csv"),
+    ],
+)
+def test_reservados_con_dolar_y_superindices_se_renombran(entrada, esperado):
+    assert nombre_seguro(entrada) == esperado
+
+
+def test_el_mensaje_de_nombre_inutilizable_empieza_con_mayuscula():
+    with pytest.raises(ValueError) as error:
+        nombre_seguro("..")
+    assert str(error.value)[0].isupper()
+    assert str(error.value) == "El archivo subido no trae un nombre utilizable"

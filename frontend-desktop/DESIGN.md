@@ -71,10 +71,9 @@ ajustan aquí cuando la construcción los fije.
 ## Marco
 
 Cabecera de Carbon de 48 px (nombre de la persona, selectores de caso y de proyecto en tamaño `sm`, «Salir») y menú
-lateral de 16 rem, fijo desde 1056 px de ancho y plegable con el botón de la cabecera por debajo. Cuatro secciones como
-en Streamlit (Trabajo, Revisión, Investigación, Administración); dentro de cada una, primero las páginas migradas y,
-bajo el rótulo «En la interfaz clásica», las que aún viven en Streamlit (una línea de 32 px, sin ser enlaces de esta
-interfaz). Las que no puede ver la cuenta no aparecen; las que sí puede y no están migradas, sí.
+lateral de 16 rem, fijo desde 1056 px de ancho y plegable con el botón de la cabecera por debajo. Cuatro secciones
+(Trabajo, Revisión, Investigación, Administración); toda página del menú es un enlace de esta interfaz. Las que no puede
+ver la cuenta no aparecen.
 
 ## Movimiento
 

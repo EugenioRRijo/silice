@@ -24,10 +24,10 @@ from adapters.espacio import (
     ModoRecorrido,
     Recorrido,
 )
+from aplicacion.hoja import Borrador, espacio_desde_filas
 from asistente.experimento.modelo import Referencia, Sembrado
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
-from ui.hoja import Borrador, espacio_desde_filas
 
 CARPETA_TAREAS = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "asistente" / "tareas"
 NO_SE = "no lo se"

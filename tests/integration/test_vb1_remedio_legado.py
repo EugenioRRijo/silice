@@ -22,6 +22,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
+from aplicacion import entrega
 from core import models
 from core.budget import cadena, canonico
 from core.catalog import abrir_sesion
@@ -29,7 +30,6 @@ from core.models.cadena import EslabonVersion
 from tests.fixtures.canonico_minimo import USUARIO
 from tests.fixtures.instalacion import instalacion
 from tests.fixtures.vb1_fraccionario import UN_DOCEAVO_28, UN_DOCEAVO_29, sembrar_fraccionaria
-from ui import entrega
 
 CUANDO = datetime(2026, 11, 10, 9, 30)
 AVISO = (

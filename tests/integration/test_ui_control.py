@@ -13,6 +13,7 @@ import openpyxl
 import pytest
 from sqlalchemy import func, select
 
+from aplicacion import control
 from core import models
 from core.budget import exportar_hoja
 from core.budget.excel import (
@@ -27,7 +28,6 @@ from core.catalog import Catalogo
 from core.catalog.indices import Observacion, definicion_tasa, registrar_importacion
 from tests.fixtures import control_ob_s2 as ob
 from tests.fixtures import reajuste_ob_s2 as rz
-from ui import control
 
 D = Decimal
 FILAS_V01 = [

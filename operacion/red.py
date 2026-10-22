@@ -1,7 +1,7 @@
 """Red local de Sílice: interfaces, cortafuegos y quién es «el propio equipo» (RF-98; spec S5 §8.2).
 
-Apagada por defecto. Al activarla, Streamlit y Uvicorn escuchan en la IP **explícita** de la
-interfaz elegida (nunca en todas) y el cortafuegos de Windows solo deja entrar a esa IP, a la
+Apagada por defecto. Al activarla, Uvicorn (la API y la interfaz) escucha en la IP **explícita** de
+la interfaz elegida (nunca en todas) y el cortafuegos de Windows solo deja entrar a esa IP, a la
 subred local y al perfil Privado. Sin TLS: el aviso lo dice. Solo IPv4 en la 1.0.0.
 """
 

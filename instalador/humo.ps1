@@ -31,6 +31,7 @@ $Python = Join-Path $Programa 'python\python.exe'
 $Banderas = @('-E', '-s', '-B', '-X', 'utf8', '-m', 'operacion')
 $PuertoProxy = 8899
 $Url = 'http://127.0.0.1:8501'
+$UrlApp = "$Url/app"
 $ReglaSalida = 'Silice humo: bloquear salida'
 $Fallos = [System.Collections.Generic.List[string]]::new()
 New-Item -ItemType Directory -Force -Path $Salida | Out-Null
@@ -62,7 +63,7 @@ function EsperarSalud([string]$Direccion, [int]$Limite = 60) {
     $reloj = [Diagnostics.Stopwatch]::StartNew()
     while ($reloj.Elapsed.TotalSeconds -lt $Limite) {
         try {
-            $r = Invoke-WebRequest -Uri "$Direccion/_stcore/health" -UseBasicParsing -TimeoutSec 2
+            $r = Invoke-WebRequest -Uri "$Direccion/salud" -UseBasicParsing -TimeoutSec 2
             if ($r.StatusCode -eq 200) { return [math]::Round($reloj.Elapsed.TotalSeconds, 2) }
         } catch { }
         Start-Sleep -Milliseconds 500
@@ -220,9 +221,10 @@ try {
 
     Paso '3. Inventario y manifiesto'
     Afirmar ((Operacion @('verificar-programa')) -eq 0) '{app}\codigo coincide con manifiesto.json'
-    $configs = @(Get-ChildItem -LiteralPath $Codigo -Recurse -Filter 'config.toml' -File)
-    $unico = $configs.Count -eq 1 -and $configs[0].FullName.EndsWith('.streamlit\config.toml')
-    Afirmar $unico 'hay un único .streamlit\config.toml'
+    $residuos = @((Join-Path $Codigo 'ui'), (Join-Path $Codigo '.streamlit')) |
+        Where-Object { Test-Path $_ }
+    Afirmar (@($residuos).Count -eq 0) 'no viaja ninguna carpeta ui ni .streamlit'
+    Afirmar (Test-Path (Join-Path $Codigo 'frontend-desktop\dist\index.html')) 'la interfaz compilada viaja con el programa'
     $ajustes = Join-Path $Usuario 'config'
     New-Item -ItemType Directory -Force -Path $ajustes | Out-Null
     Set-Content -Path (Join-Path $ajustes 'silice.toml') -Encoding utf8 `
@@ -241,12 +243,14 @@ try {
     $escuchas = Escuchas $servidor.Id
     Afirmar ((Escucha $escuchas '127.0.0.1' 8501) -ge 1) 'el 8501 escucha en 127.0.0.1'
     Afirmar ((EnTodas $escuchas) -eq 0) 'nada de Sílice escucha en 0.0.0.0 ni en ::'
-    $api = Contar ($escuchas | Where-Object { $_.LocalPort -eq 8000 })
-    Afirmar ($api -eq 0) 'el 8000 (API) no escucha'
+    $otros = Contar ($escuchas | Where-Object { $_.LocalPort -ne 8501 })
+    Afirmar ($otros -eq 0) 'un solo puerto: el 8501 sirve la API y la interfaz, y no escucha ningún otro'
+    $app = Invoke-WebRequest -Uri "$UrlApp/" -UseBasicParsing -TimeoutSec 5
+    Afirmar ($app.StatusCode -eq 200 -and $app.Content -match '/app/assets/') '/app/ entrega la interfaz de React (index.html con sus recursos)'
 
     Paso '5. Navegador sin interfaz'
     $navegador = Join-Path $Raiz 'instalador\navegador.py'
-    & uv run --no-project --with playwright python $navegador --url $Url `
+    & uv run --no-project --with playwright python $navegador --url $UrlApp `
         --salida (Join-Path $Salida 'peticiones.json')
     Afirmar ($LASTEXITCODE -eq 0) 'el navegador no pidió nada fuera de 127.0.0.1 (ni telemetría)'
     if ($Perfil -eq 'completo') {

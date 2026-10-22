@@ -90,13 +90,6 @@ def test_una_periodicidad_ajena_es_el_error_del_nucleo():
         indices.definiciones_desde_filas([fila])
 
 
-def test_ui_indices_reexporta_la_capa_de_aplicacion():
-    from ui import indices as ui_indices
-
-    for nombre in ("TIPOS", "leer", "confirmar", "filas_del_informe"):
-        assert getattr(ui_indices, nombre) is getattr(indices, nombre)
-
-
 def _con_rechazos(cuantos: int) -> InformeImportacion:
     rechazos = tuple(Rechazo(f"a.csv:{n}", "valor no numerico " + "x" * 40) for n in range(cuantos))
     return InformeImportacion(

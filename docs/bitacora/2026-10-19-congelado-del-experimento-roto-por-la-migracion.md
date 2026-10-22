@@ -45,3 +45,5 @@ inmutable. Son cambios mecanicos (equivalentes), pero la guardia existe justamen
   (se borra `aplicacion/hoja*`). Costo aceptado: ~2 100 lineas duplicadas, deuda con retiro junto a Streamlit.
 - Sigue **pendiente de Eugenio** la guardia del congelado ya rota por `ui/composicion.py` y `ui/hoja.py` (opciones A/B/C arriba) y,
   por tanto, la fusion de la migracion a `main`.
+
+**Cierre (2026-10-21):** resuelto por el re-congelado a propósito (opción A); ver `docs/bitacora/2026-10-21-recongelado-del-experimento.md`.

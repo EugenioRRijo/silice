@@ -123,7 +123,7 @@ jobs:
 
       - name: Entorno (las capas del instalador básico, para construir y verificar bases)
         run: >-
-          uv sync --locked --extra ui --extra api --extra planos --extra civil
+          uv sync --locked --extra api --extra planos --extra civil
           --extra informes --extra bcv --extra anomalias --extra ia
 
       - name: Versiones

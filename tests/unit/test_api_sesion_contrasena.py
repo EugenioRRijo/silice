@@ -71,7 +71,6 @@ ACCIONES = {
     ],
 }
 ROLES = {"ana": ["arma"], "rita": ["revisa"], "admin": ["administrador"]}
-URL_CLASICA = "http://127.0.0.1:8501/"  # sin SILICE_DIRECCION ni silice.toml
 NOMBRES = {"ana": "Ana", "rita": "Rita", "admin": "Admin de Prueba"}
 
 
@@ -134,7 +133,6 @@ def test_entrar_y_consultar_informan_acciones_y_modo_entrega(login: str) -> None
         "debe_cambiar_clave": False,
         "acciones": ACCIONES[login],
         "modo_entrega": False,
-        "url_clasica": URL_CLASICA,
     }
     assert respuesta.json() == esperado
     assert navegador.get("/v1/sesion").json() == esperado
@@ -146,13 +144,11 @@ def test_el_modo_entrega_viaja_en_la_sesion(monkeypatch: pytest.MonkeyPatch) -> 
     assert navegador.get("/v1/sesion").json()["modo_entrega"] is True
 
 
-def test_la_url_clasica_viaja_en_la_sesion(monkeypatch: pytest.MonkeyPatch) -> None:
-    """La IP en que escuchan las dos interfaces (`SILICE_DIRECCION`, del lanzador) y el puerto de
-    Streamlit de `silice.toml`: lo que ya es público en la red local, nada más."""
+def test_la_sesion_ya_no_trae_url_clasica(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Streamlit se retiro: ni la clave ni su direccion viajan en la sesion."""
     monkeypatch.setenv("SILICE_DIRECCION", "192.168.1.20")
-    config.guardar_ajustes(config.ruta_ajustes(), config.Ajustes(puerto=8600))
     navegador, _ = con_cuenta(app, "ana")
-    assert navegador.get("/v1/sesion").json()["url_clasica"] == "http://192.168.1.20:8600/"
+    assert "url_clasica" not in navegador.get("/v1/sesion").json()
 
 
 # --- la cookie restringida -------------------------------------------------------------------
@@ -212,7 +208,6 @@ def test_cambiar_la_contrasena_abre_una_ficha_normal_y_cierra_las_demas() -> Non
         "debe_cambiar_clave": False,
         "acciones": ACCIONES["ana"],
         "modo_entrega": False,
-        "url_clasica": URL_CLASICA,
     }
     assert _abiertas("tomas") == [sesiones.huella_de(nueva)]
     assert navegador.get("/v1/casos").status_code == 200  # ya no está restringida

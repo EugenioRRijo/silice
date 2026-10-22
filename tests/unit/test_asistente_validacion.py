@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import pytest
 
+from aplicacion.hoja import Borrador
 from asistente.propuestas import EstadoPropuesta, Propuesta, TipoPropuesta, aplicar
 from asistente.validacion import Causa, Rechazo, validar_llamada
 from tests.fixtures.asistente_pedidos import AMBIENTE, FECHA, ORIGEN, catalogo, contexto
-from ui.hoja import Borrador
 
 
 def _ok(nombre, argumentos, **kw) -> Propuesta:

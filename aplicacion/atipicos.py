@@ -18,8 +18,7 @@ de 0 que no ocurrieron. Dos listas **independientes** con el mismo precio y la m
 observaciones.
 
 RM-1 (T4 de la migración final): la lógica pasó aquí desde `ui/atipicos.py`, que la reexporta. Los
-avisos salen con el texto tal cual (`escapar` los adapta a quien los pinte: Streamlit los escapa
-para su Markdown, RV-14; la API los manda así).
+avisos salen con el texto tal cual (la API los manda así; React no pinta Markdown).
 """
 
 from __future__ import annotations
@@ -103,10 +102,6 @@ def _cargar_series() -> ModuleType:
     import ml.anomaly.series
 
     return ml.anomaly.series
-
-
-def _tal_cual(texto: str) -> str:
-    return texto
 
 
 def _porcentaje(valor: Decimal) -> str:
@@ -232,19 +227,15 @@ def atipicos_del_insumo(
     return None if busqueda is None else list(busqueda.hallazgos)
 
 
-def avisos_generales(
-    busqueda: BusquedaAtipicos | None, escapar: Callable[[str], str] = _tal_cual
-) -> list[tuple[str, str]]:
+def avisos_generales(busqueda: BusquedaAtipicos | None) -> list[tuple[str, str]]:
     """Lo que se dice de una búsqueda además de sus hallazgos, como `(nivel, texto)` con el nivel
     `info` o `success`: sin el extra `ml`; cada lista en Bs sin tasa; cada insumo que no se pudo
-    analizar; y «nada atípico» si no hubo hallazgos. `escapar` se aplica al texto ajeno."""
+    analizar; y «nada atípico» si no hubo hallazgos."""
     if busqueda is None:
         return [("info", AVISO_SIN_ML)]
-    salida = [
-        ("info", f"Precio en Bs sin tasa, omitido: {escapar(lista)}") for lista in busqueda.sin_tasa
-    ]
+    salida = [("info", f"Precio en Bs sin tasa, omitido: {lista}") for lista in busqueda.sin_tasa]
     salida += [
-        ("info", f"{escapar(codigo)}: no se pudo analizar ({escapar(motivo)})")
+        ("info", f"{codigo}: no se pudo analizar ({motivo})")
         for codigo, motivo in busqueda.no_analizados
     ]
     if not busqueda.hallazgos:
@@ -252,15 +243,11 @@ def avisos_generales(
     return salida
 
 
-def avisos(
-    busqueda: BusquedaAtipicos | None, escapar: Callable[[str], str] = _tal_cual
-) -> list[tuple[str, str]]:
-    """Todo lo que las pantallas de Streamlit muestran de una búsqueda: los avisos generales y un
+def avisos(busqueda: BusquedaAtipicos | None) -> list[tuple[str, str]]:
+    """Todo lo que se muestra de una búsqueda: los avisos generales y un
     `warning` por hallazgo, con su descripción. Nunca `error`."""
     hallazgos = () if busqueda is None else busqueda.hallazgos
-    return avisos_generales(busqueda, escapar) + [
-        ("warning", escapar(h.descripcion)) for h in hallazgos
-    ]
+    return avisos_generales(busqueda) + [("warning", h.descripcion) for h in hallazgos]
 
 
 def variaciones_atipicas(

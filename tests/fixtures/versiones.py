@@ -87,7 +87,7 @@ def elaborar_editada(sesion, composiciones, codigo: str, plan=plan_secuencial):
 def editar_apu_en_la_hoja(sesion, catalogo=None, codigo=linea_base.CODIGO_PRESUPUESTO):
     """Abre `codigo` en la hoja, sube el cemento del concreto en su copia y guarda la version
     siguiente. Devuelve el total exacto de la version nueva (el catalogo no cambia)."""
-    from ui import hoja
+    from aplicacion import hoja
 
     catalogo = catalogo or Catalogo(sesion)
     nombre = sesion.scalars(select(models.Proyecto.nombre)).one()

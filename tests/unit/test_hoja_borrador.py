@@ -16,11 +16,11 @@ from decimal import Decimal
 import pytest
 
 from adapters.espacio import Espacio
+from aplicacion import hoja
 from core.budget import EstadoEquilibrio
 from core.budget.edicion import CambioEditado
 from core.contracts import ParametrosCosto, Severidad
 from tests.fixtures.hoja_borrador import PU_SINTETICO, borrador_bano
-from ui import hoja
 
 D = Decimal
 

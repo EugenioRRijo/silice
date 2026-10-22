@@ -35,8 +35,6 @@ export interface InstalacionEstado {
   red_local: boolean;
   direccion: string;
   puerto: number;
-  api_activa: boolean;
-  puerto_api: number;
   avisos: string[];
   respaldos: Juego[];
   pendientes: Pendiente[];
@@ -66,8 +64,4 @@ export function textoDeRed(i: InstalacionEstado): string {
   return i.red_local
     ? `Red local: encendida en http://${i.direccion}:${i.puerto}`
     : `Red local: apagada (solo http://127.0.0.1:${i.puerto})`;
-}
-
-export function textoDeApi(i: InstalacionEstado): string {
-  return `API: ${i.api_activa ? "activa" : "apagada"} (puerto ${i.puerto_api})`;
 }

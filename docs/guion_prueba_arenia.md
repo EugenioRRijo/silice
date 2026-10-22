@@ -1,10 +1,12 @@
 # Guion de prueba manual de Sílice (IEEE 829) — Sesión P4.2
 
 Especificación de casos de prueba manuales para la pantalla **Componer una partida** (UC‑10 / UC‑11)
-del prototipo AREN.IA (hoy Sílice) (`ui/paginas/componer.py`). Está escrita para una persona que **no programa**:
+del prototipo AREN.IA (hoy Sílice) (pantalla `ui/paginas/componer.py`, retirada el 2026‑10‑21). Está escrita para una persona que **no programa**:
 cada caso dice qué hacer, paso a paso, y qué debe ver en pantalla. Complementa el
 [plan de pruebas](plan_pruebas.md), que cubre las pruebas automatizadas; los enunciados de los UC y
 RF citados viven una sola vez en la [ERS](ERS.md) y aquí no se repiten.
+
+> **Enmienda del 2026‑10‑21 (retiro de Streamlit).** Este guion se escribió para las pantallas de Streamlit (`ui/`), que ya no existen: los **comandos de arranque** se actualizaron (un solo proceso Uvicorn, la interfaz de React en `http://127.0.0.1:8501/app/`), pero los **pasos que nombran pantallas, botones y la barra lateral** describen la interfaz anterior y deben revalidarse con una persona sobre la interfaz de React antes de usarse como evidencia. Los resultados de §9 (`AppTest`, Streamlit 1.62.0) son el registro de aquella corrida.
 
 ## 1. Identificador y alcance
 
@@ -33,12 +35,12 @@ completos, con persona y con RNF‑13 (sección 6.1). Es un cambio previo a la p
 
 | Elemento | Qué es |
 |---|---|
-| `ui/paginas/componer.py` | la pantalla que se prueba (UC‑10 componer, UC‑11 editar) |
-| `ui/composicion.py` | el buscador de la referencia MaPreX y la lectura de las tablas |
+| `ui/paginas/componer.py` (retirada) | la pantalla que se prueba (UC‑10 componer, UC‑11 editar) |
+| `aplicacion/composicion.py` | el buscador de la referencia MaPreX y la lectura de las tablas |
 | `core/budget/excel.py` | el libro de Excel con sus cuatro hojas |
 | `scripts/seed_demo.py` | la siembra que deja la base lista para la prueba |
-| `ui/paginas/hoja.py`, `ui/hoja.py` | la Hoja del proyecto (CP‑08 a CP‑11): tablas del espacio, APU, precios, versiones, plano y Excel |
-| `ui/barra.py` | la barra de herramientas (Proyecto, Importar plano, Precios, Auditar, Guardar versión, Exportar Excel, Recorrido guiado) |
+| `ui/paginas/hoja.py` (retirada), `aplicacion/hoja.py` | la Hoja del proyecto (CP‑08 a CP‑11): tablas del espacio, APU, precios, versiones, plano y Excel |
+| `ui/barra.py` (retirada) | la barra de herramientas (Proyecto, Importar plano, Precios, Auditar, Guardar versión, Exportar Excel, Recorrido guiado) |
 | `adapters/espacio/planos/` | la importación de planos DXF e IFC (CP‑09) |
 | `scripts/seed_of001.py` | la siembra de OF‑001 en `data/prueba_sf.db` para CP‑08 a CP‑11 |
 
@@ -68,7 +70,7 @@ no la copia desechable del paso 1) y, si existe, su fecha y hora de modificació
 Si no existe, anote «no existe».
 
 1. **Cree una copia desechable del repositorio y trabaje sobre ella, nunca sobre esta copia de
-   trabajo.** Desde U1 (fase C3) la aplicación abre el caso que nombra `SILICE_CASO` (`ui/caso.py`)
+   trabajo.** Desde U1 (fase C3) la aplicación abre el caso que nombra `SILICE_CASO` (`operacion/config.py`)
    en todas las pantallas, pero la copia desechable se conserva como segunda barrera: si la
    variable faltara o tuviera una errata, la aplicación abriría `data/apu.db` de la carpeta desde la
    que se ejecuta. Trabajar fuera de esta copia de trabajo evita tocar su `data/apu.db` en cualquier
@@ -77,7 +79,7 @@ Si no existe, anote «no existe».
    ```
    git worktree add ../tesis-prueba-manual HEAD
    cd ../tesis-prueba-manual
-   uv sync --extra ui --extra ml
+   uv sync --extra api --extra ml
    ```
 
    Ejecute el resto de esta sección y los casos CP‑01…CP‑06 **dentro de `../tesis-prueba-manual`**.
@@ -106,13 +108,13 @@ Si no existe, anote «no existe».
 3. Abra la aplicación con el caso de prueba. En bash:
 
    ```
-   SILICE_CASO=data/prueba_arenia.db uv run python -m streamlit run ui/app.py
+   SILICE_CASO=data/prueba_arenia.db uv run uvicorn api.main:app --host 127.0.0.1 --port 8501
    ```
 
    En PowerShell:
 
    ```
-   $env:SILICE_CASO = "data/prueba_arenia.db"; uv run python -m streamlit run ui/app.py
+   $env:SILICE_CASO = "data/prueba_arenia.db"; uv run uvicorn api.main:app --host 127.0.0.1 --port 8501
    ```
 
    Se abre el navegador en **Inicio**. Compruebe que la barra lateral, bajo **Caso abierto**, nombra
@@ -130,7 +132,7 @@ Si no existe, anote «no existe».
 
 CP‑08 a CP‑11 no usan `data/prueba_arenia.db`: trabajan sobre su propia base, **`data/prueba_sf.db`**, con
 la oficina OF‑001 y la misma protección de `data/apu.db` (sección 4, «Antes de empezar» y «Al terminar la
-prueba»). Dentro de la copia desechable del paso 1 (con `uv sync --extra ui --extra ml --extra planos`):
+prueba»). Dentro de la copia desechable del paso 1 (con `uv sync --extra api --extra ml --extra planos`):
 
 ```
 uv run python scripts/seed_of001.py --db data/prueba_sf.db --reiniciar
@@ -140,9 +142,9 @@ uv run python scripts/seed_of001.py --db data/prueba_sf.db --reiniciar
 `Proyecto: OF-001: oficina con baño, cocineta y puestos (caso de prueba)`, `Version 001: 30 partidas`,
 `Total: 2703.86 USD` y `Auditoria: 33 hallazgo(s), CUMPLE`. La orden se niega a escribir en `data/apu.db` y,
 sobre una base que ya existe, exige `--reiniciar`: cada participante empieza de la misma base. Después, la
-aplicación se abre con el caso de prueba (en bash `SILICE_CASO=data/prueba_sf.db uv run python -m streamlit
-run ui/app.py`; en PowerShell `$env:SILICE_CASO = "data/prueba_sf.db"; uv run python -m streamlit run
-ui/app.py`) y la barra lateral, bajo **Caso abierto**, nombra `prueba_sf.db` con `30 partidas · 49 insumos ·
+aplicación se abre con el caso de prueba (en bash `SILICE_CASO=data/prueba_sf.db uv run uvicorn api.main:app --host 127.0.0.1 --port 8501`;
+en PowerShell `$env:SILICE_CASO = "data/prueba_sf.db"; uv run uvicorn api.main:app --host 127.0.0.1 --port 8501`,
+y se abre `http://127.0.0.1:8501/app/`) y el caso abierto, que se ve en la interfaz, nombra `prueba_sf.db` con `30 partidas · 49 insumos ·
 lista vigente: Lista MaPreX jul-2026 (OF-001)`. Para CP‑09 el observador deja una copia de
 `tests/fixtures/planos/of001.dxf` en el escritorio con el nombre `of001.dxf`.
 
@@ -444,7 +446,7 @@ parte de lo que se prueba (principio 7 de [NORMAS.md](../NORMAS.md)).
 ### CP‑07 — Una persona nueva llega sola del Inicio al Excel auditado
 
 > **CP‑07 es ejecutable desde U1 y se ejecuta en la fase Med (GU1b).** La fase C3 lo dejó listo:
-> `ui/caso.py` lee `SILICE_CASO` y la aplicación abre el caso de cada escenario en todas las
+> `operacion/config.py` lee `SILICE_CASO` y la aplicación abre el caso de cada escenario en todas las
 > pantallas. La medición con personas no es de C3: C3 cierra la compuerta GU1a (U1 completa sin
 > CP‑07) y la medición cierra GU1b en Med. Con la misma protección de INV‑065 que los demás casos,
 > se ejecuta **dentro de la copia desechable de la sección 4** (paso 1,
@@ -469,7 +471,7 @@ parte de lo que se prueba (principio 7 de [NORMAS.md](../NORMAS.md)).
 **Preparación (el observador, antes de que llegue el participante)**
 
 1. Instale las dependencias si no lo ha hecho ya (sección 4, paso 1, en la raíz del repositorio):
-   `uv sync --extra ui --extra ml`.
+   `uv sync --extra api --extra ml`.
 2. Base **exclusiva** de la prueba, nunca `data/apu.db`. Anote si `data/apu.db` existe y su fecha de
    modificación: es la protección para confirmar, al terminar, que la prueba no lo tocó. Escenario
    A: borre `data/cp07/escenario_a.db` si existe (de una corrida anterior) y siembre:
@@ -481,8 +483,8 @@ parte de lo que se prueba (principio 7 de [NORMAS.md](../NORMAS.md)).
    `unset SILICE_MODO_ENTREGA`; en PowerShell,
    `Remove-Item Env:SILICE_MODO_ENTREGA -ErrorAction SilentlyContinue`.
 4. Arranque la aplicación apuntando a esa base. En bash:
-   `SILICE_CASO=data/cp07/escenario_a.db uv run python -m streamlit run ui/app.py`;
-   en PowerShell: `$env:SILICE_CASO = "data/cp07/escenario_a.db"; uv run python -m streamlit run ui/app.py`
+   `SILICE_CASO=data/cp07/escenario_a.db uv run uvicorn api.main:app --host 127.0.0.1 --port 8501`;
+   en PowerShell: `$env:SILICE_CASO = "data/cp07/escenario_a.db"; uv run uvicorn api.main:app --host 127.0.0.1 --port 8501`
    (en el escenario B, `escenario_b.db`).
 5. Compruebe que el navegador abrió en **Inicio**, que el menú de pantallas está **arriba** (con la barra
    de herramientas debajo) y que la barra lateral, bajo **Caso abierto**, nombra la base del
@@ -1127,7 +1129,7 @@ terminar), con estas diferencias:
 Todos los resultados esperados de la sección 6 se obtuvieron **ejecutando el sistema** el
 2026‑09‑21 sobre el commit `617861b`, contra una base temporal sembrada con
 `scripts/seed_demo.py` (nunca contra `data/apu.db`), recorriendo la pantalla con
-`streamlit.testing.v1.AppTest` como en `tests/unit/test_ui_componer.py`: las búsquedas de CP‑01 se
+`streamlit.testing.v1.AppTest` como en test_ui_componer.py (retirado con Streamlit): las búsquedas de CP‑01 se
 hicieron en la propia pantalla (buscador, *Resultado* y *Usar esta fila*), y las cantidades de las
 tablas, que `AppTest` no puede teclear, se sembraron con las mismas filas que produce el buscador.
 Los guiones auxiliares no forman parte del repositorio. Si una versión posterior del sistema cambia
@@ -1158,15 +1160,15 @@ se obtuvieron **ejecutando el sistema** sobre el commit `a8ec283` y los commits 
 siguen (no tocan el código), con `streamlit.testing.v1.AppTest` contra una base temporal sembrada con
 `scripts/seed_of001.py` (nunca contra `data/apu.db`). `AppTest` no puede teclear en un `st.data_editor`:
 las filas de CP‑08 y CP‑09 y la cantidad de CP‑10 se sembraron en `st.session_state` con las mismas filas que
-produce la pantalla al leer el editor (el mismo recurso que usan `tests/unit/test_ui_hoja.py` y
-`tests/unit/test_ui_hoja_planos.py`); **lo que solo se ve en un navegador** (teclear en las celdas, arrastrar
+produce la pantalla al leer el editor (el mismo recurso que usan test_ui_hoja.py (retirado con Streamlit) y
+test_ui_hoja_planos.py (retirado con Streamlit)); **lo que solo se ve en un navegador** (teclear en las celdas, arrastrar
 el archivo al cuadro *Plano*, descargar el libro, la apariencia de los contadores) **no se verificó** y se
 confirma en la primera sesión de Med. Se cotejó con aritmética aparte: las ocho cantidades de CP‑08 con
 `tests/fixtures/memorias/bano_of001.md` (exactas); las cantidades de CP‑09 con la hoja manual de OF‑001
 (±0,001 m, prueba `tests/integration/test_aceptacion_sf.py`) y su total con la hoja manual con los mismos
 parámetros (2577.59 USD, no 2703.86: esa cifra usa el bono adoptado del caso, 5.81, y un borrador nuevo
 usa el de la aplicación, 1.00); los pasos 7 y 8 de CP‑08 y el paso 9 de CP‑09 (guardar la primera versión, RI‑7) se obtuvieron con `AppTest`
-sobre una copia de `scripts/seed_of001.py` con un proyecto vacío (`tests/unit/test_ui_hoja_primera_version.py`
+sobre una copia de `scripts/seed_of001.py` con un proyecto vacío (test_ui_hoja_primera_version.py (retirado con Streamlit)
 y el recorrido de CP‑08 con las filas de la ficha): el mensaje, el aviso, la ayuda del botón, los selectores y
 la trazabilidad se leyeron de la pantalla; el total de CP‑09 tras guardar (2577.59) se comprobó a nivel de la
 hoja (`tests/integration/test_primera_version.py`), **no** con el plano subido por la interfaz; el total de
@@ -1186,4 +1188,4 @@ del guion resultaron correctas; ninguna se corrigió.
 **Puesta al día de CP‑07.** Solo cambia la interfaz que describe (menú superior, barra de herramientas,
 y el aviso de que «Exportar Excel» de la barra no produce `presupuesto_<código>*.xlsx`); su consigna, sus
 paradas y su criterio **no se tocaron**. Se verificó que el recorrido de CP‑07 sigue existiendo con las
-pruebas `tests/unit/test_ui_recorridos.py` y `tests/unit/test_ui_app.py`; no se ejecutó con una persona.
+pruebas test_ui_recorridos.py (retirado con Streamlit) y test_ui_app.py (retirado con Streamlit); no se ejecutó con una persona.

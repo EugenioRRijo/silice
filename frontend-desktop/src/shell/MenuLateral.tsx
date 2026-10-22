@@ -1,44 +1,20 @@
-import { ChevronDown, ChevronUp, Launch } from "@carbon/icons-react";
+import { ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { SideNav, SideNavItems, SideNavLink } from "@carbon/react";
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router";
 import { PanelRecorrido } from "./PanelRecorrido";
 import { useRecorrido } from "./recorrido";
-import { areasVisibles, enlaceClasico, estaMigrada, herramientasVisibles, rutaDe } from "./rutas";
+import { areasVisibles, herramientasVisibles, rutaDe } from "./rutas";
 import type { AreaVisible, PaginaDef } from "./rutas";
 
 interface Props {
   paginas: readonly PaginaDef[];
   acciones: readonly string[];
   modoEntrega: boolean;
-  // Base de la interfaz Streamlit, si se conoce.
-  urlClasica?: string | null;
   abierto: boolean;
   alCerrar: () => void;
   // Quien tiene la sesion: con la letra grande la cabecera no da para su nombre y el menu en capa lo dice al pie.
   nombre?: string;
-}
-
-// Una linea por pagina (32 px): el texto «En la interfaz clásica» se dice una vez, visible, sobre el grupo, y en cada
-// elemento va oculto a la vista para quien lee con un lector de pantalla.
-function PaginaSinMigrar({ pagina, urlClasica }: { pagina: PaginaDef; urlClasica?: string | null }) {
-  const enlace = enlaceClasico(urlClasica, pagina);
-  return (
-    <li className="silice-menu__pendiente cds--side-nav__item">
-      {enlace ? (
-        <a href={enlace} target="_blank" rel="noopener noreferrer" className="silice-menu__clasica cds--type-body-compact-01">
-          <span>{pagina.titulo}</span>
-          <Launch size={16} aria-hidden="true" />
-          <span className="cds--visually-hidden">En la interfaz clásica</span>
-        </a>
-      ) : (
-        <span className="silice-menu__titulo cds--type-body-compact-01" aria-disabled="true">
-          {pagina.titulo}
-          <span className="cds--visually-hidden"> En la interfaz clásica</span>
-        </span>
-      )}
-    </li>
-  );
 }
 
 // tabIndex 0 a proposito: Carbon lo pone en -1 si el menu no esta "expandido", pero en pantalla ancha esta siempre a
@@ -53,16 +29,12 @@ function EnlaceDePagina({ pagina, alCerrar }: { pagina: PaginaDef; alCerrar: () 
 
 interface PropsArea {
   area: AreaVisible;
-  urlClasica?: string | null;
   alCerrar: () => void;
   // Solo «Más»: su lista se pliega con el boton del rotulo.
   plegable?: { abierto: boolean; alternar: () => void };
 }
 
-function Area({ area, urlClasica, alCerrar, plegable }: PropsArea) {
-  // Las ya migradas arriba, que son las que se pueden abrir aqui.
-  const migradas = area.paginas.filter(estaMigrada);
-  const pendientes = area.paginas.filter((p) => !estaMigrada(p));
+function Area({ area, alCerrar, plegable }: PropsArea) {
   const idRotulo = `menu-area-${area.id}`;
   const idLista = `menu-lista-${area.id}`;
   return (
@@ -87,16 +59,8 @@ function Area({ area, urlClasica, alCerrar, plegable }: PropsArea) {
         {area.descripcion}
       </p>
       <ul id={idLista} aria-labelledby={idRotulo} aria-describedby={`${idRotulo}-ayuda`} className="silice-menu__lista" hidden={plegable ? !plegable.abierto : undefined}>
-        {migradas.map((pagina) => (
+        {area.paginas.map((pagina) => (
           <EnlaceDePagina key={pagina.id} pagina={pagina} alCerrar={alCerrar} />
-        ))}
-        {pendientes.length > 0 && (
-          <li className="silice-menu__grupo cds--type-label-01" aria-hidden="true">
-            En la interfaz clásica
-          </li>
-        )}
-        {pendientes.map((pagina) => (
-          <PaginaSinMigrar key={pagina.id} pagina={pagina} urlClasica={urlClasica} />
         ))}
       </ul>
     </li>
@@ -107,9 +71,8 @@ function Area({ area, urlClasica, alCerrar, plegable }: PropsArea) {
 // 12 px antes de el (VB-15).
 // Menu por rol y modo entrega, en cinco areas con su descripcion (spec del Inicio, §2.2) y, arriba, las tres
 // herramientas principales (§2.3). Un solo menu lateral: la barra superior del spec nacio para Streamlit; aqui su
-// equivalente es este SideNav. Las paginas aun no migradas se ven deshabilitadas (que la persona sepa que existen) y,
-// si se conoce, enlazan a la interfaz clasica.
-export function MenuLateral({ paginas, acciones, modoEntrega, urlClasica, abierto, alCerrar, nombre }: Props) {
+// equivalente es este SideNav.
+export function MenuLateral({ paginas, acciones, modoEntrega, abierto, alCerrar, nombre }: Props) {
   const { pathname } = useLocation();
   const recorrido = useRecorrido();
   const areas = areasVisibles(acciones, modoEntrega, paginas);
@@ -163,7 +126,6 @@ export function MenuLateral({ paginas, acciones, modoEntrega, urlClasica, abiert
           <Area
             key={area.id}
             area={area}
-            urlClasica={urlClasica}
             alCerrar={alCerrar}
             plegable={area.id === "mas" ? { abierto: masAbierto, alternar: () => setMasAbierto((a) => !a) } : undefined}
           />

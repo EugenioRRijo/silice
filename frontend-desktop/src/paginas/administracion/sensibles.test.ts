@@ -1,13 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { avisoDeRevocacion, bytesDeBase64, contrasenasCoinciden, textoDeApi, textoDeRed } from "./sensibles";
+import * as sensibles from "./sensibles";
+import { avisoDeRevocacion, bytesDeBase64, contrasenasCoinciden, textoDeRed } from "./sensibles";
 import type { InstalacionEstado } from "./sensibles";
 
 const BASE: InstalacionEstado = {
   red_local: false,
   direccion: "",
   puerto: 8501,
-  api_activa: false,
-  puerto_api: 8000,
   avisos: [],
   respaldos: [],
   pendientes: [],
@@ -39,12 +38,11 @@ describe("lógica de las pestañas sensibles", () => {
     expect(() => bytesDeBase64("@@@")).toThrow();
   });
 
-  test("dice la red y la API como la página clásica", () => {
+  test("dice la red y ya no dice nada de la API: es el mismo proceso", () => {
     expect(textoDeRed(BASE)).toBe("Red local: apagada (solo http://127.0.0.1:8501)");
     expect(textoDeRed({ ...BASE, red_local: true, direccion: "192.168.1.20" })).toBe(
       "Red local: encendida en http://192.168.1.20:8501",
     );
-    expect(textoDeApi(BASE)).toBe("API: apagada (puerto 8000)");
-    expect(textoDeApi({ ...BASE, api_activa: true })).toBe("API: activa (puerto 8000)");
+    expect("textoDeApi" in sensibles).toBe(false);
   });
 });

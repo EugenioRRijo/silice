@@ -42,13 +42,19 @@ function PaginaA() {
   );
 }
 
+function PaginaB() {
+  return <h1>Otra pantalla</h1>;
+}
+
+const CARGAR_B = async () => ({ default: PaginaB });
+
 const PAGINAS: PaginaDef[] = [
   { id: "tablero", titulo: "Tablero del proyecto", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
-  { id: "catalogo", titulo: "Catálogo de partidas e insumos", seccion: "Trabajo", accion: "leer_proyecto" },
-  { id: "control", titulo: "Control de obra", seccion: "Trabajo", accion: "control_de_obra" },
-  { id: "acerca", titulo: "Acerca de Sílice", seccion: "Trabajo", accion: null },
-  { id: "revisar", titulo: "Revisar un paquete", seccion: "Revisión", accion: "revisar_paquete" },
-  { id: "escenarios", titulo: "Escenarios de sensibilidad", seccion: "Investigación", accion: "editar_hoja" },
+  { id: "catalogo", titulo: "Catálogo de partidas e insumos", seccion: "Trabajo", accion: "leer_proyecto", cargar: CARGAR_B },
+  { id: "control", titulo: "Control de obra", seccion: "Trabajo", accion: "control_de_obra", cargar: CARGAR_B },
+  { id: "acerca", titulo: "Acerca de Sílice", seccion: "Trabajo", accion: null, cargar: CARGAR_B },
+  { id: "revisar", titulo: "Revisar un paquete", seccion: "Revisión", accion: "revisar_paquete", cargar: CARGAR_B },
+  { id: "escenarios", titulo: "Escenarios de sensibilidad", seccion: "Investigación", accion: "editar_hoja", cargar: CARGAR_B },
 ];
 
 const CASOS = {
@@ -96,10 +102,10 @@ describe("Shell", () => {
     vi.unstubAllGlobals();
   });
 
-  function montar(sesion = sesionCon(), ruta = "/tablero", urlClasica?: string | null) {
+  function montar(sesion = sesionCon(), ruta = "/tablero") {
     return render(
       <MemoryRouter initialEntries={[ruta]}>
-        <Shell sesion={sesion} alSalir={alSalir} alExpirar={alExpirar} paginas={PAGINAS} urlClasica={urlClasica} />
+        <Shell sesion={sesion} alSalir={alSalir} alExpirar={alExpirar} paginas={PAGINAS} />
       </MemoryRouter>,
     );
   }
@@ -248,35 +254,15 @@ describe("Shell", () => {
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("las paginas sin migrar aparecen deshabilitadas con «En la interfaz clásica» y sin enlace", async () => {
+    test("toda pagina del menu es un enlace de esta interfaz: ni «clásica» ni enlaces fuera de ella", async () => {
       montar();
       const nav = menu();
-      expect(within(nav).queryByRole("link", { name: /Catálogo/ })).not.toBeInTheDocument();
-      const item = within(nav).getByText("Catálogo de partidas e insumos").closest("li") as HTMLElement;
-      expect(within(item).getByText("En la interfaz clásica")).toBeInTheDocument();
-      expect(within(item).queryByRole("link")).not.toBeInTheDocument();
-      expect(within(item).getByText("Catálogo de partidas e insumos")).toHaveAttribute("aria-disabled", "true");
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
-    });
-
-    test("dentro de cada seccion van primero las migradas y luego, bajo un rotulo, las que siguen en la interfaz clasica", async () => {
-      montar();
-      const enlaces = Array.from(menu().querySelectorAll("li")).map((li) => li.textContent ?? "");
-      const migrada = enlaces.findIndex((t) => t.includes("Tablero del proyecto"));
-      const rotulo = enlaces.findIndex((t) => t === "En la interfaz clásica");
-      const pendiente = enlaces.findIndex((t) => t.startsWith("Catálogo de partidas e insumos"));
-      expect(migrada).toBeGreaterThanOrEqual(0);
-      expect(rotulo).toBeGreaterThan(migrada);
-      expect(pendiente).toBeGreaterThan(rotulo);
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
-    });
-
-    test("si se conoce la direccion de Streamlit, la pagina sin migrar enlaza a ella", async () => {
-      montar(sesionCon(), "/tablero", "http://127.0.0.1:8501");
-      const item = within(menu()).getByText("Catálogo de partidas e insumos").closest("li") as HTMLElement;
-      const enlace = within(item).getByRole("link", { name: /Catálogo de partidas e insumos/ });
-      expect(enlace).toHaveAttribute("href", "http://127.0.0.1:8501/catalogo");
-      expect(enlace).toHaveAccessibleName(/En la interfaz clásica/);
+      expect(nav).not.toHaveTextContent(/clásica/i);
+      expect(nav.querySelector(".silice-menu__pendiente, .silice-menu__grupo")).toBeNull();
+      expect(nav.querySelector("a[target=_blank]")).toBeNull();
+      const enlace = within(nav).getByRole("link", { name: /Catálogo de partidas e insumos/ });
+      expect(enlace).toHaveAttribute("href", "/catalogo");
+      expect(within(nav).queryByText("Catálogo de partidas e insumos")?.closest("[aria-disabled]")).toBeNull();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
@@ -368,8 +354,9 @@ describe("Shell", () => {
           <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
         </MemoryRouter>,
       );
-      expect(await screen.findByText(/todavía está en la interfaz clásica/i)).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Otra pantalla" })).toBeInTheDocument();
       expect(cargar).not.toHaveBeenCalled();
+      expect(screen.queryByText(/clásica/i)).toBeNull();
     });
 
     test("mientras llega la pagina muestra un esqueleto anunciado", async () => {
@@ -390,16 +377,6 @@ describe("Shell", () => {
     test("una ruta desconocida vuelve a la raiz", async () => {
       montar(sesionCon(), "/no-existe");
       expect(await screen.findByRole("heading", { name: "Pantalla del tablero" })).toBeInTheDocument();
-    });
-
-    test("una pagina sin migrar explica donde esta y enlaza si conoce la direccion", async () => {
-      montar(sesionCon(), "/catalogo", "http://127.0.0.1:8501");
-      expect(await screen.findByText(/todavía está en la interfaz clásica/i)).toBeInTheDocument();
-      const principal = screen.getByRole("main");
-      expect(within(principal).getByRole("link", { name: /Abrir en la interfaz clásica/ })).toHaveAttribute(
-        "href",
-        "http://127.0.0.1:8501/catalogo",
-      );
     });
 
     test("una ruta que la cuenta no puede usar dice que no tiene permiso, aunque se escriba la direccion", async () => {
@@ -651,6 +628,7 @@ describe("Shell", () => {
         </MemoryRouter>,
       );
       expect(await screen.findByText("No hay pantallas disponibles en esta interfaz")).toBeInTheDocument();
+      expect(screen.queryByText(/clásica/i)).toBeNull();
     });
   });
   // VD-7: cuando la accion quita el control que tenia el foco, el foco cae a <body>. Una prueba de jsdom no ve la

@@ -40,7 +40,7 @@ METADATAS = {Destino.CASO: METADATAS_CASO, Destino.INSTALACION: METADATAS_INSTAL
 PAQUETES_CON_TABLAS = (
     "core",
     "adapters",
-    "ui",
+    "aplicacion",
     "seguridad",
     "paquete",
     "asistente",

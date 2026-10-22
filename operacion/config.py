@@ -28,7 +28,7 @@ NOMBRE_INSTALACION = "instalacion.db"
 CARPETA_CASOS = "casos"
 CARPETA_RESPALDOS = "respaldos"
 CASO_POR_DEFECTO = "silice.db"
-#: La base de trabajo de las versiones 0.1 a 0.5 (`scripts/seed.py`, `ui/caso.py`, `api`). No se
+#: La base de trabajo de las versiones 0.1 a 0.5 (`scripts/seed.py`, `api`). No se
 #: abre en su sitio: se adopta COPIÁNDOLA a la carpeta de casos con `python -m operacion adoptar`.
 BASE_ANTERIOR = DATOS_DESARROLLO / "apu.db"
 
@@ -76,8 +76,9 @@ def ruta_caso_por_defecto(entorno: Mapping[str, str] | None = None) -> Path:
 
 VARIABLE_USUARIO = "SILICE_USUARIO"
 NIVELES_DE_REGISTRO = ("DEBUG", "INFO", "WARNING", "ERROR")
-PUERTO_STREAMLIT = 8501
-PUERTO_API = 8000
+#: El puerto único: Uvicorn sirve la API y la interfaz (`/app/`). Sigue siendo el 8501 para que los
+#: `silice.toml` y las reglas del cortafuegos ya escritos sigan valiendo.
+PUERTO_POR_DEFECTO = 8501
 
 
 def es_producto(raiz: Path | None = None) -> bool:
@@ -117,13 +118,14 @@ def ruta_codigo_instalacion(entorno: Mapping[str, str] | None = None) -> Path:
 @dataclass(frozen=True, slots=True)
 class Ajustes:
     """El contenido de `silice.toml` ya validado (spec S5 §8.1). Todo lo dudoso cae al valor
-    por defecto, que tiene la red local y la API apagadas."""
+    por defecto, que tiene la red local apagada.
 
-    puerto: int = PUERTO_STREAMLIT
+    Un solo proceso y un solo puerto: `puerto` es el de Uvicorn, que sirve la API y la interfaz.
+    La tabla `[api]` de los archivos ya escritos se ignora (con un aviso)."""
+
+    puerto: int = PUERTO_POR_DEFECTO
     red_local: bool = False
     direccion: str = ""
-    api_activa: bool = False
-    puerto_api: int = PUERTO_API
     mostrar_investigacion: bool = False
     nivel_registro: str = "INFO"
     avisos: tuple[str, ...] = ()
@@ -175,21 +177,20 @@ def cargar_ajustes(ruta: Path) -> Ajustes:
         return Ajustes(
             avisos=(
                 f"No se pudo leer {ruta.name} ({type(error).__name__}); se usan los valores por "
-                "defecto: red local apagada y API apagada.",
+                "defecto: red local apagada.",
             )
         )
     avisos: list[str] = []
     servidor, api = _tabla(datos, "servidor"), _tabla(datos, "api")
     interfaz, reg = _tabla(datos, "interfaz"), _tabla(datos, "registro")
-    puerto = _puerto(servidor.get("puerto"), PUERTO_STREAMLIT, "la interfaz", avisos)
-    puerto_api = _puerto(api.get("puerto"), PUERTO_API, "la API", avisos)
-    if puerto_api == puerto:
-        # Si la interfaz ocupa justo el 8000, la API no puede «volver» a 8000 (auditoría final).
-        alterno = PUERTO_API if puerto != PUERTO_API else PUERTO_API + 1
+    puerto = _puerto(servidor.get("puerto"), PUERTO_POR_DEFECTO, "Sílice", avisos)
+    if "activa" in api or "puerto" in api:
+        # Compatibilidad: los archivos escritos antes del retiro de Streamlit traen [api]. Se leen
+        # sin error y no hacen nada: la API y la interfaz comparten el proceso y el puerto.
         avisos.append(
-            f"La interfaz y la API no pueden usar el mismo puerto; la API pasa al {alterno}."
+            "La tabla [api] de silice.toml ya no se usa: Sílice sirve la API y la interfaz en un "
+            f"solo puerto, el de [servidor] ({puerto})."
         )
-        puerto_api = alterno
     red_local = _booleano(servidor.get("red_local"), "red_local", avisos)
     direccion = servidor.get("direccion", "")
     if red_local and not (isinstance(direccion, str) and _direccion_valida(direccion)):
@@ -206,8 +207,6 @@ def cargar_ajustes(ruta: Path) -> Ajustes:
         puerto=puerto,
         red_local=red_local,
         direccion=direccion if red_local else "",
-        api_activa=_booleano(api.get("activa"), "api.activa", avisos),
-        puerto_api=puerto_api,
         mostrar_investigacion=_booleano(
             interfaz.get("mostrar_investigacion"), "mostrar_investigacion", avisos
         ),
@@ -223,9 +222,6 @@ def guardar_ajustes(ruta: Path, ajustes: Ajustes) -> None:
         f"puerto = {ajustes.puerto}\n"
         f"red_local = {str(ajustes.red_local).lower()}        # true: escucha en la IP de abajo\n"
         f'direccion = "{ajustes.direccion}"         # IP de la interfaz elegida; nunca 0.0.0.0\n'
-        "[api]\n"
-        f"activa = {str(ajustes.api_activa).lower()}\n"
-        f"puerto = {ajustes.puerto_api}\n"
         "[interfaz]\n"
         f"mostrar_investigacion = {str(ajustes.mostrar_investigacion).lower()}"
         "   # false = modo entrega (RS5-9)\n"

@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
+import * as rutas from "./rutas";
+import type { PaginaDef } from "./rutas";
 import {
   AREAS,
   HERRAMIENTAS_PRINCIPALES,
   PAGINAS,
   SECCIONES,
   areasVisibles,
-  enlaceClasico,
-  estaMigrada,
   herramientasVisibles,
   paginaPorId,
   rutaDe,
@@ -50,31 +50,11 @@ describe("registro de paginas", () => {
     expect(SECCIONES).toEqual(["Trabajo", "Revisión", "Investigación", "Administración"]);
   });
 
-  test("estan migradas las paginas ya construidas, con carga perezosa", () => {
-    expect(PAGINAS.filter(estaMigrada).map((p) => p.id)).toEqual([
-      "inicio",
-      "tablero",
-      "catalogo",
-      "componer",
-      "elaborar",
-      "hoja",
-      "actualizacion",
-      "historico",
-      "precios_empresa",
-      "indices",
-      "reajuste",
-      "control",
-      "acerca",
-      "entregar",
-      "existencias",
-      "revisar",
-      "libros",
-      "historial",
-      "escenarios",
-      "similares",
-      "simulador",
-      "administracion",
-    ]);
+  test("toda pagina del registro carga su pantalla; ya no existe el concepto de «sin migrar»", () => {
+    expect(PAGINAS.map((p) => p.id)).toEqual(COMO_STREAMLIT.map(([id]) => id));
+    expect(PAGINAS.every((p) => typeof p.cargar === "function")).toBe(true);
+    expect("estaMigrada" in rutas).toBe(false);
+    expect("enlaceClasico" in rutas).toBe(false);
     const libro = paginaPorId("libros");
     expect(libro?.titulo).toBe("Libro de la empresa");
     expect(typeof libro?.cargar).toBe("function");
@@ -136,28 +116,6 @@ describe("quien ve que", () => {
   test("el administrador sin acciones de trabajo solo ve su seccion y lo comun", () => {
     const secciones = seccionesVisibles(["administrar_cuentas"], false);
     expect(secciones.map((s) => s.seccion)).toEqual(["Trabajo", "Administración"]);
-  });
-});
-
-describe("enlaceClasico", () => {
-  test("une la direccion base con la ruta de Streamlit", () => {
-    expect(enlaceClasico("http://127.0.0.1:8501", paginaPorId("tablero")!)).toBe("http://127.0.0.1:8501/tablero");
-    expect(enlaceClasico("http://127.0.0.1:8501/", paginaPorId("tablero")!)).toBe("http://127.0.0.1:8501/tablero");
-  });
-
-  test("Inicio es la raiz de Streamlit", () => {
-    expect(enlaceClasico("http://127.0.0.1:8501", paginaPorId("inicio")!)).toBe("http://127.0.0.1:8501/");
-  });
-
-  test("sin direccion conocida no hay enlace", () => {
-    expect(enlaceClasico(null, paginaPorId("tablero")!)).toBeNull();
-    expect(enlaceClasico(undefined, paginaPorId("tablero")!)).toBeNull();
-    expect(enlaceClasico("", paginaPorId("tablero")!)).toBeNull();
-  });
-
-  test("solo acepta http y https (nada de javascript:)", () => {
-    expect(enlaceClasico("javascript:alert(1)", paginaPorId("tablero")!)).toBeNull();
-    expect(enlaceClasico("https://silice.local", paginaPorId("tablero")!)).toBe("https://silice.local/tablero");
   });
 });
 
@@ -224,7 +182,7 @@ describe("areas del menu", () => {
   });
 
   test("una pagina fuera de toda area cae al final de «Más» en vez de perderse", () => {
-    const extra = { id: "nueva", titulo: "Nueva", seccion: "Trabajo", accion: null } as const;
+    const extra: PaginaDef = { id: "nueva", titulo: "Nueva", seccion: "Trabajo", accion: null, cargar: PAGINAS[0].cargar };
     const mas = areasVisibles([], false, [...PAGINAS, extra]).find((a) => a.id === "mas")!;
     expect(mas.paginas.map((p) => p.id).at(-1)).toBe("nueva");
   });
@@ -245,12 +203,10 @@ describe("herramientas principales", () => {
     ]);
   });
 
-  test("solo salen las que la cuenta puede usar y que ya estan en esta interfaz", () => {
+  test("solo salen las que la cuenta puede usar", () => {
     expect(herramientasVisibles(["leer_proyecto"], false).map((h) => h.pagina)).toEqual(["libros"]);
     const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
     expect(herramientasVisibles(todas, false).map((h) => h.pagina)).toEqual(["libros", "componer", "existencias"]);
-    const sinMigrar = PAGINAS.map((p) => (p.id === "componer" ? { ...p, cargar: undefined } : p));
-    expect(herramientasVisibles(todas, false, sinMigrar).map((h) => h.pagina)).toEqual(["libros", "existencias"]);
   });
 });
 

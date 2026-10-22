@@ -19,15 +19,14 @@ dependencies = [
 ]
 
 # Extras por capa (uv sync --extra <x>; la CI instala todos con --all-extras: cero omitidas).
-#   ui, api, civil (IFC), planos (DXF y geometria del plano), informes (PDF)
+#   api, civil (IFC), planos (DXF y geometria del plano), informes (PDF)
 #   anomalias (scikit-learn) y similitud (sentence-transformers): los dos modulos de ml del
 #     instalador (S5 7.2); ml = los dos + xgboost, para la CI y la investigacion
 #   bcv  (S1: .xls del BCV; entra al instalador basico, RV-24)
 #   ifc  (S3: IDS con ifctester; fuera del instalador mientras S3-0 no resuelva la GPLv3 de bcf-client)
 #   ia   (S4: Claude, Ollama y el almacen de claves del sistema operativo)
 [project.optional-dependencies]
-ui = ["streamlit>=1.62", "altair>=6"]
-api = ["fastapi>=0.110", "uvicorn>=0.29"]
+api = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
 civil = ["ifcopenshell>=0.8"]
 ifc = ["ifctester>=0.8.5,<0.9"]
 planos = ["ezdxf>=1.3", "shapely>=2.1"]
@@ -48,8 +47,8 @@ dev = [
     "formulas>=1.3.4",
 ]
 
-# El repositorio es una aplicacion con varios paquetes de primer nivel (core, adapters, ml, ui, api),
-# no una libreria publicable: uv no intenta construirlo y pytest resuelve los imports desde la raiz.
+# El repositorio es una aplicacion con varios paquetes de primer nivel (core, adapters, ml, api, aplicacion,
+# asistente, seguridad, operacion y otros), no una libreria publicable: uv no intenta construirlo y pytest resuelve los imports desde la raiz.
 [tool.uv]
 package = false
 
@@ -71,8 +70,8 @@ select = ["E", "F", "W", "I", "B", "UP", "N"]
 
 [tool.ruff.lint.isort]
 known-first-party = [
-    "asistente", "core", "adapters", "ml", "ui", "api", "tests", "scripts", "operacion",
-    "migraciones", "instalador", "fusion",
+    "asistente", "core", "adapters", "ml", "api", "tests", "scripts", "operacion",
+    "migraciones", "instalador", "fusion", "aplicacion", "seguridad", "paquete", "produccion", "auditoria",
 ]
 
 [tool.pytest.ini_options]

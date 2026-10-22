@@ -18,7 +18,6 @@ RAIZ = Path(__file__).resolve().parents[2]
 PAQUETES_FUERA_DEL_NUCLEO = (
     "adapters",
     "ml",
-    "ui",
     "api",
     "scripts",
     "tests",
@@ -257,35 +256,21 @@ def test_produccion_respeta_su_regla(tmp_path):
     assert not {k: v for k, v in hallados.items() if v}
 
 
-#: Lo que cada modulo de ui/ no importa en tiempo de ejecucion (fuera de `if TYPE_CHECKING:`).
-#: Reglas de interfaz del plan de C3 (Global Constraints) e INV-043 para la pagina de componer.
-PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
-    "ui/paginas/componer.py": ("core.budget", "core.costing", "sqlalchemy.orm", "tempfile"),
-    # U-6 de la pista U de C5 (A-2 de GC5): el plan por defecto lo decide `ui.elaboracion.plan_de`.
-    "ui/paginas/elaborar.py": ("core.budget",),
-    # RA-2: "no escribe en la base" vigilado tambien por core.catalog, core.budget y sqlalchemy.
-    "ui/composicion.py": (
-        "streamlit",
-        "pandas",
-        "ui.caso",
-        "sqlalchemy",
-        "core.catalog",
-        "core.budget",
-    ),
-    "ui/elaboracion.py": ("streamlit", "pandas", "ui.caso"),
+#: Lo que cada modulo de la hoja y su composicion no importa en tiempo de ejecucion (fuera de
+#: `if TYPE_CHECKING:`). Eran las reglas de `ui/composicion.py` y `ui/hoja.py`; con el retiro de
+#: Streamlit (F8) pasan a sus destinos definitivos en `aplicacion/`.
+PROHIBIDOS_EN_LA_HOJA: dict[str, tuple[str, ...]] = {
+    # RA-2: no escribe presupuestos (`core.budget`) ni toca SQL a mano. `core.catalog` ya no se
+    # vigila: `aplicacion/composicion.py` guarda la composicion (`guardar_composicion`) con el.
+    "aplicacion/composicion.py": ("streamlit", "pandas", "sqlalchemy", "core.budget"),
     # SF 1.8: la hoja orquesta el borrador y la elaboracion sin pintar (FR-5: sin Streamlit).
-    "ui/hoja.py": ("streamlit", "pandas", "ui.caso"),
-    # ARQ-A2: el fragmento pinta; no abre la base ni lee el catalogo.
-    "ui/resultado.py": ("sqlalchemy.orm", "core.costing", "core.catalog"),
-    # RF-37: los recorridos se declaran en un modulo sin Streamlit ni base de datos (A6, R-3).
-    "ui/recorridos.py": ("streamlit", "sqlalchemy", "core.catalog", "ui.caso", "ui.app"),
-    # SF4: las operaciones sobre proyectos no pintan ni leen la sesion de Streamlit.
-    "ui/proyectos.py": ("streamlit", "pandas", "ui.caso", "ui.app", "ui.barra"),
-    # RF-100 (S3-6): la serie de precios de un insumo se arma sin pintar; la pintan las pantallas.
-    "ui/atipicos.py": ("streamlit", "pandas"),
-    # Tarea 4.9 (RT-S4-3): la logica de la pantalla de la arenera se prueba sin Streamlit.
-    "ui/existencias.py": ("streamlit", "pandas"),
+    "aplicacion/hoja.py": ("streamlit", "pandas"),
 }
+
+
+def test_la_carpeta_ui_no_existe():
+    """Retiro de Streamlit (F8): ya no hay interfaz clasica; nada vuelve a crear `ui/`."""
+    assert not (RAIZ / "ui").exists()
 
 
 def _imports_de_ejecucion(ruta: Path) -> set[str]:
@@ -312,93 +297,26 @@ def _imports_de_ejecucion(ruta: Path) -> set[str]:
     return importados
 
 
-@pytest.mark.parametrize("modulo", sorted(PROHIBIDOS_EN_UI))
-def test_ui_respeta_sus_importaciones_prohibidas(modulo):
-    """INV-043 (criterio S, spec de cierre §4) y reglas de interfaz de C3: cada modulo de ui/
-    importa solo lo que su responsabilidad pide."""
+@pytest.mark.parametrize("modulo", sorted(PROHIBIDOS_EN_LA_HOJA))
+def test_la_hoja_respeta_sus_importaciones_prohibidas(modulo):
+    """INV-043 (criterio S, spec de cierre §4) y reglas de C3: cada modulo importa solo lo que su
+    responsabilidad pide."""
     importados = _imports_de_ejecucion(RAIZ / modulo)
     prohibidos = {
         nombre
         for nombre in importados
-        for prefijo in PROHIBIDOS_EN_UI[modulo]
+        for prefijo in PROHIBIDOS_EN_LA_HOJA[modulo]
         if nombre == prefijo or nombre.startswith(prefijo + ".")
     }
     assert not prohibidos, f"{modulo} importa {sorted(prohibidos)}"
 
 
-#: Las paginas de ui/ (y su `__init__`): el marco `ui/app.py` las importa, ninguna lo importa a el.
-PAGINAS_DE_UI = sorted((RAIZ / "ui" / "paginas").glob("*.py"))
-
-
-def test_solo_ui_app_importa_la_barra_de_herramientas():
-    """SF4 4.2: `ui/barra.py` es parte del marco; lo importa SOLO `ui/app.py`."""
-    importadores = sorted(
-        archivo.relative_to(RAIZ).as_posix()
-        for archivo in (RAIZ / "ui").rglob("*.py")
-        if archivo.name != "barra.py"
-        and any(
-            nombre == "ui.barra" or nombre.startswith("ui.barra.")
-            for nombre in _imports_de_ejecucion(archivo)
-        )
-    )
-    assert importadores == ["ui/app.py"]
-
-
-def _importa_el_marco(ruta: Path) -> list[str]:
-    """Lo que `ruta` importa de `ui.app` en tiempo de ejecucion (`_imports_de_ejecucion`)."""
-    return sorted(
-        nombre
-        for nombre in _imports_de_ejecucion(ruta)
-        if nombre == "ui.app" or nombre.startswith("ui.app.")
-    )
-
-
-def test_la_guardia_del_marco_recorre_las_paginas():
-    """Sin parametrizar a proposito (O-1 de la revision de la pista C de C4): si `PAGINAS_DE_UI`
-    quedara vacia, pytest omitiria la prueba parametrizada en vez de fallar."""
-    assert RAIZ / "ui" / "paginas" / "escenarios.py" in PAGINAS_DE_UI
-
-
-@pytest.mark.parametrize("pagina", PAGINAS_DE_UI, ids=_ruta)
-def test_ninguna_pagina_importa_el_marco(pagina):
-    """M-2 de la revision de arquitectura de GC3: el grafo `ui.app -> ui.paginas.*` es aciclico
-    (`ui/app.py`) solo si ninguna pagina importa `ui.app`, ni con `import ui.app` ni con
-    `from ui import app` (`_imports_de_ejecucion` registra `ui.app` en los dos casos)."""
-    marco = _importa_el_marco(pagina)
-    assert not marco, f"{_ruta(pagina)} importa {marco}: el marco importa las paginas, no al reves"
-
-
-def test_la_guardia_del_marco_ve_cada_forma_de_importarlo(tmp_path):
-    """Las mordidas de la guardia, fijadas (O-2 de la revision de la pista C de C4), como
-    `test_la_guardia_ve_las_importaciones_relativas`: cada forma de importar `ui.app` en tiempo
-    de ejecucion se detecta, y un nombre que solo empieza igual o un import de tipado no.
-    Limite declarado, comun a `_imports_de_ejecucion`: `from .. import app` e
-    `importlib.import_module("ui.app")` no se ven (ninguna pagina usa esas formas)."""
-    fuentes = {
-        "import ui.app\n": True,
-        "import ui.app as marco\n": True,
-        "from ui import app\n": True,
-        "from ui.app import render\n": True,
-        "def perezosa():\n    from ui import app\n": True,
-        "from ui import app_nueva\n": False,
-        "import ui.apply\n": False,
-        "from ui import caso\n": False,
-        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from ui import app\n": False,
-    }
-    detectadas = {}
-    for numero, fuente in enumerate(fuentes):
-        archivo = tmp_path / f"pagina_{numero}.py"
-        archivo.write_text(fuente, encoding="utf-8")
-        detectadas[fuente] = bool(_importa_el_marco(archivo))
-    assert detectadas == fuentes
-
-
-def test_una_sola_lectura_de_celdas_de_tabla_en_ui():
-    """INV-046: las celdas de las tablas de `st.data_editor` se leen solo con
-    `ui.composicion.texto_de_celda`; ningun modulo de ui/ define su propia copia."""
+def test_una_sola_lectura_de_celdas_de_tabla():
+    """INV-046: las celdas de las tablas se leen solo con `aplicacion.composicion.texto_de_celda`;
+    ningun otro modulo de `aplicacion/` define su propia copia."""
     copias = sorted(
         archivo.relative_to(RAIZ).as_posix()
-        for archivo in (RAIZ / "ui").rglob("*.py")
+        for archivo in (RAIZ / "aplicacion").rglob("*.py")
         for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8")))
         if isinstance(nodo, ast.FunctionDef) and nodo.name in {"_celda_de_cantidad", "_texto"}
     )
@@ -575,7 +493,7 @@ def test_la_guardia_de_scripts_ve_cada_forma_de_importar_tests(tmp_path):
     assert detectadas == fuentes
 
 
-# --- SF1: el grafo de dependencias de adapters/espacio y de ui.hoja no tiene ciclos --------------
+# --- SF1: el grafo de dependencias de adapters/espacio y de aplicacion.hoja no tiene ciclos ----
 
 
 def _modulo_de(archivo: Path) -> str:
@@ -643,9 +561,9 @@ def test_ningun_submodulo_de_espacio_importa_el_paquete_raiz():
     assert not culpables, culpables
 
 
-def test_ui_hoja_depende_de_adapters_espacio_y_este_no_depende_de_ui():
-    """La arista es ui.hoja -> adapters.espacio y no existe la inversa: sin ciclo entre capas."""
-    de_hoja = {m for m in _imports(RAIZ / "ui" / "hoja.py") if m.startswith("adapters")}
+def test_la_hoja_depende_de_adapters_espacio_y_este_no_depende_de_aplicacion():
+    """La arista es aplicacion.hoja -> adapters.espacio y no existe la inversa: sin ciclo."""
+    de_hoja = {m for m in _imports(RAIZ / "aplicacion" / "hoja.py") if m.startswith("adapters")}
     assert de_hoja and all(
         m == "adapters.espacio" or m.startswith("adapters.espacio.") for m in de_hoja
     ), de_hoja
@@ -653,7 +571,7 @@ def test_ui_hoja_depende_de_adapters_espacio_y_este_no_depende_de_ui():
         f"{_ruta(a)}: {m}"
         for a in _archivos("adapters/espacio")
         for m in _imports(a)
-        if m == "ui" or m.startswith("ui.")
+        if m == "ui" or m.startswith(("ui.", "aplicacion"))
     ]
     assert not inversa, inversa
 
@@ -706,52 +624,11 @@ def test_importar_la_capa_de_aplicacion_no_carga_interfaz_api_guiones_ni_pruebas
     assert salida.stdout.strip() == "[]", salida.stdout
 
 
-def test_ui_proyectos_reexporta_la_capa_de_aplicacion():
-    """RM-1: `ui/proyectos.py` quedo como reexportacion explicita de `aplicacion/proyectos.py`:
-    los mismos objetos (no copias), y ninguna definicion propia."""
-    import aplicacion.proyectos as original
-    import ui.proyectos as reexportado
-
-    assert reexportado.__all__ and set(reexportado.__all__) <= set(vars(original))
-    for nombre in reexportado.__all__:
-        assert getattr(reexportado, nombre) is getattr(original, nombre), nombre
-    arbol = ast.parse((RAIZ / "ui" / "proyectos.py").read_text(encoding="utf-8"))
-    definiciones = [
-        nodo.name
-        for nodo in arbol.body
-        if isinstance(nodo, ast.FunctionDef | ast.ClassDef | ast.AsyncFunctionDef)
-    ]
-    assert definiciones == []
-
-
-def test_ui_composicion_reexporta_la_capa_de_aplicacion():
-    """RM-1 (ola 3, S2-B): `ui/composicion.py` quedo como reexportacion explicita de
-    `aplicacion/composicion.py`: los mismos objetos y ninguna definicion propia."""
-    import aplicacion.composicion as original
-    import ui.composicion as reexportado
-
-    assert reexportado.__all__ and set(reexportado.__all__) <= set(vars(original))
-    for nombre in reexportado.__all__:
-        assert getattr(reexportado, nombre) is getattr(original, nombre), nombre
-    arbol = ast.parse((RAIZ / "ui" / "composicion.py").read_text(encoding="utf-8"))
-    definiciones = [
-        nodo.name
-        for nodo in arbol.body
-        if isinstance(nodo, ast.FunctionDef | ast.ClassDef | ast.AsyncFunctionDef)
-    ]
-    assert definiciones == []
-
-
-def test_ui_elaboracion_toma_el_guardado_de_la_capa_de_aplicacion():
+def test_la_elaboracion_toma_el_guardado_de_la_composicion():
     """RB-3 (ola 3, S2-B): `guardar_composicion` y `Guardado` viven en `aplicacion/composicion.py`
-    (la ruta de guardado de la API no puede importar `ui/`); `ui/elaboracion.py` los reexporta y
-    ya no los define."""
-    import aplicacion.composicion as original
-    import ui.elaboracion as elaboracion
-
-    assert elaboracion.Guardado is original.Guardado
-    assert elaboracion.guardar_composicion is original.guardar_composicion
-    arbol = ast.parse((RAIZ / "ui" / "elaboracion.py").read_text(encoding="utf-8"))
+    (la ruta de guardado de la API no puede importar `ui/`); `aplicacion/elaboracion.py` no los
+    define. (F5: se retiro el puente `ui/elaboracion.py` que los reexportaba.)"""
+    arbol = ast.parse((RAIZ / "aplicacion" / "elaboracion.py").read_text(encoding="utf-8"))
     definidos = {
         nodo.name
         for nodo in arbol.body

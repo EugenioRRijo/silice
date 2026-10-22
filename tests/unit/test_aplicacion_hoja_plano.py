@@ -1,13 +1,12 @@
-"""El informe de la importacion en `aplicacion.hoja_plano` (T10, 3e-2): mismas filas que la clasica,
-en tiempo lineal.
+"""El informe de la importacion en `aplicacion.hoja_plano` (T10, 3e-2): filas en tiempo lineal.
 
-`filas_del_informe` de la clasica (`ui/hoja.py`, copiada tal cual en `aplicacion/hoja.py`) quita las
-referencias internas `(SF5-1, SF5-2)` con `re.sub(r"\\s*\\((?:SF\\d+-\\d+(?:,\\s*)?)+\\)", ...)`. El
-`\\s*` del principio hace la sustitucion CUADRATICA en una corrida larga de espacios: medido en este
-equipo, 100 000 espacios en un mensaje tardan decenas de segundos. El mensaje sale del plano subido
-(capas, textos), asi que un DXF hostil lo puede provocar dentro del tope de 20 MiB. La API usa una
-version lineal (`hoja_plano.filas_del_informe`) que da EXACTAMENTE las mismas filas: esta prueba lo
-fija contra `ui.hoja` VIVO y mide el caso hostil.
+`filas_del_informe` de `aplicacion/hoja.py` quita las referencias internas `(SF5-1, SF5-2)` con
+una expresion regular cuyo espacio inicial opcional hace la sustitucion CUADRATICA en una corrida
+larga de espacios: medido en este equipo, 100 000 espacios en un mensaje tardan decenas de
+segundos. El mensaje sale del plano subido (capas, textos), asi que un DXF hostil lo puede
+provocar dentro del tope de 20 MiB. La API usa una version lineal
+(`hoja_plano.filas_del_informe`): esta prueba fija con literales a mano el texto de cada caso y
+mide el caso hostil. Ya no compara contra `ui.hoja` (retiro de Streamlit, F6).
 
 Oraculos a mano: el texto esperado de cada caso esta escrito aqui (quitar la referencia y los
 espacios que la preceden, nada mas).
@@ -20,9 +19,8 @@ import time
 import pytest
 
 from adapters.espacio.planos import ItemInforme, TipoItem
-from aplicacion import hoja_plano
+from aplicacion import hoja, hoja_plano
 from tests.fixtures.planos_de_la_hoja import DXF_OF001
-from ui import hoja as clasica
 
 CLAVES = ("tipo", "referencia", "fila", "mensaje")
 
@@ -50,21 +48,23 @@ def _item(mensaje: str) -> ItemInforme:
     return ItemInforme(TipoItem.APROXIMADO, "esp_puntos", "H1", "P1", mensaje)
 
 
-def _como_la_clasica(items) -> list[dict[str, str]]:
-    return [dict(zip(CLAVES, f.values(), strict=True)) for f in clasica.filas_del_informe(items)]
-
-
 @pytest.mark.parametrize(("mensaje", "esperado"), CASOS)
-def test_cada_mensaje_queda_como_en_la_clasica(mensaje, esperado) -> None:
+def test_cada_mensaje_queda_sin_sus_referencias_internas(mensaje, esperado) -> None:
     (fila,) = hoja_plano.filas_del_informe([_item(mensaje)])
     assert fila == {"tipo": "Aproximado", "referencia": "H1", "fila": "P1", "mensaje": esperado}
-    assert [fila] == _como_la_clasica([_item(mensaje)])
 
 
-def test_el_informe_del_dxf_de_of001_es_el_de_la_clasica() -> None:
-    informe = clasica.leer_plano(DXF_OF001).informe
-    assert hoja_plano.filas_del_informe(informe) == _como_la_clasica(informe)
-    assert len(informe) > 30
+def test_el_informe_del_dxf_de_of001_cuenta_33_importados_y_6_pendientes() -> None:
+    """Memoria de OF-001: 33 elementos importados (6 ambientes + 6 fuentes + 21 puntos) y las 6
+    alturas pendientes de los ambientes; ninguna fila conserva una referencia interna."""
+    informe = hoja.leer_plano(DXF_OF001).informe
+    filas = hoja_plano.filas_del_informe(informe)
+    assert len(filas) == len(informe)
+    assert [f["tipo"] for f in filas].count("Importado") == 33
+    assert [f["tipo"] for f in filas].count("Pendiente") == 6
+    assert {f["tipo"] for f in filas} == {"Importado", "Aproximado", "Pendiente"}
+    assert all(set(f) == set(CLAVES) for f in filas)
+    assert not any("(SF" in f["mensaje"] for f in filas)
 
 
 @pytest.mark.parametrize(

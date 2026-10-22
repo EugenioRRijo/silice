@@ -34,14 +34,14 @@ NOMBRE_HISTORICO = "AREN.IA (hoy Sílice)"
 _NOMBRE_VIEJO = re.compile(r"AREN\.IA(?! \(hoy Sílice\))")
 _VARIABLE_VIEJA = re.compile(r"ARENIA_(?:CASO|MODO_ENTREGA)")
 PERMITEN_VARIABLE_VIEJA = frozenset(
-    {"ui/entorno.py", "docs/manual_usuario.md", "docs/manual_tecnico.md"}
+    {"aplicacion/entorno.py", "docs/manual_usuario.md", "docs/manual_tecnico.md"}
 )
 LICENCIA = "Copyright (c) 2026 Eugenio Rijo. Todos los derechos reservados.\n"
 
 
 def _archivos() -> list[str]:
-    de_ui = [ruta.relative_to(RAIZ).as_posix() for ruta in sorted((RAIZ / "ui").rglob("*.py"))]
-    return [*VIGENTES, *de_ui]
+    assert VIGENTES, "la guardia no recorre una lista vacia"
+    return [*VIGENTES]
 
 
 def _texto(ruta: str) -> str:
@@ -74,11 +74,9 @@ def test_los_manuales_anuncian_el_retiro_del_alias() -> None:
         assert "ya no se aceptan desde la 0.7.0" in texto, ruta
 
 
-def test_la_interfaz_la_api_y_el_readme_se_llaman_silice() -> None:
+def test_la_api_y_el_readme_se_llaman_silice() -> None:
     from api.main import app
-    from ui.app import TITULO_APP
 
-    assert TITULO_APP == "Sílice"
     assert app.title == "Sílice"
     assert _texto("README.md").startswith("# Sílice\n")
 

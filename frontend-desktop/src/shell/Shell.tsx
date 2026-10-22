@@ -15,7 +15,7 @@ import { LimiteDeError } from "./LimiteDeError";
 import { MenuLateral } from "./MenuLateral";
 import { olvidarImportaciones } from "../paginas/hoja/useImportacion";
 import { terminarRecorrido } from "./recorrido";
-import { PAGINAS, enlaceClasico, estaMigrada, rutaDe, visible } from "./rutas";
+import { PAGINAS, rutaDe, visible } from "./rutas";
 import type { PaginaDef } from "./rutas";
 import { SelectorCaso, SelectorProyecto } from "./Selectores";
 import type { AlmacenDelVisor } from "../visor/almacen";
@@ -30,8 +30,6 @@ interface Props {
   alExpirar: () => void;
   // Se puede cambiar solo en las pruebas.
   paginas?: readonly PaginaDef[];
-  // Base de la interfaz Streamlit (por ejemplo http://127.0.0.1:8501), si se conoce.
-  urlClasica?: string | null;
   // Lo abierto en «Libro de la empresa», guardado por encima de la puerta de sesion (UC-26).
   almacen?: AlmacenDelVisor;
   // Solo en pruebas: el visor de hojas (por omision, Univer).
@@ -56,34 +54,15 @@ function PaginaDeRuta({
   pagina,
   acciones,
   modoEntrega,
-  urlClasica,
 }: {
   pagina: PaginaDef;
   acciones: readonly string[];
   modoEntrega: boolean;
-  urlClasica?: string | null;
 }) {
   if (!visible(pagina, acciones, modoEntrega)) {
     return (
       <div className="silice-pagina-aviso">
         <EstadoVacio titulo="Sin permiso" descripcion={MENSAJE_SIN_PERMISO} />
-      </div>
-    );
-  }
-  if (!estaMigrada(pagina)) {
-    const enlace = enlaceClasico(urlClasica, pagina);
-    return (
-      <div className="silice-pagina-aviso">
-        <EstadoVacio
-          titulo={pagina.titulo}
-          descripcion="Esta pantalla todavía está en la interfaz clásica de Sílice."
-        >
-          {enlace && (
-            <a href={enlace} target="_blank" rel="noopener noreferrer" className="cds--link">
-              Abrir en la interfaz clásica
-            </a>
-          )}
-        </EstadoVacio>
       </div>
     );
   }
@@ -95,7 +74,7 @@ function esSinPermiso(e: unknown): boolean {
 }
 
 // Marco de la interfaz: cabecera con caso y proyecto, menu por rol y modo entrega, y la pagina de la ruta.
-export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp, paginas = PAGINAS, urlClasica, almacen, crearHoja }: Props) {
+export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp, paginas = PAGINAS, almacen, crearHoja }: Props) {
   const ubicacion = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [casos, setCasos] = useState<CasosRespuesta | null>(null);
@@ -253,7 +232,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     [sesion, proyecto, proyectos, casos, recargarProyectos, alExpirar, almacen, crearHoja],
   );
 
-  const primera = paginas.find((p) => estaMigrada(p) && visible(p, acciones, sesion.modo_entrega));
+  const primera = paginas.find((p) => visible(p, acciones, sesion.modo_entrega));
 
   const selectores = (
     <>
@@ -280,7 +259,6 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
         paginas={paginas}
         acciones={acciones}
         modoEntrega={sesion.modo_entrega}
-        urlClasica={urlClasica}
         abierto={menuAbierto}
         alCerrar={() => setMenuAbierto(false)}
         nombre={sesion.nombre}
@@ -315,7 +293,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                     <div className="silice-pagina-aviso">
                       <EstadoVacio
                         titulo="No hay pantallas disponibles en esta interfaz"
-                        descripcion="Las pantallas que su cuenta puede usar siguen en la interfaz clásica de Sílice."
+                        descripcion="Su cuenta no puede usar ninguna pantalla."
                       />
                     </div>
                   )
@@ -330,7 +308,6 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                       pagina={pagina}
                       acciones={acciones}
                       modoEntrega={sesion.modo_entrega}
-                      urlClasica={urlClasica}
                     />
                   }
                 />

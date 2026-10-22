@@ -68,7 +68,6 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
-from ui import hoja as clasica
 
 D = Decimal
 APP = app_con(ruta_hoja.router, ruta_plano.router)
@@ -460,8 +459,8 @@ def test_p5_sobre_un_borrador_en_blanco_da_el_total_y_las_cantidades_de_la_memor
     del_plano = sorted((d["partida"], D(d["cantidad"]["exacto"])) for d in vista["derivadas"])
     manual = sorted(
         (i.codigo_partida, i.cantidad)
-        for e in clasica.TODAS
-        for i in clasica.items_del_borrador(espacio_of001(), e)
+        for e in copia.TODAS
+        for i in copia.items_del_borrador(espacio_of001(), e)
     )
     assert [p for p, _ in del_plano] == [p for p, _ in manual]
     for (partida, a), (_, b) in zip(del_plano, manual, strict=True):

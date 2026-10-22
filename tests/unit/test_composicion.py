@@ -8,10 +8,7 @@ from decimal import Decimal
 
 import pytest
 
-from core.contracts import Dominio, ModalidadManoObra, OrigenTipo, ParametrosCosto
-from core.costing import calcular_apu
-from tests.fixtures.apu_linea_base import APU_TUBERIA, PRECIO_UNITARIO_ESPERADO
-from ui.composicion import (
+from aplicacion.composicion import (
     ComposicionInvalida,
     FilaReferencia,
     buscar_referencia,
@@ -25,6 +22,9 @@ from ui.composicion import (
     item_desde_cantidad,
     motivo_para_no_reemplazar,
 )
+from core.contracts import Dominio, ModalidadManoObra, OrigenTipo, ParametrosCosto
+from core.costing import calcular_apu
+from tests.fixtures.apu_linea_base import APU_TUBERIA, PRECIO_UNITARIO_ESPERADO
 
 MATERIALES = [{"descripcion": "Cemento", "unidad": "saco", "cantidad": "7.5", "precio": "8.00"}]
 EQUIPOS = [{"descripcion": "Vibrador", "cantidad": "1", "precio": "300.00", "depreciacion": "0.03"}]

@@ -14,14 +14,14 @@ from pathlib import Path
 from sqlalchemy import select
 
 from adapters.espacio import crear_esquema_espacio, guardar_espacio
+from aplicacion import hoja
+from aplicacion.entrega import con_anexos_de_cadena
 from core import models
 from core.budget import crear_proyecto, guardar_presupuesto, plan_secuencial
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts.dominio import Dominio
 from tests.fixtures import caso_of001, caso_ti001
 from tests.fixtures.espacio_of001 import espacio_of001
-from ui import hoja
-from ui.entrega import con_anexos_de_cadena
 
 NOMBRE_OF001 = "OF-001: oficina con baño, cocineta y puestos (caso de prueba)"
 NOMBRE_TI001 = "TI-001: telecomunicaciones (caso de prueba)"

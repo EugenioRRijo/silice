@@ -12,11 +12,11 @@ from pathlib import Path
 
 import pytest
 
+from aplicacion import hoja
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from scripts import seed_of001
 from scripts.seed import RUTA_POR_DEFECTO as RUTA_APU
 from tests.fixtures.hoja_en_base import NOMBRE_OF001
-from ui import hoja
 
 
 def test_la_ruta_por_defecto_es_la_base_propia_de_la_prueba_y_no_la_de_trabajo():

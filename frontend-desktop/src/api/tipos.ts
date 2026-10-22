@@ -14,8 +14,6 @@ export interface SesionRespuesta {
   debe_cambiar_clave: boolean;
   acciones: string[];
   modo_entrega: boolean;
-  // Propuesta aditiva: direccion de la interfaz Streamlit, para el enlace de las paginas aun no migradas.
-  url_clasica?: string | null;
 }
 
 export interface CasoRespuesta {

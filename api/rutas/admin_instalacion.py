@@ -55,8 +55,6 @@ class InstalacionRespuesta(BaseModel):
     red_local: bool
     direccion: str
     puerto: int
-    api_activa: bool
-    puerto_api: int
     avisos: list[str]
     respaldos: list[Juego]
     pendientes: list[Pendiente]
@@ -76,8 +74,6 @@ def ver(request: Request) -> InstalacionRespuesta:
         red_local=ajustes.red_local,
         direccion=ajustes.direccion,
         puerto=ajustes.puerto,
-        api_activa=ajustes.api_activa,
-        puerto_api=ajustes.puerto_api,
         avisos=list(ajustes.avisos),
         respaldos=[
             Juego(nombre=j.nombre, motivo=j.motivo, bases=j.bases)

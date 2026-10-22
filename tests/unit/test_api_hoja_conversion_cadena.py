@@ -29,7 +29,7 @@ from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
 from api.main import app
-from aplicacion import entrega
+from aplicacion import entrega, hoja
 from core import models
 from core.budget.cadena import sellar_historial
 from core.catalog import Catalogo, abrir_sesion, crear_motor
@@ -55,7 +55,6 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
-from ui import hoja as clasica
 
 D = Decimal
 CONVERTIR = "/v1/hoja/versiones/convertir"
@@ -104,9 +103,9 @@ def _casos(tmp_path_factory) -> dict[str, Path]:
         with abrir_sesion(motor) as sesion:
             entrega.con_anexos_de_cadena(sesion)
             catalogo = Catalogo(sesion)
-            abierta = clasica.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
+            abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
             parametros = replace(abierta.borrador.parametros, administracion=D("0.20"))
-            clasica.guardar_version(
+            hoja.guardar_version(
                 sesion,
                 catalogo,
                 abierta,
@@ -280,7 +279,7 @@ def test_el_lado_se_respeta_sin_serie_de_compra_no_se_convierte(_casos) -> None:
     assert _convertir(navegador, ficha, lado="venta").status_code == 200
 
 
-def test_los_datos_de_una_conversion_invalida_llevan_el_prefijo_de_la_clasica(_casos) -> None:
+def test_los_datos_de_una_conversion_invalida_llevan_el_prefijo_escrito(_casos) -> None:
     ruta = _poner(_casos["con_tasa"])
     navegador, ficha = _ana()
     antes = volcado(ruta)

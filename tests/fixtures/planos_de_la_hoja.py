@@ -1,6 +1,6 @@
 """Los planos de prueba de la importacion en la hoja (T10, 3e-2): OF-001 y sus variantes.
 
-Lo comparten `test_aplicacion_hoja_paridad_planos.py` y `test_api_hoja_plano.py` (INV-052: lo
+Lo comparten `test_aplicacion_hoja_planos.py` y `test_api_hoja_plano.py` (INV-052: lo
 compartido entre pruebas vive en `tests/fixtures/`). Todo es ficticio: el DXF de OF-001 se dibujo
 desde las tablas de la memoria de calculo (`tests/fixtures/planos/README.md`).
 

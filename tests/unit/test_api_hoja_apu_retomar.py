@@ -12,7 +12,7 @@ Contrato: `docs/bitacora/2026-10-19-hoja-3c3-contrato-rutas.md` (diseno ยง3.2, ย
   registra) y 3c-B19 ampliada a E6 a E11.
 
 Oraculos a mano (ninguno sale del codigo bajo prueba; los de AF-LLAVE estan deducidos en
-`test_aplicacion_hoja_paridad_apu.py`): total de OF-001 2 703,86; AF-LLAVE vale 3 unidades en la
+`test_aplicacion_hoja_apu.py`): total de OF-001 2 703,86; AF-LLAVE vale 3 unidades en la
 version; su CD es 10,433785 y su PU 13,198738025. Con 2 llaves por unidad: PU 23,000337525 (delta
 del total 3 x 9,8015995 = 29,4047985); con rendimiento 10: PU 16,59587655 (delta 3 x 3,397138525 =
 10,191415575); con el pegamento (34,5694) en lugar de la llave: PU 47,1274295250 (delta 3 x
