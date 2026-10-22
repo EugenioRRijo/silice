@@ -8,7 +8,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/inicio_rapido.mjs",
+    "dev:vite": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "lint": "eslint . && tsc -b --noEmit",
