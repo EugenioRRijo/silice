@@ -110,7 +110,13 @@ def test_el_codigo_de_la_primera_vez_no_caduca(tmp_path: Path, freno) -> None:
     with instalacion(tmp_path) as sesion:
         codigo = cuentas.emitir_codigo(sesion, tmp_path, AHORA)
         usuario = cuentas.reclamar_instalacion(
-            sesion, codigo, "uno", "U", CONTRASENA, AHORA + timedelta(days=90), tmp_path,
+            sesion,
+            codigo,
+            "uno",
+            "U",
+            CONTRASENA,
+            AHORA + timedelta(days=90),
+            tmp_path,
             freno=freno,
         )
         assert usuario.login == "uno"
@@ -172,7 +178,13 @@ def test_con_una_escritura_ajena_abierta_vence_con_base_ocupada(
                 "emitir": lambda: cuentas.emitir_codigo(sesion, tmp_path, AHORA),
                 "preparar": lambda: cuentas.preparar_primera_vez(sesion, tmp_path, AHORA),
                 "reclamar": lambda: cuentas.reclamar_instalacion(
-                    sesion, codigo, "uno", "U", CONTRASENA, AHORA, tmp_path,
+                    sesion,
+                    codigo,
+                    "uno",
+                    "U",
+                    CONTRASENA,
+                    AHORA,
+                    tmp_path,
                     freno=cuentas.FrenoGlobal(),
                 ),
                 "restablecimiento": lambda: cuentas.emitir_codigo_de_restablecimiento(
@@ -198,7 +210,14 @@ def test_ademas_arma_da_los_dos_roles_a_la_cuenta_nueva(tmp_path: Path, freno) -
     with instalacion(tmp_path) as sesion:
         codigo = cuentas.emitir_codigo(sesion, tmp_path, AHORA)
         usuario = cuentas.reclamar_instalacion(
-            sesion, codigo, "solo", "Solo", CONTRASENA, AHORA, tmp_path, freno=freno,
+            sesion,
+            codigo,
+            "solo",
+            "Solo",
+            CONTRASENA,
+            AHORA,
+            tmp_path,
+            freno=freno,
             ademas_arma=True,
         )
         assert usuario.roles == "arma,administrador"  # el orden de `Rol`
@@ -242,7 +261,14 @@ def test_un_restablecimiento_de_un_administrador_no_deja_evento_de_promocion(
         admin = administrador(sesion, tmp_path)
         rescate = cuentas.emitir_codigo_de_restablecimiento(sesion, tmp_path, AHORA)
         cuentas.reclamar_instalacion(
-            sesion, rescate, admin.login, "Admin", OTRA, AHORA, tmp_path, freno=freno,
+            sesion,
+            rescate,
+            admin.login,
+            "Admin",
+            OTRA,
+            AHORA,
+            tmp_path,
+            freno=freno,
             ademas_arma=True,
         )
         sesion.refresh(admin)

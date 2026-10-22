@@ -54,7 +54,13 @@ def _carrera(
         if con_fila_previa:  # un solo fallo anterior crea la fila del contador del código
             with pytest.raises(cuentas.ErrorDeAcceso):
                 cuentas.reclamar_instalacion(
-                    sesion, "A" * 20, "previo", "P", CONTRASENA, AHORA, carpeta,
+                    sesion,
+                    "A" * 20,
+                    "previo",
+                    "P",
+                    CONTRASENA,
+                    AHORA,
+                    carpeta,
                     freno=cuentas.FrenoGlobal(),
                 )
     barrera = threading.Barrier(2)
@@ -66,8 +72,15 @@ def _carrera(
             barrera.wait(timeout=10)
             try:
                 cuentas.reclamar_instalacion(
-                    sesion, codigo, login, "Nombre", CONTRASENA, AHORA, carpeta,
-                    freno=cuentas.FrenoGlobal(), dormir=lambda segundos: None,
+                    sesion,
+                    codigo,
+                    login,
+                    "Nombre",
+                    CONTRASENA,
+                    AHORA,
+                    carpeta,
+                    freno=cuentas.FrenoGlobal(),
+                    dormir=lambda segundos: None,
                 )
                 resultado = ("ok", login)
             except Exception as error:  # noqa: BLE001 - el tipo del error ES lo que se mide
@@ -88,9 +101,9 @@ def _cuentas_y_codigos(motor: Engine) -> tuple[int, int]:
     with abrir_sesion(motor) as sesion:
         usuarios = sesion.scalar(select(func.count()).select_from(Usuario))
         usados = sesion.scalar(
-            select(func.count()).select_from(CodigoInstalacion).where(
-                CodigoInstalacion.usado.is_not(None)
-            )
+            select(func.count())
+            .select_from(CodigoInstalacion)
+            .where(CodigoInstalacion.usado.is_not(None))
         )
     return usuarios, usados
 

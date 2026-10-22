@@ -128,3 +128,14 @@ def test_el_detector_de_importaciones_al_cargar_ve_lo_que_debe(tmp_path) -> None
         "scripts.simular_lista",
         "tests.fixtures",
     ]
+
+
+@pytest.mark.parametrize("modulo", ["primer_arranque", "lanzador"])
+def test_el_primer_arranque_y_el_lanzador_no_importan_fastapi_ni_la_aplicacion(modulo) -> None:
+    """BCP-1: `operacion/primer_arranque.py` vive en `operacion/` (y no en `aplicacion/`) porque el
+    lanzador lo llama antes de que exista la API; ninguno importa la API ni FastAPI."""
+    [archivo] = [a for a in archivos("operacion") if a.name == f"{modulo}.py"]
+    prohibidos = {"fastapi", "starlette", "api", "aplicacion", "ui", "streamlit"}
+    prohibidos |= {"scripts", "tests"}
+    assert sorted(m for m in importaciones(archivo) if _raiz(m) in prohibidos) == []
+

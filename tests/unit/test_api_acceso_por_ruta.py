@@ -260,8 +260,17 @@ DE_LA_SESION = {
     ("GET", "/v1/sesion"),
     ("DELETE", "/v1/sesion"),
     ("POST", "/v1/sesion/contrasena"),
+    # BCP-1: el primer administrador; públicas, las protege el propio equipo, el `Origin` y el
+    # código (las prueban `test_api_primer_arranque.py`: B2, B8, S1 a S8), no esta tabla
+    ("GET", "/v1/primer-arranque"),
+    ("POST", "/v1/primer-arranque/reclamo"),
 }
-SIN_NADA = {("GET", "/salud"), ("POST", "/v1/sesion")}  # las únicas abiertas
+SIN_NADA = {  # las únicas abiertas
+    ("GET", "/salud"),
+    ("POST", "/v1/sesion"),
+    ("GET", "/v1/primer-arranque"),
+    ("POST", "/v1/primer-arranque/reclamo"),
+}
 
 
 def _rutas(router) -> Iterator[APIRoute]:

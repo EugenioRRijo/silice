@@ -71,7 +71,15 @@ MENSAJE_IGUAL = "La contraseña no puede ser igual al usuario."
 MENSAJE_COMUN = "Esa contraseña es demasiado común; elija otra."
 MENSAJE_OCUPADA = "La base está ocupada; reintente en unos segundos."
 CLAVES_DEL_ESTADO = {"sin_cuentas", "archivo_presente", "modo", "politica"}
-CLAVES_DE_SESION = {"login", "nombre", "roles", "csrf", "debe_cambiar_clave", "acciones", "modo_entrega"}
+CLAVES_DE_SESION = {
+    "login",
+    "nombre",
+    "roles",
+    "csrf",
+    "debe_cambiar_clave",
+    "acciones",
+    "modo_entrega",
+}
 #: Matriz de `seguridad/permisos.py`, en el orden de `Accion`, de cada combinación de roles.
 ACCIONES_ADMINISTRADOR = [
     "operar_arenera",
@@ -99,7 +107,7 @@ ACCIONES_ADMINISTRADOR_Y_ARMA = [
 ]
 
 
-# --- infraestructura --------------------------------------------------------------------------
+# --- infraestructura ----------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="module")
@@ -175,7 +183,7 @@ def reloj(monkeypatch: pytest.MonkeyPatch) -> dict[str, datetime]:
     return marca
 
 
-# --- GET /v1/primer-arranque (B2) --------------------------------------------------------------
+# --- GET /v1/primer-arranque (B2) ---------------------------------------------------------------
 
 
 @pytest.mark.usefixtures("vacia")
@@ -234,7 +242,7 @@ def test_el_estado_desde_otra_ip_es_403_y_sin_cache() -> None:
     assert respuesta.headers["cache-control"] == "no-store"
 
 
-# --- POST: el reclamo feliz (B3, B4, B9) ---------------------------------------------------------
+# --- POST: el reclamo feliz (B3, B4, B9) --------------------------------------------------------
 
 
 @pytest.mark.usefixtures("vacia")
@@ -245,7 +253,11 @@ def test_el_reclamo_crea_el_primer_administrador_y_abre_la_sesion() -> None:
     assert respuesta.status_code == 201, respuesta.text
     datos = respuesta.json()
     assert set(datos) == CLAVES_DE_SESION
-    assert (datos["login"], datos["nombre"], datos["roles"]) == ("dueno", "Dueña Demo", ["administrador"])
+    assert (datos["login"], datos["nombre"], datos["roles"]) == (
+        "dueno",
+        "Dueña Demo",
+        ["administrador"],
+    )
     assert datos["debe_cambiar_clave"] is False and datos["modo_entrega"] is False
     assert datos["acciones"] == ACCIONES_ADMINISTRADOR
     ficha = ficha_de(respuesta)
@@ -314,14 +326,19 @@ def test_con_cuentas_el_codigo_de_la_primera_vez_no_sirve_y_responde_lo_mismo() 
         assert sesion.scalar(select(Usuario).where(Usuario.login == "nuevo")) is None
 
 
-# --- restablecimiento con cuentas (B9, B10) ------------------------------------------------------
+# --- restablecimiento con cuentas (B9, B10) -----------------------------------------------------
 
 
 @pytest.mark.usefixtures("con_cuentas")
 def test_el_restablecimiento_devuelve_el_acceso_y_promueve_sin_tocar_a_las_demas(reloj) -> None:
     rescate = emitir("restablecimiento", T0)
     viejo = navegador()
-    assert viejo.post("/v1/sesion", json={"login": "ana", "contrasena": "otra contrasena larga de prueba"}).status_code == 200
+    assert (
+        viejo.post(
+            "/v1/sesion", json={"login": "ana", "contrasena": "otra contrasena larga de prueba"}
+        ).status_code
+        == 200
+    )
     respuesta = reclamar(navegador(), cuerpo(rescate, "ana", contrasena="una clave nueva y larga"))
     assert respuesta.status_code == 201, respuesta.text
     assert respuesta.json()["roles"] == ["arma", "administrador"]  # ana era `arma`
@@ -335,11 +352,18 @@ def test_el_restablecimiento_devuelve_el_acceso_y_promueve_sin_tocar_a_las_demas
         assert [e.login_intentado for e in promovidas if "promovida" in e.detalle] == ["ana"]
     # la contraseña nueva entra por /v1/sesion
     nuevo = navegador()
-    assert nuevo.post("/v1/sesion", json={"login": "ana", "contrasena": "una clave nueva y larga"}).status_code == 200
+    assert (
+        nuevo.post(
+            "/v1/sesion", json={"login": "ana", "contrasena": "una clave nueva y larga"}
+        ).status_code
+        == 200
+    )
 
 
 @pytest.mark.usefixtures("con_cuentas")
-def test_una_cookie_anterior_del_navegador_se_cierra_y_se_olvida_su_caso(reloj, monkeypatch) -> None:
+def test_una_cookie_anterior_del_navegador_se_cierra_y_se_olvida_su_caso(
+    reloj, monkeypatch
+) -> None:
     olvidados: list[str] = []
     monkeypatch.setattr(ruta_pa.caso_web, "olvidar", olvidados.append)
     nav = navegador()
@@ -369,7 +393,9 @@ def test_una_cookie_anterior_del_navegador_se_cierra_y_se_olvida_su_caso(reloj, 
 def test_el_codigo_de_restablecimiento_caduca_a_las_24_horas(reloj, pasado, esperado) -> None:
     rescate = emitir("restablecimiento", T0)
     reloj["ahora"] = T0 + pasado
-    respuesta = reclamar(navegador(), cuerpo(rescate, "admin", contrasena="una clave nueva y larga"))
+    respuesta = reclamar(
+        navegador(), cuerpo(rescate, "admin", contrasena="una clave nueva y larga")
+    )
     assert respuesta.status_code == esperado, respuesta.text
     if esperado == 401:
         assert respuesta.json() == {"detalle": MENSAJE_CODIGO}
@@ -383,7 +409,7 @@ def test_emitir_otro_restablecimiento_invalida_el_anterior(reloj) -> None:
     assert reclamar(navegador(), cuerpo(segundo, "admin")).status_code == 201
 
 
-# --- forma antes que código (B5, B7, S4, S4b) ----------------------------------------------------
+# --- forma antes que código (B5, B7, S4, S4b) ---------------------------------------------------
 
 
 FORMAS_MALAS = [
@@ -441,7 +467,15 @@ def test_una_contrasena_de_129_caracteres_es_422_fijo() -> None:
         {"codigo": "Z" * 65},
         {"nombre": "n" * 121},
     ],
-    ids=["500-caracteres", "numero", "usuario-nulo", "nombre-lista", "arma-texto", "codigo-65", "nombre-121"],
+    ids=[
+        "500-caracteres",
+        "numero",
+        "usuario-nulo",
+        "nombre-lista",
+        "arma-texto",
+        "codigo-65",
+        "nombre-121",
+    ],
 )
 def test_un_cuerpo_invalido_es_422_fijo_y_no_repite_lo_enviado(malo: dict) -> None:
     codigo = emitir()
@@ -461,7 +495,7 @@ def test_un_campo_obligatorio_que_falta_es_422_fijo() -> None:
     assert respuesta.status_code == 422 and respuesta.json() == {"detalle": MENSAJE_CUERPO}
 
 
-# --- Origin y equipo propio (B8, S8) ---------------------------------------------------------------
+# --- Origin y equipo propio (B8, S8) ------------------------------------------------------------
 
 
 @pytest.mark.usefixtures("vacia")
@@ -484,7 +518,9 @@ def test_un_origin_ajeno_es_403(origen: str) -> None:
 @pytest.mark.usefixtures("vacia")
 def test_un_host_no_permitido_no_llega_a_la_ruta() -> None:
     nav = navegador(base_url="http://evil.example")
-    respuesta = nav.post(URL_RECLAMO, json=cuerpo(emitir()), headers={"Origin": "http://evil.example"})
+    respuesta = nav.post(
+        URL_RECLAMO, json=cuerpo(emitir()), headers={"Origin": "http://evil.example"}
+    )
     assert respuesta.status_code in (400, 403)
     assert contar(Usuario) == 0
 
@@ -514,7 +550,7 @@ def test_la_comprobacion_de_origen_y_equipo_antecede_al_422(ip: str) -> None:
             assert respuesta.status_code == 403 and respuesta.json() == {"detalle": MENSAJE_REMOTO}
 
 
-# --- bloqueo, freno, base ocupada (S1, S2) ----------------------------------------------------------
+# --- bloqueo, freno, base ocupada (S1, S2) ------------------------------------------------------
 
 
 @pytest.mark.usefixtures("vacia")
@@ -555,7 +591,10 @@ def test_con_veinte_fallos_de_todo_el_equipo_el_reclamo_da_429_sin_calcular_hash
     cuentas.FRENO.reiniciar()
     nav = navegador()
     for i in range(20):  # 20 usuarios inexistentes en el acceso normal
-        assert nav.post("/v1/sesion", json={"login": f"nadie{i}", "contrasena": "x"}).status_code == 401
+        assert (
+            nav.post("/v1/sesion", json={"login": f"nadie{i}", "contrasena": "x"}).status_code
+            == 401
+        )
     calculos: list[str] = []
     monkeypatch.setattr(cuentas, "_huella", lambda contrasena: calculos.append("hash") or "x")
     codigo = emitir()
@@ -583,7 +622,7 @@ def test_una_base_ocupada_es_503(monkeypatch) -> None:
     assert reclamar(navegador(), cuerpo(codigo)).status_code == 201
 
 
-# --- carrera por la API (S3) -----------------------------------------------------------------------
+# --- carrera por la API (S3) --------------------------------------------------------------------
 
 
 @pytest.mark.usefixtures("vacia")
@@ -612,7 +651,7 @@ def test_dos_reclamos_simultaneos_por_la_api_dejan_una_sola_cuenta(con_fila_prev
     assert contar(Usuario) == 1
 
 
-# --- secretos (S7) ---------------------------------------------------------------------------------
+# --- secretos (S7) ------------------------------------------------------------------------------
 
 
 @pytest.mark.usefixtures("vacia")
