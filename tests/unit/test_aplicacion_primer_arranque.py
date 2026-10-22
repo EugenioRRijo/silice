@@ -156,6 +156,19 @@ def test_la_orden_restablecer_administrador_imprime_el_codigo_y_el_plazo(datos, 
     cerrar_motores()
 
 
+def test_con_esperar_la_orden_pide_una_tecla_antes_de_cerrar(datos, monkeypatch) -> None:
+    with sesion_de_instalacion() as sesion:
+        administrador(sesion, datos)
+    pedidos: list[str] = []
+    monkeypatch.setattr("builtins.input", lambda aviso="": pedidos.append(aviso) or "")
+    assert cli.main(["restablecer-administrador", "--esperar"]) == 0
+    assert len(pedidos) == 1 and "Enter" in pedidos[0]
+    pedidos.clear()
+    assert cli.main(["restablecer-administrador"]) == 0
+    assert pedidos == []  # desde una consola abierta no se espera
+    cerrar_motores()
+
+
 def test_la_orden_no_deja_el_codigo_en_un_evento(datos, capsys) -> None:
     with sesion_de_instalacion() as sesion:
         administrador(sesion, datos)
