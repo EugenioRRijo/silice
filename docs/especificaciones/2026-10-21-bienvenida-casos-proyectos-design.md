@@ -1,6 +1,6 @@
 # Bienvenida, carpetas de trabajo, proyectos, cómo se guarda y ayuda en lenguaje llano (React): diseño
 
-**Fecha:** 2026-10-21 · **Rama:** `inc/ruta-s2-mig-adm-empresa` (árbol `.worktrees/s2madm`) · **Estado:** PROPUESTO. Lo juzga el árbitro
+**Fecha:** 2026-10-21 (ronda 2) · **Rama:** `inc/ruta-s2-mig-adm-empresa` (árbol `.worktrees/s2madm`) · **Estado:** PROPUESTO, corregido tras el veredicto DEVUELTO de la ronda 1 (5 MAYOR y 9 MENOR; §16 dice qué cambió). Lo juzga el árbitro
 (`docs/planes/MANUAL_ARBITRO.md`, criterios B2, B3, B4, C1, C2, D1 y D2 aplicados al diseño). Sin su aprobación no hay código. Las
 decisiones que no son de ingeniería están en §13 (D-1 a D-9), cada una con su recomendación.
 
@@ -47,7 +47,8 @@ no código vivo). Los demás son rutas del árbol `s2madm` en la base `4ad4c576`
    obligatorio, 422 sin eco, mensajes fijos, el código no se registra ni se devuelve). Al canjear abre la sesión, como `POST /v1/sesion`.
 3. **Hay un defecto real en `reclamar_instalacion`** que la clásica ocultaba: no toma el bloqueo de escritura antes de leer si el código sigue
    vivo (`_tomar_escritura` existe en el mismo archivo y lo usan `cambiar_roles` y `desactivar`). Dos reclamos simultáneos con logins
-   distintos pueden crear **dos administradores con un solo código** (deducción por lectura, §1 H3). Se corrige con una línea y una prueba roja.
+   distintos crean **dos administradores con un solo código** si hay una fila previa en `intento_acceso` (basta un fallo anterior; el árbitro lo reprodujo 3/3 con hilos), y
+   sin fila previa el perdedor recibe un `IntegrityError` (500). Con `_tomar_escritura` antes de `_intento` el árbitro obtuvo un solo éxito 12/12 (H3, §3.3).
 4. **Pantalla de bienvenida de primera vez** (en lugar de «Entrar» cuando no hay cuentas): qué es Sílice en tres líneas, dónde está el
    código (archivo y consola, escrito en llano), formulario con la política de contraseñas explicada, y qué pasa después. El mismo
    formulario sirve, con otro texto, al **código de restablecimiento** cuando ya hay cuentas (enlace «Perdí el acceso de administrador» en «Entrar»).
@@ -82,8 +83,9 @@ no código vivo). Los demás son rutas del árbol `s2madm` en la base `4ad4c576`
 - **Retiro de Streamlit** (rama `inc/ruta-s2-mig-retiro-streamlit`, otra sesión): su `operacion/lanzador.py` ya lanza solo `uvicorn` y su
   `ui/` está borrada. **Este diseño no puede construirse sobre `4ad4c576` tal cual:** `estado_caso`/`resumen_caso` vivían en `ui/caso.py`
   y el retiro **no los movió** (`git grep estado_caso` en esa rama solo encuentra un comentario), así que BCP-2 los reconstruye en
-  `aplicacion/casos.py`. **BCP-1 y BCP-2 no empiezan hasta que la rama de trabajo contenga el retiro** (comprobable con
-  `git merge-base --is-ancestor a86532d2 HEAD`). Los frentes (BCP-4 a BCP-7) sí pueden empezar contra el contrato de §9 con `fetch` simulado.
+  `aplicacion/casos.py`. **Ninguna BCP empieza hasta que la rama de trabajo contenga el retiro** (comprobable con `git merge-base --is-ancestor a86532d2 HEAD`): el retiro
+  (diff `4ad4c576..a86532d2`) tocó `App.tsx`, `Shell.tsx`, `MenuLateral.tsx`, `rutas.ts`, `inicio/index.tsx`, `api/tipos.ts`, `shell.scss` y `api/rutas/sesion.py`. RULING: el orquestador lleva
+  `inc/ruta-s2-mig-adm-empresa` a `c7842510` por fast-forward antes de cualquier BCP.
 - **Autocompletado de campos** (otro agente: Componer, Hoja, Catálogo; memoria `feedback-campos-con-autocompletado-2026-10-21`): este diseño
   **no toca** `src/paginas/componer`, `hoja` ni `catalogo`, con dos excepciones mínimas y ordenadas al final: el texto del estado vacío
   de `hoja/index.tsx` (BCP-6) y la línea `<AyudaDePagina />` bajo el `h1` de cada página (BCP-8, la última sub-rebanada, cuando ese agente
@@ -100,11 +102,11 @@ no código vivo). Los demás son rutas del árbol `s2madm` en la base `4ad4c576`
 |---|---|---|---|
 | H1 | **Nadie emite el código de instalación sin Streamlit.** `preparar_primera_vez` la llamaba solo la pantalla de acceso (`A:108`); el lanzador solo imprime el código si `codigo_instalacion.txt` ya existe, y esa comprobación corre **antes** de que alguien lo haya emitido | `cuentas.py:357-365`; `lanzador.py:286-289` (base) y `255-259` (rama del retiro); `git grep preparar_primera_vez` | el código se emite en el arranque (lanzador) y en el arranque de la API (gancho, §14), nunca al abrir una pantalla |
 | H2 | `reclamar_instalacion` no tiene ruta ni pantalla en React; `/v1/sesion` solo autentica | `grep reclamar_instalacion` solo da `A:144` y pruebas | ruta y pantalla nuevas (§3) |
-| H3 | **Carrera en el reclamo.** `reclamar_instalacion` lee `pendiente.usado` y `hay_usuarios` sin `_tomar_escritura`; pysqlite no abre transacción en un `SELECT`, y `pendiente.usado = ahora` se escribe sin condición. Dos hilos con logins distintos pasan ambos la comprobación y ambos crean un administrador. Con el mismo login, el segundo da `IntegrityError` (500) | `cuentas.py:393-427`; el remedio ya existe en `:145-158` y lo usan `cambiar_roles` (`:478`) y `desactivar` (`:509`) | deducción por lectura, **no probada**; BCP-1 abre con una prueba roja de carrera (S3) y añade `_tomar_escritura(session)` antes de leer |
+| H3 | **Carrera en el reclamo.** `reclamar_instalacion` lee `pendiente.usado` y `hay_usuarios` sin `_tomar_escritura`; pysqlite no abre transacción en un `SELECT`, y `pendiente.usado = ahora` se escribe sin condición. Dos hilos con logins distintos pasan ambos la comprobación y ambos crean un administrador. Reproducida por el árbitro con hilos: **con una fila previa en `intento_acceso` (un fallo anterior), dos administradores 3/3; sin fila previa, `IntegrityError` 500 en el perdedor; con `_tomar_escritura` antes de `_intento`, un solo éxito 12/12** | `cuentas.py:368-428`; el remedio ya existe en `:145-158` y lo usan `cambiar_roles` (`:478`) y `desactivar` (`:509`) | **confirmada.** RULING del orquestador: la corrección va en `seguridad/cuentas.py` (no en la ruta), como **cambio de seguridad con expediente** (rojo primero, aprobación del árbitro, aval del tutor declarado por Eugenio sin acta), en BCP-1: `_tomar_escritura(session)` tras la espera del freno y antes de `_intento`, y como defensa extra `UPDATE codigo_instalacion SET usado=… WHERE huella=? AND usado IS NULL` exigiendo `rowcount == 1` |
 | H4 | El orden de comprobaciones filtra el código: con el código válido y una contraseña débil, la ruta devuelve el mensaje de política; con un código inválido, `MENSAJE_CODIGO`. Un atacante distingue «código bueno» de «código malo» sin gastar el intento | `cuentas.py:393-406` (código primero, `validar_login`/`validar_contrasena` después) | la ruta valida la **forma** (usuario y contraseña) **antes** de tocar el código; así los dos casos devuelven el mismo mensaje de forma |
 | H5 | El contador de intentos del código es **global** (`CLAVE_INTENTOS_CODIGO`): cinco fallos bloquean quince minutos el reclamo para todos, también para la persona legítima | `cuentas.py:55, 389-403` | aceptado (solo se canjea desde el propio equipo, §3.7); el mensaje dice «espere 15 minutos» y la prueba S1 fija el desbloqueo por reloj |
 | H6 | El **restablecimiento** no distingue cuentas: si el login existe, `reclamar_instalacion` lo **reactiva y le agrega el rol administrador** aunque fuera `arma` o `revisa`, y cierra sus sesiones; si no existe, crea un administrador nuevo | `cuentas.py:416-420` | comportamiento heredado de S3 (quien corre el script tiene el equipo); se documenta y se pide a Eugenio decidir (D-6) |
-| H7 | `scripts/restablecer_administrador.py` no está en el instalador ni en los manuales de usuario: en el producto instalado una persona no tiene cómo ejecutarlo | `grep` en `docs/manual_*.md` e `instalador/silice.iss` sin resultados; el instalador solo ofrece accesos «Sílice», «Detener Sílice» y «red local» | orden `python -m operacion restablecer-administrador` y acceso directo (D-7); la lógica pasa a `aplicacion/primer_arranque.py` (el script queda como envoltura) |
+| H7 | `scripts/restablecer_administrador.py` no está en el instalador ni en los manuales de usuario: en el producto instalado una persona no tiene cómo ejecutarlo | `grep` en `docs/manual_*.md` e `instalador/silice.iss` sin resultados; el instalador solo ofrece accesos «Sílice», «Detener Sílice» y «red local» | orden `python -m operacion restablecer-administrador` y acceso directo (D-7); la lógica pasa a `operacion/primer_arranque.py` (el script queda como envoltura) |
 | H8 | Crear y subir casos existen en `operacion/base_datos.py` (`crear_caso`, `subir_caso`) pero **ninguna ruta los expone**; la lista de la cabecera es de solo elección | `base_datos.py:470-504`; `casos.py` solo tiene `GET` y `POST /actual` | rutas nuevas (§4) |
 | H9 | `subir_caso` **escribe el archivo en `casos/` antes de validarlo** (`write_bytes` y luego `preparar_base`; si falla, `unlink`): en esa ventana otra sesión ve en su lista un archivo a medias, y un corte deja basura. Solo comprueba 16 bytes de firma | `base_datos.py:496-504` | la subida pasa por una carpeta de cuarentena fuera de `casos/` y se publica con renombrado atómico (§4.4) |
 | H10 | `crear_caso` y `subir_caso` hacen «comprobar que no existe y crear» sin cerrojo; dos peticiones simultáneas con el mismo nombre pueden ambas pasar | `base_datos.py:475-479, 492-499` | cerrojo de proceso por la creación de casos (§4.2); la API corre en un solo proceso (`orden_uvicorn` sin `--workers`, vigilado por 3b-B26 de la Hoja) |
@@ -116,7 +118,7 @@ no código vivo). Los demás son rutas del árbol `s2madm` en la base `4ad4c576`
 | H16 | La cabecera mide 48 px y ya aloja los dos selectores, el tamaño de letra y «Salir»; no hay sitio para una línea de ayuda **bajo** los desplegables sin restar alto permanente a una pantalla de 768 px | `Cabecera.tsx`; `DESIGN.md` «Marco» | un `Toggletip` «¿Qué es esto?» junto a cada selector y una franja descriptiva solo mientras «Primeros pasos» esté pendiente (§7.2) |
 | H17 | El Inicio por áreas ya existe (`paginas/inicio/index.tsx`: auditar un Excel, arenera, últimas auditorías) y **no menciona** carpeta de trabajo ni proyecto, salvo «Caso abierto: …» en una línea | `inicio/index.tsx` | «Primeros pasos» es un bloque **nuevo encima**; no se reordena ni se retira nada del Inicio |
 | H18 | «Espacio» ya significa otra cosa: `Espacio y metrajes`, `esp_*`, «describa el espacio» (los ambientes del edificio) | `hoja-react-design.md` §2.5.1, §7.2 | descarta «Espacio de trabajo» como nombre (D-1) |
-| H19 | Los respaldos manuales de la instalación existen (`POST /v1/admin/instalacion/respaldos` y descarga `.zip`) pero son del administrador; quien arma no tiene una forma de copiar su carpeta | `admin_instalacion.py:94` | el texto de «dónde queda y cómo se respalda» manda a Administración › Instalación (§6.5); una descarga por carpeta queda fuera (§11.1) |
+| H19 | Los respaldos manuales de la instalación existen (`POST /v1/admin/instalacion/respaldos` y descarga `.zip`) pero son del administrador; quien arma no tiene una forma de copiar su carpeta | `admin_instalacion.py:94` | el texto de «dónde queda y cómo se respalda» manda a Administración › Instalación (§6.4); una descarga por carpeta queda fuera (§11.1) |
 | H20 | `Shell.tsx` pide `GET /v1/casos` solo al montar: una carpeta creada o subida por otra persona no aparece hasta recargar | `Shell.tsx:182` | el selector vuelve a pedir la lista al abrirse y tras cada creación (§4.6) |
 
 ---
@@ -148,10 +150,11 @@ no código vivo). Los demás son rutas del árbol `s2madm` en la base `4ad4c576`
 
 ### 3.1 Emitir el código: dos lugares, una función
 
-`aplicacion/primer_arranque.py` (RM-1, sin FastAPI):
+`operacion/primer_arranque.py` (RM-1, sin FastAPI):
 
-- `asegurar_codigo(sesion, carpeta, ahora) -> bool`: envoltura de `cuentas.preparar_primera_vez`; idempotente (no hace nada si hay cuentas o ya
-  hay un código vigente). Devuelve si emitió uno.
+- `asegurar_codigo(sesion, carpeta, ahora) -> bool`: sin cuentas, si **no hay archivo** `codigo_instalacion.txt` invalida los pendientes y emite uno nuevo (cubre el hueco de
+  `preparar_primera_vez`, que con un código vigente en la base devuelve `None` y nadie reescribe el archivo borrado); si hay archivo, o hay cuentas, no hace nada. Idempotente.
+  Devuelve si emitió uno. Toma `_tomar_escritura` antes de leer.
 - `emitir_restablecimiento(sesion, carpeta, ahora) -> tuple[str, Path]`: lo que hoy hace `scripts/restablecer_administrador.restablecer`
   (se mueve aquí; el script y la orden `python -m operacion restablecer-administrador` lo llaman).
 - `estado(sesion, carpeta) -> EstadoDeInstalacion`: `sin_cuentas = not cuentas.hay_usuarios(sesion)`, `archivo_presente = (carpeta /
@@ -209,7 +212,11 @@ Orden fijo de comprobaciones (cada una antes de la siguiente; ninguna escribe ha
 Cambios en `seguridad/cuentas.py` (BCP-1, con prueba roja primero):
 
 - `reclamar_instalacion` llama a `_tomar_escritura(session)` **después de la espera del freno y antes de `_intento`**: el segundo reclamo espera
-  `busy_timeout` y encuentra `usado` fijado (H3).
+  `busy_timeout` y encuentra `usado` fijado (H3). Si `_tomar_escritura` vence, lanza `ValueError(MENSAJE_BASE_OCUPADA)`: la ruta lo mapea a **503** con ese texto.
+  Defensa extra: el uso del código es un `UPDATE … WHERE huella = ? AND usado IS NULL` con `rowcount == 1`; si no, `ErrorDeAcceso(MENSAJE_CODIGO)`.
+- `emitir_codigo` **invalida los códigos pendientes anteriores** (`usado = ahora`, motivo «reemplazado») antes de insertar el nuevo; `preparar_primera_vez` y
+  `emitir_codigo_de_restablecimiento` también toman `_tomar_escritura`. Un código de **restablecimiento caduca a las 24 h** (RULING, reloj `ahora` inyectado): pasado ese plazo
+  `reclamar_instalacion` lo trata como inválido (mismo 401). Cuando el reclamo cambia el rol de una cuenta existente se registra el evento de acceso «promovida a administrador».
 - Parámetro `ademas_arma: bool = False`: con `True`, los roles de la cuenta nueva son `administrador,arma` (D-2). En un restablecimiento sobre una
   cuenta existente no cambia nada más que lo que ya hace.
 
@@ -219,10 +226,11 @@ busca en todo eso con la cadena literal del código de la prueba.
 
 ### 3.4 Qué pasa si ya hay cuentas (restablecimiento)
 
-- El enlace «Perdí el acceso de administrador» (siempre visible en «Entrar») abre la **misma** pantalla de código con otro texto: «Un
+- **Con cuentas creadas**, el enlace «Perdí el acceso de administrador» (visible en «Entrar»; sin cuentas «Entrar» no se muestra y ese enlace no existe en la bienvenida) abre la **misma** pantalla de código con otro texto: «Un
   administrador con acceso al equipo ejecuta … y le da un código nuevo de 20 caracteres». Escribe el código, el usuario del administrador,
   su nombre y una contraseña nueva.
 - Sin un código de restablecimiento pendiente, el servidor responde exactamente igual que con un código errado (401 `MENSAJE_CODIGO`).
+- El código de restablecimiento caduca a las 24 h y emitir uno invalida los anteriores (§3.3).
 - Con el código bueno: si el usuario **existe** se reactiva, se le agrega el rol administrador y se le cierran las sesiones; si **no existe** se crea (H6, D-6).
 - El comando para generarlo: dev, `uv run python scripts/restablecer_administrador.py`; producto, `python -m operacion restablecer-administrador` desde
   el acceso directo propuesto en D-7. La pantalla dice las dos formas según `modo`.
@@ -241,13 +249,14 @@ h1  Bienvenida a Sílice
 
 h2  Paso 1: busque su código de instalación
     Sílice dejó un código de un solo uso para crear la primera cuenta. Está en dos sitios:
-      • en la ventana negra que se abrió al iniciar Sílice (busque «Código de instalación»), y
+      • en el Bloc de notas que Sílice abrió solo la primera vez (el archivo), y en la ventana del servidor, que el acceso directo deja
+        **minimizada** (búsquela en la barra de tareas y busque «Código de instalación»), y
       • en el archivo  codigo_instalacion.txt  dentro de la carpeta de datos de Sílice:
         %LOCALAPPDATA%\Silice\datos\codigo_instalacion.txt          (instalación normal; modo = producto)
         data\codigo_instalacion.txt, dentro de la carpeta del programa  (modo = desarrollo)
     Son 20 letras y números en grupos de cuatro, por ejemplo  XXXX-XXXX-XXXX-XXXX-XXXX. Cópielo y péguelo abajo.
-    [si archivo_presente = false:] «No encuentro el archivo. Si ya lo borró, pida un código nuevo con
-    «Perdí el acceso de administrador».»
+    [si archivo_presente = false:] «No encuentro el archivo. Cierre Sílice y ábralo otra vez: se crea un código nuevo
+    al arrancar. Si sigue sin aparecer, un administrador del equipo ejecuta «Sílice: recuperar acceso de administrador».»
 
 h2  Paso 2: cree la cuenta del administrador
     Código de instalación        [__________________]   (sin eco; no se guarda)
@@ -262,7 +271,7 @@ h2  Paso 2: cree la cuenta del administrador
       • De 10 a 128 caracteres. Una frase larga es mejor que una palabra con símbolos.
       • No puede ser igual a su usuario ni una contraseña muy conocida (por ejemplo «password123»).
       • No hace falta mezclar mayúsculas, números o símbolos.
-      • Sílice no puede recuperarla: si la olvida, se restablece con el equipo (vea «Perdí el acceso»).
+      • Sílice no puede recuperarla: si la olvida, se restablece con el equipo (un administrador del equipo la restablece).
 
 h2  Qué pasa después
     Entrará con esa cuenta. Esta cuenta administra Sílice: crea las demás cuentas, la empresa y las copias de seguridad.
@@ -275,6 +284,8 @@ Reglas de la pantalla:
 - Dos campos de contraseña con comparación **en el cliente** (como `A:140`): «Las dos contraseñas no coinciden.» No se manda `repetida`.
 - La política en llano sale de `politica` (10 y 128) y de los **mensajes de la API** (`MENSAJE_*` de `cuentas`), tal cual (DESIGN.md «Texto»: el `detalle` de la API).
   El cliente **no** lleva la lista de contraseñas comunes: solo la API decide; el cliente muestra el contador «N de 10 caracteres como mínimo».
+- El campo del código es **visible** (no enmascarado: se copia y pega y es de un solo uso). RULING: en el primer arranque del producto el lanzador abre `codigo_instalacion.txt`
+  con el Bloc de notas (`os.startfile`) porque el instalador lanza la ventana minimizada (`silice.iss:90,93`).
 - Atributos del navegador: código `autocomplete="off" spellcheck="false" autocapitalize="characters"`; usuario `autocomplete="username"`;
   contraseñas `autocomplete="new-password"`; el valor de contraseña y de código **no** va a `localStorage`, `sessionStorage` ni a la URL, y se
   borra del estado al terminar (éxito o error de 401/423). `PasswordInput` de Carbon con el botón de mostrar (accesible).
@@ -403,13 +414,13 @@ Un archivo rechazado **no crea nada** en `casos/` ni deja nada en la cuarentena 
   Equivale a `ui.caso.estado_caso` (que el retiro borra): conexión de **solo lectura**, sin DDL, nunca crea el archivo (RV-5). `ubicacion` es texto en llano con
   la variable literal `%LOCALAPPDATA%` en producto y la ruta relativa a la carpeta del programa en desarrollo: **ninguna ruta absoluta** (como `GET /v1/casos`).
 - El selector «Carpeta de trabajo» vuelve a pedir `GET /v1/casos` al abrirse (foco o clic) y tras cada creación (H20).
-- Al **cambiar** de carpeta, si la ficha tiene borradores con cambios (`GET /v1/hoja/borradores` con `cambios > 0`), el front muestra un diálogo de
+- Al **cambiar** de carpeta, si la ficha tiene borradores con cambios (`GET /v1/hoja/borradores` con `cambios > 0`; esa ruta exige `EDITAR_HOJA`: el Shell la consulta **solo si `acciones` incluye `editar_hoja`** y trata un 403 como cero borradores), el front muestra un diálogo de
   confirmación: «Tiene N borrador(es) de la hoja con cambios sin guardar. Si cambia de carpeta se descartan. ¿Cambiar de todos modos?» [Quedarme] [Cambiar y descartar]. Sin borradores o sin
   cambios, cambia directo como hoy. El mismo aviso se repite en «Salir» (§6.3).
 
 ### 4.7 Lo que el diálogo «Carpetas de trabajo» ofrece
 
-Un botón «Carpetas…» al lado del selector abre un `ComposedModal` de Carbon con tres pestañas (`Tabs`): **Crear**, **Subir un archivo** y **Demostración**.
+Un botón «Carpetas…» al lado del selector abre un diálogo propio (patrón de `DialogoDeGuardar`/`DialogoDeOperacion`/`DialogoDeVersion`/`Confirmacion` y el hook `useDialogo`, extraído a `comun/` si hace falta; el `Modal`/`ComposedModal` de Carbon trae una URL de documentación que `npm run dist` rechaza, RNF-22, `ComposedModal.js:223` y `Cuentas.tsx:62-64`) con tres pestañas (`Tabs`): **Crear**, **Subir un archivo** y **Demostración**.
 Cada una tiene su explicación en una línea («Una carpeta de trabajo guarda su catálogo, sus precios y sus proyectos en un solo archivo») y su botón. Sin
 `CAMBIAR_CASO` el botón no aparece (el selector queda como hoy, deshabilitado). Sin `EDITAR_HOJA`, la pestaña Demostración dice por qué no está disponible.
 
@@ -467,9 +478,9 @@ que usted guarde una versión.»
 
 El borrador vive en el servidor, ligado a la ficha de sesión (`hoja_borradores`; hoja-react-design §3.1). Se descarta:
 
-1. al **cambiar de carpeta de trabajo** (`caso_web.fijar`); 2. al **Salir**; 3. a los **30 minutos sin actividad** o a las **12 horas** desde que entró (aunque esté trabajando), porque la ficha vence y
+1. al **cambiar de carpeta de trabajo** (`caso_web.fijar`; **elegir la misma carpeta también descarta**, porque `fijar` llama a `olvidar`); 2. al **Salir**; 3. a los **30 minutos sin actividad** o a las **12 horas** desde que entró (aunque esté trabajando), porque la ficha vence y
 `caso_web.olvidar` lo arrastra; 4. a las **8 horas sin tocarlo** (`VIGENCIA`); 5. al **reiniciar Sílice** (memoria del proceso); 6. por exceso de borradores (4 por ficha, 64 en total o 256 MiB: el menos usado).
-**No** se pierde al recargar la página (F5), ni al cambiar de proyecto en la cabecera (se retoma desde la Hoja), ni al navegar a otra pantalla.
+**No** se pierde al recargar la página (F5), ni al **cambiar la contraseña** (los borradores pasan a la ficha nueva, `caso_web.heredar`), ni al cambiar de proyecto en la cabecera (se retoma desde la Hoja), ni al navegar a otra pantalla.
 
 ### 6.3 Avisos de salida
 
@@ -479,7 +490,7 @@ El borrador vive en el servidor, ligado a la ficha de sesión (`hoja_borradores`
 | Cambiar de carpeta de trabajo con borradores con cambios | diálogo de confirmación con el número (§4.6) | Shell |
 | «Salir» con borradores con cambios | el mismo diálogo: «Si sale, se descartan. Guarde una versión primero.» | Cabecera/Shell |
 | Cambiar de proyecto en la cabecera con borrador | **sin diálogo**; nota en el selector («Su borrador de «Torre B» sigue abierto en la Hoja») y la Hoja ya ofrece «Retomar» | Selectores/Hoja |
-| La sesión venció | aviso en «Entrar»: «Su sesión venció por inactividad. Los cambios de la hoja que no guardó se perdieron.» (hoy: «Su sesión venció. Entre de nuevo para seguir.») | `App.tsx` |
+| La sesión venció | aviso en «Entrar»: «Su sesión venció (30 minutos sin actividad o 12 horas desde que entró). Si tenía cambios de la hoja sin guardar, se perdieron.» (hoy: «Su sesión venció. Entre de nuevo para seguir.») | `App.tsx` |
 | Indicador permanente | región `role="region" aria-label="Estado del borrador"` ya existente en la Hoja («3 cambios sin guardar»); se agrega la frase «Provisional hasta que guarde una versión» | Hoja |
 
 No se promete un aviso «le quedan 5 minutos» porque `GET /v1/sesion` no informa el tiempo restante; ese contador es una mejora posible (D-8).
@@ -607,7 +618,7 @@ El paso siguiente se enlaza solo si la pantalla existe, está migrada y la cuent
 
 - **Bienvenida y Recuperar acceso: páginas, no capas.** Un `h1`, `main`, etiquetas visibles, errores con `aria-invalid` + `aria-describedby`, un resumen de errores con `role="alert"` que recibe el foco al enviar con fallos
   (la primera vez; después solo anuncia). La política de contraseña es texto, no un tooltip, y se enlaza al campo con `aria-describedby`.
-- **Diálogos (Carpetas…, Nuevo proyecto, confirmaciones):** `ComposedModal`/`Modal` de Carbon: foco atrapado, Esc cierra, el foco vuelve al botón que lo abrió, `aria-labelledby` al título; no se abren solos al cargar.
+- **Diálogos (Carpetas…, Nuevo proyecto, confirmaciones):** diálogo propio (`useDialogo`, **no** `Modal`/`ComposedModal` de Carbon): foco atrapado, Esc cierra, el foco vuelve al botón que lo abrió, `aria-labelledby` al título; no se abren solos al cargar.
   La subida usa `SubidaArchivo` (ya accesible; teclado, `extensiones=[".db"]`) y un `status` que dice el nombre y el tamaño en MiB con la coma decimal de `formatoEsVe`.
 - **Regiones vivas:** un `role="status"` siempre montado por pantalla/diálogo que anuncia «Creando…», «Carpeta creada: Obra_1.db», «Subiendo… 4,2 MiB» y los errores; el cuerpo de error además va en el `InlineNotification`.
 - **Letra Normal/Grande/Muy grande (`--silice-escala-letra` 1, 1,25, 1,5):** todo en `rem`; formularios en una columna que pasa de dos a una por debajo de 1056 px con `grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr))`;
@@ -681,7 +692,7 @@ nombres reales**; datos ficticios («Contratista Demo, C.A.», `ana`, `rita`, `a
 | B18 | `GET /v1/casos/actual`: base vacía → `partidas=0`; con la demostración → conteos; no crea el archivo; no emite DDL (conexión de solo lectura); sin ruta absoluta en `ubicacion` | conteos a mano |
 | B19 | `POST /v1/proyectos`: 201 con la forma de un elemento de la lista; moneda `Bs` queda en `moneda_proyecto` con `responsable = "Ana Pérez <ana>"`; vacío («   ») 422 con el texto; «Torre B» y «  torre   b » → 409 con «Torre B» en el mensaje; moneda «EUR» 422; dominio «x» 422; dos peticiones simultáneas con el mismo nombre → 201 y 409 | textos de `proyectos.py` con tildes (DV-BCP-3) |
 | B20 | `POST /v1/proyectos` crea en el caso de la **ficha** (no en el del proceso): con `ana` en otra carpeta, el proyecto aparece solo allí | dos bases de prueba |
-| B21 | arquitectura: `api/` no importa `scripts`, `ui`, `tests`; `aplicacion/primer_arranque.py` y `casos.py` no importan `api`, `streamlit`, `scripts`; importar la API no carga `scripts` ni `tests` (la prueba existente `test_importar_la_api_no_carga_scripts_tests_ni_ui` sigue verde) | guardias existentes |
+| B21 | arquitectura: `api/` no importa `scripts`, `ui`, `tests`; `operacion/primer_arranque.py` y `casos.py` no importan `api`, `streamlit`, `scripts`; importar la API no carga `scripts` ni `tests` (la prueba existente `test_importar_la_api_no_carga_scripts_tests_ni_ui` sigue verde) | guardias existentes |
 | B22 | `core/` intacto (`git diff -- core/` vacío) | `git diff` |
 | B23 | `lifespan`: al arrancar sin cuentas se emite el código; un fallo al emitir no impide arrancar (se registra) | a mano |
 
@@ -689,9 +700,9 @@ nombres reales**; datos ficticios («Contratista Demo, C.A.», `ana`, `rita`, `a
 
 | Id | Qué prueba | Oráculo |
 |---|---|---|
-| **S1** | **Fuerza bruta del código.** Cinco `POST` con códigos errados → los cinco 401 (el quinto bloquea); el sexto, **con el código correcto**, da 423 `MENSAJE_BLOQUEO` y **no crea cuenta**; con el reloj avanzado 15 min (`ahora` inyectado) el código correcto funciona; 4 fallos no bloquean | `FALLOS_PARA_BLOQUEAR = 5`, `BLOQUEO = 15 min`: literales de la prueba |
-| **S2** | **Freno global.** 20 fallos de login con 20 usuarios inexistentes distintos (cada uno con su contador) y luego un reclamo → 429, `Retry-After: 2`, cuerpo `MENSAJE_FRENO`, y **no se calculó ningún hash** (el contador de verificaciones no sube); el 22.º fallo → `Retry-After: 4` | `FRENO_FALLOS = 20`, espera `2**exceso`: 2 con exceso 1, 4 con exceso 2 |
-| **S3** | **Carrera de dos reclamos.** Dos hilos con barrera, mismo código y logins distintos (`uno`, `dos`): exactamente un 201 y un 401; `SELECT count(*) FROM usuario` = 1; una sola fila `usado` fijada. **Debe fallar antes del arreglo** (rojo visto, H3). Variante con el mismo login: no hay 500 | conteos SQL a mano |
+| **S1** | **Fuerza bruta del código.** Cuatro `POST` con códigos errados → cuatro 401; el **quinto ya da 423** (`_fallar` devuelve que bloquea y se lanza `CuentaBloqueada`); el sexto, **con el código correcto**, da 423 `MENSAJE_BLOQUEO` y **no crea cuenta**; con el reloj avanzado 15 min (`ahora` inyectado) el código correcto funciona | `FALLOS_PARA_BLOQUEAR = 5`, `BLOQUEO = 15 min`: literales de la prueba |
+| **S2** | **Freno global.** `FrenoGlobal.espera` **directo** (sin HTTP): 19 fallos → 0 s; 20 → `2**(20-20) = 1` s; 21 → 2 s; 22 → 4 s; 26 → 60 s (tope). **Por la API:** 20 fallos de login con 20 usuarios inexistentes y luego un reclamo → 429, `Retry-After: 1`, cuerpo `MENSAJE_FRENO` y ningún hash calculado. Por HTTP el contador **no pasa de 20** (`_no_dormir` lanza `_Frenado` antes de contar), así que «22 → 4 s» es inalcanzable por la API. **Se documenta:** el freno por API es un límite de 1 s por petición; la defensa real son los 100 bits del código y los 5 fallos | `FRENO_FALLOS = 20`, espera `2**exceso` con `exceso = fallos - 20` |
+| **S3** | **Carrera de dos reclamos**, dos hilos con barrera, mismo código y logins distintos (`uno`, `dos`). **(a) con fila previa en `intento_acceso`** (un fallo anterior): sin arreglo, **dos 201 y dos administradores** (rojo = el segundo 201); con arreglo, un 201 y un 401 y `SELECT count(*) FROM usuario` = 1. **(b) sin fila previa:** sin arreglo, el perdedor da **500** por `IntegrityError` (rojo = el 500); con arreglo, un 201 y un 401. Variante con el mismo login: nunca 500. Una sola fila `usado` fijada | conteos SQL a mano; reproducción del árbitro 3/3 en (a), 12/12 con el arreglo |
 | **S4** | **Política de contraseña** completa (B5). **S4b:** el mensaje de forma no distingue código bueno de malo | igualdad de respuestas |
 | **S5** | **Traversal y nombres hostiles, en crear y subir.** Lista literal: `..\x`, `../x`, `a/b`, `a\b`, `C:\x`, `\\srv\share\x`, `//srv/x`, `con`, `NUL.db`, `COM1`, `x:y`, `x.db::$DATA`, `   `, `....`, `.`, `x.`, un nombre de 500 caracteres, `Ñandú`, `x<y>`, `%2e%2e/x`: el resultado de cada uno es 201 con nombre saneado **dentro** de `casos/`, o 422; el árbol fuera de `casos/` es idéntico; nunca existe un archivo cuyo `resolve()` salga de `casos/`; el nombre del archivo subido (`filename` del multipart) con `..\..\evil.db` crea solo `casos/evil.db` | `Path.resolve().is_relative_to` sobre el árbol; lista literal |
 | **S6** | **Subida hostil** (B15) más: dos subidas simultáneas del mismo nombre → 201 y 409; cuerpo multipart sin parte `archivo` → 422; parte `archivo` repetida → 422; `Content-Length` mentiroso (declara 10, envía 21 MiB) → 413 sin escribir; cuarentena con basura de más de 1 h se purga al arrancar | hilos con barrera; árbol |
@@ -765,10 +776,10 @@ Hoja «sin versión».
 
 | Sub-rebanada | Hace | Archivos suyos | Depende de | Pruebas |
 |---|---|---|---|---|
-| **BCP-1** backend: primer arranque | `aplicacion/primer_arranque.py`, `api/rutas/primer_arranque.py` (+ esquemas), `cuentas._tomar_escritura` y `ademas_arma`, `operacion` orden `restablecer-administrador`, gancho del lanzador, `scripts/restablecer_administrador.py` como envoltura. **Abre con S3 en rojo** | `aplicacion/primer_arranque.py`, `api/rutas/primer_arranque.py`, `api/esquemas_bienvenida.py`, `seguridad/cuentas.py` (2 puntos), `operacion/lanzador.py` (4 líneas), `operacion/ordenes_100.py`, `scripts/restablecer_administrador.py`, `tests/unit/test_aplicacion_primer_arranque.py`, `tests/unit/test_api_primer_arranque*.py`, `docs/bitacora/2026-10-2x-bcp1-*` | **el retiro de Streamlit fusionado** y este diseño aprobado | B1 a B10, B21 a B23, S1 a S4, S7, S8; P-1 a P-7 |
+| **BCP-1** backend: primer arranque | `operacion/primer_arranque.py`, `api/rutas/primer_arranque.py` (+ esquemas), `cuentas._tomar_escritura` y `ademas_arma`, `operacion` orden `restablecer-administrador`, gancho del lanzador, `scripts/restablecer_administrador.py` como envoltura. **Abre con S3 en rojo** | `operacion/primer_arranque.py`, `api/rutas/primer_arranque.py`, `api/esquemas_bienvenida.py`, `seguridad/cuentas.py` (2 puntos), `operacion/lanzador.py` (4 líneas), `operacion/ordenes_100.py`, `scripts/restablecer_administrador.py`, `tests/unit/test_aplicacion_primer_arranque.py`, `tests/unit/test_api_primer_arranque*.py`, `docs/bitacora/2026-10-2x-bcp1-*` | **el retiro fusionado (`c7842510`)** y este diseño aprobado | B1 a B10, B21 a B23, S1 a S4, S7, S8; P-1 a P-7 |
 | **BCP-2** backend: carpetas | `aplicacion/casos.py` (estado de solo lectura, crear, subir seguro, cerrojo, tope, purga de cuarentena), `operacion/demostracion.py` y `--salida`, `CasoYaExiste`, rutas C0 a C3 | `aplicacion/casos.py`, `operacion/demostracion.py`, `operacion/base_datos.py` (subclase), `operacion/ordenes_100.py` (`--salida`), `api/rutas/casos.py`, `tests/unit/test_aplicacion_casos.py`, `tests/unit/test_api_casos_*.py` | el retiro fusionado (necesita reconstruir `estado_caso`) | B11 a B18, S5, S6, S8, S9; P-8 a P-12 |
 | **BCP-3** backend: proyectos | `crear_proyecto_en_sesion`, `POST /v1/proyectos` | `aplicacion/proyectos.py`, `api/rutas/proyectos.py`, `tests/unit/test_api_proyectos_crear.py` | independiente (puede ir en paralelo con BCP-1/2; mismo archivo `api/rutas/casos.py` no) | B19, B20; P-13 |
-| **BCP-4** front: bienvenida y recuperar | `src/bienvenida/` (`Bienvenida`, `RecuperarAcceso`, `usePrimerArranque`), cambios en `App.tsx`, `useSesion.ts` y `Entrar.tsx` (enlace) | `frontend-desktop/src/bienvenida/**`, `src/App.tsx`, `src/sesion/*`, sus pruebas | solo el contrato de §9 (P0, P1) con `fetch` simulado: **puede empezar antes del retiro** | F1 a F4, F16 (parte); P-14 |
+| **BCP-4** front: bienvenida y recuperar | `src/bienvenida/` (`Bienvenida`, `RecuperarAcceso`, `usePrimerArranque`), cambios en `App.tsx`, `useSesion.ts` y `Entrar.tsx` (enlace) | `frontend-desktop/src/bienvenida/**`, `src/App.tsx`, `src/sesion/*`, sus pruebas | el retiro fusionado; contrato de §9 (P0, P1) con `fetch` simulado; en paralelo con BCP-2 | F1 a F4, F16 (parte); P-14 |
 | **BCP-5** front: carpetas de trabajo | `src/shell/carpetas/` (diálogo con tres pestañas, confirmación de borradores), cambios en `Shell.tsx` y `Selectores.tsx` | `src/shell/carpetas/**`, `Shell.tsx`, `Selectores.tsx` y sus pruebas | contrato C0 a C3 y `GET /v1/hoja/borradores` (existe) | F5 a F9, F19; P-15 |
 | **BCP-6** front: proyectos | diálogo «Nuevo proyecto», elegir el nuevo, rótulo «(sin versión guardada)», estado vacío de la Hoja | `src/shell/proyectos/**`, `Selectores.tsx`, **una línea de `src/paginas/hoja/index.tsx`** | contrato J1; BCP-5 (mismo `Selectores.tsx`: en orden) | F10, F11; P-16 |
 | **BCP-7** front: primeros pasos y recorrido | `primerosPasos.ts`, bloque en `inicio/index.tsx`, `RECORRIDO_PRIMER_PRESUPUESTO` en `recorrido.ts` | `src/paginas/inicio/**`, `src/shell/recorrido.ts` y su prueba | BCP-5, BCP-6 y C0 | F12; P-17 |
@@ -780,15 +791,16 @@ Hoja «sin versión».
 **Orden y paralelismo**
 
 ```
-(retiro fusionado) ──▶ BCP-1 ──▶ BCP-2 ──▶┐
-                         BCP-3 ───────────┤
-BCP-4 ─────────────────────────────────────┤
-BCP-5 ──▶ BCP-6 ──▶ BCP-7 ─────────────────┼─▶ BCP-8 ─▶ BCP-9 (tras D-1) ─▶ BCP-10 ─▶ BCP-11
+(1) retiro fusionado (c7842510)
+(2) BCP-1 ‖ BCP-3  ──▶  BCP-2
+(3) BCP-4 ‖ BCP-2
+(4) BCP-5 ──▶ BCP-6 ──▶ BCP-7        (en serie: comparten Shell, Selectores e inicio)
+(5) BCP-8 ─▶ BCP-9 (tras D-1) ─▶ BCP-10 ─▶ BCP-11   (BCP-8/9 al final, tras el autocompletado y el asistente: tocan 22 index.tsx)
 ```
 
-- **Backend y frontend en paralelo:** BCP-4 a BCP-7 trabajan contra el contrato de §9 con `fetch` simulado y **no prueban** que el front y el servidor coincidan: lo prueba BCP-10 (primera integración real). Si BCP-1 a BCP-3
+- **Backend y frontend en paralelo (después del retiro):** BCP-4 a BCP-7 trabajan contra el contrato de §9 con `fetch` simulado y **no prueban** que el front y el servidor coincidan: lo prueba BCP-10 (primera integración real). Si BCP-1 a BCP-3
   desvían el contrato lo anotan en `docs/bitacora/…-bcp-contrato-rutas.md` y avisan.
-- BCP-1 → BCP-2 es secuencial (BCP-2 hereda el cerrojo y la cuarentena de BCP-1 solo en `<datos>`); BCP-3 es independiente. BCP-5 → BCP-6 → BCP-7 comparten `Selectores.tsx`/`Shell.tsx`/`inicio`: en orden. BCP-8 y BCP-9
+- BCP-1 → BCP-2 es secuencial (BCP-2 hereda el cerrojo y la cuarentena de BCP-1 solo en `<datos>`); BCP-3 va en paralelo con BCP-1. BCP-5 → BCP-6 → BCP-7 comparten `Selectores.tsx`/`Shell.tsx`/`inicio`: en orden. BCP-8 y BCP-9
   son las únicas que tocan pantallas ajenas y van **al final**.
 - Cada sub-rebanada pasa implementador → árbitro antes de empezar la siguiente que dependa de ella. Un solo árbol; cada agente toca solo sus carpetas; los archivos compartidos los aplica el orquestador (§14).
 
@@ -803,14 +815,14 @@ desde la bienvenida (ya existe `POST /v1/sesion/contrasena`); contador regresivo
 
 | # | Riesgo | Efecto | Mitigación | Estado |
 |---|---|---|---|---|
-| R-B1 | **Orden de fusión:** construir BCP-1/2 antes del retiro | `lanzador.py` y `ordenes_100.py` en conflicto; `estado_caso` desaparecido | `git merge-base --is-ancestor`; BCP-4 a BCP-7 pueden empezar | mitigado |
-| R-B2 | H3 es una **deducción**: si `pysqlite`/SQLAlchemy toman el bloqueo antes de lo que creo, la carrera no existe | el arreglo sobraría (inocuo) | S3 se escribe primero y se mira: si no falla, se documenta y el arreglo queda como defensa | abierto hasta ver S3 |
+| R-B1 | **Orden de fusión:** construir BCP-1/2 antes del retiro | `lanzador.py` y `ordenes_100.py` en conflicto; `estado_caso` desaparecido | `git merge-base --is-ancestor`; **ninguna BCP empieza antes del retiro** | mitigado |
+| R-B2 | **Carrera confirmada** (H3): dos administradores con un código | cuenta con el máximo rol de más | cambio de seguridad con expediente en `cuentas.py`, S3 (a) y (b) en rojo primero, defensa `UPDATE … AND usado IS NULL` | abierto hasta BCP-1 |
 | R-B3 | El proceso hijo de la demostración no existe en un producto sin `scripts/` | la demostración no se puede estrenar | `OpD` del instalador ya lo corre; el 503 dice qué hacer; prueba de producto en BCP-10 | declarado |
 | R-B4 | Denegación local: gastar los 5 intentos del código | el administrador legítimo espera 15 min | aceptado; `restablecer-administrador` | declarado |
 | R-B5 | El archivo del código lo lee otro proceso del mismo usuario de Windows | fuga de un código de un solo uso | es de un solo uso y caduca al canjearse; endurecer ACL fuera de alcance | declarado |
 | R-B6 | Una subida de 20 MiB tarda: el cerrojo de creación bloquea otras creaciones | espera | `integrity_check` sobre 20 MiB es del orden de segundos; solo bloquea creaciones, no lecturas | por medir (BCP-10) |
 | R-B7 | La validación de tablas núcleo rechaza una carpeta antigua legítima | el usuario no puede subir su archivo | condición «`alembic_version` conocida **o** tablas núcleo»; tablas extra no se rechazan; B14 cubre la 0.5.0 | por medir |
-| R-B8 | `Toggletip` y `ComposedModal` de Carbon no se usan hoy en el repositorio | comportamiento de foco/jsdom distinto | F5/F14 prueban foco y Esc con Testing Library; si el componente no cumple, se usa un botón con `aria-expanded` propio | abierto |
+| R-B8 | `Toggletip` de Carbon no se usa hoy; `ComposedModal` es inviable (URL en `ComposedModal.js:223`, rechazada por `npm run dist`) | foco/jsdom distinto | diálogos con el patrón propio; `Toggletip` con `label` en español y pruebas por `aria-expanded` (no por visibilidad), o botón propio con `aria-expanded` y región de texto | abierto |
 | R-B9 | Cambiar el nombre «caso» deja textos mixtos | confusión | `F-vocab`, BCP-9 al final y un solo vocabulario (§7.1) | mitigado |
 | R-B10 | El borrador muere con la sesión de 30 min | trabajo perdido | texto claro y aviso al vencer; mejora D-8 | declarado |
 | R-B11 | Mensajes de la clásica sin tilde reaparecen | inconsistencia | DV-BCP-3; pruebas con la cadena con tilde | mitigado |
@@ -829,7 +841,7 @@ desde la bienvenida (ya existe `POST /v1/sesion/contrasena`); contador regresivo
 | **D-3** | Permisos: crear y subir = `CAMBIAR_CASO` (arma y administrador, como la clásica); demostración = `EDITAR_HOJA` (solo arma, como la clásica). Consecuencia: el administrador sin rol «arma» crea y sube carpetas pero **no** puede estrenar la demostración ni crear proyectos | Eugenio | paridad con la clásica | dejar la demostración también al administrador (acción `CAMBIAR_CASO`), o restringir crear/subir a quien arma |
 | **D-4** | Topes y plazos supuestos: subida 20 MiB (el global de la API); `MAXIMO_CARPETAS = 100`; cuarentena de 1 h; plazo de la demostración 120 s; nombre ≤ 80 caracteres | Eugenio | adoptarlos como supuestos y medir en BCP-10 | cambiar constantes en `aplicacion/casos.py` |
 | **D-5** | La demostración es **una carpeta propia** (`demostracion.db`, nombre fijo, ficticia), no se siembra la carpeta abierta | Eugenio | sí (no puede dañar datos reales; el proceso hijo se aísla de ARQ-5) | sembrar la carpeta abierta cuando esté vacía exige mover `seed_demo` y `seed` a un paquete que la API pueda importar, y sacar `tests.fixtures` de `scripts/seed.py` |
-| **D-6** | El código de **restablecimiento** reactiva y promueve a administrador a **cualquier** login existente (aunque fuera `arma` o `revisa`) y crea un administrador nuevo si no existe (H6) | Eugenio / tutor (es comportamiento de S3) | mantenerlo y documentarlo: quien corre el script ya tiene el equipo; restringirlo cambia `seguridad/cuentas.py` y sus pruebas | restringir a cuentas que ya eran administradoras: rechazo con mensaje fijo si el login existe y no lo es |
+| **D-6** | El código de **restablecimiento** reactiva y promueve a administrador a **cualquier** login existente (aunque fuera `arma` o `revisa`) y crea un administrador nuevo si no existe (H6) | Eugenio / tutor (es comportamiento de S3) | mantenerlo **solo junto con** caducidad de 24 h, invalidación de pendientes y el evento «promovida a administrador» (§3.3); restringirlo cambiaría más `seguridad/cuentas.py` | restringir a cuentas que ya eran administradoras: rechazo con mensaje fijo si el login existe y no lo es |
 | **D-7** | Acceso directo «Sílice: recuperar acceso de administrador» en el menú Inicio de Windows y la orden `python -m operacion restablecer-administrador` (H7); si no, el producto no tiene forma de ejecutar el script | Eugenio | sí (una línea en `instalador/silice.iss`, un `[Icons]` más) | solo documentar la orden en el manual de instalación |
 | **D-8** | Aviso «le quedan 5 minutos» antes de que venza la sesión (y con ella el borrador): exige que `GET /v1/sesion` informe el tiempo restante | Eugenio | **diferir**; por ahora, el texto de §6.2 y el aviso al vencer | adelantarlo: un campo `vence_en_s` en `SesionRespuesta` y un temporizador accesible en el front |
 | **D-9** | Los textos de ayuda (§3.5, §7.2 a §7.6) los valida una **persona sin experiencia** (la prueba CP-07 de RNF-10) antes de cerrar BCP-4 y BCP-8 | Eugenio | sí: una persona real, 20 minutos con el guion de `guion_prueba_arenia.md`; el redactor ajusta | cerrar con la revisión del árbitro y dejar RNF-10 pendiente |
@@ -874,21 +886,15 @@ async def _arranque(_: FastAPI):
         logging.getLogger("silice.api").exception("no se pudo preparar el primer arranque")
     yield
 ```
-(`app = FastAPI(..., lifespan=_arranque)`; si el gancho de apagado del asistente de la Hoja ya añade un `lifespan`, se componen en uno.) Las rutas C0 a C3 y J1 viven en `casos.router` y `proyectos.router`, ya incluidos.
+(`app = FastAPI(..., lifespan=_arranque)`. RULING: **un solo `lifespan`** en `api/main.py`; lo escribe BCP-1 (bienvenida) y el asistente de la Hoja solo registra en él su gancho `apagar()`. Correrá en toda prueba con `with TestClient(app)`: `conftest.py:142-149` aísla `SILICE_DATOS`, pero hay que revisar `test_api_auditorias.py` y `test_api_hoja_plano.py`.) Las rutas C0 a C3 y J1 viven en `casos.router` y `proyectos.router`, ya incluidos.
 
-**`tests/unit/test_api_acceso_por_ruta.py`** (tabla escrita a mano; filas nuevas)
+**`tests/unit/test_api_acceso_por_ruta.py`** (el archivo usa un diccionario `(método, ruta) → acción` más los conjuntos `DE_LA_SESION` y `SIN_NADA`, líneas 93 y 255-264; no una tabla de roles). Filas nuevas:
 
-| Ruta | Sin clave ni sesión | Con sesión `arma` | `revisa` | `administrador` |
-|---|---|---|---|---|
-| `GET /v1/primer-arranque` | 200 (solo propio equipo) | 200 | 200 | 200 |
-| `POST /v1/primer-arranque/reclamo` | 401/422 según cuerpo (pública, solo propio equipo, `Origin` obligatorio) | igual | igual | igual |
-| `GET /v1/casos/actual` | 401 | 200 | 200 | 200 |
-| `POST /v1/casos` | 401 | 201 | 403 | 201 |
-| `POST /v1/casos/subida` | 401 | 201 | 403 | 201 |
-| `POST /v1/casos/demostracion` | 401 | 201/200 | 403 | 403 |
-| `POST /v1/proyectos` | 401 | 201 | 403 | 403 |
+- `ACCION_DE_RUTA`: `("GET", "/v1/casos/actual")` → `None` (cualquier rol); `("POST", "/v1/casos")` → `CAMBIAR_CASO`; `("POST", "/v1/casos/subida")` → `CAMBIAR_CASO`; `("POST", "/v1/casos/demostracion")` → `EDITAR_HOJA`; `("POST", "/v1/proyectos")` → `EDITAR_HOJA`.
+- `SIN_NADA`: `("GET", "/v1/primer-arranque")` y `("POST", "/v1/primer-arranque/reclamo")` (públicas; su protección es el propio equipo, el `Origin` y el código, y las prueban B2, B8 y S8, no esta tabla).
+- Resultados esperados por rol (S8): `rita` 403 en las cinco; `ana` 201/200; `admin` 201 en crear y subir, **403** en demostración y proyecto.
 
-**`tests/unit/test_arquitectura.py`:** ningún cambio de reglas; `aplicacion/primer_arranque.py` y `aplicacion/casos.py` quedan bajo las guardias existentes (no importan `api`, `streamlit`, `scripts`, `tests`). Si la guardia enumera módulos de `aplicacion/`, añadir esos dos.
+**`tests/unit/test_arquitectura.py`:** ningún cambio de reglas; `operacion/primer_arranque.py` y `aplicacion/casos.py` quedan bajo las guardias existentes (no importan `api`, `streamlit`, `scripts`, `tests`). Si la guardia enumera módulos de `aplicacion/`, añadir esos dos.
 
 **`frontend-desktop/src/shell/rutas.ts` y su prueba**
 
@@ -897,35 +903,83 @@ async def _arranque(_: FastAPI):
   Con ella, los conteos de `rutas.test.ts` pasan de 22 a 23 páginas y de 19 a 20 en modo entrega (recalcular, como se hizo con `historial`).
 - `AREAS`: `ayuda` va en el grupo «Más» (`paginas: [..., "acerca", "ayuda"]`) y, además, un enlace «Ayuda y glosario» al pie del menú lateral.
 
-**`docs/ERS.md`** (la numeración la asigna el orquestador contra el máximo vigente: RF-155, UC-30, RNF-28; los números de abajo son provisionales)
+**`docs/ERS.md`** (la numeración la asigna el orquestador contra el máximo vigente: RF-155, UC-30, RNF-28; los números de abajo siguen el ruling; UC-12 en la ERS es «Recorrer la aplicación guiado desde el Inicio» y las carpetas cuelgan de RF-96 y del Inicio)
 
-> **Enmienda de Sílice (bienvenida, carpetas de trabajo y ayuda):** se agregan RF-156 a RF-162 y RNF-29; se enmiendan UC-12, UC-21 y RF-63.
-> - **RF-156** (UC-21): una instalación sin cuentas emite un código de instalación de un solo uso al arrancar, y la interfaz permite canjearlo, solo desde el propio equipo, para crear el primer administrador, con el mismo freno y bloqueo que el acceso; el código no se registra ni se devuelve. *Criterio:* cinco intentos errados bloquean quince minutos; dos canjes simultáneos crean una sola cuenta.
-> - **RF-157** (UC-12): la interfaz permite crear una carpeta de trabajo con un nombre que no salga de la carpeta de casos. **RF-158:** permite subir un archivo `.db`, que se valida, se respalda, se migra y solo entonces aparece; un archivo rechazado no deja rastro.
-> - **RF-159** (UC-12): la interfaz ofrece una carpeta de demostración ficticia que no altera ninguna carpeta existente.
-> - **RF-160** (UC-01): crear un proyecto desde la interfaz elige la moneda, firma con la cuenta y queda elegido; un proyecto sin versión dice qué hacer.
-> - **RF-161** (UC-15): la interfaz explica qué se guarda al instante y qué es un borrador, avisa al descartarlo (cambio de carpeta, salida) y declara cuándo se pierde.
-> - **RF-162** (UC-12): cada pantalla dice en una línea qué hace; hay un glosario accesible; el Inicio de una instalación o carpeta nueva muestra los primeros pasos según el rol.
-> - **RNF-29** (usabilidad): la ayuda se entiende sin formación previa (se mide con RNF-10).
+> **Enmienda de Sílice (bienvenida, carpetas de trabajo y ayuda):** se agregan RF-160 a RF-166 y RNF-30; se enmiendan UC-12, UC-21 y RF-63. (RULING del orquestador: asistente RF-156 a RF-159, bienvenida RF-160 a RF-166, autocompletado RNF-29, bienvenida RNF-30.)
+> - **RF-160** (UC-21): una instalación sin cuentas emite un código de instalación de un solo uso al arrancar, y la interfaz permite canjearlo, solo desde el propio equipo, para crear el primer administrador, con el mismo freno y bloqueo que el acceso; el código no se registra ni se devuelve. *Criterio:* cinco intentos errados bloquean quince minutos; dos canjes simultáneos crean una sola cuenta.
+> - **RF-161** (RF-96, carpetas): la interfaz permite crear una carpeta de trabajo con un nombre que no salga de la carpeta de casos. **RF-162:** permite subir un archivo `.db`, que se valida, se respalda, se migra y solo entonces aparece; un archivo rechazado no deja rastro.
+> - **RF-163** (RF-96, carpetas): la interfaz ofrece una carpeta de demostración ficticia que no altera ninguna carpeta existente.
+> - **RF-164** (UC-01): crear un proyecto desde la interfaz elige la moneda, firma con la cuenta y queda elegido; un proyecto sin versión dice qué hacer.
+> - **RF-165** (UC-15): la interfaz explica qué se guarda al instante y qué es un borrador, avisa al descartarlo (cambio de carpeta, salida) y declara cuándo se pierde.
+> - **RF-166** (UC-12, «Recorrer la aplicación guiado desde el Inicio»): cada pantalla dice en una línea qué hace; hay un glosario accesible; el Inicio de una instalación o carpeta nueva muestra los primeros pasos según el rol.
+> - **RNF-30** (usabilidad): la ayuda se entiende sin formación previa (se mide con RNF-10).
 > - **Terminología:** donde la ERS dice «caso» (la base de datos de trabajo) la interfaz y los manuales dicen «carpeta de trabajo» (D-1); «caso de uso» no cambia.
 
 **`CHANGELOG.md`** (una línea por sub-rebanada, al cerrar): «Bienvenida de primera vez, carpetas de trabajo (crear, subir, demostración), proyectos nuevos, explicación de cómo se guarda y ayuda en lenguaje llano.»
 
 **`docs/api.json`:** regenerar con `scripts/exportar_openapi.py` al cerrar BCP-1, BCP-2 y BCP-3.
 
-**`package.json`:** sin cambios (Carbon ya incluye `Toggletip`, `ComposedModal` y `PasswordInput`).
+**`package.json`:** sin cambios (Carbon ya incluye `Toggletip` y `PasswordInput`; los diálogos son propios).
 
 ---
 
 ## 15. Lo que no pude determinar
 
-1. **H3 es lectura, no ejecución.** No corrí la carrera; la prueba S3 abre BCP-1 para verlo en rojo.
+1. **H3 la reprodujo el árbitro** (ronda 1); yo no la corrí. S3 sigue abriendo BCP-1 en rojo.
 2. **El conjunto de «tablas núcleo» del caso** (B15, §4.4 paso 5): sale de `core.models` y `migraciones`; no abrí `migraciones/` para listarlo. La regla exacta (alembic conocida **o** tablas núcleo) se fija leyéndolo al construir BCP-2.
 3. **El recuento de la demostración** (B17: 8 partidas) sale del docstring de `scripts/seed_demo.py` (5 `LB-*` y 3 `DEMO-*`); confirmarlo ejecutando `seed_demo` en la sub-rebanada.
 4. **Qué mueve el retiro a `aplicacion/`:** vi `aplicacion/` y `operacion/` de la rama del retiro, pero no su `api/` ni su `frontend-desktop/`; si el retiro ya añadió algo parecido a `GET /v1/casos/actual` o a un estado de instalación, BCP-1/2 lo reutilizan. La cabeza que leí es `a86532d2`.
 5. **Mensaje del 413 del middleware y el límite efectivo del archivo** (el multipart añade bytes): se fija midiendo en B15.
-6. **`Toggletip`/`ComposedModal` de Carbon** no se usan aún en el repositorio; su comportamiento de foco con jsdom está por verificar (R-B8).
+6. **`Toggletip` de Carbon** no se usa aún en el repositorio; su comportamiento de foco con jsdom está por verificar (R-B8).
 7. **Si `Hoja` ya muestra «Versión 001 guardada»** como texto fijo (paso 2 del recorrido nuevo): lo fija la Hoja; el texto del recorrido se ajusta al construir.
 8. **La orden `restablecer-administrador`** y su acceso directo no existen; no comprobé si `instalador/silice.iss` admite otro `[Icons]` sin cambiar el manifiesto de huellas (`instalador/manifiesto.toml`).
-9. **Los números de RF/RNF** de §14 son provisionales; la ERS vigente llega hasta RF-155, UC-30 y RNF-28.
+9. **Los números de RF/RNF** de §14 siguen el ruling del orquestador (RF-160 a RF-166, RNF-30); la ERS vigente llega hasta RF-155, UC-30 y RNF-28.
 10. **No leí `NORMAS.md` entero ni `docs/metodologia.md`:** los criterios del árbitro se aplicaron por el manual.
+
+---
+
+## 16. Registro de la ronda 2 (qué cambió por hallazgo del árbitro)
+
+Los cambios de los MAYOR están hechos en su sitio (H3, §0.1, §3.1, §3.3, §3.4, §3.5, §4.7, §8, §10.2 S1 a S3, §11, §12 R-B1/R-B2/R-B8, D-6, §14). Los MENORES que siguen son **normativos**: sustituyen lo que digan §4 a §9 donde choquen.
+
+| # | Hallazgo | Corrección |
+|---|---|---|
+| 1 MAYOR | carrera de `reclamar_instalacion` confirmada | arreglo en `seguridad/cuentas.py` como cambio de seguridad con expediente; `UPDATE … AND usado IS NULL`; 503 por `MENSAJE_BASE_OCUPADA`; S3 (a) y (b) con su rojo (H3, §3.3, §10.3) |
+| 2 MAYOR | códigos sin caducidad ni invalidación | `emitir_codigo` invalida pendientes; restablecimiento caduca a 24 h; `asegurar_codigo` reemite si falta el archivo; `_tomar_escritura` también en `preparar_primera_vez`; texto de la bienvenida sin «Perdí el acceso»; D-6 solo con esas medidas (§3.1, §3.3 a §3.5, D-6) |
+| 3 MAYOR | `ComposedModal` inviable | diálogos propios con `useDialogo` (§4.7, §8, R-B8, §14) |
+| 4 MAYOR | oráculos de S1/S2 | S1: 4×401 y el 5.º 423; S2: `Retry-After: 1`, el «22.º → 4» solo en `FrenoGlobal.espera` directo; el freno por API es un límite de 1 s por petición (§10.3) |
+| 5 MAYOR | orden y paralelismo | el retiro se fusiona primero (`c7842510`); BCP-1 ‖ BCP-3 → BCP-2; BCP-4 ‖ BCP-2; BCP-5 → 6 → 7 en serie; BCP-8/9 al final; un solo `lifespan` escrito por BCP-1 (§0.1, §11, §14) |
+| 6 | numeración | RF-160 a RF-166 y RNF-30; UC-12 corregido; referencias cruzadas arregladas (§14) |
+| 7 | `GET /v1/hoja/borradores` exige `EDITAR_HOJA` | el Shell lo consulta solo con `editar_hoja` y trata el 403 como cero (§4.6) |
+| 8 | ventana minimizada | el texto lo dice; el lanzador abre `codigo_instalacion.txt` con el Bloc de notas; el campo del código es visible (§3.5) |
+| 9 | subida y demostración | ver 9.1 |
+| 10 | nombres reservados | ver 9.2 |
+| 11 | proyectos | ver 9.3 |
+| 12 | ayuda y formularios | ver 9.4 |
+| 13 | aviso de sesión vencida | texto corregido; el cambio de contraseña no pierde el borrador; elegir la misma carpeta sí (§6.2, §6.3) |
+| 14 | capa y pruebas | ver 9.5 |
+
+**9.1 Subida y demostración (se suma a §4.4 y §4.5).** Además de `integrity_check`: `PRAGMA trusted_schema=OFF` y `PRAGMA quick_check`; la tabla virtual se detecta con una expresión
+sin distinguir mayúsculas ni espacios (`re.search(r"^\s*create\s+virtual\s+table", sql, re.I)`) además de rechazar `trigger` y `view`; **límite de tiempo** sobre `integrity_check` y `preparar_base`
+(supuesto 60 s, D-4; vencido → 422/503 sin dejar nada); el `finally` borra también `.sub-wal`, `.sub-shm` y `.sub-journal`; `ATTACH` no aplica (conexión de solo lectura sin SQL de la persona).
+El nombre **«demostracion» está reservado**: crear o subir con ese nombre (en cualquier combinación de mayúsculas) da 422 «Ese nombre está reservado para la demostración.»; `es_demostracion` se decide
+por ese nombre reservado, no por el contenido. El proceso hijo de la demostración corre con `cwd=config.RAIZ` y el entorno del hijo (`entorno_hijos`, como el lanzador); `--salida` es una ruta absoluta
+armada por el servidor y **salta `resolver_caso`**. El cerrojo se toma con `acquire(timeout=…)`: si otra creación sigue en curso responde **409** «Hay otra creación de carpeta en curso: espere unos segundos y repita.»
+(o 503 si es la demostración).
+
+**9.2 Nombres.** Se añaden `COM¹ COM² COM³ LPT¹ LPT² LPT³` a `_RESERVADOS_WINDOWS` de `operacion/base_datos.py` (los superíndices que Windows también reserva). La colisión por mayúsculas se decide con
+`casefold` sobre `listar_casos()` **bajo el cerrojo**, no solo por el sistema de archivos (NTFS ya lo hace; la CI corre en ubuntu). Prueba: crear `Obra` y `OBRA` → 409 en ambos sistemas.
+
+**9.3 Proyectos (se suma a §5).** `core.budget.crear_proyecto` compara con `==` (`persistencia.py:77`), así que «Torre B» y «torre b» simultáneos podrían pasar ambos: `crear_proyecto_en_sesion` toma el
+cerrojo de la ruta del caso (o `_tomar_escritura`) antes de comparar con `casefold`; si no, queda documentado como límite. Los mensajes del núcleo para moneda y tipo de obra (sin tilde, jerga) **se
+reemplazan por texto propio**: «Elija la moneda: Bs o USD.» y «El tipo de obra no es uno de los de la lista.». `presupuestos.py:215/260/386` (`"api (sin clave)"`) es una deuda aparte, declarada
+en §11.1: la corrección trivial es usar `_QUIEN_EDITA`.
+
+**9.4 Ayuda y formularios (se suma a §7 y §8).** `Toggletip` recibe `label` en español; sus pruebas leen `aria-expanded` y no la visibilidad (jsdom). Los formularios nuevos usan `comun/CampoTexto` (VB-18).
+BCP-5 y BCP-6 comprueban el desbordamiento de la cabecera a 1056 px con letra Muy grande (dos botones nuevos junto a los selectores); si no cabe, pasan a un menú «Carpeta y proyecto». Vocabulario (fila
+nueva de §7.1 y entrada del glosario): **«Carpeta de datos»** = el directorio de la instalación (`acerca/index.tsx:79`; contiene `casos/`, `respaldos/`, `instalacion.db`); **«carpeta de trabajo»** = un archivo `.db`
+dentro de `casos/`. La bienvenida y el glosario no las confunden: «la carpeta de datos de Sílice» solo se usa para ubicar archivos.
+
+**9.5 Capa y pruebas (se suma a §3 y §10).** El lanzador no importa `aplicacion`; por eso el módulo del primer arranque vive en **`operacion/primer_arranque.py`** y `api/` y `aplicacion/` lo importan (ya reflejado
+en todo el documento). El 403 de `Origin` y de equipo ajeno es una **dependencia de la ruta** que se ejecuta **antes** del 422 del cuerpo (así un cuerpo inválido desde fuera no devuelve 422). S7 cubre también la
+**salida estándar y de error del hijo uvicorn** (la prueba arranca un servidor real en `127.0.0.1` con datos temporales, hace un reclamo y busca el código y la contraseña en lo que el proceso imprimió).
