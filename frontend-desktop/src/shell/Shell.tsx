@@ -17,7 +17,7 @@ import { olvidarImportaciones } from "../paginas/hoja/useImportacion";
 import { terminarRecorrido } from "./recorrido";
 import { PAGINAS, rutaDe, visible } from "./rutas";
 import type { PaginaDef } from "./rutas";
-import { SelectorCaso, SelectorProyecto } from "./Selectores";
+import { SelectorCaso, SelectorProyecto, nombreDeCarpeta } from "./Selectores";
 import type { AlmacenDelVisor } from "../visor/almacen";
 import type { CrearHojaVisor } from "../visor/hojaVisor";
 
@@ -206,7 +206,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
         setProyecto(null);
         setProyectos(null);
         setGeneracion((g) => g + 1);
-        setAviso(`Ahora trabaja con la carpeta de trabajo «${nombre}». Si se reinicia la API, vuelve a la carpeta por defecto.`);
+        setAviso(`Ahora trabaja con la carpeta de trabajo «${nombreDeCarpeta(nombre)}». Si se reinicia la API, vuelve a la carpeta por defecto.`);
       } catch (e) {
         fallo(e);
       } finally {

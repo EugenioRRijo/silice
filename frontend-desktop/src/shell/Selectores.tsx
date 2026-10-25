@@ -10,6 +10,11 @@ interface PropsCaso {
   alElegir: (nombre: string) => void;
 }
 
+// La carpeta de trabajo se muestra sin la extension de la base de datos.
+export function nombreDeCarpeta(nombre: string): string {
+  return nombre.endsWith(".db") ? nombre.slice(0, -3) : nombre;
+}
+
 // La carpeta de trabajo (el caso en la API) es la base de datos en uso (RM-2): la API lo guarda por sesion.
 export function SelectorCaso({ casos, puedeCambiar, ocupado, alElegir }: PropsCaso) {
   return (
@@ -23,7 +28,7 @@ export function SelectorCaso({ casos, puedeCambiar, ocupado, alElegir }: PropsCa
         onChange={(e) => alElegir(e.target.value)}
       >
         {casos.casos.map((c) => (
-          <SelectItem key={c.ruta_relativa} value={c.nombre} text={c.nombre} />
+          <SelectItem key={c.ruta_relativa} value={c.nombre} text={nombreDeCarpeta(c.nombre)} />
         ))}
       </Select>
     </div>

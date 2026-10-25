@@ -1,7 +1,8 @@
 import { Folder } from "@carbon/icons-react";
+import { useId } from "react";
 import type { ReactNode } from "react";
 import type { CasosRespuesta, ProyectoRespuesta } from "../api/tipos";
-import { SelectorCaso, SelectorProyecto, rotuloDeProyecto } from "./Selectores";
+import { SelectorCaso, SelectorProyecto, nombreDeCarpeta, rotuloDeProyecto } from "./Selectores";
 import { useDespliegue } from "./useDespliegue";
 import "./PanelCarpetaProyecto.scss";
 
@@ -18,10 +19,7 @@ interface Props {
   children?: ReactNode;
 }
 
-// La carpeta de trabajo se muestra sin la extension de la base de datos.
-export function nombreDeCarpeta(nombre: string): string {
-  return nombre.endsWith(".db") ? nombre.slice(0, -3) : nombre;
-}
+export { nombreDeCarpeta };
 
 // «Carpeta y proyecto» siempre a la vista, a la derecha de la barra. El texto se recorta por CSS (puntos suspensivos); el
 // nombre completo va en el nombre accesible. Con letra grande o poco ancho solo queda el icono (el nombre accesible no cambia).
@@ -35,8 +33,9 @@ export function PanelCarpetaProyecto({
   alElegirProyecto,
   children,
 }: Props) {
+  const idPanel = useId();
   const { abierto, alternar, envoltorio, boton, alTeclear } = useDespliegue();
-  const carpeta = casos ? nombreDeCarpeta(casos.actual.nombre) : "sin carpeta";
+  const carpeta = casos ? nombreDeCarpeta(casos.actual.nombre) : "Sin carpeta";
   const actual = proyectos?.find((p) => p.codigo === elegido);
   const proyecto = actual && proyectos ? rotuloDeProyecto(actual, proyectos) : "Sin proyecto";
   return (
@@ -46,7 +45,7 @@ export function PanelCarpetaProyecto({
         ref={boton}
         className="cds--header__action silice-contexto__boton"
         aria-expanded={abierto}
-        aria-controls="panel-carpeta-proyecto"
+        aria-controls={idPanel}
         aria-label={`Carpeta de trabajo: ${carpeta}. Proyecto: ${proyecto}. Cambiar`}
         title={`${carpeta} · ${proyecto}`}
         onClick={alternar}
@@ -55,7 +54,7 @@ export function PanelCarpetaProyecto({
         <span className="silice-contexto__texto cds--type-body-compact-01">{`${carpeta} · ${proyecto}`}</span>
       </button>
       {abierto && (
-        <div id="panel-carpeta-proyecto" role="region" aria-label="Carpeta y proyecto" className="silice-contexto__panel">
+        <div id={idPanel} role="region" aria-label="Carpeta y proyecto" className="silice-contexto__panel">
           <p className="silice-contexto__titulo cds--type-label-01">Carpeta y proyecto</p>
           {casos && (
             <SelectorCaso casos={casos} puedeCambiar={puedeCambiar} ocupado={ocupado} alElegir={alElegirCaso} />

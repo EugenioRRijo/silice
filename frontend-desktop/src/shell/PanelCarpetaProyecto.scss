@@ -1,16 +1,14 @@
-// Lado derecho de la barra superior: «Carpeta y proyecto» y la cuenta. Todo en rem (sigue la escala de letra), esquinas
-// rectas, sin sombra ni animacion. Con letra Grande o Muy grande, o por debajo de 1366 px, solo queda el icono.
+// «Carpeta y proyecto» en la barra superior. Todo en rem (sigue la escala de letra), esquinas rectas, sin sombra ni
+// animacion. Con letra Grande o Muy grande, o por debajo de 1366 px, solo queda el icono.
 
-.silice-contexto,
-.silice-cuenta {
+.silice-contexto {
   position: relative;
   display: flex;
   align-items: center;
   min-inline-size: 0;
 }
 
-.silice-contexto__boton,
-.silice-cuenta__boton {
+.silice-contexto__boton {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -26,30 +24,19 @@
   white-space: nowrap;
 }
 
-.silice-cuenta__nombre {
-  max-inline-size: 10rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.silice-contexto__panel,
-.silice-cuenta__panel {
+.silice-contexto__panel {
   position: absolute;
   inset-block-start: 100%;
   inset-inline-end: 0;
   z-index: 8000;
   box-sizing: border-box;
+  display: grid;
+  gap: 1rem;
+  inline-size: 20rem;
   max-inline-size: calc(100vw - 1rem);
   padding: 1rem;
   background: var(--cds-layer-01);
   border: 1px solid var(--cds-border-subtle);
-}
-
-.silice-contexto__panel {
-  display: grid;
-  gap: 1rem;
-  inline-size: 20rem;
 
   .silice-selector {
     padding-inline: 0;
@@ -65,45 +52,15 @@
   color: var(--cds-text-secondary);
 }
 
-.silice-cuenta__panel {
-  padding: 0.25rem 0;
-  min-inline-size: 10rem;
-}
-
-.silice-cuenta__salir {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  inline-size: 100%;
-  min-block-size: 2rem;
-  padding: 0 1rem;
-  border: 0;
-  background: transparent;
-  color: var(--cds-text-primary);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--cds-layer-hover-01);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: -2px;
-  }
-}
-
-// Letra Grande o Muy grande, o menos de 1366 px: solo iconos.
 :root[data-silice-letra="grande"],
 :root[data-silice-letra="muy-grande"] {
-  .silice-contexto__texto,
-  .silice-cuenta__nombre {
+  .silice-contexto__texto {
     display: none;
   }
 }
 
 @media (max-width: 1365.98px) {
-  .silice-contexto__texto,
-  .silice-cuenta__nombre {
+  .silice-contexto__texto {
     display: none;
   }
 }
