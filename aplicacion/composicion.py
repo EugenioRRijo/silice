@@ -33,6 +33,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
 
+from aplicacion.cifras import CifraInvalida, cifra_escrita, texto_de_cifra
 from core.catalog import (
     Catalogo,
     CatalogoIncompleto,
@@ -100,69 +101,41 @@ def decimal_desde_texto(texto: str, campo: str) -> Decimal:
     return valor
 
 
-def decimal_con_coma(texto: str) -> Decimal | None:
-    """El número que escribió una persona en es-VE: coma o punto como separador decimal.
-
-    Es el criterio de las alturas del plano de la Hoja (`aplicacion.hoja._altura`, que lo usa) y
-    de Componer: `0,005` y `0.005` valen lo mismo. Con coma y punto a la vez (`1.234,5`) no se
-    adivina cuál es el decimal; eso, un texto que no es un número y uno no finito dan `None`.
-    Nunca pasa por `float`.
-    """
-    limpio = texto.strip()
-    if "," in limpio and "." in limpio:
-        return None
-    try:
-        valor = Decimal(limpio.replace(",", "."))
-    except InvalidOperation:
-        return None
-    return valor if valor.is_finite() else None
+#: El ejemplo de cifra que acompaña al aviso de un campo de Componer que falta.
+_EJEMPLO = "por ejemplo, 2,5"
 
 
-#: Lo que la persona debe escribir en un campo de cifra de Componer (prueba en vivo 2026-10-25):
-#: lenguaje llano, con tildes y con el rótulo que ve en pantalla, nunca la clave interna.
-_SOLO_CIFRAS = "escriba solo cifras, con coma o punto para los decimales"
-_SIN_MILES = "escriba el número sin separador de miles; por ejemplo, 1234,5."
-
-
-def _cifra_de_componer(texto: str, sujeto: str, falta: str, ejemplo: str) -> Decimal:
-    """`decimal_con_coma` con el mensaje de Componer. `sujeto` es lo que se nombra delante del
-    texto escrito («En Equipos, fila 1 («Mezcladora»), la depreciación»); `falta`, la frase
-    completa para el campo vacío."""
+def _cifra_de_componer(texto: str, sujeto: str, falta: str) -> Decimal:
+    """Una cifra de Componer leída con la regla única (`aplicacion.cifras.cifra_escrita`: coma
+    decimal, punto de miles). `sujeto` es lo que se nombra delante del texto escrito («En Equipos,
+    fila 1 («Mezcladora»), la depreciación»); `falta`, la frase completa para el campo vacío."""
     limpio = texto.strip()
     if not limpio:
         raise ComposicionInvalida(falta)
-    valor = decimal_con_coma(limpio)
-    if valor is not None:
-        return valor
-    if "," in limpio and "." in limpio:
+    try:
+        return cifra_escrita(limpio)
+    except CifraInvalida as error:
         raise ComposicionInvalida(
-            f"{sujeto} «{limpio}» lleva punto y coma a la vez y no se sabe cuál separa los "
-            f"decimales: {_SIN_MILES}"
-        )
-    raise ComposicionInvalida(
-        f"{sujeto} «{limpio}» no es un número: {_SOLO_CIFRAS}; por ejemplo, {ejemplo}."
-    )
+            f"{sujeto} «{limpio}» no se entiende como número. {error}"
+        ) from error
 
 
 def _cifra_de_fila(texto: str, tabla: str, indice: int, descripcion: str, rotulo: str) -> Decimal:
     """Una cifra de una fila de insumos; `rotulo` lleva su artículo («la depreciación»)."""
     lugar = f"En {tabla}, fila {indice} («{descripcion}»)"
     return _cifra_de_componer(
-        texto,
-        f"{lugar}, {rotulo}",
-        f"{lugar}, falta {rotulo}: escriba un número; por ejemplo, 2,5.",
-        "2,5",
+        texto, f"{lugar}, {rotulo}", f"{lugar}, falta {rotulo}: escriba un número; {_EJEMPLO}."
     )
 
 
 def rendimiento_desde_texto(texto: str) -> Decimal:
-    """El rendimiento de la cabecera de Componer (coma o punto decimal), con su mensaje llano."""
+    """El rendimiento de la cabecera de Componer (coma decimal, punto de miles), con su mensaje
+    llano."""
     return _cifra_de_componer(
         texto,
         "El rendimiento",
         "Falta el rendimiento: escriba cuántas unidades de la partida se hacen por día; por "
         "ejemplo, 25.",
-        "25",
     )
 
 
@@ -409,12 +382,10 @@ def item_desde_cantidad(
 
 
 def _decimal_como_texto(valor: Decimal) -> str:
-    """El `Decimal` tal como lo teclea una persona: notacion fija, sin exponente ni perder escala.
-
-    Mismo criterio que `tests/integration/test_composicion_extremo_a_extremo.py::_texto`:
-    `str(Decimal("1E+2"))` da `"1E+2"`, que ninguna pantalla muestra.
-    """
-    return f"{valor:f}"
+    """El `Decimal` tal como lo teclea una persona (`aplicacion.cifras.texto_de_cifra`): coma
+    decimal y punto de miles, notación fija, sin exponente ni perder escala. Vuelve a leerse igual
+    con `cifra_escrita`, así que precargar y guardar sin tocar nada no cambia ninguna cifra."""
+    return texto_de_cifra(valor)
 
 
 def filas_desde_composicion(
@@ -631,7 +602,7 @@ def fila_materiales_desde_referencia(fila: FilaReferencia) -> dict[str, str]:
         "descripcion": fila.descripcion,
         "unidad": fila.unidad,
         "cantidad": "",
-        "precio": str(fila.precio_usd),
+        "precio": _decimal_como_texto(fila.precio_usd),
     }
 
 
@@ -642,11 +613,13 @@ def fila_equipos_desde_referencia(fila: FilaReferencia) -> dict[str, str]:
     personas le den un factor distinto al mismo equipo en dos APU
     (`tests/integration/test_composicion_r6.py`).
     """
-    depreciacion = "" if fila.factor_depreciacion is None else str(fila.factor_depreciacion)
+    depreciacion = (
+        "" if fila.factor_depreciacion is None else _decimal_como_texto(fila.factor_depreciacion)
+    )
     return {
         "descripcion": fila.descripcion,
         "cantidad": "",
-        "precio": str(fila.precio_usd),
+        "precio": _decimal_como_texto(fila.precio_usd),
         "depreciacion": depreciacion,
     }
 
@@ -660,7 +633,7 @@ def fila_mano_obra_desde_referencia(fila: FilaReferencia) -> dict[str, str]:
     return {
         "descripcion": fila.descripcion,
         "cantidad": "",
-        "sueldo": str(fila.precio_usd),
+        "sueldo": _decimal_como_texto(fila.precio_usd),
         "modalidad": "",
     }
 
@@ -1131,7 +1104,7 @@ def precarga_de_partida(sesion: Session, codigo: str) -> Precarga:
         propuesta = proponer_rendimiento(sesion, codigo)
     except KeyError:
         return Precarga(False, vacias, None, False)
-    rendimiento = None if propuesta is None else str(propuesta.rendimiento.valor)
+    rendimiento = None if propuesta is None else _decimal_como_texto(propuesta.rendimiento.valor)
     try:
         tablas = filas_desde_composicion(Catalogo(sesion).composicion(codigo))
     except (KeyError, CatalogoIncompleto):
@@ -1292,12 +1265,17 @@ def guardar_desde_tablas(
             justificada = True
         else:
             avisos.append(MENSAJE_SIN_JUSTIFICACION)
+    # El aviso se lee en pantalla: coma decimal y punto de miles (el campo `precio_unitario` de la
+    # respuesta sigue con punto, es el contrato).
     precio = presentar(guardado.resultado.precio_unitario)
-    mensaje = f"Composición guardada para la partida {codigo_partida}: precio unitario {precio}."
+    mensaje = (
+        f"Composición guardada para la partida {codigo_partida}: precio unitario "
+        f"{texto_de_cifra(Decimal(precio))}."
+    )
     if justificada:  # UC-06, flujo 4a
         mensaje += (
             " Justificación de la advertencia registrada junto al rendimiento "
-            f"{composicion.rendimiento}."
+            f"{texto_de_cifra(composicion.rendimiento)}."
         )
     return ResultadoGuardado(
         precio_unitario=precio, mensaje=mensaje, justificada=justificada, avisos=tuple(avisos)

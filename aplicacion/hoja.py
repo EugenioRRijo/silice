@@ -89,9 +89,9 @@ from adapters.espacio.planos import (
 )
 from adapters.espacio.planos.geometria_plano import reglas_plano
 from adapters.espacio.reglas import CantidadEscrita, reglas_espacio
+from aplicacion.cifras import CifraInvalida, cifra_escrita
 from aplicacion.composicion import (
     ComposicionInvalida,
-    decimal_con_coma,
     decimal_desde_texto,
     filas_desde_composicion,
     texto_de_celda,
@@ -2756,9 +2756,12 @@ def alturas_pendientes(resultado: ResultadoImportacion) -> list[tuple[str, str]]
 
 
 def _altura(identificador: str, texto: str) -> Decimal:
-    """Una altura en metros escrita por el usuario (acepta coma decimal: `decimal_con_coma`,
-    el mismo criterio que Componer)."""
-    valor = decimal_con_coma(texto)
+    """Una altura en metros escrita por el usuario, con la regla única de las cifras tecleadas
+    (`aplicacion.cifras.cifra_escrita`: coma decimal, punto de miles; «2.5» no se adivina)."""
+    try:
+        valor: Decimal | None = cifra_escrita(texto)
+    except CifraInvalida:
+        valor = None
     if valor is None or not Decimal(0) < valor <= ALTURA_MAXIMA_M:
         raise HojaInvalida(
             f"Altura de «{identificador}»: «{texto}» no es una altura valida. "

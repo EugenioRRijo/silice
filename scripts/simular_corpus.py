@@ -46,6 +46,7 @@ if str(RAIZ) not in sys.path:
 
 from sqlalchemy.orm import Session  # noqa: E402
 
+from aplicacion.cifras import texto_de_cifra  # noqa: E402
 from aplicacion.composicion import (  # noqa: E402
     FilaReferencia,
     buscar_referencia,
@@ -89,8 +90,9 @@ _RENDIMIENTO = (1, 200)
 
 
 def _cantidad(generador: random.Random) -> str:
-    """Cantidad de una linea, desde enteros y nunca desde `random.random()` (sin `float`)."""
-    return str(Decimal(generador.randint(*_CENTESIMAS_CANTIDAD)) / Decimal(100))
+    """Cantidad de una linea, desde enteros y nunca desde `random.random()` (sin `float`), escrita
+    como la teclea la persona en Componer (coma decimal: `aplicacion.cifras.texto_de_cifra`)."""
+    return texto_de_cifra(Decimal(generador.randint(*_CENTESIMAS_CANTIDAD)) / Decimal(100))
 
 
 def _equipos_validos() -> list[FilaReferencia]:
