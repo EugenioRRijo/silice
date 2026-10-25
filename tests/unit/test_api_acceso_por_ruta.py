@@ -140,6 +140,7 @@ TABLA = {
     ("GET", "/v1/casos"): CUALQUIERA,
     ("POST", "/v1/casos/actual"): CAMBIAR_CASO,
     ("GET", "/v1/proyectos"): LEER,
+    ("POST", "/v1/proyectos"): EDITAR,
     ("POST", "/v1/similares"): EDITAR,
     ("POST", "/v1/simulador"): EDITAR,
     ("POST", "/v1/simulador/csv"): EDITAR,
