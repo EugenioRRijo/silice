@@ -31,3 +31,15 @@ Servidor de prueba en 127.0.0.1:8030 que sirve `dist/` en `/app/` y **simula** P
 `api/main.py`: no se probó contra el servidor real). 12 combinaciones (bienvenida, bienvenida sin archivo, recuperar × 1366 y
 1056 px × Normal y Muy grande): un `h1`, `scrollWidth <= clientWidth` en todas, resumen de errores con el foco al enviar vacío.
 Alto de la bienvenida: 1667 px (Normal), 2500 (Muy grande 1366), 2910 (Muy grande 1056, una columna). El 8000 no se tocó.
+
+## Ronda 2 (2026-10-25): correcciones F1 y F4 y D-7
+
+- F1 (textos): en producto, `RecuperarAcceso` nombra el acceso directo «Sílice: recuperar acceso de administrador» sin órdenes de
+  Python; en desarrollo da el script y la orden; con estado desconocido da ambos. F4: el aviso del servidor va arriba del formulario
+  y se acerca con `scrollIntoView({block: "nearest"})`, sin animación.
+- D-7 implementado con la opción recomendada del diseño (§13): un `[Icons]` más en `instalador/silice.iss` (macro `OpRec`) con
+  `restablecer-administrador --esperar` y la consola visible; **queda por ratificar por Eugenio**.
+- Corrido: `npx vitest run src/bienvenida` (61 verdes); `pytest tests/unit/test_iss.py tests/unit/test_aplicacion_primer_arranque.py`
+  verdes; `npm run lint` y `npm run build` limpios. Veredicto del árbitro, ronda 2: **APROBADO** (cabeza `ab400fb1`), con cuatro
+  MENOR: commit `d390e0f2` con tipo `wip:` y prueba e implementación juntas (declarado; se deja así), esta sección, la línea de
+  `CHANGELOG.md` y la limpieza del sustituto de `scrollIntoView` en un `finally` (corregidos).
