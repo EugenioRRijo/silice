@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
+import { AYUDA_CIFRAS, MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
@@ -242,12 +243,32 @@ describe("Existencias de la arenera", () => {
       expect(servidor.de("POST", MOVIMIENTOS)[0].cuerpo).toMatchObject({ fecha: "2026-10-10" });
     });
 
-    test("rechaza «1.234,5» sin llamar a la API y dice como escribirlo", async () => {
+    test("rechaza «2.5» (punto decimal) sin llamar a la API y dice como escribirlo", async () => {
+      await abrirRegistrar();
+      await usuario.type(screen.getByLabelText("Cantidad (m³)"), "2.5");
+      await usuario.click(screen.getByRole("button", { name: "Registrar entrada" }));
+      expect(
+        await screen.findByText(`La cantidad de la entrada está mal escrita. ${MENSAJE_CIFRA}`),
+      ).toBeInTheDocument();
+      expect(servidor.de("POST", MOVIMIENTOS)).toHaveLength(0);
+    });
+
+    test("«1.234,5» es mil doscientos treinta y cuatro coma cinco, y «1.000» es mil", async () => {
+      servidor.responder(`POST ${MOVIMIENTOS}`, () => json({ id: 1 }, 201));
       await abrirRegistrar();
       await usuario.type(screen.getByLabelText("Cantidad (m³)"), "1.234,5");
       await usuario.click(screen.getByRole("button", { name: "Registrar entrada" }));
-      expect(await screen.findByText(/no debe llevar separador de miles: escriba, por ejemplo, 1234,5/)).toBeInTheDocument();
-      expect(servidor.de("POST", MOVIMIENTOS)).toHaveLength(0);
+      expect(await screen.findByText("Entrada registrada: 1.234,5 m³ de ARE-01.")).toBeInTheDocument();
+      await usuario.type(screen.getByLabelText("Cantidad (m³)"), "1.000");
+      await usuario.click(screen.getByRole("button", { name: "Registrar entrada" }));
+      await screen.findByText("Entrada registrada: 1.000 m³ de ARE-01.");
+      const enviados = servidor.de("POST", MOVIMIENTOS).map((p) => (p.cuerpo as { cantidad: string }).cantidad);
+      expect(enviados).toEqual(["1234.5", "1000"]);
+    });
+
+    test("la ayuda junto a la cantidad dice la regla de la coma", async () => {
+      await abrirRegistrar();
+      expect(screen.getByText(AYUDA_CIFRAS)).toBeInTheDocument();
     });
 
     test("una cantidad vacia o en cero se marca antes de llamar a la API", async () => {
@@ -265,7 +286,7 @@ describe("Existencias de la arenera", () => {
       await abrirRegistrar();
       await irA("Despacho");
       await usuario.selectOptions(screen.getByLabelText("Material"), "PIE-01");
-      await usuario.type(screen.getByLabelText("Cantidad (t)"), "8.25");
+      await usuario.type(screen.getByLabelText("Cantidad (t)"), "8,25");
       await usuario.click(screen.getByRole("button", { name: "Registrar despacho" }));
       expect(await screen.findByText("Despacho registrado: 8,25 t de PIE-01.")).toBeInTheDocument();
       expect(servidor.de("POST", MOVIMIENTOS)[0].cuerpo).toEqual({
@@ -618,12 +639,12 @@ describe("Existencias de la arenera", () => {
       expect(screen.getByText(/1 pesaje por resolver/)).toBeInTheDocument();
     });
 
-    test("el peso neto con separador de miles se rechaza sin llamar a la API", async () => {
+    test("el peso neto con punto decimal se rechaza sin llamar a la API", async () => {
       await abrirBandeja();
       await usuario.click(screen.getByRole("button", { name: "Revisar el pesaje de la fila 12" }));
-      await usuario.type(screen.getByLabelText("Peso neto (t)"), "1.234,5");
+      await usuario.type(screen.getByLabelText("Peso neto (t)"), "19.5");
       await usuario.click(screen.getByRole("button", { name: "Resolver como despacho" }));
-      expect(await screen.findByText(/no debe llevar separador de miles/)).toBeInTheDocument();
+      expect(await screen.findByText(`La cantidad del peso neto está mal escrita. ${MENSAJE_CIFRA}`)).toBeInTheDocument();
       expect(servidor.de("POST", `${SOSPECHOSOS}/7/resolver`)).toHaveLength(0);
     });
 
