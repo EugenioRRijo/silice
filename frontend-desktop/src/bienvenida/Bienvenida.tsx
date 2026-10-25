@@ -49,6 +49,12 @@ export function Bienvenida({ info, onReclamar }: Props) {
             {info.modo === "desarrollo" && " (dentro de la carpeta del programa)"}
           </li>
         </ul>
+        {info.modo === "desarrollo" && (
+          <p className="cds--type-body-compact-01">
+            En desarrollo, el código sale en la consola donde ejecutó <code className="silice-codigo">npm run dev</code> y
+            en <code className="silice-codigo">data/codigo_instalacion.txt</code>.
+          </p>
+        )}
         <p className="cds--type-body-compact-01">
           Son 20 caracteres en grupos de cuatro, por ejemplo XXXX-XXXX-XXXX-XXXX-XXXX: letras de la A a la Z y cifras
           del 2 al 7. Cópielo y péguelo abajo tal cual.
