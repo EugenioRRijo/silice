@@ -278,6 +278,28 @@ describe("Componer una partida", () => {
     expect(screen.queryByRole("link", { name: "Elaborar un presupuesto" })).not.toBeInTheDocument();
   });
 
+  test("un dato mal escrito no borra el último desglose: lo conserva, marcado, junto al aviso", async () => {
+    // Prueba en vivo 2026-10-25: un número ilegible dejaba la pantalla sin desglose y solo con el mensaje.
+    const usuario = userEvent.setup();
+    const AVISO = "En Equipos, fila 1 («Mezcladora»), la depreciación «0,0,5» no es un número: escriba solo cifras.";
+    evaluacion = () => json(valida("29.70"));
+    montar();
+    await usuario.type(screen.getByLabelText("Código"), "FIC-1");
+    expect(await screen.findByText("29.70", { selector: "td" }, ESPERA)).toBeInTheDocument();
+
+    evaluacion = () => json({ ...VACIA, estado: "incompleto", aviso: AVISO });
+    await usuario.type(screen.getByLabelText("Código"), "X");
+    expect(await screen.findByText(AVISO, {}, ESPERA)).toBeInTheDocument();
+    expect(screen.getByText("29.70", { selector: "td" })).toBeInTheDocument();
+    expect(screen.getByText(/último desglose calculado/i)).toBeInTheDocument();
+
+    // Con el formulario vacío otra vez no queda nada viejo a la vista.
+    evaluacion = () => json(VACIA);
+    await usuario.clear(screen.getByLabelText("Código"));
+    expect(await screen.findByText(/Comience por la cabecera/, {}, ESPERA)).toBeInTheDocument();
+    expect(screen.queryByText("29.70", { selector: "td" })).not.toBeInTheDocument();
+  });
+
   test("un 401 en el desglose llama a alExpirar", async () => {
     const usuario = userEvent.setup();
     evaluacion = () => json({ detalle: "Sesión vencida." }, 401);
