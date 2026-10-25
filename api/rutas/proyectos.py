@@ -10,18 +10,49 @@
   plan: el selector lo necesita para rotularla); `actualizado`: su fecha ISO, o `null`.
 
 `LEER_PROYECTO` (arma y revisa), como la barra y el Tablero.
+
+`POST /v1/proyectos` (BCP-3, diseño `2026-10-21-bienvenida-casos-proyectos-design.md` §5): crea un
+proyecto en el caso de la petición (el de la ficha, RM-2) con `EDITAR_HOJA` (clave de API o sesión).
+`{nombre ≤ 120, moneda: "Bs"|"USD"|null, dominio: ""|civil|telecom|industrial|sistemas,
+descripcion ≤ 500}` → 201 con la forma de un elemento de la lista (`version_vigente: null`). El
+responsable de la moneda es la cuenta de la sesión (`Nombre <login>`, RF-82) o, con clave de API,
+`USUARIO_API`. Va sobre la sesión de escritura (`BEGIN IMMEDIATE`): dos peticiones con el mismo
+nombre dan 201 y 409. Errores: 409 repetido; 422 vacío, moneda o tipo de obra (textos con tilde,
+DV-BCP-3). El 422 de forma no repite lo enviado (`RutaSinEco`).
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter
-from pydantic import BaseModel
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from api.acceso import LEER
-from api.dependencias import SesionDep
-from aplicacion.proyectos import proyectos_del_caso
+from api.dependencias import USUARIO_API, SesionDeEscrituraDep, SesionDep
+from api.sesion_web import exigir_clave_o_sesion
+from api.sin_eco import RutaSinEco, sin_eco
+from aplicacion.proyectos import (
+    ProyectoInvalido,
+    ProyectoRepetido,
+    crear_proyecto_en_sesion,
+    proyectos_del_caso,
+)
+from seguridad.permisos import Accion
+from seguridad.sesiones import SesionActiva
 
-router = APIRouter(prefix="/v1/proyectos", tags=["proyectos"])
+MENSAJE_CUERPO_INVALIDO = (
+    "Indique el nombre del proyecto (hasta 120 caracteres), la moneda (Bs o USD), el tipo de obra "
+    "y una descripción de hasta 500 caracteres."
+)
+
+
+class _RutaProyectos(RutaSinEco):
+    mensaje_por_omision = MENSAJE_CUERPO_INVALIDO
+
+
+router = APIRouter(prefix="/v1/proyectos", tags=["proyectos"], route_class=_RutaProyectos)
+EDITAR_HOJA = Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))
 
 
 class ProyectoDelCasoRespuesta(BaseModel):
@@ -45,3 +76,43 @@ def listar_proyectos_del_caso(sesion: SesionDep) -> list[ProyectoDelCasoRespuest
         )
         for fila in proyectos_del_caso(sesion)
     ]
+
+
+class ProyectoNuevo(BaseModel):
+    nombre: str = Field(max_length=120)
+    moneda: str | None = None
+    dominio: str = ""
+    descripcion: str = Field(default="", max_length=500)
+
+
+@router.post(
+    "", response_model=ProyectoDelCasoRespuesta, status_code=201, dependencies=[EDITAR_HOJA]
+)
+@sin_eco(MENSAJE_CUERPO_INVALIDO)
+def crear_proyecto_del_caso(
+    sesion: SesionDeEscrituraDep,
+    peticion: ProyectoNuevo,
+    activa: Annotated[SesionActiva | None, EDITAR_HOJA],
+) -> ProyectoDelCasoRespuesta:
+    """Crea el proyecto en el caso de esta sesión; sin versión guardada todavía."""
+    responsable = USUARIO_API if activa is None else activa.usuario
+    try:
+        proyecto = crear_proyecto_en_sesion(
+            sesion,
+            peticion.nombre,
+            peticion.moneda,
+            peticion.dominio,
+            peticion.descripcion,
+            responsable,
+        )
+    except ProyectoRepetido as error:
+        raise HTTPException(409, str(error)) from None
+    except ProyectoInvalido as error:
+        raise HTTPException(422, str(error)) from None
+    return ProyectoDelCasoRespuesta(
+        codigo=str(proyecto.id),
+        nombre=proyecto.nombre,
+        version_vigente=None,
+        version_codigo=None,
+        actualizado=None,
+    )

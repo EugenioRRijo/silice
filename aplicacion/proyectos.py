@@ -27,6 +27,7 @@ from datetime import date
 from pathlib import Path
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core import models
@@ -35,6 +36,7 @@ from core.budget.moneda import declarar_moneda
 from core.catalog import abrir_sesion, crear_motor
 from core.catalog.moneda import MONEDAS
 from core.contracts import Severidad
+from core.contracts.dominio import Dominio
 
 #: Las monedas que ofrece la barra al crear un proyecto (sin valor por defecto en la interfaz).
 MONEDAS_DEL_PROYECTO = MONEDAS
@@ -83,6 +85,69 @@ def listar_proyectos(ruta: Path) -> list[str]:
     return sorted(nombres, key=str.casefold)
 
 
+MENSAJE_NOMBRE_VACIO = "Escriba un nombre para el proyecto: no puede quedar vacío."
+MENSAJE_MONEDA = "Elija la moneda: Bs o USD."
+MENSAJE_TIPO_DE_OBRA = "El tipo de obra no es uno de los de la lista."
+
+
+class ProyectoRepetido(ProyectoInvalido):
+    """Ya hay un proyecto con ese nombre (sin distinguir mayúsculas): la API lo dice con un 409."""
+
+
+def _limpiar_nombre(nombre: str) -> str:
+    limpio = " ".join(nombre.split())  # sin espacios sobrantes ni dobles
+    if not limpio:
+        raise ProyectoInvalido(MENSAJE_NOMBRE_VACIO)
+    return limpio
+
+
+def crear_proyecto_en_sesion(
+    sesion: Session,
+    nombre: str,
+    moneda: str | None,
+    dominio: str,
+    descripcion: str,
+    responsable: str,
+) -> models.Proyecto:
+    """Crea el proyecto en la base de `sesion` y confirma, todo o nada (BCP-3, diseño §5.1).
+
+    Normaliza el nombre, compara sin distinguir mayúsculas (`casefold`, en Python: `lower()` de
+    SQLite solo conoce el ASCII), crea el proyecto con `core.budget.crear_proyecto` y, con
+    `moneda`, la declara en `moneda_proyecto` firmada por `responsable` (RF-82); si algo falla se
+    deshace todo y no queda el proyecto. `ProyectoRepetido` si el nombre ya existe (también si dos
+    peticiones lo crean a la vez y la restricción única de la base gana); `ProyectoInvalido` si el
+    nombre queda vacío, la moneda no es Bs ni USD o el tipo de obra no es uno de la lista. Quien
+    llama con una sesión de escritura (`BEGIN IMMEDIATE`) serializa la comparación y el alta.
+    """
+    limpio = _limpiar_nombre(nombre)
+    if moneda is not None and moneda not in MONEDAS_DEL_PROYECTO:
+        raise ProyectoInvalido(MENSAJE_MONEDA)
+    if dominio != "" and dominio not in {d.value for d in Dominio}:
+        raise ProyectoInvalido(MENSAJE_TIPO_DE_OBRA)
+    try:
+        for otro in sesion.scalars(select(models.Proyecto)):
+            if otro.nombre.casefold() == limpio.casefold():
+                raise ProyectoRepetido(
+                    f"Ya existe un proyecto llamado «{otro.nombre}»: elija otro nombre o abra ese."
+                )
+        try:
+            proyecto = crear_proyecto(sesion, limpio, descripcion, dominio)
+            if moneda is not None:
+                declarar_moneda(sesion, proyecto, moneda, responsable=responsable)
+        except ValueError as error:  # el núcleo repite las reglas; por si cambian
+            raise ProyectoInvalido(str(error)) from error
+        sesion.commit()
+    except IntegrityError:  # dos peticiones a la vez con el mismo nombre
+        sesion.rollback()
+        raise ProyectoRepetido(
+            f"Ya existe un proyecto llamado «{limpio}»: elija otro nombre o abra ese."
+        ) from None
+    except BaseException:
+        sesion.rollback()
+        raise
+    return proyecto
+
+
 def crear_proyecto_nuevo(
     ruta: Path,
     nombre: str,
@@ -94,9 +159,7 @@ def crear_proyecto_nuevo(
     `ProyectoInvalido` si el nombre queda vacio, ya existe (sin distinguir mayusculas), la moneda
     no es Bs ni USD o el caso no existe. `responsable` firma la declaración de la moneda (RF-82):
     la barra pasa el usuario de la sesión con el acceso encendido."""
-    limpio = " ".join(nombre.split())  # sin espacios sobrantes ni dobles
-    if not limpio:
-        raise ProyectoInvalido("Escriba un nombre para el proyecto: no puede quedar vacio.")
+    limpio = _limpiar_nombre(nombre)
     if not ruta.exists():
         raise ProyectoInvalido(
             f"El caso {ruta} no existe todavia: abra o siembre un caso en el Inicio antes de "
@@ -105,22 +168,7 @@ def crear_proyecto_nuevo(
     motor = crear_motor(_url(ruta))
     try:
         with abrir_sesion(motor) as sesion:
-            # En Python: `lower()` de SQLite solo conoce el ASCII y «CLINICA» no es «clinica».
-            existe = any(
-                otro.casefold() == limpio.casefold()
-                for otro in sesion.scalars(select(models.Proyecto.nombre))
-            )
-            if existe:
-                raise ProyectoInvalido(
-                    f"Ya existe un proyecto llamado «{limpio}»: elija otro nombre o abra ese."
-                )
-            try:
-                proyecto = crear_proyecto(sesion, limpio)
-                if moneda is not None:
-                    declarar_moneda(sesion, proyecto, moneda, responsable=responsable)
-            except ValueError as error:  # el nucleo repite las reglas; por si cambian
-                raise ProyectoInvalido(str(error)) from error
-            sesion.commit()
+            crear_proyecto_en_sesion(sesion, limpio, moneda, "", "", responsable)
     finally:
         motor.dispose()
     return limpio

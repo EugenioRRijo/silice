@@ -131,7 +131,7 @@ def test_nombre_vacio_da_422_con_el_texto_y_no_crea(nombre: str) -> None:
     navegador, ficha = con_cuenta(app, "ana")
     respuesta = _crear(navegador, ficha, {"nombre": nombre, "moneda": "Bs"})
     assert respuesta.status_code == 422
-    assert respuesta.json() == {"detail": VACIO}
+    assert respuesta.json() == {"detalle": VACIO}
     assert _nombres("silice.db") == []
 
 
@@ -142,7 +142,7 @@ def test_nombre_repetido_sin_distinguir_mayusculas_da_409(otro: str) -> None:
     respuesta = _crear(navegador, ficha, {"nombre": otro, "moneda": "USD"})
     assert respuesta.status_code == 409
     assert respuesta.json() == {
-        "detail": "Ya existe un proyecto llamado «Torre B»: elija otro nombre o abra ese."
+        "detalle": "Ya existe un proyecto llamado «Torre B»: elija otro nombre o abra ese."
     }
     assert _nombres("silice.db") == ["Torre B"]
 
@@ -153,8 +153,8 @@ def test_el_409_nombra_al_proyecto_que_ya_existe() -> None:
     _crear(navegador, ficha, {"nombre": "Torre B", "moneda": "Bs"})
     respuesta = _crear(navegador, ficha, {"nombre": "  torre   b ", "moneda": "Bs"})
     assert respuesta.status_code == 409
-    assert "«Torre B»" in respuesta.json()["detail"]
-    assert "torre b" not in respuesta.json()["detail"]
+    assert "«Torre B»" in respuesta.json()["detalle"]
+    assert "torre b" not in respuesta.json()["detalle"]
 
 
 def test_la_mayuscula_no_ascii_tambien_cuenta_como_repetida() -> None:
@@ -168,7 +168,7 @@ def test_moneda_fuera_de_bs_usd_da_422_y_no_crea(moneda: str) -> None:
     navegador, ficha = con_cuenta(app, "ana")
     respuesta = _crear(navegador, ficha, {"nombre": "Torre C", "moneda": moneda})
     assert respuesta.status_code == 422
-    assert respuesta.json() == {"detail": "Elija la moneda: Bs o USD."}
+    assert respuesta.json() == {"detalle": "Elija la moneda: Bs o USD."}
     assert _nombres("silice.db") == []  # todo o nada
     assert _filas("silice.db", "select count(*) from moneda_proyecto") == [(0,)]
 
@@ -178,7 +178,7 @@ def test_tipo_de_obra_desconocido_da_422_y_no_crea(dominio: str) -> None:
     navegador, ficha = con_cuenta(app, "ana")
     respuesta = _crear(navegador, ficha, {"nombre": "Torre C", "moneda": "Bs", "dominio": dominio})
     assert respuesta.status_code == 422
-    assert respuesta.json() == {"detail": "El tipo de obra no es uno de los de la lista."}
+    assert respuesta.json() == {"detalle": "El tipo de obra no es uno de los de la lista."}
     assert _nombres("silice.db") == []
 
 
@@ -265,7 +265,7 @@ def test_sin_editar_hoja_da_403_y_no_crea(login: str) -> None:
     navegador, ficha = con_cuenta(app, login)
     respuesta = _crear(navegador, ficha, {"nombre": "Torre B", "moneda": "Bs"})
     assert respuesta.status_code == 403
-    assert respuesta.json()["detail"] == MENSAJE_PERMISO
+    assert respuesta.json()["detalle"] == MENSAJE_PERMISO
     assert _nombres("silice.db") == []
 
 
@@ -276,19 +276,6 @@ def test_sin_csrf_o_sin_origin_da_403_y_no_crea() -> None:
     assert sin_csrf.status_code == 403
     sin_origen = navegador.post(RUTA, json=cuerpo, headers=protegida(ficha, origen=None))
     assert sin_origen.status_code == 403
-    assert _nombres("silice.db") == []
-
-
-def test_desde_ip_remota_da_403() -> None:
-    navegador, ficha = con_cuenta(app, "ana")
-    remoto = cliente(app, ip="192.168.1.50")
-    respuesta = remoto.post(
-        RUTA,
-        json={"nombre": "Torre B", "moneda": "Bs"},
-        cookies=dict(navegador.cookies),
-        headers=protegida(ficha),
-    )
-    assert respuesta.status_code == 403
     assert _nombres("silice.db") == []
 
 

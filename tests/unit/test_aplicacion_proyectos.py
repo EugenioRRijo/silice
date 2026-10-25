@@ -51,7 +51,7 @@ def test_crear_devuelve_el_nombre_sin_espacios_sobrantes(base):
 def test_nombre_vacio_se_rechaza_con_mensaje(base, nombre):
     ruta, _ = base
     antes = proyectos.listar_proyectos(ruta)
-    with pytest.raises(ProyectoInvalido, match="no puede quedar vacio"):
+    with pytest.raises(ProyectoInvalido, match="no puede quedar vacío"):
         proyectos.crear_proyecto_nuevo(ruta, nombre)
     assert proyectos.listar_proyectos(ruta) == antes
 
