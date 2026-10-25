@@ -128,6 +128,15 @@ describe("Bienvenida: página y texto (F2)", () => {
     expect(screen.queryByText("%LOCALAPPDATA%\\Silice\\datos\\codigo_instalacion.txt")).not.toBeInTheDocument();
   });
 
+  test("en desarrollo dice que el código sale en la consola de npm run dev; en el producto, no", () => {
+    const { unmount } = render(<Bienvenida info={{ ...info, modo: "desarrollo" }} onReclamar={vi.fn()} />);
+    expect(screen.getByText(/sale en la consola donde ejecutó/)).toBeInTheDocument();
+    expect(screen.getByText(/npm run dev/)).toBeInTheDocument();
+    unmount();
+    render(<Bienvenida info={info} onReclamar={vi.fn()} />);
+    expect(screen.queryByText(/npm run dev/)).not.toBeInTheDocument();
+  });
+
   test("si el archivo no está, lo dice y qué hacer; si está, no lo menciona", () => {
     const { unmount } = render(<Bienvenida info={{ ...info, archivo_presente: false }} onReclamar={vi.fn()} />);
     expect(screen.getByText(/No encuentro el archivo/)).toBeInTheDocument();
