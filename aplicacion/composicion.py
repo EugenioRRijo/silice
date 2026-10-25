@@ -837,25 +837,28 @@ MENSAJE_FORMULARIO_VACIO = (
     "en alguna de las tres tablas de abajo, o búsquelo en la referencia MaPreX: el "
     "desglose se calcula aquí automáticamente, sin necesidad de guardar."
 )
-#: RF-33: la página deshabilita el botón de guardar sin condiciones; la API lo dice con esto
-#: (la primera frase es la de la página; la segunda, la ayuda de su campo).
+# Los textos que siguen llegan tal cual a la pantalla Componer: en llano, con tildes y sin códigos
+# del expediente (prueba en vivo del 2026-10-25). La trazabilidad va en estos comentarios.
+#: RF-33: la página deshabilita el botón de guardar sin condiciones; la API lo dice con esto.
 MENSAJE_CONDICIONES_OBLIGATORIAS = (
-    "Las condiciones del rendimiento son obligatorias para guardar (RF-33): el sistema no "
-    "persiste una composicion cuyo rendimiento no se declare junto con las condiciones en que se "
-    "obtuvo."
+    "Las condiciones del rendimiento son obligatorias para guardar: Sílice no guarda una "
+    "composición sin decir en qué condiciones se obtuvo su rendimiento."
 )
+#: UC-07, flujo 3a: sin PU anterior no hay base para la estimación por reglas.
 MENSAJE_PARTIDA_NUEVA = (
-    "Partida nueva: la estimacion por reglas parte del PU anterior de la partida, que "
-    "no existe; el contraste no es posible (UC-07, flujo 3a)."
+    "Partida nueva: todavía no tiene un precio unitario anterior, así que no se puede "
+    "contrastar con la estimación por reglas."
 )
+#: UC-06, flujo 4a: la justificación se liga al rendimiento nuevo; sin él, no se registra.
 MENSAJE_SIN_RENDIMIENTO_NUEVO = (
-    "El guardado no registro un rendimiento nuevo (el valor y las condiciones son los "
-    "del ultimo estimado): la justificacion no se registro, porque se ligaria a otro "
-    "rendimiento (UC-06, flujo 4a)."
+    "El guardado no registró un rendimiento nuevo (el valor y las condiciones son los del "
+    "último estimado), así que la justificación no se registró: quedaría ligada a otro "
+    "rendimiento."
 )
+#: UC-06, flujo 4a, y RF-27: la advertencia informa, no bloquea.
 MENSAJE_SIN_JUSTIFICACION = (
-    "El rendimiento se guardo con la advertencia y sin justificacion (UC-06, flujo "
-    "4a): la advertencia informa, no impide el registro (RF-27)."
+    "El rendimiento se guardó con la advertencia y sin justificación: la advertencia "
+    "informa, no impide guardar."
 )
 #: Los tres tipos de fila de la referencia MaPreX y cómo cada uno completa su tabla.
 _COMPLETAR_FILA: dict[str, Callable[[FilaReferencia], dict[str, str]]] = {
@@ -986,9 +989,10 @@ def _advertencias_de_rendimiento(
         advertencias.append(
             Advertencia(
                 "rendimiento_ml",
-                f"El bosque de aislamiento (ayuda 3 de Sílice, spec §3.7) tambien marca este "
-                f"rendimiento como atipico frente al historico de la partida (puntaje "
-                f"{veredicto.puntaje:.3f}); el registro no queda bloqueado por esto.",
+                # Ayuda 3 de Sílice (spec §3.7): el bosque de aislamiento de `ml.anomaly`.
+                "El detector de valores atípicos también marca este rendimiento como atípico "
+                f"frente al histórico de la partida (puntaje {veredicto.puntaje:.3f}); no impide "
+                "guardar.",
             )
         )
     return advertencias
@@ -1010,9 +1014,9 @@ def _advertencias_de_precios(
             advertencias.append(
                 Advertencia(
                     "precio_atipico",
-                    f"El precio de «{descripcion}» ({precio}) resulta atipico frente al "
-                    "historico de ese insumo (ayuda 2 de Sílice, spec §3.7); reviselo, aunque "
-                    "el sistema no bloquea el guardado por esto.",
+                    # Ayuda 2 de Sílice (spec §3.7).
+                    f"El precio de «{descripcion}» ({precio}) resulta atípico frente al "
+                    "histórico de ese insumo; revíselo, aunque esto no impide guardar.",
                 )
             )
     return advertencias
@@ -1289,11 +1293,11 @@ def guardar_desde_tablas(
         else:
             avisos.append(MENSAJE_SIN_JUSTIFICACION)
     precio = presentar(guardado.resultado.precio_unitario)
-    mensaje = f"Composicion guardada para la partida {codigo_partida}: precio unitario {precio}."
-    if justificada:
+    mensaje = f"Composición guardada para la partida {codigo_partida}: precio unitario {precio}."
+    if justificada:  # UC-06, flujo 4a
         mensaje += (
-            " Justificacion de la advertencia registrada junto al rendimiento "
-            f"{composicion.rendimiento} (UC-06, flujo 4a)."
+            " Justificación de la advertencia registrada junto al rendimiento "
+            f"{composicion.rendimiento}."
         )
     return ResultadoGuardado(
         precio_unitario=precio, mensaje=mensaje, justificada=justificada, avisos=tuple(avisos)
