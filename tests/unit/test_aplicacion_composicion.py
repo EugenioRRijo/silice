@@ -321,6 +321,11 @@ def test_el_contraste_aace_de_una_partida_existente_viaja_con_su_hallazgo(base: 
 # --- precarga_de_partida ------------------------------------------------------------------------
 
 
+def _leido(texto: str) -> Decimal:
+    """Una cifra escrita con la regla (coma decimal, punto de miles) leída a mano."""
+    return Decimal(texto.replace(".", "").replace(",", "."))
+
+
 def test_una_partida_existente_precarga_sus_tablas_y_su_rendimiento(base: Path) -> None:
     with _sesion(base) as sesion:
         precarga = precarga_de_partida(sesion, f" {TUBERIA} ")
@@ -329,14 +334,15 @@ def test_una_partida_existente_precarga_sus_tablas_y_su_rendimiento(base: Path) 
     assert [fila["descripcion"] for fila in materiales] == [
         linea.descripcion for linea in APU_TUBERIA.materiales
     ]
-    assert [Decimal(fila["precio"]) for fila in materiales] == [
+    # Coma decimal y punto de miles (regla de Eugenio, 2026-10-25), leído a mano con la regla.
+    assert [_leido(fila["precio"]) for fila in materiales] == [
         linea.precio for linea in APU_TUBERIA.materiales
     ]
-    assert [Decimal(fila["depreciacion"]) for fila in equipos] == [
+    assert [_leido(fila["depreciacion"]) for fila in equipos] == [
         linea.depreciacion for linea in APU_TUBERIA.equipos
     ]
     assert [fila["modalidad"] for fila in mano_obra] == ["jornal"] * len(APU_TUBERIA.mano_obra)
-    assert Decimal(precarga.rendimiento_propuesto) == APU_TUBERIA.rendimiento
+    assert _leido(precarga.rendimiento_propuesto) == APU_TUBERIA.rendimiento
     assert precarga.hay_historial is True
 
 
@@ -426,20 +432,20 @@ def test_las_sugerencias_traen_la_etiqueta_la_referencia_y_la_fila_completada(
         "descripcion": "TUBO FICTICIO DE PRUEBA",
         "unidad": "m",
         "cantidad": "",
-        "precio": "2.50",
+        "precio": "2,50",
     }
     [equipo] = sugerencias_de_referencia("mezcladora", "equipo", raiz)
     assert equipo.fila == {
         "descripcion": "MEZCLADORA FICTICIA",
         "cantidad": "",
-        "precio": "40.00",
-        "depreciacion": "0.03",
+        "precio": "40,00",
+        "depreciacion": "0,03",
     }
     [obrero] = sugerencias_de_referencia("ayudante", "mano_obra", raiz)
     assert obrero.fila == {
         "descripcion": "AYUDANTE FICTICIO",
         "cantidad": "",
-        "sueldo": "3.00",
+        "sueldo": "3,00",
         "modalidad": "",
     }
 

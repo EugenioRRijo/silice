@@ -4,6 +4,7 @@ Lo único verificable antes de que existan pruebas de interfaz es lo que se pued
 Streamlit (spec §4). Estas pruebas fijan ese contorno.
 """
 
+from dataclasses import replace
 from decimal import Decimal
 
 import pytest
@@ -22,15 +23,15 @@ from aplicacion.composicion import (
     item_desde_cantidad,
     motivo_para_no_reemplazar,
 )
-from core.contracts import Dominio, ModalidadManoObra, OrigenTipo, ParametrosCosto
+from core.contracts import Dominio, LineaEquipo, ModalidadManoObra, OrigenTipo, ParametrosCosto
 from core.costing import calcular_apu
 from tests.fixtures.apu_linea_base import APU_TUBERIA, PRECIO_UNITARIO_ESPERADO
 
-MATERIALES = [{"descripcion": "Cemento", "unidad": "saco", "cantidad": "7.5", "precio": "8.00"}]
-EQUIPOS = [{"descripcion": "Vibrador", "cantidad": "1", "precio": "300.00", "depreciacion": "0.03"}]
+MATERIALES = [{"descripcion": "Cemento", "unidad": "saco", "cantidad": "7,5", "precio": "8,00"}]
+EQUIPOS = [{"descripcion": "Vibrador", "cantidad": "1", "precio": "300,00", "depreciacion": "0,03"}]
 MANO_OBRA = [
-    {"descripcion": "Obrero de primera", "cantidad": "2", "sueldo": "12.50", "modalidad": "jornal"},
-    {"descripcion": "Friso", "cantidad": "1", "sueldo": "6.00", "modalidad": "destajo"},
+    {"descripcion": "Obrero de primera", "cantidad": "2", "sueldo": "12,50", "modalidad": "jornal"},
+    {"descripcion": "Friso", "cantidad": "1", "sueldo": "6,00", "modalidad": "destajo"},
 ]
 
 
@@ -48,7 +49,7 @@ def test_una_tabla_valida_produce_la_composicion_esperada():
 
 
 def test_una_cantidad_no_numerica_nombra_el_campo_culpable():
-    filas = [{"descripcion": "Cemento", "unidad": "saco", "cantidad": "siete", "precio": "8.00"}]
+    filas = [{"descripcion": "Cemento", "unidad": "saco", "cantidad": "siete", "precio": "8,00"}]
 
     with pytest.raises(ComposicionInvalida) as error:
         composicion_desde_tablas("P-01", "Prueba", "m3", "8", filas, [], MANO_OBRA)
@@ -79,7 +80,7 @@ def test_la_unidad_con_alias_se_normaliza():
 
 
 def test_una_modalidad_desconocida_se_rechaza_nombrando_la_fila():
-    filas = [{"descripcion": "Friso", "cantidad": "1", "sueldo": "6.00", "modalidad": "por pieza"}]
+    filas = [{"descripcion": "Friso", "cantidad": "1", "sueldo": "6,00", "modalidad": "por pieza"}]
 
     with pytest.raises(ComposicionInvalida) as error:
         composicion_desde_tablas("P-01", "Prueba", "m3", "8", MATERIALES, [], filas)
@@ -89,7 +90,7 @@ def test_una_modalidad_desconocida_se_rechaza_nombrando_la_fila():
 
 
 def test_una_fila_de_mano_de_obra_sin_modalidad_es_jornal():
-    filas = [{"descripcion": "Obrero", "cantidad": "1", "sueldo": "12.50"}]
+    filas = [{"descripcion": "Obrero", "cantidad": "1", "sueldo": "12,50"}]
 
     composicion = composicion_desde_tablas("P-01", "Prueba", "m3", "8", MATERIALES, [], filas)
 
@@ -127,8 +128,8 @@ def test_decimal_desde_texto_rechaza_lo_que_no_es_finito():
 
 def test_una_cantidad_negativa_en_la_segunda_fila_nombra_la_tabla_y_la_fila():
     filas = [
-        {"descripcion": "Cemento", "unidad": "saco", "cantidad": "7.5", "precio": "8.00"},
-        {"descripcion": "Arena", "unidad": "saco", "cantidad": "-5", "precio": "3.00"},
+        {"descripcion": "Cemento", "unidad": "saco", "cantidad": "7,5", "precio": "8,00"},
+        {"descripcion": "Arena", "unidad": "saco", "cantidad": "-5", "precio": "3,00"},
     ]
 
     with pytest.raises(ComposicionInvalida) as error:
@@ -140,7 +141,7 @@ def test_una_cantidad_negativa_en_la_segunda_fila_nombra_la_tabla_y_la_fila():
 
 def test_una_depreciacion_fuera_de_rango_nombra_la_tabla_equipos():
     filas = [
-        {"descripcion": "Vibrador", "cantidad": "1", "precio": "300.00", "depreciacion": "1.5"}
+        {"descripcion": "Vibrador", "cantidad": "1", "precio": "300,00", "depreciacion": "1,5"}
     ]
 
     with pytest.raises(ComposicionInvalida) as error:
@@ -152,7 +153,7 @@ def test_una_depreciacion_fuera_de_rango_nombra_la_tabla_equipos():
 
 def test_una_unidad_vacia_en_una_fila_se_distingue_de_la_unidad_vacia_de_la_partida():
     fila_sin_unidad = [
-        {"descripcion": "Cemento", "unidad": "  ", "cantidad": "7.5", "precio": "8.00"}
+        {"descripcion": "Cemento", "unidad": "  ", "cantidad": "7,5", "precio": "8,00"}
     ]
 
     with pytest.raises(ComposicionInvalida) as error_de_fila:
@@ -170,7 +171,7 @@ def test_una_unidad_vacia_en_una_fila_se_distingue_de_la_unidad_vacia_de_la_part
 
 
 def test_una_fila_de_materiales_con_datos_pero_sin_descripcion_se_rechaza():
-    filas = [{"descripcion": "   ", "unidad": "saco", "cantidad": "7.5", "precio": "8.00"}]
+    filas = [{"descripcion": "   ", "unidad": "saco", "cantidad": "7,5", "precio": "8,00"}]
 
     with pytest.raises(ComposicionInvalida) as error:
         composicion_desde_tablas("P-01", "Prueba", "m3", "8", filas, [], MANO_OBRA)
@@ -180,7 +181,7 @@ def test_una_fila_de_materiales_con_datos_pero_sin_descripcion_se_rechaza():
 
 
 def test_una_fila_de_equipos_con_datos_pero_sin_descripcion_se_rechaza():
-    filas = [{"descripcion": "", "cantidad": "1", "precio": "300.00", "depreciacion": "0.03"}]
+    filas = [{"descripcion": "", "cantidad": "1", "precio": "300,00", "depreciacion": "0,03"}]
 
     with pytest.raises(ComposicionInvalida) as error:
         composicion_desde_tablas("P-01", "Prueba", "m3", "8", [], filas, MANO_OBRA)
@@ -190,7 +191,7 @@ def test_una_fila_de_equipos_con_datos_pero_sin_descripcion_se_rechaza():
 
 
 def test_una_fila_de_mano_de_obra_con_datos_pero_sin_descripcion_se_rechaza():
-    filas = [{"descripcion": "", "cantidad": "1", "sueldo": "12.50", "modalidad": "jornal"}]
+    filas = [{"descripcion": "", "cantidad": "1", "sueldo": "12,50", "modalidad": "jornal"}]
 
     with pytest.raises(ComposicionInvalida) as error:
         composicion_desde_tablas("P-01", "Prueba", "m3", "8", MATERIALES, [], filas)
@@ -219,7 +220,7 @@ def test_una_fila_con_nan_en_todas_las_celdas_se_descarta_como_vacia():
 
 
 def test_una_fila_con_none_solo_en_cantidad_nombra_la_fila_no_el_texto_none():
-    filas = [{"descripcion": "Cemento", "unidad": "saco", "cantidad": None, "precio": "8.00"}]
+    filas = [{"descripcion": "Cemento", "unidad": "saco", "cantidad": None, "precio": "8,00"}]
 
     with pytest.raises(ComposicionInvalida) as error:
         composicion_desde_tablas("P-01", "Prueba", "m3", "8", filas, [], MANO_OBRA)
@@ -327,9 +328,10 @@ def test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_reflej
 
     # El precio sugerido llega como texto de la celda (no como Decimal, no de solo lectura): sigue
     # siendo el mismo campo que la persona puede teclear encima, igual que si lo hubiera escrito.
-    assert fila_material["precio"] == "8.00"
-    assert fila_equipo["precio"] == "300.00"
-    assert fila_mano_obra["sueldo"] == "12.50"
+    # Con coma decimal (regla de Eugenio, 2026-10-25): «8.00» volvería como un error.
+    assert fila_material["precio"] == "8,00"
+    assert fila_equipo["precio"] == "300,00"
+    assert fila_mano_obra["sueldo"] == "12,50"
     assert all(
         isinstance(valor, str)
         for valor in (fila_material["precio"], fila_equipo["precio"], fila_mano_obra["sueldo"])
@@ -337,9 +339,9 @@ def test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_reflej
 
     # La persona edita las tres celdas de precio antes de guardar (y completa la cantidad, que la
     # referencia no sugiere: spec §3.4, solo describe el insumo, no cuanto se usa).
-    fila_material = {**fila_material, "cantidad": "2", "precio": "9.50"}
-    fila_equipo = {**fila_equipo, "cantidad": "1", "precio": "320.00"}
-    fila_mano_obra = {**fila_mano_obra, "cantidad": "1", "sueldo": "15.00", "modalidad": "jornal"}
+    fila_material = {**fila_material, "cantidad": "2", "precio": "9,50"}
+    fila_equipo = {**fila_equipo, "cantidad": "1", "precio": "320,00"}
+    fila_mano_obra = {**fila_mano_obra, "cantidad": "1", "sueldo": "15,00", "modalidad": "jornal"}
 
     composicion = composicion_desde_tablas(
         "P-RF35",
@@ -460,16 +462,26 @@ def test_filas_desde_composicion_es_la_ida_y_vuelta_de_composicion_desde_tablas(
     )
 
 
-def test_filas_desde_composicion_escribe_los_decimales_sin_exponente():
-    composicion = _edicion(
-        equipos=[
-            {"descripcion": "Vibrador", "cantidad": "1E+2", "precio": "300", "depreciacion": "1"}
-        ]
+def test_filas_desde_composicion_escribe_los_decimales_sin_exponente_y_con_coma():
+    """La precarga va a campos que la persona edita: coma decimal y punto de miles (regla de
+    Eugenio, 2026-10-25), sin exponente y sin perder la escala."""
+    composicion = replace(
+        _edicion(),
+        equipos=(
+            LineaEquipo(
+                descripcion="Vibrador",
+                cantidad=Decimal("1E+2"),
+                precio=Decimal("18000.50"),
+                depreciacion=Decimal("0.005"),
+            ),
+        ),
     )
 
     _, (equipo,), _ = filas_desde_composicion(composicion)
 
     assert equipo["cantidad"] == "100"
+    assert equipo["precio"] == "18.000,50"
+    assert equipo["depreciacion"] == "0,005"
 
 
 def test_desglose_de_la_tuberia_da_el_precio_de_la_linea_base():
@@ -482,60 +494,71 @@ def test_desglose_de_la_tuberia_da_el_precio_de_la_linea_base():
     )
 
 
-# --- Coma decimal (es-VE) en Componer: prueba en vivo del 2026-10-25 ----------------------------
+# --- Coma decimal y punto de miles en Componer (regla de Eugenio, 2026-10-25) --------------------
 #
-# Escribir `0,005` borraba el desglose con «depreciacion (...): '0,005' no es un numero decimal
-# valido». La coma y el punto valen lo mismo, con el criterio de la Hoja (las alturas del plano,
-# `aplicacion.hoja._altura`); con los dos a la vez no se adivina. Oraculos escritos a mano.
+# Prueba en vivo del 2026-10-25: escribir `0,005` borraba el desglose; el arreglo aceptaba coma o
+# punto y leía «1.000» como UNO (un precio mil veces menor). Regla de producto de Eugenio: coma
+# para los decimales, punto para los miles; lo ambiguo se rechaza sin adivinar. El intérprete
+# es `aplicacion.cifras.cifra_escrita` (su tabla de fronteras está en
+# `tests/fixtures/cifras_escritas.json`); aquí se prueba que Componer lo usa en cada campo y nombra
+# el lugar. Oráculos escritos a mano.
 
-FILAS_CON_PUNTO = (
-    [{"descripcion": "Cemento", "unidad": "saco", "cantidad": "1.26", "precio": "380.50"}],
-    [{"descripcion": "Mezcladora", "cantidad": "1", "precio": "18000", "depreciacion": "0.005"}],
-    [{"descripcion": "Obrero", "cantidad": "6", "sueldo": "420.75", "modalidad": "jornal"}],
+REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
+
+FILAS_ES_VE = (
+    [{"descripcion": "Cemento", "unidad": "saco", "cantidad": "1,26", "precio": "1.380,50"}],
+    [{"descripcion": "Mezcladora", "cantidad": "1", "precio": "18.000", "depreciacion": "0,005"}],
+    [{"descripcion": "Obrero", "cantidad": "6", "sueldo": "420,75", "modalidad": "jornal"}],
 )
 
 
-def _con_coma(filas: list[dict[str, str]]) -> list[dict[str, str]]:
-    return [{clave: valor.replace(".", ",") for clave, valor in fila.items()} for fila in filas]
+def test_coma_decimal_y_punto_de_miles_se_leen_exactos():
+    composicion = composicion_desde_tablas("P-01", "Prueba", "m2", "1.025,5", *FILAS_ES_VE)
+
+    assert composicion.rendimiento == Decimal("1025.5")
+    assert composicion.materiales[0].cantidad == Decimal("1.26")
+    assert composicion.materiales[0].precio == Decimal("1380.50")
+    assert composicion.equipos[0].precio == Decimal("18000")
+    assert composicion.equipos[0].depreciacion == Decimal("0.005")
+    assert composicion.mano_obra[0].sueldo == Decimal("420.75")
 
 
-def test_la_coma_decimal_vale_lo_mismo_que_el_punto():
-    con_punto = composicion_desde_tablas("P-01", "Prueba", "m2", "25.5", *FILAS_CON_PUNTO)
-    con_coma = composicion_desde_tablas(
-        "P-01", "Prueba", "m2", "25,5", *(_con_coma(filas) for filas in FILAS_CON_PUNTO)
-    )
+def test_un_precio_de_mil_con_punto_vale_mil_y_no_uno():
+    """El defecto: «1.000» se leía como 1 y el precio quedaba mil veces menor."""
+    materiales = [{"descripcion": "Cabilla", "unidad": "kg", "cantidad": "2", "precio": "1.000"}]
 
-    assert con_coma == con_punto
-    assert con_coma.rendimiento == Decimal("25.5")
-    assert con_coma.materiales[0].cantidad == Decimal("1.26")
-    assert con_coma.materiales[0].precio == Decimal("380.50")
-    assert con_coma.equipos[0].depreciacion == Decimal("0.005")
-    assert con_coma.mano_obra[0].sueldo == Decimal("420.75")
+    composicion = composicion_desde_tablas("P-01", "Prueba", "m2", "25", materiales, [], [])
+
+    assert composicion.materiales[0].precio == Decimal(1000)
 
 
 @pytest.mark.parametrize(
     ("texto", "esperado"),
     [
         (
-            "1.234,5",
-            "En Equipos, fila 1 («Mezcladora»), la depreciación «1.234,5» lleva punto y coma a la "
-            "vez y no se sabe cuál separa los decimales: escriba el número sin separador de miles; "
-            "por ejemplo, 1234,5.",
+            "0.005",
+            "En Equipos, fila 1 («Mezcladora»), la depreciación «0.005» no se entiende como "
+            f"número. {REGLA}",
+        ),
+        (
+            "1,234.5",
+            "En Equipos, fila 1 («Mezcladora»), la depreciación «1,234.5» no se entiende como "
+            f"número. {REGLA}",
         ),
         (
             "0,0,5",
-            "En Equipos, fila 1 («Mezcladora»), la depreciación «0,0,5» no es un número: escriba "
-            "solo cifras, con coma o punto para los decimales; por ejemplo, 2,5.",
+            "En Equipos, fila 1 («Mezcladora»), la depreciación «0,0,5» no se entiende como "
+            f"número. {REGLA}",
         ),
         (
             "abc",
-            "En Equipos, fila 1 («Mezcladora»), la depreciación «abc» no es un número: escriba "
-            "solo cifras, con coma o punto para los decimales; por ejemplo, 2,5.",
+            "En Equipos, fila 1 («Mezcladora»), la depreciación «abc» no se entiende como "
+            f"número. {REGLA}",
         ),
         (
             "Infinity",
-            "En Equipos, fila 1 («Mezcladora»), la depreciación «Infinity» no es un número: "
-            "escriba solo cifras, con coma o punto para los decimales; por ejemplo, 2,5.",
+            "En Equipos, fila 1 («Mezcladora»), la depreciación «Infinity» no se entiende como "
+            f"número. {REGLA}",
         ),
         (
             "",
@@ -563,16 +586,9 @@ def test_un_numero_ambiguo_o_invalido_dice_en_llano_que_escribir(texto, esperado
             "Falta el rendimiento: escriba cuántas unidades de la partida se hacen por día; por "
             "ejemplo, 25.",
         ),
-        (
-            "abc",
-            "El rendimiento «abc» no es un número: escriba solo cifras, con coma o punto para los "
-            "decimales; por ejemplo, 25.",
-        ),
-        (
-            "1.234,5",
-            "El rendimiento «1.234,5» lleva punto y coma a la vez y no se sabe cuál separa los "
-            "decimales: escriba el número sin separador de miles; por ejemplo, 1234,5.",
-        ),
+        ("abc", f"El rendimiento «abc» no se entiende como número. {REGLA}"),
+        ("25.5", f"El rendimiento «25.5» no se entiende como número. {REGLA}"),
+        ("1 234", f"El rendimiento «1 234» no se entiende como número. {REGLA}"),
     ],
 )
 def test_el_rendimiento_ilegible_dice_en_llano_que_escribir(texto, esperado):
@@ -588,17 +604,17 @@ def test_el_rendimiento_ilegible_dice_en_llano_que_escribir(texto, esperado):
         (
             0,
             {"descripcion": "Cemento", "unidad": "saco", "cantidad": "1", "precio": "x"},
-            "En Materiales, fila 1 («Cemento»), el precio «x» no es un número",
+            "En Materiales, fila 1 («Cemento»), el precio «x» no se entiende como número",
         ),
         (
             2,
             {"descripcion": "Obrero", "cantidad": "x", "sueldo": "420", "modalidad": ""},
-            "En Mano de obra, fila 1 («Obrero»), la cantidad «x» no es un número",
+            "En Mano de obra, fila 1 («Obrero»), la cantidad «x» no se entiende como número",
         ),
         (
             2,
             {"descripcion": "Obrero", "cantidad": "1", "sueldo": "x", "modalidad": ""},
-            "En Mano de obra, fila 1 («Obrero»), el sueldo «x» no es un número",
+            "En Mano de obra, fila 1 («Obrero»), el sueldo «x» no se entiende como número",
         ),
     ],
 )

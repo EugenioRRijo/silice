@@ -15,12 +15,14 @@ from core.contracts import ComposicionAPU
 
 
 def texto_tecleado(valor: Decimal) -> str:
-    """El `Decimal` tal como lo teclea una persona: notacion fija, sin exponente.
+    """El `Decimal` tal como lo teclea una persona: notacion fija, sin exponente y con la coma
+    decimal de la regla de Eugenio (2026-10-25), sin separador de miles (tambien valido).
 
     `str(Decimal("1E+2"))` da `"1E+2"`, que ninguna pantalla muestra; `f"{...:f}"` fuerza la
-    notacion posicional sin perder ni un digito ni la escala (`Decimal("1.00")` -> `"1.00"`).
+    notacion posicional sin perder ni un digito ni la escala (`Decimal("1.00")` -> `"1,00"`). Se
+    escribe aqui a mano, sin `aplicacion.cifras.texto_de_cifra`: es el oraculo de lo tecleado.
     """
-    return f"{valor:f}"
+    return f"{valor:f}".replace(".", ",")
 
 
 def filas_materiales(apu: ComposicionAPU) -> list[dict[str, str]]:

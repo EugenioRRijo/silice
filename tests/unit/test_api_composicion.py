@@ -61,6 +61,11 @@ def _tablas() -> dict[str, list[dict[str, str]]]:
     }
 
 
+def _leido(texto: str) -> Decimal:
+    """Una cifra escrita con la regla (coma decimal, punto de miles) leída a mano."""
+    return Decimal(texto.replace(".", "").replace(",", "."))
+
+
 def _cuerpo(codigo: str = NUEVA, descripcion: str = "Partida de prueba", **extra) -> dict:
     return {
         "codigo": codigo,
@@ -184,35 +189,33 @@ def test_evaluar_una_tabla_a_medias_es_200_incompleto_nunca_4xx(api: TestClient)
     cuerpo = respuesta.json()
     assert cuerpo["estado"] == "incompleto"
     assert cuerpo["aviso"] == (
-        "El rendimiento «abc» no es un número: escriba solo cifras, con coma o punto para los "
-        "decimales; por ejemplo, 25."
+        "El rendimiento «abc» no se entiende como número. Use la coma para los decimales: por "
+        "ejemplo 2,5. El punto separa los miles: 1.234,56."
     )
     assert cuerpo["desglose"] is None
 
 
-def test_evaluar_con_coma_decimal_da_el_mismo_desglose_que_con_punto(api: TestClient) -> None:
-    """Prueba en vivo del 2026-10-25: `0,005` borraba el desglose. Sílice es es-VE: la coma y el
-    punto valen lo mismo en Componer (oráculo: el mismo cuerpo escrito con punto)."""
-    con_punto = _cuerpo(rendimiento="100.5")
-    con_coma = {
-        **con_punto,
-        "rendimiento": "100,5",
-        **{
-            tabla: [
-                {clave: valor.replace(".", ",") for clave, valor in fila.items()}
-                for fila in con_punto[tabla]
-            ]
-            for tabla in ("materiales", "equipos", "mano_obra")
-        },
-    }
-    assert any("," in fila["precio"] for fila in con_coma["materiales"])  # la prueba no es vacia
+def test_evaluar_con_punto_de_miles_lee_mil_y_no_uno(api: TestClient) -> None:
+    """Regla de Eugenio (2026-10-25): coma decimal, punto de miles. Antes «1.000» se leía como
+    uno (un rendimiento mil veces menor). Oráculo: el mismo cuerpo escrito sin separador."""
+    sin_separador = api.post("/v1/composicion/evaluar", json=_cuerpo(rendimiento="1000")).json()
+    con_miles = api.post("/v1/composicion/evaluar", json=_cuerpo(rendimiento="1.000")).json()
+    uno = api.post("/v1/composicion/evaluar", json=_cuerpo(rendimiento="1")).json()
 
-    desglose_punto = api.post("/v1/composicion/evaluar", json=con_punto).json()
-    desglose_coma = api.post("/v1/composicion/evaluar", json=con_coma).json()
+    assert sin_separador["estado"] == con_miles["estado"] == "valido"
+    assert con_miles["desglose"] == sin_separador["desglose"]
+    assert con_miles["desglose"] != uno["desglose"]
 
-    assert desglose_punto["estado"] == "valido"
-    assert desglose_coma["estado"] == "valido"
-    assert desglose_coma["desglose"] == desglose_punto["desglose"]
+
+def test_evaluar_con_decimal_de_punto_es_incompleto_con_la_regla(api: TestClient) -> None:
+    """«100.5» es ambiguo (¿cien coma cinco o mil cinco?): no se adivina."""
+    cuerpo = api.post("/v1/composicion/evaluar", json=_cuerpo(rendimiento="100.5")).json()
+
+    assert cuerpo["estado"] == "incompleto" and cuerpo["desglose"] is None
+    assert cuerpo["aviso"] == (
+        "El rendimiento «100.5» no se entiende como número. Use la coma para los decimales: por "
+        "ejemplo 2,5. El punto separa los miles: 1.234,56."
+    )
 
 
 def test_evaluar_una_composicion_valida_da_el_desglose_como_texto(api: TestClient) -> None:
@@ -273,14 +276,20 @@ def test_la_precarga_de_una_partida_existente_trae_sus_tablas_como_texto(api: Te
     assert respuesta.status_code == 200
     cuerpo = respuesta.json()
     assert cuerpo["existe"] is True and cuerpo["hay_historial"] is True
-    assert Decimal(cuerpo["rendimiento_propuesto"]) == APU_TUBERIA.rendimiento
+    assert _leido(cuerpo["rendimiento_propuesto"]) == APU_TUBERIA.rendimiento
     materiales = cuerpo["tablas"]["materiales"]
     assert [fila["descripcion"] for fila in materiales] == [
         linea.descripcion for linea in APU_TUBERIA.materiales
     ]
     assert all(isinstance(valor, str) for fila in materiales for valor in fila.values())
-    assert [Decimal(fila["cantidad"]) for fila in materiales] == [
+    # La precarga va a campos que la persona edita: coma decimal y punto de miles, y se vuelve a
+    # leer igual (oráculo escrito a mano con la regla, no con `aplicacion.cifras`).
+    assert all("." not in fila["cantidad"].split(",")[-1] for fila in materiales)
+    assert [_leido(fila["cantidad"]) for fila in materiales] == [
         linea.cantidad for linea in APU_TUBERIA.materiales
+    ]
+    assert [_leido(fila["precio"]) for fila in materiales] == [
+        linea.precio for linea in APU_TUBERIA.materiales
     ]
     assert len(cuerpo["tablas"]["equipos"]) == len(APU_TUBERIA.equipos)
     assert [f["modalidad"] for f in cuerpo["tablas"]["mano_obra"]] == ["jornal"] * len(
@@ -329,7 +338,7 @@ def test_la_referencia_sugiere_filas_completadas_desde_los_csv(
                 "descripcion": "TUBO FICTICIO DE PRUEBA",
                 "unidad": "m",
                 "cantidad": "",
-                "precio": "2.50",
+                "precio": "2,50",
             },
         }
     ]
