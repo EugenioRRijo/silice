@@ -357,7 +357,9 @@ describe("Shell", () => {
     test("en modo entrega no aparece ninguna pantalla de Investigación, ni en la barra ni en la capa", async () => {
       const usuario = userEvent.setup();
       montar(sesionCon({ modo_entrega: true }));
-      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
+      // Sin Escenarios, a «Más» le queda una sola pantalla: pasa a enlace directo.
+      expect(areasDeLaBarra().map((a) => a.textContent)).toEqual(["Crear", "Acerca de Sílice"]);
+      await usuario.click(within(menu()).getByRole("button", { name: "Crear" }));
       expect(within(menu()).queryByText("Investigación")).not.toBeInTheDocument();
       expect(within(menu()).queryByRole("link", { name: "Escenarios de sensibilidad" })).not.toBeInTheDocument();
       expect(within(capa()).queryByText("Escenarios de sensibilidad")).not.toBeInTheDocument();
@@ -401,7 +403,7 @@ describe("Shell", () => {
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("se recorre con el teclado: Tab llega al área, Enter abre su panel, flecha abajo y Enter cambian de página", async () => {
+    test("se recorre con el teclado: Tab llega al área, Enter abre su panel, las flechas recorren y Enter cambia de página", async () => {
       const usuario = userEvent.setup();
       montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
@@ -410,9 +412,13 @@ describe("Shell", () => {
       expect(crear).toHaveFocus();
       await usuario.keyboard("{Enter}");
       expect(crear).toHaveAttribute("aria-expanded", "true");
-      expect(within(menu()).getByRole("link", { name: "Tablero del proyecto" })).toHaveFocus();
+      // En «Crear» el catálogo va antes que el tablero (orden de AREAS en rutas.ts).
+      const catalogo = within(menu()).getByRole("link", { name: "Catálogo de partidas e insumos" });
+      expect(catalogo).toHaveFocus();
       await usuario.keyboard("{ArrowDown}");
-      expect(within(menu()).getByRole("link", { name: "Catálogo de partidas e insumos" })).toHaveFocus();
+      expect(within(menu()).getByRole("link", { name: "Tablero del proyecto" })).toHaveFocus();
+      await usuario.keyboard("{ArrowUp}");
+      expect(catalogo).toHaveFocus();
       await usuario.keyboard("{Enter}");
       const titulo = await screen.findByRole("heading", { name: "Otra pantalla" });
       await waitFor(() => expect(titulo).toHaveFocus());

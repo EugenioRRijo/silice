@@ -7,36 +7,6 @@ body {
   padding-block-start: 3rem;
 }
 
-.silice-usuario {
-  display: inline-flex;
-  align-items: center;
-  block-size: 3rem;
-  padding-inline: 1rem;
-  color: var(--silice-texto);
-}
-
-.silice-salir {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  block-size: 3rem;
-  padding-inline: 1rem;
-  border: 0;
-  background: transparent;
-  color: var(--silice-texto);
-  font-family: inherit;
-  cursor: pointer;
-
-  &:hover {
-    background: var(--cds-layer-hover);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: -2px;
-  }
-}
-
 .silice-entrada__formulario {
   display: grid;
   gap: 1rem;

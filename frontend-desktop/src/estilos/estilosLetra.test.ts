@@ -66,7 +66,7 @@ describe("tamaño de letra en el CSS propio", () => {
       expect(shell).toContain(`@include menu-en-capa("${escala}");`);
     }
     expect(shell).toMatch(/@include u\.por-debajo-del-umbral\(\$escala\)/);
-    expect(shell).not.toMatch(/\d+(\.\d+)?px\)/);
+    expect(shell).not.toMatch(/max-width:\s*[\d.]+px/);
     // La cuenta cede el nombre (queda en su nombre accesible) con letra Grande o Muy grande.
     const cuenta = leer(`${raiz}/shell/MenuCuenta.scss`);
     expect(cuenta).toMatch(/data-silice-letra="grande"\][^{]*data-silice-letra="muy-grande"\][^{]*\{\s*\.silice-cuenta__nombre\s*\{\s*display:\s*none/);

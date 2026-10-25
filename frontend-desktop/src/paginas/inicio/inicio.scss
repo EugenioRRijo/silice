@@ -46,3 +46,28 @@
 .silice-inicio__sinquiebre {
   white-space: nowrap;
 }
+
+// Herramientas principales: tres mosaicos de Carbon (sin sombra, esquinas rectas), tantos por fila como quepan.
+.silice-inicio__mosaicos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.silice-inicio__mosaico {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  block-size: 100%;
+}
+
+.silice-inicio__mosaico-titulo {
+  font-weight: 600;
+}
+
+.silice-inicio__mosaico-ayuda {
+  color: var(--silice-texto-secundario);
+}

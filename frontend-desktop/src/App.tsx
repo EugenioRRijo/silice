@@ -1,4 +1,4 @@
-import { Theme } from "@carbon/react";
+import { Header, HeaderGlobalBar, HeaderName, Theme } from "@carbon/react";
 import { useState } from "react";
 import { HashRouter } from "react-router";
 import { Bienvenida } from "./bienvenida/Bienvenida";
@@ -9,7 +9,8 @@ import type { ConsultaPrimerArranque } from "./bienvenida/usePrimerArranque";
 import { CambiarContrasena } from "./sesion/CambiarContrasena";
 import { Entrar } from "./sesion/Entrar";
 import { useSesion } from "./sesion/useSesion";
-import { Cabecera } from "./shell/Cabecera";
+import { TamanoLetra } from "./comun/TamanoLetra";
+import { MenuCuenta } from "./shell/MenuCuenta";
 import { Shell } from "./shell/Shell";
 import { crearAlmacen } from "./visor/almacen";
 import type { AlmacenDelVisor } from "./visor/almacen";
@@ -17,6 +18,23 @@ import type { CrearHojaVisor } from "./visor/hojaVisor";
 
 // El enrutador es de hash (`/app/#/libros`): el servidor de /app es estatico y no devuelve index.html para
 // /app/libros al recargar, y asi tampoco hace falta tocarlo cuando la interfaz vaya dentro de Tauri.
+// Cabecera de las pantallas sin el marco (entrar, bienvenida, recuperar, cambio de contrasena obligatorio): «Sílice» y el
+// tamano de letra, que la persona necesita para leer la pantalla de entrada; con una sesion provisional, tambien su cuenta
+// para poder salir. Sin navegacion: todavia no hay pantallas a las que ir.
+function CabeceraSinMarco({ nombre, alSalir }: { nombre?: string; alSalir: () => void }) {
+  return (
+    <Header aria-label="Sílice">
+      <HeaderName href="#/" prefix="">
+        Sílice
+      </HeaderName>
+      <HeaderGlobalBar>
+        <TamanoLetra />
+        {nombre && <MenuCuenta nombre={nombre} alSalir={alSalir} />}
+      </HeaderGlobalBar>
+    </Header>
+  );
+}
+
 interface Props {
   // Solo en pruebas: el visor de hojas (por omision, Univer).
   crearHoja?: CrearHojaVisor;
@@ -67,7 +85,7 @@ export function App({ crearHoja }: Props = {}) {
         </HashRouter>
       ) : (
         <>
-          <Cabecera nombre={estado.tipo === "activa" ? estado.sesion.nombre : undefined} alSalir={alSalir} />
+          <CabeceraSinMarco nombre={estado.tipo === "activa" ? estado.sesion.nombre : undefined} alSalir={alSalir} />
           {(estado.tipo === "cargando" || entrada?.tipo === "cargando") && (
             <main className="silice-entrada">
               <p className="silice-entrada__texto cds--type-body-compact-01" role="status">

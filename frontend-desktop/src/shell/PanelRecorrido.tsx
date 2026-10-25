@@ -35,7 +35,7 @@ export function PanelRecorrido({ paginas, acciones, modoEntrega, enColumna = fal
 
   return (
     <Raiz className="silice-recorrido" {...(enColumna ? {} : { "aria-labelledby": "recorrido-titulo" })}>
-      <div id="recorrido-titulo" className="silice-menu__rotulo cds--type-label-01">
+      <div id="recorrido-titulo" className="silice-recorrido__rotulo cds--type-label-01">
         Recorrido en curso
       </div>
       <p className="silice-recorrido__nombre cds--type-body-compact-01">{recorrido.titulo}</p>
