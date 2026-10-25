@@ -1,17 +1,19 @@
 // Formato de cantidades y fechas. Nada aqui calcula: solo cambia como se escribe un texto decimal y se lee lo que
-// escribe la persona (coma o punto) para mandarlo a la API con punto.
+// escribe la persona (coma decimal y punto de miles, regla de Eugenio del 2026-10-25) para mandarlo a la API con punto.
+import { MENSAJE_CIFRA, leerCifra } from "../../indicadores/cifraEscrita";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 const DECIMAL_DE_API = /^([+-]?)(\d+)(?:\.(\d*))?$/;
 
-// «24.5000» -> «24,5»; «20.000» -> «20»; «-0.000» -> «0». Sin separador de miles (igual que lo que se acepta al
-// escribir). Un texto que no es decimal se devuelve como llego.
+// «24.5000» -> «24,5»; «20.000» -> «20»; «1234.5» -> «1.234,5»; «-0.000» -> «0». Coma decimal y punto de miles, como
+// se escribe al registrar. Un texto que no es decimal se devuelve como llego.
 export function mostrarCantidad(texto: string): string {
   const m = DECIMAL_DE_API.exec(texto.trim());
   if (!m) return texto;
   const fraccion = (m[3] ?? "").replace(/0+$/, "");
   const esCero = /^0*$/.test(m[2]) && fraccion === "";
   const signo = m[1] === "-" && !esCero ? "-" : "";
-  return `${signo}${m[2]}${fraccion ? `,${fraccion}` : ""}`;
+  return formatoEsVe(`${signo}${m[2]}${fraccion ? `.${fraccion}` : ""}`);
 }
 
 export type LecturaDeCantidad = { valor: string } | { error: string };
@@ -21,25 +23,21 @@ interface OpcionesDeCantidad {
   permiteCero?: boolean;
 }
 
-// Lo que escribe la persona: «24,5» y «24.5» valen lo mismo y salen con punto. Con coma y punto a la vez («1.234,5»)
-// no se adivina cual es el decimal: se pide escribirlo sin separador de miles. Sin signo ni exponentes. `deQue` es la
-// frase completa que sigue a «la cantidad» («de la entrada», «del conteo»).
+// Lo que escribe la persona con la regla de `leerCifra`: «24,5» y «1.234,5» salen con punto («24.5», «1234.5»); «2.5» o
+// «1,234.5» se rechazan con la regla, sin adivinar. Sin signo: una cantidad es positiva (o cero si se permite). `deQue`
+// es la frase completa que sigue a «la cantidad» («de la entrada», «del conteo»).
 export function leerCantidad(texto: string, deQue: string, opciones: OpcionesDeCantidad = {}): LecturaDeCantidad {
-  const limpio = texto.trim();
-  if (limpio === "") return { error: `Escriba la cantidad ${deQue}.` };
-  if (limpio.includes(",") && limpio.includes(".")) {
-    return { error: `La cantidad ${deQue} no debe llevar separador de miles: escriba, por ejemplo, 1234,5.` };
-  }
-  if (!/^\d+(?:[.,]\d+)?$/.test(limpio)) {
+  if (texto.trim() === "") return { error: `Escriba la cantidad ${deQue}.` };
+  const lectura = leerCifra(texto);
+  if ("error" in lectura) return { error: `La cantidad ${deQue} está mal escrita. ${MENSAJE_CIFRA}` };
+  const { valor } = lectura;
+  const esCero = /^0(?:\.0*)?$/.test(valor);
+  if (valor.startsWith("-") || (!opciones.permiteCero && esCero)) {
     return {
       error: opciones.permiteCero
         ? `La cantidad ${deQue} debe ser un número, cero o mayor.`
         : `La cantidad ${deQue} debe ser un número mayor que cero.`,
     };
-  }
-  const valor = limpio.replace(",", ".");
-  if (!opciones.permiteCero && /^0+(?:\.0*)?$/.test(valor)) {
-    return { error: `La cantidad ${deQue} debe ser un número mayor que cero.` };
   }
   return { valor };
 }

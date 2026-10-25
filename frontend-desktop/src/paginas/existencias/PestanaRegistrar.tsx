@@ -5,6 +5,7 @@ import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { reaccionar } from "./fallos";
 import type { Reacciones } from "./fallos";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { fechaIsoDe, hoyISO, leerCantidad, mostrarCantidad, rotuloUnidad } from "./formato";
 import type { MaterialRespuesta, MovimientoRespuesta, TipoDeMovimiento } from "./tipos";
 import type { Recurso } from "./useRecurso";
@@ -133,6 +134,7 @@ function FormularioMovimiento({ tipo, materiales, alRegistrar, reacciones }: Pro
         labelText={descripcion.rotuloCantidad(unidad)}
         inputMode="decimal"
         autoComplete="off"
+        helperText={AYUDA_CIFRAS}
         value={cantidad}
         onChange={(e) => setCantidad(e.target.value)}
         invalid={errorCantidad !== null}
@@ -271,7 +273,7 @@ function FormularioMaterial({ alCrear, reacciones }: PropsMaterialNuevo) {
         labelText="Existencia mínima"
         inputMode="decimal"
         autoComplete="off"
-        helperText={`En ${rotuloUnidad(unidad)}.`}
+        helperText={`En ${rotuloUnidad(unidad)}. ${AYUDA_CIFRAS}`}
         value={minima}
         onChange={(e) => setMinima(e.target.value)}
         invalid={errores.minima !== undefined}
@@ -282,6 +284,7 @@ function FormularioMaterial({ alCrear, reacciones }: PropsMaterialNuevo) {
         labelText="Densidad (t/m³, opcional)"
         inputMode="decimal"
         autoComplete="off"
+        helperText={AYUDA_CIFRAS}
         value={densidad}
         onChange={(e) => setDensidad(e.target.value)}
         invalid={errores.densidad !== undefined}

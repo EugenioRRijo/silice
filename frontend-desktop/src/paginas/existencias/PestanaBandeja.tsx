@@ -8,6 +8,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { reaccionar } from "./fallos";
 import type { Reacciones } from "./fallos";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { ahoraLocalISO, fechaIsoDe, leerCantidad } from "./formato";
 import type { MaterialRespuesta, MovimientoRespuesta, SospechosoRespuesta } from "./tipos";
 import { useRecurso } from "./useRecurso";
@@ -151,6 +152,7 @@ function FormularioPesaje({ sospechoso, materiales, ocupado, alResolver, alDesca
         labelText="Peso neto (t)"
         inputMode="decimal"
         autoComplete="off"
+        helperText={AYUDA_CIFRAS}
         value={neto}
         onChange={(e) => setNeto(e.target.value)}
         invalid={errores.neto !== undefined}

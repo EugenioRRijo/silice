@@ -42,7 +42,7 @@ function aFila(f: ExistenciaRespuesta): FilaDensa {
 }
 
 // «Cuanto hay y cuanto queda» de cada material a una fecha (UC-28, RF-129). Las cantidades son texto de la API: aqui
-// solo se escriben con coma decimal y sin ceros de relleno; nada se calcula.
+// solo se escriben con coma decimal, punto de miles y sin ceros de relleno; nada se calcula.
 export function PestanaExistencias({ existencias, fecha, alCambiarFecha, alReintentar, alCrearMaterial }: Props) {
   const filtro = (
     <div className="existencias-filtro">
