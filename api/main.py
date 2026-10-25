@@ -74,8 +74,9 @@ la perdida de precision de `float` en JSON (regla 3 de NORMAS.md).
 
 
 def _preparar_primer_arranque() -> None:
-    """Sin cuentas y sin `codigo_instalacion.txt`, emite el código de instalación (BCP-1). Un fallo
-    se registra (nunca con el código) y no impide servir: el acceso normal sigue funcionando."""
+    """Sin cuentas, sin `codigo_instalacion.txt` o con uno rancio, emite el código de instalación
+    (BCP-1; expediente §7). Un fallo se registra (nunca con el código) y no impide servir: el acceso
+    normal sigue funcionando."""
     try:
         with sesion_de_instalacion() as sesion:
             primer_arranque.asegurar_codigo(sesion, config.carpeta_datos(), datetime.now())
