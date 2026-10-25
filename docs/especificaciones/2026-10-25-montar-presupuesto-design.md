@@ -32,7 +32,7 @@ firmado, punto de equilibrio, control de obra.
 6. M6 · Una obra ficticia completa (la vivienda de 80 m²) se hace **sin atajos**, comprobada por un recorrido en vivo con
    Playwright y un video.
 
-**No-metas (pieza siguiente):** procura (explosión de insumos), plan de pagos, plan que se calcule con los rendimientos (O-21),
+**No-metas (pieza siguiente):** plan de pagos,
 que Sílice relea su propio Excel (O-24, va con la Fase 1 de auditoría), varias fases de aprobación en cadena (ingeniero → gerente
 → cliente), la Hoja orientada a instalaciones (se conserva tal cual para esas obras).
 
@@ -225,3 +225,52 @@ columnas nuevas.
 - **Rastro verificable de aprobaciones**: cada envío y dictamen guarda el sello (SHA) del eslabón de la versión a la que se refiere y
   su propia huella encadenada a la anterior de ese proyecto (cadena paralela fuera de `core/`, verificable); la Trazabilidad
   la verifica y lo dice si se rompió.
+
+## 11. Retrasos y crisis (MP-7, agregado y aprobado por Eugenio el 2026-10-25)
+
+**Origen:** prueba en vivo del sistema de retrasos sobre la obra ficticia (valuación n.º 1 con el concreto atrasado por una compra
+de cemento tardía; VIV-003 con la cuadrilla reforzada). Hallazgos: Sílice dijo «adelantada» (SPI 2,15) porque el plan base pone
+una partida por día; la causa del retraso es solo texto; la reproyección usa un índice global; las compras no tienen fecha; la
+subida de precio entra suelta por «Actualizar precios»; el APU de la versión no admite líneas nuevas. Eugenio: «agrega lo que falta
+y apruebo».
+
+**Metas de MP-7**
+1. **Plan desde los rendimientos** (O-21): la duración de cada partida = cantidad ÷ rendimiento ÷ cuadrillas, redondeada hacia
+   arriba a medio día; el plan base (y el que se propone al guardar la primera versión) encadena las partidas en el orden del
+   presupuesto, con la posibilidad de marcar partidas que van en paralelo; períodos en días hábiles (o semanas, a elección). La
+   curva y el punto de equilibrio salen de ese plan. La persona puede ajustar el plan a mano como hoy.
+2. **Causas de retraso por partida**: en cada línea de una valuación, una causa elegible (compra tardía, precio, lluvia o clima,
+   cambio del cliente, falta de personal, falla de equipo, otra) además de la observación; la reproyección **por partida** usa el
+   avance propio de esa partida cuando hay evidencia (no el SPI global), y las alertas dicen la causa («OBRA-02 atrasada 3 días:
+   compra tardía»).
+3. **Procura con fechas**: la explosión de insumos de la versión (cantidad total de cada insumo = Σ cantidad de la partida ×
+   cantidad del insumo en su APU) con la **fecha en que se necesita** según el plan (inicio de la primera partida que lo usa, menos
+   un plazo de entrega por insumo, por omisión 3 días hábiles, editable). Registro de compra por insumo: pedida (fecha), recibida
+   (fecha, cantidad, precio real). **Alerta anticipada** cuando una compra no está pedida a tiempo para su fecha de necesidad, y
+   alerta de **compra tardía** cuando se recibe después; la recepción tardía alimenta la causa «compra tardía» de la partida. El
+   precio real de la compra es una observación de mercado (§5.1, «Lo que compramos»).
+4. **Precio nuevo → desvío de precio**: un precio nuevo de un insumo (desde el estudio de mercado o desde la recepción de una compra)
+   puede declararse «precio del corte» de control de obra, para que el valor ganado separe el desvío de precio del de consumo
+   (hoy: «sin precios del corte»), sin tener que cargar un archivo en «Actualizar precios».
+5. **Arreglar el APU para solventar la crisis**: en la pestaña APU de la versión se pueden **agregar y quitar líneas** (un insumo
+   del catálogo o uno nuevo con su precio), además de cambiar cantidades, rendimiento e insumo como hoy; el cambio se guarda como
+   versión nueva con su fuente (y, si la obra tiene línea base, Control de obra muestra el antes y el después de esa partida:
+   costo, duración y efecto en el término y el punto de equilibrio).
+6. **Recuperación con el plan real**: las opciones de recuperación (más cuadrillas, horas extra, en paralelo, aceptar) se calculan
+   con el plan del punto 1 y el atraso por partida del punto 2.
+
+**Sin tocar `core/`**: la reproyección, las alertas y el valor ganado actuales viven en `aplicacion/`/`control` (el constructor lo
+confirma antes; si alguna fórmula vive en `core/`, se extiende alrededor sin modificarla o se anota como bloqueo para el tutor).
+**No-metas de MP-7:** plan de pagos, inventario de almacén, órdenes de compra a proveedores con documentos.
+
+**Pruebas y aceptación de MP-7**: con la vivienda de 80 m², plan base con duraciones por rendimiento; valuación con el concreto
+atrasado por compra tardía → Sílice dice «atrasada», nombra la causa y la partida; la alerta anticipada salta si el cemento no está
+pedido a tiempo; el precio nuevo del cemento aparece como desvío de precio al corte; agregar la línea «Concreto premezclado» al APU
+del concreto en una versión nueva y ver su efecto; recuperación con opciones coherentes. Todo en vivo y en el video final.
+
+| Rebanada | Hace | Depende de |
+|---|---|---|
+| MP-7a | Plan desde los rendimientos (y paralelos) | MP-3 |
+| MP-7b | Causas por partida en valuaciones y reproyección por partida | MP-7a |
+| MP-7c | Procura con fechas, compras pedidas/recibidas y alertas | MP-7a, MP-5 |
+| MP-7d | Precio nuevo como precio del corte; agregar/quitar líneas en el APU de la versión; recuperación con el plan real | MP-7b, MP-7c |
