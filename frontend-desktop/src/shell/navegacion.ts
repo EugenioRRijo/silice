@@ -39,7 +39,8 @@ export function navegacion(
 }
 
 export function areaActual(pathname: string, entradas: readonly EntradaNav[]): string | null {
-  const id = pathname.split("/")[1] ?? "";
+  // Solo el primer segmento: sin consulta ni ancla (la barra recibe `useLocation().pathname`, pero no se fía).
+  const id = pathname.split(/[?#]/)[0].split("/")[1] ?? "";
   if (!id) return null;
   for (const e of entradas) {
     if (e.tipo === "enlace" ? e.pagina.id === id : e.grupos.some((g) => g.paginas.some((p) => p.id === id))) return e.area;
