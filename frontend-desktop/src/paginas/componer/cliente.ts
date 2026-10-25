@@ -95,7 +95,17 @@ export function partida(codigo: string): Promise<PartidaExistente> {
   return pedir<PartidaExistente>(`${BASE}/partidas/${encodeURIComponent(codigo)}`);
 }
 
-export function referencia(tipo: TipoTabla, q: string): Promise<FilaReferencia[]> {
+// El `tipo` que acepta `GET /v1/composicion/referencia` para cada tabla: la API habla en singular (`material`,
+// `equipo`), la pagina en el nombre de la tabla (`materiales`, `equipos`). Mandar el de la tabla era un 422 (prueba en
+// vivo 2026-10-25); `contratoReferencia.test.ts` compara este mapa con `docs/api.json`.
+export const TIPO_DE_REFERENCIA: Record<TipoTabla, "material" | "equipo" | "mano_obra"> = {
+  materiales: "material",
+  equipos: "equipo",
+  mano_obra: "mano_obra",
+};
+
+export function referencia(tabla: TipoTabla, q: string): Promise<FilaReferencia[]> {
+  const tipo = TIPO_DE_REFERENCIA[tabla];
   return pedir<FilaReferencia[]>(`${BASE}/referencia?tipo=${encodeURIComponent(tipo)}&q=${encodeURIComponent(q)}`);
 }
 
