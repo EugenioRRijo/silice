@@ -74,7 +74,10 @@ def sellar_caso_copiado(destino: Path) -> None:
     Las bases de `tests/fixtures/bases/` son inmutables (su ficha lleva el hash) y nacen sin
     eslabones: sin esto, «Entregar paquete» dice «Cadena rota... no tiene eslabon». El sello es
     el declarado de siempre (`tipo = "retroactivo"`, que la Trazabilidad muestra) y usa la forma
-    actual de las cifras (28 decimales, VB-1), asi que la version queda entregable."""
+    actual de las cifras (28 decimales, VB-1), asi que la version queda entregable.
+
+    `preparar_base` puede migrar con respaldo en `SILICE_RESPALDOS` (el juego nombra el archivo
+    que se le pasa, o sea el temporal de `preparar_demo`). Deja la base cerrada al volver."""
     from aplicacion.entrega import anexos_de_cadena
     from core.budget.cadena import sellar_historial
     from core.catalog.sesion import abrir_sesion, crear_motor
@@ -90,6 +93,26 @@ def sellar_caso_copiado(destino: Path) -> None:
         motor.dispose()
 
 
+def _sembrar_copia(origen: Path, destino: Path) -> None:
+    """Todo o nada: copia, sella en un temporal de la misma carpeta y publica con `os.replace`.
+    Si algo falla, el temporal (y sus -wal/-shm/-journal) se borra y `destino` no existe."""
+    temporal = destino.with_name(f".{destino.name}.tmp")
+    restos = [temporal] + [
+        temporal.with_name(temporal.name + s) for s in ("-wal", "-shm", "-journal")
+    ]
+    try:
+        for resto in restos:
+            resto.unlink(missing_ok=True)
+        shutil.copyfile(origen, temporal)
+        sellar_caso_copiado(temporal)
+        for resto in restos[1:]:
+            resto.unlink(missing_ok=True)
+        os.replace(temporal, destino)
+    finally:
+        for resto in restos:
+            resto.unlink(missing_ok=True)
+
+
 def preparar_demo(*, reiniciar: bool = False) -> list[str]:
     """Deja los casos de demostración en la carpeta de casos; devuelve lo que sembró."""
     casos = carpeta_casos()
@@ -102,8 +125,7 @@ def preparar_demo(*, reiniciar: bool = False) -> list[str]:
             print(f"  (no está {origen.relative_to(RAIZ)}; se omite {nombre})")
             continue
         if reiniciar or not destino.exists():
-            shutil.copyfile(origen, destino)
-            sellar_caso_copiado(destino)
+            _sembrar_copia(origen, destino)
             sembrados.append(nombre)
     destino = casos / "obra_control.db"
     if reiniciar or not destino.exists():
