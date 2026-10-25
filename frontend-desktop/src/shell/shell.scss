@@ -52,6 +52,11 @@ a.cds--side-nav__link > .cds--side-nav__link-text {
         display: flex;
       }
 
+      // La barra superior no cabe: sus areas ceden su lugar al boton de menu, que abre la capa.
+      .silice-barra__nav {
+        display: none;
+      }
+
       .cds--side-nav__overlay-active {
         z-index: 8000;
         background-color: var(--cds-overlay);
@@ -77,6 +82,7 @@ a.cds--side-nav__link > .cds--side-nav__link-text {
   }
 }
 
+@include menu-en-capa("normal", 1055.98px);
 @include menu-en-capa("grande", 1535.98px);
 @include menu-en-capa("muy-grande", 1919.98px);
 
