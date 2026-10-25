@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useEffect } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { MemoryRouter, useLocation, useNavigate, type NavigateFunction } from "react-router";
 import { BarraSuperior } from "./BarraSuperior";
@@ -18,10 +19,14 @@ const PAGINAS_DE_CREAR = [
   "Entregar paquete",
 ];
 
-let navegar: NavigateFunction | null = null;
+// Atras/adelante del navegador sin tocar la pagina (un clic en un boton seria un «clic fuera»).
+const historial: { navegar: NavigateFunction | null } = { navegar: null };
 
 function Ubicacion() {
-  navegar = useNavigate();
+  const navegar = useNavigate();
+  useEffect(() => {
+    historial.navegar = navegar;
+  }, [navegar]);
   return <output data-testid="ruta">{useLocation().pathname}</output>;
 }
 
@@ -44,7 +49,7 @@ const area = (nombre: string) => within(nav()).getByRole("button", { name: nombr
 const panel = (nombre: string) => screen.queryByRole("region", { name: nombre });
 
 afterEach(() => {
-  navegar = null;
+  historial.navegar = null;
   delete document.documentElement.dataset.siliceLetra;
 });
 
@@ -186,14 +191,14 @@ describe("BarraSuperior", () => {
     expect(area("Crear")).toHaveClass("silice-barra__area--actual");
     await u.click(area("Crear"));
     expect(panel("Crear")).toBeInTheDocument();
-    act(() => navegar!(-1));
+    act(() => historial.navegar!(-1));
     expect(screen.getByTestId("ruta")).toHaveTextContent("/libros");
     expect(panel("Crear")).toBeNull();
     expect(area("Crear")).toHaveAttribute("aria-expanded", "false");
     expect(area("Crear")).not.toHaveClass("silice-barra__area--actual");
     expect(area("Auditar")).toHaveClass("silice-barra__area--actual");
     // Y al volver adelante el panel no reaparece solo.
-    act(() => navegar!(1));
+    act(() => historial.navegar!(1));
     expect(panel("Crear")).toBeNull();
   });
 

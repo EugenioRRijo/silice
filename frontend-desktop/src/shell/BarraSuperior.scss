@@ -1,0 +1,159 @@
+// Barra superior y panel de area (diseno 2026-10-25 §5.1 y §5.2). Carbon g10, esquinas rectas, sin sombra, sin gradiente,
+// sin animacion (tampoco al abrir el panel). Todo en rem: sigue la escala de letra. El paso a la capa por debajo del
+// umbral de cada escala lo decide `shell.scss` (mixin `menu-en-capa`), no este parcial.
+
+.silice-barra__item {
+  position: relative;
+  display: flex;
+  block-size: 100%;
+}
+
+// Areas: los enlaces usan `cds--header__menu-item` de Carbon; los botones copian su aspecto. Sin transiciones.
+.silice-barra .silice-barra__area {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  box-sizing: border-box;
+  block-size: 100%;
+  padding: 0 1rem;
+  margin: 0;
+  border: 2px solid transparent;
+  background-color: var(--cds-background);
+  color: var(--cds-text-secondary);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.125rem;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: none;
+
+  &:hover {
+    background-color: var(--cds-background-hover);
+    color: var(--cds-text-primary);
+  }
+
+  &:focus,
+  &:focus-visible {
+    border-color: var(--cds-focus);
+    outline: none;
+  }
+
+  &[aria-expanded="true"] {
+    background-color: var(--cds-layer-01);
+    color: var(--cds-text-primary);
+  }
+}
+
+.silice-barra__chevron {
+  flex: none;
+  fill: currentcolor;
+}
+
+.silice-barra__area[aria-expanded="true"] .silice-barra__chevron {
+  transform: rotate(180deg);
+}
+
+// Area actual: borde inferior azul de 3 px, como `isCurrentPage` de Carbon (en los enlaces lo pone Carbon con
+// `aria-current="page"`; en los botones, esta clase).
+.silice-barra .silice-barra__area--actual {
+  color: var(--cds-text-primary);
+}
+
+.silice-barra button.silice-barra__area--actual::after {
+  position: absolute;
+  inset-block-end: -2px;
+  inset-inline-start: -2px;
+  inline-size: calc(100% + 4px);
+  block-size: 3px;
+  background-color: var(--cds-border-interactive);
+  content: "";
+}
+
+// Panel de area: bajo su boton, `$layer-01`, borde 1 px `$border-subtle`, sin sombra, recortado a la ventana. Una columna
+// por defecto; dos con letra Normal y ancho >= 1056 px.
+.silice-panel-area {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  z-index: 8000;
+  box-sizing: border-box;
+  inline-size: 22rem;
+  max-inline-size: min(40rem, calc(100vw - 1rem));
+  max-block-size: calc(100vh - 3rem);
+  overflow-y: auto;
+  padding: 0.5rem 0;
+  background: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-primary);
+}
+
+.silice-panel-area__grupo + .silice-panel-area__grupo {
+  margin-block-start: 0.5rem;
+}
+
+.silice-panel-area__subtitulo {
+  margin: 0;
+  padding: 0.5rem 1rem 0.25rem;
+  color: var(--cds-text-secondary);
+}
+
+.silice-panel-area__lista {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.silice-panel-area__enlace {
+  display: block;
+  block-size: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 1rem 0.5rem calc(1rem - 3px);
+  border-inline-start: 3px solid transparent;
+  color: var(--cds-text-primary);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+
+  &:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
+  // La pantalla actual: barra izquierda azul de seleccion de Carbon.
+  &[aria-current="page"] {
+    border-inline-start-color: var(--cds-border-interactive);
+    background: var(--cds-layer-selected-01);
+  }
+}
+
+.silice-panel-area__titulo {
+  display: block;
+  font-weight: 600;
+}
+
+.silice-panel-area__ayuda {
+  display: block;
+  margin-block-start: 0.125rem;
+  color: var(--cds-text-secondary);
+}
+
+@media (min-width: 1056px) {
+  :root:not([data-silice-letra="grande"], [data-silice-letra="muy-grande"]) {
+    .silice-panel-area {
+      inline-size: 40rem;
+    }
+
+    .silice-panel-area__lista {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
