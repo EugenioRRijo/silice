@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 
 from api import caso_web, dependencias
 from api.main import app
+from api.sesion_web import MENSAJE_CAMBIAR_CLAVE
 from operacion import config
 from operacion.base_datos import preparar_base
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
@@ -283,6 +284,7 @@ def test_contrasena_temporal_pendiente_da_403() -> None:
     navegador, ficha = con_cuenta(app, "tomas")
     respuesta = _crear(navegador, ficha, {"nombre": "Torre B", "moneda": "Bs"})
     assert respuesta.status_code == 403
+    assert respuesta.json()["detalle"] == MENSAJE_CAMBIAR_CLAVE
     assert _nombres("silice.db") == []
 
 

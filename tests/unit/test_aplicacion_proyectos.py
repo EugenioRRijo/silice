@@ -35,6 +35,19 @@ def test_listar_devuelve_los_proyectos_en_orden_alfabetico(base):
     assert proyectos.listar_proyectos(ruta) == ["Anexo norte", NOMBRE_PROYECTO]
 
 
+def test_si_declarar_la_moneda_falla_no_queda_el_proyecto(base, monkeypatch):
+    """Diseño §5.1: crear y declarar la moneda es todo o nada."""
+    ruta, _ = base
+
+    def falla(*_args, **_kwargs):
+        raise RuntimeError("fallo simulado al declarar la moneda")
+
+    monkeypatch.setattr(proyectos, "declarar_moneda", falla)
+    with pytest.raises(RuntimeError, match="fallo simulado"):
+        proyectos.crear_proyecto_nuevo(ruta, "Torre B", "Bs")
+    assert proyectos.listar_proyectos(ruta) == [NOMBRE_PROYECTO]
+
+
 def test_listar_sin_archivo_no_lo_crea(tmp_path):
     ruta = tmp_path / "no_existe.db"
     assert proyectos.listar_proyectos(ruta) == []

@@ -108,7 +108,8 @@ def sesion_api(request: Request) -> Iterator[Session]:
 
 
 def sesion_de_escritura_api(request: Request) -> Iterator[Session]:
-    """La sesion de una ruta que CREA UNA VERSION (SL-E12, diseno §4.5): su transaccion empieza con
+    """La sesion de una ruta que CREA UNA VERSION (SL-E12, diseno §4.5) o un proyecto (BCP-3, que
+    compara el nombre y da el alta bajo el mismo bloqueo): su transaccion empieza con
     `BEGIN IMMEDIATE` en la primera sentencia, asi que quien guarda toma el bloqueo de escritura
     antes de leer la version vigente y el ultimo codigo (el otro espera). No confirma por si
     misma: confirma o deshace la funcion de aplicacion que escribe (todo o nada), y al salir se
@@ -120,7 +121,7 @@ def sesion_de_escritura_api(request: Request) -> Iterator[Session]:
 #: Alias de tipo para inyectar la sesion en las rutas sin disparar B008 (ruff): un `Depends(...)`
 #: como valor por defecto es una llamada en la firma; dentro de `Annotated` no lo es.
 SesionDep = Annotated[Session, Depends(sesion_api)]
-#: La de escritura (`BEGIN IMMEDIATE`): solo para las rutas que crean versiones.
+#: La de escritura (`BEGIN IMMEDIATE`): para las rutas que crean versiones o proyectos (BCP-3).
 SesionDeEscrituraDep = Annotated[Session, Depends(sesion_de_escritura_api)]
 
 
