@@ -53,6 +53,14 @@ a.cds--side-nav__link > .cds--side-nav__link-text {
       display: none;
     }
 
+    // Y la capa las muestra: Carbon solo ensena `HeaderSideNavItems` con su consulta en rem (<= 65.98rem), que no sigue
+    // la letra de Silice; sin esto, con letra Grande o Muy grande por encima de 1056 px la capa se abria vacia.
+    .cds--side-nav__header-navigation {
+      position: relative;
+      display: block;
+      margin-block-end: 2rem;
+    }
+
     .cds--side-nav__overlay-active {
       z-index: 8000;
       background-color: var(--cds-overlay);
