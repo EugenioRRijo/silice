@@ -233,6 +233,14 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     [fallo],
   );
 
+  // El aviso de carpeta cambiada es de la pantalla en que se cambio: al navegar a otra se cierra (D6 del recorrido
+  // funcional). Se ajusta durante el render, sin efecto.
+  const [rutaDelAviso, setRutaDelAviso] = useState(ubicacion.pathname);
+  if (rutaDelAviso !== ubicacion.pathname) {
+    setRutaDelAviso(ubicacion.pathname);
+    if (aviso) setAviso(null);
+  }
+
   const recargarProyectos = useCallback(() => setRecarga((n) => n + 1), []);
 
   const aplicacion = useMemo<Aplicacion>(

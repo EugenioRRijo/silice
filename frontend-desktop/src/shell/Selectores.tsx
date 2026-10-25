@@ -16,7 +16,10 @@ export function nombreDeCarpeta(nombre: string): string {
 }
 
 // La carpeta de trabajo (el caso en la API) es la base de datos en uso (RM-2): la API lo guarda por sesion.
+// La carpeta abierta siempre es una de las opciones: si la lista de la API no la trae, se agrega al principio. Si no, el
+// Select mostraria la primera de la lista (otra carpeta) y elegir esa no haria nada (D1 del recorrido funcional).
 export function SelectorCaso({ casos, puedeCambiar, ocupado, alElegir }: PropsCaso) {
+  const opciones = casos.casos.some((c) => c.nombre === casos.actual.nombre) ? casos.casos : [casos.actual, ...casos.casos];
   return (
     <div className="silice-selector">
       <Select
@@ -27,7 +30,7 @@ export function SelectorCaso({ casos, puedeCambiar, ocupado, alElegir }: PropsCa
         disabled={!puedeCambiar || ocupado}
         onChange={(e) => alElegir(e.target.value)}
       >
-        {casos.casos.map((c) => (
+        {opciones.map((c) => (
           <SelectItem key={c.ruta_relativa} value={c.nombre} text={nombreDeCarpeta(c.nombre)} />
         ))}
       </Select>
