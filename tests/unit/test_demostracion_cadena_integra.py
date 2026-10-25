@@ -89,3 +89,40 @@ def test_la_orden_demostracion_deja_cadena_integra_y_entregable(datos: Path) -> 
     argumentos = type("A", (), {"salida": str(salida)})()
     assert ordenes_100._demostracion(argumentos) == 0
     assert _verificar_todo(salida, datos) >= 1
+
+
+def test_si_el_sellado_falla_no_queda_el_caso_ni_temporales(
+    datos: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Todo o nada (C2): un sellado a medias no deja `demo.db` sin sellar que el siguiente
+    arranque dé por sembrado; la excepción sube y la carpeta queda sin restos."""
+
+    def falla(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("disco lleno")
+
+    monkeypatch.setattr(cadena, "sellar_historial", falla)
+    with pytest.raises(RuntimeError, match="disco lleno"):
+        start.preparar_demo()
+    casos = start.carpeta_casos()
+    assert sorted(p.name for p in casos.iterdir()) == []
+    monkeypatch.undo()
+    monkeypatch.setenv("SILICE_DATOS", str(datos / "datos"))
+    monkeypatch.setenv("SILICE_RESPALDOS", str(datos / "respaldos"))
+    assert sorted(start.preparar_demo()) == sorted(CASOS)
+
+
+def test_los_sellos_son_retroactivos_de_script_start(datos: Path) -> None:
+    start.preparar_demo()
+    ruta = start.carpeta_casos() / "demo.db"
+    motor = crear_motor(f"sqlite:///{ruta.resolve().as_posix()}")
+    try:
+        with abrir_sesion(motor) as caso:
+            eslabones = [
+                e
+                for p in caso.scalars(select(models.Proyecto))
+                for e in cadena.eslabones_de(caso, p)
+            ]
+    finally:
+        motor.dispose()
+    assert eslabones
+    assert {(e.tipo, e.usuario) for e in eslabones} == {("retroactivo", "script:start")}
