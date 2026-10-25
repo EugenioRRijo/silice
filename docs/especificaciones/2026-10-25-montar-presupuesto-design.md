@@ -190,3 +190,38 @@ columnas nuevas.
 6. «Cómo se midió» se guarda como la regla del ítem manual, para que R1 no marque como ruido una medición declarada.
 7. Una versión en aprobación o aprobada no se edita; se hace una nueva desde ella.
 8. Quien arma puede aprobar su propia versión, y queda rotulado así.
+
+## 10. Ajustes tras el revisor constructor (2026-10-25)
+
+**Decididos por Eugenio**
+- **D-MP1 · Una moneda por carpeta de trabajo** (opción a). Cada carpeta trabaja en una sola moneda: sus listas para armar,
+  precios y APU están en esa moneda. Un proyecto en la otra moneda se valora con la conversión existente con la tasa del BCV,
+  declarando tasa y fecha. Así `core/` (que elige la lista vigente sin mirar la moneda) no se toca y no hay mezcla posible. Esto
+  **reemplaza** en §5.1 «para cada moneda (Bs, USD) la carpeta tiene su lista para armar»: la carpeta declara su moneda de trabajo
+  (al crearla o, en las existentes, por la de su lista vigente); `lista_para_armar` devuelve la vigente de la carpeta; Componer
+  muestra la moneda de la carpeta (no la pregunta); si la lista vigente no está en la moneda de la carpeta, se avisa y no se arma.
+- **D-MP2 · Precio de un insumo:** en Componer, teclear un precio distinto para un insumo que ya existe crea una **variante solo
+  para ese APU** (comportamiento actual del núcleo) y Sílice lo **avisa** antes de guardar; en el estudio de mercado, «Usar este
+  precio» cambia el **precio del insumo en la lista para armar** (como la hoja INSUMOS del Excel) y antes muestra qué APU se
+  moverán. Si la lista de hoy ya la usa una versión guardada, se crea otra derivada del mismo día («… (2)»).
+
+**Decisiones de ingeniería (las ratifica Eugenio al leer)**
+- **«Cómo se midió»**: dos campos. «Cálculo» (opcional): una expresión aritmética con coma decimal (`6*3-2`, `2,5*4`), que
+  `aplicacion/` traduce a la sintaxis de `evaluar` y guarda como la regla del ítem **solo si** su resultado coincide con la cantidad
+  (si la persona escribe el cálculo, la cantidad se rellena con su resultado); así R1 la reconoce. «Nota de medición» (texto libre,
+  opcional) se guarda aparte. Sin cálculo, R1 sigue avisando, y el aviso se presenta en lenguaje llano («cantidad medida a mano sin
+  cálculo: escriba cómo se obtuvo si quiere que Sílice la pueda verificar»).
+- **Quién aprueba**: una acción nueva `aprobar_version` para los roles **revisa** y **arma** (decisión de Eugenio: quien arma
+  también puede aprobar), con su fila en `seguridad/permisos.py` y `test_permisos`; el dictamen de alguien sobre su propia versión
+  queda rotulado «aprobada por quien la armó». **Revisa** gana `cambiar_caso` (solo lectura de carpetas: no escribe) para llegar a
+  la carpeta de lo que debe aprobar; «Por aprobar» lista los envíos de todas las carpetas (índice en `instalacion.db`: carpeta,
+  proyecto, versión, estado) y abrir uno cambia la carpeta de esa sesión. Recordar carpeta y proyecto aplica a todas las cuentas.
+- **Piso del estudio de mercado (cobro)**: costo directo + administración con los parámetros del **proyecto abierto** (si no hay,
+  los por omisión de `ParametrosCosto`); el precio objetivo vale **por partida en la carpeta** (una sola moneda); el margen se
+  compara con el **precio unitario con utilidad, sin IVA**.
+- **Máquina de estados**: se puede hacer una versión nueva desde una en aprobación (las versiones ya son inmutables); **un solo
+  envío pendiente por proyecto**: enviar otra versión retira la pendiente (queda «retirada», con su rastro); una versión devuelta
+  no se reenvía tal cual: se corrige en una versión nueva.
+- **Rastro verificable de aprobaciones**: cada envío y dictamen guarda el sello (SHA) del eslabón de la versión a la que se refiere y
+  su propia huella encadenada a la anterior de ese proyecto (cadena paralela fuera de `core/`, verificable); la Trazabilidad
+  la verifica y lo dice si se rompió.
