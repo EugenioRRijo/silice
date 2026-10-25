@@ -18,7 +18,7 @@ Las filas viven en `scripts/recorrido_funcional.toml` (una por pantalla) y se re
 URL (`#/<id>`), no por el menú:
 
     uv run --active --with playwright python scripts/recorrido_ux_playwright.py --funcional \\
-        --salida <carpeta> [--acciones scripts/recorrido_funcional.toml] [--solo componer catalogo]
+        --salida <carpeta> [--acciones scripts/recorrido_funcional.toml] [--solo componer,catalogo]
 
 No usa `data/` del árbol ni datos reales; solo libros ficticios (`tests/fixtures/`). Cierra el
 servidor por su PID y el navegador que lanzó; nunca cierra Chrome/Edge por nombre.
@@ -462,6 +462,8 @@ def flujo_revisar_excel(
 # interfaz, RT-9): se navega cambiando `location.hash`, sin recargar.
 
 ACCIONES_TOML = Path(__file__).with_name("recorrido_funcional.toml")
+# El botón de la barra superior que abre «Carpeta y proyecto» (su aria-label empieza así).
+BOTON_CARPETA = 'button[aria-label^="Carpeta de trabajo"]'
 ACCIONES_ADMITIDAS = {"llenar", "elegir", "pulsar", "marcar", "subir", "ir", "esperar", "tecla"}
 LIMITE_PASO_MS = 15_000
 LIMITE_ESPERA_MS = 30_000
@@ -520,7 +522,36 @@ def cargar_filas_funcionales(ruta: Path) -> dict[str, list[dict[str, Any]]]:
             for paso in fila.get("pasos", []):
                 if paso.get("accion") not in ACCIONES_ADMITIDAS:
                     raise ValueError(f"{tipo} {n}: acción no admitida {paso!r}")
+    rutas = [f["ruta"] for f in filas["pantalla"]]
+    for fila in filas["pantalla"]:
+        for previa in fila.get("requiere", []):
+            if previa not in rutas or rutas.index(previa) >= rutas.index(fila["ruta"]):
+                raise ValueError(f"{fila['ruta']}: «requiere» {previa!r} no es una fila anterior")
     return filas
+
+
+def seleccionar_pantallas(
+    filas: list[dict[str, Any]], solo: list[str] | None
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Las filas de `--solo` (con espacios o con comas) más las que ellas `requiere`, en el orden
+    del archivo. Un nombre que no es una fila, o quedarse sin filas, es un error (no un verde)."""
+    if solo is None:
+        return list(filas), []
+    pedidas = [n.strip() for parte in solo for n in parte.split(",") if n.strip()]
+    rutas = [f["ruta"] for f in filas]
+    desconocidas = [n for n in pedidas if n not in rutas]
+    if desconocidas:
+        raise ValueError(
+            f"--solo: no hay fila para {', '.join(desconocidas)}; las filas son: {', '.join(rutas)}"
+        )
+    if not pedidas:
+        raise ValueError("--solo sin rutas: no quedaría ninguna fila que ejecutar")
+    elegidas = set(pedidas)
+    for fila in reversed(filas):  # las dependencias siempre son filas anteriores
+        if fila["ruta"] in elegidas:
+            elegidas.update(fila.get("requiere", []))
+    agregadas = [r for r in rutas if r in elegidas and r not in pedidas]
+    return [f for f in filas if f["ruta"] in elegidas], agregadas
 
 
 def archivos_de_entrada(carpeta: Path) -> dict[str, Path]:
@@ -600,7 +631,7 @@ def carpeta_mostrada_y_real(pagina: Any) -> dict[str, Any]:
     mostrada = pagina.evaluate(
         "() => { const s = document.querySelector('#selector-caso');"
         " if (s && s.selectedIndex >= 0) return s.options[s.selectedIndex].textContent.trim();"
-        " const b = document.querySelector('[aria-controls=panel-carpeta-proyecto]');"
+        " const b = document.querySelector('button[aria-label^=\"Carpeta de trabajo\"]');"
         " return b ? b.textContent.trim() : null; }"
     )
     real = caso_de_la_sesion(pagina)
@@ -619,8 +650,8 @@ def elegir_contexto(pagina: Any, carpeta: str | None, proyecto: str | None) -> N
     def asegurar(selector: str) -> Any:
         control = pagina.locator(selector)
         if not control.is_visible():
-            boton = pagina.locator("[aria-controls=panel-carpeta-proyecto]")
-            if boton.count():
+            boton = pagina.locator(BOTON_CARPETA)
+            if boton.count() and boton.first.get_attribute("aria-expanded") != "true":
                 boton.first.click()
         control.wait_for(state="visible", timeout=LIMITE_PASO_MS)
         return control
@@ -645,8 +676,8 @@ def elegir_contexto(pagina: Any, carpeta: str | None, proyecto: str | None) -> N
     if proyecto:
         elegir_opcion(asegurar("#selector-proyecto"), proyecto)
         pagina.wait_for_timeout(800)
-    abierto = pagina.locator("#panel-carpeta-proyecto")
-    if abierto.count() and abierto.is_visible():
+    boton = pagina.locator(BOTON_CARPETA)
+    if boton.count() and boton.first.get_attribute("aria-expanded") == "true":
         pagina.keyboard.press("Escape")
 
 
@@ -666,6 +697,17 @@ def esperar_textos(pagina: Any, textos: list[str], limite_ms: int) -> list[str]:
         faltan = [t for t in textos if re.sub(r"\s+", " ", t) not in visible]
         if not faltan or time.monotonic() > fin:
             return faltan
+        pagina.wait_for_timeout(400)
+
+
+def esperar_ausentes(pagina: Any, textos: list[str], limite_ms: int) -> list[str]:
+    """Espera a que ningún texto se vea (un filtro que sí filtra); devuelve los que siguen."""
+    fin = time.monotonic() + limite_ms / 1000
+    while True:
+        visible = _texto_principal(pagina)
+        siguen = [t for t in textos if re.sub(r"\s+", " ", t) in visible]
+        if not siguen or time.monotonic() > fin:
+            return siguen
         pagina.wait_for_timeout(400)
 
 
@@ -748,6 +790,14 @@ def comprobar_espera(
             detalle.append("no se ve: " + " | ".join(f"«{t}»" for t in faltan))
         else:
             detalle.append("se ve: " + " | ".join(f"«{t}»" for t in textos))
+    ausentes = list(espera.get("ausentes", []))
+    if ausentes:
+        siguen = esperar_ausentes(pagina, ausentes, int(espera.get("ms_ausentes", 5000)))
+        if siguen:
+            ok = False
+            detalle.append("todavía se ve: " + " | ".join(f"«{t}»" for t in siguen))
+        else:
+            detalle.append("ya no se ve: " + " | ".join(f"«{t}»" for t in ausentes))
     if espera.get("descarga"):
         archivo = archivos.get(espera["descarga"])
         if archivo is None or not archivo.exists() or archivo.stat().st_size == 0:
@@ -766,7 +816,8 @@ def comprobar_espera(
                     detalle.append(f"la huella del archivo ({huella[:12]}…) no está en pantalla")
     if not espera.get("admite_error"):
         errores = pagina.eval_on_selector_all(
-            "main .cds--inline-notification--error, main .cds--actionable-notification--error",
+            ".cds--inline-notification--error, .cds--actionable-notification--error,"
+            " .cds--toast-notification--error",
             "els => els.filter(e => e.offsetParent !== null)"
             r".map(e => e.innerText.replace(/\s+/g, ' ').trim().slice(0, 300))",
         )
@@ -846,10 +897,16 @@ def ejecutar_fila(
 def main_funcional(salida: Path, acciones: Path, solo: list[str] | None) -> int:
     """Siembra, ejecuta las filas en orden y escribe `funcional.json`; 1 si alguna falla."""
     filas = cargar_filas_funcionales(acciones)
+    try:
+        pantallas, agregadas = seleccionar_pantallas(filas["pantalla"], solo)
+    except ValueError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    if agregadas:
+        print(f"--solo: se agregan las filas que se requieren: {', '.join(agregadas)}")
     for sub in ("capturas", "arbol", "descargas"):
         (salida / sub).mkdir(parents=True, exist_ok=True)
     rutas = [r["id"] for r in rutas_de_la_interfaz()]
-    pantallas = [f for f in filas["pantalla"] if not solo or f["ruta"] in solo]
     sin_fila = [r for r in rutas if r not in {f["ruta"] for f in filas["pantalla"]}]
     archivos = archivos_de_entrada(salida / "entradas")
     temporal = Path(tempfile.mkdtemp(prefix="datos_funcional_", dir=salida))
@@ -861,6 +918,8 @@ def main_funcional(salida: Path, acciones: Path, solo: list[str] | None) -> int:
         **compilado,
         "rutas_de_la_interfaz": len(rutas),
         "sin_fila": sin_fila,
+        "solo": solo,
+        "agregadas_por_requiere": agregadas,
         "siembra": [],
         "pantallas": [],
     }
@@ -964,7 +1023,12 @@ def main(argv: list[str] | None = None) -> int:
         "--funcional", action="store_true", help="ejecuta la acción principal de cada pantalla"
     )
     a.add_argument("--acciones", type=Path, default=ACCIONES_TOML, help="filas del modo funcional")
-    a.add_argument("--solo", nargs="*", help="modo funcional: solo estas rutas (y la siembra)")
+    a.add_argument(
+        "--solo",
+        nargs="*",
+        help="modo funcional: solo estas rutas (con espacios o comas), las que requieren y la "
+        "siembra; un nombre desconocido o ninguna ruta sale con 1",
+    )
     args = a.parse_args(argv)
     if args.funcional:
         return main_funcional(args.salida, args.acciones, args.solo)

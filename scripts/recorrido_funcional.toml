@@ -9,7 +9,10 @@
 # Formato de cada fila:
 #   ruta, cuenta, accion (qué se prueba, en una línea), carpeta y proyecto (opcionales),
 #   pasos = [ { accion = "llenar" | "elegir" | "pulsar" | "marcar" | "subir" | "ir" | "esperar" | "tecla", ... } ]
-#   espera = { texto = "...", textos = [...], descarga = "<clave>", huella = true, ms = 30000 }
+#   espera = { texto = "...", textos = [...], ausentes = [...], descarga = "<clave>", huella = true, ms = 30000 }
+#   requiere = ["<ruta>"]: filas anteriores de las que depende; `--solo` las agrega solas.
+# - ausentes: textos que NO deben verse al final (prueban que un filtro o una búsqueda quitó algo).
+# - Toda fila falla, además, si queda a la vista un aviso de error de Carbon (en línea, accionable o toast).
 # - llenar: rotulo (etiqueta exacta del campo), valor («{hoy}» = la fecha del día); fuera = true busca fuera de <main>.
 # - elegir: rotulo, opcion (valor o parte del texto de la opción).
 # - pulsar: nombre (nombre accesible), rol (button por omisión; tab, link...), exacto (true por omisión),
@@ -39,6 +42,25 @@ pasos = [
   { accion = "pulsar", nombre = "Generar la clave" },
 ]
 espera = { texto = "Huella de la clave de firma" }
+
+# Un cambio de precio ANTERIOR a hoy (vigencia 2026-10-01) en demo: «Histórico» debe quitarlo al filtrar
+# «desde hoy». La demostración no trae ninguno (tabla cambio_precio vacía en demo.db). Va después de la
+# lista base de DEMO-001 (2026-09-20): con una vigencia anterior a ella, los insumos que la lista nueva no
+# menciona quedan sin precio y la revaloración se rechaza (409; probado con 2026-06-01).
+[[siembra]]
+ruta = "actualizacion"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "revaloración ficticia con vigencia 2026-10-01 (cambios de precio anteriores a hoy)"
+pasos = [
+  { accion = "elegir", rotulo = "Presupuesto base", opcion = "DEMO-001" },
+  { accion = "llenar", rotulo = "Código de la versión nueva", valor = "FUN-01" },
+  { accion = "llenar", rotulo = "Fecha de vigencia", valor = "2026-10-01" },
+  { accion = "llenar", rotulo = "Nombre de la lista", valor = "Lista antigua ficticia" },
+  { accion = "subir", zona = "Suelte aquí la lista de precios", archivo = "lista_precios" },
+  { accion = "pulsar", nombre = "Revalorar presupuesto" },
+]
+espera = { textos = ["Comparativo por partida", "Informe de auditoría de la versión nueva"] }
 
 # ---------------------------------------------------------------------------------------------
 # Administración (admin)
@@ -93,7 +115,7 @@ espera = { texto = "Lista creada" }
 [[pantalla]]
 ruta = "acerca"
 cuenta = "ana"
-accion = "ver la versión y el estado de las bases -> «Al día»"
+accion = "(solo lectura) ver la versión y el estado de las bases -> «Al día»"
 espera = { textos = ["Versión", "Al día"] }
 
 [[pantalla]]
@@ -110,11 +132,12 @@ espera = { textos = ["libro_plantilla_empresa_ficticio.xlsx", "Hallazgos (2)", "
 ruta = "catalogo"
 cuenta = "ana"
 carpeta = "demo.db"
-accion = "buscar «PVC» en el catálogo -> aparecen las partidas de PVC"
+accion = "buscar «PVC» en el catálogo -> quedan las partidas de PVC y desaparecen las demás"
 pasos = [
+  { accion = "esperar", texto = "LB-01-EXC" },
   { accion = "llenar", rotulo = "Buscar en el catálogo", valor = "PVC" },
 ]
-espera = { textos = ["LB-02-TUB", "DEMO-01-INST"] }
+espera = { textos = ["LB-02-TUB", "DEMO-01-INST"], ausentes = ["LB-01-EXC", "LB-03-ENC", "DEMO-02-VALV"] }
 
 [[pantalla]]
 ruta = "componer"
@@ -148,7 +171,7 @@ pasos = [
   { accion = "llenar", rotulo = "Descripción de la partida", valor = "instalacion de tuberia PVC" },
   { accion = "pulsar", nombre = "Buscar" },
 ]
-espera = { textos = ["3 propuestas, de mayor a menor similitud", "DEMO-01-INST"], ms = 120000 }
+espera = { textos = ["3 propuestas, de mayor a menor similitud", "DEMO-01-INST"], ms = 240000 }
 
 [[pantalla]]
 ruta = "simulador"
@@ -177,7 +200,7 @@ ruta = "tablero"
 cuenta = "ana"
 carpeta = "demo.db"
 proyecto = "Sílice: caso de demostracion"
-accion = "abrir el tablero del proyecto con presupuesto -> resumen, curva y Pareto"
+accion = "(solo lectura) abrir el tablero del proyecto con presupuesto -> resumen, curva y Pareto"
 espera = { textos = ["Curva del proyecto", "Partidas que más pesan (Pareto)", "Versiones del presupuesto"] }
 
 [[pantalla]]
@@ -194,13 +217,14 @@ pasos = [
   { accion = "llenar", rotulo = "Fuente del cambio (por qué y con qué respaldo)", valor = "Acta ficticia AF-02", fuera = true },
   { accion = "pulsar", nombre = "Guardar versión", fuera = true },
 ]
-espera = { textos = ["Se guardó la versión DEMO-002", "Versión DEMO-002 · Sin cambios sin guardar"] }
+espera = { textos = ["Se guardó la versión FUN-002 con 1 cambio registrado.", "Versión FUN-002 · Sin cambios sin guardar"] }
 
 [[pantalla]]
 ruta = "entregar"
 cuenta = "ana"
 carpeta = "demo.db"
 proyecto = "Sílice: caso de demostracion"
+requiere = ["hoja"]
 accion = "generar el paquete firmado de la versión guardada -> se descarga con su huella"
 pasos = [
   { accion = "elegir", rotulo = "Proyecto", opcion = "Sílice: caso de demostracion" },
@@ -229,12 +253,14 @@ espera = { textos = ["Comparativo por partida", "Informe de auditoría de la ver
 ruta = "historico"
 cuenta = "ana"
 carpeta = "demo.db"
-accion = "filtrar los cambios de precio desde hoy -> aparecen los de la revaloración anterior"
+requiere = ["actualizacion"]
+accion = "filtrar los cambios de precio desde hoy -> quedan los de hoy y desaparecen los del 01/10/2026 (siembra)"
 pasos = [
+  { accion = "esperar", texto = "01/10/2026" },
   { accion = "llenar", rotulo = "Desde", valor = "{hoy}" },
   { accion = "pulsar", nombre = "Filtrar" },
 ]
-espera = { textos = ["Cemento Portland", "Arena lavada"] }
+espera = { textos = ["Cemento Portland", "Arena lavada"], ausentes = ["01/10/2026"] }
 
 [[pantalla]]
 ruta = "elaborar"
@@ -333,6 +359,7 @@ espera = { texto = "ARE-F01 Arena lavada ficticia m³ 25 10 Normal" }
 [[pantalla]]
 ruta = "revisar"
 cuenta = "rita"
+requiere = ["entregar"]
 accion = "abrir el paquete .silice que generó «Entregar» y guardar el dictamen -> total recalculado y dictamen atado al SHA-256"
 pasos = [
   { accion = "pulsar", rol = "tab", nombre = "Paquete .silice" },
@@ -355,5 +382,6 @@ espera = { textos = ["libro_plantilla_empresa_ficticio.xlsx", "Hallazgos (2)", "
 [[pantalla]]
 ruta = "historial"
 cuenta = "rita"
+requiere = ["libros"]
 accion = "ver la auditoría del libro recién abierto -> aparece en el historial"
 espera = { texto = "libro_plantilla_empresa_ficticio.xlsx" }
