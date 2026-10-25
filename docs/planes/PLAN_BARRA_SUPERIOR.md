@@ -19,6 +19,11 @@ el diseño y este plan.
 
 ## Restricciones globales
 
+- **Estilos por componente:** cada componente nuevo lleva su propio parcial SCSS junto a él (`BarraSuperior.scss`,
+  `PanelCarpetaProyecto.scss`, `MenuEnCapa.scss`, `ColumnaRecorrido.scss`), importado por el componente, como
+  `src/bienvenida/bienvenida.scss`. Solo la Tarea 5 (mixin `menu-en-capa`) y la Tarea 7 (retiro de `.silice-menu__*`) tocan
+  `shell.scss`. Así varias tareas pueden ir en paralelo sin pisarse.
+
 - Árbol único `.worktrees/s2madm`, rama `inc/ruta-s2-mig-adm-empresa`; sin `git worktree add`, sin `.venv` nuevo, sin
   `npm install`, sin cambiar `package.json`; `uv run --active` siempre.
 - Archivos compartidos que solo aplica el orquestador: `src/shell/rutas.ts` y `rutas.test.ts`, `CHANGELOG.md`, `docs/ERS.md`.
@@ -44,7 +49,7 @@ Lo que el diseño implica y ninguna prueba ejercitaría por sí sola; cada líne
    completo está en el nombre accesible (Tarea 4).
 2. Atrás/adelante del navegador con un panel de área abierto → el panel se cierra y el área actual se actualiza (Tarea 3).
 3. Cambiar el tamaño de letra con un panel abierto → el panel se cierra (no queda flotando fuera de la barra) (Tarea 3).
-4. Recorrido activo + panel de área abierto + Esc → Esc cierra solo el panel; el recorrido sigue (Tarea 6).
+4. Recorrido activo + panel de área abierto + Esc → Esc cierra solo el panel; el recorrido sigue (Tarea 7, integración).
 5. Cuenta sin ninguna página visible o en modo entrega → la barra no muestra áreas vacías y no falla (Tarea 2).
 
 ---
@@ -121,7 +126,7 @@ Lo que el diseño implica y ninguna prueba ejercitaría por sí sola; cada líne
 
 **Archivos:**
 - Crear: `frontend-desktop/src/shell/BarraSuperior.tsx`, `frontend-desktop/src/shell/PanelDeArea.tsx`, estilos en
-  `frontend-desktop/src/shell/shell.scss` (bloque `.silice-barra*` y `.silice-panel-area*`)
+  `frontend-desktop/src/shell/BarraSuperior.scss` (`.silice-barra*`, `.silice-panel-area*`)
 - Prueba: `frontend-desktop/src/shell/BarraSuperior.test.tsx`
 
 **Interfaces:**
@@ -215,7 +220,7 @@ Lo que el diseño implica y ninguna prueba ejercitaría por sí sola; cada líne
 **Archivos:**
 - Crear: `frontend-desktop/src/shell/ColumnaRecorrido.tsx`
 - Modificar: `frontend-desktop/src/shell/PanelRecorrido.tsx` (`alTerminar`: el foco va al h1 de la página, `#contenido h1`, ya
-  no a un enlace del menú), `frontend-desktop/src/shell/shell.scss` (`.silice-con-recorrido` estrecha el `main` 16 rem;
+  no a un enlace del menú), `frontend-desktop/src/shell/ColumnaRecorrido.scss` (`.silice-con-recorrido` estrecha el `main` 16 rem;
   por debajo del umbral, la columna pasa a franja plegable bajo la barra)
 - Prueba: `frontend-desktop/src/shell/ColumnaRecorrido.test.tsx`; ajustar `PanelRecorrido.test.tsx`
 
@@ -231,8 +236,6 @@ Lo que el diseño implica y ninguna prueba ejercitaría por sí sola; cada líne
   - «Ocultar» la oculta y aparece `BotonRecorrido`; pulsarlo la muestra de nuevo;
   - «Terminar recorrido» llama `terminarRecorrido` y el foco va al h1 de la página;
   - navegar a otra ruta no la cierra;
-  - **foco de revisión 4:** con la columna visible y un panel de área abierto (montar `BarraSuperior` y `ColumnaRecorrido`
-    juntos), Esc cierra el panel de área y la columna sigue visible y el recorrido sigue en curso.
 - [ ] **Paso 2:** `npx vitest run src/shell/ColumnaRecorrido.test.tsx src/shell/PanelRecorrido.test.tsx` → FALLA.
 - [ ] **Paso 3:** implementar.
 - [ ] **Paso 4:** misma orden → PASA.
@@ -260,6 +263,8 @@ Lo que el diseño implica y ninguna prueba ejercitaría por sí sola; cada líne
   - `Inicio.test.tsx`: con las acciones de ana, tres mosaicos «Libro de la empresa», «Componer una partida», «Existencias de la
     arenera» con su ayuda; sin permisos para una, esa no aparece;
   - `sinClasica.test.ts`: la expresión de clases prohibidas incluye `silice-menu__`.
+  - **foco de revisión 4:** con un recorrido activo y el panel de «Crear» abierto, Esc cierra el panel de área; la columna
+    «Recorrido» sigue visible y `recorridoEnCurso()` no es `null`.
 - [ ] **Paso 2:** `npx vitest run src/shell src/App.test.tsx src/paginas/inicio` → FALLA.
 - [ ] **Paso 3:** montar, borrar lo retirado.
 - [ ] **Paso 4:** `npx vitest run` (toda la suite del front), `npm run lint`, `npm run build` → PASA y limpio.
