@@ -5,6 +5,7 @@ import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
+import { AYUDA_CIFRAS, MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
 import Asistente from "./Asistente";
 import type { AsistenteEstado } from "./logica";
 
@@ -92,12 +93,12 @@ describe("Asistente de IA", () => {
     expect(screen.getByLabelText("Modelo local (Ollama)")).toHaveValue("");
     expect(screen.getByLabelText("Dirección de Ollama")).toHaveValue("http://127.0.0.1:11434");
     expect(screen.getByLabelText("Tope de costo por sesión (USD)")).toHaveValue("2,50");
-    expect(screen.getByText("Mayor que cero; puede escribir coma o punto decimal.")).toBeInTheDocument();
+    expect(screen.getByText(`Mayor que cero. ${AYUDA_CIFRAS}`)).toBeInTheDocument();
     expect(screen.getByText(/Si la dirección de Ollama no es de este equipo/)).toBeInTheDocument();
     expect(screen.getByText("Clave registrada: ninguna")).toBeInTheDocument();
   });
 
-  test("guarda la configuración con el tope tal como se escribió", async () => {
+  test("guarda la configuración con el tope leído con la coma decimal y enviado con punto", async () => {
     const usuario = userEvent.setup();
     fetchFalso.mockResolvedValueOnce(json(FABRICA));
     fetchFalso.mockResolvedValueOnce(
@@ -119,9 +120,45 @@ describe("Asistente de IA", () => {
       modelo_claude: "claude-opus-5-5",
       modelo_local: "llama-ficticio",
       anfitrion_ollama: "http://127.0.0.1:11434",
-      tope_usd: "3,75",
+      tope_usd: "3.75",
     });
     expect(screen.getByLabelText("Tope de costo por sesión (USD)")).toHaveValue("3,75");
+  });
+
+  test("el tope que da la API se ve con coma y, sin tocarlo, vuelve igual", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValueOnce(json({ ...FABRICA, tope_usd: "0.12" }));
+    fetchFalso.mockResolvedValueOnce(json({ mensaje: "Configuración del asistente guardada.", estado: FABRICA }));
+    montar();
+    expect(await screen.findByLabelText("Tope de costo por sesión (USD)")).toHaveValue("0,12");
+    await usuario.click(screen.getByRole("button", { name: "Guardar la configuración" }));
+    await screen.findByText("Configuración del asistente guardada.");
+    expect(cuerpo(1)).toMatchObject({ tope_usd: "0.12" });
+  });
+
+  test("«1.000» es un tope de mil, no de uno", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValueOnce(json(FABRICA));
+    fetchFalso.mockResolvedValueOnce(json({ mensaje: "Configuración del asistente guardada.", estado: FABRICA }));
+    montar();
+    const tope = await screen.findByLabelText("Tope de costo por sesión (USD)");
+    await usuario.clear(tope);
+    await usuario.type(tope, "1.000");
+    await usuario.click(screen.getByRole("button", { name: "Guardar la configuración" }));
+    await screen.findByText("Configuración del asistente guardada.");
+    expect(cuerpo(1)).toMatchObject({ tope_usd: "1000" });
+  });
+
+  test("un tope con punto decimal («2.5») se marca junto al campo y no se envía", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValueOnce(json(FABRICA));
+    montar();
+    const tope = await screen.findByLabelText("Tope de costo por sesión (USD)");
+    await usuario.clear(tope);
+    await usuario.type(tope, "2.5");
+    await usuario.click(screen.getByRole("button", { name: "Guardar la configuración" }));
+    expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();
+    expect(fetchFalso).toHaveBeenCalledTimes(1);
   });
 
   test("un tope rechazado muestra el mensaje de la API", async () => {

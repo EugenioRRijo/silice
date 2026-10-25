@@ -175,6 +175,7 @@ describe("logica de Administracion", () => {
       expect(topeParaEditar("2.50")).toBe("2,50");
       expect(topeParaEditar("2")).toBe("2");
       expect(topeParaEditar("0.0000001")).toBe("0,0000001");
+      expect(topeParaEditar("1234.5")).toBe("1.234,5");
     });
   });
 });
