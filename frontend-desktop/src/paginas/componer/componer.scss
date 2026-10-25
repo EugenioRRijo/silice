@@ -54,8 +54,29 @@
   min-inline-size: 0;
 }
 
+// Tablas de insumos: cada celda es un campo de texto. Sin el relleno lateral de Carbon el texto del campo (que trae su
+// propio relleno de 1 rem) cae justo bajo el de su encabezado, y no quedan franjas grises entre campos; un filete
+// separa las columnas. Las cifras se escriben a la derecha, como su encabezado `silice-cifra` (prueba en vivo
+// 2026-10-25, capturas 08 y 11).
 .silice-componer__tabla td {
   padding-block: 0;
+  padding-inline: 0;
+}
+
+.silice-componer__tabla td + td {
+  border-inline-start: 1px solid var(--silice-divisor);
+}
+
+.silice-componer__tabla td.silice-cifra input {
+  text-align: end;
+}
+
+.silice-componer__tabla th:first-child {
+  inline-size: 34%;
+}
+
+.silice-componer__tabla th:last-child {
+  inline-size: 1%;
 }
 
 .silice-componer__contraste {
