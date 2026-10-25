@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { MemoryRouter, useLocation, useNavigate, type NavigateFunction } from "react-router";
 import { BarraSuperior } from "./BarraSuperior";
 import { navegacion } from "./navegacion";
@@ -35,7 +35,7 @@ function pintar(entradas: string[] = ["/inicio"], indice = entradas.length - 1) 
     <MemoryRouter initialEntries={entradas} initialIndex={indice}>
       <BarraSuperior
         entradas={ENTRADAS}
-        derecha={<span>derecha</span>}
+        derecha={<button type="button">derecha</button>}
         menu={{ abierto: false, alternar: () => {} }}
       />
       <main>contenido</main>
@@ -51,6 +51,9 @@ const panel = (nombre: string) => screen.queryByRole("region", { name: nombre })
 afterEach(() => {
   historial.navegar = null;
   delete document.documentElement.dataset.siliceLetra;
+  // Quita el ancho de ventana fingido (vuelve el del prototipo de jsdom).
+  delete (document.documentElement as unknown as Record<string, unknown>).clientWidth;
+  vi.restoreAllMocks();
 });
 
 describe("BarraSuperior", () => {
@@ -110,16 +113,79 @@ describe("BarraSuperior", () => {
     expect(area("Crear")).toHaveFocus();
   });
 
-  test("las flechas recorren las entradas del panel", async () => {
+  test("las flechas recorren las entradas del panel y se detienen en la primera y la última (sin vuelta)", async () => {
     const u = userEvent.setup();
     pintar();
     await u.click(area("Crear"));
     await u.keyboard("{ArrowDown}");
     expect(screen.getByRole("link", { name: "Elaborar un presupuesto" })).toHaveFocus();
     await u.keyboard("{ArrowUp}{ArrowUp}");
+    expect(screen.getByRole("link", { name: "Componer una partida" })).toHaveFocus();
+    await u.keyboard("{End}");
+    expect(screen.getByRole("link", { name: "Entregar paquete" })).toHaveFocus();
+    await u.keyboard("{ArrowDown}");
     expect(screen.getByRole("link", { name: "Entregar paquete" })).toHaveFocus();
     await u.keyboard("{Home}");
     expect(screen.getByRole("link", { name: "Componer una partida" })).toHaveFocus();
+  });
+
+  test("Espacio sobre el botón del área abre el panel", async () => {
+    const u = userEvent.setup();
+    pintar();
+    area("Auditar").focus();
+    await u.keyboard(" ");
+    expect(area("Auditar")).toHaveAttribute("aria-expanded", "true");
+    expect(panel("Auditar")).toBeInTheDocument();
+  });
+
+  test("Tab desde el último enlace del panel va a la siguiente área (el foco sigue en la navegación)", async () => {
+    const u = userEvent.setup();
+    pintar();
+    await u.click(area("Crear"));
+    await u.keyboard("{End}");
+    expect(screen.getByRole("link", { name: "Entregar paquete" })).toHaveFocus();
+    await u.tab();
+    expect(within(nav()).getByRole("link", { name: "Existencias de la arenera" })).toHaveFocus();
+  });
+
+  test("Tab que saca el foco de la navegación cierra el panel", async () => {
+    const u = userEvent.setup();
+    pintar();
+    await u.click(area("Más"));
+    await u.keyboard("{End}");
+    expect(screen.getByRole("link", { name: "Acerca de Sílice" })).toHaveFocus();
+    await u.tab();
+    expect(screen.getByRole("button", { name: "derecha" })).toHaveFocus();
+    expect(panel("Más")).toBeNull();
+    expect(area("Más")).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("al redimensionar la ventana el panel abierto se vuelve a encajar en el ancho útil (sin la barra de desplazamiento)", async () => {
+    const u = userEvent.setup();
+    let ancho = 1000;
+    Object.defineProperty(document.documentElement, "clientWidth", { configurable: true, get: () => ancho });
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      // El panel mide de 500 a 900 px, sea cual sea el desplazamiento puesto.
+      return this.classList.contains("silice-panel-area") ? new DOMRect(500, 48, 400, 300) : original.call(this);
+    });
+    pintar();
+    await u.click(area("Más"));
+    const region = panel("Más")!;
+    expect(region.style.insetInlineStart).toBe("");
+    expect(region.style.maxInlineSize).toBe("min(40rem, 984px)");
+    ancho = 800;
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    // 900 - (800 - 8) = 108 px de exceso.
+    expect(region.style.insetInlineStart).toBe("-108px");
+    expect(region.style.maxInlineSize).toBe("min(40rem, 784px)");
+    ancho = 1000;
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(region.style.insetInlineStart).toBe("");
   });
 
   test("clic fuera (en el main) cierra; abrir «Más» cierra «Crear»", async () => {
