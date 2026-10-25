@@ -48,7 +48,7 @@ import tempfile
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -91,6 +91,7 @@ from adapters.espacio.planos.geometria_plano import reglas_plano
 from adapters.espacio.reglas import CantidadEscrita, reglas_espacio
 from aplicacion.composicion import (
     ComposicionInvalida,
+    decimal_con_coma,
     decimal_desde_texto,
     filas_desde_composicion,
     texto_de_celda,
@@ -2755,12 +2756,10 @@ def alturas_pendientes(resultado: ResultadoImportacion) -> list[tuple[str, str]]
 
 
 def _altura(identificador: str, texto: str) -> Decimal:
-    """Una altura en metros escrita por el usuario (acepta coma decimal)."""
-    try:
-        valor: Decimal | None = Decimal(texto.strip().replace(",", "."))
-    except InvalidOperation:
-        valor = None
-    if valor is None or not valor.is_finite() or not Decimal(0) < valor <= ALTURA_MAXIMA_M:
+    """Una altura en metros escrita por el usuario (acepta coma decimal: `decimal_con_coma`,
+    el mismo criterio que Componer)."""
+    valor = decimal_con_coma(texto)
+    if valor is None or not Decimal(0) < valor <= ALTURA_MAXIMA_M:
         raise HojaInvalida(
             f"Altura de «{identificador}»: «{texto}» no es una altura valida. "
             f"Escriba un numero de metros mayor que 0 y hasta {ALTURA_MAXIMA_M}, por ejemplo 2,50."

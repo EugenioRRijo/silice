@@ -225,7 +225,10 @@ def test_una_fila_con_none_solo_en_cantidad_nombra_la_fila_no_el_texto_none():
         composicion_desde_tablas("P-01", "Prueba", "m3", "8", filas, [], MANO_OBRA)
 
     assert "None" not in str(error.value)
-    assert "cantidad (Cemento)" in str(error.value)
+    assert str(error.value) == (
+        "En Materiales, fila 1 («Cemento»), falta el consumo por unidad: escriba un número; por "
+        "ejemplo, 2,5."
+    )
 
 
 # --- Tarea 2: busqueda en la referencia MaPreX, como funcion pura ------------------------------

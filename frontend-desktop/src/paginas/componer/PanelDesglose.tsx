@@ -6,6 +6,9 @@ interface Props {
   evaluacion: Evaluacion | null;
   cargando: boolean;
   error: unknown;
+  // El ultimo desglose valido: con un dato mal escrito (estado `incompleto`) se sigue viendo, marcado como anterior,
+  // en vez de dejar la pantalla solo con el aviso (prueba en vivo 2026-10-25).
+  anterior?: Desglose | null;
 }
 
 const ROTULOS: readonly (readonly [keyof Desglose, string])[] = [
@@ -61,7 +64,8 @@ function BloqueContraste({ contraste }: { contraste: Contraste }) {
 }
 
 // Desglose en vivo (RF-27): lo calcula la API; aqui solo se pinta. Las advertencias informan, nunca bloquean.
-export function PanelDesglose({ evaluacion, cargando, error }: Props) {
+export function PanelDesglose({ evaluacion, cargando, error, anterior = null }: Props) {
+  const conservado = evaluacion && !evaluacion.desglose && evaluacion.estado === "incompleto" ? anterior : null;
   return (
     <section className="silice-componer__bloque" aria-labelledby="componer-desglose">
       <h2 id="componer-desglose" className="cds--type-heading-compact-02">
@@ -89,6 +93,14 @@ export function PanelDesglose({ evaluacion, cargando, error }: Props) {
             />
           )}
           {evaluacion.desglose && <TablaDeMontos desglose={evaluacion.desglose} />}
+          {conservado && (
+            <>
+              <p className="silice-componer__nota cds--type-body-compact-01">
+                Se muestra el último desglose calculado, sin el cambio del aviso: corrija ese dato para actualizarlo.
+              </p>
+              <TablaDeMontos desglose={conservado} />
+            </>
+          )}
           {evaluacion.advertencias.map((a, i) => (
             <InlineNotification
               key={`${a.tipo}-${i}`}

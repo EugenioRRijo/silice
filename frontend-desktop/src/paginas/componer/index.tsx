@@ -7,7 +7,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { useAplicacion } from "../../shell/contexto";
 import { BuscadorReferencia } from "./BuscadorReferencia";
 import { evaluar, guardar, opciones, partida, similares as pedirSimilares } from "./cliente";
-import type { Cabecera, Evaluacion, Guardado, Opciones, Similar } from "./cliente";
+import type { Cabecera, Desglose, Evaluacion, Guardado, Opciones, Similar } from "./cliente";
 import "./componer.scss";
 import { Guardar } from "./Guardar";
 import { PanelDesglose } from "./PanelDesglose";
@@ -57,6 +57,8 @@ export default function PaginaComponer() {
   const [errorOpciones, setErrorOpciones] = useState<unknown>(null);
 
   const [evaluacion, setEvaluacion] = useState<Evaluacion | null>(null);
+  // El ultimo desglose valido; con el formulario vacio se olvida.
+  const [ultimoDesglose, setUltimoDesglose] = useState<Desglose | null>(null);
   const [calculando, setCalculando] = useState(false);
   const [errorDesglose, setErrorDesglose] = useState<unknown>(null);
 
@@ -137,6 +139,8 @@ export default function PaginaComponer() {
         .then((r) => {
           if (mio !== turnoEvaluar.current) return;
           setEvaluacion(r);
+          if (r.desglose) setUltimoDesglose(r.desglose);
+          else if (r.estado === "vacio") setUltimoDesglose(null);
           setErrorDesglose(null);
           setCalculando(false);
         })
@@ -288,6 +292,9 @@ export default function PaginaComponer() {
         <h2 id="componer-insumos" className="cds--type-heading-compact-02">
           Insumos
         </h2>
+        <p className="silice-componer__nota cds--type-body-compact-01">
+          Las cifras se escriben con coma o con punto para los decimales, por ejemplo 0,005, y sin separador de miles.
+        </p>
         {TIPOS.map((tipo) => (
           <div key={tipo} className="silice-componer__insumo">
             <BuscadorReferencia tipo={tipo} alUsar={usarFila(tipo)} alExpirar={expirar} />
@@ -303,7 +310,7 @@ export default function PaginaComponer() {
         ))}
       </section>
 
-      <PanelDesglose evaluacion={evaluacion} cargando={calculando} error={errorDesglose} />
+      <PanelDesglose evaluacion={evaluacion} cargando={calculando} error={errorDesglose} anterior={ultimoDesglose} />
 
       <Guardar
         sinCondiciones={condiciones.trim() === ""}

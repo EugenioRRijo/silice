@@ -100,6 +100,72 @@ def decimal_desde_texto(texto: str, campo: str) -> Decimal:
     return valor
 
 
+def decimal_con_coma(texto: str) -> Decimal | None:
+    """El número que escribió una persona en es-VE: coma o punto como separador decimal.
+
+    Es el criterio de las alturas del plano de la Hoja (`aplicacion.hoja._altura`, que lo usa) y
+    de Componer: `0,005` y `0.005` valen lo mismo. Con coma y punto a la vez (`1.234,5`) no se
+    adivina cuál es el decimal; eso, un texto que no es un número y uno no finito dan `None`.
+    Nunca pasa por `float`.
+    """
+    limpio = texto.strip()
+    if "," in limpio and "." in limpio:
+        return None
+    try:
+        valor = Decimal(limpio.replace(",", "."))
+    except InvalidOperation:
+        return None
+    return valor if valor.is_finite() else None
+
+
+#: Lo que la persona debe escribir en un campo de cifra de Componer (prueba en vivo 2026-10-25):
+#: lenguaje llano, con tildes y con el rótulo que ve en pantalla, nunca la clave interna.
+_SOLO_CIFRAS = "escriba solo cifras, con coma o punto para los decimales"
+_SIN_MILES = "escriba el número sin separador de miles; por ejemplo, 1234,5."
+
+
+def _cifra_de_componer(texto: str, sujeto: str, falta: str, ejemplo: str) -> Decimal:
+    """`decimal_con_coma` con el mensaje de Componer. `sujeto` es lo que se nombra delante del
+    texto escrito («En Equipos, fila 1 («Mezcladora»), la depreciación»); `falta`, la frase
+    completa para el campo vacío."""
+    limpio = texto.strip()
+    if not limpio:
+        raise ComposicionInvalida(falta)
+    valor = decimal_con_coma(limpio)
+    if valor is not None:
+        return valor
+    if "," in limpio and "." in limpio:
+        raise ComposicionInvalida(
+            f"{sujeto} «{limpio}» lleva punto y coma a la vez y no se sabe cuál separa los "
+            f"decimales: {_SIN_MILES}"
+        )
+    raise ComposicionInvalida(
+        f"{sujeto} «{limpio}» no es un número: {_SOLO_CIFRAS}; por ejemplo, {ejemplo}."
+    )
+
+
+def _cifra_de_fila(texto: str, tabla: str, indice: int, descripcion: str, rotulo: str) -> Decimal:
+    """Una cifra de una fila de insumos; `rotulo` lleva su artículo («la depreciación»)."""
+    lugar = f"En {tabla}, fila {indice} («{descripcion}»)"
+    return _cifra_de_componer(
+        texto,
+        f"{lugar}, {rotulo}",
+        f"{lugar}, falta {rotulo}: escriba un número; por ejemplo, 2,5.",
+        "2,5",
+    )
+
+
+def rendimiento_desde_texto(texto: str) -> Decimal:
+    """El rendimiento de la cabecera de Componer (coma o punto decimal), con su mensaje llano."""
+    return _cifra_de_componer(
+        texto,
+        "El rendimiento",
+        "Falta el rendimiento: escriba cuántas unidades de la partida se hacen por día; por "
+        "ejemplo, 25.",
+        "25",
+    )
+
+
 def texto_de_celda(fila: Mapping[str, object], clave: str) -> str:
     """Extrae y normaliza una celda, incluida la frontera con el productor real de las filas.
 
@@ -164,8 +230,10 @@ def _material_desde_fila(fila: Mapping[str, str], indice: int) -> LineaMaterial 
         return None
     _exigir_descripcion("materiales", indice, descripcion)
 
-    cantidad = decimal_desde_texto(cantidad_texto, f"cantidad ({descripcion})")
-    precio = decimal_desde_texto(precio_texto, f"precio ({descripcion})")
+    cantidad = _cifra_de_fila(
+        cantidad_texto, "Materiales", indice, descripcion, "el consumo por unidad"
+    )
+    precio = _cifra_de_fila(precio_texto, "Materiales", indice, descripcion, "el precio")
     try:
         return LineaMaterial(
             descripcion=descripcion, unidad=unidad, cantidad=cantidad, precio=precio
@@ -183,9 +251,11 @@ def _equipo_desde_fila(fila: Mapping[str, str], indice: int) -> LineaEquipo | No
         return None
     _exigir_descripcion("equipos", indice, descripcion)
 
-    cantidad = decimal_desde_texto(cantidad_texto, f"cantidad ({descripcion})")
-    precio = decimal_desde_texto(precio_texto, f"precio ({descripcion})")
-    depreciacion = decimal_desde_texto(depreciacion_texto, f"depreciacion ({descripcion})")
+    cantidad = _cifra_de_fila(cantidad_texto, "Equipos", indice, descripcion, "la cantidad")
+    precio = _cifra_de_fila(precio_texto, "Equipos", indice, descripcion, "el precio")
+    depreciacion = _cifra_de_fila(
+        depreciacion_texto, "Equipos", indice, descripcion, "la depreciación"
+    )
     try:
         return LineaEquipo(
             descripcion=descripcion, cantidad=cantidad, precio=precio, depreciacion=depreciacion
@@ -203,8 +273,8 @@ def _mano_obra_desde_fila(fila: Mapping[str, str], indice: int) -> LineaManoObra
         return None
     _exigir_descripcion("mano de obra", indice, descripcion)
 
-    cantidad = decimal_desde_texto(cantidad_texto, f"cantidad ({descripcion})")
-    sueldo = decimal_desde_texto(sueldo_texto, f"sueldo ({descripcion})")
+    cantidad = _cifra_de_fila(cantidad_texto, "Mano de obra", indice, descripcion, "la cantidad")
+    sueldo = _cifra_de_fila(sueldo_texto, "Mano de obra", indice, descripcion, "el sueldo")
     modalidad = _modalidad_desde_texto(modalidad_texto, descripcion)
     try:
         return LineaManoObra(
@@ -248,7 +318,7 @@ def composicion_desde_tablas(
         for indice, fila in enumerate(filas_mano_obra, start=1)
         if (linea := _mano_obra_desde_fila(fila, indice)) is not None
     )
-    valor_rendimiento = decimal_desde_texto(rendimiento, "rendimiento")
+    valor_rendimiento = rendimiento_desde_texto(rendimiento)
 
     try:
         return ComposicionAPU(
@@ -903,7 +973,7 @@ def _advertencias_de_rendimiento(
     if not rendimiento.strip():
         return []
     try:
-        valor = decimal_desde_texto(rendimiento, "rendimiento")
+        valor = rendimiento_desde_texto(rendimiento)
     except ComposicionInvalida:
         return []
     dispersion, observados = _historial_de_rendimiento(sesion, codigo)
