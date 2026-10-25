@@ -2130,9 +2130,109 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "casos"
+        ],
+        "summary": "Crear Carpeta",
+        "description": "C1: una carpeta de trabajo vacía con el nombre saneado. No la abre.",
+        "operationId": "crear_carpeta_v1_casos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NuevaCarpeta"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CasoRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin el permiso, o sin CSRF u origen propio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe, tope, otra creación en curso o clave.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Nombre con rutas, reservado o datos sin la forma.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No se pudo preparar; nada quedó a medias.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/casos/actual": {
+      "get": {
+        "tags": [
+          "casos"
+        ],
+        "summary": "Resumen Actual",
+        "description": "C0: el resumen de la carpeta de esta petición (la de la ficha o, con la clave, la del\nproceso), en solo lectura: no crea el archivo ni lo migra.",
+        "operationId": "resumen_actual_v1_casos_actual_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumenCarpeta"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "El proceso no usa un archivo SQLite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "casos"
@@ -2214,6 +2314,150 @@
         }
       }
     },
+    "/v1/casos/subida": {
+      "post": {
+        "tags": [
+          "casos"
+        ],
+        "summary": "Subir Carpeta",
+        "description": "C2: un `.db` ajeno se valida, se respalda, se migra y solo entonces aparece; todo o nada.",
+        "operationId": "subir_carpeta_v1_casos_subida_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_subir_carpeta_v1_casos_subida_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CasoSubido"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin el permiso, o sin CSRF u origen propio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe, tope, otra creación en curso o clave.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "No es una carpeta de Sílice válida o es nueva.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No se pudo preparar; nada quedó a medias.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "El archivo pasa de 20 MiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/casos/demostracion": {
+      "post": {
+        "tags": [
+          "casos"
+        ],
+        "summary": "Estrenar Demostracion",
+        "description": "C3: la carpeta `demostracion.db`, ficticia; 201 si la creó, 200 si ya estaba. No la abre\nni toca la carpeta abierta.",
+        "operationId": "estrenar_demostracion_v1_casos_demostracion_post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CasoRespuesta"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Ya existía con los datos de ejemplo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CasoRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin `EDITAR_HOJA`, o sin CSRF u origen propio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Con la clave de API, o una demostración vacía.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "El proceso hijo falló o pasó su plazo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/proyectos": {
       "get": {
         "tags": [
@@ -2233,6 +2477,46 @@
                   },
                   "type": "array",
                   "title": "Response Listar Proyectos Del Caso V1 Proyectos Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "proyectos"
+        ],
+        "summary": "Crear Proyecto Del Caso",
+        "description": "Crea el proyecto en el caso de esta sesión; sin versión guardada todavía.",
+        "operationId": "crear_proyecto_del_caso_v1_proyectos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProyectoNuevo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProyectoDelCasoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -9196,6 +9480,33 @@
         "type": "object",
         "title": "Body_revocar_v1_admin_empresas_registradas__empresa_id__revocar_post"
       },
+      "Body_subir_carpeta_v1_casos_subida_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo",
+            "description": "El `.db` de una carpeta de trabajo"
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo"
+        ],
+        "title": "Body_subir_carpeta_v1_casos_subida_post"
+      },
       "Body_vista_previa_de_lista_listas_precios_vista_previa_post": {
         "properties": {
           "archivo": {
@@ -9701,6 +10012,37 @@
           "ruta_relativa"
         ],
         "title": "CasoRespuesta"
+      },
+      "CasoSubido": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "ruta_relativa": {
+            "type": "string",
+            "title": "Ruta Relativa"
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso",
+            "description": "Qué se hizo con el archivo (migrado con respaldo)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "ruta_relativa",
+          "aviso"
+        ],
+        "title": "CasoSubido"
       },
       "CasosRespuesta": {
         "properties": {
@@ -14579,6 +14921,21 @@
         ],
         "title": "MovimientoRespuesta"
       },
+      "NuevaCarpeta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Nombre",
+            "description": "El nombre que escribió la persona"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "NuevaCarpeta"
+      },
       "NuevosRoles": {
         "properties": {
           "roles": {
@@ -15900,6 +16257,42 @@
         ],
         "title": "ProyectoDelCasoRespuesta"
       },
+      "ProyectoNuevo": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Nombre"
+          },
+          "moneda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda"
+          },
+          "dominio": {
+            "type": "string",
+            "title": "Dominio",
+            "default": ""
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Descripcion",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "ProyectoNuevo"
+      },
       "ProyectoPeticion": {
         "properties": {
           "nombre": {
@@ -16731,6 +17124,84 @@
           "mensaje"
         ],
         "title": "ResultadoRespuesta"
+      },
+      "ResumenCarpeta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "ruta_relativa": {
+            "type": "string",
+            "title": "Ruta Relativa"
+          },
+          "ubicacion": {
+            "type": "string",
+            "title": "Ubicacion",
+            "description": "Dónde está, en llano y sin ruta absoluta"
+          },
+          "partidas": {
+            "type": "integer",
+            "title": "Partidas"
+          },
+          "insumos": {
+            "type": "integer",
+            "title": "Insumos"
+          },
+          "lista_vigente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lista Vigente"
+          },
+          "proyectos": {
+            "type": "integer",
+            "title": "Proyectos"
+          },
+          "proyectos_con_version": {
+            "type": "integer",
+            "title": "Proyectos Con Version"
+          },
+          "es_demostracion": {
+            "type": "boolean",
+            "title": "Es Demostracion"
+          },
+          "por_migrar": {
+            "type": "boolean",
+            "title": "Por Migrar"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "ruta_relativa",
+          "ubicacion",
+          "partidas",
+          "insumos",
+          "lista_vigente",
+          "proyectos",
+          "proyectos_con_version",
+          "es_demostracion",
+          "por_migrar",
+          "error"
+        ],
+        "title": "ResumenCarpeta"
       },
       "ResumenDeFusionRespuesta": {
         "properties": {

@@ -42,7 +42,7 @@ from api.main import (
     manejar_value_error,
 )
 from api.proteccion import exigir_clave_api
-from api.rutas import auditorias, catalogo, computos, listas, presupuestos, rendimientos
+from api.rutas import auditorias, casos, catalogo, computos, listas, presupuestos, rendimientos
 from core.catalog import CatalogoIncompleto
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
@@ -139,6 +139,11 @@ TABLA = {
     ("POST", "/v1/control/recuperacion/elegir"): DECIDIR,
     ("GET", "/v1/casos"): CUALQUIERA,
     ("POST", "/v1/casos/actual"): CAMBIAR_CASO,
+    # BCP-2: carpetas de trabajo (C0 a C3)
+    ("GET", "/v1/casos/actual"): CUALQUIERA,
+    ("POST", "/v1/casos"): CAMBIAR_CASO,
+    ("POST", "/v1/casos/subida"): CAMBIAR_CASO,
+    ("POST", "/v1/casos/demostracion"): EDITAR,
     ("GET", "/v1/proyectos"): LEER,
     ("POST", "/v1/proyectos"): EDITAR,
     ("POST", "/v1/similares"): EDITAR,
@@ -318,10 +323,17 @@ def _llego() -> None:
 @pytest.fixture
 def _sin_base() -> Iterator[None]:
     app.dependency_overrides[sesion_api] = _llego
+    # BCP-2: la demostración no corre el proceso hijo en esta tabla (llegar al punto final basta)
+    app.dependency_overrides[casos.ejecutor_de_demostracion] = lambda: _no_construir
     try:
         yield
     finally:
         app.dependency_overrides.pop(sesion_api, None)
+        app.dependency_overrides.pop(casos.ejecutor_de_demostracion, None)
+
+
+def _no_construir(_salida) -> None:
+    raise HTTPException(status_code=418, detail="llegó al punto final")
 
 
 def test_la_tabla_cubre_exactamente_las_rutas_de_la_api() -> None:

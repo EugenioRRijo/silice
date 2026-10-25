@@ -11,7 +11,9 @@ alfabeto base32; la base guarda una fila por código y una sola vigente; solo ha
 from __future__ import annotations
 
 import logging
+import os
 import re
+import time
 from pathlib import Path
 
 import pytest
@@ -20,6 +22,7 @@ from sqlalchemy import func, select
 
 from api import main
 from api.main import app
+from aplicacion.casos import carpeta_cuarentena
 from operacion import config, primer_arranque
 from operacion.instalacion import cerrar_motores, sesion_de_instalacion
 from seguridad.modelo import CodigoInstalacion
@@ -110,3 +113,19 @@ def test_la_api_tiene_un_solo_lifespan() -> None:
     # el `on_startup` del router de planos (barrido de temporales) convive, fusionado por FastAPI
     assert [f.__name__ for f in app.router.on_startup] == ["barrer_al_arrancar"]
     assert app.router.on_shutdown == []
+
+
+def test_arrancar_la_api_purga_la_cuarentena_vieja_de_casos() -> None:
+    """BCP-2: lo que dejó en la cuarentena un corte a mitad de una creación (más de una hora) se
+    borra al arrancar; lo reciente (una creación en curso) se queda."""
+    viejo = carpeta_cuarentena() / "token-viejo"
+    reciente = carpeta_cuarentena() / "token-reciente"
+    for carpeta in (viejo, reciente):
+        carpeta.mkdir(parents=True)
+        (carpeta / "subida.db").write_bytes(b"x")
+    hace_dos_horas = time.time() - 2 * 3600
+    for ruta in (viejo / "subida.db", viejo):
+        os.utime(ruta, (hace_dos_horas, hace_dos_horas))
+    _arrancar()
+    assert not viejo.exists()
+    assert (reciente / "subida.db").exists()

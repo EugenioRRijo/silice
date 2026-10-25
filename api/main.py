@@ -54,6 +54,7 @@ from api.rutas import (
     primer_arranque as rutas_primer_arranque,
 )
 from api.sesion_web import exigir_clave_o_sesion
+from aplicacion import casos as casos_aplicacion
 from core.catalog import CatalogoIncompleto
 from operacion import config, primer_arranque
 from operacion.instalacion import sesion_de_instalacion
@@ -71,6 +72,7 @@ DESCRIPCION = """API HTTP sobre el nucleo del sistema de Analisis de Precios Uni
 la perdida de precision de `float` en JSON (regla 3 de NORMAS.md).
 """
 
+
 def _preparar_primer_arranque() -> None:
     """Sin cuentas y sin `codigo_instalacion.txt`, emite el código de instalación (BCP-1). Un fallo
     se registra (nunca con el código) y no impide servir: el acceso normal sigue funcionando."""
@@ -79,6 +81,10 @@ def _preparar_primer_arranque() -> None:
             primer_arranque.asegurar_codigo(sesion, config.carpeta_datos(), datetime.now())
     except Exception:  # noqa: BLE001
         logging.getLogger("silice.api").exception("no se pudo preparar el primer arranque")
+    try:  # BCP-2: lo que dejó en la cuarentena un corte a mitad de una creación
+        casos_aplicacion.purgar_cuarentena()
+    except Exception:  # noqa: BLE001
+        logging.getLogger("silice.api").exception("no se pudo purgar la cuarentena de casos")
 
 
 @asynccontextmanager
