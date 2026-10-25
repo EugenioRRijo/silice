@@ -54,6 +54,14 @@ describe("ColumnaRecorrido", () => {
     expect(screen.queryByRole("button", { name: "Recorrido" })).not.toBeInTheDocument();
   });
 
+  test("dentro de la columna hay una sola region con nombre: no se anuncia «Recorrido» dos veces", () => {
+    iniciarRecorrido(RECORRIDO_AUDITAR);
+    montar();
+    const columna = screen.getByRole("complementary", { name: "Recorrido" });
+    expect(within(columna).queryByRole("region")).not.toBeInTheDocument();
+    expect(within(columna).getByText("Paso 2 de 3")).toBeInTheDocument();
+  });
+
   test("«Ocultar» la oculta y aparece el boton; pulsarlo la muestra de nuevo", async () => {
     const usuario = userEvent.setup();
     iniciarRecorrido(RECORRIDO_AUDITAR);
