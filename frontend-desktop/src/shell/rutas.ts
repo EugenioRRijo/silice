@@ -13,8 +13,8 @@ export interface PaginaDef {
   // La ruta de la pagina es `/<id>`.
   id: string;
   titulo: string;
-  // Una linea (1 a 60 caracteres) que dice para que sirve la pantalla, en imperativo y sin jerga: la leen el panel de
-  // area y las herramientas principales. Es el unico lugar donde vive ese texto.
+  // Una linea (1 a 60 caracteres) que dice para que sirve la pantalla, sin jerga (imperativo o frase nominal): la leen
+  // el panel de area y las herramientas principales. Es el unico lugar donde vive ese texto.
   enUnaLinea: string;
   seccion: Seccion;
   // La `Accion` de seguridad/permisos.py que exige la pagina (la declara su router en api/acceso.py); null = toda cuenta la ve.
@@ -172,7 +172,7 @@ export const PAGINAS: readonly PaginaDef[] = [
   {
     id: "escenarios",
     titulo: "Escenarios de sensibilidad",
-    enUnaLinea: "Pruebe qué pasa si cambian los precios",
+    enUnaLinea: "Pruebe qué pasa si cambian costos o precios",
     seccion: "Investigación",
     accion: "editar_hoja",
     cargar: () => import("../paginas/escenarios"),

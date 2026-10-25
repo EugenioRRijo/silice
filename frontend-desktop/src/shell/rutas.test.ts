@@ -221,11 +221,21 @@ describe("herramientas principales", () => {
 });
 
 describe("linea de ayuda y grupos de Mas", () => {
+  // Códigos internos que no deben verse en la interfaz (UC-12, RF-3, RNF-04, BCP-2, INV-108).
+  const JERGA = /\b(UC|RF|RNF|BCP|INV)-\d/;
+
+  test("la prueba de jerga detecta los codigos internos", () => {
+    for (const codigo of ["UC-12", "RF-3", "RNF-04", "BCP-2", "INV-108"]) {
+      expect(JERGA.test(`vea ${codigo}`), codigo).toBe(true);
+    }
+    expect(JERGA.test("Arme el análisis de precio de una partida")).toBe(false);
+  });
+
   test("cada pagina tiene una linea de 1 a 60 caracteres sin jerga", () => {
     for (const p of PAGINAS) {
       expect(p.enUnaLinea.length, p.id).toBeGreaterThanOrEqual(1);
       expect(p.enUnaLinea.length, p.id).toBeLessThanOrEqual(60);
-      expect(/\b(UC|RF|RNF|BCP)-\d/.test(p.enUnaLinea), p.id).toBe(false);
+      expect(JERGA.test(p.enUnaLinea), p.id).toBe(false);
     }
   });
 
