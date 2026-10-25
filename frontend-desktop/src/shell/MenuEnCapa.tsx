@@ -82,15 +82,24 @@ export function MenuEnCapa({ entradas, abierto, alCerrar, nombre }: Props) {
     >
       <SideNavItems>
         <HeaderSideNavItems>
-          {entradas.map((e) => (
-            <Area
-              key={e.area}
-              id={e.area}
-              rotulo={e.titulo}
-              grupos={e.tipo === "enlace" ? [{ subtitulo: null, paginas: [e.pagina] }] : e.grupos.map((g) => ({ subtitulo: g.titulo, paginas: g.paginas }))}
-              alCerrar={alCerrar}
-            />
-          ))}
+          {entradas.map((e) =>
+            e.tipo === "enlace" ? (
+              // Un area de una sola pantalla es un enlace directo (diseno §5.1): sin rotulo que repita su nombre.
+              <li key={e.area} className="silice-capa__grupo">
+                <ul className="silice-capa__lista">
+                  <Enlace pagina={e.pagina} alCerrar={alCerrar} />
+                </ul>
+              </li>
+            ) : (
+              <Area
+                key={e.area}
+                id={e.area}
+                rotulo={e.titulo}
+                grupos={e.grupos.map((g) => ({ subtitulo: g.titulo, paginas: g.paginas }))}
+                alCerrar={alCerrar}
+              />
+            ),
+          )}
         </HeaderSideNavItems>
         {nombre && <li className="silice-capa__sesion cds--type-helper-text-01">Sesión de {nombre}</li>}
       </SideNavItems>
