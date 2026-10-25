@@ -425,7 +425,32 @@ describe("Shell", () => {
       expect(llamada?.[1]?.method).toBe("POST");
       expect(llamada?.[1]?.body).toBe(JSON.stringify({ nombre: "arenaza" }));
       expect(new Headers(llamada?.[1]?.headers).get("X-Silice-CSRF")).toBe("tok");
-      expect(await screen.findByText(/vuelve a la carpeta por defecto/i)).toBeInTheDocument();
+      const aviso = (await screen.findByText(/vuelve a la carpeta por defecto/i)).closest(".cds--inline-notification");
+      expect(aviso).not.toBeNull();
+      const dentro = within(aviso as HTMLElement);
+      expect(dentro.getByText("Carpeta de trabajo cambiada")).toBeInTheDocument();
+      expect(dentro.getByText(/Ahora trabaja con la carpeta de trabajo «arenaza»/)).toBeInTheDocument();
+      expect(dentro.queryByText(/\bcaso\b/i)).toBeNull();
+    });
+
+    test("el aviso y las opciones muestran la carpeta sin la extension .db", async () => {
+      const usuario = userEvent.setup();
+      const con = { nombre: "clinica.db", ruta_relativa: "data/clinica.db" };
+      const otra = { nombre: "obra.db", ruta_relativa: "data/obra.db" };
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        const ruta = String(entrada);
+        if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json({ actual: con, casos: [con, otra] });
+        if (ruta === "/v1/casos/actual") return json({ actual: otra });
+        if (ruta === "/v1/proyectos") return json(PROYECTOS);
+        return json({ detalle: "No encontrado." }, 404);
+      });
+      montar();
+      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+      await waitFor(() => expect(selector).toHaveValue("clinica.db"));
+      expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["clinica", "obra"]);
+      await usuario.selectOptions(selector, "obra.db");
+      const aviso = (await screen.findByText(/vuelve a la carpeta por defecto/i)).closest(".cds--inline-notification");
+      expect(within(aviso as HTMLElement).getByText(/carpeta de trabajo «obra»\./)).toBeInTheDocument();
     });
 
     test("al cambiar el caso la pagina se vuelve a montar con el caso nuevo", async () => {

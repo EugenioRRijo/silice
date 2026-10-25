@@ -18,6 +18,17 @@ describe("MenuCuenta", () => {
     expect(botones[0]).toHaveTextContent("Salir");
   });
 
+  test("dos instancias no repiten el id del menú", () => {
+    render(
+      <>
+        <MenuCuenta nombre="Ana" alSalir={() => {}} />
+        <MenuCuenta nombre="Rita" alSalir={() => {}} />
+      </>,
+    );
+    const ids = screen.getAllByRole("button").map((b) => b.getAttribute("aria-controls"));
+    expect(new Set(ids).size).toBe(2);
+  });
+
   test("«Salir» llama a alSalir", async () => {
     const u = userEvent.setup();
     const alSalir = vi.fn();

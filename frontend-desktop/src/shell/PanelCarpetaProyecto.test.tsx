@@ -42,6 +42,28 @@ describe("PanelCarpetaProyecto", () => {
     expect(boton).toHaveAttribute("aria-expanded", "false");
   });
 
+  test("sin la lista de carpetas el botón dice «Sin carpeta»", () => {
+    pintar({ casos: null });
+    expect(screen.getByRole("button", { name: /Cambiar$/ })).toHaveTextContent("Sin carpeta · Torre B");
+  });
+
+  test("dos instancias no repiten el id del panel", () => {
+    pintar();
+    render(
+      <PanelCarpetaProyecto
+        casos={casos("demo.db")}
+        proyectos={PROYECTOS}
+        elegido={null}
+        puedeCambiar
+        ocupado={false}
+        alElegirCaso={() => {}}
+        alElegirProyecto={() => {}}
+      />,
+    );
+    const ids = screen.getAllByRole("button", { name: /Cambiar$/ }).map((b) => b.getAttribute("aria-controls"));
+    expect(new Set(ids).size).toBe(2);
+  });
+
   test("sin proyecto elegido dice «Sin proyecto»", () => {
     pintar({ elegido: null });
     expect(screen.getByRole("button", { name: /Cambiar$/ })).toHaveTextContent("demo · Sin proyecto");
@@ -85,8 +107,7 @@ describe("PanelCarpetaProyecto", () => {
   test("una carpeta de 80 caracteres se recorta con la clase del texto y el nombre accesible la trae completa", () => {
     const larga = `${"a".repeat(77)}.db`;
     pintar({ casos: casos(larga) });
-    const completo = nombreDeCarpeta(larga);
-    expect(completo).toHaveLength(77);
+    const completo = "a".repeat(77);
     const boton = screen.getByRole("button", { name: new RegExp(`Carpeta de trabajo: ${completo}\\.`) });
     expect(boton.querySelector(".silice-contexto__texto")).not.toBeNull();
     expect(boton.querySelector(".silice-contexto__texto")).toHaveTextContent(completo);

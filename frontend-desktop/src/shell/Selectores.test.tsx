@@ -39,6 +39,17 @@ describe("SelectorCaso", () => {
   });
 });
 
+describe("SelectorCaso, extensión", () => {
+  test("las opciones se ven sin .db y conservan el nombre real como valor", () => {
+    const a = { nombre: "demo.db", ruta_relativa: "data/demo.db" } as never;
+    const b = { nombre: "obra.v2.db", ruta_relativa: "data/obra.v2.db" } as never;
+    render(<SelectorCaso casos={{ actual: a, casos: [a, b] }} puedeCambiar ocupado={false} alElegir={() => {}} />);
+    const opciones = screen.getAllByRole("option");
+    expect(opciones.map((o) => o.textContent)).toEqual(["demo", "obra.v2"]);
+    expect(opciones.map((o) => (o as HTMLOptionElement).value)).toEqual(["demo.db", "obra.v2.db"]);
+  });
+});
+
 describe("MenuLateral, pie con la persona", () => {
   test("el menú trae al pie quién tiene la sesión (se ve cuando el menú es capa y la cabecera cede el nombre)", () => {
     render(
