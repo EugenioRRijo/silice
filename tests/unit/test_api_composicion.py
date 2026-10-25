@@ -183,8 +183,36 @@ def test_evaluar_una_tabla_a_medias_es_200_incompleto_nunca_4xx(api: TestClient)
     assert respuesta.status_code == 200
     cuerpo = respuesta.json()
     assert cuerpo["estado"] == "incompleto"
-    assert cuerpo["aviso"] == "rendimiento: 'abc' no es un numero decimal valido"
+    assert cuerpo["aviso"] == (
+        "El rendimiento «abc» no es un número: escriba solo cifras, con coma o punto para los "
+        "decimales; por ejemplo, 25."
+    )
     assert cuerpo["desglose"] is None
+
+
+def test_evaluar_con_coma_decimal_da_el_mismo_desglose_que_con_punto(api: TestClient) -> None:
+    """Prueba en vivo del 2026-10-25: `0,005` borraba el desglose. Sílice es es-VE: la coma y el
+    punto valen lo mismo en Componer (oráculo: el mismo cuerpo escrito con punto)."""
+    con_punto = _cuerpo(rendimiento="100.5")
+    con_coma = {
+        **con_punto,
+        "rendimiento": "100,5",
+        **{
+            tabla: [
+                {clave: valor.replace(".", ",") for clave, valor in fila.items()}
+                for fila in con_punto[tabla]
+            ]
+            for tabla in ("materiales", "equipos", "mano_obra")
+        },
+    }
+    assert any("," in fila["precio"] for fila in con_coma["materiales"])  # la prueba no es vacia
+
+    desglose_punto = api.post("/v1/composicion/evaluar", json=con_punto).json()
+    desglose_coma = api.post("/v1/composicion/evaluar", json=con_coma).json()
+
+    assert desglose_punto["estado"] == "valido"
+    assert desglose_coma["estado"] == "valido"
+    assert desglose_coma["desglose"] == desglose_punto["desglose"]
 
 
 def test_evaluar_una_composicion_valida_da_el_desglose_como_texto(api: TestClient) -> None:
@@ -379,7 +407,12 @@ def test_guardar_sin_condiciones_es_422_y_no_escribe(api: TestClient) -> None:
 def test_guardar_una_composicion_invalida_es_422_con_el_mensaje(api: TestClient) -> None:
     respuesta = api.post("/v1/composicion/guardar", json=_guardar_cuerpo(rendimiento=""))
     assert respuesta.status_code == 422
-    assert respuesta.json() == {"detalle": "rendimiento: '' no es un numero decimal valido"}
+    assert respuesta.json() == {
+        "detalle": (
+            "Falta el rendimiento: escriba cuántas unidades de la partida se hacen por día; por "
+            "ejemplo, 25."
+        )
+    }
     assert api.get(f"/v1/composicion/partidas/{NUEVA}").json()["existe"] is False
 
 

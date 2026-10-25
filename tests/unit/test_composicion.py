@@ -53,7 +53,8 @@ def test_una_cantidad_no_numerica_nombra_el_campo_culpable():
     with pytest.raises(ComposicionInvalida) as error:
         composicion_desde_tablas("P-01", "Prueba", "m3", "8", filas, [], MANO_OBRA)
 
-    assert "cantidad" in str(error.value)
+    # El rotulo visible de la columna (`tablas.ts`: «Consumo por unidad»), no la clave interna.
+    assert "consumo por unidad" in str(error.value)
     assert "Cemento" in str(error.value)
 
 
@@ -476,3 +477,133 @@ def test_desglose_de_la_tuberia_da_el_precio_de_la_linea_base():
     assert (
         resultado.precio_unitario.quantize(Decimal("0.01")) == PRECIO_UNITARIO_ESPERADO["LB-02-TUB"]
     )
+
+
+# --- Coma decimal (es-VE) en Componer: prueba en vivo del 2026-10-25 ----------------------------
+#
+# Escribir `0,005` borraba el desglose con «depreciacion (...): '0,005' no es un numero decimal
+# valido». La coma y el punto valen lo mismo, con el criterio de la Hoja (las alturas del plano,
+# `aplicacion.hoja._altura`); con los dos a la vez no se adivina. Oraculos escritos a mano.
+
+FILAS_CON_PUNTO = (
+    [{"descripcion": "Cemento", "unidad": "saco", "cantidad": "1.26", "precio": "380.50"}],
+    [{"descripcion": "Mezcladora", "cantidad": "1", "precio": "18000", "depreciacion": "0.005"}],
+    [{"descripcion": "Obrero", "cantidad": "6", "sueldo": "420.75", "modalidad": "jornal"}],
+)
+
+
+def _con_coma(filas: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [{clave: valor.replace(".", ",") for clave, valor in fila.items()} for fila in filas]
+
+
+def test_la_coma_decimal_vale_lo_mismo_que_el_punto():
+    con_punto = composicion_desde_tablas("P-01", "Prueba", "m2", "25.5", *FILAS_CON_PUNTO)
+    con_coma = composicion_desde_tablas(
+        "P-01", "Prueba", "m2", "25,5", *(_con_coma(filas) for filas in FILAS_CON_PUNTO)
+    )
+
+    assert con_coma == con_punto
+    assert con_coma.rendimiento == Decimal("25.5")
+    assert con_coma.materiales[0].cantidad == Decimal("1.26")
+    assert con_coma.materiales[0].precio == Decimal("380.50")
+    assert con_coma.equipos[0].depreciacion == Decimal("0.005")
+    assert con_coma.mano_obra[0].sueldo == Decimal("420.75")
+
+
+@pytest.mark.parametrize(
+    ("texto", "esperado"),
+    [
+        (
+            "1.234,5",
+            "En Equipos, fila 1 («Mezcladora»), la depreciación «1.234,5» lleva punto y coma a la "
+            "vez y no se sabe cuál separa los decimales: escriba el número sin separador de miles; "
+            "por ejemplo, 1234,5.",
+        ),
+        (
+            "0,0,5",
+            "En Equipos, fila 1 («Mezcladora»), la depreciación «0,0,5» no es un número: escriba "
+            "solo cifras, con coma o punto para los decimales; por ejemplo, 2,5.",
+        ),
+        (
+            "abc",
+            "En Equipos, fila 1 («Mezcladora»), la depreciación «abc» no es un número: escriba "
+            "solo cifras, con coma o punto para los decimales; por ejemplo, 2,5.",
+        ),
+        (
+            "Infinity",
+            "En Equipos, fila 1 («Mezcladora»), la depreciación «Infinity» no es un número: "
+            "escriba solo cifras, con coma o punto para los decimales; por ejemplo, 2,5.",
+        ),
+        (
+            "",
+            "En Equipos, fila 1 («Mezcladora»), falta la depreciación: escriba un número; por "
+            "ejemplo, 2,5.",
+        ),
+    ],
+)
+def test_un_numero_ambiguo_o_invalido_dice_en_llano_que_escribir(texto, esperado):
+    equipos = [
+        {"descripcion": "Mezcladora", "cantidad": "1", "precio": "18000", "depreciacion": texto}
+    ]
+
+    with pytest.raises(ComposicionInvalida) as error:
+        composicion_desde_tablas("P-01", "Prueba", "m2", "25", MATERIALES, equipos, MANO_OBRA)
+
+    assert str(error.value) == esperado
+
+
+@pytest.mark.parametrize(
+    ("texto", "esperado"),
+    [
+        (
+            "",
+            "Falta el rendimiento: escriba cuántas unidades de la partida se hacen por día; por "
+            "ejemplo, 25.",
+        ),
+        (
+            "abc",
+            "El rendimiento «abc» no es un número: escriba solo cifras, con coma o punto para los "
+            "decimales; por ejemplo, 25.",
+        ),
+        (
+            "1.234,5",
+            "El rendimiento «1.234,5» lleva punto y coma a la vez y no se sabe cuál separa los "
+            "decimales: escriba el número sin separador de miles; por ejemplo, 1234,5.",
+        ),
+    ],
+)
+def test_el_rendimiento_ilegible_dice_en_llano_que_escribir(texto, esperado):
+    with pytest.raises(ComposicionInvalida) as error:
+        composicion_desde_tablas("P-01", "Prueba", "m2", texto, MATERIALES, EQUIPOS, MANO_OBRA)
+
+    assert str(error.value) == esperado
+
+
+@pytest.mark.parametrize(
+    ("tabla", "fila", "esperado"),
+    [
+        (
+            0,
+            {"descripcion": "Cemento", "unidad": "saco", "cantidad": "1", "precio": "x"},
+            "En Materiales, fila 1 («Cemento»), el precio «x» no es un número",
+        ),
+        (
+            2,
+            {"descripcion": "Obrero", "cantidad": "x", "sueldo": "420", "modalidad": ""},
+            "En Mano de obra, fila 1 («Obrero»), la cantidad «x» no es un número",
+        ),
+        (
+            2,
+            {"descripcion": "Obrero", "cantidad": "1", "sueldo": "x", "modalidad": ""},
+            "En Mano de obra, fila 1 («Obrero»), el sueldo «x» no es un número",
+        ),
+    ],
+)
+def test_cada_tabla_nombra_su_columna_visible(tabla, fila, esperado):
+    tablas: list[list[dict[str, str]]] = [[], [], []]
+    tablas[tabla] = [fila]
+
+    with pytest.raises(ComposicionInvalida) as error:
+        composicion_desde_tablas("P-01", "Prueba", "m2", "25", *tablas)
+
+    assert str(error.value).startswith(esperado)

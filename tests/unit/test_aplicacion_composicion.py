@@ -154,7 +154,10 @@ def test_una_tabla_a_medias_es_incompleta_con_el_mensaje_de_la_conversion(base: 
     with _sesion(base) as sesion:
         evaluacion = _evaluar(sesion, NUEVA, "Partida de prueba", "m", "", _tablas())
     assert evaluacion.estado == "incompleto"
-    assert evaluacion.aviso == "rendimiento: '' no es un numero decimal valido"
+    assert evaluacion.aviso == (
+        "Falta el rendimiento: escriba cuántas unidades de la partida se hacen por día; por "
+        "ejemplo, 25."
+    )
     assert evaluacion.resultado is None
 
 
