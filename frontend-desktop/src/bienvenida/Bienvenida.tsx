@@ -50,7 +50,8 @@ export function Bienvenida({ info, onReclamar }: Props) {
           </li>
         </ul>
         <p className="cds--type-body-compact-01">
-          Son 20 letras y números en grupos de cuatro, por ejemplo XXXX-XXXX-XXXX-XXXX-XXXX. Cópielo y péguelo abajo.
+          Son 20 caracteres en grupos de cuatro, por ejemplo XXXX-XXXX-XXXX-XXXX-XXXX: letras de la A a la Z y cifras
+          del 2 al 7. Cópielo y péguelo abajo tal cual.
         </p>
         {!info.archivo_presente && (
           <p className="silice-bienvenida__nota cds--type-body-compact-01">

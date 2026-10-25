@@ -25,8 +25,9 @@ export function RecuperarAcceso({ info, onReclamar, alVolver }: Props) {
     <main className="silice-entrada silice-bienvenida">
       <h1 className="cds--type-heading-04">Recuperar el acceso de administrador</h1>
       <p className="silice-entrada__texto cds--type-body-compact-01">
-        Un administrador con acceso al equipo ejecuta el restablecimiento y le da un código nuevo de 20 caracteres. El
-        código sirve una sola vez y vence a las 24 horas.
+        Un administrador con acceso al equipo ejecuta el restablecimiento y le da un código nuevo de 20 caracteres:
+        letras de la A a la Z y cifras del 2 al 7. Puede pegarlo tal cual. El código sirve una sola vez y vence a las 24
+        horas.
       </p>
 
       <section className="silice-bienvenida__seccion" aria-labelledby="recuperar-paso1">
