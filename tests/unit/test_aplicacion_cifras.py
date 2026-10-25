@@ -35,7 +35,8 @@ def test_los_mensajes_son_los_del_oraculo_compartido():
     assert ORACULO["mensajes"] == {"vacio": MENSAJE_CIFRA_VACIA, "formato": MENSAJE_CIFRA}
     assert ORACULO["ayuda"] == AYUDA_CIFRAS
     # El mensaje lleva tildes y los dos ejemplos de la regla, en lenguaje llano.
-    assert "2,5" in MENSAJE_CIFRA and "1.234,56" in MENSAJE_CIFRA and "número" in MENSAJE_CIFRA_VACIA
+    assert "2,5" in MENSAJE_CIFRA and "1.234,56" in MENSAJE_CIFRA
+    assert "número" in MENSAJE_CIFRA_VACIA
 
 
 @pytest.mark.parametrize(
