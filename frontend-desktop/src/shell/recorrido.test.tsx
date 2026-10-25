@@ -3,10 +3,13 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   RECORRIDO_AUDITAR,
   iniciarRecorrido,
+  mostrarColumna,
+  ocultarColumna,
   pasoDeRuta,
   recorridoEnCurso,
   suscribirRecorrido,
   terminarRecorrido,
+  useColumnaOculta,
   useRecorrido,
 } from "./recorrido";
 
@@ -77,5 +80,44 @@ describe("recorrido en curso", () => {
     expect(result.current).toBe(RECORRIDO_AUDITAR);
     act(() => terminarRecorrido());
     expect(result.current).toBeNull();
+  });
+});
+
+describe("columna del recorrido oculta o a la vista", () => {
+  afterEach(() => terminarRecorrido());
+
+  test("empieza a la vista, se oculta, se muestra y useColumnaOculta lo sigue", () => {
+    const { result } = renderHook(() => useColumnaOculta());
+    expect(result.current).toBe(false);
+    act(() => ocultarColumna());
+    expect(result.current).toBe(true);
+    act(() => mostrarColumna());
+    expect(result.current).toBe(false);
+  });
+
+  test("avisa a quien escucha al cambiar", () => {
+    const oyente = vi.fn();
+    const baja = suscribirRecorrido(oyente);
+    ocultarColumna();
+    expect(oyente).toHaveBeenCalledTimes(1);
+    baja();
+    mostrarColumna();
+  });
+
+  test("terminar el recorrido vuelve a mostrar la columna para el siguiente", () => {
+    const { result } = renderHook(() => useColumnaOculta());
+    iniciarRecorrido(RECORRIDO_AUDITAR);
+    act(() => ocultarColumna());
+    expect(result.current).toBe(true);
+    act(() => terminarRecorrido());
+    expect(result.current).toBe(false);
+  });
+
+  test("nada se guarda en el navegador", () => {
+    const espia = vi.spyOn(Storage.prototype, "setItem");
+    ocultarColumna();
+    mostrarColumna();
+    expect(espia).not.toHaveBeenCalled();
+    espia.mockRestore();
   });
 });

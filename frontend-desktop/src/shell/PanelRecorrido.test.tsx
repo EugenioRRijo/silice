@@ -84,4 +84,19 @@ describe("PanelRecorrido", () => {
     act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
     expect(screen.getByRole("region", { name: "Recorrido en curso" })).toBeInTheDocument();
   });
+
+  test("«Terminar recorrido» manda el foco al h1 de la pagina", async () => {
+    const usuario = userEvent.setup();
+    iniciarRecorrido(RECORRIDO_AUDITAR);
+    render(
+      <MemoryRouter initialEntries={["/libros"]}>
+        <PanelRecorrido paginas={PAGINAS} acciones={["leer_proyecto"]} modoEntrega={false} />
+        <main id="contenido">
+          <h1>Libro de la empresa</h1>
+        </main>
+      </MemoryRouter>,
+    );
+    await usuario.click(screen.getByRole("button", { name: "Terminar recorrido" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Libro de la empresa" })).toHaveFocus();
+  });
 });
