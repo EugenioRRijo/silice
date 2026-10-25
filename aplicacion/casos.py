@@ -111,6 +111,7 @@ CARPETA_CUARENTENA = "cuarentena"
 NOMBRE_DEMOSTRACION = "demostracion" + EXTENSION
 PREFIJO_TEMPORAL = ".subiendo-"
 SUFIJO_TEMPORAL = ".tmp"
+AUXILIARES_TEMPORAL = ("-journal", "-wal", "-shm")
 #: Las tablas que todo caso de Sílice tiene desde la 0.5.0 (revisión `caso_0001`, ficha de v0_5_0).
 TABLAS_NUCLEO = frozenset(
     {"composicion_apu", "insumo", "lista_precios", "partida", "precio_insumo", "presupuesto"}
@@ -331,7 +332,7 @@ def _publicar(origen: Path, destino: Path, plantilla: str = MENSAJE_EXISTE) -> N
 def _preparar(ruta: Path) -> str | None:
     """`preparar_base` sobre la copia de la cuarentena; el aviso si hubo que migrar con respaldo."""
     try:
-        resultado = preparar_base(ruta)
+        resultado = preparar_base(ruta, motivo=respaldo.MOTIVO_SUBIDA)
     except BaseMasNueva as error:
         raise CarpetaMasNueva(str(error)) from None
     except BaseNoAdoptable:
@@ -506,10 +507,13 @@ def purgar_cuarentena(ahora: float | None = None) -> int:
         _quitar_si_vacia(cuarentena)
     carpeta_casos = config.carpeta_casos()
     if carpeta_casos.is_dir():
-        for temporal in carpeta_casos.glob(f"{PREFIJO_TEMPORAL}*{SUFIJO_TEMPORAL}"):
-            if temporal.is_file() and _antiguo(temporal, momento):
-                temporal.unlink(missing_ok=True)
-                quitados += 1
+        # Con los auxiliares de SQLite: un corte a mitad de la copia deja -journal, -wal y -shm.
+        for sufijo in ("", *AUXILIARES_TEMPORAL):
+            patron = f"{PREFIJO_TEMPORAL}*{SUFIJO_TEMPORAL}{sufijo}"
+            for temporal in carpeta_casos.glob(patron):
+                if temporal.is_file() and _antiguo(temporal, momento):
+                    temporal.unlink(missing_ok=True)
+                    quitados += 1
     return quitados
 
 

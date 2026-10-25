@@ -279,7 +279,11 @@ def _devolver(
         devueltas.append((ruta, destino))
 
 
-def _migrar(bases: Sequence[tuple[Path, Destino]], entorno: Mapping[str, str] | None) -> Path:
+def _migrar(
+    bases: Sequence[tuple[Path, Destino]],
+    entorno: Mapping[str, str] | None,
+    motivo: str = respaldo.MOTIVO_MIGRACION,
+) -> Path:
     """Un juego para todas; cada una se migra en su copia de trabajo y se devuelve solo si todas
     llegaron a `head`. Un fallo antes de devolver deja los originales intactos (RF-96 c)."""
     huellas = {ruta: respaldo.huella(ruta) for ruta, _ in bases}
@@ -289,7 +293,7 @@ def _migrar(bases: Sequence[tuple[Path, Destino]], entorno: Mapping[str, str] | 
     )
     juego = respaldo.respaldar(
         [ruta for ruta, destino in bases if destino is Destino.CASO],
-        respaldo.MOTIVO_MIGRACION,
+        motivo,
         ruta_instalacion=ruta_instalacion,
         carpeta_respaldos=config.carpeta_respaldos(entorno),
         heads=_heads(),
@@ -314,15 +318,25 @@ def _migrar(bases: Sequence[tuple[Path, Destino]], entorno: Mapping[str, str] | 
     finally:
         for trabajo in trabajos.values():
             trabajo.unlink(missing_ok=True)
-    respaldo.podar_juegos(config.carpeta_respaldos(entorno))
+    conservar = (
+        respaldo.CONSERVAR_SUBIDAS
+        if motivo == respaldo.MOTIVO_SUBIDA
+        else respaldo.CONSERVAR_MIGRACIONES
+    )
+    respaldo.podar_juegos(config.carpeta_respaldos(entorno), conservar, motivo=motivo)
     return juego
 
 
 def preparar_base(
-    ruta: Path, destino: Destino = Destino.CASO, *, entorno: Mapping[str, str] | None = None
+    ruta: Path,
+    destino: Destino = Destino.CASO,
+    *,
+    entorno: Mapping[str, str] | None = None,
+    motivo: str = respaldo.MOTIVO_MIGRACION,
 ) -> ResultadoPreparacion:
     """El único camino para abrir una base (RV-5): al día, la deja; nueva, la crea en `head`;
-    anterior, la respalda y la migra (spec S5 §6.4). Idempotente."""
+    anterior, la respalda y la migra (spec S5 §6.4). Idempotente. `motivo` rotula el juego de
+    respaldo (las subidas usan `MOTIVO_SUBIDA` para no desplazar al de la migración real)."""
     ruta = Path(ruta)
     clase, estado = _clasificar(ruta, destino)
     head = revision_head(destino)
@@ -331,7 +345,7 @@ def preparar_base(
     if clase == "nueva":
         _crear(ruta, destino)
         return ResultadoPreparacion(ruta, destino, None, head, None, True)
-    juego = _migrar([(ruta, destino)], entorno)
+    juego = _migrar([(ruta, destino)], entorno, motivo)
     return ResultadoPreparacion(ruta, destino, estado.revision, head, juego, False)
 
 

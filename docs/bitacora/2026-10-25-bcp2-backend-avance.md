@@ -37,6 +37,17 @@ construyeron aquí.
     registrada (solo el código de salida).
 12. **Fixture nueva** `tests/fixtures/carpetas_trabajo.py` (fuera de la lista de archivos del encargo, pero nueva: INV-052).
 
+13. **Motivo propio para las subidas (corrección tras la revisión del árbitro).** Cada subida de una base anterior a `head`
+    creaba un juego con motivo `migracion` y la poda conservaba solo 5: cinco subidas de bases viejas borraban el respaldo de
+    la migración real de la instalación. Ahora `preparar_base(..., motivo=)` (por omisión `migracion`, sin cambio para los
+    demás llamadores) recibe `MOTIVO_SUBIDA = "subida"` desde `aplicacion/casos.py::_preparar`; `podar_juegos(..., motivo=)`
+    cuenta y borra solo juegos de ese motivo (se conservan 5 `subida` y 5 `migracion` por separado). Un juego `subida` jamás
+    borra uno de migración, manual ni de antes de restaurar. `restaurar` y los listados (`aplicacion/instalacion.py`,
+    `api/rutas/admin_instalacion.py`) no filtran por motivo: muestran el texto crudo de la ficha, así que un juego `subida`
+    aparece y se restaura como cualquiera; la interfaz React no traduce motivos. Reversible: basta volver a pasar el motivo por omisión.
+14. **MENOR C2**: `purgar_cuarentena` también quita `-journal`, `-wal` y `-shm` de los `casos/.subiendo-*.tmp` de más de una
+    hora. Los `*.db.migrando-*` de `preparar_base` no se tocan (diferido).
+
 ## Desviaciones y diferidos
 
 - **Sin plazo sobre `preparar_base`** (§16 9.1 lo pedía): Alembic no se puede interrumpir con seguridad desde otro hilo

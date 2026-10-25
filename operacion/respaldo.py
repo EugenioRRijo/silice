@@ -33,9 +33,11 @@ FORMATO_FICHA = 1
 NOMBRE_FICHA = "ficha.json"
 CARPETA_CASOS_DEL_JUEGO = "casos"
 MOTIVO_MIGRACION = "migracion"
+MOTIVO_SUBIDA = "subida"
 MOTIVO_MANUAL = "manual"
 MOTIVO_ANTES_DE_RESTAURAR = "antes_de_restaurar"
 CONSERVAR_MIGRACIONES = 5
+CONSERVAR_SUBIDAS = 5
 TABLA_EVENTOS = "evento_acceso"
 #: Segundos que se espera a otro proceso que tiene la base bloqueada antes de rendirse.
 ESPERA_BLOQUEO_S = 5.0
@@ -262,15 +264,20 @@ def listar_juegos(carpeta_respaldos: Path) -> list[tuple[Path, dict[str, Any]]]:
     return sorted(juegos, key=lambda par: par[1]["fecha"])
 
 
-def podar_juegos(carpeta_respaldos: Path, conservar: int = CONSERVAR_MIGRACIONES) -> list[Path]:
-    """Borra los juegos de migración más viejos y conserva los `conservar` últimos (al menos uno:
-    nunca el más reciente). Los manuales y los de antes de restaurar no se borran (spec S5 §6.3)."""
-    de_migracion = [
-        carpeta
-        for carpeta, ficha in listar_juegos(carpeta_respaldos)
-        if ficha["motivo"] == MOTIVO_MIGRACION
+def podar_juegos(
+    carpeta_respaldos: Path,
+    conservar: int = CONSERVAR_MIGRACIONES,
+    *,
+    motivo: str = MOTIVO_MIGRACION,
+) -> list[Path]:
+    """Borra los juegos más viejos **del `motivo` dado** (por omisión, de migración) y conserva los
+    `conservar` últimos (al menos uno: nunca el más reciente). Solo cuenta y borra juegos de ese
+    motivo: los de migración, los de subida, los manuales y los de antes de restaurar no se
+    pisan entre sí (spec S5 §6.3)."""
+    del_motivo = [
+        carpeta for carpeta, ficha in listar_juegos(carpeta_respaldos) if ficha["motivo"] == motivo
     ]
-    sobran = de_migracion[: -max(conservar, 1)]
+    sobran = del_motivo[: -max(conservar, 1)]
     for carpeta in sobran:
         shutil.rmtree(carpeta)
     return sobran
