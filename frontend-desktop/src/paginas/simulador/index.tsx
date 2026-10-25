@@ -8,6 +8,7 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import {
   AVISO_HERRAMIENTA,
@@ -28,7 +29,8 @@ const COLUMNAS: ColumnaDensa[] = [
   { clave: "tipo", titulo: "Tipo" },
   { clave: "insumo", titulo: "Insumo" },
   { clave: "unidad", titulo: "Unidad" },
-  { clave: "precio", titulo: "Precio", numerica: true },
+  // El precio llega con punto y se lee en es-VE; la fila conserva el texto de la API para ordenar.
+  { clave: "precio", titulo: "Precio", numerica: true, presentar: formatoEsVe },
 ];
 
 type Estado =

@@ -35,9 +35,9 @@ describe("logica del simulador", () => {
     });
   });
 
-  test("la tabla escribe el precio de la API en es-VE (coma decimal, punto de miles), sin calcular", () => {
-    const filas = filasDeTabla([{ tipo: "material", insumo: "Arena", unidad: "m3", precio: "1230.00" }]);
-    expect(filas).toEqual([{ id: "0", tipo: "material", insumo: "Arena", unidad: "m3", precio: "1.230,00" }]);
+  test("la tabla conserva el precio como texto, sin tocarlo (la columna lo presenta en es-VE)", () => {
+    const filas = filasDeTabla([{ tipo: "material", insumo: "Arena", unidad: "m3", precio: "30.00" }]);
+    expect(filas).toEqual([{ id: "0", tipo: "material", insumo: "Arena", unidad: "m3", precio: "30.00" }]);
   });
 
   test("la variacion acepta la coma decimal y el punto de miles entre 0 y 1000", () => {

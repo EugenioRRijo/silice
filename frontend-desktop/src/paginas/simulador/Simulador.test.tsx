@@ -26,7 +26,7 @@ const SESION: SesionRespuesta = {
 };
 
 const FILAS = [
-  { tipo: "material", insumo: "Arena lavada", unidad: "m3", precio: "30.00" },
+  { tipo: "material", insumo: "Arena lavada", unidad: "m3", precio: "1230.00" },
   { tipo: "mano_obra", insumo: "Peon ficticio", unidad: "jornal", precio: "12.50" },
 ];
 
@@ -93,7 +93,7 @@ describe("Simulador de listas", () => {
     await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
     const tabla = await screen.findByRole("table", { name: "Lista simulada" });
     expect(tabla).toHaveTextContent("Arena lavada");
-    expect(tabla).toHaveTextContent("30,00");
+    expect(tabla).toHaveTextContent("1.230,00");
     expect(tabla).toHaveTextContent("12,50");
     expect(fetchFalso.mock.calls[0][0]).toBe("/v1/simulador");
     expect((fetchFalso.mock.calls[0][1] as RequestInit).method).toBe("POST");
