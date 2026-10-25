@@ -299,7 +299,9 @@ def test_p3_una_en_blanco_queda_pendiente() -> None:
     assert sorted(a["id"] for a in cuerpo["alturas_pendientes"]) == ["ZA", "ZB"]
 
 
-@pytest.mark.parametrize("malo", ["250,5", "0", "abc"])
+# «2.5» y «1.000»: coma decimal y punto de miles (regla de Eugenio, 2026-10-25); «1.000» son mil
+# metros, no uno, y pasa del tope.
+@pytest.mark.parametrize("malo", ["250,5", "0", "abc", "2.5", "1.000", "2,5 m"])
 def test_p3_una_altura_invalida_es_422_con_el_texto_de_la_clasica_y_ninguna_se_carga(malo) -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
