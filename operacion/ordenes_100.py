@@ -23,8 +23,18 @@ def _parar(_argumentos: argparse.Namespace) -> int:
     return lanzador.parar()
 
 
-def _demostracion(_argumentos: argparse.Namespace) -> int:
-    ruta = base_datos.resolver_caso("demostracion")
+def _demostracion(argumentos: argparse.Namespace) -> int:
+    """Sin `--salida`, el caso `demostracion` de la carpeta de casos (como siempre). Con `--salida`
+    (BCP-2), la ruta absoluta que arma el servidor en su cuarentena: no pasa por `resolver_caso`
+    porque no viene de la persona, y la publica `aplicacion.casos.demostracion`."""
+    salida = getattr(argumentos, "salida", None)
+    if salida is None:
+        ruta = base_datos.resolver_caso("demostracion")
+    elif not Path(salida).is_absolute():
+        print("--salida debe ser una ruta absoluta.", file=sys.stderr)
+        return 2
+    else:
+        ruta = Path(salida)
     base_datos.preparar_base(ruta)
     from scripts.seed_demo import main as sembrar  # diferido: scripts/ viaja solo por el manifiesto
 
@@ -246,7 +256,9 @@ def registrar(
     arrancar = ordenes.add_parser("arrancar", help="prepara las bases y abre Sílice")
     arrancar.add_argument("--sin-navegador", action="store_true")
     ordenes.add_parser("parar", help="detiene la instancia en marcha")
-    ordenes.add_parser("demostracion", help="crea el caso de demostración (datos construidos)")
+    ordenes.add_parser(
+        "demostracion", help="crea el caso de demostración (datos construidos)"
+    ).add_argument("--salida", help=argparse.SUPPRESS)  # BCP-2: la arma el servidor
     ordenes.add_parser(
         "restablecer-administrador",
         help="emite un código de un solo uso para recuperar el acceso de administrador",

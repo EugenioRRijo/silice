@@ -140,6 +140,8 @@ _RESERVADOS_WINDOWS = frozenset(
         "NUL",
         *(f"COM{n}" for n in range(1, 10)),
         *(f"LPT{n}" for n in range(1, 10)),
+        # los superíndices, que Windows también reserva (diseño de la bienvenida §16 9.2)
+        *(f"{prefijo}{n}" for prefijo in ("COM", "LPT") for n in "¹²³"),
     }
 )
 _NO_PERMITIDO = re.compile(r"[^\w\- .]")  # `\w` es Unicode: conserva tildes y ñ
@@ -147,6 +149,10 @@ _NO_PERMITIDO = re.compile(r"[^\w\- .]")  # `\w` es Unicode: conserva tildes y �
 
 class RutaDeCasoRechazada(ErrorDeBase):  # noqa: N818
     """El nombre o la ruta de un caso sale de la carpeta de casos; se rechaza sin tocar el disco."""
+
+
+class CasoYaExiste(RutaDeCasoRechazada):
+    """Ya hay un caso con ese nombre (sin distinguir mayúsculas): la API responde 409, no 422."""
 
 
 class BaseIlegible(ErrorDeBase):  # noqa: N818
@@ -473,7 +479,7 @@ def crear_caso(
     _validar_forma(nombre.strip())
     ruta = resolver_caso(sanear_nombre(nombre), carpeta, entorno=entorno)
     if ruta.exists():
-        raise RutaDeCasoRechazada(
+        raise CasoYaExiste(
             f"Ya existe el caso {ruta.name}: ábralo de la lista o elija otro nombre."
         )
     return preparar_base(ruta, entorno=entorno)
@@ -490,7 +496,7 @@ def subir_caso(
     preparar, no queda en la carpeta."""
     ruta = resolver_caso(sanear_nombre(nombre_original), carpeta, entorno=entorno)
     if ruta.exists():
-        raise RutaDeCasoRechazada(
+        raise CasoYaExiste(
             f"Ya hay un caso llamado {ruta.name}: cambie el nombre del archivo antes de subirlo."
         )
     if not contenido.startswith(CABECERA_SQLITE):

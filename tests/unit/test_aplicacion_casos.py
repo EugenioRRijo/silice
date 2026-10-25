@@ -520,7 +520,7 @@ def test_el_estado_de_un_archivo_ilegible_no_trae_rutas(datos: Path) -> None:
 
 
 def test_una_base_vieja_esta_por_migrar(datos: Path) -> None:
-    ruta = bases_prueba.copiar_base("1.0.0", "s1.db", config.carpeta_casos() / "s1.db")
+    ruta = bases_prueba.copiar_base("0.5.0", "demo.db", config.carpeta_casos() / "vieja.db")
     huella = base_datos.respaldo.huella(ruta)
     assert casos.estado(ruta).por_migrar
     assert base_datos.respaldo.huella(ruta) == huella
