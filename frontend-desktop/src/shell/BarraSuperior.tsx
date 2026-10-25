@@ -1,7 +1,7 @@
 import { ChevronDown } from "@carbon/icons-react";
 import { Header, HeaderGlobalBar, HeaderMenuButton, HeaderName, HeaderNavigation } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent, ReactNode } from "react";
+import type { FocusEvent, KeyboardEvent, ReactNode } from "react";
 import { NavLink, useLocation } from "react-router";
 import { areaActual, type EntradaNav } from "./navegacion";
 import { PanelDeArea } from "./PanelDeArea";
@@ -18,8 +18,8 @@ interface Props {
 
 // Barra superior: «Sílice», las areas y el lado derecho. Un area con una sola pantalla es un enlace; con varias, un boton
 // que abre su panel (patron «disclosure» de navegacion, nunca al pasar el raton). Un solo panel abierto; se cierra con Esc
-// (el foco vuelve al boton), con un clic fuera, al elegir una pantalla, al abrir otra area, al cambiar de ruta (tambien
-// atras/adelante del navegador) y al cambiar el tamano de letra.
+// (el foco vuelve al boton), con un clic fuera, cuando el foco sale de la navegacion, al elegir una pantalla, al abrir
+// otra area, al cambiar de ruta (tambien atras/adelante del navegador) y al cambiar el tamano de letra.
 export function BarraSuperior({ entradas, derecha, menu }: Props) {
   const ubicacion = useLocation();
   const [abierta, setAbierta] = useState<string | null>(null);
@@ -55,6 +55,12 @@ export function BarraSuperior({ entradas, derecha, menu }: Props) {
     e.currentTarget.querySelector<HTMLButtonElement>(".silice-barra__area")?.focus();
   }
 
+  // Si el foco sale de la navegacion (Tab hacia carpeta, letra o cuenta), el panel se cierra, como en el ejemplo de la APG.
+  // Moverse entre areas y enlaces dentro de la navegacion no lo cierra.
+  function alSalirFoco(e: FocusEvent<HTMLElement>) {
+    if (abierta && !e.currentTarget.contains(e.relatedTarget as Node | null)) setAbierta(null);
+  }
+
   const actual = areaActual(ubicacion.pathname, entradas);
   const claseArea = (area: string) =>
     `silice-barra__area${area === actual ? " silice-barra__area--actual" : ""}`;
@@ -70,7 +76,7 @@ export function BarraSuperior({ entradas, derecha, menu }: Props) {
       <HeaderName href="#/" prefix="">
         Sílice
       </HeaderName>
-      <HeaderNavigation aria-label="Menú principal" className="silice-barra__nav">
+      <HeaderNavigation aria-label="Menú principal" className="silice-barra__nav" onBlur={alSalirFoco}>
         {entradas.map((e) => {
           if (e.tipo === "enlace") {
             return (

@@ -82,6 +82,7 @@
   z-index: 8000;
   box-sizing: border-box;
   inline-size: 22rem;
+  // Solo hasta que PanelDeArea lo mide: alli lo pone con `clientWidth` (sin la barra de desplazamiento, que `100vw` incluye).
   max-inline-size: min(40rem, calc(100vw - 1rem));
   max-block-size: calc(100vh - 3rem);
   overflow-y: auto;

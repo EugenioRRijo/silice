@@ -19,17 +19,29 @@ const MARGEN_PX = 8;
 
 // Panel de un area de la barra superior: patron «disclosure» de navegacion (enlaces), no un menu. Cada pantalla lleva su
 // titulo (nombre accesible) y su linea de ayuda (descripcion accesible). Al abrirse, el foco va a la primera entrada; las
-// flechas, Inicio y Fin recorren las entradas (Tab tambien, en el orden natural).
+// flechas, Inicio y Fin recorren las entradas y se detienen en la primera y la ultima, sin vuelta, como en la APG (Tab
+// tambien, en el orden natural).
 export function PanelDeArea({ id, titulo, grupos, alElegir }: Props) {
   const base = useId();
   const caja = useRef<HTMLDivElement>(null);
 
   // Alineado bajo su boton, pero sin salirse de la ventana: si el borde derecho sobra, el panel se corre a la izquierda.
+  // Se mide con `clientWidth` (el ancho util, sin la barra de desplazamiento; `100vw` la incluye) y se vuelve a medir al
+  // redimensionar la ventana.
   useLayoutEffect(() => {
     const el = caja.current;
     if (!el) return;
-    const exceso = el.getBoundingClientRect().right - (document.documentElement.clientWidth - MARGEN_PX);
-    if (exceso > 0) el.style.insetInlineStart = `${-exceso}px`;
+    function encajar() {
+      if (!el) return;
+      const ancho = document.documentElement.clientWidth;
+      el.style.maxInlineSize = `min(40rem, ${ancho - 2 * MARGEN_PX}px)`;
+      el.style.insetInlineStart = "";
+      const exceso = el.getBoundingClientRect().right - (ancho - MARGEN_PX);
+      if (exceso > 0) el.style.insetInlineStart = `${-exceso}px`;
+    }
+    encajar();
+    window.addEventListener("resize", encajar);
+    return () => window.removeEventListener("resize", encajar);
   }, []);
 
   useEffect(() => {
@@ -44,7 +56,7 @@ export function PanelDeArea({ id, titulo, grupos, alElegir }: Props) {
     const i = enlaces.indexOf(document.activeElement as HTMLAnchorElement);
     const n = enlaces.length;
     const siguiente =
-      e.key === "Home" ? 0 : e.key === "End" ? n - 1 : e.key === "ArrowDown" ? (i + 1) % n : (i - 1 + n) % n;
+      e.key === "Home" ? 0 : e.key === "End" ? n - 1 : e.key === "ArrowDown" ? Math.min(i + 1, n - 1) : Math.max(i - 1, 0);
     enlaces[siguiente].focus();
   }
 
