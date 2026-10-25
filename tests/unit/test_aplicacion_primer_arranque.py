@@ -283,3 +283,51 @@ def test_la_orden_no_deja_el_codigo_en_un_evento(datos, capsys) -> None:
             assert codigo not in f"{evento.login_intentado}{evento.detalle}"
         assert cuentas.hay_usuarios(sesion)
     cerrar_motores()
+
+
+# --- el archivo se escribe con el bloqueo tomado y antes de confirmar (observacion de robustez) ---
+#
+# Antes `emitir_codigo` confirmaba y soltaba el bloqueo y DESPUES escribia el archivo: con dos
+# arranques a la vez el segundo podia reemitir (e invalidar el primero) y el archivo quedar con un
+# codigo invalidado. Ahora el archivo se escribe (atomico) mientras se tiene el bloqueo.
+
+
+def test_el_archivo_ya_esta_escrito_cuando_la_base_confirma(tmp_path: Path) -> None:
+    from sqlalchemy import event
+
+    vistos: list[str | None] = []
+    with instalacion(tmp_path) as sesion:
+        archivo = tmp_path / "codigo_instalacion.txt"
+
+        def al_confirmar(_sesion) -> None:
+            vistos.append(archivo.read_text(encoding="ascii") if archivo.exists() else None)
+
+        event.listen(sesion, "before_commit", al_confirmar)
+        assert primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA)
+        assert vistos and vistos[-1] is not None and FORMATO.fullmatch(vistos[-1])
+        assert vistos[-1] == archivo.read_text(encoding="ascii")  # el que confirmo es el que queda
+
+
+def test_si_falla_escribir_el_archivo_la_base_queda_sin_el_codigo_nuevo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with instalacion(tmp_path) as sesion:
+        primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA)
+        archivo = tmp_path / "codigo_instalacion.txt"
+        antes = archivo.read_text(encoding="ascii")
+        archivo.unlink()  # fuerza la reemision
+        archivo.write_text("NADA-QUE-VER\n", encoding="ascii")
+
+        def falla(*_a, **_k):
+            raise OSError("disco lleno")
+
+        monkeypatch.setattr(cuentas.os, "replace", falla)
+        with pytest.raises(OSError):
+            primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA + timedelta(hours=1))
+        monkeypatch.undo()
+        assert (
+            _filas(sesion) == 1 and _vigentes(sesion) == 1
+        )  # ni fila nueva ni anterior invalidada
+        assert sesion.scalar(select(CodigoInstalacion.huella)) == cuentas._huella_codigo(antes)
+        assert archivo.read_text(encoding="ascii") == "NADA-QUE-VER\n"  # el archivo no se tocó
+        assert [p.name for p in tmp_path.iterdir() if p.suffix == ".tmp"] == []  # sin temporales

@@ -560,3 +560,22 @@ def test_un_servidor_json_viejo_con_puerto_api_se_sigue_leyendo(entorno) -> None
     assert lanzador.leer_estado(entorno) == lanzador.EstadoServidor(
         (1, 2), "127.0.0.1", 8501, "ayer"
     )
+
+
+def test_un_archivo_de_codigo_con_bytes_que_no_son_utf8_no_rompe_el_arranque(entorno) -> None:
+    ruta = config.ruta_codigo_instalacion(entorno)
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    ruta.write_bytes(b"ABCD-EFGH-IJKL-MNOP-QRST \xff\xfe\x80\n")
+    escenario = Escenario()
+    assert escenario.correr(entorno) == 0
+    assert any("ABCD-EFGH-IJKL-MNOP-QRST" in linea for linea in escenario.salida)
+
+
+def test_un_archivo_de_codigo_enorme_no_se_lee_entero(entorno) -> None:
+    ruta = config.ruta_codigo_instalacion(entorno)
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    ruta.write_bytes(b"ABCD-EFGH-IJKL-MNOP-QRST\n" + b"x" * (1024 * 1024))
+    escenario = Escenario()
+    assert escenario.correr(entorno) == 0
+    impreso = " ".join(escenario.salida)
+    assert "ABCD-EFGH-IJKL-MNOP-QRST" in impreso and len(impreso) < 4096
