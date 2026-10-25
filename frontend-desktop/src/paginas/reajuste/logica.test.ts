@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   armarCuerpo,
+  erroresDeCifras,
   columnasDeResultado,
   filasDeResultado,
   filasVacias,
@@ -10,6 +11,7 @@ import {
   hayFilaConDatos,
   quitarFilaVacia,
 } from "./logica";
+import { MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
 
 describe("filas editables", () => {
   test("una fila con algun texto tiene datos; en blanco o solo espacios, no", () => {
@@ -40,16 +42,17 @@ describe("armarCuerpo", () => {
     expect(base.clausula.r_en_comprobacion).toBe("no");
   });
 
-  test("manda el proyecto, la version y los textos tal cual, sin filas en blanco", () => {
+  test("manda el proyecto, la version y los textos, sin filas en blanco; las cifras escritas con coma van con punto", () => {
     const f = {
       ...base,
       version: "001",
-      clausula: { ...base.clausula, fecha_inicio: "2026-01-15", r: "0.10" },
+      clausula: { ...base.clausula, fecha_inicio: "2026-01-15", r: "0,10" },
       periodos: [
         { desde: "2027-02-01", hasta: "2027-02-28", version_comprobacion: "002", excepcion: "" },
         { desde: "", hasta: "", version_comprobacion: "", excepcion: "" },
       ],
-      ejecutado: [{ periodo: "1", partida: "S1-R01", cantidad: "1000", fuente: "AV-01" }],
+      // «1.000» es mil (punto de miles), no uno.
+      ejecutado: [{ periodo: "1", partida: "S1-R01", cantidad: "1.000", fuente: "AV-01" }],
     };
     const cuerpo = armarCuerpo("Contrato S1", f);
     expect(cuerpo.proyecto).toBe("Contrato S1");
@@ -84,6 +87,28 @@ describe("armarCuerpo", () => {
     const cuerpo = armarCuerpo("P", f);
     expect(cuerpo.con_valuaciones).toBe(true);
     expect(cuerpo.ejecutado).toEqual([]);
+  });
+
+  test("el peso de un componente escrito con coma viaja con punto; en blanco sigue en blanco", () => {
+    const f = { ...base, version: "001", componentes: [{ componente: "materiales", serie: "S", peso: "0,25" }] };
+    expect(armarCuerpo("P", f).componentes).toEqual([{ componente: "materiales", serie: "S", peso: "0.25" }]);
+  });
+
+  test("erroresDeCifras nombra cada cifra mal escrita (R, peso, cantidad) y nada si estan bien o en blanco", () => {
+    expect(erroresDeCifras({ ...base, version: "001" })).toEqual([]);
+    const mal = {
+      ...base,
+      clausula: { ...base.clausula, r: "0.10" },
+      componentes: [{ componente: "materiales", serie: "S", peso: "1,2,3" }],
+      ejecutado: [{ periodo: "1", partida: "A", cantidad: "2.5", fuente: "f" }],
+    };
+    expect(erroresDeCifras(mal)).toEqual([
+      `R (fracción no reajustable): ${MENSAJE_CIFRA}`,
+      `Peso, Componentes fila 1: ${MENSAJE_CIFRA}`,
+      `Cantidad, Ejecutado fila 1: ${MENSAJE_CIFRA}`,
+    ]);
+    // Con las valuaciones, lo ejecutado a mano no se manda: no se revisa.
+    expect(erroresDeCifras({ ...mal, con_valuaciones: true })).toHaveLength(2);
   });
 
   test("los tres componentes se mandan siempre, aun sin serie (la API dice cual falta)", () => {

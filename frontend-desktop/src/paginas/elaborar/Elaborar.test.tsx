@@ -7,6 +7,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaElaborar from "./index";
+import { AYUDA_CIFRAS, MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
 import { hoy } from "./logica";
 import type { CalculoRespuesta, ItemComputo, PartidaCatalogo, RendimientoPorDeclarar } from "./tipos";
 
@@ -498,11 +499,12 @@ describe("Elaborar un presupuesto", () => {
     await elaborar(usuario);
     const fraccion = screen.getByLabelText("Fracción, fila 1");
     await usuario.clear(fraccion);
-    await usuario.type(fraccion, "0.5");
+    // Regla de Eugenio (2026-10-25): la fraccion se escribe con coma y viaja con punto.
+    await usuario.type(fraccion, "0,5");
     await usuario.click(screen.getByRole("button", { name: "Añadir fila" }));
     await usuario.type(screen.getByLabelText("Período, fila 3"), "3");
     await usuario.type(screen.getByLabelText("Partida, fila 3"), "FIC-T1");
-    await usuario.type(screen.getByLabelText("Fracción, fila 3"), "0.5");
+    await usuario.type(screen.getByLabelText("Fracción, fila 3"), "0,5");
     await usuario.click(screen.getByRole("button", { name: "Aplicar plan y volver a elaborar" }));
     await waitFor(() => expect(llamadas("POST /presupuestos/calcular")).toHaveLength(2));
     expect(cuerpoJson("POST /presupuestos/calcular", 1).plan).toEqual([
@@ -510,6 +512,48 @@ describe("Elaborar un presupuesto", () => {
       { periodo: "2", codigo_partida: "FIC-T2", fraccion: "1" },
       { periodo: "3", codigo_partida: "FIC-T1", fraccion: "0.5" },
     ]);
+  });
+
+  test("la fraccion del plan por defecto («0.5» de la API) se ve «0,5» y, sin tocarla, vuelve «0.5»", async () => {
+    rutas["POST /presupuestos/calcular"] = () =>
+      json(
+        calculo({
+          plan_por_defecto: [
+            { periodo: "1", codigo_partida: "FIC-T1", fraccion: "0.5" },
+            { periodo: "2", codigo_partida: "FIC-T1", fraccion: "0.5" },
+            { periodo: "2", codigo_partida: "FIC-T2", fraccion: "1" },
+          ],
+        }),
+      );
+    const { usuario } = montar();
+    await extraerTelecom(usuario);
+    await elaborar(usuario);
+    expect(screen.getByLabelText("Fracción, fila 1")).toHaveValue("0,5");
+    expect(screen.getByText(AYUDA_CIFRAS)).toBeInTheDocument();
+    await usuario.click(screen.getByRole("button", { name: "Aplicar plan y volver a elaborar" }));
+    await waitFor(() => expect(llamadas("POST /presupuestos/calcular")).toHaveLength(2));
+    expect(cuerpoJson("POST /presupuestos/calcular", 1).plan).toEqual([
+      { periodo: "1", codigo_partida: "FIC-T1", fraccion: "0.5" },
+      { periodo: "2", codigo_partida: "FIC-T1", fraccion: "0.5" },
+      { periodo: "2", codigo_partida: "FIC-T2", fraccion: "1" },
+    ]);
+    // nadie edito la tabla: elaborar sin plan no avisa de un plan descartado
+    await usuario.click(screen.getByRole("button", { name: "Elaborar presupuesto" }));
+    await waitFor(() => expect(llamadas("POST /presupuestos/calcular")).toHaveLength(3));
+    expect(screen.queryByText(/el plan editado antes se descartó/)).toBeNull();
+  });
+
+  test("una fraccion escrita con punto decimal se marca en su celda y el plan no se envia", async () => {
+    const { usuario } = montar();
+    await extraerTelecom(usuario);
+    await elaborar(usuario);
+    const fraccion = screen.getByLabelText("Fracción, fila 1");
+    await usuario.clear(fraccion);
+    await usuario.type(fraccion, "0.5");
+    await usuario.click(screen.getByRole("button", { name: "Aplicar plan y volver a elaborar" }));
+    expect(await alertaConTexto()).toHaveTextContent(`Fracción, fila 1: ${MENSAJE_CIFRA}`);
+    expect(screen.getByLabelText("Fracción, fila 1")).toHaveAttribute("aria-invalid", "true");
+    expect(llamadas("POST /presupuestos/calcular")).toHaveLength(1);
   });
 
   test("se puede quitar una fila del plan", async () => {
@@ -569,7 +613,7 @@ describe("Elaborar un presupuesto", () => {
 
     const fraccion = screen.getByLabelText("Fracción, fila 1");
     await usuario.clear(fraccion);
-    await usuario.type(fraccion, "0.25");
+    await usuario.type(fraccion, "0,25");
     await usuario.click(screen.getByRole("button", { name: "Elaborar presupuesto" }));
     expect(await screen.findByText(/el plan de trabajo volvió a una partida por día/)).toBeInTheDocument();
     expect(screen.getByLabelText("Fracción, fila 1")).toHaveValue("1");

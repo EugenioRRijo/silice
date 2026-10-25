@@ -12,6 +12,7 @@ import type { Calculo, LineaBase, OpcionDeRecuperacion, Valuaciones } from "./lo
 // VD-1: la respuesta real de POST /v1/control/recuperacion/opciones para OB-S2 (la compara con la API
 // `tests/unit/test_api_control.py::test_la_respuesta_de_opciones_del_front_es_la_de_la_api_real`).
 import opcionesReales from "./opciones_ob_s2.json";
+import { AYUDA_CIFRAS, MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
 
 vi.mock("../../comun/GraficoCarbon", () => ({
   default: ({ tipo, datos }: { tipo: string; datos: unknown[] }) => (
@@ -539,10 +540,153 @@ describe("Control de obra", () => {
   });
 });
 
+describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026-10-25)", () => {
+  const fetchFalso = vi.fn<typeof fetch>();
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchFalso);
+    fetchFalso.mockReset();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = String(entrada);
+      const metodo = init?.method ?? "GET";
+      if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return json(LINEA_BASE);
+      if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return json(VALUACIONES);
+      if (url.startsWith("/v1/control/calculo")) return json(CALCULO);
+      if (url === "/v1/control/valuaciones") return json({ corte: "2026-11-20", hallazgos: 0, errores: 0 });
+      if (url === "/v1/control/costos") return json({});
+      if (url === "/v1/control/parametros") return json({ cambiados: 1 });
+      if (url === "/v1/control/recuperacion/opciones") return json({ opciones: OPCIONES });
+      return json({ detalle: `ruta inesperada ${metodo} ${url}` }, 500);
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  function montar() {
+    const valor: Aplicacion = {
+      sesion: SESION,
+      proyecto: "OB-S2",
+      caso: { nombre: "obra", ruta_relativa: "data/obra.db" },
+      recargarProyectos: vi.fn(),
+      alExpirar: vi.fn(),
+    };
+    render(
+      <ContextoAplicacion.Provider value={valor}>
+        <PaginaControl />
+      </ContextoAplicacion.Provider>,
+    );
+    return userEvent.setup();
+  }
+  const envios = (ruta: string) =>
+    fetchFalso.mock.calls.filter(([u, i]) => String(u) === ruta && (i?.method ?? "GET") === "POST");
+  const cuerpo = (ruta: string) => JSON.parse(String(envios(ruta).at(-1)?.[1]?.body)) as Record<string, unknown>;
+
+  test("el parametro elegido se edita con coma («0.80» se ve «0,80») y, sin tocarlo, viaja con punto", async () => {
+    const u = montar();
+    await screen.findByRole("table", { name: "Parámetros de control" });
+    await u.selectOptions(screen.getByLabelText("Parámetro a cambiar"), "spi_error");
+    const campo = screen.getByLabelText("Nuevo valor de Umbral de SPI para error");
+    expect(campo).toHaveValue("0,80");
+    expect(screen.getAllByText(AYUDA_CIFRAS).length).toBeGreaterThan(0);
+    await u.click(screen.getByRole("button", { name: "Guardar parámetros" }));
+    await screen.findByText("1 parámetro(s) cambiado(s).");
+    expect(cuerpo("/v1/control/parametros").parametros).toEqual([{ parametro: "spi_error", valor: "0.80" }]);
+  });
+
+  test("un parametro escrito con punto decimal se rechaza junto al campo y no se envia", async () => {
+    const u = montar();
+    await screen.findByRole("table", { name: "Parámetros de control" });
+    await u.selectOptions(screen.getByLabelText("Parámetro a cambiar"), "spi_error");
+    const campo = screen.getByLabelText("Nuevo valor de Umbral de SPI para error");
+    await u.clear(campo);
+    await u.type(campo, "0.85");
+    await u.click(screen.getByRole("button", { name: "Guardar parámetros" }));
+    expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();
+    expect(envios("/v1/control/parametros")).toHaveLength(0);
+    await u.clear(campo);
+    await u.type(campo, "0,85");
+    await u.click(screen.getByRole("button", { name: "Guardar parámetros" }));
+    await screen.findByText("1 parámetro(s) cambiado(s).");
+    expect(cuerpo("/v1/control/parametros").parametros).toEqual([{ parametro: "spi_error", valor: "0.85" }]);
+  });
+
+  test("la cantidad de una valuacion se escribe con coma y punto de miles; con punto decimal no se envia", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "2.5");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();
+    expect(envios("/v1/control/valuaciones")).toHaveLength(0);
+    await u.clear(screen.getByLabelText("Cantidad 1"));
+    await u.type(screen.getByLabelText("Cantidad 1"), "1.234,5");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await screen.findByText(/Valuación registrada/);
+    expect(cuerpo("/v1/control/valuaciones").lineas).toEqual([
+      { partida: "OB-A", cantidad: "1234.5", fecha_medicion: "", observacion: "" },
+    ]);
+  });
+
+  test("el monto de un costo «1.000» es mil, no uno", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    await u.type(screen.getByLabelText("Monto"), "1.000");
+    await u.click(screen.getByRole("button", { name: "Anotar costo" }));
+    await screen.findByText(/Costo anotado/);
+    expect(cuerpo("/v1/control/costos")).toMatchObject({ monto: "1000" });
+  });
+
+  test("el monto de un costo con punto decimal se rechaza y no se envia", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    await u.type(screen.getByLabelText("Monto"), "12.50");
+    await u.click(screen.getByRole("button", { name: "Anotar costo" }));
+    expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();
+    expect(envios("/v1/control/costos")).toHaveLength(0);
+  });
+
+  test("las horas extra previas viajan con punto; escritas con punto decimal no se calculan", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Recuperación" }));
+    const horas = await screen.findByLabelText("Horas extra que el obrero ya acumula en el año");
+    await u.clear(horas);
+    await u.type(horas, "2.5");
+    await u.click(screen.getByRole("button", { name: "Calcular opciones" }));
+    expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();
+    expect(envios("/v1/control/recuperacion/opciones")).toHaveLength(0);
+    await u.clear(horas);
+    await u.type(horas, "1.002,5");
+    await u.click(screen.getByRole("button", { name: "Calcular opciones" }));
+    await screen.findByRole("table", { name: "Opciones de recuperación" });
+    expect(cuerpo("/v1/control/recuperacion/opciones")).toMatchObject({ horas_previas: "1002.5" });
+  });
+
+  test("Km y R de la escalatoria se escriben con coma; con punto decimal no se calcula", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    await u.selectOptions(screen.getByLabelText("Precios del corte"), "escalatoria");
+    await u.type(screen.getByLabelText("Km declarado"), "1.05");
+    await u.click(screen.getByRole("button", { name: "Calcular al corte" }));
+    expect(await screen.findByText(MENSAJE_CIFRA)).toBeInTheDocument();
+    expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("metodo=escalatoria"))).toBe(false);
+    await u.clear(screen.getByLabelText("Km declarado"));
+    await u.type(screen.getByLabelText("Km declarado"), "1,05");
+    await u.clear(screen.getByLabelText("R declarado"));
+    await u.type(screen.getByLabelText("R declarado"), "0,15");
+    await u.click(screen.getByRole("button", { name: "Calcular al corte" }));
+    await waitFor(() =>
+      expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("km=1.05&r=0.15"))).toBe(true),
+    );
+  });
+});
+
 describe("logica del control", () => {
   test("la consulta del calculo solo lleva lo elegido", () => {
     expect(consultaDeCalculo("OB S2", FILTROS_INICIALES)).toBe("/v1/control/calculo?proyecto=OB+S2");
-    const con = consultaDeCalculo("P", { corte: " 2026-11-06 ", precios: { metodo: "escalatoria", version: "x", km: "1.1", r: "0", fuente: "f" } });
+    // Km y R se escriben con coma (regla de Eugenio, 2026-10-25) y viajan con punto.
+    const con = consultaDeCalculo("P", { corte: " 2026-11-06 ", precios: { metodo: "escalatoria", version: "x", km: "1,1", r: "0", fuente: "f" } });
     expect(con).toBe("/v1/control/calculo?proyecto=P&corte=2026-11-06&metodo=escalatoria&km=1.1&r=0&fuente=f");
   });
 

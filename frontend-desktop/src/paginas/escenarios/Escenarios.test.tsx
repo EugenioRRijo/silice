@@ -5,6 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaEscenarios from "./index";
+import { AYUDA_CIFRAS, MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
 import type { EscenarioRespuesta, EscenariosBaseRespuesta, EscenariosRespuesta } from "./tipos";
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -21,7 +22,7 @@ const SESION: SesionRespuesta = {
   modo_entrega: false,
 };
 
-const FCAS = "FCAS (fracción; 6.00 = prestaciones del 600 %)";
+const FCAS = "FCAS (fracción; 6,00 = prestaciones del 600 %)";
 
 const LISTA = [
   { codigo: "FIC-1", total: "1000.00", proyecto: "Obra ficticia" },
@@ -127,7 +128,7 @@ describe("Escenarios de sensibilidad", () => {
 
   async function listo() {
     await screen.findByLabelText(FCAS);
-    await waitFor(() => expect(screen.getByLabelText(FCAS)).toHaveValue("6.00"));
+    await waitFor(() => expect(screen.getByLabelText(FCAS)).toHaveValue("6,00"));
   }
 
   test("lista los presupuestos con etiqueta proyecto / codigo y muestra el texto de ayuda", async () => {
@@ -150,9 +151,9 @@ describe("Escenarios de sensibilidad", () => {
   test("precarga los parametros del base y el nombre por omision", async () => {
     montar();
     await listo();
-    expect(screen.getByLabelText("Bono de alimentación")).toHaveValue("2.50");
-    expect(screen.getByLabelText("Administración")).toHaveValue("0.10");
-    expect(screen.getByLabelText("Utilidad")).toHaveValue("0.12");
+    expect(screen.getByLabelText("Bono de alimentación")).toHaveValue("2,50");
+    expect(screen.getByLabelText("Administración")).toHaveValue("0,10");
+    expect(screen.getByLabelText("Utilidad")).toHaveValue("0,12");
     expect(screen.getByLabelText("Nombre del escenario")).toHaveValue("escenario 1");
     expect(fetchFalso).toHaveBeenCalledWith(
       "/presupuestos/FIC-1/escenarios/base?proyecto=Obra%20ficticia",
@@ -179,7 +180,7 @@ describe("Escenarios de sensibilidad", () => {
     const usuario = userEvent.setup();
     await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
     await usuario.type(screen.getByLabelText("Insumo 1"), "  Cemento ficticio ");
-    await usuario.type(screen.getByLabelText("Precio nuevo 1"), "18.50");
+    await usuario.type(screen.getByLabelText("Precio nuevo 1"), "1.018,50");
     await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
     await usuario.type(screen.getByLabelText("Precio nuevo 2"), "99"); // insumo en blanco: se ignora
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
@@ -195,14 +196,14 @@ describe("Escenarios de sensibilidad", () => {
           bono_alimentacion: "2.50",
           administracion: "0.10",
           utilidad: "0.12",
-          precios: { "Cemento ficticio": "18.50" },
+          precios: { "Cemento ficticio": "1018.50" },
         },
       ],
     });
     const tabla = screen.getByRole("table", { name: "Comparación contra el base" });
     const filas = within(tabla).getAllByRole("row");
-    expect(within(filas[1]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["FIC-1", "1000.00", "0.00(sin variación)", "0.00(sin variación)"]);
-    expect(within(filas[2]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["escenario 1", "1050.00", "50.00(desfavorable)", "5.00(desfavorable)"]);
+    expect(within(filas[1]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["FIC-1", "1.000,00", "0.00(sin variación)", "0.00(sin variación)"]);
+    expect(within(filas[2]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["escenario 1", "1.050,00", "50.00(desfavorable)", "5.00(desfavorable)"]);
 
     // el nombre por omision avanza y el segundo envio lleva los dos
     expect(screen.getByLabelText("Nombre del escenario")).toHaveValue("escenario 2");
@@ -212,6 +213,23 @@ describe("Escenarios de sensibilidad", () => {
     await waitFor(() =>
       expect(within(screen.getByRole("table", { name: "Comparación contra el base" })).getAllByRole("row")).toHaveLength(4),
     );
+  });
+
+  test("una cifra escrita con punto decimal se marca junto a su campo y no se envia (regla de Eugenio, 2026-10-25)", async () => {
+    montar();
+    await listo();
+    expect(screen.getAllByText(AYUDA_CIFRAS).length).toBeGreaterThan(0);
+    const usuario = userEvent.setup();
+    await usuario.clear(screen.getByLabelText("Utilidad"));
+    await usuario.type(screen.getByLabelText("Utilidad"), "0.15");
+    await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
+    await usuario.type(screen.getByLabelText("Insumo 1"), "Cemento ficticio");
+    await usuario.type(screen.getByLabelText("Precio nuevo 1"), "18.50");
+    await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
+    expect(screen.getByLabelText("Utilidad")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Precio nuevo 1")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getAllByText(MENSAJE_CIFRA).length).toBeGreaterThanOrEqual(2);
+    expect(posts()).toHaveLength(0);
   });
 
   test("un 422 muestra el error y el escenario nuevo no queda en la lista", async () => {
@@ -234,7 +252,7 @@ describe("Escenarios de sensibilidad", () => {
         escenarios: cuerpo.escenarios.map((e) => escenario(e.nombre, "1.00")),
       });
     await usuario.clear(screen.getByLabelText("Utilidad"));
-    await usuario.type(screen.getByLabelText("Utilidad"), "0.12");
+    await usuario.type(screen.getByLabelText("Utilidad"), "0,12");
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
     await screen.findByText("Comparación contra el base");
     expect(cuerpoDe(posts()[1]).escenarios).toHaveLength(1);
@@ -247,7 +265,7 @@ describe("Escenarios de sensibilidad", () => {
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
     await screen.findByText("Comparación contra el base");
     await usuario.selectOptions(screen.getByLabelText("Presupuesto base"), "FIC-2");
-    await waitFor(() => expect(screen.getByLabelText(FCAS)).toHaveValue("5.00"));
+    await waitFor(() => expect(screen.getByLabelText(FCAS)).toHaveValue("5,00"));
     expect(screen.getByText("Defina un escenario para compararlo contra el presupuesto base.")).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre del escenario")).toHaveValue("escenario 1");
   });
@@ -268,10 +286,10 @@ describe("Escenarios de sensibilidad", () => {
     await usuario.selectOptions(await screen.findByLabelText("Presupuesto base"), "FIC-2");
     await waitFor(() => expect(pendientes["FIC-2"]).toBeDefined());
     pendientes["FIC-2"](json(BASE_2));
-    await waitFor(() => expect(screen.getByLabelText(FCAS)).toHaveValue("5.00"));
+    await waitFor(() => expect(screen.getByLabelText(FCAS)).toHaveValue("5,00"));
     pendientes["FIC-1"](json(BASE_1));
     await new Promise((r) => setTimeout(r, 20));
-    expect(screen.getByLabelText(FCAS)).toHaveValue("5.00");
+    expect(screen.getByLabelText(FCAS)).toHaveValue("5,00");
   });
 
   test("descarga el CSV por POST con el mismo cuerpo", async () => {
@@ -316,7 +334,7 @@ describe("Escenarios de sensibilidad", () => {
       "P.U. nuevo",
       "Cantidad",
     ]);
-    expect(within(tabla).getByText("1050.00")).toBeInTheDocument();
+    expect(within(tabla).getByText("1.050,00")).toHaveAttribute("title", "1050.00");
     expect(
       screen.getByText("Hallazgos de la auditoría del escenario: 2 (el informe se genera siempre). Insumos variados: 1."),
     ).toBeInTheDocument();
@@ -353,7 +371,7 @@ describe("Escenarios de sensibilidad", () => {
   test("los precios de ensayo enseñan con un ejemplo, tienen cabecera y manejan el foco", async () => {
     montar();
     await listo();
-    expect(screen.getByText("p. ej. Cemento Portland → 18.50")).toBeInTheDocument();
+    expect(screen.getByText("p. ej. Cemento Portland → 18,50")).toBeInTheDocument();
     const usuario = userEvent.setup();
     await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
     expect(screen.getByText("Insumo (descripción exacta)")).toBeInTheDocument();

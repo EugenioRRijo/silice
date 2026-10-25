@@ -6,6 +6,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaReajuste from "./index";
+import { AYUDA_CIFRAS, MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -131,11 +132,27 @@ describe("Reajuste de precios", () => {
   async function llenar(u: ReturnType<typeof userEvent.setup>) {
     await u.type(screen.getByLabelText("Inicio del contrato"), "2026-01-15");
     await u.type(screen.getByLabelText("Duración (meses)"), "24");
-    await u.type(screen.getByLabelText("R (fracción no reajustable)"), "0.10");
+    // Regla de Eugenio (2026-10-25): coma decimal al escribir; la API recibe «0.10».
+    await u.type(screen.getByLabelText("R (fracción no reajustable)"), "0,10");
     await u.type(screen.getByLabelText("Serie, Componentes fila 1"), "FIC-MAT");
     await irA(u, "2. Períodos y lo ejecutado");
     await u.type(screen.getByLabelText("Desde, Períodos fila 1"), "2027-02-01");
   }
+
+  test("R escrita con punto decimal se rechaza junto al campo y no se calcula", async () => {
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await u.type(screen.getByLabelText("R (fracción no reajustable)"), "0.10");
+    expect(screen.getAllByText(AYUDA_CIFRAS).length).toBeGreaterThan(0);
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.type(screen.getByLabelText("Cantidad, Ejecutado fila 1"), "1.5");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    expect(await screen.findByText(`R (fracción no reajustable): ${MENSAJE_CIFRA}`)).toBeInTheDocument();
+    expect(screen.getByText(`Cantidad, Ejecutado fila 1: ${MENSAJE_CIFRA}`)).toBeInTheDocument();
+    expect(screen.getByLabelText("Cantidad, Ejecutado fila 1")).toHaveAttribute("aria-invalid", "true");
+    expect(post("/v1/reajuste/calcular")).toBeUndefined();
+  });
 
   test("sin proyecto abierto dice qué hacer", async () => {
     montar(null);
