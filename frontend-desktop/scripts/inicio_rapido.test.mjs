@@ -239,23 +239,20 @@ describe("codigo de instalacion en desarrollo", () => {
     expect(rutaCodigoInstalacion({}, join("/r"))).toBe(join("/r", "data", "codigo_instalacion.txt"));
   });
   test("las dos lineas son las mismas que imprime el lanzador", () => {
-    expect(lineasDelCodigo("ABCD-EFGH
-", "/x/codigo_instalacion.txt")).toEqual([
+    expect(lineasDelCodigo("ABCD-EFGH\n", "/x/codigo_instalacion.txt")).toEqual([
       "Código de instalación (un solo uso, para crear el primer administrador): ABCD-EFGH",
       "También está en el archivo /x/codigo_instalacion.txt",
     ]);
   });
   test("un archivo vacío no produce lineas", () => {
-    expect(lineasDelCodigo("  
-", "/x")).toBeNull();
+    expect(lineasDelCodigo("  \n", "/x")).toBeNull();
   });
   test("lee el archivo con tope de 1 KiB y devuelve null si no existe", () => {
     const dir = mkdtempSync(join(tmpdir(), "silice-cod-"));
     try {
       const ruta = join(dir, "codigo_instalacion.txt");
       expect(leerCodigoInstalacion(ruta)).toBeNull();
-      writeFileSync(ruta, "ABCD-EFGH-IJKL-MNOP-QRST
-");
+      writeFileSync(ruta, "ABCD-EFGH-IJKL-MNOP-QRST\n");
       expect(leerCodigoInstalacion(ruta)).toBe("ABCD-EFGH-IJKL-MNOP-QRST");
       writeFileSync(ruta, "A".repeat(5000));
       expect(leerCodigoInstalacion(ruta)).toHaveLength(1024);

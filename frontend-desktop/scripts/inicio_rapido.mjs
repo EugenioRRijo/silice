@@ -9,7 +9,7 @@
 // la parte con efectos vive al final y solo corre cuando se ejecuta el archivo.
 import { spawn, spawnSync } from "node:child_process";
 import dgram from "node:dgram";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { closeSync, existsSync, openSync, readdirSync, readSync, statSync } from "node:fs";
 import net from "node:net";
 import { networkInterfaces } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -129,6 +129,35 @@ export function cuentasDePrueba(logins) {
 export function rutaInstalacion(entorno, raiz) {
   if (entorno.SILICE_INSTALACION) return resolve(entorno.SILICE_INSTALACION);
   return join(entorno.SILICE_DATOS ? resolve(entorno.SILICE_DATOS) : join(raiz, "data"), "instalacion.db");
+}
+
+export const TOPE_CODIGO = 1024;
+
+/** Mismo archivo que `config.ruta_codigo_instalacion`: SILICE_DATOS o `data/` del repositorio. */
+export function rutaCodigoInstalacion(entorno, raiz) {
+  return join(entorno.SILICE_DATOS ? resolve(entorno.SILICE_DATOS) : join(raiz, "data"), "codigo_instalacion.txt");
+}
+
+/** Lee el codigo con tope de 1 KiB; null si el archivo no existe o no se puede leer. */
+export function leerCodigoInstalacion(ruta) {
+  let fd;
+  try {
+    fd = openSync(ruta, "r");
+    const buf = Buffer.alloc(TOPE_CODIGO);
+    const n = readSync(fd, buf, 0, TOPE_CODIGO, 0);
+    return buf.subarray(0, n).toString("utf8").trim() || null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+/** Las dos lineas que imprime el lanzador del producto (operacion/lanzador.py); null si no hay codigo. */
+export function lineasDelCodigo(texto, ruta) {
+  const codigo = String(texto ?? "").trim();
+  if (!codigo) return null;
+  return [`Código de instalación (un solo uso, para crear el primer administrador): ${codigo}`, `También está en el archivo ${ruta}`];
 }
 
 export function parsearArgumentos(argv) {
@@ -338,6 +367,10 @@ async function principal() {
     throw new Error("El servidor no respondio en /salud; revise el mensaje de arriba.");
   }
   console.log(mensajeInicio({ ip, puerto, cuentas, plataforma: process.platform, ocupados }));
+  // Como el lanzador del producto: el codigo va a la consola (nunca a un registro) y no se abre el Bloc de notas.
+  const rutaCodigo = rutaCodigoInstalacion(entorno, raiz);
+  const lineas = lineasDelCodigo(leerCodigoInstalacion(rutaCodigo), rutaCodigo);
+  if (lineas) console.log(lineas.join("\n") + "\n");
   if (args.abrir) abrirNavegador(`http://${LOOPBACK}:${puerto}/app/`);
   return salida;
 }
