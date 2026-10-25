@@ -25,12 +25,22 @@ export function BarraSuperior({ entradas, derecha, menu }: Props) {
   const [abierta, setAbierta] = useState<string | null>(null);
   const [clave, setClave] = useState(ubicacion.key);
   const itemAbierto = useRef<HTMLLIElement>(null);
+  // Hay un boton del raton apretado dentro de la navegacion (se suelta en cualquier parte del documento).
+  const apretadoDentro = useRef(false);
 
   // Cambio de ruta: el panel se cierra (se ajusta el estado durante el render, sin efecto).
   if (clave !== ubicacion.key) {
     setClave(ubicacion.key);
     setAbierta(null);
   }
+
+  useEffect(() => {
+    function soltar() {
+      apretadoDentro.current = false;
+    }
+    document.addEventListener("mouseup", soltar);
+    return () => document.removeEventListener("mouseup", soltar);
+  }, []);
 
   useEffect(() => {
     if (!abierta) return;
@@ -56,9 +66,13 @@ export function BarraSuperior({ entradas, derecha, menu }: Props) {
   }
 
   // Si el foco sale de la navegacion (Tab hacia carpeta, letra o cuenta), el panel se cierra, como en el ejemplo de la APG.
-  // Moverse entre areas y enlaces dentro de la navegacion no lo cierra.
+  // Moverse entre areas y enlaces dentro de la navegacion no lo cierra. Un foco que se pierde sin destino mientras el raton
+  // esta apretado dentro de la navegacion tampoco: es un clic dentro (p. ej. Safari, donde el boton no toma el foco), y de
+  // ese clic se ocupan su `onClick` o el clic fuera.
   function alSalirFoco(e: FocusEvent<HTMLElement>) {
-    if (abierta && !e.currentTarget.contains(e.relatedTarget as Node | null)) setAbierta(null);
+    if (!abierta || e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    if (e.relatedTarget === null && apretadoDentro.current) return;
+    setAbierta(null);
   }
 
   const actual = areaActual(ubicacion.pathname, entradas);
@@ -76,7 +90,14 @@ export function BarraSuperior({ entradas, derecha, menu }: Props) {
       <HeaderName href="#/" prefix="">
         Sílice
       </HeaderName>
-      <HeaderNavigation aria-label="Menú principal" className="silice-barra__nav" onBlur={alSalirFoco}>
+      <HeaderNavigation
+        aria-label="Menú principal"
+        className="silice-barra__nav"
+        onBlur={alSalirFoco}
+        onMouseDown={() => {
+          apretadoDentro.current = true;
+        }}
+      >
         {entradas.map((e) => {
           if (e.tipo === "enlace") {
             return (

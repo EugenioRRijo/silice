@@ -90,6 +90,11 @@
   background: var(--cds-layer-01);
   border: 1px solid var(--cds-border-subtle);
   color: var(--cds-text-primary);
+
+  // Recibe el foco solo por un clic en una zona no enfocable (tabIndex -1): sin contorno; los enlaces llevan el suyo.
+  &:focus {
+    outline: none;
+  }
 }
 
 .silice-panel-area__grupo + .silice-panel-area__grupo {

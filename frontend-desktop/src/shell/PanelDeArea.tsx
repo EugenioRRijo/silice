@@ -61,7 +61,17 @@ export function PanelDeArea({ id, titulo, grupos, alElegir }: Props) {
   }
 
   return (
-    <div id={id} ref={caja} role="region" aria-label={titulo} className="silice-panel-area" onKeyDown={alTeclear}>
+    // tabIndex -1: un clic en una zona no enfocable del panel (subtitulo, relleno, hueco entre columnas) le da el foco a la
+    // region en vez de al body, asi el foco no sale de la navegacion y el panel no se cierra. No entra en el orden de Tab.
+    <div
+      id={id}
+      ref={caja}
+      role="region"
+      aria-label={titulo}
+      tabIndex={-1}
+      className="silice-panel-area"
+      onKeyDown={alTeclear}
+    >
       {grupos.map((g, ig) => {
         const idGrupo = `${base}-g${ig}`;
         return (
