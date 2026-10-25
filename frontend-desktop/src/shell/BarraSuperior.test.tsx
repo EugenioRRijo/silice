@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -146,6 +146,36 @@ describe("BarraSuperior", () => {
     expect(screen.getByRole("link", { name: "Entregar paquete" })).toHaveFocus();
     await u.tab();
     expect(within(nav()).getByRole("link", { name: "Existencias de la arenera" })).toHaveFocus();
+  });
+
+  test("clic en un subtítulo del panel de «Más» no lo cierra y el foco queda dentro de la navegación", async () => {
+    const u = userEvent.setup();
+    pintar();
+    await u.click(area("Más"));
+    const region = panel("Más")!;
+    await u.click(within(region).getByText("Precios"));
+    expect(panel("Más")).toBeInTheDocument();
+    expect(area("Más")).toHaveAttribute("aria-expanded", "true");
+    expect(nav()).toContainElement(document.activeElement as HTMLElement);
+    // Y las flechas siguen sirviendo desde ahí.
+    await u.keyboard("{ArrowDown}");
+    expect(screen.getByRole("link", { name: "Actualizar precios" })).toHaveFocus();
+  });
+
+  test("el segundo clic sobre el área abierta la cierra una sola vez aunque el botón no tome el foco (Safari)", async () => {
+    const u = userEvent.setup();
+    pintar();
+    await u.click(area("Crear"));
+    const enlace = screen.getByRole("link", { name: "Componer una partida" });
+    expect(enlace).toHaveFocus();
+    // Safari: al apretar el botón, este no toma el foco; el enlace lo pierde hacia el body (relatedTarget nulo).
+    const boton = area("Crear");
+    fireEvent.mouseDown(boton);
+    act(() => enlace.blur());
+    fireEvent.mouseUp(boton);
+    fireEvent.click(boton);
+    expect(panel("Crear")).toBeNull();
+    expect(area("Crear")).toHaveAttribute("aria-expanded", "false");
   });
 
   test("Tab que saca el foco de la navegación cierra el panel", async () => {
