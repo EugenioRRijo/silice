@@ -21,7 +21,7 @@ from operacion import config, primer_arranque
 from operacion.instalacion import cerrar_motores, sesion_de_instalacion
 from seguridad import cuentas
 from seguridad.modelo import CodigoInstalacion, EventoAcceso
-from tests.fixtures.instalacion import AHORA, administrador, instalacion
+from tests.fixtures.instalacion import AHORA, CONTRASENA, administrador, instalacion
 
 FORMATO = re.compile(r"^(?:[A-Z2-7]{4}-){4}[A-Z2-7]{4}\n$")
 
@@ -77,11 +77,115 @@ def test_asegurar_codigo_reemite_si_se_borro_el_archivo_e_invalida_el_anterior(
         assert _filas(sesion) == 2 and _vigentes(sesion) == 1  # solo el último sirve
 
 
-def test_asegurar_codigo_con_un_archivo_ajeno_no_lo_toca(tmp_path: Path) -> None:
+# --- el archivo rancio (un `codigo_instalacion.txt` cuyo código no está vigente en la base) ------
+#
+# Caso real: la `instalacion.db` se recreó (o se restauró) y el `.txt` quedó. Antes, con el archivo
+# presente, `asegurar_codigo` no hacía nada: el archivo mostraba un código que la base no conoce y
+# el reclamo daba 401 para siempre (y 423 al quinto intento). Ahora, sin cuentas, si el código del
+# archivo no es uno vigente en la base, se emite otro y se reescribe el archivo.
+
+RANCIO = "KAQF-MZXR-A2PT-W4HN-CEDV\n"  # forma válida, pero ninguna base de la prueba lo emitió
+
+
+def _reclamar(sesion, texto: str, carpeta: Path):
+    return cuentas.reclamar_instalacion(
+        sesion,
+        texto,
+        "dueno",
+        "Dueña Demo",
+        CONTRASENA,
+        AHORA,
+        carpeta,
+        freno=cuentas.FrenoGlobal(),
+    )
+
+
+def test_sin_cuentas_un_archivo_que_la_base_no_conoce_se_reemplaza(tmp_path: Path) -> None:
     with instalacion(tmp_path) as sesion:
-        (tmp_path / "codigo_instalacion.txt").write_text("K7QF-M9XR-A2PT-W4HN-C8DV\n")
+        (tmp_path / "codigo_instalacion.txt").write_text(RANCIO, encoding="ascii")
+        assert primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA) is True
+        nuevo = (tmp_path / "codigo_instalacion.txt").read_text(encoding="ascii")
+        assert FORMATO.fullmatch(nuevo) and nuevo != RANCIO
+        assert _filas(sesion) == 1 and _vigentes(sesion) == 1
+        assert _reclamar(sesion, nuevo, tmp_path).login == "dueno"
+
+
+def test_tras_recrear_la_instalacion_el_archivo_viejo_se_reemite_y_el_nuevo_sirve(
+    tmp_path: Path,
+) -> None:
+    with instalacion(tmp_path) as sesion:
+        assert primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA) is True
+    viejo = (tmp_path / "codigo_instalacion.txt").read_text(encoding="ascii")
+    (tmp_path / "instalacion.db").unlink()  # la base se recrea; el .txt se queda
+    with instalacion(tmp_path) as sesion:
+        assert primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA) is True
+        nuevo = (tmp_path / "codigo_instalacion.txt").read_text(encoding="ascii")
+        assert FORMATO.fullmatch(nuevo) and nuevo != viejo
+        with pytest.raises(cuentas.ErrorDeAcceso):  # esta base no conoce el viejo
+            _reclamar(sesion, viejo, tmp_path)
+        assert _reclamar(sesion, nuevo, tmp_path).login == "dueno"
+
+
+def test_una_base_restaurada_con_otro_codigo_vigente_se_reemite_y_queda_uno(
+    tmp_path: Path,
+) -> None:
+    with instalacion(tmp_path) as sesion:
+        cuentas.emitir_codigo(sesion, tmp_path, AHORA)  # el vigente de la base restaurada
+        (tmp_path / "codigo_instalacion.txt").write_text(RANCIO, encoding="ascii")
+        assert primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA) is True
+        assert _filas(sesion) == 2 and _vigentes(sesion) == 1
+        nuevo = (tmp_path / "codigo_instalacion.txt").read_text(encoding="ascii")
+        assert _reclamar(sesion, nuevo, tmp_path).login == "dueno"
+
+
+def test_un_archivo_ilegible_o_vacio_tambien_se_reemplaza(tmp_path: Path) -> None:
+    with instalacion(tmp_path) as sesion:
+        (tmp_path / "codigo_instalacion.txt").write_bytes(b"\xff\xfe basura \x00")
+        assert primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA) is True
+        assert FORMATO.fullmatch((tmp_path / "codigo_instalacion.txt").read_text(encoding="ascii"))
+        (tmp_path / "codigo_instalacion.txt").write_text("", encoding="ascii")
+        assert primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA) is True
+        assert _vigentes(sesion) == 1
+
+
+def test_un_restablecimiento_caducado_sin_cuentas_se_reemplaza(tmp_path: Path) -> None:
+    with instalacion(tmp_path) as sesion:
+        cuentas.emitir_codigo_de_restablecimiento(sesion, tmp_path, AHORA)
+        tarde = AHORA + timedelta(hours=24)  # a las 24 h exactas ya no sirve
+        assert primer_arranque.asegurar_codigo(sesion, tmp_path, tarde) is True
+        assert _vigentes(sesion) == 1
+        nuevo = (tmp_path / "codigo_instalacion.txt").read_text(encoding="ascii")
+        assert _reclamar(sesion, nuevo, tmp_path).login == "dueno"
+
+
+def test_un_archivo_editado_a_mano_con_el_codigo_vigente_no_se_toca(tmp_path: Path) -> None:
+    with instalacion(tmp_path) as sesion:
+        primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA)
+        archivo = tmp_path / "codigo_instalacion.txt"
+        anotado = "Código: " + archivo.read_text(encoding="ascii").lower()
+        archivo.write_text(anotado, encoding="utf-8")
         assert primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA) is False
-        assert (tmp_path / "codigo_instalacion.txt").read_text() == "K7QF-M9XR-A2PT-W4HN-C8DV\n"
+        assert archivo.read_text(encoding="utf-8") == anotado
+        assert _filas(sesion) == 1
+
+
+def test_con_cuentas_el_archivo_del_restablecimiento_no_se_toca(tmp_path: Path) -> None:
+    with instalacion(tmp_path) as sesion:
+        administrador(sesion, tmp_path)
+        primer_arranque.emitir_restablecimiento(sesion, tmp_path, AHORA)
+        escrito = (tmp_path / "codigo_instalacion.txt").read_bytes()
+        antes = _filas(sesion)
+        assert primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA) is False
+        assert (tmp_path / "codigo_instalacion.txt").read_bytes() == escrito
+        assert _filas(sesion) == antes
+
+
+def test_con_cuentas_un_archivo_ajeno_no_se_toca(tmp_path: Path) -> None:
+    with instalacion(tmp_path) as sesion:
+        administrador(sesion, tmp_path)
+        (tmp_path / "codigo_instalacion.txt").write_text(RANCIO, encoding="ascii")
+        assert primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA) is False
+        assert (tmp_path / "codigo_instalacion.txt").read_text(encoding="ascii") == RANCIO
 
 
 def test_el_estado_dice_solo_tres_cosas(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

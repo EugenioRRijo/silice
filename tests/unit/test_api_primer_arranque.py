@@ -298,6 +298,57 @@ def test_el_codigo_mal_escrito_se_acepta(variante: str) -> None:
     assert reclamar(navegador(), cuerpo(escrito)).status_code == 201
 
 
+# Caso real (2026-10-25): una persona no pudo crear el primer administrador. El código sembrado es
+# un literal con B, O e I; su huella se calcula aquí con `hashlib`. La línea es la que imprime el
+# lanzador (`operacion/lanzador.py`), copiada a mano.
+SEMBRADO = "BOIA-QRST-IOBU-VWXY-ZL34"
+LINEA = "Código de instalación (un solo uso, para crear el primer administrador): " + SEMBRADO
+
+
+def sembrar(texto: str = SEMBRADO) -> None:
+    with sesion_de_instalacion() as sesion:
+        sesion.add(
+            CodigoInstalacion(
+                huella=hashlib.sha256(texto.replace("-", "").encode("ascii")).hexdigest(),
+                creado=datetime.now(),
+                motivo="primera vez",
+            )
+        )
+        sesion.commit()
+
+
+@pytest.mark.usefixtures("vacia")
+@pytest.mark.parametrize(
+    "escrito",
+    [
+        "801A-QRST-108U-VWXY-ZL34",
+        "801a qrst 108u vwxy zl34",
+        LINEA,
+        LINEA + "\r\n",
+        LINEA.replace("BOIA", "8O1A"),
+    ],
+    ids=["cifras", "cifras-minusculas-espacios", "linea", "linea-con-salto", "linea-con-cifras"],
+)
+def test_cifras_por_letras_y_la_linea_entera_de_la_consola_se_aceptan(escrito: str) -> None:
+    sembrar()
+    respuesta = reclamar(navegador(), cuerpo(escrito))
+    assert respuesta.status_code == 201, respuesta.text
+    assert respuesta.json()["login"] == "dueno"
+
+
+@pytest.mark.usefixtures("vacia")
+def test_un_codigo_de_256_caracteres_no_es_422_y_un_errado_largo_es_el_401_de_siempre() -> None:
+    sembrar()
+    largo = LINEA.replace("ZL34", "ZL35") + " " * (256 - len(LINEA))
+    assert len(largo) == 256
+    respuesta = reclamar(navegador(), cuerpo(largo))
+    assert respuesta.status_code == 401 and respuesta.json() == {"detalle": MENSAJE_CODIGO}
+    assert "ZL35" not in respuesta.text and "QRST" not in respuesta.text
+    with sesion_de_instalacion() as sesion:
+        fila = sesion.get(IntentoAcceso, cuentas.CLAVE_INTENTOS_CODIGO)
+        assert fila is not None and fila.fallos_seguidos == 1
+
+
 @pytest.mark.usefixtures("vacia")
 def test_un_codigo_con_un_caracter_cambiado_es_401() -> None:
     codigo = emitir()
@@ -464,7 +515,7 @@ def test_una_contrasena_de_129_caracteres_es_422_fijo() -> None:
         {"usuario": None},
         {"nombre": ["lista"]},
         {"tambien_arma": "si"},
-        {"codigo": "Z" * 65},
+        {"codigo": "Z" * 257},
         {"nombre": "n" * 121},
     ],
     ids=[
@@ -473,7 +524,7 @@ def test_una_contrasena_de_129_caracteres_es_422_fijo() -> None:
         "usuario-nulo",
         "nombre-lista",
         "arma-texto",
-        "codigo-65",
+        "codigo-257",
         "nombre-121",
     ],
 )

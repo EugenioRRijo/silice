@@ -84,6 +84,22 @@ def test_si_se_borro_el_archivo_se_emite_otro_y_solo_el_ultimo_sirve() -> None:
     assert _filas() == (2, 1)
 
 
+def test_un_archivo_que_la_base_no_conoce_se_reemite_al_arrancar() -> None:
+    """Caso real (2026-10-25): la `instalacion.db` se recreó y el `.txt` viejo quedó. El archivo
+    mostraba un código que la base no tenía y el reclamo daba 401 para siempre."""
+    _arrancar()
+    viejo = _archivo().read_bytes()
+    with sesion_de_instalacion() as sesion:  # la base «nueva»: el código del archivo ya no está
+        sesion.execute(CodigoInstalacion.__table__.delete())
+        sesion.commit()
+    _arrancar()
+    assert FORMATO.fullmatch(_archivo().read_text(encoding="ascii"))
+    assert _archivo().read_bytes() != viejo
+    assert _filas() == (1, 1)
+    _arrancar()  # y vuelve a ser idempotente
+    assert _filas() == (1, 1)
+
+
 def test_con_cuentas_no_emite_nada(tmp_path_factory) -> None:
     copiar_instalacion(plantilla_con_cuentas(tmp_path_factory.mktemp("lifespan_cuentas")))
     _arrancar()
