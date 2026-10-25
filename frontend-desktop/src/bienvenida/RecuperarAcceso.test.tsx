@@ -46,6 +46,13 @@ describe("RecuperarAcceso", () => {
     expect(screen.getByText(/24 horas/)).toBeInTheDocument();
   });
 
+  test("dice qué caracteres lleva el código (A a Z y 2 a 7) y que se puede pegar tal cual", () => {
+    render(<RecuperarAcceso info={info} onReclamar={vi.fn()} alVolver={vi.fn()} />);
+    const texto = screen.getByText(/código nuevo de 20 caracteres/);
+    expect(texto).toHaveTextContent("letras de la A a la Z y cifras del 2 al 7");
+    expect(texto).toHaveTextContent("Puede pegarlo tal cual");
+  });
+
   test("en el producto instalado dice el acceso directo y a quién pedirlo, sin comandos de Python", () => {
     render(<RecuperarAcceso info={info} onReclamar={vi.fn()} alVolver={vi.fn()} />);
     expect(screen.getByText(/«Sílice: recuperar acceso de administrador»/)).toBeInTheDocument();

@@ -52,6 +52,15 @@ describe("Bienvenida: página y texto (F2)", () => {
     expect(screen.getByText(/Todo se guarda en este equipo/)).toBeInTheDocument();
   });
 
+  // Caso real (2026-10-25): «20 letras y números» invitaba a escribir 0 y 1, que el código no lleva.
+  test("dice qué caracteres lleva el código (A a Z y 2 a 7) y que se puede pegar tal cual", () => {
+    render(<Bienvenida info={info} onReclamar={vi.fn()} />);
+    const texto = screen.getByText(/Son 20 caracteres en grupos de cuatro/);
+    expect(texto).toHaveTextContent("letras de la A a la Z y cifras del 2 al 7");
+    expect(texto).toHaveTextContent("péguelo abajo tal cual");
+    expect(screen.queryByText(/letras y números/)).not.toBeInTheDocument();
+  });
+
   test("tiene los campos con su etiqueta visible y la casilla desmarcada", () => {
     render(<Bienvenida info={info} onReclamar={vi.fn()} />);
     for (const etiqueta of ["Código de instalación", "Su nombre", "Usuario", "Contraseña", "Repita la contraseña"]) {
