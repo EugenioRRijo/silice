@@ -153,7 +153,7 @@ no código vivo). Los demás son rutas del árbol `s2madm` en la base `4ad4c576`
 `operacion/primer_arranque.py` (RM-1, sin FastAPI):
 
 - `asegurar_codigo(sesion, carpeta, ahora) -> bool`: sin cuentas, si **no hay archivo** `codigo_instalacion.txt` invalida los pendientes y emite uno nuevo (cubre el hueco de
-  `preparar_primera_vez`, que con un código vigente en la base devuelve `None` y nadie reescribe el archivo borrado); si hay archivo, o hay cuentas, no hace nada. Idempotente.
+  `preparar_primera_vez`, que con un código vigente en la base devuelve `None` y nadie reescribe el archivo borrado); con cuentas no hace nada; sin cuentas, si no hay archivo o su código no es uno vigente en la base, invalida los pendientes y emite uno nuevo (enmienda 2026-10-25, expediente BCP-1 §7: antes «si hay archivo, no hace nada» dejaba un rechazo permanente con un archivo rancio). Idempotente.
   Devuelve si emitió uno. Toma `_tomar_escritura` antes de leer.
 - `emitir_restablecimiento(sesion, carpeta, ahora) -> tuple[str, Path]`: lo que hoy hace `scripts/restablecer_administrador.restablecer`
   (se mueve aquí; el script y la orden `python -m operacion restablecer-administrador` lo llaman).
@@ -254,7 +254,7 @@ h2  Paso 1: busque su código de instalación
       • en el archivo  codigo_instalacion.txt  dentro de la carpeta de datos de Sílice:
         %LOCALAPPDATA%\Silice\datos\codigo_instalacion.txt          (instalación normal; modo = producto)
         data\codigo_instalacion.txt, dentro de la carpeta del programa  (modo = desarrollo)
-    Son 20 letras y números en grupos de cuatro, por ejemplo  XXXX-XXXX-XXXX-XXXX-XXXX. Cópielo y péguelo abajo.
+    Son 20 caracteres en grupos de cuatro, por ejemplo XXXX-XXXX-XXXX-XXXX-XXXX: letras de la A a la Z y cifras del 2 al 7. Cópielo y péguelo abajo tal cual.
     [si archivo_presente = false:] «No encuentro el archivo. Cierre Sílice y ábralo otra vez: se crea un código nuevo
     al arrancar. Si sigue sin aparecer, un administrador del equipo ejecuta «Sílice: recuperar acceso de administrador».»
 

@@ -16549,9 +16549,9 @@
         "properties": {
           "codigo": {
             "type": "string",
-            "maxLength": 64,
+            "maxLength": 256,
             "title": "Codigo",
-            "description": "El código de instalación o de restablecimiento"
+            "description": "El código de instalación o de restablecimiento; también la línea entera de la consola que lo trae (se usa el único grupo con la forma del código)"
           },
           "usuario": {
             "type": "string",

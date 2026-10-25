@@ -271,7 +271,8 @@ def arrancar(
         return 1
     emitido = False
     try:
-        emitido = asegurar(entorno)  # sin cuentas y sin archivo: emite el código (primer arranque)
+        # sin cuentas, sin archivo o con un archivo rancio: emite el código (primer arranque)
+        emitido = asegurar(entorno)
     except Exception as error:  # noqa: BLE001 - sin el código se sigue sirviendo el acceso normal
         logger.error("no se pudo asegurar el código de instalación: %s", type(error).__name__)
     codigo = config.ruta_codigo_instalacion(entorno)
