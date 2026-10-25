@@ -13,6 +13,7 @@ import "./componer.scss";
 import { Guardar } from "./Guardar";
 import { PanelDesglose } from "./PanelDesglose";
 import { Similares } from "./Similares";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { agregarFila, borrarFila, editarCelda, hayFilas, normalizarTablas, TIPOS, tablasVacias } from "./tablas";
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 import { TablaInsumos } from "./TablaInsumos";
@@ -312,7 +313,7 @@ export default function PaginaComponer() {
           Insumos
         </h2>
         <p className="silice-componer__nota cds--type-body-compact-01">
-          Las cifras se escriben con coma o con punto para los decimales, por ejemplo 0,005, y sin separador de miles.
+          {AYUDA_CIFRAS}
         </p>
         {TIPOS.map((tipo) => (
           <div key={tipo} className="silice-componer__insumo">

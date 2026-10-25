@@ -398,7 +398,7 @@ describe("Componer una partida", () => {
     const usuario = userEvent.setup();
     montar();
     await usuario.type(screen.getByLabelText("Descripción"), "muro");
-    expect(await screen.findByText("0.91 · FIC-009 · Muro ficticio", {}, ESPERA)).toBeInTheDocument();
+    expect(await screen.findByText("0,91 · FIC-009 · Muro ficticio", {}, ESPERA)).toBeInTheDocument();
     expect(de("/v1/composicion/similares")[0].ruta).toBe("/v1/composicion/similares?dominio=civil&descripcion=muro");
   });
 

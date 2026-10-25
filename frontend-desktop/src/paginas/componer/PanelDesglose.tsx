@@ -1,5 +1,6 @@
 import { InlineNotification, Table, TableBody, TableCell, TableRow } from "@carbon/react";
 import { AvisoError } from "../../comun/AvisoError";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import type { Advertencia, Contraste, Desglose, Evaluacion } from "./cliente";
 
 interface Props {
@@ -36,7 +37,10 @@ function TablaDeMontos({ desglose }: { desglose: Desglose }) {
           {ROTULOS.map(([clave, rotulo]) => (
             <TableRow key={clave}>
               <TableCell>{rotulo}</TableCell>
-              <TableCell className="silice-cifra">{desglose[clave]}</TableCell>
+              {/* La interfaz no calcula: el texto exacto de la API, en es-VE; el exacto queda en el title. */}
+              <TableCell className="silice-cifra" title={desglose[clave]}>
+                {formatoEsVe(desglose[clave])}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -51,7 +55,7 @@ function BloqueContraste({ contraste }: { contraste: Contraste }) {
       <h3 className="cds--type-heading-compact-02">Contraste con la estimación por reglas (AACE)</h3>
       <p className="cds--type-body-compact-01">
         Técnica de estimación que corresponde a este dominio: {contraste.tecnica} ({contraste.registros} registro(s)).
-        Precio unitario estimado por reglas: {contraste.pu_estimado}.
+        Precio unitario estimado por reglas: {formatoEsVe(contraste.pu_estimado)}.
       </p>
       {contraste.dentro_de_rango && (
         <p className="cds--type-body-compact-01">

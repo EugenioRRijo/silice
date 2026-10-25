@@ -1,5 +1,6 @@
 import { Accordion, AccordionItem } from "@carbon/react";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import type { Similar } from "./cliente";
 import { COLUMNAS, TIPOS, TITULOS } from "./tablas";
 
@@ -10,7 +11,7 @@ interface Props {
 function tituloDe(s: Similar): string {
   const puntaje = Number(s.puntaje);
   const texto = Number.isFinite(puntaje) ? puntaje.toFixed(2) : String(s.puntaje);
-  return `${texto} · ${s.codigo} · ${s.descripcion}`;
+  return `${formatoEsVe(texto)} · ${s.codigo} · ${s.descripcion}`;
 }
 
 // Ayuda 1: partidas parecidas, de solo lectura. La persona copia a mano lo que le sirva; nada se llena solo.
@@ -31,7 +32,7 @@ export function Similares({ similares }: Props) {
             {s.aviso && <p className="cds--type-body-compact-01">{s.aviso}</p>}
             {s.tablas && s.rendimiento !== null && (
               <p className="cds--type-body-compact-01">
-                Rendimiento: {s.rendimiento} {s.unidad}/día
+                Rendimiento: {formatoEsVe(s.rendimiento)} {s.unidad}/día
               </p>
             )}
             {s.tablas &&
