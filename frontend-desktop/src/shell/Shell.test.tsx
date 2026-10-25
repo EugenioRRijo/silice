@@ -10,6 +10,7 @@ import { useAplicacion } from "./contexto";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, recorridoEnCurso, terminarRecorrido } from "./recorrido";
 import { Shell } from "./Shell";
+import { PAGINAS as REGISTRO, visible } from "./rutas";
 import type { PaginaDef } from "./rutas";
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -49,13 +50,43 @@ function PaginaB() {
 const CARGAR_B = async () => ({ default: PaginaB });
 
 const PAGINAS: PaginaDef[] = [
-  { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
+  { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Cómo va el proyecto", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
   { id: "catalogo", titulo: "Catálogo de partidas e insumos", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: CARGAR_B },
   { id: "control", titulo: "Control de obra", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "control_de_obra", cargar: CARGAR_B },
   { id: "acerca", titulo: "Acerca de Sílice", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: CARGAR_B },
   { id: "revisar", titulo: "Revisar un paquete", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "revisar_paquete", cargar: CARGAR_B },
   { id: "escenarios", titulo: "Escenarios de sensibilidad", enUnaLinea: "Pantalla de prueba", seccion: "Investigación", accion: "editar_hoja", cargar: CARGAR_B },
 ];
+
+// Las 22 pantallas del registro, cada una con un h1 con su titulo (sin bajar la pagina real).
+const LIGERAS: PaginaDef[] = REGISTRO.map((p) => {
+  const Ligera = () => <h1>{p.titulo}</h1>;
+  return { ...p, cargar: async () => ({ default: Ligera }) };
+});
+
+// Acciones por rol, escritas a mano desde PERMISOS de seguridad/permisos.py (ana arma, rita revisa, admin administra).
+const ACCIONES_POR_ROL: Record<"ana" | "rita" | "admin", string[]> = {
+  ana: [
+    "editar_hoja",
+    "convertir_y_reajustar",
+    "control_de_obra",
+    "decidir_recuperacion",
+    "entregar_paquete",
+    "operar_arenera",
+    "leer_proyecto",
+    "cambiar_caso",
+  ],
+  rita: ["leer_proyecto", "revisar_paquete"],
+  admin: [
+    "operar_arenera",
+    "cambiar_caso",
+    "administrar_cuentas",
+    "administrar_empresa",
+    "administrar_precios",
+    "administrar_red_y_api",
+    "cambiar_carpeta_de_datos",
+  ],
+};
 
 const CASOS = {
   actual: { nombre: "clinica", ruta_relativa: "data/clinica.db" },
@@ -102,25 +133,87 @@ describe("Shell", () => {
     vi.unstubAllGlobals();
   });
 
-  function montar(sesion = sesionCon(), ruta = "/tablero") {
+  function montar(sesion = sesionCon(), ruta = "/tablero", paginas: readonly PaginaDef[] = PAGINAS) {
     return render(
       <MemoryRouter initialEntries={[ruta]}>
-        <Shell sesion={sesion} alSalir={alSalir} alExpirar={alExpirar} paginas={PAGINAS} />
+        <Shell sesion={sesion} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
       </MemoryRouter>,
     );
   }
 
+  // La barra superior (ancho normal) y su capa (ancho estrecho o letra grande) son dos navegaciones con nombre propio.
   function menu() {
     return screen.getByRole("navigation", { name: "Menú principal" });
   }
 
+  function capa() {
+    return screen.getByRole("navigation", { name: "Menú principal (capa)" });
+  }
+
+  // Las areas de la barra, en su orden: enlaces (una sola pantalla) y botones (abren su panel).
+  function areasDeLaBarra(): HTMLElement[] {
+    return [...menu().querySelectorAll<HTMLElement>(".silice-barra__item > a, .silice-barra__item > button")];
+  }
+
+  // Titulo de cada enlace de la capa (su nombre accesible lleva tambien la linea de ayuda).
+  function titulosDeLaCapa(): string[] {
+    return within(capa())
+      .getAllByRole("link")
+      .map((a) => a.querySelector(".silice-capa__nombre")?.textContent ?? "");
+  }
+
+  // Los selectores viven en el panel «Carpeta y proyecto» de la barra: se abre antes de usarlos.
+  async function abrirCarpeta(usuario: ReturnType<typeof userEvent.setup>) {
+    await usuario.click(await screen.findByRole("button", { name: /^Carpeta de trabajo:/ }));
+  }
+
+  async function selectorDeCarpeta(usuario: ReturnType<typeof userEvent.setup>) {
+    await abrirCarpeta(usuario);
+    return screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+  }
+
+  async function salir(usuario: ReturnType<typeof userEvent.setup>) {
+    await usuario.click(await screen.findByRole("button", { name: "Cuenta de Ana Pérez" }));
+    await usuario.click(screen.getByRole("button", { name: "Salir" }));
+  }
+
   describe("cabecera", () => {
-    test("muestra el nombre de la persona y Salir llama a alSalir", async () => {
+    test("muestra el nombre de la persona y «Salir», en el menú de la cuenta, llama a alSalir", async () => {
       const usuario = userEvent.setup();
       montar();
-      expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
-      await usuario.click(screen.getByRole("button", { name: /^Salir/ }));
+      const banner = screen.getByRole("banner");
+      expect(await within(banner).findByText("Ana Pérez")).toBeInTheDocument();
+      await salir(usuario);
       expect(alSalir).toHaveBeenCalled();
+    });
+
+    // Antes en Cabecera.test.tsx: el control de tamaño de letra está en la barra junto a la cuenta.
+    test("trae el control de tamaño de letra junto a la cuenta, que lleva el nombre en su nombre accesible y su título", async () => {
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      const banner = screen.getByRole("banner");
+      expect(within(banner).getByRole("group", { name: "Tamaño de letra" })).toBeInTheDocument();
+      const cuenta = within(banner).getByRole("button", { name: "Cuenta de Ana Pérez" });
+      expect(cuenta).toHaveAttribute("title", "Ana Pérez");
+    });
+
+    test("el lado derecho va en orden: carpeta y proyecto, recorrido, tamaño de letra y cuenta", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      await usuario.click(within(screen.getByRole("complementary", { name: "Recorrido" })).getByRole("button", { name: "Ocultar" }));
+      const banner = screen.getByRole("banner");
+      const orden = [
+        within(banner).getByRole("button", { name: /^Carpeta de trabajo:/ }),
+        within(banner).getByRole("button", { name: "Recorrido" }),
+        within(banner).getByRole("group", { name: "Tamaño de letra" }),
+        within(banner).getByRole("button", { name: "Cuenta de Ana Pérez" }),
+      ];
+      for (let i = 1; i < orden.length; i++) {
+        expect(orden[i - 1].compareDocumentPosition(orden[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
     });
 
     test("«Saltar al contenido» es lo primero que se alcanza con Tab y manda el foco a la pagina", async () => {
@@ -140,22 +233,67 @@ describe("Shell", () => {
       expect(screen.getAllByRole("main")).toHaveLength(1);
       expect(screen.getByRole("banner")).toHaveTextContent("Sílice");
     });
+
+    test("la carpeta de trabajo y el proyecto se ven en la barra", async () => {
+      montar();
+      const banner = screen.getByRole("banner");
+      expect(await within(banner).findByRole("button", { name: "Carpeta de trabajo: clinica. Proyecto: Sin proyecto. Cambiar" })).toBeInTheDocument();
+      expect(within(banner).getByText("clinica · Sin proyecto")).toBeInTheDocument();
+    });
   });
 
-  describe("menu", () => {
-    test("agrupa por area segun las acciones de la sesion, cada una con su descripcion a la vista", async () => {
+  describe("barra superior", () => {
+    test("muestra las áreas que la cuenta puede usar, y en cada panel solo sus pantallas permitidas", async () => {
+      const usuario = userEvent.setup();
       montar();
-      const nav = menu();
-      const rotulos = [...nav.querySelectorAll(".silice-menu__rotulo")].map((h) => h.textContent);
-      expect(rotulos).toEqual(["Crear", "Más"]); // sin revisar_paquete ni operar_arenera no hay Auditar ni Producción
-      expect(within(nav).getByText("APU, presupuestos y entregas")).toBeInTheDocument();
-      expect(within(nav).getByText("Precios, obra, análisis y ajustes")).toBeInTheDocument();
-      expect(within(nav).queryByText("Control de obra")).not.toBeInTheDocument(); // sin control_de_obra
-      expect(within(nav).getByText("Acerca de Sílice")).toBeInTheDocument(); // sin accion: toda cuenta la ve
+      // Sin revisar_paquete ni operar_arenera no hay Auditar ni Producción; Crear y Más tienen dos pantallas cada una.
+      expect(areasDeLaBarra().map((a) => a.textContent)).toEqual(["Crear", "Más"]);
+      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
+      const panel = within(menu()).getByRole("region", { name: "Más" });
+      expect(within(panel).getByRole("link", { name: "Acerca de Sílice" })).toBeInTheDocument(); // sin accion: toda cuenta la ve
+      expect(within(panel).queryByRole("link", { name: "Control de obra" })).not.toBeInTheDocument(); // sin control_de_obra
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("«Más» viene plegado, se abre con su boton y se abre solo si la pagina actual es de ahi", async () => {
+    test.each([
+      ["ana", ["Inicio", "Auditar", "Crear", "Existencias de la arenera", "Más"]],
+      ["rita", ["Inicio", "Auditar", "Crear", "Más"]],
+      ["admin", ["Inicio", "Existencias de la arenera", "Más"]],
+    ] as const)("%s ve en la barra las áreas de su rol", async (rol, esperadas) => {
+      montar(sesionCon({ login: rol, acciones: ACCIONES_POR_ROL[rol] }), "/inicio", LIGERAS);
+      await screen.findByRole("heading", { name: "Inicio" });
+      expect(areasDeLaBarra().map((a) => a.textContent)).toEqual(esperadas);
+    });
+
+    test.each(["ana", "rita", "admin"] as const)(
+      "con %s ninguna página tiene dos enlaces en una misma navegación (barra y capa), y están todas las que puede usar",
+      async (rol) => {
+        const usuario = userEvent.setup();
+        const acciones = ACCIONES_POR_ROL[rol];
+        montar(sesionCon({ login: rol, acciones }), "/inicio", LIGERAS);
+        await screen.findByRole("heading", { name: "Inicio" });
+        const esperadas = REGISTRO.filter((p) => visible(p, acciones, false)).map((p) => p.titulo).sort();
+        const vistas = new Set<string>();
+        for (const area of areasDeLaBarra()) {
+          if (area.tagName === "BUTTON") await usuario.click(area);
+          // En el panel el nombre accesible es solo el titulo (la linea de ayuda es la descripcion).
+          const titulos = within(menu())
+            .getAllByRole("link")
+            .map((a) => (a.querySelector(".silice-panel-area__titulo") ?? a).textContent ?? "");
+          for (const t of titulos) {
+            expect(within(menu()).getAllByRole("link", { name: t })).toHaveLength(1);
+            vistas.add(t);
+          }
+        }
+        expect([...vistas].sort()).toEqual(esperadas);
+        await usuario.click(screen.getByRole("button", { name: "Abrir el menú" }));
+        const enCapa = titulosDeLaCapa();
+        expect(new Set(enCapa).size).toBe(enCapa.length);
+        expect([...enCapa].sort()).toEqual(esperadas);
+      },
+    );
+
+    test("«Más» empieza cerrado, se abre con su botón y se vuelve a cerrar", async () => {
       const usuario = userEvent.setup();
       montar();
       const boton = within(menu()).getByRole("button", { name: "Más" });
@@ -163,143 +301,191 @@ describe("Shell", () => {
       expect(within(menu()).queryByRole("link", { name: /Escenarios/ })).not.toBeInTheDocument();
       await usuario.click(boton);
       expect(boton).toHaveAttribute("aria-expanded", "true");
-      expect(within(menu()).getByText("Escenarios de sensibilidad")).toBeVisible();
+      expect(within(menu()).getByRole("link", { name: "Escenarios de sensibilidad" })).toBeVisible();
       await usuario.click(boton);
       expect(boton).toHaveAttribute("aria-expanded", "false");
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("estando en una pagina de «Más» ese grupo ya esta abierto", async () => {
+    test("estando en una pagina de «Más», esa área se marca como actual y su panel marca la pantalla", async () => {
+      const usuario = userEvent.setup();
       const paginas: PaginaDef[] = [
         ...PAGINAS,
         { id: "indices", titulo: "Índices del BCV", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
       ];
-      render(
-        <MemoryRouter initialEntries={["/indices"]}>
-          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
-        </MemoryRouter>,
-      );
-      expect(within(menu()).getByRole("button", { name: "Más" })).toHaveAttribute("aria-expanded", "true");
-      expect(within(menu()).getByRole("link", { name: "Índices del BCV" })).toBeVisible();
+      montar(sesionCon(), "/indices", paginas);
+      const mas = within(menu()).getByRole("button", { name: "Más" });
+      expect(mas).toHaveClass("silice-barra__area--actual");
+      expect(within(menu()).getByRole("button", { name: "Crear" })).not.toHaveClass("silice-barra__area--actual");
+      await usuario.click(mas);
+      expect(within(menu()).getByRole("link", { name: "Índices del BCV" })).toHaveAttribute("aria-current", "page");
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("las herramientas principales van arriba, en su orden, con su linea de ayuda, y solo las que la cuenta puede usar", async () => {
+    test("las herramientas principales no se repiten en la navegación: cada una sale una sola vez, en su área", async () => {
       const migrada = async () => ({ default: PaginaA });
       const paginas: PaginaDef[] = [
         { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Suba un Excel y vea lo que no cuadra", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
         { id: "componer", titulo: "Componer una partida", enUnaLinea: "Arme el análisis de precio de una partida", seccion: "Trabajo", accion: "editar_hoja", cargar: migrada },
         { id: "existencias", titulo: "Existencias de la arenera", enUnaLinea: "Cuánto hay y cuánto queda de cada material", seccion: "Trabajo", accion: "operar_arenera", cargar: migrada },
       ];
-      render(
-        <MemoryRouter initialEntries={["/libros"]}>
-          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
-        </MemoryRouter>,
-      );
-      const nav = menu();
-      const panel = within(nav).getByText("Herramientas principales").closest("li") as HTMLElement;
-      expect(within(panel).getAllByRole("link").map((a) => a.getAttribute("aria-label"))).toEqual([
-        "Libro de la empresa",
-        "Componer una partida",
-      ]); // la cuenta de ana no opera la arenera; la herramienta lleva el nombre de su pantalla
-      expect(within(panel).getByText("Suba un Excel y vea lo que no cuadra")).toBeInTheDocument();
-      expect(within(panel).getByRole("link", { name: "Componer una partida" })).toHaveAttribute("href", "/componer");
-      expect(within(panel).getByRole("link", { name: "Libro de la empresa" })).toHaveAccessibleDescription(
-        "Suba un Excel y vea lo que no cuadra",
-      );
-      // El panel va antes que las areas.
-      const rotulos = [...nav.querySelectorAll(".silice-menu__rotulo")].map((h) => h.textContent);
-      expect(rotulos[0]).toBe("Herramientas principales");
+      montar(sesionCon(), "/libros", paginas);
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      expect(screen.queryByText("Herramientas principales")).not.toBeInTheDocument();
+      // Una sola pantalla por area: enlaces directos, con el nombre de su pantalla. La cuenta de ana no opera la arenera.
+      expect(within(menu()).getAllByRole("link", { name: "Libro de la empresa" })).toHaveLength(1);
+      expect(within(menu()).getByRole("link", { name: "Componer una partida" })).toHaveAttribute("href", "/componer");
+      expect(within(menu()).queryByRole("link", { name: "Existencias de la arenera" })).not.toBeInTheDocument();
     });
 
-    test("sin ninguna herramienta principal disponible el panel no se pinta", async () => {
+    test("sin herramientas principales tampoco queda un bloque vacío con ese nombre", async () => {
       montar();
-      expect(within(menu()).queryByText("Herramientas principales")).not.toBeInTheDocument();
+      expect(screen.queryByText("Herramientas principales")).not.toBeInTheDocument();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("el recorrido en curso aparece en el menu y se cierra desde ahi", async () => {
+    test("cada pantalla del panel lleva su línea de ayuda como descripción", async () => {
       const usuario = userEvent.setup();
       montar();
-      expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
-      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
-      onTestFinished(() => terminarRecorrido());
-      const region = within(menu()).getByRole("region", { name: "Recorrido en curso" });
-      await usuario.click(within(region).getByRole("button", { name: "Terminar recorrido" }));
-      expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
+      await usuario.click(within(menu()).getByRole("button", { name: "Crear" }));
+      const enlace = within(menu()).getByRole("link", { name: "Tablero del proyecto" });
+      expect(enlace).toHaveAccessibleDescription("Cómo va el proyecto");
+      expect(within(menu()).getByText("Cómo va el proyecto")).toBeVisible();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("la descripcion de cada area esta ligada a su lista", async () => {
-      montar();
-      const lista = within(menu()).getByText("Tablero del proyecto").closest("ul") as HTMLElement;
-      expect(lista).toHaveAccessibleDescription("APU, presupuestos y entregas");
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
-    });
-
-    test("en modo entrega desaparece Investigacion", async () => {
+    test("en modo entrega no aparece ninguna pantalla de Investigación, ni en la barra ni en la capa", async () => {
+      const usuario = userEvent.setup();
       montar(sesionCon({ modo_entrega: true }));
-      const nav = menu();
-      expect(within(nav).queryByText("Investigación")).not.toBeInTheDocument();
-      expect(within(nav).queryByText("Escenarios de sensibilidad")).not.toBeInTheDocument();
+      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
+      expect(within(menu()).queryByText("Investigación")).not.toBeInTheDocument();
+      expect(within(menu()).queryByRole("link", { name: "Escenarios de sensibilidad" })).not.toBeInTheDocument();
+      expect(within(capa()).queryByText("Escenarios de sensibilidad")).not.toBeInTheDocument();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("la pagina migrada es un enlace y marca la actual", async () => {
+    test("en modo entrega, con todas las acciones de ana, ninguna pantalla de Investigación sale en la navegación", async () => {
+      const usuario = userEvent.setup();
+      montar(sesionCon({ acciones: ACCIONES_POR_ROL.ana, modo_entrega: true }), "/inicio", LIGERAS);
+      await screen.findByRole("heading", { name: "Inicio" });
+      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
+      for (const p of REGISTRO.filter((q) => q.seccion === "Investigación")) {
+        expect(within(menu()).queryByRole("link", { name: p.titulo })).not.toBeInTheDocument();
+        expect(titulosDeLaCapa()).not.toContain(p.titulo);
+      }
+    });
+
+    test("la pagina actual es un enlace marcado en su panel y su área va marcada como actual", async () => {
+      const usuario = userEvent.setup();
       montar();
+      const crear = within(menu()).getByRole("button", { name: "Crear" });
+      expect(crear).toHaveClass("silice-barra__area--actual");
+      await usuario.click(crear);
       const enlace = within(menu()).getByRole("link", { name: "Tablero del proyecto" });
       expect(enlace).toHaveAttribute("href", "/tablero");
       expect(enlace).toHaveAttribute("aria-current", "page");
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("toda pagina del menu es un enlace de esta interfaz: ni «clásica» ni enlaces fuera de ella", async () => {
+    test("toda pantalla de la navegación es un enlace de esta interfaz: ni «clásica» ni enlaces fuera de ella", async () => {
+      const usuario = userEvent.setup();
       montar();
-      const nav = menu();
-      expect(nav).not.toHaveTextContent(/clásica/i);
-      expect(nav.querySelector(".silice-menu__pendiente, .silice-menu__grupo")).toBeNull();
-      expect(nav.querySelector("a[target=_blank]")).toBeNull();
-      const enlace = within(nav).getByRole("link", { name: /Catálogo de partidas e insumos/ });
-      expect(enlace).toHaveAttribute("href", "/catalogo");
-      expect(within(nav).queryByText("Catálogo de partidas e insumos")?.closest("[aria-disabled]")).toBeNull();
+      await usuario.click(within(menu()).getByRole("button", { name: "Crear" }));
+      for (const nav of [menu(), capa()]) {
+        expect(nav).not.toHaveTextContent(/clásica/i);
+        expect(nav.querySelector("[class*='silice-menu__']")).toBeNull();
+        expect(nav.querySelector("a[target=_blank]")).toBeNull();
+        expect(nav.querySelector("[aria-disabled]")).toBeNull();
+      }
+      expect(within(menu()).getByRole("link", { name: "Catálogo de partidas e insumos" })).toHaveAttribute("href", "/catalogo");
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("se recorre con el teclado: Tab llega al enlace y Enter cambia de pagina", async () => {
-      // En pantalla ancha (lg) el menu esta siempre abierto; en angosta Carbon lo marca inert hasta abrirlo.
-      const original = window.matchMedia;
-      Object.defineProperty(window, "matchMedia", {
-        configurable: true,
-        value: (consulta: string) => ({ ...original(consulta), matches: true }),
-      });
-      onTestFinished(() => {
-        Object.defineProperty(window, "matchMedia", { configurable: true, value: original });
-      });
+    test("se recorre con el teclado: Tab llega al área, Enter abre su panel, flecha abajo y Enter cambian de página", async () => {
       const usuario = userEvent.setup();
-      const paginas: PaginaDef[] = [
-        ...PAGINAS,
-        {
-          id: "libros",
-          titulo: "Libro de la empresa",
-          enUnaLinea: "Pantalla de prueba",
-          seccion: "Revisión",
-          accion: "leer_proyecto",
-          cargar: async () => ({ default: () => <h1>Pantalla del libro</h1> }),
-        },
-      ];
-      render(
-        <MemoryRouter initialEntries={["/tablero"]}>
-          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
-        </MemoryRouter>,
-      );
+      montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      // La herramienta principal y su area llevan el mismo nombre: se prueba con el de su area (el ultimo).
-      const enlace = within(menu()).getAllByRole("link", { name: "Libro de la empresa" }).at(-1)!;
-      for (let i = 0; i < 40 && document.activeElement !== enlace; i++) await usuario.tab();
-      expect(enlace).toHaveFocus();
+      const crear = within(menu()).getByRole("button", { name: "Crear" });
+      for (let i = 0; i < 40 && document.activeElement !== crear; i++) await usuario.tab();
+      expect(crear).toHaveFocus();
       await usuario.keyboard("{Enter}");
-      expect(await screen.findByRole("heading", { name: "Pantalla del libro" })).toBeInTheDocument();
+      expect(crear).toHaveAttribute("aria-expanded", "true");
+      expect(within(menu()).getByRole("link", { name: "Tablero del proyecto" })).toHaveFocus();
+      await usuario.keyboard("{ArrowDown}");
+      expect(within(menu()).getByRole("link", { name: "Catálogo de partidas e insumos" })).toHaveFocus();
+      await usuario.keyboard("{Enter}");
+      const titulo = await screen.findByRole("heading", { name: "Otra pantalla" });
+      await waitFor(() => expect(titulo).toHaveFocus());
+    });
+
+    test("los rótulos de área no son encabezados, ni en la barra ni en la capa (el h1 de la página es el primero que se lee)", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
+      expect(within(menu()).queryAllByRole("heading")).toHaveLength(0);
+      expect(within(capa()).queryAllByRole("heading")).toHaveLength(0);
+      expect(capa().querySelectorAll(".silice-capa__rotulo").length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("recorrido guiado", () => {
+    test("el recorrido en curso aparece en su columna junto al contenido y se cierra desde ahí", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      expect(screen.queryByRole("complementary", { name: "Recorrido" })).not.toBeInTheDocument();
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      const columna = screen.getByRole("complementary", { name: "Recorrido" });
+      expect(within(columna).getByText(RECORRIDO_AUDITAR.titulo)).toBeInTheDocument();
+      await usuario.click(within(columna).getByRole("button", { name: "Terminar recorrido" }));
+      expect(screen.queryByRole("complementary", { name: "Recorrido" })).not.toBeInTheDocument();
+      expect(recorridoEnCurso()).toBeNull();
+    });
+
+    test("con la columna a la vista el contenido cede su ancho (clase silice-con-recorrido); oculta o sin recorrido, no", async () => {
+      const usuario = userEvent.setup();
+      const { container } = montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      expect(container.querySelector(".silice-con-recorrido .silice-contenido")).toBeNull();
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      expect(container.querySelector(".silice-con-recorrido .silice-contenido")).not.toBeNull();
+      await usuario.click(screen.getByRole("button", { name: "Ocultar" }));
+      expect(container.querySelector(".silice-con-recorrido")).toBeNull();
+      await usuario.click(within(screen.getByRole("banner")).getByRole("button", { name: "Recorrido" }));
+      expect(screen.getByRole("complementary", { name: "Recorrido" })).toBeInTheDocument();
+      expect(container.querySelector(".silice-con-recorrido .silice-contenido")).not.toBeNull();
+    });
+
+    test("la columna no se cierra al navegar", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      await usuario.click(within(menu()).getByRole("button", { name: "Crear" }));
+      await usuario.click(within(menu()).getByRole("link", { name: "Catálogo de partidas e insumos" }));
+      await screen.findByRole("heading", { name: "Otra pantalla" });
+      expect(screen.getByRole("complementary", { name: "Recorrido" })).toBeInTheDocument();
+    });
+
+    // Foco de revision 4 del plan: Esc cierra el panel del area, no el recorrido.
+    test("con un recorrido activo y el panel de «Crear» abierto, Esc cierra solo el panel", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      const crear = within(menu()).getByRole("button", { name: "Crear" });
+      await usuario.click(crear);
+      expect(crear).toHaveAttribute("aria-expanded", "true");
+      await usuario.keyboard("{Escape}");
+      expect(crear).toHaveAttribute("aria-expanded", "false");
+      expect(within(menu()).queryByRole("region", { name: "Crear" })).not.toBeInTheDocument();
+      expect(screen.getByRole("complementary", { name: "Recorrido" })).toBeInTheDocument();
+      expect(recorridoEnCurso()).not.toBeNull();
     });
   });
 
@@ -309,10 +495,10 @@ describe("Shell", () => {
       montar();
       act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
       onTestFinished(() => terminarRecorrido());
-      expect(within(menu()).getByRole("region", { name: "Recorrido en curso" })).toBeInTheDocument();
-      await usuario.click(screen.getByRole("button", { name: /^Salir/ }));
+      expect(screen.getByRole("complementary", { name: "Recorrido" })).toBeInTheDocument();
+      await salir(usuario);
       expect(alSalir).toHaveBeenCalled();
-      expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("complementary", { name: "Recorrido" })).not.toBeInTheDocument();
       expect(recorridoEnCurso()).toBeNull();
     });
 
@@ -328,7 +514,7 @@ describe("Shell", () => {
       montar();
       act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
       onTestFinished(() => terminarRecorrido());
-      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+      const selector = await selectorDeCarpeta(usuario);
       await waitFor(() => expect(selector).toHaveValue("clinica"));
       await usuario.selectOptions(selector, "arenaza");
       await waitFor(() => expect(alExpirar).toHaveBeenCalled());
@@ -408,8 +594,9 @@ describe("Shell", () => {
 
   describe("selector de caso", () => {
     test("lista los casos y deja elegido el actual", async () => {
+      const usuario = userEvent.setup();
       montar();
-      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+      const selector = await selectorDeCarpeta(usuario);
       await waitFor(() => expect(selector).toHaveValue("clinica"));
       expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["clinica", "arenaza"]);
     });
@@ -417,7 +604,7 @@ describe("Shell", () => {
     test("cambiar el caso hace POST /v1/casos/actual con el token y avisa que el cambio vive hasta reiniciar la API", async () => {
       const usuario = userEvent.setup();
       montar();
-      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+      const selector = await selectorDeCarpeta(usuario);
       await waitFor(() => expect(selector).toHaveValue("clinica"));
       await usuario.selectOptions(selector, "arenaza");
       await waitFor(() => expect(selector).toHaveValue("arenaza"));
@@ -431,6 +618,8 @@ describe("Shell", () => {
       expect(dentro.getByText("Carpeta de trabajo cambiada")).toBeInTheDocument();
       expect(dentro.getByText(/Ahora trabaja con la carpeta de trabajo «arenaza»/)).toBeInTheDocument();
       expect(dentro.queryByText(/\bcaso\b/i)).toBeNull();
+      // La barra muestra la carpeta nueva.
+      expect(screen.getByRole("button", { name: /^Carpeta de trabajo: arenaza\./ })).toBeInTheDocument();
     });
 
     test("el aviso y las opciones muestran la carpeta sin la extension .db", async () => {
@@ -445,7 +634,7 @@ describe("Shell", () => {
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+      const selector = await selectorDeCarpeta(usuario);
       await waitFor(() => expect(selector).toHaveValue("clinica.db"));
       expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["clinica", "obra"]);
       await usuario.selectOptions(selector, "obra.db");
@@ -457,13 +646,14 @@ describe("Shell", () => {
       const usuario = userEvent.setup();
       montar();
       expect(await screen.findByText("caso=clinica")).toBeInTheDocument();
-      await usuario.selectOptions(await screen.findByRole("combobox", { name: "Carpeta de trabajo" }), "arenaza");
+      await usuario.selectOptions(await selectorDeCarpeta(usuario), "arenaza");
       expect(await screen.findByText("caso=arenaza")).toBeInTheDocument();
     });
 
     test("sin la accion cambiar_caso el selector esta deshabilitado", async () => {
+      const usuario = userEvent.setup();
       montar(sesionCon({ acciones: ["leer_proyecto"] }));
-      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+      const selector = await selectorDeCarpeta(usuario);
       expect(selector).toBeDisabled();
     });
 
@@ -477,7 +667,7 @@ describe("Shell", () => {
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+      const selector = await selectorDeCarpeta(usuario);
       await waitFor(() => expect(selector).toHaveValue("clinica"));
       await usuario.selectOptions(selector, "arenaza");
       expect(await alertaConTexto()).toHaveTextContent("El caso ya no existe.");
@@ -494,7 +684,7 @@ describe("Shell", () => {
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+      const selector = await selectorDeCarpeta(usuario);
       await waitFor(() => expect(selector).toHaveValue("clinica"));
       await usuario.selectOptions(selector, "arenaza");
       await waitFor(() => expect(alExpirar).toHaveBeenCalled());
@@ -503,21 +693,14 @@ describe("Shell", () => {
 
   // VB-14 y VB-15 (auditoria visual del bloque B).
   describe("menu en capa y titulo del documento", () => {
-    test("los rótulos de área del menú no son encabezados (el h1 de la página es el primero que se lee)", async () => {
-      montar();
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      expect(within(menu()).queryAllByRole("heading")).toHaveLength(0);
-      expect(menu().querySelectorAll(".silice-menu__rotulo").length).toBeGreaterThan(0);
-    });
-
     test("Esc cierra el menú abierto como capa y devuelve el foco al botón", async () => {
       const usuario = userEvent.setup();
       montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
       await usuario.click(screen.getByRole("button", { name: "Abrir el menú" }));
       expect(screen.getByRole("button", { name: "Cerrar el menú" })).toHaveAttribute("aria-expanded", "true");
-      // El clic deja el foco en el propio boton: se lleva a un enlace del menu para que el regreso se note.
-      within(menu()).getAllByRole("link")[0].focus();
+      // El clic deja el foco en el propio boton: se lleva a un enlace de la capa para que el regreso se note.
+      within(capa()).getAllByRole("link")[0].focus();
       expect(screen.getByRole("button", { name: "Cerrar el menú" })).not.toHaveFocus();
       await usuario.keyboard("{Escape}");
       const boton = screen.getByRole("button", { name: "Abrir el menú" });
@@ -525,13 +708,21 @@ describe("Shell", () => {
       await waitFor(() => expect(boton).toHaveFocus());
     });
 
-    test("Esc con el menú cerrado no mueve el foco", async () => {
+    test("Esc con todo cerrado no mueve el foco", async () => {
       const usuario = userEvent.setup();
       montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      await usuario.click(screen.getByRole("button", { name: /^Salir/ }));
+      const crear = within(menu()).getByRole("button", { name: "Crear" });
+      crear.focus();
       await usuario.keyboard("{Escape}");
-      expect(screen.getByRole("button", { name: /^Salir/ })).toHaveFocus();
+      expect(crear).toHaveFocus();
+      expect(crear).toHaveAttribute("aria-expanded", "false");
+    });
+
+    test("la capa trae al pie quién tiene la sesión (la barra cede el nombre con la letra grande)", async () => {
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      expect(within(capa()).getByText("Sesión de Ana Pérez")).toBeInTheDocument();
     });
 
     test("document.title es «Página · Sílice» con la página actual y cambia al navegar", async () => {
@@ -540,15 +731,10 @@ describe("Shell", () => {
         ...PAGINAS,
         { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
       ];
-      render(
-        <MemoryRouter initialEntries={["/tablero"]}>
-          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={dos} />
-        </MemoryRouter>,
-      );
+      montar(sesionCon(), "/tablero", dos);
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
       expect(document.title).toBe("Tablero del proyecto · Sílice");
-      await usuario.click(screen.getByRole("button", { name: "Abrir el menú" }));
-      await usuario.click(within(menu()).getAllByRole("link", { name: "Libro de la empresa" })[0]);
+      await usuario.click(within(menu()).getByRole("link", { name: "Libro de la empresa" }));
       await waitFor(() => expect(document.title).toBe("Libro de la empresa · Sílice"));
     });
 
@@ -565,7 +751,9 @@ describe("Shell", () => {
 
   describe("selector de proyecto", () => {
     test("lista los proyectos y empieza sin ninguno elegido", async () => {
+      const usuario = userEvent.setup();
       montar();
+      await abrirCarpeta(usuario);
       const selector = await screen.findByRole("combobox", { name: "Proyecto" });
       await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(3));
       expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
@@ -576,15 +764,17 @@ describe("Shell", () => {
       expect(selector).toHaveValue("");
     });
 
-    test("el elegido llega a las paginas por el contexto y no se guarda en el navegador", async () => {
+    test("el elegido llega a las paginas por el contexto, se ve en la barra y no se guarda en el navegador", async () => {
       const usuario = userEvent.setup();
       const espiaSet = vi.spyOn(Storage.prototype, "setItem");
       montar();
       expect(await screen.findByText("proyecto=ninguno")).toBeInTheDocument();
+      await abrirCarpeta(usuario);
       const selector = await screen.findByRole("combobox", { name: "Proyecto" });
       await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(3));
       await usuario.selectOptions(selector, "P-02");
       expect(await screen.findByText("proyecto=P-02")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Carpeta de trabajo: clinica. Proyecto: Galpón. Cambiar" })).toBeInTheDocument();
       expect(espiaSet).not.toHaveBeenCalled();
       espiaSet.mockRestore();
     });
@@ -592,6 +782,7 @@ describe("Shell", () => {
     test("al cambiar de caso se olvida el proyecto elegido", async () => {
       const usuario = userEvent.setup();
       montar();
+      await abrirCarpeta(usuario);
       const proyecto = await screen.findByRole("combobox", { name: "Proyecto" });
       await waitFor(() => expect(within(proyecto).getAllByRole("option")).toHaveLength(3));
       await usuario.selectOptions(proyecto, "P-01");
@@ -601,6 +792,7 @@ describe("Shell", () => {
     });
 
     test("sin permiso para listar proyectos (403) el selector no se muestra y no hay error", async () => {
+      const usuario = userEvent.setup();
       fetchFalso.mockImplementation(async (entrada, init) => {
         const ruta = String(entrada);
         if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json(CASOS);
@@ -608,7 +800,7 @@ describe("Shell", () => {
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+      await selectorDeCarpeta(usuario);
       await waitFor(() => expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(true));
       expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -617,6 +809,7 @@ describe("Shell", () => {
     // VB-20: el codigo es un numero interno; la persona elige por el nombre. Si dos proyectos se llaman igual, el
     // codigo es lo unico que los distingue y se agrega entre parentesis.
     test("dos proyectos con el mismo nombre se distinguen por su código", async () => {
+      const usuario = userEvent.setup();
       fetchFalso.mockImplementation(async (entrada, init) => {
         const ruta = String(entrada);
         if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json(CASOS);
@@ -629,6 +822,7 @@ describe("Shell", () => {
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
+      await abrirCarpeta(usuario);
       const selector = await screen.findByRole("combobox", { name: "Proyecto" });
       await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(4));
       expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
@@ -641,8 +835,9 @@ describe("Shell", () => {
 
     // VB-9: sin `leer_proyecto` la API contesta 403; no se pide.
     test("una cuenta sin la acción leer_proyecto no pide la lista de proyectos", async () => {
+      const usuario = userEvent.setup();
       montar(sesionCon({ acciones: ["administrar_cuentas", "cambiar_caso"] }), "/acerca");
-      await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+      await selectorDeCarpeta(usuario);
       expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(false);
       expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
     });
@@ -672,6 +867,7 @@ describe("Shell", () => {
       );
     }
     const Destino = () => <h1>Pantalla de destino</h1>;
+    // Sin area propia: las dos caen en el panel de «Más» (grupo «Otras»).
     const DOS: PaginaDef[] = [
       { id: "origen", titulo: "Origen de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Origen }) },
       { id: "destino", titulo: "Destino de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Destino }) },
@@ -694,11 +890,41 @@ describe("Shell", () => {
       expect(titulo).toHaveAttribute("tabindex", "-1");
     });
 
-    test("un enlace del menú conserva el foco: solo se mueve si se perdió", async () => {
+    test("elegir otra pantalla en el panel de un área lleva el foco al h1 de la nueva (el panel se cierra)", async () => {
       const usuario = userEvent.setup();
       montarDos();
       await screen.findByRole("heading", { name: "Pantalla de origen" });
-      const enlace = within(menu()).getByRole("link", { name: "Destino de prueba" });
+      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
+      await usuario.click(within(menu()).getByRole("link", { name: "Destino de prueba" }));
+      const titulo = await screen.findByRole("heading", { name: "Pantalla de destino" });
+      await waitFor(() => expect(titulo).toHaveFocus());
+      expect(within(menu()).queryByRole("region", { name: "Más" })).not.toBeInTheDocument();
+    });
+
+    test("elegir en el panel la pantalla en la que ya está deja el foco en su h1, no en <body>", async () => {
+      const usuario = userEvent.setup();
+      montarDos();
+      const titulo = await screen.findByRole("heading", { name: "Pantalla de origen" });
+      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
+      await usuario.click(within(menu()).getByRole("link", { name: "Origen de prueba" }));
+      expect(within(menu()).queryByRole("region", { name: "Más" })).not.toBeInTheDocument();
+      await waitFor(() => expect(titulo).toHaveFocus());
+    });
+
+    test("un enlace directo de la barra conserva el foco: solo se mueve si se perdió", async () => {
+      const usuario = userEvent.setup();
+      // Inicio y Producción tienen una sola pantalla: son enlaces que siguen en la barra tras navegar.
+      const directas: PaginaDef[] = [
+        { ...DOS[0], id: "inicio", titulo: "Inicio" },
+        { ...DOS[1], id: "existencias", titulo: "Existencias de prueba" },
+      ];
+      render(
+        <MemoryRouter initialEntries={["/inicio"]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={directas} />
+        </MemoryRouter>,
+      );
+      await screen.findByRole("heading", { name: "Pantalla de origen" });
+      const enlace = within(menu()).getByRole("link", { name: "Existencias de prueba" });
       await usuario.click(enlace);
       await screen.findByRole("heading", { name: "Pantalla de destino" });
       await new Promise((r) => setTimeout(r, 80));
@@ -762,17 +988,18 @@ describe("Shell", () => {
       await waitFor(() => expect(real).toHaveFocus());
     });
 
-    test("«Terminar recorrido» con Enter deja el foco en el primer enlace del menú, no en <body>", async () => {
+    // Tarea 6 del plan de la barra: al terminar, el foco va al h1 de la pagina (ya no hay un enlace del menu al que volver).
+    test("«Terminar recorrido» con Enter deja el foco en el h1 de la página, no en <body>", async () => {
       const usuario = userEvent.setup();
       montar();
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      const titulo = await screen.findByRole("heading", { name: "Pantalla del tablero" });
       act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
       onTestFinished(() => terminarRecorrido());
-      const region = within(menu()).getByRole("region", { name: "Recorrido en curso" });
-      within(region).getByRole("button", { name: "Terminar recorrido" }).focus();
+      const columna = screen.getByRole("complementary", { name: "Recorrido" });
+      within(columna).getByRole("button", { name: "Terminar recorrido" }).focus();
       await usuario.keyboard("{Enter}");
-      expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
-      expect(within(menu()).getAllByRole("link")[0]).toHaveFocus();
+      expect(screen.queryByRole("complementary", { name: "Recorrido" })).not.toBeInTheDocument();
+      expect(titulo).toHaveFocus();
     });
   });
 });

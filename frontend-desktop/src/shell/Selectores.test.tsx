@@ -1,7 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
 import { describe, expect, test } from "vitest";
-import { MenuLateral } from "./MenuLateral";
 import { SelectorCaso, SelectorProyecto } from "./Selectores";
 
 const PROYECTOS = [
@@ -50,22 +48,5 @@ describe("SelectorCaso, extensión", () => {
   });
 });
 
-describe("MenuLateral, pie con la persona", () => {
-  test("el menú trae al pie quién tiene la sesión (se ve cuando el menú es capa y la cabecera cede el nombre)", () => {
-    render(
-      <MemoryRouter>
-        <MenuLateral paginas={[]} acciones={[]} modoEntrega={false} abierto alCerrar={() => {}} nombre="Ana Pérez" />
-      </MemoryRouter>,
-    );
-    expect(screen.getByText("Sesión de Ana Pérez")).toBeInTheDocument();
-  });
-
-  test("sin nombre no hay pie", () => {
-    render(
-      <MemoryRouter>
-        <MenuLateral paginas={[]} acciones={[]} modoEntrega={false} abierto alCerrar={() => {}} />
-      </MemoryRouter>,
-    );
-    expect(screen.queryByText(/^Sesión de/)).not.toBeInTheDocument();
-  });
-});
+// El pie «Sesión de …» del menú lateral pasó a la capa: lo prueban MenuEnCapa.test.tsx («con nombre muestra la sesion al pie;
+// sin nombre no», «sin nombre no hay pie de sesion») y Shell.test.tsx («la capa trae al pie quién tiene la sesión»).

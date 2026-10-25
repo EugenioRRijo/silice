@@ -30,7 +30,8 @@ const PROHIBIDO: [string, RegExp][] = [
   ["puerto_api", /puerto_api/],
   ["textoDeApi", /textoDeApi/],
   ["«interfaz clásica»", /interfaz cl[aá]sica/i],
-  ["clases del menu «sin migrar»", /silice-menu__(clasica|pendiente|grupo|titulo)/],
+  // El menu lateral se retiro (barra superior, 2026-10-25): ninguna clase suya queda en el codigo ni en los estilos.
+  ["clases del menu lateral retirado", /silice-menu__/],
 ];
 
 describe("sin rastro de la interfaz clasica", () => {

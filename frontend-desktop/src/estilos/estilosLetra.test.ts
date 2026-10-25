@@ -55,10 +55,20 @@ describe("tamaño de letra en el CSS propio", () => {
     expect(0.75 * base).toBeGreaterThanOrEqual(14);
   });
 
-  test("el menu pasa a ser capa antes con la letra grande (Grande bajo 1536 px, Muy grande bajo 1920 px) y la cabecera cede el nombre", () => {
+  test("la barra pasa a capa antes con la letra grande (Grande bajo 1536 px, Muy grande bajo 1920 px) y cede el nombre", () => {
     const shell = leer(`${raiz}/shell/shell.scss`);
-    expect(shell).toMatch(/@include menu-en-capa\("grande", 1535\.98px\)/);
-    expect(shell).toMatch(/@include menu-en-capa\("muy-grande", 1919\.98px\)/);
-    expect(shell).toMatch(/\.silice-usuario\s*\{\s*display:\s*none/);
+    const umbrales = leer(`${raiz}/shell/_umbrales.scss`);
+    // Los umbrales viven solo en _umbrales.scss; shell.scss aplica el mixin por escala, sin cifras propias.
+    expect(umbrales).toMatch(/"normal":\s*1055\.98px/);
+    expect(umbrales).toMatch(/"grande":\s*1535\.98px/);
+    expect(umbrales).toMatch(/"muy-grande":\s*1919\.98px/);
+    for (const escala of ["normal", "grande", "muy-grande"]) {
+      expect(shell).toContain(`@include menu-en-capa("${escala}");`);
+    }
+    expect(shell).toMatch(/@include u\.por-debajo-del-umbral\(\$escala\)/);
+    expect(shell).not.toMatch(/\d+(\.\d+)?px\)/);
+    // La cuenta cede el nombre (queda en su nombre accesible) con letra Grande o Muy grande.
+    const cuenta = leer(`${raiz}/shell/MenuCuenta.scss`);
+    expect(cuenta).toMatch(/data-silice-letra="grande"\][^{]*data-silice-letra="muy-grande"\][^{]*\{\s*\.silice-cuenta__nombre\s*\{\s*display:\s*none/);
   });
 });

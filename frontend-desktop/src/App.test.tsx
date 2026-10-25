@@ -61,12 +61,24 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Entrar" });
   });
 
+  // Antes en Cabecera.test.tsx: la persona necesita leer la pantalla de entrada; sin sesion no hay cuenta ni menu.
+  test("sin sesión la cabecera también trae el control de tamaño de letra, y no la cuenta ni el menú", async () => {
+    sesionActual = () => json({ detalle: "Sin sesión." }, 401);
+    render(<App />);
+    await screen.findByRole("heading", { name: "Entrar" });
+    const banner = screen.getByRole("banner");
+    expect(within(banner).getByRole("group", { name: "Tamaño de letra" })).toBeInTheDocument();
+    expect(within(banner).queryByRole("button", { name: /^Cuenta de/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();
+  });
+
   test("sin sesion muestra el formulario de entrada", async () => {
     sesionActual = () => json({ detalle: "Sin sesión." }, 401);
     render(<App />);
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
     expect(screen.getByLabelText("Usuario")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Salir/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Cuenta de/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Salir" })).not.toBeInTheDocument();
   });
 
   test("mientras comprueba la sesion no muestra el formulario", () => {
@@ -76,14 +88,21 @@ describe("App", () => {
     expect(screen.getByText(/Comprobando su sesión/)).toBeInTheDocument();
   });
 
-  test("con sesion vigente muestra el nombre, Salir, el menu y aterriza en el Inicio", async () => {
+  test("con sesion vigente muestra el nombre, la cuenta con Salir, la barra y aterriza en el Inicio", async () => {
+    const usuario = userEvent.setup();
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Salir/ })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Libro de la empresa" }).length).toBeGreaterThan(0);
+    await usuario.click(screen.getByRole("button", { name: "Cuenta de Ana Pérez" }));
+    expect(screen.getByRole("button", { name: "Salir" })).toBeInTheDocument();
+    // La cuenta revisa y opera la arenera: Auditar tiene varias pantallas (panel) y Producción una sola (enlace).
+    const barra = screen.getByRole("navigation", { name: "Menú principal" });
+    expect(within(barra).getByRole("button", { name: "Auditar" })).toBeInTheDocument();
+    expect(within(barra).getByRole("link", { name: "Existencias de la arenera" })).toBeInTheDocument();
     // La pagina llega por import() dinamico: con la suite entera en marcha tarda mas que el plazo por omision.
     expect(await screen.findByRole("heading", { name: "Audite un presupuesto" }, { timeout: 5000 })).toBeInTheDocument();
     expect(window.location.hash).toBe("#/inicio");
+    // Las herramientas principales, fuera de la navegacion, son mosaicos del Inicio.
+    expect(screen.getByRole("link", { name: "Libro de la empresa" })).toHaveAttribute("href", "#/libros");
     // Las lecturas del Inicio ya contestaron: la sesion sigue viva (no cayo al formulario «Entrar»).
     expect(await screen.findByText("Aún no hay materiales", {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
@@ -130,7 +149,8 @@ describe("App", () => {
   test("Salir cierra la sesion con DELETE y vuelve al formulario", async () => {
     const usuario = userEvent.setup();
     render(<App />);
-    await usuario.click(await screen.findByRole("button", { name: /^Salir/ }));
+    await usuario.click(await screen.findByRole("button", { name: "Cuenta de Ana Pérez" }));
+    await usuario.click(screen.getByRole("button", { name: "Salir" }));
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
     const borrado = fetchFalso.mock.calls.find((c) => c[1]?.method === "DELETE");
     expect(new Headers(borrado?.[1]?.headers).get("X-Silice-CSRF")).toBe("tok");
@@ -144,7 +164,7 @@ describe("App", () => {
       render(<App />);
       expect(await screen.findByRole("heading", { name: "Cambie su contraseña" })).toBeInTheDocument();
       expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /^Salir/ })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Cuenta de Ana Pérez" })).toBeInTheDocument();
       expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/casos")).toBe(false);
       expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(false);
     });
@@ -356,7 +376,8 @@ describe("App", () => {
       render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
       await screen.findByText("Ana Pérez");
       await subirLibro(usuario);
-      await usuario.click(screen.getByRole("button", { name: /^Salir/ }));
+      await usuario.click(screen.getByRole("button", { name: "Cuenta de Ana Pérez" }));
+      await usuario.click(screen.getByRole("button", { name: "Salir" }));
       await screen.findByRole("heading", { name: "Entrar" });
       await volverAEntrar(usuario);
       await screen.findByText("Ana Pérez");

@@ -509,4 +509,57 @@ describe("Inicio, panel del día", () => {
       });
     });
   });
+
+  // Barra superior (2026-10-25, §5.5): las tres herramientas principales salieron de la navegacion (eran el duplicado)
+  // y quedan aqui como mosaicos, con el titulo y la linea de ayuda de su pantalla (rutas.ts), solo las que la cuenta usa.
+  describe("herramientas principales", () => {
+    function mosaicos() {
+      return screen.getByRole("region", { name: "Herramientas principales" });
+    }
+
+    test("con las acciones de ana: «Libro de la empresa», «Componer una partida» y «Existencias de la arenera», con su ayuda", () => {
+      montar();
+      const enlaces = within(mosaicos()).getAllByRole("link");
+      expect(enlaces.map((a) => a.getAttribute("href"))).toEqual(["/libros", "/componer", "/existencias"]);
+      expect(within(mosaicos()).getByRole("link", { name: "Libro de la empresa" })).toHaveAccessibleDescription(
+        "Suba un Excel y vea lo que no cuadra",
+      );
+      expect(within(mosaicos()).getByRole("link", { name: "Componer una partida" })).toHaveAccessibleDescription(
+        "Arme el análisis de precio de una partida",
+      );
+      expect(within(mosaicos()).getByRole("link", { name: "Existencias de la arenera" })).toHaveAccessibleDescription(
+        "Cuánto hay y cuánto queda de cada material",
+      );
+      expect(within(mosaicos()).getByText("Suba un Excel y vea lo que no cuadra")).toBeVisible();
+    });
+
+    test("sin permiso para una herramienta, ese mosaico no aparece", () => {
+      montar({ sesion: { ...SESION, acciones: ["leer_proyecto", "editar_hoja"] } });
+      expect(within(mosaicos()).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/libros", "/componer"]);
+      expect(within(mosaicos()).queryByRole("link", { name: "Existencias de la arenera" })).not.toBeInTheDocument();
+    });
+
+    test("el administrador solo ve la arenera, y sin ninguna herramienta no queda un bloque vacío", () => {
+      const { unmount } = montar({ sesion: { ...SESION, roles: ["administrador"], acciones: ["operar_arenera"] } });
+      expect(within(mosaicos()).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/existencias"]);
+      unmount();
+      montar({ sesion: { ...SESION, acciones: [] } });
+      expect(screen.queryByRole("region", { name: "Herramientas principales" })).not.toBeInTheDocument();
+    });
+
+    test("van debajo de la zona de auditar y antes de la arenera", () => {
+      montar();
+      const auditar = screen.getByRole("heading", { name: "Audite un presupuesto" });
+      const arenera = screen.getByRole("region", { name: "Arenera: lo que requiere atención" });
+      expect(auditar.compareDocumentPosition(mosaicos()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(mosaicos().compareDocumentPosition(arenera) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    test("pulsar un mosaico abre su pantalla", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await usuario.click(within(mosaicos()).getByRole("link", { name: "Existencias de la arenera" }));
+      expect(await screen.findByRole("heading", { name: "Pantalla de existencias" })).toBeInTheDocument();
+    });
+  });
 });
