@@ -7,7 +7,7 @@ OWN-WORLD: IBM Carbon g10 nativo (paquete oficial @carbon/react), IBM Plex Sans 
 divisores de 1 px, severidad con ícono, morado solo para atípicos, verde/rojo IBCS solo en cifras de variación.
 STORY: el auditor suelta el libro, lo ve como en Excel con las celdas marcadas, toca un hallazgo, cae en su
 celda y lee libro contra Sílice.
-FIRST VIEWPORT: cabecera de 48 px; franja de indicadores Fiori de 64 px como mínimo (crece con la etiqueta del libro menor); la hoja ocupa el resto a la izquierda;
+FIRST VIEWPORT: barra superior de 3 rem; franja de indicadores Fiori de 64 px como mínimo (crece con la etiqueta del libro menor); la hoja ocupa el resto a la izquierda;
 panel de hallazgos de 320 px a la derecha (tabla Carbon `sm`).
 FORM: gramática nativa de Carbon, fijada por el brief (RS-6); sin sorteo de direcciones.
 -->
@@ -26,8 +26,8 @@ ajustan aquí cuando la construcción los fije.
   **Tamaño base por presbicia (Eugenio, 2026-10-21):** la raíz mide 116,6667 % de la letra del navegador, así que el cuerpo de
   Carbon (14 px) sale a 16 px y la etiqueta más pequeña (12 px) a 14 px; todo va en rem. El control «Tamaño de letra» de la
   cabecera (Normal 100 %, Grande 125 %, Muy grande 150 %, guardado en el navegador) multiplica ese tamaño por la variable
-  `--silice-escala-letra`. Con Grande y Muy grande el menú lateral pasa a ser capa (botón de la cabecera) por debajo de
-  1536 y 1920 px, y la cabecera cede el nombre de la persona a los selectores. El texto de los gráficos de Carbon Charts
+  `--silice-escala-letra`. Con Grande y Muy grande las áreas de la barra superior pasan a la capa (botón de la barra) por
+  debajo de 1536 y 1920 px (véase «Marco»), y carpeta y cuenta quedan en su ícono. El texto de los gráficos de Carbon Charts
   también sigue la escala; el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). IBM Plex es la
   cara nativa de Carbon, que el brief fija: se aloja en el propio servidor, sin CDN.
 - **Forma:** esquinas rectas (radio 0, como Carbon); separación con divisores de 1 px `$border-subtle` y espacio,
@@ -70,10 +70,40 @@ ajustan aquí cuando la construcción los fije.
 
 ## Marco
 
-Cabecera de Carbon de 48 px (nombre de la persona, selectores de caso y de proyecto en tamaño `sm`, «Salir») y menú
-lateral de 16 rem, fijo desde 1056 px de ancho y plegable con el botón de la cabecera por debajo. Cuatro secciones
-(Trabajo, Revisión, Investigación, Administración); toda página del menú es un enlace de esta interfaz. Las que no puede
-ver la cuenta no aparecen.
+Sin menú lateral: una **barra superior** de Carbon (`Header`) de **3 rem** de alto (56 px con letra Normal; sigue la escala
+de letra) y, debajo, el contenido a todo el ancho (diseño `docs/especificaciones/2026-10-25-barra-superior-design.md`).
+
+- **Izquierda:** «Sílice» (lleva a Inicio) y la navegación `Menú principal` con cinco áreas: Inicio, Auditar, Crear,
+  Producción y Más. La lógica de qué se ve vive en `src/shell/navegacion.ts`; los datos, en `rutas.ts`. Un área con **una
+  sola pantalla visible** para la cuenta es un enlace directo (Inicio; Producción → «Existencias de la arenera»), sin rótulo
+  que repita su nombre; un área sin pantallas visibles no se muestra; cada pantalla sale **una sola vez** en la barra y una
+  sola vez en la capa. El área de la pantalla actual lleva el borde inferior azul de 3 px (`$border-interactive`).
+- **Panel de área:** un área con varias pantallas es un botón con chevron que abre su panel (patrón *disclosure* de
+  navegación de la APG: enlaces, no `role="menu"`). Se abre con clic o Intro/Espacio, **nunca al pasar el ratón**; un solo
+  panel abierto; se cierra con Esc (el foco vuelve al botón), con clic fuera, al salir el foco de la navegación, al elegir,
+  al cambiar de ruta y al cambiar la letra. Superficie `$layer-01`, borde de 1 px `$border-subtle`, sin sombra ni
+  animación, alineado bajo su botón y corrido a la izquierda si no cabe (8 px de margen a la ventana). Cada entrada: el
+  título en `body-compact-01` seminegrita y debajo su línea de ayuda (`enUnaLinea`, ≤ 60 caracteres, en un solo lugar:
+  `rutas.ts`) en `helper-text-01` `$text-secondary`; la actual con la barra izquierda azul de selección. Dos columnas
+  (40 rem) solo con letra Normal y ventana de 1056 px o más; si no, una (22 rem). «Más» agrupa por tema con subtítulo:
+  Precios, Obra, Análisis, Ajustes (y Otras, solo si hay pantallas sin área).
+- **Derecha (`HeaderGlobalBar`):** «Carpeta y proyecto» (nombre de la carpeta de trabajo sin `.db` y del proyecto, o «Sin
+  proyecto», recortados con puntos suspensivos a 18 rem; el nombre completo en el nombre accesible), que abre un panel de
+  20 rem con los dos selectores apilados; el botón «Recorrido» (solo con un recorrido plegado); el tamaño de letra; y la
+  cuenta (nombre y un menú con «Salir»). Con letra Grande o Muy grande, o por debajo de 1366 px, carpeta y cuenta quedan
+  solo en su ícono, con el mismo nombre accesible. En las cadenas del armazón se dice «carpeta de trabajo», no «caso».
+- **Capa por debajo del umbral de cada letra:** la barra no cabe por debajo de **1056 px** (Normal), **1536 px** (Grande)
+  y **1920 px** (Muy grande). Los tres umbrales viven solo en `src/shell/_umbrales.scss` (mixin `por-debajo-del-umbral`,
+  que `shell.scss` usa en `menu-en-capa`), porque la consulta en rem de Carbon no sigue la letra de Sílice. Por debajo, las
+  áreas ceden su sitio al botón «Abrir el menú», que despliega el `SideNav` de Carbon en capa (`MenuEnCapa.tsx`,
+  `Menú principal (capa)`): las mismas entradas, cada área con su rótulo y sus pantallas con la línea de ayuda, y al pie
+  «Sesión de <nombre>». Esc la cierra.
+- **Recorrido guiado:** con un recorrido en curso, la columna «Recorrido» queda **acoplada a la derecha** (16 rem, bajo la
+  barra) y el contenido le cede ese ancho; no es una capa: no la cierran el clic fuera, Esc ni los paneles. «Ocultar» la
+  pliega (queda el botón «Recorrido» en la barra) y «Terminar recorrido» la quita. Por debajo del umbral de la letra pasa
+  a franja plegable bajo la barra, encima del contenido.
+- 1366×768 y 1056 px sin desplazamiento horizontal con las tres letras; la barra no se corta y ningún panel sale de la
+  ventana (lo mide `scripts/recorrido_ux_playwright.py`). Las pantallas que la cuenta no puede usar no aparecen.
 
 ## Movimiento
 
