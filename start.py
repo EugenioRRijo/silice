@@ -68,6 +68,28 @@ def sembrar_obra_control(destino: Path) -> None:
         motor.dispose()
 
 
+def sellar_caso_copiado(destino: Path) -> None:
+    """Lleva una base copiada de antes de la cadena a `head` y sella su historial (D3).
+
+    Las bases de `tests/fixtures/bases/` son inmutables (su ficha lleva el hash) y nacen sin
+    eslabones: sin esto, «Entregar paquete» dice «Cadena rota... no tiene eslabon». El sello es
+    el declarado de siempre (`tipo = "retroactivo"`, que la Trazabilidad muestra) y usa la forma
+    actual de las cifras (28 decimales, VB-1), asi que la version queda entregable."""
+    from aplicacion.entrega import anexos_de_cadena
+    from core.budget.cadena import sellar_historial
+    from core.catalog.sesion import abrir_sesion, crear_motor
+    from operacion.base_datos import preparar_base
+
+    preparar_base(destino)
+    motor = crear_motor(f"sqlite:///{destino.resolve().as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            sellar_historial(sesion, "script:start", anexos_de=anexos_de_cadena)
+            sesion.commit()
+    finally:
+        motor.dispose()
+
+
 def preparar_demo(*, reiniciar: bool = False) -> list[str]:
     """Deja los casos de demostración en la carpeta de casos; devuelve lo que sembró."""
     casos = carpeta_casos()
@@ -81,6 +103,7 @@ def preparar_demo(*, reiniciar: bool = False) -> list[str]:
             continue
         if reiniciar or not destino.exists():
             shutil.copyfile(origen, destino)
+            sellar_caso_copiado(destino)
             sembrados.append(nombre)
     destino = casos / "obra_control.db"
     if reiniciar or not destino.exists():

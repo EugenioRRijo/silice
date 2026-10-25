@@ -9,6 +9,7 @@ siembra en una carpeta temporal y se exige, por proyecto, cadena íntegra, sella
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 
@@ -75,7 +76,7 @@ def test_preparar_demo_deja_cadena_integra_y_entregable_en_cada_caso(datos: Path
 def test_la_demo_de_start_tiene_su_version_demo_001_entregable(datos: Path) -> None:
     start.preparar_demo()
     ruta = start.carpeta_casos() / "demo.db"
-    with sqlite3.connect(ruta) as con:
+    with closing(sqlite3.connect(ruta)) as con:
         codigos = {f[0] for f in con.execute("select codigo from presupuesto")}
     assert "DEMO-001" in codigos
     assert _verificar_todo(ruta, datos) == len(codigos)
