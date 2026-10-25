@@ -6,8 +6,9 @@ import { ErrorDeApi } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { useAplicacion } from "../../shell/contexto";
 import { BuscadorReferencia } from "./BuscadorReferencia";
-import { evaluar, guardar, opciones, partida, similares as pedirSimilares } from "./cliente";
-import type { Cabecera, Desglose, Evaluacion, Guardado, Opciones, Similar } from "./cliente";
+import { AvisoSinLista } from "./AvisoSinLista";
+import { evaluar, guardar, opciones, partida, resumenDeCarpeta, similares as pedirSimilares } from "./cliente";
+import type { Cabecera, Desglose, Evaluacion, Guardado, Opciones, ResumenDeCarpeta, Similar } from "./cliente";
 import "./componer.scss";
 import { Guardar } from "./Guardar";
 import { PanelDesglose } from "./PanelDesglose";
@@ -54,6 +55,7 @@ export default function PaginaComponer() {
   const [condiciones, setCondiciones] = useState("");
   const [tablas, setTablas] = useState<Tablas>(tablasVacias);
   const [ops, setOps] = useState<Opciones | null>(null);
+  const [carpeta, setCarpeta] = useState<ResumenDeCarpeta | null>(null);
   const [errorOpciones, setErrorOpciones] = useState<unknown>(null);
 
   const [evaluacion, setEvaluacion] = useState<Evaluacion | null>(null);
@@ -95,6 +97,22 @@ export default function PaginaComponer() {
       })
       .catch((e: unknown) => {
         if (vigente && !atender(e)) setErrorOpciones(e);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [atender]);
+
+  // ¿Hay lista de precios vigente? Se pregunta al abrir; al cambiar de carpeta el Shell vuelve a montar la pagina. Si
+  // la API no da el resumen (otra base que SQLite) no se avisa nada: guardar lo dira si hace falta.
+  useEffect(() => {
+    let vigente = true;
+    resumenDeCarpeta()
+      .then((r) => {
+        if (vigente) setCarpeta(r);
+      })
+      .catch((e: unknown) => {
+        if (vigente) atender(e);
       });
     return () => {
       vigente = false;
@@ -196,6 +214,7 @@ export default function PaginaComponer() {
         desglosarse en vivo (sin necesidad de guardar) y guarde la composición. Si la partida ya existe, sus tablas se
         precargan al teclear su código y guardar reemplaza su composición vigente; si no existe, la crea.
       </p>
+      <AvisoSinLista carpeta={carpeta} />
       <AvisoError error={errorOpciones} titulo="No se pudieron cargar las opciones" />
 
       <section className="silice-componer__bloque" aria-labelledby="componer-cabecera">

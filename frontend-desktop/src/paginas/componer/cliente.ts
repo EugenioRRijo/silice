@@ -81,6 +81,19 @@ export interface Guardado {
   avisos: string[];
 }
 
+// Lo que Componer usa de `GET /v1/casos/actual` (ResumenCarpeta, api/rutas/casos.py): si la carpeta abierta tiene una
+// lista de precios vigente hoy. Sin ella el desglose se calcula, pero guardar responde 409.
+export interface ResumenDeCarpeta {
+  nombre: string;
+  lista_vigente: string | null;
+  por_migrar: boolean;
+  error: string | null;
+}
+
+export function resumenDeCarpeta(): Promise<ResumenDeCarpeta> {
+  return pedir<ResumenDeCarpeta>("/v1/casos/actual");
+}
+
 const BASE = "/v1/composicion";
 
 export function opciones(): Promise<Opciones> {
