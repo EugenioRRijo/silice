@@ -229,8 +229,8 @@ def test_evaluar_una_composicion_valida_da_el_desglose_como_texto(api: TestClien
         {
             "tipo": "partida_nueva",
             "texto": (
-                "Partida nueva: la estimacion por reglas parte del PU anterior de la partida, "
-                "que no existe; el contraste no es posible (UC-07, flujo 3a)."
+                "Partida nueva: todavía no tiene un precio unitario anterior, así que no se "
+                "puede contrastar con la estimación por reglas."
             ),
         }
     ]
@@ -387,7 +387,7 @@ def test_guardar_una_partida_nueva_confirma_y_responde_el_precio(api: TestClient
     assert respuesta.status_code == 200
     assert respuesta.json() == {
         "precio_unitario": "10.19",
-        "mensaje": (f"Composicion guardada para la partida {NUEVA}: precio unitario 10.19."),
+        "mensaje": (f"Composición guardada para la partida {NUEVA}: precio unitario 10.19."),
         "justificada": False,
         "avisos": [],
     }
@@ -398,8 +398,9 @@ def test_guardar_una_partida_nueva_confirma_y_responde_el_precio(api: TestClient
 def test_guardar_sin_condiciones_es_422_y_no_escribe(api: TestClient) -> None:
     respuesta = api.post("/v1/composicion/guardar", json=_guardar_cuerpo(condiciones="  "))
     assert respuesta.status_code == 422
-    assert respuesta.json()["detalle"].startswith(
-        "Las condiciones del rendimiento son obligatorias para guardar (RF-33)"
+    assert respuesta.json()["detalle"] == (
+        "Las condiciones del rendimiento son obligatorias para guardar: Sílice no guarda una "
+        "composición sin decir en qué condiciones se obtuvo su rendimiento."
     )
     assert api.get(f"/v1/composicion/partidas/{NUEVA}").json()["existe"] is False
 
@@ -453,7 +454,7 @@ def test_guardar_con_advertencia_y_justificacion_la_registra(caso_con_rango: Pat
     assert cuerpo["justificada"] is True
     assert cuerpo["avisos"] == []
     assert cuerpo["mensaje"].endswith(
-        " Justificacion de la advertencia registrada junto al rendimiento 150 (UC-06, flujo 4a)."
+        " Justificación de la advertencia registrada junto al rendimiento 150."
     )
 
 

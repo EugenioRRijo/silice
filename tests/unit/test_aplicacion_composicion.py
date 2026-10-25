@@ -15,6 +15,8 @@ dobles (como `tests/unit/test_composicion_ia.py`): la prueba no depende del extr
 
 from __future__ import annotations
 
+import ast
+import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date
@@ -177,8 +179,8 @@ def test_una_composicion_valida_da_el_desglose_y_avisa_que_la_partida_es_nueva(
     assert [(a.tipo, a.texto) for a in evaluacion.advertencias] == [
         (
             "partida_nueva",
-            "Partida nueva: la estimacion por reglas parte del PU anterior de la partida, que "
-            "no existe; el contraste no es posible (UC-07, flujo 3a).",
+            "Partida nueva: todavía no tiene un precio unitario anterior, así que no se puede "
+            "contrastar con la estimación por reglas.",
         )
     ]
     assert evaluacion.contraste is None
@@ -229,9 +231,8 @@ def test_el_bosque_de_aislamiento_agrega_su_advertencia_sin_pedir_justificacion(
     assert [(a.tipo, a.texto) for a in evaluacion.advertencias] == [
         (
             "rendimiento_ml",
-            "El bosque de aislamiento (ayuda 3 de Sílice, spec §3.7) tambien marca este "
-            "rendimiento como atipico frente al historico de la partida (puntaje -0.250); el "
-            "registro no queda bloqueado por esto.",
+            "El detector de valores atípicos también marca este rendimiento como atípico "
+            "frente al histórico de la partida (puntaje -0.250); no impide guardar.",
         )
     ]
     assert evaluacion.requiere_justificacion is False
@@ -276,9 +277,8 @@ def test_un_precio_atipico_frente_a_su_historico_advierte(base: Path) -> None:
     precio = APU_TUBERIA.materiales[0].precio
     textos = [a.texto for a in evaluacion.advertencias if a.tipo == "precio_atipico"]
     assert textos == [
-        f"El precio de «{insumo}» ({precio}) resulta atipico frente al historico de ese insumo "
-        "(ayuda 2 de Sílice, spec §3.7); reviselo, aunque el sistema no bloquea el guardado "
-        "por esto."
+        f"El precio de «{insumo}» ({precio}) resulta atípico frente al histórico de ese "
+        "insumo; revíselo, aunque esto no impide guardar."
     ]
     # La variacion implicita (6 - 5) / 5 = 0,2 viaja junto al historico.
     assert marcadas and marcadas[0]["candidato-precio-tecleado"] == Decimal("0.2")
@@ -490,7 +490,7 @@ def test_guardar_una_partida_nueva_da_el_precio_y_el_mensaje_de_la_pagina(base: 
     assert guardado.precio_unitario == "10.19"
     assert (
         guardado.mensaje
-        == "Composicion guardada para la partida PRUEBA-01-NUEVA: precio unitario 10.19."
+        == "Composición guardada para la partida PRUEBA-01-NUEVA: precio unitario 10.19."
     )
     assert guardado.justificada is False
     assert guardado.avisos == ()
@@ -503,8 +503,9 @@ def test_sin_condiciones_no_se_guarda_nada(base: Path) -> None:
         with pytest.raises(ComposicionInvalida) as error:
             _guardar(sesion, NUEVA, "Partida", "m", "100", _tablas(), condiciones="  ")
         assert str(error.value) == MENSAJE_CONDICIONES_OBLIGATORIAS
-        assert MENSAJE_CONDICIONES_OBLIGATORIAS.startswith(
-            "Las condiciones del rendimiento son obligatorias para guardar (RF-33)"
+        assert MENSAJE_CONDICIONES_OBLIGATORIAS == (
+            "Las condiciones del rendimiento son obligatorias para guardar: Sílice no guarda una "
+            "composición sin decir en qué condiciones se obtuvo su rendimiento."
         )
         with pytest.raises(KeyError):
             Catalogo(sesion).partida(NUEVA)
@@ -545,7 +546,7 @@ def test_con_advertencia_y_justificacion_se_justifica_el_rendimiento_nuevo(
     assert guardado.justificada is True
     assert guardado.mensaje is not None
     assert guardado.mensaje.endswith(
-        " Justificacion de la advertencia registrada junto al rendimiento 150 (UC-06, flujo 4a)."
+        " Justificación de la advertencia registrada junto al rendimiento 150."
     )
     assert guardado.avisos == ()
     with _sesion(base_con_rango) as sesion:
@@ -568,8 +569,8 @@ def test_con_advertencia_y_sin_justificacion_avisa_y_no_justifica(base_con_rango
         assert _contar(sesion, models.JustificacionRendimiento) == 0
     assert guardado.justificada is False
     assert guardado.avisos == (
-        "El rendimiento se guardo con la advertencia y sin justificacion (UC-06, flujo 4a): la "
-        "advertencia informa, no impide el registro (RF-27).",
+        "El rendimiento se guardó con la advertencia y sin justificación: la advertencia "
+        "informa, no impide guardar.",
     )
 
 
@@ -587,3 +588,41 @@ def test_sin_advertencia_la_justificacion_se_ignora(base_con_rango: Path) -> Non
         assert _contar(sesion, models.JustificacionRendimiento) == 0
     assert guardado.justificada is False
     assert guardado.avisos == ()
+
+
+# --- Sin jerga interna en lo que ve la persona (prueba en vivo del 2026-10-25) ---------------
+
+#: Códigos de requisitos y casos de uso, secciones de la especificación y «ayuda N de Sílice»: son
+#: del expediente, no de quien compone una partida.
+JERGA_INTERNA = re.compile(r"\b(?:UC|RF|RNF|INV)[-‑]\d|spec\s*§|ayuda \d de Sílice|flujo \d+[a-z]")
+
+
+def _cadenas_visibles(ruta: Path) -> list[tuple[int, str]]:
+    """Las cadenas del módulo salvo los docstrings (ni ellos ni los comentarios se muestran)."""
+    arbol = ast.parse(ruta.read_text(encoding="utf-8"))
+    docstrings = {
+        id(nodo.body[0].value)
+        for nodo in ast.walk(arbol)
+        if isinstance(nodo, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+        and nodo.body
+        and isinstance(nodo.body[0], ast.Expr)
+        and isinstance(nodo.body[0].value, ast.Constant)
+    }
+    return [
+        (nodo.lineno, nodo.value)
+        for nodo in ast.walk(arbol)
+        if isinstance(nodo, ast.Constant)
+        and isinstance(nodo.value, str)
+        and id(nodo) not in docstrings
+    ]
+
+
+def test_los_textos_de_componer_no_llevan_codigos_internos() -> None:
+    """Los mensajes de `aplicacion.composicion` llegan tal cual a la pantalla Componer: «(UC-07,
+    flujo 3a)» o «(RF-33)» no le dicen nada a quien compone una partida."""
+    import aplicacion.composicion as modulo
+
+    cadenas = _cadenas_visibles(Path(modulo.__file__))
+    assert len(cadenas) > 20  # la guardia no recorre una lista vacía
+    con_jerga = [(linea, texto) for linea, texto in cadenas if JERGA_INTERNA.search(texto)]
+    assert con_jerga == []
