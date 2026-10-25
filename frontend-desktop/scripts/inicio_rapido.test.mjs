@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
   armarEntorno,
@@ -5,12 +8,15 @@ import {
   cuentasDePrueba,
   elegirIp,
   elegirPuerto,
+  leerCodigoInstalacion,
+  lineasDelCodigo,
   esInterfazVirtual,
   esIpPrivada,
   mensajeInicio,
   necesitaCompilar,
   ordenServidor,
   parsearArgumentos,
+  rutaCodigoInstalacion,
   rutaPython,
 } from "./inicio_rapido.mjs";
 
@@ -224,5 +230,37 @@ describe("mensajeInicio", () => {
   });
   test("avisa de los puertos ocupados", () => {
     expect(mensajeInicio({ ...base, puerto: 8001, ocupados: [8000] })).toMatch(/8000.*ocupado/);
+  });
+});
+
+describe("codigo de instalacion en desarrollo", () => {
+  test("la ruta respeta SILICE_DATOS y, si no, es data/ del repo", () => {
+    expect(rutaCodigoInstalacion({ SILICE_DATOS: join(tmpdir(), "d") }, "/r")).toBe(join(tmpdir(), "d", "codigo_instalacion.txt"));
+    expect(rutaCodigoInstalacion({}, join("/r"))).toBe(join("/r", "data", "codigo_instalacion.txt"));
+  });
+  test("las dos lineas son las mismas que imprime el lanzador", () => {
+    expect(lineasDelCodigo("ABCD-EFGH
+", "/x/codigo_instalacion.txt")).toEqual([
+      "Código de instalación (un solo uso, para crear el primer administrador): ABCD-EFGH",
+      "También está en el archivo /x/codigo_instalacion.txt",
+    ]);
+  });
+  test("un archivo vacío no produce lineas", () => {
+    expect(lineasDelCodigo("  
+", "/x")).toBeNull();
+  });
+  test("lee el archivo con tope de 1 KiB y devuelve null si no existe", () => {
+    const dir = mkdtempSync(join(tmpdir(), "silice-cod-"));
+    try {
+      const ruta = join(dir, "codigo_instalacion.txt");
+      expect(leerCodigoInstalacion(ruta)).toBeNull();
+      writeFileSync(ruta, "ABCD-EFGH-IJKL-MNOP-QRST
+");
+      expect(leerCodigoInstalacion(ruta)).toBe("ABCD-EFGH-IJKL-MNOP-QRST");
+      writeFileSync(ruta, "A".repeat(5000));
+      expect(leerCodigoInstalacion(ruta)).toHaveLength(1024);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
