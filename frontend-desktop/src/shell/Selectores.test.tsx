@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, test } from "vitest";
 import { MenuLateral } from "./MenuLateral";
-import { SelectorProyecto } from "./Selectores";
+import { SelectorCaso, SelectorProyecto } from "./Selectores";
 
 const PROYECTOS = [
   { codigo: "P-01", nombre: "Clínica Norte con un nombre larguísimo que se recorta", version_vigente: 3, actualizado: null },
@@ -27,6 +27,15 @@ describe("SelectorProyecto", () => {
   test("sin proyecto elegido el título dice «Sin proyecto»", () => {
     render(<SelectorProyecto proyectos={PROYECTOS} elegido={null} alElegir={() => {}} />);
     expect(screen.getByRole("combobox", { name: "Proyecto" })).toHaveAttribute("title", "Sin proyecto");
+  });
+});
+
+describe("SelectorCaso", () => {
+  test("el rótulo dice «Carpeta de trabajo», no «Caso»", () => {
+    const caso = { nombre: "demo.db", ruta_relativa: "data/demo.db" } as never;
+    render(<SelectorCaso casos={{ actual: caso, casos: [caso] }} puedeCambiar ocupado={false} alElegir={() => {}} />);
+    expect(screen.getByRole("combobox", { name: "Carpeta de trabajo" })).toBeInTheDocument();
+    expect(screen.queryByText(/\bcaso\b/i)).toBeNull();
   });
 });
 

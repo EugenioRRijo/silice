@@ -327,7 +327,7 @@ describe("Shell", () => {
       montar();
       act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
       onTestFinished(() => terminarRecorrido());
-      const selector = await screen.findByRole("combobox", { name: "Caso" });
+      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
       await waitFor(() => expect(selector).toHaveValue("clinica"));
       await usuario.selectOptions(selector, "arenaza");
       await waitFor(() => expect(alExpirar).toHaveBeenCalled());
@@ -408,7 +408,7 @@ describe("Shell", () => {
   describe("selector de caso", () => {
     test("lista los casos y deja elegido el actual", async () => {
       montar();
-      const selector = await screen.findByRole("combobox", { name: "Caso" });
+      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
       await waitFor(() => expect(selector).toHaveValue("clinica"));
       expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["clinica", "arenaza"]);
     });
@@ -416,7 +416,7 @@ describe("Shell", () => {
     test("cambiar el caso hace POST /v1/casos/actual con el token y avisa que el cambio vive hasta reiniciar la API", async () => {
       const usuario = userEvent.setup();
       montar();
-      const selector = await screen.findByRole("combobox", { name: "Caso" });
+      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
       await waitFor(() => expect(selector).toHaveValue("clinica"));
       await usuario.selectOptions(selector, "arenaza");
       await waitFor(() => expect(selector).toHaveValue("arenaza"));
@@ -424,20 +424,20 @@ describe("Shell", () => {
       expect(llamada?.[1]?.method).toBe("POST");
       expect(llamada?.[1]?.body).toBe(JSON.stringify({ nombre: "arenaza" }));
       expect(new Headers(llamada?.[1]?.headers).get("X-Silice-CSRF")).toBe("tok");
-      expect(await screen.findByText(/vuelve al caso por defecto/i)).toBeInTheDocument();
+      expect(await screen.findByText(/vuelve a la carpeta por defecto/i)).toBeInTheDocument();
     });
 
     test("al cambiar el caso la pagina se vuelve a montar con el caso nuevo", async () => {
       const usuario = userEvent.setup();
       montar();
       expect(await screen.findByText("caso=clinica")).toBeInTheDocument();
-      await usuario.selectOptions(await screen.findByRole("combobox", { name: "Caso" }), "arenaza");
+      await usuario.selectOptions(await screen.findByRole("combobox", { name: "Carpeta de trabajo" }), "arenaza");
       expect(await screen.findByText("caso=arenaza")).toBeInTheDocument();
     });
 
     test("sin la accion cambiar_caso el selector esta deshabilitado", async () => {
       montar(sesionCon({ acciones: ["leer_proyecto"] }));
-      const selector = await screen.findByRole("combobox", { name: "Caso" });
+      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
       expect(selector).toBeDisabled();
     });
 
@@ -451,7 +451,7 @@ describe("Shell", () => {
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      const selector = await screen.findByRole("combobox", { name: "Caso" });
+      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
       await waitFor(() => expect(selector).toHaveValue("clinica"));
       await usuario.selectOptions(selector, "arenaza");
       expect(await alertaConTexto()).toHaveTextContent("El caso ya no existe.");
@@ -468,7 +468,7 @@ describe("Shell", () => {
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      const selector = await screen.findByRole("combobox", { name: "Caso" });
+      const selector = await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
       await waitFor(() => expect(selector).toHaveValue("clinica"));
       await usuario.selectOptions(selector, "arenaza");
       await waitFor(() => expect(alExpirar).toHaveBeenCalled());
@@ -570,7 +570,7 @@ describe("Shell", () => {
       await waitFor(() => expect(within(proyecto).getAllByRole("option")).toHaveLength(3));
       await usuario.selectOptions(proyecto, "P-01");
       expect(await screen.findByText("proyecto=P-01")).toBeInTheDocument();
-      await usuario.selectOptions(await screen.findByRole("combobox", { name: "Caso" }), "arenaza");
+      await usuario.selectOptions(await screen.findByRole("combobox", { name: "Carpeta de trabajo" }), "arenaza");
       expect(await screen.findByText("proyecto=ninguno")).toBeInTheDocument();
     });
 
@@ -582,7 +582,7 @@ describe("Shell", () => {
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      await screen.findByRole("combobox", { name: "Caso" });
+      await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
       await waitFor(() => expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(true));
       expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -616,7 +616,7 @@ describe("Shell", () => {
     // VB-9: sin `leer_proyecto` la API contesta 403; no se pide.
     test("una cuenta sin la acción leer_proyecto no pide la lista de proyectos", async () => {
       montar(sesionCon({ acciones: ["administrar_cuentas", "cambiar_caso"] }), "/acerca");
-      await screen.findByRole("combobox", { name: "Caso" });
+      await screen.findByRole("combobox", { name: "Carpeta de trabajo" });
       expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(false);
       expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
     });
