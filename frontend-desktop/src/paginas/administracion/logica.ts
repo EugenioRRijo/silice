@@ -2,6 +2,7 @@
 // contrato de /v1/cuentas, /v1/accesos, /v1/admin/empresas-registradas y /v1/admin/asistente, los rotulos de
 // Streamlit (ui/paginas/administracion.py) y las filas de las tablas. No guarda ningun secreto.
 import type { FilaDensa } from "../../comun/TablaDensa";
+import { textoParaEscribir } from "../../indicadores/cifraEscrita";
 
 export interface Cuenta {
   id: number;
@@ -241,7 +242,8 @@ export function textoDeLaClaveDeIA(e: AsistenteEstado): string {
   return `Clave registrada: ${e.clave_registrada ?? "ninguna"}`;
 }
 
-// El tope en el campo de texto con coma decimal (la API acepta coma o punto). Solo cambia el separador del texto.
+// El tope de la API («2.50», «1234.5») en el campo de texto como se escribe: coma decimal y punto de miles («2,50»,
+// «1.234,5»), para que vuelva igual al leerlo con `leerCifra` (regla de Eugenio, 2026-10-25). Solo texto.
 export function topeParaEditar(tope: string): string {
-  return tope.replace(".", ",");
+  return textoParaEscribir(tope);
 }

@@ -6,6 +6,7 @@ import { CampoTexto } from "../../comun/CampoTexto";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { useAplicacion } from "../../shell/contexto";
+import { AYUDA_CIFRAS, leerCifra } from "../../indicadores/cifraEscrita";
 import { textoDeLaClaveDeIA, topeParaEditar } from "./logica";
 import type { AsistenteEstado, ResultadoAsistente } from "./logica";
 
@@ -33,6 +34,7 @@ export default function Asistente() {
   const [modeloLocal, setModeloLocal] = useState("");
   const [anfitrion, setAnfitrion] = useState("");
   const [tope, setTope] = useState("");
+  const [errorTope, setErrorTope] = useState<string | null>(null);
   // clave (secretos: solo aquí y solo hasta enviarlos)
   const [clave, setClave] = useState("");
   const [respaldo, setRespaldo] = useState("");
@@ -61,6 +63,7 @@ export default function Asistente() {
     setModeloLocal(e.modelo_local);
     setAnfitrion(e.anfitrion_ollama);
     setTope(topeParaEditar(e.tope_usd));
+    setErrorTope(null);
   }, []);
 
   const fallar = useCallback(
@@ -99,13 +102,21 @@ export default function Asistente() {
 
   function guardar(e: FormEvent) {
     e.preventDefault();
+    // Coma decimal y punto de miles: «1.000» es mil. Lo mal escrito se marca aqui y no viaja; que sea mayor que cero
+    // lo dice la API con su mensaje.
+    const lectura = leerCifra(tope);
+    if ("error" in lectura) {
+      setErrorTope(lectura.error);
+      return;
+    }
+    setErrorTope(null);
     void enviar(`${RUTA}/configuracion`, {
       activo,
       proveedor,
       modelo_claude: modeloClaude,
       modelo_local: modeloLocal,
       anfitrion_ollama: anfitrion,
-      tope_usd: tope,
+      tope_usd: lectura.valor,
     });
   }
 
@@ -177,9 +188,11 @@ export default function Asistente() {
         <CampoTexto
           id="ia-tope"
           labelText="Tope de costo por sesión (USD)"
-          helperText="Mayor que cero; puede escribir coma o punto decimal."
+          helperText={`Mayor que cero. ${AYUDA_CIFRAS}`}
           inputMode="decimal"
           value={tope}
+          invalid={errorTope !== null}
+          invalidText={errorTope ?? ""}
           onChange={(e) => setTope(e.target.value)}
         />
         <Button type="submit" kind="primary" size="md" disabled={ocupada}>
