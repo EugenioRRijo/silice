@@ -12,6 +12,14 @@ presupuesto y auditarlo) contando clics, pantallas y decisiones.
         --salida <carpeta> [--roles admin ana rita] [--anchos 1366 1056] [--sin-axe] [--sin-flujo]
         [--rutas inicio libros ...] [--url http://127.0.0.1:8501]
 
+Modo `--funcional` (BS-F, «que todas las herramientas funcionen»): en vez de medir, ejecuta la
+acción principal de cada pantalla con la cuenta que la puede usar y comprueba el resultado visible.
+Las filas viven en `scripts/recorrido_funcional.toml` (una por pantalla) y se recorren navegando por
+URL (`#/<id>`), no por el menú:
+
+    uv run --active --with playwright python scripts/recorrido_ux_playwright.py --funcional \\
+        --salida <carpeta> [--acciones scripts/recorrido_funcional.toml] [--solo componer catalogo]
+
 No usa `data/` del árbol ni datos reales; solo libros ficticios (`tests/fixtures/`). Cierra el
 servidor por su PID y el navegador que lanzó; nunca cierra Chrome/Edge por nombre.
 """
@@ -49,18 +57,19 @@ def rutas_de_la_interfaz() -> list[dict[str, str | None]]:
     texto = RUTAS_TS.read_text(encoding="utf-8")
     bloque = texto.split("export const PAGINAS", 1)[1].split("export function paginaPorId", 1)[0]
     paginas: list[dict[str, str | None]] = []
-    patron = re.compile(
-        r'id:\s*"(?P<id>[^"]+)",\s*titulo:\s*"(?P<titulo>[^"]+)",\s*seccion:\s*"(?P<seccion>[^"]+)",'
-        r"\s*accion:\s*(?P<accion>null|\"[^\"]+\")"
-    )
-    for m in patron.finditer(bloque):
-        accion = m["accion"]
+    # Cada entrada se lee campo a campo: el orden de los campos (y los que se agreguen, como
+    # `enUnaLinea`) no importa.
+    for entrada in re.findall(r"\{([^{}]*?\bid:\s*\"[^\"]+\"[^{}]*?)\}", bloque):
+        campos = dict(re.findall(r'(\w+):\s*"([^"]*)"', entrada))
+        accion = re.search(r"\baccion:\s*(null|\"[^\"]*\")", entrada)
+        if "id" not in campos or "titulo" not in campos or accion is None:
+            continue
         paginas.append(
             {
-                "id": m["id"],
-                "titulo": m["titulo"],
-                "seccion": m["seccion"],
-                "accion": None if accion == "null" else accion.strip('"'),
+                "id": campos["id"],
+                "titulo": campos["titulo"],
+                "seccion": campos.get("seccion"),
+                "accion": None if accion[1] == "null" else accion[1].strip('"'),
             }
         )
     return paginas
@@ -445,6 +454,483 @@ def flujo_revisar_excel(
     return salida
 
 
+# --------------------------- modo funcional (BS-F) ----------------------------------------------
+#
+# Cada fila de `recorrido_funcional.toml` dice: la ruta, la cuenta que la usa, la carpeta de trabajo
+# y el proyecto (si hacen falta), los pasos y lo que debe verse al final. Las filas se ejecutan en
+# el orden del archivo, con UNA página por cuenta (el proyecto elegido vive en la memoria de la
+# interfaz, RT-9): se navega cambiando `location.hash`, sin recargar.
+
+ACCIONES_TOML = Path(__file__).with_name("recorrido_funcional.toml")
+ACCIONES_ADMITIDAS = {"llenar", "elegir", "pulsar", "marcar", "subir", "ir", "esperar", "tecla"}
+LIMITE_PASO_MS = 15_000
+LIMITE_ESPERA_MS = 30_000
+
+
+class ServidorCongelado(Servidor):
+    """El mismo servidor, pero sirviendo una COPIA de `frontend-desktop/dist`: si otro proceso
+    recompila la interfaz a mitad del recorrido, los trozos perezosos no desaparecen (404)."""
+
+    def __init__(self, datos: Path, puerto: int, dist: Path) -> None:
+        entorno = dict(os.environ)
+        entorno["SILICE_DATOS"] = str(datos)
+        entorno["SILICE_USUARIO"] = str(datos / "usuario")
+        entorno.pop("SILICE_INSTALACION", None)
+        arranque = (
+            "import sys; from pathlib import Path; import api.interfaz as i; "
+            "i.DIST = Path(sys.argv[1]); import uvicorn; "
+            "uvicorn.run('api.main:app', host='127.0.0.1', port=int(sys.argv[2]), "
+            "access_log=False)"
+        )
+        self.puerto = puerto
+        self.proceso = subprocess.Popen(
+            [sys.executable, "-c", arranque, str(dist), str(puerto)],
+            cwd=RAIZ,
+            env=entorno,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        self.url = f"http://127.0.0.1:{puerto}"
+
+
+def congelar_interfaz(destino: Path) -> dict[str, str]:
+    """Copia el `dist` compilado y devuelve de cuándo es (para la bitácora)."""
+    origen = RAIZ / "frontend-desktop" / "dist"
+    if not (origen / "index.html").exists():
+        raise SystemExit("falta frontend-desktop/dist: corra «npm run build» en frontend-desktop")
+    shutil.rmtree(destino, ignore_errors=True)
+    shutil.copytree(origen, destino)
+    momento = time.localtime((origen / "index.html").stat().st_mtime)
+    return {"dist_compilado": time.strftime("%Y-%m-%d %H:%M:%S", momento)}
+
+
+def cargar_filas_funcionales(ruta: Path) -> dict[str, list[dict[str, Any]]]:
+    """Las filas de siembra y de pantalla, con una validación mínima del formato."""
+    import tomllib
+
+    datos = tomllib.loads(ruta.read_text(encoding="utf-8"))
+    filas = {"siembra": datos.get("siembra", []), "pantalla": datos.get("pantalla", [])}
+    for tipo, lista in filas.items():
+        for n, fila in enumerate(lista, 1):
+            for clave in ("ruta", "cuenta", "espera"):
+                if clave not in fila:
+                    raise ValueError(f"{tipo} {n}: falta «{clave}»")
+            if fila["cuenta"] not in ROLES:
+                raise ValueError(f"{tipo} {n}: cuenta desconocida «{fila['cuenta']}»")
+            for paso in fila.get("pasos", []):
+                if paso.get("accion") not in ACCIONES_ADMITIDAS:
+                    raise ValueError(f"{tipo} {n}: acción no admitida {paso!r}")
+    return filas
+
+
+def archivos_de_entrada(carpeta: Path) -> dict[str, Path]:
+    """Los archivos ficticios que suben las filas (`archivo = "<clave>"`), todos de fixtures."""
+    carpeta.mkdir(parents=True, exist_ok=True)
+    archivos = {k: v for k, v in libros_ficticios(carpeta).items() if k == "limpio"}
+    archivos["libro_limpio"] = archivos.pop("limpio")
+    fijos = {
+        # Tasa de referencia del BCV (archivo público de fixture; tests/fixtures/bcv/FUENTE.md)
+        "bcv_tasa": RAIZ / "tests" / "fixtures" / "bcv" / "2_1_2c26_smc.xls",
+        # Lista ficticia de la empresa del caso S1 (tests/fixtures/precios_empresa_s1.py)
+        "precios_empresa_s1": RAIZ / "tests" / "fixtures" / "precios_empresa_s1.csv",
+        # Muestras ficticias de las pruebas (tests/fixtures/actualizacion_uc02.py, caso_ti001.py)
+        "lista_precios": RAIZ / "data" / "samples" / "precios" / "lista_2026-06-01.csv",
+        "topologia_ti001": RAIZ / "data" / "samples" / "telecom" / "topologia_ti001.csv",
+    }
+    for clave, ruta in fijos.items():
+        if ruta.exists():
+            archivos[clave] = ruta
+    return archivos
+
+
+def _principal(pagina: Any) -> Any:
+    """El contenido de la pantalla (sin la cabecera, que también tiene «Proyecto»)."""
+    return pagina.locator("main").first
+
+
+def _rellenable(donde: Any, rotulo: str) -> Any:
+    """El campo con esa etiqueta exacta que se puede escribir (no su envoltorio de búsqueda)."""
+    return donde.get_by_label(rotulo, exact=True).and_(
+        donde.locator("input:not([type=file]), textarea, [contenteditable=true]")
+    )
+
+
+def elegir_opcion(campo: Any, opcion: str) -> str:
+    """Elige en un `select` la opción cuyo valor o texto es `opcion` o, si no, la primera cuyo texto
+    la contiene. Espera a que la opción exista (las listas llegan de la API)."""
+    fin = time.monotonic() + LIMITE_PASO_MS / 1000
+    while True:
+        opciones = campo.evaluate(
+            "s => [...s.options].map(o => ({v: o.value, t: o.textContent.trim(), d: o.disabled}))"
+        )
+        exacta = [o for o in opciones if not o["d"] and opcion in (o["v"], o["t"])]
+        parcial = [o for o in opciones if not o["d"] and opcion.lower() in o["t"].lower()]
+        elegida = (exacta or parcial or [None])[0]
+        if elegida is not None:
+            campo.select_option(value=elegida["v"], timeout=LIMITE_PASO_MS)
+            return elegida["t"]
+        if time.monotonic() > fin:
+            raise RuntimeError(f"no hay opción «{opcion}» en {[o['t'] for o in opciones]}")
+        time.sleep(0.3)
+
+
+def ir_por_hash(pagina: Any, ruta: str) -> None:
+    pagina.evaluate("r => { location.hash = '#/' + r; }", ruta)
+    pagina.wait_for_function(
+        "r => location.hash === '#/' + r && document.querySelector('main h1') !== null",
+        arg=ruta,
+        timeout=LIMITE_CARGA_MS,
+    )
+    with contextlib.suppress(Exception):
+        pagina.wait_for_load_state("networkidle", timeout=3000)
+
+
+def caso_de_la_sesion(pagina: Any) -> str | None:
+    """La carpeta de trabajo que la API tiene para esta sesión (no la que muestra el selector)."""
+    return pagina.evaluate(
+        "async () => { const r = await fetch('/v1/casos', {credentials: 'same-origin'});"
+        " if (!r.ok) return null; const d = await r.json();"
+        " return d && d.actual ? d.actual.nombre : null; }"
+    )
+
+
+def carpeta_mostrada_y_real(pagina: Any) -> dict[str, Any]:
+    """Control del armazón en cada fila: la carpeta que el selector MUESTRA frente a la que la API
+    tiene para la sesión (sin la extensión `.db`, que la interfaz no muestra)."""
+    mostrada = pagina.evaluate(
+        "() => { const s = document.querySelector('#selector-caso');"
+        " if (s && s.selectedIndex >= 0) return s.options[s.selectedIndex].textContent.trim();"
+        " const b = document.querySelector('[aria-controls=panel-carpeta-proyecto]');"
+        " return b ? b.textContent.trim() : null; }"
+    )
+    real = caso_de_la_sesion(pagina)
+    corta = (real or "").removesuffix(".db")
+    return {
+        "carpeta_mostrada": mostrada,
+        "carpeta_api": real,
+        "carpeta_coincide": bool(mostrada) and bool(corta) and mostrada.startswith(corta),
+    }
+
+
+def elegir_contexto(pagina: Any, carpeta: str | None, proyecto: str | None) -> None:
+    """Carpeta de trabajo y proyecto, con la cabecera de hoy (dos `select`) o con la barra superior
+    (los mismos `select` dentro del panel «Carpeta y proyecto», que se abre con su botón)."""
+
+    def asegurar(selector: str) -> Any:
+        control = pagina.locator(selector)
+        if not control.is_visible():
+            boton = pagina.locator("[aria-controls=panel-carpeta-proyecto]")
+            if boton.count():
+                boton.first.click()
+        control.wait_for(state="visible", timeout=LIMITE_PASO_MS)
+        return control
+
+    if carpeta:
+        control = asegurar("#selector-caso")
+        if caso_de_la_sesion(pagina) != carpeta:
+            # El selector puede MOSTRAR la carpeta pedida sin que sea la de la sesión (defecto
+            # anotado en la bitácora): se elige igual y se comprueba contra la API, no contra él.
+            control.select_option(carpeta)
+            fin = time.monotonic() + LIMITE_PASO_MS / 1000
+            while caso_de_la_sesion(pagina) != carpeta:
+                if time.monotonic() > fin:
+                    raise RuntimeError(f"la carpeta de trabajo no cambió a «{carpeta}»")
+                pagina.wait_for_timeout(300)
+            pagina.wait_for_function(
+                "() => { const s = document.querySelector('#selector-caso');"
+                " return s && !s.disabled; }",
+                timeout=LIMITE_PASO_MS,
+            )
+            pagina.wait_for_timeout(800)
+    if proyecto:
+        elegir_opcion(asegurar("#selector-proyecto"), proyecto)
+        pagina.wait_for_timeout(800)
+    abierto = pagina.locator("#panel-carpeta-proyecto")
+    if abierto.count() and abierto.is_visible():
+        pagina.keyboard.press("Escape")
+
+
+def _texto_principal(pagina: Any) -> str:
+    try:
+        return re.sub(r"\s+", " ", _principal(pagina).inner_text(timeout=2000))
+    except Exception:
+        return ""
+
+
+def esperar_textos(pagina: Any, textos: list[str], limite_ms: int) -> list[str]:
+    """Espera a que cada texto se vea en la pantalla; devuelve los que no aparecieron."""
+    fin = time.monotonic() + limite_ms / 1000
+    faltan = list(textos)
+    while True:
+        visible = _texto_principal(pagina)
+        faltan = [t for t in textos if re.sub(r"\s+", " ", t) not in visible]
+        if not faltan or time.monotonic() > fin:
+            return faltan
+        pagina.wait_for_timeout(400)
+
+
+def ejecutar_paso(
+    pagina: Any, paso: dict[str, Any], archivos: dict[str, Path], descargas: Path
+) -> str:
+    """Un paso de una fila; devuelve una línea para la bitácora. Falla con excepción."""
+    accion = paso["accion"]
+    zona = _principal(pagina)
+    indice = int(paso.get("indice", 0))
+    if accion == "ir":
+        ir_por_hash(pagina, paso["ruta"])
+        return f"ir #/{paso['ruta']}"
+    if accion == "llenar":
+        donde = pagina if paso.get("fuera") else zona
+        valor = str(paso["valor"]).replace("{hoy}", time.strftime("%Y-%m-%d"))
+        campo = _rellenable(donde, paso["rotulo"]).nth(indice)
+        campo.fill(valor, timeout=LIMITE_PASO_MS)
+        return f"llenar «{paso['rotulo']}» = {valor!r}"
+    if accion == "elegir":
+        campo = zona.get_by_label(paso["rotulo"], exact=True).and_(zona.locator("select"))
+        campo = campo.nth(indice)
+        elegido = elegir_opcion(campo, str(paso["opcion"]))
+        return f"elegir «{paso['rotulo']}» = {elegido!r}"
+    if accion == "marcar":
+        campo = zona.get_by_label(paso["rotulo"], exact=True).nth(indice)
+        try:
+            campo.check(timeout=4000)
+        except Exception:
+            zona.get_by_text(paso["rotulo"], exact=True).nth(indice).click(timeout=LIMITE_PASO_MS)
+        return f"marcar «{paso['rotulo']}»"
+    if accion == "pulsar":
+        rol = paso.get("rol", "button")
+        exacto = bool(paso.get("exacto", True))
+        donde = pagina if paso.get("fuera") else zona
+        boton = donde.get_by_role(rol, name=paso["nombre"], exact=exacto).nth(indice)
+        if paso.get("descarga"):
+            with pagina.expect_download(timeout=LIMITE_ESPERA_MS) as bajada:
+                boton.click(timeout=LIMITE_PASO_MS)
+            destino = descargas / bajada.value.suggested_filename
+            bajada.value.save_as(str(destino))
+            archivos[paso["descarga"]] = destino
+            tamano = destino.stat().st_size
+            return f"pulsar «{paso['nombre']}» -> descarga {destino.name} ({tamano} B)"
+        boton.click(timeout=LIMITE_PASO_MS)
+        return f"pulsar {rol} «{paso['nombre']}»"
+    if accion == "subir":
+        archivo = archivos.get(paso["archivo"])
+        if archivo is None:
+            raise RuntimeError(f"no hay «{paso['archivo']}» (¿falló la fila que lo genera?)")
+        boton = zona.get_by_role("button", name=paso["zona"], exact=False).first
+        with pagina.expect_file_chooser(timeout=LIMITE_PASO_MS) as elector:
+            boton.click(timeout=LIMITE_PASO_MS)
+        elector.value.set_files(str(archivo))
+        return f"subir {archivo.name}"
+    if accion == "esperar":
+        faltan = esperar_textos(pagina, [paso["texto"]], int(paso.get("ms", LIMITE_ESPERA_MS)))
+        if faltan:
+            raise RuntimeError(f"no apareció «{paso['texto']}»")
+        return f"esperar «{paso['texto']}»"
+    if accion == "tecla":
+        pagina.keyboard.press(paso["nombre"])
+        return f"tecla {paso['nombre']}"
+    raise ValueError(f"acción no admitida: {accion}")
+
+
+def comprobar_espera(
+    pagina: Any, espera: dict[str, Any], archivos: dict[str, Path]
+) -> tuple[bool, str]:
+    """El resultado visible de la fila: textos en pantalla y, si se pide, el archivo bajado."""
+    textos = list(espera.get("textos", []))
+    if "texto" in espera:
+        textos.insert(0, espera["texto"])
+    detalle: list[str] = []
+    ok = True
+    if textos:
+        faltan = esperar_textos(pagina, textos, int(espera.get("ms", LIMITE_ESPERA_MS)))
+        if faltan:
+            ok = False
+            detalle.append("no se ve: " + " | ".join(f"«{t}»" for t in faltan))
+        else:
+            detalle.append("se ve: " + " | ".join(f"«{t}»" for t in textos))
+    if espera.get("descarga"):
+        archivo = archivos.get(espera["descarga"])
+        if archivo is None or not archivo.exists() or archivo.stat().st_size == 0:
+            ok = False
+            detalle.append(f"no se descargó «{espera['descarga']}»")
+        else:
+            import hashlib
+
+            huella = hashlib.sha256(archivo.read_bytes()).hexdigest()
+            detalle.append(f"descargado {archivo.name} ({archivo.stat().st_size} B)")
+            if espera.get("huella"):
+                if huella in _texto_principal(pagina):
+                    detalle.append(f"la huella en pantalla es la del archivo ({huella[:12]}…)")
+                else:
+                    ok = False
+                    detalle.append(f"la huella del archivo ({huella[:12]}…) no está en pantalla")
+    if not espera.get("admite_error"):
+        errores = pagina.eval_on_selector_all(
+            "main .cds--inline-notification--error, main .cds--actionable-notification--error",
+            "els => els.filter(e => e.offsetParent !== null)"
+            r".map(e => e.innerText.replace(/\s+/g, ' ').trim().slice(0, 300))",
+        )
+        if errores:
+            ok = False
+            detalle.append("aviso de error en pantalla: " + " | ".join(errores))
+    return ok, "; ".join(detalle)
+
+
+def ejecutar_fila(
+    pagina: Any,
+    fila: dict[str, Any],
+    archivos: dict[str, Path],
+    salida: Path,
+    etiqueta: str,
+) -> dict[str, Any]:
+    consola: list[str] = []
+    red: list[str] = []
+
+    def al_consola(m: Any) -> None:
+        if m.type == "error":
+            consola.append(m.text[:200])
+
+    def al_error(e: Any) -> None:
+        consola.append(f"pageerror: {str(e)[:200]}")
+
+    def al_responder(r: Any) -> None:
+        if r.status >= 400:
+            red.append(f"{r.status} {r.request.method} {r.url.split('127.0.0.1')[-1][:100]}")
+
+    pagina.on("console", al_consola)
+    pagina.on("pageerror", al_error)
+    pagina.on("response", al_responder)
+    resultado: dict[str, Any] = {
+        "ruta": fila["ruta"],
+        "cuenta": fila["cuenta"],
+        "carpeta": fila.get("carpeta"),
+        "proyecto": fila.get("proyecto"),
+        "accion": fila.get("accion", ""),
+        "pasos": [],
+    }
+    inicio = time.monotonic()
+    try:
+        ir_por_hash(pagina, fila["ruta"])
+        elegir_contexto(pagina, fila.get("carpeta"), fila.get("proyecto"))
+        ir_por_hash(pagina, fila["ruta"])
+        for paso in fila.get("pasos", []):
+            resultado["pasos"].append(ejecutar_paso(pagina, paso, archivos, salida / "descargas"))
+        ok, detalle = comprobar_espera(pagina, fila["espera"], archivos)
+        resultado["paso"] = ok
+        resultado["salida"] = detalle
+    except Exception as error:
+        resultado["paso"] = False
+        resultado["salida"] = f"error en el paso {len(resultado['pasos']) + 1}: {str(error)[:400]}"
+    resultado["segundos"] = round(time.monotonic() - inicio, 1)
+    with contextlib.suppress(Exception):
+        resultado.update(carpeta_mostrada_y_real(pagina))
+    resultado["avisos"] = aviso_visible(pagina)[:600]
+    resultado["consola"] = consola[:6]
+    resultado["red"] = red[:6]
+    captura = salida / "capturas" / f"{etiqueta}.png"
+    with contextlib.suppress(Exception):
+        pagina.screenshot(path=str(captura), full_page=True)
+        resultado["captura"] = captura.name
+    if not resultado["paso"]:
+        with contextlib.suppress(Exception):
+            (salida / "arbol" / f"{etiqueta}.txt").write_text(
+                _principal(pagina).aria_snapshot(timeout=5000), encoding="utf-8"
+            )
+            resultado["arbol"] = f"{etiqueta}.txt"
+    pagina.remove_listener("console", al_consola)
+    pagina.remove_listener("pageerror", al_error)
+    pagina.remove_listener("response", al_responder)
+    return resultado
+
+
+def main_funcional(salida: Path, acciones: Path, solo: list[str] | None) -> int:
+    """Siembra, ejecuta las filas en orden y escribe `funcional.json`; 1 si alguna falla."""
+    filas = cargar_filas_funcionales(acciones)
+    for sub in ("capturas", "arbol", "descargas"):
+        (salida / sub).mkdir(parents=True, exist_ok=True)
+    rutas = [r["id"] for r in rutas_de_la_interfaz()]
+    pantallas = [f for f in filas["pantalla"] if not solo or f["ruta"] in solo]
+    sin_fila = [r for r in rutas if r not in {f["ruta"] for f in filas["pantalla"]}]
+    archivos = archivos_de_entrada(salida / "entradas")
+    temporal = Path(tempfile.mkdtemp(prefix="datos_funcional_", dir=salida))
+    claves = sembrar_datos(temporal)
+    compilado = congelar_interfaz(temporal / "dist")
+    servidor = ServidorCongelado(temporal, puerto_libre(), temporal / "dist")
+    informe: dict[str, Any] = {
+        "base": servidor.url,
+        **compilado,
+        "rutas_de_la_interfaz": len(rutas),
+        "sin_fila": sin_fila,
+        "siembra": [],
+        "pantallas": [],
+    }
+    try:
+        servidor.esperar()
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            navegador = lanzar_navegador(p)
+            paginas: dict[str, Any] = {}
+            try:
+
+                def pagina_de(cuenta: str) -> Any:
+                    if cuenta not in paginas:
+                        contexto = navegador.new_context(
+                            viewport={"width": 1366, "height": ALTO}, accept_downloads=True
+                        )
+                        pagina = contexto.new_page()
+                        pagina.set_default_timeout(LIMITE_PASO_MS)
+                        entrar(pagina, servidor.url, cuenta, claves[cuenta])
+                        paginas[cuenta] = pagina
+                    return paginas[cuenta]
+
+                for n, fila in enumerate(filas["siembra"], 1):
+                    r = ejecutar_fila(
+                        pagina_de(fila["cuenta"]), fila, archivos, salida, f"siembra{n:02}"
+                    )
+                    informe["siembra"].append(r)
+                    print(f"siembra {n:2} {fila['ruta']:15} {'ok' if r['paso'] else 'FALLA'}")
+                for n, fila in enumerate(pantallas, 1):
+                    etiqueta = f"{n:02}_{fila['ruta']}"
+                    r = ejecutar_fila(pagina_de(fila["cuenta"]), fila, archivos, salida, etiqueta)
+                    informe["pantallas"].append(r)
+                    print(
+                        f"{n:2} {fila['ruta']:15} {fila['cuenta']:5} "
+                        f"{'PASA ' if r['paso'] else 'FALLA'} {r['salida'][:150]}"
+                    )
+            finally:
+                for pagina in paginas.values():
+                    with contextlib.suppress(Exception):
+                        pagina.context.close()
+                navegador.close()
+    finally:
+        servidor.cerrar()
+        for _ in range(10):  # Windows suelta las bases un momento después de cerrar el servidor
+            shutil.rmtree(temporal, ignore_errors=True)
+            if not temporal.exists():
+                break
+            time.sleep(1)
+    informe["resumen"] = {
+        "filas": len(informe["pantallas"]),
+        "pasan": sum(1 for r in informe["pantallas"] if r["paso"]),
+        "fallan": [r["ruta"] for r in informe["pantallas"] if not r["paso"]],
+        "siembra_fallida": [r["ruta"] for r in informe["siembra"] if not r["paso"]],
+        "carpeta_mostrada_distinta": [
+            f"{r['ruta']} ({r['cuenta']}): muestra {r.get('carpeta_mostrada')!r}, "
+            f"la sesión usa {r.get('carpeta_api')!r}"
+            for r in informe["pantallas"]
+            if r.get("carpeta_coincide") is False
+        ],
+        "sin_fila": sin_fila,
+    }
+    (salida / "funcional.json").write_text(
+        json.dumps(informe, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(json.dumps(informe["resumen"], indent=2, ensure_ascii=False))
+    resumen = informe["resumen"]
+    return 0 if not (resumen["fallan"] or resumen["siembra_fallida"] or sin_fila) else 1
+
+
 # --------------------------- orquestación -------------------------------------------------------
 
 
@@ -474,7 +960,14 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--sin-axe", action="store_true")
     a.add_argument("--sin-flujo", action="store_true")
     a.add_argument("--url", help="servidor ya en marcha (usa las cuentas ficticias por omisión)")
+    a.add_argument(
+        "--funcional", action="store_true", help="ejecuta la acción principal de cada pantalla"
+    )
+    a.add_argument("--acciones", type=Path, default=ACCIONES_TOML, help="filas del modo funcional")
+    a.add_argument("--solo", nargs="*", help="modo funcional: solo estas rutas (y la siembra)")
     args = a.parse_args(argv)
+    if args.funcional:
+        return main_funcional(args.salida, args.acciones, args.solo)
 
     salida: Path = args.salida
     capturas = salida / "capturas"

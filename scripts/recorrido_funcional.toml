@@ -1,0 +1,359 @@
+# Recorrido funcional (BS-F): la acción principal de cada una de las 22 pantallas de
+# `frontend-desktop/src/shell/rutas.ts` y el resultado visible que prueba que funcionó.
+#
+# Lo ejecuta `scripts/recorrido_ux_playwright.py --funcional`, en el orden de este archivo y navegando
+# por URL (`#/<ruta>`), no por el menú. Cuentas ficticias de `tests/fixtures/sesion_web.py`:
+# admin (administra), ana (arma), rita (revisa). Carpetas de trabajo: los casos de demostración que
+# siembra `start.preparar_demo` (demo.db, s1.db, ti001.db, of001.db, obra_control.db).
+#
+# Formato de cada fila:
+#   ruta, cuenta, accion (qué se prueba, en una línea), carpeta y proyecto (opcionales),
+#   pasos = [ { accion = "llenar" | "elegir" | "pulsar" | "marcar" | "subir" | "ir" | "esperar" | "tecla", ... } ]
+#   espera = { texto = "...", textos = [...], descarga = "<clave>", huella = true, ms = 30000 }
+# - llenar: rotulo (etiqueta exacta del campo), valor («{hoy}» = la fecha del día); fuera = true busca fuera de <main>.
+# - elegir: rotulo, opcion (valor o parte del texto de la opción).
+# - pulsar: nombre (nombre accesible), rol (button por omisión; tab, link...), exacto (true por omisión),
+#   descarga = "<clave>" (guarda lo que baje con esa clave para filas siguientes).
+# - marcar: rotulo de una casilla o un botón de opción.
+# - subir: zona (parte del nombre del botón de la zona de subida), archivo (clave: libro_limpio, bcv_tasa,
+#   precios_empresa_s1, lista_precios, topologia_ti001, o una descarga anterior como «paquete»).
+# - indice = n elige la n-ésima coincidencia (0 por omisión).
+# Todo dato es ficticio («Contratista Demo, C.A.», J-00000000-0, contraseñas de prueba).
+
+# ---------------------------------------------------------------------------------------------
+# Siembra adicional: la empresa ficticia y su clave de firma (la usa «Entregar paquete»).
+# La genera el administrador ficticio desde el propio equipo (servidor en 127.0.0.1).
+[[siembra]]
+ruta = "administracion"
+cuenta = "admin"
+accion = "empresa ficticia y clave de firma de prueba"
+pasos = [
+  { accion = "pulsar", rol = "tab", nombre = "Empresa y clave de firma" },
+  { accion = "llenar", rotulo = "Nombre de la empresa", valor = "Contratista Demo, C.A." },
+  { accion = "llenar", rotulo = "RIF", valor = "J-00000000-0" },
+  { accion = "llenar", rotulo = "Ciudad", valor = "Ciudad Ficticia" },
+  { accion = "pulsar", nombre = "Guardar la empresa" },
+  { accion = "esperar", texto = "Generar la clave de firma" },
+  { accion = "llenar", rotulo = "Contraseña de la clave (12 a 128 caracteres)", valor = "clave de firma de prueba 01" },
+  { accion = "llenar", rotulo = "Repítala", valor = "clave de firma de prueba 01" },
+  { accion = "pulsar", nombre = "Generar la clave" },
+]
+espera = { texto = "Huella de la clave de firma" }
+
+# ---------------------------------------------------------------------------------------------
+# Administración (admin)
+
+[[pantalla]]
+ruta = "administracion"
+cuenta = "admin"
+accion = "crear una cuenta ficticia -> aparece en la lista de cuentas"
+pasos = [
+  { accion = "pulsar", rol = "tab", nombre = "Cuentas" },
+  { accion = "llenar", rotulo = "Usuario", valor = "func01" },
+  { accion = "llenar", rotulo = "Nombre de la persona", valor = "Persona Ficticia Uno" },
+  { accion = "marcar", rotulo = "arma presupuestos (arma)" },
+  { accion = "llenar", rotulo = "Contraseña temporal", valor = "temporal ficticia 01" },
+  { accion = "pulsar", nombre = "Crear la cuenta" },
+]
+espera = { textos = ["func01", "Persona Ficticia Uno"] }
+
+[[pantalla]]
+ruta = "indices"
+cuenta = "admin"
+accion = "leer la tasa del BCV (fixture) y confirmar la importación -> aviso de importación"
+pasos = [
+  { accion = "elegir", rotulo = "Qué archivo es", opcion = "Tasa de referencia del USD" },
+  { accion = "llenar", rotulo = "Dirección de la página del BCV de donde lo bajó", valor = "https://www.bcv.org.ve/estadisticas/tipo-cambio-de-referencia-smc" },
+  { accion = "subir", zona = "Suelte aquí el archivo", archivo = "bcv_tasa" },
+  { accion = "pulsar", nombre = "Leer" },
+  { accion = "esperar", texto = "Filas leídas" },
+  { accion = "pulsar", nombre = "Confirmar la importación" },
+]
+espera = { textos = ["usd_compra: importada (64 valores)", "usd_venta: importada (64 valores)"] }
+
+[[pantalla]]
+ruta = "precios_empresa"
+cuenta = "admin"
+carpeta = "s1.db"
+accion = "crear la lista de la empresa con un CSV ficticio -> «Lista creada»"
+pasos = [
+  { accion = "llenar", rotulo = "Empresa (nombre)", valor = "Contratista Demo, C.A." },
+  { accion = "llenar", rotulo = "RIF", valor = "J-00000000-0" },
+  { accion = "elegir", rotulo = "Moneda de la lista", opcion = "Bs" },
+  { accion = "llenar", rotulo = "Fecha de la lista", valor = "2026-09-20" },
+  { accion = "llenar", rotulo = "Fuente de la lista (de donde salen estos precios)", valor = "Cotizacion interna CI-001 (ficticia)" },
+  { accion = "subir", zona = "Archivo de precios", archivo = "precios_empresa_s1" },
+  { accion = "pulsar", nombre = "Crear la lista de la empresa" },
+]
+espera = { texto = "Lista creada" }
+
+# ---------------------------------------------------------------------------------------------
+# Trabajo (ana)
+
+[[pantalla]]
+ruta = "acerca"
+cuenta = "ana"
+accion = "ver la versión y el estado de las bases -> «Al día»"
+espera = { textos = ["Versión", "Al día"] }
+
+[[pantalla]]
+ruta = "inicio"
+cuenta = "ana"
+accion = "soltar el libro ficticio en «Audite un presupuesto» y auditar por mi cuenta -> hallazgos"
+pasos = [
+  { accion = "subir", zona = "Suelte aquí el libro .xlsx del presupuesto", archivo = "libro_limpio" },
+  { accion = "pulsar", nombre = "Auditar por mi cuenta" },
+]
+espera = { textos = ["libro_plantilla_empresa_ficticio.xlsx", "Hallazgos (2)", "Total general"] }
+
+[[pantalla]]
+ruta = "catalogo"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "buscar «PVC» en el catálogo -> aparecen las partidas de PVC"
+pasos = [
+  { accion = "llenar", rotulo = "Buscar en el catálogo", valor = "PVC" },
+]
+espera = { textos = ["LB-02-TUB", "DEMO-01-INST"] }
+
+[[pantalla]]
+ruta = "componer"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "componer una partida nueva y guardarla -> aparece en el catálogo"
+pasos = [
+  { accion = "llenar", rotulo = "Código", valor = "FUN-001" },
+  { accion = "llenar", rotulo = "Descripción", valor = "Partida ficticia del recorrido funcional" },
+  { accion = "llenar", rotulo = "Unidad", valor = "m2" },
+  { accion = "llenar", rotulo = "Rendimiento: unidades por día", valor = "10" },
+  { accion = "llenar", rotulo = "Condiciones del rendimiento", valor = "Condicion ficticia del recorrido funcional" },
+  { accion = "pulsar", nombre = "Agregar fila a Materiales" },
+  { accion = "llenar", rotulo = "Descripción, fila 1", valor = "Cemento Portland" },
+  { accion = "llenar", rotulo = "Unidad, fila 1", valor = "saco" },
+  { accion = "llenar", rotulo = "Consumo por unidad, fila 1", valor = "0.5" },
+  { accion = "llenar", rotulo = "Precio, fila 1", valor = "18" },
+  { accion = "pulsar", nombre = "Guardar composición" },
+  { accion = "esperar", texto = "Siguiente paso" },
+  { accion = "ir", ruta = "catalogo" },
+  { accion = "llenar", rotulo = "Buscar en el catálogo", valor = "FUN-001" },
+]
+espera = { textos = ["FUN-001", "Partida ficticia del recorrido funcional"] }
+
+[[pantalla]]
+ruta = "similares"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "buscar partidas parecidas a una descripción -> lista de similares del catálogo"
+pasos = [
+  { accion = "llenar", rotulo = "Descripción de la partida", valor = "instalacion de tuberia PVC" },
+  { accion = "pulsar", nombre = "Buscar" },
+]
+espera = { textos = ["3 propuestas, de mayor a menor similitud", "DEMO-01-INST"], ms = 120000 }
+
+[[pantalla]]
+ruta = "simulador"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "generar una lista simulada con semilla 42 -> la lista aparece"
+pasos = [
+  { accion = "pulsar", nombre = "Generar lista simulada" },
+]
+espera = { textos = ["Lista simulada", "Cemento"] }
+
+[[pantalla]]
+ruta = "escenarios"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "generar un escenario con utilidad 0.20 -> comparación contra el presupuesto base"
+pasos = [
+  { accion = "llenar", rotulo = "Nombre del escenario", valor = "utilidad alta ficticia" },
+  { accion = "llenar", rotulo = "Utilidad", valor = "0.20" },
+  { accion = "pulsar", nombre = "Generar escenario" },
+]
+espera = { textos = ["Comparación contra el base", "utilidad alta ficticia"] }
+
+[[pantalla]]
+ruta = "tablero"
+cuenta = "ana"
+carpeta = "demo.db"
+proyecto = "Sílice: caso de demostracion"
+accion = "abrir el tablero del proyecto con presupuesto -> resumen, curva y Pareto"
+espera = { textos = ["Curva del proyecto", "Partidas que más pesan (Pareto)", "Versiones del presupuesto"] }
+
+[[pantalla]]
+ruta = "hoja"
+cuenta = "ana"
+carpeta = "demo.db"
+proyecto = "Sílice: caso de demostracion"
+accion = "cambiar la utilidad en Parámetros y guardar una versión con su fuente -> versión nueva vigente"
+pasos = [
+  { accion = "pulsar", rol = "tab", nombre = "Parámetros" },
+  { accion = "llenar", rotulo = "Utilidad (fracción, en cascada sobre la administración)", valor = "0.12" },
+  { accion = "tecla", nombre = "Tab" },
+  { accion = "pulsar", nombre = "Guardar versión…" },
+  { accion = "llenar", rotulo = "Fuente del cambio (por qué y con qué respaldo)", valor = "Acta ficticia AF-02", fuera = true },
+  { accion = "pulsar", nombre = "Guardar versión", fuera = true },
+]
+espera = { textos = ["Se guardó la versión DEMO-002", "Versión DEMO-002 · Sin cambios sin guardar"] }
+
+[[pantalla]]
+ruta = "entregar"
+cuenta = "ana"
+carpeta = "demo.db"
+proyecto = "Sílice: caso de demostracion"
+accion = "generar el paquete firmado de la versión guardada -> se descarga con su huella"
+pasos = [
+  { accion = "elegir", rotulo = "Proyecto", opcion = "Sílice: caso de demostracion" },
+  { accion = "llenar", rotulo = "Para quién es (opcional)", valor = "Revisora ficticia" },
+  { accion = "llenar", rotulo = "Contraseña de la clave de firma", valor = "clave de firma de prueba 01" },
+  { accion = "pulsar", nombre = "Generar paquete" },
+  { accion = "esperar", texto = "Paquete listo" },
+  { accion = "pulsar", nombre = "Descargar el paquete", descarga = "paquete" },
+]
+espera = { texto = "Paquete listo y firmado.", descarga = "paquete", huella = true }
+
+[[pantalla]]
+ruta = "actualizacion"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "revalorar el presupuesto DEMO-001 con una lista nueva (muestra ficticia) -> totales y versión nueva auditada"
+pasos = [
+  { accion = "elegir", rotulo = "Presupuesto base", opcion = "DEMO-001" },
+  { accion = "llenar", rotulo = "Código de la versión nueva", valor = "FUN-02" },
+  { accion = "subir", zona = "Suelte aquí la lista de precios", archivo = "lista_precios" },
+  { accion = "pulsar", nombre = "Revalorar presupuesto" },
+]
+espera = { textos = ["Comparativo por partida", "Informe de auditoría de la versión nueva"] }
+
+[[pantalla]]
+ruta = "historico"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "filtrar los cambios de precio desde hoy -> aparecen los de la revaloración anterior"
+pasos = [
+  { accion = "llenar", rotulo = "Desde", valor = "{hoy}" },
+  { accion = "pulsar", nombre = "Filtrar" },
+]
+espera = { textos = ["Cemento Portland", "Arena lavada"] }
+
+[[pantalla]]
+ruta = "elaborar"
+cuenta = "ana"
+carpeta = "ti001.db"
+accion = "extraer el cómputo de la topología ficticia TI-001 y elaborar el presupuesto -> métricas e informe de auditoría"
+pasos = [
+  { accion = "elegir", rotulo = "Dominio", opcion = "telecom" },
+  { accion = "llenar", rotulo = "Código del presupuesto", valor = "FUN-TI" },
+  { accion = "subir", zona = "Suelte aquí el archivo de muestra", archivo = "topologia_ti001" },
+  { accion = "pulsar", nombre = "Extraer cómputo" },
+  { accion = "esperar", texto = "Cómputo extraído" },
+  { accion = "pulsar", nombre = "Elaborar presupuesto" },
+]
+espera = { textos = ["Presupuesto elaborado", "Informe de auditoría"] }
+
+[[pantalla]]
+ruta = "reajuste"
+cuenta = "ana"
+carpeta = "s1.db"
+proyecto = "Contrato S1 (reajuste)"
+accion = "declarar la cláusula ficticia (tests/fixtures/reajuste_pantalla.py) y calcular -> escalatoria y comprobación"
+pasos = [
+  { accion = "elegir", rotulo = "Versión del contrato", opcion = "001" },
+  { accion = "llenar", rotulo = "Inicio del contrato", valor = "2026-01-15" },
+  { accion = "llenar", rotulo = "Duración (meses)", valor = "24" },
+  { accion = "llenar", rotulo = "El primer año corre desde", valor = "2026-01-15" },
+  { accion = "llenar", rotulo = "Mes base de los índices", valor = "2026-01-01" },
+  { accion = "elegir", rotulo = "Periodicidad", opcion = "mensual" },
+  { accion = "elegir", rotulo = "Mecanismo", opcion = "ambos" },
+  { accion = "elegir", rotulo = "Estructura", opcion = "declarada" },
+  { accion = "llenar", rotulo = "R (fracción no reajustable)", valor = "0.10" },
+  { accion = "llenar", rotulo = "Fuente de R", valor = "memoria" },
+  { accion = "llenar", rotulo = "Fuente de la cláusula", valor = "contrato ficticio" },
+  { accion = "llenar", rotulo = "Responsable", valor = "Ing." },
+  { accion = "llenar", rotulo = "Serie, Componentes fila 1", valor = "FIC-MAT" },
+  { accion = "llenar", rotulo = "Peso, Componentes fila 1", valor = "0.5" },
+  { accion = "llenar", rotulo = "Serie, Componentes fila 2", valor = "FIC-EQU" },
+  { accion = "llenar", rotulo = "Peso, Componentes fila 2", valor = "0.2" },
+  { accion = "llenar", rotulo = "Serie, Componentes fila 3", valor = "FIC-MO" },
+  { accion = "llenar", rotulo = "Peso, Componentes fila 3", valor = "0.3" },
+  { accion = "pulsar", nombre = "Siguiente: períodos y lo ejecutado" },
+  { accion = "pulsar", nombre = "Agregar fila a Períodos" },
+  { accion = "llenar", rotulo = "Desde, Períodos fila 1", valor = "2027-02-01" },
+  { accion = "llenar", rotulo = "Hasta, Períodos fila 1", valor = "2027-02-28" },
+  { accion = "llenar", rotulo = "Versión de comprobación, Períodos fila 1", valor = "002" },
+  { accion = "pulsar", nombre = "Agregar fila a Ejecutado" },
+  { accion = "llenar", rotulo = "Período, Ejecutado fila 1", valor = "1" },
+  { accion = "llenar", rotulo = "Partida, Ejecutado fila 1", valor = "S1-R01" },
+  { accion = "llenar", rotulo = "Cantidad, Ejecutado fila 1", valor = "1000" },
+  { accion = "llenar", rotulo = "Fuente, Ejecutado fila 1", valor = "AV-01" },
+  { accion = "pulsar", nombre = "Calcular" },
+]
+espera = { texto = "Escalatoria y comprobación, lado a lado" }
+
+[[pantalla]]
+ruta = "control"
+cuenta = "ana"
+carpeta = "obra_control.db"
+proyecto = "OBRA-GENERADA"
+accion = "cambiar un parámetro de control con su fuente -> «1 parámetro(s) cambiado(s)» y el valor nuevo en la tabla"
+pasos = [
+  { accion = "elegir", rotulo = "Parámetro a cambiar", opcion = "Umbral de SPI para error" },
+  { accion = "llenar", rotulo = "Nuevo valor de Umbral de SPI para error", valor = "0.85" },
+  { accion = "llenar", rotulo = "Fuente del cambio de parámetros", valor = "Acta ficticia AF-01" },
+  { accion = "pulsar", nombre = "Guardar parámetros" },
+]
+espera = { textos = ["1 parámetro(s) cambiado(s).", "0,85"] }
+
+[[pantalla]]
+ruta = "existencias"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "crear un material y registrar una entrada -> cambia la existencia"
+pasos = [
+  { accion = "pulsar", rol = "tab", nombre = "Registrar" },
+  { accion = "pulsar", rol = "tab", nombre = "Material nuevo" },
+  { accion = "llenar", rotulo = "Código", valor = "ARE-F01" },
+  { accion = "llenar", rotulo = "Nombre", valor = "Arena lavada ficticia" },
+  { accion = "elegir", rotulo = "Unidad de venta", opcion = "m3" },
+  { accion = "llenar", rotulo = "Existencia mínima", valor = "10" },
+  { accion = "pulsar", nombre = "Crear material" },
+  { accion = "esperar", texto = "Material creado: ARE-F01." },
+  { accion = "pulsar", rol = "tab", nombre = "Entrada" },
+  { accion = "elegir", rotulo = "Material", opcion = "ARE-F01" },
+  { accion = "llenar", rotulo = "Cantidad (m³)", valor = "25" },
+  { accion = "pulsar", nombre = "Registrar entrada" },
+  { accion = "esperar", texto = "Entrada registrada" },
+  { accion = "pulsar", rol = "tab", nombre = "Existencias" },
+]
+espera = { texto = "ARE-F01 Arena lavada ficticia m³ 25 10 Normal" }
+
+# ---------------------------------------------------------------------------------------------
+# Revisión (rita)
+
+[[pantalla]]
+ruta = "revisar"
+cuenta = "rita"
+accion = "abrir el paquete .silice que generó «Entregar» y guardar el dictamen -> total recalculado y dictamen atado al SHA-256"
+pasos = [
+  { accion = "pulsar", rol = "tab", nombre = "Paquete .silice" },
+  { accion = "subir", zona = "Suelte aquí el paquete .silice", archivo = "paquete" },
+  { accion = "esperar", texto = "Total recalculado" },
+  { accion = "llenar", rotulo = "Notas", valor = "Dictamen ficticio del recorrido funcional" },
+  { accion = "pulsar", nombre = "Guardar dictamen" },
+]
+espera = { textos = ["Total recalculado", "Dictamen guardado, atado al SHA-256 de este archivo."] }
+
+[[pantalla]]
+ruta = "libros"
+cuenta = "rita"
+accion = "abrir el libro ficticio de la empresa -> hoja con sus hallazgos"
+pasos = [
+  { accion = "subir", zona = "Suelte aquí el libro .xlsx de la empresa", archivo = "libro_limpio" },
+]
+espera = { textos = ["libro_plantilla_empresa_ficticio.xlsx", "Hallazgos (2)", "Total general"] }
+
+[[pantalla]]
+ruta = "historial"
+cuenta = "rita"
+accion = "ver la auditoría del libro recién abierto -> aparece en el historial"
+espera = { texto = "libro_plantilla_empresa_ficticio.xlsx" }
