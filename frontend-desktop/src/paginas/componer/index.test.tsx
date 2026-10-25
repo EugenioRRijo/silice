@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import type { Evaluacion } from "./cliente";
 import PaginaComponer from "./index";
 
@@ -51,9 +52,10 @@ function valida(pu: string, parcial: Partial<Evaluacion> = {}): Evaluacion {
 }
 
 const TABLAS_FICTICIAS = {
-  materiales: [{ descripcion: "Arena ficticia", unidad: "m3", cantidad: "0.5", precio: "40.00" }],
+  // La precarga llega como se escribe en los campos: coma decimal (aplicacion.cifras.texto_de_cifra).
+  materiales: [{ descripcion: "Arena ficticia", unidad: "m3", cantidad: "0,5", precio: "1.040,00" }],
   equipos: [],
-  mano_obra: [{ descripcion: "Peón ficticio", cantidad: "2", sueldo: "15.00", modalidad: "JORNAL" }],
+  mano_obra: [{ descripcion: "Peón ficticio", cantidad: "2", sueldo: "15,00", modalidad: "JORNAL" }],
 };
 
 // `GET /v1/casos/actual` (api/rutas/casos.py, ResumenCarpeta): solo importa `lista_vigente`.
@@ -209,7 +211,7 @@ describe("Componer una partida", () => {
       await usuario.type(screen.getByLabelText("Código"), "FIC-1");
       await usuario.type(screen.getByLabelText("Rendimiento: unidades por día"), "10");
       await usuario.click(screen.getByRole("button", { name: "Agregar fila a Materiales" }));
-      await usuario.type(screen.getByLabelText("Precio, fila 1"), "40.00");
+      await usuario.type(screen.getByLabelText("Precio, fila 1"), "1.040,00");
       // Cada edición reinició el temporizador: a 299 ms de la última no se ha pedido ningún desglose.
       await vi.advanceTimersByTimeAsync(299);
       expect(de("/v1/composicion/evaluar")).toHaveLength(0);
@@ -222,12 +224,13 @@ describe("Componer una partida", () => {
         codigo: "FIC-1",
         dominio: "civil",
         rendimiento: "10",
-        materiales: [{ descripcion: "", unidad: "", cantidad: "", precio: "40.00" }],
+        // Lo tecleado viaja tal cual: lo lee el servidor con la regla unica (aplicacion/cifras.py).
+        materiales: [{ descripcion: "", unidad: "", cantidad: "", precio: "1.040,00" }],
         equipos: [],
         mano_obra: [],
       });
       await vi.advanceTimersByTimeAsync(0);
-      expect(screen.getByText("29.70")).toBeInTheDocument();
+      expect(screen.getAllByText("29,70").length).toBeGreaterThan(0);
       // Sin más ediciones no se vuelve a pedir.
       await vi.advanceTimersByTimeAsync(1000);
       expect(de("/v1/composicion/evaluar")).toHaveLength(1);
@@ -246,20 +249,20 @@ describe("Componer una partida", () => {
     await usuario.type(screen.getByLabelText("Código"), "B");
     await waitFor(() => expect(pendientes).toHaveLength(2), ESPERA);
     pendientes[1](json(valida("2.00")));
-    expect(await screen.findByText("2.00", { selector: "td" }, ESPERA)).toBeInTheDocument();
+    expect(await screen.findAllByText("2,00", { selector: "td" }, ESPERA)).not.toHaveLength(0);
     pendientes[0](json(valida("1.00")));
     await new Promise((r) => setTimeout(r, 50));
-    expect(screen.queryByText("1.00", { selector: "td" })).not.toBeInTheDocument();
-    expect(screen.getAllByText("2.00", { selector: "td" }).length).toBeGreaterThan(0);
+    expect(screen.queryByText("1,00", { selector: "td" })).not.toBeInTheDocument();
+    expect(screen.getAllByText("2,00", { selector: "td" }).length).toBeGreaterThan(0);
   });
 
   test("al teclear un código que existe precarga tablas y rendimiento una sola vez, sin pisar lo editado", async () => {
     const usuario = userEvent.setup();
-    partida = () => json({ existe: true, tablas: TABLAS_FICTICIAS, rendimiento_propuesto: "10.50", hay_historial: true });
+    partida = () => json({ existe: true, tablas: TABLAS_FICTICIAS, rendimiento_propuesto: "10,50", hay_historial: true });
     montar();
     await usuario.type(screen.getByLabelText("Código"), "FIC-1");
     await waitFor(() => expect(screen.getAllByLabelText("Descripción, fila 1")[0]).toHaveValue("Arena ficticia"), ESPERA);
-    expect(screen.getByLabelText("Rendimiento: unidades por día")).toHaveValue("10.50");
+    expect(screen.getByLabelText("Rendimiento: unidades por día")).toHaveValue("10,50");
     expect(screen.getAllByLabelText(/^Descripción, fila 1$/)).toHaveLength(2); // materiales y mano de obra
     expect(de("/v1/composicion/partidas/")).toHaveLength(1);
 
@@ -336,6 +339,12 @@ describe("Componer una partida", () => {
     expect(screen.queryByRole("link", { name: "Elaborar un presupuesto" })).not.toBeInTheDocument();
   });
 
+  test("la ayuda de las cifras dice la regla: coma decimal, punto de miles (Eugenio, 2026-10-25)", () => {
+    montar();
+    expect(screen.getByText(AYUDA_CIFRAS)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/con coma o con punto|sin separador de miles/);
+  });
+
   test("un dato mal escrito no borra el último desglose: lo conserva, marcado, junto al aviso", async () => {
     // Prueba en vivo 2026-10-25: un número ilegible dejaba la pantalla sin desglose y solo con el mensaje.
     const usuario = userEvent.setup();
@@ -343,19 +352,19 @@ describe("Componer una partida", () => {
     evaluacion = () => json(valida("29.70"));
     montar();
     await usuario.type(screen.getByLabelText("Código"), "FIC-1");
-    expect(await screen.findByText("29.70", { selector: "td" }, ESPERA)).toBeInTheDocument();
+    expect(await screen.findAllByText("29,70", { selector: "td" }, ESPERA)).not.toHaveLength(0);
 
     evaluacion = () => json({ ...VACIA, estado: "incompleto", aviso: AVISO });
     await usuario.type(screen.getByLabelText("Código"), "X");
     expect(await screen.findByText(AVISO, {}, ESPERA)).toBeInTheDocument();
-    expect(screen.getByText("29.70", { selector: "td" })).toBeInTheDocument();
+    expect(screen.getAllByText("29,70", { selector: "td" }).length).toBeGreaterThan(0);
     expect(screen.getByText(/último desglose calculado/i)).toBeInTheDocument();
 
     // Con el formulario vacío otra vez no queda nada viejo a la vista.
     evaluacion = () => json(VACIA);
     await usuario.clear(screen.getByLabelText("Código"));
     expect(await screen.findByText(/Comience por la cabecera/, {}, ESPERA)).toBeInTheDocument();
-    expect(screen.queryByText("29.70", { selector: "td" })).not.toBeInTheDocument();
+    expect(screen.queryByText("29,70", { selector: "td" })).not.toBeInTheDocument();
   });
 
   test("un 401 en el desglose llama a alExpirar", async () => {

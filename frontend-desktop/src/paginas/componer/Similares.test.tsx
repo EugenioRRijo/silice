@@ -11,7 +11,8 @@ const UNA: Similar = {
   rendimiento: "12.00",
   unidad: "m2",
   tablas: {
-    materiales: [{ descripcion: "Bloque ficticio", unidad: "u", cantidad: "12.5", precio: "0.80" }],
+    // Las tablas llegan como se escriben en los campos (coma decimal, `aplicacion.cifras.texto_de_cifra`).
+    materiales: [{ descripcion: "Bloque ficticio", unidad: "u", cantidad: "12,5", precio: "0,80" }],
     equipos: [],
     mano_obra: [{ descripcion: "Albañil ficticio", cantidad: "1", sueldo: "20", modalidad: "JORNAL" }],
   },
@@ -27,14 +28,15 @@ describe("Similares", () => {
   test("lista cada partida con puntaje a dos decimales, código y descripción", () => {
     render(<Similares similares={[UNA]} />);
     expect(screen.getByRole("heading", { name: "Partidas similares del catálogo" })).toBeInTheDocument();
-    expect(screen.getByText("0.87 · FIC-001 · Muro ficticio de bloque")).toBeInTheDocument();
+    expect(screen.getByText("0,87 · FIC-001 · Muro ficticio de bloque")).toBeInTheDocument();
   });
 
   test("al abrir una muestra el rendimiento y sus tablas de solo lectura", async () => {
     const usuario = userEvent.setup();
     render(<Similares similares={[UNA]} />);
     await usuario.click(screen.getByRole("button", { name: /FIC-001/ }));
-    expect(screen.getByText("Rendimiento: 12.00 m2/día")).toBeInTheDocument();
+    expect(screen.getByText("Rendimiento: 12,00 m2/día")).toBeInTheDocument();
+    expect(screen.getByText("12,5")).toBeInTheDocument();
     expect(screen.getByText("Bloque ficticio")).toBeInTheDocument();
     expect(screen.getByText("Albañil ficticio")).toBeInTheDocument();
     expect(screen.queryAllByRole("textbox")).toHaveLength(0);
