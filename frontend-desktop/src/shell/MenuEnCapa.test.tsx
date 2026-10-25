@@ -39,6 +39,26 @@ describe("MenuEnCapa", () => {
     for (const t of ["Auditar", "Crear", "Más"]) expect(screen.getAllByText(t, { selector: ".silice-capa__rotulo" }).length).toBeGreaterThan(0);
   });
 
+  // Diseno §1 y §5.1: un area de una sola pantalla es un enlace directo; repetir su nombre como rotulo y como enlace
+  // («Inicio / Inicio») reproduce el doble que la barra quiso quitar.
+  test("un area de una sola pantalla no repite su nombre: sin rotulo, solo el enlace con su ayuda", () => {
+    const { entradas } = pintar();
+    const nav = screen.getByRole("navigation", { name: "Menú principal (capa)", hidden: true });
+    const enlaces = entradas.filter((e) => e.tipo === "enlace");
+    expect(enlaces.map((e) => e.area)).toEqual(["inicio", "produccion"]);
+    for (const e of enlaces) {
+      if (e.tipo !== "enlace") continue;
+      expect(within(nav).queryAllByText(e.titulo, { selector: ".silice-capa__rotulo" })).toHaveLength(0);
+      expect(within(nav).getAllByText(e.pagina.titulo)).toHaveLength(1);
+      const enlace = within(nav).getByRole("link", { name: new RegExp(`^${e.pagina.titulo}`), hidden: true });
+      const idAyuda = enlace.getAttribute("aria-describedby") ?? "";
+      expect(document.getElementById(idAyuda)?.textContent).toBe(e.pagina.enUnaLinea);
+    }
+    // Las areas con panel conservan su rotulo.
+    expect(within(nav).queryAllByText("Producción", { selector: ".silice-capa__rotulo" })).toHaveLength(0);
+    expect(within(nav).getAllByText("Crear", { selector: ".silice-capa__rotulo" })).toHaveLength(1);
+  });
+
   test("cada enlace describe su pagina con su linea de ayuda", () => {
     const { entradas } = pintar();
     for (const id of idsDe(entradas)) {
