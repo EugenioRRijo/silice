@@ -328,9 +328,54 @@ def purgar_intentos_de_inexistentes(session: Session, ahora: datetime) -> int:
 # --- primer administrador y código de instalación -------------------------------------------
 
 
+#: Cifras que **nunca** salen en un código (el alfabeto no tiene 0, 1, 8 ni 9) y que quien copia a
+#: mano escribe por la letra que se les parece. Leerlas como esa letra es inequívoco: ningún código
+#: real cambia de huella. No se traduce la L (es una letra del alfabeto) ni el 9.
+_CIFRAS_POR_LETRAS = str.maketrans({"0": "O", "1": "I", "8": "B"})
+_BLOQUE = r"[A-Z0-9]{4}"
+#: Lo que separa los bloques de un código pegado: guiones (también el largo de un procesador de
+#: texto), con o sin espacios alrededor; o solo espacios.
+_SEPARADORES = (r"\s*[-‐-―]\s*", r"\s+")
+_RACHAS = tuple(
+    re.compile(rf"(?<!\w){_BLOQUE}(?:{separador}{_BLOQUE})*(?!\w)") for separador in _SEPARADORES
+)
+
+
+def _grupo_con_forma_de_codigo(texto: str) -> str | None:
+    """El único grupo de cinco bloques de cuatro del texto (la línea entera de la consola, el
+    archivo con una nota): primero separados por guion, luego por espacios. Una racha de bloques
+    de otro largo no cuenta (los separadores no son letras ni cifras: cinco bloques son 20); con
+    dos grupos no se adivina cuál es (`None`)."""
+    for racha in _RACHAS:
+        grupos = [
+            m.group()
+            for m in racha.finditer(texto)
+            if sum(c.isalnum() for c in m.group()) == LONGITUD_CODIGO
+        ]
+        if grupos:
+            return grupos[0] if len(grupos) == 1 else None
+    return None
+
+
+def normalizar_codigo(codigo: str) -> str:
+    """Lo que se compara de un código escrito o pegado: mayúsculas; 0, 1 y 8 leídos como O, I y
+    B; si el texto trae un único grupo con la forma del código, solo ese grupo; y sin nada que no
+    sea letra o cifra. Lo que no es un código sigue sin serlo: solo cambia qué huella se busca,
+    una por intento, y el freno cuenta el intento igual."""
+    texto = codigo.upper().translate(_CIFRAS_POR_LETRAS)
+    grupo = _grupo_con_forma_de_codigo(texto)
+    return "".join(c for c in (texto if grupo is None else grupo) if c.isalnum())
+
+
 def _huella_codigo(codigo: str) -> str:
-    limpio = "".join(c for c in codigo.upper() if c.isalnum())
-    return hashlib.sha256(limpio.encode("ascii", "ignore")).hexdigest()
+    return hashlib.sha256(normalizar_codigo(codigo).encode("ascii", "ignore")).hexdigest()
+
+
+def _caducado(pendiente: CodigoInstalacion, ahora: datetime) -> bool:
+    return (
+        pendiente.motivo == "restablecimiento"
+        and ahora - pendiente.creado >= CADUCIDAD_RESTABLECIMIENTO
+    )
 
 
 def formato_codigo(codigo: str) -> str:
@@ -364,16 +409,33 @@ def hay_usuarios(session: Session) -> bool:
     return bool(session.scalar(select(func.count()).select_from(Usuario)))
 
 
+#: Lo que se lee de `codigo_instalacion.txt` para compararlo (el archivo lleva 25 bytes).
+_LECTURA_DEL_ARCHIVO = 1024
+
+
+def _archivo_lleva_un_codigo_vigente(session: Session, carpeta: Path, ahora: datetime) -> bool:
+    """`codigo_instalacion.txt` existe y su código es uno que la base aceptaría ahora: vigente y,
+    si es de restablecimiento, sin caducar. Un archivo rancio (la base se recreó o se restauró y
+    el archivo quedó), vacío o ilegible no lo lleva. El texto leído no sale de aquí."""
+    try:
+        with (carpeta / NOMBRE_ARCHIVO_CODIGO).open("rb") as archivo:
+            texto = archivo.read(_LECTURA_DEL_ARCHIVO).decode("utf-8", "replace")
+    except OSError:
+        return False
+    pendiente = session.get(CodigoInstalacion, _huella_codigo(texto))
+    return pendiente is not None and pendiente.usado is None and not _caducado(pendiente, ahora)
+
+
 def preparar_primera_vez(session: Session, carpeta: Path, ahora: datetime) -> str | None:
-    """Si no hay cuentas, asegura que haya un código vigente **y su archivo**: emite el de la
-    primera vez si no hay ninguno vigente o si falta `codigo_instalacion.txt` (alguien lo borró y
-    el código vigente quedó sin dueño: se invalida y se emite otro). Toma el bloqueo de escritura
-    antes de mirar. Devuelve el código o `None` si no hacía falta."""
+    """Si no hay cuentas, asegura que `codigo_instalacion.txt` lleve un código que la base acepte:
+    emite el de la primera vez (invalida los pendientes y reescribe el archivo) si falta el
+    archivo (alguien lo borró y el código vigente quedó sin dueño) o si su código no es uno
+    vigente de la base (archivo rancio: la base se recreó o se restauró y el archivo quedó; antes
+    mostraba un código que la base no conoce y el reclamo fallaba para siempre). Con cuentas no
+    toca nada, ni el archivo de un restablecimiento. Toma el bloqueo de escritura antes de mirar.
+    Devuelve el código o `None` si no hacía falta."""
     _tomar_escritura(session)
-    vigente = session.scalar(
-        select(func.count()).select_from(CodigoInstalacion).where(CodigoInstalacion.usado.is_(None))
-    )
-    if hay_usuarios(session) or (vigente and (carpeta / NOMBRE_ARCHIVO_CODIGO).is_file()):
+    if hay_usuarios(session) or _archivo_lleva_un_codigo_vigente(session, carpeta, ahora):
         session.rollback()  # no se escribió nada: se suelta el bloqueo
         return None
     return emitir_codigo(session, carpeta, ahora)
@@ -425,11 +487,7 @@ def reclamar_instalacion(
         raise CuentaBloqueada(MENSAJE_BLOQUEO)
     pendiente = session.get(CodigoInstalacion, _huella_codigo(codigo))
     vigente = pendiente is not None and pendiente.usado is None
-    caducado = (
-        vigente
-        and pendiente.motivo == "restablecimiento"
-        and ahora - pendiente.creado >= CADUCIDAD_RESTABLECIMIENTO
-    )
+    caducado = vigente and _caducado(pendiente, ahora)
     aceptable = (
         vigente and not caducado
         and (not hay_usuarios(session) or pendiente.motivo == "restablecimiento")

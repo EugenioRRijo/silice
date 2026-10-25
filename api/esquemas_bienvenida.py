@@ -32,7 +32,11 @@ class PrimerArranqueRespuesta(BaseModel):
 
 class ReclamoDeInstalacion(BaseModel):
     codigo: StrictStr = Field(
-        max_length=64, description="El código de instalación o de restablecimiento"
+        max_length=256,
+        description=(
+            "El código de instalación o de restablecimiento; también la línea entera de la "
+            "consola que lo trae (se usa el único grupo con la forma del código)"
+        ),
     )
     usuario: StrictStr = Field(max_length=120)
     nombre: StrictStr = Field(max_length=120)

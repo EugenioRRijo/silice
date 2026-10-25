@@ -4,11 +4,12 @@ Vive en `operacion/` y no en `aplicacion/` porque el lanzador (que nunca importa
 llama antes de que exista la API. Tampoco importa FastAPI: la ruta (`api.rutas.primer_arranque`)
 y la orden `python -m operacion restablecer-administrador` lo usan.
 
-- `asegurar_codigo`: sin cuentas y sin `codigo_instalacion.txt`, emite un código nuevo (invalida
-  los pendientes; `seguridad.cuentas.preparar_primera_vez` toma el bloqueo de escritura). Con
-  cuentas, o con el archivo ya escrito, no hace nada: es idempotente. **Nunca se llama desde una
-  petición**: un `GET` con efecto sería una trampa; lo llaman el lanzador y el gancho `lifespan`
-  de la API.
+- `asegurar_codigo`: sin cuentas, si falta `codigo_instalacion.txt` o su código no es uno vigente
+  en la base (archivo rancio: la base se recreó o se restauró y el archivo quedó), emite un código
+  nuevo y reescribe el archivo (invalida los pendientes; `seguridad.cuentas.preparar_primera_vez`
+  toma el bloqueo de escritura). Con cuentas, o con un archivo cuyo código la base acepta, no hace
+  nada: es idempotente. **Nunca se llama desde una petición**: un `GET` con efecto sería una
+  trampa; lo llaman el lanzador y el gancho `lifespan` de la API.
 - `emitir_restablecimiento`: un código de restablecimiento (caduca a las 24 h; cierra las sesiones
   de los administradores). Quien lo corre tiene el equipo.
 - `estado`: lo único que la bienvenida puede saber antes de entrar (sin nombres ni rutas).
@@ -49,10 +50,13 @@ def _archivo(carpeta: Path) -> Path:
 
 
 def asegurar_codigo(sesion: Session, carpeta: Path, ahora: datetime) -> bool:
-    """True si emitió un código (no había cuentas ni archivo). Con cuentas o con el archivo
-    presente no toca nada, ni siquiera el archivo de otra persona."""
-    if _archivo(carpeta).is_file():
-        return False
+    """True si emitió un código: no había cuentas y faltaba el archivo o su código no era uno
+    vigente en la base. Con cuentas no toca nada, ni siquiera el archivo de un restablecimiento.
+
+    Antes salía en cuanto el archivo existía, sin mirar la base: si `instalacion.db` se recreaba
+    y el `.txt` quedaba, el archivo mostraba un código que la base no conoce y el reclamo fallaba
+    para siempre (401 y luego 423). La comprobación vive en `preparar_primera_vez`, bajo el
+    bloqueo de escritura: el lanzador y el gancho de la API no se pisan."""
     return cuentas.preparar_primera_vez(sesion, carpeta, ahora) is not None
 
 
