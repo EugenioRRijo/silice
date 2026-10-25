@@ -7,6 +7,7 @@ import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useAplicacion } from "../../shell/contexto";
 import {
   AVISO_HERRAMIENTA,
@@ -104,7 +105,7 @@ export default function PaginaSimulador() {
         <CampoTexto
           id="simulador-variacion"
           labelText="Variación máxima (%)"
-          helperText="Cada precio sube o baja, como máximo, este porcentaje."
+          helperText={`Cada precio sube o baja, como máximo, este porcentaje. ${AYUDA_CIFRAS}`}
           size="md"
           inputMode="decimal"
           value={variacion}

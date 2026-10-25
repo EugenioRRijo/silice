@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
@@ -74,7 +75,7 @@ describe("Simulador de listas", () => {
     expect(screen.getByLabelText("Variación máxima (%)")).toHaveValue("5");
     expect(screen.getByLabelText(/^Insumos/)).toHaveValue("");
     expect(screen.getByText("Mismo número, misma lista: sirve para repetir un resultado.")).toBeInTheDocument();
-    expect(screen.getByText("Cada precio sube o baja, como máximo, este porcentaje.")).toBeInTheDocument();
+    expect(screen.getByText(`Cada precio sube o baja, como máximo, este porcentaje. ${AYUDA_CIFRAS}`)).toBeInTheDocument();
     expect(screen.getByText("Separados por coma; vacío = todos.")).toBeInTheDocument();
   });
 
