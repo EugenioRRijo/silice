@@ -182,19 +182,22 @@ describe("areas del menu", () => {
   });
 
   test("una pagina fuera de toda area cae al final de «Más» en vez de perderse", () => {
-    const extra: PaginaDef = { id: "nueva", titulo: "Nueva", seccion: "Trabajo", accion: null, cargar: PAGINAS[0].cargar };
+    const extra: PaginaDef = {
+      id: "nueva",
+      titulo: "Nueva",
+      enUnaLinea: "Una pantalla de prueba",
+      seccion: "Trabajo",
+      accion: null,
+      cargar: PAGINAS[0].cargar,
+    };
     const mas = areasVisibles([], false, [...PAGINAS, extra]).find((a) => a.id === "mas")!;
     expect(mas.paginas.map((p) => p.id).at(-1)).toBe("nueva");
   });
 });
 
 describe("herramientas principales", () => {
-  test("son tres, en este orden, con la linea de ayuda del spec; llevan el nombre de su pantalla", () => {
-    expect(HERRAMIENTAS_PRINCIPALES.map((h) => [h.pagina, h.ayuda])).toEqual([
-      ["libros", "Suba un Excel y vea lo que no cuadra"],
-      ["componer", "Componga una partida o arme un presupuesto"],
-      ["existencias", "Cuánto hay y cuánto queda de cada material"],
-    ]);
+  test("son tres, en este orden; llevan el nombre de su pantalla", () => {
+    expect(HERRAMIENTAS_PRINCIPALES.map((h) => h.pagina)).toEqual(["libros", "componer", "existencias"]);
     const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
     expect(herramientasVisibles(todas, false).map((h) => h.titulo)).toEqual([
       "Libro de la empresa",
@@ -207,6 +210,45 @@ describe("herramientas principales", () => {
     expect(herramientasVisibles(["leer_proyecto"], false).map((h) => h.pagina)).toEqual(["libros"]);
     const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
     expect(herramientasVisibles(todas, false).map((h) => h.pagina)).toEqual(["libros", "componer", "existencias"]);
+  });
+
+  test("la ayuda de una herramienta principal es la linea de su pagina", () => {
+    const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
+    const visibles = herramientasVisibles(todas, false);
+    expect(visibles).toHaveLength(3);
+    for (const h of visibles) expect(h.ayuda).toBe(paginaPorId(h.pagina)!.enUnaLinea);
+  });
+});
+
+describe("linea de ayuda y grupos de Mas", () => {
+  test("cada pagina tiene una linea de 1 a 60 caracteres sin jerga", () => {
+    for (const p of PAGINAS) {
+      expect(p.enUnaLinea.length, p.id).toBeGreaterThanOrEqual(1);
+      expect(p.enUnaLinea.length, p.id).toBeLessThanOrEqual(60);
+      expect(/(UC|RF|RNF|BCP)-\d/.test(p.enUnaLinea), p.id).toBe(false);
+    }
+  });
+
+  const mas = () => AREAS.find((a) => a.id === "mas")!;
+
+  test("los grupos de Mas cubren exactamente sus paginas", () => {
+    const ids = mas().grupos!.flatMap((g) => g.paginas);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect([...ids].sort()).toEqual([...mas().paginas].sort());
+    expect(mas().grupos!.map((g) => g.titulo)).toEqual(["Precios", "Obra", "Análisis", "Ajustes"]);
+  });
+
+  test("los grupos de Mas", () => {
+    expect(mas().grupos!.map((g) => g.paginas)).toEqual([
+      ["actualizacion", "historico", "precios_empresa", "indices", "reajuste"],
+      ["control"],
+      ["escenarios", "similares", "simulador"],
+      ["administracion", "acerca"],
+    ]);
+  });
+
+  test("solo Mas tiene grupos", () => {
+    for (const a of AREAS.filter((x) => x.id !== "mas")) expect(a.grupos).toBeUndefined();
   });
 });
 
