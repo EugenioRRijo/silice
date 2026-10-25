@@ -3,11 +3,42 @@
 import { useCallback, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import type { FilaDensa } from "../../comun/TablaDensa";
+import { leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
 import { formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
 
 export type Fila = Record<string, string>;
+
+// --- cifras tecleadas (regla de Eugenio, 2026-10-25: coma decimal, punto de miles) ----------------
+// La API de control sigue recibiendo el decimal con punto: la pantalla lee lo escrito con `leerCifra` antes de enviar y
+// marca el campo si no sigue la regla. Un campo en blanco no se juzga aqui: va tal cual y la API dice lo que falta
+// (o, como las horas extra previas, lo toma por cero).
+
+// El error de una cifra escrita, o null si se lee (o si esta en blanco).
+export function errorDeCifra(texto: string): string | null {
+  if (texto.trim() === "") return null;
+  const lectura = leerCifra(texto);
+  return "error" in lectura ? lectura.error : null;
+}
+
+// Lo escrito como lo espera la API (punto decimal). Lo que no se lee va tal cual: la pantalla ya lo marco antes.
+export function cifraParaApi(texto: string): string {
+  const lectura = leerCifra(texto);
+  return "valor" in lectura ? lectura.valor : texto;
+}
+
+// Los parametros de control que no son cifras: un sí/no y un texto (`PARAMETROS_EDITABLES`, aplicacion/control.py).
+const PARAMETROS_SIN_CIFRA = new Set(["fcas_en_horas_extra", "fuente_penalizacion"]);
+
+export function esParametroCifra(parametro: string): boolean {
+  return !PARAMETROS_SIN_CIFRA.has(parametro);
+}
+
+// El valor actual de un parametro (con punto, de la API) como se edita: «0.80» -> «0,80».
+export function valorParaEditar(parametro: string, valor: string): string {
+  return esParametroCifra(parametro) ? textoParaEscribir(valor) : valor;
+}
 
 // V-12: lo que se le pasa a `AvisoError` cuando una carga no llego a `listo`. Los estados `sin_permiso` y
 // `no_disponible` traen el `ErrorDeApi` con su `detalle`: se conserva; si no hay detalle, una frase en español
@@ -309,11 +340,16 @@ export function rutaDe(base: string, proyecto: string, extra: Record<string, str
   return `${base}?${p.toString()}`;
 }
 
+// Km y R se escriben con coma y viajan con punto.
+function preciosParaApi(precios: Precios): Precios {
+  return { ...precios, km: cifraParaApi(precios.km), r: cifraParaApi(precios.r) };
+}
+
 // Los parametros de la consulta del calculo: solo lo que la persona eligio.
 export function consultaDeCalculo(proyecto: string, filtros: Filtros): string {
   const extra: Record<string, string> = {};
   if (filtros.corte.trim()) extra.corte = filtros.corte.trim();
-  const { metodo, version, km, r, fuente } = filtros.precios;
+  const { metodo, version, km, r, fuente } = preciosParaApi(filtros.precios);
   if (metodo !== "ninguno") {
     extra.metodo = metodo;
     if (metodo === "comprobacion") extra.version = version;
@@ -322,14 +358,15 @@ export function consultaDeCalculo(proyecto: string, filtros: Filtros): string {
   return rutaDe("/v1/control/calculo", proyecto, extra);
 }
 
-// El cuerpo comun de las opciones y de la eleccion: el servidor no guarda estado, asi que se repite todo.
+// El cuerpo comun de las opciones y de la eleccion: el servidor no guarda estado, asi que se repite todo. El dia
+// objetivo es un entero y va tal cual; las horas previas, Km y R son cifras escritas con coma.
 export function cuerpoDeOpciones(proyecto: string, filtros: Filtros, objetivo: string, horasPrevias: string) {
   return {
     proyecto,
     corte: filtros.corte.trim() || null,
-    precios: filtros.precios,
+    precios: preciosParaApi(filtros.precios),
     objetivo,
-    horas_previas: horasPrevias,
+    horas_previas: cifraParaApi(horasPrevias),
   };
 }
 

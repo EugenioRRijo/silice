@@ -1,5 +1,6 @@
 // Logica pura de «Reajuste de precios»: arma lo que se manda a la API con el texto que escribe la persona y lo que
 // se muestra con el texto que devuelve. No calcula ni redondea nada (RB-2): el estudio lo hace el servidor.
+import { leerCifra } from "../../indicadores/cifraEscrita";
 import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 
@@ -107,17 +108,52 @@ export function formularioInicial(): Formulario {
   };
 }
 
+// --- cifras tecleadas (regla de Eugenio, 2026-10-25: coma decimal, punto de miles) ----------------
+// R, el peso de cada componente y la cantidad ejecutada se escriben con coma; la API los recibe con punto. Los enteros
+// (duracion en meses, numero de periodo) y las fechas no son cifras decimales y van tal cual. Un campo en blanco no se
+// juzga aqui: va tal cual y la API dice lo que falta (un peso en blanco es «sin peso»).
+
+export const ROTULO_R = "R (fracción no reajustable)";
+
+// El error de una cifra escrita, o null si se lee o esta en blanco.
+export function errorDeCifra(texto: string): string | null {
+  if (texto.trim() === "") return null;
+  const lectura = leerCifra(texto);
+  return "error" in lectura ? lectura.error : null;
+}
+
+function cifraParaApi(texto: string): string {
+  const lectura = leerCifra(texto);
+  return "valor" in lectura ? lectura.valor : texto;
+}
+
+// Cada cifra mal escrita del formulario, con el nombre del campo delante («Peso, Componentes fila 2: ...»), en el
+// orden en que aparecen. Lo ejecutado a mano no se revisa si sale de las valuaciones (no se manda).
+export function erroresDeCifras(f: Formulario): string[] {
+  const errores: string[] = [];
+  const revisar = (rotulo: string, texto: string) => {
+    const error = errorDeCifra(texto);
+    if (error) errores.push(`${rotulo}: ${error}`);
+  };
+  revisar(ROTULO_R, f.clausula.r);
+  f.componentes.forEach((c, i) => revisar(`Peso, Componentes fila ${i + 1}`, c.peso ?? ""));
+  if (!f.con_valuaciones) f.ejecutado.forEach((e, i) => revisar(`Cantidad, Ejecutado fila ${i + 1}`, e.cantidad ?? ""));
+  return errores;
+}
+
 // El cuerpo de calcular, guardar y excel. Las filas en blanco de periodos y ejecutado no se mandan; los tres
 // componentes si, como la pantalla de Streamlit (el servidor dice cual serie falta). Con las valuaciones, lo
-// ejecutado sale de ellas y no se manda.
+// ejecutado sale de ellas y no se manda. Las cifras van con punto (la pagina las revisa antes con `erroresDeCifras`).
 export function armarCuerpo(proyecto: string, f: Formulario): CuerpoEstudio {
   return {
     proyecto,
     version: f.version,
-    clausula: clausulaParaEnviar(f.clausula),
-    componentes: f.componentes,
+    clausula: { ...clausulaParaEnviar(f.clausula), r: cifraParaApi(f.clausula.r) },
+    componentes: f.componentes.map((c) => ({ ...c, peso: cifraParaApi(c.peso ?? "") })),
     periodos: f.periodos.filter(hayFilaConDatos),
-    ejecutado: f.con_valuaciones ? [] : f.ejecutado.filter(ejecutadoConDatos),
+    ejecutado: f.con_valuaciones
+      ? []
+      : f.ejecutado.filter(ejecutadoConDatos).map((e) => ({ ...e, cantidad: cifraParaApi(e.cantidad ?? "") })),
     con_valuaciones: f.con_valuaciones,
   };
 }

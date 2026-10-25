@@ -1,5 +1,6 @@
 import { Button, InlineNotification, RadioButton, RadioButtonGroup, Select, SelectItem } from "@carbon/react";
 import { useState } from "react";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -20,6 +21,7 @@ import {
   conId,
   cuerpoDeOpciones,
   descripcionEsVe,
+  errorDeCifra,
   etiquetaDeCodigo,
   notaDeOpcion,
   partirUmbral,
@@ -42,6 +44,8 @@ export function BarraDeCorte({
   alAplicar: (f: Filtros) => void;
 }) {
   const [borrador, setBorrador] = useState(filtros);
+  // Km y R mal escritos (regla de la coma decimal): se marcan y no se calcula.
+  const [errores, setErrores] = useState<{ km: string | null; r: string | null }>({ km: null, r: null });
   const precios = borrador.precios;
   const cambiarPrecios = (cambio: Partial<typeof precios>) => setBorrador({ ...borrador, precios: { ...precios, ...cambio } });
   return (
@@ -49,6 +53,13 @@ export function BarraDeCorte({
       className="silice-control__corte"
       onSubmit={(e) => {
         e.preventDefault();
+        const escalatoria = precios.metodo === "escalatoria";
+        const nuevos = {
+          km: escalatoria ? errorDeCifra(precios.km) : null,
+          r: escalatoria ? errorDeCifra(precios.r) : null,
+        };
+        setErrores(nuevos);
+        if (nuevos.km || nuevos.r) return;
         alAplicar(borrador);
       }}
     >
@@ -78,8 +89,23 @@ export function BarraDeCorte({
       )}
       {precios.metodo === "escalatoria" && (
         <>
-          <CampoTexto id="corte-km" labelText="Km declarado" value={precios.km} onChange={(e) => cambiarPrecios({ km: e.target.value })} />
-          <CampoTexto id="corte-r" labelText="R declarado" value={precios.r} onChange={(e) => cambiarPrecios({ r: e.target.value })} />
+          <CampoTexto
+            id="corte-km"
+            labelText="Km declarado"
+            helperText={AYUDA_CIFRAS}
+            invalid={errores.km !== null}
+            invalidText={errores.km ?? undefined}
+            value={precios.km}
+            onChange={(e) => cambiarPrecios({ km: e.target.value })}
+          />
+          <CampoTexto
+            id="corte-r"
+            labelText="R declarado"
+            invalid={errores.r !== null}
+            invalidText={errores.r ?? undefined}
+            value={precios.r}
+            onChange={(e) => cambiarPrecios({ r: e.target.value })}
+          />
           <CampoTexto id="corte-fuente" labelText="Fuente de Km y R" value={precios.fuente} onChange={(e) => cambiarPrecios({ fuente: e.target.value })} />
         </>
       )}
@@ -247,8 +273,16 @@ export function Recuperacion({
   const [elegida, setElegida] = useState("");
   const [declaracion, setDeclaracion] = useState("");
   const [fuente, setFuente] = useState("");
+  // Las horas previas son una cifra con coma decimal; el dia objetivo es un entero y va tal cual.
+  const [errorHoras, setErrorHoras] = useState<string | null>(null);
+  const horasBienEscritas = () => {
+    const error = errorDeCifra(horas);
+    setErrorHoras(error);
+    return error === null;
+  };
 
   const calcular = () =>
+    horasBienEscritas() &&
     calculando.ejecutar(async () => {
       const r = await pedir<{ opciones: OpcionDeRecuperacion[] }>("/v1/control/recuperacion/opciones", {
         metodo: "POST",
@@ -261,6 +295,7 @@ export function Recuperacion({
   const aplican = (opciones ?? []).filter((o) => o.aplica);
   const actual = aplican.find((o) => o.clave === elegida);
   const elegir = () =>
+    horasBienEscritas() &&
     eligiendo.ejecutar(async () => {
       const r = await pedir<{ version: string }>("/v1/control/recuperacion/elegir", {
         metodo: "POST",
@@ -283,7 +318,15 @@ export function Recuperacion({
       </p>
       <div className="silice-control__formulario">
         <CampoTexto id="rec-objetivo" labelText="Día hábil objetivo (vacío: el fin del plan base)" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} />
-        <CampoTexto id="rec-horas" labelText="Horas extra que el obrero ya acumula en el año" value={horas} onChange={(e) => setHoras(e.target.value)} />
+        <CampoTexto
+          id="rec-horas"
+          labelText="Horas extra que el obrero ya acumula en el año"
+          helperText={AYUDA_CIFRAS}
+          invalid={errorHoras !== null}
+          invalidText={errorHoras ?? undefined}
+          value={horas}
+          onChange={(e) => setHoras(e.target.value)}
+        />
         <div>
           <Button kind="secondary" size="md" disabled={calculando.estado.enviando} onClick={() => void calcular()}>
             Calcular opciones

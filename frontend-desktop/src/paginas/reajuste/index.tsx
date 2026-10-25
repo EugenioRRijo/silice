@@ -12,7 +12,18 @@ import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
 import { FilasEditables } from "./FilasEditables";
 import type { ColumnaEditable } from "./FilasEditables";
-import { armarCuerpo, filasDeResultado, formularioInicial, marcasPorPeriodo, partirResultado, rotuloDeOpcion } from "./logica";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
+import {
+  ROTULO_R,
+  armarCuerpo,
+  errorDeCifra,
+  erroresDeCifras,
+  filasDeResultado,
+  formularioInicial,
+  marcasPorPeriodo,
+  partirResultado,
+  rotuloDeOpcion,
+} from "./logica";
 import type { ClausulaTextos, Fila, Formulario } from "./logica";
 import "./reajuste.scss";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -54,7 +65,7 @@ interface Calculo {
 const COLUMNAS_COMPONENTE: ColumnaEditable[] = [
   { clave: "componente", titulo: "Componente", fija: true, presentar: rotuloDeOpcion },
   { clave: "serie", titulo: "Serie" },
-  { clave: "peso", titulo: "Peso" },
+  { clave: "peso", titulo: "Peso", cifra: true },
 ];
 const COLUMNAS_PERIODO: ColumnaEditable[] = [
   { clave: "desde", titulo: "Desde", tipo: "fecha" },
@@ -65,7 +76,7 @@ const COLUMNAS_PERIODO: ColumnaEditable[] = [
 const COLUMNAS_EJECUTADO: ColumnaEditable[] = [
   { clave: "periodo", titulo: "Período" },
   { clave: "partida", titulo: "Partida" },
-  { clave: "cantidad", titulo: "Cantidad" },
+  { clave: "cantidad", titulo: "Cantidad", cifra: true },
   { clave: "fuente", titulo: "Fuente" },
 ];
 const PASOS = ["1. La cláusula", "2. Períodos y lo ejecutado"];
@@ -135,6 +146,8 @@ function Formulario({
   const [guardado, setGuardado] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [ocupado, setOcupado] = useState(false);
+  // Tras un intento de calcular con cifras mal escritas, cada una se marca en su campo (regla de la coma decimal).
+  const [revisar, setRevisar] = useState(false);
   const [fuente, setFuente] = useState("");
   const [responsable, setResponsable] = useState("");
   const [reemplaza, setReemplaza] = useState("");
@@ -186,6 +199,15 @@ function Formulario({
   async function calcular() {
     setGuardado(null);
     setReemplaza("");
+    const errores = erroresDeCifras(form);
+    setRevisar(errores.length > 0);
+    if (errores.length > 0) {
+      // No se envia nada: el aviso nombra cada cifra y su campo queda marcado.
+      setCalculo(null);
+      setError(errores.join(" "));
+      setEnfocar({ donde: "error" });
+      return;
+    }
     const marca = edicion.current;
     const respuesta = await enviar<Calculo>("/v1/reajuste/calcular", armarCuerpo(proyecto, form));
     if (marca !== edicion.current) return;
@@ -271,7 +293,15 @@ function Formulario({
                 <fieldset className="silice-reajuste__grupo">
                   <legend className="cds--type-label-01">Parte que no se reajusta y fuentes</legend>
                   <div className="silice-reajuste__rejilla">
-                    <CampoTexto id="rj-r" labelText="R (fracción no reajustable)" value={form.clausula.r} onChange={(e) => campo("r", e.target.value)} />
+                    <CampoTexto
+                      id="rj-r"
+                      labelText={ROTULO_R}
+                      helperText={AYUDA_CIFRAS}
+                      invalid={revisar && errorDeCifra(form.clausula.r) !== null}
+                      invalidText={(revisar && errorDeCifra(form.clausula.r)) || undefined}
+                      value={form.clausula.r}
+                      onChange={(e) => campo("r", e.target.value)}
+                    />
                     <CampoTexto id="rj-fuente-r" labelText="Fuente de R" helperText="Si el contrato no la trae, escriba 0 y declárelo." value={form.clausula.fuente_r} onChange={(e) => campo("fuente_r", e.target.value)} />
                     <CampoTexto id="rj-fuente" labelText="Fuente de la cláusula" helperText="Contrato, número, fecha." value={form.clausula.fuente} onChange={(e) => campo("fuente", e.target.value)} />
                     <CampoTexto id="rj-responsable" labelText="Responsable" helperText="En blanco, su nombre de usuario." value={form.clausula.responsable} onChange={(e) => campo("responsable", e.target.value)} />
@@ -291,6 +321,7 @@ function Formulario({
                   columnas={COLUMNAS_COMPONENTE}
                   filas={form.componentes}
                   fijas
+                  revisar={revisar}
                   alCambiar={(filas) => editar((f) => ({ ...f, componentes: filas }))}
                 />
                 <div>
@@ -334,10 +365,11 @@ function Formulario({
                       etiqueta="Ejecutado"
                       columnas={COLUMNAS_EJECUTADO}
                       filas={form.ejecutado}
+                      revisar={revisar}
                       alCambiar={(filas) => editar((f) => ({ ...f, ejecutado: filas }))}
                     />
                     <p className="silice-reajuste__nota cds--type-body-compact-01">
-                      «Período» es el número de la fila de períodos (1, 2, ...).
+                      {`«Período» es el número de la fila de períodos (1, 2, ...). ${AYUDA_CIFRAS}`}
                     </p>
                   </>
                 )}

@@ -26,6 +26,9 @@ import {
   TITULO_COMPARACION,
   armarEscenario,
   campoNombrado,
+  erroresDeCifras,
+  hayErrores,
+  parametrosParaEditar,
   etiquetaDePresupuesto,
   filasComparacion,
   filasPartidas,
@@ -34,7 +37,8 @@ import {
   notaHallazgos,
   rutaEscenarios,
 } from "./logica";
-import type { FilaPrecio } from "./logica";
+import type { ErroresDeCifras, FilaPrecio } from "./logica";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import type {
   CampoParametro,
   EscenarioPeticion,
@@ -54,14 +58,12 @@ function claveDe(p: PresupuestoResumen, todos: PresupuestoResumen[]): string {
   return todos.filter((o) => o.codigo === p.codigo).length > 1 ? etiquetaDePresupuesto(p) : p.codigo;
 }
 
+// Los parametros del base llegan con punto y se editan con coma (regla de la coma decimal).
 function parametrosDe(base: EscenariosBaseRespuesta): Parametros {
-  return {
-    fcas: base.parametros.fcas ?? "",
-    bono_alimentacion: base.parametros.bono_alimentacion ?? "",
-    administracion: base.parametros.administracion ?? "",
-    utilidad: base.parametros.utilidad ?? "",
-  };
+  return parametrosParaEditar(base.parametros);
 }
+
+const SIN_ERRORES: ErroresDeCifras = { parametros: {}, precios: {} };
 
 // «Escenarios de sensibilidad» (UC-08): recalcula un presupuesto guardado con otros parametros o precios y lo
 // compara contra el base. Nada se guarda; la API recalcula sin estado, asi que cada envio lleva todos los
@@ -80,6 +82,7 @@ export default function PaginaEscenarios() {
   const [filas, setFilas] = useState<FilaPrecio[]>([]);
   const [errorGenerar, setErrorGenerar] = useState<unknown>(null);
   const [generando, setGenerando] = useState(false);
+  const [errores, setErrores] = useState<ErroresDeCifras>(SIN_ERRORES);
   const cargaBase = useRef(0);
   const siguienteFila = useRef(1);
   const focoPendiente = useRef<string | null>(null);
@@ -108,6 +111,7 @@ export default function PaginaEscenarios() {
     setResultado(null);
     setNombre(null);
     setFilas([]);
+    setErrores(SIN_ERRORES);
     setErrorGenerar(null);
     setGenerando(false);
     pedir<EscenariosBaseRespuesta>(rutaEscenarios(presupuesto.codigo, presupuesto.proyecto, "/base")).then(
@@ -148,6 +152,9 @@ export default function PaginaEscenarios() {
   function generar(evento: FormEvent) {
     evento.preventDefault();
     if (!seleccion || !base || generando) return;
+    const revision = erroresDeCifras(parametros, filas);
+    setErrores(revision);
+    if (hayErrores(revision)) return; // cada cifra mal escrita queda marcada en su campo; no se envia nada
     const nueva = armarEscenario(nombre ?? "", parametros, filas, peticiones.length);
     const todas = [...peticiones, nueva];
     const numero = cargaBase.current;
@@ -267,8 +274,9 @@ export default function PaginaEscenarios() {
                   id={`escenarios-${campo}`}
                   size="sm"
                   labelText={ROTULOS_PARAMETROS[campo]}
-                  invalid={campoInvalido === campo}
-                  invalidText={campoInvalido === campo ? mensajeDeError(errorGenerar) : undefined}
+                  helperText={AYUDA_CIFRAS}
+                  invalid={campoInvalido === campo || campo in errores.parametros}
+                  invalidText={errores.parametros[campo] ?? (campoInvalido === campo ? mensajeDeError(errorGenerar) : undefined)}
                   value={parametros[campo]}
                   onChange={(e) => setParametros((p) => ({ ...p, [campo]: e.target.value }))}
                 />
@@ -300,6 +308,8 @@ export default function PaginaEscenarios() {
                     size="sm"
                     labelText={`Precio nuevo ${i + 1}`}
                     hideLabel
+                    invalid={fila.id in errores.precios}
+                    invalidText={errores.precios[fila.id]}
                     value={fila.precio}
                     onChange={(e) => cambiarFila(fila.id, { precio: e.target.value })}
                   />

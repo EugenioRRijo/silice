@@ -1,6 +1,6 @@
 import { Button } from "@carbon/react";
 import { Add, TrashCan } from "@carbon/icons-react";
-import { filasVacias } from "./logica";
+import { errorDeCifra, filasVacias } from "./logica";
 import type { Fila } from "./logica";
 import { CampoTexto } from "../../comun/CampoTexto";
 
@@ -15,6 +15,8 @@ export interface ColumnaEditable {
   fija?: boolean;
   // Como se lee el valor de una columna fija (su rotulo en español); el valor de la fila no cambia.
   presentar?: (valor: string) => string;
+  // Una cifra decimal: se escribe con coma y, con `revisar`, se marca si no sigue la regla.
+  cifra?: boolean;
 }
 
 interface Props {
@@ -25,11 +27,13 @@ interface Props {
   alCambiar: (filas: Fila[]) => void;
   // Con `fijas` no se agregan ni se quitan filas (los tres componentes).
   fijas?: boolean;
+  // Tras un intento de calcular con cifras mal escritas: cada una se marca en su celda.
+  revisar?: boolean;
 }
 
 // Tabla de campos de texto: cada celda es un campo con nombre accesible «<columna>, <tabla> fila <n>». Los valores
-// se mandan a la API tal como se escriben (RB-2): aqui no se interpreta nada.
-export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = false }: Props) {
+// se mandan a la API tal como se escriben (RB-2), salvo las cifras, que `armarCuerpo` pasa a punto decimal.
+export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = false, revisar = false }: Props) {
   const cambiar = (indice: number, clave: string, valor: string) =>
     alCambiar(filas.map((fila, i) => (i === indice ? { ...fila, [clave]: valor } : fila)));
   const quitar = (indice: number) => {
@@ -53,21 +57,26 @@ export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = f
         <tbody>
           {filas.map((fila, i) => (
             <tr key={i}>
-              {columnas.map((c) => (
-                <td key={c.clave}>
-                  <CampoTexto
-                    id={`${etiqueta}-${c.clave}-${i}`}
-                    labelText={`${c.titulo}, ${etiqueta} fila ${i + 1}`}
-                    hideLabel
-                    size="sm"
-                    type={c.tipo === "fecha" ? "date" : undefined}
-                    value={c.fija && c.presentar ? c.presentar(fila[c.clave] ?? "") : (fila[c.clave] ?? "")}
-                    placeholder={c.ayuda}
-                    readOnly={c.fija}
-                    onChange={(e) => cambiar(i, c.clave, e.target.value)}
-                  />
-                </td>
-              ))}
+              {columnas.map((c) => {
+                const error = revisar && c.cifra ? errorDeCifra(fila[c.clave] ?? "") : null;
+                return (
+                  <td key={c.clave}>
+                    <CampoTexto
+                      id={`${etiqueta}-${c.clave}-${i}`}
+                      labelText={`${c.titulo}, ${etiqueta} fila ${i + 1}`}
+                      hideLabel
+                      size="sm"
+                      type={c.tipo === "fecha" ? "date" : undefined}
+                      value={c.fija && c.presentar ? c.presentar(fila[c.clave] ?? "") : (fila[c.clave] ?? "")}
+                      placeholder={c.ayuda}
+                      readOnly={c.fija}
+                      invalid={error !== null}
+                      invalidText={error ?? undefined}
+                      onChange={(e) => cambiar(i, c.clave, e.target.value)}
+                    />
+                  </td>
+                );
+              })}
               {!fijas && (
                 // VD-11: la papelera en su columna angosta (sin el minimo de 9rem de las celdas de campo).
                 <td className="silice-filas__quitar">

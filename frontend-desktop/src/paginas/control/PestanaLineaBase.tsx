@@ -7,7 +7,20 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { leerFeriados } from "./fechas";
-import { errorDeCarga, etiquetaDeCodigo, rutaDe, sinTitulo, textoLlano, useAccion, useCargaSuave } from "./logica";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
+import {
+  cifraParaApi,
+  errorDeCarga,
+  errorDeCifra,
+  esParametroCifra,
+  etiquetaDeCodigo,
+  rutaDe,
+  sinTitulo,
+  textoLlano,
+  useAccion,
+  useCargaSuave,
+  valorParaEditar,
+} from "./logica";
 import type { LineaBase } from "./logica";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { AreaTexto } from "../../comun/AreaTexto";
@@ -96,10 +109,22 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
   const { alExpirar } = useAplicacion();
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
   const [editados, setEditados] = useState<Record<string, string>>({});
+  const [errores, setErrores] = useState<Record<string, string>>({});
   const [fuente, setFuente] = useState("");
-  const guardar = () =>
-    ejecutar(async () => {
-      const parametros = Object.entries(editados).map(([parametro, valor]) => ({ parametro, valor }));
+  const guardar = () => {
+    // Las cifras se leen con la regla de la coma decimal antes de enviar; una mal escrita se marca y no se envia nada.
+    const nuevos: Record<string, string> = {};
+    for (const [nombre, valor] of Object.entries(editados)) {
+      const error = esParametroCifra(nombre) ? errorDeCifra(valor) : null;
+      if (error) nuevos[nombre] = error;
+    }
+    setErrores(nuevos);
+    if (Object.keys(nuevos).length > 0) return;
+    void ejecutar(async () => {
+      const parametros = Object.entries(editados).map(([parametro, valor]) => ({
+        parametro,
+        valor: esParametroCifra(parametro) ? cifraParaApi(valor) : valor,
+      }));
       const r = await pedir<{ cambiados: number }>("/v1/control/parametros", {
         metodo: "POST",
         cuerpo: { proyecto, parametros, fuente },
@@ -107,6 +132,7 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
       setEditados({});
       return `${r.cambiados} parámetro(s) cambiado(s).`;
     });
+  };
   return (
     <section className="silice-control__bloque" aria-labelledby="control-parametros">
       <h2 id="control-parametros" className="cds--type-heading-compact-02">
@@ -142,7 +168,8 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
             const nombre = e.target.value;
             if (nombre && !(nombre in editados)) {
               const actual = datos.parametros.find((p) => p.parametro === nombre)?.valor ?? "";
-              setEditados({ ...editados, [nombre]: actual });
+              // La API manda el valor con punto («0.80»); en el campo se escribe con coma («0,80»).
+              setEditados({ ...editados, [nombre]: valorParaEditar(nombre, actual) });
             }
           }}
         >
@@ -156,6 +183,9 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
             key={nombre}
             id={`par-${nombre}`}
             labelText={`Nuevo valor de ${etiquetaDeCodigo(nombre)}`}
+            helperText={esParametroCifra(nombre) ? AYUDA_CIFRAS : undefined}
+            invalid={nombre in errores}
+            invalidText={errores[nombre]}
             value={valor}
             onChange={(e) => setEditados({ ...editados, [nombre]: e.target.value })}
           />
@@ -166,7 +196,7 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
             kind="primary"
             size="md"
             disabled={estado.enviando || Object.keys(editados).length === 0}
-            onClick={() => void guardar()}
+            onClick={guardar}
           >
             Guardar parámetros
           </Button>

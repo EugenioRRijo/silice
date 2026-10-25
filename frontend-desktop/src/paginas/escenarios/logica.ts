@@ -1,5 +1,7 @@
 // Logica pura de «Escenarios de sensibilidad» (UC-08). Sin React; los montos son texto tal como llegan.
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
+import { leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
+import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import type {
   CampoParametro,
   EscenarioPeticion,
@@ -17,7 +19,7 @@ export const SIN_PRESUPUESTOS = "No hay presupuestos guardados todavía: elabore
 export const NOTA_PARAMETROS = "Parámetros de costo del escenario (por defecto, los del presupuesto base).";
 export const NOTA_PRECIOS =
   "Precios de ensayo (opcional): descripción exacta del insumo y precio nuevo. Lo no mencionado conserva su precio vigente.";
-export const EJEMPLO_PRECIOS = "p. ej. Cemento Portland → 18.50";
+export const EJEMPLO_PRECIOS = "p. ej. Cemento Portland → 18,50";
 export const SIN_ESCENARIOS = "Defina un escenario para compararlo contra el presupuesto base.";
 export const TITULO_COMPARACION = "Comparación contra el base";
 export const AVISO_PENDIENTES = "El presupuesto base tiene ítems pendientes, sin partida en el catálogo:";
@@ -28,7 +30,7 @@ export const NOTA_PENDIENTES =
 export const CAMPOS_PARAMETROS: CampoParametro[] = ["fcas", "bono_alimentacion", "administracion", "utilidad"];
 
 export const ROTULOS_PARAMETROS: Record<CampoParametro, string> = {
-  fcas: "FCAS (fracción; 6.00 = prestaciones del 600 %)",
+  fcas: "FCAS (fracción; 6,00 = prestaciones del 600 %)",
   bono_alimentacion: "Bono de alimentación",
   administracion: "Administración",
   utilidad: "Utilidad",
@@ -58,12 +60,62 @@ export function lineaPendiente(p: Pendiente): string {
   return `- ${p.origen_id}: ${p.codigo_partida} (${p.descripcion})`;
 }
 
-// Las filas con insumo en blanco se ignoran; el insumo se recorta (la API lo busca por descripcion exacta).
+// --- cifras tecleadas (regla de Eugenio, 2026-10-25: coma decimal, punto de miles) ----------------
+// Los parametros y los precios de ensayo se escriben con coma; la API los recibe con punto. Los parametros del base
+// llegan con punto («6.00») y se ponen en los campos con coma («6,00»): sin tocarlos, vuelven iguales.
+
+export function parametrosParaEditar(parametros: Record<string, string>): Record<CampoParametro, string> {
+  const editar = (valor: string | undefined) => (valor === undefined ? "" : textoParaEscribir(valor));
+  return {
+    fcas: editar(parametros.fcas),
+    bono_alimentacion: editar(parametros.bono_alimentacion),
+    administracion: editar(parametros.administracion),
+    utilidad: editar(parametros.utilidad),
+  };
+}
+
+function cifraParaApi(texto: string): string {
+  const lectura = leerCifra(texto);
+  return "valor" in lectura ? lectura.valor : texto;
+}
+
+// El error de una cifra escrita, o null si se lee. Un campo en blanco no se juzga aqui: la API dice lo que falta.
+function errorDeCifra(texto: string): string | null {
+  if (texto.trim() === "") return null;
+  const lectura = leerCifra(texto);
+  return "error" in lectura ? lectura.error : null;
+}
+
+export interface ErroresDeCifras {
+  parametros: Partial<Record<CampoParametro, string>>;
+  // Por id de fila; solo las filas con insumo (las otras no se mandan).
+  precios: Record<number, string>;
+}
+
+export function erroresDeCifras(parametros: Record<CampoParametro, string>, filas: FilaPrecio[]): ErroresDeCifras {
+  const errores: ErroresDeCifras = { parametros: {}, precios: {} };
+  for (const campo of CAMPOS_PARAMETROS) {
+    const error = errorDeCifra(parametros[campo]);
+    if (error) errores.parametros[campo] = error;
+  }
+  for (const fila of filas) {
+    const error = fila.insumo.trim() ? errorDeCifra(fila.precio) : null;
+    if (error) errores.precios[fila.id] = error;
+  }
+  return errores;
+}
+
+export function hayErrores(e: ErroresDeCifras): boolean {
+  return Object.keys(e.parametros).length > 0 || Object.keys(e.precios).length > 0;
+}
+
+// Las filas con insumo en blanco se ignoran; el insumo se recorta (la API lo busca por descripcion exacta). El precio
+// va con punto.
 export function preciosDeFilas(filas: FilaPrecio[]): Record<string, string> {
   const precios: Record<string, string> = {};
   for (const fila of filas) {
     const insumo = fila.insumo.trim();
-    if (insumo) precios[insumo] = fila.precio;
+    if (insumo) precios[insumo] = cifraParaApi(fila.precio);
   }
   return precios;
 }
@@ -76,17 +128,18 @@ export function armarEscenario(
 ): EscenarioPeticion {
   return {
     nombre: nombre.trim() === "" ? nombrePorOmision(definidos) : nombre,
-    fcas: parametros.fcas,
-    bono_alimentacion: parametros.bono_alimentacion,
-    administracion: parametros.administracion,
-    utilidad: parametros.utilidad,
+    fcas: cifraParaApi(parametros.fcas),
+    bono_alimentacion: cifraParaApi(parametros.bono_alimentacion),
+    administracion: cifraParaApi(parametros.administracion),
+    utilidad: cifraParaApi(parametros.utilidad),
     precios: preciosDeFilas(filas),
   };
 }
 
 export const COLUMNAS_COMPARACION: ColumnaDensa[] = [
   { clave: "escenario", titulo: "Escenario" },
-  { clave: "total", titulo: "Total", numerica: true },
+  // Los montos se leen en es-VE (el exacto queda en el title); las variaciones llevan su flecha IBCS.
+  { clave: "total", titulo: "Total", numerica: true, presentar: formatoMontoEsVe },
   { clave: "variacion", titulo: "Variación", numerica: true, celda: "variacion" },
   { clave: "variacion_pct", titulo: "Variación %", numerica: true, celda: "variacion" },
 ];
@@ -95,13 +148,13 @@ export const COLUMNAS_COMPARACION: ColumnaDensa[] = [
 export const COLUMNAS_PARTIDAS: ColumnaDensa[] = [
   { clave: "codigo_partida", titulo: "Partida" },
   { clave: "descripcion", titulo: "Descripción" },
-  { clave: "total_anterior", titulo: "Total anterior", numerica: true },
-  { clave: "total_nuevo", titulo: "Total nuevo", numerica: true },
+  { clave: "total_anterior", titulo: "Total anterior", numerica: true, presentar: formatoMontoEsVe },
+  { clave: "total_nuevo", titulo: "Total nuevo", numerica: true, presentar: formatoMontoEsVe },
   { clave: "variacion_pct", titulo: "Variación %", numerica: true, celda: "variacion" },
   { clave: "incidencia_pct", titulo: "Incidencia %", numerica: true, celda: "variacion" },
-  { clave: "pu_anterior", titulo: "P.U. anterior", numerica: true },
-  { clave: "pu_nuevo", titulo: "P.U. nuevo", numerica: true },
-  { clave: "cantidad", titulo: "Cantidad", numerica: true },
+  { clave: "pu_anterior", titulo: "P.U. anterior", numerica: true, presentar: formatoMontoEsVe },
+  { clave: "pu_nuevo", titulo: "P.U. nuevo", numerica: true, presentar: formatoMontoEsVe },
+  { clave: "cantidad", titulo: "Cantidad", numerica: true, presentar: formatoMontoEsVe },
 ];
 
 // La fila del base: variacion cero, escrita como la API escribe los montos.

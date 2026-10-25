@@ -148,8 +148,14 @@ describe("Reajuste de precios", () => {
     await irA(u, "2. Períodos y lo ejecutado");
     await u.type(screen.getByLabelText("Cantidad, Ejecutado fila 1"), "1.5");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
-    expect(await screen.findByText(`R (fracción no reajustable): ${MENSAJE_CIFRA}`)).toBeInTheDocument();
-    expect(screen.getByText(`Cantidad, Ejecutado fila 1: ${MENSAJE_CIFRA}`)).toBeInTheDocument();
+    // El aviso nombra cada cifra mal escrita; la celda visible se marca.
+    const aviso = await waitFor(() => {
+      const alerta = screen.getAllByRole("alert").find((a) => (a.textContent ?? "").includes("R (fracción"));
+      if (!alerta) throw new Error("sin aviso");
+      return alerta;
+    });
+    expect(aviso).toHaveTextContent(`R (fracción no reajustable): ${MENSAJE_CIFRA}`);
+    expect(aviso).toHaveTextContent(`Cantidad, Ejecutado fila 1: ${MENSAJE_CIFRA}`);
     expect(screen.getByLabelText("Cantidad, Ejecutado fila 1")).toHaveAttribute("aria-invalid", "true");
     expect(post("/v1/reajuste/calcular")).toBeUndefined();
   });

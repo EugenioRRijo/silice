@@ -7,7 +7,20 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
-import { COLUMNAS_VALUACIONES, LINEA_VACIA, columnasDe, conId, errorDeCarga, rutaDe, sinLineasVacias, useAccion, useCargaSuave } from "./logica";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
+import {
+  COLUMNAS_VALUACIONES,
+  LINEA_VACIA,
+  cifraParaApi,
+  columnasDe,
+  conId,
+  errorDeCarga,
+  errorDeCifra,
+  rutaDe,
+  sinLineasVacias,
+  useAccion,
+  useCargaSuave,
+} from "./logica";
 import type { LineaEditable, Valuaciones } from "./logica";
 import { fechaDeRanura } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -32,17 +45,31 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
   const [v, setV] = useState({ numero: "", desde: "", hasta: "", fecha: "", inspector: "", fuente: "" });
   const [lineas, setLineas] = useState<LineaEditable[]>([{ ...LINEA_VACIA }]);
+  // El error de la cantidad de cada linea (por posicion), si no sigue la regla de la coma decimal.
+  const [errores, setErrores] = useState<Record<number, string>>({});
   const campo = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
   const cambiarLinea = (i: number, k: keyof LineaEditable, valor: string) =>
     setLineas(lineas.map((l, j) => (j === i ? { ...l, [k]: valor } : l)));
-  const registrar = () =>
-    ejecutar(async () => {
+  const registrar = () => {
+    const nuevos: Record<number, string> = {};
+    lineas.forEach((l, i) => {
+      const error = errorDeCifra(l.cantidad);
+      if (error) nuevos[i] = error;
+    });
+    setErrores(nuevos);
+    if (Object.keys(nuevos).length > 0) return;
+    void ejecutar(async () => {
       const r = await pedir<{ corte: string; hallazgos: number; errores: number }>("/v1/control/valuaciones", {
         metodo: "POST",
-        cuerpo: { proyecto, ...v, lineas: sinLineasVacias(lineas) },
+        cuerpo: {
+          proyecto,
+          ...v,
+          lineas: sinLineasVacias(lineas).map((l) => ({ ...l, cantidad: cifraParaApi(l.cantidad) })),
+        },
       });
       return `Valuación registrada: corte ${fechaDeRanura(r.corte)}, ${r.hallazgos} hallazgo(s) en la revisión de la valuación (${r.errores} con severidad Error).`;
     });
+  };
   return (
     <details open>
       <summary className="cds--type-body-compact-01">Registrar una valuación</summary>
@@ -54,10 +81,18 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
         <CampoTexto id="val-inspector" labelText="Inspector" value={v.inspector} onChange={campo("inspector")} />
         <fieldset className="silice-control__lineas">
           <legend className="cds--type-label-01">Líneas medidas</legend>
+          <p className="silice-control__nota cds--type-helper-text-01">{AYUDA_CIFRAS}</p>
           {lineas.map((l, i) => (
             <div key={i} className="silice-control__linea">
               <CampoTexto id={`val-p-${i}`} labelText={`Partida ${i + 1}`} value={l.partida} onChange={(e) => cambiarLinea(i, "partida", e.target.value)} />
-              <CampoTexto id={`val-c-${i}`} labelText={`Cantidad ${i + 1}`} value={l.cantidad} onChange={(e) => cambiarLinea(i, "cantidad", e.target.value)} />
+              <CampoTexto
+                id={`val-c-${i}`}
+                labelText={`Cantidad ${i + 1}`}
+                invalid={i in errores}
+                invalidText={errores[i]}
+                value={l.cantidad}
+                onChange={(e) => cambiarLinea(i, "cantidad", e.target.value)}
+              />
               <CampoTexto id={`val-m-${i}`} type="date" labelText={`Fecha de medición ${i + 1}`} value={l.fecha_medicion} onChange={(e) => cambiarLinea(i, "fecha_medicion", e.target.value)} />
               <CampoTexto id={`val-o-${i}`} labelText={`Observación ${i + 1}`} value={l.observacion} onChange={(e) => cambiarLinea(i, "observacion", e.target.value)} />
             </div>
@@ -68,7 +103,7 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
         </fieldset>
         <CampoTexto id="val-fuente" labelText="Fuente (acta, oficio)" value={v.fuente} onChange={campo("fuente")} />
         <div>
-          <Button kind="primary" size="md" disabled={estado.enviando} onClick={() => void registrar()}>
+          <Button kind="primary" size="md" disabled={estado.enviando} onClick={registrar}>
             Registrar y controlar
           </Button>
         </div>
@@ -182,17 +217,30 @@ function Costo({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => voi
   const { alExpirar } = useAplicacion();
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
   const [v, setV] = useState({ monto: "", moneda: "USD", fecha: "", partida: "", fuente: "" });
+  const [errorMonto, setErrorMonto] = useState<string | null>(null);
   const campo = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
-  const anotar = () =>
-    ejecutar(async () => {
-      await pedir("/v1/control/costos", { metodo: "POST", cuerpo: { proyecto, ...v } });
+  const anotar = () => {
+    const error = errorDeCifra(v.monto);
+    setErrorMonto(error);
+    if (error) return;
+    void ejecutar(async () => {
+      await pedir("/v1/control/costos", { metodo: "POST", cuerpo: { proyecto, ...v, monto: cifraParaApi(v.monto) } });
       return "Costo anotado: se convierte con la tasa de su fecha al calcular.";
     });
+  };
   return (
     <details>
       <summary className="cds--type-body-compact-01">Anotar un costo incurrido</summary>
       <div className="silice-control__formulario">
-        <CampoTexto id="cos-monto" labelText="Monto" value={v.monto} onChange={campo("monto")} />
+        <CampoTexto
+          id="cos-monto"
+          labelText="Monto"
+          helperText={AYUDA_CIFRAS}
+          invalid={errorMonto !== null}
+          invalidText={errorMonto ?? undefined}
+          value={v.monto}
+          onChange={campo("monto")}
+        />
         <Select id="cos-moneda" labelText="Moneda" value={v.moneda} onChange={campo("moneda")}>
           <SelectItem value="USD" text="USD" />
           <SelectItem value="Bs" text="Bs" />
@@ -201,7 +249,7 @@ function Costo({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => voi
         <CampoTexto id="cos-partida" labelText="Partida (opcional)" value={v.partida} onChange={campo("partida")} />
         <CampoTexto id="cos-fuente" labelText="Fuente del costo" value={v.fuente} onChange={campo("fuente")} />
         <div>
-          <Button kind="primary" size="md" disabled={estado.enviando} onClick={() => void anotar()}>
+          <Button kind="primary" size="md" disabled={estado.enviando} onClick={anotar}>
             Anotar costo
           </Button>
         </div>

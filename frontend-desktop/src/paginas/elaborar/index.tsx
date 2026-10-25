@@ -8,7 +8,7 @@ import { InformeAuditoria } from "../../comun/InformeAuditoria";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
-import { PlanDeTrabajo, conIds, sinIds } from "./PlanDeTrabajo";
+import { PlanDeTrabajo, avisoDelPlan, conIds, erroresDelPlan, sinIds } from "./PlanDeTrabajo";
 import type { FilaEditable } from "./PlanDeTrabajo";
 import { Severidad } from "../../comun/Severidad";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -162,6 +162,8 @@ export default function PaginaElaborar() {
 
   // Plan de trabajo (UC-01 6)
   const [plan, setPlan] = useState<FilaEditable[]>([]);
+  // Las fracciones mal escritas del ultimo intento de aplicar el plan (regla de la coma decimal).
+  const [erroresPlan, setErroresPlan] = useState<Record<number, string>>({});
   const [planReiniciado, setPlanReiniciado] = useState(false);
   // Las filas del plan por defecto de la ultima elaboracion sin plan del proyectista: el aviso compara con ellas.
   const precargado = useRef<FilaPlan[]>([]);
@@ -303,6 +305,12 @@ export default function PaginaElaborar() {
   async function aplicarPlan() {
     if (!hayItems || !items) {
       setErrorElaborar(ERROR_SIN_ITEMS_PLAN);
+      return;
+    }
+    const errores = erroresDelPlan(plan);
+    setErroresPlan(errores);
+    if (Object.keys(errores).length > 0) {
+      setErrorElaborar(avisoDelPlan(plan, errores));
       return;
     }
     await elaborar(items, sinIds(plan));
@@ -559,6 +567,7 @@ export default function PaginaElaborar() {
             reiniciado={planReiniciado}
             ocupado={elaborando}
             alAplicar={() => void aplicarPlan()}
+            errores={erroresPlan}
           />
 
           {resultado.pendientes.length > 0 && (
