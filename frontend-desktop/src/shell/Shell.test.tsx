@@ -49,12 +49,12 @@ function PaginaB() {
 const CARGAR_B = async () => ({ default: PaginaB });
 
 const PAGINAS: PaginaDef[] = [
-  { id: "tablero", titulo: "Tablero del proyecto", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
-  { id: "catalogo", titulo: "Catálogo de partidas e insumos", seccion: "Trabajo", accion: "leer_proyecto", cargar: CARGAR_B },
-  { id: "control", titulo: "Control de obra", seccion: "Trabajo", accion: "control_de_obra", cargar: CARGAR_B },
-  { id: "acerca", titulo: "Acerca de Sílice", seccion: "Trabajo", accion: null, cargar: CARGAR_B },
-  { id: "revisar", titulo: "Revisar un paquete", seccion: "Revisión", accion: "revisar_paquete", cargar: CARGAR_B },
-  { id: "escenarios", titulo: "Escenarios de sensibilidad", seccion: "Investigación", accion: "editar_hoja", cargar: CARGAR_B },
+  { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
+  { id: "catalogo", titulo: "Catálogo de partidas e insumos", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: CARGAR_B },
+  { id: "control", titulo: "Control de obra", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "control_de_obra", cargar: CARGAR_B },
+  { id: "acerca", titulo: "Acerca de Sílice", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: CARGAR_B },
+  { id: "revisar", titulo: "Revisar un paquete", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "revisar_paquete", cargar: CARGAR_B },
+  { id: "escenarios", titulo: "Escenarios de sensibilidad", enUnaLinea: "Pantalla de prueba", seccion: "Investigación", accion: "editar_hoja", cargar: CARGAR_B },
 ];
 
 const CASOS = {
@@ -172,7 +172,7 @@ describe("Shell", () => {
     test("estando en una pagina de «Más» ese grupo ya esta abierto", async () => {
       const paginas: PaginaDef[] = [
         ...PAGINAS,
-        { id: "indices", titulo: "Índices del BCV", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
+        { id: "indices", titulo: "Índices del BCV", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
       ];
       render(
         <MemoryRouter initialEntries={["/indices"]}>
@@ -187,9 +187,9 @@ describe("Shell", () => {
     test("las herramientas principales van arriba, en su orden, con su linea de ayuda, y solo las que la cuenta puede usar", async () => {
       const migrada = async () => ({ default: PaginaA });
       const paginas: PaginaDef[] = [
-        { id: "libros", titulo: "Libro de la empresa", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
-        { id: "componer", titulo: "Componer una partida", seccion: "Trabajo", accion: "editar_hoja", cargar: migrada },
-        { id: "existencias", titulo: "Existencias de la arenera", seccion: "Trabajo", accion: "operar_arenera", cargar: migrada },
+        { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Suba un Excel y vea lo que no cuadra", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
+        { id: "componer", titulo: "Componer una partida", enUnaLinea: "Arme el análisis de precio de una partida", seccion: "Trabajo", accion: "editar_hoja", cargar: migrada },
+        { id: "existencias", titulo: "Existencias de la arenera", enUnaLinea: "Cuánto hay y cuánto queda de cada material", seccion: "Trabajo", accion: "operar_arenera", cargar: migrada },
       ];
       render(
         <MemoryRouter initialEntries={["/libros"]}>
@@ -282,6 +282,7 @@ describe("Shell", () => {
         {
           id: "libros",
           titulo: "Libro de la empresa",
+          enUnaLinea: "Pantalla de prueba",
           seccion: "Revisión",
           accion: "leer_proyecto",
           cargar: async () => ({ default: () => <h1>Pantalla del libro</h1> }),
@@ -512,7 +513,7 @@ describe("Shell", () => {
       const usuario = userEvent.setup();
       const dos: PaginaDef[] = [
         ...PAGINAS,
-        { id: "libros", titulo: "Libro de la empresa", seccion: "Revisión", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
+        { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
       ];
       render(
         <MemoryRouter initialEntries={["/tablero"]}>
@@ -647,8 +648,8 @@ describe("Shell", () => {
     }
     const Destino = () => <h1>Pantalla de destino</h1>;
     const DOS: PaginaDef[] = [
-      { id: "origen", titulo: "Origen de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Origen }) },
-      { id: "destino", titulo: "Destino de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Destino }) },
+      { id: "origen", titulo: "Origen de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Origen }) },
+      { id: "destino", titulo: "Destino de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Destino }) },
     ];
     function montarDos() {
       return render(
@@ -715,7 +716,7 @@ describe("Shell", () => {
       }
       const TRES: PaginaDef[] = [
         ...DOS,
-        { id: "lenta", titulo: "Lenta de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Lenta }) },
+        { id: "lenta", titulo: "Lenta de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Lenta }) },
       ];
       function Va() {
         const ir = useNavigate();

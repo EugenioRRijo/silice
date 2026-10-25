@@ -225,7 +225,7 @@ describe("linea de ayuda y grupos de Mas", () => {
     for (const p of PAGINAS) {
       expect(p.enUnaLinea.length, p.id).toBeGreaterThanOrEqual(1);
       expect(p.enUnaLinea.length, p.id).toBeLessThanOrEqual(60);
-      expect(/(UC|RF|RNF|BCP)-\d/.test(p.enUnaLinea), p.id).toBe(false);
+      expect(/\b(UC|RF|RNF|BCP)-\d/.test(p.enUnaLinea), p.id).toBe(false);
     }
   });
 

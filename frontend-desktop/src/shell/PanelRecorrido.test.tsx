@@ -8,10 +8,10 @@ import type { PaginaDef } from "./rutas";
 
 const migrada = async () => ({ default: () => null });
 const PAGINAS: PaginaDef[] = [
-  { id: "inicio", titulo: "Inicio", seccion: "Trabajo", accion: null, cargar: migrada },
-  { id: "libros", titulo: "Libro de la empresa", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
-  { id: "historial", titulo: "Historial de auditorías", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
-  { id: "tablero", titulo: "Tablero del proyecto", seccion: "Trabajo", accion: "leer_proyecto", cargar: migrada },
+  { id: "inicio", titulo: "Inicio", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: migrada },
+  { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
+  { id: "historial", titulo: "Historial de auditorías", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
+  { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: migrada },
 ];
 
 function montar(ruta: string, paginas: readonly PaginaDef[] = PAGINAS, acciones: string[] = ["leer_proyecto"]) {
