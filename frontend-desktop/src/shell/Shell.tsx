@@ -206,7 +206,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
         setProyecto(null);
         setProyectos(null);
         setGeneracion((g) => g + 1);
-        setAviso(`Ahora trabaja con el caso «${nombre}». Si se reinicia la API, vuelve al caso por defecto.`);
+        setAviso(`Ahora trabaja con la carpeta de trabajo «${nombre}». Si se reinicia la API, vuelve a la carpeta por defecto.`);
       } catch (e) {
         fallo(e);
       } finally {
@@ -270,7 +270,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
             {aviso && (
               <InlineNotification
                 kind="info"
-                title="Caso cambiado"
+                title="Carpeta de trabajo cambiada"
                 subtitle={aviso}
                 lowContrast
                 onClose={() => {

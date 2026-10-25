@@ -10,14 +10,13 @@ interface PropsCaso {
   alElegir: (nombre: string) => void;
 }
 
-// El caso es la base de datos en uso (RM-2): la API lo guarda por sesion.
+// La carpeta de trabajo (el caso en la API) es la base de datos en uso (RM-2): la API lo guarda por sesion.
 export function SelectorCaso({ casos, puedeCambiar, ocupado, alElegir }: PropsCaso) {
   return (
     <div className="silice-selector">
       <Select
         id="selector-caso"
-        labelText="Caso"
-        inline
+        labelText="Carpeta de trabajo"
         size="sm"
         value={casos.actual.nombre}
         disabled={!puedeCambiar || ocupado}
@@ -59,7 +58,6 @@ export function SelectorProyecto({ proyectos, elegido, alElegir }: PropsProyecto
       <Select
         id="selector-proyecto"
         labelText="Proyecto"
-        inline
         size="sm"
         ref={lista}
         value={elegido ?? ""}
