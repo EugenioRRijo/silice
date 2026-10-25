@@ -223,6 +223,8 @@ describe("Componer una partida", () => {
     await usuario.type(screen.getByLabelText("Código"), "NUEVA-1");
     expect(await screen.findByText(/Todavía no hay historial de rendimientos/, {}, ESPERA)).toBeInTheDocument();
     expect(screen.getByLabelText("Cantidad, fila 1")).toBeInTheDocument();
+    // Prueba en vivo 2026-10-25: «es el comportamiento correcto, no un error» confundia a quien la leia.
+    expect(screen.queryByText(/comportamiento correcto|no un error/)).not.toBeInTheDocument();
   });
 
   test("la justificación solo aparece cuando la API pide justificar", async () => {

@@ -84,6 +84,8 @@ describe("PanelDesglose", () => {
     expect(screen.getByText(/regla ficticia/)).toBeInTheDocument();
     expect(screen.getByText(/28\.00/)).toBeInTheDocument();
     expect(screen.getByText(/dentro del rango/i)).toBeInTheDocument();
+    // «compuerta G2» es del expediente de la tesis, no de quien compone (prueba en vivo 2026-10-25).
+    expect(document.body.textContent).not.toMatch(/compuerta|G2/);
   });
 
   test("un error de la API se muestra con su detalle", () => {
