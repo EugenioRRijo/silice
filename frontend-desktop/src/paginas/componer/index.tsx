@@ -271,14 +271,14 @@ export default function PaginaComponer() {
         </div>
         {sinHistorial && cabecera.codigo.trim() !== "" && (
           <p className="silice-componer__nota cds--type-body-compact-01">
-            Todavía no hay historial de rendimientos registrado para esta partida: es el comportamiento correcto, no un
-            error. Declare el rendimiento con sus condiciones.
+            Todavía no hay historial de rendimientos para esta partida: declare el rendimiento y las condiciones en que
+            se obtuvo.
           </p>
         )}
         <AreaTexto
           id="componer-condiciones"
           labelText="Condiciones del rendimiento"
-          helperText="Obligatorio: el sistema no persiste una composición cuyo rendimiento no se declare junto con las condiciones en que se obtuvo."
+          helperText="Obligatorio: Sílice no guarda una composición sin las condiciones en que se obtuvo su rendimiento."
           rows={2}
           value={condiciones}
           onChange={(e) => {

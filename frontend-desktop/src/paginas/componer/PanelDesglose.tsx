@@ -50,8 +50,8 @@ function BloqueContraste({ contraste }: { contraste: Contraste }) {
     <div className="silice-componer__contraste">
       <h3 className="cds--type-heading-compact-02">Contraste con la estimación por reglas (AACE)</h3>
       <p className="cds--type-body-compact-01">
-        Técnica de la compuerta G2 para este dominio: {contraste.tecnica} ({contraste.registros} registro(s)). PU
-        estimado por reglas: {contraste.pu_estimado}.
+        Técnica de estimación que corresponde a este dominio: {contraste.tecnica} ({contraste.registros} registro(s)).
+        Precio unitario estimado por reglas: {contraste.pu_estimado}.
       </p>
       {contraste.dentro_de_rango && (
         <p className="cds--type-body-compact-01">
