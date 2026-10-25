@@ -12,12 +12,15 @@ interface Props {
 
 // «Recorrido en curso» del panel izquierdo (spec §2.3): los pasos, el actual con su «que hacer» y «sabra que termino
 // cuando». El paso sale de la pantalla abierta; fuera de ellas ninguno es el actual y los pasos siguen siendo enlaces.
-// Al terminar, el panel (y con el su boton) desaparece: el foco pasa al primer enlace del menu (VD-7).
+// Al terminar, el panel (y con el su boton) desaparece: el foco pasa al h1 de la pagina abierta (VD-7), que es lo que
+// queda en pantalla; ya no hay un enlace del menu al que volver.
 function alTerminar() {
   terminarRecorrido();
-  document.querySelector<HTMLElement>('nav[aria-label="Menú principal"] a[href]')?.focus();
-  // Con el menu cerrado (pantalla angosta) ese enlace no recibe el foco: va al boton que abre el menu.
-  if (document.activeElement === document.body) document.querySelector<HTMLElement>(".cds--header__menu-toggle")?.focus();
+  const titulo = document.querySelector<HTMLElement>("#contenido h1");
+  if (titulo) {
+    titulo.tabIndex = -1;
+    titulo.focus({ preventScroll: true });
+  }
 }
 
 export function PanelRecorrido({ paginas, acciones, modoEntrega }: Props) {

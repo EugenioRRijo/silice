@@ -64,10 +64,32 @@ export function iniciarRecorrido(recorrido: Recorrido): void {
   avisar();
 }
 
+// Terminar tambien vuelve a mostrar la columna, para que el siguiente recorrido empiece a la vista.
 export function terminarRecorrido(): void {
-  if (enCurso === null) return;
+  if (enCurso === null && !columnaOculta) return;
   enCurso = null;
+  columnaOculta = false;
   avisar();
+}
+
+// La columna «Recorrido» se puede plegar sin cerrar el recorrido (spec de la barra superior, §5.5). Igual que el
+// recorrido, vive solo en memoria.
+let columnaOculta = false;
+
+export function ocultarColumna(): void {
+  if (columnaOculta) return;
+  columnaOculta = true;
+  avisar();
+}
+
+export function mostrarColumna(): void {
+  if (!columnaOculta) return;
+  columnaOculta = false;
+  avisar();
+}
+
+function estaColumnaOculta(): boolean {
+  return columnaOculta;
 }
 
 export function suscribirRecorrido(oyente: () => void): () => void {
@@ -79,4 +101,8 @@ export function suscribirRecorrido(oyente: () => void): () => void {
 
 export function useRecorrido(): Recorrido | null {
   return useSyncExternalStore(suscribirRecorrido, recorridoEnCurso, recorridoEnCurso);
+}
+
+export function useColumnaOculta(): boolean {
+  return useSyncExternalStore(suscribirRecorrido, estaColumnaOculta, estaColumnaOculta);
 }
