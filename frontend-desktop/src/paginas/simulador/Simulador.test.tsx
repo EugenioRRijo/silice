@@ -85,15 +85,15 @@ describe("Simulador de listas", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  test("genera la lista: manda el cuerpo por omision y muestra los precios tal como llegan", async () => {
+  test("genera la lista: manda el cuerpo por omision y muestra los precios con coma decimal", async () => {
     const usuario = userEvent.setup();
     fetchFalso.mockResolvedValue(json({ filas: FILAS }));
     montar();
     await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
     const tabla = await screen.findByRole("table", { name: "Lista simulada" });
     expect(tabla).toHaveTextContent("Arena lavada");
-    expect(tabla).toHaveTextContent("30.00");
-    expect(tabla).toHaveTextContent("12.50");
+    expect(tabla).toHaveTextContent("30,00");
+    expect(tabla).toHaveTextContent("12,50");
     expect(fetchFalso.mock.calls[0][0]).toBe("/v1/simulador");
     expect((fetchFalso.mock.calls[0][1] as RequestInit).method).toBe("POST");
     expect(cuerpoEnviado(0)).toEqual({ semilla: 42, variacion_max: "5", insumos: null });
@@ -107,7 +107,7 @@ describe("Simulador de listas", () => {
     await usuario.clear(screen.getByLabelText("Semilla"));
     await usuario.type(screen.getByLabelText("Semilla"), "7");
     await usuario.clear(screen.getByLabelText("Variación máxima (%)"));
-    await usuario.type(screen.getByLabelText("Variación máxima (%)"), "2.5");
+    await usuario.type(screen.getByLabelText("Variación máxima (%)"), "2,5");
     await usuario.type(screen.getByLabelText(/^Insumos/), "Arena lavada, Peon ficticio");
     await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
     await screen.findByRole("table");
@@ -217,7 +217,7 @@ describe("Simulador de listas", () => {
     const usuario = userEvent.setup();
     montar();
     const campo = screen.getByLabelText("Variación máxima (%)");
-    for (const mala of ["-1", "abc", "2,5", "1001", "1E+999999"]) {
+    for (const mala of ["-1", "abc", "2.5", "1001", "1E+999999"]) {
       await usuario.clear(campo);
       await usuario.type(campo, mala);
       expect(await screen.findByText(MENSAJE_VARIACION)).toBeInTheDocument();

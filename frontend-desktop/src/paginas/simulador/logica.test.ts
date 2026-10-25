@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
 import {
   AVISO_HERRAMIENTA,
   cuerpoDe,
@@ -21,32 +22,36 @@ describe("logica del simulador", () => {
     }
   });
 
-  test("el cuerpo manda la variacion como texto y los insumos vacios como null", () => {
+  test("el cuerpo manda la variacion leida con coma decimal, con punto, y los insumos vacios como null", () => {
     expect(cuerpoDe({ semilla: " 42 ", variacion: "5", insumos: "  " })).toEqual({
       semilla: 42,
       variacion_max: "5",
       insumos: null,
     });
-    expect(cuerpoDe({ semilla: "0", variacion: "2.50", insumos: " Arena , Cemento " })).toEqual({
+    expect(cuerpoDe({ semilla: "0", variacion: "2,50", insumos: " Arena , Cemento " })).toEqual({
       semilla: 0,
       variacion_max: "2.50",
       insumos: "Arena , Cemento",
     });
   });
 
-  test("la tabla conserva el precio como texto, sin tocarlo", () => {
-    const filas = filasDeTabla([{ tipo: "material", insumo: "Arena", unidad: "m3", precio: "30.00" }]);
-    expect(filas).toEqual([{ id: "0", tipo: "material", insumo: "Arena", unidad: "m3", precio: "30.00" }]);
+  test("la tabla escribe el precio de la API en es-VE (coma decimal, punto de miles), sin calcular", () => {
+    const filas = filasDeTabla([{ tipo: "material", insumo: "Arena", unidad: "m3", precio: "1230.00" }]);
+    expect(filas).toEqual([{ id: "0", tipo: "material", insumo: "Arena", unidad: "m3", precio: "1.230,00" }]);
   });
 
-  test("la variacion acepta decimales con punto entre 0 y 1000, tambien con exponente", () => {
-    for (const buena of ["0", "5", " 2.5 ", "+3", ".5", "5.", "1000", "1E2", "1e+3", "0.0001"]) {
-      expect(errorDeVariacion(buena)).toBeNull();
+  test("la variacion acepta la coma decimal y el punto de miles entre 0 y 1000", () => {
+    for (const buena of ["0", "5", " 2,5 ", "0,0001", "1000", "1.000", "1000,0", "999,999"]) {
+      expect(errorDeVariacion(buena), buena).toBeNull();
     }
   });
 
-  test("la variacion rechaza vacio, texto, coma decimal, negativos, no finitos y lo que pasa de 1000", () => {
-    for (const mala of ["", "  ", "abc", "2,5", "-1", "-0.5", "NaN", "Infinity", "1000.01", "1E+4", "1E+999999", "1_0"]) {
+  test("el mensaje de la variacion dice la regla de la coma", () => {
+    expect(MENSAJE_VARIACION).toContain(MENSAJE_CIFRA);
+  });
+
+  test("la variacion rechaza vacio, texto, punto decimal, negativos, exponentes y lo que pasa de 1000", () => {
+    for (const mala of ["", "  ", "abc", "2.5", "1,234.5", "-1", "-0,5", "+3", "NaN", "Infinity", "1000,01", "1.000,5", "1001", "12.345", "1E+4", "1e3", "1_0"]) {
       expect(errorDeVariacion(mala)).toBe(MENSAJE_VARIACION);
     }
   });
@@ -61,7 +66,7 @@ describe("logica del simulador", () => {
       "semilla 42, variación 5 %, insumos: todos",
     );
     expect(resumenDeEnvio({ semilla: 7, variacion_max: "2.5", insumos: "Arena" })).toBe(
-      "semilla 7, variación 2.5 %, insumos: Arena",
+      "semilla 7, variación 2,5 %, insumos: Arena",
     );
   });
 });
