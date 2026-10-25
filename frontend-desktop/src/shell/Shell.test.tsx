@@ -648,6 +648,40 @@ describe("Shell", () => {
       expect(within(aviso as HTMLElement).getByText(/carpeta de trabajo «obra»\./)).toBeInTheDocument();
     });
 
+    // D1 del recorrido funcional: la barra y el selector dicen la carpeta de la sesion aunque no venga en la lista.
+    test("si la carpeta abierta no está en la lista, la barra y el selector la muestran y elegir otra la cambia", async () => {
+      const usuario = userEvent.setup();
+      const silice = { nombre: "silice.db", ruta_relativa: "data/silice.db" };
+      const demo = { nombre: "demo.db", ruta_relativa: "data/demo.db" };
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        const ruta = String(entrada);
+        if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json({ actual: silice, casos: [demo] });
+        if (ruta === "/v1/casos/actual") return json({ actual: demo });
+        if (ruta === "/v1/proyectos") return json(PROYECTOS);
+        return json({ detalle: "No encontrado." }, 404);
+      });
+      montar();
+      expect(await screen.findByRole("button", { name: /^Carpeta de trabajo: silice\./ })).toBeInTheDocument();
+      const selector = await selectorDeCarpeta(usuario);
+      expect(selector).toHaveValue("silice.db");
+      await usuario.selectOptions(selector, "demo.db");
+      const llamada = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/casos/actual");
+      expect(llamada?.[1]?.body).toBe(JSON.stringify({ nombre: "demo.db" }));
+      expect(await screen.findByRole("button", { name: /^Carpeta de trabajo: demo\./ })).toBeInTheDocument();
+    });
+
+    // D6 del recorrido funcional: el aviso no se queda en todas las pantallas.
+    test("el aviso de carpeta cambiada se cierra al navegar a otra pantalla", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await usuario.selectOptions(await selectorDeCarpeta(usuario), "arenaza");
+      expect(await screen.findByText("Carpeta de trabajo cambiada")).toBeInTheDocument();
+      await usuario.click(within(menu()).getByRole("button", { name: "Crear" }));
+      await usuario.click(within(menu()).getByRole("link", { name: "Catálogo de partidas e insumos" }));
+      await screen.findByRole("heading", { name: "Otra pantalla" });
+      expect(screen.queryByText("Carpeta de trabajo cambiada")).not.toBeInTheDocument();
+    });
+
     test("al cambiar el caso la pagina se vuelve a montar con el caso nuevo", async () => {
       const usuario = userEvent.setup();
       montar();

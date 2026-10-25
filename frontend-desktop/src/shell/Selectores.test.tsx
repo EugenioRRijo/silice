@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, test, vi } from "vitest";
 import { SelectorCaso, SelectorProyecto } from "./Selectores";
 
 const PROYECTOS = [
@@ -34,6 +35,32 @@ describe("SelectorCaso", () => {
     render(<SelectorCaso casos={{ actual: caso, casos: [caso] }} puedeCambiar ocupado={false} alElegir={() => {}} />);
     expect(screen.getByRole("combobox", { name: "Carpeta de trabajo" })).toBeInTheDocument();
     expect(screen.queryByText(/\bcaso\b/i)).toBeNull();
+  });
+});
+
+// D1 del recorrido funcional (bitacora 2026-10-25-recorrido-funcional.md): si la carpeta abierta no viene en la lista, el
+// Select caia en la primera opcion, mostraba una carpeta que no era la de la sesion y elegirla no hacia nada.
+describe("SelectorCaso, carpeta abierta fuera de la lista", () => {
+  test("muestra la carpeta abierta aunque no esté en la lista, y elegir otra llama alElegir con su nombre real", async () => {
+    const usuario = userEvent.setup();
+    const alElegir = vi.fn();
+    const actual = { nombre: "silice.db", ruta_relativa: "data/silice.db" } as never;
+    const demo = { nombre: "demo.db", ruta_relativa: "data/demo.db" } as never;
+    render(<SelectorCaso casos={{ actual, casos: [demo] }} puedeCambiar ocupado={false} alElegir={alElegir} />);
+    const selector = screen.getByRole("combobox", { name: "Carpeta de trabajo" });
+    expect(selector).toHaveValue("silice.db");
+    expect((selector as HTMLSelectElement).selectedOptions[0].textContent).toBe("silice");
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["silice", "demo"]);
+    await usuario.selectOptions(selector, "demo.db");
+    expect(alElegir).toHaveBeenCalledWith("demo.db");
+  });
+
+  test("con la carpeta abierta en la lista no la repite", () => {
+    const a = { nombre: "demo.db", ruta_relativa: "data/demo.db" } as never;
+    const b = { nombre: "obra.db", ruta_relativa: "data/obra.db" } as never;
+    render(<SelectorCaso casos={{ actual: b, casos: [a, b] }} puedeCambiar ocupado={false} alElegir={() => {}} />);
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["demo", "obra"]);
+    expect(screen.getByRole("combobox", { name: "Carpeta de trabajo" })).toHaveValue("obra.db");
   });
 });
 
