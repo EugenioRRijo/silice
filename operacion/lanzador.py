@@ -276,8 +276,8 @@ def arrancar(
     except Exception as error:  # noqa: BLE001 - sin el código se sigue sirviendo el acceso normal
         logger.error("no se pudo asegurar el código de instalación: %s", type(error).__name__)
     codigo = config.ruta_codigo_instalacion(entorno)
-    if codigo.is_file():
-        texto = codigo.read_text(encoding="utf-8").strip()
+    texto = (primer_arranque.leer_codigo_del_archivo(codigo) or "").strip()
+    if texto:
         registro.registrar_secreto(texto)  # a la consola, nunca al registro
         salida(f"Código de instalación (un solo uso, para crear el primer administrador): {texto}")
         salida(f"También está en el archivo {codigo}")

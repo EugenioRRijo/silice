@@ -168,6 +168,8 @@ devuelva.
   reemite, y arrancar otra vez no cambia nada.
 - Front: `Bienvenida.test.tsx` y `RecuperarAcceso.test.tsx` comprueban el texto nuevo y que ya no dice «letras y números».
 
+- **Robustez (observaciones del árbitro, 2026-10-25):** `emitir_codigo` escribe `codigo_instalacion.txt` de forma atómica (temporal en la misma carpeta + `os.replace`) con el bloqueo de escritura tomado y **antes** del `commit`; si escribir falla, `rollback` y base y archivo no divergen (dos arranques a la vez ya no dejan un archivo con un código invalidado). El lanzador lee el archivo con `leer_archivo_del_codigo` (1 KiB como mucho, `errors="replace"`; el mismo lugar que usa `_archivo_lleva_un_codigo_vigente`). Pruebas en `test_aplicacion_primer_arranque.py` y `test_lanzador.py`.
+
 ### 7.5 Residuales
 
 | # | Riesgo | Estado |

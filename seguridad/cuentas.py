@@ -14,6 +14,7 @@ comparte transacción con ningún caso). El reloj `ahora` y la espera `dormir` s
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import secrets
 import threading
@@ -313,7 +314,8 @@ def purgar_intentos_de_inexistentes(session: Session, ahora: datetime) -> int:
     """Borra los contadores de logins que no existen y llevan 24 h sin fallar (S3 §5.4)."""
     existentes = set(session.scalars(select(Usuario.login)))
     viejos = [
-        fila for fila in session.scalars(select(IntentoAcceso))
+        fila
+        for fila in session.scalars(select(IntentoAcceso))
         if fila.login_normalizado not in existentes
         and not fila.login_normalizado.startswith("!")
         and fila.ultimo_fallo is not None
@@ -388,7 +390,8 @@ def emitir_codigo(
     """Un código de instalación de un solo uso: 20 caracteres base32 (100 bits) de `secrets`.
     Guarda su SHA-256 y lo escribe en `carpeta/codigo_instalacion.txt`. Toma el bloqueo de
     escritura, **invalida los códigos pendientes anteriores** (`usado` = `ahora`: solo el último
-    sirve y el archivo siempre lleva el último) y confirma."""
+    sirve y el archivo siempre lleva el último), escribe el archivo (atómico) con el bloqueo aún
+    tomado y solo entonces confirma; si escribir falla, deshace y la base queda como estaba."""
     if motivo not in {"primera vez", "restablecimiento"}:
         raise ValueError("motivo de codigo desconocido")
     _tomar_escritura(session)
@@ -399,10 +402,28 @@ def emitir_codigo(
     session.add(CodigoInstalacion(huella=_huella_codigo(codigo), creado=ahora, motivo=motivo))
     detalle = motivo if not reemplazados else f"{motivo}; reemplaza {reemplazados} pendiente(s)"
     eventos.registrar(session, "codigo de instalacion", ahora, detalle=detalle)
-    session.commit()
-    carpeta.mkdir(parents=True, exist_ok=True)
-    (carpeta / NOMBRE_ARCHIVO_CODIGO).write_text(formato_codigo(codigo) + "\n", encoding="ascii")
+    try:
+        # con el bloqueo tomado y ANTES de confirmar: si escribir falla, base y archivo no divergen
+        _escribir_archivo_del_codigo(carpeta, formato_codigo(codigo) + "\n")
+        session.commit()
+    except BaseException:
+        session.rollback()
+        raise
     return codigo
+
+
+def _escribir_archivo_del_codigo(carpeta: Path, texto: str) -> None:
+    """Escribe `codigo_instalacion.txt` de forma atómica: un temporal en la misma carpeta y
+    `os.replace`. Quien lo lea ve el archivo anterior o el nuevo entero, nunca a medias. El texto
+    no se registra ni se devuelve; si algo falla, el temporal no queda."""
+    carpeta.mkdir(parents=True, exist_ok=True)
+    temporal = carpeta / f"{NOMBRE_ARCHIVO_CODIGO}.{secrets.token_hex(4)}.tmp"
+    try:
+        temporal.write_text(texto, encoding="ascii")
+        os.replace(temporal, carpeta / NOMBRE_ARCHIVO_CODIGO)
+    except BaseException:
+        temporal.unlink(missing_ok=True)
+        raise
 
 
 def hay_usuarios(session: Session) -> bool:
@@ -413,14 +434,23 @@ def hay_usuarios(session: Session) -> bool:
 _LECTURA_DEL_ARCHIVO = 1024
 
 
+def leer_archivo_del_codigo(archivo: Path) -> str | None:
+    """Lo que lleva `codigo_instalacion.txt`: como mucho 1 KiB, decodificado con `errors="replace"`
+    (un archivo enorme o con bytes inválidos no rompe a quien lo lee). `None` si no se puede leer.
+    Es el único lugar que lo lee (la base y el lanzador)."""
+    try:
+        with archivo.open("rb") as abierto:
+            return abierto.read(_LECTURA_DEL_ARCHIVO).decode("utf-8", "replace")
+    except OSError:
+        return None
+
+
 def _archivo_lleva_un_codigo_vigente(session: Session, carpeta: Path, ahora: datetime) -> bool:
     """`codigo_instalacion.txt` existe y su código es uno que la base aceptaría ahora: vigente y,
     si es de restablecimiento, sin caducar. Un archivo rancio (la base se recreó o se restauró y
     el archivo quedó), vacío o ilegible no lo lleva. El texto leído no sale de aquí."""
-    try:
-        with (carpeta / NOMBRE_ARCHIVO_CODIGO).open("rb") as archivo:
-            texto = archivo.read(_LECTURA_DEL_ARCHIVO).decode("utf-8", "replace")
-    except OSError:
+    texto = leer_archivo_del_codigo(carpeta / NOMBRE_ARCHIVO_CODIGO)
+    if texto is None:
         return False
     pendiente = session.get(CodigoInstalacion, _huella_codigo(texto))
     return pendiente is not None and pendiente.usado is None and not _caducado(pendiente, ahora)
@@ -489,7 +519,8 @@ def reclamar_instalacion(
     vigente = pendiente is not None and pendiente.usado is None
     caducado = vigente and _caducado(pendiente, ahora)
     aceptable = (
-        vigente and not caducado
+        vigente
+        and not caducado
         and (not hay_usuarios(session) or pendiente.motivo == "restablecimiento")
     )
     if not aceptable:
@@ -516,9 +547,15 @@ def reclamar_instalacion(
     if usuario is None:
         roles = [Rol.ADMINISTRADOR, *([Rol.ARMA] if ademas_arma else [])]
         usuario = Usuario(
-            login=login_normal, nombre=nombre.strip() or login_normal, huella_clave=huella,
-            roles=texto_de_roles(roles), activo=True, debe_cambiar_clave=False,
-            restablecida_por_admin=False, creado=ahora, creado_por="código de instalación",
+            login=login_normal,
+            nombre=nombre.strip() or login_normal,
+            huella_clave=huella,
+            roles=texto_de_roles(roles),
+            activo=True,
+            debe_cambiar_clave=False,
+            restablecida_por_admin=False,
+            creado=ahora,
+            creado_por="código de instalación",
         )
         session.add(usuario)
         session.flush()
@@ -530,12 +567,22 @@ def reclamar_instalacion(
         sesiones.cerrar_todas(session, usuario.id, "restablecimiento")
         if Rol.ADMINISTRADOR not in eran:
             eventos.registrar(
-                session, "cambio de roles", ahora, login=login_normal, usuario_id=usuario.id,
-                ip=ip, detalle=f"{usuario.roles}; promovida a administrador por restablecimiento",
+                session,
+                "cambio de roles",
+                ahora,
+                login=login_normal,
+                usuario_id=usuario.id,
+                ip=ip,
+                detalle=f"{usuario.roles}; promovida a administrador por restablecimiento",
             )
     fila.fallos_seguidos, fila.bloqueado_hasta = 0, None
     eventos.registrar(
-        session, "alta", ahora, login=login_normal, usuario_id=usuario.id, ip=ip,
+        session,
+        "alta",
+        ahora,
+        login=login_normal,
+        usuario_id=usuario.id,
+        ip=ip,
         detalle=f"administrador por {motivo}",
     )
     session.commit()
@@ -573,15 +620,24 @@ def crear_usuario(
     if session.scalar(select(Usuario.id).where(Usuario.login == login_normal)) is not None:
         raise ValueError(f"Ya existe una cuenta con el usuario {login_normal!r}.")
     usuario = Usuario(
-        login=login_normal, nombre=nombre.strip() or login_normal,
-        huella_clave=_huella(contrasena_temporal), roles=texto_de_roles(roles), activo=True,
-        debe_cambiar_clave=True, restablecida_por_admin=False, creado=ahora,
+        login=login_normal,
+        nombre=nombre.strip() or login_normal,
+        huella_clave=_huella(contrasena_temporal),
+        roles=texto_de_roles(roles),
+        activo=True,
+        debe_cambiar_clave=True,
+        restablecida_por_admin=False,
+        creado=ahora,
         creado_por=_quien(actor),
     )
     session.add(usuario)
     session.flush()
     eventos.registrar(
-        session, "alta", ahora, login=login_normal, usuario_id=usuario.id,
+        session,
+        "alta",
+        ahora,
+        login=login_normal,
+        usuario_id=usuario.id,
         detalle=f"roles {usuario.roles}; por {actor.login}",
     )
     session.commit()
@@ -602,7 +658,11 @@ def cambiar_roles(
     usuario.roles = nuevos
     sesiones.cerrar_todas(session, usuario.id, "cambio de roles")
     eventos.registrar(
-        session, "cambio de roles", ahora, login=usuario.login, usuario_id=usuario.id,
+        session,
+        "cambio de roles",
+        ahora,
+        login=usuario.login,
+        usuario_id=usuario.id,
         detalle=f"{nuevos}; por {actor.login}",
     )
     session.commit()
@@ -611,8 +671,11 @@ def cambiar_roles(
 
 def _exigir_otro_administrador(session: Session, usuario: Usuario) -> None:
     otros = [
-        u for u in session.scalars(
-            select(Usuario).where(Usuario.activo.is_(True)).execution_options(populate_existing=True)
+        u
+        for u in session.scalars(
+            select(Usuario)
+            .where(Usuario.activo.is_(True))
+            .execution_options(populate_existing=True)
         )
         if u.id != usuario.id and Rol.ADMINISTRADOR in roles_de(u.roles)
     ]
@@ -632,7 +695,11 @@ def desactivar(session: Session, actor: Usuario, usuario_id: int, ahora: datetim
     usuario.activo = False
     sesiones.cerrar_todas(session, usuario.id, "cuenta desactivada")
     eventos.registrar(
-        session, "baja", ahora, login=usuario.login, usuario_id=usuario.id,
+        session,
+        "baja",
+        ahora,
+        login=usuario.login,
+        usuario_id=usuario.id,
         detalle=f"por {actor.login}",
     )
     session.commit()
@@ -643,7 +710,11 @@ def reactivar(session: Session, actor: Usuario, usuario_id: int, ahora: datetime
     usuario = _usuario(session, usuario_id)
     usuario.activo = True
     eventos.registrar(
-        session, "alta", ahora, login=usuario.login, usuario_id=usuario.id,
+        session,
+        "alta",
+        ahora,
+        login=usuario.login,
+        usuario_id=usuario.id,
         detalle=f"reactivada por {actor.login}",
     )
     session.commit()
@@ -674,7 +745,11 @@ def restablecer(
         fila.fallos_seguidos, fila.bloqueado_hasta = 0, None
     sesiones.cerrar_todas(session, usuario.id, "restablecimiento")
     eventos.registrar(
-        session, "restablecimiento", ahora, login=usuario.login, usuario_id=usuario.id,
+        session,
+        "restablecimiento",
+        ahora,
+        login=usuario.login,
+        usuario_id=usuario.id,
         detalle=f"por {actor.login}",
     )
     session.commit()
@@ -691,8 +766,6 @@ def cambiar_contrasena(
     usuario.huella_clave = _huella(nueva)
     usuario.debe_cambiar_clave, usuario.restablecida_por_admin = False, False
     sesiones.cerrar_todas(session, usuario.id, "cambio de clave")
-    eventos.registrar(
-        session, "cambio de clave", ahora, login=usuario.login, usuario_id=usuario.id
-    )
+    eventos.registrar(session, "cambio de clave", ahora, login=usuario.login, usuario_id=usuario.id)
     session.commit()
     return sesiones.abrir(session, usuario, ahora)

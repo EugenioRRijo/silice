@@ -34,6 +34,7 @@ __all__ = [
     "asegurar_codigo_de_la_instalacion",
     "emitir_restablecimiento",
     "estado",
+    "leer_codigo_del_archivo",
     "restablecer_administrador",
 ]
 
@@ -43,6 +44,12 @@ class EstadoDeInstalacion:
     sin_cuentas: bool
     archivo_presente: bool
     modo: str  # "producto" | "desarrollo"
+
+
+def leer_codigo_del_archivo(archivo: Path) -> str | None:
+    """El texto de `codigo_instalacion.txt` leído con tope (1 KiB) y sin romperse con bytes
+    inválidos; `None` si no se puede leer. Un solo lugar: `seguridad.cuentas`."""
+    return cuentas.leer_archivo_del_codigo(archivo)
 
 
 def _archivo(carpeta: Path) -> Path:
