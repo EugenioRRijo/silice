@@ -18,13 +18,14 @@ import threading
 import time
 from collections.abc import Iterator
 from contextlib import closing
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
 from aplicacion import casos
 from operacion import __main__ as cli
-from operacion import base_datos, config, demostracion
+from operacion import base_datos, config, demostracion, respaldo
 from operacion.base_datos import (
     CasoYaExiste,
     Destino,
@@ -321,6 +322,59 @@ def test_subir_una_base_0_5_0_la_respalda_y_la_migra(datos: Path, tmp_path: Path
     esperado = bases_prueba.ficha("0.5.0")["bases"]["demo.db"]
     assert bases_prueba.diferencias_con_ficha(subida.ruta, esperado) == []
     assert not (datos / casos.CARPETA_CUARENTENA).exists()
+
+
+def _juegos_por_motivo() -> dict[str, list[Path]]:
+    salida: dict[str, list[Path]] = {}
+    for carpeta, ficha in respaldo.listar_juegos(config.carpeta_respaldos()):
+        salida.setdefault(ficha["motivo"], []).append(carpeta)
+    return salida
+
+
+def test_las_subidas_viejas_no_borran_el_respaldo_de_la_migracion_real(
+    datos: Path, tmp_path: Path
+) -> None:
+    """Defecto de BCP-2: seis subidas de bases anteriores a `head` no pueden llevarse el juego de
+    la migración de la instalación; las subidas se podan aparte (5) con su propio motivo."""
+    real = respaldo.respaldar(
+        [],
+        respaldo.MOTIVO_MIGRACION,
+        ruta_instalacion=config.ruta_instalacion(),
+        carpeta_respaldos=config.carpeta_respaldos(),
+        heads={d.value: revision_head(d) for d in Destino},
+        ahora=datetime(2020, 1, 1),
+    )
+    origen = bases_prueba.copiar_base("0.5.0", "demo.db", tmp_path / "demo.db")
+    for n in range(7):
+        casos.subir_seguro(io.BytesIO(origen.read_bytes()), f"vieja {n}.db")
+    por_motivo = _juegos_por_motivo()
+    assert por_motivo[respaldo.MOTIVO_MIGRACION] == [real]
+    assert len(por_motivo[respaldo.MOTIVO_SUBIDA]) == respaldo.CONSERVAR_SUBIDAS
+
+
+def test_las_migraciones_de_base_datos_siguen_conservando_cinco(
+    datos: Path, tmp_path: Path
+) -> None:
+    for n in range(7):
+        origen = bases_prueba.copiar_base("0.5.0", "demo.db", tmp_path / f"m{n}.db")
+        base_datos.preparar_base(origen)
+    por_motivo = _juegos_por_motivo()
+    assert len(por_motivo[respaldo.MOTIVO_MIGRACION]) == respaldo.CONSERVAR_MIGRACIONES
+    assert respaldo.MOTIVO_SUBIDA not in por_motivo
+
+
+def test_purgar_borra_tambien_el_journal_wal_y_shm_de_un_temporal_viejo(datos: Path) -> None:
+    casos_dir = config.carpeta_casos()
+    casos_dir.mkdir()
+    viejos = [casos_dir / f".subiendo-9.tmp{extra}" for extra in ("", "-journal", "-wal", "-shm")]
+    nuevos = [casos_dir / f".subiendo-8.tmp{extra}" for extra in ("-wal", "-shm")]
+    for ruta in (*viejos, *nuevos):
+        ruta.write_bytes(b"x")
+    hace_dos_horas = time.time() - 2 * 3600
+    for ruta in viejos:
+        os.utime(ruta, (hace_dos_horas, hace_dos_horas))
+    assert casos.purgar_cuarentena() == 4
+    assert {p.name for p in casos_dir.iterdir()} == {p.name for p in nuevos}
 
 
 @pytest.mark.parametrize("hostil", sorted(HOSTILES))

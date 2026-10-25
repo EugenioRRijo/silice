@@ -183,6 +183,31 @@ def test_se_conservan_los_cinco_ultimos_de_migracion_y_todos_los_manuales(datos:
     assert quedan == [manual, *de_migracion[2:]]
 
 
+def test_la_poda_de_subidas_solo_cuenta_y_borra_subidas(datos: Datos) -> None:
+    inicio = datetime(2026, 10, 11, 8, 0, 0)
+    migracion = _respaldar(datos, [], ahora=inicio - timedelta(days=3))
+    manual = _respaldar(datos, [], motivo="manual", ahora=inicio - timedelta(days=2))
+    previo = _respaldar(datos, [], motivo="antes_de_restaurar", ahora=inicio - timedelta(days=1))
+    subidas = [
+        _respaldar(datos, [], motivo=respaldo.MOTIVO_SUBIDA, ahora=inicio + timedelta(minutes=n))
+        for n in range(8)
+    ]
+    borrados = respaldo.podar_juegos(
+        datos.respaldos, respaldo.CONSERVAR_SUBIDAS, motivo=respaldo.MOTIVO_SUBIDA
+    )
+    assert borrados == subidas[:3]
+    quedan = [c for c, _ in respaldo.listar_juegos(datos.respaldos)]
+    assert quedan == [migracion, manual, previo, *subidas[3:]]
+
+
+def test_la_poda_de_migracion_no_toca_los_juegos_de_subida(datos: Datos) -> None:
+    inicio = datetime(2026, 10, 11, 8, 0, 0)
+    subida = _respaldar(datos, [], motivo=respaldo.MOTIVO_SUBIDA, ahora=inicio - timedelta(days=1))
+    migraciones = [_respaldar(datos, [], ahora=inicio + timedelta(minutes=n)) for n in range(6)]
+    assert respaldo.podar_juegos(datos.respaldos) == migraciones[:1]
+    assert subida in [c for c, _ in respaldo.listar_juegos(datos.respaldos)]
+
+
 def test_restaurar_devuelve_el_caso_y_guarda_antes_las_bases_actuales(datos: Datos) -> None:
     caso = bases_prueba.copiar_base("0.5.0", "demo.db", datos.casos / "demo.db")
     juego = _respaldar(datos, [caso])
