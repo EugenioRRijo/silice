@@ -37,12 +37,26 @@ describe("BuscadorReferencia", () => {
     render(<BuscadorReferencia tipo="materiales" alUsar={alUsar} alExpirar={vi.fn()} />);
     await usuario.type(screen.getByLabelText("Buscar en la referencia MaPreX (materiales)"), "cem");
     expect(await screen.findByText("Referencia MaPreX: REF-FICT-001")).toBeInTheDocument();
-    expect(fetchFalso).toHaveBeenCalledWith("/v1/composicion/referencia?tipo=materiales&q=cem", expect.anything());
+    // Oraculo: el contrato de la API (`api/rutas/composicion.py`, `docs/api.json`), que acepta `material`, no el
+    // nombre de la tabla del navegador (`materiales`): con este ultimo la API respondia 422 (prueba en vivo 2026-10-25).
+    expect(fetchFalso).toHaveBeenCalledWith("/v1/composicion/referencia?tipo=material&q=cem", expect.anything());
 
     await usuario.selectOptions(screen.getByLabelText("Resultado"), "Cemento blanco ficticio");
     expect(screen.getByText("Referencia MaPreX: REF-FICT-002")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Usar esta fila" }));
     expect(alUsar).toHaveBeenCalledWith(RESULTADOS[1].fila);
+  });
+
+  test.each([
+    ["equipos", "equipo"],
+    ["mano_obra", "mano_obra"],
+  ] as const)("la tabla %s pide la referencia con el tipo «%s» que acepta la API", async (tabla, tipoApi) => {
+    const usuario = userEvent.setup();
+    render(<BuscadorReferencia tipo={tabla} alUsar={vi.fn()} alExpirar={vi.fn()} />);
+    await usuario.type(screen.getByRole("textbox"), "cem");
+    await waitFor(() =>
+      expect(fetchFalso).toHaveBeenCalledWith(`/v1/composicion/referencia?tipo=${tipoApi}&q=cem`, expect.anything()),
+    );
   });
 
   test("sin coincidencias lo dice", async () => {
