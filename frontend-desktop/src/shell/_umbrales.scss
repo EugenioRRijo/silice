@@ -1,6 +1,8 @@
 // Unica fuente de los umbrales en que la barra superior no cabe y pasa a un boton de menu (spec de la barra superior,
 // §5.4), por escala de letra. `TamanoLetra` siempre pone <html data-silice-letra> (normal | grande | muy-grande), asi
 // que cada escala se selecciona por el atributo. Normal conserva los 1056 px de Carbon.
+@use "sass:map";
+
 $umbrales-por-escala: (
   "normal": 1055.98px,
   "grande": 1535.98px,
@@ -8,7 +10,7 @@ $umbrales-por-escala: (
 );
 
 @mixin por-debajo-del-umbral($escala) {
-  @media (max-width: map-get($umbrales-por-escala, $escala)) {
+  @media (max-width: map.get($umbrales-por-escala, $escala)) {
     html[data-silice-letra="#{$escala}"] {
       @content;
     }
