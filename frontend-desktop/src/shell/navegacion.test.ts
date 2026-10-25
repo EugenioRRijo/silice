@@ -36,7 +36,8 @@ describe("navegacion", () => {
   test("sin acciones y con una pagina de prueba sin accion: solo inicio, sin grupos vacios", () => {
     const x = { id: "x", titulo: "X", enUnaLinea: "Haga X", seccion: "Trabajo", accion: null, cargar: async () => ({ default: () => null }) } as PaginaDef;
     const e = navegacion([], false, [...PAGINAS, x]);
-    expect(e.map((n) => n.area)).toContain("inicio");
+    // La página de prueba no tiene acción, así que es visible sin permisos y, como no está en ningún área, cae en «Más».
+    expect(e.map((n) => n.area)).toEqual(["inicio", "mas"]);
     for (const n of e) if (n.tipo === "panel") for (const g of n.grupos) expect(g.paginas.length).toBeGreaterThan(0);
     const soloInicio = navegacion([], false, PAGINAS.filter((p) => p.accion === null && p.id === "inicio"));
     expect(soloInicio.map((n) => n.area)).toEqual(["inicio"]);
@@ -81,5 +82,11 @@ describe("areaActual", () => {
   test("ruta desconocida: null", () => {
     expect(areaActual("/nada", e)).toBeNull();
     expect(areaActual("/", e)).toBeNull();
+  });
+  test("barra final, subruta, consulta y ancla no cambian el area", () => {
+    expect(areaActual("/componer/", e)).toBe("crear");
+    expect(areaActual("/componer/detalle", e)).toBe("crear");
+    expect(areaActual("/componer?codigo=DEMO-1", e)).toBe("crear");
+    expect(areaActual("/componer#arriba", e)).toBe("crear");
   });
 });
