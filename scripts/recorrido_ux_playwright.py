@@ -10,7 +10,15 @@ presupuesto y auditarlo) contando clics, pantallas y decisiones.
 
     uv run --active --with playwright python scripts/recorrido_ux_playwright.py \\
         --salida <carpeta> [--roles admin ana rita] [--anchos 1366 1056] [--sin-axe] [--sin-flujo]
-        [--rutas inicio libros ...] [--url http://127.0.0.1:8501]
+        [--letras normal,grande,muy-grande] [--rutas inicio libros ...] [--url http://127.0.0.1:8501]
+
+Cada medición se repite con cada tamaño de letra (`--letras`, como lo fija `TamanoLetra`) y
+comprueba la navegación de la barra superior: `duplicados_nav` (una pantalla repetida dentro de la
+barra o dentro de su capa: debe ser 0), `barra_cortada` (la cabecera se desborda o algo suyo sale
+de la ventana o se monta sobre el lado derecho), `panel_fuera` (cada panel de área, o la capa
+cuando la barra no cabe, sale de la ventana). Inicio y Libro se repiten con el recorrido guiado
+en curso (columna «Recorrido» a la vista) para quien puede auditar. La interfaz se sirve desde una
+copia de `frontend-desktop/dist` (una recompilación a mitad de la corrida no la rompe).
 
 Modo `--funcional` (BS-F, «que todas las herramientas funcionen»): en vez de medir, ejecuta la
 acción principal de cada pantalla con la cuenta que la puede usar y comprueba el resultado visible.
@@ -50,6 +58,16 @@ AXE_URL = "https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js"
 ALTO = 768
 ROLES = {"admin": "administra", "ana": "arma", "rita": "revisa"}
 LIMITE_CARGA_MS = 20_000
+# Los tamaños de letra de `frontend-desktop/src/comun/preferenciaDeLetra.ts` y su clave de
+# localStorage.
+LETRAS = ("normal", "grande", "muy-grande")
+CLAVE_LETRA = "silice.tamano-letra"
+# Violaciones axe de la corrida de referencia (bitácora 2026-10-25-recorrido-ux-playwright.md,
+# H-10): cualquier otra (ruta, regla) es nueva.
+AXE_DE_REFERENCIA = {
+    ("administracion", "color-contrast"),
+    ("inicio", "scrollable-region-focusable"),
+}
 
 
 def rutas_de_la_interfaz() -> list[dict[str, str | None]]:
@@ -222,20 +240,143 @@ def ids_del_menu(contexto: Any, base: str) -> set[str]:
     }
 
 
-def medir_pantalla(
-    contexto: Any,
-    base: str,
-    ruta: dict[str, Any],
-    ancho: int,
-    rol: str,
-    capturas: Path,
-    axe: str | None,
-    en_menu: set[str],
-) -> dict[str, Any]:
-    pagina = contexto.new_page()
-    pagina.set_viewport_size({"width": ancho, "height": ALTO})
-    consola: list[str] = []
-    red: list[str] = []
+# Controles de la barra superior sobre la pantalla ya cargada. Abre cada área con su botón (el mismo
+# `onClick` de React que un clic), mide su panel y lo cierra; si la barra no cabe (umbral de cada
+# letra), abre la capa y la mide. Las dos listas de nombres (barra y capa) se revisan por separado:
+# cada pantalla debe salir una sola vez en cada una, y un área no debe repetir el nombre de su
+# única pantalla («Inicio / Inicio»).
+NAV_JS = """async () => {
+  const cuadros = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const de = document.documentElement, ancho = de.clientWidth, alto = window.innerHeight;
+  const limpio = t => (t || '').replace(/\\s+/g, ' ').trim();
+  const caja = r => [r.left, r.top, r.right, r.bottom].map(Math.round);
+  const dentro = r => r.left >= -1 && r.top >= -1 && r.right <= ancho + 1 && r.bottom <= alto + 1;
+  const visible = el => { const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
+  const repetidos = nombres => { const c = {};
+    for (const n of nombres) c[n] = (c[n] || 0) + 1;
+    return Object.entries(c).filter(([, k]) => k > 1).map(([n, k]) => n + ' x' + k); };
+  const header = document.querySelector('header.cds--header');
+  const nav = document.querySelector('nav[aria-label="Menú principal"]');
+  const capa = document.querySelector('nav[aria-label="Menú principal (capa)"]');
+  const s = { letra_aplicada: de.dataset.siliceLetra || null,
+    modo_nav: nav && getComputedStyle(nav).display !== 'none'
+      && nav.getBoundingClientRect().width > 0 ? 'barra' : 'capa' };
+  const motivos = [];
+  if (!header) motivos.push('sin cabecera');
+  else {
+    if (header.scrollWidth > header.clientWidth + 1)
+      motivos.push('scrollWidth ' + header.scrollWidth + ' > clientWidth ' + header.clientWidth);
+    for (const el of header.querySelectorAll('a, button')) {
+      if (!visible(el) || el.closest('.silice-panel-area')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.right > ancho + 1 || r.left < -1)
+        motivos.push(limpio(el.getAttribute('aria-label') || el.textContent).slice(0, 40)
+          + ' fuera ' + caja(r));
+    }
+    const global = header.querySelector('.cds--header__global');
+    const items = s.modo_nav === 'barra' ? [...nav.querySelectorAll('.silice-barra__item')] : [];
+    if (global && items.length) {
+      const hijos = [...global.children].filter(visible);
+      const borde = Math.min(...hijos.map(h => h.getBoundingClientRect().left));
+      const ultimo = items[items.length - 1].getBoundingClientRect();
+      if (ultimo.right > borde + 1) motivos.push('las áreas se montan sobre el lado derecho');
+    }
+  }
+  s.barra_cortada = motivos.length > 0;
+  s.barra_motivos = motivos.slice(0, 4);
+  const nombresBarra = [], paneles = [];
+  if (s.modo_nav === 'barra') {
+    for (const a of nav.querySelectorAll('li.silice-barra__item > a'))
+      nombresBarra.push(limpio(a.textContent));
+    for (const b of nav.querySelectorAll('button.silice-barra__area')) {
+      const area = limpio(b.textContent);
+      nombresBarra.push(area);
+      if (b.getAttribute('aria-expanded') !== 'true') b.click();
+      await cuadros();
+      const panel = document.getElementById(b.getAttribute('aria-controls') || '');
+      if (!panel) { paneles.push({ area, abierto: false, dentro: false }); continue; }
+      const r = panel.getBoundingClientRect();
+      paneles.push({ area, abierto: true, dentro: dentro(r), caja: caja(r),
+        columnas: getComputedStyle(panel.querySelector('ul')).gridTemplateColumns
+          .split(' ').length });
+      for (const t of panel.querySelectorAll('.silice-panel-area__titulo'))
+        nombresBarra.push(limpio(t.textContent));
+    }
+    const abierto = nav.querySelector('button.silice-barra__area[aria-expanded="true"]');
+    if (abierto) { abierto.click(); await cuadros(); }
+  }
+  const nombresCapa = capa
+    ? [...capa.querySelectorAll('.silice-capa__nombre, .silice-capa__rotulo')]
+        .map(e => limpio(e.textContent))
+    : [];
+  s.paneles = paneles;
+  if (s.modo_nav === 'capa') {
+    const boton = document.querySelector('header button[aria-label="Abrir el menú"]');
+    if (!boton || !visible(boton))
+      s.capa = { abierta: false, motivo: 'no hay botón de menú visible' };
+    else {
+      boton.click();
+      // El SideNav de Carbon se despliega con una transición de 110 ms: se mide ya asentado.
+      let previo = -1;
+      for (let i = 0; i < 40; i++) {
+        await cuadros();
+        const w = Math.round(capa.getBoundingClientRect().width);
+        if (w > 0 && w === previo) break;
+        previo = w;
+      }
+      const r = capa.getBoundingClientRect();
+      const enlaces = [...capa.querySelectorAll('a')];
+      s.capa = { abierta: capa.classList.contains('cds--side-nav--expanded'),
+        dentro: dentro(r), caja: caja(r), enlaces: enlaces.length,
+        enlaces_visibles: enlaces.filter(visible).length };
+      const cerrar = document.querySelector('header button[aria-label="Cerrar el menú"]');
+      if (cerrar) {
+        cerrar.click();
+        for (let i = 0; i < 40 && capa.getBoundingClientRect().width > 0; i++) await cuadros();
+      }
+    }
+  }
+  const fueraPaneles = paneles.filter(p => !p.dentro).map(p => p.area);
+  const capaMal = s.capa && !(s.capa.abierta && s.capa.dentro && s.capa.caja[2] > s.capa.caja[0]
+    && s.capa.enlaces > 0
+    && s.capa.enlaces_visibles === s.capa.enlaces);
+  s.panel_fuera = fueraPaneles.length > 0 || Boolean(capaMal);
+  s.paneles_fuera = fueraPaneles.concat(capaMal ? ['capa'] : []);
+  const dupBarra = repetidos(nombresBarra), dupCapa = repetidos(nombresCapa);
+  s.duplicados_nav = dupBarra.length + dupCapa.length;
+  s.duplicados_detalle = { barra: dupBarra, capa: dupCapa };
+  s.nombres_barra = nombresBarra.length;
+  s.nombres_capa = nombresCapa.length;
+  return s;
+}"""
+
+# La columna «Recorrido» con un recorrido guiado en curso: a la vista, dentro de la ventana y sin
+# tapar el contenido (columna fija a la derecha, o franja bajo la barra por debajo del umbral).
+COLUMNA_JS = """() => {
+  const col = document.querySelector('aside[aria-label="Recorrido"]');
+  const main = document.querySelector('main#contenido');
+  if (!col || !main) return { recorrido_visible: false };
+  const ancho = document.documentElement.clientWidth;
+  const r = col.getBoundingClientRect(), m = main.getBoundingClientRect();
+  const fija = getComputedStyle(col).position === 'fixed';
+  return {
+    recorrido_visible: r.width > 0 && r.height > 0 && r.left >= -1 && r.right <= ancho + 1,
+    recorrido_modo: fija ? 'columna' : 'franja',
+    recorrido_solapa: fija ? m.right > r.left + 1 : m.top < r.bottom - 1,
+    recorrido_caja: [r.left, r.top, r.right, r.bottom].map(Math.round),
+  };
+}"""
+
+
+def fijar_letra(pagina: Any, letra: str) -> None:
+    """El tamaño de letra guardado, antes de que cargue la interfaz (`main.tsx` lo aplica al
+    arrancar y pone `<html data-silice-letra>`, como `TamanoLetra`)."""
+    clave, valor = json.dumps(CLAVE_LETRA), json.dumps(letra)
+    pagina.add_init_script(f"try {{ localStorage.setItem({clave}, {valor}); }} catch (e) {{}}")
+
+
+def _escuchar(pagina: Any, consola: list[str], red: list[str]) -> None:
     pagina.on("console", lambda m: consola.append(m.text[:200]) if m.type == "error" else None)
     pagina.on("pageerror", lambda e: consola.append(f"pageerror: {str(e)[:200]}"))
     pagina.on("requestfailed", lambda r: red.append(f"FALLA {r.method} {r.url[:120]}"))
@@ -245,20 +386,91 @@ def medir_pantalla(
             red.append(f"{r.status} {r.request.method} {r.url[:120]}") if r.status >= 400 else None
         ),
     )
+
+
+def _medir_cargada(pagina: Any, fila: dict[str, Any], axe: str | None, captura: Path) -> None:
+    """Medidas, axe, captura y controles de la barra de una pantalla ya cargada."""
+    en_menu = fila.get("en_menu")
+    fila.update(pagina.evaluate(MEDIR_JS))
+    fila["en_menu"] = en_menu
+    if axe:
+        try:
+            pagina.evaluate(axe)
+            fila["axe"] = pagina.evaluate(
+                "async () => (await axe.run(document, "
+                "{runOnly: ['wcag2a','wcag2aa','wcag21a','wcag21aa']}))"
+                ".violations.map(v => ({id: v.id, impacto: v.impact, nodos: v.nodes.length}))"
+            )
+        except Exception as error:
+            fila["axe_error"] = str(error)[:150]
+    pagina.screenshot(path=str(captura), full_page=True)
+    fila["captura"] = captura.name
+    # Después de axe y de la captura, para que sean comparables con la corrida de referencia.
+    fila.update(pagina.evaluate(NAV_JS))
+
+
+def capturar_paneles(pagina: Any, prefijo: str, capturas: Path) -> list[str]:
+    """Una captura con cada panel de área abierto (o con la capa abierta, si la barra no cabe), con
+    clics de verdad: insumo del revisor de diseño."""
+    hechas: list[str] = []
+    botones = pagina.locator('nav[aria-label="Menú principal"] button.silice-barra__area')
+    if botones.count() and botones.first.is_visible():
+        for i in range(botones.count()):
+            boton = botones.nth(i)
+            area = re.sub(r"\W+", "_", boton.inner_text().strip().lower()) or str(i)
+            boton.click()
+            pagina.wait_for_timeout(250)
+            destino = capturas / f"{prefijo}_panel_{area}.png"
+            pagina.screenshot(path=str(destino))
+            hechas.append(destino.name)
+            pagina.keyboard.press("Escape")
+            pagina.wait_for_timeout(150)
+        return hechas
+    menu = pagina.locator('header button[aria-label="Abrir el menú"]')
+    if menu.count() and menu.first.is_visible():
+        menu.first.click()
+        pagina.wait_for_timeout(250)
+        destino = capturas / f"{prefijo}_capa.png"
+        pagina.screenshot(path=str(destino))
+        hechas.append(destino.name)
+        pagina.keyboard.press("Escape")
+        pagina.wait_for_timeout(150)
+    return hechas
+
+
+def medir_pantalla(
+    contexto: Any,
+    base: str,
+    ruta: dict[str, Any],
+    ancho: int,
+    rol: str,
+    capturas: Path,
+    axe: str | None,
+    en_menu: set[str],
+    letra: str = "normal",
+) -> dict[str, Any]:
+    pagina = contexto.new_page()
+    pagina.set_viewport_size({"width": ancho, "height": ALTO})
+    fijar_letra(pagina, letra)
+    consola: list[str] = []
+    red: list[str] = []
+    _escuchar(pagina, consola, red)
     fila: dict[str, Any] = {
         "rol": rol,
         "ancho": ancho,
+        "letra": letra,
         "id": ruta["id"],
         "titulo": ruta["titulo"],
         "seccion": ruta["seccion"],
         "accion": ruta["accion"],
+        "en_menu": ruta["id"] in en_menu,
     }
     try:
         inicio = time.monotonic()
         pagina.goto(f"{base}/app/#/{ruta['id']}", wait_until="domcontentloaded")
         try:
             # Una ruta que el menú del rol no ofrece se espera poco: no es un error de carga.
-            espera = LIMITE_CARGA_MS if ruta["id"] in en_menu else 3000
+            espera = LIMITE_CARGA_MS if fila["en_menu"] else 3000
             pagina.wait_for_selector("h1", timeout=espera)
             fila["ms_hasta_h1"] = round((time.monotonic() - inicio) * 1000)
         except Exception:
@@ -266,29 +478,72 @@ def medir_pantalla(
         with contextlib.suppress(Exception):
             pagina.wait_for_load_state("networkidle", timeout=3000)
         fila["ms_hasta_reposo"] = round((time.monotonic() - inicio) * 1000)
-        fila.update(pagina.evaluate(MEDIR_JS))
-        fila.pop("en_menu")
-        fila["en_menu"] = ruta["id"] in en_menu
-        if axe:
-            try:
-                pagina.evaluate(axe)
-                r = pagina.evaluate(
-                    "async () => (await axe.run(document, "
-                    "{runOnly: ['wcag2a','wcag2aa','wcag21a','wcag21aa']}))"
-                    ".violations.map(v => ({id: v.id, impacto: v.impact, nodos: v.nodes.length}))"
-                )
-                fila["axe"] = r
-            except Exception as error:
-                fila["axe_error"] = str(error)[:150]
-        destino = capturas / f"{rol}_{ancho}_{ruta['id']}.png"
-        pagina.screenshot(path=str(destino), full_page=True)
-        fila["captura"] = destino.name
+        _medir_cargada(pagina, fila, axe, capturas / f"{rol}_{ancho}_{letra}_{ruta['id']}.png")
+        if ruta["id"] == "inicio":
+            fila["capturas_paneles"] = capturar_paneles(pagina, f"{rol}_{ancho}_{letra}", capturas)
     except Exception as error:
         fila["error"] = str(error)[:300]
     fila["consola"] = consola[:8]
     fila["red"] = red[:8]
     pagina.close()
     return fila
+
+
+def medir_con_recorrido(
+    contexto: Any,
+    base: str,
+    libro: Path,
+    ancho: int,
+    rol: str,
+    capturas: Path,
+    axe: str | None,
+    letra: str,
+) -> list[dict[str, Any]]:
+    """Inicio → soltar el libro → «Auditar con recorrido guiado»: mide Libro con el recorrido en
+    curso y vuelve a Inicio sin recargar (el recorrido vive en la memoria de la interfaz)."""
+    pagina = contexto.new_page()
+    pagina.set_viewport_size({"width": ancho, "height": ALTO})
+    fijar_letra(pagina, letra)
+    consola: list[str] = []
+    red: list[str] = []
+    _escuchar(pagina, consola, red)
+    filas: list[dict[str, Any]] = []
+    base_fila = {"rol": rol, "ancho": ancho, "letra": letra, "recorrido": True, "en_menu": True}
+    try:
+        pagina.goto(f"{base}/app/#/inicio", wait_until="domcontentloaded")
+        pagina.wait_for_selector("main h1", timeout=LIMITE_CARGA_MS)
+        pagina.locator("main input[type=file]").first.set_input_files(str(libro))
+        pagina.get_by_role("button", name="Auditar con recorrido guiado").click()
+        pagina.wait_for_function(
+            "() => location.hash === '#/libros' && document.querySelector('main h1') !== null",
+            timeout=LIMITE_CARGA_MS,
+        )
+        for _ in range(80):
+            if pagina.locator("[role=alert]").count() or pagina.locator(".visor__cuerpo").count():
+                break
+            pagina.wait_for_timeout(500)
+        for id_ in ("libros", "inicio"):
+            if id_ == "inicio":
+                ir_por_hash(pagina, "inicio")
+            pagina.wait_for_timeout(500)
+            antes_consola, antes_red = len(consola), len(red)
+            fila: dict[str, Any] = {**base_fila, "id": id_}
+            try:
+                captura = capturas / f"{rol}_{ancho}_{letra}_recorrido_{id_}.png"
+                _medir_cargada(pagina, fila, axe, captura)
+                fila.update(pagina.evaluate(COLUMNA_JS))
+            except Exception as error:
+                fila["error"] = str(error)[:300]
+            fila["consola"] = consola[antes_consola:][:8]
+            fila["red"] = red[antes_red:][:8]
+            filas.append(fila)
+    except Exception as error:
+        filas.append(
+            {**base_fila, "id": "libros", "error": str(error)[:300], "consola": consola[:8]}
+            | {"red": red[:8]}
+        )
+    pagina.close()
+    return filas
 
 
 # --------------------------- flujo de la empresa de hoy ----------------------------------------
@@ -993,21 +1248,93 @@ def main_funcional(salida: Path, acciones: Path, solo: list[str] | None) -> int:
 # --------------------------- orquestación -------------------------------------------------------
 
 
-def resumir(filas: list[dict[str, Any]]) -> dict[str, Any]:
-    def n(pred: Any) -> int:
-        return sum(1 for f in filas if pred(f))
+def axe_nuevas(fila: dict[str, Any]) -> list[str]:
+    """Las reglas axe violadas en esta pantalla que no estaban en la corrida de referencia."""
+    return [v["id"] for v in fila.get("axe", []) if (fila["id"], v["id"]) not in AXE_DE_REFERENCIA]
 
-    return {
-        "pantallas_medidas": len(filas),
-        "con_error_de_carga": n(lambda f: "error" in f),
-        "sin_h1": n(lambda f: f.get("h1") == 0),
-        "con_varios_h1": n(lambda f: (f.get("h1") or 0) > 1),
-        "con_scroll_horizontal": n(lambda f: f.get("scroll_x")),
-        "con_errores_de_consola": n(lambda f: f.get("consola")),
-        "con_errores_de_red": n(lambda f: f.get("red")),
-        "con_violaciones_axe": n(lambda f: f.get("axe")),
-        "sin_axe": n(lambda f: "axe" not in f),
+
+def resumir(filas: list[dict[str, Any]]) -> dict[str, Any]:
+    def n(pred: Any, grupo: list[dict[str, Any]] | None = None) -> int:
+        return sum(1 for f in (filas if grupo is None else grupo) if pred(f))
+
+    def controles(grupo: list[dict[str, Any]]) -> dict[str, Any]:
+        accesibles = [f for f in grupo if f.get("en_menu")]
+        return {
+            "mediciones": len(grupo),
+            "en_menu": len(accesibles),
+            "con_error_de_carga": n(lambda f: "error" in f, grupo),
+            "en_menu_sin_un_h1": n(lambda f: f.get("h1") != 1, accesibles),
+            "fuera_de_menu_sin_h1": n(lambda f: not f.get("en_menu") and f.get("h1") == 0, grupo),
+            "con_varios_h1": n(lambda f: (f.get("h1") or 0) > 1, grupo),
+            "con_scroll_horizontal": n(lambda f: f.get("scroll_x"), grupo),
+            "con_errores_de_consola": n(lambda f: f.get("consola"), grupo),
+            "con_errores_de_red": n(lambda f: f.get("red"), grupo),
+            "letra_no_aplicada": n(lambda f: f.get("letra_aplicada") != f.get("letra"), grupo),
+            "duplicados_nav": sum(f.get("duplicados_nav") or 0 for f in grupo),
+            "sin_control_nav": n(lambda f: "duplicados_nav" not in f, grupo),
+            "barra_cortada": n(lambda f: f.get("barra_cortada") is not False, grupo),
+            "panel_fuera": n(lambda f: f.get("panel_fuera") is not False, grupo),
+            "modo_nav": {
+                m: n(lambda f, m=m: f.get("modo_nav") == m, grupo) for m in ("barra", "capa")
+            },
+            "con_violaciones_axe": n(lambda f: f.get("axe"), grupo),
+            "con_violaciones_axe_nuevas": n(lambda f: axe_nuevas(f), grupo),
+            "sin_axe": n(lambda f: "axe" not in f, grupo),
+        }
+
+    normales = [f for f in filas if not f.get("recorrido")]
+    con_recorrido = [f for f in filas if f.get("recorrido")]
+    letras = sorted({f.get("letra") for f in filas}, key=lambda x: LETRAS.index(x))
+    resumen = controles(normales)
+    resumen["por_letra"] = {
+        letra: controles([f for f in normales if f.get("letra") == letra]) for letra in letras
     }
+    resumen["con_recorrido"] = controles(con_recorrido)
+    resumen["con_recorrido"]["columna_no_visible"] = n(
+        lambda f: not f.get("recorrido_visible"), con_recorrido
+    )
+    resumen["con_recorrido"]["columna_solapa"] = n(
+        lambda f: f.get("recorrido_solapa") is not False, con_recorrido
+    )
+    resumen["axe_nuevas"] = sorted(
+        {
+            f"{f['rol']} {f['ancho']} {f['letra']} {f['id']}: {r}"
+            for f in filas
+            for r in axe_nuevas(f)
+        }
+    )
+    resumen["fallos_nav"] = sorted(filter(None, map(fallo_nav, filas)))
+    return resumen
+
+
+def fallo_nav(fila: dict[str, Any]) -> str | None:
+    """Una línea por medición con un control de la barra en rojo (o sin medir)."""
+    motivos = []
+    if "duplicados_nav" not in fila:
+        motivos.append("sin control de la barra: " + str(fila.get("error", "")))
+    if fila.get("duplicados_nav"):
+        motivos.append(f"duplicados {fila.get('duplicados_detalle')}")
+    if fila.get("barra_cortada"):
+        motivos.append(f"cortada {fila.get('barra_motivos')}")
+    if fila.get("panel_fuera"):
+        motivos.append(f"fuera {fila.get('paneles_fuera')} {fila.get('capa', '')}")
+    if not motivos:
+        return None
+    marca = " (recorrido)" if fila.get("recorrido") else ""
+    return f"{fila['rol']} {fila['ancho']} {fila['letra']} {fila['id']}{marca}: " + "; ".join(
+        motivos
+    )
+
+
+def letras_pedidas(valores: list[str]) -> list[str]:
+    """`--letras normal,grande` o `--letras normal grande`; en el orden de `LETRAS`."""
+    pedidas = {v.strip() for parte in valores for v in parte.split(",") if v.strip()}
+    desconocidas = pedidas - set(LETRAS)
+    if desconocidas or not pedidas:
+        raise SystemExit(
+            f"--letras: use {', '.join(LETRAS)} (no {', '.join(sorted(desconocidas))})"
+        )
+    return [letra for letra in LETRAS if letra in pedidas]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1015,9 +1342,18 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--salida", type=Path, required=True)
     a.add_argument("--roles", nargs="+", default=list(ROLES), choices=list(ROLES))
     a.add_argument("--anchos", nargs="+", type=int, default=[1366, 1056])
+    a.add_argument(
+        "--letras",
+        nargs="+",
+        default=[",".join(LETRAS)],
+        help="tamaños de letra (con comas o espacios): normal, grande, muy-grande",
+    )
     a.add_argument("--rutas", nargs="*", help="ids de página; por omisión todas las de rutas.ts")
     a.add_argument("--sin-axe", action="store_true")
     a.add_argument("--sin-flujo", action="store_true")
+    a.add_argument(
+        "--sin-recorrido", action="store_true", help="no repite Inicio y Libro con el recorrido"
+    )
     a.add_argument("--url", help="servidor ya en marcha (usa las cuentas ficticias por omisión)")
     a.add_argument(
         "--funcional", action="store_true", help="ejecuta la acción principal de cada pantalla"
@@ -1033,6 +1369,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.funcional:
         return main_funcional(args.salida, args.acciones, args.solo)
 
+    letras = letras_pedidas(args.letras)
     salida: Path = args.salida
     capturas = salida / "capturas"
     capturas.mkdir(parents=True, exist_ok=True)
@@ -1043,16 +1380,22 @@ def main(argv: list[str] | None = None) -> int:
     claves = sembrar_datos(temporal)
     servidor: Servidor | None = None
     base = args.url.rstrip("/") if args.url else ""
+    compilado: dict[str, str] = {}
     if not args.url:
-        servidor = Servidor(temporal, puerto_libre())
+        compilado = congelar_interfaz(temporal / "dist")
+        servidor = ServidorCongelado(temporal, puerto_libre(), temporal / "dist")
         base = servidor.url
     resultado: dict[str, Any] = {
         "base": base,
+        **compilado,
         "rutas": len(rutas),
+        "letras": letras,
+        "anchos": args.anchos,
         "axe": bool(axe),
         "pantallas": [],
         "flujos": [],
     }
+    libros = libros_ficticios(salida / "libros_ficticios")
     try:
         if servidor:
             servidor.esperar()
@@ -1068,18 +1411,42 @@ def main(argv: list[str] | None = None) -> int:
                     pagina.close()
                     en_menu = ids_del_menu(contexto, base)
                     resultado.setdefault("menu_por_rol", {})[rol] = sorted(en_menu)
-                    for ancho in args.anchos:
-                        for ruta in rutas:
-                            fila = medir_pantalla(
-                                contexto, base, ruta, ancho, rol, capturas, axe, en_menu
-                            )
-                            resultado["pantallas"].append(fila)
-                            print(
-                                f"{rol:5} {ancho} {ruta['id']:15} h1={fila.get('h1')} "
-                                f"scrollX={fila.get('scroll_x')} {fila.get('ms_hasta_h1')}ms"
-                            )
+                    for letra in letras:
+                        for ancho in args.anchos:
+                            for ruta in rutas:
+                                fila = medir_pantalla(
+                                    contexto, base, ruta, ancho, rol, capturas, axe, en_menu, letra
+                                )
+                                resultado["pantallas"].append(fila)
+                                print(
+                                    f"{rol:5} {letra:10} {ancho} {ruta['id']:15} "
+                                    f"h1={fila.get('h1')} scrollX={fila.get('scroll_x')} "
+                                    f"nav={fila.get('modo_nav')} dup={fila.get('duplicados_nav')} "
+                                    f"cortada={fila.get('barra_cortada')} "
+                                    f"fuera={fila.get('panel_fuera')} {fila.get('ms_hasta_h1')}ms"
+                                )
+                            # El recorrido empieza al auditar desde el Inicio: solo quien audita.
+                            if not args.sin_recorrido and "libros" in en_menu:
+                                for fila in medir_con_recorrido(
+                                    contexto,
+                                    base,
+                                    libros["limpio"],
+                                    ancho,
+                                    rol,
+                                    capturas,
+                                    axe,
+                                    letra,
+                                ):
+                                    resultado["pantallas"].append(fila)
+                                    print(
+                                        f"{rol:5} {letra:10} {ancho} recorrido/{fila['id']:9} "
+                                        f"h1={fila.get('h1')} columna={fila.get('recorrido_modo')} "
+                                        f"visible={fila.get('recorrido_visible')} "
+                                        f"solapa={fila.get('recorrido_solapa')} "
+                                        f"dup={fila.get('duplicados_nav')} "
+                                        f"fuera={fila.get('panel_fuera')} {fila.get('error', '')}"
+                                    )
                     if not args.sin_flujo and rol in ("ana", "rita"):
-                        libros = libros_ficticios(salida / "libros_ficticios")
                         if rol == "ana":
                             for clave in ("limpio", "ajeno_control", "csv"):
                                 if clave not in libros:
@@ -1109,12 +1476,16 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         if servidor:
             servidor.cerrar()
-        shutil.rmtree(temporal, ignore_errors=True)
+        for _ in range(10):  # Windows suelta las bases un momento después de cerrar el servidor
+            shutil.rmtree(temporal, ignore_errors=True)
+            if not temporal.exists():
+                break
+            time.sleep(1)
     resultado["resumen"] = resumir(resultado["pantallas"])
     (salida / "recorrido.json").write_text(
         json.dumps(resultado, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    print(json.dumps(resultado["resumen"], indent=2))
+    print(json.dumps(resultado["resumen"], indent=2, ensure_ascii=False))
     return 0
 
 
