@@ -496,7 +496,7 @@ def test_guardar_una_partida_nueva_da_el_precio_y_el_mensaje_de_la_pagina(base: 
     assert guardado.precio_unitario == "10.19"
     assert (
         guardado.mensaje
-        == "Composición guardada para la partida PRUEBA-01-NUEVA: precio unitario 10.19."
+        == "Composición guardada para la partida PRUEBA-01-NUEVA: precio unitario 10,19."
     )
     assert guardado.justificada is False
     assert guardado.avisos == ()

@@ -396,7 +396,7 @@ def test_guardar_una_partida_nueva_confirma_y_responde_el_precio(api: TestClient
     assert respuesta.status_code == 200
     assert respuesta.json() == {
         "precio_unitario": "10.19",
-        "mensaje": (f"Composición guardada para la partida {NUEVA}: precio unitario 10.19."),
+        "mensaje": (f"Composición guardada para la partida {NUEVA}: precio unitario 10,19."),
         "justificada": False,
         "avisos": [],
     }
