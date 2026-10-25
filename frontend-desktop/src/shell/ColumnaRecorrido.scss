@@ -1,8 +1,9 @@
+@use "sass:map";
+@use "umbrales" as u;
+
 // Columna «Recorrido» acoplada a la derecha (spec de la barra superior, §5.5). El armazon pone `silice-con-recorrido`
 // en el contenedor mientras la columna esta a la vista; el `main` cede el ancho de la columna.
 $ancho-columna-recorrido: 16rem;
-// Mismo umbral que la barra en escala Normal (§5.4): por debajo, la columna pasa a franja bajo la barra.
-$umbral-franja: 1056px;
 
 .silice-columna-recorrido {
   position: fixed;
@@ -24,16 +25,19 @@ $umbral-franja: 1056px;
   margin-inline-end: $ancho-columna-recorrido;
 }
 
-@media (max-width: $umbral-franja) {
-  .silice-columna-recorrido {
-    position: static;
-    inline-size: auto;
-    max-block-size: 40vh;
-    border-inline-start: 0;
-    border-block-end: 1px solid var(--cds-border-subtle);
-  }
+// Donde la barra pasa a boton de menu (umbral de cada escala de letra), la columna pasa a franja bajo la barra.
+@each $escala in map.keys(u.$umbrales-por-escala) {
+  @include u.por-debajo-del-umbral($escala) {
+    .silice-columna-recorrido {
+      position: static;
+      inline-size: auto;
+      max-block-size: 40vh;
+      border-inline-start: 0;
+      border-block-end: 1px solid var(--cds-border-subtle);
+    }
 
-  .silice-con-recorrido .silice-contenido {
-    margin-inline-end: 0;
+    .silice-con-recorrido .silice-contenido {
+      margin-inline-end: 0;
+    }
   }
 }

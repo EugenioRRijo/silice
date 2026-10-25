@@ -8,6 +8,8 @@ interface Props {
   paginas: readonly PaginaDef[];
   acciones: readonly string[];
   modoEntrega: boolean;
+  // Dentro de la columna «Recorrido» (su aside ya es la region con nombre): sin region propia, para no anunciarlo dos veces.
+  enColumna?: boolean;
 }
 
 // «Recorrido en curso» del panel izquierdo (spec §2.3): los pasos, el actual con su «que hacer» y «sabra que termino
@@ -23,15 +25,16 @@ function alTerminar() {
   }
 }
 
-export function PanelRecorrido({ paginas, acciones, modoEntrega }: Props) {
+export function PanelRecorrido({ paginas, acciones, modoEntrega, enColumna = false }: Props) {
   const recorrido = useRecorrido();
   const { pathname } = useLocation();
   if (!recorrido) return null;
   const actual = pasoDeRuta(recorrido, pathname);
   const total = recorrido.pasos.length;
+  const Raiz = enColumna ? "div" : "section";
 
   return (
-    <section className="silice-recorrido" aria-labelledby="recorrido-titulo">
+    <Raiz className="silice-recorrido" {...(enColumna ? {} : { "aria-labelledby": "recorrido-titulo" })}>
       <div id="recorrido-titulo" className="silice-menu__rotulo cds--type-label-01">
         Recorrido en curso
       </div>
@@ -66,6 +69,6 @@ export function PanelRecorrido({ paginas, acciones, modoEntrega }: Props) {
       <Button kind="ghost" size="sm" onClick={alTerminar}>
         Terminar recorrido
       </Button>
-    </section>
+    </Raiz>
   );
 }

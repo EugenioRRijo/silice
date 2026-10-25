@@ -24,7 +24,7 @@ export function ColumnaRecorrido({ paginas, acciones, modoEntrega }: Props) {
           Ocultar
         </Button>
       </div>
-      <PanelRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
+      <PanelRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} enColumna />
     </aside>
   );
 }
