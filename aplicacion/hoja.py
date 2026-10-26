@@ -100,6 +100,7 @@ from aplicacion.composicion import (
 from aplicacion.errores import HojaInvalida
 from aplicacion.estilo import porcentaje
 from aplicacion.parametros_de_costo import parametros_de_version
+from aplicacion.plan_rendimientos import plan_del_borrador
 from aplicacion.subidas import Subida, guardar_subida
 from aplicacion.tablas_medicion import guardar_notas, notas_de_version
 from core import models
@@ -1261,6 +1262,15 @@ def con_plan_secuencial(borrador: Borrador) -> Borrador:
     return replace(borrador, plan=tuple(plan_secuencial(presupuesto)))
 
 
+def con_plan_por_rendimientos(borrador: Borrador) -> Borrador:
+    """El borrador con el plan desde los rendimientos (Tarea 21): la duracion de cada partida es
+    su cantidad entre el rendimiento de su APU, una cuadrilla, encadenadas en el orden del
+    presupuesto y en dias habiles (`aplicacion.plan_rendimientos`). El que se propone al guardar
+    la primera version (decision 4 del plan, choque 10)."""
+    plan, _ = plan_del_borrador(items_elaborados(borrador), borrador.composiciones)
+    return replace(borrador, plan=tuple(plan))
+
+
 def plan_como_filas(
     plan: Sequence[PeriodoPlan], codigos: Sequence[str]
 ) -> tuple[list[str], list[dict[str, str]]]:
@@ -2130,8 +2140,9 @@ def crear_primera_version(
     * los parametros son los del borrador (los del contrato por defecto, o los que el usuario ya
       cambio en la pestana Parametros); las composiciones, las del catalogo vigente para cada
       partida derivada (`completar_composiciones`), congeladas en la instantanea de la version;
-    * sin plan en el borrador, el plan secuencial de `core` (una partida por periodo): sin el no
-      habria curva ni punto de equilibrio en el tiempo, y el usuario lo edita despues;
+    * sin plan en el borrador, el plan desde los rendimientos (`con_plan_por_rendimientos`, Tarea
+      21): sin el no habria curva ni punto de equilibrio en el tiempo, y el usuario lo edita
+      despues;
     * la version nace sin `version_origen` ni motivo (nace de cero) y deja UN `RegistroCambio`
       (`objeto='version'`, `campo='creacion'`) con la fuente y el responsable, obligatorios;
     * el espacio se copia con la clave de la version nueva, en la misma transaccion.
@@ -2184,7 +2195,7 @@ def crear_primera_version(
         catalogo, replace(borrador, fecha=fecha, moneda=moneda), lista=lista
     )
     if borrador.plan is None:
-        borrador = con_plan_secuencial(borrador)
+        borrador = con_plan_por_rendimientos(borrador)
     try:
         nuevo_codigo = (codigo or "").strip() or siguiente_codigo(sesion, proyecto)
         resultado = elaborar_borrador(borrador, codigo=nuevo_codigo)

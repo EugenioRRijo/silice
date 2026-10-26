@@ -184,7 +184,9 @@ def test_el_historial_dice_que_la_001_nacio_de_cero_con_un_registro(base):
     ]
 
 
-def test_sin_plan_en_el_borrador_la_primera_version_lleva_el_plan_secuencial(base):
+def test_sin_plan_en_el_borrador_la_primera_version_lleva_el_plan_de_rendimientos(base):
+    # Tarea 21 (choque 10): ya no es una partida por dia; el oraculo a mano de las duraciones esta
+    # en tests/unit/test_plan_rendimientos.py (la vivienda: 58 dias). Aqui, que hay plan y curva.
     sesion, catalogo = base
     _crear(base)
 

@@ -983,7 +983,7 @@ def test_la_primera_version_de_un_proyecto_nuevo_es_la_001_con_la_memoria(_entor
     assert _resumen(navegador, id_)["guardado_como"] == "001"
     assert _cadena(_entorno, NUEVO).integra
     assert _cadena(_entorno).integra  # y la del proyecto de al lado, intacta
-    # al reabrirla: la misma hoja, con su plan secuencial y su espacio copiado
+    # al reabrirla: la misma hoja, con su plan (de rendimientos, T21) y su espacio copiado
     reabierto = _abrir(navegador, ficha, NUEVO, "001")
     assert _cerca(_resumen(navegador, reabierto)["total"]["exacto"], TOTAL_MEMORIA)
     assert _resumen(navegador, reabierto)["hay_plan"] is True

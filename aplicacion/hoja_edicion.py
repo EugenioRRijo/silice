@@ -53,6 +53,13 @@ from aplicacion.hoja_partidas import (
     quitar_partida,
 )
 from aplicacion.listas_para_armar import valoracion_de_la_obra
+from aplicacion.plan_rendimientos import (
+    CuadrillasInvalidas,
+    PlanDemasiadoLargo,
+    Unidad,
+    cuadrillas_escritas,
+    plan_del_borrador,
+)
 from core import models
 from core.budget import PeriodoPlan
 from core.catalog import Catalogo
@@ -81,6 +88,7 @@ __all__ = [
     "editar_parametros",
     "editar_plan",
     "pendiente_de_la_version",
+    "plan_desde_rendimientos",
     "quitar",
 ]
 
@@ -98,6 +106,12 @@ MENSAJE_RENGLONES = (
 )
 MENSAJE_PARTIDA_REPETIDA = (
     "plan: una partida aparece en más de una fila; deje una sola fila por partida."
+)
+#: Las cuadrillas y las paralelas nombran partidas de la vista del plan: una ajena solo llega de
+#: una ventana con otro presupuesto.
+MENSAJE_PARTIDA_AJENA = (
+    "Las cuadrillas o las partidas en paralelo nombran una partida que no está en el "
+    "presupuesto: vuelva a cargar el plan."
 )
 #: La matriz del plan es completa (una fila por partida, como la clasica): ni mas ni menos.
 MENSAJE_MATRIZ_COMPLETA = (
@@ -326,6 +340,50 @@ def crear_plan_secuencial(sesion: Session, huella: str, id: str, rev: int) -> Bo
         return hoja.con_plan_secuencial(vivo.borrador)
 
     return _cambiar(sesion, huella, id, rev, construir)
+
+
+def plan_desde_rendimientos(
+    sesion: Session,
+    huella: str,
+    id: str,
+    rev: int,
+    *,
+    cuadrillas: Mapping[str, str],
+    paralelas: Sequence[str],
+    unidad: Unidad,
+) -> tuple[BorradorVivo, list[str]]:
+    """Rehace el plan del borrador desde los rendimientos (Tarea 21) y devuelve el borrador y los
+    avisos de las partidas sin rendimiento o con cantidad 0.
+
+    Vale con plan o sin el: reemplaza la matriz entera. `cuadrillas` trae el texto tecleado por
+    partida (1 si falta); `paralelas`, las que empiezan con la anterior. Una partida que no esta
+    entre los renglones, unas cuadrillas que no son un entero de 1 a 99 o un plan de mas de 500
+    periodos son `HojaInvalida` y el borrador no cambia. El mismo plan no sube el `rev`.
+    """
+    avisos: list[str] = []
+
+    def construir(vivo: BorradorVivo) -> hoja.Borrador | None:
+        borrador = vivo.borrador
+        items = hoja.items_elaborados(borrador)
+        codigos = {i.codigo_partida for i in items}
+        if not (set(cuadrillas) | set(paralelas)) <= codigos:
+            raise HojaInvalida(MENSAJE_PARTIDA_AJENA)
+        try:
+            plan, encontrados = plan_del_borrador(
+                items,
+                borrador.composiciones,
+                cuadrillas=cuadrillas_escritas(cuadrillas),
+                paralelas=frozenset(paralelas),
+                unidad=unidad,
+            )
+        except (CuadrillasInvalidas, PlanDemasiadoLargo) as error:
+            raise HojaInvalida(str(error)) from None
+        avisos.extend(encontrados)
+        if borrador.plan is not None and _canonico(plan) == _canonico(borrador.plan):
+            return None
+        return replace(borrador, plan=tuple(plan))
+
+    return _cambiar(sesion, huella, id, rev, construir), avisos
 
 
 # --- el APU de una partida y el cambio de insumo (3c-3) ----------------------------------------

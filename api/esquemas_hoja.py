@@ -564,6 +564,25 @@ class EdicionSecuencial(BaseModel):
     rev: Annotated[int, Field(strict=True, ge=0)]
 
 
+class EdicionRendimientos(BaseModel):
+    """El plan desde los rendimientos (Tarea 21): las cuadrillas tecleadas por partida (texto; las
+    lee `aplicacion.plan_rendimientos.cuadrillas_escritas`), las partidas que van en paralelo con
+    la anterior y la unidad de los periodos."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    cuadrillas: Annotated[dict[Texto500, Texto500], Field(max_length=5000)]
+    paralelas: Annotated[list[Texto500], Field(max_length=5000)]
+    unidad: Literal["dia", "semana"]
+
+
+class EdicionRendimientosRespuesta(EdicionPlanRespuesta):
+    """Como E4, mas los avisos de las partidas sin rendimiento o con cantidad 0 (en orden)."""
+
+    avisos: list[str]
+
+
 # --- el APU, el cambio de insumo, los cambios y retomar (3c-3, E6 a E11) -----------------------
 #
 # Topes (D-9, SUPUESTOS declarados): cada texto ≤ 500 caracteres y a lo sumo 500 lineas por rubro de

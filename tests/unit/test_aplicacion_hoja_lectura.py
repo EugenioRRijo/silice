@@ -129,6 +129,8 @@ TABLA_5_7 = {
     "composicion_convertida": ("T9", "contrato"),
     "con_precios_de_la_lista": ("T9", "contrato"),
     "ApuSinPreciosDeLaLista": ("T9", "contrato"),
+    # montar un presupuesto, Tarea 21: el plan que se propone al guardar la primera version
+    "con_plan_por_rendimientos": ("T21", "contrato"),
 }
 
 

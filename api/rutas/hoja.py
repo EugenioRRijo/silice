@@ -14,7 +14,8 @@ y `aplicacion.hoja_borradores`. Esta rebanada trae las rutas R1 a R4 del diseño
 - `GET /v1/hoja/borradores/{id}` y `DELETE` (204, idempotente).
 - Vistas del borrador vivo (solo cuenta): R5 a R8 (3b-2: espacio, presupuesto, APU, plan) y R9 a R11
   (3b-3: `/vistas/equilibrio`, `/vistas/parametros`, `/vistas/auditoria`, esta con R17).
-- Edición del borrador vivo (3c): E1 a E5 (espacio, cantidades, parámetros, plan), E6
+- Edición del borrador vivo (3c): E1 a E5 (espacio, cantidades, parámetros, plan) y el plan desde
+  los rendimientos (`POST /borradores/{id}/plan/rendimientos`, Tarea 21), E6
   `PUT /apu/{partida}` y E7 `POST /apu/{partida}/insumo`, la lectura de los candidatos E8
   (`/insumos`) y de los cambios E9 (`/cambios`), E10 `GET /borradores` (retomar) y E11, el
   `reemplazar` de R2 (3c-3). Nada de esto escribe en la base: el guardado es 3d.
@@ -68,6 +69,8 @@ from api.esquemas_hoja import (
     EdicionParametrosRespuesta,
     EdicionPlan,
     EdicionPlanRespuesta,
+    EdicionRendimientos,
+    EdicionRendimientosRespuesta,
     EdicionSecuencial,
     GuardadoRespuesta,
     GuardarVersion,
@@ -164,6 +167,10 @@ FORMA_PLAN = (
     "como texto de hasta 500 caracteres, con no más de 5000 partidas."
 )
 FORMA_REV = "La petición debe traer el rev del borrador, un número entero."
+FORMA_RENDIMIENTOS = (
+    "El plan desde los rendimientos no tiene la forma esperada: envíe rev (entero), las "
+    "cuadrillas de cada partida como texto, las partidas en paralelo y la unidad (dia o semana)."
+)
 FORMA_APU = (
     "El APU no tiene la forma esperada: envíe el rendimiento y las cantidades de materiales, "
     "equipos y mano de obra, cada una como texto de hasta 500 caracteres, con no más de 500 "
@@ -726,6 +733,44 @@ def crear_plan_secuencial(
     )
     return EdicionPlanRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), plan=vista_plan_a_respuesta(vista)
+    )
+
+
+@router.post("/borradores/{id}/plan/rendimientos", response_model=EdicionRendimientosRespuesta)
+@sin_eco(FORMA_RENDIMIENTOS)
+def plan_desde_rendimientos(
+    id: IdDeBorrador,
+    datos: EdicionRendimientos,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> EdicionRendimientosRespuesta:
+    """Rehace el plan del borrador desde los rendimientos (Tarea 21): duracion = cantidad ÷
+    rendimiento ÷ cuadrillas, encadenadas con las paralelas, en dias habiles o semanas. Con plan o
+    sin el. Devuelve el plan y la curva recalculados y los avisos; 422 con el texto de las
+    cuadrillas, de una partida ajena o de un plan de mas de 500 periodos."""
+    vivo = _vivo(request, activa, id)
+    avisos: list[str] = []
+
+    def editar() -> BorradorVivo:
+        editado, encontrados = hoja_edicion.plan_desde_rendimientos(
+            sesion,
+            activa.huella_ficha,
+            id,
+            datos.rev,
+            cuadrillas=datos.cuadrillas,
+            paralelas=datos.paralelas,
+            unidad=datos.unidad,
+        )
+        avisos.extend(encontrados)
+        return editado
+
+    resumen, vista = _editar(sesion, vivo, editar, hoja_vista.vista_plan)
+    return EdicionRendimientosRespuesta(
+        rev=resumen.rev,
+        resumen=resumen_a_respuesta(resumen),
+        plan=vista_plan_a_respuesta(vista),
+        avisos=avisos,
     )
 
 
