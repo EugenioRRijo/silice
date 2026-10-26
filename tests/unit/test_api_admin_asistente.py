@@ -469,3 +469,22 @@ def test_olvidar_solo_desde_el_propio_equipo(entorno) -> None:
     respuesta = navegador.post(f"{BASE}/clave/olvidar", headers=cab)
     assert respuesta.status_code == 403
     assert entorno.almacen.datos == {(SERVICIO, EMPRESA_DE_LA_CLAVE): CLAVE}
+
+
+def test_un_tope_minimo_sale_sin_exponente_para_editarlo_sin_tocar(entorno) -> None:
+    """Arbitro (mantenimiento de la coma decimal): `str(Decimal("0.0000001"))` es «1E-7»; la
+    pantalla lo pone en el campo, `leerCifra` lo rechaza y guardar sin tocar nada fallaba."""
+    navegador, cab = _admin()
+    respuesta = navegador.post(
+        f"{BASE}/configuracion", json={**CONFIGURACION, "tope_usd": "0,0000001"}, headers=cab
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["estado"]["tope_usd"] == "0.0000001"
+
+
+def test_el_esquema_describe_el_tope_tecleado_con_coma_decimal() -> None:
+    from api.main import app
+
+    propiedad = app.openapi()["components"]["schemas"]["Configuracion"]["properties"]["tope_usd"]
+    descripcion = propiedad["description"]
+    assert "coma" in descripcion and "1.000" in descripcion and "2.50" in descripcion

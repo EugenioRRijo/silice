@@ -129,3 +129,12 @@ def test_las_filas_del_plan_se_agrupan_por_periodo_y_una_a_medias_se_rechaza() -
     a_medias = [{"periodo": "Semana 1", "codigo_partida": "LB-01-EXC", "fraccion": ""}]
     with pytest.raises(ComposicionInvalida, match="fila 1"):
         plan_desde_filas(a_medias)
+
+
+def test_las_fracciones_del_plan_salen_sin_exponente() -> None:
+    """Arbitro (mantenimiento de la coma decimal): `str(Decimal("1E-7"))` es «1E-7» y la pantalla
+    de Elaborar no lo puede volver a leer; la fila lo escribe en notacion fija."""
+    from aplicacion.elaboracion import filas_desde_plan
+
+    filas = filas_desde_plan([("Dia 1", (("A", Decimal("1E-7")), ("B", Decimal("1.0"))))])
+    assert [f["fraccion"] for f in filas] == ["0.0000001", "1.0"]

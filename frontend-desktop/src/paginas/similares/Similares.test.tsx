@@ -30,7 +30,7 @@ const CONCRETO: Propuesta = {
   composicion: {
     unidad: "m3",
     rendimiento: "8.00",
-    materiales: [{ descripcion: "Cemento ficticio", unidad: "saco", cantidad: "7.50", precio: "15.00" }],
+    materiales: [{ descripcion: "Cemento ficticio", unidad: "saco", cantidad: "7.50", precio: "1500.00" }],
     equipos: [{ descripcion: "Mezcladora ficticia", cantidad: "1.00", precio: "60.00", depreciacion: "1.00" }],
     mano_obra: [{ descripcion: "Ayudante", cantidad: "4.00", sueldo: "3.00" }],
   },
@@ -146,17 +146,19 @@ describe("Partidas similares", () => {
     expect(opciones?.method).toBe("POST");
     expect(JSON.parse(String(opciones?.body))).toEqual({ descripcion: "concreto para paredes" });
 
-    await usuario.click(screen.getByRole("button", { name: /Puntajes*0.91 - FIC-01 - Vaciado de concreto ficticio/ }));
-    expect(screen.getByText("Partida de origen: FIC-01 | puntaje de similitud: 0.9137")).toBeInTheDocument();
+    await usuario.click(screen.getByRole("button", { name: /Puntajes*0,91 - FIC-01 - Vaciado de concreto ficticio/ }));
+    expect(screen.getByText("Partida de origen: FIC-01 | puntaje de similitud: 0,9137")).toBeInTheDocument();
     expect(screen.getByText("Unidad:").tagName).toBe("STRONG");
     expect(screen.getByText("Rendimiento:").tagName).toBe("STRONG");
-    expect(screen.getByText("8.00 m3/día", { exact: false })).toBeInTheDocument();
+    // es-VE (decision de Eugenio, 2026-10-25): la API manda punto y la pantalla formatea una sola vez
+    expect(screen.getByText("8,00 m3/día", { exact: false })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Materiales" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Equipos" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Mano de obra" })).toBeInTheDocument();
     const materiales = screen.getByRole("table", { name: "Materiales" });
-    expect(within(materiales).getByText("7.50")).toBeInTheDocument();
-    expect(within(materiales).getByText("15.00")).toBeInTheDocument();
+    expect(within(materiales).getByText("7,50")).toBeInTheDocument();
+    expect(within(materiales).getByText("1.500,00")).toBeInTheDocument();
+    expect(within(materiales).queryByText("1500.00")).toBeNull();
     expect(screen.getByRole("table", { name: "Equipos" })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Mano de obra" })).toBeInTheDocument();
   });
@@ -164,7 +166,7 @@ describe("Partidas similares", () => {
   test("el desglose incompleto se avisa y no se muestra a medias", async () => {
     montar();
     const usuario = await buscar("zanja");
-    await usuario.click(await screen.findByRole("button", { name: /Puntajes*0.64 - FIC-02 - Zanja ficticia/ }));
+    await usuario.click(await screen.findByRole("button", { name: /Puntajes*0,64 - FIC-02 - Zanja ficticia/ }));
     const aviso = screen.getByText(/Desglose incompleto en la lista vigente/);
     expect(aviso).toBeInTheDocument();
     const panel = aviso.closest(".silice-similares__detalle") as HTMLElement;

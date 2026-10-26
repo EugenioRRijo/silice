@@ -110,7 +110,8 @@ describe("Asistente de IA", () => {
     await usuario.type(screen.getByLabelText("Modelo local (Ollama)"), "llama-ficticio");
     const tope = screen.getByLabelText("Tope de costo por sesión (USD)");
     await usuario.clear(tope);
-    await usuario.type(tope, "3,75");
+    // con blancos alrededor: viaja TAL CUAL (los recorta el servidor con el conjunto BLANCOS)
+    await usuario.type(tope, " 3,75 ");
     await usuario.click(screen.getByRole("button", { name: "Guardar la configuración" }));
     expect(await screen.findByText("Configuración del asistente guardada.")).toBeInTheDocument();
     expect(llamada(1)[0]).toBe("/v1/admin/asistente/configuracion");
@@ -120,7 +121,7 @@ describe("Asistente de IA", () => {
       modelo_claude: "claude-opus-5-5",
       modelo_local: "llama-ficticio",
       anfitrion_ollama: "http://127.0.0.1:11434",
-      tope_usd: "3,75",
+      tope_usd: " 3,75 ",
     });
     expect(screen.getByLabelText("Tope de costo por sesión (USD)")).toHaveValue("3,75");
   });

@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import shutil
 from collections.abc import Iterator
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -341,3 +342,19 @@ def test_en_el_producto_la_falta_del_modulo_manda_al_instalador_completo(base, m
     assert falla.startswith("El módulo de similitud de partidas no está instalado")
     assert "instalador" in falla
     assert falla != MENSAJE_SIN_EXTRA
+
+
+def test_la_depreciacion_viaja_sin_exponente() -> None:
+    """Arbitro (mantenimiento de la coma decimal): `str` de una depreciacion minima daba «1E-7»,
+    que la pantalla no puede escribir en es-VE. Viaja con punto y en notacion fija."""
+    from aplicacion.similares import _en_texto
+    from core.contracts import ComposicionAPU, LineaEquipo
+
+    composicion = ComposicionAPU(
+        codigo_partida="FIC-01",
+        descripcion="Partida ficticia",
+        unidad="m2",
+        rendimiento=Decimal("8"),
+        equipos=(LineaEquipo("Vibrador ficticio", Decimal("1"), Decimal("300"), Decimal("1E-7")),),
+    )
+    assert _en_texto(composicion).equipos[0].depreciacion == "0.0000001"
