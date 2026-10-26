@@ -9177,7 +9177,7 @@
           "procura"
         ],
         "summary": "Registrar",
-        "description": "Anota un pedido o una recepción de un material de la obra.",
+        "description": "Anota un pedido o una recepción de un material de la obra (y, con la casilla, declara su\nprecio del corte).",
         "operationId": "registrar_v1_procura_compras_post",
         "requestBody": {
           "content": {
@@ -13382,6 +13382,12 @@
             "title": "Precio",
             "description": "Precio unitario (por unidad del material), en la moneda de la carpeta",
             "default": ""
+          },
+          "declarar_corte": {
+            "type": "boolean",
+            "title": "Declarar Corte",
+            "description": "Declarar el precio de la recepción como precio del corte de la obra",
+            "default": false
           }
         },
         "type": "object",
@@ -22878,6 +22884,20 @@
               }
             ],
             "title": "Observacion Id"
+          },
+          "declarar_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declarar En",
+            "description": "Obra (código o nombre) en la que el precio queda como precio del corte"
           }
         },
         "type": "object",
@@ -22891,6 +22911,18 @@
           "lista": {
             "type": "string",
             "title": "Lista"
+          },
+          "corte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corte",
+            "description": "La frase que confirma el precio del corte declarado, si se pidió"
           }
         },
         "type": "object",
