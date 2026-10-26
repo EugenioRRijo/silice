@@ -70,6 +70,7 @@ _ESTADO_DE_ARMA = {
         "entregar_paquete",
         "operar_arenera",
         "leer_proyecto",
+        "aprobar_version",
         "cambiar_caso",
     ],
     "modo_entrega": False,
@@ -421,7 +422,7 @@ def test_get_sesion_con_cookie_da_el_usuario() -> None:
         "roles": ["revisa"],
         "csrf": _csrf(ficha),
         "debe_cambiar_clave": False,
-        "acciones": ["leer_proyecto", "revisar_paquete"],
+        "acciones": ["leer_proyecto", "revisar_paquete", "aprobar_version"],
         "modo_entrega": False,
         "eleccion": {"caso": None, "proyecto": None, "aviso": None},  # MOD-0
         "preferencias": {"modulo": None, "sidebar_fijado": False},

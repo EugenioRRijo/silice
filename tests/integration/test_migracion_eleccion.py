@@ -25,11 +25,14 @@ from operacion.base_datos import (
     leer_estado,
     preparar_base,
     revision_head,
+    revisiones_en_orden,
 )
 
 TABLA = "mp_eleccion"
 REVISION = "ins_0004_mod_eleccion"
 ANTERIOR = "ins_0003_auditoria_libro"
+#: La que cuelga de esta (MP-4, T18) y es la cabeza de la instalación.
+SIGUIENTE = CABEZA = "ins_0005_mp_indice_aprobacion"
 #: (nombre, tipo SQL declarado, admite nulo), en orden.
 COLUMNAS = [
     ("usuario_id", "INTEGER", False),
@@ -60,8 +63,11 @@ def _instantanea_de_la_tabla(ruta: Path) -> dict:
         motor.dispose()
 
 
-def test_la_revision_cuelga_de_la_auditoria_del_libro_y_es_la_cabeza() -> None:
-    assert revision_head(Destino.INSTALACION) == REVISION
+def test_la_revision_cuelga_de_la_auditoria_del_libro_y_de_ella_el_indice_de_aprobacion() -> None:
+    orden = revisiones_en_orden(Destino.INSTALACION)
+    indice = orden.index(REVISION)
+    assert orden[indice - 1 : indice + 2] == [ANTERIOR, REVISION, SIGUIENTE]
+    assert revision_head(Destino.INSTALACION) == CABEZA
 
 
 def test_subir_crea_la_tabla_con_las_columnas_del_plan(tmp_path: Path) -> None:
@@ -118,7 +124,8 @@ def test_subir_dos_veces_no_falla(tmp_path: Path) -> None:
     ruta = tmp_path / "instalacion.db"
     aplicar_revisiones(ruta, Destino.INSTALACION)
     aplicar_revisiones(ruta, Destino.INSTALACION)
-    assert leer_estado(ruta).revision == REVISION
+    assert leer_estado(ruta).revision == CABEZA
+    assert TABLA in _tablas(ruta)
 
 
 def test_una_base_que_ya_trae_la_tabla_se_adopta_sin_recrearla(tmp_path: Path) -> None:
@@ -138,7 +145,7 @@ def test_una_base_que_ya_trae_la_tabla_se_adopta_sin_recrearla(tmp_path: Path) -
 
     aplicar_revisiones(ruta, Destino.INSTALACION)
 
-    assert leer_estado(ruta).revision == REVISION
+    assert leer_estado(ruta).revision == CABEZA
     with closing(sqlite3.connect(ruta)) as conexion:
         assert conexion.execute(f"SELECT usuario_id, caso FROM {TABLA}").fetchall() == [
             (3, "obra.db")
@@ -158,7 +165,7 @@ def test_la_base_anterior_con_datos_se_respalda_y_migra(tmp_path: Path) -> None:
     resultado = preparar_base(ruta, Destino.INSTALACION)
 
     assert resultado.revision_origen == ANTERIOR
-    assert resultado.revision_destino == REVISION
+    assert resultado.revision_destino == CABEZA
     assert resultado.juego is not None and resultado.juego.is_dir()
     assert respaldo.listar_juegos(config.carpeta_respaldos())
     with closing(sqlite3.connect(ruta)) as conexion:

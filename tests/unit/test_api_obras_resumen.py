@@ -203,13 +203,15 @@ def test_pendientes_de_ana() -> None:
     _sin_cache(respuesta)
     grupos = respuesta.json()["grupos"]
     assert [(g["clave"], g["titulo"]) for g in grupos] == [
+        ("aprobar", "Aprobar"),
         ("precios", "Precios"),
         ("calidad", "Calidad"),
     ]
+    assert grupos[0]["items"] == []  # OB-S2 no tiene envíos a aprobación (T18)
     # La lista «OB-S2 USD» es del 2026-11-02, posterior a hoy: no es vieja. Sus precios los cargó
     # el catálogo sin referencia ni origen: los ocho insumos de los tres APU (A: equipo y
     # cuadrilla; B y C: material, equipo y cuadrilla; 2 + 3 + 3) quedan sin referencia.
-    precios = grupos[0]["items"]
+    precios = grupos[1]["items"]
     assert precios == [
         {
             "obra": precios[0]["obra"],

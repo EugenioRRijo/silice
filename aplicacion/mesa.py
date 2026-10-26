@@ -10,7 +10,7 @@ Tres cosas, todas deterministas y en `Decimal` (la interfaz solo formatea):
   tasa del BCV de su corte y se declara, y sin tasa se deja aparte (nunca se suma a ciegas).
 - `pendientes`: lo que requiere atención, en los grupos de `GRUPOS`. Cada grupo lo alimentan las
   fuentes de `FUENTES`; un grupo sin ninguna fuente registrada no sale (nunca un grupo vacío
-  falso). Las tareas que vienen (aprobaciones, compras, mercado, mediciones) agregan su fuente con
+  falso). Las tareas que vienen (compras, mediciones) agregan su fuente con
   una línea en `FUENTES`.
 
 Nada escribe: solo lee la carpeta de la sesión. Los textos son los que ve la persona (español de
@@ -29,6 +29,7 @@ from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from aplicacion import aprobaciones
+from aplicacion.aprobaciones import pendientes_de_aprobacion
 from aplicacion.cifras import texto_de_cifra
 from aplicacion.control import (
     ControlInvalido,
@@ -540,9 +541,9 @@ GRUPOS = (
     ("calidad", "Calidad"),
 )
 #: Las fuentes de cada grupo; un grupo sin fuentes no sale. Una línea por fuente: las tareas que
-#: vienen agregan la suya (MP-4 aprobar, MP-7 compras, T14 mercado, T9 cantidades sin cálculo).
+#: vienen agregan la suya (MP-7 compras, T9 cantidades sin cálculo).
 FUENTES: dict[str, tuple[FuentePendientes, ...]] = {
-    "aprobar": (),
+    "aprobar": (pendientes_de_aprobacion,),
     "compras": (),
     "precios": (
         precios_viejos,

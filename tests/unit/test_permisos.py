@@ -25,6 +25,7 @@ MATRIZ = (
     (Accion.ENTREGAR_PAQUETE, True, False, False),
     (Accion.LEER_PROYECTO, True, True, False),
     (Accion.REVISAR_PAQUETE, False, True, False),
+    (Accion.APROBAR_VERSION, True, True, False),
     (Accion.CAMBIAR_CASO, True, False, True),
     (Accion.ADMINISTRAR_CUENTAS, False, False, True),
     (Accion.ADMINISTRAR_EMPRESA, False, False, True),

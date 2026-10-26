@@ -23,6 +23,7 @@ from api.rutas import (
     admin_empresa,
     admin_empresas_registradas,
     admin_instalacion,
+    aprobaciones,
     auditorias,
     auditorias_libro,
     busqueda,
@@ -186,6 +187,8 @@ app.include_router(obras.router)
 # T14 (montar un presupuesto): /v1/mercado, estudio de mercado y «Usar este precio»
 # (EDITAR_HOJA en la ruta)
 app.include_router(mercado.router)
+# MP-4 T18: ciclo de aprobación
+app.include_router(aprobaciones.router)
 
 
 @app.get("/salud", tags=["catalogo"])

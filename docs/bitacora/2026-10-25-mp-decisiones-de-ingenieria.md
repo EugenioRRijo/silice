@@ -65,6 +65,29 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   `aplicacion/tablero.py:113` todavía arman `ParametrosCosto` a mano (deuda).
 - `pendientes_de_mercado` importa `aplicacion.mesa` dentro de la función para evitar el import circular con `FUENTES`.
 
+## T18, rutas de aprobación
+
+- El detalle de un envío (`GET /v1/aprobaciones/{envio_id}`) se lee de los renglones y los hallazgos guardados de la
+  versión (lo que su sello cubre), no con `abrir_version`, que escribe la instantánea. Desviación consciente del plan: el
+  detalle es de solo lectura y no abre borrador.
+- Columnas del índice de la instalación (`mp_indice_aprobacion`): `proyecto` es el código de la obra (el de
+  `GET /v1/proyectos`), y se agregan `obra` (su nombre), `nota` (la del envío), `notas` y `armo` (los del dictamen).
+- `/pendientes` y `/mias` devuelven listas (no un objeto con la lista dentro).
+- Con la clave de API (sin cuenta), `/mias`, `/abrir` y `/dictamen` responden 403: son de una persona.
+- `/abrir` responde 404 sin eco («No se encontró ese envío.») si la carpeta no existe o el nombre trae rutas o `..`; la
+  sesión no cambia. La carpeta de la empresa se recuerda como caso nulo (la de siempre).
+- El reflejo del índice tolera fallos: si no se puede escribir, la respuesta no cambia (manda la carpeta) y queda un aviso
+  en el registro; los GET que leen el índice reflejan antes la carpeta abierta, así que lo reponen.
+- Fuente «aprobar» de la mesa: solo el último envío de cada obra; las notas de una devuelta se juntan (espacios y saltos
+  seguidos cuentan como uno) y se cortan a 80 letras con «…». **Por ratificar.**
+- `hallazgos.error` del detalle cuenta los de severidad error y crítico.
+- Clases de error: `NoSeEncontro` → 404, `DatosInvalidos` → 422, otra `AprobacionInvalida` → 409.
+- Una hora con zona horaria se RECHAZA (`ValueError` antes de escribir), no se normaliza. **Por ratificar.**
+- Envío y dictamen usan `BEGIN IMMEDIATE`; el choque se reconoce por `sqlite_errorname` (`SQLITE_BUSY*`,
+  `SQLITE_LOCKED*`), no por el texto; la huella usa `json_canonico` y `huella` de `core/budget/canonico.py`.
+- **Duda para Eugenio:** quien revisa (rita) no tiene `cambiar_caso`, así que al volver a entrar no vuelve a la carpeta
+  que abrió desde un envío (la elección recordada solo se restaura a quien puede cambiar de carpeta).
+
 ## Migraciones del caso
 
 Tres tareas a la vez colgaron su migración de `caso_0010_mp_carpeta`. El orden fijado es

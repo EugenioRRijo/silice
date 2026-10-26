@@ -11,6 +11,7 @@ from alembic.migration import MigrationContext
 from sqlalchemy import create_engine
 
 from aplicacion.tablas_eleccion import METADATA_ELECCION
+from aplicacion.tablas_indice_aprobacion import METADATA_INDICE_APROBACION
 from fusion.historial_modelo import METADATA_HISTORIAL
 from migraciones.comun import metadata_unida
 from migraciones.metadatos import METADATAS_INSTALACION
@@ -35,6 +36,7 @@ NUEVAS = {
     "prod_pesaje_sospechoso",
     "auditoria_libro",
     "mp_eleccion",
+    "mp_indice_aprobacion",
 }
 
 
@@ -45,12 +47,13 @@ def _tablas(ruta: Path) -> set[str]:
 
 
 def test_la_cabeza_del_destino_instalacion_es_la_revision_del_historial() -> None:
-    assert revision_head(Destino.INSTALACION) == "ins_0004_mod_eleccion"
+    assert revision_head(Destino.INSTALACION) == "ins_0005_mp_indice_aprobacion"
     assert METADATAS_INSTALACION == (
         Base.metadata,
         METADATA_PRODUCCION,
         METADATA_HISTORIAL,
         METADATA_ELECCION,
+        METADATA_INDICE_APROBACION,
     )
 
 

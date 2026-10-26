@@ -100,6 +100,7 @@ ACCIONES_ADMINISTRADOR_Y_ARMA = [
     "entregar_paquete",
     "operar_arenera",
     "leer_proyecto",
+    "aprobar_version",
     "cambiar_caso",
     "administrar_cuentas",
     "administrar_empresa",

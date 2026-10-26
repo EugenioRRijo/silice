@@ -69,6 +69,7 @@ ENTREGAR = "entregar_paquete"
 REAJUSTAR = "convertir_y_reajustar"
 OPERAR = "operar_arenera"
 PRECIOS = "administrar_precios"
+APROBAR = "aprobar_version"
 EMPRESA, RED_Y_API = (
     "administrar_empresa",
     "administrar_red_y_api",
@@ -78,6 +79,7 @@ ROLES = {
     LEER: {"arma", "revisa"},
     EDITAR: {"arma"},
     REVISAR: {"revisa"},
+    APROBAR: {"arma", "revisa"},
     ENTREGAR: {"arma"},
     EMPRESA: {"administrador"},
     RED_Y_API: {"administrador"},
@@ -164,6 +166,15 @@ TABLA = {
     ("POST", "/v1/mercado/compra/{codigo}/usar"): EDITAR,
     ("POST", "/v1/mercado/cobro/{codigo}/usar"): EDITAR,
     ("GET", "/v1/mercado/objetivos"): EDITAR,
+    # MP-4 T18: ciclo de aprobación
+    ("POST", "/v1/aprobaciones"): EDITAR,
+    ("GET", "/v1/aprobaciones"): EDITAR,
+    ("GET", "/v1/aprobaciones/pendientes"): APROBAR,
+    ("GET", "/v1/aprobaciones/mias"): EDITAR,
+    ("GET", "/v1/aprobaciones/resumen"): APROBAR,
+    ("POST", "/v1/aprobaciones/abrir"): APROBAR,
+    ("GET", "/v1/aprobaciones/{envio_id}"): APROBAR,
+    ("POST", "/v1/aprobaciones/{envio_id}/dictamen"): APROBAR,
     ("POST", "/v1/proyectos"): EDITAR,
     ("POST", "/v1/similares"): EDITAR,
     ("POST", "/v1/simulador"): EDITAR,
@@ -183,6 +194,7 @@ TABLA = {
     ("GET", "/v1/composicion/referencia"): EDITAR,
     ("GET", "/v1/composicion/similares"): EDITAR,
     ("POST", "/v1/composicion/guardar"): EDITAR,
+    ("POST", "/v1/composicion/prever"): EDITAR,
     ("GET", "/v1/entregas/versiones"): ENTREGAR,
     ("GET", "/v1/entregas/resumen"): ENTREGAR,
     ("POST", "/v1/entregas"): ENTREGAR,

@@ -2,7 +2,7 @@
 
 `aplicacion/mesa.py` calcula, sin tocar el núcleo, las cifras de arriba (valor ganado y avance
 contra el plan, en la moneda de la carpeta), la tabla de obras (etapa, avance, qué pasa y el
-siguiente paso) y los pendientes agrupados (Precios y Calidad en esta tarea).
+siguiente paso) y los pendientes agrupados (Aprobar, Precios y Calidad).
 
 Oráculos escritos a mano, con la cuenta al lado; ninguno sale del código bajo prueba:
 
@@ -25,6 +25,7 @@ import pytest
 from sqlalchemy import delete, select
 
 from aplicacion import aprobaciones, mesa
+from aplicacion.aprobaciones import pendientes_de_aprobacion
 from aplicacion.mercado import pendientes_de_mercado
 from aplicacion.mesa import (
     Cifra,
@@ -658,7 +659,7 @@ def test_un_hallazgo_grave_en_singular(sesion) -> None:
     assert pendiente.texto == "1 hallazgo de error o crítico en CD-001"
 
 
-def test_pendientes_trae_precios_y_calidad_en_ese_orden(sesion) -> None:
+def test_pendientes_trae_aprobar_precios_y_calidad_en_ese_orden(sesion) -> None:
     version = _casa_demo(sesion, date(2026, 6, 1))
     _referencias(sesion, version)
     _hallazgos(sesion, version)
@@ -668,6 +669,7 @@ def test_pendientes_trae_precios_y_calidad_en_ese_orden(sesion) -> None:
         return Pendiente(codigo, "Casa Demo", texto, accion)
 
     assert pendientes(sesion, HOY) == [
+        GrupoPendientes("aprobar", "Aprobar", ()),  # Casa Demo no tiene envíos
         GrupoPendientes(
             "precios",
             "Precios",
@@ -695,10 +697,11 @@ def test_un_grupo_con_una_fuente_registrada_sale_aunque_no_tenga_pendientes(
     def ninguna(_sesion, _hoy: date) -> list[Pendiente]:
         return []
 
-    monkeypatch.setitem(mesa.FUENTES, "aprobar", (ninguna,))
+    monkeypatch.setitem(mesa.FUENTES, "compras", (ninguna,))
     grupos = pendientes(sesion, HOY)
     assert [(grupo.clave, grupo.titulo, grupo.items) for grupo in grupos] == [
         ("aprobar", "Aprobar", ()),
+        ("compras", "Compras", ()),
         ("precios", "Precios", ()),
         ("calidad", "Calidad", ()),
     ]
@@ -718,5 +721,6 @@ def test_los_grupos_y_las_fuentes_de_esta_tarea() -> None:
         pendientes_de_mercado,
     )
     assert mesa.FUENTES["calidad"] == (hallazgos_graves, lista_vieja)
-    assert not mesa.FUENTES.get("aprobar")
+    # T18 agrega «espera dictamen» y «devuelta» (compartido del orquestador).
+    assert mesa.FUENTES["aprobar"] == (pendientes_de_aprobacion,)
     assert not mesa.FUENTES.get("compras")
