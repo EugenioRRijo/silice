@@ -151,8 +151,9 @@ def elegir_caso(
     if ruta not in {caso.resolve() for caso in listar_casos()}:
         raise HTTPException(status_code=404, detail=MENSAJE_NO_ESTA.format(nombre=ruta.name))
     obtener_motor(url_de_ruta(ruta))  # prepara la base una vez (503 si no se puede)
-    caso_web.fijar(activa.huella_ficha, ruta)
     recordar_caso(instalacion, activa.usuario_id, ruta.name, ahora())
+    instalacion.commit()  # la ficha cambia solo si la instalación lo confirmó
+    caso_web.fijar(activa.huella_ficha, ruta)
     return _describir(ruta)
 
 

@@ -32,6 +32,9 @@ recuerda entre sesiones y reinicios vive en `mp_eleccion` de la instalación (`a
   que usan `_cuerpo`) gana `eleccion: {caso, proyecto, aviso}` y `preferencias: {modulo,
   sidebar_fijado}`. Si la ficha no eligió carpeta y la recordada sigue en la carpeta de casos, se
   fija para la ficha (`caso_web.fijar`): así vuelve tras salir y entrar, y tras reiniciar la API.
+  Solo si la cuenta tiene `CAMBIAR_CASO` (§12.2): sin él, `caso: null`, la obra se mira en la
+  carpeta de la ficha y la fila no se toca (vuelve si recupera el permiso). La memoria de la ficha
+  cambia solo después de confirmar la instalación.
   Una carpeta recordada que ya no existe da `caso: null` y el aviso `MENSAJE_CARPETA_PERDIDA`
   **una vez**: se olvida en la tabla (y en la ficha, para que nadie la recree vacía). Una obra que
   ya no está en la carpeta de la ficha da `proyecto: null` y también se olvida. Sin nada recordado,
@@ -197,11 +200,10 @@ def _carpeta_en_la_lista(caso: str) -> Path | None:
     return ruta if ruta in {c.resolve() for c in listar_casos()} else None
 
 
-def _obra_sigue(huella: str, proyecto: str) -> bool:
-    """La obra está en la carpeta con que trabaja la ficha. Si esa carpeta no se puede abrir no
-    se sabe: se conserva lo recordado."""
-    elegida = caso_web.elegido(huella)
-    url = url_del_proceso() if elegida is None else url_de_ruta(elegida)
+def _obra_sigue(carpeta: Path | None, proyecto: str) -> bool:
+    """La obra está en `carpeta` (`None` = la del proceso), con la que trabajará la ficha. Si esa
+    carpeta no se puede abrir no se sabe: se conserva lo recordado."""
+    url = url_del_proceso() if carpeta is None else url_de_ruta(carpeta)
     try:
         motor = obtener_motor(url)
     except HTTPException:
@@ -215,29 +217,43 @@ def _restaurar(activa: SesionActiva) -> tuple[EleccionRespuesta | None, Preferen
     if activa.debe_cambiar_clave:
         return None, SIN_PREFERENCIAS
     huella = activa.huella_ficha
+    puede_elegir = permitido(activa.roles, Accion.CAMBIAR_CASO)
+    elegida = caso_web.elegido(huella)
+    efectiva = elegida  # la carpeta con que trabajará la ficha (`None` = la del proceso)
+    fijar = olvidar = False
     try:
         with sesion_de_instalacion() as sesion:
             recordada = eleccion_de(sesion, activa.usuario_id)
             if recordada is None:
                 return EleccionRespuesta(caso=None, proyecto=None, aviso=None), SIN_PREFERENCIAS
             caso, proyecto, aviso = recordada.caso, recordada.proyecto, None
-            if caso is not None:
+            if not puede_elegir:
+                # §12.2: sin `cambiar_caso` no se vuelve a una carpeta que ya no podría elegir. La
+                # fila no se toca (vuelve si recupera el permiso); la obra se mira en la de la ficha
+                caso = None
+            elif caso is not None:
                 ruta = _carpeta_en_la_lista(caso)
                 if ruta is None:
                     aviso = MENSAJE_CARPETA_PERDIDA.format(nombre=Path(caso).stem)
-                    elegida = caso_web.elegido(huella)
-                    if elegida is not None and elegida.name == caso:
-                        caso_web.olvidar(huella)  # que nadie abra (y recree) la que ya no está
+                    # que nadie abra (y recree vacía) la que ya no está
+                    olvidar = elegida is not None and elegida.name == caso
+                    efectiva = None if olvidar else elegida
                     recordar_caso(sesion, activa.usuario_id, None, ahora())
                     caso = proyecto = None
-                elif caso_web.elegido(huella) is None:
-                    caso_web.fijar(huella, ruta)
-            if proyecto is not None and not _obra_sigue(huella, proyecto):
-                recordar_proyecto(sesion, activa.usuario_id, None, ahora())
+                elif elegida is None:
+                    fijar, efectiva = True, ruta
+            if proyecto is not None and not _obra_sigue(efectiva, proyecto):
+                if puede_elegir:
+                    recordar_proyecto(sesion, activa.usuario_id, None, ahora())
                 proyecto = None
             sesion.commit()
     except ErrorDeBase as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+    # la memoria de la ficha cambia solo después de confirmar la instalación (C2)
+    if olvidar:
+        caso_web.olvidar(huella)
+    elif fijar and efectiva is not None:
+        caso_web.fijar(huella, efectiva)
     modulo = recordada.modulo if recordada.modulo in MODULOS else None
     return (
         EleccionRespuesta(caso=caso, proyecto=proyecto, aviso=aviso),
