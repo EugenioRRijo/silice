@@ -19,28 +19,42 @@ decisión de ingeniería «Cómo se midió».
   borrador son altas y bajas (`hoja._cambios_de_cantidades`).
 * `texto_llano` presenta la advertencia de R1 para una cantidad manual sin regla en lenguaje
   llano.
+* `calculo_tecleable` muestra la regla de un renglón con coma decimal (Tarea 9), y
+  `pendientes_sin_calculo` es la fuente «cantidades sin cálculo» de la mesa de control.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from typing import TYPE_CHECKING
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from aplicacion.cifras import BLANCOS, MENSAJE_CIFRA, CifraInvalida, cifra_escrita, texto_de_cifra
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja import Borrador, claves_de_items, items_sin_escribir
+from aplicacion.proyectos import proyectos_del_caso
+from core import models
 from core.contracts import ItemComputo, OrigenTipo
 from core.contracts.dominio import Dominio
 from core.verification import REGLAS, TrazabilidadGeometrica, evaluar
 from core.verification.expresiones import ExpresionInvalida, ParametroFaltante
+
+if TYPE_CHECKING:
+    from aplicacion.mesa import Pendiente
 
 __all__ = [
     "PREFIJO_A_MANO",
     "CalculoInvalido",
     "PartidaElegida",
     "agregar_partida",
+    "calculo_tecleable",
     "cantidad_y_regla",
+    "pendientes_sin_calculo",
     "quitar_partida",
     "texto_llano",
     "traducir_calculo",
@@ -318,3 +332,49 @@ def texto_llano(descripcion: str) -> str:
         f"La cantidad de {manual['codigo']} ({cifra}{espacio}{unidad}) se escribió a mano sin "
         "cálculo: escriba cómo se obtuvo si quiere que Sílice la pueda verificar."
     )
+
+
+#: La regla de un renglón agregado a mano: solo cifras con punto decimal y los signos.
+_REGLA_ARITMETICA = re.compile(r"[0-9.+\-*/() ]+")
+_CIFRA_DE_LA_REGLA = re.compile(r"[0-9.]+")
+
+
+def calculo_tecleable(regla: str | None) -> str | None:
+    """El cálculo de un renglón como lo teclea la persona: la regla que dejó `cantidad_y_regla`
+    («2.5*84») con cada cifra en es-VE («2,5*84»), que `traducir_calculo` vuelve a leer igual.
+    `None` sin regla o si no es solo aritmética (la regla de un renglón del espacio)."""
+    if not regla or _REGLA_ARITMETICA.fullmatch(regla) is None:
+        return None
+    try:
+        return _CIFRA_DE_LA_REGLA.sub(lambda cifra: texto_de_cifra(Decimal(cifra[0])), regla)
+    except InvalidOperation:  # «1.2.3» no es una cifra: no se muestra
+        return None
+
+
+def pendientes_sin_calculo(sesion: Session, hoy: date) -> list[Pendiente]:
+    """Fuente «calidad» de la mesa: por obra, cuántos hallazgos de R1 de cantidad manual sin
+    regla tiene su versión vigente (los guardados con la versión) → «{n} cantidad(es) escritas a
+    mano sin cálculo en {versión}», acción «Abrir la Hoja». No escribe."""
+    # `aplicacion.mesa` registra esta fuente en `FUENTES`: importarla arriba sería circular.
+    from aplicacion.mesa import ABRIR_LA_HOJA, Pendiente
+
+    del hoy  # la regla no depende del día
+    salida = []
+    for fila in proyectos_del_caso(sesion):
+        if fila.version_id is None:
+            continue
+        descripciones = sesion.scalars(
+            select(models.Hallazgo.descripcion).where(
+                models.Hallazgo.presupuesto_id == fila.version_id,
+                models.Hallazgo.regla == TrazabilidadGeometrica.codigo,
+            )
+        )
+        cuantas = sum(1 for d in descripciones if _R1_MANUAL.fullmatch(d) is not None)
+        if cuantas:
+            cantidades = "cantidad escrita" if cuantas == 1 else "cantidades escritas"
+            texto = (
+                f"{texto_de_cifra(Decimal(cuantas))} {cantidades} a mano sin cálculo en "
+                f"{fila.version_codigo}"
+            )
+            salida.append(Pendiente(str(fila.id), fila.nombre, texto, ABRIR_LA_HOJA))
+    return salida

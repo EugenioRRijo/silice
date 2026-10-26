@@ -1036,7 +1036,16 @@ def test_la_primera_version_que_otra_persona_ya_creo_es_422_ya_tiene_versiones(_
     assert _volcado(_entorno) == despues and _codigos(uno, NUEVO) == ["001"]
 
 
-def test_la_primera_version_sin_lista_vigente_a_la_fecha_lo_dice_y_no_inventa_precios(
+#: Montar un presupuesto, Tarea 9: la primera versión se valora con `lista_para_el_proyecto` (la
+#: lista para armar de la carpeta, o su conversión con la tasa del BCV); sus textos son los de MP-1.
+SIN_LISTA_PARA_ARMAR = (
+    "Esta carpeta de trabajo no tiene lista de precios para armar. Créela a partir de MaPreX o "
+    "convirtiendo la que tiene."
+)
+SIN_TASA = "No hay tasa del BCV de los últimos 7 días: cárguela en Índices y vuelva a intentar."
+
+
+def test_la_primera_version_sin_lista_para_armar_a_la_fecha_lo_dice_y_no_inventa_precios(
     _entorno,
 ) -> None:
     _proyecto_nuevo(_entorno)
@@ -1046,24 +1055,22 @@ def test_la_primera_version_sin_lista_vigente_a_la_fecha_lo_dice_y_no_inventa_pr
     vivo.borrador = replace(vivo.borrador, fecha=date(2000, 1, 1))
     antes = _volcado(_entorno)
     respuesta = _guardar(navegador, ficha, id_, 2)
-    assert respuesta.status_code == 422
-    assert respuesta.json()["detalle"].startswith(
-        "No hay una lista de precios vigente al 01/01/2000"
-    )
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {"detalle": SIN_LISTA_PARA_ARMAR}
     assert _volcado(_entorno) == antes
 
 
-def test_la_primera_version_con_una_lista_de_otra_moneda_dice_cual_es_cada_una(_entorno) -> None:
+def test_una_obra_en_la_otra_moneda_sin_tasa_del_bcv_no_se_valora(_entorno) -> None:
+    """La carpeta de OF-001 trabaja en USD (la moneda de su lista) y la obra en Bs: su espacio se
+    valoraría con la lista convertida con la tasa del BCV, y el caso no tiene tasa (foco 1)."""
     _proyecto_nuevo(_entorno, "Proyecto en bolivares", moneda="Bs")
     navegador, ficha = _ana()
-    id_ = _en_blanco_con_el_espacio(navegador, ficha, "Proyecto en bolivares")
+    id_ = _abrir(navegador, ficha, "Proyecto en bolivares", None)
     antes = _volcado(_entorno)
-    respuesta = _guardar(navegador, ficha, id_, 2)
-    assert respuesta.status_code == 422
-    assert respuesta.json()["detalle"].startswith(
-        "El proyecto 'Proyecto en bolivares' esta en Bs y la lista "
-        "'Lista MaPreX jul-2026 (OF-001)' en USD"
-    )
+    respuesta = _espacio(navegador, ficha, id_, 0, _sin_circuitos())
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {"detalle": SIN_TASA}
+    assert _resumen(navegador, id_)["rev"] == 0
     assert _volcado(_entorno) == antes
 
 

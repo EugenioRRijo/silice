@@ -68,6 +68,8 @@ class ResumenHojaRespuesta(BaseModel):
     hay_plan: bool
     version_mas_nueva: str | None
     guardado_como: str | None
+    #: El borrador no tiene espacio (una obra civil): la Hoja abre en Presupuesto (Tarea 9, O-7).
+    espacio_vacio: bool
 
 
 class VersionHojaRespuesta(BaseModel):
@@ -152,6 +154,7 @@ def resumen_a_respuesta(resumen: ResumenHoja) -> ResumenHojaRespuesta:
         hay_plan=resumen.hay_plan,
         version_mas_nueva=resumen.version_mas_nueva,
         guardado_como=resumen.guardado_como,
+        espacio_vacio=resumen.espacio_vacio,
     )
 
 
@@ -216,6 +219,10 @@ class FilaPresupuestoRespuesta(BaseModel):
     pu: MontoHojaRespuesta | None
     total: MontoHojaRespuesta | None
     estado: EstadoFilaRespuesta
+    #: Tarea 9: el renglón es de la versión (se quita); su nota de medición y su cálculo (con coma).
+    quitable: bool
+    nota: str | None
+    calculo: str | None
 
 
 class VistaPresupuestoRespuesta(BaseModel):
@@ -693,6 +700,9 @@ class GuardarVersion(BaseModel):
     rev: Annotated[int, Field(strict=True, ge=0)]
     fuente: Annotated[str, Field(strict=True, max_length=300)]
     confirmar_version_mas_nueva: StrictBool = False
+    #: Tarea 9: el código de la PRIMERA versión («VIV-001»; 40, el ancho de `presupuesto.codigo`).
+    #: Sin él, el siguiente de la numeración; en una versión que no es la primera, 422.
+    codigo: Annotated[str, Field(strict=True, min_length=1, max_length=40)] | None = None
 
 
 class GuardadoRespuesta(BaseModel):
@@ -797,3 +807,41 @@ def cadena_a_respuesta(estado: EstadoDeLaCadena) -> CadenaHojaRespuesta:
     return CadenaHojaRespuesta(
         integra=estado.integra, mensaje=estado.mensaje, declaracion=estado.declaracion
     )
+
+
+# --- partidas agregadas y quitadas a mano (Tarea 9) ---------------------------------------------
+#
+# Topes (SUPUESTOS declarados): código, cantidad, cálculo y clave ≤ 500 caracteres (el cálculo,
+# además, ≤ 300 con su mensaje propio, Tarea 8); la nota ≤ 500 (el plan; `mp_nota_medicion.nota`).
+# Textos en `strict`: una cifra enviada como número es de otra forma, no un dato (la regla de las
+# cifras se aplica al texto tecleado). `extra` prohibido.
+
+
+class AgregarPartida(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    codigo: Annotated[str, Field(strict=True, min_length=1, max_length=500)]
+    cantidad: Annotated[str, Field(strict=True, max_length=500)] = ""
+    calculo: Annotated[str, Field(strict=True, max_length=500)] = ""
+    nota: Annotated[str, Field(strict=True, max_length=500)] = ""
+
+
+class PartidaAgregadaRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la clave del renglón nuevo."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    clave: str
+
+
+class QuitarPartida(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    clave: Annotated[str, Field(strict=True, min_length=1, max_length=500)]
+
+
+class PartidaQuitadaRespuesta(BaseModel):
+    rev: int
+    resumen: ResumenHojaRespuesta

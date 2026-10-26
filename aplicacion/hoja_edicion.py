@@ -22,6 +22,13 @@ ese cerrojo: la primera sube el `rev` y la segunda ve `RevDesactualizado` (3c-B1
 Tambien lee: los candidatos de insumo (E8), la lista de cambios (E9) y los borradores que se pueden
 retomar o que estorban al abrir la misma version (E10, E11).
 
+Tarea 9 (montar un presupuesto): `agregar` y `quitar` partidas a mano (`aplicacion.hoja_partidas`)
+pasan por el mismo `_cambiar`. La composicion de una partida nueva sale de la lista de la version
+abierta o, en un borrador en blanco, de `lista_para_el_proyecto` (la de la carpeta, o su conversion
+con la tasa del BCV si la obra esta en la otra moneda: foco de revision 1). Esa conversion solo se
+calcula aqui y se deshace (la escribe el guardado, a nombre de quien guarda); sin tasa de los
+ultimos 7 dias o sin lista para armar, `SinListaDeLaObra` y el borrador no cambia.
+
 Sin FastAPI ni Streamlit (RM-1).
 """
 
@@ -35,21 +42,33 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from aplicacion import hoja, hoja_borradores, hoja_vista
+from aplicacion.cifras import CifraInvalida
 from aplicacion.composicion import texto_de_celda
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
+from aplicacion.hoja_partidas import (
+    CalculoInvalido,
+    PartidaElegida,
+    agregar_partida,
+    quitar_partida,
+)
+from aplicacion.listas_para_armar import lista_para_el_proyecto
 from core import models
 from core.budget import PeriodoPlan
 from core.catalog import Catalogo
+from core.contracts.dominio import Dominio
 
 __all__ = [
     "LIMITE_INSUMOS",
     "BorradorYaGuardado",
+    "PartidaFueraDelCatalogo",
     "PartidaSinApu",
     "RevDesactualizado",
+    "SinListaDeLaObra",
     "SinPlan",
     "SinVersionAbierta",
     "YaTienePlan",
+    "agregar",
     "borradores_para_retomar",
     "cambiar_insumo_de_linea",
     "cambios_del_borrador",
@@ -62,6 +81,7 @@ __all__ = [
     "editar_parametros",
     "editar_plan",
     "pendiente_de_la_version",
+    "quitar",
 ]
 
 #: Insumos que ofrece el selector de una linea; con mas, la clasica pide acotar por descripcion
@@ -111,6 +131,46 @@ class PartidaSinApu(Exception):  # noqa: N818
     """La partida no esta entre las composiciones del borrador."""
 
 
+class PartidaFueraDelCatalogo(Exception):  # noqa: N818
+    """La partida que se quiere agregar no esta en el catalogo de la carpeta."""
+
+    def __init__(self, codigo: str) -> None:
+        super().__init__(codigo)
+        self.codigo = codigo
+
+    def __str__(self) -> str:
+        return f"La partida «{self.codigo}» no está en el catálogo: compóngala primero en Componer."
+
+
+class SinListaDeLaObra(Exception):  # noqa: N818
+    """No hay lista con que valorar la obra (sin lista para armar o, en la otra moneda, sin tasa
+    del BCV de los ultimos 7 dias); el mensaje es el que ve la persona."""
+
+
+#: Quien figura en la conversion de la lista que se calcula para completar un borrador en blanco:
+#: no se guarda nunca (se deshace), pero `lista_para_el_proyecto` exige un responsable.
+_SIN_GUARDAR = "Hoja (borrador sin guardar)"
+
+
+def _completar(sesion: Session, vivo: BorradorVivo, nuevo: hoja.Borrador) -> hoja.Borrador:
+    """`nuevo` con la composicion de cada partida nueva que el catalogo conoce, con la lista de la
+    version abierta o, en blanco, con la de la obra (`lista_para_el_proyecto`, a la fecha del
+    borrador). En blanco no se busca lista si no hay partidas nuevas, y lo que esa busqueda haya
+    escrito (una conversion) se deshace."""
+    if vivo.abierta is not None:
+        lista = hoja.lista_de_version(sesion, vivo.abierta.proyecto, vivo.abierta.codigo)
+        return hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
+    if not hoja.partidas_sin_composicion(nuevo):
+        return nuevo
+    try:
+        lista = lista_para_el_proyecto(sesion, vivo.proyecto, nuevo.fecha, responsable=_SIN_GUARDAR)
+        return hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
+    except ValueError as error:  # SinListaParaArmar (sin lista o sin tasa) u obra que no existe
+        raise SinListaDeLaObra(str(error)) from None
+    finally:
+        sesion.rollback()
+
+
 def _cambiar(
     sesion: Session,
     huella: str,
@@ -134,11 +194,7 @@ def _cambiar(
         nuevo = construir(vivo)
         if nuevo is None or nuevo == vivo.borrador:
             return vivo
-        lista = None
-        if vivo.abierta is not None:
-            lista = hoja.lista_de_version(sesion, vivo.abierta.proyecto, vivo.abierta.codigo)
-        nuevo = hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
-        return hoja_borradores.reemplazar(huella, id, nuevo, rev)
+        return hoja_borradores.reemplazar(huella, id, _completar(sesion, vivo, nuevo), rev)
 
 
 def editar_espacio(
@@ -378,6 +434,61 @@ def cambiar_insumo_de_linea(
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
     return _cambiar(sesion, huella, id, rev, construir)
+
+
+# --- partidas agregadas y quitadas a mano (Tarea 9) ---------------------------------------------
+
+
+def _partida_del_catalogo(sesion: Session, codigo: str) -> PartidaElegida:
+    """La partida `codigo` del catalogo de la carpeta, o `PartidaFueraDelCatalogo`."""
+    try:
+        fila = Catalogo(sesion).partida(codigo)
+    except KeyError:
+        raise PartidaFueraDelCatalogo(codigo) from None
+    try:
+        dominio = Dominio(fila.dominio)
+    except ValueError:  # una partida sin dominio declarado se presupuesta como obra civil
+        dominio = Dominio.CIVIL
+    return PartidaElegida(fila.codigo, fila.descripcion, fila.unidad, dominio)
+
+
+def agregar(
+    sesion: Session,
+    huella: str,
+    id: str,
+    rev: int,
+    *,
+    codigo: str,
+    cantidad: str,
+    calculo: str,
+    nota: str,
+) -> tuple[BorradorVivo, str]:
+    """Agrega al borrador la partida `codigo` del catalogo con su cantidad, su calculo y su nota
+    (`hoja_partidas.agregar_partida`) y devuelve el borrador y la clave del renglon nuevo.
+
+    Orden: ya guardado, `rev`, la partida en el catalogo (`PartidaFueraDelCatalogo`), la cantidad
+    y el calculo (`HojaInvalida` con el texto de la regla de las cifras o de la Tarea 8) y la lista
+    de la obra (`SinListaDeLaObra`). Si algo falla, el borrador no cambia."""
+    clave: list[str] = []
+
+    def construir(vivo: BorradorVivo) -> hoja.Borrador:
+        partida = _partida_del_catalogo(sesion, codigo)
+        try:
+            nuevo, nueva = agregar_partida(
+                vivo.borrador, partida, cantidad=cantidad, calculo=calculo, nota=nota
+            )
+        except (CalculoInvalido, CifraInvalida) as error:
+            raise HojaInvalida(str(error)) from None
+        clave.append(nueva)
+        return nuevo
+
+    return _cambiar(sesion, huella, id, rev, construir), clave[0]
+
+
+def quitar(sesion: Session, huella: str, id: str, rev: int, clave: str) -> BorradorVivo:
+    """Quita del borrador el renglon `clave`, con su cantidad escrita y su nota
+    (`hoja_partidas.quitar_partida`): solo los de la version; uno del espacio es `HojaInvalida`."""
+    return _cambiar(sesion, huella, id, rev, lambda vivo: quitar_partida(vivo.borrador, clave))
 
 
 # --- lo que se lee: candidatos, cambios, retomar (3c-3) ----------------------------------------

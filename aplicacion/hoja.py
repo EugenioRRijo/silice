@@ -101,6 +101,7 @@ from aplicacion.errores import HojaInvalida
 from aplicacion.estilo import porcentaje
 from aplicacion.parametros_de_costo import parametros_de_version
 from aplicacion.subidas import Subida, guardar_subida
+from aplicacion.tablas_medicion import guardar_notas, notas_de_version
 from core import models
 from core.budget import (
     CODIGO_PENDIENTE,
@@ -348,7 +349,8 @@ class Borrador:
     * `reglas_extra`: R11 y R12 evaluadas al abrir, a la fecha de hoy (S1 §4.3); no son un cambio
       (no cuentan para "cambios sin guardar").
     * `notas`: la nota de medición de cada renglón agregado a mano, por su clave
-      (`aplicacion.hoja_partidas`); texto libre que no entra en el cálculo.
+      (`aplicacion.hoja_partidas`); texto libre que no entra en el cálculo. Se guarda con la
+      version (`aplicacion.tablas_medicion`) y vuelve al abrirla.
 
     Es inmutable: cada edicion produce otro borrador con `dataclasses.replace`, y la pantalla
     compara el vigente con el abierto (`cambios_entre`) para saber si hay algo sin guardar.
@@ -908,6 +910,28 @@ def items_elaborados(borrador: Borrador) -> list[ItemComputo]:
     """Los items que se elaboran: los de la version que no vienen del espacio, los derivados del
     espacio y las cantidades escritas a mano ya aplicadas (DA-SF-5)."""
     return _con_cantidades(items_sin_escribir(borrador), borrador.cantidades)
+
+
+def claves_propias(borrador: Borrador) -> list[str]:
+    """Las claves de los renglones de la version que no vienen del espacio (`items_base`), en su
+    orden: los que se quitan con «Quitar» y los unicos que llevan nota de medicion."""
+    return claves_de_items(items_sin_escribir(borrador))[: len(borrador.items_base)]
+
+
+def notas_propias(borrador: Borrador) -> dict[str, str]:
+    """Las notas de medicion del borrador que son de un renglon propio (las que se guardan)."""
+    propias = set(claves_propias(borrador))
+    return {clave: nota for clave, nota in borrador.notas.items() if clave in propias}
+
+
+def partidas_sin_composicion(borrador: Borrador) -> set[str]:
+    """Los codigos de las partidas que se elaboran y todavia no tienen composicion en el
+    borrador: las que `completar_composiciones` busca en el catalogo."""
+    return {
+        i.codigo_partida
+        for i in items_elaborados(borrador)
+        if i.codigo_partida not in borrador.composiciones
+    }
 
 
 def cantidades_escritas(borrador: Borrador) -> list[CantidadEscrita]:
@@ -1835,6 +1859,13 @@ def abrir_version(
         cantidades=escritas,
         reglas_extra=extra,
     )
+    # las notas de medicion de sus renglones propios (las de una clave que ya no esta, no)
+    borrador = replace(
+        borrador,
+        notas=notas_propias(
+            replace(borrador, notas=notas_de_version(sesion, modelo.proyecto_id, codigo))
+        ),
+    )
     return VersionAbierta(
         proyecto=proyecto,
         codigo=codigo,
@@ -1856,11 +1887,7 @@ def completar_composiciones(
     catalogo (con `lista`, o la vigente a la fecha del borrador) y pasa a ser parte de la copia
     de la version. Una partida sin composicion en el catalogo queda pendiente (UC-01 3a).
     """
-    nuevas = {
-        i.codigo_partida
-        for i in items_elaborados(borrador)
-        if i.codigo_partida not in borrador.composiciones
-    }
+    nuevas = partidas_sin_composicion(borrador)
     if not nuevas:
         return borrador
     existentes = {p.codigo for p in catalogo.partidas()}
@@ -1946,8 +1973,11 @@ def guardar_version(
         if con_espacio:
             crear_esquema_espacio(sesion.connection())
 
-        def copiar_espacio(sesion_: Session, version: models.Presupuesto) -> None:
-            guardar_espacio(sesion_, version.id, borrador.espacio)
+        def copiar_anexos(sesion_: Session, version: models.Presupuesto) -> None:
+            """El espacio y las notas de medicion, con la clave de la version nueva."""
+            if con_espacio:
+                guardar_espacio(sesion_, version.id, borrador.espacio)
+            guardar_notas(sesion_, version.proyecto_id, version.codigo, notas_propias(borrador))
 
         nueva = guardar_edicion(
             sesion,
@@ -1960,7 +1990,7 @@ def guardar_version(
             responsable=responsable,
             plan=resultado.plan,
             ahora=ahora,
-            gancho=copiar_espacio if con_espacio else None,
+            gancho=copiar_anexos,
         )
         sesion.commit()
     except BaseException:
@@ -2107,6 +2137,7 @@ def crear_primera_version(
         sesion.flush()
         if borrador.espacio != Espacio():
             guardar_espacio(sesion, nueva.id, borrador.espacio)
+        guardar_notas(sesion, modelo_proyecto.id, nuevo_codigo, notas_propias(borrador))
         sesion.commit()
     except HojaInvalida:
         sesion.rollback()
@@ -2418,17 +2449,16 @@ def texto_propio(propio: bool | None) -> str:
     return "" if propio is None else ("propio" if propio else "heredado")
 
 
-def _erosion_de(
-    auditado: PrecioAuditado | None, tasa_evaluacion: Decimal | None
-) -> Erosion | None:
+def _erosion_de(auditado: PrecioAuditado | None, tasa_evaluacion: Decimal | None) -> Erosion | None:
     """La erosion del precio original con su T0 (declarada o la del BCV a su fecha) y T1 (S1 §5.3);
     `None` sin evaluacion o sin alguna de las dos tasas. Un original en USD da 0 (declarado)."""
     if auditado is None:
         return None
     t0 = auditado.tasa or auditado.tasa_a_su_fecha
     if auditado.moneda_original == "USD":
-        return erosion(auditado.precio_original, "USD", t0 or Decimal(1),
-                       tasa_evaluacion or Decimal(1))
+        return erosion(
+            auditado.precio_original, "USD", t0 or Decimal(1), tasa_evaluacion or Decimal(1)
+        )
     if t0 is None or tasa_evaluacion is None:
         return None
     return erosion(auditado.precio_original, "Bs", t0, tasa_evaluacion)

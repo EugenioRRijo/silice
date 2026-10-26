@@ -122,6 +122,10 @@ TABLA_5_7 = {
     "cargar_alturas_desde_texto": ("3e", "contrato"),
     "circuitos_supuestos": ("3e", "contrato"),
     "declarar_circuitos_desde_texto": ("3e", "contrato"),
+    # montar un presupuesto, Tarea 9: los renglones propios, sus notas y las partidas sin APU
+    "claves_propias": ("T9", "contrato"),
+    "notas_propias": ("T9", "contrato"),
+    "partidas_sin_composicion": ("T9", "contrato"),
 }
 
 

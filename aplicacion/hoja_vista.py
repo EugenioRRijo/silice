@@ -21,6 +21,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal, localcontext
 
+from adapters.espacio import Espacio
 from adapters.espacio.conexion import con_conexion
 from adapters.espacio.modelo import (
     Especialidad,
@@ -33,8 +34,10 @@ from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja
 from aplicacion.cifras import texto_de_cifra
 from aplicacion.hoja_borradores import BorradorVivo
+from aplicacion.hoja_partidas import PREFIJO_A_MANO, calculo_tecleable, texto_llano
 from core.budget.equilibrio import PuntoEquilibrio
 from core.contracts import Severidad
+from core.verification import TrazabilidadGeometrica
 from core.verification.informe import DECIMALES_PRESENTACION, InformeAuditoria
 from core.verification.texto import formatear_decimal
 
@@ -68,7 +71,9 @@ class BaseAbierta:
 
 @dataclass(frozen=True, slots=True)
 class ResumenHoja:
-    """`Resumen` del contrato (§4.2): lo que muestra la barra de estado del borrador."""
+    """`Resumen` del contrato (§4.2): lo que muestra la barra de estado del borrador. `moneda` es
+    la del borrador (la de la obra, también en blanco) y `espacio_vacio` dice que no tiene espacio:
+    una obra civil, que abre en Presupuesto (O-7)."""
 
     rev: int
     moneda: str
@@ -79,6 +84,7 @@ class ResumenHoja:
     hay_plan: bool
     version_mas_nueva: str | None
     guardado_como: str | None
+    espacio_vacio: bool
 
 
 def monto(valor: Decimal) -> Monto:
@@ -167,6 +173,7 @@ def resumen(vivo: BorradorVivo, version_mas_nueva: str | None = None) -> Resumen
         hay_plan=vivo.borrador.plan is not None,
         version_mas_nueva=version_mas_nueva,
         guardado_como=vivo.guardado_como,
+        espacio_vacio=vivo.borrador.espacio == Espacio(),
     )
 
 
@@ -340,7 +347,11 @@ SIN_RENGLONES = "El presupuesto no tiene renglones todavía."
 @dataclass(frozen=True, slots=True)
 class FilaDePresupuesto:
     """Un renglon: `cantidad` es la vigente (texto, la que se edita) y `cantidad_calculada` la del
-    sistema; `pu` y `total` son `None` en una partida pendiente (sin APU en el catalogo)."""
+    sistema; `pu` y `total` son `None` en una partida pendiente (sin APU en el catalogo).
+
+    `quitable`: el renglon es de la version y no del espacio (se quita con «Quitar»); `nota`, su
+    nota de medicion; `calculo`, el calculo con que se agrego a mano, con coma decimal (`None` si no
+    lo tiene o si su cantidad se escribio despues a mano)."""
 
     clave: str
     partida: str
@@ -352,6 +363,9 @@ class FilaDePresupuesto:
     pu: Monto | None
     total: Monto | None
     estado: EstadoDeFila
+    quitable: bool
+    nota: str | None
+    calculo: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -377,11 +391,15 @@ def vista_presupuesto(vivo: BorradorVivo) -> VistaPresupuesto:
     sin_escribir = hoja.items_sin_escribir(vivo.borrador)
     calculadas = dict(zip(hoja.claves_de_items(sin_escribir), sin_escribir, strict=True))
     escritas = vivo.borrador.cantidades
+    propias = set(hoja.claves_propias(vivo.borrador))
     filas = []
     for texto in hoja.filas_del_presupuesto(resultado):
         clave = texto["clave"]
         renglon = valorados.get(clave)
-        calculada = calculadas[clave].cantidad
+        item = calculadas[clave]
+        calculada = item.cantidad
+        escrita = clave in escritas and escritas[clave] != calculada
+        a_mano = item.origen_id.startswith(PREFIJO_A_MANO)
         filas.append(
             FilaDePresupuesto(
                 clave=clave,
@@ -391,12 +409,15 @@ def vista_presupuesto(vivo: BorradorVivo) -> VistaPresupuesto:
                 # la editable, como la teclea la persona (coma decimal); la calculada, de lectura
                 cantidad=hoja.texto_editable(Decimal(texto["cantidad"])),
                 cantidad_calculada=hoja.texto_numero(calculada),
-                escrita=clave in escritas and escritas[clave] != calculada,
+                escrita=escrita,
                 pu=None if renglon is None else monto(renglon.resultado.precio_unitario),
                 total=None if renglon is None else monto(renglon.total),
                 estado=estado_de_fila(
                     resultado.estado_items.get(clave, hoja.EstadoFila(None, hoja.TEXTO_OK))
                 ),
+                quitable=clave in propias,
+                nota=vivo.borrador.notas.get(clave),
+                calculo=calculo_tecleable(item.regla) if a_mano and not escrita else None,
             )
         )
     return VistaPresupuesto(
@@ -750,9 +771,26 @@ def vista_parametros(
 
 def informe_de_auditoria(vivo: BorradorVivo) -> InformeAuditoria:
     """El informe de la pestana Auditoria (P:2124-2128): todas las reglas sobre el borrador vigente,
-    con R17 (viene de `elaborar`, no de la base). La API lo serializa con `informe_a_respuesta`."""
+    con R17 (viene de `elaborar`, no de la base). La API lo serializa con `informe_a_respuesta`.
+
+    La advertencia de R1 para una cantidad escrita a mano sin calculo se dice en lenguaje llano
+    (`hoja_partidas.texto_llano`, Tarea 9); el resto de los hallazgos, como los dice el nucleo."""
     resultado, _ = calculo(vivo)
-    return resultado.elaboracion.informe
+    informe = resultado.elaboracion.informe
+    llanos = {
+        h: replace(h, descripcion=texto_llano(h.descripcion))
+        for h in informe.hallazgos
+        if h.regla == TrazabilidadGeometrica.codigo
+    }
+    if all(h == llano for h, llano in llanos.items()):
+        return informe
+    return replace(
+        informe,
+        hallazgos=tuple(llanos.get(h, h) for h in informe.hallazgos),
+        partida_por_hallazgo={
+            llanos.get(h, h): partida for h, partida in informe.partida_por_hallazgo.items()
+        },
+    )
 
 
 # --- Trazabilidad (R14) -------------------------------------------------------------------------

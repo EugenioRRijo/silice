@@ -21,6 +21,10 @@ y `aplicacion.hoja_borradores`. Esta rebanada trae las rutas R1 a R4 del diseño
 - Lecturas de una versión GUARDADA (3b-3; clave de API o sesión con `EDITAR_HOJA`; sin borrador y
   solo leen): R12 `GET /precios?proyecto=&version=`, R13 `GET /precios/atipicos?...` y R14
   `GET /trazabilidad?...`.
+- Partidas a mano (Tarea 9 de montar un presupuesto): `POST /borradores/{id}/partidas` agrega una
+  partida del catálogo con su cantidad, su cálculo y su nota, y `POST /borradores/{id}/partidas/
+  quitar` quita un renglón de la versión. El borrador en blanco nace en la moneda de la obra y se
+  valora con `lista_para_el_proyecto` (la de la carpeta o su conversión con la tasa del BCV).
 
 Los borradores y todo lo que los toca son **solo de una cuenta** (RF-82: el responsable es la
 persona de la sesión, nunca un campo): con `X-Silice-Clave`, 403. Un borrador de otra ficha no
@@ -44,6 +48,7 @@ from api.admin_acceso import cuenta_con
 from api.dependencias import SesionDeEscrituraDep, SesionDep, url_de_la_peticion
 from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
 from api.esquemas_hoja import (
+    AgregarPartida,
     BorradorAbierto,
     BorradoresHojaRespuesta,
     BorradorHojaRespuesta,
@@ -68,7 +73,10 @@ from api.esquemas_hoja import (
     GuardarVersion,
     InstantaneaHojaRespuesta,
     InsumosHojaRespuesta,
+    PartidaAgregadaRespuesta,
+    PartidaQuitadaRespuesta,
     PreciosHojaRespuesta,
+    QuitarPartida,
     RestaurarVersion,
     RetirarCotizacion,
     TrazabilidadHojaRespuesta,
@@ -194,6 +202,11 @@ MENSAJE_PARTIDA = "Esa partida no tiene APU en este borrador: vuelva a cargar la
 MENSAJE_SIN_VERSION = "Abra una version guardada: los insumos se eligen de su lista de precios."
 MENSAJE_SIN_PLAN = "Esta versión no tiene plan de trabajo: cree primero el plan secuencial."
 MENSAJE_YA_TIENE_PLAN = "Esta versión ya tiene plan de trabajo: edítelo en la matriz del plan."
+FORMA_PARTIDA = (
+    "La partida no tiene la forma esperada: envíe rev (entero), codigo, cantidad, calculo y nota "
+    "como texto; la nota, de hasta 500 caracteres."
+)
+FORMA_QUITAR = "La petición no tiene la forma esperada: envíe rev (entero) y la clave de la fila."
 
 
 class _RutaHoja(RutaSinCache, RutaSinEco):
@@ -337,7 +350,8 @@ def abrir_borrador(
     403) debe responder antes de abrir la base del caso."""
     try:
         con_anexos_de_cadena(sesion)  # el sello de lo que se escriba cubre los anexos (§1.2)
-        nombre = _proyecto(sesion, datos.proyecto).nombre
+        encontrado = _proyecto(sesion, datos.proyecto)
+        nombre = encontrado.nombre
         caso = url_de_la_peticion(request)
         if not datos.reemplazar:  # E11: antes de escribir nada (la instantánea de abajo)
             pendiente = hoja_edicion.pendiente_de_la_version(
@@ -353,7 +367,10 @@ def abrir_borrador(
         if datos.version is None:
             if filas:
                 raise HTTPException(status_code=409, detail=MENSAJE_CON_VERSIONES)
-            borrador, abierta = hoja.Borrador(fecha=date.today()), None
+            # en blanco, en la moneda de la obra (Tarea 9, O-7); la lista con que se valora la
+            # elige `lista_para_el_proyecto` al agregar partidas y al guardar
+            moneda = moneda_del_proyecto(sesion, encontrado)
+            borrador, abierta = hoja.Borrador(fecha=_hoy(), moneda=moneda), None
         else:
             try:
                 hoja.lista_de_version(sesion, nombre, datos.version)  # el 404 de la clásica
@@ -448,6 +465,10 @@ def _editar(
                 raise HTTPException(status_code=409, detail=MENSAJE_SIN_VERSION) from None
             except hoja_edicion.PartidaSinApu:
                 raise HTTPException(status_code=404, detail=MENSAJE_PARTIDA) from None
+            except hoja_edicion.PartidaFueraDelCatalogo as error:
+                raise HTTPException(status_code=404, detail=str(error)) from None
+            except hoja_edicion.SinListaDeLaObra as error:
+                raise HTTPException(status_code=409, detail=str(error)) from None
             except HojaInvalida as error:
                 raise HTTPException(status_code=422, detail=str(error)) from None
             mas_nueva = _mas_nueva(editado, hoja.codigo_vigente(sesion, editado.proyecto))
@@ -483,6 +504,7 @@ def guardar_borrador(
             fuente=datos.fuente,
             responsable=activa.usuario,
             confirmar_version_mas_nueva=datos.confirmar_version_mas_nueva,
+            codigo=datos.codigo,
         )
     except BorradorInexistente:
         raise HTTPException(status_code=404, detail=MENSAJE_FALTA) from None
@@ -496,6 +518,8 @@ def guardar_borrador(
         )
     except hoja_guardado.VersionSoloLectura as error:
         raise HTTPException(status_code=409, detail=str(error)) from None
+    except hoja_guardado.SinListaDeLaObra as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     except HojaInvalida as error:  # antes que ValueError: es una subclase
         raise HTTPException(status_code=422, detail=str(error)) from None
     except (ValueError, CatalogoIncompleto) as error:
@@ -503,6 +527,66 @@ def guardar_borrador(
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
     return guardado_a_respuesta(guardado)
+
+
+@router.post("/borradores/{id}/partidas", response_model=PartidaAgregadaRespuesta)
+@sin_eco(FORMA_PARTIDA)
+def agregar_partida(
+    id: IdDeBorrador,
+    datos: AgregarPartida,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> PartidaAgregadaRespuesta:
+    """Tarea 9: agrega al borrador una partida del catálogo (`codigo`) con su cantidad, su cálculo
+    («cómo se midió», con coma decimal) y su nota; responde la clave del renglón nuevo.
+
+    Solo cambia el borrador en memoria. La partida que no está en el catálogo, 404; la cifra o el
+    cálculo, 422 con el texto de su regla; `rev` viejo, 409; sin lista para valorar la obra (en
+    blanco: sin lista para armar o, en la otra moneda, sin tasa del BCV de los últimos 7 días),
+    409 con ese texto. Nada de esto deja el borrador a medias."""
+    vivo = _vivo(request, activa, id)
+    clave: list[str] = []
+
+    def editar() -> BorradorVivo:
+        editado, nueva = hoja_edicion.agregar(
+            sesion,
+            activa.huella_ficha,
+            id,
+            datos.rev,
+            codigo=datos.codigo.strip(),
+            cantidad=datos.cantidad,
+            calculo=datos.calculo,
+            nota=datos.nota,
+        )
+        clave.append(nueva)
+        return editado
+
+    resumen, _ = _editar(sesion, vivo, editar, lambda _editado: None)
+    return PartidaAgregadaRespuesta(
+        rev=resumen.rev, resumen=resumen_a_respuesta(resumen), clave=clave[0]
+    )
+
+
+@router.post("/borradores/{id}/partidas/quitar", response_model=PartidaQuitadaRespuesta)
+@sin_eco(FORMA_QUITAR)
+def quitar_partida(
+    id: IdDeBorrador,
+    datos: QuitarPartida,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> PartidaQuitadaRespuesta:
+    """Tarea 9: quita del borrador el renglón `clave` (con su cantidad escrita y su nota). Solo los
+    renglones de la versión: uno del espacio, 422 («cámbiela en Espacio y metrajes»)."""
+    vivo = _vivo(request, activa, id)
+    resumen, _ = _editar(
+        sesion,
+        vivo,
+        lambda: hoja_edicion.quitar(sesion, activa.huella_ficha, id, datos.rev, datos.clave),
+        lambda _editado: None,
+    )
+    return PartidaQuitadaRespuesta(rev=resumen.rev, resumen=resumen_a_respuesta(resumen))
 
 
 @router.put("/borradores/{id}/espacio", response_model=EdicionEspacioRespuesta)
