@@ -1084,3 +1084,124 @@ y `tests/unit/test_front_rutas_api.py` tras cada integración.
 6. Aviso de compra: 2 días hábiles antes de la fecha límite de pedido; plazo de entrega 3 días hábiles por omisión.
 7. «Quien la armó» es quien guardó la versión (el usuario de su eslabón), no quien la envió.
 8. El administrador no aprueba versiones (`aprobar_version` solo para arma y revisa, como dice §10).
+
+## Cambios por el diseño de módulos (2026-10-25)
+
+Fuente: `docs/especificaciones/2026-10-25-modulos-design.md` (§12 manda) y su plan `docs/planes/PLAN_MODULOS.md` (MOD-0 a MOD-5).
+**Esta sección manda sobre lo anterior de este plan** donde se contradigan; lo que no se nombra aquí no cambia.
+
+### Orden
+
+El armazón de módulos va primero. Se adelantan **T1 y T10** a la ola M1 (con MOD-0) y **T2** a la ola M2 (con MOD-1), porque MOD-3b
+(crear carpeta con moneda, «Nueva obra») y MOD-4a (moneda de la carpeta y lista para armar en la mesa) las necesitan. El resto de este
+plan empieza cuando el orquestador integra MOD-4b (las tareas de backend sin front —T3, T8, T13, T17— pueden correr junto a MOD-5).
+La tabla de olas queda así: A = T1 ‖ T10 (en M1); B = T2 (en M2); después de MOD-4b: B' = T3 ‖ T8 ‖ T13 ‖ T17; C = T4 ‖ T9 ‖ T14;
+D = T11 ‖ T12 ‖ T15 ‖ T18; E = T16 ‖ T19 ‖ T21; F a J sin cambios. Dependencias nuevas: T4←T2, T3, MOD-2, MOD-3b (ya no T6);
+T15←T14, MOD-2; T18←MOD-0, T17 (ya no T5); T19←T18, T11, MOD-4b; T20←T19; T28←todas y MOD-5. T5, T6 y T7 desaparecen de las olas.
+
+### Migraciones (reemplaza la «Numeración de migraciones» de las Restricciones globales)
+
+| Antes | Ahora | Tarea |
+|---|---|---|
+| `ins_0004_mp_eleccion` | `ins_0004_mod_eleccion` (misma tabla `mp_eleccion`, con `caso` nulo y columnas `modulo`, `sidebar_fijado`) | MOD-0 |
+| — | `caso_0011_mod_ficha_obra` (tabla `ficha_obra`) | MOD-3a |
+| `caso_0011_mp_medicion` | `caso_0012_mp_medicion` | T9 |
+| `caso_0012_mp_mercado` | `caso_0013_mp_mercado` | T13 |
+| `caso_0013_mp_aprobacion` | `caso_0014_mp_aprobacion` | T17 |
+| `caso_0014_mp_causas` | `caso_0015_mp_causas` | T22 |
+| `caso_0015_mp_procura` | `caso_0016_mp_procura` | T23 |
+| `caso_0016_mp_corte` | `caso_0017_mp_corte` | T25 |
+
+`caso_0010_mp_carpeta` (T1) e `ins_0005_mp_indice_aprobacion` (T18) no cambian. Cada `down_revision` es la fila anterior de su
+columna en el orden de integración; si una termina antes, el orquestador la ajusta al integrar (como ya decía este plan).
+
+### Restricciones globales
+
+- Se agrega a los compartidos: `aplicacion/mesa.py::FUENTES` (una línea por fuente de pendientes que agregue una tarea) y
+  `frontend-desktop/src/shell/rutas.ts` con el campo `ubicacion: {modulo, area}` de cada página nueva.
+- Texto de la interfaz en «Presupuestos y obras»: **«obra»**, no «proyecto» (la API conserva `proyecto`). Afecta los textos nuevos de
+  T12 («Llevar a la Hoja de la obra»), T19 y T20.
+- La confirmación al salir es única: `confirmarSalida()` y `useFormularioSucio()` de `src/shell/salida.ts` y `src/shell/sucio.ts`
+  (MOD-2). Ninguna tarea crea otra.
+- Foco de revisión 2 de este plan: «(Tareas 5, 6 y 19)» pasa a «(MOD-0, MOD-2, MOD-3b y T19)».
+
+### Por tarea
+
+- **T2 (Rutas de la carpeta):** sin cambios de contrato; se adelanta a la ola M2.
+- **T4 (Componer y el panel dicen la moneda):** `useFormularioSucio` sale de MOD-2 (no de T6). `ListaDeLaCarpeta` ya no va en el hueco
+  `children` de `PanelCarpetaProyecto` (se borra en MOD-3b): el orquestador la monta en el hueco `pie` de `SelectorObra`
+  (`src/shell/SelectorObra.tsx`), bajo «Carpeta: … · Cambiar carpeta…». Las pruebas de T4 no cambian.
+- **T5 (Recordar carpeta y proyecto por cuenta):** **pasa entera a MOD-0** del plan de módulos, con estos cambios: migración
+  `ins_0004_mod_eleccion`; `caso` nulo (`NULL` = la carpeta de la empresa); la tabla guarda además `modulo` y `sidebar_fijado`;
+  `POST /v1/sesion` también restaura y devuelve `eleccion`; nueva `PUT /v1/sesion/preferencias`. Las pruebas de T5 están en MOD-0.
+  En este plan ya no hay nada que hacer de T5.
+- **T6 (Carpetas de trabajo en el panel):** **se retira de este plan.** `sucio.ts` (`useFormularioSucio`, `formulariosSucios`) y el
+  diálogo de confirmación (`ConfirmarCambio` → `DialogoSalida` con `confirmarSalida`) van a **MOD-2**; el diálogo de carpetas (BCP-5:
+  elegir, crear con «Moneda de trabajo» obligatoria y la secuencia `POST /v1/casos` → `POST /v1/casos/actual` → `PUT
+  /v1/carpeta/moneda`, subir, demostración), la confirmación con borradores y las pruebas F5-F9 van a **MOD-3b**, que lo abre desde
+  «Cambiar carpeta…» al pie del selector de obra y lo muestra también en Administración › Carpetas de trabajo. Los permisos no cambian
+  (`cambiar_caso` sigue en arma y administrador).
+- **T7 (Nuevo proyecto y restaurar la elección):** **se retira de este plan.** El diálogo pasa a **«Nueva obra»** en MOD-3b (nombre,
+  cliente, ubicación, tipo de obra; moneda propuesta la de la carpeta y el texto «Esta obra se valorará convirtiendo los precios de la
+  carpeta con la tasa del BCV del día.»); cliente y ubicación se guardan en `ficha_obra` (MOD-3a). Restaurar carpeta y obra desde
+  `sesion.eleccion`, `PUT /v1/sesion/proyecto` al elegir, el aviso de `eleccion.aviso`, «(sin versión guardada)» y el estado vacío de
+  la Hoja (F10, F11) van a MOD-3b.
+- **T9 (Rutas de la Hoja):** migración `caso_0012_mp_medicion`. Agrega la fuente de calidad «cantidades sin cálculo» a la mesa:
+  `def pendientes_sin_calculo(sesion: Session, hoy: date) -> list[Pendiente]` en `aplicacion/hoja_partidas.py` (por obra, la cuenta de
+  hallazgos R1 de cantidad manual sin regla de su versión vigente → «{n} cantidad(es) escritas a mano sin cálculo en {versión}»,
+  acción («Abrir la Hoja», "hoja")); el orquestador la suma a `FUENTES["calidad"]`. Prueba: con la versión de la prueba de T9 sin
+  cálculo en OBRA-04, `pendientes()` trae en «Calidad» «1 cantidad escrita a mano sin cálculo en VIV-001».
+- **T13 / T14 (Estudio de mercado):** migración `caso_0013_mp_mercado`. T14 agrega la fuente de precios «partida por debajo del costo
+  frente al mercado»: `def pendientes_de_mercado(sesion: Session, hoy: date) -> list[Pendiente]` en `aplicacion/mercado.py` (por obra,
+  las partidas de su versión vigente cuyo `q1` de cobro de los últimos 90 días es menor que su `piso_de_cobro` → «{código}: el
+  mercado cobra menos que su costo», acción («Estudio de mercado», "mercado")); el orquestador la suma a `FUENTES["precios"]`. Prueba
+  con los datos de la Tarea 13: piso 125 y mercado [100, 120, 130, 150, 200] → aparece; piso 110 → no.
+- **T15 (Página «Estudio de mercado»):** cambia lo compartido de `rutas.ts`: la página va en el módulo **Presupuestos y obras, área
+  Mercado, la primera del área**: `{id:"mercado", titulo:"Estudio de mercado", enUnaLinea:"Compare precios del mercado y elija los
+  suyos", seccion:"Trabajo", accion:"editar_hoja", ubicacion:{modulo:"obras", area:"mercado"}}`, antes de `precios_empresa` en
+  `PAGINAS`. El orquestador actualiza los oráculos de `navegacion.test.ts` (ana, obras, mercado = mercado, actualizacion, historico,
+  simulador; en modo entrega, mercado, actualizacion, historico) y el conjunto de pantallas de ana. `useFormularioSucio` es el de MOD-2.
+- **T17 (Envíos y dictámenes):** migración `caso_0014_mp_aprobacion`; sin otro cambio.
+- **T18 (Rutas de aprobación):** `POST /abrir` llama `recordar_caso` de `aplicacion/eleccion.py` (MOD-0). Agrega además:
+  `GET /v1/aprobaciones/resumen` (`aprobar_version`) → la cifra «Por aprobar» con la forma de las cifras de la mesa: `{clave:
+  "por_aprobar", titulo: "Por aprobar", actual: "<versiones en_aprobacion del índice, de todas las carpetas>", meta: "0", delta: "<días
+  hábiles de la más antigua, con dias_habiles_entre de aplicacion/mesa.py>", delta_pct: null, sentido: "costo", detalle: "La más
+  antigua: {obra} {versión}, {d} días hábiles" | null, marcada: bool}` (`marcada` desde 3 días hábiles); sin pendientes, `actual "0"`,
+  `delta "0"`, `detalle null`. Y la fuente «aprobar»: `def pendientes_de_aprobacion(sesion: Session, hoy: date) -> list[Pendiente]` en
+  `aplicacion/aprobaciones.py` (versiones `en_aprobacion` → «{versión} espera dictamen», acción («Ver el envío», "aprobar");
+  `devuelta` → «{versión} devuelta: {primeras 80 letras de las notas}», acción («Hacer una versión nueva», "hoja")); el orquestador la
+  suma a `FUENTES["aprobar"]`. `obras_de_la_mesa` gana las etapas `en_aprobacion` («En aprobación», («Ver el envío», "aprobar")) y
+  `aprobada` sin línea base («Aprobada», («Declarar la línea base», "control")) leyendo `estados()`: es un cambio en `aplicacion/mesa.py`
+  que hace T18 con su prueba. Pruebas nuevas: envío del martes 2026-10-20 con hoy viernes 2026-10-23 → `delta "3"` y `marcada: true`;
+  con hoy 2026-10-22 → `"2"` y `false`; admin → 403; ana con VIV-001 devuelta ve el pendiente con las notas.
+- **T19 (Enviar desde la Hoja y el dictamen de vuelta):** lo del Inicio se muda a la **mesa** (`src/paginas/obras/**`, no
+  `src/paginas/inicio/**`, que ya no tiene página): la cifra «Por aprobar» se agrega a la franja de «Cómo van las obras» con
+  `GET /v1/aprobaciones/resumen` (un 403 la oculta; `marcada` pinta el aviso con ícono y texto, no solo color); «Mis versiones en
+  aprobación» pasa a ser el grupo «Aprobar» de Pendientes (sale de `GET /v1/obras/pendientes`) y «Por aprobar» de rita también (rita no
+  tiene `editar_hoja`: su lista sale de `GET /v1/aprobaciones/pendientes` y se pinta como grupo «Aprobar» en la misma columna). «Abrir»
+  de un envío de otra carpeta llama `confirmarSalida("carpeta", borradores)` (MOD-2) antes de `POST /abrir` y navega a
+  `/aprobar?envio=`. Lo de la Hoja (etiquetas, «Enviar a aprobación…», «Hacer una versión nueva a partir de esta») no cambia. Pruebas:
+  las de T19 cambiando «en el Inicio» por «en la mesa»; rita ve la cifra «Por aprobar» y su grupo, sin el resto de pendientes.
+- **T20 (Página «Aprobar»):** cambia lo compartido de `rutas.ts`: `{id:"aprobar", titulo:"Aprobar una versión", enUnaLinea:"Revise y
+  dé su dictamen sobre una versión", seccion:"Revisión", accion:"aprobar_version", ubicacion:{modulo:"obras", area:"aprobaciones"}}`
+  en el área **Aprobaciones de Presupuestos y obras** (no en Auditar). Con `aprobar_version` (T18), rita gana en Presupuestos y obras
+  el enlace «Aprobaciones» y ana el área «Aprobaciones»; el orquestador actualiza esos oráculos de `navegacion.test.ts` y los conjuntos
+  de pantallas de ana y rita. T20 completa la fuente «aprobar» con «{versión} aprobada y sin entregar», acción («Entregar», "entregar")
+  cuando la última aprobada no tiene paquete generado.
+- **T22 (Causas y atraso por partida):** migración `caso_0015_mp_causas`. En `aplicacion/mesa.py`, el `que_pasa` de una obra atrasada
+  pasa a ser el `texto` del primer `Atraso` (p. ej. «OBRA-02 atrasada 5 días: Compra tardía») y solo sin atrasos por partida queda el
+  de MOD-4a. Prueba: con la obra de dos partidas de T22, `obras_de_la_mesa` trae «A atrasada 5 días: Compra tardía».
+- **T23 (Procura):** migración `caso_0016_mp_procura`. Fuente «compras»: `def pendientes_de_compras(sesion: Session, hoy: date) ->
+  list[Pendiente]` en `aplicacion/procura.py` (las `alertas_de_compra` con `corte = hoy` de cada obra con línea base, su texto tal cual,
+  acción («Ver la procura», "control")); el orquestador la suma a `FUENTES["compras"]`. Prueba: con el corte 2026-11-02 de T23, «Pida
+  Cemento gris antes del 03/11/2026.» en el grupo «Compras».
+- **T25:** migración `caso_0017_mp_corte`; sin otro cambio.
+- **T28 (Recorrido de la vivienda):** los pasos entran por el sidebar y el área de su módulo; `ana_carpeta_bs` usa «Cambiar carpeta…»
+  del selector de obra y `ana_nuevo_proyecto_bs` usa «Nueva obra»; `ana_ve_devuelta` comprueba la devolución en la **mesa**. Nombres
+  de los pasos sin cambios.
+- **T29 (Video, manual y cierre):** el capítulo `montar-un-presupuesto.md` remite al capítulo de módulos de MOD-5 para la navegación.
+
+### Decisiones para Eugenio (reemplaza la decisión 2)
+
+2. «Estudio de mercado» va en **Presupuestos y obras › Mercado**, la primera del área; «Aprobar una versión», en **Presupuestos y obras ›
+   Aprobaciones** (lo fija el diseño de módulos, §3 y §8; ya no en Crear ni en Auditar).
