@@ -17,6 +17,7 @@ const ANA = [
   "entregar_paquete",
   "operar_arenera",
   "leer_proyecto",
+  "aprobar_version",
   "cambiar_caso",
 ];
 const ADMIN = [

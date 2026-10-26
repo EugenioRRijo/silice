@@ -133,7 +133,7 @@ describe("BarraSuperior", () => {
       <MemoryRouter initialEntries={["/libros"]}>
         <BarraSuperior
           modulo={auditoria}
-          entradas={navegacion("auditoria", ["leer_proyecto", "revisar_paquete"], false)}
+          entradas={navegacion("auditoria", ["leer_proyecto", "revisar_paquete", "aprobar_version"], false)}
           derecha={null}
           sidebar={CERRADO}
         />

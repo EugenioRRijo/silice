@@ -22,11 +22,12 @@ const ANA: SesionRespuesta = {
     "entregar_paquete",
     "operar_arenera",
     "leer_proyecto",
+    "aprobar_version",
     "cambiar_caso",
   ],
   modo_entrega: false,
 };
-const RITA: SesionRespuesta = { ...ANA, login: "rita", nombre: "Rita Gómez", roles: ["revisa"], acciones: ["leer_proyecto", "revisar_paquete"] };
+const RITA: SesionRespuesta = { ...ANA, login: "rita", nombre: "Rita Gómez", roles: ["revisa"], acciones: ["leer_proyecto", "revisar_paquete", "aprobar_version"] };
 const ADMIN: SesionRespuesta = {
   ...ANA,
   login: "admin",

@@ -11,9 +11,10 @@ const ANA = [
   "entregar_paquete",
   "operar_arenera",
   "leer_proyecto",
+  "aprobar_version",
   "cambiar_caso",
 ];
-const RITA = ["leer_proyecto", "revisar_paquete"];
+const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
 const ADMIN = [
   "operar_arenera",
   "cambiar_caso",

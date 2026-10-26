@@ -279,7 +279,7 @@ describe("Inicio de auditoría", () => {
   // ofrece auditar. Acciones a mano de seguridad/permisos.py.
   describe("según las acciones de la cuenta", () => {
     test("quien revisa conserva la zona del Excel y el historial", async () => {
-      montar({ sesion: { ...SESION, login: "rita", roles: ["revisa"], acciones: ["leer_proyecto", "revisar_paquete"] } });
+      montar({ sesion: { ...SESION, login: "rita", roles: ["revisa"], acciones: ["leer_proyecto", "revisar_paquete", "aprobar_version"] } });
       expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
       expect(await screen.findByRole("region", { name: "Últimas auditorías guardadas" })).toBeInTheDocument();
       expect(rutasPedidas()).toEqual(["/v1/auditorias-libro?limite=5"]);

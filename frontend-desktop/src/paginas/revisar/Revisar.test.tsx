@@ -29,7 +29,7 @@ const SESION: SesionRespuesta = {
   roles: ["revisa"],
   csrf: "tok",
   debe_cambiar_clave: false,
-  acciones: ["leer_proyecto", "revisar_paquete"],
+  acciones: ["leer_proyecto", "revisar_paquete", "aprobar_version"],
   modo_entrega: false,
 };
 

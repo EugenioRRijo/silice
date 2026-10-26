@@ -17,7 +17,7 @@ const sesion = {
   roles: ["arma"],
   csrf: "tok",
   debe_cambiar_clave: false,
-  acciones: ["leer_proyecto", "revisar_paquete", "cambiar_caso", "operar_arenera"],
+  acciones: ["leer_proyecto", "revisar_paquete", "aprobar_version", "cambiar_caso", "operar_arenera"],
   modo_entrega: false,
 };
 

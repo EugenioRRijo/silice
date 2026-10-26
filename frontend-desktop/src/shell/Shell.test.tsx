@@ -83,9 +83,10 @@ const ACCIONES_POR_ROL: Record<"ana" | "rita" | "admin", string[]> = {
     "entregar_paquete",
     "operar_arenera",
     "leer_proyecto",
+    "aprobar_version",
     "cambiar_caso",
   ],
-  rita: ["leer_proyecto", "revisar_paquete"],
+  rita: ["leer_proyecto", "revisar_paquete", "aprobar_version"],
   admin: [
     "operar_arenera",
     "cambiar_caso",
