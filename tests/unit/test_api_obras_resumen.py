@@ -19,7 +19,7 @@ V = 5 060,00; SV −300,00 y −300 / 1 500 × 100 = −20,0 %; SPI 0,8000; avan
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -33,6 +33,7 @@ from core.catalog import abrir_sesion, crear_motor
 from operacion.base_datos import preparar_base
 from tests.fixtures import control_ob_s2 as ob
 from tests.fixtures.app_de_prueba import app_con
+from tests.fixtures.hoja_versiones_api import registrar_tasa
 from tests.fixtures.sesion_web import (
     MENSAJE_PERMISO,
     cliente,
@@ -48,7 +49,7 @@ MENSAJE_BASE = "No se pudo leer la carpeta de trabajo. Intente de nuevo."
 HOY = datetime(2026, 10, 25, 9, 0)
 
 
-def _caso(ruta: Path) -> Path:
+def _caso(ruta: Path, moneda: str = "USD") -> Path:
     preparar_base(ruta)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
@@ -57,7 +58,7 @@ def _caso(ruta: Path) -> Path:
             ob.declarar_linea_base(sesion)
             ob.registrar_v01_y_v02(sesion)
             declarar_moneda_de_la_carpeta(
-                sesion, "USD", responsable="Residente Ficticio", ahora=HOY
+                sesion, moneda, responsable="Residente Ficticio", ahora=HOY
             )
             sesion.commit()
     finally:
@@ -68,7 +69,11 @@ def _caso(ruta: Path) -> Path:
 @pytest.fixture(scope="module")
 def _plantillas(tmp_path_factory) -> dict[str, Path]:
     carpeta = tmp_path_factory.mktemp("api_obras_resumen")
-    return {"instalacion": plantilla_con_cuentas(carpeta), "caso": _caso(carpeta / "caso.db")}
+    return {
+        "instalacion": plantilla_con_cuentas(carpeta),
+        "caso": _caso(carpeta / "caso.db"),
+        "caso_bs": _caso(carpeta / "caso_bs.db", "Bs"),
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -85,6 +90,18 @@ def _entorno(
     yield
     caso_web.olvidar_todo()
     dependencias.cerrar_motores()  # en Windows un motor abierto retiene el archivo del caso
+
+
+def _usar_carpeta_en_bs(
+    plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fecha_tasa: date
+) -> None:
+    """La carpeta declara Bs y OB-S2 sigue en USD; una tasa del BCV de 40,00 Bs/USD del
+    `fecha_tasa`."""
+    copia = tmp_path / "caso_bs.db"
+    copia.write_bytes(plantillas["caso_bs"].read_bytes())
+    registrar_tasa(copia, fecha_tasa, "40.00")
+    dependencias.cerrar_motores()
+    monkeypatch.setenv(dependencias.VARIABLE_BASE, f"sqlite:///{copia.as_posix()}")
 
 
 def _entrar(login: str) -> TestClient:
@@ -162,6 +179,39 @@ def test_resumen_de_ob_s2_en_una_carpeta_en_usd() -> None:
     assert _numeros(cuerpo) == []  # ningún monto ni índice viaja como número JSON
 
 
+def test_ob_s2_en_usd_se_convierte_con_la_tasa_del_bcv_y_declara_su_fecha(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # corte de OB-S2: 2026-11-13; tasa del 2026-11-09 (4 días antes, dentro de los 7):
+    # EV 1 200 × 40 = 48 000,00 Bs y PV 1 500 × 40 = 60 000,00 Bs
+    _usar_carpeta_en_bs(_plantillas, tmp_path, monkeypatch, date(2026, 11, 9))
+
+    cuerpo = _entrar("ana").get(RESUMEN).json()
+
+    assert cuerpo["moneda"] == "Bs"
+    assert cuerpo["conversiones"] == [
+        {"obra": "OB-S2", "moneda": "USD", "tasa": "40.00", "fecha": "2026-11-13",
+         "fecha_tasa": "2026-11-09"}
+    ]  # fmt: skip
+    assert cuerpo["fuera_de_suma"] == []
+    assert (cuerpo["cifras"][0]["actual"], cuerpo["cifras"][0]["meta"]) == ("48000.00", "60000.00")
+    assert cuerpo["cifras"][1]["actual"] == "0.8000"
+
+
+def test_sin_tasa_de_los_ultimos_7_dias_ob_s2_queda_fuera_de_la_suma(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # tasa del 2026-11-05: 8 días antes del corte del 2026-11-13, más de 7 → no se convierte
+    _usar_carpeta_en_bs(_plantillas, tmp_path, monkeypatch, date(2026, 11, 5))
+
+    cuerpo = _entrar("ana").get(RESUMEN).json()
+
+    assert cuerpo["moneda"] == "Bs"
+    assert cuerpo["conversiones"] == []
+    assert cuerpo["fuera_de_suma"] == ["OB-S2"]
+    assert cuerpo["cifras"] == []
+
+
 def test_resumen_de_rita_tambien() -> None:
     respuesta = _entrar("rita").get(RESUMEN)
     assert respuesta.status_code == 200, respuesta.text
@@ -220,6 +270,10 @@ def test_pendientes_de_ana() -> None:
             "accion": {"texto": "Ver el catálogo", "pagina": "catalogo"},
         }
     ]
+    # Calidad, nada: los hallazgos de OB-001 son tres R1 de ADVERTENCIA (cantidades a mano), que no
+    # son de error ni críticos, y al 2026-10-25 no hay lista para armar con que compararla (la
+    # única lista, «OB-S2 USD», rige desde el 2026-11-02).
+    assert grupos[2] == {"clave": "calidad", "titulo": "Calidad", "items": []}
 
 
 def test_pendientes_de_rita_es_403() -> None:

@@ -16,6 +16,7 @@ Oráculos escritos a mano, con la cuenta al lado; ninguno sale del código bajo 
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from datetime import date, datetime
 from decimal import Decimal
@@ -34,6 +35,7 @@ from aplicacion.mesa import (
     ObraEnMesa,
     Pendiente,
     Siguiente,
+    TasaDelBcv,
     cifras_de_la_mesa,
     dias_habiles_entre,
     hallazgos_graves,
@@ -46,6 +48,8 @@ from aplicacion.mesa import (
 from aplicacion.obras import FichaObra, guardar_ficha
 from core import models
 from core.budget import crear_proyecto, elaborar, guardar_presupuesto
+from core.budget.control import guardar_parametros
+from core.budget.valor_ganado import ParametrosControl
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.contracts.apu import (
     ComposicionAPU,
@@ -110,12 +114,16 @@ B = _obra("B", "Bs", "30000.00", "25000.00")
 C = _obra("C", "USD", "100.00", "100.00")
 
 
-def _sin_tasa(_fecha: date) -> Decimal | None:
+#: La tasa del BCV más reciente al 2026-10-23 es la del jueves 2026-10-22 (40,00 Bs/USD).
+FECHA_TASA = date(2026, 10, 22)
+
+
+def _sin_tasa(_fecha: date) -> TasaDelBcv | None:
     return None
 
 
-def _tasa_40(fecha: date) -> Decimal | None:
-    return D("40.00") if fecha == CORTE_A else None
+def _tasa_40(fecha: date) -> TasaDelBcv | None:
+    return TasaDelBcv(D("40.00"), FECHA_TASA) if fecha == CORTE_A else None
 
 
 # --- cifras de la mesa (puras) --------------------------------------------------------------------
@@ -165,7 +173,7 @@ def test_una_obra_en_otra_moneda_se_convierte_con_la_tasa_de_su_corte_y_se_decla
     assert cifras.valor_ganado.delta_pct == D("-6.3")
     assert str(cifras.avance.actual) == "0.9367"
     assert cifras.avance.delta == D("-0.0633")
-    assert cifras.conversiones == (Conversion("C", "USD", D("40.00"), CORTE_A),)
+    assert cifras.conversiones == (Conversion("C", "USD", D("40.00"), CORTE_A, FECHA_TASA),)
     assert cifras.fuera_de_suma == ()
 
 
@@ -194,7 +202,7 @@ def test_carpeta_en_usd_convierte_una_obra_en_bs_dividiendo_por_la_tasa() -> Non
     assert (cifras.valor_ganado.actual, cifras.valor_ganado.meta) == (D("200.00"), D("300.00"))
     assert cifras.valor_ganado.delta_pct == D("-33.3")
     assert cifras.avance.actual == D("0.6667")
-    assert cifras.conversiones == (Conversion("D", "Bs", D("40.00"), CORTE_A),)
+    assert cifras.conversiones == (Conversion("D", "Bs", D("40.00"), CORTE_A, FECHA_TASA),)
 
 
 def test_ev_y_pv_en_cero_dan_valor_ganado_en_cero_y_sin_avance() -> None:
@@ -407,7 +415,7 @@ def test_con_linea_base_futura_y_sin_valuaciones_tambien_dice_sin_avance(sesion)
     assert obra.siguiente == REGISTRAR
 
 
-def test_un_control_que_no_se_puede_calcular_dice_por_que(sesion) -> None:
+def test_un_control_que_no_se_puede_calcular_lo_dice_con_un_texto_fijo(sesion) -> None:
     # línea base desde el 2026-11-20 y valuaciones hasta el 2026-11-13: al corte no hay línea base
     ob.sembrar(sesion)
     ob.declarar_linea_base(sesion, desde=date(2026, 11, 20))
@@ -418,7 +426,63 @@ def test_un_control_que_no_se_puede_calcular_dice_por_que(sesion) -> None:
 
     assert obra.etapa == "en_ejecucion"
     assert (obra.ev, obra.pv, obra.spi) == (None, None, None)
-    assert obra.que_pasa == "no hay linea base de control declarada al 2026-11-13"
+    # el mensaje del núcleo («no hay linea base … al 2026-11-13») no llega a la interfaz
+    assert obra.que_pasa == "No se pudo calcular el avance; ábralo en Control para ver el motivo."
+    assert not re.search(r"\d{4}-\d{2}-\d{2}", obra.que_pasa)
+    assert obra.siguiente == REGISTRAR
+
+
+def test_con_el_plan_empezado_y_sin_valuaciones_esta_atrasada_y_se_suma(sesion) -> None:
+    # Comportamiento vigente hasta que Eugenio decida: al viernes 2026-11-13 (sin valuaciones, el
+    # corte es hoy) el plan pide PV 1 500,00 (memoria §3) y no hay nada ejecutado: EV 0, SPI 0.
+    # Sin avance no hay ritmo con que reproyectar: no hay días de retraso.
+    ob.sembrar(sesion)
+    ob.declarar_linea_base(sesion)
+    sesion.flush()
+    hoy = date(2026, 11, 13)
+
+    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), hoy)
+
+    assert obra.etapa == "atrasada"
+    assert obra.corte == hoy
+    assert (obra.ev, obra.pv, obra.spi) == (D("0"), D("1500.00"), D("0"))
+    assert obra.retraso_dias is None
+    assert obra.que_pasa == "Atrasada (SPI 0,00)"
+    assert obra.siguiente == ALERTAS
+    cifras = cifras_de_la_mesa([obra], "USD", _sin_tasa)
+    assert cifras.valor_ganado is not None and cifras.avance is not None
+    # entra en la suma: 0,00 contra 1 500,00; SV −1 500,00 (−100,0 %); avance 0,0000
+    assert (cifras.valor_ganado.actual, cifras.valor_ganado.meta) == (D("0.00"), D("1500.00"))
+    assert cifras.valor_ganado.delta_pct == D("-100.0")
+    assert cifras.avance.actual == D("0.0000")
+    assert cifras.avance.detalle == "1 obra atrasada"
+
+
+@pytest.mark.parametrize(
+    ("umbral", "etapa"),
+    [
+        # SPI 0,8000 (memoria §3) no es menor que 0,8000: en ejecución
+        ("0.8000", "en_ejecucion"),
+        # 0,8000 < 0,8001: atrasada
+        ("0.8001", "atrasada"),
+    ],
+)
+def test_la_frontera_del_umbral_de_spi(sesion, umbral: str, etapa: str) -> None:
+    ob.sembrar(sesion)
+    ob.declarar_linea_base(sesion)
+    ob.registrar_v01_y_v02(sesion)
+    guardar_parametros(
+        sesion,
+        ob.NOMBRE,
+        ParametrosControl(spi_error=D(umbral)),
+        fuente="umbral ficticio de la prueba",
+        responsable=ob.RESPONSABLE,
+    )
+    sesion.flush()
+
+    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY)
+
+    assert obra.etapa == etapa
 
 
 # --- etapas de aprobación (MP-4, T18) ------------------------------------------------------------
@@ -598,6 +662,16 @@ def test_lista_vieja_frente_a_la_lista_para_armar(sesion) -> None:
             accion=ACTUALIZAR,
         )
     ]
+
+
+def test_los_dias_y_las_cuentas_se_escriben_con_punto_de_miles(sesion) -> None:
+    # 2023-07-13 → 2023-10-25: 18 + 31 + 30 + 25 = 104 días; → 2026-10-25: + 365 + 366 + 365 =
+    # 1 200 días. A la lista para armar (2026-10-01) le faltan 24: 1 176 días.
+    _casa_demo(sesion, date(2023, 7, 13))
+    (viejos,) = precios_viejos(sesion, HOY)
+    assert viejos.texto == "Precios de hace 1.200 días (lista «Base» del 13/07/2023)"
+    (vieja,) = lista_vieja(sesion, HOY)
+    assert vieja.texto == "La lista de CD-001 es 1.176 días más vieja que la lista para armar."
 
 
 def test_lista_vieja_de_90_dias_o_menos_no_es_pendiente(sesion) -> None:
