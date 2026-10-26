@@ -13,7 +13,11 @@ sesión (`SesionDep`); las que escriben van con `BEGIN IMMEDIATE` y confirman aq
 - `GET /compra/{codigo}/afectados` → `{apus}` (lo que se muestra antes de «Usar este precio»).
 - `POST /compra/{codigo}/usar` `{precio, observacion_id}` → 200 `{lista}` (el nombre de la lista).
 - `POST /cobro/{codigo}/usar` `{precio, observaciones}` → 200 `{codigo, precio, moneda}`.
-- `GET /objetivos?partidas=A,B` → `{objetivos: [{codigo, precio, moneda}]}`.
+- `GET /objetivos?partidas=A,B&pu=A:2074.44,B:30&moneda=Bs` → `{objetivos: [{codigo, precio, moneda,
+  margen}]}`. `pu` son los precios unitarios que la Hoja ya tiene (con utilidad, sin IVA; decimal
+  con punto) y `moneda` la de esos precios; `margen` lo calcula `margen()` de la lógica (Tarea 16:
+  el front no calcula) y va vacío sin el precio unitario de esa partida, con un precio unitario de
+  cero o con el objetivo en otra moneda (no se compara ni se convierte).
 
 Errores: el 422 de forma (lado, fuente, fecha, precio que no es texto, códigos largos, ventana
 fuera de 1 a 3.650 días) es un mensaje fijo que no repite lo enviado; el 422 de una regla
@@ -28,6 +32,7 @@ fallo de la base.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
@@ -53,6 +58,7 @@ from aplicacion.mercado import (
     centimos,
     estadisticas,
     exigir_codigo,
+    margen,
     objetivos,
     observaciones_vigentes,
     piso_de_cobro,
@@ -76,6 +82,8 @@ MENSAJE_BASE = "No se pudo leer ni guardar el estudio de mercado de la carpeta d
 MENSAJE_INESPERADO = "No se pudo procesar el estudio de mercado con esos datos."
 _LARGO_CODIGO = 40
 _DIAS_MAXIMO = 3650
+#: Los precios unitarios de la Hoja: un decimal con punto, sin exponente (`format(x, "f")`).
+_DECIMAL_CON_PUNTO = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
 
 #: Los valores de `aplicacion.mercado.LADOS` y `FUENTES` (una prueba vigila que coincidan).
 Lado = Literal["compra", "cobro"]
@@ -180,8 +188,17 @@ class ObjetivoRespuesta(BaseModel):
     moneda: str
 
 
+class ObjetivoConMargen(ObjetivoRespuesta):
+    margen: str | None = Field(
+        description=(
+            "(objetivo − precio unitario) / precio unitario, en % con una cifra decimal; vacío sin "
+            "el precio unitario de la partida, con uno de cero o con el objetivo en otra moneda"
+        )
+    )
+
+
 class ObjetivosRespuesta(BaseModel):
-    objetivos: list[ObjetivoRespuesta]
+    objetivos: list[ObjetivoConMargen]
 
 
 # --- traducción de errores ----------------------------------------------------------------------
@@ -226,6 +243,44 @@ def _traducir[T](hacer: Callable[[], T]) -> T:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, MENSAJE_BASE) from None
 
 
+def _forma_invalida() -> HTTPException:
+    return HTTPException(422, MENSAJE_FORMA)
+
+
+def _precios_unitarios(pu: str, moneda: str | None) -> dict[str, Decimal]:
+    """`CODIGO:2074.44,…` → {código: precio}. El código va antes del último «:»; la misma partida
+    con dos precios distintos, un decimal que no es con punto o `pu` sin `moneda` es un 422 de
+    forma (sin repetir lo enviado)."""
+    precios: dict[str, Decimal] = {}
+    for parte in (p.strip() for p in pu.split(",")):
+        if not parte:
+            continue
+        codigo, separador, texto = parte.rpartition(":")
+        codigo = codigo.strip()
+        texto = texto.strip()
+        if (
+            not separador
+            or not codigo
+            or len(codigo) > _LARGO_CODIGO
+            or _DECIMAL_CON_PUNTO.fullmatch(texto) is None
+        ):
+            raise _forma_invalida()
+        valor = Decimal(texto)
+        if precios.setdefault(codigo, valor) != valor:
+            raise _forma_invalida()
+    if precios and moneda is None:
+        raise _forma_invalida()
+    return precios
+
+
+def _margen(objetivo: Decimal, precio_unitario: Decimal | None) -> str | None:
+    if precio_unitario is None or precio_unitario <= 0:
+        return None
+    valor = margen(objetivo, precio_unitario)
+    # −0,0 (un margen que redondea a cero desde abajo) se dice 0,0: el signo no significa nada.
+    return format(abs(valor) if valor == 0 else valor, "f")
+
+
 # --- rutas --------------------------------------------------------------------------------------
 
 
@@ -233,14 +288,35 @@ def _traducir[T](hacer: Callable[[], T]) -> T:
 def leer_objetivos(
     sesion: SesionDep,
     partidas: Annotated[str, Query(max_length=2000, description="Códigos separados por coma")] = "",
+    pu: Annotated[
+        str,
+        Query(
+            max_length=4000,
+            description=(
+                "Precios unitarios de la Hoja (con utilidad, sin IVA) como CODIGO:monto separados "
+                "por coma, decimal con punto"
+            ),
+        ),
+    ] = "",
+    moneda: Annotated[
+        str | None,
+        Query(min_length=1, max_length=10, description="Moneda de los precios unitarios de `pu`"),
+    ] = None,
 ) -> ObjetivosRespuesta:
-    """El último precio de venta objetivo de cada partida pedida que tenga uno."""
+    """El último precio de venta objetivo de cada partida pedida que tenga uno y, con el precio
+    unitario de la Hoja en la misma moneda, su margen."""
     codigos = [c.strip() for c in partidas.split(",") if c.strip()]
+    precios = _precios_unitarios(pu, moneda)
     filas = _traducir(lambda: objetivos(sesion, codigos))
     return ObjetivosRespuesta(
         objetivos=[
-            ObjetivoRespuesta(
-                codigo=f.codigo_partida, precio=_en_centimos(f.precio), moneda=f.moneda
+            ObjetivoConMargen(
+                codigo=f.codigo_partida,
+                precio=_en_centimos(f.precio),
+                moneda=f.moneda,
+                margen=(
+                    _margen(f.precio, precios.get(f.codigo_partida)) if f.moneda == moneda else None
+                ),
             )
             for f in filas
         ]
