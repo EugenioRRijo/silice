@@ -36,3 +36,9 @@ def test_la_instalacion_lleva_seguridad_la_arenera_el_historial_y_la_eleccion() 
         METADATA_HISTORIAL,
         METADATA_ELECCION,
     )
+
+
+def test_el_caso_lleva_la_moneda_de_la_carpeta() -> None:
+    from aplicacion.tablas_carpeta import METADATA_CARPETA
+
+    assert METADATA_CARPETA in METADATAS_CASO
