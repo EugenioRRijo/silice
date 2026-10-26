@@ -21,7 +21,7 @@ export const RECORRIDO_AUDITAR: Recorrido = {
   titulo: "Auditar un libro de la empresa",
   pasos: [
     {
-      pagina: "inicio",
+      pagina: "auditoria",
       titulo: "Suba el libro",
       queHacer: "Suelte el Excel del presupuesto en la zona de arriba. Pulse «Auditar con recorrido guiado».",
       sabraQueTermino: "Sabrá que terminó cuando se abra «Libro de la empresa» con su libro ya revisado.",

@@ -45,7 +45,7 @@ export function PanelRecorrido({ paginas, acciones, modoEntrega, enColumna = fal
       <ol className="silice-recorrido__pasos">
         {recorrido.pasos.map((paso, i) => {
           const pagina = paginaPorId(paso.pagina, paginas);
-          const enlazable = pagina !== undefined && visible(pagina, acciones, modoEntrega);
+          const enlazable = pagina !== undefined && visible(pagina, acciones, modoEntrega, paginas);
           const esActual = i === actual;
           return (
             <li key={paso.pagina} aria-current={esActual ? "step" : undefined} className="silice-recorrido__paso">

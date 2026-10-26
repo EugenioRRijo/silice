@@ -67,6 +67,11 @@ describe("App: primer arranque y recuperar acceso", () => {
       if (ruta === "/v1/proyectos") return json([]);
       if (ruta === "/v1/produccion/existencias") return json([]);
       if (ruta.startsWith("/v1/auditorias-libro")) return json([]);
+      // Plan de modulos (MOD-1): un administrador sin modulos visibles entra en Administracion; sus lecturas no
+      // existen en este doble (404), pero no deben caer en el 401 de abajo y dar la sesion por vencida.
+      if (metodo === "GET" && (ruta.startsWith("/v1/admin/") || ruta.startsWith("/v1/cuentas") || ruta === "/v1/accesos")) {
+        return json({ detalle: "No encontrado." }, 404);
+      }
       return json({ detalle: "Sin sesión." }, 401);
     });
   });

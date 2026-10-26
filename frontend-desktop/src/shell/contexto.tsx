@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 import type { CasoRespuesta, SesionRespuesta } from "../api/tipos";
 import type { AlmacenDelVisor } from "../visor/almacen";
 import type { CrearHojaVisor } from "../visor/hojaVisor";
+import type { ModuloId } from "./rutas";
 
 // Lo que toda pagina necesita saber de la aplicacion. Vive en memoria (nada en localStorage, RT-9).
 export interface Aplicacion {
@@ -16,6 +17,9 @@ export interface Aplicacion {
   recargarProyectos: () => void;
   // La API contesto 401: la sesion vencio.
   alExpirar: () => void;
+  // Modulo abierto (el de la pantalla, o el ultimo usado fuera de los modulos); null si la cuenta no ve ninguno. El
+  // Shell siempre lo da; es opcional para que las pruebas de cada pagina no tengan que inventarlo.
+  modulo?: ModuloId | null;
   // «Libro de la empresa»: lo abierto vive por encima de la puerta de sesion (UC-26), asi que el almacen llega de
   // App. `ranuraCabecera` ya no la da el Shell (V-24, T8): los controles del libro van en el cuerpo de la pagina; el
   // campo queda solo porque el visor y su prueba aun lo aceptan. `crearHojaVisor` solo cambia en pruebas.

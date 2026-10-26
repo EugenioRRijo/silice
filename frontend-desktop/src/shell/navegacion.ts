@@ -1,6 +1,6 @@
-// Logica pura de la barra superior: que entradas se muestran y a que area pertenece la ruta actual.
-// Se construye sobre `areasVisibles` (rutas.ts), que ya decide la visibilidad por permisos y modo entrega.
-import { AREAS, PAGINAS, areasVisibles, type PaginaDef } from "./rutas";
+// Logica pura de la navegacion por modulos: que areas ve la cuenta en la barra del modulo abierto, a que area y a que
+// modulo pertenece la ruta actual, y en que modulo entra la cuenta. La visibilidad la decide `visible` (rutas.ts).
+import { MODULOS, PAGINAS, modulosVisibles, paginaPorId, visible, type ModuloId, type PaginaDef } from "./rutas";
 
 export interface GrupoNav {
   titulo: string | null;
@@ -11,39 +11,71 @@ export type EntradaNav =
   | { tipo: "enlace"; area: string; titulo: string; pagina: PaginaDef }
   | { tipo: "panel"; area: string; titulo: string; grupos: GrupoNav[] };
 
+// Las areas del modulo, en su orden. Un area con una sola pantalla visible es un enlace directo que lleva el titulo del
+// AREA (decision 2 de Eugenio: rita ve «Obras» y abre el Tablero; el titulo de la pantalla queda en su h1); con varias,
+// un panel con un solo grupo sin titulo; sin ninguna, no aparece.
 export function navegacion(
+  modulo: ModuloId,
   acciones: readonly string[],
   modoEntrega: boolean,
   paginas: readonly PaginaDef[] = PAGINAS,
 ): EntradaNav[] {
-  return areasVisibles(acciones, modoEntrega, paginas).map((area): EntradaNav => {
-    if (area.paginas.length === 1) {
-      const pagina = area.paginas[0];
-      return { tipo: "enlace", area: area.id, titulo: pagina.titulo, pagina };
-    }
-    const def = AREAS.find((a) => a.id === area.id);
-    if (!def?.grupos) {
-      return { tipo: "panel", area: area.id, titulo: area.titulo, grupos: [{ titulo: null, paginas: area.paginas }] };
-    }
-    const grupos: GrupoNav[] = [];
-    const usadas = new Set<string>();
-    for (const g of def.grupos) {
-      const delGrupo = area.paginas.filter((p) => g.paginas.includes(p.id));
-      delGrupo.forEach((p) => usadas.add(p.id));
-      if (delGrupo.length > 0) grupos.push({ titulo: g.titulo, paginas: delGrupo });
-    }
-    const otras = area.paginas.filter((p) => !usadas.has(p.id));
-    if (otras.length > 0) grupos.push({ titulo: "Otras", paginas: otras });
-    return { tipo: "panel", area: area.id, titulo: area.titulo, grupos };
+  const def = MODULOS.find((m) => m.id === modulo);
+  if (!def) return [];
+  return def.areas.flatMap((area): EntradaNav[] => {
+    const delArea = paginas.filter(
+      (p) => p.ubicacion?.modulo === modulo && p.ubicacion.area === area.id && visible(p, acciones, modoEntrega, paginas),
+    );
+    if (delArea.length === 0) return [];
+    if (delArea.length === 1) return [{ tipo: "enlace", area: area.id, titulo: area.titulo, pagina: delArea[0] }];
+    return [{ tipo: "panel", area: area.id, titulo: area.titulo, grupos: [{ titulo: null, paginas: delArea }] }];
   });
 }
 
+// Solo el primer segmento: sin consulta ni ancla (la barra recibe `useLocation().pathname`, pero no se fia).
+function idDeRuta(pathname: string): string {
+  return pathname.split(/[?#]/)[0].split("/")[1] ?? "";
+}
+
 export function areaActual(pathname: string, entradas: readonly EntradaNav[]): string | null {
-  // Solo el primer segmento: sin consulta ni ancla (la barra recibe `useLocation().pathname`, pero no se fía).
-  const id = pathname.split(/[?#]/)[0].split("/")[1] ?? "";
+  const id = idDeRuta(pathname);
   if (!id) return null;
   for (const e of entradas) {
     if (e.tipo === "enlace" ? e.pagina.id === id : e.grupos.some((g) => g.paginas.some((p) => p.id === id))) return e.area;
   }
   return null;
+}
+
+// El modulo sale de la pantalla (un marcador a /componer abre Presupuestos y obras aunque el ultimo fuera Auditoria).
+// Fuera de los modulos (Administracion, Acerca) o en una ruta sin pantalla, queda el ultimo usado.
+export function moduloDeRuta(
+  pathname: string,
+  ultimo: ModuloId | null,
+  paginas: readonly PaginaDef[] = PAGINAS,
+): ModuloId | null {
+  const pagina = paginaPorId(idDeRuta(pathname), paginas);
+  return pagina?.ubicacion?.modulo ?? ultimo;
+}
+
+// Modulo de entrada por rol (decision 3 de Eugenio, ratificada el 2026-10-25): quien arma y quien administra entran en
+// Presupuestos y obras; quien revisa, en Auditoria. El rol se lee por una accion que solo tiene ese rol
+// (seguridad/permisos.py); el primer renglon que la cuenta tenga y cuyo modulo vea es el que manda.
+export const ENTRADA_POR_ROL: readonly { accion: string; modulo: ModuloId }[] = [
+  { accion: "editar_hoja", modulo: "obras" },
+  { accion: "revisar_paquete", modulo: "auditoria" },
+  { accion: "administrar_precios", modulo: "obras" },
+];
+
+// El modulo guardado si la cuenta todavia lo puede usar; si no, el de su rol; si no, el primero visible; null si la
+// cuenta no ve ningun modulo.
+export function moduloAlEntrar(
+  preferido: ModuloId | null,
+  acciones: readonly string[],
+  modoEntrega: boolean,
+  paginas: readonly PaginaDef[] = PAGINAS,
+): ModuloId | null {
+  const visibles = modulosVisibles(acciones, modoEntrega, paginas).map((m) => m.id);
+  if (preferido !== null && visibles.includes(preferido)) return preferido;
+  const porRol = ENTRADA_POR_ROL.find((e) => acciones.includes(e.accion) && visibles.includes(e.modulo));
+  return porRol?.modulo ?? visibles[0] ?? null;
 }

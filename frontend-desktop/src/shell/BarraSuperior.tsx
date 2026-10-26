@@ -5,10 +5,12 @@ import type { FocusEvent, KeyboardEvent, ReactNode } from "react";
 import { NavLink, useLocation } from "react-router";
 import { areaActual, type EntradaNav } from "./navegacion";
 import { PanelDeArea } from "./PanelDeArea";
-import { rutaDe } from "./rutas";
+import { rutaDe, type ModuloDef } from "./rutas";
 import "./BarraSuperior.scss";
 
 interface Props {
+  // Modulo abierto: su nombre va junto a «Sílice» y sus areas son las `entradas`. null si la cuenta no ve ninguno.
+  modulo: ModuloDef | null;
   entradas: readonly EntradaNav[];
   // Lado derecho (carpeta y proyecto, recorrido, tamano de letra, cuenta): va dentro de `HeaderGlobalBar`.
   derecha: ReactNode;
@@ -16,11 +18,12 @@ interface Props {
   menu: { abierto: boolean; alternar: () => void };
 }
 
-// Barra superior: «Sílice», las areas y el lado derecho. Un area con una sola pantalla es un enlace; con varias, un boton
+// Barra superior: «Sílice», el nombre del modulo abierto, sus areas y el lado derecho. El nombre del modulo es texto, no
+// enlace (no es un tercer camino al inicio: ya estan «Sílice» y el area «Inicio»). Un area con una sola pantalla es un enlace; con varias, un boton
 // que abre su panel (patron «disclosure» de navegacion, nunca al pasar el raton). Un solo panel abierto; se cierra con Esc
 // (el foco vuelve al boton), con un clic fuera, cuando el foco sale de la navegacion, al elegir una pantalla, al abrir
 // otra area, al cambiar de ruta (tambien atras/adelante del navegador) y al cambiar el tamano de letra.
-export function BarraSuperior({ entradas, derecha, menu }: Props) {
+export function BarraSuperior({ modulo, entradas, derecha, menu }: Props) {
   const ubicacion = useLocation();
   const [abierta, setAbierta] = useState<string | null>(null);
   const [clave, setClave] = useState(ubicacion.key);
@@ -90,6 +93,11 @@ export function BarraSuperior({ entradas, derecha, menu }: Props) {
       <HeaderName href="#/" prefix="">
         Sílice
       </HeaderName>
+      {modulo && (
+        <span className="silice-barra__modulo cds--type-heading-compact-01" title={modulo.titulo}>
+          {modulo.titulo}
+        </span>
+      )}
       <HeaderNavigation
         aria-label="Menú principal"
         className="silice-barra__nav"

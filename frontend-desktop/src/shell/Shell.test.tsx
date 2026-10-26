@@ -10,7 +10,7 @@ import { useAplicacion } from "./contexto";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, recorridoEnCurso, terminarRecorrido } from "./recorrido";
 import { Shell } from "./Shell";
-import { PAGINAS as REGISTRO, visible } from "./rutas";
+import { PAGINAS as REGISTRO } from "./rutas";
 import type { ModuloId, PaginaDef } from "./rutas";
 
 function json(cuerpo: unknown, estado = 200): Response {

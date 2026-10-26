@@ -2,6 +2,24 @@
 // sin animacion (tampoco al abrir el panel). Todo en rem: sigue la escala de letra. El paso a la capa por debajo del
 // umbral de cada escala lo decide `shell.scss` (mixin `menu-en-capa`), no este parcial.
 
+// Nombre del modulo abierto, junto a «Sílice»: texto (no enlace), separado por un filete; si no cabe se recorta con
+// puntos suspensivos y el nombre completo queda en `title`.
+.silice-barra .silice-barra__modulo {
+  display: block;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  max-inline-size: 14rem;
+  block-size: 100%;
+  padding: 0 1rem;
+  // Centrado en la barra de 3 rem (sigue la escala de letra).
+  line-height: 3rem;
+  border-inline-start: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .silice-barra__item {
   position: relative;
   display: flex;

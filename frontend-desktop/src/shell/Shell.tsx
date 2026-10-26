@@ -16,12 +16,12 @@ import type { Aplicacion } from "./contexto";
 import { LimiteDeError } from "./LimiteDeError";
 import { MenuCuenta } from "./MenuCuenta";
 import { MenuEnCapa } from "./MenuEnCapa";
-import { navegacion } from "./navegacion";
+import { moduloAlEntrar, moduloDeRuta, navegacion } from "./navegacion";
 import { PanelCarpetaProyecto, nombreDeCarpeta } from "./PanelCarpetaProyecto";
 import { olvidarImportaciones } from "../paginas/hoja/useImportacion";
 import { terminarRecorrido, useColumnaOculta, useRecorrido } from "./recorrido";
-import { PAGINAS, rutaDe, visible } from "./rutas";
-import type { PaginaDef } from "./rutas";
+import { MODULOS, PAGINAS, fueraDeModulos, inicioDe, modulosVisibles, rutaDe, visible } from "./rutas";
+import type { ModuloId, PaginaDef } from "./rutas";
 import type { AlmacenDelVisor } from "../visor/almacen";
 import type { CrearHojaVisor } from "../visor/hojaVisor";
 
@@ -58,12 +58,14 @@ function PaginaDeRuta({
   pagina,
   acciones,
   modoEntrega,
+  paginas,
 }: {
   pagina: PaginaDef;
   acciones: readonly string[];
   modoEntrega: boolean;
+  paginas: readonly PaginaDef[];
 }) {
-  if (!visible(pagina, acciones, modoEntrega)) {
+  if (!visible(pagina, acciones, modoEntrega, paginas)) {
     return (
       <div className="silice-pagina-aviso">
         <EstadoVacio titulo="Sin permiso" descripcion={MENSAJE_SIN_PERMISO} />
@@ -77,8 +79,8 @@ function esSinPermiso(e: unknown): boolean {
   return e instanceof ErrorDeApi && e.estado === 403;
 }
 
-// Marco de la interfaz: barra superior (areas por rol y modo entrega, carpeta y proyecto, recorrido, letra y cuenta), su
-// capa para cuando no cabe, la columna del recorrido guiado y la pagina de la ruta.
+// Marco de la interfaz: barra superior (el modulo abierto y sus areas por rol y modo entrega, carpeta y proyecto,
+// recorrido, letra y cuenta), su capa para cuando no cabe, la columna del recorrido guiado y la pagina de la ruta.
 export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp, paginas = PAGINAS, almacen, crearHoja }: Props) {
   const ubicacion = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -157,7 +159,36 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   }, [menuAbierto]);
 
   const acciones = sesion.acciones;
-  const entradas = useMemo(() => navegacion(acciones, sesion.modo_entrega, paginas), [acciones, sesion.modo_entrega, paginas]);
+  const modoEntrega = sesion.modo_entrega;
+
+  // Modulo abierto (plan de modulos, MOD-1). Sale de la pantalla; fuera de los modulos (Administracion, Acerca), en una
+  // ruta sin pantalla o en una pantalla de un modulo que la cuenta no ve, queda el ultimo usado. Al entrar, el ultimo
+  // es el que la cuenta recuerda (si aun lo ve) o el de su rol.
+  const visibles = useMemo(() => modulosVisibles(acciones, modoEntrega, paginas), [acciones, modoEntrega, paginas]);
+  const [ultimo, setUltimo] = useState<ModuloId | null>(() =>
+    moduloAlEntrar(sesion.preferencias?.modulo ?? null, acciones, modoEntrega, paginas),
+  );
+  const deLaPantalla = moduloDeRuta(ubicacion.pathname, null, paginas);
+  const modulo = deLaPantalla !== null && visibles.some((m) => m.id === deLaPantalla) ? deLaPantalla : ultimo;
+  // Se ajusta durante el render, sin efecto (como el aviso de carpeta, mas abajo).
+  if (modulo !== ultimo) setUltimo(modulo);
+
+  // El modulo de la pantalla se recuerda por cuenta cuando cambia (PUT /v1/sesion/preferencias). Solo el que viene de
+  // una pantalla: entrar en Acerca con el modulo de entrada no es «usar» ese modulo. Un 401 es la sesion vencida; otro
+  // error no molesta a la persona (lo peor es entrar la proxima vez en otro modulo).
+  const guardado = useRef<ModuloId | null>(sesion.preferencias?.modulo ?? null);
+  useEffect(() => {
+    if (modulo === null || modulo !== deLaPantalla || modulo === guardado.current) return;
+    guardado.current = modulo;
+    pedir("/v1/sesion/preferencias", { metodo: "PUT", cuerpo: { modulo } }).catch((e: unknown) => {
+      if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
+    });
+  }, [modulo, deLaPantalla, alExpirar]);
+
+  const entradas = useMemo(
+    () => (modulo === null ? [] : navegacion(modulo, acciones, modoEntrega, paginas)),
+    [modulo, acciones, modoEntrega, paginas],
+  );
   // Con la columna del recorrido a la vista, el contenido le cede su ancho (ColumnaRecorrido.scss).
   const recorrido = useRecorrido();
   const columnaOculta = useColumnaOculta();
@@ -251,13 +282,25 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       caso: casos?.actual ?? null,
       recargarProyectos,
       alExpirar,
+      modulo,
       almacenDelLibro: almacen,
       crearHojaVisor: crearHoja,
     }),
-    [sesion, proyecto, proyectos, casos, recargarProyectos, alExpirar, almacen, crearHoja],
+    [sesion, proyecto, proyectos, casos, recargarProyectos, alExpirar, modulo, almacen, crearHoja],
   );
 
-  const primera = paginas.find((p) => visible(p, acciones, sesion.modo_entrega));
+  // A donde llevan «/», «/inicio» y una ruta inexistente: el inicio del ultimo modulo usado (o del de entrada); sin
+  // ningun modulo visible, la primera pantalla de fuera de los modulos (Administracion o Acerca).
+  const moduloDeEntrada = moduloAlEntrar(ultimo, acciones, modoEntrega, paginas);
+  const destino =
+    moduloDeEntrada !== null ? inicioDe(moduloDeEntrada, paginas) : fueraDeModulos(acciones, modoEntrega, paginas)[0];
+  const redirigir = destino ? (
+    <Navigate to={rutaDe(destino)} replace />
+  ) : (
+    <div className="silice-pagina-aviso">
+      <EstadoVacio titulo="No hay pantallas disponibles en esta interfaz" descripcion="Su cuenta no puede usar ninguna pantalla." />
+    </div>
+  );
 
   // Lado derecho de la barra, en este orden: carpeta y proyecto, recorrido (solo con la columna plegada), letra y cuenta.
   const derecha = (
@@ -279,19 +322,20 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
 
   return (
     <ContextoAplicacion.Provider value={aplicacion}>
-      <div className={conRecorrido ? "silice-marco silice-con-recorrido" : "silice-marco"}>
+      <div className={conRecorrido ? "silice-marco silice-con-recorrido" : "silice-marco"} data-modulo={modulo ?? undefined}>
         {/* Con hash por enrutador un enlace #contenido cambiaria la ruta: se manda el foco a mano. */}
         <button type="button" className="silice-saltar cds--type-body-compact-01" onClick={() => document.getElementById("contenido")?.focus()}>
           Saltar al contenido
         </button>
         <BarraSuperior
+          modulo={MODULOS.find((m) => m.id === modulo) ?? null}
           entradas={entradas}
           derecha={derecha}
           menu={{ abierto: menuAbierto, alternar: () => setMenuAbierto((a) => !a) }}
         />
         <MenuEnCapa entradas={entradas} abierto={menuAbierto} alCerrar={() => setMenuAbierto(false)} nombre={sesion.nombre} />
         {/* Antes del contenido: por debajo del umbral de la letra pasa a franja bajo la barra (ColumnaRecorrido.scss). */}
-        <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={sesion.modo_entrega} />
+        <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
         <main id="contenido" className="silice-contenido" tabIndex={-1}>
           {(error !== null || aviso) && (
             <div className="silice-avisos">
@@ -313,35 +357,19 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
           <LimiteDeError key={`${ubicacion.pathname}|${generacion}`}>
             <Suspense fallback={<EsqueletoPagina />}>
               <Routes>
-                <Route
-                  index
-                  element={
-                    primera ? (
-                      <Navigate to={rutaDe(primera)} replace />
-                    ) : (
-                      <div className="silice-pagina-aviso">
-                        <EstadoVacio
-                          titulo="No hay pantallas disponibles en esta interfaz"
-                          descripcion="Su cuenta no puede usar ninguna pantalla."
-                        />
-                      </div>
-                    )
-                  }
-                />
+                <Route index element={redirigir} />
+                {/* El antiguo Inicio: hoy cada modulo tiene el suyo. */}
+                <Route path="/inicio" element={redirigir} />
                 {paginas.map((pagina) => (
                   <Route
                     key={pagina.id}
                     path={rutaDe(pagina)}
                     element={
-                      <PaginaDeRuta
-                        pagina={pagina}
-                        acciones={acciones}
-                        modoEntrega={sesion.modo_entrega}
-                      />
+                      <PaginaDeRuta pagina={pagina} acciones={acciones} modoEntrega={modoEntrega} paginas={paginas} />
                     }
                   />
                 ))}
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={redirigir} />
               </Routes>
             </Suspense>
           </LimiteDeError>
