@@ -38,6 +38,7 @@ from aplicacion.composicion import (
     similares_con_composicion,
     sugerencias_de_referencia,
 )
+from aplicacion.tablas_carpeta import crear_esquema_carpeta
 from core import models
 from core.catalog import (
     Catalogo,
@@ -73,6 +74,7 @@ def _sembrar(base: Path, segundo_rendimiento: bool = False) -> Path:
     motor = crear_motor(f"sqlite:///{base.as_posix()}")
     try:
         crear_esquema(motor)
+        crear_esquema_carpeta(motor)  # Componer lee la moneda de la carpeta (MP-1, Tarea 3)
         with abrir_sesion(motor) as sesion:
             sembrar(sesion)
             if segundo_rendimiento:

@@ -442,7 +442,13 @@ def test_guardar_con_otra_cabecera_sobre_una_existente_es_422_con_el_motivo(
 def test_guardar_sin_lista_de_precios_vigente_es_409_y_no_escribe(api: TestClient) -> None:
     respuesta = api.post("/v1/composicion/guardar", json=_guardar_cuerpo(fecha="2020-01-01"))
     assert respuesta.status_code == 409
-    assert respuesta.json() == {"detalle": "no hay ninguna lista de precios vigente al 2020-01-01"}
+    # MP-1, Tarea 3: el 409 lo da `SinListaParaArmar` (Componer guarda en la lista de hoy).
+    assert respuesta.json() == {
+        "detalle": (
+            "Esta carpeta de trabajo no tiene lista de precios para armar. Créela a partir de "
+            "MaPreX o convirtiendo la que tiene."
+        )
+    }
     assert api.get(f"/v1/composicion/partidas/{NUEVA}").json()["existe"] is False
 
 

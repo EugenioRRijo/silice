@@ -26,6 +26,7 @@ from aplicacion.elaboracion import (
     items_desde_filas,
     libro_excel,
 )
+from aplicacion.tablas_carpeta import crear_esquema_carpeta
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import Dominio
 from scripts.seed import sembrar
@@ -43,6 +44,7 @@ def _sembrar(base: Path) -> Path:
     motor = crear_motor(f"sqlite:///{base.as_posix()}")
     try:
         crear_esquema(motor)
+        crear_esquema_carpeta(motor)  # Componer lee la moneda de la carpeta (MP-1, Tarea 3)
         with abrir_sesion(motor) as sesion:
             sembrar(sesion)
             sesion.commit()
@@ -157,7 +159,7 @@ def test_una_cabecera_distinta_da_el_motivo_sin_escribir_nada(tmp_path: Path) ->
     distinta = dataclasses.replace(APU_TUBERIA, descripcion="Otra descripcion", equipos=())
     with _sesion(base) as sesion:
         guardado = guardar_composicion(
-            Catalogo(sesion), distinta, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES
+            sesion, distinta, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES
         )
         sesion.commit()  # aun confirmando, nada se escribio
     assert guardado.resultado is None
@@ -171,9 +173,7 @@ def test_una_partida_nueva_se_persiste_y_se_relee(tmp_path: Path) -> None:
     base = _sembrar(tmp_path / "caso.db")
     nueva = dataclasses.replace(APU_TUBERIA, codigo_partida="XX-01-NUE")
     with _sesion(base) as sesion:
-        guardado = guardar_composicion(
-            Catalogo(sesion), nueva, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES
-        )
+        guardado = guardar_composicion(sesion, nueva, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES)
         sesion.commit()  # la prueba confirma, como la pagina: guardar_composicion no lo hace
     assert guardado.motivo is None
     assert (
@@ -195,9 +195,7 @@ def test_guardar_no_confirma_el_commit_es_de_la_pagina(tmp_path: Path) -> None:
     base = _sembrar(tmp_path / "caso.db")
     nueva = dataclasses.replace(APU_TUBERIA, codigo_partida="XX-02-NUE")
     with _sesion(base) as sesion:
-        guardado = guardar_composicion(
-            Catalogo(sesion), nueva, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES
-        )
+        guardado = guardar_composicion(sesion, nueva, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES)
     assert guardado.resultado is not None  # se escribio en la sesion, pero no se confirmo
     with _catalogo(base) as catalogo, pytest.raises(KeyError):
         catalogo.partida("XX-02-NUE")
