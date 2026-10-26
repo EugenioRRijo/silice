@@ -131,7 +131,6 @@ function Seleccion({
     alExpirar,
   );
   const lista = versiones.estado === "listo" ? versiones.datos : [];
-  // La version elegida si sigue en la lista; si no (otro proyecto), la mas nueva.
   // La version elegida si sigue en la lista; si no, la ultima aprobada (la aprobada manda, Tarea 20) y, sin ninguna, la mas nueva.
   const aprobada = lista.find((v) => v.ultima_aprobada === true)?.codigo;
   const elegida = lista.some((v) => v.codigo === version)

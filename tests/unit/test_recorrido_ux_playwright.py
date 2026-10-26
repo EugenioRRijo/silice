@@ -118,7 +118,6 @@ def test_cada_ruta_dice_su_modulo_y_su_area() -> None:
     assert (rutas["produccion"]["modulo"], rutas["produccion"]["area"]) == ("produccion", "inicio")
     assert (rutas["mercado"]["modulo"], rutas["mercado"]["area"]) == ("obras", "mercado")
     assert (rutas["aprobar"]["modulo"], rutas["aprobar"]["area"]) == ("obras", "aprobaciones")
-    assert (rutas["aprobar"]["modulo"], rutas["aprobar"]["area"]) == ("obras", "aprobaciones")
     assert (rutas["revisar"]["modulo"], rutas["revisar"]["area"]) == ("auditoria", "paquetes")
     assert (rutas["existencias"]["modulo"], rutas["existencias"]["area"]) == (
         "produccion",

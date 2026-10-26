@@ -553,14 +553,15 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 5. «Aprobada y sin entregar»: la entrega registra `sello_version` (el eslabón de la versión) en su evento; una aprobada se
    da por entregada si algún paquete lleva su sello, no su código (que se repite entre obras). Como el registro vive en la
    instalación, `aprobadas_sin_entregar` la abre ella misma (`sesion_de_instalacion`). Las entregas anteriores a este
-   cambio no llevan sello y la aprobada reaparecerá como pendiente una vez.
+   cambio no llevan sello y una aprobada ya entregada sin sello sigue pendiente hasta que se entregue de nuevo.
 6. Control › Línea base propone la última aprobada y avisa; Hoja › Trazabilidad gana la sección «Aprobaciones» (fases,
    rastro con ícono y texto, movimientos); un 403 o un 404 no dicen nada. Textos de Entregar sin jerga («Obra», «Esta carpeta
    todavía no tiene obras.»); el valor exacto se lee con coma decimal y sin `title` con punto.
-7. Menores del árbitro de T19 que tocaban a T20: el aviso de un fallo de los envíos pasa a decir «No se pudieron leer los
-   envíos por aprobar» (ya no «de otras carpetas»: ahora también es de la pantalla de aprobar), «Abrir el envío» se ofrece en
-   toda fila del grupo y el nombre del responsable usa `src/comun/responsable.ts`. No encontré más pendientes con el nombre
-   «últimos 3 menores» en la bitácora de T19: si se esperaba otro, falta decir cuál.
+7. Los tres menores del árbitro de T19: (a) retirar el `vi.mock` de `shell/rutas` de las pruebas: HECHO (`aprobar` ya está
+   registrada, la prueba de `PorAprobar` no simula la ruta); (b) decir la carpeta del envío: HECHO (punto 2); (c) el segundo
+   uso de `fiori-kpi__aviso` en `DESIGN.md`: QUEDA para MOD-5b / el rediseño. Además, el aviso de un fallo de los envíos
+   pasa a decir «No se pudieron leer los envíos por aprobar», «Abrir el envío» se ofrece en toda fila del grupo y el nombre
+   del responsable usa `src/comun/responsable.ts`.
 8. Commits: rojo `7d8b1065`, `badf39bd` (API, entrega y sello), rojo `94727c0c` y `35ac2b07` (fuente de la mesa),
    `84ef51d6` (front).
 
