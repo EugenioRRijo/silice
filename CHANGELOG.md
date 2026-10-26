@@ -7,6 +7,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- Ficha de la obra: `ficha_obra` (migración `caso_0011_mod_ficha_obra`) con `cliente` y `ubicacion` en `POST/GET /v1/proyectos`; `GET /v1/casos` trae `empresa` y `es_demostracion`; `DELETE /v1/casos/actual` vuelve a la carpeta de la empresa (MOD-3a).
 - Aprobaciones: envíos, retiros y dictámenes por versión con rastro encadenado por huella en la carpeta (tabla mp_aprobacion_evento, migración caso_0014_mp_aprobacion; MP-4, T17).
 - Estudio de mercado (lógica): observaciones de precios por carpeta de trabajo, estadísticas en la moneda de la carpeta (n, mínimo, primer cuartil como CUARTIL.INC, mediana, promedio, máximo; ventana de 90 días cambiable), piso de cobro (costo directo + administración) y propuesta (compra: mediana; cobro: primer cuartil si no baja del piso, si no el piso). Migración caso_0013_mp_mercado (tablas mp_observacion y mp_precio_objetivo).
 - Buscador de partidas del catálogo (T10 del plan de montar un presupuesto): `GET /v1/buscar/partidas` (todas las palabras en código o descripción, sin tildes, orden por relevancia, límite por grupo con `hay_mas`, `LEER_PROYECTO`, `no-store`, 422 sin eco) y el componente `CampoConBusqueda` (combobox accesible con teclado completo, región de estado solo con texto, «Ver más resultados», valor propio al final); `pedir` acepta `senal` y no convierte un aborto en un error de red.

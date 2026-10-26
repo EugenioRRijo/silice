@@ -2528,6 +2528,56 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "casos"
+        ],
+        "summary": "Volver A La Empresa",
+        "description": "«Volver a la carpeta de la empresa»: la ficha deja de tener carpeta propia (trabaja en la\ndel proceso) y la cuenta recuerda `caso` nulo, lo que olvida la obra recordada.",
+        "operationId": "volver_a_la_empresa_v1_casos_actual_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CasoRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin `CAMBIAR_CASO`, o sin CSRF u origen propio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Con la clave de API no se elige caso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "El proceso no usa un archivo o no se prepara.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/casos/subida": {
@@ -8440,7 +8490,7 @@
           "alturas"
         ],
         "title": "AlturasDelPlano",
-        "description": "P3: id del ambiente pendiente -> su altura en metros (texto; coma o punto)."
+        "description": "P3: id del ambiente pendiente -> su altura en metros, como se teclea (coma decimal y\npunto de miles: `aplicacion.cifras`; «2.5» se rechaza)."
       },
       "AnilloRespuesta": {
         "properties": {
@@ -10402,12 +10452,30 @@
             },
             "type": "array",
             "title": "Casos"
+          },
+          "empresa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CasoRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "La carpeta de la empresa: la del proceso; `null` si no usa un archivo SQLite"
+          },
+          "es_demostracion": {
+            "type": "boolean",
+            "title": "Es Demostracion",
+            "description": "Si la carpeta de esta sesión es la de demostración"
           }
         },
         "type": "object",
         "required": [
           "actual",
-          "casos"
+          "casos",
+          "empresa",
+          "es_demostracion"
         ],
         "title": "CasosRespuesta"
       },
@@ -16843,6 +16911,16 @@
               }
             ],
             "title": "Actualizado"
+          },
+          "cliente": {
+            "type": "string",
+            "title": "Cliente",
+            "default": ""
+          },
+          "ubicacion": {
+            "type": "string",
+            "title": "Ubicacion",
+            "default": ""
           }
         },
         "type": "object",
@@ -16882,6 +16960,18 @@
             "type": "string",
             "maxLength": 500,
             "title": "Descripcion",
+            "default": ""
+          },
+          "cliente": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Cliente",
+            "default": ""
+          },
+          "ubicacion": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Ubicacion",
             "default": ""
           }
         },

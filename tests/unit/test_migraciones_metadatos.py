@@ -54,3 +54,9 @@ def test_el_caso_lleva_el_rastro_de_aprobaciones() -> None:
     from aplicacion.tablas_aprobacion import METADATA_APROBACION
 
     assert METADATA_APROBACION in METADATAS_CASO
+
+
+def test_el_caso_lleva_la_ficha_de_la_obra() -> None:
+    from aplicacion.tablas_obra import METADATA_OBRA
+
+    assert METADATA_OBRA in METADATAS_CASO

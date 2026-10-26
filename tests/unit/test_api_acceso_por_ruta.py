@@ -139,6 +139,7 @@ TABLA = {
     ("POST", "/v1/control/recuperacion/elegir"): DECIDIR,
     ("GET", "/v1/casos"): CUALQUIERA,
     ("POST", "/v1/casos/actual"): CAMBIAR_CASO,
+    ("DELETE", "/v1/casos/actual"): CAMBIAR_CASO,  # MOD-3a: volver a la carpeta de la empresa
     # BCP-2: carpetas de trabajo (C0 a C3)
     ("GET", "/v1/casos/actual"): CUALQUIERA,
     ("POST", "/v1/casos"): CAMBIAR_CASO,

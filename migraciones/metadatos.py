@@ -14,6 +14,7 @@ from aplicacion.tablas_aprobacion import METADATA_APROBACION
 from aplicacion.tablas_carpeta import METADATA_CARPETA
 from aplicacion.tablas_eleccion import METADATA_ELECCION
 from aplicacion.tablas_mercado import METADATA_MERCADO
+from aplicacion.tablas_obra import METADATA_OBRA
 from asistente.registro import METADATA_IA
 from core.models import Base
 from fusion.historial_modelo import METADATA_HISTORIAL
@@ -27,6 +28,7 @@ METADATAS_CASO: tuple[MetaData, ...] = (
     METADATA_IA,
     METADATA_PAQUETE,
     METADATA_CARPETA,
+    METADATA_OBRA,
     METADATA_MERCADO,
     METADATA_APROBACION,
 )
