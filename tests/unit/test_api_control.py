@@ -359,6 +359,50 @@ def test_una_valuacion_sin_lineas_se_rechaza_con_422_y_no_se_guarda() -> None:
     ] == ["V-01", "V-02"]
 
 
+#: El 422 de forma del router de control (`RutaSinEco`): fijo, sin repetir lo enviado.
+MENSAJE_FORMA = (
+    "Los datos del control de obra no son válidos: las cantidades, los montos, las fechas y las "
+    "observaciones van como texto, y la causa del retraso es una clave de la lista de causas."
+)
+PRIVADO = "valor-que-nunca-debe-volver"
+
+
+@pytest.mark.parametrize(
+    "linea",
+    [
+        {"partida": "OB-A", "cantidad": "40", "causa": {"clave": PRIVADO}},
+        {"partida": "OB-A", "cantidad": [PRIVADO]},
+        {"partida": "OB-A", "cantidad": "40", "observacion": {"texto": PRIVADO}},
+    ],
+)
+def test_una_linea_de_valuacion_mal_formada_es_422_fijo_sin_eco(linea: dict) -> None:
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "V-09",
+        "desde": "2026-11-16",
+        "hasta": "2026-11-20",
+        "lineas": [linea],
+        "fuente": "x",
+    }
+    respuesta = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert (respuesta.status_code, respuesta.json()) == (422, {"detalle": MENSAJE_FORMA})
+    assert PRIVADO not in respuesta.text and "input" not in respuesta.text
+    assert respuesta.headers.get("cache-control") == "no-store"
+
+
+def test_toda_respuesta_de_control_va_sin_cache() -> None:
+    navegador = _con_clave()
+    for ruta in ("/v1/control/linea-base", "/v1/control/valuaciones", "/v1/control/calculo"):
+        respuesta = navegador.get(ruta, params=P)
+        assert respuesta.status_code == 200, ruta
+        assert respuesta.headers.get("cache-control") == "no-store", ruta
+    # también el 404 de una obra que no existe
+    respuesta = navegador.get("/v1/control/linea-base", params={"proyecto": "NO"})
+    assert respuesta.status_code == 404
+    assert respuesta.headers.get("cache-control") == "no-store"
+
+
 def test_anular_una_valuacion_la_saca_de_las_que_cuentan() -> None:
     navegador, cabeceras = _arma()
     anulables = navegador.get("/v1/control/valuaciones", params=P).json()["anulables"]

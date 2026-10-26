@@ -84,6 +84,11 @@ MENSAJE_FORMA = (
 )
 MENSAJE_BASE = "No se pudo leer ni guardar el estudio de mercado de la carpeta de trabajo."
 PRIVADO = "valor-que-nunca-debe-volver"
+#: El 422 de `pu` (los precios unitarios de la Hoja) tiene su propio mensaje fijo (árbitro de T16).
+MENSAJE_PU = (
+    "Los precios unitarios de la Hoja no son válidos: cada uno va como código:monto, separados "
+    "por coma, con punto decimal y con la moneda de esos precios."
+)
 POR_ENCIMA = "Primer cuartil del mercado, igual o por encima de su costo."
 POR_DEBAJO = "La competencia cobra menos que su costo: se propone su costo."
 
@@ -780,7 +785,7 @@ def test_sin_precio_unitario_en_otra_moneda_o_con_cero_no_hay_margen(ana, caso: 
 )
 def test_un_precio_unitario_mal_formado_es_422_fijo_sin_eco(ana, params: dict) -> None:
     respuesta = ana[0].get(f"{RUTA}/objetivos", params={"partidas": "OBRA-04", **params})
-    assert (respuesta.status_code, respuesta.json()) == (422, {"detalle": MENSAJE_FORMA})
+    assert (respuesta.status_code, respuesta.json()) == (422, {"detalle": MENSAJE_PU})
     assert PRIVADO not in respuesta.text
     _sin_cache(respuesta)
 
@@ -790,3 +795,18 @@ def test_la_misma_partida_repetida_con_el_mismo_precio_se_acepta(ana) -> None:
     assert _margenes(
         ana, partidas="OBRA-04", pu="OBRA-04:2074.44,OBRA-04:2074.44", moneda="Bs"
     ) == {"OBRA-04": ("1980.00", "Bs", "-4.6")}
+
+
+def test_un_precio_unitario_absurdo_no_tumba_la_tanda(ana) -> None:
+    """Un `pu` bien escrito pero diminuto (0,000…01) da un margen que no cabe en la precisión: esa
+    partida queda sin margen y las demás siguen (antes, `InvalidOperation` y un 500)."""
+    _objetivo(ana, "OBRA-04", "1.980,00")
+    _objetivo(ana, "OBRA-03", "120")
+    diminuto = "0." + "0" * 40 + "1"
+    assert _margenes(
+        ana, partidas="OBRA-04,OBRA-03", pu=f"OBRA-04:{diminuto},OBRA-03:100", moneda="Bs"
+    ) == {
+        "OBRA-04": ("1980.00", "Bs", None),
+        # (120 − 100) / 100 = 20 %
+        "OBRA-03": ("120.00", "Bs", "20.0"),
+    }

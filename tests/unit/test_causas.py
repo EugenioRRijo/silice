@@ -95,6 +95,18 @@ def _filas_de_causas(sesion) -> list[tuple[int, str, str]]:
 # --- el catálogo de causas y el texto ---------------------------------------------------------
 
 
+def test_que_valuaciones_cuentan_lo_decide_solo_la_instantanea(
+    dos, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """La regla «no anulada y con *hasta* hasta el corte» vive en un solo lugar
+    (`InstantaneaControl.para_el_valor_ganado`, núcleo): las causas no la repiten."""
+    from core.budget.valuaciones import InstantaneaControl
+
+    resultado = _registrar(dos, [_linea("A", "5", "compra_tardia")])
+    monkeypatch.setattr(InstantaneaControl, "para_el_valor_ganado", lambda self: ())
+    assert [a.causa for a in atrasos(dos, resultado)] == [None, None]
+
+
 def test_las_siete_causas_del_plan_en_su_orden() -> None:
     assert list(CAUSAS.items()) == [
         ("compra_tardia", "Compra tardía"),
