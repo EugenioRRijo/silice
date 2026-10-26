@@ -313,6 +313,27 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   registro. **Por decidir (Eugenio):** con la cadena rota, ¿permitir al menos devolver?; una versión antigua sin sellar
   rompe la cadena y bloquea el dictamen de todas (igual que Trazabilidad y la entrega).
 
+## T21, plan desde los rendimientos
+
+1. **Cantidad 0 en la Hoja.** `plan_por_rendimientos` deja fuera la partida, como manda el plan; pero la curva del núcleo
+   exige que cada partida valorada sume 1, así que `plan_del_borrador` la pone entera (monto 0) en el último período (no
+   alarga el plan como haría `ajustar_plan` con un «Día n+1»). **Por ratificar.**
+2. **«La anterior» de una paralela** es la anterior que entró al plan; una con cantidad 0 no cuenta. Si es la primera, empieza
+   en 0.
+3. **Cuadrillas:** texto con un entero de 1 a 99, sin separadores ni ceros a la izquierda; el tope de 99 es arbitrario.
+   **Por ratificar.**
+4. **Tope de 500 períodos:** el de la matriz (`EdicionPlan`); más allá el plan no se podría editar. El mensaje sugiere
+   semanas o más cuadrillas.
+5. **Varios renglones del mismo código** suman su cantidad: una sola duración, como en `plan_secuencial`.
+6. **Rehacer el plan** reemplaza la matriz entera (la pantalla avisa «lo que haya repartido a mano se reemplaza») y no pide
+   confirmación; el mismo plan no sube el `rev`. **Por decidir** si debe confirmar con un plan repartido a mano.
+7. **Sin plan, el front no lista partidas** (`vista_plan` no las trae): se manda una cuadrilla por partida; con el plan
+   hecho, la persona ajusta cada una.
+8. **Para T27:** `paralelas_del_plan` sigue la letra del plan y también marca como paralela una partida encadenada que
+   empieza en el mismo período que la anterior (con duraciones de medio día y, en semanas, es lo habitual).
+9. La primera versión sin plan guarda el plan desde los rendimientos en vez de una partida por día (`crear_primera_version`
+   usa `con_plan_por_rendimientos`); ningún oráculo dependía de «una partida por día» (choque 10).
+
 ## MOD-4a, mesa de control (aprobada en la ronda 2)
 
 1. **Corte sin valuaciones.** El corte de una obra con línea base es el «hasta» de su última valuación no anulada; sin
