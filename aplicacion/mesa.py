@@ -28,6 +28,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
+from aplicacion import aprobaciones
 from aplicacion.cifras import texto_de_cifra
 from aplicacion.control import (
     ControlInvalido,
@@ -70,11 +71,15 @@ __all__ = [
 ]
 
 EN_ELABORACION = "en_elaboracion"
+EN_APROBACION = "en_aprobacion"
+APROBADA = "aprobada"
 EN_EJECUCION = "en_ejecucion"
 ATRASADA = "atrasada"
-#: Cómo se nombra cada etapa en la interfaz (MP-4 agrega «En aprobación» y «Aprobada»).
+#: Cómo se nombra cada etapa en la interfaz.
 ETAPA_TEXTO = {
     EN_ELABORACION: "En elaboración",
+    EN_APROBACION: "En aprobación",
+    APROBADA: "Aprobada",
     EN_EJECUCION: "En ejecución",
     ATRASADA: "Atrasada",
 }
@@ -107,6 +112,8 @@ REGISTRAR_EL_AVANCE = Siguiente("Registrar el avance", "control")
 VER_LAS_ALERTAS = Siguiente("Ver las alertas", "control")
 ACTUALIZAR_PRECIOS = Siguiente("Actualizar precios", "actualizacion")
 VER_EL_CATALOGO = Siguiente("Ver el catálogo", "catalogo")
+VER_EL_ENVIO = Siguiente("Ver el envío", "aprobar")
+DECLARAR_LA_LINEA_BASE = Siguiente("Declarar la línea base", "control")
 
 
 @dataclass(frozen=True)
@@ -243,6 +250,19 @@ class _Estado:
 
 
 _EN_ELABORACION = _Estado(EN_ELABORACION, ABRIR_LA_HOJA)
+_EN_APROBACION = _Estado(EN_APROBACION, VER_EL_ENVIO)
+_APROBADA = _Estado(APROBADA, DECLARAR_LA_LINEA_BASE)
+
+
+def _sin_linea_base(sesion: Session, codigo: str) -> _Estado:
+    """La etapa de una obra sin línea base (MP-4): en aprobación si alguna de sus versiones lo
+    está; si no, aprobada si tiene una versión aprobada (con o sin observaciones); si no, en
+    elaboración."""
+    if any(e.estado == EN_APROBACION for e in aprobaciones.estados(sesion, codigo).values()):
+        return _EN_APROBACION
+    if aprobaciones.ultima_aprobada(sesion, codigo) is not None:
+        return _APROBADA
+    return _EN_ELABORACION
 
 
 def _en_curso(sesion: Session, catalogo: Catalogo, nombre: str, hoy: date) -> _Estado:
@@ -283,7 +303,8 @@ def _en_curso(sesion: Session, catalogo: Catalogo, nombre: str, hoy: date) -> _E
 def obras_de_la_mesa(sesion: Session, catalogo: Catalogo, hoy: date) -> list[ObraEnMesa]:
     """Las obras de la carpeta en orden alfabético, cada una con su etapa:
 
-    - `en_elaboracion` sin línea base de control declarada;
+    - sin línea base de control declarada: `en_aprobacion` si alguna versión está en
+      aprobación, `aprobada` si tiene una versión aprobada y, si no, `en_elaboracion`;
     - `en_ejecucion` con línea base, y `atrasada` si su SPI es menor que el umbral de SPI de su
       control (`parametros_actuales(...).spi_error`, 0,90 por omisión).
 
@@ -296,7 +317,10 @@ def obras_de_la_mesa(sesion: Session, catalogo: Catalogo, hoy: date) -> list[Obr
         base = linea_base_vigente(sesion, fila.nombre, date.max)
         version_id = fila.version_id if base is None else base.presupuesto_id
         version = None if version_id is None else sesion.get(models.Presupuesto, version_id)
-        estado = _EN_ELABORACION if base is None else _en_curso(sesion, catalogo, fila.nombre, hoy)
+        if base is None:
+            estado = _sin_linea_base(sesion, str(fila.id))
+        else:
+            estado = _en_curso(sesion, catalogo, fila.nombre, hoy)
         obras.append(
             ObraEnMesa(
                 codigo=str(fila.id),
