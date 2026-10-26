@@ -96,6 +96,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - Para integradores (RM-3): todas las rutas antiguas aceptan ahora la clave de API **o** la sesión del navegador con el rol de su página (tabla en `api/acceso.py`). Con `X-Silice-Clave` responden igual que antes; sin ella ni cookie, 401 con el mensaje de sesión y sin evento de «fallo de clave», como ya hacían las de `/v1/libros`.
 
 ### Cambiado
+- Cifras tecleadas (decisión de Eugenio 2026-10-25, resuelve D-8): coma para los decimales y punto para los miles en toda la interfaz. Un solo intérprete (`aplicacion/cifras.py`, con su espejo `src/indicadores/cifraEscrita.ts` y el oráculo compartido `tests/fixtures/cifras_escritas.json`); Componer ya no lee «1.000» como uno (se retira `decimal_con_coma`); la Hoja acepta la coma y rechaza «2.5», y sus celdas editables llegan con coma y vuelven iguales; Existencias, Asistente, Simulador, Control, Reajuste, Escenarios y Elaborar leen lo tecleado antes de enviar; los montos de lectura de Componer y Simulador en es-VE. El contrato de la API y los archivos siguen con punto decimal. Inventario en `docs/bitacora/2026-10-25-coma-decimal-punto-miles.md`.
 
 - Sesión 2 de la ruta (en curso): plan `docs/planes/PLAN_SESION_2_VISUAL.md`, producto y diseño de la interfaz nueva (`frontend-desktop/PRODUCT.md`, `DESIGN.md`) y enmienda 1.2.0 de la ERS (UC-26, RF-111 a RF-118, RNF-22 y RNF-23).
 
