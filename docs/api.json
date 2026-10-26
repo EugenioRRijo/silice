@@ -4283,7 +4283,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResumenRespuesta"
+                  "$ref": "#/components/schemas/api__rutas__entregas__ResumenRespuesta"
                 }
               }
             }
@@ -8212,6 +8212,50 @@
         }
       }
     },
+    "/v1/obras/resumen": {
+      "get": {
+        "tags": [
+          "obras"
+        ],
+        "summary": "Resumen",
+        "description": "Las cifras de las obras en ejecución y la tabla de obras de la carpeta de trabajo.",
+        "operationId": "resumen_v1_obras_resumen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__obras__ResumenRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/obras/pendientes": {
+      "get": {
+        "tags": [
+          "obras"
+        ],
+        "summary": "Pendientes De La Mesa",
+        "description": "Lo que requiere atención en las obras de la carpeta, agrupado.",
+        "operationId": "pendientes_de_la_mesa_v1_obras_pendientes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendientesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -10525,6 +10569,69 @@
         "title": "CeldaVisualRespuesta",
         "description": "Espejo de `visual.CeldaVisual`: `fila` y `columna` base 1, `ref` sin `$`."
       },
+      "CifraRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "actual": {
+            "type": "string",
+            "title": "Actual"
+          },
+          "meta": {
+            "type": "string",
+            "title": "Meta"
+          },
+          "delta": {
+            "type": "string",
+            "title": "Delta"
+          },
+          "delta_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Pct"
+          },
+          "sentido": {
+            "type": "string",
+            "title": "Sentido",
+            "description": "«rendimiento»: más es mejor"
+          },
+          "detalle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "titulo",
+          "actual",
+          "meta",
+          "delta",
+          "delta_pct",
+          "sentido",
+          "detalle"
+        ],
+        "title": "CifraRespuesta"
+      },
       "CircuitoSupuestoRespuesta": {
         "properties": {
           "id": {
@@ -11104,6 +11211,38 @@
           "disponible"
         ],
         "title": "ControlRespuesta"
+      },
+      "ConversionRespuesta": {
+        "properties": {
+          "obra": {
+            "type": "string",
+            "title": "Obra",
+            "description": "El nombre de la obra convertida"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda",
+            "description": "La moneda de la obra"
+          },
+          "tasa": {
+            "type": "string",
+            "title": "Tasa",
+            "description": "Bs por USD"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha",
+            "description": "El corte de la obra (ISO)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "obra",
+          "moneda",
+          "tasa",
+          "fecha"
+        ],
+        "title": "ConversionRespuesta"
       },
       "ConvertirVersion": {
         "properties": {
@@ -12506,7 +12645,7 @@
           },
           "pendientes_base": {
             "items": {
-              "$ref": "#/components/schemas/PendienteRespuesta"
+              "$ref": "#/components/schemas/api__esquemas__PendienteRespuesta"
             },
             "type": "array",
             "title": "Pendientes Base"
@@ -12553,7 +12692,7 @@
           },
           "pendientes_base": {
             "items": {
-              "$ref": "#/components/schemas/PendienteRespuesta"
+              "$ref": "#/components/schemas/api__esquemas__PendienteRespuesta"
             },
             "type": "array",
             "title": "Pendientes Base"
@@ -13664,6 +13803,32 @@
           "subtotal"
         ],
         "title": "GrupoApuRespuesta"
+      },
+      "GrupoRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/api__rutas__obras__PendienteRespuesta"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "titulo",
+          "items"
+        ],
+        "title": "GrupoRespuesta"
       },
       "GuardarParametros": {
         "properties": {
@@ -15491,6 +15656,117 @@
         ],
         "title": "ObraElegida"
       },
+      "ObraRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "cliente": {
+            "type": "string",
+            "title": "Cliente"
+          },
+          "etapa": {
+            "type": "string",
+            "title": "Etapa"
+          },
+          "etapa_texto": {
+            "type": "string",
+            "title": "Etapa Texto"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "avance_real": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avance Real",
+            "description": "EV ÷ BAC × 100, a 0,1"
+          },
+          "avance_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avance Plan",
+            "description": "PV ÷ BAC × 100, a 0,1"
+          },
+          "que_pasa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Que Pasa"
+          },
+          "siguiente": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiguienteRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nombre",
+          "cliente",
+          "etapa",
+          "etapa_texto",
+          "version",
+          "total",
+          "moneda",
+          "avance_real",
+          "avance_plan",
+          "que_pasa",
+          "siguiente"
+        ],
+        "title": "ObraRespuesta"
+      },
       "OpcionListaRespuesta": {
         "properties": {
           "valor": {
@@ -16049,39 +16325,21 @@
         "title": "PendienteConPropuestasRespuesta",
         "description": "Un ítem sin partida con las partidas similares que se le proponen (o por qué no hay)."
       },
-      "PendienteRespuesta": {
+      "PendientesRespuesta": {
         "properties": {
-          "codigo_partida": {
-            "type": "string",
-            "title": "Codigo Partida"
-          },
-          "descripcion": {
-            "type": "string",
-            "title": "Descripcion"
-          },
-          "unidad": {
-            "type": "string",
-            "title": "Unidad"
-          },
-          "cantidad": {
-            "type": "string",
-            "title": "Cantidad"
-          },
-          "origen_id": {
-            "type": "string",
-            "title": "Origen Id"
+          "grupos": {
+            "items": {
+              "$ref": "#/components/schemas/GrupoRespuesta"
+            },
+            "type": "array",
+            "title": "Grupos"
           }
         },
         "type": "object",
         "required": [
-          "codigo_partida",
-          "descripcion",
-          "unidad",
-          "cantidad",
-          "origen_id"
+          "grupos"
         ],
-        "title": "PendienteRespuesta",
-        "description": "Un ítem de cómputo sin partida en el catálogo (UC‑01, flujo 3a): no suma a ningún total.\nLa cantidad viaja exacta, como texto decimal, no redondeada."
+        "title": "PendientesRespuesta"
       },
       "PeriodoPlanPeticion": {
         "properties": {
@@ -17990,93 +18248,6 @@
         ],
         "title": "ResumenHojaRespuesta"
       },
-      "ResumenRespuesta": {
-        "properties": {
-          "proyecto": {
-            "type": "string",
-            "title": "Proyecto"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version"
-          },
-          "moneda": {
-            "type": "string",
-            "title": "Moneda"
-          },
-          "total": {
-            "type": "string",
-            "title": "Total"
-          },
-          "total_texto": {
-            "type": "string",
-            "title": "Total Texto"
-          },
-          "hallazgos_total": {
-            "type": "integer",
-            "title": "Hallazgos Total"
-          },
-          "hallazgos_por_severidad": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "type": "object",
-            "title": "Hallazgos Por Severidad"
-          },
-          "cadena_integra": {
-            "type": "boolean",
-            "title": "Cadena Integra"
-          },
-          "mensaje_de_cadena": {
-            "type": "string",
-            "title": "Mensaje De Cadena"
-          },
-          "entregable": {
-            "type": "boolean",
-            "title": "Entregable"
-          },
-          "empresa": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Empresa"
-          },
-          "firma_disponible": {
-            "type": "boolean",
-            "title": "Firma Disponible"
-          },
-          "viaja_con": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Viaja Con"
-          }
-        },
-        "type": "object",
-        "required": [
-          "proyecto",
-          "version",
-          "moneda",
-          "total",
-          "total_texto",
-          "hallazgos_total",
-          "hallazgos_por_severidad",
-          "cadena_integra",
-          "mensaje_de_cadena",
-          "entregable",
-          "empresa",
-          "firma_disponible",
-          "viaja_con"
-        ],
-        "title": "ResumenRespuesta",
-        "description": "`entregable` es `false` si la versión se selló antes de la corrección de cifras (VB-1): la\ncadena sigue íntegra, pero entregarla se rechaza (409) y hay que confirmar una versión nueva.\nEl texto del aviso ya viaja al final de `mensaje_de_cadena`; la pantalla debe mostrarlo y\ndeshabilitar «Entregar» cuando `entregable` es `false`."
-      },
       "RetirarCotizacion": {
         "properties": {
           "proyecto": {
@@ -18594,6 +18765,26 @@
           "total"
         ],
         "title": "SeveridadRespuesta"
+      },
+      "SiguienteRespuesta": {
+        "properties": {
+          "texto": {
+            "type": "string",
+            "title": "Texto",
+            "description": "El texto del botón"
+          },
+          "pagina": {
+            "type": "string",
+            "title": "Pagina",
+            "description": "La pantalla a la que lleva (`id` de la ruta del front)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "texto",
+          "pagina"
+        ],
+        "title": "SiguienteRespuesta"
       },
       "SimilarRespuesta": {
         "properties": {
@@ -20013,6 +20204,40 @@
         "title": "VistaPreviaRespuesta",
         "description": "Los insumos del archivo que se pueden dar de alta (flujo 2a), sin escribir nada. Un archivo\nque no se puede leer no ofrece nada y trae su motivo; el mismo fallo se informa al revalorar."
       },
+      "api__esquemas__PendienteRespuesta": {
+        "properties": {
+          "codigo_partida": {
+            "type": "string",
+            "title": "Codigo Partida"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "origen_id": {
+            "type": "string",
+            "title": "Origen Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo_partida",
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "origen_id"
+        ],
+        "title": "PendienteRespuesta",
+        "description": "Un ítem de cómputo sin partida en el catálogo (UC‑01, flujo 3a): no suma a ningún total.\nLa cantidad viaja exacta, como texto decimal, no redondeada."
+      },
       "api__esquemas_hoja__GuardadoRespuesta": {
         "properties": {
           "codigo": {
@@ -20663,6 +20888,93 @@
         ],
         "title": "VersionRespuesta"
       },
+      "api__rutas__entregas__ResumenRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "total_texto": {
+            "type": "string",
+            "title": "Total Texto"
+          },
+          "hallazgos_total": {
+            "type": "integer",
+            "title": "Hallazgos Total"
+          },
+          "hallazgos_por_severidad": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Hallazgos Por Severidad"
+          },
+          "cadena_integra": {
+            "type": "boolean",
+            "title": "Cadena Integra"
+          },
+          "mensaje_de_cadena": {
+            "type": "string",
+            "title": "Mensaje De Cadena"
+          },
+          "entregable": {
+            "type": "boolean",
+            "title": "Entregable"
+          },
+          "empresa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empresa"
+          },
+          "firma_disponible": {
+            "type": "boolean",
+            "title": "Firma Disponible"
+          },
+          "viaja_con": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Viaja Con"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "moneda",
+          "total",
+          "total_texto",
+          "hallazgos_total",
+          "hallazgos_por_severidad",
+          "cadena_integra",
+          "mensaje_de_cadena",
+          "entregable",
+          "empresa",
+          "firma_disponible",
+          "viaja_con"
+        ],
+        "title": "ResumenRespuesta",
+        "description": "`entregable` es `false` si la versión se selló antes de la corrección de cifras (VB-1): la\ncadena sigue íntegra, pero entregarla se rechaza (409) y hay que confirmar una versión nueva.\nEl texto del aviso ya viaja al final de `mensaje_de_cadena`; la pantalla debe mostrarlo y\ndeshabilitar «Entregar» cuando `entregable` es `false`."
+      },
       "api__rutas__indices__ContextoRespuesta": {
         "properties": {
           "tipos": {
@@ -20810,6 +21122,91 @@
           "hasta"
         ],
         "title": "SerieRespuesta"
+      },
+      "api__rutas__obras__PendienteRespuesta": {
+        "properties": {
+          "obra": {
+            "type": "string",
+            "title": "Obra",
+            "description": "El código de la obra"
+          },
+          "obra_nombre": {
+            "type": "string",
+            "title": "Obra Nombre"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          },
+          "accion": {
+            "$ref": "#/components/schemas/SiguienteRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "obra",
+          "obra_nombre",
+          "texto",
+          "accion"
+        ],
+        "title": "PendienteRespuesta"
+      },
+      "api__rutas__obras__ResumenRespuesta": {
+        "properties": {
+          "moneda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda"
+          },
+          "hoy": {
+            "type": "string",
+            "title": "Hoy"
+          },
+          "cifras": {
+            "items": {
+              "$ref": "#/components/schemas/CifraRespuesta"
+            },
+            "type": "array",
+            "title": "Cifras"
+          },
+          "conversiones": {
+            "items": {
+              "$ref": "#/components/schemas/ConversionRespuesta"
+            },
+            "type": "array",
+            "title": "Conversiones"
+          },
+          "fuera_de_suma": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Fuera De Suma"
+          },
+          "obras": {
+            "items": {
+              "$ref": "#/components/schemas/ObraRespuesta"
+            },
+            "type": "array",
+            "title": "Obras"
+          }
+        },
+        "type": "object",
+        "required": [
+          "moneda",
+          "hoy",
+          "cifras",
+          "conversiones",
+          "fuera_de_suma",
+          "obras"
+        ],
+        "title": "ResumenRespuesta"
       },
       "api__rutas__produccion__ImportacionRespuesta": {
         "properties": {

@@ -154,6 +154,9 @@ TABLA = {
     ("PUT", "/v1/carpeta/moneda"): EDITAR,
     ("POST", "/v1/carpeta/lista-para-armar"): EDITAR,
     ("GET", "/v1/buscar/partidas"): LEER,  # T10: buscador de partidas del catálogo (C-1)
+    # MOD-4a: la mesa de control (inicio de Presupuestos y obras)
+    ("GET", "/v1/obras/resumen"): LEER,
+    ("GET", "/v1/obras/pendientes"): EDITAR,
     ("POST", "/v1/proyectos"): EDITAR,
     ("POST", "/v1/similares"): EDITAR,
     ("POST", "/v1/simulador"): EDITAR,
