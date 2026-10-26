@@ -624,7 +624,7 @@ describe("Control de obra: coma decimal y punto de miles (regla de Eugenio, 2026
     await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
     await screen.findByText(/Valuación registrada/);
     expect(cuerpo("/v1/control/valuaciones").lineas).toEqual([
-      { partida: "OB-A", cantidad: "1234.5", fecha_medicion: "", observacion: "" },
+      { partida: "OB-A", cantidad: "1234.5", fecha_medicion: "", observacion: "", causa: null },
     ]);
   });
 
