@@ -16,6 +16,7 @@ import hashlib
 import json
 import sqlite3
 from collections.abc import Iterator
+from contextlib import closing
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -904,7 +905,13 @@ def test_el_detalle_lista_tambien_los_items_pendientes(tmp_path: Path) -> None:
         Decimal("10"),
     )
     assert (pendiente.precio_unitario, pendiente.total) == (None, None)
-    assert detalle.total == sum((p.total for p in detalle.partidas[:6]), Decimal(0))
+    with closing(sqlite3.connect(tmp_path / "vivienda.db")) as conexion:
+        guardados = conexion.execute(
+            "SELECT pp.total FROM partida_presupuestada pp JOIN presupuesto p "
+            "ON p.id = pp.presupuesto_id WHERE p.codigo = 'VIV-002'"
+        ).fetchall()
+    assert len(guardados) == 6  # el pendiente no tiene renglón con precio
+    assert detalle.total == sum((Decimal(t) for (t,) in guardados), Decimal(0))
 
 
 def test_los_textos_de_la_fuente_aprobar_viven_en_un_solo_lugar() -> None:
@@ -918,3 +925,20 @@ def test_los_textos_de_la_fuente_aprobar_viven_en_un_solo_lugar() -> None:
 
 def _la_vivienda(s: Session) -> models.Proyecto:
     return s.scalars(select(models.Proyecto).where(models.Proyecto.nombre == OBRA_80)).one()
+
+
+CADENA_ROTA_AL_ENVIAR = (
+    "No se puede enviar {version}: la cadena de versiones de esta obra está rota en la versión "
+    "VIV-001 (su contenido no coincide con su huella). Revíselo con el administrador."
+)
+
+
+def test_una_version_de_una_cadena_rota_no_se_envia(sesion: Session) -> None:
+    """Un envío que nadie podría dictaminar no se crea: la cadena se verifica también al enviar."""
+    _alterar_un_renglon(sesion, "VIV-001")
+    for version in ("VIV-001", "VIV-002"):  # la cadena se rompe en VIV-001 para las dos
+        with pytest.raises(AprobacionInvalida) as error:
+            _enviar(sesion, version)
+        assert type(error.value) is AprobacionInvalida  # 409
+        assert _mensaje(error) == CADENA_ROTA_AL_ENVIAR.format(version=version)
+    assert _cuenta(sesion) == 0

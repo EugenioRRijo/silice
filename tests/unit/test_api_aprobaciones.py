@@ -22,6 +22,7 @@ archivo compartido que integra el orquestador.
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 import threading
 from collections.abc import Iterator
@@ -695,3 +696,31 @@ def test_el_detalle_muestra_los_items_pendientes_sin_precio(ana) -> None:
         "pendiente": True,
     }
     assert cuerpo["total"] == _total("VIV-003")
+
+
+def test_una_version_alterada_no_se_envia(ana) -> None:
+    _alterar_un_renglon("VIV-001")
+    enviado = _enviar(ana)
+    assert enviado.status_code == 409
+    assert enviado.json() == {
+        "detalle": "No se puede enviar VIV-001: la cadena de versiones de esta obra está rota en "
+        "la versión VIV-001 (su contenido no coincide con su huella). Revíselo con el "
+        "administrador."
+    }
+    assert ana[0].get(f"{RAIZ}/mias").json() == []
+
+
+def test_el_fallo_del_reflejo_queda_en_el_registro(
+    ana, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def falla(*_args, **_kwargs):
+        raise ValueError("un fallo que no es de la base")
+
+    monkeypatch.setattr(indice_aprobaciones, "reflejar", falla)
+    with caplog.at_level(logging.WARNING, logger="api.rutas.aprobaciones"):
+        assert _enviar(ana).status_code == 201
+    avisos = [r for r in caplog.records if r.name == "api.rutas.aprobaciones"]
+    assert [(r.levelno, r.getMessage()) for r in avisos] == [
+        (logging.WARNING, "No se pudo reflejar el índice de aprobaciones de vivienda.db.")
+    ]
+    assert avisos[0].exc_info is not None and avisos[0].exc_info[0] is ValueError
