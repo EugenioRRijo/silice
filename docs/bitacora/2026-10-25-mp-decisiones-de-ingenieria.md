@@ -221,6 +221,38 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 8. Aviso: cuando se integre la fuente «cantidades sin cálculo» (T9), el oráculo del grupo «Calidad» de
    `tests/unit/test_api_obras_resumen.py` debe actualizarse.
 
+## MOD-4b, mesa de control (front)
+
+1. **Dos cifras en el esqueleto.** La API sirve hoy como mucho dos (valor ganado y avance); el esqueleto dibuja esa forma
+   con `CIFRAS_DEL_RESUMEN = 2` (`src/paginas/obras/CifrasMesa.tsx`), que sube a tres cuando exista «Por aprobar» (§12.6).
+2. **Columna de pendientes a `calc(380px * var(--silice-escala-letra))`.** Mide 380 px con letra Normal y crece con la
+   escala, como el sidebar fijado (choque 13). Dos columnas por consulta de contenedor desde 60 rem; el rem de la consulta
+   es el de la raíz, que sigue la escala. **Por ratificar** (MOD-5 mide 1056 y 1366 px con las tres letras).
+3. **Accesos si todo da 403.** Si todos los bloques pedidos resultan prohibidos, la mesa muestra «Lo que puede hacer
+   aquí» en vez de quedar solo con el h1. Sin columnas vacías: la de obras solo existe si el resumen no dio 403 y la
+   rejilla solo tiene dos columnas con las dos (ronda 2).
+4. **El aviso de un fallo del resumen va una sola vez, en «Obras».** Cifras y obras salen de la misma respuesta; la
+   franja no se pinta. Con cero obras tampoco se pinta la franja: el vacío del bloque de obras enseña qué hacer.
+5. **«Nueva obra» de la cabecera se oculta en el vacío**, donde «Cree su primera obra» hace lo mismo (sin dos botones
+   principales iguales). **Por ratificar.**
+6. **«Ver el envío» (pantalla `aprobar`) no se ofrece mientras esa pantalla no esté en `rutas.ts`.** Un botón de la mesa
+   (siguiente paso o acción de un pendiente) solo aparece si su pantalla existe y es visible para la cuenta; la columna
+   «Siguiente paso» solo existe si alguna fila trae uno. Cuando se registre `aprobar` (T20), aparece sola. Las etapas
+   `en_aprobacion` y `aprobada` se leen con su `etapa_texto`.
+7. **Conversión con la fecha de la tasa.** «C convertida a Bs con la tasa del BCV de 40,00 del 22/10/2026» usa
+   `fecha_tasa`, no el corte.
+8. **Ronda 2: la mesa sigue a la obra recién creada.** `alCrearObra` del armazón no vuelve a montar la página; la mesa
+   lo resuelve sola: si la obra elegida (`proyecto`) no está en la tabla ya cargada, se vuelve a montar y pide de nuevo
+   resumen y pendientes, una sola vez por obra. Elegir una obra que ya está en la tabla no repite la lectura.
+9. **Ronda 2: la demostración pregunta antes de estrenarse** (`abrirCarpeta(nombre, preparar)`): con «Quedarme» no hay
+   `POST /v1/casos/demostracion`.
+10. **Ronda 2: accesibilidad.** La línea de las atrasadas es la descripción del grupo de su cifra (`IndicadorFiori` gana
+    `idDescripcion` opcional); el botón de un pendiente se describe con su obra y su texto.
+11. **Fuera de `src/paginas/obras/**`**, dos props opcionales y compatibles: `AccesosDelModulo` gana `titulo` («Lo que
+    puede hacer aquí») e `IndicadorFiori` gana `idDescripcion`.
+12. **Decisiones para Eugenio:** quien revisa (rita) no ve el grupo «Aprobar» porque `/v1/obras/pendientes` exige
+    `editar_hoja`; la cifra «Por aprobar» (§12.6) no la sirve todavía `GET /v1/obras/resumen`.
+
 ## Migraciones del caso
 
 Tres tareas a la vez colgaron su migración de `caso_0010_mp_carpeta`. El orden fijado es
