@@ -130,6 +130,19 @@ describe("SelectorObra", () => {
     expect(boton).toHaveFocus();
   });
 
+  // D-2 de MOD-5a (navegador real): con texto en «Buscar obra», Esc cerraba el panel pero el Search de Carbon, despues,
+  // devolvia el foco a su campo (que se iba con el panel) y quedaba en <body>.
+  test("Esc en «Buscar obra» con texto cierra el panel y deja el foco en el botón de la obra", async () => {
+    const u = userEvent.setup();
+    pintar();
+    const boton = screen.getByRole("button", { name: /^Obra: / });
+    await u.click(boton);
+    await u.type(screen.getByRole("searchbox", { name: "Buscar obra" }), "maracay");
+    await u.keyboard("{Escape}");
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    expect(boton).toHaveFocus();
+  });
+
   // Menor de la ronda 1 del arbitro: la busqueda no sobrevive al cierre del panel, sea cual sea la forma de cerrarlo.
   test.each([
     ["Esc", async (u: ReturnType<typeof userEvent.setup>) => u.keyboard("{Escape}")],
