@@ -167,6 +167,14 @@ body {
   cursor: not-allowed;
 }
 
+// Panel de la pestana elegida (D-5): envuelve al lienzo y le pasa el alto que queda bajo las pestanas.
+.visor__panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
 .visor__lienzo {
   position: relative;
   flex: 1 1 auto;

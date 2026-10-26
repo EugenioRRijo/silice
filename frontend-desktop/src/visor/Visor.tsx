@@ -1,5 +1,6 @@
 import { FileUploaderButton, FileUploaderDropContainer, InlineNotification, SkeletonPlaceholder, SkeletonText, Tab, TabList, Tabs } from "@carbon/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import { tomarArchivoPendiente } from "../paginas/inicio/archivoPendiente";
@@ -61,6 +62,33 @@ function cuerpoDeLibro(archivo: File, fecha?: string): FormData {
 
 function mensajeDe(razon: unknown): string {
   return razon instanceof ErrorDeApi ? razon.detalle : "Ocurrió un error inesperado. Inténtelo de nuevo.";
+}
+
+// D-5: las pestanas «Hojas del libro» (Carbon) no cambian de panel: todas muestran sus hojas en el mismo lienzo, que
+// no se puede rehacer por pestana sin recrear Univer. Este es el panel de la pestana elegida: toma el id que la
+// pestana anuncia en `aria-controls` y se nombra con ella (`aria-labelledby`), asi el `aria-controls` de la elegida
+// apunta a un panel que existe. Los ids los pone Carbon (no se pueden fijar desde afuera), por eso se leen de la
+// pestana ya dibujada y se escriben aqui antes de pintar, en cada render (React no maneja esos dos atributos).
+function PanelDeHoja({ children }: { children: ReactNode }) {
+  const panel = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const destino = panel.current;
+    if (!destino) return;
+    const elegida = destino.parentElement?.querySelector<HTMLElement>('[role="tablist"] [role="tab"][aria-selected="true"]');
+    const id = elegida?.getAttribute("aria-controls");
+    if (elegida && id) {
+      destino.id = id;
+      destino.setAttribute("aria-labelledby", elegida.id);
+    } else {
+      destino.removeAttribute("id");
+      destino.removeAttribute("aria-labelledby");
+    }
+  });
+  return (
+    <div className="visor__panel" role="tabpanel" ref={panel}>
+      {children}
+    </div>
+  );
 }
 
 function Esqueleto() {
@@ -401,26 +429,28 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
                 alRestablecer={zoomHoja.restablecer}
               />
             </div>
-            <div className="visor__lienzo" ref={setLienzoHoja} role="group" aria-label="Hoja del libro, solo lectura" onContextMenuCapture={(e) => e.preventDefault()}>
-              <UniverGrid
-                libro={replica}
-                crearHoja={crearHoja}
-                alCambiarVisor={alCambiarVisor}
-                alFallar={alFallarVisor}
-                zoomInicial={zoomHoja.razon}
-              />
-              {!visor && <SkeletonPlaceholder className="visor__esqueleto-lienzo visor__esqueleto-sobre" />}
-              <CapaHalos
-                halos={halos}
-                hallazgos={hallazgos}
-                visor={visor}
-                seleccionado={seleccionado}
-                onElegir={(indice) => {
-                  setSeleccionado(indice);
-                  setEnfocar((previo) => ({ indice, n: (previo?.n ?? 0) + 1 }));
-                }}
-              />
-            </div>
+            <PanelDeHoja>
+              <div className="visor__lienzo" ref={setLienzoHoja} role="group" aria-label="Hoja del libro, solo lectura" onContextMenuCapture={(e) => e.preventDefault()}>
+                <UniverGrid
+                  libro={replica}
+                  crearHoja={crearHoja}
+                  alCambiarVisor={alCambiarVisor}
+                  alFallar={alFallarVisor}
+                  zoomInicial={zoomHoja.razon}
+                />
+                {!visor && <SkeletonPlaceholder className="visor__esqueleto-lienzo visor__esqueleto-sobre" />}
+                <CapaHalos
+                  halos={halos}
+                  hallazgos={hallazgos}
+                  visor={visor}
+                  seleccionado={seleccionado}
+                  onElegir={(indice) => {
+                    setSeleccionado(indice);
+                    setEnfocar((previo) => ({ indice, n: (previo?.n ?? 0) + 1 }));
+                  }}
+                />
+              </div>
+            </PanelDeHoja>
           </section>
           <aside className="visor__lista">
             <ListaHallazgos

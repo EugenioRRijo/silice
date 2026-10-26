@@ -94,6 +94,13 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   injector.get(IConfigService).setConfig(SHEETS_UI_PLUGIN_CONFIG_KEY, { disableEdit: true }, { merge: true });
   const hojaActual = (): FWorksheet => fLibro.getActiveSheet();
 
+  // D-3: despues de `destruir` nada de aqui vuelve a tocar Univer. Un cuadro de dibujo o un temporizador que quedo
+  // pedido, o un zoom que llega tarde de React, corria sobre la hoja ya desechada y Univer lanzaba
+  // `[redi]: Cannot find "u4"` (u4 es su controlador de zoom por hoja) al salir de la pantalla.
+  let destruido = false;
+  let cuadroPendiente: number | null = null;
+  const temporizadores = new Set<ReturnType<typeof setTimeout>>();
+
   // Zoom del lienzo (facade FWorksheet.zoom, 0,1 a 4): es por hoja, asi que se pone en todas para que al cambiar de
   // pestana siga igual; Univer redibuja la activa y deja la seleccion y el desplazamiento donde estaban.
   // Reintentos de la racha actual (la decision, con su tope, vive en `debeReaplicarZoom`).
@@ -103,6 +110,7 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
     for (const hoja of fLibro.getSheets()) hoja.zoom(razonVigente);
   }
   function fijarZoom(razon: number): void {
+    if (destruido) return;
     razonVigente = Math.min(RAZON_MAXIMA_UNIVER, Math.max(RAZON_MINIMA_UNIVER, razon));
     reintentosZoom = 0;
     aplicarZoom();
@@ -205,10 +213,12 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   const oyentesCambio = new Set<() => void>();
   let pendiente = false;
   const avisarCambio = () => {
-    if (pendiente) return;
+    if (pendiente || destruido) return;
     pendiente = true;
-    requestAnimationFrame(() => {
+    cuadroPendiente = requestAnimationFrame(() => {
+      cuadroPendiente = null;
       pendiente = false;
+      if (destruido) return;
       asegurarZoom();
       oyentesCambio.forEach((f) => f());
     });
@@ -239,6 +249,7 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   fijarZoom(zoomInicial);
 
   function irAHoja(nombre: string): void {
+    if (destruido) return;
     const hoja = fLibro.getSheetByName(nombre);
     if (hoja && hojaActual().getSheetName() !== nombre) fLibro.setActiveSheet(hoja);
   }
@@ -293,6 +304,7 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   }
 
   function irA(celda: CeldaRef): void {
+    if (destruido) return;
     const cambio = hojaActual().getSheetName() !== celda.hoja;
     irAHoja(celda.hoja);
     const colocar = () => {
@@ -303,8 +315,13 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
       avisarCambio();
     };
     // Tras cambiar de hoja, Univer arma su cuadricula en el cuadro siguiente.
-    if (cambio) setTimeout(colocar, PASO_MS);
-    else colocar();
+    if (cambio) {
+      const temporizador = setTimeout(() => {
+        temporizadores.delete(temporizador);
+        if (!destruido) colocar();
+      }, PASO_MS);
+      temporizadores.add(temporizador);
+    } else colocar();
   }
 
   return {
@@ -324,6 +341,11 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
       return () => oyentesSeleccion.delete(devolucion);
     },
     destruir: () => {
+      if (destruido) return;
+      destruido = true;
+      if (cuadroPendiente !== null) cancelAnimationFrame(cuadroPendiente);
+      temporizadores.forEach((t) => clearTimeout(t));
+      temporizadores.clear();
       observador.disconnect();
       for (const s of suscripciones) {
         if (typeof s.unsubscribe === "function") s.unsubscribe();
@@ -331,7 +353,19 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
       }
       oyentesCambio.clear();
       oyentesSeleccion.clear();
-      univer.dispose();
+      // En orden: primero el libro (Univer suelta su unidad de dibujo con los servicios aun vivos), despues la
+      // instancia. `destruir` corre en la limpieza de un efecto de React: si Univer lanzara al desecharse, el error
+      // no debe escapar (la pantalla ya se fue y no hay nada que el usuario pueda hacer); queda en la consola como aviso.
+      try {
+        univerAPI.disposeUnit(unitId);
+      } catch (error) {
+        console.warn("Univer lanzo al desechar el libro:", error);
+      }
+      try {
+        univer.dispose();
+      } catch (error) {
+        console.warn("Univer lanzo al desecharse:", error);
+      }
     },
   };
 }

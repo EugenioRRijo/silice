@@ -178,11 +178,15 @@ describe("adaptador de Univer: montar y desmontar (D-3)", () => {
 
   test("si Univer lanza al desecharse, destruir no lo deja escapar y se puede llamar dos veces", async () => {
     doble.estado.lanzaSiempre = true;
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
     const visor = await crearHojaUniver(document.createElement("div"), libro, 1);
     expect(() => visor.destruir()).not.toThrow();
     expect(() => visor.destruir()).not.toThrow();
     // La segunda llamada no vuelve a desechar nada.
     expect(doble.estado.orden.filter((paso) => paso === "instancia")).toHaveLength(1);
+    // No se calla: queda como aviso en la consola (no como error de pagina).
+    expect(aviso).toHaveBeenCalledTimes(1);
+    aviso.mockRestore();
   });
 
   test("despues de destruir, pedir zoom u hoja no toca Univer", async () => {
