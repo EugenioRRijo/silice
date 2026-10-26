@@ -213,3 +213,17 @@ def test_sin_sesion_es_401_y_con_clave_409() -> None:
 def test_con_la_contrasena_temporal_no_vuelve() -> None:
     navegador, ficha = con_cuenta(app, "tomas")
     assert _volver(navegador, ficha).status_code == 403
+
+
+def test_sin_archivo_en_disco_volver_da_503_con_su_propio_mensaje(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    monkeypatch.setenv(dependencias.VARIABLE_BASE, "sqlite:///:memory:")
+    respuesta = _volver(navegador, ficha)
+    assert respuesta.status_code == 503
+    assert respuesta.headers["cache-control"] == "no-store"
+    assert respuesta.json() == {
+        "detalle": "Esta instalación no usa una carpeta de trabajo en disco: no hay carpeta de "
+        "la empresa a la que volver."
+    }
