@@ -123,10 +123,18 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
   // Adónde va el foco tras un error o al elegir un insumo nuevo: mientras va la petición los campos están deshabilitados.
   const focoPendiente = useRef<string | null>(null);
 
-  // Lo escrito en cualquier campo cuenta como trabajo sin guardar (también la modalidad elegida).
+  // Lo escrito en un campo que se ve cuenta como trabajo sin guardar (también la modalidad elegida); lo que el tipo o el
+  // insumo elegido oculta conserva su valor pero no ensucia el formulario.
   useFormularioSucio(
     "hoja",
-    [texto, cantidad, precio, unidad, depreciacion].some((t) => t.trim() !== "") || modalidad !== "jornal",
+    [
+      texto,
+      cantidad,
+      nuevo !== null ? precio : "",
+      nuevo !== null && tipo === "material" ? unidad : "",
+      tipo === "equipo" ? depreciacion : "",
+    ].some((t) => t.trim() !== "") ||
+      (tipo === "mano_obra" && modalidad !== "jornal"),
   );
 
   useEffect(() => {

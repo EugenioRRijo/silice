@@ -315,6 +315,7 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    margen viejo visible mientras llega la respuesta nueva, ayuda sin `aria-describedby`, consulta cuadrática por render
    (front); `InvalidOperation` con un `pu` absurdo y mensaje propio del 422 de `pu` (con T25).
    **Cerrados** los tres del front: la columna queda vacía y sin error mientras llega la respuesta a otros precios, la ayuda describe la cabecera (`aria-describedby`) y la consulta se arma una vez por filas (`useMemo`, conjunto en vez de `includes`); además, el error va en una región `role="status"` montada vacía.
+   Desvío del método: el commit `2346a6bb` mezcló prueba y código sin rojo visto (no se reescribe). Ronda 2 (árbitro, MAYOR): `descripcion` pisaba el `aria-describedby` de orden de Carbon en toda columna ordenable; ahora solo se pasa en columnas no ordenables (Carbon no expone su id), con pruebas en `src/comun` (rojo en su commit). Lo oculto por el tipo (depreciación, modalidad, unidad) ya no ensucia el diálogo de agregar línea.
 
 ## T17, eventos de aprobación (aprobada en ronda 1)
 
