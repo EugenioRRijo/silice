@@ -21,6 +21,7 @@ Las dos rutas solo leen.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -40,6 +41,7 @@ from aplicacion.mesa import (
     Cifra,
     ObraEnMesa,
     Siguiente,
+    TasaDelBcv,
     cifras_de_la_mesa,
     moneda_de_la_suma,
     obras_de_la_mesa,
@@ -85,6 +87,7 @@ class ConversionRespuesta(BaseModel):
     moneda: str = Field(description="La moneda de la obra")
     tasa: str = Field(description="Bs por USD")
     fecha: str = Field(description="El corte de la obra (ISO)")
+    fecha_tasa: str = Field(description="La fecha valor de la tasa del BCV (ISO)")
 
 
 class ObraRespuesta(BaseModel):
@@ -174,12 +177,13 @@ def _obra(obra: ObraEnMesa) -> ObraRespuesta:
     )
 
 
-def _tasa_del_bcv(sesion: Session):
-    def tasa(fecha: date) -> Decimal | None:
+def _tasa_del_bcv(sesion: Session) -> Callable[[date], TasaDelBcv | None]:
+    def tasa(fecha: date) -> TasaDelBcv | None:
         try:
-            return tasa_aplicable(sesion, fecha).valor
+            aplicable = tasa_aplicable(sesion, fecha)
         except TasaNoDisponible:
             return None
+        return TasaDelBcv(aplicable.valor, aplicable.fecha)
 
     return tasa
 
@@ -194,7 +198,11 @@ def _resumen(sesion: Session, hoy: date) -> ResumenRespuesta:
         cifras=[_cifra(c) for c in (cifras.valor_ganado, cifras.avance) if c is not None],
         conversiones=[
             ConversionRespuesta(
-                obra=c.obra, moneda=c.moneda, tasa=str(c.tasa), fecha=c.fecha.isoformat()
+                obra=c.obra,
+                moneda=c.moneda,
+                tasa=str(c.tasa),
+                fecha=c.fecha.isoformat(),
+                fecha_tasa=c.fecha_tasa.isoformat(),
             )
             for c in cifras.conversiones
         ],

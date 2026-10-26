@@ -34,7 +34,6 @@ from aplicacion.cifras import texto_de_cifra
 from aplicacion.control import (
     ControlInvalido,
     calcular_el_control,
-    corte_por_defecto,
     parametros_actuales,
 )
 from aplicacion.listas_para_armar import describir
@@ -60,6 +59,7 @@ __all__ = [
     "ObraEnMesa",
     "Pendiente",
     "Siguiente",
+    "TasaDelBcv",
     "cifras_de_la_mesa",
     "dias_habiles_entre",
     "hallazgos_graves",
@@ -87,6 +87,9 @@ ETAPA_TEXTO = {
 _EN_CURSO = frozenset({EN_EJECUCION, ATRASADA})
 
 SIN_AVANCE = "Sin avance registrado"
+#: Lo que dice la mesa cuando el control de una obra con valuaciones no se puede calcular: el
+#: motivo (el mensaje del núcleo, sin tildes y con fechas ISO) lo explica la pantalla Control.
+SIN_CALCULO = "No se pudo calcular el avance; ábralo en Control para ver el motivo."
 #: Desde cuántos días una lista de precios es vieja (diseño §12.6: «más de 90 días»).
 DIAS_DE_UNA_LISTA_VIEJA = 90
 _SEVERIDADES_GRAVES = (int(Severidad.ERROR), int(Severidad.CRITICO))
@@ -156,13 +159,24 @@ class Cifra:
 
 
 @dataclass(frozen=True)
+class TasaDelBcv:
+    """La tasa del BCV (Bs por USD) que rige a una fecha y la fecha valor de esa tasa."""
+
+    valor: Decimal
+    fecha: date
+
+
+@dataclass(frozen=True)
 class Conversion:
-    """Una obra en la otra moneda que se sumó convertida con la tasa del BCV de su corte."""
+    """Una obra en la otra moneda que se sumó convertida con la tasa del BCV de su corte:
+    `fecha` es el corte de la obra y `fecha_tasa`, la fecha valor de la tasa (hasta 7 días antes
+    del corte)."""
 
     obra: str
     moneda: str
     tasa: Decimal
     fecha: date
+    fecha_tasa: date
 
 
 @dataclass(frozen=True)
@@ -210,8 +224,13 @@ def dias_habiles_entre(desde: date, hasta: date) -> int:
 # --- textos ---------------------------------------------------------------------------------------
 
 
+def _entero(n: int) -> str:
+    """Un entero como lo lee la persona: con punto de miles («1.200»)."""
+    return texto_de_cifra(Decimal(n))
+
+
 def _plural(n: int, singular: str, plural: str) -> str:
-    return f"{n} {singular if n == 1 else plural}"
+    return f"{_entero(n)} {singular if n == 1 else plural}"
 
 
 def _dias_habiles(n: int) -> str:
@@ -269,13 +288,15 @@ def _sin_linea_base(sesion: Session, codigo: str) -> _Estado:
 def _en_curso(sesion: Session, catalogo: Catalogo, nombre: str, hoy: date) -> _Estado:
     """La etapa y el control de una obra con línea base, al último corte (el *hasta* de la última
     valuación; sin valuaciones, `hoy`)."""
-    con_valuaciones = bool(valuaciones_registradas(sesion, nombre))
-    corte = corte_por_defecto(sesion, nombre) if con_valuaciones else hoy
+    valuaciones = valuaciones_registradas(sesion, nombre)
+    con_valuaciones = bool(valuaciones)
+    # el corte por defecto del control (`corte_por_defecto`), con `hoy` en vez del reloj
+    corte = max((v.hasta for v in valuaciones), default=hoy)
     try:
         resultado = calcular_el_control(sesion, nombre, catalogo, corte=corte)
-    except ControlInvalido as error:
+    except ControlInvalido:
         # Sin valuaciones no hay nada que controlar todavía (p. ej. la línea base rige más tarde).
-        que_pasa = str(error) if con_valuaciones else SIN_AVANCE
+        que_pasa = SIN_CALCULO if con_valuaciones else SIN_AVANCE
         return _Estado(EN_EJECUCION, REGISTRAR_EL_AVANCE, que_pasa)
     indicadores = resultado.indicadores
     spi = indicadores.spi
@@ -374,15 +395,15 @@ def _detalle_del_avance(obras: Sequence[ObraEnMesa]) -> str | None:
 
 
 def cifras_de_la_mesa(
-    obras: Sequence[ObraEnMesa], moneda: str | None, tasa: Callable[[date], Decimal | None]
+    obras: Sequence[ObraEnMesa], moneda: str | None, tasa: Callable[[date], TasaDelBcv | None]
 ) -> CifrasMesa:
     """Valor ganado y avance contra el plan de las obras en ejecución (o atrasadas) con EV y PV.
 
     Cada obra se suma en la moneda de la suma (`moneda_de_la_suma`); una en la otra moneda se
     convierte con `tasa(corte)` (Bs = USD × tasa; USD = Bs ÷ tasa) y se declara en
-    `conversiones`; sin tasa va a `fuera_de_suma`. Montos a 0,01, `delta_pct` a 0,1 y el avance a
-    0,0001, con ROUND_HALF_UP. Sin ninguna obra sumada, las dos cifras son `None`; con ΣPV = 0 el
-    avance es `None` y la desviación porcentual también."""
+    `conversiones` con la fecha valor de la tasa; sin tasa va a `fuera_de_suma`. Montos a 0,01,
+    `delta_pct` a 0,1 y el avance a 0,0001, con ROUND_HALF_UP. Sin ninguna obra sumada, las dos
+    cifras son `None`; con ΣPV = 0 el avance es `None` y la desviación porcentual también."""
     destino = moneda_de_la_suma(obras, moneda)
     suma_ev = suma_pv = _CERO
     sumadas = 0
@@ -394,13 +415,15 @@ def cifras_de_la_mesa(
             fuera.append(obra.nombre)
             continue
         if obra.moneda != destino:
-            valor = None if obra.corte is None else tasa(obra.corte)
-            if valor is None or obra.corte is None:
+            del_bcv = None if obra.corte is None else tasa(obra.corte)
+            if del_bcv is None or obra.corte is None:
                 fuera.append(obra.nombre)
                 continue
-            ev = convertir(ev, obra.moneda, destino, valor)
-            pv = convertir(pv, obra.moneda, destino, valor)
-            conversiones.append(Conversion(obra.nombre, obra.moneda, valor, obra.corte))
+            ev = convertir(ev, obra.moneda, destino, del_bcv.valor)
+            pv = convertir(pv, obra.moneda, destino, del_bcv.valor)
+            conversiones.append(
+                Conversion(obra.nombre, obra.moneda, del_bcv.valor, obra.corte, del_bcv.fecha)
+            )
         suma_ev += ev
         suma_pv += pv
         sumadas += 1
@@ -457,7 +480,7 @@ def precios_viejos(sesion: Session, hoy: date) -> list[Pendiente]:
         dias = (hoy - lista.fecha_vigencia).days
         if dias > DIAS_DE_UNA_LISTA_VIEJA:
             texto = (
-                f"Precios de hace {dias} días (lista «{lista.nombre}» del "
+                f"Precios de hace {_entero(dias)} días (lista «{lista.nombre}» del "
                 f"{lista.fecha_vigencia:%d/%m/%Y})"
             )
             salida.append(_pendiente(fila, texto, ACTUALIZAR_PRECIOS))
@@ -527,7 +550,8 @@ def lista_vieja(sesion: Session, hoy: date) -> list[Pendiente]:
         dias = (para_armar.fecha - version.lista_precios.fecha_vigencia).days
         if dias > DIAS_DE_UNA_LISTA_VIEJA:
             texto = (
-                f"La lista de {version.codigo} es {dias} días más vieja que la lista para armar."
+                f"La lista de {version.codigo} es {_entero(dias)} días más vieja que la lista "
+                "para armar."
             )
             salida.append(_pendiente(fila, texto, ACTUALIZAR_PRECIOS))
     return salida
