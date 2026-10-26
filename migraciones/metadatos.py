@@ -10,6 +10,7 @@ from __future__ import annotations
 from sqlalchemy import MetaData
 
 from adapters.espacio.persistencia import METADATA_ESPACIO
+from aplicacion.tablas_eleccion import METADATA_ELECCION
 from asistente.registro import METADATA_IA
 from core.models import Base
 from fusion.historial_modelo import METADATA_HISTORIAL
@@ -27,4 +28,5 @@ METADATAS_INSTALACION: tuple[MetaData, ...] = (
     BaseSeguridad.metadata,
     METADATA_PRODUCCION,
     METADATA_HISTORIAL,
+    METADATA_ELECCION,
 )

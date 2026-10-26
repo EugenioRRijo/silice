@@ -145,6 +145,9 @@ TABLA = {
     ("POST", "/v1/casos/subida"): CAMBIAR_CASO,
     ("POST", "/v1/casos/demostracion"): EDITAR,
     ("GET", "/v1/proyectos"): LEER,
+    # MOD-0: lo que recuerda la cuenta; solo con sesión completa (401 con la clave de API)
+    ("PUT", "/v1/sesion/proyecto"): CUALQUIERA,
+    ("PUT", "/v1/sesion/preferencias"): CUALQUIERA,
     ("POST", "/v1/proyectos"): EDITAR,
     ("POST", "/v1/similares"): EDITAR,
     ("POST", "/v1/simulador"): EDITAR,

@@ -1912,6 +1912,116 @@
         }
       }
     },
+    "/v1/sesion/proyecto": {
+      "put": {
+        "tags": [
+          "sesion"
+        ],
+        "summary": "Recordar Obra",
+        "description": "Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta.",
+        "operationId": "recordar_obra_v1_sesion_proyecto_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObraElegida"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sin sesión vigente (la clave de API no sirve).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contraseña temporal, o sin CSRF u origen propio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Cuerpo inválido (no repite lo enviado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sesion/preferencias": {
+      "put": {
+        "tags": [
+          "sesion"
+        ],
+        "summary": "Guardar Preferencias",
+        "description": "Recuerda el último módulo y si el sidebar queda fijado; lo que no viene no cambia.",
+        "operationId": "guardar_preferencias_v1_sesion_preferencias_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferencias"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sin sesión vigente (la clave de API no sirve).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contraseña temporal, o sin CSRF u origen propio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Cuerpo inválido (no repite lo enviado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/primer-arranque": {
       "get": {
         "tags": [
@@ -2238,7 +2348,7 @@
           "casos"
         ],
         "summary": "Elegir Caso",
-        "description": "Fija el caso de esta ficha de sesión (lo olvida al salir o expirar).",
+        "description": "Fija el caso de esta ficha de sesión (lo olvida al salir o expirar) y lo recuerda para la\ncuenta (vuelve al entrar de nuevo).",
         "operationId": "elegir_caso_v1_casos_actual_post",
         "requestBody": {
           "content": {
@@ -11792,6 +11902,53 @@
         ],
         "title": "EleccionCaso"
       },
+      "EleccionRespuesta": {
+        "properties": {
+          "caso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caso",
+            "description": "La carpeta recordada; `null` = la de la instalación"
+          },
+          "proyecto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proyecto",
+            "description": "El código de la obra recordada en esa carpeta"
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso",
+            "description": "Qué se perdió de lo recordado (se dice una vez)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "caso",
+          "proyecto",
+          "aviso"
+        ],
+        "title": "EleccionRespuesta"
+      },
       "EmpresaDatos": {
         "properties": {
           "nombre": {
@@ -14953,6 +15110,28 @@
         ],
         "title": "NuevosRoles"
       },
+      "ObraElegida": {
+        "properties": {
+          "proyecto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proyecto",
+            "description": "El `codigo` de la obra"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto"
+        ],
+        "title": "ObraElegida"
+      },
       "OpcionListaRespuesta": {
         "properties": {
           "valor": {
@@ -15869,6 +16048,66 @@
           "filas"
         ],
         "title": "PreciosHojaRespuesta"
+      },
+      "Preferencias": {
+        "properties": {
+          "modulo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modulo",
+            "description": "auditoria, obras o produccion"
+          },
+          "sidebar_fijado": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sidebar Fijado"
+          }
+        },
+        "type": "object",
+        "title": "Preferencias"
+      },
+      "PreferenciasRespuesta": {
+        "properties": {
+          "modulo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "auditoria",
+                  "obras",
+                  "produccion"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modulo",
+            "description": "El último módulo abierto"
+          },
+          "sidebar_fijado": {
+            "type": "boolean",
+            "title": "Sidebar Fijado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "modulo",
+          "sidebar_fijado"
+        ],
+        "title": "PreferenciasRespuesta"
       },
       "PresupuestoConProyectoRespuesta": {
         "properties": {
@@ -17859,6 +18098,20 @@
             "type": "boolean",
             "title": "Modo Entrega",
             "description": "`SILICE_MODO_ENTREGA` está encendido"
+          },
+          "eleccion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EleccionRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "La carpeta y la obra recordadas (`null` con la contraseña temporal)"
+          },
+          "preferencias": {
+            "$ref": "#/components/schemas/PreferenciasRespuesta"
           }
         },
         "type": "object",
@@ -17869,7 +18122,9 @@
           "csrf",
           "debe_cambiar_clave",
           "acciones",
-          "modo_entrega"
+          "modo_entrega",
+          "eleccion",
+          "preferencias"
         ],
         "title": "SesionRespuesta"
       },

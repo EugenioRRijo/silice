@@ -69,7 +69,7 @@ def _tablas(ruta: Path) -> set[str]:
 
 
 def test_migrar_crea_la_tabla_y_cero_deriva(tmp_path: Path) -> None:
-    assert revision_head(Destino.INSTALACION) == "ins_0003_auditoria_libro"
+    assert revision_head(Destino.INSTALACION) == "ins_0004_mod_eleccion"
     assert METADATA_HISTORIAL in METADATAS_INSTALACION
     migrada = tmp_path / "migrada.db"
     aplicar_revisiones(migrada, Destino.INSTALACION)
@@ -136,10 +136,10 @@ def test_la_base_de_la_1_0_0_se_respalda_y_migra(tmp_path: Path) -> None:
     resultado = preparar_base(ruta, Destino.INSTALACION)
 
     assert resultado.revision_origen == "ins_0002_produccion"
-    assert resultado.revision_destino == "ins_0003_auditoria_libro"
+    assert resultado.revision_destino == "ins_0004_mod_eleccion"
     assert resultado.juego is not None and resultado.juego.is_dir()
     assert respaldo.listar_juegos(config.carpeta_respaldos())
-    assert leer_estado(ruta).revision == "ins_0003_auditoria_libro"
+    assert leer_estado(ruta).revision == "ins_0004_mod_eleccion"
     with closing(sqlite3.connect(ruta)) as conexion:
         assert conexion.execute("SELECT codigo FROM prod_material").fetchall() == [("ARENA",)]
         assert conexion.execute(f"SELECT COUNT(*) FROM {TABLA}").fetchone() == (0,)
@@ -148,7 +148,7 @@ def test_la_base_de_la_1_0_0_se_respalda_y_migra(tmp_path: Path) -> None:
 def test_deshacer_vuelve_a_ins_0002_y_vuelve_a_subir(tmp_path: Path) -> None:
     ruta = tmp_path / "instalacion.db"
     aplicar_revisiones(ruta, Destino.INSTALACION)
-    deshacer_revisiones(ruta, Destino.INSTALACION, "-1")
+    deshacer_revisiones(ruta, Destino.INSTALACION, "ins_0002_produccion")
     assert TABLA not in _tablas(ruta)
     assert "prod_material" in _tablas(ruta)
     assert leer_estado(ruta).revision == "ins_0002_produccion"

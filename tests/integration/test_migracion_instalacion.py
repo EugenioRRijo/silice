@@ -10,6 +10,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from sqlalchemy import create_engine
 
+from aplicacion.tablas_eleccion import METADATA_ELECCION
 from fusion.historial_modelo import METADATA_HISTORIAL
 from migraciones.comun import metadata_unida
 from migraciones.metadatos import METADATAS_INSTALACION
@@ -28,7 +29,13 @@ TABLAS = {
     "empresa_registrada",
     "clave_api",
 }
-NUEVAS = {"prod_material", "prod_movimiento", "prod_pesaje_sospechoso", "auditoria_libro"}
+NUEVAS = {
+    "prod_material",
+    "prod_movimiento",
+    "prod_pesaje_sospechoso",
+    "auditoria_libro",
+    "mp_eleccion",
+}
 
 
 def _tablas(ruta: Path) -> set[str]:
@@ -38,8 +45,13 @@ def _tablas(ruta: Path) -> set[str]:
 
 
 def test_la_cabeza_del_destino_instalacion_es_la_revision_del_historial() -> None:
-    assert revision_head(Destino.INSTALACION) == "ins_0003_auditoria_libro"
-    assert METADATAS_INSTALACION == (Base.metadata, METADATA_PRODUCCION, METADATA_HISTORIAL)
+    assert revision_head(Destino.INSTALACION) == "ins_0004_mod_eleccion"
+    assert METADATAS_INSTALACION == (
+        Base.metadata,
+        METADATA_PRODUCCION,
+        METADATA_HISTORIAL,
+        METADATA_ELECCION,
+    )
 
 
 def test_subir_crea_las_diez_tablas_y_bajar_las_quita(tmp_path: Path) -> None:
