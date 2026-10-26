@@ -77,7 +77,7 @@
 // La franja de cifras: una columna por cifra, que bajan de linea sin desplazamiento horizontal.
 .silice-mercado__cifras {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
   gap: 0;
   margin: 0;
 }
@@ -131,13 +131,33 @@
   }
 }
 
+// Las columnas bajan de linea cuando no caben y ninguna exige mas que el ancho disponible; los campos se encogen con su
+// columna (el de fecha tiene un ancho propio del navegador que, con letra Grande, salia de la suya: D-4 de MOD-5a).
 .silice-mercado__usar,
 .silice-mercado__anotar {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
   gap: 1rem;
   align-items: start;
   max-inline-size: 56rem;
+  min-inline-size: 0;
+
+  .cds--form-item,
+  .cds--text-input-wrapper,
+  .cds--text-input__field-outer-wrapper,
+  .cds--text-input__field-wrapper,
+  .cds--select,
+  .cds--select-input__wrapper {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+
+  input,
+  .cds--text-input,
+  .cds--select-input {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
 }
 
 .silice-mercado__ancho {

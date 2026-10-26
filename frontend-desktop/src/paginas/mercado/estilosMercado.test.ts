@@ -27,7 +27,8 @@ describe("estudio de mercado sin desplazamiento horizontal (letra Grande y Muy g
   test("toda columna de rejilla con mínimo cede al ancho del contenedor: minmax(min(100%, …), …) o minmax(0, …)", () => {
     const minimos = [...scss.matchAll(/minmax\(\s*([^,]+?)\s*,/g)].map((m) => m[1]);
     expect(minimos.length).toBeGreaterThan(0);
-    const fijos = minimos.filter((m) => !/^min\(\s*100%\s*,/.test(m) && m !== "0");
+    // El mínimo capturado llega hasta la primera coma: «min(100%» (de «minmax(min(100%, 14rem), 1fr)») o «0».
+    const fijos = minimos.filter((m) => !/^min\(\s*100%$/.test(m) && m !== "0");
     expect(fijos).toEqual([]);
   });
 
