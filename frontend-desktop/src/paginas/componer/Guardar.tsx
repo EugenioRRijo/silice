@@ -17,8 +17,9 @@ export interface Props {
   alGuardar: (justificacion: string | null) => void;
   // La carpeta no tiene lista para armar (D-MP1): guardar responderia 409, asi que el boton espera a que se cree.
   sinLista?: boolean;
-  // Se llego desde la Hoja (`?volver=hoja`): guardada la partida, el siguiente paso es volver a ella.
-  volverAHoja?: boolean;
+  // Se llego desde la Hoja (`?volver=hoja`): guardada la partida, el siguiente paso es volver a ella con este
+  // manejador (la pagina navega con `useNavegarSeguro`). Sin el, el siguiente paso es Elaborar.
+  alVolverAHoja?: () => void;
   // El boton de guardar, para devolverle el foco al cerrarse el dialogo de las variantes.
   refBoton?: RefObject<HTMLButtonElement | null>;
 }
@@ -31,7 +32,7 @@ export function Guardar({
   error,
   alGuardar,
   sinLista = false,
-  volverAHoja = false,
+  alVolverAHoja,
   refBoton,
 }: Props) {
   const [justificacion, setJustificacion] = useState("");
@@ -81,17 +82,17 @@ export function Guardar({
           {resultado.avisos.map((a, i) => (
             <InlineNotification key={i} kind="info" lowContrast hideCloseButton role="status" title="Aviso" subtitle={a} />
           ))}
-          <p className="cds--type-body-compact-01">
-            {volverAHoja ? (
-              <>
-                Siguiente paso: <Link to="/hoja">Volver a la Hoja</Link>
-              </>
-            ) : (
-              <>
-                Siguiente paso: <Link to="/elaborar">Elaborar un presupuesto</Link>
-              </>
-            )}
-          </p>
+          {alVolverAHoja ? (
+            <div>
+              <Button kind="secondary" size="md" onClick={alVolverAHoja}>
+                Volver a la Hoja
+              </Button>
+            </div>
+          ) : (
+            <p className="cds--type-body-compact-01">
+              Siguiente paso: <Link to="/elaborar">Elaborar un presupuesto</Link>
+            </p>
+          )}
         </>
       )}
     </section>
