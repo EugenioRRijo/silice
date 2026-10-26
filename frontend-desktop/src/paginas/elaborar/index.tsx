@@ -8,6 +8,7 @@ import { InformeAuditoria } from "../../comun/InformeAuditoria";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
+import { LlevarALaHoja } from "./LlevarALaHoja";
 import { PlanDeTrabajo, avisoDelPlan, conIds, erroresDelPlan, sinIds } from "./PlanDeTrabajo";
 import type { FilaEditable } from "./PlanDeTrabajo";
 import { Severidad } from "../../comun/Severidad";
@@ -22,6 +23,7 @@ import {
   ERROR_SIN_ITEMS_RENDIMIENTO,
   MONEDA_POR_DEFECTO,
   SIN_HALLAZGOS,
+  TEXTO_ELABORAR_DE_NUEVO,
   TEXTO_PENDIENTES,
   TEXTO_RENDIMIENTOS,
   aceptarPropuesta,
@@ -36,6 +38,7 @@ import {
   lineaPropuesta,
   mapeoCodigos,
   textoDispersion,
+  textoObraElegida,
   textoPropuestaRendimiento,
   veredictoLegible,
 } from "./logica";
@@ -134,7 +137,8 @@ function Pendiente({
 // «Elaborar un presupuesto» (UC-01): extrae el computo de un CSV con el adaptador del dominio y elabora el presupuesto
 // SIN guardarlo (RA-3). La auditoria se muestra siempre. La interfaz no calcula montos: los muestra como llegan.
 export default function PaginaElaborar() {
-  const { sesion, alExpirar } = useAplicacion();
+  // Con una obra elegida, se valora con su lista y en su moneda, y se puede llevar a su Hoja (Tarea 12).
+  const { sesion, alExpirar, proyecto, nombreProyecto } = useAplicacion();
 
   // Parametros
   const [dominio, setDominio] = useState<Dominio>("civil");
@@ -253,7 +257,14 @@ export default function PaginaElaborar() {
   // Si falla, muestra el error: con el plan del proyectista el presupuesto anterior sigue a la vista; sin el, se borra.
   async function elaborar(lista: ItemComputo[], filasPlan?: FilaPlan[]): Promise<boolean> {
     const numero = ++secuencia.current;
-    const cuerpo: CuerpoCalculo = { codigo, fecha, moneda, items: lista, ...(filasPlan ? { plan: filasPlan } : {}) };
+    const cuerpo: CuerpoCalculo = {
+      codigo,
+      fecha,
+      moneda,
+      items: lista,
+      ...(filasPlan ? { plan: filasPlan } : {}),
+      ...(proyecto !== null ? { proyecto } : {}),
+    };
     setElaborando(true);
     setErrorElaborar(null);
     try {
@@ -376,13 +387,17 @@ export default function PaginaElaborar() {
           value={fecha}
           onChange={(e) => setFecha(e.target.value)}
         />
-        <CampoTexto
-          id="elaborar-moneda"
-          labelText="Moneda"
-          size="sm"
-          value={moneda}
-          onChange={(e) => setMoneda(e.target.value)}
-        />
+        {proyecto === null ? (
+          <CampoTexto
+            id="elaborar-moneda"
+            labelText="Moneda"
+            size="sm"
+            value={moneda}
+            onChange={(e) => setMoneda(e.target.value)}
+          />
+        ) : (
+          <p className="cds--type-body-compact-01">{textoObraElegida(nombreProyecto ?? null)}</p>
+        )}
       </section>
 
       {esCivil && (
@@ -559,6 +574,18 @@ export default function PaginaElaborar() {
               nombrePorOmision={`${resultado.codigo}.xlsx`}
               alExpirar={alExpirar}
             />
+            {proyecto !== null &&
+              (elaboracion.cuerpo.proyecto === proyecto ? (
+                <LlevarALaHoja
+                  proyecto={proyecto}
+                  obra={nombreProyecto ?? null}
+                  items={elaboracion.cuerpo.items}
+                  pendientes={resultado.pendientes}
+                  alExpirar={alExpirar}
+                />
+              ) : (
+                <p className="silice-elaborar__nota cds--type-body-compact-01">{TEXTO_ELABORAR_DE_NUEVO}</p>
+              ))}
           </section>
 
           <PlanDeTrabajo

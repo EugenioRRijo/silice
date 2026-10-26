@@ -39,6 +39,15 @@ export interface CuerpoCalculo {
   moneda: string;
   items: ItemComputo[];
   plan?: FilaPlan[];
+  // El codigo de la obra elegida: con el, la API valora con la lista de la obra y en su moneda (Tarea 12).
+  proyecto?: string;
+}
+
+// Un renglon de POST /v1/hoja/llevar: la cantidad tal como salio del computo (texto de maquina, punto decimal).
+export interface PartidaParaLlevar {
+  codigo: string;
+  cantidad: string;
+  calculo: string;
 }
 
 export interface PartidaPresupuestada {

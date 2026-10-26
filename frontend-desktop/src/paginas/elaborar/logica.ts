@@ -10,6 +10,7 @@ import type {
   Dominio,
   FilaPlan,
   ItemComputo,
+  PartidaParaLlevar,
   PendienteConPropuestas,
   PropuestaPartida,
   RendimientoPorDeclarar,
@@ -215,4 +216,39 @@ export async function calcular(cuerpo: CuerpoCalculo, csrf: string | null): Prom
     detalleDe(contenido, respuesta.status),
     Number.isFinite(espera) && espera > 0 ? espera : null,
   );
+}
+
+// --- Tarea 12 de montar un presupuesto: llevar los items a la Hoja de la obra ---------------------------------------
+
+export const BOTON_LLEVAR = "Llevar a la Hoja de la obra";
+export const TEXTO_ELABORAR_DE_NUEVO = "Elabore de nuevo el presupuesto con la obra elegida para llevarlo a su Hoja.";
+
+export function textoObraElegida(obra: string | null): string {
+  return obra
+    ? `Se valora con la lista de precios de la obra «${obra}», en su moneda.`
+    : "Se valora con la lista de precios de la obra elegida, en su moneda.";
+}
+
+// Los items del computo con que se elaboro, sin los pendientes (no tienen partida en el catalogo: la API los rechazaria
+// y no llevaria ninguno). La cantidad viaja tal cual salio de /computos: la pagina no la convierte ni la redondea.
+export function partidasParaLlevar(
+  items: ItemComputo[],
+  pendientes: Pick<PendienteConPropuestas, "origen_id" | "codigo_partida">[],
+): PartidaParaLlevar[] {
+  const pendiente = (i: ItemComputo) =>
+    pendientes.some((p) => p.origen_id === i.origen_id && p.codigo_partida === i.codigo_partida);
+  return items.filter((i) => !pendiente(i)).map((i) => ({ codigo: i.codigo_partida, cantidad: i.cantidad, calculo: "" }));
+}
+
+export function textoLlevar(partidas: number, obra: string | null): string {
+  const cuantas = partidas === 1 ? "1 partida" : `${partidas} partidas`;
+  const destino = obra ? `de «${obra}»` : "de la obra";
+  return `Lleva ${cuantas} al borrador de la Hoja ${destino}, sin guardar una versión: la guarda usted desde la Hoja.`;
+}
+
+export function textoPendientesNoSeLlevan(pendientes: number): string | null {
+  if (pendientes === 0) return null;
+  return pendientes === 1
+    ? "El ítem pendiente no se lleva: no tiene partida en el catálogo."
+    : `Los ${pendientes} ítems pendientes no se llevan: no tienen partida en el catálogo.`;
 }

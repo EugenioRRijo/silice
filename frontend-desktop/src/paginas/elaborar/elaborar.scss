@@ -34,6 +34,15 @@
   max-inline-size: 100%;
 }
 
+.silice-elaborar__llevar {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  padding-block-start: 0.75rem;
+  border-block-start: 1px solid var(--cds-border-subtle);
+  inline-size: 100%;
+}
+
 .silice-elaborar__selectores {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));

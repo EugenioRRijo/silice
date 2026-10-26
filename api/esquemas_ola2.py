@@ -124,11 +124,14 @@ class FilaPlan(BaseModel):
 
 class CalculoPeticion(BaseModel):
     """UC-01 en modo «solo calcular»: nada se guarda. `plan` son las filas de la tabla del
-    proyectista; sin ellas, el plan por defecto (`plan_secuencial`)."""
+    proyectista; sin ellas, el plan por defecto (`plan_secuencial`). Con `proyecto` (el código o
+    el nombre de la obra, Tarea 12 de montar un presupuesto) se valora con la lista de la obra y en
+    su moneda, y `moneda` no se usa."""
 
     codigo: str = Field(pattern=PATRON_CODIGO)
     fecha: date
     moneda: str = "USD"
+    proyecto: str | None = Field(default=None, min_length=1, max_length=500)
     items: list[ItemComputoPeticion] = Field(max_length=MAX_ITEMS)
     plan: list[FilaPlan] | None = Field(default=None, max_length=MAX_FILAS_DE_PLAN)
 

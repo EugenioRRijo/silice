@@ -15,6 +15,10 @@ Es el unico modulo de `ui/` sin pagina que escribe filas en la base (regla A-2 d
 `guardar_composicion` y `declarar_rendimiento` (UC-01 3b, INV-088) escriben, pero no confirman;
 el `commit` es de la pagina. Filas, no esquema:
 `ui.caso.estado_caso` no escribe: lee con una conexion de solo lectura (RV-5).
+
+Tarea 12 de montar un presupuesto: `elaborar_desde_catalogo` acepta la lista de la obra elegida y
+`llevar_a_la_hoja` mete los items elaborados en el borrador de la Hoja de la obra (todo o nada, sin
+guardar version; `POST /v1/hoja/llevar`).
 """
 
 from __future__ import annotations
@@ -28,13 +32,17 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from aplicacion import hoja, hoja_borradores, hoja_edicion
+from aplicacion.cifras import texto_de_cifra
 from aplicacion.composicion import (
     ComposicionInvalida,
     decimal_desde_texto,
     item_desde_cantidad,
     texto_de_celda,
 )
+from aplicacion.errores import HojaInvalida
 from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_secuencial
+from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo, PropuestaRendimiento, proponer_rendimiento, registrar_rendimiento
 from core.contracts import Dominio, ItemComputo, ParametrosCosto
 from core.contracts.apu import Rendimiento, TipoRendimiento
@@ -44,6 +52,8 @@ if TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
+    from aplicacion.hoja_borradores import BorradorVivo
+    from core import models
     from core.budget import GeneradorPlan, PeriodoPlan
     from core.contracts.presupuesto import Presupuesto
     from core.models import Partida
@@ -101,6 +111,7 @@ def elaborar_desde_catalogo(
     fecha: date,
     moneda: str,
     plan: Sequence[PeriodoPlan] | GeneradorPlan = plan_secuencial,
+    lista: models.ListaPrecios | None = None,
 ) -> ResultadoElaboracion:
     """Elabora y audita el presupuesto de `items` con las composiciones del catalogo a `fecha`.
 
@@ -112,6 +123,10 @@ def elaborar_desde_catalogo(
     UC-01 3a (INV-072): pide solo las composiciones de los codigos que el catalogo tiene, el mismo
     criterio que `api/rutas/presupuestos.py`. Un item sin partida no lanza: `elaborar` lo deja en
     `ResultadoElaboracion.pendientes` y el informe lo declara con un hallazgo `PENDIENTE`.
+
+    Con `lista` (Tarea 12 de montar un presupuesto: la de `lista_para_el_proyecto` de la obra
+    elegida), los precios salen de esa lista y no de la vigente del catalogo, que no mira la moneda;
+    `moneda` debe ser entonces la de esa lista (la pone la ruta).
     """
     existentes = {partida.codigo for partida in catalogo.partidas()}
     codigos_unicos = [
@@ -119,7 +134,13 @@ def elaborar_desde_catalogo(
         for codigo in dict.fromkeys(item.codigo_partida for item in items)
         if codigo in existentes
     ]
-    composiciones = catalogo.composiciones(codigos_unicos, fecha=fecha)
+    if lista is None:
+        composiciones = catalogo.composiciones(codigos_unicos, fecha=fecha)
+    else:
+        composiciones = {
+            codigo: catalogo.composicion(codigo, fecha=fecha, lista=lista)
+            for codigo in codigos_unicos
+        }
     return elaborar(
         list(items),
         composiciones,
@@ -333,3 +354,111 @@ def declarar_rendimiento(
         f"[{dispersion.minimo}, {dispersion.maximo}]"
     )
     return registrar_rendimiento(sesion, codigo, origen.valor, tipo, fecha, condiciones)
+
+
+# --- Tarea 12 de montar un presupuesto: llevar los items a la Hoja de la obra -------------------
+
+
+class VersionQueNoSeAbre(Exception):  # noqa: N818
+    """La version vigente de la obra ya no se puede abrir como borrador (la `HojaInvalida` de
+    `hoja.abrir_version`); el mensaje es el que ve la persona."""
+
+
+@dataclass(frozen=True, slots=True)
+class PartidaParaLlevar:
+    """Un item de Elaborar que va a la Hoja: el codigo de su partida, su cantidad exacta (la del
+    computo) y, si la persona lo escribio, el calculo con coma decimal (Tarea 8)."""
+
+    codigo: str
+    cantidad: Decimal
+    calculo: str = ""
+
+
+def _borrador_de_la_obra(
+    sesion: Session,
+    huella: str,
+    caso: str,
+    proyecto: models.Proyecto,
+    *,
+    responsable: str,
+    hoy: date,
+) -> tuple[BorradorVivo, bool]:
+    """El borrador vivo mas reciente de esa ficha y esa obra en el caso (`False`: ya existia) o uno
+    nuevo (`True`) sobre la version vigente o, sin versiones, en blanco en la moneda de la obra,
+    como `POST /v1/hoja/borradores`. Abrir la vigente escribe su instantanea si faltaba (UC-15e),
+    la misma y unica escritura de abrir la Hoja; `HojaInvalida` si ya no se puede reconstruir."""
+    nombre = proyecto.nombre
+    for vivo, _cambios in hoja_edicion.borradores_para_retomar(huella, caso):
+        if vivo.proyecto == nombre:
+            return vivo, False
+    vigente = hoja.codigo_vigente(sesion, nombre)
+    if vigente is None:
+        borrador = hoja.Borrador(fecha=hoy, moneda=moneda_del_proyecto(sesion, proyecto))
+        abierta = None
+    else:
+        try:
+            abierta = hoja.abrir_version(
+                sesion,
+                Catalogo(sesion),
+                nombre,
+                vigente,
+                fecha_evaluacion=hoy,
+                responsable=responsable,
+            )
+        except HojaInvalida as error:
+            raise VersionQueNoSeAbre(str(error)) from None
+        borrador = abierta.borrador
+    vivo = hoja_borradores.crear(
+        huella, caso, nombre, vigente, borrador, abierta, vigente_al_abrir=vigente
+    )
+    return vivo, True
+
+
+def llevar_a_la_hoja(
+    sesion: Session,
+    huella: str,
+    caso: str,
+    proyecto: models.Proyecto,
+    partidas: Sequence[PartidaParaLlevar],
+    *,
+    responsable: str,
+    hoy: date,
+) -> str:
+    """Agrega `partidas` al borrador de la Hoja de la obra `proyecto` y devuelve su id. No guarda
+    version: los renglones quedan como altas del borrador, que se guardan desde la Hoja.
+
+    Usa el borrador vivo mas reciente de esa ficha y obra o abre uno (`_borrador_de_la_obra`) y
+    agrega cada partida con `hoja_edicion.agregar` (Tarea 9), la cantidad escrita como la teclearia
+    la persona (`texto_de_cifra`: «1.125» del computo es uno coma ciento veinticinco). **Todo o
+    nada:** con el cerrojo del borrador tomado de punta a punta, si una partida falla
+    (`PartidaFueraDelCatalogo`, `HojaInvalida` con el codigo de la partida delante,
+    `SinListaDeLaObra`, la base) el borrador abierto aqui se descarta y uno que ya existia vuelve
+    exactamente a como estaba, con su `rev` (la ventana que lo esta editando no ve ningun cambio),
+    y el error sube. `VersionQueNoSeAbre` si la vigente ya no se puede abrir."""
+    vivo, nuevo = _borrador_de_la_obra(
+        sesion, huella, caso, proyecto, responsable=responsable, hoy=hoy
+    )
+    with vivo.cerrojo:
+        antes = (vivo.borrador, vivo.rev, vivo.calculo)
+        try:
+            for partida in partidas:
+                try:
+                    vivo, _clave = hoja_edicion.agregar(
+                        sesion,
+                        huella,
+                        vivo.id,
+                        vivo.rev,
+                        codigo=partida.codigo,
+                        cantidad=texto_de_cifra(partida.cantidad),
+                        calculo=partida.calculo,
+                        nota="",
+                    )
+                except HojaInvalida as error:  # varias partidas: se dice cual
+                    raise HojaInvalida(f"{partida.codigo}: {error}") from None
+        except BaseException:
+            if nuevo:
+                hoja_borradores.descartar(huella, vivo.id)
+            else:
+                vivo.borrador, vivo.rev, vivo.calculo = antes
+            raise
+    return vivo.id

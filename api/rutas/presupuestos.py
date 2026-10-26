@@ -77,6 +77,8 @@ from api.rutas.rendimientos import propuesta_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import actualizacion as aplicacion_actualizacion
 from aplicacion import elaboracion as aplicacion_elaboracion
+from aplicacion.listas_para_armar import SinListaParaArmar, lista_para_el_proyecto
+from aplicacion.proyectos import resolver_proyecto
 from core import models
 from core.budget import (
     Comparativo,
@@ -117,6 +119,11 @@ router = APIRouter(tags=["presupuestos"])
 _QUIEN_EDITA = exigir_clave_o_sesion(Accion.EDITAR_HOJA)
 
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
+
+#: Elaborar con una obra que no está en la carpeta (Tarea 12); no repite lo enviado.
+MENSAJE_SIN_OBRA = (
+    "Esa obra no está en esta carpeta de trabajo: elíjala de nuevo en el selector de obra."
+)
 
 
 @router.post(
@@ -503,7 +510,7 @@ def descartar_version_revalorada(
 @router.post(
     "/presupuestos/calcular",
     response_model=CalculoRespuesta,
-    dependencies=EDITAR,
+    dependencies=[Depends(_QUIEN_EDITA)],  # antes que `sesion_api`: sin permiso no se abre el caso
     responses={
         status.HTTP_409_CONFLICT: {
             "model": RendimientosPorDeclararRespuesta,
@@ -513,7 +520,9 @@ def descartar_version_revalorada(
     },
 )
 def calcular_presupuesto(
-    sesion: SesionDep, peticion: CalculoPeticion
+    sesion: SesionDep,
+    peticion: CalculoPeticion,
+    quien: Annotated[SesionActiva | None, Depends(_QUIEN_EDITA)],
 ) -> CalculoRespuesta | JSONResponse:
     """UC-01 en modo «solo calcular» (la página Elaborar de Streamlit): elabora y audita el
     presupuesto con las composiciones del catálogo a la fecha, sin guardar nada.
@@ -523,9 +532,12 @@ def calcular_presupuesto(
     ítem con ese código. `plan` son las filas de la tabla del plan de trabajo (paso 6); sin ellas,
     `plan_secuencial`. Una partida sin rendimiento estimado vigente responde 409 con el que
     propone el histórico (flujo 3b), que se declara con `POST /presupuestos/calcular/declarar-
-    rendimiento`.
+    rendimiento`. Con `proyecto` valora con la lista de esa obra (`lista_para_el_proyecto`) y en su
+    moneda: así Elaborar muestra lo que la Hoja valorará al llevarle los ítems (Tarea 12). Sigue
+    sin guardar nada: la lista convertida de una obra en la otra moneda se deshace al terminar.
+    Una obra que no existe, 404; sin lista para armar o sin tasa del BCV, 409 con su texto.
     """
-    calculo = _elaborar_sin_guardar(sesion, peticion)
+    calculo = _elaborar_sin_guardar(sesion, peticion, quien)
     if isinstance(calculo, JSONResponse):
         return calculo
     resultado, descripciones = calculo
@@ -547,11 +559,19 @@ def calcular_presupuesto(
     )
 
 
-@router.post("/presupuestos/calcular/excel", dependencies=EDITAR, response_class=Response)
-def calcular_presupuesto_excel(sesion: SesionDep, peticion: CalculoPeticion) -> Response:
+@router.post(
+    "/presupuestos/calcular/excel",
+    dependencies=[Depends(_QUIEN_EDITA)],
+    response_class=Response,
+)
+def calcular_presupuesto_excel(
+    sesion: SesionDep,
+    peticion: CalculoPeticion,
+    quien: Annotated[SesionActiva | None, Depends(_QUIEN_EDITA)],
+) -> Response:
     """El libro de Excel (con su hoja de auditoría) del mismo cálculo de `POST
     /presupuestos/calcular`, que recalcula con el mismo cuerpo: sin estado, nada se guarda."""
-    calculo = _elaborar_sin_guardar(sesion, peticion)
+    calculo = _elaborar_sin_guardar(sesion, peticion, quien)
     if isinstance(calculo, JSONResponse):
         return calculo
     libro, nombre = aplicacion_elaboracion.libro_excel(calculo[0])
@@ -732,20 +752,43 @@ def _pendientes_con_propuestas(
     return respuestas
 
 
+def _lista_de_la_obra(
+    sesion: Session, peticion: CalculoPeticion, quien: SesionActiva | None
+) -> models.ListaPrecios | None:
+    """La lista con que se valora la obra de `peticion` (Tarea 12), o `None` sin obra. No confirma:
+    la conversión que escriba `lista_para_el_proyecto` se deshace al cerrar la sesión."""
+    if peticion.proyecto is None:
+        return None
+    proyecto = resolver_proyecto(sesion, peticion.proyecto)
+    if proyecto is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MENSAJE_SIN_OBRA)
+    try:
+        return lista_para_el_proyecto(
+            sesion,
+            proyecto.nombre,
+            peticion.fecha,
+            responsable=USUARIO_SIN_CLAVE if quien is None else quien.usuario,
+        )
+    except SinListaParaArmar as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from None
+
+
 def _elaborar_sin_guardar(
-    sesion: Session, peticion: CalculoPeticion
+    sesion: Session, peticion: CalculoPeticion, quien: SesionActiva | None
 ) -> tuple[ResultadoElaboracion, dict[str, str]] | JSONResponse:
     """Elabora `peticion` con `aplicacion.elaboracion` (la misma lógica que la página de Streamlit)
     sin guardar nada. Devuelve el resultado y las partidas del catálogo (código → descripción), o
-    el 409 de «rendimientos por declarar» (UC-01, flujo 3b)."""
+    el 409 de «rendimientos por declarar» (UC-01, flujo 3b). Con obra, con su lista y su moneda."""
     items = [_a_item_computo(item) for item in peticion.items]
     plan = aplicacion_elaboracion.plan_de(
         None if peticion.plan is None else [fila.model_dump() for fila in peticion.plan]
     )
     catalogo = Catalogo(sesion)
+    lista = _lista_de_la_obra(sesion, peticion, quien)
+    moneda = peticion.moneda if lista is None else lista.moneda
     try:
         resultado = aplicacion_elaboracion.elaborar_desde_catalogo(
-            catalogo, items, peticion.codigo, peticion.fecha, peticion.moneda, plan
+            catalogo, items, peticion.codigo, peticion.fecha, moneda, plan, lista
         )
     except CatalogoIncompleto:
         por_declarar = aplicacion_elaboracion.rendimientos_por_declarar(
