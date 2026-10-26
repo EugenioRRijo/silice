@@ -971,7 +971,9 @@ def _carrera(navegador, ficha, id_, peticiones) -> list:
 def _evidencias(navegador, id_) -> list[bool]:
     """Para cada edicion de la carrera: si su efecto esta en el borrador."""
     return [
-        _vista(navegador, id_, "parametros")["campos"][3]["valor"] == "0.12",
+        # la vista de parámetros escribe con coma decimal (regla de cifras de 2026-10-25): la
+        # utilidad tecleada «0,12» vuelve «0,12», no «0.12»
+        _vista(navegador, id_, "parametros")["campos"][3]["valor"] == "0,12",
         any(f["escrita"] for f in _vista(navegador, id_, "presupuesto")["filas"]),
         next(g for g in _vista(navegador, id_, "apu", "?partida=AF-LLAVE")["detalle"]["grupos"])[
             "filas"
