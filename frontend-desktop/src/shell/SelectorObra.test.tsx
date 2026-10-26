@@ -130,6 +130,24 @@ describe("SelectorObra", () => {
     expect(boton).toHaveFocus();
   });
 
+  // Menor de la ronda 1 del arbitro: la busqueda no sobrevive al cierre del panel, sea cual sea la forma de cerrarlo.
+  test.each([
+    ["Esc", async (u: ReturnType<typeof userEvent.setup>) => u.keyboard("{Escape}")],
+    ["un clic fuera", async (u: ReturnType<typeof userEvent.setup>) => u.click(document.body)],
+  ])("la búsqueda se vacía al cerrar el panel con %s", async (_forma, cerrar) => {
+    const u = userEvent.setup();
+    pintar();
+    const boton = screen.getByRole("button", { name: /^Obra: / });
+    await u.click(boton);
+    await u.type(screen.getByRole("searchbox", { name: "Buscar obra" }), "maracay");
+    expect(nombresDeLaLista()).toEqual(["Casa Demo"]);
+    await cerrar(u);
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    await u.click(boton);
+    expect(screen.getByRole("searchbox", { name: "Buscar obra" })).toHaveValue("");
+    expect(nombresDeLaLista()).toHaveLength(3);
+  });
+
   test("al pie: «Carpeta: silice · Cambiar carpeta…», «Nueva obra» y el hueco para lo que venga", async () => {
     const u = userEvent.setup();
     const props = pintar({ pie: <p>Hueco del pie</p> });

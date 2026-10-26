@@ -359,6 +359,99 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   });
 });
 
+// Ronda 2 del arbitro de MOD-3b (MAYOR): «Crear y abrir» pregunta ANTES de crear, con la misma confirmacion que abrir
+// otra carpeta; y si la moneda no se declara, lo dice sin decir que la carpeta no se creo, y reintenta solo la moneda.
+describe("crear una carpeta: primero se pregunta, la moneda se reintenta sola", () => {
+  const escrituras = () =>
+    servidor.llamadas.filter(
+      (l) =>
+        (l.metodo === "POST" && (l.ruta === "/v1/casos" || l.ruta === "/v1/casos/actual")) ||
+        (l.metodo === "PUT" && l.ruta === "/v1/carpeta/moneda"),
+    );
+
+  test("con Componer a medio llenar, crear con Bs pregunta antes; «Quedarme» no crea, no abre ni declara nada", async () => {
+    const u = userEvent.setup();
+    montarShell(sesionDe("ana"), "/componer", ligeras({ componer: ComponerSucio }));
+    await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
+    await abrirCarpetas(u);
+    await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
+    await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
+    await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    expect(pregunta).toHaveAccessibleDescription(
+      "Tiene cambios sin guardar en Componer una partida. Si cambia de carpeta, se perderán.",
+    );
+    await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(escrituras()).toEqual([]);
+    expect(within(dialogo()).queryByText(/Se creó/)).toBeNull();
+  });
+
+  test("si la moneda no se declara (503) lo dice sin «No se pudo crear» y «Declarar la moneda» repite solo el PUT", async () => {
+    const u = userEvent.setup();
+    let fallar = true;
+    servidor = servidorFalso(estadoInicial(), (metodo, ruta) => {
+      if (metodo === "PUT" && ruta === "/v1/carpeta/moneda" && fallar) {
+        fallar = false;
+        return json({ detalle: "La carpeta de trabajo está ocupada: repita en unos segundos." }, 503);
+      }
+      return undefined;
+    });
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    montarShell(sesionDe("ana"), "/hoja");
+    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await abrirCarpetas(u);
+    await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
+    await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
+    await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
+    expect(
+      await within(dialogo()).findByText(
+        "La carpeta «Nueva» se creó y ya trabaja con ella, pero no se pudo declarar su moneda: La carpeta de trabajo está ocupada: repita en unos segundos.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialogo()).queryByText(/No se pudo crear/)).toBeNull();
+    const antes = escrituras().length;
+    await u.click(within(dialogo()).getByRole("button", { name: "Declarar la moneda" }));
+    expect(await within(dialogo()).findByText("Se creó la carpeta de trabajo «Nueva» y ya trabaja con ella.")).toBeInTheDocument();
+    const despues = escrituras().slice(antes);
+    expect(despues.map((l) => `${l.metodo} ${l.ruta} ${JSON.stringify(l.cuerpo)}`)).toEqual([
+      'PUT /v1/carpeta/moneda {"moneda":"Bs"}',
+    ]);
+    expect(servidor.de("POST", "/v1/casos")).toHaveLength(1);
+  });
+});
+
+describe("subir: lo que se rechaza en el navegador no queda elegido", () => {
+  test("un archivo que no es .db vacía el que estaba elegido y «Subir» queda deshabilitado", async () => {
+    const u = userEvent.setup({ applyAccept: false });
+    montarShell(sesionDe("ana"), "/hoja");
+    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await abrirCarpetas(u);
+    await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
+    const campo = () => dialogo().querySelector<HTMLInputElement>('input[type="file"]')!;
+    await u.upload(campo(), new File(["x"], "s1.db"));
+    expect(within(dialogo()).getByRole("button", { name: "Subir" })).toBeEnabled();
+    await u.upload(campo(), new File(["x"], "libro.xlsx"));
+    expect(within(dialogo()).getByText("Solo se aceptan archivos .db.")).toBeInTheDocument();
+    expect(within(dialogo()).queryByText(/^s1\.db · /)).toBeNull();
+    expect(within(dialogo()).getByRole("button", { name: "Subir" })).toBeDisabled();
+  });
+
+  test("un .db de más de 20 MiB se rechaza en el navegador con el texto de la API y no se sube", async () => {
+    const u = userEvent.setup();
+    montarShell(sesionDe("ana"), "/hoja");
+    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await abrirCarpetas(u);
+    await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
+    const grande = new File(["x"], "grande.db");
+    Object.defineProperty(grande, "size", { value: 20 * 1024 * 1024 + 1 });
+    await u.upload(dialogo().querySelector<HTMLInputElement>('input[type="file"]')!, grande);
+    expect(await within(dialogo()).findByText("El archivo pasa de 20 MiB.")).toBeInTheDocument();
+    expect(within(dialogo()).getByRole("button", { name: "Subir" })).toBeDisabled();
+    expect(servidor.de("POST", "/v1/casos/subida")).toEqual([]);
+  });
+});
+
 describe("GestionCarpetas sola (la usa Administración)", () => {
   test("F7: sin la demostración no trae su pestaña y dice por qué", async () => {
     render(<GestionCarpetas alAbrir={vi.fn()} conDemostracion={false} />);
