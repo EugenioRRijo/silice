@@ -36,6 +36,7 @@ from aplicacion.control import (
     parametros_actuales,
 )
 from aplicacion.listas_para_armar import describir
+from aplicacion.mercado import pendientes_de_mercado
 from aplicacion.obras import SIN_FICHA, fichas
 from aplicacion.proyectos import ProyectoDelCaso, proyectos_del_caso
 from core import models
@@ -522,6 +523,7 @@ FUENTES: dict[str, tuple[FuentePendientes, ...]] = {
     "precios": (
         precios_viejos,
         precios_sin_referencia,
+        pendientes_de_mercado,
     ),
     "calidad": (
         hallazgos_graves,

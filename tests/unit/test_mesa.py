@@ -25,6 +25,7 @@ import pytest
 from sqlalchemy import delete, select
 
 from aplicacion import mesa
+from aplicacion.mercado import pendientes_de_mercado
 from aplicacion.mesa import (
     Cifra,
     Conversion,
@@ -658,7 +659,12 @@ def test_los_grupos_y_las_fuentes_de_esta_tarea() -> None:
         ("precios", "Precios"),
         ("calidad", "Calidad"),
     )
-    assert mesa.FUENTES["precios"] == (precios_viejos, precios_sin_referencia)
+    # T14 agrega «el mercado cobra menos que su costo» (compartido del orquestador).
+    assert mesa.FUENTES["precios"] == (
+        precios_viejos,
+        precios_sin_referencia,
+        pendientes_de_mercado,
+    )
     assert mesa.FUENTES["calidad"] == (hallazgos_graves, lista_vieja)
     assert not mesa.FUENTES.get("aprobar")
     assert not mesa.FUENTES.get("compras")

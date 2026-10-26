@@ -49,6 +49,22 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   `SQLITE_LOCKED*`) en vez del texto; normalizar o rechazar un `ahora` con zona horaria antes de calcular la huella; reusar
   `json_canonico`/`huella` de `core/budget/canonico.py` o dejar escrito por qué no.
 
+## T14, rutas del estudio de mercado
+
+- Anular una observación deja un contraasiento: una fila que copia la observación, dice «Anula la observación n.º X.», quién
+  y cuándo, y se anula a sí misma; la original queda con `anulada_por` = id de esa fila. **Por ratificar.**
+- «Usar este precio» de compra el mismo día: si ninguna versión usa la lista de hoy se reescribe en el lugar; si ya la usa
+  una, se crea «… (2)» (D-MP2).
+- Piso y precio con utilidad se muestran en céntimos con la mitad hacia arriba; la propuesta de cobro, hacia arriba (piso
+  125,004 → «piso 125,00» y «propuesta 125,01»).
+- Ventana de días de 1 a 3.650; `objetivos` devuelve el último precio aunque esté en otra moneda y dice cuál.
+- El origen del precio dice quién lo hizo («Estudio de mercado: observación n.º {id}, por {responsable}»).
+- No registra `CambioPrecio` al usar un precio de compra (ese historial es del cambio entre listas, UC-02) ni borra la
+  `ReferenciaPrecio` del precio cambiado.
+- `parametros_de_version` vive en `aplicacion/parametros_de_costo.py` (Hoja y mercado); `aplicacion/reajuste.py:638` y
+  `aplicacion/tablero.py:113` todavía arman `ParametrosCosto` a mano (deuda).
+- `pendientes_de_mercado` importa `aplicacion.mesa` dentro de la función para evitar el import circular con `FUENTES`.
+
 ## Migraciones del caso
 
 Tres tareas a la vez colgaron su migración de `caso_0010_mp_carpeta`. El orden fijado es

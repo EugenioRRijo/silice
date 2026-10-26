@@ -39,8 +39,9 @@ from api.rutas import (
     hoja_plano,
     indices,
     libros,
-    obras,
     listas,
+    mercado,
+    obras,
     precios_empresa,
     presupuestos,
     produccion,
@@ -182,6 +183,9 @@ app.include_router(busqueda.router)
 # MOD-4a (plan de módulos): /v1/obras/resumen (LEER_PROYECTO) y /v1/obras/pendientes (EDITAR_HOJA),
 # los datos de la mesa de control; el acceso va en cada ruta
 app.include_router(obras.router)
+# T14 (montar un presupuesto): /v1/mercado, estudio de mercado y «Usar este precio»
+# (EDITAR_HOJA en la ruta)
+app.include_router(mercado.router)
 
 
 @app.get("/salud", tags=["catalogo"])

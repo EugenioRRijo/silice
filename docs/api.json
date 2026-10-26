@@ -8256,6 +8256,382 @@
         }
       }
     },
+    "/v1/mercado/objetivos": {
+      "get": {
+        "tags": [
+          "mercado"
+        ],
+        "summary": "Leer Objetivos",
+        "description": "El último precio de venta objetivo de cada partida pedida que tenga uno.",
+        "operationId": "leer_objetivos_v1_mercado_objetivos_get",
+        "parameters": [
+          {
+            "name": "partidas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "Códigos separados por coma",
+              "default": "",
+              "title": "Partidas"
+            },
+            "description": "Códigos separados por coma"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjetivosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mercado/{lado}/{codigo}": {
+      "get": {
+        "tags": [
+          "mercado"
+        ],
+        "summary": "Leer Estudio",
+        "description": "Las observaciones de la ventana, sus cifras, el piso (cobro) y la propuesta.",
+        "operationId": "leer_estudio_v1_mercado__lado___codigo__get",
+        "parameters": [
+          {
+            "name": "lado",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "compra",
+                "cobro"
+              ],
+              "type": "string",
+              "title": "Lado"
+            }
+          },
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "title": "Codigo"
+            }
+          },
+          {
+            "name": "dias",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 3650,
+              "minimum": 1,
+              "default": 90,
+              "title": "Dias"
+            }
+          },
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstudioRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mercado/observaciones": {
+      "post": {
+        "tags": [
+          "mercado"
+        ],
+        "summary": "Registrar",
+        "description": "Anota un precio visto en el mercado (en la moneda de la carpeta).",
+        "operationId": "registrar_v1_mercado_observaciones_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObservacionNueva"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Creada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mercado/observaciones/{observacion_id}/anular": {
+      "post": {
+        "tags": [
+          "mercado"
+        ],
+        "summary": "Anular",
+        "description": "Anula una observación (queda su contraasiento: quién y cuándo).",
+        "operationId": "anular_v1_mercado_observaciones__observacion_id__anular_post",
+        "parameters": [
+          {
+            "name": "observacion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Observacion Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Anulada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mercado/compra/{codigo}/afectados": {
+      "get": {
+        "tags": [
+          "mercado"
+        ],
+        "summary": "Afectados",
+        "description": "Las partidas del catálogo que cambian de precio si cambia el del insumo.",
+        "operationId": "afectados_v1_mercado_compra__codigo__afectados_get",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "title": "Codigo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AfectadosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mercado/compra/{codigo}/usar": {
+      "post": {
+        "tags": [
+          "mercado"
+        ],
+        "summary": "Usar Compra",
+        "description": "Pone el precio en la lista de hoy de la carpeta (otra del día si una versión ya la usa).",
+        "operationId": "usar_compra_v1_mercado_compra__codigo__usar_post",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "title": "Codigo"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsarCompra"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsarCompraRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mercado/cobro/{codigo}/usar": {
+      "post": {
+        "tags": [
+          "mercado"
+        ],
+        "summary": "Usar Cobro",
+        "description": "Guarda el precio como el precio de venta objetivo de la partida.",
+        "operationId": "usar_cobro_v1_mercado_cobro__codigo__usar_post",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "title": "Codigo"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsarCobro"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjetivoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -8407,6 +8783,22 @@
           "texto"
         ],
         "title": "Advertencia"
+      },
+      "AfectadosRespuesta": {
+        "properties": {
+          "apus": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Apus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "apus"
+        ],
+        "title": "AfectadosRespuesta"
       },
       "AlertaPrecioRespuesta": {
         "properties": {
@@ -8646,6 +9038,24 @@
           "motivo"
         ],
         "title": "Anulacion"
+      },
+      "Anulada": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "anulada_por": {
+            "type": "integer",
+            "title": "Anulada Por"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "anulada_por"
+        ],
+        "title": "Anulada"
       },
       "AsistenteEstado": {
         "properties": {
@@ -11062,7 +11472,8 @@
           },
           "tope_usd": {
             "type": "string",
-            "title": "Tope Usd"
+            "title": "Tope Usd",
+            "description": "Tope de costo por sesión (USD) tal como lo teclea la persona: coma para los decimales y punto para los miles («2,50», «1.000» es mil, «1.234,56»). Un decimal con punto («2.50», «2.5») no se adivina: se rechaza con 400 y la regla."
           }
         },
         "type": "object",
@@ -11354,6 +11765,19 @@
           "fecha"
         ],
         "title": "CotizarVersion"
+      },
+      "Creada": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "Creada"
       },
       "Credenciales": {
         "properties": {
@@ -12714,6 +13138,99 @@
         "title": "EscenariosRespuesta",
         "description": "La comparación completa de UC-08. Nada de esto queda persistido (RF-30).\n\n`pendientes_base` lista los ítems pendientes del presupuesto base (sin partida en el\ncatálogo): ningún escenario los recalcula ni los suma a su total, y los hallazgos de cada\nescenario no los cuentan. Queda vacía si el base no tiene pendientes o si se guardó sin\nregistrarlos."
       },
+      "EstadisticasRespuesta": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "minimo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimo"
+          },
+          "q1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Q1"
+          },
+          "mediana": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mediana"
+          },
+          "promedio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promedio"
+          },
+          "maximo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximo"
+          },
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Ids",
+            "description": "Las observaciones de las que salen las cifras"
+          },
+          "otras_monedas": {
+            "type": "integer",
+            "title": "Otras Monedas",
+            "description": "Observaciones de la ventana en otra moneda"
+          },
+          "dias": {
+            "type": "integer",
+            "title": "Dias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "minimo",
+          "q1",
+          "mediana",
+          "promedio",
+          "maximo",
+          "ids",
+          "otras_monedas",
+          "dias"
+        ],
+        "title": "EstadisticasRespuesta"
+      },
       "EstadoFilaRespuesta": {
         "properties": {
           "severidad": {
@@ -12993,6 +13510,71 @@
           "clausula"
         ],
         "title": "EstudioPeticion"
+      },
+      "EstudioRespuesta": {
+        "properties": {
+          "lado": {
+            "type": "string",
+            "title": "Lado"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "estadisticas": {
+            "$ref": "#/components/schemas/EstadisticasRespuesta"
+          },
+          "propuesta": {
+            "$ref": "#/components/schemas/api__rutas__mercado__PropuestaRespuesta"
+          },
+          "piso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piso",
+            "description": "Cobro: costo directo + administración"
+          },
+          "precio_unitario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Unitario",
+            "description": "Cobro: con utilidad, sin IVA"
+          },
+          "observaciones": {
+            "items": {
+              "$ref": "#/components/schemas/ObservacionRespuesta"
+            },
+            "type": "array",
+            "title": "Observaciones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lado",
+          "codigo",
+          "moneda",
+          "estadisticas",
+          "propuesta",
+          "piso",
+          "precio_unitario",
+          "observaciones"
+        ],
+        "title": "EstudioRespuesta"
       },
       "EvaluacionRespuesta": {
         "properties": {
@@ -15634,6 +16216,45 @@
         ],
         "title": "NuevosRoles"
       },
+      "ObjetivoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "precio",
+          "moneda"
+        ],
+        "title": "ObjetivoRespuesta"
+      },
+      "ObjetivosRespuesta": {
+        "properties": {
+          "objetivos": {
+            "items": {
+              "$ref": "#/components/schemas/ObjetivoRespuesta"
+            },
+            "type": "array",
+            "title": "Objetivos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "objetivos"
+        ],
+        "title": "ObjetivosRespuesta"
+      },
       "ObraElegida": {
         "properties": {
           "proyecto": {
@@ -15766,6 +16387,120 @@
           "siguiente"
         ],
         "title": "ObraRespuesta"
+      },
+      "ObservacionNueva": {
+        "properties": {
+          "lado": {
+            "type": "string",
+            "enum": [
+              "compra",
+              "cobro"
+            ],
+            "title": "Lado"
+          },
+          "codigo": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Codigo"
+          },
+          "fuente_tipo": {
+            "type": "string",
+            "enum": [
+              "proveedor",
+              "competidor",
+              "cotizacion",
+              "maprex",
+              "compra"
+            ],
+            "title": "Fuente Tipo"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Fuente"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "precio": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Precio"
+          },
+          "nota": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Nota",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "lado",
+          "codigo",
+          "fuente_tipo",
+          "fuente",
+          "fecha",
+          "precio"
+        ],
+        "title": "ObservacionNueva"
+      },
+      "ObservacionRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "fuente_tipo": {
+            "type": "string",
+            "title": "Fuente Tipo"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota"
+          },
+          "responsable": {
+            "type": "string",
+            "title": "Responsable"
+          },
+          "cuenta": {
+            "type": "boolean",
+            "title": "Cuenta",
+            "description": "Está en la moneda de la carpeta y entra en las cifras"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "fuente_tipo",
+          "fuente",
+          "fecha",
+          "moneda",
+          "precio",
+          "nota",
+          "responsable",
+          "cuenta"
+        ],
+        "title": "ObservacionRespuesta"
       },
       "OpcionListaRespuesta": {
         "properties": {
@@ -17057,57 +17792,6 @@
         ],
         "title": "PropuestaRendimientoRespuesta",
         "description": "La propuesta al componer un APU: rendimiento elegido mas su dispersion."
-      },
-      "PropuestaRespuesta": {
-        "properties": {
-          "codigo": {
-            "type": "string",
-            "title": "Codigo"
-          },
-          "descripcion": {
-            "type": "string",
-            "title": "Descripcion"
-          },
-          "puntaje": {
-            "type": "string",
-            "title": "Puntaje"
-          },
-          "puntaje_corto": {
-            "type": "string",
-            "title": "Puntaje Corto"
-          },
-          "composicion": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ComposicionRespuesta"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "aviso": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Aviso"
-          }
-        },
-        "type": "object",
-        "required": [
-          "codigo",
-          "descripcion",
-          "puntaje",
-          "puntaje_corto",
-          "composicion",
-          "aviso"
-        ],
-        "title": "PropuestaRespuesta"
       },
       "Proveedor": {
         "properties": {
@@ -18860,7 +19544,7 @@
         "properties": {
           "propuestas": {
             "items": {
-              "$ref": "#/components/schemas/PropuestaRespuesta"
+              "$ref": "#/components/schemas/api__rutas__similares__PropuestaRespuesta"
             },
             "type": "array",
             "title": "Propuestas"
@@ -19554,6 +20238,66 @@
         ],
         "title": "UnidadDelPlano",
         "description": "P2: la unidad del dibujo con que se vuelve a leer el plano detenido."
+      },
+      "UsarCobro": {
+        "properties": {
+          "precio": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Precio"
+          },
+          "observaciones": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Observaciones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "precio"
+        ],
+        "title": "UsarCobro"
+      },
+      "UsarCompra": {
+        "properties": {
+          "precio": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Precio"
+          },
+          "observacion_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observacion Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "precio"
+        ],
+        "title": "UsarCompra"
+      },
+      "UsarCompraRespuesta": {
+        "properties": {
+          "lista": {
+            "type": "string",
+            "title": "Lista"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lista"
+        ],
+        "title": "UsarCompraRespuesta"
       },
       "ValidationError": {
         "properties": {
@@ -21123,6 +21867,31 @@
         ],
         "title": "SerieRespuesta"
       },
+      "api__rutas__mercado__PropuestaRespuesta": {
+        "properties": {
+          "precio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio"
+          },
+          "razon": {
+            "type": "string",
+            "title": "Razon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "precio",
+          "razon"
+        ],
+        "title": "PropuestaRespuesta"
+      },
       "api__rutas__obras__PendienteRespuesta": {
         "properties": {
           "obra": {
@@ -21382,6 +22151,57 @@
           "revalorada"
         ],
         "title": "VersionRespuesta"
+      },
+      "api__rutas__similares__PropuestaRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "puntaje": {
+            "type": "string",
+            "title": "Puntaje"
+          },
+          "puntaje_corto": {
+            "type": "string",
+            "title": "Puntaje Corto"
+          },
+          "composicion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComposicionRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "puntaje",
+          "puntaje_corto",
+          "composicion",
+          "aviso"
+        ],
+        "title": "PropuestaRespuesta"
       },
       "api__rutas__tablero__SerieRespuesta": {
         "properties": {

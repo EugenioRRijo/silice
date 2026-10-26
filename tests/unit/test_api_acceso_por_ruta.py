@@ -157,6 +157,13 @@ TABLA = {
     # MOD-4a: la mesa de control (inicio de Presupuestos y obras)
     ("GET", "/v1/obras/resumen"): LEER,
     ("GET", "/v1/obras/pendientes"): EDITAR,
+    ("GET", "/v1/mercado/{lado}/{codigo}"): EDITAR,  # T14: estudio de mercado
+    ("POST", "/v1/mercado/observaciones"): EDITAR,
+    ("POST", "/v1/mercado/observaciones/{observacion_id}/anular"): EDITAR,
+    ("GET", "/v1/mercado/compra/{codigo}/afectados"): EDITAR,
+    ("POST", "/v1/mercado/compra/{codigo}/usar"): EDITAR,
+    ("POST", "/v1/mercado/cobro/{codigo}/usar"): EDITAR,
+    ("GET", "/v1/mercado/objetivos"): EDITAR,
     ("POST", "/v1/proyectos"): EDITAR,
     ("POST", "/v1/similares"): EDITAR,
     ("POST", "/v1/simulador"): EDITAR,
