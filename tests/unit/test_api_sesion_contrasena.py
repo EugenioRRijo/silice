@@ -133,6 +133,8 @@ def test_entrar_y_consultar_informan_acciones_y_modo_entrega(login: str) -> None
         "debe_cambiar_clave": False,
         "acciones": ACCIONES[login],
         "modo_entrega": False,
+        "eleccion": {"caso": None, "proyecto": None, "aviso": None},  # MOD-0
+        "preferencias": {"modulo": None, "sidebar_fijado": False},
     }
     assert respuesta.json() == esperado
     assert navegador.get("/v1/sesion").json() == esperado
@@ -161,6 +163,9 @@ def test_la_cuenta_temporal_entra_con_una_cookie_restringida() -> None:
     ficha = ficha_de(respuesta)
     cuerpo = respuesta.json()
     assert cuerpo["debe_cambiar_clave"] is True and cuerpo["acciones"] == []
+    # MOD-0: con la temporal no hay elección que restaurar
+    assert cuerpo["eleccion"] is None
+    assert cuerpo["preferencias"] == {"modulo": None, "sidebar_fijado": False}
     assert cuerpo["csrf"] == csrf(ficha)
     consulta = navegador.get("/v1/sesion")
     assert consulta.status_code == 200 and consulta.json() == cuerpo
@@ -208,6 +213,8 @@ def test_cambiar_la_contrasena_abre_una_ficha_normal_y_cierra_las_demas() -> Non
         "debe_cambiar_clave": False,
         "acciones": ACCIONES["ana"],
         "modo_entrega": False,
+        "eleccion": {"caso": None, "proyecto": None, "aviso": None},  # MOD-0
+        "preferencias": {"modulo": None, "sidebar_fijado": False},
     }
     assert _abiertas("tomas") == [sesiones.huella_de(nueva)]
     assert navegador.get("/v1/casos").status_code == 200  # ya no está restringida

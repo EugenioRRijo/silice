@@ -73,6 +73,9 @@ _ESTADO_DE_ARMA = {
         "cambiar_caso",
     ],
     "modo_entrega": False,
+    # MOD-0: sin nada recordado, la elección viene vacía y las preferencias por omisión
+    "eleccion": {"caso": None, "proyecto": None, "aviso": None},
+    "preferencias": {"modulo": None, "sidebar_fijado": False},
 }
 #: Login -> contraseña vigente. `tomas` conserva la temporal: debe cambiarla.
 CUENTAS = {"admin": CONTRASENA, "ana": NUEVA, "rita": NUEVA, "tomas": CONTRASENA}
@@ -420,6 +423,8 @@ def test_get_sesion_con_cookie_da_el_usuario() -> None:
         "debe_cambiar_clave": False,
         "acciones": ["leer_proyecto", "revisar_paquete"],
         "modo_entrega": False,
+        "eleccion": {"caso": None, "proyecto": None, "aviso": None},  # MOD-0
+        "preferencias": {"modulo": None, "sidebar_fijado": False},
     }
     assert ficha not in respuesta.text
 

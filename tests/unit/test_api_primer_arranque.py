@@ -79,6 +79,8 @@ CLAVES_DE_SESION = {
     "debe_cambiar_clave",
     "acciones",
     "modo_entrega",
+    "eleccion",  # MOD-0
+    "preferencias",
 }
 #: Matriz de `seguridad/permisos.py`, en el orden de `Accion`, de cada combinación de roles.
 ACCIONES_ADMINISTRADOR = [

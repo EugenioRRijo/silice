@@ -76,3 +76,44 @@ describe("useSesion.reclamar (BCP-4)", () => {
     expect(result.current.estado.tipo).toBe("sin_sesion");
   });
 });
+
+describe("useSesion: elección y preferencias por cuenta (MOD-0)", () => {
+  test("una respuesta sin eleccion ni preferencias queda con eleccion null y las preferencias por omisión", async () => {
+    fetchFalso.mockImplementation(async () =>
+      json({ login: "ana", nombre: "Ana", roles: ["arma"], csrf: "tok", debe_cambiar_clave: false, acciones: [], modo_entrega: false }),
+    );
+    const { result } = renderHook(() => useSesion());
+    await waitFor(() => expect(result.current.estado.tipo).toBe("activa"));
+    if (result.current.estado.tipo !== "activa") throw new Error("sin sesión");
+    expect(result.current.estado.sesion.eleccion).toBeNull();
+    expect(result.current.estado.sesion.preferencias).toEqual({ modulo: null, sidebar_fijado: false });
+  });
+
+  test("la elección y las preferencias que trae la API llegan tal cual", async () => {
+    const eleccion = { caso: "s1.db", proyecto: "7", aviso: null };
+    const preferencias = { modulo: "obras", sidebar_fijado: true };
+    fetchFalso.mockImplementation(async () =>
+      json({ login: "ana", nombre: "Ana", roles: ["arma"], csrf: "tok", debe_cambiar_clave: false, acciones: [], modo_entrega: false, eleccion, preferencias }),
+    );
+    const { result } = renderHook(() => useSesion());
+    await waitFor(() => expect(result.current.estado.tipo).toBe("activa"));
+    if (result.current.estado.tipo !== "activa") throw new Error("sin sesión");
+    expect(result.current.estado.sesion.eleccion).toEqual(eleccion);
+    expect(result.current.estado.sesion.preferencias).toEqual(preferencias);
+  });
+
+  test("al entrar con POST /v1/sesion también se normalizan", async () => {
+    fetchFalso.mockImplementation(async (entrada) => {
+      if (String(entrada) === "/v1/sesion" && fetchFalso.mock.calls.length === 1) return json({ detalle: "Sin sesión." }, 401);
+      return json({ login: "ana", nombre: "Ana", roles: ["arma"], csrf: "tok" });
+    });
+    const { result } = renderHook(() => useSesion());
+    await waitFor(() => expect(result.current.estado.tipo).toBe("sin_sesion"));
+    await act(async () => {
+      await result.current.entrar("ana", "una contraseña larga");
+    });
+    if (result.current.estado.tipo !== "activa") throw new Error("sin sesión");
+    expect(result.current.estado.sesion.eleccion).toBeNull();
+    expect(result.current.estado.sesion.preferencias).toEqual({ modulo: null, sidebar_fijado: false });
+  });
+});
