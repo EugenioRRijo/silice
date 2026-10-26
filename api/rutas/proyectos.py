@@ -45,7 +45,7 @@ from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
 MENSAJE_CUERPO_INVALIDO = (
-    "Indique el nombre del proyecto (hasta 120 caracteres), la moneda (Bs o USD), el tipo de obra "
+    "Indique el nombre de la obra (hasta 120 caracteres), la moneda (Bs o USD), el tipo de obra "
     "y una descripción de hasta 500 caracteres."
 )
 

@@ -86,7 +86,7 @@ def listar_proyectos(ruta: Path) -> list[str]:
     return sorted(nombres, key=str.casefold)
 
 
-MENSAJE_NOMBRE_VACIO = "Escriba un nombre para el proyecto: no puede quedar vacío."
+MENSAJE_NOMBRE_VACIO = "Escriba un nombre para la obra: no puede quedar vacío."
 MENSAJE_MONEDA = "Elija la moneda: Bs o USD."
 MENSAJE_TIPO_DE_OBRA = "El tipo de obra no es uno de los de la lista."
 
@@ -132,7 +132,7 @@ def crear_proyecto_en_sesion(
         for otro in sesion.scalars(select(models.Proyecto)):
             if otro.nombre.casefold() == limpio.casefold():
                 raise ProyectoRepetido(
-                    f"Ya existe un proyecto llamado «{otro.nombre}»: elija otro nombre o abra ese."
+                    f"Ya existe una obra llamada «{otro.nombre}»: elija otro nombre o abra esa."
                 )
         try:
             proyecto = crear_proyecto(sesion, limpio, descripcion, dominio)
@@ -146,7 +146,7 @@ def crear_proyecto_en_sesion(
     except IntegrityError:  # dos peticiones a la vez con el mismo nombre
         sesion.rollback()
         raise ProyectoRepetido(
-            f"Ya existe un proyecto llamado «{limpio}»: elija otro nombre o abra ese."
+            f"Ya existe una obra llamada «{limpio}»: elija otro nombre o abra esa."
         ) from None
     except BaseException:
         sesion.rollback()
@@ -168,8 +168,8 @@ def crear_proyecto_nuevo(
     limpio = _limpiar_nombre(nombre)
     if not ruta.exists():
         raise ProyectoInvalido(
-            f"El caso {ruta} no existe todavia: abra o siembre un caso en el Inicio antes de "
-            "crear un proyecto."
+            f"La carpeta de trabajo {ruta} no existe todavía: abra o cree una carpeta de trabajo "
+            "antes de crear una obra."
         )
     motor = crear_motor(_url(ruta))
     try:

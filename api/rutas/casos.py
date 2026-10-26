@@ -78,7 +78,9 @@ from operacion.base_datos import (
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
-MENSAJE_NO_ESTA = "El caso «{nombre}» no está en la carpeta de casos: elija uno de la lista."
+MENSAJE_NO_ESTA = (
+    "La carpeta de trabajo «{nombre}» no está en la carpeta de datos: elija una de la lista."
+)
 MENSAJE_CON_CLAVE = (
     "Con la clave de API se trabaja en el caso del proceso (APU_BASE); el caso se elige por "
     "sesión desde la interfaz."
