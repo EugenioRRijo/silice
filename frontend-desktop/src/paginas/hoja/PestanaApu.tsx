@@ -3,7 +3,6 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { CambioDeInsumo } from "./CambioDeInsumo";
@@ -97,7 +96,9 @@ function TablaDelRubro({
       clave: c.clave,
       titulo: c.rotulo,
       ordenable: false,
-      ...(NUMERICAS.has(c.clave) ? { numerica: true, presentar: formatoEsVe } : {}),
+      // Las filas del APU llegan escritas como en los campos (coma decimal y punto de miles: `texto_de_cifra` en
+      // `filas_desde_composicion`); se muestran tal cual. Volver a formatearlas convertia «1.500» en «1,500» (B3).
+      ...(NUMERICAS.has(c.clave) ? { numerica: true } : {}),
     };
   });
   return (
