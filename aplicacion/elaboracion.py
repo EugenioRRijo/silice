@@ -133,9 +133,10 @@ def elaborar_desde_catalogo(
 
 def filas_desde_plan(plan: Sequence[PeriodoPlan]) -> list[dict[str, str]]:
     """UC-01, paso 6 (INV-087): el plan de trabajo como filas de la tabla editable, una por
-    partida y periodo, con la fraccion como texto exacto (`str` del `Decimal`)."""
+    partida y periodo, con la fraccion como texto exacto en notacion fija (`format(x, "f")`: `str`
+    daba «1E-7», que la pantalla no puede volver a leer)."""
     return [
-        {"periodo": periodo, "codigo_partida": codigo, "fraccion": str(fraccion)}
+        {"periodo": periodo, "codigo_partida": codigo, "fraccion": format(fraccion, "f")}
         for periodo, reparto in plan
         for codigo, fraccion in reparto
     ]

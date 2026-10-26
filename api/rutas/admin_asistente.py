@@ -100,7 +100,13 @@ class Configuracion(BaseModel):
     modelo_claude: str
     modelo_local: str = ""
     anfitrion_ollama: str
-    tope_usd: str
+    tope_usd: str = Field(
+        description=(
+            "Tope de costo por sesión (USD) tal como lo teclea la persona: coma para los decimales "
+            "y punto para los miles («2,50», «1.000» es mil, «1.234,56»). Un decimal con punto "
+            "(«2.50», «2.5») no se adivina: se rechaza con 400 y la regla."
+        )
+    )
 
 
 class NuevaClave(BaseModel):
@@ -148,7 +154,8 @@ def _estado(request: Request) -> AsistenteEstado:
         modelo_claude=cfg.modelo_claude,
         modelo_local=cfg.modelo_local,
         anfitrion_ollama=cfg.anfitrion_ollama,
-        tope_usd=str(cfg.tope_usd),
+        # notacion fija: `str(Decimal("0.0000001"))` es «1E-7», que la pantalla no puede editar
+        tope_usd=format(cfg.tope_usd, "f"),
         clave_registrada=vista.clave_registrada,
         clave_guardada=vista.clave_guardada,
         pide_contrasena=vista.pide_contrasena,
