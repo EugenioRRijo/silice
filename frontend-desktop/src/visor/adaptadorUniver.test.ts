@@ -18,6 +18,12 @@ const doble = vi.hoisted(() => {
     // false: desechar la instancia con la unidad viva no lanza (para aislar los avisos pendientes).
     lanzaConUnidadViva: true,
     alEjecutarComando: null as null | (() => void),
+    // Etapa del ciclo de vida de Univer (LifecycleStages: 1 Ready, 2 Rendered, 3 Steady). El controlador de zoom de
+    // la hoja (u4) se registra recien en Rendered; en Ready ya hay escena y cuadricula, pero no el controlador.
+    etapa: 3,
+    zooms: 0,
+    // Zooms pedidos antes de Rendered: en el navegador cada uno es un `Cannot find "u4"` al abrir.
+    zoomsAntesDeDibujar: 0,
   };
   const vigente = () => {
     if (!estado.instanciaViva || !estado.unidadViva) throw new Error('[redi]: Cannot find "u4" registered by any injector.');
@@ -25,7 +31,11 @@ const doble = vi.hoisted(() => {
   const hoja = (nombre: string) => ({
     getSheetName: () => (vigente(), nombre),
     getSkeleton: () => (vigente(), {}),
-    zoom: () => vigente(),
+    zoom: () => {
+      vigente();
+      estado.zooms += 1;
+      if (estado.etapa < 2) estado.zoomsAntesDeDibujar += 1;
+    },
     getZoom: () => (vigente(), 1),
     getRange: () => ({ activate: () => vigente() }),
   });
@@ -70,6 +80,7 @@ const doble = vi.hoisted(() => {
   };
   const univerAPI = {
     createWorkbook: () => fLibro,
+    getCurrentLifecycleStage: () => estado.etapa,
     disposeUnit: (id: string) => {
       estado.orden.push(`unidad:${id}`);
       estado.unidadViva = false;
@@ -83,6 +94,9 @@ const doble = vi.hoisted(() => {
     estado.lanzaSiempre = false;
     estado.lanzaConUnidadViva = true;
     estado.alEjecutarComando = null;
+    estado.etapa = 3;
+    estado.zooms = 0;
+    estado.zoomsAntesDeDibujar = 0;
     activa = hoja("PRESUPUESTO");
   };
   return { estado, univer, univerAPI, reiniciar };
@@ -100,6 +114,7 @@ vi.mock("@univerjs/presets", () => ({
   createUniver: () => ({ univer: doble.univer, univerAPI: doble.univerAPI }),
   ICommandService: "ICommandService",
   IConfigService: "IConfigService",
+  LifecycleStages: { Starting: 0, Ready: 1, Rendered: 2, Steady: 3 },
   LocaleType: { ES_ES: "esES" },
   mergeLocales: (x: unknown) => x,
 }));
@@ -187,6 +202,21 @@ describe("adaptador de Univer: montar y desmontar (D-3)", () => {
     // No se calla: queda como aviso en la consola (no como error de pagina).
     expect(aviso).toHaveBeenCalledTimes(1);
     aviso.mockRestore();
+  });
+
+  test("al abrir, no pide zoom hasta que Univer registra el controlador de zoom (etapa Rendered)", async () => {
+    // D-3 al abrir: escena y cuadricula existen desde Ready, pero el controlador de zoom (u4) llega en Rendered,
+    // unos 300 ms despues. Un zoom pedido en ese hueco era el `Cannot find "u4"` que MOD-5a midio al abrir el libro.
+    doble.estado.etapa = 1;
+    const reloj = setTimeout(() => {
+      doble.estado.etapa = 2;
+    }, 120);
+    const visor = await crearHojaUniver(document.createElement("div"), libro, 1.25);
+    clearTimeout(reloj);
+    expect(doble.estado.zoomsAntesDeDibujar).toBe(0);
+    // El zoom inicial si se pide, una vez montada la hoja.
+    expect(doble.estado.zooms).toBeGreaterThan(0);
+    visor.destruir();
   });
 
   test("despues de destruir, pedir zoom u hoja no toca Univer", async () => {
