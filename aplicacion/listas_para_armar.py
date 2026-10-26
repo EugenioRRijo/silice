@@ -47,6 +47,7 @@ __all__ = [
     "crear_lista_para_armar",
     "declarar_moneda_de_la_carpeta",
     "describir",
+    "exigir_responsable",
     "lista_de_hoy",
     "lista_para_armar",
     "lista_para_el_proyecto",
@@ -118,7 +119,7 @@ def moneda_de_la_carpeta(sesion: Session, fecha: date | None = None) -> str | No
     return _moneda(sesion, date.today() if fecha is None else fecha)
 
 
-def _exigir_responsable(responsable: str) -> str:
+def exigir_responsable(responsable: str) -> str:
     responsable = responsable.strip()
     if not responsable:
         raise ValueError("hace falta quién lo hace (responsable)")
@@ -134,7 +135,7 @@ def declarar_moneda_de_la_carpeta(
     hay otra declarada o la lista vigente a `ahora` está en otra; `ValueError` con una moneda que
     no es Bs ni USD o sin responsable. No confirma."""
     exigir_moneda(moneda)
-    responsable = _exigir_responsable(responsable)
+    responsable = exigir_responsable(responsable)
     actual = moneda_de_la_carpeta(sesion, ahora.date())
     if actual is not None and actual != moneda:
         raise CarpetaConOtraMoneda(
@@ -275,7 +276,7 @@ def lista_para_el_proyecto(
     conversión de alcance proyecto con la tasa del BCV del día (`convertir_lista`), que se
     reutiliza si ya existe para esa obra, esa base, esa fecha y esa tasa. `SinListaParaArmar` sin
     lista o sin tasa de los últimos 7 días; `ValueError` si la obra no existe. No confirma."""
-    responsable = _exigir_responsable(responsable)
+    responsable = exigir_responsable(responsable)
     fila = sesion.scalars(
         select(models.Proyecto).where(models.Proyecto.nombre == proyecto)
     ).one_or_none()
@@ -379,7 +380,7 @@ def crear_lista_para_armar(
     moneda, a la de la carpeta con la tasa del BCV. `SinListaParaArmar` sin tasa de los últimos 7
     días, sin lista que convertir o si la vigente ya está en la moneda de la carpeta. No confirma
     (salvo la carga de la referencia: ver el módulo)."""
-    responsable = _exigir_responsable(responsable)
+    responsable = exigir_responsable(responsable)
     if desde == "maprex":
         return _desde_maprex(sesion, fecha, responsable)
     if desde == "convertir":

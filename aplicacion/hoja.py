@@ -99,6 +99,7 @@ from aplicacion.composicion import (
 )
 from aplicacion.errores import HojaInvalida
 from aplicacion.estilo import porcentaje
+from aplicacion.parametros_de_costo import parametros_de_version
 from aplicacion.subidas import Subida, guardar_subida
 from core import models
 from core.budget import (
@@ -1688,15 +1689,6 @@ def espacio_de_version(sesion: Session, modelo: models.Presupuesto) -> tuple[Esp
         actual = siguiente
 
 
-def _parametros_de_version(modelo: models.Presupuesto) -> ParametrosCosto:
-    return ParametrosCosto(
-        fcas=modelo.fcas,
-        bono_alimentacion=modelo.bono_alimentacion,
-        administracion=modelo.administracion,
-        utilidad=modelo.utilidad,
-    )
-
-
 def _composiciones_de_la_version(
     sesion: Session, catalogo: Catalogo, modelo: models.Presupuesto
 ) -> tuple[dict[str, ComposicionAPU], bool]:
@@ -1812,7 +1804,7 @@ def abrir_version(
         espacio=espacio,
         items_base=items_base,
         composiciones=composiciones,
-        parametros=_parametros_de_version(modelo),
+        parametros=parametros_de_version(modelo),
         plan=None if plan is None else tuple((e, tuple(r)) for e, r in plan),
         cantidades=escritas,
         reglas_extra=extra,
