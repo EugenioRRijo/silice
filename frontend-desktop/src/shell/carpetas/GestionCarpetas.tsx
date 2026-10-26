@@ -160,7 +160,7 @@ export function GestionCarpetas({
                 carpeta={c}
                 abierta={c.nombre === casos.actual.nombre}
                 deLaEmpresa={casos.empresa?.nombre === c.nombre}
-                ocupada={abriendo !== null}
+                ocupada={abriendo !== null || aplicacion?.declarandoMoneda === true}
                 alAbrir={() => void abrir(c.nombre, "lista")}
               />
             ))}
@@ -284,6 +284,7 @@ function Crear({
   const [nombre, setNombre] = useState("");
   const [moneda, setMoneda] = useState("");
   const [faltaMoneda, setFaltaMoneda] = useState(false);
+  const [faltaNombre, setFaltaNombre] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<unknown>(null);
   // La carpeta se creo pero no se pudo abrir: se dice con su nombre (no «No se pudo crear»).
@@ -301,10 +302,12 @@ function Crear({
     setHecho(null);
     setError(null);
     setSinAbrir(null);
-    if (puedeDeclararMoneda && moneda === "") {
-      setFaltaMoneda(true);
-      return;
-    }
+    // Lo que falta se dice en el campo, sin llamar a la API.
+    const sinNombre = nombre.trim() === "";
+    const sinMoneda = puedeDeclararMoneda && moneda === "";
+    setFaltaNombre(sinNombre);
+    setFaltaMoneda(sinMoneda);
+    if (sinNombre || sinMoneda) return;
     setOcupado(true);
     // BCP-5 §4.3 con la pregunta delante: confirmar, crear, abrir (si abrir falla, la carpeta existe y no esta abierta)
     // y, ya abierta, declarar su moneda de trabajo (D-MP1, una por carpeta).
@@ -352,7 +355,12 @@ function Crear({
         helperText="Lo que no se puede usar en el nombre de un archivo se cambia por «_»."
         value={nombre}
         maxLength={200}
-        onChange={(e) => setNombre(e.target.value)}
+        invalid={faltaNombre}
+        invalidText="Escriba un nombre para la carpeta de trabajo."
+        onChange={(e) => {
+          setNombre(e.target.value);
+          setFaltaNombre(false);
+        }}
       />
       {puedeDeclararMoneda ? (
         <Select

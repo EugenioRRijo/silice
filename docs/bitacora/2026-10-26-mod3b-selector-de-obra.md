@@ -110,3 +110,15 @@ esa lectura cuentan como cero borradores (no se puede saber); un 401 cierra la s
   declararla en otra. Sin armazón (la pieza sola en pruebas) la guarda el propio formulario.
 - **Pruebas que faltaban:** la rama «se creó, pero no se pudo abrir» (`POST /v1/casos/actual` con 503) y «Quedarme» al
   crear desde Administración. Las dos ya pasaban con el código de la ronda 2: cubren comportamiento que existía.
+
+## 7. Menores de la ronda 3
+
+- **Nombre vacío:** «Crear y abrir» con el nombre vacío (o solo espacios) lo dice en el campo, «Escriba un nombre para la
+  carpeta de trabajo.», sin llamar a la API (como la moneda que falta).
+- **La moneda pendiente es de su carpeta.** El `Shell` lleva la carpeta abierta en el momento (`carpetaAbierta`, fijada al
+  cambiar y con cada lista de `GET /v1/casos`): `declararMoneda` no declara si la abierta ya es otra, y un `PUT` que falla
+  después de cambiar de carpeta no deja la moneda pendiente en la nueva. Mientras se declara (`declarandoMoneda`), la
+  lista de carpetas del diálogo y de Administración no deja abrir otra. La prueba del reintento que falla tras cambiar
+  abre la otra carpeta por `abrirCarpeta` desde la página, porque la lista ya no lo permite.
+- **Prueba de que la moneda pendiente se borra al cambiar de carpeta:** ya pasaba (`alCambiarCarpeta` la olvida desde la
+  ronda 3); queda cubierta.

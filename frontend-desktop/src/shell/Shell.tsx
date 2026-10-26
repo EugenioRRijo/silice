@@ -126,6 +126,10 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   );
   const [carpetasAbierto, setCarpetasAbierto] = useState(false);
   const [monedaPendiente, setMonedaPendiente] = useState<MonedaPendiente | null>(null);
+  const [declarandoMoneda, setDeclarandoMoneda] = useState(false);
+  // La carpeta abierta ahora (sin .db): la moneda pendiente es de SU carpeta y nunca se declara ni se ofrece en otra. Se
+  // fija al cambiar (en el momento, antes de que llegue la lista) y con cada lista de `GET /v1/casos`.
+  const carpetaAbierta = useRef<string | null>(null);
   const [nuevaObraAbierta, setNuevaObraAbierta] = useState(false);
   // Cambia con el caso: las paginas se vuelven a montar y piden sus datos de nuevo.
   const [generacion, setGeneracion] = useState(0);
@@ -311,6 +315,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // Cambio de carpeta (abrir otra o volver a la de la empresa): se olvida la obra, la pagina se vuelve a montar y pide
   // sus datos a la carpeta nueva, y se avisa. Sin la frase del reinicio: MOD-0 recuerda la carpeta por cuenta.
   const alCambiarCarpeta = useCallback((carpeta: string) => {
+    carpetaAbierta.current = carpeta;
     setError(null);
     setMonedaPendiente(null);
     setProyecto(null);
@@ -327,6 +332,9 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     alCambiar: alCambiarCarpeta,
   });
   const casoActual = casos?.actual.ruta_relativa ?? null;
+  useEffect(() => {
+    if (casos) carpetaAbierta.current = nombreDeCarpeta(casos.actual.nombre);
+  }, [casos]);
 
   // Sin `leer_proyecto` la API contesta 403: no se pide (VB-9).
   const puedeLeerProyectos = acciones.includes("leer_proyecto");
@@ -366,17 +374,26 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const abrirNuevaObra = useCallback(() => setNuevaObraAbierta(true), []);
 
   // La moneda de la carpeta recien creada y abierta (D-MP1). Si falla queda pendiente aqui, en el armazon: el formulario
-  // que la pidio puede haberse desmontado al abrir la carpeta (Administracion se vuelve a montar).
+  // que la pidio puede haberse desmontado al abrir la carpeta (Administracion se vuelve a montar). Es de SU carpeta: si
+  // la abierta ya es otra, no se declara, y un fallo que llega despues de cambiar no se vuelve a ofrecer. Mientras se
+  // declara, la lista de carpetas no deja abrir otra.
   const declararMoneda = useCallback(
     async (carpeta: string, moneda: string): Promise<boolean> => {
+      if (carpetaAbierta.current !== carpeta) {
+        setMonedaPendiente(null);
+        return false;
+      }
+      setDeclarandoMoneda(true);
       try {
         await pedir("/v1/carpeta/moneda", { metodo: "PUT", cuerpo: { moneda } });
-        setMonedaPendiente(null);
+        if (carpetaAbierta.current === carpeta) setMonedaPendiente(null);
         return true;
       } catch (e) {
         if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
-        else setMonedaPendiente({ carpeta, moneda, error: e });
+        else if (carpetaAbierta.current === carpeta) setMonedaPendiente({ carpeta, moneda, error: e });
         return false;
+      } finally {
+        setDeclarandoMoneda(false);
       }
     },
     [alExpirar],
@@ -425,12 +442,13 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       abrirCarpeta,
       monedaPendiente,
       declararMoneda,
+      declarandoMoneda,
       alExpirar,
       modulo,
       almacenDelLibro: almacen,
       crearHojaVisor: crearHoja,
     }),
-    [sesion, proyecto, proyectos, casos, recargarProyectos, elegirObra, abrirNuevaObra, abrirCarpeta, monedaPendiente, declararMoneda, alExpirar, modulo, almacen, crearHoja],
+    [sesion, proyecto, proyectos, casos, recargarProyectos, elegirObra, abrirNuevaObra, abrirCarpeta, monedaPendiente, declararMoneda, declarandoMoneda, alExpirar, modulo, almacen, crearHoja],
   );
 
   // A donde llevan «/», «/inicio» y una ruta inexistente: el inicio del ultimo modulo usado (o del de entrada); sin

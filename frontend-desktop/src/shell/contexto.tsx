@@ -28,7 +28,9 @@ export interface Aplicacion {
   // carpeta. `declararMoneda` resuelve true si la declaro; si falla, la deja pendiente con su error.
   monedaPendiente?: MonedaPendiente | null;
   declararMoneda?: (carpeta: string, moneda: string) => Promise<boolean>;
-  // El Shell siempre da estas cinco; son opcionales para que las pruebas de cada pagina no tengan que inventarlas.
+  // Mientras se declara, la lista de carpetas no deja abrir otra (la moneda iria a parar a la que se abre).
+  declarandoMoneda?: boolean;
+  // El Shell siempre da estas seis; son opcionales para que las pruebas de cada pagina no tengan que inventarlas.
   // La API contesto 401: la sesion vencio.
   alExpirar: () => void;
   // Modulo abierto (el de la pantalla, o el ultimo usado fuera de los modulos); null si la cuenta no ve ninguno. El
