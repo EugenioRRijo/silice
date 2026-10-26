@@ -12803,6 +12803,26 @@
         "title": "CausaRespuesta",
         "description": "Una causa de retraso que se puede elegir en una línea: su clave y su nombre."
       },
+      "CausaSugeridaRespuesta": {
+        "properties": {
+          "partida": {
+            "type": "string",
+            "title": "Partida",
+            "description": "Código de la partida"
+          },
+          "causa": {
+            "type": "string",
+            "title": "Causa",
+            "description": "Clave de la causa de retraso (la de `/v1/control/valuaciones`)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "partida",
+          "causa"
+        ],
+        "title": "CausaSugeridaRespuesta"
+      },
       "CeldaVisualRespuesta": {
         "properties": {
           "ref": {
@@ -13353,12 +13373,14 @@
             "type": "string",
             "maxLength": 60,
             "title": "Cantidad",
+            "description": "Cantidad recibida, en la unidad",
             "default": ""
           },
           "precio": {
             "type": "string",
             "maxLength": 60,
             "title": "Precio",
+            "description": "Precio unitario (por unidad del material), en la moneda de la carpeta",
             "default": ""
           }
         },
@@ -20252,13 +20274,22 @@
             ],
             "title": "Aviso",
             "description": "Por qué no hay fechas, si no las hay"
+          },
+          "causas_sugeridas": {
+            "items": {
+              "$ref": "#/components/schemas/CausaSugeridaRespuesta"
+            },
+            "type": "array",
+            "title": "Causas Sugeridas",
+            "description": "Por partida, la causa de retraso que sugiere la procura al corte (una compra que llegó después de que la partida empezara); Valuaciones la preelige. Solo las que tienen una."
           }
         },
         "type": "object",
         "required": [
           "necesidades",
           "alertas",
-          "aviso"
+          "aviso",
+          "causas_sugeridas"
         ],
         "title": "ProcuraRespuesta"
       },
