@@ -107,6 +107,22 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   VIV-001 (con plan) el alta entra también en el plan (conducta de la Hoja), así que se cuentan solo los cambios de
   cantidad.
 
+### T12, ronda 2 (devuelta por un MAYOR; corregida)
+
+- Todo o nada sin expulsar a nadie: `llevar_a_la_hoja` valida todas las partidas (catálogo, cantidad y cálculo con
+  `cantidad_y_regla`) y, si la obra no tiene versiones, la lista con que se valora (`valoracion_de_la_obra`, el 409) ANTES de
+  registrar el borrador, porque registrar uno nuevo expulsa el menos usado de la ficha (`POR_FICHA`). Orden de los errores:
+  partidas (404, 422) antes que la lista (409). Lo imprevisible (la base) después de registrar todavía descarta el borrador
+  nuevo, y el expulsado en ese caso no vuelve (límite declarado).
+- La restauración de un borrador que ya existía devuelve también su `tamano` (el registro lo vuelve a medir cada 20
+  cambios); la caché de la vista no se exige igual: la llena el listado de borradores (rev 0).
+- `/computos` escribe cantidades y parámetros en notación fija (`format(x, "f")`; `str` daba «1E-7», que `llevar` rechaza
+  con el 422 de forma). El patrón de `llevar` sigue sin exponente.
+- Cobertura nueva: 2000 partidas aceptadas (`MAX_ITEMS`, importado de `api/esquemas_ola2.py`), el Excel de Elaborar con
+  obra y la lista completa de cambios al llevar a VIV-001, igual a la de agregar a mano.
+- El oráculo de la ronda 1 de T12 (el de la línea mal puesta en `test_api_hoja.py`) era del orquestador y se corrigió en
+  `2e6a70c2`.
+
 ## T13, estudio de mercado (aprobada en ronda 1)
 
 - `Estadisticas` lleva `dias` al final, para el texto «Sin observaciones en los últimos {dias} días.».
