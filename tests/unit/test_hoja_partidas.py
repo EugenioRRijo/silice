@@ -257,8 +257,11 @@ def test_un_resultado_cero_negativo_es_cero():
     [
         # 0,00005 a cuatro decimales se escribiría 0,0001, igual que la cantidad: se dice entero
         ("0,0001", "0,00005*1", "0,00005", "0,0001"),
-        # 1/30000 = 0,0000333…: un Decimal guarda 28 cifras significativas, 28 treses
-        ("0", "1/30000", "0,0000" + "3" * 28, "0"),
+        # 1/30000 = 0,0000333…: se dice con 8 cifras significativas, 3,3333333 × 10⁻⁵
+        ("0", "1/30000", "0,000033333333", "0"),
+        # 2/30000 = 0,0000666… se vería 0,0001 como la cantidad; con 8 significativas la última
+        # sube (6,6666667 × 10⁻⁵)
+        ("0,0001", "2/30000", "0,000066666667", "0,0001"),
     ],
 )
 def test_si_el_resultado_redondeado_se_ve_igual_a_la_cantidad_se_dice_con_todas_sus_cifras(
