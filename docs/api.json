@@ -9426,6 +9426,25 @@
         ],
         "title": "AprobacionAbrirRespuesta"
       },
+      "AprobacionCadenaRespuesta": {
+        "properties": {
+          "integra": {
+            "type": "boolean",
+            "title": "Integra"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje",
+            "description": "El mismo texto de la pestaña Trazabilidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "integra",
+          "mensaje"
+        ],
+        "title": "AprobacionCadenaRespuesta"
+      },
       "AprobacionCifraRespuesta": {
         "properties": {
           "clave": {
@@ -9536,6 +9555,10 @@
           "rastro": {
             "$ref": "#/components/schemas/AprobacionRastroRespuesta"
           },
+          "cadena": {
+            "$ref": "#/components/schemas/AprobacionCadenaRespuesta",
+            "description": "La cadena de versiones recalculada: si no está íntegra, no se dictamina"
+          },
           "envio": {
             "$ref": "#/components/schemas/AprobacionEnvioDeLaVersion"
           },
@@ -9557,6 +9580,7 @@
           "partidas",
           "hallazgos",
           "rastro",
+          "cadena",
           "envio",
           "armo"
         ],
@@ -10016,12 +10040,32 @@
             "title": "Cantidad"
           },
           "precio_unitario": {
-            "type": "string",
-            "title": "Precio Unitario"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Unitario",
+            "description": "`null` en un ítem pendiente"
           },
           "total": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Total"
+          },
+          "pendiente": {
+            "type": "boolean",
+            "title": "Pendiente",
+            "description": "Ítem sin partida en el catálogo: sin precio"
           }
         },
         "type": "object",
@@ -10031,7 +10075,8 @@
           "unidad",
           "cantidad",
           "precio_unitario",
-          "total"
+          "total",
+          "pendiente"
         ],
         "title": "AprobacionPartidaRespuesta"
       },

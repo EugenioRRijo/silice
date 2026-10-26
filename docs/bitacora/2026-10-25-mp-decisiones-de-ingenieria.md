@@ -125,6 +125,10 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   `SQLITE_LOCKED*`), no por el texto; la huella usa `json_canonico` y `huella` de `core/budget/canonico.py`.
 - **Duda para Eugenio:** quien revisa (rita) no tiene `cambiar_caso`, así que al volver a entrar no vuelve a la carpeta
   que abrió desde un envío (la elección recordada solo se restaura a quien puede cambiar de carpeta).
+- Ronda de menores: el reflejo del índice tolera cualquier fallo después de confirmar la carpeta (aviso en el registro, la
+  próxima lectura lo repone). El detalle de un envío lista también los ítems pendientes, sin precio. El detalle trae la
+  cadena de versiones recalculada como en Trazabilidad y el dictamen se rechaza con 409 si está rota. Enviar una versión de
+  una cadena rota todavía se permite: solo se bloquea el dictamen. La mesa reusa la acción «Ver el envío».
 
 ## MOD-4a, mesa de control (aprobada en la ronda 2)
 
