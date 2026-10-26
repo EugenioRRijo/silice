@@ -1,3 +1,5 @@
+@use "@carbon/styles/scss/type";
+
 // Barra superior y panel de area (diseno 2026-10-25 §5.1 y §5.2; modulos §5). Carbon g10, esquinas rectas, sin sombra,
 // sin gradiente, sin animacion (tampoco al abrir el panel). Todo en rem: sigue la escala de letra. Que las areas cedan su
 // sitio al sidebar de modulos por debajo del umbral de cada modulo y letra lo decide `shell.scss` (mixin
@@ -18,10 +20,9 @@
   background-color: transparent;
   color: var(--cds-text-primary);
   font-family: inherit;
-  font-size: 0.875rem;
+  @include type.type-style("body-compact-01");
+  // Seminegrita, como el nombre de la cabecera de Carbon.
   font-weight: 600;
-  line-height: 1.125rem;
-  letter-spacing: 0.1px;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;

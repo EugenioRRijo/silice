@@ -55,7 +55,8 @@ afterEach(() => {
 // Con `css: false` los estilos no se aplican en jsdom: se leen como texto.
 type ModuloFs = { readFileSync(ruta: string, codificacion: string): string };
 const nodo = (globalThis as unknown as { process: { cwd(): string; getBuiltinModule(nombre: string): ModuloFs } }).process;
-const estilosBarra = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/shell/BarraSuperior.scss`, "utf-8");
+const estilosBarra = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/shell/BarraSuperior.scss`, "utf-8")
+  .replaceAll("\r\n", "\n");
 
 describe("estilos de «Sílice»", () => {
   test("usa el estilo de tipo body-compact-01 de Carbon, sin tamaño, interlineado ni espaciado a mano", () => {

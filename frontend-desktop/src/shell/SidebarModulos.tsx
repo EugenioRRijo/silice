@@ -6,6 +6,7 @@ import { EnlaceSeguro, useClicSeguro } from "./EnlaceSeguro";
 import type { EntradaNav } from "./navegacion";
 import { PAGINAS, inicioDe, rutaDe, type ModuloDef, type ModuloId, type PaginaDef } from "./rutas";
 import { ID_SIDEBAR, cerrarSidebar } from "./sidebar";
+import { primerEnfocable, useAtraparFoco } from "./useAtraparFoco";
 
 interface Props {
   // Modulos que la cuenta ve, en su orden.
@@ -40,16 +41,6 @@ export function SidebarModulos(props: Props): JSX.Element | null {
   return <Contenido key={enCapa ? "capa" : "fijado"} {...props} enCapa={enCapa} />;
 }
 
-// Lo enfocable que de verdad se ve: las areas pueden estar ocultas por CSS (barra que si cabe).
-function enfocables(caja: HTMLElement): HTMLElement[] {
-  return Array.from(caja.querySelectorAll<HTMLElement>("a[href], button:not([disabled])")).filter((el) => {
-    for (let nodo: HTMLElement | null = el; nodo && nodo !== caja; nodo = nodo.parentElement) {
-      if (getComputedStyle(nodo).display === "none") return false;
-    }
-    return true;
-  });
-}
-
 function Contenido({
   modulos,
   actual,
@@ -65,12 +56,13 @@ function Contenido({
   const base = useId();
   const caja = useRef<HTMLDivElement>(null);
   const moduloActual = modulos.find((m) => m.id === actual) ?? null;
+  const atrapar = useAtraparFoco(caja);
 
   // En capa, el foco entra al modulo actual (o al primero). Fijado no le roba el foco a la pagina.
   useEffect(() => {
     if (!enCapa || !caja.current) return;
     const destino =
-      caja.current.querySelector<HTMLElement>('.silice-sidebar__modulo[aria-current="page"]') ?? enfocables(caja.current)[0];
+      caja.current.querySelector<HTMLElement>('.silice-sidebar__modulo[aria-current="page"]') ?? primerEnfocable(caja.current);
     destino?.focus();
   }, [enCapa]);
 
@@ -82,18 +74,7 @@ function Contenido({
       alCerrar();
       return;
     }
-    if (e.key !== "Tab") return;
-    const lista = enfocables(caja.current);
-    const primero = lista[0];
-    const ultimo = lista[lista.length - 1];
-    if (!primero || !ultimo) return;
-    if (e.shiftKey && document.activeElement === primero) {
-      e.preventDefault();
-      ultimo.focus();
-    } else if (!e.shiftKey && document.activeElement === ultimo) {
-      e.preventDefault();
-      primero.focus();
-    }
+    atrapar(e);
   }
 
   const cuerpo = (

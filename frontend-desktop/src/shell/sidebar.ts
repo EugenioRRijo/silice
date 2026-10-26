@@ -65,13 +65,11 @@ export function fijarSidebar(fijo: boolean): void {
 }
 
 // Donde Esc es de otro: un campo de texto o de seleccion, una celda o tabla editable, un control desplegable o un dialogo.
+// Lo editable (contenteditable) lo dice `isContentEditable`, que el navegador calcula con herencia y sin mayusculas.
 const DESTINOS_CON_ESC_PROPIO = [
   "input",
   "textarea",
   "select",
-  '[contenteditable="true"]',
-  '[contenteditable=""]',
-  '[contenteditable="plaintext-only"]',
   '[role="grid"]',
   '[role="combobox"]',
   '[role="listbox"]',
@@ -81,13 +79,15 @@ const DESTINOS_CON_ESC_PROPIO = [
 
 // Esc abre el sidebar solo si no es de nadie mas (diseno §4: «nunca roba Esc a un formulario»; choque 9 del plan): la
 // tecla es Escape, nadie la atendio ya, el foco no esta en un campo, una tabla editable, un control desplegable ni un
-// dialogo, no hay ningun dialogo modal abierto y ningun control de la barra (panel de area, carpeta, cuenta) esta
+// dialogo, no hay ningun dialogo modal ni tooltip o popover de Carbon abierto (Carbon cierra el tooltip con Esc desde
+// el documento aunque el foco este fuera) y ningun control de la barra (panel de area, carpeta, cuenta) esta
 // desplegado, salvo el propio «Sílice».
 export function esEscParaElSidebar(e: KeyboardEvent): boolean {
   if (e.key !== "Escape" || e.defaultPrevented) return false;
   const destino = e.target;
+  if (destino instanceof HTMLElement && destino.isContentEditable) return false;
   if (destino instanceof Element && destino.closest(DESTINOS_CON_ESC_PROPIO)) return false;
-  if (document.querySelector('[aria-modal="true"]')) return false;
+  if (document.querySelector('[aria-modal="true"], .cds--popover--open')) return false;
   const desplegados = document.querySelectorAll('header.silice-barra [aria-expanded="true"]');
   return Array.from(desplegados).every((control) => control.id === ID_BOTON_SILICE);
 }

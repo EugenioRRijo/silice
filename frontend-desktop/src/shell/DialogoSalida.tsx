@@ -4,6 +4,7 @@ import type { JSX, KeyboardEvent } from "react";
 import "./DialogoSalida.scss";
 import { PAGINAS, paginaPorId, type PaginaDef } from "./rutas";
 import { responderSalida, unirConY, useSalidaPendiente, type SalidaPendiente } from "./salida";
+import { useAtraparFoco } from "./useAtraparFoco";
 
 interface Props {
   // Registro de donde salen los titulos de las pantallas sucias (el del armazon; en pruebas, el suyo).
@@ -24,6 +25,7 @@ function Caja({ pendiente, paginas }: { pendiente: SalidaPendiente; paginas: rea
   const quedarme = useRef<HTMLButtonElement>(null);
   // Lo que tenia el foco al preguntar (el enlace que se eligio): «Quedarme» lo devuelve ahi.
   const previo = useRef<Element | null>(null);
+  const atrapar = useAtraparFoco(caja);
 
   useEffect(() => {
     previo.current = document.activeElement;
@@ -53,18 +55,7 @@ function Caja({ pendiente, paginas }: { pendiente: SalidaPendiente; paginas: rea
       quedarse();
       return;
     }
-    if (e.key !== "Tab" || !caja.current) return;
-    const botones = Array.from(caja.current.querySelectorAll<HTMLButtonElement>("button:not([disabled])"));
-    const primero = botones[0];
-    const ultimo = botones[botones.length - 1];
-    if (!primero || !ultimo) return;
-    if (e.shiftKey && (document.activeElement === primero || document.activeElement === caja.current)) {
-      e.preventDefault();
-      ultimo.focus();
-    } else if (!e.shiftKey && document.activeElement === ultimo) {
-      e.preventDefault();
-      primero.focus();
-    }
+    atrapar(e);
   }
 
   return (

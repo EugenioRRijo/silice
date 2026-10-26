@@ -184,6 +184,11 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // Fijado solo con ancho para ello; si no, se comporta como oculto (y al abrirse va en capa).
   const fijadoVisible = sidebarFijado && fijadoPosible;
   const enCapa = sidebarAbierto && !fijadoVisible;
+  // Abierto en capa con fijado sin ancho y la ventana se ensancha: pasa a franja; la capa se da por cerrada para que al
+  // estrecharse no reaparezca sola ni robe el foco.
+  useEffect(() => {
+    if (fijadoVisible && sidebarAbierto) cerrarSidebar();
+  }, [fijadoVisible, sidebarAbierto]);
 
   const enfocarSilice = useCallback(() => document.getElementById(ID_BOTON_SILICE)?.focus(), []);
   const cerrarModulos = useCallback(() => {
