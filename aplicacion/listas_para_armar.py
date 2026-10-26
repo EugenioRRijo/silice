@@ -479,7 +479,11 @@ def crear_lista_para_armar(
     queda en la de la referencia (Bs). `"convertir"`: copia la lista vigente, que está en otra
     moneda, a la de la carpeta con la tasa del BCV. `SinListaParaArmar` sin tasa de los últimos 7
     días, sin lista que convertir o si la vigente ya está en la moneda de la carpeta. No confirma
-    (salvo la carga de la referencia: ver el módulo)."""
+    (salvo la carga de la referencia: ver el módulo).
+
+    `"maprex"` no mira si la carpeta ya tiene lista para armar: si la tiene, crea otra del mismo
+    día («… (2)»). La API lo niega con 409 (`api/rutas/carpeta.py`, `crear_la_lista_para_armar`);
+    un llamador directo que no quiera una segunda debe comprobarlo antes con `describir`."""
     responsable = exigir_responsable(responsable)
     if desde == "maprex":
         return _desde_maprex(sesion, fecha, responsable)

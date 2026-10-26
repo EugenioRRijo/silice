@@ -1,11 +1,15 @@
 import { Button, InlineNotification } from "@carbon/react";
 import { useEffect, useRef } from "react";
 import type { CarpetaRespuesta } from "../../api/tipos";
+import { ErrorDeApi } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { mensajeDeError } from "../../comun/errores";
 import { nombreConFecha } from "../../shell/ListaDeLaCarpeta";
 
 export type Desde = "maprex" | "convertir";
+
+// Comienzo del 409 de `POST /v1/carpeta/lista-para-armar` cuando la carpeta ya tiene lista para armar.
+const YA_TIENE_LISTA = "La carpeta de trabajo ya tiene lista para armar";
 
 interface Props {
   carpeta: CarpetaRespuesta | null;
@@ -26,7 +30,13 @@ export function AvisoSinLista({ carpeta, creada, creando, error, alCrear }: Prop
   const mostrarHecho = aviso === null && creada !== null;
   // Crear respondio 409 porque la carpeta ya tenia lista (un aviso viejo, de antes de crearla en otra pestana): la
   // pagina relee la carpeta, el aviso se va y se dice por que, con el foco (el boton pulsado desaparecio).
-  const yaTenia = aviso === null && creada === null && error !== null && error !== undefined;
+  // Solo ese 409 (el mensaje de `api/rutas/carpeta.py`); otro error (sin tasa, por ejemplo) no se presenta asi.
+  const yaTenia =
+    aviso === null &&
+    creada === null &&
+    error instanceof ErrorDeApi &&
+    error.estado === 409 &&
+    error.detalle.startsWith(YA_TIENE_LISTA);
   useEffect(() => {
     if (mostrarHecho || yaTenia) hecho.current?.focus();
   }, [mostrarHecho, yaTenia]);
