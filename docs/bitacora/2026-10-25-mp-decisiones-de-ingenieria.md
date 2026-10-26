@@ -129,6 +129,10 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   próxima lectura lo repone). El detalle de un envío lista también los ítems pendientes, sin precio. El detalle trae la
   cadena de versiones recalculada como en Trazabilidad y el dictamen se rechaza con 409 si está rota. Enviar una versión de
   una cadena rota todavía se permite: solo se bloquea el dictamen. La mesa reusa la acción «Ver el envío».
+- Ronda 3: una versión de una cadena de versiones rota tampoco se envía (409), para no dejar envíos atascados que nadie
+  puede dictaminar. El total del detalle con pendientes se verifica con `sqlite3`. El fallo del reflejo queda probado en el
+  registro. **Por decidir (Eugenio):** con la cadena rota, ¿permitir al menos devolver?; una versión antigua sin sellar
+  rompe la cadena y bloquea el dictamen de todas (igual que Trazabilidad y la entrega).
 
 ## MOD-4a, mesa de control (aprobada en la ronda 2)
 
