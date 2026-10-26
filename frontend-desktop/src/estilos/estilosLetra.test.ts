@@ -60,11 +60,13 @@ describe("tamaño de letra en el CSS propio", () => {
   test("la barra de cada módulo cede sus áreas al sidebar por debajo de su umbral, por letra, y la cuenta cede el nombre", () => {
     const shell = leer(`${raiz}/shell/shell.scss`);
     const umbrales = leer(`${raiz}/shell/_umbrales.scss`);
-    // Valores de partida del plan (los fija la medida del recorrido visual), escritos a mano.
+    // Medidos por el recorrido visual (MOD-5, `recorrido_ux_playwright.py --umbrales`; bitacora 2026-10-26-modulos.md
+    // §2): el menor ancho en que la barra cabe con la obra de nombre mas largo de la siembra, menos 0,02 px, y nunca
+    // por debajo de 1055,98 px (Carbon esconde la navegacion de la cabecera por debajo de 1056 px). Escritos a mano.
     const mapa = umbrales.slice(umbrales.indexOf("$umbrales-por-modulo"));
-    expect(mapa).toMatch(/"auditoria":\s*\(\s*"normal":\s*1055\.98px,\s*"grande":\s*1535\.98px,\s*"muy-grande":\s*1919\.98px/);
-    expect(mapa).toMatch(/"obras":\s*\(\s*"normal":\s*1279\.98px,\s*"grande":\s*1919\.98px,\s*"muy-grande":\s*2559\.98px/);
-    expect(mapa).toMatch(/"produccion":\s*\(\s*"normal":\s*1055\.98px,\s*"grande":\s*1279\.98px,\s*"muy-grande":\s*1535\.98px/);
+    expect(mapa).toMatch(/"auditoria":\s*\(\s*"normal":\s*1055\.98px,\s*"grande":\s*1061\.98px,\s*"muy-grande":\s*1252\.98px/);
+    expect(mapa).toMatch(/"obras":\s*\(\s*"normal":\s*1663\.98px,\s*"grande":\s*1545\.98px,\s*"muy-grande":\s*1812\.98px/);
+    expect(mapa).toMatch(/"produccion":\s*\(\s*"normal":\s*1055\.98px,\s*"grande":\s*1055\.98px,\s*"muy-grande":\s*1165\.98px/);
     // El fijado del sidebar: desde 1366 px con Normal y 1366 x 1,25 y x 1,5 con Grande y Muy grande.
     expect(umbrales).toMatch(/\$fijado-desde:\s*\(\s*"normal":\s*1366px,\s*"grande":\s*1708px,\s*"muy-grande":\s*2049px/);
     // La columna del recorrido sigue pasando a franja con los umbrales por letra de siempre.
