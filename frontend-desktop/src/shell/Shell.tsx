@@ -17,6 +17,7 @@ import { ContextoAplicacion } from "./contexto";
 import type { Aplicacion, MonedaPendiente } from "./contexto";
 import { DialogoSalida } from "./DialogoSalida";
 import { LimiteDeError } from "./LimiteDeError";
+import { ListaDeLaCarpeta } from "./ListaDeLaCarpeta";
 import { MarcaDemostracion } from "./MarcaDemostracion";
 import { MenuCuenta } from "./MenuCuenta";
 import { moduloAlEntrar, moduloDeRuta, navegacion } from "./navegacion";
@@ -483,6 +484,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
           alElegir={elegirObra}
           alNuevaObra={abrirNuevaObra}
           alCambiarCarpeta={() => setCarpetasAbierto(true)}
+          pie={<ListaDeLaCarpeta alExpirar={alExpirar} />}
         />
       )}
       <BotonRecorrido />
