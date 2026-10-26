@@ -8,8 +8,9 @@ import { nombreConFecha } from "../../shell/ListaDeLaCarpeta";
 
 export type Desde = "maprex" | "convertir";
 
-// Comienzo del 409 de `POST /v1/carpeta/lista-para-armar` cuando la carpeta ya tiene lista para armar.
-const YA_TIENE_LISTA = "La carpeta de trabajo ya tiene lista para armar";
+// Comienzo del 409 de `POST /v1/carpeta/lista-para-armar` cuando la carpeta ya tiene lista para armar
+// (`MENSAJE_YA_TIENE_LISTA` de `api/rutas/carpeta.py`; lo ata `tests/unit/test_front_ya_tiene_lista.py`).
+export const YA_TIENE_LISTA = "La carpeta de trabajo ya tiene lista para armar";
 
 interface Props {
   carpeta: CarpetaRespuesta | null;

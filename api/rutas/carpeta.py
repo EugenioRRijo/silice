@@ -55,6 +55,12 @@ MENSAJE_CUERPO_INVALIDO = (
     "Indique la moneda (Bs o USD) o de dónde crear la lista (maprex o convertir)."
 )
 
+#: El 409 de crear desde MaPreX con lista para armar ya creada. Componer lo reconoce por su comienzo
+#: (`YA_TIENE_LISTA` de `AvisoSinLista.tsx`; lo ata `tests/unit/test_front_ya_tiene_lista.py`).
+MENSAJE_YA_TIENE_LISTA = (
+    "La carpeta de trabajo ya tiene lista para armar («{nombre}»): no se creó otra."
+)
+
 
 class _RutaCarpeta(RutaSinEco):
     mensaje_por_omision = MENSAJE_CUERPO_INVALIDO
@@ -158,8 +164,7 @@ def crear_la_lista_para_armar(
         if ya is not None:
             raise HTTPException(
                 409,
-                f"La carpeta de trabajo ya tiene lista para armar («{ya.nombre}»): no se creó "
-                "otra.",
+                MENSAJE_YA_TIENE_LISTA.format(nombre=ya.nombre),
             )
     try:
         crear_lista_para_armar(
