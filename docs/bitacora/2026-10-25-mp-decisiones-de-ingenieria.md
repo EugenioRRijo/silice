@@ -126,7 +126,7 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - **Duda para Eugenio:** quien revisa (rita) no tiene `cambiar_caso`, así que al volver a entrar no vuelve a la carpeta
   que abrió desde un envío (la elección recordada solo se restaura a quien puede cambiar de carpeta).
 
-## MOD-4a, mesa de control (ronda 2)
+## MOD-4a, mesa de control (aprobada en la ronda 2)
 
 1. **Corte sin valuaciones.** El corte de una obra con línea base es el «hasta» de su última valuación no anulada; sin
    valuaciones, `hoy` (el día del servidor). Si con ese corte el control no se puede calcular (la línea base rige más
