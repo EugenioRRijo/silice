@@ -25,6 +25,7 @@ from api.rutas import (
     admin_instalacion,
     auditorias,
     auditorias_libro,
+    busqueda,
     carpeta,
     casos,
     catalogo,
@@ -175,6 +176,8 @@ interfaz.montar(app)
 # 1.4 (sesion 4 de la ruta): /v1/produccion, existencias de la arenera y bascula; clave o sesion
 # (Accion.OPERAR_ARENERA): la dependencia vive en el router, que la comparte con el `usuario`
 app.include_router(produccion.router)
+# T10 (montar un presupuesto): /v1/buscar/partidas, buscador C-1 (LEER_PROYECTO en la ruta)
+app.include_router(busqueda.router)
 
 
 @app.get("/salud", tags=["catalogo"])

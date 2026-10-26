@@ -8087,6 +8087,81 @@
         }
       }
     },
+    "/v1/buscar/partidas": {
+      "get": {
+        "tags": [
+          "busqueda"
+        ],
+        "summary": "Partidas",
+        "description": "Partidas del catálogo cuyo código o descripción tiene todas las palabras de `q`, por\nrelevancia. Con menos de 2 letras responde vacío (no es un error).",
+        "operationId": "partidas_v1_buscar_partidas_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "description": "Código o palabras",
+              "default": "",
+              "title": "Q"
+            },
+            "description": "Código o palabras"
+          },
+          {
+            "name": "dominio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Dominio"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dominio"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartidasHalladasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -15559,6 +15634,46 @@
         ],
         "title": "PartidaDiferente"
       },
+      "PartidaHalladaRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave",
+            "description": "Única en la lista: «partida:<código>»"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "dominio": {
+            "type": "string",
+            "title": "Dominio"
+          },
+          "tiene_composicion": {
+            "type": "boolean",
+            "title": "Tiene Composicion",
+            "description": "Tiene al menos una línea de composición"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "codigo",
+          "descripcion",
+          "unidad",
+          "dominio",
+          "tiene_composicion"
+        ],
+        "title": "PartidaHalladaRespuesta"
+      },
       "PartidaListaRespuesta": {
         "properties": {
           "codigo": {
@@ -15644,6 +15759,34 @@
         ],
         "title": "PartidaRespuesta",
         "description": "Cabecera de una partida del catalogo."
+      },
+      "PartidasHalladasRespuesta": {
+        "properties": {
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo",
+            "description": "El rótulo del grupo en la lista"
+          },
+          "resultados": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaHalladaRespuesta"
+            },
+            "type": "array",
+            "title": "Resultados"
+          },
+          "hay_mas": {
+            "type": "boolean",
+            "title": "Hay Mas",
+            "description": "Quedaron coincidencias fuera de `limite`"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rotulo",
+          "resultados",
+          "hay_mas"
+        ],
+        "title": "PartidasHalladasRespuesta"
       },
       "PdfOrigenRespuesta": {
         "properties": {
