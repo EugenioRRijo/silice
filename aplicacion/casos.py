@@ -234,6 +234,24 @@ def _no_reservado(final: str) -> str:
     return final
 
 
+_COMO_CARPETA = (
+    ("Elija un caso:", "Elija una carpeta de trabajo:"),
+    ("elija un caso de la lista", "elija una carpeta de trabajo de la lista"),
+    ("sale de la carpeta de casos (..)", "sale de la carpeta de datos (..)"),
+    ("queda fuera de la carpeta de casos", "queda fuera de la carpeta de datos"),
+    ("el nombre del caso", "el nombre de la carpeta de trabajo"),
+    ("nombre de caso", "nombre de carpeta de trabajo"),
+)
+
+
+def en_lenguaje_de_la_interfaz(mensaje: str) -> str:
+    """El rechazo de `operacion.base_datos` (que también lo ve la línea de órdenes y dice «caso»)
+    con las palabras de la interfaz: «carpeta de trabajo»."""
+    for caso, carpeta in _COMO_CARPETA:
+        mensaje = mensaje.replace(caso, carpeta)
+    return mensaje
+
+
 def _nombre_elegido(nombre: str) -> str:
     """Un nombre que escribió la persona: la forma de la clásica (sin rutas, `..`, unidades, `:` ni
     reservados de Windows), saneado y no reservado para la demostración."""

@@ -252,18 +252,19 @@ def test_una_carpeta_que_no_esta_da_404_con_el_lenguaje_de_la_interfaz() -> None
             "«\\\\srv\\x» es una ruta de red (UNC): elija una carpeta de trabajo de la lista.",
         ),
         (
-            "???",
-            "«???» no sirve como nombre de carpeta de trabajo: use letras, números, espacios, "
+            "...",
+            "«...» no sirve como nombre de carpeta de trabajo: use letras, números, espacios, "
             "guiones o puntos.",
         ),
     ],
 )
 def test_el_422_de_nombre_habla_de_carpeta_de_trabajo(nombre: str, texto: str) -> None:
     navegador, ficha = con_cuenta(app, "ana")
-    for ruta, cuerpo in (
-        ("/v1/casos", {"nombre": nombre}),
-        ("/v1/casos/actual", {"nombre": nombre}),
-    ):
+    rutas = ["/v1/casos"]
+    if nombre != "...":  # «....db» es un nombre de archivo válido para elegir: da 404, no 422
+        rutas.append("/v1/casos/actual")
+    for ruta in rutas:
+        cuerpo = {"nombre": nombre}
         respuesta = navegador.post(ruta, json=cuerpo, headers=protegida(ficha))
         assert respuesta.status_code == 422, (ruta, respuesta.text)
         assert respuesta.json() == {"detalle": texto}, ruta

@@ -167,7 +167,9 @@ def elegir_caso(
     try:
         ruta = resolver_caso(datos.nombre)
     except RutaDeCasoRechazada as error:
-        raise HTTPException(status_code=422, detail=str(error)) from None
+        raise HTTPException(
+            status_code=422, detail=carpetas.en_lenguaje_de_la_interfaz(str(error))
+        ) from None
     if ruta not in {caso.resolve() for caso in listar_casos()}:
         raise HTTPException(status_code=404, detail=MENSAJE_NO_ESTA.format(nombre=ruta.name))
     obtener_motor(url_de_ruta(ruta))  # prepara la base una vez (503 si no se puede)
@@ -248,7 +250,9 @@ def _traducir(*, demostracion_en_curso: int = 409) -> Iterator[None]:
     except CasoYaExiste as error:
         raise HTTPException(status_code=409, detail=str(error)) from None
     except RutaDeCasoRechazada as error:
-        raise HTTPException(status_code=422, detail=str(error)) from None
+        raise HTTPException(
+            status_code=422, detail=carpetas.en_lenguaje_de_la_interfaz(str(error))
+        ) from None
     except carpetas.TopeDeCarpetas as error:
         raise HTTPException(status_code=409, detail=str(error)) from None
     except carpetas.CreacionEnCurso as error:
