@@ -21,16 +21,17 @@ $umbrales-por-escala: (
 
 // Por modulo y letra: por debajo de estos anchos la barra del modulo no cabe y sus areas pasan al sidebar de modulos
 // (diseno de modulos §12.4). Medidos en el navegador (MOD-5, `scripts/recorrido_ux_playwright.py --umbrales`; cifras
-// por rol y carpeta en docs/bitacora/2026-10-26-modulos.md §2): el menor ancho desde el que la barra cabe, por rol y en
-// la carpeta de la empresa y en la de demostracion (con su marca), con la obra de nombre mas largo de la siembra
-// recortada a su tope de 18 rem, menos 0,02 px. Manda lo mas exigente: «Presupuestos y obras» de quien arma, en la
+// por rol y carpeta en docs/bitacora/2026-10-26-modulos.md §6): el menor ancho desde el que la barra cabe, por rol, en
+// la carpeta de la empresa y en la de demostracion (con su marca), con la obra de nombre mas largo de la siembra en su
+// tope de 18 rem y la cuenta con un nombre en su tope de 10 rem, sin ningun texto con puntos suspensivos apretado (ni
+// el nombre del modulo), menos 0,02 px. Manda lo mas exigente: «Presupuestos y obras» de quien arma, en la
 // demostracion. Nunca por debajo de 1055,98 px: Carbon esconde la navegacion de la cabecera por debajo de 1056 px. Con
-// letra Normal la obra y la cuenta muestran su texto (por encima de 1366 px); con Grande y Muy grande solo el icono, por
-// eso «obras» Normal pide mas ancho que Grande.
+// letra Normal la obra y la cuenta muestran su texto (desde 1366 px); con Grande y Muy grande solo el icono, por eso
+// «obras» Normal pide mas ancho que Grande.
 $umbrales-por-modulo: (
-  "auditoria": ("normal": 1055.98px, "grande": 1061.98px, "muy-grande": 1252.98px),
-  "obras": ("normal": 1663.98px, "grande": 1545.98px, "muy-grande": 1812.98px),
-  "produccion": ("normal": 1055.98px, "grande": 1055.98px, "muy-grande": 1165.98px),
+  "auditoria": ("normal": 1055.98px, "grande": 1135.98px, "muy-grande": 1340.98px),
+  "obras": ("normal": 1909.98px, "grande": 1654.98px, "muy-grande": 1942.98px),
+  "produccion": ("normal": 1055.98px, "grande": 1063.98px, "muy-grande": 1254.98px),
 );
 
 @mixin barra-no-cabe($modulo, $escala) {
