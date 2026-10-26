@@ -481,6 +481,36 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    catálogo ya consta en T23, 15. Las pruebas en rojo de T20 (`LineaBaseAprobada`) y T25 (`PreciosDeclarados`) que
    viven en `src/paginas/control` siguen en rojo: no son de esta tarea.
 
+## T25, precio nuevo como precio del corte
+
+1. **Tabla `mp_precio_corte`** (solo inserción) en `aplicacion/tablas_corte.py`, migración `caso_0017_mp_corte` sobre
+   `caso_0016_mp_procura` (una sola cabeza). El plan decía `caso_0016_mp_corte`: la tabla de migraciones ya la renumeró.
+   Bajar a la 0016 **borra los precios declarados** (la tabla entera); el resto de la base queda igual (probado a mano
+   sobre una base de caso con OB-S2: 73 filas ajenas antes y después de bajar y volver a subir).
+2. **El material se nombra por descripción y unidad** (normalizada) de la composición congelada de la línea base; solo
+   materiales (los de la explosión de la procura). Manda el último declarado con `fecha <= corte` (mismo día: el último
+   registrado), en la moneda de la obra; uno en otra moneda se rechaza (409), no se convierte.
+3. **Unitarios del corte:** la partida que usa un material declarado se recalcula con `calcular_apu` del núcleo y los
+   parámetros de su versión; las demás conservan su resultado de la línea base (desvío de precio exactamente cero).
+   Ningún precio de una versión sellada cambia (prueba de guarda en las dos casillas).
+4. **La perspectiva sale de la línea base** vigente al corte para los cuatro métodos (prueba del defecto: con la línea
+   base en precio, la escalatoria con Km = 1 daba 318,00 en lugar de 0,00).
+5. **Casilla del Estudio de mercado:** solo en «Lo que compramos» y con una obra abierta; declara desde hoy, en la misma
+   transacción que la lista (si no se puede declarar, tampoco cambia la lista); mientras se confirma, la casilla se
+   oculta y la pregunta dice «También quedará como precio del corte…». **Por ratificar.**
+6. **Casilla de Procura** (después del feat de T24): en «Recibida…», declara el precio unitario de la recepción desde la
+   **fecha de llegada** (no desde hoy), fuente «Procura: compra recibida el dd/mm/aaaa», en la misma transacción que la
+   compra; sin precio o en un pedido, 422 («El precio unitario hace falta…» va junto al campo del precio). **Por
+   ratificar** la fecha de llegada como inicio.
+7. Menores de T22 y T16 cerrados: `RutaSinCache` + `RutaSinEco` en todo el router de control (422 fijo), causas con
+   `para_el_valor_ganado()`, `InvalidOperation` del margen → sin margen, 422 propio de `pu`.
+8. Desvíos del método: dos oráculos cambiaron después del rojo `70a886ae` (el «ahora» del declarado de prueba era anterior
+   a la fecha declarada; la respuesta de usar compra gana `"corte": null`); `migraciones/metadatos.py` registra
+   `METADATA_CORTE` (lo pedía `test_migraciones.py`). `test_arquitectura_s5::test_aplicacion_y_api_no_importan_migraciones`
+   ya fallaba antes (`aplicacion/casos.py:370`, ded765d7): no es de esta tarea.
+9. Commits: rojo `70a886ae`, `0a773495` (feat de control y mercado), rojo `fc67861d` y `dc88ae13` (casilla de procura),
+   `20c0f6e2` (`docs/api.json` desde HEAD limpio).
+
 ## T19, enviar y dictamen en la mesa (aprobada en ronda 1)
 
 1. Quien arma también ve en su grupo «Aprobar» los envíos de OTRAS carpetas (de `GET /v1/aprobaciones/pendientes`); los

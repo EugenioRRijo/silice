@@ -7,6 +7,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- Control de obra: precio nuevo como precio del corte (MP-7, T25). Un precio de un material se declara «precio del corte» de la obra desde Estudio de mercado (casilla al usar un precio de compra, `declarar_en`) o al recibir una compra en Procura (`declarar_corte`), y el método «Precios declarados de insumos» separa el desvío de precio del de consumo sin cargar un archivo; las versiones selladas no cambian (migración `caso_0017_mp_corte`; commits 0a773495, dc88ae13).
 - Hoja › APU: agregar una línea (un insumo de la lista de la versión o uno nuevo con su precio) y quitar otra en la copia de la versión; se guardan como versión nueva y cuentan como alta y baja en los cambios (MP-7, T26).
 - API: `POST /v1/hoja/borradores/{id}/apu/{partida}/lineas` y `…/lineas/quitar`; `GET /v1/hoja/antes-y-despues` compara cada partida cambiada con la línea base (costo, duración, término y punto de equilibrio) (T26).
 - Hoja › Presupuesto: columna «Objetivo de mercado» junto al precio unitario, con el precio de venta objetivo guardado en «Estudio de mercado» y su margen («1.980,00 · margen −4,6 %»); un objetivo en otra moneda se dice y no se compara (Tarea 16).
@@ -64,6 +65,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- Control de obra: los precios del corte se comparan en la perspectiva de la línea base (antes, siempre costo: con una línea base en precio, la escalatoria con Km = 1 daba desvío); el 422 de forma de `/v1/control` ya no repite lo enviado y sus respuestas van sin caché; un precio unitario absurdo en `GET /v1/mercado/objetivos` deja el margen vacío en vez de un 500, y su 422 tiene mensaje propio (T25, menores de T22 y T16).
 - Los cambios del borrador ya no pierden ni corren las líneas de un APU cuando cambia su número (antes se emparejaban por posición) (T26).
 - La ayuda del APU de la Hoja ya no dice que la coma no se acepta (T26).
 - Libro de la empresa: las pestañas «Hojas del libro» controlan un panel que existe (axe `aria-valid-attr-value`, D-5) y Univer se desmonta en orden y nada lo toca después (el `[redi] Cannot find "u4"` no venía de salir, sino del zoom al montar: ver la entrada de D-3).
