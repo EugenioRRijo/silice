@@ -160,6 +160,8 @@ LLAMADORES = {
     ("aplicacion/hoja.py", "_retirar_cotizacion"),
     ("aplicacion/hoja.py", "convertir_version"),
     ("api/rutas/hoja.py", "abrir_version"),  # R2: responsable = la persona de la sesion
+    # MP T12: «llevar a la Hoja» abre la vigente como R2; responsable = la persona de la sesion
+    ("aplicacion/elaboracion.py", "abrir_version"),
     # 3d-1 (S1): guardar el borrador vivo; el responsable es la persona de la sesion, no el cuerpo
     ("aplicacion/hoja_guardado.py", "guardar_version"),
     ("aplicacion/hoja_guardado.py", "crear_primera_version"),
