@@ -237,3 +237,33 @@ def test_una_carpeta_que_no_esta_da_404_con_el_lenguaje_de_la_interfaz() -> None
         "detalle": "La carpeta de trabajo «no_existe.db» no está en la carpeta de datos: elija "
         "una de la lista."
     }
+
+
+@pytest.mark.parametrize(
+    ("nombre", "texto"),
+    [
+        ("", "Elija una carpeta de trabajo: el nombre no puede quedar vacío."),
+        ("   ", "Elija una carpeta de trabajo: el nombre no puede quedar vacío."),
+        ("..", "«..» sale de la carpeta de datos (..)."),
+        ("a/b", "«a/b» lleva carpetas: escriba solo el nombre de la carpeta de trabajo."),
+        ("C:\\x", "«C:\\x» es una ruta absoluta: elija una carpeta de trabajo de la lista."),
+        (
+            "\\\\srv\\x",
+            "«\\\\srv\\x» es una ruta de red (UNC): elija una carpeta de trabajo de la lista.",
+        ),
+        (
+            "???",
+            "«???» no sirve como nombre de carpeta de trabajo: use letras, números, espacios, "
+            "guiones o puntos.",
+        ),
+    ],
+)
+def test_el_422_de_nombre_habla_de_carpeta_de_trabajo(nombre: str, texto: str) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    for ruta, cuerpo in (
+        ("/v1/casos", {"nombre": nombre}),
+        ("/v1/casos/actual", {"nombre": nombre}),
+    ):
+        respuesta = navegador.post(ruta, json=cuerpo, headers=protegida(ficha))
+        assert respuesta.status_code == 422, (ruta, respuesta.text)
+        assert respuesta.json() == {"detalle": texto}, ruta
