@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from aplicacion import hoja, hoja_borradores, hoja_edicion
-from aplicacion.cifras import texto_de_cifra
+from aplicacion.cifras import CifraInvalida, texto_de_cifra
 from aplicacion.composicion import (
     ComposicionInvalida,
     decimal_desde_texto,
@@ -41,6 +41,8 @@ from aplicacion.composicion import (
     texto_de_celda,
 )
 from aplicacion.errores import HojaInvalida
+from aplicacion.hoja_partidas import CalculoInvalido, cantidad_y_regla
+from aplicacion.listas_para_armar import valoracion_de_la_obra
 from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_secuencial
 from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo, PropuestaRendimiento, proponer_rendimiento, registrar_rendimiento
@@ -380,6 +382,22 @@ class PartidaParaLlevar:
     calculo: str = ""
 
 
+def _validar(sesion: Session, partidas: Sequence[PartidaParaLlevar]) -> None:
+    """Lo que `hoja_edicion.agregar` rechazaria de cada partida, antes de tocar ningun borrador:
+    que este en el catalogo (`PartidaFueraDelCatalogo`) y su cantidad y su calculo (`HojaInvalida`
+    con el codigo delante), con las mismas reglas (`cantidad_y_regla`, Tarea 8)."""
+    catalogo = Catalogo(sesion)
+    for partida in partidas:
+        try:
+            catalogo.partida(partida.codigo)
+        except KeyError:
+            raise hoja_edicion.PartidaFueraDelCatalogo(partida.codigo) from None
+        try:
+            cantidad_y_regla(texto_de_cifra(partida.cantidad), partida.calculo)
+        except (CalculoInvalido, CifraInvalida) as error:
+            raise HojaInvalida(f"{partida.codigo}: {error}") from None
+
+
 def _borrador_de_la_obra(
     sesion: Session,
     huella: str,
@@ -392,13 +410,20 @@ def _borrador_de_la_obra(
     """El borrador vivo mas reciente de esa ficha y esa obra en el caso (`False`: ya existia) o uno
     nuevo (`True`) sobre la version vigente o, sin versiones, en blanco en la moneda de la obra,
     como `POST /v1/hoja/borradores`. Abrir la vigente escribe su instantanea si faltaba (UC-15e),
-    la misma y unica escritura de abrir la Hoja; `HojaInvalida` si ya no se puede reconstruir."""
+    la misma y unica escritura de abrir la Hoja; `VersionQueNoSeAbre` si ya no se puede
+    reconstruir. En blanco, comprueba antes de registrarlo que haya lista con que valorar la obra
+    (`SinListaDeLaObra`): registrar uno nuevo puede expulsar el menos usado de la ficha
+    (`POR_FICHA`), asi que solo se registra cuando ya no queda nada previsible que pueda fallar."""
     nombre = proyecto.nombre
     for vivo, _cambios in hoja_edicion.borradores_para_retomar(huella, caso):
         if vivo.proyecto == nombre:
             return vivo, False
     vigente = hoja.codigo_vigente(sesion, nombre)
     if vigente is None:
+        try:  # el 409 de la Hoja en blanco, antes de registrar el borrador (ronda 2)
+            valoracion_de_la_obra(sesion, nombre, hoy)
+        except ValueError as error:  # sin lista para armar o sin tasa del BCV
+            raise hoja_edicion.SinListaDeLaObra(str(error)) from None
         borrador = hoja.Borrador(fecha=hoy, moneda=moneda_del_proyecto(sesion, proyecto))
         abierta = None
     else:
@@ -440,12 +465,17 @@ def llevar_a_la_hoja(
     (`PartidaFueraDelCatalogo`, `HojaInvalida` con el codigo de la partida delante,
     `SinListaDeLaObra`, la base) el borrador abierto aqui se descarta y uno que ya existia vuelve
     exactamente a como estaba, con su `rev` (la ventana que lo esta editando no ve ningun cambio),
-    y el error sube. `VersionQueNoSeAbre` si la vigente ya no se puede abrir."""
+    y el error sube. `VersionQueNoSeAbre` si la vigente ya no se puede abrir.
+
+    Ronda 2: las partidas se validan (`_validar`) y la lista de la obra en blanco se comprueba
+    ANTES de abrir el borrador, porque registrar uno nuevo puede expulsar el menos usado de la
+    ficha: un llevar que falla por algo previsible no quita ningun otro borrador."""
+    _validar(sesion, partidas)
     vivo, nuevo = _borrador_de_la_obra(
         sesion, huella, caso, proyecto, responsable=responsable, hoy=hoy
     )
     with vivo.cerrojo:
-        antes = (vivo.borrador, vivo.rev, vivo.calculo)
+        antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano)
         try:
             for partida in partidas:
                 try:
@@ -465,6 +495,6 @@ def llevar_a_la_hoja(
             if nuevo:
                 hoja_borradores.descartar(huella, vivo.id)
             else:
-                vivo.borrador, vivo.rev, vivo.calculo = antes
+                vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano = antes
             raise
     return vivo.id

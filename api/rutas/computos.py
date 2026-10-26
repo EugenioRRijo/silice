@@ -88,11 +88,11 @@ def _a_respuesta(item: ItemComputo) -> ItemComputoRespuesta:
         codigo_partida=item.codigo_partida,
         descripcion=item.descripcion,
         unidad=item.unidad,
-        cantidad=str(item.cantidad),
+        cantidad=format(item.cantidad, "f"),  # notacion fija: `str` daba «1E-7»
         origen_id=item.origen_id,
         origen_tipo=item.origen_tipo.value,
         dominio=item.dominio.value,
         regla=item.regla,
-        parametros={clave: str(valor) for clave, valor in item.parametros.items()},
+        parametros={clave: format(valor, "f") for clave, valor in item.parametros.items()},
         especificaciones=dict(item.especificaciones),
     )

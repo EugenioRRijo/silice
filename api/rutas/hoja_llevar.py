@@ -31,6 +31,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import SesionDep, url_de_la_peticion
+from api.esquemas_ola2 import MAX_ITEMS
 from api.rutas.hoja import MENSAJE_BASE, CuentaDeLaHoja
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
@@ -41,15 +42,13 @@ from aplicacion.hoja_borradores import BorradorInexistente, RevDesactualizado
 from aplicacion.proyectos import resolver_proyecto
 
 FORMA_LLEVAR = (
-    "Lo que se lleva a la Hoja no tiene la forma esperada: envíe la obra y de 1 a 2000 partidas, "
-    "cada una con su código y su cantidad tal como salen del cómputo."
+    f"Lo que se lleva a la Hoja no tiene la forma esperada: envíe la obra y de 1 a {MAX_ITEMS} "
+    "partidas, cada una con su código y su cantidad tal como salen del cómputo."
 )
 MENSAJE_CAMBIO = (
     "El borrador de la obra cambió mientras se llevaban las partidas: no se llevó ninguna. "
     "Vuelva a intentarlo."
 )
-#: Las partidas que se llevan de una vez: las de un cómputo de Elaborar (`MAX_ITEMS`).
-MAX_PARTIDAS = 2000
 
 
 class _RutaLlevar(RutaSinCache, RutaSinEco):
@@ -74,7 +73,7 @@ class LlevarALaHoja(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     proyecto: Annotated[str, Field(strict=True, min_length=1, max_length=500)]
-    partidas: Annotated[list[PartidaLlevada], Field(min_length=1, max_length=MAX_PARTIDAS)]
+    partidas: Annotated[list[PartidaLlevada], Field(min_length=1, max_length=MAX_ITEMS)]
 
 
 class LlevadoRespuesta(BaseModel):
