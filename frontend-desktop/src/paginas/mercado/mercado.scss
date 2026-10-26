@@ -1,0 +1,165 @@
+// Estudio de mercado. Sin sombras, sin tarjetas ni animaciones (DESIGN.md): bloques separados por divisores de 1 px y
+// espacio; las cifras van en una franja de terminos con su valor, alineadas como cifras tabulares.
+
+.silice-mercado {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem 1rem 2rem;
+}
+
+.silice-mercado__nota {
+  max-inline-size: 70ch;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-mercado__lado {
+  display: grid;
+  gap: 1.5rem;
+  padding-block-start: 1rem;
+}
+
+// Buscador y ventana de dias en una fila; bajan de linea cuando no caben (1056 px, letra grande).
+.silice-mercado__eleccion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem 1.5rem;
+}
+
+.silice-mercado__buscador {
+  flex: 1 1 22rem;
+  max-inline-size: 40rem;
+  min-inline-size: 0;
+}
+
+.silice-mercado__dias {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 1rem;
+  flex: 0 1 auto;
+
+  .cds--form-item {
+    inline-size: 12rem;
+  }
+
+  // El boton queda a la altura del campo, no de su etiqueta.
+  > .cds--btn {
+    margin-block-start: 1.5rem;
+  }
+}
+
+.silice-mercado__estudio {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.silice-mercado__elegido {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.silice-mercado__bloque {
+  display: grid;
+  gap: 0.75rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--silice-divisor);
+  min-inline-size: 0;
+
+  > h2:focus {
+    outline: 2px solid var(--silice-interactivo);
+    outline-offset: 2px;
+  }
+}
+
+// La franja de cifras: una columna por cifra, que bajan de linea sin desplazamiento horizontal.
+.silice-mercado__cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0;
+  margin: 0;
+}
+
+.silice-mercado__cifra {
+  display: grid;
+  align-content: start;
+  gap: 0.125rem;
+  padding: 0.5rem 1rem 0.5rem 0;
+  border-inline-end: 1px solid var(--silice-divisor);
+  margin-inline-end: 1rem;
+  min-inline-size: 0;
+
+  dt {
+    color: var(--silice-texto-secundario);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.silice-mercado__valor {
+  font-size: var(--cds-heading-03-font-size, 1.25rem);
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.silice-mercado__de {
+  color: var(--silice-texto-secundario);
+}
+
+.silice-mercado__razon {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  max-inline-size: 70ch;
+}
+
+// El aviso de «la competencia cobra menos que su costo»: icono con su nombre, nunca el color solo.
+.silice-mercado__icono-aviso {
+  flex: none;
+  margin-block-start: 0.125rem;
+  fill: var(--silice-aviso-borde);
+
+  // El glifo interior oscuro, como el resto de los avisos amarillos.
+  path[data-icon-path="inner-path"] {
+    fill: var(--silice-texto);
+    opacity: 1;
+  }
+}
+
+.silice-mercado__usar,
+.silice-mercado__anotar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  align-items: start;
+  max-inline-size: 56rem;
+}
+
+.silice-mercado__ancho {
+  grid-column: 1 / -1;
+}
+
+.silice-mercado__pregunta {
+  display: grid;
+  gap: 0.75rem;
+  max-inline-size: 56rem;
+  padding: 1rem;
+  border: 1px solid var(--silice-divisor);
+  border-inline-start: 4px solid var(--silice-interactivo);
+
+  &:focus {
+    outline: 2px solid var(--silice-interactivo);
+    outline-offset: 2px;
+  }
+}
+
+.silice-mercado__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

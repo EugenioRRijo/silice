@@ -202,6 +202,15 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/similares"),
   },
   {
+    id: "mercado",
+    titulo: "Estudio de mercado",
+    enUnaLinea: "Compare precios del mercado y elija los suyos",
+    seccion: "Trabajo",
+    accion: "editar_hoja",
+    ubicacion: en("obras", "mercado"),
+    cargar: () => import("../paginas/mercado"),
+  },
+  {
     id: "precios_empresa",
     titulo: "Precios de la empresa",
     enUnaLinea: "Cargue y cree las listas de precios de la empresa",
