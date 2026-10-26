@@ -1,20 +1,24 @@
-# Recorrido funcional (BS-F): la acción principal de cada una de las 22 pantallas de
+# Recorrido funcional (BS-F): la acción principal de cada una de las 25 pantallas de
 # `frontend-desktop/src/shell/rutas.ts` y el resultado visible que prueba que funcionó.
 #
-# Lo ejecuta `scripts/recorrido_ux_playwright.py --funcional`, en el orden de este archivo y navegando
-# por URL (`#/<ruta>`), no por el menú. Cuentas ficticias de `tests/fixtures/sesion_web.py`:
+# Lo ejecuta `scripts/recorrido_ux_playwright.py --funcional`, en el orden de este archivo. Cada fila
+# entra como una persona (plan de módulos, MOD-5): «Sílice» abre el sidebar, se elige el módulo y,
+# en la barra, el área y la pantalla (o la pantalla en el sidebar, si la barra cedió sus áreas); nunca
+# por dirección. La carpeta y la obra se eligen con el selector de obra de Presupuestos y obras
+# («Cambiar carpeta…» y la lista de obras). Cuentas ficticias de `tests/fixtures/sesion_web.py`:
 # admin (administra), ana (arma), rita (revisa). Carpetas de trabajo: los casos de demostración que
 # siembra `start.preparar_demo` (demo.db, s1.db, ti001.db, of001.db, obra_control.db).
 #
 # Formato de cada fila:
 #   ruta, cuenta, accion (qué se prueba, en una línea), carpeta y proyecto (opcionales),
 #   pasos = [ { accion = "llenar" | "elegir" | "pulsar" | "marcar" | "subir" | "ir" | "esperar" | "tecla", ... } ]
+# - ir: ruta (otra pantalla, por el menú como la fila).
 #   espera = { texto = "...", textos = [...], ausentes = [...], descarga = "<clave>", huella = true, ms = 30000 }
 #   requiere = ["<ruta>"]: filas anteriores de las que depende; `--solo` las agrega solas.
 # - ausentes: textos que NO deben verse al final (prueban que un filtro o una búsqueda quitó algo).
 # - Toda fila falla, además, si queda a la vista un aviso de error de Carbon (en línea, accionable o toast).
 # - llenar: rotulo (etiqueta exacta del campo), valor («{hoy}» = la fecha del día); fuera = true busca fuera de <main>.
-# - elegir: rotulo, opcion (valor o parte del texto de la opción).
+# - elegir: rotulo, opcion (valor o parte del texto de la opción); fuera = true busca fuera de <main>.
 # - pulsar: nombre (nombre accesible), rol (button por omisión; tab, link...), exacto (true por omisión),
 #   descarga = "<clave>" (guarda lo que baje con esa clave para filas siguientes).
 # - marcar: rotulo de una casilla o un botón de opción.
@@ -119,14 +123,28 @@ accion = "(solo lectura) ver la versión y el estado de las bases -> «Al día»
 espera = { textos = ["Versión", "Al día"] }
 
 [[pantalla]]
-ruta = "inicio"
+ruta = "auditoria"
 cuenta = "ana"
-accion = "soltar el libro ficticio en «Audite un presupuesto» y auditar por mi cuenta -> hallazgos"
+accion = "soltar el libro ficticio en «Audite un presupuesto» y auditar por mi cuenta -> el informe con sus hallazgos"
 pasos = [
   { accion = "subir", zona = "Suelte aquí el libro .xlsx del presupuesto", archivo = "libro_limpio" },
   { accion = "pulsar", nombre = "Auditar por mi cuenta" },
 ]
 espera = { textos = ["libro_plantilla_empresa_ficticio.xlsx", "Hallazgos (2)", "Total general"] }
+
+[[pantalla]]
+ruta = "obras"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "crear una obra con «Nueva obra» -> la obra aparece en la tabla de la mesa de control"
+pasos = [
+  { accion = "pulsar", nombre = "Nueva obra" },
+  { accion = "llenar", rotulo = "Nombre de la obra", valor = "Obra ficticia del recorrido funcional", fuera = true },
+  { accion = "llenar", rotulo = "Cliente (opcional)", valor = "Contratista Demo, C.A.", fuera = true },
+  { accion = "elegir", rotulo = "Moneda", opcion = "Bs", fuera = true },
+  { accion = "pulsar", nombre = "Crear obra", fuera = true },
+]
+espera = { textos = ["Obra ficticia del recorrido funcional", "Contratista Demo, C.A."] }
 
 [[pantalla]]
 ruta = "catalogo"
@@ -352,6 +370,29 @@ pasos = [
   { accion = "pulsar", rol = "tab", nombre = "Existencias" },
 ]
 espera = { texto = "ARE-F01 Arena lavada ficticia m³ 25 10 Normal" }
+
+[[pantalla]]
+ruta = "produccion"
+cuenta = "ana"
+carpeta = "demo.db"
+requiere = ["existencias"]
+accion = "(solo lectura) ver «Lo que requiere atención» de la arenera con el material de la fila anterior"
+espera = { textos = ["Arenera: lo que requiere atención", "Todo sobre el mínimo"] }
+
+[[pantalla]]
+ruta = "mercado"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "elegir un insumo y anotar una observación ficticia (demo.db está en USD) -> sale en la tabla y en las cifras"
+pasos = [
+  { accion = "llenar", rotulo = "Insumo", valor = "Cemento" },
+  { accion = "pulsar", rol = "option", nombre = "Cemento", exacto = false },
+  { accion = "esperar", texto = "Cifras de los últimos 90 días" },
+  { accion = "llenar", rotulo = "Fuente", valor = "Proveedor ficticio del recorrido" },
+  { accion = "llenar", rotulo = "Precio (USD)", valor = "12,50" },
+  { accion = "pulsar", nombre = "Anotar observación" },
+]
+espera = { textos = ["Proveedor ficticio del recorrido", "12,50"] }
 
 # ---------------------------------------------------------------------------------------------
 # Revisión (rita)
