@@ -125,7 +125,7 @@ def _declarar(ruta: Path, descripcion: str, unidad: str, precio: str, fecha: dat
             fecha=fecha,
             fuente="cotización ficticia",
             responsable="Ana <ana>",
-            ahora=datetime(2026, 11, 13, 17, 0),
+            ahora=datetime(2026, 11, 20, 17, 0),
         ),
     )
 

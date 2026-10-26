@@ -28,6 +28,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from aplicacion.causas import causas_de_las_filas
+from aplicacion.precios_declarados import precios_declarados
 from aplicacion.tablas_causas import guardar_causas
 from core import models
 from core.budget.calendario import dia_habil
@@ -96,6 +97,7 @@ __all__ = [
     "filas_del_plan_reproyectado",
     "hay_valuaciones",
     "parametros_actuales",
+    "perspectiva_de_la_linea_base",
     "texto_monto",
     "tiene_linea_base",
     "valuaciones_para_anular",
@@ -129,7 +131,18 @@ __all__ = [
 METODO_NINGUNO = "Sin precios del corte"
 METODO_COMPROBACION = "Comprobacion directa (version revalorada)"
 METODO_ESCALATORIA = "Escalatoria (un Km declarado)"
-METODOS_DE_PRECIOS = (METODO_NINGUNO, METODO_COMPROBACION, METODO_ESCALATORIA)
+METODO_DECLARADOS = "Precios declarados de insumos"
+METODOS_DE_PRECIOS = (
+    METODO_NINGUNO,
+    METODO_COMPROBACION,
+    METODO_ESCALATORIA,
+    METODO_DECLARADOS,
+)
+#: Elegir los precios declarados sin ninguno hasta el corte (MP-7, Tarea 25).
+MENSAJE_SIN_DECLARADOS = (
+    "No hay precios declarados de insumos hasta el corte: declárelos desde Estudio de mercado o "
+    "al recibir una compra en Procura."
+)
 COLUMNAS_LINEAS = ("Partida", "Cantidad", "Fecha de medicion", "Observacion")
 COLUMNAS_VALUACIONES = ("Numero", "Periodo", "Fecha", "Inspector", "Registrada", "Estado")
 COLUMNAS_INDICADORES = ("Indicador", "Valor", "En la otra moneda", "Nota")
@@ -423,10 +436,35 @@ class PrecioElegido:
     fuente: str = ""
 
 
+def perspectiva_de_la_linea_base(sesion: Session, proyecto: str, corte: date | None) -> str:
+    """La perspectiva (costo o precio) de la línea base vigente al `corte` (sin `corte`, al de la
+    última valuación). Sin línea base, «costo»: el cálculo dirá luego por qué no se puede."""
+    fila = linea_base_vigente(sesion, proyecto, corte or corte_por_defecto(sesion, proyecto))
+    return "costo" if fila is None else fila.perspectiva
+
+
 def precios_del_corte(
-    sesion: Session, proyecto: str, catalogo: Catalogo, elegido: PrecioElegido, perspectiva: str
+    sesion: Session,
+    proyecto: str,
+    catalogo: Catalogo,
+    elegido: PrecioElegido,
+    perspectiva: str,
+    *,
+    corte: date | None = None,
 ) -> PreciosDelCorte | None:
-    """Los `PreciosDelCorte` que corresponden a la elección, o `None` si no se eligió ninguno."""
+    """Los `PreciosDelCorte` que corresponden a la elección, o `None` si no se eligió ninguno.
+
+    `perspectiva` debe ser la de la línea base (`perspectiva_de_la_linea_base`): los unitarios del
+    corte se comparan con los de la línea base. `corte` solo lo usan los precios declarados (sin él,
+    el de la última valuación); sin ninguno declarado hasta el corte, `ControlInvalido`."""
+    if elegido.metodo == METODO_DECLARADOS:
+        try:
+            declarados = precios_declarados(sesion, proyecto, catalogo, corte, perspectiva)
+        except ValueError as error:
+            raise ControlInvalido(str(error)) from None
+        if declarados is None:
+            raise ControlInvalido(MENSAJE_SIN_DECLARADOS)
+        return declarados
     if elegido.metodo == METODO_COMPROBACION:
         if not elegido.version:
             raise ControlInvalido("elija la version revalorada para la comprobacion directa")

@@ -11,6 +11,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
 import {
+  AYUDA_DECLARADOS,
   COLUMNAS_ALERTAS,
   COLUMNAS_ATRASOS,
   COLUMNAS_DECISIONES,
@@ -90,6 +91,7 @@ export function BarraDeCorte({
           ))}
         </Select>
       )}
+      {precios.metodo === "declarados" && <p className="silice-control__nota cds--type-helper-text-01">{AYUDA_DECLARADOS}</p>}
       {precios.metodo === "escalatoria" && (
         <>
           <CampoTexto

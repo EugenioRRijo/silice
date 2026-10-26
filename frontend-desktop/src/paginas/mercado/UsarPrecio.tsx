@@ -1,5 +1,5 @@
 import { WarningAltFilled } from "@carbon/icons-react";
-import { Button, Select, SelectItem } from "@carbon/react";
+import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -23,7 +23,9 @@ type Paso =
 // lo que la persona escribe se envia tal cual y lo interpreta el servidor. Antes se revisa con la misma regla
 // (`leerCifra`) para decir el error en el campo sin ir a la API; el valor leido no se usa. En compra, antes de guardar
 // se dice que partidas cambiaran de precio y se pide confirmar (D-MP2); en cobro se guarda el precio objetivo citando
-// las observaciones de las cifras.
+// las observaciones de las cifras. En compra, con una obra abierta, la casilla «Declararlo precio del corte» deja
+// ademas el precio como precio del corte de esa obra (Tarea 25): `declarar_en` solo viaja si se marco, y la API
+// confirma con su frase (`corte`) o, si la obra no lo admite, no guarda nada.
 interface Props {
   estudio: Estudio;
   // Avisa al lado si el campo tiene algo escrito sin usar (para preguntar antes de cambiar de insumo o partida).
@@ -31,7 +33,7 @@ interface Props {
 }
 
 export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
-  const { alExpirar } = useAplicacion();
+  const { alExpirar, proyecto, nombreProyecto } = useAplicacion();
   const { lado, codigo, moneda, propuesta, estadisticas } = estudio;
   const propuesto = propuesta.precio === null ? "" : textoParaEscribir(propuesta.precio);
   // La ultima propuesta vista (para seguir sus cambios) y el texto que cuenta como «sin cambios»: la propuesta mientras
@@ -44,6 +46,7 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
   const [error, setError] = useState<unknown>(null);
   const [hecho, setHecho] = useState<string | null>(null);
   const [paso, setPaso] = useState<Paso>({ fase: "editando" });
+  const [declarar, setDeclarar] = useState(false);
   const campo = useRef<HTMLInputElement>(null);
   const boton = useRef<HTMLButtonElement>(null);
   const pregunta = useRef<HTMLDivElement>(null);
@@ -82,6 +85,9 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
   const debajoDelPiso = lado === "cobro" && propuesta.razon === RAZON_POR_DEBAJO;
   const citables = estudio.observaciones.filter((o) => o.cuenta);
   const ocupado = paso.fase === "consultando" || paso.fase === "guardando";
+  // La casilla solo existe en compra y con una obra abierta; sin ella nunca se declara.
+  const obra = lado === "compra" && proyecto ? { codigo: proyecto, nombre: nombreProyecto ?? proyecto } : null;
+  const declarando = obra !== null && declarar;
 
   function fallo(e: unknown) {
     if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
@@ -101,11 +107,13 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
     try {
       if (lado === "compra") {
         const cita = citables.find((o) => String(o.id) === respaldo);
-        const r = await pedir<{ lista: string }>(rutaDeUsar("compra", codigo), {
+        const cuerpo = { precio, observacion_id: cita ? cita.id : null };
+        const r = await pedir<{ lista: string; corte?: string | null }>(rutaDeUsar("compra", codigo), {
           metodo: "POST",
-          cuerpo: { precio, observacion_id: cita ? cita.id : null },
+          cuerpo: declarando ? { ...cuerpo, declarar_en: obra.codigo } : cuerpo,
         });
-        setHecho(`Precio guardado en «${r.lista}».`);
+        setHecho(r.corte ? `Precio guardado en «${r.lista}». ${r.corte}` : `Precio guardado en «${r.lista}».`);
+        setDeclarar(false);
       } else {
         const r = await pedir<{ codigo: string; precio: string; moneda: string }>(rutaDeUsar("cobro", codigo), {
           metodo: "POST",
@@ -217,6 +225,19 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
             ))}
           </Select>
         ) : null}
+        {/* Mientras se confirma, la pregunta ya dice si se declara (como «Usar este precio», la casilla se oculta). */}
+        {obra !== null && paso.fase !== "confirmando" && (
+          <div className="silice-mercado__ancho">
+            <Checkbox
+              id={`mercado-${lado}-declarar`}
+              labelText={`Declararlo precio del corte de la obra ${obra.nombre}`}
+              helperText="Control de obra lo usará para separar el desvío de precio («Precios declarados de insumos»)."
+              checked={declarar}
+              disabled={paso.fase !== "editando"}
+              onChange={(_e, { checked }) => setDeclarar(checked)}
+            />
+          </div>
+        )}
         <p className="silice-mercado__nota silice-mercado__ancho cds--type-helper-text-01">
           {lado === "compra"
             ? "Entra en la lista para armar de la carpeta con la fecha de hoy. Las versiones ya guardadas no cambian."
@@ -234,6 +255,9 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
       {paso.fase === "confirmando" && (
         <div ref={pregunta} tabIndex={-1} className="silice-mercado__pregunta" role="group" aria-label="Confirmar el precio">
           <p className="cds--type-body-compact-01">{textoDeAfectados(paso.apus)}</p>
+          {declarando && (
+            <p className="cds--type-body-compact-01">{`También quedará como precio del corte de la obra ${obra.nombre} desde hoy.`}</p>
+          )}
           <p className="cds--type-body-compact-01">{`¿Usar ${precio} ${moneda} para ${codigo}?`}</p>
           <div className="silice-mercado__botones">
             <Button kind="primary" size="md" onClick={() => void guardar()}>

@@ -247,7 +247,7 @@ export function notaDeOpcion(opcion: OpcionDeRecuperacion): string {
     .join("; ");
 }
 
-export type MetodoDePrecios = "ninguno" | "comprobacion" | "escalatoria";
+export type MetodoDePrecios = "ninguno" | "comprobacion" | "escalatoria" | "declarados";
 
 export interface Precios {
   metodo: MetodoDePrecios;
@@ -269,7 +269,12 @@ export const ROTULO_DE_METODO: Record<MetodoDePrecios, string> = {
   ninguno: "Sin precios del corte",
   comprobacion: "Comprobación directa (versión revalorada)",
   escalatoria: "Escalatoria (un Km declarado)",
+  declarados: "Precios declarados de insumos",
 };
+
+// De donde salen los precios declarados (Tarea 25): se declaran en Estudio de mercado o al recibir una compra.
+export const AYUDA_DECLARADOS =
+  "Usa el último precio declarado de cada material hasta la fecha de corte. Se declaran en Estudio de mercado o al recibir una compra en Procura.";
 
 export const PESTANAS = [
   "Línea base",

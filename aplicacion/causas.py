@@ -93,8 +93,7 @@ def causas_de_las_filas(filas: Sequence[Mapping[str, object]]) -> list[tuple[str
 def _ultimas_causas(sesion: Session, resultado: ResultadoControl) -> dict[str, str]:
     """La última causa declarada por partida en las valuaciones que cuentan al corte: no
     anuladas (`instantanea.valuaciones`) y con *hasta* hasta el corte."""
-    instantanea = resultado.instantanea
-    cuentan = {v.id for v in instantanea.valuaciones if v.hasta <= instantanea.corte}
+    cuentan = {v.id for v in resultado.instantanea.para_el_valor_ganado()}
     ultimas: dict[str, str] = {}
     for _, partida, causa in causas_de_valuaciones(sesion, cuentan):
         ultimas[partida] = causa

@@ -13,6 +13,7 @@ from adapters.espacio.persistencia import METADATA_ESPACIO
 from aplicacion.tablas_aprobacion import METADATA_APROBACION
 from aplicacion.tablas_carpeta import METADATA_CARPETA
 from aplicacion.tablas_causas import METADATA_CAUSAS
+from aplicacion.tablas_corte import METADATA_CORTE
 from aplicacion.tablas_eleccion import METADATA_ELECCION
 from aplicacion.tablas_indice_aprobacion import METADATA_INDICE_APROBACION
 from aplicacion.tablas_medicion import METADATA_MEDICION
@@ -38,6 +39,7 @@ METADATAS_CASO: tuple[MetaData, ...] = (
     METADATA_MEDICION,
     METADATA_CAUSAS,
     METADATA_PROCURA,
+    METADATA_CORTE,
 )
 METADATAS_INSTALACION: tuple[MetaData, ...] = (
     BaseSeguridad.metadata,

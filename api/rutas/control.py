@@ -13,11 +13,17 @@ propia:
 - `POST /recuperacion/opciones` y `POST /recuperacion/elegir`: las opciones a pedido y la
   decisión.
 
+Los precios del corte se toman con uno de cuatro métodos: ninguno, comprobación directa (versión
+revalorada), escalatoria o los precios declarados de los materiales (MP-7, Tarea 25); sus unitarios
+van en la perspectiva de la línea base vigente al corte (costo o precio), no en una fija.
+
 Todo exige `CONTROL_DE_OBRA` (arma, o la clave de API); elegir una opción exige además
-`DECIDIR_RECUPERACION`. El responsable de cada escritura sale de la sesión (o `USUARIO_SIN_CLAVE`
-con clave de API), nunca del cuerpo. El servidor no guarda estado entre llamadas: las opciones y
-la elección se calculan de nuevo con los mismos parámetros (corte, precios, objetivo y horas), así
-que la elección no depende de un cálculo previo en memoria. Los textos que vienen de fuera
+`DECIDIR_RECUPERACION`. Toda respuesta va con `Cache-Control: no-store` y el 422 de forma es un
+mensaje fijo que no repite lo enviado (`RutaSinCache` y `RutaSinEco`). El responsable de cada
+escritura sale de la sesión (o `USUARIO_SIN_CLAVE` con clave de API), nunca del cuerpo. El
+servidor no guarda estado entre llamadas: las opciones y la elección se calculan de nuevo con los
+mismos parámetros (corte, precios, objetivo y horas), así que la elección no depende de un cálculo
+previo en memoria. Los textos que vienen de fuera
 (inspector, observación, fuente) viajan como datos: la interfaz los pinta como texto (RV-14). Un
 `ControlInvalido` sale como 422 con su mensaje (`manejar_value_error`).
 """
@@ -37,6 +43,8 @@ from sqlalchemy.orm import Session
 from api.archivos import guardar_subida
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.sesion_web import exigir_clave_o_sesion
+from api.sin_cache import RutaSinCache
+from api.sin_eco import RutaSinEco
 from aplicacion import control as logica
 from aplicacion.causas import CAUSAS, atrasos
 from aplicacion.proyectos import resolver_proyecto
@@ -47,17 +55,31 @@ from seguridad.sesiones import SesionActiva
 
 CONTROLAR = Depends(exigir_clave_o_sesion(Accion.CONTROL_DE_OBRA))
 DECIDIR = Depends(exigir_clave_o_sesion(Accion.DECIDIR_RECUPERACION))
+MENSAJE_FORMA = (
+    "Los datos del control de obra no son válidos: las cantidades, los montos, las fechas y las "
+    "observaciones van como texto, y la causa del retraso es una clave de la lista de causas."
+)
 
-router = APIRouter(prefix="/v1/control", tags=["control"], dependencies=[CONTROLAR])
+
+class _RutaControl(RutaSinCache, RutaSinEco):
+    """El orden importa: `RutaSinCache` envuelve a `RutaSinEco` (diseño de la Hoja §1.3-7)."""
+
+    mensaje_por_omision = MENSAJE_FORMA
+
+
+router = APIRouter(
+    prefix="/v1/control", tags=["control"], route_class=_RutaControl, dependencies=[CONTROLAR]
+)
 
 Activa = Annotated[SesionActiva | None, CONTROLAR]
 Fila = dict[str, str]
 
-#: Cómo se nombran por fuera los tres métodos de precios del corte (S1).
+#: Cómo se nombran por fuera los métodos de precios del corte (S1; los declarados, MP-7).
 METODOS = {
     "ninguno": logica.METODO_NINGUNO,
     "comprobacion": logica.METODO_COMPROBACION,
     "escalatoria": logica.METODO_ESCALATORIA,
+    "declarados": logica.METODO_DECLARADOS,
 }
 
 
@@ -93,7 +115,9 @@ class Precios(BaseModel):
     fuente: str = ""
 
 
-def _precios(sesion: Session, proyecto: str, catalogo: Catalogo, datos: Precios):
+def _precios(
+    sesion: Session, proyecto: str, catalogo: Catalogo, datos: Precios, corte: date | None
+):
     if datos.metodo not in METODOS:
         raise logica.ControlInvalido(
             f"método de precios {datos.metodo!r} desconocido; use " + ", ".join(METODOS)
@@ -101,17 +125,19 @@ def _precios(sesion: Session, proyecto: str, catalogo: Catalogo, datos: Precios)
     elegido = logica.PrecioElegido(
         METODOS[datos.metodo], datos.version, datos.km, datos.r, datos.fuente
     )
-    return logica.precios_del_corte(sesion, proyecto, catalogo, elegido, "costo")
+    # La perspectiva es la de la línea base al corte (antes, «costo» fijo: con una línea base en
+    # la perspectiva precio, el desvío comparaba costo directo con precio unitario).
+    perspectiva = logica.perspectiva_de_la_linea_base(sesion, proyecto, corte)
+    return logica.precios_del_corte(sesion, proyecto, catalogo, elegido, perspectiva, corte=corte)
 
 
 def _calcular(
     sesion: Session, proyecto: str, corte: str | None, datos: Precios
 ) -> tuple[Catalogo, ResultadoControl]:
     catalogo = Catalogo(sesion)
-    precios = _precios(sesion, proyecto, catalogo, datos)
-    resultado = logica.calcular_el_control(
-        sesion, proyecto, catalogo, corte=_corte(corte), precios=precios
-    )
+    dia = _corte(corte)
+    precios = _precios(sesion, proyecto, catalogo, datos, dia)
+    resultado = logica.calcular_el_control(sesion, proyecto, catalogo, corte=dia, precios=precios)
     return catalogo, resultado
 
 

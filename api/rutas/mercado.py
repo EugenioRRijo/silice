@@ -11,21 +11,27 @@ sesión (`SesionDep`); las que escriben van con `BEGIN IMMEDIATE` y confirman aq
   `proyecto` (código o nombre de la obra abierta) da los parámetros del piso.
 - `POST /observaciones` → 201 `{id}`; `POST /observaciones/{id}/anular` → 200 `{id, anulada_por}`.
 - `GET /compra/{codigo}/afectados` → `{apus}` (lo que se muestra antes de «Usar este precio»).
-- `POST /compra/{codigo}/usar` `{precio, observacion_id}` → 200 `{lista}` (el nombre de la lista).
+- `POST /compra/{codigo}/usar` `{precio, observacion_id, declarar_en}` → 200 `{lista, corte}` (el
+  nombre de la lista). Con `declarar_en` (el código o el nombre de una obra), el precio queda además
+  como precio del corte de ese material en la obra desde hoy (MP-7, Tarea 25), en la misma
+  transacción: si no se puede declarar, tampoco cambia la lista; `corte` es la frase que lo confirma
+  (`null` sin `declarar_en`).
 - `POST /cobro/{codigo}/usar` `{precio, observaciones}` → 200 `{codigo, precio, moneda}`.
 - `GET /objetivos?partidas=A,B&pu=A:2074.44,B:30&moneda=Bs` → `{objetivos: [{codigo, precio, moneda,
   margen}]}`. `pu` son los precios unitarios que la Hoja ya tiene (con utilidad, sin IVA; decimal
   con punto) y `moneda` la de esos precios; `margen` lo calcula `margen()` de la lógica (Tarea 16:
   el front no calcula) y va vacío sin el precio unitario de esa partida, con un precio unitario de
-  cero o con el objetivo en otra moneda (no se compara ni se convierte).
+  cero, con uno tan pequeño que el margen no cabe en la precisión, o con el objetivo en otra moneda
+  (no se compara ni se convierte). Un `pu` mal formado es un 422 con su propio mensaje fijo.
 
 Errores: el 422 de forma (lado, fuente, fecha, precio que no es texto, códigos largos, ventana
 fuera de 1 a 3.650 días) es un mensaje fijo que no repite lo enviado; el 422 de una regla
 (`CifraInvalida` y `ReglaDeMercado`: fuente, nota, fecha futura, precio no positivo, objetivo de
 más de 2 decimales, observación ajena o de otra moneda) lleva el mensaje de `aplicacion.mercado`, y
-cualquier otro `ValueError` un texto fijo; 404 lo que no existe; 409 sin moneda, sin lista para
-armar, una partida cuyo costo no se puede calcular o una observación ya anulada; 503 fijo ante un
-fallo de la base.
+cualquier otro `ValueError` un texto fijo; 404 lo que no existe (también la obra de `declarar_en` o
+un material que no está en su línea base); 409 sin moneda, sin lista para armar, una partida cuyo
+costo no se puede calcular, una observación ya anulada o un precio del corte que la obra no admite
+(sin línea base o en otra moneda); 503 fijo ante un fallo de la base.
 `Cache-Control: no-store` en toda respuesta. Quien escribe consta como la cuenta de la sesión (o
 `USUARIO_API` con la clave). Montos como texto con punto decimal, nunca como número.
 """
@@ -35,7 +41,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
@@ -46,7 +52,7 @@ from api.dependencias import USUARIO_API, SesionDeEscrituraDep, SesionDep
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
-from aplicacion.cifras import CifraInvalida
+from aplicacion.cifras import CifraInvalida, cifra_escrita
 from aplicacion.listas_para_armar import SinListaParaArmar
 from aplicacion.mercado import (
     CarpetaSinMoneda,
@@ -67,6 +73,7 @@ from aplicacion.mercado import (
     usar_precio_de_cobro,
     usar_precio_de_compra,
 )
+from aplicacion.precios_declarados import ReglaDelCorte, declarar_desde_el_catalogo
 from aplicacion.proyectos import resolver_proyecto
 from core.catalog import Catalogo
 from core.catalog.errores import CatalogoIncompleto
@@ -77,6 +84,11 @@ MENSAJE_FORMA = (
     "Los datos del estudio de mercado no son válidos: el lado es compra o cobro; la fuente es "
     "proveedor, competidor, cotización, MaPreX o compra; la fecha va como aaaa-mm-dd; el precio "
     "va como texto; los códigos admiten hasta 40 caracteres y la ventana va de 1 a 3.650 días."
+)
+#: El 422 de `pu` en `GET /objetivos` (los precios unitarios que manda la Hoja): fijo, sin eco.
+MENSAJE_PU = (
+    "Los precios unitarios de la Hoja no son válidos: cada uno va como código:monto, separados "
+    "por coma, con punto decimal y con la moneda de esos precios."
 )
 MENSAJE_BASE = "No se pudo leer ni guardar el estudio de mercado de la carpeta de trabajo."
 MENSAJE_INESPERADO = "No se pudo procesar el estudio de mercado con esos datos."
@@ -171,10 +183,19 @@ class AfectadosRespuesta(BaseModel):
 class UsarCompra(BaseModel):
     precio: str = Field(max_length=60)
     observacion_id: int | None = None
+    declarar_en: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=500,
+        description="Obra (código o nombre) en la que el precio queda como precio del corte",
+    )
 
 
 class UsarCompraRespuesta(BaseModel):
     lista: str
+    corte: str | None = Field(
+        default=None, description="La frase que confirma el precio del corte declarado, si se pidió"
+    )
 
 
 class UsarCobro(BaseModel):
@@ -225,7 +246,7 @@ def _traducir[T](hacer: Callable[[], T]) -> T:
         return hacer()
     except NoExiste as error:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(error)) from None
-    except (CarpetaSinMoneda, SinListaParaArmar, ObservacionAnulada) as error:
+    except (CarpetaSinMoneda, SinListaParaArmar, ObservacionAnulada, ReglaDelCorte) as error:
         raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from None
     except CatalogoIncompleto:
         raise HTTPException(
@@ -243,8 +264,8 @@ def _traducir[T](hacer: Callable[[], T]) -> T:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, MENSAJE_BASE) from None
 
 
-def _forma_invalida() -> HTTPException:
-    return HTTPException(422, MENSAJE_FORMA)
+def _pu_invalido() -> HTTPException:
+    return HTTPException(422, MENSAJE_PU)
 
 
 def _precios_unitarios(pu: str, moneda: str | None) -> dict[str, Decimal]:
@@ -264,19 +285,24 @@ def _precios_unitarios(pu: str, moneda: str | None) -> dict[str, Decimal]:
             or len(codigo) > _LARGO_CODIGO
             or _DECIMAL_CON_PUNTO.fullmatch(texto) is None
         ):
-            raise _forma_invalida()
+            raise _pu_invalido()
         valor = Decimal(texto)
         if precios.setdefault(codigo, valor) != valor:
-            raise _forma_invalida()
+            raise _pu_invalido()
     if precios and moneda is None:
-        raise _forma_invalida()
+        raise _pu_invalido()
     return precios
 
 
 def _margen(objetivo: Decimal, precio_unitario: Decimal | None) -> str | None:
     if precio_unitario is None or precio_unitario <= 0:
         return None
-    valor = margen(objetivo, precio_unitario)
+    try:
+        valor = margen(objetivo, precio_unitario)
+    except InvalidOperation:
+        # Un precio unitario tan pequeño que el margen no cabe en la precisión: sin margen (no un
+        # 500 que tumbe la tanda entera de objetivos).
+        return None
     # −0,0 (un margen que redondea a cero desde abajo) se dice 0,0: el signo no significa nada.
     return format(abs(valor) if valor == 0 else valor, "f")
 
@@ -446,21 +472,40 @@ def usar_compra(
 ) -> UsarCompraRespuesta:
     """Pone el precio en la lista de hoy de la carpeta (otra del día si una versión ya la usa)."""
 
-    def escribir() -> str:
+    def escribir() -> UsarCompraRespuesta:
         momento = ahora()
+        responsable = _responsable(activa)
         lista = usar_precio_de_compra(
             sesion,
             codigo,
             datos.precio,
             observacion_id=datos.observacion_id,
             fecha=momento.date(),
-            responsable=_responsable(activa),
+            responsable=responsable,
         )
-        nombre = lista.nombre
+        corte = None
+        if datos.declarar_en is not None:
+            # El precio ya pasó las reglas del estudio de mercado; está en la moneda de la lista.
+            corte = declarar_desde_el_catalogo(
+                sesion,
+                datos.declarar_en,
+                codigo,
+                precio=cifra_escrita(datos.precio),
+                fecha=momento.date(),
+                fuente=(
+                    f"Estudio de mercado: observación n.º {datos.observacion_id}"
+                    if datos.observacion_id is not None
+                    else "Estudio de mercado: precio propio"
+                ),
+                responsable=responsable,
+                ahora=momento,
+                moneda=lista.moneda,
+            )
+        respuesta = UsarCompraRespuesta(lista=lista.nombre, corte=corte)
         sesion.commit()
-        return nombre
+        return respuesta
 
-    return UsarCompraRespuesta(lista=_traducir(escribir))
+    return _traducir(escribir)
 
 
 @router.post("/cobro/{codigo}/usar", response_model=ObjetivoRespuesta, dependencies=[EDITAR_HOJA])
