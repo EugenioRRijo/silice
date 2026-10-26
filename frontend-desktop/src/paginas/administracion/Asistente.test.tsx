@@ -98,7 +98,7 @@ describe("Asistente de IA", () => {
     expect(screen.getByText("Clave registrada: ninguna")).toBeInTheDocument();
   });
 
-  test("guarda la configuración con el tope leído con la coma decimal y enviado con punto", async () => {
+  test("guarda la configuración con el tope tal como se tecleó (lo lee el servidor con la regla)", async () => {
     const usuario = userEvent.setup();
     fetchFalso.mockResolvedValueOnce(json(FABRICA));
     fetchFalso.mockResolvedValueOnce(
@@ -120,7 +120,7 @@ describe("Asistente de IA", () => {
       modelo_claude: "claude-opus-5-5",
       modelo_local: "llama-ficticio",
       anfitrion_ollama: "http://127.0.0.1:11434",
-      tope_usd: "3.75",
+      tope_usd: "3,75",
     });
     expect(screen.getByLabelText("Tope de costo por sesión (USD)")).toHaveValue("3,75");
   });
@@ -133,7 +133,7 @@ describe("Asistente de IA", () => {
     expect(await screen.findByLabelText("Tope de costo por sesión (USD)")).toHaveValue("0,12");
     await usuario.click(screen.getByRole("button", { name: "Guardar la configuración" }));
     await screen.findByText("Configuración del asistente guardada.");
-    expect(cuerpo(1)).toMatchObject({ tope_usd: "0.12" });
+    expect(cuerpo(1)).toMatchObject({ tope_usd: "0,12" });
   });
 
   test("«1.000» es un tope de mil, no de uno", async () => {
@@ -146,7 +146,8 @@ describe("Asistente de IA", () => {
     await usuario.type(tope, "1.000");
     await usuario.click(screen.getByRole("button", { name: "Guardar la configuración" }));
     await screen.findByText("Configuración del asistente guardada.");
-    expect(cuerpo(1)).toMatchObject({ tope_usd: "1000" });
+    // se manda tal cual: el servidor (`_tope`, con `aplicacion.cifras`) lo lee como mil
+    expect(cuerpo(1)).toMatchObject({ tope_usd: "1.000" });
   });
 
   test("un tope con punto decimal («2.5») se marca junto al campo y no se envía", async () => {

@@ -20,7 +20,14 @@ PAQUETES_DE_TERCEROS = {
     "keyring": {"asistente/clave.py"},
 }
 #: Lo unico de `aplicacion` que puede importar `asistente` el propio paquete (ver mas abajo).
-DE_APLICACION_PERMITIDO = {"aplicacion", "aplicacion.hoja", "aplicacion.errores"}
+#: `aplicacion.cifras` (regla de las cifras tecleadas, 2026-10-25) es una hoja sin dependencias: el
+#: tope de costo del asistente se lee con ella (`asistente.administracion._tope`).
+DE_APLICACION_PERMITIDO = {
+    "aplicacion",
+    "aplicacion.hoja",
+    "aplicacion.errores",
+    "aplicacion.cifras",
+}
 #: En `aplicacion/` solo `entrega` (lo movio de `ui/entrega.py` la ola 4 de la sesion 2b), y solo
 #: `asistente.registro`, para el anexo `ia.json`: ruling RP9-6 del plan 0.9.0.
 IMPORTAN_ASISTENTE_APLICACION = {"aplicacion/entrega.py"}

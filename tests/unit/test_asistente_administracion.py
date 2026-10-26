@@ -89,21 +89,35 @@ def test_solo_el_administrador_configura_y_el_tope_acepta_coma(tmp_path):
     assert datos["tope_usd"] == "2.50" and datos["activo"] is True  # el tope como texto exacto
 
 
-@pytest.mark.parametrize("tope", ["0,01", "0.01", " 3,5 ", "1000"])
-def test_el_menor_tope_positivo_y_otros_validos_se_aceptan(tmp_path, tope):
+# Coma decimal y punto de miles (regla de Eugenio, 2026-10-25; el servidor lee con
+# `aplicacion.cifras`): «1.000» es mil, no uno. Oraculo escrito a mano con la regla.
+@pytest.mark.parametrize(
+    ("tope", "esperado"),
+    [
+        ("0,01", "0.01"),
+        (" 3,5 ", "3.5"),
+        ("1000", "1000"),
+        ("1.000", "1000"),
+        ("1.234,5", "1234.5"),
+    ],
+)
+def test_el_menor_tope_positivo_y_otros_validos_se_aceptan(tmp_path, tope, esperado):
     ruta = tmp_path / "ia_config.json"
     guardada = configurar(ruta, es_administrador=True, **{**PARAMETROS, "tope_usd": tope})
-    assert guardada.tope_usd == Decimal(tope.strip().replace(",", "."))
+    assert format(guardada.tope_usd, "f") == esperado
 
 
 @pytest.mark.parametrize(
     ("malo", "mensaje"),
     [
-        ("dos", "no es un número"),
-        ("", "no es un número"),
-        ("NaN", "no es un número"),
-        ("Infinity", "no es un número"),
-        ("-Infinity", "no es un número"),
+        ("dos", "«dos» no se entiende como número. Use la coma para los decimales"),
+        ("", "Escriba un número"),
+        ("NaN", "no se entiende como número"),
+        ("Infinity", "no se entiende como número"),
+        ("-Infinity", "no se entiende como número"),
+        ("0.01", "«0.01» no se entiende como número"),
+        ("2.5", "«2.5» no se entiende como número"),
+        ("1,234.5", "no se entiende como número"),
         ("0", "mayor que cero"),
         ("0,00", "mayor que cero"),
         ("-1", "mayor que cero"),
