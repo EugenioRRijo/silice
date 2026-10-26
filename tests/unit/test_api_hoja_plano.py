@@ -414,11 +414,10 @@ def _con_proyecto_nuevo(ruta: Path) -> None:
 
 def _parametros_de_ti001(navegador, ficha, id_) -> int:
     p = caso_ti001.PARAMETROS
+    # tecleados con coma decimal (regla de Eugenio, 2026-10-25), a mano y sin separador de miles
     textos = {
-        "fcas": str(p.fcas),
-        "bono_alimentacion": str(p.bono_alimentacion),
-        "administracion": str(p.administracion),
-        "utilidad": str(p.utilidad),
+        campo: format(getattr(p, campo), "f").replace(".", ",")
+        for campo in ("fcas", "bono_alimentacion", "administracion", "utilidad")
     }
     respuesta = navegador.put(
         f"/v1/hoja/borradores/{id_}/parametros",
