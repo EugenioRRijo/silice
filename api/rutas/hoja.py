@@ -961,7 +961,10 @@ def antes_y_despues(
         base = hoja_lineas_apu.linea_base_de(sesion, nombre)
         if base is None or codigo is None:
             return antes_y_despues_a_respuesta(base, codigo, moneda, [], SIN_LINEA_BASE)
-        filas = hoja_lineas_apu.antes_y_despues(sesion, nombre, Catalogo(sesion), codigo)
+        try:
+            filas = hoja_lineas_apu.antes_y_despues(sesion, nombre, Catalogo(sesion), codigo)
+        except hoja_lineas_apu.MonedasDistintas as distintas:
+            return antes_y_despues_a_respuesta(base, codigo, moneda, [], str(distintas))
     except (HojaInvalida, ValueError, CatalogoIncompleto) as error:
         raise HTTPException(status_code=409, detail=f"No se pudo comparar: {error}") from None
     except SQLAlchemyError:

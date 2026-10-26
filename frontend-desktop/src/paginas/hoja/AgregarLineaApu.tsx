@@ -123,7 +123,11 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
   // Adónde va el foco tras un error o al elegir un insumo nuevo: mientras va la petición los campos están deshabilitados.
   const focoPendiente = useRef<string | null>(null);
 
-  useFormularioSucio("hoja", texto.trim() !== "" || cantidad.trim() !== "" || precio.trim() !== "");
+  // Lo escrito en cualquier campo cuenta como trabajo sin guardar (también la modalidad elegida).
+  useFormularioSucio(
+    "hoja",
+    [texto, cantidad, precio, unidad, depreciacion].some((t) => t.trim() !== "") || modalidad !== "jornal",
+  );
 
   useEffect(() => {
     document.getElementById(ID_INSUMO)?.focus();

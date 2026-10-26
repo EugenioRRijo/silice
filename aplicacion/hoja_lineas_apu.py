@@ -58,6 +58,7 @@ __all__ = [
     "MENSAJE_UNA_LINEA",
     "MENSAJE_YA_NO_ESTA",
     "PartidaAntesYDespues",
+    "MonedasDistintas",
     "SinVersionGuardada",
     "agregar_linea",
     "antes_y_despues",
@@ -77,6 +78,20 @@ MENSAJE_SIN_VERSION = (
 #: Los topes de `linea_composicion_version` (`descripcion` String(300), `unidad` String(20)).
 LARGO_DESCRIPCION = 300
 LARGO_UNIDAD = 20
+
+
+class MonedasDistintas(Exception):  # noqa: N818
+    """La version esta en otra moneda que la linea base: sus montos no se comparan."""
+
+    def __init__(self, version: str, moneda: str, linea_base: str, moneda_base: str) -> None:
+        super().__init__(version)
+        self.texto = (
+            f"La versión {version} está en {moneda} y la línea base {linea_base} en "
+            f"{moneda_base}: no se comparan montos en monedas distintas."
+        )
+
+    def __str__(self) -> str:
+        return self.texto
 
 
 class SinVersionGuardada(Exception):  # noqa: N818
@@ -252,7 +267,8 @@ def antes_y_despues(
     línea base escalado por término nuevo ÷ término base y la curva de la línea base; antes, el
     mismo cálculo sin cambios (que es el punto de equilibrio de la línea base).
 
-    Sin línea base, o si `version_nueva` es la de la línea base, lista vacía. `HojaInvalida` si la
+    Sin línea base, o si `version_nueva` es la de la línea base, lista vacía; en otra moneda que la
+    línea base, `MonedasDistintas` (no se mezclan montos). `HojaInvalida` si la
     versión no existe.
     """
     base_modelo = _version_de_la_linea_base(sesion, proyecto)
@@ -262,6 +278,10 @@ def antes_y_despues(
     nueva_modelo = _version(sesion, proyecto, version_nueva)
     if nueva_modelo.id == base_modelo.id:
         return []
+    if nueva_modelo.moneda != base_modelo.moneda:
+        raise MonedasDistintas(
+            nueva_modelo.codigo, nueva_modelo.moneda, codigo_base, base_modelo.moneda
+        )
     base = cargar_presupuesto(sesion, proyecto, codigo_base, catalogo)
     nueva = cargar_presupuesto(sesion, proyecto, nueva_modelo.codigo, catalogo)
     parametros: ParametrosCosto = parametros_de_version(base_modelo)

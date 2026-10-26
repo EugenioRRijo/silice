@@ -1435,16 +1435,38 @@ def _cambios_de_linea(codigo: str, antes: _Linea, despues: _Linea) -> list[Cambi
 def _cambios_de_rubro(
     codigo: str, tipo: str, antes: Sequence[_Linea], despues: Sequence[_Linea]
 ) -> list[CambioEditado]:
-    """Los cambios de un rubro del APU (Tarea 26). Las lineas se alinean por su descripcion
-    (`SequenceMatcher`): una que sale es una `baja` y una que entra un `alta`, con la clave
-    `{partida}|{tipo}|{n}` (n, su posicion desde 1 en el rubro de antes o de despues); las que
-    siguen, o cambian de insumo en su lugar (`cambiar_insumo`), dicen su insumo, cantidad y precio
-    como siempre. Antes se emparejaban por posicion (`zip(strict=False)`) y la de mas se perdia."""
+    """Los cambios de un rubro del APU (Tarea 26). Las lineas se alinean primero enteras
+    (descripcion, cantidad y precio: dos homonimas se desempatan asi) y, en lo que no coincide, por
+    su descripcion (`SequenceMatcher`): una que sale es una `baja` y una que entra un `alta`, con la
+    clave `{partida}|{tipo}|{n}` (n, su posicion desde 1 en el rubro de antes o de despues); las
+    que siguen, o cambian de insumo en su lugar (`cambiar_insumo`), dicen su insumo, cantidad y
+    precio como siempre. Antes se emparejaban por posicion (`zip(strict=False)`) y la de mas se
+    perdia."""
+    cambios: list[CambioEditado] = []
+    enteras = SequenceMatcher(None, list(antes), list(despues), autojunk=False)
+    for operacion, a1, a2, b1, b2 in enteras.get_opcodes():
+        if operacion != "equal":
+            cambios.extend(_cambios_de_tramo(codigo, tipo, antes, despues, (a1, a2), (b1, b2)))
+    return cambios
+
+
+def _cambios_de_tramo(
+    codigo: str,
+    tipo: str,
+    antes: Sequence[_Linea],
+    despues: Sequence[_Linea],
+    de_antes: tuple[int, int],
+    de_despues: tuple[int, int],
+) -> list[CambioEditado]:
+    """Los cambios de un tramo que no coincide entero, alineado por la descripcion de sus lineas
+    (las posiciones de la clave son las del rubro completo)."""
+    (a1, a2), (b1, b2) = de_antes, de_despues
     cambios: list[CambioEditado] = []
     alineacion = SequenceMatcher(
-        None, [d for d, _, _ in antes], [d for d, _, _ in despues], autojunk=False
+        None, [d for d, _, _ in antes[a1:a2]], [d for d, _, _ in despues[b1:b2]], autojunk=False
     )
-    for _, i1, i2, j1, j2 in alineacion.get_opcodes():
+    for _, x1, x2, y1, y2 in alineacion.get_opcodes():
+        i1, i2, j1, j2 = a1 + x1, a1 + x2, b1 + y1, b1 + y2
         pares = min(i2 - i1, j2 - j1)
         for k in range(pares):
             cambios.extend(_cambios_de_linea(codigo, antes[i1 + k], despues[j1 + k]))
