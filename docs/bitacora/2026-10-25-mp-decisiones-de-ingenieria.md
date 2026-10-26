@@ -219,6 +219,10 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   carpeta, con su propio `origen`, y el `aviso` sigue diciendo que hay que convertirla; así Componer ofrece «Convertir la
   lista que tiene» con la API real. `describir_vigente` es nueva en `aplicacion/listas_para_armar.py` (`describir` no cambia
   y la mesa la sigue usando); el oráculo de T2 cambió de nombre y de valor esperado. El esquema no cambia.
+- Menores de la ronda 1 (4f8e5cf7, 7b6f12bb): desde MaPreX, `POST /v1/carpeta/lista-para-armar` responde 409 si la carpeta
+  ya tiene lista para armar (en la ruta, no en `aplicacion/`, porque T1 conserva la numeración «(2)»); Componer vuelve a leer
+  la carpeta ante un 409 y dice por qué desaparece el aviso. El panel y «Lista para armar creada» no repiten la fecha si el
+  nombre ya la trae (**por ratificar**). Los docstrings de la carpeta dicen el sentido nuevo de `lista`.
 
 ## T8, partidas a mano
 
