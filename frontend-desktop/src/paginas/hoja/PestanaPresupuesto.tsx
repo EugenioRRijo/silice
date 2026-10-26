@@ -10,6 +10,7 @@ import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
+import { useObjetivosDeMercado } from "./ObjetivoDeMercado";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
 import { clavesDeAuditoria, comoSeMidio, enteroDeDigitos, rotuloDeOrigen, rutaDeQuitarPartida, rutaDeVista } from "./logica";
@@ -106,6 +107,8 @@ function EditorDePresupuesto({
     alExpirar,
   });
   const { error, esperarEnvios, accionarEnOrden, resembrar } = edicion;
+  // Tarea 16: el objetivo de mercado de cada partida y su margen (lo calcula la API) junto al precio unitario.
+  const objetivos = useObjetivosDeMercado(vista.filas, vista.moneda);
   const filaInvalida = error?.ubicacion ?? null;
   const mover = (desde: number, paso: 1 | -1) => document.getElementById(idDeCantidad(desde + paso))?.focus();
   // La fila que la persona pidió quitar: espera su confirmación.
@@ -207,6 +210,7 @@ function EditorDePresupuesto({
             ordenable: false,
             celda: (f) => (f.pu_texto === "" ? PENDIENTE : <Cifra monto={{ texto: f.pu_texto!, exacto: f.pu_exacto! }} />),
           },
+          objetivos.columna,
           {
             clave: "total",
             titulo: "Total",
@@ -269,6 +273,7 @@ function EditorDePresupuesto({
           nota: f.nota ?? "",
         }))}
       />
+      {objetivos.aviso}
       <p className="silice-hoja__total cds--type-heading-03">
         Total del presupuesto <Cifra monto={vista.total} unidad={vista.moneda} />
       </p>
