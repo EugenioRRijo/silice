@@ -329,6 +329,7 @@ def test_r1_de_un_proyecto_sin_versiones_no_tiene_version_por_omision(_entorno: 
 def test_r1_la_clave_de_api_puede_leer_las_versiones() -> None:
     respuesta = cliente(app).get(
         "/v1/hoja/versiones",
+        "/v1/hoja/llevar",
         params={"proyecto": NOMBRE_OF001},
         headers={CABECERA: crear_clave_de_prueba()},
     )
