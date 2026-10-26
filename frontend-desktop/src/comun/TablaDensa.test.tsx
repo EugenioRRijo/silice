@@ -146,4 +146,39 @@ describe("compararDecimales", () => {
     expect(compararDecimales("n/d", "1")).toBeGreaterThan(0);
     expect(compararDecimales("", "")).toBe(0);
   });
+
+  test("una cabecera ordenable sin descripcion conserva el aria-describedby de Carbon en su boton de orden", () => {
+    render(<TablaDensa etiqueta="Partidas" columnas={columnas} filas={filas} />);
+    const boton = screen.getByRole("button", { name: /Descripción/ });
+    const id = boton.getAttribute("aria-describedby");
+    expect(id).toBeTruthy();
+    expect(document.getElementById(id as string)).not.toBeNull();
+  });
+
+  test("una columna no ordenable con descripcion la lleva en su cabecera", () => {
+    const cols: ColumnaDensa[] = [
+      { clave: "codigo", titulo: "Código" },
+      { clave: "objetivo", titulo: "Objetivo", ordenable: false, descripcion: "ayuda-objetivo" },
+    ];
+    render(
+      <>
+        <p id="ayuda-objetivo">Explica el objetivo</p>
+        <TablaDensa etiqueta="Partidas" columnas={cols} filas={filas} />
+      </>,
+    );
+    expect(screen.getByRole("columnheader", { name: "Objetivo" })).toHaveAccessibleDescription("Explica el objetivo");
+  });
+
+  test("una columna ordenable con descripcion no pisa el aria-describedby de Carbon (su id no se expone)", () => {
+    const cols: ColumnaDensa[] = [{ clave: "codigo", titulo: "Código", descripcion: "ayuda-codigo" }];
+    render(
+      <>
+        <p id="ayuda-codigo">Explica el código</p>
+        <TablaDensa etiqueta="Partidas" columnas={cols} filas={filas} />
+      </>,
+    );
+    const id = screen.getByRole("button", { name: /Código/ }).getAttribute("aria-describedby");
+    expect(id).toBeTruthy();
+    expect(id).not.toBe("ayuda-codigo");
+  });
 });
