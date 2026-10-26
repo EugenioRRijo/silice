@@ -36,7 +36,15 @@ from tests.fixtures.sesion_web import (
 )
 
 RUTA = "/v1/proyectos"
-FORMA = {"codigo", "nombre", "version_vigente", "version_codigo", "actualizado"}
+FORMA = {
+    "codigo",
+    "nombre",
+    "version_vigente",
+    "version_codigo",
+    "actualizado",
+    "cliente",
+    "ubicacion",
+}
 VACIO = "Escriba un nombre para el proyecto: no puede quedar vacío."
 
 

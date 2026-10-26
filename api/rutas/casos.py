@@ -14,6 +14,12 @@
   proceso (`APU_BASE`), que fija quien arranca la API. MOD-0: además se recuerda para la cuenta
   (`aplicacion.eleccion.recordar_caso`, en la transacción de la petición sobre la instalación), lo
   que olvida la obra recordada; `GET /v1/sesion` la restaura al volver a entrar.
+- MOD-3a: `GET /v1/casos` agrega `empresa` (`{nombre, ruta_relativa}` de la carpeta del proceso, la
+  de omisión de la instalación; `null` si el proceso no usa un archivo) y `es_demostracion` (la
+  carpeta de esta petición es la de demostración). `DELETE /v1/casos/actual` (`CAMBIAR_CASO`,
+  sesión, CSRF y `Origin`) es «Volver a la carpeta de la empresa»: la ficha olvida su carpeta y
+  la cuenta recuerda `caso` nulo (que olvida la obra); 200 con la carpeta de la empresa, 409 con
+  la clave de API, 503 si el proceso no usa un archivo o no se puede preparar.
 
 Carpetas de trabajo (BCP-2; diseño de la bienvenida §4 y §9, rutas C0 a C3). La interfaz dice
 «carpeta de trabajo»; la API sigue diciendo `caso`. Estas cuatro rutas responden con
@@ -53,6 +59,7 @@ from api.dependencias import (
     ruta_de_url,
     url_de_la_peticion,
     url_de_ruta,
+    url_del_proceso,
 )
 from api.rutas.sesion import Detalle
 from api.sesion_web import ahora, exigir_clave_o_sesion
@@ -99,6 +106,10 @@ class CasosRespuesta(BaseModel):
         description="El caso de esta sesión; `null` solo si el proceso no usa un archivo SQLite"
     )
     casos: list[CasoRespuesta]
+    empresa: CasoRespuesta | None = Field(
+        description="La carpeta de la empresa: la del proceso; `null` si no usa un archivo SQLite"
+    )
+    es_demostracion: bool = Field(description="Si la carpeta de esta sesión es la de demostración")
 
 
 class EleccionCaso(BaseModel):
@@ -118,9 +129,12 @@ def _describir(ruta: Path) -> CasoRespuesta:
 def consultar_casos(request: Request) -> CasosRespuesta:
     """El caso de esta sesión y los de la carpeta de casos, por nombre. No abre ninguna base."""
     ruta = ruta_de_url(url_de_la_peticion(request))
+    empresa = ruta_de_url(url_del_proceso())
     return CasosRespuesta(
         actual=None if ruta is None else _describir(ruta),
         casos=[_describir(caso) for caso in listar_casos()],
+        empresa=None if empresa is None else _describir(empresa),
+        es_demostracion=ruta is not None and carpetas.es_demostracion(ruta.name),
     )
 
 
@@ -155,6 +169,34 @@ def elegir_caso(
     instalacion.commit()  # la ficha cambia solo si la instalación lo confirmó
     caso_web.fijar(activa.huella_ficha, ruta)
     return _describir(ruta)
+
+
+@router.delete(
+    "/actual",
+    response_model=CasoRespuesta,
+    responses={
+        403: {"model": Detalle, "description": "Sin `CAMBIAR_CASO`, o sin CSRF u origen propio."},
+        409: {"model": Detalle, "description": "Con la clave de API no se elige caso."},
+        503: {"model": Detalle, "description": "El proceso no usa un archivo o no se prepara."},
+    },
+)
+def volver_a_la_empresa(
+    activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.CAMBIAR_CASO))],
+    instalacion: SesionInstalacionDep,
+) -> CasoRespuesta:
+    """«Volver a la carpeta de la empresa»: la ficha deja de tener carpeta propia (trabaja en la
+    del proceso) y la cuenta recuerda `caso` nulo, lo que olvida la obra recordada."""
+    if activa is None:
+        raise HTTPException(status_code=409, detail=MENSAJE_CON_CLAVE)
+    url = url_del_proceso()
+    empresa = ruta_de_url(url)
+    if empresa is None:
+        raise HTTPException(status_code=503, detail=MENSAJE_SIN_ARCHIVO)
+    obtener_motor(url)  # prepara la base una vez (503 si no se puede)
+    recordar_caso(instalacion, activa.usuario_id, None, ahora())
+    instalacion.commit()  # la ficha cambia solo si la instalación lo confirmó
+    caso_web.olvidar(activa.huella_ficha)
+    return _describir(empresa)
 
 
 # --- carpetas de trabajo (BCP-2: C0 a C3) ---------------------------------------------------------

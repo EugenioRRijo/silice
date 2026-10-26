@@ -22,6 +22,7 @@ Sin Streamlit ni nada de `ui/`; lo vigila `tests/unit/test_arquitectura.py`. Viv
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -108,6 +109,7 @@ def crear_proyecto_en_sesion(
     dominio: str,
     descripcion: str,
     responsable: str,
+    antes_de_confirmar: Callable[[Session, models.Proyecto], None] | None = None,
 ) -> models.Proyecto:
     """Crea el proyecto en la base de `sesion` y confirma, todo o nada (BCP-3, diseño §5.1).
 
@@ -118,6 +120,8 @@ def crear_proyecto_en_sesion(
     peticiones lo crean a la vez y la restricción única de la base gana); `ProyectoInvalido` si el
     nombre queda vacío, la moneda no es Bs ni USD o el tipo de obra no es uno de la lista. Quien
     llama con una sesión de escritura (`BEGIN IMMEDIATE`) serializa la comparación y el alta.
+    `antes_de_confirmar(sesion, proyecto)` (MOD-3a: la ficha de la obra) corre con el proyecto ya
+    con `id` y antes del `commit`, en la misma transacción: si falla, tampoco queda el proyecto.
     """
     limpio = _limpiar_nombre(nombre)
     if moneda is not None and moneda not in MONEDAS_DEL_PROYECTO:
@@ -134,6 +138,8 @@ def crear_proyecto_en_sesion(
             proyecto = crear_proyecto(sesion, limpio, descripcion, dominio)
             if moneda is not None:
                 declarar_moneda(sesion, proyecto, moneda, responsable=responsable)
+            if antes_de_confirmar is not None:
+                antes_de_confirmar(sesion, proyecto)
         except ValueError as error:  # el núcleo repite las reglas; por si cambian
             raise ProyectoInvalido(str(error)) from error
         sesion.commit()

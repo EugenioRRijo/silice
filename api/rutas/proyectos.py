@@ -14,7 +14,9 @@
 `POST /v1/proyectos` (BCP-3, diseño `2026-10-21-bienvenida-casos-proyectos-design.md` §5): crea un
 proyecto en el caso de la petición (el de la ficha, RM-2) con `EDITAR_HOJA` (clave de API o sesión).
 `{nombre ≤ 120, moneda: "Bs"|"USD"|null, dominio: ""|civil|telecom|industrial|sistemas,
-descripcion ≤ 500}` → 201 con la forma de un elemento de la lista (`version_vigente: null`). El
+descripcion ≤ 500, cliente ≤ 200, ubicacion ≤ 200}` → 201 con la forma de un elemento de la lista
+(`version_vigente: null`). MOD-3a: `cliente` y `ubicacion` (vacíos por omisión) son la ficha de la
+obra (`aplicacion.obras`), guardada en la misma transacción que el proyecto; `GET` los repite. El
 responsable de la moneda es la cuenta de la sesión (`Nombre <login>`, RF-82) o, con clave de API,
 `USUARIO_API`. Va sobre la sesión de escritura (`BEGIN IMMEDIATE`): dos peticiones con el mismo
 nombre dan 201 y 409. Errores: 409 repetido; 422 vacío, moneda o tipo de obra (textos con tilde,
@@ -32,6 +34,7 @@ from api.acceso import LEER
 from api.dependencias import USUARIO_API, SesionDeEscrituraDep, SesionDep
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
+from aplicacion import obras
 from aplicacion.proyectos import (
     ProyectoInvalido,
     ProyectoRepetido,
@@ -61,11 +64,14 @@ class ProyectoDelCasoRespuesta(BaseModel):
     version_vigente: int | None
     version_codigo: str | None
     actualizado: str | None
+    cliente: str = ""
+    ubicacion: str = ""
 
 
 @router.get("", response_model=list[ProyectoDelCasoRespuesta], dependencies=LEER)
 def listar_proyectos_del_caso(sesion: SesionDep) -> list[ProyectoDelCasoRespuesta]:
     """Los proyectos del caso de esta sesión con su versión vigente."""
+    guardadas = obras.fichas(sesion)
     return [
         ProyectoDelCasoRespuesta(
             codigo=str(fila.id),
@@ -73,6 +79,8 @@ def listar_proyectos_del_caso(sesion: SesionDep) -> list[ProyectoDelCasoRespuest
             version_vigente=fila.version_id,
             version_codigo=fila.version_codigo,
             actualizado=None if fila.version_fecha is None else fila.version_fecha.isoformat(),
+            cliente=guardadas.get(fila.id, obras.SIN_FICHA).cliente,
+            ubicacion=guardadas.get(fila.id, obras.SIN_FICHA).ubicacion,
         )
         for fila in proyectos_del_caso(sesion)
     ]
@@ -83,6 +91,8 @@ class ProyectoNuevo(BaseModel):
     moneda: str | None = None
     dominio: str = ""
     descripcion: str = Field(default="", max_length=500)
+    cliente: str = Field(default="", max_length=200)
+    ubicacion: str = Field(default="", max_length=200)
 
 
 @router.post(
@@ -96,6 +106,7 @@ def crear_proyecto_del_caso(
 ) -> ProyectoDelCasoRespuesta:
     """Crea el proyecto en el caso de esta sesión; sin versión guardada todavía."""
     responsable = USUARIO_API if activa is None else activa.usuario
+    ficha = obras.FichaObra(peticion.cliente, peticion.ubicacion)
     try:
         proyecto = crear_proyecto_en_sesion(
             sesion,
@@ -104,6 +115,8 @@ def crear_proyecto_del_caso(
             peticion.dominio,
             peticion.descripcion,
             responsable,
+            # la función se busca al llamar: ficha y proyecto se confirman juntos o ninguno
+            lambda abierta, nuevo: obras.guardar_ficha(abierta, nuevo.id, ficha),
         )
     except ProyectoRepetido as error:
         raise HTTPException(409, str(error)) from None
@@ -115,4 +128,6 @@ def crear_proyecto_del_caso(
         version_vigente=None,
         version_codigo=None,
         actualizado=None,
+        cliente=peticion.cliente,
+        ubicacion=peticion.ubicacion,
     )

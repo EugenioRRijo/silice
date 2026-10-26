@@ -8,7 +8,8 @@ Contrato del plan (`docs/planes/PLAN_SESION_2B_MIGRACION.md` §4, ola 0a):
   404 si no está en la carpeta de casos; 422 si el nombre lleva rutas o `..`.
 - La elección vive en memoria del proceso por ficha; al salir o expirar se olvida; la clave de
   API sigue usando el caso del proceso.
-- `GET /v1/proyectos` → `[{codigo, nombre, version_vigente, version_codigo, actualizado}]`.
+- `GET /v1/proyectos` → `[{codigo, nombre, version_vigente, version_codigo, actualizado, cliente,
+  ubicacion}]`.
 
 Oráculos: las carpetas y archivos los arma la prueba (nombres, orden y rutas relativas escritos a
 mano); la versión vigente se lee con `sqlite3` directo del archivo, sin SQLAlchemy ni `core`.
@@ -101,7 +102,12 @@ def test_cualquier_rol_ve_la_lista_y_el_caso_por_defecto(login: str, _entorno: P
     navegador, _ = con_cuenta(app, login)
     respuesta = navegador.get("/v1/casos")
     assert respuesta.status_code == 200, respuesta.text
-    assert respuesta.json() == {"actual": _caso("silice.db"), "casos": TODOS}
+    assert respuesta.json() == {
+        "actual": _caso("silice.db"),
+        "casos": TODOS,
+        "empresa": _caso("silice.db"),  # MOD-3a: la carpeta del proceso
+        "es_demostracion": False,
+    }
     assert str(config.carpeta_datos()) not in respuesta.text  # sin rutas absolutas
     assert _entorno.as_posix() not in respuesta.text
 
@@ -131,7 +137,12 @@ def test_sin_carpeta_de_casos_la_lista_queda_vacia(_entorno: Path) -> None:
         archivo.unlink()
     _entorno.rmdir()
     navegador, _ = con_cuenta(app, "ana")
-    assert navegador.get("/v1/casos").json() == {"actual": _caso("silice.db"), "casos": []}
+    assert navegador.get("/v1/casos").json() == {
+        "actual": _caso("silice.db"),
+        "casos": [],
+        "empresa": _caso("silice.db"),
+        "es_demostracion": False,
+    }
 
 
 # --- POST /v1/casos/actual -------------------------------------------------------------------
@@ -334,6 +345,8 @@ def test_proyectos_con_y_sin_version_vigente(_entorno: Path) -> None:
             "version_vigente": None,
             "version_codigo": None,
             "actualizado": None,
+            "cliente": "",  # MOD-3a: sin fila de ficha
+            "ubicacion": "",
         },
         {
             "codigo": str(_id_por_sqlite(ruta, NOMBRE_PROYECTO)),
@@ -341,6 +354,8 @@ def test_proyectos_con_y_sin_version_vigente(_entorno: Path) -> None:
             "version_vigente": identificador,
             "version_codigo": codigo,
             "actualizado": fecha,
+            "cliente": "",
+            "ubicacion": "",
         },
     ]
     assert sorted(respuesta.json(), key=lambda p: p["nombre"].casefold()) == esperado
