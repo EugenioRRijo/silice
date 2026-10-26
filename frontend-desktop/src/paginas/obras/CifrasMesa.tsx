@@ -27,12 +27,13 @@ interface Props {
 // flecha, IBCS) de las obras en ejecucion y lo que espera dictamen, y debajo lo que hay que saber para leerlas: que obra
 // se convirtio y con que tasa, y cual no se sumo. Las cifras salen todas de la API. Un 403 o un fallo del resumen no
 // pintan el bloque: el aviso del fallo va una sola vez, en el bloque de las obras (las dos salen de la misma respuesta).
-// «Por aprobar» va aparte: un 403 o un fallo suyo la quitan de la franja sin tocar las demas (lo que espera dictamen
-// tambien se lee en el grupo «Aprobar» de los pendientes).
+// «Por aprobar» va aparte (otra lectura): un 403 o un fallo suyo la quitan de la franja sin tocar las demas, y un 403 o un
+// fallo del resumen de obras no la quitan a ella (la franja queda solo con ella; el fallo se dice en «Obras»).
 export function CifrasMesa({ carga, porAprobar }: Props): JSX.Element | null {
   const idTitulo = useId();
-  if (carga.estado !== "cargando" && carga.estado !== "listo") return null;
   const aprobar = porAprobar.estado === "listo" ? porAprobar.datos : null;
+  const sinResumen = carga.estado !== "cargando" && carga.estado !== "listo";
+  if (sinResumen && aprobar === null) return null;
   // Sin obras no hay nada que sumar (el bloque de las obras dice que hacer); lo que espera dictamen, que es de todas las
   // carpetas, si se dice.
   if (carga.estado === "listo" && carga.datos.obras.length === 0 && aprobar === null) return null;
@@ -44,8 +45,14 @@ export function CifrasMesa({ carga, porAprobar }: Props): JSX.Element | null {
       </h2>
       {carga.estado === "cargando" ? (
         <Esqueleto cuantas={porAprobar.estado === "sin_permiso" ? CIFRAS_DEL_RESUMEN : CIFRAS_CON_POR_APROBAR} />
-      ) : (
+      ) : carga.estado === "listo" ? (
         <Cifras resumen={carga.datos} aprobar={aprobar} />
+      ) : (
+        aprobar !== null && (
+          <div className="silice-mesa__franja">
+            <Cifra cifra={aprobar} />
+          </div>
+        )
       )}
     </section>
   );

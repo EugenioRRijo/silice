@@ -105,10 +105,13 @@ function Mesa({ recargadaPor, alObraNueva }: { recargadaPor: string | null; alOb
   const sinObras = resumen.estado === "listo" && resumen.datos.obras.length === 0;
   const pedidos = bloques.filter((b) => b !== "accesos");
   // Si todo lo pedido resulto prohibido, la pagina no queda en blanco: quedan los accesos del modulo.
-  const todoOculto = pedidos.every((b) => (b === "obras" || b === "cifras" ? resumen : columna.carga).estado === "sin_permiso");
+  const todoOculto =
+    porAprobar.estado !== "listo" &&
+    pedidos.every((b) => (b === "obras" || b === "cifras" ? resumen : columna.carga).estado === "sin_permiso");
   // Ninguna columna vacia: la de las obras solo existe si el resumen no se oculto, y las dos columnas solo con las dos.
   // La de pendientes junta los de las obras y los envios por aprobar (quien solo revisa ve solo estos).
-  const conPrincipal = bloques.includes("obras") && resumen.estado !== "sin_permiso";
+  // «Por aprobar» (otra lectura) sostiene la columna aunque el resumen de obras se haya ocultado.
+  const conPrincipal = (bloques.includes("obras") && resumen.estado !== "sin_permiso") || porAprobar.estado === "listo";
   const conPendientes = columna.carga.estado !== "sin_permiso";
 
   return (

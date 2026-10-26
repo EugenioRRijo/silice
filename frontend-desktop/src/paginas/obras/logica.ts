@@ -1,6 +1,7 @@
 // Mesa de control, inicio de «Presupuestos y obras» (plan de modulos, MOD-4b). Los tipos son los de `GET /v1/obras/resumen`
 // y `GET /v1/obras/pendientes` (`api/rutas/obras.py`): montos, indices y porcentajes llegan como texto con punto decimal y
 // aqui solo se formatean (es-VE), nunca se convierten en numero ni se recalculan.
+import { nombreDeResponsable } from "../../comun/responsable";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import type { IndicadorRespuesta } from "../../indicadores/tipos";
 import type { Carga } from "../inicio/useCarga";
@@ -124,13 +125,8 @@ export interface GrupoDeLaMesa {
 }
 
 const GRUPO_APROBAR = { clave: "aprobar", titulo: "Aprobar" };
-const ABRIR_ENVIO = { texto: "Abrir", pagina: "aprobar" };
-
-// «Ana Pérez» de «Ana Pérez <ana>» (el responsable que guarda la API, RF-82): en la interfaz se dice el nombre.
-export function nombreDeResponsable(responsable: string): string {
-  const corte = responsable.indexOf(" <");
-  return corte > 0 ? responsable.slice(0, corte) : responsable;
-}
+// El mismo verbo para toda fila del grupo «Aprobar», venga del indice o de la API («Ver el envío»).
+const ABRIR_ENVIO = { texto: "Abrir el envío", pagina: "aprobar" };
 
 // «4.876,56 Bs · enviada por Ana Pérez el 20/10/2026», con « · carpeta s2» si el envio es de otra carpeta.
 export function lineaDelEnvio(envio: EnvioPorAprobar, casoActual: string | null): string {
@@ -150,11 +146,17 @@ function pendienteDeEnvio(envio: EnvioPorAprobar, casoActual: string | null): Pe
   };
 }
 
-// Los grupos de la columna de pendientes (Tarea 19, con los cambios por el diseno de modulos):
+// Un pendiente de la API que lleva a la pantalla de aprobar dice el mismo verbo que los del indice.
+function conElVerbo(item: PendienteDeLaMesa): PendienteDeLaMesa {
+  return item.accion.pagina === ABRIR_ENVIO.pagina ? { ...item, accion: ABRIR_ENVIO } : item;
+}
+
+// Los grupos de la columna de pendientes (Tarea 19, con los cambios por el diseno de modulos y los menores de su arbitro):
 // - sin los pendientes de las obras (quien revisa: no tiene `editar_hoja`), un solo grupo «Aprobar» con todos los envios;
-// - con ellos, los de la API tal cual y, en su grupo «Aprobar» (primero si la API no lo trae), los envios de OTRAS
-//   carpetas: los de la abierta ya los dice la API («… espera dictamen»). Sin saber cual es la abierta no se suma ninguno
-//   (no se repite nada).
+// - con ellos, los de la API tal cual y, en su grupo «Aprobar» (primero si la API no lo trae), los envios del indice de
+//   todas las carpetas, con su total, quien y cuando. El «… espera dictamen» que la API dice de una obra de la carpeta
+//   abierta lo reemplaza su fila del indice (que trae el envio que abrir). Sin saber cual es la abierta no se suma ninguno
+//   (no se repite nada) y quedan los de la API.
 export function gruposDeLaMesa(
   pendientes: PendientesRespuesta | null,
   envios: readonly EnvioPorAprobar[] | null,
@@ -162,9 +164,15 @@ export function gruposDeLaMesa(
 ): GrupoDeLaMesa[] {
   const todos = envios ?? [];
   if (pendientes === null) return [{ ...GRUPO_APROBAR, items: todos.map((e) => pendienteDeEnvio(e, casoActual)) }];
-  const otras = casoActual === null ? [] : todos.filter((e) => e.caso !== casoActual).map((e) => pendienteDeEnvio(e, casoActual));
-  const grupos: GrupoDeLaMesa[] = pendientes.grupos.map((g) => (g.clave === GRUPO_APROBAR.clave ? { ...g, items: [...g.items, ...otras] } : g));
-  if (otras.length > 0 && !grupos.some((g) => g.clave === GRUPO_APROBAR.clave)) grupos.unshift({ ...GRUPO_APROBAR, items: otras });
+  const delIndice = casoActual === null ? [] : todos;
+  const obrasAqui = new Set(delIndice.filter((e) => e.caso === casoActual).map((e) => e.proyecto));
+  const filas = delIndice.map((e) => pendienteDeEnvio(e, casoActual));
+  const grupos: GrupoDeLaMesa[] = pendientes.grupos.map((g) => {
+    if (g.clave !== GRUPO_APROBAR.clave) return g;
+    const propios = g.items.filter((i) => !(i.accion.pagina === ABRIR_ENVIO.pagina && obrasAqui.has(i.obra))).map(conElVerbo);
+    return { ...g, items: [...propios, ...filas] };
+  });
+  if (filas.length > 0 && !grupos.some((g) => g.clave === GRUPO_APROBAR.clave)) grupos.unshift({ ...GRUPO_APROBAR, items: filas });
   return grupos;
 }
 
