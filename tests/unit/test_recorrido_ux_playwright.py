@@ -296,3 +296,146 @@ def test_el_recorrido_funcional_tiene_una_fila_por_pantalla_y_ninguna_de_mas() -
     assert len(rutas) == len(set(rutas))
     # Los tres inicios reemplazan la fila del Inicio de antes (plan de modulos, MOD-5 paso 3).
     assert {"auditoria", "obras", "produccion"} <= set(rutas)
+
+
+# --------------------------- ronda 2 del arbitro de MOD-5a ---------------------------------------
+
+
+class _Pagina:
+    """Pagina falsa: guarda los oyentes de `on` y deja dispararlos a mano."""
+
+    def __init__(self) -> None:
+        self.oyentes: dict[str, list] = {}
+
+    def on(self, evento: str, oyente) -> None:  # type: ignore[no-untyped-def]
+        self.oyentes.setdefault(evento, []).append(oyente)
+
+    def disparar(self, evento: str, dato: object) -> None:
+        for oyente in self.oyentes.get(evento, []):
+            oyente(dato)
+
+
+class _Peticion:
+    def __init__(self, metodo: str, url: str) -> None:
+        self.method = metodo
+        self.url = url
+        self.failure = "net::ERR_ABORTED"
+
+
+class _Respuesta:
+    def __init__(self, peticion: _Peticion, estado: int) -> None:
+        self.request = peticion
+        self.status = estado
+        self.url = peticion.url
+
+
+def test_un_aborto_despues_de_la_respuesta_no_es_fallo_de_red() -> None:
+    from scripts.recorrido_ux_playwright import _escuchar
+
+    pagina, consola, red = _Pagina(), [], []
+    _escuchar(pagina, consola, red)
+    respondida = _Peticion("PUT", "http://127.0.0.1:1/v1/sesion/preferencias")
+    pagina.disparar("response", _Respuesta(respondida, 204))
+    pagina.disparar("requestfailed", respondida)
+    assert red == []
+    # Otra peticion a la misma direccion, sin respuesta, si es un fallo.
+    sin_respuesta = _Peticion("PUT", "http://127.0.0.1:1/v1/sesion/preferencias")
+    pagina.disparar("requestfailed", sin_respuesta)
+    assert len(red) == 1 and red[0].startswith("FALLA PUT")
+    # Un 500 cuenta aunque llegue respuesta.
+    pagina.disparar("response", _Respuesta(_Peticion("GET", "http://127.0.0.1:1/v1/obras"), 500))
+    assert red[-1].startswith("500 GET")
+
+
+def test_umbral_de_la_fila_es_el_mayor_y_sin_una_medida_no_hay_umbral() -> None:
+    from scripts.recorrido_ux_playwright import umbral_de_la_fila
+
+    assert umbral_de_la_fila([1500.98, 1663.98, 1204.98]) == pytest.approx(1663.98)
+    assert umbral_de_la_fila([1500.98, None]) is None
+    assert umbral_de_la_fila([]) is None
+
+
+def test_umbrales_por_modulo_toman_el_mas_exigente_con_piso_y_marcan_lo_que_falta() -> None:
+    from scripts.recorrido_ux_playwright import umbrales_por_modulo
+
+    medidas = [
+        {"modulo": "obras", "letra": "normal", "rol": "ana", "carpeta": "a", "umbral": 1500.98},
+        {"modulo": "obras", "letra": "normal", "rol": "ana", "carpeta": "b", "umbral": 1663.98},
+        {"modulo": "obras", "letra": "normal", "rol": "rita", "carpeta": "a", "umbral": 999.98},
+        {"modulo": "auditoria", "letra": "normal", "rol": "ana", "carpeta": "a", "umbral": 999.98},
+        {"modulo": "auditoria", "letra": "grande", "rol": "ana", "carpeta": "a", "umbral": 1061.98},
+        {"modulo": "auditoria", "letra": "grande", "rol": "rita", "carpeta": "a", "umbral": None},
+        {"modulo": "produccion", "letra": "normal", "rol": "ana", "carpeta": "a", "error": "x"},
+        {
+            "modulo": "produccion",
+            "letra": "normal",
+            "rol": "admin",
+            "carpeta": "a",
+            "umbral": 1100.98,
+        },
+    ]
+    salida = umbrales_por_modulo(medidas)
+    assert salida["obras"]["normal"] == pytest.approx(1663.98)
+    # Piso: Carbon esconde la navegacion de la cabecera por debajo de 1056 px.
+    assert salida["auditoria"]["normal"] == pytest.approx(1055.98)
+    # Una medida sin umbral (no cabe ni en la ventana mas ancha) o con error no se descarta: deja
+    # la casilla sin umbral.
+    assert salida["auditoria"]["grande"] is None
+    assert salida["produccion"]["normal"] is None
+
+
+def test_umbrales_sin_medir_nombra_cada_casilla_y_su_causa() -> None:
+    from scripts.recorrido_ux_playwright import umbrales_sin_medir
+
+    medidas = [
+        {"modulo": "auditoria", "letra": "grande", "rol": "rita", "carpeta": "a", "umbral": None},
+        {"modulo": "produccion", "letra": "normal", "rol": "ana", "carpeta": "b", "error": "x"},
+        {"modulo": "obras", "letra": "normal", "rol": "ana", "carpeta": "a", "umbral": 1663.98},
+    ]
+    assert umbrales_sin_medir(medidas) == [
+        "auditoria grande (rita, a): no cabe ni en la ventana más ancha",
+        "produccion normal (ana, b): error x",
+    ]
+
+
+def test_la_peticion_respondida_se_recuerda_por_referencia_no_por_su_id() -> None:
+    # Con `id()` una peticion nueva puede heredar la direccion de una ya liberada y su fallo se
+    # perderia; con la referencia guardada eso no pasa.
+    import gc
+
+    from scripts.recorrido_ux_playwright import _escuchar
+
+    pagina, consola, red = _Pagina(), [], []
+    _escuchar(pagina, consola, red)
+    ids = set()
+    for _ in range(50):
+        vieja = _Peticion("GET", "http://127.0.0.1:1/a")
+        ids.add(id(vieja))
+        pagina.disparar("response", _Respuesta(vieja, 200))
+        del vieja
+        gc.collect()
+    nuevas = [_Peticion("GET", "http://127.0.0.1:1/b") for _ in range(50)]
+    for n in nuevas:
+        pagina.disparar("requestfailed", n)
+    assert len(red) == 50
+
+
+def test_barrido_baja_hasta_el_primer_ancho_que_no_cabe_y_afina_de_uno_en_uno() -> None:
+    from scripts.recorrido_ux_playwright import barrido, umbral_medido
+
+    medidos: list[int] = []
+
+    def cabe(ancho: int) -> bool:
+        medidos.append(ancho)
+        return ancho >= 1507
+
+    caben = barrido(cabe, desde=1000, hasta=2600, paso=8)
+    assert umbral_medido(caben) == pytest.approx(1506.98)
+    # No sigue bajando despues del corte: lo de debajo no cambia el umbral.
+    assert min(medidos) >= 1507 - 8
+    # Si cabe en todo el tramo, el umbral queda por debajo del menor ancho medido.
+    assert umbral_medido(barrido(lambda a: True, desde=1000, hasta=1100, paso=8)) < 1000
+    # Los bordes de las consultas de la interfaz (1366 y 1056 px) se miden siempre: un hueco que
+    # cae entre dos pasos no se pierde.
+    caben = barrido(lambda a: a != 1366, desde=1000, hasta=2600, paso=8)
+    assert umbral_medido(caben) == pytest.approx(1366.98)
