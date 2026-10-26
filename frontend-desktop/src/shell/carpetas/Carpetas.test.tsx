@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import { cancelarSalida } from "../salida";
 import { olvidarFormularios, useFormularioSucio } from "../sucio";
+import { useAplicacion } from "../contexto";
 import { botonDeObra, estadoInicial, json, ligeras, montarShell, servidorFalso, sesionDe } from "../obras/datosDePrueba";
 import PaginaAdministracion from "../../paginas/administracion/index";
 import { DialogoCarpetas } from "./DialogoCarpetas";
@@ -610,15 +611,27 @@ describe("menores de la ronda 3", () => {
       });
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
-    montarShell(sesionDe("ana"), "/hoja");
+    // La lista del diálogo no deja abrir otra mientras se declara: la otra carpeta se abre por la aplicación (como lo haría
+    // cualquier pantalla con `abrirCarpeta`).
+    function HojaQueAbre() {
+      const { abrirCarpeta } = useAplicacion();
+      return (
+        <>
+          <h1>Hoja del proyecto</h1>
+          <button type="button" onClick={() => void abrirCarpeta?.("s2.db")}>
+            Abrir s2 desde la página
+          </button>
+        </>
+      );
+    }
+    montarShell(sesionDe("ana"), "/hoja", ligeras({ hoja: HojaQueAbre }));
     await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
     await crearNueva(u);
     await u.click(within(dialogo()).getByRole("button", { name: "Declarar la moneda" }));
     await waitFor(() => expect(puts()).toHaveLength(2));
-    // Con el reintento en curso se cierra el diálogo y, desde uno nuevo, se abre otra carpeta.
+    // Con el reintento en curso se cierra el diálogo y se abre otra carpeta.
     await u.click(within(dialogo()).getByRole("button", { name: "Cerrar" }));
-    await abrirCarpetas(u);
-    await u.click(await within(dialogo()).findByRole("button", { name: "Abrir s2" }));
+    await u.click(await screen.findByRole("button", { name: "Abrir s2 desde la página" }));
     expect(await screen.findByText("Ahora trabaja con la carpeta de trabajo «s2».")).toBeInTheDocument();
     soltar();
     await new Promise((r) => setTimeout(r, 30));
