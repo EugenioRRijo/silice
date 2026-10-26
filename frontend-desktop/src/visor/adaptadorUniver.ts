@@ -129,6 +129,7 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   }
 
   function area(): RectanguloPx | null {
+    if (destruido) return null;
     const r = render();
     const sk = hojaActual().getSkeleton();
     const canvas = r?.engine.getCanvasElement();
@@ -185,6 +186,7 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   }
 
   function rectanguloDe(celda: CeldaRef): RectanguloPx | null {
+    if (destruido) return null;
     const c = contexto(celda);
     if (!c) return null;
     const hoja = c.sk.getCellWithCoordByIndex(celda.fila0, celda.columna0);
@@ -325,9 +327,10 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   }
 
   return {
-    hojaActiva: () => hojaActual().getSheetName(),
+    // Tras destruir, las lecturas dan un valor neutro sin preguntarle a Univer.
+    hojaActiva: () => (destruido ? "" : hojaActual().getSheetName()),
     fijarZoom,
-    zoomActual: () => hojaActual().getZoom(),
+    zoomActual: () => (destruido ? razonVigente : hojaActual().getZoom()),
     irAHoja,
     irA,
     rectanguloDe,
