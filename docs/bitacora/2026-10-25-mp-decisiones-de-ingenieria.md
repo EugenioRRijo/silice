@@ -27,6 +27,26 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - Aviso para el árbitro: los dos oráculos ajustados de `test_api_hoja_guardado.py` y el registro `TABLA_5_7` de
   `test_aplicacion_hoja_lectura.py` cambiaron en el commit de implementación (no hubo forma de verlos en rojo sin stash).
 
+### T9, ronda 2 (devuelta por dos MAYOR; corregida)
+
+- La primera versión toma los precios de sus APU de la lista que declara (la de `lista_para_el_proyecto` al guardar: tasa
+  del BCV y fecha del día de guardar), con `hoja.con_precios_de_la_lista`: si entre agregar y guardar llega una tasa más
+  nueva (u otra lista para armar), tasa declarada y precios coinciden. Se conservan el rendimiento y las cantidades de cada
+  línea del borrador (lo editable) y se cambia solo el precio; si las líneas del catálogo ya no son las mismas, el APU del
+  catálogo entero. **Por ratificar** (la otra salida era guardar con la tasa con que se valoró, o 409).
+- Agregar en una obra en la otra moneda ya no copia la lista entera para deshacerla: convierte en memoria solo los APU
+  nuevos con `core.catalog.moneda.convertir` (la misma cuenta que `copiar_precios`), sin escribir nada; la lista convertida
+  la escribe solo el guardado. Medido con 3.015 precios: de 1,5-1,9 s a 0,01-0,07 s por agregar.
+  `valoracion_de_la_obra` (`aplicacion/listas_para_armar.py`) da la lista base y la tasa sin escribir;
+  `lista_para_el_proyecto` la usa.
+- Sin lista vigente a la fecha del borrador, pero con listas posteriores, la Hoja dice «Esta carpeta de trabajo no tiene
+  lista de precios para armar vigente al dd/mm/aaaa: su primera lista rige desde el dd/mm/aaaa.». Solo en la Hoja
+  (`valoracion_de_la_obra`); Componer conserva su mensaje (cambiarlo tocaría cuatro oráculos de T3).
+- El código de la primera versión: `^[A-Za-z0-9._-]+$`, de 1 a 40; si no, 422 con el FORMA_GUARDAR de siempre, sin eco.
+- `pendientes_sin_calculo` reusa `_versiones_vigentes`, `_plural` y `_pendiente` de la mesa (import diferido).
+- La prueba de la fuente de calidad ya no la suma con monkeypatch: comprueba que está registrada una sola vez (la registró
+  el orquestador en ec1b23a3; esa doble suma fue un error de integración).
+
 ## T10, buscador de partidas (aprobada en ronda 1)
 
 - El oráculo del diseño §8.1 («`q=tub` devuelve solo LB-02-TUB») no se cumple con la línea base: LB-01-EXC dice «zanja de

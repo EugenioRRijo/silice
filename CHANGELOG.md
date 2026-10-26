@@ -114,6 +114,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - Para integradores (RM-3): todas las rutas antiguas aceptan ahora la clave de API **o** la sesión del navegador con el rol de su página (tabla en `api/acceso.py`). Con `X-Silice-Clave` responden igual que antes; sin ella ni cookie, 401 con el mensaje de sesión y sin evento de «fallo de clave», como ya hacían las de `/v1/libros`.
 
 ### Cambiado
+- Hoja: el código de la primera versión admite solo letras, dígitos, «.», «-» y «_» (hasta 40); la primera versión toma los precios de sus APU de la lista que declara (su tasa del BCV), y sin lista vigente a la fecha del borrador la Hoja dice esa fecha (Tarea 9, ronda 2).
 - Los rechazos de nombre al crear, subir o elegir una carpeta de trabajo hablan de «carpeta de trabajo» y «carpeta de datos» en vez de «caso» y «carpeta de casos» (la línea de órdenes conserva sus textos).
 - Los mensajes de la API que llegan a los diálogos (crear obra, elegir carpeta de trabajo) hablan de «obra» y «carpeta de trabajo» en vez de «proyecto» y «caso»; rutas y campos no cambian.
 - `POST /v1/aprobaciones` responde 409 «No se puede enviar {versión}: la cadena de versiones de esta obra está rota…» si la cadena de versiones de la obra no está íntegra, igual que el dictamen (MP-4, T18).
