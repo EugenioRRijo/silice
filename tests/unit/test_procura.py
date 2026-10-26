@@ -511,7 +511,7 @@ def test_sin_fechas_no_hay_alertas() -> None:
 # --- la fuente «compras» de la mesa ---------------------------------------------------------------
 
 
-def test_pendientes_de_compras_al_corte_del_02_11(sesion, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pendientes_de_compras_al_corte_del_02_11(sesion) -> None:
     obra, _ = _vivienda(sesion)
     _linea_base(sesion)
     _comprar(sesion, AGUA, "pedida", date(2026, 10, 28))
@@ -521,8 +521,7 @@ def test_pendientes_de_compras_al_corte_del_02_11(sesion, monkeypatch: pytest.Mo
     )
     assert pendientes_de_compras(sesion, LUNES) == [esperado]
 
-    # Con la fuente registrada (la línea de `FUENTES` la suma el orquestador), sale en «Compras».
-    monkeypatch.setitem(mesa.FUENTES, "compras", (pendientes_de_compras,))
+    # La fuente está registrada en `mesa.FUENTES`: sale en «Compras».
     grupos = {grupo.clave: grupo for grupo in mesa.pendientes(sesion, LUNES)}
     assert grupos["compras"] == GrupoPendientes("compras", "Compras", (esperado,))
 

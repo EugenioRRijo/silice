@@ -293,6 +293,20 @@ def test_pendientes_de_ana() -> None:
     }
 
 
+def test_pendientes_de_compras_al_02_11(monkeypatch: pytest.MonkeyPatch) -> None:
+    """La tubería (OB-B) se pide a más tardar el mié 04/11 y el aviso empieza el lun 02/11 (dos
+    días hábiles antes); el relleno (OB-C), el 11/11, todavía no avisa. «Tuberia» va sin tilde
+    porque así la escribe la fixture."""
+    monkeypatch.setattr(obras, "ahora", lambda: datetime(2026, 11, 2, 9, 0))
+    respuesta = _entrar("ana").get(PENDIENTES)
+    assert respuesta.status_code == 200, respuesta.text
+    (compras,) = [g for g in respuesta.json()["grupos"] if g["clave"] == "compras"]
+    assert [item["texto"] for item in compras["items"]] == [
+        "Pida Material de Tuberia de drenaje antes del 04/11/2026."
+    ]
+    assert compras["items"][0]["accion"] == {"texto": "Ver la procura", "pagina": "control"}
+
+
 def test_pendientes_de_rita_es_403() -> None:
     respuesta = _entrar("rita").get(PENDIENTES)
     assert respuesta.status_code == 403
