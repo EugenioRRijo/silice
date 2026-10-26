@@ -18,6 +18,7 @@ import {
   FRASES_DE_RECHAZO,
   cambiarCantidad,
   cuerpoDeCantidades,
+  resembrarCantidades,
   rutaDeCantidades,
   sembrarCantidades,
   ubicarErrorDeCantidad,
@@ -104,7 +105,7 @@ function EditorDePresupuesto({
     alAusente,
     alExpirar,
   });
-  const { error, esperarEnvios, accionarEnOrden } = edicion;
+  const { error, esperarEnvios, accionarEnOrden, resembrar } = edicion;
   const filaInvalida = error?.ubicacion ?? null;
   const mover = (desde: number, paso: 1 | -1) => document.getElementById(idDeCantidad(desde + paso))?.focus();
   // La fila que la persona pidió quitar: espera su confirmación.
@@ -114,6 +115,16 @@ function EditorDePresupuesto({
     registrarEspera(esperarEnvios);
     return () => registrarEspera(null);
   }, [registrarEspera, esperarEnvios]);
+
+  // Se agregó o se quitó un renglón: se vuelve a sembrar conservando lo escrito y no aceptado de las demás filas (y su
+  // aviso). Volver a montar el editor lo perdía.
+  const claves = vista.filas.map((f) => f.clave).join("\n");
+  const sembradas = useRef(claves);
+  useEffect(() => {
+    if (sembradas.current === claves) return;
+    sembradas.current = claves;
+    resembrar((estado, aceptado) => resembrarCantidades(vista.filas, estado, aceptado));
+  }, [claves, vista.filas, resembrar]);
 
   const quitar = async () => {
     if (porQuitar === null) return;
@@ -275,8 +286,7 @@ function EditorDePresupuesto({
   );
 }
 
-// La pestaña: su explicación, «Agregar partida» (también con el presupuesto vacío) y la tabla. El editor se vuelve a montar
-// cuando cambian los renglones (se agregó o se quitó uno): lo que edita se siembra de la vista nueva.
+// La pestaña: su explicación, «Agregar partida» (también con el presupuesto vacío) y la tabla.
 function ContenidoPresupuesto(props: PropsContenido) {
   const { id, rev, vista, alAceptar, alRelectura, alAusente, alRecargarBorrador } = props;
   const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
@@ -308,7 +318,11 @@ function ContenidoPresupuesto(props: PropsContenido) {
     },
     [enfocar],
   );
-  const renglones = vista.filas.map((f) => f.clave).join("\n");
+  // Tras un 409 por `rev` viejo: el borrador y la vista, para que la tabla no quede vieja si la persona cancela.
+  const releer = useCallback(async () => {
+    await alRecargarBorrador();
+    alRelectura();
+  }, [alRecargarBorrador, alRelectura]);
 
   return (
     <div className="silice-hoja__pestana">
@@ -341,7 +355,7 @@ function ContenidoPresupuesto(props: PropsContenido) {
       {vista.vacio_mensaje !== null ? (
         <p className="cds--type-body-compact-01">{vista.vacio_mensaje}</p>
       ) : (
-        <EditorDePresupuesto key={renglones} {...props} registrarEspera={registrarEspera} alQuitada={alQuitada} enfocar={enfocar} />
+        <EditorDePresupuesto {...props} registrarEspera={registrarEspera} alQuitada={alQuitada} enfocar={enfocar} />
       )}
       {abierto && anfitrion !== null && (
         <DialogoAgregarPartida
@@ -351,7 +365,7 @@ function ContenidoPresupuesto(props: PropsContenido) {
           alAgregada={alAgregada}
           alCancelar={() => cerrar(true)}
           alAusente={alAusente}
-          alRecargarBorrador={alRecargarBorrador}
+          alReleer={releer}
         />
       )}
     </div>

@@ -12,6 +12,7 @@ import type { PartidaHallada } from "../../comun/logicaBusqueda";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useNavegarSeguro } from "../../shell/EnlaceSeguro";
 import { useAplicacion } from "../../shell/contexto";
+import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
 import { ContextoDeDialogos } from "./ContextoDeDialogos";
 import { DialogoDeVersion } from "./DialogoDeVersion";
@@ -23,6 +24,7 @@ const ID_PARTIDA = "hoja-agregar-partida";
 const ID_CANTIDAD = "hoja-agregar-cantidad";
 const ID_CALCULO = "hoja-agregar-calculo";
 const ID_NOTA = "hoja-agregar-nota";
+const ID_DIALOGO = "hoja-agregar-dialogo";
 
 export const ELEGIR_DE_LA_LISTA = "Elija la partida de la lista de sugerencias.";
 const AYUDA_PARTIDA = "Busque por código o por una palabra de la descripción, por ejemplo «bloque».";
@@ -62,7 +64,8 @@ interface Props {
   alAgregada: (resumen: Resumen, codigo: string) => void;
   alCancelar: () => void;
   alAusente: () => void;
-  alRecargarBorrador: () => Promise<void>;
+  // Vuelve a leer el borrador (su `rev`) y la vista, tras un 409 por `rev` viejo.
+  alReleer: () => Promise<void>;
 }
 
 // «Agregar partida» (Tarea 11, diseño de montar un presupuesto §5.3 y §10): una partida del catálogo con su cantidad, el
@@ -71,7 +74,7 @@ interface Props {
 // interfaz no evalúa el cálculo: si la cantidad queda vacía, el servidor la toma del resultado. Diálogo propio (no el
 // Modal de Carbon, como los demás de la Hoja): foco atrapado, Esc cierra (primero la lista del buscador, que se queda la
 // tecla) y, mientras va la petición, no se cierra para no perder la respuesta.
-export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, alCancelar, alAusente, alRecargarBorrador }: Props) {
+export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, alCancelar, alAusente, alReleer }: Props) {
   const { alExpirar } = useAplicacion();
   const navegarSeguro = useNavegarSeguro();
   const caja = useRef<HTMLDivElement>(null);
@@ -86,10 +89,24 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
   const [errores, setErrores] = useState<Errores>(SIN_ERRORES);
   const [enviando, setEnviando] = useState(false);
   const [buscar] = useState(() => buscadorDePartidas());
+  // Adónde va el foco tras un error: el campo, o la caja del diálogo si no es de un campo. Mientras va la petición los
+  // campos y el botón están deshabilitados (no se pueden enfocar): se enfoca cuando vuelven.
+  const focoPendiente = useRef<string | null>(null);
+
+  // Lo escrito cuenta como trabajo sin guardar: «Componer una partida nueva» (la única salida con el diálogo abierto)
+  // pregunta antes de perderlo.
+  useFormularioSucio("hoja", cantidad.trim() !== "" || calculo.trim() !== "" || nota.trim() !== "");
 
   useEffect(() => {
     document.getElementById(ID_PARTIDA)?.focus();
   }, []);
+
+  useEffect(() => {
+    if (enviando || focoPendiente.current === null) return;
+    const destino = focoPendiente.current;
+    focoPendiente.current = null;
+    (destino === ID_DIALOGO ? caja.current : document.getElementById(destino))?.focus();
+  }, [enviando, errores]);
 
   const cancelar = useCallback(() => {
     if (!enviando) alCancelar();
@@ -104,8 +121,8 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
     atrapar(e);
   };
 
+  // Con algo escrito, `navegarSeguro` pregunta («Cambios sin guardar»); con «Quedarme» el diálogo sigue como estaba.
   const componerNueva = (codigo: string) => {
-    alCancelar();
     void navegarSeguro(`/componer?${new URLSearchParams({ codigo, volver: "hoja" }).toString()}`);
   };
 
@@ -114,7 +131,7 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
     if (enviando) return;
     if (elegida === null) {
       setErrores({ ...SIN_ERRORES, partida: ELEGIR_DE_LA_LISTA });
-      document.getElementById(ID_PARTIDA)?.focus();
+      focoPendiente.current = ID_PARTIDA;
       return;
     }
     setErrores(SIN_ERRORES);
@@ -136,16 +153,18 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
       } else if (e instanceof ErrorDeApi && e.estado === 422) {
         const campo = campoDelErrorDePartida(e.detalle, escrito);
         setErrores({ ...SIN_ERRORES, ...(campo === null ? { general: e.detalle } : { [campo]: e.detalle }) });
-        if (campo !== null) document.getElementById(campo === "calculo" ? ID_CALCULO : ID_CANTIDAD)?.focus();
+        focoPendiente.current = campo === null ? ID_DIALOGO : campo === "calculo" ? ID_CALCULO : ID_CANTIDAD;
       } else if (e instanceof ErrorDeApi && e.estado === 404) {
         // La partida ya no está en el catálogo (el texto de la API dice que se componga primero).
         setErrores({ ...SIN_ERRORES, partida: e.detalle });
-        document.getElementById(ID_PARTIDA)?.focus();
+        focoPendiente.current = ID_PARTIDA;
       } else if (e instanceof ErrorDeApi && e.estado === 409 && claseDeConflicto(e.detalle) === "rev") {
         setErrores({ ...SIN_ERRORES, general: `${e.detalle} ${RECARGADO}` });
-        await alRecargarBorrador();
+        focoPendiente.current = ID_DIALOGO;
+        await alReleer();
       } else {
         setErrores({ ...SIN_ERRORES, general: mensajeDeError(e) });
+        focoPendiente.current = ID_DIALOGO;
       }
     } finally {
       setEnviando(false);

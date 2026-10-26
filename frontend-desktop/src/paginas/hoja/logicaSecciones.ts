@@ -45,6 +45,27 @@ export function sembrarCantidades(filas: FilaPresupuesto[]): EdicionDeCantidades
   };
 }
 
+// Los renglones cambiaron (se agregó o se quitó uno): el orden y los textos salen de la vista nueva, salvo lo que la
+// persona tocó y el servidor todavía no aceptó (lo que espera la pausa o lo que rechazó), que se conserva tal cual. Las
+// filas que ya no están salen de lo tocado.
+export function resembrarCantidades(
+  filas: FilaPresupuesto[],
+  estado: EdicionDeCantidades,
+  aceptado: EdicionDeCantidades,
+): { estado: EdicionDeCantidades; aceptado: EdicionDeCantidades } {
+  const orden = filas.map((f) => f.clave);
+  const tocadas = estado.tocadas.filter((c) => orden.includes(c));
+  const deLaVista = Object.fromEntries(filas.map((f) => [f.clave, f.cantidad]));
+  const textos = Object.fromEntries(
+    filas.map((f) => {
+      const escrito = estado.textos[f.clave];
+      const pendiente = tocadas.includes(f.clave) && escrito !== undefined && escrito !== aceptado.textos[f.clave];
+      return [f.clave, pendiente ? escrito : f.cantidad];
+    }),
+  );
+  return { estado: { orden, textos, tocadas }, aceptado: { orden, textos: deLaVista, tocadas } };
+}
+
 export function cambiarCantidad(edicion: EdicionDeCantidades, clave: string, texto: string): EdicionDeCantidades {
   return {
     ...edicion,

@@ -71,6 +71,8 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     // Lo que se está mandando ahora (para esperarlo antes de una acción que no puede adelantarse).
     envioEnCurso: null as Promise<Resumen | null> | null,
   });
+  // `enviarEdicion`, para mandar lo escrito mientras iba una acción (se fija en un efecto).
+  const reenviar = useRef<(() => Promise<Resumen | null>) | null>(null);
   const actuales = useRef(opciones);
 
   useEffect(() => {
@@ -108,9 +110,10 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
           setError(null);
           actuales.current.alAceptar(respuesta.resumen);
           actuales.current.alRelectura();
-        } while (m.volver);
+          // Solo la edición se repite con lo último escrito; una acción (quitar, usar un insumo) no se repite.
+        } while (repetir && m.volver);
       } catch (e) {
-        m.volver = false;
+        if (repetir) m.volver = false;
         // Si una vuelta anterior ya se aceptó, `aceptado` es lo último que el servidor tiene; si no, sigue en null.
         if (e instanceof ErrorDeApi && e.estado === 401) {
           actuales.current.alExpirar();
@@ -137,7 +140,11 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
         }
       } finally {
         m.enVuelo = false;
+        // Lo escrito mientras iba una acción sale ahora, con el `rev` que ella dejó.
+        const pendiente = !repetir && m.volver;
+        if (pendiente) m.volver = false;
         setEnvio(m.temporizador !== null ? "pendiente" : "quieto");
+        if (pendiente) void reenviar.current?.();
       }
       return aceptado;
     })();
@@ -146,6 +153,9 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
   }, []);
 
   const enviarEdicion = useCallback(() => mandar((rev, e) => actuales.current.peticion(rev, e), true), [mandar]);
+  useEffect(() => {
+    reenviar.current = enviarEdicion;
+  }, [enviarEdicion]);
 
   // Cambia lo editable y programa el envío tras la pausa. `cambio` recibe lo último (no lo último pintado).
   const cambiar = useCallback(
@@ -234,8 +244,19 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     }
   }, []);
 
+  // La vista cambió de forma (se agregó o se quitó un renglón): se vuelve a sembrar sin mandar nada y sin borrar el error.
+  // `cambio` recibe lo escrito y lo aceptado y decide qué se conserva (lo tocado y no aceptado). Lo que espera la pausa
+  // sale igual, ya con la siembra nueva.
+  const resembrar = useCallback((cambio: (escrito: E, yaAceptado: E) => { estado: E; aceptado: E }) => {
+    const m = motor.current;
+    const nuevo = cambio(m.estado, m.aceptado);
+    m.estado = nuevo.estado;
+    m.aceptado = nuevo.aceptado;
+    setEstado(nuevo.estado);
+  }, []);
+
   // Lo último que aceptó el servidor (Esc devuelve un campo a eso).
   const aceptado = useCallback((): E => motor.current.aceptado, []);
 
-  return { estado, envio, error, cambiar, accionar, accionarEnOrden, esperarEnvios, recargar, aceptado };
+  return { estado, envio, error, cambiar, accionar, accionarEnOrden, esperarEnvios, resembrar, recargar, aceptado };
 }
