@@ -23,7 +23,7 @@ import {
   UniverSheetsCorePreset,
 } from "@univerjs/preset-sheets-core";
 import type { FWorkbook, FWorksheet } from "@univerjs/preset-sheets-core";
-import { createUniver, ICommandService, IConfigService, LocaleType, mergeLocales } from "@univerjs/presets";
+import { createUniver, ICommandService, IConfigService, LifecycleStages, LocaleType, mergeLocales } from "@univerjs/presets";
 import type { LibroVisualRespuesta } from "../api/tipos";
 import { aUniver } from "../replica/aUniver";
 import { columnaDeDescripcion } from "./celdas";
@@ -76,10 +76,14 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   const render = () => renderManager.getRenderUnitById(unitId);
   const viewportPrincipal = () => render()?.scene.getViewport(SHEET_VIEWPORT_KEY.VIEW_MAIN);
 
-  // El lienzo se arma de forma asincrona: se espera a tener escena y cuadricula antes de entregar el visor.
+  // El lienzo se arma de forma asincrona: se espera a tener escena y cuadricula antes de entregar el visor, y a que
+  // Univer llegue a la etapa Rendered. D-3 al abrir: escena y cuadricula existen desde Ready, pero los modulos de
+  // dibujo de la hoja (entre ellos su controlador de zoom, `u4` en el paquete construido) se registran en Rendered,
+  // unos 300 ms despues; un `FWorksheet.zoom` en ese hueco lanzaba `[redi]: Cannot find "u4"`.
   const inicio = Date.now();
   for (;;) {
-    const listo = viewportPrincipal() && fLibro.getActiveSheet().getSkeleton();
+    const listo =
+      univerAPI.getCurrentLifecycleStage() >= LifecycleStages.Rendered && viewportPrincipal() && fLibro.getActiveSheet().getSkeleton();
     if (listo) break;
     if (Date.now() - inicio > ESPERA_MAXIMA_MS) {
       univer.dispose();
