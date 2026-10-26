@@ -42,3 +42,9 @@ def test_el_caso_lleva_la_moneda_de_la_carpeta() -> None:
     from aplicacion.tablas_carpeta import METADATA_CARPETA
 
     assert METADATA_CARPETA in METADATAS_CASO
+
+
+def test_el_caso_lleva_el_estudio_de_mercado() -> None:
+    from aplicacion.tablas_mercado import METADATA_MERCADO
+
+    assert METADATA_MERCADO in METADATAS_CASO
