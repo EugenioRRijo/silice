@@ -17,8 +17,9 @@ function areasDe(entradas: ReturnType<typeof navegacion>): { area: string; titul
 }
 
 // Las pantallas que la cuenta puede usar en el modulo (sin su inicio), agrupadas por area con un rotulo de texto y cada
-// una con su linea de ayuda. Una lista sencilla con divisores, no mosaicos: es el mapa del modulo, no un tablero.
-export function AccesosDelModulo({ modulo }: { modulo: ModuloId }): JSX.Element {
+// una con su linea de ayuda. Una lista sencilla con divisores, no mosaicos: es el mapa del modulo, no un tablero. La mesa
+// de control lo titula «Lo que puede hacer aquí» (plan de modulos, MOD-4b).
+export function AccesosDelModulo({ modulo, titulo = "Pantallas del módulo" }: { modulo: ModuloId; titulo?: string }): JSX.Element {
   const { sesion } = useAplicacion();
   const base = useId();
   const areas = areasDe(navegacion(modulo, sesion.acciones, sesion.modo_entrega));
@@ -27,7 +28,7 @@ export function AccesosDelModulo({ modulo }: { modulo: ModuloId }): JSX.Element 
   return (
     <section className="silice-accesos" aria-labelledby={idTitulo}>
       <h2 id={idTitulo} className="cds--type-heading-compact-02">
-        Pantallas del módulo
+        {titulo}
       </h2>
       {areas.length === 0 ? (
         <p className="silice-accesos__nota cds--type-body-compact-01">
