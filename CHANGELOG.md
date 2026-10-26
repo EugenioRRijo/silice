@@ -118,6 +118,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - Para integradores (RM-3): todas las rutas antiguas aceptan ahora la clave de API **o** la sesión del navegador con el rol de su página (tabla en `api/acceso.py`). Con `X-Silice-Clave` responden igual que antes; sin ella ni cookie, 401 con el mensaje de sesión y sin evento de «fallo de clave», como ya hacían las de `/v1/libros`.
 
 ### Cambiado
+- `GET /v1/carpeta`: `lista` es ahora la lista vigente de hoy aunque esté en otra moneda que la carpeta (el `aviso` lo dice), no `null`, para poder ofrecer convertirla; el esquema no cambia.
 - Hoja: guardar la primera versión se niega (409, sin guardar nada) si una partida agregada salió del catálogo, le falta un precio en la lista o su APU cambió en el catálogo después de agregarla, y dice cuál (Tarea 9).
 - Hoja: el código de la primera versión admite solo letras, dígitos, «.», «-» y «_» (hasta 40); la primera versión toma los precios de sus APU de la lista que declara (su tasa del BCV), y sin lista vigente a la fecha del borrador la Hoja dice esa fecha (Tarea 9, ronda 2).
 - Los rechazos de nombre al crear, subir o elegir una carpeta de trabajo hablan de «carpeta de trabajo» y «carpeta de datos» en vez de «caso» y «carpeta de casos» (la línea de órdenes conserva sus textos).

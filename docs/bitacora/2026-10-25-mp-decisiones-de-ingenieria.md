@@ -180,6 +180,10 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   decidir** si se quita el «, al …»).
 - Deuda de T3 cerrada: `RutaSinEco` en todo el router de Componer (`docs/api.json` no cambia).
 - `?codigo=X&volver=hoja`: trae el código y, guardada la partida, ofrece el botón «Volver a la Hoja» (`useNavegarSeguro`).
+- Choque con T2 resuelto (97aabf0f, 2ed1d765): `GET /v1/carpeta` da en `lista` la vigente aunque esté en otra moneda que la
+  carpeta, con su propio `origen`, y el `aviso` sigue diciendo que hay que convertirla; así Componer ofrece «Convertir la
+  lista que tiene» con la API real. `describir_vigente` es nueva en `aplicacion/listas_para_armar.py` (`describir` no cambia
+  y la mesa la sigue usando); el oráculo de T2 cambió de nombre y de valor esperado. El esquema no cambia.
 
 ## T8, partidas a mano
 
@@ -243,6 +247,10 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - Límites que quedan: «Ver estos días» descarta sin preguntar un precio escrito sin usar (el estudio se recarga), y
   «Salir y descartar» olvida todos los formularios registrados de la pantalla, también los de la otra pestaña
   (`olvidarFormularios` de MOD-2).
+- D-4 (MOD-5): las rejillas del estudio de mercado usan `minmax(min(100%, …), 1fr)` y los campos de sus formularios se
+  encogen con su columna (`min-inline-size: 0`, `max-inline-size: 100%`); la Fecha de «Anotar una observación» ya no saca la
+  página de ancho a 1056 px con letra Grande y Muy grande; lo vigila `src/paginas/mercado/estilosMercado.test.ts` (falta
+  volver a medirlo en navegador).
 - Cierre: `tests/unit/test_front_razon_mercado.py` ata `RAZON_POR_DEBAJO` de `logica.ts` a la de `aplicacion/mercado.py`;
   `confirmarSalida` gana el motivo `"cambiar"` con consecuencia propia (aditivo en MOD-2), y el estudio de mercado lo usa al
   elegir otro insumo o partida («Si elige otro insumo o partida, se perderán.», «Cambiar y descartar»).
