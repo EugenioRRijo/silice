@@ -55,23 +55,31 @@ describe("tamaño de letra en el CSS propio", () => {
     expect(0.75 * base).toBeGreaterThanOrEqual(14);
   });
 
-  test("la barra pasa a capa antes con la letra grande (Grande bajo 1536 px, Muy grande bajo 1920 px) y cede el nombre", () => {
+  // Plan de modulos (MOD-2): el umbral en que la barra no cabe es por modulo y por letra, y por debajo sus areas pasan al
+  // sidebar de modulos (no a una capa aparte). Las cifras viven solo en _umbrales.scss.
+  test("la barra de cada módulo cede sus áreas al sidebar por debajo de su umbral, por letra, y la cuenta cede el nombre", () => {
     const shell = leer(`${raiz}/shell/shell.scss`);
     const umbrales = leer(`${raiz}/shell/_umbrales.scss`);
-    // Los umbrales viven solo en _umbrales.scss; shell.scss aplica el mixin por escala, sin cifras propias.
+    // Valores de partida del plan (los fija la medida del recorrido visual), escritos a mano.
+    const mapa = umbrales.slice(umbrales.indexOf("$umbrales-por-modulo"));
+    expect(mapa).toMatch(/"auditoria":\s*\(\s*"normal":\s*1055\.98px,\s*"grande":\s*1535\.98px,\s*"muy-grande":\s*1919\.98px/);
+    expect(mapa).toMatch(/"obras":\s*\(\s*"normal":\s*1279\.98px,\s*"grande":\s*1919\.98px,\s*"muy-grande":\s*2559\.98px/);
+    expect(mapa).toMatch(/"produccion":\s*\(\s*"normal":\s*1055\.98px,\s*"grande":\s*1279\.98px,\s*"muy-grande":\s*1535\.98px/);
+    // El fijado del sidebar: desde 1366 px con Normal y 1366 x 1,25 y x 1,5 con Grande y Muy grande.
+    expect(umbrales).toMatch(/\$fijado-desde:\s*\(\s*"normal":\s*1366px,\s*"grande":\s*1708px,\s*"muy-grande":\s*2049px/);
+    // La columna del recorrido sigue pasando a franja con los umbrales por letra de siempre.
     expect(umbrales).toMatch(/"normal":\s*1055\.98px/);
     expect(umbrales).toMatch(/"grande":\s*1535\.98px/);
     expect(umbrales).toMatch(/"muy-grande":\s*1919\.98px/);
-    for (const escala of ["normal", "grande", "muy-grande"]) {
-      expect(shell).toContain(`@include menu-en-capa("${escala}");`);
-    }
-    expect(shell).toMatch(/@include u\.por-debajo-del-umbral\(\$escala\)/);
-    // Ninguna consulta de medios en px (ni max- ni min-width): esas cifras son de _umbrales.scss.
+    // shell.scss aplica el mixin a cada modulo y cada letra, sin cifras propias.
+    expect(shell).toMatch(/@include u\.barra-no-cabe\(\$modulo, \$escala\)/);
+    expect(shell).toMatch(/@include u\.fijado-posible/);
     expect(shell).not.toMatch(/@media[^{]*\d+(\.\d+)?px/);
-    // Por debajo del umbral la capa es la unica navegacion: sus areas (HeaderSideNavItems, ul.cds--side-nav__header-navigation)
-    // deben verse aunque Carbon solo las muestre con su consulta en rem (<= 65.98rem), que no sigue la letra de Silice.
-    const mixin = shell.slice(shell.indexOf("@mixin menu-en-capa"), shell.indexOf('@include menu-en-capa("normal")'));
-    expect(mixin).toMatch(/\.cds--side-nav__header-navigation\s*\{[^}]*display:\s*block/);
+    expect(shell).not.toContain("menu-en-capa");
+    // Por debajo del umbral la barra esconde sus areas y el sidebar las muestra.
+    const regla = shell.slice(shell.indexOf("@include u.barra-no-cabe"));
+    expect(regla).toMatch(/\.silice-barra__nav\s*\{\s*display:\s*none/);
+    expect(regla).toMatch(/\.silice-sidebar__areas\s*\{\s*display:\s*block/);
     // La cuenta cede el nombre (queda en su nombre accesible) con letra Grande o Muy grande.
     const cuenta = leer(`${raiz}/shell/MenuCuenta.scss`);
     expect(cuenta).toMatch(/data-silice-letra="grande"\][^{]*data-silice-letra="muy-grande"\][^{]*\{\s*\.silice-cuenta__nombre\s*\{\s*display:\s*none/);

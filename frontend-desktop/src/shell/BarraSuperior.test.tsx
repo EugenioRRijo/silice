@@ -12,6 +12,7 @@ const TODAS = [...new Set(PAGINAS.flatMap((p) => (p.accion ? [p.accion] : [])))]
 const OBRAS = MODULOS.find((m) => m.id === "obras")!;
 const ENTRADAS = navegacion("obras", TODAS, false);
 const PANTALLAS_DE_OBRAS = ["Hoja del proyecto", "Elaborar un presupuesto", "Tablero del proyecto", "Entregar paquete"];
+const CERRADO = { abierto: false, visible: false, alternar: () => {} };
 
 // Atras/adelante del navegador sin tocar la pagina (un clic en un boton seria un «clic fuera»).
 const historial: { navegar: NavigateFunction | null } = { navegar: null };
@@ -31,7 +32,7 @@ function pintar(entradas: string[] = ["/obras"], indice = entradas.length - 1) {
         modulo={OBRAS}
         entradas={ENTRADAS}
         derecha={<button type="button">derecha</button>}
-        menu={{ abierto: false, alternar: () => {} }}
+        sidebar={CERRADO}
       />
       <main>contenido</main>
       <Ubicacion />
@@ -52,10 +53,42 @@ afterEach(() => {
 });
 
 describe("BarraSuperior", () => {
-  test("Sílice lleva al inicio (#/) y lo de la derecha va en la barra", () => {
+  // Plan de modulos, MOD-2: «Sílice» ya no es un enlace al inicio sino el boton que abre el sidebar de modulos.
+  test("«Sílice» es el botón que abre los módulos (no un enlace) y lo de la derecha va en la barra", () => {
     pintar();
-    expect(screen.getByRole("link", { name: "Sílice" })).toHaveAttribute("href", "#/");
+    const silice = screen.getByRole("button", { name: "Sílice, abrir los módulos" });
+    expect(silice).toHaveAttribute("aria-expanded", "false");
+    expect(silice).toHaveTextContent("Sílice");
+    expect(screen.queryByRole("link", { name: /Sílice/ })).not.toBeInTheDocument();
+    // Ya no esta el boton de menu de Carbon (la capa se retiro).
+    expect(screen.queryByRole("button", { name: "Abrir el menú" })).not.toBeInTheDocument();
     expect(screen.getByText("derecha")).toBeInTheDocument();
+  });
+
+  test("«Sílice» dice su estado: abrir (oculto), cerrar (en capa) o ir a los módulos (fijado); controla el sidebar visible", () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <BarraSuperior modulo={OBRAS} entradas={ENTRADAS} derecha={null} sidebar={CERRADO} />
+      </MemoryRouter>,
+    );
+    const boton = screen.getByRole("button", { name: "Sílice, abrir los módulos" });
+    expect(boton).not.toHaveAttribute("aria-controls");
+    rerender(
+      <MemoryRouter>
+        <BarraSuperior modulo={OBRAS} entradas={ENTRADAS} derecha={null} sidebar={{ abierto: true, visible: true, alternar: () => {} }} />
+      </MemoryRouter>,
+    );
+    expect(boton).toHaveAccessibleName("Sílice, cerrar los módulos");
+    expect(boton).toHaveAttribute("aria-expanded", "true");
+    expect(boton).toHaveAttribute("aria-controls", "silice-sidebar");
+    rerender(
+      <MemoryRouter>
+        <BarraSuperior modulo={OBRAS} entradas={ENTRADAS} derecha={null} sidebar={{ abierto: false, visible: true, alternar: () => {} }} />
+      </MemoryRouter>,
+    );
+    expect(boton).toHaveAccessibleName("Sílice, ir a los módulos");
+    expect(boton).toHaveAttribute("aria-expanded", "true");
+    expect(boton).toHaveAttribute("aria-controls", "silice-sidebar");
   });
 
   test("junto a «Sílice» se lee el nombre del módulo, como texto (no es enlace) y con el nombre completo en title", () => {
@@ -67,7 +100,7 @@ describe("BarraSuperior", () => {
     expect(nombre).toHaveAttribute("title", "Presupuestos y obras");
     expect(within(banner).queryByRole("link", { name: "Presupuestos y obras" })).not.toBeInTheDocument();
     // Va despues de «Sílice» y antes de las areas.
-    const silice = screen.getByRole("link", { name: "Sílice" });
+    const silice = screen.getByRole("button", { name: "Sílice, abrir los módulos" });
     expect(silice.compareDocumentPosition(nombre) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(nombre.compareDocumentPosition(nav()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -86,7 +119,7 @@ describe("BarraSuperior", () => {
           modulo={auditoria}
           entradas={navegacion("auditoria", ["leer_proyecto", "revisar_paquete"], false)}
           derecha={null}
-          menu={{ abierto: false, alternar: () => {} }}
+          sidebar={CERRADO}
         />
       </MemoryRouter>,
     );
@@ -101,7 +134,7 @@ describe("BarraSuperior", () => {
   test("sin módulo (ninguno visible) no hay nombre de módulo", () => {
     render(
       <MemoryRouter>
-        <BarraSuperior modulo={null} entradas={[]} derecha={null} menu={{ abierto: false, alternar: () => {} }} />
+        <BarraSuperior modulo={null} entradas={[]} derecha={null} sidebar={CERRADO} />
       </MemoryRouter>,
     );
     expect(document.querySelector(".silice-barra__modulo")).toBeNull();
@@ -366,24 +399,30 @@ describe("BarraSuperior", () => {
     expect(nav()).toContainElement(panel("Mercado"));
   });
 
-  test("el botón del menú en capa refleja su estado y llama a alternar", async () => {
+  test("clic en «Sílice» llama a alternar y cierra el panel de área abierto", async () => {
     const u = userEvent.setup();
     let veces = 0;
     render(
       <MemoryRouter>
-        <BarraSuperior modulo={OBRAS} entradas={ENTRADAS} derecha={null} menu={{ abierto: false, alternar: () => (veces += 1) }} />
+        <BarraSuperior
+          modulo={OBRAS}
+          entradas={ENTRADAS}
+          derecha={null}
+          sidebar={{ abierto: false, visible: false, alternar: () => (veces += 1) }}
+        />
       </MemoryRouter>,
     );
-    const boton = screen.getByRole("button", { name: "Abrir el menú" });
-    expect(boton).toHaveAttribute("aria-expanded", "false");
-    await u.click(boton);
+    await u.click(area("Obras"));
+    expect(panel("Obras")).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Sílice, abrir los módulos" }));
     expect(veces).toBe(1);
+    expect(panel("Obras")).toBeNull();
   });
 
   test("sin entradas la barra no pinta áreas ni falla", () => {
     render(
       <MemoryRouter>
-        <BarraSuperior modulo={OBRAS} entradas={[]} derecha={null} menu={{ abierto: false, alternar: () => {} }} />
+        <BarraSuperior modulo={OBRAS} entradas={[]} derecha={null} sidebar={CERRADO} />
       </MemoryRouter>,
     );
     const menu = screen.getByRole("navigation", { name: "Menú principal" });

@@ -32,6 +32,10 @@ const PROHIBIDO: [string, RegExp][] = [
   ["«interfaz clásica»", /interfaz cl[aá]sica/i],
   // El menu lateral se retiro (barra superior, 2026-10-25): ninguna clase suya queda en el codigo ni en los estilos.
   ["clases del menu lateral retirado", /silice-menu__/],
+  // El menu en capa (SideNav de Carbon) se retiro con el sidebar de modulos (plan de modulos, MOD-2): ni sus clases
+  // propias ni las del SideNav quedan en el codigo ni en los estilos.
+  ["clases del menu en capa retirado", /silice-capa/],
+  ["clases del SideNav de Carbon", /cds--side-nav/],
 ];
 
 describe("sin rastro de la interfaz clasica", () => {

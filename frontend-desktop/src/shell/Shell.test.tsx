@@ -10,6 +10,8 @@ import { useAplicacion } from "./contexto";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, recorridoEnCurso, terminarRecorrido } from "./recorrido";
 import { Shell } from "./Shell";
+import { cancelarSalida } from "./salida";
+import { formulariosSucios, olvidarFormularios, useFormularioSucio } from "./sucio";
 import { PAGINAS as REGISTRO } from "./rutas";
 import type { ModuloId, PaginaDef } from "./rutas";
 
@@ -149,13 +151,23 @@ describe("Shell", () => {
     );
   }
 
-  // La barra superior (ancho normal) y su capa (ancho estrecho o letra grande) son dos navegaciones con nombre propio.
+  // La barra superior y el sidebar de modulos (en capa: un dialogo; fijado: una navegacion) tienen nombre propio.
   function menu() {
     return screen.getByRole("navigation", { name: "Menú principal" });
   }
 
-  function capa() {
-    return screen.getByRole("navigation", { name: "Menú principal (capa)" });
+  function sidebar() {
+    return screen.getByRole("dialog", { name: "Módulos de Sílice" });
+  }
+
+  async function abrirModulos(usuario: ReturnType<typeof userEvent.setup>) {
+    await usuario.click(screen.getByRole("button", { name: "Sílice, abrir los módulos" }));
+    return sidebar();
+  }
+
+  // Las pantallas de la seccion «Areas de …» del sidebar (la que se ve cuando la barra no cabe).
+  function areasDelSidebar(): HTMLElement {
+    return sidebar().querySelector<HTMLElement>(".silice-sidebar__areas")!;
   }
 
   // Las areas de la barra, en su orden: enlaces (una sola pantalla) y botones (abren su panel).
@@ -163,11 +175,11 @@ describe("Shell", () => {
     return [...menu().querySelectorAll<HTMLElement>(".silice-barra__item > a, .silice-barra__item > button")];
   }
 
-  // Titulo de cada enlace de la capa (su nombre accesible lleva tambien la linea de ayuda).
-  function titulosDeLaCapa(): string[] {
-    return within(capa())
+  // Titulo de cada pantalla de las areas del sidebar (su descripcion accesible es la linea de ayuda).
+  function titulosDelSidebar(): string[] {
+    return within(areasDelSidebar())
       .getAllByRole("link")
-      .map((a) => a.querySelector(".silice-capa__nombre")?.textContent ?? "");
+      .map((a) => a.querySelector(".silice-sidebar__titulo")?.textContent ?? "");
   }
 
   // Los selectores viven en el panel «Carpeta y proyecto» de la barra: se abre antes de usarlos.
@@ -307,7 +319,7 @@ describe("Shell", () => {
       ["rita", ["/auditoria", "/libros", "/revisar", "/historial"]],
       ["admin", ["/obras", "/precios_empresa", "/indices"]],
     ] as const)(
-      "con %s cada pantalla de su módulo de entrada sale una sola vez en la barra y en la capa",
+      "con %s cada pantalla de su módulo de entrada sale una sola vez en la barra y en las áreas del sidebar",
       async (rol, esperadas) => {
         const usuario = userEvent.setup();
         montar(sesionCon({ login: rol, acciones: ACCIONES_POR_ROL[rol] }), "/", LIGERAS);
@@ -323,8 +335,8 @@ describe("Shell", () => {
           }
         }
         expect(vistas).toEqual(esperadas);
-        await usuario.click(screen.getByRole("button", { name: "Abrir el menú" }));
-        const enCapa = within(capa())
+        await abrirModulos(usuario);
+        const enCapa = within(areasDelSidebar())
           .getAllByRole("link")
           .map((a) => a.getAttribute("href")!);
         expect(new Set(enCapa).size).toBe(enCapa.length);
@@ -367,13 +379,15 @@ describe("Shell", () => {
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("en modo entrega no aparece ninguna pantalla de Investigación, ni en la barra ni en la capa", async () => {
+    test("en modo entrega no aparece ninguna pantalla de Investigación, ni en la barra ni en el sidebar", async () => {
+      const usuario = userEvent.setup();
       montar(sesionCon({ modo_entrega: true }));
       // Sin Escenarios, «Control» queda sin pantallas y no se pinta.
       expect(areasDeLaBarra().map((a) => a.textContent)).toEqual(["Inicio", "Obras", "Partidas"]);
       expect(within(menu()).queryByRole("link", { name: "Escenarios de sensibilidad" })).not.toBeInTheDocument();
-      expect(within(capa()).queryByText("Escenarios de sensibilidad")).not.toBeInTheDocument();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      await abrirModulos(usuario);
+      expect(within(sidebar()).queryByText("Escenarios de sensibilidad")).not.toBeInTheDocument();
     });
 
     test("en modo entrega, con todas las acciones de ana, ninguna pantalla de Investigación sale en la navegación", async () => {
@@ -386,7 +400,10 @@ describe("Shell", () => {
           expect(within(menu()).queryByRole("link", { name: p.titulo })).not.toBeInTheDocument();
         }
       }
-      for (const p of REGISTRO.filter((q) => q.seccion === "Investigación")) expect(titulosDeLaCapa()).not.toContain(p.titulo);
+      await usuario.click(document.body);
+      await abrirModulos(usuario);
+      expect(titulosDelSidebar().length).toBeGreaterThan(0);
+      for (const p of REGISTRO.filter((q) => q.seccion === "Investigación")) expect(titulosDelSidebar()).not.toContain(p.titulo);
     });
 
     test("la pagina actual es un enlace marcado en su panel y su área va marcada como actual", async () => {
@@ -405,7 +422,8 @@ describe("Shell", () => {
       const usuario = userEvent.setup();
       montar();
       await usuario.click(within(menu()).getByRole("button", { name: "Obras" }));
-      for (const nav of [menu(), capa()]) {
+      await abrirModulos(usuario);
+      for (const nav of [menu(), sidebar()]) {
         expect(nav).not.toHaveTextContent(/clásica/i);
         expect(nav.querySelector("[class*='silice-menu__']")).toBeNull();
         expect(nav.querySelector("a[target=_blank]")).toBeNull();
@@ -437,14 +455,15 @@ describe("Shell", () => {
       await waitFor(() => expect(titulo).toHaveFocus());
     });
 
-    test("los rótulos de área no son encabezados, ni en la barra ni en la capa (el h1 de la página es el primero que se lee)", async () => {
+    test("los rótulos de área no son encabezados, ni en la barra ni en el sidebar (el h1 de la página es el primero que se lee)", async () => {
       const usuario = userEvent.setup();
       montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
       await usuario.click(within(menu()).getByRole("button", { name: "Obras" }));
       expect(within(menu()).queryAllByRole("heading")).toHaveLength(0);
-      expect(within(capa()).queryAllByRole("heading")).toHaveLength(0);
-      expect(capa().querySelectorAll(".silice-capa__rotulo").length).toBeGreaterThan(0);
+      await abrirModulos(usuario);
+      expect(within(sidebar()).queryAllByRole("heading")).toHaveLength(0);
+      expect(sidebar().querySelectorAll(".silice-sidebar__rotulo-area").length).toBeGreaterThan(0);
     });
   });
 
@@ -898,40 +917,423 @@ describe("Shell", () => {
     });
   });
 
-  // VB-14 y VB-15 (auditoria visual del bloque B).
-  describe("menu en capa y titulo del documento", () => {
-    test("Esc cierra el menú abierto como capa y devuelve el foco al botón", async () => {
-      const usuario = userEvent.setup();
-      montar();
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      await usuario.click(screen.getByRole("button", { name: "Abrir el menú" }));
-      expect(screen.getByRole("button", { name: "Cerrar el menú" })).toHaveAttribute("aria-expanded", "true");
-      // El clic deja el foco en el propio boton: se lleva a un enlace de la capa para que el regreso se note.
-      within(capa()).getAllByRole("link")[0].focus();
-      expect(screen.getByRole("button", { name: "Cerrar el menú" })).not.toHaveFocus();
-      await usuario.keyboard("{Escape}");
-      const boton = screen.getByRole("button", { name: "Abrir el menú" });
+  // Plan de modulos, MOD-2: el sidebar de modulos (estado 3), el boton «Sílice», Esc, fijar/ocultar y la confirmacion al
+  // salir. Oraculos escritos a mano (titulos y rutas del registro, acciones por rol de seguridad/permisos.py).
+  describe("sidebar de módulos", () => {
+    const VARIABLE = "--silice-fijado-posible";
+    const PUT = "/v1/sesion/preferencias";
+    const historia: { ir: NavigateFunction | null } = { ir: null };
+    function Navegador() {
+      const ir = useNavigate();
+      useEffect(() => {
+        historia.ir = ir;
+      }, [ir]);
+      return null;
+    }
+
+    function cuerposPut(): string[] {
+      return fetchFalso.mock.calls.filter((c) => String(c[0]) === PUT && c[1]?.method === "PUT").map((c) => String(c[1]?.body));
+    }
+
+    function sesionDe(rol: "ana" | "rita" | "admin", modulo: ModuloId | null = null, sidebar_fijado = false) {
+      return sesionCon({ login: rol, acciones: ACCIONES_POR_ROL[rol], preferencias: { modulo, sidebar_fijado } });
+    }
+
+    function montarCon(sesion: SesionRespuesta, ruta: string, paginas: readonly PaginaDef[] = LIGERAS) {
+      return render(
+        <MemoryRouter initialEntries={[ruta]}>
+          <Shell sesion={sesion} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
+          <Navegador />
+        </MemoryRouter>,
+      );
+    }
+
+    // «Componer una partida» con un formulario a medio llenar (foco 3) y la Hoja con un campo de la pagina (foco 2).
+    function ComponerSucio() {
+      useFormularioSucio("componer", true);
+      return <h1>Componer una partida</h1>;
+    }
+    function HojaConCampo() {
+      return (
+        <>
+          <h1>Hoja del proyecto</h1>
+          <input aria-label="Cantidad" />
+        </>
+      );
+    }
+    const CON_PAGINAS_PROPIAS = LIGERAS.map((p) =>
+      p.id === "componer"
+        ? { ...p, cargar: async () => ({ default: ComponerSucio }) }
+        : p.id === "hoja"
+          ? { ...p, cargar: async () => ({ default: HojaConCampo }) }
+          : p,
+    );
+
+    const silice = () => screen.getByRole("button", { name: /^Sílice, / });
+    const fijado = () => screen.queryByRole("navigation", { name: "Módulos" });
+    const enCapa = () => screen.queryByRole("dialog", { name: "Módulos de Sílice" });
+
+    afterEach(() => {
+      document.documentElement.style.removeProperty(VARIABLE);
+      cancelarSalida();
+      olvidarFormularios();
+      historia.ir = null;
+    });
+
+    test("oculto al empezar; «Sílice» lo abre en capa con el foco en el módulo actual, y lo vuelve a cerrar", async () => {
+      const u = userEvent.setup();
+      montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      expect(enCapa()).toBeNull();
+      expect(fijado()).toBeNull();
+      const boton = screen.getByRole("button", { name: "Sílice, abrir los módulos" });
       expect(boton).toHaveAttribute("aria-expanded", "false");
-      await waitFor(() => expect(boton).toHaveFocus());
+      await u.click(boton);
+      expect(enCapa()).toBeInTheDocument();
+      expect(boton).toHaveAttribute("aria-expanded", "true");
+      expect(boton).toHaveAccessibleName("Sílice, cerrar los módulos");
+      expect(boton).toHaveAttribute("aria-controls", enCapa()!.id);
+      const actual = within(enCapa()!).getByRole("link", { name: "Presupuestos y obras" });
+      expect(actual).toHaveAttribute("aria-current", "page");
+      await waitFor(() => expect(actual).toHaveFocus());
+      await u.click(boton);
+      expect(enCapa()).toBeNull();
+      expect(boton).toHaveAttribute("aria-expanded", "false");
     });
 
-    test("Esc con todo cerrado no mueve el foco", async () => {
-      const usuario = userEvent.setup();
-      montar();
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+    test("foco 2: con el foco en <main> Esc lo abre; otro Esc lo cierra y el foco vuelve a «Sílice»", async () => {
+      const u = userEvent.setup();
+      montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      screen.getByRole("main").focus();
+      await u.keyboard("{Escape}");
+      expect(enCapa()).toBeInTheDocument();
+      await waitFor(() => expect(within(enCapa()!).getByRole("link", { name: "Presupuestos y obras" })).toHaveFocus());
+      await u.keyboard("{Escape}");
+      expect(enCapa()).toBeNull();
+      await waitFor(() => expect(silice()).toHaveFocus());
+      expect(silice()).toHaveAccessibleName("Sílice, abrir los módulos");
+    });
+
+    test("foco 2: con el foco en un campo de la página, Esc no lo abre y el campo conserva el foco", async () => {
+      const u = userEvent.setup();
+      montarCon(sesionDe("ana", "obras"), "/hoja", CON_PAGINAS_PROPIAS);
+      const campo = await screen.findByRole("textbox", { name: "Cantidad" });
+      await u.click(campo);
+      await u.keyboard("{Escape}");
+      expect(enCapa()).toBeNull();
+      expect(campo).toHaveFocus();
+    });
+
+    test("foco 2: con el panel de «Obras» abierto, el primer Esc cierra solo el panel; el segundo abre el sidebar", async () => {
+      const u = userEvent.setup();
+      montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
       const obras = within(menu()).getByRole("button", { name: "Obras" });
-      obras.focus();
-      await usuario.keyboard("{Escape}");
-      expect(obras).toHaveFocus();
+      await u.click(obras);
+      expect(obras).toHaveAttribute("aria-expanded", "true");
+      await u.keyboard("{Escape}");
       expect(obras).toHaveAttribute("aria-expanded", "false");
+      expect(obras).toHaveFocus();
+      expect(enCapa()).toBeNull();
+      await u.keyboard("{Escape}");
+      expect(enCapa()).toBeInTheDocument();
     });
 
-    test("la capa trae al pie quién tiene la sesión (la barra cede el nombre con la letra grande)", async () => {
-      montar();
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      expect(within(capa()).getByText("Sesión de Ana Pérez")).toBeInTheDocument();
+    test("foco 2: con el menú de la cuenta abierto, Esc lo cierra a él y no abre el sidebar", async () => {
+      const u = userEvent.setup();
+      montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      const cuenta = screen.getByRole("button", { name: "Cuenta de Ana Pérez" });
+      await u.click(cuenta);
+      expect(cuenta).toHaveAttribute("aria-expanded", "true");
+      await u.keyboard("{Escape}");
+      expect(cuenta).toHaveAttribute("aria-expanded", "false");
+      expect(enCapa()).toBeNull();
     });
 
+    test("foco 2: con un recorrido activo, abrir y cerrar el sidebar con Esc no termina el recorrido", async () => {
+      const u = userEvent.setup();
+      montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      screen.getByRole("main").focus();
+      await u.keyboard("{Escape}");
+      expect(enCapa()).toBeInTheDocument();
+      await u.keyboard("{Escape}");
+      expect(enCapa()).toBeNull();
+      expect(recorridoEnCurso()).not.toBeNull();
+      expect(screen.getByRole("complementary", { name: "Recorrido" })).toBeInTheDocument();
+    });
+
+    test("foco atrapado en la capa: Tab desde el último vuelve al primero y Mayús+Tab desde el primero va al último", async () => {
+      const u = userEvent.setup();
+      montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await u.click(silice());
+      // Sin ancho para fijarlo no hay «Fijar»: lo último es «Acerca de Sílice», al pie.
+      const primero = within(enCapa()!).getByRole("link", { name: "Auditoría" });
+      const ultimo = within(enCapa()!).getByRole("link", { name: "Acerca de Sílice" });
+      ultimo.focus();
+      await u.tab();
+      expect(primero).toHaveFocus();
+      await u.tab({ shift: true });
+      expect(ultimo).toHaveFocus();
+    });
+
+    test("clic en la capa lo cierra y devuelve el foco a «Sílice»", async () => {
+      const u = userEvent.setup();
+      const { container } = montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await u.click(silice());
+      await u.click(container.querySelector<HTMLElement>(".silice-sidebar__fondo")!);
+      expect(enCapa()).toBeNull();
+      await waitFor(() => expect(silice()).toHaveFocus());
+    });
+
+    test("elegir «Auditoría» navega a su inicio, cierra el sidebar, el foco va al h1 y se recuerda el módulo", async () => {
+      const u = userEvent.setup();
+      montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await u.click(silice());
+      await u.click(within(enCapa()!).getByRole("link", { name: "Auditoría" }));
+      const titulo = await screen.findByRole("heading", { level: 1, name: "Inicio de auditoría" });
+      expect(enCapa()).toBeNull();
+      await waitFor(() => expect(titulo).toHaveFocus());
+      expect(within(screen.getByRole("banner")).getByText("Auditoría")).toBeInTheDocument();
+      await waitFor(() => expect(cuerposPut()).toEqual(['{"modulo":"auditoria"}']));
+    });
+
+    test("«Fijar» lo deja como franja que empuja (navegación «Módulos») y lo recuerda; «Ocultar» lo devuelve oculto", async () => {
+      const u = userEvent.setup();
+      document.documentElement.style.setProperty(VARIABLE, "1");
+      const { container } = montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await u.click(silice());
+      await u.click(within(enCapa()!).getByRole("button", { name: "Fijar" }));
+      await waitFor(() => expect(cuerposPut()).toEqual(['{"sidebar_fijado":true}']));
+      expect(container.querySelector(".silice-marco")).toHaveClass("silice-marco--fijado");
+      expect(enCapa()).toBeNull();
+      expect(container.querySelector(".silice-sidebar__fondo")).toBeNull();
+      const nav = fijado()!;
+      expect(nav).toBeInTheDocument();
+      expect(silice()).toHaveAccessibleName("Sílice, ir a los módulos");
+      expect(silice()).toHaveAttribute("aria-expanded", "true");
+      const ocultar = within(nav).getByRole("button", { name: "Ocultar" });
+      await waitFor(() => expect(ocultar).toHaveFocus());
+      await u.click(ocultar);
+      await waitFor(() => expect(cuerposPut()).toEqual(['{"sidebar_fijado":true}', '{"sidebar_fijado":false}']));
+      expect(fijado()).toBeNull();
+      expect(container.querySelector(".silice-marco")).not.toHaveClass("silice-marco--fijado");
+      await waitFor(() => expect(silice()).toHaveFocus());
+    });
+
+    test("fijado en la cuenta pero sin ancho para fijarlo: no se pinta hasta pulsar «Sílice», y sale en capa sin «Fijar»", async () => {
+      const u = userEvent.setup();
+      document.documentElement.style.setProperty(VARIABLE, "0");
+      const { container } = montarCon(sesionDe("ana", "obras", true), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      expect(fijado()).toBeNull();
+      expect(enCapa()).toBeNull();
+      expect(container.querySelector(".silice-marco")).not.toHaveClass("silice-marco--fijado");
+      await u.click(screen.getByRole("button", { name: "Sílice, abrir los módulos" }));
+      expect(enCapa()).toBeInTheDocument();
+      expect(within(enCapa()!).queryByRole("button", { name: "Fijar" })).not.toBeInTheDocument();
+    });
+
+    test("fijado en la cuenta y con ancho: se pinta fijado al cargar; Esc no pinta capa y «Sílice» lleva el foco al módulo actual", async () => {
+      const u = userEvent.setup();
+      document.documentElement.style.setProperty(VARIABLE, "1");
+      const { container } = montarCon(sesionDe("ana", "obras", true), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      expect(fijado()).toBeInTheDocument();
+      expect(container.querySelector(".silice-marco")).toHaveClass("silice-marco--fijado");
+      screen.getByRole("main").focus();
+      await u.keyboard("{Escape}");
+      expect(enCapa()).toBeNull();
+      expect(fijado()).toBeInTheDocument();
+      await u.click(silice());
+      expect(fijado()).toBeInTheDocument();
+      expect(enCapa()).toBeNull();
+      expect(within(fijado()!).getByRole("link", { name: "Presupuestos y obras" })).toHaveFocus();
+      expect(cuerposPut()).toEqual([]);
+    });
+
+    test("las áreas del sidebar son las mismas pantallas que la barra, cada título una sola vez", async () => {
+      const u = userEvent.setup();
+      montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      const deLaBarra: string[] = [];
+      for (const area of areasDeLaBarra()) {
+        if (area.tagName === "BUTTON") {
+          await u.click(area);
+          deLaBarra.push(...within(document.getElementById(area.getAttribute("aria-controls")!)!).getAllByRole("link").map((a) => a.getAttribute("href")!));
+        } else deLaBarra.push(area.getAttribute("href")!);
+      }
+      await u.click(document.body);
+      await u.click(silice());
+      const areas = areasDelSidebar();
+      expect(within(areas).getByText("Áreas de Presupuestos y obras")).toBeInTheDocument();
+      expect(within(areas).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(deLaBarra);
+      for (const titulo of titulosDelSidebar()) expect(within(enCapa()!).getAllByText(titulo)).toHaveLength(1);
+    });
+
+    test("el pie trae «Acerca de Sílice» y no «Administración» con ana; con el administrador las dos", async () => {
+      const u = userEvent.setup();
+      const { unmount } = montarCon(sesionDe("ana", "obras"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await u.click(silice());
+      expect(within(enCapa()!).getByRole("link", { name: "Acerca de Sílice" })).toBeInTheDocument();
+      expect(within(enCapa()!).queryByRole("link", { name: "Administración" })).not.toBeInTheDocument();
+      expect(within(enCapa()!).getByText("Sesión de Ana Pérez")).toBeInTheDocument();
+      unmount();
+      montarCon(sesionDe("admin", "obras"), "/obras");
+      await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
+      await u.click(silice());
+      await u.click(within(enCapa()!).getByRole("link", { name: "Administración" }));
+      expect(await screen.findByRole("heading", { level: 1, name: "Administración" })).toBeInTheDocument();
+      expect(enCapa()).toBeNull();
+      await u.click(silice());
+      await u.click(within(enCapa()!).getByRole("link", { name: "Acerca de Sílice" }));
+      expect(await screen.findByRole("heading", { level: 1, name: "Acerca de Sílice" })).toBeInTheDocument();
+    });
+
+    // Foco 4 y condicion del arbitro de MOD-1: sin escribir direcciones, solo con clics en el sidebar (modulos y pie) y
+    // en la barra de cada modulo, cada cuenta llega a TODAS sus pantallas y a ninguna otra. Oraculo escrito a mano.
+    test.each([
+      [
+        "ana",
+        [
+          "/auditoria",
+          "/libros",
+          "/historial",
+          "/obras",
+          "/hoja",
+          "/elaborar",
+          "/tablero",
+          "/entregar",
+          "/componer",
+          "/catalogo",
+          "/similares",
+          "/actualizacion",
+          "/historico",
+          "/simulador",
+          "/control",
+          "/reajuste",
+          "/escenarios",
+          "/produccion",
+          "/existencias",
+          "/acerca",
+        ],
+      ],
+      ["rita", ["/auditoria", "/libros", "/revisar", "/historial", "/obras", "/tablero", "/catalogo", "/historico", "/acerca"]],
+      ["admin", ["/obras", "/precios_empresa", "/indices", "/produccion", "/existencias", "/administracion", "/acerca"]],
+    ] as const)("foco 4: %s alcanza toda pantalla suya con clics en el sidebar y la barra", async (rol, esperadas) => {
+      const u = userEvent.setup();
+      montarCon(sesionDe(rol), "/");
+      await screen.findByRole("heading", { level: 1 });
+      const alcanzadas: string[] = [];
+      await u.click(silice());
+      const modulos = [...enCapa()!.querySelectorAll<HTMLAnchorElement>(".silice-sidebar__modulos a")].map((a) => a.getAttribute("href")!);
+      const pie = [...enCapa()!.querySelectorAll<HTMLAnchorElement>(".silice-sidebar__pie a")].map((a) => a.getAttribute("href")!);
+      await u.click(silice());
+      for (const ruta of modulos) {
+        await u.click(silice());
+        await u.click(enCapa()!.querySelector<HTMLElement>(`.silice-sidebar__modulos a[href="${ruta}"]`)!);
+        const titulo = REGISTRO.find((p) => `/${p.id}` === ruta)!.titulo;
+        await screen.findByRole("heading", { level: 1, name: titulo });
+        alcanzadas.push(ruta);
+        for (const area of areasDeLaBarra()) {
+          if (area.tagName === "BUTTON") {
+            await u.click(area);
+            alcanzadas.push(
+              ...within(document.getElementById(area.getAttribute("aria-controls")!)!)
+                .getAllByRole("link")
+                .map((a) => a.getAttribute("href")!),
+            );
+            await u.click(area);
+          } else alcanzadas.push(area.getAttribute("href")!);
+        }
+      }
+      alcanzadas.push(...pie);
+      // Cada pantalla una vez por camino propio: el inicio de cada modulo sale en el sidebar y en «Inicio» de su barra.
+      const sinInicios = alcanzadas.filter((r, i) => !(modulos.includes(r) && alcanzadas.indexOf(r) !== i));
+      expect(new Set(sinInicios).size).toBe(sinInicios.length);
+      expect([...new Set(alcanzadas)].sort()).toEqual([...esperadas].sort());
+    });
+
+    describe("foco 3: confirmación al salir con trabajo sin guardar", () => {
+      test("elegir «Auditoría» en el sidebar pregunta; «Quedarme» no navega ni guarda; «Salir y descartar» navega", async () => {
+        const u = userEvent.setup();
+        montarCon(sesionDe("ana", "obras"), "/componer", CON_PAGINAS_PROPIAS);
+        await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
+        await u.click(silice());
+        const auditoria = within(enCapa()!).getByRole("link", { name: "Auditoría" });
+        await u.click(auditoria);
+        const dialogo = screen.getByRole("dialog", { name: "Cambios sin guardar" });
+        expect(dialogo).toHaveAccessibleDescription(
+          "Tiene cambios sin guardar en Componer una partida. Si sale de esta pantalla, se perderán.",
+        );
+        await u.click(within(dialogo).getByRole("button", { name: "Quedarme" }));
+        expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 1, name: "Componer una partida" })).toBeInTheDocument();
+        expect(auditoria).toHaveFocus();
+        await new Promise((r) => setTimeout(r, 30));
+        expect(cuerposPut()).toEqual([]);
+        await u.click(auditoria);
+        await u.click(screen.getByRole("button", { name: "Salir y descartar" }));
+        expect(await screen.findByRole("heading", { level: 1, name: "Inicio de auditoría" })).toBeInTheDocument();
+        expect(enCapa()).toBeNull();
+        expect(formulariosSucios()).toEqual([]);
+        await waitFor(() => expect(cuerposPut()).toEqual(['{"modulo":"auditoria"}']));
+      });
+
+      test("lo mismo con el enlace «Inicio» de la barra y con un enlace del panel «Mercado»", async () => {
+        const u = userEvent.setup();
+        montarCon(sesionDe("ana", "obras"), "/componer", CON_PAGINAS_PROPIAS);
+        await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
+        await u.click(within(menu()).getByRole("link", { name: "Inicio" }));
+        expect(screen.getByRole("dialog", { name: "Cambios sin guardar" })).toBeInTheDocument();
+        await u.click(screen.getByRole("button", { name: "Quedarme" }));
+        expect(screen.getByRole("heading", { level: 1, name: "Componer una partida" })).toBeInTheDocument();
+        await u.click(within(menu()).getByRole("button", { name: "Mercado" }));
+        await u.click(within(menu()).getByRole("link", { name: "Actualizar precios" }));
+        expect(screen.getByRole("dialog", { name: "Cambios sin guardar" })).toBeInTheDocument();
+        await u.click(screen.getByRole("button", { name: "Quedarme" }));
+        expect(screen.getByRole("heading", { level: 1, name: "Componer una partida" })).toBeInTheDocument();
+        await u.click(within(menu()).getByRole("button", { name: "Mercado" }));
+        await u.click(within(menu()).getByRole("link", { name: "Actualizar precios" }));
+        await u.click(screen.getByRole("button", { name: "Salir y descartar" }));
+        expect(await screen.findByRole("heading", { level: 1, name: "Actualizar precios" })).toBeInTheDocument();
+        expect(formulariosSucios()).toEqual([]);
+      });
+
+      test("volver a /componer estando en /componer no pregunta", async () => {
+        const u = userEvent.setup();
+        montarCon(sesionDe("ana", "obras"), "/componer", CON_PAGINAS_PROPIAS);
+        await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
+        await u.click(within(menu()).getByRole("button", { name: "Partidas" }));
+        await u.click(within(menu()).getByRole("link", { name: "Componer una partida" }));
+        expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 1, name: "Componer una partida" })).toBeInTheDocument();
+        expect(formulariosSucios()).toEqual(["componer"]);
+      });
+
+      test("atrás/adelante del navegador no se intercepta (declarado en el diseño, §12.5)", async () => {
+        montarCon(sesionDe("ana", "obras"), "/obras", CON_PAGINAS_PROPIAS);
+        await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
+        act(() => void historia.ir!("/componer"));
+        await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
+        act(() => void historia.ir!(-1));
+        expect(await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" })).toBeInTheDocument();
+        expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  // VB-15 (auditoria visual del bloque B). La capa de VB-14 la reemplaza el sidebar de modulos (MOD-2, mas abajo).
+  describe("titulo del documento", () => {
     test("document.title es «Página · Sílice» con la página actual y cambia al navegar", async () => {
       const usuario = userEvent.setup();
       montar(sesionCon(), "/tablero");
