@@ -68,6 +68,34 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   confundía la lista de hoy con su «(2)». Lo usan el reuso de `lista_para_el_proyecto` y `_usada`; `core/` no cambia; las
   conversiones anteriores, sin marca, se rehacen una vez.
 
+## T8, partidas a mano
+
+- **Tolerancia doble.** El plan pedía «|v − c| > 0,001, la tolerancia de R1», pero R1 (`core/verification/reglas.py:119-122,161`)
+  compara en forma **relativa** (0,001 × el resultado; con resultado cero exige igualdad). La cantidad escrita coincide con el
+  cálculo solo si cumple las dos: diferencia ≤ 0,001 **y** ≤ la tolerancia relativa de R1 (tomada de la instancia de
+  `TrazabilidadGeometrica` en `REGLAS`). Con la absoluta sola, 0,5008 frente a «1/2» se aceptaba y R1 la marcaba luego como
+  error. **Por ratificar.**
+- **PRECISION_PERDIDA.** Sin cantidad, el resultado se guarda con cuatro decimales (la mitad hacia arriba, sin ceros a la
+  derecha ni exponente); si ese redondeo deja de coincidir según la regla anterior («0,00005*1» → 0,0001), no se guarda y se
+  pide escribir también la cantidad. **Por ratificar.**
+- **El resultado en los mensajes** se dice con cuatro decimales, salvo que así se vea igual a la cantidad escrita (o a cero):
+  entonces con todas sus cifras («El cálculo da 0,00005 y la cantidad es 0,0001…»).
+- **Mensajes que el plan no fija:** «El cálculo no se puede hacer: revise los signos y los paréntesis.»; «El cálculo divide
+  entre cero.» (también 0/0, que el `decimal` en C da como `InvalidOperation([DivisionUndefined])`); «El cálculo da X: una
+  cantidad no puede ser negativa.»; «La cantidad no puede ser negativa.»; «El cálculo da una cifra demasiado grande para una
+  cantidad.»; «El cálculo es demasiado largo: use a lo sumo 300 caracteres.»; «Escriba el cálculo, por ejemplo 6*3-2.»;
+  «Esa fila ya no está en el presupuesto.». Se aceptan el «−» tipográfico y «x»/«×»; «**» y «//» se rechazan. El cálculo
+  nunca se ejecuta: lo evalúa `core.verification.evaluar` (solo aritmética sobre el árbol sintáctico).
+- **Negativos:** una cantidad negativa y un cálculo que da negativo se rechazan; «0*-1» se lee como 0.
+- **Cambio de conducta del Asistente:** las partidas que propone entran en `items_base` y desde T8 cuentan como **altas**
+  (antes guardar solo propuestas no guardaba nada; lo pide el diseño §5.3).
+- **Altas, bajas y repetidos:** un renglón que entra es un alta y uno que sale una baja, nunca a la vez con un cambio de
+  cantidad; si quitar el primero de dos repetidos renombra el segundo («X|o#2» → «X|o»), se registra el cambio de cantidad de
+  «X|o» y la baja de «X|o#2».
+- **Notas solo no cuentan como cambio** (no habilitan guardar); guardarlas es de T9. **Por ratificar.**
+- **Texto llano:** «La cantidad de X (Q U) se escribió a mano sin cálculo: escriba cómo se obtuvo si quiere que Sílice la
+  pueda verificar.», con Q en es-VE.
+
 ## T17, eventos de aprobación (aprobada en ronda 1)
 
 - «Aprobada con observaciones» cuenta como aprobada: no se reenvía y vale para `ultima_aprobada` (Entregar y Control).
