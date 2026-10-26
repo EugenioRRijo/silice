@@ -33,6 +33,7 @@ from pathlib import Path
 import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
@@ -40,7 +41,8 @@ from api.main import manejar_http_exception
 from api.proteccion import proteger
 from api.rutas import aprobaciones as rutas
 from api.rutas import casos, sesion
-from aplicacion import aprobaciones
+from aplicacion import aprobaciones, indice_aprobaciones
+from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config, instalacion
 from operacion.base_datos import preparar_base
@@ -590,3 +592,106 @@ def test_un_fallo_de_la_base_es_503_sin_sql(ana, monkeypatch: pytest.MonkeyPatch
     assert respuesta.json() == {"detalle": MENSAJE_BASE}
     assert "SELECT" not in respuesta.text and "vivienda.db" not in respuesta.text
     _sin_cache(respuesta)
+
+
+# --- menores del árbitro de T18 -------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        OperationalError("INSERT INTO mp_indice_aprobacion ...", {}, Exception("disco lleno")),
+        ValueError("un fallo que no es de la base"),
+        KeyError("otro fallo"),
+    ],
+)
+def test_el_envio_vale_aunque_el_reflejo_falle_y_mias_lo_repone(
+    ana, monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    """La carpeta ya confirmó el envío: un fallo al reflejar el índice no lo convierte en error;
+    queda en el registro y la próxima lectura lo repone."""
+    real = indice_aprobaciones.reflejar
+    llamadas: list[int] = []
+
+    def falla_la_primera_vez(*args, **kwargs):
+        llamadas.append(1)
+        if len(llamadas) == 1:
+            raise error
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(indice_aprobaciones, "reflejar", falla_la_primera_vez)
+    enviado = _enviar(ana)
+    assert enviado.status_code == 201, enviado.text
+    with closing(sqlite3.connect(config.ruta_instalacion())) as conexion:
+        assert conexion.execute("SELECT count(*) FROM mp_indice_aprobacion").fetchone() == (0,)
+    assert ana[0].get(f"{RAIZ}/mias").json() == [_fila(1)]
+
+
+def _alterar_un_renglon(version: str) -> None:
+    with closing(sqlite3.connect(_vivienda())) as conexion:
+        conexion.execute(
+            "UPDATE partida_presupuestada SET cantidad = '81' WHERE presupuesto_id = "
+            "(SELECT id FROM presupuesto WHERE codigo = ?) AND orden = "
+            "(SELECT MIN(orden) FROM partida_presupuestada WHERE presupuesto_id = "
+            "(SELECT id FROM presupuesto WHERE codigo = ?))",
+            (version, version),
+        )
+        conexion.commit()
+
+
+def test_el_detalle_dice_si_la_cadena_de_versiones_esta_integra(ana) -> None:
+    _enviar(ana)
+    assert ana[0].get(f"{RAIZ}/1").json()["cadena"] == {
+        "integra": True,
+        "mensaje": "Cadena íntegra: 2 versiones",
+    }
+
+
+def test_una_version_alterada_lo_dice_y_no_se_dictamina(ana) -> None:
+    _enviar(ana)
+    _alterar_un_renglon("VIV-001")
+
+    assert ana[0].get(f"{RAIZ}/1").json()["cadena"] == {
+        "integra": False,
+        "mensaje": "Cadena rota en la versión VIV-001: su contenido no coincide con su huella; "
+        "alguien cambió la base fuera del sistema. Revíselo con el administrador antes de "
+        "entregar un paquete.",
+    }
+    dictamen = _dictaminar(ana, 1, "aprobada")
+    assert dictamen.status_code == 409
+    assert dictamen.json() == {
+        "detalle": "No se puede dictaminar VIV-001: la cadena de versiones de esta obra está rota "
+        "en la versión VIV-001 (su contenido no coincide con su huella). Revíselo con el "
+        "administrador."
+    }
+    eventos = ana[0].get(RAIZ, params={"proyecto": OBRA}).json()["eventos"]
+    assert [e["tipo"] for e in eventos] == ["envio"]
+
+
+def test_el_detalle_muestra_los_items_pendientes_sin_precio(ana) -> None:
+    motor = crear_motor(f"sqlite:///{_vivienda().as_posix()}")
+    try:
+        with abrir_sesion(motor) as s:
+            guardar_version(
+                s,
+                s.scalars(select(models.Proyecto).where(models.Proyecto.nombre == OBRA)).one(),
+                "VIV-003",
+                extra=(("OBRA-99", "Partida sin APU de prueba", "m2", "10"),),
+            )
+    finally:
+        motor.dispose()
+    enviado = _enviar(ana, "VIV-003")
+    assert enviado.status_code == 201, enviado.text
+
+    cuerpo = ana[0].get(f"{RAIZ}/1").json()
+    assert [p["pendiente"] for p in cuerpo["partidas"]] == [False] * 6 + [True]
+    assert cuerpo["partidas"][-1] == {
+        "codigo": "OBRA-99",
+        "descripcion": "Partida sin APU de prueba",
+        "unidad": "m2",
+        "cantidad": "10",
+        "precio_unitario": None,
+        "total": None,
+        "pendiente": True,
+    }
+    assert cuerpo["total"] == _total("VIV-003")

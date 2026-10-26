@@ -84,14 +84,28 @@ def guardar_version(
     usuario: str = ANA,
     cantidades: dict[str, str] | None = None,
     version_origen: models.Presupuesto | None = None,
+    extra: tuple[tuple[str, str, str, str], ...] = (),
 ) -> models.Presupuesto:
     """Guarda otra versión de la vivienda (las seis partidas; `cantidades` cambia alguna) y
-    confirma."""
+    confirma. `extra` agrega ítems (código, descripción, unidad, cantidad) sin partida en el
+    catálogo: quedan pendientes, sin renglón con precio."""
     lista = sesion.scalars(
         select(models.ListaPrecios).where(models.ListaPrecios.nombre == "Lista Bs de prueba")
     ).one()
     resultado = elaborar(
-        _items(cantidades or {}),
+        _items(cantidades or {})
+        + [
+            ItemComputo(
+                codigo_partida=c,
+                descripcion=d,
+                unidad=u,
+                cantidad=Decimal(q),
+                origen_id=f"EXTRA-{c}",
+                origen_tipo=OrigenTipo.TABULAR,
+                dominio=Dominio.CIVIL,
+            )
+            for c, d, u, q in extra
+        ],
         COMPOSICIONES,
         PARAMETROS,
         codigo=codigo,

@@ -17,6 +17,7 @@ import json
 import sqlite3
 from collections.abc import Iterator
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -39,6 +40,8 @@ from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts.dominio import Dominio
 from core.models.cadena import EslabonVersion
 from tests.fixtures.canonico_minimo import FECHA, RELLENO, guardar_otra
+from tests.fixtures.carpeta_aprobaciones import OBRA as OBRA_80
+from tests.fixtures.carpeta_aprobaciones import guardar_version, sembrar_vivienda
 
 OBRA = "Vivienda Demo 80 m2"
 OTRA_OBRA = "Galpón Demo"
@@ -824,3 +827,94 @@ def test_las_notas_largas_de_una_devuelta_se_cortan_en_80_letras(sesion: Session
     assert len(primeras_80) == 80
     (pendiente,) = aprobaciones.pendientes_de_aprobacion(sesion, HOY)
     assert pendiente.texto == f"VIV-001 devuelta: {primeras_80}…"
+
+
+# --- menores del árbitro de T18 -----------------------------------------------------------------
+
+CADENA_ROTA_VIV_001 = (
+    "No se puede dictaminar VIV-001: la cadena de versiones de esta obra está rota en la versión "
+    "VIV-001 (su contenido no coincide con su huella). Revíselo con el administrador."
+)
+
+
+def _alterar_un_renglon(s: Session, version: str) -> None:
+    """Lo que haría alguien que cambia la base fuera del sistema: otra cantidad en un renglón."""
+    s.execute(
+        text(
+            "UPDATE partida_presupuestada SET cantidad = '21' WHERE presupuesto_id = "
+            "(SELECT id FROM presupuesto WHERE codigo = :codigo)"
+        ),
+        {"codigo": version},
+    )
+    s.commit()
+
+
+def test_un_dictamen_sobre_una_version_alterada_se_rechaza(sesion: Session) -> None:
+    envio = _enviar(sesion, "VIV-001")
+    _alterar_un_renglon(sesion, "VIV-001")
+    with pytest.raises(AprobacionInvalida) as error:
+        _dictaminar(sesion, envio.id, "aprobada")
+    assert type(error.value) is AprobacionInvalida  # 409: el estado de la obra, no un dato
+    assert _mensaje(error) == CADENA_ROTA_VIV_001
+    assert _cuenta(sesion, "dictamen") == 0
+
+
+def test_el_detalle_dice_si_la_cadena_de_la_version_esta_rota(sesion: Session) -> None:
+    envio = _enviar(sesion, "VIV-001")
+    assert aprobaciones.detalle_de_envio(sesion, envio.id, RITA).cadena == (
+        aprobaciones.CadenaDeVersiones(True, "Cadena íntegra: 2 versiones")
+    )
+    _alterar_un_renglon(sesion, "VIV-001")
+    assert aprobaciones.detalle_de_envio(sesion, envio.id, RITA).cadena == (
+        aprobaciones.CadenaDeVersiones(
+            False,
+            "Cadena rota en la versión VIV-001: su contenido no coincide con su huella; alguien "
+            "cambió la base fuera del sistema. Revíselo con el administrador antes de entregar "
+            "un paquete.",
+        )
+    )
+
+
+def test_el_detalle_lista_tambien_los_items_pendientes(tmp_path: Path) -> None:
+    """Un ítem sin partida en el catálogo no tiene renglón con precio, pero entra en el documento
+    sellado: quien aprueba lo ve, marcado como pendiente y sin precio."""
+    motor = crear_motor(f"sqlite:///{(tmp_path / 'vivienda.db').as_posix()}")
+    crear_esquema(motor)
+    crear_esquema_aprobacion(motor)
+    try:
+        with abrir_sesion(motor) as s:
+            sembrar_vivienda(s)
+            guardar_version(
+                s,
+                _la_vivienda(s),
+                "VIV-002",
+                extra=(("OBRA-99", "Partida sin APU de prueba", "m2", "10"),),
+            )
+            envio = aprobaciones.enviar(s, OBRA_80, "VIV-002", nota="", usuario=ANA, ahora=LUNES)
+            detalle = aprobaciones.detalle_de_envio(s, envio.id, RITA)
+    finally:
+        motor.dispose()
+    codigos = [p.codigo for p in detalle.partidas]
+    assert codigos == [f"OBRA-0{n}" for n in range(1, 7)] + ["OBRA-99"]
+    assert [p.pendiente for p in detalle.partidas] == [False] * 6 + [True]
+    pendiente = detalle.partidas[-1]
+    assert (pendiente.descripcion, pendiente.unidad, pendiente.cantidad) == (
+        "Partida sin APU de prueba",
+        "m2",
+        Decimal("10"),
+    )
+    assert (pendiente.precio_unitario, pendiente.total) == (None, None)
+    assert detalle.total == sum((p.total for p in detalle.partidas[:6]), Decimal(0))
+
+
+def test_los_textos_de_la_fuente_aprobar_viven_en_un_solo_lugar() -> None:
+    """La mesa reusa la acción «Ver el envío» de este módulo en vez de repetirla."""
+    raiz = Path(__file__).resolve().parents[2] / "aplicacion"
+    con_el_texto = sorted(
+        ruta.name for ruta in raiz.glob("*.py") if '"Ver el envío"' in ruta.read_text("utf-8")
+    )
+    assert con_el_texto == ["aprobaciones.py"]
+
+
+def _la_vivienda(s: Session) -> models.Proyecto:
+    return s.scalars(select(models.Proyecto).where(models.Proyecto.nombre == OBRA_80)).one()
