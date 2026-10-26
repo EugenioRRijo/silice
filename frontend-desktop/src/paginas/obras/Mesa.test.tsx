@@ -86,7 +86,7 @@ const CASA_DEMO = {
   avance_real: null,
   avance_plan: null,
   que_pasa: null,
-  // La pantalla de aprobar aun no existe en el registro: el boton no se ofrece.
+  // Desde la Tarea 20 la pantalla de aprobar esta en el registro: el boton se ofrece.
   siguiente: { texto: "Ver el envío", pagina: "aprobar" },
 };
 
@@ -280,15 +280,17 @@ describe("la tabla de obras", () => {
     expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "21" }]);
   });
 
-  test("«En aprobación» se lee con su texto; su paso («Ver el envío») no se ofrece mientras la pantalla no exista", async () => {
+  test("«En aprobación» se lee con su texto; su paso («Ver el envío», T20) elige la obra y abre la pantalla de aprobar", async () => {
+    const u = userEvent.setup();
     await montar("ana");
     const fila = await filaDe("Casa Demo");
     expect(within(fila).getByText("En aprobación")).toBeInTheDocument();
     expect(within(fila).getByText("125.000,50 USD")).toBeInTheDocument();
-    expect(within(fila).queryByRole("button")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Ver el envío" })).toBeNull();
     // Sin avance: lo dice en palabras.
     expect(within(fila).getByText("Sin avance")).toBeInTheDocument();
+    await u.click(within(fila).getByRole("button", { name: "Ver el envío" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Aprobar una versión" })).toBeInTheDocument();
+    expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "7" }]);
   });
 
   test("foco 3: con Componer a medio llenar el botón pregunta y «Quedarme» no navega ni elige obra", async () => {
@@ -321,10 +323,10 @@ describe("pendientes", () => {
     expect(within(calidad).getByText("La lista de CD-001 es 122 días más vieja que la lista para armar.")).toBeInTheDocument();
     expect(within(calidad).getByRole("button", { name: "Abrir la Hoja" })).toBeInTheDocument();
     expect(within(calidad).getAllByText("Casa Demo")).toHaveLength(2);
-    // «Aprobar» sale primero; su accion lleva a una pantalla que aun no existe: el texto sin boton.
+    // «Aprobar» sale primero; desde T20 su pantalla existe: el boton con el verbo de los envios.
     const aprobar = within(columna).getByRole("list", { name: "Aprobar" });
     expect(within(aprobar).getByText("CD-001 espera dictamen")).toBeInTheDocument();
-    expect(within(aprobar).queryByRole("button")).toBeNull();
+    expect(within(aprobar).getByRole("button", { name: "Abrir el envío" })).toBeInTheDocument();
   });
 
   test("la acción de un pendiente elige su obra y abre su pantalla", async () => {
@@ -754,7 +756,7 @@ describe("T19: el grupo «Aprobar» de la columna de pendientes", () => {
     const columna = await region("Pendientes");
     expect(await within(columna).findByText("1 precio sin referencia en CD-001")).toBeInTheDocument();
     const aviso = await within(columna).findByRole("alert");
-    expect(aviso).toHaveTextContent("No se pudieron leer los envíos de otras carpetas");
+    expect(aviso).toHaveTextContent("No se pudieron leer los envíos por aprobar");
     expect(aviso).toHaveTextContent("No se pudo leer o guardar la aprobación en la carpeta de trabajo.");
   });
 

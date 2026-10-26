@@ -35,6 +35,8 @@ const REGISTRO: [string, string, string | null, string | null][] = [
   ["historico", "Trabajo", "leer_proyecto", "obras/mercado"],
   ["indices", "Trabajo", "administrar_precios", "obras/mercado"],
   ["simulador", "Investigación", "editar_hoja", "obras/mercado"],
+  // Plan de montar un presupuesto, T20 (cambios por el diseno de modulos): en Presupuestos y obras › Aprobaciones.
+  ["aprobar", "Revisión", "aprobar_version", "obras/aprobaciones"],
   ["control", "Trabajo", "control_de_obra", "obras/control"],
   ["reajuste", "Trabajo", "convertir_y_reajustar", "obras/control"],
   ["escenarios", "Investigación", "editar_hoja", "obras/control"],
@@ -72,7 +74,7 @@ function ubicacionEnTexto(p: PaginaDef): string | null {
 }
 
 describe("registro de paginas", () => {
-  test("tiene las 25 pantallas en su orden, con su seccion, su accion y su modulo y area", () => {
+  test("tiene las 26 pantallas en su orden, con su seccion, su accion y su modulo y area", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion, ubicacionEnTexto(p)])).toEqual(REGISTRO);
   });
 
@@ -95,6 +97,11 @@ describe("registro de paginas", () => {
     expect(paginaPorId("mercado")).toMatchObject({
       titulo: "Estudio de mercado",
       enUnaLinea: "Compare precios del mercado y elija los suyos",
+    });
+    // T20: la pantalla del area Aprobaciones, que esperaba su pantalla.
+    expect(paginaPorId("aprobar")).toMatchObject({
+      titulo: "Aprobar una versión",
+      enUnaLinea: "Revise y dé su dictamen sobre una versión",
     });
   });
 
@@ -197,13 +204,13 @@ describe("quien ve que", () => {
     expect(PAGINAS.filter((p) => visible(p, [], false)).map((p) => p.id)).toEqual(["acerca"]);
   });
 
-  test("con todas las acciones se ven las 25", () => {
-    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(25);
+  test("con todas las acciones se ven las 26", () => {
+    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(26);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (22)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (23)", () => {
     const vistas = PAGINAS.filter((p) => visible(p, todas, true));
-    expect(vistas).toHaveLength(22);
+    expect(vistas).toHaveLength(23);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 

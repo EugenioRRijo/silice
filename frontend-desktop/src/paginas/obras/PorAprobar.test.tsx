@@ -1,55 +1,18 @@
 import { renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import { botonDeObra, caso, estadoInicial, json, ligeras, montarShell, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
 import type { EstadoDelServidor, Rol } from "../../shell/obras/datosDePrueba";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios, useFormularioSucio } from "../../shell/sucio";
+import PaginaAprobar from "../aprobar";
 import PaginaObras from "./index";
 
 // Tarea 19 (con los cambios por el diseno de modulos): «Abrir» un envio del grupo «Aprobar» de la mesa. Un envio de otra
 // carpeta pasa por la confirmacion unica de cambiar de carpeta (`confirmarSalida("carpeta", borradores)`, MOD-2) ANTES de
-// `POST /v1/aprobaciones/abrir` y luego abre `/aprobar?envio=`; uno de la carpeta abierta no la cambia. La pantalla
-// «Aprobar una versión» es de la Tarea 20: aqui se registra una de mentira con la linea que T20 agregara a `rutas.ts` (el
-// plan, «Cambios por el diseno de modulos», T20), porque la mesa solo ofrece botones de pantallas que existen. Datos ficticios.
-vi.mock("../../shell/rutas", async (importOriginal) => {
-  const real = await importOriginal<typeof import("../../shell/rutas")>();
-  const aprobar: import("../../shell/rutas").PaginaDef = {
-    id: "aprobar",
-    titulo: "Aprobar una versión",
-    enUnaLinea: "Revise y dé su dictamen sobre una versión",
-    seccion: "Revisión",
-    accion: "aprobar_version",
-    ubicacion: { modulo: "obras", area: "aprobaciones" },
-    cargar: async () => ({ default: () => null }),
-  };
-  const PAGINAS = [...real.PAGINAS, aprobar];
-  return {
-    ...real,
-    PAGINAS,
-    paginaPorId: (id: string, paginas: readonly import("../../shell/rutas").PaginaDef[] = PAGINAS) => real.paginaPorId(id, paginas),
-    visible: (
-      pagina: import("../../shell/rutas").PaginaDef,
-      acciones: readonly string[],
-      modoEntrega: boolean,
-      paginas: readonly import("../../shell/rutas").PaginaDef[] = PAGINAS,
-    ) => real.visible(pagina, acciones, modoEntrega, paginas),
-  };
-});
-
-// La pantalla de aprobar de mentira: dice que envio le pidieron.
-function PaginaAprobarFalsa() {
-  const { search } = useLocation();
-  return (
-    <>
-      <h1>Aprobar una versión</h1>
-      <p>Envío pedido: {search}</p>
-    </>
-  );
-}
-
+// `POST /v1/aprobaciones/abrir` y luego abre `/aprobar?envio=`; uno de la carpeta abierta no la cambia. Desde la Tarea 20
+// la pantalla «Aprobar una versión» esta en el registro real (`rutas.ts`): ya no se simula. Datos ficticios.
 const envio = (casoDelEnvio: string, envio_id: number, obra: string, version: string, proyecto = "3") => ({
   caso: casoDelEnvio,
   envio_id,
@@ -88,6 +51,32 @@ const PENDIENTES = {
   grupos: [{ clave: "aprobar", titulo: "Aprobar", items: [{ obra: "7", obra_nombre: "Casa Demo", texto: "CD-001 espera dictamen", accion: ver }] }],
 };
 
+// Lo que la pantalla real de aprobar lee de un envío (`GET /v1/aprobaciones/{id}`, Tarea 18).
+function detalleDe(envio_id: number, obra: string, version: string, proyecto: string) {
+  return {
+    envio_id,
+    proyecto,
+    obra,
+    version,
+    estado: "en_aprobacion",
+    moneda: "Bs",
+    total: "4876.56",
+    partidas: [],
+    hallazgos: { error: 0, advertencia: 0, info: 0, lista: [] },
+    rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." },
+    cadena: { integra: true, mensaje: "Cadena íntegra." },
+    envio: { por: "Ana Pérez <ana>", el: "2026-10-20T09:15:00", nota: "" },
+    armo: false,
+  };
+}
+// El rastro de Casa Demo (`GET /v1/aprobaciones?proyecto=7`): su envío n.º 4 de CD-001 sigue abierto.
+const RASTRO_CASA = {
+  rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." },
+  fases: "CD-001 en aprobación",
+  versiones: { "CD-001": { estado: "en_aprobacion", por: "Ana Pérez <ana>", el: "2026-10-20T09:15:00", notas: "", armo: false } },
+  eventos: [{ id: 4, tipo: "envio", version: "CD-001", resultado: null, notas: "", por: "Ana Pérez <ana>", el: "2026-10-20T09:15:00", armo: false, cierre_de: null }],
+};
+
 let servidor: ReturnType<typeof servidorFalso>;
 let alAbrirEnvio: (cuerpo: unknown) => Response;
 let enviosDe: () => Response;
@@ -105,6 +94,9 @@ function instalar(estado: EstadoDelServidor = estadoInicial()) {
     if (metodo === "GET" && ruta === "/v1/aprobaciones/resumen") return json(POR_APROBAR);
     if (metodo === "GET" && ruta === "/v1/aprobaciones/pendientes") return enviosDe();
     if (metodo === "POST" && ruta === "/v1/aprobaciones/abrir") return alAbrirEnvio(cuerpo);
+    // La pantalla real de aprobar lee el envío pedido (de la carpeta que tenga abierta el servidor).
+    if (metodo === "GET" && ruta === "/v1/aprobaciones/12") return json(detalleDe(12, "Galpón Sur", "GS-001", "3"));
+    if (metodo === "GET" && ruta === "/v1/aprobaciones/4") return json(detalleDe(4, "Casa Demo", "CD-001", "7"));
     return undefined;
   });
   vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
@@ -122,7 +114,7 @@ afterEach(() => {
 });
 
 async function montar(rol: Rol) {
-  const vista = montarShell(sesionDe(rol), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobarFalsa }));
+  const vista = montarShell(sesionDe(rol), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
   await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
   return vista;
 }
@@ -164,7 +156,7 @@ describe("foco 2: abrir un envío de otra carpeta", () => {
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     await u.click(within(pregunta).getByRole("button", { name: "Cambiar y descartar" }));
     expect(await aprobarAbierta()).toBeInTheDocument();
-    expect(screen.getByText("Envío pedido: ?envio=12")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Galpón Sur · GS-001" })).toBeInTheDocument();
     expect(aperturas().map((l) => l.cuerpo)).toEqual([{ caso: "s2.db", envio_id: 12 }]);
     // Los borradores se leyeron antes de abrir (para nombrarlos en la pregunta).
     const orden = servidor.llamadas.map((l) => `${l.metodo} ${l.ruta}`);
@@ -211,7 +203,7 @@ describe("foco 2: abrir un envío de otra carpeta", () => {
     await montar("rita");
     await u.click(await abrirDe("CD-001"));
     expect(await aprobarAbierta()).toBeInTheDocument();
-    expect(screen.getByText("Envío pedido: ?envio=4")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Casa Demo · CD-001" })).toBeInTheDocument();
     expect(aperturas()).toEqual([]);
   });
 
@@ -246,20 +238,68 @@ describe("con la pantalla de aprobar registrada, las filas de la carpeta abierta
     expect(await within(columna).findAllByText("CD-001 espera dictamen")).toHaveLength(1);
     await u.click(await abrirDe("CD-001"));
     expect(await aprobarAbierta()).toBeInTheDocument();
-    expect(screen.getByText("Envío pedido: ?envio=4")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Casa Demo · CD-001" })).toBeInTheDocument();
     expect(aperturas()).toEqual([]);
   });
 
-  test("ana sin el índice (403): la fila de la API dice «Abrir el envío», elige la obra y abre la pantalla", async () => {
+  test("ana sin el índice (403): la fila de la API dice «Abrir el envío», elige la obra y la pantalla real resuelve su envío", async () => {
     const u = userEvent.setup();
     enviosDe = () => json({ detalle: "Su cuenta no puede hacer esto." }, 403);
-    await montar("ana");
+    // T19, punto 5: sin `envio_id` ni índice, la pantalla de aprobar busca el envío en aprobación de la obra elegida en su
+    // rastro (`GET /v1/aprobaciones?proyecto=`).
+    const respondedor = servidor;
+    servidor = servidorFalso(respondedor.estado, (metodo, ruta, cuerpo) => {
+      if (metodo === "GET" && ruta === "/v1/aprobaciones?proyecto=7") return json(RASTRO_CASA);
+      if (metodo === "GET" && ruta === "/v1/aprobaciones/4") return json(detalleDe(4, "Casa Demo", "CD-001", "7"));
+      if (metodo === "GET" && ruta === "/v1/obras/resumen") return json(RESUMEN);
+      if (metodo === "GET" && ruta === "/v1/obras/pendientes") return json(PENDIENTES);
+      if (metodo === "GET" && ruta === "/v1/aprobaciones/resumen") return json(POR_APROBAR);
+      if (metodo === "GET" && ruta === "/v1/aprobaciones/pendientes") return enviosDe();
+      if (metodo === "POST" && ruta === "/v1/aprobaciones/abrir") return alAbrirEnvio(cuerpo);
+      return undefined;
+    });
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    montarShell(sesionDe("ana"), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
+    await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
     const columna = await screen.findByRole("region", { name: "Pendientes" });
     const boton = await within(columna).findByRole("button", { name: "Abrir el envío" });
     expect(within(columna).queryByRole("button", { name: "Ver el envío" })).toBeNull();
     await u.click(boton);
     expect(await aprobarAbierta()).toBeInTheDocument();
-    await waitFor(() => expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toContainEqual({ proyecto: "7" }));
+    expect(await screen.findByRole("region", { name: "Casa Demo · CD-001" })).toBeInTheDocument();
+    expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "7" }]);
     expect(aperturas()).toEqual([]);
+  });
+});
+
+describe("T20: «Abrir el envío» lleva a la pantalla real de aprobar", () => {
+  test("rita abre el envío de otra carpeta y la pantalla de aprobar lo lee y dice su carpeta", async () => {
+    const u = userEvent.setup();
+    const detalles: string[] = [];
+    const estado = estadoInicial();
+    servidor = servidorFalso(estado, (metodo, ruta, cuerpo) => {
+      if (metodo === "GET" && ruta === "/v1/obras/resumen") return json(RESUMEN);
+      if (metodo === "GET" && ruta === "/v1/obras/pendientes") return json(PENDIENTES);
+      if (metodo === "GET" && ruta === "/v1/aprobaciones/resumen") return json(POR_APROBAR);
+      if (metodo === "GET" && ruta === "/v1/aprobaciones/pendientes") return json([GALPON_S2, CASA_AQUI]);
+      if (metodo === "POST" && ruta === "/v1/aprobaciones/abrir") {
+        estado.actual = caso((cuerpo as { caso: string }).caso);
+        return json({ caso: estado.actual.nombre });
+      }
+      if (metodo === "GET" && ruta === "/v1/aprobaciones/12") {
+        detalles.push(ruta);
+        return json(detalleDe(12, "Galpón Sur", "GS-001", "3"));
+      }
+      return undefined;
+    });
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    montarShell(sesionDe("rita"), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
+    await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
+    await u.click(await abrirDe("GS-001"));
+    expect(await aprobarAbierta()).toBeInTheDocument();
+    const envio = await screen.findByRole("region", { name: "Galpón Sur · GS-001" });
+    expect(within(envio).getByText("s2")).toBeInTheDocument();
+    expect(detalles).toEqual(["/v1/aprobaciones/12"]);
+    expect(aperturas().map((l) => l.cuerpo)).toEqual([{ caso: "s2.db", envio_id: 12 }]);
   });
 });

@@ -2,7 +2,8 @@
 
 Contrato de `api/rutas/entregas.py` (paridad con `ui/paginas/entregar.py`):
 
-- `GET /v1/entregas/versiones?proyecto=` → `[{codigo, moneda}]`, la más nueva primero.
+- `GET /v1/entregas/versiones?proyecto=` → `[{codigo, moneda, aprobacion, ultima_aprobada}]`, la
+  más nueva primero (Tarea 20: el estado de aprobación de cada versión y cuál es la última aprobada).
 - `GET /v1/entregas/resumen?proyecto=&version=` → lo que la pantalla muestra antes de pedir la
   contraseña: total (exacto y como lo escribe la pantalla clásica), hallazgos por severidad,
   cadena, empresa, si hay clave de firma y lo que viaja.
@@ -27,6 +28,7 @@ import sqlite3
 import zipfile
 from collections.abc import Iterator
 from contextlib import closing
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -36,10 +38,13 @@ from sqlalchemy import select
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import entregas as ruta_entregas
+from aplicacion import aprobaciones
 from aplicacion.entrega import anexos_de_cadena, nombre_de_archivo
+from aplicacion.mesa import Pendiente, Siguiente
 from core import models
 from core.budget import canonico
 from core.catalog import abrir_sesion, crear_motor
+from core.models.cadena import EslabonVersion
 from operacion import config
 from operacion.base_datos import preparar_base
 from operacion.instalacion import sesion_de_instalacion
@@ -184,7 +189,10 @@ def test_las_versiones_van_de_la_mas_nueva_a_la_mas_vieja(_entorno: Path) -> Non
     navegador, _ = _ana()
     r = navegador.get("/v1/entregas/versiones", params={"proyecto": "MIN-001"})
     assert r.status_code == 200
-    assert r.json() == [{"codigo": "002", "moneda": "USD"}, {"codigo": "001", "moneda": "USD"}]
+    assert r.json() == [
+        {"codigo": "002", "moneda": "USD", "aprobacion": "guardada", "ultima_aprobada": False},
+        {"codigo": "001", "moneda": "USD", "aprobacion": "guardada", "ultima_aprobada": False},
+    ]
 
 
 def test_un_proyecto_o_una_version_que_no_existe_es_404() -> None:
@@ -437,3 +445,115 @@ def test_el_nombre_de_descarga_es_ascii_y_cabe_en_una_cabecera() -> None:
     assert nombre_de_archivo("Ж日本", "001") == "proyecto-001.silice"
     assert nombre_de_archivo("Obra Ж/..\\x", "001").isascii()
     assert nombre_de_archivo("a", "00Ж1") == "a-00-1.silice"
+
+
+# --- la aprobada manda (Tarea 20) ------------------------------------------------------------
+
+ANA = "Ana Pérez <ana>"
+RITA = "Rita Gómez <rita>"
+
+
+def _dictaminar(caso: Path, version: str, resultado: str, minuto: int) -> None:
+    """Ana envía `version` de MIN-001 y Rita dictamina (`aplicacion.aprobaciones`, Tarea 17)."""
+    motor = crear_motor(f"sqlite:///{caso.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            envio = aprobaciones.enviar(
+                sesion, "MIN-001", version, nota="", usuario=ANA,
+                ahora=datetime(2026, 10, 20, 9, minuto),
+            )
+            notas = "Corregir el rendimiento." if resultado == "devuelta" else ""
+            aprobaciones.dictaminar(
+                sesion, envio.id, resultado=resultado, notas=notas, usuario=RITA,
+                ahora=datetime(2026, 10, 20, 10, minuto),
+            )
+    finally:
+        motor.dispose()
+
+
+def _en_el_caso[T](caso: Path, leer) -> T:
+    motor = crear_motor(f"sqlite:///{caso.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            return leer(sesion)
+    finally:
+        motor.dispose()
+
+
+def test_cada_version_dice_su_aprobacion_y_cual_es_la_ultima_aprobada(_entorno: Path) -> None:
+    """001 devuelta y 002 aprobada: Entregar propone 002 (la última aprobada) y sabe que 001 no
+    lo está."""
+    _segunda_version(_entorno)
+    _dictaminar(_entorno, "001", "devuelta", 1)
+    _dictaminar(_entorno, "002", "aprobada", 2)
+    navegador, _ = _ana()
+    r = navegador.get("/v1/entregas/versiones", params={"proyecto": "MIN-001"})
+    assert r.status_code == 200
+    assert r.json() == [
+        {"codigo": "002", "moneda": "USD", "aprobacion": "aprobada", "ultima_aprobada": True},
+        {"codigo": "001", "moneda": "USD", "aprobacion": "devuelta", "ultima_aprobada": False},
+    ]
+
+
+def test_la_aprobada_con_observaciones_tambien_es_la_ultima_aprobada(_entorno: Path) -> None:
+    motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            envio = aprobaciones.enviar(
+                sesion, "MIN-001", "001", nota="", usuario=ANA, ahora=datetime(2026, 10, 20, 9)
+            )
+            aprobaciones.dictaminar(
+                sesion, envio.id, resultado="aprobada_con_observaciones", notas="Revisar el flete.",
+                usuario=RITA, ahora=datetime(2026, 10, 20, 10),
+            )
+    finally:
+        motor.dispose()
+    navegador, _ = _ana()
+    r = navegador.get("/v1/entregas/versiones", params={"proyecto": "MIN-001"})
+    assert r.json() == [
+        {
+            "codigo": "001",
+            "moneda": "USD",
+            "aprobacion": "aprobada_con_observaciones",
+            "ultima_aprobada": True,
+        }
+    ]
+
+
+def test_la_entrega_registra_el_sello_de_la_version_entregada(_entorno: Path) -> None:
+    """El registro de la entrega dice qué versión salió por su sello (el eslabón de la cadena),
+    no solo por su código, que se repite entre obras y carpetas."""
+    sello = _en_el_caso(
+        _entorno,
+        lambda s: s.scalars(select(EslabonVersion.huella_eslabon)).one(),
+    )
+    navegador, ficha = _ana()
+    assert _pedir(navegador, ficha).status_code == 200
+    detalle = next(d for t, d in _eventos() if t == "paquete exportado")
+    assert f"sello_version {sello}" in detalle
+
+
+def _sin_entregar(caso: Path) -> list[Pendiente]:
+    return _en_el_caso(caso, lambda s: aprobaciones.aprobadas_sin_entregar(s, date(2026, 10, 26)))
+
+
+def test_la_ultima_aprobada_sin_paquete_es_un_pendiente_de_la_mesa(_entorno: Path) -> None:
+    """Fuente «aprobar» de la mesa: «{versión} aprobada y sin entregar» con («Entregar»,
+    "entregar") mientras la última aprobada no tiene paquete; al entregarla, deja de serlo."""
+    assert _sin_entregar(_entorno) == []  # sin aprobadas no hay nada que entregar
+    _dictaminar(_entorno, "001", "aprobada", 1)
+    obra = _en_el_caso(_entorno, lambda s: s.scalars(select(models.Proyecto)).one())
+    assert _sin_entregar(_entorno) == [
+        Pendiente(str(obra.id), obra.nombre, "001 aprobada y sin entregar", Siguiente("Entregar", "entregar"))
+    ]
+    navegador, ficha = _ana()
+    assert _pedir(navegador, ficha).status_code == 200
+    assert _sin_entregar(_entorno) == []
+
+
+def test_un_paquete_de_otra_version_no_cuenta_como_entrega_de_la_aprobada(_entorno: Path) -> None:
+    _segunda_version(_entorno)
+    navegador, ficha = _ana()
+    assert _pedir(navegador, ficha, version="001").status_code == 200  # se entregó la 001
+    _dictaminar(_entorno, "002", "aprobada", 1)
+    assert [p.texto for p in _sin_entregar(_entorno)] == ["002 aprobada y sin entregar"]
