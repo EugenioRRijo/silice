@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
+import { formulariosSucios, olvidarFormularios } from "../../shell/sucio";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaApu, vistaEspacio, vistaParametros } from "./datosDePrueba";
 import PaginaHoja from "./index";
@@ -289,6 +290,22 @@ describe("Hoja del proyecto: agregar y quitar líneas del APU de la versión (Ta
     await userEvent.click(within(dialogo()).getByRole("button", { name: "Agregar al APU" }));
     await vi.waitFor(() => expect(altas()).toHaveLength(1));
     expect(altas()[0]).toMatchObject({ tipo: "mano_obra", modalidad: "destajo", precio: "12" });
+  });
+
+  test("el diálogo cuenta como formulario sucio también con solo la depreciación o la modalidad", async () => {
+    olvidarFormularios();
+    await irAApu();
+    await abrirDialogo();
+    expect(formulariosSucios()).toEqual([]);
+    await userEvent.selectOptions(within(dialogo()).getByRole("combobox", { name: "Tipo de línea" }), "equipo");
+    await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Depreciación/ }), "0,5");
+    await vi.waitFor(() => expect(formulariosSucios()).toEqual(["hoja"]));
+    await userEvent.clear(within(dialogo()).getByRole("textbox", { name: /^Depreciación/ }));
+    await vi.waitFor(() => expect(formulariosSucios()).toEqual([]));
+    await userEvent.selectOptions(within(dialogo()).getByRole("combobox", { name: "Tipo de línea" }), "mano_obra");
+    await userEvent.selectOptions(within(dialogo()).getByRole("combobox", { name: "Modalidad" }), "destajo");
+    await vi.waitFor(() => expect(formulariosSucios()).toEqual(["hoja"]));
+    olvidarFormularios();
   });
 
   test("sin elegir un insumo no se manda nada y el error va al buscador", async () => {

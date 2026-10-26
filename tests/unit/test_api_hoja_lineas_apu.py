@@ -513,6 +513,26 @@ def test_antes_y_despues_de_obra_02_con_costo_duracion_y_termino(
     )
 
 
+def test_una_version_en_otra_moneda_lo_dice_y_no_mezcla_filas(
+    _plantillas: dict[str, Path],
+) -> None:
+    ruta = _poner(_plantillas["con_linea_base"])
+    navegador, ficha = _ana()
+    _version_con_la_crisis(navegador, ficha)
+    dependencias.cerrar_motores()
+    with closing(sqlite3.connect(ruta.as_posix())) as bd:
+        bd.execute("UPDATE presupuesto SET moneda = 'USD' WHERE codigo = '002'")
+        bd.commit()
+    respuesta = navegador.get("/v1/hoja/antes-y-despues", params={"proyecto": OBRA})
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert (cuerpo["linea_base"], cuerpo["version"], cuerpo["filas"]) == ("001", "002", [])
+    assert cuerpo["aviso"] == (
+        "La versión 002 está en USD y la línea base 001 en Bs: no se comparan montos en monedas "
+        "distintas."
+    )
+
+
 def test_sin_linea_base_lo_dice_y_no_compara() -> None:
     navegador, _ = _ana()
     respuesta = navegador.get("/v1/hoja/antes-y-despues", params={"proyecto": OBRA})

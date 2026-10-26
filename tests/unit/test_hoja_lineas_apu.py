@@ -258,6 +258,37 @@ def test_quitar_una_linea_del_medio_no_corre_las_demas():
     ]
 
 
+def test_con_dos_lineas_homonimas_quitar_una_es_solo_su_baja():
+    """Dos líneas con la misma descripción (catálogo o `cambiar_insumo`): se desempata por cantidad
+    y precio; antes, quitar una daba además un cambio de cantidad espurio en la otra."""
+    dos = replace(
+        CONCRETO,
+        materiales=(
+            LineaMaterial("Cemento gris", "saco", D(1), D(95)),
+            LineaMaterial("Cemento gris", "saco", D(2), D(95)),
+        ),
+    )
+    base = _borrador({**COMPOSICIONES, "OBRA-02": dos})
+    sin_la_primera = _borrador(
+        {**COMPOSICIONES, "OBRA-02": hoja_lineas_apu.quitar_linea(dos, "material", 0)}
+    )
+    assert hoja.cambios_entre(base, sin_la_primera) == [
+        CambioEditado("apu", "OBRA-02|material|1", "baja", "Cemento gris", "")
+    ]
+    sin_la_segunda = _borrador(
+        {**COMPOSICIONES, "OBRA-02": hoja_lineas_apu.quitar_linea(dos, "material", 1)}
+    )
+    assert hoja.cambios_entre(base, sin_la_segunda) == [
+        CambioEditado("apu", "OBRA-02|material|2", "baja", "Cemento gris", "")
+    ]
+    otra_cantidad = replace(
+        dos, materiales=(dos.materiales[0], replace(dos.materiales[1], cantidad=D(3)))
+    )
+    assert hoja.cambios_entre(base, _borrador({**COMPOSICIONES, "OBRA-02": otra_cantidad})) == [
+        CambioEditado("apu", "OBRA-02|Cemento gris", "cantidad", "2", "3")
+    ]
+
+
 def test_cambiar_el_insumo_o_la_cantidad_de_una_linea_sigue_igual():
     base = _borrador(COMPOSICIONES)
     otro = replace(
@@ -521,3 +552,21 @@ def test_sin_linea_base_o_con_la_misma_version_no_hay_nada_que_comparar(base):
     assert hoja_lineas_apu.antes_y_despues(base, OBRA, Catalogo(base), version) == []
     _con_linea_base(base)
     assert hoja_lineas_apu.antes_y_despues(base, OBRA, Catalogo(base), "001") == []
+
+
+def test_una_version_en_otra_moneda_que_la_linea_base_no_se_compara(base):
+    _con_linea_base(base)
+    version = _version_con_la_crisis(base)
+    modelo = base.scalars(
+        select(models.Presupuesto).where(models.Presupuesto.codigo == version)
+    ).one()
+    modelo.moneda = (
+        "USD"  # como una versión convertida (la conversión pide tasa; aquí basta la marca)
+    )
+    base.flush()
+    with pytest.raises(hoja_lineas_apu.MonedasDistintas) as error:
+        hoja_lineas_apu.antes_y_despues(base, OBRA, Catalogo(base), version)
+    assert str(error.value) == (
+        "La versión 002 está en USD y la línea base 001 en Bs: no se comparan montos en monedas "
+        "distintas."
+    )
