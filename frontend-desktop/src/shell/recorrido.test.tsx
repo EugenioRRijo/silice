@@ -20,7 +20,8 @@ describe("recorrido «Auditar un libro de la empresa»", () => {
 
   test("tiene tres pasos, uno por pantalla y sin repetir", () => {
     expect(RECORRIDO_AUDITAR.titulo).toBe("Auditar un libro de la empresa");
-    expect(RECORRIDO_AUDITAR.pasos.map((p) => p.pagina)).toEqual(["inicio", "libros", "historial"]);
+    // Plan de modulos (MOD-1): el paso 1 vive en el inicio de Auditoria.
+    expect(RECORRIDO_AUDITAR.pasos.map((p) => p.pagina)).toEqual(["auditoria", "libros", "historial"]);
     expect(RECORRIDO_AUDITAR.pasos.map((p) => p.titulo)).toEqual([
       "Suba el libro",
       "Lea el resumen y los hallazgos",
@@ -37,7 +38,8 @@ describe("recorrido «Auditar un libro de la empresa»", () => {
   });
 
   test("el paso se deduce de la ruta: cada pantalla del recorrido es su paso y las demas ninguno", () => {
-    expect(pasoDeRuta(RECORRIDO_AUDITAR, "/inicio")).toBe(0);
+    expect(pasoDeRuta(RECORRIDO_AUDITAR, "/auditoria")).toBe(0);
+    expect(pasoDeRuta(RECORRIDO_AUDITAR, "/inicio")).toBeNull();
     expect(pasoDeRuta(RECORRIDO_AUDITAR, "/libros")).toBe(1);
     expect(pasoDeRuta(RECORRIDO_AUDITAR, "/historial")).toBe(2);
     expect(pasoDeRuta(RECORRIDO_AUDITAR, "/tablero")).toBeNull();

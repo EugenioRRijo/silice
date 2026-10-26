@@ -44,9 +44,12 @@ describe("App", () => {
       if (ruta === "/v1/sesion" && metodo === "DELETE") return new Response(null, { status: 204 });
       if (ruta === "/v1/casos") return json(casos);
       if (ruta === "/v1/proyectos") return json([]);
-      // Lo que pide el Inicio: sin esto caerian en el 401 de abajo y la sesion se daria por vencida.
+      // Lo que piden los inicios y Acerca, y el modulo recordado (MOD-1): sin esto caerian en el 401 de abajo y la
+      // sesion se daria por vencida.
       if (ruta === "/v1/produccion/existencias") return json([]);
       if (ruta.startsWith("/v1/auditorias-libro")) return json([]);
+      if (ruta === "/v1/acerca") return json({ detalle: "No encontrado." }, 404);
+      if (ruta === "/v1/sesion/preferencias" && metodo === "PUT") return new Response(null, { status: 204 });
       return json({ detalle: "Sin sesión." }, 401);
     });
   });
@@ -88,24 +91,30 @@ describe("App", () => {
     expect(screen.getByText(/Comprobando su sesión/)).toBeInTheDocument();
   });
 
-  test("con sesion vigente muestra el nombre, la cuenta con Salir, la barra y aterriza en el Inicio", async () => {
+  test("con sesion vigente muestra el nombre, la cuenta con Salir, la barra y aterriza en el inicio de su módulo", async () => {
     const usuario = userEvent.setup();
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Cuenta de Ana Pérez" }));
     expect(screen.getByRole("button", { name: "Salir" })).toBeInTheDocument();
-    // La cuenta revisa y opera la arenera: Auditar tiene varias pantallas (panel) y Producción una sola (enlace).
+    // La cuenta revisa (revisar_paquete) y no arma: entra en Auditoría, con una pantalla por área (enlaces).
     const barra = screen.getByRole("navigation", { name: "Menú principal" });
-    expect(within(barra).getByRole("button", { name: "Auditar" })).toBeInTheDocument();
-    expect(within(barra).getByRole("link", { name: "Existencias de la arenera" })).toBeInTheDocument();
+    expect(within(screen.getByRole("banner")).getByText("Auditoría")).toBeInTheDocument();
+    expect(within(barra).getAllByRole("link").map((a) => a.textContent)).toEqual(["Inicio", "Auditar", "Paquetes", "Historial"]);
+    expect(within(barra).getByRole("link", { name: "Auditar" })).toHaveAttribute("href", "#/libros");
     // La pagina llega por import() dinamico: con la suite entera en marcha tarda mas que el plazo por omision.
-    expect(await screen.findByRole("heading", { name: "Audite un presupuesto" }, { timeout: 5000 })).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/inicio");
-    // Las herramientas principales, fuera de la navegacion, son mosaicos del Inicio.
-    expect(screen.getByRole("link", { name: "Libro de la empresa" })).toHaveAttribute("href", "#/libros");
-    // Las lecturas del Inicio ya contestaron: la sesion sigue viva (no cayo al formulario «Entrar»).
-    expect(await screen.findByText("Aún no hay materiales", {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Inicio de auditoría" }, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/auditoria");
+    // Sin los mosaicos de «Herramientas principales» (decisión 1 de Eugenio).
+    expect(screen.queryByText("Herramientas principales")).not.toBeInTheDocument();
+    // Las lecturas del inicio ya contestaron: la sesion sigue viva (no cayo al formulario «Entrar»).
+    expect(await screen.findByText("Todavía no hay auditorías guardadas", {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
+    // Y el módulo quedó recordado en la cuenta.
+    const guardado = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/sesion/preferencias");
+    expect(guardado?.[1]?.method).toBe("PUT");
+    expect(guardado?.[1]?.body).toBe(JSON.stringify({ modulo: "auditoria" }));
   });
 
   test("una direccion con #/libros abre esa pagina", async () => {
@@ -120,8 +129,10 @@ describe("App", () => {
     sesionActual = () => json({ login: "ana", nombre: "Ana Pérez", roles: ["revisa"], csrf: "tok" });
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
-    // El Inicio no exige ninguna accion: una cuenta sin acciones igual aterriza en el (sin ofrecerle auditar, VB-9).
-    expect(await screen.findByRole("heading", { name: "Quién audita los presupuestos" }, { timeout: 5000 })).toBeInTheDocument();
+    // Sin acciones no hay ningún módulo visible: aterriza en lo único que toda cuenta ve, Acerca de Sílice.
+    expect(await screen.findByRole("heading", { level: 1, name: "Acerca de Sílice" }, { timeout: 5000 })).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/acerca");
+    expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
   });
 
   test("entrar con una cuenta buena abre el shell y guarda el token solo en memoria", async () => {

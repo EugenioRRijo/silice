@@ -14,7 +14,7 @@ function idsDe(entradas: readonly EntradaNav[]): string[] {
 
 function pintar(props: Partial<React.ComponentProps<typeof MenuEnCapa>> = {}) {
   const alCerrar = vi.fn();
-  const entradas = navegacion(TODAS, false);
+  const entradas = navegacion("obras", TODAS, false);
   render(
     <MemoryRouter initialEntries={["/"]}>
       <MenuEnCapa entradas={entradas} abierto alCerrar={alCerrar} {...props} />
@@ -36,7 +36,7 @@ describe("MenuEnCapa", () => {
 
   test("cada area lleva su rotulo de texto", () => {
     pintar();
-    for (const t of ["Auditar", "Crear", "Más"]) expect(screen.getAllByText(t, { selector: ".silice-capa__rotulo" }).length).toBeGreaterThan(0);
+    for (const t of ["Obras", "Partidas", "Mercado", "Control"]) expect(screen.getAllByText(t, { selector: ".silice-capa__rotulo" }).length).toBeGreaterThan(0);
   });
 
   // Diseno §1 y §5.1: un area de una sola pantalla es un enlace directo; repetir su nombre como rotulo y como enlace
@@ -45,7 +45,7 @@ describe("MenuEnCapa", () => {
     const { entradas } = pintar();
     const nav = screen.getByRole("navigation", { name: "Menú principal (capa)", hidden: true });
     const enlaces = entradas.filter((e) => e.tipo === "enlace");
-    expect(enlaces.map((e) => e.area)).toEqual(["inicio", "produccion"]);
+    expect(enlaces.map((e) => e.area)).toEqual(["inicio"]);
     for (const e of enlaces) {
       if (e.tipo !== "enlace") continue;
       expect(within(nav).queryAllByText(e.titulo, { selector: ".silice-capa__rotulo" })).toHaveLength(0);
@@ -55,8 +55,8 @@ describe("MenuEnCapa", () => {
       expect(document.getElementById(idAyuda)?.textContent).toBe(e.pagina.enUnaLinea);
     }
     // Las areas con panel conservan su rotulo.
-    expect(within(nav).queryAllByText("Producción", { selector: ".silice-capa__rotulo" })).toHaveLength(0);
-    expect(within(nav).getAllByText("Crear", { selector: ".silice-capa__rotulo" })).toHaveLength(1);
+    expect(within(nav).queryAllByText("Inicio", { selector: ".silice-capa__rotulo" })).toHaveLength(0);
+    expect(within(nav).getAllByText("Obras", { selector: ".silice-capa__rotulo" })).toHaveLength(1);
   });
 
   test("cada enlace describe su pagina con su linea de ayuda", () => {

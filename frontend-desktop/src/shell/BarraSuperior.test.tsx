@@ -5,19 +5,13 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { MemoryRouter, useLocation, useNavigate, type NavigateFunction } from "react-router";
 import { BarraSuperior } from "./BarraSuperior";
 import { navegacion } from "./navegacion";
-import { PAGINAS } from "./rutas";
+import { MODULOS, PAGINAS } from "./rutas";
 
-// Oraculo escrito a mano (AREAS de rutas.ts y la maqueta aprobada), no leido del codigo bajo prueba.
+// Oraculo escrito a mano (plan de modulos, tarea MOD-1), no leido del codigo bajo prueba.
 const TODAS = [...new Set(PAGINAS.flatMap((p) => (p.accion ? [p.accion] : [])))];
-const ENTRADAS = navegacion(TODAS, false);
-const PAGINAS_DE_CREAR = [
-  "Componer una partida",
-  "Elaborar un presupuesto",
-  "Hoja del proyecto",
-  "Catálogo de partidas e insumos",
-  "Tablero del proyecto",
-  "Entregar paquete",
-];
+const OBRAS = MODULOS.find((m) => m.id === "obras")!;
+const ENTRADAS = navegacion("obras", TODAS, false);
+const PANTALLAS_DE_OBRAS = ["Hoja del proyecto", "Elaborar un presupuesto", "Tablero del proyecto", "Entregar paquete"];
 
 // Atras/adelante del navegador sin tocar la pagina (un clic en un boton seria un «clic fuera»).
 const historial: { navegar: NavigateFunction | null } = { navegar: null };
@@ -30,10 +24,11 @@ function Ubicacion() {
   return <output data-testid="ruta">{useLocation().pathname}</output>;
 }
 
-function pintar(entradas: string[] = ["/inicio"], indice = entradas.length - 1) {
+function pintar(entradas: string[] = ["/obras"], indice = entradas.length - 1) {
   return render(
     <MemoryRouter initialEntries={entradas} initialIndex={indice}>
       <BarraSuperior
+        modulo={OBRAS}
         entradas={ENTRADAS}
         derecha={<button type="button">derecha</button>}
         menu={{ abierto: false, alternar: () => {} }}
@@ -57,137 +52,178 @@ afterEach(() => {
 });
 
 describe("BarraSuperior", () => {
-  test("Sílice lleva a Inicio y lo de la derecha va en la barra", () => {
+  test("Sílice lleva al inicio (#/) y lo de la derecha va en la barra", () => {
     pintar();
     expect(screen.getByRole("link", { name: "Sílice" })).toHaveAttribute("href", "#/");
     expect(screen.getByText("derecha")).toBeInTheDocument();
   });
 
+  test("junto a «Sílice» se lee el nombre del módulo, como texto (no es enlace) y con el nombre completo en title", () => {
+    pintar(["/hoja"]);
+    const banner = screen.getByRole("banner");
+    const nombre = within(banner).getByText("Presupuestos y obras");
+    expect(nombre.closest("a")).toBeNull();
+    expect(nombre.closest("button")).toBeNull();
+    expect(nombre).toHaveAttribute("title", "Presupuestos y obras");
+    expect(within(banner).queryByRole("link", { name: "Presupuestos y obras" })).not.toBeInTheDocument();
+    // Va despues de «Sílice» y antes de las areas.
+    const silice = screen.getByRole("link", { name: "Sílice" });
+    expect(silice.compareDocumentPosition(nombre) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(nombre.compareDocumentPosition(nav()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test("en /hoja las áreas son Inicio, Obras, Partidas, Mercado y Control", () => {
+    pintar(["/hoja"]);
+    const items = [...nav().querySelectorAll<HTMLElement>(".silice-barra__item > a, .silice-barra__item > button")];
+    expect(items.map((e) => e.textContent)).toEqual(["Inicio", "Obras", "Partidas", "Mercado", "Control"]);
+  });
+
+  test("con rita en /libros: «Auditoría» y las áreas Inicio, Auditar, Paquetes e Historial", () => {
+    const auditoria = MODULOS.find((m) => m.id === "auditoria")!;
+    render(
+      <MemoryRouter initialEntries={["/libros"]}>
+        <BarraSuperior
+          modulo={auditoria}
+          entradas={navegacion("auditoria", ["leer_proyecto", "revisar_paquete"], false)}
+          derecha={null}
+          menu={{ abierto: false, alternar: () => {} }}
+        />
+      </MemoryRouter>,
+    );
+    expect(within(screen.getByRole("banner")).getByText("Auditoría")).toBeInTheDocument();
+    const enlaces = within(nav()).getAllByRole("link");
+    expect(enlaces.map((a) => a.textContent)).toEqual(["Inicio", "Auditar", "Paquetes", "Historial"]);
+    expect(enlaces.map((a) => a.getAttribute("href"))).toEqual(["/auditoria", "/libros", "/revisar", "/historial"]);
+    expect(within(nav()).getByRole("link", { name: "Auditar" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav()).queryAllByRole("button")).toHaveLength(0);
+  });
+
+  test("sin módulo (ninguno visible) no hay nombre de módulo", () => {
+    render(
+      <MemoryRouter>
+        <BarraSuperior modulo={null} entradas={[]} derecha={null} menu={{ abierto: false, alternar: () => {} }} />
+      </MemoryRouter>,
+    );
+    expect(document.querySelector(".silice-barra__modulo")).toBeNull();
+  });
+
   test("un área de una sola pantalla es un enlace; un área con varias es un botón cerrado con aria-controls", () => {
     pintar();
-    expect(within(nav()).getByRole("link", { name: "Inicio" })).toHaveAttribute("href", "/inicio");
-    expect(within(nav()).getByRole("link", { name: "Existencias de la arenera" })).toHaveAttribute("href", "/existencias");
-    for (const nombre of ["Auditar", "Crear", "Más"]) {
+    expect(within(nav()).getByRole("link", { name: "Inicio" })).toHaveAttribute("href", "/obras");
+    for (const nombre of ["Obras", "Partidas", "Mercado", "Control"]) {
       const boton = area(nombre);
       expect(boton).toHaveAttribute("aria-expanded", "false");
       expect(boton.getAttribute("aria-controls")).toBeTruthy();
     }
-    expect(within(nav()).queryAllByRole("button")).toHaveLength(3);
+    expect(within(nav()).queryAllByRole("button")).toHaveLength(4);
   });
 
-  test("clic en «Crear» abre su panel con cada pantalla y su línea; el foco va al primer enlace", async () => {
+  test("clic en «Obras» abre su panel con cada pantalla y su línea; el foco va al primer enlace", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Crear"));
-    expect(area("Crear")).toHaveAttribute("aria-expanded", "true");
-    const region = panel("Crear")!;
+    await u.click(area("Obras"));
+    expect(area("Obras")).toHaveAttribute("aria-expanded", "true");
+    const region = panel("Obras")!;
     expect(region).toBeInTheDocument();
-    expect(region.id).toBe(area("Crear").getAttribute("aria-controls"));
+    expect(region.id).toBe(area("Obras").getAttribute("aria-controls"));
     const enlaces = within(region).getAllByRole("link");
-    expect(enlaces.map((e) => e.getAttribute("href"))).toEqual([
-      "/componer",
-      "/elaborar",
-      "/hoja",
-      "/catalogo",
-      "/tablero",
-      "/entregar",
-    ]);
-    for (const titulo of PAGINAS_DE_CREAR) expect(within(region).getByRole("link", { name: titulo })).toBeInTheDocument();
-    const componer = within(region).getByRole("link", { name: "Componer una partida" });
-    expect(componer).toHaveAccessibleDescription("Arme el análisis de precio de una partida");
-    expect(within(region).getByText("Arme el análisis de precio de una partida")).toBeVisible();
+    expect(enlaces.map((e) => e.getAttribute("href"))).toEqual(["/hoja", "/elaborar", "/tablero", "/entregar"]);
+    for (const titulo of PANTALLAS_DE_OBRAS) expect(within(region).getByRole("link", { name: titulo })).toBeInTheDocument();
+    const hoja = within(region).getByRole("link", { name: "Hoja del proyecto" });
+    expect(hoja).toHaveAccessibleDescription("El presupuesto completo, como en Excel");
+    expect(within(region).getByText("El presupuesto completo, como en Excel")).toBeVisible();
     expect(within(region).getByText("Junte partidas y cantidades")).toBeVisible();
-    expect(componer).toHaveFocus();
+    expect(hoja).toHaveFocus();
   });
 
-  test("Intro sobre «Crear» abre igual; Esc cierra y el foco vuelve al botón", async () => {
+  test("Intro sobre «Obras» abre igual; Esc cierra y el foco vuelve al botón", async () => {
     const u = userEvent.setup();
     pintar();
-    area("Crear").focus();
+    area("Obras").focus();
     await u.keyboard("{Enter}");
-    expect(panel("Crear")).toBeInTheDocument();
-    expect(within(panel("Crear")!).getByRole("link", { name: "Componer una partida" })).toHaveFocus();
+    expect(panel("Obras")).toBeInTheDocument();
+    expect(within(panel("Obras")!).getByRole("link", { name: "Hoja del proyecto" })).toHaveFocus();
     await u.keyboard("{Escape}");
-    expect(panel("Crear")).toBeNull();
-    expect(area("Crear")).toHaveAttribute("aria-expanded", "false");
-    expect(area("Crear")).toHaveFocus();
+    expect(panel("Obras")).toBeNull();
+    expect(area("Obras")).toHaveAttribute("aria-expanded", "false");
+    expect(area("Obras")).toHaveFocus();
   });
 
   test("las flechas recorren las entradas del panel y se detienen en la primera y la última (sin vuelta)", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Crear"));
+    await u.click(area("Obras"));
     await u.keyboard("{ArrowDown}");
     expect(screen.getByRole("link", { name: "Elaborar un presupuesto" })).toHaveFocus();
     await u.keyboard("{ArrowUp}{ArrowUp}");
-    expect(screen.getByRole("link", { name: "Componer una partida" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Hoja del proyecto" })).toHaveFocus();
     await u.keyboard("{End}");
     expect(screen.getByRole("link", { name: "Entregar paquete" })).toHaveFocus();
     await u.keyboard("{ArrowDown}");
     expect(screen.getByRole("link", { name: "Entregar paquete" })).toHaveFocus();
     await u.keyboard("{Home}");
-    expect(screen.getByRole("link", { name: "Componer una partida" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Hoja del proyecto" })).toHaveFocus();
   });
 
   test("Espacio sobre el botón del área abre el panel", async () => {
     const u = userEvent.setup();
     pintar();
-    area("Auditar").focus();
+    area("Partidas").focus();
     await u.keyboard(" ");
-    expect(area("Auditar")).toHaveAttribute("aria-expanded", "true");
-    expect(panel("Auditar")).toBeInTheDocument();
+    expect(area("Partidas")).toHaveAttribute("aria-expanded", "true");
+    expect(panel("Partidas")).toBeInTheDocument();
   });
 
   test("Tab desde el último enlace del panel va a la siguiente área (el foco sigue en la navegación)", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Crear"));
+    await u.click(area("Obras"));
     await u.keyboard("{End}");
     expect(screen.getByRole("link", { name: "Entregar paquete" })).toHaveFocus();
     await u.tab();
-    expect(within(nav()).getByRole("link", { name: "Existencias de la arenera" })).toHaveFocus();
+    expect(area("Partidas")).toHaveFocus();
   });
 
-  test("clic en un subtítulo del panel de «Más» no lo cierra y el foco queda dentro de la navegación", async () => {
+  test("clic en una zona del panel que no es enlace no lo cierra y el foco queda dentro de la navegación", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Más"));
-    const region = panel("Más")!;
-    await u.click(within(region).getByText("Precios"));
-    expect(panel("Más")).toBeInTheDocument();
-    expect(area("Más")).toHaveAttribute("aria-expanded", "true");
+    await u.click(area("Mercado"));
+    const region = panel("Mercado")!;
+    await u.click(region);
+    expect(panel("Mercado")).toBeInTheDocument();
+    expect(area("Mercado")).toHaveAttribute("aria-expanded", "true");
     expect(nav()).toContainElement(document.activeElement as HTMLElement);
     // Y las flechas siguen sirviendo desde ahí.
     await u.keyboard("{ArrowDown}");
-    expect(screen.getByRole("link", { name: "Actualizar precios" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Precios de la empresa" })).toHaveFocus();
   });
 
   test("el segundo clic sobre el área abierta la cierra una sola vez aunque el botón no tome el foco (Safari)", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Crear"));
-    const enlace = screen.getByRole("link", { name: "Componer una partida" });
+    await u.click(area("Obras"));
+    const enlace = screen.getByRole("link", { name: "Hoja del proyecto" });
     expect(enlace).toHaveFocus();
     // Safari: al apretar el botón, este no toma el foco; el enlace lo pierde hacia el body (relatedTarget nulo).
-    const boton = area("Crear");
+    const boton = area("Obras");
     fireEvent.mouseDown(boton);
     act(() => enlace.blur());
     fireEvent.mouseUp(boton);
     fireEvent.click(boton);
-    expect(panel("Crear")).toBeNull();
-    expect(area("Crear")).toHaveAttribute("aria-expanded", "false");
+    expect(panel("Obras")).toBeNull();
+    expect(area("Obras")).toHaveAttribute("aria-expanded", "false");
   });
 
   test("Tab que saca el foco de la navegación cierra el panel", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Más"));
+    await u.click(area("Control"));
     await u.keyboard("{End}");
-    expect(screen.getByRole("link", { name: "Acerca de Sílice" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Escenarios de sensibilidad" })).toHaveFocus();
     await u.tab();
     expect(screen.getByRole("button", { name: "derecha" })).toHaveFocus();
-    expect(panel("Más")).toBeNull();
-    expect(area("Más")).toHaveAttribute("aria-expanded", "false");
+    expect(panel("Control")).toBeNull();
+    expect(area("Control")).toHaveAttribute("aria-expanded", "false");
   });
 
   test("al redimensionar la ventana el panel abierto se vuelve a encajar en el ancho útil (sin la barra de desplazamiento)", async () => {
@@ -200,8 +236,8 @@ describe("BarraSuperior", () => {
       return this.classList.contains("silice-panel-area") ? new DOMRect(500, 48, 400, 300) : original.call(this);
     });
     pintar();
-    await u.click(area("Más"));
-    const region = panel("Más")!;
+    await u.click(area("Control"));
+    const region = panel("Control")!;
     expect(region.style.insetInlineStart).toBe("");
     expect(region.style.maxInlineSize).toBe("min(40rem, 984px)");
     ancho = 800;
@@ -218,113 +254,116 @@ describe("BarraSuperior", () => {
     expect(region.style.insetInlineStart).toBe("");
   });
 
-  test("clic fuera (en el main) cierra; abrir «Más» cierra «Crear»", async () => {
+  test("clic fuera (en el main) cierra; abrir «Control» cierra «Obras»", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Crear"));
+    await u.click(area("Obras"));
     await u.click(screen.getByRole("main"));
-    expect(panel("Crear")).toBeNull();
-    await u.click(area("Crear"));
-    await u.click(area("Más"));
-    expect(panel("Crear")).toBeNull();
-    expect(area("Crear")).toHaveAttribute("aria-expanded", "false");
-    expect(panel("Más")).toBeInTheDocument();
+    expect(panel("Obras")).toBeNull();
+    await u.click(area("Obras"));
+    await u.click(area("Control"));
+    expect(panel("Obras")).toBeNull();
+    expect(area("Obras")).toHaveAttribute("aria-expanded", "false");
+    expect(panel("Control")).toBeInTheDocument();
     expect(screen.getAllByRole("region")).toHaveLength(1);
   });
 
   test("con el teclado, abrir otra área también deja un solo panel", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Crear"));
-    area("Auditar").focus();
+    await u.click(area("Obras"));
+    area("Partidas").focus();
     await u.keyboard("{Enter}");
-    expect(panel("Crear")).toBeNull();
-    expect(panel("Auditar")).toBeInTheDocument();
+    expect(panel("Obras")).toBeNull();
+    expect(panel("Partidas")).toBeInTheDocument();
   });
 
-  test("«Más» muestra los subtítulos Precios, Obra, Análisis y Ajustes, cada uno con sus pantallas", async () => {
+  test("cada panel es una sola lista, sin subtítulos, con las pantallas en el orden del registro", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Más"));
-    const region = panel("Más")!;
-    expect(within(region).getAllByRole("list")).toHaveLength(4);
-    const obra = within(region).getByRole("list", { name: "Obra" });
-    expect(within(obra).getAllByRole("link").map((e) => e.getAttribute("href"))).toEqual(["/control"]);
-    const ajustes = within(region).getByRole("list", { name: "Ajustes" });
-    expect(within(ajustes).getAllByRole("link").map((e) => e.getAttribute("href"))).toEqual(["/administracion", "/acerca"]);
-    for (const t of ["Precios", "Obra", "Análisis", "Ajustes"]) expect(within(region).getByText(t)).toBeVisible();
+    await u.click(area("Mercado"));
+    const region = panel("Mercado")!;
+    expect(within(region).getAllByRole("list")).toHaveLength(1);
+    expect(region.querySelector(".silice-panel-area__subtitulo")).toBeNull();
+    expect(within(region).getAllByRole("link").map((e) => e.getAttribute("href"))).toEqual([
+      "/precios_empresa",
+      "/actualizacion",
+      "/historico",
+      "/indices",
+      "/simulador",
+    ]);
   });
 
   test("elegir «Componer una partida» navega a /componer y cierra el panel", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Crear"));
+    await u.click(area("Partidas"));
     await u.click(screen.getByRole("link", { name: "Componer una partida" }));
     expect(screen.getByTestId("ruta")).toHaveTextContent("/componer");
-    expect(panel("Crear")).toBeNull();
-    expect(area("Crear")).toHaveAttribute("aria-expanded", "false");
+    expect(panel("Partidas")).toBeNull();
+    expect(area("Partidas")).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("en /componer «Crear» lleva la marca de actual y la pantalla del panel aria-current", async () => {
+  test("en /componer «Partidas» lleva la marca de actual y la pantalla del panel aria-current", async () => {
     const u = userEvent.setup();
     pintar(["/componer"]);
-    expect(area("Crear")).toHaveClass("silice-barra__area--actual");
-    expect(area("Auditar")).not.toHaveClass("silice-barra__area--actual");
+    expect(area("Partidas")).toHaveClass("silice-barra__area--actual");
+    expect(area("Obras")).not.toHaveClass("silice-barra__area--actual");
     expect(within(nav()).getByRole("link", { name: "Inicio" })).not.toHaveAttribute("aria-current");
-    await u.click(area("Crear"));
+    await u.click(area("Partidas"));
     expect(screen.getByRole("link", { name: "Componer una partida" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Hoja del proyecto" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Catálogo de partidas e insumos" })).not.toHaveAttribute("aria-current");
   });
 
   test("un área de enlace marca la pantalla actual", () => {
-    pintar(["/inicio"]);
+    pintar(["/obras"]);
     expect(within(nav()).getByRole("link", { name: "Inicio" })).toHaveAttribute("aria-current", "page");
   });
 
   test("foco de revisión 2: atrás del navegador con el panel abierto lo cierra y la marca pasa al área nueva", async () => {
     const u = userEvent.setup();
-    pintar(["/libros", "/componer"]);
-    expect(area("Crear")).toHaveClass("silice-barra__area--actual");
-    await u.click(area("Crear"));
-    expect(panel("Crear")).toBeInTheDocument();
+    pintar(["/hoja", "/componer"]);
+    expect(area("Partidas")).toHaveClass("silice-barra__area--actual");
+    await u.click(area("Partidas"));
+    expect(panel("Partidas")).toBeInTheDocument();
     act(() => historial.navegar!(-1));
-    expect(screen.getByTestId("ruta")).toHaveTextContent("/libros");
-    expect(panel("Crear")).toBeNull();
-    expect(area("Crear")).toHaveAttribute("aria-expanded", "false");
-    expect(area("Crear")).not.toHaveClass("silice-barra__area--actual");
-    expect(area("Auditar")).toHaveClass("silice-barra__area--actual");
+    expect(screen.getByTestId("ruta")).toHaveTextContent("/hoja");
+    expect(panel("Partidas")).toBeNull();
+    expect(area("Partidas")).toHaveAttribute("aria-expanded", "false");
+    expect(area("Partidas")).not.toHaveClass("silice-barra__area--actual");
+    expect(area("Obras")).toHaveClass("silice-barra__area--actual");
     // Y al volver adelante el panel no reaparece solo.
     act(() => historial.navegar!(1));
-    expect(panel("Crear")).toBeNull();
+    expect(panel("Partidas")).toBeNull();
   });
 
   test("foco de revisión 3: cambiar el tamaño de letra con un panel abierto lo cierra", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Crear"));
-    expect(panel("Crear")).toBeInTheDocument();
+    await u.click(area("Obras"));
+    expect(panel("Obras")).toBeInTheDocument();
     act(() => {
       document.documentElement.dataset.siliceLetra = "grande";
     });
-    await waitFor(() => expect(panel("Crear")).toBeNull());
-    expect(area("Crear")).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => expect(panel("Obras")).toBeNull());
+    expect(area("Obras")).toHaveAttribute("aria-expanded", "false");
   });
 
   test("pasar el ratón por encima no abre nada", async () => {
     const u = userEvent.setup();
     pintar();
-    for (const nombre of ["Auditar", "Crear", "Más"]) await u.hover(area(nombre));
+    for (const nombre of ["Obras", "Partidas", "Mercado", "Control"]) await u.hover(area(nombre));
     expect(screen.queryAllByRole("region")).toHaveLength(0);
-    for (const nombre of ["Auditar", "Crear", "Más"]) expect(area(nombre)).toHaveAttribute("aria-expanded", "false");
+    for (const nombre of ["Obras", "Partidas", "Mercado", "Control"]) expect(area(nombre)).toHaveAttribute("aria-expanded", "false");
   });
 
   test("el panel es navegación con enlaces, no un menú", async () => {
     const u = userEvent.setup();
     pintar();
-    await u.click(area("Más"));
+    await u.click(area("Mercado"));
     expect(screen.queryAllByRole("menu")).toHaveLength(0);
     expect(screen.queryAllByRole("menuitem")).toHaveLength(0);
-    expect(nav()).toContainElement(panel("Más"));
+    expect(nav()).toContainElement(panel("Mercado"));
   });
 
   test("el botón del menú en capa refleja su estado y llama a alternar", async () => {
@@ -332,7 +371,7 @@ describe("BarraSuperior", () => {
     let veces = 0;
     render(
       <MemoryRouter>
-        <BarraSuperior entradas={ENTRADAS} derecha={null} menu={{ abierto: false, alternar: () => (veces += 1) }} />
+        <BarraSuperior modulo={OBRAS} entradas={ENTRADAS} derecha={null} menu={{ abierto: false, alternar: () => (veces += 1) }} />
       </MemoryRouter>,
     );
     const boton = screen.getByRole("button", { name: "Abrir el menú" });
@@ -344,7 +383,7 @@ describe("BarraSuperior", () => {
   test("sin entradas la barra no pinta áreas ni falla", () => {
     render(
       <MemoryRouter>
-        <BarraSuperior entradas={[]} derecha={null} menu={{ abierto: false, alternar: () => {} }} />
+        <BarraSuperior modulo={OBRAS} entradas={[]} derecha={null} menu={{ abierto: false, alternar: () => {} }} />
       </MemoryRouter>,
     );
     const menu = screen.getByRole("navigation", { name: "Menú principal" });

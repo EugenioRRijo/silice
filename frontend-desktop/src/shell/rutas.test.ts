@@ -2,47 +2,80 @@ import { describe, expect, test } from "vitest";
 import * as rutas from "./rutas";
 import type { PaginaDef } from "./rutas";
 import {
-  AREAS,
-  HERRAMIENTAS_PRINCIPALES,
+  MODULOS,
   PAGINAS,
   SECCIONES,
-  areasVisibles,
-  herramientasVisibles,
+  fueraDeModulos,
+  inicioDe,
+  moduloDePagina,
+  modulosVisibles,
   paginaPorId,
   rutaDe,
-  seccionesVisibles,
   visible,
 } from "./rutas";
 
-// Lo que Streamlit declara en ui/app.py (PAGINAS) y en cada ui/paginas/*.py (ui_sesion.exigir): id (modulo), seccion, accion.
-const COMO_STREAMLIT: [string, string, string | null][] = [
-  ["inicio", "Trabajo", null],
-  ["tablero", "Trabajo", "leer_proyecto"],
-  ["catalogo", "Trabajo", "leer_proyecto"],
-  ["componer", "Trabajo", "editar_hoja"],
-  ["elaborar", "Trabajo", "editar_hoja"],
-  ["hoja", "Trabajo", "editar_hoja"],
-  ["actualizacion", "Trabajo", "editar_hoja"],
-  ["historico", "Trabajo", "leer_proyecto"],
-  ["precios_empresa", "Trabajo", "administrar_precios"],
-  ["indices", "Trabajo", "administrar_precios"],
-  ["reajuste", "Trabajo", "convertir_y_reajustar"],
-  ["control", "Trabajo", "control_de_obra"],
-  ["acerca", "Trabajo", null],
-  ["entregar", "Trabajo", "entregar_paquete"],
-  ["existencias", "Trabajo", "operar_arenera"],
-  ["revisar", "Revisión", "revisar_paquete"],
-  ["libros", "Revisión", "leer_proyecto"],
-  ["historial", "Revisión", "leer_proyecto"], // solo existe en la interfaz nueva (UC-30)
-  ["escenarios", "Investigación", "editar_hoja"],
-  ["similares", "Investigación", "editar_hoja"],
-  ["simulador", "Investigación", "editar_hoja"],
-  ["administracion", "Administración", "administrar_cuentas"],
+// Oraculo escrito a mano: el plan de modulos («Restricciones globales» y la tarea MOD-1) y la seccion y la accion de
+// cada pantalla de ui/app.py y de seguridad/permisos.py. [id, seccion, accion, "modulo/area" o null], en su orden.
+const REGISTRO: [string, string, string | null, string | null][] = [
+  ["auditoria", "Revisión", null, "auditoria/inicio"],
+  ["libros", "Revisión", "leer_proyecto", "auditoria/auditar"],
+  ["revisar", "Revisión", "revisar_paquete", "auditoria/paquetes"],
+  ["historial", "Revisión", "leer_proyecto", "auditoria/historial"],
+  ["obras", "Trabajo", null, "obras/inicio"],
+  ["hoja", "Trabajo", "editar_hoja", "obras/obras"],
+  ["elaborar", "Trabajo", "editar_hoja", "obras/obras"],
+  ["tablero", "Trabajo", "leer_proyecto", "obras/obras"],
+  ["entregar", "Trabajo", "entregar_paquete", "obras/obras"],
+  ["componer", "Trabajo", "editar_hoja", "obras/partidas"],
+  ["catalogo", "Trabajo", "leer_proyecto", "obras/partidas"],
+  ["similares", "Investigación", "editar_hoja", "obras/partidas"],
+  ["precios_empresa", "Trabajo", "administrar_precios", "obras/mercado"],
+  ["actualizacion", "Trabajo", "editar_hoja", "obras/mercado"],
+  ["historico", "Trabajo", "leer_proyecto", "obras/mercado"],
+  ["indices", "Trabajo", "administrar_precios", "obras/mercado"],
+  ["simulador", "Investigación", "editar_hoja", "obras/mercado"],
+  ["control", "Trabajo", "control_de_obra", "obras/control"],
+  ["reajuste", "Trabajo", "convertir_y_reajustar", "obras/control"],
+  ["escenarios", "Investigación", "editar_hoja", "obras/control"],
+  ["produccion", "Trabajo", null, "produccion/inicio"],
+  ["existencias", "Trabajo", "operar_arenera", "produccion/existencias"],
+  ["administracion", "Administración", "administrar_cuentas", null],
+  ["acerca", "Trabajo", null, null],
 ];
 
+// Acciones por rol, escritas a mano desde PERMISOS de seguridad/permisos.py (ana arma, rita revisa, admin administra).
+const ANA = [
+  "editar_hoja",
+  "convertir_y_reajustar",
+  "control_de_obra",
+  "decidir_recuperacion",
+  "entregar_paquete",
+  "operar_arenera",
+  "leer_proyecto",
+  "cambiar_caso",
+];
+const RITA = ["leer_proyecto", "revisar_paquete"];
+const ADMIN = [
+  "operar_arenera",
+  "cambiar_caso",
+  "administrar_cuentas",
+  "administrar_empresa",
+  "administrar_precios",
+  "administrar_red_y_api",
+  "cambiar_carpeta_de_datos",
+];
+
+function ubicacionEnTexto(p: PaginaDef): string | null {
+  return p.ubicacion ? `${p.ubicacion.modulo}/${p.ubicacion.area}` : null;
+}
+
 describe("registro de paginas", () => {
-  test("tiene las 21 paginas de Streamlit mas el historial (22), en su orden, con su seccion y su accion", () => {
-    expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(COMO_STREAMLIT);
+  test("tiene las 24 pantallas en su orden, con su seccion, su accion y su modulo y area", () => {
+    expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion, ubicacionEnTexto(p)])).toEqual(REGISTRO);
+  });
+
+  test("ya no existe la pantalla «inicio»: la direccion /inicio solo redirige", () => {
+    expect(paginaPorId("inicio")).toBeUndefined();
   });
 
   test("los ids son unicos y las secciones son las cuatro de Streamlit", () => {
@@ -51,220 +84,174 @@ describe("registro de paginas", () => {
   });
 
   test("toda pagina del registro carga su pantalla; ya no existe el concepto de «sin migrar»", () => {
-    expect(PAGINAS.map((p) => p.id)).toEqual(COMO_STREAMLIT.map(([id]) => id));
     expect(PAGINAS.every((p) => typeof p.cargar === "function")).toBe(true);
     expect("estaMigrada" in rutas).toBe(false);
     expect("enlaceClasico" in rutas).toBe(false);
-    const libro = paginaPorId("libros");
-    expect(libro?.titulo).toBe("Libro de la empresa");
-    expect(typeof libro?.cargar).toBe("function");
-    const hoja = paginaPorId("hoja");
-    expect(hoja).toMatchObject({ titulo: "Hoja del proyecto", seccion: "Trabajo", accion: "editar_hoja" });
-    expect(typeof hoja?.cargar).toBe("function");
-    const existencias = paginaPorId("existencias");
-    expect(existencias).toMatchObject({
-      titulo: "Existencias de la arenera",
-      seccion: "Trabajo",
-      accion: "operar_arenera",
-    });
-    expect(typeof existencias?.cargar).toBe("function");
+    expect(paginaPorId("libros")?.titulo).toBe("Libro de la empresa");
+    expect(paginaPorId("hoja")).toMatchObject({ titulo: "Hoja del proyecto", seccion: "Trabajo", accion: "editar_hoja" });
+  });
+
+  test("los tres inicios nuevos, con su titulo y su linea", () => {
+    const inicios = ["auditoria", "obras", "produccion"].map((id) => paginaPorId(id)!);
+    expect(inicios.map((p) => [p.id, p.titulo, p.enUnaLinea])).toEqual([
+      ["auditoria", "Inicio de auditoría", "Suelte un Excel y vea las últimas auditorías"],
+      ["obras", "Inicio de presupuestos y obras", "Cifras, obras y pendientes de un vistazo"],
+      ["produccion", "Inicio de producción", "Lo que requiere atención en la arenera"],
+    ]);
+  });
+
+  test("se retiran las areas, los grupos, las secciones visibles y las herramientas principales", () => {
+    for (const nombre of [
+      "AREAS",
+      "areasVisibles",
+      "HERRAMIENTAS_PRINCIPALES",
+      "herramientasVisibles",
+      "seccionesVisibles",
+    ]) {
+      expect(nombre in rutas, nombre).toBe(false);
+    }
   });
 
   test("la ruta de una pagina es su id", () => {
     expect(rutaDe(paginaPorId("libros")!)).toBe("/libros");
-    expect(rutaDe(paginaPorId("existencias")!)).toBe("/existencias");
+    expect(rutaDe({ id: "historial" })).toBe("/historial");
+    expect(rutaDe(paginaPorId("obras")!)).toBe("/obras");
     expect(paginaPorId("no_existe")).toBeUndefined();
   });
 });
 
+describe("modulos", () => {
+  test("son tres, en orden, con su nombre, su linea y los titulos de sus areas", () => {
+    expect(MODULOS.map((m) => [m.id, m.titulo, m.enUnaLinea, m.areas.map((a) => a.titulo)])).toEqual([
+      ["auditoria", "Auditoría", "Revise presupuestos propios o de terceros", ["Inicio", "Auditar", "Paquetes", "Historial"]],
+      [
+        "obras",
+        "Presupuestos y obras",
+        "Arme, apruebe y controle sus obras",
+        ["Inicio", "Obras", "Partidas", "Mercado", "Aprobaciones", "Control"],
+      ],
+      ["produccion", "Producción", "Existencias y báscula de la arenera", ["Inicio", "Existencias"]],
+    ]);
+  });
+
+  test("los ids de las areas", () => {
+    expect(Object.fromEntries(MODULOS.map((m) => [m.id, m.areas.map((a) => a.id)]))).toEqual({
+      auditoria: ["inicio", "auditar", "paquetes", "historial"],
+      obras: ["inicio", "obras", "partidas", "mercado", "aprobaciones", "control"],
+      produccion: ["inicio", "existencias"],
+    });
+  });
+
+  test("cada pantalla con ubicacion apunta a un area que existe en su modulo", () => {
+    for (const p of PAGINAS) {
+      if (!p.ubicacion) continue;
+      const modulo = MODULOS.find((m) => m.id === p.ubicacion!.modulo);
+      expect(modulo, p.id).toBeDefined();
+      expect(modulo!.areas.map((a) => a.id), p.id).toContain(p.ubicacion.area);
+    }
+  });
+
+  test("solo Administracion y Acerca quedan fuera de los modulos", () => {
+    expect(PAGINAS.filter((p) => p.ubicacion === null).map((p) => p.id)).toEqual(["administracion", "acerca"]);
+  });
+
+  test("cada modulo tiene exactamente un inicio", () => {
+    for (const m of MODULOS) {
+      const inicios = PAGINAS.filter((p) => p.ubicacion?.modulo === m.id && p.ubicacion.area === "inicio");
+      expect(inicios, m.id).toHaveLength(1);
+    }
+  });
+
+  test("inicioDe devuelve la pantalla de inicio de cada modulo", () => {
+    expect(inicioDe("auditoria").id).toBe("auditoria");
+    expect(inicioDe("obras").id).toBe("obras");
+    expect(inicioDe("produccion").id).toBe("produccion");
+  });
+
+  test("inicioDe falla con un registro sin el inicio pedido (es un error del registro, no de la persona)", () => {
+    expect(() => inicioDe("obras", PAGINAS.filter((p) => p.id !== "obras"))).toThrow();
+  });
+
+  test("moduloDePagina: el modulo de la pantalla, o null fuera de los modulos o si no existe", () => {
+    expect(moduloDePagina("componer")).toBe("obras");
+    expect(moduloDePagina("revisar")).toBe("auditoria");
+    expect(moduloDePagina("existencias")).toBe("produccion");
+    expect(moduloDePagina("produccion")).toBe("produccion");
+    expect(moduloDePagina("acerca")).toBeNull();
+    expect(moduloDePagina("administracion")).toBeNull();
+    expect(moduloDePagina("no_existe")).toBeNull();
+  });
+});
+
 describe("quien ve que", () => {
-  const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
+  const todas = [...new Set(PAGINAS.flatMap((p) => (p.accion ? [p.accion] : [])))];
 
-  test("sin ninguna accion solo se ven Inicio y Acerca", () => {
-    expect(PAGINAS.filter((p) => visible(p, [], false)).map((p) => p.id)).toEqual(["inicio", "acerca"]);
+  test("sin ninguna accion solo se ve Acerca: los inicios exigen otra pantalla visible de su modulo", () => {
+    expect(PAGINAS.filter((p) => visible(p, [], false)).map((p) => p.id)).toEqual(["acerca"]);
   });
 
-  test("con todas las acciones se ven las 22", () => {
-    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(22);
+  test("con todas las acciones se ven las 24", () => {
+    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(24);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas", () => {
-    const sinInvestigacion = PAGINAS.filter((p) => visible(p, todas, true));
-    expect(sinInvestigacion).toHaveLength(19);
-    expect(sinInvestigacion.some((p) => p.seccion === "Investigación")).toBe(false);
+  test("el modo entrega esconde Investigacion y nada mas (21)", () => {
+    const vistas = PAGINAS.filter((p) => visible(p, todas, true));
+    expect(vistas).toHaveLength(21);
+    expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 
-  test("seccionesVisibles agrupa en orden y omite las secciones vacias", () => {
-    const rol = ["leer_proyecto", "revisar_paquete"]; // como el rol que revisa
-    const secciones = seccionesVisibles(rol, false);
-    expect(secciones.map((s) => s.seccion)).toEqual(["Trabajo", "Revisión"]);
-    expect(secciones[0].paginas.map((p) => p.id)).toEqual(["inicio", "tablero", "catalogo", "historico", "acerca"]);
-    expect(secciones[1].paginas.map((p) => p.id)).toEqual(["revisar", "libros", "historial"]);
+  test("un inicio se ve si su modulo tiene otra pantalla visible", () => {
+    const auditoria = paginaPorId("auditoria")!;
+    const produccion = paginaPorId("produccion")!;
+    expect(visible(auditoria, ["revisar_paquete"], false)).toBe(true);
+    expect(visible(auditoria, ["operar_arenera"], false)).toBe(false);
+    expect(visible(produccion, ["operar_arenera"], false)).toBe(true);
+    expect(visible(produccion, RITA, false)).toBe(false);
+  });
+
+  test("un inicio cuyo modulo solo tiene pantallas de Investigacion no se ve en modo entrega", () => {
+    const solo: PaginaDef[] = [paginaPorId("obras")!, paginaPorId("similares")!];
+    expect(visible(solo[0], ["editar_hoja"], false, solo)).toBe(true);
+    expect(visible(solo[0], ["editar_hoja"], true, solo)).toBe(false);
   });
 
   test("Existencias de la arenera solo la ve quien puede operar la arenera", () => {
     const existencias = paginaPorId("existencias")!;
     expect(visible(existencias, ["leer_proyecto", "editar_hoja"], false)).toBe(false);
     expect(visible(existencias, ["operar_arenera"], false)).toBe(true);
-    expect(seccionesVisibles(["operar_arenera"], false)[0].paginas.map((p) => p.id)).toEqual([
-      "inicio",
-      "acerca",
-      "existencias",
-    ]);
   });
 
-  test("el administrador sin acciones de trabajo solo ve su seccion y lo comun", () => {
-    const secciones = seccionesVisibles(["administrar_cuentas"], false);
-    expect(secciones.map((s) => s.seccion)).toEqual(["Trabajo", "Administración"]);
-  });
-});
-
-// Spec 2026-10-18 del Inicio, §2.2 (tabla de areas) y §2.3 (herramientas principales), copiados a mano.
-describe("areas del menu", () => {
-  test("son cinco, en orden, con la descripcion del spec", () => {
-    expect(AREAS.map((a) => [a.id, a.titulo, a.descripcion])).toEqual([
-      ["inicio", "Inicio", "Empiece aquí"],
-      ["auditar", "Auditar", "Revisar presupuestos y paquetes"],
-      ["crear", "Crear", "APU, presupuestos y entregas"],
-      ["produccion", "Producción", "Arenera: existencias y báscula"],
-      ["mas", "Más", "Precios, obra, análisis y ajustes"],
-    ]);
+  test("modulosVisibles por rol, en el orden de los modulos", () => {
+    expect(modulosVisibles(ANA, false).map((m) => m.id)).toEqual(["auditoria", "obras", "produccion"]);
+    expect(modulosVisibles(RITA, false).map((m) => m.id)).toEqual(["auditoria", "obras"]);
+    expect(modulosVisibles(ADMIN, false).map((m) => m.id)).toEqual(["obras", "produccion"]);
+    expect(modulosVisibles([], false)).toEqual([]);
   });
 
-  test("reparten las pantallas como la tabla del spec, en su orden", () => {
-    expect(Object.fromEntries(AREAS.map((a) => [a.id, a.paginas]))).toEqual({
-      inicio: ["inicio"],
-      auditar: ["libros", "revisar", "historial"],
-      crear: ["componer", "elaborar", "hoja", "catalogo", "tablero", "entregar"],
-      produccion: ["existencias"],
-      mas: [
-        "actualizacion",
-        "historico",
-        "precios_empresa",
-        "indices",
-        "reajuste",
-        "control",
-        "escenarios",
-        "similares",
-        "simulador",
-        "administracion",
-        "acerca",
-      ],
-    });
-  });
-
-  test("cada pagina del registro esta en una sola area", () => {
-    const todas = AREAS.flatMap((a) => a.paginas);
-    for (const pagina of PAGINAS) expect(todas.filter((id) => id === pagina.id)).toHaveLength(1);
-    expect(new Set(todas).size).toBe(todas.length);
-  });
-
-  test("con todas las acciones salen las cinco areas y las 22 paginas, ninguna repetida", () => {
-    const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
-    const areas = areasVisibles(todas, false);
-    expect(areas.map((a) => a.id)).toEqual(["inicio", "auditar", "crear", "produccion", "mas"]);
-    expect(areas.flatMap((a) => a.paginas)).toHaveLength(22);
-    expect(areas[1].paginas.map((p) => p.id)).toEqual(["libros", "revisar", "historial"]);
-  });
-
-  test("una area sin pantallas visibles no se pinta", () => {
-    const areas = areasVisibles(["leer_proyecto", "revisar_paquete"], false);
-    expect(areas.map((a) => a.id)).toEqual(["inicio", "auditar", "crear", "mas"]);
-    expect(areas[2].paginas.map((p) => p.id)).toEqual(["catalogo", "tablero"]);
-    expect(areas[3].paginas.map((p) => p.id)).toEqual(["historico", "acerca"]);
-  });
-
-  test("el modo entrega quita Escenarios, Partidas similares y Simulador y deja 19", () => {
-    const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
-    const ids = areasVisibles(todas, true).flatMap((a) => a.paginas.map((p) => p.id));
-    expect(ids).toHaveLength(19);
-    for (const fuera of ["escenarios", "similares", "simulador"]) expect(ids).not.toContain(fuera);
-  });
-
-  test("una pagina fuera de toda area cae al final de «Más» en vez de perderse", () => {
-    const extra: PaginaDef = {
-      id: "nueva",
-      titulo: "Nueva",
-      enUnaLinea: "Una pantalla de prueba",
-      seccion: "Trabajo",
-      accion: null,
-      cargar: PAGINAS[0].cargar,
-    };
-    const mas = areasVisibles([], false, [...PAGINAS, extra]).find((a) => a.id === "mas")!;
-    expect(mas.paginas.map((p) => p.id).at(-1)).toBe("nueva");
+  test("fueraDeModulos por rol", () => {
+    expect(fueraDeModulos(ANA, false).map((p) => p.id)).toEqual(["acerca"]);
+    expect(fueraDeModulos(RITA, false).map((p) => p.id)).toEqual(["acerca"]);
+    expect(fueraDeModulos(ADMIN, false).map((p) => p.id)).toEqual(["administracion", "acerca"]);
+    expect(fueraDeModulos([], false).map((p) => p.id)).toEqual(["acerca"]);
   });
 });
 
-describe("herramientas principales", () => {
-  test("son tres, en este orden; llevan el nombre de su pantalla", () => {
-    expect(HERRAMIENTAS_PRINCIPALES.map((h) => h.pagina)).toEqual(["libros", "componer", "existencias"]);
-    const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
-    expect(herramientasVisibles(todas, false).map((h) => h.titulo)).toEqual([
-      "Libro de la empresa",
-      "Componer una partida",
-      "Existencias de la arenera",
-    ]);
-  });
-
-  test("solo salen las que la cuenta puede usar", () => {
-    expect(herramientasVisibles(["leer_proyecto"], false).map((h) => h.pagina)).toEqual(["libros"]);
-    const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
-    expect(herramientasVisibles(todas, false).map((h) => h.pagina)).toEqual(["libros", "componer", "existencias"]);
-  });
-
-  test("la ayuda de una herramienta principal es la linea de su pagina", () => {
-    const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
-    const visibles = herramientasVisibles(todas, false);
-    expect(visibles).toHaveLength(3);
-    for (const h of visibles) expect(h.ayuda).toBe(paginaPorId(h.pagina)!.enUnaLinea);
-  });
-});
-
-describe("linea de ayuda y grupos de Mas", () => {
-  // Códigos internos que no deben verse en la interfaz (UC-12, RF-3, RNF-04, BCP-2, INV-108).
-  const JERGA = /\b(UC|RF|RNF|BCP|INV)-\d/;
+describe("linea de ayuda", () => {
+  // Codigos internos que no deben verse en la interfaz (UC-12, RF-3, RNF-04, BCP-2, INV-108, MOD-1).
+  const JERGA = /\b(UC|RF|RNF|BCP|INV|MOD)-\d/;
 
   test("la prueba de jerga detecta los codigos internos", () => {
-    for (const codigo of ["UC-12", "RF-3", "RNF-04", "BCP-2", "INV-108"]) {
+    for (const codigo of ["UC-12", "RF-3", "RNF-04", "BCP-2", "INV-108", "MOD-1"]) {
       expect(JERGA.test(`vea ${codigo}`), codigo).toBe(true);
     }
     expect(JERGA.test("Arme el análisis de precio de una partida")).toBe(false);
   });
 
-  test("cada pagina tiene una linea de 1 a 60 caracteres sin jerga", () => {
-    for (const p of PAGINAS) {
-      expect(p.enUnaLinea.length, p.id).toBeGreaterThanOrEqual(1);
-      expect(p.enUnaLinea.length, p.id).toBeLessThanOrEqual(60);
-      expect(JERGA.test(p.enUnaLinea), p.id).toBe(false);
+  test("cada pagina y cada modulo tiene una linea de 1 a 60 caracteres sin jerga", () => {
+    for (const { id, enUnaLinea } of [...PAGINAS, ...MODULOS]) {
+      expect(enUnaLinea.length, id).toBeGreaterThanOrEqual(1);
+      expect(enUnaLinea.length, id).toBeLessThanOrEqual(60);
+      expect(JERGA.test(enUnaLinea), id).toBe(false);
     }
-  });
-
-  const mas = () => AREAS.find((a) => a.id === "mas")!;
-
-  test("los grupos de Mas cubren exactamente sus paginas", () => {
-    const ids = mas().grupos!.flatMap((g) => g.paginas);
-    expect(new Set(ids).size).toBe(ids.length);
-    expect([...ids].sort()).toEqual([...mas().paginas].sort());
-    expect(mas().grupos!.map((g) => g.titulo)).toEqual(["Precios", "Obra", "Análisis", "Ajustes"]);
-  });
-
-  test("los grupos de Mas", () => {
-    expect(mas().grupos!.map((g) => g.paginas)).toEqual([
-      ["actualizacion", "historico", "precios_empresa", "indices", "reajuste"],
-      ["control"],
-      ["escenarios", "similares", "simulador"],
-      ["administracion", "acerca"],
-    ]);
-  });
-
-  test("solo Mas tiene grupos", () => {
-    for (const a of AREAS.filter((x) => x.id !== "mas")) expect(a.grupos).toBeUndefined();
-  });
-});
-
-describe("rutaDe", () => {
-  test("acepta una pagina completa o solo su id", () => {
-    expect(rutaDe({ id: "historial" })).toBe("/historial");
-    expect(rutaDe(paginaPorId("libros")!)).toBe("/libros");
   });
 });

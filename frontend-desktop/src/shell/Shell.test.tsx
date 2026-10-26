@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useNavigate } from "react-router";
+import { MemoryRouter, useNavigate, type NavigateFunction } from "react-router";
 import { afterEach, beforeEach, describe, expect, onTestFinished, test, vi } from "vitest";
 import { fijarCsrf } from "../api/cliente";
 import type { SesionRespuesta } from "../api/tipos";
@@ -11,7 +11,7 @@ import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, recorridoEnCurso, terminarRecorrido } from "./recorrido";
 import { Shell } from "./Shell";
 import { PAGINAS as REGISTRO, visible } from "./rutas";
-import type { PaginaDef } from "./rutas";
+import type { ModuloId, PaginaDef } from "./rutas";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -49,13 +49,20 @@ function PaginaB() {
 
 const CARGAR_B = async () => ({ default: PaginaB });
 
+function InicioDeObras() {
+  return <h1>Inicio de presupuestos y obras</h1>;
+}
+
+// Registro de prueba: cada pantalla con su modulo y su area (plan de modulos, MOD-1). El orden decide el de los paneles.
 const PAGINAS: PaginaDef[] = [
-  { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Cómo va el proyecto", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
-  { id: "catalogo", titulo: "Catálogo de partidas e insumos", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: CARGAR_B },
-  { id: "control", titulo: "Control de obra", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "control_de_obra", cargar: CARGAR_B },
-  { id: "acerca", titulo: "Acerca de Sílice", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: CARGAR_B },
-  { id: "revisar", titulo: "Revisar un paquete", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "revisar_paquete", cargar: CARGAR_B },
-  { id: "escenarios", titulo: "Escenarios de sensibilidad", enUnaLinea: "Pantalla de prueba", seccion: "Investigación", accion: "editar_hoja", cargar: CARGAR_B },
+  { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Cómo va el proyecto", seccion: "Trabajo", accion: "leer_proyecto", ubicacion: { modulo: "obras", area: "obras" }, cargar: async () => ({ default: PaginaA }) },
+  { id: "hoja", titulo: "Hoja del proyecto", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "editar_hoja", ubicacion: { modulo: "obras", area: "obras" }, cargar: CARGAR_B },
+  { id: "catalogo", titulo: "Catálogo de partidas e insumos", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", ubicacion: { modulo: "obras", area: "partidas" }, cargar: CARGAR_B },
+  { id: "control", titulo: "Control de obra", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "control_de_obra", ubicacion: { modulo: "obras", area: "control" }, cargar: CARGAR_B },
+  { id: "acerca", titulo: "Acerca de Sílice", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, ubicacion: null, cargar: CARGAR_B },
+  { id: "revisar", titulo: "Revisar un paquete", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "revisar_paquete", ubicacion: { modulo: "auditoria", area: "paquetes" }, cargar: CARGAR_B },
+  { id: "escenarios", titulo: "Escenarios de sensibilidad", enUnaLinea: "Pantalla de prueba", seccion: "Investigación", accion: "editar_hoja", ubicacion: { modulo: "obras", area: "control" }, cargar: CARGAR_B },
+  { id: "obras", titulo: "Inicio de presupuestos y obras", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, ubicacion: { modulo: "obras", area: "inicio" }, cargar: async () => ({ default: InicioDeObras }) },
 ];
 
 // Las 22 pantallas del registro, cada una con un h1 con su titulo (sin bajar la pagina real).
@@ -124,6 +131,7 @@ describe("Shell", () => {
         return json({ actual: elegido });
       }
       if (ruta === "/v1/proyectos") return json(PROYECTOS);
+      if (ruta === "/v1/sesion/preferencias" && metodo === "PUT") return new Response(null, { status: 204 });
       return json({ detalle: "No encontrado." }, 404);
     });
     alSalir = vi.fn<() => void>();
@@ -243,111 +251,116 @@ describe("Shell", () => {
   });
 
   describe("barra superior", () => {
-    test("muestra las áreas que la cuenta puede usar, y en cada panel solo sus pantallas permitidas", async () => {
+    test("muestra las áreas del módulo que la cuenta puede usar, y en cada panel solo sus pantallas permitidas", async () => {
       const usuario = userEvent.setup();
       montar();
-      // Sin revisar_paquete ni operar_arenera no hay Auditar ni Producción; Crear y Más tienen dos pantallas cada una.
-      expect(areasDeLaBarra().map((a) => a.textContent)).toEqual(["Crear", "Más"]);
-      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
-      const panel = within(menu()).getByRole("region", { name: "Más" });
-      expect(within(panel).getByRole("link", { name: "Acerca de Sílice" })).toBeInTheDocument(); // sin accion: toda cuenta la ve
-      expect(within(panel).queryByRole("link", { name: "Control de obra" })).not.toBeInTheDocument(); // sin control_de_obra
+      // Sin control_de_obra, a «Control» solo le queda Escenarios: pasa a enlace con el nombre del área.
+      expect(areasDeLaBarra().map((a) => a.textContent)).toEqual(["Inicio", "Obras", "Partidas", "Control"]);
+      expect(within(menu()).getByRole("link", { name: "Control" })).toHaveAttribute("href", "/escenarios");
+      await usuario.click(within(menu()).getByRole("button", { name: "Obras" }));
+      const panel = within(menu()).getByRole("region", { name: "Obras" });
+      expect(within(panel).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/tablero", "/hoja"]);
+      expect(within(menu()).queryByRole("link", { name: "Control de obra" })).not.toBeInTheDocument();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
+    });
+
+    test("junto a «Sílice» la barra dice el módulo abierto, como texto", async () => {
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      const banner = screen.getByRole("banner");
+      const nombre = within(banner).getByText("Presupuestos y obras");
+      expect(nombre.closest("a")).toBeNull();
     });
 
     test.each([
-      ["ana", ["Inicio", "Auditar", "Crear", "Existencias de la arenera", "Más"]],
-      ["rita", ["Inicio", "Auditar", "Crear", "Más"]],
-      ["admin", ["Inicio", "Existencias de la arenera", "Más"]],
-    ] as const)("%s ve en la barra las áreas de su rol", async (rol, esperadas) => {
-      montar(sesionCon({ login: rol, acciones: ACCIONES_POR_ROL[rol] }), "/inicio", LIGERAS);
-      await screen.findByRole("heading", { name: "Inicio" });
+      ["ana", "Inicio de presupuestos y obras", "Presupuestos y obras", ["Inicio", "Obras", "Partidas", "Mercado", "Control"]],
+      ["rita", "Inicio de auditoría", "Auditoría", ["Inicio", "Auditar", "Paquetes", "Historial"]],
+      ["admin", "Inicio de presupuestos y obras", "Presupuestos y obras", ["Inicio", "Mercado"]],
+    ] as const)("%s entra en el inicio de su módulo y ve en la barra las áreas de su rol", async (rol, inicio, modulo, esperadas) => {
+      montar(sesionCon({ login: rol, acciones: ACCIONES_POR_ROL[rol] }), "/", LIGERAS);
+      await screen.findByRole("heading", { name: inicio });
+      expect(within(screen.getByRole("banner")).getByText(modulo)).toBeInTheDocument();
       expect(areasDeLaBarra().map((a) => a.textContent)).toEqual(esperadas);
     });
 
-    test.each(["ana", "rita", "admin"] as const)(
-      "con %s ninguna página tiene dos enlaces en una misma navegación (barra y capa), y están todas las que puede usar",
-      async (rol) => {
+    // Foco de revision 4, en la barra: oraculo escrito a mano (plan de modulos, MOD-1).
+    test.each([
+      [
+        "ana",
+        [
+          "/obras",
+          "/hoja",
+          "/elaborar",
+          "/tablero",
+          "/entregar",
+          "/componer",
+          "/catalogo",
+          "/similares",
+          "/actualizacion",
+          "/historico",
+          "/simulador",
+          "/control",
+          "/reajuste",
+          "/escenarios",
+        ],
+      ],
+      ["rita", ["/auditoria", "/libros", "/revisar", "/historial"]],
+      ["admin", ["/obras", "/precios_empresa", "/indices"]],
+    ] as const)(
+      "con %s cada pantalla de su módulo de entrada sale una sola vez en la barra y en la capa",
+      async (rol, esperadas) => {
         const usuario = userEvent.setup();
-        const acciones = ACCIONES_POR_ROL[rol];
-        montar(sesionCon({ login: rol, acciones }), "/inicio", LIGERAS);
-        await screen.findByRole("heading", { name: "Inicio" });
-        const esperadas = REGISTRO.filter((p) => visible(p, acciones, false)).map((p) => p.titulo).sort();
-        const vistas = new Set<string>();
+        montar(sesionCon({ login: rol, acciones: ACCIONES_POR_ROL[rol] }), "/", LIGERAS);
+        await screen.findByRole("heading", { level: 1 });
+        const vistas: string[] = [];
         for (const area of areasDeLaBarra()) {
-          if (area.tagName === "BUTTON") await usuario.click(area);
-          // En el panel el nombre accesible es solo el titulo (la linea de ayuda es la descripcion).
-          const titulos = within(menu())
-            .getAllByRole("link")
-            .map((a) => (a.querySelector(".silice-panel-area__titulo") ?? a).textContent ?? "");
-          for (const t of titulos) {
-            expect(within(menu()).getAllByRole("link", { name: t })).toHaveLength(1);
-            vistas.add(t);
+          if (area.tagName === "BUTTON") {
+            await usuario.click(area);
+            const id = area.getAttribute("aria-controls")!;
+            vistas.push(...within(document.getElementById(id)!).getAllByRole("link").map((a) => a.getAttribute("href")!));
+          } else {
+            vistas.push(area.getAttribute("href")!);
           }
         }
-        expect([...vistas].sort()).toEqual(esperadas);
+        expect(vistas).toEqual(esperadas);
         await usuario.click(screen.getByRole("button", { name: "Abrir el menú" }));
-        const enCapa = titulosDeLaCapa();
+        const enCapa = within(capa())
+          .getAllByRole("link")
+          .map((a) => a.getAttribute("href")!);
         expect(new Set(enCapa).size).toBe(enCapa.length);
-        expect([...enCapa].sort()).toEqual(esperadas);
+        expect([...enCapa].sort()).toEqual([...esperadas].sort());
       },
     );
 
-    test("«Más» empieza cerrado, se abre con su botón y se vuelve a cerrar", async () => {
+    test("«Obras» empieza cerrado, se abre con su botón y se vuelve a cerrar", async () => {
       const usuario = userEvent.setup();
       montar();
-      const boton = within(menu()).getByRole("button", { name: "Más" });
+      const boton = within(menu()).getByRole("button", { name: "Obras" });
       expect(boton).toHaveAttribute("aria-expanded", "false");
-      expect(within(menu()).queryByRole("link", { name: /Escenarios/ })).not.toBeInTheDocument();
+      expect(within(menu()).queryByRole("link", { name: "Hoja del proyecto" })).not.toBeInTheDocument();
       await usuario.click(boton);
       expect(boton).toHaveAttribute("aria-expanded", "true");
-      expect(within(menu()).getByRole("link", { name: "Escenarios de sensibilidad" })).toBeVisible();
+      expect(within(menu()).getByRole("link", { name: "Hoja del proyecto" })).toBeVisible();
       await usuario.click(boton);
       expect(boton).toHaveAttribute("aria-expanded", "false");
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
-    test("estando en una pagina de «Más», esa área se marca como actual y su panel marca la pantalla", async () => {
+    test("estando en una pantalla de un panel, esa área se marca como actual y su panel marca la pantalla", async () => {
       const usuario = userEvent.setup();
-      const paginas: PaginaDef[] = [
-        ...PAGINAS,
-        { id: "indices", titulo: "Índices del BCV", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
-      ];
-      montar(sesionCon(), "/indices", paginas);
-      const mas = within(menu()).getByRole("button", { name: "Más" });
-      expect(mas).toHaveClass("silice-barra__area--actual");
-      expect(within(menu()).getByRole("button", { name: "Crear" })).not.toHaveClass("silice-barra__area--actual");
-      await usuario.click(mas);
-      expect(within(menu()).getByRole("link", { name: "Índices del BCV" })).toHaveAttribute("aria-current", "page");
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
-    });
-
-    test("las herramientas principales no se repiten en la navegación: cada una sale una sola vez, en su área", async () => {
-      const migrada = async () => ({ default: PaginaA });
-      const paginas: PaginaDef[] = [
-        { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Suba un Excel y vea lo que no cuadra", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
-        { id: "componer", titulo: "Componer una partida", enUnaLinea: "Arme el análisis de precio de una partida", seccion: "Trabajo", accion: "editar_hoja", cargar: migrada },
-        { id: "existencias", titulo: "Existencias de la arenera", enUnaLinea: "Cuánto hay y cuánto queda de cada material", seccion: "Trabajo", accion: "operar_arenera", cargar: migrada },
-      ];
-      montar(sesionCon(), "/libros", paginas);
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      expect(screen.queryByText("Herramientas principales")).not.toBeInTheDocument();
-      // Una sola pantalla por area: enlaces directos, con el nombre de su pantalla. La cuenta de ana no opera la arenera.
-      expect(within(menu()).getAllByRole("link", { name: "Libro de la empresa" })).toHaveLength(1);
-      expect(within(menu()).getByRole("link", { name: "Componer una partida" })).toHaveAttribute("href", "/componer");
-      expect(within(menu()).queryByRole("link", { name: "Existencias de la arenera" })).not.toBeInTheDocument();
-    });
-
-    test("sin herramientas principales tampoco queda un bloque vacío con ese nombre", async () => {
-      montar();
-      expect(screen.queryByText("Herramientas principales")).not.toBeInTheDocument();
-      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      montar(sesionCon(), "/hoja");
+      const obras = within(menu()).getByRole("button", { name: "Obras" });
+      expect(obras).toHaveClass("silice-barra__area--actual");
+      expect(within(menu()).getByRole("link", { name: "Partidas" })).not.toHaveAttribute("aria-current");
+      await usuario.click(obras);
+      expect(within(menu()).getByRole("link", { name: "Hoja del proyecto" })).toHaveAttribute("aria-current", "page");
+      await screen.findByRole("heading", { name: "Otra pantalla" });
     });
 
     test("cada pantalla del panel lleva su línea de ayuda como descripción", async () => {
       const usuario = userEvent.setup();
       montar();
-      await usuario.click(within(menu()).getByRole("button", { name: "Crear" }));
+      await usuario.click(within(menu()).getByRole("button", { name: "Obras" }));
       const enlace = within(menu()).getByRole("link", { name: "Tablero del proyecto" });
       expect(enlace).toHaveAccessibleDescription("Cómo va el proyecto");
       expect(within(menu()).getByText("Cómo va el proyecto")).toBeVisible();
@@ -355,12 +368,9 @@ describe("Shell", () => {
     });
 
     test("en modo entrega no aparece ninguna pantalla de Investigación, ni en la barra ni en la capa", async () => {
-      const usuario = userEvent.setup();
       montar(sesionCon({ modo_entrega: true }));
-      // Sin Escenarios, a «Más» le queda una sola pantalla: pasa a enlace directo.
-      expect(areasDeLaBarra().map((a) => a.textContent)).toEqual(["Crear", "Acerca de Sílice"]);
-      await usuario.click(within(menu()).getByRole("button", { name: "Crear" }));
-      expect(within(menu()).queryByText("Investigación")).not.toBeInTheDocument();
+      // Sin Escenarios, «Control» queda sin pantallas y no se pinta.
+      expect(areasDeLaBarra().map((a) => a.textContent)).toEqual(["Inicio", "Obras", "Partidas"]);
       expect(within(menu()).queryByRole("link", { name: "Escenarios de sensibilidad" })).not.toBeInTheDocument();
       expect(within(capa()).queryByText("Escenarios de sensibilidad")).not.toBeInTheDocument();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
@@ -368,21 +378,23 @@ describe("Shell", () => {
 
     test("en modo entrega, con todas las acciones de ana, ninguna pantalla de Investigación sale en la navegación", async () => {
       const usuario = userEvent.setup();
-      montar(sesionCon({ acciones: ACCIONES_POR_ROL.ana, modo_entrega: true }), "/inicio", LIGERAS);
-      await screen.findByRole("heading", { name: "Inicio" });
-      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
-      for (const p of REGISTRO.filter((q) => q.seccion === "Investigación")) {
-        expect(within(menu()).queryByRole("link", { name: p.titulo })).not.toBeInTheDocument();
-        expect(titulosDeLaCapa()).not.toContain(p.titulo);
+      montar(sesionCon({ acciones: ACCIONES_POR_ROL.ana, modo_entrega: true }), "/obras", LIGERAS);
+      await screen.findByRole("heading", { name: "Inicio de presupuestos y obras" });
+      for (const nombre of ["Obras", "Partidas", "Mercado", "Control"]) {
+        await usuario.click(within(menu()).getByRole("button", { name: nombre }));
+        for (const p of REGISTRO.filter((q) => q.seccion === "Investigación")) {
+          expect(within(menu()).queryByRole("link", { name: p.titulo })).not.toBeInTheDocument();
+        }
       }
+      for (const p of REGISTRO.filter((q) => q.seccion === "Investigación")) expect(titulosDeLaCapa()).not.toContain(p.titulo);
     });
 
     test("la pagina actual es un enlace marcado en su panel y su área va marcada como actual", async () => {
       const usuario = userEvent.setup();
       montar();
-      const crear = within(menu()).getByRole("button", { name: "Crear" });
-      expect(crear).toHaveClass("silice-barra__area--actual");
-      await usuario.click(crear);
+      const obras = within(menu()).getByRole("button", { name: "Obras" });
+      expect(obras).toHaveClass("silice-barra__area--actual");
+      await usuario.click(obras);
       const enlace = within(menu()).getByRole("link", { name: "Tablero del proyecto" });
       expect(enlace).toHaveAttribute("href", "/tablero");
       expect(enlace).toHaveAttribute("aria-current", "page");
@@ -392,14 +404,14 @@ describe("Shell", () => {
     test("toda pantalla de la navegación es un enlace de esta interfaz: ni «clásica» ni enlaces fuera de ella", async () => {
       const usuario = userEvent.setup();
       montar();
-      await usuario.click(within(menu()).getByRole("button", { name: "Crear" }));
+      await usuario.click(within(menu()).getByRole("button", { name: "Obras" }));
       for (const nav of [menu(), capa()]) {
         expect(nav).not.toHaveTextContent(/clásica/i);
         expect(nav.querySelector("[class*='silice-menu__']")).toBeNull();
         expect(nav.querySelector("a[target=_blank]")).toBeNull();
         expect(nav.querySelector("[aria-disabled]")).toBeNull();
       }
-      expect(within(menu()).getByRole("link", { name: "Catálogo de partidas e insumos" })).toHaveAttribute("href", "/catalogo");
+      expect(within(menu()).getByRole("link", { name: "Partidas" })).toHaveAttribute("href", "/catalogo");
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
@@ -407,19 +419,20 @@ describe("Shell", () => {
       const usuario = userEvent.setup();
       montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      const crear = within(menu()).getByRole("button", { name: "Crear" });
-      for (let i = 0; i < 40 && document.activeElement !== crear; i++) await usuario.tab();
-      expect(crear).toHaveFocus();
+      const obras = within(menu()).getByRole("button", { name: "Obras" });
+      for (let i = 0; i < 40 && document.activeElement !== obras; i++) await usuario.tab();
+      expect(obras).toHaveFocus();
       await usuario.keyboard("{Enter}");
-      expect(crear).toHaveAttribute("aria-expanded", "true");
-      // En «Crear» el catálogo va antes que el tablero (orden de AREAS en rutas.ts).
-      const catalogo = within(menu()).getByRole("link", { name: "Catálogo de partidas e insumos" });
-      expect(catalogo).toHaveFocus();
+      expect(obras).toHaveAttribute("aria-expanded", "true");
+      // En el registro de prueba el tablero va antes que la hoja.
+      const tablero = within(menu()).getByRole("link", { name: "Tablero del proyecto" });
+      expect(tablero).toHaveFocus();
       await usuario.keyboard("{ArrowDown}");
-      expect(within(menu()).getByRole("link", { name: "Tablero del proyecto" })).toHaveFocus();
+      const hoja = within(menu()).getByRole("link", { name: "Hoja del proyecto" });
+      expect(hoja).toHaveFocus();
       await usuario.keyboard("{ArrowUp}");
-      expect(catalogo).toHaveFocus();
-      await usuario.keyboard("{Enter}");
+      expect(tablero).toHaveFocus();
+      await usuario.keyboard("{ArrowDown}{Enter}");
       const titulo = await screen.findByRole("heading", { name: "Otra pantalla" });
       await waitFor(() => expect(titulo).toHaveFocus());
     });
@@ -428,10 +441,166 @@ describe("Shell", () => {
       const usuario = userEvent.setup();
       montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
+      await usuario.click(within(menu()).getByRole("button", { name: "Obras" }));
       expect(within(menu()).queryAllByRole("heading")).toHaveLength(0);
       expect(within(capa()).queryAllByRole("heading")).toHaveLength(0);
       expect(capa().querySelectorAll(".silice-capa__rotulo").length).toBeGreaterThan(0);
+    });
+  });
+
+  // Plan de modulos (MOD-1): la direccion de entrada, el modulo actual y el ultimo modulo recordado por cuenta.
+  describe("modulos: entrada, modulo actual y preferencia", () => {
+    const PUT = "/v1/sesion/preferencias";
+
+    function llamadasPut() {
+      return fetchFalso.mock.calls.filter((c) => String(c[0]) === PUT && c[1]?.method === "PUT");
+    }
+
+    function sesionDe(rol: "ana" | "rita" | "admin", modulo: ModuloId | null) {
+      return sesionCon({ login: rol, acciones: ACCIONES_POR_ROL[rol], preferencias: { modulo, sidebar_fijado: false } });
+    }
+
+    // Para navegar sin la barra (la direccion escrita a mano o un marcador).
+    const historia: { ir: NavigateFunction | null } = { ir: null };
+    function Navegador() {
+      const ir = useNavigate();
+      useEffect(() => {
+        historia.ir = ir;
+      }, [ir]);
+      return null;
+    }
+
+    function montarCon(sesion: SesionRespuesta, ruta: string) {
+      return render(
+        <MemoryRouter initialEntries={[ruta]}>
+          <Shell sesion={sesion} alSalir={alSalir} alExpirar={alExpirar} paginas={LIGERAS} />
+          <Navegador />
+        </MemoryRouter>,
+      );
+    }
+
+    test.each(["/", "/inicio", "/no-existe"])("%s con «obras» guardado lleva al inicio de Presupuestos y obras", async (ruta) => {
+      montarCon(sesionDe("ana", "obras"), ruta);
+      expect(await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" })).toBeInTheDocument();
+    });
+
+    test("ana con «auditoria» guardado entra en Auditoría", async () => {
+      montarCon(sesionDe("ana", "auditoria"), "/");
+      expect(await screen.findByRole("heading", { level: 1, name: "Inicio de auditoría" })).toBeInTheDocument();
+    });
+
+    test("rita con «produccion» guardado (que no puede usar) entra en Auditoría", async () => {
+      montarCon(sesionDe("rita", "produccion"), "/inicio");
+      expect(await screen.findByRole("heading", { level: 1, name: "Inicio de auditoría" })).toBeInTheDocument();
+    });
+
+    test("sin módulo guardado, quien arma entra en Presupuestos y obras y quien revisa en Auditoría", async () => {
+      const { unmount } = montarCon(sesionDe("ana", null), "/");
+      expect(await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" })).toBeInTheDocument();
+      unmount();
+      montarCon(sesionDe("rita", null), "/");
+      expect(await screen.findByRole("heading", { level: 1, name: "Inicio de auditoría" })).toBeInTheDocument();
+    });
+
+    test("una API anterior sin preferencias entra por el rol", async () => {
+      montarCon(sesionCon({ acciones: ACCIONES_POR_ROL.admin }), "/");
+      expect(await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" })).toBeInTheDocument();
+    });
+
+    test("una cuenta sin ningún módulo visible entra en la primera pantalla de fuera de los módulos", async () => {
+      montarCon(sesionCon({ acciones: ["administrar_cuentas"] }), "/");
+      expect(await screen.findByRole("heading", { level: 1, name: "Administración" })).toBeInTheDocument();
+      expect(screen.queryByText("Presupuestos y obras")).not.toBeInTheDocument();
+    });
+
+    test("ir de /libros a /hoja guarda «obras» una sola vez; ir a /acerca no guarda nada", async () => {
+      montarCon(sesionDe("ana", "auditoria"), "/libros");
+      await screen.findByRole("heading", { level: 1, name: "Libro de la empresa" });
+      expect(llamadasPut()).toHaveLength(0);
+      act(() => void historia.ir!("/hoja"));
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await waitFor(() => expect(llamadasPut()).toHaveLength(1));
+      const [, init] = llamadasPut()[0];
+      expect(init?.body).toBe(JSON.stringify({ modulo: "obras" }));
+      expect(new Headers(init?.headers).get("X-Silice-CSRF")).toBe("tok");
+      act(() => void historia.ir!("/elaborar"));
+      await screen.findByRole("heading", { level: 1, name: "Elaborar un presupuesto" });
+      act(() => void historia.ir!("/acerca"));
+      await screen.findByRole("heading", { level: 1, name: "Acerca de Sílice" });
+      await new Promise((r) => setTimeout(r, 30));
+      expect(llamadasPut()).toHaveLength(1);
+    });
+
+    test("foco 1: un marcador a /componer con «auditoria» guardado abre Presupuestos y obras y lo recuerda", async () => {
+      const { container } = montarCon(sesionDe("ana", "auditoria"), "/componer");
+      await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
+      expect(within(screen.getByRole("banner")).getByText("Presupuestos y obras")).toBeInTheDocument();
+      expect(container.querySelector(".silice-marco")).toHaveAttribute("data-modulo", "obras");
+      await waitFor(() => expect(llamadasPut()).toHaveLength(1));
+      expect(llamadasPut()[0][1]?.body).toBe(JSON.stringify({ modulo: "obras" }));
+    });
+
+    test("foco 1: Administración queda en el último módulo usado (la barra y data-modulo no cambian)", async () => {
+      const { container } = montarCon(sesionDe("admin", "produccion"), "/existencias");
+      await screen.findByRole("heading", { level: 1, name: "Existencias de la arenera" });
+      act(() => void historia.ir!("/administracion"));
+      await screen.findByRole("heading", { level: 1, name: "Administración" });
+      expect(within(screen.getByRole("banner")).getByText("Producción")).toBeInTheDocument();
+      expect(container.querySelector(".silice-marco")).toHaveAttribute("data-modulo", "produccion");
+      expect(areasDeLaBarra().map((a) => a.textContent)).toEqual(["Inicio", "Existencias"]);
+      expect(llamadasPut()).toHaveLength(0);
+    });
+
+    test("entrar directo a Acerca sin módulo guardado muestra el módulo de entrada y no guarda nada", async () => {
+      const { container } = montarCon(sesionDe("rita", null), "/acerca");
+      await screen.findByRole("heading", { level: 1, name: "Acerca de Sílice" });
+      expect(container.querySelector(".silice-marco")).toHaveAttribute("data-modulo", "auditoria");
+      await new Promise((r) => setTimeout(r, 30));
+      expect(llamadasPut()).toHaveLength(0);
+    });
+
+    test("una pantalla de un módulo que la cuenta no puede usar no cambia el módulo ni lo guarda", async () => {
+      const { container } = montarCon(sesionDe("rita", "auditoria"), "/existencias");
+      expect(await screen.findByText("Su cuenta no tiene permiso para esta pantalla o acción.")).toBeInTheDocument();
+      expect(container.querySelector(".silice-marco")).toHaveAttribute("data-modulo", "auditoria");
+      await new Promise((r) => setTimeout(r, 30));
+      expect(llamadasPut()).toHaveLength(0);
+    });
+
+    test("un 401 al guardar el módulo da la sesión por vencida", async () => {
+      const base = fetchFalso.getMockImplementation()!;
+      fetchFalso.mockImplementation(async (entrada, init) =>
+        String(entrada) === PUT ? json({ detalle: "Sin sesión." }, 401) : base(entrada, init),
+      );
+      montarCon(sesionDe("ana", "auditoria"), "/hoja");
+      await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+    });
+
+    test("otro error al guardar el módulo no molesta a la persona", async () => {
+      const base = fetchFalso.getMockImplementation()!;
+      fetchFalso.mockImplementation(async (entrada, init) =>
+        String(entrada) === PUT ? json({ detalle: "La base de la instalación no responde." }, 500) : base(entrada, init),
+      );
+      montarCon(sesionDe("ana", "auditoria"), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await waitFor(() => expect(llamadasPut()).toHaveLength(1));
+      await new Promise((r) => setTimeout(r, 30));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(alExpirar).not.toHaveBeenCalled();
+    });
+
+    test("el módulo llega a las páginas por el contexto", async () => {
+      function VeModulo() {
+        const { modulo } = useAplicacion();
+        return <h1>{`modulo=${modulo ?? "ninguno"}`}</h1>;
+      }
+      const paginas = LIGERAS.map((p) => (p.id === "historial" ? { ...p, cargar: async () => ({ default: VeModulo }) } : p));
+      render(
+        <MemoryRouter initialEntries={["/historial"]}>
+          <Shell sesion={sesionDe("ana", "obras")} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
+        </MemoryRouter>,
+      );
+      expect(await screen.findByRole("heading", { name: "modulo=auditoria" })).toBeInTheDocument();
     });
   });
 
@@ -471,25 +640,24 @@ describe("Shell", () => {
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
       act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
       onTestFinished(() => terminarRecorrido());
-      await usuario.click(within(menu()).getByRole("button", { name: "Crear" }));
-      await usuario.click(within(menu()).getByRole("link", { name: "Catálogo de partidas e insumos" }));
+      await usuario.click(within(menu()).getByRole("link", { name: "Partidas" }));
       await screen.findByRole("heading", { name: "Otra pantalla" });
       expect(screen.getByRole("complementary", { name: "Recorrido" })).toBeInTheDocument();
     });
 
     // Foco de revision 4 del plan: Esc cierra el panel del area, no el recorrido.
-    test("con un recorrido activo y el panel de «Crear» abierto, Esc cierra solo el panel", async () => {
+    test("con un recorrido activo y el panel de «Obras» abierto, Esc cierra solo el panel", async () => {
       const usuario = userEvent.setup();
       montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
       act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
       onTestFinished(() => terminarRecorrido());
-      const crear = within(menu()).getByRole("button", { name: "Crear" });
-      await usuario.click(crear);
-      expect(crear).toHaveAttribute("aria-expanded", "true");
+      const obras = within(menu()).getByRole("button", { name: "Obras" });
+      await usuario.click(obras);
+      expect(obras).toHaveAttribute("aria-expanded", "true");
       await usuario.keyboard("{Escape}");
-      expect(crear).toHaveAttribute("aria-expanded", "false");
-      expect(within(menu()).queryByRole("region", { name: "Crear" })).not.toBeInTheDocument();
+      expect(obras).toHaveAttribute("aria-expanded", "false");
+      expect(within(menu()).queryByRole("region", { name: "Obras" })).not.toBeInTheDocument();
       expect(screen.getByRole("complementary", { name: "Recorrido" })).toBeInTheDocument();
       expect(recorridoEnCurso()).not.toBeNull();
     });
@@ -562,14 +730,14 @@ describe("Shell", () => {
       expect(await screen.findByRole("status", { name: "Cargando la pantalla" })).toBeInTheDocument();
     });
 
-    test("la raiz lleva a la primera pagina migrada que la persona puede ver", async () => {
+    test("la raiz lleva al inicio del módulo de entrada (quien arma: Presupuestos y obras)", async () => {
       montar(sesionCon(), "/");
-      expect(await screen.findByRole("heading", { name: "Pantalla del tablero" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Inicio de presupuestos y obras" })).toBeInTheDocument();
     });
 
-    test("una ruta desconocida vuelve a la raiz", async () => {
+    test("una ruta desconocida redirige igual que la raíz", async () => {
       montar(sesionCon(), "/no-existe");
-      expect(await screen.findByRole("heading", { name: "Pantalla del tablero" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Inicio de presupuestos y obras" })).toBeInTheDocument();
     });
 
     test("una ruta que la cuenta no puede usar dice que no tiene permiso, aunque se escriba la direccion", async () => {
@@ -676,8 +844,7 @@ describe("Shell", () => {
       montar();
       await usuario.selectOptions(await selectorDeCarpeta(usuario), "arenaza");
       expect(await screen.findByText("Carpeta de trabajo cambiada")).toBeInTheDocument();
-      await usuario.click(within(menu()).getByRole("button", { name: "Crear" }));
-      await usuario.click(within(menu()).getByRole("link", { name: "Catálogo de partidas e insumos" }));
+      await usuario.click(within(menu()).getByRole("link", { name: "Partidas" }));
       await screen.findByRole("heading", { name: "Otra pantalla" });
       expect(screen.queryByText("Carpeta de trabajo cambiada")).not.toBeInTheDocument();
     });
@@ -752,11 +919,11 @@ describe("Shell", () => {
       const usuario = userEvent.setup();
       montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      const crear = within(menu()).getByRole("button", { name: "Crear" });
-      crear.focus();
+      const obras = within(menu()).getByRole("button", { name: "Obras" });
+      obras.focus();
       await usuario.keyboard("{Escape}");
-      expect(crear).toHaveFocus();
-      expect(crear).toHaveAttribute("aria-expanded", "false");
+      expect(obras).toHaveFocus();
+      expect(obras).toHaveAttribute("aria-expanded", "false");
     });
 
     test("la capa trae al pie quién tiene la sesión (la barra cede el nombre con la letra grande)", async () => {
@@ -767,15 +934,11 @@ describe("Shell", () => {
 
     test("document.title es «Página · Sílice» con la página actual y cambia al navegar", async () => {
       const usuario = userEvent.setup();
-      const dos: PaginaDef[] = [
-        ...PAGINAS,
-        { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
-      ];
-      montar(sesionCon(), "/tablero", dos);
+      montar(sesionCon(), "/tablero");
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
       expect(document.title).toBe("Tablero del proyecto · Sílice");
-      await usuario.click(within(menu()).getByRole("link", { name: "Libro de la empresa" }));
-      await waitFor(() => expect(document.title).toBe("Libro de la empresa · Sílice"));
+      await usuario.click(within(menu()).getByRole("link", { name: "Partidas" }));
+      await waitFor(() => expect(document.title).toBe("Catálogo de partidas e insumos · Sílice"));
     });
 
     test("sin página para la ruta el título queda en «Sílice»", async () => {
@@ -907,10 +1070,12 @@ describe("Shell", () => {
       );
     }
     const Destino = () => <h1>Pantalla de destino</h1>;
-    // Sin area propia: las dos caen en el panel de «Más» (grupo «Otras»).
+    const InicioPrueba = () => <h1>Inicio de prueba</h1>;
+    // Las dos en el area «Partidas» (su panel) y un inicio del modulo para la direccion de entrada.
     const DOS: PaginaDef[] = [
-      { id: "origen", titulo: "Origen de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Origen }) },
-      { id: "destino", titulo: "Destino de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Destino }) },
+      { id: "origen", titulo: "Origen de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, ubicacion: { modulo: "obras", area: "partidas" }, cargar: async () => ({ default: Origen }) },
+      { id: "destino", titulo: "Destino de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, ubicacion: { modulo: "obras", area: "partidas" }, cargar: async () => ({ default: Destino }) },
+      { id: "obras", titulo: "Inicio de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, ubicacion: { modulo: "obras", area: "inicio" }, cargar: async () => ({ default: InicioPrueba }) },
     ];
     function montarDos() {
       return render(
@@ -934,37 +1099,37 @@ describe("Shell", () => {
       const usuario = userEvent.setup();
       montarDos();
       await screen.findByRole("heading", { name: "Pantalla de origen" });
-      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
+      await usuario.click(within(menu()).getByRole("button", { name: "Partidas" }));
       await usuario.click(within(menu()).getByRole("link", { name: "Destino de prueba" }));
       const titulo = await screen.findByRole("heading", { name: "Pantalla de destino" });
       await waitFor(() => expect(titulo).toHaveFocus());
-      expect(within(menu()).queryByRole("region", { name: "Más" })).not.toBeInTheDocument();
+      expect(within(menu()).queryByRole("region", { name: "Partidas" })).not.toBeInTheDocument();
     });
 
     test("elegir en el panel la pantalla en la que ya está deja el foco en su h1, no en <body>", async () => {
       const usuario = userEvent.setup();
       montarDos();
       const titulo = await screen.findByRole("heading", { name: "Pantalla de origen" });
-      await usuario.click(within(menu()).getByRole("button", { name: "Más" }));
+      await usuario.click(within(menu()).getByRole("button", { name: "Partidas" }));
       await usuario.click(within(menu()).getByRole("link", { name: "Origen de prueba" }));
-      expect(within(menu()).queryByRole("region", { name: "Más" })).not.toBeInTheDocument();
+      expect(within(menu()).queryByRole("region", { name: "Partidas" })).not.toBeInTheDocument();
       await waitFor(() => expect(titulo).toHaveFocus());
     });
 
     test("un enlace directo de la barra conserva el foco: solo se mueve si se perdió", async () => {
       const usuario = userEvent.setup();
-      // Inicio y Producción tienen una sola pantalla: son enlaces que siguen en la barra tras navegar.
+      // En Producción, Inicio y Existencias tienen una sola pantalla: son enlaces que siguen en la barra tras navegar.
       const directas: PaginaDef[] = [
-        { ...DOS[0], id: "inicio", titulo: "Inicio" },
-        { ...DOS[1], id: "existencias", titulo: "Existencias de prueba" },
+        { ...DOS[0], id: "produccion", titulo: "Inicio de producción", ubicacion: { modulo: "produccion", area: "inicio" } },
+        { ...DOS[1], id: "existencias", titulo: "Existencias de prueba", ubicacion: { modulo: "produccion", area: "existencias" } },
       ];
       render(
-        <MemoryRouter initialEntries={["/inicio"]}>
+        <MemoryRouter initialEntries={["/produccion"]}>
           <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={directas} />
         </MemoryRouter>,
       );
       await screen.findByRole("heading", { name: "Pantalla de origen" });
-      const enlace = within(menu()).getByRole("link", { name: "Existencias de prueba" });
+      const enlace = within(menu()).getByRole("link", { name: "Existencias" });
       await usuario.click(enlace);
       await screen.findByRole("heading", { name: "Pantalla de destino" });
       await new Promise((r) => setTimeout(r, 80));
@@ -978,16 +1143,16 @@ describe("Shell", () => {
       expect(document.body).toHaveFocus();
     });
 
-    // Ronda 1 del arbitro: la entrada real es «/» (o una ruta que no existe) y ambas REDIRIGEN con `replace` a la primera
-    // pagina; eso es la carga inicial, no un cambio de pagina: el foco sigue en <body> y el primer Tab es «Saltar».
-    test.each(["/", "/ruta-inexistente"])("al cargar en %s (redirige a la primera página) no roba el foco", async (entrada) => {
+    // Ronda 1 del arbitro: la entrada real es «/» (o una ruta que no existe) y ambas REDIRIGEN con `replace` al inicio
+    // del modulo; eso es la carga inicial, no un cambio de pagina: el foco sigue en <body> y el primer Tab es «Saltar».
+    test.each(["/", "/inicio", "/ruta-inexistente"])("al cargar en %s (redirige al inicio del módulo) no roba el foco", async (entrada) => {
       const usuario = userEvent.setup();
       render(
         <MemoryRouter initialEntries={[entrada]}>
           <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={DOS} />
         </MemoryRouter>,
       );
-      await screen.findByRole("heading", { name: "Pantalla de origen" });
+      await screen.findByRole("heading", { name: "Inicio de prueba" });
       await new Promise((r) => setTimeout(r, 120));
       expect(document.body).toHaveFocus();
       await usuario.tab();
@@ -1007,7 +1172,7 @@ describe("Shell", () => {
       }
       const TRES: PaginaDef[] = [
         ...DOS,
-        { id: "lenta", titulo: "Lenta de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Lenta }) },
+        { id: "lenta", titulo: "Lenta de prueba", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, ubicacion: { modulo: "obras", area: "partidas" }, cargar: async () => ({ default: Lenta }) },
       ];
       function Va() {
         const ir = useNavigate();

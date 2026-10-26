@@ -8,10 +8,10 @@ import type { PaginaDef } from "./rutas";
 
 const migrada = async () => ({ default: () => null });
 const PAGINAS: PaginaDef[] = [
-  { id: "inicio", titulo: "Inicio", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, cargar: migrada },
-  { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
-  { id: "historial", titulo: "Historial de auditorías", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
-  { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: migrada },
+  { id: "auditoria", titulo: "Inicio de auditoría", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: null, ubicacion: { modulo: "auditoria", area: "inicio" }, cargar: migrada },
+  { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", ubicacion: { modulo: "auditoria", area: "auditar" }, cargar: migrada },
+  { id: "historial", titulo: "Historial de auditorías", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", ubicacion: { modulo: "auditoria", area: "historial" }, cargar: migrada },
+  { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", ubicacion: { modulo: "obras", area: "obras" }, cargar: migrada },
 ];
 
 function montar(ruta: string, paginas: readonly PaginaDef[] = PAGINAS, acciones: string[] = ["leer_proyecto"]) {
@@ -26,13 +26,13 @@ describe("PanelRecorrido", () => {
   afterEach(() => terminarRecorrido());
 
   test("sin recorrido en curso no pinta nada", () => {
-    const { container } = montar("/inicio");
+    const { container } = montar("/auditoria");
     expect(container).toBeEmptyDOMElement();
   });
 
   test("en el paso 1 muestra el titulo, «Paso 1 de 3», que hacer y cuando se sabe que termino", () => {
     iniciarRecorrido(RECORRIDO_AUDITAR);
-    montar("/inicio");
+    montar("/auditoria");
     const region = screen.getByRole("region", { name: "Recorrido en curso" });
     expect(within(region).getByText("Auditar un libro de la empresa")).toBeInTheDocument();
     expect(within(region).getByText("Paso 1 de 3")).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe("PanelRecorrido", () => {
     const region = screen.getByRole("region", { name: "Recorrido en curso" });
     expect(within(region).getByText("Paso 2 de 3")).toBeInTheDocument();
     expect(within(region).getByText("Lea el resumen y los hallazgos").closest("li")).toHaveAttribute("aria-current", "step");
-    expect(within(region).getByRole("link", { name: "Suba el libro" })).toHaveAttribute("href", "/inicio");
+    expect(within(region).getByRole("link", { name: "Suba el libro" })).toHaveAttribute("href", "/auditoria");
     expect(within(region).getByRole("link", { name: "Compruebe que quedó guardada" })).toHaveAttribute("href", "/historial");
   });
 
@@ -79,7 +79,7 @@ describe("PanelRecorrido", () => {
   });
 
   test("aparece cuando se inicia con el panel ya montado", () => {
-    montar("/inicio");
+    montar("/auditoria");
     expect(screen.queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
     act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
     expect(screen.getByRole("region", { name: "Recorrido en curso" })).toBeInTheDocument();
