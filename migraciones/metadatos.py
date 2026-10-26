@@ -10,6 +10,7 @@ from __future__ import annotations
 from sqlalchemy import MetaData
 
 from adapters.espacio.persistencia import METADATA_ESPACIO
+from aplicacion.tablas_aprobacion import METADATA_APROBACION
 from aplicacion.tablas_carpeta import METADATA_CARPETA
 from aplicacion.tablas_eleccion import METADATA_ELECCION
 from aplicacion.tablas_mercado import METADATA_MERCADO
@@ -27,6 +28,7 @@ METADATAS_CASO: tuple[MetaData, ...] = (
     METADATA_PAQUETE,
     METADATA_CARPETA,
     METADATA_MERCADO,
+    METADATA_APROBACION,
 )
 METADATAS_INSTALACION: tuple[MetaData, ...] = (
     BaseSeguridad.metadata,
