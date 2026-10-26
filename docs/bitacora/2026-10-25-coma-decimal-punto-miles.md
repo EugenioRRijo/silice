@@ -51,6 +51,7 @@ escritura), que leen las dos pruebas: `tests/unit/test_aplicacion_cifras.py` y
 | Componer | desglose, PU estimado, similares (lectura); aviso de guardado | texto de la API tal cual («2240.39») | `formatoEsVe` («2.240,39», el exacto en el `title`); el aviso dice «precio unitario 10,19» (el campo `precio_unitario` sigue con punto) |
 | Hoja › Presupuesto | cantidad | `decimal_desde_texto` (punto; la coma era error) | `hoja.cifra_de_celda`; la vista la da con coma (`texto_editable`) |
 | Hoja › APU | rendimiento, cantidad de cada línea | igual | igual (las líneas salen de `filas_desde_composicion`) |
+| Hoja › APU | precio, depreciación, sueldo (solo lectura) | la pantalla les aplicaba `formatoEsVe` | llegan ya en es-VE (`texto_de_cifra`) y se muestran **tal cual**: una sola conversión (ronda 2, B3: «1.500» se veía «1,500») |
 | Hoja › Parámetros | FCAS, bono, administración, utilidad | igual (`str(Decimal)` en la vista) | igual; la vista da «6,00», «0,15» |
 | Hoja › Plan | fracción por período | igual | igual; la suma del aviso se dice con coma («suman 0,75») |
 | Hoja › Espacio | x0, y0, largo, ancho, alto, x, y, z, pendiente | igual | igual, con `tecleado=True` |
@@ -59,7 +60,7 @@ escritura), que leen las dos pruebas: `tests/unit/test_aplicacion_cifras.py` y
 | Hoja › Precios | precio cotizado | `decimal_desde_texto` (punto) | `hoja.cifra_de_celda`; ayuda `AYUDA_CIFRAS` |
 | Hoja › Cambiar moneda | tasa | se elige (venta/compra), no se teclea | sin cambio |
 | Existencias | cantidad, existencia mínima, densidad, peso neto | `existencias/formato.ts` `leerCantidad` (coma o punto) | `leerCifra` antes de enviar; lectura con miles |
-| Administración › Asistente | tope por sesión (USD) | se enviaba tal cual; el servidor (`asistente/administracion.py` `_tope`) acepta coma o punto | `leerCifra` antes de enviar; el valor de la API se edita con `textoParaEscribir` |
+| Administración › Asistente | tope por sesión (USD) | se enviaba tal cual; el servidor (`asistente/administracion.py` `_tope`) cambiaba coma por punto («1.000» = 1) | el servidor lo lee con `cifra_escrita` (ronda 2, decisión del orquestador); la pantalla lo valida con `leerCifra` y lo manda **tal cual**; el valor de la API se edita con `textoParaEscribir` |
 | Simulador | variación máxima (%) | `simulador/logica.ts` (exigía punto; aceptaba exponente) | `leerCifra` + tope 1000; precio de la tabla en es-VE |
 | Control | parámetros (umbrales, eta, horas, recargo, penalización), Km, R, horas extra, cantidad de valuación, monto de costo | `aplicacion/control.py` `_decimal` (punto) | `leerCifra` antes de enviar; los valores actuales se editan con coma |
 | Reajuste | R, peso de componente, cantidad ejecutada | `aplicacion/reajuste.py` `_decimal` (punto) | `leerCifra` antes de enviar |
@@ -83,16 +84,27 @@ escritura), que leen las dos pruebas: `tests/unit/test_aplicacion_cifras.py` y
 `scripts/simular_corpus.py` teclea sus cantidades con coma (pasa por `composicion_desde_tablas`) y las filas de
 `scripts/recorrido_funcional.toml` que escribían decimales con punto pasan a coma.
 
+## Ronda 2 (árbitro)
+
+- **B3, doble conversión:** las filas del APU de la Hoja llegan en es-VE y `PestanaApu` les volvía a aplicar
+  `formatoEsVe` («1.500» → «1,500»). Decisión: en las rutas cuyo texto ya es es-VE (las tablas que arma
+  `filas_desde_composicion`) la pantalla **no** formatea; en las que llegan con punto (`Monto`, cantidades calculadas)
+  formatea una vez. Revisadas con grep las demás aplicaciones de `formatoEsVe` en Hoja, Componer y Similares: todas
+  reciben texto con punto. `datosDePrueba.ts` pasa al contrato real (coma). La afirmación anterior de esta bitácora
+  («la pantalla solo reenvía») era falsa para `PestanaApu`.
+- **Similares:** sus tablas llegan en es-VE y `compararDecimales` no las lee: las columnas ya no se ordenan.
+- **Blancos:** `str.strip()` y `String.trim()` recortaban conjuntos distintos. Ahora los dos lados recortan
+  exactamente `BLANCOS` (espacio, tabulador, saltos, VT, FF, NBSP, NEL y BOM), fijado en el oráculo; «\u2028» y
+  «\u3000» al borde se rechazan en los dos. `textoParaEscribir` quita el «+» y los ceros a la izquierda como
+  `texto_de_cifra`; un exponente («1E+3», que la API no manda) solo lo escribe el servidor.
+- **Tope del Asistente:** el servidor lo lee con `cifra_escrita` («1.000» es mil); `asistente` puede importar
+  `aplicacion.cifras` (hoja sin dependencias; guardia de capas ajustada).
+
 ## Lo que queda para Eugenio
 
 1. **Vértices** de los recorridos declarados: siguen «x,y,z» con punto decimal (la coma separa coordenadas). Propuesta:
    separar las coordenadas con espacio («0 0 0; 2,5 0 0») en un cambio aparte, con su migración de lo guardado.
 2. **Espacio de miles** («1 234»): rechazado por defecto. Si se quiere aceptar, es una fila más en el oráculo.
-3. Servidores que aún aceptan coma o punto fuera de la interfaz: `asistente/administracion.py` `_tope` lee «1.000»
-   como 1 si un cliente de la API lo manda así (desde la interfaz ya no pasa). El contrato de la API es con punto.
-4. Los datos simulados de algunas pruebas del navegador de la Hoja (`datosDePrueba.ts`) siguen con punto («6.00»):
-   la pantalla solo reenvía lo que el servidor le da, así que no cambia su comportamiento, pero ya no son lo que la API
-   manda. La ida y vuelta real está probada en el servidor (`test_aplicacion_hoja_cifras.py`).
-5. Textos de lectura que el servidor arma con cifras dentro (cambios del borrador, trazabilidad, avisos de control)
+3. Textos de lectura que el servidor arma con cifras dentro (cambios del borrador, trazabilidad, avisos de control)
    siguen con punto; la interfaz solo formatea cifras sueltas. `comun/Variacion.tsx` (columnas de variación de
    Escenarios) tampoco se tocó.
