@@ -401,9 +401,10 @@ def test_una_partida_sin_apu_en_el_borrador(base):
 
 def test_quitar_hasta_la_ultima_linea_no_se_puede_y_el_rev_no_sube(base):
     vivo = _abierto(base)
-    uno = hoja_edicion.quitar_linea_apu(base, "ficha", vivo.id, 0, "OBRA-02", "material", 0)
-    dos = hoja_edicion.quitar_linea_apu(base, "ficha", vivo.id, 1, "OBRA-02", "equipo", 0)
-    assert (uno.rev, dos.rev) == (1, 2)
+    # el borrador vivo es el mismo objeto: su `rev` se lee en seguida
+    uno = hoja_edicion.quitar_linea_apu(base, "ficha", vivo.id, 0, "OBRA-02", "material", 0).rev
+    dos = hoja_edicion.quitar_linea_apu(base, "ficha", vivo.id, 1, "OBRA-02", "equipo", 0).rev
+    assert (uno, dos) == (1, 2)
     with pytest.raises(HojaInvalida) as error:
         hoja_edicion.quitar_linea_apu(base, "ficha", vivo.id, 2, "OBRA-02", "mano_obra", 0)
     assert str(error.value) == UNA_LINEA

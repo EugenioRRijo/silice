@@ -41,11 +41,12 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from aplicacion import hoja, hoja_borradores, hoja_vista
-from aplicacion.cifras import CifraInvalida
+from aplicacion import hoja, hoja_borradores, hoja_lineas_apu, hoja_vista
+from aplicacion.cifras import BLANCOS, MENSAJE_CIFRA, CifraInvalida, cifra_escrita
 from aplicacion.composicion import texto_de_celda
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
+from aplicacion.hoja_lineas_apu import SinVersionGuardada
 from aplicacion.hoja_partidas import (
     CalculoInvalido,
     PartidaElegida,
@@ -74,8 +75,10 @@ __all__ = [
     "SinListaDeLaObra",
     "SinPlan",
     "SinVersionAbierta",
+    "SinVersionGuardada",
     "YaTienePlan",
     "agregar",
+    "agregar_linea_apu",
     "borradores_para_retomar",
     "cambiar_insumo_de_linea",
     "cambios_del_borrador",
@@ -90,6 +93,7 @@ __all__ = [
     "pendiente_de_la_version",
     "plan_desde_rendimientos",
     "quitar",
+    "quitar_linea_apu",
 ]
 
 #: Insumos que ofrece el selector de una linea; con mas, la clasica pide acotar por descripcion
@@ -495,6 +499,117 @@ def cambiar_insumo_de_linea(
         nueva = hoja.cambiar_insumo(actual, tipo, indice, elegido)
         if nueva == actual:
             return None
+        return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
+
+    return _cambiar(sesion, huella, id, rev, construir)
+
+
+# --- agregar y quitar lineas del APU de la version (Tarea 26) ------------------------------------
+
+#: Un codigo que la lista de la version no valora (el texto propio, sin repetir lo enviado).
+MENSAJE_INSUMO_FUERA = (
+    "Ese insumo no está en la lista de precios de la versión: elíjalo de la lista."
+)
+
+
+def _cifra_de_linea(texto: str, nombre: str, falta: str) -> Decimal:
+    """Una cifra tecleada de la linea nueva con la regla de las cifras; el texto del error empieza
+    por el campo («La cantidad…», «Escriba el precio…») y no repite lo escrito."""
+    try:
+        return cifra_escrita(texto)
+    except CifraInvalida:
+        if not texto.strip(BLANCOS):
+            raise HojaInvalida(f"{falta} {MENSAJE_CIFRA}") from None
+        raise HojaInvalida(f"{nombre} no se entiende como número. {MENSAJE_CIFRA}") from None
+
+
+def _apu_de_la_version(vivo: BorradorVivo, partida: str):
+    """El APU de `partida` en el borrador de una version guardada (`SinVersionGuardada`,
+    `PartidaSinApu`)."""
+    if vivo.abierta is None:
+        raise SinVersionGuardada
+    actual = vivo.borrador.composiciones.get(partida)
+    if actual is None:
+        raise PartidaSinApu
+    return actual
+
+
+def agregar_linea_apu(
+    sesion: Session,
+    huella: str,
+    id: str,
+    rev: int,
+    partida: str,
+    *,
+    tipo: str,
+    insumo: str,
+    descripcion: str,
+    unidad: str,
+    cantidad: str,
+    precio: str,
+    depreciacion: str,
+    modalidad: str,
+) -> BorradorVivo:
+    """Agrega al APU de `partida` una linea de `tipo` al final de su rubro (Tarea 26).
+
+    Con `insumo` (su codigo), un insumo de la lista de la version abierta: toma su descripcion, su
+    unidad y su precio (lo tecleado en esos campos no cuenta). Sin el, uno nuevo con la
+    `descripcion`, la `unidad` (material) y el `precio` tecleados. La cantidad, el precio y la
+    depreciacion (equipo) se leen con la regla de las cifras; la modalidad es la de la mano de
+    obra. Orden: `SinVersionGuardada` (409), `PartidaSinApu` (404) y `HojaInvalida` (422) con el
+    texto de `hoja_lineas_apu.agregar_linea`. Si algo falla, el borrador no cambia."""
+
+    def construir(vivo: BorradorVivo) -> hoja.Borrador:
+        actual = _apu_de_la_version(vivo, partida)
+        if tipo not in hoja.TIPOS_DE_LINEA:
+            raise HojaInvalida(hoja_lineas_apu.MENSAJE_TIPO)
+        if insumo.strip():
+            assert vivo.abierta is not None  # lo exige `_apu_de_la_version`
+            try:
+                elegido = _insumo_de_la_lista(sesion, vivo.abierta, tipo, insumo.strip())
+            except HojaInvalida:
+                raise HojaInvalida(MENSAJE_INSUMO_FUERA) from None
+            nombre, medida, valor = elegido.descripcion, elegido.unidad, elegido.precio
+        else:
+            nombre, medida = descripcion, unidad
+            valor = None
+        cuanto = _cifra_de_linea(cantidad, "La cantidad", "Escriba la cantidad.")
+        if valor is None:
+            valor = _cifra_de_linea(precio, "El precio", "Escriba el precio del insumo nuevo.")
+        fraccion = None
+        if tipo == "equipo":
+            fraccion = _cifra_de_linea(
+                depreciacion,
+                "La depreciación",
+                "Escriba la depreciación del equipo, por ejemplo 0,005.",
+            )
+        nueva = hoja_lineas_apu.agregar_linea(
+            actual,
+            tipo,
+            descripcion=nombre,
+            unidad=medida,
+            cantidad=cuanto,
+            precio=valor,
+            depreciacion=fraccion,
+            modalidad=modalidad,
+        )
+        borrador = vivo.borrador
+        return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
+
+    return _cambiar(sesion, huella, id, rev, construir)
+
+
+def quitar_linea_apu(
+    sesion: Session, huella: str, id: str, rev: int, partida: str, tipo: str, indice: int
+) -> BorradorVivo:
+    """Quita la linea `indice` (desde 0) del rubro `tipo` del APU de `partida` (Tarea 26).
+    `SinVersionGuardada` (409), `PartidaSinApu` (404) y `HojaInvalida` (422: la linea ya no esta,
+    o era la ultima del APU). Si algo falla, el borrador no cambia."""
+
+    def construir(vivo: BorradorVivo) -> hoja.Borrador:
+        actual = _apu_de_la_version(vivo, partida)
+        nueva = hoja_lineas_apu.quitar_linea(actual, tipo, indice)
+        borrador = vivo.borrador
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
     return _cambiar(sesion, huella, id, rev, construir)

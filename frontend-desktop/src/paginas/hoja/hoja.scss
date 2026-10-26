@@ -108,6 +108,17 @@
   min-inline-size: 0;
 }
 
+// Las líneas y el rendimiento del APU van en un fieldset (se deshabilita mientras se quita una línea, Tarea 26): sin marco
+// ni sangría, con el mismo espaciado que la columna.
+.silice-hoja__sin-marco {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .silice-hoja__metricas {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

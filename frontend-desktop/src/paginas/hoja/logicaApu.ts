@@ -13,10 +13,10 @@ export const rutaDeInsumo = (id: string, partida: string) => `${rutaDeApu(id, pa
 // La clásica muestra a lo sumo 300 candidatos y pide uno más (301) para saber si hay más (ui/paginas/hoja.py:1515).
 export const LIMITE_DE_INSUMOS = 300;
 
-export function rutaDeInsumos(id: string, tipo: string, texto: string): string {
+export function rutaDeInsumos(id: string, tipo: string, texto: string, limite = LIMITE_DE_INSUMOS + 1): string {
   const consulta = new URLSearchParams({ tipo });
   if (texto.trim() !== "") consulta.set("texto", texto.trim());
-  consulta.set("limite", String(LIMITE_DE_INSUMOS + 1));
+  consulta.set("limite", String(limite));
   return `${rutaDelBorrador(id)}/insumos?${consulta.toString()}`;
 }
 
@@ -123,4 +123,68 @@ export function insumosVisibles(respuesta: InsumosRespuesta): { insumos: InsumoC
 // trae «:» pero no «: », así que el estado empieza donde sigue una palabra en mayúsculas con dos puntos (ERROR:, PENDIENTE:…).
 export function textoDeEstado(estado: string): string {
   return estado.replace(/^Estado de .*?: (?=[A-ZÁÉÍÓÚÑ]+(?::| \|))/, "");
+}
+
+// --- agregar y quitar líneas (Tarea 26) ---
+
+export const rutaDeLineas = (id: string, partida: string) => `${rutaDeApu(id, partida)}/lineas`;
+export const rutaDeQuitarLinea = (id: string, partida: string) => `${rutaDeLineas(id, partida)}/quitar`;
+
+export type TipoDeLinea = (typeof TIPOS_DE_LINEA)[number]["valor"];
+
+// El rubro de la tabla (clave del servidor) con su tipo de línea y cómo se nombra en una frase.
+export const RUBROS: Record<string, { tipo: TipoDeLinea; enFrase: string }> = {
+  materiales: { tipo: "material", enFrase: "los materiales" },
+  equipos: { tipo: "equipo", enFrase: "los equipos" },
+  "mano de obra": { tipo: "mano_obra", enFrase: "la mano de obra" },
+};
+
+export const grupoDelTipo = (tipo: TipoDeLinea): string => TIPOS_DE_LINEA.find((t) => t.valor === tipo)!.grupo;
+
+// Lo que viaja al agregar una línea: todo como texto tal cual. Con `insumo` (su código) los demás datos del insumo los pone
+// la lista de la versión; sin él, es uno nuevo con su descripción, su unidad y su precio.
+export interface LineaNueva {
+  tipo: TipoDeLinea;
+  insumo: string;
+  descripcion: string;
+  unidad: string;
+  cantidad: string;
+  precio: string;
+  depreciacion: string;
+  modalidad: "jornal" | "destajo";
+}
+
+export function cuerpoDeLinea(rev: number, linea: LineaNueva): LineaNueva & { rev: number } {
+  return { rev, ...linea };
+}
+
+export type CampoDeLinea = "insumo" | "unidad" | "cantidad" | "precio" | "depreciacion";
+
+// El campo del diálogo al que va un 422 al agregar una línea: los textos de la hoja empiezan por el campo
+// (aplicacion/hoja_lineas_apu.py y hoja_edicion.agregar_linea_apu). Otro texto no se ubica: va al aviso del diálogo.
+export function campoDelErrorDeLinea(detalle: string): CampoDeLinea | null {
+  const inicios: [CampoDeLinea, string[]][] = [
+    ["cantidad", ["La cantidad", "Escriba la cantidad"]],
+    ["precio", ["El precio", "Escriba el precio"]],
+    ["depreciacion", ["La depreciación", "Escriba la depreciación"]],
+    ["unidad", ["La unidad", "Escriba la unidad"]],
+    ["insumo", ["Ese insumo", "La descripción", "Escriba la descripción"]],
+  ];
+  for (const [campo, prefijos] of inicios) {
+    if (prefijos.some((p) => detalle.startsWith(p))) return campo;
+  }
+  return null;
+}
+
+// Tras agregar o quitar una línea, lo que se edita cambia de forma: se agrega (al final de su rubro) o se quita la cantidad
+// de esa línea, en lo escrito y en lo aceptado, sin tocar lo demás (lo tocado y no aceptado se conserva).
+export function conLineaAgregada(edicion: EdicionDeApu, grupo: string, cantidad: string): EdicionDeApu {
+  return { ...edicion, cantidades: { ...edicion.cantidades, [grupo]: [...(edicion.cantidades[grupo] ?? []), cantidad] } };
+}
+
+export function conLineaQuitada(edicion: EdicionDeApu, grupo: string, indice: number): EdicionDeApu {
+  return {
+    ...edicion,
+    cantidades: { ...edicion.cantidades, [grupo]: (edicion.cantidades[grupo] ?? []).filter((_, i) => i !== indice) },
+  };
 }

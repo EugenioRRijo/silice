@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
@@ -18,6 +19,7 @@ from aplicacion.entrega import EstadoDeLaCadena
 from aplicacion.hoja import CambioEditado, FilaInsumo, FilaVersion
 from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_guardado import Guardado
+from aplicacion.hoja_lineas_apu import PartidaAntesYDespues
 from aplicacion.hoja_versiones import VersionNueva
 from aplicacion.hoja_vista import (
     BaseAbierta,
@@ -620,6 +622,109 @@ class CambioDeInsumo(BaseModel):
     tipo: Texto500
     indice: Annotated[int, Field(strict=True, ge=0, le=1_000_000)]
     insumo: Texto500
+
+
+# --- agregar y quitar lineas del APU de la version y su antes y despues (Tarea 26) -------------
+#
+# Lo tecleado llega como texto tal cual (`strict`: una cifra enviada como numero es de otra forma) y
+# lo lee la regla de las cifras en `aplicacion.hoja_edicion`; `extra` prohibido.
+
+TipoDeLinea = Literal["material", "equipo", "mano_obra"]
+TextoDeLinea = Annotated[str, Field(strict=True, max_length=500)]
+
+
+class AgregarLineaApu(BaseModel):
+    """Un insumo de la lista de la version (`insumo`, su codigo) o uno nuevo (`insumo` vacio, con
+    `descripcion`, `unidad` y `precio`), con su `cantidad`; `depreciacion` es de un equipo y
+    `modalidad`, de la mano de obra."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    tipo: TipoDeLinea
+    insumo: TextoDeLinea = ""
+    descripcion: TextoDeLinea = ""
+    unidad: TextoDeLinea = ""
+    cantidad: TextoDeLinea = ""
+    precio: TextoDeLinea = ""
+    depreciacion: TextoDeLinea = ""
+    modalidad: Literal["jornal", "destajo"] = "jornal"
+
+
+class QuitarLineaApu(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    tipo: TipoDeLinea
+    indice: Annotated[int, Field(strict=True, ge=0, le=1_000_000)]
+
+
+class PartidaAntesYDespuesRespuesta(BaseModel):
+    """Montos como `{texto, exacto}`; cantidad y duraciones (dias habiles) como decimal con punto;
+    el termino en dias. `null`: no se pudo calcular."""
+
+    partida: str
+    descripcion: str
+    unidad: str
+    cantidad: str
+    costo_antes: MontoHojaRespuesta
+    costo_despues: MontoHojaRespuesta
+    duracion_antes: str
+    duracion_despues: str
+    termino_antes: int | None
+    termino_despues: int | None
+    equilibrio_antes: MontoHojaRespuesta | None
+    equilibrio_despues: MontoHojaRespuesta | None
+
+
+class AntesYDespuesRespuesta(BaseModel):
+    linea_base: str | None
+    version: str | None
+    moneda: str
+    filas: list[PartidaAntesYDespuesRespuesta]
+    aviso: str | None
+
+
+def _decimal_fijo(valor: Decimal) -> str:
+    """Un decimal en notacion fija, sin ceros de relleno («17.5», «2»)."""
+    texto = format(valor.normalize(), "f")
+    return "0" if texto in {"-0", ""} else texto
+
+
+def _monto_o_nada(valor: Decimal | None) -> MontoHojaRespuesta | None:
+    return None if valor is None else monto_a_respuesta(monto(valor))
+
+
+def antes_y_despues_a_respuesta(
+    linea_base: str | None,
+    version: str | None,
+    moneda: str,
+    filas: list[PartidaAntesYDespues],
+    aviso: str | None,
+) -> AntesYDespuesRespuesta:
+    return AntesYDespuesRespuesta(
+        linea_base=linea_base,
+        version=version,
+        moneda=moneda,
+        aviso=aviso,
+        filas=[
+            PartidaAntesYDespuesRespuesta(
+                partida=f.partida,
+                descripcion=f.descripcion,
+                unidad=f.unidad,
+                cantidad=_decimal_fijo(f.cantidad),
+                costo_antes=monto_a_respuesta(monto(f.costo_antes)),
+                costo_despues=monto_a_respuesta(monto(f.costo_despues)),
+                duracion_antes=_decimal_fijo(f.duracion_antes),
+                duracion_despues=_decimal_fijo(f.duracion_despues),
+                termino_antes=f.termino_antes,
+                termino_despues=f.termino_despues,
+                equilibrio_antes=_monto_o_nada(f.equilibrio_antes),
+                equilibrio_despues=_monto_o_nada(f.equilibrio_despues),
+            )
+            for f in filas
+        ],
+    )
 
 
 class InsumoHojaRespuesta(BaseModel):

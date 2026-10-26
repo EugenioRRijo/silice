@@ -22,6 +22,10 @@ y `aplicacion.hoja_borradores`. Esta rebanada trae las rutas R1 a R4 del diseño
 - Lecturas de una versión GUARDADA (3b-3; clave de API o sesión con `EDITAR_HOJA`; sin borrador y
   solo leen): R12 `GET /precios?proyecto=&version=`, R13 `GET /precios/atipicos?...` y R14
   `GET /trazabilidad?...`.
+- Líneas del APU de la versión (Tarea 26): `POST /borradores/{id}/apu/{partida}/lineas` agrega un
+  insumo de la lista de la versión o uno nuevo con su precio, y `…/lineas/quitar` quita una línea;
+  `GET /antes-y-despues?proyecto=&version=` compara el APU de cada partida cambiada con la línea
+  base (costo, duración, término y punto de equilibrio) para Control de obra; solo lee.
 - Partidas a mano (Tarea 9 de montar un presupuesto): `POST /borradores/{id}/partidas` agrega una
   partida del catálogo con su cantidad, su cálculo y su nota, y `POST /borradores/{id}/partidas/
   quitar` quita un renglón de la versión. El borrador en blanco nace en la moneda de la obra y se
@@ -49,7 +53,9 @@ from api.admin_acceso import cuenta_con
 from api.dependencias import SesionDeEscrituraDep, SesionDep, url_de_la_peticion
 from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
 from api.esquemas_hoja import (
+    AgregarLineaApu,
     AgregarPartida,
+    AntesYDespuesRespuesta,
     BorradorAbierto,
     BorradoresHojaRespuesta,
     BorradorHojaRespuesta,
@@ -79,6 +85,7 @@ from api.esquemas_hoja import (
     PartidaAgregadaRespuesta,
     PartidaQuitadaRespuesta,
     PreciosHojaRespuesta,
+    QuitarLineaApu,
     QuitarPartida,
     RestaurarVersion,
     RetirarCotizacion,
@@ -91,6 +98,7 @@ from api.esquemas_hoja import (
     VistaParametrosRespuesta,
     VistaPlanRespuesta,
     VistaPresupuestoRespuesta,
+    antes_y_despues_a_respuesta,
     base_a_respuesta,
     borradores_a_respuesta,
     cadena_a_respuesta,
@@ -119,6 +127,7 @@ from aplicacion import (
     hoja_borradores,
     hoja_edicion,
     hoja_guardado,
+    hoja_lineas_apu,
     hoja_versiones,
     hoja_vista,
 )
@@ -214,6 +223,24 @@ FORMA_PARTIDA = (
     "como texto; la nota, de hasta 500 caracteres."
 )
 FORMA_QUITAR = "La petición no tiene la forma esperada: envíe rev (entero) y la clave de la fila."
+FORMA_LINEA = (
+    "La línea no tiene la forma esperada: envíe rev (entero), tipo (material, equipo o "
+    "mano_obra), el código del insumo o la descripción, la unidad y el precio de uno nuevo, la "
+    "cantidad, la depreciación de un equipo y la modalidad (jornal o destajo); cada texto de "
+    "hasta 500 caracteres."
+)
+FORMA_QUITAR_LINEA = (
+    "La petición no tiene la forma esperada: envíe rev (entero), tipo (material, equipo o "
+    "mano_obra) e indice (entero)."
+)
+FORMA_ANTES = (
+    "Indique el proyecto (código o nombre) y, si quiere, la versión; cada uno de hasta 500 "
+    "caracteres."
+)
+SIN_LINEA_BASE = (
+    "Esta obra no tiene línea base: declárela en Control de obra para comparar el antes y el "
+    "después."
+)
 
 
 class _RutaHoja(RutaSinCache, RutaSinEco):
@@ -470,6 +497,8 @@ def _editar(
                 raise HTTPException(status_code=409, detail=MENSAJE_YA_TIENE_PLAN) from None
             except hoja_edicion.SinVersionAbierta:
                 raise HTTPException(status_code=409, detail=MENSAJE_SIN_VERSION) from None
+            except hoja_edicion.SinVersionGuardada as error:
+                raise HTTPException(status_code=409, detail=str(error)) from None
             except hoja_edicion.PartidaSinApu:
                 raise HTTPException(status_code=404, detail=MENSAJE_PARTIDA) from None
             except hoja_edicion.PartidaFueraDelCatalogo as error:
@@ -841,6 +870,109 @@ def cambiar_insumo(
     return EdicionApuRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
     )
+
+
+@router.post("/borradores/{id}/apu/{partida:path}/lineas", response_model=EdicionApuRespuesta)
+@sin_eco(FORMA_LINEA)
+def agregar_linea_apu(
+    id: IdDeBorrador,
+    partida: CodigoDePartida,
+    datos: AgregarLineaApu,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> EdicionApuRespuesta:
+    """Tarea 26: agrega una línea al APU de una partida en la copia de la versión: un insumo de la
+    lista de la versión (`insumo`, su código; toma su precio) o uno nuevo con su descripción, su
+    unidad y su precio tecleados. Lo tecleado se lee con la regla de las cifras (422 con su texto);
+    sin versión guardada, 409; la partida sin APU, 404. Devuelve el APU recalculado."""
+    vivo = _vivo(request, activa, id)
+    resumen, vista = _editar(
+        sesion,
+        vivo,
+        lambda: hoja_edicion.agregar_linea_apu(
+            sesion,
+            activa.huella_ficha,
+            id,
+            datos.rev,
+            partida,
+            tipo=datos.tipo,
+            insumo=datos.insumo,
+            descripcion=datos.descripcion,
+            unidad=datos.unidad,
+            cantidad=datos.cantidad,
+            precio=datos.precio,
+            depreciacion=datos.depreciacion,
+            modalidad=datos.modalidad,
+        ),
+        lambda editado: hoja_vista.vista_apu(editado, partida),
+    )
+    return EdicionApuRespuesta(
+        rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
+    )
+
+
+@router.post(
+    "/borradores/{id}/apu/{partida:path}/lineas/quitar", response_model=EdicionApuRespuesta
+)
+@sin_eco(FORMA_QUITAR_LINEA)
+def quitar_linea_apu(
+    id: IdDeBorrador,
+    partida: CodigoDePartida,
+    datos: QuitarLineaApu,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> EdicionApuRespuesta:
+    """Tarea 26: quita la línea `indice` (desde 0) del rubro `tipo` del APU de una partida. La
+    última línea de un APU no se quita (422 «Un APU necesita al menos una línea.»)."""
+    vivo = _vivo(request, activa, id)
+    resumen, vista = _editar(
+        sesion,
+        vivo,
+        lambda: hoja_edicion.quitar_linea_apu(
+            sesion, activa.huella_ficha, id, datos.rev, partida, datos.tipo, datos.indice
+        ),
+        lambda editado: hoja_vista.vista_apu(editado, partida),
+    )
+    return EdicionApuRespuesta(
+        rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
+    )
+
+
+@router.get("/antes-y-despues", response_model=AntesYDespuesRespuesta, dependencies=[LEER])
+@sin_eco(FORMA_ANTES)
+def antes_y_despues(
+    sesion: SesionDep,
+    proyecto: Annotated[str, Query(min_length=1, max_length=500)],
+    version: Annotated[str | None, Query(max_length=500)] = None,
+) -> AntesYDespuesRespuesta:
+    """Tarea 26 (lo muestra Control de obra): por partida de la versión (la vigente si no se dice)
+    cuyo APU cambió respecto de la línea base, el costo directo unitario, la duración y el término
+    por rendimientos y el punto de equilibrio, antes y después. Solo lee. Sin línea base, o sin
+    partidas cambiadas, la lista va vacía con el aviso; la obra o la versión que no existen, 404."""
+    encontrado = _proyecto(sesion, proyecto)
+    nombre = encontrado.nombre
+    try:
+        codigo = version if version is not None else hoja.codigo_vigente(sesion, nombre)
+        moneda = moneda_del_proyecto(sesion, encontrado)
+        if codigo is not None:
+            _version_guardada(sesion, nombre, codigo)  # 404 si no existe
+        base = hoja_lineas_apu.linea_base_de(sesion, nombre)
+        if base is None or codigo is None:
+            return antes_y_despues_a_respuesta(base, codigo, moneda, [], SIN_LINEA_BASE)
+        filas = hoja_lineas_apu.antes_y_despues(sesion, nombre, Catalogo(sesion), codigo)
+    except (HojaInvalida, ValueError, CatalogoIncompleto) as error:
+        raise HTTPException(status_code=409, detail=f"No se pudo comparar: {error}") from None
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    aviso = None
+    if not filas:
+        aviso = (
+            f"Ninguna partida de la versión {codigo} cambió su APU respecto de la línea base "
+            f"{base}."
+        )
+    return antes_y_despues_a_respuesta(base, codigo, moneda, filas, aviso)
 
 
 @router.get("/borradores/{id}/insumos", response_model=InsumosHojaRespuesta)

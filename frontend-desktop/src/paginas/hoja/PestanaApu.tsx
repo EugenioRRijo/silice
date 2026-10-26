@@ -1,9 +1,14 @@
-import { RadioButton, RadioButtonGroup, Search } from "@carbon/react";
+import { Button, RadioButton, RadioButtonGroup, Search } from "@carbon/react";
+import { Add } from "@carbon/icons-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useAplicacion } from "../../shell/contexto";
+import { ConfirmarQuitarLinea, DialogoAgregarLinea } from "./AgregarLineaApu";
+import type { LineaAgregada } from "./AgregarLineaApu";
+import { useFocoAlCerrar } from "./AgregarPartida";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { CambioDeInsumo } from "./CambioDeInsumo";
 import { CampoDeCelda } from "./CampoDeCelda";
@@ -15,15 +20,20 @@ import { enteroDeDigitos, rutaDeVista } from "./logica";
 import type { DetalleApu, GrupoApu, Resumen, VistaApu } from "./logica";
 import {
   FRASE_DE_APU,
+  RUBROS,
   cambiarCantidadDeLinea,
   cambiarRendimiento,
+  conLineaAgregada,
+  conLineaQuitada,
   cuerpoDeApu,
   rutaDeApu,
+  rutaDeQuitarLinea,
   sembrarApu,
   textoDeEstado,
   ubicarErrorDeApu,
 } from "./logicaApu";
 import type { EdicionDeApu, UbicacionDeApu } from "./logicaApu";
+import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 
 interface Props {
@@ -44,6 +54,17 @@ const PAUSA_DE_BUSQUEDA_MS = 300;
 const NUMERICAS = new Set(["precio", "depreciacion", "sueldo"]);
 
 const idDeCantidad = (rubro: string, n: number) => `hoja-apu-${rubro.replace(/\s+/g, "-")}-${n}`;
+const idDeQuitar = (rubro: string, n: number) => `hoja-apu-quitar-${rubro.replace(/\s+/g, "-")}-${n}`;
+const ID_AGREGAR_LINEA = "hoja-apu-agregar-linea";
+const SIN_VERSION_GUARDADA = "Las líneas del APU se agregan y se quitan en una versión guardada.";
+
+// La línea que la persona pidió quitar: espera su confirmación.
+interface PorQuitar {
+  grupo: string;
+  indice: number;
+  descripcion: string;
+  boton: string;
+}
 
 interface PropsEditor extends Props {
   detalle: DetalleApu;
@@ -56,16 +77,21 @@ function TablaDelRubro({
   edicion,
   ubicacion,
   idDelError,
+  quitable,
   alCambiar,
   alRestaurar,
+  alQuitar,
 }: {
   grupo: GrupoApu;
   moneda: string;
   edicion: EdicionDeApu;
   ubicacion: UbicacionDeApu | null;
   idDelError: string;
+  // Las líneas se quitan solo en el borrador de una versión guardada (Tarea 26).
+  quitable: boolean;
   alCambiar: (indice: number, texto: string) => void;
   alRestaurar: (indice: number) => void;
+  alQuitar: (linea: PorQuitar) => void;
 }) {
   const mover = (desde: number, paso: 1 | -1) => document.getElementById(idDeCantidad(grupo.clave, desde + paso))?.focus();
   const columnas: ColumnaDensa[] = grupo.columnas.map((c) => {
@@ -101,6 +127,28 @@ function TablaDelRubro({
       ...(NUMERICAS.has(c.clave) ? { numerica: true } : {}),
     };
   });
+  if (quitable) {
+    columnas.push({
+      clave: "quitar",
+      titulo: "Quitar",
+      ordenable: false,
+      celda: (f) => {
+        const n = enteroDeDigitos(f.n!);
+        const descripcion = f.descripcion ?? "";
+        return (
+          <Button
+            id={idDeQuitar(grupo.clave, n)}
+            kind="ghost"
+            size="sm"
+            aria-label={`Quitar ${descripcion}, ${grupo.rotulo} fila ${n}`}
+            onClick={() => alQuitar({ grupo: grupo.clave, indice: n - 1, descripcion, boton: idDeQuitar(grupo.clave, n) })}
+          >
+            Quitar
+          </Button>
+        );
+      },
+    });
+  }
   return (
     <section className="silice-hoja__seccion">
       <h3 className="cds--type-heading-compact-01">
@@ -145,8 +193,61 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
     alAusente,
     alExpirar,
   });
-  const { error } = edicion;
+  const { error, accionarEnOrden, esperarEnvios, resembrar, recargar } = edicion;
   const ubicacion = error?.ubicacion ?? null;
+  // Agregar y quitar líneas (Tarea 26): solo en el borrador de una versión guardada.
+  const conLineas = !detalle.solo_lectura_insumos;
+  const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
+  const enfocar = useFocoAlCerrar();
+  const [porQuitar, setPorQuitar] = useState<PorQuitar | null>(null);
+  // Mientras va la petición de quitar, la tabla no se edita: lo escrito tendría la forma del APU de antes.
+  const [quitando, setQuitando] = useState(false);
+  const [aviso, setAviso] = useState("");
+
+  const alAgregada = useCallback(
+    ({ resumen, grupo, descripcion, cantidad }: LineaAgregada) => {
+      // La línea nueva va al final de su rubro: su cantidad entra en lo que se edita (lo demás se conserva).
+      resembrar((escrito, yaAceptado) => ({
+        estado: conLineaAgregada(escrito, grupo, cantidad),
+        aceptado: conLineaAgregada(yaAceptado, grupo, cantidad),
+      }));
+      alAceptar(resumen);
+      alRelectura();
+      setAviso(`Se agregó «${descripcion}» a ${RUBROS[grupo]?.enFrase ?? grupo} de ${detalle.codigo}.`);
+      cerrar(true);
+    },
+    [resembrar, alAceptar, alRelectura, cerrar, detalle.codigo],
+  );
+
+  const quitar = async () => {
+    if (porQuitar === null) return;
+    const { grupo, indice, descripcion, boton } = porQuitar;
+    const tipo = RUBROS[grupo]!.tipo;
+    setPorQuitar(null);
+    setAviso("");
+    setQuitando(true);
+    try {
+      // Primero sale lo escrito que espera la pausa; un error (409, 422) se dice en el aviso del APU, tal cual.
+      const aceptado = await accionarEnOrden((r) => ({
+        ruta: rutaDeQuitarLinea(id, detalle.codigo),
+        metodo: "POST",
+        cuerpo: { rev: r, tipo, indice },
+        frase: "",
+      }));
+      if (aceptado !== null) {
+        resembrar((escrito, yaAceptado) => ({
+          estado: conLineaQuitada(escrito, grupo, indice),
+          aceptado: conLineaQuitada(yaAceptado, grupo, indice),
+        }));
+        setAviso(`Se quitó «${descripcion}» de ${RUBROS[grupo]!.enFrase} de ${detalle.codigo}.`);
+        enfocar(ID_AGREGAR_LINEA);
+      } else {
+        enfocar(boton);
+      }
+    } finally {
+      setQuitando(false);
+    }
+  };
 
   return (
     <>
@@ -155,47 +256,102 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
           {detalle.codigo} · {detalle.descripcion} · {detalle.unidad}
         </h2>
         <p className="cds--type-helper-text-01">
-          Se edita la cantidad de cada línea y el rendimiento, en la copia de esta versión: el catálogo no cambia. Decimales con
-          punto, por ejemplo 2.5: la coma no se acepta. Los cambios se aplican al borrador cuando deja de escribir; no se guardan
-          como versión hasta que lo pida.
+          Se edita la cantidad de cada línea y el rendimiento, y se puede agregar una línea (un insumo de la lista de la versión
+          o uno nuevo con su precio) o quitar otra, en la copia de esta versión: el catálogo no cambia. {AYUDA_CIFRAS} Los
+          cambios se aplican al borrador cuando deja de escribir; no se guardan como versión hasta que lo pida.
         </p>
         <AvisoDeEnvio envio={edicion.envio} />
         {error !== null && (
-          <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir} />
+          <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void recargar()} alReabrir={alReabrir} />
         )}
-        {detalle.grupos.map((g) => (
-          <TablaDelRubro
-            key={g.clave}
-            grupo={g}
-            moneda={moneda}
-            edicion={edicion.estado}
-            ubicacion={ubicacion}
-            idDelError={idDelError}
-            alCambiar={(indice, texto) => edicion.cambiar((previo) => cambiarCantidadDeLinea(previo, g.clave, indice, texto))}
-            alRestaurar={(indice) =>
-              edicion.cambiar((previo) =>
-                cambiarCantidadDeLinea(previo, g.clave, indice, edicion.aceptado().cantidades[g.clave]?.[indice] ?? ""),
-              )
-            }
+        <fieldset className="silice-hoja__sin-marco" disabled={quitando} aria-busy={quitando}>
+          <legend className="cds--visually-hidden">Líneas y rendimiento del APU de {detalle.codigo}</legend>
+          {detalle.grupos.map((g) => (
+            <TablaDelRubro
+              key={g.clave}
+              grupo={g}
+              moneda={moneda}
+              edicion={edicion.estado}
+              ubicacion={ubicacion}
+              idDelError={idDelError}
+              quitable={conLineas}
+              alCambiar={(indice, texto) => edicion.cambiar((previo) => cambiarCantidadDeLinea(previo, g.clave, indice, texto))}
+              alRestaurar={(indice) =>
+                edicion.cambiar((previo) =>
+                  cambiarCantidadDeLinea(previo, g.clave, indice, edicion.aceptado().cantidades[g.clave]?.[indice] ?? ""),
+                )
+              }
+              alQuitar={(linea) => {
+                setAviso("");
+                setPorQuitar(linea);
+              }}
+            />
+          ))}
+          <div className="silice-hoja__acciones">
+            {conLineas ? (
+              <Button
+                id={ID_AGREGAR_LINEA}
+                ref={anclaDelBoton}
+                kind="tertiary"
+                size="sm"
+                renderIcon={Add}
+                onClick={() => {
+                  setAviso("");
+                  abrir();
+                }}
+              >
+                Agregar línea
+              </Button>
+            ) : (
+              <p className="cds--type-helper-text-01">{SIN_VERSION_GUARDADA}</p>
+            )}
+          </div>
+          <p className="cds--type-helper-text-01" role="status">
+            {aviso}
+          </p>
+          <CampoDeCelda
+            id="hoja-apu-rendimiento"
+            etiqueta="Rendimiento (unidades por día)"
+            etiquetaVisible
+            valor={edicion.estado.rendimiento}
+            invalido={ubicacion?.campo === "rendimiento"}
+            descripcionId={idDelError}
+            alCambiar={(texto) => edicion.cambiar((previo) => cambiarRendimiento(previo, texto))}
+            alRestaurar={() => edicion.cambiar((previo) => cambiarRendimiento(previo, edicion.aceptado().rendimiento))}
           />
-        ))}
-        <CampoDeCelda
-          id="hoja-apu-rendimiento"
-          etiqueta="Rendimiento (unidades por día)"
-          etiquetaVisible
-          valor={edicion.estado.rendimiento}
-          invalido={ubicacion?.campo === "rendimiento"}
-          descripcionId={idDelError}
-          alCambiar={(texto) => edicion.cambiar((previo) => cambiarRendimiento(previo, texto))}
-          alRestaurar={() => edicion.cambiar((previo) => cambiarRendimiento(previo, edicion.aceptado().rendimiento))}
-        />
+        </fieldset>
         <CambioDeInsumo
           id={id}
           detalle={detalle}
-          alCambiar={edicion.accionarEnOrden}
+          alCambiar={accionarEnOrden}
           alAusente={alAusente}
           alExpirar={alExpirar}
         />
+        {porQuitar !== null && (
+          <ConfirmarQuitarLinea
+            partida={detalle.codigo}
+            descripcion={porQuitar.descripcion}
+            enFrase={RUBROS[porQuitar.grupo]?.enFrase ?? porQuitar.grupo}
+            alQuitar={() => void quitar()}
+            alCancelar={() => {
+              enfocar(porQuitar.boton);
+              setPorQuitar(null);
+            }}
+          />
+        )}
+        {abierto && anfitrion !== null && (
+          <DialogoAgregarLinea
+            id={id}
+            partida={detalle.codigo}
+            moneda={moneda}
+            anfitrion={anfitrion}
+            revActual={esperarEnvios}
+            alAgregada={alAgregada}
+            alCancelar={() => cerrar(true)}
+            alAusente={alAusente}
+            alReleer={recargar}
+          />
+        )}
       </div>
       <div className="silice-hoja__apu-cierre">
         <section className="silice-hoja__seccion">

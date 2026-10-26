@@ -49,6 +49,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from decimal import Decimal
+from difflib import SequenceMatcher
 from enum import StrEnum
 from functools import partial
 from pathlib import Path
@@ -1402,14 +1403,60 @@ def _cambios_de_metraje(base: Espacio, actual: Espacio) -> list[CambioEditado]:
     return cambios
 
 
-def _lineas(composicion: ComposicionAPU) -> list[tuple[str, Decimal, Decimal]]:
-    """Las lineas de un APU como `(descripcion, cantidad, precio)`: materiales, equipos y mano
-    de obra, en ese orden."""
+#: Una linea de un APU para comparar: `(descripcion, cantidad, precio)`.
+_Linea = tuple[str, Decimal, Decimal]
+
+
+def _lineas(composicion: ComposicionAPU) -> list[tuple[str, list[_Linea]]]:
+    """Las lineas de un APU por rubro, `(tipo, [(descripcion, cantidad, precio), ...])`:
+    materiales, equipos y mano de obra, en ese orden."""
     return [
-        *((m.descripcion, m.cantidad, m.precio) for m in composicion.materiales),
-        *((e.descripcion, e.cantidad, e.precio) for e in composicion.equipos),
-        *((o.descripcion, o.cantidad, o.sueldo) for o in composicion.mano_obra),
+        ("material", [(m.descripcion, m.cantidad, m.precio) for m in composicion.materiales]),
+        ("equipo", [(e.descripcion, e.cantidad, e.precio) for e in composicion.equipos]),
+        ("mano_obra", [(o.descripcion, o.cantidad, o.sueldo) for o in composicion.mano_obra]),
     ]
+
+
+def _cambios_de_linea(codigo: str, antes: _Linea, despues: _Linea) -> list[CambioEditado]:
+    """Lo que cambio de una linea que sigue en el APU: insumo, cantidad y precio, con la clave
+    `{partida}|{descripcion de antes}`."""
+    (d0, c0, p0), (d1, c1, p1) = antes, despues
+    clave = f"{codigo}|{d0}"
+    cambios = []
+    if d0 != d1:
+        cambios.append(CambioEditado("apu", clave, "insumo", d0, d1))
+    if c0 != c1:
+        cambios.append(CambioEditado("apu", clave, "cantidad", _numero(c0), _numero(c1)))
+    if p0 != p1:
+        cambios.append(CambioEditado("apu", clave, "precio", _numero(p0), _numero(p1)))
+    return cambios
+
+
+def _cambios_de_rubro(
+    codigo: str, tipo: str, antes: Sequence[_Linea], despues: Sequence[_Linea]
+) -> list[CambioEditado]:
+    """Los cambios de un rubro del APU (Tarea 26). Las lineas se alinean por su descripcion
+    (`SequenceMatcher`): una que sale es una `baja` y una que entra un `alta`, con la clave
+    `{partida}|{tipo}|{n}` (n, su posicion desde 1 en el rubro de antes o de despues); las que
+    siguen, o cambian de insumo en su lugar (`cambiar_insumo`), dicen su insumo, cantidad y precio
+    como siempre. Antes se emparejaban por posicion (`zip(strict=False)`) y la de mas se perdia."""
+    cambios: list[CambioEditado] = []
+    alineacion = SequenceMatcher(
+        None, [d for d, _, _ in antes], [d for d, _, _ in despues], autojunk=False
+    )
+    for _, i1, i2, j1, j2 in alineacion.get_opcodes():
+        pares = min(i2 - i1, j2 - j1)
+        for k in range(pares):
+            cambios.extend(_cambios_de_linea(codigo, antes[i1 + k], despues[j1 + k]))
+        cambios.extend(
+            CambioEditado("apu", f"{codigo}|{tipo}|{i + 1}", "baja", antes[i][0], "")
+            for i in range(i1 + pares, i2)
+        )
+        cambios.extend(
+            CambioEditado("apu", f"{codigo}|{tipo}|{j + 1}", "alta", "", despues[j][0])
+            for j in range(j1 + pares, j2)
+        )
+    return cambios
 
 
 def _cambios_de_apu(
@@ -1430,14 +1477,8 @@ def _cambios_de_apu(
                     _numero(despues.rendimiento),
                 )
             )
-        for (d0, c0, p0), (d1, c1, p1) in zip(_lineas(antes), _lineas(despues), strict=False):
-            clave = f"{codigo}|{d0}"
-            if d0 != d1:
-                cambios.append(CambioEditado("apu", clave, "insumo", d0, d1))
-            if c0 != c1:
-                cambios.append(CambioEditado("apu", clave, "cantidad", _numero(c0), _numero(c1)))
-            if p0 != p1:
-                cambios.append(CambioEditado("apu", clave, "precio", _numero(p0), _numero(p1)))
+        for (tipo, de_antes), (_, de_despues) in zip(_lineas(antes), _lineas(despues), strict=True):
+            cambios.extend(_cambios_de_rubro(codigo, tipo, de_antes, de_despues))
     return cambios
 
 
