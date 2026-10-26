@@ -554,3 +554,39 @@ def test_las_reglas_que_ve_la_persona_son_regla_de_mercado(s: Session, hacer, me
         hacer(s)
     if mensaje is not None:
         assert str(error.value) == mensaje
+
+
+def test_con_nombres_largos_la_conversion_de_la_2_no_reutiliza_la_de_la_primera(
+    s: Session,
+) -> None:
+    # una lista vigente de 118 letras: su derivada de hoy y su «(2)» solo se distinguen al final,
+    # y un nombre convertido recortado a 120 caracteres pierde esa diferencia
+    julio = s.scalars(select(models.ListaPrecios).where(models.ListaPrecios.nombre == LISTA)).one()
+    larga = models.ListaPrecios(
+        nombre="L" * 118, moneda="Bs", fecha_vigencia=HOY.replace(month=7, day=2), origen=""
+    )
+    s.add(larga)
+    s.flush()
+    for precio in julio.precios:
+        s.add(
+            models.PrecioInsumo(lista_id=larga.id, insumo_id=precio.insumo_id, precio=precio.precio)
+        )
+    obra = models.Proyecto(nombre="OBRA-USD", descripcion="Obra ficticia en dólares")
+    s.add(obra)
+    s.flush()
+    declarar_moneda(s, obra, "USD", responsable=RESPONSABLE, ahora=AHORA)
+    _tasa_ficticia(s)
+    usar_precio_de_compra(
+        s, "MAT-001", "400", observacion_id=None, fecha=HOY, responsable=RESPONSABLE
+    )
+    primera = lista_para_el_proyecto(s, "OBRA-USD", HOY, responsable=RESPONSABLE)
+    otra = usar_precio_de_compra(
+        s, "MAT-001", "800", observacion_id=None, fecha=HOY, responsable=RESPONSABLE
+    )
+    assert otra.nombre.endswith(" (2)")
+    segunda = lista_para_el_proyecto(s, "OBRA-USD", HOY, responsable=RESPONSABLE)
+    assert segunda.id != primera.id
+    assert (_en(s, primera, "MAT-001"), _en(s, segunda, "MAT-001")) == (
+        Decimal("10"),
+        Decimal("20"),
+    )
