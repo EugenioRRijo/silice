@@ -12640,6 +12640,11 @@
             "type": "string",
             "title": "Fecha",
             "description": "El corte de la obra (ISO)"
+          },
+          "fecha_tasa": {
+            "type": "string",
+            "title": "Fecha Tasa",
+            "description": "La fecha valor de la tasa del BCV (ISO)"
           }
         },
         "type": "object",
@@ -12647,7 +12652,8 @@
           "obra",
           "moneda",
           "tasa",
-          "fecha"
+          "fecha",
+          "fecha_tasa"
         ],
         "title": "ConversionRespuesta"
       },

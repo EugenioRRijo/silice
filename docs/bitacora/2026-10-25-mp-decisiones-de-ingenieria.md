@@ -122,6 +122,30 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - **Duda para Eugenio:** quien revisa (rita) no tiene `cambiar_caso`, así que al volver a entrar no vuelve a la carpeta
   que abrió desde un envío (la elección recordada solo se restaura a quien puede cambiar de carpeta).
 
+## MOD-4a, mesa de control (aprobada tras la ronda 2)
+
+1. **Corte sin valuaciones.** El corte de una obra con línea base es el «hasta» de su última valuación no anulada; sin
+   valuaciones, `hoy` (el día del servidor). Si con ese corte el control no se puede calcular (la línea base rige más
+   tarde), la obra queda «En ejecución» con «Sin avance registrado». Si el plan ya empezó y no hay valuaciones, el SPI es
+   0: «Atrasada (SPI 0,00)», sin días, y entra en la suma con EV 0. **Por decidir (Eugenio):** contarla así o como «Sin
+   avance registrado».
+2. **Texto fijo en vez del mensaje del núcleo (desvío consciente de la letra del plan).** Con valuaciones, un
+   `ControlInvalido` dice «No se pudo calcular el avance; ábralo en Control para ver el motivo.»; el mensaje del núcleo
+   sale sin tildes y con fechas ISO. EV y PV quedan vacíos y el siguiente paso es «Registrar el avance».
+3. **Fecha de la tasa.** Una obra en la otra moneda se convierte con `tasa_aplicable` al corte (a lo sumo 7 días antes).
+   La conversión declara `fecha` (el corte) y `fecha_tasa` (la fecha valor de la tasa). La firma de `cifras_de_la_mesa`
+   recibe `Callable[[date], TasaDelBcv | None]` en vez de `Decimal | None`. Sin tasa de los últimos 7 días, la obra va a
+   `fuera_de_suma`.
+4. **Moneda del resumen.** La de la carpeta; sin ella, la común de las obras en ejecución; `null` si no se sumó nada.
+5. **Versión y total.** Los de la versión de la línea base; sin línea base, los de la vigente. Los pendientes miran la
+   vigente.
+6. **«Sin referencia».** Insumos de la composición congelada con fila de precio en la lista de la versión y sin
+   `referencia_precio` ni `precio_origen`.
+7. **Atrasadas fuera de la suma.** El detalle de «Avance contra el plan» cuenta todas las atrasadas, también las que no se
+   sumaron por falta de tasa. Los enteros de los textos llevan punto de miles.
+8. Aviso: cuando se integre la fuente «cantidades sin cálculo» (T9), el oráculo del grupo «Calidad» de
+   `tests/unit/test_api_obras_resumen.py` debe actualizarse.
+
 ## Migraciones del caso
 
 Tres tareas a la vez colgaron su migración de `caso_0010_mp_carpeta`. El orden fijado es
