@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { AYUDA_CIFRAS, MENSAJE_CIFRA, MENSAJE_CIFRA_VACIA, leerCifra, textoParaEscribir } from "./cifraEscrita";
+import { AYUDA_CIFRAS, BLANCOS, MENSAJE_CIFRA, MENSAJE_CIFRA_VACIA, leerCifra, textoParaEscribir } from "./cifraEscrita";
 
 // Regla de Eugenio (2026-10-25): coma para los decimales, punto para los miles. El oraculo es el MISMO archivo, escrito
 // a mano, que usa la prueba de `aplicacion/cifras.py` (tests/fixtures/cifras_escritas.json): si la regla del navegador
@@ -13,6 +13,8 @@ interface Oraculo {
   aceptados: { texto: string; valor: string }[];
   rechazados: { texto: string; error: "vacio" | "formato" }[];
   escritura: { valor: string; texto: string }[];
+  escritura_no_canonica: { valor: string; texto: string }[];
+  blancos: string;
 }
 const nodo = (globalThis as unknown as { process: { cwd(): string; getBuiltinModule(nombre: "node:fs"): Fs } }).process;
 const oraculo = JSON.parse(
@@ -20,6 +22,10 @@ const oraculo = JSON.parse(
 ) as Oraculo;
 
 describe("leerCifra: lo que teclea la persona", () => {
+  test("los blancos que se recortan son exactamente los del oraculo (los mismos que en el servidor)", () => {
+    expect(BLANCOS).toBe(oraculo.blancos);
+  });
+
   test("los mensajes y la ayuda son los del oraculo compartido", () => {
     expect({ vacio: MENSAJE_CIFRA_VACIA, formato: MENSAJE_CIFRA }).toEqual(oraculo.mensajes);
     expect(AYUDA_CIFRAS).toBe(oraculo.ayuda);
@@ -47,6 +53,14 @@ describe("leerCifra: lo que teclea la persona", () => {
 describe("textoParaEscribir: el decimal de la API en un campo editable", () => {
   test.each(oraculo.escritura)("$valor se escribe «$texto»", ({ valor, texto }) => {
     expect(textoParaEscribir(valor)).toBe(texto);
+  });
+
+  test.each(oraculo.escritura_no_canonica)("$valor (no canonico) se escribe «$texto», como en el servidor", ({ valor, texto }) => {
+    expect(textoParaEscribir(valor)).toBe(texto);
+  });
+
+  test("un exponente no es un texto de la API: se deja como llego (solo el servidor lo escribe)", () => {
+    expect(textoParaEscribir("1E+3")).toBe("1E+3");
   });
 
   // «3.000» (tres, con tres decimales) se escribe «3,000» y vuelve como 3.000, nunca como 3000.

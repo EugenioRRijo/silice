@@ -18,6 +18,7 @@ import pytest
 from aplicacion import cifras
 from aplicacion.cifras import (
     AYUDA_CIFRAS,
+    BLANCOS,
     MENSAJE_CIFRA,
     MENSAJE_CIFRA_VACIA,
     CifraInvalida,
@@ -75,7 +76,23 @@ def test_un_decimal_se_escribe_como_lo_teclearia_la_persona(valor, texto):
     assert texto_de_cifra(Decimal(valor)) == texto
 
 
-@pytest.mark.parametrize(("valor", "texto"), [("1E+2", "100"), ("1E-7", "0,0000001"), ("-0", "0")])
+def test_los_blancos_que_se_recortan_son_los_del_oraculo():
+    """El mismo conjunto en el servidor y en el navegador (`str.strip()` y `String.trim()` recortan
+    conjuntos distintos: «﻿2,5» y «2,5» daban resultados distintos, árbitro ronda 1)."""
+    assert BLANCOS == ORACULO["blancos"]
+
+
+@pytest.mark.parametrize(
+    ("valor", "texto"), [(c["valor"], c["texto"]) for c in ORACULO["escritura_no_canonica"]]
+)
+def test_un_decimal_no_canonico_se_escribe_igual_en_los_dos_lados(valor, texto):
+    assert texto_de_cifra(Decimal(valor)) == texto
+
+
+# Solo el servidor: la API nunca manda exponente; el navegador lo deja como llegó (oráculo).
+@pytest.mark.parametrize(
+    ("valor", "texto"), [("1E+2", "100"), ("1E+3", "1.000"), ("1E-7", "0,0000001"), ("-0", "0")]
+)
 def test_la_escritura_nunca_usa_exponente_ni_cero_negativo(valor, texto):
     assert texto_de_cifra(Decimal(valor)) == texto
 
