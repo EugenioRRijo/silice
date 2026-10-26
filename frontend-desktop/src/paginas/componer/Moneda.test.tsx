@@ -266,6 +266,22 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     expect(screen.getByText(SIN_LISTA, { exact: false })).toBeInTheDocument();
   });
 
+  test("otro 409 (sin tasa) no se presenta como «Sin cambios» aunque al releer ya no haya aviso", async () => {
+    const u = userEvent.setup();
+    const SIN_TASA = "No hay tasa del BCV de los últimos 7 días: cárguela en Índices y vuelva a intentar.";
+    carpeta = () => json({ ...SIN_LISTA_BS, moneda: "USD" });
+    crearLista = () => json({ detalle: SIN_TASA }, 409);
+    montar();
+    const crear = await screen.findByRole("button", { name: "Crear la lista a partir de MaPreX" }, ESPERA);
+    // Entretanto otra pestaña dejó la carpeta con lista: el aviso se va al releer.
+    carpeta = () => json({ ...CON_LISTA, moneda: "USD", lista: { ...CON_LISTA.lista!, moneda: "USD" } });
+    await u.click(crear);
+    await waitFor(() => expect(de("/v1/carpeta", "GET")).toHaveLength(2), ESPERA);
+    await waitFor(() => expect(screen.queryByText(SIN_LISTA, { exact: false })).not.toBeInTheDocument(), ESPERA);
+    expect(screen.queryByText("Sin cambios")).not.toBeInTheDocument();
+    expect(screen.queryByText(SIN_TASA)).not.toBeInTheDocument();
+  });
+
   test("si la carpeta ya tenía lista (aviso viejo), el 409 relee la carpeta, quita el aviso y lo dice", async () => {
     const u = userEvent.setup();
     const YA_TIENE = "La carpeta de trabajo ya tiene lista para armar («Lista ficticia de Bs»): no se creó otra.";
