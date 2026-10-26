@@ -5,6 +5,7 @@ import { fijarCsrf } from "../../api/cliente";
 import { cancelarSalida } from "../salida";
 import { olvidarFormularios, useFormularioSucio } from "../sucio";
 import { botonDeObra, estadoInicial, json, ligeras, montarShell, servidorFalso, sesionDe } from "../obras/datosDePrueba";
+import PaginaAdministracion from "../../paginas/administracion/index";
 import { DialogoCarpetas } from "./DialogoCarpetas";
 import { GestionCarpetas } from "./GestionCarpetas";
 
@@ -415,6 +416,109 @@ describe("crear una carpeta: primero se pregunta, la moneda se reintenta sola", 
     expect(await within(dialogo()).findByText("Se creó la carpeta de trabajo «Nueva» y ya trabaja con ella.")).toBeInTheDocument();
     const despues = escrituras().slice(antes);
     expect(despues.map((l) => `${l.metodo} ${l.ruta} ${JSON.stringify(l.cuerpo)}`)).toEqual([
+      'PUT /v1/carpeta/moneda {"moneda":"Bs"}',
+    ]);
+    expect(servidor.de("POST", "/v1/casos")).toHaveLength(1);
+  });
+});
+
+// Menores del arbitro tras aprobar la ronda 2 de MOD-3b: la demostracion tambien pregunta antes de crearse; la rama
+// «se creo, pero no se pudo abrir»; y en Administracion (donde abrir vuelve a montar la pagina) «Quedarme» no crea nada y
+// la moneda que falto declarar no se pierde con el remontaje.
+describe("menores tras la ronda 2", () => {
+  const escrituras = () =>
+    servidor.llamadas.filter(
+      (l) =>
+        (l.metodo === "POST" && l.ruta.startsWith("/v1/casos")) || (l.metodo === "PUT" && l.ruta === "/v1/carpeta/moneda"),
+    );
+  // Ana con Administración: arma (crea y declara la moneda) y administra la instalación.
+  const anaAdministra = () =>
+    sesionDe("ana", { acciones: [...sesionDe("ana").acciones, "administrar_cuentas"], roles: ["arma", "administrador"] });
+  const conAdministracion = () => ligeras({ administracion: PaginaAdministracion });
+
+  async function crearEnAdministracion(u: ReturnType<typeof userEvent.setup>) {
+    await screen.findByRole("heading", { level: 1, name: "Administración" });
+    await u.click(screen.getByRole("tab", { name: "Carpetas de trabajo" }));
+    await u.type(await screen.findByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
+    await u.selectOptions(screen.getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
+    await u.click(screen.getByRole("button", { name: "Crear y abrir" }));
+  }
+
+  test("con Componer a medio llenar, «Abrir la demostración» pregunta antes; «Quedarme» no la crea", async () => {
+    const u = userEvent.setup();
+    montarShell(sesionDe("ana"), "/componer", ligeras({ componer: ComponerSucio }));
+    await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
+    await abrirCarpetas(u);
+    await u.click(within(dialogo()).getByRole("tab", { name: "Demostración" }));
+    await u.click(within(dialogo()).getByRole("button", { name: "Abrir la demostración" }));
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(escrituras()).toEqual([]);
+  });
+
+  test("si la carpeta se crea pero no se puede abrir (503), lo dice con su nombre y no dice «No se pudo crear»", async () => {
+    const u = userEvent.setup();
+    servidor = servidorFalso(estadoInicial(), (metodo, ruta) =>
+      metodo === "POST" && ruta === "/v1/casos/actual" ? json({ detalle: "La carpeta de trabajo no se pudo preparar." }, 503) : undefined,
+    );
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    montarShell(sesionDe("ana"), "/hoja");
+    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await abrirCarpetas(u);
+    await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
+    await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
+    await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
+    expect(
+      await within(dialogo()).findByText(
+        "La carpeta «Nueva» se creó, pero no se pudo abrir: La carpeta de trabajo no se pudo preparar. Ábrala de la lista cuando quiera.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialogo()).queryByText(/No se pudo crear/)).toBeNull();
+    expect(servidor.de("PUT", "/v1/carpeta/moneda")).toEqual([]);
+  });
+
+  test("en Administración, con un borrador de la Hoja con cambios, crear pregunta antes y «Quedarme» no crea nada", async () => {
+    const u = userEvent.setup();
+    const estado = estadoInicial();
+    estado.borradores = [{ id: "b-1", proyecto: "7", version: "001", cambios: 2, rev: 3, tocado: "2026-10-25T10:00:00" }];
+    servidor = servidorFalso(estado);
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    montarShell(anaAdministra(), "/administracion", conAdministracion());
+    await crearEnAdministracion(u);
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    expect(pregunta).toHaveAccessibleDescription(
+      "Tiene cambios sin guardar en Hoja de Casa Demo. Si cambia de carpeta, se perderán.",
+    );
+    await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(escrituras()).toEqual([]);
+  });
+
+  test("en Administración la moneda que falló sigue a la vista tras volver a montar la página y se reintenta sola", async () => {
+    const u = userEvent.setup();
+    let fallar = true;
+    servidor = servidorFalso(estadoInicial(), (metodo, ruta) => {
+      if (metodo === "PUT" && ruta === "/v1/carpeta/moneda" && fallar) {
+        fallar = false;
+        return json({ detalle: "La carpeta de trabajo está ocupada: repita en unos segundos." }, 503);
+      }
+      return undefined;
+    });
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    montarShell(anaAdministra(), "/administracion", conAdministracion());
+    await crearEnAdministracion(u);
+    expect(
+      await screen.findByText(
+        "La carpeta «Nueva» se creó y ya trabaja con ella, pero no se pudo declarar su moneda: La carpeta de trabajo está ocupada: repita en unos segundos.",
+      ),
+    ).toBeInTheDocument();
+    // La pagina se volvio a montar (abrir la carpeta) y sigue en la pestaña de las carpetas.
+    expect(screen.getByRole("tab", { name: "Carpetas de trabajo" })).toHaveAttribute("aria-selected", "true");
+    const antes = escrituras().length;
+    await u.click(screen.getByRole("button", { name: "Declarar la moneda" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Declarar la moneda" })).toBeNull());
+    expect(escrituras().slice(antes).map((l) => `${l.metodo} ${l.ruta} ${JSON.stringify(l.cuerpo)}`)).toEqual([
       'PUT /v1/carpeta/moneda {"moneda":"Bs"}',
     ]);
     expect(servidor.de("POST", "/v1/casos")).toHaveLength(1);
