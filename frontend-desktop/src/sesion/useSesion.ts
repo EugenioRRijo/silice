@@ -9,13 +9,16 @@ export type EstadoDeSesion =
   | { tipo: "activa"; sesion: SesionRespuesta };
 
 // Una API anterior a la ola 0a no trae estos campos: sin ellos, nadie debe cambiar clave, no hay acciones (el
-// menu queda vacio) y no hay modo entrega.
+// menu queda vacio) y no hay modo entrega. Sin los de MOD-0, no hay eleccion recordada y las preferencias son las
+// de omision (ningun modulo, sidebar oculto).
 function normalizar(bruta: Partial<SesionRespuesta> & Pick<SesionRespuesta, "login" | "nombre" | "roles" | "csrf">): SesionRespuesta {
   return {
     ...bruta,
     debe_cambiar_clave: bruta.debe_cambiar_clave === true,
     acciones: Array.isArray(bruta.acciones) ? bruta.acciones : [],
     modo_entrega: bruta.modo_entrega === true,
+    eleccion: bruta.eleccion ?? null,
+    preferencias: bruta.preferencias ?? { modulo: null, sidebar_fijado: false },
   };
 }
 

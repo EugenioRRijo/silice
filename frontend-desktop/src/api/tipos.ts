@@ -14,6 +14,24 @@ export interface SesionRespuesta {
   debe_cambiar_clave: boolean;
   acciones: string[];
   modo_entrega: boolean;
+  // MOD-0: lo que la cuenta recuerda (carpeta, obra, ultimo modulo, sidebar fijado). `eleccion` es null con la
+  // contrasena temporal. Opcionales en el tipo porque una API anterior no los trae y las pruebas de las paginas
+  // arman sesiones sin ellos; useSesion siempre los llena.
+  eleccion?: EleccionDeSesion | null;
+  preferencias?: PreferenciasDeSesion;
+}
+
+export type ModuloDeSilice = "auditoria" | "obras" | "produccion";
+
+export interface EleccionDeSesion {
+  caso: string | null;
+  proyecto: string | null;
+  aviso: string | null;
+}
+
+export interface PreferenciasDeSesion {
+  modulo: ModuloDeSilice | null;
+  sidebar_fijado: boolean;
 }
 
 export interface CasoRespuesta {

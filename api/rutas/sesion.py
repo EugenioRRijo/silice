@@ -24,18 +24,42 @@ en la interfaz clásica»): entra con `debe_cambiar_clave: true`, `acciones: []`
 `api.sesion_web.exigir_sesion` rechaza en toda otra ruta (la «cookie restringida»). `acciones` son
 las `Accion` que su rol permite (`seguridad.permisos.permitido`), en el orden de la matriz, para que
 el menú no repita la matriz; `modo_entrega` es `SILICE_MODO_ENTREGA` (de `aplicacion.entorno`).
+
+MOD-0 (plan de módulos; absorbe la Tarea 5 del plan de montar un presupuesto): lo que la cuenta
+recuerda entre sesiones y reinicios vive en `mp_eleccion` de la instalación (`aplicacion.eleccion`).
+
+- El cuerpo de `POST`/`GET /v1/sesion` (y de `POST /contrasena` y del reclamo del primer arranque,
+  que usan `_cuerpo`) gana `eleccion: {caso, proyecto, aviso}` y `preferencias: {modulo,
+  sidebar_fijado}`. Si la ficha no eligió carpeta y la recordada sigue en la carpeta de casos, se
+  fija para la ficha (`caso_web.fijar`): así vuelve tras salir y entrar, y tras reiniciar la API.
+  Una carpeta recordada que ya no existe da `caso: null` y el aviso `MENSAJE_CARPETA_PERDIDA`
+  **una vez**: se olvida en la tabla (y en la ficha, para que nadie la recree vacía). Una obra que
+  ya no está en la carpeta de la ficha da `proyecto: null` y también se olvida. Sin nada recordado,
+  `eleccion` viene con los tres campos nulos. Con la contraseña temporal, `eleccion: null` y las
+  preferencias por omisión.
+- `PUT /proyecto` `{proyecto}` y `PUT /preferencias` `{modulo?, sidebar_fijado?}` (sesión completa,
+  CSRF y `Origin`; la clave de API no tiene cuenta a la que recordar: 401) → 204. Lo que no viene
+  (o viene `null`) en las preferencias no cambia. 422 sin repetir lo enviado: `MENSAJE_MODULO` si
+  el módulo no existe; un mensaje fijo si el cuerpo no tiene la forma.
 """
 
 from __future__ import annotations
 
 import math
-from typing import Annotated
+from pathlib import Path
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool, StrictStr
 
 from api import caso_web
+from api.dependencias import (
+    SesionInstalacionDep,
+    obtener_motor,
+    url_de_ruta,
+    url_del_proceso,
+)
 from api.sesion_web import (
     COOKIE,
     MENSAJE_ORIGEN,
@@ -44,13 +68,24 @@ from api.sesion_web import (
     borrar_cookie,
     csrf_de,
     exigir_csrf_y_origen,
+    exigir_sesion,
     origen_propio,
     poner_cookie,
     sesion_vigente,
 )
 from api.sin_eco import RutaSinEco, sin_eco
+from aplicacion.eleccion import (
+    MENSAJE_MODULO,
+    MODULOS,
+    eleccion_de,
+    recordar_caso,
+    recordar_preferencias,
+    recordar_proyecto,
+)
 from aplicacion.entorno import modo_entrega_activo
-from operacion.base_datos import ErrorDeBase
+from aplicacion.proyectos import resolver_proyecto
+from core.catalog import abrir_sesion
+from operacion.base_datos import ErrorDeBase, RutaDeCasoRechazada, listar_casos, resolver_caso
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import cuentas, eventos, sesiones
 from seguridad.permisos import Accion, Rol, permitido
@@ -66,6 +101,11 @@ MENSAJE_CONTRASENAS_INVALIDAS = (
 )
 MENSAJE_FRENO = (
     "Demasiados intentos fallidos en este equipo. Espere unos segundos y vuelva a probar."
+)
+MENSAJE_CARPETA_PERDIDA = "La carpeta de trabajo «{nombre}» ya no existe; se abrió la de siempre."
+MENSAJE_OBRA_INVALIDA = "Indique la obra por su código, como texto de hasta 120 caracteres, o null."
+MENSAJE_PREFERENCIAS_INVALIDAS = (
+    "Indique el módulo (auditoria, obras o produccion) y si el sidebar queda fijado (true o false)."
 )
 
 
@@ -99,6 +139,23 @@ class CambioDeContrasena(BaseModel):
     nueva: str = Field(max_length=cuentas.MAXIMO_CONTRASENA)
 
 
+Modulo = Literal["auditoria", "obras", "produccion"]
+
+
+class EleccionRespuesta(BaseModel):
+    caso: str | None = Field(description="La carpeta recordada; `null` = la de la instalación")
+    proyecto: str | None = Field(description="El código de la obra recordada en esa carpeta")
+    aviso: str | None = Field(description="Qué se perdió de lo recordado (se dice una vez)")
+
+
+class PreferenciasRespuesta(BaseModel):
+    modulo: Modulo | None = Field(description="El último módulo abierto")
+    sidebar_fijado: bool
+
+
+SIN_PREFERENCIAS = PreferenciasRespuesta(modulo=None, sidebar_fijado=False)
+
+
 class SesionRespuesta(BaseModel):
     login: str
     nombre: str
@@ -112,13 +169,84 @@ class SesionRespuesta(BaseModel):
         description="Las acciones que permite su rol (vacía con la contraseña temporal)"
     )
     modo_entrega: bool = Field(description="`SILICE_MODO_ENTREGA` está encendido")
+    eleccion: EleccionRespuesta | None = Field(
+        description="La carpeta y la obra recordadas (`null` con la contraseña temporal)"
+    )
+    preferencias: PreferenciasRespuesta
+
+
+class ObraElegida(BaseModel):
+    proyecto: StrictStr | None = Field(max_length=120, description="El `codigo` de la obra")
+
+
+class Preferencias(BaseModel):
+    modulo: StrictStr | None = Field(default=None, description="auditoria, obras o produccion")
+    sidebar_fijado: StrictBool | None = None
 
 
 class Detalle(BaseModel):
     detalle: str
 
 
+def _carpeta_en_la_lista(caso: str) -> Path | None:
+    """La ruta de la carpeta recordada si sigue en la carpeta de casos; `None` si no."""
+    try:
+        ruta = resolver_caso(caso)
+    except RutaDeCasoRechazada:
+        return None
+    return ruta if ruta in {c.resolve() for c in listar_casos()} else None
+
+
+def _obra_sigue(huella: str, proyecto: str) -> bool:
+    """La obra está en la carpeta con que trabaja la ficha. Si esa carpeta no se puede abrir no
+    se sabe: se conserva lo recordado."""
+    elegida = caso_web.elegido(huella)
+    url = url_del_proceso() if elegida is None else url_de_ruta(elegida)
+    try:
+        motor = obtener_motor(url)
+    except HTTPException:
+        return True
+    with abrir_sesion(motor) as sesion:
+        return resolver_proyecto(sesion, proyecto) is not None
+
+
+def _restaurar(activa: SesionActiva) -> tuple[EleccionRespuesta | None, PreferenciasRespuesta]:
+    """Lo que recuerda la cuenta, ya aplicado a la ficha (ver la cabecera del módulo)."""
+    if activa.debe_cambiar_clave:
+        return None, SIN_PREFERENCIAS
+    huella = activa.huella_ficha
+    try:
+        with sesion_de_instalacion() as sesion:
+            recordada = eleccion_de(sesion, activa.usuario_id)
+            if recordada is None:
+                return EleccionRespuesta(caso=None, proyecto=None, aviso=None), SIN_PREFERENCIAS
+            caso, proyecto, aviso = recordada.caso, recordada.proyecto, None
+            if caso is not None:
+                ruta = _carpeta_en_la_lista(caso)
+                if ruta is None:
+                    aviso = MENSAJE_CARPETA_PERDIDA.format(nombre=Path(caso).stem)
+                    elegida = caso_web.elegido(huella)
+                    if elegida is not None and elegida.name == caso:
+                        caso_web.olvidar(huella)  # que nadie abra (y recree) la que ya no está
+                    recordar_caso(sesion, activa.usuario_id, None, ahora())
+                    caso = proyecto = None
+                elif caso_web.elegido(huella) is None:
+                    caso_web.fijar(huella, ruta)
+            if proyecto is not None and not _obra_sigue(huella, proyecto):
+                recordar_proyecto(sesion, activa.usuario_id, None, ahora())
+                proyecto = None
+            sesion.commit()
+    except ErrorDeBase as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    modulo = recordada.modulo if recordada.modulo in MODULOS else None
+    return (
+        EleccionRespuesta(caso=caso, proyecto=proyecto, aviso=aviso),
+        PreferenciasRespuesta(modulo=modulo, sidebar_fijado=recordada.sidebar_fijado),
+    )
+
+
 def _cuerpo(ficha: str, activa: SesionActiva) -> SesionRespuesta:
+    eleccion, preferencias = _restaurar(activa)
     acciones = (
         []
         if activa.debe_cambiar_clave
@@ -132,6 +260,8 @@ def _cuerpo(ficha: str, activa: SesionActiva) -> SesionRespuesta:
         debe_cambiar_clave=activa.debe_cambiar_clave,
         acciones=acciones,
         modo_entrega=modo_entrega_activo(),
+        eleccion=eleccion,
+        preferencias=preferencias,
     )
 
 
@@ -294,3 +424,64 @@ def cambiar_contrasena(
         raise HTTPException(status_code=401, detail=MENSAJE_SIN_SESION)
     poner_cookie(response, nueva)
     return _cuerpo(nueva, nueva_activa)
+
+
+# --- MOD-0: lo que la cuenta recuerda ------------------------------------------------------------
+
+
+def _sesion_completa(request: Request) -> SesionActiva:
+    """Sesión completa (401 sin ella, 403 con la contraseña temporal), con CSRF y `Origin` (403).
+    La clave de API no cuenta: no tiene cuenta a la que recordar."""
+    ficha, activa = exigir_sesion(request)
+    exigir_csrf_y_origen(request, ficha)
+    return activa
+
+
+_RESPUESTAS_DE_LO_RECORDADO: dict[int | str, dict] = {
+    401: {"model": Detalle, "description": "Sin sesión vigente (la clave de API no sirve)."},
+    403: {"model": Detalle, "description": "Contraseña temporal, o sin CSRF u origen propio."},
+    422: {"model": Detalle, "description": "Cuerpo inválido (no repite lo enviado)."},
+}
+
+
+@router.put(
+    "/proyecto",
+    status_code=204,
+    response_class=Response,
+    responses=_RESPUESTAS_DE_LO_RECORDADO,
+)
+@sin_eco(MENSAJE_OBRA_INVALIDA)
+def recordar_obra(
+    datos: ObraElegida,
+    activa: Annotated[SesionActiva, Depends(_sesion_completa)],
+    sesion: SesionInstalacionDep,
+) -> Response:
+    """Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta."""
+    recordar_proyecto(sesion, activa.usuario_id, datos.proyecto, ahora())
+    return Response(status_code=204)
+
+
+@router.put(
+    "/preferencias",
+    status_code=204,
+    response_class=Response,
+    responses=_RESPUESTAS_DE_LO_RECORDADO,
+)
+@sin_eco(MENSAJE_PREFERENCIAS_INVALIDAS)
+def guardar_preferencias(
+    datos: Preferencias,
+    activa: Annotated[SesionActiva, Depends(_sesion_completa)],
+    sesion: SesionInstalacionDep,
+) -> Response:
+    """Recuerda el último módulo y si el sidebar queda fijado; lo que no viene no cambia."""
+    try:
+        recordar_preferencias(
+            sesion,
+            activa.usuario_id,
+            modulo=datos.modulo,
+            sidebar_fijado=datos.sidebar_fijado,
+            ahora=ahora(),
+        )
+    except ValueError:
+        raise HTTPException(status_code=422, detail=MENSAJE_MODULO) from None
+    return Response(status_code=204)

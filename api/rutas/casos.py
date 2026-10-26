@@ -11,7 +11,9 @@
   nombres reservados: 422) y debe estar en `listar_casos` (404). El caso se prepara con
   `preparar_base` al abrir su motor (503 si no se puede, y no queda elegido) y se guarda para la
   ficha (`api.caso_web`). Con la clave de API, 409: las integraciones trabajan en el caso del
-  proceso (`APU_BASE`), que fija quien arranca la API.
+  proceso (`APU_BASE`), que fija quien arranca la API. MOD-0: además se recuerda para la cuenta
+  (`aplicacion.eleccion.recordar_caso`, en la transacción de la petición sobre la instalación), lo
+  que olvida la obra recordada; `GET /v1/sesion` la restaura al volver a entrar.
 
 Carpetas de trabajo (BCP-2; diseño de la bienvenida §4 y §9, rutas C0 a C3). La interfaz dice
 «carpeta de trabajo»; la API sigue diciendo `caso`. Estas cuatro rutas responden con
@@ -45,12 +47,19 @@ from pydantic import BaseModel, Field, StrictStr
 
 from api import caso_web
 from api.acceso import CUALQUIER_ROL
-from api.dependencias import obtener_motor, ruta_de_url, url_de_la_peticion, url_de_ruta
+from api.dependencias import (
+    SesionInstalacionDep,
+    obtener_motor,
+    ruta_de_url,
+    url_de_la_peticion,
+    url_de_ruta,
+)
 from api.rutas.sesion import Detalle
-from api.sesion_web import exigir_clave_o_sesion
+from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import casos as carpetas
+from aplicacion.eleccion import recordar_caso
 from operacion import config, demostracion
 from operacion.base_datos import (
     CasoYaExiste,
@@ -129,8 +138,10 @@ def consultar_casos(request: Request) -> CasosRespuesta:
 def elegir_caso(
     datos: EleccionCaso,
     activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.CAMBIAR_CASO))],
+    instalacion: SesionInstalacionDep,
 ) -> CasoRespuesta:
-    """Fija el caso de esta ficha de sesión (lo olvida al salir o expirar)."""
+    """Fija el caso de esta ficha de sesión (lo olvida al salir o expirar) y lo recuerda para la
+    cuenta (vuelve al entrar de nuevo)."""
     if activa is None:
         raise HTTPException(status_code=409, detail=MENSAJE_CON_CLAVE)
     try:
@@ -141,6 +152,7 @@ def elegir_caso(
         raise HTTPException(status_code=404, detail=MENSAJE_NO_ESTA.format(nombre=ruta.name))
     obtener_motor(url_de_ruta(ruta))  # prepara la base una vez (503 si no se puede)
     caso_web.fijar(activa.huella_ficha, ruta)
+    recordar_caso(instalacion, activa.usuario_id, ruta.name, ahora())
     return _describir(ruta)
 
 

@@ -263,7 +263,9 @@ def test_salir_olvida_el_caso_elegido() -> None:
     assert caso_web.elegido(sesiones.huella_de(ficha)) is None
     respuesta = entrar(navegador, "ana")
     assert ficha_de(respuesta) != ficha
-    assert navegador.get("/v1/casos").json()["actual"] == _caso("silice.db")
+    # MOD-0: la ficha nueva no hereda nada en memoria, pero la cuenta recuerda su carpeta y la
+    # entrada la restaura (`tests/unit/test_api_eleccion.py`); antes volvía a «silice.db»
+    assert navegador.get("/v1/casos").json()["actual"] == _caso("anexo.db")
 
 
 def test_volver_a_entrar_no_hereda_el_caso_de_la_ficha_anterior() -> None:
