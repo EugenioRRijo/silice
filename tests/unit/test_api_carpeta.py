@@ -224,7 +224,7 @@ def test_ana_declara_bs_y_la_carpeta_lo_recuerda(_entorno: Path) -> None:
     }
     assert navegador.get("/v1/carpeta").json()["moneda"] == "Bs"
     assert _filas(_entorno, "SELECT id, moneda, declarada_por FROM mp_carpeta") == [
-        (1, "Bs", "ana")
+        (1, "Bs", "Ana <ana>")
     ]
 
 
@@ -411,3 +411,31 @@ def test_un_422_de_la_lista_no_repite_lo_enviado(cuerpo: dict, _entorno: Path) -
     assert respuesta.json() == {"detalle": MENSAJE_422}
     assert PRIVADO not in respuesta.text
     assert _filas(_entorno, "SELECT * FROM lista_precios") == []
+
+
+def test_si_la_creacion_falla_tras_cargar_la_referencia_la_carpeta_queda_coherente(
+    _entorno: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`cargar_referencia_maprex` confirma por su cuenta: queda la referencia (global, sin usar) y
+    ninguna lista para armar a medias; la moneda declarada no cambia y reintentar funciona."""
+    from aplicacion import listas_para_armar
+
+    navegador, ficha = con_cuenta(app, "ana")
+    _poner(navegador, ficha, "Bs")
+    original = listas_para_armar._lista_global
+
+    def falla(*args, **kwargs):
+        raise RuntimeError("fallo simulado")
+
+    monkeypatch.setattr(listas_para_armar, "_lista_global", falla)
+    assert _crear(navegador, ficha, "maprex").status_code == 500
+    assert _filas(_entorno, "SELECT nombre, moneda FROM lista_precios") == [
+        ("MaPreX julio 2026 en Bs", "Bs")
+    ]
+    assert _filas(_entorno, "SELECT moneda, declarada_por FROM mp_carpeta") == [("Bs", "Ana <ana>")]
+    monkeypatch.setattr(listas_para_armar, "_lista_global", original)
+    estado = navegador.get("/v1/carpeta").json()
+    assert estado["moneda"] == "Bs"
+    assert _crear(navegador, ficha, "maprex").status_code == 201
+    nombres = sorted(n for (n,) in _filas(_entorno, "SELECT nombre FROM lista_precios"))
+    assert nombres == sorted(["MaPreX julio 2026 en Bs", NOMBRE_MAPREX_HOY])
