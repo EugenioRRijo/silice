@@ -90,7 +90,7 @@ def _estado(sesion: Session) -> CarpetaRespuesta:
         aviso = str(error)
     descrita = describir(sesion, hoy)
     return CarpetaRespuesta(
-        moneda=moneda_de_la_carpeta(sesion),
+        moneda=moneda_de_la_carpeta(sesion, hoy),
         declarada=sesion.get(CarpetaDeTrabajo, 1) is not None,
         lista=None
         if descrita is None
