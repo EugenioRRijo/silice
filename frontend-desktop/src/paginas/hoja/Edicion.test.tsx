@@ -213,7 +213,8 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
       "Estado",
       "Acciones",
     ]);
-    expect(screen.getByText(/Decimales con punto, por ejemplo 2\.5/)).toBeInTheDocument();
+    expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
+    expect(screen.queryByText(/la coma no se acepta/)).toBeNull();
   });
 
   test("el Estado de la fila sigue visible con ícono y texto, y una fila nueva dice que aún no se evalúa", async () => {
@@ -232,7 +233,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
   test("3c-F2: tras la pausa de 400 ms se manda una sola petición con la tabla completa y se actualizan total, estado y derivadas", async () => {
     await abrirConRelojFalso();
     const antes = lecturasDelEspacio();
-    fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "2.5" } });
+    fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "2,5" } });
     await pausa(399);
     expect(puestas()).toHaveLength(0);
     // Cuando el servidor acepte, la vista trae el estado y las cantidades nuevas.
@@ -251,7 +252,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
       tablas: {
         origenes: [{ id: "O1", tipo: "supuesto", referencia: "motivo=ejemplo" }],
         ambientes: [
-          { id: "BAN-01", nombre: "Baño", largo: "2.5" },
+          { id: "BAN-01", nombre: "Baño", largo: "2,5" },
           { id: "COC-01", nombre: "Cocineta", largo: "2" },
         ],
         fuentes: [{ id: "F1", especialidad: "agua" }],
@@ -269,7 +270,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     const filas = within(screen.getByRole("table", { name: "Ambientes" })).getAllByRole("row");
     expect(await esperar(() => within(filas[1]!).getByText("OK"))).toBeInTheDocument();
     // Lo escrito se queda como lo escribió la persona; la respuesta no lo reemplaza.
-    expect(celda("Largo (m), Ambientes fila 1")).toHaveValue("2.5");
+    expect(celda("Largo (m), Ambientes fila 1")).toHaveValue("2,5");
   });
 
   test("3c-F2: varias teclas seguidas dentro de la pausa son una sola petición con lo último escrito, y la siguiente lleva el rev nuevo", async () => {
@@ -327,7 +328,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
 
   test("3c-F3: una edición inválida muestra el detalle del servidor y la frase de la clásica en un alert; la celda queda inválida; nada cambia", async () => {
     await abrirConRelojFalso();
-    const DETALLE = "ambientes, fila 1: largo: '2,5' no es un numero decimal valido";
+    const DETALLE = "ambientes, fila 1: largo: «2.5» no se entiende como número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56.";
     alPonerse = () => json({ detalle: DETALLE }, 422);
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "2,5" } });
     await pausa(400);
@@ -347,7 +348,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     expect(within(estado).getByText(/Sin cambios sin guardar/)).toBeInTheDocument();
     // Corregir y volver a mandar: sigue con el rev que el servidor no avanzó y el alert desaparece.
     alPonerse = ACEPTA;
-    fireEvent.change(invalida, { target: { value: "2.5" } });
+    fireEvent.change(invalida, { target: { value: "2,5" } });
     await pausa(400);
     await esperar(() => expect(puestas()).toHaveLength(2));
     expect(puestas()[1]!.cuerpo.rev).toBe(0);
@@ -355,13 +356,14 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     expect(celda("Largo (m), Ambientes fila 1")).not.toHaveAttribute("aria-invalid", "true");
   });
 
-  test("3c-F3: la coma decimal se rechaza con el mensaje de la clásica, sin convertirla en el navegador", async () => {
+  test("3c-F3: el decimal con punto se rechaza con el mensaje de la regla, sin convertirlo en el navegador", async () => {
+    // Regla de Eugenio (2026-10-25, resuelve D-8): coma decimal, punto de miles; lo lee aplicacion/cifras.py.
     await abrirConRelojFalso();
-    alPonerse = () => json({ detalle: "ambientes, fila 2: largo: '2,5' no es un numero decimal valido" }, 422);
-    fireEvent.change(celda("Largo (m), Ambientes fila 2"), { target: { value: "2,5" } });
+    alPonerse = () => json({ detalle: "ambientes, fila 2: largo: «2.5» no se entiende como número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56." }, 422);
+    fireEvent.change(celda("Largo (m), Ambientes fila 2"), { target: { value: "2.5" } });
     await pausa(400);
-    expect(puestas()[0]!.cuerpo.tablas.ambientes![1]!.largo).toBe("2,5"); // se manda tal cual: decide el servidor (D-8)
-    expect(await esperar(() => aviso())).toHaveTextContent("'2,5' no es un numero decimal valido");
+    expect(puestas()[0]!.cuerpo.tablas.ambientes![1]!.largo).toBe("2.5"); // se manda tal cual: decide el servidor
+    expect(await esperar(() => aviso())).toHaveTextContent("«2.5» no se entiende como número. Use la coma para los decimales");
   });
 
   test("3c-F4: si el mensaje nombra tabla y fila se ofrece ir a esa fila, sin robar el foco mientras se escribe", async () => {

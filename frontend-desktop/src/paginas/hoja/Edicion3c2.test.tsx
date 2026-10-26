@@ -490,7 +490,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       expect(campo(/^Administración/)).toHaveValue("0.15");
       expect(campo(/^Utilidad/)).toHaveValue("0.10");
       expect(screen.getAllByRole("textbox")).toHaveLength(4);
-      expect(screen.getByText(/Decimales con punto, por ejemplo 2\.5/)).toBeInTheDocument();
+      expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
       expect(screen.getByText(/Cambiarlos recalcula/)).toBeInTheDocument();
       expect(screen.queryByText(/solo se leen/)).toBeNull();
       expect(screen.getByText("Moneda del proyecto: USD")).toBeInTheDocument();
@@ -541,16 +541,16 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       expect(within(regionDeEstado()).getByTitle("2703.860232344044033333333333")).toBeInTheDocument();
     });
 
-    test("D-8 (P17): la coma decimal se manda tal cual y se rechaza con el mensaje de la clásica, sin convertirla", async () => {
+    test("D-8 resuelta (Eugenio, 2026-10-25): el decimal con punto se manda tal cual y lo rechaza el servidor con la regla", async () => {
       await irA("Parámetros");
       await screen.findByRole("textbox", { name: /^Administración/ });
       relojFalso();
       alPoner.parametros = () =>
-        json({ detalle: "parametros: administracion: '0,20' no es un numero decimal valido" }, 422);
-      fireEvent.change(campo(/^Administración/), { target: { value: "0,20" } });
+        json({ detalle: "parametros: administracion: «0.20» no se entiende como número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56." }, 422);
+      fireEvent.change(campo(/^Administración/), { target: { value: "0.20" } });
       await pausa(400);
-      expect(escrituras("parametros")[0]!.administracion).toBe("0,20");
-      expect(await esperar(() => aviso())).toHaveTextContent("'0,20' no es un numero decimal valido");
+      expect(escrituras("parametros")[0]!.administracion).toBe("0.20");
+      expect(await esperar(() => aviso())).toHaveTextContent("«0.20» no se entiende como número");
       expect(campo(/^Administración/)).toHaveAttribute("aria-invalid", "true");
     });
 
@@ -595,7 +595,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       expect(within(filas[1]!).getByText("13,20")).toBeInTheDocument();
       expect(within(filas[2]!).getAllByText("Pendiente")).toHaveLength(2);
       expect(within(filas[2]!).getByText("Error")).toBeInTheDocument();
-      expect(screen.getByText(/Decimales con punto, por ejemplo 2\.5/)).toBeInTheDocument();
+      expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
     });
 
     test("3c-B3 (P15): escribir 5 en AF-LLAVE manda solo esa fila; la vista nueva la marca como escrita y sube el total", async () => {
@@ -666,16 +666,16 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       expect(campo("Cantidad, Presupuesto fila 1")).toHaveValue("-1");
     });
 
-    test("la coma decimal se manda tal cual y la rechaza el servidor con el mensaje de la clásica", async () => {
+    test("el decimal con punto se manda tal cual y lo rechaza el servidor con la regla de la coma decimal", async () => {
       await irA("Presupuesto");
       await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 2" });
       relojFalso();
       alPoner.cantidades = () =>
-        json({ detalle: "presupuesto, fila 2 (AF-SALIDA): cantidad: '2,5' no es un numero decimal valido" }, 422);
-      fireEvent.change(campo("Cantidad, Presupuesto fila 2"), { target: { value: "2,5" } });
+        json({ detalle: "presupuesto, fila 2 (AF-SALIDA): cantidad: «2.5» no se entiende como número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56." }, 422);
+      fireEvent.change(campo("Cantidad, Presupuesto fila 2"), { target: { value: "2.5" } });
       await pausa(400);
-      expect(escrituras("cantidades")[0]!.filas).toEqual([{ clave: "AF-SALIDA|esp_puntos:P2", cantidad: "2,5" }]);
-      expect(await esperar(() => aviso())).toHaveTextContent("'2,5' no es un numero decimal valido");
+      expect(escrituras("cantidades")[0]!.filas).toEqual([{ clave: "AF-SALIDA|esp_puntos:P2", cantidad: "2.5" }]);
+      expect(await esperar(() => aviso())).toHaveTextContent("«2.5» no se entiende como número");
       expect(campo("Cantidad, Presupuesto fila 2")).toHaveAttribute("aria-invalid", "true");
     });
 
@@ -723,7 +723,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       expect(campo("Día 1, Plan de trabajo fila 2")).toHaveValue("0");
       expect(campo("Día 2, Plan de trabajo fila 2")).toHaveValue("1");
       expect(within(within(matriz).getAllByRole("row")[1]!).getAllByRole("cell")[0]).toHaveTextContent("AF-CODO-1/2");
-      expect(screen.getByText(/Decimales con punto, por ejemplo 2\.5/)).toBeInTheDocument();
+      expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
       expect(screen.getByRole("heading", { level: 2, name: "Curva de inversión" })).toBeInTheDocument();
       expect(screen.getByRole("table", { name: "Curva de inversión: montos" })).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /Crear plan secuencial/ })).toBeNull();
@@ -789,16 +789,16 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       expect(within(screen.getByRole("table", { name: "Curva de inversión: montos" })).getAllByText("11,18")).toHaveLength(2);
     });
 
-    test("una fracción negativa o con coma se manda tal cual; el servidor decide", async () => {
+    test("una fracción negativa o con punto decimal se manda tal cual; el servidor decide", async () => {
       await irA("Plan y curva");
       await screen.findByRole("textbox", { name: "Día 1, Plan de trabajo fila 1" });
       relojFalso();
-      alPoner.plan = () => json({ detalle: "plan, partida AF-CODO-1/2: Dia 1: '0,5' no es un numero decimal valido" }, 422);
-      fireEvent.change(campo("Día 1, Plan de trabajo fila 1"), { target: { value: "0,5" } });
+      alPoner.plan = () => json({ detalle: "plan, partida AF-CODO-1/2: Dia 1: «0.5» no se entiende como número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56." }, 422);
+      fireEvent.change(campo("Día 1, Plan de trabajo fila 1"), { target: { value: "0.5" } });
       await pausa(400);
       const cuerpo = escrituras("plan")[0] as unknown as { filas: Array<{ valores: Record<string, string> }> };
-      expect(cuerpo.filas[0]!.valores["Dia 1"]).toBe("0,5");
-      expect(await esperar(() => aviso())).toHaveTextContent("'0,5' no es un numero decimal valido");
+      expect(cuerpo.filas[0]!.valores["Dia 1"]).toBe("0.5");
+      expect(await esperar(() => aviso())).toHaveTextContent("«0.5» no se entiende como número");
       expect(campo("Día 1, Plan de trabajo fila 1")).toHaveAttribute("aria-invalid", "true");
       expect(campo("Día 1, Plan de trabajo fila 2")).not.toHaveAttribute("aria-invalid", "true");
     });

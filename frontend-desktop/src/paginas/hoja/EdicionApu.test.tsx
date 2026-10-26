@@ -270,7 +270,7 @@ describe("Hoja del proyecto: APU editable y cambio de insumo (3c-3)", () => {
     expect(campo("Cantidad, Materiales fila 1")).toHaveValue("2.5");
   });
 
-  test("el rendimiento y las cantidades de otro rubro viajan juntos; la coma decimal se manda tal cual (decide el servidor)", async () => {
+  test("el rendimiento y las cantidades de otro rubro viajan juntos; la coma decimal se manda tal cual (la lee el servidor)", async () => {
     await irAApu();
     relojFalso();
     fireEvent.change(campo("Rendimiento (unidades por día)"), { target: { value: "25,5" } });

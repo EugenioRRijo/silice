@@ -248,7 +248,7 @@ describe("Hoja del proyecto: restaurar, cotizar, retirar, convertir y la cadena 
     };
     const llenar = (dialogo: HTMLElement) => {
       fireEvent.change(within(dialogo).getByRole("combobox", { name: "Insumo" }), { target: { value: "MAT-001" } });
-      escribir(dialogo, "Precio cotizado", "3.50");
+      escribir(dialogo, "Precio cotizado", "1.003,50");
       escribir(dialogo, "Proveedor", "Ferretería Demo, C.A.");
       escribir(dialogo, "Número de la cotización", "COT-18");
       fireEvent.change(campo(dialogo, "Fecha de la cotización"), { target: { value: "2026-10-18" } });
@@ -274,6 +274,8 @@ describe("Hoja del proyecto: restaurar, cotizar, retirar, convertir y la cadena 
       expect(campo(dialogo, "Fecha de la cotización")).toHaveValue(new Date().toLocaleDateString("en-CA"));
       expect(campo(dialogo, "Fecha de la cotización")).toHaveAttribute("type", "date");
       expect(within(dialogo).getByText("Responsable: Ana Pérez <ana>")).toBeInTheDocument();
+      // La ayuda del precio dice la regla de las cifras (Eugenio, 2026-10-25), no «Decimales con punto».
+      expect(within(dialogo).getByText("Escriba los decimales con coma: 2,5; el punto separa los miles: 1.234,56.")).toBeInTheDocument();
       expect(within(dialogo).queryByRole("textbox", { name: /Responsable/ })).toBeNull();
     });
 
@@ -283,7 +285,7 @@ describe("Hoja del proyecto: restaurar, cotizar, retirar, convertir y la cadena 
       expect(cotizar).toBeDisabled();
       expect(within(dialogo).getByText("Escriba el precio cotizado.")).toBeInTheDocument();
       expect(cotizar).toHaveAccessibleDescription("Escriba el precio cotizado.");
-      escribir(dialogo, "Precio cotizado", "3.50");
+      escribir(dialogo, "Precio cotizado", "1.003,50");
       expect(within(dialogo).getByText("Escriba el proveedor de la cotización.")).toBeInTheDocument();
       escribir(dialogo, "Proveedor", "Ferretería Demo, C.A.");
       expect(within(dialogo).getByText("Escriba el número de la cotización.")).toBeInTheDocument();
@@ -303,7 +305,7 @@ describe("Hoja del proyecto: restaurar, cotizar, retirar, convertir y la cadena 
           proyecto: "OF-001",
           version: "002",
           insumo: "MAT-001",
-          precio: "3.50",
+          precio: "1.003,50", // tal cual: lo lee el servidor (coma decimal, punto de miles)
           proveedor: "Ferretería Demo, C.A.",
           numero: "COT-18",
           fecha: "2026-10-18",

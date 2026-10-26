@@ -440,7 +440,7 @@ describe("Importar plano (3e-2)", () => {
       montar();
       await leer(usuario);
       await encabezado("Alturas pendientes");
-      await usuario.type(screen.getByRole("textbox", { name: "Altura de A1 (Oficina 1), en metros" }), "2.5");
+      await usuario.type(screen.getByRole("textbox", { name: "Altura de A1 (Oficina 1), en metros" }), "2,5");
       const visto = vi.fn();
       alAlturas = (c) => {
         visto(c);
@@ -448,7 +448,7 @@ describe("Importar plano (3e-2)", () => {
       };
       await usuario.click(screen.getByRole("button", { name: "Cargar alturas" }));
       await screen.findByText("Se cargó 1 altura. Quedan 5 ambientes pendientes.");
-      expect(visto.mock.calls[0]![0].alturas).toEqual({ A1: "2.5", A2: "", A3: "", A4: "", A5: "", A6: "" });
+      expect(visto.mock.calls[0]![0].alturas).toEqual({ A1: "2,5", A2: "", A3: "", A4: "", A5: "", A6: "" });
       expect(screen.getAllByRole("textbox", { name: /^Altura de / })).toHaveLength(5);
     });
 
