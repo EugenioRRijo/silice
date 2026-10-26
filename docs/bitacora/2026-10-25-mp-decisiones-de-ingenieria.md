@@ -80,6 +80,8 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   pide escribir también la cantidad. **Por ratificar.**
 - **El resultado en los mensajes** se dice con cuatro decimales, salvo que así se vea igual a la cantidad escrita (o a cero):
   entonces con todas sus cifras («El cálculo da 0,00005 y la cantidad es 0,0001…»).
+  Desde el último menor: si no cabe en cuatro decimales y redondeado se vería igual a la cantidad (o a cero), se dice con 8
+  cifras significativas, la mitad hacia arriba (1/30000 → «0,000033333333»), y con todas solo si aun así se viera igual.
 - **Mensajes que el plan no fija:** «El cálculo no se puede hacer: revise los signos y los paréntesis.»; «El cálculo divide
   entre cero.» (también 0/0, que el `decimal` en C da como `InvalidOperation([DivisionUndefined])`); «El cálculo da X: una
   cantidad no puede ser negativa.»; «La cantidad no puede ser negativa.»; «El cálculo da una cifra demasiado grande para una
