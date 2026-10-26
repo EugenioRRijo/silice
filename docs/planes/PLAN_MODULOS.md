@@ -716,7 +716,7 @@ Eugenio ese estado intermedio). Después de M6 sigue el plan de montar con los c
 orquestador aplica los compartidos de cada informe en el orden de las olas y corre `tests/unit/test_api_acceso_por_ruta.py`,
 `tests/integration/test_migraciones.py` y `tests/unit/test_front_rutas_api.py` tras cada integración. Sin push ni PR.
 
-## Decisiones que solo puede tomar Eugenio (las demás son de ingeniería y quedan registradas arriba)
+## Decisiones de Eugenio (RATIFICADAS el 2026-10-25: las siete tal como están; la 3 por rol: arma → Presupuestos y obras, revisa → Auditoría, administra → Presupuestos y obras (Mercado). Además: las cuentas las crea el administrador, que asigna el rol, el usuario y la contraseña; no hay registro propio)
 
 1. Retirar los tres mosaicos de «Herramientas principales» (el sidebar hace su papel; choque 7).
 2. Un área de una sola pantalla se rotula con el nombre del área (rita ve «Obras» y abre el Tablero; choque 8).
