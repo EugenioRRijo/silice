@@ -608,15 +608,13 @@ def test_la_mesa_dice_el_plural_y_no_cuenta_las_que_traen_calculo(_entorno: Path
     assert textos == ["2 cantidades escritas a mano sin cálculo en VIV-001"]
 
 
-def test_registrada_en_calidad_la_fuente_sale_en_ese_grupo(
-    _entorno: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_registrada_en_calidad_la_fuente_sale_una_vez_en_ese_grupo(_entorno: Path) -> None:
     from aplicacion import mesa
     from aplicacion.hoja_partidas import pendientes_sin_calculo
 
+    assert mesa.FUENTES["calidad"].count(pendientes_sin_calculo) == 1
     navegador, ficha = _ana()
     _guardar_viv_001(navegador, ficha, [{"cantidad": "210"}])
-    monkeypatch.setitem(mesa.FUENTES, "calidad", (*mesa.FUENTES["calidad"], pendientes_sin_calculo))
     dependencias.cerrar_motores()
     motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
     try:
