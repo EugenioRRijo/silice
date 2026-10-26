@@ -29,6 +29,9 @@ export function fijarCsrf(valor: string | null): void {
 export interface OpcionesDePeticion {
   metodo?: "GET" | "POST" | "PUT" | "DELETE";
   cuerpo?: FormData | object;
+  // Para abortar una peticion que ya no sirve (un buscador que recibe otro texto). Un aborto se relanza tal cual
+  // (AbortError), sin envolverlo en ErrorDeApi: no es un servidor caido (diseno de autocompletado, H-13).
+  senal?: AbortSignal;
 }
 
 export interface OpcionesBinarias extends OpcionesDePeticion {
@@ -71,8 +74,15 @@ async function enviar(ruta: string, opciones: OpcionesDePeticion): Promise<Respo
 
   let respuesta: Response;
   try {
-    respuesta = await fetch(ruta, { method: metodo, headers: cabeceras, body: cuerpo, credentials: "same-origin" });
-  } catch {
+    respuesta = await fetch(ruta, {
+      method: metodo,
+      headers: cabeceras,
+      body: cuerpo,
+      credentials: "same-origin",
+      signal: opciones.senal,
+    });
+  } catch (error) {
+    if (typeof error === "object" && error !== null && (error as { name?: unknown }).name === "AbortError") throw error;
     throw new ErrorDeApi(0, "No se pudo hablar con el programa de Sílice. Compruebe que esté encendido.");
   }
 

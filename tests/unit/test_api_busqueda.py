@@ -36,7 +36,7 @@ from sqlalchemy.exc import OperationalError
 from api import caso_web, dependencias
 from api.main import manejar_http_exception
 from api.proteccion import proteger
-from api.rutas import busqueda
+from api.rutas import busqueda, sesion
 from core.catalog import abrir_sesion, crear_motor
 from core.models import Partida
 from operacion.base_datos import preparar_base
@@ -77,10 +77,11 @@ TUBERIA = {
 
 
 def _aplicacion() -> FastAPI:
-    """El router de búsqueda con el mismo formato de error (`{"detalle": ...}`) y la misma
-    protección que `api.main.app`."""
+    """El router de búsqueda, y el de la sesión para entrar, con el mismo formato de error
+    (`{"detalle": ...}`) y la misma protección que `api.main.app`."""
     aplicacion = FastAPI()
     aplicacion.add_exception_handler(HTTPException, manejar_http_exception)
+    aplicacion.include_router(sesion.router)
     aplicacion.include_router(busqueda.router)
     proteger(aplicacion)
     return aplicacion
@@ -142,7 +143,11 @@ def _sin_cache(respuesta) -> None:
 def test_busca_en_codigo_y_descripcion_y_ordena_por_relevancia(ana: TestClient) -> None:
     respuesta = ana.get(RUTA, params={"q": "tub"})
     assert respuesta.status_code == 200, respuesta.text
-    assert respuesta.json() == {"rotulo": ROTULO, "resultados": [EXCAVACION, TUBERIA], "hay_mas": False}
+    assert respuesta.json() == {
+        "rotulo": ROTULO,
+        "resultados": [EXCAVACION, TUBERIA],
+        "hay_mas": False,
+    }
     _sin_cache(respuesta)
 
 

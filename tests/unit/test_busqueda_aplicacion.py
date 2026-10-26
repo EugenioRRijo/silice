@@ -11,16 +11,16 @@ por código. Menos de 2 letras → nada. `hay_mas` dice si quedaron coincidencia
 Oráculos escritos a mano: las partidas de abajo son ficticias y su rango se calculó leyendo cada
 descripción, no corriendo el código. Para «bloq»:
 
-| código   | descripción                         | por qué                                   | rango |
-|----------|-------------------------------------|-------------------------------------------|-------|
-| BLOQ     | Zanja de prueba                     | el código es «bloq»                        | 0     |
-| BLOQ-01  | Pared de arcilla                    | el código empieza por «bloq»               | 1     |
-| BLOQ-T   | Bloque de telecom (dominio telecom) | el código empieza por «bloq»               | 1     |
-| PAR-06   | Bloques de arcilla                  | la descripción empieza por «bloq»          | 2     |
-| PAR-02   | Bloques de concreto de 15 cm        | la descripción empieza por «bloq»          | 2     |
-| PAR-03   | Pared de bloques de arcilla         | la palabra «bloques» empieza por «bloq»    | 3     |
-| PAR-04   | Pared con sobrebloque decorativo    | «sobrebloque» contiene «bloq», no empieza  | 4     |
-| PAR-05   | Friso liso                          | no coincide                                | —     |
+| código  | descripción                      | por qué                                 | rango |
+|---------|----------------------------------|-----------------------------------------|-------|
+| BLOQ    | Zanja de prueba                  | el código es «bloq»                     | 0     |
+| BLOQ-01 | Pared de arcilla                 | el código empieza por «bloq»            | 1     |
+| BLOQ-T  | Bloque de telecom (telecom)      | el código empieza por «bloq»            | 1     |
+| PAR-06  | Bloques de arcilla               | la descripción empieza por «bloq»       | 2     |
+| PAR-02  | Bloques de concreto de 15 cm     | la descripción empieza por «bloq»       | 2     |
+| PAR-03  | Pared de bloques de arcilla      | «bloques» empieza por «bloq»            | 3     |
+| PAR-04  | Pared con sobrebloque decorativo | «sobrebloque» tiene «bloq» en medio     | 4     |
+| PAR-05  | Friso liso                       | no coincide                             | —     |
 """
 
 from __future__ import annotations
@@ -111,7 +111,8 @@ def test_la_partida_hallada_trae_su_cabecera(catalogo: Catalogo) -> None:
 
 
 def test_todas_las_palabras_en_cualquier_orden(catalogo: Catalogo) -> None:
-    # «arcilla pared»: solo BLOQ-01 y PAR-03 tienen las dos palabras (PAR-06 dice «par-06», no «pared»).
+    # «arcilla pared»: solo BLOQ-01 y PAR-03 tienen las dos palabras (PAR-06 dice «par-06»,
+    # no «pared»).
     # Las dos tienen rango 3 por «arcilla»; «pared de arcilla» < «pared de bloques de arcilla».
     halladas, _ = buscar_partidas(catalogo, "arcilla pared", None, 20)
     assert _codigos(halladas) == ["BLOQ-01", "PAR-03"]
@@ -130,7 +131,8 @@ def test_menos_de_dos_letras_no_busca(catalogo: Catalogo) -> None:
     assert buscar_partidas(catalogo, "b", None, 20) == ([], False)
     assert buscar_partidas(catalogo, "", None, 20) == ([], False)
     assert buscar_partidas(catalogo, "  p  ", None, 20) == ([], False)
-    # dos letras ya buscan: «bl» está en los códigos BLOQ, BLOQ-01 y BLOQ-T y en «bloques»/«sobrebloque»
+    # dos letras ya buscan: «bl» está en los códigos BLOQ, BLOQ-01 y BLOQ-T y en las cuatro
+    # descripciones con «bloques» o «sobrebloque»
     assert len(buscar_partidas(catalogo, "bl", None, 20)[0]) == 7
 
 
