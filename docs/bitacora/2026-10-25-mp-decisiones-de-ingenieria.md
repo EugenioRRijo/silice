@@ -297,6 +297,20 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   `confirmarSalida` gana el motivo `"cambiar"` con consecuencia propia (aditivo en MOD-2), y el estudio de mercado lo usa al
   elegir otro insumo o partida («Si elige otro insumo o partida, se perderán.», «Cambiar y descartar»).
 
+## T16, objetivo de mercado en la Hoja
+
+1. **El margen lo calcula la API:** `GET /v1/mercado/objetivos` recibe `pu=CODIGO:monto,…` (exacto, con utilidad, sin
+   IVA) y `moneda`; `margen` lleva una cifra decimal vía `margen()` de T13; −0,0 se dice 0,0. Vacío sin precio unitario,
+   con uno ≤ 0 o en otra moneda (sin convertir). `pu` mal formado, partida repetida o `pu` sin `moneda` dan el 422 de
+   forma.
+2. **La celda** no repite «APU 2.074,44» y dice «1.980,00 · margen −4,6 %», «… · sin precio unitario, sin margen» o
+   «31,50 USD · en otra moneda que la obra (Bs), sin margen». **Por ratificar.**
+3. **El margen se compara con el precio exacto.** **Por ratificar.**
+4. **El signo es la única marca**, sin color. **Por ratificar** si el negativo va en rojo IBCS con ícono.
+5. **Hoja grande por tandas:** `partidas` ≤ 2.000 y `pu` ≤ 4.000 caracteres por pedido.
+6. **Si falla la lectura**, la Hoja sigue y lo dice bajo la tabla.
+7. Tres pruebas que fijaban las columnas del Presupuesto ganan «Objetivo de mercado».
+
 ## T17, eventos de aprobación (aprobada en ronda 1)
 
 - «Aprobada con observaciones» cuenta como aprobada: no se reenvía y vale para `ultima_aprobada` (Entregar y Control).

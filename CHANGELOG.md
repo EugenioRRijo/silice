@@ -7,6 +7,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- Hoja › Presupuesto: columna «Objetivo de mercado» junto al precio unitario, con el precio de venta objetivo guardado en «Estudio de mercado» y su margen («1.980,00 · margen −4,6 %»); un objetivo en otra moneda se dice y no se compara (Tarea 16).
 - Hoja: junto a la versión, la etiqueta de su aprobación («Aprobada · Rita · 25/10/2026», «Devuelta · …», «aprobada por quien la armó»), «Enviar a aprobación…» con nota opcional y, si la devolvieron, sus notas y «Hacer una versión nueva a partir de esta» (T19).
 - Mesa de Presupuestos y obras: cifra «Por aprobar» con su marca desde 3 días hábiles, y grupo «Aprobar» con los envíos de todas las carpetas (quien revisa) o de las otras (quien arma); «Abrir» un envío de otra carpeta pregunta antes de cambiarla (T19).
 - Control de obra: cada línea de una valuación lleva una causa de retraso elegible (compra tardía, precio, lluvia o clima, cambio del cliente, falta de personal, falla de equipo, otra) y «Alertas y reproyección» muestra el atraso por partida con su causa; la mesa nombra la partida atrasada (MP-7, T22; migración caso_0015_mp_causas).
@@ -123,6 +124,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - Para integradores (RM-3): todas las rutas antiguas aceptan ahora la clave de API **o** la sesión del navegador con el rol de su página (tabla en `api/acceso.py`). Con `X-Silice-Clave` responden igual que antes; sin ella ni cookie, 401 con el mensaje de sesión y sin evento de «fallo de clave», como ya hacían las de `/v1/libros`.
 
 ### Cambiado
+- API: `GET /v1/mercado/objetivos` acepta `pu` (los precios unitarios de la Hoja, `CODIGO:monto` con punto) y `moneda`, y devuelve `margen` calculado en el servidor (Tarea 16).
 - `POST /v1/carpeta/lista-para-armar` con `{desde: "maprex"}` responde 409 «La carpeta de trabajo ya tiene lista para armar («…»): no se creó otra.» cuando la carpeta ya tiene lista para armar, en vez de crear «… (2)».
 - `GET /v1/carpeta`: `lista` es ahora la lista vigente de hoy aunque esté en otra moneda que la carpeta (el `aviso` lo dice), no `null`, para poder ofrecer convertirla; el esquema no cambia.
 - Hoja: guardar la primera versión se niega (409, sin guardar nada) si una partida agregada salió del catálogo, le falta un precio en la lista o su APU cambió en el catálogo después de agregarla, y dice cuál (Tarea 9).
