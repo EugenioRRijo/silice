@@ -29,7 +29,8 @@ class UnidadDelPlano(BaseModel):
 
 
 class AlturasDelPlano(BaseModel):
-    """P3: id del ambiente pendiente -> su altura en metros (texto; coma o punto)."""
+    """P3: id del ambiente pendiente -> su altura en metros, como se teclea (coma decimal y
+    punto de miles: `aplicacion.cifras`; «2.5» se rechaza)."""
 
     model_config = ConfigDict(extra="forbid")
 
