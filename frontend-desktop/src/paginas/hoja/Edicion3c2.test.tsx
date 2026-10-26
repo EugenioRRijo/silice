@@ -578,11 +578,14 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
         "Descripción",
         "Unidad",
         "Cantidad",
+        "Cómo se midió",
         "Precio unitario",
         "Total",
         "Estado",
+        "Quitar",
       ]);
-      // Dos renglones, dos campos: la cantidad. Lo demás es texto.
+      // Dos renglones, dos campos: la cantidad. Lo demás es texto (los dos salen del espacio: ninguno tiene «Quitar»).
+      expect(within(tabla).queryByRole("button", { name: /^Quitar/ })).toBeNull();
       expect(within(tabla).getAllByRole("textbox")).toHaveLength(2);
       expect(campo("Cantidad, Presupuesto fila 1")).toHaveValue("3");
       expect(campo("Cantidad, Presupuesto fila 2")).toHaveValue("5");
