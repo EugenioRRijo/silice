@@ -5,7 +5,9 @@ moneda de trabajo (al crearla o, en las existentes, la de su lista vigente); la 
 la vigente de la carpeta, y si no está en esa moneda se avisa y no se arma. `core/` elige la lista
 vigente sin mirar la moneda (`Catalogo.lista_vigente`), así que la regla vive aquí y el núcleo no
 cambia. Ningún precio cambia de moneda en silencio: toda conversión usa la tasa del BCV de
-`tasa_aplicable` (a lo sumo 7 días) y la declara en el origen de la lista y de cada precio.
+`tasa_aplicable` (a lo sumo 7 días) y la declara en el origen de la lista y de cada precio. La
+conversión es la de `core.catalog.moneda.convertir`: 28 dígitos significativos con ROUND_HALF_EVEN,
+sin redondear a centésimas (100 Bs a 36,53 Bs/USD son 2,737476047084588009854913770 USD).
 
 Ninguna función hace `commit`: escriben con `flush` y el que llama confirma o deshace (Componer
 llama `lista_de_hoy` dentro de su guardado). La única excepción es la carga de la referencia
@@ -25,6 +27,7 @@ from typing import Literal
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
+from aplicacion.cifras import texto_de_cifra
 from aplicacion.precios_empresa import cargar_referencia_maprex
 from aplicacion.tablas_carpeta import CarpetaDeTrabajo
 from core import models
@@ -109,9 +112,10 @@ def _moneda(sesion: Session, fecha: date) -> str | None:
     return None if vigente is None else vigente.moneda
 
 
-def moneda_de_la_carpeta(sesion: Session) -> str | None:
-    """La moneda declarada; si no hay, la de la lista vigente de hoy; sin lista, `None`."""
-    return _moneda(sesion, date.today())
+def moneda_de_la_carpeta(sesion: Session, fecha: date | None = None) -> str | None:
+    """La moneda declarada; si no hay, la de la lista vigente a `fecha` (hoy, sin `fecha`); sin
+    lista, `None`."""
+    return _moneda(sesion, date.today() if fecha is None else fecha)
 
 
 def _exigir_responsable(responsable: str) -> str:
@@ -127,11 +131,11 @@ def declarar_moneda_de_la_carpeta(
     """Declara la moneda de trabajo de la carpeta (una sola vez: D-MP1).
 
     Declarar la que ya tiene no cambia nada (ni quién ni cuándo). `CarpetaConOtraMoneda` si ya
-    hay otra declarada o la lista vigente está en otra; `ValueError` con una moneda que no es Bs
-    ni USD o sin responsable. No confirma."""
+    hay otra declarada o la lista vigente a `ahora` está en otra; `ValueError` con una moneda que
+    no es Bs ni USD o sin responsable. No confirma."""
     exigir_moneda(moneda)
     responsable = _exigir_responsable(responsable)
-    actual = moneda_de_la_carpeta(sesion)
+    actual = moneda_de_la_carpeta(sesion, ahora.date())
     if actual is not None and actual != moneda:
         raise CarpetaConOtraMoneda(
             f"La carpeta de trabajo ya trabaja en {actual}: para trabajar en {moneda}, "
@@ -258,7 +262,8 @@ def _tasa(sesion: Session, fecha: date) -> TasaDeclarada:
 
 
 def _con_tasa(tasa: TasaDeclarada) -> str:
-    return f"con {tasa.valor} Bs/USD del {tasa.fecha:%d/%m/%Y}"
+    """La tasa como la escribe Sílice: coma decimal y punto de miles («40,00 Bs/USD»)."""
+    return f"con {texto_de_cifra(tasa.valor)} Bs/USD del {tasa.fecha:%d/%m/%Y}"
 
 
 def lista_para_el_proyecto(
