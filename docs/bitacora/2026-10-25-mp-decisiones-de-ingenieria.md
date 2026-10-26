@@ -98,6 +98,39 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - **Texto llano:** «La cantidad de X (Q U) se escribió a mano sin cálculo: escriba cómo se obtuvo si quiere que Sílice la
   pueda verificar.», con Q en es-VE.
 
+## T15, página Estudio de mercado
+
+- Buscador de insumos en el navegador: no hay una búsqueda de insumos en el servidor (la de T10 es de partidas). La página
+  pide una vez `GET /insumos` (el catálogo de la carpeta, acción `leer_proyecto`) y filtra por palabras del código o la
+  descripción, sin tildes ni mayúsculas (`buscadorDeInsumos` en `src/paginas/mercado/logica.ts`); si falla, la búsqueda
+  siguiente la vuelve a pedir. Sirve para cientos de insumos. **Deuda:** `GET /v1/buscar/insumos` con el contrato de
+  `/v1/buscar/partidas` (relevancia, límite por grupo, `hay_mas`) cuando el catálogo crezca.
+- «de n observaciones» va bajo los cinco montos (mínimo, primer cuartil, mediana, promedio y máximo), no bajo n, donde
+  sería redundante (el plan decía «cada una»).
+- Compra: la observación que respalda el precio es opcional (selector con las de la moneda de la carpeta) y viaja como
+  `observacion_id`. Cobro: se citan siempre todas las `estadisticas.ids` y se guarda sin confirmación (no hay partidas
+  que cambien). **Por ratificar** si cobro debe pedir confirmación.
+- Los avisos de éxito son texto neutro en una región `role="status"`, sin la notificación verde de Carbon («verde por
+  ser positivo» está prohibido en DESIGN.md).
+- El TextInput de Carbon 1.117 no enlaza su mensaje de error con el campo: con error, la página pone
+  `aria-describedby="<id>-error-msg"` (como `CampoConBusqueda`).
+- La ubicación (Presupuestos y obras › Mercado, la primera del área) es la del plan de módulos. **Por ratificar.**
+
+### T15, ronda 2 (devuelta por un MAYOR; corregida)
+
+- MAYOR: tras usar un precio escrito, el campo volvía a la propuesta y un segundo uso la mandaba sin aviso. Ahora la
+  última propuesta vista y el texto «sin cambios» se guardan aparte: lo usado queda en el campo y la pantalla queda
+  limpia; la propuesta solo reemplaza el campo si no hay nada propio sin usar.
+- El ícono de «la competencia cobra menos que su costo» sale de la razón que manda la API (que compara los exactos),
+  no de comparar cifras ya redondeadas en la página.
+- Los montos ya no llevan `title` con el texto de la API con punto decimal.
+- Elegir otro insumo o partida con un precio o una observación a medio escribir pasa por `confirmarSalida("salir")`
+  (MOD-2); con «Quedarme» el buscador vuelve a decir lo que se estudia.
+- Si usar el precio falla con un error que no es del campo, el foco va al aviso de error.
+- Límites que quedan: «Ver estos días» descarta sin preguntar un precio escrito sin usar (el estudio se recarga), y
+  «Salir y descartar» olvida todos los formularios registrados de la pantalla, también los de la otra pestaña
+  (`olvidarFormularios` de MOD-2).
+
 ## T17, eventos de aprobación (aprobada en ronda 1)
 
 - «Aprobada con observaciones» cuenta como aprobada: no se reenvía y vale para `ultima_aprobada` (Entregar y Control).
