@@ -45,7 +45,7 @@ FORMA = {
     "cliente",
     "ubicacion",
 }
-VACIO = "Escriba un nombre para el proyecto: no puede quedar vacío."
+VACIO = "Escriba un nombre para la obra: no puede quedar vacío."
 
 
 @pytest.fixture(scope="module")
@@ -151,7 +151,7 @@ def test_nombre_repetido_sin_distinguir_mayusculas_da_409(otro: str) -> None:
     respuesta = _crear(navegador, ficha, {"nombre": otro, "moneda": "USD"})
     assert respuesta.status_code == 409
     assert respuesta.json() == {
-        "detalle": "Ya existe un proyecto llamado «Torre B»: elija otro nombre o abra ese."
+        "detalle": "Ya existe una obra llamada «Torre B»: elija otro nombre o abra esa."
     }
     assert _nombres("silice.db") == ["Torre B"]
 
@@ -301,3 +301,13 @@ def test_p13_el_historico_y_el_get_no_cambian() -> None:
     historico = navegador.post("/proyectos", json={"nombre": "Histórico"}, headers=protegida(ficha))
     assert historico.status_code == 201, historico.text
     assert [p["nombre"] for p in navegador.get(RUTA).json()] == ["Histórico"]
+
+
+def test_el_422_de_forma_habla_de_obra() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(navegador, ficha, {"moneda": "Bs"})
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {
+        "detalle": "Indique el nombre de la obra (hasta 120 caracteres), la moneda (Bs o USD), "
+        "el tipo de obra y una descripción de hasta 500 caracteres."
+    }

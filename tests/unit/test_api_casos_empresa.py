@@ -227,3 +227,13 @@ def test_sin_archivo_en_disco_volver_da_503_con_su_propio_mensaje(
         "detalle": "Esta instalación no usa una carpeta de trabajo en disco: no hay carpeta de "
         "la empresa a la que volver."
     }
+
+
+def test_una_carpeta_que_no_esta_da_404_con_el_lenguaje_de_la_interfaz() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = _elegir(navegador, ficha, "no_existe.db")
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {
+        "detalle": "La carpeta de trabajo «no_existe.db» no está en la carpeta de datos: elija "
+        "una de la lista."
+    }

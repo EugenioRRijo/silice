@@ -12,7 +12,7 @@ import { TORRE_B, botonDeObra, estadoInicial, json, montarShell, servidorFalso, 
 // con la ficha de la obra de MOD-3a y la moneda de la carpeta de T2). Oraculos escritos a mano.
 
 const CONVERSION = "Esta obra se valorará convirtiendo los precios de la carpeta con la tasa del BCV del día.";
-const VACIO_DE_LA_API = "Escriba un nombre para el proyecto: no puede quedar vacío.";
+const VACIO_DE_LA_API = "Escriba un nombre para la obra: no puede quedar vacío.";
 
 let servidor: ReturnType<typeof servidorFalso>;
 
