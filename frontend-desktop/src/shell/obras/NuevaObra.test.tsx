@@ -160,7 +160,7 @@ describe("«Nueva obra» (F10 adaptado)", () => {
 });
 
 describe("F11: obra sin versión guardada", () => {
-  test("la Hoja de una obra sin versiones enseña a describir el espacio y a guardar la primera versión", async () => {
+  test("la Hoja de una obra sin versiones enseña a agregar las partidas y a guardar la primera versión", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (entrada: RequestInfo | URL) => {
@@ -184,7 +184,8 @@ describe("F11: obra sin versión guardada", () => {
     );
     expect(
       await screen.findByText(
-        "Describa el espacio (ambientes y puntos) o importe un plano, y guarde la primera versión con «Guardar primera versión…».",
+        // Tarea 11: una obra civil empieza por «Presupuesto»; el espacio queda para las de instalaciones.
+        "Agregue las partidas en «Presupuesto» (o, en una obra de instalaciones, describa el espacio o importe un plano) y guarde la primera versión con «Guardar primera versión…».",
       ),
     ).toBeInTheDocument();
   });
