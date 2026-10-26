@@ -15,7 +15,9 @@ carpeta, declarada una sola vez, y una lista vigente en esa moneda con la que se
   {otra}, cree otra carpeta.» si ya hay otra declarada o la lista vigente está en otra.
 - `POST /v1/carpeta/lista-para-armar` `{desde: "maprex"|"convertir"}` (`EDITAR_HOJA`) -> 201 con la
   misma forma; 409 con el mensaje de `SinListaParaArmar` (sin lista, sin tasa del BCV de los
-  últimos 7 días, o nada que convertir).
+  últimos 7 días, o nada que convertir) y, desde MaPreX, 409 «La carpeta de trabajo ya tiene lista
+  para armar («{nombre}»): no se creó otra.» si ya la tiene (T4: un aviso viejo de otra pestaña no
+  crea «… (2)»).
 
 Quien declara o crea consta como la cuenta de la sesión (o `USUARIO_API` con la clave de API). Las
 dos escrituras van sobre la sesión de escritura (`BEGIN IMMEDIATE`) y se confirman aquí; un error
@@ -40,6 +42,7 @@ from aplicacion.listas_para_armar import (
     SinListaParaArmar,
     crear_lista_para_armar,
     declarar_moneda_de_la_carpeta,
+    describir,
     describir_vigente,
     lista_para_armar,
     moneda_de_la_carpeta,
@@ -110,7 +113,8 @@ def _estado(sesion: Session) -> CarpetaRespuesta:
 
 @router.get("", response_model=CarpetaRespuesta, dependencies=CUALQUIER_ROL)
 def consultar_carpeta(sesion: SesionDep) -> CarpetaRespuesta:
-    """La moneda de trabajo de la carpeta y su lista para armar de hoy, o por qué no hay."""
+    """La moneda de trabajo de la carpeta y su lista vigente de hoy: la de armar o, si está en otra
+    moneda, la que hay que convertir; el aviso dice por qué no hay lista para armar."""
     return _estado(sesion)
 
 
@@ -147,7 +151,16 @@ def crear_la_lista_para_armar(
     peticion: ListaPeticion,
     activa: Annotated[SesionActiva | None, EDITAR_HOJA],
 ) -> CarpetaRespuesta:
-    """Crea la lista para armar a partir de MaPreX o convirtiendo la vigente (tasa del BCV)."""
+    """Crea la lista para armar a partir de MaPreX o convirtiendo la vigente (tasa del BCV). Desde
+    MaPreX, si la carpeta ya tiene lista para armar, 409 y no crea otra."""
+    if peticion.desde == "maprex":
+        ya = describir(sesion, ahora().date())
+        if ya is not None:
+            raise HTTPException(
+                409,
+                f"La carpeta de trabajo ya tiene lista para armar («{ya.nombre}»): no se creó "
+                "otra.",
+            )
     try:
         crear_lista_para_armar(
             sesion,

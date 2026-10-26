@@ -174,7 +174,10 @@ export default function PaginaComponer() {
       setCarpeta(nueva);
       setListaCreada(nueva.aviso === null ? nueva.lista : null);
     } catch (e) {
-      if (!atender(e)) setErrorLista(e);
+      if (atender(e)) return;
+      setErrorLista(e);
+      // 409: la carpeta pudo cambiar en otra pestana (ya tiene lista, o sigue sin tasa): se relee y el aviso se ajusta.
+      if (e instanceof ErrorDeApi && e.estado === 409) setLecturaCarpeta((n) => n + 1);
     } finally {
       setCreandoLista(false);
     }

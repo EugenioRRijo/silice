@@ -2,7 +2,8 @@ import { Button, InlineNotification } from "@carbon/react";
 import { useEffect, useRef } from "react";
 import type { CarpetaRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
-import { fechaEsVe } from "../../indicadores/formatoEsVe";
+import { mensajeDeError } from "../../comun/errores";
+import { nombreConFecha } from "../../shell/ListaDeLaCarpeta";
 
 export type Desde = "maprex" | "convertir";
 
@@ -23,9 +24,12 @@ export function AvisoSinLista({ carpeta, creada, creando, error, alCrear }: Prop
   const hecho = useRef<HTMLDivElement>(null);
   const aviso = carpeta?.aviso ?? null;
   const mostrarHecho = aviso === null && creada !== null;
+  // Crear respondio 409 porque la carpeta ya tenia lista (un aviso viejo, de antes de crearla en otra pestana): la
+  // pagina relee la carpeta, el aviso se va y se dice por que, con el foco (el boton pulsado desaparecio).
+  const yaTenia = aviso === null && creada === null && error !== null && error !== undefined;
   useEffect(() => {
-    if (mostrarHecho) hecho.current?.focus();
-  }, [mostrarHecho]);
+    if (mostrarHecho || yaTenia) hecho.current?.focus();
+  }, [mostrarHecho, yaTenia]);
 
   if (mostrarHecho) {
     return (
@@ -36,7 +40,21 @@ export function AvisoSinLista({ carpeta, creada, creando, error, alCrear }: Prop
           hideCloseButton
           role="status"
           title="Listo"
-          subtitle={`Lista para armar creada: ${creada.nombre}, al ${fechaEsVe(creada.fecha)}. Ya puede guardar la composición.`}
+          subtitle={`Lista para armar creada: ${nombreConFecha(creada)}. Ya puede guardar la composición.`}
+        />
+      </div>
+    );
+  }
+  if (yaTenia) {
+    return (
+      <div ref={hecho} tabIndex={-1} className="silice-componer__aviso">
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          role="status"
+          title="Sin cambios"
+          subtitle={mensajeDeError(error)}
         />
       </div>
     );
