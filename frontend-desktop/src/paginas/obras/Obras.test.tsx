@@ -27,7 +27,6 @@ const ANA: SesionRespuesta = {
   ],
   modo_entrega: false,
 };
-const RITA: SesionRespuesta = { ...ANA, login: "rita", nombre: "Rita Gómez", roles: ["revisa"], acciones: ["leer_proyecto", "revisar_paquete", "aprobar_version"] };
 const ADMIN: SesionRespuesta = {
   ...ANA,
   login: "admin",
@@ -44,7 +43,7 @@ const ADMIN: SesionRespuesta = {
   ],
 };
 
-describe("Inicio de presupuestos y obras (accesos del módulo)", () => {
+describe("Inicio de presupuestos y obras: los accesos del módulo (quien no lee obras)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
 
   beforeEach(() => {
@@ -79,7 +78,7 @@ describe("Inicio de presupuestos y obras (accesos del módulo)", () => {
 
   // Los rotulos de area y, debajo de cada uno, los enlaces (href) de sus pantallas.
   function accesos(): [string, string[]][] {
-    const region = screen.getByRole("region", { name: "Pantallas del módulo" });
+    const region = screen.getByRole("region", { name: "Lo que puede hacer aquí" });
     return [...region.querySelectorAll<HTMLElement>(".silice-accesos__area")].map((area) => [
       area.querySelector(".silice-accesos__rotulo")?.textContent ?? "",
       [...area.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? ""),
@@ -100,41 +99,15 @@ describe("Inicio de presupuestos y obras (accesos del módulo)", () => {
     expect(screen.getByText("Cargue los índices publicados por el BCV")).toBeVisible();
   });
 
-  test("ana ve sus pantallas agrupadas por área, sin el propio inicio", () => {
-    montar(ANA);
-    expect(accesos()).toEqual([
-      ["Obras", ["/hoja", "/elaborar", "/tablero", "/entregar"]],
-      ["Partidas", ["/componer", "/catalogo", "/similares"]],
-      ["Mercado", ["/mercado", "/actualizacion", "/historico", "/simulador"]],
-      ["Control", ["/control", "/reajuste", "/escenarios"]],
-    ]);
-    expect(screen.queryByRole("link", { name: /Inicio de presupuestos y obras/ })).not.toBeInTheDocument();
-  });
-
-  test("en modo entrega no aparece ninguna pantalla de Investigación", () => {
-    montar({ ...ANA, modo_entrega: true });
-    const todas = accesos().flatMap(([, hrefs]) => hrefs);
-    for (const fuera of ["/similares", "/simulador", "/escenarios"]) expect(todas).not.toContain(fuera);
-  });
-
-  test("rita ve Tablero, Catálogo e Histórico, cada uno bajo su área", () => {
-    montar(RITA);
-    expect(accesos()).toEqual([
-      ["Obras", ["/tablero"]],
-      ["Partidas", ["/catalogo"]],
-      ["Mercado", ["/historico"]],
-    ]);
-  });
-
   test("los rótulos de área son texto (no encabezados) y la lista no son mosaicos", () => {
-    montar(ANA);
-    const region = screen.getByRole("region", { name: "Pantallas del módulo" });
+    montar(ADMIN);
+    const region = screen.getByRole("region", { name: "Lo que puede hacer aquí" });
     // El único encabezado es el h2 de la sección; los rótulos de área no lo son.
-    expect(within(region).getAllByRole("heading").map((h) => [h.tagName, h.textContent])).toEqual([["H2", "Pantallas del módulo"]]);
+    expect(within(region).getAllByRole("heading").map((h) => [h.tagName, h.textContent])).toEqual([["H2", "Lo que puede hacer aquí"]]);
     expect(within(region).getByRole("heading", { level: 2 })).toHaveClass("cds--type-heading-compact-02");
     expect(region.querySelector(".cds--tile")).toBeNull();
     // Cada área es una lista de enlaces con nombre propio.
-    expect(within(region).getByRole("list", { name: "Partidas" })).toBeInTheDocument();
+    expect(within(region).getByRole("list", { name: "Mercado" })).toBeInTheDocument();
   });
 
   test("pulsar un acceso abre su pantalla", async () => {
@@ -144,8 +117,15 @@ describe("Inicio de presupuestos y obras (accesos del módulo)", () => {
     expect(await screen.findByRole("heading", { name: "Pantalla de precios" })).toBeInTheDocument();
   });
 
-  test("no pide nada a la API (las cifras de la mesa llegan en otra tarea)", () => {
-    montar(ANA);
+  test("el administrador no pide la mesa (la API le daría 403) ni ve «Nueva obra»", () => {
+    montar(ADMIN);
     expect(fetchFalso).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Nueva obra" })).toBeNull();
+  });
+
+  test("quien arma no ve los accesos: ve la mesa", () => {
+    montar(ANA);
+    expect(screen.queryByRole("region", { name: "Lo que puede hacer aquí" })).toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Cómo van las obras" })).toBeInTheDocument();
   });
 });
