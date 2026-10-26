@@ -6,7 +6,7 @@ Rutas finas sobre `aplicacion.aprobaciones` (la regla y el rastro, en la carpeta
 
 - `POST ""` (`editar_hoja`) `{proyecto, version, nota}` → 201 `{id, estado, retirada}`.
 - `GET ""?proyecto=` (`editar_hoja`) → `{rastro: {integro, mensaje}, fases, versiones: {código:
-  {estado, por, el, notas, armo}}, eventos: [...]}` de la obra en la carpeta de la sesión.
+  {estado, por, el, notas, armo}}, eventos: [...], ultima_aprobada}` de la obra en la carpeta de la sesión.
 - `GET /pendientes` (`aprobar_version`) → las filas del índice en aprobación, de todas las carpetas,
   lo más antiguo primero; antes vuelve a reflejar la carpeta abierta (la repone si se perdió).
 - `GET /mias` (`editar_hoja`, solo con sesión) → las 20 últimas filas que envió la cuenta.
@@ -171,6 +171,11 @@ class AprobacionObraRespuesta(BaseModel):
     fases: str = Field(description="«VIV-001 devuelta → VIV-002 aprobada»")
     versiones: dict[str, AprobacionEstadoRespuesta]
     eventos: list[AprobacionEventoRespuesta]
+    ultima_aprobada: str | None = Field(
+        description="El código de la versión del último dictamen que aprobó (con o sin "
+        "observaciones); `null` si ninguna. La misma regla que marca `ultima_aprobada` en "
+        "`GET /v1/entregas/versiones`"
+    )
 
 
 class AprobacionFilaRespuesta(BaseModel):
@@ -388,11 +393,13 @@ def consultar_obra(
         fases = aprobaciones.fases(sesion, proyecto)
         estados = aprobaciones.estados(sesion, proyecto)
         eventos = aprobaciones.historial(sesion, proyecto)
+        aprobada = aprobaciones.ultima_aprobada(sesion, proyecto)
     except AprobacionInvalida as error:
         raise _http(error) from None
     except SQLAlchemyError:
         raise _sin_base() from None
     return AprobacionObraRespuesta(
+        ultima_aprobada=aprobada,
         rastro=AprobacionRastroRespuesta(integro=rastro.integro, mensaje=rastro.mensaje),
         fases=fases,
         versiones={
