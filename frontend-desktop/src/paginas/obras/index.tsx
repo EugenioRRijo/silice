@@ -159,7 +159,7 @@ function Mesa({ recargadaPor, alObraNueva }: { recargadaPor: string | null; alOb
             alAbrirEnvio={(envio) => void alAbrirEnvio(envio)}
             avisos={
               <>
-                <AvisoError error={columna.falloEnvios} titulo="No se pudieron leer los envíos de otras carpetas" />
+                <AvisoError error={columna.falloEnvios} titulo="No se pudieron leer los envíos por aprobar" />
                 <AvisoError error={falloAlAbrir} titulo="No se pudo abrir el envío" />
               </>
             }

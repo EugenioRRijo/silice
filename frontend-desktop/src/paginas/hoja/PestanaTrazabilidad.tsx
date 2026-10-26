@@ -1,4 +1,5 @@
 import { EstadoDeLaCadena } from "./EstadoDeLaCadena";
+import { RastroDeAprobaciones } from "./RastroDeAprobaciones";
 import { RestaurarVersion } from "./RestaurarVersion";
 import type { AlCrearVersion } from "./OperacionesDePrecios";
 import { TablaPaginada } from "./TablaPaginada";
@@ -59,6 +60,7 @@ function ContenidoTrazabilidad({
         />
       </section>
       <EstadoDeLaCadena proyecto={proyecto} />
+      <RastroDeAprobaciones proyecto={proyecto} />
       <section className="silice-hoja__seccion">
         <h2 className="cds--type-heading-compact-02">{titulo}</h2>
         {vista.registros.length === 0 ? (

@@ -351,7 +351,7 @@ describe("pendientes", () => {
 
 describe("foco 5: cada bloque según lo que la cuenta puede leer", () => {
   // T19: rita ve ademas su grupo «Aprobar» (de `GET /v1/aprobaciones/pendientes`), sin el resto de los pendientes.
-  test("rita: no se piden los pendientes de las obras; cifras, obras y su columna de aprobar sí, sin «Siguiente paso» ni «Nueva obra»", async () => {
+  test("rita: no se piden los pendientes de las obras; cifras, obras y su columna de aprobar sí; «Siguiente paso» (aprobar, T20) sí y «Nueva obra» no", async () => {
     await montar("rita");
     await filaDe("OB-S2");
     expect(await region("Cómo van las obras")).toBeInTheDocument();
@@ -359,7 +359,8 @@ describe("foco 5: cada bloque según lo que la cuenta puede leer", () => {
     expect(servidor.de("GET", "/v1/obras/pendientes")).toEqual([]);
     expect(servidor.de("GET", "/v1/aprobaciones/pendientes")).toHaveLength(1);
     expect(await within(await region("Pendientes")).findByText("Nada pendiente por ahora.")).toBeInTheDocument();
-    expect(screen.queryByRole("columnheader", { name: /Siguiente paso/ })).toBeNull();
+    // Desde T20 rita puede ir a «Aprobar una versión»: el paso de su fila en aprobación existe.
+    expect(screen.getByRole("columnheader", { name: /Siguiente paso/ })).toBeInTheDocument();
     expect(within(screen.getByRole("main")).queryByRole("button", { name: "Nueva obra" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Ver las alertas" })).toBeNull();
   });
@@ -695,8 +696,8 @@ describe("T19: el grupo «Aprobar» de la columna de pendientes", () => {
     expect(within(filas[0]!).getByText("Nota: Urgente para el cliente.")).toBeInTheDocument();
     expect(within(filas[1]!).getByText("CD-001 espera dictamen")).toBeInTheDocument();
     expect(within(filas[1]!).getByText("125.000,50 USD · enviada por Ana Pérez el 22/10/2026")).toBeInTheDocument();
-    // «Abrir» lleva a la pantalla de aprobar, que aun no existe: no se ofrece.
-    expect(within(lista).queryByRole("button")).toBeNull();
+    // «Abrir el envío» lleva a la pantalla de aprobar (T20), que ya esta en el registro.
+    expect(within(lista).getAllByRole("button", { name: "Abrir el envío" })).toHaveLength(2);
     expect(servidor.de("GET", "/v1/obras/pendientes")).toEqual([]);
   });
 

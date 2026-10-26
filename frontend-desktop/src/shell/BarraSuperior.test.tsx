@@ -121,10 +121,10 @@ describe("BarraSuperior", () => {
     expect(nombre.compareDocumentPosition(nav()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  test("en /hoja las áreas son Inicio, Obras, Partidas, Mercado y Control", () => {
+  test("en /hoja las áreas son Inicio, Obras, Partidas, Mercado, Aprobaciones y Control", () => {
     pintar(["/hoja"]);
     const items = [...nav().querySelectorAll<HTMLElement>(".silice-barra__item > a, .silice-barra__item > button")];
-    expect(items.map((e) => e.textContent)).toEqual(["Inicio", "Obras", "Partidas", "Mercado", "Control"]);
+    expect(items.map((e) => e.textContent)).toEqual(["Inicio", "Obras", "Partidas", "Mercado", "Aprobaciones", "Control"]);
   });
 
   test("con rita en /libros: «Auditoría» y las áreas Inicio, Auditar, Paquetes e Historial", () => {

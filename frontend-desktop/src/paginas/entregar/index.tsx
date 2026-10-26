@@ -10,10 +10,12 @@ import { Download } from "@carbon/icons-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedirBinario } from "../../api/cliente";
+import { ESTADOS_APROBADOS, versionConEstado } from "../../comun/aprobacion";
 import { AvisoError } from "../../comun/AvisoError";
 import { guardarBlob } from "../../comun/DescargaArchivo";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
@@ -29,6 +31,13 @@ interface ProyectoDelCaso {
 interface VersionEntregable {
   codigo: string;
   moneda: string;
+  // Tarea 20: el estado de aprobacion de la version y si es la del ultimo dictamen que aprobo. Una API sin ellos no avisa nada.
+  aprobacion?: string;
+  ultima_aprobada?: boolean;
+}
+
+function textoDeVersion(v: VersionEntregable): string {
+  return versionConEstado(v.codigo, v.aprobacion);
 }
 
 interface ResumenEntrega {
@@ -55,7 +64,7 @@ interface PaqueteListo {
   firmado: boolean;
 }
 
-// UC-22 (spec S3 §8.2; RF-85): el rol «arma» elige proyecto y version, ve lo que va a viajar y descarga el .silice.
+// UC-22 (spec S3 §8.2; RF-85): el rol «arma» elige obra y version, ve lo que va a viajar y descarga el .silice.
 // La contraseña de la clave de firma vive solo en este formulario: se vacia al enviar, no se guarda en ningun sitio
 // y la API ni la registra ni la devuelve. Firmar solo se puede desde el propio equipo (la API lo dice si no).
 export default function PaginaEntregar() {
@@ -66,11 +75,11 @@ export default function PaginaEntregar() {
     <div className="silice-entregar silice-pagina">
       <h1 className="cds--type-heading-04">Entregar paquete</h1>
       {proyectos.estado === "cargando" && (
-        <EsqueletoPagina etiqueta="Cargando los proyectos" />
+        <EsqueletoPagina etiqueta="Cargando las obras" />
       )}
       {proyectos.estado === "listo" && proyectos.datos.length === 0 && (
         <EstadoVacio
-          titulo="Este caso todavía no tiene proyectos."
+          titulo="Esta carpeta todavía no tiene obras."
           descripcion="Elabore un presupuesto para tener algo que entregar."
         />
       )}
@@ -123,16 +132,21 @@ function Seleccion({
   );
   const lista = versiones.estado === "listo" ? versiones.datos : [];
   // La version elegida si sigue en la lista; si no (otro proyecto), la mas nueva.
+  // La version elegida si sigue en la lista; si no, la ultima aprobada (la aprobada manda, Tarea 20) y, sin ninguna, la mas nueva.
+  const aprobada = lista.find((v) => v.ultima_aprobada === true)?.codigo;
   const elegida = lista.some((v) => v.codigo === version)
     ? version
-    : (lista[0]?.codigo ?? "");
+    : (aprobada ?? lista[0]?.codigo ?? "");
+  const deLaElegida = lista.find((v) => v.codigo === elegida);
+  const noAprobada =
+    deLaElegida?.aprobacion !== undefined && !ESTADOS_APROBADOS.has(deLaElegida.aprobacion);
 
   return (
     <>
       <div className="silice-entregar__selectores">
         <Select
           id="entregar-proyecto"
-          labelText="Proyecto"
+          labelText="Obra"
           value={nombre}
           onChange={(e) => {
             setNombre(e.target.value);
@@ -151,7 +165,7 @@ function Seleccion({
           onChange={(e) => setVersion(e.target.value)}
         >
           {lista.map((v) => (
-            <SelectItem key={v.codigo} value={v.codigo} text={v.codigo} />
+            <SelectItem key={v.codigo} value={v.codigo} text={textoDeVersion(v)} />
           ))}
         </Select>
       </div>
@@ -159,9 +173,23 @@ function Seleccion({
         <EsqueletoPagina etiqueta="Cargando las versiones" />
       )}
       {versiones.estado === "listo" && lista.length === 0 && (
-        <EstadoVacio titulo="Este proyecto todavía no tiene versiones." />
+        <EstadoVacio titulo="Esta obra todavía no tiene versiones." />
       )}
       <MensajeDeCarga carga={versiones} />
+      {elegida && noAprobada && (
+        <InlineNotification
+          kind="warning"
+          role="status"
+          title="Esta versión no está aprobada."
+          subtitle={
+            aprobada === undefined
+              ? "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde la Hoja."
+              : `La última aprobada es ${aprobada}. Si entrega esta, el cliente recibirá una versión que nadie aprobó.`
+          }
+          lowContrast
+          hideCloseButton
+        />
+      )}
       {elegida && (
         <Entrega
           key={`${nombre}|${elegida}`}
@@ -239,10 +267,9 @@ function Entrega({
           <dt className="cds--type-label-01">Total</dt>
           <dd
             className="cds--type-heading-03 silice-entregar__total"
-            title={`Valor exacto: ${datos.total} ${datos.moneda}`}
           >
             {`${totalPresentado(datos.total)} ${datos.moneda}`}
-            <span className="cds--visually-hidden">{`. Valor exacto: ${datos.total} ${datos.moneda}`}</span>
+            <span className="cds--visually-hidden">{`. Valor exacto: ${formatoEsVe(datos.total)} ${datos.moneda}`}</span>
           </dd>
         </div>
         <div>

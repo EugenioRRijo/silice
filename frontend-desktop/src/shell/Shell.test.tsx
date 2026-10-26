@@ -306,7 +306,7 @@ describe("Shell", () => {
     });
 
     test.each([
-      ["ana", "Inicio de presupuestos y obras", "Presupuestos y obras", ["Inicio", "Obras", "Partidas", "Mercado", "Control"]],
+      ["ana", "Inicio de presupuestos y obras", "Presupuestos y obras", ["Inicio", "Obras", "Partidas", "Mercado", "Aprobaciones", "Control"]],
       ["rita", "Inicio de auditoría", "Auditoría", ["Inicio", "Auditar", "Paquetes", "Historial"]],
       ["admin", "Inicio de presupuestos y obras", "Presupuestos y obras", ["Inicio", "Mercado"]],
     ] as const)("%s entra en el inicio de su módulo y ve en la barra las áreas de su rol", async (rol, inicio, modulo, esperadas) => {
@@ -333,6 +333,7 @@ describe("Shell", () => {
           "/actualizacion",
           "/historico",
           "/simulador",
+          "/aprobar",
           "/control",
           "/reajuste",
           "/escenarios",
@@ -1277,6 +1278,7 @@ describe("Shell", () => {
           "/actualizacion",
           "/historico",
           "/simulador",
+          "/aprobar",
           "/control",
           "/reajuste",
           "/escenarios",
@@ -1285,7 +1287,7 @@ describe("Shell", () => {
           "/acerca",
         ],
       ],
-      ["rita", ["/auditoria", "/libros", "/revisar", "/historial", "/obras", "/tablero", "/catalogo", "/historico", "/acerca"]],
+      ["rita", ["/auditoria", "/libros", "/revisar", "/historial", "/obras", "/tablero", "/catalogo", "/historico", "/aprobar", "/acerca"]],
       ["admin", ["/obras", "/precios_empresa", "/indices", "/produccion", "/existencias", "/administracion", "/acerca"]],
     ] as const)("foco 4: %s alcanza toda pantalla suya con clics en el sidebar y la barra", async (rol, esperadas) => {
       const u = userEvent.setup();

@@ -110,13 +110,15 @@ def test_cada_ruta_dice_su_modulo_y_su_area() -> None:
     from scripts.recorrido_ux_playwright import rutas_de_la_interfaz
 
     rutas = {r["id"]: r for r in rutas_de_la_interfaz()}
-    # 21 pantallas de antes, los tres inicios y «Estudio de mercado» (plan de modulos, choque 5).
-    assert len(rutas) == 25
+    # 21 pantallas de antes, los tres inicios, «Estudio de mercado» (choque 5) y «Aprobar» (T20).
+    assert len(rutas) == 26
     assert "inicio" not in rutas
     assert (rutas["auditoria"]["modulo"], rutas["auditoria"]["area"]) == ("auditoria", "inicio")
     assert (rutas["obras"]["modulo"], rutas["obras"]["area"]) == ("obras", "inicio")
     assert (rutas["produccion"]["modulo"], rutas["produccion"]["area"]) == ("produccion", "inicio")
     assert (rutas["mercado"]["modulo"], rutas["mercado"]["area"]) == ("obras", "mercado")
+    assert (rutas["aprobar"]["modulo"], rutas["aprobar"]["area"]) == ("obras", "aprobaciones")
+    assert (rutas["aprobar"]["modulo"], rutas["aprobar"]["area"]) == ("obras", "aprobaciones")
     assert (rutas["revisar"]["modulo"], rutas["revisar"]["area"]) == ("auditoria", "paquetes")
     assert (rutas["existencias"]["modulo"], rutas["existencias"]["area"]) == (
         "produccion",

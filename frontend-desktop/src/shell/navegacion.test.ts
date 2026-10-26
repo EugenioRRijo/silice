@@ -42,13 +42,14 @@ function idsDe(entradas: readonly EntradaNav[]): string[] {
 }
 
 describe("navegacion por modulo (oraculos escritos a mano)", () => {
-  test("ana en Presupuestos y obras: Inicio, Obras, Partidas, Mercado y Control (sin Aprobaciones: aun no tiene pantallas)", () => {
+  test("ana en Presupuestos y obras: Inicio, Obras, Partidas, Mercado, Aprobaciones y Control (T20)", () => {
     const e = navegacion("obras", ANA, false);
     expect(forma(e)).toEqual([
       ["inicio", "enlace", "Inicio"],
       ["obras", "panel", "Obras"],
       ["partidas", "panel", "Partidas"],
       ["mercado", "panel", "Mercado"],
+      ["aprobaciones", "enlace", "Aprobaciones"],
       ["control", "panel", "Control"],
     ]);
     expect(idsPorArea(e)).toEqual({
@@ -56,6 +57,7 @@ describe("navegacion por modulo (oraculos escritos a mano)", () => {
       obras: ["hoja", "elaborar", "tablero", "entregar"],
       partidas: ["componer", "catalogo", "similares"],
       mercado: ["mercado", "actualizacion", "historico", "simulador"],
+      aprobaciones: ["aprobar"],
       control: ["control", "reajuste", "escenarios"],
     });
   });
@@ -67,6 +69,7 @@ describe("navegacion por modulo (oraculos escritos a mano)", () => {
       obras: ["hoja", "elaborar", "tablero", "entregar"],
       partidas: ["componer", "catalogo"],
       mercado: ["mercado", "actualizacion", "historico"],
+      aprobaciones: ["aprobar"],
       control: ["control", "reajuste"],
     });
   });
@@ -78,8 +81,15 @@ describe("navegacion por modulo (oraculos escritos a mano)", () => {
       ["obras", "enlace", "Obras"],
       ["partidas", "enlace", "Partidas"],
       ["mercado", "enlace", "Mercado"],
+      ["aprobaciones", "enlace", "Aprobaciones"],
     ]);
-    expect(idsPorArea(e)).toEqual({ inicio: ["obras"], obras: ["tablero"], partidas: ["catalogo"], mercado: ["historico"] });
+    expect(idsPorArea(e)).toEqual({
+      inicio: ["obras"],
+      obras: ["tablero"],
+      partidas: ["catalogo"],
+      mercado: ["historico"],
+      aprobaciones: ["aprobar"],
+    });
   });
 
   test("admin en Presupuestos y obras: Inicio y el panel de Mercado con Precios de la empresa e Indices", () => {
@@ -159,6 +169,7 @@ describe("navegacion por modulo (oraculos escritos a mano)", () => {
         "actualizacion",
         "historico",
         "simulador",
+        "aprobar",
         "control",
         "reajuste",
         "escenarios",
@@ -185,6 +196,7 @@ describe("navegacion por modulo (oraculos escritos a mano)", () => {
         "mercado",
         "actualizacion",
         "historico",
+        "aprobar",
         "control",
         "reajuste",
         "produccion",
@@ -192,7 +204,7 @@ describe("navegacion por modulo (oraculos escritos a mano)", () => {
         "acerca",
       ],
     ],
-    ["rita", RITA, false, ["auditoria", "libros", "revisar", "historial", "obras", "tablero", "catalogo", "historico", "acerca"]],
+    ["rita", RITA, false, ["auditoria", "libros", "revisar", "historial", "obras", "tablero", "catalogo", "historico", "aprobar", "acerca"]],
     ["admin", ADMIN, false, ["obras", "precios_empresa", "indices", "produccion", "existencias", "administracion", "acerca"]],
   ] as const)("%s: las entradas de sus modulos mas el pie son exactamente sus pantallas, cada una una vez", (_, acciones, entrega, esperadas) => {
     const ids = [

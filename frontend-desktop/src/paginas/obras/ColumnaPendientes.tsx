@@ -14,7 +14,7 @@ interface Props {
   alIr: (codigo: string, pagina: string) => void;
   // «Abrir» un envio del indice de aprobaciones (Tarea 19): cambia de carpeta si es de otra y abre la pantalla de aprobar.
   alAbrirEnvio: (envio: EnvioDeLaMesa) => void;
-  // Lo que se dice bajo los grupos (un fallo de los envios de otras carpetas, o al abrir uno).
+  // Lo que se dice bajo los grupos (un fallo de los envios por aprobar, o al abrir uno).
   avisos?: ReactNode;
 }
 

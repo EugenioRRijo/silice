@@ -1,4 +1,4 @@
-# Recorrido funcional (BS-F): la acción principal de cada una de las 25 pantallas de
+# Recorrido funcional (BS-F): la acción principal de cada una de las 26 pantallas de
 # `frontend-desktop/src/shell/rutas.ts` y el resultado visible que prueba que funcionó.
 #
 # Lo ejecuta `scripts/recorrido_ux_playwright.py --funcional`, en el orden de este archivo. Cada fila
@@ -220,6 +220,13 @@ carpeta = "demo.db"
 proyecto = "Sílice: caso de demostracion"
 accion = "(solo lectura) abrir el tablero del proyecto con presupuesto -> resumen, curva y Pareto"
 espera = { textos = ["Curva del proyecto", "Partidas que más pesan (Pareto)", "Versiones del presupuesto"] }
+
+[[pantalla]]
+ruta = "aprobar"
+cuenta = "rita"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir Aprobar una versión sin envíos pendientes -> dice que no hay versiones esperando dictamen"
+espera = { textos = ["Aprobar una versión", "No hay versiones esperando dictamen."] }
 
 [[pantalla]]
 ruta = "hoja"

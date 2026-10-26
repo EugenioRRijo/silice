@@ -1,11 +1,14 @@
 import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useState } from "react";
 import { pedir } from "../../api/cliente";
+import { ESTADOS_APROBADOS, ultimaAprobada, versionConEstado } from "../../comun/aprobacion";
+import type { AprobacionesDeObra } from "../../comun/aprobacion";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
+import { useCarga } from "../inicio/useCarga";
 import { leerFeriados } from "./fechas";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import {
@@ -36,18 +39,40 @@ function Aviso({ exito, error }: { exito: string; error: unknown }) {
   return (
     <>
       <AvisoError error={error} />
+      {/* Texto neutro, no un aviso verde: el color nunca dice solo que algo salio bien. */}
       {exito && (
-        <InlineNotification kind="success" lowContrast hideCloseButton role="status" title={exito} />
+        <p className="cds--type-body-compact-01" role="status">
+          {exito}
+        </p>
       )}
     </>
   );
 }
 
-function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versiones: string[]; alCambiar: () => void }) {
+// Un servidor sin la ruta (o con otra forma) no dice nada: se propone la version mas nueva, sin avisos.
+function esAprobaciones(valor: unknown): valor is AprobacionesDeObra {
+  const a = valor as Partial<AprobacionesDeObra> | null | undefined;
+  return typeof a?.versiones === "object" && a.versiones !== null && Array.isArray(a.eventos);
+}
+
+function Declarar({
+  proyecto,
+  versiones,
+  aprobaciones,
+  alCambiar,
+}: {
+  proyecto: string;
+  versiones: string[];
+  // Lo que dice el rastro de aprobaciones de la obra; null si la cuenta no lo ve o no se pudo leer (sin avisos).
+  aprobaciones: AprobacionesDeObra | null;
+  alCambiar: () => void;
+}) {
   const { alExpirar } = useAplicacion();
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
+  // Tarea 20: la aprobada manda. Se propone la ultima version aprobada; sin ninguna, la mas nueva.
+  const aprobada = aprobaciones === null ? null : ultimaAprobada(aprobaciones);
   const [v, setV] = useState({
-    version: versiones[0] ?? "",
+    version: aprobada !== null && versiones.includes(aprobada) ? aprobada : (versiones[0] ?? ""),
     desde: "",
     perspectiva: "costo",
     inicio: "",
@@ -57,6 +82,8 @@ function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versio
   });
   const [errorFeriados, setErrorFeriados] = useState("");
   const campo = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
+  const estadoElegido = aprobaciones?.versiones[v.version]?.estado;
+  const noAprobada = aprobaciones !== null && estadoElegido !== undefined && !ESTADOS_APROBADOS.has(estadoElegido);
   const declarar = () => {
     // Los feriados se validan aquí: la API los recibe en AAAA-MM-DD y diría otro valor que el escrito.
     const lectura = leerFeriados(v.feriados);
@@ -69,11 +96,31 @@ function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versio
   };
   return (
     <div className="silice-control__formulario">
-      <Select id="lb-version" labelText="Versión del contrato" value={v.version} onChange={campo("version")}>
+      <Select
+        id="lb-version"
+        labelText="Versión del contrato"
+        helperText={aprobada !== null && v.version === aprobada ? `Se propone ${aprobada}, la última versión aprobada.` : undefined}
+        value={v.version}
+        onChange={campo("version")}
+      >
         {versiones.map((c) => (
-          <SelectItem key={c} value={c} text={c} />
+          <SelectItem key={c} value={c} text={versionConEstado(c, aprobaciones?.versiones[c]?.estado)} />
         ))}
       </Select>
+      {noAprobada && (
+        <InlineNotification
+          kind="warning"
+          role="status"
+          title="Esta versión no está aprobada."
+          subtitle={
+            aprobada === null
+              ? "Ninguna versión de esta obra está aprobada todavía; puede declararla igual."
+              : `La última aprobada es ${aprobada}; puede declarar esta igual.`
+          }
+          lowContrast
+          hideCloseButton
+        />
+      )}
       <CampoTexto id="lb-desde" type="date" labelText="Vigente desde" value={v.desde} onChange={campo("desde")} />
       <Select
         id="lb-perspectiva"
@@ -209,8 +256,17 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
 
 export function PestanaLineaBase({ proyecto, clave, alCambiar }: Props) {
   const { alExpirar } = useAplicacion();
+  const { sesion } = useAplicacion();
   const carga = useCargaSuave<LineaBase>(rutaDe("/v1/control/linea-base", proyecto, { n: String(clave) }), alExpirar);
-  if (carga.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando la línea base" />;
+  // El rastro de aprobaciones lo lee quien edita la Hoja (`GET /v1/aprobaciones?proyecto=`): sin esa accion no se pide.
+  const puedeVerAprobaciones = sesion.acciones.includes("editar_hoja");
+  const aprobaciones = useCarga<AprobacionesDeObra>(
+    puedeVerAprobaciones ? rutaDe("/v1/aprobaciones", proyecto) : null,
+    alExpirar,
+  );
+  if (carga.estado === "cargando" || (puedeVerAprobaciones && aprobaciones.estado === "cargando")) {
+    return <EsqueletoPagina etiqueta="Cargando la línea base" />;
+  }
   if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudo cargar la línea base" />;
   const datos = carga.datos;
   return (
@@ -224,7 +280,12 @@ export function PestanaLineaBase({ proyecto, clave, alCambiar }: Props) {
         </p>
         <details open={!datos.tiene_linea_base}>
           <summary className="cds--type-body-compact-01">Declarar una línea base</summary>
-          <Declarar proyecto={proyecto} versiones={datos.versiones} alCambiar={alCambiar} />
+          <Declarar
+            proyecto={proyecto}
+            versiones={datos.versiones}
+            aprobaciones={aprobaciones.estado === "listo" && esAprobaciones(aprobaciones.datos) ? aprobaciones.datos : null}
+            alCambiar={alCambiar}
+          />
         </details>
       </section>
       <Parametros proyecto={proyecto} datos={datos} alCambiar={alCambiar} />

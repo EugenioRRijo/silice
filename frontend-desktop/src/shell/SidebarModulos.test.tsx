@@ -130,6 +130,7 @@ describe("SidebarModulos", () => {
       "/actualizacion",
       "/historico",
       "/simulador",
+      "/aprobar",
       "/control",
       "/reajuste",
       "/escenarios",

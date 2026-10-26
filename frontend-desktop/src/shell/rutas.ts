@@ -255,6 +255,16 @@ export const PAGINAS: readonly PaginaDef[] = [
     ubicacion: en("obras", "mercado"),
     cargar: () => import("../paginas/simulador"),
   },
+  // Plan de montar un presupuesto, T20: el area Aprobaciones de Presupuestos y obras (diseno de modulos, §3 y §8).
+  {
+    id: "aprobar",
+    titulo: "Aprobar una versión",
+    enUnaLinea: "Revise y dé su dictamen sobre una versión",
+    seccion: "Revisión",
+    accion: "aprobar_version",
+    ubicacion: en("obras", "aprobaciones"),
+    cargar: () => import("../paginas/aprobar"),
+  },
   {
     id: "control",
     titulo: "Control de obra",
