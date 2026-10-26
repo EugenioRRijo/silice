@@ -100,6 +100,9 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   antes de perderlo.
 - Pendiente: `HojaExcel.test.tsx` («pide el libro… y no toca nada más») es inestable (un `GET …/vistas/espacio` tardío), ya
   antes de esta ronda; revisar si lo causa el `setPestana` durante el render de la ronda 1.
+- Encargos finales (601e01c2, d610b54e): el reenvío de lo escrito mientras iba una acción (quitar) ya no borra, al
+  aceptarse, el aviso de la acción fallida, y no sale tras un 401 ni con el borrador ausente. `HojaExcel` espera la vista de
+  Espacio antes de contar las peticiones (la carrera era de la prueba desde 3e-1, no de T11).
 
 ## T12, Elaborar lleva a la Hoja
 
