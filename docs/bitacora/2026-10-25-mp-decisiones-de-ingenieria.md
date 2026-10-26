@@ -130,6 +130,9 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - Límites que quedan: «Ver estos días» descarta sin preguntar un precio escrito sin usar (el estudio se recarga), y
   «Salir y descartar» olvida todos los formularios registrados de la pantalla, también los de la otra pestaña
   (`olvidarFormularios` de MOD-2).
+- Cierre: `tests/unit/test_front_razon_mercado.py` ata `RAZON_POR_DEBAJO` de `logica.ts` a la de `aplicacion/mercado.py`;
+  `confirmarSalida` gana el motivo `"cambiar"` con consecuencia propia (aditivo en MOD-2), y el estudio de mercado lo usa al
+  elegir otro insumo o partida («Si elige otro insumo o partida, se perderán.», «Cambiar y descartar»).
 
 ## T17, eventos de aprobación (aprobada en ronda 1)
 
