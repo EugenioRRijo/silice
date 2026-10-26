@@ -252,7 +252,10 @@ migas; a la derecha un botón ancho «Buscar… (Ctrl+K)», el tamaño de letra 
 
 Aspecto: fondo `var(--silice-lateral)`, 236 px; zona 1 «Pendientes» (enlace a `#/pendientes`); zona 2 «Obras» con el
 árbol (obra abierta desplegada con sus 7 secciones, línea guía a la izquierda; las demás plegadas; agrupadas por
-carpeta solo si hay más de una carpeta) y «+ Nueva obra» al pie; zona 3 «Empresa» con `ENTRADAS_DE_EMPRESA`.
+carpeta solo si hay más de una carpeta) y **«Nueva obra» como botón vistoso** (Eugenio, 2026-10-26): ancho completo
+de la barra, relleno `var(--silice-acento)` con texto `var(--silice-marco)` en seminegrita, icono `Add` de Carbon,
+40 px de alto, siempre visible (fijo bajo la cabecera «Obras», no al final de una lista larga); con cuenta sin
+permiso de crear obras no aparece; zona 3 «Empresa» con `ENTRADAS_DE_EMPRESA`.
 Activo: fondo `var(--silice-lateral-activo)` y raya de 3 px `var(--silice-acento)`. Sin contadores en esta tanda
 (llegan en F3).
 
@@ -265,6 +268,8 @@ Activo: fondo `var(--silice-lateral-activo)` y raya de 3 px `var(--silice-acento
   - error de `GET /v1/obras/todas` → «No se pudieron cargar las obras» con «Reintentar»; sin obras → «Todavía no hay
     obras» y «+ Nueva obra».
   - teclado: flechas arriba/abajo recorren, derecha despliega, izquierda pliega (patrón `tree` de WAI-ARIA).
+  - «Nueva obra» es un `button` con clase de botón principal del marco, está antes del árbol en el orden del DOM y
+    no se renderiza sin el permiso de crear obras; el contraste texto/fondo del tema neutro es ≥ 4,5:1.
   - `DialogoNuevaObra` con 2 carpetas pide la carpeta (por omisión la abierta); con 1, no.
 - [ ] **Paso 2:** FALLA. **Paso 3:** implementar. **Paso 4:** PASA. **Paso 5: commit.**
 
