@@ -1,79 +1,46 @@
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, test, vi } from "vitest";
-import { SelectorCaso, SelectorProyecto } from "./Selectores";
+import { describe, expect, test } from "vitest";
+import type { ProyectoRespuesta } from "../api/tipos";
+import { nombreDeCarpeta, rotuloDeProyecto } from "./Selectores";
 
-const PROYECTOS = [
-  { codigo: "P-01", nombre: "Clínica Norte con un nombre larguísimo que se recorta", version_vigente: 3, actualizado: null },
-  { codigo: "P-02", nombre: "Galpón", version_vigente: null, actualizado: null },
-];
+// Plan de modulos, MOD-3b: los selectores «Carpeta de trabajo» y «Proyecto» de la barra se retiraron (los reemplaza el
+// selector de obra); de este modulo quedan los dos rotulos que usan el selector, el dialogo de carpetas y Componer.
 
-// Con la letra grande el selector se acota (min(13rem, 18vw)) y el nombre del proyecto se recorta con puntos suspensivos:
-// el nombre completo queda en el título.
-describe("SelectorProyecto", () => {
-  test("el título del selector trae el nombre completo del proyecto elegido", () => {
-    render(<SelectorProyecto proyectos={PROYECTOS} elegido="P-01" alElegir={() => {}} />);
-    expect(screen.getByRole("combobox", { name: "Proyecto" })).toHaveAttribute("title", PROYECTOS[0].nombre);
-  });
+const obra = (codigo: string, nombre: string, version_vigente: number | null): ProyectoRespuesta => ({
+  codigo,
+  nombre,
+  version_vigente,
+  actualizado: null,
+  cliente: "",
+  ubicacion: "",
+});
 
-  // Carbon fija el título solo al montar y al cambiar con el selector: si el proyecto cambia desde fuera, hay que dárselo.
-  test("el título sigue al proyecto elegido cuando este cambia desde fuera", () => {
-    const { rerender } = render(<SelectorProyecto proyectos={PROYECTOS} elegido="P-01" alElegir={() => {}} />);
-    rerender(<SelectorProyecto proyectos={PROYECTOS} elegido="P-02" alElegir={() => {}} />);
-    expect(screen.getByRole("combobox", { name: "Proyecto" })).toHaveAttribute("title", "Galpón");
-  });
-
-  test("sin proyecto elegido el título dice «Sin proyecto»", () => {
-    render(<SelectorProyecto proyectos={PROYECTOS} elegido={null} alElegir={() => {}} />);
-    expect(screen.getByRole("combobox", { name: "Proyecto" })).toHaveAttribute("title", "Sin proyecto");
+describe("nombreDeCarpeta", () => {
+  test("quita el .db final y solo ese", () => {
+    expect(nombreDeCarpeta("demo.db")).toBe("demo");
+    expect(nombreDeCarpeta("obra.v2.db")).toBe("obra.v2");
+    expect(nombreDeCarpeta("x")).toBe("x");
   });
 });
 
-describe("SelectorCaso", () => {
-  test("el rótulo dice «Carpeta de trabajo», no «Caso»", () => {
-    const caso = { nombre: "demo.db", ruta_relativa: "data/demo.db" } as never;
-    render(<SelectorCaso casos={{ actual: caso, casos: [caso] }} puedeCambiar ocupado={false} alElegir={() => {}} />);
-    expect(screen.getByRole("combobox", { name: "Carpeta de trabajo" })).toBeInTheDocument();
-    expect(screen.queryByText(/\bcaso\b/i)).toBeNull();
+describe("rotuloDeProyecto", () => {
+  const TORRE = obra("8", "Torre B", null);
+  const CASA = obra("7", "Casa Demo", 1);
+
+  // F11 (BCP-6 §5.2): una obra sin version guardada lo dice en su rotulo.
+  test("una obra sin versión guardada lo dice; una con versión, no", () => {
+    expect(rotuloDeProyecto(TORRE, [TORRE, CASA])).toBe("Torre B (sin versión guardada)");
+    expect(rotuloDeProyecto(CASA, [TORRE, CASA])).toBe("Casa Demo");
+  });
+
+  // VB-20: el codigo es un numero interno; solo si dos obras se llaman igual, el codigo las distingue.
+  test("dos obras con el mismo nombre se distinguen por su código", () => {
+    const a = obra("3", "OBRA-GENERADA", 1);
+    const b = obra("4", "OBRA-GENERADA", null);
+    expect(rotuloDeProyecto(a, [a, b, CASA])).toBe("OBRA-GENERADA (3)");
+    expect(rotuloDeProyecto(b, [a, b, CASA])).toBe("OBRA-GENERADA (4) (sin versión guardada)");
+  });
+
+  test("sin la marca de la versión queda solo el nombre (el botón de la barra)", () => {
+    expect(rotuloDeProyecto(TORRE, [TORRE], false)).toBe("Torre B");
   });
 });
-
-// D1 del recorrido funcional (bitacora 2026-10-25-recorrido-funcional.md): si la carpeta abierta no viene en la lista, el
-// Select caia en la primera opcion, mostraba una carpeta que no era la de la sesion y elegirla no hacia nada.
-describe("SelectorCaso, carpeta abierta fuera de la lista", () => {
-  test("muestra la carpeta abierta aunque no esté en la lista, y elegir otra llama alElegir con su nombre real", async () => {
-    const usuario = userEvent.setup();
-    const alElegir = vi.fn();
-    const actual = { nombre: "silice.db", ruta_relativa: "data/silice.db" } as never;
-    const demo = { nombre: "demo.db", ruta_relativa: "data/demo.db" } as never;
-    render(<SelectorCaso casos={{ actual, casos: [demo] }} puedeCambiar ocupado={false} alElegir={alElegir} />);
-    const selector = screen.getByRole("combobox", { name: "Carpeta de trabajo" });
-    expect(selector).toHaveValue("silice.db");
-    expect((selector as HTMLSelectElement).selectedOptions[0].textContent).toBe("silice");
-    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["silice", "demo"]);
-    await usuario.selectOptions(selector, "demo.db");
-    expect(alElegir).toHaveBeenCalledWith("demo.db");
-  });
-
-  test("con la carpeta abierta en la lista no la repite", () => {
-    const a = { nombre: "demo.db", ruta_relativa: "data/demo.db" } as never;
-    const b = { nombre: "obra.db", ruta_relativa: "data/obra.db" } as never;
-    render(<SelectorCaso casos={{ actual: b, casos: [a, b] }} puedeCambiar ocupado={false} alElegir={() => {}} />);
-    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["demo", "obra"]);
-    expect(screen.getByRole("combobox", { name: "Carpeta de trabajo" })).toHaveValue("obra.db");
-  });
-});
-
-describe("SelectorCaso, extensión", () => {
-  test("las opciones se ven sin .db y conservan el nombre real como valor", () => {
-    const a = { nombre: "demo.db", ruta_relativa: "data/demo.db" } as never;
-    const b = { nombre: "obra.v2.db", ruta_relativa: "data/obra.v2.db" } as never;
-    render(<SelectorCaso casos={{ actual: a, casos: [a, b] }} puedeCambiar ocupado={false} alElegir={() => {}} />);
-    const opciones = screen.getAllByRole("option");
-    expect(opciones.map((o) => o.textContent)).toEqual(["demo", "obra.v2"]);
-    expect(opciones.map((o) => (o as HTMLOptionElement).value)).toEqual(["demo.db", "obra.v2.db"]);
-  });
-});
-
-// El pie «Sesión de …» del menú lateral pasó al sidebar de módulos: lo prueban SidebarModulos.test.tsx («al pie: Acerca de
-// Sílice …, la sesión …») y Shell.test.tsx («el pie trae «Acerca de Sílice» y no «Administración» con ana …»).

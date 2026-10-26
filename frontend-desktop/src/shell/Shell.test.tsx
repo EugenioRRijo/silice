@@ -183,14 +183,34 @@ describe("Shell", () => {
       .map((a) => a.querySelector(".silice-sidebar__titulo")?.textContent ?? "");
   }
 
-  // Los selectores viven en el panel «Carpeta y proyecto» de la barra: se abre antes de usarlos.
-  async function abrirCarpeta(usuario: ReturnType<typeof userEvent.setup>) {
-    await usuario.click(await screen.findByRole("button", { name: /^Carpeta de trabajo:/ }));
+  // El selector de obra de la barra (MOD-3b): «Obra: …», «Todas las obras» o, sin obras que ver, «Carpeta: …».
+  function botonObra() {
+    return within(screen.getByRole("banner")).findByRole("button", { name: /^(Obra: |Todas las obras|Carpeta: )/ });
   }
 
-  async function selectorDeCarpeta(usuario: ReturnType<typeof userEvent.setup>) {
-    await abrirCarpeta(usuario);
-    return screen.findByRole("combobox", { name: "Carpeta de trabajo" });
+  // Lo que se ve de cada obra en el panel del selector (su primera linea).
+  function obrasDeLaLista(): string[] {
+    return within(screen.getByRole("list", { name: "Obras de la carpeta de trabajo" }))
+      .getAllByRole("button")
+      .map((b) => b.querySelector(".silice-obra__nombre")?.textContent ?? "");
+  }
+
+  // «Cambiar carpeta…» al pie del selector abre el dialogo «Carpetas de trabajo».
+  async function abrirCarpetas(usuario: ReturnType<typeof userEvent.setup>) {
+    await usuario.click(await botonObra());
+    await usuario.click(await screen.findByRole("button", { name: "Cambiar carpeta…" }));
+    return screen.findByRole("dialog", { name: "Carpetas de trabajo" });
+  }
+
+  async function abrirEnElDialogo(usuario: ReturnType<typeof userEvent.setup>, nombre: string) {
+    const dialogo = await abrirCarpetas(usuario);
+    await usuario.click(await within(dialogo).findByRole("button", { name: `Abrir ${nombre}` }));
+  }
+
+  function nombresDeCarpetas(lista: HTMLElement): string[] {
+    return within(lista)
+      .getAllByRole("listitem")
+      .map((li) => li.querySelector(".silice-carpetas__nombre")?.textContent ?? "");
   }
 
   async function salir(usuario: ReturnType<typeof userEvent.setup>) {
@@ -218,7 +238,7 @@ describe("Shell", () => {
       expect(cuenta).toHaveAttribute("title", "Ana Pérez");
     });
 
-    test("el lado derecho va en orden: carpeta y proyecto, recorrido, tamaño de letra y cuenta", async () => {
+    test("el lado derecho va en orden: obra, recorrido, tamaño de letra y cuenta", async () => {
       const usuario = userEvent.setup();
       montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
@@ -227,7 +247,7 @@ describe("Shell", () => {
       await usuario.click(within(screen.getByRole("complementary", { name: "Recorrido" })).getByRole("button", { name: "Ocultar" }));
       const banner = screen.getByRole("banner");
       const orden = [
-        within(banner).getByRole("button", { name: /^Carpeta de trabajo:/ }),
+        within(banner).getByRole("button", { name: /^Obra: / }),
         within(banner).getByRole("button", { name: "Recorrido" }),
         within(banner).getByRole("group", { name: "Tamaño de letra" }),
         within(banner).getByRole("button", { name: "Cuenta de Ana Pérez" }),
@@ -255,11 +275,11 @@ describe("Shell", () => {
       expect(screen.getByRole("banner")).toHaveTextContent("Sílice");
     });
 
-    test("la carpeta de trabajo y el proyecto se ven en la barra", async () => {
+    test("la obra se ve en la barra (plan de modulos, MOD-3b: obra en vez de carpeta y proyecto)", async () => {
       montar();
       const banner = screen.getByRole("banner");
-      expect(await within(banner).findByRole("button", { name: "Carpeta de trabajo: clinica. Proyecto: Sin proyecto. Cambiar" })).toBeInTheDocument();
-      expect(within(banner).getByText("clinica · Sin proyecto")).toBeInTheDocument();
+      expect(await within(banner).findByRole("button", { name: "Obra: sin elegir. Elegir obra" })).toHaveTextContent("Obra: sin elegir");
+      expect(within(banner).queryByRole("button", { name: /^Carpeta de trabajo:/ })).toBeNull();
     });
   });
 
@@ -708,9 +728,7 @@ describe("Shell", () => {
       montar();
       act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
       onTestFinished(() => terminarRecorrido());
-      const selector = await selectorDeCarpeta(usuario);
-      await waitFor(() => expect(selector).toHaveValue("clinica"));
-      await usuario.selectOptions(selector, "arenaza");
+      await abrirEnElDialogo(usuario, "arenaza");
       await waitFor(() => expect(alExpirar).toHaveBeenCalled());
       expect(recorridoEnCurso()).toBeNull();
     });
@@ -786,122 +804,136 @@ describe("Shell", () => {
     });
   });
 
-  describe("selector de caso", () => {
-    test("lista los casos y deja elegido el actual", async () => {
+  // Plan de modulos, MOD-3b: la carpeta se cambia en el dialogo «Carpetas de trabajo» (pie del selector de obra,
+  // «Cambiar carpeta…»); el aviso ya no dice que vuelve a la de por defecto al reiniciar (MOD-0 la recuerda por cuenta).
+  describe("cambiar de carpeta", () => {
+    test("el diálogo lista las carpetas y marca la abierta", async () => {
       const usuario = userEvent.setup();
       montar();
-      const selector = await selectorDeCarpeta(usuario);
-      await waitFor(() => expect(selector).toHaveValue("clinica"));
-      expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["clinica", "arenaza"]);
+      const dialogo = await abrirCarpetas(usuario);
+      const lista = await within(dialogo).findByRole("list", { name: "Carpetas de trabajo de la instalación" });
+      expect(nombresDeCarpetas(lista)).toEqual(["clinica", "arenaza"]);
+      expect(within(lista).getAllByRole("listitem")[0]).toHaveAttribute("aria-current", "true");
     });
 
-    test("cambiar el caso hace POST /v1/casos/actual con el token y avisa que el cambio vive hasta reiniciar la API", async () => {
+    test("abrir otra hace POST /v1/casos/actual con el token y avisa que ahora trabaja con ella", async () => {
       const usuario = userEvent.setup();
       montar();
-      const selector = await selectorDeCarpeta(usuario);
-      await waitFor(() => expect(selector).toHaveValue("clinica"));
-      await usuario.selectOptions(selector, "arenaza");
-      await waitFor(() => expect(selector).toHaveValue("arenaza"));
+      await abrirEnElDialogo(usuario, "arenaza");
+      await waitFor(() => expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/casos/actual")).toBe(true));
       const llamada = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/casos/actual");
       expect(llamada?.[1]?.method).toBe("POST");
       expect(llamada?.[1]?.body).toBe(JSON.stringify({ nombre: "arenaza" }));
       expect(new Headers(llamada?.[1]?.headers).get("X-Silice-CSRF")).toBe("tok");
-      const aviso = (await screen.findByText(/vuelve a la carpeta por defecto/i)).closest(".cds--inline-notification");
+      const aviso = (await screen.findByText("Ahora trabaja con la carpeta de trabajo «arenaza».")).closest(".cds--inline-notification");
       expect(aviso).not.toBeNull();
       const dentro = within(aviso as HTMLElement);
       expect(dentro.getByText("Carpeta de trabajo cambiada")).toBeInTheDocument();
-      expect(dentro.getByText(/Ahora trabaja con la carpeta de trabajo «arenaza»/)).toBeInTheDocument();
       expect(dentro.queryByText(/\bcaso\b/i)).toBeNull();
-      // La barra muestra la carpeta nueva.
-      expect(screen.getByRole("button", { name: /^Carpeta de trabajo: arenaza\./ })).toBeInTheDocument();
+      expect(dentro.queryByText(/reinici/i)).toBeNull();
+      // El pie del selector dice la carpeta nueva.
+      await usuario.click(await botonObra());
+      expect(await screen.findByText("Carpeta: arenaza")).toBeInTheDocument();
     });
 
-    test("el aviso y las opciones muestran la carpeta sin la extension .db", async () => {
+    test("el aviso y la lista muestran la carpeta sin la extension .db", async () => {
       const usuario = userEvent.setup();
       const con = { nombre: "clinica.db", ruta_relativa: "data/clinica.db" };
       const otra = { nombre: "obra.db", ruta_relativa: "data/obra.db" };
+      let actual = con;
       fetchFalso.mockImplementation(async (entrada, init) => {
         const ruta = String(entrada);
-        if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json({ actual: con, casos: [con, otra] });
-        if (ruta === "/v1/casos/actual") return json({ actual: otra });
+        if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json({ actual, casos: [con, otra] });
+        if (ruta === "/v1/casos/actual") {
+          actual = otra;
+          return json(otra);
+        }
         if (ruta === "/v1/proyectos") return json(PROYECTOS);
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      const selector = await selectorDeCarpeta(usuario);
-      await waitFor(() => expect(selector).toHaveValue("clinica.db"));
-      expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual(["clinica", "obra"]);
-      await usuario.selectOptions(selector, "obra.db");
-      const aviso = (await screen.findByText(/vuelve a la carpeta por defecto/i)).closest(".cds--inline-notification");
-      expect(within(aviso as HTMLElement).getByText(/carpeta de trabajo «obra»\./)).toBeInTheDocument();
+      const dialogo = await abrirCarpetas(usuario);
+      expect(nombresDeCarpetas(await within(dialogo).findByRole("list", { name: "Carpetas de trabajo de la instalación" }))).toEqual([
+        "clinica",
+        "obra",
+      ]);
+      await usuario.click(within(dialogo).getByRole("button", { name: "Abrir obra" }));
+      expect(await screen.findByText("Ahora trabaja con la carpeta de trabajo «obra».")).toBeInTheDocument();
     });
 
-    // D1 del recorrido funcional: la barra y el selector dicen la carpeta de la sesion aunque no venga en la lista.
-    test("si la carpeta abierta no está en la lista, la barra y el selector la muestran y elegir otra la cambia", async () => {
+    // D1 del recorrido funcional: la carpeta de la sesion se ve aunque no venga en la lista, y elegir otra la cambia.
+    test("si la carpeta abierta no está en la lista, el diálogo la muestra como abierta y elegir otra la cambia", async () => {
       const usuario = userEvent.setup();
       const silice = { nombre: "silice.db", ruta_relativa: "data/silice.db" };
       const demo = { nombre: "demo.db", ruta_relativa: "data/demo.db" };
+      let actual = silice;
       fetchFalso.mockImplementation(async (entrada, init) => {
         const ruta = String(entrada);
-        if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json({ actual: silice, casos: [demo] });
-        if (ruta === "/v1/casos/actual") return json({ actual: demo });
+        if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json({ actual, casos: [demo] });
+        if (ruta === "/v1/casos/actual") {
+          actual = demo;
+          return json(demo);
+        }
         if (ruta === "/v1/proyectos") return json(PROYECTOS);
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      expect(await screen.findByRole("button", { name: /^Carpeta de trabajo: silice\./ })).toBeInTheDocument();
-      const selector = await selectorDeCarpeta(usuario);
-      expect(selector).toHaveValue("silice.db");
-      await usuario.selectOptions(selector, "demo.db");
-      const llamada = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/casos/actual");
-      expect(llamada?.[1]?.body).toBe(JSON.stringify({ nombre: "demo.db" }));
-      expect(await screen.findByRole("button", { name: /^Carpeta de trabajo: demo\./ })).toBeInTheDocument();
+      const dialogo = await abrirCarpetas(usuario);
+      const lista = await within(dialogo).findByRole("list", { name: "Carpetas de trabajo de la instalación" });
+      expect(nombresDeCarpetas(lista)).toEqual(["silice", "demo"]);
+      expect(within(lista).getAllByRole("listitem")[0]).toHaveAttribute("aria-current", "true");
+      await usuario.click(within(lista).getByRole("button", { name: "Abrir demo" }));
+      await waitFor(() => {
+        const llamada = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/casos/actual");
+        expect(llamada?.[1]?.body).toBe(JSON.stringify({ nombre: "demo.db" }));
+      });
+      await usuario.click(await botonObra());
+      expect(await screen.findByText("Carpeta: demo")).toBeInTheDocument();
     });
 
     // D6 del recorrido funcional: el aviso no se queda en todas las pantallas.
     test("el aviso de carpeta cambiada se cierra al navegar a otra pantalla", async () => {
       const usuario = userEvent.setup();
       montar();
-      await usuario.selectOptions(await selectorDeCarpeta(usuario), "arenaza");
+      await abrirEnElDialogo(usuario, "arenaza");
       expect(await screen.findByText("Carpeta de trabajo cambiada")).toBeInTheDocument();
       await usuario.click(within(menu()).getByRole("link", { name: "Partidas" }));
       await screen.findByRole("heading", { name: "Otra pantalla" });
       expect(screen.queryByText("Carpeta de trabajo cambiada")).not.toBeInTheDocument();
     });
 
-    test("al cambiar el caso la pagina se vuelve a montar con el caso nuevo", async () => {
+    test("al cambiar de carpeta la pagina se vuelve a montar con la carpeta nueva", async () => {
       const usuario = userEvent.setup();
       montar();
       expect(await screen.findByText("caso=clinica")).toBeInTheDocument();
-      await usuario.selectOptions(await selectorDeCarpeta(usuario), "arenaza");
+      await abrirEnElDialogo(usuario, "arenaza");
       expect(await screen.findByText("caso=arenaza")).toBeInTheDocument();
     });
 
-    test("sin la accion cambiar_caso el selector esta deshabilitado", async () => {
+    test("sin la accion cambiar_caso el selector no ofrece «Cambiar carpeta…»", async () => {
       const usuario = userEvent.setup();
       montar(sesionCon({ acciones: ["leer_proyecto"] }));
-      const selector = await selectorDeCarpeta(usuario);
-      expect(selector).toBeDisabled();
+      await usuario.click(await botonObra());
+      expect(await screen.findByText("Carpeta: clinica")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Cambiar carpeta…" })).not.toBeInTheDocument();
     });
 
-    test("si la API rechaza el cambio muestra el detalle y deja el caso anterior", async () => {
+    test("si la API rechaza el cambio muestra el detalle y deja la carpeta anterior", async () => {
       const usuario = userEvent.setup();
       fetchFalso.mockImplementation(async (entrada, init) => {
         const ruta = String(entrada);
         if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json(CASOS);
-        if (ruta === "/v1/casos/actual") return json({ detalle: "El caso ya no existe." }, 404);
+        if (ruta === "/v1/casos/actual") return json({ detalle: "La carpeta de trabajo ya no existe." }, 404);
         if (ruta === "/v1/proyectos") return json(PROYECTOS);
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      const selector = await selectorDeCarpeta(usuario);
-      await waitFor(() => expect(selector).toHaveValue("clinica"));
-      await usuario.selectOptions(selector, "arenaza");
-      expect(await alertaConTexto()).toHaveTextContent("El caso ya no existe.");
-      expect(selector).toHaveValue("clinica");
+      await abrirEnElDialogo(usuario, "arenaza");
+      expect(await alertaConTexto()).toHaveTextContent("La carpeta de trabajo ya no existe.");
+      expect(screen.getByText("caso=clinica")).toBeInTheDocument();
     });
 
-    test("un 401 al cambiar el caso avisa que la sesion vencio", async () => {
+    test("un 401 al cambiar de carpeta avisa que la sesion vencio", async () => {
       const usuario = userEvent.setup();
       fetchFalso.mockImplementation(async (entrada, init) => {
         const ruta = String(entrada);
@@ -911,13 +943,10 @@ describe("Shell", () => {
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      const selector = await selectorDeCarpeta(usuario);
-      await waitFor(() => expect(selector).toHaveValue("clinica"));
-      await usuario.selectOptions(selector, "arenaza");
+      await abrirEnElDialogo(usuario, "arenaza");
       await waitFor(() => expect(alExpirar).toHaveBeenCalled());
     });
   });
-
   // Plan de modulos, MOD-2: el sidebar de modulos (estado 3), el boton «Sílice», Esc, fijar/ocultar y la confirmacion al
   // salir. Oraculos escritos a mano (titulos y rutas del registro, acciones por rol de seguridad/permisos.py).
   describe("sidebar de módulos", () => {
@@ -1381,49 +1410,42 @@ describe("Shell", () => {
     });
   });
 
-  describe("selector de proyecto", () => {
-    test("lista los proyectos y empieza sin ninguno elegido", async () => {
+  // Plan de modulos, MOD-3b: el selector «Proyecto» del panel «Carpeta y proyecto» paso a ser el selector de obra.
+  describe("selector de obra", () => {
+    test("lista las obras y empieza sin ninguna elegida", async () => {
       const usuario = userEvent.setup();
       montar();
-      await abrirCarpeta(usuario);
-      const selector = await screen.findByRole("combobox", { name: "Proyecto" });
-      await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(3));
-      expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
-        "Sin proyecto",
-        "Clínica Norte",
-        "Galpón",
-      ]);
-      expect(selector).toHaveValue("");
+      const boton = await botonObra();
+      expect(boton).toHaveTextContent("Obra: sin elegir");
+      await usuario.click(boton);
+      await waitFor(() => expect(obrasDeLaLista()).toEqual(["Clínica Norte", "Galpón (sin versión guardada)"]));
+      expect(screen.queryByRole("button", { name: /^Clínica Norte/ })).not.toHaveAttribute("aria-current");
     });
 
-    test("el elegido llega a las paginas por el contexto, se ve en la barra y no se guarda en el navegador", async () => {
+    test("la elegida llega a las paginas por el contexto, se ve en la barra y no se guarda en el navegador", async () => {
       const usuario = userEvent.setup();
       const espiaSet = vi.spyOn(Storage.prototype, "setItem");
       montar();
       expect(await screen.findByText("proyecto=ninguno")).toBeInTheDocument();
-      await abrirCarpeta(usuario);
-      const selector = await screen.findByRole("combobox", { name: "Proyecto" });
-      await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(3));
-      await usuario.selectOptions(selector, "P-02");
+      await usuario.click(await botonObra());
+      await usuario.click(await screen.findByRole("button", { name: /^Galpón/ }));
       expect(await screen.findByText("proyecto=P-02")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Carpeta de trabajo: clinica. Proyecto: Galpón. Cambiar" })).toBeInTheDocument();
+      expect(await botonObra()).toHaveAccessibleName("Obra: Galpón. Cambiar obra");
       expect(espiaSet).not.toHaveBeenCalled();
       espiaSet.mockRestore();
     });
 
-    test("al cambiar de caso se olvida el proyecto elegido", async () => {
+    test("al cambiar de carpeta se olvida la obra elegida", async () => {
       const usuario = userEvent.setup();
       montar();
-      await abrirCarpeta(usuario);
-      const proyecto = await screen.findByRole("combobox", { name: "Proyecto" });
-      await waitFor(() => expect(within(proyecto).getAllByRole("option")).toHaveLength(3));
-      await usuario.selectOptions(proyecto, "P-01");
+      await usuario.click(await botonObra());
+      await usuario.click(await screen.findByRole("button", { name: /^Clínica Norte/ }));
       expect(await screen.findByText("proyecto=P-01")).toBeInTheDocument();
-      await usuario.selectOptions(await screen.findByRole("combobox", { name: "Carpeta de trabajo" }), "arenaza");
+      await abrirEnElDialogo(usuario, "arenaza");
       expect(await screen.findByText("proyecto=ninguno")).toBeInTheDocument();
     });
 
-    test("sin permiso para listar proyectos (403) el selector no se muestra y no hay error", async () => {
+    test("sin permiso para listar obras (403) el panel no las lista y no hay error", async () => {
       const usuario = userEvent.setup();
       fetchFalso.mockImplementation(async (entrada, init) => {
         const ruta = String(entrada);
@@ -1432,46 +1454,38 @@ describe("Shell", () => {
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      await selectorDeCarpeta(usuario);
       await waitFor(() => expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(true));
-      expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
+      await usuario.click(await botonObra());
+      expect(screen.queryByRole("list", { name: "Obras de la carpeta de trabajo" })).not.toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
-    // VB-20: el codigo es un numero interno; la persona elige por el nombre. Si dos proyectos se llaman igual, el
-    // codigo es lo unico que los distingue y se agrega entre parentesis.
-    test("dos proyectos con el mismo nombre se distinguen por su código", async () => {
+    // VB-20: el codigo es un numero interno; la persona elige por el nombre. Si dos obras se llaman igual, el codigo es
+    // lo unico que las distingue y se agrega entre parentesis.
+    test("dos obras con el mismo nombre se distinguen por su código", async () => {
       const usuario = userEvent.setup();
       fetchFalso.mockImplementation(async (entrada, init) => {
         const ruta = String(entrada);
         if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json(CASOS);
         if (ruta === "/v1/proyectos")
           return json([
-            { codigo: "3", nombre: "OBRA-GENERADA", version_vigente: 1, actualizado: null },
-            { codigo: "4", nombre: "OBRA-GENERADA", version_vigente: 1, actualizado: null },
-            { codigo: "5", nombre: "Galpón", version_vigente: 1, actualizado: null },
+            { codigo: "3", nombre: "OBRA-GENERADA", version_vigente: 1, actualizado: null, cliente: "", ubicacion: "" },
+            { codigo: "4", nombre: "OBRA-GENERADA", version_vigente: 1, actualizado: null, cliente: "", ubicacion: "" },
+            { codigo: "5", nombre: "Galpón", version_vigente: 1, actualizado: null, cliente: "", ubicacion: "" },
           ]);
         return json({ detalle: "No encontrado." }, 404);
       });
       montar();
-      await abrirCarpeta(usuario);
-      const selector = await screen.findByRole("combobox", { name: "Proyecto" });
-      await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(4));
-      expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
-        "Sin proyecto",
-        "OBRA-GENERADA (3)",
-        "OBRA-GENERADA (4)",
-        "Galpón",
-      ]);
+      await usuario.click(await botonObra());
+      await waitFor(() => expect(obrasDeLaLista()).toEqual(["OBRA-GENERADA (3)", "OBRA-GENERADA (4)", "Galpón"]));
     });
 
     // VB-9: sin `leer_proyecto` la API contesta 403; no se pide.
-    test("una cuenta sin la acción leer_proyecto no pide la lista de proyectos", async () => {
-      const usuario = userEvent.setup();
+    test("una cuenta sin la acción leer_proyecto no pide la lista de obras", async () => {
       montar(sesionCon({ acciones: ["administrar_cuentas", "cambiar_caso"] }), "/acerca");
-      await selectorDeCarpeta(usuario);
+      await screen.findByRole("heading", { name: "Otra pantalla" });
+      await waitFor(() => expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/casos")).toBe(true));
       expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(false);
-      expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
     });
 
     test("sin ninguna pagina disponible para la cuenta, dice que no hay pantallas en esta interfaz", async () => {

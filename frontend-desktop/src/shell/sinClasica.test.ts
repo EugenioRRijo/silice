@@ -36,6 +36,8 @@ const PROHIBIDO: [string, RegExp][] = [
   // propias ni las del SideNav quedan en el codigo ni en los estilos.
   ["clases del menu en capa retirado", /silice-capa/],
   ["clases del SideNav de Carbon", /cds--side-nav/],
+  // El panel «Carpeta y proyecto» de la barra se retiro con el selector de obra (plan de modulos, MOD-3b).
+  ["clases del panel de carpeta y proyecto retirado", /silice-contexto__/],
 ];
 
 describe("sin rastro de la interfaz clasica", () => {

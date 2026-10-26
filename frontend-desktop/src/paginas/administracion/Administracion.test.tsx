@@ -520,3 +520,71 @@ describe("Administracion: capa de los campos", () => {
   });
 });
 
+
+// Plan de modulos, MOD-3b (diseno de modulos §7 y §12.2): las carpetas de trabajo se administran en Administración ›
+// Carpetas de trabajo (BCP-5). El administrador puede cambiar de carpeta pero no editar la hoja: sin «Demostración».
+describe("Administracion: Carpetas de trabajo", () => {
+  const fetchFalso = vi.fn<typeof fetch>();
+  const CASOS = {
+    actual: { nombre: "silice.db", ruta_relativa: "casos/silice.db" },
+    casos: [
+      { nombre: "silice.db", ruta_relativa: "casos/silice.db" },
+      { nombre: "s1.db", ruta_relativa: "casos/s1.db" },
+    ],
+    empresa: { nombre: "silice.db", ruta_relativa: "casos/silice.db" },
+    es_demostracion: false,
+  };
+  const ADMIN_CON_CARPETAS: SesionRespuesta = { ...SESION, acciones: [...SESION.acciones, "cambiar_caso"] };
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchFalso);
+    fetchFalso.mockReset();
+    fijarCsrf("tok");
+    fetchFalso.mockImplementation(async (entrada) => {
+      const ruta = String(entrada);
+      if (ruta === "/v1/casos") return json(CASOS);
+      if (ruta === "/v1/cuentas") return json({ cuentas: [ADMIN], aviso_arma_y_revisa: AVISO });
+      return json({ detalle: "No encontrado." }, 404);
+    });
+  });
+  afterEach(() => {
+    fijarCsrf(null);
+    vi.unstubAllGlobals();
+  });
+
+  function montarConCarpetas(sesion: SesionRespuesta, abrirCarpeta = vi.fn(async () => true)) {
+    const valor: Aplicacion = { sesion, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), abrirCarpeta };
+    render(
+      <ContextoAplicacion.Provider value={valor}>
+        <PaginaAdministracion />
+      </ContextoAplicacion.Provider>,
+    );
+    return abrirCarpeta;
+  }
+
+  test("el admin ve la pestaña «Carpetas de trabajo» con la lista y «Crear», sin «Demostración»", async () => {
+    const u = userEvent.setup();
+    montarConCarpetas(ADMIN_CON_CARPETAS);
+    await u.click(screen.getByRole("tab", { name: "Carpetas de trabajo" }));
+    const lista = await screen.findByRole("list", { name: "Carpetas de trabajo de la instalación" }, PIDE);
+    expect(within(lista).getAllByRole("listitem").map((li) => li.querySelector(".silice-carpetas__nombre")?.textContent)).toEqual([
+      "silice",
+      "s1",
+    ]);
+    expect(screen.getByRole("tab", { name: "Crear" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Demostración" })).not.toBeInTheDocument();
+  });
+
+  test("abrir una carpeta desde la pestaña pasa por la aplicación (confirmación y aviso del armazón)", async () => {
+    const u = userEvent.setup();
+    const abrirCarpeta = montarConCarpetas(ADMIN_CON_CARPETAS);
+    await u.click(screen.getByRole("tab", { name: "Carpetas de trabajo" }));
+    await u.click(await screen.findByRole("button", { name: "Abrir s1" }, PIDE));
+    expect(abrirCarpeta).toHaveBeenCalledWith("s1.db");
+  });
+
+  test("sin cambiar de carpeta no hay pestaña «Carpetas de trabajo»", () => {
+    montarConCarpetas(SESION);
+    expect(screen.queryByRole("tab", { name: "Carpetas de trabajo" })).not.toBeInTheDocument();
+  });
+});
