@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -7,6 +7,7 @@ import { alertaConTexto } from "../../test/ayudas";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
+import { cancelarSalida, responderSalida } from "../../shell/salida";
 import { formulariosSucios, olvidarFormularios } from "../../shell/sucio";
 import PaginaMercado from "./index";
 
@@ -196,6 +197,7 @@ describe("Estudio de mercado", () => {
     });
   });
   afterEach(() => {
+    cancelarSalida();
     olvidarFormularios();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -225,8 +227,9 @@ describe("Estudio de mercado", () => {
       ["Promedio", "140,00 Bs"],
       ["Máximo", "200,00 Bs"],
     ]);
-    // El exacto de la API queda a la vista de quien lo pida (title), formateado una sola vez.
-    expect(within(franja).getByText("140,00")).toHaveAttribute("title", "140.00");
+    // Formateado una sola vez y sin el texto de la API con punto decimal en ninguna parte (ni en el title).
+    expect(within(franja).getByText("140,00")).not.toHaveAttribute("title");
+    expect(franja.querySelector("[title]")).toBeNull();
     expect(within(franja).getAllByText("de 5 observaciones")).toHaveLength(5);
     expect(within(franja).getByText("1 observación en otra moneda no entra en las cifras.")).toBeInTheDocument();
     // La propuesta de compra (la mediana) con su razon; el campo de precio, prellenado como se escribe.
@@ -241,6 +244,7 @@ describe("Estudio de mercado", () => {
     expect(within(tabla).getByText("9,50 USD")).toBeInTheDocument();
     expect(within(tabla).getByText("No: está en USD")).toBeInTheDocument();
     expect(tabla).not.toHaveTextContent("2026-10-20");
+    expect(within(tabla).getByText("150,00 Bs")).not.toHaveAttribute("title");
   });
 
   test("cobro: su costo (piso), el precio con utilidad y la razón cuando la competencia cobra menos que su costo", async () => {
@@ -467,5 +471,116 @@ describe("Estudio de mercado", () => {
     const alerta = await alertaConTexto();
     expect(alerta).toHaveTextContent("No se pudo leer el estudio de mercado");
     expect(alerta).toHaveTextContent("Esta carpeta de trabajo aún no tiene moneda");
+  });
+
+  // Ronda 2 del arbitro: lo que se uso queda en el campo y la pantalla queda limpia.
+  test("cobro: tras usar un precio escrito, el campo lo conserva, la pantalla queda limpia y un segundo uso lo repite", async () => {
+    const u = userEvent.setup();
+    montar();
+    await elegirPartida(u);
+    await u.clear(campoPrecio());
+    await u.type(campoPrecio(), "1.980,00");
+    await u.click(screen.getByRole("button", { name: "Usar este precio" }));
+    await screen.findByText(/Precio objetivo guardado/);
+    expect(campoPrecio()).toHaveValue("1.980,00");
+    expect(formulariosSucios()).toEqual([]);
+    await u.click(screen.getByRole("button", { name: "Usar este precio" }));
+    await waitFor(() => expect(llamadas("POST", /\/usar$/)).toHaveLength(2));
+    expect(llamadas("POST", /\/usar$/)[1].cuerpo).toEqual({ precio: "1.980,00", observaciones: [11, 12, 13, 14] });
+  });
+
+  test("compra: tras confirmar un precio escrito, el campo lo conserva, la pantalla queda limpia y un segundo uso lo repite", async () => {
+    const u = userEvent.setup();
+    montar();
+    await elegirInsumo(u);
+    await u.clear(campoPrecio());
+    await u.type(campoPrecio(), "135,50");
+    await u.click(screen.getByRole("button", { name: "Usar este precio" }));
+    await u.click(await screen.findByRole("button", { name: "Confirmar" }));
+    await screen.findByText(/Precio guardado/);
+    expect(campoPrecio()).toHaveValue("135,50");
+    expect(formulariosSucios()).toEqual([]);
+    await u.click(screen.getByRole("button", { name: "Usar este precio" }));
+    await u.click(await screen.findByRole("button", { name: "Confirmar" }));
+    await waitFor(() => expect(llamadas("POST", /\/usar$/)).toHaveLength(2));
+    expect(llamadas("POST", /\/usar$/)[1].cuerpo).toEqual({ precio: "135,50", observacion_id: null });
+  });
+
+  test("el aviso de cobro sale de la razón que manda la API, no de comparar cifras redondeadas", async () => {
+    const u = userEvent.setup();
+    // Cifras redondeadas que se leen iguales (q1 = piso = 2.010,50) con la razón de «por debajo» del servidor, que
+    // compara los exactos.
+    responder("GET", /^\/v1\/mercado\/cobro\/OBRA-04\?/, () =>
+      json({ ...ESTUDIO_COBRO, estadisticas: { ...ESTUDIO_COBRO.estadisticas, q1: "2010.50" } }),
+    );
+    montar();
+    await elegirPartida(u);
+    const razon = screen.getByText("La competencia cobra menos que su costo: se propone su costo.");
+    expect(within(razon.closest("p")!).getByRole("img", { name: "Aviso" })).toBeInTheDocument();
+  });
+
+  test("con la razón de «igual o por encima» no hay aviso aunque el primer cuartil redondeado se lea menor", async () => {
+    const u = userEvent.setup();
+    responder("GET", /^\/v1\/mercado\/cobro\/OBRA-04\?/, () =>
+      json({
+        ...ESTUDIO_COBRO,
+        estadisticas: { ...ESTUDIO_COBRO.estadisticas, q1: "2010.49" },
+        propuesta: { precio: "2010.50", razon: "Primer cuartil del mercado, igual o por encima de su costo." },
+      }),
+    );
+    montar();
+    await elegirPartida(u);
+    const razon = screen.getByText("Primer cuartil del mercado, igual o por encima de su costo.");
+    expect(within(razon.closest("p")!).queryByRole("img", { name: "Aviso" })).not.toBeInTheDocument();
+  });
+
+  test("elegir otro insumo con un precio a medio escribir pregunta antes; «Quedarme» lo conserva", async () => {
+    const u = userEvent.setup();
+    responder("GET", /^\/v1\/mercado\/compra\/ARE-LAV\?/, () => json({ ...ESTUDIO_COMPRA, codigo: "ARE-LAV", observaciones: [] }));
+    montar();
+    await elegirInsumo(u);
+    await u.clear(campoPrecio());
+    await u.type(campoPrecio(), "135,50");
+    const buscador = screen.getByRole("combobox", { name: "Insumo" });
+    await u.clear(buscador);
+    await u.type(buscador, "arena");
+    await u.click(await screen.findByRole("option", { name: /Arena lavada ficticia/ }));
+    expect(llamadas("GET", /\/v1\/mercado\/compra\/ARE-LAV/)).toEqual([]);
+    expect(campoPrecio()).toHaveValue("135,50");
+    act(() => responderSalida(false));
+    await waitFor(() => expect(buscador).toHaveValue("Cemento gris ficticio, saco de 42,5 kg"));
+    expect(campoPrecio()).toHaveValue("135,50");
+    expect(llamadas("GET", /\/v1\/mercado\/compra\/ARE-LAV/)).toEqual([]);
+  });
+
+  test("elegir otro insumo con un precio a medio escribir: «Salir y descartar» cambia de insumo", async () => {
+    const u = userEvent.setup();
+    responder("GET", /^\/v1\/mercado\/compra\/ARE-LAV\?/, () => json({ ...ESTUDIO_COMPRA, codigo: "ARE-LAV", observaciones: [] }));
+    montar();
+    await elegirInsumo(u);
+    await u.type(campoPrecio(), "5");
+    const buscador = screen.getByRole("combobox", { name: "Insumo" });
+    await u.clear(buscador);
+    await u.type(buscador, "arena");
+    await u.click(await screen.findByRole("option", { name: /Arena lavada ficticia/ }));
+    expect(llamadas("GET", /\/v1\/mercado\/compra\/ARE-LAV/)).toEqual([]);
+    act(() => responderSalida(true));
+    await waitFor(() => expect(llamadas("GET", /\/v1\/mercado\/compra\/ARE-LAV/)).toHaveLength(1));
+    await waitFor(() => expect(campoPrecio()).toHaveValue("130,00"));
+    expect(formulariosSucios()).toEqual([]);
+  });
+
+  test("si confirmar falla con un error que no es del campo, el foco va al aviso de error", async () => {
+    const u = userEvent.setup();
+    responder("POST", /^\/v1\/mercado\/compra\/CEM-GRIS\/usar$/, () =>
+      json({ detail: "La carpeta de trabajo no tiene lista para armar en Bs." }, 409),
+    );
+    montar();
+    await elegirInsumo(u);
+    await u.click(screen.getByRole("button", { name: "Usar este precio" }));
+    await u.click(await screen.findByRole("button", { name: "Confirmar" }));
+    const alerta = await alertaConTexto();
+    expect(alerta).toHaveTextContent("La carpeta de trabajo no tiene lista para armar en Bs.");
+    await waitFor(() => expect(alerta.closest("[tabindex='-1']")).toHaveFocus());
   });
 });
