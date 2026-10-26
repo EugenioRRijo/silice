@@ -41,7 +41,13 @@ export function Similares({ similares }: Props) {
                   <p className="cds--type-heading-compact-01">{TITULOS[t]}</p>
                   <TablaDensa
                     etiqueta={`${TITULOS[t]} de ${s.codigo}`}
-                    columnas={COLUMNAS[t].map((c) => ({ clave: c.clave, titulo: c.titulo, numerica: c.numerica }))}
+                    // Las celdas llegan escritas en es-VE («1.500,5»), que `compararDecimales` no lee: sin orden.
+                    columnas={COLUMNAS[t].map((c) => ({
+                      clave: c.clave,
+                      titulo: c.titulo,
+                      numerica: c.numerica,
+                      ordenable: false,
+                    }))}
                     filas={s.tablas![t].map((f, i) => ({ id: `${s.codigo}-${t}-${i}`, ...f }))}
                   />
                 </div>
