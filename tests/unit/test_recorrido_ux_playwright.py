@@ -83,8 +83,8 @@ def test_medicion_sin_controles_de_la_barra_no_pasa_por_verde() -> None:
 def test_resumen_por_letra_y_con_recorrido() -> None:
     filas = [
         _fila(),
-        _fila(letra="grande", letra_aplicada="grande", modo_nav="capa", duplicados_nav=2),
-        _fila(letra="grande", letra_aplicada="normal", modo_nav="capa"),
+        _fila(letra="grande", letra_aplicada="grande", modo_nav="sidebar", duplicados_nav=2),
+        _fila(letra="grande", letra_aplicada="normal", modo_nav="sidebar"),
         _fila(id="hoja", en_menu=False, h1=0),
         _fila(id="libros", recorrido=True, recorrido_visible=True, recorrido_solapa=False),
         _fila(id="inicio", recorrido=True, recorrido_visible=False, recorrido_solapa=True),
@@ -95,9 +95,176 @@ def test_resumen_por_letra_y_con_recorrido() -> None:
     assert resumen["fuera_de_menu_sin_h1"] == 1
     assert resumen["duplicados_nav"] == 2
     assert resumen["letra_no_aplicada"] == 1
-    assert resumen["modo_nav"] == {"barra": 2, "capa": 2}
+    assert resumen["modo_nav"] == {"barra": 2, "sidebar": 2}
     assert resumen["por_letra"]["normal"]["mediciones"] == 2
     assert resumen["por_letra"]["grande"]["duplicados_nav"] == 2
     assert resumen["con_recorrido"]["mediciones"] == 2
     assert resumen["con_recorrido"]["columna_no_visible"] == 1
     assert resumen["con_recorrido"]["columna_solapa"] == 1
+
+
+# --------------------------- plan de modulos (MOD-5) -------------------------------------------
+
+
+def test_cada_ruta_dice_su_modulo_y_su_area() -> None:
+    from scripts.recorrido_ux_playwright import rutas_de_la_interfaz
+
+    rutas = {r["id"]: r for r in rutas_de_la_interfaz()}
+    # 21 pantallas de antes, los tres inicios y «Estudio de mercado» (plan de modulos, choque 5).
+    assert len(rutas) == 25
+    assert "inicio" not in rutas
+    assert (rutas["auditoria"]["modulo"], rutas["auditoria"]["area"]) == ("auditoria", "inicio")
+    assert (rutas["obras"]["modulo"], rutas["obras"]["area"]) == ("obras", "inicio")
+    assert (rutas["produccion"]["modulo"], rutas["produccion"]["area"]) == ("produccion", "inicio")
+    assert (rutas["mercado"]["modulo"], rutas["mercado"]["area"]) == ("obras", "mercado")
+    assert (rutas["revisar"]["modulo"], rutas["revisar"]["area"]) == ("auditoria", "paquetes")
+    assert (rutas["existencias"]["modulo"], rutas["existencias"]["area"]) == (
+        "produccion",
+        "existencias",
+    )
+    assert (rutas["administracion"]["modulo"], rutas["administracion"]["area"]) == (None, None)
+    assert (rutas["acerca"]["modulo"], rutas["acerca"]["area"]) == (None, None)
+
+
+def test_los_tres_modulos_con_sus_areas_en_orden() -> None:
+    from scripts.recorrido_ux_playwright import modulos_de_la_interfaz
+
+    modulos = modulos_de_la_interfaz()
+    # Orden y textos de «Restricciones globales» del plan de modulos.
+    assert [(m, d["titulo"]) for m, d in modulos.items()] == [
+        ("auditoria", "Auditoría"),
+        ("obras", "Presupuestos y obras"),
+        ("produccion", "Producción"),
+    ]
+    assert list(modulos["auditoria"]["areas"].values()) == [
+        "Inicio",
+        "Auditar",
+        "Paquetes",
+        "Historial",
+    ]
+    assert list(modulos["obras"]["areas"].values()) == [
+        "Inicio",
+        "Obras",
+        "Partidas",
+        "Mercado",
+        "Aprobaciones",
+        "Control",
+    ]
+    assert modulos["produccion"]["areas"] == {"inicio": "Inicio", "existencias": "Existencias"}
+
+
+@pytest.mark.parametrize(
+    ("ancho", "letra", "posible"),
+    [
+        (1366, "normal", True),
+        (1365, "normal", False),
+        (1056, "normal", False),
+        (1707, "grande", False),
+        (1708, "grande", True),
+        (2048, "muy-grande", False),
+        (2049, "muy-grande", True),
+        (1366, "grande", False),
+    ],
+)
+def test_fijado_posible_desde_1366_por_la_escala(ancho: int, letra: str, posible: bool) -> None:
+    from scripts.recorrido_ux_playwright import fijado_posible
+
+    assert fijado_posible(ancho, letra) is posible
+
+
+def test_sidebar_esperado_por_estado() -> None:
+    from scripts.recorrido_ux_playwright import sidebar_esperado
+
+    assert sidebar_esperado("oculto", 1366, "normal") is None
+    assert sidebar_esperado("abierto", 1056, "muy-grande") == "capa"
+    assert sidebar_esperado("fijado", 1366, "normal") == "fijado"
+    # Sin ancho para fijarlo se comporta como oculto.
+    assert sidebar_esperado("fijado", 1056, "normal") is None
+    assert sidebar_esperado("fijado", 1366, "grande") is None
+
+
+def test_sidebars_con_comas_o_espacios_y_desconocido_con_error() -> None:
+    from scripts.recorrido_ux_playwright import sidebars_pedidos
+
+    assert sidebars_pedidos(["fijado,oculto"]) == ["oculto", "fijado"]
+    assert sidebars_pedidos(["abierto", "oculto"]) == ["oculto", "abierto"]
+    with pytest.raises(SystemExit):
+        sidebars_pedidos(["capa"])
+
+
+def test_camino_por_el_menu_de_cada_pantalla() -> None:
+    from scripts.recorrido_ux_playwright import camino_por_menu
+
+    assert camino_por_menu("componer") == {
+        "modulo": "Presupuestos y obras",
+        "area": "Partidas",
+        "pantalla": "Componer una partida",
+        "inicio": False,
+    }
+    assert camino_por_menu("auditoria") == {
+        "modulo": "Auditoría",
+        "area": "Inicio",
+        "pantalla": "Inicio de auditoría",
+        "inicio": True,
+    }
+    assert camino_por_menu("acerca") == {
+        "modulo": None,
+        "area": None,
+        "pantalla": "Acerca de Sílice",
+        "inicio": False,
+    }
+    with pytest.raises(ValueError):
+        camino_por_menu("inicio")
+
+
+def test_umbral_medido_es_el_menor_ancho_desde_el_que_siempre_cabe() -> None:
+    from scripts.recorrido_ux_playwright import umbral_medido
+
+    # Cabe desde 1290 salvo un hueco en 1366 (aparece el texto de la obra): manda el ultimo hueco.
+    caben = {1200: False, 1280: True, 1290: True, 1366: False, 1367: True, 1500: True}
+    assert umbral_medido(caben) == pytest.approx(1366.98)
+    assert umbral_medido({1000: True, 1100: True}) == pytest.approx(999.98)
+    # Si ni el mas ancho cabe, no hay umbral.
+    assert umbral_medido({1000: True, 2600: False}) is None
+
+
+def test_axe_del_inicio_de_antes_pasa_al_inicio_de_auditoria() -> None:
+    # «Últimas auditorías» del Inicio de la linea base vive hoy en el inicio de Auditoría.
+    fila = _fila(id="auditoria", axe=[{"id": "scrollable-region-focusable"}])
+    assert axe_nuevas(fila) == []
+    assert axe_nuevas(_fila(id="obras", axe=[{"id": "scrollable-region-focusable"}])) == [
+        "scrollable-region-focusable"
+    ]
+
+
+def test_fallo_nav_nombra_el_sidebar_que_tapa_o_que_no_es_el_esperado() -> None:
+    linea = fallo_nav(
+        _fila(sidebar="fijado", sidebar_modo="fijado", sidebar_esperado="fijado", sidebar_tapa=True)
+    )
+    assert linea is not None and "tapa" in linea
+    linea = fallo_nav(
+        _fila(sidebar="fijado", sidebar_modo="fijado", sidebar_esperado=None, sidebar_tapa=False)
+    )
+    assert linea is not None and "sidebar fijado (se esperaba ninguno)" in linea
+    assert fallo_nav(_fila(sidebar="abierto", sidebar_modo="capa", sidebar_esperado="capa")) is None
+
+
+def test_resumen_por_estado_del_sidebar_y_por_modulo() -> None:
+    filas = [
+        _fila(sidebar="oculto", modulo="obras"),
+        _fila(sidebar="abierto", sidebar_modo="capa", sidebar_esperado="capa", modulo="obras"),
+        _fila(
+            sidebar="fijado",
+            sidebar_modo="fijado",
+            sidebar_esperado="fijado",
+            sidebar_tapa=True,
+            modulo="auditoria",
+        ),
+        _fila(sidebar="fijado", sidebar_modo=None, sidebar_esperado="fijado", modulo="auditoria"),
+    ]
+    resumen = resumir(filas)
+    assert resumen["sidebar_tapa"] == 1
+    assert resumen["sidebar_distinto"] == 1
+    assert resumen["por_sidebar"]["fijado"]["mediciones"] == 2
+    assert resumen["por_sidebar"]["oculto"]["sidebar_tapa"] == 0
+    assert resumen["por_modulo"]["obras"]["mediciones"] == 2
