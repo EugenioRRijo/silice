@@ -10771,6 +10771,18 @@
             },
             "type": "array",
             "title": "Eventos"
+          },
+          "ultima_aprobada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultima Aprobada",
+            "description": "El código de la versión del último dictamen que aprobó (con o sin observaciones); `null` si ninguna. La misma regla que marca `ultima_aprobada` en `GET /v1/entregas/versiones`"
           }
         },
         "type": "object",
@@ -10778,7 +10790,8 @@
           "rastro",
           "fases",
           "versiones",
-          "eventos"
+          "eventos",
+          "ultima_aprobada"
         ],
         "title": "AprobacionObraRespuesta"
       },
