@@ -1074,7 +1074,7 @@ con código 1 si un paso falla. La única siembra es la de `sembrar_datos` (cuen
 tabla de olas y corre `tests/unit/test_api_acceso_por_ruta.py`, `tests/unit/test_permisos.py`, `tests/integration/test_migraciones.py`
 y `tests/unit/test_front_rutas_api.py` tras cada integración.
 
-## Decisiones para Eugenio (ratificar al leer; el plan las toma así mientras tanto)
+## Decisiones para Eugenio (RATIFICADAS por Eugenio el 2026-10-25 al aprobar el diseño de módulos; la ubicación de «Estudio de mercado» y «Aprobar» la fija ahora el diseño de módulos: áreas Mercado y Aprobaciones de «Presupuestos y obras»)
 
 1. Revisa no gana `cambiar_caso`: llega a la carpeta de lo que debe aprobar con «Abrir» desde «Por aprobar» (choque 2).
 2. «Estudio de mercado» va en el área Crear, después de «Catálogo»; «Aprobar una versión», en Auditar.

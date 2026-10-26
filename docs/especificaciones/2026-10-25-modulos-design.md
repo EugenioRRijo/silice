@@ -1,6 +1,6 @@
 # Sílice por módulos, con un Inicio propio en cada uno: diseño
 
-**Fecha:** 2026-10-25 · **Rama:** `inc/ruta-s2-mig-adm-empresa` (árbol `.worktrees/s2madm`) · **Estado:** PROPUESTO (por aprobar por Eugenio).
+**Fecha:** 2026-10-25 · **Rama:** `inc/ruta-s2-mig-adm-empresa` (árbol `.worktrees/s2madm`) · **Estado:** APROBADO por Eugenio (2026-10-25).
 **Origen:** sesión de diseño con Eugenio del 2026-10-25 (skills impeccable y taste; maquetas en el compañero visual:
 `inicio-dashboard-v2.html` y `modulos-v2.html`). Se construye sobre la barra superior ya hecha
 (`2026-10-25-barra-superior-design.md`) y encaja con `2026-10-25-montar-presupuesto-design.md`.
