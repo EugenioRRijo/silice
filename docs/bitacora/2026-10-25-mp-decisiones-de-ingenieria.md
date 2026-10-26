@@ -314,6 +314,7 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    historia entre a40054d5 y 2f0d25e3; en adelante, el oráculo de una columna nueva va en el commit rojo. Menores encargados:
    margen viejo visible mientras llega la respuesta nueva, ayuda sin `aria-describedby`, consulta cuadrática por render
    (front); `InvalidOperation` con un `pu` absurdo y mensaje propio del 422 de `pu` (con T25).
+   **Cerrados** los tres del front: la columna queda vacía y sin error mientras llega la respuesta a otros precios, la ayuda describe la cabecera (`aria-describedby`) y la consulta se arma una vez por filas (`useMemo`, conjunto en vez de `includes`); además, el error va en una región `role="status"` montada vacía.
 
 ## T17, eventos de aprobación (aprobada en ronda 1)
 
@@ -505,6 +506,7 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   modal y `esperarEnvios`; tras aceptar, lo editado se vuelve a sembrar sin tocar `useEdicionDeSeccion`.
 - Corrección: los cambios del borrador ya no pierden ni corren las líneas de un APU cuando cambia su número (antes se
   emparejaban por posición). La ayuda del APU decía «la coma no se acepta» (contradecía la regla del 2026-10-25): corregida.
+- **Menores del árbitro de T26, cerrados** (pruebas en rojo: `ca7e0d75`): líneas homónimas (se alinean primero enteras, con cantidad y precio, y luego por descripción), versión en otra moneda que la línea base (`MonedasDistintas`: el antes y después lo dice en vez de mezclar montos) y el diálogo de agregar línea como formulario sucio con solo la unidad, la depreciación o la modalidad.
 
 ## MOD-4a, mesa de control (aprobada en la ronda 2)
 

@@ -1,13 +1,16 @@
-import { configure, render, screen, waitFor, within } from "@testing-library/react";
+import { configure, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import type { FilaDensa } from "../../comun/TablaDensa";
 import { DialogoSalida } from "../../shell/DialogoSalida";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios } from "../../shell/sucio";
 import PaginaHoja from "./index";
+import { useObjetivosDeMercado } from "./ObjetivoDeMercado";
 import type { BorradorAbierto, FilaPresupuesto, VersionesRespuesta, VistaPresupuesto } from "./logica";
 
 // Tarea 16 del plan de montar un presupuesto: la Hoja muestra, junto al precio unitario de cada partida, el precio de
@@ -290,5 +293,93 @@ describe("Hoja: objetivo de mercado junto al precio unitario (Tarea 16)", () => 
     expect(tandas.flatMap((t) => (t.get("partidas") ?? "").split(","))).toEqual(codigos);
     // La fila 60 está en la segunda página de la tabla (50 por página); su objetivo llega igual a la Hoja.
     await waitFor(() => expect(screen.getByText(AYUDA)).toBeInTheDocument());
+  });
+  test("la ayuda describe la cabecera «Objetivo de mercado»", async () => {
+    montar();
+    await waitFor(async () => expect(texto((await celdaDe("OBRA-04")).celda)).toContain("1.980,00"));
+    expect(screen.getByRole("columnheader", { name: COLUMNA })).toHaveAccessibleDescription(AYUDA);
+  });
+
+  test("el error de la lectura sale en una región role=status que ya estaba, vacía, antes de la respuesta", async () => {
+    let responder: (r: Response) => void = () => {};
+    alObjetivos = () => new Promise<Response>((r) => (responder = r));
+    montar();
+    await screen.findByRole("table", { name: "Presupuesto" });
+    await waitFor(() => expect(pedidasDeObjetivos()).toHaveLength(1));
+    const vaciasAntes = Array.from(document.querySelectorAll('[role="status"]')).filter((r) => texto(r as HTMLElement) === "");
+    responder(json({ detalle: "No se pudo leer el estudio de mercado." }, 503));
+    const error = await screen.findByText("No se pudieron leer los objetivos de mercado: No se pudo leer el estudio de mercado.");
+    const region = error.closest('[role="status"]');
+    expect(region).not.toBeNull();
+    expect(vaciasAntes).toContain(region);
+  });
+
+  // Las pruebas del gancho solo: lo que pinta la columna para una fila y lo que va bajo la tabla.
+  function envoltura({ children }: { children: ReactNode }) {
+    const valor: Aplicacion = {
+      sesion: SESION,
+      proyecto: "VIV-80",
+      nombreProyecto: "Vivienda de 80 m²",
+      caso: { nombre: "obra", ruta_relativa: "data/obra.db" },
+      recargarProyectos: vi.fn(),
+      alExpirar,
+    };
+    return <ContextoAplicacion.Provider value={valor}>{children}</ContextoAplicacion.Provider>;
+  }
+  const montarGancho = (inicial: FilaPresupuesto[]) =>
+    renderHook(({ filas: f }: { filas: FilaPresupuesto[] }) => useObjetivosDeMercado(f, "Bs"), {
+      wrapper: envoltura,
+      initialProps: { filas: inicial },
+    });
+  const pintada = (columna: { celda?: unknown }, partida: string, pu: string) =>
+    String((columna.celda as (f: FilaDensa) => ReactNode)({ id: "r", partida, pu_exacto: pu })).replace(/\s+/g, " ");
+
+  test("al cambiar los precios unitarios no se ve el margen calculado con el precio anterior mientras llega el nuevo", async () => {
+    let n = 0;
+    alObjetivos = () => (++n === 1 ? json(OBJETIVOS) : new Promise<Response>(() => {}));
+    const { result, rerender } = montarGancho([fila("OBRA-04", { texto: "2074.44", exacto: "2074.4449" })]);
+    await waitFor(() => expect(pintada(result.current.columna, "OBRA-04", "2074.4449")).toBe("1.980,00 · margen −4,6 %"));
+    // Cambian los Parámetros: el precio unitario es otro y la respuesta nueva no ha llegado.
+    rerender({ filas: [fila("OBRA-04", { texto: "2000.00", exacto: "2000" })] });
+    await waitFor(() => expect(pedidasDeObjetivos()).toHaveLength(2));
+    expect(pintada(result.current.columna, "OBRA-04", "2000")).toBe("");
+  });
+
+  test("al cambiar los precios unitarios no queda el error de la lectura anterior mientras llega la nueva", async () => {
+    let n = 0;
+    alObjetivos = () => (++n === 1 ? json({ detalle: "Sin estudio." }, 503) : new Promise<Response>(() => {}));
+    const { result, rerender } = montarGancho([fila("OBRA-04", { texto: "2074.44", exacto: "2074.4449" })]);
+    const aviso = () => {
+      const { container, unmount } = render(<>{result.current.aviso}</>);
+      const t = texto(container);
+      unmount();
+      return t;
+    };
+    await waitFor(() => expect(aviso()).toBe("No se pudieron leer los objetivos de mercado: Sin estudio."));
+    rerender({ filas: [fila("OBRA-04", { texto: "2000.00", exacto: "2000" })] });
+    await waitFor(() => expect(pedidasDeObjetivos()).toHaveLength(2));
+    expect(aviso()).toBe("");
+  });
+
+  test("con 2.000 filas sin cambios, pintar otra vez no vuelve a armar la consulta", async () => {
+    const muchas = Array.from({ length: 2000 }, (_, i) => fila(`P-${String(i).padStart(4, "0")}`, { texto: "1.00", exacto: "1" }));
+    // Cuenta las veces que se recorren las filas (armar la consulta las recorre).
+    let vueltas = 0;
+    const recorrer = Array.prototype[Symbol.iterator];
+    Object.defineProperty(muchas, Symbol.iterator, {
+      value: function (this: FilaPresupuesto[]) {
+        vueltas += 1;
+        return recorrer.call(this);
+      },
+    });
+    alObjetivos = () => json({ objetivos: [] });
+    const { rerender } = montarGancho(muchas);
+    await waitFor(() => expect(pedidasDeObjetivos().length).toBeGreaterThan(0));
+    const pedidas = pedidasDeObjetivos().length;
+    const antes = vueltas;
+    rerender({ filas: muchas });
+    rerender({ filas: muchas });
+    expect(vueltas).toBe(antes);
+    expect(pedidasDeObjetivos()).toHaveLength(pedidas);
   });
 });

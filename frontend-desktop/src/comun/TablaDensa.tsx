@@ -28,6 +28,8 @@ export interface ColumnaDensa {
   // Como se lee el texto de la celda (formato es-VE, etiqueta en espanol llano). El valor original queda en el
   // `title` para trazabilidad y el orden sigue siendo el del valor original.
   presentar?: (valor: string) => string;
+  // El id de un texto en la página que explica la columna: la cabecera lo lleva en `aria-describedby`.
+  descripcion?: string;
 }
 
 // Los valores son texto tal como los manda la API: la tabla no los redondea ni los reformatea.
@@ -116,6 +118,7 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
   );
   const presentacion = new Map(columnas.filter((c) => c.presentar).map((c) => [c.clave, c.presentar]));
   const cabeceras = columnas.map((c) => ({ key: c.clave, header: c.titulo }));
+  const descripciones = new Map(columnas.flatMap((c) => (c.descripcion ? [[c.clave, c.descripcion] as const] : [])));
   const pintores = new Map(columnas.flatMap((c) => (typeof c.celda === "function" ? [[c.clave, c.celda] as const] : [])));
   const filaPorId = new Map(filas.map((f) => [f.id, f]));
   const pintar = (clave: string, valor: ReactNode, original: FilaDensa | undefined): ReactNode => {
@@ -147,7 +150,12 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
                     isSortable: !sinOrden.has(cabecera.key),
                   });
                   return (
-                    <TableHeader key={key} {...propiedades} className={numericas.has(cabecera.key) ? "silice-cifra" : undefined}>
+                    <TableHeader
+                      key={key}
+                      {...propiedades}
+                      className={numericas.has(cabecera.key) ? "silice-cifra" : undefined}
+                      aria-describedby={descripciones.get(cabecera.key)}
+                    >
                       {cabecera.header}
                     </TableHeader>
                   );

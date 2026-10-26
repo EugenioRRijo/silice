@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
@@ -32,15 +32,16 @@ const LARGO_PARTIDAS = 2000;
 const LARGO_PU = 4000;
 
 // Lo que se pide: los códigos sin repetir, en el orden de la Hoja, y el precio unitario EXACTO del primer renglón de
-// cada uno que lo tenga (el que se muestra va a dos decimales). Devuelve las rutas de cada tanda y lo enviado.
+// cada uno que lo tenga (el que se muestra va a dos decimales). Devuelve las rutas de cada tanda y lo enviado. Un
+// conjunto lleva los códigos ya vistos (buscarlos en una lista era cuadrático en una Hoja grande).
 export function consultasDeObjetivos(
   filas: Pick<FilaPresupuesto, "partida" | "pu">[],
   moneda: string,
 ): { rutas: string[]; enviados: Map<string, string> } {
   const enviados = new Map<string, string>();
-  const codigos: string[] = [];
+  const codigos = new Set<string>();
   for (const f of filas) {
-    if (!codigos.includes(f.partida)) codigos.push(f.partida);
+    codigos.add(f.partida);
     if (f.pu !== null && !enviados.has(f.partida)) enviados.set(f.partida, f.pu.exacto);
   }
   const rutas: string[] = [];
@@ -93,19 +94,25 @@ export function textoDelObjetivo(
 
 interface Leidos {
   clave: string;
-  objetivos: Map<string, ObjetivoDeMercado>;
+  objetivos: ReadonlyMap<string, ObjetivoDeMercado>;
   error: string | null;
 }
 
+const SIN_OBJETIVOS: ReadonlyMap<string, ObjetivoDeMercado> = new Map();
+
 // Lee los objetivos de las partidas de la Hoja (otra vez cuando cambian sus códigos o sus precios) y da la columna
-// «Objetivo de mercado» y lo que va bajo la tabla: la ayuda (si hay algún objetivo) o el error de la lectura. Si la
-// lectura falla, la Hoja sigue igual con la columna vacía.
+// «Objetivo de mercado» y lo que va bajo la tabla: la ayuda (si hay algún objetivo), que describe la cabecera, y la
+// región `role="status"` del error de la lectura, montada vacía desde el principio para que el lector de pantalla
+// anuncie lo que entre. Si la lectura falla, la Hoja sigue igual con la columna vacía. Lo leído vale solo para los
+// códigos y precios con que se pidió: mientras llega la respuesta a otros, la columna queda vacía y sin error.
 export function useObjetivosDeMercado(
   filas: FilaPresupuesto[],
   moneda: string,
 ): { columna: ColumnaDensa; aviso: ReactNode } {
   const { alExpirar } = useAplicacion();
-  const { rutas, enviados } = consultasDeObjetivos(filas, moneda);
+  const idAyuda = useId();
+  // Se arma una vez por filas y moneda, no en cada pintura (editar una cantidad vuelve a pintar la Hoja).
+  const { rutas, enviados } = useMemo(() => consultasDeObjetivos(filas, moneda), [filas, moneda]);
   const clave = rutas.join("\n");
   const [leidos, setLeidos] = useState<Leidos | null>(null);
 
@@ -134,23 +141,37 @@ export function useObjetivosDeMercado(
     };
   }, [clave, alExpirar]);
 
-  const objetivos = leidos?.objetivos ?? new Map<string, ObjetivoDeMercado>();
-  const columna: ColumnaDensa = {
-    clave: "objetivo",
-    titulo: "Objetivo de mercado",
-    numerica: true,
-    ordenable: false,
-    celda: (f: FilaDensa) => {
-      const texto = textoDelObjetivo(
-        objetivos.get(f.partida!),
-        { pu: f.pu_exacto ? f.pu_exacto : null, enviado: enviados.get(f.partida!) },
-        moneda,
-      );
-      return texto;
-    },
-  };
-  let aviso: ReactNode = null;
-  if (leidos?.error) aviso = <p className="cds--type-helper-text-01">{leidos.error}</p>;
-  else if (objetivos.size > 0) aviso = <p className="cds--type-helper-text-01">{AYUDA_OBJETIVO}</p>;
+  const vigentes = leidos !== null && leidos.clave === clave ? leidos : null;
+  const objetivos = vigentes?.objetivos ?? SIN_OBJETIVOS;
+  const error = vigentes?.error ?? null;
+  const conAyuda = objetivos.size > 0;
+  const columna = useMemo<ColumnaDensa>(
+    () => ({
+      clave: "objetivo",
+      titulo: "Objetivo de mercado",
+      numerica: true,
+      ordenable: false,
+      descripcion: conAyuda ? idAyuda : undefined,
+      celda: (f: FilaDensa) =>
+        textoDelObjetivo(
+          objetivos.get(f.partida!),
+          { pu: f.pu_exacto ? f.pu_exacto : null, enviado: enviados.get(f.partida!) },
+          moneda,
+        ),
+    }),
+    [objetivos, enviados, moneda, conAyuda, idAyuda],
+  );
+  const aviso: ReactNode = (
+    <>
+      {conAyuda && (
+        <p id={idAyuda} className="cds--type-helper-text-01">
+          {AYUDA_OBJETIVO}
+        </p>
+      )}
+      <p role="status" className="cds--type-helper-text-01">
+        {error ?? ""}
+      </p>
+    </>
+  );
   return { columna, aviso };
 }
