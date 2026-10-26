@@ -1,4 +1,4 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button, Checkbox, InlineNotification } from "@carbon/react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -146,6 +146,8 @@ interface PropsAccion {
 type ErroresDeRecepcion = Record<CampoDeRecepcion, string | null>;
 const SIN_ERRORES: ErroresDeRecepcion = { fecha: null, cantidad: null, precio: null };
 const ORDEN: CampoDeRecepcion[] = ["fecha", "cantidad", "precio"];
+// La casilla «Declararlo precio del corte» (Tarea 25) sin precio: el mismo texto que el 422 de la API.
+const PRECIO_PARA_EL_CORTE = "El precio unitario hace falta para declararlo precio del corte.";
 
 function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAccion) {
   const { alExpirar } = useAplicacion();
@@ -153,6 +155,7 @@ function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAcci
   const [fecha, setFecha] = useState(hoy);
   const [cantidad, setCantidad] = useState("");
   const [precio, setPrecio] = useState("");
+  const [declarar, setDeclarar] = useState(false);
   const [errores, setErrores] = useState<ErroresDeRecepcion>(SIN_ERRORES);
   const [general, setGeneral] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -162,13 +165,13 @@ function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAcci
   const { descripcion, unidad } = necesidad;
   const porUnidad = unidad ? `por ${unidad}, ` : "";
 
-  useFormularioSucio(PANTALLA, fecha !== hoy || cantidad.trim() !== "" || precio.trim() !== "");
+  useFormularioSucio(PANTALLA, fecha !== hoy || cantidad.trim() !== "" || precio.trim() !== "" || declarar);
 
   async function anotar() {
     const nuevos: ErroresDeRecepcion = {
       fecha: fecha ? null : "Escriba la fecha en que llegó el material.",
       cantidad: errorDeCifra(cantidad),
-      precio: errorDeCifra(precio),
+      precio: declarar && !precio.trim() ? PRECIO_PARA_EL_CORTE : errorDeCifra(precio),
     };
     setErrores(nuevos);
     setGeneral(null);
@@ -179,11 +182,13 @@ function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAcci
     }
     setEnviando(true);
     try {
+      const cuerpo = { proyecto, descripcion, unidad, evento: "recibida", fecha, cantidad, precio };
       await pedir("/v1/procura/compras", {
         metodo: "POST",
-        cuerpo: { proyecto, descripcion, unidad, evento: "recibida", fecha, cantidad, precio },
+        cuerpo: declarar ? { ...cuerpo, declarar_corte: true } : cuerpo,
       });
-      alHecho(`Recepción de ${descripcion} anotada con fecha ${fechaDeRanura(fecha)}.`);
+      const anotada = `Recepción de ${descripcion} anotada con fecha ${fechaDeRanura(fecha)}.`;
+      alHecho(declarar ? `${anotada} Su precio queda como precio del corte desde esa fecha.` : anotada);
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
       const campo = e instanceof ErrorDeApi && e.estado === 422 ? campoDelError(e.detalle) : null;
@@ -249,6 +254,17 @@ function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAcci
         value={precio}
         onChange={(e) => {
           setPrecio(e.target.value);
+          setErrores((previos) => ({ ...previos, precio: null }));
+        }}
+      />
+      <Checkbox
+        id={`${base}-declarar`}
+        labelText="Declararlo precio del corte"
+        helperText="Desde la fecha de llegada, Control de obra lo usará para separar el desvío de precio («Precios declarados de insumos»)."
+        checked={declarar}
+        disabled={enviando}
+        onChange={(_e, { checked }) => {
+          setDeclarar(checked);
           setErrores((previos) => ({ ...previos, precio: null }));
         }}
       />

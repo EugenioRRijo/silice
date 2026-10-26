@@ -11,16 +11,20 @@ trabajo de la sesión (`SesionDep`); las que escriben van con `BEGIN IMMEDIATE` 
   como texto con punto decimal; fechas aaaa-mm-dd o `null` sin línea base, y entonces `aviso` lo
   dice. `causas_sugeridas`: por partida, la causa de retraso que sugiere la procura al corte
   (Tarea 24: Valuaciones la preelige con el «hasta» de la valuación como corte).
-- `POST /compras` `{proyecto, descripcion, unidad, evento, fecha, cantidad, precio}` → 204.
-  `cantidad` y `precio` (unitario) van como texto tecleado (coma decimal, punto de miles), vacíos
-  si no se declaran.
+- `POST /compras` `{proyecto, descripcion, unidad, evento, fecha, cantidad, precio,
+  declarar_corte}` → 204. `cantidad` y `precio` (unitario) van como texto tecleado (coma decimal,
+  punto de miles), vacíos si no se declaran. Con `declarar_corte` (la casilla «Declararlo precio
+  del corte», MP-7, Tarea 25), el precio de la recepción queda además como precio del corte del
+  material en la obra desde la fecha de llegada, en la misma transacción: si no se puede declarar,
+  tampoco se anota la compra; sin precio o en un pedido es un 422 que lo dice.
 - `PUT /plazos` `{proyecto, descripcion, unidad, dias}` → 204; `dias` tecleado, entero de 0 a 365.
 
 Errores: el 422 de forma es un mensaje fijo que no repite lo enviado; el 422 de una regla
 (`CifraInvalida`, `ReglaDeProcura` y las del estudio de mercado) lleva su mensaje, y cualquier otro
-`ValueError` un texto fijo; 404 lo que no existe (obra o material); 409 sin moneda en la carpeta;
-503 fijo ante un fallo de la base. `Cache-Control: no-store` en toda respuesta. Quien escribe consta
-como la cuenta de la sesión (o `USUARIO_API` con la clave).
+`ValueError` un texto fijo; 404 lo que no existe (obra o material); 409 sin moneda en la carpeta o
+un precio del corte que la obra no admite (sin línea base o en otra moneda); 503 fijo ante un fallo
+de la base. `Cache-Control: no-store` en toda respuesta. Quien escribe consta como la cuenta de la
+sesión (o `USUARIO_API` con la clave).
 """
 
 from __future__ import annotations
@@ -37,8 +41,10 @@ from api.dependencias import USUARIO_API, SesionDeEscrituraDep, SesionDep
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
-from aplicacion.cifras import CifraInvalida
+from aplicacion.cifras import CifraInvalida, cifra_escrita
+from aplicacion.listas_para_armar import moneda_de_la_carpeta
 from aplicacion.mercado import CarpetaSinMoneda, NoExiste, ReglaDeMercado
+from aplicacion.precios_declarados import ReglaDelCorte, declarar_precio_del_corte
 from aplicacion.procura import (
     NecesidadDeInsumo,
     ReglaDeProcura,
@@ -58,6 +64,10 @@ MENSAJE_FORMA = (
 )
 MENSAJE_BASE = "No se pudo leer ni guardar la procura de la carpeta de trabajo."
 MENSAJE_INESPERADO = "No se pudo procesar la procura con esos datos."
+#: La casilla «Declararlo precio del corte» sin precio, o en un pedido (Tarea 25). El primero
+#: empieza por «El precio» para que la pantalla lo diga junto al campo del precio.
+MENSAJE_CORTE_SIN_PRECIO = "El precio unitario hace falta para declararlo precio del corte."
+MENSAJE_CORTE_EN_PEDIDO = "Solo el precio de una compra recibida se declara precio del corte."
 _LARGO_OBRA = 500
 _LARGO_DESCRIPCION = 300
 _LARGO_UNIDAD = 20
@@ -135,6 +145,10 @@ class CompraNueva(BaseModel):
         max_length=_LARGO_CIFRA,
         description="Precio unitario (por unidad del material), en la moneda de la carpeta",
     )
+    declarar_corte: bool = Field(
+        default=False,
+        description="Declarar el precio de la recepción como precio del corte de la obra",
+    )
 
 
 class PlazoNuevo(BaseModel):
@@ -175,7 +189,7 @@ def _traducir[T](hacer: Callable[[], T]) -> T:
         return hacer()
     except NoExiste as error:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(error)) from None
-    except CarpetaSinMoneda as error:
+    except (CarpetaSinMoneda, ReglaDelCorte) as error:
         raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from None
     except (CifraInvalida, ReglaDeProcura, ReglaDeMercado) as error:
         raise HTTPException(422, str(error)) from None
@@ -218,9 +232,16 @@ def leer_procura(
 
 @router.post("/compras", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def registrar(sesion: SesionDeEscrituraDep, datos: CompraNueva, activa: Activa) -> Response:
-    """Anota un pedido o una recepción de un material de la obra."""
+    """Anota un pedido o una recepción de un material de la obra (y, con la casilla, declara su
+    precio del corte)."""
 
     def escribir() -> None:
+        if datos.declarar_corte and datos.evento != "recibida":
+            raise ReglaDeProcura(MENSAJE_CORTE_EN_PEDIDO)
+        if datos.declarar_corte and not datos.precio.strip():
+            raise ReglaDeProcura(MENSAJE_CORTE_SIN_PRECIO)
+        momento = ahora()
+        responsable = _responsable(activa)
         registrar_compra(
             sesion,
             datos.proyecto,
@@ -230,9 +251,24 @@ def registrar(sesion: SesionDeEscrituraDep, datos: CompraNueva, activa: Activa) 
             fecha=datos.fecha,
             cantidad=datos.cantidad,
             precio=datos.precio,
-            responsable=_responsable(activa),
-            ahora=ahora(),
+            responsable=responsable,
+            ahora=momento,
         )
+        if datos.declarar_corte:
+            # La compra ya pasó sus reglas: el precio es positivo, la fecha no es posterior a hoy y
+            # está en la moneda de la carpeta, que debe ser la de la obra (no se convierte).
+            declarar_precio_del_corte(
+                sesion,
+                datos.proyecto,
+                descripcion=datos.descripcion,
+                unidad=datos.unidad,
+                precio=cifra_escrita(datos.precio),
+                fecha=datos.fecha,
+                fuente=f"Procura: compra recibida el {datos.fecha:%d/%m/%Y}",
+                responsable=responsable,
+                ahora=momento,
+                moneda=moneda_de_la_carpeta(sesion, momento.date()),
+            )
         sesion.commit()
 
     _traducir(escribir)
