@@ -69,6 +69,13 @@ def _plantillas(tmp_path_factory) -> dict[str, Path]:
             "INSERT INTO proyecto (id, nombre, descripcion, dominio) VALUES (7, 'Torre B', '', '')"
         )
         conexion.commit()
+    # la carpeta por omisión trae otra obra con el mismo código 7, y la obra 3
+    with closing(sqlite3.connect(casos["silice.db"])) as conexion:
+        conexion.executemany(
+            "INSERT INTO proyecto (id, nombre, descripcion, dominio) VALUES (?, ?, '', '')",
+            [(3, "Casa Demo"), (7, "Otra obra con el código 7")],
+        )
+        conexion.commit()
     return {"instalacion": plantilla_con_cuentas(carpeta), **casos}
 
 
@@ -419,3 +426,38 @@ def test_si_la_restauracion_no_se_confirma_la_ficha_no_cambia(
     monkeypatch.setattr(rutas_sesion, "recordar_proyecto", falla)
     assert navegador.get("/v1/sesion").status_code == 500
     assert caso_web.elegido(sesiones.huella_de(ficha)) is None
+
+
+# --- menor 1 del árbitro: un código de obra es de su carpeta ------------------------------------
+
+
+def test_sin_cambiar_caso_la_obra_de_otra_carpeta_no_se_cruza_con_la_por_omision() -> None:
+    """El «7» de s1 no es el «7» de silice.db; y una obra guardada sin el permiso es de la carpeta
+    por omisión, así que no vuelve pegada a s1 cuando lo recupera."""
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "7").status_code == 204
+    _cambiar_roles("ana", ["revisa"])
+
+    respuesta = entrar(navegador, "ana")
+    assert respuesta.json()["eleccion"]["proyecto"] is None
+
+    ficha = ficha_de(respuesta)
+    assert _obra(navegador, ficha, "3").status_code == 204  # la obra 3 de silice.db
+    _cambiar_roles("ana", ["arma"])
+
+    respuesta = entrar(navegador, "ana")
+    assert respuesta.json()["eleccion"] == {"caso": None, "proyecto": "3", "aviso": None}
+    assert navegador.get("/v1/casos").json()["actual"]["nombre"] == "silice.db"
+
+
+def test_quien_nunca_cambia_de_carpeta_recuerda_su_obra() -> None:
+    """Plan de montar, T5: todas las cuentas recuerdan; rita trabaja en la carpeta por omisión."""
+    navegador, ficha = con_cuenta(app, "rita")
+    assert _obra(navegador, ficha, "3").status_code == 204
+    _salir(navegador, ficha)
+    assert entrar(navegador, "rita").json()["eleccion"] == {
+        "caso": None,
+        "proyecto": "3",
+        "aviso": None,
+    }
