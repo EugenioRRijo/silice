@@ -462,6 +462,25 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
     mercado y sin avisarlo. El `precio` de la recepción es unitario. Menores que pasan a T24: exponer `causa_sugerida`,
     prueba de la mesa al 02/11, descripción del precio y `monkeypatch` sobrante.
 
+## T24, pestaña «Procura» en Control de obra
+
+1. **Pestañas por nombre:** «Procura» entra entre Valuaciones y Valor ganado; `index.tsx` elige cada panel por su nombre
+   (`Pestana`), no por su posición.
+2. **Alertas al día de hoy** (`GET /v1/procura` sin `corte`). El AVISO de la procura se pinta como «Advertencia» del
+   componente común `Severidad` (ícono y texto, nunca solo color).
+3. **«Pedida hoy»** usa la fecha del equipo de la persona; un material recibido sin pedido dice «No consta» y ya no ofrece
+   pedirlo (T23, 2). **«Recibida…»** no acepta una fecha posterior a hoy; cantidad y precio unitario opcionales, con la
+   regla de la coma; un 422 de regla se dice en su campo. Lo hecho se dice en una línea de estado neutra.
+4. **Causa sugerida en Valuaciones:** se pide la procura al «hasta» de la valuación (sin él, a hoy); la línea cuyo selector
+   no se ha tocado lleva la sugerida para su partida, con una ayuda que lo dice; en cuanto se toca, vale lo elegido
+   (también «Sin causa»). Una clave que no está en la lista de causas no se preelige; si la procura falla, no se sugiere
+   nada y la valuación se registra igual. **Por ratificar.**
+5. Commits: rojo `1fe57441`, `c38a4964` (front), `4bdd4499` (`docs/api.json` regenerado desde HEAD limpio). Menores de
+   T23 cerrados: `afea82e0` (rojo) y `481c203c` (`causas_sugeridas` en la ruta, precio unitario en el contrato),
+   `427c19ee` (mesa al 02/11 con la tubería antes del 04/11, sin `monkeypatch` sobrante); la recepción sin código de
+   catálogo ya consta en T23, 15. Las pruebas en rojo de T20 (`LineaBaseAprobada`) y T25 (`PreciosDeclarados`) que
+   viven en `src/paginas/control` siguen en rojo: no son de esta tarea.
+
 ## T19, enviar y dictamen en la mesa (aprobada en ronda 1)
 
 1. Quien arma también ve en su grupo «Aprobar» los envíos de OTRAS carpetas (de `GET /v1/aprobaciones/pendientes`); los
