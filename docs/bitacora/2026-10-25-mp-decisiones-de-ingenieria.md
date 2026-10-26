@@ -63,6 +63,10 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   la ventana, y una observación no anulada sigue siendo cierta.
 - El precio objetivo (cobro) admite hasta 2 decimales (céntimos); compra y observaciones no tienen ese límite.
   **Por ratificar.**
+- Encargo final: la conversión de alcance proyecto se reconoce por el número de su lista base, al principio de su
+  `origen` («Convertida de la lista n.º {id}: »), y no por el nombre, que se recorta a 120 caracteres y con nombres largos
+  confundía la lista de hoy con su «(2)». Lo usan el reuso de `lista_para_el_proyecto` y `_usada`; `core/` no cambia; las
+  conversiones anteriores, sin marca, se rehacen una vez.
 
 ## T17, eventos de aprobación (aprobada en ronda 1)
 
