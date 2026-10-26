@@ -32,6 +32,7 @@ import {
 } from "./logica";
 import type { Calculo, Filtros, MetodoDePrecios, OpcionDeRecuperacion } from "./logica";
 import { fechaDeRanura } from "./fechas";
+import { AntesYDespues } from "./AntesYDespues";
 import { CampoTexto } from "../../comun/CampoTexto";
 
 // --- el corte y los precios del corte, comunes a las tres pestañas ---------------------------
@@ -332,6 +333,7 @@ export function Recuperacion({
 
   return (
     <>
+      <AntesYDespues proyecto={proyecto} />
       <p className="silice-control__nota cds--type-helper-text-01">
         Las opciones se calculan a pedido, cada una sola, con el rendimiento y la cuadrilla de cada APU y un factor de
         eficiencia declarado (supuesto, no dato). Elegir una crea una versión nueva; la línea base no cambia.
