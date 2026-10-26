@@ -47,10 +47,6 @@ export interface AprobacionesDeObra {
   fases: string;
   versiones: Record<string, EstadoDeAprobacion>;
   eventos: EventoDeAprobacion[];
-}
-
-// La version del ultimo dictamen que aprobo (con o sin observaciones), o null: la misma regla de `aprobaciones.ultima_aprobada`.
-export function ultimaAprobada(a: AprobacionesDeObra): string | null {
-  const aprobadas = (a.eventos ?? []).filter((e) => e.tipo === "dictamen" && e.resultado !== null && ESTADOS_APROBADOS.has(e.resultado));
-  return aprobadas.length > 0 ? aprobadas[aprobadas.length - 1]!.version : null;
+  // La version del ultimo dictamen que aprobo (con o sin observaciones), o null: la decide la API.
+  ultima_aprobada: string | null;
 }

@@ -50,6 +50,7 @@ const evento = (id: number, tipo: string, version: string, resultado: string | n
 const APROBACIONES = {
   rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." },
   fases: "VIV-001 devuelta → VIV-002 aprobada",
+  ultima_aprobada: "VIV-002",
   versiones: {
     "VIV-001": { estado: "devuelta", por: "Rita Gómez <rita>", el: "2026-10-22T09:00:00", notas: "Corregir.", armo: false },
     "VIV-002": { estado: "aprobada", por: "Rita Gómez <rita>", el: "2026-10-24T09:00:00", notas: "", armo: false },
@@ -136,7 +137,7 @@ describe("la aprobada manda en la línea base", () => {
 
   test("sin ninguna aprobada propone la más nueva y avisa que no está aprobada", async () => {
     aprobaciones = () =>
-      json({ ...APROBACIONES, fases: "", eventos: [], versiones: { "VIV-003": { estado: "guardada", por: null, el: null, notas: "", armo: false } } });
+      json({ ...APROBACIONES, fases: "", eventos: [], ultima_aprobada: null, versiones: { "VIV-003": { estado: "guardada", por: null, el: null, notas: "", armo: false } } });
     montar();
     expect(await version()).toHaveValue("VIV-003");
     expect(await screen.findByText("Esta versión no está aprobada.")).toBeInTheDocument();

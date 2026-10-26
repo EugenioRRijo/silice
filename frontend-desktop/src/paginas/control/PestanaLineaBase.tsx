@@ -1,7 +1,7 @@
 import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useState } from "react";
 import { pedir } from "../../api/cliente";
-import { ESTADOS_APROBADOS, ultimaAprobada, versionConEstado } from "../../comun/aprobacion";
+import { ESTADOS_APROBADOS, versionConEstado } from "../../comun/aprobacion";
 import type { AprobacionesDeObra } from "../../comun/aprobacion";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
@@ -70,7 +70,7 @@ function Declarar({
   const { alExpirar } = useAplicacion();
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
   // Tarea 20: la aprobada manda. Se propone la ultima version aprobada; sin ninguna, la mas nueva.
-  const aprobada = aprobaciones === null ? null : ultimaAprobada(aprobaciones);
+  const aprobada = aprobaciones === null ? null : aprobaciones.ultima_aprobada;
   const [v, setV] = useState({
     version: aprobada !== null && versiones.includes(aprobada) ? aprobada : (versiones[0] ?? ""),
     desde: "",
@@ -255,8 +255,7 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
 }
 
 export function PestanaLineaBase({ proyecto, clave, alCambiar }: Props) {
-  const { alExpirar } = useAplicacion();
-  const { sesion } = useAplicacion();
+  const { alExpirar, sesion } = useAplicacion();
   const carga = useCargaSuave<LineaBase>(rutaDe("/v1/control/linea-base", proyecto, { n: String(clave) }), alExpirar);
   // El rastro de aprobaciones lo lee quien edita la Hoja (`GET /v1/aprobaciones?proyecto=`): sin esa accion no se pide.
   const puedeVerAprobaciones = sesion.acciones.includes("editar_hoja");
