@@ -102,8 +102,9 @@ export default function Asistente() {
 
   function guardar(e: FormEvent) {
     e.preventDefault();
-    // Coma decimal y punto de miles: «1.000» es mil. Lo mal escrito se marca aqui y no viaja; que sea mayor que cero
-    // lo dice la API con su mensaje.
+    // Coma decimal y punto de miles: «1.000» es mil. Lo mal escrito se marca aqui y no viaja; lo bien escrito viaja
+    // TAL CUAL y lo convierte el servidor (`asistente.administracion._tope`, con `aplicacion.cifras`): una sola
+    // conversion. Que sea mayor que cero lo dice la API con su mensaje.
     const lectura = leerCifra(tope);
     if ("error" in lectura) {
       setErrorTope(lectura.error);
@@ -116,7 +117,7 @@ export default function Asistente() {
       modelo_claude: modeloClaude,
       modelo_local: modeloLocal,
       anfitrion_ollama: anfitrion,
-      tope_usd: lectura.valor,
+      tope_usd: tope.trim(),
     });
   }
 

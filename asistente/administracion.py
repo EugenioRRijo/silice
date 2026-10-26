@@ -15,6 +15,7 @@ from dataclasses import dataclass, replace
 from decimal import Decimal
 from pathlib import Path
 
+from aplicacion.cifras import BLANCOS, CifraInvalida, cifra_escrita
 from asistente.clave import ClaveDeIA, ClaveNoRegistrable
 from asistente.configuracion import ConfiguracionIA, guardar, leer
 from asistente.instalacion import cargar_clave_guardada
@@ -86,14 +87,17 @@ def estado(ruta: Path, clave: ClaveDeIA) -> EstadoDelAsistente:
 
 
 def _tope(texto: str) -> Decimal:
+    """El tope tal como lo teclea la persona: coma decimal y punto de miles (`cifra_escrita`, la
+    regla de Eugenio del 2026-10-25). Antes cambiaba la coma por punto y «1.000» valia uno."""
     try:
-        tope = Decimal(texto.strip().replace(",", "."))
-    except ArithmeticError:
+        tope = cifra_escrita(texto)
+    except CifraInvalida as error:
+        limpio = texto.strip(BLANCOS)
+        if not limpio:
+            raise ValueError(f"Falta el tope de costo. {error}") from None
         raise ValueError(
-            f"El tope de costo {texto!r} no es un número: escriba, por ejemplo, 2,50."
+            f"El tope de costo «{limpio}» no se entiende como número. {error}"
         ) from None
-    if not tope.is_finite():
-        raise ValueError(f"El tope de costo {texto!r} no es un número: escriba, por ejemplo, 2,50.")
     if tope <= 0:
         raise ValueError("El tope de costo debe ser mayor que cero: escriba, por ejemplo, 2,50.")
     return tope

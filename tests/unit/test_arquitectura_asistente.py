@@ -54,7 +54,8 @@ def test_de_aplicacion_asistente_solo_importa_la_hoja_y_los_errores(archivo):
     # `aplicacion.hoja` queda debajo de `asistente`; nada mas de `aplicacion` (ni entrega, ni caso)
     de_aplicacion = {n for n in importaciones(archivo) if _raiz(n) == "aplicacion"}
     assert all(
-        n in DE_APLICACION_PERMITIDO or n.startswith("aplicacion.hoja.") for n in de_aplicacion
+        n in DE_APLICACION_PERMITIDO or n.startswith(("aplicacion.hoja.", "aplicacion.cifras."))
+        for n in de_aplicacion
     ), (ruta(archivo), sorted(de_aplicacion))
 
 
