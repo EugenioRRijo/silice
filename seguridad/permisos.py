@@ -30,6 +30,7 @@ class Accion(StrEnum):
     LEER_PROYECTO = "leer_proyecto"
     # Revisión (rol revisa)
     REVISAR_PAQUETE = "revisar_paquete"  # abrir paquetes, reauditar, dictamen
+    APROBAR_VERSION = "aprobar_version"  # por aprobar, abrir un envío y dictaminar (MP-4)
     # Compartida
     CAMBIAR_CASO = "cambiar_caso"
     # Administración
@@ -63,6 +64,7 @@ PERMISOS: dict[Accion, frozenset[Rol]] = {
     Accion.OPERAR_ARENERA: frozenset({_ARMA, _ADMIN}),
     Accion.LEER_PROYECTO: frozenset({_ARMA, _REVISA}),
     Accion.REVISAR_PAQUETE: frozenset({_REVISA}),
+    Accion.APROBAR_VERSION: frozenset({_ARMA, _REVISA}),
     Accion.CAMBIAR_CASO: frozenset({_ARMA, _ADMIN}),
     Accion.ADMINISTRAR_CUENTAS: frozenset({_ADMIN}),
     Accion.ADMINISTRAR_EMPRESA: frozenset({_ADMIN}),

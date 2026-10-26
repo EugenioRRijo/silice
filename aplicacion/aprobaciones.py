@@ -47,6 +47,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -60,6 +61,7 @@ from core import models
 from core.budget.cadena import GENESIS
 from core.budget.canonico import huella as sha256_hex
 from core.budget.canonico import json_canonico
+from core.contracts.verificacion import Severidad
 from core.models.cadena import EslabonVersion
 
 if TYPE_CHECKING:
@@ -71,13 +73,17 @@ __all__ = [
     "RESULTADOS",
     "AprobacionInvalida",
     "DatosInvalidos",
+    "DetalleDeEnvio",
     "Envio",
     "EnvioRegistrado",
     "EstadoDeVersion",
     "EventoAprobacion",
+    "HallazgoDelEnvio",
     "NoSeEncontro",
+    "PartidaDelEnvio",
     "RastroVerificado",
     "armo_la_version",
+    "detalle_de_envio",
     "dictaminar",
     "enviar",
     "envio",
@@ -85,7 +91,9 @@ __all__ = [
     "estados",
     "fases",
     "historial",
+    "misma_cuenta",
     "pendientes_de_aprobacion",
+    "total_y_moneda",
     "ultima_aprobada",
     "verificar_rastro",
 ]
@@ -242,7 +250,7 @@ def enviar(
                 notas="",
                 usuario=usuario,
                 fecha_hora=ahora,
-                armo=_armo(usuario, _quien_guardo(sesion, otra)),
+                armo=misma_cuenta(usuario, _quien_guardo(sesion, otra)),
                 cierre_de=pendiente.id,
             )
             anterior, retirada = retiro.huella, pendiente.version
@@ -257,7 +265,7 @@ def enviar(
             notas=nota_limpia,
             usuario=usuario,
             fecha_hora=ahora,
-            armo=_armo(usuario, _quien_guardo(sesion, presupuesto)),
+            armo=misma_cuenta(usuario, _quien_guardo(sesion, presupuesto)),
             cierre_de=None,
         )
         return Envio(fila.id, retirada)
@@ -303,7 +311,7 @@ def dictaminar(
             notas=notas_limpias,
             usuario=usuario,
             fecha_hora=ahora,
-            armo=_armo(usuario, _quien_guardo(sesion, presupuesto)),
+            armo=misma_cuenta(usuario, _quien_guardo(sesion, presupuesto)),
             cierre_de=envio_id,
         )
         return fila.id
@@ -414,7 +422,104 @@ def armo_la_version(sesion: Session, envio_id: int, usuario: str) -> bool:
     obra = sesion.get(models.Proyecto, registrado.proyecto_id)
     if obra is None:
         raise NoSeEncontro(SIN_ENVIO)
-    return _armo(usuario, _quien_guardo(sesion, _version(sesion, obra, registrado.version)))
+    return misma_cuenta(usuario, _quien_guardo(sesion, _version(sesion, obra, registrado.version)))
+
+
+@dataclass(frozen=True, slots=True)
+class PartidaDelEnvio:
+    codigo: str
+    descripcion: str
+    unidad: str
+    cantidad: Decimal
+    precio_unitario: Decimal
+    total: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class HallazgoDelEnvio:
+    regla: str
+    severidad: str  # critico | error | advertencia | info
+    descripcion: str
+
+
+@dataclass(frozen=True, slots=True)
+class DetalleDeEnvio:
+    """Lo que se aprueba, leído de lo GUARDADO y sellado de la versión (sus renglones y los
+    hallazgos que se emitieron con ella), sin recalcular ni escribir nada."""
+
+    envio: EnvioRegistrado
+    proyecto: str  # el código de la obra
+    obra: str
+    moneda: str
+    total: Decimal
+    partidas: tuple[PartidaDelEnvio, ...]
+    hallazgos: tuple[HallazgoDelEnvio, ...]  # del más grave al más leve
+    rastro: RastroVerificado
+    armo: bool  # quien mira es quien guardó la versión
+
+
+def total_y_moneda(sesion: Session, proyecto_id: int, version: str) -> tuple[Decimal, str]:
+    """Σ `partida_presupuestada.total` de la versión (en `Decimal`) y su moneda;
+    `NoSeEncontro` si la obra no tiene esa versión."""
+    obra = sesion.get(models.Proyecto, proyecto_id)
+    if obra is None:
+        raise NoSeEncontro(SIN_ENVIO)
+    presupuesto = _version(sesion, obra, version)
+    totales = sesion.scalars(
+        select(models.PartidaPresupuestada.total).where(
+            models.PartidaPresupuestada.presupuesto_id == presupuesto.id
+        )
+    )
+    return sum(totales, Decimal(0)), presupuesto.moneda
+
+
+def detalle_de_envio(sesion: Session, envio_id: int, usuario: str) -> DetalleDeEnvio:
+    """El envío `envio_id` con lo que se aprueba (renglones, total, hallazgos, rastro de la obra)
+    y si `usuario` armó la versión. Solo lectura: no abre borrador ni registra instantánea."""
+    registrado = envio(sesion, envio_id)
+    obra = sesion.get(models.Proyecto, registrado.proyecto_id)
+    if obra is None:
+        raise NoSeEncontro(SIN_ENVIO)
+    presupuesto = _version(sesion, obra, registrado.version)
+    renglones = sesion.execute(
+        select(models.ItemComputo, models.PartidaPresupuestada)
+        .join(
+            models.PartidaPresupuestada,
+            models.PartidaPresupuestada.item_computo_id == models.ItemComputo.id,
+        )
+        .where(models.PartidaPresupuestada.presupuesto_id == presupuesto.id)
+        .order_by(models.PartidaPresupuestada.orden, models.PartidaPresupuestada.id)
+    ).all()
+    partidas = tuple(
+        PartidaDelEnvio(
+            item.codigo_partida,
+            item.descripcion,
+            item.unidad,
+            renglon.cantidad,
+            renglon.precio_unitario,
+            renglon.total,
+        )
+        for item, renglon in renglones
+    )
+    hallazgos = tuple(
+        HallazgoDelEnvio(h.regla, Severidad(h.severidad).name.lower(), h.descripcion)
+        for h in sesion.scalars(
+            select(models.Hallazgo)
+            .where(models.Hallazgo.presupuesto_id == presupuesto.id)
+            .order_by(models.Hallazgo.severidad.desc(), models.Hallazgo.id)
+        )
+    )
+    return DetalleDeEnvio(
+        envio=registrado,
+        proyecto=str(obra.id),
+        obra=obra.nombre,
+        moneda=presupuesto.moneda,
+        total=sum((p.total for p in partidas), Decimal(0)),
+        partidas=partidas,
+        hallazgos=hallazgos,
+        rastro=verificar_rastro(sesion, str(obra.id)),
+        armo=misma_cuenta(usuario, _quien_guardo(sesion, presupuesto)),
+    )
 
 
 def pendientes_de_aprobacion(sesion: Session, hoy: date) -> list[Pendiente]:
@@ -624,9 +729,10 @@ def _quien_guardo(sesion: Session, presupuesto: models.Presupuesto) -> str:
     return _eslabon(sesion, presupuesto).usuario
 
 
-def _armo(usuario: str, quien_guardo: str) -> bool:
-    """Quien actúa es quien guardó la versión: por su cuenta (`<login>`) si las dos la traen
-    (así un cambio de nombre no la oculta); si no, por el texto completo."""
+def misma_cuenta(usuario: str, quien_guardo: str) -> bool:
+    """Si `usuario` y `quien_guardo` son la misma cuenta (`armo`: quien actúa es quien guardó la
+    versión): por su cuenta (`<login>`) si los dos textos la traen (así un cambio de nombre no
+    la oculta); si no, por el texto completo."""
     propio, de_la_version = login_de(usuario), login_de(quien_guardo)
     if propio is not None and de_la_version is not None:
         return propio == de_la_version
