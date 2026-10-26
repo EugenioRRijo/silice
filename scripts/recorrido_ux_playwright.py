@@ -427,7 +427,10 @@ MOTIVOS_DE_CORTE_JS = """function motivosDeCorte(header, nav) {
       const caja = el.getBoundingClientRect().width;
       const relleno = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
         + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
-      if (texto <= caja - relleno + 0.01) continue;
+      // 0,05 px: Chromium guarda el relleno en unidades de 1/64 px (18,6667 px queda en
+      // 18,65625) y la resta sale hasta 0,02 px corta con el texto entero; un recorte real mide
+      // décimas.
+      if (texto <= caja - relleno + 0.05) continue;
       const tope = cs.maxWidth.endsWith('px') ? parseFloat(cs.maxWidth) : Infinity;
       const medida = cs.boxSizing === 'border-box' ? caja : caja - relleno;
       if (medida >= tope - 0.01) continue;
@@ -1334,13 +1337,15 @@ def medir_visor(
     fijar_letra(pagina, letra)
     errores: list[str] = []
     avisos: list[str] = []
-    pagina.on("pageerror", lambda e: errores.append(f"pageerror: {str(e)[:200]}"))
+    # En qué momento del recorrido llega cada error o aviso (abrir, otra hoja, salir 1, volver 1…).
+    fase = ["abrir"]
+    pagina.on("pageerror", lambda e: errores.append(f"[{fase[0]}] pageerror: {str(e)[:200]}"))
     pagina.on(
         "console",
         lambda m: (
-            errores.append(m.text[:200])
+            errores.append(f"[{fase[0]}] {m.text[:200]}")
             if m.type == "error"
-            else avisos.append(m.text[:200])
+            else avisos.append(f"[{fase[0]}] {m.text[:200]}")
             if m.type == "warning"
             else None
         ),
@@ -1357,23 +1362,27 @@ def medir_visor(
         pestanas = pagina.get_by_role("tablist", name="Hojas del libro").get_by_role("tab")
         fila["hojas"] = pestanas.count()
         if fila["hojas"] > 1:
+            fase[0] = "otra hoja"
             pestanas.nth(1).click()
             pagina.wait_for_timeout(1200)
             fila["axe_segunda_hoja"] = _axe_ids(pagina, axe)
             fila["segunda_hoja"] = pagina.evaluate(LIENZO_JS)
             pagina.screenshot(path=f"{prefijo}_hoja2.png")
-        for _ in range(2):
+        for vuelta in (1, 2):
+            fase[0] = f"salir {vuelta}"
             ir_por_hash(pagina, "auditoria")
             pagina.wait_for_timeout(1500)
+            fase[0] = f"volver {vuelta}"
             ir_por_hash(pagina, "libros")
             _esperar_visor(pagina)
             fila["vueltas"] += 1
+        fase[0] = "salir 3"
         ir_por_hash(pagina, "auditoria")
         pagina.wait_for_timeout(1500)
     except Exception as error:
         fila["error"] = str(error)[:300]
-    fila["errores"] = errores[:8]
-    fila["avisos"] = avisos[:8]
+    fila["errores"] = errores[:12]
+    fila["avisos"] = avisos[:12]
     pagina.close()
     return fila
 
