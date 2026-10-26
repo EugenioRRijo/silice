@@ -17,10 +17,11 @@ sesión (`SesionDep`); las que escriben van con `BEGIN IMMEDIATE` y confirman aq
 
 Errores: el 422 de forma (lado, fuente, fecha, precio que no es texto, códigos largos, ventana
 fuera de 1 a 3.650 días) es un mensaje fijo que no repite lo enviado; el 422 de una regla
-(`CifraInvalida`, fuente, nota, fecha futura, precio no positivo, observación ajena) lleva el
-mensaje de `aplicacion.mercado`; 404 lo que no existe; 409 sin moneda, sin lista para armar, una
-partida cuyo costo no se puede calcular o una observación ya anulada; 503 fijo ante un fallo de la
-base.
+(`CifraInvalida` y `ReglaDeMercado`: fuente, nota, fecha futura, precio no positivo, objetivo de
+más de 2 decimales, observación ajena o de otra moneda) lleva el mensaje de `aplicacion.mercado`, y
+cualquier otro `ValueError` un texto fijo; 404 lo que no existe; 409 sin moneda, sin lista para
+armar, una partida cuyo costo no se puede calcular o una observación ya anulada; 503 fijo ante un
+fallo de la base.
 `Cache-Control: no-store` en toda respuesta. Quien escribe consta como la cuenta de la sesión (o
 `USUARIO_API` con la clave). Montos como texto con punto decimal, nunca como número.
 """
@@ -46,6 +47,7 @@ from aplicacion.mercado import (
     CarpetaSinMoneda,
     NoExiste,
     ObservacionAnulada,
+    ReglaDeMercado,
     anular_observacion,
     apus_afectados,
     centimos,
@@ -71,6 +73,7 @@ MENSAJE_FORMA = (
     "va como texto; los códigos admiten hasta 40 caracteres y la ventana va de 1 a 3.650 días."
 )
 MENSAJE_BASE = "No se pudo leer ni guardar el estudio de mercado de la carpeta de trabajo."
+MENSAJE_INESPERADO = "No se pudo procesar el estudio de mercado con esos datos."
 _LARGO_CODIGO = 40
 _DIAS_MAXIMO = 3650
 
@@ -213,8 +216,11 @@ def _traducir[T](hacer: Callable[[], T]) -> T:
             "No se puede calcular el costo de la partida con la lista para armar: le falta un "
             "precio o su rendimiento.",
         ) from None
-    except (CifraInvalida, ValueError) as error:
+    except (CifraInvalida, ReglaDeMercado) as error:
         raise HTTPException(422, str(error)) from None
+    except ValueError:
+        # Un error de programación (lado, tipo de fuente, responsable): su texto no sale.
+        raise HTTPException(422, MENSAJE_INESPERADO) from None
     except SQLAlchemyError:
         # El texto de un error de base lleva el SQL y sus parámetros: no sale por la API.
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, MENSAJE_BASE) from None

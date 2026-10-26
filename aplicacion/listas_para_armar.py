@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Literal
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from aplicacion.cifras import texto_de_cifra
@@ -36,7 +36,13 @@ from core.catalog import Catalogo
 from core.catalog.empresa import lista_de_referencia
 from core.catalog.errores import CatalogoIncompleto
 from core.catalog.indices import TasaNoDisponible, tasa_aplicable
-from core.catalog.moneda import TasaDeclarada, convertir_lista, copiar_precios, exigir_moneda
+from core.catalog.moneda import (
+    MONEDAS,
+    TasaDeclarada,
+    convertir_lista,
+    copiar_precios,
+    exigir_moneda,
+)
 
 __all__ = [
     "MENSAJE_SIN_LISTA",
@@ -231,16 +237,47 @@ def _lista_global(
     return nueva
 
 
+def _nombre_convertida(base: str, moneda: str, fecha: date) -> str:
+    """El nombre de la conversión de alcance proyecto de la lista `base` a `moneda` hecha a
+    `fecha`; es parte de la clave con que `lista_para_el_proyecto` la reutiliza."""
+    sufijo = f" en {moneda} al {fecha:%d/%m/%Y}"
+    return base[: _LARGO_NOMBRE - len(sufijo)] + sufijo
+
+
 def _usada(sesion: Session, lista: models.ListaPrecios) -> bool:
-    return bool(
-        sesion.scalar(select(exists().where(models.Presupuesto.lista_precios_id == lista.id)))
-    )
+    """Si reescribir un precio de `lista` en el lugar dejaría algo copiado con el precio viejo: la
+    usa una versión, otra lista la tomó de base (`ListaPreciosOrigen`, `ListaEmpresa`) o una obra
+    en la otra moneda la convirtió (`lista_para_el_proyecto` reutilizaría esa conversión)."""
+    origen = models.ListaPreciosOrigen
+    empresa = models.ListaEmpresa
+    copiada = [
+        exists().where(models.Presupuesto.lista_precios_id == lista.id),
+        exists().where(origen.lista_base_id == lista.id),
+        exists().where(
+            or_(empresa.lista_base_id == lista.id, empresa.lista_referencia_id == lista.id)
+        ),
+    ]
+    for moneda in MONEDAS:
+        if moneda == lista.moneda:
+            continue
+        # la fecha de la conversión no se sabe, pero ocupa siempre 10 caracteres al final
+        prefijo = _nombre_convertida(lista.nombre, moneda, lista.fecha_vigencia)[:-10]
+        copiada.append(
+            exists().where(
+                origen.lista_id == models.ListaPrecios.id,
+                origen.alcance == models.ALCANCE_PROYECTO,
+                models.ListaPrecios.moneda == moneda,
+                models.ListaPrecios.fecha_vigencia == lista.fecha_vigencia,
+                func.substr(models.ListaPrecios.nombre, 1, len(prefijo)) == prefijo,
+            )
+        )
+    return bool(sesion.scalar(select(or_(*copiada))))
 
 
 def lista_de_hoy(sesion: Session, fecha: date, *, nueva_si_usada: bool) -> models.ListaPrecios:
     """La lista donde se escribe un precio tecleado a `fecha` (O-13: no se reescribe una lista
-    vieja). Es la lista para armar si ya es de esa fecha (y, con `nueva_si_usada`, ninguna versión
-    la usa); si no, una derivada global de esa moneda y fecha con los mismos precios."""
+    vieja). Es la lista para armar si ya es de esa fecha (y, con `nueva_si_usada`, nada la usa ni
+    la copió: `_usada`); si no, una derivada global de esa moneda y fecha con los mismos precios."""
     base = lista_para_armar(sesion, fecha)
     if base.fecha_vigencia == fecha and not (nueva_si_usada and _usada(sesion, base)):
         return base
@@ -287,8 +324,7 @@ def lista_para_el_proyecto(
     if moneda == base.moneda:
         return base
     tasa = _tasa(sesion, fecha)
-    sufijo = f" en {moneda} al {fecha:%d/%m/%Y}"
-    nombre = base.nombre[: _LARGO_NOMBRE - len(sufijo)] + sufijo
+    nombre = _nombre_convertida(base.nombre, moneda, fecha)
     existente = sesion.scalars(
         select(models.ListaPrecios)
         .join(

@@ -27,8 +27,9 @@ Diseño de montar un presupuesto §5.1 y §10, con las decisiones que Eugenio ra
   `anulada_por` = el contraasiento. Ninguna de las dos cuenta ni se lista.
 
 Todo determinista, sin IA. Ninguna función confirma: escriben con `flush` y quien llama confirma.
-Los mensajes en oraciones con mayúscula son los que ve la persona; `NoExiste` es lo pedido que no
-está en la carpeta (la API lo da como 404).
+Los mensajes que ve la persona van en `ReglaDeMercado` (lo escrito no cumple una regla) y en
+`NoExiste` (lo pedido no está en la carpeta; la API lo da como 404); los demás `ValueError` son de
+programación y la API no muestra su texto.
 """
 
 from __future__ import annotations
@@ -75,6 +76,7 @@ __all__ = [
     "NoExiste",
     "ObservacionAnulada",
     "Propuesta",
+    "ReglaDeMercado",
     "anular_observacion",
     "apus_afectados",
     "centimos",
@@ -130,6 +132,12 @@ class NoExiste(ValueError):  # noqa: N818
 
 class ObservacionAnulada(ValueError):  # noqa: N818
     """La observación ya está anulada (o es el contraasiento de una anulación)."""
+
+
+class ReglaDeMercado(ValueError):  # noqa: N818
+    """Lo escrito no cumple una regla del estudio de mercado; el mensaje es el que ve la persona.
+    Los demás `ValueError` de este módulo son errores de programación (lado, tipo de fuente,
+    responsable) que la API no deja ver."""
 
 
 @dataclass(frozen=True)
@@ -195,14 +203,14 @@ def _responsable(texto: str) -> str:
 def _texto_acotado(valor: str, largo: int, nombre: str) -> str:
     valor = valor.strip()
     if len(valor) > largo:
-        raise ValueError(f"La {nombre} admite hasta {largo} caracteres.")
+        raise ReglaDeMercado(f"La {nombre} admite hasta {largo} caracteres.")
     return valor
 
 
 def _precio_positivo(precio: str) -> Decimal:
     valor = cifra_escrita(precio)
     if valor <= 0:
-        raise ValueError("El precio debe ser mayor que cero.")
+        raise ReglaDeMercado("El precio debe ser mayor que cero.")
     return valor
 
 
@@ -258,11 +266,11 @@ def registrar_observacion(
     responsable = _responsable(responsable)
     fuente = _texto_acotado(fuente, _LARGO_FUENTE, "fuente")
     if not fuente:
-        raise ValueError("Escriba de dónde sale el precio (la fuente).")
+        raise ReglaDeMercado("Escriba de dónde sale el precio (la fuente).")
     nota = _texto_acotado(nota, _LARGO_NOTA, "nota")
     valor = _precio_positivo(precio)
     if fecha > ahora.date():
-        raise ValueError("La fecha de la observación no puede ser posterior a hoy.")
+        raise ReglaDeMercado("La fecha de la observación no puede ser posterior a hoy.")
     moneda = _exigir_moneda(sesion, ahora.date())
     codigo = exigir_codigo(sesion, lado, codigo)
     fila = ObservacionDeMercado(
@@ -477,11 +485,20 @@ def margen(objetivo: Decimal, precio_unitario: Decimal) -> Decimal:
 # --- usar un precio -----------------------------------------------------------------------------
 
 
-def _citada(sesion: Session, observacion_id: int, lado: str, codigo: str) -> ObservacionDeMercado:
-    """La observación citada si es vigente, de ese lado y de ese código; si no, `ValueError`."""
+def _citada(
+    sesion: Session, observacion_id: int, lado: str, codigo: str, moneda: str
+) -> ObservacionDeMercado:
+    """La observación citada si es vigente (no anulada), de ese lado, de ese código y en `moneda`
+    (la de la carpeta); si no, `ReglaDeMercado`. No se exige que esté en la ventana de 90 días:
+    la persona puede ampliarla al estudiar, y una observación vieja no anulada sigue siendo
+    cierta."""
     fila = sesion.get(ObservacionDeMercado, observacion_id)
     if fila is None or fila.anulada_por is not None or (fila.lado, fila.codigo) != (lado, codigo):
-        raise ValueError(MENSAJE_OBSERVACION_AJENA)
+        raise ReglaDeMercado(MENSAJE_OBSERVACION_AJENA)
+    if fila.moneda != moneda:
+        raise ReglaDeMercado(
+            f"La observación elegida está en {fila.moneda} y la carpeta trabaja en {moneda}."
+        )
     return fila
 
 
@@ -516,14 +533,14 @@ def usar_precio_de_compra(
     versión guardada, se deriva otra del mismo día; las listas viejas y las versiones no cambian.
     El origen del precio dice «Estudio de mercado: observación n.º {id}, por {responsable}» (o sin
     la observación). Todo se valida antes de escribir: `CifraInvalida`, precio no positivo,
-    `NoExiste`, una observación que no es un precio de compra vigente de ese insumo
-    (`MENSAJE_OBSERVACION_AJENA`), `SinListaParaArmar`. No confirma."""
+    `NoExiste`, una observación que no es un precio de compra vigente de ese insumo en la moneda
+    de la carpeta (`ReglaDeMercado`), `SinListaParaArmar`. No confirma."""
     responsable = _responsable(responsable)
     valor = _precio_positivo(precio)
     codigo = exigir_codigo(sesion, "compra", codigo_insumo)
     fuente = FUENTE_DEL_PRECIO
     if observacion_id is not None:
-        citada = _citada(sesion, observacion_id, "compra", codigo)
+        citada = _citada(sesion, observacion_id, "compra", codigo, _exigir_moneda(sesion, fecha))
         fuente = f"{FUENTE_DEL_PRECIO}: observación n.º {citada.id}"
     lista = lista_de_hoy(sesion, fecha, nueva_si_usada=True)
     insumo = sesion.scalars(select(models.Insumo).where(models.Insumo.codigo == codigo)).one()
@@ -565,22 +582,26 @@ def usar_precio_de_cobro(
 ) -> PrecioObjetivo:
     """Guarda `precio` (tecleado) como el precio de venta objetivo de la partida, en la moneda de
     la carpeta, citando las observaciones de cobro de las que sale (sin repetir, en orden). Vale
-    el último por partida. `CifraInvalida`, precio no positivo, `NoExiste`, una observación que no
-    es un precio de cobro vigente de esa partida (`MENSAJE_OBSERVACION_AJENA`) o
-    `CarpetaSinMoneda`. No confirma."""
+    el último por partida. `CifraInvalida`; `ReglaDeMercado` con un precio no positivo o de más de
+    2 decimales (un precio de venta va en céntimos) o una observación que no es un precio de cobro
+    vigente de esa partida en la moneda de la carpeta; `NoExiste`; `CarpetaSinMoneda`. No
+    confirma."""
     responsable = _responsable(responsable)
     valor = _precio_positivo(precio)
+    if valor != valor.quantize(_CENTIMO):
+        raise ReglaDeMercado("El precio objetivo admite hasta 2 decimales (céntimos).")
     codigo = exigir_codigo(sesion, "cobro", codigo_partida)
+    moneda = _exigir_moneda(sesion, ahora.date())
     citas = sorted(set(observaciones))
     for ident in citas:
-        _citada(sesion, ident, "cobro", codigo)
+        _citada(sesion, ident, "cobro", codigo, moneda)
     texto = json.dumps(citas, separators=(",", ":"))
     if len(texto) > _LARGO_CITAS:
-        raise ValueError("Son demasiadas observaciones para citar: elija menos.")
+        raise ReglaDeMercado("Son demasiadas observaciones para citar: elija menos.")
     fila = PrecioObjetivo(
         codigo_partida=codigo,
         precio=valor,
-        moneda=_exigir_moneda(sesion, ahora.date()),
+        moneda=moneda,
         observaciones=texto,
         responsable=responsable,
         fecha_hora=ahora,
