@@ -25,7 +25,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import delete, select
 
-from aplicacion import aprobaciones, mesa
+from aplicacion import aprobaciones, control, mesa
 from aplicacion.aprobaciones import pendientes_de_aprobacion
 from aplicacion.hoja_partidas import pendientes_sin_calculo
 from aplicacion.mercado import pendientes_de_mercado
@@ -47,6 +47,7 @@ from aplicacion.mesa import (
     precios_viejos,
 )
 from aplicacion.obras import FichaObra, guardar_ficha
+from aplicacion.procura import pendientes_de_compras
 from core import models
 from core.budget import crear_proyecto, elaborar, guardar_presupuesto
 from core.budget.control import guardar_parametros
@@ -64,6 +65,7 @@ from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.verificacion import Severidad
 from operacion.base_datos import preparar_base
 from tests.fixtures import control_ob_s2 as ob
+from tests.fixtures import obra_atrasada
 from tests.fixtures.canonico_minimo import FECHA, RELLENO, guardar_otra
 
 D = Decimal
@@ -357,7 +359,9 @@ def test_ob_s2_con_v01_y_v02_esta_atrasada_con_sus_cifras_de_la_memoria(sesion) 
     assert ob_s2.spi == D("0.8000")
     # memoria §4: término día 23 contra 20 del plan
     assert ob_s2.retraso_dias == 3
-    assert ob_s2.que_pasa == "Atrasada 3 días hábiles (SPI 0,80)"
+    # T22: qué pasa nombra la primera partida atrasada en el orden del presupuesto. Memoria §4: OB-A
+    # termina en el día 11,11 y su plan en la semana 2 (2 × 5 = día 10): ⌈1,11⌉ = 2 días, sin causa.
+    assert ob_s2.que_pasa == "OB-A atrasada 2 días: sin causa declarada"
     assert ob_s2.siguiente == ALERTAS
     # memoria §1: V = 4 000 × 1,265 = 5 060,00
     assert ob_s2.total == _total_a_mano(sesion, "OB-001")
@@ -457,6 +461,34 @@ def test_con_el_plan_empezado_y_sin_valuaciones_esta_atrasada_y_se_suma(sesion) 
     assert cifras.valor_ganado.delta_pct == D("-100.0")
     assert cifras.avance.actual == D("0.0000")
     assert cifras.avance.detalle == "1 obra atrasada"
+
+
+def test_una_obra_atrasada_dice_la_partida_atrasada_y_su_causa(sesion) -> None:
+    # T22, la obra de dos partidas: A en 5 de 10 al viernes 2026-11-06 (día hábil 5) por una compra
+    # tardía. SPI = 300 / 600 = 0,5 < 0,90: atrasada. A termina en el día 10 contra el 5 de su plan
+    # (5 días) y B en el 9 contra el 7 (2 días): la primera en el orden del presupuesto es A.
+    obra_atrasada.sembrar_dos_partidas(sesion)
+    sesion.commit()
+    control.registrar_y_controlar(
+        sesion,
+        obra_atrasada.NOMBRE,
+        Catalogo(sesion),
+        numero="V-01",
+        desde="2026-11-02",
+        hasta="2026-11-06",
+        fecha="2026-11-06",
+        inspector="Ing. Ficticio",
+        filas=[{"Partida": "A", "Cantidad": "5", "Causa": "compra_tardia"}],
+        fuente=obra_atrasada.FUENTE,
+        responsable=obra_atrasada.RESPONSABLE,
+    )
+
+    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY)
+
+    assert obra.etapa == "atrasada"
+    assert obra.spi == D("0.5")
+    assert obra.que_pasa == "A atrasada 5 días: Compra tardía"
+    assert obra.siguiente == ALERTAS
 
 
 @pytest.mark.parametrize(
@@ -745,6 +777,7 @@ def test_pendientes_trae_aprobar_precios_y_calidad_en_ese_orden(sesion) -> None:
 
     assert pendientes(sesion, HOY) == [
         GrupoPendientes("aprobar", "Aprobar", ()),  # Casa Demo no tiene envíos
+        GrupoPendientes("compras", "Compras", ()),  # Casa Demo no tiene línea base
         GrupoPendientes(
             "precios",
             "Precios",
@@ -811,4 +844,5 @@ def test_los_grupos_y_las_fuentes_de_esta_tarea() -> None:
     assert mesa.FUENTES["calidad"] == (hallazgos_graves, lista_vieja, pendientes_sin_calculo)
     # T18 agrega «espera dictamen» y «devuelta» (compartido del orquestador).
     assert mesa.FUENTES["aprobar"] == (pendientes_de_aprobacion,)
-    assert not mesa.FUENTES.get("compras")
+    # T23 agrega «las compras de la procura» (compartido del orquestador).
+    assert mesa.FUENTES["compras"] == (pendientes_de_compras,)

@@ -166,6 +166,10 @@ TABLA = {
     ("POST", "/v1/mercado/compra/{codigo}/usar"): EDITAR,
     ("POST", "/v1/mercado/cobro/{codigo}/usar"): EDITAR,
     ("GET", "/v1/mercado/objetivos"): EDITAR,
+    # MP-7 T23: procura con fechas
+    ("GET", "/v1/procura"): CONTROLAR,
+    ("POST", "/v1/procura/compras"): CONTROLAR,
+    ("PUT", "/v1/procura/plazos"): CONTROLAR,
     # MP-4 T18: ciclo de aprobación
     ("POST", "/v1/aprobaciones"): EDITAR,
     ("GET", "/v1/aprobaciones"): EDITAR,

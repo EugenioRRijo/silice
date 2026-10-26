@@ -172,7 +172,8 @@ def test_resumen_de_ob_s2_en_una_carpeta_en_usd() -> None:
         "moneda": "USD",
         "avance_real": "30.0",
         "avance_plan": "37.5",
-        "que_pasa": "Atrasada 3 días hábiles (SPI 0,80)",
+        # T22: la primera partida atrasada (memoria §4: OB-A, día 11,11 contra 10: 2 días)
+        "que_pasa": "OB-A atrasada 2 días: sin causa declarada",
         "siguiente": {"texto": "Ver las alertas", "pagina": "control"},
     }
     assert obra["codigo"].isdigit()
@@ -254,14 +255,19 @@ def test_pendientes_de_ana() -> None:
     grupos = respuesta.json()["grupos"]
     assert [(g["clave"], g["titulo"]) for g in grupos] == [
         ("aprobar", "Aprobar"),
+        ("compras", "Compras"),
         ("precios", "Precios"),
         ("calidad", "Calidad"),
     ]
     assert grupos[0]["items"] == []  # OB-S2 no tiene envíos a aprobación (T18)
+    # Compras (T23): la tubería (OB-B) se necesita el lun 09/11 (semana 2: día hábil 6) y se pide a
+    # más tardar el mié 04/11 (3 días hábiles antes); el aviso empieza el lun 02/11 (2 antes). El
+    # relleno (OB-C), el 16/11 y el 11/11. Al 25/10 no hay nada que pedir todavía.
+    assert grupos[1]["items"] == []
     # La lista «OB-S2 USD» es del 2026-11-02, posterior a hoy: no es vieja. Sus precios los cargó
     # el catálogo sin referencia ni origen: los ocho insumos de los tres APU (A: equipo y
     # cuadrilla; B y C: material, equipo y cuadrilla; 2 + 3 + 3) quedan sin referencia.
-    precios = grupos[1]["items"]
+    precios = grupos[2]["items"]
     assert precios == [
         {
             "obra": precios[0]["obra"],
@@ -273,7 +279,7 @@ def test_pendientes_de_ana() -> None:
     # Calidad: los hallazgos de OB-001 son tres R1 de ADVERTENCIA (cantidades a mano sin regla):
     # no son de error ni críticos, pero sí tres cantidades sin cálculo (T9); y al 2026-10-25 no hay
     # lista para armar con que compararla (la única lista, «OB-S2 USD», rige desde el 2026-11-02).
-    assert grupos[2] == {
+    assert grupos[3] == {
         "clave": "calidad",
         "titulo": "Calidad",
         "items": [

@@ -395,6 +395,45 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - Los avisos son una sola región viva (`InlineNotification role="status"`) con el nombre «Avisos del plan» por
   `aria-labelledby` (Carbon reserva `aria-label` para el botón de cerrar).
 
+## T22, causas de retraso
+
+1. **Orden de los atrasos:** el del presupuesto (el de la reproyección). La mesa toma el primero, que suele ser la partida
+   que origina el atraso (en la vivienda, OBRA-02 por la compra tardía y no OBRA-05, que va 16 días tarde solo por el SPI
+   global). **Por ratificar.**
+2. **Partidas sin avance propio:** entran con el `fin` que les da el núcleo con el SPI global, con «sin causa declarada».
+3. **Qué causas cuentan:** la última declarada (por orden de registro) en las valuaciones no anuladas con «hasta» hasta el
+   corte; la de una valuación posterior al corte no cuenta.
+4. **Rechazo sin eco:** una causa desconocida es un `ValueError` con texto fijo («La causa del retraso no está en la lista
+   de causas.») y deshace la valuación entera. Una causa que no es texto da el 422 por omisión de FastAPI (el router de
+   control no es `RutaSinEco`); no se cambió para no tocar el 422 de todas las rutas de control (deuda).
+5. **La lista de causas la da la API** (`GET /v1/control/valuaciones`, `causas`); la causa vacía viaja `null`.
+6. **Base sin la tabla:** se lee sin causas; la tabla se crea al guardar la primera.
+7. **Mesa:** OB-S2 pasa de «Atrasada 3 días hábiles (SPI 0,80)» a «OB-A atrasada 2 días: sin causa declarada»; el detalle
+   de la cifra de avance sigue diciendo los días hábiles de la obra (3). El texto dice «días» y cuenta días hábiles.
+   **Por ratificar.**
+8. Dos oráculos de `Control.test.tsx` cambian por el contrato: el cuerpo de las líneas lleva `causa: null`.
+
+## T23, procura con fechas
+
+1. **Vale la primera fecha de cada evento** (primer pedido, primera recepción); no se comparan cantidades (entregas
+   parciales). **Por ratificar.**
+2. **Una recepción cuenta también como pedido.**
+3. **Al corte solo cuenta lo ocurrido hasta el corte.**
+4. **El aviso cubre fechas de calendario** desde `pedir − 2 días hábiles` (con feriados) hasta el día anterior a `pedir`.
+5. **Sin alerta** (el plan no la fija): pedido después de la fecha límite pero antes de necesitarse, y material sin
+   recibir pasada la fecha en que se necesitaba. **Por decidir (Eugenio):** «{insumo} no ha llegado».
+6. **Causa sugerida:** se compara la primera recepción con el primer día de esa partida en el plan de la línea base vigente,
+   no con el `se_necesita` del material; un material no recibido no sugiere causa. `CAUSA_COMPRA_TARDIA` es constante propia.
+7. **Línea base:** la procura y la mesa usan la última declarada; sin línea base, la versión vigente sin fechas y con aviso.
+8. **Plazo:** entero de 0 a 365 días hábiles, por obra y material; se reemplaza sin dejar constancia. **Por ratificar.**
+9. **Precio de la compra** en la moneda de la carpeta (409 sin moneda); solo la recepción con precio crea observación.
+10. **Cantidad exacta** en la API («126.0»).
+11. **Texto «{insumo} no está pedido»** tal como lo fija el plan; propuesta «no se ha pedido». **Por decidir.**
+12. `POST /compras` y `PUT /plazos` devuelven 204.
+13. Fechas en los textos con `%d/%m/%Y` (`aplicacion/cifras.py` no tiene formateador de fechas).
+14. Oráculo corregido después del rojo (3040d9e6): la clave primaria `id` de `mp_compra` es NOT NULL; era un supuesto de la
+    base de pruebas.
+
 ## MOD-4a, mesa de control (aprobada en la ronda 2)
 
 1. **Corte sin valuaciones.** El corte de una obra con línea base es el «hasta» de su última valuación no anulada; sin

@@ -46,6 +46,7 @@ from api.rutas import (
     obras,
     precios_empresa,
     presupuestos,
+    procura,
     produccion,
     proyectos,
     reajuste,
@@ -190,6 +191,8 @@ app.include_router(obras.router)
 # T14 (montar un presupuesto): /v1/mercado, estudio de mercado y «Usar este precio»
 # (EDITAR_HOJA en la ruta)
 app.include_router(mercado.router)
+# T23 (montar un presupuesto): /v1/procura, procura con fechas, compras y plazos (control_de_obra)
+app.include_router(procura.router)
 # MP-4 T18: ciclo de aprobación
 app.include_router(aprobaciones.router)
 

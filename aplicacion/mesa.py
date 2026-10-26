@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 
 from aplicacion import aprobaciones
 from aplicacion.aprobaciones import pendientes_de_aprobacion
+from aplicacion.causas import atrasos
 from aplicacion.cifras import texto_de_cifra
 from aplicacion.control import (
     ControlInvalido,
@@ -40,6 +41,7 @@ from aplicacion.hoja_partidas import pendientes_sin_calculo
 from aplicacion.listas_para_armar import describir
 from aplicacion.mercado import pendientes_de_mercado
 from aplicacion.obras import SIN_FICHA, fichas
+from aplicacion.procura import pendientes_de_compras
 from aplicacion.proyectos import ProyectoDelCaso, proyectos_del_caso
 from core import models
 from core.budget.moneda import moneda_del_proyecto
@@ -292,7 +294,9 @@ def _sin_linea_base(sesion: Session, codigo: str) -> _Estado:
 
 def _en_curso(sesion: Session, catalogo: Catalogo, nombre: str, hoy: date) -> _Estado:
     """La etapa y el control de una obra con línea base, al último corte (el *hasta* de la última
-    valuación; sin valuaciones, `hoy`)."""
+    valuación; sin valuaciones, `hoy`). Una obra atrasada dice la primera partida atrasada en el
+    orden del presupuesto con su causa (`aplicacion.causas.atrasos`, MP-7); solo sin atrasos por
+    partida dice «Atrasada …» con su SPI."""
     valuaciones = valuaciones_registradas(sesion, nombre)
     con_valuaciones = bool(valuaciones)
     # el corte por defecto del control (`corte_por_defecto`), con `hoy` en vez del reloj
@@ -309,7 +313,10 @@ def _en_curso(sesion: Session, catalogo: Catalogo, nombre: str, hoy: date) -> _E
     retraso = None if termino is None else termino - resultado.estado.dias_plan
     retraso = retraso if retraso is not None and retraso > 0 else None
     atrasada = spi is not None and spi < parametros_actuales(sesion, nombre).spi_error
-    if atrasada and spi is not None:
+    por_partida = atrasos(sesion, resultado) if atrasada else []
+    if por_partida:
+        que_pasa: str | None = por_partida[0].texto
+    elif atrasada and spi is not None:
         dias = "" if retraso is None else f" {_dias_habiles(retraso)}"
         que_pasa = f"Atrasada{dias} (SPI {texto_de_cifra(_a(spi, _CENTESIMA))})"
     else:
@@ -573,7 +580,7 @@ GRUPOS = (
 #: vienen agregan la suya (MP-7 compras, T9 cantidades sin cálculo).
 FUENTES: dict[str, tuple[FuentePendientes, ...]] = {
     "aprobar": (pendientes_de_aprobacion,),
-    "compras": (),
+    "compras": (pendientes_de_compras,),
     "precios": (
         precios_viejos,
         precios_sin_referencia,

@@ -52,6 +52,18 @@ def test_el_caso_lleva_el_estudio_de_mercado() -> None:
     assert METADATA_MERCADO in METADATAS_CASO
 
 
+def test_el_caso_lleva_las_causas_de_retraso() -> None:
+    from aplicacion.tablas_causas import METADATA_CAUSAS
+
+    assert METADATA_CAUSAS in METADATAS_CASO
+
+
+def test_el_caso_lleva_la_procura() -> None:
+    from aplicacion.tablas_procura import METADATA_PROCURA
+
+    assert METADATA_PROCURA in METADATAS_CASO
+
+
 def test_el_caso_lleva_el_rastro_de_aprobaciones() -> None:
     from aplicacion.tablas_aprobacion import METADATA_APROBACION
 
