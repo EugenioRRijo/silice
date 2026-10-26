@@ -40,7 +40,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/api__esquemas__PartidaRespuesta"
+                    "$ref": "#/components/schemas/PartidaRespuesta"
                   },
                   "title": "Response Listar Partidas Partidas Get"
                 }
@@ -5173,7 +5173,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/api__rutas__precios_empresa__EstadoRespuesta"
+                  "$ref": "#/components/schemas/EstadoRespuesta"
                 }
               }
             }
@@ -5287,7 +5287,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/api__rutas__precios_empresa__HallazgosRespuesta"
+                  "$ref": "#/components/schemas/HallazgosRespuesta"
                 }
               }
             }
@@ -8683,7 +8683,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EnvioPeticion"
+                "$ref": "#/components/schemas/AprobacionEnvioPeticion"
               }
             }
           }
@@ -8694,7 +8694,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnvioRespuesta"
+                  "$ref": "#/components/schemas/AprobacionEnvioRespuesta"
                 }
               }
             }
@@ -8738,7 +8738,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/api__rutas__aprobaciones__ObraRespuesta"
+                  "$ref": "#/components/schemas/AprobacionObraRespuesta"
                 }
               }
             }
@@ -8771,7 +8771,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/FilaRespuesta"
+                    "$ref": "#/components/schemas/AprobacionFilaRespuesta"
                   },
                   "type": "array",
                   "title": "Response Por Aprobar V1 Aprobaciones Pendientes Get"
@@ -8797,7 +8797,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/FilaRespuesta"
+                    "$ref": "#/components/schemas/AprobacionFilaRespuesta"
                   },
                   "type": "array",
                   "title": "Response Mias V1 Aprobaciones Mias Get"
@@ -8822,7 +8822,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/api__rutas__aprobaciones__CifraRespuesta"
+                  "$ref": "#/components/schemas/AprobacionCifraRespuesta"
                 }
               }
             }
@@ -8842,7 +8842,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AbrirPeticion"
+                "$ref": "#/components/schemas/AprobacionAbrirPeticion"
               }
             }
           },
@@ -8854,7 +8854,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AbrirRespuesta"
+                  "$ref": "#/components/schemas/AprobacionAbrirRespuesta"
                 }
               }
             }
@@ -8897,7 +8897,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DetalleRespuesta"
+                  "$ref": "#/components/schemas/AprobacionDetalleRespuesta"
                 }
               }
             }
@@ -8939,7 +8939,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DictamenPeticion"
+                "$ref": "#/components/schemas/AprobacionDictamenPeticion"
               }
             }
           }
@@ -8950,7 +8950,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DictamenRespuesta"
+                  "$ref": "#/components/schemas/AprobacionDictamenRespuesta"
                 }
               }
             }
@@ -8997,39 +8997,6 @@
   },
   "components": {
     "schemas": {
-      "AbrirPeticion": {
-        "properties": {
-          "caso": {
-            "type": "string",
-            "maxLength": 255,
-            "title": "Caso",
-            "description": "La carpeta del envío (`caso` del índice)"
-          },
-          "envio_id": {
-            "type": "integer",
-            "title": "Envio Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "caso",
-          "envio_id"
-        ],
-        "title": "AbrirPeticion"
-      },
-      "AbrirRespuesta": {
-        "properties": {
-          "caso": {
-            "type": "string",
-            "title": "Caso"
-          }
-        },
-        "type": "object",
-        "required": [
-          "caso"
-        ],
-        "title": "AbrirRespuesta"
-      },
       "AccesosRespuesta": {
         "properties": {
           "maximo": {
@@ -9038,7 +9005,7 @@
           },
           "eventos": {
             "items": {
-              "$ref": "#/components/schemas/api__rutas__cuentas__EventoRespuesta"
+              "$ref": "#/components/schemas/EventoRespuesta"
             },
             "type": "array",
             "title": "Eventos"
@@ -9425,6 +9392,666 @@
           "anulada_por"
         ],
         "title": "Anulada"
+      },
+      "AprobacionAbrirPeticion": {
+        "properties": {
+          "caso": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Caso",
+            "description": "La carpeta del envío (`caso` del índice)"
+          },
+          "envio_id": {
+            "type": "integer",
+            "title": "Envio Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "caso",
+          "envio_id"
+        ],
+        "title": "AprobacionAbrirPeticion"
+      },
+      "AprobacionAbrirRespuesta": {
+        "properties": {
+          "caso": {
+            "type": "string",
+            "title": "Caso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "caso"
+        ],
+        "title": "AprobacionAbrirRespuesta"
+      },
+      "AprobacionCifraRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "actual": {
+            "type": "string",
+            "title": "Actual"
+          },
+          "meta": {
+            "type": "string",
+            "title": "Meta"
+          },
+          "delta": {
+            "type": "string",
+            "title": "Delta"
+          },
+          "delta_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Pct"
+          },
+          "sentido": {
+            "type": "string",
+            "title": "Sentido"
+          },
+          "detalle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalle"
+          },
+          "marcada": {
+            "type": "boolean",
+            "title": "Marcada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "titulo",
+          "actual",
+          "meta",
+          "delta",
+          "delta_pct",
+          "sentido",
+          "detalle",
+          "marcada"
+        ],
+        "title": "AprobacionCifraRespuesta"
+      },
+      "AprobacionDetalleRespuesta": {
+        "properties": {
+          "envio_id": {
+            "type": "integer",
+            "title": "Envio Id"
+          },
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "obra": {
+            "type": "string",
+            "title": "Obra"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/AprobacionPartidaRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas"
+          },
+          "hallazgos": {
+            "$ref": "#/components/schemas/AprobacionHallazgosRespuesta"
+          },
+          "rastro": {
+            "$ref": "#/components/schemas/AprobacionRastroRespuesta"
+          },
+          "envio": {
+            "$ref": "#/components/schemas/AprobacionEnvioDeLaVersion"
+          },
+          "armo": {
+            "type": "boolean",
+            "title": "Armo",
+            "description": "Quien mira es quien guardó la versión"
+          }
+        },
+        "type": "object",
+        "required": [
+          "envio_id",
+          "proyecto",
+          "obra",
+          "version",
+          "estado",
+          "moneda",
+          "total",
+          "partidas",
+          "hallazgos",
+          "rastro",
+          "envio",
+          "armo"
+        ],
+        "title": "AprobacionDetalleRespuesta"
+      },
+      "AprobacionDictamenPeticion": {
+        "properties": {
+          "resultado": {
+            "type": "string",
+            "enum": [
+              "aprobada",
+              "aprobada_con_observaciones",
+              "devuelta"
+            ],
+            "title": "Resultado"
+          },
+          "notas": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Notas",
+            "description": "Obligatorias para devolver o aprobar con observaciones",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "resultado"
+        ],
+        "title": "AprobacionDictamenPeticion"
+      },
+      "AprobacionDictamenRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "estado"
+        ],
+        "title": "AprobacionDictamenRespuesta"
+      },
+      "AprobacionEnvioDeLaVersion": {
+        "properties": {
+          "por": {
+            "type": "string",
+            "title": "Por"
+          },
+          "el": {
+            "type": "string",
+            "format": "date-time",
+            "title": "El"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota"
+          }
+        },
+        "type": "object",
+        "required": [
+          "por",
+          "el",
+          "nota"
+        ],
+        "title": "AprobacionEnvioDeLaVersion"
+      },
+      "AprobacionEnvioPeticion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Proyecto",
+            "description": "El código o el nombre de la obra"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Version",
+            "description": "El código de la versión guardada"
+          },
+          "nota": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Nota",
+            "description": "Nota opcional del envío",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version"
+        ],
+        "title": "AprobacionEnvioPeticion"
+      },
+      "AprobacionEnvioRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "retirada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retirada",
+            "description": "La versión pendiente que este envío retiró"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "estado",
+          "retirada"
+        ],
+        "title": "AprobacionEnvioRespuesta"
+      },
+      "AprobacionEstadoRespuesta": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "por": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Por"
+          },
+          "el": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "El"
+          },
+          "notas": {
+            "type": "string",
+            "title": "Notas"
+          },
+          "armo": {
+            "type": "boolean",
+            "title": "Armo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado",
+          "por",
+          "el",
+          "notas",
+          "armo"
+        ],
+        "title": "AprobacionEstadoRespuesta"
+      },
+      "AprobacionEventoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "resultado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resultado"
+          },
+          "notas": {
+            "type": "string",
+            "title": "Notas"
+          },
+          "por": {
+            "type": "string",
+            "title": "Por"
+          },
+          "el": {
+            "type": "string",
+            "format": "date-time",
+            "title": "El"
+          },
+          "armo": {
+            "type": "boolean",
+            "title": "Armo"
+          },
+          "cierre_de": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cierre De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tipo",
+          "version",
+          "resultado",
+          "notas",
+          "por",
+          "el",
+          "armo",
+          "cierre_de"
+        ],
+        "title": "AprobacionEventoRespuesta"
+      },
+      "AprobacionFilaRespuesta": {
+        "properties": {
+          "caso": {
+            "type": "string",
+            "title": "Caso"
+          },
+          "envio_id": {
+            "type": "integer",
+            "title": "Envio Id"
+          },
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto",
+            "description": "El código de la obra en su carpeta"
+          },
+          "obra": {
+            "type": "string",
+            "title": "Obra"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "enviado_por": {
+            "type": "string",
+            "title": "Enviado Por"
+          },
+          "enviado_el": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Enviado El"
+          },
+          "dictamen_por": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dictamen Por"
+          },
+          "dictamen_el": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dictamen El"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota",
+            "description": "La nota del envío"
+          },
+          "notas": {
+            "type": "string",
+            "title": "Notas",
+            "description": "Las notas del dictamen"
+          },
+          "armo": {
+            "type": "boolean",
+            "title": "Armo",
+            "description": "Quien dictaminó es quien guardó la versión"
+          }
+        },
+        "type": "object",
+        "required": [
+          "caso",
+          "envio_id",
+          "proyecto",
+          "obra",
+          "version",
+          "total",
+          "moneda",
+          "estado",
+          "enviado_por",
+          "enviado_el",
+          "dictamen_por",
+          "dictamen_el",
+          "nota",
+          "notas",
+          "armo"
+        ],
+        "title": "AprobacionFilaRespuesta"
+      },
+      "AprobacionHallazgoRespuesta": {
+        "properties": {
+          "regla": {
+            "type": "string",
+            "title": "Regla"
+          },
+          "severidad": {
+            "type": "string",
+            "title": "Severidad"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "regla",
+          "severidad",
+          "descripcion"
+        ],
+        "title": "AprobacionHallazgoRespuesta"
+      },
+      "AprobacionHallazgosRespuesta": {
+        "properties": {
+          "error": {
+            "type": "integer",
+            "title": "Error",
+            "description": "Los de severidad error o crítica"
+          },
+          "advertencia": {
+            "type": "integer",
+            "title": "Advertencia"
+          },
+          "info": {
+            "type": "integer",
+            "title": "Info"
+          },
+          "lista": {
+            "items": {
+              "$ref": "#/components/schemas/AprobacionHallazgoRespuesta"
+            },
+            "type": "array",
+            "title": "Lista"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error",
+          "advertencia",
+          "info",
+          "lista"
+        ],
+        "title": "AprobacionHallazgosRespuesta"
+      },
+      "AprobacionObraRespuesta": {
+        "properties": {
+          "rastro": {
+            "$ref": "#/components/schemas/AprobacionRastroRespuesta"
+          },
+          "fases": {
+            "type": "string",
+            "title": "Fases",
+            "description": "«VIV-001 devuelta → VIV-002 aprobada»"
+          },
+          "versiones": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AprobacionEstadoRespuesta"
+            },
+            "type": "object",
+            "title": "Versiones"
+          },
+          "eventos": {
+            "items": {
+              "$ref": "#/components/schemas/AprobacionEventoRespuesta"
+            },
+            "type": "array",
+            "title": "Eventos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rastro",
+          "fases",
+          "versiones",
+          "eventos"
+        ],
+        "title": "AprobacionObraRespuesta"
+      },
+      "AprobacionPartidaRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "precio_unitario": {
+            "type": "string",
+            "title": "Precio Unitario"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "precio_unitario",
+          "total"
+        ],
+        "title": "AprobacionPartidaRespuesta"
+      },
+      "AprobacionRastroRespuesta": {
+        "properties": {
+          "integro": {
+            "type": "boolean",
+            "title": "Integro"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "integro",
+          "mensaje"
+        ],
+        "title": "AprobacionRastroRespuesta"
       },
       "AsistenteEstado": {
         "properties": {
@@ -11348,6 +11975,69 @@
         "title": "CeldaVisualRespuesta",
         "description": "Espejo de `visual.CeldaVisual`: `fila` y `columna` base 1, `ref` sin `$`."
       },
+      "CifraRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "actual": {
+            "type": "string",
+            "title": "Actual"
+          },
+          "meta": {
+            "type": "string",
+            "title": "Meta"
+          },
+          "delta": {
+            "type": "string",
+            "title": "Delta"
+          },
+          "delta_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Pct"
+          },
+          "sentido": {
+            "type": "string",
+            "title": "Sentido",
+            "description": "«rendimiento»: más es mejor"
+          },
+          "detalle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "titulo",
+          "actual",
+          "meta",
+          "delta",
+          "delta_pct",
+          "sentido",
+          "detalle"
+        ],
+        "title": "CifraRespuesta"
+      },
       "CircuitoSupuestoRespuesta": {
         "properties": {
           "id": {
@@ -12497,75 +13187,6 @@
         ],
         "title": "DetalleApuRespuesta"
       },
-      "DetalleRespuesta": {
-        "properties": {
-          "envio_id": {
-            "type": "integer",
-            "title": "Envio Id"
-          },
-          "proyecto": {
-            "type": "string",
-            "title": "Proyecto"
-          },
-          "obra": {
-            "type": "string",
-            "title": "Obra"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version"
-          },
-          "estado": {
-            "type": "string",
-            "title": "Estado"
-          },
-          "moneda": {
-            "type": "string",
-            "title": "Moneda"
-          },
-          "total": {
-            "type": "string",
-            "title": "Total"
-          },
-          "partidas": {
-            "items": {
-              "$ref": "#/components/schemas/api__rutas__aprobaciones__PartidaRespuesta"
-            },
-            "type": "array",
-            "title": "Partidas"
-          },
-          "hallazgos": {
-            "$ref": "#/components/schemas/api__rutas__aprobaciones__HallazgosRespuesta"
-          },
-          "rastro": {
-            "$ref": "#/components/schemas/RastroRespuesta"
-          },
-          "envio": {
-            "$ref": "#/components/schemas/EnvioDeLaVersion"
-          },
-          "armo": {
-            "type": "boolean",
-            "title": "Armo",
-            "description": "Quien mira es quien guardó la versión"
-          }
-        },
-        "type": "object",
-        "required": [
-          "envio_id",
-          "proyecto",
-          "obra",
-          "version",
-          "estado",
-          "moneda",
-          "total",
-          "partidas",
-          "hallazgos",
-          "rastro",
-          "envio",
-          "armo"
-        ],
-        "title": "DetalleRespuesta"
-      },
       "DictamenAnterior": {
         "properties": {
           "resultado": {
@@ -12619,49 +13240,6 @@
           "dictamenes"
         ],
         "title": "DictamenGuardado"
-      },
-      "DictamenPeticion": {
-        "properties": {
-          "resultado": {
-            "type": "string",
-            "enum": [
-              "aprobada",
-              "aprobada_con_observaciones",
-              "devuelta"
-            ],
-            "title": "Resultado"
-          },
-          "notas": {
-            "type": "string",
-            "maxLength": 2000,
-            "title": "Notas",
-            "description": "Obligatorias para devolver o aprobar con observaciones",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "resultado"
-        ],
-        "title": "DictamenPeticion"
-      },
-      "DictamenRespuesta": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "estado": {
-            "type": "string",
-            "title": "Estado"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "estado"
-        ],
-        "title": "DictamenRespuesta"
       },
       "DiferenciaDePrecio": {
         "properties": {
@@ -13330,90 +13908,6 @@
         ],
         "title": "EntregaPeticion"
       },
-      "EnvioDeLaVersion": {
-        "properties": {
-          "por": {
-            "type": "string",
-            "title": "Por"
-          },
-          "el": {
-            "type": "string",
-            "format": "date-time",
-            "title": "El"
-          },
-          "nota": {
-            "type": "string",
-            "title": "Nota"
-          }
-        },
-        "type": "object",
-        "required": [
-          "por",
-          "el",
-          "nota"
-        ],
-        "title": "EnvioDeLaVersion"
-      },
-      "EnvioPeticion": {
-        "properties": {
-          "proyecto": {
-            "type": "string",
-            "maxLength": 200,
-            "title": "Proyecto",
-            "description": "El código o el nombre de la obra"
-          },
-          "version": {
-            "type": "string",
-            "maxLength": 40,
-            "title": "Version",
-            "description": "El código de la versión guardada"
-          },
-          "nota": {
-            "type": "string",
-            "maxLength": 2000,
-            "title": "Nota",
-            "description": "Nota opcional del envío",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "proyecto",
-          "version"
-        ],
-        "title": "EnvioPeticion"
-      },
-      "EnvioRespuesta": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "estado": {
-            "type": "string",
-            "title": "Estado"
-          },
-          "retirada": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Retirada",
-            "description": "La versión pendiente que este envío retiró"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "estado",
-          "retirada"
-        ],
-        "title": "EnvioRespuesta"
-      },
       "Equilibrio": {
         "properties": {
           "punto": {
@@ -13757,6 +14251,30 @@
           "texto"
         ],
         "title": "EstadoFilaRespuesta"
+      },
+      "EstadoRespuesta": {
+        "properties": {
+          "bases": {
+            "items": {
+              "$ref": "#/components/schemas/BaseRespuesta"
+            },
+            "type": "array",
+            "title": "Bases"
+          },
+          "listas": {
+            "items": {
+              "$ref": "#/components/schemas/ListaEmpresaRespuesta"
+            },
+            "type": "array",
+            "title": "Listas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bases",
+          "listas"
+        ],
+        "title": "EstadoRespuesta"
       },
       "EstiloVisualRespuesta": {
         "properties": {
@@ -14118,6 +14636,44 @@
           "contraste"
         ],
         "title": "EvaluacionRespuesta"
+      },
+      "EventoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "title": "Fecha Hora"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "ip": {
+            "type": "string",
+            "title": "Ip"
+          },
+          "detalle": {
+            "type": "string",
+            "title": "Detalle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "fecha_hora",
+          "tipo",
+          "usuario",
+          "ip",
+          "detalle"
+        ],
+        "title": "EventoRespuesta"
       },
       "ExcelExternoRespuesta": {
         "properties": {
@@ -14693,109 +15249,6 @@
         ],
         "title": "FilaPresupuestoRespuesta"
       },
-      "FilaRespuesta": {
-        "properties": {
-          "caso": {
-            "type": "string",
-            "title": "Caso"
-          },
-          "envio_id": {
-            "type": "integer",
-            "title": "Envio Id"
-          },
-          "proyecto": {
-            "type": "string",
-            "title": "Proyecto",
-            "description": "El código de la obra en su carpeta"
-          },
-          "obra": {
-            "type": "string",
-            "title": "Obra"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version"
-          },
-          "total": {
-            "type": "string",
-            "title": "Total"
-          },
-          "moneda": {
-            "type": "string",
-            "title": "Moneda"
-          },
-          "estado": {
-            "type": "string",
-            "title": "Estado"
-          },
-          "enviado_por": {
-            "type": "string",
-            "title": "Enviado Por"
-          },
-          "enviado_el": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Enviado El"
-          },
-          "dictamen_por": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dictamen Por"
-          },
-          "dictamen_el": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dictamen El"
-          },
-          "nota": {
-            "type": "string",
-            "title": "Nota",
-            "description": "La nota del envío"
-          },
-          "notas": {
-            "type": "string",
-            "title": "Notas",
-            "description": "Las notas del dictamen"
-          },
-          "armo": {
-            "type": "boolean",
-            "title": "Armo",
-            "description": "Quien dictaminó es quien guardó la versión"
-          }
-        },
-        "type": "object",
-        "required": [
-          "caso",
-          "envio_id",
-          "proyecto",
-          "obra",
-          "version",
-          "total",
-          "moneda",
-          "estado",
-          "enviado_por",
-          "enviado_el",
-          "dictamen_por",
-          "dictamen_el",
-          "nota",
-          "notas",
-          "armo"
-        ],
-        "title": "FilaRespuesta"
-      },
       "FilaSimuladaRespuesta": {
         "properties": {
           "tipo": {
@@ -15236,6 +15689,38 @@
           "total"
         ],
         "title": "HallazgosHojaRespuesta"
+      },
+      "HallazgosRespuesta": {
+        "properties": {
+          "columnas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columnas"
+          },
+          "filas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Filas"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columnas",
+          "filas",
+          "nota"
+        ],
+        "title": "HallazgosRespuesta"
       },
       "HojaVisualRespuesta": {
         "properties": {
@@ -16812,6 +17297,117 @@
         ],
         "title": "ObraElegida"
       },
+      "ObraRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "cliente": {
+            "type": "string",
+            "title": "Cliente"
+          },
+          "etapa": {
+            "type": "string",
+            "title": "Etapa"
+          },
+          "etapa_texto": {
+            "type": "string",
+            "title": "Etapa Texto"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "avance_real": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avance Real",
+            "description": "EV ÷ BAC × 100, a 0,1"
+          },
+          "avance_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avance Plan",
+            "description": "PV ÷ BAC × 100, a 0,1"
+          },
+          "que_pasa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Que Pasa"
+          },
+          "siguiente": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiguienteRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nombre",
+          "cliente",
+          "etapa",
+          "etapa_texto",
+          "version",
+          "total",
+          "moneda",
+          "avance_real",
+          "avance_plan",
+          "que_pasa",
+          "siguiente"
+        ],
+        "title": "ObraRespuesta"
+      },
       "ObservacionNueva": {
         "properties": {
           "lado": {
@@ -17233,6 +17829,35 @@
         ],
         "title": "PartidaPresupuestadaRespuesta",
         "description": "Un renglón del presupuesto, tal como se presenta (dos decimales, NORMAS.md §2.3)."
+      },
+      "PartidaRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "dominio": {
+            "type": "string",
+            "title": "Dominio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "unidad",
+          "dominio"
+        ],
+        "title": "PartidaRespuesta",
+        "description": "Cabecera de una partida del catalogo."
       },
       "PartidasHalladasRespuesta": {
         "properties": {
@@ -18473,24 +19098,6 @@
           "valor"
         ],
         "title": "PuntoRespuesta"
-      },
-      "RastroRespuesta": {
-        "properties": {
-          "integro": {
-            "type": "boolean",
-            "title": "Integro"
-          },
-          "mensaje": {
-            "type": "string",
-            "title": "Mensaje"
-          }
-        },
-        "type": "object",
-        "required": [
-          "integro",
-          "mensaje"
-        ],
-        "title": "RastroRespuesta"
       },
       "Reactivacion": {
         "properties": {
@@ -21420,35 +22027,6 @@
         "title": "VistaPreviaRespuesta",
         "description": "Los insumos del archivo que se pueden dar de alta (flujo 2a), sin escribir nada. Un archivo\nque no se puede leer no ofrece nada y trae su motivo; el mismo fallo se informa al revalorar."
       },
-      "api__esquemas__PartidaRespuesta": {
-        "properties": {
-          "codigo": {
-            "type": "string",
-            "title": "Codigo"
-          },
-          "descripcion": {
-            "type": "string",
-            "title": "Descripcion"
-          },
-          "unidad": {
-            "type": "string",
-            "title": "Unidad"
-          },
-          "dominio": {
-            "type": "string",
-            "title": "Dominio"
-          }
-        },
-        "type": "object",
-        "required": [
-          "codigo",
-          "descripcion",
-          "unidad",
-          "dominio"
-        ],
-        "title": "PartidaRespuesta",
-        "description": "Cabecera de una partida del catalogo."
-      },
       "api__esquemas__PendienteRespuesta": {
         "properties": {
           "codigo_partida": {
@@ -21839,316 +22417,6 @@
         ],
         "title": "AvisoRespuesta"
       },
-      "api__rutas__aprobaciones__CifraRespuesta": {
-        "properties": {
-          "clave": {
-            "type": "string",
-            "title": "Clave"
-          },
-          "titulo": {
-            "type": "string",
-            "title": "Titulo"
-          },
-          "actual": {
-            "type": "string",
-            "title": "Actual"
-          },
-          "meta": {
-            "type": "string",
-            "title": "Meta"
-          },
-          "delta": {
-            "type": "string",
-            "title": "Delta"
-          },
-          "delta_pct": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Delta Pct"
-          },
-          "sentido": {
-            "type": "string",
-            "title": "Sentido"
-          },
-          "detalle": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Detalle"
-          },
-          "marcada": {
-            "type": "boolean",
-            "title": "Marcada"
-          }
-        },
-        "type": "object",
-        "required": [
-          "clave",
-          "titulo",
-          "actual",
-          "meta",
-          "delta",
-          "delta_pct",
-          "sentido",
-          "detalle",
-          "marcada"
-        ],
-        "title": "CifraRespuesta"
-      },
-      "api__rutas__aprobaciones__EstadoRespuesta": {
-        "properties": {
-          "estado": {
-            "type": "string",
-            "title": "Estado"
-          },
-          "por": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Por"
-          },
-          "el": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "El"
-          },
-          "notas": {
-            "type": "string",
-            "title": "Notas"
-          },
-          "armo": {
-            "type": "boolean",
-            "title": "Armo"
-          }
-        },
-        "type": "object",
-        "required": [
-          "estado",
-          "por",
-          "el",
-          "notas",
-          "armo"
-        ],
-        "title": "EstadoRespuesta"
-      },
-      "api__rutas__aprobaciones__EventoRespuesta": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "tipo": {
-            "type": "string",
-            "title": "Tipo"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version"
-          },
-          "resultado": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resultado"
-          },
-          "notas": {
-            "type": "string",
-            "title": "Notas"
-          },
-          "por": {
-            "type": "string",
-            "title": "Por"
-          },
-          "el": {
-            "type": "string",
-            "format": "date-time",
-            "title": "El"
-          },
-          "armo": {
-            "type": "boolean",
-            "title": "Armo"
-          },
-          "cierre_de": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cierre De"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "tipo",
-          "version",
-          "resultado",
-          "notas",
-          "por",
-          "el",
-          "armo",
-          "cierre_de"
-        ],
-        "title": "EventoRespuesta"
-      },
-      "api__rutas__aprobaciones__HallazgoRespuesta": {
-        "properties": {
-          "regla": {
-            "type": "string",
-            "title": "Regla"
-          },
-          "severidad": {
-            "type": "string",
-            "title": "Severidad"
-          },
-          "descripcion": {
-            "type": "string",
-            "title": "Descripcion"
-          }
-        },
-        "type": "object",
-        "required": [
-          "regla",
-          "severidad",
-          "descripcion"
-        ],
-        "title": "HallazgoRespuesta"
-      },
-      "api__rutas__aprobaciones__HallazgosRespuesta": {
-        "properties": {
-          "error": {
-            "type": "integer",
-            "title": "Error",
-            "description": "Los de severidad error o crítica"
-          },
-          "advertencia": {
-            "type": "integer",
-            "title": "Advertencia"
-          },
-          "info": {
-            "type": "integer",
-            "title": "Info"
-          },
-          "lista": {
-            "items": {
-              "$ref": "#/components/schemas/api__rutas__aprobaciones__HallazgoRespuesta"
-            },
-            "type": "array",
-            "title": "Lista"
-          }
-        },
-        "type": "object",
-        "required": [
-          "error",
-          "advertencia",
-          "info",
-          "lista"
-        ],
-        "title": "HallazgosRespuesta"
-      },
-      "api__rutas__aprobaciones__ObraRespuesta": {
-        "properties": {
-          "rastro": {
-            "$ref": "#/components/schemas/RastroRespuesta"
-          },
-          "fases": {
-            "type": "string",
-            "title": "Fases",
-            "description": "«VIV-001 devuelta → VIV-002 aprobada»"
-          },
-          "versiones": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/api__rutas__aprobaciones__EstadoRespuesta"
-            },
-            "type": "object",
-            "title": "Versiones"
-          },
-          "eventos": {
-            "items": {
-              "$ref": "#/components/schemas/api__rutas__aprobaciones__EventoRespuesta"
-            },
-            "type": "array",
-            "title": "Eventos"
-          }
-        },
-        "type": "object",
-        "required": [
-          "rastro",
-          "fases",
-          "versiones",
-          "eventos"
-        ],
-        "title": "ObraRespuesta"
-      },
-      "api__rutas__aprobaciones__PartidaRespuesta": {
-        "properties": {
-          "codigo": {
-            "type": "string",
-            "title": "Codigo"
-          },
-          "descripcion": {
-            "type": "string",
-            "title": "Descripcion"
-          },
-          "unidad": {
-            "type": "string",
-            "title": "Unidad"
-          },
-          "cantidad": {
-            "type": "string",
-            "title": "Cantidad"
-          },
-          "precio_unitario": {
-            "type": "string",
-            "title": "Precio Unitario"
-          },
-          "total": {
-            "type": "string",
-            "title": "Total"
-          }
-        },
-        "type": "object",
-        "required": [
-          "codigo",
-          "descripcion",
-          "unidad",
-          "cantidad",
-          "precio_unitario",
-          "total"
-        ],
-        "title": "PartidaRespuesta"
-      },
       "api__rutas__auditorias__HallazgoRespuesta": {
         "properties": {
           "regla": {
@@ -22443,44 +22711,6 @@
         ],
         "title": "VersionRespuesta"
       },
-      "api__rutas__cuentas__EventoRespuesta": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "fecha_hora": {
-            "type": "string",
-            "title": "Fecha Hora"
-          },
-          "tipo": {
-            "type": "string",
-            "title": "Tipo"
-          },
-          "usuario": {
-            "type": "string",
-            "title": "Usuario"
-          },
-          "ip": {
-            "type": "string",
-            "title": "Ip"
-          },
-          "detalle": {
-            "type": "string",
-            "title": "Detalle"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "fecha_hora",
-          "tipo",
-          "usuario",
-          "ip",
-          "detalle"
-        ],
-        "title": "EventoRespuesta"
-      },
       "api__rutas__entregas__ResumenRespuesta": {
         "properties": {
           "proyecto": {
@@ -22741,180 +22971,6 @@
         ],
         "title": "PropuestaRespuesta"
       },
-      "api__rutas__obras__CifraRespuesta": {
-        "properties": {
-          "clave": {
-            "type": "string",
-            "title": "Clave"
-          },
-          "titulo": {
-            "type": "string",
-            "title": "Titulo"
-          },
-          "actual": {
-            "type": "string",
-            "title": "Actual"
-          },
-          "meta": {
-            "type": "string",
-            "title": "Meta"
-          },
-          "delta": {
-            "type": "string",
-            "title": "Delta"
-          },
-          "delta_pct": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Delta Pct"
-          },
-          "sentido": {
-            "type": "string",
-            "title": "Sentido",
-            "description": "«rendimiento»: más es mejor"
-          },
-          "detalle": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Detalle"
-          }
-        },
-        "type": "object",
-        "required": [
-          "clave",
-          "titulo",
-          "actual",
-          "meta",
-          "delta",
-          "delta_pct",
-          "sentido",
-          "detalle"
-        ],
-        "title": "CifraRespuesta"
-      },
-      "api__rutas__obras__ObraRespuesta": {
-        "properties": {
-          "codigo": {
-            "type": "string",
-            "title": "Codigo"
-          },
-          "nombre": {
-            "type": "string",
-            "title": "Nombre"
-          },
-          "cliente": {
-            "type": "string",
-            "title": "Cliente"
-          },
-          "etapa": {
-            "type": "string",
-            "title": "Etapa"
-          },
-          "etapa_texto": {
-            "type": "string",
-            "title": "Etapa Texto"
-          },
-          "version": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Version"
-          },
-          "total": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Total"
-          },
-          "moneda": {
-            "type": "string",
-            "title": "Moneda"
-          },
-          "avance_real": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avance Real",
-            "description": "EV ÷ BAC × 100, a 0,1"
-          },
-          "avance_plan": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avance Plan",
-            "description": "PV ÷ BAC × 100, a 0,1"
-          },
-          "que_pasa": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Que Pasa"
-          },
-          "siguiente": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SiguienteRespuesta"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "codigo",
-          "nombre",
-          "cliente",
-          "etapa",
-          "etapa_texto",
-          "version",
-          "total",
-          "moneda",
-          "avance_real",
-          "avance_plan",
-          "que_pasa",
-          "siguiente"
-        ],
-        "title": "ObraRespuesta"
-      },
       "api__rutas__obras__PendienteRespuesta": {
         "properties": {
           "obra": {
@@ -22962,7 +23018,7 @@
           },
           "cifras": {
             "items": {
-              "$ref": "#/components/schemas/api__rutas__obras__CifraRespuesta"
+              "$ref": "#/components/schemas/CifraRespuesta"
             },
             "type": "array",
             "title": "Cifras"
@@ -22983,7 +23039,7 @@
           },
           "obras": {
             "items": {
-              "$ref": "#/components/schemas/api__rutas__obras__ObraRespuesta"
+              "$ref": "#/components/schemas/ObraRespuesta"
             },
             "type": "array",
             "title": "Obras"
@@ -22999,62 +23055,6 @@
           "obras"
         ],
         "title": "ResumenRespuesta"
-      },
-      "api__rutas__precios_empresa__EstadoRespuesta": {
-        "properties": {
-          "bases": {
-            "items": {
-              "$ref": "#/components/schemas/BaseRespuesta"
-            },
-            "type": "array",
-            "title": "Bases"
-          },
-          "listas": {
-            "items": {
-              "$ref": "#/components/schemas/ListaEmpresaRespuesta"
-            },
-            "type": "array",
-            "title": "Listas"
-          }
-        },
-        "type": "object",
-        "required": [
-          "bases",
-          "listas"
-        ],
-        "title": "EstadoRespuesta"
-      },
-      "api__rutas__precios_empresa__HallazgosRespuesta": {
-        "properties": {
-          "columnas": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Columnas"
-          },
-          "filas": {
-            "items": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Filas"
-          },
-          "nota": {
-            "type": "string",
-            "title": "Nota"
-          }
-        },
-        "type": "object",
-        "required": [
-          "columnas",
-          "filas",
-          "nota"
-        ],
-        "title": "HallazgosRespuesta"
       },
       "api__rutas__produccion__ImportacionRespuesta": {
         "properties": {
