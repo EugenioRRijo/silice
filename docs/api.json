@@ -6777,6 +6777,202 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/apu/{partida}/lineas": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Agregar Linea Apu",
+        "description": "Tarea 26: agrega una línea al APU de una partida en la copia de la versión: un insumo de la\nlista de la versión (`insumo`, su código; toma su precio) o uno nuevo con su descripción, su\nunidad y su precio tecleados. Lo tecleado se lee con la regla de las cifras (422 con su texto);\nsin versión guardada, 409; la partida sin APU, 404. Devuelve el APU recalculado.",
+        "operationId": "agregar_linea_apu_v1_hoja_borradores__id__apu__partida__lineas_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "partida",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Partida"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgregarLineaApu"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionApuRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/apu/{partida}/lineas/quitar": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Quitar Linea Apu",
+        "description": "Tarea 26: quita la línea `indice` (desde 0) del rubro `tipo` del APU de una partida. La\núltima línea de un APU no se quita (422 «Un APU necesita al menos una línea.»).",
+        "operationId": "quitar_linea_apu_v1_hoja_borradores__id__apu__partida__lineas_quitar_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "partida",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Partida"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuitarLineaApu"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionApuRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/antes-y-despues": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Antes Y Despues",
+        "description": "Tarea 26 (lo muestra Control de obra): por partida de la versión (la vigente si no se dice)\ncuyo APU cambió respecto de la línea base, el costo directo unitario, la duración y el término\npor rendimientos y el punto de equilibrio, antes y después. Solo lee. Sin línea base, o sin\npartidas cambiadas, la lista va vacía con el aviso; la obra o la versión que no existen, 404.",
+        "operationId": "antes_y_despues_v1_hoja_antes_y_despues_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AntesYDespuesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores/{id}/insumos": {
       "get": {
         "tags": [
@@ -9511,6 +9707,77 @@
         ],
         "title": "AfectadosRespuesta"
       },
+      "AgregarLineaApu": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "material",
+              "equipo",
+              "mano_obra"
+            ],
+            "title": "Tipo"
+          },
+          "insumo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Insumo",
+            "default": ""
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Descripcion",
+            "default": ""
+          },
+          "unidad": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Unidad",
+            "default": ""
+          },
+          "cantidad": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Cantidad",
+            "default": ""
+          },
+          "precio": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Precio",
+            "default": ""
+          },
+          "depreciacion": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Depreciacion",
+            "default": ""
+          },
+          "modalidad": {
+            "type": "string",
+            "enum": [
+              "jornal",
+              "destajo"
+            ],
+            "title": "Modalidad",
+            "default": "jornal"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "tipo"
+        ],
+        "title": "AgregarLineaApu",
+        "description": "Un insumo de la lista de la version (`insumo`, su codigo) o uno nuevo (`insumo` vacio, con\n`descripcion`, `unidad` y `precio`), con su `cantidad`; `depreciacion` es de un equipo y\n`modalidad`, de la mano de obra."
+      },
       "AgregarPartida": {
         "properties": {
           "rev": {
@@ -9780,6 +10047,63 @@
           "fuente"
         ],
         "title": "AnotarCosto"
+      },
+      "AntesYDespuesRespuesta": {
+        "properties": {
+          "linea_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linea Base"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "filas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaAntesYDespuesRespuesta"
+            },
+            "type": "array",
+            "title": "Filas"
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "linea_base",
+          "version",
+          "moneda",
+          "filas",
+          "aviso"
+        ],
+        "title": "AntesYDespuesRespuesta"
       },
       "Anulable": {
         "properties": {
@@ -18611,6 +18935,99 @@
         "title": "PartidaAgregadaRespuesta",
         "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la clave del renglón nuevo."
       },
+      "PartidaAntesYDespuesRespuesta": {
+        "properties": {
+          "partida": {
+            "type": "string",
+            "title": "Partida"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "costo_antes": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "costo_despues": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "duracion_antes": {
+            "type": "string",
+            "title": "Duracion Antes"
+          },
+          "duracion_despues": {
+            "type": "string",
+            "title": "Duracion Despues"
+          },
+          "termino_antes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Termino Antes"
+          },
+          "termino_despues": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Termino Despues"
+          },
+          "equilibrio_antes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "equilibrio_despues": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "partida",
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "costo_antes",
+          "costo_despues",
+          "duracion_antes",
+          "duracion_despues",
+          "termino_antes",
+          "termino_despues",
+          "equilibrio_antes",
+          "equilibrio_despues"
+        ],
+        "title": "PartidaAntesYDespuesRespuesta",
+        "description": "Montos como `{texto, exacto}`; cantidad y duraciones (dias habiles) como decimal con punto;\nel termino en dias. `null`: no se pudo calcular."
+      },
       "PartidaDiferente": {
         "properties": {
           "codigo_partida": {
@@ -20146,6 +20563,38 @@
           "valor"
         ],
         "title": "PuntoRespuesta"
+      },
+      "QuitarLineaApu": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "material",
+              "equipo",
+              "mano_obra"
+            ],
+            "title": "Tipo"
+          },
+          "indice": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Indice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "tipo",
+          "indice"
+        ],
+        "title": "QuitarLineaApu"
       },
       "QuitarPartida": {
         "properties": {
