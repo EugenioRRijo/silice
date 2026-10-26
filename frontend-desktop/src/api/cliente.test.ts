@@ -121,6 +121,18 @@ describe("cliente de la API", () => {
     expect((error as ErrorDeApi).detalle).toMatch(/no se pudo hablar/i);
   });
 
+  // Diseño de autocompletado §12-8 (H-13): un buscador aborta la petición vieja; ese aborto no es un servidor caído.
+  test("la señal de aborto llega a fetch y un aborto se relanza tal cual, sin envolverlo en ErrorDeApi", async () => {
+    const controlador = new AbortController();
+    fetchFalso.mockImplementation(async (_ruta, init) => {
+      expect(init?.signal).toBe(controlador.signal);
+      throw new DOMException("The operation was aborted.", "AbortError");
+    });
+    const error = await pedir("/v1/buscar/partidas?q=tub", { senal: controlador.signal }).catch((e: unknown) => e);
+    expect(error).not.toBeInstanceOf(ErrorDeApi);
+    expect((error as DOMException).name).toBe("AbortError");
+  });
+
   test("pedirBinario devuelve el contenido y el nombre del Content-Disposition", async () => {
     fetchFalso.mockImplementation(
       async () =>
