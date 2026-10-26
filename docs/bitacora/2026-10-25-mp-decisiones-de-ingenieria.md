@@ -534,6 +534,36 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    en lugar del «espera dictamen» de la API, que solo queda si el índice no está. `Retomar.test.tsx` no se reprodujo
    (32/32 cuatro veces): probablemente se corrió con cambios a medias de T26 en el árbol.
 
+## T20, página Aprobar y la aprobada manda
+
+1. `aprobar` se registra en `shell/rutas.ts` con la estructura de hoy (módulo «obras», área «aprobaciones»); ese archivo se
+   reorganiza en otra tarea. Con ella, rita y ana ganan el área «Aprobaciones» y la mesa ofrece «Ver el envío» y «Abrir el
+   envío» (la prueba de `PorAprobar` ya no simula la ruta). Los oráculos de navegación, de la barra, del sidebar y de la mesa
+   (rita ve ahora «Siguiente paso») y el recorrido funcional (26 pantallas; fila de `aprobar` en solo lectura, sin envíos
+   sembrados) se actualizaron a mano.
+2. La pantalla dice de qué carpeta es el envío (la carpeta abierta, T19 punto 4). Sin `?envio=` resuelve el envío de la obra
+   elegida en la carpeta abierta desde `GET /v1/aprobaciones/pendientes`; sin el índice y con `editar_hoja`, desde el rastro
+   de la obra (T19 punto 5); si no, lista los de la carpeta y cuenta los de otras carpetas.
+3. Dictamen: «Devuelta» y «Aprobada con observaciones» sin notas no se envían (texto de la T17, foco en las notas); nada se
+   confirma sin diálogo («Volver» tiene el foco) y el dictamen se dice en texto neutro, no en un aviso verde. Un rechazo del
+   servidor (409) conserva lo escrito. Con la cadena rota no se ofrece dictamen y se dice por qué.
+4. `GET /v1/entregas/versiones` trae `aprobacion` (estado de cada versión) y `ultima_aprobada` (la del último dictamen que
+   aprobó, no la de número más alto). Entregar la propone por omisión y avisa si se elige otra o no hay ninguna, sin
+   impedir la entrega. **Por ratificar** (deja entregar una no aprobada).
+5. «Aprobada y sin entregar»: la entrega registra `sello_version` (el eslabón de la versión) en su evento; una aprobada se
+   da por entregada si algún paquete lleva su sello, no su código (que se repite entre obras). Como el registro vive en la
+   instalación, `aprobadas_sin_entregar` la abre ella misma (`sesion_de_instalacion`). Las entregas anteriores a este
+   cambio no llevan sello y la aprobada reaparecerá como pendiente una vez.
+6. Control › Línea base propone la última aprobada y avisa; Hoja › Trazabilidad gana la sección «Aprobaciones» (fases,
+   rastro con ícono y texto, movimientos); un 403 o un 404 no dicen nada. Textos de Entregar sin jerga («Obra», «Esta carpeta
+   todavía no tiene obras.»); el valor exacto se lee con coma decimal y sin `title` con punto.
+7. Menores del árbitro de T19 que tocaban a T20: el aviso de un fallo de los envíos pasa a decir «No se pudieron leer los
+   envíos por aprobar» (ya no «de otras carpetas»: ahora también es de la pantalla de aprobar), «Abrir el envío» se ofrece en
+   toda fila del grupo y el nombre del responsable usa `src/comun/responsable.ts`. No encontré más pendientes con el nombre
+   «últimos 3 menores» en la bitácora de T19: si se esperaba otro, falta decir cuál.
+8. Commits: rojo `7d8b1065`, `badf39bd` (API, entrega y sello), rojo `94727c0c` y `35ac2b07` (fuente de la mesa),
+   `84ef51d6` (front).
+
 ## T26, líneas del APU de la versión
 
 - **Altas y bajas de líneas.** Las líneas de cada rubro se alinean por su descripción (`difflib.SequenceMatcher`): la que

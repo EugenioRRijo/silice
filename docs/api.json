@@ -23134,12 +23134,22 @@
           "moneda": {
             "type": "string",
             "title": "Moneda"
+          },
+          "aprobacion": {
+            "type": "string",
+            "title": "Aprobacion"
+          },
+          "ultima_aprobada": {
+            "type": "boolean",
+            "title": "Ultima Aprobada"
           }
         },
         "type": "object",
         "required": [
           "codigo",
-          "moneda"
+          "moneda",
+          "aprobacion",
+          "ultima_aprobada"
         ],
         "title": "VersionEntregable"
       },
