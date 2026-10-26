@@ -580,6 +580,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
         "Cantidad",
         "Cómo se midió",
         "Precio unitario",
+        "Objetivo de mercado",
         "Total",
         "Estado",
         "Quitar",
