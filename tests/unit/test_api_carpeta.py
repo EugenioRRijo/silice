@@ -197,14 +197,18 @@ def test_con_clave_de_api_consulta_y_declara(_entorno: Path) -> None:
     ]
 
 
-def test_carpeta_usd_con_lista_vigente_en_bs_avisa_y_no_ofrece_lista(_entorno: Path) -> None:
+def test_carpeta_usd_con_lista_vigente_en_bs_avisa_y_la_muestra_para_convertir(
+    _entorno: Path,
+) -> None:
+    # T4: `lista` es la vigente aunque esté en otra moneda (el `aviso` dice que no sirve para
+    # armar), para que la pantalla ofrezca «Convertir la lista que tiene».
     _lista_base(_entorno)
     _declarar_usd_en_la_base(_entorno)
     navegador, _ = con_cuenta(app, "ana")
     assert navegador.get("/v1/carpeta").json() == {
         "moneda": "USD",
         "declarada": True,
-        "lista": None,
+        "lista": {"nombre": "Base", "moneda": "Bs", "fecha": "2026-07-01", "origen": "prueba"},
         "aviso": CONVERTIR_AVISO,
     }
 

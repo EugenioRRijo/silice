@@ -278,6 +278,25 @@ def test_describir_la_lista_para_armar(sesion: Session) -> None:
     )
 
 
+def test_describir_la_vigente_aunque_este_en_otra_moneda(sesion: Session) -> None:
+    # T4: la carpeta muestra la lista que tiene aunque no sirva para armar, para ofrecer
+    # convertirla; `describir` (la de armar) sigue sin darla.
+    assert armar.describir_vigente(sesion, HOY) is None
+    base = _lista(sesion, "Base")
+    sesion.add(CarpetaDeTrabajo(id=1, moneda="USD", declarada_por="ana", declarada_el=AHORA))
+    sesion.flush()
+    assert armar.describir(sesion, HOY) is None
+    assert armar.describir_vigente(sesion, HOY) == ListaParaArmar(
+        lista_id=base.id, nombre="Base", moneda="Bs", fecha=JULIO, origen=""
+    )
+
+
+def test_describir_la_vigente_en_la_moneda_de_la_carpeta_es_la_de_armar(sesion: Session) -> None:
+    _lista(sesion, MAPREX)
+    assert armar.describir_vigente(sesion, HOY) == armar.describir(sesion, HOY)
+    assert armar.describir_vigente(sesion, HOY) is not None
+
+
 # --- lista de hoy -----------------------------------------------------------------------------
 
 

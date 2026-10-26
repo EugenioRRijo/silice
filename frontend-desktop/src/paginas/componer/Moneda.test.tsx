@@ -392,4 +392,42 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     expect(screen.queryByRole("button", { name: "Volver a la Hoja" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Elaborar un presupuesto" })).toBeInTheDocument();
   });
+
+  // --- contrato real de T2 ---------------------------------------------------------------------------
+
+  test("con la respuesta real de /v1/carpeta (USD, vigente «Base» en Bs) ofrece convertir y, convertida, guarda", async () => {
+    // La forma exacta que da la API (tests/unit/test_api_carpeta.py,
+    // test_carpeta_usd_con_lista_vigente_en_bs_avisa_y_la_muestra_para_convertir).
+    const u = userEvent.setup();
+    const AVISO_REAL = "La lista vigente «Base» está en Bs y la carpeta trabaja en USD: conviértala antes de armar.";
+    carpeta = () =>
+      json({
+        moneda: "USD",
+        declarada: true,
+        lista: { nombre: "Base", moneda: "Bs", fecha: "2026-07-01", origen: "prueba" },
+        aviso: AVISO_REAL,
+      });
+    crearLista = () =>
+      json(
+        {
+          moneda: "USD",
+          declarada: true,
+          lista: { nombre: "Base en USD al 26/10/2026", moneda: "USD", fecha: "2026-10-26", origen: "derivada" },
+          aviso: null,
+        },
+        201,
+      );
+    montar();
+    expect(await screen.findByText(AVISO_REAL, { exact: false }, ESPERA)).toBeInTheDocument();
+    expect(screen.getByText("Precios en USD")).toBeInTheDocument();
+    expect(screen.getByText(/Convertir pasa los precios de «Base» de Bs a USD con la tasa del BCV/)).toBeInTheDocument();
+    await conCondiciones(u);
+    expect(screen.getByRole("button", { name: "Guardar composición" })).toBeDisabled();
+    await u.click(screen.getByRole("button", { name: "Convertir la lista que tiene" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Guardar composición" })).toBeEnabled(), ESPERA);
+    expect(de("/v1/carpeta/lista-para-armar", "POST").map((l) => l.cuerpo)).toEqual([{ desde: "convertir" }]);
+    expect(
+      screen.getByText("Lista para armar creada: Base en USD al 26/10/2026, al 26/10/2026. Ya puede guardar la composición."),
+    ).toBeInTheDocument();
+  });
 });
