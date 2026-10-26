@@ -3,21 +3,24 @@ import { Suspense, createElement, lazy, useCallback, useEffect, useLayoutEffect,
 import type { ReactElement } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigationType } from "react-router";
 import { ErrorDeApi, pedir } from "../api/cliente";
-import type { CasosRespuesta, ProyectoRespuesta, SesionRespuesta } from "../api/tipos";
+import type { ProyectoRespuesta, SesionRespuesta } from "../api/tipos";
 import { AvisoError } from "../comun/AvisoError";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { EstadoVacio } from "../comun/EstadoVacio";
 import { TamanoLetra } from "../comun/TamanoLetra";
 import { useTituloDelDocumento } from "../comun/tituloDelDocumento";
 import { BarraSuperior } from "./BarraSuperior";
+import { DialogoCarpetas } from "./carpetas/DialogoCarpetas";
+import { useCarpetaDeTrabajo } from "./carpetas/useCarpetaDeTrabajo";
 import { BotonRecorrido, ColumnaRecorrido } from "./ColumnaRecorrido";
 import { ContextoAplicacion } from "./contexto";
 import type { Aplicacion } from "./contexto";
 import { DialogoSalida } from "./DialogoSalida";
 import { LimiteDeError } from "./LimiteDeError";
+import { MarcaDemostracion } from "./MarcaDemostracion";
 import { MenuCuenta } from "./MenuCuenta";
 import { moduloAlEntrar, moduloDeRuta, navegacion } from "./navegacion";
-import { PanelCarpetaProyecto, nombreDeCarpeta } from "./PanelCarpetaProyecto";
+import { DialogoNuevaObra } from "./obras/DialogoNuevaObra";
 import { olvidarImportaciones } from "../paginas/hoja/useImportacion";
 import { guardarPreferencias } from "./preferencias";
 import { terminarRecorrido, useColumnaOculta, useRecorrido } from "./recorrido";
@@ -34,6 +37,8 @@ import {
   useSidebar,
 } from "./sidebar";
 import { SidebarModulos } from "./SidebarModulos";
+import { SelectorObra } from "./SelectorObra";
+import { nombreDeCarpeta } from "./Selectores";
 import { olvidarFormularios } from "./sucio";
 import { useFijadoPosible } from "./useFijadoPosible";
 import { MODULOS, PAGINAS, fueraDeModulos, inicioDe, modulosVisibles, rutaDe, visible } from "./rutas";
@@ -95,18 +100,32 @@ function esSinPermiso(e: unknown): boolean {
   return e instanceof ErrorDeApi && e.estado === 403;
 }
 
-// Marco de la interfaz: barra superior («Sílice», el modulo abierto y sus areas por rol y modo entrega, carpeta y
-// proyecto, recorrido, letra y cuenta), el sidebar de modulos, la columna del recorrido guiado, la pagina de la ruta y
-// la confirmacion al salir con trabajo sin guardar.
+interface Aviso {
+  titulo: string;
+  texto: string;
+}
+
+const CARPETA_CAMBIADA = "Carpeta de trabajo cambiada";
+
+// Marco de la interfaz: barra superior («Sílice», el modulo abierto y sus areas por rol y modo entrega, la marca de la
+// demostracion, la obra, recorrido, letra y cuenta), el sidebar de modulos, la columna del recorrido guiado, la pagina de
+// la ruta, los dialogos de carpetas y de «Nueva obra» y la confirmacion al salir con trabajo sin guardar.
 export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp, paginas = PAGINAS, almacen, crearHoja }: Props) {
   const ubicacion = useLocation();
-  const [casos, setCasos] = useState<CasosRespuesta | null>(null);
-  const [cambiandoCaso, setCambiandoCaso] = useState(false);
   const [proyectos, setProyectos] = useState<ProyectoRespuesta[] | null>(null);
-  const [proyecto, setProyecto] = useState<string | null>(null);
+  // Plan de modulos, MOD-3b: se empieza con la obra que la cuenta recuerda (MOD-0, `GET /v1/sesion`); si ya no esta en la
+  // lista de la carpeta, la lista la olvida al llegar.
+  const [proyecto, setProyecto] = useState<string | null>(() => sesion.eleccion?.proyecto ?? null);
+  // La API contesto 403 a la lista de obras: la cuenta no las ve (el selector queda en la carpeta).
+  const [sinObras, setSinObras] = useState(false);
   const [recarga, setRecarga] = useState(0);
   const [error, setError] = useState<unknown>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
+  // El aviso de lo que la cuenta recordaba (una carpeta que ya no existe) se ve una vez, en la pantalla de entrada.
+  const [aviso, setAviso] = useState<Aviso | null>(() =>
+    sesion.eleccion?.aviso ? { titulo: CARPETA_CAMBIADA, texto: sesion.eleccion.aviso } : null,
+  );
+  const [carpetasAbierto, setCarpetasAbierto] = useState(false);
+  const [nuevaObraAbierta, setNuevaObraAbierta] = useState(false);
   // Cambia con el caso: las paginas se vuelven a montar y piden sus datos de nuevo.
   const [generacion, setGeneracion] = useState(0);
 
@@ -278,7 +297,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const columnaOculta = useColumnaOculta();
   const conRecorrido = recorrido !== null && !columnaOculta;
   const puedeCambiarCaso = acciones.includes("cambiar_caso");
-  const casoActual = casos?.actual.ruta_relativa ?? null;
+  const puedeEditarHoja = acciones.includes("editar_hoja");
 
   const fallo = useCallback(
     (razon: unknown) => {
@@ -288,20 +307,24 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     [alExpirar],
   );
 
-  useEffect(() => {
-    let vigente = true;
-    pedir<CasosRespuesta>("/v1/casos")
-      .then((r) => {
-        // Una API que no trae la forma esperada no tumba la pantalla: simplemente no hay selector de caso.
-        if (vigente && r?.actual && Array.isArray(r.casos)) setCasos(r);
-      })
-      .catch((e: unknown) => {
-        if (vigente && !esSinPermiso(e)) fallo(e);
-      });
-    return () => {
-      vigente = false;
-    };
-  }, [fallo]);
+  // Cambio de carpeta (abrir otra o volver a la de la empresa): se olvida la obra, la pagina se vuelve a montar y pide
+  // sus datos a la carpeta nueva, y se avisa. Sin la frase del reinicio: MOD-0 recuerda la carpeta por cuenta.
+  const alCambiarCarpeta = useCallback((carpeta: string) => {
+    setError(null);
+    setProyecto(null);
+    setProyectos(null);
+    setRecarga((n) => n + 1);
+    setGeneracion((g) => g + 1);
+    setAviso({ titulo: CARPETA_CAMBIADA, texto: `Ahora trabaja con la carpeta de trabajo «${carpeta}».` });
+  }, []);
+  const { casos, abrir: abrirCarpeta, volverALaEmpresa } = useCarpetaDeTrabajo({
+    puedeVerBorradores: puedeEditarHoja,
+    obras: proyectos,
+    alExpirar,
+    alFallar: fallo,
+    alCambiar: alCambiarCarpeta,
+  });
+  const casoActual = casos?.actual.ruta_relativa ?? null;
 
   // Sin `leer_proyecto` la API contesta 403: no se pide (VB-9).
   const puedeLeerProyectos = acciones.includes("leer_proyecto");
@@ -313,40 +336,42 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
         if (!vigente) return;
         const lista = Array.isArray(respuesta) ? respuesta : [];
         setProyectos(lista);
+        setSinObras(false);
         setProyecto((previo) => (previo !== null && lista.some((p) => p.codigo === previo) ? previo : null));
       })
       .catch((e: unknown) => {
         if (!vigente) return;
         setProyectos(null);
-        if (!esSinPermiso(e)) fallo(e);
+        if (esSinPermiso(e)) setSinObras(true);
+        else fallo(e);
       });
     return () => {
       vigente = false;
     };
   }, [fallo, casoActual, recarga, puedeLeerProyectos]);
 
-  const cambiarCaso = useCallback(
-    async (nombre: string) => {
-      setCambiandoCaso(true);
-      setError(null);
-      try {
-        const respuesta = await pedir<Partial<CasosRespuesta>>("/v1/casos/actual", { metodo: "POST", cuerpo: { nombre } });
-        setCasos((previo) => {
-          const elegido = respuesta.actual ?? previo?.casos.find((c) => c.nombre === nombre);
-          return previo && elegido ? { ...previo, actual: elegido } : previo;
-        });
-        setProyecto(null);
-        setProyectos(null);
-        setGeneracion((g) => g + 1);
-        setAviso(`Ahora trabaja con la carpeta de trabajo «${nombreDeCarpeta(nombre)}». Si se reinicia la API, vuelve a la carpeta por defecto.`);
-      } catch (e) {
-        fallo(e);
-      } finally {
-        setCambiandoCaso(false);
-      }
+  // La obra elegida se recuerda para la cuenta (MOD-0). Un 401 es la sesion vencida; otro error se calla, como con las
+  // preferencias: lo peor es que la proxima vez no vuelva elegida.
+  const elegirObra = useCallback(
+    (codigo: string | null) => {
+      setProyecto(codigo);
+      pedir("/v1/sesion/proyecto", { metodo: "PUT", cuerpo: { proyecto: codigo } }).catch((e: unknown) => {
+        if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
+      });
     },
-    [fallo],
+    [alExpirar],
   );
+  const abrirNuevaObra = useCallback(() => setNuevaObraAbierta(true), []);
+
+  // «Volver a la carpeta de la empresa» desde la marca de la demostracion: la marca desaparece, asi que el foco pasa al
+  // contenido; un error de la API se muestra arriba del contenido.
+  const volver = useCallback(() => {
+    volverALaEmpresa()
+      .then((cambio) => {
+        if (cambio) document.getElementById("contenido")?.focus();
+      })
+      .catch(fallo);
+  }, [volverALaEmpresa, fallo]);
 
   // El aviso de carpeta cambiada es de la pantalla en que se cambio: al navegar a otra se cierra (D6 del recorrido
   // funcional). Se ajusta durante el render, sin efecto.
@@ -358,6 +383,17 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
 
   const recargarProyectos = useCallback(() => setRecarga((n) => n + 1), []);
 
+  // La obra nueva entra a la lista sin esperar la recarga (la barra la nombra al momento) y queda elegida.
+  const alCrearObra = useCallback(
+    (obra: ProyectoRespuesta) => {
+      setNuevaObraAbierta(false);
+      setProyectos((previas) => [...(previas ?? []).filter((p) => p.codigo !== obra.codigo), obra]);
+      recargarProyectos();
+      elegirObra(obra.codigo);
+    },
+    [recargarProyectos, elegirObra],
+  );
+
   const aplicacion = useMemo<Aplicacion>(
     () => ({
       sesion,
@@ -365,12 +401,15 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       nombreProyecto: proyectos?.find((p) => p.codigo === proyecto)?.nombre ?? null,
       caso: casos?.actual ?? null,
       recargarProyectos,
+      elegirObra,
+      abrirNuevaObra,
+      abrirCarpeta,
       alExpirar,
       modulo,
       almacenDelLibro: almacen,
       crearHojaVisor: crearHoja,
     }),
-    [sesion, proyecto, proyectos, casos, recargarProyectos, alExpirar, modulo, almacen, crearHoja],
+    [sesion, proyecto, proyectos, casos, recargarProyectos, elegirObra, abrirNuevaObra, abrirCarpeta, alExpirar, modulo, almacen, crearHoja],
   );
 
   // A donde llevan «/», «/inicio» y una ruta inexistente: el inicio del ultimo modulo usado (o del de entrada); sin
@@ -386,18 +425,27 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     </div>
   );
 
-  // Lado derecho de la barra, en este orden: carpeta y proyecto, recorrido (solo con la columna plegada), letra y cuenta.
+  // Lado derecho de la barra, en este orden: la marca de la demostracion (en los tres modulos, mientras se este en
+  // ella), la obra (solo en Presupuestos y obras), recorrido (solo con la columna plegada), letra y cuenta.
+  const inicioDeObras = paginas.find((p) => p.ubicacion?.modulo === "obras" && p.ubicacion.area === "inicio");
+  const verObras = puedeLeerProyectos && !sinObras;
   const derecha = (
     <>
-      <PanelCarpetaProyecto
-        casos={casos}
-        proyectos={proyectos}
-        elegido={proyecto}
-        puedeCambiar={puedeCambiarCaso}
-        ocupado={cambiandoCaso}
-        alElegirCaso={(n) => void cambiarCaso(n)}
-        alElegirProyecto={setProyecto}
-      />
+      <MarcaDemostracion activa={casos?.es_demostracion === true} puedeVolver={puedeCambiarCaso} alVolver={volver} />
+      {modulo === "obras" && (
+        <SelectorObra
+          obras={verObras ? proyectos : null}
+          puedeVerObras={verObras}
+          elegida={proyecto}
+          enInicio={inicioDeObras !== undefined && ubicacion.pathname === rutaDe(inicioDeObras)}
+          carpeta={casos ? nombreDeCarpeta(casos.actual.nombre) : null}
+          puedeCambiarCarpeta={puedeCambiarCaso}
+          puedeCrearObra={puedeEditarHoja}
+          alElegir={elegirObra}
+          alNuevaObra={abrirNuevaObra}
+          alCambiarCarpeta={() => setCarpetasAbierto(true)}
+        />
+      )}
       <BotonRecorrido />
       <TamanoLetra />
       <MenuCuenta nombre={sesion.nombre} alSalir={alSalir} />
@@ -442,8 +490,8 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
               {aviso && (
                 <InlineNotification
                   kind="info"
-                  title="Carpeta de trabajo cambiada"
-                  subtitle={aviso}
+                  title={aviso.titulo}
+                  subtitle={aviso.texto}
                   lowContrast
                   onClose={() => {
                     setAviso(null);
@@ -473,6 +521,15 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
             </Suspense>
           </LimiteDeError>
         </main>
+        <DialogoCarpetas
+          abierto={carpetasAbierto}
+          alCerrar={() => setCarpetasAbierto(false)}
+          alAbrir={abrirCarpeta}
+          conDemostracion={puedeEditarHoja}
+          puedeDeclararMoneda={puedeEditarHoja}
+        />
+        <DialogoNuevaObra abierto={nuevaObraAbierta} alCerrar={() => setNuevaObraAbierta(false)} alCrear={alCrearObra} />
+        {/* Despues de los dialogos: «Cambios sin guardar» puede abrirse encima del de carpetas. */}
         <DialogoSalida paginas={paginas} />
       </div>
     </ContextoAplicacion.Provider>

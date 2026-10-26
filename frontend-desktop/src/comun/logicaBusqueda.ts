@@ -163,7 +163,8 @@ export interface PartidasHalladas {
   hay_mas: boolean;
 }
 
-const TIPO_DE_OBRA: Record<string, string> = {
+// Los tipos de obra del nucleo (`core/contracts/dominio.py`) como se leen; los usan la busqueda y «Nueva obra».
+export const TIPO_DE_OBRA: Record<string, string> = {
   civil: "obra civil",
   telecom: "telecomunicaciones",
   industrial: "industrial",

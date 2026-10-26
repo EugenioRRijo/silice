@@ -11,10 +11,18 @@ export interface Aplicacion {
   proyecto: string | null;
   // Nombre del proyecto elegido (el selector guarda el codigo); null si no hay o aun no carga la lista.
   nombreProyecto?: string | null;
-  // Caso (base de datos) en uso, o null mientras carga o si la API no lo informa.
+  // Carpeta de trabajo (el caso en la API, la base de datos) en uso, o null mientras carga o si la API no lo informa.
   caso: CasoRespuesta | null;
   // Para volver a pedir la lista de proyectos (por ejemplo, despues de crear uno).
   recargarProyectos: () => void;
+  // Plan de modulos, MOD-3b. Fija la obra (el proyecto en la API) y la recuerda para la cuenta (`PUT /v1/sesion/proyecto`).
+  elegirObra?: (codigo: string | null) => void;
+  // Abre el dialogo «Nueva obra» del armazon.
+  abrirNuevaObra?: () => void;
+  // Abre otra carpeta de trabajo con la confirmacion y el aviso del armazon: true si la abrio, false si la persona se
+  // quedo o la sesion vencio; si la API la rechaza, lanza el error. La usa Administracion › Carpetas de trabajo.
+  abrirCarpeta?: (nombre: string) => Promise<boolean>;
+  // El Shell siempre da estas tres; son opcionales para que las pruebas de cada pagina no tengan que inventarlas.
   // La API contesto 401: la sesion vencio.
   alExpirar: () => void;
   // Modulo abierto (el de la pantalla, o el ultimo usado fuera de los modulos); null si la cuenta no ve ninguno. El

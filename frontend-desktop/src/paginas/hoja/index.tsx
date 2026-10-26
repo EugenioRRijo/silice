@@ -437,7 +437,7 @@ function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombre
             ))}
           </Select>
         ) : (
-          <EstadoVacio titulo={SIN_VERSIONES} descripcion="Se abre un borrador en blanco para describir el espacio." />
+          <EstadoVacio titulo={SIN_VERSIONES} descripcion="Describa el espacio (ambientes y puntos) o importe un plano, y guarde la primera versión con «Guardar primera versión…»." />
         ))}
 
       {estado.estado === "abriendo" && <EsqueletoPagina etiqueta="Abriendo el borrador" />}

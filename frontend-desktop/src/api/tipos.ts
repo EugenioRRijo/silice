@@ -42,6 +42,18 @@ export interface CasoRespuesta {
 export interface CasosRespuesta {
   actual: CasoRespuesta;
   casos: CasoRespuesta[];
+  // MOD-3a: la carpeta de la empresa (la del proceso, la de omision de la instalacion; null si no usa un archivo) y si
+  // la de esta sesion es la de demostracion.
+  empresa: CasoRespuesta | null;
+  es_demostracion: boolean;
+}
+
+// `GET /v1/carpeta` y `PUT /v1/carpeta/moneda` (MP T2): la moneda de trabajo de la carpeta abierta.
+export interface CarpetaRespuesta {
+  moneda: string | null;
+  declarada: boolean;
+  lista: { nombre: string; moneda: string; fecha: string; origen: string } | null;
+  aviso: string | null;
 }
 
 export interface ProyectoRespuesta {
@@ -49,6 +61,9 @@ export interface ProyectoRespuesta {
   nombre: string;
   version_vigente: number | null;
   actualizado: string | null;
+  // MOD-3a: la ficha de la obra (vacios si no se dieron).
+  cliente: string;
+  ubicacion: string;
 }
 
 export interface HallazgoLibroRespuesta {

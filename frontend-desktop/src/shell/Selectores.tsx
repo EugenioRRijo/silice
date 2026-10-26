@@ -1,82 +1,17 @@
-import { Select, SelectItem } from "@carbon/react";
-import { useEffect, useRef } from "react";
-import type { CasosRespuesta, ProyectoRespuesta } from "../api/tipos";
+import type { ProyectoRespuesta } from "../api/tipos";
 
-interface PropsCaso {
-  casos: CasosRespuesta;
-  // Sin la accion `cambiar_caso` el selector se ve pero no se puede mover.
-  puedeCambiar: boolean;
-  ocupado: boolean;
-  alElegir: (nombre: string) => void;
-}
+// Rotulos de la carpeta de trabajo y de la obra (plan de modulos, MOD-3b). Los selectores «Carpeta de trabajo» y
+// «Proyecto» de la barra se retiraron: los reemplazan el selector de obra (`SelectorObra`) y el dialogo de carpetas.
 
-// La carpeta de trabajo se muestra sin la extension de la base de datos.
+// La carpeta de trabajo (el caso en la API) se muestra sin la extension de la base de datos.
 export function nombreDeCarpeta(nombre: string): string {
   return nombre.endsWith(".db") ? nombre.slice(0, -3) : nombre;
 }
 
-// La carpeta de trabajo (el caso en la API) es la base de datos en uso (RM-2): la API lo guarda por sesion.
-// La carpeta abierta siempre es una de las opciones: si la lista de la API no la trae, se agrega al principio. Si no, el
-// Select mostraria la primera de la lista (otra carpeta) y elegir esa no haria nada (D1 del recorrido funcional).
-export function SelectorCaso({ casos, puedeCambiar, ocupado, alElegir }: PropsCaso) {
-  const opciones = casos.casos.some((c) => c.nombre === casos.actual.nombre) ? casos.casos : [casos.actual, ...casos.casos];
-  return (
-    <div className="silice-selector">
-      <Select
-        id="selector-caso"
-        labelText="Carpeta de trabajo"
-        size="sm"
-        value={casos.actual.nombre}
-        disabled={!puedeCambiar || ocupado}
-        onChange={(e) => alElegir(e.target.value)}
-      >
-        {opciones.map((c) => (
-          <SelectItem key={c.ruta_relativa} value={c.nombre} text={nombreDeCarpeta(c.nombre)} />
-        ))}
-      </Select>
-    </div>
-  );
-}
-
-interface PropsProyecto {
-  proyectos: ProyectoRespuesta[];
-  // Codigo del elegido, o null.
-  elegido: string | null;
-  alElegir: (codigo: string | null) => void;
-}
-
-// El proyecto elegido vive en el estado de la aplicacion, no en el navegador (RT-9).
-// El codigo es un numero interno: se elige por el nombre. Solo si dos se llaman igual, el codigo los distingue.
-export function rotuloDeProyecto(p: ProyectoRespuesta, todos: ProyectoRespuesta[]): string {
-  return todos.filter((q) => q.nombre === p.nombre).length > 1 ? `${p.nombre} (${p.codigo})` : p.nombre;
-}
-
-export function SelectorProyecto({ proyectos, elegido, alElegir }: PropsProyecto) {
-  // El selector se acota con la letra grande y recorta el nombre: el nombre completo va en el titulo (Carbon lo fija solo al
-  // montar y al elegir (y su estado pisa a la prop `title`), no cuando el proyecto cambia desde fuera: se asienta en el
-  // <select> en cada cambio.
-  const lista = useRef<HTMLSelectElement>(null);
-  const actual = proyectos.find((p) => p.codigo === elegido);
-  const titulo = actual ? rotuloDeProyecto(actual, proyectos) : "Sin proyecto";
-  useEffect(() => {
-    if (lista.current) lista.current.title = titulo;
-  }, [titulo]);
-  return (
-    <div className="silice-selector">
-      <Select
-        id="selector-proyecto"
-        labelText="Proyecto"
-        size="sm"
-        ref={lista}
-        value={elegido ?? ""}
-        title={titulo}
-        onChange={(e) => alElegir(e.target.value || null)}
-      >
-        <SelectItem value="" text="Sin proyecto" />
-        {proyectos.map((p) => (
-          <SelectItem key={p.codigo} value={p.codigo} text={rotuloDeProyecto(p, proyectos)} />
-        ))}
-      </Select>
-    </div>
-  );
+// La obra (el proyecto en la API) se elige por su nombre: el codigo es un numero interno y solo se agrega si dos obras se
+// llaman igual (VB-20). Una obra sin version guardada lo dice (BCP-6 §5.2, F11), salvo en el boton de la barra, que
+// solo nombra la obra (`conVersion` falso).
+export function rotuloDeProyecto(p: ProyectoRespuesta, todos: readonly ProyectoRespuesta[], conVersion = true): string {
+  const nombre = todos.filter((q) => q.nombre === p.nombre).length > 1 ? `${p.nombre} (${p.codigo})` : p.nombre;
+  return conVersion && p.version_vigente === null ? `${nombre} (sin versión guardada)` : nombre;
 }

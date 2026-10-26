@@ -1,0 +1,10 @@
+// «Nueva obra» (DialogoNuevaObra.tsx): los campos apilados, separados por espacio; sin tarjetas ni sombras; en rem.
+.silice-nueva-obra {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-nueva-obra__estado {
+  margin: 0;
+}
