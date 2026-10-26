@@ -47,6 +47,10 @@ TABLA_5_7 = {
     "Borrador": ("3b-1", "contrato"),
     "filas_desde_espacio": ("3b-2", "contrato"),
     "espacio_desde_filas": ("3c-1", "contrato"),
+    # coma decimal y punto de miles en lo tecleado (regla de Eugenio, 2026-10-25; resuelve D-8)
+    "filas_editables_del_espacio": ("coma-decimal", "contrato"),
+    "cifra_de_celda": ("coma-decimal", "contrato"),
+    "texto_editable": ("coma-decimal", "contrato"),
     "borrador_de_version": ("ninguna", "no migra"),
     "items_del_borrador": ("3b-2", "contrato"),
     "elaborar_hoja": ("3b-2", "contrato"),

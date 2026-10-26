@@ -94,6 +94,11 @@ def test_mensaje_de_la_instantanea_solo_si_se_creo_alguna():
     )
 
 
+def _leido(texto: str) -> Decimal:
+    """Un campo editable de la vista, con coma decimal y punto de miles, leido a mano."""
+    return Decimal(texto.replace(".", "").replace(",", "."))
+
+
 @pytest.fixture(scope="module")
 def _of001(tmp_path_factory):
     carpeta = tmp_path_factory.mktemp("vista_hoja")
@@ -466,12 +471,13 @@ def test_las_filas_del_espacio_son_las_de_la_memoria_de_of001(_of001):
     )
     # memoria de OF-001, plano de planta: el baño BAN-01 va de (0; 0) y mide 2 × 1,5 × 2,5
     bano = next(f for f in v.filas["ambientes"] if f["id"] == "BAN-01")
+    # celdas editables: coma decimal (regla de Eugenio, 2026-10-25)
     assert (bano["x0"], bano["y0"], bano["largo"], bano["ancho"], bano["alto"]) == (
         "0",
         "0",
         "2",
-        "1.5",
-        "2.5",
+        "1,5",
+        "2,5",
     )
     assert len(v.filas["ambientes"]) == 6  # BAN-01, COC-01, CT-01, REC-01, ZA y ZB
     assert v.filas["tramos"] == []  # los recorridos de OF-001 son propuestos, no declarados
@@ -577,7 +583,8 @@ def test_las_filas_del_presupuesto_son_las_de_la_memoria_con_su_monto_exacto(_of
     v = hoja_vista.vista_presupuesto(_vivo(_of001))
     assert [f.partida for f in v.filas] == CODIGOS_DE_OF001
     assert all(f.clave.startswith(f"{f.partida}|") for f in v.filas)
-    assert {f.partida: Decimal(f.cantidad) for f in v.filas} == CANTIDADES_DE_LA_MEMORIA
+    # la cantidad editable con coma decimal (regla de Eugenio, 2026-10-25), leida a mano
+    assert {f.partida: _leido(f.cantidad) for f in v.filas} == CANTIDADES_DE_LA_MEMORIA
     for f in v.filas:
         pu = _pu_a_mano(f.partida)
         total = CANTIDADES_DE_LA_MEMORIA[f.partida] * pu
@@ -746,14 +753,14 @@ def test_el_detalle_de_af_llave_trae_los_tres_rubros_de_la_composicion(_of001):
             "descripcion": "Llave de paso de bola PVC 1/2 pulg [PLOG26]",
             "unidad": "pieza",
             "cantidad": "1",
-            "precio": "7.7483",
+            "precio": "7,7483",  # celda del APU: coma decimal
         }
     ]
     assert [f["descripcion"] for f in mano_obra.filas] == [
         "Plomero de 1ra N5 [19-212]",
         "Ayudante N2 [1-1.2]",
     ]
-    assert mano_obra.filas[0]["sueldo"] == "2.1877" and mano_obra.filas[0]["modalidad"] == "jornal"
+    assert mano_obra.filas[0]["sueldo"] == "2,1877" and mano_obra.filas[0]["modalidad"] == "jornal"
 
 
 def test_los_subtotales_y_el_cierre_de_af_llave_son_la_cascada_a_mano(_of001):
@@ -803,19 +810,15 @@ def test_el_cierre_y_las_tablas_de_cada_partida_son_los_de_la_formula_a_mano(_of
         assert [(f["descripcion"], f["unidad"]) for f in materiales] == [
             (m.descripcion, m.unidad) for m in composicion.materiales
         ], codigo
-        assert [Decimal(f["precio"]) for f in materiales] == [
+        assert [_leido(f["precio"]) for f in materiales] == [
             m.precio for m in composicion.materiales
         ], codigo
-        assert [Decimal(f["cantidad"]) for f in equipos] == [
-            e.cantidad for e in composicion.equipos
-        ]
-        assert [Decimal(f["depreciacion"]) for f in equipos] == [
+        assert [_leido(f["cantidad"]) for f in equipos] == [e.cantidad for e in composicion.equipos]
+        assert [_leido(f["depreciacion"]) for f in equipos] == [
             e.depreciacion for e in composicion.equipos
         ], codigo
-        assert [Decimal(f["sueldo"]) for f in mano_obra] == [
-            o.sueldo for o in composicion.mano_obra
-        ]
-        assert d.rendimiento == format(composicion.rendimiento, "f"), codigo
+        assert [_leido(f["sueldo"]) for f in mano_obra] == [o.sueldo for o in composicion.mano_obra]
+        assert _leido(d.rendimiento) == composicion.rendimiento, codigo
         esperado = _a_mano(composicion)
         assert [c.concepto for c in d.cierre] == CONCEPTOS_DEL_CIERRE, codigo
         for fila, monto in zip(d.cierre, esperado, strict=True):
@@ -1050,7 +1053,7 @@ def test_los_parametros_de_of001_son_los_cuatro_de_la_memoria_con_su_texto_exact
         "administracion",
         "utilidad",
     ]
-    valores = {c.clave: Decimal(c.valor) for c in v.campos}
+    valores = {c.clave: _leido(c.valor) for c in v.campos}
     assert valores["fcas"] == D("6.00") and valores["administracion"] == D("0.15")
     assert valores["utilidad"] == D("0.10")
     assert valores["bono_alimentacion"] == caso_ti001.PARAMETROS.bono_alimentacion
@@ -1073,7 +1076,7 @@ def test_un_parametro_editado_se_ve_con_su_texto_y_mueve_el_total(_of001):
         _of001.borrador, parametros=replace(_of001.borrador.parametros, administracion=D("0.20"))
     )
     v = hoja_vista.vista_parametros(_vivo(_of001, editado), "USD", True)
-    assert {c.clave: c.valor for c in v.campos}["administracion"] == "0.20"
+    assert {c.clave: c.valor for c in v.campos}["administracion"] == "0,20"
     assert abs(Decimal(v.total.exacto) - D("2821.42")) <= D("0.01")
 
 
@@ -1081,7 +1084,7 @@ def test_sin_version_abierta_no_hay_moneda_del_proyecto_ni_se_puede_convertir():
     vivo = Registro().crear("f", "c", "N", None, hoja.Borrador(fecha=HOY), None)
     v = hoja_vista.vista_parametros(vivo, "USD", True)
     assert (v.moneda_proyecto, v.puede_convertir) == (None, False)
-    assert v.total.exacto == "0" and [c.valor for c in v.campos][2] == "0.15"  # los del contrato
+    assert v.total.exacto == "0" and [c.valor for c in v.campos][2] == "0,15"  # los del contrato
 
 
 def test_sin_el_permiso_de_convertir_la_vista_no_lo_ofrece(_of001):

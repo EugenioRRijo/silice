@@ -278,10 +278,10 @@ def test_b1_exporta_el_borrador_vivo_no_la_version_guardada(app: FastAPI, tmp_pa
         f"/v1/hoja/borradores/{id_}/parametros",
         json={
             "rev": 0,
-            "fcas": "6.00",
-            "bono_alimentacion": "5.8100",
-            "administracion": "0.20",
-            "utilidad": "0.10",
+            "fcas": "6,00",
+            "bono_alimentacion": "5,8100",
+            "administracion": "0,20",
+            "utilidad": "0,10",
         },
         headers=protegida(ficha),
     )

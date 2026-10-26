@@ -106,17 +106,22 @@ def test_las_claves_de_items_son_unicas_aunque_se_repita_partida_y_origen():
 
 def test_los_parametros_se_leen_de_texto_con_el_campo_culpable_en_el_error():
     ok = hoja.parametros_desde_texto(
-        {"fcas": "6.5", "bono_alimentacion": "1", "administracion": "0.18", "utilidad": "0.1"}
+        {"fcas": "6,5", "bono_alimentacion": "1", "administracion": "0,18", "utilidad": "0,1"}
     )
     assert ok == ParametrosCosto(
         fcas=D("6.5"), bono_alimentacion=D("1"), administracion=D("0.18"), utilidad=D("0.1")
     )
-    for campo, valor in (("fcas", "mucho"), ("utilidad", "-0.1"), ("administracion", "")):
+    for campo, valor in (
+        ("fcas", "mucho"),
+        ("utilidad", "-0,1"),
+        ("administracion", ""),
+        ("fcas", "6.5"),
+    ):
         textos = {
             "fcas": "6",
             "bono_alimentacion": "1",
-            "administracion": "0.15",
-            "utilidad": "0.1",
+            "administracion": "0,15",
+            "utilidad": "0,1",
         }
         textos[campo] = valor
         with pytest.raises(hoja.HojaInvalida, match=campo):
@@ -185,17 +190,17 @@ def test_el_plan_se_ajusta_cuando_el_espacio_agrega_una_partida():
 def test_el_plan_se_lee_de_filas_y_cada_partida_debe_sumar_uno():
     etiquetas = ["Dia 1", "Dia 2"]
     filas = [
-        {"partida": "A", "Dia 1": "0.4", "Dia 2": "0.6"},
+        {"partida": "A", "Dia 1": "0,4", "Dia 2": "0,6"},
         {"partida": "B", "Dia 1": "1", "Dia 2": "0"},
     ]
 
     plan = hoja.plan_desde_filas(filas, etiquetas)
 
     assert plan == [("Dia 1", (("A", D("0.4")), ("B", D("1")))), ("Dia 2", (("A", D("0.6")),))]
-    filas[0]["Dia 2"] = "0.5"
-    with pytest.raises(hoja.HojaInvalida, match="A.*0.9.*1"):
+    filas[0]["Dia 2"] = "0,5"
+    with pytest.raises(hoja.HojaInvalida, match="A.*0,9.*1"):
         hoja.plan_desde_filas(filas, etiquetas)
-    filas[0]["Dia 2"] = "-0.4"  # suma 0 con una fraccion negativa
+    filas[0]["Dia 2"] = "-0,4"  # suma 0 con una fraccion negativa
     with pytest.raises(hoja.HojaInvalida, match="A"):
         hoja.plan_desde_filas(filas, etiquetas)
 
@@ -383,12 +388,12 @@ def _apu_con_tres_grupos():
 def test_las_cantidades_de_linea_se_leen_de_las_tres_tablas_y_el_resto_no_se_toca():
     apu = _apu_con_tres_grupos()
     materiales, equipos, mano = hoja.filas_de_apu(apu)
-    materiales[1]["cantidad"] = "0.75"
+    materiales[1]["cantidad"] = "0,75"  # tecleado: coma decimal (regla de 2026-10-25)
     equipos[0]["cantidad"] = "4"
     mano[0]["cantidad"] = "2"
     materiales[0]["precio"] = "999"  # una columna no editable: se ignora
 
-    editada = hoja.composicion_con_cantidades(apu, materiales, equipos, mano, "2.5")
+    editada = hoja.composicion_con_cantidades(apu, materiales, equipos, mano, "2,5")
 
     assert editada.rendimiento == D("2.5")
     assert [m.cantidad for m in editada.materiales] == [D("1"), D("0.75")]

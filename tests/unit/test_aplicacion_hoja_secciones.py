@@ -17,7 +17,9 @@ Oraculos a mano, ninguno sale del codigo:
   (3c-B2, 3c-B5, 3c-B12), con la posicion de la fila a mano: AF-LLAVE es el renglon 3 de
   OF-001 (orden alfabetico de partida y luego de origen).
 
-Un cambio legitimo del comportamiento exige cambiar esta prueba con el aval de Eugenio.
+Un cambio legitimo del comportamiento exige cambiar esta prueba con el aval de Eugenio. Aval del
+2026-10-25 (resuelve D-8): las cifras se teclean con coma decimal y punto de miles
+(`aplicacion.cifras`); los textos de esta prueba se escriben asi y los errores dicen la regla.
 """
 
 from __future__ import annotations
@@ -41,6 +43,14 @@ from tests.fixtures.hoja_en_base import (
 )
 
 D = Decimal
+REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
+
+
+def _con_coma(texto: str) -> str:
+    """Un decimal con punto (como lo da `texto_numero`) escrito a mano con la regla: coma decimal y
+    sin separador de miles (tambien valido)."""
+    return texto.replace(".", ",")
+
 
 #: La clave del renglon de las llaves de OF-001 (tres llaves: F1, FC1 y los puntos P1, P2 y PC1).
 LLAVE = "AF-LLAVE|esp_fuentes:F1;esp_fuentes:FC1;esp_puntos:P1;esp_puntos:P2;esp_puntos:PC1"
@@ -83,7 +93,7 @@ def _tabla(borrador, **cambios: str) -> list[dict[str, str]]:
     items = hoja.items_sin_escribir(borrador)
     vigentes = hoja.items_elaborados(borrador)
     filas = [
-        {"clave": c, "cantidad": hoja.texto_numero(i.cantidad)}
+        {"clave": c, "cantidad": _con_coma(hoja.texto_numero(i.cantidad))}
         for c, i in zip(hoja.claves_de_items(items), vigentes, strict=True)
     ]
     for fila in filas:
@@ -111,10 +121,11 @@ def test_una_cantidad_distinta_de_la_calculada_queda_escrita_como_decimal(_of001
 
 
 def test_escribir_el_valor_calculado_deja_de_ser_una_cantidad_escrita(_of001) -> None:
-    """3c-B4: AF-LLAVE vale 3; enviar «3» (o «3.000») no es escribir nada."""
+    """3c-B4: AF-LLAVE vale 3; enviar «3» (o «3,000») no es escribir nada. «3.000» es tres mil
+    (regla de Eugenio, 2026-10-25): `test_aplicacion_hoja_cifras.py`."""
     borrador = _of001
     items = hoja.items_sin_escribir(borrador)
-    for texto in ("3", "3.000"):
+    for texto in ("3", "3,000"):
         assert hoja.cantidades_desde_filas(_tabla(borrador, **{LLAVE: texto}), items) == {}
 
 
@@ -136,14 +147,15 @@ def test_cero_es_una_cantidad_valida(_of001) -> None:
     assert hoja.cantidades_desde_filas(_tabla(borrador, **{LLAVE: "0"}), items) == {LLAVE: D(0)}
 
 
-def test_la_coma_decimal_y_el_texto_no_numerico_son_errores_con_el_texto_escrito(_of001) -> None:
+def test_el_punto_decimal_y_el_texto_no_numerico_son_errores_con_el_texto_escrito(_of001) -> None:
     borrador = _of001
     items = hoja.items_sin_escribir(borrador)
+    donde = "presupuesto, fila 3 (AF-LLAVE): cantidad:"
     casos = {
-        "2,5": "presupuesto, fila 3 (AF-LLAVE): cantidad: '2,5' no es un numero decimal valido",
-        "mucho": "presupuesto, fila 3 (AF-LLAVE): cantidad: 'mucho' no es un numero decimal valido",
-        "": "presupuesto, fila 3 (AF-LLAVE): cantidad: '' no es un numero decimal valido",
-        "Infinity": "presupuesto, fila 3 (AF-LLAVE): cantidad: 'Infinity' no es un monto finito",
+        "2.5": f"{donde} «2.5» no se entiende como número. {REGLA}",
+        "mucho": f"{donde} «mucho» no se entiende como número. {REGLA}",
+        "": f"{donde} Escriba un número. {REGLA}",
+        "Infinity": f"{donde} «Infinity» no se entiende como número. {REGLA}",
     }
     for texto, mensaje in casos.items():
         with pytest.raises(HojaInvalida) as error:
@@ -196,10 +208,10 @@ def test_la_cantidad_de_llaves_en_5_suma_26_3975_al_total_de_la_memoria(_of001) 
 # --- parametros_desde_texto -------------------------------------------------------------------
 
 TEXTOS = {
-    "fcas": "6.00",
-    "bono_alimentacion": "5.8100",
-    "administracion": "0.15",
-    "utilidad": "0.10",
+    "fcas": "6,00",
+    "bono_alimentacion": "5,8100",
+    "administracion": "0,15",
+    "utilidad": "0,10",
 }
 
 
@@ -213,7 +225,7 @@ def test_los_cuatro_textos_de_of001_dan_sus_parametros(_of001) -> None:
 def test_administracion_020_da_los_literales_de_p13(_of001) -> None:
     """Total 2 821,42; PE 1 763,39; 62,50 %; un solo cambio `administracion` 0.15 -> 0.20."""
     borrador = _of001
-    parametros = hoja.parametros_desde_texto({**TEXTOS, "administracion": "0.20"})
+    parametros = hoja.parametros_desde_texto({**TEXTOS, "administracion": "0,20"})
     editado = replace(borrador, parametros=parametros)
     resultado = hoja.elaborar_borrador(editado)
     assert abs(resultado.elaboracion.presupuesto.total - D("2821.42")) <= D("0.01")
@@ -227,11 +239,11 @@ def test_administracion_020_da_los_literales_de_p13(_of001) -> None:
 
 def test_un_parametro_invalido_dice_el_campo_y_el_texto_escrito() -> None:
     casos = {
-        ("utilidad", "mucho"): "parametros: utilidad: 'mucho' no es un numero decimal valido",
-        ("fcas", "6,00"): "parametros: fcas: '6,00' no es un numero decimal valido",
-        ("administracion", ""): "parametros: administracion: '' no es un numero decimal valido",
+        ("utilidad", "mucho"): f"parametros: utilidad: «mucho» no se entiende como número. {REGLA}",
+        ("fcas", "6.00"): f"parametros: fcas: «6.00» no se entiende como número. {REGLA}",
+        ("administracion", ""): f"parametros: administracion: Escriba un número. {REGLA}",
         ("bono_alimentacion", "Infinity"): (
-            "parametros: bono_alimentacion: 'Infinity' no es un monto finito"
+            f"parametros: bono_alimentacion: «Infinity» no se entiende como número. {REGLA}"
         ),
         ("fcas", "-1"): "parametros: fcas no puede ser negativo: -1",
     }
@@ -245,7 +257,7 @@ def test_un_campo_ausente_cuenta_como_vacio() -> None:
     sin_utilidad = {k: v for k, v in TEXTOS.items() if k != "utilidad"}
     with pytest.raises(HojaInvalida) as error:
         hoja.parametros_desde_texto(sin_utilidad)
-    assert str(error.value) == "parametros: utilidad: '' no es un numero decimal valido"
+    assert str(error.value) == f"parametros: utilidad: Escriba un número. {REGLA}"
 
 
 # --- plan_desde_filas -------------------------------------------------------------------------
@@ -259,6 +271,8 @@ def _matriz(borrador, **cambios: dict[str, str]):
     )
     etiquetas, filas = hoja.plan_como_filas(resultado.plan or (), codigos)
     for fila in filas:
+        for etiqueta in etiquetas:
+            fila[etiqueta] = _con_coma(fila[etiqueta])
         fila.update(cambios.get(fila["partida"], {}))
     return etiquetas, filas
 
@@ -278,7 +292,7 @@ def test_repartir_las_llaves_entre_el_dia_3_y_el_dia_30_conserva_el_total_y_muev
     """P19/P20: AF-LLAVE 0,5 en «Dia 3» y 0,5 en «Dia 30»: la mitad de su total (39,5967 / 2 =
     19,798, a mano) cambia de periodo y la curva sigue cerrando en 2 703,86."""
     borrador = _of001
-    etiquetas, filas = _matriz(borrador, **{"AF-LLAVE": {"Dia 3": "0.5", "Dia 30": "0.5"}})
+    etiquetas, filas = _matriz(borrador, **{"AF-LLAVE": {"Dia 3": "0,5", "Dia 30": "0,5"}})
     plan = tuple(hoja.plan_desde_filas(filas, etiquetas))
     resultado = hoja.elaborar_borrador(replace(borrador, plan=plan))
     curva = resultado.elaboracion.presupuesto.curva
@@ -294,11 +308,11 @@ def test_repartir_las_llaves_entre_el_dia_3_y_el_dia_30_conserva_el_total_y_muev
 
 def test_un_plan_que_no_suma_1_dice_cuanto_suma(_of001) -> None:
     """3c-B12 / P19: el texto de H:1209-1212, con la suma como la teclea una persona."""
-    etiquetas, filas = _matriz(_of001, **{"AF-LLAVE": {"Dia 3": "0.5"}})
+    etiquetas, filas = _matriz(_of001, **{"AF-LLAVE": {"Dia 3": "0,5"}})
     with pytest.raises(HojaInvalida) as error:
         hoja.plan_desde_filas(filas, etiquetas)
     assert str(error.value) == (
-        "plan, partida AF-LLAVE: las fracciones suman 0.5 y deben sumar exactamente 1; "
+        "plan, partida AF-LLAVE: las fracciones suman 0,5 y deben sumar exactamente 1; "
         "repartala entre los periodos hasta completar 1"
     )
 
@@ -309,11 +323,11 @@ def test_una_fraccion_negativa_y_una_que_no_es_numero(_of001) -> None:
     with pytest.raises(HojaInvalida) as error:
         hoja.plan_desde_filas(filas, etiquetas)
     assert str(error.value) == "plan, partida AF-LLAVE: la fraccion de Dia 3 no puede ser negativa"
-    etiquetas, filas = _matriz(borrador, **{"AF-LLAVE": {"Dia 3": "0,5"}})
+    etiquetas, filas = _matriz(borrador, **{"AF-LLAVE": {"Dia 3": "0.5"}})
     with pytest.raises(HojaInvalida) as error:
         hoja.plan_desde_filas(filas, etiquetas)
     assert str(error.value) == (
-        "plan, partida AF-LLAVE: Dia 3: '0,5' no es un numero decimal valido"
+        f"plan, partida AF-LLAVE: Dia 3: «0.5» no se entiende como número. {REGLA}"
     )
 
 
@@ -361,12 +375,12 @@ def test_el_plan_secuencial_es_una_partida_por_periodo_y_la_curva_cierra_en_el_t
 
 
 def test_una_fraccion_con_ceros_de_relleno_se_dice_sin_ellos(_of001) -> None:
-    """«0.50» suma 0.5, no 0.50: el texto del error no arrastra ceros (3c-B12)."""
-    etiquetas, filas = _matriz(_of001, **{"AF-LLAVE": {"Dia 3": "0.50"}})
+    """«0,50» suma 0,5, no 0,50: el texto del error no arrastra ceros (3c-B12)."""
+    etiquetas, filas = _matriz(_of001, **{"AF-LLAVE": {"Dia 3": "0,50"}})
     with pytest.raises(HojaInvalida) as error:
         hoja.plan_desde_filas(filas, etiquetas)
     assert str(error.value) == (
-        "plan, partida AF-LLAVE: las fracciones suman 0.5 y deben sumar exactamente 1; "
+        "plan, partida AF-LLAVE: las fracciones suman 0,5 y deben sumar exactamente 1; "
         "repartala entre los periodos hasta completar 1"
     )
 

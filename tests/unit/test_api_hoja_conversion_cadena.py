@@ -349,7 +349,7 @@ def test_la_cadena_sigue_integra_tras_restaurar_cotizar_y_convertir(_casos) -> N
             json={
                 **cuerpo,
                 "insumo": "EQU-001",
-                "precio": "99.5",
+                "precio": "99,5",  # tecleado: coma decimal (regla de 2026-10-25)
                 "proveedor": "Ferreteria Demo, C.A.",
                 "numero": "C-1",
                 "fecha": "2026-10-05",

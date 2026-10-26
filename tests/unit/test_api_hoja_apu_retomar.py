@@ -66,6 +66,7 @@ from tests.fixtures.sesion_web import (
 )
 
 D = Decimal
+REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
 SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
 FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "
@@ -215,10 +216,10 @@ def _cambios(navegador, id_):
 
 def _parametros(navegador, ficha, id_, rev, **cambios):
     textos = {
-        "fcas": "6.00",
-        "bono_alimentacion": "5.8100",
-        "administracion": "0.15",
-        "utilidad": "0.10",
+        "fcas": "6,00",
+        "bono_alimentacion": "5,8100",
+        "administracion": "0,15",
+        "utilidad": "0,10",
     }
     return navegador.put(
         f"/v1/hoja/borradores/{id_}/parametros",
@@ -300,7 +301,7 @@ def test_e6_el_mismo_apu_no_es_un_cambio_ni_sube_el_rev() -> None:
     igual = _apu(navegador, ficha, id_, 0)  # lo mismo que tiene
     assert igual.status_code == 200 and igual.json()["rev"] == 0
     assert igual.json()["resumen"]["cambios"] == 0
-    for texto in ("1.000", "1.0"):  # otra forma de escribir lo mismo
+    for texto in ("1,000", "1,0"):  # otra forma de escribir lo mismo
         assert _apu(navegador, ficha, id_, 0, materiales=[texto]).json()["rev"] == 0
 
 
@@ -318,13 +319,13 @@ def test_e6_una_partida_con_barra_en_el_codigo_viaja_en_la_ruta() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     partida = "AF-TUB-PVC-1/2"
-    cantidad = D(
-        next(f for f in _vista(navegador, id_, "presupuesto")["filas"] if f["partida"] == partida)[
-            "cantidad"
-        ]
-    )
+    # la cantidad editable llega con coma decimal (regla de Eugenio, 2026-10-25): leída a mano
+    escrita = next(
+        f for f in _vista(navegador, id_, "presupuesto")["filas"] if f["partida"] == partida
+    )["cantidad"]
+    cantidad = D(escrita.replace(".", "").replace(",", "."))
     antes = _total(_resumen(navegador, id_))
-    cuerpo = {"rendimiento": "30", "materiales": ["1", "0.02"], "equipos": ["1"]}
+    cuerpo = {"rendimiento": "30", "materiales": ["1", "0,02"], "equipos": ["1"]}
     cuerpo["mano_obra"] = ["1", "1"]
     respuesta = navegador.put(
         _ruta_apu(id_, partida), json={"rev": 0, **cuerpo}, headers=protegida(ficha)
@@ -349,11 +350,14 @@ def test_e6_una_partida_con_barra_en_el_codigo_viaja_en_la_ruta() -> None:
         ({"materiales": ["-1"]}, "materiales, fila 1: la cantidad no puede ser negativa"),
         ({"mano_obra": ["1", "-2"]}, "mano de obra, fila 2: la cantidad no puede ser negativa"),
         (
-            {"materiales": ["2,5"]},
-            "materiales, fila 1: cantidad: '2,5' no es un numero decimal valido",
+            {"materiales": ["2.5"]},
+            f"materiales, fila 1: cantidad: «2.5» no se entiende como número. {REGLA}",
         ),
-        ({"equipos": ["x"]}, "equipos, fila 1: cantidad: 'x' no es un numero decimal valido"),
-        ({"rendimiento": "0,5"}, "rendimiento: '0,5' no es un numero decimal valido"),
+        (
+            {"equipos": ["x"]},
+            f"equipos, fila 1: cantidad: «x» no se entiende como número. {REGLA}",
+        ),
+        ({"rendimiento": "0.5"}, f"rendimiento: «0.5» no se entiende como número. {REGLA}"),
         (
             {"materiales": ["1", "1"]},
             "materiales: la tabla tiene 2 lineas y el APU 1; en la hoja solo se edita la "
@@ -394,7 +398,7 @@ def test_e6_una_partida_sin_apu_es_404_fijo_despues_de_rev_y_sin_eco() -> None:
     respuesta = _apu(navegador, ficha, id_, 0, partida="NO-EXISTE-" + CENTINELA)
     assert respuesta.status_code == 404 and respuesta.json() == {"detalle": PARTIDA_FALTA}
     assert respuesta.headers["cache-control"] == "no-store" and CENTINELA not in respuesta.text
-    assert _parametros(navegador, ficha, id_, 0, utilidad="0.12").status_code == 200  # rev 1
+    assert _parametros(navegador, ficha, id_, 0, utilidad="0,12").status_code == 200  # rev 1
     rezagada = _apu(navegador, ficha, id_, 0, partida="NO-EXISTE")
     assert rezagada.status_code == 409 and rezagada.json() == {"detalle": REV_VIEJO}
 
@@ -402,7 +406,7 @@ def test_e6_una_partida_sin_apu_es_404_fijo_despues_de_rev_y_sin_eco() -> None:
 def test_e6_el_rev_se_comprueba_antes_que_el_contenido() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    _parametros(navegador, ficha, id_, 0, utilidad="0.12")
+    _parametros(navegador, ficha, id_, 0, utilidad="0,12")
     malo = _apu(navegador, ficha, id_, 0, materiales=["-1"])
     assert malo.status_code == 409 and malo.json() == {"detalle": REV_VIEJO}
 
@@ -529,7 +533,7 @@ def test_e7_el_pegamento_en_lugar_de_la_llave_conserva_la_cantidad_y_sube_101_78
         DESC_PEGAMENTO,
         "env",
         "1",
-        "34.5694",
+        "34,5694",  # celda del APU: coma decimal (regla de 2026-10-25)
     )
     precio = D(cuerpo["apu"]["detalle"]["metricas"]["precio_unitario"]["exacto"])
     assert abs(precio - D("47.127429525")) <= D("0.0000001")
@@ -557,7 +561,7 @@ def test_e7_el_tecnico_en_lugar_del_plomero_cambia_el_sueldo_y_no_la_cantidad() 
     obreros = next(
         g for g in respuesta.json()["apu"]["detalle"]["grupos"] if g["clave"] == "mano de obra"
     )
-    assert obreros["filas"][0]["cantidad"] == "1" and obreros["filas"][0]["sueldo"] == "10.0000"
+    assert obreros["filas"][0]["cantidad"] == "1" and obreros["filas"][0]["sueldo"] == "10,0000"
 
 
 def test_e7_un_insumo_que_la_lista_no_valora_o_de_otro_tipo_es_422_y_nada_cambia() -> None:
@@ -628,7 +632,7 @@ def test_e7_una_partida_sin_apu_es_404_fijo() -> None:
 def test_e7_el_rev_se_comprueba_antes_que_el_contenido() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    _parametros(navegador, ficha, id_, 0, utilidad="0.12")
+    _parametros(navegador, ficha, id_, 0, utilidad="0,12")
     malo = _insumo(navegador, ficha, id_, 0, insumo="MAT-999")
     assert malo.status_code == 409 and malo.json() == {"detalle": REV_VIEJO}
 
@@ -719,7 +723,7 @@ def test_e9_sin_ediciones_la_lista_esta_vacia() -> None:
 def test_e9_lista_cada_celda_en_el_orden_apu_cantidad_parametro() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    assert _parametros(navegador, ficha, id_, 0, administracion="0.20").status_code == 200
+    assert _parametros(navegador, ficha, id_, 0, administracion="0,20").status_code == 200
     assert (
         _cantidades(navegador, ficha, id_, 1, [{"clave": LLAVE, "cantidad": "5"}]).status_code
         == 200
@@ -752,7 +756,7 @@ def test_e9_en_un_borrador_en_blanco_todo_lo_escrito_cuenta() -> None:
     _con_proyecto_nuevo(config.ruta_caso_por_defecto())
     id_ = _abrir(navegador, ficha, "Proyecto nuevo", None)
     assert _cambios(navegador, id_).json() == {"rev": 0, "cambios": []}
-    assert _parametros(navegador, ficha, id_, 0, administracion="0.20").status_code == 200
+    assert _parametros(navegador, ficha, id_, 0, administracion="0,20").status_code == 200
     cambios = _cambios(navegador, id_).json()["cambios"]
     # el borrador en blanco parte de los parametros por omision de `Borrador`, no de los de OF-001:
     # cada parametro que el cuerpo escribe distinto es una celda cambiada
@@ -782,7 +786,7 @@ def test_e10_tras_dos_ediciones_se_puede_retomar_con_su_rev_y_sus_tablas() -> No
     """3c-B14: la lista dice `cambios: 2`; con el id y el rev se reanuda tras recargar."""
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    assert _parametros(navegador, ficha, id_, 0, utilidad="0.12").status_code == 200
+    assert _parametros(navegador, ficha, id_, 0, utilidad="0,12").status_code == 200
     assert _apu(navegador, ficha, id_, 1, materiales=["2"]).status_code == 200
     (fila,) = _listar(navegador)
     assert fila["id"] == id_ and fila["proyecto"] == NOMBRE_OF001 and fila["version"] == "001"
@@ -797,7 +801,7 @@ def test_e10_tras_dos_ediciones_se_puede_retomar_con_su_rev_y_sus_tablas() -> No
         ]
         == "2"
     )
-    siguiente = _parametros(navegador, ficha, id_, vivo["resumen"]["rev"], utilidad="0.13")
+    siguiente = _parametros(navegador, ficha, id_, vivo["resumen"]["rev"], utilidad="0,13")
     assert siguiente.status_code == 200 and siguiente.json()["rev"] == 3
 
 
@@ -830,7 +834,7 @@ def test_e10_no_lista_los_guardados_ni_los_de_otro_caso_ni_los_de_otra_ficha() -
 def test_e11_reabrir_la_misma_version_con_cambios_es_409_con_el_id_y_no_abre_nada() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    _parametros(navegador, ficha, id_, 0, utilidad="0.12")
+    _parametros(navegador, ficha, id_, 0, utilidad="0,12")
     _apu(navegador, ficha, id_, 1, materiales=["2"])
     respuesta = _abrir_con(navegador, ficha)
     assert respuesta.status_code == 409
@@ -847,7 +851,7 @@ def test_e11_reabrir_la_misma_version_con_cambios_es_409_con_el_id_y_no_abre_nad
 def test_e11_con_un_solo_cambio_el_aviso_va_en_singular() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    _parametros(navegador, ficha, id_, 0, utilidad="0.12")
+    _parametros(navegador, ficha, id_, 0, utilidad="0,12")
     detalle = _abrir_con(navegador, ficha).json()["detalle"]
     assert detalle == (
         "Ya tiene un borrador de esta versión con 1 cambio sin guardar: retómelo o reemplácelo."
@@ -857,7 +861,7 @@ def test_e11_con_un_solo_cambio_el_aviso_va_en_singular() -> None:
 def test_e11_reemplazar_descarta_el_anterior_y_abre_uno_nuevo_sin_cambios() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    _parametros(navegador, ficha, id_, 0, utilidad="0.12")
+    _parametros(navegador, ficha, id_, 0, utilidad="0,12")
     respuesta = _abrir_con(navegador, ficha, reemplazar=True)
     assert respuesta.status_code == 201, respuesta.text
     nuevo = respuesta.json()["id"]
@@ -889,7 +893,7 @@ def test_e11_si_abrir_falla_el_anterior_queda_intacto(monkeypatch: pytest.Monkey
     `reemplazar` el borrador anterior, con sus cambios, no se pierde."""
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    _parametros(navegador, ficha, id_, 0, utilidad="0.12")
+    _parametros(navegador, ficha, id_, 0, utilidad="0,12")
 
     def no_se_puede(*_a, **_k):
         raise HojaInvalida("no se puede abrir esta version")
@@ -912,20 +916,20 @@ def test_e11_cambiar_de_version_no_descarta_nada_p23() -> None:
     navegador, ficha = _ana()
     _con_proyecto_nuevo(config.ruta_caso_por_defecto())
     primero = _abrir(navegador, ficha)
-    _parametros(navegador, ficha, primero, 0, utilidad="0.12")
+    _parametros(navegador, ficha, primero, 0, utilidad="0,12")
     segundo = _abrir(navegador, ficha, "Proyecto nuevo", None)
     assert segundo != primero
     assert _resumen(navegador, primero)["cambios"] == 1  # nada se descarto solo
     assert {b["id"]: b["cambios"] for b in _listar(navegador)} == {primero: 1, segundo: 0}
     # y se sigue editando el primero con su rev
-    assert _parametros(navegador, ficha, primero, 1, utilidad="0.13").status_code == 200
+    assert _parametros(navegador, ficha, primero, 1, utilidad="0,13").status_code == 200
 
 
 def test_e11_el_borrador_de_otra_ficha_no_estorba_ni_se_confirma() -> None:
     uno, ficha_uno = _ana()
     otro, ficha_otro = _ana()
     id_ = _abrir(uno, ficha_uno)
-    _parametros(uno, ficha_uno, id_, 0, utilidad="0.12")
+    _parametros(uno, ficha_uno, id_, 0, utilidad="0,12")
     respuesta = _abrir_con(otro, ficha_otro)
     assert respuesta.status_code == 201 and id_ not in respuesta.text
     assert _resumen(uno, id_)["cambios"] == 1  # el dueno no se entero
@@ -981,7 +985,7 @@ def test_cuatro_hilos_de_rutas_distintas_con_el_mismo_rev_gana_exactamente_uno()
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     peticiones = [
-        lambda: _parametros(navegador, ficha, id_, 0, utilidad="0.12"),
+        lambda: _parametros(navegador, ficha, id_, 0, utilidad="0,12"),
         lambda: _cantidades(navegador, ficha, id_, 0, [{"clave": LLAVE, "cantidad": "5"}]),
         lambda: _apu(navegador, ficha, id_, 0, materiales=["2"]),
         lambda: _espacio(navegador, ficha, id_, 0, "3"),
@@ -1016,14 +1020,14 @@ def test_con_el_rev_nuevo_de_la_respuesta_la_segunda_edicion_si_pasa() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     peticiones = [
-        lambda: _parametros(navegador, ficha, id_, 0, utilidad="0.12"),
+        lambda: _parametros(navegador, ficha, id_, 0, utilidad="0,12"),
         lambda: _apu(navegador, ficha, id_, 0, materiales=["2"]),
     ]
     respuestas = _carrera(navegador, ficha, id_, peticiones)
     perdedora = next(n for n, r in enumerate(respuestas) if r.status_code == 409)
     rev = _resumen(navegador, id_)["rev"]
     if perdedora == 0:
-        assert _parametros(navegador, ficha, id_, rev, utilidad="0.12").status_code == 200
+        assert _parametros(navegador, ficha, id_, rev, utilidad="0,12").status_code == 200
     else:
         assert _apu(navegador, ficha, id_, rev, materiales=["2"]).status_code == 200
     assert _resumen(navegador, id_)["cambios"] == 2 and _resumen(navegador, id_)["rev"] == 2
@@ -1344,14 +1348,21 @@ def test_put_espacio_con_500_puntos_y_resumen_la_mediana_se_registra() -> None:
     # 500 puntos en una cuadricula de 25 x 20 (cada uno en su sitio): iguales entre si dispararian
     # la regla de puntos duplicados, que es cuadratica, y no mediria el caso real
     adicionales = [
-        {**modelo, "id": f"X{n:03d}", "x": str(n % 25 * 0.04), "y": str(n // 25 * 0.05)}
+        {
+            **modelo,
+            "id": f"X{n:03d}",
+            # tecleado con coma decimal (regla de Eugenio, 2026-10-25)
+            "x": str(n % 25 * 0.04).replace(".", ","),
+            "y": str(n // 25 * 0.05).replace(".", ","),
+        }
         for n in range(500)
     ]
     tablas["puntos"] = [*tablas["puntos"], *adicionales]
     estado = {"rev": 0}
 
     def edicion(i: int) -> None:
-        tablas["puntos"][-1]["z"] = str(i / 100)  # cada corrida cambia algo: el borrador cambia
+        # cada corrida cambia algo: el borrador cambia (con coma decimal)
+        tablas["puntos"][-1]["z"] = str(i / 100).replace(".", ",")
         respuesta = navegador.put(
             f"/v1/hoja/borradores/{id_}/espacio",
             json={"rev": estado["rev"], "tablas": tablas},

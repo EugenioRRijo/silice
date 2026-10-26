@@ -31,7 +31,7 @@ from adapters.espacio import ModoRecorrido, Recorrido
 from api import caso_web, dependencias
 from api.main import app
 from aplicacion import hoja_borradores
-from aplicacion.hoja import cambios_entre, filas_desde_espacio
+from aplicacion.hoja import cambios_entre, filas_editables_del_espacio
 from core.budget import crear_proyecto
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
@@ -158,7 +158,8 @@ def _con_alto(tablas: dict, alto: str, ambiente: str = "COC-01") -> dict:
 def _sin_circuitos() -> dict[str, list[dict[str, str]]]:
     """Las tablas de OF-001 sin circuitos: un borrador en blanco no los tiene (se declaran al
     importar un plano) y un punto no puede citar uno que no existe."""
-    tablas = copy.deepcopy(filas_desde_espacio(espacio_of001()))
+    # como las muestra el editor: las cifras con coma decimal (regla de Eugenio, 2026-10-25)
+    tablas = copy.deepcopy(filas_editables_del_espacio(espacio_of001()))
     for punto in tablas["puntos"]:
         punto["circuito_id"] = ""
     return tablas
@@ -227,15 +228,17 @@ def test_e1_deja_en_el_borrador_exactamente_la_celda_cambiada() -> None:
     ]
 
 
-def test_e1_el_alto_con_coma_es_422_con_el_texto_escrito_y_el_borrador_no_cambia() -> None:
+def test_e1_el_alto_con_punto_decimal_es_422_con_el_texto_escrito_y_el_borrador_no_cambia() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     tablas = _tablas(navegador, id_)
     antes = _vista(navegador, id_, "espacio").json()
-    respuesta = _editar(navegador, ficha, id_, 0, _con_alto(tablas, "2,5"))
+    # regla de Eugenio (2026-10-25): coma decimal, punto de miles; «2.5» no se adivina
+    respuesta = _editar(navegador, ficha, id_, 0, _con_alto(tablas, "2.5"))
     assert respuesta.status_code == 422
     assert respuesta.json() == {
-        "detalle": "ambientes, fila 2: alto: '2,5' no es un numero decimal valido"
+        "detalle": "ambientes, fila 2: alto: «2.5» no se entiende como número. Use la coma para "
+        "los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
     }
     assert respuesta.headers["cache-control"] == "no-store"
     assert _vista(navegador, id_, "espacio").json() == antes
@@ -252,8 +255,8 @@ def test_e1_el_rev_no_sube_si_el_espacio_no_cambia() -> None:
     assert respuesta.status_code == 200
     assert respuesta.json()["rev"] == 0 and respuesta.json()["resumen"]["cambios"] == 0
     assert _derivadas(respuesta.json()["espacio"])["AF-TUB-PVC-1/2"] == D("8.25")
-    # escribir `2.500` donde estaba `2.5` es el mismo numero: tampoco hay cambio
-    igual = _editar(navegador, ficha, id_, 0, _con_alto(tablas, "2.500", "BAN-01"))
+    # escribir `2,500` donde estaba `2,5` es el mismo numero: tampoco hay cambio
+    igual = _editar(navegador, ficha, id_, 0, _con_alto(tablas, "2,500", "BAN-01"))
     assert igual.status_code == 200 and igual.json()["rev"] == 0
 
 
@@ -571,7 +574,7 @@ def test_e1_el_rev_se_comprueba_antes_que_el_contenido() -> None:
     id_ = _abrir(navegador, ficha)
     tablas = _tablas(navegador, id_)
     _editar(navegador, ficha, id_, 0, _con_alto(tablas, "3"))
-    respuesta = _editar(navegador, ficha, id_, 0, _con_alto(tablas, "2,5"))
+    respuesta = _editar(navegador, ficha, id_, 0, _con_alto(tablas, "2.5"))
     assert respuesta.status_code == 409
 
 
@@ -688,7 +691,7 @@ def test_e1_no_escribe_nada_en_la_base_ni_con_exito_ni_con_error(_entorno: Path)
     tablas = _tablas(navegador, id_)
     antes = _volcado(_entorno)
     assert _editar(navegador, ficha, id_, 0, _con_alto(tablas, "3")).status_code == 200
-    assert _editar(navegador, ficha, id_, 1, _con_alto(tablas, "2,5")).status_code == 422
+    assert _editar(navegador, ficha, id_, 1, _con_alto(tablas, "2.5")).status_code == 422
     assert _editar(navegador, ficha, id_, 0, tablas).status_code == 409
     nueva = copy.deepcopy(tablas)
     nueva["puntos"].append({"id": "PX", "especialidad": "agua", "tipo": "agua_fria"})
@@ -728,7 +731,7 @@ def test_e1_no_store_en_exito_404_409_y_422() -> None:
         _editar(navegador, ficha, id_, 0, _con_alto(tablas, "3")),  # 200
         _editar(navegador, ficha, ID_AJENO, 0, tablas),  # 404
         _editar(navegador, ficha, id_, 0, tablas),  # 409
-        _editar(navegador, ficha, id_, 1, _con_alto(tablas, "2,5")),  # 422 de dominio
+        _editar(navegador, ficha, id_, 1, _con_alto(tablas, "2.5")),  # 422 de dominio
         _editar(navegador, ficha, id_, "x", tablas),  # 422 de forma
     ]
     assert [r.status_code for r in respuestas] == [200, 404, 409, 422, 422]
@@ -754,6 +757,6 @@ def test_e1_el_registro_vuelve_a_medir_el_borrador_en_los_cambios_que_toca(
     id_ = _abrir(navegador, ficha)
     assert len(medidas) == 1  # al crear
     tablas = _tablas(navegador, id_)
-    for rev, alto in enumerate(["3", "2.5", "3"]):
+    for rev, alto in enumerate(["3", "2,5", "3"]):
         assert _editar(navegador, ficha, id_, rev, _con_alto(tablas, alto)).status_code == 200
         assert len(medidas) == (1 if rev < 2 else 2)  # y en el cambio 3

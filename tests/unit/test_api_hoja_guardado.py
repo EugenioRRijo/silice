@@ -207,10 +207,10 @@ def _resumen(navegador: TestClient, id_: str) -> dict:
 
 def _parametros(navegador, ficha, id_, rev, **cambios):
     textos = {
-        "fcas": "6.00",
-        "bono_alimentacion": "5.8100",
-        "administracion": "0.15",
-        "utilidad": "0.10",
+        "fcas": "6,00",
+        "bono_alimentacion": "5,8100",
+        "administracion": "0,15",
+        "utilidad": "0,10",
     }
     return navegador.put(
         f"/v1/hoja/borradores/{id_}/parametros",
@@ -239,7 +239,7 @@ def _versiones(navegador, proyecto: str = NOMBRE_OF001) -> list[dict]:
     return navegador.get("/v1/hoja/versiones", params={"proyecto": proyecto}).json()["versiones"]
 
 
-def _con_administracion(navegador, ficha, valor="0.20", **abrir) -> str:
+def _con_administracion(navegador, ficha, valor="0,20", **abrir) -> str:
     """Un borrador de OF-001 v001 con la administracion cambiada: `rev` 1, un cambio."""
     id_ = _abrir(navegador, ficha, **abrir)
     assert _parametros(navegador, ficha, id_, 0, administracion=valor).status_code == 200
@@ -253,7 +253,8 @@ def _cerca(texto: str, esperado: Decimal) -> bool:
 def _sin_circuitos() -> dict[str, list[dict[str, str]]]:
     """El espacio de OF-001 sin circuitos: un borrador en blanco no los tiene (se declaran al
     importar un plano) y un punto no puede citar uno que no existe."""
-    tablas = copy.deepcopy(copia.filas_desde_espacio(espacio_of001()))
+    # como las muestra el editor: las cifras con coma decimal (regla de Eugenio, 2026-10-25)
+    tablas = copy.deepcopy(copia.filas_editables_del_espacio(espacio_of001()))
     for punto in tablas["puntos"]:
         punto["circuito_id"] = ""
     return tablas
@@ -415,7 +416,7 @@ def test_la_cadena_queda_integra_tras_guardar_por_la_api(_entorno) -> None:
     assert "íntegra" in despues.mensaje or "integra" in despues.mensaje.lower()
     # y guardar otra encima (la 003, que copia el espacio con su anexo) tambien la deja sana
     otro = _abrir(navegador, ficha, version="002")
-    assert _parametros(navegador, ficha, otro, 0, administracion="0.25").status_code == 200
+    assert _parametros(navegador, ficha, otro, 0, administracion="0,25").status_code == 200
     assert _guardar(navegador, ficha, otro, 1).json()["codigo"] == "003"
     assert _cadena(_entorno).integra
 
@@ -499,7 +500,7 @@ def test_sin_cambios_es_422_con_el_texto_del_motivo_y_tambien_si_se_revirtieron(
     antes = _volcado(_entorno)
     respuesta = _guardar(navegador, ficha, id_, 0)
     assert respuesta.status_code == 422 and respuesta.json() == {"detalle": SIN_CAMBIOS}
-    assert _parametros(navegador, ficha, id_, 0, administracion="0.20").status_code == 200
+    assert _parametros(navegador, ficha, id_, 0, administracion="0,20").status_code == 200
     assert _parametros(navegador, ficha, id_, 1).status_code == 200  # vuelve a 0.15
     assert _resumen(navegador, id_)["cambios"] == 0
     assert _guardar(navegador, ficha, id_, 2).json() == {"detalle": SIN_CAMBIOS}
@@ -520,8 +521,8 @@ MAS_NUEVA = (
 def test_una_version_mas_nueva_pide_confirmar_y_con_la_confirmacion_guarda(_entorno) -> None:
     uno, ficha_uno = _ana()
     otro, ficha_otro = _ana()  # otra ficha de la misma cuenta: otro borrador de la misma 001
-    mio = _con_administracion(uno, ficha_uno, "0.30")
-    de_otro = _con_administracion(otro, ficha_otro, "0.20")
+    mio = _con_administracion(uno, ficha_uno, "0,30")
+    de_otro = _con_administracion(otro, ficha_otro, "0,20")
     assert _guardar(otro, ficha_otro, de_otro, 1).json()["codigo"] == "002"  # se me adelantan
     assert _resumen(uno, mio)["version_mas_nueva"] == "002"  # la pantalla ya lo sabia
     antes = _volcado(_entorno)
@@ -566,7 +567,7 @@ def test_abrir_a_proposito_una_version_descartada_no_pide_confirmar_si_nadie_gua
     ]
     descartada = _abrir(navegador, ficha, version="002")
     assert _resumen(navegador, descartada)["version_mas_nueva"] is None  # la pantalla no avisa
-    assert _parametros(navegador, ficha, descartada, 0, administracion="0.30").status_code == 200
+    assert _parametros(navegador, ficha, descartada, 0, administracion="0,30").status_code == 200
     assert _resumen(navegador, descartada)["version_mas_nueva"] is None
     ok = _guardar(navegador, ficha, descartada, 1)  # sin confirmar
     assert ok.status_code == 200 and ok.json()["codigo"] == "003"
@@ -578,7 +579,7 @@ def test_abrir_una_version_vieja_a_proposito_no_pide_confirmar_si_nadie_guardo(_
     navegador, ficha = _ana()
     primero = _con_administracion(navegador, ficha)
     assert _guardar(navegador, ficha, primero, 1).json()["codigo"] == "002"
-    vieja = _con_administracion(navegador, ficha, "0.30", version="001")
+    vieja = _con_administracion(navegador, ficha, "0,30", version="001")
     assert _resumen(navegador, vieja)["version_mas_nueva"] is None
     ok = _guardar(navegador, ficha, vieja, 1)
     assert ok.status_code == 200 and ok.json()["codigo"] == "003"
@@ -593,8 +594,8 @@ def test_si_alguien_guarda_despues_de_abrir_una_version_vieja_si_pide_confirmar(
     otro, ficha_otro = _ana()
     primero = _con_administracion(uno, ficha_uno)
     assert _guardar(uno, ficha_uno, primero, 1).json()["codigo"] == "002"
-    mio = _con_administracion(uno, ficha_uno, "0.30", version="001")  # a proposito: la vieja
-    de_otro = _con_administracion(otro, ficha_otro, "0.25", version="002")
+    mio = _con_administracion(uno, ficha_uno, "0,30", version="001")  # a proposito: la vieja
+    de_otro = _con_administracion(otro, ficha_otro, "0,25", version="002")
     assert _guardar(otro, ficha_otro, de_otro, 1).json()["codigo"] == "003"  # se me adelantan
     assert _resumen(uno, mio)["version_mas_nueva"] == "003"
     antes = _volcado(_entorno)
@@ -624,8 +625,8 @@ def test_dos_personas_que_abrieron_la_vieja_a_proposito_guardan_a_la_vez_uno_gan
     otro, ficha_otro = _ana()
     base = _con_administracion(uno, ficha_uno)
     assert _guardar(uno, ficha_uno, base, 1).json()["codigo"] == "002"
-    a = _con_administracion(uno, ficha_uno, "0.20", version="001")
-    b = _con_administracion(otro, ficha_otro, "0.30", version="001")
+    a = _con_administracion(uno, ficha_uno, "0,20", version="001")
+    b = _con_administracion(otro, ficha_otro, "0,30", version="001")
     respuestas = _a_la_vez(
         lambda: _guardar(uno, ficha_uno, a, 1), lambda: _guardar(otro, ficha_otro, b, 1)
     )
@@ -644,7 +645,7 @@ def test_un_borrador_retomado_conserva_la_vigente_de_cuando_se_abrio(_entorno) -
     id_ = _con_administracion(uno, ficha)
     retomable = uno.get("/v1/hoja/borradores", headers=protegida(ficha)).json()
     assert [b["id"] for b in retomable["borradores"]] == [id_]
-    de_otro = _con_administracion(otro, ficha_otro, "0.20")
+    de_otro = _con_administracion(otro, ficha_otro, "0,20")
     assert _guardar(otro, ficha_otro, de_otro, 1).json()["codigo"] == "002"
     leido = uno.get(f"/v1/hoja/borradores/{id_}").json()  # R3 tras «recargar la pagina»
     assert leido["resumen"]["version_mas_nueva"] == "002"
@@ -662,7 +663,7 @@ def test_un_borrador_perdido_por_un_reinicio_no_se_guarda_ni_se_rehidrata(_entor
     perdido = _guardar(navegador, ficha, id_, 1)
     assert perdido.status_code == 404 and perdido.json() == {"detalle": FALTA}
     assert _volcado(_entorno) == antes
-    nuevo = _con_administracion(navegador, ficha, "0.30")
+    nuevo = _con_administracion(navegador, ficha, "0,30")
     assert _guardar(navegador, ficha, nuevo, 1).json()["codigo"] == "002"
 
 
@@ -697,8 +698,8 @@ def test_dos_personas_guardan_a_la_vez_desde_la_misma_version_uno_gana_y_el_otro
     IMMEDIATE` el segundo espera, ve la 002 y recibe el 409 de "version mas nueva"."""
     uno, ficha_uno = _ana()
     otro, ficha_otro = _ana()
-    a = _con_administracion(uno, ficha_uno, "0.20")
-    b = _con_administracion(otro, ficha_otro, "0.30")
+    a = _con_administracion(uno, ficha_uno, "0,20")
+    b = _con_administracion(otro, ficha_otro, "0,30")
     respuestas = _a_la_vez(
         lambda: _guardar(uno, ficha_uno, a, 1), lambda: _guardar(otro, ficha_otro, b, 1)
     )
@@ -712,8 +713,8 @@ def test_dos_personas_guardan_a_la_vez_desde_la_misma_version_uno_gana_y_el_otro
 def test_dos_personas_que_confirman_a_la_vez_obtienen_codigos_distintos(_entorno) -> None:
     uno, ficha_uno = _ana()
     otro, ficha_otro = _ana()
-    a = _con_administracion(uno, ficha_uno, "0.20")
-    b = _con_administracion(otro, ficha_otro, "0.30")
+    a = _con_administracion(uno, ficha_uno, "0,20")
+    b = _con_administracion(otro, ficha_otro, "0,30")
     respuestas = _a_la_vez(
         lambda: _guardar(uno, ficha_uno, a, 1, confirmar_version_mas_nueva=True),
         lambda: _guardar(otro, ficha_otro, b, 1, confirmar_version_mas_nueva=True),
@@ -764,7 +765,7 @@ def test_el_borrador_guardado_queda_cerrado_y_no_se_guarda_ni_se_edita_otra_vez(
     assert segundo.status_code == 409 and segundo.json() == ya
     # ni siquiera con otro rev, con la confirmacion o con la fuente en blanco
     assert _guardar(navegador, ficha, id_, 9, "", confirmar_version_mas_nueva=True).json() == ya
-    assert _parametros(navegador, ficha, id_, 1, utilidad="0.12").json() == ya
+    assert _parametros(navegador, ficha, id_, 1, utilidad="0,12").json() == ya
     assert _espacio(navegador, ficha, id_, 1, _sin_circuitos()).json() == ya
     assert _codigos(navegador) == ["001", "002"] and _volcado(_entorno) == despues
 
@@ -1234,8 +1235,8 @@ def test_si_se_rechaza_por_version_mas_nueva_la_transaccion_termina_y_el_bloqueo
 
     uno, ficha_uno = _ana()
     otro, ficha_otro = _ana()
-    mio = _con_administracion(uno, ficha_uno, "0.30")
-    de_otro = _con_administracion(otro, ficha_otro, "0.20")
+    mio = _con_administracion(uno, ficha_uno, "0,30")
+    de_otro = _con_administracion(otro, ficha_otro, "0,20")
     assert _guardar(otro, ficha_otro, de_otro, 1).json()["codigo"] == "002"
     motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
     try:

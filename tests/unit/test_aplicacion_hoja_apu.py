@@ -43,6 +43,7 @@ from tests.fixtures.hoja_en_base import (
 )
 
 D = Decimal
+REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
 FACTOR = D("1.15") * D("1.10")  # administracion y utilidad en cascada
 TOLERANCIA = D("0.0000001")
 
@@ -135,24 +136,24 @@ def test_rendimiento_10_da_cd_13_11927(_of001) -> None:
             "materiales, fila 1: la cantidad no puede ser negativa",
         ),
         (
-            (("1",), ("1",), ("1", "-0.5")),
+            (("1",), ("1",), ("1", "-0,5")),
             "20",
             "mano de obra, fila 2: la cantidad no puede ser negativa",
         ),
         (
-            (("2,5",), ("1",), ("1", "1")),
+            (("2.5",), ("1",), ("1", "1")),
             "20",
-            "materiales, fila 1: cantidad: '2,5' no es un numero decimal valido",
+            f"materiales, fila 1: cantidad: «2.5» no se entiende como número. {REGLA}",
         ),
         (
             (("1",), ("x",), ("1", "1")),
             "20",
-            "equipos, fila 1: cantidad: 'x' no es un numero decimal valido",
+            f"equipos, fila 1: cantidad: «x» no se entiende como número. {REGLA}",
         ),
         (
             (("1",), ("1",), ("1", "1")),
-            "0,5",
-            "rendimiento: '0,5' no es un numero decimal valido",
+            "0.5",
+            f"rendimiento: «0.5» no se entiende como número. {REGLA}",
         ),
         (
             (("1", "1"), ("1",), ("1", "1")),
@@ -187,15 +188,23 @@ def test_un_rendimiento_que_el_modelo_rechaza_dice_que_debe_ser_mayor_que_cero(
     assert str(error.value) == f"rendimiento debe ser mayor que cero: {rendimiento}"
 
 
+def _coma(valor: Decimal) -> str:
+    """El decimal escrito a mano con coma decimal y sin miles (regla de Eugenio, 2026-10-25)."""
+    return format(valor, "f").replace(".", ",")
+
+
 def test_en_ti001_cada_partida_acepta_sus_propias_lineas(_ti001) -> None:
-    """TI-001: reenviar las cantidades de cada APU tal cual no lo cambia."""
+    """TI-001: reenviar las cantidades de cada APU tal cual no lo cambia (escritas con coma
+    decimal a mano, como las teclea la persona)."""
     assert len(_ti001.composiciones) == 10  # las 10 partidas de TI-001
     for codigo, base in _ti001.composiciones.items():
-        materiales = [{"cantidad": str(linea.cantidad)} for linea in base.materiales]
-        equipos = [{"cantidad": str(linea.cantidad)} for linea in base.equipos]
-        mano = [{"cantidad": str(linea.cantidad)} for linea in base.mano_obra]
+        materiales = [{"cantidad": _coma(linea.cantidad)} for linea in base.materiales]
+        equipos = [{"cantidad": _coma(linea.cantidad)} for linea in base.equipos]
+        mano = [{"cantidad": _coma(linea.cantidad)} for linea in base.mano_obra]
         assert (
-            hoja.composicion_con_cantidades(base, materiales, equipos, mano, str(base.rendimiento))
+            hoja.composicion_con_cantidades(
+                base, materiales, equipos, mano, _coma(base.rendimiento)
+            )
             == base
         ), codigo
 
@@ -208,7 +217,7 @@ def test_cada_partida_de_oficina_y_de_ti001_toma_las_cantidades_y_el_rendimiento
         for codigo, base in casos.composiciones.items():
             materiales = [{"cantidad": "3"} for _ in base.materiales]
             equipos = [{"cantidad": "2"} for _ in base.equipos]
-            mano = [{"cantidad": "1.5"} for _ in base.mano_obra]
+            mano = [{"cantidad": "1,5"} for _ in base.mano_obra]
             nueva = hoja.composicion_con_cantidades(base, materiales, equipos, mano, "7")
             assert nueva.rendimiento == D(7), codigo
             assert [x.cantidad for x in nueva.materiales] == [D(3)] * len(base.materiales), codigo

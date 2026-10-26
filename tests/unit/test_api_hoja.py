@@ -78,6 +78,12 @@ ID_AJENO = "a" * 22
 # --- los casos de la prueba -----------------------------------------------------------------
 
 
+def _leido(texto: str) -> Decimal:
+    """Un campo editable de la hoja, escrito con coma decimal y punto de miles (regla de Eugenio,
+    2026-10-25), leído a mano."""
+    return Decimal(texto.replace(".", "").replace(",", "."))
+
+
 @pytest.fixture(scope="module")
 def _casos(tmp_path_factory) -> dict[str, Path]:
     """Cada caso se siembra una vez por modulo; las pruebas copian el archivo que necesitan."""
@@ -1149,7 +1155,7 @@ def test_r10_of001_trae_los_cuatro_parametros_la_moneda_y_el_total() -> None:
         "administracion",
         "utilidad",
     ]
-    valores = {c["clave"]: D(c["valor"]) for c in cuerpo["campos"]}
+    valores = {c["clave"]: _leido(c["valor"]) for c in cuerpo["campos"]}
     assert (valores["fcas"], valores["administracion"], valores["utilidad"]) == (
         D("6.00"),
         D("0.15"),
@@ -1163,7 +1169,7 @@ def test_r10_de_la_version_002_trae_la_administracion_editada(_casos) -> None:
     _poner(_casos["of001_tres"])
     navegador, ficha = _ana()
     cuerpo = _vista(navegador, _abierta(navegador, ficha, version="002"), "parametros").json()
-    assert {c["clave"]: c["valor"] for c in cuerpo["campos"]}["administracion"] == "0.20"
+    assert {c["clave"]: c["valor"] for c in cuerpo["campos"]}["administracion"] == "0,20"
     assert abs(D(cuerpo["total"]["exacto"]) - D("2821.42")) <= D("0.01")
 
 
@@ -1627,7 +1633,7 @@ def _abrir_caso(_casos, clave: str, proyecto: str, version: str):
 def test_r10_de_ti001_trae_los_parametros_y_el_total_de_rf58(_casos) -> None:
     navegador, id_ = _abrir_caso(_casos, "ti001", NOMBRE_TI001, caso_ti001.CODIGO)
     cuerpo = _vista(navegador, id_, "parametros").json()
-    assert {c["clave"]: D(c["valor"]) for c in cuerpo["campos"]} == {
+    assert {c["clave"]: _leido(c["valor"]) for c in cuerpo["campos"]} == {
         "fcas": D("6.00"),
         "bono_alimentacion": D("5.8100"),  # 3 679,85 Bs / 633,3644
         "administracion": D("0.15"),

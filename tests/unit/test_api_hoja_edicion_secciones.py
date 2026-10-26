@@ -62,6 +62,7 @@ from tests.fixtures.sesion_web import (
 )
 
 D = Decimal
+REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
 SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
 FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "
@@ -99,10 +100,10 @@ ID_AJENO = "a" * 22
 MIB = 1024 * 1024
 LLAVE = "AF-LLAVE|esp_fuentes:F1;esp_fuentes:FC1;esp_puntos:P1;esp_puntos:P2;esp_puntos:PC1"
 TEXTOS = {
-    "fcas": "6.00",
-    "bono_alimentacion": "5.8100",
-    "administracion": "0.15",
-    "utilidad": "0.10",
+    "fcas": "6,00",
+    "bono_alimentacion": "5,8100",
+    "administracion": "0,15",
+    "utilidad": "0,10",
 }
 
 
@@ -273,10 +274,10 @@ def test_e2_la_respuesta_es_lo_mismo_que_piden_despues_r6_y_r3() -> None:
 
 
 def test_e2_escribir_el_valor_calculado_no_es_una_cantidad_escrita() -> None:
-    """3c-B4: «3» (o «3.000») no cambia nada; volver a 3 tras escribir 5 libera el renglon."""
+    """3c-B4: «3» (o «3,000») no cambia nada; volver a 3 tras escribir 5 libera el renglon."""
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    for texto in ("3", "3.000"):
+    for texto in ("3", "3,000"):
         igual = _cantidades(navegador, ficha, id_, 0, [{"clave": LLAVE, "cantidad": texto}])
         assert igual.status_code == 200 and igual.json()["rev"] == 0
         assert igual.json()["resumen"]["cambios"] == 0
@@ -332,13 +333,21 @@ def test_e2_una_cantidad_negativa_dice_la_fila_de_la_tabla_completa_aunque_se_ma
 @pytest.mark.parametrize(
     ("texto", "detalle"),
     [
-        ("2,5", "presupuesto, fila 3 (AF-LLAVE): cantidad: '2,5' no es un numero decimal valido"),
+        (
+            "2.5",
+            f"presupuesto, fila 3 (AF-LLAVE): cantidad: «2.5» no se entiende como número. {REGLA}",
+        ),
         (
             "mucho",
-            "presupuesto, fila 3 (AF-LLAVE): cantidad: 'mucho' no es un numero decimal valido",
+            f"presupuesto, fila 3 (AF-LLAVE): cantidad: «mucho» no se entiende como número. "
+            f"{REGLA}",
         ),
-        ("", "presupuesto, fila 3 (AF-LLAVE): cantidad: '' no es un numero decimal valido"),
-        ("Infinity", "presupuesto, fila 3 (AF-LLAVE): cantidad: 'Infinity' no es un monto finito"),
+        ("", f"presupuesto, fila 3 (AF-LLAVE): cantidad: Escriba un número. {REGLA}"),
+        (
+            "Infinity",
+            f"presupuesto, fila 3 (AF-LLAVE): cantidad: «Infinity» no se entiende como número. "
+            f"{REGLA}",
+        ),
     ],
 )
 def test_e2_el_texto_que_no_es_un_decimal_es_422_con_el_mensaje_de_la_clasica(
@@ -393,7 +402,7 @@ def test_e2_en_ti001_sin_espacio_se_escribe_la_cantidad_de_un_renglon_de_la_vers
 def test_e3_administracion_020_da_los_literales_de_p13() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    respuesta = _parametros(navegador, ficha, id_, 0, administracion="0.20")
+    respuesta = _parametros(navegador, ficha, id_, 0, administracion="0,20")
     assert respuesta.status_code == 200, respuesta.text
     cuerpo = respuesta.json()
     assert cuerpo["rev"] == 1 and cuerpo["resumen"]["cambios"] == 1
@@ -407,7 +416,7 @@ def test_e3_administracion_020_da_los_literales_de_p13() -> None:
         ("parametro", "administracion", "valor", "0.15", "0.20")
     ]
     campos = {c["clave"]: c["valor"] for c in cuerpo["parametros"]["campos"]}
-    assert campos == {**TEXTOS, "administracion": "0.20"}
+    assert campos == {**TEXTOS, "administracion": "0,20"}
     assert cuerpo["parametros"]["total"] == cuerpo["resumen"]["total"]
     assert (cuerpo["parametros"]["moneda_proyecto"], cuerpo["parametros"]["puede_convertir"]) == (
         "USD",
@@ -418,7 +427,7 @@ def test_e3_administracion_020_da_los_literales_de_p13() -> None:
 def test_e3_la_respuesta_es_lo_mismo_que_piden_despues_r10_y_r3() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    respuesta = _parametros(navegador, ficha, id_, 0, utilidad="0.12").json()
+    respuesta = _parametros(navegador, ficha, id_, 0, utilidad="0,12").json()
     assert _vista(navegador, id_, "parametros") == respuesta["parametros"]
     assert _resumen(navegador, id_) == respuesta["resumen"]
 
@@ -429,30 +438,30 @@ def test_e3_un_parametro_invalido_es_422_con_el_texto_de_la_clasica_y_conserva_l
     """3c-B2: «mucho» no es un numero; la hoja sigue con el ultimo valor valido."""
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    assert _parametros(navegador, ficha, id_, 0, fcas="5.00").status_code == 200  # fcas previo
+    assert _parametros(navegador, ficha, id_, 0, fcas="5,00").status_code == 200  # fcas previo
     antes = _vista(navegador, id_, "parametros")
-    respuesta = _parametros(navegador, ficha, id_, 1, fcas="5.00", utilidad="mucho")
+    respuesta = _parametros(navegador, ficha, id_, 1, fcas="5,00", utilidad="mucho")
     assert respuesta.status_code == 422
     assert respuesta.json() == {
-        "detalle": "parametros: utilidad: 'mucho' no es un numero decimal valido"
+        "detalle": f"parametros: utilidad: «mucho» no se entiende como número. {REGLA}"
     }
     assert respuesta.headers["cache-control"] == "no-store"
     despues = _vista(navegador, id_, "parametros")
     assert despues == antes and _resumen(navegador, id_)["rev"] == 1  # el rev no subio
     campos = {c["clave"]: c["valor"] for c in despues["campos"]}
-    assert campos["fcas"] == "5.00" and campos["utilidad"] == "0.10"
-    assert _parametros(navegador, ficha, id_, 1, fcas="5.00", utilidad="0.12").status_code == 200
+    assert campos["fcas"] == "5,00" and campos["utilidad"] == "0,10"
+    assert _parametros(navegador, ficha, id_, 1, fcas="5,00", utilidad="0,12").status_code == 200
 
 
 @pytest.mark.parametrize(
     ("campo", "texto", "detalle"),
     [
-        ("fcas", "6,00", "parametros: fcas: '6,00' no es un numero decimal valido"),
-        ("administracion", "", "parametros: administracion: '' no es un numero decimal valido"),
+        ("fcas", "6.00", f"parametros: fcas: «6.00» no se entiende como número. {REGLA}"),
+        ("administracion", "", f"parametros: administracion: Escriba un número. {REGLA}"),
         (
             "bono_alimentacion",
             "Infinity",
-            "parametros: bono_alimentacion: 'Infinity' no es un monto finito",
+            f"parametros: bono_alimentacion: «Infinity» no se entiende como número. {REGLA}",
         ),
         ("fcas", "-1", "parametros: fcas no puede ser negativo: -1"),
     ],
@@ -468,7 +477,7 @@ def test_e3_otros_textos_invalidos_con_el_mensaje_de_la_clasica(campo, texto, de
 def test_e3_el_mismo_valor_escrito_de_otra_forma_no_cambia_nada() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    igual = _parametros(navegador, ficha, id_, 0, administracion="0.150", fcas="6")
+    igual = _parametros(navegador, ficha, id_, 0, administracion="0,150", fcas="6")
     assert igual.status_code == 200
     assert igual.json()["rev"] == 0 and igual.json()["resumen"]["cambios"] == 0
 
@@ -482,7 +491,7 @@ def test_e4_repartir_las_llaves_entre_el_dia_3_y_el_dia_30_mueve_la_mitad_y_la_c
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     antes = _por_dia(_vista(navegador, id_, "plan"))
-    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0.5", "Dia 30": "0.5"}})
+    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0,5", "Dia 30": "0,5"}})
     respuesta = _plan(navegador, ficha, id_, 0, etiquetas, filas)
     assert respuesta.status_code == 200, respuesta.text
     cuerpo = respuesta.json()
@@ -490,7 +499,7 @@ def test_e4_repartir_las_llaves_entre_el_dia_3_y_el_dia_30_mueve_la_mitad_y_la_c
     plan = cuerpo["plan"]
     assert plan["hay_plan"] is True and plan["etiquetas"] == etiquetas
     fila = next(f for f in plan["filas"] if f["partida"] == "AF-LLAVE")
-    assert (fila["valores"]["Dia 3"], fila["valores"]["Dia 30"]) == ("0.5", "0.5")
+    assert (fila["valores"]["Dia 3"], fila["valores"]["Dia 30"]) == ("0,5", "0,5")
     despues = _por_dia(plan)
     mitad = D("19.798")  # a mano: PU 13,1989 x 3 llaves = 39,5967; la mitad cambia de periodo
     assert abs(
@@ -514,7 +523,7 @@ def test_e4_repartir_las_llaves_entre_el_dia_3_y_el_dia_30_mueve_la_mitad_y_la_c
 def test_e4_la_respuesta_es_lo_mismo_que_piden_despues_r8_y_r3() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0.5", "Dia 4": "0.5"}})
+    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0,5", "Dia 4": "0,5"}})
     respuesta = _plan(navegador, ficha, id_, 0, etiquetas, filas).json()
     assert _vista(navegador, id_, "plan") == respuesta["plan"]
     assert _resumen(navegador, id_) == respuesta["resumen"]
@@ -524,12 +533,12 @@ def test_e4_un_plan_que_no_suma_1_es_422_con_el_texto_de_la_clasica_y_el_plan_no
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     antes = _vista(navegador, id_, "plan")
-    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0.5"}})
+    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0,5"}})
     respuesta = _plan(navegador, ficha, id_, 0, etiquetas, filas)
     assert respuesta.status_code == 422
     assert respuesta.json() == {
         "detalle": (
-            "plan, partida AF-LLAVE: las fracciones suman 0.5 y deben sumar exactamente 1; "
+            "plan, partida AF-LLAVE: las fracciones suman 0,5 y deben sumar exactamente 1; "
             "repartala entre los periodos hasta completar 1"
         )
     }
@@ -545,12 +554,13 @@ def test_e4_un_plan_que_no_suma_1_es_422_con_el_texto_de_la_clasica_y_el_plan_no
             "plan, partida AF-LLAVE: la fraccion de Dia 3 no puede ser negativa",
         ),
         (
-            {"Dia 3": "0,5", "Dia 4": "0.5"},
-            "plan, partida AF-LLAVE: Dia 3: '0,5' no es un numero decimal valido",
+            {"Dia 3": "0.5", "Dia 4": "0,5"},
+            "plan, partida AF-LLAVE: Dia 3: «0.5» no se entiende como número. Use la coma para los "
+            "decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56.",
         ),
     ],
 )
-def test_e4_fraccion_negativa_o_con_coma_son_422_con_el_texto_de_la_clasica(
+def test_e4_fraccion_negativa_o_con_punto_son_422_con_el_texto_de_la_clasica(
     celdas, detalle
 ) -> None:
     navegador, ficha = _ana()
@@ -619,7 +629,7 @@ def test_e4_una_partida_desconocida_o_que_falta_es_422_y_el_plan_no_queda_parcia
 def test_e4_una_fila_con_la_partida_vacia_se_ignora_y_la_matriz_completa_pasa() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0.5", "Dia 4": "0.5"}})
+    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0,5", "Dia 4": "0,5"}})
     respuesta = _plan(
         navegador, ficha, id_, 0, etiquetas, [*filas, {"partida": "", "valores": {"Dia 1": "7"}}]
     )
@@ -850,7 +860,7 @@ def test_un_cuerpo_de_mas_de_20_mib_declarado_o_por_trozos_es_413() -> None:
 
 PEDIDOS = [
     ("cantidades", lambda r: {"rev": r, "filas": [{"clave": LLAVE, "cantidad": "5"}]}, "put"),
-    ("parametros", lambda r: {"rev": r, **TEXTOS, "administracion": "0.20"}, "put"),
+    ("parametros", lambda r: {"rev": r, **TEXTOS, "administracion": "0,20"}, "put"),
     ("plan", lambda r: {"rev": r, "etiquetas": ["Dia 1"], "filas": []}, "put"),
     ("plan/secuencial", lambda r: {"rev": r}, "post"),
 ]
@@ -867,7 +877,7 @@ def _enviar(navegador, ficha, id_, ruta, metodo, cuerpo):
 def test_un_rev_viejo_o_adelantado_es_409_y_nada_cambia(ruta, cuerpo, metodo) -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    assert _parametros(navegador, ficha, id_, 0, utilidad="0.12").status_code == 200  # rev 1
+    assert _parametros(navegador, ficha, id_, 0, utilidad="0,12").status_code == 200  # rev 1
     antes = (_vista(navegador, id_, "presupuesto"), _vista(navegador, id_, "plan"))
     estado = _resumen(navegador, id_)
     for rev in (0, 5):
@@ -882,7 +892,7 @@ def test_el_rev_se_comprueba_antes_que_el_contenido_en_e2_e3_y_e4() -> None:
     """Una ventana rezagada con un dato malo recibe el 409 (recargar), no un 422 confuso."""
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    _parametros(navegador, ficha, id_, 0, utilidad="0.12")
+    _parametros(navegador, ficha, id_, 0, utilidad="0,12")
     malos = [
         _cantidades(navegador, ficha, id_, 0, [{"clave": LLAVE, "cantidad": "-1"}]),
         _parametros(navegador, ficha, id_, 0, utilidad="mucho"),
@@ -1018,8 +1028,8 @@ def test_ninguna_de_las_cuatro_escribe_en_la_base_ni_con_exito_ni_con_error(_ent
         _cantidades(navegador, ficha, id_, 0, [{"clave": LLAVE, "cantidad": "5"}]).status_code
         == 200
     )
-    assert _parametros(navegador, ficha, id_, 1, administracion="0.20").status_code == 200
-    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0.5", "Dia 4": "0.5"}})
+    assert _parametros(navegador, ficha, id_, 1, administracion="0,20").status_code == 200
+    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0,5", "Dia 4": "0,5"}})
     assert _plan(navegador, ficha, id_, 2, etiquetas, filas).status_code == 200
     assert (
         _cantidades(navegador, ficha, id_, 3, [{"clave": LLAVE, "cantidad": "-1"}]).status_code
@@ -1046,10 +1056,10 @@ def _sin_float(valor) -> None:
 def test_ningun_numero_del_json_es_float_y_todo_monto_es_texto() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0.5", "Dia 4": "0.5"}})
+    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0,5", "Dia 4": "0,5"}})
     respuestas = [
         _cantidades(navegador, ficha, id_, 0, [{"clave": LLAVE, "cantidad": "5"}]),
-        _parametros(navegador, ficha, id_, 1, administracion="0.20"),
+        _parametros(navegador, ficha, id_, 1, administracion="0,20"),
         _plan(navegador, ficha, id_, 2, etiquetas, filas),
     ]
     _sin_plan(ficha, id_)
@@ -1140,7 +1150,7 @@ def test_una_edicion_espera_al_cerrojo_del_borrador() -> None:
     resultado: list = []
 
     def editar() -> None:
-        resultado.append(_parametros(navegador, ficha, id_, 0, utilidad="0.12"))
+        resultado.append(_parametros(navegador, ficha, id_, 0, utilidad="0,12"))
 
     with vivo.cerrojo:
         hilo = threading.Thread(target=editar)

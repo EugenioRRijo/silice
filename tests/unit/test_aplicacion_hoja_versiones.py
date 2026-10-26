@@ -48,6 +48,7 @@ from tests.fixtures.hoja_en_base import (
 from tests.fixtures.hoja_versiones_api import registrar_tasa
 
 D = Decimal
+REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
 FUENTE = "acta de revision 7: se vuelve a la medida original"
 MOTIVO = "el proveedor retiro la oferta"
 RESPONSABLE = "Ana <ana>"
@@ -179,7 +180,7 @@ class _Caso:
     def cotizar(self, proyecto: str, codigo: str, **datos) -> str:
         valores = {
             "insumo": "EQU-001",
-            "precio": "999.5",
+            "precio": "999,5",
             "proveedor": PROVEEDOR,
             "numero": "COT-001",
             "fecha": date(2026, 10, 5),
@@ -202,7 +203,7 @@ class _Caso:
                 responsable=RESPONSABLE,
             ).codigo
         try:
-            precio = hoja.decimal_desde_texto(valores["precio"], "precio")
+            precio = hoja.cifra_de_celda(valores["precio"], "precio")  # tecleado: coma decimal
         except ValueError as error:  # la ruta lo captura igual (`except ValueError`)
             raise HojaInvalida(str(error)) from error
         return hoja.cotizar(
@@ -378,13 +379,22 @@ def test_cotizar_deja_lo_mismo_en_las_dos_capas(_plantillas, abrir_caso) -> None
 
 
 DATOS_MALOS = [
-    ({"precio": "abc"}, "precio: 'abc' no es un numero decimal valido"),
-    ({"precio": "NaN"}, "precio: 'NaN' no es un monto finito"),
+    (
+        {"precio": "abc"},
+        f"precio: «abc» no se entiende como número. {REGLA}",
+    ),
+    (
+        {"precio": "NaN"},
+        f"precio: «NaN» no se entiende como número. {REGLA}",
+    ),
     ({"precio": "-1"}, "el precio cotizado debe ser un Decimal no negativo, no Decimal('-1')"),
     ({"proveedor": ""}, "el proveedor de la cotizacion es obligatorio"),
     ({"numero": " "}, "el numero de la cotizacion es obligatorio"),
     ({"insumo": "NO-EXISTE"}, "no hay ningun insumo con codigo 'NO-EXISTE'"),
-    ({"precio": "abc", "proveedor": ""}, "precio: 'abc' no es un numero decimal valido"),
+    (
+        {"precio": "abc", "proveedor": ""},
+        f"precio: «abc» no se entiende como número. {REGLA}",
+    ),
     ({"proveedor": "", "numero": ""}, "el proveedor de la cotizacion es obligatorio"),
 ]
 
@@ -416,7 +426,8 @@ def test_cotizar_al_precio_que_ya_tiene_la_lista_lo_rechaza(_plantillas, abrir_c
         abrir_caso,
         _plantillas["of001"],
         NOMBRE_OF001,
-        lambda c: c.cotizar(NOMBRE_OF001, "001", precio=str(de_lista)),
+        # tecleado con coma decimal (regla de Eugenio, 2026-10-25)
+        lambda c: c.cotizar(NOMBRE_OF001, "001", precio=format(de_lista, "f").replace(".", ",")),
     )
     unica = _iguales(corridas)
     assert unica.resultado == (

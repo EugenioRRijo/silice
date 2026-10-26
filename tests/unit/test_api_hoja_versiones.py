@@ -74,6 +74,7 @@ from tests.fixtures.sesion_web import (
 )
 
 D = Decimal
+REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
 SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
 BASE = (
     "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro "
@@ -131,7 +132,7 @@ CUERPOS = {
             "proyecto": NOMBRE_OF001,
             "version": "002",
             "insumo": "EQU-001",
-            "precio": "999.5",
+            "precio": "999,5",
             "proveedor": PROVEEDOR,
             "numero": "COT-002",
             "fecha": "2026-10-05",
@@ -266,7 +267,7 @@ def _cotizar(navegador, ficha, **cambios):
         "proyecto": NOMBRE_OF001,
         "version": "001",
         "insumo": "EQU-001",
-        "precio": "999.5",
+        "precio": "999,5",
         "proveedor": PROVEEDOR,
         "numero": "COT-001",
         "fecha": "2026-10-05",
@@ -541,7 +542,7 @@ def test_una_cotizacion_previa_del_mismo_insumo_se_reemplaza_y_las_otras_se_cons
     ruta = _poner(_casos["completa"])  # la 002 ya cotiza EQU-001 a 15.00
     navegador, ficha = _ana()
     assert _fila(_precios(navegador, "002"), "EQU-001")["cotizacion"] == COTIZACION_001
-    segunda = _cotizar(navegador, ficha, version="002", insumo="MAT-001", precio="99.5")
+    segunda = _cotizar(navegador, ficha, version="002", insumo="MAT-001", precio="99,5")
     assert segunda.status_code == 200, segunda.text
     # otro insumo: se conserva la cotizacion de EQU-001
     filas = _precios(navegador, segunda.json()["codigo"])
@@ -565,19 +566,19 @@ def test_los_datos_de_una_cotizacion_invalida_dicen_cual_es_y_no_escriben_nada(_
     de_lista = _precio_de_lista(navegador)
     antes = volcado(_entorno)
     casos = [
-        ({"precio": "abc"}, "precio: 'abc' no es un numero decimal valido"),
-        ({"precio": "NaN"}, "precio: 'NaN' no es un monto finito"),
+        ({"precio": "abc"}, f"precio: «abc» no se entiende como número. {REGLA}"),
+        ({"precio": "NaN"}, f"precio: «NaN» no se entiende como número. {REGLA}"),
         ({"precio": "-1"}, "el precio cotizado debe ser un Decimal no negativo, no Decimal('-1')"),
         ({"proveedor": ""}, "el proveedor de la cotizacion es obligatorio"),
         ({"proveedor": "   "}, "el proveedor de la cotizacion es obligatorio"),
         ({"numero": ""}, "el numero de la cotizacion es obligatorio"),
         ({"insumo": "NO-EXISTE"}, "no hay ningun insumo con codigo 'NO-EXISTE'"),
         (
-            {"precio": de_lista},
+            {"precio": de_lista.replace(".", ",")},  # tecleado con coma decimal
             f"el insumo EQU-001 ya vale {de_lista} en la lista de la version",
         ),
         # el orden del nucleo: el precio se juzga antes que el proveedor, y este antes que el numero
-        ({"precio": "abc", "proveedor": ""}, "precio: 'abc' no es un numero decimal valido"),
+        ({"precio": "abc", "proveedor": ""}, f"precio: «abc» no se entiende como número. {REGLA}"),
         ({"proveedor": "", "numero": ""}, "el proveedor de la cotizacion es obligatorio"),
     ]
     fallos = []
@@ -606,7 +607,7 @@ def test_cotizar_proyecto_o_version_inexistente_es_404_antes_que_el_precio(_ento
 
 def test_el_precio_con_espacios_se_acepta_y_la_fecha_es_la_que_dice_el_cuerpo(_entorno) -> None:
     navegador, ficha = _ana()
-    respuesta = _cotizar(navegador, ficha, precio=" 999.5 ", fecha="2026-01-02")
+    respuesta = _cotizar(navegador, ficha, precio=" 999,5 ", fecha="2026-01-02")
     assert respuesta.status_code == 200, respuesta.text
     assert _fila(_precios(navegador, "002"), "EQU-001")["cotizacion"].endswith("2026-01-02")
     (registro,) = registros(_entorno, NOMBRE_OF001, "002")
