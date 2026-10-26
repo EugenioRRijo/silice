@@ -6,12 +6,14 @@ procura vive en Control de obra); revisa y administra reciben 403. Operan sobre 
 trabajo de la sesión (`SesionDep`); las que escriben van con `BEGIN IMMEDIATE` y confirman aquí
 (todo o nada: la compra y su observación de mercado entran juntas o ninguna).
 
-- `GET ?proyecto=&corte=` → `{necesidades, alertas, aviso}`. `proyecto` es el código o el nombre de
-  la obra; `corte` (aaaa-mm-dd) es hoy si no se manda. Cantidades exactas como texto con punto
-  decimal; fechas aaaa-mm-dd o `null` sin línea base, y entonces `aviso` lo dice.
+- `GET ?proyecto=&corte=` → `{necesidades, alertas, aviso, causas_sugeridas}`. `proyecto` es el
+  código o el nombre de la obra; `corte` (aaaa-mm-dd) es hoy si no se manda. Cantidades exactas
+  como texto con punto decimal; fechas aaaa-mm-dd o `null` sin línea base, y entonces `aviso` lo
+  dice. `causas_sugeridas`: por partida, la causa de retraso que sugiere la procura al corte
+  (Tarea 24: Valuaciones la preelige con el «hasta» de la valuación como corte).
 - `POST /compras` `{proyecto, descripcion, unidad, evento, fecha, cantidad, precio}` → 204.
-  `cantidad` y `precio` van como texto tecleado (coma decimal, punto de miles), vacíos si no se
-  declaran.
+  `cantidad` y `precio` (unitario) van como texto tecleado (coma decimal, punto de miles), vacíos
+  si no se declaran.
 - `PUT /plazos` `{proyecto, descripcion, unidad, dias}` → 204; `dias` tecleado, entero de 0 a 365.
 
 Errores: el 422 de forma es un mensaje fijo que no repite lo enviado; el 422 de una regla
@@ -41,6 +43,7 @@ from aplicacion.procura import (
     NecesidadDeInsumo,
     ReglaDeProcura,
     alertas_de_compra,
+    causas_sugeridas,
     fijar_plazo,
     procura,
     registrar_compra,
@@ -100,10 +103,22 @@ class AlertaRespuesta(BaseModel):
     texto: str
 
 
+class CausaSugeridaRespuesta(BaseModel):
+    partida: str = Field(description="Código de la partida")
+    causa: str = Field(description="Clave de la causa de retraso (la de `/v1/control/valuaciones`)")
+
+
 class ProcuraRespuesta(BaseModel):
     necesidades: list[NecesidadRespuesta]
     alertas: list[AlertaRespuesta]
     aviso: str | None = Field(description="Por qué no hay fechas, si no las hay")
+    causas_sugeridas: list[CausaSugeridaRespuesta] = Field(
+        description=(
+            "Por partida, la causa de retraso que sugiere la procura al corte (una compra que"
+            " llegó después de que la partida empezara); Valuaciones la preelige. Solo las que"
+            " tienen una."
+        )
+    )
 
 
 class CompraNueva(BaseModel):
@@ -112,8 +127,14 @@ class CompraNueva(BaseModel):
     unidad: Unidad
     evento: Evento
     fecha: date
-    cantidad: str = Field(default="", max_length=_LARGO_CIFRA)
-    precio: str = Field(default="", max_length=_LARGO_CIFRA)
+    cantidad: str = Field(
+        default="", max_length=_LARGO_CIFRA, description="Cantidad recibida, en la unidad"
+    )
+    precio: str = Field(
+        default="",
+        max_length=_LARGO_CIFRA,
+        description="Precio unitario (por unidad del material), en la moneda de la carpeta",
+    )
 
 
 class PlazoNuevo(BaseModel):
@@ -181,10 +202,15 @@ def leer_procura(
     def leer() -> ProcuraRespuesta:
         leida = procura(sesion, proyecto)
         alertas = alertas_de_compra(leida.necesidades, dia, leida.feriados)
+        causas = causas_sugeridas(sesion, proyecto, dia)
         return ProcuraRespuesta(
             necesidades=[_necesidad(n) for n in leida.necesidades],
             alertas=[AlertaRespuesta(severidad=a.severidad, texto=a.texto) for a in alertas],
             aviso=leida.aviso,
+            causas_sugeridas=[
+                CausaSugeridaRespuesta(partida=partida, causa=causa)
+                for partida, causa in causas.items()
+            ],
         )
 
     return _traducir(leer)

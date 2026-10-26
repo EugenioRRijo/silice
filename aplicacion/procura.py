@@ -70,6 +70,7 @@ __all__ = [
     "ReglaDeProcura",
     "alertas_de_compra",
     "causa_sugerida",
+    "causas_sugeridas",
     "explosion",
     "fijar_plazo",
     "pendientes_de_compras",
@@ -380,26 +381,32 @@ def _hasta(fecha: date | None, corte: date) -> bool:
     return fecha is not None and fecha <= corte
 
 
-def causa_sugerida(sesion: Session, proyecto: str, codigo_partida: str, hasta: date) -> str | None:
-    """`CAUSA_COMPRA_TARDIA` si algún material de la partida llegó (hasta `hasta`, la primera
-    recepción) después del primer día de esa partida en el plan de la línea base vigente a `hasta`;
-    si no, `None` (también sin línea base o si la partida no está en el plan)."""
+def causas_sugeridas(sesion: Session, proyecto: str, hasta: date) -> dict[str, str]:
+    """Por código de partida, en el orden del presupuesto, `CAUSA_COMPRA_TARDIA` si algún material
+    de la partida llegó (hasta `hasta`, la primera recepción) después del primer día de esa partida
+    en el plan de la línea base vigente a `hasta`. Las partidas sin causa no aparecen; sin línea
+    base, o si la partida no está en el plan, nada."""
     obra = _obra(sesion, proyecto)
     fila = _linea_base(sesion, obra, hasta)
     if fila is None:
-        return None
+        return {}
     version = sesion.get(models.Presupuesto, fila.presupuesto_id)
-    inicio = _inicios(sesion, version.id, _calendario(fila)).get(codigo_partida)
-    if inicio is None:
-        return None
+    inicios = _inicios(sesion, version.id, _calendario(fila))
     compras = _primeras(sesion, obra.id)
+    sugeridas: dict[str, str] = {}
     for linea in _lineas(sesion, version):
-        if linea.partida != codigo_partida:
+        inicio = inicios.get(linea.partida)
+        if inicio is None or linea.partida in sugeridas:
             continue
         llegada = compras.get((*linea.clave, "recibida"))
         if _hasta(llegada, hasta) and llegada > inicio:
-            return CAUSA_COMPRA_TARDIA
-    return None
+            sugeridas[linea.partida] = CAUSA_COMPRA_TARDIA
+    return sugeridas
+
+
+def causa_sugerida(sesion: Session, proyecto: str, codigo_partida: str, hasta: date) -> str | None:
+    """La causa que `causas_sugeridas` da a la partida `codigo_partida`, o `None`."""
+    return causas_sugeridas(sesion, proyecto, hasta).get(codigo_partida)
 
 
 # --- escrituras ---------------------------------------------------------------------------------
