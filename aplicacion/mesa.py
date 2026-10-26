@@ -67,9 +67,12 @@ __all__ = [
     "lista_vieja",
     "moneda_de_la_suma",
     "obras_de_la_mesa",
+    "pendiente",
     "pendientes",
+    "plural",
     "precios_sin_referencia",
     "precios_viejos",
+    "versiones_vigentes",
 ]
 
 EN_ELABORACION = "en_elaboracion"
@@ -230,12 +233,13 @@ def _entero(n: int) -> str:
     return texto_de_cifra(Decimal(n))
 
 
-def _plural(n: int, singular: str, plural: str) -> str:
-    return f"{_entero(n)} {singular if n == 1 else plural}"
+def plural(n: int, singular: str, en_plural: str) -> str:
+    """`n` con punto de miles y la palabra que le toca («1 obra atrasada», «1.200 días»)."""
+    return f"{_entero(n)} {singular if n == 1 else en_plural}"
 
 
 def _dias_habiles(n: int) -> str:
-    return _plural(n, "día hábil", "días hábiles")
+    return plural(n, "día hábil", "días hábiles")
 
 
 def _a(valor: Decimal, paso: Decimal) -> Decimal:
@@ -387,7 +391,7 @@ def _detalle_del_avance(obras: Sequence[ObraEnMesa]) -> str | None:
     atrasadas = [obra for obra in obras if obra.etapa == ATRASADA]
     if not atrasadas:
         return None
-    texto = _plural(len(atrasadas), "obra atrasada", "obras atrasadas")
+    texto = plural(len(atrasadas), "obra atrasada", "obras atrasadas")
     con_dias = [obra for obra in atrasadas if obra.retraso_dias is not None]
     if not con_dias:
         return texto
@@ -460,7 +464,7 @@ def cifras_de_la_mesa(
 # --- pendientes -----------------------------------------------------------------------------------
 
 
-def _versiones_vigentes(
+def versiones_vigentes(
     sesion: Session,
 ) -> Iterator[tuple[ProyectoDelCaso, models.Presupuesto]]:
     """Cada obra con versión vigente, en orden alfabético, con esa versión."""
@@ -469,14 +473,14 @@ def _versiones_vigentes(
             yield fila, sesion.get(models.Presupuesto, fila.version_id)
 
 
-def _pendiente(fila: ProyectoDelCaso, texto: str, accion: Siguiente) -> Pendiente:
+def pendiente(fila: ProyectoDelCaso, texto: str, accion: Siguiente) -> Pendiente:
     return Pendiente(str(fila.id), fila.nombre, texto, accion)
 
 
 def precios_viejos(sesion: Session, hoy: date) -> list[Pendiente]:
     """Precios: la lista de la versión vigente tiene más de 90 días de vigencia a `hoy`."""
     salida = []
-    for fila, version in _versiones_vigentes(sesion):
+    for fila, version in versiones_vigentes(sesion):
         lista = version.lista_precios
         dias = (hoy - lista.fecha_vigencia).days
         if dias > DIAS_DE_UNA_LISTA_VIEJA:
@@ -484,7 +488,7 @@ def precios_viejos(sesion: Session, hoy: date) -> list[Pendiente]:
                 f"Precios de hace {_entero(dias)} días (lista «{lista.nombre}» del "
                 f"{lista.fecha_vigencia:%d/%m/%Y})"
             )
-            salida.append(_pendiente(fila, texto, ACTUALIZAR_PRECIOS))
+            salida.append(pendiente(fila, texto, ACTUALIZAR_PRECIOS))
     return salida
 
 
@@ -493,7 +497,7 @@ def precios_sin_referencia(sesion: Session, hoy: date) -> list[Pendiente]:
     el Ref de MaPreX) ni origen declarado."""
     del hoy  # la regla no depende del día
     salida = []
-    for fila, version in _versiones_vigentes(sesion):
+    for fila, version in versiones_vigentes(sesion):
         insumos = (
             select(models.LineaComposicionVersion.insumo_id)
             .join(models.ComposicionVersion)
@@ -514,8 +518,8 @@ def precios_sin_referencia(sesion: Session, hoy: date) -> list[Pendiente]:
             )
         )
         if cuantos:
-            texto = f"{_plural(cuantos, 'precio', 'precios')} sin referencia en {version.codigo}"
-            salida.append(_pendiente(fila, texto, VER_EL_CATALOGO))
+            texto = f"{plural(cuantos, 'precio', 'precios')} sin referencia en {version.codigo}"
+            salida.append(pendiente(fila, texto, VER_EL_CATALOGO))
     return salida
 
 
@@ -523,7 +527,7 @@ def hallazgos_graves(sesion: Session, hoy: date) -> list[Pendiente]:
     """Calidad: hallazgos de severidad ERROR o CRÍTICO de la versión vigente."""
     del hoy  # la regla no depende del día
     salida = []
-    for fila, version in _versiones_vigentes(sesion):
+    for fila, version in versiones_vigentes(sesion):
         cuantos = sesion.scalar(
             select(func.count())
             .select_from(models.Hallazgo)
@@ -533,10 +537,10 @@ def hallazgos_graves(sesion: Session, hoy: date) -> list[Pendiente]:
             )
         )
         if cuantos:
-            hallazgos = _plural(
+            hallazgos = plural(
                 cuantos, "hallazgo de error o crítico", "hallazgos de error o críticos"
             )
-            salida.append(_pendiente(fila, f"{hallazgos} en {version.codigo}", ABRIR_LA_HOJA))
+            salida.append(pendiente(fila, f"{hallazgos} en {version.codigo}", ABRIR_LA_HOJA))
     return salida
 
 
@@ -547,14 +551,14 @@ def lista_vieja(sesion: Session, hoy: date) -> list[Pendiente]:
     if para_armar is None:
         return []
     salida = []
-    for fila, version in _versiones_vigentes(sesion):
+    for fila, version in versiones_vigentes(sesion):
         dias = (para_armar.fecha - version.lista_precios.fecha_vigencia).days
         if dias > DIAS_DE_UNA_LISTA_VIEJA:
             texto = (
                 f"La lista de {version.codigo} es {_entero(dias)} días más vieja que la lista "
                 "para armar."
             )
-            salida.append(_pendiente(fila, texto, ACTUALIZAR_PRECIOS))
+            salida.append(pendiente(fila, texto, ACTUALIZAR_PRECIOS))
     return salida
 
 

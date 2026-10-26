@@ -1930,6 +1930,12 @@ def _mismas_lineas(uno: ComposicionAPU, otro: ComposicionAPU) -> bool:
     )
 
 
+class ApuSinPreciosDeLaLista(Exception):  # noqa: N818
+    """Un APU del borrador no se puede valorar con la lista que la version declara (la partida
+    salio del catalogo, le falta un precio o sus lineas cambiaron); el mensaje es el que ve la
+    persona y no se guarda nada."""
+
+
 def con_precios_de_la_lista(
     catalogo: Catalogo, borrador: Borrador, lista: models.ListaPrecios
 ) -> Borrador:
@@ -1939,17 +1945,31 @@ def con_precios_de_la_lista(
     lista se escribe al guardar; si entretanto cambio (una tasa del BCV mas nueva, otra lista para
     armar), los APU congelados deben usar los precios de la lista que se declara. Se conservan el
     rendimiento y las cantidades de cada linea (lo que la persona pudo editar) y se toma el precio
-    del catalogo con `lista`; si las lineas del catalogo ya no son las mismas, el APU del catalogo
-    entero. Una partida que el catalogo no puede valorar con `lista` queda como estaba."""
+    del catalogo con `lista`.
+
+    Nada cambia en silencio: si la partida salio del catalogo, a un insumo le falta el precio en
+    `lista` o las lineas de su APU en el catalogo ya no son las del borrador (se perderian el
+    rendimiento y las cantidades editadas), `ApuSinPreciosDeLaLista` con el motivo."""
     composiciones = dict(borrador.composiciones)
     for codigo, actual in borrador.composiciones.items():
+        sin_valorar = f"La partida «{codigo}» ya no se puede valorar con la lista «{lista.nombre}»"
         try:
             fresca = catalogo.composicion(codigo, fecha=borrador.fecha, lista=lista)
-        except (KeyError, ValueError, CatalogoIncompleto):
-            continue
+        except KeyError:
+            raise ApuSinPreciosDeLaLista(
+                f"{sin_valorar}: ya no está en el catálogo. Quítela del presupuesto o vuelva a "
+                "componerla en Componer."
+            ) from None
+        except (ValueError, CatalogoIncompleto):
+            raise ApuSinPreciosDeLaLista(
+                f"{sin_valorar}: a uno de sus insumos le falta el precio en esa lista. Cárguelo o "
+                "quite la partida del presupuesto."
+            ) from None
         if not _mismas_lineas(actual, fresca):
-            composiciones[codigo] = fresca
-            continue
+            raise ApuSinPreciosDeLaLista(
+                f"El APU de la partida «{codigo}» cambió en el catálogo después de agregarla: "
+                "quítela y vuelva a agregarla para valorarla con el APU de ahora."
+            )
         composiciones[codigo] = replace(
             actual,
             materiales=tuple(

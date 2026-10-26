@@ -223,7 +223,10 @@ def _primera(
             raise SinListaDeLaObra(str(error)) from None
         # los APU con los precios de la lista que la version declara (su tasa y su fecha), aunque
         # al agregar se hayan valorado con otra (una tasa del BCV llegada despues)
-        borrador = hoja.con_precios_de_la_lista(Catalogo(sesion), borrador, lista)
+        try:
+            borrador = hoja.con_precios_de_la_lista(Catalogo(sesion), borrador, lista)
+        except hoja.ApuSinPreciosDeLaLista as error:
+            raise SinListaDeLaObra(str(error)) from None
         guardada = hoja.crear_primera_version(
             sesion,
             Catalogo(sesion),

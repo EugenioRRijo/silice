@@ -355,11 +355,11 @@ def pendientes_sin_calculo(sesion: Session, hoy: date) -> list[Pendiente]:
     regla tiene su versión vigente (los guardados con la versión) → «{n} cantidad(es) escritas a
     mano sin cálculo en {versión}», acción «Abrir la Hoja». No escribe."""
     # `aplicacion.mesa` registra esta fuente en `FUENTES`: importarla arriba sería circular.
-    from aplicacion.mesa import ABRIR_LA_HOJA, _pendiente, _plural, _versiones_vigentes
+    from aplicacion.mesa import ABRIR_LA_HOJA, pendiente, plural, versiones_vigentes
 
     del hoy  # la regla no depende del día
     salida = []
-    for fila, version in _versiones_vigentes(sesion):
+    for fila, version in versiones_vigentes(sesion):
         descripciones = sesion.scalars(
             select(models.Hallazgo.descripcion).where(
                 models.Hallazgo.presupuesto_id == version.id,
@@ -368,7 +368,7 @@ def pendientes_sin_calculo(sesion: Session, hoy: date) -> list[Pendiente]:
         )
         cuantas = sum(1 for d in descripciones if _R1_MANUAL.fullmatch(d) is not None)
         if cuantas:
-            cantidades = _plural(cuantas, "cantidad escrita", "cantidades escritas")
+            cantidades = plural(cuantas, "cantidad escrita", "cantidades escritas")
             texto = f"{cantidades} a mano sin cálculo en {version.codigo}"
-            salida.append(_pendiente(fila, texto, ABRIR_LA_HOJA))
+            salida.append(pendiente(fila, texto, ABRIR_LA_HOJA))
     return salida

@@ -128,6 +128,7 @@ TABLA_5_7 = {
     "partidas_sin_composicion": ("T9", "contrato"),
     "composicion_convertida": ("T9", "contrato"),
     "con_precios_de_la_lista": ("T9", "contrato"),
+    "ApuSinPreciosDeLaLista": ("T9", "contrato"),
 }
 
 
