@@ -30,6 +30,23 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   recorta el responsable a 200 sin avisar; T14 valida `lado` y `fuente_tipo` en el esquema para que esos `ValueError` no
   lleguen a un 422 visible.
 
+## T3, Componer guarda en la lista de hoy (aprobada en ronda 1)
+
+- `guardar_composicion` recibe la sesión; decide primero el motivo y solo si va a escribir pide
+  `lista_de_hoy(sesion, fecha, nueva_si_usada=False)`, así una cabecera rechazada no crea una lista que nadie usa.
+- Componer escribe en la lista de hoy aunque una versión guardada ya la use (como manda el plan): solo agrega insumos o
+  variantes nuevas, nunca cambia un precio existente. La «(2)» del mismo día solo la crea el estudio de mercado.
+  **Por ratificar.**
+- `precio_en_lista` del aviso es el del homónimo original (el de menor id) en la lista de hoy, no el de la variante más
+  parecida. Una variante ya existente con el mismo precio tecleado no se avisa (el APU la usa). **Por ratificar** si debe
+  avisarse «usará la variante existente».
+- Prever con una cabecera distinta de la partida existente da `ComposicionInvalida` → 422, igual que `/guardar`.
+- Con `lista_nueva`, `Prevision.lista.lista_id` es un id que no existe tras deshacer; está documentado y la API no lo
+  expone (menor: pasarlo a `None`).
+- Deuda para T4: `/guardar` conserva el 422 de Pydantic con eco; pasar el router entero a `RutaSinEco` junto con el front.
+- Las bases creadas con `crear_esquema` que guardan composiciones necesitan `crear_esquema_carpeta`; las migradas no.
+- `aplicacion/elaboracion.py:4-5` todavía nombra `ui/elaboracion.py`, que ya no existe.
+
 ## T17, eventos de aprobación (aprobada en ronda 1)
 
 - «Aprobada con observaciones» cuenta como aprobada: no se reenvía y vale para `ultima_aprobada` (Entregar y Control).
