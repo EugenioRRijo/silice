@@ -59,7 +59,7 @@ from tests.fixtures.mercado_ficticio import (
 
 MERCADO_5 = ["100", "120", "130", "150", "200"]
 SIN_OBSERVACIONES_90 = "Sin observaciones en los últimos 90 días."
-POR_ENCIMA = "Primer cuartil del mercado, por encima de su costo."
+POR_ENCIMA = "Primer cuartil del mercado, igual o por encima de su costo."
 POR_DEBAJO = "La competencia cobra menos que su costo: se propone su costo."
 
 
