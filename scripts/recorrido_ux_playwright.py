@@ -408,7 +408,8 @@ MOTIVOS_DE_CORTE_JS = """function motivosDeCorte(header, nav) {
     }
     for (const el of header.querySelectorAll('a, button')) {
       if (!visible(el) || el.closest('.silice-panel-area')) continue;
-      if (getComputedStyle(el).overflowX === 'visible' && el.scrollWidth > el.clientWidth + 1)
+      // 4 px de holgura: la raya del área actual (::after) sobresale 2 px a propósito.
+      if (getComputedStyle(el).overflowX === 'visible' && el.scrollWidth > el.clientWidth + 4)
         motivos.push('«' + limpio(el.textContent).slice(0, 30) + '» se sale de su botón ('
           + el.scrollWidth + ' de ' + el.clientWidth + ' px)');
     }
