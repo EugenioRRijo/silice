@@ -63,15 +63,18 @@ function Grupo({ grupo, puedeIr, alIr }: { grupo: GrupoRespuesta } & Omit<Props,
       </h3>
       <ul className="silice-mesa__lista" aria-labelledby={idTitulo}>
         {grupo.items.map((item, i) => {
+          const idObra = `${base}-${i}-obra`;
           const idTexto = `${base}-${i}`;
           return (
             <li key={`${item.obra}-${i}`} className="silice-mesa__pendiente">
-              <span className="silice-mesa__pendiente-obra cds--type-label-01">{item.obra_nombre}</span>
+              <span id={idObra} className="silice-mesa__pendiente-obra cds--type-label-01">
+                {item.obra_nombre}
+              </span>
               <span id={idTexto} className="silice-mesa__pendiente-texto cds--type-body-compact-01">
                 {item.texto}
               </span>
               {puedeIr(item.accion.pagina) && (
-                <Button kind="ghost" size="sm" aria-describedby={idTexto} onClick={() => alIr(item.obra, item.accion.pagina)}>
+                <Button kind="ghost" size="sm" aria-describedby={`${idObra} ${idTexto}`} onClick={() => alIr(item.obra, item.accion.pagina)}>
                   {item.accion.texto}
                 </Button>
               )}

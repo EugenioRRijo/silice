@@ -1,5 +1,5 @@
 import { Button } from "@carbon/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CasoRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
@@ -23,13 +23,36 @@ const RUTA_PENDIENTES = "/v1/obras/pendientes";
 // arriba, las obras con su siguiente paso y, a la derecha, los pendientes. Cada bloque se pide aparte y solo si la cuenta
 // puede leerlo; un 403 lo oculta (nunca lo pinta vacio) y un fallo se dice en su bloque sin tumbar los demas. Quien no
 // lee obras (el administrador) ve lo que puede hacer en el modulo.
+//
+// La obra elegida en el armazon (`proyecto`) cambia al crear una con «Nueva obra» o «Cree su primera obra»: si la mesa no
+// la conoce, se vuelve a montar y pide de nuevo el resumen y los pendientes (una sola vez por obra, para que una obra que
+// el resumen no traiga no repita la lectura sin fin). Elegir una obra que la mesa ya muestra no vuelve a pedir nada.
 export default function PaginaObras() {
-  const { sesion, alExpirar, elegirObra, abrirNuevaObra, abrirCarpeta } = useAplicacion();
+  const [generacion, setGeneracion] = useState(0);
+  const [recargadaPor, setRecargadaPor] = useState<string | null>(null);
+  const alObraNueva = useCallback((codigo: string) => {
+    setRecargadaPor(codigo);
+    setGeneracion((g) => g + 1);
+  }, []);
+  return <Mesa key={generacion} recargadaPor={recargadaPor} alObraNueva={alObraNueva} />;
+}
+
+function Mesa({ recargadaPor, alObraNueva }: { recargadaPor: string | null; alObraNueva: (codigo: string) => void }) {
+  const { sesion, proyecto, alExpirar, elegirObra, abrirNuevaObra, abrirCarpeta } = useAplicacion();
   const { acciones, modo_entrega: modoEntrega } = sesion;
   const bloques = bloquesPedidos(acciones);
   const resumen = useCarga<ResumenObrasRespuesta>(bloques.includes("obras") ? RUTA_RESUMEN : null, alExpirar);
   const pendientes = useCarga<PendientesRespuesta>(bloques.includes("pendientes") ? RUTA_PENDIENTES : null, alExpirar);
   const navegarSeguro = useNavegarSeguro();
+
+  const desconocida =
+    proyecto !== null &&
+    proyecto !== recargadaPor &&
+    resumen.estado === "listo" &&
+    !resumen.datos.obras.some((o) => o.codigo === proyecto);
+  useEffect(() => {
+    if (desconocida && proyecto !== null) alObraNueva(proyecto);
+  }, [desconocida, proyecto, alObraNueva]);
 
   const puedeIr = useCallback((pagina: string) => pantallaVisible(pagina, acciones, modoEntrega), [acciones, modoEntrega]);
   // Primero se pregunta (si hay trabajo sin guardar); con «Quedarme» no se elige obra ni se navega.
@@ -47,6 +70,8 @@ export default function PaginaObras() {
   const pedidos = bloques.filter((b) => b !== "accesos");
   // Si todo lo pedido resulto prohibido, la pagina no queda en blanco: quedan los accesos del modulo.
   const todoOculto = pedidos.every((b) => (b === "pendientes" ? pendientes : resumen).estado === "sin_permiso");
+  // Ninguna columna vacia: la de las obras solo existe si el resumen no se oculto, y las dos columnas solo con las dos.
+  const conPrincipal = bloques.includes("obras") && resumen.estado !== "sin_permiso";
   const conPendientes = bloques.includes("pendientes") && pendientes.estado !== "sin_permiso";
 
   return (
@@ -59,28 +84,34 @@ export default function PaginaObras() {
           </Button>
         )}
       </div>
-      {pedidos.length > 0 && (
-        <div className={conPendientes ? "silice-mesa__rejilla silice-mesa__rejilla--con-pendientes" : "silice-mesa__rejilla"}>
-          <div className="silice-mesa__principal">
-            <CifrasMesa carga={resumen} />
-            <TablaObras
-              carga={resumen}
-              puedeIr={puedeIr}
-              alIr={(codigo, pagina) => void alIr(codigo, pagina)}
-              vacio={{
-                descripcion: puedeCrear
-                  ? "Cree la primera con su nombre y su cliente, o pruebe Sílice con una obra de ejemplo."
-                  : "Cuando quien arma los presupuestos cree una obra, la verá aquí con su avance.",
-                acciones: puedeCrear ? (
-                  <PrimerosPasos
-                    abrirNuevaObra={abrirNuevaObra}
-                    abrirCarpeta={acciones.includes("cambiar_caso") ? abrirCarpeta : undefined}
-                    alExpirar={alExpirar}
-                  />
-                ) : null,
-              }}
-            />
-          </div>
+      {(conPrincipal || conPendientes) && (
+        <div
+          className={
+            conPrincipal && conPendientes ? "silice-mesa__rejilla silice-mesa__rejilla--con-pendientes" : "silice-mesa__rejilla"
+          }
+        >
+          {conPrincipal && (
+            <div className="silice-mesa__principal">
+              <CifrasMesa carga={resumen} />
+              <TablaObras
+                carga={resumen}
+                puedeIr={puedeIr}
+                alIr={(codigo, pagina) => void alIr(codigo, pagina)}
+                vacio={{
+                  descripcion: puedeCrear
+                    ? "Cree la primera con su nombre y su cliente, o pruebe Sílice con una obra de ejemplo."
+                    : "Cuando quien arma los presupuestos cree una obra, la verá aquí con su avance.",
+                  acciones: puedeCrear ? (
+                    <PrimerosPasos
+                      abrirNuevaObra={abrirNuevaObra}
+                      abrirCarpeta={acciones.includes("cambiar_caso") ? abrirCarpeta : undefined}
+                      alExpirar={alExpirar}
+                    />
+                  ) : null,
+                }}
+              />
+            </div>
+          )}
           <ColumnaPendientes carga={pendientes} puedeIr={puedeIr} alIr={(codigo, pagina) => void alIr(codigo, pagina)} />
         </div>
       )}
@@ -89,10 +120,13 @@ export default function PaginaObras() {
   );
 }
 
+// El nombre de la carpeta de demostracion; el que se abre es el que devuelve la API al estrenarla.
+const CARPETA_DEMOSTRACION = "demostracion.db";
+
 interface PrimerosPasosProps {
   abrirNuevaObra: (() => void) | undefined;
   // Sin `cambiar_caso` no se ofrece la demostracion (abrirla es cambiar de carpeta).
-  abrirCarpeta: ((nombre: string) => Promise<boolean>) | undefined;
+  abrirCarpeta: ((nombre: string, preparar?: () => Promise<string>) => Promise<boolean>) | undefined;
   alExpirar: () => void;
 }
 
@@ -102,13 +136,16 @@ function PrimerosPasos({ abrirNuevaObra, abrirCarpeta, alExpirar }: PrimerosPaso
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
+  // La pregunta del armazon va antes de estrenarla: `preparar` (el POST) corre solo si la persona acepta salir.
   async function probarDemostracion() {
     if (!abrirCarpeta) return;
-    setOcupado(true);
     setError(null);
     try {
-      const demo = await pedir<CasoRespuesta>("/v1/casos/demostracion", { metodo: "POST" });
-      await abrirCarpeta(demo.nombre);
+      await abrirCarpeta(CARPETA_DEMOSTRACION, async () => {
+        setOcupado(true);
+        const demo = await pedir<CasoRespuesta>("/v1/casos/demostracion", { metodo: "POST" });
+        return demo.nombre;
+      });
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
       else setError(e);

@@ -17,6 +17,9 @@ interface Props {
   partidasConOmision?: readonly number[];
   // Subtotal e IVA: solo el marcador «Libro menor» (la frase completa va en «Total general»).
   etiquetaBreve?: boolean;
+  // Id de una linea que acompana a la cifra fuera de la tarjeta (la mesa de control: «1 obra atrasada; …»): se suma a la
+  // descripcion accesible del indicador.
+  idDescripcion?: string;
 }
 
 // Proporciones solo para dibujar la barra (no es dinero): real y meta contra el mayor de los dos. Sin barra si la
@@ -35,7 +38,7 @@ function proporciones(actual: string, meta: string): { real: number; meta: numbe
 // Patron SAP Fiori: valor actual, meta y desviacion. Los montos se presentan en es-VE (4.358,21) sobre el
 // texto decimal de la API, sin pasar por numero. El exacto de los dos totales (tambien en es-VE, sin redondear) va
 // en un Tooltip de Carbon que se abre con el foco del teclado y con el raton, y es la descripcion accesible.
-export function IndicadorFiori({ indicador, exactoLibro, exactoSilice, rotuloMeta = "Meta", partidasConOmision, etiquetaBreve = false }: Props) {
+export function IndicadorFiori({ indicador, exactoLibro, exactoSilice, rotuloMeta = "Meta", partidasConOmision, etiquetaBreve = false, idDescripcion }: Props) {
   const { titulo, actual, meta, delta, delta_pct: deltaPct, sentido } = indicador;
   const semantica = semanticaIbcs(delta, sentido);
   const barra = proporciones(actual, meta);
@@ -45,9 +48,10 @@ export function IndicadorFiori({ indicador, exactoLibro, exactoSilice, rotuloMet
   // accesible (aria-describedby): la lectora la dice una vez, con la cifra, no dos.
   const libroMenor = esLibroMenor(delta, sentido);
   const idEtiqueta = useId();
+  const descripcion = [libroMenor ? idEtiqueta : null, idDescripcion ?? null].filter((id) => id !== null).join(" ");
 
   return (
-    <div className={libroMenor && !etiquetaBreve ? "fiori-kpi fiori-kpi--frase" : "fiori-kpi"} role="group" aria-label={titulo} aria-describedby={libroMenor ? idEtiqueta : undefined}>
+    <div className={libroMenor && !etiquetaBreve ? "fiori-kpi fiori-kpi--frase" : "fiori-kpi"} role="group" aria-label={titulo} aria-describedby={descripcion || undefined}>
       <div className="fiori-kpi__fila">
         <span className="fiori-kpi__titulo cds--type-label-01">{titulo}</span>
         <span className="fiori-kpi__meta cds--type-label-01 silice-cifra">

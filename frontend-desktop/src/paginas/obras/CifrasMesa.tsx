@@ -44,18 +44,27 @@ function Esqueleto() {
 }
 
 function Cifras({ resumen }: { resumen: ResumenObrasRespuesta }) {
+  const base = useId();
   const fuera = textoFueraDeSuma(resumen.fuera_de_suma);
   const hayNotas = resumen.conversiones.length > 0 || fuera !== null;
   return (
     <>
       {resumen.cifras.length > 0 ? (
         <div className="silice-mesa__franja">
-          {resumen.cifras.map((cifra) => (
-            <div key={cifra.clave} className="silice-mesa__cifra">
-              <IndicadorFiori indicador={cifra} rotuloMeta="Meta" />
-              {cifra.detalle && <p className="silice-mesa__detalle cds--type-body-compact-01">{cifra.detalle}</p>}
-            </div>
-          ))}
+          {resumen.cifras.map((cifra) => {
+            // La linea de debajo es parte de la cifra: la lectora la dice con ella (descripcion del grupo).
+            const idDetalle = cifra.detalle ? `${base}-${cifra.clave}` : undefined;
+            return (
+              <div key={cifra.clave} className="silice-mesa__cifra">
+                <IndicadorFiori indicador={cifra} rotuloMeta="Meta" idDescripcion={idDetalle} />
+                {cifra.detalle && (
+                  <p id={idDetalle} className="silice-mesa__detalle cds--type-body-compact-01">
+                    {cifra.detalle}
+                  </p>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <p className="silice-mesa__nota cds--type-body-compact-01">
