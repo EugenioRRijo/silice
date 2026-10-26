@@ -335,6 +335,7 @@ describe("BarraSuperior", () => {
     expect(within(region).getAllByRole("list")).toHaveLength(1);
     expect(region.querySelector(".silice-panel-area__subtitulo")).toBeNull();
     expect(within(region).getAllByRole("link").map((e) => e.getAttribute("href"))).toEqual([
+      "/mercado",
       "/precios_empresa",
       "/actualizacion",
       "/historico",

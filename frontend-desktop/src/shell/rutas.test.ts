@@ -29,6 +29,7 @@ const REGISTRO: [string, string, string | null, string | null][] = [
   ["componer", "Trabajo", "editar_hoja", "obras/partidas"],
   ["catalogo", "Trabajo", "leer_proyecto", "obras/partidas"],
   ["similares", "Investigación", "editar_hoja", "obras/partidas"],
+  ["mercado", "Trabajo", "editar_hoja", "obras/mercado"],
   ["precios_empresa", "Trabajo", "administrar_precios", "obras/mercado"],
   ["actualizacion", "Trabajo", "editar_hoja", "obras/mercado"],
   ["historico", "Trabajo", "leer_proyecto", "obras/mercado"],
@@ -71,7 +72,7 @@ function ubicacionEnTexto(p: PaginaDef): string | null {
 }
 
 describe("registro de paginas", () => {
-  test("tiene las 24 pantallas en su orden, con su seccion, su accion y su modulo y area", () => {
+  test("tiene las 25 pantallas en su orden, con su seccion, su accion y su modulo y area", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion, ubicacionEnTexto(p)])).toEqual(REGISTRO);
   });
 
@@ -90,6 +91,11 @@ describe("registro de paginas", () => {
     expect("enlaceClasico" in rutas).toBe(false);
     expect(paginaPorId("libros")?.titulo).toBe("Libro de la empresa");
     expect(paginaPorId("hoja")).toMatchObject({ titulo: "Hoja del proyecto", seccion: "Trabajo", accion: "editar_hoja" });
+    // Plan de montar un presupuesto, T15 (cambios por el diseno de modulos): la primera del area Mercado.
+    expect(paginaPorId("mercado")).toMatchObject({
+      titulo: "Estudio de mercado",
+      enUnaLinea: "Compare precios del mercado y elija los suyos",
+    });
   });
 
   test("los tres inicios nuevos, con su titulo y su linea", () => {
@@ -191,13 +197,13 @@ describe("quien ve que", () => {
     expect(PAGINAS.filter((p) => visible(p, [], false)).map((p) => p.id)).toEqual(["acerca"]);
   });
 
-  test("con todas las acciones se ven las 24", () => {
-    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(24);
+  test("con todas las acciones se ven las 25", () => {
+    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(25);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (21)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (22)", () => {
     const vistas = PAGINAS.filter((p) => visible(p, todas, true));
-    expect(vistas).toHaveLength(21);
+    expect(vistas).toHaveLength(22);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 

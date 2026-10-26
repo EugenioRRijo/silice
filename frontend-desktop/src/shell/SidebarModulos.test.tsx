@@ -126,6 +126,7 @@ describe("SidebarModulos", () => {
       "/componer",
       "/catalogo",
       "/similares",
+      "/mercado",
       "/actualizacion",
       "/historico",
       "/simulador",

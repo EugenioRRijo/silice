@@ -55,7 +55,7 @@ describe("navegacion por modulo (oraculos escritos a mano)", () => {
       inicio: ["obras"],
       obras: ["hoja", "elaborar", "tablero", "entregar"],
       partidas: ["componer", "catalogo", "similares"],
-      mercado: ["actualizacion", "historico", "simulador"],
+      mercado: ["mercado", "actualizacion", "historico", "simulador"],
       control: ["control", "reajuste", "escenarios"],
     });
   });
@@ -66,7 +66,7 @@ describe("navegacion por modulo (oraculos escritos a mano)", () => {
       inicio: ["obras"],
       obras: ["hoja", "elaborar", "tablero", "entregar"],
       partidas: ["componer", "catalogo"],
-      mercado: ["actualizacion", "historico"],
+      mercado: ["mercado", "actualizacion", "historico"],
       control: ["control", "reajuste"],
     });
   });
@@ -155,6 +155,7 @@ describe("navegacion por modulo (oraculos escritos a mano)", () => {
         "componer",
         "catalogo",
         "similares",
+        "mercado",
         "actualizacion",
         "historico",
         "simulador",
@@ -181,6 +182,7 @@ describe("navegacion por modulo (oraculos escritos a mano)", () => {
         "entregar",
         "componer",
         "catalogo",
+        "mercado",
         "actualizacion",
         "historico",
         "control",

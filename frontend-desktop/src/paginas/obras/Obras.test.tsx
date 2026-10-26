@@ -105,7 +105,7 @@ describe("Inicio de presupuestos y obras (accesos del módulo)", () => {
     expect(accesos()).toEqual([
       ["Obras", ["/hoja", "/elaborar", "/tablero", "/entregar"]],
       ["Partidas", ["/componer", "/catalogo", "/similares"]],
-      ["Mercado", ["/actualizacion", "/historico", "/simulador"]],
+      ["Mercado", ["/mercado", "/actualizacion", "/historico", "/simulador"]],
       ["Control", ["/control", "/reajuste", "/escenarios"]],
     ]);
     expect(screen.queryByRole("link", { name: /Inicio de presupuestos y obras/ })).not.toBeInTheDocument();
