@@ -268,6 +268,43 @@ def test_cambiar_el_plazo_corre_la_fecha_de_pedido(ana) -> None:
     assert (cemento["plazo"], cemento["pedir_a_mas_tardar"]) == (5, "2026-10-30")
 
 
+# --- la causa sugerida (la pide Valuaciones, Tarea 24) ------------------------------------------
+
+
+def test_la_procura_sugiere_compra_tardia_a_la_partida_que_la_sufrio(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """El cemento recibido el lun 09/11 llegó tarde a OBRA-02 (empieza el vie 06/11, día hábil 5);
+    a OBRA-04, que también lo usa, le llega a tiempo (empieza el lun 16/11). Antes de recibirlo,
+    y al corte del 06/11 (la recepción aún no ocurrió), no se sugiere nada."""
+    navegador, cabeceras = ana
+    antes = navegador.get(RUTA, params={"proyecto": pv.OBRA, "corte": "2026-11-02"}).json()
+    assert antes["causas_sugeridas"] == []
+
+    monkeypatch.setattr(rutas_procura, "ahora", lambda: datetime(2026, 11, 9, 17))
+    recibida = navegador.post(
+        f"{RUTA}/compras",
+        json=_compra(evento="recibida", fecha="2026-11-09"),
+        headers=cabeceras,
+    )
+    assert recibida.status_code == 204, recibida.text
+
+    al_09 = navegador.get(RUTA, params={"proyecto": pv.OBRA, "corte": "2026-11-09"}).json()
+    assert al_09["causas_sugeridas"] == [{"partida": "OBRA-02", "causa": "compra_tardia"}]
+    al_06 = navegador.get(RUTA, params={"proyecto": pv.OBRA, "corte": "2026-11-06"}).json()
+    assert al_06["causas_sugeridas"] == []
+
+
+def test_sin_linea_base_no_se_sugiere_causa(ana) -> None:
+    cuerpo = ana[0].get(RUTA, params={"proyecto": SIN_LINEA_BASE}).json()
+    assert cuerpo["causas_sugeridas"] == []
+
+
+def test_el_contrato_dice_que_el_precio_de_la_compra_es_unitario() -> None:
+    propiedades = APLICACION.openapi()["components"]["schemas"]["CompraNueva"]["properties"]
+    assert "unitario" in propiedades["precio"]["description"]
+
+
 # --- errores ------------------------------------------------------------------------------------
 
 

@@ -64,6 +64,7 @@ from aplicacion.procura import (
     ReglaDeProcura,
     alertas_de_compra,
     causa_sugerida,
+    causas_sugeridas,
     explosion,
     fijar_plazo,
     pendientes_de_compras,
@@ -285,6 +286,19 @@ def test_sin_linea_base_no_hay_causa_sugerida(sesion) -> None:
     _vivienda(sesion)
     _comprar(sesion, CEMENTO, "recibida", date(2026, 11, 9))
     assert causa_sugerida(sesion, OBRA, "OBRA-02", date(2026, 11, 13)) is None
+    assert causas_sugeridas(sesion, OBRA, date(2026, 11, 13)) == {}
+
+
+def test_las_causas_sugeridas_de_toda_la_obra(sesion) -> None:
+    """Por partida, de una vez (Valuaciones las pide todas): el cemento del 09/11 llegó tarde solo a
+    OBRA-02 (empieza el vie 06/11); OBRA-04, la otra partida que lo usa, empieza el lun 16/11 y le
+    llegó a tiempo. Al 08/11 la recepción aún no ha ocurrido."""
+    _vivienda(sesion)
+    _linea_base(sesion)
+    assert causas_sugeridas(sesion, OBRA, date(2026, 11, 20)) == {}
+    _comprar(sesion, CEMENTO, "recibida", date(2026, 11, 9))
+    assert causas_sugeridas(sesion, OBRA, date(2026, 11, 20)) == {"OBRA-02": "compra_tardia"}
+    assert causas_sugeridas(sesion, OBRA, date(2026, 11, 8)) == {}
 
 
 def test_la_recepcion_con_precio_crea_una_observacion_de_compra(sesion) -> None:
