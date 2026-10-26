@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Literal
 
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import ColumnElement, and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from aplicacion.cifras import texto_de_cifra
@@ -36,13 +36,7 @@ from core.catalog import Catalogo
 from core.catalog.empresa import lista_de_referencia
 from core.catalog.errores import CatalogoIncompleto
 from core.catalog.indices import TasaNoDisponible, tasa_aplicable
-from core.catalog.moneda import (
-    MONEDAS,
-    TasaDeclarada,
-    convertir_lista,
-    copiar_precios,
-    exigir_moneda,
-)
+from core.catalog.moneda import TasaDeclarada, convertir_lista, copiar_precios, exigir_moneda
 
 __all__ = [
     "MENSAJE_SIN_LISTA",
@@ -238,10 +232,28 @@ def _lista_global(
 
 
 def _nombre_convertida(base: str, moneda: str, fecha: date) -> str:
-    """El nombre de la conversión de alcance proyecto de la lista `base` a `moneda` hecha a
-    `fecha`; es parte de la clave con que `lista_para_el_proyecto` la reutiliza."""
+    """El nombre que ve la persona de la conversión de alcance proyecto de la lista `base` a
+    `moneda` hecha a `fecha`. Se recorta para caber, así que NO identifica la base: eso lo hace
+    `_marca_de_conversion`."""
     sufijo = f" en {moneda} al {fecha:%d/%m/%Y}"
     return base[: _LARGO_NOMBRE - len(sufijo)] + sufijo
+
+
+def _marca_de_conversion(base_id: int) -> str:
+    """El comienzo del `origen` de una conversión de alcance proyecto: dice de qué lista sale por
+    su número. Es la clave fiable de la base (el nombre se recorta y `convertir_lista` deja
+    `lista_base_id` vacío a propósito); va al principio para que el recorte a 200 no la toque."""
+    return f"Convertida de la lista n.º {base_id}: "
+
+
+def _convertida_de(base_id: int) -> ColumnElement[bool]:
+    """La condición SQL «esta lista es una conversión de alcance proyecto de `base_id`»."""
+    marca = _marca_de_conversion(base_id)
+    return and_(
+        models.ListaPreciosOrigen.lista_id == models.ListaPrecios.id,
+        models.ListaPreciosOrigen.alcance == models.ALCANCE_PROYECTO,
+        func.substr(models.ListaPrecios.origen, 1, len(marca)) == marca,
+    )
 
 
 def _usada(sesion: Session, lista: models.ListaPrecios) -> bool:
@@ -256,21 +268,8 @@ def _usada(sesion: Session, lista: models.ListaPrecios) -> bool:
         exists().where(
             or_(empresa.lista_base_id == lista.id, empresa.lista_referencia_id == lista.id)
         ),
+        exists().where(_convertida_de(lista.id)),
     ]
-    for moneda in MONEDAS:
-        if moneda == lista.moneda:
-            continue
-        # la fecha de la conversión no se sabe, pero ocupa siempre 10 caracteres al final
-        prefijo = _nombre_convertida(lista.nombre, moneda, lista.fecha_vigencia)[:-10]
-        copiada.append(
-            exists().where(
-                origen.lista_id == models.ListaPrecios.id,
-                origen.alcance == models.ALCANCE_PROYECTO,
-                models.ListaPrecios.moneda == moneda,
-                models.ListaPrecios.fecha_vigencia == lista.fecha_vigencia,
-                func.substr(models.ListaPrecios.nombre, 1, len(prefijo)) == prefijo,
-            )
-        )
     return bool(sesion.scalar(select(or_(*copiada))))
 
 
@@ -311,7 +310,8 @@ def lista_para_el_proyecto(
 
     Si la obra está en la moneda de la carpeta, la lista para armar. Si no (choque 16), su
     conversión de alcance proyecto con la tasa del BCV del día (`convertir_lista`), que se
-    reutiliza si ya existe para esa obra, esa base, esa fecha y esa tasa. `SinListaParaArmar` sin
+    reutiliza si ya existe para esa obra, esa base (por su número en el `origen`, no por el
+    nombre, que se recorta), esa fecha y esa tasa. `SinListaParaArmar` sin
     lista o sin tasa de los últimos 7 días; `ValueError` si la obra no existe. No confirma."""
     responsable = exigir_responsable(responsable)
     fila = sesion.scalars(
@@ -331,11 +331,10 @@ def lista_para_el_proyecto(
             models.ListaPreciosOrigen, models.ListaPreciosOrigen.lista_id == models.ListaPrecios.id
         )
         .where(
-            models.ListaPreciosOrigen.alcance == models.ALCANCE_PROYECTO,
+            _convertida_de(base.id),
             models.ListaPreciosOrigen.proyecto_id == fila.id,
             models.ListaPreciosOrigen.tasa == tasa.valor,
             models.ListaPreciosOrigen.fecha_tasa == tasa.fecha,
-            models.ListaPrecios.nombre == nombre,
             models.ListaPrecios.moneda == moneda,
             models.ListaPrecios.fecha_vigencia == base.fecha_vigencia,
         )
@@ -345,7 +344,9 @@ def lista_para_el_proyecto(
     if existente is not None:
         return existente
     convertida = convertir_lista(sesion, base, moneda, tasa, nombre=nombre, proyecto=fila)
-    convertida.origen = f"{convertida.origen}, por {responsable}"[:_LARGO_ORIGEN]
+    convertida.origen = f"{_marca_de_conversion(base.id)}{convertida.origen}, por {responsable}"[
+        :_LARGO_ORIGEN
+    ]
     sesion.flush()
     return convertida
 
