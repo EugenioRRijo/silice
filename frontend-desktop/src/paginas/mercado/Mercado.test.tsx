@@ -7,6 +7,7 @@ import { alertaConTexto } from "../../test/ayudas";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
+import { DialogoSalida } from "../../shell/DialogoSalida";
 import { cancelarSalida, responderSalida } from "../../shell/salida";
 import { formulariosSucios, olvidarFormularios } from "../../shell/sucio";
 import PaginaMercado from "./index";
@@ -152,6 +153,7 @@ function montar(extra: Partial<Aplicacion> = {}) {
     <ContextoAplicacion.Provider value={valor}>
       <MemoryRouter>
         <PaginaMercado />
+        <DialogoSalida />
       </MemoryRouter>
     </ContextoAplicacion.Provider>,
   );
@@ -582,5 +584,24 @@ describe("Estudio de mercado", () => {
     const alerta = await alertaConTexto();
     expect(alerta).toHaveTextContent("La carpeta de trabajo no tiene lista para armar en Bs.");
     await waitFor(() => expect(alerta.closest("[tabindex='-1']")).toHaveFocus());
+  });
+  test("el diálogo al cambiar de insumo dice lo que pasa de verdad: no se sale de la pantalla", async () => {
+    const u = userEvent.setup();
+    responder("GET", /^\/v1\/mercado\/compra\/ARE-LAV\?/, () => json({ ...ESTUDIO_COMPRA, codigo: "ARE-LAV", observaciones: [] }));
+    montar();
+    await elegirInsumo(u);
+    await u.type(campoPrecio(), "5");
+    const buscador = screen.getByRole("combobox", { name: "Insumo" });
+    await u.clear(buscador);
+    await u.type(buscador, "arena");
+    await u.click(await screen.findByRole("option", { name: /Arena lavada ficticia/ }));
+    const dialogo = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    expect(dialogo).toHaveAccessibleDescription(
+      "Tiene cambios sin guardar en Estudio de mercado. Si elige otro insumo o partida, se perderán.",
+    );
+    expect(within(dialogo).queryByRole("button", { name: "Salir y descartar" })).not.toBeInTheDocument();
+    await u.click(within(dialogo).getByRole("button", { name: "Cambiar y descartar" }));
+    await waitFor(() => expect(llamadas("GET", /\/v1\/mercado\/compra\/ARE-LAV/)).toHaveLength(1));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
