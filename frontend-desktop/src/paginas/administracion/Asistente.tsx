@@ -117,7 +117,7 @@ export default function Asistente() {
       modelo_claude: modeloClaude,
       modelo_local: modeloLocal,
       anfitrion_ollama: anfitrion,
-      tope_usd: tope.trim(),
+      tope_usd: tope,
     });
   }
 

@@ -9,7 +9,7 @@
 // con punto, sin cero a la izquierda del primer grupo («1.234»); una parte decimal opcional tras una coma («2,5»).
 // Todo lo demas se rechaza sin adivinar («2.5», «1,234.5», «1.2345», «0.123», «1 234», «1e3», NaN...). Solo texto:
 // nunca pasa por Number, asi una cifra de 40 digitos no pierde ninguno. El cero negativo se lee como cero.
-import { formatoEsVe } from "./formatoEsVe";
+import { DECIMAL, formatoEsVe } from "./formatoEsVe";
 
 export const MENSAJE_CIFRA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56.";
 export const MENSAJE_CIFRA_VACIA = `Escriba un número. ${MENSAJE_CIFRA}`;
@@ -46,14 +46,14 @@ export function leerCifra(texto: string): LecturaDeCifra {
 
 // El decimal de la API («1234.5», «3.000») como se escribe en un campo editable («1.234,5», «3,000»): vuelve igual al
 // leerlo con `leerCifra`. Como `texto_de_cifra` del servidor: sin «+», sin ceros a la izquierda y sin cero negativo.
-// Lo que no es un decimal (un exponente, que la API no manda) se devuelve tal cual.
-const DECIMAL_DE_LA_API = /^([-+]?)([0-9]+)(\.[0-9]+)?$/;
-
+// Lo que no es un decimal se devuelve tal cual: un exponente («1E-7»), que la API debe evitar escribiendo sus
+// decimales en notacion fija (`format(x, "f")`); si llega uno, queda en el campo y `leerCifra` lo rechaza.
 export function textoParaEscribir(decimal: string): string {
-  const m = DECIMAL_DE_LA_API.exec(decimal.trim());
+  const m = DECIMAL.exec(decimal.trim());
   if (!m) return decimal;
-  const [, signo, entera, decimales = ""] = m;
+  const [, signo, entera, decimales] = m;
   const canonica = entera!.replace(/^0+(?=[0-9])/, "");
-  const esCero = /^0$/.test(canonica) && /^\.?0*$/.test(decimales);
-  return formatoEsVe(`${signo === "-" && !esCero ? "-" : ""}${canonica}${decimales}`);
+  const fraccion = decimales === undefined ? "" : `.${decimales}`;
+  const esCero = /^0$/.test(canonica) && /^0*$/.test(decimales ?? "");
+  return formatoEsVe(`${signo === "-" && !esCero ? "-" : ""}${canonica}${fraccion}`);
 }
