@@ -46,6 +46,10 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - `pendientes_sin_calculo` reusa `_versiones_vigentes`, `_plural` y `_pendiente` de la mesa (import diferido).
 - La prueba de la fuente de calidad ya no la suma con monkeypatch: comprueba que está registrada una sola vez (la registró
   el orquestador en ec1b23a3; esa doble suma fue un error de integración).
+- Menores tras la aprobación: guardar la primera versión responde 409 (sin escribir nada) si entre agregar y guardar la
+  partida salió del catálogo, a un insumo le falta el precio en la lista o cambiaron las líneas de su APU (se perderían el
+  rendimiento y las cantidades editadas: hay que quitarla y volver a agregarla); `plural`, `pendiente` y
+  `versiones_vigentes` de la mesa son públicos.
 
 ## T10, buscador de partidas (aprobada en ronda 1)
 
