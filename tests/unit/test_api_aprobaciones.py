@@ -407,6 +407,15 @@ def test_ana_aprueba_su_propia_version_y_queda_rotulado(ana) -> None:
     assert versiones["VIV-001"]["armo"] is True
 
 
+def test_la_obra_dice_cual_es_su_ultima_version_aprobada(ana, rita) -> None:
+    assert ana[0].get(RAIZ, params={"proyecto": OBRA}).json()["ultima_aprobada"] is None
+    _enviar(ana)
+    assert ana[0].get(RAIZ, params={"proyecto": OBRA}).json()["ultima_aprobada"] is None
+    _abrir(rita, 1)
+    assert _dictaminar(rita, 1, "aprobada_con_observaciones", "Revisar el flete").status_code == 201
+    assert ana[0].get(RAIZ, params={"proyecto": OBRA}).json()["ultima_aprobada"] == "VIV-001"
+
+
 def test_pendientes_repone_la_fila_borrada_de_la_carpeta_abierta(ana, rita) -> None:
     _enviar(ana)
     _abrir(rita, 1)
