@@ -155,7 +155,8 @@ def editar_espacio(
         id,
         rev,
         lambda vivo: replace(
-            vivo.borrador, espacio=hoja.espacio_desde_filas(tablas, base=vivo.borrador.espacio)
+            vivo.borrador,
+            espacio=hoja.espacio_desde_filas(tablas, base=vivo.borrador.espacio, tecleado=True),
         ),
     )
 
@@ -185,7 +186,8 @@ def editar_cantidades(
             enviadas[clave] = fila["cantidad"]
         vigentes = hoja.items_elaborados(borrador)
         tabla = [
-            {"clave": clave, "cantidad": enviadas.get(clave, hoja.texto_numero(item.cantidad))}
+            # lo no enviado se escribe como lo teclearia la persona (coma decimal): se lee igual
+            {"clave": clave, "cantidad": enviadas.get(clave, hoja.texto_editable(item.cantidad))}
             for clave, item in zip(claves, vigentes, strict=True)
         ]
         escritas = hoja.cantidades_desde_filas(tabla, items)

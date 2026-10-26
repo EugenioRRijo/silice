@@ -31,6 +31,7 @@ from adapters.espacio.modelo import (
 )
 from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja
+from aplicacion.cifras import texto_de_cifra
 from aplicacion.hoja_borradores import BorradorVivo
 from core.budget.equilibrio import PuntoEquilibrio
 from core.contracts import Severidad
@@ -312,7 +313,7 @@ def vista_espacio(vivo: BorradorVivo) -> VistaEspacio:
     return VistaEspacio(
         ayuda=AYUDA_ESPACIO,
         tablas=tuple(_tabla(clave) for clave in hoja.COLUMNAS),
-        filas=hoja.filas_desde_espacio(vivo.borrador.espacio),
+        filas=hoja.filas_editables_del_espacio(vivo.borrador.espacio),
         estado={clave: estado_de_fila(e) for clave, e in resultado.estado.items()},
         derivadas=tuple(
             CantidadDerivada(
@@ -387,7 +388,8 @@ def vista_presupuesto(vivo: BorradorVivo) -> VistaPresupuesto:
                 partida=texto["partida"],
                 descripcion=texto["descripcion"],
                 unidad=texto["unidad"],
-                cantidad=texto["cantidad"],
+                # la editable, como la teclea la persona (coma decimal); la calculada, de lectura
+                cantidad=hoja.texto_editable(Decimal(texto["cantidad"])),
                 cantidad_calculada=hoja.texto_numero(calculada),
                 escrita=clave in escritas and escritas[clave] != calculada,
                 pu=None if renglon is None else monto(renglon.resultado.precio_unitario),
@@ -528,7 +530,7 @@ def _detalle_de_apu(vivo: BorradorVivo, resultado: hoja.ResultadoHoja, codigo: s
         codigo=codigo,
         descripcion=composicion.descripcion,
         unidad=composicion.unidad,
-        rendimiento=hoja.texto_numero(composicion.rendimiento),
+        rendimiento=hoja.texto_editable(composicion.rendimiento),
         grupos=tuple(
             GrupoDeApu(
                 clave=clave,
@@ -638,7 +640,10 @@ def vista_plan(vivo: BorradorVivo) -> VistaPlan:
     return VistaPlan(
         hay_plan=True,
         etiquetas=tuple(etiquetas),
-        filas=tuple(FilaDePlan(f["partida"], {e: f[e] for e in etiquetas}) for f in filas),
+        filas=tuple(
+            FilaDePlan(f["partida"], {e: hoja.texto_editable(Decimal(f[e])) for e in etiquetas})
+            for f in filas
+        ),
         curva=tuple(curva),
         moneda=presupuesto.moneda,
         mensaje=None,
@@ -718,10 +723,11 @@ class VistaParametros:
 def vista_parametros(
     vivo: BorradorVivo, moneda_proyecto: str, puede_convertir: bool
 ) -> VistaParametros:
-    """La pestana Parametros en lectura (P:2028-2118): los cuatro factores como texto exacto
-    (`str(Decimal)`, lo que el cuadro de la clasica siembra) y el total. La moneda del proyecto y
-    el cambio de moneda solo existen con una version abierta (P:2073); `moneda_proyecto` la lee la
-    ruta de la base y `puede_convertir` es el permiso de quien pregunta."""
+    """La pestana Parametros en lectura (P:2028-2118): los cuatro factores como texto exacto con
+    coma decimal (`texto_de_cifra`: «0,20», lo que se teclea en el cuadro) y el total. La moneda
+    del proyecto y el cambio de moneda solo existen con una version abierta (P:2073);
+    `moneda_proyecto` la lee la ruta de la base y `puede_convertir` es el permiso de quien
+    pregunta."""
     resultado, _ = calculo(vivo)
     abierta = vivo.abierta is not None
     return VistaParametros(
@@ -729,7 +735,7 @@ def vista_parametros(
             CampoDeParametro(
                 clave=c,
                 rotulo=ROTULOS_PARAMETROS[c],
-                valor=str(getattr(vivo.borrador.parametros, c)),
+                valor=texto_de_cifra(getattr(vivo.borrador.parametros, c)),
             )
             for c in hoja.CAMPOS_PARAMETROS
         ),

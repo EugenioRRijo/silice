@@ -50,6 +50,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -89,7 +90,7 @@ from adapters.espacio.planos import (
 )
 from adapters.espacio.planos.geometria_plano import reglas_plano
 from adapters.espacio.reglas import CantidadEscrita, reglas_espacio
-from aplicacion.cifras import CifraInvalida, cifra_escrita
+from aplicacion.cifras import CifraInvalida, cifra_escrita, texto_de_cifra
 from aplicacion.composicion import (
     ComposicionInvalida,
     decimal_desde_texto,
@@ -370,6 +371,44 @@ def _numero(valor: Decimal) -> str:
     return "0" if texto in {"-0", ""} else texto
 
 
+# --- cifras tecleadas en la hoja (regla de Eugenio, 2026-10-25; resuelve D-8) --------------------
+#
+# Lo que la persona escribe en una celda o un cuadro de la hoja se lee con la regla única
+# (`aplicacion.cifras.cifra_escrita`: coma decimal, punto de miles) y lo que la vista pone en esas
+# celdas se escribe igual (`texto_editable`), para que una celda que nadie toca vuelva sin cambio.
+# Las tablas de solo lectura, el Excel y los cambios siguen con `_numero` (punto decimal).
+
+#: Las columnas de cifra de las tablas del espacio. `vertices` NO: es la lista «x,y,z; x,y,z» cuya
+#: coma separa las coordenadas, así que conserva el punto decimal (decisión declarada en
+#: `docs/bitacora/2026-10-25-coma-decimal-punto-miles.md`).
+COLUMNAS_CIFRA: dict[str, tuple[str, ...]] = {
+    "ambientes": ("x0", "y0", "largo", "ancho", "alto"),
+    "fuentes": ("x", "y", "z"),
+    "puntos": ("x", "y", "z"),
+    "tramos": ("pendiente",),
+}
+
+
+def cifra_de_celda(texto: str, campo: str) -> Decimal:
+    """Una cifra tecleada en la hoja, o `ComposicionInvalida` con el campo delante (el prefijo
+    «campo: » es el que la pantalla usa para ubicar la celda)."""
+    limpio = texto.strip()
+    try:
+        return cifra_escrita(limpio)
+    except CifraInvalida as error:
+        if not limpio:
+            raise ComposicionInvalida(f"{campo}: {error}") from error
+        raise ComposicionInvalida(
+            f"{campo}: «{limpio}» no se entiende como número. {error}"
+        ) from error
+
+
+def texto_editable(valor: Decimal) -> str:
+    """Un decimal en una celda editable de la hoja: sin ceros de relleno (`_numero`) y con coma
+    decimal y punto de miles (`texto_de_cifra`); `cifra_de_celda` lo vuelve a leer igual."""
+    return texto_de_cifra(Decimal(_numero(valor)))
+
+
 def _coords_a_texto(vertices: Iterable[Coord]) -> str:
     return "; ".join(f"{_numero(v.x)},{_numero(v.y)},{_numero(v.z)}" for v in vertices)
 
@@ -380,6 +419,18 @@ def _pares_a_texto(pares: Iterable[tuple[str, str]]) -> str:
 
 def _bool_a_texto(valor: bool | None) -> str:
     return "" if valor is None else (_SI if valor else _NO)
+
+
+def filas_editables_del_espacio(espacio: Espacio) -> dict[str, list[dict[str, str]]]:
+    """`filas_desde_espacio` para el editor: las columnas de cifra (`COLUMNAS_CIFRA`) con coma
+    decimal y punto de miles (`texto_editable`), como las teclea la persona."""
+    filas = filas_desde_espacio(espacio)
+    for tabla, columnas in COLUMNAS_CIFRA.items():
+        for fila in filas[tabla]:
+            for columna in columnas:
+                if fila[columna]:
+                    fila[columna] = texto_editable(Decimal(fila[columna]))
+    return filas
 
 
 def filas_desde_espacio(espacio: Espacio) -> dict[str, list[dict[str, str]]]:
@@ -472,12 +523,14 @@ def _pares_desde_texto(texto: str, campo: str) -> dict[str, str]:
     return pares
 
 
-def _coord(x: str, y: str, z: str, campo: str) -> Coord:
-    return Coord(
-        decimal_desde_texto(x, f"{campo} x"),
-        decimal_desde_texto(y, f"{campo} y"),
-        decimal_desde_texto(z, f"{campo} z"),
-    )
+#: Cómo se lee una cifra de una celda del espacio: `cifra_de_celda` (lo que teclea la persona en
+#: el editor) o `decimal_desde_texto` (texto de máquina con punto decimal: el asistente de IA, el
+#: banco del experimento). Lo elige `espacio_desde_filas(..., tecleado=...)`.
+LectorDeCifra = Callable[[str, str], Decimal]
+
+
+def _coord(x: str, y: str, z: str, campo: str, leer: LectorDeCifra) -> Coord:
+    return Coord(leer(x, f"{campo} x"), leer(y, f"{campo} y"), leer(z, f"{campo} z"))
 
 
 def _vertices(texto: str) -> tuple[Coord, ...]:
@@ -487,7 +540,8 @@ def _vertices(texto: str) -> tuple[Coord, ...]:
         partes = p.split(",")
         if len(partes) != 3:
             raise ValueError(f"vertices: {p.strip()!r} no tiene la forma x,y,z")
-        vertices.append(_coord(*partes, campo="vertices"))
+        # la coma separa coordenadas: los decimales de los vertices van siempre con punto
+        vertices.append(_coord(*partes, campo="vertices", leer=decimal_desde_texto))
     if len(vertices) < 2:
         raise ValueError("vertices: un tramo necesita dos vertices x,y,z o mas, separados por «;»")
     return tuple(vertices)
@@ -535,23 +589,23 @@ def _origen(c: dict[str, str]) -> OrigenMedida:
     )
 
 
-def _ambiente(c: dict[str, str]) -> Ambiente:
-    d = {k: decimal_desde_texto(c[k], k) for k in ("x0", "y0", "largo", "ancho", "alto")}
+def _ambiente(c: dict[str, str], leer: LectorDeCifra) -> Ambiente:
+    d = {k: leer(c[k], k) for k in COLUMNAS_CIFRA["ambientes"]}
     return Ambiente(id=c["id"], nombre=c["nombre"], origen_id=c["origen_id"], **d)
 
 
-def _fuente(c: dict[str, str]) -> Fuente:
+def _fuente(c: dict[str, str], leer: LectorDeCifra) -> Fuente:
     return Fuente(
         id=c["id"],
         especialidad=_enum(Especialidad, c["especialidad"] or "agua", "especialidad"),
         tipo=_enum(TipoFuente, c["tipo"], "tipo"),
         ambiente_id=c["ambiente_id"],
-        posicion=_coord(c["x"], c["y"], c["z"], "posicion"),
+        posicion=_coord(c["x"], c["y"], c["z"], "posicion", leer),
         origen_id=c["origen_id"],
     )
 
 
-def _punto(c: dict[str, str]) -> Punto:
+def _punto(c: dict[str, str], leer: LectorDeCifra) -> Punto:
     return Punto(
         id=c["id"],
         nombre=c["nombre"],
@@ -559,7 +613,7 @@ def _punto(c: dict[str, str]) -> Punto:
         tipo=_enum(TipoPunto, c["tipo"], "tipo"),
         ambiente_id=c["ambiente_id"],
         superficie=_enum(SuperficiePunto, c["superficie"], "superficie"),
-        posicion=_coord(c["x"], c["y"], c["z"], "posicion"),
+        posicion=_coord(c["x"], c["y"], c["z"], "posicion", leer),
         fuente_id=_opcional(c["fuente_id"]),
         circuito_id=_opcional(c["circuito_id"]),
         especificaciones=_pares_desde_texto(c["especificaciones"], "especificaciones"),
@@ -567,7 +621,7 @@ def _punto(c: dict[str, str]) -> Punto:
     )
 
 
-def _tramo(c: dict[str, str]) -> tuple[str, str | None, str | None, Tramo]:
+def _tramo(c: dict[str, str], leer: LectorDeCifra) -> tuple[str, str | None, str | None, Tramo]:
     if not c["recorrido_id"]:
         raise ValueError("recorrido_id: el tramo debe nombrar su recorrido")
     try:
@@ -579,16 +633,16 @@ def _tramo(c: dict[str, str]) -> tuple[str, str | None, str | None, Tramo]:
         superficie=_enum(SuperficieTramo, c["superficie"], "superficie"),
         vertices=_vertices(c["vertices"]),
         empotrado=_tri(c["empotrado"], "empotrado"),
-        pendiente=decimal_desde_texto(c["pendiente"], "pendiente") if c["pendiente"] else None,
+        pendiente=leer(c["pendiente"], "pendiente") if c["pendiente"] else None,
     )
     return c["recorrido_id"], _opcional(c["punto_id"]), _opcional(c["circuito_id"]), tramo
 
 
 def _recorridos_declarados(
-    filas: Sequence[Mapping[str, object]],
+    filas: Sequence[Mapping[str, object]], leer: LectorDeCifra
 ) -> list[Recorrido]:
     por_recorrido: dict[str, tuple[str | None, str | None, list[Tramo]]] = {}
-    for rid, punto, circuito, tramo in _construir("tramos", filas, _tramo):
+    for rid, punto, circuito, tramo in _construir("tramos", filas, partial(_tramo, leer=leer)):
         _, _, tramos = por_recorrido.setdefault(rid, (punto, circuito, []))
         tramos.append(tramo)
     try:
@@ -607,18 +661,27 @@ def _recorridos_declarados(
 
 
 def espacio_desde_filas(
-    filas: Mapping[str, Sequence[Mapping[str, object]]], base: Espacio | None = None
+    filas: Mapping[str, Sequence[Mapping[str, object]]],
+    base: Espacio | None = None,
+    *,
+    tecleado: bool = False,
 ) -> Espacio:
     """El borrador que describen las tablas del editor, o `HojaInvalida` con la fila culpable.
 
     `base` aporta lo que el editor no muestra: circuitos, sobrescrituras de segmento y recorridos
     propuestos (los declarados salen de la tabla de vertices). Una tabla ausente de `filas` cuenta
     como vacia.
+
+    `tecleado=True` es el editor de la hoja: las columnas de cifra (`COLUMNAS_CIFRA`) se leen con
+    la regla de lo que teclea la persona (coma decimal, punto de miles; `cifra_de_celda`). Sin él,
+    las celdas son texto de máquina con punto decimal (`filas_desde_espacio`, el asistente de IA):
+    leerlas con la regla convertiría «1.125» metros en mil ciento veinticinco.
     """
     base = base if base is not None else Espacio()
-    declarados = _recorridos_declarados(filas.get("tramos", ()))
+    leer: LectorDeCifra = cifra_de_celda if tecleado else decimal_desde_texto
+    declarados = _recorridos_declarados(filas.get("tramos", ()), leer)
     nombres = {r.id for r in declarados}
-    puntos = tuple(_construir("puntos", filas.get("puntos", ()), _punto))
+    puntos = tuple(_construir("puntos", filas.get("puntos", ()), partial(_punto, leer=leer)))
     existentes = {p.id for p in puntos}
     # un recorrido propuesto no guarda datos: solo marca que el punto usa el camino que propone la
     # hoja; si el punto se quita de la tabla, su recorrido propuesto se va con el
@@ -632,8 +695,12 @@ def espacio_desde_filas(
     try:
         return Espacio(
             origenes=tuple(_construir("origenes", filas.get("origenes", ()), _origen)),
-            ambientes=tuple(_construir("ambientes", filas.get("ambientes", ()), _ambiente)),
-            fuentes=tuple(_construir("fuentes", filas.get("fuentes", ()), _fuente)),
+            ambientes=tuple(
+                _construir("ambientes", filas.get("ambientes", ()), partial(_ambiente, leer=leer))
+            ),
+            fuentes=tuple(
+                _construir("fuentes", filas.get("fuentes", ()), partial(_fuente, leer=leer))
+            ),
             circuitos=base.circuitos,
             puntos=puntos,
             recorridos=(*propuestos, *declarados),
@@ -862,7 +929,7 @@ def cantidades_desde_filas(
             continue
         donde = f"presupuesto, fila {numero} ({item.codigo_partida})"
         try:
-            valor = decimal_desde_texto(texto_de_celda(fila, "cantidad"), "cantidad")
+            valor = cifra_de_celda(texto_de_celda(fila, "cantidad"), "cantidad")
         except ComposicionInvalida as error:
             raise HojaInvalida(f"{donde}: {error}") from error
         if valor < 0:
@@ -950,7 +1017,7 @@ def _cantidades_de_tabla(
     for numero, fila in enumerate(filas, start=1):
         donde = f"{grupo}, fila {numero}"
         try:
-            valor = decimal_desde_texto(texto_de_celda(fila, "cantidad"), f"{donde}: cantidad")
+            valor = cifra_de_celda(texto_de_celda(fila, "cantidad"), f"{donde}: cantidad")
         except ComposicionInvalida as error:
             raise HojaInvalida(str(error)) from error
         if valor < 0:
@@ -975,7 +1042,7 @@ def composicion_con_cantidades(
     cant_e = _cantidades_de_tabla(equipos, "equipos", len(base.equipos))
     cant_o = _cantidades_de_tabla(mano_obra, "mano de obra", len(base.mano_obra))
     try:
-        valor = decimal_desde_texto(rendimiento, "rendimiento")
+        valor = cifra_de_celda(rendimiento, "rendimiento")
         return replace(
             base,
             rendimiento=valor,
@@ -1126,7 +1193,7 @@ def parametros_desde_texto(textos: Mapping[str, str]) -> ParametrosCosto:
     """Los `ParametrosCosto` que escriben los cuadros de texto; `HojaInvalida` dice el campo."""
     try:
         return ParametrosCosto(
-            **{c: decimal_desde_texto(textos.get(c, ""), c) for c in CAMPOS_PARAMETROS}
+            **{c: cifra_de_celda(textos.get(c, ""), c) for c in CAMPOS_PARAMETROS}
         )
     except (ComposicionInvalida, ValueError) as error:
         raise HojaInvalida(f"parametros: {error}") from error
@@ -1203,7 +1270,7 @@ def plan_desde_filas(
         for etiqueta in etiquetas:
             texto = texto_de_celda(fila, etiqueta) or "0"
             try:
-                fraccion = decimal_desde_texto(texto, etiqueta)
+                fraccion = cifra_de_celda(texto, etiqueta)
             except ComposicionInvalida as error:
                 raise HojaInvalida(f"plan, partida {codigo}: {error}") from error
             if fraccion < 0:
@@ -1215,8 +1282,8 @@ def plan_desde_filas(
                 reparto[etiqueta].append((codigo, fraccion))
         if suma != Decimal(1):
             raise HojaInvalida(
-                f"plan, partida {codigo}: las fracciones suman {_numero(suma)} y deben sumar "
-                "exactamente 1; repartala entre los periodos hasta completar 1"
+                f"plan, partida {codigo}: las fracciones suman {texto_editable(suma)} y deben "
+                "sumar exactamente 1; repartala entre los periodos hasta completar 1"
             )
     return [(etiqueta, tuple(reparto[etiqueta])) for etiqueta in etiquetas]
 

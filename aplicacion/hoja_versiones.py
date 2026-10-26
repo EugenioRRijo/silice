@@ -30,7 +30,6 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from aplicacion import entrega, hoja
-from aplicacion.composicion import decimal_desde_texto
 from aplicacion.entrega import EstadoDeLaCadena, con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.proyectos import resolver_proyecto
@@ -125,12 +124,12 @@ def cotizar(
     evidencia: str | None,
     responsable: str,
 ) -> VersionNueva:
-    """S3: cotiza `insumo` (su codigo) a `precio` (texto) para el proyecto (RF-56). El precio se
-    lee como la clasica (`precio: '...' no es un numero decimal valido`)."""
+    """S3: cotiza `insumo` (su codigo) a `precio` (texto) para el proyecto (RF-56). El precio es
+    lo que teclea la persona: coma decimal y punto de miles (`hoja.cifra_de_celda`)."""
 
     def escribir(nombre: str) -> tuple[str, str]:
         try:
-            valor = decimal_desde_texto(precio, "precio")
+            valor = hoja.cifra_de_celda(precio, "precio")
         except (
             ValueError
         ) as error:  # ComposicionInvalida: la clasica la muestra como cualquier otra
