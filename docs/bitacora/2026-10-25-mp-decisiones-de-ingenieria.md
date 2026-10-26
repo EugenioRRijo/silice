@@ -460,7 +460,7 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
     mercado y sin avisarlo. El `precio` de la recepción es unitario. Menores que pasan a T24: exponer `causa_sugerida`,
     prueba de la mesa al 02/11, descripción del precio y `monkeypatch` sobrante.
 
-## T19, enviar y dictamen en la mesa
+## T19, enviar y dictamen en la mesa (aprobada en ronda 1)
 
 1. Quien arma también ve en su grupo «Aprobar» los envíos de OTRAS carpetas (de `GET /v1/aprobaciones/pendientes`); los
    de la carpeta abierta los dice ya `/v1/obras/pendientes`. **Por ratificar.**
@@ -477,6 +477,11 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    volver a enviar.
 8. `abrirCarpeta` gana un tercer parámetro opcional (`abrirCon`) en `useCarpetaDeTrabajo.ts` y `contexto.tsx`
    (compatible).
+9. Menores del árbitro (adceb0af rojo, 9759890c): la barra dice la carpeta del envío abierto; «Por aprobar» se sostiene
+   aunque el resumen de obras dé 403 o falle; `nombreDeResponsable` vive en `src/comun/responsable.ts`; en el grupo
+   «Aprobar» toda fila dice «Abrir el envío» y las de la carpeta abierta salen del índice (total, quién, cuándo y su envío)
+   en lugar del «espera dictamen» de la API, que solo queda si el índice no está. `Retomar.test.tsx` no se reprodujo
+   (32/32 cuatro veces): probablemente se corrió con cambios a medias de T26 en el árbol.
 
 ## T26, líneas del APU de la versión
 
