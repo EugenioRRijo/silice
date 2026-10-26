@@ -11,7 +11,8 @@ enviado; montos como texto con punto decimal; un fallo de la base es un 503 sin 
 - `GET /v1/mercado/compra/{codigo}/afectados` → `{apus}`.
 - `POST /v1/mercado/compra/{codigo}/usar` `{precio, observacion_id}` → 200 `{lista}`.
 - `POST /v1/mercado/cobro/{codigo}/usar` `{precio, observaciones}` → 200 `{codigo, precio, moneda}`.
-- `GET /v1/mercado/objetivos?partidas=A,B` → `{objetivos: [{codigo, precio, moneda}]}`.
+- `GET /v1/mercado/objetivos?partidas=A,B&pu=A:2074.44&moneda=Bs` → `{objetivos: [{codigo, precio,
+  moneda, margen}]}` (Tarea 16: el margen lo calcula la API con los precios unitarios de la Hoja).
 
 El router se monta en una aplicación propia con el de la sesión (para entrar) y los manejadores de
 `api.main`, porque `api/main.py` es un archivo compartido que integra el orquestador.
@@ -507,7 +508,7 @@ def test_usar_un_precio_de_cobro_y_leerlo_como_objetivo(ana) -> None:
     objetivos = navegador.get(f"{RUTA}/objetivos", params={"partidas": "OBRA-04,OBRA-02"})
     assert objetivos.status_code == 200, objetivos.text
     assert objetivos.json() == {
-        "objetivos": [{"codigo": "OBRA-04", "precio": "1980.00", "moneda": "Bs"}]
+        "objetivos": [{"codigo": "OBRA-04", "precio": "1980.00", "moneda": "Bs", "margen": None}]
     }
     _sin_cache(objetivos)
     assert navegador.get(f"{RUTA}/objetivos").json() == {"objetivos": []}
@@ -674,3 +675,118 @@ def test_un_precio_objetivo_con_mas_de_dos_decimales_es_422(ana) -> None:
     assert navegador.get(f"{RUTA}/objetivos", params={"partidas": "OBRA-04"}).json() == {
         "objetivos": []
     }
+
+
+# --- Tarea 16: el margen con el precio unitario de la Hoja ---------------------------------------
+
+
+def _objetivo(ana, codigo: str, precio: str) -> None:
+    respuesta = ana[0].post(
+        f"{RUTA}/cobro/{codigo}/usar",
+        json={"precio": precio, "observaciones": []},
+        headers=ana[1],
+    )
+    assert respuesta.status_code == 200, respuesta.text
+
+
+def _margenes(ana, **params: str) -> dict[str, tuple[str, str, str | None]]:
+    respuesta = ana[0].get(f"{RUTA}/objetivos", params=params)
+    assert respuesta.status_code == 200, respuesta.text
+    _sin_cache(respuesta)
+    return {
+        o["codigo"]: (o["precio"], o["moneda"], o["margen"]) for o in respuesta.json()["objetivos"]
+    }
+
+
+@pytest.mark.parametrize(
+    ("pu", "margen"),
+    [
+        # (1.980 − 2.074,44) / 2.074,44 × 100 = −94,44 / 20,7444 = −4,5526… → −4,6 (mitad arriba)
+        ("2074.44", "-4.6"),
+        # el exacto de la Hoja: −94,4449 / 20,744449 = −4,5528… → −4,6
+        ("2074.4449", "-4.6"),
+        # 180 / 18 = 10 → 10,0: el objetivo queda por encima del precio con utilidad
+        ("1800", "10.0"),
+        ("1980.00", "0.0"),
+        # −0,50 / 19,805 = −0,0252… → −0,0 se dice 0,0 (sin un signo que no significa nada)
+        ("1980.50", "0.0"),
+        # −20 / 20 = −1 % exacto
+        ("2000", "-1.0"),
+    ],
+)
+def test_el_margen_lo_calcula_la_api_con_el_precio_unitario_de_la_hoja(
+    ana, pu: str, margen: str
+) -> None:
+    _objetivo(ana, "OBRA-04", "1.980,00")
+    assert _margenes(ana, partidas="OBRA-04", pu=f"OBRA-04:{pu}", moneda="Bs") == {
+        "OBRA-04": ("1980.00", "Bs", margen)
+    }
+
+
+def test_sin_precio_unitario_en_otra_moneda_o_con_cero_no_hay_margen(ana, caso: Path) -> None:
+    from aplicacion.tablas_mercado import PrecioObjetivo
+
+    _objetivo(ana, "OBRA-04", "1.980,00")
+    _objetivo(ana, "OBRA-03", "120")
+    _en_el_caso(
+        caso,
+        lambda s: s.add(
+            PrecioObjetivo(
+                codigo_partida="OBRA-02",
+                precio=Decimal("31.50"),
+                moneda="USD",
+                observaciones="[]",
+                responsable="Ana <ana>",
+                fecha_hora=AHORA,
+            )
+        ),
+    )
+    partidas = "OBRA-04,OBRA-03,OBRA-02"
+    # sin `pu`: como antes de la Tarea 16, el margen va vacío
+    assert _margenes(ana, partidas=partidas) == {
+        "OBRA-04": ("1980.00", "Bs", None),
+        "OBRA-03": ("120.00", "Bs", None),
+        "OBRA-02": ("31.50", "USD", None),
+    }
+    # OBRA-04 sin su precio unitario; OBRA-03 con precio unitario 0 (no se divide entre cero);
+    # OBRA-02 en USD y la Hoja en Bs: no se compara (ni se convierte); un `pu` de una partida no
+    # pedida no agrega nada.
+    assert _margenes(
+        ana, partidas=partidas, pu="OBRA-03:0,OBRA-02:30.00,OBRA-09:10", moneda="Bs"
+    ) == {
+        "OBRA-04": ("1980.00", "Bs", None),
+        "OBRA-03": ("120.00", "Bs", None),
+        "OBRA-02": ("31.50", "USD", None),
+    }
+    # la misma partida en USD con la Hoja en USD sí se compara: (31,50 − 30) / 30 = 5 %
+    assert _margenes(ana, partidas="OBRA-02", pu="OBRA-02:30.00", moneda="USD") == {
+        "OBRA-02": ("31.50", "USD", "5.0")
+    }
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"pu": "OBRA-04:2.074,44", "moneda": "Bs"},  # la Hoja manda el decimal con punto
+        {"pu": "OBRA-04", "moneda": "Bs"},
+        {"pu": f"OBRA-04:{PRIVADO}", "moneda": "Bs"},
+        {"pu": "OBRA-04:1e3", "moneda": "Bs"},
+        {"pu": "OBRA-04:NaN", "moneda": "Bs"},
+        {"pu": ":2074.44", "moneda": "Bs"},
+        {"pu": "OBRA-04:2074.44,OBRA-04:2000", "moneda": "Bs"},  # la misma partida con dos precios
+        {"pu": "OBRA-04:2074.44"},  # sin la moneda de esos precios
+        {"pu": f"{PRIVADO * 2}:1", "moneda": "Bs"},  # código de más de 40 caracteres
+    ],
+)
+def test_un_precio_unitario_mal_formado_es_422_fijo_sin_eco(ana, params: dict) -> None:
+    respuesta = ana[0].get(f"{RUTA}/objetivos", params={"partidas": "OBRA-04", **params})
+    assert (respuesta.status_code, respuesta.json()) == (422, {"detalle": MENSAJE_FORMA})
+    assert PRIVADO not in respuesta.text
+    _sin_cache(respuesta)
+
+
+def test_la_misma_partida_repetida_con_el_mismo_precio_se_acepta(ana) -> None:
+    _objetivo(ana, "OBRA-04", "1.980,00")
+    assert _margenes(
+        ana, partidas="OBRA-04", pu="OBRA-04:2074.44,OBRA-04:2074.44", moneda="Bs"
+    ) == {"OBRA-04": ("1980.00", "Bs", "-4.6")}
