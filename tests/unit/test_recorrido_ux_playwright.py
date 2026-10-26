@@ -268,3 +268,31 @@ def test_resumen_por_estado_del_sidebar_y_por_modulo() -> None:
     assert resumen["por_sidebar"]["fijado"]["mediciones"] == 2
     assert resumen["por_sidebar"]["oculto"]["sidebar_tapa"] == 0
     assert resumen["por_modulo"]["obras"]["mediciones"] == 2
+
+
+def test_lo_recortado_tambien_en_la_ventana_mas_ancha_no_es_falta_de_espacio() -> None:
+    from scripts.recorrido_ux_playwright import motivos_por_espacio
+
+    de_fondo = ["«Ana» recortado a 17 de 29 px"]
+    motivos = [
+        "«Ana» recortado a 15 de 29 px",
+        "«Obra: Torre B» recortado a 20 de 90 px",
+        "las áreas se montan sobre el lado derecho",
+    ]
+    assert motivos_por_espacio(motivos, de_fondo) == motivos[1:]
+    assert motivos_por_espacio(de_fondo, de_fondo) == []
+
+
+def test_el_recorrido_funcional_tiene_una_fila_por_pantalla_y_ninguna_de_mas() -> None:
+    from scripts.recorrido_ux_playwright import (
+        ACCIONES_TOML,
+        cargar_filas_funcionales,
+        rutas_de_la_interfaz,
+    )
+
+    filas = cargar_filas_funcionales(ACCIONES_TOML)["pantalla"]
+    rutas = [f["ruta"] for f in filas]
+    assert sorted(rutas) == sorted(r["id"] for r in rutas_de_la_interfaz())
+    assert len(rutas) == len(set(rutas))
+    # Los tres inicios reemplazan la fila del Inicio de antes (plan de modulos, MOD-5 paso 3).
+    assert {"auditoria", "obras", "produccion"} <= set(rutas)
