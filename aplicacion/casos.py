@@ -247,9 +247,11 @@ _COMO_CARPETA = (
 def en_lenguaje_de_la_interfaz(mensaje: str) -> str:
     """El rechazo de `operacion.base_datos` (que también lo ve la línea de órdenes y dice «caso»)
     con las palabras de la interfaz: «carpeta de trabajo»."""
-    for caso, carpeta in _COMO_CARPETA:
-        mensaje = mensaje.replace(caso, carpeta)
-    return mensaje
+    tramos = re.split(r"(«[^»]*»)", mensaje)  # lo escrito por la persona queda tal cual
+    for i in range(0, len(tramos), 2):
+        for caso, carpeta in _COMO_CARPETA:
+            tramos[i] = tramos[i].replace(caso, carpeta)
+    return "".join(tramos)
 
 
 def _nombre_elegido(nombre: str) -> str:
