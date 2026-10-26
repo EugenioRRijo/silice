@@ -106,19 +106,19 @@ CuentaQueAprueba = Annotated[SesionActiva | None, APROBAR]
 # --- esquemas -------------------------------------------------------------------------------------
 
 
-class EnvioPeticion(BaseModel):
+class AprobacionEnvioPeticion(BaseModel):
     proyecto: StrictStr = Field(max_length=200, description="El código o el nombre de la obra")
     version: StrictStr = Field(max_length=40, description="El código de la versión guardada")
     nota: StrictStr = Field(default="", max_length=2000, description="Nota opcional del envío")
 
 
-class EnvioRespuesta(BaseModel):
+class AprobacionEnvioRespuesta(BaseModel):
     id: int
     estado: str
     retirada: str | None = Field(description="La versión pendiente que este envío retiró")
 
 
-class DictamenPeticion(BaseModel):
+class AprobacionDictamenPeticion(BaseModel):
     resultado: Literal["aprobada", "aprobada_con_observaciones", "devuelta"]
     notas: StrictStr = Field(
         default="",
@@ -127,26 +127,26 @@ class DictamenPeticion(BaseModel):
     )
 
 
-class DictamenRespuesta(BaseModel):
+class AprobacionDictamenRespuesta(BaseModel):
     id: int
     estado: str
 
 
-class AbrirPeticion(BaseModel):
+class AprobacionAbrirPeticion(BaseModel):
     caso: StrictStr = Field(max_length=255, description="La carpeta del envío (`caso` del índice)")
     envio_id: StrictInt
 
 
-class AbrirRespuesta(BaseModel):
+class AprobacionAbrirRespuesta(BaseModel):
     caso: str
 
 
-class RastroRespuesta(BaseModel):
+class AprobacionRastroRespuesta(BaseModel):
     integro: bool
     mensaje: str
 
 
-class EstadoRespuesta(BaseModel):
+class AprobacionEstadoRespuesta(BaseModel):
     estado: str
     por: str | None
     el: datetime | None
@@ -154,7 +154,7 @@ class EstadoRespuesta(BaseModel):
     armo: bool
 
 
-class EventoRespuesta(BaseModel):
+class AprobacionEventoRespuesta(BaseModel):
     id: int
     tipo: str
     version: str
@@ -166,14 +166,14 @@ class EventoRespuesta(BaseModel):
     cierre_de: int | None
 
 
-class ObraRespuesta(BaseModel):
-    rastro: RastroRespuesta
+class AprobacionObraRespuesta(BaseModel):
+    rastro: AprobacionRastroRespuesta
     fases: str = Field(description="«VIV-001 devuelta → VIV-002 aprobada»")
-    versiones: dict[str, EstadoRespuesta]
-    eventos: list[EventoRespuesta]
+    versiones: dict[str, AprobacionEstadoRespuesta]
+    eventos: list[AprobacionEventoRespuesta]
 
 
-class FilaRespuesta(BaseModel):
+class AprobacionFilaRespuesta(BaseModel):
     caso: str
     envio_id: int
     proyecto: str = Field(description="El código de la obra en su carpeta")
@@ -191,7 +191,7 @@ class FilaRespuesta(BaseModel):
     armo: bool = Field(description="Quien dictaminó es quien guardó la versión")
 
 
-class CifraRespuesta(BaseModel):
+class AprobacionCifraRespuesta(BaseModel):
     clave: str
     titulo: str
     actual: str
@@ -203,7 +203,7 @@ class CifraRespuesta(BaseModel):
     marcada: bool
 
 
-class PartidaRespuesta(BaseModel):
+class AprobacionPartidaRespuesta(BaseModel):
     codigo: str
     descripcion: str
     unidad: str
@@ -212,26 +212,26 @@ class PartidaRespuesta(BaseModel):
     total: str
 
 
-class HallazgoRespuesta(BaseModel):
+class AprobacionHallazgoRespuesta(BaseModel):
     regla: str
     severidad: str
     descripcion: str
 
 
-class HallazgosRespuesta(BaseModel):
+class AprobacionHallazgosRespuesta(BaseModel):
     error: int = Field(description="Los de severidad error o crítica")
     advertencia: int
     info: int
-    lista: list[HallazgoRespuesta]
+    lista: list[AprobacionHallazgoRespuesta]
 
 
-class EnvioDeLaVersion(BaseModel):
+class AprobacionEnvioDeLaVersion(BaseModel):
     por: str
     el: datetime
     nota: str
 
 
-class DetalleRespuesta(BaseModel):
+class AprobacionDetalleRespuesta(BaseModel):
     envio_id: int
     proyecto: str
     obra: str
@@ -239,10 +239,10 @@ class DetalleRespuesta(BaseModel):
     estado: str
     moneda: str
     total: str
-    partidas: list[PartidaRespuesta]
-    hallazgos: HallazgosRespuesta
-    rastro: RastroRespuesta
-    envio: EnvioDeLaVersion
+    partidas: list[AprobacionPartidaRespuesta]
+    hallazgos: AprobacionHallazgosRespuesta
+    rastro: AprobacionRastroRespuesta
+    envio: AprobacionEnvioDeLaVersion
     armo: bool = Field(description="Quien mira es quien guardó la versión")
 
 
@@ -293,8 +293,8 @@ def _reflejar(instalacion: Session, caso: str | None, sesion: Session) -> None:
         sesion.rollback()  # suelta la carpeta: la lectura del reflejo no deja nada abierto
 
 
-def _fila(fila: FilaIndice) -> FilaRespuesta:
-    return FilaRespuesta(
+def _fila(fila: FilaIndice) -> AprobacionFilaRespuesta:
+    return AprobacionFilaRespuesta(
         caso=fila.caso,
         envio_id=fila.envio_id,
         proyecto=fila.proyecto,
@@ -338,14 +338,14 @@ def _dias(n: int) -> str:
 # --- rutas ----------------------------------------------------------------------------------------
 
 
-@router.post("", response_model=EnvioRespuesta, status_code=201, dependencies=[EDITAR])
+@router.post("", response_model=AprobacionEnvioRespuesta, status_code=201, dependencies=[EDITAR])
 def enviar(
-    peticion: EnvioPeticion,
+    peticion: AprobacionEnvioPeticion,
     request: Request,
     activa: CuentaQueEdita,
     sesion: SesionDeEscrituraDep,
     instalacion: SesionInstalacionDep,
-) -> EnvioRespuesta:
+) -> AprobacionEnvioRespuesta:
     """Envía una versión guardada a aprobación (retira la pendiente de la obra, si había)."""
     try:
         envio = aprobaciones.enviar(
@@ -361,15 +361,15 @@ def enviar(
     except SQLAlchemyError:
         raise _sin_base() from None
     _reflejar(instalacion, _caso(request), sesion)
-    return EnvioRespuesta(id=envio.id, estado="en_aprobacion", retirada=envio.retirada)
+    return AprobacionEnvioRespuesta(id=envio.id, estado="en_aprobacion", retirada=envio.retirada)
 
 
-@router.get("", response_model=ObraRespuesta, dependencies=[EDITAR])
+@router.get("", response_model=AprobacionObraRespuesta, dependencies=[EDITAR])
 def consultar_obra(
     activa: CuentaQueEdita,
     sesion: SesionDep,
     proyecto: Annotated[str, Query(max_length=200, description="Código o nombre de la obra")],
-) -> ObraRespuesta:
+) -> AprobacionObraRespuesta:
     """El rastro de aprobaciones de la obra, sus fases, el estado de cada versión y sus eventos."""
     del activa  # el acceso ya se comprobó
     try:
@@ -381,15 +381,17 @@ def consultar_obra(
         raise _http(error) from None
     except SQLAlchemyError:
         raise _sin_base() from None
-    return ObraRespuesta(
-        rastro=RastroRespuesta(integro=rastro.integro, mensaje=rastro.mensaje),
+    return AprobacionObraRespuesta(
+        rastro=AprobacionRastroRespuesta(integro=rastro.integro, mensaje=rastro.mensaje),
         fases=fases,
         versiones={
-            codigo: EstadoRespuesta(estado=e.estado, por=e.por, el=e.el, notas=e.notas, armo=e.armo)
+            codigo: AprobacionEstadoRespuesta(
+                estado=e.estado, por=e.por, el=e.el, notas=e.notas, armo=e.armo
+            )
             for codigo, e in estados.items()
         },
         eventos=[
-            EventoRespuesta(
+            AprobacionEventoRespuesta(
                 id=e.id,
                 tipo=e.tipo,
                 version=e.version,
@@ -405,13 +407,13 @@ def consultar_obra(
     )
 
 
-@router.get("/pendientes", response_model=list[FilaRespuesta], dependencies=[APROBAR])
+@router.get("/pendientes", response_model=list[AprobacionFilaRespuesta], dependencies=[APROBAR])
 def por_aprobar(
     request: Request,
     activa: CuentaQueAprueba,
     sesion: SesionDep,
     instalacion: SesionInstalacionDep,
-) -> list[FilaRespuesta]:
+) -> list[AprobacionFilaRespuesta]:
     """Lo que espera dictamen en todas las carpetas, lo más antiguo primero."""
     del activa
     _reflejar(instalacion, _caso(request), sesion)
@@ -421,13 +423,13 @@ def por_aprobar(
         raise _sin_base() from None
 
 
-@router.get("/mias", response_model=list[FilaRespuesta], dependencies=[EDITAR])
+@router.get("/mias", response_model=list[AprobacionFilaRespuesta], dependencies=[EDITAR])
 def mias(
     request: Request,
     activa: CuentaQueEdita,
     sesion: SesionDep,
     instalacion: SesionInstalacionDep,
-) -> list[FilaRespuesta]:
+) -> list[AprobacionFilaRespuesta]:
     """Las últimas 20 versiones que la cuenta envió a aprobación, con su dictamen."""
     cuenta = _con_cuenta(activa)
     _reflejar(instalacion, _caso(request), sesion)
@@ -437,13 +439,13 @@ def mias(
         raise _sin_base() from None
 
 
-@router.get("/resumen", response_model=CifraRespuesta, dependencies=[APROBAR])
+@router.get("/resumen", response_model=AprobacionCifraRespuesta, dependencies=[APROBAR])
 def resumen(
     request: Request,
     activa: CuentaQueAprueba,
     sesion: SesionDep,
     instalacion: SesionInstalacionDep,
-) -> CifraRespuesta:
+) -> AprobacionCifraRespuesta:
     """La cifra «Por aprobar»: cuántas versiones esperan dictamen y cuánto lleva la más antigua."""
     del activa
     _reflejar(instalacion, _caso(request), sesion)
@@ -452,7 +454,7 @@ def resumen(
     except SQLAlchemyError:
         raise _sin_base() from None
     dias = 0 if not filas else dias_habiles_entre(filas[0].enviado_el.date(), ahora().date())
-    return CifraRespuesta(
+    return AprobacionCifraRespuesta(
         clave="por_aprobar",
         titulo="Por aprobar",
         actual=str(len(filas)),
@@ -467,12 +469,12 @@ def resumen(
     )
 
 
-@router.post("/abrir", response_model=AbrirRespuesta, dependencies=[APROBAR])
+@router.post("/abrir", response_model=AprobacionAbrirRespuesta, dependencies=[APROBAR])
 def abrir(
-    peticion: AbrirPeticion,
+    peticion: AprobacionAbrirPeticion,
     activa: CuentaQueAprueba,
     instalacion: SesionInstalacionDep,
-) -> AbrirRespuesta:
+) -> AprobacionAbrirRespuesta:
     """Cambia la carpeta de esta sesión a la del envío y la recuerda para la cuenta."""
     cuenta = _con_cuenta(activa)
     ruta = _carpeta(peticion.caso)
@@ -493,11 +495,13 @@ def abrir(
         caso_web.olvidar(cuenta.huella_ficha)
     else:
         caso_web.fijar(cuenta.huella_ficha, ruta)
-    return AbrirRespuesta(caso=ruta.name)
+    return AprobacionAbrirRespuesta(caso=ruta.name)
 
 
-@router.get("/{envio_id}", response_model=DetalleRespuesta, dependencies=[APROBAR])
-def detalle(envio_id: int, activa: CuentaQueAprueba, sesion: SesionDep) -> DetalleRespuesta:
+@router.get("/{envio_id}", response_model=AprobacionDetalleRespuesta, dependencies=[APROBAR])
+def detalle(
+    envio_id: int, activa: CuentaQueAprueba, sesion: SesionDep
+) -> AprobacionDetalleRespuesta:
     """Lo que se aprueba, en solo lectura, con su rastro y quién la envió."""
     try:
         leido = aprobaciones.detalle_de_envio(
@@ -509,7 +513,7 @@ def detalle(envio_id: int, activa: CuentaQueAprueba, sesion: SesionDep) -> Detal
         raise _sin_base() from None
     enviado: EnvioRegistrado = leido.envio
     severidades = [h.severidad for h in leido.hallazgos]
-    return DetalleRespuesta(
+    return AprobacionDetalleRespuesta(
         envio_id=enviado.id,
         proyecto=leido.proyecto,
         obra=leido.obra,
@@ -518,7 +522,7 @@ def detalle(envio_id: int, activa: CuentaQueAprueba, sesion: SesionDep) -> Detal
         moneda=leido.moneda,
         total=_texto(leido.total),
         partidas=[
-            PartidaRespuesta(
+            AprobacionPartidaRespuesta(
                 codigo=p.codigo,
                 descripcion=p.descripcion,
                 unidad=p.unidad,
@@ -528,35 +532,39 @@ def detalle(envio_id: int, activa: CuentaQueAprueba, sesion: SesionDep) -> Detal
             )
             for p in leido.partidas
         ],
-        hallazgos=HallazgosRespuesta(
+        hallazgos=AprobacionHallazgosRespuesta(
             error=sum(1 for s in severidades if s in ("error", "critico")),
             advertencia=severidades.count("advertencia"),
             info=severidades.count("info"),
             lista=[
-                HallazgoRespuesta(regla=h.regla, severidad=h.severidad, descripcion=h.descripcion)
+                AprobacionHallazgoRespuesta(
+                    regla=h.regla, severidad=h.severidad, descripcion=h.descripcion
+                )
                 for h in leido.hallazgos
             ],
         ),
-        rastro=RastroRespuesta(integro=leido.rastro.integro, mensaje=leido.rastro.mensaje),
-        envio=EnvioDeLaVersion(por=enviado.por, el=enviado.el, nota=enviado.nota),
+        rastro=AprobacionRastroRespuesta(
+            integro=leido.rastro.integro, mensaje=leido.rastro.mensaje
+        ),
+        envio=AprobacionEnvioDeLaVersion(por=enviado.por, el=enviado.el, nota=enviado.nota),
         armo=leido.armo,
     )
 
 
 @router.post(
     "/{envio_id}/dictamen",
-    response_model=DictamenRespuesta,
+    response_model=AprobacionDictamenRespuesta,
     status_code=201,
     dependencies=[APROBAR],
 )
 def dictaminar(
     envio_id: int,
-    peticion: DictamenPeticion,
+    peticion: AprobacionDictamenPeticion,
     request: Request,
     activa: CuentaQueAprueba,
     sesion: SesionDeEscrituraDep,
     instalacion: SesionInstalacionDep,
-) -> DictamenRespuesta:
+) -> AprobacionDictamenRespuesta:
     """Registra el dictamen sobre el envío (solo con la cuenta de una persona)."""
     cuenta = _con_cuenta(activa)
     try:
@@ -573,4 +581,4 @@ def dictaminar(
     except SQLAlchemyError:
         raise _sin_base() from None
     _reflejar(instalacion, _caso(request), sesion)
-    return DictamenRespuesta(id=evento, estado=peticion.resultado)
+    return AprobacionDictamenRespuesta(id=evento, estado=peticion.resultado)
