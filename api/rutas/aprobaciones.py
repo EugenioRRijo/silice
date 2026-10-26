@@ -6,7 +6,8 @@ Rutas finas sobre `aplicacion.aprobaciones` (la regla y el rastro, en la carpeta
 
 - `POST ""` (`editar_hoja`) `{proyecto, version, nota}` → 201 `{id, estado, retirada}`.
 - `GET ""?proyecto=` (`editar_hoja`) → `{rastro: {integro, mensaje}, fases, versiones: {código:
-  {estado, por, el, notas, armo}}, eventos: [...], ultima_aprobada}` de la obra en la carpeta de la sesión.
+  {estado, por, el, notas, armo}}, eventos: [...],
+  ultima_aprobada}` de la obra en la carpeta de la sesión.
 - `GET /pendientes` (`aprobar_version`) → las filas del índice en aprobación, de todas las carpetas,
   lo más antiguo primero; antes vuelve a reflejar la carpeta abierta (la repone si se perdió).
 - `GET /mias` (`editar_hoja`, solo con sesión) → las 20 últimas filas que envió la cuenta.
