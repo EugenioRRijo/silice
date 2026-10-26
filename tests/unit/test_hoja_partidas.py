@@ -7,8 +7,12 @@ Todo vive en el borrador (inmutable) y se ve en sus cambios como alta o baja.
 Oráculos a mano (ninguno sale del código bajo prueba):
 
 - «6*3-2» = 18 − 2 = 16; «10/3» = 3,33333… → 3,3333 a cuatro decimales; «6*35» = 210.
-- «0,00005*1» = 0,00005 → a cuatro decimales con redondeo «la mitad hacia arriba» 0,0001 (con
-  el redondeo bancario daría 0,0000).
+- «1,00005*1» = 1,00005 → a cuatro decimales con redondeo «la mitad hacia arriba» 1,0001 (con
+  el redondeo bancario daría 1,0000). La diferencia, 0,00005, cabe en la tolerancia de abajo.
+- «0,00005*1» = 0,00005 → 0,0001 a cuatro decimales: diferencia 0,00005 > 0,001 × 0,00005, así
+  que R1 marcaría la cantidad redondeada como error; se pide escribir la cantidad. «0,00005» con
+  ese cálculo coincide exactamente y vale.
+- 9.999.999.999³ ≈ 10³⁰: con cuatro decimales serían 35 cifras, más de las 28 de un `Decimal`.
 - «50*2» = 100 y «2,50*2» = 5,00: se escriben «100» y «5» (sin exponente ni ceros a la derecha).
 - Tolerancia de la cantidad escrita frente al cálculo: la diferencia no pasa de 0,001 y, como la
   regla R1 la compara en forma relativa (0,001 × el resultado), tampoco de esa fracción.
@@ -157,7 +161,23 @@ def test_sin_cantidad_la_cantidad_es_el_resultado_del_calculo():
 
 def test_el_resultado_se_redondea_a_cuatro_decimales_la_mitad_hacia_arriba():
     assert cantidad_y_regla("", "10/3") == (D("3.3333"), "10/3")
-    assert cantidad_y_regla("", "0,00005*1") == (D("0.0001"), "0.00005*1")
+    assert cantidad_y_regla("", "1,00005*1") == (D("1.0001"), "1.00005*1")
+
+
+def test_si_el_redondeo_rompe_la_tolerancia_de_r1_se_pide_escribir_la_cantidad():
+    with pytest.raises(CalculoInvalido) as error:
+        cantidad_y_regla("", "0,00005*1")
+    assert str(error.value) == (
+        "Con cuatro decimales, el resultado del cálculo pierde precisión: escriba también la "
+        "cantidad, con los decimales que necesite."
+    )
+    assert cantidad_y_regla("0,00005", "0,00005*1") == (D("0.00005"), "0.00005*1")
+
+
+def test_un_resultado_demasiado_grande_se_rechaza():
+    with pytest.raises(CalculoInvalido) as error:
+        cantidad_y_regla("", "9.999.999.999*9.999.999.999*9.999.999.999")
+    assert str(error.value) == "El cálculo da una cifra demasiado grande para una cantidad."
 
 
 def test_el_resultado_no_lleva_exponente_ni_ceros_a_la_derecha():
