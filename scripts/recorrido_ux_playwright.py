@@ -571,15 +571,23 @@ def fijar_letra(pagina: Any, letra: str) -> None:
 
 
 def _escuchar(pagina: Any, consola: list[str], red: list[str]) -> None:
+    # Chromium avisa `net::ERR_ABORTED` de una petición que ya tuvo respuesta (el 204 de
+    # `PUT /v1/sesion/preferencias`, cuyo cuerpo vacío nadie lee): eso no es un fallo de red.
+    respondidas: set[int] = set()
+
+    def al_responder(r: Any) -> None:
+        respondidas.add(id(r.request))
+        if r.status >= 400:
+            red.append(f"{r.status} {r.request.method} {r.url[:120]}")
+
+    def al_fallar(r: Any) -> None:
+        if id(r) not in respondidas:
+            red.append(f"FALLA {r.method} {r.url[:120]} {r.failure}")
+
     pagina.on("console", lambda m: consola.append(m.text[:200]) if m.type == "error" else None)
     pagina.on("pageerror", lambda e: consola.append(f"pageerror: {str(e)[:200]}"))
-    pagina.on("requestfailed", lambda r: red.append(f"FALLA {r.method} {r.url[:120]}"))
-    pagina.on(
-        "response",
-        lambda r: (
-            red.append(f"{r.status} {r.request.method} {r.url[:120]}") if r.status >= 400 else None
-        ),
-    )
+    pagina.on("response", al_responder)
+    pagina.on("requestfailed", al_fallar)
 
 
 def _medir_cargada(
@@ -987,6 +995,7 @@ def medir_mesa(
             _ir_y_esperar(pagina, base, "obras")
             pagina.wait_for_timeout(600)
             fila.update(pagina.evaluate(MESA_JS))
+            fila["desbordan"] = pagina.evaluate(MEDIR_JS)["desbordan"]
             captura = capturas / f"ana_{ancho}_{letra}_{nombre}.png"
             pagina.screenshot(path=str(captura), full_page=True)
             fila["captura"] = captura.name
@@ -1161,6 +1170,7 @@ def medir_mercado(
         )
         pagina.wait_for_timeout(400)
         fila.update(pagina.evaluate(MERCADO_JS))
+        fila["desbordan"] = pagina.evaluate(MEDIR_JS)["desbordan"]
         captura = capturas / f"ana_{ancho}_{letra}_mercado.png"
         pagina.screenshot(path=str(captura), full_page=True)
         fila["captura"] = captura.name
