@@ -1,4 +1,5 @@
 import { Button } from "@carbon/react";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useCallback, useId, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -71,7 +72,7 @@ function EditorDePresupuesto({ id, rev, vista, alAusente, alAceptar, alRecargarB
         a mano se marca en el Estado y puede volver a la calculada.
       </p>
       <p className="cds--type-helper-text-01">
-        Decimales con punto, por ejemplo 2.5: la coma no se acepta. Los cambios se aplican al borrador cuando deja de escribir; no se
+        {AYUDA_CIFRAS} Los cambios se aplican al borrador cuando deja de escribir; no se
         guardan como versión hasta que lo pida.
       </p>
       <AvisoDeEnvio envio={edicion.envio} />

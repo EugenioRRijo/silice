@@ -330,13 +330,14 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     await abrirConRelojFalso();
     const DETALLE = "ambientes, fila 1: largo: «2.5» no se entiende como número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56.";
     alPonerse = () => json({ detalle: DETALLE }, 422);
-    fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "2,5" } });
+    fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "2.5" } });
     await pausa(400);
     const alerta = await esperar(() => aviso());
-    expect(alerta).toHaveTextContent(`${DETALLE}. La hoja sigue con el último borrador válido.`);
+    // El detalle ya termina en punto: la frase de la clásica va después, sin un punto doble.
+    expect(alerta).toHaveTextContent(`${DETALLE} La hoja sigue con el último borrador válido.`);
     const invalida = celda("Largo (m), Ambientes fila 1");
     await esperar(() => expect(invalida).toHaveAttribute("aria-invalid", "true"));
-    expect(invalida).toHaveValue("2,5"); // se queda lo escrito para corregirlo
+    expect(invalida).toHaveValue("2.5"); // se queda lo escrito para corregirlo
     // Carbon señala su «Valor no válido» con aria-errormessage; la descripción accesible es el aviso completo.
     expect(document.getElementById(invalida.getAttribute("aria-describedby")!)).toHaveTextContent(DETALLE);
     expect(celda("Largo (m), Ambientes fila 2")).not.toHaveAttribute("aria-invalid", "true");

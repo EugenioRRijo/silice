@@ -1,4 +1,5 @@
 import { Button } from "@carbon/react";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useCallback, useId, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
@@ -99,9 +100,10 @@ function ContenidoEspacio({
     <div className="silice-hoja__pestana">
       <p className="cds--type-body-compact-01">{vista.ayuda}</p>
       <p className="cds--type-helper-text-01">
-        Decimales con punto, por ejemplo 2.5: la coma no se acepta. Los cambios
-        se aplican al borrador cuando deja de escribir; no se guardan como
-        versión hasta que lo pida.
+        {AYUDA_CIFRAS} En «Vértices» cada punto se escribe x,y,z: ahí la coma
+        separa las coordenadas y los decimales van con punto (0,0,0; 2.5,0,0).
+        Los cambios se aplican al borrador cuando deja de escribir; no se
+        guardan como versión hasta que lo pida.
       </p>
       <ImportarPlano
         id={id}

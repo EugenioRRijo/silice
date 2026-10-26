@@ -1,4 +1,5 @@
 import { useCallback, useId, useState } from "react";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { pedir } from "../../api/cliente";
 import { useAplicacion } from "../../shell/contexto";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
@@ -67,7 +68,7 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
     <div className="silice-hoja__pestana">
       {!compacto && (
       <p className="cds--type-body-compact-01">
-        Los parámetros de costo del borrador. Decimales con punto, por ejemplo 2.5: la coma no se acepta. Cambiarlos recalcula todos los
+        Los parámetros de costo del borrador. {AYUDA_CIFRAS} Cambiarlos recalcula todos los
         APU y el total; los cambios se aplican al borrador cuando deja de escribir y no se guardan como versión hasta que lo pida.
       </p>
       )}

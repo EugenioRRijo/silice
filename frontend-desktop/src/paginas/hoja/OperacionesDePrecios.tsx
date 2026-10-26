@@ -1,4 +1,5 @@
 import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import type { JSX } from "react";
 import { useState } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -78,7 +79,7 @@ function FormularioDeCotizar({ proyecto, version, insumos, anfitrion, alCancelar
       <CampoTexto
         id="hoja-cotizar-precio"
         labelText="Precio cotizado"
-        helperText="Decimales con punto, por ejemplo 2.5."
+        helperText={AYUDA_CIFRAS}
         inputMode="decimal"
         value={precio}
         maxLength={LARGO.precio}
