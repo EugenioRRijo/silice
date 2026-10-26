@@ -2,9 +2,10 @@
 // `{texto, exacto}` y la página solo los formatea: no calcula ni convierte nada a número.
 import { ErrorDeApi } from "../../api/cliente";
 import type { HallazgoInformeRespuesta, InformeAuditoriaRespuesta } from "../../api/tipos";
+import { leerCifra } from "../../indicadores/cifraEscrita";
 
 export const TITULO = "Hoja del proyecto";
-export const SIN_VERSIONES = "Este proyecto aún no tiene versiones";
+export const SIN_VERSIONES = "Esta obra aún no tiene versiones";
 
 // El orden de la página clásica (ui/paginas/hoja.py, PESTANAS).
 export const PESTANAS = [
@@ -67,6 +68,9 @@ export interface Resumen {
   hay_plan: boolean;
   version_mas_nueva: string | null;
   guardado_como: string | null;
+  // Tarea 9: el borrador no tiene espacio (una obra civil) y la Hoja abre en «Presupuesto». La API lo manda siempre; es
+  // opcional solo para los datos de prueba anteriores, que no lo traen (y abren en «Espacio y metrajes»).
+  espacio_vacio?: boolean;
 }
 
 export interface BorradorVivo {
@@ -180,6 +184,11 @@ export interface FilaPresupuesto {
   pu: Monto | null;
   total: Monto | null;
   estado: EstadoFila;
+  // Tarea 9: el renglón es de la versión (se quita) y no del espacio; su nota de medición y el cálculo con que se
+  // agregó, con coma decimal (null si no lo tiene o si su cantidad se escribió después a mano).
+  quitable: boolean;
+  nota: string | null;
+  calculo: string | null;
 }
 
 export interface VistaPresupuesto {
@@ -604,4 +613,64 @@ export function ubicarError(detalle: string, tablas: TablaEspacio[]): UbicacionD
     fila: enteroDeDigitos(m[2]!),
     columna: campo !== undefined && tabla.columnas.some((c) => c.clave === campo) ? campo : null,
   };
+}
+
+// --- Tarea 11: agregar y quitar partidas (rutas de la Tarea 9) ---
+
+// La pestaña con que abre la Hoja: una obra sin espacio (obra civil) abre en «Presupuesto»; las de instalaciones, en
+// «Espacio y metrajes», como siempre.
+export function pestanaInicial(resumen: { espacio_vacio?: boolean }): number {
+  return resumen.espacio_vacio === true ? PESTANAS.indexOf("Presupuesto") : 0;
+}
+
+export const rutaDeAgregarPartida = (id: string) => `/v1/hoja/borradores/${id}/partidas`;
+export const rutaDeQuitarPartida = (id: string) => `/v1/hoja/borradores/${id}/partidas/quitar`;
+
+export interface PartidaEscrita {
+  codigo: string;
+  // Lo tecleado, tal cual: lo interpreta el servidor con la regla de las cifras (una sola conversión).
+  cantidad: string;
+  calculo: string;
+  nota: string;
+}
+
+export function cuerpoDeAgregarPartida(rev: number, partida: PartidaEscrita): { rev: number } & PartidaEscrita {
+  return { rev, codigo: partida.codigo, cantidad: partida.cantidad, calculo: partida.calculo, nota: partida.nota };
+}
+
+export type CampoDePartida = "cantidad" | "calculo";
+
+// Los textos del 422 que son siempre del cálculo (`aplicacion/hoja_partidas.py`).
+const ERRORES_DEL_CALCULO = ["El cálculo", "Escriba el cálculo", "Con cuatro decimales"];
+// Las cifras del cálculo, sin los signos que admite (+ - − * × x / y paréntesis) ni los blancos.
+const SIGNOS_DEL_CALCULO = /[+\-−*×x/()\s]+/;
+
+// El campo junto al que va el error de un 422 de «Agregar partida», o null si el texto no es de un campo. La regla de las
+// cifras vale para los dos: el servidor lee primero el cálculo, así que es suyo si alguna de sus cifras está mal escrita;
+// si no, de la cantidad cuando no hay cálculo o cuando la cantidad está mal escrita. Aquí no se convierte nada: `leerCifra`
+// solo dice si el texto sigue la regla (la misma tabla de oráculos que el servidor).
+export function campoDelErrorDePartida(detalle: string, escrito: { cantidad: string; calculo: string }): CampoDePartida | null {
+  if (ERRORES_DEL_CALCULO.some((inicio) => detalle.startsWith(inicio))) return "calculo";
+  if (detalle.startsWith("La cantidad")) return "cantidad";
+  if (!detalle.includes("Use la coma para los decimales")) return null;
+  if (escrito.calculo.trim() === "") return "cantidad";
+  const cifras = escrito.calculo.split(SIGNOS_DEL_CALCULO).filter((c) => c !== "");
+  if (cifras.some((c) => "error" in leerCifra(c))) return "calculo";
+  if (escrito.cantidad.trim() !== "" && "error" in leerCifra(escrito.cantidad)) return "cantidad";
+  return "calculo";
+}
+
+export interface ComoSeMidio {
+  calculo: string | null;
+  nota: string | null;
+  // Sin cálculo ni nota: de dónde sale la cantidad.
+  texto: string | null;
+}
+
+// Lo que dice la columna «Cómo se midió» de un renglón.
+export function comoSeMidio(fila: Pick<FilaPresupuesto, "quitable" | "calculo" | "nota">): ComoSeMidio {
+  const calculo = fila.calculo ?? null;
+  const nota = fila.nota ?? null;
+  if (calculo !== null || nota !== null) return { calculo, nota, texto: null };
+  return { calculo: null, nota: null, texto: fila.quitable ? "Sin cálculo" : "Sale del espacio" };
 }

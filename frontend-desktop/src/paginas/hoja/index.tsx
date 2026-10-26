@@ -15,6 +15,7 @@ import {
   SIN_VERSIONES,
   TITULO,
   esBorradorAusente,
+  pestanaInicial,
   rotuloDeVersion,
   rutaDeVersiones,
   textoDeCambios,
@@ -377,6 +378,13 @@ function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombre
   };
 
   const [pestana, setPestana] = useState(0);
+  // La pestaña con que abre la obra (Tarea 11): sin espacio, «Presupuesto». Se fija una vez por obra, con su primer borrador;
+  // cambiar de versión no mueve a la persona de la pestaña en que está. Ajuste durante el render, como `existenteVisto`.
+  const [pestanaDe, setPestanaDe] = useState<string | null>(null);
+  if (estado.estado === "listo" && pestanaDe !== proyecto) {
+    setPestanaDe(proyecto);
+    setPestana(pestanaInicial(estado.borrador.resumen));
+  }
   // «Ver en Auditoría» desde el Estado de una fila: va a esa pestaña con el filtro de la fila.
   const [filtro, setFiltro] = useState<FiltroDeAuditoria | null>(null);
   const verEnAuditoria = (f: FiltroDeAuditoria) => {
@@ -437,7 +445,10 @@ function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombre
             ))}
           </Select>
         ) : (
-          <EstadoVacio titulo={SIN_VERSIONES} descripcion="Describa el espacio (ambientes y puntos) o importe un plano, y guarde la primera versión con «Guardar primera versión…»." />
+          <EstadoVacio
+            titulo={SIN_VERSIONES}
+            descripcion="Agregue las partidas en «Presupuesto» (o, en una obra de instalaciones, describa el espacio o importe un plano) y guarde la primera versión con «Guardar primera versión…»."
+          />
         ))}
 
       {estado.estado === "abriendo" && <EsqueletoPagina etiqueta="Abriendo el borrador" />}
@@ -551,7 +562,7 @@ export default function PaginaHoja() {
     <section className="silice-pagina silice-hoja">
       <h1 className="cds--type-heading-04">{TITULO}</h1>
       {proyecto === null ? (
-        <EstadoVacio titulo="Elija un proyecto" descripcion="Use el selector de la cabecera para abrir su hoja." />
+        <EstadoVacio titulo="Elija una obra" descripcion="Use el selector de obra de la cabecera para abrir su hoja." />
       ) : (
         <HojaDeProyecto proyecto={proyecto} nombreProyecto={nombreProyecto ?? null} />
       )}

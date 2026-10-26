@@ -183,6 +183,20 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     [mandar, enviarEdicion],
   );
 
+  // Para una acción con su propio manejo de errores (agregar una partida desde su diálogo): manda ya la edición que espera
+  // la pausa, espera la que va en vuelo y devuelve el `rev` con que quedó el borrador. Quien llama manda su petición con
+  // ese `rev` y pasa el resumen nuevo a la página (`alAceptar`), que trae el `rev` nuevo a este motor.
+  const esperarEnvios = useCallback(async (): Promise<number> => {
+    const m = motor.current;
+    if (m.temporizador !== null) {
+      clearTimeout(m.temporizador);
+      m.temporizador = null;
+      await enviarEdicion();
+    }
+    while (m.enVuelo && m.envioEnCurso !== null) await m.envioEnCurso;
+    return m.rev;
+  }, [enviarEdicion]);
+
   // Al irse de la pestaña con una edición esperando la pausa, se manda en seguida para no perderla.
   useEffect(() => {
     const m = motor.current;
@@ -223,5 +237,5 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
   // Lo último que aceptó el servidor (Esc devuelve un campo a eso).
   const aceptado = useCallback((): E => motor.current.aceptado, []);
 
-  return { estado, envio, error, cambiar, accionar, accionarEnOrden, recargar, aceptado };
+  return { estado, envio, error, cambiar, accionar, accionarEnOrden, esperarEnvios, recargar, aceptado };
 }

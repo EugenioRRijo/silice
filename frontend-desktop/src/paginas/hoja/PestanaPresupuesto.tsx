@@ -1,17 +1,19 @@
 import { Button } from "@carbon/react";
+import { Add } from "@carbon/icons-react";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
+import { ConfirmarQuitar, DialogoAgregarPartida, useFocoAlCerrar } from "./AgregarPartida";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
-import { clavesDeAuditoria, enteroDeDigitos, rotuloDeOrigen, rutaDeVista } from "./logica";
-import type { Resumen, VistaPresupuesto } from "./logica";
+import { clavesDeAuditoria, comoSeMidio, enteroDeDigitos, rotuloDeOrigen, rutaDeQuitarPartida, rutaDeVista } from "./logica";
+import type { FilaPresupuesto, Resumen, VistaPresupuesto } from "./logica";
 import {
   FRASES_DE_RECHAZO,
   cambiarCantidad,
@@ -21,6 +23,7 @@ import {
   ubicarErrorDeCantidad,
 } from "./logicaSecciones";
 import type { EdicionDeCantidades } from "./logicaSecciones";
+import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 
 interface Props {
@@ -40,11 +43,51 @@ interface PropsContenido extends Props {
   alRelectura: () => void;
 }
 
+interface PropsEditor extends PropsContenido {
+  // El editor le da a la pestaña cómo esperar lo que tiene por mandar (antes de agregar una partida).
+  registrarEspera: (esperar: (() => Promise<number>) | null) => void;
+  // Se quitó la partida `codigo`: la pestaña lo dice y lleva el foco a «Agregar partida».
+  alQuitada: (codigo: string) => void;
+  // Lleva el foco a un elemento cuando ya no queda ningún diálogo abierto.
+  enfocar: (id: string) => void;
+}
+
 const PENDIENTE = "Pendiente";
+const ID_AGREGAR = "hoja-agregar-partida-boton";
 
 const idDeCantidad = (n: number | string) => `hoja-cantidades-${n}`;
+const idDeQuitar = (n: number | string) => `hoja-quitar-${n}`;
 
-function EditorDePresupuesto({ id, rev, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura }: PropsContenido) {
+// «Cómo se midió»: el cálculo (en Plex Mono, como se escribió) y la nota; sin ninguno, de dónde sale la cantidad.
+function Medicion({ fila }: { fila: Pick<FilaPresupuesto, "quitable" | "calculo" | "nota"> }) {
+  const { calculo, nota, texto } = comoSeMidio(fila);
+  return (
+    <div className="silice-hoja__medicion">
+      {calculo !== null && (
+        <span>
+          <span className="cds--visually-hidden">Cálculo: </span>
+          <span className="silice-codigo">{calculo}</span>
+        </span>
+      )}
+      {nota !== null && <span className="cds--type-helper-text-01">{nota}</span>}
+      {texto !== null && <span className="cds--type-helper-text-01">{texto}</span>}
+    </div>
+  );
+}
+
+function EditorDePresupuesto({
+  id,
+  rev,
+  vista,
+  alAusente,
+  alAceptar,
+  alRecargarBorrador,
+  alReabrir,
+  alRelectura,
+  registrarEspera,
+  alQuitada,
+  enfocar,
+}: PropsEditor) {
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<EdicionDeCantidades, number>({
@@ -61,20 +104,34 @@ function EditorDePresupuesto({ id, rev, vista, alAusente, alAceptar, alRecargarB
     alAusente,
     alExpirar,
   });
-  const { error } = edicion;
+  const { error, esperarEnvios, accionarEnOrden } = edicion;
   const filaInvalida = error?.ubicacion ?? null;
   const mover = (desde: number, paso: 1 | -1) => document.getElementById(idDeCantidad(desde + paso))?.focus();
+  // La fila que la persona pidió quitar: espera su confirmación.
+  const [porQuitar, setPorQuitar] = useState<{ clave: string; partida: string; boton: string } | null>(null);
+
+  useEffect(() => {
+    registrarEspera(esperarEnvios);
+    return () => registrarEspera(null);
+  }, [registrarEspera, esperarEnvios]);
+
+  const quitar = async () => {
+    if (porQuitar === null) return;
+    const { clave, partida, boton } = porQuitar;
+    setPorQuitar(null);
+    // Primero sale lo escrito que espera la pausa; un error (409, 422) se dice en el aviso de la sección, tal cual.
+    const aceptado = await accionarEnOrden((r) => ({
+      ruta: rutaDeQuitarPartida(id),
+      metodo: "POST",
+      cuerpo: { rev: r, clave },
+      frase: "",
+    }));
+    if (aceptado !== null) alQuitada(partida);
+    else enfocar(boton);
+  };
 
   return (
-    <div className="silice-hoja__pestana">
-      <p className="cds--type-body-compact-01">
-        Las cantidades salen del espacio y los precios de la composición de cada partida. Aquí se edita la cantidad: una cantidad escrita
-        a mano se marca en el Estado y puede volver a la calculada.
-      </p>
-      <p className="cds--type-helper-text-01">
-        {AYUDA_CIFRAS} Los cambios se aplican al borrador cuando deja de escribir; no se
-        guardan como versión hasta que lo pida.
-      </p>
+    <>
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir} />}
       <TablaPaginada
@@ -127,6 +184,12 @@ function EditorDePresupuesto({ id, rev, vista, alAusente, alAceptar, alRecargarB
             },
           },
           {
+            clave: "medicion",
+            titulo: "Cómo se midió",
+            ordenable: false,
+            celda: (f) => <Medicion fila={{ quitable: f.quitable === "si", calculo: f.calculo || null, nota: f.nota || null }} />,
+          },
+          {
             clave: "pu",
             titulo: "Precio unitario",
             numerica: true,
@@ -153,6 +216,26 @@ function EditorDePresupuesto({ id, rev, vista, alAusente, alAceptar, alRecargarB
               />
             ),
           },
+          {
+            clave: "quitar",
+            titulo: "Quitar",
+            ordenable: false,
+            // Solo los renglones de la versión; los del espacio se cambian en «Espacio y metrajes».
+            celda: (f) =>
+              f.quitable === "si" ? (
+                <Button
+                  id={idDeQuitar(f.n!)}
+                  kind="ghost"
+                  size="sm"
+                  aria-label={`Quitar ${f.partida}, Presupuesto fila ${f.n}`}
+                  onClick={() => setPorQuitar({ clave: f.clave!, partida: f.partida!, boton: idDeQuitar(f.n!) })}
+                >
+                  Quitar
+                </Button>
+              ) : (
+                ""
+              ),
+          },
         ]}
         filas={vista.filas.map((f, i) => ({
           id: `renglon-${i}`,
@@ -170,21 +253,113 @@ function EditorDePresupuesto({ id, rev, vista, alAusente, alAceptar, alRecargarB
           total_exacto: f.total?.exacto ?? "",
           estado_severidad: f.estado.severidad ?? "",
           estado_texto: f.estado.texto,
+          quitable: f.quitable ? "si" : "no",
+          calculo: f.calculo ?? "",
+          nota: f.nota ?? "",
         }))}
       />
       <p className="silice-hoja__total cds--type-heading-03">
         Total del presupuesto <Cifra monto={vista.total} unidad={vista.moneda} />
       </p>
+      {porQuitar !== null && (
+        <ConfirmarQuitar
+          partida={porQuitar.partida}
+          alQuitar={() => void quitar()}
+          alCancelar={() => {
+            enfocar(porQuitar.boton);
+            setPorQuitar(null);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+// La pestaña: su explicación, «Agregar partida» (también con el presupuesto vacío) y la tabla. El editor se vuelve a montar
+// cuando cambian los renglones (se agregó o se quitó uno): lo que edita se siembra de la vista nueva.
+function ContenidoPresupuesto(props: PropsContenido) {
+  const { id, rev, vista, alAceptar, alRelectura, alAusente, alRecargarBorrador } = props;
+  const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
+  const enfocar = useFocoAlCerrar();
+  const [aviso, setAviso] = useState("");
+  // Con el editor montado, el `rev` sale de él (después de lo que tenga por mandar); sin renglones, de la página.
+  const espera = useRef<(() => Promise<number>) | null>(null);
+  const revDeLaPagina = useRef(rev);
+  useEffect(() => {
+    revDeLaPagina.current = rev;
+  });
+  const registrarEspera = useCallback((esperar: (() => Promise<number>) | null) => {
+    espera.current = esperar;
+  }, []);
+  const revActual = useCallback(async () => (espera.current !== null ? espera.current() : revDeLaPagina.current), []);
+  const alAgregada = useCallback(
+    (resumen: Resumen, codigo: string) => {
+      alAceptar(resumen);
+      alRelectura();
+      setAviso(`Se agregó ${codigo} al presupuesto.`);
+      cerrar(true);
+    },
+    [alAceptar, alRelectura, cerrar],
+  );
+  const alQuitada = useCallback(
+    (codigo: string) => {
+      setAviso(`Se quitó ${codigo} del presupuesto.`);
+      enfocar(ID_AGREGAR);
+    },
+    [enfocar],
+  );
+  const renglones = vista.filas.map((f) => f.clave).join("\n");
+
+  return (
+    <div className="silice-hoja__pestana">
+      <p className="cds--type-body-compact-01">
+        Las cantidades salen del espacio o de las partidas que agrega con «Agregar partida», y los precios de la composición de cada
+        partida. Aquí se edita la cantidad: una cantidad escrita a mano se marca en el Estado y puede volver a la calculada.
+      </p>
+      <p className="cds--type-helper-text-01">
+        {AYUDA_CIFRAS} Los cambios se aplican al borrador cuando deja de escribir; no se
+        guardan como versión hasta que lo pida.
+      </p>
+      <div className="silice-hoja__acciones">
+        <Button
+          id={ID_AGREGAR}
+          ref={anclaDelBoton}
+          kind="tertiary"
+          size="sm"
+          renderIcon={Add}
+          onClick={() => {
+            setAviso("");
+            abrir();
+          }}
+        >
+          Agregar partida
+        </Button>
+      </div>
+      <p className="cds--type-helper-text-01" role="status">
+        {aviso}
+      </p>
+      {vista.vacio_mensaje !== null ? (
+        <p className="cds--type-body-compact-01">{vista.vacio_mensaje}</p>
+      ) : (
+        <EditorDePresupuesto key={renglones} {...props} registrarEspera={registrarEspera} alQuitada={alQuitada} enfocar={enfocar} />
+      )}
+      {abierto && anfitrion !== null && (
+        <DialogoAgregarPartida
+          id={id}
+          anfitrion={anfitrion}
+          revActual={revActual}
+          alAgregada={alAgregada}
+          alCancelar={() => cerrar(true)}
+          alAusente={alAusente}
+          alRecargarBorrador={alRecargarBorrador}
+        />
+      )}
     </div>
   );
 }
 
-function ContenidoPresupuesto(props: PropsContenido) {
-  if (props.vista.vacio_mensaje !== null) return <p className="cds--type-body-compact-01">{props.vista.vacio_mensaje}</p>;
-  return <EditorDePresupuesto {...props} />;
-}
-
-// Pestaña «Presupuesto»: la cantidad de cada renglón se edita como texto (rebanada 3c-2) y se aplica al borrador del servidor.
+// Pestaña «Presupuesto»: la cantidad de cada renglón se edita como texto (rebanada 3c-2) y se aplica al borrador del servidor;
+// las partidas del catálogo se agregan y se quitan (Tarea 11).
 export function PestanaPresupuesto(props: Props) {
   // Sube cada vez que hay que volver a leer la vista tras una edición: la anterior sigue a la vista mientras llega.
   const [lecturas, setLecturas] = useState(0);

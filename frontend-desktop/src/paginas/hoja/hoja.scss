@@ -193,6 +193,15 @@
   min-inline-size: 7rem;
 }
 
+// «Cómo se midió» (Tarea 11): el cálculo en Plex Mono y la nota debajo; el texto baja de línea, no ensancha la tabla.
+.silice-hoja__medicion {
+  display: grid;
+  gap: 0.125rem;
+  min-inline-size: 8rem;
+  max-inline-size: 16rem;
+  overflow-wrap: anywhere;
+}
+
 // APU editable (3c-3): el cambio de insumo se pliega; sus campos se apilan.
 .silice-hoja__insumo-cuerpo {
   display: grid;
