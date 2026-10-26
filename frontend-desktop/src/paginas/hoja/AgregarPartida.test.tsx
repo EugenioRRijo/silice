@@ -3,8 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { DialogoSalida } from "../../shell/DialogoSalida";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
+import { cancelarSalida } from "../../shell/salida";
+import { olvidarFormularios } from "../../shell/sucio";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, FilaPresupuesto, Resumen, VersionesRespuesta, VistaPresupuesto } from "./logica";
 
@@ -33,11 +36,25 @@ const SESION: SesionRespuesta = {
 const ID = "id-borrador-vivienda-aaaa";
 const RUTA_AGREGAR = `/v1/hoja/borradores/${ID}/partidas`;
 const RUTA_QUITAR = `/v1/hoja/borradores/${ID}/partidas/quitar`;
+const RUTA_CANTIDADES = `/v1/hoja/borradores/${ID}/cantidades`;
 const SIN_RENGLONES = "El presupuesto no tiene renglones todavía.";
 const CALCULO_NO_CUADRA = "El cálculo da 16 y la cantidad es 15: corrija uno de los dos.";
 const FUERA_DEL_CATALOGO = "La partida «OBRA-04» no está en el catálogo: compóngala primero en Componer.";
 const SIN_TASA = "No hay tasa del BCV de los últimos 7 días: cárguela en Índices y vuelva a intentar.";
 const CONFIRMAR_QUITAR = "¿Quitar OBRA-04 del presupuesto? Lo puede descartar antes de guardar.";
+const REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo.";
+const RECARGADO = "Ya se volvió a leer el borrador: puede agregarla otra vez.";
+const CIFRA_EN_LA_FILA_1 =
+  "presupuesto, fila 1 (AF-LLAVE): Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56.";
+
+// Una respuesta que la prueba suelta cuando quiere (para retener una petición en vuelo).
+function diferida() {
+  let soltar: (r: Response) => void = () => undefined;
+  const promesa = new Promise<Response>((resolver) => {
+    soltar = resolver;
+  });
+  return { promesa, soltar };
+}
 
 const SIN_VERSIONES_DE_LA_OBRA: VersionesRespuesta = { proyecto: "VIV-80", moneda: "Bs", por_omision: null, versiones: [] };
 
@@ -130,8 +147,9 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
   let versiones: VersionesRespuesta;
   let abierto: BorradorAbierto;
   let filas: FilaPresupuesto[];
-  let alAgregar: (cuerpo: Cuerpo) => Response;
-  let alQuitar: (cuerpo: Cuerpo) => Response;
+  let alAgregar: (cuerpo: Cuerpo) => Response | Promise<Response>;
+  let alQuitar: (cuerpo: Cuerpo) => Response | Promise<Response>;
+  let alPonerCantidades: (cuerpo: Cuerpo) => Response | Promise<Response>;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -148,6 +166,14 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
       filas = filas.filter((f) => f.clave !== cuerpo.clave);
       return json({ rev: cuerpo.rev + 1, resumen: resumen({ rev: cuerpo.rev + 1, cambios: 0 }) });
     };
+    alPonerCantidades = (cuerpo) => {
+      const puestas = cuerpo.filas as Array<{ clave: string; cantidad: string }>;
+      filas = filas.map((f) => {
+        const puesta = puestas.find((p) => p.clave === f.clave);
+        return puesta ? { ...f, cantidad: puesta.cantidad } : f;
+      });
+      return json({ rev: cuerpo.rev + 1, resumen: resumen({ rev: cuerpo.rev + 1, cambios: 1 }) });
+    };
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = String(ruta);
       const metodo = init?.method ?? "GET";
@@ -157,6 +183,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
       if (url === `/v1/hoja/borradores/${ID}` && metodo === "GET") return json({ id: ID, base: abierto.base, resumen: abierto.resumen });
       if (url === RUTA_AGREGAR && metodo === "POST") return alAgregar(JSON.parse(String(init?.body)) as Cuerpo);
       if (url === RUTA_QUITAR && metodo === "POST") return alQuitar(JSON.parse(String(init?.body)) as Cuerpo);
+      if (url === RUTA_CANTIDADES && metodo === "PUT") return alPonerCantidades(JSON.parse(String(init?.body)) as Cuerpo);
       if (url.endsWith("/vistas/presupuesto")) return json(vista(filas));
       if (url.startsWith("/v1/buscar/partidas")) {
         const q = new URL(url, "http://local").searchParams.get("q") ?? "";
@@ -165,12 +192,38 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
       return json({ detalle: `ruta inesperada ${metodo} ${url}` }, 500);
     });
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    cancelarSalida();
+    olvidarFormularios();
+    vi.unstubAllGlobals();
+  });
 
-  const escrituras = (ruta: string): Cuerpo[] =>
+  const escrituras = (ruta: string, metodo = "POST"): Cuerpo[] =>
     fetchFalso.mock.calls
-      .filter(([r, init]) => String(r) === ruta && init?.method === "POST")
+      .filter(([r, init]) => String(r) === ruta && init?.method === metodo)
       .map(([, init]) => JSON.parse(String(init?.body)) as Cuerpo);
+  const lecturasDelBorrador = () =>
+    fetchFalso.mock.calls.filter(([r, init]) => String(r) === `/v1/hoja/borradores/${ID}` && (init?.method ?? "GET") === "GET").length;
+
+  // La obra con su versión VIV-001 guardada y estos renglones.
+  function conVersion(renglones: FilaPresupuesto[]) {
+    versiones = {
+      ...SIN_VERSIONES_DE_LA_OBRA,
+      por_omision: "VIV-001",
+      versiones: [{ codigo: "VIV-001", fecha: "2026-10-25", motivo: "", origen: "", vigente: true, descartada: false, cambios: 0 }],
+    };
+    abierto = {
+      ...borradorEnBlanco(),
+      base: { proyecto: "VIV-80", version: "VIV-001", vigente: "VIV-001", lista: "Lista de la carpeta", espacio_de: "VIV-001", solo_lectura: false, moneda: "Bs" },
+    };
+    filas = renglones;
+  }
+
+  async function escribirCantidad(fila: number, texto: string) {
+    const campo = await screen.findByRole("textbox", { name: `Cantidad, Presupuesto fila ${fila}` });
+    await userEvent.clear(campo);
+    await userEvent.type(campo, texto);
+  }
   const vistasPedidas = () => fetchFalso.mock.calls.map(([r]) => String(r)).filter((r) => r.includes("/vistas/"));
 
   function montar() {
@@ -189,6 +242,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
             <Route path="/hoja" element={<PaginaHoja />} />
             <Route path="/componer" element={<Ubicacion />} />
           </Routes>
+          <DialogoSalida />
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
     );
@@ -289,6 +343,8 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     expect(within(dialogo).getByRole("textbox", { name: /^Cantidad/ })).not.toHaveAttribute("aria-invalid", "true");
     expect(screen.getByRole("dialog", { name: "Agregar partida" })).toBeInTheDocument();
     expect(screen.queryByRole("table", { name: "Presupuesto" })).toBeNull();
+    // Ronda 2: el foco va al campo del error, no al cuerpo de la página.
+    await waitFor(() => expect(calculo).toHaveFocus());
   });
 
   test("una cantidad mal escrita sin cálculo se marca en «Cantidad»", async () => {
@@ -336,6 +392,133 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
     expect(await within(dialogo).findByText(SIN_TASA)).toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: "Agregar partida" })).toBeInTheDocument();
+    // Ronda 2: el botón se deshabilitó mientras iba la petición; el foco no se pierde en el cuerpo de la página.
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Agregar partida" })).toHaveFocus());
+  });
+
+  // --- ronda 2 del árbitro ---
+
+  test("el POST sale después de la cantidad que esperaba la pausa y con el rev que contestó su PUT", async () => {
+    conVersion([LLAVE_DEL_ESPACIO, PARED]);
+    const put = diferida();
+    alPonerCantidades = () => put.promesa;
+    montar();
+    await screen.findByRole("table", { name: "Presupuesto" });
+    await escribirCantidad(2, "250");
+    // La cantidad salió tras la pausa y sigue en vuelo.
+    await waitFor(() => expect(escrituras(RUTA_CANTIDADES, "PUT")).toHaveLength(1));
+    const dialogo = await abrirDialogo();
+    await elegirPared(dialogo);
+    await userEvent.type(within(dialogo).getByRole("textbox", { name: /^Cantidad/ }), "12");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
+    await new Promise((r) => setTimeout(r, 300));
+    expect(escrituras(RUTA_AGREGAR)).toEqual([]);
+
+    filas = [LLAVE_DEL_ESPACIO, { ...PARED, cantidad: "250" }];
+    put.soltar(json({ rev: 5, resumen: resumen({ rev: 5, cambios: 1 }) }));
+    await waitFor(() =>
+      expect(escrituras(RUTA_AGREGAR)).toEqual([{ rev: 5, codigo: "OBRA-04", cantidad: "12", calculo: "", nota: "" }]),
+    );
+  });
+
+  test("con el rev viejo (409) relee el borrador y la vista, conserva lo escrito y el segundo intento lleva el rev releído", async () => {
+    let primera = true;
+    const normal = alAgregar;
+    alAgregar = (cuerpo) => {
+      if (!primera) return normal(cuerpo);
+      primera = false;
+      abierto = { ...abierto, resumen: resumen({ rev: 7, cambios: 2 }) };
+      return json({ detalle: REV_VIEJO }, 409);
+    };
+    montar();
+    const dialogo = await abrirDialogo();
+    await elegirPared(dialogo);
+    await userEvent.type(within(dialogo).getByRole("textbox", { name: /^Cantidad/ }), "210");
+    await userEvent.type(within(dialogo).getByRole("textbox", { name: "Cálculo (opcional)" }), "6*35");
+    await userEvent.type(within(dialogo).getByRole("textbox", { name: "Nota de medición (opcional)" }), "muro norte");
+    const leidasAntes = lecturasDelBorrador();
+    const vistasAntes = vistasPedidas().length;
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
+
+    expect(await within(dialogo).findByText(`${REV_VIEJO} ${RECARGADO}`)).toBeInTheDocument();
+    await waitFor(() => expect(lecturasDelBorrador()).toBe(leidasAntes + 1));
+    await waitFor(() => expect(vistasPedidas().length).toBeGreaterThan(vistasAntes));
+    expect(screen.getByRole("dialog", { name: "Agregar partida" })).toBeInTheDocument();
+    expect(within(dialogo).getByRole("combobox", { name: "Partida" })).toHaveValue("OBRA-04 · Pared de bloques de arcilla de 15 cm");
+    expect(within(dialogo).getByRole("textbox", { name: /^Cantidad/ })).toHaveValue("210");
+    expect(within(dialogo).getByRole("textbox", { name: "Cálculo (opcional)" })).toHaveValue("6*35");
+    expect(within(dialogo).getByRole("textbox", { name: "Nota de medición (opcional)" })).toHaveValue("muro norte");
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
+    await waitFor(() => expect(escrituras(RUTA_AGREGAR).map((c) => c.rev)).toEqual([0, 7]));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Agregar partida" })).toBeNull());
+  });
+
+  test("al agregar, la cantidad que el servidor rechazó en otra fila sigue escrita y su aviso también", async () => {
+    conVersion([LLAVE_DEL_ESPACIO, PARED]);
+    alPonerCantidades = () => json({ detalle: CIFRA_EN_LA_FILA_1 }, 422);
+    alAgregar = (cuerpo) => {
+      filas = [...filas, { ...PARED, clave: "OBRA-04|a-mano:2", cantidad: "12" }];
+      return json({ rev: cuerpo.rev + 1, resumen: resumen({ rev: cuerpo.rev + 1, cambios: 1 }), clave: "OBRA-04|a-mano:2" });
+    };
+    montar();
+    await screen.findByRole("table", { name: "Presupuesto" });
+    await escribirCantidad(1, "2.5");
+    await screen.findByText(/presupuesto, fila 1 \(AF-LLAVE\): Use la coma/);
+
+    const dialogo = await abrirDialogo();
+    await elegirPared(dialogo);
+    await userEvent.type(within(dialogo).getByRole("textbox", { name: /^Cantidad/ }), "12");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
+    await waitFor(() => expect(screen.getAllByRole("textbox", { name: /^Cantidad, Presupuesto fila/ })).toHaveLength(3));
+    expect(screen.getByRole("textbox", { name: "Cantidad, Presupuesto fila 1" })).toHaveValue("2.5");
+    expect(screen.getByText(/presupuesto, fila 1 \(AF-LLAVE\): Use la coma/)).toBeInTheDocument();
+  });
+
+  test("lo escrito en otra fila mientras va «Quitar» sale después, una sola vez, y no repite el quitar", async () => {
+    conVersion([LLAVE_DEL_ESPACIO, PARED]);
+    const quitada = diferida();
+    alQuitar = () => quitada.promesa;
+    montar();
+    await screen.findByRole("table", { name: "Presupuesto" });
+    await userEvent.click(screen.getByRole("button", { name: "Quitar OBRA-04, Presupuesto fila 2" }));
+    const confirmacion = await screen.findByRole("alertdialog", { name: "Quitar partida" });
+    await userEvent.click(within(confirmacion).getByRole("button", { name: "Quitar" }));
+    await waitFor(() => expect(escrituras(RUTA_QUITAR)).toHaveLength(1));
+
+    await escribirCantidad(1, "4");
+    await new Promise((r) => setTimeout(r, 700)); // pasa la pausa con el quitar en vuelo
+    filas = [LLAVE_DEL_ESPACIO];
+    quitada.soltar(json({ rev: 1, resumen: resumen({ rev: 1, cambios: 1 }) }));
+
+    await waitFor(() =>
+      expect(escrituras(RUTA_CANTIDADES, "PUT")).toEqual([{ rev: 1, filas: [{ clave: LLAVE_DEL_ESPACIO.clave, cantidad: "4" }] }]),
+    );
+    await waitFor(() => expect(screen.queryByText("Pared de bloques de arcilla de 15 cm")).toBeNull());
+    expect(escrituras(RUTA_QUITAR)).toHaveLength(1);
+    expect(screen.getByRole("textbox", { name: "Cantidad, Presupuesto fila 1" })).toHaveValue("4");
+  });
+
+  test("«Componer una partida nueva» con algo escrito pregunta antes; «Quedarme» conserva lo escrito", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    await userEvent.type(within(dialogo).getByRole("textbox", { name: /^Cantidad/ }), "210");
+    await userEvent.type(within(dialogo).getByRole("textbox", { name: "Nota de medición (opcional)" }), "muro norte");
+    const partida = within(dialogo).getByRole("combobox", { name: "Partida" });
+    await userEvent.type(partida, "OBRA-99");
+    await userEvent.click(await screen.findByRole("option", { name: "Componer una partida nueva con el código «OBRA-99»" }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Quedarme" }));
+    expect(screen.queryByTestId("ubicacion")).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Agregar partida" })).toBeInTheDocument();
+    expect(within(dialogo).getByRole("textbox", { name: /^Cantidad/ })).toHaveValue("210");
+    expect(within(dialogo).getByRole("textbox", { name: "Nota de medición (opcional)" })).toHaveValue("muro norte");
+
+    await userEvent.clear(partida);
+    await userEvent.type(partida, "OBRA-99");
+    await userEvent.click(await screen.findByRole("option", { name: "Componer una partida nueva con el código «OBRA-99»" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Salir y descartar" }));
+    expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/componer?codigo=OBRA-99&volver=hoja");
   });
 
   test("«Componer una partida nueva» lleva a Componer con el código y la vuelta a la Hoja", async () => {
