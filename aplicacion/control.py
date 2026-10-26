@@ -27,6 +27,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from aplicacion.causas import causas_de_las_filas
+from aplicacion.tablas_causas import guardar_causas
 from core import models
 from core.budget.calendario import dia_habil
 from core.budget.control import (
@@ -320,11 +322,15 @@ def registrar_y_controlar(
     precios: PreciosDelCorte | None = None,
 ) -> ResultadoControl:
     """UC-19 4 y 5: registra la valuación y calcula al corte (su fecha *hasta*) el informe de
-    control, los indicadores, las alertas y la reproyección. Es lo que mide RNF-15."""
+    control, los indicadores, las alertas y la reproyección. Es lo que mide RNF-15.
+
+    La causa de retraso de cada línea (clave «Causa» de la fila, MP-7) se guarda en la misma
+    transacción que la valuación; una causa desconocida la rechaza entera."""
     fin = _fecha(hasta, "hasta")
 
     def accion():
-        registrar_valuacion(
+        causas = causas_de_las_filas(filas)
+        valuacion = registrar_valuacion(
             sesion,
             proyecto,
             numero=numero,
@@ -336,6 +342,7 @@ def registrar_y_controlar(
             fuente=fuente,
             responsable=responsable,
         )
+        guardar_causas(sesion, valuacion.id, causas, valuacion.fecha_hora)
 
     _escribir(sesion, accion)
     return calcular_el_control(sesion, proyecto, catalogo, corte=fin, precios=precios)

@@ -6,9 +6,10 @@ propia:
 - `GET /linea-base` y `POST /linea-base`, `POST /parametros`: la línea base vigente, su
   declaración y los parámetros de control con su naturaleza;
 - `GET /valuaciones`, `POST /valuaciones`, `POST /valuaciones/{id}/anular`, `POST /costos`, `POST
-  /importar/informe` y `POST /importar`: las valuaciones, su anulación, los costos y el XLSX;
-- `GET /calculo`: el valor ganado, las alertas y la reproyección, que se calculan siempre (UC-20 1
-  a 3);
+  /importar/informe` y `POST /importar`: las valuaciones (con la causa de retraso de cada línea y la
+  lista de causas que se pueden elegir, MP-7), su anulación, los costos y el XLSX;
+- `GET /calculo`: el valor ganado, las alertas, la reproyección y el atraso por partida con su
+  causa (MP-7), que se calculan siempre (UC-20 1 a 3);
 - `POST /recuperacion/opciones` y `POST /recuperacion/elegir`: las opciones a pedido y la
   decisión.
 
@@ -37,6 +38,7 @@ from api.archivos import guardar_subida
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import control as logica
+from aplicacion.causas import CAUSAS, atrasos
 from aplicacion.proyectos import resolver_proyecto
 from core.budget.control import ResultadoControl
 from core.catalog import Catalogo
@@ -238,12 +240,22 @@ class Anulable(BaseModel):
     rotulo: str
 
 
+class CausaRespuesta(BaseModel):
+    """Una causa de retraso que se puede elegir en una línea: su clave y su nombre."""
+
+    clave: str
+    nombre: str
+
+
 class ValuacionesRespuesta(BaseModel):
     tiene_linea_base: bool
     filas: list[Fila]
     aviso: str = ""
     anulables: list[Anulable]
     corte_por_defecto: str | None
+    causas: list[CausaRespuesta] = Field(
+        default_factory=lambda: [CausaRespuesta(clave=c, nombre=n) for c, n in CAUSAS.items()]
+    )
 
 
 @router.get("/valuaciones", response_model=ValuacionesRespuesta)
@@ -278,6 +290,8 @@ class LineaDeValuacion(BaseModel):
     cantidad: str = ""
     fecha_medicion: str = ""
     observacion: str = ""
+    #: La clave de la causa del retraso (`GET /valuaciones`, `causas`) o nula si no hay.
+    causa: str | None = None
 
 
 class RegistrarValuacion(BaseModel):
@@ -309,6 +323,7 @@ def registrar_valuacion(
             "Cantidad": linea.cantidad,
             "Fecha de medicion": linea.fecha_medicion,
             "Observacion": linea.observacion,
+            "Causa": linea.causa,
         }
         for linea in peticion.lineas
     ]
@@ -444,6 +459,15 @@ class PlanReproyectado(BaseModel):
     filas: list[Fila]
 
 
+class AtrasoRespuesta(BaseModel):
+    """Una partida que termina después de su plan: días hábiles, causa (clave o nula) y la frase."""
+
+    codigo: str
+    dias: int
+    causa: str | None
+    texto: str
+
+
 class CalculoRespuesta(BaseModel):
     estado: str
     corte: str | None = None
@@ -462,6 +486,7 @@ class CalculoRespuesta(BaseModel):
     plan: PlanReproyectado | None = None
     decisiones: list[Fila] = Field(default_factory=list)
     versiones_revaloradas: list[str] = Field(default_factory=list)
+    atrasos: list[AtrasoRespuesta] = Field(default_factory=list)
 
 
 def _texto(valor: object) -> str:
@@ -534,6 +559,10 @@ def calculo(
         plan=PlanReproyectado(columnas=list(columnas), filas=plan),
         decisiones=logica.filas_de_decisiones(sesion, proyecto),
         versiones_revaloradas=logica.versiones_revaloradas(sesion, proyecto),
+        atrasos=[
+            AtrasoRespuesta(codigo=a.codigo, dias=a.dias, causa=a.causa, texto=a.texto)
+            for a in atrasos(sesion, resultado)
+        ],
     )
 
 

@@ -12,6 +12,7 @@ import type { FilaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
 import {
   COLUMNAS_ALERTAS,
+  COLUMNAS_ATRASOS,
   COLUMNAS_DECISIONES,
   COLUMNAS_INDICADORES,
   COLUMNAS_OPCIONES,
@@ -23,6 +24,7 @@ import {
   descripcionEsVe,
   errorDeCifra,
   etiquetaDeCodigo,
+  filasDeAtrasos,
   notaDeOpcion,
   partirUmbral,
   severidadVisible,
@@ -202,6 +204,24 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
           )}
           filas={conId(calculo.alertas)}
         />
+      </section>
+      <section className="silice-control__bloque" aria-labelledby="control-atrasos">
+        <h2 id="control-atrasos" className="cds--type-heading-compact-02">
+          Atraso por partida
+        </h2>
+        {calculo.atrasos.length === 0 ? (
+          <p className="cds--type-body-compact-01">Ninguna partida va atrasada contra su plan.</p>
+        ) : (
+          <TablaDensa
+            etiqueta="Atraso por partida"
+            columnas={columnasDe(COLUMNAS_ATRASOS, ["Días de atraso"])}
+            filas={conId(filasDeAtrasos(calculo.atrasos))}
+          />
+        )}
+        <p className="silice-control__nota cds--type-helper-text-01">
+          Días hábiles que cada partida termina después de su plan, según la reproyección. La causa es la última que se
+          declaró para la partida en una valuación que cuenta.
+        </p>
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-terminos">
         <h2 id="control-terminos" className="cds--type-heading-compact-02">

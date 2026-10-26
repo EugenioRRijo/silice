@@ -135,12 +135,28 @@ export interface LineaBase {
   parametros: ParametroDeControl[];
 }
 
+// MP-7: una causa de retraso que se puede elegir en una linea de valuacion (la lista la da la API, en su orden).
+export interface CausaDeRetraso {
+  clave: string;
+  nombre: string;
+}
+
 export interface Valuaciones {
   tiene_linea_base: boolean;
   filas: Fila[];
   aviso: string;
   anulables: { id: number; rotulo: string }[];
   corte_por_defecto: string | null;
+  causas: CausaDeRetraso[];
+}
+
+// MP-7: una partida que termina despues de su plan. El texto ya viene armado por la API («A atrasada 5 días: Compra
+// tardía»); la pantalla solo pone los dias en es-VE en su columna.
+export interface AtrasoDePartida {
+  codigo: string;
+  dias: number;
+  causa: string | null;
+  texto: string;
 }
 
 export interface PuntoDeCurva {
@@ -168,6 +184,7 @@ export interface Calculo {
   plan: { columnas: string[]; filas: Fila[] } | null;
   decisiones: Fila[];
   versiones_revaloradas: string[];
+  atrasos: AtrasoDePartida[];
 }
 
 // Un supuesto de una opcion en sus tres ranuras: nombre y valor ya con tilde, la naturaleza como codigo del nucleo.
@@ -262,6 +279,7 @@ export const COLUMNAS_INDICADORES = ["Indicador", "Valor", "En la otra moneda", 
 export const COLUMNAS_ALERTAS = ["Alerta", "Severidad", "Descripcion", "Observado", "Umbral"];
 export const COLUMNAS_REPROYECCION = ["Partida", "Indice", "Fin (dia habil)", "Nota"];
 export const COLUMNAS_DECISIONES = ["Version", "Opcion", "Corte", "Termino", "Fuente", "Responsable"];
+export const COLUMNAS_ATRASOS = ["Partida", "Días de atraso", "Qué pasa"];
 export const COLUMNAS_OPCIONES = [
   "Opcion",
   "Termino",
@@ -370,18 +388,36 @@ export function cuerpoDeOpciones(proyecto: string, filtros: Filtros, objetivo: s
   };
 }
 
-// Las filas de una valuacion tal como las pide la API: las vacias se ignoran alla.
+// Las filas de una valuacion tal como las pide la API: las vacias se ignoran alla. `causa` es la clave de la causa del
+// retraso elegida («» = sin causa).
 export interface LineaEditable {
   partida: string;
   cantidad: string;
   fecha_medicion: string;
   observacion: string;
+  causa: string;
 }
 
-export const LINEA_VACIA: LineaEditable = { partida: "", cantidad: "", fecha_medicion: "", observacion: "" };
+export const LINEA_VACIA: LineaEditable = { partida: "", cantidad: "", fecha_medicion: "", observacion: "", causa: "" };
 
-export function sinLineasVacias(lineas: LineaEditable[]): LineaEditable[] {
+export function sinLineasVacias<T extends { partida: string; cantidad: string }>(lineas: T[]): T[] {
   return lineas.filter((l) => l.partida.trim() !== "" || l.cantidad.trim() !== "");
+}
+
+// Una linea como la pide la API: la cantidad escrita con coma viaja con punto y sin causa elegida va `null`.
+export function lineaParaApi(l: LineaEditable) {
+  return {
+    partida: l.partida,
+    cantidad: cifraParaApi(l.cantidad),
+    fecha_medicion: l.fecha_medicion,
+    observacion: l.observacion,
+    causa: l.causa || null,
+  };
+}
+
+// Los atrasos como filas de `TablaDensa` (las claves son los titulos de `COLUMNAS_ATRASOS`).
+export function filasDeAtrasos(atrasos: AtrasoDePartida[]): Fila[] {
+  return atrasos.map((a) => ({ Partida: a.codigo, "Días de atraso": String(a.dias), "Qué pasa": a.texto }));
 }
 
 // Resultado de una accion que escribe: en curso, con su mensaje de exito o con su error.

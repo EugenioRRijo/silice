@@ -16,12 +16,13 @@ import {
   conId,
   errorDeCarga,
   errorDeCifra,
+  lineaParaApi,
   rutaDe,
   sinLineasVacias,
   useAccion,
   useCargaSuave,
 } from "./logica";
-import type { LineaEditable, Valuaciones } from "./logica";
+import type { CausaDeRetraso, LineaEditable, Valuaciones } from "./logica";
 import { fechaDeRanura } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
 
@@ -40,7 +41,7 @@ function Resultado({ exito, error }: { exito: string; error: unknown }) {
   );
 }
 
-function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => void }) {
+function Registrar({ proyecto, causas, alCambiar }: { proyecto: string; causas: CausaDeRetraso[]; alCambiar: () => void }) {
   const { alExpirar } = useAplicacion();
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
   const [v, setV] = useState({ numero: "", desde: "", hasta: "", fecha: "", inspector: "", fuente: "" });
@@ -64,7 +65,7 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
         cuerpo: {
           proyecto,
           ...v,
-          lineas: sinLineasVacias(lineas).map((l) => ({ ...l, cantidad: cifraParaApi(l.cantidad) })),
+          lineas: sinLineasVacias(lineas).map(lineaParaApi),
         },
       });
       return `Valuación registrada: corte ${fechaDeRanura(r.corte)}, ${r.hallazgos} hallazgo(s) en la revisión de la valuación (${r.errores} con severidad Error).`;
@@ -95,6 +96,12 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
               />
               <CampoTexto id={`val-m-${i}`} type="date" labelText={`Fecha de medición ${i + 1}`} value={l.fecha_medicion} onChange={(e) => cambiarLinea(i, "fecha_medicion", e.target.value)} />
               <CampoTexto id={`val-o-${i}`} labelText={`Observación ${i + 1}`} value={l.observacion} onChange={(e) => cambiarLinea(i, "observacion", e.target.value)} />
+              <Select id={`val-r-${i}`} labelText={`Causa del retraso ${i + 1}`} value={l.causa} onChange={(e) => cambiarLinea(i, "causa", e.target.value)}>
+                <SelectItem value="" text="Sin causa" />
+                {causas.map((c) => (
+                  <SelectItem key={c.clave} value={c.clave} text={c.nombre} />
+                ))}
+              </Select>
             </div>
           ))}
           <Button kind="ghost" size="sm" onClick={() => setLineas([...lineas, { ...LINEA_VACIA }])}>
@@ -289,7 +296,7 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         <h2 id="control-escribir" className="cds--type-heading-compact-02">
           Registrar, importar, anular y anotar costos
         </h2>
-        <Registrar proyecto={proyecto} alCambiar={alCambiar} />
+        <Registrar proyecto={proyecto} causas={datos.causas} alCambiar={alCambiar} />
         <Importar proyecto={proyecto} alCambiar={alCambiar} />
         <Anular proyecto={proyecto} datos={datos} alCambiar={alCambiar} />
         <Costo proyecto={proyecto} alCambiar={alCambiar} />
