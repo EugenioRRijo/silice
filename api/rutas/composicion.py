@@ -9,8 +9,13 @@ solo se traducen las tablas de texto y se arma la respuesta. Montos y decimales 
 - `evaluar` no escribe y nunca responde 4xx por una tabla a medias: `estado: "incompleto"` con el
   mensaje de la conversión.
 - `guardar` confirma (`commit`) solo con resultado: 422 sin escribir si faltan las condiciones
-  (RF-33), si la composición es inválida o si `motivo_para_no_reemplazar` da motivo; 409 sin lista
-  de precios vigente (`CatalogoIncompleto`, manejador global de `api/main.py`).
+  (RF-33), si la composición es inválida o si `motivo_para_no_reemplazar` da motivo; 409 con el
+  mensaje de `SinListaParaArmar` sin lista para armar o con la vigente en otra moneda que la
+  carpeta (MP-1, Tarea 3: los precios van a la lista de hoy).
+- `prever` (MP-1, Tarea 3; D-MP2) recibe el mismo cuerpo que `guardar` y dice, sin escribir nada,
+  en qué lista quedarían los precios (`lista_nueva` si el guardado la crearía) y qué insumos
+  quedarían como variante con su precio en la lista y el tecleado. Los mismos 409 y 422 que
+  `guardar`; su 422 de forma no repite lo enviado (`RutaSinEco`).
 """
 
 from __future__ import annotations
@@ -24,22 +29,36 @@ from pydantic import BaseModel
 
 from api.acceso import EDITAR
 from api.dependencias import SesionDep
+from api.sin_eco import RutaSinEco
 from aplicacion.composicion import (
     ComposicionInvalida,
     Evaluacion,
     Precarga,
+    Prevision,
     TablasDeTexto,
     evaluar_composicion,
     filas_desde_composicion,
     guardar_desde_tablas,
     precarga_de_partida,
     presentar,
+    prever_guardado,
     similares_con_composicion,
     sugerencias_de_referencia,
 )
+from aplicacion.listas_para_armar import SinListaParaArmar
 from core.contracts import Dominio, ModalidadManoObra, ResultadoAPU
 
 router = APIRouter(prefix="/v1/composicion", tags=["composicion"])
+
+#: El 422 de forma de `prever`: fijo, sin repetir lo enviado.
+MENSAJE_FORMA_PREVER = (
+    "La composición enviada no tiene la forma esperada: revise la cabecera, las tres tablas, la "
+    "fecha y las condiciones."
+)
+
+
+class _RutaPrever(RutaSinEco):
+    mensaje_por_omision = MENSAJE_FORMA_PREVER
 
 
 # --- Esquemas (junto a la ruta, plan de la sesión 2b §3) ---------------------------------------
@@ -160,6 +179,30 @@ class GuardadoRespuesta(BaseModel):
     avisos: list[str]
 
 
+class ListaDeHoy(BaseModel):
+    """La lista donde quedarían los precios; `fecha` en ISO (`aaaa-mm-dd`)."""
+
+    nombre: str
+    moneda: str
+    fecha: str
+
+
+class VariantePrevista(BaseModel):
+    """Montos como texto con punto, exactos (`Decimal` en notación fija)."""
+
+    descripcion: str
+    unidad: str
+    precio_en_lista: str
+    precio_tecleado: str
+    codigo_variante: str
+
+
+class PrevisionRespuesta(BaseModel):
+    lista: ListaDeHoy
+    lista_nueva: bool
+    variantes: list[VariantePrevista]
+
+
 # --- Traducción ---------------------------------------------------------------------------------
 
 
@@ -203,6 +246,27 @@ def _evaluacion(evaluacion: Evaluacion) -> EvaluacionRespuesta:
             pu_estimado=f"{contraste.pu_estimado:f}",
             dentro_de_rango=contraste.dentro_de_rango,
         ),
+    )
+
+
+def _prevision(prevision: Prevision) -> PrevisionRespuesta:
+    return PrevisionRespuesta(
+        lista=ListaDeHoy(
+            nombre=prevision.lista.nombre,
+            moneda=prevision.lista.moneda,
+            fecha=prevision.lista.fecha.isoformat(),
+        ),
+        lista_nueva=prevision.lista_nueva,
+        variantes=[
+            VariantePrevista(
+                descripcion=variante.descripcion,
+                unidad=variante.unidad,
+                precio_en_lista=f"{variante.precio_en_lista:f}",
+                precio_tecleado=f"{variante.precio_tecleado:f}",
+                codigo_variante=variante.codigo_variante,
+            )
+            for variante in prevision.variantes
+        ],
     )
 
 
@@ -307,6 +371,8 @@ def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
             condiciones=peticion.condiciones,
             justificacion=peticion.justificacion,
         )
+    except SinListaParaArmar as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     except ComposicionInvalida as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if resultado.precio_unitario is None or resultado.mensaje is None:
@@ -319,3 +385,44 @@ def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
         justificada=resultado.justificada,
         avisos=list(resultado.avisos),
     )
+
+
+def prever(sesion: SesionDep, peticion: PeticionGuardar) -> PrevisionRespuesta:
+    """Lo que haría `guardar` con el mismo cuerpo (la lista de hoy y las variantes), sin escribir
+    nada: `prever_guardado` lo deshace siempre y aquí no se confirma."""
+    try:
+        prevision = prever_guardado(
+            sesion,
+            peticion.codigo,
+            peticion.descripcion,
+            peticion.unidad,
+            peticion.dominio,
+            peticion.rendimiento,
+            _filas(peticion.materiales),
+            _filas(peticion.equipos),
+            _filas(peticion.mano_obra),
+            fecha=peticion.fecha,
+            condiciones=peticion.condiciones,
+            justificacion=peticion.justificacion,
+        )
+    except SinListaParaArmar as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
+    except ComposicionInvalida as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return _prevision(prevision)
+
+
+# `add_api_route` para fijar la clase de la ruta (422 sin eco) solo en `prever`: las demás rutas de
+# Componer conservan la de siempre.
+router.add_api_route(
+    "/prever",
+    prever,
+    methods=["POST"],
+    response_model=PrevisionRespuesta,
+    dependencies=EDITAR,
+    responses={
+        409: {"description": "Sin lista para armar, o la vigente en otra moneda que la carpeta."},
+        422: {"description": "Sin condiciones, composición inválida o cabecera distinta."},
+    },
+    route_class_override=_RutaPrever,
+)

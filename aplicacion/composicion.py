@@ -34,6 +34,7 @@ from types import ModuleType
 from typing import TYPE_CHECKING
 
 from aplicacion.cifras import CifraInvalida, cifra_escrita, texto_de_cifra
+from aplicacion.listas_para_armar import ListaParaArmar, lista_de_hoy, lista_para_armar
 from core.catalog import (
     Catalogo,
     CatalogoIncompleto,
@@ -64,6 +65,8 @@ from core.verification.texto import formatear_decimal, normalizar_texto
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
+    from core import models
+    from core.catalog import ResumenCarga
     from ml.anomaly import VeredictoRendimiento
     from ml.normalization import Propuesta
 
@@ -859,8 +862,45 @@ class Guardado:
             raise ValueError("un Guardado lleva exactamente uno de los dos: resultado o motivo")
 
 
+@dataclass(frozen=True, slots=True)
+class _Escrito:
+    """Lo que escribió un guardado: la lista donde quedaron los precios y el resumen del núcleo
+    (`ResumenCarga.variantes`, los insumos creados por llegar con otro precio)."""
+
+    lista: models.ListaPrecios
+    resumen: ResumenCarga
+
+
+def _guardar_composicion(
+    sesion: Session,
+    composicion: ComposicionAPU,
+    dominio: Dominio,
+    fecha: date,
+    condiciones: str,
+) -> tuple[Guardado, _Escrito | None]:
+    """`guardar_composicion` con lo que escribió (`None` con motivo: no escribió nada)."""
+    catalogo = Catalogo(sesion)
+    try:
+        partida = catalogo.partida(composicion.codigo_partida)
+    except KeyError:
+        partida = None
+    else:
+        motivo = motivo_para_no_reemplazar(partida.descripcion, partida.unidad, composicion)
+        if motivo is not None:
+            return Guardado(motivo=motivo), None
+    # MP-1, Tarea 3 (O-13): los precios tecleados van a la lista para armar de `fecha`, derivada
+    # de la vigente si hace falta; nunca a una lista vieja. Se pide después del motivo para no
+    # crear una lista que no se usará.
+    lista = lista_de_hoy(sesion, fecha, nueva_si_usada=False)
+    if partida is None:
+        resumen = catalogo.cargar_composicion(composicion, lista, dominio, fecha, condiciones)
+    else:
+        resumen = catalogo.reemplazar_composicion(composicion, lista, dominio, fecha, condiciones)
+    return Guardado(resultado=desglose(composicion)), _Escrito(lista, resumen)
+
+
 def guardar_composicion(
-    catalogo: Catalogo,
+    sesion: Session,
     composicion: ComposicionAPU,
     dominio: Dominio,
     fecha: date,
@@ -871,19 +911,12 @@ def guardar_composicion(
     Sobre una partida existente, `motivo_para_no_reemplazar` decide antes de escribir: una
     composicion sin lineas borraria el desglose, y una cabecera distinta se descartaria en silencio
     (`reemplazar_composicion` solo sustituye lineas y rendimiento). En ese caso devuelve el motivo
-    y no escribe nada. **No confirma**: el `commit` lo decide la pagina.
+    y no escribe nada. Los precios van a la lista de hoy (`lista_de_hoy` con
+    `nueva_si_usada=False`, MP-1 Tarea 3): `SinListaParaArmar` sin lista para armar o con la
+    vigente en otra moneda que la carpeta, antes de escribir. **No confirma**: el `commit` lo
+    decide quien llama.
     """
-    lista = catalogo.lista_vigente(fecha)
-    try:
-        partida = catalogo.partida(composicion.codigo_partida)
-    except KeyError:
-        catalogo.cargar_composicion(composicion, lista, dominio, fecha, condiciones)
-    else:
-        motivo = motivo_para_no_reemplazar(partida.descripcion, partida.unidad, composicion)
-        if motivo is not None:
-            return Guardado(motivo=motivo)
-        catalogo.reemplazar_composicion(composicion, lista, dominio, fecha, condiciones)
-    return Guardado(resultado=desglose(composicion))
+    return _guardar_composicion(sesion, composicion, dominio, fecha, condiciones)[0]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1227,13 +1260,46 @@ def guardar_desde_tablas(
     """El botón «Guardar composicion» de la página (`_guardar`), sin pintar y **sin confirmar**.
 
     `ComposicionInvalida` si faltan las condiciones (RF-33) o la composición no es válida, antes
-    de escribir nada; `CatalogoIncompleto` (de `Catalogo.lista_vigente`) sin lista vigente a
-    `fecha`, tampoco escribe. Sobre una partida existente, `motivo_para_no_reemplazar` decide
+    de escribir nada; `SinListaParaArmar` sin lista para armar a `fecha` o con la vigente en otra
+    moneda que la carpeta (MP-1, Tarea 3), tampoco escribe. Los precios van a la lista de hoy
+    (`guardar_composicion`). Sobre una partida existente, `motivo_para_no_reemplazar` decide
     (`ResultadoGuardado.motivo`). UC-06 4a: con la advertencia de rango a la vista (la misma que
     `evaluar_composicion`, sobre el histórico de antes de guardar), la justificación se registra
     en la misma transacción solo si el guardado registró un rendimiento nuevo y hay texto; si no,
     `avisos` trae el mensaje de la página.
     """
+    return _guardar_desde_tablas(
+        sesion,
+        codigo,
+        descripcion,
+        unidad,
+        dominio,
+        rendimiento,
+        filas_materiales,
+        filas_equipos,
+        filas_mano_obra,
+        fecha=fecha,
+        condiciones=condiciones,
+        justificacion=justificacion,
+    )[0]
+
+
+def _guardar_desde_tablas(
+    sesion: Session,
+    codigo: str,
+    descripcion: str,
+    unidad: str,
+    dominio: Dominio,
+    rendimiento: str,
+    filas_materiales: Sequence[Mapping[str, str]],
+    filas_equipos: Sequence[Mapping[str, str]],
+    filas_mano_obra: Sequence[Mapping[str, str]],
+    *,
+    fecha: date,
+    condiciones: str,
+    justificacion: str | None,
+) -> tuple[ResultadoGuardado, _Escrito | None]:
+    """`guardar_desde_tablas` con lo que escribió (`None` con motivo: no escribió nada)."""
     if not condiciones.strip():
         raise ComposicionInvalida(MENSAJE_CONDICIONES_OBLIGATORIAS)
     composicion = composicion_desde_tablas(
@@ -1251,9 +1317,9 @@ def guardar_desde_tablas(
     catalogo = Catalogo(sesion)
     codigo_partida = composicion.codigo_partida
     antes = _cuantos_rendimientos(catalogo, codigo_partida)
-    guardado = guardar_composicion(catalogo, composicion, dominio, fecha, condiciones)
+    guardado, escrito = _guardar_composicion(sesion, composicion, dominio, fecha, condiciones)
     if guardado.resultado is None:
-        return ResultadoGuardado(motivo=guardado.motivo)
+        return ResultadoGuardado(motivo=guardado.motivo), None
 
     justificada = False
     avisos: list[str] = []
@@ -1277,6 +1343,129 @@ def guardar_desde_tablas(
             " Justificación de la advertencia registrada junto al rendimiento "
             f"{texto_de_cifra(composicion.rendimiento)}."
         )
-    return ResultadoGuardado(
+    resultado = ResultadoGuardado(
         precio_unitario=precio, mensaje=mensaje, justificada=justificada, avisos=tuple(avisos)
     )
+    return resultado, escrito
+
+
+# --- Prever el guardado: la lista de hoy y las variantes (MP-1, Tarea 3; D-MP2) -----------------
+#
+# D-MP2 (diseño de montar un presupuesto §10): teclear en Componer un precio distinto para un
+# insumo que ya existe crea una variante solo para ese APU (lo hace el núcleo, `_resolver_insumo`)
+# y Sílice lo avisa ANTES de guardar. Para no duplicar la regla del núcleo, la previsión corre el
+# mismo guardado dentro de un punto de guardado (`begin_nested`) y lo deshace siempre, también si
+# falla a mitad: lo que se avisa es exactamente lo que el guardado haría.
+
+
+@dataclass(frozen=True, slots=True)
+class AvisoVariante:
+    """Un insumo que el guardado crearía como variante: `precio_en_lista` es el del insumo
+    original (el homónimo registrado primero) en la lista de hoy; `precio_tecleado`, el de la
+    composición; `codigo_variante`, el código que tendría (p. ej. «MAT-001-B»). La mano de obra no
+    tiene unidad: `unidad` va vacía."""
+
+    descripcion: str
+    unidad: str
+    precio_en_lista: Decimal
+    precio_tecleado: Decimal
+    codigo_variante: str
+
+
+@dataclass(frozen=True, slots=True)
+class Prevision:
+    """Lo que haría el guardado: la lista donde quedarían los precios (`lista_nueva` si el
+    guardado la crearía; su `lista_id` es entonces el que tuvo dentro de la previsión y no
+    existe en la base) y las variantes que crearía."""
+
+    lista: ListaParaArmar
+    lista_nueva: bool
+    variantes: list[AvisoVariante]
+
+
+def _avisos_de_variantes(sesion: Session, escrito: _Escrito) -> list[AvisoVariante]:
+    """`ResumenCarga.variantes` con los dos precios, leídos de la lista de hoy ya escrita."""
+    variantes = escrito.resumen.variantes
+    if not variantes:
+        return []
+    # Los precios del guardado se agregaron por id, no por la colección: se relee.
+    sesion.expire(escrito.lista, ["precios"])
+    precios = {precio.insumo_id: precio.precio for precio in escrito.lista.precios}
+    nuevas = {variante.id for variante in variantes}
+    catalogo = Catalogo(sesion)
+    avisos: list[AvisoVariante] = []
+    for variante in variantes:
+        original = min(
+            (
+                insumo
+                for insumo in catalogo.insumos(variante.tipo)
+                if insumo.descripcion == variante.descripcion
+                and insumo.unidad == variante.unidad
+                and insumo.id not in nuevas
+            ),
+            key=lambda insumo: insumo.id,
+        )
+        avisos.append(
+            AvisoVariante(
+                descripcion=variante.descripcion,
+                unidad=variante.unidad or "",
+                precio_en_lista=precios[original.id],
+                precio_tecleado=precios[variante.id],
+                codigo_variante=variante.codigo,
+            )
+        )
+    return avisos
+
+
+def prever_guardado(
+    sesion: Session,
+    codigo: str,
+    descripcion: str,
+    unidad: str,
+    dominio: Dominio,
+    rendimiento: str,
+    filas_materiales: Sequence[Mapping[str, str]],
+    filas_equipos: Sequence[Mapping[str, str]],
+    filas_mano_obra: Sequence[Mapping[str, str]],
+    *,
+    fecha: date,
+    condiciones: str,
+    justificacion: str | None = None,
+) -> Prevision:
+    """Lo que haría `guardar_desde_tablas` con los mismos datos, sin dejar nada escrito.
+
+    Corre el guardado en `sesion.begin_nested()` y lo deshace siempre (con resultado, con motivo
+    o con una excepción a mitad). Los mismos errores que el guardado: `SinListaParaArmar`,
+    `ComposicionInvalida` (y, con el motivo de `motivo_para_no_reemplazar`, también
+    `ComposicionInvalida`: no hay nada que prever) o lo que levante el núcleo.
+    """
+    vigente = lista_para_armar(sesion, fecha)
+    punto = sesion.begin_nested()
+    try:
+        resultado, escrito = _guardar_desde_tablas(
+            sesion,
+            codigo,
+            descripcion,
+            unidad,
+            dominio,
+            rendimiento,
+            filas_materiales,
+            filas_equipos,
+            filas_mano_obra,
+            fecha=fecha,
+            condiciones=condiciones,
+            justificacion=justificacion,
+        )
+        if escrito is None:
+            raise ComposicionInvalida(resultado.motivo or "")
+        lista = escrito.lista
+        prevision = Prevision(
+            lista=ListaParaArmar(
+                lista.id, lista.nombre, lista.moneda, lista.fecha_vigencia, lista.origen
+            ),
+            lista_nueva=lista.id != vigente.id,
+            variantes=_avisos_de_variantes(sesion, escrito),
+        )
+    finally:
+        punto.rollback()
+    return prevision
