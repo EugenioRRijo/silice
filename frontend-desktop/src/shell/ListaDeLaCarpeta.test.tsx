@@ -47,6 +47,57 @@ describe("La lista de la carpeta de trabajo", () => {
     expect(fetchFalso).toHaveBeenCalledTimes(1);
   });
 
+  test("una lista derivada que ya trae su fecha en el nombre no la repite", async () => {
+    con({
+      moneda: "Bs",
+      declarada: true,
+      lista: { nombre: "MaPreX ficticio en Bs al 25/10/2026", moneda: "Bs", fecha: "2026-10-25", origen: "derivada" },
+      aviso: null,
+    });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    expect(
+      await screen.findByText("Moneda de trabajo: Bs · Lista para armar: MaPreX ficticio en Bs al 25/10/2026"),
+    ).toBeInTheDocument();
+  });
+
+  test("tampoco la repite con el número de la del mismo día, y sí la dice si el nombre trae otra fecha", async () => {
+    con({
+      moneda: "Bs",
+      declarada: true,
+      lista: { nombre: "MaPreX ficticio en Bs al 25/10/2026 (2)", moneda: "Bs", fecha: "2026-10-25", origen: "derivada" },
+      aviso: null,
+    });
+    const { unmount } = render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    expect(
+      await screen.findByText("Moneda de trabajo: Bs · Lista para armar: MaPreX ficticio en Bs al 25/10/2026 (2)"),
+    ).toBeInTheDocument();
+    unmount();
+    con({
+      moneda: "Bs",
+      declarada: true,
+      lista: { nombre: "Base ficticia al 01/07/2026", moneda: "Bs", fecha: "2026-10-25", origen: "prueba" },
+      aviso: null,
+    });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    expect(
+      await screen.findByText("Moneda de trabajo: Bs · Lista para armar: Base ficticia al 01/07/2026, al 25/10/2026"),
+    ).toBeInTheDocument();
+  });
+
+  test("con la vigente en otra moneda dice el aviso, no «Lista para armar»", async () => {
+    // El sentido de `lista` desde T4: la vigente aunque esté en otra moneda; el aviso lo dice.
+    const AVISO = "La lista vigente «Base ficticia» está en USD y la carpeta trabaja en Bs: conviértala antes de armar.";
+    con({
+      moneda: "Bs",
+      declarada: true,
+      lista: { nombre: "Base ficticia", moneda: "USD", fecha: "2026-07-01", origen: "prueba" },
+      aviso: AVISO,
+    });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
+    expect(await screen.findByText(`Moneda de trabajo: Bs · ${AVISO}`)).toBeInTheDocument();
+    expect(screen.queryByText(/Lista para armar:/)).not.toBeInTheDocument();
+  });
+
   test("sin moneda dice «Carpeta sin moneda declarada»", async () => {
     con({ moneda: null, declarada: false, lista: null, aviso: SIN_LISTA });
     render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);

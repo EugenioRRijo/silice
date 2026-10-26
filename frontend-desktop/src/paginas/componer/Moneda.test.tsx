@@ -237,7 +237,7 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     expect(de("/v1/carpeta/lista-para-armar", "POST").map((l) => l.cuerpo)).toEqual([{ desde: "maprex" }]);
     expect(screen.queryByText(SIN_LISTA, { exact: false })).not.toBeInTheDocument();
     // Lo dice y el foco no se pierde con el botón que desaparece.
-    const hecho = screen.getByText("Lista para armar creada: MaPreX ficticio en Bs al 26/10/2026, al 26/10/2026. Ya puede guardar la composición.");
+    const hecho = screen.getByText("Lista para armar creada: MaPreX ficticio en Bs al 26/10/2026. Ya puede guardar la composición.");
     expect(hecho.closest("[tabindex='-1']")).toHaveFocus();
   });
 
@@ -264,6 +264,24 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     await u.click(screen.getByRole("button", { name: "Crear la lista a partir de MaPreX" }));
     expect(await screen.findByText(SIN_TASA, {}, ESPERA)).toBeInTheDocument();
     expect(screen.getByText(SIN_LISTA, { exact: false })).toBeInTheDocument();
+  });
+
+  test("si la carpeta ya tenía lista (aviso viejo), el 409 relee la carpeta, quita el aviso y lo dice", async () => {
+    const u = userEvent.setup();
+    const YA_TIENE = "La carpeta de trabajo ya tiene lista para armar («Lista ficticia de Bs»): no se creó otra.";
+    carpeta = () => json(SIN_LISTA_BS);
+    crearLista = () => json({ detalle: YA_TIENE }, 409);
+    montar();
+    await conCondiciones(u);
+    const crear = await screen.findByRole("button", { name: "Crear la lista a partir de MaPreX" }, ESPERA);
+    // Mientras tanto, otra pestaña creó la lista.
+    carpeta = () => json(CON_LISTA);
+    await u.click(crear);
+    await waitFor(() => expect(screen.queryByText(SIN_LISTA, { exact: false })).not.toBeInTheDocument(), ESPERA);
+    expect(de("/v1/carpeta", "GET")).toHaveLength(2);
+    const dicho = screen.getByText(YA_TIENE);
+    expect(dicho.closest("[tabindex='-1']")).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Guardar composición" })).toBeEnabled();
   });
 
   test("ninguna cadena visible dice «caso»", async () => {
@@ -427,7 +445,7 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Guardar composición" })).toBeEnabled(), ESPERA);
     expect(de("/v1/carpeta/lista-para-armar", "POST").map((l) => l.cuerpo)).toEqual([{ desde: "convertir" }]);
     expect(
-      screen.getByText("Lista para armar creada: Base en USD al 26/10/2026, al 26/10/2026. Ya puede guardar la composición."),
+      screen.getByText("Lista para armar creada: Base en USD al 26/10/2026. Ya puede guardar la composición."),
     ).toBeInTheDocument();
   });
 });

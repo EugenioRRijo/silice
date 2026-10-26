@@ -347,6 +347,36 @@ def test_crear_desde_maprex_en_usd_sin_tasa_es_409_y_no_escribe_lista(_entorno: 
     assert _filas(_entorno, "SELECT * FROM lista_precios") == []
 
 
+def test_crear_desde_maprex_si_ya_hay_lista_para_armar_es_409_y_no_crea_otra(
+    _entorno: Path,
+) -> None:
+    # T4: un aviso viejo (otra pestaña) no debe crear «… (2)» encima de la lista que ya hay.
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _crear(navegador, ficha, "maprex").status_code == 201
+    respuesta = _crear(navegador, ficha, "maprex")
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {
+        "detalle": (
+            f"La carpeta de trabajo ya tiene lista para armar («{NOMBRE_MAPREX_HOY}»): no se "
+            "creó otra."
+        )
+    }
+    nombres = [n for (n,) in _filas(_entorno, "SELECT nombre FROM lista_precios")]
+    assert nombres.count(NOMBRE_MAPREX_HOY) == 1
+    assert not any(n.endswith(")") for n in nombres)
+
+
+def test_crear_desde_maprex_con_la_vigente_en_otra_moneda_si_crea(_entorno: Path) -> None:
+    # Con la vigente en otra moneda no hay lista para armar: MaPreX sigue siendo una salida.
+    _lista_base(_entorno)
+    _tasa(_entorno, HOY)
+    _declarar_usd_en_la_base(_entorno)
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(navegador, ficha, "maprex")
+    assert respuesta.status_code == 201, respuesta.text
+    assert respuesta.json()["lista"]["nombre"] == f"MaPreX julio 2026 en USD al {HOY:%d/%m/%Y}"
+
+
 def test_convertir_la_vigente_en_bs_a_la_carpeta_usd(_entorno: Path) -> None:
     _lista_base(_entorno)
     _tasa(_entorno, HOY)
