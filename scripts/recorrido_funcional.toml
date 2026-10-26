@@ -153,7 +153,7 @@ pasos = [
   { accion = "pulsar", nombre = "Agregar fila a Materiales" },
   { accion = "llenar", rotulo = "Descripción, fila 1", valor = "Cemento Portland" },
   { accion = "llenar", rotulo = "Unidad, fila 1", valor = "saco" },
-  { accion = "llenar", rotulo = "Consumo por unidad, fila 1", valor = "0.5" },
+  { accion = "llenar", rotulo = "Consumo por unidad, fila 1", valor = "0,5" },
   { accion = "llenar", rotulo = "Precio, fila 1", valor = "18" },
   { accion = "pulsar", nombre = "Guardar composición" },
   { accion = "esperar", texto = "Siguiente paso" },
@@ -187,10 +187,10 @@ espera = { textos = ["Lista simulada", "Cemento"] }
 ruta = "escenarios"
 cuenta = "ana"
 carpeta = "demo.db"
-accion = "generar un escenario con utilidad 0.20 -> comparación contra el presupuesto base"
+accion = "generar un escenario con utilidad 0,20 -> comparación contra el presupuesto base"
 pasos = [
   { accion = "llenar", rotulo = "Nombre del escenario", valor = "utilidad alta ficticia" },
-  { accion = "llenar", rotulo = "Utilidad", valor = "0.20" },
+  { accion = "llenar", rotulo = "Utilidad", valor = "0,20" },
   { accion = "pulsar", nombre = "Generar escenario" },
 ]
 espera = { textos = ["Comparación contra el base", "utilidad alta ficticia"] }
@@ -211,7 +211,7 @@ proyecto = "Sílice: caso de demostracion"
 accion = "cambiar la utilidad en Parámetros y guardar una versión con su fuente -> versión nueva vigente"
 pasos = [
   { accion = "pulsar", rol = "tab", nombre = "Parámetros" },
-  { accion = "llenar", rotulo = "Utilidad (fracción, en cascada sobre la administración)", valor = "0.12" },
+  { accion = "llenar", rotulo = "Utilidad (fracción, en cascada sobre la administración)", valor = "0,12" },
   { accion = "tecla", nombre = "Tab" },
   { accion = "pulsar", nombre = "Guardar versión…" },
   { accion = "llenar", rotulo = "Fuente del cambio (por qué y con qué respaldo)", valor = "Acta ficticia AF-02", fuera = true },
@@ -292,16 +292,16 @@ pasos = [
   { accion = "elegir", rotulo = "Periodicidad", opcion = "mensual" },
   { accion = "elegir", rotulo = "Mecanismo", opcion = "ambos" },
   { accion = "elegir", rotulo = "Estructura", opcion = "declarada" },
-  { accion = "llenar", rotulo = "R (fracción no reajustable)", valor = "0.10" },
+  { accion = "llenar", rotulo = "R (fracción no reajustable)", valor = "0,10" },
   { accion = "llenar", rotulo = "Fuente de R", valor = "memoria" },
   { accion = "llenar", rotulo = "Fuente de la cláusula", valor = "contrato ficticio" },
   { accion = "llenar", rotulo = "Responsable", valor = "Ing." },
   { accion = "llenar", rotulo = "Serie, Componentes fila 1", valor = "FIC-MAT" },
-  { accion = "llenar", rotulo = "Peso, Componentes fila 1", valor = "0.5" },
+  { accion = "llenar", rotulo = "Peso, Componentes fila 1", valor = "0,5" },
   { accion = "llenar", rotulo = "Serie, Componentes fila 2", valor = "FIC-EQU" },
-  { accion = "llenar", rotulo = "Peso, Componentes fila 2", valor = "0.2" },
+  { accion = "llenar", rotulo = "Peso, Componentes fila 2", valor = "0,2" },
   { accion = "llenar", rotulo = "Serie, Componentes fila 3", valor = "FIC-MO" },
-  { accion = "llenar", rotulo = "Peso, Componentes fila 3", valor = "0.3" },
+  { accion = "llenar", rotulo = "Peso, Componentes fila 3", valor = "0,3" },
   { accion = "pulsar", nombre = "Siguiente: períodos y lo ejecutado" },
   { accion = "pulsar", nombre = "Agregar fila a Períodos" },
   { accion = "llenar", rotulo = "Desde, Períodos fila 1", valor = "2027-02-01" },
@@ -324,7 +324,7 @@ proyecto = "OBRA-GENERADA"
 accion = "cambiar un parámetro de control con su fuente -> «1 parámetro(s) cambiado(s)» y el valor nuevo en la tabla"
 pasos = [
   { accion = "elegir", rotulo = "Parámetro a cambiar", opcion = "Umbral de SPI para error" },
-  { accion = "llenar", rotulo = "Nuevo valor de Umbral de SPI para error", valor = "0.85" },
+  { accion = "llenar", rotulo = "Nuevo valor de Umbral de SPI para error", valor = "0,85" },
   { accion = "llenar", rotulo = "Fuente del cambio de parámetros", valor = "Acta ficticia AF-01" },
   { accion = "pulsar", nombre = "Guardar parámetros" },
 ]
