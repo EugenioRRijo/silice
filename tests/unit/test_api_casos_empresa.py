@@ -268,3 +268,23 @@ def test_el_422_de_nombre_habla_de_carpeta_de_trabajo(nombre: str, texto: str) -
         respuesta = navegador.post(ruta, json=cuerpo, headers=protegida(ficha))
         assert respuesta.status_code == 422, (ruta, respuesta.text)
         assert respuesta.json() == {"detalle": texto}, ruta
+
+
+@pytest.mark.parametrize(
+    ("nombre", "texto"),
+    [
+        (
+            "Elija un caso: x",
+            "«Elija un caso: x» no puede llevar «:».",
+        ),
+        (
+            "nombre de caso/x",
+            "«nombre de caso/x» lleva carpetas: escriba solo el nombre de la carpeta de trabajo.",
+        ),
+    ],
+)
+def test_el_nombre_escrito_entre_comillas_no_se_traduce(nombre: str, texto: str) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = navegador.post("/v1/casos", json={"nombre": nombre}, headers=protegida(ficha))
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {"detalle": texto}
