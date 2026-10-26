@@ -8510,7 +8510,7 @@
           "mercado"
         ],
         "summary": "Leer Objetivos",
-        "description": "El último precio de venta objetivo de cada partida pedida que tenga uno.",
+        "description": "El último precio de venta objetivo de cada partida pedida que tenga uno y, con el precio\nunitario de la Hoja en la misma moneda, su margen.",
         "operationId": "leer_objetivos_v1_mercado_objetivos_get",
         "parameters": [
           {
@@ -8525,6 +8525,39 @@
               "title": "Partidas"
             },
             "description": "Códigos separados por coma"
+          },
+          {
+            "name": "pu",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "Precios unitarios de la Hoja (con utilidad, sin IVA) como CODIGO:monto separados por coma, decimal con punto",
+              "default": "",
+              "title": "Pu"
+            },
+            "description": "Precios unitarios de la Hoja (con utilidad, sin IVA) como CODIGO:monto separados por coma, decimal con punto"
+          },
+          {
+            "name": "moneda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 10
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Moneda de los precios unitarios de `pu`",
+              "title": "Moneda"
+            },
+            "description": "Moneda de los precios unitarios de `pu`"
           }
         ],
         "responses": {
@@ -8866,6 +8899,138 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/procura": {
+      "get": {
+        "tags": [
+          "procura"
+        ],
+        "summary": "Leer Procura",
+        "description": "Los materiales de la obra con sus fechas, y las alertas al corte.",
+        "operationId": "leer_procura_v1_procura_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "corte",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Corte"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcuraRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/procura/compras": {
+      "post": {
+        "tags": [
+          "procura"
+        ],
+        "summary": "Registrar",
+        "description": "Anota un pedido o una recepción de un material de la obra.",
+        "operationId": "registrar_v1_procura_compras_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompraNueva"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/procura/plazos": {
+      "put": {
+        "tags": [
+          "procura"
+        ],
+        "summary": "Plazo",
+        "description": "Fija el plazo de entrega (días hábiles) de un material de la obra.",
+        "operationId": "plazo_v1_procura_plazos_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlazoNuevo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -9466,6 +9631,28 @@
           "mensaje"
         ],
         "title": "AlertaPrecioRespuesta"
+      },
+      "AlertaRespuesta": {
+        "properties": {
+          "severidad": {
+            "type": "string",
+            "enum": [
+              "AVISO",
+              "ERROR"
+            ],
+            "title": "Severidad"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "severidad",
+          "texto"
+        ],
+        "title": "AlertaRespuesta"
       },
       "AlturaPendienteRespuesta": {
         "properties": {
@@ -10466,6 +10653,42 @@
         ],
         "title": "AtipicosRespuesta",
         "description": "`disponible` es falso sin el extra `ml`: no se busco nada y un aviso lo dice."
+      },
+      "AtrasoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "dias": {
+            "type": "integer",
+            "title": "Dias"
+          },
+          "causa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Causa"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "dias",
+          "causa",
+          "texto"
+        ],
+        "title": "AtrasoRespuesta",
+        "description": "Una partida que termina después de su plan: días hábiles, causa (clave o nula) y la frase."
       },
       "AuditoriaDetalleRespuesta": {
         "properties": {
@@ -12237,6 +12460,25 @@
         ],
         "title": "CasosRespuesta"
       },
+      "CausaRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "nombre"
+        ],
+        "title": "CausaRespuesta",
+        "description": "Una causa de retraso que se puede elegir en una línea: su clave y su nombre."
+      },
       "CeldaVisualRespuesta": {
         "properties": {
           "ref": {
@@ -12750,6 +12992,61 @@
           "mano_obra"
         ],
         "title": "ComposicionRespuesta"
+      },
+      "CompraNueva": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Unidad"
+          },
+          "evento": {
+            "type": "string",
+            "enum": [
+              "pedida",
+              "recibida"
+            ],
+            "title": "Evento"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "cantidad": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Cantidad",
+            "default": ""
+          },
+          "precio": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Precio",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "descripcion",
+          "unidad",
+          "evento",
+          "fecha"
+        ],
+        "title": "CompraNueva"
       },
       "Configuracion": {
         "properties": {
@@ -17040,6 +17337,17 @@
             "type": "string",
             "title": "Observacion",
             "default": ""
+          },
+          "causa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Causa"
           }
         },
         "type": "object",
@@ -17679,6 +17987,95 @@
         ],
         "title": "MovimientoRespuesta"
       },
+      "NecesidadRespuesta": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad",
+            "description": "Exacta, con punto decimal"
+          },
+          "partidas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Partidas"
+          },
+          "se_necesita": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Se Necesita",
+            "description": "aaaa-mm-dd; null sin línea base"
+          },
+          "pedir_a_mas_tardar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pedir A Mas Tardar"
+          },
+          "plazo": {
+            "type": "integer",
+            "title": "Plazo",
+            "description": "Días hábiles de entrega"
+          },
+          "pedida": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pedida",
+            "description": "El primer pedido registrado"
+          },
+          "recibida": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recibida",
+            "description": "La primera recepción registrada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "partidas",
+          "se_necesita",
+          "pedir_a_mas_tardar",
+          "plazo",
+          "pedida",
+          "recibida"
+        ],
+        "title": "NecesidadRespuesta"
+      },
       "NuevaCarpeta": {
         "properties": {
           "nombre": {
@@ -17711,6 +18108,42 @@
         ],
         "title": "NuevosRoles"
       },
+      "ObjetivoConMargen": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "margen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margen",
+            "description": "(objetivo − precio unitario) / precio unitario, en % con una cifra decimal; vacío sin el precio unitario de la partida, con uno de cero o con el objetivo en otra moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "precio",
+          "moneda",
+          "margen"
+        ],
+        "title": "ObjetivoConMargen"
+      },
       "ObjetivoRespuesta": {
         "properties": {
           "codigo": {
@@ -17738,7 +18171,7 @@
         "properties": {
           "objetivos": {
             "items": {
-              "$ref": "#/components/schemas/ObjetivoRespuesta"
+              "$ref": "#/components/schemas/ObjetivoConMargen"
             },
             "type": "array",
             "title": "Objetivos"
@@ -18913,6 +19346,40 @@
         ],
         "title": "PlanReproyectado"
       },
+      "PlazoNuevo": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Unidad"
+          },
+          "dias": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Dias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "descripcion",
+          "unidad",
+          "dias"
+        ],
+        "title": "PlazoNuevo"
+      },
       "PoliticaDeContrasena": {
         "properties": {
           "minimo": {
@@ -19340,6 +19807,43 @@
           "politica"
         ],
         "title": "PrimerArranqueRespuesta"
+      },
+      "ProcuraRespuesta": {
+        "properties": {
+          "necesidades": {
+            "items": {
+              "$ref": "#/components/schemas/NecesidadRespuesta"
+            },
+            "type": "array",
+            "title": "Necesidades"
+          },
+          "alertas": {
+            "items": {
+              "$ref": "#/components/schemas/AlertaRespuesta"
+            },
+            "type": "array",
+            "title": "Alertas"
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso",
+            "description": "Por qué no hay fechas, si no las hay"
+          }
+        },
+        "type": "object",
+        "required": [
+          "necesidades",
+          "alertas",
+          "aviso"
+        ],
+        "title": "ProcuraRespuesta"
       },
       "PropuestaPartidaRespuesta": {
         "properties": {
@@ -22011,6 +22515,13 @@
               }
             ],
             "title": "Corte Por Defecto"
+          },
+          "causas": {
+            "items": {
+              "$ref": "#/components/schemas/CausaRespuesta"
+            },
+            "type": "array",
+            "title": "Causas"
           }
         },
         "type": "object",
@@ -23229,6 +23740,13 @@
             },
             "type": "array",
             "title": "Versiones Revaloradas"
+          },
+          "atrasos": {
+            "items": {
+              "$ref": "#/components/schemas/AtrasoRespuesta"
+            },
+            "type": "array",
+            "title": "Atrasos"
           }
         },
         "type": "object",
