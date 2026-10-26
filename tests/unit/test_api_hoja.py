@@ -329,7 +329,6 @@ def test_r1_de_un_proyecto_sin_versiones_no_tiene_version_por_omision(_entorno: 
 def test_r1_la_clave_de_api_puede_leer_las_versiones() -> None:
     respuesta = cliente(app).get(
         "/v1/hoja/versiones",
-        "/v1/hoja/llevar",
         params={"proyecto": NOMBRE_OF001},
         headers={CABECERA: crear_clave_de_prueba()},
     )
@@ -764,6 +763,7 @@ def test_docs_api_json_esta_al_dia() -> None:
     rutas = {r for r in guardado["paths"] if r.startswith("/v1/hoja")}
     assert rutas == {
         "/v1/hoja/versiones",
+        "/v1/hoja/llevar",
         "/v1/hoja/borradores",
         "/v1/hoja/borradores/{id}",
         "/v1/hoja/borradores/{id}/apu/{partida}",
