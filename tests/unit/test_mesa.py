@@ -26,7 +26,7 @@ import pytest
 from sqlalchemy import delete, select
 
 from aplicacion import aprobaciones, control, mesa
-from aplicacion.aprobaciones import pendientes_de_aprobacion
+from aplicacion.aprobaciones import aprobadas_sin_entregar, pendientes_de_aprobacion
 from aplicacion.hoja_partidas import pendientes_sin_calculo
 from aplicacion.mercado import pendientes_de_mercado
 from aplicacion.mesa import (
@@ -842,7 +842,7 @@ def test_los_grupos_y_las_fuentes_de_esta_tarea() -> None:
     )
     # T9 agrega «cantidades escritas a mano sin cálculo» (compartido del orquestador).
     assert mesa.FUENTES["calidad"] == (hallazgos_graves, lista_vieja, pendientes_sin_calculo)
-    # T18 agrega «espera dictamen» y «devuelta» (compartido del orquestador).
-    assert mesa.FUENTES["aprobar"] == (pendientes_de_aprobacion,)
+    # T18 agrega «espera dictamen» y «devuelta»; T20, «aprobada y sin entregar» (compartido del orquestador).
+    assert mesa.FUENTES["aprobar"] == (pendientes_de_aprobacion, aprobadas_sin_entregar)
     # T23 agrega «las compras de la procura» (compartido del orquestador).
     assert mesa.FUENTES["compras"] == (pendientes_de_compras,)
