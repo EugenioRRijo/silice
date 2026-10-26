@@ -220,6 +220,13 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       expect(await textoDeEtiqueta()).toBe("Aprobada · Ana Pérez · 25/10/2026 · aprobada por quien la armó");
     });
 
+    // Menor del arbitro de T19.
+    test("devuelta por quien la armó: lo dice", async () => {
+      aprobaciones = { "VIV-001": { ...DEVUELTA, por: "Ana Pérez <ana>", armo: true } };
+      montar();
+      expect(await textoDeEtiqueta()).toBe("Devuelta · Ana Pérez · 25/10/2026 · devuelta por quien la armó");
+    });
+
     test("se pide el estado de la obra abierta (GET /v1/aprobaciones?proyecto=)", async () => {
       montar();
       await textoDeEtiqueta();

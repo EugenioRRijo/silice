@@ -544,7 +544,9 @@ describe("ronda 2: confirmación, descripciones y columnas", () => {
   });
 
   test("ana con el resumen en 403: los pendientes no dejan a su izquierda una columna vacía", async () => {
-    instalar(() => json({ detalle: "Su cuenta no puede hacer esto." }, 403));
+    // Con «Por aprobar» tambien prohibida no queda nada que pintar a la izquierda (T19: si cargo, esa cifra si se pinta).
+    const prohibido = () => json({ detalle: "Su cuenta no puede hacer esto." }, 403);
+    instalar(prohibido, undefined, { porAprobar: prohibido });
     const { container } = await montar("ana");
     await within(await region("Pendientes")).findByText("1 precio sin referencia en CD-001");
     expect(container.querySelector(".silice-mesa__principal")).toBeNull();
@@ -647,6 +649,27 @@ describe("T19: la cifra «Por aprobar»", () => {
     expect(otra.querySelectorAll(".silice-mesa__cifra--esqueleto")).toHaveLength(2);
   });
 
+  // Menor del arbitro de T19: «Por aprobar» es de otra lectura; un 403 o un fallo del resumen de obras no la quita.
+  test("con el resumen de obras en 403, la cifra «Por aprobar» sigue (sin las obras)", async () => {
+    instalar(() => json({ detalle: "Su cuenta no puede hacer esto." }, 403));
+    await montar("ana");
+    const cifras = await region("Cómo van las obras");
+    expect(await within(cifras).findByRole("group", { name: "Por aprobar" })).toBeInTheDocument();
+    expect(within(cifras).queryByRole("group", { name: "Valor ganado" })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 2, name: "Obras" })).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("con el resumen de obras en 503, la cifra «Por aprobar» sigue y el fallo se dice una vez, en «Obras»", async () => {
+    instalar(() => json({ detalle: "No se pudo leer la carpeta de trabajo. Intente de nuevo." }, 503));
+    await montar("ana");
+    const cifras = await region("Cómo van las obras");
+    expect(await within(cifras).findByRole("group", { name: "Por aprobar" })).toBeInTheDocument();
+    expect(within(cifras).queryByRole("alert")).toBeNull();
+    expect(await within(await region("Obras")).findByRole("alert")).toHaveTextContent("No se pudo leer la carpeta de trabajo.");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+
   test("rita ve la cifra «Por aprobar»", async () => {
     await montar("rita");
     const cifras = await region("Cómo van las obras");
@@ -675,17 +698,20 @@ describe("T19: el grupo «Aprobar» de la columna de pendientes", () => {
     expect(servidor.de("GET", "/v1/obras/pendientes")).toEqual([]);
   });
 
-  test("ana: los envíos de otras carpetas se suman a su grupo «Aprobar»; los de la carpeta abierta no se repiten", async () => {
+  // Menor del arbitro de T19: las filas de la carpeta abierta salen tambien del indice (ya leido): mismo verbo, total, quien
+  // y cuando, sin repetir la que manda la API («CD-001 espera dictamen» de la obra 7).
+  test("ana: los envíos de todas las carpetas van en su grupo «Aprobar», con total, quién y cuándo, sin repetirse", async () => {
     instalar(undefined, undefined, { envios: () => json([GALPON_S2, CASA_AQUI]) });
     await montar("ana");
     const columna = await region("Pendientes");
     await within(columna).findByText("GS-001 espera dictamen");
     const lista = within(columna).getByRole("list", { name: "Aprobar" });
     expect(within(lista).getAllByText(/espera dictamen$/).map((e) => e.textContent)).toEqual([
-      "CD-001 espera dictamen",
       "GS-001 espera dictamen",
+      "CD-001 espera dictamen",
     ]);
     expect(within(lista).getByText("4.876,56 Bs · enviada por Ana Pérez el 20/10/2026 · carpeta s2")).toBeInTheDocument();
+    expect(within(lista).getByText("125.000,50 USD · enviada por Ana Pérez el 22/10/2026")).toBeInTheDocument();
     // Los otros grupos siguen como los manda la API.
     expect(within(columna).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Aprobar", "Precios", "Calidad"]);
   });

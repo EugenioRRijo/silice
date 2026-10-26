@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
-import { caso, estadoInicial, json, ligeras, montarShell, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
+import { botonDeObra, caso, estadoInicial, json, ligeras, montarShell, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
 import type { EstadoDelServidor, Rol } from "../../shell/obras/datosDePrueba";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios, useFormularioSucio } from "../../shell/sucio";
@@ -50,10 +50,10 @@ function PaginaAprobarFalsa() {
   );
 }
 
-const envio = (casoDelEnvio: string, envio_id: number, obra: string, version: string) => ({
+const envio = (casoDelEnvio: string, envio_id: number, obra: string, version: string, proyecto = "3") => ({
   caso: casoDelEnvio,
   envio_id,
-  proyecto: "3",
+  proyecto,
   obra,
   version,
   total: "4876.56",
@@ -68,7 +68,8 @@ const envio = (casoDelEnvio: string, envio_id: number, obra: string, version: st
   armo: false,
 });
 const GALPON_S2 = envio("s2.db", 12, "Galpón Sur", "GS-001");
-const CASA_AQUI = envio("silice.db", 4, "Casa Demo", "CD-001");
+// La obra 7 de la carpeta abierta: la API de pendientes tambien la dice («CD-001 espera dictamen»).
+const CASA_AQUI = envio("silice.db", 4, "Casa Demo", "CD-001", "7");
 
 const RESUMEN = { moneda: "Bs", hoy: "2026-10-26", cifras: [], conversiones: [], fuera_de_suma: [], obras: [] };
 const POR_APROBAR = {
@@ -89,8 +90,10 @@ const PENDIENTES = {
 
 let servidor: ReturnType<typeof servidorFalso>;
 let alAbrirEnvio: (cuerpo: unknown) => Response;
+let enviosDe: () => Response;
 
 function instalar(estado: EstadoDelServidor = estadoInicial()) {
+  enviosDe = () => json([GALPON_S2, CASA_AQUI]);
   alAbrirEnvio = (cuerpo) => {
     const pedido = cuerpo as { caso: string };
     estado.actual = caso(pedido.caso);
@@ -100,7 +103,7 @@ function instalar(estado: EstadoDelServidor = estadoInicial()) {
     if (metodo === "GET" && ruta === "/v1/obras/resumen") return json(RESUMEN);
     if (metodo === "GET" && ruta === "/v1/obras/pendientes") return json(PENDIENTES);
     if (metodo === "GET" && ruta === "/v1/aprobaciones/resumen") return json(POR_APROBAR);
-    if (metodo === "GET" && ruta === "/v1/aprobaciones/pendientes") return json([GALPON_S2, CASA_AQUI]);
+    if (metodo === "GET" && ruta === "/v1/aprobaciones/pendientes") return enviosDe();
     if (metodo === "POST" && ruta === "/v1/aprobaciones/abrir") return alAbrirEnvio(cuerpo);
     return undefined;
   });
@@ -124,11 +127,11 @@ async function montar(rol: Rol) {
   return vista;
 }
 
-// El renglon del envio en el grupo «Aprobar» y su boton «Abrir».
+// El renglon del envio en el grupo «Aprobar» y su boton «Abrir el envío» (el mismo verbo para toda fila del grupo).
 async function abrirDe(version: string) {
   const columna = await screen.findByRole("region", { name: "Pendientes" });
   const texto = await within(columna).findByText(`${version} espera dictamen`);
-  return within(texto.closest("li")!).getByRole("button", { name: "Abrir" });
+  return within(texto.closest("li")!).getByRole("button", { name: "Abrir el envío" });
 }
 
 const aperturas = () => servidor.de("POST", "/v1/aprobaciones/abrir");
@@ -151,7 +154,7 @@ describe("foco 2: abrir un envío de otra carpeta", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" })).toBeInTheDocument();
   });
 
-  test("«Cambiar y descartar» abre la carpeta del envío (POST /abrir), avisa del cambio y lleva a /aprobar?envio=", async () => {
+  test("«Cambiar y descartar» abre la carpeta del envío (POST /abrir), la barra dice la carpeta nueva y lleva a /aprobar?envio=", async () => {
     const u = userEvent.setup();
     const estado = estadoInicial();
     estado.borradores = [{ id: "b-1", proyecto: "7", version: "001", cambios: 2, rev: 3, tocado: "2026-10-25T10:00:00" }];
@@ -173,6 +176,10 @@ describe("foco 2: abrir un envío de otra carpeta", () => {
       expect(despues.lastIndexOf("GET /v1/casos")).toBeGreaterThan(despues.indexOf("POST /v1/aprobaciones/abrir"));
     });
     expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+    // Menor del arbitro de T19: el pie del selector de obra de la barra dice la carpeta del envio.
+    await u.click(await botonDeObra());
+    const panel = await within(screen.getByRole("banner")).findByRole("region", { name: "Obra" });
+    expect(await within(panel).findByText("Carpeta: s2")).toBeInTheDocument();
   });
 
   test("rita (sin borradores que perder) abre el envío de otra carpeta sin preguntar y sin leer borradores", async () => {
@@ -229,14 +236,30 @@ describe("foco 2: abrir un envío de otra carpeta", () => {
   });
 });
 
-describe("con la pantalla de aprobar registrada, el «Ver el envío» de la API se ofrece (MOD-4b, decisión 6)", () => {
-  test("ana: «Ver el envío» de su carpeta elige la obra y abre la pantalla", async () => {
+describe("con la pantalla de aprobar registrada, las filas de la carpeta abierta (MOD-4b, decisión 6)", () => {
+  test("ana: la fila de su carpeta sale del índice y «Abrir el envío» va directo a /aprobar?envio=, sin cambiar de carpeta", async () => {
     const u = userEvent.setup();
     await montar("ana");
     const columna = await screen.findByRole("region", { name: "Pendientes" });
-    await u.click(await within(columna).findByRole("button", { name: "Ver el envío" }));
+    // La de la API no se repite ni ofrece otro verbo.
+    expect(within(columna).queryByRole("button", { name: "Ver el envío" })).toBeNull();
+    expect(await within(columna).findAllByText("CD-001 espera dictamen")).toHaveLength(1);
+    await u.click(await abrirDe("CD-001"));
     expect(await aprobarAbierta()).toBeInTheDocument();
-    await waitFor(() => expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "7" }]));
+    expect(screen.getByText("Envío pedido: ?envio=4")).toBeInTheDocument();
+    expect(aperturas()).toEqual([]);
+  });
+
+  test("ana sin el índice (403): la fila de la API dice «Abrir el envío», elige la obra y abre la pantalla", async () => {
+    const u = userEvent.setup();
+    enviosDe = () => json({ detalle: "Su cuenta no puede hacer esto." }, 403);
+    await montar("ana");
+    const columna = await screen.findByRole("region", { name: "Pendientes" });
+    const boton = await within(columna).findByRole("button", { name: "Abrir el envío" });
+    expect(within(columna).queryByRole("button", { name: "Ver el envío" })).toBeNull();
+    await u.click(boton);
+    expect(await aprobarAbierta()).toBeInTheDocument();
+    await waitFor(() => expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toContainEqual({ proyecto: "7" }));
     expect(aperturas()).toEqual([]);
   });
 });
