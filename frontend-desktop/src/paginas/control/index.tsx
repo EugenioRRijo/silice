@@ -5,13 +5,15 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
 import { PestanaLineaBase } from "./PestanaLineaBase";
+import { PestanaProcura } from "./PestanaProcura";
 import { PestanaValuaciones } from "./PestanaValuaciones";
 import { AlertasYReproyeccion, BarraDeCorte, Recuperacion, ValorGanado } from "./PestanasDeResultados";
 import { FILTROS_INICIALES, PESTANAS, consultaDeCalculo, errorDeCarga, useCargaSuave } from "./logica";
-import type { Calculo, Filtros } from "./logica";
+import type { Calculo, Filtros, Pestana } from "./logica";
 import "./control.scss";
 
-// Las tres pestañas de resultados comparten un solo calculo al corte (UC-20 1 a 3: se calcula siempre).
+// Las tres pestañas de resultados comparten un solo calculo al corte (UC-20 1 a 3: se calcula siempre). Se eligen por
+// su nombre, no por su lugar: «Procura» (Tarea 24) entro entre Valuaciones y los resultados.
 function Resultados({
   proyecto,
   pestana,
@@ -19,7 +21,7 @@ function Resultados({
   alCambiar,
 }: {
   proyecto: string;
-  pestana: number;
+  pestana: Pestana;
   clave: number;
   alCambiar: () => void;
 }) {
@@ -48,9 +50,9 @@ function Resultados({
   return (
     <>
       {barra}
-      {pestana === 2 && <ValorGanado calculo={calculo} />}
-      {pestana === 3 && <AlertasYReproyeccion calculo={calculo} />}
-      {pestana === 4 && (
+      {pestana === "Valor ganado" && <ValorGanado calculo={calculo} />}
+      {pestana === "Alertas y reproyección" && <AlertasYReproyeccion calculo={calculo} />}
+      {pestana === "Recuperación" && (
         <Recuperacion
           proyecto={proyecto}
           filtros={filtros}
@@ -63,7 +65,7 @@ function Resultados({
   );
 }
 
-// Control de obra (UC-19, UC-20): cinco pestañas sobre la linea base del proyecto elegido en la cabecera.
+// Control de obra (UC-19, UC-20, MP-7): seis pestañas sobre la linea base del proyecto elegido en la cabecera.
 // Exige `control_de_obra`; elegir una opcion de recuperacion exige ademas `decidir_recuperacion`.
 export default function PaginaControl() {
   const { proyecto } = useAplicacion();
@@ -86,12 +88,14 @@ export default function PaginaControl() {
           <TabPanels>
             {PESTANAS.map((p, i) => (
               <TabPanel key={p}>
-                {i !== pestana ? null : i === 0 ? (
+                {i !== pestana ? null : p === "Línea base" ? (
                   <PestanaLineaBase proyecto={proyecto} clave={clave} alCambiar={cambiar} />
-                ) : i === 1 ? (
+                ) : p === "Valuaciones" ? (
                   <PestanaValuaciones proyecto={proyecto} clave={clave} alCambiar={cambiar} />
+                ) : p === "Procura" ? (
+                  <PestanaProcura proyecto={proyecto} clave={clave} alCambiar={cambiar} />
                 ) : (
-                  <Resultados proyecto={proyecto} pestana={i} clave={clave} alCambiar={cambiar} />
+                  <Resultados proyecto={proyecto} pestana={p} clave={clave} alCambiar={cambiar} />
                 )}
               </TabPanel>
             ))}

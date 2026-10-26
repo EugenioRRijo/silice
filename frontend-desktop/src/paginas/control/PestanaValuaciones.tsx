@@ -25,6 +25,9 @@ import {
 import type { CausaDeRetraso, LineaEditable, Valuaciones } from "./logica";
 import { fechaDeRanura } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { useCarga } from "../inicio/useCarga";
+import { AYUDA_CAUSA_SUGERIDA, causaDeLinea, sugeridasPorPartida } from "./procura";
+import type { Procura } from "./procura";
 
 interface Props {
   proyecto: string;
@@ -46,6 +49,14 @@ function Registrar({ proyecto, causas, alCambiar }: { proyecto: string; causas: 
   const { estado, ejecutar } = useAccion(alExpirar, alCambiar);
   const [v, setV] = useState({ numero: "", desde: "", hasta: "", fecha: "", inspector: "", fuente: "" });
   const [lineas, setLineas] = useState<LineaEditable[]>([{ ...LINEA_VACIA }]);
+  // MP-7, Tarea 24: la procura sugiere una causa por partida al «hasta» de la valuacion (sin él, a hoy). Una linea cuyo
+  // selector no ha tocado la persona lleva la sugerida para su partida; en cuanto lo toca, vale lo que eligio (tambien
+  // «Sin causa»). Si la procura no responde, no se sugiere nada: la valuacion se registra igual.
+  const [elegidas, setElegidas] = useState<Record<number, true>>({});
+  const sugerencia = useCarga<Procura>(rutaDe("/v1/procura", proyecto, v.hasta ? { corte: v.hasta } : {}), alExpirar);
+  const sugeridas =
+    sugerencia.estado === "listo" ? sugeridasPorPartida(sugerencia.datos.causas_sugeridas ?? [], causas.map((c) => c.clave)) : {};
+  const causaDe = (l: LineaEditable, i: number) => causaDeLinea(l, i in elegidas, sugeridas);
   // El error de la cantidad de cada linea (por posicion), si no sigue la regla de la coma decimal.
   const [errores, setErrores] = useState<Record<number, string>>({});
   const campo = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
@@ -65,7 +76,7 @@ function Registrar({ proyecto, causas, alCambiar }: { proyecto: string; causas: 
         cuerpo: {
           proyecto,
           ...v,
-          lineas: sinLineasVacias(lineas).map(lineaParaApi),
+          lineas: sinLineasVacias(lineas.map((l, i) => ({ ...l, causa: causaDe(l, i) }))).map(lineaParaApi),
         },
       });
       return `Valuación registrada: corte ${fechaDeRanura(r.corte)}, ${r.hallazgos} hallazgo(s) en la revisión de la valuación (${r.errores} con severidad Error).`;
@@ -96,7 +107,16 @@ function Registrar({ proyecto, causas, alCambiar }: { proyecto: string; causas: 
               />
               <CampoTexto id={`val-m-${i}`} type="date" labelText={`Fecha de medición ${i + 1}`} value={l.fecha_medicion} onChange={(e) => cambiarLinea(i, "fecha_medicion", e.target.value)} />
               <CampoTexto id={`val-o-${i}`} labelText={`Observación ${i + 1}`} value={l.observacion} onChange={(e) => cambiarLinea(i, "observacion", e.target.value)} />
-              <Select id={`val-r-${i}`} labelText={`Causa del retraso ${i + 1}`} value={l.causa} onChange={(e) => cambiarLinea(i, "causa", e.target.value)}>
+              <Select
+                id={`val-r-${i}`}
+                labelText={`Causa del retraso ${i + 1}`}
+                value={causaDe(l, i)}
+                helperText={!(i in elegidas) && causaDe(l, i) !== "" ? AYUDA_CAUSA_SUGERIDA : undefined}
+                onChange={(e) => {
+                  setElegidas({ ...elegidas, [i]: true });
+                  cambiarLinea(i, "causa", e.target.value);
+                }}
+              >
                 <SelectItem value="" text="Sin causa" />
                 {causas.map((c) => (
                   <SelectItem key={c.clave} value={c.clave} text={c.nombre} />

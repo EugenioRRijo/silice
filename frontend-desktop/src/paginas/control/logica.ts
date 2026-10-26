@@ -271,7 +271,15 @@ export const ROTULO_DE_METODO: Record<MetodoDePrecios, string> = {
   escalatoria: "Escalatoria (un Km declarado)",
 };
 
-export const PESTANAS = ["Línea base", "Valuaciones", "Valor ganado", "Alertas y reproyección", "Recuperación"] as const;
+export const PESTANAS = [
+  "Línea base",
+  "Valuaciones",
+  "Procura",
+  "Valor ganado",
+  "Alertas y reproyección",
+  "Recuperación",
+] as const;
+export type Pestana = (typeof PESTANAS)[number];
 
 // Son las claves de cada fila tal como las manda la API (sin tilde); el título visible sale de TITULOS_VISIBLES.
 export const COLUMNAS_VALUACIONES = ["Numero", "Periodo", "Fecha", "Inspector", "Registrada", "Estado"];

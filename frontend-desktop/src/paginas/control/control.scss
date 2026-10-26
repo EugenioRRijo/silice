@@ -55,3 +55,66 @@ details > summary {
   cursor: pointer;
   padding-block: 0.5rem;
 }
+
+// Procura (Tarea 24): el plazo con su botón en la misma celda, y la línea de estado de lo hecho (texto neutro).
+.silice-control__plazo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.silice-control__estado:empty {
+  display: none;
+}
+
+.silice-control__estado:focus {
+  outline: 2px solid var(--silice-interactivo, #0f62fe);
+  outline-offset: 2px;
+}
+
+// Diálogos de la procura («Recibida…», plazo): como los de operación de la Hoja; caben a 1366×768 con la letra grande
+// (el cuerpo se desplaza y el pie con las acciones queda a la vista).
+.silice-control__dialogo-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(22 22 22 / 50%);
+}
+
+.silice-control__dialogo {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  inline-size: min(32rem, 100%);
+  max-block-size: calc(100vh - 2rem);
+  max-block-size: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.5rem 0;
+  background: var(--cds-layer, #fff);
+  border-inline-start: 4px solid var(--silice-interactivo, #0f62fe);
+
+  &:focus {
+    outline: 2px solid var(--silice-interactivo, #0f62fe);
+  }
+}
+
+.silice-control__dialogo-campos {
+  display: grid;
+  gap: 1rem;
+}
+
+.silice-control__dialogo-acciones {
+  position: sticky;
+  inset-block-end: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1px;
+  margin-inline: -1.5rem;
+  padding: 0.75rem 1.5rem 1rem;
+  background: var(--cds-layer, #fff);
+  border-block-start: 1px solid var(--silice-divisor);
+}
