@@ -613,6 +613,55 @@ def test_sin_lista_vigente_a_la_fecha_del_borrador_lo_dice_con_la_fecha(
     assert _resumen(navegador, id_)["rev"] == 0
 
 
+def _agregada_y_luego(ruta: Path, sql: str) -> tuple[TestClient, str, str]:
+    """VIVIENDA en blanco con OBRA-04 agregada; después, `sql` cambia el catálogo (como si
+    alguien lo hubiera tocado entre agregar y guardar)."""
+    navegador, ficha = _ana()
+    id_ = _abierto(navegador, ficha)
+    assert _agregar(navegador, ficha, id_, cantidad="210").status_code == 200
+    with closing(sqlite3.connect(ruta)) as bd:
+        bd.execute(sql)
+        bd.commit()
+    return navegador, ficha, id_
+
+
+@pytest.mark.parametrize(
+    ("sql", "detalle"),
+    [
+        (
+            "UPDATE partida SET codigo = 'OBRA-04-RETIRADA' WHERE codigo = 'OBRA-04'",
+            "La partida «OBRA-04» ya no se puede valorar con la lista «Lista Bs de prueba»: ya "
+            "no está en el catálogo. Quítela del presupuesto o vuelva a componerla en Componer.",
+        ),
+        (
+            "DELETE FROM precio_insumo WHERE insumo_id = "
+            "(SELECT id FROM insumo WHERE descripcion = 'Material de OBRA-04')",
+            "La partida «OBRA-04» ya no se puede valorar con la lista «Lista Bs de prueba»: a "
+            "uno de sus insumos le falta el precio en esa lista. Cárguelo o quite la partida del "
+            "presupuesto.",
+        ),
+        (
+            "UPDATE insumo SET descripcion = 'Material renovado de OBRA-04' "
+            "WHERE descripcion = 'Material de OBRA-04'",
+            "El APU de la partida «OBRA-04» cambió en el catálogo después de agregarla: quítela "
+            "y vuelva a agregarla para valorarla con el APU de ahora.",
+        ),
+    ],
+    ids=["salio_del_catalogo", "sin_precio", "apu_cambiado"],
+)
+def test_si_el_catalogo_cambio_entre_agregar_y_guardar_es_409_y_no_escribe(
+    _entorno: Path, sql: str, detalle: str
+) -> None:
+    navegador, ficha, id_ = _agregada_y_luego(_entorno, sql)
+    antes = _volcado(_entorno)
+
+    respuesta = _guardar(navegador, ficha, id_, 1, codigo="VIV-001")
+
+    assert respuesta.status_code == 409, respuesta.text
+    assert respuesta.json() == {"detalle": detalle}
+    assert _volcado(_entorno) == antes
+
+
 def test_el_codigo_de_la_primera_version_solo_admite_letras_digitos_y_guiones() -> None:
     navegador, ficha = _ana()
     id_ = _abierto(navegador, ficha)

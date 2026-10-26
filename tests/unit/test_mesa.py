@@ -782,6 +782,18 @@ def test_un_grupo_con_una_fuente_registrada_sale_aunque_no_tenga_pendientes(
     ]
 
 
+def test_los_ayudantes_de_las_fuentes_son_publicos(sesion) -> None:
+    """Otras fuentes (T9 `pendientes_sin_calculo`) los usan: son parte de la mesa, no privados."""
+    version = _casa_demo(sesion, date(2026, 6, 1))
+    assert mesa.plural(1, "cantidad escrita", "cantidades escritas") == "1 cantidad escrita"
+    assert mesa.plural(1200, "día", "días") == "1.200 días"
+    ((fila, vigente),) = list(mesa.versiones_vigentes(sesion))
+    assert (fila.nombre, vigente.codigo) == ("Casa Demo", version.codigo)
+    assert mesa.pendiente(fila, "texto", mesa.ABRIR_LA_HOJA) == Pendiente(
+        _codigo(sesion, "Casa Demo"), "Casa Demo", "texto", mesa.ABRIR_LA_HOJA
+    )
+
+
 def test_los_grupos_y_las_fuentes_de_esta_tarea() -> None:
     assert mesa.GRUPOS == (
         ("aprobar", "Aprobar"),
