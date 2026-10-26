@@ -347,6 +347,8 @@ class Borrador:
       (`claves_de_items`). R8 las marca.
     * `reglas_extra`: R11 y R12 evaluadas al abrir, a la fecha de hoy (S1 §4.3); no son un cambio
       (no cuentan para "cambios sin guardar").
+    * `notas`: la nota de medición de cada renglón agregado a mano, por su clave
+      (`aplicacion.hoja_partidas`); texto libre que no entra en el cálculo.
 
     Es inmutable: cada edicion produce otro borrador con `dataclasses.replace`, y la pantalla
     compara el vigente con el abierto (`cambios_entre`) para saber si hay algo sin guardar.
@@ -361,6 +363,7 @@ class Borrador:
     plan: tuple[PeriodoPlan, ...] | None = None
     cantidades: Mapping[str, Decimal] = field(default_factory=dict)
     reglas_extra: tuple[ReglaVerificacion, ...] = field(default=(), compare=False)
+    notas: Mapping[str, str] = field(default_factory=dict)
 
 
 # --- filas -> modelo ----------------------------------------------------------------------------
@@ -1452,19 +1455,39 @@ def _cambios_de_plan(base: Borrador, actual: Borrador) -> list[CambioEditado]:
 
 
 def _cambios_de_cantidades(base: Borrador, actual: Borrador) -> list[CambioEditado]:
-    def efectivas(b: Borrador) -> dict[str, Decimal]:
-        sin = items_sin_escribir(b)
-        return {
-            clave: b.cantidades.get(clave, item.cantidad)
-            for clave, item in zip(claves_de_items(sin), sin, strict=True)
-        }
+    """Las cantidades escritas que cambiaron y, despues, los renglones de la version (no del
+    espacio) que se quitaron (`baja`, con su cantidad antes) o se agregaron (`alta`, con su
+    cantidad despues). Un renglon que entra o sale no lleva ademas cambio de cantidad."""
 
-    antes, despues = efectivas(base), efectivas(actual)
+    def efectivas(b: Borrador) -> tuple[dict[str, Decimal], list[str]]:
+        sin = items_sin_escribir(b)
+        claves = claves_de_items(sin)
+        cantidades = {
+            clave: b.cantidades.get(clave, item.cantidad)
+            for clave, item in zip(claves, sin, strict=True)
+        }
+        return cantidades, claves[: len(b.items_base)]
+
+    (antes, propias_antes), (despues, propias_despues) = efectivas(base), efectivas(actual)
     claves = [*base.cantidades, *(k for k in actual.cantidades if k not in base.cantidades)]
     return [
-        CambioEditado("cantidad", clave, "cantidad", _numero(antes[clave]), _numero(despues[clave]))
-        for clave in claves
-        if clave in antes and clave in despues and antes[clave] != despues[clave]
+        *(
+            CambioEditado(
+                "cantidad", clave, "cantidad", _numero(antes[clave]), _numero(despues[clave])
+            )
+            for clave in claves
+            if clave in antes and clave in despues and antes[clave] != despues[clave]
+        ),
+        *(
+            CambioEditado("cantidad", clave, "baja", _numero(antes[clave]), "")
+            for clave in propias_antes
+            if clave not in despues
+        ),
+        *(
+            CambioEditado("cantidad", clave, "alta", "", _numero(despues[clave]))
+            for clave in propias_despues
+            if clave not in antes
+        ),
     ]
 
 
