@@ -131,14 +131,60 @@ const PENDIENTES = {
   ],
 };
 
+// Tarea 19: la cifra «Por aprobar» de `GET /v1/aprobaciones/resumen` (api/rutas/aprobaciones.py): dos versiones esperan
+// dictamen y la mas antigua lleva 3 dias habiles (desde 3 se marca).
+const POR_APROBAR = {
+  clave: "por_aprobar",
+  titulo: "Por aprobar",
+  actual: "2",
+  meta: "0",
+  delta: "3",
+  delta_pct: null,
+  sentido: "costo",
+  detalle: "La más antigua: Casa Demo CD-001, 3 días hábiles",
+  marcada: true,
+};
+
+// Filas del indice de aprobaciones (`GET /v1/aprobaciones/pendientes`), lo mas antiguo primero. «silice.db» es la carpeta
+// abierta en el servidor de mentira; «s2.db», otra.
+const envio = (caso: string, envio_id: number, obra: string, version: string, extra: Record<string, unknown> = {}) => ({
+  caso,
+  envio_id,
+  proyecto: "3",
+  obra,
+  version,
+  total: "4876.56",
+  moneda: "Bs",
+  estado: "en_aprobacion",
+  enviado_por: "Ana Pérez <ana>",
+  enviado_el: "2026-10-20T09:15:00",
+  dictamen_por: null,
+  dictamen_el: null,
+  nota: "",
+  notas: "",
+  armo: false,
+  ...extra,
+});
+
 type Respuesta = Response | Promise<Response>;
 let servidor: ReturnType<typeof servidorFalso>;
 
+interface Respuestas {
+  porAprobar?: () => Respuesta;
+  envios?: () => Respuesta;
+}
+
 // `resumenDe` y `pendientesDe` responden por la mesa; lo demas, el servidor de mentira del armazon.
-function instalar(resumenDe: () => Respuesta = () => json(resumen()), pendientesDe: () => Respuesta = () => json(PENDIENTES)) {
+function instalar(
+  resumenDe: () => Respuesta = () => json(resumen()),
+  pendientesDe: () => Respuesta = () => json(PENDIENTES),
+  { porAprobar = () => json(POR_APROBAR), envios = () => json([]) }: Respuestas = {},
+) {
   servidor = servidorFalso(undefined, (metodo, ruta) => {
     if (metodo === "GET" && ruta === "/v1/obras/resumen") return resumenDe();
     if (metodo === "GET" && ruta === "/v1/obras/pendientes") return pendientesDe();
+    if (metodo === "GET" && ruta === "/v1/aprobaciones/resumen") return porAprobar();
+    if (metodo === "GET" && ruta === "/v1/aprobaciones/pendientes") return envios();
     return undefined;
   });
   vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
@@ -302,13 +348,15 @@ describe("pendientes", () => {
 });
 
 describe("foco 5: cada bloque según lo que la cuenta puede leer", () => {
-  test("rita: no se piden los pendientes; cifras y obras sí, sin «Siguiente paso» ni «Nueva obra»", async () => {
+  // T19: rita ve ademas su grupo «Aprobar» (de `GET /v1/aprobaciones/pendientes`), sin el resto de los pendientes.
+  test("rita: no se piden los pendientes de las obras; cifras, obras y su columna de aprobar sí, sin «Siguiente paso» ni «Nueva obra»", async () => {
     await montar("rita");
     await filaDe("OB-S2");
     expect(await region("Cómo van las obras")).toBeInTheDocument();
     expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(1);
     expect(servidor.de("GET", "/v1/obras/pendientes")).toEqual([]);
-    expect(screen.queryByRole("region", { name: "Pendientes" })).toBeNull();
+    expect(servidor.de("GET", "/v1/aprobaciones/pendientes")).toHaveLength(1);
+    expect(await within(await region("Pendientes")).findByText("Nada pendiente por ahora.")).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: /Siguiente paso/ })).toBeNull();
     expect(within(screen.getByRole("main")).queryByRole("button", { name: "Nueva obra" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Ver las alertas" })).toBeNull();
@@ -322,7 +370,9 @@ describe("foco 5: cada bloque según lo que la cuenta puede leer", () => {
   });
 
   test("un 403 del resumen oculta «Cómo van las obras» y «Obras» (no los pinta vacíos)", async () => {
-    instalar(() => json({ detalle: "Su cuenta no puede hacer esto." }, 403));
+    // T19: con lo de aprobar tambien prohibido, a rita no le queda ningun bloque.
+    const prohibido = () => json({ detalle: "Su cuenta no puede hacer esto." }, 403);
+    instalar(prohibido, undefined, { porAprobar: prohibido, envios: prohibido });
     await montar("rita");
     await waitFor(() => expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(1));
     await new Promise((r) => setTimeout(r, 30));
@@ -342,6 +392,7 @@ describe("foco 5: cada bloque según lo que la cuenta puede leer", () => {
     expect(screen.queryByRole("heading", { level: 2, name: "Cómo van las obras" })).toBeNull();
     expect(screen.queryByRole("heading", { level: 2, name: "Pendientes" })).toBeNull();
     expect(servidor.llamadas.filter((l) => l.ruta.startsWith("/v1/obras/"))).toEqual([]);
+    expect(servidor.llamadas.filter((l) => l.ruta.startsWith("/v1/aprobaciones"))).toEqual([]);
   });
 
   test("un 500 en pendientes muestra el aviso en esa columna y las cifras siguen", async () => {
@@ -484,7 +535,8 @@ describe("ronda 2: confirmación, descripciones y columnas", () => {
   });
 
   test("rita con el resumen en 403: no queda ninguna columna vacía, solo los accesos", async () => {
-    instalar(() => json({ detalle: "Su cuenta no puede hacer esto." }, 403));
+    const prohibido = () => json({ detalle: "Su cuenta no puede hacer esto." }, 403);
+    instalar(prohibido, undefined, { porAprobar: prohibido, envios: prohibido });
     const { container } = await montar("rita");
     await region("Lo que puede hacer aquí");
     expect(container.querySelector(".silice-mesa__rejilla")).toBeNull();
@@ -515,6 +567,178 @@ describe("cargando y forma", () => {
     await montar("ana");
     await filaDe("OB-S2");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+});
+
+// Tarea 19 (con los cambios por el diseno de modulos): la cifra «Por aprobar» en la franja y el grupo «Aprobar» de la
+// columna de pendientes. La pantalla «Aprobar una versión» (T20) aun no esta en el registro: su boton no se ofrece aqui (la
+// navegacion con la pantalla registrada se prueba en `PorAprobar.test.tsx`).
+const MARCA = "Hay versiones esperando dictamen desde hace días: revíselas pronto.";
+const GALPON_S2 = envio("s2.db", 12, "Galpón Sur", "GS-001", { nota: "Urgente para el cliente." });
+const CASA_AQUI = envio("silice.db", 4, "Casa Demo", "CD-001", {
+  proyecto: "7",
+  total: "125000.50",
+  moneda: "USD",
+  enviado_el: "2026-10-22T08:00:00",
+});
+
+describe("T19: la cifra «Por aprobar»", () => {
+  test("va tercera en la franja con su valor, su meta, la más antigua y la marca con ícono y texto", async () => {
+    await montar("ana");
+    const cifras = await region("Cómo van las obras");
+    const cifra = await within(cifras).findByRole("group", { name: "Por aprobar" });
+    expect(cifra.querySelector(".fiori-kpi__actual")).toHaveTextContent("2");
+    expect(cifra.querySelector(".fiori-kpi__meta")).toHaveTextContent("Meta 0");
+    expect(within(cifras).getByText("La más antigua: Casa Demo CD-001, 3 días hábiles")).toBeInTheDocument();
+    const marca = within(cifras).getByRole("note");
+    expect(marca).toHaveTextContent(MARCA);
+    // El color no va solo: icono y texto.
+    expect(marca.querySelector("svg")).not.toBeNull();
+    expect(cifra).toHaveAccessibleDescription(`La más antigua: Casa Demo CD-001, 3 días hábiles ${MARCA}`);
+    expect(within(cifras).getAllByRole("group").map((g) => g.getAttribute("aria-label"))).toEqual([
+      "Valor ganado",
+      "Avance contra el plan",
+      "Por aprobar",
+    ]);
+    expect(servidor.de("GET", "/v1/aprobaciones/resumen")).toHaveLength(1);
+  });
+
+  test("sin la marca (menos de 3 días hábiles) no hay aviso", async () => {
+    instalar(undefined, undefined, {
+      porAprobar: () => json({ ...POR_APROBAR, delta: "2", detalle: "La más antigua: Casa Demo CD-001, 2 días hábiles", marcada: false }),
+    });
+    await montar("ana");
+    const cifras = await region("Cómo van las obras");
+    await within(cifras).findByRole("group", { name: "Por aprobar" });
+    expect(within(cifras).getByText("La más antigua: Casa Demo CD-001, 2 días hábiles")).toBeInTheDocument();
+    expect(within(cifras).queryByRole("note")).toBeNull();
+    expect(cifras).not.toHaveTextContent(MARCA);
+  });
+
+  test("un 403 de «Por aprobar» la oculta (no la pinta vacía) y las demás cifras siguen", async () => {
+    instalar(undefined, undefined, { porAprobar: () => json({ detalle: "Su cuenta no puede hacer esto." }, 403) });
+    await montar("ana");
+    const cifras = await region("Cómo van las obras");
+    await within(cifras).findByRole("group", { name: "Valor ganado" });
+    await waitFor(() => expect(servidor.de("GET", "/v1/aprobaciones/resumen")).toHaveLength(1));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(within(cifras).queryByRole("group", { name: "Por aprobar" })).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("sin `aprobar_version` no se pide", async () => {
+    const sin = sesionDe("ana", { acciones: ["editar_hoja", "leer_proyecto", "control_de_obra", "cambiar_caso"] });
+    montarShell(sin, "/obras", ligeras({ obras: PaginaObras }));
+    const cifras = await region("Cómo van las obras");
+    await within(cifras).findByRole("group", { name: "Valor ganado" });
+    expect(within(cifras).queryByRole("group", { name: "Por aprobar" })).toBeNull();
+    expect(servidor.llamadas.filter((l) => l.ruta.startsWith("/v1/aprobaciones"))).toEqual([]);
+  });
+
+  test("mientras llega el resumen el esqueleto tiene tres cifras con `aprobar_version` y dos sin ella", async () => {
+    const espera = () => new Promise<Response>(() => {});
+    instalar(espera, espera, { porAprobar: espera, envios: espera });
+    const { unmount } = await montar("ana");
+    const franja = await screen.findByRole("status", { name: "Cargando las cifras de las obras" });
+    expect(franja.querySelectorAll(".silice-mesa__cifra--esqueleto")).toHaveLength(3);
+    unmount();
+    montarShell(sesionDe("ana", { acciones: ["editar_hoja", "leer_proyecto"] }), "/obras", ligeras({ obras: PaginaObras }));
+    const otra = await screen.findByRole("status", { name: "Cargando las cifras de las obras" });
+    expect(otra.querySelectorAll(".silice-mesa__cifra--esqueleto")).toHaveLength(2);
+  });
+
+  test("rita ve la cifra «Por aprobar»", async () => {
+    await montar("rita");
+    const cifras = await region("Cómo van las obras");
+    expect(await within(cifras).findByRole("group", { name: "Por aprobar" })).toBeInTheDocument();
+  });
+});
+
+describe("T19: el grupo «Aprobar» de la columna de pendientes", () => {
+  test("rita: su grupo sale de GET /v1/aprobaciones/pendientes (todas las carpetas), sin el resto de pendientes", async () => {
+    instalar(undefined, undefined, { envios: () => json([GALPON_S2, CASA_AQUI]) });
+    await montar("rita");
+    const columna = await region("Pendientes");
+    const lista = await within(columna).findByRole("list", { name: "Aprobar" });
+    expect(within(columna).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Aprobar"]);
+    const filas = within(lista).getAllByRole("listitem");
+    expect(filas).toHaveLength(2);
+    // Lo mas antiguo primero (el orden de la API): obra, version, total, quien y cuando; la carpeta solo si es otra.
+    expect(within(filas[0]!).getByText("Galpón Sur")).toBeInTheDocument();
+    expect(within(filas[0]!).getByText("GS-001 espera dictamen")).toBeInTheDocument();
+    expect(within(filas[0]!).getByText("4.876,56 Bs · enviada por Ana Pérez el 20/10/2026 · carpeta s2")).toBeInTheDocument();
+    expect(within(filas[0]!).getByText("Nota: Urgente para el cliente.")).toBeInTheDocument();
+    expect(within(filas[1]!).getByText("CD-001 espera dictamen")).toBeInTheDocument();
+    expect(within(filas[1]!).getByText("125.000,50 USD · enviada por Ana Pérez el 22/10/2026")).toBeInTheDocument();
+    // «Abrir» lleva a la pantalla de aprobar, que aun no existe: no se ofrece.
+    expect(within(lista).queryByRole("button")).toBeNull();
+    expect(servidor.de("GET", "/v1/obras/pendientes")).toEqual([]);
+  });
+
+  test("ana: los envíos de otras carpetas se suman a su grupo «Aprobar»; los de la carpeta abierta no se repiten", async () => {
+    instalar(undefined, undefined, { envios: () => json([GALPON_S2, CASA_AQUI]) });
+    await montar("ana");
+    const columna = await region("Pendientes");
+    await within(columna).findByText("GS-001 espera dictamen");
+    const lista = within(columna).getByRole("list", { name: "Aprobar" });
+    expect(within(lista).getAllByText(/espera dictamen$/).map((e) => e.textContent)).toEqual([
+      "CD-001 espera dictamen",
+      "GS-001 espera dictamen",
+    ]);
+    expect(within(lista).getByText("4.876,56 Bs · enviada por Ana Pérez el 20/10/2026 · carpeta s2")).toBeInTheDocument();
+    // Los otros grupos siguen como los manda la API.
+    expect(within(columna).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Aprobar", "Precios", "Calidad"]);
+  });
+
+  test("ana: si la API no trae grupo «Aprobar», el de las otras carpetas va primero", async () => {
+    instalar(undefined, () => json({ grupos: PENDIENTES.grupos.slice(1) }), { envios: () => json([GALPON_S2]) });
+    await montar("ana");
+    const columna = await region("Pendientes");
+    await within(columna).findByText("GS-001 espera dictamen");
+    expect(within(columna).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Aprobar", "Precios", "Calidad"]);
+  });
+
+  test("foco 3: ana ve en la mesa su versión devuelta con las notas y «Hacer una versión nueva» abre la Hoja de esa obra", async () => {
+    const u = userEvent.setup();
+    const devuelta = item("7", "Casa Demo", "VIV-001 devuelta: Falta el acero de la losa.", "Hacer una versión nueva", "hoja");
+    instalar(undefined, () => json({ grupos: [{ clave: "aprobar", titulo: "Aprobar", items: [devuelta] }] }));
+    await montar("ana");
+    const lista = await within(await region("Pendientes")).findByRole("list", { name: "Aprobar" });
+    expect(within(lista).getByText("VIV-001 devuelta: Falta el acero de la losa.")).toBeInTheDocument();
+    await u.click(within(lista).getByRole("button", { name: "Hacer una versión nueva" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" })).toBeInTheDocument();
+    expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "7" }]);
+  });
+
+  test("rita sin envíos: «Nada pendiente por ahora.»", async () => {
+    await montar("rita");
+    expect(await within(await region("Pendientes")).findByText("Nada pendiente por ahora.")).toBeInTheDocument();
+  });
+
+  test("rita: un fallo al leer los envíos se dice en la columna", async () => {
+    instalar(undefined, undefined, { envios: () => json({ detalle: "No se pudo leer o guardar la aprobación en la carpeta de trabajo." }, 503) });
+    await montar("rita");
+    const aviso = await within(await region("Pendientes")).findByRole("alert");
+    expect(aviso).toHaveTextContent("No se pudo leer o guardar la aprobación en la carpeta de trabajo.");
+  });
+
+  test("ana: un fallo al leer los envíos no tapa los pendientes de las obras", async () => {
+    instalar(undefined, undefined, { envios: () => json({ detalle: "No se pudo leer o guardar la aprobación en la carpeta de trabajo." }, 503) });
+    await montar("ana");
+    const columna = await region("Pendientes");
+    expect(await within(columna).findByText("1 precio sin referencia en CD-001")).toBeInTheDocument();
+    const aviso = await within(columna).findByRole("alert");
+    expect(aviso).toHaveTextContent("No se pudieron leer los envíos de otras carpetas");
+    expect(aviso).toHaveTextContent("No se pudo leer o guardar la aprobación en la carpeta de trabajo.");
+  });
+
+  test("ana: un 403 de los envíos no se dice (solo quedan los pendientes de las obras)", async () => {
+    instalar(undefined, undefined, { envios: () => json({ detalle: "Su cuenta no puede hacer esto." }, 403) });
+    await montar("ana");
+    const columna = await region("Pendientes");
+    await within(columna).findByText("1 precio sin referencia en CD-001");
+    await new Promise((r) => setTimeout(r, 30));
+    expect(within(columna).queryByRole("alert")).toBeNull();
   });
 });
 

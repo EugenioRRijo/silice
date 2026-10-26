@@ -27,12 +27,13 @@ const ADMIN = [
 ];
 
 describe("bloquesPedidos", () => {
-  test("quien arma pide cifras, obras y pendientes (no los accesos)", () => {
-    expect(bloquesPedidos(ANA)).toEqual(["cifras", "obras", "pendientes"]);
+  // T19: con `aprobar_version` se pide ademas lo de aprobar (la cifra «Por aprobar» y los envios de todas las carpetas).
+  test("quien arma pide cifras, obras, pendientes y lo de aprobar (no los accesos)", () => {
+    expect(bloquesPedidos(ANA)).toEqual(["cifras", "obras", "pendientes", "por_aprobar"]);
   });
 
-  test("quien revisa pide cifras y obras; los pendientes exigen editar la hoja", () => {
-    expect(bloquesPedidos(RITA)).toEqual(["cifras", "obras"]);
+  test("quien revisa pide cifras, obras y lo de aprobar; los pendientes de las obras exigen editar la hoja", () => {
+    expect(bloquesPedidos(RITA)).toEqual(["cifras", "obras", "por_aprobar"]);
   });
 
   test("el administrador no lee obras: solo los accesos de su módulo", () => {
@@ -41,6 +42,10 @@ describe("bloquesPedidos", () => {
 
   test("solo editar la hoja: pendientes, sin cifras ni obras ni accesos", () => {
     expect(bloquesPedidos(["editar_hoja"])).toEqual(["pendientes"]);
+  });
+
+  test("solo aprobar versiones: lo de aprobar, sin accesos", () => {
+    expect(bloquesPedidos(["aprobar_version"])).toEqual(["por_aprobar"]);
   });
 
   test("sin acciones: accesos", () => {
