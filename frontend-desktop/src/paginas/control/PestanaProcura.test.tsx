@@ -278,6 +278,56 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
     expect(document.querySelector(".cds--inline-notification--success")).toBeNull();
   });
 
+  // Tarea 25: la casilla «Declararlo precio del corte» de la recepcion deja el precio unitario como precio del corte de
+  // la obra desde la fecha de llegada (`declarar_corte` solo viaja si se marco; sin precio no se envia).
+  test("con la casilla marcada, el precio de la recepción se declara precio del corte y lo dice", async () => {
+    const u = montar();
+    const tabla = await abrirProcura(u);
+    await u.click(within(tabla).getByRole("button", { name: "Recibida…: Cemento gris (saco)" }));
+    const dialogo = screen.getByRole("dialog", { name: "Recepción de Cemento gris" });
+    const casilla = within(dialogo).getByRole("checkbox", { name: "Declararlo precio del corte" });
+    expect(casilla).not.toBeChecked();
+    expect(
+      within(dialogo).getByText(
+        "Desde la fecha de llegada, Control de obra lo usará para separar el desvío de precio («Precios declarados de insumos»).",
+      ),
+    ).toBeInTheDocument();
+    await u.type(within(dialogo).getByLabelText("Precio unitario (por saco, opcional)"), "20,00");
+    await u.click(casilla);
+    await u.click(within(dialogo).getByRole("button", { name: "Anotar recepción" }));
+    expect(
+      await screen.findByText(
+        "Recepción de Cemento gris anotada con fecha 02/11/2026. Su precio queda como precio del corte desde esa fecha.",
+      ),
+    ).toBeInTheDocument();
+    expect(cuerpoDe("/v1/procura/compras", "POST")).toEqual({
+      proyecto: "Vivienda demo",
+      descripcion: "Cemento gris",
+      unidad: "saco",
+      evento: "recibida",
+      fecha: "2026-11-02",
+      cantidad: "",
+      precio: "20,00",
+      declarar_corte: true,
+    });
+  });
+
+  test("con la casilla marcada y sin precio, se pide el precio en su campo y no se envía", async () => {
+    const u = montar();
+    const tabla = await abrirProcura(u);
+    await u.click(within(tabla).getByRole("button", { name: "Recibida…: Cemento gris (saco)" }));
+    const dialogo = screen.getByRole("dialog", { name: "Recepción de Cemento gris" });
+    await u.click(within(dialogo).getByRole("checkbox", { name: "Declararlo precio del corte" }));
+    await u.click(within(dialogo).getByRole("button", { name: "Anotar recepción" }));
+    const precio = within(dialogo).getByLabelText("Precio unitario (por saco, opcional)");
+    expect(
+      await within(dialogo).findByText("El precio unitario hace falta para declararlo precio del corte."),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(precio).toHaveFocus());
+    expect(precio).toHaveAttribute("aria-invalid", "true");
+    expect(llamadas("/v1/procura/compras", "POST")).toHaveLength(0);
+  });
+
   test("un precio con punto decimal se marca en su campo, recibe el foco y no se envía; Esc cierra y devuelve el foco", async () => {
     const u = montar();
     const tabla = await abrirProcura(u);

@@ -10,7 +10,11 @@ Lo que se prueba:
   «costo»): con la línea base en la perspectiva precio, la escalatoria con Km = 1 no da desvío y los
   declarados se comparan con el precio unitario;
 - `POST /v1/mercado/compra/{codigo}/usar` con `declarar_en` (la obra) declara el precio usado como
-  precio del corte, en la misma transacción que la lista (todo o nada).
+  precio del corte, en la misma transacción que la lista (todo o nada);
+- `POST /v1/procura/compras` con `declarar_corte` declara el precio unitario de la compra recibida
+  como precio del corte desde la fecha de llegada, en la misma transacción que la compra; sin
+  precio o en un pedido es un 422 que lo dice. Ni una casilla ni la otra cambian los precios de la
+  versión sellada de la línea base.
 
 Oráculos de la memoria de OB-S2 (`tests/fixtures/memorias/control_ob_s2.md`, §1, §3 y §6), a mano:
 el material de B pasa de 3,00 a 4,00 y el de C de 12,00 a 14,10 → ΔP = 90 × 0 + 60 × (5 − 6) =
@@ -33,8 +37,10 @@ from sqlalchemy import select
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import mercado as rutas_mercado
-from aplicacion.precios_declarados import declarar_precio_del_corte
+from api.rutas import procura as rutas_procura
+from aplicacion.precios_declarados import ReglaDelCorte, declarar_precio_del_corte
 from aplicacion.tablas_corte import PrecioDelCorte
+from aplicacion.tablas_procura import CompraDeInsumo
 from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion.base_datos import preparar_base
@@ -97,6 +103,7 @@ def caso(
     copiar_instalacion(_plantillas["instalacion"])
     copia = _entrar(_plantillas, "costo", tmp_path, monkeypatch)
     monkeypatch.setattr(rutas_mercado, "ahora", lambda: AHORA)
+    monkeypatch.setattr(rutas_procura, "ahora", lambda: AHORA)
     yield copia
     caso_web.olvidar_todo()
     dependencias.cerrar_motores()
@@ -297,4 +304,126 @@ def test_la_obra_de_la_casilla_que_no_existe_es_404(caso: Path) -> None:
     assert respuesta.json() == {
         "detalle": "No hay ninguna obra «NO-HAY» en esta carpeta de trabajo."
     }
+    assert _declarados(caso) == []
+
+
+def _sellados(ruta: Path) -> list[tuple[str, Decimal]]:
+    """Los precios de la composición congelada de las versiones guardadas (la línea base)."""
+    return _en_el_caso(
+        ruta,
+        lambda s: [
+            (f.descripcion, f.precio)
+            for f in s.scalars(
+                select(models.LineaComposicionVersion).order_by(models.LineaComposicionVersion.id)
+            )
+        ],
+    )
+
+
+def test_la_casilla_del_estudio_de_mercado_no_toca_la_version_sellada(caso: Path) -> None:
+    navegador, cabeceras = _arma()
+    antes = _sellados(caso)
+    respuesta = navegador.post(
+        f"/v1/mercado/compra/{_codigo(caso, TUBO)}/usar",
+        json={"precio": "4,00", "observacion_id": None, "declarar_en": ob.NOMBRE},
+        headers=cabeceras,
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    assert (TUBO, D("3.00")) in antes
+    assert _sellados(caso) == antes
+
+
+# --- la casilla de la recepción de una compra (Procura) -----------------------------------------
+
+
+def _compras(ruta: Path) -> list[tuple[str, str, date, Decimal | None]]:
+    return _en_el_caso(
+        ruta,
+        lambda s: [
+            (f.descripcion_insumo, f.evento, f.fecha, f.precio)
+            for f in s.scalars(select(CompraDeInsumo).order_by(CompraDeInsumo.id))
+        ],
+    )
+
+
+def _recibir(navegador, cabeceras, **cambio):
+    cuerpo = {
+        "proyecto": ob.NOMBRE,
+        "descripcion": TUBO,
+        "unidad": "m",
+        "evento": "recibida",
+        "fecha": "2026-11-09",
+        "cantidad": "60",
+        "precio": "4,00",
+        **cambio,
+    }
+    return navegador.post("/v1/procura/compras", json=cuerpo, headers=cabeceras)
+
+
+def test_al_recibir_una_compra_la_casilla_declara_su_precio_del_corte(caso: Path) -> None:
+    navegador, cabeceras = _arma()
+    antes = _sellados(caso)
+    respuesta = _recibir(navegador, cabeceras, declarar_corte=True)
+    assert respuesta.status_code == 204, respuesta.text
+    [declarado] = _declarados(caso)
+    assert declarado[:6] == (
+        TUBO,
+        "m",
+        D("4.00"),
+        "USD",
+        date(2026, 11, 9),
+        "Procura: compra recibida el 09/11/2026",
+    )
+    assert "<ana>" in declarado[6]
+    assert _compras(caso) == [(TUBO, "recibida", date(2026, 11, 9), D("4.00"))]
+    assert _sellados(caso) == antes
+    ind = _indicadores(navegador, metodo="declarados")
+    assert ind["Desvío de precio (USD)"]["Valor"] == "-60.00"
+
+
+def test_al_recibir_una_compra_sin_la_casilla_no_se_declara_nada(caso: Path) -> None:
+    navegador, cabeceras = _arma()
+    respuesta = _recibir(navegador, cabeceras)
+    assert respuesta.status_code == 204, respuesta.text
+    assert _declarados(caso) == []
+    assert len(_compras(caso)) == 1
+
+
+@pytest.mark.parametrize(
+    ("cambio", "mensaje"),
+    [
+        (
+            {"precio": ""},
+            "El precio unitario hace falta para declararlo precio del corte.",
+        ),
+        (
+            {"evento": "pedida"},
+            "Solo el precio de una compra recibida se declara precio del corte.",
+        ),
+    ],
+)
+def test_la_casilla_sin_precio_o_en_un_pedido_es_422_y_no_anota_nada(
+    caso: Path, cambio: dict, mensaje: str
+) -> None:
+    navegador, cabeceras = _arma()
+    respuesta = _recibir(navegador, cabeceras, declarar_corte=True, **cambio)
+    assert (respuesta.status_code, respuesta.json()) == (422, {"detalle": mensaje})
+    assert _compras(caso) == []
+    assert _declarados(caso) == []
+
+
+def test_si_no_se_puede_declarar_tampoco_se_anota_la_compra(
+    caso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def rechazar(*_args, **_kwargs):
+        raise ReglaDelCorte("La obra «OB-S2» no admite ese precio del corte (prueba).")
+
+    monkeypatch.setattr(rutas_procura, "declarar_precio_del_corte", rechazar)
+    navegador, cabeceras = _arma()
+    respuesta = _recibir(navegador, cabeceras, declarar_corte=True)
+    assert (respuesta.status_code, respuesta.json()) == (
+        409,
+        {"detalle": "La obra «OB-S2» no admite ese precio del corte (prueba)."},
+    )
+    assert _compras(caso) == []
     assert _declarados(caso) == []
