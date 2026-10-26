@@ -171,6 +171,44 @@ describe("Visor", () => {
     expect(screen.queryByRole("tab", { name: "AUX" })).not.toBeInTheDocument();
   });
 
+  // D-5 (MOD-5): axe `aria-valid-attr-value` critico con el libro abierto. La regla de axe exige que el aria-controls
+  // de todo elemento que no este con aria-selected="false" ni aria-expanded="false" nombre ids que existen; la pestana
+  // elegida, ademas, controla el panel que muestra la hoja (el lienzo), y ese panel se nombra con la pestana.
+  test("la pestana elegida controla un panel que existe y contiene la hoja; ningun aria-controls queda colgando (D-5)", async () => {
+    const usuario = userEvent.setup();
+    const { container } = render(<Visor crearHoja={crearHoja} />);
+    await soltar(usuario);
+    await screen.findByRole("tablist", { name: "Hojas del libro" });
+
+    const comprobar = (nombre: RegExp) => {
+      const pestana = screen.getByRole("tab", { name: nombre });
+      expect(pestana).toHaveAttribute("aria-selected", "true");
+      const panel = document.getElementById(pestana.getAttribute("aria-controls") ?? "");
+      expect(panel).not.toBeNull();
+      expect(panel).toHaveAttribute("role", "tabpanel");
+      expect(panel).toHaveAttribute("aria-labelledby", pestana.id);
+      expect(panel).toContainElement(container.querySelector(".visor__lienzo") as HTMLElement);
+      for (const el of container.querySelectorAll("[aria-controls]")) {
+        if (el.getAttribute("aria-selected") === "false" || el.getAttribute("aria-expanded") === "false") continue;
+        for (const id of (el.getAttribute("aria-controls") ?? "").split(/\s+/).filter(Boolean)) {
+          expect(document.getElementById(id), `aria-controls="${id}" de ${el.outerHTML.slice(0, 80)}`).not.toBeNull();
+        }
+      }
+    };
+
+    await waitFor(() => expect(screen.getByRole("tab", { name: /^PLAN DE PAGOS/ })).toHaveAttribute("aria-selected", "true"));
+    comprobar(/^PLAN DE PAGOS/);
+    await usuario.click(screen.getByRole("tab", { name: "PORTADA" }));
+    act(() => {
+      hoja.fijarHoja("PORTADA");
+      hoja.cambiar();
+    });
+    await waitFor(() => expect(screen.getByRole("tab", { name: "PORTADA" })).toHaveAttribute("aria-selected", "true"));
+    comprobar(/^PORTADA$/);
+    // La conducta no cambia: el lienzo sigue nombrado y fuera del orden de Tab (m3).
+    expect(screen.getByRole("group", { name: "Hoja del libro, solo lectura" })).toBeInTheDocument();
+  });
+
   test("un hallazgo en una hoja oculta va al grupo de ocultos y dice cual", async () => {
     const usuario = userEvent.setup();
     const conOculta = {
