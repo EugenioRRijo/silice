@@ -72,7 +72,7 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     envioEnCurso: null as Promise<Resumen | null> | null,
   });
   // `enviarEdicion`, para mandar lo escrito mientras iba una acción (se fija en un efecto).
-  const reenviar = useRef<(() => Promise<Resumen | null>) | null>(null);
+  const reenviar = useRef<((conservarError: boolean) => Promise<Resumen | null>) | null>(null);
   const actuales = useRef(opciones);
 
   useEffect(() => {
@@ -85,7 +85,8 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
   });
 
   // Manda una petición y devuelve el resumen que contestó el servidor, o null si no se aceptó (o ya había una en vuelo).
-  const mandar = useCallback(async (construir: (rev: number, estado: E) => Peticion, repetir: boolean): Promise<Resumen | null> => {
+  // `conservarError`: el reenvío de lo escrito tras una acción fallida no borra, al aceptarse, el aviso de esa acción.
+  const mandar = useCallback(async (construir: (rev: number, estado: E) => Peticion, repetir: boolean, conservarError = false): Promise<Resumen | null> => {
     const m = motor.current;
     if (m.bloqueado) return null;
     if (m.enVuelo) {
@@ -97,6 +98,9 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     const envio = (async (): Promise<Resumen | null> => {
       let frase = actuales.current.frase;
       let aceptado: Resumen | null = null;
+      // La acción falló (su aviso se conserva) o la sesión o el borrador se perdieron (no se reenvía nada).
+      let fallo = false;
+      let perdido = false;
       try {
         do {
           m.volver = false;
@@ -107,17 +111,20 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
           m.rev = respuesta.rev;
           m.aceptado = enviado;
           aceptado = respuesta.resumen;
-          setError(null);
+          if (!conservarError) setError(null);
           actuales.current.alAceptar(respuesta.resumen);
           actuales.current.alRelectura();
           // Solo la edición se repite con lo último escrito; una acción (quitar, usar un insumo) no se repite.
         } while (repetir && m.volver);
       } catch (e) {
         if (repetir) m.volver = false;
+        fallo = true;
         // Si una vuelta anterior ya se aceptó, `aceptado` es lo último que el servidor tiene; si no, sigue en null.
         if (e instanceof ErrorDeApi && e.estado === 401) {
+          perdido = true;
           actuales.current.alExpirar();
         } else if (esBorradorAusente(e)) {
+          perdido = true;
           actuales.current.alAusente();
         } else if (e instanceof ErrorDeApi && e.estado === 409) {
           const clase = claseDeConflicto(e.detalle);
@@ -140,11 +147,11 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
         }
       } finally {
         m.enVuelo = false;
-        // Lo escrito mientras iba una acción sale ahora, con el `rev` que ella dejó.
-        const pendiente = !repetir && m.volver;
-        if (pendiente) m.volver = false;
+        // Lo escrito mientras iba una acción sale ahora, con el `rev` que ella dejó; tras un 401 o sin borrador, no.
+        const pendiente = !repetir && m.volver && !perdido;
+        if (!repetir) m.volver = false;
         setEnvio(m.temporizador !== null ? "pendiente" : "quieto");
-        if (pendiente) void reenviar.current?.();
+        if (pendiente) void reenviar.current?.(fallo);
       }
       return aceptado;
     })();
@@ -154,8 +161,8 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
 
   const enviarEdicion = useCallback(() => mandar((rev, e) => actuales.current.peticion(rev, e), true), [mandar]);
   useEffect(() => {
-    reenviar.current = enviarEdicion;
-  }, [enviarEdicion]);
+    reenviar.current = (conservarError) => mandar((rev, e) => actuales.current.peticion(rev, e), true, conservarError);
+  }, [mandar]);
 
   // Cambia lo editable y programa el envío tras la pausa. `cambio` recibe lo último (no lo último pintado).
   const cambiar = useCallback(
