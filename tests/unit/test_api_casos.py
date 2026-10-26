@@ -255,7 +255,7 @@ def test_una_clave_de_api_con_la_cookie_de_un_navegador_usa_el_caso_del_proceso(
     assert respuesta.status_code == 200 and respuesta.json() == []
 
 
-def test_salir_olvida_el_caso_elegido() -> None:
+def test_salir_olvida_la_ficha_y_al_entrar_vuelve_la_carpeta_recordada() -> None:
     navegador, ficha = con_cuenta(app, "ana")
     _elegir(navegador, ficha, "anexo.db")
     assert caso_web.elegido(sesiones.huella_de(ficha)) is not None

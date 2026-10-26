@@ -30,8 +30,11 @@ from fastapi.testclient import TestClient
 
 from api import caso_web, dependencias
 from api.main import app
+from api.rutas import casos as rutas_casos
+from api.rutas import sesion as rutas_sesion
 from operacion import config
 from operacion.base_datos import preparar_base
+from seguridad import sesiones
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
     ORIGEN,
@@ -343,3 +346,76 @@ def test_con_la_contrasena_temporal_no_hay_eleccion_ni_se_puede_guardar() -> Non
         bloqueada = navegador.put(ruta, json=cuerpo, headers=protegida(ficha))
         assert bloqueada.status_code == 403
         assert bloqueada.json() == {"detalle": MENSAJE_CAMBIAR_CLAVE}
+
+
+# --- ronda 2 del árbitro: permisos (C1) y memoria solo tras confirmar (C2) ---------------------
+
+
+def _cambiar_roles(login: str, roles: list[str]) -> None:
+    """El administrador cambia los roles de `login` (lo que cierra sus sesiones)."""
+    admin, ficha = con_cuenta(app, "admin")
+    cuentas = admin.get("/v1/cuentas").json()["cuentas"]
+    destino = next(c["id"] for c in cuentas if c["login"] == login)
+    respuesta = admin.post(
+        f"/v1/cuentas/{destino}/roles", json={"roles": roles}, headers=protegida(ficha)
+    )
+    assert respuesta.status_code == 200, respuesta.text
+
+
+def test_sin_cambiar_caso_no_se_restaura_la_carpeta_recordada() -> None:
+    """§12.2: quien perdió `cambiar_caso` no vuelve a una carpeta que ya no podría elegir."""
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "7").status_code == 204
+    _cambiar_roles("ana", ["revisa"])
+
+    respuesta = entrar(navegador, "ana")
+
+    assert respuesta.status_code == 200, respuesta.text
+    # la obra 7 no está en la carpeta por omisión: tampoco vuelve
+    assert respuesta.json()["eleccion"] == SIN_ELECCION
+    assert navegador.get("/v1/casos").json()["actual"]["nombre"] == "silice.db"
+
+
+def test_la_fila_se_conserva_y_vuelve_si_recupera_cambiar_caso() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "7").status_code == 204
+    _cambiar_roles("ana", ["revisa"])
+    assert entrar(navegador, "ana").json()["eleccion"]["caso"] is None
+    _cambiar_roles("ana", ["arma"])
+
+    respuesta = entrar(navegador, "ana")
+
+    assert respuesta.json()["eleccion"] == {"caso": "s1.db", "proyecto": "7", "aviso": None}
+    assert navegador.get("/v1/casos").json()["actual"]["nombre"] == "s1.db"
+
+
+def test_si_no_se_puede_recordar_la_carpeta_la_ficha_no_cambia(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+
+    def falla(*_args, **_kwargs) -> None:
+        raise RuntimeError("la instalación no confirmó")
+
+    monkeypatch.setattr(rutas_casos, "recordar_caso", falla)
+    assert _elegir(navegador, ficha, "s1.db").status_code == 500
+    assert caso_web.elegido(sesiones.huella_de(ficha)) is None
+    assert navegador.get("/v1/casos").json()["actual"]["nombre"] == "silice.db"
+
+
+def test_si_la_restauracion_no_se_confirma_la_ficha_no_cambia(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "99").status_code == 204  # una obra que no está en s1
+    caso_web.olvidar_todo()  # reinicio de la API
+
+    def falla(*_args, **_kwargs) -> None:
+        raise RuntimeError("la instalación no confirmó")
+
+    monkeypatch.setattr(rutas_sesion, "recordar_proyecto", falla)
+    assert navegador.get("/v1/sesion").status_code == 500
+    assert caso_web.elegido(sesiones.huella_de(ficha)) is None
