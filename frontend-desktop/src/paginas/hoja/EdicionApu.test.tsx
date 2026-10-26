@@ -361,7 +361,7 @@ describe("Hoja del proyecto: APU editable y cambio de insumo (3c-3)", () => {
       detalle: {
         ...vistaApu().detalle!,
         grupos: vistaApu().detalle!.grupos.map((g, i) =>
-          i === 0 ? { ...g, filas: [{ descripcion: "Llave de bola PVC 1/2", unidad: "pieza", cantidad: "9", precio: "7.7483" }] } : g,
+          i === 0 ? { ...g, filas: [{ descripcion: "Llave de bola PVC 1/2", unidad: "pieza", cantidad: "9", precio: "7,7483" }] } : g,
         ),
       },
     });
@@ -435,15 +435,15 @@ describe("Hoja del proyecto: APU editable y cambio de insumo (3c-3)", () => {
   test("los cuatro factores se editan en la pestaña (PUT …/parametros) y el cierre de la partida se vuelve a leer", async () => {
     await irAApu();
     relojFalso();
-    expect(await esperar(() => campo(/^Administración/))).toHaveValue("0.15");
-    expect(campo(/^FCAS/)).toHaveValue("6.00");
+    expect(await esperar(() => campo(/^Administración/))).toHaveValue("0,15");
+    expect(campo(/^FCAS/)).toHaveValue("6,00");
     const lecturas = lecturasDeApu();
-    fireEvent.change(campo(/^Administración/), { target: { value: "0.20" } });
+    fireEvent.change(campo(/^Administración/), { target: { value: "0,20" } });
     await pausa(400);
     await esperar(() =>
       expect(
         fetchFalso.mock.calls.filter(([r, i]) => i?.method === "PUT" && String(r).endsWith("/parametros")).map(([, i]) => JSON.parse(String(i?.body))),
-      ).toEqual([{ rev: 0, fcas: "6.00", bono_alimentacion: "5.8100", administracion: "0.20", utilidad: "0.10" }]),
+      ).toEqual([{ rev: 0, fcas: "6,00", bono_alimentacion: "5,8100", administracion: "0,20", utilidad: "0,10" }]),
     );
     await esperar(() => expect(lecturasDeApu()).toBeGreaterThan(lecturas));
   });

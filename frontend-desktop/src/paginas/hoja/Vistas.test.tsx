@@ -269,12 +269,33 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     expect(within(filas[2]!).getByText("FCAS 6 y bono 5.81, entre el rendimiento")).toBeInTheDocument();
   });
 
-  test("APU: las cantidades y precios de las líneas salen en es-VE con el valor original en el title", async () => {
+  test("APU: las líneas llegan ya en es-VE y se muestran tal cual, sin convertirlas otra vez", async () => {
+    // Árbitro, ronda 1 (B3): `filas_desde_composicion` ya escribe las celdas con coma decimal y punto de miles; la
+    // pantalla las formateaba de nuevo y un precio de mil quinientos («1.500») se veía «1,500», mil veces menos.
     servidor();
     montar();
     await irA("APU");
     const materiales = await screen.findByRole("table", { name: "Materiales" });
-    expect(within(materiales).getByTitle("7.7483")).toHaveTextContent("7,7483");
+    expect(within(materiales).getByText("7,7483")).toBeInTheDocument();
+  });
+
+  test("APU: un precio de mil quinientos («1.500») se ve «1.500»", async () => {
+    const detalle = vistaApu().detalle!;
+    const grupos = detalle.grupos.map((g, i) =>
+      i === 0
+        ? { ...g, filas: [{ ...g.filas[0]!, precio: "1.500" }] }
+        : i === 2
+          ? { ...g, filas: [{ ...g.filas[0]!, sueldo: "12.345,6" }, g.filas[1]!] }
+          : g,
+    );
+    servidor({ apu: () => json(vistaApu({ detalle: { ...detalle, grupos } })) });
+    montar();
+    await irA("APU");
+    const materiales = await screen.findByRole("table", { name: "Materiales" });
+    expect(within(materiales).getByText("1.500")).toBeInTheDocument();
+    expect(within(materiales).queryByText("1,500")).toBeNull();
+    const mano = screen.getByRole("table", { name: "Mano de obra" });
+    expect(within(mano).getByText("12.345,6")).toBeInTheDocument();
   });
 
   test("3b-F7: escribir en «Buscar partida» pide al servidor la lista filtrada", async () => {

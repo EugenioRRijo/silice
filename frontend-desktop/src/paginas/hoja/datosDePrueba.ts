@@ -170,7 +170,7 @@ export function vistaApu(extra: Partial<VistaApu> = {}): VistaApu {
             { clave: "cantidad", rotulo: "Cantidad" },
             { clave: "precio", rotulo: "Precio" },
           ],
-          filas: [{ descripcion: "Llave de bola PVC 1/2", unidad: "pieza", cantidad: "1", precio: "7.7483" }],
+          filas: [{ descripcion: "Llave de bola PVC 1/2", unidad: "pieza", cantidad: "1", precio: "7,7483" }],
           subtotal: m("7.75", "7.7483"),
         },
         {
@@ -182,7 +182,7 @@ export function vistaApu(extra: Partial<VistaApu> = {}): VistaApu {
             { clave: "precio", rotulo: "Precio" },
             { clave: "depreciacion", rotulo: "Depreciación" },
           ],
-          filas: [{ descripcion: "Herramientas menores", cantidad: "1", precio: "14.3046", depreciacion: "1" }],
+          filas: [{ descripcion: "Herramientas menores", cantidad: "1", precio: "14,3046", depreciacion: "1" }],
           subtotal: m("0.72", "0.71523"),
         },
         {
@@ -195,8 +195,8 @@ export function vistaApu(extra: Partial<VistaApu> = {}): VistaApu {
             { clave: "modalidad", rotulo: "Modalidad" },
           ],
           filas: [
-            { descripcion: "Plomero de 1ra N5", cantidad: "1", sueldo: "2.1877", modalidad: "jornal" },
-            { descripcion: "Ayudante N2", cantidad: "1", sueldo: "1.7816", modalidad: "jornal" },
+            { descripcion: "Plomero de 1ra N5", cantidad: "1", sueldo: "2,1877", modalidad: "jornal" },
+            { descripcion: "Ayudante N2", cantidad: "1", sueldo: "1,7816", modalidad: "jornal" },
           ],
           subtotal: m("1.97", "1.970255"),
         },
@@ -263,10 +263,10 @@ export function vistaEquilibrio(extra: Partial<VistaEquilibrio> = {}): VistaEqui
 export function vistaParametros(extra: Partial<VistaParametros> = {}): VistaParametros {
   return {
     campos: [
-      { clave: "fcas", rotulo: "FCAS (fracción: 6.00 = prestaciones del 600 %)", valor: "6.00" },
-      { clave: "bono_alimentacion", rotulo: "Bono de alimentación (por obrero y día)", valor: "5.8100" },
-      { clave: "administracion", rotulo: "Administración (fracción del costo directo)", valor: "0.15" },
-      { clave: "utilidad", rotulo: "Utilidad (fracción, en cascada sobre la administración)", valor: "0.10" },
+      { clave: "fcas", rotulo: "FCAS (fracción: 6,00 = prestaciones del 600 %)", valor: "6,00" },
+      { clave: "bono_alimentacion", rotulo: "Bono de alimentación (por obrero y día)", valor: "5,8100" },
+      { clave: "administracion", rotulo: "Administración (fracción del costo directo)", valor: "0,15" },
+      { clave: "utilidad", rotulo: "Utilidad (fracción, en cascada sobre la administración)", valor: "0,10" },
     ],
     moneda_proyecto: "USD",
     total: m("2703.86", "2703.860232344044"),

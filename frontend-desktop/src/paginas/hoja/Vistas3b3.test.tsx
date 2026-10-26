@@ -220,10 +220,10 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
     servidor();
     montar();
     await irA("Parámetros");
-    expect(await screen.findByRole("textbox", { name: /^FCAS/ })).toHaveValue("6.00");
-    expect(screen.getByRole("textbox", { name: /^Bono de alimentación/ })).toHaveValue("5.8100");
-    expect(screen.getByRole("textbox", { name: /^Administración/ })).toHaveValue("0.15");
-    expect(screen.getByRole("textbox", { name: /^Utilidad/ })).toHaveValue("0.10");
+    expect(await screen.findByRole("textbox", { name: /^FCAS/ })).toHaveValue("6,00");
+    expect(screen.getByRole("textbox", { name: /^Bono de alimentación/ })).toHaveValue("5,8100");
+    expect(screen.getByRole("textbox", { name: /^Administración/ })).toHaveValue("0,15");
+    expect(screen.getByRole("textbox", { name: /^Utilidad/ })).toHaveValue("0,10");
     expect(screen.getAllByRole("textbox")).toHaveLength(4);
   });
 

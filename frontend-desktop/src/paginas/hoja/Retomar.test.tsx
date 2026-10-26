@@ -261,7 +261,7 @@ describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", 
       return json({ rev: c.rev + 1, resumen: resumen({ rev: c.rev + 1, cambios: 3 }) });
     };
     relojFalso();
-    fireEvent.change(campo, { target: { value: "0.20" } });
+    fireEvent.change(campo, { target: { value: "0,20" } });
     await pausa(400);
     await esperar(() => expect(cuerpos).toHaveLength(1));
     expect(cuerpos[0]!.rev).toBe(4);
@@ -510,7 +510,7 @@ describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", 
     await userEvent.click(screen.getByRole("tab", { name: "Parámetros" }));
     const campo = await screen.findByRole("textbox", { name: /^Administración/ });
     relojFalso();
-    fireEvent.change(campo, { target: { value: "0.20" } });
+    fireEvent.change(campo, { target: { value: "0,20" } });
     await pausa(100); // dentro de los 400 ms de la pausa
     pagina.unmount();
     await esperar(() => expect(llamadas("PUT", `/v1/hoja/borradores/${ID}/parametros`)).toHaveLength(1));
@@ -554,7 +554,7 @@ describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", 
         async (...args: Parameters<typeof fetch>) =>
           String(args[0]).endsWith("/parametros") && args[1]?.method === "PUT" ? respuesta : impl(...args))(fetchFalso.getMockImplementation()!),
     );
-    fireEvent.change(campo, { target: { value: "0.20" } });
+    fireEvent.change(campo, { target: { value: "0,20" } });
     await pausa(100);
     pagina.unmount();
     await esperar(() => expect(llamadas("PUT", `/v1/hoja/borradores/${ID}/parametros`)).toHaveLength(1));

@@ -89,20 +89,20 @@ describe("edición por sección (3c-2): parámetros (E3)", () => {
 
   test("sembrar guarda el valor de cada campo como texto", () => {
     expect(sembrarParametros(vistaParametros().campos)).toEqual({
-      fcas: "6.00",
-      bono_alimentacion: "5.8100",
-      administracion: "0.15",
-      utilidad: "0.10",
+      fcas: "6,00",
+      bono_alimentacion: "5,8100",
+      administracion: "0,15",
+      utilidad: "0,10",
     });
   });
 
   test("el cuerpo lleva el rev y los cuatro textos; el que falte va vacío, y nada se convierte", () => {
-    expect(cuerpoDeParametros(2, { fcas: "6.00", bono_alimentacion: "5.8100", administracion: "0,20", utilidad: "0.10" })).toEqual({
+    expect(cuerpoDeParametros(2, { fcas: "6,00", bono_alimentacion: "5,8100", administracion: "0,20", utilidad: "0,10" })).toEqual({
       rev: 2,
-      fcas: "6.00",
-      bono_alimentacion: "5.8100",
+      fcas: "6,00",
+      bono_alimentacion: "5,8100",
       administracion: "0,20",
-      utilidad: "0.10",
+      utilidad: "0,10",
     });
     expect(cuerpoDeParametros(0, { fcas: "1" })).toEqual({ rev: 0, fcas: "1", bono_alimentacion: "", administracion: "", utilidad: "" });
   });

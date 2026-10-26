@@ -231,7 +231,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
         await screen.findByRole("textbox", { name: /^Administración/ });
       },
       campo: () => campo(/^Administración/),
-      sembrado: "0.15",
+      sembrado: "0,15",
       enCuerpo: (c) => String(c.administracion),
       otroValorEnElServidor: (valor) => {
         parametros = vistaParametros({
@@ -485,10 +485,10 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
   describe("Parámetros (E3)", () => {
     test("cuatro campos con etiqueta visible y el valor como texto; ayuda de decimales; ya no dice que solo se leen", async () => {
       await irA("Parámetros");
-      expect(await screen.findByRole("textbox", { name: /^FCAS/ })).toHaveValue("6.00");
-      expect(campo(/^Bono de alimentación/)).toHaveValue("5.8100");
-      expect(campo(/^Administración/)).toHaveValue("0.15");
-      expect(campo(/^Utilidad/)).toHaveValue("0.10");
+      expect(await screen.findByRole("textbox", { name: /^FCAS/ })).toHaveValue("6,00");
+      expect(campo(/^Bono de alimentación/)).toHaveValue("5,8100");
+      expect(campo(/^Administración/)).toHaveValue("0,15");
+      expect(campo(/^Utilidad/)).toHaveValue("0,10");
       expect(screen.getAllByRole("textbox")).toHaveLength(4);
       expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
       expect(screen.getByText(/Cambiarlos recalcula/)).toBeInTheDocument();
@@ -504,21 +504,21 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       relojFalso();
       const nuevo = { texto: "2821.42", exacto: "2821.4208" };
       parametros = vistaParametros({
-        campos: parametros.campos.map((f) => (f.clave === "administracion" ? { ...f, valor: "0.20" } : f)),
+        campos: parametros.campos.map((f) => (f.clave === "administracion" ? { ...f, valor: "0,20" } : f)),
         total: nuevo,
       });
       alPoner.parametros = (c) => acepta(c, { total: nuevo });
       const antes = lecturas("parametros");
-      fireEvent.change(campo(/^Administración/), { target: { value: "0.20" } });
+      fireEvent.change(campo(/^Administración/), { target: { value: "0,20" } });
       await pausa(400);
       expect(escrituras("parametros")).toEqual([
-        { rev: 0, fcas: "6.00", bono_alimentacion: "5.8100", administracion: "0.20", utilidad: "0.10" },
+        { rev: 0, fcas: "6,00", bono_alimentacion: "5,8100", administracion: "0,20", utilidad: "0,10" },
       ]);
       await esperar(() => expect(screen.getAllByTitle("2821.4208")).toHaveLength(2)); // el estado y el total de la pestaña
       expect(screen.getAllByTitle("2821.4208")[0]).toHaveTextContent("2.821,42 USD");
       expect(lecturas("parametros")).toBe(antes + 1);
       expect(within(regionDeEstado()).getByText(/· 1 cambio sin guardar/)).toBeInTheDocument();
-      expect(campo(/^Administración/)).toHaveValue("0.20");
+      expect(campo(/^Administración/)).toHaveValue("0,20");
     });
 
     test("3c-B2 (P14): «mucho» en utilidad se rechaza con el mensaje de la clásica; solo ese campo queda inválido, con su texto", async () => {
