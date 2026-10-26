@@ -132,17 +132,19 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
     );
   });
 
-  test("3b-F2: sin proyecto en la cabecera pide elegir uno y no llama a la API", () => {
+  test("3b-F2: sin obra en la cabecera pide elegir una con el selector de obra y no llama a la API", () => {
     montar(null);
     expect(screen.getByRole("heading", { level: 1, name: "Hoja del proyecto" })).toBeInTheDocument();
-    expect(screen.getByText("Elija un proyecto")).toBeInTheDocument();
+    // Tarea 11 (F11 de MOD-3b): «obra» y el selector de obra, no «proyecto» ni «el selector de la cabecera».
+    expect(screen.getByText("Elija una obra")).toBeInTheDocument();
+    expect(screen.getByText("Use el selector de obra de la cabecera para abrir su hoja.")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
-  test("3b-F2: un proyecto sin versiones lo dice y abre un borrador en blanco", async () => {
+  test("3b-F2: una obra sin versiones lo dice y abre un borrador en blanco", async () => {
     servidor({ proyecto: "Nuevo", moneda: "USD", por_omision: null, versiones: [] });
     montar("Nuevo");
-    expect(await screen.findByText("Este proyecto aún no tiene versiones")).toBeInTheDocument();
+    expect(await screen.findByText("Esta obra aún no tiene versiones")).toBeInTheDocument();
     await screen.findByRole("region", { name: "Estado del borrador" });
     const [[, init]] = llamadas("POST", "/v1/hoja/borradores");
     expect(JSON.parse(String(init?.body))).toEqual({ proyecto: "Nuevo", version: null });

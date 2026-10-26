@@ -358,9 +358,11 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
       "Descripción",
       "Unidad",
       "Cantidad",
+      "Cómo se midió",
       "Precio unitario",
       "Total",
       "Estado",
+      "Quitar",
     ]);
     const filas = within(tabla).getAllByRole("row");
     expect(within(filas[1]!).getByText("13,20")).toBeInTheDocument();
