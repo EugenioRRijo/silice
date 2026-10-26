@@ -17,14 +17,14 @@ Oráculos escritos a mano, con la cuenta al lado; ninguno sale del código bajo 
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
 import pytest
 from sqlalchemy import delete, select
 
-from aplicacion import mesa
+from aplicacion import aprobaciones, mesa
 from aplicacion.mercado import pendientes_de_mercado
 from aplicacion.mesa import (
     Cifra,
@@ -58,6 +58,7 @@ from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.verificacion import Severidad
 from operacion.base_datos import preparar_base
 from tests.fixtures import control_ob_s2 as ob
+from tests.fixtures.canonico_minimo import FECHA, RELLENO, guardar_otra
 
 D = Decimal
 HOY = date(2026, 10, 25)
@@ -67,6 +68,8 @@ ALERTAS = Siguiente("Ver las alertas", "control")
 HOJA = Siguiente("Abrir la Hoja", "hoja")
 ACTUALIZAR = Siguiente("Actualizar precios", "actualizacion")
 CATALOGO = Siguiente("Ver el catálogo", "catalogo")
+VER_EL_ENVIO = Siguiente("Ver el envío", "aprobar")
+DECLARAR = Siguiente("Declarar la línea base", "control")
 
 
 def _obra(
@@ -415,6 +418,55 @@ def test_un_control_que_no_se_puede_calcular_dice_por_que(sesion) -> None:
     assert obra.etapa == "en_ejecucion"
     assert (obra.ev, obra.pv, obra.spi) == (None, None, None)
     assert obra.que_pasa == "no hay linea base de control declarada al 2026-11-13"
+
+
+# --- etapas de aprobación (MP-4, T18) ------------------------------------------------------------
+
+
+def _vivienda_guardada(sesion) -> str:
+    """«Vivienda Demo 80 m2» (ficticia) con VIV-001 guardada y sellada a nombre de «Ana <ana>»;
+    confirma (el sello se escribe al confirmar) y devuelve el código de la obra."""
+    lista = models.ListaPrecios(
+        nombre="Lista de prueba", moneda="USD", fecha_vigencia=FECHA, origen="prueba"
+    )
+    sesion.add(lista)
+    sesion.flush()
+    Catalogo(sesion).cargar_composicion(RELLENO, lista, Dominio.CIVIL, FECHA, "prueba")
+    obra = crear_proyecto(sesion, "Vivienda Demo 80 m2", dominio=Dominio.CIVIL)
+    guardar_otra(sesion, obra, lista, "VIV-001", usuario="Ana <ana>")
+    sesion.commit()
+    return str(obra.id)
+
+
+def test_una_obra_pasa_por_en_aprobacion_y_aprobada_sin_linea_base(sesion) -> None:
+    codigo = _vivienda_guardada(sesion)
+
+    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY)
+    assert (obra.etapa, obra.siguiente) == ("en_elaboracion", HOJA)
+
+    envio = aprobaciones.enviar(
+        sesion, codigo, "VIV-001", nota="", usuario="Ana <ana>", ahora=datetime(2026, 10, 20, 10)
+    )
+    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY)
+    assert (obra.etapa, obra.version) == ("en_aprobacion", "VIV-001")
+    assert obra.siguiente == VER_EL_ENVIO
+    assert obra.siguiente.pagina == "aprobar"
+    assert (obra.ev, obra.pv, obra.que_pasa) == (None, None, None)
+
+    aprobaciones.dictaminar(
+        sesion,
+        envio.id,
+        resultado="aprobada",
+        notas="",
+        usuario="Rita <rita>",
+        ahora=datetime(2026, 10, 21, 9),
+    )
+    (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY)
+    assert (obra.etapa, obra.version) == ("aprobada", "VIV-001")
+    assert obra.siguiente == DECLARAR
+    assert obra.siguiente.pagina == "control"
+    assert mesa.ETAPA_TEXTO["en_aprobacion"] == "En aprobación"
+    assert mesa.ETAPA_TEXTO["aprobada"] == "Aprobada"
 
 
 # --- pendientes (con base) ------------------------------------------------------------------------
