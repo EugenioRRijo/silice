@@ -3,7 +3,8 @@
 **Encargo:** Tarea MOD-3b de `docs/planes/PLAN_MODULOS.md` (absorbe T6 y T7 del plan de montar un presupuesto); diseño
 APROBADO `docs/especificaciones/2026-10-25-modulos-design.md` (§7 y §12) y BCP-5/BCP-6 de
 `2026-10-21-bienvenida-casos-proyectos-design.md`. Commits: `fb3f4ab4` (listas de acciones con `aprobar_version`),
-`96b50e5a` (rojo) y el de la implementación. Las marcadas **por ratificar** las decide Eugenio.
+`96b50e5a` (rojo), `95b575d7` (implementación) y la ronda 2 del árbitro (§5). Las marcadas **por ratificar** las
+decide Eugenio.
 
 ## 1. «Volver a la carpeta de la empresa» pregunta como «Cambiar carpeta…»
 
@@ -36,8 +37,8 @@ esa lectura cuentan como cero borradores (no se puede saber); un 401 cierra la s
 - **Abrir desde la lista o la demostración cierra el diálogo; crear y subir no.** Crear se queda para mostrar el nombre
   final saneado («Se creó la carpeta de trabajo «Obra_1» y ya trabaja con ella.», F5); subir, para el aviso de la migración
   y «Abrir ahora».
-- **Crear:** `POST /v1/casos` → abrir (con la confirmación) → `PUT /v1/carpeta/moneda`. Si la persona elige «Quedarme», la
-  carpeta queda creada y sin abrir ni moneda («ábrala de la lista cuando quiera»).
+- **Crear:** confirmación → `POST /v1/casos` → `POST /v1/casos/actual` → `PUT /v1/carpeta/moneda` (corregido en la
+  ronda 2, §5: antes la carpeta se creaba antes de preguntar).
 - **El administrador no declara la moneda** (**por ratificar**): `PUT /v1/carpeta/moneda` exige `editar_hoja` y el
   administrador no la tiene (los permisos no cambian en este plan). En Administración › Carpetas de trabajo crear no pide
   la moneda y dice «La moneda de trabajo la declara una cuenta que arma presupuestos.». Hoy ninguna pantalla la declara
@@ -68,3 +69,31 @@ esa lectura cuentan como cero borradores (no se puede saber); un 401 cierra la s
   (`paginas/hoja/logica.ts`, fuera de esta tarea): conviene pasarlos a «obra».
 - `PlanoEnHoja.test.tsx` («Fusionar» no se puede pulsar…) falla a veces cuando corre junto a `src/shell` (pausa de 400 ms
   bajo carga); solo, pasa. No es de esta tarea.
+
+## 5. Ronda 2 del árbitro
+
+- **MAYOR, crear antes de preguntar.** «Crear y abrir» hacía `POST /v1/casos` y la confirmación llegaba después, dentro de
+  abrir: con «Quedarme» la carpeta quedaba creada sin la moneda elegida (y luego tomaba Bs en silencio al crear la lista de
+  MaPreX, contra D-MP1); y si fallaba `PUT /v1/carpeta/moneda` tras abrirla, el formulario decía «No se pudo crear la
+  carpeta de trabajo» mientras el armazón avisaba «Ahora trabaja con…», y reintentar daba 409 «ya existe». **Arreglo:**
+  `abrir(nombre, preparar?)` de `useCarpetaDeTrabajo` corre `preparar` (el `POST /v1/casos`) dentro del mismo `cambiar`,
+  después de `confirmarSalida("carpeta", extras)` y antes de `POST /v1/casos/actual`: «Quedarme» no crea nada y el orden de
+  las tres llamadas no cambia. Si falla el `PUT`, `Crear` dice «La carpeta «X» se creó y ya trabaja con ella, pero no se
+  pudo declarar su moneda: {detalle}» con «Declarar la moneda», que repite solo el `PUT`. Si la carpeta se crea y no se
+  puede abrir, dice que se creó y que se abra de la lista (nunca «No se pudo crear»).
+- **Menor, subida.** Cada elección vacía antes la anterior (captura de `change` y `drop` alrededor de `SubidaArchivo`):
+  un archivo que no es .db ya no deja el .db de antes con «Subir» habilitado. Un archivo de más de 20 MiB se rechaza en el
+  navegador con el mismo texto de la API («El archivo pasa de 20 MiB.», el 413) y no se sube entero. La API sigue siendo
+  la última palabra (su tope incluye el sobre del multipart).
+- **Menor, búsqueda de obras.** Se vacía al cerrar el panel de cualquier forma (se ajusta en el render al pasar a
+  cerrado). El `Search` de Carbon se quedaba con Esc (borra y detiene la propagación): ahora Esc en la búsqueda cierra el
+  panel de una vez y el foco vuelve al botón.
+- **Deuda del backend que llega tal cual a los diálogos** (los errores van con el `detalle` de la API): `api/rutas/casos.py:81`
+  `MENSAJE_NO_ESTA` («El caso «X» no está en la carpeta de casos: elija uno de la lista.») al abrir una carpeta que ya no
+  está, y `aplicacion/proyectos.py:89,135,149` («Escriba un nombre para el proyecto…», «Ya existe un proyecto
+  llamado…») en «Nueva obra». La guardia de vocabulario mira los textos propios, no esos.
+- `elegirObra`, `abrirNuevaObra` y `abrirCarpeta` quedaron **opcionales** en `src/shell/contexto.tsx` (el plan las da como
+  parte de `Aplicacion`): el Shell siempre las da; así las pruebas de cada página no tienen que inventarlas, como `modulo`.
+- **F11** conserva el título «Este proyecto aún no tiene versiones» (`SIN_VERSIONES` de `paginas/hoja/logica.ts`) y «Elija
+  un proyecto · Use el selector de la cabecera» de la Hoja sin obra: el plan permite una sola línea de
+  `paginas/hoja/index.tsx`, que se usó para la descripción de BCP-6 §5.2.

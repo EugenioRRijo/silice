@@ -7,7 +7,7 @@ import { MarcoDeDialogo } from "./MarcoDeDialogo";
 interface Props {
   abierto: boolean;
   alCerrar: () => void;
-  alAbrir: (nombre: string) => void | Promise<boolean>;
+  alAbrir: (nombre: string, preparar?: () => Promise<string>) => void | Promise<boolean>;
   conDemostracion: boolean;
   puedeDeclararMoneda?: boolean;
 }

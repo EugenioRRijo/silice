@@ -20,8 +20,9 @@ export interface Aplicacion {
   // Abre el dialogo «Nueva obra» del armazon.
   abrirNuevaObra?: () => void;
   // Abre otra carpeta de trabajo con la confirmacion y el aviso del armazon: true si la abrio, false si la persona se
-  // quedo o la sesion vencio; si la API la rechaza, lanza el error. La usa Administracion › Carpetas de trabajo.
-  abrirCarpeta?: (nombre: string) => Promise<boolean>;
+  // quedo o la sesion vencio; si la API la rechaza, lanza el error. Con `preparar` (crear la carpeta), primero pregunta,
+  // luego la crea y abre el nombre que `preparar` devuelve. La usa Administracion › Carpetas de trabajo.
+  abrirCarpeta?: (nombre: string, preparar?: () => Promise<string>) => Promise<boolean>;
   // El Shell siempre da estas tres; son opcionales para que las pruebas de cada pagina no tengan que inventarlas.
   // La API contesto 401: la sesion vencio.
   alExpirar: () => void;

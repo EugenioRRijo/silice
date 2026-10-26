@@ -4,6 +4,7 @@ import type { FormEvent, JSX } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CasoRespuesta, CasosRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
+import { mensajeDeError } from "../../comun/errores";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -17,8 +18,9 @@ export type OrigenDeApertura = "lista" | "creada" | "subida" | "demostracion";
 
 interface Props {
   // Abre la carpeta por su nombre (con .db). La del armazon pregunta antes si hay trabajo sin guardar y resuelve si la
-  // abrio (false: la persona se quedo); si la API la rechaza, lanza el error y aqui se muestra en linea.
-  alAbrir: (nombre: string) => void | Promise<boolean>;
+  // abrio (false: la persona se quedo); si la API la rechaza, lanza el error y aqui se muestra en linea. Con `preparar`
+  // (crear la carpeta) pregunta primero, luego llama a `preparar` y abre el nombre que devuelve: «Quedarme» no crea nada.
+  alAbrir: (nombre: string, preparar?: () => Promise<string>) => void | Promise<boolean>;
   // Estrenar la demostracion exige `editar_hoja` (BCP-5 §4.2); sin ella la pestana no aparece y se dice por que.
   conDemostracion: boolean;
   // Declarar la moneda de la carpeta (`PUT /v1/carpeta/moneda`) exige `editar_hoja`; sin ella, crear no la pide.
@@ -31,6 +33,9 @@ interface Props {
 
 const EXPLICACION = "Una carpeta de trabajo guarda su catálogo, sus precios y sus obras en un solo archivo.";
 const MIB = 1024 * 1024;
+// El tope de `POST /v1/casos/subida` y su texto (`aplicacion/casos.py`, `MENSAJE_GRANDE`): un archivo mayor no se envia.
+const TOPE_SUBIDA = 20 * MIB;
+const MENSAJE_GRANDE = "El archivo pasa de 20 MiB.";
 
 // El tamano del archivo en MiB con un decimal y coma (es-VE): cuenta entera de decimas, sin redondeo de coma flotante
 // a la vista ni `toFixed` (la interfaz no calcula montos; esto es solo el tamano de un archivo).
@@ -114,6 +119,21 @@ export function GestionCarpetas({
     [alAbrir, alAbierta, recargar, vencida],
   );
 
+  // Crear y abrir (ronda 2 del arbitro de MOD-3b): la pregunta va ANTES de crear, porque `preparar` (el `POST /v1/casos`)
+  // corre dentro de la confirmacion del armazon. Los errores siguen hacia `Crear`, que sabe si la carpeta llego a crearse.
+  const crearYAbrir = useCallback(
+    async (nombre: string, preparar: () => Promise<string>): Promise<boolean> => {
+      setErrorAbrir(null);
+      const abierta = (await alAbrir(nombre, preparar)) ?? true;
+      if (abierta) {
+        recargar();
+        alAbierta?.("creada");
+      }
+      return abierta;
+    },
+    [alAbrir, alAbierta, recargar],
+  );
+
   // La carpeta abierta siempre esta en la lista, aunque la API no la traiga (D1 del recorrido funcional).
   const lista = casos
     ? casos.casos.some((c) => c.nombre === casos.actual.nombre)
@@ -159,7 +179,12 @@ export function GestionCarpetas({
           </TabList>
           <TabPanels>
             <TabPanel>
-              <Crear puedeDeclararMoneda={puedeDeclararMoneda} abrir={abrir} recargar={recargar} vencida={vencida} />
+              <Crear
+                puedeDeclararMoneda={puedeDeclararMoneda}
+                crearYAbrir={crearYAbrir}
+                recargar={recargar}
+                vencida={vencida}
+              />
             </TabPanel>
             <TabPanel>
               <Subir abrir={abrir} recargar={recargar} vencida={vencida} />
@@ -219,14 +244,21 @@ function FilaDeCarpeta({
 
 type Abrir = (nombre: string, origen: OrigenDeApertura) => Promise<boolean | null>;
 
+// La moneda que quedo sin declarar tras crear y abrir la carpeta (el `PUT` fallo): se reintenta sola.
+interface MonedaPendiente {
+  carpeta: string;
+  moneda: string;
+  error: unknown;
+}
+
 function Crear({
   puedeDeclararMoneda,
-  abrir,
+  crearYAbrir,
   recargar,
   vencida,
 }: {
   puedeDeclararMoneda: boolean;
-  abrir: Abrir;
+  crearYAbrir: (nombre: string, preparar: () => Promise<string>) => Promise<boolean>;
   recargar: () => void;
   vencida: (e: unknown) => boolean;
 }) {
@@ -236,38 +268,65 @@ function Crear({
   const [faltaMoneda, setFaltaMoneda] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  // La carpeta se creo pero no se pudo abrir: se dice con su nombre (no «No se pudo crear»).
+  const [sinAbrir, setSinAbrir] = useState<{ carpeta: string; error: unknown } | null>(null);
+  const [pendiente, setPendiente] = useState<MonedaPendiente | null>(null);
   const [hecho, setHecho] = useState<string | null>(null);
+
+  // Declara la moneda de la carpeta ya abierta; si falla, queda pendiente con su error para reintentar solo esto.
+  async function declarar(carpeta: string, elegida: string) {
+    try {
+      await pedir("/v1/carpeta/moneda", { metodo: "PUT", cuerpo: { moneda: elegida } });
+      setPendiente(null);
+      setHecho(`Se creó la carpeta de trabajo «${carpeta}» y ya trabaja con ella.`);
+    } catch (e) {
+      if (!vencida(e)) setPendiente({ carpeta, moneda: elegida, error: e });
+    }
+  }
 
   async function crear(e: FormEvent) {
     e.preventDefault();
     setHecho(null);
     setError(null);
+    setSinAbrir(null);
+    setPendiente(null);
     if (puedeDeclararMoneda && moneda === "") {
       setFaltaMoneda(true);
       return;
     }
     setOcupado(true);
+    // BCP-5 §4.3 con la pregunta delante: confirmar, crear, abrir (si abrir falla, la carpeta existe y no esta abierta)
+    // y, ya abierta, declarar su moneda de trabajo (D-MP1, una por carpeta).
+    // Lo escribe `preparar` dentro de la confirmacion: si queda en null, nada se creo.
+    const creada = { nombre: null as string | null };
     try {
-      // BCP-5 §4.3: crear, luego abrir (dos llamadas: si la segunda falla, la carpeta existe y no esta abierta) y, ya
-      // abierta, declarar su moneda de trabajo (D-MP1, una por carpeta).
-      const creada = await pedir<CasoRespuesta>("/v1/casos", { metodo: "POST", cuerpo: { nombre } });
-      recargar();
+      const abierta = await crearYAbrir(nombre, async () => {
+        const r = await pedir<CasoRespuesta>("/v1/casos", { metodo: "POST", cuerpo: { nombre } });
+        creada.nombre = r.nombre;
+        recargar();
+        return r.nombre;
+      });
+      // «Quedarme» (nada se creo) o la sesion vencio: no hay nada que contar aqui.
+      if (!abierta || creada.nombre === null) return;
       const final = nombreDeCarpeta(creada.nombre);
-      const abierta = await abrir(creada.nombre, "creada");
-      if (abierta === null) return;
-      if (!abierta) {
-        setHecho(`Se creó la carpeta de trabajo «${final}»; ábrala de la lista cuando quiera.`);
-        return;
-      }
-      if (puedeDeclararMoneda) await pedir("/v1/carpeta/moneda", { metodo: "PUT", cuerpo: { moneda } });
-      setHecho(`Se creó la carpeta de trabajo «${final}» y ya trabaja con ella.`);
       setNombre("");
+      if (puedeDeclararMoneda) await declarar(final, moneda);
+      else setHecho(`Se creó la carpeta de trabajo «${final}» y ya trabaja con ella.`);
       setMoneda("");
     } catch (e) {
-      if (!vencida(e)) setError(e);
+      if (vencida(e)) return;
+      if (creada.nombre === null) setError(e);
+      else setSinAbrir({ carpeta: nombreDeCarpeta(creada.nombre), error: e });
     } finally {
       setOcupado(false);
     }
+  }
+
+  async function reintentar() {
+    if (!pendiente) return;
+    setOcupado(true);
+    await declarar(pendiente.carpeta, pendiente.moneda);
+    setOcupado(false);
   }
 
   return (
@@ -303,16 +362,33 @@ function Crear({
         </p>
       )}
       <div>
-        <Button type="submit" size="sm" disabled={ocupado}>
+        <Button type="submit" size="sm" disabled={ocupado || pendiente !== null}>
           Crear y abrir
         </Button>
       </div>
       {ocupado && (
         <p className="silice-carpetas__estado cds--type-body-compact-01" role="status">
-          Creando la carpeta…
+          {pendiente ? "Declarando la moneda…" : "Creando la carpeta…"}
         </p>
       )}
       <AvisoError error={error} titulo="No se pudo crear la carpeta de trabajo" />
+      {sinAbrir && (
+        <AvisoError
+          error={`La carpeta «${sinAbrir.carpeta}» se creó, pero no se pudo abrir: ${mensajeDeError(sinAbrir.error)} Ábrala de la lista cuando quiera.`}
+          titulo="Carpeta creada sin abrir"
+        />
+      )}
+      {pendiente && (
+        <div className="silice-carpetas__hecho">
+          <AvisoError
+            error={`La carpeta «${pendiente.carpeta}» se creó y ya trabaja con ella, pero no se pudo declarar su moneda: ${mensajeDeError(pendiente.error)}`}
+            titulo="Falta declarar la moneda"
+          />
+          <Button kind="tertiary" size="sm" disabled={ocupado} onClick={() => void reintentar()}>
+            Declarar la moneda
+          </Button>
+        </div>
+      )}
       {hecho && (
         <p className="silice-carpetas__hecho cds--type-body-compact-01" role="status">
           {hecho}
@@ -329,6 +405,12 @@ function Subir({ abrir, recargar, vencida }: { abrir: Abrir; recargar: () => voi
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [subida, setSubida] = useState<{ nombre: string; aviso: string | null } | null>(null);
+
+  function olvidarElegido() {
+    setArchivo(null);
+    setError(null);
+    setSubida(null);
+  }
 
   async function subir() {
     if (!archivo) return;
@@ -358,17 +440,24 @@ function Subir({ abrir, recargar, vencida }: { abrir: Abrir; recargar: () => voi
         Suba el archivo .db de una carpeta de trabajo, por ejemplo copiado de otro equipo. Nunca reemplaza una carpeta
         que ya exista.
       </p>
-      <SubidaArchivo
-        id={`${base}-archivo`}
-        etiqueta="Suelte aquí el archivo .db, o haga clic para elegirlo"
-        extensiones={[".db"]}
-        deshabilitada={ocupado}
-        alElegir={(a) => {
-          setArchivo(a);
-          setError(null);
-          setSubida(null);
-        }}
-      />
+      {/* Cada eleccion (clic o soltar) empieza vaciando la anterior, en la fase de captura, antes de que `SubidaArchivo`
+          entregue el archivo: uno rechazado (no es .db) no deja elegido el de antes con «Subir» habilitado. */}
+      <div onChangeCapture={olvidarElegido} onDropCapture={olvidarElegido}>
+        <SubidaArchivo
+          id={`${base}-archivo`}
+          etiqueta="Suelte aquí el archivo .db, o haga clic para elegirlo"
+          extensiones={[".db"]}
+          deshabilitada={ocupado}
+          alElegir={(a) => {
+            // El tope de la API, en el navegador: un archivo mayor no se sube entero para que lo rechace.
+            if (a.size > TOPE_SUBIDA) {
+              setError(MENSAJE_GRANDE);
+              return;
+            }
+            setArchivo(a);
+          }}
+        />
+      </div>
       {archivo && <p className="cds--type-body-compact-01">{`${archivo.name} · ${mibEsVe(archivo.size)}`}</p>}
       <CampoTexto
         id={`${base}-nombre`}

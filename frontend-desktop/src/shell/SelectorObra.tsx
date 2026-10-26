@@ -51,6 +51,13 @@ export function SelectorObra({
   const idPanel = useId();
   const { abierto, alternar, envoltorio, boton, alTeclear } = useDespliegue();
   const [busqueda, setBusqueda] = useState("");
+  // La busqueda no sobrevive al cierre del panel, se cierre como se cierre (boton, Esc, clic fuera, elegir): se ajusta
+  // durante el render, sin efecto, como el aviso del armazon.
+  const [abiertoAntes, setAbiertoAntes] = useState(abierto);
+  if (abierto !== abiertoAntes) {
+    setAbiertoAntes(abierto);
+    if (!abierto) setBusqueda("");
+  }
   if (!puedeVerObras && !puedeCambiarCarpeta) return null;
 
   const nombreCarpeta = carpeta ?? "…";
@@ -76,7 +83,6 @@ export function SelectorObra({
   // «Nueva obra») sabe a donde devolverlo, y el control pulsado, que desaparece con el panel, no deja el foco en <body>.
   function cerrarYDespues(despues: () => void) {
     alternar();
-    setBusqueda("");
     boton.current?.focus();
     despues();
   }
@@ -94,10 +100,7 @@ export function SelectorObra({
         aria-controls={idPanel}
         aria-label={`${texto}. ${accion}`}
         title={nombreObra ?? (puedeVerObras ? texto : nombreCarpeta)}
-        onClick={() => {
-          if (abierto) setBusqueda("");
-          alternar();
-        }}
+        onClick={alternar}
       >
         {puedeVerObras ? <Building size={16} aria-hidden="true" /> : <Folder size={16} aria-hidden="true" />}
         <span className="silice-obra__texto cds--type-body-compact-01">{texto}</span>
@@ -119,7 +122,13 @@ export function SelectorObra({
                 closeButtonLabelText="Borrar la búsqueda"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                // Esc borra la busqueda (Carbon) y ademas cierra el panel (useDespliegue): nada mas que hacer aqui.
+                // El Search de Carbon se queda con Esc (borra y detiene la propagacion): aqui Esc cierra el panel de una
+                // vez, como en el resto de la barra, y el foco vuelve al boton.
+                onKeyDown={(e) => {
+                  if (e.key !== "Escape") return;
+                  alternar();
+                  boton.current?.focus();
+                }}
               />
               <ListaDeObras
                 obras={obras}

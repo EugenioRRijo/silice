@@ -86,11 +86,14 @@ export function useCarpetaDeTrabajo({ puedeVerBorradores, obras, alExpirar, alFa
     [hojasConCambios, alCambiar, alExpirar],
   );
 
+  // `preparar` (crear la carpeta, `POST /v1/casos`) corre DESPUES de la pregunta y antes de abrir, y da el nombre final
+  // que se abre: si la persona elige «Quedarme» no se crea nada (ronda 2 del arbitro de MOD-3b).
   const abrir = useCallback(
-    (nombre: string) =>
+    (nombre: string, preparar?: () => Promise<string>) =>
       cambiar(async () => {
-        const r = await pedir<Partial<CasoRespuesta> | null>("/v1/casos/actual", { metodo: "POST", cuerpo: { nombre } });
-        return { nombre: typeof r?.nombre === "string" ? r.nombre : nombre, ruta_relativa: r?.ruta_relativa ?? "" };
+        const destino = preparar ? await preparar() : nombre;
+        const r = await pedir<Partial<CasoRespuesta> | null>("/v1/casos/actual", { metodo: "POST", cuerpo: { nombre: destino } });
+        return { nombre: typeof r?.nombre === "string" ? r.nombre : destino, ruta_relativa: r?.ruta_relativa ?? "" };
       }),
     [cambiar],
   );

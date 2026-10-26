@@ -18,11 +18,11 @@ export default function CarpetasDeTrabajo() {
   const { sesion, abrirCarpeta } = useAplicacion();
   const editaHoja = sesion.acciones.includes("editar_hoja");
 
-  async function abrir(nombre: string): Promise<boolean> {
+  async function abrir(nombre: string, preparar?: () => Promise<string>): Promise<boolean> {
     if (!abrirCarpeta) return false;
     volverAEstaPestana = true;
     try {
-      const abierta = await abrirCarpeta(nombre);
+      const abierta = await (preparar ? abrirCarpeta(nombre, preparar) : abrirCarpeta(nombre));
       if (!abierta) volverAEstaPestana = false;
       return abierta;
     } catch (e) {
