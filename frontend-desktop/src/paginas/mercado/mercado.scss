@@ -158,6 +158,11 @@
   }
 }
 
+.silice-mercado__aviso:focus {
+  outline: 2px solid var(--silice-interactivo);
+  outline-offset: 2px;
+}
+
 .silice-mercado__botones {
   display: flex;
   flex-wrap: wrap;

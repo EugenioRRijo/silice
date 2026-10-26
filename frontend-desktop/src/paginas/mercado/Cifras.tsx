@@ -3,15 +3,12 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { deObservaciones, enOtraMoneda } from "./logica";
 import type { Estudio } from "./logica";
 
-// Un monto de la API (texto con punto, ya en centimos) como se lee: «140,00 Bs», con el texto de la API en el `title`.
-// Se formatea una sola vez y nunca se convierte en numero.
+// Un monto de la API (texto con punto, ya en centimos) como se lee: «140,00 Bs». Se formatea una sola vez y nunca se
+// convierte en numero; el texto con punto decimal no se muestra en ninguna parte (ni en un `title`).
 export function Monto({ valor, moneda }: { valor: string; moneda: string }) {
   return (
     <>
-      <span title={valor}>
-        {formatoEsVe(valor)}
-      </span>{" "}
-      {moneda}
+      <span>{formatoEsVe(valor)}</span> {moneda}
     </>
   );
 }

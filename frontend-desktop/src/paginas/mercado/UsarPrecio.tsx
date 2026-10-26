@@ -5,13 +5,12 @@ import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { compararDecimales } from "../../comun/TablaDensa";
 import { AYUDA_CIFRAS, leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { Monto } from "./Cifras";
-import { describirError, rutaDeAfectados, rutaDeUsar, textoDeAfectados } from "./logica";
+import { RAZON_POR_DEBAJO, describirError, rutaDeAfectados, rutaDeUsar, textoDeAfectados } from "./logica";
 import type { Estudio } from "./logica";
 
 type Paso =
@@ -25,11 +24,20 @@ type Paso =
 // (`leerCifra`) para decir el error en el campo sin ir a la API; el valor leido no se usa. En compra, antes de guardar
 // se dice que partidas cambiaran de precio y se pide confirmar (D-MP2); en cobro se guarda el precio objetivo citando
 // las observaciones de las cifras.
-export function UsarPrecio({ estudio }: { estudio: Estudio }) {
+interface Props {
+  estudio: Estudio;
+  // Avisa al lado si el campo tiene algo escrito sin usar (para preguntar antes de cambiar de insumo o partida).
+  alCambiarSucio?: (sucio: boolean) => void;
+}
+
+export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
   const { alExpirar } = useAplicacion();
   const { lado, codigo, moneda, propuesta, estadisticas } = estudio;
   const propuesto = propuesta.precio === null ? "" : textoParaEscribir(propuesta.precio);
-  const [base, setBase] = useState(propuesto);
+  // La ultima propuesta vista (para seguir sus cambios) y el texto que cuenta como «sin cambios»: la propuesta mientras
+  // nadie escriba, o el ultimo precio usado. Son dos cosas: tras usar un precio propio, ese queda en el campo.
+  const [vista, setVista] = useState(propuesto);
+  const [limpio, setLimpio] = useState(propuesto);
   const [precio, setPrecio] = useState(propuesto);
   const [respaldo, setRespaldo] = useState("");
   const [errorDelCampo, setErrorDelCampo] = useState<string | null>(null);
@@ -39,32 +47,39 @@ export function UsarPrecio({ estudio }: { estudio: Estudio }) {
   const campo = useRef<HTMLInputElement>(null);
   const boton = useRef<HTMLButtonElement>(null);
   const pregunta = useRef<HTMLDivElement>(null);
-  // Al cerrar la pregunta (confirmar o cancelar), el foco vuelve a «Usar este precio», que se vuelve a montar.
-  const devolverFoco = useRef(false);
+  const aviso = useRef<HTMLDivElement>(null);
+  // Adonde va el foco al volver a editar: a «Usar este precio» (que se vuelve a montar tras la pregunta) o al aviso de
+  // error; un error del campo lo enfoca en el acto.
+  const devolverFoco = useRef<"boton" | "aviso" | null>(null);
   const idTitulo = `mercado-${lado}-precio-titulo`;
 
-  // Si la propuesta cambia (otra ventana de dias, una observacion nueva) y la persona no habia escrito nada propio, el
-  // campo toma la nueva; lo escrito no se pisa.
-  if (propuesto !== base) {
-    setBase(propuesto);
-    if (precio === base) setPrecio(propuesto);
+  // Si la propuesta cambia (otra ventana de dias, una observacion nueva) y el campo no tiene nada propio sin usar, toma
+  // la nueva; lo escrito y no usado no se pisa.
+  if (propuesto !== vista) {
+    setVista(propuesto);
+    if (precio === limpio) {
+      setPrecio(propuesto);
+      setLimpio(propuesto);
+    }
   }
 
-  useFormularioSucio("mercado", precio !== base);
+  const sucio = precio !== limpio;
+  useFormularioSucio("mercado", sucio);
+  useEffect(() => {
+    alCambiarSucio?.(sucio);
+  }, [sucio, alCambiarSucio]);
 
   useEffect(() => {
     if (paso.fase === "confirmando") pregunta.current?.focus();
     if (paso.fase === "editando" && devolverFoco.current) {
-      devolverFoco.current = false;
-      boton.current?.focus();
+      const destino = devolverFoco.current === "aviso" ? aviso.current : boton.current;
+      devolverFoco.current = null;
+      destino?.focus();
     }
   }, [paso.fase]);
 
-  const debajoDelPiso =
-    lado === "cobro" &&
-    estudio.piso !== null &&
-    estadisticas.q1 !== null &&
-    compararDecimales(estadisticas.q1, estudio.piso) < 0;
+  // El aviso lo decide la razon que manda la API (compara los montos exactos); la pagina no vuelve a comparar.
+  const debajoDelPiso = lado === "cobro" && propuesta.razon === RAZON_POR_DEBAJO;
   const citables = estudio.observaciones.filter((o) => o.cuenta);
   const ocupado = paso.fase === "consultando" || paso.fase === "guardando";
 
@@ -77,6 +92,7 @@ export function UsarPrecio({ estudio }: { estudio: Estudio }) {
       return;
     }
     setError(e);
+    devolverFoco.current = "aviso";
     setPaso({ fase: "editando" });
   }
 
@@ -99,8 +115,8 @@ export function UsarPrecio({ estudio }: { estudio: Estudio }) {
           `Precio objetivo guardado: ${formatoEsVe(r.precio)} ${r.moneda}. La Hoja lo mostrará junto al precio del APU.`,
         );
       }
-      setBase(precio);
-      devolverFoco.current = true;
+      setLimpio(precio);
+      devolverFoco.current = "boton";
       setPaso({ fase: "editando" });
     } catch (e) {
       fallo(e);
@@ -131,7 +147,7 @@ export function UsarPrecio({ estudio }: { estudio: Estudio }) {
   }
 
   function cancelar() {
-    devolverFoco.current = true;
+    devolverFoco.current = "boton";
     setPaso({ fase: "editando" });
   }
 
@@ -230,7 +246,11 @@ export function UsarPrecio({ estudio }: { estudio: Estudio }) {
         </div>
       )}
 
-      <AvisoError error={error} titulo="No se usó el precio" />
+      {error !== null && (
+        <div ref={aviso} tabIndex={-1} className="silice-mercado__aviso">
+          <AvisoError error={error} titulo="No se usó el precio" />
+        </div>
+      )}
       <p role="status" className="silice-mercado__estado cds--type-body-compact-01">
         {hecho ?? ""}
       </p>

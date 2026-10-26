@@ -1,5 +1,5 @@
 import { Button, Select, SelectItem } from "@carbon/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -16,12 +16,14 @@ interface Props {
   moneda: string;
   // Tras anotar, el estudio se vuelve a leer (las cifras cambian).
   alCambiar: () => void;
+  // Avisa al lado si el formulario tiene algo escrito sin anotar.
+  alCambiarSucio?: (sucio: boolean) => void;
 }
 
 // «Anotar una observación»: un precio visto en el mercado, en la moneda de la carpeta. El precio se envia tal como se
 // escribio (lo interpreta el servidor); antes se revisa con la misma regla para decir el error en el campo. Los demas
 // errores de la API (fuente vacia, fecha futura, precio no positivo) se dicen con su mensaje tal cual.
-export function AnotarObservacion({ lado, codigo, moneda, alCambiar }: Props) {
+export function AnotarObservacion({ lado, codigo, moneda, alCambiar, alCambiarSucio }: Props) {
   const { alExpirar } = useAplicacion();
   const [tipo, setTipo] = useState(fuenteInicial(lado));
   const [fuente, setFuente] = useState("");
@@ -34,7 +36,11 @@ export function AnotarObservacion({ lado, codigo, moneda, alCambiar }: Props) {
   const [enviando, setEnviando] = useState(false);
   const id = `mercado-${lado}-anotar`;
 
-  useFormularioSucio("mercado", fuente.trim() !== "" || precio.trim() !== "" || nota.trim() !== "");
+  const sucio = fuente.trim() !== "" || precio.trim() !== "" || nota.trim() !== "";
+  useFormularioSucio("mercado", sucio);
+  useEffect(() => {
+    alCambiarSucio?.(sucio);
+  }, [sucio, alCambiarSucio]);
 
   async function anotar(evento: FormEvent) {
     evento.preventDefault();

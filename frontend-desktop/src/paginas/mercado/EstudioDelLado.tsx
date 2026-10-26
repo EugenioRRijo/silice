@@ -1,5 +1,5 @@
 import { Button } from "@carbon/react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -10,6 +10,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { buscadorDePartidas } from "../../comun/logicaBusqueda";
 import type { GrupoDeResultados, OpcionDeBusqueda } from "../../comun/logicaBusqueda";
 import { useAplicacion } from "../../shell/contexto";
+import { confirmarSalida } from "../../shell/salida";
 import { AnotarObservacion } from "./AnotarObservacion";
 import { Cifras } from "./Cifras";
 import { Observaciones } from "./Observaciones";
@@ -96,9 +97,25 @@ export function EstudioDelLado({ lado }: { lado: Lado }) {
   // Un buscador por pestana: el de insumos recuerda la lista del catalogo mientras la pagina este abierta.
   const buscar = useMemo<Buscar>(() => (lado === "cobro" ? buscadorDePartidas() : buscadorDeInsumos()), [lado]);
 
-  function elegir(opcion: OpcionDeBusqueda<Elegido>) {
-    setTexto(opcion.valor.descripcion);
-    setElegido({ codigo: opcion.valor.codigo, descripcion: opcion.valor.descripcion });
+  // Lo escrito sin usar en esta pestana (el precio y el formulario de observacion). Elegir otro insumo o partida lo
+  // descarta, asi que antes se pregunta con la confirmacion unica del armazon (MOD-2).
+  const sucios = useRef({ precio: false, anotar: false });
+  const precioSucio = useCallback((sucio: boolean) => {
+    sucios.current.precio = sucio;
+  }, []);
+  const anotarSucio = useCallback((sucio: boolean) => {
+    sucios.current.anotar = sucio;
+  }, []);
+
+  async function elegir(opcion: OpcionDeBusqueda<Elegido>) {
+    const nuevo = { codigo: opcion.valor.codigo, descripcion: opcion.valor.descripcion };
+    const cambia = elegido !== null && elegido.codigo !== nuevo.codigo;
+    if (cambia && (sucios.current.precio || sucios.current.anotar) && !(await confirmarSalida("salir"))) {
+      setTexto(elegido.descripcion); // «Quedarme»: el buscador vuelve a decir lo que se esta estudiando
+      return;
+    }
+    setTexto(nuevo.descripcion);
+    setElegido(nuevo);
   }
 
   function verDias(evento: FormEvent) {
@@ -124,7 +141,7 @@ export function EstudioDelLado({ lado }: { lado: Lado }) {
             texto={texto}
             alCambiarTexto={setTexto}
             buscar={buscar}
-            alElegir={elegir}
+            alElegir={(opcion) => void elegir(opcion)}
             vacio={textos.vacio}
             alExpirar={alExpirar}
             tamano="md"
@@ -163,9 +180,15 @@ export function EstudioDelLado({ lado }: { lado: Lado }) {
             <span className="silice-codigo">{carga.estudio.codigo}</span> {elegido.descripcion}
           </p>
           <Cifras estudio={carga.estudio} obra={obra === null ? null : (nombreProyecto ?? obra)} />
-          <UsarPrecio estudio={carga.estudio} />
+          <UsarPrecio estudio={carga.estudio} alCambiarSucio={precioSucio} />
           <Observaciones estudio={carga.estudio} alCambiar={() => setVersion((v) => v + 1)} />
-          <AnotarObservacion lado={lado} codigo={carga.estudio.codigo} moneda={carga.estudio.moneda} alCambiar={() => setVersion((v) => v + 1)} />
+          <AnotarObservacion
+            lado={lado}
+            codigo={carga.estudio.codigo}
+            moneda={carga.estudio.moneda}
+            alCambiar={() => setVersion((v) => v + 1)}
+            alCambiarSucio={anotarSucio}
+          />
         </div>
       )}
     </div>

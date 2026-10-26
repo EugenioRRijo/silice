@@ -62,6 +62,10 @@ export function fuenteInicial(lado: Lado): string {
 
 export const DIAS_POR_OMISION = "90";
 
+// La razon con que la API dice que el primer cuartil quedo por debajo del piso (`RAZON_POR_DEBAJO` de
+// aplicacion/mercado.py, que compara los montos exactos). La pagina no recalcula la regla: reconoce la razon.
+export const RAZON_POR_DEBAJO = "La competencia cobra menos que su costo: se propone su costo.";
+
 // De 1 a 3.650 dias, entero, sin signos ni ceros a la izquierda (el limite de la API). Se compara como texto: un numero
 // de dias no es un monto, pero asi la pagina no convierte nada.
 export function diasValidos(texto: string): boolean {

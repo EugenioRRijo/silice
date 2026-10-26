@@ -60,9 +60,7 @@ export function Observaciones({ estudio, alCambiar }: Props) {
       clave: "precio",
       titulo: "Precio",
       numerica: true,
-      celda: (f: FilaDensa) => (
-        <span title={f.precio}>{`${formatoEsVe(f.precio)} ${f.moneda}`}</span>
-      ),
+      celda: (f: FilaDensa) => <span>{`${formatoEsVe(f.precio)} ${f.moneda}`}</span>,
     },
     { clave: "nota", titulo: "Nota", ordenable: false },
     { clave: "responsable", titulo: "Anotó" },
