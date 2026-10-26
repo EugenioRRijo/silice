@@ -227,7 +227,10 @@ cuenta = "ana"
 carpeta = "demo.db"
 proyecto = "Sílice: caso de demostracion"
 accion = "cambiar la utilidad en Parámetros y guardar una versión con su fuente -> versión nueva vigente"
+# Primero se espera a que la Hoja termine de cargar: un clic en la pestaña recién pintada no la cambia (bitácora de
+# módulos, §6).
 pasos = [
+  { accion = "esperar", texto = "Sin cambios sin guardar" },
   { accion = "pulsar", rol = "tab", nombre = "Parámetros" },
   { accion = "llenar", rotulo = "Utilidad (fracción, en cascada sobre la administración)", valor = "0,12" },
   { accion = "tecla", nombre = "Tab" },
