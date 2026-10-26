@@ -122,6 +122,8 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   obra y la lista completa de cambios al llevar a VIV-001, igual a la de agregar a mano.
 - El oráculo de la ronda 1 de T12 (el de la línea mal puesta en `test_api_hoja.py`) era del orquestador y se corrigió en
   `2e6a70c2`.
+- «Llevar a la Hoja» abre la versión vigente con `hoja.abrir_version` (como R2) y queda registrado en el embudo de
+  `tests/unit/test_arquitectura_s3.py` (`LLAMADORES`), con el responsable = la persona de la sesión (`520ab6f0`).
 
 ## T13, estudio de mercado (aprobada en ronda 1)
 
