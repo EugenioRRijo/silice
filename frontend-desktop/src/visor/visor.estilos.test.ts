@@ -138,6 +138,14 @@ describe("zoom de la hoja (estilos)", () => {
     expect(regla(".zoom-hoja")).toMatch(/flex:\s*none/);
   });
 
+  test("el panel de la pestana elegida (D-5) ocupa el alto que queda y no hace crecer la hoja", () => {
+    const panel = regla(".visor__panel");
+    expect(panel).toMatch(/display:\s*flex/);
+    expect(panel).toMatch(/flex-direction:\s*column/);
+    expect(panel).toMatch(/flex:\s*1 1 auto/);
+    expect(panel).toMatch(/min-block-size:\s*0/);
+  });
+
   test("el valor del zoom no baila: cifras tabulares y ancho minimo", () => {
     const r = regla(".zoom-hoja__valor");
     expect(r).toMatch(/font-variant-numeric:\s*tabular-nums/);
