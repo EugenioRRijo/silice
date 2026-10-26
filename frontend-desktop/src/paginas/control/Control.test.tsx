@@ -53,6 +53,7 @@ const VALUACIONES: Valuaciones = {
   aviso: "",
   anulables: [{ id: 7, rotulo: "V-01 (02/11/2026 a 06/11/2026)" }],
   corte_por_defecto: "2026-11-13",
+  causas: [{ clave: "compra_tardia", nombre: "Compra tardía" }],
 };
 
 const CALCULO: Calculo = {
@@ -79,6 +80,7 @@ const CALCULO: Calculo = {
   plan: { columnas: ["Periodo", "OB-A"], filas: [{ Periodo: "P3", "OB-A": "0.5000" }] },
   decisiones: [],
   versiones_revaloradas: ["OB-R1"],
+  atrasos: [],
 };
 
 const OPCIONES: OpcionDeRecuperacion[] = [
@@ -380,7 +382,7 @@ describe("Control de obra", () => {
     ).toBeInTheDocument();
     const cuerpo = cuerpoDe("/v1/control/valuaciones");
     expect(cuerpo).toMatchObject({ proyecto: "OB-S2", numero: "V-03", fuente: "acta 3" });
-    expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "" }]);
+    expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "", causa: null }]);
   });
 
   test("un 422 de la API se muestra con su detalle y no se da por registrado", async () => {
