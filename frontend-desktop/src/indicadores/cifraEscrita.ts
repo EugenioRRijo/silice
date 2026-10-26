@@ -15,6 +15,18 @@ export const MENSAJE_CIFRA = "Use la coma para los decimales: por ejemplo 2,5. E
 export const MENSAJE_CIFRA_VACIA = `Escriba un número. ${MENSAJE_CIFRA}`;
 export const AYUDA_CIFRAS = "Escriba los decimales con coma: 2,5; el punto separa los miles: 1.234,56.";
 
+// Lo que se recorta en los bordes, y nada mas: el mismo conjunto que `aplicacion/cifras.py` (BLANCOS). `trim()` no
+// sirve: recorta otro conjunto (no quita NEL, si quita U+2028 y U+3000).
+export const BLANCOS = " \t\n\r\u000b\f\u00a0\u0085\ufeff";
+
+function recortar(texto: string): string {
+  let inicio = 0;
+  let fin = texto.length;
+  while (inicio < fin && BLANCOS.includes(texto[inicio]!)) inicio += 1;
+  while (fin > inicio && BLANCOS.includes(texto[fin - 1]!)) fin -= 1;
+  return texto.slice(inicio, fin);
+}
+
 export type LecturaDeCifra = { valor: string } | { error: string };
 
 const CIFRA = /^(-?)([0-9]+|[1-9][0-9]{0,2}(?:\.[0-9]{3})+)(?:,([0-9]+))?$/;
@@ -22,7 +34,7 @@ const CIFRA = /^(-?)([0-9]+|[1-9][0-9]{0,2}(?:\.[0-9]{3})+)(?:,([0-9]+))?$/;
 // Lo escrito («1.234,5») al decimal con punto que espera la API («1234.5»), o el mensaje que se muestra junto al
 // campo. Quien llama decide si un campo vacio vale cero o es un error.
 export function leerCifra(texto: string): LecturaDeCifra {
-  const limpio = texto.trim();
+  const limpio = recortar(texto);
   if (limpio === "") return { error: MENSAJE_CIFRA_VACIA };
   const m = CIFRA.exec(limpio);
   if (!m) return { error: MENSAJE_CIFRA };
@@ -33,8 +45,15 @@ export function leerCifra(texto: string): LecturaDeCifra {
 }
 
 // El decimal de la API («1234.5», «3.000») como se escribe en un campo editable («1.234,5», «3,000»): vuelve igual al
-// leerlo con `leerCifra`. Lo que no es un decimal se devuelve tal cual.
+// leerlo con `leerCifra`. Como `texto_de_cifra` del servidor: sin «+», sin ceros a la izquierda y sin cero negativo.
+// Lo que no es un decimal (un exponente, que la API no manda) se devuelve tal cual.
+const DECIMAL_DE_LA_API = /^([-+]?)([0-9]+)(\.[0-9]+)?$/;
+
 export function textoParaEscribir(decimal: string): string {
-  const texto = formatoEsVe(decimal);
-  return /^-0(?:,0*)?$/.test(texto) ? texto.slice(1) : texto;
+  const m = DECIMAL_DE_LA_API.exec(decimal.trim());
+  if (!m) return decimal;
+  const [, signo, entera, decimales = ""] = m;
+  const canonica = entera!.replace(/^0+(?=[0-9])/, "");
+  const esCero = /^0$/.test(canonica) && /^\.?0*$/.test(decimales);
+  return formatoEsVe(`${signo === "-" && !esCero ? "-" : ""}${canonica}${decimales}`);
 }

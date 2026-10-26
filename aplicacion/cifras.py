@@ -33,6 +33,7 @@ from decimal import Decimal
 
 __all__ = [
     "AYUDA_CIFRAS",
+    "BLANCOS",
     "MENSAJE_CIFRA",
     "MENSAJE_CIFRA_VACIA",
     "CifraInvalida",
@@ -46,6 +47,9 @@ MENSAJE_CIFRA = (
 )
 #: Lo que se responde a un campo de cifra vacío (quien llama decide si vacío vale cero).
 MENSAJE_CIFRA_VACIA = f"Escriba un número. {MENSAJE_CIFRA}"
+#: Lo que se recorta en los bordes, y nada más: el mismo conjunto en el navegador
+#: (`cifraEscrita.ts`). `str.strip()` y `String.trim()` recortan conjuntos distintos (el BOM, NEL).
+BLANCOS = " \t\n\r\x0b\x0c\xa0\x85\ufeff"
 #: El texto de ayuda junto a los campos de cifra.
 AYUDA_CIFRAS = "Escriba los decimales con coma: 2,5; el punto separa los miles: 1.234,56."
 
@@ -64,7 +68,7 @@ def cifra_escrita(texto: str) -> Decimal:
     `MENSAJE_CIFRA` si no sigue la regla. El mensaje no repite lo escrito: quien llama añade el
     lugar (la tabla, la fila, el campo) y, si quiere, el texto.
     """
-    limpio = texto.strip()
+    limpio = texto.strip(BLANCOS)
     if not limpio:
         raise CifraInvalida(MENSAJE_CIFRA_VACIA)
     partes = _CIFRA.fullmatch(limpio)
