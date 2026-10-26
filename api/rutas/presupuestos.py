@@ -120,11 +120,6 @@ _QUIEN_EDITA = exigir_clave_o_sesion(Accion.EDITAR_HOJA)
 
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
 
-#: Elaborar con una obra que no está en la carpeta (Tarea 12); no repite lo enviado.
-MENSAJE_SIN_OBRA = (
-    "Esa obra no está en esta carpeta de trabajo: elíjala de nuevo en el selector de obra."
-)
-
 
 @router.post(
     "/proyectos",
@@ -761,7 +756,9 @@ def _lista_de_la_obra(
         return None
     proyecto = resolver_proyecto(sesion, peticion.proyecto)
     if proyecto is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MENSAJE_SIN_OBRA)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=aplicacion_elaboracion.MENSAJE_SIN_OBRA
+        )
     try:
         return lista_para_el_proyecto(
             sesion,

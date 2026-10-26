@@ -44,9 +44,6 @@ FORMA_LLEVAR = (
     "Lo que se lleva a la Hoja no tiene la forma esperada: envíe la obra y de 1 a 2000 partidas, "
     "cada una con su código y su cantidad tal como salen del cómputo."
 )
-MENSAJE_SIN_OBRA = (
-    "Esa obra no está en esta carpeta de trabajo: elíjala de nuevo en el selector de obra."
-)
 MENSAJE_CAMBIO = (
     "El borrador de la obra cambió mientras se llevaban las partidas: no se llevó ninguna. "
     "Vuelva a intentarlo."
@@ -108,7 +105,7 @@ def llevar_a_la_hoja(
         con_anexos_de_cadena(sesion)  # el sello de lo que se escriba cubre los anexos (§1.2)
         proyecto = resolver_proyecto(sesion, datos.proyecto)
         if proyecto is None:
-            raise HTTPException(status_code=404, detail=MENSAJE_SIN_OBRA)
+            raise HTTPException(status_code=404, detail=elaboracion.MENSAJE_SIN_OBRA)
         borrador_id = elaboracion.llevar_a_la_hoja(
             sesion,
             activa.huella_ficha,

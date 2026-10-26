@@ -359,6 +359,12 @@ def declarar_rendimiento(
 # --- Tarea 12 de montar un presupuesto: llevar los items a la Hoja de la obra -------------------
 
 
+#: Elaborar o llevar a la Hoja con una obra que no esta en la carpeta; no repite lo enviado.
+MENSAJE_SIN_OBRA = (
+    "Esa obra no está en esta carpeta de trabajo: elíjala de nuevo en el selector de obra."
+)
+
+
 class VersionQueNoSeAbre(Exception):  # noqa: N818
     """La version vigente de la obra ya no se puede abrir como borrador (la `HojaInvalida` de
     `hoja.abrir_version`); el mensaje es el que ve la persona."""
