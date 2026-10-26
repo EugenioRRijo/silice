@@ -75,5 +75,5 @@ describe("SelectorCaso, extensión", () => {
   });
 });
 
-// El pie «Sesión de …» del menú lateral pasó a la capa: lo prueban MenuEnCapa.test.tsx («con nombre muestra la sesion al pie;
-// sin nombre no», «sin nombre no hay pie de sesion») y Shell.test.tsx («la capa trae al pie quién tiene la sesión»).
+// El pie «Sesión de …» del menú lateral pasó al sidebar de módulos: lo prueban SidebarModulos.test.tsx («al pie: Acerca de
+// Sílice …, la sesión …») y Shell.test.tsx («el pie trae «Acerca de Sílice» y no «Administración» con ana …»).

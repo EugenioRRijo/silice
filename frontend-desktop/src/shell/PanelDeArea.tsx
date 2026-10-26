@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef } from "react";
 import type { KeyboardEvent } from "react";
-import { NavLink } from "react-router";
+import { EnlaceSeguro } from "./EnlaceSeguro";
 import type { GrupoNav } from "./navegacion";
 import { rutaDe } from "./rutas";
 
@@ -10,14 +10,15 @@ interface Props {
   // Nombre del area: nombre accesible de la region.
   titulo: string;
   grupos: readonly GrupoNav[];
-  // Se llama al elegir una pantalla (la barra cierra el panel).
+  // Se llama al elegir una pantalla (la barra cierra el panel); con trabajo sin guardar, solo si la persona sale.
   alElegir: () => void;
 }
 
 // Margen minimo entre el panel y el borde de la ventana.
 const MARGEN_PX = 8;
 
-// Panel de un area de la barra superior: patron «disclosure» de navegacion (enlaces), no un menu. Cada pantalla lleva su
+// Panel de un area de la barra superior: patron «disclosure» de navegacion (enlaces seguros: preguntan antes de perder
+// trabajo), no un menu. Cada pantalla lleva su
 // titulo (nombre accesible) y su linea de ayuda (descripcion accesible). Al abrirse, el foco va a la primera entrada; las
 // flechas, Inicio y Fin recorren las entradas y se detienen en la primera y la ultima, sin vuelta, como en la APG (Tab
 // tambien, en el orden natural).
@@ -87,12 +88,12 @@ export function PanelDeArea({ id, titulo, grupos, alElegir }: Props) {
                 const idAyuda = `${base}-${p.id}-a`;
                 return (
                   <li key={p.id}>
-                    <NavLink
+                    <EnlaceSeguro
                       to={rutaDe(p)}
                       className="silice-panel-area__enlace"
                       aria-labelledby={idTitulo}
                       aria-describedby={idAyuda}
-                      onClick={alElegir}
+                      alNavegar={alElegir}
                     >
                       <span id={idTitulo} className="silice-panel-area__titulo cds--type-body-compact-01">
                         {p.titulo}
@@ -100,7 +101,7 @@ export function PanelDeArea({ id, titulo, grupos, alElegir }: Props) {
                       <span id={idAyuda} className="silice-panel-area__ayuda cds--type-helper-text-01">
                         {p.enUnaLinea}
                       </span>
-                    </NavLink>
+                    </EnlaceSeguro>
                   </li>
                 );
               })}

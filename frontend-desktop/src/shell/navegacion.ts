@@ -59,7 +59,8 @@ export function moduloDeRuta(
 
 // Modulo de entrada por rol (decision 3 de Eugenio, ratificada el 2026-10-25): quien arma y quien administra entran en
 // Presupuestos y obras; quien revisa, en Auditoria. El rol se lee por una accion que solo tiene ese rol
-// (seguridad/permisos.py); el primer renglon que la cuenta tenga y cuyo modulo vea es el que manda.
+// (seguridad/permisos.py); el primer renglon que la cuenta tenga y cuyo modulo vea es el que manda. Que cada una siga
+// siendo exclusiva de su rol en la matriz lo vigila tests/unit/test_front_entrada_por_rol.py.
 export const ENTRADA_POR_ROL: readonly { accion: string; modulo: ModuloId }[] = [
   { accion: "editar_hoja", modulo: "obras" },
   { accion: "revisar_paquete", modulo: "auditoria" },

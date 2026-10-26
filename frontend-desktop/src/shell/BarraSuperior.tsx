@@ -1,11 +1,13 @@
-import { ChevronDown } from "@carbon/icons-react";
-import { Header, HeaderGlobalBar, HeaderMenuButton, HeaderName, HeaderNavigation } from "@carbon/react";
+import { ChevronDown, Menu } from "@carbon/icons-react";
+import { Header, HeaderGlobalBar, HeaderNavigation } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import type { FocusEvent, KeyboardEvent, ReactNode } from "react";
-import { NavLink, useLocation } from "react-router";
+import { useLocation } from "react-router";
+import { EnlaceSeguro } from "./EnlaceSeguro";
 import { areaActual, type EntradaNav } from "./navegacion";
 import { PanelDeArea } from "./PanelDeArea";
 import { rutaDe, type ModuloDef } from "./rutas";
+import { ID_BOTON_SILICE, ID_SIDEBAR } from "./sidebar";
 import "./BarraSuperior.scss";
 
 interface Props {
@@ -14,16 +16,24 @@ interface Props {
   entradas: readonly EntradaNav[];
   // Lado derecho (carpeta y proyecto, recorrido, tamano de letra, cuenta): va dentro de `HeaderGlobalBar`.
   derecha: ReactNode;
-  // Boton del menu en capa (ancho estrecho o letra grande); el CSS lo muestra solo por debajo del umbral.
-  menu: { abierto: boolean; alternar: () => void };
+  // El sidebar de modulos que abre «Sílice»: `abierto` = en capa encima del contenido; `visible` = en capa o fijado.
+  sidebar: { abierto: boolean; visible: boolean; alternar: () => void };
 }
 
-// Barra superior: «Sílice», el nombre del modulo abierto, sus areas y el lado derecho. El nombre del modulo es texto, no
-// enlace (no es un tercer camino al inicio: ya estan «Sílice» y el area «Inicio»). Un area con una sola pantalla es un enlace; con varias, un boton
+// El nombre accesible dice lo que hace el boton (empieza por «Sílice», el texto que se ve): abrir los modulos (oculto),
+// cerrarlos (en capa) o, fijado, ir a ellos (pulsarlo lleva el foco al modulo actual; ocultarlo es «Ocultar», al pie).
+function nombreDeSilice(sidebar: Props["sidebar"]): string {
+  if (!sidebar.visible) return "Sílice, abrir los módulos";
+  return sidebar.abierto ? "Sílice, cerrar los módulos" : "Sílice, ir a los módulos";
+}
+
+// Barra superior: el boton «Sílice» (abre el sidebar de modulos), el nombre del modulo abierto, sus areas y el lado
+// derecho. El nombre del modulo es texto, no enlace (no es otro camino al inicio: ya estan el sidebar y el area
+// «Inicio»). Las areas son enlaces seguros (preguntan antes de perder trabajo). Un area con una sola pantalla es un enlace; con varias, un boton
 // que abre su panel (patron «disclosure» de navegacion, nunca al pasar el raton). Un solo panel abierto; se cierra con Esc
 // (el foco vuelve al boton), con un clic fuera, cuando el foco sale de la navegacion, al elegir una pantalla, al abrir
 // otra area, al cambiar de ruta (tambien atras/adelante del navegador) y al cambiar el tamano de letra.
-export function BarraSuperior({ modulo, entradas, derecha, menu }: Props) {
+export function BarraSuperior({ modulo, entradas, derecha, sidebar }: Props) {
   const ubicacion = useLocation();
   const [abierta, setAbierta] = useState<string | null>(null);
   const [clave, setClave] = useState(ubicacion.key);
@@ -84,15 +94,18 @@ export function BarraSuperior({ modulo, entradas, derecha, menu }: Props) {
 
   return (
     <Header aria-label="Sílice" className="silice-barra">
-      <HeaderMenuButton
-        aria-label={menu.abierto ? "Cerrar el menú" : "Abrir el menú"}
-        isActive={menu.abierto}
-        onClick={menu.alternar}
-        aria-expanded={menu.abierto}
-      />
-      <HeaderName href="#/" prefix="">
-        Sílice
-      </HeaderName>
+      <button
+        type="button"
+        id={ID_BOTON_SILICE}
+        className="silice-barra__silice"
+        aria-label={nombreDeSilice(sidebar)}
+        aria-expanded={sidebar.visible}
+        aria-controls={sidebar.visible ? ID_SIDEBAR : undefined}
+        onClick={sidebar.alternar}
+      >
+        <Menu size={20} aria-hidden="true" />
+        <span>Sílice</span>
+      </button>
       {modulo && (
         <span className="silice-barra__modulo cds--type-heading-compact-01" title={modulo.titulo}>
           {modulo.titulo}
@@ -110,9 +123,9 @@ export function BarraSuperior({ modulo, entradas, derecha, menu }: Props) {
           if (e.tipo === "enlace") {
             return (
               <li key={e.area} className="silice-barra__item">
-                <NavLink to={rutaDe(e.pagina)} className={`cds--header__menu-item ${claseArea(e.area)}`}>
+                <EnlaceSeguro to={rutaDe(e.pagina)} className={`cds--header__menu-item ${claseArea(e.area)}`}>
                   {e.titulo}
-                </NavLink>
+                </EnlaceSeguro>
               </li>
             );
           }

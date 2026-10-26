@@ -1,5 +1,5 @@
 import { InlineNotification } from "@carbon/react";
-import { Suspense, createElement, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, createElement, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactElement } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigationType } from "react-router";
 import { ErrorDeApi, pedir } from "../api/cliente";
@@ -13,13 +13,29 @@ import { BarraSuperior } from "./BarraSuperior";
 import { BotonRecorrido, ColumnaRecorrido } from "./ColumnaRecorrido";
 import { ContextoAplicacion } from "./contexto";
 import type { Aplicacion } from "./contexto";
+import { DialogoSalida } from "./DialogoSalida";
 import { LimiteDeError } from "./LimiteDeError";
 import { MenuCuenta } from "./MenuCuenta";
-import { MenuEnCapa } from "./MenuEnCapa";
 import { moduloAlEntrar, moduloDeRuta, navegacion } from "./navegacion";
 import { PanelCarpetaProyecto, nombreDeCarpeta } from "./PanelCarpetaProyecto";
 import { olvidarImportaciones } from "../paginas/hoja/useImportacion";
+import { guardarPreferencias } from "./preferencias";
 import { terminarRecorrido, useColumnaOculta, useRecorrido } from "./recorrido";
+import { cancelarSalida } from "./salida";
+import {
+  ID_BOTON_SILICE,
+  ID_SIDEBAR,
+  abrirSidebar,
+  alternarSidebar,
+  cerrarSidebar,
+  esEscParaElSidebar,
+  fijarSidebar,
+  iniciarSidebar,
+  useSidebar,
+} from "./sidebar";
+import { SidebarModulos } from "./SidebarModulos";
+import { olvidarFormularios } from "./sucio";
+import { useFijadoPosible } from "./useFijadoPosible";
 import { MODULOS, PAGINAS, fueraDeModulos, inicioDe, modulosVisibles, rutaDe, visible } from "./rutas";
 import type { ModuloId, PaginaDef } from "./rutas";
 import type { AlmacenDelVisor } from "../visor/almacen";
@@ -79,11 +95,11 @@ function esSinPermiso(e: unknown): boolean {
   return e instanceof ErrorDeApi && e.estado === 403;
 }
 
-// Marco de la interfaz: barra superior (el modulo abierto y sus areas por rol y modo entrega, carpeta y proyecto,
-// recorrido, letra y cuenta), su capa para cuando no cabe, la columna del recorrido guiado y la pagina de la ruta.
+// Marco de la interfaz: barra superior («Sílice», el modulo abierto y sus areas por rol y modo entrega, carpeta y
+// proyecto, recorrido, letra y cuenta), el sidebar de modulos, la columna del recorrido guiado, la pagina de la ruta y
+// la confirmacion al salir con trabajo sin guardar.
 export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp, paginas = PAGINAS, almacen, crearHoja }: Props) {
   const ubicacion = useLocation();
-  const [menuAbierto, setMenuAbierto] = useState(false);
   const [casos, setCasos] = useState<CasosRespuesta | null>(null);
   const [cambiandoCaso, setCambiandoCaso] = useState(false);
   const [proyectos, setProyectos] = useState<ProyectoRespuesta[] | null>(null);
@@ -94,15 +110,20 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // Cambia con el caso: las paginas se vuelven a montar y piden sus datos de nuevo.
   const [generacion, setGeneracion] = useState(0);
 
-  // Un recorrido en curso no sobrevive a la sesion: al salir o vencer se cierra (vive fuera del arbol de React).
+  // Un recorrido en curso no sobrevive a la sesion: al salir o vencer se cierra (vive fuera del arbol de React). Lo mismo
+  // la pregunta de salida abierta y los formularios sucios (lo que no se guardo se pierde con la sesion).
   const alSalir = useCallback(() => {
     terminarRecorrido();
     olvidarImportaciones();
+    cancelarSalida();
+    olvidarFormularios();
     alSalirDeApp();
   }, [alSalirDeApp]);
   const alExpirar = useCallback(() => {
     terminarRecorrido();
     olvidarImportaciones();
+    cancelarSalida();
+    olvidarFormularios();
     alExpirarDeApp();
   }, [alExpirarDeApp]);
 
@@ -144,19 +165,51 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     return () => cancelAnimationFrame(cuadro);
   }, [ubicacion.pathname, ubicacion.key, tipoNavegacion]);
 
-  // Esc cierra el menu abierto como capa y devuelve el foco a su boton (VB-14). Se escucha en la fase de captura: la capa
-  // detiene la propagacion de su propio Esc (para no cerrar nada mas) y este oyente no se enteraria.
+  // Sidebar de modulos (MOD-2): oculto al entrar, con el fijado que recuerda la cuenta. Antes de pintar (sin parpadeo del
+  // fijado); al desmontarse (salir de la sesion) vuelve a oculto y se olvida lo pendiente.
+  const fijadoDeLaCuenta = sesion.preferencias?.sidebar_fijado ?? false;
+  useLayoutEffect(() => {
+    iniciarSidebar(fijadoDeLaCuenta);
+  }, [fijadoDeLaCuenta]);
+  useEffect(
+    () => () => {
+      iniciarSidebar(false);
+      cancelarSalida();
+      olvidarFormularios();
+    },
+    [],
+  );
+  const { abierto: sidebarAbierto, fijado: sidebarFijado } = useSidebar();
+  const fijadoPosible = useFijadoPosible();
+  // Fijado solo con ancho para ello; si no, se comporta como oculto (y al abrirse va en capa).
+  const fijadoVisible = sidebarFijado && fijadoPosible;
+  const enCapa = sidebarAbierto && !fijadoVisible;
+
+  const enfocarSilice = useCallback(() => document.getElementById(ID_BOTON_SILICE)?.focus(), []);
+  const cerrarModulos = useCallback(() => {
+    cerrarSidebar();
+    enfocarSilice();
+  }, [enfocarSilice]);
+
+  // Esc (choque 9 del plan): un solo oyente en el documento, en la fase de burbuja, asi lo que tiene su propio Esc (un
+  // panel de area, la cuenta, la carpeta, un dialogo) lo atiende antes y detiene la propagacion. En capa, Esc cierra el
+  // sidebar y el foco vuelve a «Sílice» (dentro del sidebar lo atiende el propio sidebar); con todo cerrado lo abre si
+  // el Esc no es de nadie (esEscParaElSidebar); fijado y a la vista no hace nada (decision 4 de Eugenio).
   useEffect(() => {
-    if (!menuAbierto) return;
     const alTeclear = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setMenuAbierto(false);
-      // El boton cambia de nombre al cerrarse; se le manda el foco cuando React ya lo repinto.
-      requestAnimationFrame(() => document.querySelector<HTMLElement>(".cds--header__menu-toggle")?.focus());
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (enCapa) {
+        // Otro dialogo modal encima (p. ej. «Cambios sin guardar») se queda con su Esc.
+        const otroModal = Array.from(document.querySelectorAll('[aria-modal="true"]')).some((m) => m.id !== ID_SIDEBAR);
+        if (!otroModal) cerrarModulos();
+        return;
+      }
+      if (fijadoVisible || !esEscParaElSidebar(e)) return;
+      abrirSidebar();
     };
-    document.addEventListener("keydown", alTeclear, true);
-    return () => document.removeEventListener("keydown", alTeclear, true);
-  }, [menuAbierto]);
+    document.addEventListener("keydown", alTeclear);
+    return () => document.removeEventListener("keydown", alTeclear);
+  }, [enCapa, fijadoVisible, cerrarModulos]);
 
   const acciones = sesion.acciones;
   const modoEntrega = sesion.modo_entrega;
@@ -180,15 +233,41 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   useEffect(() => {
     if (modulo === null || modulo !== deLaPantalla || modulo === guardado.current) return;
     guardado.current = modulo;
-    pedir("/v1/sesion/preferencias", { metodo: "PUT", cuerpo: { modulo } }).catch((e: unknown) => {
-      if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
-    });
+    void guardarPreferencias({ modulo }, alExpirar);
   }, [modulo, deLaPantalla, alExpirar]);
+
+  // «Sílice»: oculto, abre en capa (el sidebar lleva el foco al modulo actual); en capa, cierra; fijado y a la vista,
+  // lleva el foco al modulo actual (no lo oculta: eso es «Ocultar», al pie del sidebar).
+  const alPulsarSilice = useCallback(() => {
+    if (!fijadoVisible) {
+      alternarSidebar();
+      return;
+    }
+    cerrarSidebar();
+    const lado = document.getElementById(ID_SIDEBAR);
+    (lado?.querySelector<HTMLElement>('.silice-sidebar__modulo[aria-current="page"]') ?? lado?.querySelector<HTMLElement>("a"))?.focus();
+  }, [fijadoVisible]);
+
+  // «Fijar» y «Ocultar»: se recuerda por cuenta. El boton que se pulso desaparece (el sidebar pasa de capa a franja, o
+  // se va): el foco va a «Ocultar» o a «Sílice» cuando React ya repinto.
+  const alFijar = useCallback(
+    (fijo: boolean) => {
+      fijarSidebar(fijo);
+      void guardarPreferencias({ sidebar_fijado: fijo }, alExpirar);
+      requestAnimationFrame(() => {
+        if (fijo) document.querySelector<HTMLElement>(`#${ID_SIDEBAR} .silice-sidebar__fijar`)?.focus();
+        else enfocarSilice();
+      });
+    },
+    [alExpirar, enfocarSilice],
+  );
 
   const entradas = useMemo(
     () => (modulo === null ? [] : navegacion(modulo, acciones, modoEntrega, paginas)),
     [modulo, acciones, modoEntrega, paginas],
   );
+  // Administracion y Acerca de Silice, al pie del sidebar (las que la cuenta puede usar).
+  const fuera = useMemo(() => fueraDeModulos(acciones, modoEntrega, paginas), [acciones, modoEntrega, paginas]);
   // Con la columna del recorrido a la vista, el contenido le cede su ancho (ColumnaRecorrido.scss).
   const recorrido = useRecorrido();
   const columnaOculta = useColumnaOculta();
@@ -322,7 +401,10 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
 
   return (
     <ContextoAplicacion.Provider value={aplicacion}>
-      <div className={conRecorrido ? "silice-marco silice-con-recorrido" : "silice-marco"} data-modulo={modulo ?? undefined}>
+      <div
+        className={`silice-marco${conRecorrido ? " silice-con-recorrido" : ""}${fijadoVisible ? " silice-marco--fijado" : ""}`}
+        data-modulo={modulo ?? undefined}
+      >
         {/* Con hash por enrutador un enlace #contenido cambiaria la ruta: se manda el foco a mano. */}
         <button type="button" className="silice-saltar cds--type-body-compact-01" onClick={() => document.getElementById("contenido")?.focus()}>
           Saltar al contenido
@@ -331,9 +413,21 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
           modulo={MODULOS.find((m) => m.id === modulo) ?? null}
           entradas={entradas}
           derecha={derecha}
-          menu={{ abierto: menuAbierto, alternar: () => setMenuAbierto((a) => !a) }}
+          sidebar={{ abierto: enCapa, visible: enCapa || fijadoVisible, alternar: alPulsarSilice }}
         />
-        <MenuEnCapa entradas={entradas} abierto={menuAbierto} alCerrar={() => setMenuAbierto(false)} nombre={sesion.nombre} />
+        <SidebarModulos
+          modulos={visibles}
+          actual={modulo}
+          entradas={entradas}
+          fuera={fuera}
+          abierto={sidebarAbierto}
+          fijado={sidebarFijado}
+          fijadoPosible={fijadoPosible}
+          alCerrar={cerrarModulos}
+          alFijar={alFijar}
+          nombre={sesion.nombre}
+          paginas={paginas}
+        />
         {/* Antes del contenido: por debajo del umbral de la letra pasa a franja bajo la barra (ColumnaRecorrido.scss). */}
         <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
         <main id="contenido" className="silice-contenido" tabIndex={-1}>
@@ -374,6 +468,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
             </Suspense>
           </LimiteDeError>
         </main>
+        <DialogoSalida paginas={paginas} />
       </div>
     </ContextoAplicacion.Provider>
   );

@@ -1,4 +1,5 @@
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { useEffect } from "react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -79,11 +80,15 @@ describe("EnlaceSeguro", () => {
 
 describe("useNavegarSeguro", () => {
   test("sin sucios navega y resuelve true; con sucios y «Quedarme», false sin navegar", async () => {
-    let navegar!: (to: string) => Promise<boolean>;
+    const capturado: { navegar: ((to: string) => Promise<boolean>) | null } = { navegar: null };
     function Captura() {
-      navegar = useNavegarSeguro();
+      const navegar = useNavegarSeguro();
+      useEffect(() => {
+        capturado.navegar = navegar;
+      }, [navegar]);
       return null;
     }
+    const navegar = (to: string) => capturado.navegar!(to);
     render(
       <MemoryRouter initialEntries={["/componer"]}>
         <Captura />

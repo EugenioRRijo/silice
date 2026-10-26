@@ -1,6 +1,51 @@
-// Barra superior y panel de area (diseno 2026-10-25 §5.1 y §5.2). Carbon g10, esquinas rectas, sin sombra, sin gradiente,
-// sin animacion (tampoco al abrir el panel). Todo en rem: sigue la escala de letra. El paso a la capa por debajo del
-// umbral de cada escala lo decide `shell.scss` (mixin `menu-en-capa`), no este parcial.
+// Barra superior y panel de area (diseno 2026-10-25 §5.1 y §5.2; modulos §5). Carbon g10, esquinas rectas, sin sombra,
+// sin gradiente, sin animacion (tampoco al abrir el panel). Todo en rem: sigue la escala de letra. Que las areas cedan su
+// sitio al sidebar de modulos por debajo del umbral de cada modulo y letra lo decide `shell.scss` (mixin
+// `barra-no-cabe`), no este parcial.
+
+// «Sílice»: el boton que abre el sidebar de modulos (icono de menu y nombre), en la esquina, con el aspecto del nombre de
+// la cabecera de Carbon. Abierto o fijado lleva el fondo de seleccion, ademas de `aria-expanded`.
+.silice-barra .silice-barra__silice {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  block-size: 100%;
+  padding: 0 1rem;
+  margin: 0;
+  border: 2px solid transparent;
+  background-color: transparent;
+  color: var(--cds-text-primary);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.125rem;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: none;
+
+  svg {
+    flex: none;
+    fill: currentcolor;
+  }
+
+  &:hover {
+    background-color: var(--cds-background-hover);
+  }
+
+  &:focus,
+  &:focus-visible {
+    border-color: var(--cds-focus);
+    outline: none;
+  }
+
+  &[aria-expanded="true"] {
+    background-color: var(--cds-layer-selected-01);
+  }
+}
 
 // Nombre del modulo abierto, junto a «Sílice»: texto (no enlace), separado por un filete; si no cabe se recorta con
 // puntos suspensivos y el nombre completo queda en `title`.

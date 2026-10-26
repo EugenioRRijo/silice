@@ -1,79 +1,27 @@
+@use "sass:map";
 @use "umbrales" as u;
 
-// Marco de la interfaz: barra superior (BarraSuperior.tsx), su capa por debajo del umbral de cada letra (MenuEnCapa.tsx),
-// el contenido y, con un recorrido en curso, su columna a la derecha (ColumnaRecorrido.tsx). Sin sombras, sin animacion
-// (DESIGN.md).
+// Marco de la interfaz: barra superior (BarraSuperior.tsx), sidebar de modulos (SidebarModulos.tsx), el contenido y, con
+// un recorrido en curso, su columna a la derecha (ColumnaRecorrido.tsx). Sin sombras, sin animacion (DESIGN.md).
 
-// La capa (SideNav de Carbon) cuelga bajo la cabecera: su alto resta la cabecera en rem, no en 48 px.
-.cds--header ~ .cds--side-nav {
-  block-size: calc(100% - 3rem);
-}
+// Por debajo del umbral de cada modulo y letra la barra no cabe: sus areas se esconden y el sidebar de modulos las
+// muestra (diseno de modulos §12.4; un solo boton, «Sílice»). Las cifras viven solo en `_umbrales.scss`.
+@each $modulo in map.keys(u.$umbrales-por-modulo) {
+  @each $escala in map.keys(map.get(u.$umbrales-por-modulo, $modulo)) {
+    @include u.barra-no-cabe($modulo, $escala) {
+      .silice-barra__nav {
+        display: none;
+      }
 
-// Cerrada, la capa no se ve ni se alcanza con Tab a ningun ancho: Carbon solo la marca `inert` por debajo de lg y, por
-// encima, la deja en ancho 0 pero con sus enlaces enfocables.
-.silice-capa:not(.cds--side-nav--expanded) {
-  visibility: hidden;
-}
-
-// En pantallas angostas el menu abierto es una capa: puede ser mas ancha que la cuarta parte, pero no cubre todo.
-@media (max-width: 65.99rem) {
-  .cds--side-nav--expanded {
-    inline-size: min(16rem, 85vw);
-  }
-}
-
-// Los nombres largos de la capa pasan a la linea siguiente en vez de cortarse con puntos suspensivos.
-a.cds--side-nav__link > .cds--side-nav__link-text {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-// Con la letra grande la barra no cabe: el punto en que sus areas pasan al boton de menu (que abre la capa) sube con la
-// escala, como al acercar con el zoom del navegador. Carbon lo decide con una consulta en rem que no sigue a la letra de la
-// raiz; los umbrales en px de cada escala viven solo en `_umbrales.scss`.
-@mixin menu-en-capa($escala) {
-  @include u.por-debajo-del-umbral($escala) {
-    .cds--side-nav--ux:not(.cds--side-nav--expanded) {
-      inline-size: 0;
-      visibility: hidden;
-    }
-
-    .cds--side-nav--expanded {
-      inline-size: min(16rem, 85vw);
-    }
-
-    .cds--header__menu-toggle__hidden {
-      display: flex;
-    }
-
-    // La barra superior no cabe: sus areas ceden su lugar al boton de menu, que abre la capa.
-    .silice-barra__nav {
-      display: none;
-    }
-
-    // Y la capa las muestra: Carbon solo ensena `HeaderSideNavItems` con su consulta en rem (<= 65.98rem), que no sigue
-    // la letra de Silice; sin esto, con letra Grande o Muy grande por encima de 1056 px la capa se abria vacia.
-    .cds--side-nav__header-navigation {
-      position: relative;
-      display: block;
-      margin-block-end: 2rem;
-    }
-
-    .cds--side-nav__overlay-active {
-      z-index: 8000;
-      background-color: var(--cds-overlay);
-      block-size: 100vh;
-      inline-size: 100vw;
-      opacity: 1;
+      .silice-sidebar__areas {
+        display: block;
+      }
     }
   }
 }
 
-@include menu-en-capa("normal");
-@include menu-en-capa("grande");
-@include menu-en-capa("muy-grande");
+// `--silice-fijado-posible` en <html>: si hay ancho para dejar el sidebar fijado (useFijadoPosible.ts).
+@include u.fijado-posible;
 
 .silice-saltar {
   position: fixed;
