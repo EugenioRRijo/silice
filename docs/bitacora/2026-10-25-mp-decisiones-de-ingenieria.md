@@ -434,6 +434,24 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 14. Oráculo corregido después del rojo (3040d9e6): la clave primaria `id` de `mp_compra` es NOT NULL; era un supuesto de la
     base de pruebas.
 
+## T19, enviar y dictamen en la mesa
+
+1. Quien arma también ve en su grupo «Aprobar» los envíos de OTRAS carpetas (de `GET /v1/aprobaciones/pendientes`); los
+   de la carpeta abierta los dice ya `/v1/obras/pendientes`. **Por ratificar.**
+2. Quien solo revisa ve la columna Pendientes con un único grupo «Aprobar».
+3. «Abrir» de otra carpeta usa `abrirCarpeta(nombre, undefined, abrirCon)`: misma pregunta
+   (`confirmarSalida("carpeta", borradores)`), `POST /v1/aprobaciones/abrir` en vez de `POST /v1/casos/actual`, relectura
+   de la carpeta y aviso; luego navega a `/aprobar?envio=`. Uno de la carpeta abierta no llama a `/abrir`.
+4. El aviso «Ahora trabaja con la carpeta…» se cierra al llegar a /aprobar: T20 debe decir de qué carpeta es el envío.
+5. «Ver el envío» de `/v1/obras/pendientes` y de la tabla no trae `envio_id`: T20 debe resolver el envío pendiente de la
+   obra elegida.
+6. «Por aprobar» con `IndicadorFiori`: Δ son días hábiles de espera, no actual − meta; marca «Hay versiones esperando
+   dictamen desde hace días: revíselas pronto.» **Por ratificar.**
+7. Hoja: un 5xx al leer el estado lo dice; un 403 o 404 no dice nada; «Retirada · …» es la sexta etiqueta y permite
+   volver a enviar.
+8. `abrirCarpeta` gana un tercer parámetro opcional (`abrirCon`) en `useCarpetaDeTrabajo.ts` y `contexto.tsx`
+   (compatible).
+
 ## MOD-4a, mesa de control (aprobada en la ronda 2)
 
 1. **Corte sin valuaciones.** El corte de una obra con línea base es el «hasta» de su última valuación no anulada; sin

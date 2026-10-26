@@ -7,6 +7,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- Hoja: junto a la versión, la etiqueta de su aprobación («Aprobada · Rita · 25/10/2026», «Devuelta · …», «aprobada por quien la armó»), «Enviar a aprobación…» con nota opcional y, si la devolvieron, sus notas y «Hacer una versión nueva a partir de esta» (T19).
+- Mesa de Presupuestos y obras: cifra «Por aprobar» con su marca desde 3 días hábiles, y grupo «Aprobar» con los envíos de todas las carpetas (quien revisa) o de las otras (quien arma); «Abrir» un envío de otra carpeta pregunta antes de cambiarla (T19).
 - Control de obra: cada línea de una valuación lleva una causa de retraso elegible (compra tardía, precio, lluvia o clima, cambio del cliente, falta de personal, falla de equipo, otra) y «Alertas y reproyección» muestra el atraso por partida con su causa; la mesa nombra la partida atrasada (MP-7, T22; migración caso_0015_mp_causas).
 - Procura con fechas (MP-7, T23): `/v1/procura` explota los materiales de la versión de la línea base con la fecha en que se necesitan y la de pedido (plazo por material, 3 días hábiles por omisión), registra pedidos y recepciones (la recepción con precio es una observación de mercado) y avisa compras por pedir, vencidas y tardías; fuente «Compras» de la mesa; migración `caso_0016_mp_procura`.
 - Hoja › Plan y curva: «Plan desde los rendimientos» (duración = cantidad ÷ rendimiento ÷ cuadrillas, al medio día; partidas en paralelo; días hábiles o semanas) y la primera versión sin plan guarda ese plan en vez de una partida por día (T21, MP-7).
