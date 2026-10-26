@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import type { Similar } from "./cliente";
@@ -37,6 +37,10 @@ describe("Similares", () => {
     await usuario.click(screen.getByRole("button", { name: /FIC-001/ }));
     expect(screen.getByText("Rendimiento: 12,00 m2/día")).toBeInTheDocument();
     expect(screen.getByText("12,5")).toBeInTheDocument();
+    // Las celdas llegan en es-VE («1.500,5»): `compararDecimales` las ordenaria mal, asi que no se ofrece ordenar
+    // (arbitro, ronda 1, menor 4).
+    const tabla = screen.getByRole("table", { name: "Materiales de FIC-001" });
+    expect(within(tabla).queryAllByRole("button")).toHaveLength(0);
     expect(screen.getByText("Bloque ficticio")).toBeInTheDocument();
     expect(screen.getByText("Albañil ficticio")).toBeInTheDocument();
     expect(screen.queryAllByRole("textbox")).toHaveLength(0);
