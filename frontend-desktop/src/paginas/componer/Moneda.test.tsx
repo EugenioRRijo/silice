@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { CarpetaRespuesta, SesionRespuesta } from "../../api/tipos";
@@ -171,7 +171,10 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     const vista = render(
       <ContextoAplicacion.Provider value={valor}>
         <MemoryRouter initialEntries={[ruta]}>
-          <PaginaComponer />
+          <Routes>
+            <Route path="/componer" element={<PaginaComponer />} />
+            <Route path="/hoja" element={<p>Pantalla ficticia de la Hoja</p>} />
+          </Routes>
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
     );
@@ -370,12 +373,14 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     await waitFor(() => expect(de("/v1/composicion/partidas/OBRA-07")).toHaveLength(1), ESPERA);
     // Lo que trajo la Hoja no es trabajo de la persona.
     expect(formulariosSucios()).toEqual([]);
-    expect(screen.queryByRole("link", { name: "Volver a la Hoja" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Volver a la Hoja" })).not.toBeInTheDocument();
     await u.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
     await u.click(screen.getByRole("button", { name: "Guardar composición" }));
     await screen.findByText(GUARDADO.mensaje, {}, ESPERA);
-    expect(screen.getByRole("link", { name: "Volver a la Hoja" })).toHaveAttribute("href", "/hoja");
     expect(de("/v1/composicion/guardar")[0].cuerpo).toMatchObject({ codigo: "OBRA-07" });
+    // Guardada, no hay nada que perder: «Volver a la Hoja» lleva a la Hoja sin preguntar.
+    await u.click(screen.getByRole("button", { name: "Volver a la Hoja" }));
+    expect(await screen.findByText("Pantalla ficticia de la Hoja", {}, ESPERA)).toBeInTheDocument();
   });
 
   test("sin volver=hoja, guardada, no ofrece volver a la Hoja", async () => {
@@ -384,7 +389,7 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     await conCondiciones(u);
     await u.click(screen.getByRole("button", { name: "Guardar composición" }));
     await screen.findByText(GUARDADO.mensaje, {}, ESPERA);
-    expect(screen.queryByRole("link", { name: "Volver a la Hoja" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Volver a la Hoja" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Elaborar un presupuesto" })).toBeInTheDocument();
   });
 });
