@@ -629,7 +629,10 @@ def aprobadas_sin_entregar(sesion: Session, hoy: date) -> list[Pendiente]:
         codigo = ultima_aprobada(sesion, str(obra.id))
         if codigo is None:
             continue
-        sello = _sello(sesion, _version(sesion, obra, codigo))
+        try:
+            sello = _sello(sesion, _version(sesion, obra, codigo))
+        except AprobacionInvalida:
+            continue  # base alterada (sin eslabón): se omite esa obra, la lista no se rompe
         if any(f"sello_version {sello}" in detalle for detalle in entregas):
             continue
         salida.append(
