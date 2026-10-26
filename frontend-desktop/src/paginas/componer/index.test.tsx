@@ -58,21 +58,16 @@ const TABLAS_FICTICIAS = {
   mano_obra: [{ descripcion: "Peón ficticio", cantidad: "2", sueldo: "15,00", modalidad: "JORNAL" }],
 };
 
-// `GET /v1/casos/actual` (api/rutas/casos.py, ResumenCarpeta): solo importa `lista_vigente`.
-function resumenDeCarpeta(lista: string | null, parcial: Record<string, unknown> = {}) {
+// `GET /v1/carpeta` (api/rutas/carpeta.py, Tarea 2 del plan de montar): la moneda de trabajo y la lista para armar.
+function estadoDeCarpeta(lista: string | null) {
   return {
-    nombre: "silice.db",
-    ruta_relativa: "silice.db",
-    ubicacion: "En la carpeta de datos de Sílice",
-    partidas: 0,
-    insumos: 0,
-    lista_vigente: lista,
-    proyectos: 0,
-    proyectos_con_version: 0,
-    es_demostracion: false,
-    por_migrar: false,
-    error: null,
-    ...parcial,
+    moneda: "Bs",
+    declarada: true,
+    lista: lista === null ? null : { nombre: lista, moneda: "Bs", fecha: "2026-10-25", origen: "prueba" },
+    aviso:
+      lista === null
+        ? "Esta carpeta de trabajo no tiene lista de precios para armar. Créela a partir de MaPreX o convirtiendo la que tiene."
+        : null,
   };
 }
 
@@ -96,7 +91,7 @@ describe("Componer una partida", () => {
     llamadas = [];
     evaluacion = () => json(VACIA);
     partida = () => json({ existe: false, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
-    carpeta = () => json(resumenDeCarpeta("Lista ficticia 2026-01"));
+    carpeta = () => json(estadoDeCarpeta("Lista ficticia 2026-01"));
     guardado = () => json({ precio_unitario: "29.70", mensaje: "Composición guardada para la partida FIC-1: precio unitario 29.70.", justificada: false, avisos: [] });
     fetchFalso.mockImplementation(async (entrada, init) => {
       const ruta = String(entrada);
@@ -112,8 +107,12 @@ describe("Componer una partida", () => {
       if (ruta.startsWith("/v1/composicion/similares")) {
         return json([{ codigo: "FIC-009", descripcion: "Muro ficticio", puntaje: 0.91, rendimiento: "8.00", unidad: "m2", tablas: null, aviso: null }]);
       }
+      // Guardar pregunta antes a `prever` (Tarea 3 del plan de montar); sin variantes, guarda de una vez.
+      if (ruta === "/v1/composicion/prever") {
+        return json({ lista: { nombre: "Lista ficticia 2026-01", moneda: "Bs", fecha: "2026-10-25" }, lista_nueva: false, variantes: [] });
+      }
       if (ruta === "/v1/composicion/guardar") return guardado();
-      if (ruta === "/v1/casos/actual") return carpeta();
+      if (ruta === "/v1/carpeta") return carpeta();
       return json({ detalle: "No encontrado." }, 404);
     });
   });
@@ -155,39 +154,22 @@ describe("Componer una partida", () => {
     expect(within(screen.getByLabelText("Dominio")).getAllByRole("option").map((o) => o.textContent)).toEqual(["civil", "telecom"]);
   });
 
-  test("sin lista de precios vigente lo dice arriba al abrir, en llano y con qué hacer", async () => {
-    // Prueba en vivo 2026-10-25: la carpeta por defecto no tenía lista y solo se supo al guardar (409).
-    carpeta = () => json(resumenDeCarpeta(null));
+  test("con lista para armar no hay aviso de lista", async () => {
     montar();
-    const aviso = await screen.findByText(/no tiene lista de precios vigente/, {}, ESPERA);
-    const bloque = aviso.closest("[role=status]") as HTMLElement;
-    expect(bloque).toHaveTextContent("«silice»");
-    expect(bloque).toHaveTextContent(/no podrá guardarla/);
-    expect(bloque).toHaveTextContent(/elija en la barra superior otra carpeta de trabajo/);
-    // Va antes de la cabecera de la partida: se ve sin desplazarse.
-    const cabecera = screen.getByRole("heading", { name: "Cabecera de la partida" });
-    expect(bloque.compareDocumentPosition(cabecera) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(de("/v1/casos/actual")).toHaveLength(1);
+    await waitFor(() => expect(de("/v1/carpeta")).toHaveLength(1), ESPERA);
+    await screen.findByText(/Comience por la cabecera/, {}, ESPERA);
+    expect(screen.queryByText(/no tiene lista de precios/)).not.toBeInTheDocument();
   });
 
-  test("con lista vigente no hay aviso de lista", async () => {
+  test("sin aviso de lista cuando la API no da la carpeta", async () => {
+    carpeta = () => json({ detalle: "El proceso no usa un archivo SQLite." }, 503);
     montar();
-    await waitFor(() => expect(de("/v1/casos/actual")).toHaveLength(1), ESPERA);
+    await waitFor(() => expect(de("/v1/carpeta")).toHaveLength(1), ESPERA);
     await screen.findByText(/Comience por la cabecera/, {}, ESPERA);
-    expect(screen.queryByText(/no tiene lista de precios vigente/)).not.toBeInTheDocument();
-  });
-
-  test.each([
-    ["la carpeta trae un error", () => json(resumenDeCarpeta(null, { error: "No se pudo leer." }))],
-    ["la carpeta está por migrar", () => json(resumenDeCarpeta(null, { por_migrar: true }))],
-    ["la API no da el resumen", () => json({ detalle: "El proceso no usa un archivo SQLite." }, 503)],
-  ])("sin aviso de lista cuando %s", async (_caso, respuesta) => {
-    carpeta = respuesta;
-    montar();
-    await waitFor(() => expect(de("/v1/casos/actual")).toHaveLength(1), ESPERA);
-    await screen.findByText(/Comience por la cabecera/, {}, ESPERA);
-    expect(screen.queryByText(/no tiene lista de precios vigente/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no tiene lista de precios/)).not.toBeInTheDocument();
     expect(screen.queryByText("El proceso no usa un archivo SQLite.")).not.toBeInTheDocument();
+    // Sin saber la moneda no se inventa: no hay «Precios en …».
+    expect(screen.queryByText(/^Precios en /)).not.toBeInTheDocument();
   });
 
   test("guardar está deshabilitado sin condiciones y se habilita al declararlas", async () => {
