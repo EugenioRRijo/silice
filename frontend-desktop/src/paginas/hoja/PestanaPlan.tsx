@@ -1,7 +1,8 @@
-import { Button, Checkbox, InlineNotification, RadioButton, RadioButtonGroup, TextInput } from "@carbon/react";
+import { Button, Checkbox, InlineNotification, RadioButton, RadioButtonGroup } from "@carbon/react";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useCallback, useId, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { CurvaPlanAvance, periodoLegible } from "../../comun/CurvaPlanAvance";
 import { mensajeDeError } from "../../comun/errores";
 import { useAplicacion } from "../../shell/contexto";
@@ -153,7 +154,7 @@ function PlanDesdeRendimientos({
   const estado = enviando
     ? "Haciendo el plan desde los rendimientos…"
     : hecho !== null
-      ? `Plan hecho desde los rendimientos: ${hecho.periodos} períodos.`
+      ? `Plan hecho desde los rendimientos: ${hecho.periodos} ${hecho.periodos === 1 ? "período" : "períodos"}.`
       : "";
   return (
     <section className="silice-hoja__seccion" aria-labelledby={idTitulo}>
@@ -179,7 +180,7 @@ function PlanDesdeRendimientos({
               titulo: "Cuadrillas",
               ordenable: false,
               celda: (f) => (
-                <TextInput
+                <CampoTexto
                   id={`${base}-cuadrillas-${f.n}`}
                   labelText={`Cuadrillas de ${f.partida}`}
                   hideLabel
@@ -226,21 +227,24 @@ function PlanDesdeRendimientos({
         {estado}
       </p>
       {hecho !== null && hecho.avisos.length > 0 && (
-        <div role="status" aria-label="Avisos del plan">
-          <InlineNotification
-            kind="warning"
-            lowContrast
-            hideCloseButton
-            role="log"
-            title="Revise estas partidas"
-          >
-            <ul>
-              {hecho.avisos.map((aviso) => (
-                <li key={aviso}>{aviso}</li>
-              ))}
-            </ul>
-          </InlineNotification>
-        </div>
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          role="status"
+          aria-labelledby={`${base}-avisos`}
+          title="Revise estas partidas"
+        >
+          {/* Carbon usa `aria-label` para el botón de cerrar: el nombre de la región va por `aria-labelledby`. */}
+          <span id={`${base}-avisos`} className="cds--visually-hidden">
+            Avisos del plan
+          </span>
+          <ul>
+            {hecho.avisos.map((aviso) => (
+              <li key={aviso}>{aviso}</li>
+            ))}
+          </ul>
+        </InlineNotification>
       )}
       {error !== null && <AvisoDeEdicion error={error} id={`${base}-error`} alRecargar={() => void recargar()} alReabrir={alReabrir} />}
       <div>

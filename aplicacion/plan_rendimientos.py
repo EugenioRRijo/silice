@@ -159,22 +159,40 @@ def plan_por_rendimientos(
         )
     repartos: list[list[tuple[str, Decimal]]] = [[] for _ in range(total)]
     for codigo, inicio, fin in tramos:
-        duracion = fin - inicio
         primero = int((inicio / por_periodo).to_integral_value(rounding=ROUND_FLOOR))
-        ultimo = int((fin / por_periodo).to_integral_value(rounding=ROUND_CEILING)) - 1
-        repartido = CERO
-        for indice in range(primero, ultimo + 1):
-            if indice == ultimo:
-                fraccion = UNO - repartido
-            else:
-                desde = max(inicio, indice * por_periodo)
-                hasta = min(fin, (indice + 1) * por_periodo)
-                fraccion = ((hasta - desde) / duracion).quantize(
-                    PASO_DE_FRACCION, rounding=ROUND_HALF_UP
-                )
-            repartido += fraccion
-            repartos[indice].append((codigo, fraccion))
+        for indice, fraccion in enumerate(_fracciones(inicio, fin, por_periodo), start=primero):
+            if fraccion > CERO:
+                repartos[indice].append((codigo, fraccion))
     return [(_etiqueta(n, unidad), tuple(reparto)) for n, reparto in enumerate(repartos, start=1)]
+
+
+def _cuantizada(valor: Decimal) -> Decimal:
+    return valor.quantize(PASO_DE_FRACCION, rounding=ROUND_HALF_UP)
+
+
+def _fracciones(inicio: Decimal, fin: Decimal, por_periodo: Decimal) -> list[Decimal]:
+    """Las fracciones de la partida que va de `inicio` a `fin`, una por período desde el que
+    contiene `inicio`, que suman exactamente 1.
+
+    Cada período se cuantiza por su cuenta y el último absorbe el residuo (la regla del plan). En
+    una partida muy larga el error de redondeo, que es el mismo en cada período entero, se acumula
+    y el residuo podría quedar negativo (ronda 2 del árbitro): entonces se cuantiza el ACUMULADO
+    (fracción = acumulado cuantizado del período menos el del anterior), que nunca es negativo.
+    """
+    duracion = fin - inicio
+    primero = int((inicio / por_periodo).to_integral_value(rounding=ROUND_FLOOR))
+    ultimo = int((fin / por_periodo).to_integral_value(rounding=ROUND_CEILING)) - 1
+    hastas = [min(fin, (indice + 1) * por_periodo) for indice in range(primero, ultimo)]
+    desdes = [inicio, *hastas]
+    propias = [
+        _cuantizada((hasta - desde) / duracion)
+        for desde, hasta in zip(desdes[:-1], hastas, strict=True)
+    ]
+    residuo = UNO - sum(propias, CERO)
+    if residuo >= CERO:
+        return [*propias, residuo]
+    acumuladas = [_cuantizada((hasta - inicio) / duracion) for hasta in hastas]
+    return [b - a for a, b in zip([CERO, *acumuladas], [*acumuladas, UNO], strict=True)]
 
 
 def paralelas_del_plan(plan: Sequence[PeriodoPlan]) -> frozenset[str]:
