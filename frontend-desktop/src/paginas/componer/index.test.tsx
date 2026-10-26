@@ -212,7 +212,7 @@ describe("Componer una partida", () => {
         mano_obra: [],
       });
       await vi.advanceTimersByTimeAsync(0);
-      expect(screen.getAllByText("29,70").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("29,70 Bs").length).toBeGreaterThan(0);
       // Sin más ediciones no se vuelve a pedir.
       await vi.advanceTimersByTimeAsync(1000);
       expect(de("/v1/composicion/evaluar")).toHaveLength(1);
@@ -231,11 +231,11 @@ describe("Componer una partida", () => {
     await usuario.type(screen.getByLabelText("Código"), "B");
     await waitFor(() => expect(pendientes).toHaveLength(2), ESPERA);
     pendientes[1](json(valida("2.00")));
-    expect(await screen.findAllByText("2,00", { selector: "td" }, ESPERA)).not.toHaveLength(0);
+    expect(await screen.findAllByText("2,00 Bs", { selector: "td" }, ESPERA)).not.toHaveLength(0);
     pendientes[0](json(valida("1.00")));
     await new Promise((r) => setTimeout(r, 50));
-    expect(screen.queryByText("1,00", { selector: "td" })).not.toBeInTheDocument();
-    expect(screen.getAllByText("2,00", { selector: "td" }).length).toBeGreaterThan(0);
+    expect(screen.queryByText("1,00 Bs", { selector: "td" })).not.toBeInTheDocument();
+    expect(screen.getAllByText("2,00 Bs", { selector: "td" }).length).toBeGreaterThan(0);
   });
 
   test("al teclear un código que existe precarga tablas y rendimiento una sola vez, sin pisar lo editado", async () => {
@@ -334,19 +334,19 @@ describe("Componer una partida", () => {
     evaluacion = () => json(valida("29.70"));
     montar();
     await usuario.type(screen.getByLabelText("Código"), "FIC-1");
-    expect(await screen.findAllByText("29,70", { selector: "td" }, ESPERA)).not.toHaveLength(0);
+    expect(await screen.findAllByText("29,70 Bs", { selector: "td" }, ESPERA)).not.toHaveLength(0);
 
     evaluacion = () => json({ ...VACIA, estado: "incompleto", aviso: AVISO });
     await usuario.type(screen.getByLabelText("Código"), "X");
     expect(await screen.findByText(AVISO, {}, ESPERA)).toBeInTheDocument();
-    expect(screen.getAllByText("29,70", { selector: "td" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("29,70 Bs", { selector: "td" }).length).toBeGreaterThan(0);
     expect(screen.getByText(/último desglose calculado/i)).toBeInTheDocument();
 
     // Con el formulario vacío otra vez no queda nada viejo a la vista.
     evaluacion = () => json(VACIA);
     await usuario.clear(screen.getByLabelText("Código"));
     expect(await screen.findByText(/Comience por la cabecera/, {}, ESPERA)).toBeInTheDocument();
-    expect(screen.queryByText("29,70", { selector: "td" })).not.toBeInTheDocument();
+    expect(screen.queryByText("29,70 Bs", { selector: "td" })).not.toBeInTheDocument();
   });
 
   test("un 401 en el desglose llama a alExpirar", async () => {
