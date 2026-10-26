@@ -640,3 +640,37 @@ def test_un_fallo_de_la_base_es_un_503_sin_sql_ni_rutas(
         assert (respuesta.status_code, respuesta.json()) == (503, {"detalle": MENSAJE_BASE})
         assert "SELECT" not in respuesta.text and "caso.db" not in respuesta.text
         _sin_cache(respuesta)
+
+
+# --- ronda 2 del árbitro ------------------------------------------------------------------------
+
+MENSAJE_INESPERADO = "No se pudo procesar el estudio de mercado con esos datos."
+
+
+def test_un_value_error_que_no_es_una_regla_no_sale_por_la_api(
+    ana, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def falla(*_args, **_kwargs):
+        raise ValueError("lado 'x'; detalle interno que no debe salir")
+
+    monkeypatch.setattr(rutas_mercado, "apus_afectados", falla)
+    respuesta = ana[0].get(f"{RUTA}/compra/MAT-001/afectados")
+    assert (respuesta.status_code, respuesta.json()) == (422, {"detalle": MENSAJE_INESPERADO})
+    assert "interno" not in respuesta.text
+    _sin_cache(respuesta)
+
+
+def test_un_precio_objetivo_con_mas_de_dos_decimales_es_422(ana) -> None:
+    navegador, cabeceras = ana
+    respuesta = navegador.post(
+        f"{RUTA}/cobro/OBRA-04/usar",
+        json={"precio": "1.980,005", "observaciones": []},
+        headers=cabeceras,
+    )
+    assert (respuesta.status_code, respuesta.json()) == (
+        422,
+        {"detalle": "El precio objetivo admite hasta 2 decimales (céntimos)."},
+    )
+    assert navegador.get(f"{RUTA}/objetivos", params={"partidas": "OBRA-04"}).json() == {
+        "objetivos": []
+    }

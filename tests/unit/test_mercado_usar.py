@@ -19,13 +19,16 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from datetime import date
 from decimal import Decimal
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from aplicacion import mercado
 from aplicacion.cifras import MENSAJE_CIFRA, CifraInvalida
+from aplicacion.listas_para_armar import lista_para_armar, lista_para_el_proyecto
 from aplicacion.mercado import (
     NoExiste,
     ObservacionAnulada,
@@ -42,6 +45,8 @@ from aplicacion.mercado import (
 from aplicacion.mesa import Pendiente, Siguiente
 from aplicacion.tablas_mercado import ObservacionDeMercado, PrecioObjetivo
 from core import models
+from core.budget.moneda import declarar_moneda
+from core.catalog.indices import Observacion, definicion_tasa, registrar_importacion
 from tests.fixtures.mercado_ficticio import (
     AHORA,
     HOY,
@@ -393,3 +398,159 @@ def test_sin_observaciones_de_cobro_no_hay_pendiente(s: Session) -> None:
 def test_sin_lista_para_armar_la_fuente_no_dice_nada() -> None:
     for sesion in nueva_sesion(con_lista=False):
         assert pendientes_de_mercado(sesion, HOY) == []
+
+
+# --- ronda 2 del árbitro ------------------------------------------------------------------------
+#
+# Oráculos a mano: con la tasa ficticia de 40,00 Bs/USD, 400 Bs son 10 USD y 800 Bs son 20 USD.
+
+
+def _tasa_ficticia(s: Session) -> None:
+    registrar_importacion(
+        s,
+        definicion_tasa("venta"),
+        [Observacion(date(2026, 10, 24), Decimal("40.00"))],
+        archivo="tasa_ficticia.xls",
+        huella="1".ljust(64, "0"),
+        fuente="BCV (dato ficticio de prueba)",
+        fecha_descarga=date(2026, 10, 24),
+        responsable=RESPONSABLE,
+        filas_leidas=1,
+        filas_rechazadas=0,
+    )
+
+
+def _en(s: Session, lista: models.ListaPrecios, codigo: str) -> Decimal:
+    return s.scalars(
+        select(models.PrecioInsumo.precio)
+        .join(models.Insumo)
+        .where(models.PrecioInsumo.lista_id == lista.id, models.Insumo.codigo == codigo)
+    ).one()
+
+
+def test_la_conversion_de_una_obra_en_otra_moneda_no_queda_con_el_precio_viejo(
+    s: Session,
+) -> None:
+    obra = models.Proyecto(nombre="OBRA-USD", descripcion="Obra ficticia en dólares")
+    s.add(obra)
+    s.flush()
+    declarar_moneda(s, obra, "USD", responsable=RESPONSABLE, ahora=AHORA)
+    _tasa_ficticia(s)
+    hoy = usar_precio_de_compra(
+        s, "MAT-001", "400", observacion_id=None, fecha=HOY, responsable=RESPONSABLE
+    )
+    primera = lista_para_el_proyecto(s, "OBRA-USD", HOY, responsable=RESPONSABLE)
+    assert _en(s, primera, "MAT-001") == Decimal("10")
+    otra = usar_precio_de_compra(
+        s, "MAT-001", "800", observacion_id=None, fecha=HOY, responsable=RESPONSABLE
+    )
+    assert otra.id != hoy.id and otra.nombre == f"{LISTA_DE_HOY} (2)"
+    assert _en(s, hoy, "MAT-001") == Decimal("400")  # la que ya se convirtió no cambia
+    segunda = lista_para_el_proyecto(s, "OBRA-USD", HOY, responsable=RESPONSABLE)
+    assert segunda.id != primera.id
+    assert _en(s, segunda, "MAT-001") == Decimal("20")
+    assert _en(s, primera, "MAT-001") == Decimal("10")
+
+
+@pytest.mark.parametrize("hija", ["origen", "empresa_base", "empresa_referencia"])
+def test_una_lista_de_hoy_copiada_por_otra_no_se_reescribe(s: Session, hija: str) -> None:
+    hoy = usar_precio_de_compra(
+        s, "MAT-001", "400", observacion_id=None, fecha=HOY, responsable=RESPONSABLE
+    )
+    copia = models.ListaPrecios(nombre="Copia ficticia", moneda="Bs", fecha_vigencia=HOY)
+    s.add(copia)
+    s.flush()
+    # la copia es de empresa (fuera de la vigente); solo una de las tres referencias apunta a hoy
+    s.add(
+        models.ListaPreciosOrigen(
+            lista_id=copia.id,
+            alcance=models.ALCANCE_EMPRESA,
+            lista_base_id=hoy.id if hija == "origen" else None,
+        )
+    )
+    if hija != "origen":
+        base = hoy.id if hija == "empresa_base" else copia.id
+        referencia = hoy.id if hija == "empresa_referencia" else None
+        s.add(
+            models.ListaEmpresa(
+                lista_id=copia.id,
+                empresa_nombre="Contratista Demo, C.A.",
+                empresa_rif="J-00000000-0",
+                lista_base_id=base,
+                lista_referencia_id=referencia,
+                plazo_vigencia_dias=30,
+                rango_inferior=Decimal("0.8"),
+                rango_superior=Decimal("1.2"),
+            )
+        )
+    s.flush()
+    assert lista_para_armar(s, HOY).id == hoy.id  # la copia no es la lista para armar
+    otra = usar_precio_de_compra(
+        s, "MAT-001", "800", observacion_id=None, fecha=HOY, responsable=RESPONSABLE
+    )
+    assert (otra.nombre, _en(s, hoy, "MAT-001")) == (f"{LISTA_DE_HOY} (2)", Decimal("400"))
+
+
+def test_no_se_cita_una_observacion_de_otra_moneda(s: Session) -> None:
+    compra = observacion_cruda(s, "MAT-001", Decimal("3"), moneda="USD")
+    cobro = observacion_cruda(s, "OBRA-04", Decimal("50"), moneda="USD", lado="cobro")
+    otra_moneda = "La observación elegida está en USD y la carpeta trabaja en Bs."
+    with pytest.raises(ValueError) as error:
+        usar_precio_de_compra(
+            s, "MAT-001", "480", observacion_id=compra, fecha=HOY, responsable=RESPONSABLE
+        )
+    assert str(error.value) == otra_moneda
+    with pytest.raises(ValueError) as error:
+        usar_precio_de_cobro(
+            s, "OBRA-04", "1980", observaciones=[cobro], responsable=RESPONSABLE, ahora=AHORA
+        )
+    assert str(error.value) == otra_moneda
+    assert s.scalars(select(PrecioObjetivo)).all() == []
+
+
+def test_se_cita_una_observacion_vieja_si_sigue_vigente(s: Session) -> None:
+    # fuera de la ventana de 90 días, pero no anulada: la persona pudo ampliar la ventana
+    vieja = observar(s, "OBRA-04", ["1900"], lado="cobro", fecha=HOY.replace(month=1))[0]
+    fila = usar_precio_de_cobro(
+        s, "OBRA-04", "1980", observaciones=[vieja], responsable=RESPONSABLE, ahora=AHORA
+    )
+    assert json.loads(fila.observaciones) == [vieja]
+
+
+@pytest.mark.parametrize("precio", ["1.980,005", "0,001"])
+def test_el_precio_objetivo_admite_hasta_dos_decimales(s: Session, precio: str) -> None:
+    with pytest.raises(mercado.ReglaDeMercado) as error:
+        usar_precio_de_cobro(
+            s, "OBRA-04", precio, observaciones=[], responsable=RESPONSABLE, ahora=AHORA
+        )
+    assert str(error.value) == "El precio objetivo admite hasta 2 decimales (céntimos)."
+    assert s.scalars(select(PrecioObjetivo)).all() == []
+    fila = usar_precio_de_cobro(
+        s, "OBRA-04", "1.980,5", observaciones=[], responsable=RESPONSABLE, ahora=AHORA
+    )
+    assert fila.precio == Decimal("1980.5")
+
+
+@pytest.mark.parametrize(
+    ("hacer", "mensaje"),
+    [
+        (
+            lambda s: usar_precio_de_compra(
+                s, "MAT-001", "0", observacion_id=None, fecha=HOY, responsable=RESPONSABLE
+            ),
+            "El precio debe ser mayor que cero.",
+        ),
+        (
+            lambda s: usar_precio_de_compra(
+                s, "MAT-001", "1", observacion_id=999, fecha=HOY, responsable=RESPONSABLE
+            ),
+            OBSERVACION_AJENA,
+        ),
+        (lambda s: observar(s, "MAT-001", ["1"], fecha=HOY.replace(day=26)), None),
+    ],
+)
+def test_las_reglas_que_ve_la_persona_son_regla_de_mercado(s: Session, hacer, mensaje) -> None:
+    with pytest.raises(mercado.ReglaDeMercado) as error:
+        hacer(s)
+    if mensaje is not None:
+        assert str(error.value) == mensaje
