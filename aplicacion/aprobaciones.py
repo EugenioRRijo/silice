@@ -134,7 +134,7 @@ DICTAMEN_DESCONOCIDO = "Elija el dictamen: aprobada, aprobada con observaciones 
 NOTAS_LARGAS = f"Las notas no pueden pasar de {_LARGO_DE_NOTAS} caracteres."
 INTEGRO = "Rastro de aprobaciones íntegro."
 CADENA_ROTA = (
-    "No se puede dictaminar {version}: la cadena de versiones de esta obra está rota en la "
+    "No se puede {accion} {version}: la cadena de versiones de esta obra está rota en la "
     "versión {rota} ({motivo}). Revíselo con el administrador."
 )
 CHOQUE = (
@@ -245,6 +245,7 @@ def enviar(
         estado = _estados_por_version(eventos).get(version)
         if estado is not None:
             _exigir_que_se_pueda_enviar(version, estado.estado)
+        _exigir_cadena_integra(sesion, obra, version, "enviar")
         pendiente = _pendiente(eventos)
         anterior = _cabeza(sesion, obra.id)
         retirada = None
@@ -311,7 +312,7 @@ def dictaminar(
         if obra is None:  # la obra se borró después del envío: no hay a qué atar el dictamen
             raise NoSeEncontro(SIN_ENVIO)
         presupuesto = _version(sesion, obra, envio.version)
-        _exigir_cadena_integra(sesion, obra, envio.version)
+        _exigir_cadena_integra(sesion, obra, envio.version, "dictaminar")
         fila = _insertar(
             sesion,
             anterior=_cabeza(sesion, obra.id),
@@ -670,11 +671,16 @@ def _cadena(sesion: Session, obra: models.Proyecto) -> ResultadoCadena:
     return verificar_cadena(sesion, obra, anexos_de=anexos_de_cadena)
 
 
-def _exigir_cadena_integra(sesion: Session, obra: models.Proyecto, version: str) -> None:
+def _exigir_cadena_integra(
+    sesion: Session, obra: models.Proyecto, version: str, accion: str
+) -> None:
+    """Una versión de una cadena rota no se envía ni se dictamina (409): un envío así quedaría
+    atascado, porque nadie podría dictaminarlo."""
     resultado = _cadena(sesion, obra)
     if not resultado.integra and resultado.fallo is not None:
         raise AprobacionInvalida(
             CADENA_ROTA.format(
+                accion=accion,
                 version=version,
                 rota=resultado.fallo.codigo_version,
                 motivo=resultado.fallo.mensaje,
