@@ -408,8 +408,9 @@ MOTIVOS_DE_CORTE_JS = """function motivosDeCorte(header, nav) {
     }
     for (const el of header.querySelectorAll('a, button')) {
       if (!visible(el) || el.closest('.silice-panel-area')) continue;
-      // 4 px de holgura: la raya del área actual (::after) sobresale 2 px a propósito.
-      if (getComputedStyle(el).overflowX === 'visible' && el.scrollWidth > el.clientWidth + 4)
+      // Solo el área actual tiene holgura: su raya (::after) sobresale 2 px a propósito.
+      const holgura = el.classList.contains('silice-barra__area--actual') ? 2 : 0;
+      if (getComputedStyle(el).overflowX === 'visible' && el.scrollWidth > el.clientWidth + holgura)
         motivos.push('«' + limpio(el.textContent).slice(0, 30) + '» se sale de su botón ('
           + el.scrollWidth + ' de ' + el.clientWidth + ' px)');
     }
@@ -417,11 +418,21 @@ MOTIVOS_DE_CORTE_JS = """function motivosDeCorte(header, nav) {
       if (!visible(el) || el.closest('.silice-panel-area')) continue;
       const cs = getComputedStyle(el);
       if (cs.textOverflow !== 'ellipsis') continue;
+      // Sin holgura y en fracciones de píxel: el ancho del texto (un Range da su caja completa,
+      // aunque la vista lo corte) frente al hueco de contenido de su caja. Recortado por su propio
+      // tope (`max-inline-size`) es a propósito y no cuenta.
+      const rango = document.createRange();
+      rango.selectNodeContents(el);
+      const texto = rango.getBoundingClientRect().width;
+      const caja = el.getBoundingClientRect().width;
+      const relleno = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+        + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+      if (texto <= caja - relleno + 0.01) continue;
       const tope = cs.maxWidth.endsWith('px') ? parseFloat(cs.maxWidth) : Infinity;
-      const natural = Math.min(el.scrollWidth, tope);
-      if (el.clientWidth + 1 < natural)
-        motivos.push('«' + limpio(el.textContent).slice(0, 30) + '» recortado a '
-          + el.clientWidth + ' de ' + Math.round(natural) + ' px');
+      const medida = cs.boxSizing === 'border-box' ? caja : caja - relleno;
+      if (medida >= tope - 0.01) continue;
+      motivos.push('«' + limpio(el.textContent).slice(0, 30) + '» recortado a '
+        + (caja - relleno).toFixed(1) + ' de ' + texto.toFixed(1) + ' px');
     }
     const global = header.querySelector('.cds--header__global');
     const items = nav ? [...nav.querySelectorAll('.silice-barra__item')] : [];
@@ -573,15 +584,17 @@ def fijar_letra(pagina: Any, letra: str) -> None:
 def _escuchar(pagina: Any, consola: list[str], red: list[str]) -> None:
     # Chromium avisa `net::ERR_ABORTED` de una petición que ya tuvo respuesta (el 204 de
     # `PUT /v1/sesion/preferencias`, cuyo cuerpo vacío nadie lee): eso no es un fallo de red.
-    respondidas: set[int] = set()
+    # Se guarda la petición misma, no su `id()`: una petición nueva podría heredar la dirección
+    # de una ya liberada y su fallo se perdería.
+    respondidas: list[Any] = []
 
     def al_responder(r: Any) -> None:
-        respondidas.add(id(r.request))
+        respondidas.append(r.request)
         if r.status >= 400:
             red.append(f"{r.status} {r.request.method} {r.url[:120]}")
 
     def al_fallar(r: Any) -> None:
-        if id(r) not in respondidas:
+        if not any(r is q for q in respondidas):
             red.append(f"FALLA {r.method} {r.url[:120]} {r.failure}")
 
     pagina.on("console", lambda m: consola.append(m.text[:200]) if m.type == "error" else None)
@@ -1283,6 +1296,13 @@ ANCHO_DECLARADO_CSS = (
     ".silice-barra .cds--header__action.silice-cuenta__boton, "
     ".silice-barra .cds--header__action.silice-demo__boton { inline-size: auto !important; }"
 )
+# Un nombre de cuenta ficticio más largo que el tope de `.silice-cuenta__nombre` (10 rem): el umbral
+# cuenta con la cuenta de nombre más largo posible, no con «Ana».
+CUENTA_LARGA_JS = """() => document.querySelectorAll('.silice-cuenta__nombre').forEach(e => {
+  e.textContent = 'Persona Ficticia de Nombre Muy Largo para Medir'; })"""
+# Las tres medidas de cada pantalla: tal cual, con la cuenta larga y, además, con el ancho que
+# declaran los botones (si D-1 está corregido, debe dar lo mismo que la anterior).
+MEDIDAS_DE_UMBRAL = ("tal_cual", "cuenta_larga", "cuenta_larga_y_ancho_declarado")
 CABE_JS = (
     """async () => {
 """
@@ -1309,27 +1329,58 @@ def motivos_por_espacio(motivos: list[str], de_fondo: list[str]) -> list[str]:
     return [m for m in motivos if clave(m) not in fijos]
 
 
-def barrer_anchos(
-    pagina: Any, desde: int, hasta: int, paso: int, de_fondo: list[str]
-) -> dict[int, list[str]]:
-    motivos: dict[int, list[str]] = {}
-    for ancho in range(hasta, desde - 1, -paso):
-        pagina.set_viewport_size({"width": ancho, "height": ALTO})
-        motivos[ancho] = motivos_por_espacio(pagina.evaluate(CABE_JS), de_fondo)
-    return motivos
+# Anchos donde cambian las consultas de la interfaz (texto de la obra y la cuenta, navegación de
+# Carbon): se miden siempre, para que un hueco entre dos pasos del barrido no se pierda.
+BORDES_DE_CONSULTA = (1366, 1365, 1056, 1055)
+
+
+def barrido(cabe: Any, desde: int, hasta: int, paso: int) -> dict[int, bool]:
+    """Si la barra cabe, medido de `hasta` hacia abajo de `paso` en `paso` px hasta el primer ancho
+    en que no cabe; entre ese y el anterior se afina de 1 en 1 (el mayor que no cabe es el que
+    fija el umbral; lo de debajo no lo cambia). Se miden también `desde` y los bordes de las
+    consultas por encima del corte."""
+    caben: dict[int, bool] = {}
+    ancho = hasta
+    while True:
+        caben[ancho] = cabe(ancho)
+        if not caben[ancho]:
+            for fino in range(min(ancho + paso - 1, hasta), ancho, -1):
+                if fino not in caben:
+                    caben[fino] = cabe(fino)
+                if not caben[fino]:
+                    break
+            break
+        if ancho == desde:
+            break
+        ancho = max(ancho - paso, desde)
+    corte = max((a for a, si in caben.items() if not si), default=desde - 1)
+    for borde in BORDES_DE_CONSULTA:
+        if corte < borde <= hasta and borde >= desde and borde not in caben:
+            caben[borde] = cabe(borde)
+    # Si un borde no cabe, se afina también por encima de él, hasta el ancho medido siguiente.
+    nuevo = max((a for a, si in caben.items() if not si), default=desde - 1)
+    if nuevo > corte:
+        siguiente = min((a for a in caben if a > nuevo), default=nuevo + 1)
+        for fino in range(siguiente - 1, nuevo, -1):
+            caben[fino] = cabe(fino)
+            if not caben[fino]:
+                break
+    return caben
 
 
 def medir_umbral(pagina: Any, desde: int = 1000, hasta: int = 3000) -> dict[str, Any]:
-    """El menor ancho desde el que la barra cabe en todos los anchos: barrido de 4 en 4 px y,
-    alrededor del corte, de 1 en 1. Lo que sale cortado ya en `hasta` se anota aparte."""
+    """El menor ancho desde el que la barra cabe en todos los anchos (`barrido` de 8 en 8 px y
+    afinado de 1 en 1). Lo que sale cortado ya en `hasta` se anota aparte y no cuenta."""
     pagina.set_viewport_size({"width": hasta, "height": ALTO})
     de_fondo = pagina.evaluate(CABE_JS)
-    motivos = barrer_anchos(pagina, desde, hasta, 4, de_fondo)
-    umbral = umbral_medido({a: not m for a, m in motivos.items()})
-    if umbral is not None:
-        cabe_desde = round(umbral + 0.02)
-        motivos |= barrer_anchos(pagina, max(desde, cabe_desde - 3), cabe_desde - 1, 1, de_fondo)
-        umbral = umbral_medido({a: not m for a, m in motivos.items()})
+    motivos: dict[int, list[str]] = {}
+
+    def cabe(ancho: int) -> bool:
+        pagina.set_viewport_size({"width": ancho, "height": ALTO})
+        motivos[ancho] = motivos_por_espacio(pagina.evaluate(CABE_JS), de_fondo)
+        return not motivos[ancho]
+
+    umbral = umbral_medido(barrido(cabe, desde, hasta, 8))
     cabe_desde = None if umbral is None else round(umbral + 0.02)
     no_cabe = (
         None if cabe_desde is None else max((a for a in motivos if a < cabe_desde), default=None)
@@ -1340,6 +1391,14 @@ def medir_umbral(pagina: Any, desde: int = 1000, hasta: int = 3000) -> dict[str,
         "motivos_justo_debajo": motivos.get(no_cabe, []) if no_cabe else [],
         "cortado_a_cualquier_ancho": de_fondo,
     }
+
+
+def umbral_de_la_fila(umbrales: list[float | None]) -> float | None:
+    """El más exigente de las medidas de una misma pantalla; si una no tiene umbral (no cabe ni
+    en la ventana más ancha), la fila tampoco."""
+    if not umbrales or any(u is None for u in umbrales):
+        return None
+    return max(u for u in umbrales if u is not None)
 
 
 def medir_umbrales(
@@ -1405,14 +1464,14 @@ def medir_umbrales(
                             ID_BOTON_OBRA,
                         )
                         fila["tal_cual"] = medir_umbral(pagina)
+                        # La cuenta con un nombre en su tope de 10 rem (solo en esta medida).
+                        pagina.evaluate(CUENTA_LARGA_JS)
+                        fila["cuenta_larga"] = medir_umbral(pagina)
                         pagina.add_style_tag(content=ANCHO_DECLARADO_CSS)
-                        fila["con_ancho_declarado"] = medir_umbral(pagina)
-                        umbrales = [
-                            m["umbral"]
-                            for m in (fila["tal_cual"], fila["con_ancho_declarado"])
-                            if m["umbral"] is not None
-                        ]
-                        fila["umbral"] = max(umbrales) if len(umbrales) == 2 else None
+                        fila["cuenta_larga_y_ancho_declarado"] = medir_umbral(pagina)
+                        fila["umbral"] = umbral_de_la_fila(
+                            [fila[m]["umbral"] for m in MEDIDAS_DE_UMBRAL]
+                        )
                         fila["cabe_desde"] = (
                             None if fila["umbral"] is None else round(fila["umbral"] + 0.02)
                         )
@@ -1427,8 +1486,10 @@ def medir_umbrales(
                     medidas.append(fila)
                     print(
                         f"umbral {rol:5} {etiqueta:12} {modulo:10} {letra:10} "
-                        f"tal cual {fila.get('tal_cual', {}).get('cabe_desde')} "
-                        f"declarado {fila.get('con_ancho_declarado', {}).get('cabe_desde')} "
+                        + " ".join(
+                            f"{m} {fila.get(m, {}).get('cabe_desde')}" for m in MEDIDAS_DE_UMBRAL
+                        )
+                        + f" "
                         f"{fila.get('error', '')}"
                     )
         contexto.close()
@@ -1437,21 +1498,35 @@ def medir_umbrales(
         "demostracion": demo,
         "medidas": medidas,
         "umbrales": umbrales_por_modulo(medidas),
+        "sin_medir": umbrales_sin_medir(medidas),
     }
 
 
 def umbrales_por_modulo(medidas: list[dict[str, Any]]) -> dict[str, dict[str, float | None]]:
-    """Por módulo y letra, el umbral más exigente de los medidos (rol y carpeta), nunca por debajo
-    de 1055,98 px."""
-    salida: dict[str, dict[str, float | None]] = {}
+    """Por módulo y letra, el umbral más exigente de los medidos (roles y carpetas), nunca por
+    debajo de 1055,98 px. Una medida sin umbral o con error deja la casilla en `None` (sin
+    umbral): no se descarta en silencio (`umbrales_sin_medir` dice cuál y por qué)."""
+    grupos: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for m in medidas:
-        actual = salida.setdefault(m["modulo"], {}).get(m["letra"])
-        valor = m.get("umbral")
-        if valor is None or "error" in m:
-            salida[m["modulo"]][m["letra"]] = actual if actual is not None else None
-            continue
-        valor = max(valor, UMBRAL_MINIMO)
-        salida[m["modulo"]][m["letra"]] = valor if actual is None else max(actual, valor)
+        grupos.setdefault((m["modulo"], m["letra"]), []).append(m)
+    salida: dict[str, dict[str, float | None]] = {}
+    for (modulo, letra), grupo in grupos.items():
+        umbral = umbral_de_la_fila([None if "error" in m else m.get("umbral") for m in grupo])
+        salida.setdefault(modulo, {})[letra] = (
+            None if umbral is None else max(umbral, UMBRAL_MINIMO)
+        )
+    return salida
+
+
+def umbrales_sin_medir(medidas: list[dict[str, Any]]) -> list[str]:
+    """Las medidas que dejan su casilla sin umbral, con su causa."""
+    salida = []
+    for m in medidas:
+        cabeza = f"{m['modulo']} {m['letra']} ({m['rol']}, {m['carpeta']})"
+        if "error" in m:
+            salida.append(f"{cabeza}: error {m['error']}")
+        elif m.get("umbral") is None:
+            salida.append(f"{cabeza}: no cabe ni en la ventana más ancha")
     return salida
 
 
