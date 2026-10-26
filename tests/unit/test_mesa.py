@@ -842,7 +842,7 @@ def test_los_grupos_y_las_fuentes_de_esta_tarea() -> None:
     )
     # T9 agrega «cantidades escritas a mano sin cálculo» (compartido del orquestador).
     assert mesa.FUENTES["calidad"] == (hallazgos_graves, lista_vieja, pendientes_sin_calculo)
-    # T18 agrega «espera dictamen» y «devuelta»; T20, «aprobada y sin entregar» (compartido del orquestador).
+    # T18: «espera dictamen» y «devuelta»; T20: «aprobada y sin entregar» (del orquestador).
     assert mesa.FUENTES["aprobar"] == (pendientes_de_aprobacion, aprobadas_sin_entregar)
     # T23 agrega «las compras de la procura» (compartido del orquestador).
     assert mesa.FUENTES["compras"] == (pendientes_de_compras,)

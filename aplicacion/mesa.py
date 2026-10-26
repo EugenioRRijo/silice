@@ -29,7 +29,7 @@ from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from aplicacion import aprobaciones
-from aplicacion.aprobaciones import pendientes_de_aprobacion
+from aplicacion.aprobaciones import aprobadas_sin_entregar, pendientes_de_aprobacion
 from aplicacion.causas import atrasos
 from aplicacion.cifras import texto_de_cifra
 from aplicacion.control import (
@@ -579,7 +579,7 @@ GRUPOS = (
 #: Las fuentes de cada grupo; un grupo sin fuentes no sale. Una línea por fuente: las tareas que
 #: vienen agregan la suya (MP-7 compras, T9 cantidades sin cálculo).
 FUENTES: dict[str, tuple[FuentePendientes, ...]] = {
-    "aprobar": (pendientes_de_aprobacion,),
+    "aprobar": (pendientes_de_aprobacion, aprobadas_sin_entregar),
     "compras": (pendientes_de_compras,),
     "precios": (
         precios_viejos,
