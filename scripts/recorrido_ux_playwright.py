@@ -388,6 +388,10 @@ def ids_del_menu(contexto: Any, base: str) -> set[str]:
 # Por qué la barra no cabe (vacío si cabe), con la navegación medida (`nav`) o sin ella (`null`, la
 # barra ya cedió sus áreas). Va dentro de `NAV_JS` y de `CABE_JS` (la medida de umbrales):
 # Playwright evalúa una sola función.
+# Chromium guarda las medidas en unidades de 1/64 px (18,6667 px queda en 18,65625; 10 rem, en
+# 186,656): las dos comparaciones del recorte, contra el hueco de la caja y contra su tope, toleran
+# esa diferencia. Un recorte real mide décimas de píxel.
+TOLERANCIA_SUBPIXEL = 0.05
 MOTIVOS_DE_CORTE_JS = """function motivosDeCorte(header, nav) {
   const de = document.documentElement, ancho = de.clientWidth;
   const limpio = t => (t || '').replace(/\\s+/g, ' ').trim();
@@ -427,13 +431,13 @@ MOTIVOS_DE_CORTE_JS = """function motivosDeCorte(header, nav) {
       const caja = el.getBoundingClientRect().width;
       const relleno = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
         + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
-      // 0,05 px: Chromium guarda el relleno en unidades de 1/64 px (18,6667 px queda en
+      // TOLERANCIA_SUBPIXEL: Chromium guarda el relleno en unidades de 1/64 px (18,6667 px queda en
       // 18,65625) y la resta sale hasta 0,02 px corta con el texto entero; un recorte real mide
       // décimas.
-      if (texto <= caja - relleno + 0.05) continue;
+      if (texto <= caja - relleno + __TOL__) continue;
       const tope = cs.maxWidth.endsWith('px') ? parseFloat(cs.maxWidth) : Infinity;
       const medida = cs.boxSizing === 'border-box' ? caja : caja - relleno;
-      if (medida >= tope - 0.01) continue;
+      if (medida >= tope - __TOL__) continue;
       motivos.push('«' + limpio(el.textContent).slice(0, 30) + '» recortado a '
         + (caja - relleno).toFixed(1) + ' de ' + texto.toFixed(1) + ' px');
     }
@@ -447,7 +451,7 @@ MOTIVOS_DE_CORTE_JS = """function motivosDeCorte(header, nav) {
     }
   }
   return motivos;
-}"""
+}""".replace("__TOL__", str(TOLERANCIA_SUBPIXEL))
 
 
 # Controles de la barra superior y del sidebar de módulos sobre la pantalla ya cargada. Abre cada
@@ -1381,10 +1385,22 @@ def medir_visor(
         pagina.wait_for_timeout(1500)
     except Exception as error:
         fila["error"] = str(error)[:300]
+    # Cuántos hay por fase, sin tope; de texto, una muestra de 12.
+    fila["errores_por_fase"] = contar_por_fase(errores)
+    fila["avisos_por_fase"] = contar_por_fase(avisos)
     fila["errores"] = errores[:12]
     fila["avisos"] = avisos[:12]
     pagina.close()
     return fila
+
+
+def contar_por_fase(textos: list[str]) -> dict[str, int]:
+    """Cuántos errores o avisos llegaron en cada fase («[abrir] …» → «abrir»), sin tope."""
+    cuenta: dict[str, int] = {}
+    for texto in textos:
+        fase = texto[1:].split("]", 1)[0] if texto.startswith("[") and "]" in texto else "sin fase"
+        cuenta[fase] = cuenta.get(fase, 0) + 1
+    return cuenta
 
 
 def fallos_visor(m: dict[str, Any]) -> list[str]:
@@ -1395,6 +1411,11 @@ def fallos_visor(m: dict[str, Any]) -> list[str]:
     for clave in ("axe_libro", "axe_segunda_hoja"):
         if "aria-valid-attr-value" in (m.get(clave) or []):
             fallos.append(f"{clave}: aria-valid-attr-value")
+    if m.get("errores_por_fase"):
+        fallos.append(
+            "errores por fase: "
+            + ", ".join(f"{fase} {n}" for fase, n in m["errores_por_fase"].items())
+        )
     fallos += [f"error en la página: {e}" for e in m.get("errores", [])]
     fallos += [
         f"aviso de consola: {a}" for a in m.get("avisos", []) if re.search(r"Univer lanz", a)
