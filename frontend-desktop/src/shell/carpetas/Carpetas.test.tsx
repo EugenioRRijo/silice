@@ -525,6 +525,110 @@ describe("menores tras la ronda 2", () => {
   });
 });
 
+// Menores de la ronda 3 de MOD-3b: el nombre vacio se dice en el navegador; la moneda pendiente es de SU carpeta (se borra
+// al cambiar de carpeta y un reintento en curso que falla despues de cambiar no la vuelve a ofrecer en otra).
+describe("menores de la ronda 3", () => {
+  const PENDIENTE =
+    "La carpeta «Nueva» se creó y ya trabaja con ella, pero no se pudo declarar su moneda: La carpeta de trabajo está ocupada: repita en unos segundos.";
+  const OCUPADA = () => json({ detalle: "La carpeta de trabajo está ocupada: repita en unos segundos." }, 503);
+  const puts = () => servidor.de("PUT", "/v1/carpeta/moneda");
+
+  async function crearNueva(u: ReturnType<typeof userEvent.setup>) {
+    await abrirCarpetas(u);
+    await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
+    await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
+    await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
+    expect(await within(dialogo()).findByText(PENDIENTE)).toBeInTheDocument();
+  }
+
+  test("crear con el nombre vacío lo dice en el campo y no llama a la API", async () => {
+    const u = userEvent.setup();
+    montarShell(sesionDe("ana"), "/hoja");
+    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await abrirCarpetas(u);
+    await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "   ");
+    await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
+    await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
+    expect(await within(dialogo()).findByText("Escriba un nombre para la carpeta de trabajo.")).toBeInTheDocument();
+    expect(servidor.llamadas.filter((l) => l.metodo !== "GET" && !l.ruta.startsWith("/v1/sesion/"))).toEqual([]);
+  });
+
+  test("la moneda pendiente se borra al cambiar de carpeta", async () => {
+    const u = userEvent.setup();
+    servidor = servidorFalso(estadoInicial(), (metodo, ruta) =>
+      metodo === "PUT" && ruta === "/v1/carpeta/moneda" ? OCUPADA() : undefined,
+    );
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    montarShell(sesionDe("ana"), "/hoja");
+    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await crearNueva(u);
+    await u.click(within(dialogo()).getByRole("button", { name: "Abrir s2" }));
+    expect(await screen.findByText("Ahora trabaja con la carpeta de trabajo «s2».")).toBeInTheDocument();
+    await abrirCarpetas(u);
+    expect(within(dialogo()).queryByText(PENDIENTE)).toBeNull();
+    expect(within(dialogo()).queryByRole("button", { name: "Declarar la moneda" })).toBeNull();
+    expect(puts()).toHaveLength(1);
+  });
+
+  test("mientras se declara la moneda la lista del diálogo no deja abrir otra carpeta", async () => {
+    const u = userEvent.setup();
+    let soltar: () => void = () => {};
+    let primero = true;
+    servidor = servidorFalso(estadoInicial(), (metodo, ruta) => {
+      if (metodo !== "PUT" || ruta !== "/v1/carpeta/moneda") return undefined;
+      if (primero) {
+        primero = false;
+        return OCUPADA();
+      }
+      return new Promise<Response>((resolver) => {
+        soltar = () => resolver(OCUPADA());
+      });
+    });
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    montarShell(sesionDe("ana"), "/hoja");
+    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await crearNueva(u);
+    await u.click(within(dialogo()).getByRole("button", { name: "Declarar la moneda" }));
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    expect(within(dialogo()).getByRole("button", { name: "Abrir s2" })).toBeDisabled();
+    soltar();
+    await waitFor(() => expect(within(dialogo()).getByRole("button", { name: "Abrir s2" })).toBeEnabled());
+  });
+
+  test("un reintento en curso que falla después de abrir otra carpeta no ofrece la moneda en la otra", async () => {
+    const u = userEvent.setup();
+    let soltar: () => void = () => {};
+    let primero = true;
+    servidor = servidorFalso(estadoInicial(), (metodo, ruta) => {
+      if (metodo !== "PUT" || ruta !== "/v1/carpeta/moneda") return undefined;
+      if (primero) {
+        primero = false;
+        return OCUPADA();
+      }
+      return new Promise<Response>((resolver) => {
+        soltar = () => resolver(OCUPADA());
+      });
+    });
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    montarShell(sesionDe("ana"), "/hoja");
+    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await crearNueva(u);
+    await u.click(within(dialogo()).getByRole("button", { name: "Declarar la moneda" }));
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    // Con el reintento en curso se cierra el diálogo y, desde uno nuevo, se abre otra carpeta.
+    await u.click(within(dialogo()).getByRole("button", { name: "Cerrar" }));
+    await abrirCarpetas(u);
+    await u.click(await within(dialogo()).findByRole("button", { name: "Abrir s2" }));
+    expect(await screen.findByText("Ahora trabaja con la carpeta de trabajo «s2».")).toBeInTheDocument();
+    soltar();
+    await new Promise((r) => setTimeout(r, 30));
+    await abrirCarpetas(u);
+    expect(within(dialogo()).queryByText(PENDIENTE)).toBeNull();
+    expect(within(dialogo()).queryByRole("button", { name: "Declarar la moneda" })).toBeNull();
+    expect(puts()).toHaveLength(2);
+  });
+});
+
 describe("subir: lo que se rechaza en el navegador no queda elegido", () => {
   test("un archivo que no es .db vacía el que estaba elegido y «Subir» queda deshabilitado", async () => {
     const u = userEvent.setup({ applyAccept: false });
