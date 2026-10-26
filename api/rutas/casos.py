@@ -84,6 +84,10 @@ MENSAJE_CON_CLAVE = (
     "sesión desde la interfaz."
 )
 
+MENSAJE_SIN_EMPRESA = (
+    "Esta instalación no usa una carpeta de trabajo en disco: no hay carpeta de la empresa a la "
+    "que volver."
+)
 FORMA_CREAR = "Escriba el nombre de la carpeta de trabajo como texto de hasta 200 caracteres."
 FORMA_SUBIDA = (
     "Envíe un solo archivo .db en el campo «archivo» y, si quiere, un nombre de hasta 200 "
@@ -171,15 +175,6 @@ def elegir_caso(
     return _describir(ruta)
 
 
-@router.delete(
-    "/actual",
-    response_model=CasoRespuesta,
-    responses={
-        403: {"model": Detalle, "description": "Sin `CAMBIAR_CASO`, o sin CSRF u origen propio."},
-        409: {"model": Detalle, "description": "Con la clave de API no se elige caso."},
-        503: {"model": Detalle, "description": "El proceso no usa un archivo o no se prepara."},
-    },
-)
 def volver_a_la_empresa(
     activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.CAMBIAR_CASO))],
     instalacion: SesionInstalacionDep,
@@ -191,7 +186,7 @@ def volver_a_la_empresa(
     url = url_del_proceso()
     empresa = ruta_de_url(url)
     if empresa is None:
-        raise HTTPException(status_code=503, detail=MENSAJE_SIN_ARCHIVO)
+        raise HTTPException(status_code=503, detail=MENSAJE_SIN_EMPRESA)
     obtener_motor(url)  # prepara la base una vez (503 si no se puede)
     recordar_caso(instalacion, activa.usuario_id, None, ahora())
     instalacion.commit()  # la ficha cambia solo si la instalación lo confirmó
@@ -380,6 +375,18 @@ router.add_api_route(
         403: {"model": Detalle, "description": "Sin `EDITAR_HOJA`, o sin CSRF u origen propio."},
         409: {"model": Detalle, "description": "Con la clave de API, o una demostración vacía."},
         503: {"model": Detalle, "description": "El proceso hijo falló o pasó su plazo."},
+    },
+    route_class_override=_RutaCarpetas,
+)
+router.add_api_route(
+    "/actual",
+    volver_a_la_empresa,
+    methods=["DELETE"],
+    response_model=CasoRespuesta,
+    responses={
+        403: {"model": Detalle, "description": "Sin `CAMBIAR_CASO`, o sin CSRF u origen propio."},
+        409: {"model": Detalle, "description": "Con la clave de API no se elige caso."},
+        503: {"model": Detalle, "description": "El proceso no usa un archivo o no se prepara."},
     },
     route_class_override=_RutaCarpetas,
 )
