@@ -60,6 +60,30 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   que una página use `enCelda`; T11 usa el campo en un diálogo.
 - Menor cosmético pendiente: el 403 repite «Su cuenta» («Su cuenta no puede usar esta búsqueda. Su cuenta no tiene permiso…»).
 
+## T11, la Hoja agrega y quita partidas
+
+- **La cantidad del cálculo.** La interfaz no evalúa el cálculo (un solo intérprete, B3). Con la cantidad vacía, la ayuda
+  dice que Sílice la toma del cálculo, y el servidor la calcula y la confirma. El plan pedía rellenarla al salir del campo.
+  **Por ratificar** (la alternativa es una ruta que evalúe el cálculo antes de agregar).
+- **El error de un 422 va a su campo** con `campoDelErrorDePartida`: «El cálculo…», «Escriba el cálculo…» y «Con cuatro
+  decimales…» van a Cálculo; «La cantidad…» a Cantidad; la regla de las cifras va a Cálculo si alguna de sus cifras está
+  mal escrita (el servidor lo lee primero) y si no a Cantidad. `leerCifra` solo valida. El 404 va a Partida y el 409 a un
+  aviso del diálogo; con `rev` viejo, el borrador se vuelve a leer solo.
+- **La lista del buscador va dentro del diálogo, sin `enCelda`**, como pide la bitácora de T10. Falta medirlo en navegador.
+- **El `rev` con que se agrega** sale de `esperarEnvios()` (nuevo y aditivo en `useEdicionDeSeccion`).
+- **Quitar** usa `accionarEnOrden` con el `detalle` tal cual en el aviso de la sección, tras confirmar «¿Quitar X del
+  presupuesto? Lo puede descartar antes de guardar.».
+- **El editor del Presupuesto se vuelve a montar cuando cambian los renglones** (antes, una fila nueva no viajaba en
+  `cuerpoDeCantidades` y una quitada podía viajar).
+- **La pestaña inicial se fija una vez por obra** (Presupuesto si la obra no tiene espacio); cambiar de versión no la mueve.
+- **`Resumen.espacio_vacio` es opcional en el tipo** (la API lo manda siempre).
+- **F11 de MOD-3b corregido:** estados vacíos con «obra» y el selector de obra; el h1 sigue «Hoja del proyecto» (va con
+  `rutas.ts`, compartido: se cambia en MOD-5b).
+- **«Componer una partida nueva»** lleva a `/componer?codigo=X&volver=hoja` y se pierde lo escrito en el diálogo; Componer
+  debe leer esos parámetros (encargado a T4). **Por decidir:** ¿preguntar antes de perder lo escrito?
+- **Por decidir (Eugenio):** editar una nota (`PUT …/partidas/nota` con un campo en la fila) y avisar si el total cambia al
+  guardar por una tasa nueva (que `/guardar` devuelva tasa y fecha usadas y el diálogo avise si difiere).
+
 ## T12, Elaborar lleva a la Hoja
 
 - **Cantidad de máquina.** En `POST /v1/hoja/llevar` la cantidad es la del cómputo (punto decimal, sin miles, sin signo ni
