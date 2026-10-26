@@ -466,6 +466,29 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 8. `abrirCarpeta` gana un tercer parámetro opcional (`abrirCon`) en `useCarpetaDeTrabajo.ts` y `contexto.tsx`
    (compatible).
 
+## T26, líneas del APU de la versión
+
+- **Altas y bajas de líneas.** Las líneas de cada rubro se alinean por su descripción (`difflib.SequenceMatcher`): la que
+  sale es `baja` y la que entra `alta`, clave `{partida}|{tipo}|{n}` (n desde 1 en su rubro). El oráculo del plan
+  («OBRA-02|material|5») no cabe en la vivienda: OBRA-02 tiene un material y la línea nueva es la 2.ª.
+- **Solo en una versión guardada** (409 propio): la primera versión exige que cada APU tenga las líneas del catálogo
+  (`con_precios_de_la_lista`), así que en un borrador en blanco no se ofrece.
+- **Insumo del catálogo:** precio de la lista de la versión; lo tecleado no cuenta. **Insumo nuevo:** descripción ≤ 300,
+  unidad ≤ 20; equipo con depreciación (0, 1]; mano de obra jornal o destajo. Un insumo ya presente en el rubro se rechaza
+  («edítelo en la tabla»). Se aceptan cantidad 0 y precio 0. **Por ratificar.**
+- Los mensajes empiezan por el campo y no repiten lo tecleado; la pantalla ubica el error por ese inicio.
+- Al guardar, el núcleo resuelve el insumo de cada línea por tipo y descripción: una línea nueva sin homónimo queda con
+  `insumo_id` nulo y su precio no lo pisa una revaloración; un «insumo nuevo» con la misma descripción que uno del catálogo
+  se liga a él. **Por decidir.**
+- **Antes y después:** por partida cambiada respecto de la línea base vigente, cada una sola: costo directo unitario,
+  duración y término por rendimientos (T21, una cuadrilla, las paralelas del plan base) y punto de equilibrio con
+  `equilibrio_proyectado`. **Por ratificar.** La ruta va en `/v1/hoja/antes-y-despues` (`editar_hoja`) porque T22 editaba
+  `api/rutas/control.py`; se monta en Control › Recuperación.
+- **Edición mientras se quita:** la tabla del APU queda deshabilitada (fieldset) hasta la respuesta; agregar usa un diálogo
+  modal y `esperarEnvios`; tras aceptar, lo editado se vuelve a sembrar sin tocar `useEdicionDeSeccion`.
+- Corrección: los cambios del borrador ya no pierden ni corren las líneas de un APU cuando cambia su número (antes se
+  emparejaban por posición). La ayuda del APU decía «la coma no se acepta» (contradecía la regla del 2026-10-25): corregida.
+
 ## MOD-4a, mesa de control (aprobada en la ronda 2)
 
 1. **Corte sin valuaciones.** El corte de una obra con línea base es el «hasta» de su última valuación no anulada; sin

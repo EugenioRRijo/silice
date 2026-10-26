@@ -279,6 +279,9 @@ TABLA = {
     ("POST", "/v1/hoja/borradores/{id}/plan/rendimientos"): EDITAR,  # T21; ademas, solo con sesion
     ("PUT", "/v1/hoja/borradores/{id}/apu/{partida:path}"): EDITAR,  # T10 3c-3 (E6); solo sesion
     ("POST", "/v1/hoja/borradores/{id}/apu/{partida:path}/insumo"): EDITAR,  # E7; solo sesion
+    ("POST", "/v1/hoja/borradores/{id}/apu/{partida:path}/lineas"): EDITAR,  # MP T26; solo sesion
+    ("POST", "/v1/hoja/borradores/{id}/apu/{partida:path}/lineas/quitar"): EDITAR,  # T26; sesion
+    ("GET", "/v1/hoja/antes-y-despues"): EDITAR,  # MP T26; clave o sesion (solo lee)
     ("GET", "/v1/hoja/borradores/{id}/insumos"): EDITAR,  # E8; solo sesion
     ("GET", "/v1/hoja/borradores/{id}/cambios"): EDITAR,  # E9; solo sesion
     ("GET", "/v1/hoja/borradores"): EDITAR,  # E10 (retomar); solo sesion

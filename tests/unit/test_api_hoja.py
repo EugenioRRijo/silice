@@ -764,10 +764,13 @@ def test_docs_api_json_esta_al_dia() -> None:
     assert rutas == {
         "/v1/hoja/versiones",
         "/v1/hoja/llevar",
+        "/v1/hoja/antes-y-despues",
         "/v1/hoja/borradores",
         "/v1/hoja/borradores/{id}",
         "/v1/hoja/borradores/{id}/apu/{partida}",
         "/v1/hoja/borradores/{id}/apu/{partida}/insumo",
+        "/v1/hoja/borradores/{id}/apu/{partida}/lineas",
+        "/v1/hoja/borradores/{id}/apu/{partida}/lineas/quitar",
         "/v1/hoja/borradores/{id}/cambios",
         "/v1/hoja/borradores/{id}/cantidades",
         "/v1/hoja/borradores/{id}/espacio",

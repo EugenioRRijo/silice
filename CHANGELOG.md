@@ -7,6 +7,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- Hoja › APU: agregar una línea (un insumo de la lista de la versión o uno nuevo con su precio) y quitar otra en la copia de la versión; se guardan como versión nueva y cuentan como alta y baja en los cambios (MP-7, T26).
+- API: `POST /v1/hoja/borradores/{id}/apu/{partida}/lineas` y `…/lineas/quitar`; `GET /v1/hoja/antes-y-despues` compara cada partida cambiada con la línea base (costo, duración, término y punto de equilibrio) (T26).
 - Hoja › Presupuesto: columna «Objetivo de mercado» junto al precio unitario, con el precio de venta objetivo guardado en «Estudio de mercado» y su margen («1.980,00 · margen −4,6 %»); un objetivo en otra moneda se dice y no se compara (Tarea 16).
 - Hoja: junto a la versión, la etiqueta de su aprobación («Aprobada · Rita · 25/10/2026», «Devuelta · …», «aprobada por quien la armó»), «Enviar a aprobación…» con nota opcional y, si la devolvieron, sus notas y «Hacer una versión nueva a partir de esta» (T19).
 - Mesa de Presupuestos y obras: cifra «Por aprobar» con su marca desde 3 días hábiles, y grupo «Aprobar» con los envíos de todas las carpetas (quien revisa) o de las otras (quien arma); «Abrir» un envío de otra carpeta pregunta antes de cambiarla (T19).
@@ -62,6 +64,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- Los cambios del borrador ya no pierden ni corren las líneas de un APU cuando cambia su número (antes se emparejaban por posición) (T26).
+- La ayuda del APU de la Hoja ya no dice que la coma no se acepta (T26).
 - Libro de la empresa: las pestañas «Hojas del libro» controlan un panel que existe (axe `aria-valid-attr-value`, D-5) y salir de la pantalla ya no lanza `[redi] Cannot find "u4"` (Univer se desmonta en orden y nada lo toca después, D-3).
 - Componer una partida (prueba en vivo del 2026-10-25): el buscador de la referencia MaPreX vuelve a funcionar en materiales y equipos (enviaba `materiales`/`equipos` y la API respondía 422; prueba de contrato contra `docs/api.json`); acepta coma o punto decimal con el mismo criterio que las alturas del plano de la Hoja (`decimal_con_coma`), con mensajes llanos que dicen qué escribir, y un dato ilegible ya no borra el último desglose; avisa al abrir si la carpeta de trabajo no tiene lista de precios vigente; sin códigos internos (UC-, RF-) ni «compuerta G2» en sus textos (guardia para todas las páginas); columnas de las tablas de insumos alineadas con su encabezado.
 - Demostración: `start.py` lleva a `head` y sella el historial (sello retroactivo declarado, cifras a 28 decimales) de los casos de demostración que copia de las bases de prueba, así que «Entregar paquete» acepta DEMO-001 desde la primera sesión, sin tener que guardar antes una versión en la Hoja (defecto D3 del recorrido funcional).
