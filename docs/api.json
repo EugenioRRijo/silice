@@ -1918,7 +1918,7 @@
           "sesion"
         ],
         "summary": "Recordar Obra",
-        "description": "Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta.",
+        "description": "Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta. Sin\n`CAMBIAR_CASO` la ficha trabaja en la carpeta por omisión: la obra se recuerda con ella\n(`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso.",
         "operationId": "recordar_obra_v1_sesion_proyecto_put",
         "requestBody": {
           "content": {
@@ -2203,6 +2203,112 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SimilaresRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/carpeta": {
+      "get": {
+        "tags": [
+          "carpeta"
+        ],
+        "summary": "Consultar Carpeta",
+        "description": "La moneda de trabajo de la carpeta y su lista para armar de hoy, o por qué no hay.",
+        "operationId": "consultar_carpeta_v1_carpeta_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarpetaRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/carpeta/moneda": {
+      "put": {
+        "tags": [
+          "carpeta"
+        ],
+        "summary": "Declarar Moneda",
+        "description": "Declara la moneda de trabajo de la carpeta (una sola vez: D-MP1).",
+        "operationId": "declarar_moneda_v1_carpeta_moneda_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonedaPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarpetaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/carpeta/lista-para-armar": {
+      "post": {
+        "tags": [
+          "carpeta"
+        ],
+        "summary": "Crear La Lista Para Armar",
+        "description": "Crea la lista para armar a partir de MaPreX o convirtiendo la vigente (tasa del BCV).",
+        "operationId": "crear_la_lista_para_armar_v1_carpeta_lista_para_armar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListaPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarpetaRespuesta"
                 }
               }
             }
@@ -10105,6 +10211,54 @@
         "title": "CargaListaRespuesta",
         "description": "Lo que produjo cargar un archivo de precios (UC-02): la lista creada y los insumos del\narchivo que el catalogo no conocia.\n\n- `dados_de_alta`: los desconocidos que el administrador eligio dar de alta (flujo 2a, campo\n  de formulario `dar_de_alta`); quedan en el catalogo con codigo nuevo y su precio solo en esta\n  lista.\n- `ignorados`: los desconocidos del flujo 2a que no se eligieron; no intervienen en el\n  recalculo.\n- `rechazados`: las filas del flujo 2b, cuya descripcion si esta en el catalogo pero con una\n  unidad no equivalente; se rechazan y no se pueden dar de alta.\n- `desconocidos`: ignorados y rechazados juntos, en el orden del archivo (el campo de antes de\n  C6, que se conserva)."
       },
+      "CarpetaRespuesta": {
+        "properties": {
+          "moneda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda"
+          },
+          "declarada": {
+            "type": "boolean",
+            "title": "Declarada"
+          },
+          "lista": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListaDeLaCarpeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "moneda",
+          "declarada",
+          "lista",
+          "aviso"
+        ],
+        "title": "CarpetaRespuesta"
+      },
       "CasoRespuesta": {
         "properties": {
           "nombre": {
@@ -14692,6 +14846,34 @@
         ],
         "title": "ListaCreadaRespuesta"
       },
+      "ListaDeLaCarpeta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "origen": {
+            "type": "string",
+            "title": "Origen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "moneda",
+          "fecha",
+          "origen"
+        ],
+        "title": "ListaDeLaCarpeta"
+      },
       "ListaDelCaso": {
         "properties": {
           "id": {
@@ -14727,6 +14909,23 @@
           "nombre"
         ],
         "title": "ListaEmpresaRespuesta"
+      },
+      "ListaPeticion": {
+        "properties": {
+          "desde": {
+            "type": "string",
+            "enum": [
+              "maprex",
+              "convertir"
+            ],
+            "title": "Desde"
+          }
+        },
+        "type": "object",
+        "required": [
+          "desde"
+        ],
+        "title": "ListaPeticion"
       },
       "ListaRespuesta": {
         "properties": {
@@ -14951,6 +15150,23 @@
           "instalado"
         ],
         "title": "ModuloRespuesta"
+      },
+      "MonedaPeticion": {
+        "properties": {
+          "moneda": {
+            "type": "string",
+            "enum": [
+              "Bs",
+              "USD"
+            ],
+            "title": "Moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "moneda"
+        ],
+        "title": "MonedaPeticion"
       },
       "MontoHojaRespuesta": {
         "properties": {

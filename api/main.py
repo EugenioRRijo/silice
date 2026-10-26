@@ -25,6 +25,7 @@ from api.rutas import (
     admin_instalacion,
     auditorias,
     auditorias_libro,
+    carpeta,
     casos,
     catalogo,
     composicion,
@@ -134,6 +135,7 @@ app.include_router(
     similares.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]
 )
 # Ola 0a (sesion 2b): el caso de la sesion web (RM-2) y los proyectos del caso
+app.include_router(carpeta.router)
 app.include_router(casos.router)
 app.include_router(proyectos.router)
 # Migracion: Administracion, pestañas Cuentas y Accesos (ADMINISTRAR_CUENTAS, solo sesion)

@@ -148,6 +148,10 @@ TABLA = {
     # MOD-0: lo que recuerda la cuenta; solo con sesión completa (401 con la clave de API)
     ("PUT", "/v1/sesion/proyecto"): CUALQUIERA,
     ("PUT", "/v1/sesion/preferencias"): CUALQUIERA,
+    # MP-1 T2: moneda de la carpeta y lista para armar
+    ("GET", "/v1/carpeta"): CUALQUIERA,
+    ("PUT", "/v1/carpeta/moneda"): EDITAR,
+    ("POST", "/v1/carpeta/lista-para-armar"): EDITAR,
     ("POST", "/v1/proyectos"): EDITAR,
     ("POST", "/v1/similares"): EDITAR,
     ("POST", "/v1/simulador"): EDITAR,
