@@ -170,6 +170,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ### Corregido
 
+- Visor del libro: al abrir o volver a un libro, Chromium lanzaba `[redi]: Cannot find "u4"` porque el zoom inicial se pedía antes de que Univer registrara el controlador de zoom de la hoja (etapa Rendered); el adaptador ahora espera esa etapa (D-3).
 - `main` en rojo desde la 1.0.0: se retiran los alias `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, que solo valían hasta la 0.6.0 (`ui/entorno.py`, manuales y `tests/conftest.py`).
 
 ## [1.0.0] - 2026-10-15
