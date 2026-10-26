@@ -84,6 +84,23 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - **Por decidir (Eugenio):** editar una nota (`PUT …/partidas/nota` con un campo en la fila) y avisar si el total cambia al
   guardar por una tasa nueva (que `/guardar` devuelva tasa y fecha usadas y el diálogo avise si difiere).
 
+### T11, ronda 2 (devuelta por falta de pruebas que distingan; corregida)
+
+- El `rev` de «Agregar partida» sale de `esperarEnvios()`: primero sale lo que esperaba la pausa y se espera lo que va en
+  vuelo. Lo cubre una prueba con el PUT retenido (falla con la mutación del árbitro).
+- Con un 409 por `rev` viejo, el diálogo relee el borrador y la vista, conserva lo escrito y lo dice; el segundo intento
+  lleva el `rev` releído.
+- El foco tras un error va al campo, o a la caja del diálogo, cuando los controles vuelven a estar habilitados (antes se
+  intentaba con el campo deshabilitado y se perdía, también en el 422).
+- El editor del Presupuesto ya no se vuelve a montar al agregar o quitar: se vuelve a sembrar (`resembrarCantidades` de
+  `logicaSecciones.ts`) conservando lo tocado y no aceptado, y su aviso.
+- Defecto del motor de edición (`useEdicionDeSeccion`): una acción como «Quitar» se repetía si la persona escribía mientras
+  iba. Ahora solo la edición se repite y lo escrito sale después, una vez, con el `rev` que dejó la acción.
+- Lo escrito en el diálogo es un formulario sucio (`useFormularioSucio("hoja", …)`): «Componer una partida nueva» pregunta
+  antes de perderlo.
+- Pendiente: `HojaExcel.test.tsx` («pide el libro… y no toca nada más») es inestable (un `GET …/vistas/espacio` tardío), ya
+  antes de esta ronda; revisar si lo causa el `setPestana` durante el render de la ronda 1.
+
 ## T12, Elaborar lleva a la Hoja
 
 - **Cantidad de máquina.** En `POST /v1/hoja/llevar` la cantidad es la del cómputo (punto decimal, sin miles, sin signo ni
