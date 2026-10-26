@@ -51,6 +51,7 @@ PREFIJO_A_MANO = "a-mano:"
 
 SOLO_ARITMETICA = "El cálculo solo admite números y los signos + − × / y paréntesis."
 CALCULO_IMPOSIBLE = "El cálculo no se puede hacer: revise los signos y los paréntesis."
+DIVIDE_ENTRE_CERO = "El cálculo divide entre cero."
 CALCULO_VACIO = "Escriba el cálculo, por ejemplo 6*3-2."
 CALCULO_LARGO = "El cálculo es demasiado largo: use a lo sumo 300 caracteres."
 CALCULO_ENORME = "El cálculo da una cifra demasiado grande para una cantidad."
@@ -165,11 +166,36 @@ def _a_cuatro_decimales(valor: Decimal) -> Decimal:
     return Decimal(format(redondeado.normalize(), "f"))
 
 
+def _divide_entre_cero(causa: BaseException | None) -> bool:
+    """La causa que encadena `evaluar` es una división entre cero: `decimal.DivisionByZero`
+    (x/0) es un `ZeroDivisionError`; la división indefinida (0/0) llega, con el `decimal` en C,
+    como `InvalidOperation` cuyo primer argumento es la lista de señales (`DivisionUndefined`,
+    que también es un `ZeroDivisionError`)."""
+    if isinstance(causa, ZeroDivisionError):
+        return True
+    senales = causa.args[0] if isinstance(causa, InvalidOperation) and causa.args else ()
+    return isinstance(senales, list) and any(
+        isinstance(s, type) and issubclass(s, ZeroDivisionError) for s in senales
+    )
+
+
 def _resultado(traducido: str) -> Decimal:
+    """El resultado exacto del cálculo (el cero, sin signo: «0*-1» da 0, no −0)."""
     try:
-        return evaluar(traducido, {})
+        resultado = evaluar(traducido, {})
     except (ExpresionInvalida, ParametroFaltante, RecursionError) as error:
+        if _divide_entre_cero(error.__cause__):
+            raise CalculoInvalido(DIVIDE_ENTRE_CERO) from error
         raise CalculoInvalido(CALCULO_IMPOSIBLE) from error
+    return resultado.copy_abs() if resultado.is_zero() else resultado
+
+
+def _texto_del_resultado(resultado: Decimal, redondeado: Decimal, comparado: Decimal) -> str:
+    """El resultado como se dice en un mensaje: con cuatro decimales, salvo que así se vea igual
+    a `comparado` (la cantidad escrita, o cero); entonces con todas sus cifras."""
+    if texto_de_cifra(redondeado) != texto_de_cifra(comparado):
+        return texto_de_cifra(redondeado)
+    return texto_de_cifra(Decimal(format(resultado.normalize(), "f")))
 
 
 def cantidad_y_regla(cantidad: str, calculo: str) -> tuple[Decimal, str | None]:
@@ -193,9 +219,8 @@ def cantidad_y_regla(cantidad: str, calculo: str) -> tuple[Decimal, str | None]:
     resultado = _resultado(traducido)
     redondeado = _a_cuatro_decimales(resultado)
     if resultado < 0:
-        raise CalculoInvalido(
-            f"El cálculo da {texto_de_cifra(redondeado)}: una cantidad no puede ser negativa."
-        )
+        mostrado = _texto_del_resultado(resultado, redondeado, Decimal(0))
+        raise CalculoInvalido(f"El cálculo da {mostrado}: una cantidad no puede ser negativa.")
     if not cantidad.strip(BLANCOS):
         if not _coinciden(redondeado, resultado):
             raise CalculoInvalido(PRECISION_PERDIDA)
@@ -203,8 +228,8 @@ def cantidad_y_regla(cantidad: str, calculo: str) -> tuple[Decimal, str | None]:
     escrita = cifra_escrita(cantidad)
     if not _coinciden(escrita, resultado):
         raise CalculoInvalido(
-            f"El cálculo da {texto_de_cifra(redondeado)} y la cantidad es "
-            f"{texto_de_cifra(escrita)}: corrija uno de los dos."
+            f"El cálculo da {_texto_del_resultado(resultado, redondeado, escrita)} y la cantidad "
+            f"es {texto_de_cifra(escrita)}: corrija uno de los dos."
         )
     return escrita, traducido
 
@@ -269,12 +294,18 @@ def quitar_partida(borrador: Borrador, clave: str) -> Borrador:
 
 
 def texto_llano(descripcion: str) -> str:
-    """La advertencia de R1 para una cantidad manual sin regla, en lenguaje llano; cualquier
-    otra descripción, igual."""
+    """La advertencia de R1 para una cantidad manual sin regla, en lenguaje llano y con la
+    cantidad en es-VE (R1 la cita con punto decimal: «12.5 m2» → «12,5 m2», «1234.5» →
+    «1.234,5»); cualquier otra descripción, igual."""
     manual = _R1_MANUAL.fullmatch(descripcion)
     if manual is None:
         return descripcion
+    numero, espacio, unidad = manual["medida"].partition(" ")
+    try:
+        cifra = texto_de_cifra(Decimal(numero))
+    except (InvalidOperation, ValueError):  # no es una cifra: se deja como la escribió R1
+        cifra = numero
     return (
-        f"La cantidad de {manual['codigo']} ({manual['medida']}) se escribió a mano sin cálculo: "
-        "escriba cómo se obtuvo si quiere que Sílice la pueda verificar."
+        f"La cantidad de {manual['codigo']} ({cifra}{espacio}{unidad}) se escribió a mano sin "
+        "cálculo: escriba cómo se obtuvo si quiere que Sílice la pueda verificar."
     )

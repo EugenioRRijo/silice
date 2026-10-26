@@ -1455,9 +1455,12 @@ def _cambios_de_plan(base: Borrador, actual: Borrador) -> list[CambioEditado]:
 
 
 def _cambios_de_cantidades(base: Borrador, actual: Borrador) -> list[CambioEditado]:
-    """Las cantidades escritas que cambiaron y, despues, los renglones de la version (no del
-    espacio) que se quitaron (`baja`, con su cantidad antes) o se agregaron (`alta`, con su
-    cantidad despues). Un renglon que entra o sale no lleva ademas cambio de cantidad."""
+    """Las cantidades que cambiaron y, despues, los renglones de la version (no del espacio) que
+    se quitaron (`baja`, con su cantidad antes) o se agregaron (`alta`, con su cantidad despues).
+
+    Cambia la cantidad de una clave escrita a mano o de un renglon de la version que esta antes y
+    despues con otra cantidad efectiva (al quitar el primero de dos repetidos, «X|o#2» pasa a ser
+    «X|o»). Un renglon que entra o sale no lleva ademas cambio de cantidad."""
 
     def efectivas(b: Borrador) -> tuple[dict[str, Decimal], list[str]]:
         sin = items_sin_escribir(b)
@@ -1469,7 +1472,7 @@ def _cambios_de_cantidades(base: Borrador, actual: Borrador) -> list[CambioEdita
         return cantidades, claves[: len(b.items_base)]
 
     (antes, propias_antes), (despues, propias_despues) = efectivas(base), efectivas(actual)
-    claves = [*base.cantidades, *(k for k in actual.cantidades if k not in base.cantidades)]
+    claves = list(dict.fromkeys([*base.cantidades, *actual.cantidades, *propias_antes]))
     return [
         *(
             CambioEditado(
