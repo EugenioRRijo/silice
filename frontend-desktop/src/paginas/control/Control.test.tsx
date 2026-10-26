@@ -100,10 +100,14 @@ describe("Control de obra", () => {
   let calculo: () => Response;
   let valuaciones: () => Response;
   let lineaBase: () => Response;
+  // Tarea 26: «Antes y después» de Recuperación (por omisión, sin línea base que comparar).
+  let antesYDespues: () => Response;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
+    antesYDespues = () =>
+      json({ linea_base: null, version: "OB-001", moneda: "Bs", filas: [], aviso: "Esta obra no tiene línea base." });
     calculo = () => json(CALCULO);
     valuaciones = () => json(VALUACIONES);
     lineaBase = () => json(LINEA_BASE);
@@ -117,6 +121,7 @@ describe("Control de obra", () => {
       if (url === "/v1/control/recuperacion/opciones") return json({ opciones: OPCIONES });
       if (url === "/v1/control/recuperacion/elegir") return json({ version: "OB-002" });
       if (url === "/v1/control/linea-base") return json({ descripcion: "x" });
+      if (url.startsWith("/v1/hoja/antes-y-despues")) return antesYDespues();
       return json({ detalle: `ruta inesperada ${metodo} ${url}` }, 500);
     });
   });
@@ -471,6 +476,39 @@ describe("Control de obra", () => {
     await waitFor(() =>
       expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("corte=2026-11-06"))).toBe(true),
     );
+  });
+
+  test("recuperacion: muestra «Antes y después» de las partidas cambiadas y lo pide para la obra (Tarea 26)", async () => {
+    antesYDespues = () =>
+      json({
+        linea_base: "OB-001",
+        version: "OB-002",
+        moneda: "Bs",
+        aviso: null,
+        filas: [
+          {
+            partida: "OBRA-02",
+            descripcion: "Concreto para fundaciones",
+            unidad: "m3",
+            cantidad: "12",
+            costo_antes: { texto: "210.33", exacto: "210.3333333333333333333333333" },
+            costo_despues: { texto: "367.75", exacto: "367.75" },
+            duracion_antes: "2",
+            duracion_despues: "3",
+            termino_antes: 58,
+            termino_despues: 59,
+            equilibrio_antes: null,
+            equilibrio_despues: null,
+          },
+        ],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Recuperación" }));
+    expect(await screen.findByRole("heading", { name: "Antes y después de las partidas cambiadas" })).toBeInTheDocument();
+    const tabla = await screen.findByRole("table", { name: "Antes y después de las partidas cambiadas" });
+    expect(within(tabla).getByRole("row", { name: /OBRA-02/ })).toHaveTextContent("210,33 Bs pasa a 367,75 Bs");
+    const pedidas = fetchFalso.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/v1/hoja/antes-y-despues"));
+    expect(pedidas).toContain("/v1/hoja/antes-y-despues?proyecto=OB-S2");
   });
 
   test("recuperacion: calcula a pedido, pide la declaracion y elige repitiendo los parametros", async () => {
