@@ -47,7 +47,7 @@ const CIFRAS_CON_TASA = [
 ];
 
 const OB_S2 = {
-  codigo: "11",
+  codigo: "21",
   nombre: "OB-S2",
   cliente: "Contratista Demo, C.A.",
   etapa: "atrasada",
@@ -231,7 +231,7 @@ describe("la tabla de obras", () => {
     await montar("ana");
     await u.click(within(await filaDe("OB-S2")).getByRole("button", { name: "Ver las alertas" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Control de obra" })).toBeInTheDocument();
-    expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "11" }]);
+    expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "21" }]);
   });
 
   test("«En aprobación» se lee con su texto; su paso («Ver el envío») no se ofrece mientras la pantalla no exista", async () => {
@@ -393,6 +393,110 @@ describe("sin obras: el vacío enseña qué hacer", () => {
     expect(await screen.findByText(VACIO)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cree su primera obra" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Probar con datos de demostración" })).toBeNull();
+  });
+});
+
+// Ronda 2 del arbitro de MOD-4b.
+describe("la mesa sigue a la obra recién creada", () => {
+  // La obra que crea el dialogo: el servidor de mentira le da el codigo 9 + las dos obras que ya tiene = «11».
+  const NUEVA = { ...TORRE_B, codigo: "11", nombre: "Galpón Demo", cliente: "Contratista Demo, C.A." };
+
+  // La primera lectura del resumen responde `antes`; las siguientes, `despues`.
+  function resumenQueCambia(antes: Record<string, unknown>, despues: Record<string, unknown>) {
+    let lecturas = 0;
+    return () => {
+      lecturas += 1;
+      return json(resumen(lecturas === 1 ? antes : despues));
+    };
+  }
+
+  async function crearEnElDialogo(u: ReturnType<typeof userEvent.setup>) {
+    const caja = await screen.findByRole("dialog", { name: "Nueva obra" });
+    await waitFor(() => expect(within(caja).getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+    await u.type(within(caja).getByRole("textbox", { name: /^Nombre/ }), "Galpón Demo");
+    await u.click(within(caja).getByRole("button", { name: "Crear obra" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
+  }
+
+  test("sin obras, «Cree su primera obra» → crear: la mesa vuelve a pedir el resumen y muestra la obra", async () => {
+    const u = userEvent.setup();
+    instalar(
+      resumenQueCambia(
+        { moneda: null, cifras: [], fuera_de_suma: [], obras: [] },
+        { cifras: [], fuera_de_suma: [], obras: [NUEVA] },
+      ),
+    );
+    await montar("ana");
+    await u.click(await screen.findByRole("button", { name: "Cree su primera obra" }));
+    await crearEnElDialogo(u);
+    expect(await filaDe("Galpón Demo")).toBeInTheDocument();
+    expect(screen.queryByText("Todavía no hay obras en esta carpeta de trabajo.")).toBeNull();
+    expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(2);
+  });
+
+  test("con obras, «Nueva obra» de la cabecera → crear: la obra nueva entra a la tabla", async () => {
+    const u = userEvent.setup();
+    instalar(resumenQueCambia({}, { obras: [OB_S2, TORRE_B, CASA_DEMO, NUEVA] }));
+    await montar("ana");
+    await filaDe("OB-S2");
+    await u.click(within(screen.getByRole("main")).getByRole("button", { name: "Nueva obra" }));
+    await crearEnElDialogo(u);
+    expect(await filaDe("Galpón Demo")).toBeInTheDocument();
+    expect(await filaDe("OB-S2")).toBeInTheDocument();
+  });
+
+  test("elegir una obra que la mesa ya conoce no vuelve a pedir el resumen", async () => {
+    const u = userEvent.setup();
+    await montar("ana");
+    await u.click(within(await filaDe("OB-S2")).getByRole("button", { name: "Ver las alertas" }));
+    await screen.findByRole("heading", { level: 1, name: "Control de obra" });
+    expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(1);
+  });
+});
+
+describe("ronda 2: confirmación, descripciones y columnas", () => {
+  test("«Probar con datos de demostración» pregunta antes de estrenarla: «Quedarme» no la crea", async () => {
+    const u = userEvent.setup();
+    instalar(() => json(resumen({ moneda: null, cifras: [], fuera_de_suma: [], obras: [] })));
+    await montar("ana");
+    const boton = await screen.findByRole("button", { name: "Probar con datos de demostración" });
+    renderHook(() => useFormularioSucio("componer", true));
+    await u.click(boton);
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(servidor.de("POST", "/v1/casos/demostracion")).toEqual([]);
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+  });
+
+  test("la línea de las atrasadas es la descripción accesible de «Avance contra el plan»", async () => {
+    await montar("ana");
+    const avance = await within(await region("Cómo van las obras")).findByRole("group", { name: "Avance contra el plan" });
+    expect(avance).toHaveAccessibleDescription("1 obra atrasada; la más atrasada, A: 3 días hábiles");
+  });
+
+  test("el botón de un pendiente se describe con su obra y su texto", async () => {
+    await montar("ana");
+    const columna = await region("Pendientes");
+    expect(await within(columna).findByRole("button", { name: "Ver el catálogo" })).toHaveAccessibleDescription(
+      "Casa Demo 1 precio sin referencia en CD-001",
+    );
+  });
+
+  test("rita con el resumen en 403: no queda ninguna columna vacía, solo los accesos", async () => {
+    instalar(() => json({ detalle: "Su cuenta no puede hacer esto." }, 403));
+    const { container } = await montar("rita");
+    await region("Lo que puede hacer aquí");
+    expect(container.querySelector(".silice-mesa__rejilla")).toBeNull();
+    expect(container.querySelector(".silice-mesa__principal")).toBeNull();
+  });
+
+  test("ana con el resumen en 403: los pendientes no dejan a su izquierda una columna vacía", async () => {
+    instalar(() => json({ detalle: "Su cuenta no puede hacer esto." }, 403));
+    const { container } = await montar("ana");
+    await within(await region("Pendientes")).findByText("1 precio sin referencia en CD-001");
+    expect(container.querySelector(".silice-mesa__principal")).toBeNull();
+    expect(container.querySelector(".silice-mesa__rejilla--con-pendientes")).toBeNull();
   });
 });
 
