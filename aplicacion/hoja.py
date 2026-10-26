@@ -136,6 +136,7 @@ from core.catalog import Catalogo, CatalogoIncompleto
 from core.catalog.empresa import es_heredado, lista_de_referencia
 from core.catalog.indices import LADO_POR_DEFECTO, tasa_aplicable, valor_en
 from core.catalog.moneda import Erosion, TasaDeclarada, erosion, erosion_por_indice
+from core.catalog.moneda import convertir as convertir_monto
 from core.catalog.origen import origen_de_precios
 from core.contracts import ComposicionAPU, ItemComputo, ParametrosCosto, Severidad
 from core.contracts.apu import ResultadoAPU
@@ -1897,6 +1898,73 @@ def completar_composiciones(
             composiciones[codigo] = catalogo.composicion(codigo, fecha=borrador.fecha, lista=lista)
         except (KeyError, ValueError, CatalogoIncompleto):
             continue
+    return replace(borrador, composiciones=composiciones)
+
+
+def composicion_convertida(
+    composicion: ComposicionAPU, de: str, a: str, tasa: Decimal
+) -> ComposicionAPU:
+    """El APU con cada precio (material, equipo y sueldo) convertido de `de` a `a` con `tasa`, con
+    la misma cuenta que `core.catalog.moneda.copiar_precios` aplica a una lista: es el APU que la
+    lista convertida daria, sin escribirla (Tarea 9, ronda 2)."""
+
+    def en(monto: Decimal) -> Decimal:
+        return convertir_monto(monto, de, a, tasa)
+
+    return replace(
+        composicion,
+        materiales=tuple(replace(m, precio=en(m.precio)) for m in composicion.materiales),
+        equipos=tuple(replace(e, precio=en(e.precio)) for e in composicion.equipos),
+        mano_obra=tuple(replace(o, sueldo=en(o.sueldo)) for o in composicion.mano_obra),
+    )
+
+
+def _mismas_lineas(uno: ComposicionAPU, otro: ComposicionAPU) -> bool:
+    return all(
+        [linea.descripcion for linea in a] == [linea.descripcion for linea in b]
+        for a, b in (
+            (uno.materiales, otro.materiales),
+            (uno.equipos, otro.equipos),
+            (uno.mano_obra, otro.mano_obra),
+        )
+    )
+
+
+def con_precios_de_la_lista(
+    catalogo: Catalogo, borrador: Borrador, lista: models.ListaPrecios
+) -> Borrador:
+    """El borrador con los precios de cada APU tomados de `lista` (la que la version declara).
+
+    Para la PRIMERA version (Tarea 9, ronda 2): el borrador en blanco se valoro al agregar y la
+    lista se escribe al guardar; si entretanto cambio (una tasa del BCV mas nueva, otra lista para
+    armar), los APU congelados deben usar los precios de la lista que se declara. Se conservan el
+    rendimiento y las cantidades de cada linea (lo que la persona pudo editar) y se toma el precio
+    del catalogo con `lista`; si las lineas del catalogo ya no son las mismas, el APU del catalogo
+    entero. Una partida que el catalogo no puede valorar con `lista` queda como estaba."""
+    composiciones = dict(borrador.composiciones)
+    for codigo, actual in borrador.composiciones.items():
+        try:
+            fresca = catalogo.composicion(codigo, fecha=borrador.fecha, lista=lista)
+        except (KeyError, ValueError, CatalogoIncompleto):
+            continue
+        if not _mismas_lineas(actual, fresca):
+            composiciones[codigo] = fresca
+            continue
+        composiciones[codigo] = replace(
+            actual,
+            materiales=tuple(
+                replace(m, precio=f.precio)
+                for m, f in zip(actual.materiales, fresca.materiales, strict=True)
+            ),
+            equipos=tuple(
+                replace(e, precio=f.precio)
+                for e, f in zip(actual.equipos, fresca.equipos, strict=True)
+            ),
+            mano_obra=tuple(
+                replace(o, sueldo=f.sueldo)
+                for o, f in zip(actual.mano_obra, fresca.mano_obra, strict=True)
+            ),
+        )
     return replace(borrador, composiciones=composiciones)
 
 

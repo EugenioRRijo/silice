@@ -24,10 +24,10 @@ retomar o que estorban al abrir la misma version (E10, E11).
 
 Tarea 9 (montar un presupuesto): `agregar` y `quitar` partidas a mano (`aplicacion.hoja_partidas`)
 pasan por el mismo `_cambiar`. La composicion de una partida nueva sale de la lista de la version
-abierta o, en un borrador en blanco, de `lista_para_el_proyecto` (la de la carpeta, o su conversion
-con la tasa del BCV si la obra esta en la otra moneda: foco de revision 1). Esa conversion solo se
-calcula aqui y se deshace (la escribe el guardado, a nombre de quien guarda); sin tasa de los
-ultimos 7 dias o sin lista para armar, `SinListaDeLaObra` y el borrador no cambia.
+abierta o, en un borrador en blanco, de la lista para armar de la carpeta, convertida en memoria con
+la tasa del BCV si la obra esta en la otra moneda (foco de revision 1). Aqui no se escribe la lista
+convertida: la escribe el guardado, a nombre de quien guarda, y toma de ella los precios de los APU;
+sin tasa de los ultimos 7 dias o sin lista para armar, `SinListaDeLaObra` y el borrador no cambia.
 
 Sin FastAPI ni Streamlit (RM-1).
 """
@@ -52,7 +52,7 @@ from aplicacion.hoja_partidas import (
     agregar_partida,
     quitar_partida,
 )
-from aplicacion.listas_para_armar import lista_para_el_proyecto
+from aplicacion.listas_para_armar import valoracion_de_la_obra
 from core import models
 from core.budget import PeriodoPlan
 from core.catalog import Catalogo
@@ -147,28 +147,34 @@ class SinListaDeLaObra(Exception):  # noqa: N818
     del BCV de los ultimos 7 dias); el mensaje es el que ve la persona."""
 
 
-#: Quien figura en la conversion de la lista que se calcula para completar un borrador en blanco:
-#: no se guarda nunca (se deshace), pero `lista_para_el_proyecto` exige un responsable.
-_SIN_GUARDAR = "Hoja (borrador sin guardar)"
-
-
 def _completar(sesion: Session, vivo: BorradorVivo, nuevo: hoja.Borrador) -> hoja.Borrador:
     """`nuevo` con la composicion de cada partida nueva que el catalogo conoce, con la lista de la
-    version abierta o, en blanco, con la de la obra (`lista_para_el_proyecto`, a la fecha del
-    borrador). En blanco no se busca lista si no hay partidas nuevas, y lo que esa busqueda haya
-    escrito (una conversion) se deshace."""
+    version abierta o, en blanco, con la de la obra a la fecha del borrador
+    (`valoracion_de_la_obra`). En blanco no se busca lista si no hay partidas nuevas, y nada se
+    escribe: en la otra moneda, el APU de la lista para armar se convierte con la tasa del BCV
+    (`hoja.composicion_convertida`, la misma cuenta que la lista convertida); la lista convertida
+    la escribe el guardado, que vuelve a tomar los precios de ella."""
     if vivo.abierta is not None:
         lista = hoja.lista_de_version(sesion, vivo.abierta.proyecto, vivo.abierta.codigo)
         return hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
-    if not hoja.partidas_sin_composicion(nuevo):
+    nuevas = hoja.partidas_sin_composicion(nuevo)
+    if not nuevas:
         return nuevo
     try:
-        lista = lista_para_el_proyecto(sesion, vivo.proyecto, nuevo.fecha, responsable=_SIN_GUARDAR)
-        return hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
+        valoracion = valoracion_de_la_obra(sesion, vivo.proyecto, nuevo.fecha)
     except ValueError as error:  # SinListaParaArmar (sin lista o sin tasa) u obra que no existe
         raise SinListaDeLaObra(str(error)) from None
-    finally:
-        sesion.rollback()
+    completo = hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=valoracion.base)
+    if valoracion.tasa is None:
+        return completo
+    de, a, tasa = valoracion.base.moneda, valoracion.moneda, valoracion.tasa.valor
+    return replace(
+        completo,
+        composiciones={
+            codigo: hoja.composicion_convertida(apu, de, a, tasa) if codigo in nuevas else apu
+            for codigo, apu in completo.composiciones.items()
+        },
+    )
 
 
 def _cambiar(

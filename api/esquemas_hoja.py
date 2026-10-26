@@ -700,9 +700,15 @@ class GuardarVersion(BaseModel):
     rev: Annotated[int, Field(strict=True, ge=0)]
     fuente: Annotated[str, Field(strict=True, max_length=300)]
     confirmar_version_mas_nueva: StrictBool = False
-    #: Tarea 9: el código de la PRIMERA versión («VIV-001»; 40, el ancho de `presupuesto.codigo`).
-    #: Sin él, el siguiente de la numeración; en una versión que no es la primera, 422.
-    codigo: Annotated[str, Field(strict=True, min_length=1, max_length=40)] | None = None
+    #: Tarea 9: el código de la PRIMERA versión («VIV-001»; 40, el ancho de `presupuesto.codigo`):
+    #: letras y dígitos ASCII, «.», «-» y «_». Sin él, el siguiente de la numeración; en una versión
+    #: que no es la primera, 422.
+    codigo: (
+        Annotated[
+            str, Field(strict=True, min_length=1, max_length=40, pattern=r"^[A-Za-z0-9._-]+$")
+        ]
+        | None
+    ) = None
 
 
 class GuardadoRespuesta(BaseModel):

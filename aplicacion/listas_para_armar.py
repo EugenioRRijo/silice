@@ -44,6 +44,7 @@ __all__ = [
     "CarpetaConOtraMoneda",
     "ListaParaArmar",
     "SinListaParaArmar",
+    "ValoracionDeLaObra",
     "crear_lista_para_armar",
     "declarar_moneda_de_la_carpeta",
     "describir",
@@ -52,6 +53,7 @@ __all__ = [
     "lista_para_armar",
     "lista_para_el_proyecto",
     "moneda_de_la_carpeta",
+    "valoracion_de_la_obra",
 ]
 
 MENSAJE_SIN_LISTA = (
@@ -79,6 +81,17 @@ class SinListaParaArmar(ValueError):  # noqa: N818
 class CarpetaConOtraMoneda(ValueError):  # noqa: N818
     """La carpeta ya trabaja en otra moneda (declarada o la de su lista vigente): para trabajar en
     la otra se crea otra carpeta (D-MP1). El mensaje es el que ve la persona."""
+
+
+@dataclass(frozen=True)
+class ValoracionDeLaObra:
+    """Con qué se valora una obra a una fecha, sin escribir nada: la lista para armar de la carpeta
+    y, si la obra está en la otra moneda, la tasa del BCV con que se convierte (`None` si no)."""
+
+    proyecto: models.Proyecto
+    moneda: str
+    base: models.ListaPrecios
+    tasa: TasaDeclarada | None
 
 
 @dataclass(frozen=True)
@@ -156,6 +169,20 @@ def declarar_moneda_de_la_carpeta(
 
 
 # --- la lista para armar ----------------------------------------------------------------------
+
+
+def _primera_posterior(sesion: Session, fecha: date) -> date | None:
+    """La fecha de vigencia de la primera lista que `lista_vigente` resolvería después de `fecha`
+    (las de proyecto, empresa y referencia no cuentan, como en el núcleo); `None` si no hay."""
+    fuera_de_vigente = exists().where(
+        models.ListaPreciosOrigen.lista_id == models.ListaPrecios.id,
+        models.ListaPreciosOrigen.alcance.in_(models.ALCANCES_FUERA_DE_VIGENTE),
+    )
+    return sesion.scalar(
+        select(func.min(models.ListaPrecios.fecha_vigencia)).where(
+            models.ListaPrecios.fecha_vigencia > fecha, ~fuera_de_vigente
+        )
+    )
 
 
 def lista_para_armar(sesion: Session, fecha: date) -> models.ListaPrecios:
@@ -303,6 +330,30 @@ def _con_tasa(tasa: TasaDeclarada) -> str:
     return f"con {texto_de_cifra(tasa.valor)} Bs/USD del {tasa.fecha:%d/%m/%Y}"
 
 
+def valoracion_de_la_obra(sesion: Session, proyecto: str, fecha: date) -> ValoracionDeLaObra:
+    """La lista para armar a `fecha` y, si la obra `proyecto` está en la otra moneda, la tasa del
+    BCV del día (a lo sumo 7 días). No escribe. `SinListaParaArmar` sin lista o sin tasa;
+    `ValueError` si la obra no existe.
+
+    La Hoja valora a la fecha del borrador: si la carpeta tiene listas pero todas rigen después,
+    el mensaje dice esa fecha y desde cuándo rige la primera (no es que falte la lista: todavía no
+    rige). Componer, que arma a hoy, conserva el mensaje de `lista_para_armar`."""
+    fila = sesion.scalars(
+        select(models.Proyecto).where(models.Proyecto.nombre == proyecto)
+    ).one_or_none()
+    if fila is None:
+        raise ValueError(f"No hay ninguna obra «{proyecto}» en esta carpeta de trabajo.")
+    if _vigente(sesion, fecha) is None and (primera := _primera_posterior(sesion, fecha)):
+        raise SinListaParaArmar(
+            f"Esta carpeta de trabajo no tiene lista de precios para armar vigente al "
+            f"{fecha:%d/%m/%Y}: su primera lista rige desde el {primera:%d/%m/%Y}."
+        )
+    base = lista_para_armar(sesion, fecha)
+    moneda = moneda_del_proyecto(sesion, fila)
+    tasa = None if moneda == base.moneda else _tasa(sesion, fecha)
+    return ValoracionDeLaObra(fila, moneda, base, tasa)
+
+
 def lista_para_el_proyecto(
     sesion: Session, proyecto: str, fecha: date, *, responsable: str
 ) -> models.ListaPrecios:
@@ -314,16 +365,15 @@ def lista_para_el_proyecto(
     nombre, que se recorta), esa fecha y esa tasa. `SinListaParaArmar` sin
     lista o sin tasa de los últimos 7 días; `ValueError` si la obra no existe. No confirma."""
     responsable = exigir_responsable(responsable)
-    fila = sesion.scalars(
-        select(models.Proyecto).where(models.Proyecto.nombre == proyecto)
-    ).one_or_none()
-    if fila is None:
-        raise ValueError(f"No hay ninguna obra «{proyecto}» en esta carpeta de trabajo.")
-    base = lista_para_armar(sesion, fecha)
-    moneda = moneda_del_proyecto(sesion, fila)
-    if moneda == base.moneda:
+    valoracion = valoracion_de_la_obra(sesion, proyecto, fecha)
+    fila, moneda, base, tasa = (
+        valoracion.proyecto,
+        valoracion.moneda,
+        valoracion.base,
+        valoracion.tasa,
+    )
+    if tasa is None:
         return base
-    tasa = _tasa(sesion, fecha)
     nombre = _nombre_convertida(base.nombre, moneda, fecha)
     existente = sesion.scalars(
         select(models.ListaPrecios)
