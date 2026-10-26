@@ -68,6 +68,8 @@ FILA_AUSENTE = "Esa fila ya no está en el presupuesto."
 LARGO_MAXIMO = 300
 #: La cantidad calculada se guarda con cuatro decimales (la mitad hacia arriba).
 CUATRO_DECIMALES = Decimal("0.0001")
+#: Cifras significativas con que un mensaje dice un resultado que no cabe en cuatro decimales.
+CIFRAS_EN_EL_MENSAJE = 8
 #: La diferencia máxima entre la cantidad escrita y el resultado del cálculo (plan, Tarea 8).
 TOLERANCIA_ABSOLUTA = Decimal("0.001")
 #: La tolerancia relativa con que R1 compara la cantidad con su regla: la misma instancia que
@@ -192,10 +194,17 @@ def _resultado(traducido: str) -> Decimal:
 
 def _texto_del_resultado(resultado: Decimal, redondeado: Decimal, comparado: Decimal) -> str:
     """El resultado como se dice en un mensaje: con cuatro decimales, salvo que así se vea igual
-    a `comparado` (la cantidad escrita, o cero); entonces con todas sus cifras."""
+    a `comparado` (la cantidad escrita, o cero); entonces con `CIFRAS_EN_EL_MENSAJE` cifras
+    significativas (la mitad hacia arriba: 1/30000 → 0,000033333333), y con todas si aun así se
+    viera igual."""
     if texto_de_cifra(redondeado) != texto_de_cifra(comparado):
         return texto_de_cifra(redondeado)
-    return texto_de_cifra(Decimal(format(resultado.normalize(), "f")))
+    paso = Decimal(1).scaleb(resultado.adjusted() - CIFRAS_EN_EL_MENSAJE + 1)
+    for valor in (resultado.quantize(paso, rounding=ROUND_HALF_UP), resultado):
+        texto = texto_de_cifra(Decimal(format(valor.normalize(), "f")))
+        if texto != texto_de_cifra(comparado):
+            return texto
+    return texto
 
 
 def cantidad_y_regla(cantidad: str, calculo: str) -> tuple[Decimal, str | None]:
