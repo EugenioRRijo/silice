@@ -5,8 +5,10 @@ carpeta, declarada una sola vez, y una lista vigente en esa moneda con la que se
 
 - `GET /v1/carpeta` (cualquier rol) -> `{moneda, declarada, lista, aviso}`: `moneda` es la declarada
   o, si no hay, la de la lista vigente de hoy (`null` sin ninguna); `declarada` dice si la carpeta
-  la declaró; `lista` es `{nombre, moneda, fecha, origen}` de la lista para armar de hoy (`fecha`
-  ISO) o `null`; `aviso` es el mensaje que explica por qué no hay lista para armar, o `null`.
+  la declaró; `lista` es `{nombre, moneda, fecha, origen}` de la lista vigente de hoy (`fecha` ISO)
+  o `null`: la de armar o, si está en otra moneda que la carpeta, la que hay que convertir (T4: así
+  la pantalla ofrece «Convertir la lista que tiene»); `aviso` es el mensaje que explica por qué no
+  hay lista para armar, o `null`.
 - `PUT /v1/carpeta/moneda` `{moneda: "Bs"|"USD"}` (`EDITAR_HOJA`) -> 200 con la misma forma.
   Declarar
   la que ya tiene no cambia nada. 409 «La carpeta de trabajo ya trabaja en {m}: para trabajar en
@@ -38,7 +40,7 @@ from aplicacion.listas_para_armar import (
     SinListaParaArmar,
     crear_lista_para_armar,
     declarar_moneda_de_la_carpeta,
-    describir,
+    describir_vigente,
     lista_para_armar,
     moneda_de_la_carpeta,
 )
@@ -88,7 +90,9 @@ def _estado(sesion: Session) -> CarpetaRespuesta:
         lista_para_armar(sesion, hoy)
     except SinListaParaArmar as error:
         aviso = str(error)
-    descrita = describir(sesion, hoy)
+    # La vigente en cualquier moneda: sin aviso es la de armar; con el aviso de otra moneda, la
+    # que hay que convertir.
+    descrita = describir_vigente(sesion, hoy)
     return CarpetaRespuesta(
         moneda=moneda_de_la_carpeta(sesion, hoy),
         declarada=sesion.get(CarpetaDeTrabajo, 1) is not None,

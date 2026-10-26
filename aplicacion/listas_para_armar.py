@@ -205,6 +205,19 @@ def describir(sesion: Session, fecha: date) -> ListaParaArmar | None:
         lista = lista_para_armar(sesion, fecha)
     except SinListaParaArmar:
         return None
+    return _descrita(lista)
+
+
+def describir_vigente(sesion: Session, fecha: date) -> ListaParaArmar | None:
+    """La lista vigente a `fecha` en cualquier moneda, para mostrarla; `None` si no la hay.
+
+    En la moneda de la carpeta es la de `describir`; en otra, es la que no sirve para armar y hay
+    que convertir (`lista_para_armar` lo dice con su mensaje)."""
+    vigente = _vigente(sesion, fecha)
+    return None if vigente is None else _descrita(vigente)
+
+
+def _descrita(lista: models.ListaPrecios) -> ListaParaArmar:
     return ListaParaArmar(lista.id, lista.nombre, lista.moneda, lista.fecha_vigencia, lista.origen)
 
 
