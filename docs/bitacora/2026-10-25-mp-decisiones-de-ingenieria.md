@@ -297,12 +297,12 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   `confirmarSalida` gana el motivo `"cambiar"` con consecuencia propia (aditivo en MOD-2), y el estudio de mercado lo usa al
   elegir otro insumo o partida («Si elige otro insumo o partida, se perderán.», «Cambiar y descartar»).
 
-## T16, objetivo de mercado en la Hoja
+## T16, objetivo de mercado en la Hoja (aprobada en ronda 1)
 
 1. **El margen lo calcula la API:** `GET /v1/mercado/objetivos` recibe `pu=CODIGO:monto,…` (exacto, con utilidad, sin
    IVA) y `moneda`; `margen` lleva una cifra decimal vía `margen()` de T13; −0,0 se dice 0,0. Vacío sin precio unitario,
-   con uno ≤ 0 o en otra moneda (sin convertir). `pu` mal formado, partida repetida o `pu` sin `moneda` dan el 422 de
-   forma.
+   con uno ≤ 0 o en otra moneda (sin convertir). `pu` mal formado, una partida repetida con precios distintos (con el
+   mismo precio se acepta) o `pu` sin `moneda` dan el 422 de forma.
 2. **La celda** no repite «APU 2.074,44» y dice «1.980,00 · margen −4,6 %», «… · sin precio unitario, sin margen» o
    «31,50 USD · en otra moneda que la obra (Bs), sin margen». **Por ratificar.**
 3. **El margen se compara con el precio exacto.** **Por ratificar.**
@@ -310,6 +310,10 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 5. **Hoja grande por tandas:** `partidas` ≤ 2.000 y `pu` ≤ 4.000 caracteres por pedido.
 6. **Si falla la lectura**, la Hoja sigue y lo dice bajo la tabla.
 7. Tres pruebas que fijaban las columnas del Presupuesto ganan «Objetivo de mercado».
+8. Árbitro (ronda 1): esos tres oráculos se cambiaron después del feat (1b536fcb, 2f0d25e3) y quedaron en rojo en la
+   historia entre a40054d5 y 2f0d25e3; en adelante, el oráculo de una columna nueva va en el commit rojo. Menores encargados:
+   margen viejo visible mientras llega la respuesta nueva, ayuda sin `aria-describedby`, consulta cuadrática por render
+   (front); `InvalidOperation` con un `pu` absurdo y mensaje propio del 422 de `pu` (con T25).
 
 ## T17, eventos de aprobación (aprobada en ronda 1)
 
@@ -409,7 +413,7 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - Los avisos son una sola región viva (`InlineNotification role="status"`) con el nombre «Avisos del plan» por
   `aria-labelledby` (Carbon reserva `aria-label` para el botón de cerrar).
 
-## T22, causas de retraso
+## T22, causas de retraso (aprobada en ronda 1)
 
 1. **Orden de los atrasos:** el del presupuesto (el de la reproyección). La mesa toma el primero, que suele ser la partida
    que origina el atraso (en la vivienda, OBRA-02 por la compra tardía y no OBRA-05, que va 16 días tarde solo por el SPI
@@ -426,8 +430,12 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    de la cifra de avance sigue diciendo los días hábiles de la obra (3). El texto dice «días» y cuenta días hábiles.
    **Por ratificar.**
 8. Dos oráculos de `Control.test.tsx` cambian por el contrato: el cuerpo de las líneas lleva `causa: null`.
+9. Árbitro (ronda 1): oráculos de atraso rehechos a mano con `_proyectar_partida`. Menores que pasan a T25: el router de
+   control repite lo enviado en el 422 (`causa`, `cantidad`, `observacion`) → `RutaSinCache`+`RutaSinEco` en todo el router;
+   `aplicacion/causas.py` repite el filtro de `para_el_valor_ganado()`. **Por decidir (Eugenio):** si se muestran las
+   partidas atrasadas solo por el SPI global (sin avance propio).
 
-## T23, procura con fechas
+## T23, procura con fechas (aprobada en ronda 1)
 
 1. **Vale la primera fecha de cada evento** (primer pedido, primera recepción); no se comparan cantidades (entregas
    parciales). **Por ratificar.**
@@ -447,6 +455,10 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 13. Fechas en los textos con `%d/%m/%Y` (`aplicacion/cifras.py` no tiene formateador de fechas).
 14. Oráculo corregido después del rojo (3040d9e6): la clave primaria `id` de `mp_compra` es NOT NULL; era un supuesto de la
     base de pruebas.
+15. Árbitro (ronda 1): fronteras y fechas de la mesa recalculadas a mano (al 02/11 «Pida Material de Tuberia de drenaje
+    antes del 04/11/2026.»). Una recepción con precio de un material sin código de catálogo se guarda sin observación de
+    mercado y sin avisarlo. El `precio` de la recepción es unitario. Menores que pasan a T24: exponer `causa_sugerida`,
+    prueba de la mesa al 02/11, descripción del precio y `monkeypatch` sobrante.
 
 ## T19, enviar y dictamen en la mesa
 
