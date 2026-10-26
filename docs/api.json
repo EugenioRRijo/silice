@@ -2226,7 +2226,7 @@
           "carpeta"
         ],
         "summary": "Consultar Carpeta",
-        "description": "La moneda de trabajo de la carpeta y su lista para armar de hoy, o por qué no hay.",
+        "description": "La moneda de trabajo de la carpeta y su lista vigente de hoy: la de armar o, si está en otra\nmoneda, la que hay que convertir; el aviso dice por qué no hay lista para armar.",
         "operationId": "consultar_carpeta_v1_carpeta_get",
         "responses": {
           "200": {
@@ -2290,7 +2290,7 @@
           "carpeta"
         ],
         "summary": "Crear La Lista Para Armar",
-        "description": "Crea la lista para armar a partir de MaPreX o convirtiendo la vigente (tasa del BCV).",
+        "description": "Crea la lista para armar a partir de MaPreX o convirtiendo la vigente (tasa del BCV). Desde\nMaPreX, si la carpeta ya tiene lista para armar, 409 y no crea otra.",
         "operationId": "crear_la_lista_para_armar_v1_carpeta_lista_para_armar_post",
         "requestBody": {
           "content": {
