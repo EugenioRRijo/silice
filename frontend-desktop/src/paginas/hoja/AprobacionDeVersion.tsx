@@ -13,6 +13,7 @@ import { useAtraparFoco } from "../../shell/useAtraparFoco";
 import { nombreDeResponsable } from "../obras/logica";
 import { useFocoAlCerrar } from "./AgregarPartida";
 import { ContextoDeDialogos } from "./ContextoDeDialogos";
+import "./AprobacionDeVersion.scss";
 
 // El estado de una versión en el ciclo de aprobación, como lo da `GET /v1/aprobaciones?proyecto=` (api/rutas/aprobaciones.py,
 // Tarea 18): el último movimiento manda; `por` es el responsable «Nombre <login>» y `el`, la fecha y hora ISO.
