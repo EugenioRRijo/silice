@@ -1279,6 +1279,128 @@ def resumen_especial(m: dict[str, Any]) -> str:
     return "ok" if not fallos else "; ".join(fallos)[:200]
 
 
+# --------------------------- visor del libro (D-3 y D-5) ----------------------------------------
+#
+# «Libro de la empresa» con el libro ficticio abierto: axe en la primera hoja y tras elegir otra;
+# el lienzo de Univer (tamaño y sin desplazamiento de la página); y salir y volver dos veces sin
+# `pageerror` ni avisos de Univer al desecharse (si los hay, D-3 solo quedó escondido).
+
+LIENZO_JS = """() => {
+  const de = document.documentElement;
+  const lienzos = [...document.querySelectorAll('.visor__hoja canvas')]
+    .map(c => c.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
+  const mayor = lienzos.sort((a, b) => b.width * b.height - a.width * a.height)[0];
+  const hoja = document.querySelector('.visor__hoja');
+  const rh = hoja ? hoja.getBoundingClientRect() : null;
+  return {
+    lienzo: mayor ? { ancho: Math.round(mayor.width), alto: Math.round(mayor.height),
+      caja: [mayor.left, mayor.top, mayor.right, mayor.bottom].map(Math.round) } : null,
+    hoja: rh ? [rh.left, rh.top, rh.right, rh.bottom].map(Math.round) : null,
+    scroll_x: de.scrollWidth > de.clientWidth,
+    scroll_y: de.scrollHeight > de.clientHeight,
+    alto_documento: de.scrollHeight,
+  };
+}"""
+
+
+def _axe_ids(pagina: Any, axe: str | None) -> list[str] | None:
+    if not axe:
+        return None
+    pagina.evaluate(axe)
+    return pagina.evaluate(
+        "async () => (await axe.run(document, "
+        "{runOnly: ['wcag2a','wcag2aa','wcag21a','wcag21aa']})).violations.map(v => v.id)"
+    )
+
+
+def _esperar_visor(pagina: Any) -> None:
+    pagina.locator(".visor__cuerpo").wait_for(timeout=LIMITE_ESPERA_MS)
+    pagina.locator(".visor__hoja canvas").first.wait_for(timeout=LIMITE_ESPERA_MS)
+    pagina.wait_for_timeout(1200)
+
+
+def medir_visor(
+    contexto: Any,
+    base: str,
+    libro: Path,
+    ancho: int,
+    letra: str,
+    rol: str,
+    capturas: Path,
+    axe: str | None,
+) -> dict[str, Any]:
+    pagina = contexto.new_page()
+    pagina.set_viewport_size({"width": ancho, "height": ALTO})
+    fijar_letra(pagina, letra)
+    errores: list[str] = []
+    avisos: list[str] = []
+    pagina.on("pageerror", lambda e: errores.append(f"pageerror: {str(e)[:200]}"))
+    pagina.on(
+        "console",
+        lambda m: (
+            errores.append(m.text[:200])
+            if m.type == "error"
+            else avisos.append(m.text[:200])
+            if m.type == "warning"
+            else None
+        ),
+    )
+    fila: dict[str, Any] = {"rol": rol, "ancho": ancho, "letra": letra, "vueltas": 0}
+    prefijo = capturas / f"visor_{rol}_{ancho}_{letra}"
+    try:
+        _ir_y_esperar(pagina, base, "libros")
+        pagina.locator("main input[type=file]").first.set_input_files(str(libro))
+        _esperar_visor(pagina)
+        fila.update(pagina.evaluate(LIENZO_JS))
+        fila["axe_libro"] = _axe_ids(pagina, axe)
+        pagina.screenshot(path=f"{prefijo}_hoja1.png")
+        pestanas = pagina.get_by_role("tablist", name="Hojas del libro").get_by_role("tab")
+        fila["hojas"] = pestanas.count()
+        if fila["hojas"] > 1:
+            pestanas.nth(1).click()
+            pagina.wait_for_timeout(1200)
+            fila["axe_segunda_hoja"] = _axe_ids(pagina, axe)
+            fila["segunda_hoja"] = pagina.evaluate(LIENZO_JS)
+            pagina.screenshot(path=f"{prefijo}_hoja2.png")
+        for _ in range(2):
+            ir_por_hash(pagina, "auditoria")
+            pagina.wait_for_timeout(1500)
+            ir_por_hash(pagina, "libros")
+            _esperar_visor(pagina)
+            fila["vueltas"] += 1
+        ir_por_hash(pagina, "auditoria")
+        pagina.wait_for_timeout(1500)
+    except Exception as error:
+        fila["error"] = str(error)[:300]
+    fila["errores"] = errores[:8]
+    fila["avisos"] = avisos[:8]
+    pagina.close()
+    return fila
+
+
+def fallos_visor(m: dict[str, Any]) -> list[str]:
+    """Lo que la medida del visor deja en rojo (vacío si todo está bien)."""
+    fallos: list[str] = []
+    if "error" in m:
+        fallos.append(f"error {m['error']}")
+    for clave in ("axe_libro", "axe_segunda_hoja"):
+        if "aria-valid-attr-value" in (m.get(clave) or []):
+            fallos.append(f"{clave}: aria-valid-attr-value")
+    fallos += [f"error en la página: {e}" for e in m.get("errores", [])]
+    fallos += [
+        f"aviso de consola: {a}" for a in m.get("avisos", []) if re.search(r"Univer lanz", a)
+    ]
+    lienzo = m.get("lienzo")
+    if not lienzo or not lienzo.get("ancho") or not lienzo.get("alto"):
+        fallos.append(f"sin lienzo de la hoja: {lienzo}")
+    # El alto del documento se anota (`scroll_y`, `alto_documento`); a lo ancho no debe desplazarse.
+    if m.get("scroll_x"):
+        fallos.append("desplazamiento horizontal de la página con el libro abierto")
+    if m.get("vueltas", 0) < 2:
+        fallos.append(f"solo {m.get('vueltas', 0)} vueltas de salir y volver a «libros»")
+    return fallos
+
+
 # --------------------------- umbrales de la barra por módulo (MOD-5) ----------------------------
 
 # Muestra la navegación de la barra aunque el umbral actual la esconda (y Carbon por debajo de
@@ -2504,6 +2626,9 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument(
         "--umbrales", action="store_true", help="mide el umbral de la barra de cada módulo"
     )
+    a.add_argument(
+        "--visor", action="store_true", help="el visor del libro: axe, lienzo, salir y volver"
+    )
     a.add_argument("--url", help="servidor ya en marcha (usa las cuentas ficticias por omisión)")
     a.add_argument(
         "--funcional", action="store_true", help="ejecuta la acción principal de cada pantalla"
@@ -2580,6 +2705,32 @@ def main(argv: list[str] | None = None) -> int:
                         resultado,
                     )
                     contexto.close()
+                if args.visor:
+                    resultado["visor"] = []
+                    for rol in [r for r in args.roles if r in ("ana", "rita")]:
+                        contexto = navegador.new_context(viewport={"width": 1366, "height": ALTO})
+                        pagina = contexto.new_page()
+                        entrar(pagina, base, rol, claves[rol])
+                        pagina.close()
+                        for letra in letras:
+                            for ancho in args.anchos:
+                                m = medir_visor(
+                                    contexto,
+                                    base,
+                                    libros["limpio"],
+                                    ancho,
+                                    letra,
+                                    rol,
+                                    capturas,
+                                    axe or bajar_axe(salida),
+                                )
+                                m["fallos"] = fallos_visor(m)
+                                resultado["visor"].append(m)
+                                print(
+                                    f"visor {rol:5} {letra:10} {ancho} lienzo={m.get('lienzo')} "
+                                    f"{'; '.join(m['fallos']) or 'ok'}"
+                                )
+                        contexto.close()
                 if args.especiales:
                     contexto = navegador.new_context(viewport={"width": 1366, "height": ALTO})
                     pagina = contexto.new_page()
