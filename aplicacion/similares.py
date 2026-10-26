@@ -121,7 +121,8 @@ def _en_texto(composicion: ComposicionAPU) -> ComposicionTexto:
                 linea.descripcion,
                 _numero(linea.cantidad),
                 _numero(linea.precio),
-                str(linea.depreciacion),
+                # exacta y en notacion fija (`str` daba «1E-7»); la pantalla la formatea en es-VE
+                format(linea.depreciacion, "f"),
             )
             for linea in composicion.equipos
         ),

@@ -6,6 +6,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import {
   AVISO_SIN_DESCRIPCION,
@@ -49,8 +50,8 @@ function Desglose({ composicion }: { composicion: Composicion }) {
             columnas={[
               { clave: "descripcion", titulo: "Descripción" },
               { clave: "unidad", titulo: "Unidad" },
-              { clave: "cantidad", titulo: "Cantidad", numerica: true },
-              { clave: "precio", titulo: "Precio", numerica: true },
+              { clave: "cantidad", titulo: "Cantidad", numerica: true, presentar: formatoEsVe },
+              { clave: "precio", titulo: "Precio", numerica: true, presentar: formatoEsVe },
             ]}
             filas={filasMateriales(composicion)}
           />
@@ -63,9 +64,9 @@ function Desglose({ composicion }: { composicion: Composicion }) {
             etiqueta={ROTULO_EQUIPOS}
             columnas={[
               { clave: "descripcion", titulo: "Descripción" },
-              { clave: "cantidad", titulo: "Cantidad", numerica: true },
-              { clave: "precio", titulo: "Precio", numerica: true },
-              { clave: "depreciacion", titulo: "Depreciación", numerica: true },
+              { clave: "cantidad", titulo: "Cantidad", numerica: true, presentar: formatoEsVe },
+              { clave: "precio", titulo: "Precio", numerica: true, presentar: formatoEsVe },
+              { clave: "depreciacion", titulo: "Depreciación", numerica: true, presentar: formatoEsVe },
             ]}
             filas={filasEquipos(composicion)}
           />
@@ -80,8 +81,8 @@ function Desglose({ composicion }: { composicion: Composicion }) {
             etiqueta={ROTULO_MANO_DE_OBRA}
             columnas={[
               { clave: "descripcion", titulo: "Descripción" },
-              { clave: "cantidad", titulo: "Cantidad", numerica: true },
-              { clave: "sueldo", titulo: "Sueldo", numerica: true },
+              { clave: "cantidad", titulo: "Cantidad", numerica: true, presentar: formatoEsVe },
+              { clave: "sueldo", titulo: "Sueldo", numerica: true, presentar: formatoEsVe },
             ]}
             filas={filasManoObra(composicion)}
           />

@@ -1,6 +1,7 @@
 // Logica pura de «Partidas similares»: arma lo que se muestra con el texto que manda la API. No calcula ni
-// redondea nada (los montos y puntajes ya llegan formateados, como los de la pagina de Streamlit).
+// redondea nada: los montos y puntajes llegan de la API con punto y solo se escriben en es-VE.
 import type { FilaDensa } from "../../comun/TablaDensa";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 export interface LineaMaterial {
   descripcion: string;
@@ -48,12 +49,14 @@ export function descripcionLista(texto: string): boolean {
   return texto.trim() !== "";
 }
 
+// Las cifras llegan de la API con punto decimal y se formatean en es-VE una sola vez, aqui o en `presentar` de la
+// tabla (decision de Eugenio, 2026-10-25: toda salida numerica en es-VE). Nada se calcula.
 export function tituloDePropuesta(p: Propuesta): string {
-  return `${p.puntaje_corto} - ${p.codigo} - ${p.descripcion}`;
+  return `${formatoEsVe(p.puntaje_corto)} - ${p.codigo} - ${p.descripcion}`;
 }
 
 export function origenDePropuesta(p: Propuesta): string {
-  return `Partida de origen: ${p.codigo} | puntaje de similitud: ${p.puntaje}`;
+  return `Partida de origen: ${p.codigo} | puntaje de similitud: ${formatoEsVe(p.puntaje)}`;
 }
 
 export function encabezadoDeLista(cantidad: number): string {
@@ -67,9 +70,9 @@ export const ROTULO_MANO_DE_OBRA = "Mano de obra";
 export const AYUDA =
   "Escriba la descripción de la partida: Sílice propone las más parecidas del catálogo para reutilizar su desglose y su rendimiento.";
 
-// Unidad y rendimiento tal como los manda la API; la interfaz solo les agrega la unidad de tiempo.
+// Unidad y rendimiento de la API; la interfaz solo escribe el rendimiento en es-VE y le agrega la unidad de tiempo.
 export function rendimientoEnTexto(c: Composicion): { unidad: string; rendimiento: string } {
-  return { unidad: c.unidad, rendimiento: `${c.rendimiento} ${c.unidad}/día` };
+  return { unidad: c.unidad, rendimiento: `${formatoEsVe(c.rendimiento)} ${c.unidad}/día` };
 }
 
 export function resultadosDe(buscado: string): string {
