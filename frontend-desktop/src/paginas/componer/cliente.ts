@@ -1,5 +1,6 @@
 // Llamadas de la pagina «Componer una partida» a la API (plan de la ola 3 B, §2). Todo monto viaja como texto.
 import { pedir } from "../../api/cliente";
+import type { CarpetaRespuesta } from "../../api/tipos";
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 
 export interface Cabecera {
@@ -81,17 +82,31 @@ export interface Guardado {
   avisos: string[];
 }
 
-// Lo que Componer usa de `GET /v1/casos/actual` (ResumenCarpeta, api/rutas/casos.py): si la carpeta abierta tiene una
-// lista de precios vigente hoy. Sin ella el desglose se calcula, pero guardar responde 409.
-export interface ResumenDeCarpeta {
-  nombre: string;
-  lista_vigente: string | null;
-  por_migrar: boolean;
-  error: string | null;
+// La moneda de trabajo de la carpeta y su lista para armar (`GET /v1/carpeta`, plan de montar, T2; D-MP1): Componer
+// arma en esa moneda y, sin lista para armar, no guarda (la API responde 409).
+export function carpeta(): Promise<CarpetaRespuesta> {
+  return pedir<CarpetaRespuesta>("/v1/carpeta");
 }
 
-export function resumenDeCarpeta(): Promise<ResumenDeCarpeta> {
-  return pedir<ResumenDeCarpeta>("/v1/casos/actual");
+// Crea la lista para armar de la carpeta a partir de MaPreX o convirtiendo la que tiene (con la tasa del BCV).
+export function crearListaParaArmar(desde: "maprex" | "convertir"): Promise<CarpetaRespuesta> {
+  return pedir<CarpetaRespuesta>("/v1/carpeta/lista-para-armar", { metodo: "POST", cuerpo: { desde } });
+}
+
+// Lo que haria `guardar` con el mismo cuerpo, sin escribir nada (`POST /v1/composicion/prever`, T3; D-MP2): la lista
+// donde quedarian los precios y los insumos que quedarian como variante solo para este APU. Montos con punto.
+export interface VariantePrevista {
+  descripcion: string;
+  unidad: string;
+  precio_en_lista: string;
+  precio_tecleado: string;
+  codigo_variante: string;
+}
+
+export interface Prevision {
+  lista: { nombre: string; moneda: string; fecha: string };
+  lista_nueva: boolean;
+  variantes: VariantePrevista[];
 }
 
 const BASE = "/v1/composicion";
@@ -130,4 +145,8 @@ export function similares(dominio: string, descripcion: string): Promise<Similar
 
 export function guardar(cabecera: Cabecera, tablas: Tablas, datos: DatosDeGuardado): Promise<Guardado> {
   return pedir<Guardado>(`${BASE}/guardar`, { metodo: "POST", cuerpo: { ...cabecera, ...tablas, ...datos } });
+}
+
+export function prever(cabecera: Cabecera, tablas: Tablas, datos: DatosDeGuardado): Promise<Prevision> {
+  return pedir<Prevision>(`${BASE}/prever`, { metodo: "POST", cuerpo: { ...cabecera, ...tablas, ...datos } });
 }

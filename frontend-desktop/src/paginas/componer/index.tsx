@@ -2,14 +2,28 @@ import { Select, SelectItem } from "@carbon/react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { AreaTexto } from "../../comun/AreaTexto";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import { ErrorDeApi } from "../../api/cliente";
+import type { CarpetaRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
 import { useAplicacion } from "../../shell/contexto";
+import { useFormularioSucio } from "../../shell/sucio";
 import { BuscadorReferencia } from "./BuscadorReferencia";
 import { AvisoSinLista } from "./AvisoSinLista";
-import { evaluar, guardar, opciones, partida, resumenDeCarpeta, similares as pedirSimilares } from "./cliente";
-import type { Cabecera, Desglose, Evaluacion, Guardado, Opciones, ResumenDeCarpeta, Similar } from "./cliente";
+import type { Desde } from "./AvisoSinLista";
+import {
+  carpeta as pedirCarpeta,
+  crearListaParaArmar,
+  evaluar,
+  guardar,
+  opciones,
+  partida,
+  prever,
+  similares as pedirSimilares,
+} from "./cliente";
+import type { Cabecera, DatosDeGuardado, Desglose, Evaluacion, Guardado, Opciones, Prevision, Similar } from "./cliente";
 import "./componer.scss";
+import { DialogoVariantes } from "./DialogoVariantes";
 import { Guardar } from "./Guardar";
 import { PanelDesglose } from "./PanelDesglose";
 import { Similares } from "./Similares";
@@ -27,6 +41,16 @@ function hoy(): string {
   const d = new Date();
   const dos = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`;
+}
+
+// Lo que la persona escribio y se perderia: algun campo de la cabecera o de las condiciones, o alguna fila con algo
+// escrito (una fila agregada y vacia no cuenta). La fecha y el dominio traen su valor y no cuentan solos.
+function hayDatos(cabecera: Cabecera, condiciones: string, tablas: Tablas): boolean {
+  const escrito = (v: string | undefined) => (v ?? "").trim() !== "";
+  return (
+    [cabecera.codigo, cabecera.descripcion, cabecera.unidad, cabecera.rendimiento, condiciones].some(escrito) ||
+    TIPOS.some((t) => tablas[t].some((fila) => Object.values(fila).some(escrito)))
+  );
 }
 
 // UC-10 (componer) y UC-11 (editar) una partida a mano. El navegador no calcula nada: el desglose, las advertencias
@@ -51,12 +75,21 @@ export default function PaginaComponer() {
     [expirar],
   );
 
-  const [cabecera, setCabecera] = useState<Cabecera>(CABECERA_INICIAL);
+  // Desde la Hoja (plan de montar, T4 y T11): `?codigo=X&volver=hoja` trae el codigo y, guardada, ofrece volver.
+  const [parametros] = useSearchParams();
+  const volverAHoja = parametros.get("volver") === "hoja";
+  const [cabecera, setCabecera] = useState<Cabecera>(() => ({
+    ...CABECERA_INICIAL,
+    codigo: parametros.get("codigo")?.trim() ?? "",
+  }));
   const [fecha, setFecha] = useState(hoy);
   const [condiciones, setCondiciones] = useState("");
   const [tablas, setTablas] = useState<Tablas>(tablasVacias);
   const [ops, setOps] = useState<Opciones | null>(null);
-  const [carpeta, setCarpeta] = useState<ResumenDeCarpeta | null>(null);
+  const [carpeta, setCarpeta] = useState<CarpetaRespuesta | null>(null);
+  const [listaCreada, setListaCreada] = useState<CarpetaRespuesta["lista"]>(null);
+  const [creandoLista, setCreandoLista] = useState(false);
+  const [errorLista, setErrorLista] = useState<unknown>(null);
   const [errorOpciones, setErrorOpciones] = useState<unknown>(null);
 
   const [evaluacion, setEvaluacion] = useState<Evaluacion | null>(null);
@@ -73,6 +106,13 @@ export default function PaginaComponer() {
   const [guardando, setGuardando] = useState(false);
   const [resultado, setResultado] = useState<Guardado | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<unknown>(null);
+  // Lo que dijo `prever` cuando algun precio quedaria como variante, con lo que se iba a guardar: abre el dialogo.
+  const [porConfirmar, setPorConfirmar] = useState<{ prevision: Prevision; datos: DatosDeGuardado } | null>(null);
+  const botonGuardar = useRef<HTMLButtonElement>(null);
+  // La persona cambio algo (lo que trae la URL o la precarga no cuenta). Con algo escrito y sin guardar, salir de la
+  // pantalla por un control de Silice pregunta antes (foco 2 del plan de montar; MOD-2).
+  const [tocado, setTocado] = useState(false);
+  useFormularioSucio("componer", tocado && hayDatos(cabecera, condiciones, tablas) && resultado === null);
 
   const limpiarGuardado = () => {
     setResultado(null);
@@ -80,10 +120,12 @@ export default function PaginaComponer() {
   };
   const cambiarCabecera = (parcial: Partial<Cabecera>) => {
     setCabecera((c) => ({ ...c, ...parcial }));
+    setTocado(true);
     limpiarGuardado();
   };
   const cambiarTablas = (cambio: (t: Tablas) => Tablas) => {
     setTablas(cambio);
+    setTocado(true);
     limpiarGuardado();
   };
 
@@ -104,11 +146,13 @@ export default function PaginaComponer() {
     };
   }, [atender]);
 
-  // ¿Hay lista de precios vigente? Se pregunta al abrir; al cambiar de carpeta el Shell vuelve a montar la pagina. Si
-  // la API no da el resumen (otra base que SQLite) no se avisa nada: guardar lo dira si hace falta.
+  // La moneda de trabajo y la lista para armar de la carpeta (D-MP1). Se pregunta al abrir (al cambiar de carpeta el
+  // Shell vuelve a montar la pagina) y otra vez si guardar responde 409. Si la API no la da (otra base que SQLite) no se
+  // avisa nada ni se inventa la moneda: guardar lo dira si hace falta.
+  const [lecturaCarpeta, setLecturaCarpeta] = useState(0);
   useEffect(() => {
     let vigente = true;
-    resumenDeCarpeta()
+    pedirCarpeta()
       .then((r) => {
         if (vigente) setCarpeta(r);
       })
@@ -118,7 +162,21 @@ export default function PaginaComponer() {
     return () => {
       vigente = false;
     };
-  }, [atender]);
+  }, [atender, lecturaCarpeta]);
+
+  const crearLista = async (desde: Desde) => {
+    setCreandoLista(true);
+    setErrorLista(null);
+    try {
+      const nueva = await crearListaParaArmar(desde);
+      setCarpeta(nueva);
+      setListaCreada(nueva.aviso === null ? nueva.lista : null);
+    } catch (e) {
+      if (!atender(e)) setErrorLista(e);
+    } finally {
+      setCreandoLista(false);
+    }
+  };
 
   // UC-11, paso 1: al teclear un codigo que existe se precargan las tres tablas y el rendimiento propuesto, una sola
   // vez por codigo (lo editado despues no se pisa); teclear otro codigo vuelve a precargar.
@@ -192,16 +250,51 @@ export default function PaginaComponer() {
     return () => clearTimeout(espera);
   }, [cabecera.descripcion, cabecera.dominio, atender]);
 
-  const guardarComposicion = async (justificacion: string | null) => {
+  const fallarGuardado = (e: unknown) => {
+    if (atender(e)) return;
+    setErrorGuardado(e);
+    // 409: la carpeta no tiene lista para armar en su moneda (pudo cambiar en otra pestana): se relee y el aviso de
+    // arriba ofrece sus salidas.
+    if (e instanceof ErrorDeApi && e.estado === 409) setLecturaCarpeta((n) => n + 1);
+  };
+
+  const confirmarGuardado = async (datos: DatosDeGuardado) => {
     setGuardando(true);
-    limpiarGuardado();
     try {
-      setResultado(await guardar(cabecera, tablas, { fecha, condiciones, justificacion }));
+      setResultado(await guardar(cabecera, tablas, datos));
     } catch (e) {
-      if (!atender(e)) setErrorGuardado(e);
+      fallarGuardado(e);
     } finally {
       setGuardando(false);
     }
+  };
+
+  // D-MP2: antes de guardar se pregunta a `prever` (no escribe); si algun precio tecleado quedaria como variante solo
+  // para este APU, se dice y la persona decide. Sin variantes se guarda de una vez, con el mismo cuerpo.
+  const guardarComposicion = async (justificacion: string | null) => {
+    const datos: DatosDeGuardado = { fecha, condiciones, justificacion };
+    setGuardando(true);
+    limpiarGuardado();
+    let previsto: Prevision;
+    try {
+      previsto = await prever(cabecera, tablas, datos);
+    } catch (e) {
+      fallarGuardado(e);
+      setGuardando(false);
+      return;
+    }
+    if (previsto.variantes.length > 0) {
+      setGuardando(false);
+      setPorConfirmar({ prevision: previsto, datos });
+      return;
+    }
+    await confirmarGuardado(datos);
+  };
+
+  // Al cerrar el dialogo el foco vuelve a «Guardar composición» (mientras se preveia estuvo deshabilitado).
+  const cerrarDialogo = () => {
+    setPorConfirmar(null);
+    botonGuardar.current?.focus();
   };
 
   const usarFila = (tipo: TipoTabla) => (fila: Fila) => cambiarTablas((t) => agregarFila(t, tipo, fila));
@@ -215,7 +308,13 @@ export default function PaginaComponer() {
         desglosarse en vivo (sin necesidad de guardar) y guarde la composición. Si la partida ya existe, sus tablas se
         precargan al teclear su código y guardar reemplaza su composición vigente; si no existe, la crea.
       </p>
-      <AvisoSinLista carpeta={carpeta} />
+      <AvisoSinLista
+        carpeta={carpeta}
+        creada={listaCreada}
+        creando={creandoLista}
+        error={errorLista}
+        alCrear={(desde) => void crearLista(desde)}
+      />
       <AvisoError error={errorOpciones} titulo="No se pudieron cargar las opciones" />
 
       <section className="silice-componer__bloque" aria-labelledby="componer-cabecera">
@@ -303,6 +402,7 @@ export default function PaginaComponer() {
           value={condiciones}
           onChange={(e) => {
             setCondiciones(e.target.value);
+            setTocado(true);
             limpiarGuardado();
           }}
         />
@@ -312,6 +412,9 @@ export default function PaginaComponer() {
         <h2 id="componer-insumos" className="cds--type-heading-compact-02">
           Insumos
         </h2>
+        {carpeta?.moneda && (
+          <p className="silice-componer__moneda cds--type-body-compact-01">{`Precios en ${carpeta.moneda}`}</p>
+        )}
         <p className="silice-componer__nota cds--type-body-compact-01">
           {AYUDA_CIFRAS}
         </p>
@@ -330,7 +433,13 @@ export default function PaginaComponer() {
         ))}
       </section>
 
-      <PanelDesglose evaluacion={evaluacion} cargando={calculando} error={errorDesglose} anterior={ultimoDesglose} />
+      <PanelDesglose
+        evaluacion={evaluacion}
+        cargando={calculando}
+        error={errorDesglose}
+        anterior={ultimoDesglose}
+        moneda={carpeta?.moneda ?? null}
+      />
 
       <Guardar
         sinCondiciones={condiciones.trim() === ""}
@@ -339,7 +448,21 @@ export default function PaginaComponer() {
         resultado={resultado}
         error={errorGuardado}
         alGuardar={(j) => void guardarComposicion(j)}
+        sinLista={Boolean(carpeta?.aviso)}
+        volverAHoja={volverAHoja}
+        refBoton={botonGuardar}
       />
+      {porConfirmar && (
+        <DialogoVariantes
+          prevision={porConfirmar.prevision}
+          alVolver={cerrarDialogo}
+          alGuardar={() => {
+            const { datos } = porConfirmar;
+            cerrarDialogo();
+            void confirmarGuardado(datos);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Button, InlineNotification } from "@carbon/react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { useState } from "react";
+import type { RefObject } from "react";
 import { Link } from "react-router";
 import { AvisoError } from "../../comun/AvisoError";
 import type { Guardado } from "./cliente";
@@ -14,9 +15,25 @@ export interface Props {
   resultado: Guardado | null;
   error: unknown;
   alGuardar: (justificacion: string | null) => void;
+  // La carpeta no tiene lista para armar (D-MP1): guardar responderia 409, asi que el boton espera a que se cree.
+  sinLista?: boolean;
+  // Se llego desde la Hoja (`?volver=hoja`): guardada la partida, el siguiente paso es volver a ella.
+  volverAHoja?: boolean;
+  // El boton de guardar, para devolverle el foco al cerrarse el dialogo de las variantes.
+  refBoton?: RefObject<HTMLButtonElement | null>;
 }
 
-export function Guardar({ sinCondiciones, requiereJustificacion, guardando, resultado, error, alGuardar }: Props) {
+export function Guardar({
+  sinCondiciones,
+  requiereJustificacion,
+  guardando,
+  resultado,
+  error,
+  alGuardar,
+  sinLista = false,
+  volverAHoja = false,
+  refBoton,
+}: Props) {
   const [justificacion, setJustificacion] = useState("");
   const guardar = () => alGuardar(requiereJustificacion ? justificacion.trim() || null : null);
 
@@ -40,8 +57,13 @@ export function Guardar({ sinCondiciones, requiereJustificacion, guardando, resu
           deshabilitado hasta que se declaren.
         </p>
       )}
+      {sinLista && (
+        <p className="silice-componer__nota cds--type-body-compact-01">
+          Para guardar hace falta la lista de precios para armar de la carpeta de trabajo: créela con el aviso de arriba.
+        </p>
+      )}
       <div>
-        <Button kind="primary" size="md" disabled={sinCondiciones || guardando} onClick={guardar}>
+        <Button ref={refBoton} kind="primary" size="md" disabled={sinCondiciones || guardando || sinLista} onClick={guardar}>
           Guardar composición
         </Button>
       </div>
@@ -60,7 +82,15 @@ export function Guardar({ sinCondiciones, requiereJustificacion, guardando, resu
             <InlineNotification key={i} kind="info" lowContrast hideCloseButton role="status" title="Aviso" subtitle={a} />
           ))}
           <p className="cds--type-body-compact-01">
-            Siguiente paso: <Link to="/elaborar">Elaborar un presupuesto</Link>
+            {volverAHoja ? (
+              <>
+                Siguiente paso: <Link to="/hoja">Volver a la Hoja</Link>
+              </>
+            ) : (
+              <>
+                Siguiente paso: <Link to="/elaborar">Elaborar un presupuesto</Link>
+              </>
+            )}
           </p>
         </>
       )}

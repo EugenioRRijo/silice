@@ -10,6 +10,13 @@ interface Props {
   // El ultimo desglose valido: con un dato mal escrito (estado `incompleto`) se sigue viendo, marcado como anterior,
   // en vez de dejar la pantalla solo con el aviso (prueba en vivo 2026-10-25).
   anterior?: Desglose | null;
+  // La moneda de trabajo de la carpeta (D-MP1): cada monto la dice. Sin ella (la API no la dio) no se inventa.
+  moneda?: string | null;
+}
+
+// «2.074,44 Bs»: el texto de la API en es-VE (una sola conversion) y la moneda, si se sabe.
+function conMoneda(decimal: string, moneda: string | null): string {
+  return moneda ? `${formatoEsVe(decimal)} ${moneda}` : formatoEsVe(decimal);
 }
 
 const ROTULOS: readonly (readonly [keyof Desglose, string])[] = [
@@ -29,7 +36,7 @@ const TITULO_ADVERTENCIA: Record<Advertencia["tipo"], string> = {
   partida_nueva: "Partida nueva",
 };
 
-function TablaDeMontos({ desglose }: { desglose: Desglose }) {
+function TablaDeMontos({ desglose, moneda }: { desglose: Desglose; moneda: string | null }) {
   return (
     <div className="silice-tabla">
       <Table size="sm" aria-label="Desglose del precio unitario">
@@ -39,7 +46,7 @@ function TablaDeMontos({ desglose }: { desglose: Desglose }) {
               <TableCell>{rotulo}</TableCell>
               {/* La interfaz no calcula: el texto exacto de la API, en es-VE; el exacto queda en el title. */}
               <TableCell className="silice-cifra" title={desglose[clave]}>
-                {formatoEsVe(desglose[clave])}
+                {conMoneda(desglose[clave], moneda)}
               </TableCell>
             </TableRow>
           ))}
@@ -49,13 +56,13 @@ function TablaDeMontos({ desglose }: { desglose: Desglose }) {
   );
 }
 
-function BloqueContraste({ contraste }: { contraste: Contraste }) {
+function BloqueContraste({ contraste, moneda }: { contraste: Contraste; moneda: string | null }) {
   return (
     <div className="silice-componer__contraste">
       <h3 className="cds--type-heading-compact-02">Contraste con la estimación por reglas (AACE)</h3>
       <p className="cds--type-body-compact-01">
         Técnica de estimación que corresponde a este dominio: {contraste.tecnica} ({contraste.registros} registro(s)).
-        Precio unitario estimado por reglas: {formatoEsVe(contraste.pu_estimado)}.
+        Precio unitario estimado por reglas: {conMoneda(contraste.pu_estimado, moneda)}.
       </p>
       {contraste.dentro_de_rango && (
         <p className="cds--type-body-compact-01">
@@ -68,7 +75,7 @@ function BloqueContraste({ contraste }: { contraste: Contraste }) {
 }
 
 // Desglose en vivo (RF-27): lo calcula la API; aqui solo se pinta. Las advertencias informan, nunca bloquean.
-export function PanelDesglose({ evaluacion, cargando, error, anterior = null }: Props) {
+export function PanelDesglose({ evaluacion, cargando, error, anterior = null, moneda = null }: Props) {
   const conservado = evaluacion && !evaluacion.desglose && evaluacion.estado === "incompleto" ? anterior : null;
   return (
     <section className="silice-componer__bloque" aria-labelledby="componer-desglose">
@@ -96,13 +103,13 @@ export function PanelDesglose({ evaluacion, cargando, error, anterior = null }: 
               subtitle={evaluacion.aviso}
             />
           )}
-          {evaluacion.desglose && <TablaDeMontos desglose={evaluacion.desglose} />}
+          {evaluacion.desglose && <TablaDeMontos desglose={evaluacion.desglose} moneda={moneda} />}
           {conservado && (
             <>
               <p className="silice-componer__nota cds--type-body-compact-01">
                 Se muestra el último desglose calculado, sin el cambio del aviso: corrija ese dato para actualizarlo.
               </p>
-              <TablaDeMontos desglose={conservado} />
+              <TablaDeMontos desglose={conservado} moneda={moneda} />
             </>
           )}
           {evaluacion.advertencias.map((a, i) => (
@@ -116,7 +123,7 @@ export function PanelDesglose({ evaluacion, cargando, error, anterior = null }: 
               subtitle={a.texto}
             />
           ))}
-          {evaluacion.contraste && <BloqueContraste contraste={evaluacion.contraste} />}
+          {evaluacion.contraste && <BloqueContraste contraste={evaluacion.contraste} moneda={moneda} />}
         </>
       )}
     </section>
