@@ -308,6 +308,23 @@ describe("Hoja del proyecto: agregar y quitar líneas del APU de la versión (Ta
     olvidarFormularios();
   });
 
+  test("lo escrito en un campo que el cambio de tipo oculta ya no cuenta como formulario sucio", async () => {
+    olvidarFormularios();
+    await irAApu();
+    await abrirDialogo();
+    await userEvent.selectOptions(within(dialogo()).getByRole("combobox", { name: "Tipo de línea" }), "equipo");
+    await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Depreciación/ }), "0,5");
+    await vi.waitFor(() => expect(formulariosSucios()).toEqual(["hoja"]));
+    await userEvent.selectOptions(within(dialogo()).getByRole("combobox", { name: "Tipo de línea" }), "material");
+    await vi.waitFor(() => expect(formulariosSucios()).toEqual([]));
+    await userEvent.selectOptions(within(dialogo()).getByRole("combobox", { name: "Tipo de línea" }), "mano_obra");
+    await userEvent.selectOptions(within(dialogo()).getByRole("combobox", { name: "Modalidad" }), "destajo");
+    await vi.waitFor(() => expect(formulariosSucios()).toEqual(["hoja"]));
+    await userEvent.selectOptions(within(dialogo()).getByRole("combobox", { name: "Tipo de línea" }), "material");
+    await vi.waitFor(() => expect(formulariosSucios()).toEqual([]));
+    olvidarFormularios();
+  });
+
   test("sin elegir un insumo no se manda nada y el error va al buscador", async () => {
     await irAApu();
     await abrirDialogo();
