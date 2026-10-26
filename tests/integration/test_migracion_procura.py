@@ -33,7 +33,7 @@ COLUMNAS_PLAZO = [
     ("dias", "INTEGER", False, 0),
 ]
 COLUMNAS_COMPRA = [
-    ("id", "INTEGER", True, 1),  # SQLite informa nula la clave primaria entera en `table_info`
+    ("id", "INTEGER", False, 1),  # SQLAlchemy declara NOT NULL toda clave primaria
     ("proyecto_id", "INTEGER", False, 0),
     ("descripcion_insumo", "VARCHAR(300)", False, 0),
     ("unidad", "VARCHAR(20)", False, 0),
