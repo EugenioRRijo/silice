@@ -37,7 +37,8 @@ function Caja({ pendiente, paginas }: { pendiente: SalidaPendiente; paginas: rea
     ...pendiente.extras,
   ];
   const carpeta = pendiente.motivo === "carpeta";
-  const consecuencia = carpeta ? "Si cambia de carpeta, se perderán." : "Si sale de esta pantalla, se perderán.";
+  const consecuencia =
+    pendiente.consecuencia ?? (carpeta ? "Si cambia de carpeta, se perderán." : "Si sale de esta pantalla, se perderán.");
 
   function quedarse() {
     const anterior = previo.current;
@@ -81,7 +82,7 @@ function Caja({ pendiente, paginas }: { pendiente: SalidaPendiente; paginas: rea
             Quedarme
           </Button>
           <Button kind="danger" onClick={() => responderSalida(true)}>
-            {carpeta ? "Cambiar y descartar" : "Salir y descartar"}
+            {pendiente.motivo === "salir" ? "Salir y descartar" : "Cambiar y descartar"}
           </Button>
         </div>
       </div>

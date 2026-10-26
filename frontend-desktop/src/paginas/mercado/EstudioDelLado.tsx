@@ -110,7 +110,8 @@ export function EstudioDelLado({ lado }: { lado: Lado }) {
   async function elegir(opcion: OpcionDeBusqueda<Elegido>) {
     const nuevo = { codigo: opcion.valor.codigo, descripcion: opcion.valor.descripcion };
     const cambia = elegido !== null && elegido.codigo !== nuevo.codigo;
-    if (cambia && (sucios.current.precio || sucios.current.anotar) && !(await confirmarSalida("salir"))) {
+    const pregunta = () => confirmarSalida("cambiar", [], "Si elige otro insumo o partida, se perderán.");
+    if (cambia && (sucios.current.precio || sucios.current.anotar) && !(await pregunta())) {
       setTexto(elegido.descripcion); // «Quedarme»: el buscador vuelve a decir lo que se esta estudiando
       return;
     }

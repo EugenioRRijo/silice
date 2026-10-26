@@ -4,7 +4,9 @@ import { formulariosSucios, olvidarFormularios } from "./sucio";
 // Confirmacion al salir con trabajo sin guardar (diseno de modulos §4 y §12.5). Un solo punto para todas las
 // navegaciones que inician los controles de Silice; atras/adelante del navegador no se interceptan (sin migrar de
 // enrutador). El dialogo lo pinta `DialogoSalida`, que el armazon monta una vez.
-export type MotivoSalida = "salir" | "carpeta";
+// «cambiar»: la pantalla sigue abierta pero cambia lo que muestra (otro insumo o partida en el estudio de mercado); quien
+// pregunta dice la consecuencia en sus palabras.
+export type MotivoSalida = "salir" | "carpeta" | "cambiar";
 
 export interface SalidaPendiente {
   // Cambia con cada pregunta: el dialogo se vuelve a montar (foco inicial de nuevo).
@@ -14,6 +16,8 @@ export interface SalidaPendiente {
   pantallas: readonly string[];
   // Otros cambios que se perderian, ya dichos en palabras (p. ej. «la obra nueva»).
   extras: readonly string[];
+  // La consecuencia dicha por quien pregunta («Si elige otro insumo o partida, se perderán.»); null = la del motivo.
+  consecuencia: string | null;
 }
 
 let pendiente: (SalidaPendiente & { resolver: (salir: boolean) => void }) | null = null;
@@ -41,13 +45,17 @@ export function useSalidaPendiente(): SalidaPendiente | null {
 
 // Resuelve true sin preguntar si no hay nada que perder; si lo hay, abre el dialogo y resuelve con la respuesta. Una
 // pregunta nueva deja sin efecto la anterior (que resuelve false: nadie navega por ella).
-export function confirmarSalida(motivo: MotivoSalida, extras: readonly string[] = []): Promise<boolean> {
+export function confirmarSalida(
+  motivo: MotivoSalida,
+  extras: readonly string[] = [],
+  consecuencia: string | null = null,
+): Promise<boolean> {
   const pantallas = formulariosSucios();
   if (pantallas.length === 0 && extras.length === 0) return Promise.resolve(true);
   return new Promise<boolean>((resolver) => {
     const anterior = pendiente;
     numero += 1;
-    pendiente = { numero, motivo, pantallas, extras: [...extras], resolver };
+    pendiente = { numero, motivo, pantallas, extras: [...extras], consecuencia, resolver };
     anterior?.resolver(false);
     avisar();
   });
