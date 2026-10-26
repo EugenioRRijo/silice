@@ -6195,6 +6195,118 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/partidas": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Agregar Partida",
+        "description": "Tarea 9: agrega al borrador una partida del catálogo (`codigo`) con su cantidad, su cálculo\n(«cómo se midió», con coma decimal) y su nota; responde la clave del renglón nuevo.\n\nSolo cambia el borrador en memoria. La partida que no está en el catálogo, 404; la cifra o el\ncálculo, 422 con el texto de su regla; `rev` viejo, 409; sin lista para valorar la obra (en\nblanco: sin lista para armar o, en la otra moneda, sin tasa del BCV de los últimos 7 días),\n409 con ese texto. Nada de esto deja el borrador a medias.",
+        "operationId": "agregar_partida_v1_hoja_borradores__id__partidas_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgregarPartida"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartidaAgregadaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/partidas/quitar": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Quitar Partida",
+        "description": "Tarea 9: quita del borrador el renglón `clave` (con su cantidad escrita y su nota). Solo los\nrenglones de la versión: uno del espacio, 422 («cámbiela en Espacio y metrajes»).",
+        "operationId": "quitar_partida_v1_hoja_borradores__id__partidas_quitar_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuitarPartida"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartidaQuitadaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores/{id}/espacio": {
       "put": {
         "tags": [
@@ -9135,6 +9247,46 @@
           "apus"
         ],
         "title": "AfectadosRespuesta"
+      },
+      "AgregarPartida": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "codigo": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Codigo"
+          },
+          "cantidad": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Cantidad",
+            "default": ""
+          },
+          "calculo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Calculo",
+            "default": ""
+          },
+          "nota": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Nota",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "codigo"
+        ],
+        "title": "AgregarPartida"
       },
       "AlertaPrecioRespuesta": {
         "properties": {
@@ -15283,6 +15435,32 @@
           },
           "estado": {
             "$ref": "#/components/schemas/EstadoFilaRespuesta"
+          },
+          "quitable": {
+            "type": "boolean",
+            "title": "Quitable"
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
+          "calculo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculo"
           }
         },
         "type": "object",
@@ -15296,7 +15474,10 @@
           "escrita",
           "pu",
           "total",
-          "estado"
+          "estado",
+          "quitable",
+          "nota",
+          "calculo"
         ],
         "title": "FilaPresupuestoRespuesta"
       },
@@ -15600,6 +15781,19 @@
             "type": "boolean",
             "title": "Confirmar Version Mas Nueva",
             "default": false
+          },
+          "codigo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo"
           }
         },
         "additionalProperties": false,
@@ -17731,6 +17925,29 @@
         ],
         "title": "ParetoRespuesta"
       },
+      "PartidaAgregadaRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen",
+          "clave"
+        ],
+        "title": "PartidaAgregadaRespuesta",
+        "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la clave del renglón nuevo."
+      },
       "PartidaDiferente": {
         "properties": {
           "codigo_partida": {
@@ -17880,6 +18097,23 @@
         ],
         "title": "PartidaPresupuestadaRespuesta",
         "description": "Un renglón del presupuesto, tal como se presenta (dos decimales, NORMAS.md §2.3)."
+      },
+      "PartidaQuitadaRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen"
+        ],
+        "title": "PartidaQuitadaRespuesta"
       },
       "PartidaRespuesta": {
         "properties": {
@@ -19150,6 +19384,28 @@
         ],
         "title": "PuntoRespuesta"
       },
+      "QuitarPartida": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "clave": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Clave"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "clave"
+        ],
+        "title": "QuitarPartida"
+      },
       "Reactivacion": {
         "properties": {
           "contrasena": {
@@ -20012,6 +20268,10 @@
               }
             ],
             "title": "Guardado Como"
+          },
+          "espacio_vacio": {
+            "type": "boolean",
+            "title": "Espacio Vacio"
           }
         },
         "type": "object",
@@ -20024,7 +20284,8 @@
           "hallazgos",
           "hay_plan",
           "version_mas_nueva",
-          "guardado_como"
+          "guardado_como",
+          "espacio_vacio"
         ],
         "title": "ResumenHojaRespuesta"
       },

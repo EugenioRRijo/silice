@@ -774,6 +774,8 @@ def test_docs_api_json_esta_al_dia() -> None:
         "/v1/hoja/borradores/{id}/excel",
         "/v1/hoja/borradores/{id}/insumos",
         "/v1/hoja/borradores/{id}/parametros",
+        "/v1/hoja/borradores/{id}/partidas",
+        "/v1/hoja/borradores/{id}/partidas/quitar",
         "/v1/hoja/borradores/{id}/plan",
         "/v1/hoja/borradores/{id}/plano",
         "/v1/hoja/borradores/{id}/plano/alturas",

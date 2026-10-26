@@ -3,6 +3,30 @@
 Decisiones tomadas por los implementadores de `docs/planes/PLAN_MONTAR_PRESUPUESTO.md` que el plan no fijaba, anotadas a
 pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las demás son de ingeniería y quedan como están.
 
+## T9, rutas de la Hoja
+
+- **Lista con que se valora.** El borrador en blanco nace en la moneda de la obra con la fecha de hoy. Se valora con
+  `lista_para_el_proyecto` a la fecha del borrador, solo cuando hay partidas sin APU; vale para agregar y para editar el
+  espacio. La conversión a la otra moneda se calcula y se deshace al editar; la escribe el guardado, en la misma transacción
+  que la versión y a nombre de quien guarda. Sin tasa del BCV de los últimos 7 días, o sin lista para armar: 409 con el texto
+  de MP-1, tanto al editar como al guardar. Dos oráculos de la 3d-1 (`tests/unit/test_api_hoja_guardado.py`) pasan de 422 a
+  409 con ese texto. **Por ratificar.**
+- **Código de la primera versión.** Se elige con `codigo` opcional en `/guardar` («VIV-001»); en las siguientes, 422 «El
+  código se elige solo al guardar la primera versión; las siguientes siguen su numeración.».
+- **Notas.** Viven en `mp_nota_medicion` (migración `caso_0012_mp_medicion`, que cuelga de `caso_0014_mp_aprobacion`; una nota
+  por renglón de cada versión). Se escriben en la misma transacción que la versión (`hoja.guardar_version` y
+  `crear_primera_version`, no `hoja_guardado.py:106` como decía el plan) y se recargan al abrirla. No entran en el sello de la
+  cadena: son texto libre fuera del cálculo. **Por ratificar.** Las versiones creadas al restaurar, cotizar o convertir no
+  copian las notas (deuda). No hay ruta para editar una nota: hay que quitar el renglón y agregarlo de nuevo (**por decidir**).
+- **Errores nuevos.** `PartidaFueraDelCatalogo` → 404; `SinListaDeLaObra` → 409 (agregar, cualquier edición de un borrador
+  en blanco y guardar).
+- **Partida sin dominio** declarado: se presupuesta como obra civil.
+- **`calculo` de la fila.** Solo en renglones «a-mano», con coma decimal, y no si su cantidad se escribió después a mano.
+- **Fuente de la mesa.** `pendientes_sin_calculo` cuenta los hallazgos R1 de «cantidad manual sin regla» guardados con la
+  versión vigente («3 cantidades escritas a mano sin cálculo en OB-001», acción «Abrir la Hoja»).
+- Aviso para el árbitro: los dos oráculos ajustados de `test_api_hoja_guardado.py` y el registro `TABLA_5_7` de
+  `test_aplicacion_hoja_lectura.py` cambiaron en el commit de implementación (no hubo forma de verlos en rojo sin stash).
+
 ## T10, buscador de partidas (aprobada en ronda 1)
 
 - El oráculo del diseño §8.1 («`q=tub` devuelve solo LB-02-TUB») no se cumple con la línea base: LB-01-EXC dice «zanja de

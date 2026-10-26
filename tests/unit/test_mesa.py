@@ -27,6 +27,7 @@ from sqlalchemy import delete, select
 
 from aplicacion import aprobaciones, mesa
 from aplicacion.aprobaciones import pendientes_de_aprobacion
+from aplicacion.hoja_partidas import pendientes_sin_calculo
 from aplicacion.mercado import pendientes_de_mercado
 from aplicacion.mesa import (
     Cifra,
@@ -794,7 +795,8 @@ def test_los_grupos_y_las_fuentes_de_esta_tarea() -> None:
         precios_sin_referencia,
         pendientes_de_mercado,
     )
-    assert mesa.FUENTES["calidad"] == (hallazgos_graves, lista_vieja)
+    # T9 agrega «cantidades escritas a mano sin cálculo» (compartido del orquestador).
+    assert mesa.FUENTES["calidad"] == (hallazgos_graves, lista_vieja, pendientes_sin_calculo)
     # T18 agrega «espera dictamen» y «devuelta» (compartido del orquestador).
     assert mesa.FUENTES["aprobar"] == (pendientes_de_aprobacion,)
     assert not mesa.FUENTES.get("compras")

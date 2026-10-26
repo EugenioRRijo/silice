@@ -62,3 +62,9 @@ def test_el_caso_lleva_la_ficha_de_la_obra() -> None:
     from aplicacion.tablas_obra import METADATA_OBRA
 
     assert METADATA_OBRA in METADATAS_CASO
+
+
+def test_el_caso_lleva_las_notas_de_medicion() -> None:
+    from aplicacion.tablas_medicion import METADATA_MEDICION
+
+    assert METADATA_MEDICION in METADATAS_CASO

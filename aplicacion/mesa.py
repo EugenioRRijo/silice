@@ -36,6 +36,7 @@ from aplicacion.control import (
     calcular_el_control,
     parametros_actuales,
 )
+from aplicacion.hoja_partidas import pendientes_sin_calculo
 from aplicacion.listas_para_armar import describir
 from aplicacion.mercado import pendientes_de_mercado
 from aplicacion.obras import SIN_FICHA, fichas
@@ -577,6 +578,7 @@ FUENTES: dict[str, tuple[FuentePendientes, ...]] = {
     "calidad": (
         hallazgos_graves,
         lista_vieja,
+        pendientes_sin_calculo,
     ),
 }
 

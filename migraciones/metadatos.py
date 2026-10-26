@@ -14,6 +14,7 @@ from aplicacion.tablas_aprobacion import METADATA_APROBACION
 from aplicacion.tablas_carpeta import METADATA_CARPETA
 from aplicacion.tablas_eleccion import METADATA_ELECCION
 from aplicacion.tablas_indice_aprobacion import METADATA_INDICE_APROBACION
+from aplicacion.tablas_medicion import METADATA_MEDICION
 from aplicacion.tablas_mercado import METADATA_MERCADO
 from aplicacion.tablas_obra import METADATA_OBRA
 from asistente.registro import METADATA_IA
@@ -32,6 +33,7 @@ METADATAS_CASO: tuple[MetaData, ...] = (
     METADATA_OBRA,
     METADATA_MERCADO,
     METADATA_APROBACION,
+    METADATA_MEDICION,
 )
 METADATAS_INSTALACION: tuple[MetaData, ...] = (
     BaseSeguridad.metadata,

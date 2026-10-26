@@ -270,10 +270,21 @@ def test_pendientes_de_ana() -> None:
             "accion": {"texto": "Ver el catálogo", "pagina": "catalogo"},
         }
     ]
-    # Calidad, nada: los hallazgos de OB-001 son tres R1 de ADVERTENCIA (cantidades a mano), que no
-    # son de error ni críticos, y al 2026-10-25 no hay lista para armar con que compararla (la
-    # única lista, «OB-S2 USD», rige desde el 2026-11-02).
-    assert grupos[2] == {"clave": "calidad", "titulo": "Calidad", "items": []}
+    # Calidad: los hallazgos de OB-001 son tres R1 de ADVERTENCIA (cantidades a mano sin regla):
+    # no son de error ni críticos, pero sí tres cantidades sin cálculo (T9); y al 2026-10-25 no hay
+    # lista para armar con que compararla (la única lista, «OB-S2 USD», rige desde el 2026-11-02).
+    assert grupos[2] == {
+        "clave": "calidad",
+        "titulo": "Calidad",
+        "items": [
+            {
+                "obra": precios[0]["obra"],
+                "obra_nombre": "OB-S2",
+                "texto": "3 cantidades escritas a mano sin cálculo en OB-001",
+                "accion": {"texto": "Abrir la Hoja", "pagina": "hoja"},
+            }
+        ],
+    }
 
 
 def test_pendientes_de_rita_es_403() -> None:
