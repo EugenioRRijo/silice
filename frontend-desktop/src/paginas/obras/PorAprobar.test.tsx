@@ -166,8 +166,12 @@ describe("foco 2: abrir un envío de otra carpeta", () => {
     // Los borradores se leyeron antes de abrir (para nombrarlos en la pregunta).
     const orden = servidor.llamadas.map((l) => `${l.metodo} ${l.ruta}`);
     expect(orden.indexOf("GET /v1/hoja/borradores")).toBeLessThan(orden.indexOf("POST /v1/aprobaciones/abrir"));
-    // El armazon sabe que cambio la carpeta: lo dice y no usa la ruta de cambiar carpeta (la abrio la de aprobar).
-    expect(await screen.findByText("Ahora trabaja con la carpeta de trabajo «s2».")).toBeInTheDocument();
+    // El armazon sabe que cambio la carpeta: vuelve a leerla despues de abrir el envio (su aviso es de la pantalla en que se
+    // cambio y se cierra al navegar, D6) y no usa la ruta de cambiar carpeta (la abrio la de aprobar).
+    await waitFor(() => {
+      const despues = servidor.llamadas.map((l) => `${l.metodo} ${l.ruta}`);
+      expect(despues.lastIndexOf("GET /v1/casos")).toBeGreaterThan(despues.indexOf("POST /v1/aprobaciones/abrir"));
+    });
     expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
   });
 
