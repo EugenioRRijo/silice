@@ -204,3 +204,15 @@
   max-inline-size: 65ch;
   overflow-wrap: anywhere;
 }
+
+// Tarea 19: la linea de un envio por aprobar (total, quien y cuando; su nota), en gris bajo el texto.
+.silice-mesa__pendiente-detalle {
+  max-inline-size: 65ch;
+  overflow-wrap: anywhere;
+  color: var(--silice-texto-secundario);
+}
+
+// La marca de «Por aprobar»: la etiqueta de advertencia pegada del sistema (`fiori-kpi__aviso`), alineada con la cifra.
+.silice-mesa__marca {
+  margin: 0.25rem 1rem 0;
+}

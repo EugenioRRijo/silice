@@ -3,8 +3,10 @@
 // aqui solo se formatean (es-VE), nunca se convierten en numero ni se recalculan.
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import type { IndicadorRespuesta } from "../../indicadores/tipos";
+import type { Carga } from "../inicio/useCarga";
 import { paginaPorId, visible } from "../../shell/rutas";
 import { unirConY } from "../../shell/salida";
+import { nombreDeCarpeta } from "../../shell/Selectores";
 
 // Una cifra de la franja: la forma del indicador Fiori mas una linea debajo («1 obra atrasada; la mas atrasada, …»).
 export type CifraRespuesta = IndicadorRespuesta & { detalle: string | null };
@@ -72,15 +74,98 @@ export interface PendientesRespuesta {
   grupos: GrupoRespuesta[];
 }
 
-export type Bloque = "cifras" | "obras" | "pendientes" | "accesos";
+export type Bloque = "cifras" | "obras" | "pendientes" | "por_aprobar" | "accesos";
 
-// Que bloques se piden segun las acciones de la cuenta (diseno de modulos §12.3): el resumen exige `leer_proyecto` (arma y
-// revisa) y los pendientes `editar_hoja` (arma); sin ninguno de los dos, los accesos del modulo (el administrador).
+// Que bloques se piden segun las acciones de la cuenta (diseno de modulos §12.3 y §12.6): el resumen exige `leer_proyecto`
+// (arma y revisa), los pendientes de las obras `editar_hoja` (arma) y lo de aprobar (la cifra «Por aprobar» y los envios de
+// todas las carpetas, Tarea 19) `aprobar_version` (arma y revisa); sin ninguno, los accesos del modulo (el administrador).
 export function bloquesPedidos(acciones: readonly string[]): Bloque[] {
   const bloques: Bloque[] = [];
   if (acciones.includes("leer_proyecto")) bloques.push("cifras", "obras");
   if (acciones.includes("editar_hoja")) bloques.push("pendientes");
+  if (acciones.includes("aprobar_version")) bloques.push("por_aprobar");
   return bloques.length > 0 ? bloques : ["accesos"];
+}
+
+// --- Tarea 19: lo que espera dictamen -------------------------------------------------------------------------------
+
+// La cifra «Por aprobar» (`GET /v1/aprobaciones/resumen`): la forma de las cifras de la mesa y si se marca (desde 3 dias
+// habiles de espera de la mas antigua; lo decide la API).
+export type CifraPorAprobar = CifraRespuesta & { marcada: boolean };
+
+// Una fila del indice de aprobaciones de la instalacion (`GET /v1/aprobaciones/pendientes`): lo que espera dictamen en
+// todas las carpetas, lo mas antiguo primero. `caso` es el archivo de la carpeta («s2.db»); `proyecto`, el codigo de la
+// obra en su carpeta. Fechas ISO; `total`, texto con punto decimal.
+export interface EnvioPorAprobar {
+  caso: string;
+  envio_id: number;
+  proyecto: string;
+  obra: string;
+  version: string;
+  total: string;
+  moneda: string;
+  estado: string;
+  enviado_por: string;
+  enviado_el: string;
+  nota: string;
+}
+
+// Un pendiente de la columna: el de la API o, si viene de un envio del indice, con lo que hace falta para abrirlo.
+export interface PendienteDeLaMesa extends PendienteRespuesta {
+  // Lineas que acompanan al texto (total, quien y cuando; la nota del envio).
+  detalles?: string[];
+  envio?: { caso: string; envio_id: number };
+}
+
+export interface GrupoDeLaMesa {
+  clave: string;
+  titulo: string;
+  items: PendienteDeLaMesa[];
+}
+
+const GRUPO_APROBAR = { clave: "aprobar", titulo: "Aprobar" };
+const ABRIR_ENVIO = { texto: "Abrir", pagina: "aprobar" };
+
+// «Ana Pérez» de «Ana Pérez <ana>» (el responsable que guarda la API, RF-82): en la interfaz se dice el nombre.
+export function nombreDeResponsable(responsable: string): string {
+  const corte = responsable.indexOf(" <");
+  return corte > 0 ? responsable.slice(0, corte) : responsable;
+}
+
+// «4.876,56 Bs · enviada por Ana Pérez el 20/10/2026», con « · carpeta s2» si el envio es de otra carpeta.
+export function lineaDelEnvio(envio: EnvioPorAprobar, casoActual: string | null): string {
+  const base = `${formatoEsVe(envio.total)} ${envio.moneda} · enviada por ${nombreDeResponsable(envio.enviado_por)} el ${fechaEsVe(envio.enviado_el.slice(0, 10))}`;
+  return envio.caso === casoActual ? base : `${base} · carpeta ${nombreDeCarpeta(envio.caso)}`;
+}
+
+function pendienteDeEnvio(envio: EnvioPorAprobar, casoActual: string | null): PendienteDeLaMesa {
+  const nota = envio.nota.trim();
+  return {
+    obra: envio.proyecto,
+    obra_nombre: envio.obra,
+    texto: `${envio.version} espera dictamen`,
+    accion: ABRIR_ENVIO,
+    detalles: [lineaDelEnvio(envio, casoActual), ...(nota ? [`Nota: ${nota}`] : [])],
+    envio: { caso: envio.caso, envio_id: envio.envio_id },
+  };
+}
+
+// Los grupos de la columna de pendientes (Tarea 19, con los cambios por el diseno de modulos):
+// - sin los pendientes de las obras (quien revisa: no tiene `editar_hoja`), un solo grupo «Aprobar» con todos los envios;
+// - con ellos, los de la API tal cual y, en su grupo «Aprobar» (primero si la API no lo trae), los envios de OTRAS
+//   carpetas: los de la abierta ya los dice la API («… espera dictamen»). Sin saber cual es la abierta no se suma ninguno
+//   (no se repite nada).
+export function gruposDeLaMesa(
+  pendientes: PendientesRespuesta | null,
+  envios: readonly EnvioPorAprobar[] | null,
+  casoActual: string | null,
+): GrupoDeLaMesa[] {
+  const todos = envios ?? [];
+  if (pendientes === null) return [{ ...GRUPO_APROBAR, items: todos.map((e) => pendienteDeEnvio(e, casoActual)) }];
+  const otras = casoActual === null ? [] : todos.filter((e) => e.caso !== casoActual).map((e) => pendienteDeEnvio(e, casoActual));
+  const grupos: GrupoDeLaMesa[] = pendientes.grupos.map((g) => (g.clave === GRUPO_APROBAR.clave ? { ...g, items: [...g.items, ...otras] } : g));
+  if (otras.length > 0 && !grupos.some((g) => g.clave === GRUPO_APROBAR.clave)) grupos.unshift({ ...GRUPO_APROBAR, items: otras });
+  return grupos;
 }
 
 // «30,0 % de 37,5 %»: lo avanzado contra lo planificado al corte. Sin alguno de los dos no hay avance que decir.
@@ -96,8 +181,32 @@ export function pantallaVisible(pagina: string, acciones: readonly string[], mod
   return def !== undefined && visible(def, acciones, modoEntrega);
 }
 
+// Lo que pinta la columna de pendientes con las dos lecturas que la alimentan: los pendientes de las obras (con
+// `editar_hoja`) y los envios por aprobar de todas las carpetas (con `aprobar_version`). La columna se oculta solo si las
+// dos son prohibidas (o los envios no existen en la API); quien solo revisa ve el grupo «Aprobar» con los envios. Con los
+// pendientes, un fallo de los envios no los tapa: se dice aparte (`falloEnvios`), y un 403 de los envios no se dice.
+export function columnaDeLaMesa(
+  pendientes: Carga<PendientesRespuesta>,
+  envios: Carga<EnvioPorAprobar[]>,
+  casoActual: string | null,
+): { carga: Carga<{ grupos: GrupoDeLaMesa[] }>; falloEnvios: unknown } {
+  const sinEnvios = envios.estado === "sin_permiso" || envios.estado === "no_disponible";
+  if (pendientes.estado === "sin_permiso") {
+    if (sinEnvios) return { carga: { estado: "sin_permiso", error: null }, falloEnvios: null };
+    if (envios.estado !== "listo") return { carga: envios, falloEnvios: null };
+    return { carga: { estado: "listo", datos: { grupos: gruposDeLaMesa(null, envios.datos, casoActual) } }, falloEnvios: null };
+  }
+  if (pendientes.estado !== "listo") return { carga: pendientes, falloEnvios: null };
+  if (envios.estado === "cargando") return { carga: { estado: "cargando" }, falloEnvios: null };
+  const lista = envios.estado === "listo" ? envios.datos : null;
+  return {
+    carga: { estado: "listo", datos: { grupos: gruposDeLaMesa(pendientes.datos, lista, casoActual) } },
+    falloEnvios: envios.estado === "error" ? envios.error : null,
+  };
+}
+
 // Los grupos con algo que decir, en el orden de la API.
-export function gruposConItems(grupos: GrupoRespuesta[]): GrupoRespuesta[] {
+export function gruposConItems<G extends GrupoRespuesta | GrupoDeLaMesa>(grupos: G[]): G[] {
   return grupos.filter((g) => g.items.length > 0);
 }
 

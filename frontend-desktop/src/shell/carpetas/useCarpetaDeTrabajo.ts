@@ -87,11 +87,14 @@ export function useCarpetaDeTrabajo({ puedeVerBorradores, obras, alExpirar, alFa
   );
 
   // `preparar` (crear la carpeta, `POST /v1/casos`) corre DESPUES de la pregunta y antes de abrir, y da el nombre final
-  // que se abre: si la persona elige «Quedarme» no se crea nada (ronda 2 del arbitro de MOD-3b).
+  // que se abre: si la persona elige «Quedarme» no se crea nada (ronda 2 del arbitro de MOD-3b). `abrirCon` abre por otra
+  // ruta que `POST /v1/casos/actual` y devuelve la carpeta que quedo abierta (la de un envio por aprobar, `POST
+  // /v1/aprobaciones/abrir`, Tarea 19, que no exige `cambiar_caso`); la pregunta y el aviso son los mismos.
   const abrir = useCallback(
-    (nombre: string, preparar?: () => Promise<string>) =>
+    (nombre: string, preparar?: () => Promise<string>, abrirCon?: (nombre: string) => Promise<CasoRespuesta>) =>
       cambiar(async () => {
         const destino = preparar ? await preparar() : nombre;
+        if (abrirCon) return abrirCon(destino);
         const r = await pedir<Partial<CasoRespuesta> | null>("/v1/casos/actual", { metodo: "POST", cuerpo: { nombre: destino } });
         return { nombre: typeof r?.nombre === "string" ? r.nombre : destino, ruta_relativa: r?.ruta_relativa ?? "" };
       }),

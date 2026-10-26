@@ -7,6 +7,7 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
+import { AprobacionDeVersion } from "./AprobacionDeVersion";
 import { DialogoDeGuardar } from "./DialogoDeGuardar";
 import { DialogoDeVersion } from "./DialogoDeVersion";
 import { OfertaDeRetomar as OfertaDeRetomarVista } from "./OfertaDeRetomar";
@@ -472,6 +473,19 @@ function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombre
               hideCloseButton
               title="Instantánea de la versión"
               subtitle={estado.borrador.instantanea.mensaje}
+            />
+          )}
+          {/* Tarea 19: la aprobación de la versión abierta, junto a ella (una versión guardada; el borrador en blanco no). */}
+          {estado.borrador.base.version !== null && (
+            <AprobacionDeVersion
+              key={`${proyecto}|${estado.borrador.base.version}`}
+              proyecto={proyecto}
+              version={estado.borrador.base.version}
+              cambios={estado.borrador.resumen.cambios}
+              alHacerVersionNueva={() => {
+                setFiltro(null);
+                setPestana(PESTANAS.indexOf("Presupuesto"));
+              }}
             />
           )}
           <EstadoDelBorrador borrador={estado.borrador} alDescartar={() => void descartarCambios()} alGuardar={guardado.abrir} />

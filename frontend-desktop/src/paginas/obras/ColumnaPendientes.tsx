@@ -4,18 +4,25 @@ import type { JSX, ReactNode } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import type { Carga } from "../inicio/useCarga";
 import { gruposConItems } from "./logica";
-import type { GrupoRespuesta, PendientesRespuesta } from "./logica";
+import type { GrupoDeLaMesa, PendienteDeLaMesa } from "./logica";
+
+type EnvioDeLaMesa = NonNullable<PendienteDeLaMesa["envio"]>;
 
 interface Props {
-  carga: Carga<PendientesRespuesta>;
+  carga: Carga<{ grupos: GrupoDeLaMesa[] }>;
   puedeIr: (pagina: string) => boolean;
   alIr: (codigo: string, pagina: string) => void;
+  // «Abrir» un envio del indice de aprobaciones (Tarea 19): cambia de carpeta si es de otra y abre la pantalla de aprobar.
+  alAbrirEnvio: (envio: EnvioDeLaMesa) => void;
+  // Lo que se dice bajo los grupos (un fallo de los envios de otras carpetas, o al abrir uno).
+  avisos?: ReactNode;
 }
 
 // «Pendientes»: lo que requiere atencion en las obras, en los grupos y el orden de la API (Aprobar, Compras, Precios,
-// Calidad; reglas deterministas de `aplicacion/mesa.py`). Un grupo sin nada no se muestra; cada pendiente dice su obra,
-// que pasa y lleva su accion (solo si la cuenta puede abrir esa pantalla).
-export function ColumnaPendientes({ carga, puedeIr, alIr }: Props): JSX.Element | null {
+// Calidad; reglas deterministas de `aplicacion/mesa.py`) mas, en «Aprobar», los envios por aprobar de otras carpetas (o de
+// todas, para quien solo revisa). Un grupo sin nada no se muestra; cada pendiente dice su obra, que pasa y lleva su
+// accion (solo si la cuenta puede abrir esa pantalla).
+export function ColumnaPendientes({ carga, puedeIr, alIr, alAbrirEnvio, avisos }: Props): JSX.Element | null {
   const idTitulo = useId();
   if (carga.estado === "sin_permiso") return null;
 
@@ -37,7 +44,7 @@ export function ColumnaPendientes({ carga, puedeIr, alIr }: Props): JSX.Element 
       ) : (
         <div className="silice-mesa__grupos">
           {grupos.map((g) => (
-            <Grupo key={g.clave} grupo={g} puedeIr={puedeIr} alIr={alIr} />
+            <Grupo key={g.clave} grupo={g} puedeIr={puedeIr} alIr={alIr} alAbrirEnvio={alAbrirEnvio} />
           ))}
         </div>
       );
@@ -49,11 +56,12 @@ export function ColumnaPendientes({ carga, puedeIr, alIr }: Props): JSX.Element 
         Pendientes
       </h2>
       {cuerpo}
+      {avisos}
     </section>
   );
 }
 
-function Grupo({ grupo, puedeIr, alIr }: { grupo: GrupoRespuesta } & Omit<Props, "carga">) {
+function Grupo({ grupo, puedeIr, alIr, alAbrirEnvio }: { grupo: GrupoDeLaMesa } & Omit<Props, "carga" | "avisos">) {
   const base = useId();
   const idTitulo = `${base}-titulo`;
   return (
@@ -65,6 +73,9 @@ function Grupo({ grupo, puedeIr, alIr }: { grupo: GrupoRespuesta } & Omit<Props,
         {grupo.items.map((item, i) => {
           const idObra = `${base}-${i}-obra`;
           const idTexto = `${base}-${i}`;
+          const detalles = item.detalles ?? [];
+          const idsDetalles = detalles.map((_, j) => `${base}-${i}-detalle-${j}`);
+          const envio = item.envio;
           return (
             <li key={`${item.obra}-${i}`} className="silice-mesa__pendiente">
               <span id={idObra} className="silice-mesa__pendiente-obra cds--type-label-01">
@@ -73,8 +84,18 @@ function Grupo({ grupo, puedeIr, alIr }: { grupo: GrupoRespuesta } & Omit<Props,
               <span id={idTexto} className="silice-mesa__pendiente-texto cds--type-body-compact-01">
                 {item.texto}
               </span>
+              {detalles.map((detalle, j) => (
+                <span key={idsDetalles[j]} id={idsDetalles[j]} className="silice-mesa__pendiente-detalle cds--type-helper-text-01">
+                  {detalle}
+                </span>
+              ))}
               {puedeIr(item.accion.pagina) && (
-                <Button kind="ghost" size="sm" aria-describedby={`${idObra} ${idTexto}`} onClick={() => alIr(item.obra, item.accion.pagina)}>
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  aria-describedby={[idObra, idTexto, ...idsDetalles].join(" ")}
+                  onClick={() => (envio ? alAbrirEnvio(envio) : alIr(item.obra, item.accion.pagina))}
+                >
                   {item.accion.texto}
                 </Button>
               )}

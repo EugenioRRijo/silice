@@ -21,8 +21,13 @@ export interface Aplicacion {
   abrirNuevaObra?: () => void;
   // Abre otra carpeta de trabajo con la confirmacion y el aviso del armazon: true si la abrio, false si la persona se
   // quedo o la sesion vencio; si la API la rechaza, lanza el error. Con `preparar` (crear la carpeta), primero pregunta,
-  // luego la crea y abre el nombre que `preparar` devuelve. La usa Administracion › Carpetas de trabajo.
-  abrirCarpeta?: (nombre: string, preparar?: () => Promise<string>) => Promise<boolean>;
+  // luego la crea y abre el nombre que `preparar` devuelve. La usa Administracion › Carpetas de trabajo. Con `abrirCon`,
+  // la abre esa peticion en vez de `POST /v1/casos/actual` (la mesa, al abrir un envio por aprobar de otra carpeta, T19).
+  abrirCarpeta?: (
+    nombre: string,
+    preparar?: () => Promise<string>,
+    abrirCon?: (nombre: string) => Promise<CasoRespuesta>,
+  ) => Promise<boolean>;
   // La moneda pendiente vive en el armazon (no en el formulario que crea): abrir la carpeta vuelve a montar la pagina
   // (Administracion › Carpetas de trabajo) y el aviso y su reintento no deben perderse con ella. Se olvida al cambiar de
   // carpeta. `declararMoneda` resuelve true si la declaro; si falla, la deja pendiente con su error.
