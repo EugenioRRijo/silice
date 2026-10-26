@@ -45,6 +45,6 @@ def test_los_modelos_de_aprobaciones_no_chocan_con_los_de_otros_routers():
         and issubclass(valor, BaseModel)
         and valor.__module__ == aprobaciones.__name__
     }
-    assert len(modelos) == 17
+    assert len(modelos) == 18  # 17 de T18 y la cadena de versiones del detalle
     assert sorted(modelos - componentes.keys()) == []
     assert [n for n in componentes if n.startswith("api__rutas__aprobaciones__")] == []

@@ -116,7 +116,7 @@ REGISTRAR_EL_AVANCE = Siguiente("Registrar el avance", "control")
 VER_LAS_ALERTAS = Siguiente("Ver las alertas", "control")
 ACTUALIZAR_PRECIOS = Siguiente("Actualizar precios", "actualizacion")
 VER_EL_CATALOGO = Siguiente("Ver el catálogo", "catalogo")
-VER_EL_ENVIO = Siguiente("Ver el envío", "aprobar")
+VER_EL_ENVIO = Siguiente(*aprobaciones.VER_EL_ENVIO)  # el mismo de la fuente «aprobar»
 DECLARAR_LA_LINEA_BASE = Siguiente("Declarar la línea base", "control")
 
 

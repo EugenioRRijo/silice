@@ -208,8 +208,9 @@ class AprobacionPartidaRespuesta(BaseModel):
     descripcion: str
     unidad: str
     cantidad: str
-    precio_unitario: str
-    total: str
+    precio_unitario: str | None = Field(description="`null` en un ítem pendiente")
+    total: str | None
+    pendiente: bool = Field(description="Ítem sin partida en el catálogo: sin precio")
 
 
 class AprobacionHallazgoRespuesta(BaseModel):
@@ -223,6 +224,11 @@ class AprobacionHallazgosRespuesta(BaseModel):
     advertencia: int
     info: int
     lista: list[AprobacionHallazgoRespuesta]
+
+
+class AprobacionCadenaRespuesta(BaseModel):
+    integra: bool
+    mensaje: str = Field(description="El mismo texto de la pestaña Trazabilidad")
 
 
 class AprobacionEnvioDeLaVersion(BaseModel):
@@ -242,6 +248,9 @@ class AprobacionDetalleRespuesta(BaseModel):
     partidas: list[AprobacionPartidaRespuesta]
     hallazgos: AprobacionHallazgosRespuesta
     rastro: AprobacionRastroRespuesta
+    cadena: AprobacionCadenaRespuesta = Field(
+        description="La cadena de versiones recalculada: si no está íntegra, no se dictamina"
+    )
     envio: AprobacionEnvioDeLaVersion
     armo: bool = Field(description="Quien mira es quien guardó la versión")
 
@@ -286,9 +295,11 @@ def _reflejar(instalacion: Session, caso: str | None, sesion: Session) -> None:
     try:
         indice_aprobaciones.reflejar(instalacion, caso, sesion)
         instalacion.commit()
-    except (SQLAlchemyError, AprobacionInvalida):
+    except Exception:  # noqa: BLE001 (la carpeta ya confirmó: ningún fallo aquí la desdice)
         instalacion.rollback()
-        _registro.warning("No se pudo reflejar el índice de aprobaciones de %s.", caso)
+        _registro.warning(
+            "No se pudo reflejar el índice de aprobaciones de %s.", caso, exc_info=True
+        )
     finally:
         sesion.rollback()  # suelta la carpeta: la lectura del reflejo no deja nada abierto
 
@@ -527,8 +538,9 @@ def detalle(
                 descripcion=p.descripcion,
                 unidad=p.unidad,
                 cantidad=_texto(p.cantidad),
-                precio_unitario=_texto(p.precio_unitario),
-                total=_texto(p.total),
+                precio_unitario=None if p.precio_unitario is None else _texto(p.precio_unitario),
+                total=None if p.total is None else _texto(p.total),
+                pendiente=p.pendiente,
             )
             for p in leido.partidas
         ],
@@ -545,6 +557,9 @@ def detalle(
         ),
         rastro=AprobacionRastroRespuesta(
             integro=leido.rastro.integro, mensaje=leido.rastro.mensaje
+        ),
+        cadena=AprobacionCadenaRespuesta(
+            integra=leido.cadena.integra, mensaje=leido.cadena.mensaje
         ),
         envio=AprobacionEnvioDeLaVersion(por=enviado.por, el=enviado.el, nota=enviado.nota),
         armo=leido.armo,

@@ -54,11 +54,17 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
+from aplicacion.entrega import anexos_de_cadena
 from aplicacion.proyectos import resolver_proyecto
 from aplicacion.revision import login_de
 from aplicacion.tablas_aprobacion import FilaEventoAprobacion
 from core import models
-from core.budget.cadena import GENESIS
+from core.budget.cadena import (
+    GENESIS,
+    ResultadoCadena,
+    mensaje_de_cadena,
+    verificar_cadena,
+)
 from core.budget.canonico import huella as sha256_hex
 from core.budget.canonico import json_canonico
 from core.contracts.verificacion import Severidad
@@ -72,6 +78,7 @@ __all__ = [
     "ESTADOS",
     "RESULTADOS",
     "AprobacionInvalida",
+    "CadenaDeVersiones",
     "DatosInvalidos",
     "DetalleDeEnvio",
     "Envio",
@@ -126,6 +133,10 @@ SIN_ENVIO = "No se encontró ese envío."
 DICTAMEN_DESCONOCIDO = "Elija el dictamen: aprobada, aprobada con observaciones o devuelta."
 NOTAS_LARGAS = f"Las notas no pueden pasar de {_LARGO_DE_NOTAS} caracteres."
 INTEGRO = "Rastro de aprobaciones íntegro."
+CADENA_ROTA = (
+    "No se puede dictaminar {version}: la cadena de versiones de esta obra está rota en la "
+    "versión {rota} ({motivo}). Revíselo con el administrador."
+)
 CHOQUE = (
     "Otra persona registró un movimiento de aprobación de esta obra al mismo tiempo: "
     "vuelva a intentarlo."
@@ -300,6 +311,7 @@ def dictaminar(
         if obra is None:  # la obra se borró después del envío: no hay a qué atar el dictamen
             raise NoSeEncontro(SIN_ENVIO)
         presupuesto = _version(sesion, obra, envio.version)
+        _exigir_cadena_integra(sesion, obra, envio.version)
         fila = _insertar(
             sesion,
             anterior=_cabeza(sesion, obra.id),
@@ -431,8 +443,9 @@ class PartidaDelEnvio:
     descripcion: str
     unidad: str
     cantidad: Decimal
-    precio_unitario: Decimal
-    total: Decimal
+    precio_unitario: Decimal | None  # None: ítem pendiente, sin partida en el catálogo
+    total: Decimal | None
+    pendiente: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -443,9 +456,21 @@ class HallazgoDelEnvio:
 
 
 @dataclass(frozen=True, slots=True)
+class CadenaDeVersiones:
+    """La cadena de versiones de la obra recalculada desde la base (la misma verificación y
+    el mismo texto que la pestaña Trazabilidad)."""
+
+    integra: bool
+    mensaje: str
+
+
+@dataclass(frozen=True, slots=True)
 class DetalleDeEnvio:
-    """Lo que se aprueba, leído de lo GUARDADO y sellado de la versión (sus renglones y los
-    hallazgos que se emitieron con ella), sin recalcular ni escribir nada."""
+    """Lo que se aprueba, leído de lo GUARDADO y sellado de la versión: sus renglones con
+    precio, sus ítems pendientes (que también entran en el documento sellado) y los hallazgos
+    que se emitieron con ella, sin escribir nada. `cadena` recalcula el contenido de las
+    versiones contra sus eslabones: si alguien cambió un renglón fuera del sistema, lo dice
+    (y `dictaminar` se niega)."""
 
     envio: EnvioRegistrado
     proyecto: str  # el código de la obra
@@ -455,6 +480,7 @@ class DetalleDeEnvio:
     partidas: tuple[PartidaDelEnvio, ...]
     hallazgos: tuple[HallazgoDelEnvio, ...]  # del más grave al más leve
     rastro: RastroVerificado
+    cadena: CadenaDeVersiones
     armo: bool  # quien mira es quien guardó la versión
 
 
@@ -501,6 +527,18 @@ def detalle_de_envio(sesion: Session, envio_id: int, usuario: str) -> DetalleDeE
         )
         for item, renglon in renglones
     )
+    citados = {item.id for item, _renglon in renglones}
+    pendientes = tuple(
+        PartidaDelEnvio(
+            item.codigo_partida, item.descripcion, item.unidad, item.cantidad, None, None, True
+        )
+        for item in sesion.scalars(
+            select(models.ItemComputo)
+            .where(models.ItemComputo.presupuesto_id == presupuesto.id)
+            .order_by(models.ItemComputo.id)
+        )
+        if item.id not in citados
+    )
     hallazgos = tuple(
         HallazgoDelEnvio(h.regla, Severidad(h.severidad).name.lower(), h.descripcion)
         for h in sesion.scalars(
@@ -509,15 +547,17 @@ def detalle_de_envio(sesion: Session, envio_id: int, usuario: str) -> DetalleDeE
             .order_by(models.Hallazgo.severidad.desc(), models.Hallazgo.id)
         )
     )
+    cadena = _cadena(sesion, obra)
     return DetalleDeEnvio(
         envio=registrado,
         proyecto=str(obra.id),
         obra=obra.nombre,
         moneda=presupuesto.moneda,
-        total=sum((p.total for p in partidas), Decimal(0)),
-        partidas=partidas,
+        total=sum((p.total for p in partidas if p.total is not None), Decimal(0)),
+        partidas=partidas + pendientes,
         hallazgos=hallazgos,
         rastro=verificar_rastro(sesion, str(obra.id)),
+        cadena=CadenaDeVersiones(cadena.integra, mensaje_de_cadena(cadena)),
         armo=misma_cuenta(usuario, _quien_guardo(sesion, presupuesto)),
     )
 
@@ -623,6 +663,23 @@ def _es_choque(error: OperationalError) -> bool:
     según el texto del error. Un error sin código no es un choque."""
     nombre = getattr(error.orig, "sqlite_errorname", "") or ""
     return nombre.startswith(_CODIGOS_DE_CHOQUE)
+
+
+def _cadena(sesion: Session, obra: models.Proyecto) -> ResultadoCadena:
+    """La cadena de versiones de la obra, recalculada como en Trazabilidad y en la entrega."""
+    return verificar_cadena(sesion, obra, anexos_de=anexos_de_cadena)
+
+
+def _exigir_cadena_integra(sesion: Session, obra: models.Proyecto, version: str) -> None:
+    resultado = _cadena(sesion, obra)
+    if not resultado.integra and resultado.fallo is not None:
+        raise AprobacionInvalida(
+            CADENA_ROTA.format(
+                version=version,
+                rota=resultado.fallo.codigo_version,
+                motivo=resultado.fallo.mensaje,
+            )
+        )
 
 
 def _exigir_hora_sin_zona(ahora: datetime) -> None:
