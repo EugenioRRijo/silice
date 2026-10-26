@@ -1038,9 +1038,10 @@ def test_la_primera_version_que_otra_persona_ya_creo_es_422_ya_tiene_versiones(_
 
 #: Montar un presupuesto, Tarea 9: la primera versión se valora con `lista_para_el_proyecto` (la
 #: lista para armar de la carpeta, o su conversión con la tasa del BCV); sus textos son los de MP-1.
-SIN_LISTA_PARA_ARMAR = (
-    "Esta carpeta de trabajo no tiene lista de precios para armar. Créela a partir de MaPreX o "
-    "convirtiendo la que tiene."
+#: Ronda 2: hay lista, pero rige desde el 05/10/2026 (`caso_of001.FECHA`), después del borrador.
+SIN_LISTA_A_LA_FECHA = (
+    "Esta carpeta de trabajo no tiene lista de precios para armar vigente al 01/01/2000: su "
+    "primera lista rige desde el 05/10/2026."
 )
 SIN_TASA = "No hay tasa del BCV de los últimos 7 días: cárguela en Índices y vuelva a intentar."
 
@@ -1056,7 +1057,7 @@ def test_la_primera_version_sin_lista_para_armar_a_la_fecha_lo_dice_y_no_inventa
     antes = _volcado(_entorno)
     respuesta = _guardar(navegador, ficha, id_, 2)
     assert respuesta.status_code == 409
-    assert respuesta.json() == {"detalle": SIN_LISTA_PARA_ARMAR}
+    assert respuesta.json() == {"detalle": SIN_LISTA_A_LA_FECHA}
     assert _volcado(_entorno) == antes
 
 

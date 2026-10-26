@@ -91,6 +91,14 @@ FORMA_PARTIDA = (
     "como texto; la nota, de hasta 500 caracteres."
 )
 FORMA_QUITAR = "La petición no tiene la forma esperada: envíe rev (entero) y la clave de la fila."
+SIN_LISTA_A_LA_FECHA = (
+    "Esta carpeta de trabajo no tiene lista de precios para armar vigente al 01/09/2026: su "
+    "primera lista rige desde el 01/10/2026."
+)
+FORMA_GUARDAR = (
+    "El guardado no tiene la forma esperada: envíe rev (entero) y la fuente como texto de hasta "
+    "300 caracteres."
+)
 CODIGO_SOLO_PRIMERA = (
     "El código se elige solo al guardar la primera versión; las siguientes siguen su numeración."
 )
@@ -546,6 +554,75 @@ def test_sin_tasa_al_guardar_es_409_y_no_queda_ni_la_version_ni_la_lista(_entorn
     assert respuesta.status_code == 409
     assert respuesta.json() == {"detalle": SIN_TASA}
     assert _volcado(_entorno) == antes
+
+
+def test_si_llega_una_tasa_mas_nueva_la_version_declara_la_tasa_de_los_precios_de_sus_apu(
+    _entorno: Path,
+) -> None:
+    """Ronda 2 (foco 1): tasa de 40,00 al 24/10 al agregar; antes de guardar llega la de 50,00
+    del 25/10. La versión se valora con la lista que declara su tasa (la del día de guardar) y sus
+    APU congelados usan esos mismos precios: 12,00 Bs / 50,00 = 0,24 USD."""
+    navegador, ficha = _ana()
+    id_ = _abierto(navegador, ficha, CASA_USD)
+    assert _agregar(navegador, ficha, id_, cantidad="210").status_code == 200
+    registrar_tasa(_entorno, HOY, "50.00", huella="e" * 64)
+
+    guardado = _guardar(navegador, ficha, id_, 1, codigo="CASA-001")
+
+    assert guardado.status_code == 200, guardado.text
+    ((presupuesto_id, lista_id, tasa, fecha_tasa),) = _consulta(
+        _entorno,
+        "SELECT pr.id, l.id, o.tasa, o.fecha_tasa FROM presupuesto pr "
+        "JOIN proyecto p ON p.id = pr.proyecto_id "
+        "JOIN lista_precios l ON l.id = pr.lista_precios_id "
+        "JOIN lista_precios_origen o ON o.lista_id = l.id "
+        "WHERE p.nombre = ? AND pr.codigo = 'CASA-001'",
+        CASA_USD,
+    )
+    assert (D(str(tasa)), fecha_tasa) == (D("50"), "2026-10-25")
+    en_la_lista = _consulta(
+        _entorno,
+        "SELECT pi.precio FROM precio_insumo pi JOIN insumo i ON i.id = pi.insumo_id "
+        "WHERE pi.lista_id = ? AND i.descripcion = 'Material de OBRA-04'",
+        lista_id,
+    )
+    en_el_apu = _consulta(
+        _entorno,
+        "SELECT l.precio FROM linea_composicion_version l "
+        "JOIN composicion_version c ON c.id = l.composicion_id "
+        "WHERE c.presupuesto_id = ? AND l.descripcion = 'Material de OBRA-04'",
+        presupuesto_id,
+    )
+    assert [D(str(p[0])) for p in en_la_lista] == [D("0.24")]
+    assert [D(str(p[0])) for p in en_el_apu] == [D("0.24")]
+
+
+def test_sin_lista_vigente_a_la_fecha_del_borrador_lo_dice_con_la_fecha(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ronda 2: la carpeta tiene lista, pero rige desde el 01/10/2026 y el borrador es del
+    01/09/2026: no es que falte la lista, es que todavía no rige."""
+    monkeypatch.setattr(rutas_hoja, "_hoy", lambda: date(2026, 9, 1))
+    navegador, ficha = _ana()
+    id_ = _abierto(navegador, ficha)
+
+    respuesta = _agregar(navegador, ficha, id_, cantidad="210")
+
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {"detalle": SIN_LISTA_A_LA_FECHA}
+    assert _resumen(navegador, id_)["rev"] == 0
+
+
+def test_el_codigo_de_la_primera_version_solo_admite_letras_digitos_y_guiones() -> None:
+    navegador, ficha = _ana()
+    id_ = _abierto(navegador, ficha)
+    assert _agregar(navegador, ficha, id_, cantidad="210").status_code == 200
+    for codigo in (f"VIV 001 {CENTINELA}", f"../{CENTINELA}", "VIV/001", "VIÑA-1", "x" * 41):
+        respuesta = _guardar(navegador, ficha, id_, 1, codigo=codigo)
+        assert respuesta.status_code == 422, codigo
+        assert respuesta.json() == {"detalle": FORMA_GUARDAR}
+        assert CENTINELA not in respuesta.text
+    assert _guardar(navegador, ficha, id_, 1, codigo="VIV_2026.v-01").status_code == 200
 
 
 # --- la fuente «cantidades sin cálculo» de la mesa ----------------------------------------------
