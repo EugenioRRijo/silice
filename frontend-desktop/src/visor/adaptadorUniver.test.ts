@@ -197,4 +197,15 @@ describe("adaptador de Univer: montar y desmontar (D-3)", () => {
     expect(() => visor.irAHoja("APU")).not.toThrow();
     expect(() => correrCuadros()).not.toThrow();
   });
+
+  test("despues de destruir, las lecturas no tocan Univer y dan un valor neutro", async () => {
+    doble.estado.lanzaConUnidadViva = false;
+    const visor = await crearHojaUniver(document.createElement("div"), libro, 1.25);
+    visor.destruir();
+    expect(visor.hojaActiva()).toBe("");
+    // El ultimo acercamiento pedido (1,25), sin preguntarle a Univer.
+    expect(visor.zoomActual()).toBe(1.25);
+    expect(visor.rectanguloDe({ hoja: "PRESUPUESTO", fila0: 0, columna0: 0 })).toBeNull();
+    expect(visor.area()).toBeNull();
+  });
 });
