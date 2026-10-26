@@ -30,6 +30,25 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   recorta el responsable a 200 sin avisar; T14 valida `lado` y `fuente_tipo` en el esquema para que esos `ValueError` no
   lleguen a un 422 visible.
 
+## T17, eventos de aprobación (aprobada en ronda 1)
+
+- «Aprobada con observaciones» cuenta como aprobada: no se reenvía y vale para `ultima_aprobada` (Entregar y Control).
+  **Por ratificar.**
+- Una versión retirada se puede volver a enviar y al hacerlo retira la pendiente (el diseño solo prohíbe reenviar la
+  devuelta). **Por ratificar.**
+- `fases` muestra cada envío con su desenlace, retiros incluidos («VIV-001 retirada → VIV-002 aprobada con observaciones»).
+- `ultima_aprobada` es la del último dictamen que aprobó en el tiempo, no la de número más alto. **Por ratificar.**
+- Choque entre dos sesiones: en SQLite WAL llega `OperationalError` («database is locked», `SQLITE_BUSY_SNAPSHOT`), no
+  `IntegrityError`; se trata como choque, se deshace, se relee y se valida una vez más. Si vuelve a chocar: «Otra persona
+  registró un movimiento de aprobación de esta obra al mismo tiempo: vuelva a intentarlo.»
+- Límite declarado: borrar el último evento, o reescribir la cola recalculando las huellas, no se detecta (no hay ancla
+  externa; igual que la cadena del núcleo).
+- `armo` se calcula en todo evento comparando el `<login>` de quien actúa con el del eslabón de la versión.
+- Menores para T18: usar `abrir_sesion_de_escritura` (BEGIN IMMEDIATE) en las rutas que envían y dictaminan, para que el
+  segundo dictamen reciba siempre el mensaje del plan; filtrar el choque por `sqlite_errorname` (`SQLITE_BUSY*`,
+  `SQLITE_LOCKED*`) en vez del texto; normalizar o rechazar un `ahora` con zona horaria antes de calcular la huella; reusar
+  `json_canonico`/`huella` de `core/budget/canonico.py` o dejar escrito por qué no.
+
 ## Migraciones del caso
 
 Tres tareas a la vez colgaron su migración de `caso_0010_mp_carpeta`. El orden fijado es
