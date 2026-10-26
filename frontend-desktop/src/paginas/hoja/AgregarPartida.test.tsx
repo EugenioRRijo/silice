@@ -627,6 +627,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
       "Cantidad",
       "Cómo se midió",
       "Precio unitario",
+      "Objetivo de mercado",
       "Total",
       "Estado",
       "Quitar",

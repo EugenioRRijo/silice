@@ -360,6 +360,7 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
       "Cantidad",
       "Cómo se midió",
       "Precio unitario",
+      "Objetivo de mercado",
       "Total",
       "Estado",
       "Quitar",
