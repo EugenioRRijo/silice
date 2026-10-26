@@ -43,6 +43,9 @@ const FUERA_DEL_CATALOGO = "La partida «OBRA-04» no está en el catálogo: com
 const SIN_TASA = "No hay tasa del BCV de los últimos 7 días: cárguela en Índices y vuelva a intentar.";
 const CONFIRMAR_QUITAR = "¿Quitar OBRA-04 del presupuesto? Lo puede descartar antes de guardar.";
 const REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo.";
+const FILA_AUSENTE = "Esa fila ya no está en el presupuesto.";
+const FALTA =
+  "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). Lo que no guardó se perdió: abra la versión otra vez.";
 const RECARGADO = "Ya se volvió a leer el borrador: puede agregarla otra vez.";
 const CIFRA_EN_LA_FILA_1 =
   "presupuesto, fila 1 (AF-LLAVE): Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56.";
@@ -473,6 +476,46 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     await waitFor(() => expect(screen.getAllByRole("textbox", { name: /^Cantidad, Presupuesto fila/ })).toHaveLength(3));
     expect(screen.getByRole("textbox", { name: "Cantidad, Presupuesto fila 1" })).toHaveValue("2.5");
     expect(screen.getByText(/presupuesto, fila 1 \(AF-LLAVE\): Use la coma/)).toBeInTheDocument();
+  });
+
+  // Quita la fila 2 con la respuesta retenida, escribe 4 en la fila 1 mientras va, deja pasar la pausa y suelta `respuesta`.
+  async function quitarYEscribirMientrasVa(respuesta: Response) {
+    conVersion([LLAVE_DEL_ESPACIO, PARED]);
+    const quitada = diferida();
+    alQuitar = () => quitada.promesa;
+    montar();
+    await screen.findByRole("table", { name: "Presupuesto" });
+    await userEvent.click(screen.getByRole("button", { name: "Quitar OBRA-04, Presupuesto fila 2" }));
+    const confirmacion = await screen.findByRole("alertdialog", { name: "Quitar partida" });
+    await userEvent.click(within(confirmacion).getByRole("button", { name: "Quitar" }));
+    await waitFor(() => expect(escrituras(RUTA_QUITAR)).toHaveLength(1));
+    await escribirCantidad(1, "4");
+    await new Promise((r) => setTimeout(r, 700)); // pasa la pausa con el quitar en vuelo
+    quitada.soltar(respuesta);
+  }
+
+  test("si el quitar falla (422), lo escrito sale igual y su éxito no borra el aviso del quitar", async () => {
+    await quitarYEscribirMientrasVa(json({ detalle: FILA_AUSENTE }, 422));
+    await waitFor(() =>
+      expect(escrituras(RUTA_CANTIDADES, "PUT")).toEqual([{ rev: 0, filas: [{ clave: LLAVE_DEL_ESPACIO.clave, cantidad: "4" }] }]),
+    );
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Cantidad, Presupuesto fila 1" })).toHaveValue("4"));
+    expect(screen.getByText(FILA_AUSENTE)).toBeInTheDocument();
+  });
+
+  test("si el quitar da 401, lo escrito no se reenvía y la sesión se cierra una sola vez", async () => {
+    await quitarYEscribirMientrasVa(json({ detalle: "La sesión venció: entre de nuevo." }, 401));
+    await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 300));
+    expect(alExpirar).toHaveBeenCalledTimes(1);
+    expect(escrituras(RUTA_CANTIDADES, "PUT")).toEqual([]);
+  });
+
+  test("si el borrador ya no está al quitar, lo escrito no se reenvía", async () => {
+    await quitarYEscribirMientrasVa(json({ detalle: FALTA }, 404));
+    await waitFor(() => expect(lecturasDelBorrador()).toBeGreaterThan(0));
+    await new Promise((r) => setTimeout(r, 300));
+    expect(escrituras(RUTA_CANTIDADES, "PUT")).toEqual([]);
   });
 
   test("lo escrito en otra fila mientras va «Quitar» sale después, una sola vez, y no repite el quitar", async () => {

@@ -77,6 +77,8 @@ describe("Hoja del proyecto: Descargar Excel (3e-1)", () => {
     );
     expect(screen.queryByRole("button", { name: "Descargar Excel" })).toBeNull();
     const boton = await screen.findByRole("button", { name: "Descargar Excel" });
+    // La vista de «Espacio y metrajes» sale en un efecto del mismo commit que el botón: se espera antes de contar.
+    await waitFor(() => expect(fetchFalso.mock.calls.some(([r]) => String(r).endsWith("/vistas/espacio"))).toBe(true));
     const antes = fetchFalso.mock.calls.length;
     await userEvent.click(boton);
     await waitFor(() => expect(fetchFalso.mock.calls.length).toBeGreaterThan(antes));
