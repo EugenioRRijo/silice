@@ -1129,6 +1129,32 @@ describe("Shell", () => {
       await waitFor(() => expect(silice()).toHaveFocus());
     });
 
+    test("abierto en capa con fijado sin ancho: al ensancharse pasa a franja y al estrecharse no vuelve la capa sola", async () => {
+      const u = userEvent.setup();
+      document.documentElement.style.setProperty(VARIABLE, "0");
+      montarCon(sesionDe("ana", "obras", true), "/hoja");
+      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await u.click(silice());
+      expect(enCapa()).toBeInTheDocument();
+      act(() => {
+        document.documentElement.style.setProperty(VARIABLE, "1");
+        window.dispatchEvent(new Event("resize"));
+      });
+      expect(enCapa()).toBeNull();
+      expect(fijado()).toBeInTheDocument();
+      const titulo = screen.getByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      titulo.tabIndex = -1;
+      titulo.focus();
+      act(() => {
+        document.documentElement.style.setProperty(VARIABLE, "0");
+        window.dispatchEvent(new Event("resize"));
+      });
+      expect(fijado()).toBeNull();
+      expect(enCapa()).toBeNull();
+      expect(titulo).toHaveFocus();
+      expect(silice()).toHaveAccessibleName("Sílice, abrir los módulos");
+    });
+
     test("fijado en la cuenta pero sin ancho para fijarlo: no se pinta hasta pulsar «Sílice», y sale en capa sin «Fijar»", async () => {
       const u = userEvent.setup();
       document.documentElement.style.setProperty(VARIABLE, "0");

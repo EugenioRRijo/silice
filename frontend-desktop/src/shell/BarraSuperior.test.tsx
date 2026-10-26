@@ -52,6 +52,21 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// Con `css: false` los estilos no se aplican en jsdom: se leen como texto.
+type ModuloFs = { readFileSync(ruta: string, codificacion: string): string };
+const nodo = (globalThis as unknown as { process: { cwd(): string; getBuiltinModule(nombre: string): ModuloFs } }).process;
+const estilosBarra = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/shell/BarraSuperior.scss`, "utf-8");
+
+describe("estilos de «Sílice»", () => {
+  test("usa el estilo de tipo body-compact-01 de Carbon, sin tamaño, interlineado ni espaciado a mano", () => {
+    const inicio = estilosBarra.indexOf(".silice-barra .silice-barra__silice {");
+    expect(inicio).toBeGreaterThan(-1);
+    const bloque = estilosBarra.slice(inicio, estilosBarra.indexOf("\n}\n", inicio));
+    expect(bloque).toMatch(/@include type\.type-style\("body-compact-01"\)/);
+    expect(bloque).not.toMatch(/font-size:|line-height:|letter-spacing:/);
+  });
+});
+
 describe("BarraSuperior", () => {
   // Plan de modulos, MOD-2: «Sílice» ya no es un enlace al inicio sino el boton que abre el sidebar de modulos.
   test("«Sílice» es el botón que abre los módulos (no un enlace) y lo de la derecha va en la barra", () => {

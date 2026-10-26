@@ -46,7 +46,6 @@ describe("esEscParaElSidebar", () => {
     ["un <input>", "<input id='d' />"],
     ["un <textarea>", "<textarea id='d'></textarea>"],
     ["un <select>", "<select id='d'><option>a</option></select>"],
-    ["un campo editable", "<div contenteditable='true' id='d'>x</div>"],
     ["una celda dentro de role=grid", "<div role='grid'><div role='row'><div role='gridcell' id='d' tabindex='0'>1</div></div></div>"],
     ["un role=combobox", "<div role='combobox' id='d' tabindex='0'></div>"],
     ["una lista desplegada (role=listbox)", "<ul role='listbox'><li role='option' id='d'>a</li></ul>"],
@@ -74,6 +73,32 @@ describe("esEscParaElSidebar", () => {
       `<header class='silice-barra'><button id='${ID_BOTON_SILICE}' aria-expanded='true'>Sílice</button><button aria-expanded='false'>Obras</button></header><main>x</main>`,
     );
     expect(esEscParaElSidebar(esc(caja.querySelector("main")!))).toBe(true);
+  });
+
+  // jsdom no calcula `isContentEditable`; el navegador si (con herencia y sin importar mayusculas): se simula aqui.
+  test.each([
+    ["el propio campo editable", "<div contenteditable='true' id='d'>x</div>"],
+    ["un hijo de un campo editable (lo hereda)", "<div contenteditable='true'><span id='d'>x</span></div>"],
+    ["un campo editable escrito en mayusculas", "<div contenteditable='TRUE'><span id='d'>x</span></div>"],
+  ])("Esc sobre %s no lo abre (isContentEditable)", (_nombre, html) => {
+    const caja = montar(html);
+    const destino = caja.querySelector("#d")!;
+    Object.defineProperty(destino, "isContentEditable", { value: true });
+    expect(esEscParaElSidebar(esc(destino))).toBe(false);
+  });
+
+  test("un elemento no editable dentro de una zona con contenteditable=false si lo abre", () => {
+    const caja = montar("<div contenteditable='false'><span id='d'>x</span></div>");
+    const destino = caja.querySelector("#d")!;
+    Object.defineProperty(destino, "isContentEditable", { value: false });
+    expect(esEscParaElSidebar(esc(destino))).toBe(true);
+  });
+
+  test("con un tooltip o popover de Carbon abierto (aunque el foco este fuera) no lo abre: Esc es para cerrarlo", () => {
+    const caja = montar(
+      "<main>x</main><span class='cds--popover-container cds--popover--open'><span class='cds--popover'>Valor exacto</span></span>",
+    );
+    expect(esEscParaElSidebar(esc(caja.querySelector("main")!))).toBe(false);
   });
 
   test("un aria-expanded=true fuera de la barra (p. ej. un acordeon de la pagina) no lo impide", () => {
