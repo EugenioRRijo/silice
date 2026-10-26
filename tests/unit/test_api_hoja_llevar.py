@@ -365,7 +365,7 @@ def test_si_falla_a_mitad_el_borrador_que_existia_recupera_tambien_su_tamano(
     vivo = hoja_borradores.crear(
         huella, caso, VIVIENDA, None, hoja.Borrador(fecha=HOY, moneda="Bs"), None
     )
-    antes = (vivo.borrador, vivo.rev, vivo.tamano, vivo.calculo)
+    antes = (vivo.borrador, vivo.rev, vivo.tamano)
     original, llamadas = hoja_edicion.agregar, []
 
     def agregar_que_falla(*args, **kwargs):
@@ -393,7 +393,9 @@ def test_si_falla_a_mitad_el_borrador_que_existia_recupera_tambien_su_tamano(
         motor.dispose()
 
     assert len(llamadas) == 21
-    assert (vivo.borrador, vivo.rev, vivo.tamano, vivo.calculo) == antes
+    assert (vivo.borrador, vivo.rev, vivo.tamano) == antes
+    # la caché de la vista, si la hay, es la del rev 0 (la llena al listar la búsqueda del borrador)
+    assert vivo.calculo is None or vivo.calculo[0] == 0
 
 
 def test_el_computo_da_sus_cifras_en_notacion_fija_y_llevar_las_acepta() -> None:
