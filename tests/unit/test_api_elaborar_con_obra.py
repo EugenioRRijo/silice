@@ -15,13 +15,15 @@ del precio unitario), con los parámetros de costo por omisión, a dos decimales
 
 from __future__ import annotations
 
+import io
 import shutil
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
+import openpyxl
 import pytest
 from fastapi.testclient import TestClient
 
@@ -50,6 +52,7 @@ from tests.fixtures.sesion_web import (
 
 APP = app_con(rutas_presupuestos.router)
 RUTA = "/presupuestos/calcular"
+EXCEL = "/presupuestos/calcular/excel"
 D = Decimal
 CENTINELA = "VALOR-CENTINELA"
 SIN_TASA = "No hay tasa del BCV de los últimos 7 días: cárguela en Índices y vuelva a intentar."
@@ -109,7 +112,7 @@ def _codigo_de(ruta: Path, nombre: str) -> str:
     return str(id_)
 
 
-def _calcular(navegador: TestClient, ficha: str, moneda: str, **extra):
+def _calcular(navegador: TestClient, ficha: str, moneda: str, ruta: str = RUTA, **extra):
     cuerpo = {
         "codigo": "P-001",
         "fecha": "2026-10-25",
@@ -127,7 +130,7 @@ def _calcular(navegador: TestClient, ficha: str, moneda: str, **extra):
         ],
         **extra,
     }
-    return navegador.post(RUTA, json=cuerpo, headers=protegida(ficha))
+    return navegador.post(ruta, json=cuerpo, headers=protegida(ficha))
 
 
 def _a_dos(valor: Decimal) -> str:
@@ -161,6 +164,24 @@ def test_con_una_obra_en_la_moneda_de_la_carpeta_valora_con_su_lista_y_su_moneda
     assert cuerpo["moneda"] == "Bs"
     esperado = calcular_apu(COMPOSICIONES["OBRA-04"], ParametrosCosto()).precio_unitario
     assert [p["precio_unitario"] for p in cuerpo["partidas"]] == [_a_dos(esperado)]
+
+
+def test_el_libro_de_excel_con_la_obra_lleva_sus_precios_y_no_guarda(_entorno: Path) -> None:
+    """Ronda 2: `/presupuestos/calcular/excel` con `proyecto` valora igual que `/calcular`: el
+    precio unitario de OBRA-04 en USD, a dos decimales (hoja «Presupuesto», fila 2, columna F)."""
+    navegador, ficha = con_cuenta(APP, "ana")
+    antes = _volcado(_entorno)
+
+    respuesta = _calcular(navegador, ficha, "Bs", ruta=EXCEL, proyecto=CASA_USD)
+
+    assert respuesta.status_code == 200, respuesta.text
+    hoja = openpyxl.load_workbook(io.BytesIO(respuesta.content)).active
+    esperado = calcular_apu(OBRA_04_EN_USD, ParametrosCosto()).precio_unitario
+    assert hoja.cell(row=2, column=2).value == "OBRA-04"
+    assert Decimal(str(hoja.cell(row=2, column=6).value)) == esperado.quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    assert _volcado(_entorno) == antes
 
 
 def test_sin_tasa_una_obra_en_usd_es_409_con_el_texto_de_la_tasa(_casos: dict[str, Path]) -> None:

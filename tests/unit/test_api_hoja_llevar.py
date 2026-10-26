@@ -22,15 +22,22 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
+from api.rutas import computos as rutas_computos
 from api.rutas import hoja as rutas_hoja
 from api.rutas import hoja_llevar as rutas_llevar
-from aplicacion import hoja_borradores
+from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion
+from aplicacion.proyectos import resolver_proyecto
+from core.catalog import abrir_sesion, crear_motor
+from core.contracts import Dominio, ItemComputo
+from core.contracts.item_computo import OrigenTipo
 from operacion import config
 from tests.fixtures.app_de_prueba import app_con
 from tests.fixtures.carpeta_bs_con_obras import CASA_USD, VIVIENDA, carpeta_en_bs
@@ -232,11 +239,18 @@ def test_con_versiones_abre_la_vigente_y_no_guarda_otra(_entorno: Path) -> None:
     assert nuevo != id_
     ((borrador,),) = [[b] for b in _borradores(navegador)]
     assert (borrador["id"], borrador["version"]) == (nuevo, "VIV-001")
-    # el alta de OBRA-06 (el plan de la versión también la recibe: eso es de la Hoja, no de llevar)
     cambios = navegador.get(f"/v1/hoja/borradores/{nuevo}/cambios").json()["cambios"]
-    assert [(c["clave"], c["campo"]) for c in cambios if c["objeto"] == "cantidad"] == [
-        ("OBRA-06|a-mano:2", "alta")
-    ]
+    assert (cambios[0]["objeto"], cambios[0]["clave"], cambios[0]["campo"]) == (
+        "cantidad",
+        "OBRA-06|a-mano:2",
+        "alta",
+    )
+    # la lista completa (el plan de la versión también recibe la partida) es la misma que deja
+    # agregar OBRA-06 a mano en la Hoja (Tarea 9) sobre VIV-001, en otra ficha de Ana
+    otro, ficha_otra = _ana()
+    a_mano = _abierto(otro, ficha_otra, "VIV-001")
+    assert _agregar(otro, ficha_otra, a_mano, 0, "OBRA-06", "280").status_code == 200
+    assert cambios == otro.get(f"/v1/hoja/borradores/{a_mano}/cambios").json()["cambios"]
     assert [clave for clave, _ in _filas(navegador, nuevo)] == [
         "OBRA-04|a-mano:1",
         "OBRA-06|a-mano:2",
@@ -300,6 +314,108 @@ def test_un_calculo_que_no_coincide_dice_la_partida_y_no_deja_borrador() -> None
     assert respuesta.status_code == 422
     assert respuesta.json() == {"detalle": f"OBRA-04: {NO_COINCIDE}"}
     assert _borradores(navegador) == []
+
+
+@pytest.mark.parametrize(
+    ("partidas", "estado"),
+    [
+        ([_partida("OBRA-04", "210"), _partida("OBRA-99", "1")], 404),
+        ([{"codigo": "OBRA-04", "cantidad": "15", "calculo": "6*3-2"}], 422),
+        ([_partida("OBRA-04", "210")], 409),  # CASA_USD sin tasa del BCV
+    ],
+    ids=["fuera_del_catalogo", "calculo", "sin_tasa"],
+)
+def test_un_llevar_que_falla_no_expulsa_ningun_otro_borrador(
+    _casos: dict[str, Path], partidas: list[dict], estado: int
+) -> None:
+    """Ronda 2 (C2): Ana ya tiene los 4 borradores que caben por ficha, el más viejo con un alta
+    sin guardar. Llevar a otra obra abriría un quinto (y expulsaría al más viejo): si falla, no
+    se abre ninguno y los cuatro siguen ahí."""
+    _poner(_casos["bs"])
+    navegador, ficha = _ana()
+    ids = [_abierto(navegador, ficha) for _ in range(hoja_borradores.POR_FICHA)]
+    assert _agregar(navegador, ficha, ids[0], 0, "OBRA-01", "80").status_code == 200
+    for id_ in ids[1:]:  # el del alta queda como el menos usado
+        assert navegador.get(f"/v1/hoja/borradores/{id_}").status_code == 200
+
+    respuesta = _llevar(navegador, ficha, CASA_USD, partidas)
+
+    assert respuesta.status_code == estado, respuesta.text
+    assert [navegador.get(f"/v1/hoja/borradores/{id_}").status_code for id_ in ids] == [200] * 4
+    assert _filas(navegador, ids[0]) == [("OBRA-01|a-mano:1", "80")]
+
+
+def test_llevar_acepta_2000_partidas() -> None:
+    navegador, ficha = _ana()
+
+    respuesta = _llevar(navegador, ficha, VIVIENDA, [_partida("OBRA-04", "1")] * 2000)
+
+    assert respuesta.status_code == 200, respuesta.text
+    vivo = hoja_borradores.REGISTRO._vivos[respuesta.json()["borrador_id"]]
+    assert vivo.rev == 2000
+    assert len(vivo.borrador.items_base) == 2000
+
+
+def test_si_falla_a_mitad_el_borrador_que_existia_recupera_tambien_su_tamano(
+    _entorno: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ronda 2: a los 20 cambios el registro vuelve a medir el borrador (`RE_ESTIMAR_CADA`); si
+    falla la partida 21 (aquí, la base), el borrador vuelve también a su tamaño."""
+    huella, caso = "h" * 64, "caso-de-prueba"
+    vivo = hoja_borradores.crear(
+        huella, caso, VIVIENDA, None, hoja.Borrador(fecha=HOY, moneda="Bs"), None
+    )
+    antes = (vivo.borrador, vivo.rev, vivo.tamano, vivo.calculo)
+    original, llamadas = hoja_edicion.agregar, []
+
+    def agregar_que_falla(*args, **kwargs):
+        llamadas.append(None)
+        if len(llamadas) > hoja_borradores.RE_ESTIMAR_CADA:
+            raise OperationalError("UPDATE", {}, Exception("disco lleno"))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(hoja_edicion, "agregar", agregar_que_falla)
+    motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            proyecto = resolver_proyecto(sesion, VIVIENDA)
+            with pytest.raises(OperationalError):
+                elaboracion.llevar_a_la_hoja(
+                    sesion,
+                    huella,
+                    caso,
+                    proyecto,
+                    [elaboracion.PartidaParaLlevar("OBRA-04", Decimal("1"))] * 21,
+                    responsable="Ana <ana>",
+                    hoy=HOY,
+                )
+    finally:
+        motor.dispose()
+
+    assert len(llamadas) == 21
+    assert (vivo.borrador, vivo.rev, vivo.tamano, vivo.calculo) == antes
+
+
+def test_el_computo_da_sus_cifras_en_notacion_fija_y_llevar_las_acepta() -> None:
+    """Ronda 2: `/computos` escribía `str(Decimal)` («1E-7»), que llevar rechaza; ahora da notación
+    fija, la misma que acepta `POST /v1/hoja/llevar`."""
+    item = ItemComputo(
+        codigo_partida="OBRA-04",
+        descripcion="Paredes de bloque de arcilla",
+        unidad="m2",
+        cantidad=Decimal("1E-7"),
+        origen_id="FILA-1",
+        origen_tipo=OrigenTipo.TABULAR,
+        dominio=Dominio.CIVIL,
+        parametros={"largo": Decimal("2E+1")},
+    )
+
+    respuesta = rutas_computos._a_respuesta(item)
+
+    assert (respuesta.cantidad, respuesta.parametros) == ("0.0000001", {"largo": "20"})
+    navegador, ficha = _ana()
+    llevada = _llevar(navegador, ficha, VIVIENDA, [_partida("OBRA-04", respuesta.cantidad)])
+    assert llevada.status_code == 200, llevada.text
 
 
 def test_sin_tasa_una_obra_en_usd_es_409_y_no_deja_nada(_casos: dict[str, Path]) -> None:
