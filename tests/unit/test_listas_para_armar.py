@@ -141,25 +141,42 @@ def test_la_tabla_de_la_carpeta_es_la_del_plan() -> None:
 
 
 def test_sin_declarar_y_sin_listas_la_carpeta_no_tiene_moneda(sesion: Session) -> None:
-    assert armar.moneda_de_la_carpeta(sesion) is None
+    assert armar.moneda_de_la_carpeta(sesion, HOY) is None
 
 
 def test_sin_declarar_la_moneda_es_la_de_la_lista_vigente(sesion: Session) -> None:
     _lista(sesion, MAPREX)
-    assert armar.moneda_de_la_carpeta(sesion) == "Bs"
+    assert armar.moneda_de_la_carpeta(sesion, HOY) == "Bs"
 
 
 def test_la_declarada_manda_sobre_la_de_la_lista(sesion: Session) -> None:
     _lista(sesion, MAPREX)
     sesion.add(CarpetaDeTrabajo(id=1, moneda="USD", declarada_por="ana", declarada_el=AHORA))
     sesion.flush()
-    assert armar.moneda_de_la_carpeta(sesion) == "USD"
+    assert armar.moneda_de_la_carpeta(sesion, HOY) == "USD"
 
 
 def test_las_listas_de_referencia_o_de_proyecto_no_dan_la_moneda(sesion: Session) -> None:
     _lista(sesion, MAPREX, alcance=models.ALCANCE_REFERENCIA)
     _lista(sesion, "Cotización en USD", moneda="USD", alcance=models.ALCANCE_PROYECTO)
-    assert armar.moneda_de_la_carpeta(sesion) is None
+    assert armar.moneda_de_la_carpeta(sesion, HOY) is None
+
+
+def test_la_moneda_sin_declarar_es_la_de_la_lista_vigente_a_la_fecha(sesion: Session) -> None:
+    _lista(sesion, MAPREX)
+    assert armar.moneda_de_la_carpeta(sesion, date(2026, 6, 30)) is None
+    assert armar.moneda_de_la_carpeta(sesion, JULIO) == "Bs"
+
+
+def test_declarar_mira_la_lista_vigente_a_la_fecha_de_ahora(sesion: Session) -> None:
+    """Determinismo: la lista en Bs del 01/12/2026 ya rige al declarar el 02/12/2026, sea cual
+    sea el reloj del equipo."""
+    _lista(sesion, "Base de diciembre", fecha=date(2026, 12, 1))
+    with pytest.raises(CarpetaConOtraMoneda):
+        armar.declarar_moneda_de_la_carpeta(
+            sesion, "USD", responsable="ana", ahora=datetime(2026, 12, 2, 8, 0)
+        )
+    assert sesion.scalars(select(CarpetaDeTrabajo)).all() == []
 
 
 def test_declarar_guarda_una_sola_fila_con_quien_y_cuando(sesion: Session) -> None:
@@ -168,7 +185,7 @@ def test_declarar_guarda_una_sola_fila_con_quien_y_cuando(sesion: Session) -> No
     assert [(f.id, f.moneda, f.declarada_por, f.declarada_el) for f in filas] == [
         (1, "Bs", "ana", AHORA)
     ]
-    assert armar.moneda_de_la_carpeta(sesion) == "Bs"
+    assert armar.moneda_de_la_carpeta(sesion, HOY) == "Bs"
 
 
 def test_declarar_otra_vez_la_misma_no_cambia_nada(sesion: Session) -> None:
@@ -187,7 +204,7 @@ def test_no_se_cambia_la_moneda_declarada(sesion: Session) -> None:
     assert str(error.value) == (
         "La carpeta de trabajo ya trabaja en Bs: para trabajar en USD, cree otra carpeta."
     )
-    assert armar.moneda_de_la_carpeta(sesion) == "Bs"
+    assert armar.moneda_de_la_carpeta(sesion, HOY) == "Bs"
 
 
 def test_no_se_declara_otra_moneda_que_la_de_la_lista_vigente(sesion: Session) -> None:
@@ -383,7 +400,7 @@ def test_crear_desde_maprex_en_una_carpeta_en_usd_convierte_con_la_tasa(sesion: 
         HOY,
     )
     assert nueva.origen == (
-        "copia de la referencia «MaPreX julio 2026 en Bs» en USD con 40.00 Bs/USD del "
+        "copia de la referencia «MaPreX julio 2026 en Bs» en USD con 40,00 Bs/USD del "
         "24/10/2026, por ana"
     )
     assert _precios(nueva) == {
@@ -439,7 +456,7 @@ def test_crear_desde_maprex_sin_moneda_declarada_ni_listas_queda_en_bs(sesion: S
     _lista(sesion, MAPREX, alcance=models.ALCANCE_REFERENCIA)
     nueva = armar.crear_lista_para_armar(sesion, desde="maprex", fecha=HOY, responsable="ana")
     assert nueva.moneda == "Bs"
-    assert armar.moneda_de_la_carpeta(sesion) == "Bs"
+    assert armar.moneda_de_la_carpeta(sesion, HOY) == "Bs"
 
 
 def test_convertir_la_vigente_a_la_moneda_de_la_carpeta(sesion: Session) -> None:
@@ -454,13 +471,30 @@ def test_convertir_la_vigente_a_la_moneda_de_la_carpeta(sesion: Session) -> None
         "USD",
         HOY,
     )
-    assert nueva.origen == "«Base» convertida a USD con 40.00 Bs/USD del 24/10/2026, por ana"
+    assert nueva.origen == "«Base» convertida a USD con 40,00 Bs/USD del 24/10/2026, por ana"
     assert _precios(nueva) == {
         "MAT-001": Decimal("10"),
         "MAT-002": Decimal("31.2625"),
         "MO-001": Decimal("80"),
     }
     assert armar.lista_para_armar(sesion, HOY).id == nueva.id
+
+
+def test_la_conversion_no_exacta_conserva_28_digitos(sesion: Session) -> None:
+    """100 Bs ÷ 36,53 Bs/USD = 2,737476047084588009854913770 USD (28 dígitos significativos,
+    HALF_EVEN, calculado a mano): no se redondea a centésimas."""
+    base = models.ListaPrecios(nombre="Base", moneda="Bs", fecha_vigencia=JULIO, origen="")
+    sesion.add(base)
+    sesion.flush()
+    cemento = sesion.scalars(select(models.Insumo).where(models.Insumo.codigo == "MAT-001")).one()
+    sesion.add(models.PrecioInsumo(lista_id=base.id, insumo_id=cemento.id, precio=Decimal("100")))
+    sesion.add(CarpetaDeTrabajo(id=1, moneda="USD", declarada_por="ana", declarada_el=AHORA))
+    _tasa(sesion, date(2026, 10, 24), "36.53")
+
+    nueva = armar.crear_lista_para_armar(sesion, desde="convertir", fecha=HOY, responsable="ana")
+
+    assert [str(p.precio) for p in nueva.precios] == ["2.737476047084588009854913770"]
+    assert nueva.origen == "«Base» convertida a USD con 36,53 Bs/USD del 24/10/2026, por ana"
 
 
 def test_convertir_sin_tasa_reciente_no_escribe_nada(sesion: Session) -> None:
@@ -531,6 +565,7 @@ def test_un_proyecto_en_usd_en_una_carpeta_en_bs_se_valora_convertido(sesion: Se
         "MAT-002": Decimal("31.2625"),
         "MO-001": Decimal("80"),
     }
+    # el origen de la lista de proyecto lo escribe `convertir_lista` del núcleo, con punto
     assert "40.00 Bs/USD del 24/10/2026" in lista.origen
     assert Catalogo(sesion).lista_vigente(HOY).id == vigente.id  # no cambia la de la carpeta
     otra_vez = armar.lista_para_el_proyecto(sesion, "OBRA-02", HOY, responsable="ana")
