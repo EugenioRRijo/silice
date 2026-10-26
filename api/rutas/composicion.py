@@ -15,7 +15,10 @@ solo se traducen las tablas de texto y se arma la respuesta. Montos y decimales 
 - `prever` (MP-1, Tarea 3; D-MP2) recibe el mismo cuerpo que `guardar` y dice, sin escribir nada,
   en qué lista quedarían los precios (`lista_nueva` si el guardado la crearía) y qué insumos
   quedarían como variante con su precio en la lista y el tecleado. Los mismos 409 y 422 que
-  `guardar`; su 422 de forma no repite lo enviado (`RutaSinEco`).
+  `guardar`.
+- Ningún 422 de forma repite lo enviado (`RutaSinEco` en todo el router; deuda de la Tarea 3 que
+  cierra la Tarea 4): `guardar` y `prever` dicen `MENSAJE_FORMA_PREVER` (reciben el mismo cuerpo);
+  las demás, el mensaje de omisión de `RutaSinEco`.
 """
 
 from __future__ import annotations
@@ -29,7 +32,7 @@ from pydantic import BaseModel
 
 from api.acceso import EDITAR
 from api.dependencias import SesionDep
-from api.sin_eco import RutaSinEco
+from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion.composicion import (
     ComposicionInvalida,
     Evaluacion,
@@ -48,17 +51,13 @@ from aplicacion.composicion import (
 from aplicacion.listas_para_armar import SinListaParaArmar
 from core.contracts import Dominio, ModalidadManoObra, ResultadoAPU
 
-router = APIRouter(prefix="/v1/composicion", tags=["composicion"])
-
-#: El 422 de forma de `prever`: fijo, sin repetir lo enviado.
+#: El 422 de forma de `guardar` y `prever`: fijo, sin repetir lo enviado.
 MENSAJE_FORMA_PREVER = (
     "La composición enviada no tiene la forma esperada: revise la cabecera, las tres tablas, la "
     "fecha y las condiciones."
 )
 
-
-class _RutaPrever(RutaSinEco):
-    mensaje_por_omision = MENSAJE_FORMA_PREVER
+router = APIRouter(prefix="/v1/composicion", tags=["composicion"], route_class=RutaSinEco)
 
 
 # --- Esquemas (junto a la ruta, plan de la sesión 2b §3) ---------------------------------------
@@ -353,6 +352,7 @@ def similares(
 
 
 @router.post("/guardar", response_model=GuardadoRespuesta, dependencies=EDITAR)
+@sin_eco(MENSAJE_FORMA_PREVER)
 def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
     """Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación
     (UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe."""
@@ -387,6 +387,7 @@ def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
     )
 
 
+@sin_eco(MENSAJE_FORMA_PREVER)
 def prever(sesion: SesionDep, peticion: PeticionGuardar) -> PrevisionRespuesta:
     """Lo que haría `guardar` con el mismo cuerpo (la lista de hoy y las variantes), sin escribir
     nada: `prever_guardado` lo deshace siempre y aquí no se confirma."""
@@ -412,8 +413,7 @@ def prever(sesion: SesionDep, peticion: PeticionGuardar) -> PrevisionRespuesta:
     return _prevision(prevision)
 
 
-# `add_api_route` para fijar la clase de la ruta (422 sin eco) solo en `prever`: las demás rutas de
-# Componer conservan la de siempre.
+# Con `add_api_route`, como en la Tarea 3: el orden de las rutas en `docs/api.json` no cambia.
 router.add_api_route(
     "/prever",
     prever,
@@ -424,5 +424,4 @@ router.add_api_route(
         409: {"description": "Sin lista para armar, o la vigente en otra moneda que la carpeta."},
         422: {"description": "Sin condiciones, composición inválida o cabecera distinta."},
     },
-    route_class_override=_RutaPrever,
 )
