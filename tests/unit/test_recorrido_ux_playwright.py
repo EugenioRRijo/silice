@@ -472,3 +472,38 @@ def test_fallos_del_visor_del_libro() -> None:
     assert any("lienzo" in f for f in fallos)
     assert any("desplazamiento" in f for f in fallos)
     assert any("vueltas" in f for f in fallos)
+
+
+def test_contar_por_fase_cuenta_todo_sin_tope() -> None:
+    from scripts.recorrido_ux_playwright import contar_por_fase
+
+    textos = ["[abrir] pageerror: x"] * 30 + ["[salir 1] pageerror: y", "[volver 2] z", "sin fase"]
+    assert contar_por_fase(textos) == {"abrir": 30, "salir 1": 1, "volver 2": 1, "sin fase": 1}
+    assert contar_por_fase([]) == {}
+
+
+def test_fallos_del_visor_dicen_cuantos_errores_hay_por_fase() -> None:
+    from scripts.recorrido_ux_playwright import fallos_visor
+
+    m = {
+        "axe_libro": [],
+        "axe_segunda_hoja": [],
+        "errores": ["[abrir] pageerror: x"] * 12,
+        "errores_por_fase": {"abrir": 40, "salir 1": 2},
+        "avisos": [],
+        "avisos_por_fase": {},
+        "lienzo": {"ancho": 700, "alto": 500},
+        "vueltas": 2,
+    }
+    fallos = fallos_visor(m)
+    assert "errores por fase: abrir 40, salir 1 2" in fallos
+
+
+def test_la_tolerancia_de_un_subpixel_vale_para_el_texto_y_para_su_tope() -> None:
+    # Chromium redondea a 1/64 px: las dos comparaciones del recorte usan la misma tolerancia.
+    from scripts.recorrido_ux_playwright import MOTIVOS_DE_CORTE_JS, TOLERANCIA_SUBPIXEL
+
+    assert TOLERANCIA_SUBPIXEL == 0.05
+    assert f"caja - relleno + {TOLERANCIA_SUBPIXEL}" in MOTIVOS_DE_CORTE_JS
+    assert f"tope - {TOLERANCIA_SUBPIXEL}" in MOTIVOS_DE_CORTE_JS
+    assert "0.01" not in MOTIVOS_DE_CORTE_JS
