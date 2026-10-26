@@ -377,6 +377,17 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 9. La primera versión sin plan guarda el plan desde los rendimientos en vez de una partida por día (`crear_primera_version`
    usa `con_plan_por_rendimientos`); ningún oráculo dependía de «una partida por día» (choque 10).
 
+### T21, ronda 2 (devuelta por un MAYOR de accesibilidad; corregida)
+
+- Un residuo negativo solo puede salir en partidas muy largas (el error de redondeo, igual en cada período entero, se
+  acumula). Solo en ese caso la partida se reparte con el acumulado cuantizado (fracción = acumulado cuantizado − el del
+  período anterior); así se conservan los oráculos del plan (0,042557 en el Día 51 de OBRA-05) y ninguna fracción queda
+  negativa. Las fracciones 0 no entran al reparto.
+- Las cuadrillas van en `CampoTexto`, sin región viva vacía en cada fila (guardia `regionesVivasVacias`).
+- «1 período» en singular.
+- Los avisos son una sola región viva (`InlineNotification role="status"`) con el nombre «Avisos del plan» por
+  `aria-labelledby` (Carbon reserva `aria-label` para el botón de cerrar).
+
 ## MOD-4a, mesa de control (aprobada en la ronda 2)
 
 1. **Corte sin valuaciones.** El corte de una obra con línea base es el «hasta» de su última valuación no anulada; sin
