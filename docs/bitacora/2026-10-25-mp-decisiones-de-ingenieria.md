@@ -47,6 +47,23 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 - Las bases creadas con `crear_esquema` que guardan composiciones necesitan `crear_esquema_carpeta`; las migradas no.
 - `aplicacion/elaboracion.py:4-5` todavía nombra `ui/elaboracion.py`, que ya no existe.
 
+### T14, ronda 2 (devuelta por un MAYOR; corregida)
+
+- «Usar este precio» de compra ya no reescribe en el lugar una lista de hoy que otra cosa copió: `_usada`
+  (`aplicacion/listas_para_armar.py`), consultada solo con `nueva_si_usada=True`, la da por usada si la usa una versión, si
+  otra lista la tomó de base (`ListaPreciosOrigen.lista_base_id`, `ListaEmpresa.lista_base_id` o `lista_referencia_id`) o si
+  una obra en la otra moneda la convirtió. La conversión se reconoce por la misma clave de nombre con que
+  `lista_para_el_proyecto` la reutiliza (`_nombre_convertida`, una sola regla), porque `convertir_lista` deja
+  `lista_base_id` vacío a propósito. Entonces se deriva «… (2)» (D-MP2) y la conversión siguiente sale con el precio nuevo;
+  la anterior no cambia. Se descartó invalidar el reuso de la conversión: habría dejado dos listas con el mismo nombre.
+  Componer (`nueva_si_usada=False`) no cambia.
+- Las reglas que ve la persona son `ReglaDeMercado`; la API muestra su mensaje (y el de `CifraInvalida`), y cualquier otro
+  `ValueError` sale como 422 con un texto fijo.
+- No se cita una observación de otra moneda (ni anulada). Sí una de fuera de la ventana de 90 días: la persona puede ampliar
+  la ventana, y una observación no anulada sigue siendo cierta.
+- El precio objetivo (cobro) admite hasta 2 decimales (céntimos); compra y observaciones no tienen ese límite.
+  **Por ratificar.**
+
 ## T17, eventos de aprobación (aprobada en ronda 1)
 
 - «Aprobada con observaciones» cuenta como aprobada: no se reenvía y vale para `ultima_aprobada` (Entregar y Control).
