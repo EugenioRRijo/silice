@@ -52,6 +52,7 @@ CENTINELA = "VALOR-CENTINELA"
 
 FUERA_DEL_CATALOGO = "La partida «OBRA-99» no está en el catálogo: compóngala primero en Componer."
 SIN_TASA = "No hay tasa del BCV de los últimos 7 días: cárguela en Índices y vuelva a intentar."
+NO_COINCIDE = "El cálculo da 16 y la cantidad es 15: corrija uno de los dos."
 SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
 SIN_OBRA = "Esa obra no está en esta carpeta de trabajo: elíjala de nuevo en el selector de obra."
 FORMA_LLEVAR = (
@@ -230,7 +231,12 @@ def test_con_versiones_abre_la_vigente_y_no_guarda_otra(_entorno: Path) -> None:
     nuevo = respuesta.json()["borrador_id"]
     assert nuevo != id_
     ((borrador,),) = [[b] for b in _borradores(navegador)]
-    assert (borrador["id"], borrador["version"], borrador["cambios"]) == (nuevo, "VIV-001", 1)
+    assert (borrador["id"], borrador["version"]) == (nuevo, "VIV-001")
+    # el alta de OBRA-06 (el plan de la versión también la recibe: eso es de la Hoja, no de llevar)
+    cambios = navegador.get(f"/v1/hoja/borradores/{nuevo}/cambios").json()["cambios"]
+    assert [(c["clave"], c["campo"]) for c in cambios if c["objeto"] == "cantidad"] == [
+        ("OBRA-06|a-mano:2", "alta")
+    ]
     assert [clave for clave, _ in _filas(navegador, nuevo)] == [
         "OBRA-04|a-mano:1",
         "OBRA-06|a-mano:2",
@@ -279,6 +285,21 @@ def test_un_codigo_que_no_esta_deja_el_borrador_vivo_como_estaba_y_con_su_rev() 
     siguiente = _agregar(navegador, ficha, id_, 1, "OBRA-06", "280")
     assert siguiente.status_code == 200, siguiente.text
     assert siguiente.json()["clave"] == "OBRA-06|a-mano:2"
+
+
+def test_un_calculo_que_no_coincide_dice_la_partida_y_no_deja_borrador() -> None:
+    navegador, ficha = _ana()
+
+    respuesta = _llevar(
+        navegador,
+        ficha,
+        VIVIENDA,
+        [_partida("OBRA-01", "80"), {"codigo": "OBRA-04", "cantidad": "15", "calculo": "6*3-2"}],
+    )
+
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {"detalle": f"OBRA-04: {NO_COINCIDE}"}
+    assert _borradores(navegador) == []
 
 
 def test_sin_tasa_una_obra_en_usd_es_409_y_no_deja_nada(_casos: dict[str, Path]) -> None:
