@@ -34,7 +34,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from api import caso_web, dependencias
 from api.main import app
@@ -575,3 +575,16 @@ def test_un_paquete_de_otra_version_no_cuenta_como_entrega_de_la_aprobada(_entor
     assert _pedir(navegador, ficha, version="001").status_code == 200  # se entregó la 001
     _dictaminar(_entorno, "002", "aprobada", 1)
     assert [p.texto for p in _sin_entregar(_entorno)] == ["002 aprobada y sin entregar"]
+
+
+def test_una_aprobada_sin_su_eslabon_no_tumba_la_lista_de_pendientes(_entorno: Path) -> None:
+    """Base alterada: si la aprobada perdió su eslabón, esa obra se omite de «aprobada y sin
+    entregar» y la lista no se rompe."""
+    _dictaminar(_entorno, "001", "aprobada", 1)
+
+    def borrar(sesion) -> None:
+        sesion.execute(delete(EslabonVersion))
+        sesion.commit()
+
+    _en_el_caso(_entorno, borrar)
+    assert _sin_entregar(_entorno) == []
