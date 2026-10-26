@@ -32,8 +32,10 @@ recuerda entre sesiones y reinicios vive en `mp_eleccion` de la instalación (`a
   que usan `_cuerpo`) gana `eleccion: {caso, proyecto, aviso}` y `preferencias: {modulo,
   sidebar_fijado}`. Si la ficha no eligió carpeta y la recordada sigue en la carpeta de casos, se
   fija para la ficha (`caso_web.fijar`): así vuelve tras salir y entrar, y tras reiniciar la API.
-  Solo si la cuenta tiene `CAMBIAR_CASO` (§12.2): sin él, `caso: null`, la obra se mira en la
-  carpeta de la ficha y la fila no se toca (vuelve si recupera el permiso). La memoria de la ficha
+  Solo si la cuenta tiene `CAMBIAR_CASO` (§12.2): sin él, `caso: null` y la fila no se toca
+  (vuelve si recupera el permiso); la obra solo se devuelve si se recordó para la carpeta por
+  omisión (`caso` nulo en la fila), porque un código de obra es de su carpeta, y `PUT /proyecto`
+  sin el permiso la recuerda así. La memoria de la ficha
   cambia solo después de confirmar la instalación.
   Una carpeta recordada que ya no existe da `caso: null` y el aviso `MENSAJE_CARPETA_PERDIDA`
   **una vez**: se olvida en la tabla (y en la ficha, para que nadie la recree vacía). Una obra que
@@ -229,7 +231,10 @@ def _restaurar(activa: SesionActiva) -> tuple[EleccionRespuesta | None, Preferen
             caso, proyecto, aviso = recordada.caso, recordada.proyecto, None
             if not puede_elegir:
                 # §12.2: sin `cambiar_caso` no se vuelve a una carpeta que ya no podría elegir. La
-                # fila no se toca (vuelve si recupera el permiso); la obra se mira en la de la ficha
+                # fila no se toca (vuelve si recupera el permiso). Un código de obra es de su
+                # carpeta: la de otra no se mira en la de la ficha (el «7» de s1 no es el de aquí)
+                if caso is not None:
+                    proyecto = None
                 caso = None
             elif caso is not None:
                 ruta = _carpeta_en_la_lista(caso)
@@ -472,7 +477,11 @@ def recordar_obra(
     activa: Annotated[SesionActiva, Depends(_sesion_completa)],
     sesion: SesionInstalacionDep,
 ) -> Response:
-    """Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta."""
+    """Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta. Sin
+    `CAMBIAR_CASO` la ficha trabaja en la carpeta por omisión: la obra se recuerda con ella
+    (`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso."""
+    if not permitido(activa.roles, Accion.CAMBIAR_CASO):
+        recordar_caso(sesion, activa.usuario_id, None, ahora())
     recordar_proyecto(sesion, activa.usuario_id, datos.proyecto, ahora())
     return Response(status_code=204)
 
