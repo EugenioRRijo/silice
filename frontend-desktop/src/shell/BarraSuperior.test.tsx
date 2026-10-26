@@ -244,7 +244,7 @@ describe("BarraSuperior", () => {
     expect(nav()).toContainElement(document.activeElement as HTMLElement);
     // Y las flechas siguen sirviendo desde ahí.
     await u.keyboard("{ArrowDown}");
-    expect(screen.getByRole("link", { name: "Precios de la empresa" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Estudio de mercado" })).toHaveFocus();
   });
 
   test("el segundo clic sobre el área abierta la cierra una sola vez aunque el botón no tome el foco (Safari)", async () => {
