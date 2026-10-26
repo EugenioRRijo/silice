@@ -848,7 +848,7 @@
           "presupuestos"
         ],
         "summary": "Calcular Presupuesto",
-        "description": "UC-01 en modo «solo calcular» (la página Elaborar de Streamlit): elabora y audita el\npresupuesto con las composiciones del catálogo a la fecha, sin guardar nada.\n\nEl informe de auditoría viaja como JSON (siempre, UC-05). Los ítems sin partida quedan\npendientes con sus partidas similares (flujo 3a); aceptar una propuesta es volver a enviar el\nítem con ese código. `plan` son las filas de la tabla del plan de trabajo (paso 6); sin ellas,\n`plan_secuencial`. Una partida sin rendimiento estimado vigente responde 409 con el que\npropone el histórico (flujo 3b), que se declara con `POST /presupuestos/calcular/declarar-\nrendimiento`.",
+        "description": "UC-01 en modo «solo calcular» (la página Elaborar de Streamlit): elabora y audita el\npresupuesto con las composiciones del catálogo a la fecha, sin guardar nada.\n\nEl informe de auditoría viaja como JSON (siempre, UC-05). Los ítems sin partida quedan\npendientes con sus partidas similares (flujo 3a); aceptar una propuesta es volver a enviar el\nítem con ese código. `plan` son las filas de la tabla del plan de trabajo (paso 6); sin ellas,\n`plan_secuencial`. Una partida sin rendimiento estimado vigente responde 409 con el que\npropone el histórico (flujo 3b), que se declara con `POST /presupuestos/calcular/declarar-\nrendimiento`. Con `proyecto` valora con la lista de esa obra (`lista_para_el_proyecto`) y en su\nmoneda: así Elaborar muestra lo que la Hoja valorará al llevarle los ítems (Tarea 12). Sigue\nsin guardar nada: la lista convertida de una obra en la otra moneda se deshace al terminar.\nUna obra que no existe, 404; sin lista para armar o sin tasa del BCV, 409 con su texto.",
         "operationId": "calcular_presupuesto_presupuestos_calcular_post",
         "requestBody": {
           "content": {
@@ -7587,6 +7587,48 @@
         }
       }
     },
+    "/v1/hoja/llevar": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Llevar A La Hoja",
+        "description": "Lleva las partidas al borrador de la Hoja de la obra, todo o nada, sin guardar versión.\n\n`activa` va antes que `sesion`: el acceso (401, 403) responde antes de abrir la base del caso.\nAbrir la versión vigente escribe su instantánea si faltaba (UC-15e), como abrir la Hoja.",
+        "operationId": "llevar_a_la_hoja_v1_hoja_llevar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlevarALaHoja"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlevadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores/{id}/excel": {
       "get": {
         "tags": [
@@ -11696,6 +11738,19 @@
             "title": "Moneda",
             "default": "USD"
           },
+          "proyecto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proyecto"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/ItemComputoPeticion"
@@ -11727,7 +11782,7 @@
           "items"
         ],
         "title": "CalculoPeticion",
-        "description": "UC-01 en modo «solo calcular»: nada se guarda. `plan` son las filas de la tabla del\nproyectista; sin ellas, el plan por defecto (`plan_secuencial`)."
+        "description": "UC-01 en modo «solo calcular»: nada se guarda. `plan` son las filas de la tabla del\nproyectista; sin ellas, el plan por defecto (`plan_secuencial`). Con `proyecto` (el código o\nel nombre de la obra, Tarea 12 de montar un presupuesto) se valora con la lista de la obra y en\nsu moneda, y `moneda` no se usa."
       },
       "CambiadosRespuesta": {
         "properties": {
@@ -17124,6 +17179,46 @@
         "type": "object",
         "title": "ListoRespuesta"
       },
+      "LlevadoRespuesta": {
+        "properties": {
+          "borrador_id": {
+            "type": "string",
+            "title": "Borrador Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "borrador_id"
+        ],
+        "title": "LlevadoRespuesta",
+        "description": "El borrador de la obra con las partidas ya agregadas (sin guardar)."
+      },
+      "LlevarALaHoja": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaLlevada"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "minItems": 1,
+            "title": "Partidas"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proyecto",
+          "partidas"
+        ],
+        "title": "LlevarALaHoja"
+      },
       "LoteDeHallazgos": {
         "properties": {
           "titulo": {
@@ -18059,6 +18154,35 @@
           "descripcion"
         ],
         "title": "PartidaListaRespuesta"
+      },
+      "PartidaLlevada": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Codigo"
+          },
+          "cantidad": {
+            "type": "string",
+            "maxLength": 500,
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "title": "Cantidad"
+          },
+          "calculo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Calculo",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "codigo",
+          "cantidad"
+        ],
+        "title": "PartidaLlevada"
       },
       "PartidaPresupuestadaRespuesta": {
         "properties": {
