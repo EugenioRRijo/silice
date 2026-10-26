@@ -34,12 +34,13 @@ function nombreDe(ruta) {
   return i === -1 ? ruta : ruta.slice(i + "node_modules/".length);
 }
 
-// "(MIT OR Apache-2.0)" es valida si TODAS sus alternativas estan permitidas (criterio estricto).
+// "(MIT OR Apache-2.0)" es valida si TODAS sus alternativas estan permitidas (criterio estricto); en
+// "(Apache-2.0 AND BSD-3-Clause)" rigen todas a la vez, asi que se exige lo mismo.
 export function licenciaPermitida(expresion, esDesarrollo = false) {
   const permitidas = (p) => LICENCIAS_PERMITIDAS.has(p) || (esDesarrollo && LICENCIAS_SOLO_DESARROLLO.has(p));
   const partes = expresion
     .replace(/[()]/g, " ")
-    .split(/\s+OR\s+/i)
+    .split(/\s+(?:OR|AND)\s+/i)
     .map((p) => p.trim())
     .filter(Boolean);
   return partes.length > 0 && partes.every(permitidas);

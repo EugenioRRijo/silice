@@ -27,6 +27,20 @@ describe("verificarLock", () => {
     expect(problemas).toEqual([]);
   });
 
+  test("(Apache-2.0 AND BSD-3-Clause) pasa: rigen las dos y las dos estan permitidas (@bufbuild/protobuf)", () => {
+    const { problemas } = verificarLock(
+      lock({ "node_modules/algo": { version: "1.0.0", license: "(Apache-2.0 AND BSD-3-Clause)" } }),
+    );
+    expect(problemas).toEqual([]);
+  });
+
+  test("una combinacion AND con una licencia no permitida falla", () => {
+    const { problemas } = verificarLock(
+      lock({ "node_modules/algo": { version: "1.0.0", license: "(MIT AND GPL-3.0)" } }),
+    );
+    expect(problemas).toHaveLength(1);
+  });
+
   test("una combinacion OR con una licencia no permitida falla", () => {
     const { problemas } = verificarLock(
       lock({ "node_modules/algo": { version: "1.0.0", license: "(MIT OR GPL-3.0)" } }),

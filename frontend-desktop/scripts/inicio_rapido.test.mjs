@@ -10,10 +10,13 @@ import {
   elegirPuerto,
   leerCodigoInstalacion,
   lineasDelCodigo,
+  esFuenteDeLaInterfaz,
   esInterfazVirtual,
   esIpPrivada,
+  huellaDeFuentes,
   mensajeInicio,
   necesitaCompilar,
+  ordenCompilar,
   ordenServidor,
   parsearArgumentos,
   rutaCodigoInstalacion,
@@ -158,18 +161,70 @@ describe("rutaPython", () => {
 });
 
 describe("necesitaCompilar", () => {
+  const anotada = { huella: "abc", distMtime: 100 };
   test("sin dist, compila", () => {
-    expect(necesitaCompilar({ fuentes: 100, dist: null })).toBe(true);
+    expect(necesitaCompilar({ huella: "abc", distMtime: null, anotada })).toBe(true);
   });
-  test("fuentes mas nuevas que dist, compila", () => {
-    expect(necesitaCompilar({ fuentes: 200, dist: 100 })).toBe(true);
+  test("sin anotacion de la compilacion anterior, compila", () => {
+    expect(necesitaCompilar({ huella: "abc", distMtime: 100, anotada: null })).toBe(true);
   });
-  test("dist al dia no compila (igual o posterior)", () => {
-    expect(necesitaCompilar({ fuentes: 100, dist: 100 })).toBe(false);
-    expect(necesitaCompilar({ fuentes: 100, dist: 300 })).toBe(false);
+  test("fuentes con otra huella, compila", () => {
+    expect(necesitaCompilar({ huella: "xyz", distMtime: 100, anotada })).toBe(true);
+  });
+  test("dist reemplazada por otra compilacion (npm run build), compila", () => {
+    expect(necesitaCompilar({ huella: "abc", distMtime: 250, anotada })).toBe(true);
+  });
+  test("misma huella y la misma dist no compila", () => {
+    expect(necesitaCompilar({ huella: "abc", distMtime: 100, anotada })).toBe(false);
   });
   test("forzar compila siempre", () => {
-    expect(necesitaCompilar({ fuentes: 1, dist: 300, forzar: true })).toBe(true);
+    expect(necesitaCompilar({ huella: "abc", distMtime: 100, anotada, forzar: true })).toBe(true);
+  });
+});
+
+describe("esFuenteDeLaInterfaz", () => {
+  test.each(["src/main.tsx", "src/paginas/hoja/Hoja.tsx", "src/estilos/tokens.scss", "index.html", "vite.config.ts", "package-lock.json"])(
+    "%s entra en la huella",
+    (ruta) => {
+      expect(esFuenteDeLaInterfaz(ruta)).toBe(true);
+    },
+  );
+  test.each(["src/paginas/hoja/Hoja.test.tsx", "src/shell/rutas.test.ts", "src/test/setup.ts", "scripts/inicio_rapido.mjs", "README.md"])(
+    "%s no entra (no cambia lo que sale en dist)",
+    (ruta) => {
+      expect(esFuenteDeLaInterfaz(ruta)).toBe(false);
+    },
+  );
+  test("acepta separadores de Windows", () => {
+    expect(esFuenteDeLaInterfaz("src\\paginas\\hoja\\Hoja.test.tsx")).toBe(false);
+    expect(esFuenteDeLaInterfaz("src\\paginas\\hoja\\Hoja.tsx")).toBe(true);
+  });
+});
+
+describe("huellaDeFuentes", () => {
+  const a = { ruta: "src/a.ts", contenido: Buffer.from("uno") };
+  const b = { ruta: "src/b.ts", contenido: Buffer.from("dos") };
+  test("no depende del orden en que se leen los archivos", () => {
+    expect(huellaDeFuentes([a, b])).toBe(huellaDeFuentes([b, a]));
+  });
+  test("cambia si cambia un contenido", () => {
+    expect(huellaDeFuentes([a, b])).not.toBe(huellaDeFuentes([a, { ...b, contenido: Buffer.from("tres") }]));
+  });
+  test("cambia si un archivo se renombra con el mismo contenido", () => {
+    expect(huellaDeFuentes([a, b])).not.toBe(huellaDeFuentes([a, { ...b, ruta: "src/c.ts" }]));
+  });
+  test("no confunde la frontera entre ruta y contenido", () => {
+    const x = [{ ruta: "src/ab", contenido: Buffer.from("c") }];
+    const y = [{ ruta: "src/a", contenido: Buffer.from("bc") }];
+    expect(huellaDeFuentes(x)).not.toBe(huellaDeFuentes(y));
+  });
+});
+
+describe("ordenCompilar", () => {
+  test("solo empaqueta con Vite: la comprobacion de tipos es de npm run build, lint y la CI", () => {
+    const [script, ...args] = ordenCompilar("/repo/frontend-desktop");
+    expect(script.replaceAll("\\", "/")).toBe("/repo/frontend-desktop/node_modules/vite/bin/vite.js");
+    expect(args).toEqual(["build"]);
   });
 });
 

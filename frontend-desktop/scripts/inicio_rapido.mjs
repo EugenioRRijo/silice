@@ -8,11 +8,12 @@
 // La logica pura (IP, puerto, entorno, mensaje, recompilacion) esta exportada y probada en inicio_rapido.test.mjs;
 // la parte con efectos vive al final y solo corre cuando se ejecuta el archivo.
 import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import dgram from "node:dgram";
-import { closeSync, existsSync, openSync, readdirSync, readSync, statSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, readSync, statSync, writeFileSync } from "node:fs";
 import net from "node:net";
 import { networkInterfaces } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -117,8 +118,40 @@ export function rutaPython(virtualEnv, plataforma) {
   return plataforma === "win32" ? join(virtualEnv, "Scripts", "python.exe") : join(virtualEnv, "bin", "python");
 }
 
-export function necesitaCompilar({ fuentes, dist, forzar = false }) {
-  return forzar || dist === null || dist === undefined || fuentes > dist;
+// Lo que cambia lo que sale en dist: src sin pruebas y los archivos de configuracion de la compilacion.
+const SUELTOS = ["index.html", "vite.config.ts", "package.json", "package-lock.json", "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json"];
+
+/** Ruta relativa a frontend-desktop; las pruebas y su preparacion no entran en el paquete de Vite. */
+export function esFuenteDeLaInterfaz(ruta) {
+  const r = String(ruta).replaceAll("\\", "/");
+  if (SUELTOS.includes(r)) return true;
+  if (!r.startsWith("src/") || r.startsWith("src/test/")) return false;
+  return !/\.test\.[^/]+$/.test(r);
+}
+
+/** SHA-256 de rutas y contenidos (con su largo, para que la frontera entre ambos no se confunda), en orden fijo. */
+export function huellaDeFuentes(archivos) {
+  const h = createHash("sha256");
+  for (const { ruta, contenido } of [...archivos].sort((x, y) => (x.ruta < y.ruta ? -1 : x.ruta > y.ruta ? 1 : 0))) {
+    h.update(`${ruta}\0${contenido.length}\0`);
+    h.update(contenido);
+  }
+  return h.digest("hex");
+}
+
+/**
+ * Por contenido y no por fecha: OneDrive, git y los cambios en pruebas mueven fechas sin cambiar el paquete.
+ * `anotada` es lo que dejo la compilacion anterior de este script ({huella, distMtime}); si otra compilacion
+ * (npm run build) reemplazo dist despues, su fecha ya no coincide y se recompila.
+ */
+export function necesitaCompilar({ huella, distMtime, anotada, forzar = false }) {
+  if (forzar || distMtime === null || distMtime === undefined || !anotada) return true;
+  return anotada.huella !== huella || anotada.distMtime !== distMtime;
+}
+
+/** Solo el empaquetado de Vite (que ya transpila el TypeScript); `tsc -b` queda en npm run build, lint y la CI. */
+export function ordenCompilar(front) {
+  return [join(front, "node_modules", "vite", "bin", "vite.js"), "build"];
 }
 
 export function cuentasDePrueba(logins) {
@@ -184,7 +217,7 @@ export const AYUDA = `Uso: npm run dev [-- opciones]
   Compila la interfaz si hace falta y levanta Silice (API + /app) en un solo puerto, visible en la red local.
   --ip <direccion>   IP privada de este equipo (por omision, la de la ruta por omision)
   --puerto <n>       puerto inicial (8000; si esta ocupado prueba los 9 siguientes)
-  --compilar         fuerza \`npm run build\`
+  --compilar         fuerza la compilacion de la interfaz (vite build)
   --abrir            abre el navegador en esta maquina
   -h, --ayuda        esta ayuda
 Desarrollo con recarga en caliente (solo este equipo): npm run dev:vite`;
@@ -227,18 +260,38 @@ export function mensajeInicio({ ip, puerto, cuentas, plataforma, ocupados = [] }
 
 // ---------------------------------------------------------------- efectos (solo al ejecutar el archivo)
 
-function mtimeMaximo(ruta) {
-  if (!existsSync(ruta)) return 0;
-  const st = statSync(ruta);
-  if (!st.isDirectory()) return st.mtimeMs;
-  let max = st.mtimeMs;
-  for (const e of readdirSync(ruta)) max = Math.max(max, mtimeMaximo(join(ruta, e)));
-  return max;
+function huellaDelFront(front) {
+  const archivos = [];
+  const recorrer = (carpeta) => {
+    if (!existsSync(carpeta)) return;
+    for (const e of readdirSync(carpeta, { withFileTypes: true })) {
+      const ruta = join(carpeta, e.name);
+      if (e.isDirectory()) recorrer(ruta);
+      else {
+        const rel = relative(front, ruta).replaceAll("\\", "/");
+        if (esFuenteDeLaInterfaz(rel)) archivos.push({ ruta: rel, contenido: readFileSync(ruta) });
+      }
+    }
+  };
+  recorrer(join(front, "src"));
+  for (const f of SUELTOS) if (existsSync(join(front, f))) archivos.push({ ruta: f, contenido: readFileSync(join(front, f)) });
+  return huellaDeFuentes(archivos);
 }
 
-function mtimeDeFuentes(front) {
-  const sueltos = ["index.html", "vite.config.ts", "package.json", "package-lock.json", "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json"];
-  return Math.max(mtimeMaximo(join(front, "src")), ...sueltos.map((f) => mtimeMaximo(join(front, f))));
+// Junto al tsbuildinfo y fuera de dist, que /app sirve en publico.
+const rutaAnotacion = (front) => join(front, "node_modules", ".tmp", "inicio_rapido_dist.json");
+
+function leerAnotacion(front) {
+  try {
+    return JSON.parse(readFileSync(rutaAnotacion(front), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function anotar(front, huella, distMtime) {
+  mkdirSync(dirname(rutaAnotacion(front)), { recursive: true });
+  writeFileSync(rutaAnotacion(front), JSON.stringify({ huella, distMtime }));
 }
 
 function ipDeLaRutaPorOmision() {
@@ -301,12 +354,11 @@ async function esperarSalud(url, hijo, plazoMs = 90000) {
 }
 
 function compilar(front) {
-  const npmJs = process.env.npm_execpath;
-  const usaNode = npmJs && npmJs.endsWith(".js");
-  const r = usaNode
-    ? spawnSync(process.execPath, [npmJs, "run", "build"], { cwd: front, stdio: "inherit" })
-    : spawnSync("npm run build", { cwd: front, stdio: "inherit", shell: true });
-  return r.status === 0;
+  return new Promise((ok) => {
+    const hijo = spawn(process.execPath, ordenCompilar(front), { cwd: front, stdio: "inherit" });
+    hijo.on("error", () => ok(false));
+    hijo.on("exit", (codigo) => ok(codigo === 0));
+  });
 }
 
 function abrirNavegador(url) {
@@ -325,10 +377,7 @@ async function principal() {
     return 0;
   }
   const python = rutaPython(process.env.VIRTUAL_ENV, process.platform);
-  const prueba = spawnSync(python, ["-c", "import fastapi, uvicorn"], { cwd: raiz, encoding: "utf8" });
-  if (prueba.error || prueba.status !== 0) {
-    throw new Error(`El entorno virtual ${process.env.VIRTUAL_ENV} no tiene fastapi y uvicorn (uv sync --all-extras en el entorno de siempre).`);
-  }
+  if (!existsSync(python)) throw new Error(`No existe ${python}: active el entorno virtual de siempre.`);
 
   const todas = Object.values(networkInterfaces()).flatMap((ds) => (ds ?? []).filter((d) => d.family === "IPv4").map((d) => d.address));
   const { ip, aviso } = elegirIp({
@@ -341,17 +390,9 @@ async function principal() {
 
   const { puerto, ocupados } = await elegirPuerto(args.puerto, async (p) => (await escucha(ip, p)) && (await escucha(LOOPBACK, p)));
 
-  const dist = join(front, "dist", "index.html");
-  const distMtime = existsSync(dist) ? statSync(dist).mtimeMs : null;
-  if (necesitaCompilar({ fuentes: mtimeDeFuentes(front), dist: distMtime, forzar: args.compilar })) {
-    console.log("Compilando la interfaz (npm run build)...");
-    if (!compilar(front)) throw new Error("La compilacion de la interfaz fallo; corrija y vuelva a intentar.");
-  } else {
-    console.log("La interfaz compilada (dist) esta al dia.");
-  }
-
+  // El servidor arranca ya: importar la API tarda varios segundos y /app lee dist en cada peticion
+  // (api/interfaz.py), asi que puede compilarse mientras tanto. «Listo» sale cuando estan las dos cosas.
   const entorno = armarEntorno(process.env, ip);
-  const cuentas = cuentasDePrueba(leerLogins(python, raiz, entorno));
   console.log(`Arrancando el servidor en ${ip}:${puerto} y ${LOOPBACK}:${puerto}...`);
   const hijo = spawn(python, ordenServidor(ip, puerto), { cwd: raiz, env: entorno, stdio: "inherit" });
   const detener = () => {
@@ -360,11 +401,29 @@ async function principal() {
   process.on("SIGINT", detener);
   process.on("SIGTERM", detener);
   process.on("exit", detener);
-
   const salida = new Promise((ok) => hijo.on("exit", (codigo) => ok(codigo ?? 0)));
+
+  const dist = join(front, "dist", "index.html");
+  const mtimeDist = () => (existsSync(dist) ? statSync(dist).mtimeMs : null);
+  const huella = huellaDelFront(front);
+  if (necesitaCompilar({ huella, distMtime: mtimeDist(), anotada: leerAnotacion(front), forzar: args.compilar })) {
+    console.log("Compilando la interfaz (vite build; los tipos los revisan npm run build, lint y la CI)...");
+    if (!(await compilar(front))) {
+      detener();
+      throw new Error("La compilacion de la interfaz fallo; corrija y vuelva a intentar.");
+    }
+    anotar(front, huella, mtimeDist());
+  } else {
+    console.log("La interfaz compilada (dist) esta al dia.");
+  }
+
+  const cuentas = cuentasDePrueba(leerLogins(python, raiz, entorno));
   if (!(await esperarSalud(`http://${LOOPBACK}:${puerto}/salud`, hijo))) {
     detener();
-    throw new Error("El servidor no respondio en /salud; revise el mensaje de arriba.");
+    throw new Error(
+      "El servidor no respondio en /salud; revise el mensaje de arriba " +
+        `(si falta fastapi o uvicorn: uv sync --all-extras en ${process.env.VIRTUAL_ENV}).`,
+    );
   }
   console.log(mensajeInicio({ ip, puerto, cuentas, plataforma: process.platform, ocupados }));
   // Como el lanzador del producto: el codigo va a la consola (nunca a un registro) y no se abre el Bloc de notas.
