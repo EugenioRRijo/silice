@@ -439,3 +439,36 @@ def test_barrido_baja_hasta_el_primer_ancho_que_no_cabe_y_afina_de_uno_en_uno() 
     # cae entre dos pasos no se pierde.
     caben = barrido(lambda a: a != 1366, desde=1000, hasta=2600, paso=8)
     assert umbral_medido(caben) == pytest.approx(1366.98)
+
+
+def test_fallos_del_visor_del_libro() -> None:
+    from scripts.recorrido_ux_playwright import fallos_visor
+
+    sano = {
+        "axe_libro": ["region"],
+        "axe_segunda_hoja": [],
+        "errores": [],
+        "avisos": ["otro aviso cualquiera"],
+        "lienzo": {"ancho": 700, "alto": 500},
+        "scroll_x": False,
+        "scroll_y": False,
+        "vueltas": 2,
+    }
+    assert fallos_visor(sano) == []
+    malo = dict(
+        sano,
+        axe_segunda_hoja=["aria-valid-attr-value"],
+        errores=['pageerror: [redi]: Cannot find "u4" registered by any injector.'],
+        avisos=["Univer lanzo al desecharse: Error x"],
+        lienzo={"ancho": 0, "alto": 0},
+        scroll_x=True,
+        vueltas=1,
+    )
+    fallos = fallos_visor(malo)
+    assert any("aria-valid-attr-value" in f for f in fallos)
+    assert any("Cannot find" in f for f in fallos)
+    # Un aviso de Univer al desecharse significa que D-3 solo quedo escondido.
+    assert any("Univer lanzo" in f for f in fallos)
+    assert any("lienzo" in f for f in fallos)
+    assert any("desplazamiento" in f for f in fallos)
+    assert any("vueltas" in f for f in fallos)
