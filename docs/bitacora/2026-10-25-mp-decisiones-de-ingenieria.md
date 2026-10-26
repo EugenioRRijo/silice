@@ -163,6 +163,24 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   confundía la lista de hoy con su «(2)». Lo usan el reuso de `lista_para_el_proyecto` y `_usada`; `core/` no cambia; las
   conversiones anteriores, sin marca, se rehacen una vez.
 
+## T4, Componer dice la moneda
+
+- Componer y el panel leen `GET /v1/carpeta`. «Precios en {moneda}» y los montos del desglose dicen la moneda («2.074,44
+  Bs», una sola conversión, el exacto en el `title`); sin moneda conocida no se inventa.
+- Choque con T2: el plan ofrece «Convertir la lista que tiene» solo si `lista` está en otra moneda que la carpeta, pero T2
+  devolvía `lista: null` en ese caso; con la API real el botón nunca aparecía. Se corrige en `api/rutas/carpeta.py`
+  (`_estado` devuelve la vigente de otra moneda en `lista`); ver la línea de cierre de T4 abajo.
+- Cuándo hay cambios sin guardar en Componer: que la persona haya escrito algo, que haya datos y que no esté guardado; la
+  URL y la precarga no cuentan.
+- Guardar pasa primero por `POST /v1/composicion/prever`; con variantes, el diálogo `DialogoVariantes` (reusa
+  `MarcoDeDialogo`) dice qué precio tecleado quedará como variante; «Volver» tiene el foco inicial.
+- «Guardar composición» queda deshabilitado mientras la carpeta tenga aviso (antes respondía 409). **Por ratificar.**
+- El montaje de `ListaDeLaCarpeta` en el `pie` de `SelectorObra` lo hizo T4 (commit `e4ac99b4`). El panel dice «Moneda de
+  trabajo: Bs · Lista para armar: {nombre}, al {dd/mm/aaaa}»; con nombres derivados la fecha sale dos veces (**por
+  decidir** si se quita el «, al …»).
+- Deuda de T3 cerrada: `RutaSinEco` en todo el router de Componer (`docs/api.json` no cambia).
+- `?codigo=X&volver=hoja`: trae el código y, guardada la partida, ofrece el botón «Volver a la Hoja» (`useNavegarSeguro`).
+
 ## T8, partidas a mano
 
 - **Tolerancia doble.** El plan pedía «|v − c| > 0,001, la tolerancia de R1», pero R1 (`core/verification/reglas.py:119-122,161`)
