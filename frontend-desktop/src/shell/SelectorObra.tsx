@@ -124,8 +124,12 @@ export function SelectorObra({
                 onChange={(e) => setBusqueda(e.target.value)}
                 // El Search de Carbon se queda con Esc (borra y detiene la propagacion): aqui Esc cierra el panel de una
                 // vez, como en el resto de la barra, y el foco vuelve al boton.
+                // `preventDefault` deja fuera al manejador de Carbon (que devolveria el foco a su campo, que se va con el panel;
+                // D-2 de MOD-5a) y `stopPropagation`, al de `useDespliegue`.
                 onKeyDown={(e) => {
                   if (e.key !== "Escape") return;
+                  e.preventDefault();
+                  e.stopPropagation();
                   alternar();
                   boton.current?.focus();
                 }}

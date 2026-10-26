@@ -122,3 +122,21 @@ esa lectura cuentan como cero borradores (no se puede saber); un 401 cierra la s
   abre la otra carpeta por `abrirCarpeta` desde la página, porque la lista ya no lo permite.
 - **Prueba de que la moneda pendiente se borra al cambiar de carpeta:** ya pasaba (`alCambiarCarpeta` la olvida desde la
   ronda 3); queda cubierta.
+
+## 8. Defectos medidos por MOD-5a en el navegador
+
+- **D-1 (MAYOR), botones de 3 rem.** El selector de obra, la marca «Demostración» y la cuenta (este último de la barra
+  superior, 43d644ae) declaraban `inline-size: auto` con un solo nombre de clase, pero también llevan
+  `cds--header__action`, cuya regla de Carbon (`inline-size: 3rem; padding: 0; display: inline-flex`) tiene la misma
+  especificidad y va después en el CSS compilado: ganaba Carbon («O…», «A.», la marca encima del selector). **Arreglo:** el
+  selector del botón lleva su envoltorio delante (`.silice-obra .silice-obra__boton`, igual en `silice-demo` y
+  `silice-cuenta`), sin `!important`. **Prueba** (`src/shell/anchoBotonesBarra.test.ts`): jsdom no aplica la cascada, así
+  que compila con `sass` el SCSS real de los tres, pone detrás la regla de Carbon (copiada de `_header.scss`, como sale en
+  el bundle) y resuelve la cascada por especificidad y orden; comprueba que ganan `inline-size: auto`, `display: flex` y el
+  relleno de 0,75 rem, y que el propio resolutor ve ganar a Carbon con una sola clase. El ancho en píxeles lo vuelve a
+  medir MOD-5 con Playwright; **los umbrales de la barra hay que medirlos de nuevo** (ahora los tres botones son más
+  anchos con letra Normal desde 1366 px).
+- **D-2 (MAYOR), foco tras Esc en «Buscar obra».** El manejador propio cerraba el panel y llevaba el foco al botón, pero
+  después corría el del `Search` de Carbon, que con texto escrito borra y devuelve el foco a su campo, que se iba con el
+  panel: el foco quedaba en `<body>`. **Arreglo:** `preventDefault` (Carbon compone los manejadores y se salta el suyo si
+  el evento ya está prevenido) y `stopPropagation`. Prueba en `SelectorObra.test.tsx` con texto escrito.

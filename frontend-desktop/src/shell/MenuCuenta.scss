@@ -8,7 +8,8 @@
   min-inline-size: 0;
 }
 
-.silice-cuenta__boton {
+// Con el envoltorio delante, para ganarle a `.cds--header__action` de Carbon (3 rem), que va despues (D-1 de MOD-5a).
+.silice-cuenta .silice-cuenta__boton {
   display: flex;
   align-items: center;
   gap: 0.5rem;

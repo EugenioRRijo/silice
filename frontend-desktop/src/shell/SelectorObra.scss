@@ -9,7 +9,9 @@
   min-inline-size: 0;
 }
 
-.silice-obra__boton {
+// Con el envoltorio delante: el boton lleva tambien `cds--header__action`, cuya regla de Carbon (`inline-size: 3rem;
+// padding: 0`) va despues en el CSS compilado y, con un solo nombre de clase, ganaba (D-1 de MOD-5a).
+.silice-obra .silice-obra__boton {
   display: flex;
   align-items: center;
   gap: 0.5rem;
