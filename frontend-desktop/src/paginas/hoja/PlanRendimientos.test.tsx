@@ -183,6 +183,24 @@ describe("Hoja: plan desde los rendimientos (Tarea 21)", () => {
       "OBRA-02 tiene cantidad 0.",
       "OBRA-99 no tiene rendimiento: se le asignó 1 día.",
     ]);
+    // Una sola región viva: dentro de la de los avisos no hay otra (ni log, ni status, ni alert).
+    expect(avisos.querySelectorAll('[role="log"], [role="status"], [role="alert"], [aria-live]')).toHaveLength(0);
+  });
+
+  test("un plan de un solo período lo dice en singular", async () => {
+    responder = (cuerpo) => {
+      vista = {
+        ...planPorSemana(),
+        etiquetas: ["Semana 1"],
+        filas: ["OBRA-01", "OBRA-02", "OBRA-03"].map((partida) => ({ partida, valores: { "Semana 1": "1" } })),
+        curva: [{ periodo: "Semana 1", monto: m("1000.00"), acumulado: m("1000.00"), porcentaje: m("100.00") }],
+      };
+      return json({ rev: (cuerpo.rev as number) + 1, resumen: resumen((cuerpo.rev as number) + 1), plan: vista, avisos: [] });
+    };
+    montar();
+    await screen.findByRole("region", { name: "Plan desde los rendimientos" });
+    await userEvent.click(boton());
+    expect(await screen.findByText("Plan hecho desde los rendimientos: 1 período.")).toBeInTheDocument();
   });
 
   test("sin plan, el botón está junto al secuencial y envía una cuadrilla por partida en días", async () => {

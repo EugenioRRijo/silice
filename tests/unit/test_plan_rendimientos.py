@@ -253,6 +253,29 @@ def test_un_plan_de_mas_de_500_periodos_se_rechaza_y_en_semanas_cabe():
     assert len(plan_por_rendimientos(lista, unidad="semana")) == 101
 
 
+def test_una_partida_muy_larga_en_semanas_no_deja_un_residuo_negativo():
+    # OBRA-01: 15,75 ÷ 4,5 = 3,5 días (de 0 a 3,5); OBRA-06: 148.920 ÷ 60 = 2.482 días (de 3,5 a
+    # 2.485,5) → 2.485,5 ÷ 5 = 497,1 → 498 semanas. Redondeando cada semana entera, 5 ÷ 2.482 =
+    # 0,0020145… → 0,002015 sube 0,0000005 por semana: en 495 semanas el residuo de la última
+    # (0,5 ÷ 2.482 = 0,000201) quedaría en −0,000044. Con el acumulado cuantizado:
+    # Semana 1 = 1,5 ÷ 2.482 = 0,000604351… → 0,000604;
+    # Semana 2 = 6,5 ÷ 2.482 = 0,0026188… → 0,002619 − 0,000604 = 0,002015;
+    # Semana 498 = 1 − (2.481,5 ÷ 2.482 = 0,9997985… → 0,999799) = 0,000201.
+    renglones = [item("OBRA-01", "15.75"), item("OBRA-06", "148920")]
+    plan = plan_por_rendimientos(duraciones(renglones, COMPOSICIONES, {}), unidad="semana")
+    obra_06 = _fracciones(plan, "OBRA-06")
+    assert len(plan) == 498
+    assert min(obra_06.values()) >= 0
+    assert sum(obra_06.values()) == D(1)
+    assert obra_06["Semana 1"] == D("0.000604")
+    assert obra_06["Semana 2"] == D("0.002015")
+    assert obra_06["Semana 498"] == D("0.000201")
+    # la matriz del editor lo acepta: ninguna fracción negativa
+    etiquetas = [e for e, _ in plan]
+    filas = [{"partida": "OBRA-06", **{e: hoja.texto_editable(f) for e, f in obra_06.items()}}]
+    assert len(hoja.plan_desde_filas(filas, etiquetas)) == 498
+
+
 def test_las_cuadrillas_tecleadas_son_enteros_de_1_a_99():
     assert cuadrillas_escritas({"OBRA-04": "2", "OBRA-05": " 1 "}) == {"OBRA-04": 2, "OBRA-05": 1}
     for malo in ("0", "1,5", "dos", "", "100", "-1", "1.000", "01"):
