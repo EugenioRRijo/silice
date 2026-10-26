@@ -1,7 +1,8 @@
 """Reglas de arquitectura de S4 en su propio archivo (S4 §5.2, maestro §3.1 RV-22; plan 0.9.0).
 
 Capas: `aplicacion.hoja` queda DEBAJO de `asistente`. De `aplicacion`, `asistente` solo importa
-`aplicacion.hoja` y `aplicacion.errores`; de `ui`, nada (retiro de Streamlit, F7: la hoja del
+`aplicacion.hoja`, `aplicacion.errores` y `aplicacion.cifras` (la regla de las cifras tecleadas, una
+hoja sin dependencias, para el tope de costo); de `ui`, nada (retiro de Streamlit, F7: la hoja del
 auditor paso de `ui.hoja` a `aplicacion.hoja`).
 `anthropic` solo en `claude.py`; el cliente de Ollama solo en `ollama_local.py`; `keyring` solo en
 `clave.py`; `streamlit` en ningun modulo del paquete.
@@ -50,7 +51,7 @@ def test_asistente_no_importa_streamlit_ni_las_capas_de_arriba(archivo):
 
 
 @pytest.mark.parametrize("archivo", ASISTENTE, ids=ruta)
-def test_de_aplicacion_asistente_solo_importa_la_hoja_y_los_errores(archivo):
+def test_de_aplicacion_asistente_solo_importa_la_hoja_los_errores_y_las_cifras(archivo):
     # `aplicacion.hoja` queda debajo de `asistente`; nada mas de `aplicacion` (ni entrega, ni caso)
     de_aplicacion = {n for n in importaciones(archivo) if _raiz(n) == "aplicacion"}
     assert all(

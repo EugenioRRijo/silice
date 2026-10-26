@@ -8,7 +8,7 @@
     "conservando los decimales escritos; el cero negativo se lee como cero). 'error' dice cual de los dos",
     "mensajes corresponde. 'escritura' es el camino inverso: el decimal de la API como se escribe en un campo;",
     "'escritura_no_canonica' son decimales que la API no manda (signo +, ceros a la izquierda) pero que las dos",
-    "escrituras tratan igual. Un exponente («1E+3») no es un texto de la API: solo el servidor lo escribe (1.000);",
+    "escrituras tratan igual. La API escribe en notacion fija; un exponente («1E+3») solo lo escribe el servidor (1.000);",
     "el navegador lo deja como llego. 'blancos' es el conjunto exacto que se recorta en los bordes, y nada mas."
   ],
   "mensajes": {

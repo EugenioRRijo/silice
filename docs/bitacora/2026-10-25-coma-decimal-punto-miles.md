@@ -20,8 +20,8 @@ Mensaje (con tildes, lenguaje llano): «Use la coma para los decimales: por ejem
 1.234,56.»; vacío: «Escriba un número. » + lo anterior. Ayuda junto a los campos: «Escriba los decimales con coma: 2,5;
 el punto separa los miles: 1.234,56.» El cero negativo se lee como cero.
 
-Oráculos: **una sola tabla escrita a mano**, `tests/fixtures/cifras_escritas.json` (27 aceptados, 45 rechazados, 11 de
-escritura), que leen las dos pruebas: `tests/unit/test_aplicacion_cifras.py` y
+Oráculos: **una sola tabla escrita a mano**, `tests/fixtures/cifras_escritas.json` (30 aceptados, 47 rechazados, 11 de
+escritura y 4 de escritura no canónica), que leen las dos pruebas: `tests/unit/test_aplicacion_cifras.py` y
 `frontend-desktop/src/indicadores/cifraEscrita.test.ts`.
 
 ## Dónde se convierte (una vez por ruta, y por qué)
@@ -96,7 +96,11 @@ escritura), que leen las dos pruebas: `tests/unit/test_aplicacion_cifras.py` y
 - **Blancos:** `str.strip()` y `String.trim()` recortaban conjuntos distintos. Ahora los dos lados recortan
   exactamente `BLANCOS` (espacio, tabulador, saltos, VT, FF, NBSP, NEL y BOM), fijado en el oráculo; «\u2028» y
   «\u3000» al borde se rechazan en los dos. `textoParaEscribir` quita el «+» y los ceros a la izquierda como
-  `texto_de_cifra`; un exponente («1E+3», que la API no manda) solo lo escribe el servidor.
+  `texto_de_cifra`; un exponente («1E+3») solo lo escribe el servidor. La API debe escribir sus decimales en
+  notación fija (`format(x, "f")`): el tope del Asistente, las fracciones del plan de Elaborar y la depreciación de
+  Similares usaban `str` y salían «1E-7» (mantenimiento posterior a la ronda 2, corregido con su prueba).
+- **Similares (página):** la API manda punto en notación fija y la pantalla formatea una sola vez (`presentar`
+  y el rendimiento y los puntajes en es-VE), como el desglose de Componer.
 - **Tope del Asistente:** el servidor lo lee con `cifra_escrita` («1.000» es mil); `asistente` puede importar
   `aplicacion.cifras` (hoja sin dependencias; guardia de capas ajustada).
 
