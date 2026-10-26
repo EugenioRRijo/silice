@@ -14,13 +14,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
 from sqlalchemy import Engine, func, select, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from aplicacion import aprobaciones
@@ -30,6 +31,7 @@ from aplicacion.aprobaciones import (
     EstadoDeVersion,
     RastroVerificado,
 )
+from aplicacion.mesa import Pendiente, Siguiente
 from aplicacion.tablas_aprobacion import FilaEventoAprobacion, crear_esquema_aprobacion
 from core import models
 from core.budget import crear_proyecto
@@ -649,3 +651,176 @@ def test_una_version_sin_sello_no_se_envia(sesion: Session) -> None:
         _enviar(sesion, "VIV-002")
     assert _mensaje(error) == "La versión VIV-002 no está sellada."
     assert _cuenta(sesion) == 0
+
+
+# --- encargos del árbitro de T17 (Tarea 18) -----------------------------------------------------
+
+
+def _error_de_base(nombre: str, texto: str) -> OperationalError:
+    """Un `OperationalError` de SQLAlchemy cuyo error de `sqlite3` trae el código `nombre`."""
+    original = sqlite3.OperationalError(texto)
+    original.sqlite_errorname = nombre
+    return OperationalError("INSERT INTO mp_aprobacion_evento ...", {}, original)
+
+
+def test_un_error_de_base_que_no_es_choque_no_se_disfraza(sesion: Session, monkeypatch) -> None:
+    """El choque se reconoce por el código de SQLite, no porque el texto diga «locked»: un
+    `SQLITE_ERROR` cuyo texto lo menciona sale tal cual, sin reintento ni mensaje de choque."""
+    llamadas: list[int] = []
+
+    def falla(_sesion: Session, _proyecto_id: int) -> str:
+        llamadas.append(1)
+        raise _error_de_base("SQLITE_ERROR", "no such table: locked_rows")
+
+    monkeypatch.setattr(aprobaciones, "_cabeza", falla)
+    with pytest.raises(OperationalError):
+        _enviar(sesion, "VIV-001")
+    assert len(llamadas) == 1
+    assert _cuenta(sesion) == 0
+
+
+@pytest.mark.parametrize(
+    "nombre", ["SQLITE_BUSY", "SQLITE_BUSY_SNAPSHOT", "SQLITE_LOCKED", "SQLITE_LOCKED_SHAREDCACHE"]
+)
+def test_un_choque_se_reconoce_por_su_codigo(sesion: Session, monkeypatch, nombre: str) -> None:
+    """Un `SQLITE_BUSY*` o `SQLITE_LOCKED*` es un choque aunque su texto no diga «locked»: se
+    deshace, se relee y el segundo intento registra el envío."""
+    real = aprobaciones._cabeza
+    llamadas: list[int] = []
+
+    def choca_la_primera_vez(sesion_de_la_prueba: Session, proyecto_id: int) -> str:
+        llamadas.append(1)
+        if len(llamadas) == 1:
+            raise _error_de_base(nombre, "the snapshot moved")
+        return real(sesion_de_la_prueba, proyecto_id)
+
+    monkeypatch.setattr(aprobaciones, "_cabeza", choca_la_primera_vez)
+    envio = _enviar(sesion, "VIV-001")
+    assert len(llamadas) == 2
+    assert [f.id for f in _filas(sesion)] == [envio.id]
+
+
+def test_un_ahora_con_zona_horaria_se_rechaza_antes_de_escribir(sesion: Session) -> None:
+    """SQLite guarda la hora sin zona: una huella calculada con «+00:00» no se podría recalcular
+    y el rastro se rompería. Se rechaza, sin escribir nada."""
+    with pytest.raises(ValueError) as error:
+        _enviar(sesion, "VIV-001", ahora=datetime.now(UTC))
+    assert not isinstance(error.value, AprobacionInvalida)
+    assert _cuenta(sesion) == 0
+    envio = _enviar(sesion, "VIV-001")
+    with pytest.raises(ValueError) as error:
+        _dictaminar(sesion, envio.id, "aprobada", ahora=datetime(2026, 10, 20, 10, 30, tzinfo=UTC))
+    assert not isinstance(error.value, AprobacionInvalida)
+    assert _cuenta(sesion) == 1
+    assert aprobaciones.verificar_rastro(sesion, OBRA) == RastroVerificado(True, INTEGRO)
+
+
+# --- lo que la API necesita distinguir (Tarea 18) -----------------------------------------------
+
+
+def test_lo_que_no_existe_y_los_datos_invalidos_tienen_su_clase(sesion: Session) -> None:
+    """La API responde 404, 422 o 409 según la clase; todas siguen siendo `AprobacionInvalida`."""
+    with pytest.raises(aprobaciones.NoSeEncontro):
+        aprobaciones.enviar(sesion, "Obra fantasma", "VIV-001", nota="", usuario=ANA, ahora=LUNES)
+    with pytest.raises(aprobaciones.NoSeEncontro):
+        _enviar(sesion, "VIV-009")
+    with pytest.raises(aprobaciones.NoSeEncontro):
+        _dictaminar(sesion, 999, "aprobada")
+    with pytest.raises(aprobaciones.DatosInvalidos):
+        _enviar(sesion, "VIV-001", nota="x" * 2001)
+    envio = _enviar(sesion, "VIV-001")
+    with pytest.raises(aprobaciones.DatosInvalidos):
+        _dictaminar(sesion, envio.id, "devuelta", "")
+    with pytest.raises(aprobaciones.DatosInvalidos):
+        _dictaminar(sesion, envio.id, "aprobadisima", "x")
+    with pytest.raises(AprobacionInvalida) as error:
+        _enviar(sesion, "VIV-001", ahora=MARTES)
+    assert type(error.value) is AprobacionInvalida  # ya en aprobación: un estado, no un dato
+    assert issubclass(aprobaciones.NoSeEncontro, AprobacionInvalida)
+    assert issubclass(aprobaciones.DatosInvalidos, AprobacionInvalida)
+
+
+def test_los_envios_de_la_carpeta_con_su_desenlace(sesion: Session) -> None:
+    primero = _enviar(sesion, "VIV-001", nota="Primera entrega")
+    segundo = _enviar(sesion, "VIV-002", ahora=MARTES)
+    _dictaminar(sesion, segundo.id, "devuelta", "Falta el acero.", usuario=ANA, ahora=MIERCOLES)
+    galpon = aprobaciones.enviar(sesion, OTRA_OBRA, "GAL-001", nota="", usuario=RITA, ahora=JUEVES)
+    vivienda, otra = _proyecto_id(sesion, OBRA), _proyecto_id(sesion, OTRA_OBRA)
+
+    assert aprobaciones.envios(sesion) == [
+        aprobaciones.EnvioRegistrado(
+            primero.id, vivienda, "VIV-001", "Primera entrega", ANA, LUNES,
+            "retirada", ANA, MARTES, "", True,
+        ),
+        aprobaciones.EnvioRegistrado(
+            segundo.id, vivienda, "VIV-002", "", ANA, MARTES,
+            "devuelta", ANA, MIERCOLES, "Falta el acero.", True,
+        ),
+        aprobaciones.EnvioRegistrado(
+            galpon.id, otra, "GAL-001", "", RITA, JUEVES, "en_aprobacion", None, None, "", False,
+        ),
+    ]  # fmt: skip
+    assert aprobaciones.envio(sesion, galpon.id) == aprobaciones.envios(sesion)[-1]
+    with pytest.raises(aprobaciones.NoSeEncontro) as error:
+        aprobaciones.envio(sesion, 999)
+    assert _mensaje(error) == "No se encontró ese envío."
+    (retiro,) = [f.id for f in _filas(sesion) if f.tipo == "retiro"]
+    with pytest.raises(aprobaciones.NoSeEncontro):
+        aprobaciones.envio(sesion, retiro)
+
+
+def test_quien_armo_la_version_de_un_envio(sesion: Session) -> None:
+    envio = _enviar(sesion, "VIV-001")
+    assert aprobaciones.armo_la_version(sesion, envio.id, "Ana María <ana>") is True
+    assert aprobaciones.armo_la_version(sesion, envio.id, RITA) is False
+
+
+# --- la fuente «aprobar» de la mesa (Tarea 18) --------------------------------------------------
+
+VER_EL_ENVIO = Siguiente("Ver el envío", "aprobar")
+HACER_UNA_NUEVA = Siguiente("Hacer una versión nueva", "hoja")
+HOY = date(2026, 10, 23)
+
+
+def _pendiente(s: Session, obra: str, texto: str, accion: Siguiente) -> Pendiente:
+    return Pendiente(str(_proyecto_id(s, obra)), obra, texto, accion)
+
+
+def test_sin_envios_no_hay_pendientes_de_aprobacion(sesion: Session) -> None:
+    assert aprobaciones.pendientes_de_aprobacion(sesion, HOY) == []
+
+
+def test_pendientes_de_aprobacion_en_aprobacion_y_devuelta(sesion: Session) -> None:
+    envio = _enviar(sesion, "VIV-001")
+    aprobaciones.enviar(sesion, OTRA_OBRA, "GAL-001", nota="", usuario=RITA, ahora=LUNES)
+    assert aprobaciones.pendientes_de_aprobacion(sesion, HOY) == [
+        _pendiente(sesion, OTRA_OBRA, "GAL-001 espera dictamen", VER_EL_ENVIO),
+        _pendiente(sesion, OBRA, "VIV-001 espera dictamen", VER_EL_ENVIO),
+    ]
+
+    _dictaminar(sesion, envio.id, "devuelta", "Falta el acero de la losa.\n  Revisar el friso.")
+    assert aprobaciones.pendientes_de_aprobacion(sesion, HOY)[1] == _pendiente(
+        sesion, OBRA, "VIV-001 devuelta: Falta el acero de la losa. Revisar el friso.",
+        HACER_UNA_NUEVA,
+    )  # fmt: skip
+
+
+def test_una_devuelta_deja_de_ser_pendiente_cuando_se_envia_otra(sesion: Session) -> None:
+    envio = _enviar(sesion, "VIV-001")
+    _dictaminar(sesion, envio.id, "devuelta", "Falta el acero.")
+    segundo = _enviar(sesion, "VIV-002", ahora=MIERCOLES)
+    assert aprobaciones.pendientes_de_aprobacion(sesion, HOY) == [
+        _pendiente(sesion, OBRA, "VIV-002 espera dictamen", VER_EL_ENVIO)
+    ]
+    _dictaminar(sesion, segundo.id, "aprobada", ahora=JUEVES)
+    assert aprobaciones.pendientes_de_aprobacion(sesion, HOY) == []
+
+
+def test_las_notas_largas_de_una_devuelta_se_cortan_en_80_letras(sesion: Session) -> None:
+    notas = "Revise " + "la cantidad de acero de la losa de techo y " * 3
+    envio = _enviar(sesion, "VIV-001")
+    _dictaminar(sesion, envio.id, "devuelta", notas)
+    primeras_80 = "Revise la cantidad de acero de la losa de techo y la cantidad de acero de la los"
+    assert len(primeras_80) == 80
+    (pendiente,) = aprobaciones.pendientes_de_aprobacion(sesion, HOY)
+    assert pendiente.texto == f"VIV-001 devuelta: {primeras_80}…"
