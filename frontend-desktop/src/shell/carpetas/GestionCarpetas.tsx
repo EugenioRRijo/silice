@@ -9,6 +9,7 @@ import { CampoTexto } from "../../comun/CampoTexto";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { ContextoAplicacion } from "../contexto";
+import type { MonedaPendiente } from "../contexto";
 import { nombreDeCarpeta } from "../Selectores";
 import "./GestionCarpetas.scss";
 
@@ -119,15 +120,16 @@ export function GestionCarpetas({
     [alAbrir, alAbierta, recargar, vencida],
   );
 
-  // Crear y abrir (ronda 2 del arbitro de MOD-3b): la pregunta va ANTES de crear, porque `preparar` (el `POST /v1/casos`)
-  // corre dentro de la confirmacion del armazon. Los errores siguen hacia `Crear`, que sabe si la carpeta llego a crearse.
+  // Crear y abrir, o estrenar la demostracion y abrirla (ronda 2 del arbitro de MOD-3b): la pregunta va ANTES de crear,
+  // porque `preparar` (el `POST /v1/casos` o `/v1/casos/demostracion`) corre dentro de la confirmacion del armazon. Los
+  // errores siguen hacia quien lo pidio, que sabe si la carpeta llego a crearse.
   const crearYAbrir = useCallback(
-    async (nombre: string, preparar: () => Promise<string>): Promise<boolean> => {
+    async (nombre: string, preparar: () => Promise<string>, origen: OrigenDeApertura): Promise<boolean> => {
       setErrorAbrir(null);
       const abierta = (await alAbrir(nombre, preparar)) ?? true;
       if (abierta) {
         recargar();
-        alAbierta?.("creada");
+        alAbierta?.(origen);
       }
       return abierta;
     },
@@ -191,7 +193,7 @@ export function GestionCarpetas({
             </TabPanel>
             {conDemostracion ? (
               <TabPanel>
-                <Demostracion abrir={abrir} vencida={vencida} />
+                <Demostracion crearYAbrir={crearYAbrir} vencida={vencida} />
               </TabPanel>
             ) : null}
           </TabPanels>
@@ -244,11 +246,27 @@ function FilaDeCarpeta({
 
 type Abrir = (nombre: string, origen: OrigenDeApertura) => Promise<boolean | null>;
 
-// La moneda que quedo sin declarar tras crear y abrir la carpeta (el `PUT` fallo): se reintenta sola.
-interface MonedaPendiente {
-  carpeta: string;
-  moneda: string;
-  error: unknown;
+type CrearYAbrir = (nombre: string, preparar: () => Promise<string>, origen: OrigenDeApertura) => Promise<boolean>;
+
+// La moneda que quedo sin declarar tras crear y abrir la carpeta (el `PUT` fallo): la guarda el armazon, que sobrevive
+// al remontaje de la pagina (Administracion); sin armazon (la pieza sola), la guarda el formulario.
+function useMonedaPendiente(vencida: (e: unknown) => boolean) {
+  const aplicacion = useContext(ContextoAplicacion);
+  const [local, setLocal] = useState<MonedaPendiente | null>(null);
+  const delArmazon = aplicacion?.declararMoneda;
+  const pendiente = delArmazon ? (aplicacion?.monedaPendiente ?? null) : local;
+  async function declarar(carpeta: string, moneda: string): Promise<boolean> {
+    if (delArmazon) return delArmazon(carpeta, moneda);
+    try {
+      await pedir("/v1/carpeta/moneda", { metodo: "PUT", cuerpo: { moneda } });
+      setLocal(null);
+      return true;
+    } catch (e) {
+      if (!vencida(e)) setLocal({ carpeta, moneda, error: e });
+      return false;
+    }
+  }
+  return { pendiente, declarar };
 }
 
 function Crear({
@@ -258,7 +276,7 @@ function Crear({
   vencida,
 }: {
   puedeDeclararMoneda: boolean;
-  crearYAbrir: (nombre: string, preparar: () => Promise<string>) => Promise<boolean>;
+  crearYAbrir: CrearYAbrir;
   recargar: () => void;
   vencida: (e: unknown) => boolean;
 }) {
@@ -270,18 +288,12 @@ function Crear({
   const [error, setError] = useState<unknown>(null);
   // La carpeta se creo pero no se pudo abrir: se dice con su nombre (no «No se pudo crear»).
   const [sinAbrir, setSinAbrir] = useState<{ carpeta: string; error: unknown } | null>(null);
-  const [pendiente, setPendiente] = useState<MonedaPendiente | null>(null);
+  const { pendiente, declarar: declararMoneda } = useMonedaPendiente(vencida);
   const [hecho, setHecho] = useState<string | null>(null);
 
   // Declara la moneda de la carpeta ya abierta; si falla, queda pendiente con su error para reintentar solo esto.
   async function declarar(carpeta: string, elegida: string) {
-    try {
-      await pedir("/v1/carpeta/moneda", { metodo: "PUT", cuerpo: { moneda: elegida } });
-      setPendiente(null);
-      setHecho(`Se creó la carpeta de trabajo «${carpeta}» y ya trabaja con ella.`);
-    } catch (e) {
-      if (!vencida(e)) setPendiente({ carpeta, moneda: elegida, error: e });
-    }
+    if (await declararMoneda(carpeta, elegida)) setHecho(`Se creó la carpeta de trabajo «${carpeta}» y ya trabaja con ella.`);
   }
 
   async function crear(e: FormEvent) {
@@ -289,7 +301,6 @@ function Crear({
     setHecho(null);
     setError(null);
     setSinAbrir(null);
-    setPendiente(null);
     if (puedeDeclararMoneda && moneda === "") {
       setFaltaMoneda(true);
       return;
@@ -300,12 +311,16 @@ function Crear({
     // Lo escribe `preparar` dentro de la confirmacion: si queda en null, nada se creo.
     const creada = { nombre: null as string | null };
     try {
-      const abierta = await crearYAbrir(nombre, async () => {
-        const r = await pedir<CasoRespuesta>("/v1/casos", { metodo: "POST", cuerpo: { nombre } });
-        creada.nombre = r.nombre;
-        recargar();
-        return r.nombre;
-      });
+      const abierta = await crearYAbrir(
+        nombre,
+        async () => {
+          const r = await pedir<CasoRespuesta>("/v1/casos", { metodo: "POST", cuerpo: { nombre } });
+          creada.nombre = r.nombre;
+          recargar();
+          return r.nombre;
+        },
+        "creada",
+      );
       // «Quedarme» (nada se creo) o la sesion vencio: no hay nada que contar aqui.
       if (!abierta || creada.nombre === null) return;
       const final = nombreDeCarpeta(creada.nombre);
@@ -491,7 +506,7 @@ function Subir({ abrir, recargar, vencida }: { abrir: Abrir; recargar: () => voi
   );
 }
 
-function Demostracion({ abrir, vencida }: { abrir: Abrir; vencida: (e: unknown) => boolean }) {
+function Demostracion({ crearYAbrir, vencida }: { crearYAbrir: CrearYAbrir; vencida: (e: unknown) => boolean }) {
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -499,9 +514,13 @@ function Demostracion({ abrir, vencida }: { abrir: Abrir; vencida: (e: unknown) 
     setOcupado(true);
     setError(null);
     try {
-      // 201 si la creo, 200 si ya estaba: las dos la abren (F7).
-      const demo = await pedir<CasoRespuesta>("/v1/casos/demostracion", { metodo: "POST" });
-      await abrir(demo.nombre, "demostracion");
+      // Primero se pregunta (si hay trabajo sin guardar) y solo entonces se estrena: 201 si la creo, 200 si ya estaba;
+      // las dos la abren (F7).
+      await crearYAbrir(
+        "demostracion.db",
+        async () => (await pedir<CasoRespuesta>("/v1/casos/demostracion", { metodo: "POST" })).nombre,
+        "demostracion",
+      );
     } catch (e) {
       if (!vencida(e)) setError(e);
     } finally {

@@ -97,3 +97,16 @@ esa lectura cuentan como cero borradores (no se puede saber); un 401 cierra la s
 - **F11** conserva el título «Este proyecto aún no tiene versiones» (`SIN_VERSIONES` de `paginas/hoja/logica.ts`) y «Elija
   un proyecto · Use el selector de la cabecera» de la Hoja sin obra: el plan permite una sola línea de
   `paginas/hoja/index.tsx`, que se usó para la descripción de BCP-6 §5.2.
+
+## 6. Menores tras aprobar la ronda 2
+
+- **La demostración también pregunta antes de crearse.** «Abrir la demostración» pasa su `POST /v1/casos/demostracion`
+  como `preparar` del mismo `cambiar`: con «Quedarme» no se estrena (el proceso hijo tarda hasta 120 s y no se lanza en
+  balde).
+- **La moneda pendiente vive en el armazón.** En Administración, abrir la carpeta vuelve a montar la página y el `Crear` que
+  esperaba se desmontaba: si fallaba el `PUT` de la moneda, el aviso y su reintento se perdían. Ahora el `Shell` guarda la
+  moneda pendiente y la ofrece por el contexto (`monedaPendiente`, `declararMoneda`); el formulario que se vuelve a montar
+  (y el del diálogo) la lee de ahí y «Declarar la moneda» repite solo el `PUT`. Se olvida al cambiar de carpeta, para no
+  declararla en otra. Sin armazón (la pieza sola en pruebas) la guarda el propio formulario.
+- **Pruebas que faltaban:** la rama «se creó, pero no se pudo abrir» (`POST /v1/casos/actual` con 503) y «Quedarme» al
+  crear desde Administración. Las dos ya pasaban con el código de la ronda 2: cubren comportamiento que existía.

@@ -14,7 +14,7 @@ import { DialogoCarpetas } from "./carpetas/DialogoCarpetas";
 import { useCarpetaDeTrabajo } from "./carpetas/useCarpetaDeTrabajo";
 import { BotonRecorrido, ColumnaRecorrido } from "./ColumnaRecorrido";
 import { ContextoAplicacion } from "./contexto";
-import type { Aplicacion } from "./contexto";
+import type { Aplicacion, MonedaPendiente } from "./contexto";
 import { DialogoSalida } from "./DialogoSalida";
 import { LimiteDeError } from "./LimiteDeError";
 import { MarcaDemostracion } from "./MarcaDemostracion";
@@ -125,6 +125,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     sesion.eleccion?.aviso ? { titulo: CARPETA_CAMBIADA, texto: sesion.eleccion.aviso } : null,
   );
   const [carpetasAbierto, setCarpetasAbierto] = useState(false);
+  const [monedaPendiente, setMonedaPendiente] = useState<MonedaPendiente | null>(null);
   const [nuevaObraAbierta, setNuevaObraAbierta] = useState(false);
   // Cambia con el caso: las paginas se vuelven a montar y piden sus datos de nuevo.
   const [generacion, setGeneracion] = useState(0);
@@ -311,6 +312,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // sus datos a la carpeta nueva, y se avisa. Sin la frase del reinicio: MOD-0 recuerda la carpeta por cuenta.
   const alCambiarCarpeta = useCallback((carpeta: string) => {
     setError(null);
+    setMonedaPendiente(null);
     setProyecto(null);
     setProyectos(null);
     setRecarga((n) => n + 1);
@@ -363,6 +365,23 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   );
   const abrirNuevaObra = useCallback(() => setNuevaObraAbierta(true), []);
 
+  // La moneda de la carpeta recien creada y abierta (D-MP1). Si falla queda pendiente aqui, en el armazon: el formulario
+  // que la pidio puede haberse desmontado al abrir la carpeta (Administracion se vuelve a montar).
+  const declararMoneda = useCallback(
+    async (carpeta: string, moneda: string): Promise<boolean> => {
+      try {
+        await pedir("/v1/carpeta/moneda", { metodo: "PUT", cuerpo: { moneda } });
+        setMonedaPendiente(null);
+        return true;
+      } catch (e) {
+        if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
+        else setMonedaPendiente({ carpeta, moneda, error: e });
+        return false;
+      }
+    },
+    [alExpirar],
+  );
+
   // «Volver a la carpeta de la empresa» desde la marca de la demostracion: la marca desaparece, asi que el foco pasa al
   // contenido; un error de la API se muestra arriba del contenido.
   const volver = useCallback(() => {
@@ -404,12 +423,14 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       elegirObra,
       abrirNuevaObra,
       abrirCarpeta,
+      monedaPendiente,
+      declararMoneda,
       alExpirar,
       modulo,
       almacenDelLibro: almacen,
       crearHojaVisor: crearHoja,
     }),
-    [sesion, proyecto, proyectos, casos, recargarProyectos, elegirObra, abrirNuevaObra, abrirCarpeta, alExpirar, modulo, almacen, crearHoja],
+    [sesion, proyecto, proyectos, casos, recargarProyectos, elegirObra, abrirNuevaObra, abrirCarpeta, monedaPendiente, declararMoneda, alExpirar, modulo, almacen, crearHoja],
   );
 
   // A donde llevan «/», «/inicio» y una ruta inexistente: el inicio del ultimo modulo usado (o del de entrada); sin

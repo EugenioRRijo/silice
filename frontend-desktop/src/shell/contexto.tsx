@@ -23,7 +23,12 @@ export interface Aplicacion {
   // quedo o la sesion vencio; si la API la rechaza, lanza el error. Con `preparar` (crear la carpeta), primero pregunta,
   // luego la crea y abre el nombre que `preparar` devuelve. La usa Administracion › Carpetas de trabajo.
   abrirCarpeta?: (nombre: string, preparar?: () => Promise<string>) => Promise<boolean>;
-  // El Shell siempre da estas tres; son opcionales para que las pruebas de cada pagina no tengan que inventarlas.
+  // La moneda pendiente vive en el armazon (no en el formulario que crea): abrir la carpeta vuelve a montar la pagina
+  // (Administracion › Carpetas de trabajo) y el aviso y su reintento no deben perderse con ella. Se olvida al cambiar de
+  // carpeta. `declararMoneda` resuelve true si la declaro; si falla, la deja pendiente con su error.
+  monedaPendiente?: MonedaPendiente | null;
+  declararMoneda?: (carpeta: string, moneda: string) => Promise<boolean>;
+  // El Shell siempre da estas cinco; son opcionales para que las pruebas de cada pagina no tengan que inventarlas.
   // La API contesto 401: la sesion vencio.
   alExpirar: () => void;
   // Modulo abierto (el de la pantalla, o el ultimo usado fuera de los modulos); null si la cuenta no ve ninguno. El
@@ -35,6 +40,13 @@ export interface Aplicacion {
   almacenDelLibro?: AlmacenDelVisor;
   ranuraCabecera?: HTMLElement | null;
   crearHojaVisor?: CrearHojaVisor;
+}
+
+// La moneda de una carpeta recien creada que no se pudo declarar (fallo `PUT /v1/carpeta/moneda`): se reintenta sola.
+export interface MonedaPendiente {
+  carpeta: string;
+  moneda: string;
+  error: unknown;
 }
 
 export const ContextoAplicacion = createContext<Aplicacion | null>(null);
