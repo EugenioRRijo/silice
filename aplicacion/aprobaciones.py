@@ -97,6 +97,7 @@ __all__ = [
     "envios",
     "estados",
     "fases",
+    "aprobadas_sin_entregar",
     "historial",
     "misma_cuenta",
     "pendientes_de_aprobacion",
@@ -150,6 +151,7 @@ _CODIGOS_DE_CHOQUE = ("SQLITE_BUSY", "SQLITE_LOCKED")
 #: Cuántas letras de las notas de una devuelta caben en su pendiente de la mesa.
 _LETRAS_EN_LA_MESA = 80
 VER_EL_ENVIO = ("Ver el envío", "aprobar")
+ENTREGAR_LA_APROBADA = ("Entregar", "entregar")
 HACER_UNA_VERSION_NUEVA = ("Hacer una versión nueva", "hoja")
 
 
@@ -596,6 +598,48 @@ def pendientes_de_aprobacion(sesion: Session, hoy: date) -> list[Pendiente]:
         else:
             continue
         salida.append(Pendiente(str(obra.id), obra.nombre, texto, Siguiente(*accion)))
+    return salida
+
+
+def aprobadas_sin_entregar(sesion: Session, hoy: date) -> list[Pendiente]:
+    """La fuente «aprobar» de la mesa para lo aprobado (T20): por obra, en orden alfabético, la
+    ÚLTIMA versión aprobada (con o sin observaciones) que todavía no tiene paquete generado →
+    «{versión} aprobada y sin entregar» («Entregar»). Un paquete cuenta por el sello de la versión
+    (`sello_version` del registro de la entrega en la instalación), no por su código, que se repite
+    entre obras; el de otra versión no la da por entregada."""
+    from aplicacion.mesa import Pendiente, Siguiente
+    from operacion.instalacion import sesion_de_instalacion
+    from seguridad.modelo import EventoAcceso
+
+    del hoy  # la regla no depende del día
+    con_aprobada = {r.proyecto_id for r in envios(sesion) if r.estado in APROBADAS}
+    if not con_aprobada:
+        return []
+    obras = sesion.scalars(
+        select(models.Proyecto)
+        .where(models.Proyecto.id.in_(con_aprobada))
+        .order_by(models.Proyecto.nombre, models.Proyecto.id)
+    ).all()
+    with sesion_de_instalacion() as instalacion:
+        entregas = instalacion.scalars(
+            select(EventoAcceso.detalle).where(EventoAcceso.tipo == "paquete exportado")
+        ).all()
+    salida = []
+    for obra in obras:
+        codigo = ultima_aprobada(sesion, str(obra.id))
+        if codigo is None:
+            continue
+        sello = _sello(sesion, _version(sesion, obra, codigo))
+        if any(f"sello_version {sello}" in detalle for detalle in entregas):
+            continue
+        salida.append(
+            Pendiente(
+                str(obra.id),
+                obra.nombre,
+                f"{codigo} aprobada y sin entregar",
+                Siguiente(*ENTREGAR_LA_APROBADA),
+            )
+        )
     return salida
 
 

@@ -297,7 +297,11 @@ def entregar(
     )
     sha = hashlib.sha256(datos).hexdigest()
     # UC-22 paso 5: SHA-256, `paquete_id`, versión y el usuario que entregó.
-    detalle = f"{paquete_id}; version {version.codigo}; sha256 {sha}; usuario {usuario}"
+    # T20: el sello de la versión (su eslabón) dice cuál salió aunque su código se repita.
+    detalle = (
+        f"{paquete_id}; version {version.codigo}; sha256 {sha}; usuario {usuario}; "
+        f"sello_version {eslabon.huella_eslabon}"
+    )
     quien = {"login": usuario[:60], "ip": ip}  # consultable en el registro de acceso
     if privada is not None:
         eventos.registrar(instalacion, "firma", ahora, detalle=detalle, **quien)

@@ -3,7 +3,8 @@
 Es la página `ui/paginas/entregar.py` hecha servicio, sobre `aplicacion.entrega` (la misma lógica
 que usa Streamlit):
 
-- `GET /v1/entregas/versiones?proyecto=` → `[{codigo, moneda}]`, la más nueva primero.
+- `GET /v1/entregas/versiones?proyecto=` → `[{codigo, moneda, aprobacion, ultima_aprobada}]`, la más
+  nueva primero (T20: el estado de aprobación de cada versión y cuál es la última aprobada).
 - `GET /v1/entregas/resumen?proyecto=&version=` → lo que se ve antes de pedir la contraseña.
 - `POST /v1/entregas` `{proyecto, version, destinatario?, contrasena_clave?}` → el `.silice`
   (`application/zip`); `Content-Disposition`, `X-Silice-SHA256` y `X-Silice-Firmado` (`1`/`0`).
@@ -33,6 +34,7 @@ from sqlalchemy.orm import Session
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
+from aplicacion import aprobaciones
 from aplicacion import entrega as logica
 from aplicacion.equipo import operacion_sensible_permitida
 from core import models
@@ -71,6 +73,10 @@ ENTREGAR = Depends(exigir_clave_o_sesion(Accion.ENTREGAR_PAQUETE))
 class VersionEntregable(BaseModel):
     codigo: str
     moneda: str
+    #: Uno de `aprobaciones.ESTADOS` (`guardada` si nunca se envió).
+    aprobacion: str
+    #: Es la versión del último dictamen que aprobó (no la de número más alto).
+    ultima_aprobada: bool
 
 
 class ResumenRespuesta(BaseModel):
@@ -124,8 +130,19 @@ def _version(sesion: Session, proyecto: str, codigo: str) -> models.Presupuesto:
 def versiones(sesion: SesionDep, response: Response, proyecto: str) -> list[VersionEntregable]:
     """Las versiones del proyecto, la más nueva primero (como el selector de la pantalla)."""
     response.headers.update(SIN_CACHE)
-    ordenadas = sorted(_proyecto(sesion, proyecto).presupuestos, key=lambda v: v.id, reverse=True)
-    return [VersionEntregable(codigo=v.codigo, moneda=v.moneda) for v in ordenadas]
+    obra = _proyecto(sesion, proyecto)
+    ordenadas = sorted(obra.presupuestos, key=lambda v: v.id, reverse=True)
+    estados = aprobaciones.estados(sesion, str(obra.id))
+    aprobada = aprobaciones.ultima_aprobada(sesion, str(obra.id))
+    return [
+        VersionEntregable(
+            codigo=v.codigo,
+            moneda=v.moneda,
+            aprobacion=estados[v.codigo].estado if v.codigo in estados else "guardada",
+            ultima_aprobada=v.codigo == aprobada,
+        )
+        for v in ordenadas
+    ]
 
 
 @router.get("/resumen", response_model=ResumenRespuesta, dependencies=[ENTREGAR])

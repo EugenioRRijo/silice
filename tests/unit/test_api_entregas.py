@@ -3,7 +3,8 @@
 Contrato de `api/rutas/entregas.py` (paridad con `ui/paginas/entregar.py`):
 
 - `GET /v1/entregas/versiones?proyecto=` → `[{codigo, moneda, aprobacion, ultima_aprobada}]`, la
-  más nueva primero (Tarea 20: el estado de aprobación de cada versión y cuál es la última aprobada).
+  más nueva primero (Tarea 20: el estado de aprobación de cada versión y cuál es la última
+  aprobada).
 - `GET /v1/entregas/resumen?proyecto=&version=` → lo que la pantalla muestra antes de pedir la
   contraseña: total (exacto y como lo escribe la pantalla clásica), hallazgos por severidad,
   cadena, empresa, si hay clave de firma y lo que viaja.
@@ -459,12 +460,20 @@ def _dictaminar(caso: Path, version: str, resultado: str, minuto: int) -> None:
     try:
         with abrir_sesion(motor) as sesion:
             envio = aprobaciones.enviar(
-                sesion, "MIN-001", version, nota="", usuario=ANA,
+                sesion,
+                "MIN-001",
+                version,
+                nota="",
+                usuario=ANA,
                 ahora=datetime(2026, 10, 20, 9, minuto),
             )
             notas = "Corregir el rendimiento." if resultado == "devuelta" else ""
             aprobaciones.dictaminar(
-                sesion, envio.id, resultado=resultado, notas=notas, usuario=RITA,
+                sesion,
+                envio.id,
+                resultado=resultado,
+                notas=notas,
+                usuario=RITA,
                 ahora=datetime(2026, 10, 20, 10, minuto),
             )
     finally:
@@ -503,8 +512,12 @@ def test_la_aprobada_con_observaciones_tambien_es_la_ultima_aprobada(_entorno: P
                 sesion, "MIN-001", "001", nota="", usuario=ANA, ahora=datetime(2026, 10, 20, 9)
             )
             aprobaciones.dictaminar(
-                sesion, envio.id, resultado="aprobada_con_observaciones", notas="Revisar el flete.",
-                usuario=RITA, ahora=datetime(2026, 10, 20, 10),
+                sesion,
+                envio.id,
+                resultado="aprobada_con_observaciones",
+                notas="Revisar el flete.",
+                usuario=RITA,
+                ahora=datetime(2026, 10, 20, 10),
             )
     finally:
         motor.dispose()
@@ -544,7 +557,12 @@ def test_la_ultima_aprobada_sin_paquete_es_un_pendiente_de_la_mesa(_entorno: Pat
     _dictaminar(_entorno, "001", "aprobada", 1)
     obra = _en_el_caso(_entorno, lambda s: s.scalars(select(models.Proyecto)).one())
     assert _sin_entregar(_entorno) == [
-        Pendiente(str(obra.id), obra.nombre, "001 aprobada y sin entregar", Siguiente("Entregar", "entregar"))
+        Pendiente(
+            str(obra.id),
+            obra.nombre,
+            "001 aprobada y sin entregar",
+            Siguiente("Entregar", "entregar"),
+        )
     ]
     navegador, ficha = _ana()
     assert _pedir(navegador, ficha).status_code == 200
