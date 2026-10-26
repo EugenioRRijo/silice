@@ -138,3 +138,40 @@ las capturas.
 3. Esc abre el sidebar solo si no hay nada abierto ni un campo con el foco.
 4. El estado fijado se desactiva por debajo de los umbrales de ancho y letra (se comporta como oculto).
 5. Preferencias (fijado, último módulo) por cuenta en `instalacion.db`, junto a la elección de obra de MP-2.
+
+## 12. Ajustes tras el revisor constructor (decisiones de ingeniería, 2026-10-25; las ratifica Eugenio al leer)
+
+1. **Orden**: la tabla de elección por cuenta (`mp_eleccion`, migración `ins_0004`, Tarea 5 del plan de montar un presupuesto) se
+   adelanta como primera tarea del plan de módulos (MOD-0) y guarda también el último módulo y fijado/oculto. El plan de módulos
+   incluye una sección «Cambios al plan de montar un presupuesto» que reescribe T6, T7, T19, T20 y la decisión 2 según este diseño.
+2. **Carpetas sin quitar nada a nadie**: los permisos no cambian (`cambiar_caso` sigue en arma y administrador). El selector de obra
+   lleva al pie «Carpeta: <nombre> · Cambiar carpeta…» para quien tiene `cambiar_caso` (abre el diálogo de BCP-5: elegir, crear,
+   subir); Administración › Carpetas de trabajo queda para gestionarlas. «La carpeta de la empresa» es la carpeta por omisión de la
+   instalación. En la demostración, la barra muestra «Demostración» con «Volver a la carpeta de la empresa».
+3. **Visibilidad por rol**: manda la regla (un módulo y un área aparecen si la cuenta puede usar al menos una de sus pantallas);
+   quien solo revisa ve en Presupuestos y obras lo que hoy ve (Tablero, Catálogo, Histórico) más Aprobaciones. Cada inicio exige que
+   su módulo sea visible. En la mesa de control cada bloque se muestra solo si la cuenta puede leer sus datos (un 403 oculta el bloque,
+   nunca lo muestra vacío): quien revisa ve obras (solo lectura) y Por aprobar; el administrador, lo de Mercado que administra.
+4. **Un solo botón**: «Sílice» abre un único sidebar: los módulos arriba y, por debajo del umbral, las áreas del módulo abierto
+   (absorbe el menú en capa actual, `MenuEnCapa`). El sidebar va debajo de la barra superior, que ocupa todo el ancho. El umbral de
+   cada módulo se fija por su número de áreas en `_umbrales.scss` (mapa por módulo y escala), comprobado en el recorrido visual.
+5. **Confirmación al salir**: un único `confirmarSalida()` para las navegaciones que inician los controles de Sílice (cambiar de
+   módulo, enlaces de área, botones de la mesa); no se intercepta atrás/adelante del navegador (sin migrar de enrutador). Cuenta
+   como trabajo que se pierde solo lo que vive en el navegador (formularios registrados con `useFormularioSucio`); el borrador de la
+   Hoja vive en el servidor y se retoma, así que no pide confirmación.
+6. **Cifras de la mesa** (endpoint agregado nuevo `GET /v1/obras/resumen`):
+   - **Valor ganado contra lo planificado**: valor = Σ EV y meta = Σ PV al último corte de las obras en ejecución; desviación = SV
+     (IBCS favorable/desfavorable).
+   - **Avance contra el plan**: SPI agregado = Σ EV ÷ Σ PV (queda ponderado por monto); «atrasada» si el SPI de la obra es menor que el
+     umbral de SPI del control de obra (hoy 0,90, parámetro existente).
+   - **Por aprobar**: valor = versiones pendientes; meta = 0; desviación = días hábiles de la más antigua; se marca a partir de 3.
+   - **Moneda**: se suma en la moneda de la carpeta; una obra en la otra moneda se convierte con la tasa del BCV del corte, declarada;
+     sin tasa, se muestra aparte y no se suma.
+   - Antes de que existan MP-4 y MP-7, la cifra que no tenga datos no se muestra.
+   - **Pendientes de precios**: «más de 90 días» se cuenta desde la fecha de vigencia de la lista del precio; «lista vieja» = la lista
+     de la versión de la obra tiene más de 90 días que la lista para armar vigente.
+7. **Nueva obra**: cliente y ubicación (opcionales) en una tabla nueva `ficha_obra` de la carpeta (migración propia); la moneda es la
+   de la carpeta por omisión y se puede elegir la otra con la conversión por tasa del BCV declarada (como en el plan, T7).
+8. **Fijado y recorrido**: el sidebar fijado solo se mantiene fijado a partir de 1366 px con letra Normal (umbral escalado para Grande
+   y Muy grande); por debajo se comporta como oculto, y la columna del recorrido pasa a franja como hoy. Así a 1056 px no hay
+   desplazamiento horizontal.
