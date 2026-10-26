@@ -229,10 +229,14 @@ def test_una_cantidad_mal_escrita_dice_la_regla_de_las_cifras():
 @pytest.mark.parametrize(
     ("cantidad", "calculo", "mensaje"),
     [
-        ("", "1/0", "El cálculo no se puede hacer: revise los signos y los paréntesis."),
+        ("", "1/0", "El cálculo divide entre cero."),
+        ("", "5/(2-2)", "El cálculo divide entre cero."),
+        ("", "0/0", "El cálculo divide entre cero."),
         ("", "6*", "El cálculo no se puede hacer: revise los signos y los paréntesis."),
         ("", "(6*3", "El cálculo no se puede hacer: revise los signos y los paréntesis."),
         ("", "2-5", "El cálculo da -3: una cantidad no puede ser negativa."),
+        # −0,00001 a cuatro decimales es 0: se dice el resultado con todas sus cifras
+        ("", "-0,00001", "El cálculo da -0,00001: una cantidad no puede ser negativa."),
         ("-5", "", "La cantidad no puede ser negativa."),
     ],
 )
@@ -240,6 +244,31 @@ def test_calculos_imposibles_y_cantidades_negativas_se_rechazan(cantidad, calcul
     with pytest.raises(CalculoInvalido) as error:
         cantidad_y_regla(cantidad, calculo)
     assert str(error.value) == mensaje
+
+
+def test_un_resultado_cero_negativo_es_cero():
+    """0 × (−1) da el «cero con signo» de `Decimal`; la cantidad es 0, sin signo."""
+    cantidad, regla = cantidad_y_regla("", "0*-1")
+    assert (str(cantidad), regla) == ("0", "0*-1")
+
+
+@pytest.mark.parametrize(
+    ("cantidad", "calculo", "resultado", "escrita"),
+    [
+        # 0,00005 a cuatro decimales se escribiría 0,0001, igual que la cantidad: se dice entero
+        ("0,0001", "0,00005*1", "0,00005", "0,0001"),
+        # 1/30000 = 0,0000333…: un Decimal guarda 28 cifras significativas, 28 treses
+        ("0", "1/30000", "0,0000" + "3" * 28, "0"),
+    ],
+)
+def test_si_el_resultado_redondeado_se_ve_igual_a_la_cantidad_se_dice_con_todas_sus_cifras(
+    cantidad, calculo, resultado, escrita
+):
+    with pytest.raises(CalculoInvalido) as error:
+        cantidad_y_regla(cantidad, calculo)
+    assert str(error.value) == (
+        f"El cálculo da {resultado} y la cantidad es {escrita}: corrija uno de los dos."
+    )
 
 
 # --- agregar_partida --------------------------------------------------------------------------
@@ -362,6 +391,36 @@ def test_una_clave_que_no_esta_en_el_borrador_no_se_quita():
     assert str(error.value) == "Esa fila ya no está en el presupuesto."
 
 
+def test_quitar_el_primero_de_dos_repetidos_dice_que_el_otro_paso_a_su_clave():
+    """Dos renglones con la misma partida y el mismo origen: «X|o» (10) y «X|o#2» (20). Al quitar
+    el primero, el segundo pasa a llamarse «X|o»: en esa clave la cantidad va de 10 a 20, y «X|o#2»
+    (con 20) se da de baja. La nota del segundo lo sigue a su clave nueva."""
+
+    def repetido(cantidad: str) -> ItemComputo:
+        return ItemComputo(
+            "OBRA-04",
+            MURO.descripcion,
+            "m2",
+            D(cantidad),
+            "lev:1",
+            OrigenTipo.MANUAL,
+            Dominio.CIVIL,
+        )
+
+    base = replace(
+        _vacio(),
+        items_base=(repetido("10"), repetido("20")),
+        notas={"OBRA-04|lev:1#2": "muro sur"},
+    )
+    sin_primero = quitar_partida(base, "OBRA-04|lev:1")
+    assert [i.cantidad for i in sin_primero.items_base] == [D("20")]
+    assert sin_primero.notas == {"OBRA-04|lev:1": "muro sur"}
+    assert hoja.cambios_entre(base, sin_primero) == [
+        CambioEditado("cantidad", "OBRA-04|lev:1", "cantidad", "10", "20"),
+        CambioEditado("cantidad", "OBRA-04|lev:1#2", "baja", "20", ""),
+    ]
+
+
 # --- la regla R1 y su texto llano ---------------------------------------------------------------
 
 
@@ -380,6 +439,20 @@ def test_sin_calculo_r1_advierte_y_su_texto_llano_es_el_del_plan():
     (advertencia,) = _hallazgos_r1(nuevo, "a-mano:1")
     assert advertencia.severidad is Severidad.ADVERTENCIA
     assert texto_llano(advertencia.descripcion) == LLANO_OBRA_04
+
+
+@pytest.mark.parametrize(
+    ("cantidad", "medida"),
+    [("12,5", "12,5 m2"), ("1.234,5", "1.234,5 m2"), ("210", "210 m2")],
+)
+def test_el_texto_llano_escribe_la_cantidad_con_coma_decimal_y_punto_de_miles(cantidad, medida):
+    """R1 cita la cantidad con punto decimal («12.5 m2»); la persona la lee como la escribió."""
+    nuevo, _ = _agregar(_vacio(), cantidad, "")
+    (advertencia,) = _hallazgos_r1(nuevo, "a-mano:1")
+    assert texto_llano(advertencia.descripcion) == (
+        f"La cantidad de OBRA-04 ({medida}) se escribió a mano sin cálculo: escriba cómo se "
+        "obtuvo si quiere que Sílice la pueda verificar."
+    )
 
 
 def test_texto_llano_deja_igual_cualquier_otra_descripcion():
