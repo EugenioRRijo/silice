@@ -1,15 +1,18 @@
-"""El front deduce el rol por acciones exclusivas: que sigan siendo exclusivas en la matriz de permisos.
+"""El front deduce el rol por acciones exclusivas: que sigan siendolo en la matriz de permisos.
 
-`frontend-desktop/src/shell/navegacion.ts::ENTRADA_POR_ROL` elige el modulo de entrada de una cuenta (decision 3 de
-Eugenio, ratificada el 2026-10-25) leyendo una accion que «solo tiene ese rol». La sesion no manda el rol al front de
-forma util para esto (una cuenta puede tener varios), asi que la suposicion vive en el front. Si un dia
-`seguridad/permisos.py` le da `editar_hoja` tambien a quien revisa, el front lo mandaria en silencio al modulo
-equivocado: esta prueba lo detecta (observacion menor 1 del arbitro de MOD-1).
+`frontend-desktop/src/shell/navegacion.ts::ENTRADA_POR_ROL` elige el modulo de entrada de una
+cuenta (decision 3 de Eugenio, ratificada el 2026-10-25) leyendo una accion que «solo tiene ese
+rol». La sesion no le da al front un rol util para esto (una cuenta puede tener varios), asi que
+la suposicion vive en el front. Si un dia `seguridad/permisos.py` le da `editar_hoja` tambien a
+quien revisa, el front lo mandaria en silencio al modulo equivocado: esta prueba lo detecta
+(observacion menor 1 del arbitro de MOD-1).
 
-Tambien ata las acciones por rol que las pruebas del armazon copian a mano (`ACCIONES_POR_ROL` de
-`Shell.test.tsx`): son el oraculo de «toda pantalla alcanzable por rol» y deben ser las de la matriz.
+Tambien ata las acciones por rol que las pruebas del armazon copian a mano (`ACCIONES_POR_ROL`
+de `Shell.test.tsx`): son el oraculo de «toda pantalla alcanzable por rol» y deben ser las de la
+matriz.
 
-Oraculo: `PERMISOS` (la matriz real) y, escrito a mano, que rol corresponde a cada accion de entrada.
+Oraculo: `PERMISOS` (la matriz real) y, escrito a mano, que rol corresponde a cada accion de
+entrada.
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ RAIZ = Path(__file__).resolve().parents[2]
 NAVEGACION = RAIZ / "frontend-desktop" / "src" / "shell" / "navegacion.ts"
 PRUEBA_SHELL = RAIZ / "frontend-desktop" / "src" / "shell" / "Shell.test.tsx"
 
-#: Escrito a mano: la accion con la que el front reconoce a cada rol y el modulo en que entra.
+#: Escrito a mano: la accion con que el front reconoce a cada rol y el modulo en que entra.
 ESPERADO = [
     ("editar_hoja", Rol.ARMA, "obras"),
     ("revisar_paquete", Rol.REVISA, "auditoria"),
@@ -52,7 +55,7 @@ def test_cada_accion_de_entrada_es_exclusiva_de_su_rol_en_la_matriz() -> None:
 
 
 def test_la_prueba_ve_una_accion_compartida() -> None:
-    """Si la suposicion se rompe, la comparacion lo nota: `leer_proyecto` la tienen arma y revisa."""
+    """Si la suposicion se rompe, se nota: `leer_proyecto` la tienen arma y revisa."""
     assert _roles_con("leer_proyecto") == frozenset({Rol.ARMA, Rol.REVISA})
     assert _roles_con("leer_proyecto") != frozenset({Rol.ARMA})
 
