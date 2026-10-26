@@ -12,29 +12,42 @@ dictaminar lo decide la API (`editar_hoja`, `aprobar_version`), no este módulo.
 inserción) con el sello del eslabón de su versión (`EslabonVersion.huella_eslabon`) y su propia
 huella, encadenada a la anterior de la misma obra desde `GENESIS`:
 
-    huella = SHA-256(json.dumps({anterior, tipo, proyecto_id, version, huella_version, resultado,
-                                 notas, usuario, fecha_hora (isoformat), armo, cierre_de},
-                                sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+    huella = sha256(json_canonico({anterior, tipo, proyecto_id, version, huella_version,
+                                   resultado, notas, usuario, fecha_hora (isoformat), armo,
+                                   cierre_de}))
 
-`verificar_rastro` recalcula cada huella y su encadenamiento y compara el sello guardado con el
-eslabón actual de la versión. Borrar el último evento no se detecta (límite de toda cadena sin
-ancla externa, igual que la del núcleo).
+`json_canonico` y `huella` son los de `core/budget/canonico.py` (claves ordenadas, sin espacios,
+UTF-8 sin escapar: los mismos bytes que la fórmula del plan). `ahora` va **sin zona horaria** (la
+hora local de la instalación, como `api.sesion_web.ahora`): SQLite guarda la hora sin zona, así que
+una huella calculada con «+00:00» no se podría recalcular; un `ahora` con zona es un `ValueError`
+antes de escribir. `verificar_rastro` recalcula cada huella y su encadenamiento y compara el sello
+guardado con el eslabón actual de la versión. Borrar el último evento no se detecta (límite de
+toda cadena sin ancla externa, igual que la del núcleo).
 
 **Todo o nada.** `enviar` y `dictaminar` confirman (`commit`) sus filas juntas o ninguna. La
 concurrencia la guarda la base: `cierre_de` único (un envío se cierra una vez) y (`proyecto_id`,
-`anterior`) único (dos eventos no cuelgan del mismo eslabón). Si otra sesión escribió entre la
-lectura y la escritura (`IntegrityError`, o en SQLite WAL el `database is locked` de una lectura que
-quedó vieja), se deshace, se relee y se valida otra vez: el segundo dictamen recibe «Este envío ya
-tiene dictamen o fue retirado.» y no queda rastro doble.
+`anterior`) único (dos eventos no cuelgan del mismo eslabón). Si la escritura choca con otra sesión
+(`IntegrityError` por esas restricciones, o un `OperationalError` cuyo código de SQLite empieza por
+`SQLITE_BUSY` o `SQLITE_LOCKED`, como el `SQLITE_BUSY_SNAPSHOT` de una lectura que quedó vieja en
+WAL), se deshace, se relee y se valida una vez más; si vuelve a chocar, `CHOQUE`. Cualquier otro
+error de la base sale tal cual. Con una sesión de `BEGIN IMMEDIATE` (la de las rutas de la API) el
+segundo dictamen espera al primero y recibe siempre «Este envío ya tiene dictamen o fue
+retirado.»; con una sesión común, el reintento lo da casi siempre, y si no, `CHOQUE`. En ningún
+caso queda rastro doble.
+
+**Lecturas para la API y la mesa (Tarea 18).** `envios` y `envio` dan cada envío con su desenlace
+(para el índice de la instalación y el detalle de un envío); `armo_la_version` dice si una cuenta
+guardó la versión de un envío; `pendientes_de_aprobacion` es la fuente «aprobar» de la mesa
+(`aplicacion.mesa.FUENTES`). Las clases `NoSeEncontro` (404) y `DatosInvalidos` (422) afinan
+`AprobacionInvalida` (409) para la API.
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -45,22 +58,34 @@ from aplicacion.revision import login_de
 from aplicacion.tablas_aprobacion import FilaEventoAprobacion
 from core import models
 from core.budget.cadena import GENESIS
+from core.budget.canonico import huella as sha256_hex
+from core.budget.canonico import json_canonico
 from core.models.cadena import EslabonVersion
+
+if TYPE_CHECKING:
+    from aplicacion.mesa import Pendiente
 
 __all__ = [
     "APROBADAS",
     "ESTADOS",
     "RESULTADOS",
     "AprobacionInvalida",
+    "DatosInvalidos",
     "Envio",
+    "EnvioRegistrado",
     "EstadoDeVersion",
     "EventoAprobacion",
+    "NoSeEncontro",
     "RastroVerificado",
+    "armo_la_version",
     "dictaminar",
     "enviar",
+    "envio",
+    "envios",
     "estados",
     "fases",
     "historial",
+    "pendientes_de_aprobacion",
     "ultima_aprobada",
     "verificar_rastro",
 ]
@@ -97,16 +122,56 @@ CHOQUE = (
     "Otra persona registró un movimiento de aprobación de esta obra al mismo tiempo: "
     "vuelva a intentarlo."
 )
+CON_ZONA_HORARIA = (
+    "La hora del movimiento va sin zona horaria (la hora local de la instalación): SQLite la "
+    "guarda sin zona y la huella no se podría recalcular."
+)
+#: Los códigos de SQLite (`sqlite3.Error.sqlite_errorname`) que son un choque entre sesiones.
+_CODIGOS_DE_CHOQUE = ("SQLITE_BUSY", "SQLITE_LOCKED")
+#: Cuántas letras de las notas de una devuelta caben en su pendiente de la mesa.
+_LETRAS_EN_LA_MESA = 80
+VER_EL_ENVIO = ("Ver el envío", "aprobar")
+HACER_UNA_VERSION_NUEVA = ("Hacer una versión nueva", "hoja")
 
 
 class AprobacionInvalida(ValueError):  # noqa: N818
-    """Lo que la regla no permite; la API lo devuelve como 409 o 422 con este mismo mensaje."""
+    """Lo que la regla no permite por el estado de la obra o del envío (la API: 409), con un
+    mensaje en lenguaje llano. Sus subclases afinan la respuesta."""
+
+
+class NoSeEncontro(AprobacionInvalida):
+    """La obra, la versión o el envío no existen en esta carpeta (la API: 404)."""
+
+
+class DatosInvalidos(AprobacionInvalida):
+    """Lo escrito no sirve: notas obligatorias que faltan, notas demasiado largas, un dictamen que
+    no existe (la API: 422)."""
 
 
 @dataclass(frozen=True, slots=True)
 class Envio:
     id: int
     retirada: str | None  # la versión que estaba pendiente y este envío retiró
+
+
+@dataclass(frozen=True, slots=True)
+class EnvioRegistrado:
+    """Un envío de la carpeta con su desenlace: `estado` es `en_aprobacion` mientras nadie lo
+    cierra, o `retirada` o el resultado de su dictamen; `cerrado_por`/`cerrado_el` son de quien lo
+    cerró (retiro o dictamen); `notas` son las del dictamen (vacías sin él) y `armo` dice si quien
+    lo cerró es quien guardó la versión (como `EstadoDeVersion.armo`; falso si sigue abierto)."""
+
+    id: int
+    proyecto_id: int
+    version: str
+    nota: str
+    por: str
+    el: datetime
+    estado: str
+    cerrado_por: str | None
+    cerrado_el: datetime | None
+    notas: str
+    armo: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,7 +213,9 @@ def enviar(
     sesion: Session, proyecto: str, version: str, *, nota: str, usuario: str, ahora: datetime
 ) -> Envio:
     """Envía `version` a aprobación. Si la obra tenía otro envío pendiente, lo retira en la misma
-    transacción y `Envio.retirada` lo nombra. Confirma; `AprobacionInvalida` si no se puede."""
+    transacción y `Envio.retirada` lo nombra. Confirma; `AprobacionInvalida` si no se puede;
+    `ValueError` si `ahora` trae zona horaria."""
+    _exigir_hora_sin_zona(ahora)
 
     def operacion() -> Envio:
         obra = _obra(sesion, proyecto)
@@ -203,25 +270,27 @@ def dictaminar(
 ) -> int:
     """Registra el dictamen sobre el envío `envio_id` y devuelve el id del evento. Notas
     obligatorias para devolver y para aprobar con observaciones. Confirma; `AprobacionInvalida`
-    si el envío no existe, ya está cerrado o el dictamen no es válido."""
+    si el envío no existe, ya está cerrado o el dictamen no es válido; `ValueError` si `ahora`
+    trae zona horaria."""
+    _exigir_hora_sin_zona(ahora)
 
     def operacion() -> int:
         envio = sesion.get(FilaEventoAprobacion, envio_id, populate_existing=True)
         if envio is None or envio.tipo != "envio":
-            raise AprobacionInvalida(SIN_ENVIO)
+            raise NoSeEncontro(SIN_ENVIO)
         cerrado = sesion.scalar(
             select(FilaEventoAprobacion.id).where(FilaEventoAprobacion.cierre_de == envio_id)
         )
         if cerrado is not None:
             raise AprobacionInvalida(CERRADO)
         if resultado not in RESULTADOS:
-            raise AprobacionInvalida(DICTAMEN_DESCONOCIDO)
+            raise DatosInvalidos(DICTAMEN_DESCONOCIDO)
         notas_limpias = _notas_validas(notas)
         if resultado in _CON_NOTAS_OBLIGATORIAS and not notas_limpias:
-            raise AprobacionInvalida(SIN_NOTAS)
+            raise DatosInvalidos(SIN_NOTAS)
         obra = sesion.get(models.Proyecto, envio.proyecto_id)
         if obra is None:  # la obra se borró después del envío: no hay a qué atar el dictamen
-            raise AprobacionInvalida(SIN_ENVIO)
+            raise NoSeEncontro(SIN_ENVIO)
         presupuesto = _version(sesion, obra, envio.version)
         fila = _insertar(
             sesion,
@@ -314,7 +383,101 @@ def verificar_rastro(sesion: Session, proyecto: str) -> RastroVerificado:
     return RastroVerificado(True, INTEGRO)
 
 
+def envios(sesion: Session) -> list[EnvioRegistrado]:
+    """Todos los envíos de la carpeta (de todas sus obras), en el orden del rastro, cada uno con
+    su desenlace. Es lo que el índice de la instalación refleja."""
+    filas = sesion.scalars(
+        select(FilaEventoAprobacion)
+        .order_by(FilaEventoAprobacion.id)
+        .execution_options(populate_existing=True)
+    ).all()
+    cierres = {f.cierre_de: f for f in filas if f.cierre_de is not None}
+    return [_registrado(f, cierres.get(f.id)) for f in filas if f.tipo == "envio"]
+
+
+def envio(sesion: Session, envio_id: int) -> EnvioRegistrado:
+    """El envío `envio_id` de esta carpeta con su desenlace; `NoSeEncontro` si no hay un envío
+    con ese número (un retiro o un dictamen no son envíos)."""
+    fila = sesion.get(FilaEventoAprobacion, envio_id, populate_existing=True)
+    if fila is None or fila.tipo != "envio":
+        raise NoSeEncontro(SIN_ENVIO)
+    cierre = sesion.scalars(
+        select(FilaEventoAprobacion).where(FilaEventoAprobacion.cierre_de == envio_id)
+    ).one_or_none()
+    return _registrado(fila, cierre)
+
+
+def armo_la_version(sesion: Session, envio_id: int, usuario: str) -> bool:
+    """Si `usuario` es quien guardó la versión del envío `envio_id` (por su cuenta, como `armo`
+    de los eventos): lo que el panel del dictamen avisa antes de dictaminar."""
+    registrado = envio(sesion, envio_id)
+    obra = sesion.get(models.Proyecto, registrado.proyecto_id)
+    if obra is None:
+        raise NoSeEncontro(SIN_ENVIO)
+    return _armo(usuario, _quien_guardo(sesion, _version(sesion, obra, registrado.version)))
+
+
+def pendientes_de_aprobacion(sesion: Session, hoy: date) -> list[Pendiente]:
+    """La fuente «aprobar» de la mesa (`aplicacion.mesa.FuentePendientes`), sobre el ÚLTIMO envío
+    de cada obra, en orden alfabético de obra: en aprobación → «{versión} espera dictamen»
+    («Ver el envío»); devuelta → «{versión} devuelta: {primeras 80 letras de las notas}»
+    («Hacer una versión nueva»; los espacios y saltos de línea seguidos cuentan como uno y, si se
+    cortan, termina en «…»). Una devuelta deja de ser pendiente cuando la obra envía otra versión;
+    aprobada o retirada no son pendientes."""
+    # `aplicacion.mesa` se importa aquí y no arriba: la mesa lee los estados de este módulo para
+    # sus etapas, y las dos importaciones arriba formarían un ciclo.
+    from aplicacion.mesa import Pendiente, Siguiente
+
+    del hoy  # la regla no depende del día
+    ultimos: dict[int, EnvioRegistrado] = {}
+    for registrado in envios(sesion):
+        ultimos[registrado.proyecto_id] = registrado
+    if not ultimos:
+        return []
+    obras = sesion.scalars(
+        select(models.Proyecto)
+        .where(models.Proyecto.id.in_(ultimos))
+        .order_by(models.Proyecto.nombre, models.Proyecto.id)
+    )
+    salida = []
+    for obra in obras:
+        ultimo = ultimos[obra.id]
+        if ultimo.estado == "en_aprobacion":
+            texto, accion = f"{ultimo.version} espera dictamen", VER_EL_ENVIO
+        elif ultimo.estado == "devuelta":
+            texto = f"{ultimo.version} devuelta: {_primeras_letras(ultimo.notas)}"
+            accion = HACER_UNA_VERSION_NUEVA
+        else:
+            continue
+        salida.append(Pendiente(str(obra.id), obra.nombre, texto, Siguiente(*accion)))
+    return salida
+
+
 # --- ayudantes ----------------------------------------------------------------------------------
+
+
+def _registrado(fila: FilaEventoAprobacion, cierre: FilaEventoAprobacion | None) -> EnvioRegistrado:
+    dictamen = cierre is not None and cierre.tipo == "dictamen"
+    return EnvioRegistrado(
+        id=fila.id,
+        proyecto_id=fila.proyecto_id,
+        version=fila.version,
+        nota=fila.notas,
+        por=fila.usuario,
+        el=fila.fecha_hora,
+        estado="en_aprobacion" if cierre is None else _estado_del_evento(cierre),
+        cerrado_por=None if cierre is None else cierre.usuario,
+        cerrado_el=None if cierre is None else cierre.fecha_hora,
+        notas=cierre.notas if dictamen else "",
+        armo=cierre is not None and cierre.armo,
+    )
+
+
+def _primeras_letras(notas: str) -> str:
+    seguidas = " ".join(notas.split())
+    if len(seguidas) <= _LETRAS_EN_LA_MESA:
+        return seguidas
+    return seguidas[:_LETRAS_EN_LA_MESA] + "…"
 
 
 class _ChoqueDeEscritura(Exception):  # noqa: N818
@@ -341,13 +504,25 @@ def _confirmar[T](sesion: Session, operacion: Callable[[], T]) -> T:
         sesion.commit()
     except (IntegrityError, OperationalError) as error:
         sesion.rollback()
-        if isinstance(error, OperationalError) and "locked" not in str(error.orig).lower():
+        if isinstance(error, OperationalError) and not _es_choque(error):
             raise
         raise _ChoqueDeEscritura from error
     except BaseException:
         sesion.rollback()
         raise
     return resultado
+
+
+def _es_choque(error: OperationalError) -> bool:
+    """Un choque entre sesiones según el código de SQLite (`SQLITE_BUSY*`, `SQLITE_LOCKED*`), no
+    según el texto del error. Un error sin código no es un choque."""
+    nombre = getattr(error.orig, "sqlite_errorname", "") or ""
+    return nombre.startswith(_CODIGOS_DE_CHOQUE)
+
+
+def _exigir_hora_sin_zona(ahora: datetime) -> None:
+    if ahora.tzinfo is not None:
+        raise ValueError(CON_ZONA_HORARIA)
 
 
 def _cabeza(sesion: Session, proyecto_id: int) -> str:
@@ -388,8 +563,7 @@ def _huella(
         "armo": armo,
         "cierre_de": cierre_de,
     }
-    texto = json.dumps(documento, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+    return sha256_hex(json_canonico(documento))
 
 
 def _huella_del_evento(evento: EventoAprobacion) -> str:
@@ -420,7 +594,7 @@ def _insertar(sesion: Session, *, anterior: str, **campos) -> FilaEventoAprobaci
 def _obra(sesion: Session, referencia: str) -> models.Proyecto:
     obra = resolver_proyecto(sesion, referencia)
     if obra is None:
-        raise AprobacionInvalida(f"No se encontró la obra «{referencia}».")
+        raise NoSeEncontro(f"No se encontró la obra «{referencia}».")
     return obra
 
 
@@ -431,7 +605,7 @@ def _version(sesion: Session, obra: models.Proyecto, codigo: str) -> models.Pres
         )
     ).first()
     if presupuesto is None:
-        raise AprobacionInvalida(f"No se encontró la versión {codigo} de esta obra.")
+        raise NoSeEncontro(f"No se encontró la versión {codigo} de esta obra.")
     return presupuesto
 
 
@@ -462,7 +636,7 @@ def _armo(usuario: str, quien_guardo: str) -> bool:
 def _notas_validas(notas: str) -> str:
     limpias = notas.strip()
     if len(limpias) > _LARGO_DE_NOTAS:
-        raise AprobacionInvalida(NOTAS_LARGAS)
+        raise DatosInvalidos(NOTAS_LARGAS)
     return limpias
 
 
@@ -493,7 +667,7 @@ def _eventos(sesion: Session, proyecto_id: int) -> list[EventoAprobacion]:
     ]
 
 
-def _estado_del_evento(evento: EventoAprobacion) -> str:
+def _estado_del_evento(evento: EventoAprobacion | FilaEventoAprobacion) -> str:
     if evento.tipo == "envio":
         return "en_aprobacion"
     if evento.tipo == "retiro":
