@@ -37,6 +37,7 @@ from api.rutas import (
     entregas,
     hoja,
     hoja_exportar,
+    hoja_llevar,
     hoja_plano,
     indices,
     libros,
@@ -171,6 +172,8 @@ app.include_router(revision.router)
 # Migracion final (T10 · 3b): «Hoja del proyecto»; lecturas con clave o sesion, borradores
 # solo con sesion
 app.include_router(hoja.router)
+# Montar un presupuesto (T12): Elaborar lleva sus items a la Hoja de la obra, solo con sesion
+app.include_router(hoja_llevar.router)
 # Migracion final (T10 · 3e-1): «Descargar Excel» de la hoja (X1), solo con sesion
 app.include_router(hoja_exportar.router)
 # Migracion final (T10 · 3e-2): importar un plano a la hoja (P1 a P6), solo con sesion

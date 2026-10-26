@@ -60,6 +60,29 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   que una página use `enCelda`; T11 usa el campo en un diálogo.
 - Menor cosmético pendiente: el 403 repite «Su cuenta» («Su cuenta no puede usar esta búsqueda. Su cuenta no tiene permiso…»).
 
+## T12, Elaborar lleva a la Hoja
+
+- **Cantidad de máquina.** En `POST /v1/hoja/llevar` la cantidad es la del cómputo (punto decimal, sin miles, sin signo ni
+  exponente), como `POST /presupuestos/calcular`; el servidor la escribe con `texto_de_cifra` antes de `agregar`, así
+  «1.125» es uno coma ciento veinticinco. `calculo` (opcional) sigue la regla de la Tarea 8 (coma).
+- **Qué borrador.** El vivo más reciente de esa ficha y obra (aunque sea de una versión anterior a la vigente; la Hoja avisa
+  al guardar); si no hay, uno nuevo sobre la vigente o en blanco en la moneda de la obra. Abrir la vigente escribe su
+  instantánea si faltaba (UC-15e), como abrir la Hoja, y eso no se deshace si luego falla una partida.
+- **Todo o nada.** Con el cerrojo del borrador tomado de punta a punta: el borrador abierto por llevar se descarta; uno que
+  ya existía vuelve a su `borrador`, `rev` y caché exactos (se reasignan los campos del `BorradorVivo` bajo su cerrojo;
+  `hoja_borradores` no tiene un «restaurar»: menor). Un 422 de cálculo lleva el código de la partida delante.
+- **Elaborar con obra.** `CalculoPeticion.proyecto` (opcional): valora con `lista_para_el_proyecto` y la moneda de esa
+  lista (se ignora `moneda`); la lista convertida no se confirma. Las dos rutas de calcular dependen ahora de `_QUIEN_EDITA`
+  (misma acción) para firmar la conversión. Obra inexistente, 404 sin eco; sin lista o tasa, 409.
+- **Front.** Los pendientes no se llevan (se dice cuántos); con obra no se escribe la moneda; si se cambia de obra tras
+  elaborar, pide elaborar de nuevo. Tras llevar navega a `/hoja`, que ofrece retomar el borrador (abrirlo directo con
+  `/hoja?borrador=<id>` se encarga a T11).
+- **Por decidir (Eugenio):** las partidas llevadas llegan «a mano» sin cálculo, así que R1 avisará en cada una; ¿nota
+  automática «Del cómputo de Elaborar» o traducir la regla del cómputo a un cálculo?
+- Aviso para el árbitro: un oráculo de la prueba de T12 se corrigió en un commit de pruebas propio (63ab8dd0): al llevar a
+  VIV-001 (con plan) el alta entra también en el plan (conducta de la Hoja), así que se cuentan solo los cambios de
+  cantidad.
+
 ## T13, estudio de mercado (aprobada en ronda 1)
 
 - `Estadisticas` lleva `dias` al final, para el texto «Sin observaciones en los últimos {dias} días.».
