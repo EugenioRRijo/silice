@@ -6,9 +6,12 @@ import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CarpetaRespuesta, ProyectoRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { mensajeDeError } from "../../comun/errores";
 import { TIPO_DE_OBRA } from "../../comun/logicaBusqueda";
+import { hojasConCambios } from "../carpetas/hojasConCambios";
 import { MarcoDeDialogo } from "../carpetas/MarcoDeDialogo";
 import { ContextoAplicacion } from "../contexto";
+import { confirmarSalida } from "../salida";
 import "./DialogoNuevaObra.scss";
 
 interface Props {
@@ -22,6 +25,8 @@ interface Props {
   carpetas?: CarpetaDeObra[];
   // La carpeta abierta ahora (null = la de la empresa): la que se propone y la unica cuya moneda se conoce.
   carpetaAbierta?: string | null;
+  // Las obras de la carpeta abierta, para nombrar los borradores que se perderian («Hoja de Casa Demo»).
+  obrasDeLaCarpeta?: readonly Pick<ProyectoRespuesta, "codigo" | "nombre">[];
 }
 
 export interface CarpetaDeObra {
@@ -49,7 +54,7 @@ export function DialogoNuevaObra({ abierto, ...resto }: Props): JSX.Element | nu
   return <Formulario {...resto} />;
 }
 
-function Formulario({ alCerrar, alCrear, carpetas = [], carpetaAbierta = null }: Omit<Props, "abierto">) {
+function Formulario({ alCerrar, alCrear, carpetas = [], carpetaAbierta = null, obrasDeLaCarpeta }: Omit<Props, "abierto">) {
   const base = useId();
   const alExpirar = useContext(ContextoAplicacion)?.alExpirar;
   const [nombre, setNombre] = useState("");
@@ -86,6 +91,20 @@ function Formulario({ alCerrar, alCrear, carpetas = [], carpetaAbierta = null }:
     };
   }, [alExpirar]);
 
+  const puedeEditar = useContext(ContextoAplicacion)?.sesion.acciones.includes("editar_hoja") ?? true;
+  const irA = (carpeta: string | null) => (carpeta === null ? volverALaCarpetaDeLaEmpresa() : abrirCarpeta(carpeta));
+
+  // Todo o nada: si crear falla despues de cambiar de carpeta, la sesion vuelve a la que estaba (los numeros de obra se
+  // repiten entre carpetas). Si la vuelta tambien falla, se dice: la persona sigue en otra carpeta.
+  async function volverALaAbierta(fallo: unknown): Promise<unknown> {
+    try {
+      await irA(carpetaAbierta);
+      return fallo;
+    } catch (e) {
+      return `${mensajeDeError(fallo)} Además, no se pudo volver a la carpeta anterior: ${mensajeDeError(e)}`;
+    }
+  }
+
   async function crear(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -94,10 +113,15 @@ function Formulario({ alCerrar, alCrear, carpetas = [], carpetaAbierta = null }:
       return;
     }
     setOcupado(true);
+    let cambio = false;
     try {
-      // Crear en otra carpeta es abrirla primero: la API crea la obra en la carpeta de la sesion.
-      if (pideCarpeta && carpetaElegida !== carpetaAbierta) {
-        await (carpetaElegida === null ? volverALaCarpetaDeLaEmpresa() : abrirCarpeta(carpetaElegida));
+      // Crear en otra carpeta es abrirla primero (la API crea la obra en la carpeta de la sesion), y cambiar de carpeta
+      // descarta los borradores de la Hoja: se pregunta antes y, con «Quedarme», no se cambia ni se crea nada.
+      cambio = pideCarpeta && carpetaElegida !== carpetaAbierta;
+      if (cambio) {
+        const hojas = puedeEditar ? await hojasConCambios(obrasDeLaCarpeta) : [];
+        if (!(await confirmarSalida("carpeta", hojas))) return;
+        await irA(carpetaElegida);
       }
       const obra = await pedir<ProyectoRespuesta>("/v1/proyectos", {
         metodo: "POST",
@@ -106,7 +130,7 @@ function Formulario({ alCerrar, alCrear, carpetas = [], carpetaAbierta = null }:
       alCrear(obra, pideCarpeta ? carpetaElegida : carpetaAbierta);
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar?.();
-      else setError(e);
+      else setError(cambio ? await volverALaAbierta(e) : e);
     } finally {
       setOcupado(false);
     }

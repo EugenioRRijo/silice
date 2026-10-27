@@ -4,6 +4,7 @@ import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CasoRespuesta, CasosRespuesta, ProyectoRespuesta } from "../../api/tipos";
 import { confirmarSalida } from "../salida";
 import { nombreDeCarpeta } from "../Selectores";
+import { hojasConCambios } from "./hojasConCambios";
 
 interface Opciones {
   // `GET /v1/hoja/borradores` exige `editar_hoja` (BCP-5 §4.6): sin ella no se pregunta por borradores.
@@ -51,27 +52,18 @@ export function useCarpetaDeTrabajo({ puedeVerBorradores, obras, alExpirar, alFa
     };
   }, [recarga, alExpirar, alFallar]);
 
-  // «Hoja de {obra}» por cada borrador de esta sesion con cambios. Un 403 o un fallo cuentan como ninguno (no se puede
-  // saber); un 401 sigue hacia arriba (la sesion vencio).
-  const hojasConCambios = useCallback(async (): Promise<string[]> => {
-    if (!puedeVerBorradores) return [];
-    try {
-      const r = await pedir<{ borradores?: { proyecto: string; cambios: number }[] }>("/v1/hoja/borradores");
-      const lista = Array.isArray(r?.borradores) ? r.borradores : [];
-      const nombre = (p: string) => obrasActuales.current?.find((o) => o.codigo === p || o.nombre === p)?.nombre ?? p;
-      return [...new Set(lista.filter((b) => b.cambios > 0).map((b) => `Hoja de ${nombre(b.proyecto)}`))];
-    } catch (e) {
-      if (esEstado(e, 401)) throw e;
-      return [];
-    }
-  }, [puedeVerBorradores]);
+  // Los borradores con cambios, nombrados con las obras de la carpeta abierta (ver `hojasConCambios`).
+  const hojasPendientes = useCallback(
+    async (): Promise<string[]> => (puedeVerBorradores ? hojasConCambios(obrasActuales.current) : []),
+    [puedeVerBorradores],
+  );
 
   // Pregunta, cambia y avisa. Resuelve true si cambio y false si la persona se quedo o la sesion vencio; si la API
   // rechaza el cambio, lanza el error (quien lo pidio lo muestra donde esta la persona).
   const cambiar = useCallback(
     async (peticion: () => Promise<CasoRespuesta>): Promise<boolean> => {
       try {
-        if (!(await confirmarSalida("carpeta", await hojasConCambios()))) return false;
+        if (!(await confirmarSalida("carpeta", await hojasPendientes()))) return false;
         const carpeta = await peticion();
         setRecarga((n) => n + 1);
         alCambiar(nombreDeCarpeta(carpeta.nombre));
@@ -84,7 +76,7 @@ export function useCarpetaDeTrabajo({ puedeVerBorradores, obras, alExpirar, alFa
         throw e;
       }
     },
-    [hojasConCambios, alCambiar, alExpirar],
+    [hojasPendientes, alCambiar, alExpirar],
   );
 
   // `preparar` (crear la carpeta, `POST /v1/casos`) corre DESPUES de la pregunta y antes de abrir, y da el nombre final

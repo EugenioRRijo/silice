@@ -77,7 +77,12 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
     [obras, carpetaActual, puedeCambiarDeCarpeta],
   );
   const grupos = agruparPorCarpeta(visibles);
+  // La carpeta abierta siempre se ofrece (aunque no tenga obras): es la que propone el dialogo.
   const carpetasDelDialogo: CarpetaDeObra[] = grupos.map((g) => ({ carpeta: g.carpeta, titulo: g.titulo }));
+  if (estado === "lista" && !carpetasDelDialogo.some((c) => c.carpeta === carpetaActual)) {
+    const titulo = carpetaActual === null ? "Carpeta de la empresa" : carpetaActual.replace(/\.db$/i, "");
+    carpetasDelDialogo.unshift({ carpeta: carpetaActual, titulo });
+  }
 
   const claveAbierta = obraAbierta === null ? null : claveDe({ carpeta: obraAbierta.carpeta, obra_id: obraAbierta.obraId });
   const desplegada = (clave: string) => manual[clave] ?? clave === claveAbierta;
@@ -257,6 +262,9 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         alCerrar={() => setNuevaAbierta(false)}
         carpetas={carpetasDelDialogo}
         carpetaAbierta={carpetaActual}
+        obrasDeLaCarpeta={obras
+          .filter((o) => o.carpeta === carpetaActual)
+          .map((o) => ({ codigo: String(o.obra_id), nombre: o.obra }))}
         alCrear={(obra, carpeta) => {
           setNuevaAbierta(false);
           recargar();
