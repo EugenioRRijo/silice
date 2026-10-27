@@ -314,9 +314,13 @@ que aún no tienen sitio en el árbol (Histórico, Índices, Simulador…), para
   `ubicacion`, `en()`, `inicioDe`, `modulosVisibles`; conservar `PAGINAS`, `usable`, `paginaPorId`)
 - Borrar (con sus pruebas y estilos): `shell/SidebarModulos.*`, `shell/AccesosDelModulo.*`, `shell/PanelDeArea.tsx`,
   `shell/SelectorObra.*`, `shell/Selectores.*`, `shell/BarraSuperior.*`, `shell/sidebar.*`, `shell/useFijadoPosible.*`,
-  `shell/anchoBotonesBarra.test.ts`, `shell/_umbrales.scss` y lo que `npm run muerto` señale tras el cambio
+  `shell/anchoBotonesBarra.test.ts` y lo que `npm run muerto` señale tras el cambio
 - Mover: de `shell/Shell.tsx` a `marco/Marco.tsx` lo que sigue vigente (límite de error, diálogo de salida,
   marca de demostración, avisos, expiración de sesión)
+- Mover (no borrar): `shell/_umbrales.scss` → `marco/_umbrales.scss`, porque lo usan `marco/BarraSuperior.scss` y
+  `shell/ColumnaRecorrido.scss`. Se conservan `$umbrales-por-escala` y `por-debajo-del-umbral`; se quita
+  `$umbrales-por-modulo` solo si su único usuario (`shell/shell.scss`) se borra en esta tarea. Actualizar los `@use`
+  y la ruta que lee `estilos/estilosLetra.test.ts`.
 - Prueba: `marco/Marco.test.tsx` (las pruebas de `Shell.test.tsx` que sigan aplicando se mueven aquí)
 
 **Interfaces:**
