@@ -133,7 +133,9 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
     }
   }
 
-  function filaDeObra(o: ObraDeCarpeta) {
+  // `nivel` es el de la obra en el árbol (1 sin carpetas, 2 con ellas); sus secciones, el siguiente. Los grupos no son
+  // `treeitem`, así que los niveles se dicen con aria-level, aria-setsize y aria-posinset.
+  function filaDeObra(o: ObraDeCarpeta, nivel: number, tamano: number, posicion: number) {
     const clave = claveDe(o);
     const abierta = desplegada(clave);
     const Chevron = abierta ? ChevronDown : ChevronRight;
@@ -144,6 +146,9 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
           to={rutaDeObra(o.carpeta, o.obra_id, "resumen")}
           role="treeitem"
           aria-expanded={abierta}
+          aria-level={nivel}
+          aria-setsize={tamano}
+          aria-posinset={posicion}
           data-clave={clave}
           tabIndex={tabulable === clave ? 0 : -1}
           onFocus={() => setFoco(clave)}
@@ -154,7 +159,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         </Link>
         {abierta && (
           <ul role="group" aria-labelledby={idDe(clave)} className="silice-marco-lateral__secciones">
-            {secciones.map((s) => {
+            {secciones.map((s, i) => {
               const claveSeccion = `${clave}|${s.id}`;
               return (
                 <li key={s.id} role="none">
@@ -162,6 +167,9 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
                     to={rutaDeObra(o.carpeta, o.obra_id, s.id)}
                     role="treeitem"
                     aria-current={claveSeccion === claveActiva ? "page" : undefined}
+                    aria-level={nivel + 1}
+                    aria-setsize={secciones.length}
+                    aria-posinset={i + 1}
                     data-clave={claveSeccion}
                     data-padre={clave}
                     tabIndex={tabulable === claveSeccion ? 0 : -1}
@@ -190,12 +198,21 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         </div>
       );
     }
-    if (estado === "lista" && visibles.length === 0) {
-      return <p className="silice-marco-lateral__aviso">Todavía no hay obras</p>;
+    // Sin nada que mostrar: mientras llega la primera lista (o una recarga de una lista vacía) se dice que carga; no se
+    // pinta un árbol vacío. Con obras ya cargadas, una recarga conserva el árbol.
+    if (visibles.length === 0) {
+      return estado === "cargando" ? (
+        <p className="silice-marco-lateral__aviso" role="status">
+          Cargando obras…
+        </p>
+      ) : (
+        <p className="silice-marco-lateral__aviso">Todavía no hay obras</p>
+      );
     }
+    const conCarpetas = grupos.length > 1;
     return (
       <ul ref={arbol} role="tree" aria-label="Obras" className="silice-marco-lateral__arbol" onKeyDown={alTeclear}>
-        {grupos.length > 1
+        {conCarpetas
           ? grupos.map((g) => {
               const idGrupo = idDe(`g|${g.carpeta ?? ""}`);
               return (
@@ -204,12 +221,12 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
                     {g.titulo}
                   </span>
                   <ul role="group" aria-labelledby={idGrupo}>
-                    {g.obras.map(filaDeObra)}
+                    {g.obras.map((o, i) => filaDeObra(o, 2, g.obras.length, i + 1))}
                   </ul>
                 </li>
               );
             })
-          : visibles.map(filaDeObra)}
+          : visibles.map((o, i) => filaDeObra(o, 1, visibles.length, i + 1))}
       </ul>
     );
   }
@@ -262,7 +279,8 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         alCrear={(obra) => {
           cerrarNuevaObra();
           recargar();
-          navegar(rutaDeObra(destino.carpeta, Number(obra.codigo), "resumen"));
+          // El código lo da el servidor como texto; si no son dígitos no hay ruta a la obra nueva y se queda donde está.
+          if (/^\d+$/.test(obra.codigo)) navegar(rutaDeObra(destino.carpeta, Number(obra.codigo), "resumen"));
         }}
       />
     </aside>
