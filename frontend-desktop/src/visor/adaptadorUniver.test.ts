@@ -219,6 +219,23 @@ describe("adaptador de Univer: montar y desmontar (D-3)", () => {
     visor.destruir();
   });
 
+  test("si Univer nunca llega a la etapa Rendered, a los 8 s falla con un mensaje claro y desecha la instancia", async () => {
+    doble.estado.etapa = 1;
+    // Desechar la instancia con la unidad viva lanza (como en Univer): eso no debe tapar la causa.
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    const resultado = crearHojaUniver(document.createElement("div"), libro, 1).then(
+      () => "abrio",
+      (error: unknown) => (error instanceof Error ? error.message : "otro"),
+    );
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(await resultado).toBe("Univer no termino de preparar la hoja.");
+    expect(doble.estado.orden).toContain("instancia");
+    // Nunca se pidio un zoom a una hoja sin controlador.
+    expect(doble.estado.zooms).toBe(0);
+    aviso.mockRestore();
+  });
+
   test("despues de destruir, pedir zoom u hoja no toca Univer", async () => {
     doble.estado.lanzaConUnidadViva = false;
     const visor = await crearHojaUniver(document.createElement("div"), libro, 1);
