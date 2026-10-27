@@ -155,7 +155,9 @@ describe("BarraLateral: zonas Pendientes y Empresa", () => {
   });
 
   it("Empresa lista sus entradas usables, con la activa marcada", async () => {
-    pintar({ sesion: sesionDe("admin"), ruta: "/empresa/personas" });
+    // Quien ve las cinco: lo de la administración y, además, `leer_proyecto` (el catálogo).
+    const todo = sesionDe("admin", { acciones: [...sesionDe("admin").acciones, "leer_proyecto"] });
+    pintar({ sesion: todo, ruta: "/empresa/personas" });
     await arbol();
     const zona = screen.getByRole("navigation", { name: "Empresa" });
     const enlaces = within(zona).getAllByRole("link");

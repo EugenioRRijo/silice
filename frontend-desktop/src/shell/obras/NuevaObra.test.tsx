@@ -5,7 +5,7 @@ import { fijarCsrf } from "../../api/cliente";
 import { ContextoAplicacion } from "../contexto";
 import type { Aplicacion } from "../contexto";
 import PaginaHoja from "../../paginas/hoja/index";
-import { DialogoNuevaObra } from "./DialogoNuevaObra";
+import { DialogoNuevaObra, type CarpetaDeObra } from "./DialogoNuevaObra";
 import { TORRE_B, botonDeObra, estadoInicial, json, montarShell, servidorFalso, sesionDe } from "./datosDePrueba";
 
 // Plan de modulos, MOD-3b (absorbe T7 del plan de montar): «Nueva obra» (diseno de la bienvenida, BCP-6 §5.2, F10 y F11,
@@ -193,7 +193,7 @@ describe("F11: obra sin versión guardada", () => {
 
 // Rediseño del marco, Tarea 6: con obras en más de una carpeta, el diálogo pide en cuál se crea (por omisión, la abierta).
 describe("«Nueva obra» con varias carpetas", () => {
-  const CARPETAS = [
+  const CARPETAS: CarpetaDeObra[] = [
     { carpeta: "s1.db", titulo: "S1" },
     { carpeta: "s2.db", titulo: "S2" },
   ];

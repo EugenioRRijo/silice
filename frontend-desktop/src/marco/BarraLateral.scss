@@ -1,0 +1,166 @@
+@use "@carbon/styles/scss/type";
+
+// Barra lateral marfil del marco nuevo (maqueta aprobada): 236 px, fondo --silice-lateral. Sin hexadecimales: solo
+// --silice-* y --cds-*. Rem, sin sombra ni animacion.
+.silice-marco-lateral {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  inline-size: 14.75rem;
+  flex: none;
+  min-block-size: 0;
+  overflow: hidden;
+  background-color: var(--silice-lateral);
+  color: var(--cds-text-primary);
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
+.silice-marco-lateral__titulo {
+  margin: 0;
+  padding: 1rem 1rem 0.5rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  @include type.type-style("label-01");
+}
+
+// La zona de obras ocupa lo que sobra: su cabecera y «Nueva obra» quedan fijas y solo el arbol se desplaza.
+.silice-marco-lateral__obras {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
+.silice-marco-lateral__arbol {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  margin-block-start: 0.5rem;
+  overflow-y: auto;
+}
+
+.silice-marco-lateral__carpeta {
+  display: block;
+  padding: 0.5rem 1rem 0.25rem;
+  color: var(--cds-text-secondary);
+  @include type.type-style("label-01");
+}
+
+// Una fila del arbol, de Pendientes o de Empresa. La raya del activo ocupa su sitio siempre (transparente) para que el
+// texto no se mueva al activarse.
+.silice-marco-lateral__fila {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  min-block-size: 2rem;
+  padding-inline: 0.75rem 1rem;
+  border-inline-start: 3px solid transparent;
+  color: inherit;
+  text-decoration: none;
+  @include type.type-style("body-compact-01");
+
+  svg {
+    flex: none;
+    fill: currentcolor;
+  }
+
+  &:hover {
+    background-color: var(--silice-lateral-activo);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
+  &[aria-current="page"] {
+    background-color: var(--silice-lateral-activo);
+    border-inline-start: 3px solid var(--silice-acento);
+    font-weight: 600;
+  }
+}
+
+.silice-marco-lateral__pendientes {
+  margin-block-start: 0.5rem;
+}
+
+.silice-marco-lateral__obra {
+  padding-inline-start: 0.5rem;
+}
+
+// Las secciones de la obra abierta, unidas por una linea guia a la izquierda.
+.silice-marco-lateral__secciones {
+  margin-inline-start: 1.25rem;
+  border-inline-start: 1px solid var(--cds-border-strong-01);
+}
+
+.silice-marco-lateral__seccion {
+  padding-inline-start: 0.75rem;
+}
+
+.silice-marco-lateral__aviso {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  color: var(--cds-text-secondary);
+  @include type.type-style("body-compact-01");
+}
+
+.silice-marco-lateral__reintentar {
+  margin-block-start: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cds-link-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+  }
+}
+
+.silice-marco-lateral__empresa {
+  flex: none;
+  padding-block-end: 0.5rem;
+}
+
+// «Nueva obra»: boton vistoso de ancho completo, 40 px, siempre visible bajo la cabecera de Obras.
+.silice-marco-boton-principal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: 2.5rem;
+  padding-inline: 1rem;
+  border: 0;
+  background-color: var(--silice-acento);
+  color: var(--silice-marco);
+  font-family: inherit;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+  @include type.type-style("body-compact-01");
+
+  svg {
+    flex: none;
+    fill: currentcolor;
+  }
+
+  &:hover {
+    filter: brightness(0.95);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--silice-marco);
+    outline-offset: -4px;
+  }
+}

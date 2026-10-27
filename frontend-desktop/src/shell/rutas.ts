@@ -344,7 +344,7 @@ function esInicio(pagina: PaginaDef): boolean {
 
 // Permisos y modo entrega, sin mirar el modulo. Con `modo_entrega` (SILICE_MODO_ENTREGA=1) la seccion Investigacion
 // desaparece.
-function usable(pagina: PaginaDef, acciones: readonly string[], modoEntrega: boolean): boolean {
+export function usable(pagina: PaginaDef, acciones: readonly string[], modoEntrega: boolean): boolean {
   if (modoEntrega && pagina.seccion === "Investigación") return false;
   return pagina.accion === null || acciones.includes(pagina.accion);
 }

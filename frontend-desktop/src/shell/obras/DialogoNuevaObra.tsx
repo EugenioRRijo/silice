@@ -1,6 +1,7 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import { useContext, useEffect, useId, useState } from "react";
 import type { FormEvent, JSX } from "react";
+import { abrirCarpeta, volverALaCarpetaDeLaEmpresa } from "../../api/carpetaYObra";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CarpetaRespuesta, ProyectoRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
@@ -14,7 +15,18 @@ interface Props {
   abierto: boolean;
   alCerrar: () => void;
   // La obra creada (201 de `POST /v1/proyectos`): el armazon recarga la lista y la elige.
-  alCrear: (obra: ProyectoRespuesta) => void;
+  // La carpeta donde quedo es el segundo argumento (null = la de la empresa); sin `carpetas`, la que ya estaba abierta.
+  alCrear: (obra: ProyectoRespuesta, carpeta?: string | null) => void;
+  // Las carpetas donde se puede crear la obra (las que tienen obras para esta cuenta). Con mas de una, el dialogo pide
+  // la carpeta; con una o ninguna, no (rediseno del marco, Tarea 6).
+  carpetas?: CarpetaDeObra[];
+  // La carpeta abierta ahora (null = la de la empresa): la que se propone y la unica cuya moneda se conoce.
+  carpetaAbierta?: string | null;
+}
+
+export interface CarpetaDeObra {
+  carpeta: string | null;
+  titulo: string;
 }
 
 const MONEDAS = [
@@ -23,6 +35,8 @@ const MONEDAS = [
 ];
 const CONVERSION = "Esta obra se valorará convirtiendo los precios de la carpeta con la tasa del BCV del día.";
 const ID_FORMULARIO = "silice-nueva-obra";
+// Ningun nombre de carpeta puede ser este (todos terminan en .db): es la de la empresa en el selector.
+const VALOR_EMPRESA = "empresa";
 
 const conMayuscula = (texto: string) => texto.charAt(0).toLocaleUpperCase("es") + texto.slice(1);
 
@@ -30,12 +44,12 @@ const conMayuscula = (texto: string) => texto.charAt(0).toLocaleUpperCase("es") 
 // lo valida la API), cliente y ubicacion (la ficha de la obra), tipo de obra y moneda. La moneda propuesta es la de la
 // carpeta (`GET /v1/carpeta`, D-MP1); elegir la otra se puede y se dice que se convertira con la tasa del BCV. Sin moneda
 // de la carpeta no hay propuesta y es obligatoria (UC-01: sin valor por defecto).
-export function DialogoNuevaObra({ abierto, alCerrar, alCrear }: Props): JSX.Element | null {
+export function DialogoNuevaObra({ abierto, ...resto }: Props): JSX.Element | null {
   if (!abierto) return null;
-  return <Formulario alCerrar={alCerrar} alCrear={alCrear} />;
+  return <Formulario {...resto} />;
 }
 
-function Formulario({ alCerrar, alCrear }: Omit<Props, "abierto">) {
+function Formulario({ alCerrar, alCrear, carpetas = [], carpetaAbierta = null }: Omit<Props, "abierto">) {
   const base = useId();
   const alExpirar = useContext(ContextoAplicacion)?.alExpirar;
   const [nombre, setNombre] = useState("");
@@ -45,6 +59,8 @@ function Formulario({ alCerrar, alCrear }: Omit<Props, "abierto">) {
   const [moneda, setMoneda] = useState("");
   // La moneda de la carpeta: undefined mientras llega, null si no tiene.
   const [deLaCarpeta, setDeLaCarpeta] = useState<string | null | undefined>(undefined);
+  const pideCarpeta = carpetas.length > 1;
+  const [carpetaElegida, setCarpetaElegida] = useState<string | null>(carpetaAbierta);
   const [faltaMoneda, setFaltaMoneda] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -79,11 +95,15 @@ function Formulario({ alCerrar, alCrear }: Omit<Props, "abierto">) {
     }
     setOcupado(true);
     try {
+      // Crear en otra carpeta es abrirla primero: la API crea la obra en la carpeta de la sesion.
+      if (pideCarpeta && carpetaElegida !== carpetaAbierta) {
+        await (carpetaElegida === null ? volverALaCarpetaDeLaEmpresa() : abrirCarpeta(carpetaElegida));
+      }
       const obra = await pedir<ProyectoRespuesta>("/v1/proyectos", {
         metodo: "POST",
         cuerpo: { nombre, moneda, dominio, descripcion: "", cliente, ubicacion },
       });
-      alCrear(obra);
+      alCrear(obra, pideCarpeta ? carpetaElegida : carpetaAbierta);
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar?.();
       else setError(e);
@@ -92,9 +112,11 @@ function Formulario({ alCerrar, alCrear }: Omit<Props, "abierto">) {
     }
   }
 
+  // La moneda que se conoce es la de la carpeta abierta: en otra no hay propuesta.
+  const monedaDeCarpeta = carpetaElegida === carpetaAbierta ? deLaCarpeta : null;
   let ayudaMoneda: string;
-  if (deLaCarpeta && moneda && moneda !== deLaCarpeta) ayudaMoneda = CONVERSION;
-  else if (deLaCarpeta) ayudaMoneda = `Es la moneda de la carpeta de trabajo (${deLaCarpeta}).`;
+  if (monedaDeCarpeta && moneda && moneda !== monedaDeCarpeta) ayudaMoneda = CONVERSION;
+  else if (monedaDeCarpeta) ayudaMoneda = `Es la moneda de la carpeta de trabajo (${monedaDeCarpeta}).`;
   else ayudaMoneda = "En esta moneda se calcularán los precios de la obra.";
 
   return (
@@ -121,6 +143,23 @@ function Formulario({ alCerrar, alCrear }: Omit<Props, "abierto">) {
           maxLength={120}
           onChange={(e) => setNombre(e.target.value)}
         />
+        {pideCarpeta && (
+          <Select
+            id={`${base}-carpeta`}
+            labelText="Carpeta"
+            value={carpetaElegida ?? VALOR_EMPRESA}
+            onChange={(e) => {
+              const nueva = e.target.value === VALOR_EMPRESA ? null : e.target.value;
+              setCarpetaElegida(nueva);
+              setMoneda(nueva === carpetaAbierta ? (deLaCarpeta ?? "") : "");
+              setFaltaMoneda(false);
+            }}
+          >
+            {carpetas.map((c) => (
+              <SelectItem key={c.carpeta ?? VALOR_EMPRESA} value={c.carpeta ?? VALOR_EMPRESA} text={c.titulo} />
+            ))}
+          </Select>
+        )}
         <CampoTexto
           id={`${base}-cliente`}
           labelText="Cliente (opcional)"
@@ -153,7 +192,7 @@ function Formulario({ alCerrar, alCrear }: Omit<Props, "abierto">) {
             setFaltaMoneda(false);
           }}
         >
-          {!deLaCarpeta && <SelectItem value="" text="Elija…" />}
+          {!monedaDeCarpeta && <SelectItem value="" text="Elija…" />}
           {MONEDAS.map((m) => (
             <SelectItem key={m.valor} value={m.valor} text={m.texto} />
           ))}
