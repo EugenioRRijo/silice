@@ -12,8 +12,8 @@ también (`seguridad.permisos.PERMISOS` es lo que se prueba, no la fuente):
 - `POST /v1/casos/actual`, `CAMBIAR_CASO` (arma y administrador); `GET /v1/casos`, cualquier rol.
 
 Tres pruebas: (1) la tabla cubre exactamente las rutas de la aplicación; (2) por rol, cada ruta deja
-pasar o rechaza con 403 según la tabla; (3) ninguna ruta queda abierta salvo `/salud` y la entrada
-(`POST /v1/sesion`), y fuera de las rutas de la API solo están la documentación y `/app`. La
+pasar o rechaza con 403 según la tabla; (3) ninguna ruta queda abierta salvo `/salud`, la entrada
+(`POST /v1/sesion`) y el tema de la empresa, y fuera de las rutas de la API solo están la documentación y `/app`. La
 regresión «con clave, igual que antes» se mide contra una aplicación de referencia que monta los
 mismos puntos finales con solo `exigir_clave_api` (el `CON_CLAVE` de antes de la ola 0a).
 
@@ -312,12 +312,18 @@ DE_LA_SESION = {
     # código (las prueban `test_api_primer_arranque.py`: B2, B8, S1 a S8), no esta tabla
     ("GET", "/v1/primer-arranque"),
     ("POST", "/v1/primer-arranque/reclamo"),
+    # Rediseño del marco, Tarea 1: el tema de la empresa; la pantalla de entrada lo pinta antes
+    # de que haya sesión (lo prueba `test_api_tema.py`: colores, logo y archivos rotos)
+    ("GET", "/v1/tema"),
+    ("GET", "/v1/tema/logo"),
 }
 SIN_NADA = {  # las únicas abiertas
     ("GET", "/salud"),
     ("POST", "/v1/sesion"),
     ("GET", "/v1/primer-arranque"),
     ("POST", "/v1/primer-arranque/reclamo"),
+    ("GET", "/v1/tema"),
+    ("GET", "/v1/tema/logo"),
 }
 
 
