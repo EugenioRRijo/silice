@@ -13,7 +13,8 @@ también (`seguridad.permisos.PERMISOS` es lo que se prueba, no la fuente):
 
 Tres pruebas: (1) la tabla cubre exactamente las rutas de la aplicación; (2) por rol, cada ruta deja
 pasar o rechaza con 403 según la tabla; (3) ninguna ruta queda abierta salvo `/salud`, la entrada
-(`POST /v1/sesion`) y el tema de la empresa, y fuera de las rutas de la API solo están la documentación y `/app`. La
+(`POST /v1/sesion`) y el tema de la empresa, y fuera de las rutas de la API solo están la
+documentación y `/app`. La
 regresión «con clave, igual que antes» se mide contra una aplicación de referencia que monta los
 mismos puntos finales con solo `exigir_clave_api` (el `CON_CLAVE` de antes de la ola 0a).
 
