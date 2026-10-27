@@ -8,6 +8,10 @@ existente cambia. El precio es `DecimalExacto` (texto de 40). Solo inserción: a
 Cuelga de `caso_0016_mp_procura` (T23), la cabeza cuando se escribió (la cadena real es
 0010 → 0011_mod_ficha_obra → 0013_mp_mercado → 0014_mp_aprobacion → 0012_mp_medicion →
 0015_mp_causas → 0016_mp_procura).
+
+Cuidado al bajar (`downgrade`): borra la tabla y, con ella, todos los precios declarados como precio
+del corte. Esos datos no se reconstruyen desde otra tabla; quien baje debe tener el respaldo previo
+que `preparar_base` deja antes de migrar.
 """
 
 import sqlalchemy as sa
