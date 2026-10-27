@@ -89,23 +89,30 @@ def a_la_vez(*peticiones) -> list:
     return respuestas
 
 
+def registrar_tasa_en(
+    sesion, fecha: date, valor: str, lado: str = "venta", huella: str = "f" * 64
+) -> None:
+    """Una tasa del BCV (Bs por USD) con fecha valor `fecha` en la sesion dada. No confirma."""
+    registrar_importacion(
+        sesion,
+        definicion_tasa(lado),
+        [Observacion(fecha, Decimal(valor))],
+        archivo="FUENTE.md",
+        huella=huella,
+        fuente="https://www.bcv.org.ve/",
+        fecha_descarga=fecha,
+        responsable="Admin",
+        filas_leidas=1,
+        filas_rechazadas=0,
+    )
+
+
 def registrar_tasa(
     ruta: Path, fecha: date, valor: str, lado: str = "venta", huella: str = "f" * 64
 ) -> None:
     """Una tasa del BCV (Bs por USD) con fecha valor `fecha` en la base del caso."""
     with base(ruta) as sesion:
-        registrar_importacion(
-            sesion,
-            definicion_tasa(lado),
-            [Observacion(fecha, Decimal(valor))],
-            archivo="FUENTE.md",
-            huella=huella,
-            fuente="https://www.bcv.org.ve/",
-            fecha_descarga=fecha,
-            responsable="Admin",
-            filas_leidas=1,
-            filas_rechazadas=0,
-        )
+        registrar_tasa_en(sesion, fecha, valor, lado, huella)
         sesion.commit()
 
 

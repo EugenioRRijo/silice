@@ -7,7 +7,7 @@ enviado; cantidades y fechas como texto; un fallo de la base es un 503 sin SQL n
 
 - `GET /v1/procura?proyecto=&corte=` → `{necesidades, alertas, aviso}`.
 - `POST /v1/procura/compras` `{proyecto, descripcion, unidad, evento, fecha, cantidad, precio}`
-  → 204.
+  → 200 `{equivalencia}` (la conversión del precio del corte si hubo una, si no `null`; antes 204).
 - `PUT /v1/procura/plazos` `{proyecto, descripcion, unidad, dias}` → 204.
 
 El router se monta en una aplicación propia con el de la sesión (para entrar) y los manejadores de
@@ -227,7 +227,7 @@ def test_sin_linea_base_lo_dice_y_no_hay_fechas(ana) -> None:
 def test_registrar_un_pedido_quita_la_alerta(ana, caso: Path) -> None:
     navegador, cabeceras = ana
     respuesta = navegador.post(f"{RUTA}/compras", json=_compra(), headers=cabeceras)
-    assert respuesta.status_code == 204, respuesta.text
+    assert respuesta.status_code == 200, respuesta.text
     _sin_cache(respuesta)
     (compra,) = _compras(caso)
     assert (compra.evento, compra.fecha, compra.responsable) == (
@@ -247,7 +247,7 @@ def test_una_recepcion_con_precio_guarda_cantidad_precio_y_moneda(ana, caso: Pat
         json=_compra(evento="recibida", cantidad="126", precio="1.020,50"),
         headers=cabeceras,
     )
-    assert respuesta.status_code == 204, respuesta.text
+    assert respuesta.status_code == 200, respuesta.text
     (compra,) = _compras(caso)
     assert (compra.evento, compra.cantidad, compra.precio, compra.moneda) == (
         "recibida",
@@ -287,7 +287,7 @@ def test_la_procura_sugiere_compra_tardia_a_la_partida_que_la_sufrio(
         json=_compra(evento="recibida", fecha="2026-11-09"),
         headers=cabeceras,
     )
-    assert recibida.status_code == 204, recibida.text
+    assert recibida.status_code == 200, recibida.text
 
     al_09 = navegador.get(RUTA, params={"proyecto": pv.OBRA, "corte": "2026-11-09"}).json()
     assert al_09["causas_sugeridas"] == [{"partida": "OBRA-02", "causa": "compra_tardia"}]
@@ -437,7 +437,7 @@ def test_con_la_clave_de_api_consta_el_usuario_de_la_api(caso: Path) -> None:
     respuesta = navegador.post(
         f"{RUTA}/compras", json=_compra(), headers={CABECERA: crear_clave_de_prueba()}
     )
-    assert respuesta.status_code == 204, respuesta.text
+    assert respuesta.status_code == 200, respuesta.text
     assert [c.responsable for c in _compras(caso)] == ["api (clave de API)"]
 
 

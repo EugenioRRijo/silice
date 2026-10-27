@@ -14,7 +14,10 @@ Lo que se prueba:
 - `POST /v1/procura/compras` con `declarar_corte` declara el precio unitario de la compra recibida
   como precio del corte desde la fecha de llegada, en la misma transacción que la compra; sin
   precio o en un pedido es un 422 que lo dice. Ni una casilla ni la otra cambian los precios de la
-  versión sellada de la línea base.
+  versión sellada de la línea base;
+- un precio en otra moneda que la obra se convierte con la tasa del BCV de su fecha (Tarea D2,
+  decisión de Eugenio del 2026-10-27): la respuesta trae la equivalencia exacta (original, tasa,
+  fecha y fuente de la tasa, convertido) y, sin tasa, un 409 que lo dice y no guarda nada.
 
 Oráculos de la memoria de OB-S2 (`tests/fixtures/memorias/control_ob_s2.md`, §1, §3 y §6), a mano:
 el material de B pasa de 3,00 a 4,00 y el de C de 12,00 a 14,10 → ΔP = 90 × 0 + 60 × (5 − 6) =
@@ -45,6 +48,7 @@ from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion.base_datos import preparar_base
 from tests.fixtures import control_ob_s2 as ob
+from tests.fixtures.hoja_versiones_api import registrar_tasa
 from tests.fixtures.sesion_web import (
     con_cuenta,
     copiar_instalacion,
@@ -268,6 +272,7 @@ def test_sin_la_casilla_no_se_declara_nada(caso: Path) -> None:
     )
     assert respuesta.status_code == 200, respuesta.text
     assert respuesta.json()["corte"] is None
+    assert respuesta.json()["equivalencia"] is None
     assert _declarados(caso) == []
 
 
@@ -388,7 +393,8 @@ def test_al_recibir_una_compra_la_casilla_declara_su_precio_del_corte(caso: Path
     navegador, cabeceras = _arma()
     antes = _sellados(caso)
     respuesta = _recibir(navegador, cabeceras, declarar_corte=True)
-    assert respuesta.status_code == 204, respuesta.text
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json() == {"equivalencia": None}  # el precio ya estaba en la moneda de la obra
     [declarado] = _declarados(caso)
     assert declarado[:6] == (
         TUBO,
@@ -408,7 +414,7 @@ def test_al_recibir_una_compra_la_casilla_declara_su_precio_del_corte(caso: Path
 def test_al_recibir_una_compra_sin_la_casilla_no_se_declara_nada(caso: Path) -> None:
     navegador, cabeceras = _arma()
     respuesta = _recibir(navegador, cabeceras)
-    assert respuesta.status_code == 204, respuesta.text
+    assert (respuesta.status_code, respuesta.json()) == (200, {"equivalencia": None})
     assert _declarados(caso) == []
     assert len(_compras(caso)) == 1
 
@@ -449,5 +455,141 @@ def test_si_no_se_puede_declarar_tampoco_se_anota_la_compra(
         409,
         {"detalle": "La obra «OB-S2» no admite ese precio del corte (prueba)."},
     )
+    assert _compras(caso) == []
+    assert _declarados(caso) == []
+
+
+# --- un precio en otra moneda que la obra se convierte con la tasa del BCV (Tarea D2) ------------
+#
+# La obra OB-S2 está en USD; la carpeta pasa a trabajar en Bs con una lista del 05/11/2026 que rige
+# al 10/11 (la fecha de estas pruebas), así que un precio tecleado está en Bs. Oráculo a mano: con
+# 36,50 Bs/USD, 146,00 Bs / 36,50 = 4,00 USD; el material de B pasa de 3,00 a 4,00 y ΔP = −60,00
+# (memoria de OB-S2, §3), el mismo desvío que con el precio declarado directo en USD.
+
+EQUIVALENCIA = {
+    "precio_original": "146.00",
+    "moneda_original": "Bs",
+    "tasa": "36.50",
+    "fecha_tasa": "2026-11-10",
+    "fuente_tasa": "https://www.bcv.org.ve/",
+    "convertido": "4",
+    "moneda": "USD",
+    "operacion": "÷",
+}
+SIN_TASA = (
+    "No hay tasa del BCV del 10/11/2026 para convertir este precio a USD. Cargue la tasa en "
+    "Índices y vuelva a intentarlo."
+)
+
+
+def _carpeta_en_bs(ruta: Path, con_tasa: bool) -> None:
+    def preparar(s) -> None:
+        usd = s.scalars(
+            select(models.ListaPrecios).where(models.ListaPrecios.moneda == "USD")
+        ).one()
+        bs = models.ListaPrecios(nombre="Lista Bs", moneda="Bs", fecha_vigencia=date(2026, 11, 5))
+        s.add(bs)
+        s.flush()
+        for precio in usd.precios:
+            s.add(
+                models.PrecioInsumo(
+                    lista_id=bs.id, insumo_id=precio.insumo_id, precio=precio.precio
+                )
+            )
+
+    _en_el_caso(ruta, preparar)
+    if con_tasa:
+        registrar_tasa(ruta, date(2026, 11, 10), "36.50")
+
+
+def _usar_en_bs(navegador, cabeceras, caso: Path):
+    return navegador.post(
+        f"/v1/mercado/compra/{_codigo(caso, TUBO)}/usar",
+        json={"precio": "146,00", "observacion_id": None, "declarar_en": ob.NOMBRE},
+        headers=cabeceras,
+    )
+
+
+def test_desde_el_estudio_de_mercado_un_precio_en_bs_se_convierte_a_la_moneda_de_la_obra(
+    caso: Path,
+) -> None:
+    _carpeta_en_bs(caso, con_tasa=True)
+    navegador, cabeceras = _arma()
+    antes = _sellados(caso)
+    respuesta = _usar_en_bs(navegador, cabeceras, caso)
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["equivalencia"] == EQUIVALENCIA
+    [declarado] = _declarados(caso)
+    assert declarado[2:4] == (D("4"), "USD")  # lo que el control usa: el convertido
+    assert _sellados(caso) == antes
+    ind = _indicadores(navegador, metodo="declarados")
+    assert ind["Desvío de precio (USD)"]["Valor"] == "-60.00"
+
+
+def test_la_pantalla_del_corte_trae_la_equivalencia_de_cada_precio_convertido(caso: Path) -> None:
+    _carpeta_en_bs(caso, con_tasa=True)
+    navegador, cabeceras = _arma()
+    assert _usar_en_bs(navegador, cabeceras, caso).status_code == 200
+    respuesta = navegador.get("/v1/control/calculo", params={**P, "metodo": "declarados"})
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["precios_convertidos"] == [
+        {
+            "descripcion": TUBO,
+            "unidad": "m",
+            "fecha": "2026-11-10",
+            "fuente": "Estudio de mercado: precio propio",
+            "equivalencia": EQUIVALENCIA,
+        }
+    ]
+    # sin los declarados como método, no se lista nada
+    otra = navegador.get("/v1/control/calculo", params=P)
+    assert otra.json()["precios_convertidos"] == []
+
+
+def test_sin_tasa_del_bcv_el_estudio_de_mercado_da_409_y_no_cambia_nada(caso: Path) -> None:
+    _carpeta_en_bs(caso, con_tasa=False)
+    navegador, cabeceras = _arma()
+
+    def listas(s) -> list[str]:
+        return list(s.scalars(select(models.ListaPrecios.nombre).order_by(models.ListaPrecios.id)))
+
+    antes = _en_el_caso(caso, listas)
+    respuesta = _usar_en_bs(navegador, cabeceras, caso)
+    assert (respuesta.status_code, respuesta.json()) == (409, {"detalle": SIN_TASA})
+    assert _en_el_caso(caso, listas) == antes
+    assert _declarados(caso) == []
+
+
+def test_al_recibir_una_compra_en_bs_la_casilla_convierte_con_la_tasa_de_la_fecha_de_llegada(
+    caso: Path,
+) -> None:
+    _carpeta_en_bs(caso, con_tasa=True)
+    navegador, cabeceras = _arma()
+    antes = _sellados(caso)
+    respuesta = _recibir(
+        navegador, cabeceras, declarar_corte=True, precio="146,00", fecha="2026-11-10"
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json() == {"equivalencia": EQUIVALENCIA}
+    [declarado] = _declarados(caso)
+    assert declarado[2:6] == (
+        D("4"),
+        "USD",
+        date(2026, 11, 10),
+        "Procura: compra recibida el 10/11/2026",
+    )
+    assert _compras(caso) == [(TUBO, "recibida", date(2026, 11, 10), D("146.00"))]
+    assert _sellados(caso) == antes
+    ind = _indicadores(navegador, metodo="declarados")
+    assert ind["Desvío de precio (USD)"]["Valor"] == "-60.00"
+
+
+def test_sin_tasa_del_bcv_la_recepcion_da_409_y_no_anota_ni_declara_nada(caso: Path) -> None:
+    _carpeta_en_bs(caso, con_tasa=False)
+    navegador, cabeceras = _arma()
+    respuesta = _recibir(
+        navegador, cabeceras, declarar_corte=True, precio="146,00", fecha="2026-11-10"
+    )
+    assert (respuesta.status_code, respuesta.json()) == (409, {"detalle": SIN_TASA})
     assert _compras(caso) == []
     assert _declarados(caso) == []
