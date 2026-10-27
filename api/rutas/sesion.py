@@ -43,7 +43,9 @@ recuerda entre sesiones y reinicios vive en `mp_eleccion` de la instalación (`a
   `eleccion` viene con los tres campos nulos. Con la contraseña temporal, `eleccion: null` y las
   preferencias por omisión.
 - `PUT /proyecto` `{proyecto}` y `PUT /preferencias` `{modulo?, sidebar_fijado?}` (sesión completa,
-  CSRF y `Origin`; la clave de API no tiene cuenta a la que recordar: 401) → 204. Lo que no viene
+  CSRF y `Origin`; la clave de API no tiene cuenta a la que recordar: 401) → 204. `PUT /proyecto`
+  con una obra que no existe en la carpeta de la petición → 404 «Esa obra ya no existe», sin repetir
+  lo enviado y sin guardar la elección (D1, plan de decisiones 2026-10-27). Lo que no viene
   (o viene `null`) en las preferencias no cambia. 422 sin repetir lo enviado: `MENSAJE_MODULO` si
   el módulo no existe; un mensaje fijo si el cuerpo no tiene la forma.
 """
@@ -108,6 +110,7 @@ MENSAJE_FRENO = (
     "Demasiados intentos fallidos en este equipo. Espere unos segundos y vuelva a probar."
 )
 MENSAJE_CARPETA_PERDIDA = "La carpeta de trabajo «{nombre}» ya no existe; se abrió la de siempre."
+MENSAJE_OBRA_BORRADA = "Esa obra ya no existe"
 MENSAJE_OBRA_INVALIDA = "Indique la obra por su código, como texto de hasta 120 caracteres, o null."
 MENSAJE_PREFERENCIAS_INVALIDAS = (
     "Indique el módulo (auditoria, obras o produccion) y si el sidebar queda fijado (true o false)."
@@ -469,17 +472,27 @@ _RESPUESTAS_DE_LO_RECORDADO: dict[int | str, dict] = {
     "/proyecto",
     status_code=204,
     response_class=Response,
-    responses=_RESPUESTAS_DE_LO_RECORDADO,
+    responses={
+        **_RESPUESTAS_DE_LO_RECORDADO,
+        404: {"model": Detalle, "description": "La obra no existe en la carpeta de la petición."},
+    },
 )
 @sin_eco(MENSAJE_OBRA_INVALIDA)
 def recordar_obra(
+    request: Request,
     datos: ObraElegida,
     activa: Annotated[SesionActiva, Depends(_sesion_completa)],
     sesion: SesionInstalacionDep,
 ) -> Response:
     """Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta. Sin
     `CAMBIAR_CASO` la ficha trabaja en la carpeta por omisión: la obra se recuerda con ella
-    (`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso."""
+    (`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso. La obra debe
+    existir en la carpeta de la petición (la de la ficha o la por omisión): si no, 404 con un
+    mensaje fijo y no se guarda nada."""
+    if datos.proyecto is not None and not _obra_sigue(
+        caso_web.elegido(sesiones.huella_de(request.cookies[COOKIE])), datos.proyecto
+    ):
+        raise HTTPException(status_code=404, detail=MENSAJE_OBRA_BORRADA)
     if not permitido(activa.roles, Accion.CAMBIAR_CASO):
         recordar_caso(sesion, activa.usuario_id, None, ahora())
     recordar_proyecto(sesion, activa.usuario_id, datos.proyecto, ahora())

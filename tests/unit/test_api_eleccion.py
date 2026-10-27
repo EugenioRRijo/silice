@@ -478,11 +478,12 @@ def test_si_no_se_puede_recordar_la_carpeta_la_ficha_no_cambia(
 
 
 def test_si_la_restauracion_no_se_confirma_la_ficha_no_cambia(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, _entorno: Path
 ) -> None:
     navegador, ficha = con_cuenta(app, "ana")
     assert _elegir(navegador, ficha, "s1.db").status_code == 200
-    assert _obra(navegador, ficha, "99").status_code == 204  # una obra que no está en s1
+    assert _obra(navegador, ficha, "7").status_code == 204
+    _borrar_obra_7_de_s1(_entorno)  # la obra recordada ya no está en s1
     caso_web.olvidar_todo()  # reinicio de la API
 
     def falla(*_args, **_kwargs) -> None:

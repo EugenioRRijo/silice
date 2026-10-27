@@ -1918,7 +1918,7 @@
           "sesion"
         ],
         "summary": "Recordar Obra",
-        "description": "Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta. Sin\n`CAMBIAR_CASO` la ficha trabaja en la carpeta por omisión: la obra se recuerda con ella\n(`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso.",
+        "description": "Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta. Sin\n`CAMBIAR_CASO` la ficha trabaja en la carpeta por omisión: la obra se recuerda con ella\n(`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso. La obra debe\nexistir en la carpeta de la petición (la de la ficha o la por omisión): si no, 404 con un\nmensaje fijo y no se guarda nada.",
         "operationId": "recordar_obra_v1_sesion_proyecto_put",
         "requestBody": {
           "content": {
@@ -1956,6 +1956,16 @@
           },
           "422": {
             "description": "Cuerpo inválido (no repite lo enviado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La obra no existe en la carpeta de la petición.",
             "content": {
               "application/json": {
                 "schema": {

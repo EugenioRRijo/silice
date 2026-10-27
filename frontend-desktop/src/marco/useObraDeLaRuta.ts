@@ -1,7 +1,7 @@
 // La obra de la ruta `#/obra/<carpeta>/<obra>/<sección>` (plan del rediseño del marco, Tarea 4; especificación
 // 2026-10-26, §8 ter): la ruta manda y la sesión del servidor solo la refleja. Al entrar en una obra:
-//   0. `GET /v1/obras/todas` da la carpeta abierta y dice si la obra existe (`PUT /v1/sesion/proyecto` solo recuerda
-//      un código y nunca contesta 404: sin esta lectura, un enlace viejo abriría una obra borrada);
+//   0. `GET /v1/obras/todas` da la carpeta abierta y dice si la obra existe (`PUT /v1/sesion/proyecto` también
+//      contesta 404 si la obra no existe, pero esta lectura evita cambiar de carpeta antes de saberlo);
 //   1. si la carpeta de la ruta no es la abierta, `POST /v1/casos/actual` (o `DELETE`, si la ruta dice `empresa`);
 //      sin `cambiar_caso` y en la misma carpeta no se llama (Tarea 3);
 //   2. `PUT /v1/sesion/proyecto` con la obra;
