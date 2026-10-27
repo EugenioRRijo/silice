@@ -147,9 +147,12 @@ otro encargo. Hecho P0, el árbol queda limpio salvo los artefactos locales.
   con `DELETE /v1/casos/actual`), que va primero. Orden: carpeta de la empresa, luego carpetas por nombre, y dentro
   de cada una obras por nombre (sin distinguir mayúsculas). `GET /v1/obras/todas` →
   `{"carpeta_actual": str|null, "obras": [{"carpeta": str|null, "carpeta_titulo": str, "obra_id": int, "obra": str,
-  "version_codigo": str|null}]}`; `carpeta_titulo` es «Carpeta de la empresa» para `null` y el nombre en los demás
-  casos. En rutas del front, la carpeta de la empresa se escribe `empresa` (`#/obra/empresa/<id>/...`); un caso
-  llamado literalmente «empresa» no puede existir (si `casos.py` lo permite, la ruta lo rechaza con 422).
+  "version_codigo": str|null}]}`; `carpeta_titulo` es «Carpeta de la empresa» para `null` y el nombre sin `.db` en
+  los demás casos (lo calcula el servidor). `carpeta` conserva el `.db` (es lo que acepta `POST /v1/casos/actual`) y
+  así viaja en las rutas del front (`#/obra/Carpeta%20Norte.db/<id>/...`); la carpeta de la empresa se escribe
+  `empresa`. Como `listar_casos` solo admite nombres terminados en `.db`, no hay choque posible con `empresa` y no
+  hace falta ningún 422 (árbitro de la Tarea 3, ronda 1). Sin `CAMBIAR_CASO`, el front no llama a
+  `POST /v1/casos/actual` si `carpeta == carpeta_actual`.
 
 - [ ] **Paso 1: prueba roja** con dos carpetas ficticias («Carpeta Norte» con obras «Galpón» y «Clínica»;
   «Carpeta Sur» con «Vialidad»):
