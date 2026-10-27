@@ -197,9 +197,11 @@ otro encargo. Hecho P0, el árbol queda limpio salvo los artefactos locales.
 
   `ayuda` es la frase «para qué sirve» de cada sección (≤ 90 caracteres), por ejemplo
   `presupuesto`: «Las partidas de la obra con sus cantidades, precios y APU.»
-- Produce `ENTRADAS_DE_EMPRESA: readonly EntradaDef[]` (`{ id, titulo, pagina, ayuda }`) en este orden:
-  Precios y catálogo (`catalogo`), Auditar un presupuesto (`auditoria`), Producción (`existencias`),
-  Empresa y personas (`administracion`), Ayuda (`acerca` hasta F6).
+- Produce `ENTRADAS_DE_EMPRESA: readonly EntradaDef[]` (`{ id: EntradaId, titulo, pagina, ayuda }`) en este orden,
+  con ids propios estables (no el id de la pantalla, que cambiará en F5/F6; enmienda del orquestador tras el árbitro
+  de la Tarea 4): `precios` → Precios y catálogo (pantalla `catalogo`), `auditoria` → Auditar un presupuesto
+  (`auditoria`), `produccion` → Producción (`existencias`), `personas` → Empresa y personas (`administracion`),
+  `ayuda` → Ayuda (`acerca` hasta F6). La ruta es `#/empresa/<id>`.
 - Produce rutas: `#/pendientes`, `#/obra/:carpeta/:obraId/:seccion`, `#/empresa/:entrada`;
   `rutaDeObra(carpeta: string | null, obraId: number, seccion: SeccionId): string` (`null` → `empresa`; codifica la carpeta con
   `encodeURIComponent`).
@@ -213,8 +215,8 @@ otro encargo. Hecho P0, el árbol queda limpio salvo los artefactos locales.
 - [ ] **Paso 1: pruebas rojas**:
   - `secciones.test.ts`: los 7 ids en ese orden; cada `pagina` no nula existe en `PAGINAS`; `archivos` y
     `versiones` tienen `pagina: null`; ningún `titulo`/`ayuda` contiene
-    «módulo», «área», «página» ni «Streamlit»; `rutaDeObra("Carpeta Sur", 3, "presupuesto")` →
-    `"/obra/Carpeta%20Sur/3/presupuesto"`.
+    «módulo», «área», «página» ni «Streamlit»; `rutaDeObra("Carpeta Sur.db", 3, "presupuesto")` →
+    `"/obra/Carpeta%20Sur.db/3/presupuesto"`.
   - `useObraDeLaRuta.test.tsx`: misma carpeta → solo `PUT /v1/sesion/proyecto {"proyecto":"3"}`; otra carpeta →
     `POST /v1/casos/actual` y luego el `PUT`, en ese orden; obra inexistente (404) → `no_existe`;
     sección desconocida → `no_existe`.
@@ -321,11 +323,15 @@ que aún no tienen sitio en el árbol (Histórico, Índices, Simulador…), para
 - Consume: todo lo anterior.
 - Produce: redirecciones de las rutas viejas: `#/inicio` y `#/` → `#/pendientes`; `#/<pagina>` de una sección de obra →
   la misma sección de la obra abierta en la sesión (o `#/pendientes` si no hay obra); `#/<pagina>` de Empresa →
-  `#/empresa/<entrada>`. `#/pendientes` muestra por ahora la página `obras` (la mesa actual) hasta F3.
+  `#/empresa/<id de la entrada cuya pagina es esa>` (`#/catalogo` → `#/empresa/precios`, `#/administracion` →
+  `#/empresa/personas`, `#/acerca` → `#/empresa/ayuda`, `#/existencias` → `#/empresa/produccion`); las demás
+  pantallas sin sitio en el árbol (histórico, índices, simulador…) siguen en su ruta vieja y se alcanzan por Ctrl+K.
+  `#/pendientes` muestra por ahora la página `obras` (la mesa actual) hasta F3.
 
 - [ ] **Paso 1: pruebas rojas** en `Marco.test.tsx`:
-  - `#/` y `#/inicio` acaban en `#/pendientes`; `#/hoja` con obra 3 abierta en «Carpeta Sur» acaba en
-    `#/obra/Carpeta%20Sur/3/presupuesto`; `#/catalogo` acaba en `#/empresa/catalogo`.
+  - `#/` y `#/inicio` acaban en `#/pendientes`; `#/hoja` con obra 3 abierta en «Carpeta Sur.db» acaba en
+    `#/obra/Carpeta%20Sur.db/3/presupuesto`; `#/catalogo` acaba en `#/empresa/precios`; `#/simulador` sigue en
+    `#/simulador` dentro del marco nuevo.
   - dentro de una sección se ve la cabecera de la obra (nombre, moneda, versión) y la página montada.
   - con cambios sin guardar en la Hoja, elegir otra obra en el árbol pide confirmar (reusa `sucio.ts`/`salida.ts`);
     «Cancelar» deja la ruta igual.
