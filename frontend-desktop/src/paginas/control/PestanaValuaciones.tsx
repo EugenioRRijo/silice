@@ -25,7 +25,6 @@ import {
 import type { CausaDeRetraso, LineaEditable, Valuaciones } from "./logica";
 import { fechaDeRanura } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { useCarga } from "../inicio/useCarga";
 import { AYUDA_CAUSA_SUGERIDA, causaDeLinea, sugeridasPorPartida } from "./procura";
 import type { Procura } from "./procura";
 
@@ -51,9 +50,10 @@ function Registrar({ proyecto, causas, alCambiar }: { proyecto: string; causas: 
   const [lineas, setLineas] = useState<LineaEditable[]>([{ ...LINEA_VACIA }]);
   // MP-7, Tarea 24: la procura sugiere una causa por partida al «hasta» de la valuacion (sin él, a hoy). Una linea cuyo
   // selector no ha tocado la persona lleva la sugerida para su partida; en cuanto lo toca, vale lo que eligio (tambien
-  // «Sin causa»). Si la procura no responde, no se sugiere nada: la valuacion se registra igual.
+  // «Sin causa»). Si la procura no responde, no se sugiere nada: la valuacion se registra igual. Mientras recarga (la persona cambia el
+  // «hasta») se conserva la sugerencia anterior en vez de vaciar los selectores.
   const [elegidas, setElegidas] = useState<Record<number, true>>({});
-  const sugerencia = useCarga<Procura>(rutaDe("/v1/procura", proyecto, v.hasta ? { corte: v.hasta } : {}), alExpirar);
+  const sugerencia = useCargaSuave<Procura>(rutaDe("/v1/procura", proyecto, v.hasta ? { corte: v.hasta } : {}), alExpirar);
   const sugeridas =
     sugerencia.estado === "listo" ? sugeridasPorPartida(sugerencia.datos.causas_sugeridas ?? [], causas.map((c) => c.clave)) : {};
   const causaDe = (l: LineaEditable, i: number) => causaDeLinea(l, i in elegidas, sugeridas);

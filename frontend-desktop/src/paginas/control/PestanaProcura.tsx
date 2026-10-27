@@ -163,7 +163,9 @@ function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAcci
   const base = useId();
   const id = (campo: CampoDeRecepcion) => `${base}-${campo}`;
   const { descripcion, unidad } = necesidad;
-  const porUnidad = unidad ? `por ${unidad}, ` : "";
+  // Con la casilla marcada el precio es obligatorio: ya no se llama «opcional».
+  const detallesDelPrecio = [unidad ? `por ${unidad}` : null, declarar ? null : "opcional"].filter((d) => d !== null);
+  const etiquetaDelPrecio = detallesDelPrecio.length > 0 ? `Precio unitario (${detallesDelPrecio.join(", ")})` : "Precio unitario";
 
   useFormularioSucio(PANTALLA, fecha !== hoy || cantidad.trim() !== "" || precio.trim() !== "" || declarar);
 
@@ -249,7 +251,7 @@ function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAcci
       <CampoTexto
         {...campo("precio")}
         inputMode="decimal"
-        labelText={`Precio unitario (${porUnidad}opcional)`}
+        labelText={etiquetaDelPrecio}
         helperText="En la moneda de la carpeta. Si el material está en el catálogo, el precio se anota también en el estudio de mercado."
         value={precio}
         onChange={(e) => {
