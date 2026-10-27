@@ -74,9 +74,27 @@ como estaba y se ajusta al ruteo nuevo en F7.
 
 - Front (`frontend-desktop`): `npm test` 190 archivos, 2.849 pruebas en verde; `npm run lint` limpio; `npm run muerto` sin
   hallazgos; `npm run duplicado` 0,88 %; `npm run build` correcto.
-- Python: `uv run --active pytest -q` (ver el informe de la tarea): una falla previa y ajena,
-  `tests/unit/test_arquitectura_s5.py::test_aplicacion_y_api_no_importan_migraciones` (`aplicacion/casos.py`, de
-  `ded765d7`), que no se tocó.
+- Python: `uv run --active pytest -q` (ver «Menores agrupados» más abajo). Al cerrar la Tarea 8 la rama traía **varias
+  fallas previas y ajenas a ella**, con este origen:
+  1. `tests/unit/test_arquitectura_s5.py::test_aplicacion_y_api_no_importan_migraciones`: `aplicacion/casos.py` importaba
+     `migraciones.metadatos` desde `ded765d7`.
+  2. `tests/integration/test_api_auditorias.py::test_toda_ruta_menos_salud_exige_la_clave` y las pruebas por ruta de
+     `tests/integration/test_api_clave.py`: `/v1/tema` y `/v1/tema/logo` (Tarea 1) son públicas por diseño y las guardias
+     no las conocían.
+  3. `tests/unit/test_paquete_anexos.py` (toda tabla con `responsable` viaja o figura entre las que no) y
+     `tests/unit/test_responsables.py` (cada tabla con `responsable` con su prueba): faltaban `mp_compra`,
+     `mp_observacion`, `mp_precio_corte` y `mp_precio_objetivo` (T23 a T25).
+  4. `tests/unit/test_scripts_documentados.py`: `scripts/recorrido_ux_playwright.py` sin fila en `scripts/README.md`.
+  5. `tests/unit/test_excel_m1.py`, los tres casos con prefijo CR: el `.venv` trae `lxml` 6.1.3 (lo instala
+     `python-docx`, que no está en `uv.lock`) y con él el retorno de carro vuelve como CR y no como LF.
+  6. `tests/unit/test_huellas_rnf04.py::test_huella_del_contenido_del_libro`: misma causa (con `OPENPYXL_LXML=False` la
+     huella coincide); el producto no cambió.
+  7. `tests/unit/test_experimento_congelado_vigente.py`: `aplicacion/hoja.py` y `aplicacion/composicion.py` (listados en
+     `archivos_del_auditor`) cambiaron con MP-7 después del re-congelado `1ec20732`.
+  8. `tests/integration/test_api_ola2_revision.py::test_revalorar_con_la_cuenta…` (ERROR en la preparación): la fixture
+     de cuentas pisaba la instalación ya abierta por `cliente` y dejaba su `-wal` viejo.
+  La tanda de menores arregló 1 a 5 y 8 (ver la tabla); quedan 6 (ambiental: depende de si `lxml` está instalado, no
+  del producto) y 7 (decisión de Eugenio y del tutor: volver a congelar o sacar esos archivos de la lista; no se toca).
 - Navegador (una pasada, con el tema local de la empresa y datos ficticios sembrados; capturas solo en el scratchpad, no se
   versionan): Pendientes, una obra en su Presupuesto, el árbol con cinco carpetas, el buscador abierto, «Nueva obra» y
   Empresa › personas, a 1056, 1366 y 1910 px con letra 1 y 1,5. Sin desplazamiento horizontal ni errores de consola en
@@ -92,4 +110,75 @@ como estaba y se ajusta al ruteo nuevo en F7.
 - El recorrido guiado no marca el paso «Suba el libro» en `#/empresa/auditoria` (compara con `#/auditoria`).
 - Precios de la empresa, Índices del BCV, Simulador, Histórico, Tablero, Componer… solo se alcanzan por Ctrl+K (F4/F5).
 - `scripts/recorrido_ux_playwright.py` sigue midiendo la barra de módulos (F7).
-- La cabecera de la obra pide `GET /v1/obras/resumen` solo para la moneda; una ruta de la obra la daría más barata.
+- ~~La cabecera de la obra pide `GET /v1/obras/resumen` solo para la moneda~~: resuelto en los menores (punto 40).
+
+## Rondas de la Tarea 8
+
+La Tarea 8 tuvo **3 rondas de árbitro más 1 ronda corta extra** autorizada por el orquestador. La ronda 3 encontró un
+MAYOR nuevo y ningún BLOQUEANTE: el aviso «otra pestaña» no se anunciaba ni dejaba el foco tras «Retomar»; se arregló con
+el patrón de `a4973d94` (el aviso de la obra caída). La ronda extra la **aprobó**.
+
+| Ronda | Commits |
+|---|---|
+| 1 | `9450431f` .. `8cd0848b` |
+| 2 | `5e23124b`, `cb60840b`, `45d7bf38` |
+| 3 | `2387e70b`, `a4973d94` |
+| extra (aprobada) | `99633220`, `7dff871e` |
+
+Proceso: `adb3b68f` (refactor) metió conducta nueva sin commit rojo propio (`alEntrarEnObra`, `LoQuePuedeHacer`, la lista
+para armar en la cabecera de la obra); el rojo lo verificó el árbitro. Queda anotado para no repetirlo: la conducta nueva
+va en su commit de prueba aunque llegue dentro de un refactor.
+
+## Menores agrupados de P0 y F2 (2026-10-27)
+
+Un solo encargo cerró los detalles menores que dejaron los árbitros y tres decisiones de Eugenio. Cada punto se comprobó
+antes contra el código que dejó la Tarea 8. Conducta con TDD: el commit de pruebas en rojo va antes que el arreglo.
+
+| N.º | Estado | Qué |
+|---|---|---|
+| A1 | hecho `304cd3ff` (rojo) `3ae86bec` `2cfc8626` `2593830d` | raya del activo a `--silice-marco`; par «raya del activo» (marco sobre lateral-activo, 3:1) en `aplicacion/tema.py`; neutro sin avisos (#393939 sobre #e5e0df = 8,83:1 a mano); plan y DESIGN al día |
+| A2 | hecho `3be48805` (rojo) `00669425` | el buscador no repite el «Resumen» de la obra: una ruta no sale dos veces |
+| A3 | hecho `258c75a9` (rojo) `df7c9009` | 403, 409 y 503 declarados en `POST /v1/proyectos`; `docs/api.json` y CHANGELOG |
+| 4 | hecho `ff11c235` | CHANGELOG de T24 |
+| 5 | hecho `423e6266` (rojo) `ad9b6e05` | Valuaciones conserva la causa sugerida mientras recarga (`useCargaSuave`) |
+| 6 | hecho `ff11c235` | riesgo de la fecha del equipo frente a la del servidor, en la bitácora de T24 |
+| 7 | hecho `26cd1b55` | `caso_0017` advierte que bajar borra los precios declarados |
+| 8 | hecho `f6d3f61d` | prueba API del 409 `ReglaDelCorte` (obra sin línea base); pasaba ya: la ruta lo traducía bien |
+| 9 | hecho `423e6266` (rojo) `ad9b6e05` | el precio de la recepción deja de ser «opcional» con la casilla marcada |
+| 10 | hecho `6c472172` | la lista de tablas conocidas pasa a `operacion.base_datos`; `aplicacion` ya no importa `migraciones`; sin cambio de conducta |
+| 11 | hecho `5c656e2d` (rojo) `d875e234` | la prueba con Univer que nunca llega a Rendered encontró que `univer.dispose()` lanzaba y tapaba el mensaje; ahora se desecha como en `destruir` |
+| 12 | hecho `2cfc8626` | `write_text` con `encoding="utf-8"` en `test_api_tema` |
+| 13 | hecho `ff11c235` | la fila de duplicación de la bitácora de T2 dice que compara pasada doble con simple |
+| 14 | hecho `ec3550d3` | comentario de la ventana «obra borrada entre el GET y el PUT» |
+| 15 | hecho `ec3550d3` | documentado el vigilante estable |
+| 16 | hecho `2593830d` | Tarea 5 Paso 1 del plan: texto visible como nombre, oculto solo visualmente, `aria-keyshortcuts` |
+| 17 | hecho `c052655e` (rojo) `1b3361f6` | Ctrl+K respeta `contenteditable="plaintext-only"` y todo editable |
+| 18 | hecho `c052655e` | caso con `contenteditable=""` sobre el propio destino (pasaba ya) |
+| 19 | hecho `52624abc` (rojo) `3ae86bec` | `aria-level`, `aria-setsize` y `aria-posinset` del árbol con carpetas, con prueba de niveles |
+| 20 | hecho `52624abc` (rojo) `3ae86bec` | «Cargando obras…» en vez de un `tree` vacío |
+| 21 | hecho `52624abc` (rojo) `3ae86bec` | el código de la obra creada se valida (solo dígitos) antes de navegar |
+| 22 | hecho `52624abc` (rojo) `3ae86bec` | sin obras que mostrar, «cargando» y «todavía no hay» se distinguen por el estado, también tras una recarga |
+| 23 | hecho `ae7eca34` (rojo) `df7c9009` `b0c36fa8` | `GET /v1/obras/todas` suma `carpeta_actual_titulo`; la barra lateral deja de armar el título |
+| 24 | ya resuelto | `DialogoNuevaObra` ya no trae restos de `cambio` ni de la vuelta, y no hay `puedeEditar` por omisión (T6b y T8) |
+| 25 | hecho `258c75a9` | el 422 de nombres de carpeta con `CON`, `NUL.db`, `silice.db:x` y UNC (pasaba ya) |
+| 26 | hecho `258c75a9` | todo o nada del destino con `obras.guardar_ficha` fallando (pasaba ya) |
+| 27 | ya resuelto | `DESIGN.md` ya describe la barra lateral en árbol; no queda «Sin menú lateral» |
+| 28 | hecho `3be48805` | control positivo del buscador (oferta completa encuentra «Empresa y personas»; sin permisos, nada) |
+| 29 | hecho `3be48805` (pruebas) `00669425` | `oferta` obligatoria en `resultadosDe` |
+| 30 | hecho `3be48805` (rojo) `00669425` | `aria-expanded` del buscador según haya resultados |
+| 31 | hecho `3be48805` | pruebas de Tab atrapado y de foco a `#contenido` al elegir (pasaban ya) |
+| 32 | hecho `2593830d` | Tarea 7 del plan: `busqueda.ts` y diálogo propio, con el porqué (RNF-22) |
+| 33 | hecho `f9768bb8` | `_NEUTRO` frente a `@carbon/colors` y al tema g10 (prueba de Vitest que lee `aplicacion/tema.py`) |
+| 34 | hecho `c469cea5` | sin mock sobrante en `AvisosDelTema.test.tsx` |
+| 35 | hecho `1f9b7496` | `/v1/tema` y `/v1/tema/logo` en las guardias reales (`tests/integration/test_api_auditorias.py` y `test_api_clave.py`; los nombres del encargo no existían) |
+| 36 | hecho `00043f16` | `mp_compra`, `mp_observacion`, `mp_precio_corte` y `mp_precio_objetivo` en `TABLAS_QUE_NO_VIAJAN` (hoy no se exportan; si algún día viajan, decisión de Eugenio y del tutor) y en la cobertura de responsables (con una prueba nueva del objetivo) |
+| 37 | hecho `cb976670` | fila de `recorrido_ux_playwright.py` en `scripts/README.md` |
+| 38 | parcial: `49b49cfb` `9284ffe2`; pendientes 6 y 7 | `test_excel_m1` y `test_api_ola2_revision` arreglados; `test_huellas_rnf04` es ambiental (`lxml`) y `test_experimento_congelado_vigente` espera decisión (ver arriba) |
+| 39 | hecho | la lista completa de fallas previas de pytest, arriba |
+| 40 | hecho `1c32964b` (rojo) `5fdd2ccd` `4529f882` | la cabecera de la obra dice «Moneda: …» una sola vez, sin «de trabajo»; deja de pedir `GET /v1/obras/resumen` solo para eso |
+| 41 | hecho `ec3550d3` | comentado por qué no hace falta excluir `.silice-dialogo`: `closest("a[href]")` recorre el DOM y ningún diálogo lleva enlaces |
+| 43 | hecho | «Rondas de la Tarea 8», arriba |
+| 44 | hecho | nota de proceso sobre `adb3b68f`, arriba |
+
+El pendiente «La cabecera de la obra pide `GET /v1/obras/resumen` solo para la moneda» de la sección anterior queda
+resuelto por el punto 40.
