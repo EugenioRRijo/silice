@@ -14,7 +14,9 @@
     "test": "vitest run",
     "lint": "eslint . && tsc -b --noEmit",
     "licencias": "node scripts/verificar_licencias.mjs",
-    "dist": "node scripts/verificar_dist.mjs"
+    "dist": "node scripts/verificar_dist.mjs",
+    "muerto": "knip --include files,dependencies,unlisted,unresolved",
+    "duplicado": "jscpd src"
   },
   "dependencies": {
     "@carbon/charts": "1.27.20",
@@ -32,6 +34,7 @@
     "rxjs": "7.8.2"
   },
   "devDependencies": {
+    "@carbon/colors": "11.60.0",
     "@eslint/js": "10.0.1",
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",
@@ -40,11 +43,14 @@
     "@types/node": "22.20.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@univerjs/core": "1.0.3",
     "@vitejs/plugin-react": "6.1.1",
     "eslint": "10.12.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.13.0",
+    "jscpd": "4.0.5",
     "jsdom": "30.1.1",
+    "knip": "5.66.1",
     "sass": "1.105.1",
     "sass-embedded": "1.105.1",
     "typescript": "6.0.3",

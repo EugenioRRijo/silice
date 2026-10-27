@@ -1,0 +1,7 @@
+{
+  "format": ["typescript", "tsx"],
+  "minLines": 8,
+  "threshold": 1,
+  "ignore": ["**/*.test.*"],
+  "reporters": ["console"]
+}

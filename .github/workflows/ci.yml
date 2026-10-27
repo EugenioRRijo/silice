@@ -184,6 +184,12 @@ jobs:
       - name: Pruebas
         run: npm test
 
+      - name: Codigo muerto y dependencias sin declarar (knip)
+        run: npm run muerto
+
+      - name: Duplicacion de codigo, umbral 1 % (jscpd)
+        run: npm run duplicado
+
       - name: Compilar
         run: npm run build
 
