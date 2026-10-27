@@ -23,7 +23,7 @@ const SESION: SesionRespuesta = {
 const ID = "id-borrador-aaaaaaaaaaaa";
 const m = (t: string) => ({ texto: t, exacto: t });
 
-describe("Hoja del proyecto: Descargar Excel (3e-1)", () => {
+describe("Hoja de la obra: Descargar Excel (3e-1)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);

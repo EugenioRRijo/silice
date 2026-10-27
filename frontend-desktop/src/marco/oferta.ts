@@ -23,9 +23,7 @@ export function ofertaDe(acciones: readonly string[], modoEntrega: boolean): Ofe
   const secciones = SECCIONES_DE_OBRA.filter((s) => usableLa(s.pagina, acciones, modoEntrega));
   const entradas = ENTRADAS_DE_EMPRESA.filter((e) => usableLa(e.pagina, acciones, modoEntrega));
   const conSitio = new Set<string | null>([...SECCIONES_DE_OBRA.map((s) => s.pagina), ...ENTRADAS_DE_EMPRESA.map((e) => e.pagina)]);
-  const sueltas = PAGINAS.filter(
-    (p) => !conSitio.has(p.id) && p.ubicacion?.area !== "inicio" && usable(p, acciones, modoEntrega),
-  );
+  const sueltas = PAGINAS.filter((p) => !conSitio.has(p.id) && usable(p, acciones, modoEntrega));
   return { secciones, entradas, sueltas };
 }
 

@@ -49,7 +49,7 @@ const dialogo = () => screen.getByRole("dialog", { name: "Nueva obra" });
 
 async function abrirNuevaObra(u: ReturnType<typeof userEvent.setup>) {
   montarShell(sesionDe("ana"), "/hoja");
-  await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+  await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
   await u.click(await botonDeObra());
   await u.click(await screen.findByRole("button", { name: "Nueva obra" }));
   return screen.findByRole("dialog", { name: "Nueva obra" });

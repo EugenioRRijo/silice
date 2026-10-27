@@ -93,7 +93,7 @@ const MORTERO = insumo("MAT-020", "Mortero premezclado", "m2", "4.00");
 
 type Cuerpo = Record<string, unknown> & { rev: number };
 
-describe("Hoja del proyecto: agregar y quitar líneas del APU de la versión (Tarea 26)", () => {
+describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tarea 26)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   let abierto: BorradorAbierto;

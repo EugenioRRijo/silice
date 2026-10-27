@@ -78,7 +78,7 @@ const guardado = (extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", () => {
+describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   // Lo que el servidor simulado contesta; cada prueba lo cambia.

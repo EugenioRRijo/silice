@@ -47,6 +47,13 @@ describe("App", () => {
       // Lo que piden los inicios y Acerca, y el modulo recordado (MOD-1): sin esto caerian en el 401 de abajo y la
       // sesion se daria por vencida.
       if (ruta === "/v1/produccion/existencias") return json([]);
+      // Lo que pide el marco (las obras de la barra lateral, el tema) y la mesa de Pendientes: sin esto caerian en el 401
+      // de abajo y la sesion se daria por vencida.
+      if (ruta === "/v1/obras/todas") return json({ carpeta_actual: null, obras: [] });
+      if (ruta === "/v1/tema") return json({ acento: null, marco: null, lateral: null, tiene_logo: false, avisos: [] });
+      if (metodo === "GET" && (ruta.startsWith("/v1/obras/") || ruta.startsWith("/v1/aprobaciones"))) {
+        return json({ detalle: "No encontrado." }, 404);
+      }
       if (ruta.startsWith("/v1/auditorias-libro")) return json([]);
       if (ruta === "/v1/acerca") return json({ detalle: "No encontrado." }, 404);
       if (ruta === "/v1/sesion/preferencias" && metodo === "PUT") return new Response(null, { status: 204 });
@@ -91,30 +98,27 @@ describe("App", () => {
     expect(screen.getByText(/Comprobando su sesión/)).toBeInTheDocument();
   });
 
-  test("con sesion vigente muestra el nombre, la cuenta con Salir, la barra y aterriza en el inicio de su módulo", async () => {
+  test("con sesion vigente muestra el nombre, la cuenta con Salir, el marco y aterriza en Pendientes", async () => {
     const usuario = userEvent.setup();
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Cuenta de Ana Pérez" }));
     expect(screen.getByRole("button", { name: "Salir" })).toBeInTheDocument();
-    // La cuenta revisa (revisar_paquete) y no arma: entra en Auditoría, con una pantalla por área (enlaces).
-    const barra = screen.getByRole("navigation", { name: "Menú principal" });
-    expect(within(screen.getByRole("banner")).getByText("Auditoría")).toBeInTheDocument();
-    expect(within(barra).getAllByRole("link").map((a) => a.textContent)).toEqual(["Inicio", "Auditar", "Paquetes", "Historial"]);
-    expect(within(barra).getByRole("link", { name: "Auditar" })).toHaveAttribute("href", "#/libros");
+    // El marco nuevo: buscador en la barra superior y la barra lateral con Pendientes, Obras y Empresa.
+    const barra = screen.getByRole("banner");
+    expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    expect(within(lateral).getByRole("link", { name: "Pendientes" })).toHaveAttribute("href", "#/pendientes");
+    expect(within(lateral).getByRole("navigation", { name: "Empresa" })).toBeInTheDocument();
     // La pagina llega por import() dinamico: con la suite entera en marcha tarda mas que el plazo por omision.
-    expect(await screen.findByRole("heading", { level: 1, name: "Inicio de auditoría" }, { timeout: 5000 })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/auditoria");
-    // Sin los mosaicos de «Herramientas principales» (decisión 1 de Eugenio).
-    expect(screen.queryByText("Herramientas principales")).not.toBeInTheDocument();
-    // Las lecturas del inicio ya contestaron: la sesion sigue viva (no cayo al formulario «Entrar»).
-    expect(await screen.findByText("Todavía no hay auditorías guardadas", {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" }, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/pendientes");
+    // Ya no hay módulos ni nada que recordar de ellos.
+    expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();
+    expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/sesion/preferencias")).toBe(false);
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
-    // Y el módulo quedó recordado en la cuenta.
-    const guardado = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/sesion/preferencias");
-    expect(guardado?.[1]?.method).toBe("PUT");
-    expect(guardado?.[1]?.body).toBe(JSON.stringify({ modulo: "auditoria" }));
   });
 
   test("una direccion con #/libros abre esa pagina", async () => {
@@ -129,9 +133,11 @@ describe("App", () => {
     sesionActual = () => json({ login: "ana", nombre: "Ana Pérez", roles: ["revisa"], csrf: "tok" });
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
-    // Sin acciones no hay ningún módulo visible: aterriza en lo único que toda cuenta ve, Acerca de Sílice.
-    expect(await screen.findByRole("heading", { level: 1, name: "Acerca de Sílice" }, { timeout: 5000 })).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/acerca");
+    // Sin acciones aterriza en Pendientes, que toda cuenta ve.
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" }, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/pendientes");
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
   });
 
@@ -213,7 +219,7 @@ describe("App", () => {
       await usuario.type(screen.getByLabelText("Confirme la contraseña nueva"), "una-clave-larga-1");
       await usuario.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
 
-      expect(await screen.findByRole("navigation", { name: "Menú principal" })).toBeInTheDocument();
+      expect(await screen.findByRole("complementary", { name: "Barra lateral" })).toBeInTheDocument();
       const llamada = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/sesion/contrasena");
       expect(llamada?.[1]?.body).toBe(JSON.stringify({ actual: "provisional", nueva: "una-clave-larga-1" }));
       expect(new Headers(llamada?.[1]?.headers).get("X-Silice-CSRF")).toBe("tok");

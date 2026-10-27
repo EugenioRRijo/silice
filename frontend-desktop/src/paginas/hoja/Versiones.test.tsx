@@ -89,7 +89,7 @@ const CADENA_INTEGRA = {
   declaracion: null,
 };
 
-describe("Hoja del proyecto: restaurar, cotizar, retirar, convertir y la cadena (3d-2)", () => {
+describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3d-2)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   let versiones: VersionesRespuesta;

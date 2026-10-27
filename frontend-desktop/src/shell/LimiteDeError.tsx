@@ -11,7 +11,7 @@ interface Estado {
 }
 
 // Si una pagina no se puede cargar (el archivo perezoso no llega) o falla al dibujarse, se dice en pantalla en vez
-// de dejarla en blanco. El Shell le cambia la `key` al navegar, asi que ir a otra pagina lo reinicia.
+// de dejarla en blanco. El marco le cambia la `key` al navegar, asi que ir a otra pantalla lo reinicia.
 export class LimiteDeError extends Component<Props, Estado> {
   state: Estado = { error: null };
 
@@ -25,7 +25,7 @@ export class LimiteDeError extends Component<Props, Estado> {
         <div className="silice-pagina-aviso">
           <AvisoError
             titulo="No se pudo abrir la pantalla"
-            error="La pantalla no cargó. Recargue la página; si sigue igual, avise a quien administra Sílice."
+            error="La pantalla no cargó. Vuelva a cargar Sílice (F5); si sigue igual, avise a quien administra Sílice."
           />
         </div>
       );

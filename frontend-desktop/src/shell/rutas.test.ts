@@ -40,7 +40,7 @@ const REGISTRO: [string, string, string | null, string | null][] = [
   ["control", "Trabajo", "control_de_obra", "obras/control"],
   ["reajuste", "Trabajo", "convertir_y_reajustar", "obras/control"],
   ["escenarios", "Investigación", "editar_hoja", "obras/control"],
-  ["produccion", "Trabajo", null, "produccion/inicio"],
+  ["produccion", "Trabajo", "operar_arenera", "produccion/inicio"],
   ["existencias", "Trabajo", "operar_arenera", "produccion/existencias"],
   ["administracion", "Administración", "administrar_cuentas", null],
   ["acerca", "Trabajo", null, null],
@@ -92,7 +92,7 @@ describe("registro de paginas", () => {
     expect("estaMigrada" in rutas).toBe(false);
     expect("enlaceClasico" in rutas).toBe(false);
     expect(paginaPorId("libros")?.titulo).toBe("Libro de la empresa");
-    expect(paginaPorId("hoja")).toMatchObject({ titulo: "Hoja del proyecto", seccion: "Trabajo", accion: "editar_hoja" });
+    expect(paginaPorId("hoja")).toMatchObject({ titulo: "Hoja de la obra", seccion: "Trabajo", accion: "editar_hoja" });
     // Plan de montar un presupuesto, T15 (cambios por el diseno de modulos): la primera del area Mercado.
     expect(paginaPorId("mercado")).toMatchObject({
       titulo: "Estudio de mercado",

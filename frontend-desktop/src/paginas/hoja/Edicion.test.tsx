@@ -71,7 +71,7 @@ interface Cuerpo {
   tablas: Record<string, Array<Record<string, string>>>;
 }
 
-describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
+describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   // Lo que el servidor simulado contesta; cada prueba lo cambia.

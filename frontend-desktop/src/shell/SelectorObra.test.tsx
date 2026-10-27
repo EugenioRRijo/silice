@@ -250,7 +250,7 @@ describe("SelectorObra en el armazón", () => {
   test("elegir «Torre B» llama PUT /v1/sesion/proyecto {\"proyecto\":\"8\"} y la barra la muestra", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await u.click(await botonDeObra());
     await u.click(await screen.findByRole("button", { name: /^Torre B/ }));
     await waitFor(() => expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "8" }]));

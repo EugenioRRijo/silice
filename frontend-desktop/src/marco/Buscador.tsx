@@ -11,6 +11,8 @@ import { useObras } from "./useObras";
 interface Props {
   abierto: boolean;
   alCerrar: () => void;
+  // A dónde ir con el resultado elegido; por omisión, navegar sin más. El marco pregunta antes si hay algo que perder.
+  alElegir?: (ruta: string) => void;
 }
 
 // El botón de la barra superior que abre el buscador: a él vuelve el foco si quien lo abrió ya no está.
@@ -24,12 +26,12 @@ function anuncioDe(cantidad: number): string {
 // Buscador global (Ctrl+K) del marco nuevo: obras, secciones, entradas de Empresa y pantallas sin sitio en el árbol. Es
 // un diálogo propio, no el Modal de Carbon (como los demás del armazón: su archivo trae una URL que `npm run dist`
 // rechaza, RNF-22), con el patrón WAI-ARIA combobox + listbox: el foco se queda en el campo y la opción activa se
-// señala con aria-activedescendant. Todavía no está montado en la aplicación (Tarea 8 del plan del marco).
-export function Buscador({ abierto, alCerrar }: Props) {
-  return abierto ? <Caja alCerrar={alCerrar} /> : null;
+// señala con aria-activedescendant. Lo monta marco/Marco junto a la barra superior.
+export function Buscador({ abierto, alCerrar, alElegir }: Props) {
+  return abierto ? <Caja alCerrar={alCerrar} alElegir={alElegir} /> : null;
 }
 
-function Caja({ alCerrar }: { alCerrar: () => void }) {
+function Caja({ alCerrar, alElegir }: Omit<Props, "abierto">) {
   const base = useId();
   const caja = useRef<HTMLDivElement>(null);
   const navegar = useNavigate();
@@ -64,8 +66,8 @@ function Caja({ alCerrar }: { alCerrar: () => void }) {
     if (!elegido) return;
     // El foco va al contenido de la pantalla elegida, no de vuelta a la barra.
     devolverFoco.current = false;
-    navegar(elegido.ruta);
     alCerrar();
+    (alElegir ?? navegar)(elegido.ruta);
     document.getElementById("contenido")?.focus();
   }
 

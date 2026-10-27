@@ -1,0 +1,55 @@
+import { paginaPorId, type PaginaDef } from "../shell/rutas";
+import type { Miga } from "./Migas";
+import {
+  ENTRADAS_DE_EMPRESA,
+  RUTA_DE_PENDIENTES,
+  carpetaDeLaRuta,
+  rutaDeObra,
+  seccionPorId,
+} from "./secciones";
+import type { ObraDeCarpeta } from "./useObras";
+
+export interface Ubicada {
+  migas: Miga[];
+  // El título de la pestaña del navegador (sin «Sílice», lo agrega useTituloDelDocumento); null sin pantalla.
+  titulo: string | null;
+}
+
+const OBRA = /^\/obra\/([^/]+)\/([1-9]\d*)\/([^/]+)$/;
+const EMPRESA = /^\/empresa\/([^/]+)$/;
+
+// La carpeta de una ruta `#/obra/<carpeta>/<obra>/<sección>` (null = la de la empresa), o undefined si la ruta no es de
+// una obra. La consulta (`?…`) no cuenta.
+export function carpetaDelDestino(destino: string): string | null | undefined {
+  const m = OBRA.exec(destino.split("?")[0]);
+  if (!m) return undefined;
+  try {
+    return carpetaDeLaRuta(decodeURIComponent(m[1]));
+  } catch {
+    return undefined;
+  }
+}
+
+// Dónde está la persona, dicho en migas («Mis obras / Clínica / Presupuesto», «Empresa / Ayuda», «Pendientes») y en el
+// título de la pestaña. Las obras dan el nombre de la de la ruta; mientras llegan, «Obra».
+export function ubicar(pathname: string, obras: readonly ObraDeCarpeta[], paginas: readonly PaginaDef[]): Ubicada {
+  if (pathname === RUTA_DE_PENDIENTES) return { migas: [{ texto: "Pendientes" }], titulo: "Pendientes" };
+  const deObra = OBRA.exec(pathname);
+  if (deObra) {
+    const carpeta = carpetaDelDestino(pathname) ?? null;
+    const obraId = Number(deObra[2]);
+    const nombre = obras.find((o) => o.carpeta === carpeta && o.obra_id === obraId)?.obra ?? "Obra";
+    const seccion = seccionPorId(deObra[3]);
+    const migas: Miga[] = [
+      { texto: "Mis obras", ruta: RUTA_DE_PENDIENTES },
+      { texto: nombre, ruta: rutaDeObra(carpeta, obraId, "resumen") },
+    ];
+    if (seccion) migas.push({ texto: seccion.titulo });
+    return { migas, titulo: seccion ? `${seccion.titulo} · ${nombre}` : nombre };
+  }
+  const deEmpresa = EMPRESA.exec(pathname);
+  const entrada = deEmpresa ? ENTRADAS_DE_EMPRESA.find((e) => e.id === deEmpresa[1]) : undefined;
+  if (entrada) return { migas: [{ texto: "Empresa" }, { texto: entrada.titulo }], titulo: entrada.titulo };
+  const pagina = paginaPorId(pathname.slice(1), paginas);
+  return pagina ? { migas: [{ texto: pagina.titulo }], titulo: pagina.titulo } : { migas: [], titulo: null };
+}

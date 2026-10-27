@@ -10,7 +10,7 @@ interface Opciones {
   // `GET /v1/hoja/borradores` exige `editar_hoja` (BCP-5 §4.6): sin ella no se pregunta por borradores.
   puedeVerBorradores: boolean;
   // Las obras de la carpeta abierta, para nombrar los borradores («Hoja de Casa Demo»).
-  obras: readonly ProyectoRespuesta[] | null;
+  obras: readonly Pick<ProyectoRespuesta, "codigo" | "nombre">[] | null;
   alExpirar: () => void;
   // Un error al leer la lista (que no sea 401 ni 403): lo muestra el armazon.
   alFallar: (error: unknown) => void;
@@ -99,5 +99,8 @@ export function useCarpetaDeTrabajo({ puedeVerBorradores, obras, alExpirar, alFa
     [cambiar],
   );
 
-  return { casos, abrir, volverALaEmpresa };
+  // Otra pieza cambió la carpeta de la sesión (el marco, al entrar en una obra de otra carpeta): se vuelve a leer.
+  const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+
+  return { casos, abrir, volverALaEmpresa, recargar };
 }

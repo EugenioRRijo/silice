@@ -135,10 +135,10 @@ describe("SidebarModulos", () => {
       "/reajuste",
       "/escenarios",
     ]);
-    expect(within(areas).getByRole("link", { name: "Hoja del proyecto" })).toHaveAccessibleDescription(
+    expect(within(areas).getByRole("link", { name: "Hoja de la obra" })).toHaveAccessibleDescription(
       "El presupuesto completo, como en Excel",
     );
-    expect(within(areas).getByRole("link", { name: "Hoja del proyecto" })).toHaveAttribute("aria-current", "page");
+    expect(within(areas).getByRole("link", { name: "Hoja de la obra" })).toHaveAttribute("aria-current", "page");
     const rotulos = [...areas.querySelectorAll(".silice-sidebar__rotulo-area")].map((p) => p.textContent);
     expect(rotulos).toEqual(["Obras", "Partidas", "Mercado", "Control"]);
   });

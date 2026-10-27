@@ -10,8 +10,8 @@ import { CambiarContrasena } from "./sesion/CambiarContrasena";
 import { Entrar } from "./sesion/Entrar";
 import { useSesion } from "./sesion/useSesion";
 import { TamanoLetra } from "./comun/TamanoLetra";
+import { Marco } from "./marco/Marco";
 import { MenuCuenta } from "./shell/MenuCuenta";
-import { Shell } from "./shell/Shell";
 import { crearAlmacen } from "./visor/almacen";
 import type { AlmacenDelVisor } from "./visor/almacen";
 import type { CrearHojaVisor } from "./visor/hojaVisor";
@@ -75,7 +75,7 @@ export function App({ crearHoja }: Props = {}) {
     <Theme theme="g10">
       {estado.tipo === "activa" && !estado.sesion.debe_cambiar_clave ? (
         <HashRouter>
-          <Shell
+          <Marco
             sesion={estado.sesion}
             alSalir={alSalir}
             alExpirar={expirar}

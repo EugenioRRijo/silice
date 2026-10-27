@@ -58,7 +58,7 @@ function InicioDeObras() {
 // Registro de prueba: cada pantalla con su modulo y su area (plan de modulos, MOD-1). El orden decide el de los paneles.
 const PAGINAS: PaginaDef[] = [
   { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Cómo va el proyecto", seccion: "Trabajo", accion: "leer_proyecto", ubicacion: { modulo: "obras", area: "obras" }, cargar: async () => ({ default: PaginaA }) },
-  { id: "hoja", titulo: "Hoja del proyecto", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "editar_hoja", ubicacion: { modulo: "obras", area: "obras" }, cargar: CARGAR_B },
+  { id: "hoja", titulo: "Hoja de la obra", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "editar_hoja", ubicacion: { modulo: "obras", area: "obras" }, cargar: CARGAR_B },
   { id: "catalogo", titulo: "Catálogo de partidas e insumos", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", ubicacion: { modulo: "obras", area: "partidas" }, cargar: CARGAR_B },
   { id: "control", titulo: "Control de obra", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "control_de_obra", ubicacion: { modulo: "obras", area: "control" }, cargar: CARGAR_B },
   { id: "acerca", titulo: "Acerca de Sílice", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: null, ubicacion: null, cargar: CARGAR_B },
@@ -372,10 +372,10 @@ describe("Shell", () => {
       montar();
       const boton = within(menu()).getByRole("button", { name: "Obras" });
       expect(boton).toHaveAttribute("aria-expanded", "false");
-      expect(within(menu()).queryByRole("link", { name: "Hoja del proyecto" })).not.toBeInTheDocument();
+      expect(within(menu()).queryByRole("link", { name: "Hoja de la obra" })).not.toBeInTheDocument();
       await usuario.click(boton);
       expect(boton).toHaveAttribute("aria-expanded", "true");
-      expect(within(menu()).getByRole("link", { name: "Hoja del proyecto" })).toBeVisible();
+      expect(within(menu()).getByRole("link", { name: "Hoja de la obra" })).toBeVisible();
       await usuario.click(boton);
       expect(boton).toHaveAttribute("aria-expanded", "false");
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
@@ -388,7 +388,7 @@ describe("Shell", () => {
       expect(obras).toHaveClass("silice-barra__area--actual");
       expect(within(menu()).getByRole("link", { name: "Partidas" })).not.toHaveAttribute("aria-current");
       await usuario.click(obras);
-      expect(within(menu()).getByRole("link", { name: "Hoja del proyecto" })).toHaveAttribute("aria-current", "page");
+      expect(within(menu()).getByRole("link", { name: "Hoja de la obra" })).toHaveAttribute("aria-current", "page");
       await screen.findByRole("heading", { name: "Otra pantalla" });
     });
 
@@ -469,7 +469,7 @@ describe("Shell", () => {
       const tablero = within(menu()).getByRole("link", { name: "Tablero del proyecto" });
       expect(tablero).toHaveFocus();
       await usuario.keyboard("{ArrowDown}");
-      const hoja = within(menu()).getByRole("link", { name: "Hoja del proyecto" });
+      const hoja = within(menu()).getByRole("link", { name: "Hoja de la obra" });
       expect(hoja).toHaveFocus();
       await usuario.keyboard("{ArrowUp}");
       expect(tablero).toHaveFocus();
@@ -560,7 +560,7 @@ describe("Shell", () => {
       await screen.findByRole("heading", { level: 1, name: "Libro de la empresa" });
       expect(llamadasPut()).toHaveLength(0);
       act(() => void historia.ir!("/hoja"));
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       await waitFor(() => expect(llamadasPut()).toHaveLength(1));
       const [, init] = llamadasPut()[0];
       expect(init?.body).toBe(JSON.stringify({ modulo: "obras" }));
@@ -624,7 +624,7 @@ describe("Shell", () => {
         String(entrada) === PUT ? json({ detalle: "La base de la instalación no responde." }, 500) : base(entrada, init),
       );
       montarCon(sesionDe("ana", "auditoria"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       await waitFor(() => expect(llamadasPut()).toHaveLength(1));
       await new Promise((r) => setTimeout(r, 30));
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -988,7 +988,7 @@ describe("Shell", () => {
     function HojaConCampo() {
       return (
         <>
-          <h1>Hoja del proyecto</h1>
+          <h1>Hoja de la obra</h1>
           <input aria-label="Cantidad" />
         </>
       );
@@ -1015,7 +1015,7 @@ describe("Shell", () => {
     test("oculto al empezar; «Sílice» lo abre en capa con el foco en el módulo actual, y lo vuelve a cerrar", async () => {
       const u = userEvent.setup();
       montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       expect(enCapa()).toBeNull();
       expect(fijado()).toBeNull();
       const boton = screen.getByRole("button", { name: "Sílice, abrir los módulos" });
@@ -1036,7 +1036,7 @@ describe("Shell", () => {
     test("foco 2: con el foco en <main> Esc lo abre; otro Esc lo cierra y el foco vuelve a «Sílice»", async () => {
       const u = userEvent.setup();
       montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       screen.getByRole("main").focus();
       await u.keyboard("{Escape}");
       expect(enCapa()).toBeInTheDocument();
@@ -1060,7 +1060,7 @@ describe("Shell", () => {
     test("foco 2: con el panel de «Obras» abierto, el primer Esc cierra solo el panel; el segundo abre el sidebar", async () => {
       const u = userEvent.setup();
       montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       const obras = within(menu()).getByRole("button", { name: "Obras" });
       await u.click(obras);
       expect(obras).toHaveAttribute("aria-expanded", "true");
@@ -1075,7 +1075,7 @@ describe("Shell", () => {
     test("foco 2: con el menú de la cuenta abierto, Esc lo cierra a él y no abre el sidebar", async () => {
       const u = userEvent.setup();
       montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       const cuenta = screen.getByRole("button", { name: "Cuenta de Ana Pérez" });
       await u.click(cuenta);
       expect(cuenta).toHaveAttribute("aria-expanded", "true");
@@ -1087,7 +1087,7 @@ describe("Shell", () => {
     test("foco 2: con un recorrido activo, abrir y cerrar el sidebar con Esc no termina el recorrido", async () => {
       const u = userEvent.setup();
       montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
       onTestFinished(() => terminarRecorrido());
       screen.getByRole("main").focus();
@@ -1102,7 +1102,7 @@ describe("Shell", () => {
     test("foco atrapado en la capa: Tab desde el último vuelve al primero y Mayús+Tab desde el primero va al último", async () => {
       const u = userEvent.setup();
       montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       await u.click(silice());
       // Sin ancho para fijarlo no hay «Fijar»: lo último es «Acerca de Sílice», al pie.
       const primero = within(enCapa()!).getByRole("link", { name: "Auditoría" });
@@ -1117,7 +1117,7 @@ describe("Shell", () => {
     test("clic en la capa lo cierra y devuelve el foco a «Sílice»", async () => {
       const u = userEvent.setup();
       const { container } = montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       await u.click(silice());
       await u.click(container.querySelector<HTMLElement>(".silice-sidebar__fondo")!);
       expect(enCapa()).toBeNull();
@@ -1127,7 +1127,7 @@ describe("Shell", () => {
     test("elegir «Auditoría» navega a su inicio, cierra el sidebar, el foco va al h1 y se recuerda el módulo", async () => {
       const u = userEvent.setup();
       montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       await u.click(silice());
       await u.click(within(enCapa()!).getByRole("link", { name: "Auditoría" }));
       const titulo = await screen.findByRole("heading", { level: 1, name: "Inicio de auditoría" });
@@ -1141,7 +1141,7 @@ describe("Shell", () => {
       const u = userEvent.setup();
       document.documentElement.style.setProperty(VARIABLE, "1");
       const { container } = montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       await u.click(silice());
       await u.click(within(enCapa()!).getByRole("button", { name: "Fijar" }));
       await waitFor(() => expect(cuerposPut()).toEqual(['{"sidebar_fijado":true}']));
@@ -1165,7 +1165,7 @@ describe("Shell", () => {
       const u = userEvent.setup();
       document.documentElement.style.setProperty(VARIABLE, "0");
       montarCon(sesionDe("ana", "obras", true), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       await u.click(silice());
       expect(enCapa()).toBeInTheDocument();
       act(() => {
@@ -1174,7 +1174,7 @@ describe("Shell", () => {
       });
       expect(enCapa()).toBeNull();
       expect(fijado()).toBeInTheDocument();
-      const titulo = screen.getByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      const titulo = screen.getByRole("heading", { level: 1, name: "Hoja de la obra" });
       titulo.tabIndex = -1;
       titulo.focus();
       act(() => {
@@ -1191,7 +1191,7 @@ describe("Shell", () => {
       const u = userEvent.setup();
       document.documentElement.style.setProperty(VARIABLE, "0");
       const { container } = montarCon(sesionDe("ana", "obras", true), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       expect(fijado()).toBeNull();
       expect(enCapa()).toBeNull();
       expect(container.querySelector(".silice-marco")).not.toHaveClass("silice-marco--fijado");
@@ -1204,7 +1204,7 @@ describe("Shell", () => {
       const u = userEvent.setup();
       document.documentElement.style.setProperty(VARIABLE, "1");
       const { container } = montarCon(sesionDe("ana", "obras", true), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       expect(fijado()).toBeInTheDocument();
       expect(container.querySelector(".silice-marco")).toHaveClass("silice-marco--fijado");
       screen.getByRole("main").focus();
@@ -1221,7 +1221,7 @@ describe("Shell", () => {
     test("las áreas del sidebar son las mismas pantallas que la barra, cada título una sola vez", async () => {
       const u = userEvent.setup();
       montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       const deLaBarra: string[] = [];
       for (const area of areasDeLaBarra()) {
         if (area.tagName === "BUTTON") {
@@ -1240,7 +1240,7 @@ describe("Shell", () => {
     test("el pie trae «Acerca de Sílice» y no «Administración» con ana; con el administrador las dos", async () => {
       const u = userEvent.setup();
       const { unmount } = montarCon(sesionDe("ana", "obras"), "/hoja");
-      await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+      await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
       await u.click(silice());
       expect(within(enCapa()!).getByRole("link", { name: "Acerca de Sílice" })).toBeInTheDocument();
       expect(within(enCapa()!).queryByRole("link", { name: "Administración" })).not.toBeInTheDocument();

@@ -66,6 +66,13 @@ describe("App: primer arranque y recuperar acceso", () => {
       if (ruta === "/v1/casos") return json({ actual: { nombre: "a", ruta_relativa: "data/a.db" }, casos: [] });
       if (ruta === "/v1/proyectos") return json([]);
       if (ruta === "/v1/produccion/existencias") return json([]);
+      // Lo que pide el marco (las obras de la barra lateral, el tema) y la mesa de Pendientes: sin esto caerian en el 401
+      // de abajo y la sesion se daria por vencida.
+      if (ruta === "/v1/obras/todas") return json({ carpeta_actual: null, obras: [] });
+      if (ruta === "/v1/tema") return json({ acento: null, marco: null, lateral: null, tiene_logo: false, avisos: [] });
+      if (metodo === "GET" && (ruta.startsWith("/v1/obras/") || ruta.startsWith("/v1/aprobaciones"))) {
+        return json({ detalle: "No encontrado." }, 404);
+      }
       if (ruta.startsWith("/v1/auditorias-libro")) return json([]);
       // Plan de modulos (MOD-1): un administrador sin modulos visibles entra en Administracion; sus lecturas no
       // existen en este doble (404), pero no deben caer en el 401 de abajo y dar la sesion por vencida.
@@ -149,7 +156,8 @@ describe("App: primer arranque y recuperar acceso", () => {
       if (ruta === "/v1/sesion" && (init?.method ?? "GET") === "GET") {
         return dentro ? json({ ...sesionNueva, acciones: ["leer_proyecto", "operar_arenera"] }) : json({ detalle: "Sin sesión." }, 401);
       }
-      if (ruta === "/v1/produccion/existencias") {
+      // La primera lectura del marco (las obras de la barra lateral) ya encuentra la sesión vencida.
+      if (ruta === "/v1/obras/todas") {
         dentro = false;
         return json({ detalle: "Su sesión venció." }, 401);
       }

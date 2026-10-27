@@ -57,7 +57,7 @@ const BORRADOR: BorradorAbierto = {
 
 type Respuestas = Partial<Record<"espacio" | "presupuesto" | "apu" | "plan", (url: string) => Response | Promise<Response>>>;
 
-describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
+describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
 

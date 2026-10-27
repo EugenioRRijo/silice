@@ -102,7 +102,7 @@ const MATERIALES: InsumosRespuesta = {
 
 type Cuerpo = Record<string, unknown> & { rev: number };
 
-describe("Hoja del proyecto: APU editable y cambio de insumo (3c-3)", () => {
+describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   let abierto: BorradorAbierto;

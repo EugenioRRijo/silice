@@ -735,7 +735,7 @@ describe("T19: el grupo «Aprobar» de la columna de pendientes", () => {
     const lista = await within(await region("Pendientes")).findByRole("list", { name: "Aprobar" });
     expect(within(lista).getByText("VIV-001 devuelta: Falta el acero de la losa.")).toBeInTheDocument();
     await u.click(within(lista).getByRole("button", { name: "Hacer una versión nueva" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" })).toBeInTheDocument();
     expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "7" }]);
   });
 

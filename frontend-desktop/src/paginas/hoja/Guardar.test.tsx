@@ -87,7 +87,7 @@ const MAS_NUEVA =
 const FALTA =
   "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). Lo que no guardó se perdió: abra la versión otra vez.";
 
-describe("Hoja del proyecto: guardar versión y primera versión (3d-1)", () => {
+describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   let versiones: VersionesRespuesta;

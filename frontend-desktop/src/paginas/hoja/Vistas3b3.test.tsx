@@ -78,7 +78,7 @@ interface Propias {
   version?: string | null;
 }
 
-describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Trazabilidad (3b-3)", () => {
+describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazabilidad (3b-3)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
 

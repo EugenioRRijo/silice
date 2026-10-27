@@ -11,7 +11,7 @@ import { MODULOS, PAGINAS } from "./rutas";
 const TODAS = [...new Set(PAGINAS.flatMap((p) => (p.accion ? [p.accion] : [])))];
 const OBRAS = MODULOS.find((m) => m.id === "obras")!;
 const ENTRADAS = navegacion("obras", TODAS, false);
-const PANTALLAS_DE_OBRAS = ["Hoja del proyecto", "Elaborar un presupuesto", "Tablero del proyecto", "Entregar paquete"];
+const PANTALLAS_DE_OBRAS = ["Hoja de la obra", "Elaborar un presupuesto", "Tablero del proyecto", "Entregar paquete"];
 const CERRADO = { abierto: false, visible: false, alternar: () => {} };
 
 // Atras/adelante del navegador sin tocar la pagina (un clic en un boton seria un «clic fuera»).
@@ -178,7 +178,7 @@ describe("BarraSuperior", () => {
     const enlaces = within(region).getAllByRole("link");
     expect(enlaces.map((e) => e.getAttribute("href"))).toEqual(["/hoja", "/elaborar", "/tablero", "/entregar"]);
     for (const titulo of PANTALLAS_DE_OBRAS) expect(within(region).getByRole("link", { name: titulo })).toBeInTheDocument();
-    const hoja = within(region).getByRole("link", { name: "Hoja del proyecto" });
+    const hoja = within(region).getByRole("link", { name: "Hoja de la obra" });
     expect(hoja).toHaveAccessibleDescription("El presupuesto completo, como en Excel");
     expect(within(region).getByText("El presupuesto completo, como en Excel")).toBeVisible();
     expect(within(region).getByText("Junte partidas y cantidades")).toBeVisible();
@@ -191,7 +191,7 @@ describe("BarraSuperior", () => {
     area("Obras").focus();
     await u.keyboard("{Enter}");
     expect(panel("Obras")).toBeInTheDocument();
-    expect(within(panel("Obras")!).getByRole("link", { name: "Hoja del proyecto" })).toHaveFocus();
+    expect(within(panel("Obras")!).getByRole("link", { name: "Hoja de la obra" })).toHaveFocus();
     await u.keyboard("{Escape}");
     expect(panel("Obras")).toBeNull();
     expect(area("Obras")).toHaveAttribute("aria-expanded", "false");
@@ -205,13 +205,13 @@ describe("BarraSuperior", () => {
     await u.keyboard("{ArrowDown}");
     expect(screen.getByRole("link", { name: "Elaborar un presupuesto" })).toHaveFocus();
     await u.keyboard("{ArrowUp}{ArrowUp}");
-    expect(screen.getByRole("link", { name: "Hoja del proyecto" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Hoja de la obra" })).toHaveFocus();
     await u.keyboard("{End}");
     expect(screen.getByRole("link", { name: "Entregar paquete" })).toHaveFocus();
     await u.keyboard("{ArrowDown}");
     expect(screen.getByRole("link", { name: "Entregar paquete" })).toHaveFocus();
     await u.keyboard("{Home}");
-    expect(screen.getByRole("link", { name: "Hoja del proyecto" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Hoja de la obra" })).toHaveFocus();
   });
 
   test("Espacio sobre el botón del área abre el panel", async () => {
@@ -251,7 +251,7 @@ describe("BarraSuperior", () => {
     const u = userEvent.setup();
     pintar();
     await u.click(area("Obras"));
-    const enlace = screen.getByRole("link", { name: "Hoja del proyecto" });
+    const enlace = screen.getByRole("link", { name: "Hoja de la obra" });
     expect(enlace).toHaveFocus();
     // Safari: al apretar el botón, este no toma el foco; el enlace lo pierde hacia el body (relatedTarget nulo).
     const boton = area("Obras");

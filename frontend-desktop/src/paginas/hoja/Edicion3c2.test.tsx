@@ -72,7 +72,7 @@ function borrador(extra: Partial<Resumen> = {}): BorradorAbierto {
 type Seccion = "cantidades" | "parametros" | "plan" | "secuencial";
 type Cuerpo = Record<string, unknown> & { rev: number };
 
-describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", () => {
+describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   let abierto: BorradorAbierto;

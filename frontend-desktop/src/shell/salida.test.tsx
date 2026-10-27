@@ -14,7 +14,7 @@ function dialogo() {
   return screen.getByRole("dialog", { name: "Cambios sin guardar" });
 }
 
-// Los titulos son los de rutas.ts, escritos a mano: «componer» es «Componer una partida» y «hoja», «Hoja del proyecto».
+// Los titulos son los de rutas.ts, escritos a mano: «componer» es «Componer una partida» y «hoja», «Hoja de la obra».
 describe("confirmarSalida y DialogoSalida", () => {
   test("sin nada sucio ni extras resuelve true sin pintar el diálogo", async () => {
     render(<DialogoSalida />);
@@ -56,7 +56,7 @@ describe("confirmarSalida y DialogoSalida", () => {
       promesa = confirmarSalida("salir");
     });
     expect(dialogo()).toHaveAccessibleDescription(
-      "Tiene cambios sin guardar en Componer una partida y Hoja del proyecto. Si sale de esta pantalla, se perderán.",
+      "Tiene cambios sin guardar en Componer una partida y Hoja de la obra. Si sale de esta pantalla, se perderán.",
     );
     await userEvent.click(screen.getByRole("button", { name: "Salir y descartar" }));
     await expect(promesa).resolves.toBe(true);
@@ -71,7 +71,7 @@ describe("confirmarSalida y DialogoSalida", () => {
       void confirmarSalida("salir", ["la obra nueva"]);
     });
     expect(dialogo()).toHaveAccessibleDescription(
-      "Tiene cambios sin guardar en Componer una partida, Hoja del proyecto y la obra nueva. Si sale de esta pantalla, se perderán.",
+      "Tiene cambios sin guardar en Componer una partida, Hoja de la obra y la obra nueva. Si sale de esta pantalla, se perderán.",
     );
   });
 

@@ -157,7 +157,7 @@ describe("La lista de la carpeta en el selector de obra", () => {
   test("va al pie del panel, bajo «Carpeta: … · Cambiar carpeta…», y se lee cada vez que se abre", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     const antes = servidor.de("GET", "/v1/carpeta").length;
     await u.click(await botonDeObra());
     const panel = screen.getByRole("region", { name: "Obra" });

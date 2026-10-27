@@ -140,7 +140,7 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   {
     id: "hoja",
-    titulo: "Hoja del proyecto",
+    titulo: "Hoja de la obra",
     enUnaLinea: "El presupuesto completo, como en Excel",
     seccion: "Trabajo",
     accion: "editar_hoja",
@@ -297,7 +297,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     titulo: "Inicio de producción",
     enUnaLinea: "Lo que requiere atención en la arenera",
     seccion: "Trabajo",
-    accion: null,
+    accion: "operar_arenera",
     ubicacion: en("produccion", "inicio"),
     cargar: () => import("../paginas/produccion"),
   },

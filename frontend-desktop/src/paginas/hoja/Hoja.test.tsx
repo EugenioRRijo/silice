@@ -69,7 +69,7 @@ function borrador(id: string, codigo: string | null, extra: Record<string, unkno
   };
 }
 
-describe("Hoja del proyecto (marco, 3b-1)", () => {
+describe("Hoja de la obra (marco, 3b-1)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
 
@@ -119,13 +119,13 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
     );
   }
 
-  test("3b-F1: un solo h1 «Hoja del proyecto» con heading-04", async () => {
+  test("3b-F1: un solo h1 «Hoja de la obra» con heading-04", async () => {
     servidor();
     montar();
     await screen.findByRole("region", { name: "Estado del borrador" }, { timeout: 5000 });
     const h1 = screen.getAllByRole("heading", { level: 1 });
     expect(h1).toHaveLength(1);
-    expect(h1[0]).toHaveTextContent("Hoja del proyecto");
+    expect(h1[0]).toHaveTextContent("Hoja de la obra");
     expect(h1[0]).toHaveClass("cds--type-heading-04");
     expect(screen.getByRole("heading", { level: 2, name: "Estado del borrador" })).toHaveClass(
       "cds--type-heading-compact-02",
@@ -134,7 +134,7 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
 
   test("3b-F2: sin obra en la cabecera pide elegir una con el selector de obra y no llama a la API", () => {
     montar(null);
-    expect(screen.getByRole("heading", { level: 1, name: "Hoja del proyecto" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Hoja de la obra" })).toBeInTheDocument();
     // Tarea 11 (F11 de MOD-3b): «obra» y el selector de obra, no «proyecto» ni «el selector de la cabecera».
     expect(screen.getByText("Elija una obra")).toBeInTheDocument();
     expect(screen.getByText("Use el selector de obra de la cabecera para abrir su hoja.")).toBeInTheDocument();

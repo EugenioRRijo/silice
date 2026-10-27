@@ -1,5 +1,6 @@
 import { Search } from "@carbon/icons-react";
 import { useEffect } from "react";
+import type { ReactNode } from "react";
 import { TamanoLetra } from "../comun/TamanoLetra";
 import { MenuCuenta } from "../shell/MenuCuenta";
 import "./BarraSuperior.scss";
@@ -11,6 +12,8 @@ interface Props {
   alAbrirBuscador: () => void;
   nombre: string;
   alSalir: () => void;
+  // Lo que el marco pone antes del tamaño de letra (la marca de la demostración, «Recorrido»).
+  extra?: ReactNode;
 }
 
 // Un campo donde Ctrl+K ya significa otra cosa (texto largo o contenido editable): ahi no se abre el buscador.
@@ -21,9 +24,8 @@ function usaCtrlK(destino: EventTarget | null): boolean {
   );
 }
 
-// Barra superior del marco nuevo: marca, migas, buscador (Ctrl+K), tamaño de letra y cuenta. Todavia no esta montada en
-// la aplicacion (Tarea 8 del plan del marco).
-export function BarraSuperior({ migas, alAbrirBuscador, nombre, alSalir }: Props) {
+// Barra superior del marco nuevo: marca, migas, buscador (Ctrl+K), tamaño de letra y cuenta. La monta marco/Marco.
+export function BarraSuperior({ migas, alAbrirBuscador, nombre, alSalir, extra }: Props) {
   const { logo } = useTema();
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export function BarraSuperior({ migas, alAbrirBuscador, nombre, alSalir }: Props
         <Search size={16} aria-hidden="true" />
         <span className="silice-marco-barra__buscar-texto">Buscar una obra, sección o pantalla… (Ctrl+K)</span>
       </button>
+      {extra}
       <TamanoLetra />
       <MenuCuenta nombre={nombre} alSalir={alSalir} />
     </header>

@@ -78,7 +78,7 @@ describe("foco 3: cambiar de carpeta con trabajo sin guardar", () => {
     servidor = servidorFalso(estado);
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("button", { name: "Abrir s2" }));
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
@@ -92,7 +92,7 @@ describe("foco 3: cambiar de carpeta con trabajo sin guardar", () => {
   test("sin nada que perder cambia directo, avisa sin la frase del reinicio y la barra dice la carpeta nueva", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("button", { name: "Abrir s2" }));
     await waitFor(() => expect(servidor.de("POST", "/v1/casos/actual").map((l) => l.cuerpo)).toEqual([{ nombre: "s2.db" }]));
@@ -120,7 +120,7 @@ describe("foco 3: cambiar de carpeta con trabajo sin guardar", () => {
     );
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("button", { name: "Abrir s2" }));
     expect(await within(dialogo()).findByText("La carpeta de trabajo no se pudo preparar.")).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("foco 3: cambiar de carpeta con trabajo sin guardar", () => {
     );
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     const { alExpirar } = montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("button", { name: "Abrir s2" }));
     await waitFor(() => expect(alExpirar).toHaveBeenCalled());
@@ -147,7 +147,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F5: solo con cambiar de carpeta; las pestañas se recorren con el teclado; Esc lo cierra y devuelve el foco", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     const caja = await abrirCarpetas(u);
     expect(caja).toHaveAttribute("aria-modal", "true");
     const pestanas = within(caja).getAllByRole("tab");
@@ -165,7 +165,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F5: «Cerrar» también devuelve el foco al botón de la barra", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("button", { name: "Cerrar" }));
     expect(await botonDeObra()).toHaveFocus();
@@ -174,7 +174,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F5: crear sin moneda pide elegirla y no llama a la API", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     expect(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" })).toHaveValue("");
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Obra nueva");
@@ -186,7 +186,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F5: crear con Bs llama POST /v1/casos, POST /v1/casos/actual y PUT /v1/carpeta/moneda, en ese orden, con el nombre final", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Obra*1");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
@@ -206,7 +206,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F5: «ya existe» (409) se muestra en línea, tal cual lo dice la API", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "s1");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "USD");
@@ -221,7 +221,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F9: la lista se vuelve a pedir al abrir el diálogo y después de crear; la carpeta nueva se ve", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await waitFor(() => expect(servidor.de("GET", "/v1/casos").length).toBeGreaterThan(0));
     const antes = servidor.de("GET", "/v1/casos").length;
     await abrirCarpetas(u);
@@ -238,7 +238,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("la lista marca la carpeta abierta y la de la empresa; la abierta no se ofrece para abrir", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     const lista = await within(dialogo()).findByRole("list", { name: "Carpetas de trabajo de la instalación" });
     const silice = within(lista).getAllByRole("listitem")[0]!;
@@ -266,7 +266,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
     const campo = () => dialogo().querySelector<HTMLInputElement>('input[type="file"]')!;
@@ -305,7 +305,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
     await u.upload(dialogo().querySelector<HTMLInputElement>('input[type="file"]')!, new File(["x"], "copia.db"));
@@ -318,7 +318,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F7: la demostración dice que los datos son inventados; 201 la abre", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("tab", { name: "Demostración" }));
     expect(within(dialogo()).getByText("Datos de ejemplo inventados para aprender; no son una obra real.")).toBeInTheDocument();
@@ -336,7 +336,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
     servidor = servidorFalso(estado);
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("tab", { name: "Demostración" }));
     await u.click(within(dialogo()).getByRole("button", { name: "Abrir la demostración" }));
@@ -348,7 +348,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("ninguna cadena visible del diálogo dice «caso» ni «proyecto»", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await carpetasDeLaLista();
     for (const pestana of ["Crear", "Subir un archivo", "Demostración"]) {
@@ -401,7 +401,7 @@ describe("crear una carpeta: primero se pregunta, la moneda se reintenta sola", 
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
@@ -465,7 +465,7 @@ describe("menores tras la ronda 2", () => {
     );
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
@@ -545,7 +545,7 @@ describe("menores de la ronda 3", () => {
   test("crear con el nombre vacío lo dice en el campo y no llama a la API", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "   ");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
@@ -561,7 +561,7 @@ describe("menores de la ronda 3", () => {
     );
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await crearNueva(u);
     await u.click(within(dialogo()).getByRole("button", { name: "Abrir s2" }));
     expect(await screen.findByText("Ahora trabaja con la carpeta de trabajo «s2».")).toBeInTheDocument();
@@ -587,7 +587,7 @@ describe("menores de la ronda 3", () => {
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await crearNueva(u);
     await u.click(within(dialogo()).getByRole("button", { name: "Declarar la moneda" }));
     await waitFor(() => expect(puts()).toHaveLength(2));
@@ -617,7 +617,7 @@ describe("menores de la ronda 3", () => {
       const { abrirCarpeta } = useAplicacion();
       return (
         <>
-          <h1>Hoja del proyecto</h1>
+          <h1>Hoja de la obra</h1>
           <button type="button" onClick={() => void abrirCarpeta?.("s2.db")}>
             Abrir s2 desde la página
           </button>
@@ -625,7 +625,7 @@ describe("menores de la ronda 3", () => {
       );
     }
     montarShell(sesionDe("ana"), "/hoja", ligeras({ hoja: HojaQueAbre }));
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await crearNueva(u);
     await u.click(within(dialogo()).getByRole("button", { name: "Declarar la moneda" }));
     await waitFor(() => expect(puts()).toHaveLength(2));
@@ -646,7 +646,7 @@ describe("subir: lo que se rechaza en el navegador no queda elegido", () => {
   test("un archivo que no es .db vacía el que estaba elegido y «Subir» queda deshabilitado", async () => {
     const u = userEvent.setup({ applyAccept: false });
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
     const campo = () => dialogo().querySelector<HTMLInputElement>('input[type="file"]')!;
@@ -661,7 +661,7 @@ describe("subir: lo que se rechaza en el navegador no queda elegido", () => {
   test("un .db de más de 20 MiB se rechaza en el navegador con el texto de la API y no se sube", async () => {
     const u = userEvent.setup();
     montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja del proyecto" });
+    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     await abrirCarpetas(u);
     await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
     const grande = new File(["x"], "grande.db");

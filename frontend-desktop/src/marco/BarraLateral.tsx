@@ -1,10 +1,11 @@
 import { Add, ChevronDown, ChevronRight } from "@carbon/icons-react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { Link, useMatch, useNavigate } from "react-router";
 import { DialogoNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import type { DestinoDeNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import "./BarraLateral.scss";
+import { abrirNuevaObra, cerrarNuevaObra, useNuevaObraAbierta } from "./nuevaObra";
 import { obrasAlcanzables, useOferta } from "./oferta";
 import {
   PATRON_DE_EMPRESA,
@@ -41,7 +42,7 @@ function agruparPorCarpeta(obras: ObraDeCarpeta[]): Grupo[] {
 
 // Barra lateral del marco nuevo: Pendientes, el árbol de Obras (la abierta, desplegada con sus secciones) y Empresa. Es
 // un `tree` de WAI-ARIA: una sola parada de Tab, flechas para recorrer, derecha despliega e izquierda pliega. Todavía no
-// está montada en la aplicación (Tarea 8 del plan del marco). Los contadores llegan en F3.
+// la monta marco/Marco (Tarea 8 del plan del marco). Los contadores llegan en F3.
 // Pasa de 250 líneas porque el árbol, su teclado y la ventana de Nueva obra comparten un mismo estado (qué está desplegado,
 // qué fila tiene el foco); separarlos obligaría a subir ese estado sin quitar complejidad.
 export function BarraLateral({ obraAbierta, seccion }: Props) {
@@ -51,7 +52,9 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const { obras, carpetaActual, estado, recargar } = useObras();
   const enPendientes = useMatch(RUTA_DE_PENDIENTES) !== null;
   const entradaActiva = useMatch(PATRON_DE_EMPRESA)?.params["entrada"] ?? null;
-  const [nuevaAbierta, setNuevaAbierta] = useState(false);
+  // El diálogo lo puede pedir también la mesa (marco/nuevaObra); al irse la barra (salir de la sesión) se cierra.
+  const nuevaAbierta = useNuevaObraAbierta();
+  useEffect(() => cerrarNuevaObra, []);
   // Lo que la persona desplegó o plegó a mano; sin decisión, solo está desplegada la obra abierta.
   const [manual, setManual] = useState<Record<string, boolean>>({});
   const [foco, setFoco] = useState<string | null>(null);
@@ -224,7 +227,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
       <div className="silice-marco-lateral__obras">
         <h2 className="silice-marco-lateral__titulo">Obras</h2>
         {puedeCrear && (
-          <button type="button" className="silice-marco-boton-principal" onClick={() => setNuevaAbierta(true)}>
+          <button type="button" className="silice-marco-boton-principal" onClick={abrirNuevaObra}>
             <Add size={20} aria-hidden="true" />
             Nueva obra
           </button>
@@ -251,10 +254,10 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
 
       <DialogoNuevaObra
         abierto={nuevaAbierta}
-        alCerrar={() => setNuevaAbierta(false)}
+        alCerrar={cerrarNuevaObra}
         destino={destino}
         alCrear={(obra) => {
-          setNuevaAbierta(false);
+          cerrarNuevaObra();
           recargar();
           navegar(rutaDeObra(destino.carpeta, Number(obra.codigo), "resumen"));
         }}

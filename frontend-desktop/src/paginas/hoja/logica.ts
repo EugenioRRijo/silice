@@ -1,10 +1,10 @@
-// Lógica pura de «Hoja del proyecto» (marco de la rebanada 3b-1). Los montos llegan como texto
+// Lógica pura de «Hoja de la obra» (marco de la rebanada 3b-1). Los montos llegan como texto
 // `{texto, exacto}` y la página solo los formatea: no calcula ni convierte nada a número.
 import { ErrorDeApi } from "../../api/cliente";
 import type { HallazgoInformeRespuesta, InformeAuditoriaRespuesta } from "../../api/tipos";
 import { leerCifra } from "../../indicadores/cifraEscrita";
 
-export const TITULO = "Hoja del proyecto";
+export const TITULO = "Hoja de la obra";
 export const SIN_VERSIONES = "Esta obra aún no tiene versiones";
 
 // El orden de la página clásica (ui/paginas/hoja.py, PESTANAS).
