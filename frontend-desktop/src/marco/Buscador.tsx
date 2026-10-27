@@ -103,7 +103,7 @@ function Caja({ alCerrar, alElegir }: Omit<Props, "abierto">) {
             type="text"
             role="combobox"
             aria-label="Buscar una obra, sección o pantalla"
-            aria-expanded="true"
+            aria-expanded={resultados.length > 0}
             aria-controls={`${base}-lista`}
             aria-autocomplete="list"
             aria-activedescendant={resultados.length > 0 ? idDe(indice) : undefined}

@@ -1,5 +1,5 @@
-import { PAGINAS, rutaDe } from "../shell/rutas";
-import { ofertaDe, type Oferta } from "./oferta";
+import { rutaDe } from "../shell/rutas";
+import type { Oferta } from "./oferta";
 import { rutaDeEmpresa, rutaDeObra } from "./secciones";
 import type { ObraDeCarpeta } from "./useObras";
 
@@ -22,15 +22,11 @@ function coincide(palabras: readonly string[], texto: string): boolean {
   return palabras.every((p) => limpio.includes(p));
 }
 
-// Sin oferta, se asume la de una cuenta que lo puede todo (para pruebas y usos sin sesión): el componente siempre pasa la suya.
-const OFERTA_COMPLETA: Oferta = ofertaDe(
-  PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion])),
-  false,
-);
-
 // Qué se encuentra con el texto escrito: obras, luego sus secciones, luego las entradas de Empresa y por último las
-// pantallas sin sitio en el árbol. Sin texto, las primeras obras de la lista. Nunca más de `MAXIMO_DE_RESULTADOS`.
-export function resultadosDe(texto: string, obras: readonly ObraDeCarpeta[], oferta: Oferta = OFERTA_COMPLETA): Resultado[] {
+// pantallas sin sitio en el árbol. Sin texto, las primeras obras de la lista. Nunca más de `MAXIMO_DE_RESULTADOS`. La
+// oferta es obligatoria: sin ella no habría con qué decidir qué puede usar la cuenta. Una ruta no sale dos veces (la
+// sección «Resumen» de una obra lleva a la misma que la obra).
+export function resultadosDe(texto: string, obras: readonly ObraDeCarpeta[], oferta: Oferta): Resultado[] {
   const palabras = normalizar(texto).split(/\s+/).filter(Boolean);
   const deLaObra = (o: ObraDeCarpeta): Resultado => ({
     texto: o.obra,
@@ -51,5 +47,8 @@ export function resultadosDe(texto: string, obras: readonly ObraDeCarpeta[], ofe
     ...oferta.entradas.map((e) => ({ texto: e.titulo, detalle: e.ayuda, ruta: rutaDeEmpresa(e.id) })),
     ...oferta.sueltas.map((p) => ({ texto: p.titulo, detalle: p.enUnaLinea, ruta: rutaDe(p) })),
   ];
-  return todos.filter((r) => coincide(palabras, r.texto)).slice(0, MAXIMO_DE_RESULTADOS);
+  const rutasVistas = new Set<string>();
+  return todos
+    .filter((r) => coincide(palabras, r.texto) && !rutasVistas.has(r.ruta) && rutasVistas.add(r.ruta))
+    .slice(0, MAXIMO_DE_RESULTADOS);
 }
