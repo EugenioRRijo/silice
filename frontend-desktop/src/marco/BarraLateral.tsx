@@ -3,7 +3,7 @@ import { useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { Link, useMatch, useNavigate } from "react-router";
 import { DialogoNuevaObra } from "../shell/obras/DialogoNuevaObra";
-import type { CarpetaDeObra } from "../shell/obras/DialogoNuevaObra";
+import type { DestinoDeNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import "./BarraLateral.scss";
 import { obrasAlcanzables, useOferta } from "./oferta";
 import {
@@ -65,12 +65,16 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
     [obras, carpetaActual, puedeCambiarDeCarpeta],
   );
   const grupos = agruparPorCarpeta(visibles);
-  // La carpeta abierta siempre se ofrece (aunque no tenga obras): es la que propone el dialogo.
-  const carpetasDelDialogo: CarpetaDeObra[] = grupos.map((g) => ({ carpeta: g.carpeta, titulo: g.titulo }));
-  if (estado === "lista" && !carpetasDelDialogo.some((c) => c.carpeta === carpetaActual)) {
-    const titulo = carpetaActual === null ? "Carpeta de la empresa" : carpetaActual.replace(/\.db$/i, "");
-    carpetasDelDialogo.unshift({ carpeta: carpetaActual, titulo });
-  }
+  // «Nueva obra» crea donde está la persona: en la carpeta de la obra abierta en la ruta o, sin obra, en la de la sesión.
+  const carpetaDeCreacion = obraAbierta === null ? carpetaActual : obraAbierta.carpeta;
+  const tituloDeCreacion =
+    obras.find((o) => o.carpeta === carpetaDeCreacion)?.carpeta_titulo ??
+    (carpetaDeCreacion === null ? "Carpeta de la empresa" : carpetaDeCreacion.replace(/\.db$/i, ""));
+  const destino: DestinoDeNuevaObra = {
+    carpeta: carpetaDeCreacion,
+    titulo: tituloDeCreacion,
+    enOtraCarpeta: carpetaDeCreacion !== carpetaActual,
+  };
 
   const claveAbierta = obraAbierta === null ? null : claveDe({ carpeta: obraAbierta.carpeta, obra_id: obraAbierta.obraId });
   const desplegada = (clave: string) => manual[clave] ?? clave === claveAbierta;
@@ -248,15 +252,11 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
       <DialogoNuevaObra
         abierto={nuevaAbierta}
         alCerrar={() => setNuevaAbierta(false)}
-        carpetas={carpetasDelDialogo}
-        carpetaAbierta={carpetaActual}
-        obrasDeLaCarpeta={obras
-          .filter((o) => o.carpeta === carpetaActual)
-          .map((o) => ({ codigo: String(o.obra_id), nombre: o.obra }))}
-        alCrear={(obra, carpeta) => {
+        destino={destino}
+        alCrear={(obra) => {
           setNuevaAbierta(false);
           recargar();
-          navegar(rutaDeObra(carpeta ?? null, Number(obra.codigo), "resumen"));
+          navegar(rutaDeObra(destino.carpeta, Number(obra.codigo), "resumen"));
         }}
       />
     </aside>

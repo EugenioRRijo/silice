@@ -287,8 +287,11 @@ describe("BarraLateral: Nueva obra", () => {
       throw new Error(`petición inesperada: ${ruta}`);
     });
   }
-  async function escribirYCrear() {
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+  // En otra carpeta que la abierta no se conoce la moneda: la persona la elige.
+  async function escribirYCrear(moneda?: string) {
+    const campo = screen.getByRole("combobox", { name: "Moneda" });
+    if (moneda) await userEvent.selectOptions(campo, moneda);
+    else await waitFor(() => expect(campo).toHaveValue("Bs"));
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
     await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
   }
@@ -303,7 +306,7 @@ describe("BarraLateral: Nueva obra", () => {
     const caja = await screen.findByRole("dialog", { name: "Nueva obra" });
     expect(within(caja).getByText("Se creará en Carpeta Sur")).toBeInTheDocument();
     expect(within(caja).queryByRole("combobox", { name: "Carpeta" })).toBeNull();
-    await escribirYCrear();
+    await escribirYCrear("USD");
     await waitFor(() => expect(envios()).toHaveLength(1));
     expect(envios()[0]![1]).toMatchObject({ metodo: "POST", cuerpo: expect.objectContaining({ carpeta: SUR }) });
     expect(cambiosDeCarpeta()).toEqual([]);
@@ -330,7 +333,7 @@ describe("BarraLateral: Nueva obra", () => {
     await arbol();
     await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
     await screen.findByRole("dialog", { name: "Nueva obra" });
-    await escribirYCrear();
+    await escribirYCrear("USD");
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
     expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas").length).toBeGreaterThan(1); // recargó
   });
