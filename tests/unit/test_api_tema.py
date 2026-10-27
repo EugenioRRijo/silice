@@ -26,7 +26,10 @@ PNG_1X1 = (
     b"\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe\xa7\x9a\xa0\xa0\x00"
     b"\x00\x00\x00IEND\xaeB`\x82"
 )
+JPEG = b"\xff\xd8\xff\xe0" + b"0" * 20
+WEBP = b"RIFF\x00\x00\x00\x00WEBPVP8 " + b"0" * 20
 TOPE = 512 * 1024
+TOPE_JSON = 64 * 1024
 
 
 @pytest.fixture
@@ -97,12 +100,13 @@ def test_logo_png_se_sirve(tema: Path, cliente: TestClient) -> None:
 
 
 @pytest.mark.parametrize(
-    ("archivo", "tipo"), [("logo.jpg", "image/jpeg"), ("logo.webp", "image/webp")]
+    ("archivo", "tipo", "bytes_"),
+    [("logo.jpg", "image/jpeg", JPEG), ("logo.webp", "image/webp", WEBP)],
 )
 def test_logo_jpg_y_webp_llevan_su_tipo(
-    tema: Path, cliente: TestClient, archivo: str, tipo: str
+    tema: Path, cliente: TestClient, archivo: str, tipo: str, bytes_: bytes
 ) -> None:
-    (tema / archivo).write_bytes(b"bytes de imagen")
+    (tema / archivo).write_bytes(bytes_)
     assert cliente.get("/v1/tema").json()["tiene_logo"] is True
     assert cliente.get("/v1/tema/logo").headers["content-type"] == tipo
 
@@ -114,13 +118,13 @@ def test_logo_svg_no_se_sirve(tema: Path, cliente: TestClient) -> None:
 
 
 def test_logo_mayor_de_512_kb_no_se_sirve(tema: Path, cliente: TestClient) -> None:
-    (tema / "logo.png").write_bytes(b"0" * (TOPE + 1))
+    (tema / "logo.png").write_bytes(PNG_1X1 + b"0" * (TOPE + 1 - len(PNG_1X1)))
     assert cliente.get("/v1/tema").json()["tiene_logo"] is False
     assert cliente.get("/v1/tema/logo").status_code == 404
 
 
 def test_logo_de_exactamente_512_kb_se_sirve(tema: Path, cliente: TestClient) -> None:
-    (tema / "logo.png").write_bytes(b"0" * TOPE)
+    (tema / "logo.png").write_bytes(PNG_1X1 + b"0" * (TOPE - len(PNG_1X1)))
     assert cliente.get("/v1/tema").json()["tiene_logo"] is True
 
 
@@ -139,3 +143,38 @@ def test_logo_que_es_una_carpeta_no_tumba_nada(tema: Path, cliente: TestClient) 
 def test_tema_sin_sesion(tema: Path, cliente: TestClient) -> None:
     assert not cliente.cookies
     assert cliente.get("/v1/tema").status_code == 200
+
+
+def test_json_muy_anidado_devuelve_neutro(tema: Path, cliente: TestClient) -> None:
+    (tema / "tema.json").write_text("[" * 200000 + "]" * 200000, encoding="utf-8")
+    respuesta = cliente.get("/v1/tema")
+    assert respuesta.status_code == 200
+    assert respuesta.json() == NEUTRO
+    (tema / "tema.json").write_text('{"acento": ' + "[" * 200000 + "]" * 200000 + "}")
+    assert cliente.get("/v1/tema").json() == NEUTRO
+
+
+def test_json_mayor_de_64_kb_devuelve_neutro(tema: Path, cliente: TestClient) -> None:
+    relleno = " " * TOPE_JSON
+    (tema / "tema.json").write_text('{"acento": "#123abc"}' + relleno, encoding="utf-8")
+    assert cliente.get("/v1/tema").json() == NEUTRO
+
+
+def test_json_de_exactamente_64_kb_se_lee(tema: Path, cliente: TestClient) -> None:
+    base = '{"acento": "#123abc"}'
+    (tema / "tema.json").write_text(base + " " * (TOPE_JSON - len(base)), encoding="utf-8")
+    assert cliente.get("/v1/tema").json()["acento"] == "#123abc"
+
+
+@pytest.mark.parametrize("archivo", ["logo.png", "logo.jpg", "logo.webp"])
+def test_logo_cuyos_bytes_no_son_de_la_imagen_no_se_sirve(
+    tema: Path, cliente: TestClient, archivo: str
+) -> None:
+    (tema / archivo).write_bytes(b"<html><script>alert(1)</script></html>")
+    assert cliente.get("/v1/tema").json()["tiene_logo"] is False
+    assert cliente.get("/v1/tema/logo").status_code == 404
+
+
+def test_logo_con_firma_de_otro_formato_no_se_sirve(tema: Path, cliente: TestClient) -> None:
+    (tema / "logo.png").write_bytes(JPEG)
+    assert cliente.get("/v1/tema").json()["tiene_logo"] is False
