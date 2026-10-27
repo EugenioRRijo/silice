@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ObraDeCarpetaRespuesta } from "../api/tipos";
+import { PAGINAS } from "../shell/rutas";
 import { resultadosDe } from "./busqueda";
 import { ofertaDe } from "./oferta";
 
@@ -11,10 +12,15 @@ const CLINICA = obra("Carpeta Norte.db", 1, "Clínica Las Mercedes");
 const TORRE = obra("Carpeta Norte.db", 2, "Torre B");
 const GALPON = obra("Carpeta Sur.db", 3, "Galpón Sur");
 const OBRAS = [CLINICA, TORRE, GALPON];
+// Una cuenta que lo puede todo: la oferta ya no tiene valor por omisión, quien busca dice qué ofrece.
+const COMPLETA = ofertaDe(
+  PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion])),
+  false,
+);
 
 describe("resultadosDe", () => {
   it("«clin» encuentra primero la obra", () => {
-    const r = resultadosDe("clin", OBRAS);
+    const r = resultadosDe("clin", OBRAS, COMPLETA);
     expect(r[0]).toEqual({
       texto: "Clínica Las Mercedes",
       detalle: "Carpeta Norte",
@@ -23,57 +29,68 @@ describe("resultadosDe", () => {
   });
 
   it("«clin pres» encuentra la sección Presupuesto de esa obra con su ruta", () => {
-    const r = resultadosDe("clin pres", OBRAS);
+    const r = resultadosDe("clin pres", OBRAS, COMPLETA);
     expect(r).toHaveLength(1);
     expect(r[0]?.texto).toBe("Clínica Las Mercedes › Presupuesto");
     expect(r[0]?.ruta).toBe("/obra/Carpeta%20Norte.db/1/presupuesto");
   });
 
   it("no distingue acentos ni mayúsculas", () => {
-    expect(resultadosDe("CLINICA", OBRAS)[0]?.texto).toBe("Clínica Las Mercedes");
-    expect(resultadosDe("galpon", OBRAS)[0]?.texto).toBe("Galpón Sur");
+    expect(resultadosDe("CLINICA", OBRAS, COMPLETA)[0]?.texto).toBe("Clínica Las Mercedes");
+    expect(resultadosDe("galpon", OBRAS, COMPLETA)[0]?.texto).toBe("Galpón Sur");
   });
 
   it("«precios» encuentra la entrada de Empresa", () => {
-    const r = resultadosDe("precios", []);
+    const r = resultadosDe("precios", [], COMPLETA);
     expect(r[0]).toMatchObject({ texto: "Precios y catálogo", ruta: "/empresa/precios" });
   });
 
   it("sin texto da las 5 primeras obras de la lista, y nada más", () => {
     const siete = Array.from({ length: 7 }, (_, i) => obra("Carpeta Norte.db", i + 1, `Obra ${i + 1}`));
-    expect(resultadosDe("", siete).map((x) => x.texto)).toEqual(["Obra 1", "Obra 2", "Obra 3", "Obra 4", "Obra 5"]);
-    expect(resultadosDe("   ", [TORRE]).map((x) => x.texto)).toEqual(["Torre B"]);
+    expect(resultadosDe("", siete, COMPLETA).map((x) => x.texto)).toEqual(["Obra 1", "Obra 2", "Obra 3", "Obra 4", "Obra 5"]);
+    expect(resultadosDe("   ", [TORRE], COMPLETA).map((x) => x.texto)).toEqual(["Torre B"]);
   });
 
   it("nunca devuelve más de 8", () => {
     const muchas = Array.from({ length: 20 }, (_, i) => obra("Carpeta Norte.db", i + 1, `Obra ${i + 1}`));
-    expect(resultadosDe("obra", muchas)).toHaveLength(8);
+    expect(resultadosDe("obra", muchas, COMPLETA)).toHaveLength(8);
   });
 
   it("ordena obras, secciones de obras, entradas de Empresa y pantallas sin sitio", () => {
-    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")]).map((r) => r.texto);
+    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], COMPLETA).map((r) => r.texto);
     expect(textos[0]).toBe("Precio alto");
-    expect(textos[1]).toBe("Precio alto › Resumen");
+    expect(textos[1]).toBe("Precio alto › Presupuesto");
     const i = (t: string) => textos.indexOf(t);
-    expect(i("Precio alto › Control de obra")).toBeGreaterThan(i("Precio alto › Resumen"));
+    expect(i("Precio alto › Control de obra")).toBeGreaterThan(i("Precio alto › Presupuesto"));
     expect(i("Precios y catálogo")).toBeGreaterThan(i("Precio alto › Control de obra"));
     expect(i("Precios de la empresa")).toBeGreaterThan(i("Precios y catálogo"));
   });
 
+  it("si sale la obra no repite su sección «Resumen», que lleva a la misma ruta", () => {
+    const r = resultadosDe("precio", [obra(null, 1, "Precio alto")], COMPLETA);
+    expect(r.map((x) => x.texto)).not.toContain("Precio alto › Resumen");
+    const rutas = r.map((x) => x.ruta);
+    expect(new Set(rutas).size).toBe(rutas.length);
+    // Sin la obra entre los resultados, la sección sí se alcanza: «resumen» no encuentra la obra «Torre B».
+    expect(resultadosDe("torre resumen", [TORRE], COMPLETA).map((x) => x.texto)).toEqual(["Torre B › Resumen"]);
+  });
+
   it("alcanza las pantallas que no tienen sitio en el árbol", () => {
-    expect(resultadosDe("simulador", [])[0]).toMatchObject({ texto: "Simulador de listas", ruta: "/simulador" });
-    expect(resultadosDe("historico", [])[0]?.ruta).toBe("/historico");
+    expect(resultadosDe("simulador", [], COMPLETA)[0]).toMatchObject({ texto: "Simulador de listas", ruta: "/simulador" });
+    expect(resultadosDe("historico", [], COMPLETA)[0]?.ruta).toBe("/historico");
   });
 
   it("no ofrece las secciones sin pantalla, ni lo que la cuenta no puede usar", () => {
-    expect(resultadosDe("archivos", OBRAS)).toEqual([]);
-    expect(resultadosDe("versiones", OBRAS)).toEqual([]);
+    expect(resultadosDe("archivos", OBRAS, COMPLETA)).toEqual([]);
+    expect(resultadosDe("versiones", OBRAS, COMPLETA)).toEqual([]);
     const sinPermisos = ofertaDe([], false);
+    // Control positivo: la misma búsqueda con todos los permisos sí encuentra la entrada.
+    expect(resultadosDe("personas", [], COMPLETA).map((r) => r.texto)).toContain("Empresa y personas");
     expect(resultadosDe("personas", [], sinPermisos)).toEqual([]);
     expect(resultadosDe("mercado", OBRAS, sinPermisos).map((r) => r.texto)).not.toContain("Clínica Las Mercedes › Mercado");
   });
 
   it("sin coincidencias devuelve una lista vacía", () => {
-    expect(resultadosDe("zzzz", OBRAS)).toEqual([]);
+    expect(resultadosDe("zzzz", OBRAS, COMPLETA)).toEqual([]);
   });
 });

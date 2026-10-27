@@ -43,6 +43,9 @@ function Arnes({ inicialAbierto }: { inicialAbierto: boolean }) {
       </button>
       <Buscador abierto={abierto} alCerrar={() => setAbierto(false)} />
       <Ubicacion />
+      <main id="contenido" tabIndex={-1}>
+        Contenido
+      </main>
     </>
   );
 }
@@ -75,6 +78,37 @@ describe("Buscador", () => {
     expect(c).toHaveFocus();
     expect(c.getAttribute("aria-expanded")).toBe("true");
     expect(c.getAttribute("aria-controls")).toBe(screen.getByRole("listbox").id);
+  });
+
+  it("aria-expanded dice si la lista tiene resultados", async () => {
+    pintar();
+    const c = await campo();
+    await waitFor(() => expect(opciones()).toHaveLength(3));
+    expect(c).toHaveAttribute("aria-expanded", "true");
+    await userEvent.type(c, "zzzz");
+    expect(estado()).toBe("Sin resultados");
+    expect(c).toHaveAttribute("aria-expanded", "false");
+    await userEvent.clear(c);
+    expect(c).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("Tab y Mayús+Tab no sacan el foco del diálogo", async () => {
+    pintar();
+    const c = await campo();
+    await userEvent.tab();
+    expect(c).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(c).toHaveFocus();
+  });
+
+  it("al elegir un resultado el foco va al contenido, no de vuelta al botón", async () => {
+    pintar(sesionDe("ana"), false);
+    await userEvent.click(screen.getByRole("button", { name: "Abrir buscador" }));
+    await campo();
+    await waitFor(() => expect(opciones()).toHaveLength(3));
+    await userEvent.keyboard("{Enter}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.getElementById("contenido")).toHaveFocus();
   });
 
   it("escribir filtra y anuncia cuántos resultados hay", async () => {
