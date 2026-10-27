@@ -16,8 +16,14 @@ from pathlib import Path
 NOMBRE_CARPETA = "tema"
 ARCHIVO_JSON = "tema.json"
 TOPE_LOGO = 512 * 1024
+TOPE_JSON = 64 * 1024
 #: Nombre de archivo -> tipo de imagen. Nunca SVG.
 LOGOS = {"logo.png": "image/png", "logo.jpg": "image/jpeg", "logo.webp": "image/webp"}
+_FIRMAS = {
+    "image/png": re.compile(rb"\x89PNG\r\n\x1a\n"),
+    "image/jpeg": re.compile(rb"\xff\xd8\xff"),
+    "image/webp": re.compile(rb"RIFF.{4}WEBP", re.DOTALL),
+}
 _COLOR = re.compile(r"#[0-9a-fA-F]{6}")
 
 
@@ -34,25 +40,27 @@ def _color(valor: object) -> str | None:
 
 
 def _colores(carpeta: Path) -> dict:
+    archivo = carpeta / ARCHIVO_JSON
     try:
-        datos = json.loads((carpeta / ARCHIVO_JSON).read_text(encoding="utf-8"))
-    except (OSError, ValueError):  # ausente, ilegible, no UTF-8 o JSON roto
+        if archivo.stat().st_size > TOPE_JSON:
+            return {}
+        datos = json.loads(archivo.read_text(encoding="utf-8"))
+    except (OSError, ValueError, RecursionError):  # ausente, ilegible, roto o muy anidado
         return {}
     return datos if isinstance(datos, dict) else {}
 
 
-def _cabe(archivo: Path) -> bool:
-    try:
-        return archivo.is_file() and archivo.stat().st_size <= TOPE_LOGO
-    except OSError:
-        return False
-
-
-def logo_de(carpeta: Path) -> tuple[Path, str] | None:
-    """El archivo del logo y su tipo, o `None` si no hay uno admitido y dentro del tope."""
+def leer_logo(carpeta: Path) -> tuple[bytes, str] | None:
+    """Los bytes del logo y su tipo, o `None` si no hay uno admitido, dentro del tope y con la
+    firma de su formato. Lee a lo sumo `TOPE_LOGO + 1` bytes: un archivo que crece no se cuela."""
     for nombre, tipo in LOGOS.items():
-        if _cabe(carpeta / nombre):
-            return carpeta / nombre, tipo
+        try:
+            with (carpeta / nombre).open("rb") as f:
+                contenido = f.read(TOPE_LOGO + 1)
+        except OSError:  # ausente, carpeta o ilegible
+            continue
+        if len(contenido) <= TOPE_LOGO and _FIRMAS[tipo].match(contenido):
+            return contenido, tipo
     return None
 
 
@@ -62,5 +70,5 @@ def leer_tema(carpeta: Path) -> Tema:
         acento=_color(colores.get("acento")),
         marco=_color(colores.get("marco")),
         lateral=_color(colores.get("lateral")),
-        tiene_logo=logo_de(carpeta) is not None,
+        tiene_logo=leer_logo(carpeta) is not None,
     )

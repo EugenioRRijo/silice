@@ -43,14 +43,10 @@ def ver_tema() -> TemaRespuesta:
 @router.get("/v1/tema/logo", response_class=Response, responses={200: {"content": {"image/*": {}}}})
 def ver_logo() -> Response:
     """El logo (PNG, JPEG o WebP de hasta 512 KB) o 404."""
-    encontrado = tema.logo_de(_carpeta())
+    encontrado = tema.leer_logo(_carpeta())
     if encontrado is None:
         raise HTTPException(status_code=404, detail="No hay logo.")
-    archivo, tipo = encontrado
-    try:
-        contenido = archivo.read_bytes()
-    except OSError:
-        raise HTTPException(status_code=404, detail="No hay logo.") from None
+    contenido, tipo = encontrado
     return Response(
         content=contenido,
         media_type=tipo,
