@@ -56,6 +56,7 @@ from api.rutas import (
     similares,
     simulador,
     tablero,
+    tema,
 )
 from api.rutas import (
     primer_arranque as rutas_primer_arranque,
@@ -195,6 +196,8 @@ app.include_router(mercado.router)
 app.include_router(procura.router)
 # MP-4 T18: ciclo de aprobación
 app.include_router(aprobaciones.router)
+# Rediseño del marco, Tarea 1: tema de la empresa (publico: la pantalla de entrada lo pinta)
+app.include_router(tema.router)
 
 
 @app.get("/salud", tags=["catalogo"])
