@@ -570,27 +570,75 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     await waitFor(() => expect(nuevo).toHaveFocus());
   });
 
+  // `PUT /v1/sesion/proyecto` contesta 500 mientras `caida.caido`: la obra no se puede abrir («error»). `intentos`
+  // cuenta los PUT que llegaron, para saber que «Reintentar» volvió a entrar.
+  function conLaObraCaida() {
+    const caida = { caido: true, intentos: 0 };
+    const base = servidor.fetchFalso;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+        if (String(entrada) === "/v1/sesion/proyecto" && init?.method === "PUT") {
+          caida.intentos += 1;
+          if (caida.caido) return json({ detalle: "Falla interna." }, 500);
+        }
+        return base(entrada, init);
+      }),
+    );
+    return caida;
+  }
+  const TEXTO_DE_LA_CAIDA = "Revise la conexión con Sílice y vuelva a intentarlo.";
+
   // Ronda 2 del árbitro: el estado «error» de la obra (servidor caído, 500) era el único sin h1, y el foco quedaba en
   // <body>. Ahora es un aviso con su h1, como «Esa obra ya no existe» y «Esta obra se abrió en otra pestaña».
   test("si la obra no se pudo abrir, el aviso tiene su h1 y el foco va a él; «Reintentar» la abre", async () => {
     const u = userEvent.setup();
-    let caido = true;
-    const base = servidor.fetchFalso;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) =>
-        caido && String(entrada) === "/v1/sesion/proyecto" && init?.method === "PUT" ? json({ detalle: "Falla interna." }, 500) : base(entrada, init),
-      ),
-    );
+    const caida = conLaObraCaida();
     montar({ paginas: ligeras({ obras: MesaQueVa }) });
     await u.click(await screen.findByRole("button", { name: "Ir a la obra" }));
     const aviso = await titulo("No se pudo abrir la obra");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByText("Revise la conexión con Sílice y vuelva a intentarlo.")).toBeInTheDocument();
+    expect(screen.getByText(TEXTO_DE_LA_CAIDA)).toBeInTheDocument();
     await waitFor(() => expect(aviso).toHaveFocus());
-    caido = false;
+    caida.caido = false;
     await u.click(screen.getByRole("button", { name: "Reintentar" }));
     expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+  });
+
+  // Ronda 3 del árbitro: con el h1 el aviso solo se anunciaba si el foco iba a él, y no va en la carga inicial (un
+  // enlace viejo o un marcador a la obra), tras un «Reintentar» que vuelve a fallar ni si el fallo tarda. El texto va en
+  // una región que se anuncia sola (role="alert").
+  test("entrar directo en una obra que no se puede abrir anuncia el aviso (role alert) sin mover el foco", async () => {
+    conLaObraCaida();
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("No se pudo abrir la obra");
+    expect(screen.getByRole("alert")).toHaveTextContent(TEXTO_DE_LA_CAIDA);
+    expect(document.body).toHaveFocus();
+  });
+
+  test("«Reintentar» que vuelve a fallar deja la alerta y el foco en el h1 del aviso, no en <body>", async () => {
+    const u = userEvent.setup();
+    const caida = conLaObraCaida();
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("No se pudo abrir la obra");
+    const antes = caida.intentos;
+    await u.click(screen.getByRole("button", { name: "Reintentar" }));
+    await waitFor(() => expect(caida.intentos).toBe(antes + 1));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "No se pudo abrir la obra" })).toHaveFocus());
+    expect(screen.getByRole("alert")).toHaveTextContent(TEXTO_DE_LA_CAIDA);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  test("«Reintentar» que acierta deja el foco en el h1 de la sección abierta", async () => {
+    const u = userEvent.setup();
+    const caida = conLaObraCaida();
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("No se pudo abrir la obra");
+    caida.caido = false;
+    await u.click(screen.getByRole("button", { name: "Reintentar" }));
+    const seccion = await titulo("Hoja de la obra");
+    await waitFor(() => expect(seccion).toHaveFocus());
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   // La entrada real es `#/pendientes`, o `#/`, `#/inicio` o una ruta que no existe, que REDIRIGEN con `replace` a
