@@ -1,9 +1,10 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
-import { MemoryRouter, useLocation } from "react-router";
+import { useEffect, useState } from "react";
+import { MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../api/cliente";
+import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import type { SesionRespuesta } from "../api/tipos";
 import { useAplicacion } from "../shell/contexto";
 import { ACCIONES, caso, estadoInicial, json, ligeras, servidorFalso, sesionDe } from "../shell/obras/datosDePrueba";
@@ -499,5 +500,104 @@ describe("Marco: vocabulario y alcance", () => {
     const deLaPagina = (acciones: readonly string[]) => ofertaDe(acciones, false).sueltas.map((p) => p.id);
     expect(deLaPagina(ACCIONES.rita)).not.toContain("produccion");
     expect(deLaPagina(ACCIONES.ana)).toContain("produccion");
+  });
+});
+
+// Ronda 2 del árbitro (Tarea 8): el bloque «el foco no se pierde cuando la acción quita el control» de las pruebas del
+// armazón anterior, llevado al marco. Al cambiar de pantalla, si el foco se perdió (lo tenía un control que ya no está),
+// pasa al único h1 de la nueva; si lo tiene un control que sigue (un enlace de la barra lateral o de las migas), no se
+// toca; la carga inicial y sus redirecciones (`replace`) no lo roban; y el h1 de un esqueleto no lo retiene.
+describe("Marco: el foco no se pierde cuando la acción quita el control", () => {
+  function MesaQueVa() {
+    const ir = useNavigate();
+    return (
+      <>
+        <h1>Inicio de presupuestos y obras</h1>
+        <button type="button" onClick={() => void ir("/simulador")}>
+          Ir al simulador
+        </button>
+        <button type="button" onClick={() => void ir("/obra/empresa/7/presupuesto")}>
+          Ir a la obra
+        </button>
+      </>
+    );
+  }
+
+  test.each([
+    ["Ir al simulador", "Simulador de listas"],
+    ["Ir a la obra", "Hoja de la obra"],
+  ])("«%s», un botón de la pantalla que navega, deja el foco en el único h1 de la nueva («%s»)", async (boton, h1) => {
+    const u = userEvent.setup();
+    montar({ paginas: ligeras({ obras: MesaQueVa }) });
+    await u.click(await screen.findByRole("button", { name: boton }));
+    const nuevo = await titulo(h1);
+    await waitFor(() => expect(nuevo).toHaveFocus(), { timeout: 3000 });
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(nuevo).toHaveAttribute("tabindex", "-1");
+  });
+
+  test("un enlace de la barra lateral conserva el foco: solo se mueve si se perdió", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/simulador" });
+    await titulo("Simulador de listas");
+    const enlace = within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Pendientes" });
+    await u.click(enlace);
+    await titulo("Inicio de presupuestos y obras");
+    await new Promise((r) => setTimeout(r, 80));
+    expect(enlace).toHaveFocus();
+  });
+
+  test("un enlace de las migas que sigue tras navegar conserva el foco", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("Hoja de la obra");
+    const enlace = await within(screen.getByRole("navigation", { name: "Ruta" })).findByRole("link", { name: "Casa Demo" });
+    await u.click(enlace);
+    await titulo("Inicio de presupuestos y obras");
+    expect(ruta()).toBe("/obra/empresa/7/resumen");
+    await new Promise((r) => setTimeout(r, 80));
+    expect(enlace).toHaveFocus();
+  });
+
+  test("un enlace de las migas que desaparece al navegar («Mis obras») deja el foco en el h1 de la nueva", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("Hoja de la obra");
+    await u.click(within(screen.getByRole("navigation", { name: "Ruta" })).getByRole("link", { name: "Mis obras" }));
+    const nuevo = await titulo("Inicio de presupuestos y obras");
+    expect(ruta()).toBe("/pendientes");
+    expect(within(screen.getByRole("navigation", { name: "Ruta" })).queryByRole("link", { name: "Mis obras" })).toBeNull();
+    await waitFor(() => expect(nuevo).toHaveFocus());
+  });
+
+  // La entrada real es `#/pendientes`, o `#/`, `#/inicio` o una ruta que no existe, que REDIRIGEN con `replace` a
+  // Pendientes: eso es la carga inicial, no un cambio de pantalla. El foco sigue en <body> y el primer Tab es «Saltar».
+  test.each(["/pendientes", "/", "/inicio", "/no-existe"])("al cargar en %s no roba el foco: el primer Tab va a «Saltar al contenido»", async (entrada) => {
+    const u = userEvent.setup();
+    montar({ en: entrada });
+    await titulo("Inicio de presupuestos y obras");
+    expect(ruta()).toBe("/pendientes");
+    await new Promise((r) => setTimeout(r, 120));
+    expect(document.body).toHaveFocus();
+    await u.tab();
+    expect(screen.getByRole("button", { name: "Saltar al contenido" })).toHaveFocus();
+  });
+
+  // Acerca, en el armazón anterior: el h1 del esqueleto recibía el foco y la pantalla real lo sustituía, dejando el
+  // foco en <body>.
+  test("si la pantalla nueva pinta primero un esqueleto con h1, el foco va al h1 real", async () => {
+    const u = userEvent.setup();
+    function Lenta() {
+      const [lista, setLista] = useState(false);
+      useEffect(() => {
+        const t = setTimeout(() => setLista(true), 60);
+        return () => clearTimeout(t);
+      }, []);
+      return lista ? <h1>Simulador listo</h1> : <EsqueletoPagina titulo="Simulador de listas" />;
+    }
+    montar({ paginas: ligeras({ obras: MesaQueVa, simulador: Lenta }) });
+    await u.click(await screen.findByRole("button", { name: "Ir al simulador" }));
+    const real = await titulo("Simulador listo");
+    await waitFor(() => expect(real).toHaveFocus());
   });
 });
