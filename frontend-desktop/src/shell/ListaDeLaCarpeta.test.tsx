@@ -106,13 +106,13 @@ describe("La lista de la carpeta de trabajo", () => {
   test("con moneda y sin lista para armar dice el aviso de la carpeta", async () => {
     con({ moneda: "USD", declarada: true, lista: null, aviso: SIN_LISTA });
     render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
-    expect(await screen.findByText(`Moneda de trabajo: USD · ${SIN_LISTA}`)).toBeInTheDocument();
+    expect(await screen.findByText(`Moneda: USD · ${SIN_LISTA}`)).toBeInTheDocument();
   });
 
   test("ninguna cadena visible dice «caso»", async () => {
     con({ moneda: "Bs", declarada: true, lista: null, aviso: SIN_LISTA });
     const { container } = render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
-    await screen.findByText(/Moneda de trabajo/);
+    await screen.findByText(/Moneda:/);
     expect(container.textContent).not.toMatch(/caso/i);
   });
 
@@ -126,8 +126,8 @@ describe("La lista de la carpeta de trabajo", () => {
   test("otro error lo dice en llano, sin inventar la moneda", async () => {
     respuesta = () => json({ detalle: "Falla ficticia." }, 500);
     render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
-    expect(await screen.findByText("No se pudo leer la moneda de trabajo de la carpeta.")).toBeInTheDocument();
-    expect(screen.queryByText(/Moneda de trabajo:/)).not.toBeInTheDocument();
+    expect(await screen.findByText("No se pudo leer la moneda de la carpeta.")).toBeInTheDocument();
+    expect(screen.queryByText(/Moneda:/)).not.toBeInTheDocument();
   });
 });
 

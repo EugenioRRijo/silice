@@ -2,7 +2,6 @@ import { Button } from "@carbon/react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { ErrorDeApi, pedir } from "../api/cliente";
 import type { CasosRespuesta } from "../api/tipos";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { ContextoAplicacion } from "../shell/contexto";
@@ -119,11 +118,10 @@ interface ObraAbiertaProps {
   children: ReactNode;
 }
 
-// La cabecera de la obra (nombre, moneda, versión y la lista para armar de su carpeta) y la sección. La sección lee la obra y la carpeta de la ruta desde
+// La cabecera de la obra (nombre, versión y, de su carpeta, la moneda y la lista para armar) y la sección. La sección lee la obra y la carpeta de la ruta desde
 // el primer dibujo (no las del marco, que se ponen al día un momento después).
 function ObraAbierta({ carpeta, obraId, obra, casos, children }: ObraAbiertaProps) {
   const base = useContext(ContextoAplicacion);
-  const moneda = useMonedaDeLaObra(obraId, base?.sesion.acciones.includes("leer_proyecto") ?? false, base?.alExpirar);
   const valor = useMemo(() => {
     if (!base) return null;
     const caso =
@@ -138,7 +136,6 @@ function ObraAbierta({ carpeta, obraId, obra, casos, children }: ObraAbiertaProp
       <section aria-label="Obra abierta" className="silice-obra-abierta">
         <p className="silice-obra-abierta__nombre">{obra?.obra ?? `Obra ${obraId}`}</p>
         <ul className="silice-obra-abierta__datos">
-          {moneda !== null && <li>{`Moneda: ${moneda}`}</li>}
           <li>{`Versión: ${obra?.version_codigo ?? "sin versión guardada"}`}</li>
         </ul>
         {base && <ListaDeLaCarpeta key={carpeta ?? ""} alExpirar={base.alExpirar} />}
@@ -146,25 +143,4 @@ function ObraAbierta({ carpeta, obraId, obra, casos, children }: ObraAbiertaProp
       <ContextoAplicacion.Provider value={valor}>{children}</ContextoAplicacion.Provider>
     </>
   );
-}
-
-// La moneda de la obra sale de `GET /v1/obras/resumen` (la de la carpeta abierta, que ya es la de la obra). Sin
-// `leer_proyecto` la API contestaría 403: no se pide y la cabecera no la dice.
-function useMonedaDeLaObra(obraId: number, puedeLeer: boolean, alExpirar: (() => void) | undefined): string | null {
-  const [moneda, setMoneda] = useState<{ obraId: number; valor: string | null } | null>(null);
-  useEffect(() => {
-    if (!puedeLeer) return;
-    let vigente = true;
-    pedir<{ obras?: { codigo: string; moneda: string }[] }>("/v1/obras/resumen")
-      .then((r) => {
-        if (vigente) setMoneda({ obraId, valor: r?.obras?.find((o) => o.codigo === String(obraId))?.moneda ?? null });
-      })
-      .catch((e: unknown) => {
-        if (vigente && e instanceof ErrorDeApi && e.estado === 401) alExpirar?.();
-      });
-    return () => {
-      vigente = false;
-    };
-  }, [obraId, puedeLeer, alExpirar]);
-  return moneda?.obraId === obraId ? moneda.valor : null;
 }

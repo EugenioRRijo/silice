@@ -13,7 +13,7 @@ export function nombreConFecha(lista: { nombre: string; fecha: string }): string
 }
 
 // «La carpeta dice lo que tiene» (diseno de montar §5.1, O-1; D-MP1): en la cabecera de la obra abierta (marco nuevo,
-// Tarea 8; la especificacion pide alli la lista de precios), la moneda de trabajo de su carpeta y su lista para armar
+// Tarea 8; la especificacion pide alli la lista de precios), la moneda de su carpeta (la de la obra) y su lista para armar
 // (`GET /v1/carpeta`, T2), o por que no la tiene. Se lee al montarse: cada vez que se entra en una obra.
 export function ListaDeLaCarpeta({ alExpirar }: { alExpirar: () => void }): JSX.Element {
   const [carpeta, setCarpeta] = useState<CarpetaRespuesta | null>(null);
@@ -36,13 +36,13 @@ export function ListaDeLaCarpeta({ alExpirar }: { alExpirar: () => void }): JSX.
   }, [alExpirar]);
 
   let texto: string;
-  if (fallo) texto = "No se pudo leer la moneda de trabajo de la carpeta.";
-  else if (carpeta === null) texto = "Leyendo la moneda de trabajo…";
+  if (fallo) texto = "No se pudo leer la moneda de la carpeta.";
+  else if (carpeta === null) texto = "Leyendo la moneda de la carpeta…";
   else if (carpeta.moneda === null) texto = "Carpeta sin moneda declarada";
   else if (carpeta.aviso !== null || carpeta.lista === null)
-    texto = `Moneda de trabajo: ${carpeta.moneda} · ${carpeta.aviso ?? "Sin lista para armar"}`;
+    texto = `Moneda: ${carpeta.moneda} · ${carpeta.aviso ?? "Sin lista para armar"}`;
   else
-    texto = `Moneda de trabajo: ${carpeta.moneda} · Lista para armar: ${nombreConFecha(carpeta.lista)}`;
+    texto = `Moneda: ${carpeta.moneda} · Lista para armar: ${nombreConFecha(carpeta.lista)}`;
 
   return <p className="silice-obra-abierta__lista cds--type-helper-text-01">{texto}</p>;
 }
