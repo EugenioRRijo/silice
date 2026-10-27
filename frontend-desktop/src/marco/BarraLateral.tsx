@@ -224,16 +224,19 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         Pendientes
       </Link>
 
-      <div className="silice-marco-lateral__obras">
-        <h2 className="silice-marco-lateral__titulo">Obras</h2>
-        {puedeCrear && (
-          <button type="button" className="silice-marco-boton-principal" onClick={abrirNuevaObra}>
-            <Add size={20} aria-hidden="true" />
-            Nueva obra
-          </button>
-        )}
-        {zonaDeObras()}
-      </div>
+      {/* Sin `leer_proyecto` la cuenta no ve obras: la zona no se pinta. */}
+      {estado !== "sin_permiso" && (
+        <div className="silice-marco-lateral__obras">
+          <h2 className="silice-marco-lateral__titulo">Obras</h2>
+          {puedeCrear && (
+            <button type="button" className="silice-marco-boton-principal" onClick={abrirNuevaObra}>
+              <Add size={20} aria-hidden="true" />
+              Nueva obra
+            </button>
+          )}
+          {zonaDeObras()}
+        </div>
+      )}
 
       <nav aria-label="Empresa" className="silice-marco-lateral__empresa">
         <h2 className="silice-marco-lateral__titulo">Empresa</h2>

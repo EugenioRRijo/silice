@@ -1,15 +1,17 @@
 @use "@carbon/styles/scss/type";
 
-// Marco de la interfaz (Marco.tsx): la barra superior arriba, fija al desplazarse; debajo, la barra lateral (también
-// fija, con su propio desplazamiento) y el contenido. Sin sombras, sin animación (DESIGN.md). Solo --silice-* y --cds-*.
+// Marco de la interfaz (Marco.tsx): la barra superior arriba, fija (como la cabecera de Carbon de las pantallas sin marco:
+// el cuerpo le reserva 3 rem, visor.scss); debajo, la barra lateral (también fija, con su propio desplazamiento) y el
+// contenido. Sin sombras, sin animación (DESIGN.md). Solo --silice-* y --cds-*.
 .silice-marco {
   display: flex;
   flex-direction: column;
-  min-block-size: 100vh;
+  min-block-size: calc(100vh - 3rem);
 
   > .silice-marco-barra {
-    position: sticky;
+    position: fixed;
     inset-block-start: 0;
+    inset-inline: 0;
     z-index: 8000;
   }
 }

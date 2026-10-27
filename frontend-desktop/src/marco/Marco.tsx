@@ -102,7 +102,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // Cambia con la carpeta: las pantallas se vuelven a montar y piden sus datos de nuevo.
   const [generacion, setGeneracion] = useState(0);
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
-  const obras = useObras();
+  const obras = useObras(acciones);
   const { recargar: recargarObras } = obras;
 
   // Un recorrido en curso, la pregunta de salida abierta, los formularios sucios y el diálogo «Nueva obra» no
