@@ -116,6 +116,40 @@ describe("Declararlo precio del corte", () => {
     expect(cuerpos()).toEqual([{ precio: "20,00", observacion_id: null, declarar_en: "VIV-001" }]);
   });
 
+  // Tarea D2: si la obra trabaja en la otra moneda, la API convierte el precio con la tasa del BCV y devuelve la cuenta;
+  // la pantalla la dice en una linea (original x tasa = resultado), sin calcular nada.
+  test("si el precio se convirtió, la confirmación trae la línea de equivalencia", async () => {
+    fetchFalso.mockImplementation(async (url, init) => {
+      const ruta = String(url);
+      if (ruta.endsWith("/afectados")) return json({ apus: ["OBRA-04"] });
+      if (ruta.endsWith("/usar") && init?.method === "POST") {
+        return json({
+          lista: "Lista demo al 26/10/2026",
+          corte: CONFIRMADO,
+          equivalencia: {
+            precio_original: "31.50",
+            moneda_original: "USD",
+            tasa: "36.50",
+            fecha_tasa: "2026-10-20",
+            fuente_tasa: "importacion:3",
+            convertido: "1149.75",
+            moneda: "Bs",
+            operacion: "×",
+          },
+        });
+      }
+      return json({ detalle: `ruta inesperada ${ruta}` }, 500);
+    });
+    const u = montar(COMPRA);
+    await u.click(screen.getByRole("checkbox", { name: CASILLA }));
+    await usarYConfirmar(u);
+    expect(
+      await screen.findByText(
+        `Precio guardado en «Lista demo al 26/10/2026». ${CONFIRMADO} Se convirtió con la tasa del BCV: 31,50 USD × 36,50 Bs/USD (BCV del 20/10/2026) = 1.149,75 Bs`,
+      ),
+    ).toBeInTheDocument();
+  });
+
   test("sin marcar, el cuerpo es el de siempre y no se habla del corte", async () => {
     const u = montar(COMPRA);
     await u.click(screen.getByRole("button", { name: "Usar este precio" }));

@@ -1,6 +1,7 @@
 // MP-7, Tarea 24: la pestaña «Procura» de Control de obra y la causa que Valuaciones preelige.
 // Contrato de `GET /v1/procura` (Tarea 23): cantidades exactas con punto, fechas aaaa-mm-dd; `POST /v1/procura/compras` y
-// `PUT /v1/procura/plazos` reciben las cifras tal como se teclean (coma decimal, punto de miles) y devuelven 204.
+// `PUT /v1/procura/plazos` reciben las cifras tal como se teclean (coma decimal, punto de miles) y devuelven 204;
+// `POST /v1/procura/compras` devuelve 200 `{equivalencia}` (Tarea D2: la conversion del precio del corte, o null).
 // Oraculos escritos a mano: 1260.5 se lee «1.260,5»; 2026-11-06, «06/11/2026».
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -107,7 +108,7 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
     procura = () => json(PROCURA);
-    compra = () => new Response(null, { status: 204 });
+    compra = () => json({ equivalencia: null });
     plazo = () => new Response(null, { status: 204 });
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
@@ -310,6 +311,36 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
       precio: "20,00",
       declarar_corte: true,
     });
+  });
+
+  // Tarea D2: el precio de la recepcion en otra moneda que la obra se convierte con la tasa del BCV de la fecha de
+  // llegada; la linea de estado trae la cuenta. 146,00 Bs / 36,50 Bs/USD = 4,00 USD.
+  test("si el precio del corte se convirtió, la línea de estado trae la equivalencia", async () => {
+    compra = () =>
+      json({
+        equivalencia: {
+          precio_original: "146.00",
+          moneda_original: "Bs",
+          tasa: "36.50",
+          fecha_tasa: "2026-11-02",
+          fuente_tasa: "importacion:1",
+          convertido: "4",
+          moneda: "USD",
+          operacion: "÷",
+        },
+      });
+    const u = montar();
+    const tabla = await abrirProcura(u);
+    await u.click(within(tabla).getByRole("button", { name: "Recibida…: Cemento gris (saco)" }));
+    const dialogo = screen.getByRole("dialog", { name: "Recepción de Cemento gris" });
+    await u.type(within(dialogo).getByLabelText("Precio unitario (por saco, opcional)"), "146,00");
+    await u.click(within(dialogo).getByRole("checkbox", { name: "Declararlo precio del corte" }));
+    await u.click(within(dialogo).getByRole("button", { name: "Anotar recepción" }));
+    expect(
+      await screen.findByText(
+        "Recepción de Cemento gris anotada con fecha 02/11/2026. Su precio queda como precio del corte desde esa fecha. Se convirtió con la tasa del BCV: 146,00 Bs ÷ 36,50 Bs/USD (BCV del 02/11/2026) = 4,00 USD",
+      ),
+    ).toBeInTheDocument();
   });
 
   test("el precio deja de llamarse «opcional» mientras la casilla está marcada y lo vuelve a ser al desmarcarla", async () => {

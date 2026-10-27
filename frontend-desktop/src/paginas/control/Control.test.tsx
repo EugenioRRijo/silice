@@ -81,6 +81,7 @@ const CALCULO: Calculo = {
   decisiones: [],
   versiones_revaloradas: ["OB-R1"],
   atrasos: [],
+  precios_convertidos: [],
 };
 
 const OPCIONES: OpcionDeRecuperacion[] = [
@@ -418,6 +419,50 @@ describe("Control de obra", () => {
     const montos = screen.getByRole("table", { name: "Montos de PV, EV y AC" });
     expect(within(montos).getByRole("columnheader", { name: "Período" })).toBeInTheDocument();
     expect(within(montos).getByText("1.000,00")).toHaveAttribute("title", "1000.00");
+  });
+
+  // Tarea D2: con los precios declarados, los que se convirtieron de otra moneda salen con su cuenta, su fecha y su
+  // fuente, para quien revise despues (socios y economistas). 31,5 x 36,5 = 1149,75.
+  test("valor ganado: los precios convertidos con la tasa del BCV salen con su equivalencia", async () => {
+    calculo = () =>
+      json({
+        ...CALCULO,
+        precios_convertidos: [
+          {
+            descripcion: "Cemento gris",
+            unidad: "saco",
+            fecha: "2026-10-20",
+            fuente: "Estudio de mercado: precio propio",
+            equivalencia: {
+              precio_original: "31.50",
+              moneda_original: "USD",
+              tasa: "36.50",
+              fecha_tasa: "2026-10-20",
+              fuente_tasa: "importacion:3",
+              convertido: "1149.75",
+              moneda: "Bs",
+              operacion: "×",
+            },
+          },
+        ],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    const bloque = (await screen.findByRole("heading", { name: "Precios convertidos con la tasa del BCV" })).closest(
+      "section",
+    )!;
+    expect(within(bloque).getByText("Cemento gris (por saco), desde el 20/10/2026:")).toBeInTheDocument();
+    expect(
+      within(bloque).getByText("31,50 USD × 36,50 Bs/USD (BCV del 20/10/2026) = 1.149,75 Bs"),
+    ).toBeInTheDocument();
+    expect(within(bloque).getByText("Fuente del precio: Estudio de mercado: precio propio.")).toBeInTheDocument();
+  });
+
+  test("valor ganado: sin precios convertidos no hay bloque de equivalencias", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(screen.queryByRole("heading", { name: "Precios convertidos con la tasa del BCV" })).toBeNull();
   });
 
   test("alertas y reproyeccion: terminos, estudios y plan", async () => {
