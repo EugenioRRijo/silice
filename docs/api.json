@@ -8700,6 +8700,28 @@
         }
       }
     },
+    "/v1/obras/todas": {
+      "get": {
+        "tags": [
+          "obras"
+        ],
+        "summary": "Obras De Todas Las Carpetas",
+        "description": "Las obras de todas las carpetas (con `CAMBIAR_CASO`) o solo las de la carpeta abierta. Abre\ncada base en solo lectura; una carpeta ilegible se omite.",
+        "operationId": "obras_de_todas_las_carpetas_v1_obras_todas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObrasTodasRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/mercado/objetivos": {
       "get": {
         "tags": [
@@ -18588,6 +18610,56 @@
         ],
         "title": "ObjetivosRespuesta"
       },
+      "ObraDeCarpetaRespuesta": {
+        "properties": {
+          "carpeta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carpeta",
+            "description": "El nombre que acepta `POST /v1/casos/actual`; `null`: la carpeta de la empresa"
+          },
+          "carpeta_titulo": {
+            "type": "string",
+            "title": "Carpeta Titulo",
+            "description": "«Carpeta de la empresa» para `null`; si no, el nombre"
+          },
+          "obra_id": {
+            "type": "integer",
+            "title": "Obra Id"
+          },
+          "obra": {
+            "type": "string",
+            "title": "Obra"
+          },
+          "version_codigo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Codigo",
+            "description": "La versión vigente; `null` si no tiene"
+          }
+        },
+        "type": "object",
+        "required": [
+          "carpeta",
+          "carpeta_titulo",
+          "obra_id",
+          "obra",
+          "version_codigo"
+        ],
+        "title": "ObraDeCarpetaRespuesta"
+      },
       "ObraElegida": {
         "properties": {
           "proyecto": {
@@ -18720,6 +18792,35 @@
           "siguiente"
         ],
         "title": "ObraRespuesta"
+      },
+      "ObrasTodasRespuesta": {
+        "properties": {
+          "carpeta_actual": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carpeta Actual",
+            "description": "La carpeta abierta en esta sesión; `null` si es la de la empresa"
+          },
+          "obras": {
+            "items": {
+              "$ref": "#/components/schemas/ObraDeCarpetaRespuesta"
+            },
+            "type": "array",
+            "title": "Obras"
+          }
+        },
+        "type": "object",
+        "required": [
+          "carpeta_actual",
+          "obras"
+        ],
+        "title": "ObrasTodasRespuesta"
       },
       "ObservacionNueva": {
         "properties": {
