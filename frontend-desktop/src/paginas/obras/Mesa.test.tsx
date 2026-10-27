@@ -512,8 +512,8 @@ describe("la mesa sigue a la obra recién creada", () => {
     await montar("ana");
     await u.click(within(await filaDe("OB-S2")).getByRole("button", { name: "Ver las alertas" }));
     await screen.findByRole("heading", { level: 1, name: "Control de obra" }, { timeout: 3000 });
-    // La segunda lectura es la de la cabecera de la obra (su moneda), no la de la mesa.
-    expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(2);
+    // Solo la lectura de la mesa: la cabecera de la obra ya no pide el resumen (la moneda sale de la carpeta).
+    expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(1);
   });
 });
 
