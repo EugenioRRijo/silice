@@ -39,6 +39,13 @@
   // Escala del texto (control «Tamaño de letra»): 1 normal, 1.25 grande, 1.5 muy grande. La fija preferenciaDeLetra.ts.
   --silice-escala-letra: 1;
 
+  // Marco de la empresa (rediseño del marco, Tarea 1): valores neutros del repositorio. El tema de la empresa los
+  // reemplaza en la raiz desde GET /v1/tema (marco/tema.ts); aqui nunca va un color de la empresa.
+  --silice-marco: var(--cds-background-inverse);
+  --silice-acento: #{colors.$yellow-30};
+  --silice-lateral: #{colors.$warm-gray-10};
+  --silice-lateral-activo: #{colors.$warm-gray-20};
+
   // Aliases de tokens de tema Carbon, para que el resto del CSS propio no repita var(--cds-*).
   --silice-fondo: var(--cds-background);
   --silice-texto: var(--cds-text-primary);
