@@ -219,6 +219,21 @@ describe("«Nueva obra» dice dónde se creará", () => {
     ]);
   });
 
+  test("en otra carpeta que la abierta no propone la moneda de la sesión y la exige", async () => {
+    const u = userEvent.setup();
+    render(
+      <DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={vi.fn()} destino={{ carpeta: "s2.db", titulo: "S2", enOtraCarpeta: true }} />,
+    );
+    expect(await screen.findByText("Se creará en S2")).toBeInTheDocument();
+    await waitFor(() => expect(servidor.de("GET", "/v1/carpeta").length).toBeGreaterThan(0)); // la sesión dice Bs
+    expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("");
+    expect(screen.queryByText("Es la moneda de esta carpeta (Bs).")).toBeNull();
+    await u.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Casa Demo");
+    await u.click(screen.getByRole("button", { name: "Crear obra" }));
+    expect(await screen.findByText("Elija la moneda de la obra.")).toBeInTheDocument();
+    expect(servidor.de("POST", "/v1/proyectos")).toEqual([]);
+  });
+
   test("la carpeta de la empresa se manda como «empresa»", async () => {
     const u = userEvent.setup();
     const alCrear = vi.fn();

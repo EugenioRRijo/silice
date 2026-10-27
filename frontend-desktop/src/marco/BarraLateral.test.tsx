@@ -312,6 +312,21 @@ describe("BarraLateral: Nueva obra", () => {
     expect(cambiosDeCarpeta()).toEqual([]);
   });
 
+  it("en otra carpeta que la de la sesión no se propone la moneda de la sesión y es obligatoria", async () => {
+    conCreacion(); // la sesión está en la carpeta Norte y /v1/carpeta responde Bs
+    pintar({ abierta: { carpeta: SUR, obraId: 3 }, seccion: "resumen" });
+    await arbol();
+    await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
+    const caja = await screen.findByRole("dialog", { name: "Nueva obra" });
+    await waitFor(() => expect(pedirFalso).toHaveBeenCalledWith("/v1/carpeta"));
+    expect(within(caja).getByRole("combobox", { name: "Moneda" })).toHaveValue("");
+    expect(within(caja).queryByText("Es la moneda de esta carpeta (Bs).")).toBeNull();
+    await userEvent.type(within(caja).getByRole("textbox", { name: /^Nombre/ }), "Nueva");
+    await userEvent.click(within(caja).getByRole("button", { name: "Crear obra" }));
+    expect(await within(caja).findByText("Elija la moneda de la obra.")).toBeInTheDocument();
+    expect(envios()).toEqual([]);
+  });
+
   it("sin obra en la ruta se crea en la carpeta abierta de la sesión, aunque no tenga obras (la empresa se llama «empresa»)", async () => {
     servidor([CLINICA, GALPON], null);
     conCreacion();
