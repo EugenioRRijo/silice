@@ -9539,6 +9539,46 @@
         }
       }
     },
+    "/v1/tema": {
+      "get": {
+        "tags": [
+          "tema"
+        ],
+        "summary": "Ver Tema",
+        "description": "Colores válidos (`#rrggbb`) y si hay logo; lo demás, `null` (tema neutro).",
+        "operationId": "ver_tema_v1_tema_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemaRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tema/logo": {
+      "get": {
+        "tags": [
+          "tema"
+        ],
+        "summary": "Ver Logo",
+        "description": "El logo (PNG, JPEG o WebP de hasta 512 KB) o 404.",
+        "operationId": "ver_logo_v1_tema_logo_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/*": {}
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -22725,6 +22765,55 @@
           "valor"
         ],
         "title": "TarjetaRespuesta"
+      },
+      "TemaRespuesta": {
+        "properties": {
+          "acento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acento"
+          },
+          "marco": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marco"
+          },
+          "lateral": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lateral"
+          },
+          "tiene_logo": {
+            "type": "boolean",
+            "title": "Tiene Logo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "acento",
+          "marco",
+          "lateral",
+          "tiene_logo"
+        ],
+        "title": "TemaRespuesta"
       },
       "Terminos": {
         "properties": {
