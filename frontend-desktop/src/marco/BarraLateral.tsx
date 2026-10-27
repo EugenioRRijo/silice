@@ -45,6 +45,8 @@ function agruparPorCarpeta(obras: ObraDeCarpeta[]): Grupo[] {
 // Barra lateral del marco nuevo: Pendientes, el árbol de Obras (la abierta, desplegada con sus secciones) y Empresa. Es
 // un `tree` de WAI-ARIA: una sola parada de Tab, flechas para recorrer, derecha despliega e izquierda pliega. Todavía no
 // está montada en la aplicación (Tarea 8 del plan del marco). Los contadores llegan en F3.
+// Pasa de 250 líneas porque el árbol, su teclado y la ventana de Nueva obra comparten un mismo estado (qué está desplegado,
+// qué fila tiene el foco); separarlos obligaría a subir ese estado sin quitar complejidad.
 export function BarraLateral({ obraAbierta, seccion }: Props) {
   const aplicacion = useContext(ContextoAplicacion);
   const acciones = aplicacion?.sesion.acciones ?? [];
