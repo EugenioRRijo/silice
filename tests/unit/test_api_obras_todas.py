@@ -1,4 +1,4 @@
-"""`GET /v1/obras/todas`: las obras de todas las carpetas (rediseño del marco, Tarea 3; spec §8 ter).
+"""`GET /v1/obras/todas`: las obras de todas las carpetas (rediseño del marco, T3; spec §8 ter).
 
 Carpetas ficticias en temporal: la de la empresa (`silice.db`, la del proceso) con «Edificio
 Central»; «Carpeta Norte» con «Galpón» y «Clínica»; «Carpeta Sur» con «Vialidad». Oráculos a mano:
@@ -92,9 +92,7 @@ def _abrir(ficha: str, nombre: str) -> None:
 
 
 def _filas(cuerpo: dict) -> list[dict]:
-    return [
-        {k: fila[k] for k in ("carpeta", "carpeta_titulo", "obra")} for fila in cuerpo["obras"]
-    ]
+    return [{k: fila[k] for k in ("carpeta", "carpeta_titulo", "obra")} for fila in cuerpo["obras"]]
 
 
 def test_lista_obras_de_todas_las_carpetas() -> None:

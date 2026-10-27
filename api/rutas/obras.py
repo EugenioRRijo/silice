@@ -24,15 +24,17 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
+from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from api.acceso import EDITAR, LEER
-from api.dependencias import SesionDep
-from api.sesion_web import ahora
+from api.dependencias import SesionDep, ruta_de_url, url_de_la_peticion, url_del_proceso
+from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
 from aplicacion.listas_para_armar import moneda_de_la_carpeta
@@ -47,8 +49,12 @@ from aplicacion.mesa import (
     obras_de_la_mesa,
     pendientes,
 )
+from aplicacion.proyectos import obras_de_las_carpetas
 from core.catalog import Catalogo
 from core.catalog.indices import TasaNoDisponible, tasa_aplicable
+from operacion.base_datos import listar_casos
+from seguridad.permisos import Accion, permitido
+from seguridad.sesiones import SesionActiva
 
 MENSAJE_FORMA = "La consulta de la mesa de control no es válida."
 MENSAJE_BASE = "No se pudo leer la carpeta de trabajo. Intente de nuevo."
@@ -247,4 +253,67 @@ def pendientes_de_la_mesa(sesion: SesionDep) -> PendientesRespuesta:
             )
             for grupo in grupos
         ]
+    )
+
+
+TITULO_DE_LA_EMPRESA = "Carpeta de la empresa"
+
+
+class ObraDeCarpetaRespuesta(BaseModel):
+    carpeta: str | None = Field(
+        description="El nombre que acepta `POST /v1/casos/actual`; `null`: la carpeta de la empresa"
+    )
+    carpeta_titulo: str = Field(description="«Carpeta de la empresa» para `null`; si no, el nombre")
+    obra_id: int
+    obra: str
+    version_codigo: str | None = Field(description="La versión vigente; `null` si no tiene")
+
+
+class ObrasTodasRespuesta(BaseModel):
+    carpeta_actual: str | None = Field(
+        description="La carpeta abierta en esta sesión; `null` si es la de la empresa"
+    )
+    obras: list[ObraDeCarpetaRespuesta]
+
+
+def _carpetas_visibles(
+    request: Request, activa: SesionActiva | None
+) -> tuple[str | None, list[tuple[str | None, Path]]]:
+    """La carpeta abierta (`None` si es la de la empresa) y las que esta cuenta puede listar: todas
+    con `CAMBIAR_CASO`; si no, solo la abierta (la clave de API ve el caso del proceso y no elige
+    otra). Nunca ofrece una obra que al abrirla diera 403."""
+    empresa = ruta_de_url(url_del_proceso())
+    abierta = ruta_de_url(url_de_la_peticion(request))
+    es_empresa = abierta is None or abierta == empresa
+    actual = None if es_empresa else abierta.name  # type: ignore[union-attr]
+    if activa is not None and permitido(activa.roles, Accion.CAMBIAR_CASO):
+        propias = None if empresa is None else empresa.resolve()
+        todas: list[tuple[str | None, Path]] = [(None, empresa)] if empresa is not None else []
+        todas.extend((r.name, r) for r in listar_casos() if r.resolve() != propias)
+        return actual, todas
+    if es_empresa:
+        return actual, [] if empresa is None else [(None, empresa)]
+    return actual, [(actual, abierta)]  # type: ignore[list-item]
+
+
+@router.get("/todas", response_model=ObrasTodasRespuesta)
+def obras_de_todas_las_carpetas(
+    request: Request,
+    activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.LEER_PROYECTO))],
+) -> ObrasTodasRespuesta:
+    """Las obras de todas las carpetas (con `CAMBIAR_CASO`) o solo las de la carpeta abierta. Abre
+    cada base en solo lectura; una carpeta ilegible se omite."""
+    actual, carpetas = _carpetas_visibles(request, activa)
+    return ObrasTodasRespuesta(
+        carpeta_actual=actual,
+        obras=[
+            ObraDeCarpetaRespuesta(
+                carpeta=o.carpeta,
+                carpeta_titulo=TITULO_DE_LA_EMPRESA if o.carpeta is None else o.carpeta,
+                obra_id=o.obra_id,
+                obra=o.obra,
+                version_codigo=o.version_codigo,
+            )
+            for o in obras_de_las_carpetas(carpetas)
+        ],
     )

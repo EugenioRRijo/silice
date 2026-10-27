@@ -21,6 +21,7 @@ Sin Streamlit ni nada de `ui/`; lo vigila `tests/unit/test_arquitectura.py`. Viv
 
 from __future__ import annotations
 
+import logging
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -28,7 +29,7 @@ from datetime import date
 from pathlib import Path
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core import models
@@ -38,6 +39,9 @@ from core.catalog import abrir_sesion, crear_motor
 from core.catalog.moneda import MONEDAS
 from core.contracts import Severidad
 from core.contracts.dominio import Dominio
+from operacion.base_datos import motor_solo_lectura
+
+_registro = logging.getLogger(__name__)
 
 #: Las monedas que ofrece la barra al crear un proyecto (sin valor por defecto en la interfaz).
 MONEDAS_DEL_PROYECTO = MONEDAS
@@ -274,3 +278,36 @@ def resumen_auditoria(ruta: Path, nombre: str) -> ResumenAuditoria | None:
             )
     finally:
         motor.dispose()
+
+
+@dataclass(frozen=True, slots=True)
+class ObraDeCarpeta:
+    """Una obra con la carpeta que la guarda. `carpeta` es el nombre que acepta
+    `POST /v1/casos/actual`; `None` es la carpeta de la empresa (la del proceso)."""
+
+    carpeta: str | None
+    obra_id: int
+    obra: str
+    version_codigo: str | None
+
+
+def obras_de_las_carpetas(carpetas: list[tuple[str | None, Path]]) -> list[ObraDeCarpeta]:
+    """Las obras de cada carpeta (`(nombre, ruta)`), abiertas una a una en **solo lectura**
+    (`motor_solo_lectura`: URI `mode=ro`, sin migrar ni crear `-wal`/`-shm`) y cerradas al
+    terminar. Orden: la carpeta de la empresa (`None`), luego las demás por nombre, y dentro de
+    cada una las obras por nombre sin distinguir mayúsculas. Una carpeta ilegible (archivo
+    corrupto, de otra versión o ausente) se omite y queda en el registro, sin romper la lista."""
+    filas: list[ObraDeCarpeta] = []
+    for nombre, ruta in sorted(carpetas, key=lambda c: (c[0] is not None, (c[0] or "").casefold())):
+        motor = motor_solo_lectura(ruta)
+        try:
+            with abrir_sesion(motor) as sesion:
+                filas.extend(
+                    ObraDeCarpeta(nombre, p.id, p.nombre, p.version_codigo)
+                    for p in proyectos_del_caso(sesion)
+                )
+        except SQLAlchemyError:
+            _registro.warning("Se omite la carpeta «%s»: no se pudo leer.", ruta.name)
+        finally:
+            motor.dispose()
+    return filas
