@@ -27,7 +27,7 @@ Tarea 2 del plan `docs/planes/PLAN_REDISENO_MARCO.md`. Medidas sobre `frontend-d
 | Archivos con tipos exportados sin uso (`--reporter compact`) | 57 | 59 |
 | Símbolos: exportaciones sin uso (reportero por omisión) | sin medir | 59 |
 | Símbolos: tipos exportados sin uso (reportero por omisión) | sin medir | 134 |
-| Duplicación (bloques ≥ 8 líneas, una sola pasada) | 0,79 % (27 clones) | 0,88 % (29 clones, 36.870 líneas, 255 archivos) |
+| Duplicación (bloques ≥ 8 líneas) | 0,79 % (27 clones), medida con la pasada doble (cada `.tsx` contado como `typescript` y como `javascript`) | 0,88 % (29 clones, 36.870 líneas, 255 archivos), una sola pasada |
 
 La línea base de 38 y 57 contaba archivos (reportero `compact`), no símbolos; las cifras 59 y 134 del reportero por
 omisión cuentan símbolos, así que no son comparables con ellas. Con la misma unidad, la diferencia es 38 a 37 y 57
@@ -35,7 +35,9 @@ a 59. `knip.json` no cambia esas cifras. Las exportaciones y tipos sin uso no se
 
 Duplicación: antes jscpd analizaba los `.tsx` dos veces (como `typescript` y como `javascript`) y el total inflaba a
 51.762 líneas con 0,77 %. `.jscpd.json` ahora fuerza una sola pasada (`formatsExts` asigna `ts` y `tsx` a
-`typescript`); la cifra real es 0,88 % con 29 clones, bajo el umbral de 1 %. Margen estrecho: conviene vigilarlo.
+`typescript`); la cifra real es 0,88 % con 29 clones, bajo el umbral de 1 %. Margen estrecho: conviene vigilarlo. Las
+dos cifras de la fila no son comparables: la línea base (0,79 %) se midió con la pasada doble y la de la Tarea 2 con la
+simple; la línea base con una sola pasada no se midió.
 
 ## Cómo repetir
 

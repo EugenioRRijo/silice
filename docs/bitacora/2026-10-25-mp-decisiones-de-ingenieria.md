@@ -511,6 +511,14 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
 9. Commits: rojo `70a886ae`, `0a773495` (feat de control y mercado), rojo `fc67861d` y `dc88ae13` (casilla de procura),
    `20c0f6e2` (`docs/api.json` desde HEAD limpio).
 
+6. **Riesgo, la fecha del equipo frente a la del servidor:** «Pedida hoy» y el tope de «Recibida…» (no posterior a hoy)
+   usan la fecha del equipo de la persona, y el servidor valida con la suya. Con el reloj del equipo adelantado o
+   atrasado respecto del servidor, el 422 («La fecha no puede ser posterior a hoy») puede llegar para una fecha que la
+   pantalla dejó escribir, o la pantalla negarse a una que el servidor aceptaría. Se aceptó porque el servidor manda y
+   dice el motivo en el campo; si molesta, la pantalla puede pedir «hoy» al servidor. Por ratificar. (Menores de
+   `menores-f2`: la causa sugerida se conserva mientras recarga la procura y el precio de la recepción deja de llamarse
+   «opcional» con la casilla de declararlo marcada.)
+
 ## T19, enviar y dictamen en la mesa (aprobada en ronda 1)
 
 1. Quien arma también ve en su grupo «Aprobar» los envíos de OTRAS carpetas (de `GET /v1/aprobaciones/pendientes`); los
