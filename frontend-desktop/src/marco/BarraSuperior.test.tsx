@@ -8,6 +8,7 @@ import type { Miga } from "./Migas";
 const tema = vi.hoisted(() => ({ logo: null as string | null }));
 vi.mock("./useTema", () => ({ useTema: () => tema }));
 
+const TEXTO_BUSCAR = "Buscar una obra, sección o pantalla… (Ctrl+K)";
 const MIGAS: Miga[] = [
   { texto: "Mis obras", ruta: "/pendientes" },
   { texto: "Clínica Las Mercedes", ruta: "/obra/a.db/1/resumen" },
@@ -67,7 +68,7 @@ describe("BarraSuperior: migas", () => {
 describe("BarraSuperior: buscador", () => {
   it("el clic llama a alAbrirBuscador una vez", async () => {
     const { alAbrirBuscador } = pintar();
-    await userEvent.click(screen.getByRole("button", { name: "Buscar (Ctrl+K)" }));
+    await userEvent.click(screen.getByRole("button", { name: TEXTO_BUSCAR }));
     expect(alAbrirBuscador).toHaveBeenCalledTimes(1);
   });
 
@@ -97,12 +98,26 @@ describe("BarraSuperior: buscador", () => {
     expect(alAbrirBuscador).not.toHaveBeenCalled();
   });
 
-  it("el modo icono lleva su nombre accesible y el texto largo en un tramo que el CSS oculta", () => {
+  it("el nombre accesible es el texto visible completo, también en modo icono, y anuncia el atajo", () => {
     pintar();
-    const boton = screen.getByRole("button", { name: "Buscar (Ctrl+K)" });
+    const boton = screen.getByRole("button", { name: TEXTO_BUSCAR });
+    expect(boton).not.toHaveAttribute("aria-label");
+    expect(boton).toHaveAttribute("aria-keyshortcuts", "Control+K");
     expect(boton).toHaveClass("silice-marco-barra__buscar");
-    const texto = boton.querySelector(".silice-marco-barra__buscar-texto");
-    expect(texto).toHaveTextContent("Buscar una obra, sección o pantalla… (Ctrl+K)");
+    expect(boton.querySelector(".silice-marco-barra__buscar-texto")).toHaveTextContent(TEXTO_BUSCAR);
+    expect(boton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("Ctrl+K dentro de un campo contenteditable no lo llama", () => {
+    const { alAbrirBuscador } = pintar();
+    const editable = document.createElement("div");
+    editable.setAttribute("contenteditable", "true");
+    const hijo = document.createElement("span");
+    editable.appendChild(hijo);
+    document.body.appendChild(editable);
+    fireEvent.keyDown(hijo, { key: "k", ctrlKey: true });
+    editable.remove();
+    expect(alAbrirBuscador).not.toHaveBeenCalled();
   });
 });
 
