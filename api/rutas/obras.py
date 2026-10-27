@@ -263,7 +263,9 @@ class ObraDeCarpetaRespuesta(BaseModel):
     carpeta: str | None = Field(
         description="El nombre que acepta `POST /v1/casos/actual`; `null`: la carpeta de la empresa"
     )
-    carpeta_titulo: str = Field(description="«Carpeta de la empresa» para `null`; si no, el nombre")
+    carpeta_titulo: str = Field(
+        description="«Carpeta de la empresa» para `null`; si no, el nombre sin extensión"
+    )
     obra_id: int
     obra: str
     version_codigo: str | None = Field(description="La versión vigente; `null` si no tiene")
@@ -309,7 +311,9 @@ def obras_de_todas_las_carpetas(
         obras=[
             ObraDeCarpetaRespuesta(
                 carpeta=o.carpeta,
-                carpeta_titulo=TITULO_DE_LA_EMPRESA if o.carpeta is None else o.carpeta,
+                carpeta_titulo=(
+                    TITULO_DE_LA_EMPRESA if o.carpeta is None else Path(o.carpeta).stem
+                ),
                 obra_id=o.obra_id,
                 obra=o.obra,
                 version_codigo=o.version_codigo,

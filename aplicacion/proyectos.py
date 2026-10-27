@@ -295,8 +295,9 @@ def obras_de_las_carpetas(carpetas: list[tuple[str | None, Path]]) -> list[ObraD
     """Las obras de cada carpeta (`(nombre, ruta)`), abiertas una a una en **solo lectura**
     (`motor_solo_lectura`: URI `mode=ro`, sin migrar ni crear `-wal`/`-shm`) y cerradas al
     terminar. Orden: la carpeta de la empresa (`None`), luego las demás por nombre, y dentro de
-    cada una las obras por nombre sin distinguir mayúsculas. Una carpeta ilegible (archivo
-    corrupto, de otra versión o ausente) se omite y queda en el registro, sin romper la lista."""
+    cada una las obras por nombre sin distinguir mayúsculas. Se omite (y queda en el registro) la
+    carpeta que no se puede leer: archivo no SQLite o ausente, tabla o columna que falta. Una más
+    nueva que abre sin error se lista; abrirla dará el error de `preparar_base`."""
     filas: list[ObraDeCarpeta] = []
     for nombre, ruta in sorted(carpetas, key=lambda c: (c[0] is not None, (c[0] or "").casefold())):
         motor = motor_solo_lectura(ruta)
