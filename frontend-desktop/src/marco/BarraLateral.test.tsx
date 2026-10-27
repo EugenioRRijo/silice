@@ -36,10 +36,14 @@ const CLINICA = obra(NORTE, 1, "Clínica Las Mercedes");
 const TORRE = obra(NORTE, 2, "Torre B");
 const GALPON = obra(SUR, 3, "Galpón Sur");
 
-let respuesta: { carpeta_actual: string | null; obras: ObraDeCarpetaRespuesta[] } | ErrorDeApi;
+let respuesta:
+  | { carpeta_actual: string | null; carpeta_actual_titulo: string; obras: ObraDeCarpetaRespuesta[] }
+  | ErrorDeApi;
 
-function servidor(obras: ObraDeCarpetaRespuesta[], carpetaActual: string | null = NORTE) {
-  respuesta = { carpeta_actual: carpetaActual, obras };
+// El título de la carpeta abierta lo da el servidor; por omisión el mismo que le daría a una carpeta con obras.
+function servidor(obras: ObraDeCarpetaRespuesta[], carpetaActual: string | null = NORTE, titulo?: string) {
+  const deLaCarpeta = carpetaActual === null ? "Carpeta de la empresa" : carpetaActual.replace(/\.db$/, "");
+  respuesta = { carpeta_actual: carpetaActual, carpeta_actual_titulo: titulo ?? deLaCarpeta, obras };
 }
 
 beforeEach(() => {
@@ -388,6 +392,22 @@ describe("BarraLateral: Nueva obra", () => {
     };
     const [claro, oscuro] = [luminancia("#f1c21b"), luminancia("#393939")];
     expect((claro + 0.05) / (oscuro + 0.05)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("BarraLateral: dónde se crea la obra", () => {
+  it("el título de la carpeta abierta sin obras lo da el servidor, no se arma en el front", async () => {
+    servidor([], NORTE, "Título que da el servidor");
+    pedirFalso.mockImplementation(async (ruta: string) => {
+      if (ruta === "/v1/obras/todas") return respuesta;
+      if (ruta === "/v1/carpeta") return { moneda: "Bs", declarada: true, lista: null, aviso: null };
+      throw new Error(`petición inesperada: ${ruta}`);
+    });
+    pintar();
+    await screen.findByText("Todavía no hay obras");
+    await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
+    const caja = await screen.findByRole("dialog", { name: "Nueva obra" });
+    expect(within(caja).getByText("Se creará en Título que da el servidor")).toBeInTheDocument();
   });
 });
 
