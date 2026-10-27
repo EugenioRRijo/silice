@@ -641,6 +641,32 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  // Ronda extra del árbitro: «Esta obra se abrió en otra pestaña» aparece de golpe por un mensaje de otra pestaña (quizá
+  // mientras la persona escribe en la Hoja): se anuncia solo, y «Retomar», que quita su botón sin cambiar de ruta, deja
+  // el foco en el h1 de la sección, como «Reintentar».
+  const TEXTO_DE_OTRA_PESTANA = "Otra pestaña de Sílice abrió otra obra. Retómela aquí para seguir trabajando en esta.";
+  async function abrirEnOtraPestana() {
+    const canal: CanalDeObra = { onmessage: null, postMessage: vi.fn() };
+    montar({ en: "/obra/empresa/7/presupuesto", canal });
+    await titulo("Hoja de la obra");
+    canal.onmessage?.({ data: { carpeta: SUR, obraId: 3 } } as MessageEvent);
+    return titulo("Esta obra se abrió en otra pestaña");
+  }
+
+  test("el aviso «Esta obra se abrió en otra pestaña» se anuncia (role alert)", async () => {
+    await abrirEnOtraPestana();
+    expect(screen.getByRole("alert")).toHaveTextContent(TEXTO_DE_OTRA_PESTANA);
+  });
+
+  test("«Retomar» deja el foco en el h1 de la sección, no en <body>", async () => {
+    const u = userEvent.setup();
+    await abrirEnOtraPestana();
+    await u.click(screen.getByRole("button", { name: "Retomar" }));
+    const seccion = await titulo("Hoja de la obra");
+    await waitFor(() => expect(seccion).toHaveFocus());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   // La entrada real es `#/pendientes`, o `#/`, `#/inicio` o una ruta que no existe, que REDIRIGEN con `replace` a
   // Pendientes: eso es la carga inicial, no un cambio de pantalla. El foco sigue en <body> y el primer Tab es «Saltar».
   test.each(["/pendientes", "/", "/inicio", "/no-existe"])("al cargar en %s no roba el foco: el primer Tab va a «Saltar al contenido»", async (entrada) => {
