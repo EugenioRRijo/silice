@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { CasosRespuesta } from "../api/tipos";
-import { AvisoError } from "../comun/AvisoError";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { ContextoAplicacion } from "../shell/contexto";
 import { ListaDeLaCarpeta } from "../shell/ListaDeLaCarpeta";
@@ -73,12 +72,11 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
       );
     case "error":
       return (
-        <div className="silice-pagina-aviso">
-          <AvisoError error="No se pudo abrir la obra. Revise la conexión con Sílice." titulo="No se pudo abrir la obra" />
+        <Aviso titulo="No se pudo abrir la obra" texto="Revise la conexión con Sílice y vuelva a intentarlo.">
           <Button kind="tertiary" size="md" onClick={estado.reintentar}>
             Reintentar
           </Button>
-        </div>
+        </Aviso>
       );
     case "lista":
       return (
