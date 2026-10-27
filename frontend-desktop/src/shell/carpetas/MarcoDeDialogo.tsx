@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { JSX, KeyboardEvent, ReactNode } from "react";
 import { useAtraparFoco } from "../useAtraparFoco";
 import "./MarcoDeDialogo.scss";
@@ -17,7 +18,9 @@ interface Props {
 // Dialogo propio del marco («Nueva obra», el dictamen, las variantes de Componer), como «Cambios sin guardar»: sin el Modal
 // de Carbon (su archivo trae una URL de documentacion que `npm run dist` rechaza, RNF-22), modal, Tab atrapado
 // (`useAtraparFoco`), Esc cierra y, al desmontarse, el foco vuelve a quien lo tenia al abrir (p. ej. «Nueva obra») o, si
-// ya no esta, al contenido. Va por debajo de «Cambios sin guardar», que puede abrirse encima.
+// ya no esta, al contenido. Va por debajo de «Cambios sin guardar», que puede abrirse encima. Se pinta en el cuerpo del
+// documento (portal): quien lo abre puede estar en una caja que apila aparte, como la barra lateral del marco (sticky), y
+// alli quedaria debajo del contenido. Los tokens del tema viven en :root, asi que fuera del arbol se ven igual.
 export function MarcoDeDialogo({ titulo, alCerrar, children, pie, inicial, ancho = "normal" }: Props): JSX.Element {
   const base = useId();
   const caja = useRef<HTMLDivElement>(null);
@@ -45,7 +48,7 @@ export function MarcoDeDialogo({ titulo, alCerrar, children, pie, inicial, ancho
     atrapar(e);
   }
 
-  return (
+  return createPortal(
     <div className="silice-dialogo__fondo">
       <div
         ref={caja}
@@ -62,6 +65,7 @@ export function MarcoDeDialogo({ titulo, alCerrar, children, pie, inicial, ancho
         <div className="silice-dialogo__cuerpo">{children}</div>
         <div className="silice-dialogo__pie">{pie}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
