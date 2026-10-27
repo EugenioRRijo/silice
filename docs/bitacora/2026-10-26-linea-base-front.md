@@ -23,13 +23,19 @@ Tarea 2 del plan `docs/planes/PLAN_REDISENO_MARCO.md`. Medidas sobre `frontend-d
 | Pruebas TS/TSX | 40.255 líneas | 40.457 |
 | SCSS | 4.608 líneas | 4.675 |
 | Archivos sin uso | 0 | 0 |
-| Exportaciones sin uso | 38 | 59 |
-| Tipos exportados sin uso | 57 | 134 |
-| Duplicación (bloques ≥ 8 líneas) | 0,79 % (27 clones) | 0,77 % (27 clones) |
+| Archivos con exportaciones sin uso (`--reporter compact`) | 38 | 37 |
+| Archivos con tipos exportados sin uso (`--reporter compact`) | 57 | 59 |
+| Símbolos: exportaciones sin uso (reportero por omisión) | sin medir | 59 |
+| Símbolos: tipos exportados sin uso (reportero por omisión) | sin medir | 134 |
+| Duplicación (bloques ≥ 8 líneas, una sola pasada) | 0,79 % (27 clones) | 0,88 % (29 clones, 36.870 líneas, 255 archivos) |
 
-Las líneas crecieron por el trabajo de P0 y de la Tarea 1 posterior a la medición. Las exportaciones y tipos sin uso
-no se vigilan en la CI (solo informan); la diferencia con la línea base puede deberse a esa misma obra nueva y a que
-la medición original usó otra configuración de knip; no se pudo reproducir con exactitud.
+La línea base de 38 y 57 contaba archivos (reportero `compact`), no símbolos; las cifras 59 y 134 del reportero por
+omisión cuentan símbolos, así que no son comparables con ellas. Con la misma unidad, la diferencia es 38 a 37 y 57
+a 59. `knip.json` no cambia esas cifras. Las exportaciones y tipos sin uso no se vigilan en la CI (solo informan).
+
+Duplicación: antes jscpd analizaba los `.tsx` dos veces (como `typescript` y como `javascript`) y el total inflaba a
+51.762 líneas con 0,77 %. `.jscpd.json` ahora fuerza una sola pasada (`formatsExts` asigna `ts` y `tsx` a
+`typescript`); la cifra real es 0,88 % con 29 clones, bajo el umbral de 1 %. Margen estrecho: conviene vigilarlo.
 
 ## Cómo repetir
 
@@ -41,8 +47,9 @@ find src \( -name '*.ts' -o -name '*.tsx' \) -name '*.test.*' | xargs cat | wc -
 find src -name '*.scss' | xargs cat | wc -l
 # código muerto (guardia)
 npm run muerto
-# exportaciones y tipos sin uso (informativo)
-npx knip --include files,exports,types
+# exportaciones y tipos sin uso (informativo): archivos y símbolos
+npx knip --include exports,types --reporter compact
+npx knip --include exports,types
 # duplicación
 npm run duplicado
 ```

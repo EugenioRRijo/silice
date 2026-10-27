@@ -102,6 +102,20 @@ describe("verificarLock", () => {
     expect(problemas).toEqual([]);
   });
 
+  test("spark-md5 con (WTFPL OR MIT) pasa porque se elige MIT (ruling RF-T2-1)", () => {
+    const { problemas } = verificarLock(
+      lock({ "node_modules/spark-md5": { version: "3.0.2", license: "(WTFPL OR MIT)", dev: true } }),
+    );
+    expect(problemas).toEqual([]);
+  });
+
+  test("(WTFPL OR MIT) en otro paquete sigue fallando: la eleccion es por paquete", () => {
+    const { problemas } = verificarLock(
+      lock({ "node_modules/otro": { version: "1.0.0", license: "(WTFPL OR MIT)", dev: true } }),
+    );
+    expect(problemas).toHaveLength(1);
+  });
+
   test("la misma expresion en otro paquete sigue fallando: la eleccion es por paquete", () => {
     const { problemas } = verificarLock(
       lock({ "node_modules/otro": { version: "1.0.0", license: "(MPL-2.0 OR Apache-2.0)" } }),
