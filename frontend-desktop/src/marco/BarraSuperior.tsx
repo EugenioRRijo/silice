@@ -15,7 +15,10 @@ interface Props {
 
 // Un campo donde Ctrl+K ya significa otra cosa (texto largo o contenido editable): ahi no se abre el buscador.
 function usaCtrlK(destino: EventTarget | null): boolean {
-  return destino instanceof HTMLElement && (destino instanceof HTMLTextAreaElement || destino.isContentEditable);
+  return (
+    destino instanceof HTMLElement &&
+    (destino instanceof HTMLTextAreaElement || destino.closest('[contenteditable=""], [contenteditable="true"]') !== null)
+  );
 }
 
 // Barra superior del marco nuevo: marca, migas, buscador (Ctrl+K), tamaño de letra y cuenta. Todavia no esta montada en
@@ -44,7 +47,7 @@ export function BarraSuperior({ migas, alAbrirBuscador, nombre, alSalir }: Props
       <button
         type="button"
         className="silice-marco-barra__buscar"
-        aria-label="Buscar (Ctrl+K)"
+        aria-keyshortcuts="Control+K"
         onClick={alAbrirBuscador}
       >
         <Search size={16} aria-hidden="true" />

@@ -78,7 +78,7 @@
   min-inline-size: 2rem;
   block-size: 2rem;
   padding-inline: 0.75rem;
-  border: 1px solid var(--cds-border-inverse);
+  border: 1px solid var(--cds-border-strong-01);
   background-color: transparent;
   color: inherit;
   font-family: inherit;
@@ -109,7 +109,7 @@
 
 // Los controles existentes se pintaron para fondo claro: aqui heredan el texto claro de la barra.
 .silice-marco-barra .silice-letra {
-  border-inline-start-color: var(--cds-border-inverse);
+  border-inline-start-color: var(--cds-border-strong-01);
 }
 
 .silice-marco-barra .silice-letra__opcion {
@@ -152,8 +152,17 @@
       justify-content: center;
     }
 
+    // Ocultacion visual (no display:none): el texto sigue siendo el nombre accesible del boton.
     .silice-marco-barra__buscar-texto {
-      display: none;
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      border: 0;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   }
 }
