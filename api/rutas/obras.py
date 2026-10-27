@@ -275,7 +275,14 @@ class ObrasTodasRespuesta(BaseModel):
     carpeta_actual: str | None = Field(
         description="La carpeta abierta en esta sesión; `null` si es la de la empresa"
     )
+    carpeta_actual_titulo: str = Field(
+        description="El título de esa carpeta, como `carpeta_titulo`, aunque no tenga obras"
+    )
     obras: list[ObraDeCarpetaRespuesta]
+
+
+def _titulo_de_carpeta(carpeta: str | None) -> str:
+    return TITULO_DE_LA_EMPRESA if carpeta is None else Path(carpeta).stem
 
 
 def _carpetas_visibles(
@@ -308,12 +315,11 @@ def obras_de_todas_las_carpetas(
     actual, carpetas = _carpetas_visibles(request, activa)
     return ObrasTodasRespuesta(
         carpeta_actual=actual,
+        carpeta_actual_titulo=_titulo_de_carpeta(actual),
         obras=[
             ObraDeCarpetaRespuesta(
                 carpeta=o.carpeta,
-                carpeta_titulo=(
-                    TITULO_DE_LA_EMPRESA if o.carpeta is None else Path(o.carpeta).stem
-                ),
+                carpeta_titulo=_titulo_de_carpeta(o.carpeta),
                 obra_id=o.obra_id,
                 obra=o.obra,
                 version_codigo=o.version_codigo,

@@ -480,8 +480,10 @@ def test_si_guardar_la_ficha_falla_no_queda_la_obra_en_la_carpeta_de_destino(
 
 def test_el_esquema_declara_los_errores_de_crear_una_obra() -> None:
     declaradas = app.openapi()["paths"][RUTA]["post"]["responses"]
-    # 403 sin CAMBIAR_CASO (o sin CSRF), 409 con la clave de API o nombre repetido, 503 sin carpeta de la empresa
+    # 403 sin CAMBIAR_CASO (o sin CSRF), 409 con la clave de API o nombre repetido, 503 sin carpeta
+    # de la empresa
     assert {"201", "403", "409", "503"} <= set(declaradas)
     for codigo in ("403", "409", "503"):
-        assert declaradas[codigo]["content"]["application/json"]["schema"]["$ref"].endswith("/Detalle")
+        esquema = declaradas[codigo]["content"]["application/json"]["schema"]
+        assert esquema["$ref"].endswith("/Detalle")
         assert declaradas[codigo]["description"]

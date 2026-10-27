@@ -2777,6 +2777,36 @@
               }
             }
           },
+          "403": {
+            "description": "Sin `EDITAR_HOJA`, o sin `CAMBIAR_CASO` para crear en otra carpeta, o sin CSRF u origen propio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya hay una obra con ese nombre, o con la clave de API se pidió otra carpeta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "`carpeta: empresa` y el proceso no usa una carpeta de la empresa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -18807,6 +18837,11 @@
             "title": "Carpeta Actual",
             "description": "La carpeta abierta en esta sesión; `null` si es la de la empresa"
           },
+          "carpeta_actual_titulo": {
+            "type": "string",
+            "title": "Carpeta Actual Titulo",
+            "description": "El título de esa carpeta, como `carpeta_titulo`, aunque no tenga obras"
+          },
           "obras": {
             "items": {
               "$ref": "#/components/schemas/ObraDeCarpetaRespuesta"
@@ -18818,6 +18853,7 @@
         "type": "object",
         "required": [
           "carpeta_actual",
+          "carpeta_actual_titulo",
           "obras"
         ],
         "title": "ObrasTodasRespuesta"

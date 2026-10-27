@@ -60,6 +60,7 @@ from api.dependencias import (
     url_del_proceso,
 )
 from api.rutas.casos import MENSAJE_CON_CLAVE, MENSAJE_SIN_EMPRESA
+from api.rutas.sesion import Detalle
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import casos as carpetas
@@ -177,7 +178,26 @@ def _sesion_de_destino(
 
 
 @router.post(
-    "", response_model=ProyectoDelCasoRespuesta, status_code=201, dependencies=[EDITAR_HOJA]
+    "",
+    response_model=ProyectoDelCasoRespuesta,
+    status_code=201,
+    dependencies=[EDITAR_HOJA],
+    responses={
+        403: {
+            "model": Detalle,
+            "description": "Sin `EDITAR_HOJA`, o sin `CAMBIAR_CASO` para crear en otra carpeta, "
+            "o sin CSRF u origen propio.",
+        },
+        409: {
+            "model": Detalle,
+            "description": "Ya hay una obra con ese nombre, o con la clave de API se pidió otra "
+            "carpeta.",
+        },
+        503: {
+            "model": Detalle,
+            "description": "`carpeta: empresa` y el proceso no usa una carpeta de la empresa.",
+        },
+    },
 )
 @sin_eco(MENSAJE_CUERPO_INVALIDO)
 def crear_proyecto_del_caso(
