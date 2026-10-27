@@ -48,9 +48,9 @@ def _obra(carpeta: str | None, titulo: str, obra: str) -> dict:
 
 
 EMPRESA_1 = _obra(None, TITULO_EMPRESA, "Edificio Central")
-CLINICA = _obra(NORTE, NORTE, "Clínica")
-GALPON = _obra(NORTE, NORTE, "Galpón")
-VIALIDAD = _obra(SUR, SUR, "Vialidad")
+CLINICA = _obra(NORTE, "Carpeta Norte", "Clínica")
+GALPON = _obra(NORTE, "Carpeta Norte", "Galpón")
+VIALIDAD = _obra(SUR, "Carpeta Sur", "Vialidad")
 
 
 @pytest.fixture(scope="module")
@@ -170,3 +170,19 @@ def test_sin_sesion_401() -> None:
     respuesta = cliente(app).get("/v1/obras/todas")
     assert respuesta.status_code == 401
     assert "detalle" in respuesta.json()
+
+
+def test_carpeta_mas_nueva_con_columna_extra_se_lista(_entorno: Path) -> None:
+    """Una carpeta con una columna añadida abre sin error: se lista (abrirla dará el error de
+    `preparar_base`, no esta ruta)."""
+    with closing(sqlite3.connect(_entorno / SUR)) as conexion:
+        conexion.execute("ALTER TABLE proyecto ADD COLUMN columna_futura TEXT")
+        conexion.commit()
+        conexion.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    navegador, _ = con_cuenta(app, "ana")
+    assert _filas(navegador.get("/v1/obras/todas").json()) == [
+        EMPRESA_1,
+        CLINICA,
+        GALPON,
+        VIALIDAD,
+    ]
