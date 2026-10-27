@@ -570,6 +570,29 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     await waitFor(() => expect(nuevo).toHaveFocus());
   });
 
+  // Ronda 2 del árbitro: el estado «error» de la obra (servidor caído, 500) era el único sin h1, y el foco quedaba en
+  // <body>. Ahora es un aviso con su h1, como «Esa obra ya no existe» y «Esta obra se abrió en otra pestaña».
+  test("si la obra no se pudo abrir, el aviso tiene su h1 y el foco va a él; «Reintentar» la abre", async () => {
+    const u = userEvent.setup();
+    let caido = true;
+    const base = servidor.fetchFalso;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) =>
+        caido && String(entrada) === "/v1/sesion/proyecto" && init?.method === "PUT" ? json({ detalle: "Falla interna." }, 500) : base(entrada, init),
+      ),
+    );
+    montar({ paginas: ligeras({ obras: MesaQueVa }) });
+    await u.click(await screen.findByRole("button", { name: "Ir a la obra" }));
+    const aviso = await titulo("No se pudo abrir la obra");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByText("Revise la conexión con Sílice y vuelva a intentarlo.")).toBeInTheDocument();
+    await waitFor(() => expect(aviso).toHaveFocus());
+    caido = false;
+    await u.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+  });
+
   // La entrada real es `#/pendientes`, o `#/`, `#/inicio` o una ruta que no existe, que REDIRIGEN con `replace` a
   // Pendientes: eso es la carga inicial, no un cambio de pantalla. El foco sigue en <body> y el primer Tab es «Saltar».
   test.each(["/pendientes", "/", "/inicio", "/no-existe"])("al cargar en %s no roba el foco: el primer Tab va a «Saltar al contenido»", async (entrada) => {
