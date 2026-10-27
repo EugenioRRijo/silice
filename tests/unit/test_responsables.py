@@ -59,6 +59,22 @@ _DECISION = _api(
     "test_api_control.py",
     "test_elegir_una_opcion_crea_la_version_y_deja_la_decision_con_el_responsable_de_la_sesion",
 )
+_COMPRA = _api(
+    "test_api_procura.py",
+    "test_registrar_un_pedido_quita_la_alerta",
+)
+_OBSERVACION = _api(
+    "test_api_mercado.py",
+    "test_tres_observaciones_de_compra_dan_sus_cifras_como_texto",
+)
+_OBJETIVO = _api(
+    "test_api_mercado.py",
+    "test_el_precio_objetivo_queda_con_el_responsable_de_la_sesion",
+)
+_PRECIO_DEL_CORTE = _api(
+    "test_api_control_declarados.py",
+    "test_desde_el_estudio_de_mercado_la_casilla_declara_el_precio_del_corte",
+)
 COBERTURA = {
     "registro_cambio": _HOJA,
     "importacion_indice": _INDICES,
@@ -71,6 +87,17 @@ COBERTURA = {
     "costo_real": _CONTROL,
     "decision_recuperacion": _DECISION,
 }
+
+#: Las tablas de MP-7 (procura y mercado, T23 a T25), con la misma regla: las escribe la cuenta de
+#: la sesión. No son de RF-82 (la ERS no las nombra), así que van aparte y la prueba de RF-82 sigue
+#: comparando solo `COBERTURA`.
+COBERTURA_MP7 = {
+    "mp_compra": _COMPRA,
+    "mp_observacion": _OBSERVACION,
+    "mp_precio_objetivo": _OBJETIVO,
+    "mp_precio_corte": _PRECIO_DEL_CORTE,
+}
+TODA_COBERTURA = {**COBERTURA, **COBERTURA_MP7}
 
 #: Las tablas que nombra RF-82 en la ERS (docs/ERS.md, RF-82), copiadas a mano: la lista de los
 #: metadatos no puede tener menos.
@@ -117,7 +144,7 @@ def _donde(archivo: Path, nodo: ast.AST) -> str:
 
 
 def test_toda_columna_responsable_tiene_su_prueba() -> None:
-    sin_dueno = sorted(_tablas_con_responsable() - set(COBERTURA))
+    sin_dueno = sorted(_tablas_con_responsable() - set(TODA_COBERTURA))
     assert sin_dueno == [], f"columna `responsable` sin prueba en COBERTURA: {sin_dueno}"
 
 
@@ -128,14 +155,14 @@ def test_las_tablas_que_nombra_rf82_tienen_responsable_en_los_metadatos() -> Non
 
 def test_las_pruebas_de_la_lista_existen() -> None:
     for tabla in sorted(_tablas_con_responsable()):
-        archivo, _, prueba = COBERTURA[tabla].partition("::")
+        archivo, _, prueba = TODA_COBERTURA[tabla].partition("::")
         ruta = RAIZ / archivo
         assert ruta.is_file(), f"{tabla}: no existe el archivo {archivo}"
         texto = ruta.read_text(encoding="utf-8")
-        assert f"def {prueba}(" in texto, f"{tabla}: no existe {COBERTURA[tabla]}"
+        assert f"def {prueba}(" in texto, f"{tabla}: no existe {TODA_COBERTURA[tabla]}"
 
 
-@pytest.mark.parametrize("tabla", sorted(COBERTURA))
+@pytest.mark.parametrize("tabla", sorted(TODA_COBERTURA))
 def test_la_lista_no_nombra_tablas_que_no_son_de_responsable(tabla: str) -> None:
     """Una entrada de COBERTURA es una tabla con `responsable` o aún no existe en los metadatos."""
     todas = {t for m in (*METADATAS_CASO, *METADATAS_INSTALACION) for t in m.tables}

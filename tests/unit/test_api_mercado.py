@@ -694,6 +694,17 @@ def _objetivo(ana, codigo: str, precio: str) -> None:
     assert respuesta.status_code == 200, respuesta.text
 
 
+def test_el_precio_objetivo_queda_con_el_responsable_de_la_sesion(ana, caso: Path) -> None:
+    from aplicacion.tablas_mercado import PrecioObjetivo
+
+    _objetivo(ana, "OBRA-03", "120")
+    filas = _en_el_caso(
+        caso,
+        lambda s: [(f.codigo_partida, f.responsable) for f in s.scalars(select(PrecioObjetivo))],
+    )
+    assert filas == [("OBRA-03", "Ana <ana>")]
+
+
 def _margenes(ana, **params: str) -> dict[str, tuple[str, str, str | None]]:
     respuesta = ana[0].get(f"{RUTA}/objetivos", params=params)
     assert respuesta.status_code == 200, respuesta.text
