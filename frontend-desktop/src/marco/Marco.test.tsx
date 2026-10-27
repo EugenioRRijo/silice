@@ -38,6 +38,7 @@ function obrasTodas(estado: EstadoDelServidor) {
   const deLaEmpresa = (c: string) => c === "silice.db";
   return {
     carpeta_actual: deLaEmpresa(estado.actual.nombre) ? null : estado.actual.nombre,
+    carpeta_actual_titulo: deLaEmpresa(estado.actual.nombre) ? "Carpeta de la empresa" : estado.actual.nombre.replace(/\.db$/, ""),
     obras: Object.entries(OBRAS).flatMap(([c, lista]) =>
       lista.map((o) => ({
         carpeta: deLaEmpresa(c) ? null : c,

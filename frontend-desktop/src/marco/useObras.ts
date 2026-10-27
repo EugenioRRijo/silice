@@ -9,6 +9,8 @@ export interface ObrasCargadas {
   obras: ObraDeCarpeta[];
   // La carpeta abierta en la sesión; null si es la de la empresa.
   carpetaActual: string | null;
+  // El título de esa carpeta (lo da el servidor, aunque no tenga obras).
+  tituloActual: string;
   // «sin_permiso»: la cuenta no lee obras (sin `leer_proyecto`): no se piden y no hay nada que mostrar.
   estado: "cargando" | "lista" | "error" | "sin_permiso";
   recargar: () => void;
@@ -24,9 +26,10 @@ export function useObras(acciones?: readonly string[]): ObrasCargadas {
   const deLaCuenta = acciones ?? aplicacion?.sesion.acciones;
   const puedeLeer = deLaCuenta === undefined || deLaCuenta.includes("leer_proyecto");
   const [intento, setIntento] = useState(0);
-  const [datos, setDatos] = useState<{ obras: ObraDeCarpeta[]; carpetaActual: string | null }>({
+  const [datos, setDatos] = useState<{ obras: ObraDeCarpeta[]; carpetaActual: string | null; tituloActual: string }>({
     obras: [],
     carpetaActual: null,
+    tituloActual: "",
   });
   const [estado, setEstado] = useState<ObrasCargadas["estado"]>("cargando");
 
@@ -40,7 +43,7 @@ export function useObras(acciones?: readonly string[]): ObrasCargadas {
           setEstado("error");
           return;
         }
-        setDatos({ obras: r.obras, carpetaActual: r.carpeta_actual ?? null });
+        setDatos({ obras: r.obras, carpetaActual: r.carpeta_actual ?? null, tituloActual: r.carpeta_actual_titulo ?? "" });
         setEstado("lista");
       })
       .catch((e: unknown) => {
@@ -57,5 +60,5 @@ export function useObras(acciones?: readonly string[]): ObrasCargadas {
     setEstado("cargando");
     setIntento((n) => n + 1);
   }, []);
-  return { obras: datos.obras, carpetaActual: datos.carpetaActual, estado: puedeLeer ? estado : "sin_permiso", recargar };
+  return { obras: datos.obras, carpetaActual: datos.carpetaActual, tituloActual: datos.tituloActual, estado: puedeLeer ? estado : "sin_permiso", recargar };
 }

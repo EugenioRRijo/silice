@@ -62,6 +62,8 @@ export interface ObraDeCarpetaRespuesta {
 export interface ObrasTodasRespuesta {
   // La carpeta abierta en la sesion; null si es la de la empresa.
   carpeta_actual: string | null;
+  // Su titulo, como `carpeta_titulo`, aunque no tenga obras: lo da el servidor.
+  carpeta_actual_titulo: string;
   obras: ObraDeCarpetaRespuesta[];
 }
 

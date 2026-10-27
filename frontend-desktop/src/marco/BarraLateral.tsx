@@ -49,7 +49,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const { acciones, puedeCambiarDeCarpeta, oferta } = useOferta();
   const navegar = useNavigate();
   const base = useId();
-  const { obras, carpetaActual, estado, recargar } = useObras();
+  const { obras, carpetaActual, tituloActual, estado, recargar } = useObras();
   const enPendientes = useMatch(RUTA_DE_PENDIENTES) !== null;
   const entradaActiva = useMatch(PATRON_DE_EMPRESA)?.params["entrada"] ?? null;
   // El diálogo lo puede pedir también la mesa (marco/nuevaObra); al irse la barra (salir de la sesión) se cierra.
@@ -70,9 +70,11 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const grupos = agruparPorCarpeta(visibles);
   // «Nueva obra» crea donde está la persona: en la carpeta de la obra abierta en la ruta o, sin obra, en la de la sesión.
   const carpetaDeCreacion = obraAbierta === null ? carpetaActual : obraAbierta.carpeta;
+  // El título lo da el servidor: el de la carpeta de la sesión viene con la lista; el de otra, con sus obras.
   const tituloDeCreacion =
-    obras.find((o) => o.carpeta === carpetaDeCreacion)?.carpeta_titulo ??
-    (carpetaDeCreacion === null ? "Carpeta de la empresa" : carpetaDeCreacion.replace(/\.db$/i, ""));
+    carpetaDeCreacion === carpetaActual
+      ? tituloActual
+      : (obras.find((o) => o.carpeta === carpetaDeCreacion)?.carpeta_titulo ?? "");
   const destino: DestinoDeNuevaObra = {
     carpeta: carpetaDeCreacion,
     titulo: tituloDeCreacion,

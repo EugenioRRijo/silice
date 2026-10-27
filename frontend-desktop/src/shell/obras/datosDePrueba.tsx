@@ -198,6 +198,7 @@ export function servidorFalso(estado: EstadoDelServidor = estadoInicial(), antes
       const carpeta = deLaEmpresa ? null : estado.actual.nombre;
       return json({
         carpeta_actual: carpeta,
+        carpeta_actual_titulo: carpeta === null ? "Carpeta de la empresa" : carpeta.replace(/\.db$/, ""),
         obras: estado.proyectos.map((p) => ({
           carpeta,
           carpeta_titulo: carpeta === null ? "Carpeta de la empresa" : carpeta.replace(/\.db$/, ""),
