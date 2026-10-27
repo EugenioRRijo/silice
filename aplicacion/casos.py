@@ -254,6 +254,21 @@ def en_lenguaje_de_la_interfaz(mensaje: str) -> str:
     return "".join(tramos)
 
 
+class CarpetaFueraDeLaLista(LookupError):  # noqa: N818
+    """El nombre es válido pero no es el de ninguna carpeta de la carpeta de casos."""
+
+
+def carpeta_de_la_lista(nombre: str) -> Path:
+    """La ruta de la carpeta `nombre` si es una de las que hay: la validación de «elegir carpeta»
+    (`resolver_caso`: sin `..`, rutas, unidades ni reservados; luego, que esté en `listar_casos`).
+    `RutaDeCasoRechazada` antes de tocar el disco; `CarpetaFueraDeLaLista` si no existe. Nunca
+    crea nada ni arma una ruta con la entrada fuera de la carpeta de casos."""
+    ruta = resolver_caso(nombre)
+    if ruta not in {caso.resolve() for caso in listar_casos()}:
+        raise CarpetaFueraDeLaLista(ruta.name)
+    return ruta
+
+
 def _nombre_elegido(nombre: str) -> str:
     """Un nombre que escribió la persona: la forma de la clásica (sin rutas, `..`, unidades, `:` ni
     reservados de Windows), saneado y no reservado para la demostración."""

@@ -73,7 +73,6 @@ from operacion.base_datos import (
     ErrorDeBase,
     RutaDeCasoRechazada,
     listar_casos,
-    resolver_caso,
 )
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
@@ -165,13 +164,13 @@ def elegir_caso(
     if activa is None:
         raise HTTPException(status_code=409, detail=MENSAJE_CON_CLAVE)
     try:
-        ruta = resolver_caso(datos.nombre)
+        ruta = carpetas.carpeta_de_la_lista(datos.nombre)
     except RutaDeCasoRechazada as error:
         raise HTTPException(
             status_code=422, detail=carpetas.en_lenguaje_de_la_interfaz(str(error))
         ) from None
-    if ruta not in {caso.resolve() for caso in listar_casos()}:
-        raise HTTPException(status_code=404, detail=MENSAJE_NO_ESTA.format(nombre=ruta.name))
+    except carpetas.CarpetaFueraDeLaLista as error:
+        raise HTTPException(status_code=404, detail=MENSAJE_NO_ESTA.format(nombre=error)) from None
     obtener_motor(url_de_ruta(ruta))  # prepara la base una vez (503 si no se puede)
     recordar_caso(instalacion, activa.usuario_id, ruta.name, ahora())
     instalacion.commit()  # la ficha cambia solo si la instalación lo confirmó

@@ -2754,7 +2754,7 @@
           "proyectos"
         ],
         "summary": "Crear Proyecto Del Caso",
-        "description": "Crea el proyecto en el caso de esta sesión; sin versión guardada todavía.",
+        "description": "Crea el proyecto en el caso de esta sesión (o en `carpeta`); sin versión guardada todavía.",
         "operationId": "crear_proyecto_del_caso_v1_proyectos_post",
         "requestBody": {
           "content": {
@@ -20616,6 +20616,19 @@
             "maxLength": 200,
             "title": "Ubicacion",
             "default": ""
+          },
+          "carpeta": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carpeta",
+            "description": "Dónde se crea: un nombre de `GET /v1/obras/todas`, o `empresa`; sin él, la carpeta de la sesión"
           }
         },
         "type": "object",
