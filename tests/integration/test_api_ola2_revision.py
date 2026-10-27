@@ -102,12 +102,17 @@ def base(cliente, items_payload):
 def navegador(sesion, tmp_path_factory):
     """Un navegador con la cookie de `ana` (rol arma) sobre la base en memoria de `cliente`."""
     from api.main import app
+    from operacion.instalacion import cerrar_motores
     from tests.fixtures.sesion_web import (
         con_cuenta,
         copiar_instalacion,
         plantilla_con_cuentas,
     )
 
+    # `cliente` ya abrió la instalación para crear su clave de API: se cierra su motor antes de
+    # pisarla con la de las cuentas, o su `-wal` viejo se mezcla con las páginas nuevas y el acceso
+    # falla. (Quien necesite la clave, como `base`, va antes en los parámetros de la prueba.)
+    cerrar_motores()
     copiar_instalacion(plantilla_con_cuentas(tmp_path_factory.mktemp("cuentas")))
     return con_cuenta(app, "ana")
 
@@ -129,7 +134,7 @@ def test_revalorar_con_clave_de_api_sella_al_usuario_sin_clave(cliente, sesion, 
 
 
 def test_revalorar_con_la_cuenta_sella_nombre_y_login_de_la_persona(
-    cliente, sesion, navegador, base
+    cliente, sesion, base, navegador
 ):
     from tests.fixtures.sesion_web import protegida
 
