@@ -32,7 +32,7 @@ beforeEach(() => {
 });
 
 function Ubicacion() {
-  return <output data-testid="ruta">{useLocation().pathname}</output>;
+  return <span data-testid="ruta">{useLocation().pathname}</span>;
 }
 function Arnes({ inicialAbierto }: { inicialAbierto: boolean }) {
   const [abierto, setAbierto] = useState(inicialAbierto);

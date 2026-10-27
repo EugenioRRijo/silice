@@ -1,17 +1,14 @@
 import { Add, ChevronDown, ChevronRight } from "@carbon/icons-react";
-import { useContext, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { Link, useMatch, useNavigate } from "react-router";
-import { ContextoAplicacion } from "../shell/contexto";
 import { DialogoNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import type { CarpetaDeObra } from "../shell/obras/DialogoNuevaObra";
-import { paginaPorId, usable } from "../shell/rutas";
 import "./BarraLateral.scss";
+import { obrasAlcanzables, useOferta } from "./oferta";
 import {
-  ENTRADAS_DE_EMPRESA,
   PATRON_DE_EMPRESA,
   RUTA_DE_PENDIENTES,
-  SECCIONES_DE_OBRA,
   rutaDeEmpresa,
   rutaDeObra,
   type SeccionId,
@@ -48,9 +45,7 @@ function agruparPorCarpeta(obras: ObraDeCarpeta[]): Grupo[] {
 // Pasa de 250 líneas porque el árbol, su teclado y la ventana de Nueva obra comparten un mismo estado (qué está desplegado,
 // qué fila tiene el foco); separarlos obligaría a subir ese estado sin quitar complejidad.
 export function BarraLateral({ obraAbierta, seccion }: Props) {
-  const aplicacion = useContext(ContextoAplicacion);
-  const acciones = aplicacion?.sesion.acciones ?? [];
-  const modoEntrega = aplicacion?.sesion.modo_entrega ?? false;
+  const { acciones, puedeCambiarDeCarpeta, oferta } = useOferta();
   const navegar = useNavigate();
   const base = useId();
   const { obras, carpetaActual, estado, recargar } = useObras();
@@ -62,18 +57,11 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const [foco, setFoco] = useState<string | null>(null);
   const arbol = useRef<HTMLUListElement>(null);
 
+  const { secciones, entradas } = oferta;
   const puedeCrear = acciones.includes("editar_hoja");
-  const puedeCambiarDeCarpeta = acciones.includes("cambiar_caso");
-  const usables = (pagina: string | null) => {
-    const def = pagina === null ? undefined : paginaPorId(pagina);
-    return def !== undefined && usable(def, acciones, modoEntrega);
-  };
-  const secciones = SECCIONES_DE_OBRA.filter((s) => usables(s.pagina));
-  const entradas = ENTRADAS_DE_EMPRESA.filter((e) => usables(e.pagina));
 
-  // Nunca se ofrece una obra que al abrirla daría 403: sin permiso para cambiar de carpeta, solo las de la abierta.
   const visibles = useMemo(
-    () => (puedeCambiarDeCarpeta ? obras : obras.filter((o) => o.carpeta === carpetaActual)),
+    () => obrasAlcanzables(obras, carpetaActual, puedeCambiarDeCarpeta),
     [obras, carpetaActual, puedeCambiarDeCarpeta],
   );
   const grupos = agruparPorCarpeta(visibles);
