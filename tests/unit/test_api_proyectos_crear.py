@@ -25,6 +25,7 @@ from api.main import app
 from api.sesion_web import MENSAJE_CAMBIAR_CLAVE
 from operacion import config
 from operacion.base_datos import preparar_base
+from seguridad.permisos import PERMISOS, Accion, Rol
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
     MENSAJE_PERMISO,
@@ -311,3 +312,143 @@ def test_el_422_de_forma_habla_de_obra() -> None:
         "detalle": "Indique el nombre de la obra (hasta 120 caracteres), la moneda (Bs o USD), "
         "el tipo de obra y una descripción de hasta 500 caracteres."
     }
+
+
+# --- Tarea 6b del rediseño del marco: crear en otra carpeta sin cambiar la sesión ----------------
+
+NO_ESTA = "La carpeta no está en la lista: elija una de las que ofrece la barra lateral."
+
+
+def _con_carpeta(carpeta: str | None, nombre: str = "Torre B") -> dict:
+    return {"nombre": nombre, "moneda": "Bs", "carpeta": carpeta}
+
+
+def _actual(navegador: TestClient) -> str:
+    return navegador.get("/v1/casos").json()["actual"]["nombre"]
+
+
+def test_crea_en_otra_carpeta_y_la_sesion_se_queda_donde_estaba(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    olvidadas: list[str] = []
+    monkeypatch.setattr(
+        "aplicacion.hoja_borradores.olvidar", lambda huella: olvidadas.append(huella)
+    )
+    ana, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(ana, ficha, _con_carpeta("Obra Norte.db"))
+    assert respuesta.status_code == 201, respuesta.text
+    assert set(respuesta.json()) == FORMA
+    assert _nombres("Obra Norte.db") == ["Torre B"]
+    assert _nombres("silice.db") == []
+    assert _filas("Obra Norte.db", "select moneda, responsable from moneda_proyecto") == [
+        ("Bs", "Ana <ana>")
+    ]
+    assert _actual(ana) == "silice.db"  # la sesión no cambió de carpeta
+    assert olvidadas == []  # ni olvidó borradores
+    assert ana.get(RUTA).json() == []  # la lista de la sesión sigue siendo la de silice.db
+
+
+def test_la_ficha_de_la_obra_va_a_la_carpeta_de_destino() -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    cuerpo = {**_con_carpeta("Obra Norte.db"), "cliente": "Contratista", "ubicacion": "Maracay"}
+    respuesta = _crear(ana, ficha, cuerpo)
+    assert respuesta.status_code == 201, respuesta.text
+    assert (respuesta.json()["cliente"], respuesta.json()["ubicacion"]) == (
+        "Contratista",
+        "Maracay",
+    )
+    assert _filas("Obra Norte.db", "select cliente, ubicacion from ficha_obra") == [
+        ("Contratista", "Maracay")
+    ]
+    assert _filas("silice.db", "select count(*) from ficha_obra") == [(0,)]
+
+
+def test_la_carpeta_de_la_empresa_se_nombra_empresa() -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    ana.post("/v1/casos/actual", json={"nombre": "Obra Norte.db"}, headers=protegida(ficha))
+    respuesta = _crear(ana, ficha, _con_carpeta("empresa"))
+    assert respuesta.status_code == 201, respuesta.text
+    assert _nombres("silice.db") == ["Torre B"]  # la del proceso
+    assert _nombres("Obra Norte.db") == []
+    assert _actual(ana) == "Obra Norte.db"
+
+
+def test_la_misma_carpeta_de_la_sesion_o_ninguna_es_lo_de_siempre(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # sin CAMBIAR_CASO tampoco hace falta: no cambia de carpeta
+    monkeypatch.setitem(PERMISOS, Accion.CAMBIAR_CASO, frozenset({Rol.ADMINISTRADOR}))
+    ana, ficha = con_cuenta(app, "ana")
+    assert _crear(ana, ficha, _con_carpeta("silice.db", "Uno")).status_code == 201
+    assert _crear(ana, ficha, _con_carpeta("empresa", "Dos")).status_code == 201
+    assert _crear(ana, ficha, _con_carpeta(None, "Tres")).status_code == 201
+    assert _nombres("silice.db") == ["Dos", "Tres", "Uno"]
+
+
+def test_otra_carpeta_sin_cambiar_caso_da_403_y_no_crea(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(PERMISOS, Accion.CAMBIAR_CASO, frozenset({Rol.ADMINISTRADOR}))
+    ana, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(ana, ficha, _con_carpeta("Obra Norte.db"))
+    assert respuesta.status_code == 403
+    assert respuesta.json()["detalle"] == MENSAJE_PERMISO
+    assert _nombres("Obra Norte.db") == []
+    assert _nombres("silice.db") == []
+
+
+def test_con_clave_de_api_no_se_crea_en_otra_carpeta() -> None:
+    cabeceras = {CABECERA: crear_clave_de_prueba()}
+    respuesta = cliente(app).post(RUTA, json=_con_carpeta("Obra Norte.db"), headers=cabeceras)
+    assert respuesta.status_code == 409
+    assert _nombres("Obra Norte.db") == []
+
+
+@pytest.mark.parametrize(
+    "carpeta",
+    [
+        "../silice.db",
+        "..",
+        "a/../Obra Norte.db",
+        "..\\Obra Norte.db",
+        "C:\\x.db",
+        "/etc/x.db",
+        "   ",
+    ],
+)
+def test_nombre_con_rutas_da_422_sin_eco_y_no_crea(carpeta: str, _entorno: Path) -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(ana, ficha, _con_carpeta(carpeta))
+    assert respuesta.status_code == 422, respuesta.text
+    assert carpeta.strip() not in respuesta.text or carpeta.strip() == ""
+    assert str(_entorno) not in respuesta.text and _entorno.as_posix() not in respuesta.text
+    assert _nombres("silice.db") == [] and _nombres("Obra Norte.db") == []
+
+
+def test_carpeta_inexistente_da_422_sin_eco_y_no_crea(_entorno: Path) -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(ana, ficha, _con_carpeta("Fantasma"))
+    assert respuesta.status_code == 422, respuesta.text
+    assert respuesta.json() == {"detalle": NO_ESTA}
+    assert "Fantasma" not in respuesta.text
+    assert not (_entorno / "Fantasma.db").exists()  # nada de crear el archivo con la entrada
+    assert _nombres("silice.db") == []
+
+
+def test_carpeta_que_no_es_texto_da_422_de_forma() -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(ana, ficha, {"nombre": "X", "moneda": "Bs", "carpeta": 7})
+    assert respuesta.status_code == 422
+    assert "7" not in respuesta.text
+
+
+def test_todo_o_nada_en_la_carpeta_de_destino() -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    assert _crear(ana, ficha, _con_carpeta("Obra Norte.db")).status_code == 201
+    # el nombre repetido se compara con las obras del DESTINO
+    repetida = _crear(ana, ficha, _con_carpeta("Obra Norte.db", "torre b"))
+    assert repetida.status_code == 409
+    mala = _crear(ana, ficha, {**_con_carpeta("Obra Norte.db", "Otra"), "moneda": "EUR"})
+    assert mala.status_code == 422
+    assert _nombres("Obra Norte.db") == ["Torre B"]
+    # el mismo nombre en la carpeta de la sesión no choca con el del destino
+    assert _crear(ana, ficha, _con_carpeta(None)).status_code == 201
+    assert _nombres("silice.db") == ["Torre B"]

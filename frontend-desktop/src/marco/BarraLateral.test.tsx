@@ -278,28 +278,61 @@ describe("BarraLateral: Nueva obra", () => {
     await waitFor(() => expect(pedirFalso).toHaveBeenCalledWith("/v1/carpeta"));
   });
 
-  it("si la carpeta abierta no tiene obras, igual está entre las opciones y la obra se crea en la que muestra", async () => {
-    servidor([CLINICA, GALPON], null);
+  // Tarea 6b: la obra se crea donde está la persona; no hay selector de carpeta ni cambio de carpeta.
+  function conCreacion() {
     pedirFalso.mockImplementation(async (ruta: string, opciones?: { metodo?: string }) => {
       if (ruta === "/v1/obras/todas") return respuesta;
       if (ruta === "/v1/carpeta") return { moneda: "Bs", declarada: true, lista: null, aviso: null };
       if (ruta === "/v1/proyectos" && opciones?.metodo === "POST") return { codigo: "9", nombre: "Nueva" };
       throw new Error(`petición inesperada: ${ruta}`);
     });
-    pintar();
-    await arbol();
-    await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
-    const carpeta = await screen.findByRole("combobox", { name: "Carpeta" });
-    const opciones = within(carpeta).getAllByRole("option").map((o) => o.textContent);
-    expect(opciones).toContain("Carpeta de la empresa");
-    const mostrada = (carpeta as HTMLSelectElement).selectedOptions[0]!.textContent;
-    expect(mostrada).toBe("Carpeta de la empresa");
+  }
+  async function escribirYCrear() {
     await waitFor(() => expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
     await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
-    await waitFor(() => expect(pedirFalso).toHaveBeenCalledWith("/v1/proyectos", expect.objectContaining({ metodo: "POST" })));
-    // Se crea donde se mostró: la abierta, sin cambiar de carpeta.
-    expect(pedirFalso.mock.calls.some(([r]) => r === "/v1/casos/actual")).toBe(false);
+  }
+  const envios = () => pedirFalso.mock.calls.filter(([r]) => r === "/v1/proyectos");
+  const cambiosDeCarpeta = () => pedirFalso.mock.calls.filter(([r]) => r === "/v1/casos/actual");
+
+  it("con una obra abierta en otra carpeta dice dónde se creará, sin selector, y manda esa carpeta sin cambiar la de la sesión", async () => {
+    conCreacion();
+    pintar({ abierta: { carpeta: SUR, obraId: 3 }, seccion: "resumen", ruta: "/obra/Carpeta%20Sur.db/3/resumen" });
+    await arbol();
+    await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
+    const caja = await screen.findByRole("dialog", { name: "Nueva obra" });
+    expect(within(caja).getByText("Se creará en Carpeta Sur")).toBeInTheDocument();
+    expect(within(caja).queryByRole("combobox", { name: "Carpeta" })).toBeNull();
+    await escribirYCrear();
+    await waitFor(() => expect(envios()).toHaveLength(1));
+    expect(envios()[0]![1]).toMatchObject({ metodo: "POST", cuerpo: expect.objectContaining({ carpeta: SUR }) });
+    expect(cambiosDeCarpeta()).toEqual([]);
+  });
+
+  it("sin obra en la ruta se crea en la carpeta abierta de la sesión, aunque no tenga obras (la empresa se llama «empresa»)", async () => {
+    servidor([CLINICA, GALPON], null);
+    conCreacion();
+    pintar();
+    await arbol();
+    await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
+    const caja = await screen.findByRole("dialog", { name: "Nueva obra" });
+    expect(within(caja).getByText("Se creará en Carpeta de la empresa")).toBeInTheDocument();
+    expect(within(caja).queryByRole("combobox", { name: "Carpeta" })).toBeNull();
+    await escribirYCrear();
+    await waitFor(() => expect(envios()).toHaveLength(1));
+    expect(envios()[0]![1]).toMatchObject({ cuerpo: expect.objectContaining({ carpeta: "empresa" }) });
+    expect(cambiosDeCarpeta()).toEqual([]);
+  });
+
+  it("al crear cierra el diálogo y lleva a la obra nueva en la carpeta donde se creó", async () => {
+    conCreacion();
+    pintar({ abierta: { carpeta: SUR, obraId: 3 }, seccion: "resumen" });
+    await arbol();
+    await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
+    await screen.findByRole("dialog", { name: "Nueva obra" });
+    await escribirYCrear();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
+    expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas").length).toBeGreaterThan(1); // recargó
   });
 
   it("los estilos lo pintan con el acento, el texto del marco, seminegrita y 40 px de alto, solo con variables del tema", () => {
