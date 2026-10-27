@@ -40,3 +40,40 @@ describe("sin jerga interna en las paginas", () => {
     expect(conJerga).toEqual([]);
   });
 });
+
+// Plan del rediseño del marco, Tarea 8: el marco habla con las palabras de quien usa Sílice (obra, sección, pendiente,
+// empresa). Los textos del marco (marco/ y las piezas del armazón que monta) no dicen «módulo», «área», «página»,
+// «carpeta de trabajo» ni «Streamlit». Los identificadores no llevan tilde («pagina», «area»): solo cuentan las palabras
+// del español escrito, que son las que se ven.
+const VISIBLE_CON_TILDE = /módulo|área|página|carpeta de trabajo|streamlit/i;
+const raiz = `${nodo.cwd()}/src`;
+const DEL_MARCO = [
+  ...fs
+    .readdirSync(`${raiz}/marco`, { recursive: true })
+    .map((r) => `marco/${r.replaceAll("\\", "/")}`)
+    .filter((r) => /\.tsx?$/.test(r) && !/\.test\.tsx?$/.test(r)),
+  "shell/DialogoSalida.tsx",
+  "shell/LimiteDeError.tsx",
+  "shell/MarcaDemostracion.tsx",
+  "shell/MenuCuenta.tsx",
+  "shell/ColumnaRecorrido.tsx",
+  "shell/PanelRecorrido.tsx",
+  "shell/obras/DialogoNuevaObra.tsx",
+  "shell/carpetas/MarcoDeDialogo.tsx",
+  "comun/TamanoLetra.tsx",
+];
+
+describe("sin vocabulario interno en el marco", () => {
+  test("la guardia detecta las palabras con y sin mayúscula y deja pasar los identificadores", () => {
+    expect(VISIBLE_CON_TILDE.test('const t = "Recargue la página";')).toBe(true);
+    expect(VISIBLE_CON_TILDE.test("<p>Áreas del Módulo</p>")).toBe(true);
+    expect(VISIBLE_CON_TILDE.test('const t = "Ahora trabaja con la carpeta de trabajo";')).toBe(true);
+    expect(VISIBLE_CON_TILDE.test("const pagina = paginaPorId(area);")).toBe(false);
+  });
+
+  test("ningún texto del marco dice «módulo», «área», «página», «carpeta de trabajo» ni «Streamlit»", () => {
+    expect(DEL_MARCO.length).toBeGreaterThan(15); // la guardia no recorre una lista vacia
+    const conJerga = DEL_MARCO.filter((r) => VISIBLE_CON_TILDE.test(sinComentarios(fs.readFileSync(`${raiz}/${r}`, "utf-8"))));
+    expect(conJerga).toEqual([]);
+  });
+});
