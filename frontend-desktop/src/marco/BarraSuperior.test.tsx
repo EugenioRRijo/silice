@@ -108,6 +108,29 @@ describe("BarraSuperior: buscador", () => {
     expect(boton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   });
 
+  it.each(["plaintext-only", "", "true"])(
+    "Ctrl+K sobre el propio destino con contenteditable=\"%s\" no lo llama",
+    (valor) => {
+      const { alAbrirBuscador } = pintar();
+      const editable = document.createElement("div");
+      editable.setAttribute("contenteditable", valor);
+      document.body.appendChild(editable);
+      fireEvent.keyDown(editable, { key: "k", ctrlKey: true });
+      editable.remove();
+      expect(alAbrirBuscador).not.toHaveBeenCalled();
+    },
+  );
+
+  it("Ctrl+K sobre un contenteditable=\"false\" sí lo llama", () => {
+    const { alAbrirBuscador } = pintar();
+    const fijo = document.createElement("div");
+    fijo.setAttribute("contenteditable", "false");
+    document.body.appendChild(fijo);
+    fireEvent.keyDown(fijo, { key: "k", ctrlKey: true });
+    fijo.remove();
+    expect(alAbrirBuscador).toHaveBeenCalledTimes(1);
+  });
+
   it("Ctrl+K dentro de un campo contenteditable no lo llama", () => {
     const { alAbrirBuscador } = pintar();
     const editable = document.createElement("div");
