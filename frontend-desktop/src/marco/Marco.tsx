@@ -29,6 +29,7 @@ import { BarraLateral } from "./BarraLateral";
 import { BarraSuperior } from "./BarraSuperior";
 import { Buscador } from "./Buscador";
 import { EspacioDeObra } from "./EspacioDeObra";
+import { enfocarElTitulo } from "./focoAlTitulo";
 import "./marco.scss";
 import { carpetaDelDestino, ubicar } from "./ubicar";
 import { abrirNuevaObra, cerrarNuevaObra } from "./nuevaObra";
@@ -431,7 +432,7 @@ function seccionDeLaRuta(pathname: string) {
 
 // Al cambiar de pantalla, si el foco se perdió (lo tenía un control de la anterior), pasa al h1 de la nueva: el lector
 // de pantalla la anuncia y el siguiente Tab parte de ahí. Si lo tiene otro control, no se toca; la primera carga y las
-// redirecciones (`replace` a otra ruta) tampoco. La pantalla se carga a demanda: se espera su h1 unos cuadros.
+// redirecciones (`replace` a otra ruta) tampoco (focoAlTitulo.ts espera el h1 de la pantalla, que se carga a demanda).
 function useFocoAlTitulo(pathname: string, clave: string) {
   const rutaPrevia = useRef(pathname);
   const clavePrevia = useRef(clave);
@@ -442,20 +443,6 @@ function useFocoAlTitulo(pathname: string, clave: string) {
     rutaPrevia.current = pathname;
     clavePrevia.current = clave;
     if (!mismaRuta && tipo === "REPLACE") return;
-    let cuadro = 0;
-    let intento = 0;
-    const buscar = () => {
-      const activo = document.activeElement;
-      if (activo && activo !== document.body) return;
-      const h1 = document.querySelector<HTMLElement>("#contenido h1:not([data-esqueleto])");
-      if (h1) {
-        h1.tabIndex = -1;
-        h1.focus({ preventScroll: true });
-        return;
-      }
-      if (++intento < 240) cuadro = requestAnimationFrame(buscar);
-    };
-    cuadro = requestAnimationFrame(buscar);
-    return () => cancelAnimationFrame(cuadro);
+    return enfocarElTitulo();
   }, [pathname, clave, tipo]);
 }

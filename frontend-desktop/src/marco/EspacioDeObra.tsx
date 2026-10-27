@@ -7,6 +7,7 @@ import type { CasosRespuesta } from "../api/tipos";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { ContextoAplicacion } from "../shell/contexto";
 import { ListaDeLaCarpeta } from "../shell/ListaDeLaCarpeta";
+import { enfocarElTitulo } from "./focoAlTitulo";
 import { RUTA_DE_PENDIENTES } from "./secciones";
 import { useObraDeLaRuta } from "./useObraDeLaRuta";
 import type { VigilanteDeObra } from "./otraPestana";
@@ -22,12 +23,16 @@ interface Props {
   vigilante?: VigilanteDeObra;
 }
 
-// Un aviso de pantalla completa con su h1 (el foco va a él al llegar, como con cualquier pantalla).
-function Aviso({ titulo, texto, children }: { titulo: string; texto: string; children: ReactNode }) {
+// Un aviso de pantalla completa con su h1 (el foco va a él al llegar, como con cualquier pantalla). Con `alerta`, el
+// texto se anuncia solo (role="alert"): un fallo debe oírse aunque el foco no se mueva (la carga inicial, un reintento
+// que vuelve a fallar, una respuesta que tarda).
+function Aviso({ titulo, texto, alerta = false, children }: { titulo: string; texto: string; alerta?: boolean; children: ReactNode }) {
   return (
     <div className="silice-pagina silice-obra-aviso">
       <h1 className="cds--type-heading-04">{titulo}</h1>
-      <p className="cds--type-body-compact-01">{texto}</p>
+      <p className="cds--type-body-compact-01" role={alerta ? "alert" : undefined}>
+        {texto}
+      </p>
       {children}
     </div>
   );
@@ -47,6 +52,15 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
     const [carpeta, obraId] = JSON.parse(clave) as [string | null, number];
     alEntrar(carpeta, obraId);
   }, [clave, alEntrar]);
+
+  // «Reintentar» quita su botón (la obra vuelve a «cargando») y la ruta no cambia, así que el marco no mueve el foco:
+  // cuando se sabe el resultado, pasa al h1 del aviso otra vez o al de la sección abierta.
+  const [reintentos, setReintentos] = useState(0);
+  const tipo = estado.tipo;
+  useEffect(() => {
+    if (reintentos === 0 || tipo === "cargando") return;
+    return enfocarElTitulo();
+  }, [reintentos, tipo]);
 
   switch (estado.tipo) {
     case "cargando":
@@ -72,8 +86,15 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
       );
     case "error":
       return (
-        <Aviso titulo="No se pudo abrir la obra" texto="Revise la conexión con Sílice y vuelva a intentarlo.">
-          <Button kind="tertiary" size="md" onClick={estado.reintentar}>
+        <Aviso titulo="No se pudo abrir la obra" texto="Revise la conexión con Sílice y vuelva a intentarlo." alerta>
+          <Button
+            kind="tertiary"
+            size="md"
+            onClick={() => {
+              setReintentos((n) => n + 1);
+              estado.reintentar();
+            }}
+          >
             Reintentar
           </Button>
         </Aviso>
