@@ -66,8 +66,11 @@ describe("AvisosDelTema", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  test("un servidor sin avisos en la respuesta o roto no dibuja nada ni falla", async () => {
-    fetchFalso.mockResolvedValueOnce(json(TEMA)).mockResolvedValueOnce(json({ avisos: "x" }));
+  test.each([
+    ["sin el campo de avisos", TEMA],
+    ["con avisos que no son una lista", { ...TEMA, avisos: "x" }],
+  ])("una respuesta %s no dibuja nada ni falla", async (_caso, cuerpo) => {
+    fetchFalso.mockResolvedValue(json(cuerpo));
     const { container } = montar();
     await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(1));
     expect(container).toBeEmptyDOMElement();
