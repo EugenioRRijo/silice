@@ -306,6 +306,55 @@ que aún no tienen sitio en el árbol (Histórico, Índices, Simulador…), para
   del primero; flechas mueven la selección (`role="listbox"`).
 - [ ] **Paso 2:** FALLA. **Paso 3:** implementar sobre `ComposedModal` de Carbon. **Paso 4:** PASA. **Paso 5: commit.**
 
+### Tarea 6b: «Nueva obra» crea donde estás (decisión de Eugenio, 2026-10-27)
+
+Eugenio decidió que «Nueva obra» **no pregunta la carpeta**: la obra se crea en el espacio donde está la persona,
+y para crearla en otro primero se entra en él. También decidió que el servidor cree la obra en esa carpeta **sin
+cambiar la carpeta de la sesión**. Esto reemplaza el selector de carpeta que añadió la Tarea 6 (54c10b40..7de3fad9).
+
+**Archivos:**
+- Modificar: `api/rutas/proyectos.py` (`POST /v1/proyectos` acepta `carpeta` opcional), lo que haga falta en
+  `aplicacion/` para abrir esa carpeta solo durante la petición, `shell/obras/DialogoNuevaObra.tsx`,
+  `marco/BarraLateral.tsx`, `docs/api.json`, `CHANGELOG.md`
+- Prueba: `tests/test_api_proyectos*.py` (la que ya cubre el POST), `shell/obras/NuevaObra.test.tsx`,
+  `marco/BarraLateral.test.tsx`
+
+**Reglas:**
+- «Donde estás» = la carpeta de la obra abierta en la ruta (`#/obra/<carpeta>/...`); sin obra en la ruta, la carpeta
+  abierta de la sesión. El diálogo la nombra en texto («Se creará en Carpeta Sur»), sin selector.
+- `POST /v1/proyectos` con `carpeta` distinta de la de la sesión exige `CAMBIAR_CASO` (403 sin él), valida el nombre
+  como las demás rutas de carpetas (nada de rutas armadas con la entrada; 422 sin eco si no existe) y **no** cambia la
+  carpeta de la sesión ni olvida borradores. Sin `carpeta`, el comportamiento actual.
+- Se retiran del diálogo el selector, la confirmación de salida, la vuelta atrás y el cambio de carpeta previos; se
+  borra lo que quede sin uso (`npm run muerto`). `hojasConCambios` se queda (la usa `useCarpetaDeTrabajo`).
+
+- [ ] **Paso 1: pruebas rojas**: API: crear en otra carpeta deja la sesión donde estaba y la obra en la otra; sin
+  `CAMBIAR_CASO` → 403; carpeta inexistente o con `..` → 422 sin eco. Front: con obra abierta en «Carpeta Sur.db» el
+  diálogo dice «Se creará en Carpeta Sur», no hay combobox y el POST lleva esa carpeta; ningún `POST /v1/casos/actual`.
+- [ ] **Paso 2:** FALLA. **Paso 3:** implementar. **Paso 4:** PASA (`uv run --active pytest` de los archivos tocados,
+  vitest de `marco/` y `shell/`, `npm run lint`, `npm run duplicado`, `npm run muerto`). **Paso 5: commit.**
+
+### Tarea 1b: Aviso de contraste del tema de la empresa (decisión de Eugenio, 2026-10-27)
+
+Eugenio pidió que Sílice avise cuando los colores del tema de la empresa (`data/tema/`) no tengan contraste
+suficiente. El tema se sigue aplicando (lo decide la empresa); el aviso es para quien lo configura.
+
+**Archivos:** `aplicacion/tema.py`, `api/rutas/tema.py`, `marco/tema.ts`, `docs/api.json`, `CHANGELOG.md`, y sus pruebas.
+
+**Reglas:**
+- Pares que se miden (WCAG 2.x, luminancia relativa): texto del marco sobre `marco` ≥ 4,5:1; `marco` sobre `acento`
+  (texto del botón «Nueva obra») ≥ 4,5:1; texto normal sobre `lateral` y sobre `lateral-activo` ≥ 4,5:1; borde
+  `--cds-border-strong-01` y `acento` (raya del activo) sobre su fondo ≥ 3:1.
+- El cálculo vive en un solo lado (servidor, `aplicacion/tema.py`) y `GET /v1/tema` devuelve `avisos: [texto]` en
+  español llano («El texto del botón Nueva obra no se lee bien sobre el color de acento: 2,1:1, hace falta 4,5:1»),
+  con coma decimal. El front solo lo muestra, a cuentas con permiso de administración, en Empresa (no en cada pantalla).
+- Oráculo de las pruebas: pares calculados a mano o de una fuente citada (p. ej. #777777 sobre blanco = 4,48:1).
+
+- [ ] **Paso 1: pruebas rojas** (servidor y front). **Paso 2:** FALLA. **Paso 3:** implementar. **Paso 4:** PASA.
+  **Paso 5: commit.**
+
+Orden: Tarea 7 → 6b → 1b → 8.
+
 ### Tarea 8: Montaje del marco y retiro de los módulos
 
 **Archivos:**
