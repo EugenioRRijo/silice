@@ -3,6 +3,9 @@
 Las pruebas suben y bajan hasta esta revisión con nombre (no hasta la cabeza); la anterior se lee
 de la propia revisión (`down_revision`), porque el orquestador la ajusta al integrar.
 
+Desde `caso_0018_mp_corte_tasa` el modelo trae cinco columnas más: que la tabla migrada sea la del
+modelo se prueba en `test_migracion_corte_tasa.py`.
+
 Oráculo: el DDL que fija el plan, escrito a mano: `mp_precio_corte` (`id`, `proyecto_id`,
 `descripcion_insumo`, `unidad`, `precio`, `moneda`, `fecha`, `fuente String(300)`, `responsable`,
 `fecha_hora`), ninguna columna admite nulo; solo inserción.
@@ -81,20 +84,6 @@ def test_subir_crea_la_tabla_con_las_columnas_del_plan(tmp_path: Path) -> None:
     assert leer_estado(ruta).revision == REVISION
     assert TABLA in _tablas(ruta)
     assert _columnas(ruta) == COLUMNAS
-
-
-def test_la_tabla_migrada_es_la_del_modelo(tmp_path: Path) -> None:
-    from aplicacion.tablas_corte import crear_esquema_corte
-
-    migrada = tmp_path / "migrada.db"
-    aplicar_revisiones(migrada, Destino.CASO, REVISION)
-    creada = tmp_path / "creada.db"
-    motor = create_engine(_url(creada))
-    try:
-        crear_esquema_corte(motor)
-    finally:
-        motor.dispose()
-    assert _instantanea(migrada) == _instantanea(creada)
 
 
 def test_bajar_a_la_anterior_quita_la_tabla_y_se_puede_volver_a_subir(tmp_path: Path) -> None:

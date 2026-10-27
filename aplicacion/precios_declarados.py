@@ -7,7 +7,12 @@ sin cargar un archivo en «Actualizar precios».
 
 - **Declarar** (`declarar_precio_del_corte`): el precio de un material de la línea base de la obra
   (la última declarada), desde una fecha, en la moneda de la obra, con su fuente, quién y cuándo
-  (`aplicacion/tablas_corte.py`, solo inserción).
+  (`aplicacion/tablas_corte.py`, solo inserción). Un precio en otra moneda que la obra no se
+  rechaza: se **convierte** con la tasa del BCV de su fecha (decisión de Eugenio del 2026-10-27,
+  Tarea D2) y la fila guarda el rastro (`Equivalencia`: original, tasa, su fecha y su fuente,
+  resultado). La tasa es la de `tasa_aplicable` (a lo sumo 7 días antes) y la aritmética la de
+  `core.catalog.moneda.convertir` (28 dígitos, mitad al par, sin redondear a centavos), las mismas
+  que usan la conversión de versiones y de listas; sin tasa, `SinTasaDelCorte` y nada se escribe.
 - **Leer** (`precios_declarados`): por partida de la línea base vigente al corte, su composición
   congelada con el precio de cada material sustituido por el último declarado con `fecha <= corte`
   (mismas descripción y unidad, y la moneda de la obra), calculada con los parámetros de esa
@@ -15,6 +20,8 @@ sin cargar un archivo en «Actualizar precios».
   (perspectiva precio). Una partida sin material declarado conserva su resultado de la línea base,
   así que su desvío de precio es exactamente cero. Sin ningún declarado que toque la línea base →
   `None`.
+- **Equivalencias** (`precios_convertidos`): los precios vigentes al corte que se convirtieron, con
+  su rastro, para que la pantalla del corte los muestre.
 
 `core/` no se toca: se usan `instantanea_control`, `calcular_apu` y `PreciosDelCorte` tal cual. Sin
 Streamlit ni FastAPI. Ninguna función confirma: escriben con `flush` y quien llama confirma.
@@ -24,7 +31,7 @@ demás `ValueError` son de programación.
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -41,15 +48,21 @@ from core.budget.moneda import moneda_del_proyecto
 from core.budget.valor_ganado import PERSPECTIVA_COSTO, PreciosDelCorte
 from core.budget.valuaciones import instantanea_control, linea_base_vigente
 from core.catalog import Catalogo
+from core.catalog.indices import TasaNoDisponible, tasa_aplicable
+from core.catalog.moneda import TasaDeclarada, convertir
 from core.contracts.unidades import normalizar_unidad
 from core.costing import calcular_apu
 
 __all__ = [
     "LARGO_FUENTE",
     "METODO",
+    "Equivalencia",
+    "PrecioConvertido",
     "ReglaDelCorte",
+    "SinTasaDelCorte",
     "declarar_desde_el_catalogo",
     "declarar_precio_del_corte",
+    "precios_convertidos",
     "precios_declarados",
 ]
 
@@ -63,6 +76,73 @@ Clave = tuple[str, str]
 
 class ReglaDelCorte(ValueError):  # noqa: N818 (identificadores en español, NORMAS.md §3)
     """Lo declarado no cumple una regla del precio del corte; el mensaje es el que ve la persona."""
+
+
+class SinTasaDelCorte(ReglaDelCorte):
+    """No hay tasa del BCV para la fecha del precio: no se puede convertir y nada se guarda."""
+
+
+@dataclass(frozen=True, slots=True)
+class Equivalencia:
+    """La cuenta de un precio convertido, reconstruible por quien revise: el precio original (monto
+    y moneda), la tasa (Bs por USD) con su fecha y su fuente, y el resultado en la moneda de la obra
+    (exacto: `core.catalog.moneda.convertir`, sin redondear)."""
+
+    precio_original: Decimal
+    moneda_original: str
+    tasa: Decimal
+    fecha_tasa: date
+    fuente_tasa: str
+    convertido: Decimal
+    moneda: str
+
+
+@dataclass(frozen=True, slots=True)
+class PrecioConvertido:
+    """Un precio del corte vigente que se declaró en otra moneda, con su equivalencia."""
+
+    descripcion: str
+    unidad: str
+    fecha: date
+    fuente: str
+    equivalencia: Equivalencia
+
+
+def _convertir(sesion: Session, precio: Decimal, de: str, a: str, fecha: date) -> Equivalencia:
+    """`precio` de `de` a `a` con la tasa del BCV de `fecha`; `SinTasaDelCorte` si no hay tasa."""
+    try:
+        tasa = TasaDeclarada.de_importacion(tasa_aplicable(sesion, fecha))
+    except TasaNoDisponible:
+        raise SinTasaDelCorte(
+            f"No hay tasa del BCV del {fecha:%d/%m/%Y} para convertir este precio a {a}. Cargue "
+            "la tasa en Índices y vuelva a intentarlo."
+        ) from None
+    return Equivalencia(
+        precio_original=precio,
+        moneda_original=de,
+        tasa=tasa.valor,
+        fecha_tasa=tasa.fecha,
+        fuente_tasa=tasa.fuente,
+        convertido=convertir(precio, de, a, tasa.valor),
+        moneda=a,
+    )
+
+
+def _equivalencia(fila: PrecioDelCorte) -> Equivalencia | None:
+    """La conversión que guardó la fila, o `None` si el precio ya estaba en la moneda de la obra."""
+    if fila.moneda_original is None:
+        return None
+    assert fila.precio_original is not None and fila.tasa is not None  # se guardan juntos
+    assert fila.fecha_tasa is not None and fila.fuente_tasa is not None
+    return Equivalencia(
+        precio_original=fila.precio_original,
+        moneda_original=fila.moneda_original,
+        tasa=fila.tasa,
+        fecha_tasa=fila.fecha_tasa,
+        fuente_tasa=fila.fuente_tasa,
+        convertido=fila.precio,
+        moneda=fila.moneda,
+    )
 
 
 def _unidad(texto: str) -> str:
@@ -108,12 +188,14 @@ def declarar_precio_del_corte(
     responsable: str,
     ahora: datetime,
     moneda: str | None = None,
-) -> None:
+) -> Equivalencia | None:
     """Declara `precio` como el precio del corte del material (`descripcion`, `unidad`) de la obra
     `proyecto` (código o nombre) desde `fecha`.
 
-    El precio queda en la moneda de la obra; `moneda`, si se da, es la del precio y debe ser esa
-    (`ReglaDelCorte`: no se convierte en silencio). `ReglaDelCorte` también con un precio que no es
+    El precio queda en la moneda de la obra. `moneda`, si se da, es la del precio: si es otra que la
+    de la obra, se convierte con la tasa del BCV de `fecha` (`SinTasaDelCorte`, que es una
+    `ReglaDelCorte`, si no hay tasa) y se devuelve su `Equivalencia`, que la fila también guarda;
+    si es la misma, o no se da, se devuelve `None`. `ReglaDelCorte` también con un precio que no es
     mayor que cero, una fecha posterior a `ahora`, la fuente vacía o de más de 300 caracteres, o una
     obra sin línea base; `NoExiste` si la obra no existe o su línea base no pide ese material. Si la
     base no tiene la tabla, la crea en la misma transacción. No confirma."""
@@ -134,11 +216,11 @@ def declarar_precio_del_corte(
         raise ReglaDelCorte(f"La fuente del precio admite hasta {LARGO_FUENTE} caracteres.")
     clave = _material(sesion, obra, descripcion, unidad)
     de_la_obra = moneda_del_proyecto(sesion, obra)
-    if moneda is not None and moneda != de_la_obra:
-        raise ReglaDelCorte(
-            f"El precio está en {moneda} y la obra «{obra.nombre}» en {de_la_obra}: no se puede "
-            "declarar como precio del corte."
-        )
+    equivalencia = (
+        None
+        if moneda is None or moneda == de_la_obra
+        else _convertir(sesion, precio, moneda, de_la_obra, fecha)
+    )
     if not hay_tabla_corte(sesion):
         crear_esquema_corte(sesion.connection())
     sesion.add(
@@ -146,15 +228,21 @@ def declarar_precio_del_corte(
             proyecto_id=obra.id,
             descripcion_insumo=clave[0],
             unidad=clave[1],
-            precio=precio,
+            precio=precio if equivalencia is None else equivalencia.convertido,
             moneda=de_la_obra,
             fecha=fecha,
             fuente=fuente,
             responsable=responsable,
             fecha_hora=ahora,
+            moneda_original=None if equivalencia is None else equivalencia.moneda_original,
+            precio_original=None if equivalencia is None else equivalencia.precio_original,
+            tasa=None if equivalencia is None else equivalencia.tasa,
+            fecha_tasa=None if equivalencia is None else equivalencia.fecha_tasa,
+            fuente_tasa=None if equivalencia is None else equivalencia.fuente_tasa,
         )
     )
     sesion.flush()
+    return equivalencia
 
 
 def declarar_desde_el_catalogo(
@@ -168,15 +256,16 @@ def declarar_desde_el_catalogo(
     responsable: str,
     ahora: datetime,
     moneda: str | None = None,
-) -> str:
+) -> tuple[str, Equivalencia | None]:
     """`declarar_precio_del_corte` con el material nombrado por su código del catálogo (el estudio
-    de mercado); devuelve la frase que lo confirma. `NoExiste` si el código no es de un insumo."""
+    de mercado); devuelve la frase que lo confirma y la equivalencia si el precio se convirtió.
+    `NoExiste` si el código no es de un insumo."""
     insumo = sesion.scalars(
         select(models.Insumo).where(models.Insumo.codigo == codigo_insumo)
     ).one_or_none()
     if insumo is None:
         raise NoExiste(f"No hay ningún insumo «{codigo_insumo}» en el catálogo.")
-    declarar_precio_del_corte(
+    equivalencia = declarar_precio_del_corte(
         sesion,
         proyecto,
         descripcion=insumo.descripcion,
@@ -189,11 +278,14 @@ def declarar_desde_el_catalogo(
         moneda=moneda,
     )
     obra = _obra(sesion, proyecto)
-    return f"Declarado precio del corte de la obra «{obra.nombre}» desde el {fecha:%d/%m/%Y}."
+    frase = f"Declarado precio del corte de la obra «{obra.nombre}» desde el {fecha:%d/%m/%Y}."
+    return frase, equivalencia
 
 
-def _ultimos(sesion: Session, proyecto_id: int, corte: date, moneda: str) -> dict[Clave, Decimal]:
-    """El último precio declarado hasta `corte` de cada material de la obra en `moneda` (por fecha
+def _filas_ultimas(
+    sesion: Session, proyecto_id: int, corte: date, moneda: str
+) -> dict[Clave, PrecioDelCorte]:
+    """La última fila declarada hasta `corte` de cada material de la obra en `moneda` (por fecha
     y, el mismo día, por orden de registro)."""
     filas = sesion.scalars(
         select(PrecioDelCorte)
@@ -204,7 +296,37 @@ def _ultimos(sesion: Session, proyecto_id: int, corte: date, moneda: str) -> dic
         )
         .order_by(PrecioDelCorte.fecha, PrecioDelCorte.id)
     )
-    return {(fila.descripcion_insumo, _unidad(fila.unidad)): fila.precio for fila in filas}
+    return {(fila.descripcion_insumo, _unidad(fila.unidad)): fila for fila in filas}
+
+
+def _ultimos(sesion: Session, proyecto_id: int, corte: date, moneda: str) -> dict[Clave, Decimal]:
+    """El último precio declarado hasta `corte` de cada material de la obra en `moneda`."""
+    ultimas = _filas_ultimas(sesion, proyecto_id, corte, moneda)
+    return {clave: fila.precio for clave, fila in ultimas.items()}
+
+
+def precios_convertidos(sesion: Session, proyecto: str, corte: date) -> list[PrecioConvertido]:
+    """Los precios del corte vigentes a `corte` (el último de cada material) que se declararon en
+    otra moneda que la obra, con su equivalencia, por descripción. Es lo que la pantalla del corte
+    muestra para que quien revise reconstruya la cuenta. `NoExiste` si la obra no existe."""
+    obra = _obra(sesion, proyecto)
+    if not hay_tabla_corte(sesion):
+        return []
+    ultimas = _filas_ultimas(sesion, obra.id, corte, moneda_del_proyecto(sesion, obra))
+    convertidos = []
+    for fila in ultimas.values():
+        equivalencia = _equivalencia(fila)
+        if equivalencia is not None:
+            convertidos.append(
+                PrecioConvertido(
+                    descripcion=fila.descripcion_insumo,
+                    unidad=fila.unidad,
+                    fecha=fila.fecha,
+                    fuente=fila.fuente,
+                    equivalencia=equivalencia,
+                )
+            )
+    return sorted(convertidos, key=lambda c: (c.descripcion, c.unidad))
 
 
 def precios_declarados(

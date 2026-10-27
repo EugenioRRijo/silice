@@ -5,6 +5,8 @@ obra (desde el estudio de mercado o al recibir una compra) y arma con él los pr
 control: por partida de la línea base, su composición congelada con el precio de cada material
 sustituido por el último declarado hasta el corte, calculada con los parámetros de esa versión.
 
+Un precio en otra moneda ya no se rechaza: se convierte (`test_precios_declarados_convertidos.py`).
+
 Oráculos de la memoria de OB-S2 (`tests/fixtures/memorias/control_ob_s2.md`), escritos a mano y
 ninguno sacado del código bajo prueba: el material de B pasa de 3,00 a 4,00 (1 m por m de tubería:
 `u'` de B = 5 + (4 − 3) × 1 = 6,00) y el de C de 12,00 a 14,10 (1 m3 por m3: 20 + 2,10 = 22,10); A
@@ -209,11 +211,6 @@ def test_la_declaracion_queda_con_quien_cuando_la_fuente_y_la_moneda_de_la_obra(
         ({"fecha": date(2026, 11, 21)}, "La fecha del precio no puede ser posterior a hoy."),
         ({"fuente": "  "}, "Diga de dónde sale el precio (la fuente)."),
         ({"fuente": "x" * 301}, "La fuente del precio admite hasta 300 caracteres."),
-        (
-            {"moneda": "Bs"},
-            "El precio está en Bs y la obra «OB-S2» en USD: no se puede declarar como precio "
-            "del corte.",
-        ),
     ],
 )
 def test_una_regla_rota_no_guarda_nada(obra, cambio: dict, mensaje: str) -> None:

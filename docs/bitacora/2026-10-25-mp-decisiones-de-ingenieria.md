@@ -489,7 +489,11 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    sobre una base de caso con OB-S2: 73 filas ajenas antes y después de bajar y volver a subir).
 2. **El material se nombra por descripción y unidad** (normalizada) de la composición congelada de la línea base; solo
    materiales (los de la explosión de la procura). Manda el último declarado con `fecha <= corte` (mismo día: el último
-   registrado), en la moneda de la obra; uno en otra moneda se rechaza (409), no se convierte.
+   registrado), en la moneda de la obra.
+   **Cambiado el 2026-10-27 (Tarea D2):** por decisión de Eugenio («si llega una moneda distinta se hace la equivalencia»)
+   el 409 por otra moneda deja de existir: el precio se **convierte** con la tasa del BCV de su fecha (la declarada; en
+   Procura, la de llegada) y la fila guarda el rastro (original, tasa, fecha y fuente de la tasa, resultado) en la
+   migración `caso_0018_mp_corte_tasa`. Solo sin tasa en los 7 días previos hay 409 y no se guarda nada.
 3. **Unitarios del corte:** la partida que usa un material declarado se recalcula con `calcular_apu` del núcleo y los
    parámetros de su versión; las demás conservan su resultado de la línea base (desvío de precio exactamente cero).
    Ningún precio de una versión sellada cambia (prueba de guarda en las dos casillas).

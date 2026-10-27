@@ -11,11 +11,13 @@ sesión (`SesionDep`); las que escriben van con `BEGIN IMMEDIATE` y confirman aq
   `proyecto` (código o nombre de la obra abierta) da los parámetros del piso.
 - `POST /observaciones` → 201 `{id}`; `POST /observaciones/{id}/anular` → 200 `{id, anulada_por}`.
 - `GET /compra/{codigo}/afectados` → `{apus}` (lo que se muestra antes de «Usar este precio»).
-- `POST /compra/{codigo}/usar` `{precio, observacion_id, declarar_en}` → 200 `{lista, corte}` (el
-  nombre de la lista). Con `declarar_en` (el código o el nombre de una obra), el precio queda además
-  como precio del corte de ese material en la obra desde hoy (MP-7, Tarea 25), en la misma
-  transacción: si no se puede declarar, tampoco cambia la lista; `corte` es la frase que lo confirma
-  (`null` sin `declarar_en`).
+- `POST /compra/{codigo}/usar` `{precio, observacion_id, declarar_en}` → 200 `{lista, corte,
+  equivalencia}` (el nombre de la lista). Con `declarar_en` (el código o el nombre de una obra), el
+  precio queda además como precio del corte de ese material en la obra desde hoy (MP-7, Tarea 25),
+  en la misma transacción: si no se puede declarar, tampoco cambia la lista; `corte` es la frase que
+  lo confirma (`null` sin `declarar_en`). Si la obra trabaja en la otra moneda, el precio se
+  convierte con la tasa del BCV de hoy (Tarea D2) y `equivalencia` trae la cuenta; sin esa tasa, 409
+  y no cambia nada.
 - `POST /cobro/{codigo}/usar` `{precio, observaciones}` → 200 `{codigo, precio, moneda}`.
 - `GET /objetivos?partidas=A,B&pu=A:2074.44,B:30&moneda=Bs` → `{objetivos: [{codigo, precio, moneda,
   margen}]}`. `pu` son los precios unitarios que la Hoja ya tiene (con utilidad, sin IVA; decimal
@@ -30,8 +32,9 @@ fuera de 1 a 3.650 días) es un mensaje fijo que no repite lo enviado; el 422 de
 más de 2 decimales, observación ajena o de otra moneda) lleva el mensaje de `aplicacion.mercado`, y
 cualquier otro `ValueError` un texto fijo; 404 lo que no existe (también la obra de `declarar_en` o
 un material que no está en su línea base); 409 sin moneda, sin lista para armar, una partida cuyo
-costo no se puede calcular, una observación ya anulada o un precio del corte que la obra no admite
-(sin línea base o en otra moneda); 503 fijo ante un fallo de la base.
+costo no se puede calcular, una observación ya anulada, un precio del corte que la obra no admite
+(sin línea base) o sin tasa del BCV para convertirlo a la moneda de la obra; 503 fijo ante un
+fallo de la base.
 `Cache-Control: no-store` en toda respuesta. Quien escribe consta como la cuenta de la sesión (o
 `USUARIO_API` con la clave). Montos como texto con punto decimal, nunca como número.
 """
@@ -49,6 +52,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import USUARIO_API, SesionDeEscrituraDep, SesionDep
+from api.esquemas_corte import EquivalenciaRespuesta, equivalencia_a_respuesta
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
@@ -195,6 +199,13 @@ class UsarCompraRespuesta(BaseModel):
     lista: str
     corte: str | None = Field(
         default=None, description="La frase que confirma el precio del corte declarado, si se pidió"
+    )
+    equivalencia: EquivalenciaRespuesta | None = Field(
+        default=None,
+        description=(
+            "Si el precio del corte se convirtió a la moneda de la obra con la tasa del BCV: el "
+            "precio original, la tasa con su fecha y fuente, y el resultado"
+        ),
     )
 
 
@@ -483,10 +494,11 @@ def usar_compra(
             fecha=momento.date(),
             responsable=responsable,
         )
-        corte = None
+        corte = equivalencia = None
         if datos.declarar_en is not None:
-            # El precio ya pasó las reglas del estudio de mercado; está en la moneda de la lista.
-            corte = declarar_desde_el_catalogo(
+            # El precio ya pasó las reglas del estudio de mercado; está en la moneda de la lista. Si
+            # la obra trabaja en la otra, se convierte con la tasa del BCV de hoy (o es un 409).
+            corte, convertido = declarar_desde_el_catalogo(
                 sesion,
                 datos.declarar_en,
                 codigo,
@@ -501,7 +513,9 @@ def usar_compra(
                 ahora=momento,
                 moneda=lista.moneda,
             )
-        respuesta = UsarCompraRespuesta(lista=lista.nombre, corte=corte)
+            if convertido is not None:
+                equivalencia = equivalencia_a_respuesta(convertido)
+        respuesta = UsarCompraRespuesta(lista=lista.nombre, corte=corte, equivalencia=equivalencia)
         sesion.commit()
         return respuesta
 

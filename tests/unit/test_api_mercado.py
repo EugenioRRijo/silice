@@ -415,7 +415,7 @@ def test_usar_un_precio_de_compra_lo_pone_en_la_lista_de_hoy(ana, caso: Path) ->
         headers=cabeceras,
     )
     assert respuesta.status_code == 200, respuesta.text
-    assert respuesta.json() == {"lista": LISTA_DE_HOY, "corte": None}
+    assert respuesta.json() == {"lista": LISTA_DE_HOY, "corte": None, "equivalencia": None}
     _sin_cache(respuesta)
     assert _precio(caso, LISTA_DE_HOY, "MAT-001") == Decimal("20.00")
     assert _precio(caso, LISTA, "MAT-001") == Decimal("18.00")
@@ -430,7 +430,7 @@ def test_con_una_version_sobre_la_lista_de_hoy_se_crea_otra_y_la_version_no_camb
         json={"precio": "20,00", "observacion_id": None},
         headers=cabeceras,
     )
-    assert primera.json() == {"lista": LISTA_DE_HOY, "corte": None}
+    assert primera.json() == {"lista": LISTA_DE_HOY, "corte": None, "equivalencia": None}
 
     def version_sobre_la_lista_de_hoy(s) -> int:
         lista = s.scalars(
@@ -459,7 +459,7 @@ def test_con_una_version_sobre_la_lista_de_hoy_se_crea_otra_y_la_version_no_camb
         headers=cabeceras,
     )
     assert segunda.status_code == 200, segunda.text
-    assert segunda.json() == {"lista": f"{LISTA_DE_HOY} (2)", "corte": None}
+    assert segunda.json() == {"lista": f"{LISTA_DE_HOY} (2)", "corte": None, "equivalencia": None}
     assert _precio(caso, f"{LISTA_DE_HOY} (2)", "MAT-001") == Decimal("22.00")
     assert _precio(caso, LISTA_DE_HOY, "MAT-001") == Decimal("20.00")
 

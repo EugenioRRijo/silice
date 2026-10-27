@@ -44,7 +44,7 @@ D = Decimal
 TUBO = "Material de Tuberia de drenaje"
 AHORA = datetime(2026, 11, 20, 8, 0)
 QUIEN = "Ana <ana>"
-FUENTE_TASA = "https://www.bcv.org.ve/"
+FUENTE_TASA = "importacion:1"  # la única importación de tasas de la base
 DIA_DE_LA_TASA = date(2026, 11, 10)
 
 

@@ -1,14 +1,18 @@
 """Los precios del corte declarados por material (MP-7, Tarea 25; diseño de montar un presupuesto
 §11, meta 4).
 
-Vive en la base del caso (revisión `caso_0017_mp_corte`): el precio de una obra es dato de la
-empresa y se queda en su carpeta de trabajo. `MetaData` propia, sin clave foránea a `core.models`
-(como `paquete/modelo.py`); el precio con `DecimalExacto` (texto, nunca `float`).
+Vive en la base del caso (revisiones `caso_0017_mp_corte` y `caso_0018_mp_corte_tasa`): el precio
+de una obra es dato de la empresa y se queda en su carpeta de trabajo. `MetaData` propia, sin
+clave foránea a `core.models` (como `paquete/modelo.py`); el precio con `DecimalExacto` (texto,
+nunca `float`).
 
 - `mp_precio_corte`: el precio que la persona declaró para un material de una obra a una fecha
   (desde el estudio de mercado o al recibir una compra), en la moneda de la obra, con su fuente,
   quién y cuándo. **Solo inserción**: un precio nuevo es otra fila; al leer manda el último hasta
-  el corte.
+  el corte. `precio` y `moneda` son lo que el control usa. Si la persona lo declaró en otra moneda
+  que la obra, se convirtió con la tasa del BCV de su fecha (Tarea D2) y la fila guarda además el
+  rastro: `moneda_original`, `precio_original`, `tasa` (Bs por USD), `fecha_tasa` y `fuente_tasa`
+  (nulos si no hubo conversión).
 
 El material se nombra por su descripción y su unidad, las de la composición congelada de la línea
 base (`linea_composicion_version`). Una base que todavía no tiene la tabla (creada con
@@ -59,6 +63,11 @@ class PrecioDelCorte(Base):
     fuente: Mapped[str] = mapped_column(String(300), nullable=False)
     responsable: Mapped[str] = mapped_column(String(200), nullable=False)
     fecha_hora: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    moneda_original: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    precio_original: Mapped[Decimal | None] = mapped_column(DecimalExacto, nullable=True)
+    tasa: Mapped[Decimal | None] = mapped_column(DecimalExacto, nullable=True)
+    fecha_tasa: Mapped[date | None] = mapped_column(Date, nullable=True)
+    fuente_tasa: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
 
 def crear_esquema_corte(destino: Engine | Connection) -> None:

@@ -38,6 +38,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import USUARIO_API, SesionDeEscrituraDep, SesionDep
+from api.esquemas_corte import EquivalenciaRespuesta, equivalencia_a_respuesta
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
@@ -151,6 +152,17 @@ class CompraNueva(BaseModel):
     )
 
 
+class CompraRegistrada(BaseModel):
+    equivalencia: EquivalenciaRespuesta | None = Field(
+        default=None,
+        description=(
+            "Si el precio de la recepción se declaró como precio del corte en otra moneda que la "
+            "obra: la conversión con la tasa del BCV de la fecha de llegada (original, tasa con su "
+            "fecha y fuente, resultado). Si no hubo conversión, null."
+        ),
+    )
+
+
 class PlazoNuevo(BaseModel):
     proyecto: Obra
     descripcion: Descripcion
@@ -230,12 +242,13 @@ def leer_procura(
     return _traducir(leer)
 
 
-@router.post("/compras", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
-def registrar(sesion: SesionDeEscrituraDep, datos: CompraNueva, activa: Activa) -> Response:
+@router.post("/compras", response_model=CompraRegistrada)
+def registrar(sesion: SesionDeEscrituraDep, datos: CompraNueva, activa: Activa) -> CompraRegistrada:
     """Anota un pedido o una recepción de un material de la obra (y, con la casilla, declara su
-    precio del corte)."""
+    precio del corte; si la obra trabaja en la otra moneda, lo convierte con la tasa del BCV de la
+    fecha de llegada o da 409 sin guardar nada)."""
 
-    def escribir() -> None:
+    def escribir() -> CompraRegistrada:
         if datos.declarar_corte and datos.evento != "recibida":
             raise ReglaDeProcura(MENSAJE_CORTE_EN_PEDIDO)
         if datos.declarar_corte and not datos.precio.strip():
@@ -254,10 +267,11 @@ def registrar(sesion: SesionDeEscrituraDep, datos: CompraNueva, activa: Activa) 
             responsable=responsable,
             ahora=momento,
         )
+        equivalencia = None
         if datos.declarar_corte:
-            # La compra ya pasó sus reglas: el precio es positivo, la fecha no es posterior a hoy y
-            # está en la moneda de la carpeta, que debe ser la de la obra (no se convierte).
-            declarar_precio_del_corte(
+            # La compra ya pasó sus reglas: el precio es positivo y la fecha no es posterior a hoy.
+            # Está en la moneda de la carpeta; si la obra trabaja en la otra, se convierte.
+            convertido = declarar_precio_del_corte(
                 sesion,
                 datos.proyecto,
                 descripcion=datos.descripcion,
@@ -269,10 +283,13 @@ def registrar(sesion: SesionDeEscrituraDep, datos: CompraNueva, activa: Activa) 
                 ahora=momento,
                 moneda=moneda_de_la_carpeta(sesion, momento.date()),
             )
+            if convertido is not None:
+                equivalencia = equivalencia_a_respuesta(convertido)
+        respuesta = CompraRegistrada(equivalencia=equivalencia)
         sesion.commit()
+        return respuesta
 
-    _traducir(escribir)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return _traducir(escribir)
 
 
 @router.put("/plazos", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)

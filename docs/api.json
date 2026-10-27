@@ -9239,7 +9239,7 @@
           "procura"
         ],
         "summary": "Registrar",
-        "description": "Anota un pedido o una recepción de un material de la obra (y, con la casilla, declara su\nprecio del corte).",
+        "description": "Anota un pedido o una recepción de un material de la obra (y, con la casilla, declara su\nprecio del corte; si la obra trabaja en la otra moneda, lo convierte con la tasa del BCV de la\nfecha de llegada o da 409 sin guardar nada).",
         "operationId": "registrar_v1_procura_compras_post",
         "requestBody": {
           "content": {
@@ -9252,8 +9252,15 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "Successful Response"
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompraRegistrada"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -13515,6 +13522,23 @@
         ],
         "title": "CompraNueva"
       },
+      "CompraRegistrada": {
+        "properties": {
+          "equivalencia": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EquivalenciaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Si el precio de la recepción se declaró como precio del corte en otra moneda que la obra: la conversión con la tasa del BCV de la fecha de llegada (original, tasa con su fecha y fuente, resultado). Si no hubo conversión, null."
+          }
+        },
+        "type": "object",
+        "title": "CompraRegistrada"
+      },
       "Configuracion": {
         "properties": {
           "activo": {
@@ -15081,6 +15105,60 @@
           "mensaje"
         ],
         "title": "Equilibrio"
+      },
+      "EquivalenciaRespuesta": {
+        "properties": {
+          "precio_original": {
+            "type": "string",
+            "title": "Precio Original",
+            "description": "El precio tal como se declaró, exacto"
+          },
+          "moneda_original": {
+            "type": "string",
+            "title": "Moneda Original"
+          },
+          "tasa": {
+            "type": "string",
+            "title": "Tasa",
+            "description": "Bs por USD, exacta"
+          },
+          "fecha_tasa": {
+            "type": "string",
+            "title": "Fecha Tasa",
+            "description": "aaaa-mm-dd: la fecha valor de la tasa usada"
+          },
+          "fuente_tasa": {
+            "type": "string",
+            "title": "Fuente Tasa"
+          },
+          "convertido": {
+            "type": "string",
+            "title": "Convertido",
+            "description": "El resultado en la moneda de la obra, exacto"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda",
+            "description": "La moneda del resultado (la de la obra)"
+          },
+          "operacion": {
+            "type": "string",
+            "title": "Operacion",
+            "description": "«×» si se multiplicó por la tasa (USD a Bs); «÷» si no"
+          }
+        },
+        "type": "object",
+        "required": [
+          "precio_original",
+          "moneda_original",
+          "tasa",
+          "fecha_tasa",
+          "fuente_tasa",
+          "convertido",
+          "moneda",
+          "operacion"
+        ],
+        "title": "EquivalenciaRespuesta"
       },
       "EscenarioPeticion": {
         "properties": {
@@ -20079,6 +20157,40 @@
         ],
         "title": "PrecargaRespuesta"
       },
+      "PrecioConvertidoRespuesta": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha",
+            "description": "aaaa-mm-dd: desde cuándo rige el precio"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "equivalencia": {
+            "$ref": "#/components/schemas/EquivalenciaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion",
+          "unidad",
+          "fecha",
+          "fuente",
+          "equivalencia"
+        ],
+        "title": "PrecioConvertidoRespuesta",
+        "description": "Un precio del corte vigente que se declaró en otra moneda que la obra, con su cuenta."
+      },
       "Precios": {
         "properties": {
           "metodo": {
@@ -23193,6 +23305,17 @@
             ],
             "title": "Corte",
             "description": "La frase que confirma el precio del corte declarado, si se pidió"
+          },
+          "equivalencia": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EquivalenciaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Si el precio del corte se convirtió a la moneda de la obra con la tasa del BCV: el precio original, la tasa con su fecha y fuente, y el resultado"
           }
         },
         "type": "object",
@@ -24539,6 +24662,14 @@
             },
             "type": "array",
             "title": "Atrasos"
+          },
+          "precios_convertidos": {
+            "items": {
+              "$ref": "#/components/schemas/PrecioConvertidoRespuesta"
+            },
+            "type": "array",
+            "title": "Precios Convertidos",
+            "description": "Con `metodo=declarados`, los precios del corte vigentes que se convirtieron de otra moneda con la tasa del BCV, con su cuenta; vacío con otro método"
           }
         },
         "type": "object",

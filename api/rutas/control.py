@@ -42,11 +42,13 @@ from sqlalchemy.orm import Session
 
 from api.archivos import guardar_subida
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
+from api.esquemas_corte import EquivalenciaRespuesta, equivalencia_a_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
 from aplicacion import control as logica
 from aplicacion.causas import CAUSAS, atrasos
+from aplicacion.precios_declarados import precios_convertidos
 from aplicacion.proyectos import resolver_proyecto
 from core.budget.control import ResultadoControl
 from core.catalog import Catalogo
@@ -494,6 +496,16 @@ class AtrasoRespuesta(BaseModel):
     texto: str
 
 
+class PrecioConvertidoRespuesta(BaseModel):
+    """Un precio del corte vigente que se declaró en otra moneda que la obra, con su cuenta."""
+
+    descripcion: str
+    unidad: str
+    fecha: str = Field(description="aaaa-mm-dd: desde cuándo rige el precio")
+    fuente: str
+    equivalencia: EquivalenciaRespuesta
+
+
 class CalculoRespuesta(BaseModel):
     estado: str
     corte: str | None = None
@@ -513,6 +525,13 @@ class CalculoRespuesta(BaseModel):
     decisiones: list[Fila] = Field(default_factory=list)
     versiones_revaloradas: list[str] = Field(default_factory=list)
     atrasos: list[AtrasoRespuesta] = Field(default_factory=list)
+    precios_convertidos: list[PrecioConvertidoRespuesta] = Field(
+        default_factory=list,
+        description=(
+            "Con `metodo=declarados`, los precios del corte vigentes que se convirtieron de otra "
+            "moneda con la tasa del BCV, con su cuenta; vacío con otro método"
+        ),
+    )
 
 
 def _texto(valor: object) -> str:
@@ -588,6 +607,20 @@ def calculo(
         atrasos=[
             AtrasoRespuesta(codigo=a.codigo, dias=a.dias, causa=a.causa, texto=a.texto)
             for a in atrasos(sesion, resultado)
+        ],
+        precios_convertidos=[
+            PrecioConvertidoRespuesta(
+                descripcion=c.descripcion,
+                unidad=c.unidad,
+                fecha=c.fecha.isoformat(),
+                fuente=c.fuente,
+                equivalencia=equivalencia_a_respuesta(c.equivalencia),
+            )
+            for c in (
+                precios_convertidos(sesion, proyecto, resultado.instantanea.corte)
+                if metodo == "declarados"
+                else []
+            )
         ],
     )
 

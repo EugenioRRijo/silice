@@ -471,7 +471,7 @@ EQUIVALENCIA = {
     "moneda_original": "Bs",
     "tasa": "36.50",
     "fecha_tasa": "2026-11-10",
-    "fuente_tasa": "https://www.bcv.org.ve/",
+    "fuente_tasa": "importacion:1",
     "convertido": "4",
     "moneda": "USD",
     "operacion": "÷",
