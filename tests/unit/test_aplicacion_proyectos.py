@@ -173,3 +173,21 @@ def test_sin_moneda_el_proyecto_no_declara_ninguna(base):
             assert not sesion.scalars(select(models.MonedaProyecto)).all()
     finally:
         motor.dispose()
+
+
+def test_obras_de_las_carpetas_trae_la_version_vigente_y_ordena(tmp_path):
+    """Rediseño del marco, Tarea 3: la carpeta de la empresa (`None`) va primero; luego las demás
+    por nombre; la obra con presupuesto trae el código de su versión vigente."""
+    con_version = tmp_path / "con_version.db"
+    guardar_base_con_pendiente(con_version)
+    vacia = tmp_path / "vacia.db"
+    vacia.write_bytes(con_version.read_bytes())
+    vigente = proyectos.version_vigente(con_version, NOMBRE_PROYECTO)
+    assert vigente is not None
+
+    filas = proyectos.obras_de_las_carpetas([("con_version.db", con_version), (None, vacia)])
+
+    assert [(f.carpeta, f.obra, f.version_codigo) for f in filas] == [
+        (None, NOMBRE_PROYECTO, vigente.codigo),
+        ("con_version.db", NOMBRE_PROYECTO, vigente.codigo),
+    ]

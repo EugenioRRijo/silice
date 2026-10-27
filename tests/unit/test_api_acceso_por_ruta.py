@@ -160,6 +160,7 @@ TABLA = {
     # MOD-4a: la mesa de control (inicio de Presupuestos y obras)
     ("GET", "/v1/obras/resumen"): LEER,
     ("GET", "/v1/obras/pendientes"): EDITAR,
+    ("GET", "/v1/obras/todas"): LEER,  # rediseño del marco, T3; con la clave, solo el proceso
     ("GET", "/v1/mercado/{lado}/{codigo}"): EDITAR,  # T14: estudio de mercado
     ("POST", "/v1/mercado/observaciones"): EDITAR,
     ("POST", "/v1/mercado/observaciones/{observacion_id}/anular"): EDITAR,
