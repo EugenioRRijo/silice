@@ -312,6 +312,20 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
     });
   });
 
+  test("el precio deja de llamarse «opcional» mientras la casilla está marcada y lo vuelve a ser al desmarcarla", async () => {
+    const u = montar();
+    const tabla = await abrirProcura(u);
+    await u.click(within(tabla).getByRole("button", { name: "Recibida…: Cemento gris (saco)" }));
+    const dialogo = screen.getByRole("dialog", { name: "Recepción de Cemento gris" });
+    const casilla = within(dialogo).getByRole("checkbox", { name: "Declararlo precio del corte" });
+    expect(within(dialogo).getByLabelText("Precio unitario (por saco, opcional)")).toBeInTheDocument();
+    await u.click(casilla);
+    expect(within(dialogo).getByLabelText("Precio unitario (por saco)")).toBeInTheDocument();
+    expect(within(dialogo).queryByLabelText(/Precio unitario.*opcional/)).toBeNull();
+    await u.click(casilla);
+    expect(within(dialogo).getByLabelText("Precio unitario (por saco, opcional)")).toBeInTheDocument();
+  });
+
   test("con la casilla marcada y sin precio, se pide el precio en su campo y no se envía", async () => {
     const u = montar();
     const tabla = await abrirProcura(u);
@@ -319,7 +333,7 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
     const dialogo = screen.getByRole("dialog", { name: "Recepción de Cemento gris" });
     await u.click(within(dialogo).getByRole("checkbox", { name: "Declararlo precio del corte" }));
     await u.click(within(dialogo).getByRole("button", { name: "Anotar recepción" }));
-    const precio = within(dialogo).getByLabelText("Precio unitario (por saco, opcional)");
+    const precio = within(dialogo).getByLabelText("Precio unitario (por saco)");
     expect(
       await within(dialogo).findByText("El precio unitario hace falta para declararlo precio del corte."),
     ).toBeInTheDocument();
@@ -498,6 +512,25 @@ describe("Valuaciones: la causa que sugiere la procura (Tarea 24)", () => {
       ["OBRA-02", "compra_tardia"],
       ["OBRA-01", null],
     ]);
+  });
+
+  test("al cambiar el «hasta» la causa sugerida se queda mientras la procura recarga", async () => {
+    const u = montar();
+    await abrirValuaciones(u);
+    await u.type(screen.getByLabelText("Partida 1"), "OBRA-02");
+    const causa = screen.getByRole("combobox", { name: "Causa del retraso 1" });
+    await waitFor(() => expect(causa).toHaveValue("compra_tardia"));
+    // De aquí en adelante la procura no contesta: la lista nueva nunca llega.
+    const respondeBien = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation((entrada, init) =>
+      String(entrada).startsWith("/v1/procura?") ? new Promise<Response>(() => undefined) : respondeBien(entrada, init),
+    );
+    await u.type(screen.getByLabelText("Período hasta"), "2026-11-13");
+    await waitFor(() =>
+      expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("corte=2026-11-13"))).toBe(true),
+    );
+    expect(causa).toHaveValue("compra_tardia");
+    expect(screen.getByText("Sugerida por la procura: un material de esta partida llegó tarde. Puede cambiarla.")).toBeInTheDocument();
   });
 
   test("la persona puede cambiar la causa sugerida, también a «Sin causa», y vale lo que eligió", async () => {
