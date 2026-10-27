@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorDeApi, pedir } from "../api/cliente";
-import { aplicarTema, type TemaRespuesta } from "./tema";
+import { aplicarTema, leerTema, type TemaRespuesta } from "./tema";
 import { useTema } from "./useTema";
 
 vi.mock("../api/cliente", async (importarOriginal) => ({
@@ -10,7 +10,7 @@ vi.mock("../api/cliente", async (importarOriginal) => ({
 }));
 
 // Colores inventados: ningun valor de una empresa real vive en el repositorio.
-const NEUTRO: TemaRespuesta = { acento: null, marco: null, lateral: null, tiene_logo: false };
+const NEUTRO: TemaRespuesta = { acento: null, marco: null, lateral: null, tiene_logo: false, avisos: [] };
 
 describe("aplicarTema", () => {
   let raiz: HTMLElement;
@@ -35,6 +35,18 @@ describe("aplicarTema", () => {
     expect(raiz.style.getPropertyValue("--silice-acento")).toBe("#111111");
     expect(raiz.style.getPropertyValue("--silice-marco")).toBe("#222222");
     expect(raiz.style.getPropertyValue("--silice-lateral")).toBe("#AbCdEf");
+  });
+});
+
+describe("leerTema: avisos", () => {
+  it("conserva los textos de aviso y descarta lo que no es texto", () => {
+    expect(leerTema({ avisos: ["a", 3, null, "b"] }).avisos).toEqual(["a", "b"]);
+  });
+
+  it("sin avisos, o con otra forma, quedan en una lista vacia", () => {
+    expect(leerTema({}).avisos).toEqual([]);
+    expect(leerTema({ avisos: "texto" }).avisos).toEqual([]);
+    expect(leerTema(null).avisos).toEqual([]);
   });
 });
 

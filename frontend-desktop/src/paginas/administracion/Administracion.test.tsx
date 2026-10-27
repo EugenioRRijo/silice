@@ -13,6 +13,7 @@ function json(cuerpo: unknown, estado = 200): Response {
 }
 
 const AVISO = "Esta cuenta podrá revisar paquetes que ella misma armó; la vista de revisión lo indicará.";
+const AVISO_DE_TEMA = "El texto de la barra superior no se lee bien sobre el color del marco: 4,4:1, hace falta 4,5:1";
 const SESION: SesionRespuesta = {
   login: "admin",
   nombre: "Admin Ficticio",
@@ -74,6 +75,7 @@ describe("Administracion: Cuentas y Accesos", () => {
       if (url === "/v1/accesos") return json(accesos);
       if (url === "/v1/admin/empresas-registradas") return json({ registradas: [], metodos: [] });
       if (url === "/v1/admin/asistente") return json(ASISTENTE_DE_FABRICA);
+      if (url === "/v1/tema") return json({ acento: null, marco: "#777777", lateral: null, tiene_logo: false, avisos: [AVISO_DE_TEMA] });
       return json({ detalle: "no esperada" }, 500);
     });
   });
@@ -134,6 +136,14 @@ describe("Administracion: Cuentas y Accesos", () => {
     expect(await screen.findByText("Todavía no hay empresas registradas", {}, PIDE)).toBeInTheDocument();
     expect(fetchFalso.mock.calls.map(([r]) => String(r))).toContain("/v1/admin/empresas-registradas");
     expect(screen.queryByText("En la interfaz clásica")).toBeNull();
+  });
+
+  test("los avisos de contraste del tema salen en «Empresa y clave de firma» y no en las otras pestañas", async () => {
+    montar();
+    await cargada();
+    expect(screen.queryByText(AVISO_DE_TEMA)).toBeNull();
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Empresa y clave de firma" }));
+    expect(await screen.findByText(AVISO_DE_TEMA, {}, PIDE)).toBeInTheDocument();
   });
 
   test("«Asistente de IA» ya se administra aqui: la pestana pide su estado a la API", async () => {
