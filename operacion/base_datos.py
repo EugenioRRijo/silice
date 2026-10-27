@@ -37,7 +37,7 @@ from sqlalchemy import URL, Engine, create_engine
 from sqlalchemy.pool import NullPool
 
 import migraciones
-from migraciones.comun import BaseNoAdoptable, ErrorDeBase
+from migraciones.comun import TABLA_VERSION, BaseNoAdoptable, ErrorDeBase
 from operacion import config, respaldo
 from operacion.respaldo import RespaldoFallido, Restauracion
 
@@ -72,6 +72,14 @@ def _guion(destino: Destino) -> ScriptDirectory:
 def revision_head(destino: Destino) -> str | None:
     """La última revisión del destino; `None` mientras no tenga ninguna (la instalación hoy)."""
     return _guion(destino).get_current_head()
+
+
+def tablas_conocidas_del_caso() -> frozenset[str]:
+    """Las tablas que este Sílice conoce en una carpeta de trabajo (las de sus `MetaData` más la de
+    versión de Alembic). `aplicacion` la pide aquí y no importa `migraciones` (S5 §5.2)."""
+    from migraciones.metadatos import METADATAS_CASO  # diferido: arrastra todos los modelos
+
+    return frozenset(t for metadata in METADATAS_CASO for t in metadata.tables) | {TABLA_VERSION}
 
 
 def revisiones_conocidas(destino: Destino) -> frozenset[str]:

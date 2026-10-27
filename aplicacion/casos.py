@@ -71,6 +71,7 @@ from operacion.base_datos import (
     revision_head,
     revisiones_conocidas,
     sanear_nombre,
+    tablas_conocidas_del_caso,
 )
 from operacion.demostracion import DemostracionFallida
 
@@ -381,14 +382,6 @@ def _preparar(ruta: Path) -> str | None:
 # --- validación de un archivo ajeno --------------------------------------------------------------
 
 
-def _tablas_conocidas() -> frozenset[str]:
-    from migraciones.metadatos import METADATAS_CASO  # diferido: solo para el registro
-
-    return frozenset(t for metadata in METADATAS_CASO for t in metadata.tables) | {
-        respaldo.TABLA_VERSION
-    }
-
-
 def _inspeccionar(archivo: Path) -> tuple[set[str], str | None]:
     """Las tablas y la revisión de `archivo`, en solo lectura, con plazo. `ArchivoNoValido` si no
     pasa las comprobaciones de integridad o trae disparadores, vistas o tablas virtuales."""
@@ -433,7 +426,7 @@ def _validar(archivo: Path, nombre: str) -> None:
     if not TABLAS_NUCLEO <= tablas:
         _registro.warning("subida rechazada: faltan tablas núcleo de un caso")
         raise ArchivoNoValido(MENSAJE_NO_VALIDO)
-    extra = len(tablas - _tablas_conocidas())
+    extra = len(tablas - tablas_conocidas_del_caso())
     if extra:
         _registro.info("subida con %s tabla(s) que este Sílice no conoce", extra)
 
