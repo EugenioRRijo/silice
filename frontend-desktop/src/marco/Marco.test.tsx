@@ -179,13 +179,19 @@ describe("Marco: la obra como espacio de trabajo", () => {
   }
 
   test("dentro de una sección se ve la cabecera de la obra (nombre, moneda, versión), las migas y la página", async () => {
-    instalar(enSur);
+    instalar((estado) => {
+      enSur(estado);
+      estado.moneda = "USD";
+    });
     montar({ en: "/obra/Carpeta%20Sur.db/3/presupuesto", paginas: ligeras({ hoja: PaginaConObra }) });
     expect(await titulo("Hoja de la obra")).toBeInTheDocument();
     expect(screen.getByText("obra de la página: 3 (Galpón Sur)")).toBeInTheDocument();
     const cabecera = screen.getByRole("region", { name: "Obra abierta" });
     expect(within(cabecera).getByText("Galpón Sur")).toBeInTheDocument();
     await waitFor(() => expect(cabecera).toHaveTextContent("Moneda: USD"));
+    // La moneda se dice una sola vez, sin «de trabajo».
+    expect(cabecera.textContent?.match(/moneda/gi)).toHaveLength(1);
+    expect(cabecera).not.toHaveTextContent("de trabajo");
     expect(cabecera).toHaveTextContent("Versión: 002");
     const migas = within(screen.getByRole("navigation", { name: "Ruta" }));
     expect(migas.getByRole("link", { name: "Mis obras" })).toHaveAttribute("href", "/pendientes");

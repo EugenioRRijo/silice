@@ -41,7 +41,7 @@ describe("La lista de la carpeta de trabajo", () => {
     });
     render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
     expect(
-      await screen.findByText("Moneda de trabajo: Bs · Lista para armar: Lista ficticia de Bs, al 25/10/2026"),
+      await screen.findByText("Moneda: Bs · Lista para armar: Lista ficticia de Bs, al 25/10/2026"),
     ).toBeInTheDocument();
     expect(fetchFalso).toHaveBeenCalledTimes(1);
   });
@@ -55,7 +55,7 @@ describe("La lista de la carpeta de trabajo", () => {
     });
     render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
     expect(
-      await screen.findByText("Moneda de trabajo: Bs · Lista para armar: MaPreX ficticio en Bs al 25/10/2026"),
+      await screen.findByText("Moneda: Bs · Lista para armar: MaPreX ficticio en Bs al 25/10/2026"),
     ).toBeInTheDocument();
   });
 
@@ -68,7 +68,7 @@ describe("La lista de la carpeta de trabajo", () => {
     });
     const { unmount } = render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
     expect(
-      await screen.findByText("Moneda de trabajo: Bs · Lista para armar: MaPreX ficticio en Bs al 25/10/2026 (2)"),
+      await screen.findByText("Moneda: Bs · Lista para armar: MaPreX ficticio en Bs al 25/10/2026 (2)"),
     ).toBeInTheDocument();
     unmount();
     con({
@@ -79,7 +79,7 @@ describe("La lista de la carpeta de trabajo", () => {
     });
     render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
     expect(
-      await screen.findByText("Moneda de trabajo: Bs · Lista para armar: Base ficticia al 01/07/2026, al 25/10/2026"),
+      await screen.findByText("Moneda: Bs · Lista para armar: Base ficticia al 01/07/2026, al 25/10/2026"),
     ).toBeInTheDocument();
   });
 
@@ -93,7 +93,7 @@ describe("La lista de la carpeta de trabajo", () => {
       aviso: AVISO,
     });
     render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
-    expect(await screen.findByText(`Moneda de trabajo: Bs · ${AVISO}`)).toBeInTheDocument();
+    expect(await screen.findByText(`Moneda: Bs · ${AVISO}`)).toBeInTheDocument();
     expect(screen.queryByText(/Lista para armar:/)).not.toBeInTheDocument();
   });
 
@@ -158,7 +158,7 @@ describe("La lista de la carpeta en la cabecera de la obra", () => {
     await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
     const cabecera = screen.getByRole("region", { name: "Obra abierta" });
     expect(
-      await within(cabecera).findByText("Moneda de trabajo: Bs · Lista para armar: Lista ficticia de Bs, al 25/10/2026"),
+      await within(cabecera).findByText("Moneda: Bs · Lista para armar: Lista ficticia de Bs, al 25/10/2026"),
     ).toBeInTheDocument();
     expect(servidor.de("GET", "/v1/carpeta").length).toBeGreaterThan(0);
   });
