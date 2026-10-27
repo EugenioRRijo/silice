@@ -1,0 +1,159 @@
+@use "sass:map";
+@use "../shell/umbrales" as u;
+@use "@carbon/styles/scss/type";
+
+// Barra superior del marco nuevo (maqueta aprobada): fondo del marco, 48 px, raya inferior de 3 px del acento. Texto
+// claro sobre el fondo oscuro. Sin hexadecimales: solo --silice-* y --cds-*. Rem, sin sombra ni animacion.
+.silice-marco-barra {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-sizing: border-box;
+  block-size: 3rem;
+  padding-inline: 1rem;
+  background-color: var(--silice-marco);
+  border-block-end: 3px solid var(--silice-acento);
+  color: var(--cds-text-inverse);
+}
+
+.silice-marco-barra__logo {
+  block-size: 1.75rem;
+  inline-size: auto;
+  flex: none;
+}
+
+.silice-marco-barra__nombre {
+  flex: none;
+  font-weight: 600;
+  @include type.type-style("body-compact-01");
+}
+
+.silice-marco-barra__migas {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+
+  ol {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    white-space: nowrap;
+    @include type.type-style("body-compact-01");
+  }
+
+  li {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  a {
+    color: var(--cds-text-inverse);
+    text-decoration: underline;
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus-inverse);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.silice-marco-barra__separador {
+  flex: none;
+  opacity: 0.7;
+}
+
+.silice-marco-barra__miga-actual {
+  font-weight: 600;
+}
+
+.silice-marco-barra__buscar {
+  display: flex;
+  flex: 0 1 28rem;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  min-inline-size: 2rem;
+  block-size: 2rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--cds-border-inverse);
+  background-color: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: start;
+  cursor: pointer;
+  @include type.type-style("body-compact-01");
+
+  svg {
+    flex: none;
+    fill: currentcolor;
+  }
+
+  &:hover {
+    background-color: var(--cds-background-inverse-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus-inverse);
+    outline-offset: 2px;
+  }
+}
+
+.silice-marco-barra__buscar-texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Los controles existentes se pintaron para fondo claro: aqui heredan el texto claro de la barra.
+.silice-marco-barra .silice-letra {
+  border-inline-start-color: var(--cds-border-inverse);
+}
+
+.silice-marco-barra .silice-letra__opcion {
+  color: inherit;
+
+  &:hover {
+    background-color: var(--cds-background-inverse-hover);
+  }
+
+  &[aria-pressed="true"] {
+    background-color: var(--cds-background-inverse-hover);
+    border-block-end-color: var(--silice-acento);
+  }
+
+  &:focus-visible {
+    outline-color: var(--cds-focus-inverse);
+  }
+}
+
+.silice-marco-barra .silice-cuenta .silice-cuenta__boton {
+  color: inherit;
+
+  &:hover {
+    background-color: var(--cds-background-inverse-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus-inverse);
+    outline-offset: -2px;
+  }
+}
+
+// En pantallas estrechas (umbral de cada escala de letra) el buscador queda en icono; el nombre accesible no cambia.
+@each $escala in map.keys(u.$umbrales-por-escala) {
+  @include u.por-debajo-del-umbral($escala) {
+    .silice-marco-barra__buscar {
+      flex: none;
+      inline-size: 2rem;
+      padding-inline: 0;
+      justify-content: center;
+    }
+
+    .silice-marco-barra__buscar-texto {
+      display: none;
+    }
+  }
+}
