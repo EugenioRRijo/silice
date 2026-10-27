@@ -362,6 +362,20 @@ describe("Marco: lo que se monta con él", () => {
     expect(screen.getAllByRole("dialog", { name: "Nueva obra" })).toHaveLength(1);
   });
 
+  // Pasada en el navegador del cierre de F2: la barra lateral es fija al desplazar (`position: sticky`) y por eso apila
+  // aparte; «Nueva obra», dibujado dentro de ella, quedaba debajo del contenido. Los diálogos se pintan en el cuerpo del
+  // documento, fuera de la barra lateral y del marco.
+  test("el diálogo «Nueva obra» se pinta fuera de la barra lateral, encima de todo", async () => {
+    const u = userEvent.setup();
+    montar();
+    await titulo("Inicio de presupuestos y obras");
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    await u.click(within(lateral).getByRole("button", { name: "Nueva obra" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Nueva obra" });
+    expect(lateral).not.toContainElement(dialogo);
+    expect(dialogo.closest(".silice-marco")).toBeNull();
+  });
+
   test("en la carpeta de demostración la barra lo dice", async () => {
     instalar((estado) => {
       estado.casos = [...estado.casos, caso("demostracion.db")];
