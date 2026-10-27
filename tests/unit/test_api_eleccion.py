@@ -200,15 +200,80 @@ def test_elegir_otra_carpeta_olvida_la_obra() -> None:
     }
 
 
-def test_una_obra_que_ya_no_esta_en_la_carpeta_vuelve_nula() -> None:
+def _borrar_obra_7_de_s1(carpeta: Path) -> None:
+    """Quita la obra 7 de `s1.db` con `sqlite3`, como si otra persona la hubiera borrado."""
+    with closing(sqlite3.connect(carpeta / "s1.db")) as conexion:
+        conexion.execute("DELETE FROM proyecto WHERE id = 7")
+        conexion.commit()
+
+
+def test_una_obra_que_ya_no_esta_en_la_carpeta_vuelve_nula(_entorno: Path) -> None:
     navegador, ficha = con_cuenta(app, "ana")
     assert _elegir(navegador, ficha, "s1.db").status_code == 200
-    assert _obra(navegador, ficha, "99").status_code == 204
+    assert _obra(navegador, ficha, "7").status_code == 204
+    _borrar_obra_7_de_s1(_entorno)
     assert navegador.get("/v1/sesion").json()["eleccion"] == {
         "caso": "s1.db",
         "proyecto": None,
         "aviso": None,
     }
+
+
+# --- D1: el servidor comprueba que la obra existe al elegirla -----------------------------------
+
+MENSAJE_OBRA_BORRADA = "Esa obra ya no existe"
+
+
+def test_elegir_una_obra_que_no_existe_da_404_sin_eco_y_no_cambia_lo_recordado() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "7").status_code == 204
+
+    respuesta = _obra(navegador, ficha, "zz-99")
+
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {"detalle": MENSAJE_OBRA_BORRADA}
+    assert "zz-99" not in respuesta.text
+    esperado = {"caso": "s1.db", "proyecto": "7", "aviso": None}
+    assert navegador.get("/v1/sesion").json()["eleccion"] == esperado
+
+
+def test_elegir_una_obra_que_no_existe_sin_nada_recordado_no_guarda_nada() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+
+    assert _obra(navegador, ficha, "99").status_code == 404
+
+    assert navegador.get("/v1/sesion").json()["eleccion"]["proyecto"] is None
+
+
+def test_la_obra_es_de_la_carpeta_de_la_peticion() -> None:
+    """La obra 3 es de `silice.db`: en `s1.db` no existe."""
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    respuesta = _obra(navegador, ficha, "3")
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {"detalle": MENSAJE_OBRA_BORRADA}
+
+
+def test_una_obra_borrada_entre_dos_peticiones_da_404_la_segunda_vez(_entorno: Path) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "7").status_code == 204
+    _borrar_obra_7_de_s1(_entorno)
+
+    respuesta = _obra(navegador, ficha, "7")
+
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {"detalle": MENSAJE_OBRA_BORRADA}
+
+
+def test_una_obra_que_existe_se_recuerda_como_antes() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "7").status_code == 204
+    esperado = {"caso": "s1.db", "proyecto": "7", "aviso": None}
+    assert navegador.get("/v1/sesion").json()["eleccion"] == esperado
 
 
 def test_la_obra_se_puede_soltar_con_null() -> None:
