@@ -56,4 +56,23 @@ CHANGELOG.
   dd/mm/aaaa» y no entra en las estadísticas (se cuenta aparte, como hoy `otras_monedas`).
 - Pruebas en rojo con oráculo a mano: estadísticas con una observación convertida; observación sin tasa fuera y contada.
 
-Orden: D1 → D2 → D3 → (D4 de T20, cuando Eugenio decida) → menores agrupados → cierre (suite completa).
+## Tarea D4: entregar sin aprobar queda rotulado y con la cadena rota se puede devolver (T20)
+
+Eugenio decidió el 2026-10-27: (a) **avisar y rotular**: se puede entregar una versión no aprobada, pero el paquete y su
+rastro lo dicen claramente; (b) con la **cadena de versiones rota se permite devolver** (devolver no certifica nada),
+y aprobar (también «aprobada con observaciones») sigue bloqueado hasta reparar la cadena.
+
+**Archivos:** `aplicacion/entregas.py` (o donde se arma el paquete y su evento), `aplicacion/aprobaciones.py`,
+`api/rutas/entregas.py`, `api/rutas/aprobaciones.py`, el front de Entregar y de Aprobar, sus pruebas, api.json,
+CHANGELOG, bitácora (cierra los «Por ratificar» de T20 punto 4 y del T18/T19 «cadena rota»).
+
+- (a) Al entregar una versión que no es una aprobada, el paquete lleva en su portada/índice y en su manifiesto la marca
+  «Versión NO aprobada» (con la fecha y, si la hay, la última aprobada que no se eligió), y el evento de la entrega lo
+  registra. La pantalla lo avisa antes de confirmar. Una versión aprobada no lleva la marca. El manifiesto firmado
+  cubre la marca (no se puede quitar sin romper la firma).
+- (b) Con la cadena rota, `POST` del dictamen acepta **solo** «Devuelta» (con notas obligatorias, como hoy); «Aprobada» y
+  «Aprobada con observaciones» siguen en 409 con el motivo. La pantalla Aprobar ofrece solo «Devolver» y dice por qué.
+- Pruebas en rojo: paquete de una no aprobada lleva la marca en manifiesto y portada, y la de una aprobada no; la firma
+  falla si se quita la marca; con cadena rota devolver da 200 y aprobar 409; el front muestra solo «Devolver».
+
+Orden: D1 → D2 → D3 → D4 → menores agrupados → cierre (suite completa).
