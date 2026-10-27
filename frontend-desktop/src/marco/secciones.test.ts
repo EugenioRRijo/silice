@@ -12,9 +12,17 @@ import {
   seccionPorId,
 } from "./secciones";
 
-const PROHIBIDAS = /m[oó]dulo|[aá]rea|p[aá]gina|streamlit|carpeta de trabajo/i;
+// Palabras enteras: «tarea» no es «área».
+const PROHIBIDAS = /(?<!\p{L})(m[oó]dulos?|[aá]reas?|p[aá]ginas?|streamlit|carpetas? de trabajo)(?!\p{L})/iu;
 
 describe("SECCIONES_DE_OBRA", () => {
+  it("la lista de palabras prohibidas las reconoce enteras", () => {
+    for (const t of ["el módulo", "Área de obra", "las áreas", "una página", "Streamlit", "carpeta de trabajo"]) {
+      expect(t).toMatch(PROHIBIDAS);
+    }
+    expect("cada tarea").not.toMatch(PROHIBIDAS);
+  });
+
   it("son las siete, en este orden", () => {
     expect(SECCIONES_DE_OBRA.map((s) => s.id)).toEqual([
       "resumen",

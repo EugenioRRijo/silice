@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { abrirCarpeta, volverALaCarpetaDeLaEmpresa } from "../../api/carpetaYObra";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CasoRespuesta, CasosRespuesta, ProyectoRespuesta } from "../../api/tipos";
 import { confirmarSalida } from "../salida";
@@ -94,9 +95,7 @@ export function useCarpetaDeTrabajo({ puedeVerBorradores, obras, alExpirar, alFa
     (nombre: string, preparar?: () => Promise<string>, abrirCon?: (nombre: string) => Promise<CasoRespuesta>) =>
       cambiar(async () => {
         const destino = preparar ? await preparar() : nombre;
-        if (abrirCon) return abrirCon(destino);
-        const r = await pedir<Partial<CasoRespuesta> | null>("/v1/casos/actual", { metodo: "POST", cuerpo: { nombre: destino } });
-        return { nombre: typeof r?.nombre === "string" ? r.nombre : destino, ruta_relativa: r?.ruta_relativa ?? "" };
+        return abrirCon ? abrirCon(destino) : abrirCarpeta(destino);
       }),
     [cambiar],
   );
@@ -104,7 +103,7 @@ export function useCarpetaDeTrabajo({ puedeVerBorradores, obras, alExpirar, alFa
   // «Volver a la carpeta de la empresa» (MarcaDemostracion): la misma pregunta que «Cambiar carpeta…», porque
   // `DELETE /v1/casos/actual` tambien olvida los borradores de la Hoja de esta sesion.
   const volverALaEmpresa = useCallback(
-    () => cambiar(() => pedir<CasoRespuesta>("/v1/casos/actual", { metodo: "DELETE" })),
+    () => cambiar(volverALaCarpetaDeLaEmpresa),
     [cambiar],
   );
 

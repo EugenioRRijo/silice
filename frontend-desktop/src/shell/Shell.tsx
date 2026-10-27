@@ -3,6 +3,7 @@ import { Suspense, createElement, lazy, useCallback, useEffect, useLayoutEffect,
 import type { ReactElement } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigationType } from "react-router";
 import { ErrorDeApi, pedir } from "../api/cliente";
+import { recordarObra } from "../api/carpetaYObra";
 import type { ProyectoRespuesta, SesionRespuesta } from "../api/tipos";
 import { AvisoError } from "../comun/AvisoError";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
@@ -366,7 +367,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const elegirObra = useCallback(
     (codigo: string | null) => {
       setProyecto(codigo);
-      pedir("/v1/sesion/proyecto", { metodo: "PUT", cuerpo: { proyecto: codigo } }).catch((e: unknown) => {
+      recordarObra(codigo).catch((e: unknown) => {
         if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
       });
     },

@@ -48,6 +48,23 @@ export interface CasosRespuesta {
   es_demostracion: boolean;
 }
 
+// `GET /v1/obras/todas` (rediseño del marco, Tarea 3): las obras de todas las carpetas que la cuenta puede abrir (solo
+// la abierta sin `cambiar_caso`). `carpeta` es el nombre con su .db que acepta `POST /v1/casos/actual`; null = la
+// carpeta de la empresa, la primera de la lista.
+export interface ObraDeCarpetaRespuesta {
+  carpeta: string | null;
+  carpeta_titulo: string;
+  obra_id: number;
+  obra: string;
+  version_codigo: string | null;
+}
+
+export interface ObrasTodasRespuesta {
+  // La carpeta abierta en la sesion; null si es la de la empresa.
+  carpeta_actual: string | null;
+  obras: ObraDeCarpetaRespuesta[];
+}
+
 // `GET /v1/carpeta` y `PUT /v1/carpeta/moneda` (MP T2): la moneda de trabajo de la carpeta abierta.
 export interface CarpetaRespuesta {
   moneda: string | null;
