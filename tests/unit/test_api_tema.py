@@ -20,7 +20,7 @@ from api.main import app
 from operacion import config
 from tests.fixtures.sesion_web import cliente as cliente_de
 
-NEUTRO = {"acento": None, "marco": None, "lateral": None, "tiene_logo": False}
+NEUTRO = {"acento": None, "marco": None, "lateral": None, "tiene_logo": False, "avisos": []}
 PNG_1X1 = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f"
     b"\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe\xa7\x9a\xa0\xa0\x00"
@@ -64,6 +64,7 @@ def test_colores_validos_se_devuelven(tema: Path, cliente: TestClient) -> None:
         "marco": "#000000",
         "lateral": "#fafafa",
         "tiene_logo": False,
+        "avisos": [],
     }
 
 
@@ -178,3 +179,36 @@ def test_logo_cuyos_bytes_no_son_de_la_imagen_no_se_sirve(
 def test_logo_con_firma_de_otro_formato_no_se_sirve(tema: Path, cliente: TestClient) -> None:
     (tema / "logo.png").write_bytes(JPEG)
     assert cliente.get("/v1/tema").json()["tiene_logo"] is False
+
+
+def test_colores_sin_contraste_se_aplican_y_traen_avisos_exactos(
+    tema: Path, cliente: TestClient
+) -> None:
+    """Marco y acento blancos, lateral negro: el tema se devuelve tal cual y con sus avisos.
+
+    Oráculos a mano (WCAG 2.x; luminancia de #ffffff = 1, de #000000 = 0): blanco sobre blanco =
+    1:1; #161616 (texto normal de Carbon g10, luminancia 0,0080) sobre negro = 1,16:1 -> «1,1».
+    El borde #8d8d8d sobre blanco (3,3:1) y sobre negro (6,3:1) pasa.
+    """
+    (tema / "tema.json").write_text(
+        json.dumps({"acento": "#ffffff", "marco": "#ffffff", "lateral": "#000000"}),
+        encoding="utf-8",
+    )
+    respuesta = cliente.get("/v1/tema")
+    assert respuesta.status_code == 200
+    assert respuesta.json() == {
+        "acento": "#ffffff",
+        "marco": "#ffffff",
+        "lateral": "#000000",
+        "tiene_logo": False,
+        "avisos": [
+            "El texto de la barra superior no se lee bien sobre el color del marco:"
+            " 1,0:1, hace falta 4,5:1",
+            "El texto del botón Nueva obra no se lee bien sobre el color de acento:"
+            " 1,0:1, hace falta 4,5:1",
+            "El texto del menú lateral no se lee bien sobre el color lateral:"
+            " 1,1:1, hace falta 4,5:1",
+            "La raya de color de acento bajo la barra superior casi no se ve sobre el color"
+            " del marco: 1,0:1, hace falta 3:1",
+        ],
+    }
