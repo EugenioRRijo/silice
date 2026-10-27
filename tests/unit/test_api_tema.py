@@ -151,7 +151,9 @@ def test_json_muy_anidado_devuelve_neutro(tema: Path, cliente: TestClient) -> No
     respuesta = cliente.get("/v1/tema")
     assert respuesta.status_code == 200
     assert respuesta.json() == NEUTRO
-    (tema / "tema.json").write_text('{"acento": ' + "[" * 200000 + "]" * 200000 + "}")
+    (tema / "tema.json").write_text(
+        '{"acento": ' + "[" * 200000 + "]" * 200000 + "}", encoding="utf-8"
+    )
     assert cliente.get("/v1/tema").json() == NEUTRO
 
 
@@ -188,7 +190,8 @@ def test_colores_sin_contraste_se_aplican_y_traen_avisos_exactos(
 
     Oráculos a mano (WCAG 2.x; luminancia de #ffffff = 1, de #000000 = 0): blanco sobre blanco =
     1:1; #161616 (texto normal de Carbon g10, luminancia 0,0080) sobre negro = 1,16:1 -> «1,1».
-    El borde #8d8d8d sobre blanco (3,3:1) y sobre negro (6,3:1) pasa.
+    El borde #8d8d8d sobre blanco (3,3:1) y sobre negro (6,3:1) pasa. La raya del activo: el marco
+    blanco sobre #e5e0df (luminancia 0,753) = 1,05 / 0,803 = 1,31:1 -> «1,3».
     """
     (tema / "tema.json").write_text(
         json.dumps({"acento": "#ffffff", "marco": "#ffffff", "lateral": "#000000"}),
@@ -210,5 +213,7 @@ def test_colores_sin_contraste_se_aplican_y_traen_avisos_exactos(
             " 1,1:1, hace falta 4,5:1",
             "La raya de color de acento bajo la barra superior casi no se ve sobre el color"
             " del marco: 1,0:1, hace falta 3:1",
+            "La raya del elemento activo del menú lateral casi no se ve sobre su fondo:"
+            " 1,3:1, hace falta 3:1",
         ],
     }

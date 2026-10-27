@@ -43,7 +43,9 @@ _NEUTRO = {
 _TEXTO = 4.5  # WCAG 2.x 1.4.3, texto normal
 _GRAFICO = 3.0  # WCAG 2.x 1.4.11, bordes y rayas
 #: (color delante, color de fondo, mínimo, frase del aviso). `marco`, `acento` y `lateral` los puede
-#: poner la empresa; uno ausente mide con el del tema neutro.
+#: poner la empresa; uno ausente mide con el del tema neutro. La raya del elemento activo del menú
+#: lateral es del color del marco (no del acento) y se mide sobre `lateral-activo`, que el tema no
+#: cambia.
 _PARES = (
     (
         "texto-del-marco",
@@ -81,6 +83,12 @@ _PARES = (
         "marco",
         _GRAFICO,
         "La raya de color de acento bajo la barra superior casi no se ve sobre el color del marco",
+    ),
+    (
+        "marco",
+        "lateral-activo",
+        _GRAFICO,
+        "La raya del elemento activo del menú lateral casi no se ve sobre su fondo",
     ),
 )
 

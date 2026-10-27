@@ -8,9 +8,10 @@ Oráculos a mano o de fuente citada, nunca del propio código:
   texto blanco sobre #777777 = 4,478; #777777 sobre el acento #f1c21b = 2,660; el borde #8d8d8d
   sobre #777777 = 1,349; el acento sobre #777777 = 2,660. Se muestran truncados a un decimal para
   que un 4,478 nunca se lea «4,5» y parezca pasar.
-- Raya del elemento activo del menú lateral (color del marco sobre `lateral-activo`, #e5e0df), a mano con
-  la misma definición: #393939 (neutro) = 8,83:1; #cccccc (L = 0,604) = (0,753 + 0,05) / (0,604 + 0,05)
-  = 1,23:1, que se muestra truncado «1,2:1»; #777777 (L = 0,184) = 3,42:1, que pasa 3:1.
+- Raya del elemento activo del menú lateral (color del marco sobre `lateral-activo`, #e5e0df, de
+  luminancia 0,753), a mano con la misma definición: #393939 (neutro) = 8,83:1; #cccccc (L = 0,604)
+  = (0,753 + 0,05) / (0,604 + 0,05) = 1,23:1, que se muestra truncado «1,2:1»; #777777
+  (L = 0,184) = 3,42:1, que pasa 3:1.
 """
 
 from __future__ import annotations
