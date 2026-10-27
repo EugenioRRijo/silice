@@ -32,6 +32,8 @@ pytest. Dependencias nuevas solo de desarrollo: `knip`, `jscpd`.
 - Componente de más de 250 líneas exige una línea de razón en su cabecera.
 - TDD: prueba en rojo vista antes del código; suite completa (`npm test`, `npm run lint`, `uv run --active pytest -q`)
   al cierre de F2.
+- Duplicación (jscpd, una pasada TS/TSX): umbral fijo en 1 % (hoy 0,88 %). Si una tarea lo supera, la pieza común
+  se extrae en esa misma tarea; el umbral no sube sin un ruling escrito en la bitácora.
 - Commit al cerrar cada tarea; antes de cada commit, `git diff --cached --stat` para no arrastrar archivos ajenos.
 
 ## Foco de revisión
