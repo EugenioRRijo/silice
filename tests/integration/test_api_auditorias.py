@@ -177,8 +177,17 @@ def test_toda_ruta_menos_salud_exige_la_clave(api) -> None:
         (p, m)
         for p, ops in app.openapi()["paths"].items()
         # /v1/sesion: acceso por cuenta (RT-9); /v1/primer-arranque*: públicas, solo el propio
-        # equipo, con `Origin` y código (BCP-1; sus pruebas: test_api_primer_arranque.py)
-        if p not in {"/salud", "/v1/sesion", "/v1/primer-arranque", "/v1/primer-arranque/reclamo"}
+        # equipo, con `Origin` y código (BCP-1; sus pruebas: test_api_primer_arranque.py);
+        # /v1/tema y /v1/tema/logo: públicas por diseño (Tarea 1 del marco; test_api_tema.py)
+        if p
+        not in {
+            "/salud",
+            "/v1/sesion",
+            "/v1/primer-arranque",
+            "/v1/primer-arranque/reclamo",
+            "/v1/tema",
+            "/v1/tema/logo",
+        }
         for m in ops
         if m in {"get", "post", "put", "patch", "delete"}
     ]

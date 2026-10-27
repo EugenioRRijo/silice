@@ -42,8 +42,17 @@ RUTAS = list(_rutas(app.router))
 #: Sin clave a propósito: el ping y el acceso del navegador por cuenta (RT-9, sesión 2), que se
 #: protege con la contraseña, el freno y el bloqueo de `seguridad.cuentas`.
 #: BCP-1: `/v1/primer-arranque*` tampoco (solo el propio equipo, `Origin` y un código).
+#: Rediseño del marco, Tarea 1: `/v1/tema` y `/v1/tema/logo` son públicas por diseño (la pantalla
+#: de entrada pinta el tema antes de que haya sesión; `test_api_tema.py` prueba su alcance).
 SIN_CLAVE = frozenset(
-    {"/salud", "/v1/sesion", "/v1/primer-arranque", "/v1/primer-arranque/reclamo"}
+    {
+        "/salud",
+        "/v1/sesion",
+        "/v1/primer-arranque",
+        "/v1/primer-arranque/reclamo",
+        "/v1/tema",
+        "/v1/tema/logo",
+    }
 )
 PROTEGIDAS = [
     (ruta, metodo)
