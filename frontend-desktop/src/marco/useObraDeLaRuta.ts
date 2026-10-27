@@ -71,6 +71,8 @@ async function entrar(carpeta: string | null, obraId: number, vigente: () => boo
       if (!vigente()) return null;
     }
     paso = "obra";
+    // Ventana entre el GET de arriba y este PUT: si otra persona borra la obra en ese instante el servidor contesta 404
+    // y se dice «no existe», igual que si la ruta hubiera apuntado a una obra que nunca estuvo (`dicenQueNoExiste`).
     await recordarObra(String(obraId));
     return vigente() ? "lista" : null;
   } catch (e) {
@@ -97,6 +99,9 @@ function leerDestino(params: Readonly<Partial<Record<string, string>>>): Destino
 const CARGANDO: EstadoObra = { tipo: "cargando" };
 const NO_EXISTE: EstadoObra = { tipo: "no_existe" };
 
+// `vigilante` por omisión es el de la aplicación, que `vigilanteDelNavegador` crea una sola vez por pestaña: la misma
+// referencia en cada dibujo, así que no reinicia el efecto de entrada (que lo lista como dependencia). Quien pase otro
+// (las pruebas) debe pasar siempre el mismo objeto.
 export function useObraDeLaRuta({ vigilante = vigilanteDelNavegador() }: OpcionesObraDeLaRuta = {}): EstadoObra {
   const destino = leerDestino(useParams());
   const hayDestino = destino !== null;
