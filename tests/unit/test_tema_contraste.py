@@ -8,6 +8,9 @@ Oráculos a mano o de fuente citada, nunca del propio código:
   texto blanco sobre #777777 = 4,478; #777777 sobre el acento #f1c21b = 2,660; el borde #8d8d8d
   sobre #777777 = 1,349; el acento sobre #777777 = 2,660. Se muestran truncados a un decimal para
   que un 4,478 nunca se lea «4,5» y parezca pasar.
+- Raya del elemento activo del menú lateral (color del marco sobre `lateral-activo`, #e5e0df), a mano con
+  la misma definición: #393939 (neutro) = 8,83:1; #cccccc (L = 0,604) = (0,753 + 0,05) / (0,604 + 0,05)
+  = 1,23:1, que se muestra truncado «1,2:1»; #777777 (L = 0,184) = 3,42:1, que pasa 3:1.
 """
 
 from __future__ import annotations
@@ -70,3 +73,23 @@ def test_colores_que_pasan_no_dan_avisos(tmp_path: Path) -> None:
     # Negro con texto blanco (21:1), acento blanco sobre el marco (21:1), marco negro sobre acento
     # blanco (21:1), lateral blanco con texto #161616 (17,9:1) y borde #8d8d8d (3,3:1 sobre blanco).
     assert _con(tmp_path, marco="#000000", acento="#ffffff", lateral="#ffffff") == []
+
+
+def test_tema_neutro_cumple_la_raya_del_activo_con_holgura() -> None:
+    # #393939 sobre #e5e0df = 8,83:1 a mano (decisión de Eugenio, 2026-10-27: la raya es del marco).
+    assert tema.contraste("#393939", "#e5e0df") == pytest.approx(8.83, abs=0.01)
+    assert tema.leer_tema(Path("no-existe")).avisos == []
+
+
+def test_marco_claro_avisa_de_la_raya_del_activo(tmp_path: Path) -> None:
+    # El marco #cccccc sobre el fondo del activo da 1,23:1 (a mano): menos de 3:1.
+    assert (
+        "La raya del elemento activo del menú lateral casi no se ve sobre su fondo:"
+        " 1,2:1, hace falta 3:1"
+    ) in _con(tmp_path, marco="#cccccc")
+
+
+def test_marco_gris_medio_no_avisa_de_la_raya_del_activo(tmp_path: Path) -> None:
+    # #777777 sobre #e5e0df = 3,42:1 a mano: pasa 3:1, así que la raya no figura entre los avisos.
+    assert not any("raya del elemento activo" in a for a in _con(tmp_path, marco="#777777"))
+
