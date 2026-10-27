@@ -141,10 +141,15 @@ otro encargo. Hecho P0, el árbol queda limpio salvo los artefactos locales.
 
 **Interfaces:**
 - Consume: la lista de carpetas que ya arma `api/rutas/casos.py::consultar_casos` y `proyectos_del_caso(sesion)`.
-- Produce: `obras_de_las_carpetas(carpetas: list[tuple[str, Path]]) -> list[ObraDeCarpeta]` con
-  `ObraDeCarpeta(carpeta: str, obra_id: int, obra: str, version_codigo: str | None)`, orden carpeta y luego obra
-  (sin distinguir mayúsculas). `GET /v1/obras/todas` → `{"carpeta_actual": str|null, "obras": [{"carpeta": str,
-  "obra_id": int, "obra": str, "version_codigo": str|null}]}`.
+- Produce: `obras_de_las_carpetas(carpetas: list[tuple[str | None, Path]]) -> list[ObraDeCarpeta]` con
+  `ObraDeCarpeta(carpeta: str | None, obra_id: int, obra: str, version_codigo: str | None)`. `carpeta` es el
+  `nombre` que acepta `POST /v1/casos/actual`; `None` = la carpeta de la empresa (la del proceso, a la que se vuelve
+  con `DELETE /v1/casos/actual`), que va primero. Orden: carpeta de la empresa, luego carpetas por nombre, y dentro
+  de cada una obras por nombre (sin distinguir mayúsculas). `GET /v1/obras/todas` →
+  `{"carpeta_actual": str|null, "obras": [{"carpeta": str|null, "carpeta_titulo": str, "obra_id": int, "obra": str,
+  "version_codigo": str|null}]}`; `carpeta_titulo` es «Carpeta de la empresa» para `null` y el nombre en los demás
+  casos. En rutas del front, la carpeta de la empresa se escribe `empresa` (`#/obra/empresa/<id>/...`); un caso
+  llamado literalmente «empresa» no puede existir (si `casos.py` lo permite, la ruta lo rechaza con 422).
 
 - [ ] **Paso 1: prueba roja** con dos carpetas ficticias («Carpeta Norte» con obras «Galpón» y «Clínica»;
   «Carpeta Sur» con «Vialidad»):
@@ -193,7 +198,7 @@ otro encargo. Hecho P0, el árbol queda limpio salvo los artefactos locales.
   Precios y catálogo (`catalogo`), Auditar un presupuesto (`auditoria`), Producción (`existencias`),
   Empresa y personas (`administracion`), Ayuda (`acerca` hasta F6).
 - Produce rutas: `#/pendientes`, `#/obra/:carpeta/:obraId/:seccion`, `#/empresa/:entrada`;
-  `rutaDeObra(carpeta: string, obraId: number, seccion: SeccionId): string` (codifica la carpeta con
+  `rutaDeObra(carpeta: string | null, obraId: number, seccion: SeccionId): string` (`null` → `empresa`; codifica la carpeta con
   `encodeURIComponent`).
 - Produce `useObraDeLaRuta(): EstadoObra` con `EstadoObra = { tipo: "cargando" } | { tipo: "lista"; carpeta: string;
   obraId: number; seccion: SeccionDef } | { tipo: "no_existe" } | { tipo: "en_otra_pestana"; retomar: () => void }`.
