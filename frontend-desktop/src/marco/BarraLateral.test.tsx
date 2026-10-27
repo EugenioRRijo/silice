@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { ObraDeCarpetaRespuesta, SesionRespuesta } from "../api/tipos";
@@ -62,6 +62,10 @@ interface Opciones {
   ruta?: string;
 }
 
+function Ubicacion() {
+  return <output data-testid="ubicacion">{useLocation().pathname}</output>;
+}
+
 function pintar({ sesion = sesionDe("ana"), abierta = null, seccion = null, ruta = "/pendientes" }: Opciones = {}) {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
@@ -69,6 +73,7 @@ function pintar({ sesion = sesionDe("ana"), abierta = null, seccion = null, ruta
         value={{ sesion, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}
       >
         <BarraLateral obraAbierta={abierta} seccion={seccion} />
+        <Ubicacion />
       </ContextoAplicacion.Provider>
     </MemoryRouter>,
   );
@@ -364,7 +369,8 @@ describe("BarraLateral: Nueva obra", () => {
     expect(estilos).toContain("background-color: var(--silice-lateral)");
     expect(estilos).toMatch(/inline-size: 14\.75rem/);
     expect(estilos).toContain("var(--silice-lateral-activo)");
-    expect(estilos).toMatch(/3px solid var\(--silice-acento\)/);
+    // La raya del activo es del color del marco (8,83:1 sobre el fondo del activo en el tema neutro), no del acento.
+    expect(estilos).toMatch(/&\[aria-current="page"\]\s*\{[^}]*3px solid var\(--silice-marco\)/);
     expect(estilos).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 
@@ -382,5 +388,110 @@ describe("BarraLateral: Nueva obra", () => {
     };
     const [claro, oscuro] = [luminancia("#f1c21b"), luminancia("#393939")];
     expect((claro + 0.05) / (oscuro + 0.05)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("BarraLateral: niveles del árbol", () => {
+  const nivel = (e: HTMLElement) => [e.getAttribute("aria-level"), e.getAttribute("aria-setsize"), e.getAttribute("aria-posinset")];
+
+  it("con carpetas, las obras son de nivel 2 y sus secciones de nivel 3, con su tamaño y su posición", async () => {
+    pintar({ abierta: { carpeta: NORTE, obraId: 1 }, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
+    const lista = await arbol();
+    expect(nivel(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" }))).toEqual(["2", "2", "1"]);
+    expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["2", "2", "2"]);
+    expect(nivel(within(lista).getByRole("treeitem", { name: "Galpón Sur" }))).toEqual(["2", "1", "1"]);
+    const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
+    expect(secciones.map(nivel)).toEqual([
+      ["3", "5", "1"],
+      ["3", "5", "2"],
+      ["3", "5", "3"],
+      ["3", "5", "4"],
+      ["3", "5", "5"],
+    ]);
+  });
+
+  it("sin carpetas, las obras son de nivel 1 y sus secciones de nivel 2", async () => {
+    servidor([CLINICA, TORRE]);
+    pintar({ abierta: { carpeta: NORTE, obraId: 2 }, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/2/resumen" });
+    const lista = await arbol();
+    expect(nivel(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" }))).toEqual(["1", "2", "1"]);
+    expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "2", "2"]);
+    const primera = within(screen.getByRole("group", { name: "Torre B" })).getAllByRole("treeitem")[0]!;
+    expect(nivel(primera)).toEqual(["2", "5", "1"]);
+  });
+});
+
+describe("BarraLateral: carga de las obras", () => {
+  it("mientras llegan las obras dice «Cargando obras…» y no pinta un árbol vacío", async () => {
+    pedirFalso.mockImplementation(() => new Promise(() => {}));
+    pintar();
+    expect(await screen.findByText("Cargando obras…")).toBeInTheDocument();
+    expect(screen.queryByRole("tree")).toBeNull();
+    expect(screen.queryByText("Todavía no hay obras")).toBeNull();
+  });
+
+  it("al reintentar tras un error vuelve a decir «Cargando obras…» en vez de mostrar un árbol vacío", async () => {
+    respuesta = new ErrorDeApi(500, "falló");
+    pintar();
+    await screen.findByText("No se pudieron cargar las obras");
+    pedirFalso.mockImplementation(() => new Promise(() => {}));
+    await userEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("Cargando obras…")).toBeInTheDocument();
+    expect(screen.queryByRole("tree")).toBeNull();
+  });
+
+  it("mientras recarga conserva el árbol que ya tenía", async () => {
+    conCreacionDeCodigo("9");
+    pintar();
+    await arbol();
+    await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
+    await screen.findByRole("dialog", { name: "Nueva obra" });
+    pedirFalso.mockImplementation(async (ruta: string, op?: { metodo?: string }) => {
+      if (ruta === "/v1/obras/todas") return new Promise(() => {});
+      if (ruta === "/v1/carpeta") return { moneda: "Bs", declarada: true, lista: null, aviso: null };
+      if (ruta === "/v1/proyectos" && op?.metodo === "POST") return { codigo: "9", nombre: "Nueva" };
+      throw new Error(`petición inesperada: ${ruta}`);
+    });
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
+    await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
+    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
+    expect(screen.getByRole("tree", { name: "Obras" })).toBeInTheDocument();
+    expect(screen.queryByText("Cargando obras…")).toBeNull();
+  });
+});
+
+function conCreacionDeCodigo(codigo: string) {
+  pedirFalso.mockImplementation(async (ruta: string, opciones?: { metodo?: string }) => {
+    if (ruta === "/v1/obras/todas") return respuesta;
+    if (ruta === "/v1/carpeta") return { moneda: "Bs", declarada: true, lista: null, aviso: null };
+    if (ruta === "/v1/proyectos" && opciones?.metodo === "POST") return { codigo, nombre: "Nueva" };
+    throw new Error(`petición inesperada: ${ruta}`);
+  });
+}
+
+describe("BarraLateral: la obra recién creada", () => {
+  async function crearConCodigo(codigo: string) {
+    conCreacionDeCodigo(codigo);
+    pintar();
+    await arbol();
+    await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
+    await screen.findByRole("dialog", { name: "Nueva obra" });
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
+    await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
+    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
+  }
+
+  it("con un código entero abre la obra nueva", async () => {
+    await crearConCodigo("9");
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Norte.db/9/resumen");
+  });
+
+  it("con un código que no es un entero no navega a una ruta con NaN y deja la lista recargada", async () => {
+    await crearConCodigo("abc");
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/pendientes");
+    expect(screen.getByTestId("ubicacion").textContent).not.toContain("NaN");
+    expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas").length).toBeGreaterThan(1);
   });
 });
