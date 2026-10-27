@@ -437,6 +437,23 @@ describe("Marco: lo que se monta con él", () => {
   });
 });
 
+describe("Marco: cuentas sin obras que leer", () => {
+  // Pasada en el navegador del cierre de F2: el administrador (sin `leer_proyecto`) veía «No se pudieron cargar las
+  // obras» porque el marco pedía `GET /v1/obras/todas` y la API contestaba 403. Sin el permiso no se pide (VB-9) y la
+  // zona de obras no se pinta: lo que la cuenta no puede usar no aparece.
+  test("sin leer_proyecto no pide las obras ni muestra la zona de obras con un error", async () => {
+    const admin = sesionDe("admin");
+    montar({ sesion: admin, en: "/empresa/ayuda" });
+    await titulo("Acerca de Sílice");
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    expect(within(lateral).getByRole("link", { name: "Pendientes" })).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(servidor.de("GET", "/v1/obras/todas")).toEqual([]);
+    expect(within(lateral).queryByText("No se pudieron cargar las obras")).toBeNull();
+    expect(within(lateral).queryByRole("heading", { name: "Obras" })).toBeNull();
+  });
+});
+
 describe("Marco: vocabulario y alcance", () => {
   test("ningún texto visible del marco dice «módulo», «área», «página», «carpeta de trabajo» ni «Streamlit»", async () => {
     const u = userEvent.setup();
