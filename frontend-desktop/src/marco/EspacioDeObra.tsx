@@ -24,8 +24,8 @@ interface Props {
 }
 
 // Un aviso de pantalla completa con su h1 (el foco va a él al llegar, como con cualquier pantalla). Con `alerta`, el
-// texto se anuncia solo (role="alert"): un fallo debe oírse aunque el foco no se mueva (la carga inicial, un reintento
-// que vuelve a fallar, una respuesta que tarda).
+// texto se anuncia solo (role="alert"): un fallo o un cambio que llega de fuera debe oírse aunque el foco no se mueva
+// (la carga inicial, un reintento que vuelve a fallar, una respuesta que tarda, el mensaje de otra pestaña).
 function Aviso({ titulo, texto, alerta = false, children }: { titulo: string; texto: string; alerta?: boolean; children: ReactNode }) {
   return (
     <div className="silice-pagina silice-obra-aviso">
@@ -53,14 +53,18 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
     alEntrar(carpeta, obraId);
   }, [clave, alEntrar]);
 
-  // «Reintentar» quita su botón (la obra vuelve a «cargando») y la ruta no cambia, así que el marco no mueve el foco:
-  // cuando se sabe el resultado, pasa al h1 del aviso otra vez o al de la sección abierta.
-  const [reintentos, setReintentos] = useState(0);
+  // «Reintentar» y «Retomar» vuelven a entrar: quitan su botón (la obra vuelve a «cargando») y la ruta no cambia, así
+  // que el marco no mueve el foco. Cuando se sabe el resultado, pasa al h1 del aviso otra vez o al de la sección.
+  const [entradas, setEntradas] = useState(0);
   const tipo = estado.tipo;
   useEffect(() => {
-    if (reintentos === 0 || tipo === "cargando") return;
+    if (entradas === 0 || tipo === "cargando") return;
     return enfocarElTitulo();
-  }, [reintentos, tipo]);
+  }, [entradas, tipo]);
+  const volverAEntrar = (accion: () => void) => () => {
+    setEntradas((n) => n + 1);
+    accion();
+  };
 
   switch (estado.tipo) {
     case "cargando":
@@ -78,8 +82,9 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
         <Aviso
           titulo="Esta obra se abrió en otra pestaña"
           texto="Otra pestaña de Sílice abrió otra obra. Retómela aquí para seguir trabajando en esta."
+          alerta
         >
-          <Button kind="primary" size="md" onClick={estado.retomar}>
+          <Button kind="primary" size="md" onClick={volverAEntrar(estado.retomar)}>
             Retomar
           </Button>
         </Aviso>
@@ -87,14 +92,7 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
     case "error":
       return (
         <Aviso titulo="No se pudo abrir la obra" texto="Revise la conexión con Sílice y vuelva a intentarlo." alerta>
-          <Button
-            kind="tertiary"
-            size="md"
-            onClick={() => {
-              setReintentos((n) => n + 1);
-              estado.reintentar();
-            }}
-          >
+          <Button kind="tertiary" size="md" onClick={volverAEntrar(estado.reintentar)}>
             Reintentar
           </Button>
         </Aviso>
