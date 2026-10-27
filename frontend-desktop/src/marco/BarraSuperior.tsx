@@ -16,11 +16,12 @@ interface Props {
   extra?: ReactNode;
 }
 
-// Un campo donde Ctrl+K ya significa otra cosa (texto largo o contenido editable): ahi no se abre el buscador.
+// Un campo donde Ctrl+K ya significa otra cosa (texto largo o contenido editable, también «plaintext-only»): ahi no se abre el
+// buscador. `closest` incluye al propio destino.
 function usaCtrlK(destino: EventTarget | null): boolean {
   return (
     destino instanceof HTMLElement &&
-    (destino instanceof HTMLTextAreaElement || destino.closest('[contenteditable=""], [contenteditable="true"]') !== null)
+    (destino instanceof HTMLTextAreaElement || destino.closest('[contenteditable]:not([contenteditable="false"])') !== null)
   );
 }
 
