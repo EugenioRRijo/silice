@@ -27,12 +27,102 @@ _FIRMAS = {
 _COLOR = re.compile(r"#[0-9a-fA-F]{6}")
 
 
+#: Colores del tema neutro y de los textos y bordes del marco (frontend-desktop/src/estilos/
+#: tokens.scss: --silice-* y --cds-* del tema Carbon g10). Es la ÚNICA copia en el servidor; los
+#: avisos de contraste miden contra ella. Fuente: @carbon/colors (gray-80, gray-50, yellow-30,
+#: warm-gray-10/-20) y @carbon/themes g10 (text-inverse, text-primary).
+_NEUTRO = {
+    "marco": "#393939",  # --silice-marco = --cds-background-inverse (gray-80)
+    "acento": "#f1c21b",  # --silice-acento (yellow-30)
+    "lateral": "#f7f3f2",  # --silice-lateral (warm-gray-10)
+    "lateral-activo": "#e5e0df",  # --silice-lateral-activo (warm-gray-20); el tema no lo cambia
+    "texto-del-marco": "#ffffff",  # --cds-text-inverse
+    "texto": "#161616",  # --cds-text-primary
+    "borde": "#8d8d8d",  # --cds-border-strong-01 (gray-50)
+}
+_TEXTO = 4.5  # WCAG 2.x 1.4.3, texto normal
+_GRAFICO = 3.0  # WCAG 2.x 1.4.11, bordes y rayas
+#: (color delante, color de fondo, mínimo, frase del aviso). `marco`, `acento` y `lateral` los puede
+#: poner la empresa; uno ausente mide con el del tema neutro.
+_PARES = (
+    (
+        "texto-del-marco",
+        "marco",
+        _TEXTO,
+        "El texto de la barra superior no se lee bien sobre el color del marco",
+    ),
+    (
+        "marco",
+        "acento",
+        _TEXTO,
+        "El texto del botón Nueva obra no se lee bien sobre el color de acento",
+    ),
+    ("texto", "lateral", _TEXTO, "El texto del menú lateral no se lee bien sobre el color lateral"),
+    (
+        "texto",
+        "lateral-activo",
+        _TEXTO,
+        "El texto de la opción activa del menú lateral no se lee bien sobre su fondo",
+    ),
+    (
+        "borde",
+        "marco",
+        _GRAFICO,
+        "Los bordes de la barra superior casi no se ven sobre el color del marco",
+    ),
+    (
+        "borde",
+        "lateral",
+        _GRAFICO,
+        "Las líneas del menú lateral casi no se ven sobre el color lateral",
+    ),
+    (
+        "acento",
+        "marco",
+        _GRAFICO,
+        "La raya de color de acento bajo la barra superior casi no se ve sobre el color del marco",
+    ),
+)
+
+
 @dataclass(frozen=True)
 class Tema:
     acento: str | None
     marco: str | None
     lateral: str | None
     tiene_logo: bool
+    avisos: list[str]
+
+
+def _luminancia(color: str) -> float:
+    """Luminancia relativa de `#rrggbb` (WCAG 2.x, sRGB)."""
+    canales = [int(color[i : i + 2], 16) / 255 for i in (1, 3, 5)]
+    r, g, b = (c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in canales)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contraste(a: str, b: str) -> float:
+    """Razón de contraste WCAG 2.x entre dos `#rrggbb`: de 1 (iguales) a 21 (negro y blanco)."""
+    claro, oscuro = sorted((_luminancia(a), _luminancia(b)), reverse=True)
+    return (claro + 0.05) / (oscuro + 0.05)
+
+
+def _numero(valor: float) -> str:
+    """Con coma decimal y un decimal, truncado (no redondeado): un 4,478 nunca se lee «4,5»."""
+    return f"{int(valor * 10) / 10:.1f}".replace(".", ",")
+
+
+def avisos_de_contraste(acento: str | None, marco: str | None, lateral: str | None) -> list[str]:
+    """Los pares del marco que no llegan a su mínimo, en español llano. El tema se aplica igual."""
+    propios = {"acento": acento, "marco": marco, "lateral": lateral}
+    colores = {**_NEUTRO, **{k: v for k, v in propios.items() if v}}
+    avisos = []
+    for delante, fondo, minimo, frase in _PARES:
+        razon = contraste(colores[delante], colores[fondo])
+        if razon < minimo:
+            hace_falta = f"{minimo:g}".replace(".", ",")
+            avisos.append(f"{frase}: {_numero(razon)}:1, hace falta {hace_falta}:1")
+    return avisos
 
 
 def _color(valor: object) -> str | None:
@@ -66,9 +156,11 @@ def leer_logo(carpeta: Path) -> tuple[bytes, str] | None:
 
 def leer_tema(carpeta: Path) -> Tema:
     colores = _colores(carpeta)
+    acento, marco, lateral = (_color(colores.get(k)) for k in ("acento", "marco", "lateral"))
     return Tema(
-        acento=_color(colores.get("acento")),
-        marco=_color(colores.get("marco")),
-        lateral=_color(colores.get("lateral")),
+        acento=acento,
+        marco=marco,
+        lateral=lateral,
         tiene_logo=leer_logo(carpeta) is not None,
+        avisos=avisos_de_contraste(acento, marco, lateral),
     )

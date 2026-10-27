@@ -56,11 +56,11 @@ def test_sin_carpeta_de_tema_devuelve_neutro(
 
 def test_colores_validos_se_devuelven(tema: Path, cliente: TestClient) -> None:
     (tema / "tema.json").write_text(
-        json.dumps({"acento": "#123abc", "marco": "#000000", "lateral": "#fafafa"}),
+        json.dumps({"acento": "#ffffff", "marco": "#000000", "lateral": "#fafafa"}),
         encoding="utf-8",
     )
     assert cliente.get("/v1/tema").json() == {
-        "acento": "#123abc",
+        "acento": "#ffffff",
         "marco": "#000000",
         "lateral": "#fafafa",
         "tiene_logo": False,

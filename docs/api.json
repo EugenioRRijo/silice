@@ -9567,7 +9567,7 @@
           "tema"
         ],
         "summary": "Ver Tema",
-        "description": "Colores válidos (`#rrggbb`) y si hay logo; lo demás, `null` (tema neutro).",
+        "description": "Colores válidos (`#rrggbb`) y si hay logo; lo demás, `null` (tema neutro).\n\n`avisos` dice, en español llano, qué pares de colores del marco no se leen bien (WCAG 2.x). El\ntema se aplica igual: lo decide la empresa; el aviso es para quien lo configura.",
         "operationId": "ver_tema_v1_tema_get",
         "responses": {
           "200": {
@@ -22918,6 +22918,13 @@
           "tiene_logo": {
             "type": "boolean",
             "title": "Tiene Logo"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
           }
         },
         "type": "object",
@@ -22925,7 +22932,8 @@
           "acento",
           "marco",
           "lateral",
-          "tiene_logo"
+          "tiene_logo",
+          "avisos"
         ],
         "title": "TemaRespuesta"
       },
