@@ -76,6 +76,23 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   const render = () => renderManager.getRenderUnitById(unitId);
   const viewportPrincipal = () => render()?.scene.getViewport(SHEET_VIEWPORT_KEY.VIEW_MAIN);
 
+  // En orden: primero el libro (Univer suelta su unidad de dibujo con los servicios aun vivos), despues la instancia.
+  // Corre en la limpieza de un efecto de React (`destruir`) o al fallar la apertura: si Univer lanzara al desecharse, el
+  // error no debe escapar ni tapar la causa (la pantalla ya se fue y no hay nada que la persona pueda hacer); queda en la
+  // consola como aviso.
+  function desecharUniver(): void {
+    try {
+      univerAPI.disposeUnit(unitId);
+    } catch (error) {
+      console.warn("Univer lanzo al desechar el libro:", error);
+    }
+    try {
+      univer.dispose();
+    } catch (error) {
+      console.warn("Univer lanzo al desecharse:", error);
+    }
+  }
+
   // El lienzo se arma de forma asincrona: se espera a tener escena y cuadricula antes de entregar el visor, y a que
   // Univer llegue a la etapa Rendered. D-3 al abrir: escena y cuadricula existen desde Ready, pero los modulos de
   // dibujo de la hoja (entre ellos su controlador de zoom, `u4` en el paquete construido) se registran en Rendered,
@@ -86,7 +103,7 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
       univerAPI.getCurrentLifecycleStage() >= LifecycleStages.Rendered && viewportPrincipal() && fLibro.getActiveSheet().getSkeleton();
     if (listo) break;
     if (Date.now() - inicio > ESPERA_MAXIMA_MS) {
-      univer.dispose();
+      desecharUniver();
       throw new Error("Univer no termino de preparar la hoja.");
     }
     await esperar(PASO_MS);
@@ -360,19 +377,7 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
       }
       oyentesCambio.clear();
       oyentesSeleccion.clear();
-      // En orden: primero el libro (Univer suelta su unidad de dibujo con los servicios aun vivos), despues la
-      // instancia. `destruir` corre en la limpieza de un efecto de React: si Univer lanzara al desecharse, el error
-      // no debe escapar (la pantalla ya se fue y no hay nada que el usuario pueda hacer); queda en la consola como aviso.
-      try {
-        univerAPI.disposeUnit(unitId);
-      } catch (error) {
-        console.warn("Univer lanzo al desechar el libro:", error);
-      }
-      try {
-        univer.dispose();
-      } catch (error) {
-        console.warn("Univer lanzo al desecharse:", error);
-      }
+      desecharUniver();
     },
   };
 }
