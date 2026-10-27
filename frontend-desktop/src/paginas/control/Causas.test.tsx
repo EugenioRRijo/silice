@@ -81,6 +81,7 @@ function calculo(atrasos: Calculo["atrasos"]): Calculo {
     decisiones: [],
     versiones_revaloradas: [],
     atrasos,
+    precios_convertidos: [],
   };
 }
 

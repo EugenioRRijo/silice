@@ -5,6 +5,8 @@ import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { textoDeEquivalencia } from "../../comun/LineaDeEquivalencia";
+import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import { AYUDA_CIFRAS, leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
@@ -25,7 +27,8 @@ type Paso =
 // se dice que partidas cambiaran de precio y se pide confirmar (D-MP2); en cobro se guarda el precio objetivo citando
 // las observaciones de las cifras. En compra, con una obra abierta, la casilla «Declararlo precio del corte» deja
 // ademas el precio como precio del corte de esa obra (Tarea 25): `declarar_en` solo viaja si se marco, y la API
-// confirma con su frase (`corte`) o, si la obra no lo admite, no guarda nada.
+// confirma con su frase (`corte`) o, si la obra no lo admite, no guarda nada. Si la obra trabaja en la otra moneda, la
+// API convierte el precio con la tasa del BCV y trae su `equivalencia`: se dice en una linea (Tarea D2).
 interface Props {
   estudio: Estudio;
   // Avisa al lado si el campo tiene algo escrito sin usar (para preguntar antes de cambiar de insumo o partida).
@@ -108,11 +111,17 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
       if (lado === "compra") {
         const cita = citables.find((o) => String(o.id) === respaldo);
         const cuerpo = { precio, observacion_id: cita ? cita.id : null };
-        const r = await pedir<{ lista: string; corte?: string | null }>(rutaDeUsar("compra", codigo), {
-          metodo: "POST",
-          cuerpo: declarando ? { ...cuerpo, declarar_en: obra.codigo } : cuerpo,
-        });
-        setHecho(r.corte ? `Precio guardado en «${r.lista}». ${r.corte}` : `Precio guardado en «${r.lista}».`);
+        const r = await pedir<{ lista: string; corte?: string | null; equivalencia?: Equivalencia | null }>(
+          rutaDeUsar("compra", codigo),
+          {
+            metodo: "POST",
+            cuerpo: declarando ? { ...cuerpo, declarar_en: obra.codigo } : cuerpo,
+          },
+        );
+        const guardado = r.corte ? `Precio guardado en «${r.lista}». ${r.corte}` : `Precio guardado en «${r.lista}».`;
+        setHecho(
+          r.equivalencia ? `${guardado} Se convirtió con la tasa del BCV: ${textoDeEquivalencia(r.equivalencia)}` : guardado,
+        );
         setDeclarar(false);
       } else {
         const r = await pedir<{ codigo: string; precio: string; moneda: string }>(rutaDeUsar("cobro", codigo), {

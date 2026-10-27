@@ -2,6 +2,7 @@
 // Los textos de las tablas ya vienen presentados por la API; aqui no se recalcula ningun monto.
 import { useCallback, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
+import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
 import { formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
@@ -185,6 +186,16 @@ export interface Calculo {
   decisiones: Fila[];
   versiones_revaloradas: string[];
   atrasos: AtrasoDePartida[];
+  // Con `metodo=declarados`, los precios del corte vigentes que se convirtieron de otra moneda (Tarea D2).
+  precios_convertidos: PrecioConvertido[];
+}
+
+export interface PrecioConvertido {
+  descripcion: string;
+  unidad: string;
+  fecha: string;
+  fuente: string;
+  equivalencia: Equivalencia;
 }
 
 // Un supuesto de una opcion en sus tres ranuras: nombre y valor ya con tilde, la naturaleza como codigo del nucleo.

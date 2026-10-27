@@ -6,6 +6,7 @@ import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { CurvaPlanAvance } from "../../comun/CurvaPlanAvance";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { LineaDeEquivalencia } from "../../comun/LineaDeEquivalencia";
 import { Severidad } from "../../comun/Severidad";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { FilaDensa } from "../../comun/TablaDensa";
@@ -31,7 +32,7 @@ import {
   severidadVisible,
   useAccion,
 } from "./logica";
-import type { Calculo, Filtros, MetodoDePrecios, OpcionDeRecuperacion } from "./logica";
+import type { Calculo, Filtros, MetodoDePrecios, OpcionDeRecuperacion, PrecioConvertido } from "./logica";
 import { fechaDeRanura } from "./fechas";
 import { AntesYDespues } from "./AntesYDespues";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -164,7 +165,31 @@ export function ValorGanado({ calculo }: { calculo: Calculo }) {
       {calculo.spi_no_aplica && (
         <p className="silice-control__nota cds--type-helper-text-01">El corte es anterior a todo trabajo planificado: el SPI no aplica.</p>
       )}
+      {calculo.precios_convertidos.length > 0 && <PreciosConvertidos precios={calculo.precios_convertidos} />}
     </>
+  );
+}
+
+// Los precios del corte que se declararon en otra moneda que la obra y la API convirtio con la tasa del BCV (Tarea D2):
+// cada uno con su cuenta, para que quien revise despues (socios, economistas) la reconstruya. Solo se formatea.
+function PreciosConvertidos({ precios }: { precios: PrecioConvertido[] }) {
+  return (
+    <section className="silice-control__bloque" aria-labelledby="control-convertidos">
+      <h2 id="control-convertidos" className="cds--type-heading-compact-02">
+        Precios convertidos con la tasa del BCV
+      </h2>
+      <ul className="cds--type-body-compact-01">
+        {precios.map((p) => (
+          <li key={`${p.descripcion}|${p.unidad}`}>
+            <div>{`${p.descripcion}${p.unidad ? ` (por ${p.unidad})` : ""}, desde el ${fechaDeRanura(p.fecha)}:`}</div>
+            <div>
+              <LineaDeEquivalencia equivalencia={p.equivalencia} />
+            </div>
+            <div className="silice-control__nota cds--type-helper-text-01">{`Fuente del precio: ${p.fuente}.`}</div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
