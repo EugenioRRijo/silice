@@ -85,7 +85,7 @@ pendientes, no por herramientas: nada de módulos ni áreas.
   cabecera (relleno `--silice-acento`, texto `--silice-marco`) y el árbol de obras (patrón `tree` de WAI-ARIA: flechas,
   derecha despliega, izquierda pliega; agrupado por carpeta solo si hay más de una; la obra abierta desplegada en sus
   secciones con una línea guía); y **Empresa** (Precios y catálogo, Auditar un presupuesto, Producción, Empresa y
-  personas, Ayuda). Activo: fondo `--silice-lateral-activo` y raya de 3 px `--silice-acento`. Lo que la cuenta no puede
+  personas, Ayuda). Activo: fondo `--silice-lateral-activo` y raya de 3 px `--silice-marco`. Lo que la cuenta no puede
   usar no aparece.
 - **La obra** (`EspacioDeObra.tsx`, ruta `#/obra/<carpeta>/<obra>/<sección>`): antes de montar la sección se fija la obra
   en la sesión; encima va la cabecera de la obra (nombre, moneda, versión y la lista para armar de su carpeta), que no es

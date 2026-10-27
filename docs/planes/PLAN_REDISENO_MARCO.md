@@ -246,7 +246,9 @@ migas; a la derecha un botón ancho «Buscar… (Ctrl+K)», el tamaño de letra 
 - [ ] **Paso 1: pruebas rojas**: con logo → `img` con `alt="Logo de la empresa"`; sin logo → texto «Sílice»;
   migas `[Mis obras, Clínica, Presupuesto]` → las dos primeras son enlaces y la última tiene `aria-current="page"`;
   clic en «Buscar…» y la tecla Ctrl+K llaman a `alAbrirBuscador`; a 1056 px el texto del buscador se reduce a
-  icono con `aria-label="Buscar (Ctrl+K)"` (prueba de clase, no de píxeles).
+  icono (prueba de clase, no de píxeles). Lo decidido: el botón no lleva `aria-label`; su nombre accesible es el
+  texto visible completo («Buscar una obra, sección o pantalla… (Ctrl+K)»), que en modo icono se oculta solo
+  visualmente (sigue en el árbol de accesibilidad), y anuncia el atajo con `aria-keyshortcuts="Control+K"`.
 - [ ] **Paso 2:** FALLA. **Paso 3:** implementar. **Paso 4:** PASA. **Paso 5: commit.**
 
 ### Tarea 6: Barra lateral marfil en árbol
@@ -268,7 +270,8 @@ carpeta solo si hay más de una carpeta) y **«Nueva obra» como botón vistoso*
 de la barra, relleno `var(--silice-acento)` con texto `var(--silice-marco)` en seminegrita, icono `Add` de Carbon,
 40 px de alto, siempre visible (fijo bajo la cabecera «Obras», no al final de una lista larga); con cuenta sin
 permiso de crear obras no aparece; zona 3 «Empresa» con `ENTRADAS_DE_EMPRESA`.
-Activo: fondo `var(--silice-lateral-activo)` y raya de 3 px `var(--silice-acento)`. Sin contadores en esta tanda
+Activo: fondo `var(--silice-lateral-activo)` y raya de 3 px `var(--silice-marco)` (decisión de Eugenio, 2026-10-27:
+la raya ya no es ámbar; el tema neutro da #393939 sobre #e5e0df = 8,83:1). Sin contadores en esta tanda
 (llegan en F3).
 
 - [ ] **Paso 1: pruebas rojas**:
@@ -288,13 +291,15 @@ Activo: fondo `var(--silice-lateral-activo)` y raya de 3 px `var(--silice-acento
 ### Tarea 7: Buscador Ctrl+K
 
 **Archivos:**
-- Crear: `frontend-desktop/src/marco/Buscador.tsx`, `marco/buscador.ts`
-- Prueba: `marco/buscador.test.ts`, `marco/Buscador.test.tsx`
+- Crear: `frontend-desktop/src/marco/Buscador.tsx`, `marco/busqueda.ts`
+- Prueba: `marco/busqueda.test.ts`, `marco/Buscador.test.tsx`
 
 **Interfaces:**
 - Consume: `useObras()`, `SECCIONES_DE_OBRA`, `ENTRADAS_DE_EMPRESA`, `rutaDeObra`.
 - Produce: `resultadosDe(texto: string, obras: ObraDeCarpeta[]): Resultado[]` con
-  `Resultado = { texto: string; detalle: string; ruta: string }`, máximo 8; `<Buscador abierto alCerrar />`.
+  `Resultado = { texto: string; detalle: string; ruta: string }`, máximo 8; `<Buscador abierto alCerrar />`. En
+  `busqueda.ts` la oferta de la cuenta es un tercer argumento obligatorio y una ruta no sale dos veces (si sale la
+  obra no se repite su «Resumen»).
 
 Coincidencia sin acentos ni mayúsculas, por palabras («clin pres» encuentra «Clínica Las Mercedes › Presupuesto»).
 Orden: obras, después secciones de obras, después entradas de Empresa, después las páginas de `PAGINAS` usables
@@ -304,7 +309,9 @@ que aún no tienen sitio en el árbol (Histórico, Índices, Simulador…), para
   «Clínica Las Mercedes › Presupuesto» con su ruta; `"precios"` → «Precios y catálogo»; `""` → las 5 obras más
   recientes de la lista; nunca más de 8. Componente: Esc cierra y devuelve el foco al botón; Enter navega a la ruta
   del primero; flechas mueven la selección (`role="listbox"`).
-- [ ] **Paso 2:** FALLA. **Paso 3:** implementar sobre `ComposedModal` de Carbon. **Paso 4:** PASA. **Paso 5: commit.**
+- [ ] **Paso 2:** FALLA. **Paso 3:** implementar como diálogo propio (combobox + listbox WAI-ARIA, con `useAtraparFoco`), no sobre
+  `ComposedModal`: el archivo del modal de Carbon trae una URL que `npm run dist` rechaza (RNF-22) y el resto del
+  armazón usa diálogos propios. **Paso 4:** PASA. **Paso 5: commit.**
 
 ### Tarea 6b: «Nueva obra» crea donde estás (decisión de Eugenio, 2026-10-27)
 
@@ -344,7 +351,8 @@ suficiente. El tema se sigue aplicando (lo decide la empresa); el aviso es para 
 **Reglas:**
 - Pares que se miden (WCAG 2.x, luminancia relativa): texto del marco sobre `marco` ≥ 4,5:1; `marco` sobre `acento`
   (texto del botón «Nueva obra») ≥ 4,5:1; texto normal sobre `lateral` y sobre `lateral-activo` ≥ 4,5:1; borde
-  `--cds-border-strong-01` y `acento` (raya del activo) sobre su fondo ≥ 3:1.
+  `--cds-border-strong-01` y `acento` (raya bajo la barra superior) sobre su fondo ≥ 3:1; y `marco` (raya del
+  elemento activo del menú lateral) sobre `lateral-activo` ≥ 3:1 (2026-10-27, antes la raya era del acento).
 - El cálculo vive en un solo lado (servidor, `aplicacion/tema.py`) y `GET /v1/tema` devuelve `avisos: [texto]` en
   español llano («El texto del botón Nueva obra no se lee bien sobre el color de acento: 2,1:1, hace falta 4,5:1»),
   con coma decimal. El front solo lo muestra, a cuentas con permiso de administración, en Empresa (no en cada pantalla).
