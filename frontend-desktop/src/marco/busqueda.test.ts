@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ObraDeCarpetaRespuesta } from "../api/tipos";
-import { resultadosDe } from "./buscador";
+import { resultadosDe } from "./busqueda";
 import { ofertaDe } from "./oferta";
 
 // Carpetas y obras inventadas.
