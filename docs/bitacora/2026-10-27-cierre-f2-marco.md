@@ -182,3 +182,11 @@ antes contra el código que dejó la Tarea 8. Conducta con TDD: el commit de pru
 
 El pendiente «La cabecera de la obra pide `GET /v1/obras/resumen` solo para la moneda» de la sección anterior queda
 resuelto por el punto 40.
+
+### Verificación de los menores
+
+- Front: `npm test` 191 archivos y 2.894 pruebas en verde; `npm run lint`, `npm run muerto` y `npm run build` limpios;
+  `npm run duplicado` 0,88 % (29 clones).
+- Python: `uv run --active pytest -q` (suite completa): 10.487 pasan, ninguna omitida y 2 fallan, las dos de arriba que no
+  son de este encargo: `test_huellas_rnf04` (ambiental, `lxml`) y `test_experimento_congelado_vigente` (decisión de
+  Eugenio y del tutor). `ruff check` de lo tocado, limpio.
