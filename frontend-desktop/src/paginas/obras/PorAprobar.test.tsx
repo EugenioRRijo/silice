@@ -2,7 +2,7 @@ import { renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
-import { botonDeObra, caso, estadoInicial, json, ligeras, montarShell, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
+import { caso, estadoInicial, json, ligeras, montarMarco, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
 import type { EstadoDelServidor, Rol } from "../../shell/obras/datosDePrueba";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios, useFormularioSucio } from "../../shell/sucio";
@@ -114,7 +114,7 @@ afterEach(() => {
 });
 
 async function montar(rol: Rol) {
-  const vista = montarShell(sesionDe(rol), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
+  const vista = montarMarco(sesionDe(rol), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
   await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
   return vista;
 }
@@ -146,7 +146,7 @@ describe("foco 2: abrir un envío de otra carpeta", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" })).toBeInTheDocument();
   });
 
-  test("«Cambiar y descartar» abre la carpeta del envío (POST /abrir), la barra dice la carpeta nueva y lleva a /aprobar?envio=", async () => {
+  test("«Cambiar y descartar» abre la carpeta del envío (POST /abrir), la pantalla dice la carpeta nueva y lleva a /aprobar?envio=", async () => {
     const u = userEvent.setup();
     const estado = estadoInicial();
     estado.borradores = [{ id: "b-1", proyecto: "7", version: "001", cambios: 2, rev: 3, tocado: "2026-10-25T10:00:00" }];
@@ -168,10 +168,9 @@ describe("foco 2: abrir un envío de otra carpeta", () => {
       expect(despues.lastIndexOf("GET /v1/casos")).toBeGreaterThan(despues.indexOf("POST /v1/aprobaciones/abrir"));
     });
     expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
-    // Menor del arbitro de T19: el pie del selector de obra de la barra dice la carpeta del envio.
-    await u.click(await botonDeObra());
-    const panel = await within(screen.getByRole("banner")).findByRole("region", { name: "Obra" });
-    expect(await within(panel).findByText("Carpeta: s2")).toBeInTheDocument();
+    // Menor del arbitro de T19: la pantalla dice la carpeta del envio (la de la sesion, que el marco volvio a leer).
+    const envio = await screen.findByRole("region", { name: "Galpón Sur · GS-001" });
+    expect(await within(envio).findByText("s2")).toBeInTheDocument();
   });
 
   test("rita (sin borradores que perder) abre el envío de otra carpeta sin preguntar y sin leer borradores", async () => {
@@ -259,7 +258,7 @@ describe("con la pantalla de aprobar registrada, las filas de la carpeta abierta
       return undefined;
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
-    montarShell(sesionDe("ana"), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
+    montarMarco(sesionDe("ana"), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
     await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
     const columna = await screen.findByRole("region", { name: "Pendientes" });
     const boton = await within(columna).findByRole("button", { name: "Abrir el envío" });
@@ -267,7 +266,8 @@ describe("con la pantalla de aprobar registrada, las filas de la carpeta abierta
     await u.click(boton);
     expect(await aprobarAbierta()).toBeInTheDocument();
     expect(await screen.findByRole("region", { name: "Casa Demo · CD-001" })).toBeInTheDocument();
-    expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "7" }]);
+    // La fija la mesa y, al abrir la sección Aprobaciones de la obra, también el marco: siempre la misma.
+    expect(new Set(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => JSON.stringify(l.cuerpo)))).toEqual(new Set(['{"proyecto":"7"}']));
     expect(aperturas()).toEqual([]);
   });
 });
@@ -293,7 +293,7 @@ describe("T20: «Abrir el envío» lleva a la pantalla real de aprobar", () => {
       return undefined;
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
-    montarShell(sesionDe("rita"), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
+    montarMarco(sesionDe("rita"), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
     await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
     await u.click(await abrirDe("GS-001"));
     expect(await aprobarAbierta()).toBeInTheDocument();

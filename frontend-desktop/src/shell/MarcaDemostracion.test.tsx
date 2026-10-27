@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../api/cliente";
 import { MarcaDemostracion } from "./MarcaDemostracion";
-import { caso, estadoInicial, ligeras, montarShell, servidorFalso, sesionDe } from "./obras/datosDePrueba";
+import { caso, estadoInicial, ligeras, montarMarco, servidorFalso, sesionDe } from "./obras/datosDePrueba";
 import { cancelarSalida } from "./salida";
 import { olvidarFormularios, useFormularioSucio } from "./sucio";
 
@@ -88,26 +88,26 @@ describe("MarcaDemostracion en el armazón", () => {
   const marca = () => within(screen.getByRole("banner")).findByRole("button", { name: /^Demostración/ });
 
   test.each(["/libros", "/hoja", "/existencias"])("con es_demostracion la barra dice «Demostración» en %s", async (ruta) => {
-    montarShell(sesionDe("ana"), ruta);
+    montarMarco(sesionDe("ana"), ruta);
     expect(await marca()).toHaveTextContent("Demostración");
   });
 
   test("fuera de la demostración la barra no la muestra", async () => {
     servidor = servidorFalso();
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
-    montarShell(sesionDe("ana"), "/hoja");
-    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
+    montarMarco(sesionDe("ana"), "/pendientes");
+    await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
     await waitFor(() => expect(servidor.de("GET", "/v1/casos").length).toBeGreaterThan(0));
     expect(within(screen.getByRole("banner")).queryByRole("button", { name: /^Demostración/ })).toBeNull();
   });
 
   test("«Volver a la carpeta de la empresa» llama DELETE /v1/casos/actual, avisa y la marca se va", async () => {
     const u = userEvent.setup();
-    montarShell(sesionDe("ana"), "/libros");
+    montarMarco(sesionDe("ana"), "/libros");
     await u.click(await marca());
     await u.click(screen.getByRole("button", { name: "Volver a la carpeta de la empresa" }));
     await waitFor(() => expect(servidor.de("DELETE", "/v1/casos/actual")).toHaveLength(1));
-    expect(await screen.findByText("Ahora trabaja con la carpeta de trabajo «silice».")).toBeInTheDocument();
+    expect(await screen.findByText("Ahora trabaja con la carpeta «silice».")).toBeInTheDocument();
     await waitFor(() => expect(within(screen.getByRole("banner")).queryByRole("button", { name: /^Demostración/ })).toBeNull());
   });
 
@@ -117,7 +117,7 @@ describe("MarcaDemostracion en el armazón", () => {
       useFormularioSucio("componer", true);
       return <h1>Componer una partida</h1>;
     }
-    montarShell(sesionDe("ana"), "/componer", ligeras({ componer: ComponerSucio }));
+    montarMarco(sesionDe("ana"), "/componer", ligeras({ componer: ComponerSucio }));
     await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
     await u.click(await marca());
     await u.click(screen.getByRole("button", { name: "Volver a la carpeta de la empresa" }));
@@ -132,7 +132,7 @@ describe("MarcaDemostracion en el armazón", () => {
 
   test("rita en la demostración ve la marca sin el botón de volver", async () => {
     const u = userEvent.setup();
-    montarShell(sesionDe("rita"), "/libros");
+    montarMarco(sesionDe("rita"), "/libros");
     await u.click(await marca());
     expect(screen.getByText("Está viendo datos inventados.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Volver a la carpeta de la empresa" })).not.toBeInTheDocument();

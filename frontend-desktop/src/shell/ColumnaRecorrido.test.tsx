@@ -8,10 +8,10 @@ import type { PaginaDef } from "./rutas";
 
 const migrada = async () => ({ default: () => null });
 const PAGINAS: PaginaDef[] = [
-  { id: "auditoria", titulo: "Inicio de auditoría", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: null, ubicacion: { modulo: "auditoria", area: "inicio" }, cargar: migrada },
-  { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", ubicacion: { modulo: "auditoria", area: "auditar" }, cargar: migrada },
-  { id: "historial", titulo: "Historial de auditorías", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", ubicacion: { modulo: "auditoria", area: "historial" }, cargar: migrada },
-  { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", ubicacion: { modulo: "obras", area: "obras" }, cargar: migrada },
+  { id: "auditoria", titulo: "Inicio de auditoría", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: null, cargar: migrada },
+  { id: "libros", titulo: "Libro de la empresa", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
+  { id: "historial", titulo: "Historial de auditorías", enUnaLinea: "Pantalla de prueba", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
+  { id: "tablero", titulo: "Tablero del proyecto", enUnaLinea: "Pantalla de prueba", seccion: "Trabajo", accion: "leer_proyecto", cargar: migrada },
 ];
 
 function Ir() {

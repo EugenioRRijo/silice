@@ -70,7 +70,6 @@ describe("Inicio de producción", () => {
       caso: { nombre: "clinica", ruta_relativa: "data/clinica.db" },
       recargarProyectos: vi.fn(),
       alExpirar: vi.fn(),
-      modulo: "produccion",
       ...aplicacion,
     };
     return render(

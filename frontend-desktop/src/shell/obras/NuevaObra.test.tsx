@@ -7,7 +7,7 @@ import { DialogoSalida } from "../DialogoSalida";
 import type { Aplicacion } from "../contexto";
 import PaginaHoja from "../../paginas/hoja/index";
 import { DialogoNuevaObra, type DestinoDeNuevaObra } from "./DialogoNuevaObra";
-import { TORRE_B, botonDeObra, estadoInicial, json, montarShell, servidorFalso, sesionDe } from "./datosDePrueba";
+import { TORRE_B, estadoInicial, json, montarMarco, servidorFalso, sesionDe } from "./datosDePrueba";
 
 // Plan de modulos, MOD-3b (absorbe T7 del plan de montar): «Nueva obra» (diseno de la bienvenida, BCP-6 §5.2, F10 y F11,
 // con la ficha de la obra de MOD-3a y la moneda de la carpeta de T2). Oraculos escritos a mano.
@@ -47,11 +47,13 @@ afterEach(() => {
 
 const dialogo = () => screen.getByRole("dialog", { name: "Nueva obra" });
 
+// «Nueva obra» es el botón principal de la barra lateral del marco (Tarea 6 del plan del marco).
+const botonNuevaObra = () => within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("button", { name: "Nueva obra" });
+
 async function abrirNuevaObra(u: ReturnType<typeof userEvent.setup>) {
-  montarShell(sesionDe("ana"), "/hoja");
-  await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
-  await u.click(await botonDeObra());
-  await u.click(await screen.findByRole("button", { name: "Nueva obra" }));
+  montarMarco(sesionDe("ana"), "/pendientes");
+  await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
+  await u.click(botonNuevaObra());
   return screen.findByRole("dialog", { name: "Nueva obra" });
 }
 
@@ -104,11 +106,11 @@ describe("«Nueva obra» (F10 adaptado)", () => {
     expect(dialogo()).toBeInTheDocument();
   });
 
-  test("crear manda la ficha completa, recarga las obras y la barra dice «Obra: Casa Demo»", async () => {
+  test("crear manda la ficha completa, recarga las obras y abre la obra nueva", async () => {
     const u = userEvent.setup();
     const caja = await abrirNuevaObra(u);
     await waitFor(() => expect(within(caja).getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
-    const listasAntes = servidor.de("GET", "/v1/proyectos").length;
+    const listasAntes = servidor.de("GET", "/v1/obras/todas").length;
     await u.type(within(caja).getByRole("textbox", { name: /^Nombre/ }), "Casa Demo");
     await u.type(within(caja).getByRole("textbox", { name: /^Cliente/ }), "Contratista Demo, C.A.");
     await u.type(within(caja).getByRole("textbox", { name: /^Ubicación/ }), "Maracay");
@@ -123,25 +125,28 @@ describe("«Nueva obra» (F10 adaptado)", () => {
           descripcion: "",
           cliente: "Contratista Demo, C.A.",
           ubicacion: "Maracay",
+          // «Nueva obra» siempre dice dónde se crea: sin obra abierta, en la carpeta de la sesión (la de la empresa).
+          carpeta: "empresa",
         },
       ]),
     );
-    await waitFor(async () => expect(await botonDeObra()).toHaveAccessibleName("Obra: Casa Demo. Cambiar obra"));
+    const cabecera = await screen.findByRole("region", { name: "Obra abierta" });
+    expect(await within(cabecera).findByText("Casa Demo")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Nueva obra" })).not.toBeInTheDocument();
-    await waitFor(() => expect(servidor.de("GET", "/v1/proyectos").length).toBeGreaterThan(listasAntes));
+    await waitFor(() => expect(servidor.de("GET", "/v1/obras/todas").length).toBeGreaterThan(listasAntes));
     await waitFor(() =>
       expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "10" }]),
     );
-    expect(await botonDeObra()).toHaveFocus();
+    expect(botonNuevaObra()).toHaveFocus();
   });
 
-  test("Esc cierra sin crear y devuelve el foco al botón de la barra", async () => {
+  test("Esc cierra sin crear y devuelve el foco a «Nueva obra»", async () => {
     const u = userEvent.setup();
     await abrirNuevaObra(u);
     await u.keyboard("{Escape}");
     expect(screen.queryByRole("dialog", { name: "Nueva obra" })).not.toBeInTheDocument();
     expect(servidor.de("POST", "/v1/proyectos")).toEqual([]);
-    expect(await botonDeObra()).toHaveFocus();
+    expect(botonNuevaObra()).toHaveFocus();
   });
 
   test("ninguna cadena visible del diálogo dice «caso» ni «proyecto»", async () => {
@@ -155,7 +160,9 @@ describe("«Nueva obra» (F10 adaptado)", () => {
   });
 
   test("cerrado no pinta nada", () => {
-    const { container } = render(<DialogoNuevaObra abierto={false} alCerrar={vi.fn()} alCrear={vi.fn()} />);
+    const { container } = render(
+      <DialogoNuevaObra abierto={false} alCerrar={vi.fn()} alCrear={vi.fn()} destino={{ carpeta: null, titulo: "Carpeta de la empresa" }} />,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 });
@@ -271,17 +278,6 @@ describe("«Nueva obra» dice dónde se creará", () => {
     expect(await screen.findByText(VACIO_DE_LA_API)).toBeInTheDocument();
     expect(alCrear).not.toHaveBeenCalled();
     expect(servidor.llamadas.filter((l) => l.metodo !== "GET" && l.ruta !== "/v1/proyectos")).toEqual([]);
-  });
-
-  test("sin destino (uso de siempre) no dice dónde ni manda carpeta", async () => {
-    const u = userEvent.setup();
-    const alCrear = vi.fn();
-    render(<DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={alCrear} />);
-    await screen.findByRole("textbox", { name: /^Nombre/ });
-    expect(screen.queryByText(/Se creará en/)).toBeNull();
-    await llenarYCrear(u);
-    await waitFor(() => expect(alCrear).toHaveBeenCalledTimes(1));
-    expect(servidor.de("POST", "/v1/proyectos")[0]!.cuerpo).not.toHaveProperty("carpeta");
   });
 
   test("el texto de la moneda no dice «carpeta de trabajo»", async () => {

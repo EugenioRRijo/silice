@@ -10,7 +10,7 @@ import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { ContextoAplicacion } from "../contexto";
 import type { MonedaPendiente } from "../contexto";
-import { nombreDeCarpeta } from "../Selectores";
+import { nombreDeCarpeta } from "../../api/carpetaYObra";
 import "./GestionCarpetas.scss";
 
 // De donde se abrio una carpeta: el dialogo se cierra al abrir una de la lista o la demostracion, y se queda abierto

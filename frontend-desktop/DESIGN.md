@@ -26,8 +26,8 @@ ajustan aquí cuando la construcción los fije.
   **Tamaño base por presbicia (Eugenio, 2026-10-21):** la raíz mide 116,6667 % de la letra del navegador, así que el cuerpo de
   Carbon (14 px) sale a 16 px y la etiqueta más pequeña (12 px) a 14 px; todo va en rem. El control «Tamaño de letra» de la
   cabecera (Normal 100 %, Grande 125 %, Muy grande 150 %, guardado en el navegador) multiplica ese tamaño por la variable
-  `--silice-escala-letra`. Con Grande y Muy grande las áreas de la barra superior pasan a la capa (botón de la barra) por
-  debajo de 1536 y 1920 px (véase «Marco»), y carpeta y cuenta quedan en su ícono. El texto de los gráficos de Carbon Charts
+  `--silice-escala-letra`. Con Grande y Muy grande el buscador de la barra superior queda en su ícono por debajo de 1536
+  y 1920 px (véase «Marco»), y la cuenta queda en su ícono. El texto de los gráficos de Carbon Charts
   también sigue la escala; el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). IBM Plex es la
   cara nativa de Carbon, que el brief fija: se aloja en el propio servidor, sin CDN.
 - **Forma:** esquinas rectas (radio 0, como Carbon); separación con divisores de 1 px `$border-subtle` y espacio,
@@ -70,40 +70,41 @@ ajustan aquí cuando la construcción los fije.
 
 ## Marco
 
-Sin menú lateral: una **barra superior** de Carbon (`Header`) de **3 rem** de alto (56 px con letra Normal; sigue la escala
-de letra) y, debajo, el contenido a todo el ancho (diseño `docs/especificaciones/2026-10-25-barra-superior-design.md`).
+Una **barra superior** y, debajo, una **barra lateral en árbol** a la izquierda y el contenido (especificación
+`docs/especificaciones/2026-10-26-rediseno-marco-obras-design.md`; código en `src/marco/`). La navegación va por obras y
+pendientes, no por herramientas: nada de módulos ni áreas.
 
-- **Izquierda:** «Sílice» (lleva a Inicio) y la navegación `Menú principal` con cinco áreas: Inicio, Auditar, Crear,
-  Producción y Más. La lógica de qué se ve vive en `src/shell/navegacion.ts`; los datos, en `rutas.ts`. Un área con **una
-  sola pantalla visible** para la cuenta es un enlace directo (Inicio; Producción → «Existencias de la arenera»), sin rótulo
-  que repita su nombre; un área sin pantallas visibles no se muestra; cada pantalla sale **una sola vez** en la barra y una
-  sola vez en la capa. El área de la pantalla actual lleva el borde inferior azul de 3 px (`$border-interactive`).
-- **Panel de área:** un área con varias pantallas es un botón con chevron que abre su panel (patrón *disclosure* de
-  navegación de la APG: enlaces, no `role="menu"`). Se abre con clic o Intro/Espacio, **nunca al pasar el ratón**; un solo
-  panel abierto; se cierra con Esc (el foco vuelve al botón), con clic fuera, al salir el foco de la navegación, al elegir,
-  al cambiar de ruta y al cambiar la letra. Superficie `$layer-01`, borde de 1 px `$border-subtle`, sin sombra ni
-  animación, alineado bajo su botón y corrido a la izquierda si no cabe (8 px de margen a la ventana). Cada entrada: el
-  título en `body-compact-01` seminegrita y debajo su línea de ayuda (`enUnaLinea`, ≤ 60 caracteres, en un solo lugar:
-  `rutas.ts`) en `helper-text-01` `$text-secondary`; la actual con la barra izquierda azul de selección. Dos columnas
-  (40 rem) solo con letra Normal y ventana de 1056 px o más; si no, una (22 rem). «Más» agrupa por tema con subtítulo:
-  Precios, Obra, Análisis, Ajustes (y Otras, solo si hay pantallas sin área).
-- **Derecha (`HeaderGlobalBar`):** «Carpeta y proyecto» (nombre de la carpeta de trabajo sin `.db` y del proyecto, o «Sin
-  proyecto», recortados con puntos suspensivos a 18 rem; el nombre completo en el nombre accesible), que abre un panel de
-  20 rem con los dos selectores apilados; el botón «Recorrido» (solo con un recorrido plegado); el tamaño de letra; y la
-  cuenta (nombre y un menú con «Salir»). Con letra Grande o Muy grande, o por debajo de 1366 px, carpeta y cuenta quedan
-  solo en su ícono, con el mismo nombre accesible. En las cadenas del armazón se dice «carpeta de trabajo», no «caso».
-- **Capa por debajo del umbral de cada letra:** la barra no cabe por debajo de **1056 px** (Normal), **1536 px** (Grande)
-  y **1920 px** (Muy grande). Los tres umbrales viven solo en `src/shell/_umbrales.scss` (mixin `por-debajo-del-umbral`,
-  que `shell.scss` usa en `menu-en-capa`), porque la consulta en rem de Carbon no sigue la letra de Sílice. Por debajo, las
-  áreas ceden su sitio al botón «Abrir el menú», que despliega el `SideNav` de Carbon en capa (`MenuEnCapa.tsx`,
-  `Menú principal (capa)`): las mismas entradas, cada área con su rótulo y sus pantallas con la línea de ayuda, y al pie
-  «Sesión de <nombre>». Esc la cierra.
+- **Barra superior** (`BarraSuperior.tsx`): 3 rem de alto (sigue la escala de letra), fondo `--silice-marco` con texto
+  inverso y raya inferior de 3 px `--silice-acento`; queda fija al desplazar. A la izquierda el logo de la empresa (o
+  «Sílice»); luego las **migas** (`Mis obras / <obra> / <sección>`, `Empresa / <entrada>`, `Pendientes` o el título de la
+  pantalla; la última con `aria-current`); a la derecha el botón **«Buscar… (Ctrl+K)»**, la marca de la demostración y
+  «Recorrido» cuando tocan, el tamaño de letra y la cuenta (nombre y un menú con «Salir»; con letra Grande o Muy grande,
+  solo su ícono, con el mismo nombre accesible).
+- **Barra lateral** (`BarraLateral.tsx`): 14,75 rem, fondo `--silice-lateral`, fija al desplazar el contenido y con su
+  propio desplazamiento. Tres zonas: **Pendientes**; **Obras**, con «Nueva obra» como botón principal fijo bajo su
+  cabecera (relleno `--silice-acento`, texto `--silice-marco`) y el árbol de obras (patrón `tree` de WAI-ARIA: flechas,
+  derecha despliega, izquierda pliega; agrupado por carpeta solo si hay más de una; la obra abierta desplegada en sus
+  secciones con una línea guía); y **Empresa** (Precios y catálogo, Auditar un presupuesto, Producción, Empresa y
+  personas, Ayuda). Activo: fondo `--silice-lateral-activo` y raya de 3 px `--silice-acento`. Lo que la cuenta no puede
+  usar no aparece.
+- **La obra** (`EspacioDeObra.tsx`, ruta `#/obra/<carpeta>/<obra>/<sección>`): antes de montar la sección se fija la obra
+  en la sesión; encima va la cabecera de la obra (nombre, moneda, versión y la lista para armar de su carpeta), que no es
+  un encabezado: el único h1 es el de la sección. «Esa obra ya no existe» (con «Volver a Pendientes») y «Esta obra se
+  abrió en otra pestaña» (con «Retomar») son pantallas con su h1.
+- **Buscador** (`Buscador.tsx`): diálogo propio con combobox y lista (obras, sus secciones, Empresa y las pantallas sin
+  sitio en el árbol). Ctrl+K o el botón lo abren; Esc lo cierra y el foco vuelve al botón.
+- **Salir sin perder trabajo:** elegir otra obra, sección o entrada en el marco con cambios sin guardar pregunta
+  («Cambios sin guardar»); si la obra está en otra carpeta, también nombra los borradores de la Hoja que se perderían.
+  Atrás y adelante del navegador no se interceptan.
+- **Umbrales por letra:** viven solo en `src/marco/_umbrales.scss` (mixin `por-debajo-del-umbral`, 1056, 1536 y 1920 px
+  para Normal, Grande y Muy grande), porque la consulta en rem de Carbon no sigue la letra de Sílice. Por debajo, el
+  buscador queda en su ícono y la columna del recorrido pasa a franja.
 - **Recorrido guiado:** con un recorrido en curso, la columna «Recorrido» queda **acoplada a la derecha** (16 rem, bajo la
-  barra) y el contenido le cede ese ancho; no es una capa: no la cierran el clic fuera, Esc ni los paneles. «Ocultar» la
-  pliega (queda el botón «Recorrido» en la barra) y «Terminar recorrido» la quita. Por debajo del umbral de la letra pasa
-  a franja plegable bajo la barra, encima del contenido.
-- 1366×768 y 1056 px sin desplazamiento horizontal con las tres letras; la barra no se corta y ningún panel sale de la
-  ventana (lo mide `scripts/recorrido_ux_playwright.py`). Las pantallas que la cuenta no puede usar no aparecen.
+  barra) y el contenido le cede ese ancho; no es una capa. «Ocultar» la pliega (queda el botón «Recorrido» en la barra) y
+  «Terminar recorrido» la quita. Por debajo del umbral de la letra pasa a franja plegable bajo la barra.
+- 1366×768 y 1056 px sin desplazamiento horizontal con las tres letras. Los textos del marco dicen obra, sección,
+  pendiente y empresa; nunca «módulo», «área», «página» ni «carpeta de trabajo» (salvo Empresa › Carpetas de trabajo,
+  para quien administra). Lo vigila `src/paginas/sinJergaInterna.test.ts`.
 
 ## Movimiento
 

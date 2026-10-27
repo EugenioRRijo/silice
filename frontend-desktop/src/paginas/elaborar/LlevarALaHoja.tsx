@@ -2,7 +2,7 @@ import { Button, InlineLoading } from "@carbon/react";
 import { useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
-import { useNavegarSeguro } from "../../shell/EnlaceSeguro";
+import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { BOTON_LLEVAR, partidasParaLlevar, textoLlevar, textoPendientesNoSeLlevan } from "./logica";
 import type { ItemComputo, PendienteConPropuestas } from "./tipos";
 

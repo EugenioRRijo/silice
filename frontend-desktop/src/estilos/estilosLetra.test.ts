@@ -55,33 +55,22 @@ describe("tamaño de letra en el CSS propio", () => {
     expect(0.75 * base).toBeGreaterThanOrEqual(14);
   });
 
-  // Plan de modulos (MOD-2): el umbral en que la barra no cabe es por modulo y por letra, y por debajo sus areas pasan al
-  // sidebar de modulos (no a una capa aparte). Las cifras viven solo en _umbrales.scss.
-  test("la barra de cada módulo cede sus áreas al sidebar por debajo de su umbral, por letra, y la cuenta cede el nombre", () => {
-    const shell = leer(`${raiz}/shell/shell.scss`);
-    const umbrales = leer(`${raiz}/shell/_umbrales.scss`);
-    // Medidos por el recorrido visual (MOD-5, `recorrido_ux_playwright.py --umbrales`; bitacora 2026-10-26-modulos.md
-    // §6, ronda 2: sin holgura en los textos con puntos suspensivos y con la cuenta de nombre largo): el menor ancho en que la barra cabe con la obra de nombre mas largo de la siembra, menos 0,02 px, y nunca
-    // por debajo de 1055,98 px (Carbon esconde la navegacion de la cabecera por debajo de 1056 px). Escritos a mano.
-    const mapa = umbrales.slice(umbrales.indexOf("$umbrales-por-modulo"));
-    expect(mapa).toMatch(/"auditoria":\s*\(\s*"normal":\s*1055\.98px,\s*"grande":\s*1135\.98px,\s*"muy-grande":\s*1340\.98px/);
-    expect(mapa).toMatch(/"obras":\s*\(\s*"normal":\s*1909\.98px,\s*"grande":\s*1654\.98px,\s*"muy-grande":\s*1942\.98px/);
-    expect(mapa).toMatch(/"produccion":\s*\(\s*"normal":\s*1055\.98px,\s*"grande":\s*1063\.98px,\s*"muy-grande":\s*1254\.98px/);
-    // El fijado del sidebar: desde 1366 px con Normal y 1366 x 1,25 y x 1,5 con Grande y Muy grande.
-    expect(umbrales).toMatch(/\$fijado-desde:\s*\(\s*"normal":\s*1366px,\s*"grande":\s*1708px,\s*"muy-grande":\s*2049px/);
-    // La columna del recorrido sigue pasando a franja con los umbrales por letra de siempre.
+  // Plan del rediseño del marco, Tarea 8: los módulos se retiraron y con ellos sus umbrales por módulo y el fijado del
+  // sidebar. Quedan los umbrales por letra, solo en marco/_umbrales.scss, que usan el buscador de la barra superior (pasa
+  // a su icono) y la columna del recorrido (pasa a franja).
+  test("los umbrales por letra viven solo en marco/_umbrales.scss y los usan la barra superior y el recorrido", () => {
+    const umbrales = leer(`${raiz}/marco/_umbrales.scss`);
+    // Los de Carbon para Normal y × 1,25 y × 1,5 para Grande y Muy grande, menos 0,02 px. Escritos a mano.
     expect(umbrales).toMatch(/"normal":\s*1055\.98px/);
     expect(umbrales).toMatch(/"grande":\s*1535\.98px/);
     expect(umbrales).toMatch(/"muy-grande":\s*1919\.98px/);
-    // shell.scss aplica el mixin a cada modulo y cada letra, sin cifras propias.
-    expect(shell).toMatch(/@include u\.barra-no-cabe\(\$modulo, \$escala\)/);
-    expect(shell).toMatch(/@include u\.fijado-posible/);
-    expect(shell).not.toMatch(/@media[^{]*\d+(\.\d+)?px/);
-    expect(shell).not.toContain("menu-en-capa");
-    // Por debajo del umbral la barra esconde sus areas y el sidebar las muestra.
-    const regla = shell.slice(shell.indexOf("@include u.barra-no-cabe"));
-    expect(regla).toMatch(/\.silice-barra__nav\s*\{\s*display:\s*none/);
-    expect(regla).toMatch(/\.silice-sidebar__areas\s*\{\s*display:\s*block/);
+    expect(umbrales).not.toMatch(/umbrales-por-modulo|fijado-desde|barra-no-cabe/);
+    for (const archivo of ["marco/BarraSuperior.scss", "shell/ColumnaRecorrido.scss"]) {
+      const scss = leer(`${raiz}/${archivo}`);
+      expect(scss, archivo).toMatch(/@use "[./]*(marco\/)?umbrales" as u;/);
+      expect(scss, archivo).toMatch(/@include u\.por-debajo-del-umbral\(\$escala\)/);
+      expect(scss, archivo).not.toMatch(/@media[^{]*\d+(\.\d+)?px/);
+    }
     // La cuenta cede el nombre (queda en su nombre accesible) con letra Grande o Muy grande.
     const cuenta = leer(`${raiz}/shell/MenuCuenta.scss`);
     expect(cuenta).toMatch(/data-silice-letra="grande"\][^{]*data-silice-letra="muy-grande"\][^{]*\{\s*\.silice-cuenta__nombre\s*\{\s*display:\s*none/);

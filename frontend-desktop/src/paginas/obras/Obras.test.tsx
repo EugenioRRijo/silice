@@ -43,7 +43,7 @@ const ADMIN: SesionRespuesta = {
   ],
 };
 
-describe("Inicio de presupuestos y obras: los accesos del módulo (quien no lee obras)", () => {
+describe("Inicio de presupuestos y obras: «Lo que puede hacer aquí» (quien no lee obras)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
 
   beforeEach(() => {
@@ -62,7 +62,6 @@ describe("Inicio de presupuestos y obras: los accesos del módulo (quien no lee 
       caso: { nombre: "clinica", ruta_relativa: "data/clinica.db" },
       recargarProyectos: vi.fn(),
       alExpirar: vi.fn(),
-      modulo: "obras",
     };
     return render(
       <ContextoAplicacion.Provider value={valor}>
@@ -76,20 +75,17 @@ describe("Inicio de presupuestos y obras: los accesos del módulo (quien no lee 
     );
   }
 
-  // Los rotulos de area y, debajo de cada uno, los enlaces (href) de sus pantallas.
-  function accesos(): [string, string[]][] {
+  // Los enlaces (href) de las pantallas de la lista: las que la cuenta puede usar y no tienen sitio en la barra lateral.
+  function accesos(): string[] {
     const region = screen.getByRole("region", { name: "Lo que puede hacer aquí" });
-    return [...region.querySelectorAll<HTMLElement>(".silice-accesos__area")].map((area) => [
-      area.querySelector(".silice-accesos__rotulo")?.textContent ?? "",
-      [...area.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? ""),
-    ]);
+    return [...region.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? "");
   }
 
-  test("admin ve el h1 y los accesos «Precios de la empresa» e «Índices del BCV» con su línea de ayuda", () => {
+  test("admin ve el h1 y, sin sitio en la barra lateral, «Inicio de producción», «Precios de la empresa» e «Índices del BCV»", () => {
     montar(ADMIN);
     expect(screen.getByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" })).toHaveClass("cds--type-heading-04");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(accesos()).toEqual([["Mercado", ["/precios_empresa", "/indices"]]]);
+    expect(accesos()).toEqual(["/precios_empresa", "/indices", "/produccion"]);
     expect(screen.getByRole("link", { name: "Precios de la empresa" })).toHaveAccessibleDescription(
       "Cargue y cree las listas de precios de la empresa",
     );
@@ -99,15 +95,13 @@ describe("Inicio de presupuestos y obras: los accesos del módulo (quien no lee 
     expect(screen.getByText("Cargue los índices publicados por el BCV")).toBeVisible();
   });
 
-  test("los rótulos de área son texto (no encabezados) y la lista no son mosaicos", () => {
+  test("el único encabezado es su h2 y la lista no son mosaicos", () => {
     montar(ADMIN);
     const region = screen.getByRole("region", { name: "Lo que puede hacer aquí" });
-    // El único encabezado es el h2 de la sección; los rótulos de área no lo son.
     expect(within(region).getAllByRole("heading").map((h) => [h.tagName, h.textContent])).toEqual([["H2", "Lo que puede hacer aquí"]]);
     expect(within(region).getByRole("heading", { level: 2 })).toHaveClass("cds--type-heading-compact-02");
     expect(region.querySelector(".cds--tile")).toBeNull();
-    // Cada área es una lista de enlaces con nombre propio.
-    expect(within(region).getByRole("list", { name: "Mercado" })).toBeInTheDocument();
+    expect(within(region).getByRole("list", { name: "Lo que puede hacer aquí" })).toBeInTheDocument();
   });
 
   test("pulsar un acceso abre su pantalla", async () => {

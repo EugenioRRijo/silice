@@ -1,14 +1,14 @@
-// Servidor de mentira para las pruebas del selector de obra, las carpetas de trabajo y «Nueva obra» (plan de modulos,
-// MOD-3b). Responde como la API (`api/rutas/casos.py`, `proyectos.py`, `carpeta.py`, `sesion.py`, `hoja.py`) con datos
+// Servidor de mentira para las pruebas del marco, las carpetas de trabajo y «Nueva obra» (plan de modulos, MOD-3b, y
+// rediseño del marco). Responde como la API (`api/rutas/casos.py`, `proyectos.py`, `carpeta.py`, `sesion.py`, `hoja.py`) con datos
 // ficticios y anota cada llamada. Solo lo importan las pruebas.
-import { render, screen, within } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import type { CasoRespuesta, ProyectoRespuesta, SesionRespuesta } from "../../api/tipos";
 import { PAGINAS } from "../rutas";
 import type { PaginaDef } from "../rutas";
-import { Shell } from "../Shell";
+import { Marco } from "../../marco/Marco";
 
 export function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -33,7 +33,8 @@ export const TORRE_B: ProyectoRespuesta = {
   ubicacion: "Valencia",
 };
 
-// Acciones por rol, escritas a mano desde PERMISOS de seguridad/permisos.py (las mismas que Shell.test.tsx).
+// Acciones por rol, escritas a mano desde PERMISOS de seguridad/permisos.py. `tests/unit/test_front_acciones_por_rol.py`
+// vigila que sigan siendo las de la matriz.
 export const ACCIONES = {
   ana: [
     "editar_hoja",
@@ -191,6 +192,24 @@ export function servidorFalso(estado: EstadoDelServidor = estadoInicial(), antes
       return json({ moneda: estado.moneda, declarada: true, lista: null, aviso: null });
     }
     if (ruta === "/v1/hoja/borradores" && metodo === "GET") return json({ borradores: estado.borradores });
+    // Lo que pide el marco: las obras de la barra lateral (las de la carpeta abierta) y el tema neutro.
+    if (ruta === "/v1/obras/todas" && metodo === "GET") {
+      const deLaEmpresa = estado.empresa !== null && estado.actual.nombre === estado.empresa.nombre;
+      const carpeta = deLaEmpresa ? null : estado.actual.nombre;
+      return json({
+        carpeta_actual: carpeta,
+        obras: estado.proyectos.map((p) => ({
+          carpeta,
+          carpeta_titulo: carpeta === null ? "Carpeta de la empresa" : carpeta.replace(/\.db$/, ""),
+          obra_id: Number(p.codigo),
+          obra: p.nombre,
+          version_codigo: p.version_vigente === null ? null : String(p.version_vigente).padStart(3, "0"),
+        })),
+      });
+    }
+    if (ruta === "/v1/tema" && metodo === "GET") {
+      return json({ acento: null, marco: null, lateral: null, tiene_logo: false, avisos: [] });
+    }
     if ((ruta === "/v1/sesion/proyecto" || ruta === "/v1/sesion/preferencias") && metodo === "PUT") {
       return new Response(null, { status: 204 });
     }
@@ -209,19 +228,14 @@ export function ligeras(propias: Record<string, ComponentType> = {}): PaginaDef[
   });
 }
 
-// El armazon completo en `ruta`, con el registro de pantallas ligeras.
-export function montarShell(sesion: SesionRespuesta, ruta: string, paginas: readonly PaginaDef[] = ligeras()) {
+// El marco completo en `ruta`, con el registro de pantallas ligeras.
+export function montarMarco(sesion: SesionRespuesta, ruta: string, paginas: readonly PaginaDef[] = ligeras()) {
   const alSalir = vi.fn();
   const alExpirar = vi.fn();
   const vista = render(
     <MemoryRouter initialEntries={[ruta]}>
-      <Shell sesion={sesion} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
+      <Marco sesion={sesion} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
     </MemoryRouter>,
   );
   return { ...vista, alSalir, alExpirar };
-}
-
-// El boton del selector de obra (o de carpeta, para quien no ve obras) de la barra superior.
-export function botonDeObra(): Promise<HTMLElement> {
-  return within(screen.getByRole("banner")).findByRole("button", { name: /^(Obra: |Todas las obras|Carpeta: )/ });
 }

@@ -1,8 +1,13 @@
-// Las tres peticiones que fijan la carpeta y la obra de la sesion en el servidor, en un solo lugar: las usan el armazon
-// de hoy (shell/carpetas/useCarpetaDeTrabajo, shell/Shell) y el ruteo por obra del marco (marco/useObraDeLaRuta).
+// Las tres peticiones que fijan la carpeta y la obra de la sesion en el servidor, en un solo lugar: las usan la carpeta
+// de la sesion (shell/carpetas/useCarpetaDeTrabajo), el marco (marco/Marco) y el ruteo por obra (marco/useObraDeLaRuta).
 // Solo piden: preguntar antes de salir, avisar y recargar es cosa de quien las llama.
 import { pedir } from "./cliente";
 import type { CasoRespuesta } from "./tipos";
+
+// La carpeta como la nombra la persona: el nombre de su archivo sin la extension .db (solo la final).
+export function nombreDeCarpeta(nombre: string): string {
+  return nombre.endsWith(".db") ? nombre.slice(0, -3) : nombre;
+}
 
 // `POST /v1/casos/actual`. Devuelve la carpeta que quedo abierta; si la API no la informa, la pedida.
 export async function abrirCarpeta(nombre: string): Promise<CasoRespuesta> {

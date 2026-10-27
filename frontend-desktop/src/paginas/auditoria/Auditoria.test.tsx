@@ -66,7 +66,6 @@ describe("Inicio de auditoría", () => {
       caso: { nombre: "clinica", ruta_relativa: "data/clinica.db" },
       recargarProyectos: vi.fn(),
       alExpirar: vi.fn(),
-      modulo: "auditoria",
       ...aplicacion,
     };
     return render(

@@ -106,52 +106,20 @@ def test_resumen_por_letra_y_con_recorrido() -> None:
 # --------------------------- plan de modulos (MOD-5) -------------------------------------------
 
 
-def test_cada_ruta_dice_su_modulo_y_su_area() -> None:
+def test_cada_ruta_se_lee_del_registro_sin_modulos() -> None:
+    """Rediseno del marco, Tarea 8: el registro ya no dice modulo ni area (el marco nuevo los
+    reemplaza); el script sigue leyendo id, titulo y accion. Su recorrido por el menu de modulos se
+    ajusta al marco nuevo en F7 (plan del rediseno, «Fuera de esta tanda»)."""
     from scripts.recorrido_ux_playwright import rutas_de_la_interfaz
 
     rutas = {r["id"]: r for r in rutas_de_la_interfaz()}
-    # 21 pantallas de antes, los tres inicios, «Estudio de mercado» (choque 5) y «Aprobar» (T20).
     assert len(rutas) == 26
     assert "inicio" not in rutas
-    assert (rutas["auditoria"]["modulo"], rutas["auditoria"]["area"]) == ("auditoria", "inicio")
-    assert (rutas["obras"]["modulo"], rutas["obras"]["area"]) == ("obras", "inicio")
-    assert (rutas["produccion"]["modulo"], rutas["produccion"]["area"]) == ("produccion", "inicio")
-    assert (rutas["mercado"]["modulo"], rutas["mercado"]["area"]) == ("obras", "mercado")
-    assert (rutas["aprobar"]["modulo"], rutas["aprobar"]["area"]) == ("obras", "aprobaciones")
-    assert (rutas["revisar"]["modulo"], rutas["revisar"]["area"]) == ("auditoria", "paquetes")
-    assert (rutas["existencias"]["modulo"], rutas["existencias"]["area"]) == (
-        "produccion",
-        "existencias",
-    )
-    assert (rutas["administracion"]["modulo"], rutas["administracion"]["area"]) == (None, None)
-    assert (rutas["acerca"]["modulo"], rutas["acerca"]["area"]) == (None, None)
-
-
-def test_los_tres_modulos_con_sus_areas_en_orden() -> None:
-    from scripts.recorrido_ux_playwright import modulos_de_la_interfaz
-
-    modulos = modulos_de_la_interfaz()
-    # Orden y textos de «Restricciones globales» del plan de modulos.
-    assert [(m, d["titulo"]) for m, d in modulos.items()] == [
-        ("auditoria", "Auditoría"),
-        ("obras", "Presupuestos y obras"),
-        ("produccion", "Producción"),
-    ]
-    assert list(modulos["auditoria"]["areas"].values()) == [
-        "Inicio",
-        "Auditar",
-        "Paquetes",
-        "Historial",
-    ]
-    assert list(modulos["obras"]["areas"].values()) == [
-        "Inicio",
-        "Obras",
-        "Partidas",
-        "Mercado",
-        "Aprobaciones",
-        "Control",
-    ]
-    assert modulos["produccion"]["areas"] == {"inicio": "Inicio", "existencias": "Existencias"}
+    assert rutas["hoja"]["titulo"] == "Hoja de la obra"
+    assert rutas["hoja"]["accion"] == "editar_hoja"
+    assert rutas["produccion"]["accion"] == "operar_arenera"
+    assert rutas["acerca"]["accion"] is None
+    assert all(r["modulo"] is None and r["area"] is None for r in rutas.values())
 
 
 @pytest.mark.parametrize(
@@ -191,31 +159,6 @@ def test_sidebars_con_comas_o_espacios_y_desconocido_con_error() -> None:
     assert sidebars_pedidos(["abierto", "oculto"]) == ["oculto", "abierto"]
     with pytest.raises(SystemExit):
         sidebars_pedidos(["capa"])
-
-
-def test_camino_por_el_menu_de_cada_pantalla() -> None:
-    from scripts.recorrido_ux_playwright import camino_por_menu
-
-    assert camino_por_menu("componer") == {
-        "modulo": "Presupuestos y obras",
-        "area": "Partidas",
-        "pantalla": "Componer una partida",
-        "inicio": False,
-    }
-    assert camino_por_menu("auditoria") == {
-        "modulo": "Auditoría",
-        "area": "Inicio",
-        "pantalla": "Inicio de auditoría",
-        "inicio": True,
-    }
-    assert camino_por_menu("acerca") == {
-        "modulo": None,
-        "area": None,
-        "pantalla": "Acerca de Sílice",
-        "inicio": False,
-    }
-    with pytest.raises(ValueError):
-        camino_por_menu("inicio")
 
 
 def test_umbral_medido_es_el_menor_ancho_desde_el_que_siempre_cabe() -> None:

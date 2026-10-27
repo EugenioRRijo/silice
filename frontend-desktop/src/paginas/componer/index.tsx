@@ -7,7 +7,7 @@ import { ErrorDeApi } from "../../api/cliente";
 import type { CarpetaRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
 import { useAplicacion } from "../../shell/contexto";
-import { useNavegarSeguro } from "../../shell/EnlaceSeguro";
+import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { useFormularioSucio } from "../../shell/sucio";
 import { BuscadorReferencia } from "./BuscadorReferencia";
 import { AvisoSinLista } from "./AvisoSinLista";

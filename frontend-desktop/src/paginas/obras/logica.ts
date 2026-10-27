@@ -5,9 +5,9 @@ import { nombreDeResponsable } from "../../comun/responsable";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import type { IndicadorRespuesta } from "../../indicadores/tipos";
 import type { Carga } from "../inicio/useCarga";
-import { paginaPorId, visible } from "../../shell/rutas";
+import { paginaPorId, usable } from "../../shell/rutas";
 import { unirConY } from "../../shell/salida";
-import { nombreDeCarpeta } from "../../shell/Selectores";
+import { nombreDeCarpeta } from "../../api/carpetaYObra";
 
 // Una cifra de la franja: la forma del indicador Fiori mas una linea debajo («1 obra atrasada; la mas atrasada, …»).
 export type CifraRespuesta = IndicadorRespuesta & { detalle: string | null };
@@ -186,7 +186,7 @@ export function etiquetaAvance(real: string | null, plan: string | null): string
 // existe y quien revisa no abre la Hoja ni el Control (la API lo negaria igual).
 export function pantallaVisible(pagina: string, acciones: readonly string[], modoEntrega: boolean): boolean {
   const def = paginaPorId(pagina);
-  return def !== undefined && visible(def, acciones, modoEntrega);
+  return def !== undefined && usable(def, acciones, modoEntrega);
 }
 
 // Lo que pinta la columna de pendientes con las dos lecturas que la alimentan: los pendientes de las obras (con

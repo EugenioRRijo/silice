@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef } from "react";
 import type { JSX, KeyboardEvent, ReactNode } from "react";
-import { ID_BOTON_OBRA } from "../SelectorObra";
 import { useAtraparFoco } from "../useAtraparFoco";
 import "./MarcoDeDialogo.scss";
 
@@ -15,10 +14,10 @@ interface Props {
   ancho?: "normal" | "ancho";
 }
 
-// Dialogo propio del armazon (carpetas de trabajo, «Nueva obra»), como «Cambios sin guardar»: sin el Modal de Carbon (su
-// archivo trae una URL de documentacion que `npm run dist` rechaza, RNF-22), modal, Tab atrapado (`useAtraparFoco`), Esc
-// cierra y, al desmontarse, el foco vuelve a quien lo tenia al abrir (el boton de la obra de la barra) o, si ya no esta,
-// a ese boton. Va por debajo de «Cambios sin guardar», que puede abrirse encima.
+// Dialogo propio del marco («Nueva obra», el dictamen, las variantes de Componer), como «Cambios sin guardar»: sin el Modal
+// de Carbon (su archivo trae una URL de documentacion que `npm run dist` rechaza, RNF-22), modal, Tab atrapado
+// (`useAtraparFoco`), Esc cierra y, al desmontarse, el foco vuelve a quien lo tenia al abrir (p. ej. «Nueva obra») o, si
+// ya no esta, al contenido. Va por debajo de «Cambios sin guardar», que puede abrirse encima.
 export function MarcoDeDialogo({ titulo, alCerrar, children, pie, inicial, ancho = "normal" }: Props): JSX.Element {
   const base = useId();
   const caja = useRef<HTMLDivElement>(null);
@@ -28,7 +27,7 @@ export function MarcoDeDialogo({ titulo, alCerrar, children, pie, inicial, ancho
     const previo = document.activeElement;
     (inicial?.() ?? caja.current)?.focus();
     return () => {
-      const destino = previo instanceof HTMLElement && previo.isConnected ? previo : document.getElementById(ID_BOTON_OBRA);
+      const destino = previo instanceof HTMLElement && previo.isConnected ? previo : document.getElementById("contenido");
       destino?.focus();
     };
     // Solo al abrir y al cerrar: un dialogo no le quita el foco a quien escribe cuando cambia su contenido.

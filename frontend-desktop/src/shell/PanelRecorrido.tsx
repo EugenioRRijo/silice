@@ -1,6 +1,6 @@
 import { Button } from "@carbon/react";
 import { NavLink, useLocation } from "react-router";
-import { paginaPorId, rutaDe, visible } from "./rutas";
+import { paginaPorId, rutaDe, usable } from "./rutas";
 import type { PaginaDef } from "./rutas";
 import { pasoDeRuta, terminarRecorrido, useRecorrido } from "./recorrido";
 
@@ -45,7 +45,7 @@ export function PanelRecorrido({ paginas, acciones, modoEntrega, enColumna = fal
       <ol className="silice-recorrido__pasos">
         {recorrido.pasos.map((paso, i) => {
           const pagina = paginaPorId(paso.pagina, paginas);
-          const enlazable = pagina !== undefined && visible(pagina, acciones, modoEntrega, paginas);
+          const enlazable = pagina !== undefined && usable(pagina, acciones, modoEntrega);
           const esActual = i === actual;
           return (
             <li key={paso.pagina} aria-current={esActual ? "step" : undefined} className="silice-recorrido__paso">

@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { abrirCarpeta, volverALaCarpetaDeLaEmpresa } from "../../api/carpetaYObra";
+import { abrirCarpeta, nombreDeCarpeta, volverALaCarpetaDeLaEmpresa } from "../../api/carpetaYObra";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CasoRespuesta, CasosRespuesta, ProyectoRespuesta } from "../../api/tipos";
 import { confirmarSalida } from "../salida";
-import { nombreDeCarpeta } from "../Selectores";
 import { hojasConCambios } from "./hojasConCambios";
 
 interface Opciones {

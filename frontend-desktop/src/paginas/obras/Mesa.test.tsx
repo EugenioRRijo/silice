@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios, useFormularioSucio } from "../../shell/sucio";
-import { json, ligeras, montarShell, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
+import { TORRE_B as FICHA, estadoInicial, json, ligeras, montarMarco, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
 import type { Rol } from "../../shell/obras/datosDePrueba";
 import PaginaObras from "./index";
 
@@ -180,7 +180,9 @@ function instalar(
   pendientesDe: () => Respuesta = () => json(PENDIENTES),
   { porAprobar = () => json(POR_APROBAR), envios = () => json([]) }: Respuestas = {},
 ) {
-  servidor = servidorFalso(undefined, (metodo, ruta) => {
+  const estado = estadoInicial();
+  estado.proyectos = [OB_S2, TORRE_B, CASA_DEMO].map((o) => ({ ...FICHA, codigo: o.codigo, nombre: o.nombre }));
+  servidor = servidorFalso(estado, (metodo, ruta) => {
     if (metodo === "GET" && ruta === "/v1/obras/resumen") return resumenDe();
     if (metodo === "GET" && ruta === "/v1/obras/pendientes") return pendientesDe();
     if (metodo === "GET" && ruta === "/v1/aprobaciones/resumen") return porAprobar();
@@ -201,8 +203,12 @@ afterEach(() => {
   fijarCsrf(null);
 });
 
+// La obra que la mesa elige queda fijada en la sesión (`PUT /v1/sesion/proyecto`): la fija la mesa y, al abrir una sección
+// de la obra, también el marco (useObraDeLaRuta). Siempre la misma.
+const obrasFijadas = () => [...new Set(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => JSON.stringify(l.cuerpo)))];
+
 async function montar(rol: Rol) {
-  const vista = montarShell(sesionDe(rol), "/obras", ligeras({ obras: PaginaObras }));
+  const vista = montarMarco(sesionDe(rol), "/obras", ligeras({ obras: PaginaObras }));
   await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
   return vista;
 }
@@ -276,8 +282,8 @@ describe("la tabla de obras", () => {
     const u = userEvent.setup();
     await montar("ana");
     await u.click(within(await filaDe("OB-S2")).getByRole("button", { name: "Ver las alertas" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Control de obra" })).toBeInTheDocument();
-    expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "21" }]);
+    expect(await screen.findByRole("heading", { level: 1, name: "Control de obra" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(obrasFijadas()).toEqual(['{"proyecto":"21"}']);
   });
 
   test("«En aprobación» se lee con su texto; su paso («Ver el envío», T20) elige la obra y abre la pantalla de aprobar", async () => {
@@ -289,8 +295,8 @@ describe("la tabla de obras", () => {
     // Sin avance: lo dice en palabras.
     expect(within(fila).getByText("Sin avance")).toBeInTheDocument();
     await u.click(within(fila).getByRole("button", { name: "Ver el envío" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Aprobar una versión" })).toBeInTheDocument();
-    expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "7" }]);
+    expect(await screen.findByRole("heading", { level: 1, name: "Aprobar una versión" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(obrasFijadas()).toEqual(['{"proyecto":"7"}']);
   });
 
   test("foco 3: con Componer a medio llenar el botón pregunta y «Quedarme» no navega ni elige obra", async () => {
@@ -335,7 +341,7 @@ describe("pendientes", () => {
     const columna = await region("Pendientes");
     await u.click(await within(columna).findByRole("button", { name: "Ver el catálogo" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Catálogo de partidas e insumos" })).toBeInTheDocument();
-    expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "7" }]);
+    expect(obrasFijadas()).toEqual(['{"proyecto":"7"}']);
   });
 
   test("con todos los grupos vacíos: «Nada pendiente por ahora.»", async () => {
@@ -380,7 +386,7 @@ describe("foco 5: cada bloque según lo que la cuenta puede leer", () => {
     await waitFor(() => expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(1));
     await new Promise((r) => setTimeout(r, 30));
     expect(screen.queryByRole("heading", { level: 2, name: "Cómo van las obras" })).toBeNull();
-    expect(screen.queryByRole("heading", { level: 2, name: "Obras" })).toBeNull();
+    expect(within(screen.getByRole("main")).queryByRole("heading", { level: 2, name: "Obras" })).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
     // La pagina no queda en blanco: quedan los accesos de su modulo.
     const accesos = await region("Lo que puede hacer aquí");
@@ -394,7 +400,8 @@ describe("foco 5: cada bloque según lo que la cuenta puede leer", () => {
     expect(within(accesos).getByRole("link", { name: "Índices del BCV" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 2, name: "Cómo van las obras" })).toBeNull();
     expect(screen.queryByRole("heading", { level: 2, name: "Pendientes" })).toBeNull();
-    expect(servidor.llamadas.filter((l) => l.ruta.startsWith("/v1/obras/"))).toEqual([]);
+    // La mesa no pide nada (el marco sí pide las obras de la barra lateral: `GET /v1/obras/todas`).
+    expect(servidor.llamadas.filter((l) => l.ruta.startsWith("/v1/obras/") && l.ruta !== "/v1/obras/todas")).toEqual([]);
     expect(servidor.llamadas.filter((l) => l.ruta.startsWith("/v1/aprobaciones"))).toEqual([]);
   });
 
@@ -452,8 +459,8 @@ describe("sin obras: el vacío enseña qué hacer", () => {
 
 // Ronda 2 del arbitro de MOD-4b.
 describe("la mesa sigue a la obra recién creada", () => {
-  // La obra que crea el dialogo: el servidor de mentira le da el codigo 9 + las dos obras que ya tiene = «11».
-  const NUEVA = { ...TORRE_B, codigo: "11", nombre: "Galpón Demo", cliente: "Contratista Demo, C.A." };
+  // La obra que crea el dialogo: el servidor de mentira le da el codigo 9 + las tres obras que ya tiene = «12».
+  const NUEVA = { ...TORRE_B, codigo: "12", nombre: "Galpón Demo", cliente: "Contratista Demo, C.A." };
 
   // La primera lectura del resumen responde `antes`; las siguientes, `despues`.
   function resumenQueCambia(antes: Record<string, unknown>, despues: Record<string, unknown>) {
@@ -472,7 +479,7 @@ describe("la mesa sigue a la obra recién creada", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
   }
 
-  test("sin obras, «Cree su primera obra» → crear: la mesa vuelve a pedir el resumen y muestra la obra", async () => {
+  test("sin obras, «Cree su primera obra» → crear: abre la obra nueva, cuya mesa la muestra", async () => {
     const u = userEvent.setup();
     instalar(
       resumenQueCambia(
@@ -483,9 +490,9 @@ describe("la mesa sigue a la obra recién creada", () => {
     await montar("ana");
     await u.click(await screen.findByRole("button", { name: "Cree su primera obra" }));
     await crearEnElDialogo(u);
+    expect(await within(await screen.findByRole("region", { name: "Obra abierta" }, { timeout: 3000 })).findByText("Galpón Demo")).toBeInTheDocument();
     expect(await filaDe("Galpón Demo")).toBeInTheDocument();
     expect(screen.queryByText("Todavía no hay obras en esta carpeta de trabajo.")).toBeNull();
-    expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(2);
   });
 
   test("con obras, «Nueva obra» de la cabecera → crear: la obra nueva entra a la tabla", async () => {
@@ -495,16 +502,18 @@ describe("la mesa sigue a la obra recién creada", () => {
     await filaDe("OB-S2");
     await u.click(within(screen.getByRole("main")).getByRole("button", { name: "Nueva obra" }));
     await crearEnElDialogo(u);
+    await screen.findByRole("region", { name: "Obra abierta" }, { timeout: 3000 });
     expect(await filaDe("Galpón Demo")).toBeInTheDocument();
     expect(await filaDe("OB-S2")).toBeInTheDocument();
   });
 
-  test("elegir una obra que la mesa ya conoce no vuelve a pedir el resumen", async () => {
+  test("elegir una obra que la mesa ya conoce no vuelve a pedir el resumen de la mesa", async () => {
     const u = userEvent.setup();
     await montar("ana");
     await u.click(within(await filaDe("OB-S2")).getByRole("button", { name: "Ver las alertas" }));
-    await screen.findByRole("heading", { level: 1, name: "Control de obra" });
-    expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(1);
+    await screen.findByRole("heading", { level: 1, name: "Control de obra" }, { timeout: 3000 });
+    // La segunda lectura es la de la cabecera de la obra (su moneda), no la de la mesa.
+    expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(2);
   });
 });
 
@@ -633,7 +642,7 @@ describe("T19: la cifra «Por aprobar»", () => {
 
   test("sin `aprobar_version` no se pide", async () => {
     const sin = sesionDe("ana", { acciones: ["editar_hoja", "leer_proyecto", "control_de_obra", "cambiar_caso"] });
-    montarShell(sin, "/obras", ligeras({ obras: PaginaObras }));
+    montarMarco(sin, "/obras", ligeras({ obras: PaginaObras }));
     const cifras = await region("Cómo van las obras");
     await within(cifras).findByRole("group", { name: "Valor ganado" });
     expect(within(cifras).queryByRole("group", { name: "Por aprobar" })).toBeNull();
@@ -647,7 +656,7 @@ describe("T19: la cifra «Por aprobar»", () => {
     const franja = await screen.findByRole("status", { name: "Cargando las cifras de las obras" });
     expect(franja.querySelectorAll(".silice-mesa__cifra--esqueleto")).toHaveLength(3);
     unmount();
-    montarShell(sesionDe("ana", { acciones: ["editar_hoja", "leer_proyecto"] }), "/obras", ligeras({ obras: PaginaObras }));
+    montarMarco(sesionDe("ana", { acciones: ["editar_hoja", "leer_proyecto"] }), "/obras", ligeras({ obras: PaginaObras }));
     const otra = await screen.findByRole("status", { name: "Cargando las cifras de las obras" });
     expect(otra.querySelectorAll(".silice-mesa__cifra--esqueleto")).toHaveLength(2);
   });
@@ -659,7 +668,7 @@ describe("T19: la cifra «Por aprobar»", () => {
     const cifras = await region("Cómo van las obras");
     expect(await within(cifras).findByRole("group", { name: "Por aprobar" })).toBeInTheDocument();
     expect(within(cifras).queryByRole("group", { name: "Valor ganado" })).toBeNull();
-    expect(screen.queryByRole("heading", { level: 2, name: "Obras" })).toBeNull();
+    expect(within(screen.getByRole("main")).queryByRole("heading", { level: 2, name: "Obras" })).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -735,8 +744,8 @@ describe("T19: el grupo «Aprobar» de la columna de pendientes", () => {
     const lista = await within(await region("Pendientes")).findByRole("list", { name: "Aprobar" });
     expect(within(lista).getByText("VIV-001 devuelta: Falta el acero de la losa.")).toBeInTheDocument();
     await u.click(within(lista).getByRole("button", { name: "Hacer una versión nueva" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" })).toBeInTheDocument();
-    expect(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => l.cuerpo)).toEqual([{ proyecto: "7" }]);
+    expect(await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(obrasFijadas()).toEqual(['{"proyecto":"7"}']);
   });
 
   test("rita sin envíos: «Nada pendiente por ahora.»", async () => {

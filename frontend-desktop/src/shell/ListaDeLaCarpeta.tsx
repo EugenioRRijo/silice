@@ -12,10 +12,9 @@ export function nombreConFecha(lista: { nombre: string; fecha: string }): string
   return final?.[1] === fecha ? lista.nombre : `${lista.nombre}, al ${fecha}`;
 }
 
-// «La carpeta dice lo que tiene» (diseno de montar §5.1, O-1; D-MP1): al pie del selector de obra, bajo «Carpeta: … ·
-// Cambiar carpeta…», la moneda de trabajo de la carpeta y su lista para armar (`GET /v1/carpeta`, T2), o por que no la
-// tiene. Se lee al montarse: el selector la monta al abrir su panel, asi que cada apertura la trae al dia (por ejemplo,
-// despues de crear la lista desde Componer).
+// «La carpeta dice lo que tiene» (diseno de montar §5.1, O-1; D-MP1): en la cabecera de la obra abierta (marco nuevo,
+// Tarea 8; la especificacion pide alli la lista de precios), la moneda de trabajo de su carpeta y su lista para armar
+// (`GET /v1/carpeta`, T2), o por que no la tiene. Se lee al montarse: cada vez que se entra en una obra.
 export function ListaDeLaCarpeta({ alExpirar }: { alExpirar: () => void }): JSX.Element {
   const [carpeta, setCarpeta] = useState<CarpetaRespuesta | null>(null);
   const [fallo, setFallo] = useState(false);
@@ -45,6 +44,5 @@ export function ListaDeLaCarpeta({ alExpirar }: { alExpirar: () => void }): JSX.
   else
     texto = `Moneda de trabajo: ${carpeta.moneda} · Lista para armar: ${nombreConFecha(carpeta.lista)}`;
 
-  // La misma tinta y letra que la linea de la carpeta, justo encima (SelectorObra.scss).
-  return <p className="silice-obra__carpeta cds--type-helper-text-01">{texto}</p>;
+  return <p className="silice-obra-abierta__lista cds--type-helper-text-01">{texto}</p>;
 }

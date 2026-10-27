@@ -174,18 +174,24 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     [alExpirar],
   );
 
-  // Al entrar en una obra (useObraDeLaRuta ya la fijó en el servidor) queda elegida, y si estaba en otra carpeta, el
-  // marco pone al día la carpeta y la lista de obras.
+  // Al entrar en una obra (useObraDeLaRuta ya la fijó en el servidor) queda elegida. Si estaba en otra carpeta, el marco
+  // pone al día la carpeta; si es de otra carpeta o no la conoce (recién creada), también la lista de obras.
   const carpetaActual = obras.carpetaActual;
+  const listaDeObras = obras.obras;
+  // Una sola recarga por obra: si la lista vuelve sin ella (no debería), no se insiste.
+  const recargadaPara = useRef<string | null>(null);
   const alEntrarEnObra = useCallback(
     (carpeta: string | null, obraId: number) => {
       setProyecto(String(obraId));
-      if (carpeta !== carpetaActual) {
-        recargarCasos();
+      const clave = `${carpeta ?? ""}|${obraId}`;
+      const conocida = listaDeObras.some((o) => o.carpeta === carpeta && o.obra_id === obraId);
+      if (carpeta !== carpetaActual) recargarCasos();
+      if ((carpeta !== carpetaActual || !conocida) && recargadaPara.current !== clave) {
+        recargadaPara.current = clave;
         recargarObras();
       }
     },
-    [carpetaActual, recargarCasos, recargarObras],
+    [carpetaActual, listaDeObras, recargarCasos, recargarObras],
   );
 
   const declararMoneda = useCallback(
@@ -246,7 +252,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const alClicAntes = (e: MouseEvent<HTMLDivElement>) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const enlace = (e.target as Element).closest("a[href]");
-    // Las pantallas preguntan por su cuenta (EnlaceSeguro, useNavegarSeguro).
+    // Las pantallas preguntan por su cuenta (useNavegarSeguro, confirmarSalida).
     if (!enlace || contenido.current?.contains(enlace)) return;
     const href = enlace.getAttribute("href") ?? "";
     const destino = href.startsWith("#") ? href.slice(1) : href;

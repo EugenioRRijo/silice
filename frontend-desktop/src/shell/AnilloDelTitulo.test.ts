@@ -6,7 +6,7 @@ const nodo = (
     process: { cwd(): string; getBuiltinModule(nombre: string): { readFileSync(ruta: string, codificacion: string): string } };
   }
 ).process;
-const fuente = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/shell/shell.scss`, "utf-8");
+const fuente = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/marco/marco.scss`, "utf-8");
 
 function reglaDe(selector: string): string | null {
   const i = fuente.indexOf(selector);
@@ -16,7 +16,7 @@ function reglaDe(selector: string): string | null {
 }
 
 // VD-7, ronda 2 del arbitro: en «Libro de la empresa» el h1 enfocado tiene relleno propio y su caja empieza pegada a la
-// cabecera fija, al menu y a la banda de indicadores: un anillo hacia afuera quedaba tapado por los tres. Alli va hacia
+// barra superior fija, a la barra lateral y a la banda de indicadores: un anillo hacia afuera quedaba tapado por los tres. Alli va hacia
 // adentro; en las demas paginas (h1 sin relleno, 24 px bajo la cabecera) va hacia afuera y no toca la primera letra.
 describe("anillo del h1 que recibe el foco al cambiar de pagina", () => {
   const general = reglaDe('h1[tabindex="-1"]:focus-visible');

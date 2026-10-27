@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { useAplicacion } from "../../shell/contexto";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, pasoDeRuta, useRecorrido } from "../../shell/recorrido";
-import { paginaPorId, rutaDe, visible } from "../../shell/rutas";
+import { paginaPorId, rutaDe, usable } from "../../shell/rutas";
 import { fijarArchivoPendiente } from "../inicio/archivoPendiente";
 import type { ModoDeAuditoria } from "../inicio/archivoPendiente";
 import { UltimasAuditorias } from "../inicio/UltimasAuditorias";
@@ -29,7 +29,7 @@ export default function PaginaAuditoria() {
   const posicion = recorrido ? pasoDeRuta(recorrido, "/auditoria") : null;
   const siguiente = recorrido && posicion !== null ? recorrido.pasos[posicion + 1] : undefined;
   const paginaSiguiente = siguiente ? paginaPorId(siguiente.pagina) : undefined;
-  const puedeSeguir = paginaSiguiente !== undefined && visible(paginaSiguiente, sesion.acciones, sesion.modo_entrega);
+  const puedeSeguir = paginaSiguiente !== undefined && usable(paginaSiguiente, sesion.acciones, sesion.modo_entrega);
 
   const auditar = (modo: ModoDeAuditoria) => {
     if (!archivo) return;

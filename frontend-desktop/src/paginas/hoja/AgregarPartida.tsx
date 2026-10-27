@@ -10,7 +10,7 @@ import { mensajeDeError } from "../../comun/errores";
 import { buscadorDePartidas } from "../../comun/logicaBusqueda";
 import type { PartidaHallada } from "../../comun/logicaBusqueda";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
-import { useNavegarSeguro } from "../../shell/EnlaceSeguro";
+import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";

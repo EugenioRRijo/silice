@@ -3,14 +3,14 @@ import { useCallback, useEffect, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import type { CasoRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
-import { AccesosDelModulo } from "../../shell/AccesosDelModulo";
 import { useAplicacion } from "../../shell/contexto";
-import { useNavegarSeguro } from "../../shell/EnlaceSeguro";
+import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { rutaDe } from "../../shell/rutas";
 import { confirmarSalida } from "../../shell/salida";
 import { useCarga } from "../inicio/useCarga";
 import { CifrasMesa } from "./CifrasMesa";
 import { ColumnaPendientes } from "./ColumnaPendientes";
+import { LoQuePuedeHacer } from "./LoQuePuedeHacer";
 import { bloquesPedidos, columnaDeLaMesa, pantallaVisible } from "./logica";
 import type { CifraPorAprobar, EnvioPorAprobar, PendientesRespuesta, ResumenObrasRespuesta } from "./logica";
 import "./obras.scss";
@@ -26,7 +26,7 @@ const RUTA_ABRIR_ENVIO = "/v1/aprobaciones/abrir";
 // Inicio de «Presupuestos y obras»: la mesa de control (diseno de modulos §6 y §12.3, opcion B que eligio Eugenio). Cifras
 // arriba, las obras con su siguiente paso y, a la derecha, los pendientes. Cada bloque se pide aparte y solo si la cuenta
 // puede leerlo; un 403 lo oculta (nunca lo pinta vacio) y un fallo se dice en su bloque sin tumbar los demas. Quien no
-// lee obras (el administrador) ve lo que puede hacer en el modulo.
+// lee obras (el administrador) ve lo que puede hacer (las pantallas sin sitio en la barra lateral).
 //
 // La obra elegida en el armazon (`proyecto`) cambia al crear una con «Nueva obra» o «Cree su primera obra»: si la mesa no
 // la conoce, se vuelve a montar y pide de nuevo el resumen y los pendientes (una sola vez por obra, para que una obra que
@@ -104,7 +104,7 @@ function Mesa({ recargadaPor, alObraNueva }: { recargadaPor: string | null; alOb
   const puedeCrear = acciones.includes("editar_hoja") && abrirNuevaObra !== undefined;
   const sinObras = resumen.estado === "listo" && resumen.datos.obras.length === 0;
   const pedidos = bloques.filter((b) => b !== "accesos");
-  // Si todo lo pedido resulto prohibido, la pagina no queda en blanco: quedan los accesos del modulo.
+  // Si todo lo pedido resulto prohibido, la pagina no queda en blanco: queda «Lo que puede hacer aquí».
   const todoOculto =
     porAprobar.estado !== "listo" &&
     pedidos.every((b) => (b === "obras" || b === "cifras" ? resumen : columna.carga).estado === "sin_permiso");
@@ -166,7 +166,7 @@ function Mesa({ recargadaPor, alObraNueva }: { recargadaPor: string | null; alOb
           />
         </div>
       )}
-      {(bloques.includes("accesos") || todoOculto) && <AccesosDelModulo modulo="obras" titulo="Lo que puede hacer aquí" />}
+      {(bloques.includes("accesos") || todoOculto) && <LoQuePuedeHacer />}
     </div>
   );
 }

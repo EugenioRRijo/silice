@@ -1,5 +1,5 @@
-// Accesos del modulo: rotulo de area y lista de enlaces con divisores. Carbon g10, sin tarjetas, sin sombra, sin
-// animacion; azul solo en el enlace y el foco.
+// «Lo que puede hacer aquí»: lista de enlaces con divisores. Carbon g10, sin tarjetas, sin sombra, sin animacion; azul
+// solo en el enlace y el foco.
 
 .silice-accesos {
   display: grid;
@@ -9,16 +9,6 @@
 
 .silice-accesos__nota {
   max-inline-size: 65ch;
-  color: var(--cds-text-secondary);
-}
-
-.silice-accesos__area {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.silice-accesos__rotulo {
-  margin: 0;
   color: var(--cds-text-secondary);
 }
 

@@ -16,8 +16,8 @@ interface Props {
   // La obra creada (201 de `POST /v1/proyectos`): el armazon recarga la lista y la elige.
   alCrear: (obra: ProyectoRespuesta) => void;
   // Donde se crea la obra (rediseno del marco, Tarea 6b): se nombra en el dialogo y se manda al servidor, que la crea alli
-  // sin mover la carpeta de la sesion. Sin destino (el armazon anterior), la carpeta de la sesion, sin decirlo.
-  destino?: DestinoDeNuevaObra;
+  // sin mover la carpeta de la sesion. Es obligatorio: ningun camino crea una obra sin decir donde (Tarea 8).
+  destino: DestinoDeNuevaObra;
 }
 
 export interface DestinoDeNuevaObra {
@@ -59,7 +59,7 @@ function Formulario({ alCerrar, alCrear, destino }: Omit<Props, "abierto">) {
   const [moneda, setMoneda] = useState("");
   // La moneda de la carpeta: undefined mientras llega, null si no tiene.
   const [deLaCarpeta, setDeLaCarpeta] = useState<string | null | undefined>(undefined);
-  const enOtraCarpeta = destino?.enOtraCarpeta ?? false;
+  const enOtraCarpeta = destino.enOtraCarpeta ?? false;
   const [faltaMoneda, setFaltaMoneda] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -97,7 +97,7 @@ function Formulario({ alCerrar, alCrear, destino }: Omit<Props, "abierto">) {
       const cuerpo = { nombre, moneda, dominio, descripcion: "", cliente, ubicacion };
       const obra = await pedir<ProyectoRespuesta>("/v1/proyectos", {
         metodo: "POST",
-        cuerpo: destino ? { ...cuerpo, carpeta: destino.carpeta ?? CARPETA_DE_LA_EMPRESA } : cuerpo,
+        cuerpo: { ...cuerpo, carpeta: destino.carpeta ?? CARPETA_DE_LA_EMPRESA },
       });
       alCrear(obra);
     } catch (e) {
@@ -139,7 +139,7 @@ function Formulario({ alCerrar, alCrear, destino }: Omit<Props, "abierto">) {
           maxLength={120}
           onChange={(e) => setNombre(e.target.value)}
         />
-        {destino && <p className="silice-nueva-obra__destino cds--type-body-compact-01">Se creará en {destino.titulo}</p>}
+        <p className="silice-nueva-obra__destino cds--type-body-compact-01">Se creará en {destino.titulo}</p>
         <CampoTexto
           id={`${base}-cliente`}
           labelText="Cliente (opcional)"

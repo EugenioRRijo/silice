@@ -7,6 +7,7 @@ import type { CasosRespuesta } from "../api/tipos";
 import { AvisoError } from "../comun/AvisoError";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { ContextoAplicacion } from "../shell/contexto";
+import { ListaDeLaCarpeta } from "../shell/ListaDeLaCarpeta";
 import { RUTA_DE_PENDIENTES } from "./secciones";
 import { useObraDeLaRuta } from "./useObraDeLaRuta";
 import type { VigilanteDeObra } from "./otraPestana";
@@ -101,7 +102,7 @@ interface ObraAbiertaProps {
   children: ReactNode;
 }
 
-// La cabecera de la obra (nombre, moneda y versión) y la sección. La sección lee la obra y la carpeta de la ruta desde
+// La cabecera de la obra (nombre, moneda, versión y la lista para armar de su carpeta) y la sección. La sección lee la obra y la carpeta de la ruta desde
 // el primer dibujo (no las del marco, que se ponen al día un momento después).
 function ObraAbierta({ carpeta, obraId, obra, casos, children }: ObraAbiertaProps) {
   const base = useContext(ContextoAplicacion);
@@ -123,6 +124,7 @@ function ObraAbierta({ carpeta, obraId, obra, casos, children }: ObraAbiertaProp
           {moneda !== null && <li>{`Moneda: ${moneda}`}</li>}
           <li>{`Versión: ${obra?.version_codigo ?? "sin versión guardada"}`}</li>
         </ul>
+        {base && <ListaDeLaCarpeta key={carpeta ?? ""} alExpirar={base.alExpirar} />}
       </section>
       <ContextoAplicacion.Provider value={valor}>{children}</ContextoAplicacion.Provider>
     </>
