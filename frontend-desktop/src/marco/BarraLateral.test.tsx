@@ -278,6 +278,30 @@ describe("BarraLateral: Nueva obra", () => {
     await waitFor(() => expect(pedirFalso).toHaveBeenCalledWith("/v1/carpeta"));
   });
 
+  it("si la carpeta abierta no tiene obras, igual está entre las opciones y la obra se crea en la que muestra", async () => {
+    servidor([CLINICA, GALPON], null);
+    pedirFalso.mockImplementation(async (ruta: string, opciones?: { metodo?: string }) => {
+      if (ruta === "/v1/obras/todas") return respuesta;
+      if (ruta === "/v1/carpeta") return { moneda: "Bs", declarada: true, lista: null, aviso: null };
+      if (ruta === "/v1/proyectos" && opciones?.metodo === "POST") return { codigo: "9", nombre: "Nueva" };
+      throw new Error(`petición inesperada: ${ruta}`);
+    });
+    pintar();
+    await arbol();
+    await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
+    const carpeta = await screen.findByRole("combobox", { name: "Carpeta" });
+    const opciones = within(carpeta).getAllByRole("option").map((o) => o.textContent);
+    expect(opciones).toContain("Carpeta de la empresa");
+    const mostrada = (carpeta as HTMLSelectElement).selectedOptions[0]!.textContent;
+    expect(mostrada).toBe("Carpeta de la empresa");
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+    await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
+    await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
+    await waitFor(() => expect(pedirFalso).toHaveBeenCalledWith("/v1/proyectos", expect.objectContaining({ metodo: "POST" })));
+    // Se crea donde se mostró: la abierta, sin cambiar de carpeta.
+    expect(pedirFalso.mock.calls.some(([r]) => r === "/v1/casos/actual")).toBe(false);
+  });
+
   it("los estilos lo pintan con el acento, el texto del marco, seminegrita y 40 px de alto, solo con variables del tema", () => {
     const estilos = leer("marco/BarraLateral.scss");
     const regla = /\.silice-marco-boton-principal\s*\{([^}]*)\}/.exec(estilos)?.[1] ?? "";

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import { ContextoAplicacion } from "../contexto";
+import { DialogoSalida } from "../DialogoSalida";
 import type { Aplicacion } from "../contexto";
 import PaginaHoja from "../../paginas/hoja/index";
 import { DialogoNuevaObra, type CarpetaDeObra } from "./DialogoNuevaObra";
@@ -268,5 +269,88 @@ describe("«Nueva obra» con varias carpetas", () => {
     await waitFor(() => expect(alCrear).toHaveBeenCalledTimes(1));
     expect(alCrear.mock.calls[0]![1]).toBeNull();
     expect(servidor.de("DELETE", "/v1/casos/actual")).toHaveLength(1);
+  });
+
+  // Ronda 2 del arbitro: cambiar de carpeta descarta los borradores de la Hoja; todo o nada.
+  function llenarYCrear(u: ReturnType<typeof userEvent.setup>, nombre = "Casa Demo") {
+    return (async () => {
+      await waitFor(() => expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+      await u.selectOptions(screen.getByRole("combobox", { name: "Carpeta" }), "s2.db");
+      await u.type(screen.getByRole("textbox", { name: /^Nombre/ }), nombre);
+      await u.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
+      await u.click(screen.getByRole("button", { name: "Crear obra" }));
+    })();
+  }
+  const BORRADOR = { id: "b1", proyecto: "7", version: null, cambios: 3, rev: 1, tocado: "2026-10-27" };
+
+  test("con un borrador con cambios pregunta antes de cambiar de carpeta; «Quedarme» no cambia ni crea", async () => {
+    const u = userEvent.setup();
+    servidor.estado.borradores = [BORRADOR];
+    render(
+      <>
+        <DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={vi.fn()} carpetas={CARPETAS} carpetaAbierta="s1.db" />
+        <DialogoSalida />
+      </>,
+    );
+    await llenarYCrear(u);
+    const quedarme = await screen.findByRole("button", { name: "Quedarme" });
+    await u.click(quedarme);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Quedarme" })).toBeNull());
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+    expect(servidor.de("POST", "/v1/proyectos")).toEqual([]);
+  });
+
+  test("sin borradores con cambios no pregunta", async () => {
+    const u = userEvent.setup();
+    const alCrear = vi.fn();
+    render(
+      <>
+        <DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={alCrear} carpetas={CARPETAS} carpetaAbierta="s1.db" />
+        <DialogoSalida />
+      </>,
+    );
+    await llenarYCrear(u);
+    await waitFor(() => expect(alCrear).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("button", { name: "Quedarme" })).toBeNull();
+  });
+
+  test("si crear falla después de cambiar de carpeta, vuelve a la abierta y muestra el error sin llamar a alCrear", async () => {
+    const u = userEvent.setup();
+    const alCrear = vi.fn();
+    render(<DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={alCrear} carpetas={CARPETAS} carpetaAbierta="s1.db" />);
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+    await u.selectOptions(screen.getByRole("combobox", { name: "Carpeta" }), "s2.db");
+    await u.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
+    // Nombre vacío: la API contesta 422.
+    await u.click(screen.getByRole("button", { name: "Crear obra" }));
+    expect(await screen.findByText(VACIO_DE_LA_API)).toBeInTheDocument();
+    const orden = servidor.llamadas.filter((l) => l.metodo !== "GET").map((l) => `${l.metodo} ${l.ruta} ${JSON.stringify(l.cuerpo ?? "")}`);
+    expect(orden.filter((o) => o.includes("/v1/casos/actual"))).toEqual([
+      'POST /v1/casos/actual {"nombre":"s2.db"}',
+      'POST /v1/casos/actual {"nombre":"s1.db"}',
+    ]);
+    expect(orden.findIndex((o) => o.includes("/v1/proyectos"))).toBe(1);
+    expect(alCrear).not.toHaveBeenCalled();
+  });
+
+  test("si además la vuelta falla, lo dice en el diálogo", async () => {
+    const u = userEvent.setup();
+    let abiertas = 0;
+    servidor = servidorFalso(conTorreB("Bs"), (metodo, ruta, cuerpo) => {
+      if (metodo === "POST" && ruta === "/v1/proyectos") return json({ detalle: VACIO_DE_LA_API }, 422);
+      if (metodo === "POST" && ruta === "/v1/casos/actual") {
+        abiertas += 1;
+        if (abiertas === 2) return json({ detalle: "No se pudo volver." }, 500);
+      }
+      void cuerpo;
+      return undefined;
+    });
+    vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
+    render(<DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={vi.fn()} carpetas={CARPETAS} carpetaAbierta="s1.db" />);
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+    await u.selectOptions(screen.getByRole("combobox", { name: "Carpeta" }), "s2.db");
+    await u.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
+    await u.click(screen.getByRole("button", { name: "Crear obra" }));
+    expect(await screen.findByText(/No se pudo volver/)).toBeInTheDocument();
   });
 });
