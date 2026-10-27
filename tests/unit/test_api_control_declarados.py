@@ -293,6 +293,30 @@ def test_si_no_se_puede_declarar_tampoco_cambia_la_lista(caso: Path) -> None:
     assert _declarados(caso) == []
 
 
+def test_la_obra_de_la_casilla_sin_linea_base_es_409_y_no_cambia_nada(caso: Path) -> None:
+    navegador, cabeceras = _arma()
+    _en_el_caso(
+        caso, lambda s: s.add(models.Proyecto(nombre="SIN-LINEA", descripcion="", dominio=""))
+    )
+
+    def listas(s) -> list[str]:
+        return list(s.scalars(select(models.ListaPrecios.nombre).order_by(models.ListaPrecios.id)))
+
+    antes = _en_el_caso(caso, listas)
+    respuesta = navegador.post(
+        f"/v1/mercado/compra/{_codigo(caso, TUBO)}/usar",
+        json={"precio": "4,00", "observacion_id": None, "declarar_en": "SIN-LINEA"},
+        headers=cabeceras,
+    )
+    assert respuesta.status_code == 409, respuesta.text
+    assert respuesta.json() == {
+        "detalle": "La obra «SIN-LINEA» no tiene línea base de control: declárela antes de "
+        "declarar precios del corte."
+    }
+    assert _en_el_caso(caso, listas) == antes
+    assert _declarados(caso) == []
+
+
 def test_la_obra_de_la_casilla_que_no_existe_es_404(caso: Path) -> None:
     navegador, cabeceras = _arma()
     respuesta = navegador.post(
