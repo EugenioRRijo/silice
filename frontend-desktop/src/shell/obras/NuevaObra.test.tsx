@@ -190,3 +190,83 @@ describe("F11: obra sin versión guardada", () => {
     ).toBeInTheDocument();
   });
 });
+
+// Rediseño del marco, Tarea 6: con obras en más de una carpeta, el diálogo pide en cuál se crea (por omisión, la abierta).
+describe("«Nueva obra» con varias carpetas", () => {
+  const CARPETAS = [
+    { carpeta: "s1.db", titulo: "S1" },
+    { carpeta: "s2.db", titulo: "S2" },
+  ];
+
+  function abrirDialogo(carpetas = CARPETAS, abierta: string | null = "s1.db") {
+    const alCrear = vi.fn();
+    render(
+      <DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={alCrear} carpetas={carpetas} carpetaAbierta={abierta} />,
+    );
+    return alCrear;
+  }
+
+  test("con 2 carpetas pide la carpeta y propone la abierta", async () => {
+    abrirDialogo();
+    const campo = await screen.findByRole("combobox", { name: "Carpeta" });
+    expect(campo).toHaveValue("s1.db");
+    expect(within(campo).getAllByRole("option").map((o) => o.textContent)).toEqual(["S1", "S2"]);
+  });
+
+  test("con 1 carpeta no la pide", async () => {
+    abrirDialogo([CARPETAS[0]!]);
+    await screen.findByRole("textbox", { name: /^Nombre/ });
+    expect(screen.queryByRole("combobox", { name: "Carpeta" })).toBeNull();
+  });
+
+  test("sin lista de carpetas (uso de siempre) no la pide", async () => {
+    render(<DialogoNuevaObra abierto alCerrar={vi.fn()} alCrear={vi.fn()} />);
+    await screen.findByRole("textbox", { name: /^Nombre/ });
+    expect(screen.queryByRole("combobox", { name: "Carpeta" })).toBeNull();
+  });
+
+  test("elegir otra carpeta la abre antes de crear y entrega la carpeta elegida", async () => {
+    const u = userEvent.setup();
+    const alCrear = abrirDialogo();
+    await waitFor(() => expect(within(screen.getByRole("combobox", { name: "Moneda" })).getAllByRole("option").length).toBeGreaterThan(0));
+    await u.selectOptions(screen.getByRole("combobox", { name: "Carpeta" }), "s2.db");
+    await u.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Casa Demo");
+    await u.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
+    await u.click(screen.getByRole("button", { name: "Crear obra" }));
+    await waitFor(() => expect(alCrear).toHaveBeenCalledTimes(1));
+    expect(alCrear.mock.calls[0]![1]).toBe("s2.db");
+    const orden = servidor.llamadas.filter((l) => l.metodo !== "GET").map((l) => `${l.metodo} ${l.ruta}`);
+    expect(orden).toEqual(["POST /v1/casos/actual", "POST /v1/proyectos"]);
+    expect(servidor.de("POST", "/v1/casos/actual")[0]!.cuerpo).toEqual({ nombre: "s2.db" });
+  });
+
+  test("crear en la carpeta abierta no cambia de carpeta", async () => {
+    const u = userEvent.setup();
+    const alCrear = abrirDialogo();
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+    await u.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Casa Demo");
+    await u.click(screen.getByRole("button", { name: "Crear obra" }));
+    await waitFor(() => expect(alCrear).toHaveBeenCalledTimes(1));
+    expect(alCrear.mock.calls[0]![1]).toBe("s1.db");
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+  });
+
+  test("elegir la carpeta de la empresa vuelve a ella con DELETE", async () => {
+    const u = userEvent.setup();
+    const alCrear = abrirDialogo(
+      [
+        { carpeta: null, titulo: "Carpeta de la empresa" },
+        { carpeta: "s1.db", titulo: "S1" },
+      ],
+      "s1.db",
+    );
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("Bs"));
+    await u.selectOptions(screen.getByRole("combobox", { name: "Carpeta" }), "Carpeta de la empresa");
+    await u.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Casa Demo");
+    await u.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "Bs");
+    await u.click(screen.getByRole("button", { name: "Crear obra" }));
+    await waitFor(() => expect(alCrear).toHaveBeenCalledTimes(1));
+    expect(alCrear.mock.calls[0]![1]).toBeNull();
+    expect(servidor.de("DELETE", "/v1/casos/actual")).toHaveLength(1);
+  });
+});
