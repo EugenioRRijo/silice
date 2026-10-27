@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
 import Accesos from "./Accesos";
+import AvisosDelTema from "./AvisosDelTema";
 import Asistente from "./Asistente";
 import CarpetasDeTrabajo, { tomarVueltaACarpetas } from "./CarpetasDeTrabajo";
 import ClavesApi from "./ClavesApi";
@@ -16,10 +17,20 @@ import "./administracion.scss";
 
 type IdDePestana = (typeof PESTANAS)[number]["id"];
 
+// Los avisos de contraste del tema van encima de los datos de la empresa, no en cada pantalla.
+function EmpresaConAvisos() {
+  return (
+    <>
+      <AvisosDelTema />
+      <Empresa />
+    </>
+  );
+}
+
 // Cada pestaña de la clásica con su componente; el tipo obliga a que ninguna quede sin el suyo.
 const CONTENIDOS: Record<IdDePestana, ComponentType> = {
   cuentas: Cuentas,
-  empresa: Empresa,
+  empresa: EmpresaConAvisos,
   registradas: EmpresasRegistradas,
   api: ClavesApi,
   asistente: Asistente,

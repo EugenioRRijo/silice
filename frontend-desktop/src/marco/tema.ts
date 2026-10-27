@@ -7,6 +7,8 @@ export interface TemaRespuesta {
   marco: string | null;
   lateral: string | null;
   tiene_logo: boolean;
+  // Avisos de contraste, ya redactados por el servidor (que es quien mide); aqui solo se muestran.
+  avisos: string[];
 }
 
 export const RUTA_DEL_LOGO = "/v1/tema/logo";
@@ -30,6 +32,7 @@ export function leerTema(bruto: unknown): TemaRespuesta {
     marco: esColor(dato.marco) ? dato.marco : null,
     lateral: esColor(dato.lateral) ? dato.lateral : null,
     tiene_logo: dato.tiene_logo === true,
+    avisos: Array.isArray(dato.avisos) ? dato.avisos.filter((a): a is string => typeof a === "string") : [],
   };
 }
 
