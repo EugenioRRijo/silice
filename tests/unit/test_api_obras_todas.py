@@ -102,6 +102,7 @@ def test_lista_obras_de_todas_las_carpetas() -> None:
     cuerpo = respuesta.json()
     assert _filas(cuerpo) == [EMPRESA_1, CLINICA, GALPON, VIALIDAD]
     assert cuerpo["carpeta_actual"] is None  # la sesión trabaja en la carpeta de la empresa
+    assert cuerpo["carpeta_actual_titulo"] == TITULO_EMPRESA
     assert set(cuerpo["obras"][0]) == {
         "carpeta",
         "carpeta_titulo",
@@ -117,7 +118,10 @@ def test_lista_obras_de_todas_las_carpetas() -> None:
 def test_la_carpeta_actual_es_la_abierta_en_la_sesion() -> None:
     navegador, ficha = con_cuenta(app, "ana")
     _abrir(ficha, SUR)
-    assert navegador.get("/v1/obras/todas").json()["carpeta_actual"] == SUR
+    cuerpo = navegador.get("/v1/obras/todas").json()
+    assert cuerpo["carpeta_actual"] == SUR
+    # el título de la carpeta abierta lo da el servidor, aunque no tuviera obras que lo lleven
+    assert cuerpo["carpeta_actual_titulo"] == "Carpeta Sur"
 
 
 def test_sin_cambiar_caso_solo_la_carpeta_abierta() -> None:

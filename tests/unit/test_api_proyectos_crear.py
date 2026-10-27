@@ -23,6 +23,7 @@ from fastapi.testclient import TestClient
 from api import caso_web, dependencias
 from api.main import app
 from api.sesion_web import MENSAJE_CAMBIAR_CLAVE
+from aplicacion import obras
 from operacion import config
 from operacion.base_datos import preparar_base
 from seguridad.permisos import PERMISOS, Accion, Rol
@@ -412,6 +413,10 @@ def test_con_clave_de_api_no_se_crea_en_otra_carpeta() -> None:
         "C:\\x.db",
         "/etc/x.db",
         "   ",
+        "CON",
+        "NUL.db",
+        "silice.db:x",
+        r"\\servidor\recurso\x.db",
     ],
 )
 def test_nombre_con_rutas_da_422_sin_eco_y_no_crea(carpeta: str, _entorno: Path) -> None:
@@ -452,3 +457,31 @@ def test_todo_o_nada_en_la_carpeta_de_destino() -> None:
     # el mismo nombre en la carpeta de la sesión no choca con el del destino
     assert _crear(ana, ficha, _con_carpeta(None)).status_code == 201
     assert _nombres("silice.db") == ["Torre B"]
+
+
+def test_si_guardar_la_ficha_falla_no_queda_la_obra_en_la_carpeta_de_destino(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def falla(*_args, **_kwargs):
+        raise RuntimeError("falla ficticia al guardar la ficha")
+
+    ana, ficha = con_cuenta(app, "ana")
+    with monkeypatch.context() as parche:
+        parche.setattr(obras, "guardar_ficha", falla)
+        respuesta = _crear(ana, ficha, _con_carpeta("Obra Norte.db"))
+    assert respuesta.status_code == 500
+    # todo o nada: ni la obra ni la ficha quedaron en el destino, y la sesión sigue donde estaba
+    assert _nombres("Obra Norte.db") == []
+    assert _nombres("silice.db") == []
+    assert _actual(ana) == "silice.db"
+    assert _crear(ana, ficha, _con_carpeta("Obra Norte.db")).status_code == 201
+    assert _nombres("Obra Norte.db") == ["Torre B"]
+
+
+def test_el_esquema_declara_los_errores_de_crear_una_obra() -> None:
+    declaradas = app.openapi()["paths"][RUTA]["post"]["responses"]
+    # 403 sin CAMBIAR_CASO (o sin CSRF), 409 con la clave de API o nombre repetido, 503 sin carpeta de la empresa
+    assert {"201", "403", "409", "503"} <= set(declaradas)
+    for codigo in ("403", "409", "503"):
+        assert declaradas[codigo]["content"]["application/json"]["schema"]["$ref"].endswith("/Detalle")
+        assert declaradas[codigo]["description"]
