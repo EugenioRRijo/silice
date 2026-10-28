@@ -95,12 +95,26 @@ const FILAS: FilaPresupuesto[] = [
   fila("OBRA-06", { texto: "1000.00", exacto: "1000" }),
 ];
 
+// D3b: el objetivo en USD de la obra en Bs viene convertido con la tasa del día del objetivo (31,50 × 36,50 = 1.149,75;
+// contra 1.000,00: +15,0 %). Lo calcula la API; aquí solo se muestra.
+const EQUIVALENCIA_USD = {
+  precio_original: "31.50",
+  moneda_original: "USD",
+  tasa: "36.50",
+  fecha_tasa: "2026-10-20",
+  fuente_tasa: "importacion:bcv-venta",
+  fuente_legible: "BCV, publicación del 20/10/2026",
+  convertido: "1149.75",
+  moneda: "Bs",
+  operacion: "×",
+};
+
 const OBJETIVOS = {
   objetivos: [
     { codigo: "OBRA-04", precio: "1980.00", moneda: "Bs", margen: "-4.6" },
     { codigo: "OBRA-03", precio: "1500.00", moneda: "Bs", margen: null },
     { codigo: "OBRA-05", precio: "1980.00", moneda: "Bs", margen: "10.0" },
-    { codigo: "OBRA-06", precio: "31.50", moneda: "USD", margen: null },
+    { codigo: "OBRA-06", precio: "31.50", moneda: "USD", margen: "15.0", equivalencia: EQUIVALENCIA_USD, sin_tasa: null },
   ],
 };
 
@@ -237,10 +251,30 @@ describe("Hoja: objetivo de mercado junto al precio unitario (Tarea 16)", () => 
     await waitFor(async () => expect(texto((await celdaDe("OBRA-03")).celda)).toBe("1.500,00 · sin precio unitario, sin margen"));
   });
 
-  test("un objetivo en otra moneda se dice con su moneda y no se compara", async () => {
+  test("un objetivo en otra moneda se muestra convertido, con su línea de equivalencia y su margen", async () => {
     montar();
     await waitFor(async () =>
-      expect(texto((await celdaDe("OBRA-06")).celda)).toBe("31,50 USD · en otra moneda que la obra (Bs), sin margen"),
+      expect(texto((await celdaDe("OBRA-06")).celda)).toBe(
+        "31,50 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 1.149,75 Bs · margen +15,0 %",
+      ),
+    );
+    const { celda } = await celdaDe("OBRA-06");
+    // La línea es el componente común: lleva el resultado exacto y la fuente en su `title`.
+    expect(celda.querySelector("span.silice-cifra")?.getAttribute("title")).toBe(
+      "Resultado exacto: 1.149,75 Bs. Fuente de la tasa: BCV, publicación del 20/10/2026.",
+    );
+  });
+
+  test("un objetivo en otra moneda sin tasa de su día dice el motivo en vez de «sin margen» a secas", async () => {
+    alObjetivos = () =>
+      json({
+        objetivos: [
+          { codigo: "OBRA-06", precio: "31.50", moneda: "USD", margen: null, equivalencia: null, sin_tasa: "sin tasa del BCV del 20/10/2026" },
+        ],
+      });
+    montar();
+    await waitFor(async () =>
+      expect(texto((await celdaDe("OBRA-06")).celda)).toBe("31,50 USD · sin tasa del BCV del 20/10/2026, sin margen"),
     );
   });
 
