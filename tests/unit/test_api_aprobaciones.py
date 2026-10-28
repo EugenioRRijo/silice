@@ -678,6 +678,35 @@ def test_una_version_alterada_lo_dice_y_no_se_dictamina(ana) -> None:
     assert [e["tipo"] for e in eventos] == ["envio"]
 
 
+def test_con_la_cadena_rota_se_puede_devolver_con_notas(ana) -> None:
+    _enviar(ana)
+    _alterar_un_renglon("VIV-001")
+
+    sin_notas = _dictaminar(ana, 1, "devuelta")
+    assert sin_notas.status_code == 422
+    assert sin_notas.json() == {"detalle": SIN_NOTAS}
+
+    devuelta = _dictaminar(ana, 1, "devuelta", "La cadena se rompió; se rehace la versión.")
+    assert devuelta.status_code == 201, devuelta.text
+    eventos = ana[0].get(RAIZ, params={"proyecto": OBRA}).json()["eventos"]
+    assert [(e["tipo"], e["resultado"]) for e in eventos] == [
+        ("envio", ""),
+        ("dictamen", "devuelta"),
+    ]
+    assert ana[0].get(f"{RAIZ}/1").json()["estado"] == "devuelta"
+
+
+def test_con_la_cadena_rota_aprobar_con_observaciones_sigue_en_409(ana) -> None:
+    _enviar(ana)
+    _alterar_un_renglon("VIV-001")
+
+    dictamen = _dictaminar(ana, 1, "aprobada_con_observaciones", "Con notas igual.")
+    assert dictamen.status_code == 409
+    assert dictamen.json()["detalle"].startswith("No se puede dictaminar VIV-001: la cadena")
+    eventos = ana[0].get(RAIZ, params={"proyecto": OBRA}).json()["eventos"]
+    assert [e["tipo"] for e in eventos] == ["envio"]
+
+
 def test_el_detalle_muestra_los_items_pendientes_sin_precio(ana) -> None:
     motor = crear_motor(f"sqlite:///{_vivienda().as_posix()}")
     try:
