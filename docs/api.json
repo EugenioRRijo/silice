@@ -8775,6 +8775,28 @@
         }
       }
     },
+    "/v1/obras/pendientes/todas": {
+      "get": {
+        "tags": [
+          "obras"
+        ],
+        "summary": "Pendientes De Todas Las Carpetas",
+        "description": "Los pendientes de las carpetas que la cuenta puede listar (las de `GET /v1/obras/todas`),\ncada una abierta en solo lectura. Quien edita ve todo; quien solo revisa, lo que espera su\ndictamen. Una carpeta ilegible se omite y se cuenta.",
+        "operationId": "pendientes_de_todas_las_carpetas_v1_obras_pendientes_todas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendientesTodasRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/mercado/objetivos": {
       "get": {
         "tags": [
@@ -19854,6 +19876,63 @@
         "title": "PendienteConPropuestasRespuesta",
         "description": "Un ítem sin partida con las partidas similares que se le proponen (o por qué no hay)."
       },
+      "PendienteDeObraRespuesta": {
+        "properties": {
+          "carpeta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carpeta",
+            "description": "El nombre que acepta `POST /v1/casos/actual`; `null`: la carpeta de la empresa"
+          },
+          "obra_id": {
+            "type": "integer",
+            "title": "Obra Id"
+          },
+          "obra": {
+            "type": "string",
+            "title": "Obra",
+            "description": "El nombre de la obra"
+          },
+          "grupo": {
+            "type": "string",
+            "title": "Grupo",
+            "description": "`aprobar`, `compras`, `precios` o `calidad`"
+          },
+          "urgencia": {
+            "type": "string",
+            "enum": [
+              "bloquea",
+              "aviso"
+            ],
+            "title": "Urgencia",
+            "description": "`bloquea`: aprobar y compras; `aviso`: precios y calidad"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          },
+          "accion": {
+            "$ref": "#/components/schemas/SiguienteRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "carpeta",
+          "obra_id",
+          "obra",
+          "grupo",
+          "urgencia",
+          "texto",
+          "accion"
+        ],
+        "title": "PendienteDeObraRespuesta"
+      },
       "PendientesRespuesta": {
         "properties": {
           "grupos": {
@@ -19869,6 +19948,29 @@
           "grupos"
         ],
         "title": "PendientesRespuesta"
+      },
+      "PendientesTodasRespuesta": {
+        "properties": {
+          "pendientes": {
+            "items": {
+              "$ref": "#/components/schemas/PendienteDeObraRespuesta"
+            },
+            "type": "array",
+            "title": "Pendientes",
+            "description": "Lo que bloquea primero; luego la carpeta de la empresa, las demás por nombre y el grupo en el orden de la mesa"
+          },
+          "carpetas_omitidas": {
+            "type": "integer",
+            "title": "Carpetas Omitidas",
+            "description": "Las carpetas que no se pudieron leer: sus pendientes no aparecen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pendientes",
+          "carpetas_omitidas"
+        ],
+        "title": "PendientesTodasRespuesta"
       },
       "PeriodoPlanPeticion": {
         "properties": {
