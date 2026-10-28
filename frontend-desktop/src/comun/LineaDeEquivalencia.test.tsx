@@ -42,7 +42,7 @@ describe("Línea de equivalencia", () => {
     expect(textoDeEquivalencia(EN_USD)).toBe("1.149,75 Bs ÷ 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 31,50 USD");
   });
 
-  test("la fecha es la de la tasa que se usó, aunque el precio sea de un día posterior", () => {
+  test("la línea dice la fuente legible que trae la API", () => {
     const e = { ...EN_BS, fecha_tasa: "2026-10-18", fuente_legible: "BCV, publicación del 18/10/2026" };
     expect(textoDeEquivalencia(e)).toContain("(BCV, publicación del 18/10/2026)");
   });

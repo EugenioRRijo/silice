@@ -17,7 +17,7 @@ export interface Equivalencia {
   operacion: string;
 }
 
-// «31,50 USD × 36,50 Bs/USD (BCV, publicacion del 20/10/2026) = 1.149,75 Bs». El resultado se lee en centesimas; el exacto va en el
+// «31,50 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 1.149,75 Bs». El resultado se lee en centésimas; el exacto va en el
 // `title` de `LineaDeEquivalencia`.
 export function textoDeEquivalencia(e: Equivalencia): string {
   return (
