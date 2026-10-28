@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { PendienteDeObra } from "../../api/tipos";
-import { claveDeObra, contarPorObra, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
+import { claveDeObra, contarPorObra, contarUrgencias, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
 
 // Rediseño F3, Tarea 2 (D-F3-2): la acción de un pendiente abre la sección de su obra que monta la pantalla que la
 // fuente nombra (`accion.pagina`, el id de `shell/rutas.ts`). Oráculo escrito a mano desde la tabla de D-F3-2 y las
@@ -108,5 +108,17 @@ describe("indiceTrasTecla", () => {
   test("otra tecla no mueve", () => {
     expect(indiceTrasTecla("Enter", 1, 4)).toBeNull();
     expect(indiceTrasTecla("a", 1, 4)).toBeNull();
+  });
+});
+
+describe("contarUrgencias", () => {
+  const con = (urgencia: "bloquea" | "aviso"): PendienteDeObra => ({ ...pendiente("hoja"), urgencia });
+
+  test("cuenta cada urgencia por separado", () => {
+    expect(contarUrgencias([con("bloquea"), con("aviso"), con("bloquea"), con("bloquea")])).toEqual({ bloquea: 3, aviso: 1 });
+  });
+
+  test("una lista vacía da ceros", () => {
+    expect(contarUrgencias([])).toEqual({ bloquea: 0, aviso: 0 });
   });
 });

@@ -140,14 +140,62 @@ const opciones = async () => within(await lista()).getAllByRole("option");
 const pedidas = () => servidor.de("GET", RUTA).length;
 
 describe("Pendientes: la bandeja", () => {
-  test("un solo h1 «Pendientes» y el total al lado", async () => {
+  test("un solo h1 «Pendientes» y ya no el «N por hacer» al lado", async () => {
     montar();
     await lista();
     const titulos = screen.getAllByRole("heading", { level: 1 });
     expect(titulos).toHaveLength(1);
     expect(titulos[0]).toHaveTextContent("Pendientes");
     expect(titulos[0]).toHaveClass("cds--type-heading-04");
-    expect(screen.getByText("4 por hacer")).toBeInTheDocument();
+    expect(screen.queryByText(/por hacer/)).toBeNull();
+    expect(document.querySelector(".silice-bandeja__total")).toBeNull();
+  });
+
+  describe("el resumen por urgencia encima de la lista", () => {
+    const resumen = () => document.querySelector(".silice-bandeja__resumen");
+
+    test("dos que bloquean y dos avisos: «2 bloquean · 2 avisos», antes de la lista", async () => {
+      montar();
+      const ul = await lista();
+      expect(resumen()).toHaveTextContent(/^2 bloquean · 2 avisos$/);
+      // Encima de la lista: el resumen precede a la lista en el documento.
+      expect(resumen()!.compareDocumentPosition(ul) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    test("en singular: «1 bloquea · 1 aviso»", async () => {
+      bandeja = responder([CEMENTO, PRECIOS]);
+      montar();
+      await lista();
+      expect(resumen()).toHaveTextContent(/^1 bloquea · 1 aviso$/);
+    });
+
+    test("un grupo en cero no se nombra", async () => {
+      bandeja = responder([CEMENTO, DEVUELTA, CEMENTO]);
+      montar();
+      await lista();
+      expect(resumen()).toHaveTextContent(/^3 bloquean$/);
+    });
+
+    test("solo avisos: «1 aviso»", async () => {
+      bandeja = responder([PRECIOS]);
+      montar();
+      await lista();
+      expect(resumen()).toHaveTextContent(/^1 aviso$/);
+    });
+
+    test("con la lista vacía no hay resumen", async () => {
+      bandeja = responder([]);
+      montar();
+      await screen.findByText("No tiene pendientes.");
+      expect(resumen()).toBeNull();
+    });
+
+    test("cargando, o con error, tampoco hay resumen", async () => {
+      bandeja = () => json({ detalle: "Sílice no respondió a tiempo." }, 500);
+      montar();
+      await screen.findByText("No se pudieron leer los pendientes");
+      expect(resumen()).toBeNull();
+    });
   });
 
   test("la lista es una ul con un elemento por pendiente, en el orden de la API, con texto, obra y urgencia en palabras", async () => {
