@@ -19,6 +19,10 @@ La contraseña de la clave de firma: no se guarda, no se registra y no vuelve en
 como `USUARIO_SIN_CLAVE`. La base del caso no cambia; solo se escribe el registro de la entrega en
 la base de la instalación. Los montos viajan como texto: `total` exacto y `total_texto` como lo
 escribe la pantalla clásica (dos decimales).
+
+Un fallo de la base al entregar (ocupada, ilegible) es un 503 con un texto fijo (`MENSAJE_BASE`,
+sin SQL ni rutas) y no se genera paquete: la marca «Versión NO aprobada» solo dice «sin aprobada
+previa» si la carpeta no tiene la tabla de aprobaciones (D4, plan de decisiones 2026-10-27).
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
@@ -53,6 +58,7 @@ MENSAJE_CUERPO_INVALIDO = (
     "firma, si los usa, también."
 )
 MENSAJE_CLAVE_INCORRECTA = "La contraseña de la clave no es correcta."
+MENSAJE_BASE = "No se pudo leer la carpeta de trabajo para entregar; no se generó el paquete."
 MENSAJE_FRENO = (
     "Demasiados intentos fallidos con la contraseña de la clave de firma. Espere unos segundos y "
     "vuelva a probar."
@@ -173,7 +179,10 @@ def resumen(sesion: SesionDep, response: Response, proyecto: str, version: str) 
 @router.post(
     "",
     response_class=Response,
-    responses={200: {"content": {"application/zip": {}}}},
+    responses={
+        200: {"content": {"application/zip": {}}},
+        503: {"description": "La base de la carpeta no se pudo leer; no se generó el paquete."},
+    },
     dependencies=[ENTREGAR],  # antes de abrir la base del caso; FastAPI no la corre dos veces
 )
 @sin_eco(MENSAJE_CUERPO_INVALIDO)
@@ -222,6 +231,10 @@ def entregar(
             raise HTTPException(409, str(error)) from None
         except PaqueteRechazado as error:
             raise HTTPException(422, str(error)) from None
+        except SQLAlchemyError:
+            # la base ocupada o ilegible no se disfraza en el paquete (p. ej. como «sin aprobada
+            # previa» en un manifiesto firmado): no se genera nada y el texto no trae SQL
+            raise HTTPException(503, MENSAJE_BASE) from None
     return Response(
         content=generada.datos,
         media_type="application/zip",

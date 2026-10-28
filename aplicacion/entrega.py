@@ -24,7 +24,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from adapters.espacio import cargar_espacio
@@ -78,16 +78,21 @@ def marca_de_no_aprobada(
 ) -> dict[str, str | None] | None:
     """La marca «Versión NO aprobada» de un paquete, o `None` si la versión es una aprobada (con o
     sin observaciones). Lleva la fecha de la entrega y, si la hay, la última aprobada de la obra
-    (la que no se eligió). Si el rastro de aprobaciones no se puede leer (una carpeta sin esa
-    tabla), nada consta como aprobado y se marca: ante la duda, rotular. Importa `aprobaciones`
-    aquí porque ese módulo importa `anexos_de_cadena` de este."""
+    (la que no se eligió). Si la carpeta no tiene la tabla de aprobaciones nada consta como
+    aprobado y se marca: ante la duda, rotular. Cualquier otro fallo de la base (ocupada, ilegible)
+    sube como `SQLAlchemyError`: la ruta lo dice como 503 y no se genera el paquete.
+    Importa `aprobaciones` aquí porque ese módulo importa `anexos_de_cadena` de este."""
     from aplicacion import aprobaciones  # noqa: PLC0415  (import circular)
 
     referencia = str(version.proyecto_id)
     try:
         estado = aprobaciones.estados(session, referencia).get(version.codigo)
         ultima = aprobaciones.ultima_aprobada(session, referencia)
-    except SQLAlchemyError:
+    except OperationalError as error:
+        # Solo la tabla ausente significa «aquí nunca hubo aprobaciones». Un «database is locked»
+        # u otro fallo no se firma como «sin aprobada previa» (sería afirmar algo falso): sube.
+        if "no such table" not in str(error.orig):
+            raise
         estado, ultima = None, None
     if estado is not None and estado.estado in aprobaciones.APROBADAS:
         return None
