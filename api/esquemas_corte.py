@@ -20,7 +20,8 @@ class EquivalenciaRespuesta(BaseModel):
     moneda_original: str
     tasa: str = Field(description="Bs por USD, exacta")
     fecha_tasa: str = Field(description="aaaa-mm-dd: la fecha valor de la tasa usada")
-    fuente_tasa: str
+    fuente_tasa: str = Field(description="La referencia interna de la tasa, para el rastro")
+    fuente_legible: str = Field(description="«BCV, publicación del dd/mm/aaaa», para mostrar")
     convertido: str = Field(description="El resultado en la moneda de la obra, exacto")
     moneda: str = Field(description="La moneda del resultado (la de la obra)")
     operacion: str = Field(description="«×» si se multiplicó por la tasa (USD a Bs); «÷» si no")
@@ -33,7 +34,8 @@ def equivalencia_a_respuesta(equivalencia: Equivalencia) -> EquivalenciaRespuest
         tasa=format(equivalencia.tasa, "f"),
         fecha_tasa=equivalencia.fecha_tasa.isoformat(),
         fuente_tasa=equivalencia.fuente_tasa,
+        fuente_legible=equivalencia.fuente_legible,
         convertido=format(equivalencia.convertido, "f"),
         moneda=equivalencia.moneda,
-        operacion="÷" if equivalencia.moneda_original == "Bs" else "×",
+        operacion=equivalencia.operacion,
     )

@@ -5,7 +5,7 @@ import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { textoDeEquivalencia } from "../../comun/LineaDeEquivalencia";
+import { textoDeEquivalenciaExacta } from "../../comun/LineaDeEquivalencia";
 import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import { AYUDA_CIFRAS, leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -120,7 +120,7 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
         );
         const guardado = r.corte ? `Precio guardado en «${r.lista}». ${r.corte}` : `Precio guardado en «${r.lista}».`;
         setHecho(
-          r.equivalencia ? `${guardado} Se convirtió con la tasa del BCV: ${textoDeEquivalencia(r.equivalencia)}` : guardado,
+          r.equivalencia ? `${guardado} Se convirtió con la tasa del BCV: ${textoDeEquivalenciaExacta(r.equivalencia)}` : guardado,
         );
         setDeclarar(false);
       } else {

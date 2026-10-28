@@ -493,7 +493,16 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    **Cambiado el 2026-10-27 (Tarea D2):** por decisión de Eugenio («si llega una moneda distinta se hace la equivalencia»)
    el 409 por otra moneda deja de existir: el precio se **convierte** con la tasa del BCV de su fecha (la declarada; en
    Procura, la de llegada) y la fila guarda el rastro (original, tasa, fecha y fuente de la tasa, resultado) en la
-   migración `caso_0018_mp_corte_tasa`. Solo sin tasa en los 7 días previos hay 409 y no se guarda nada.
+   migración `caso_0018_mp_corte_tasa`. Sin tasa hay 409 y no se guarda nada.
+   **Ajustado el mismo día (Tarea D2b, decisión de Eugenio: «exigen la tasa del día» y «está bien como BCV
+   publicación»):** la tasa debe ser la **del mismo día** del precio (`aplicacion/tasa_del_dia.py`, sobre
+   `tasa_aplicable`, sin tocar `core/`); la de un día anterior, aunque esté a menos de 7 días, da 409 («No hay tasa del
+   BCV del dd/mm/aaaa (hace falta la del mismo día)…»). Versiones y listas conservan S1-R2 (hasta 7 días). La API da
+   `fuente_legible` («BCV, publicación del dd/mm/aaaa») para mostrar y conserva `fuente_tasa` (`importacion:N`) para el
+   rastro. Consecuencia aceptada: fines de semana y feriados sin publicación no tienen tasa del día.
+   Desvíos del método de D2: (a) la migración `caso_0018_mp_corte_tasa` se escribió antes de sus pruebas, sin rojo
+   propio; (b) el oráculo de `fuente_tasa` cambió después del rojo de `"https://www.bcv.org.ve/"` a `"importacion:1"`,
+   porque la fuente que anota el catálogo (`ValorFechado.fuente`, `core`) es la referencia de la importación.
 3. **Unitarios del corte:** la partida que usa un material declarado se recalcula con `calcular_apu` del núcleo y los
    parámetros de su versión; las demás conservan su resultado de la línea base (desvío de precio exactamente cero).
    Ningún precio de una versión sellada cambia (prueba de guarda en las dos casillas).

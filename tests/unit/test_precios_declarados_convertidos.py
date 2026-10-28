@@ -43,7 +43,7 @@ D = Decimal
 TUBO = "Material de Tuberia de drenaje"
 AHORA = datetime(2026, 11, 20, 8, 0)
 QUIEN = "Ana <ana>"
-FUENTE_TASA = "importacion:1"  # la única importación de tasas de la base
+FUENTE_TASA = "importacion:2"  # la del 10/11 es la segunda importación sembrada
 DIA_DE_LA_TASA = date(2026, 11, 10)
 
 
@@ -58,7 +58,9 @@ def _abrir(tmp_path: Path, moneda: str, con_tasa: bool) -> Iterator:
             if moneda == "USD":
                 ob.registrar_v01_y_v02(sesion)
             if con_tasa:
-                registrar_tasa_en(sesion, DIA_DE_LA_TASA, "36.50")
+                # 36,50 los días 9, 10, 12 y 14; el 11 y el 17 no tienen tasa
+                for n, dia in enumerate((9, 10, 12, 14)):
+                    registrar_tasa_en(sesion, date(2026, 11, dia), "36.50", huella=str(n) * 64)
             sesion.commit()
             yield sesion
             sesion.rollback()
@@ -136,7 +138,7 @@ def test_el_rastro_guarda_original_tasa_fecha_fuente_y_resultado_sin_sobrescribi
         FUENTE_TASA,
     )
     # solo inserción: declarar otro precio es otra fila y la primera queda como estaba
-    _declarar(obra_usd, "182.50", "Bs", date(2026, 11, 11))
+    _declarar(obra_usd, "182.50", "Bs", date(2026, 11, 12))
     filas = obra_usd.scalars(select(PrecioDelCorte).order_by(PrecioDelCorte.id)).all()
     assert [(f.precio_original, f.precio) for f in filas] == [
         (D("146.00"), D("4")),
@@ -226,9 +228,9 @@ def test_con_la_tasa_del_mismo_dia_si_convierte(obra_usd) -> None:
 def test_las_versiones_y_las_listas_siguen_aceptando_la_tasa_de_dias_antes(obra_usd) -> None:
     from aplicacion.listas_para_armar import _tasa
 
-    # S1-R2 no cambia para ellas: a 3 días de la tasa del 10/11 todavía sirve
-    tasa = _tasa(obra_usd, date(2026, 11, 13))
-    assert (tasa.valor, tasa.fecha) == (D("36.50"), DIA_DE_LA_TASA)
+    # S1-R2 no cambia para ellas: a 2 días de la tasa del 14/11 todavía sirve
+    tasa = _tasa(obra_usd, date(2026, 11, 16))
+    assert (tasa.valor, tasa.fecha) == (D("36.50"), date(2026, 11, 14))
 
 
 # --- lo que lee la pantalla del corte -----------------------------------------------------------

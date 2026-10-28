@@ -15129,7 +15129,13 @@
           },
           "fuente_tasa": {
             "type": "string",
-            "title": "Fuente Tasa"
+            "title": "Fuente Tasa",
+            "description": "La referencia interna de la tasa, para el rastro"
+          },
+          "fuente_legible": {
+            "type": "string",
+            "title": "Fuente Legible",
+            "description": "«BCV, publicación del dd/mm/aaaa», para mostrar"
           },
           "convertido": {
             "type": "string",
@@ -15154,6 +15160,7 @@
           "tasa",
           "fecha_tasa",
           "fuente_tasa",
+          "fuente_legible",
           "convertido",
           "moneda",
           "operacion"

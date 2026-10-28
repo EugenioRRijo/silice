@@ -10,9 +10,10 @@ sin cargar un archivo en «Actualizar precios».
   (`aplicacion/tablas_corte.py`, solo inserción). Un precio en otra moneda que la obra no se
   rechaza: se **convierte** con la tasa del BCV de su fecha (decisión de Eugenio del 2026-10-27,
   Tarea D2) y la fila guarda el rastro (`Equivalencia`: original, tasa, su fecha y su fuente,
-  resultado). La tasa es la de `tasa_aplicable` (a lo sumo 7 días antes) y la aritmética la de
-  `core.catalog.moneda.convertir` (28 dígitos, mitad al par, sin redondear a centavos), las mismas
-  que usan la conversión de versiones y de listas; sin tasa, `SinTasaDelCorte` y nada se escribe.
+  resultado). La tasa es la del mismo día del precio (`aplicacion/tasa_del_dia.py`, D2b) y la
+  aritmética la de `core.catalog.moneda.convertir` (28 dígitos, mitad al par, sin redondear a
+  centavos), la que usan la conversión de versiones y de listas; sin tasa del día,
+  `SinTasaDelCorte` y nada se escribe.
 - **Leer** (`precios_declarados`): por partida de la línea base vigente al corte, su composición
   congelada con el precio de cada material sustituido por el último declarado con `fecha <= corte`
   (mismas descripción y unidad, y la moneda de la obra), calculada con los parámetros de esa
@@ -43,13 +44,13 @@ from aplicacion.mercado import NoExiste
 from aplicacion.procura import explosion
 from aplicacion.proyectos import resolver_proyecto
 from aplicacion.tablas_corte import PrecioDelCorte, crear_esquema_corte, hay_tabla_corte
+from aplicacion.tasa_del_dia import SinTasaDelDia, tasa_del_dia
 from core import models
 from core.budget.moneda import moneda_del_proyecto
 from core.budget.valor_ganado import PERSPECTIVA_COSTO, PreciosDelCorte
 from core.budget.valuaciones import instantanea_control, linea_base_vigente
 from core.catalog import Catalogo
-from core.catalog.indices import TasaNoDisponible, tasa_aplicable
-from core.catalog.moneda import TasaDeclarada, convertir
+from core.catalog.moneda import convertir
 from core.contracts.unidades import normalizar_unidad
 from core.costing import calcular_apu
 
@@ -96,6 +97,18 @@ class Equivalencia:
     convertido: Decimal
     moneda: str
 
+    @property
+    def operacion(self) -> str:
+        """«÷» si se dividió por la tasa (Bs a USD), «×» si se multiplicó (USD a Bs): lo que hace
+        `convertir`, dicho en un solo sitio."""
+        return "÷" if self.moneda_original == "Bs" else "×"
+
+    @property
+    def fuente_legible(self) -> str:
+        """La fuente de la tasa como se lee: «BCV, publicación del dd/mm/aaaa» (`fuente_tasa` es la
+        referencia interna del rastro)."""
+        return f"BCV, publicación del {self.fecha_tasa:%d/%m/%Y}"
+
 
 @dataclass(frozen=True, slots=True)
 class PrecioConvertido:
@@ -111,12 +124,9 @@ class PrecioConvertido:
 def _convertir(sesion: Session, precio: Decimal, de: str, a: str, fecha: date) -> Equivalencia:
     """`precio` de `de` a `a` con la tasa del BCV de `fecha`; `SinTasaDelCorte` si no hay tasa."""
     try:
-        tasa = TasaDeclarada.de_importacion(tasa_aplicable(sesion, fecha))
-    except TasaNoDisponible:
-        raise SinTasaDelCorte(
-            f"No hay tasa del BCV del {fecha:%d/%m/%Y} para convertir este precio a {a}. Cargue "
-            "la tasa en Índices y vuelva a intentarlo."
-        ) from None
+        tasa = tasa_del_dia(sesion, fecha, a)
+    except SinTasaDelDia as error:
+        raise SinTasaDelCorte(str(error)) from None
     return Equivalencia(
         precio_original=precio,
         moneda_original=de,

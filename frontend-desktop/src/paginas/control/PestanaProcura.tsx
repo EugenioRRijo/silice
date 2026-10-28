@@ -7,7 +7,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { mensajeDeError } from "../../comun/errores";
-import { textoDeEquivalencia } from "../../comun/LineaDeEquivalencia";
+import { textoDeEquivalenciaExacta } from "../../comun/LineaDeEquivalencia";
 import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import { Severidad } from "../../comun/Severidad";
 import { TablaDensa } from "../../comun/TablaDensa";
@@ -195,7 +195,7 @@ function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAcci
       const declarada = declarar ? `${anotada} Su precio queda como precio del corte desde esa fecha.` : anotada;
       // Si la obra trabaja en la otra moneda, la API lo convirtio con la tasa del BCV de la fecha de llegada (Tarea D2).
       alHecho(
-        r?.equivalencia ? `${declarada} Se convirtió con la tasa del BCV: ${textoDeEquivalencia(r.equivalencia)}` : declarada,
+        r?.equivalencia ? `${declarada} Se convirtió con la tasa del BCV: ${textoDeEquivalenciaExacta(r.equivalencia)}` : declarada,
       );
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();

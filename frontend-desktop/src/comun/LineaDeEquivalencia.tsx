@@ -10,6 +10,8 @@ export interface Equivalencia {
   tasa: string;
   fecha_tasa: string;
   fuente_tasa: string;
+  // «BCV, publicacion del dd/mm/aaaa»: lo que se muestra; `fuente_tasa` es la referencia interna del rastro.
+  fuente_legible: string;
   convertido: string;
   moneda: string;
   operacion: string;
@@ -24,8 +26,13 @@ export function textoDeEquivalencia(e: Equivalencia): string {
   );
 }
 
+// Para las lineas de estado, que son texto: la linea y el resultado exacto aparte (la centesima redondea).
+export function textoDeEquivalenciaExacta(e: Equivalencia): string {
+  return `${textoDeEquivalencia(e)}. Resultado exacto: ${formatoEsVe(e.convertido)} ${e.moneda}.`;
+}
+
 export function LineaDeEquivalencia({ equivalencia }: { equivalencia: Equivalencia }) {
-  const exacto = `Resultado exacto: ${formatoEsVe(equivalencia.convertido)} ${equivalencia.moneda}. Fuente de la tasa: ${equivalencia.fuente_tasa}.`;
+  const exacto = `Resultado exacto: ${formatoEsVe(equivalencia.convertido)} ${equivalencia.moneda}. Fuente de la tasa: ${equivalencia.fuente_legible}.`;
   return (
     <span className="silice-cifra" title={exacto}>
       {textoDeEquivalencia(equivalencia)}
