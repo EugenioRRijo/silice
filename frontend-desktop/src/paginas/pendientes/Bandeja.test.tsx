@@ -444,7 +444,7 @@ describe("Pendientes: la lectura de la carga inicial no deja datos viejos", () =
     // La vieja llega tarde, con datos que ya no valen.
     soltarLaPrimera(await json({ pendientes: [CEMENTO], carpetas_omitidas: 0 }));
     expect(await opciones()).toHaveLength(1);
-    expect(screen.getByText("3 precios con más de 90 días")).toBeInTheDocument();
+    expect(within(await lista()).getByText("3 precios con más de 90 días")).toBeInTheDocument();
     expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
   });
 });
