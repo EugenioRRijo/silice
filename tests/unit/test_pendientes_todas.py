@@ -189,7 +189,7 @@ def test_con_las_fuentes_reales_una_devuelta_sale_como_bloquea(
     monkeypatch.undo()  # vuelven las fuentes reales de la mesa
     ruta = tmp_path / "Carpeta Norte.db"
     preparar_base(ruta)
-    motor = crear_motor(ruta)
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
             sembrar_vivienda(sesion)
