@@ -23249,6 +23249,39 @@
             ],
             "title": "Lateral"
           },
+          "complementario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complementario"
+          },
+          "contador_numero": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contador Numero"
+          },
+          "contador_fondo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contador Fondo"
+          },
           "tiene_logo": {
             "type": "boolean",
             "title": "Tiene Logo"
@@ -23266,6 +23299,9 @@
           "acento",
           "marco",
           "lateral",
+          "complementario",
+          "contador_numero",
+          "contador_fondo",
           "tiene_logo",
           "avisos"
         ],
