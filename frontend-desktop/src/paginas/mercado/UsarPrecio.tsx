@@ -5,7 +5,7 @@ import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { textoDeEquivalenciaExacta } from "../../comun/LineaDeEquivalencia";
+import { textoDeEquivalencia, textoDeEquivalenciaExacta } from "../../comun/LineaDeEquivalencia";
 import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import { AYUDA_CIFRAS, leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -229,7 +229,7 @@ export function UsarPrecio({ estudio, alCambiarSucio }: Props) {
               <SelectItem
                 key={o.id}
                 value={String(o.id)}
-                text={`n.º ${o.id} · ${o.fuente} · ${fechaEsVe(o.fecha)} · ${formatoEsVe(o.precio)} ${o.moneda}`}
+                text={`n.º ${o.id} · ${o.fuente} · ${fechaEsVe(o.fecha)} · ${o.equivalencia ? textoDeEquivalencia(o.equivalencia) : `${formatoEsVe(o.precio)} ${o.moneda}`}`}
               />
             ))}
           </Select>
