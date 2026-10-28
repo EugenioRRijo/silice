@@ -2,7 +2,7 @@ import { renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
-import { caso, estadoInicial, json, ligeras, montarMarco, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
+import { RUTA_DE_LA_MESA, caso, conLaMesa, estadoInicial, json, montarMarco, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
 import type { EstadoDelServidor, Rol } from "../../shell/obras/datosDePrueba";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios, useFormularioSucio } from "../../shell/sucio";
@@ -114,7 +114,7 @@ afterEach(() => {
 });
 
 async function montar(rol: Rol) {
-  const vista = montarMarco(sesionDe(rol), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
+  const vista = montarMarco(sesionDe(rol), RUTA_DE_LA_MESA, conLaMesa(PaginaObras, { aprobar: PaginaAprobar }));
   await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
   return vista;
 }
@@ -258,7 +258,7 @@ describe("con la pantalla de aprobar registrada, las filas de la carpeta abierta
       return undefined;
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
-    montarMarco(sesionDe("ana"), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
+    montarMarco(sesionDe("ana"), RUTA_DE_LA_MESA, conLaMesa(PaginaObras, { aprobar: PaginaAprobar }));
     await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
     const columna = await screen.findByRole("region", { name: "Pendientes" });
     const boton = await within(columna).findByRole("button", { name: "Abrir el envío" });
@@ -293,7 +293,7 @@ describe("T20: «Abrir el envío» lleva a la pantalla real de aprobar", () => {
       return undefined;
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
-    montarMarco(sesionDe("rita"), "/obras", ligeras({ obras: PaginaObras, aprobar: PaginaAprobar }));
+    montarMarco(sesionDe("rita"), RUTA_DE_LA_MESA, conLaMesa(PaginaObras, { aprobar: PaginaAprobar }));
     await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
     await u.click(await abrirDe("GS-001"));
     expect(await aprobarAbierta()).toBeInTheDocument();

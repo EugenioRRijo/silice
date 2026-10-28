@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios, useFormularioSucio } from "../../shell/sucio";
-import { TORRE_B as FICHA, estadoInicial, json, ligeras, montarMarco, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
+import { RUTA_DE_LA_MESA, TORRE_B as FICHA, conLaMesa, estadoInicial, json, montarMarco, servidorFalso, sesionDe } from "../../shell/obras/datosDePrueba";
 import type { Rol } from "../../shell/obras/datosDePrueba";
 import PaginaObras from "./index";
 
@@ -208,7 +208,7 @@ afterEach(() => {
 const obrasFijadas = () => [...new Set(servidor.de("PUT", "/v1/sesion/proyecto").map((l) => JSON.stringify(l.cuerpo)))];
 
 async function montar(rol: Rol) {
-  const vista = montarMarco(sesionDe(rol), "/obras", ligeras({ obras: PaginaObras }));
+  const vista = montarMarco(sesionDe(rol), RUTA_DE_LA_MESA, conLaMesa(PaginaObras));
   await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
   return vista;
 }
@@ -642,7 +642,7 @@ describe("T19: la cifra «Por aprobar»", () => {
 
   test("sin `aprobar_version` no se pide", async () => {
     const sin = sesionDe("ana", { acciones: ["editar_hoja", "leer_proyecto", "control_de_obra", "cambiar_caso"] });
-    montarMarco(sin, "/obras", ligeras({ obras: PaginaObras }));
+    montarMarco(sin, RUTA_DE_LA_MESA, conLaMesa(PaginaObras));
     const cifras = await region("Cómo van las obras");
     await within(cifras).findByRole("group", { name: "Valor ganado" });
     expect(within(cifras).queryByRole("group", { name: "Por aprobar" })).toBeNull();
@@ -656,7 +656,7 @@ describe("T19: la cifra «Por aprobar»", () => {
     const franja = await screen.findByRole("status", { name: "Cargando las cifras de las obras" });
     expect(franja.querySelectorAll(".silice-mesa__cifra--esqueleto")).toHaveLength(3);
     unmount();
-    montarMarco(sesionDe("ana", { acciones: ["editar_hoja", "leer_proyecto"] }), "/obras", ligeras({ obras: PaginaObras }));
+    montarMarco(sesionDe("ana", { acciones: ["editar_hoja", "leer_proyecto"] }), RUTA_DE_LA_MESA, conLaMesa(PaginaObras));
     const otra = await screen.findByRole("status", { name: "Cargando las cifras de las obras" });
     expect(otra.querySelectorAll(".silice-mesa__cifra--esqueleto")).toHaveLength(2);
   });

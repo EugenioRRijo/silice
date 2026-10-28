@@ -208,6 +208,8 @@ export function servidorFalso(estado: EstadoDelServidor = estadoInicial(), antes
         })),
       });
     }
+    // La bandeja de Pendientes (rediseño F3): sin pendientes, salvo que la prueba responda otra cosa en `antes`.
+    if (ruta === "/v1/obras/pendientes/todas" && metodo === "GET") return json({ pendientes: [], carpetas_omitidas: 0 });
     if (ruta === "/v1/tema" && metodo === "GET") {
       return json({ acento: null, marco: null, lateral: null, tiene_logo: false, avisos: [] });
     }
@@ -227,6 +229,18 @@ export function ligeras(propias: Record<string, ComponentType> = {}): PaginaDef[
     const Ligera = Propia ?? (() => <h1>{p.titulo}</h1>);
     return { ...p, cargar: async () => ({ default: Ligera }) };
   });
+}
+
+// Rediseño F3, Tarea 2: `#/pendientes` monta la bandeja y la mesa solo vive en el Resumen de una obra, que la fija en la
+// sesión. Sus pruebas la miran sin obra elegida, como era la entrada: la montan en `#/mesa`, una pantalla más del
+// registro (no es sección de la obra ni entrada de Empresa, así que el marco la monta donde está, sin redirigir). El
+// Resumen de las obras que la prueba abre (`obras`) también es la mesa.
+export const RUTA_DE_LA_MESA = "/mesa";
+export function conLaMesa(mesa: ComponentType, propias: Record<string, ComponentType> = {}): PaginaDef[] {
+  const paginas = ligeras({ obras: mesa, ...propias });
+  const resumen = paginas.find((p) => p.id === "obras");
+  if (!resumen) throw new Error("El registro no tiene la mesa.");
+  return [...paginas, { ...resumen, id: RUTA_DE_LA_MESA.slice(1) }];
 }
 
 // El marco completo en `ruta`, con el registro de pantallas ligeras.
