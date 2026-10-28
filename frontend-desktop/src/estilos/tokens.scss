@@ -80,6 +80,12 @@ $mezcla-borde: 50%;
   --cds-link-primary: var(--silice-complementario);
   --cds-link-primary-hover: var(--silice-complementario);
   --cds-border-interactive: var(--silice-complementario);
+  // Boton terciario (borde y texto): azul en g10, pasa al complementario. Al pasar el raton Carbon lo llena con el hover y
+  // pone el texto blanco: el complementario sobre el blanco ya lo mide el servidor (4,5:1); al pulsar, el mismo mas
+  // oscuro (el blanco se lee aun mejor). El secundario de g10 es gris (#393939), no azul: no se reasigna.
+  --cds-button-tertiary: var(--silice-complementario);
+  --cds-button-tertiary-hover: var(--silice-complementario);
+  --cds-button-tertiary-active: color-mix(in srgb, var(--silice-complementario) 75%, black);
 }
 
 // El texto sobre color (text-on-color) tambien se usa sobre otros fondos (rojo, azul...): solo cambia dentro del boton principal.
