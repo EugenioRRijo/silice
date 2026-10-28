@@ -131,7 +131,7 @@ function BuscarEnvio({ alEncontrar }: { alEncontrar: (id: number, reemplazar: bo
       )}
       {deOtras > 0 && (
         <p className="silice-aprobar__nota cds--type-body-compact-01">
-          {`Hay ${deOtras} ${deOtras === 1 ? "envío" : "envíos"} en otras carpetas: ${deOtras === 1 ? "ábralo" : "ábralos"} desde el Inicio de presupuestos y obras.`}
+          {`Hay ${deOtras} ${deOtras === 1 ? "envío" : "envíos"} en otras carpetas: ${deOtras === 1 ? "ábralo" : "ábralos"} desde Pendientes.`}
         </p>
       )}
     </>
