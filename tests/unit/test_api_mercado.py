@@ -577,7 +577,16 @@ def test_usar_un_precio_de_cobro_y_leerlo_como_objetivo(ana) -> None:
     objetivos = navegador.get(f"{RUTA}/objetivos", params={"partidas": "OBRA-04,OBRA-02"})
     assert objetivos.status_code == 200, objetivos.text
     assert objetivos.json() == {
-        "objetivos": [{"codigo": "OBRA-04", "precio": "1980.00", "moneda": "Bs", "margen": None}]
+        "objetivos": [
+            {
+                "codigo": "OBRA-04",
+                "precio": "1980.00",
+                "moneda": "Bs",
+                "margen": None,
+                "equivalencia": None,
+                "sin_tasa": None,
+            }
+        ]
     }
     _sin_cache(objetivos)
     assert navegador.get(f"{RUTA}/objetivos").json() == {"objetivos": []}
@@ -885,3 +894,107 @@ def test_un_precio_unitario_absurdo_no_tumba_la_tanda(ana) -> None:
         # (120 − 100) / 100 = 20 %
         "OBRA-03": ("120.00", "Bs", "20.0"),
     }
+
+
+# --- el objetivo en otra moneda se convierte con la tasa del día del objetivo (D3b) -------------
+
+
+def _objetivo_en(caso: Path, codigo: str, precio: str, moneda: str, dia: int, tasas=()) -> None:
+    """Un objetivo fijado el `dia` de octubre de 2026 y las tasas `(dia, valor)` sembradas."""
+    from aplicacion.tablas_mercado import PrecioObjetivo
+    from tests.fixtures.hoja_versiones_api import registrar_tasa_en
+
+    def sembrar(s) -> None:
+        for n, (dia_tasa, valor) in enumerate(tasas):
+            registrar_tasa_en(s, date(2026, 10, dia_tasa), valor, huella=str(n + 1) * 64)
+        s.add(
+            PrecioObjetivo(
+                codigo_partida=codigo,
+                precio=Decimal(precio),
+                moneda=moneda,
+                observaciones="[]",
+                responsable="Ana <ana>",
+                fecha_hora=datetime(2026, 10, dia, 10, 0),
+            )
+        )
+
+    _en_el_caso(caso, sembrar)
+
+
+def _leer_objetivos(ana, **params: str) -> dict:
+    respuesta = ana[0].get(f"{RUTA}/objetivos", params=params)
+    assert respuesta.status_code == 200, respuesta.text
+    return {o["codigo"]: o for o in respuesta.json()["objetivos"]}
+
+
+def test_un_objetivo_en_usd_se_convierte_con_la_tasa_del_dia_del_objetivo_y_da_margen(
+    ana, caso: Path
+) -> None:
+    """Oráculo a mano (D3b): 31,50 USD del 20/10 × 36,50 = 1.149,75 Bs; contra un precio unitario
+    de 1.000,00 Bs: (1.149,75 − 1.000) / 1.000 × 100 = 14,975 → 15,0 (mitad arriba)."""
+    _objetivo_en(caso, "OBRA-02", "31.50", "USD", 20, tasas=[(20, "36.50"), (25, "99.00")])
+    o = _leer_objetivos(ana, partidas="OBRA-02", pu="OBRA-02:1000.00", moneda="Bs")["OBRA-02"]
+    assert (o["precio"], o["moneda"], o["margen"], o["sin_tasa"]) == ("31.50", "USD", "15.0", None)
+    equivalencia = o["equivalencia"]
+    assert Decimal(equivalencia.pop("convertido")) == Decimal("1149.75")
+    assert {k: v for k, v in equivalencia.items() if k != "fuente_tasa"} == {
+        "precio_original": "31.50",
+        "moneda_original": "USD",
+        "tasa": "36.50",
+        "fecha_tasa": "2026-10-20",
+        "fuente_legible": "BCV, publicación del 20/10/2026",
+        "moneda": "Bs",
+        "operacion": "×",
+    }
+
+
+def test_el_objetivo_convertido_no_guarda_nada(ana, caso: Path) -> None:
+    from aplicacion.tablas_mercado import PrecioObjetivo
+
+    _objetivo_en(caso, "OBRA-02", "31.50", "USD", 20, tasas=[(20, "36.50")])
+    _leer_objetivos(ana, partidas="OBRA-02", pu="OBRA-02:1000.00", moneda="Bs")
+    filas = _en_el_caso(
+        caso, lambda s: [(f.precio, f.moneda) for f in s.scalars(select(PrecioObjetivo))]
+    )
+    assert filas == [(Decimal("31.50"), "USD")]
+
+
+def test_un_objetivo_sin_tasa_de_su_dia_no_tiene_margen_y_dice_el_motivo(ana, caso: Path) -> None:
+    """Solo hay tasa del 19/10: el objetivo del 20/10 no se convierte (tasa del mismo día) y la
+    tanda sigue: sin 409, `margen` vacío y `sin_tasa` con la fecha del objetivo."""
+    _objetivo_en(caso, "OBRA-02", "31.50", "USD", 20, tasas=[(19, "36.00")])
+    _objetivo_en(caso, "OBRA-04", "1980.00", "Bs", 20)
+    por_codigo = _leer_objetivos(
+        ana, partidas="OBRA-02,OBRA-04", pu="OBRA-02:1000.00,OBRA-04:1800", moneda="Bs"
+    )
+    o = por_codigo["OBRA-02"]
+    assert (o["margen"], o["equivalencia"]) == (None, None)
+    assert o["sin_tasa"] == "sin tasa del BCV del 20/10/2026"
+    assert por_codigo["OBRA-04"]["margen"] == "10.0"
+
+
+def test_un_objetivo_en_la_misma_moneda_queda_como_antes(ana, caso: Path) -> None:
+    _objetivo_en(caso, "OBRA-04", "1980.00", "Bs", 20, tasas=[(20, "36.50")])
+    o = _leer_objetivos(ana, partidas="OBRA-04", pu="OBRA-04:1800", moneda="Bs")["OBRA-04"]
+    assert o == {
+        "codigo": "OBRA-04",
+        "precio": "1980.00",
+        "moneda": "Bs",
+        "margen": "10.0",
+        "equivalencia": None,
+        "sin_tasa": None,
+    }
+
+
+def test_un_objetivo_en_bs_con_la_hoja_en_usd_se_divide_por_la_tasa(ana, caso: Path) -> None:
+    """3.650,00 Bs del 20/10 ÷ 36,50 = 100,00 USD; contra 80,00 USD: 20 / 80 × 100 = 25,0."""
+    _objetivo_en(caso, "OBRA-03", "3650.00", "Bs", 20, tasas=[(20, "36.50")])
+    o = _leer_objetivos(ana, partidas="OBRA-03", pu="OBRA-03:80.00", moneda="USD")["OBRA-03"]
+    assert (o["margen"], o["sin_tasa"]) == ("25.0", None)
+    equivalencia = o["equivalencia"]
+    assert (equivalencia["operacion"], equivalencia["moneda_original"], equivalencia["moneda"]) == (
+        "÷",
+        "Bs",
+        "USD",
+    )
+    assert Decimal(equivalencia["convertido"]) == Decimal("100")
