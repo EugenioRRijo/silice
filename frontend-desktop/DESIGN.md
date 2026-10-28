@@ -31,7 +31,8 @@ ajustan aquí cuando la construcción los fije.
   también sigue la escala; el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). IBM Plex es la
   cara nativa de Carbon, que el brief fija: se aloja en el propio servidor, sin CDN.
 - **Forma:** esquinas rectas (radio 0, como Carbon); separación con divisores de 1 px `$border-subtle` y espacio,
-  no con tarjetas con sombra. Sin gradientes, sin sombras decorativas, sin vidrio.
+  no con tarjetas con sombra. Sin gradientes, sin sombras decorativas, sin vidrio. Única excepción a las esquinas rectas:
+  la píldora de los contadores de la barra lateral (especificación 2026-10-26, §8 ter, aprobada por Eugenio).
 - **Densidad:** la hoja replica la altura de fila del libro (24 px típica, `compact`); tablas de hallazgos en
   tamaño `sm` (32 px); controles táctiles de 48 px solo donde la ruta los pide (sesión 4).
 

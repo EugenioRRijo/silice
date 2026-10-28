@@ -9,12 +9,12 @@ interface ObraConCarpeta {
 
 // D-F3-3: el árbol y la bandeja no agrupan por carpeta; solo cuando dos obras se llaman igual en carpetas distintas hace
 // falta decir de cuál es cada una. Devuelve, por clave (carpeta y número, la de `claveDeObra`), el título de la carpeta
-// de las obras que comparten nombre con otra de otra carpeta; las demás no salen. Compara sin mayúsculas ni espacios de
-// más. Dos del mismo nombre en una misma carpeta no se marcan: la carpeta no las distinguiría.
+// de las obras que comparten nombre con otra de otra carpeta; las demás no salen. Compara sin mayúsculas, sin espacios de
+// más y con la misma forma Unicode (NFC). Dos del mismo nombre en una misma carpeta no se marcan: la carpeta no las distinguiría.
 export function obrasConMismoNombre(obras: readonly ObraConCarpeta[]): Map<string, string> {
   const porNombre = new Map<string, ObraConCarpeta[]>();
   for (const o of obras) {
-    const nombre = o.obra.trim().toLowerCase();
+    const nombre = o.obra.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase("es");
     porNombre.set(nombre, [...(porNombre.get(nombre) ?? []), o]);
   }
   const marcadas = new Map<string, string>();

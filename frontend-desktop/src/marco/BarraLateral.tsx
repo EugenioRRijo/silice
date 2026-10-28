@@ -3,7 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { Link, useMatch, useNavigate } from "react-router";
 import { Pildora } from "../comun/Pildora";
-import { contarPorObra } from "../paginas/pendientes/logica";
+import { claveDeObra, contarPorObra } from "../paginas/pendientes/logica";
 import { TEXTOS as TEXTOS_PENDIENTES } from "../paginas/pendientes/textos";
 import { DialogoNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import type { DestinoDeNuevaObra } from "../shell/obras/DialogoNuevaObra";
@@ -25,8 +25,6 @@ interface Props {
   obraAbierta: { carpeta: string | null; obraId: number } | null;
   seccion: SeccionId | null;
 }
-
-const claveDe = (o: { carpeta: string | null; obra_id: number }) => `${o.carpeta ?? ""}|${o.obra_id}`;
 
 // Barra lateral del marco nuevo: Pendientes, el árbol de Obras (la abierta, desplegada con sus secciones) y Empresa. Es
 // un `tree` de WAI-ARIA: una sola parada de Tab, flechas para recorrer, derecha despliega e izquierda pliega. Sin
@@ -56,8 +54,14 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const { secciones, entradas } = oferta;
   const puedeCrear = acciones.includes("editar_hoja");
 
+  // Por nombre (sin tildes ni mayúsculas) y, si se repite, por carpeta: la API las trae por carpeta (D-F3-3).
   const visibles = useMemo(
-    () => obrasAlcanzables(obras, carpetaActual, puedeCambiarDeCarpeta),
+    () =>
+      obrasAlcanzables(obras, carpetaActual, puedeCambiarDeCarpeta).sort(
+        (a, b) =>
+          a.obra.localeCompare(b.obra, "es", { sensitivity: "base" }) ||
+          a.carpeta_titulo.localeCompare(b.carpeta_titulo, "es", { sensitivity: "base" }),
+      ),
     [obras, carpetaActual, puedeCambiarDeCarpeta],
   );
   const carpetaDeHomonimas = useMemo(() => obrasConMismoNombre(visibles), [visibles]);
@@ -74,7 +78,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
     enOtraCarpeta: carpetaDeCreacion !== carpetaActual,
   };
 
-  const claveAbierta = obraAbierta === null ? null : claveDe({ carpeta: obraAbierta.carpeta, obra_id: obraAbierta.obraId });
+  const claveAbierta = obraAbierta === null ? null : claveDeObra(obraAbierta.carpeta, obraAbierta.obraId);
   const desplegada = (clave: string) => manual[clave] ?? clave === claveAbierta;
   const claveActiva = claveAbierta !== null && seccion !== null ? `${claveAbierta}|${seccion}` : claveAbierta;
   const idDe = (clave: string) => `${base}-${clave.replace(/[^A-Za-z0-9]/g, "_")}`;
@@ -82,7 +86,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   // Una sola parada de Tab: el último con foco, si sigue en pantalla, o el activo, o el primero.
   const clavesVisibles: string[] = [];
   for (const o of visibles) {
-    const clave = claveDe(o);
+    const clave = claveDeObra(o.carpeta, o.obra_id);
     clavesVisibles.push(clave);
     if (desplegada(clave)) for (const s of secciones) clavesVisibles.push(`${clave}|${s.id}`);
   }
@@ -131,7 +135,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   // Las obras son de nivel 1 y sus secciones de nivel 2; los niveles se dicen con aria-level, aria-setsize y aria-posinset.
   function filaDeObra(o: ObraDeCarpeta, tamano: number, posicion: number) {
     const nivel = 1;
-    const clave = claveDe(o);
+    const clave = claveDeObra(o.carpeta, o.obra_id);
     const carpeta = carpetaDeHomonimas.get(clave);
     const cuenta = porObra.get(clave) ?? 0;
     // El nombre accesible dice lo mismo que se ve: la obra, su carpeta si hay homónima y cuántos pendientes tiene.

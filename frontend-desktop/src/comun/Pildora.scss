@@ -15,6 +15,6 @@
   border-radius: 0.625rem;
   background-color: var(--silice-acento);
   color: var(--silice-marco);
-  font-weight: 600;
   @include type.type-style("label-01");
+  font-weight: 600;
 }
