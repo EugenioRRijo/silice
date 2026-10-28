@@ -1918,7 +1918,7 @@
           "sesion"
         ],
         "summary": "Recordar Obra",
-        "description": "Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta. Sin\n`CAMBIAR_CASO` la ficha trabaja en la carpeta por omisión: la obra se recuerda con ella\n(`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso. La obra debe\nexistir en la carpeta de la petición (la de la ficha o la por omisión): si no, 404 con un\nmensaje fijo y no se guarda nada.",
+        "description": "Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta. Sin\n`CAMBIAR_CASO` la ficha trabaja en la carpeta por omisión: la obra se recuerda con ella\n(`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso. La obra debe\nexistir en la carpeta de la petición (la de la ficha o la por omisión): si no, 404 con un\nmensaje fijo y no se guarda nada; si la carpeta no se puede comprobar, 503 con un texto fijo y\ntampoco se guarda. Una obra no nula exige `LEER_PROYECTO` (403): el administrador puro, que sí\npuede cambiar de carpeta, no debe poder sondear qué códigos existen.",
         "operationId": "recordar_obra_v1_sesion_proyecto_put",
         "requestBody": {
           "content": {
@@ -1945,7 +1945,7 @@
             }
           },
           "403": {
-            "description": "Contraseña temporal, o sin CSRF u origen propio.",
+            "description": "Contraseña temporal, sin CSRF u origen propio, o (con una obra) sin permiso para leer proyectos.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1966,6 +1966,16 @@
           },
           "404": {
             "description": "La obra no existe en la carpeta de la petición.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No se pudo comprobar la obra; no se guardó.",
             "content": {
               "application/json": {
                 "schema": {

@@ -45,7 +45,11 @@ recuerda entre sesiones y reinicios vive en `mp_eleccion` de la instalación (`a
 - `PUT /proyecto` `{proyecto}` y `PUT /preferencias` `{modulo?, sidebar_fijado?}` (sesión completa,
   CSRF y `Origin`; la clave de API no tiene cuenta a la que recordar: 401) → 204. `PUT /proyecto`
   con una obra que no existe en la carpeta de la petición → 404 «Esa obra ya no existe», sin repetir
-  lo enviado y sin guardar la elección (D1, plan de decisiones 2026-10-27). Lo que no viene
+  lo enviado y sin guardar la elección (D1, plan de decisiones 2026-10-27); si la carpeta no se
+  puede abrir o consultar → 503 con un texto fijo (`MENSAJE_OBRA_NO_COMPROBABLE`), sin guardar
+  («el servidor debe aprobar»; `_restaurar`, en cambio, sigue conservando lo recordado). Una obra no
+  nula exige además `LEER_PROYECTO` → 403: quien solo puede cambiar de carpeta (administrador) no
+  sondea qué códigos existen. Lo que no viene
   (o viene `null`) en las preferencias no cambia. 422 sin repetir lo enviado: `MENSAJE_MODULO` si
   el módulo no existe; un mensaje fijo si el cuerpo no tiene la forma.
 """
@@ -59,6 +63,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, StrictBool, StrictStr
+from sqlalchemy.exc import SQLAlchemyError
 
 from api import caso_web
 from api.dependencias import (
@@ -95,7 +100,7 @@ from core.catalog import abrir_sesion
 from operacion.base_datos import ErrorDeBase, RutaDeCasoRechazada, listar_casos, resolver_caso
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import cuentas, eventos, sesiones
-from seguridad.permisos import Accion, Rol, permitido
+from seguridad.permisos import Accion, PermisoDenegado, Rol, exigir, permitido
 from seguridad.sesiones import SesionActiva
 
 MENSAJE_CUERPO_INVALIDO = (
@@ -111,6 +116,9 @@ MENSAJE_FRENO = (
 )
 MENSAJE_CARPETA_PERDIDA = "La carpeta de trabajo «{nombre}» ya no existe; se abrió la de siempre."
 MENSAJE_OBRA_BORRADA = "Esa obra ya no existe"
+MENSAJE_OBRA_NO_COMPROBABLE = (
+    "No se pudo comprobar la obra en la carpeta de trabajo; no se guardó la elección."
+)
 MENSAJE_OBRA_INVALIDA = "Indique la obra por su código, como texto de hasta 120 caracteres, o null."
 MENSAJE_PREFERENCIAS_INVALIDAS = (
     "Indique el módulo (auditoria, obras o produccion) y si el sidebar queda fijado (true o false)."
@@ -205,16 +213,30 @@ def _carpeta_en_la_lista(caso: str) -> Path | None:
     return ruta if ruta in {c.resolve() for c in listar_casos()} else None
 
 
+def _buscar_obra(carpeta: Path | None, proyecto: str) -> bool:
+    """La obra está en `carpeta` (`None` = la del proceso). Levanta lo que impida abrirla."""
+    url = url_del_proceso() if carpeta is None else url_de_ruta(carpeta)
+    motor = obtener_motor(url)
+    with abrir_sesion(motor) as sesion:
+        return resolver_proyecto(sesion, proyecto) is not None
+
+
 def _obra_sigue(carpeta: Path | None, proyecto: str) -> bool:
     """La obra está en `carpeta` (`None` = la del proceso), con la que trabajará la ficha. Si esa
     carpeta no se puede abrir no se sabe: se conserva lo recordado."""
-    url = url_del_proceso() if carpeta is None else url_de_ruta(carpeta)
     try:
-        motor = obtener_motor(url)
+        return _buscar_obra(carpeta, proyecto)
     except HTTPException:
         return True
-    with abrir_sesion(motor) as sesion:
-        return resolver_proyecto(sesion, proyecto) is not None
+
+
+def _obra_existe(carpeta: Path | None, proyecto: str) -> bool:
+    """Como `_obra_sigue`, pero para aceptar una elección nueva: si no se puede comprobar, 503 con
+    un texto fijo (el error de la base puede traer rutas o SQL) y no se guarda nada."""
+    try:
+        return _buscar_obra(carpeta, proyecto)
+    except (HTTPException, SQLAlchemyError):
+        raise HTTPException(status_code=503, detail=MENSAJE_OBRA_NO_COMPROBABLE) from None
 
 
 def _restaurar(activa: SesionActiva) -> tuple[EleccionRespuesta | None, PreferenciasRespuesta]:
@@ -474,12 +496,17 @@ _RESPUESTAS_DE_LO_RECORDADO: dict[int | str, dict] = {
     response_class=Response,
     responses={
         **_RESPUESTAS_DE_LO_RECORDADO,
+        403: {
+            "model": Detalle,
+            "description": "Contraseña temporal, sin CSRF u origen propio, o (con una obra) sin "
+            "permiso para leer proyectos.",
+        },
         404: {"model": Detalle, "description": "La obra no existe en la carpeta de la petición."},
+        503: {"model": Detalle, "description": "No se pudo comprobar la obra; no se guardó."},
     },
 )
 @sin_eco(MENSAJE_OBRA_INVALIDA)
 def recordar_obra(
-    request: Request,
     datos: ObraElegida,
     activa: Annotated[SesionActiva, Depends(_sesion_completa)],
     sesion: SesionInstalacionDep,
@@ -488,11 +515,16 @@ def recordar_obra(
     `CAMBIAR_CASO` la ficha trabaja en la carpeta por omisión: la obra se recuerda con ella
     (`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso. La obra debe
     existir en la carpeta de la petición (la de la ficha o la por omisión): si no, 404 con un
-    mensaje fijo y no se guarda nada."""
-    if datos.proyecto is not None and not _obra_sigue(
-        caso_web.elegido(sesiones.huella_de(request.cookies[COOKIE])), datos.proyecto
-    ):
-        raise HTTPException(status_code=404, detail=MENSAJE_OBRA_BORRADA)
+    mensaje fijo y no se guarda nada; si la carpeta no se puede comprobar, 503 con un texto fijo y
+    tampoco se guarda. Una obra no nula exige `LEER_PROYECTO` (403): el administrador puro, que sí
+    puede cambiar de carpeta, no debe poder sondear qué códigos existen."""
+    if datos.proyecto is not None:
+        try:
+            exigir(activa.roles, Accion.LEER_PROYECTO)  # sin él no se sondea qué obras existen
+        except PermisoDenegado as error:
+            raise HTTPException(status_code=403, detail=str(error)) from None
+        if not _obra_existe(caso_web.elegido(activa.huella_ficha), datos.proyecto):
+            raise HTTPException(status_code=404, detail=MENSAJE_OBRA_BORRADA)
     if not permitido(activa.roles, Accion.CAMBIAR_CASO):
         recordar_caso(sesion, activa.usuario_id, None, ahora())
     recordar_proyecto(sesion, activa.usuario_id, datos.proyecto, ahora())
