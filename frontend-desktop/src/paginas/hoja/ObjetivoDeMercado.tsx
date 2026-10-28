@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { LineaDeEquivalencia } from "../../comun/LineaDeEquivalencia";
+import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
@@ -9,7 +11,8 @@ import type { FilaPresupuesto } from "./logica";
 // Tarea 16 del plan de montar un presupuesto: en «Presupuesto», junto al precio unitario de cada partida, el precio de
 // venta objetivo que se guardó en «Estudio de mercado» y el margen contra ese precio unitario (diseño §5.1). El margen
 // lo calcula la API (`GET /v1/mercado/objetivos` con `pu` y `moneda`); aquí solo se formatea lo que llega con punto.
-// Un objetivo en otra moneda que la obra se dice con su moneda y no se compara.
+// Un objetivo en otra moneda que la obra llega convertido por la API con la tasa del BCV del día en que se fijó (Tarea
+// D3b): se muestra su línea de equivalencia y el margen sobre el convertido; sin tasa de ese día, el motivo.
 
 export interface ObjetivoDeMercado {
   codigo: string;
@@ -17,6 +20,10 @@ export interface ObjetivoDeMercado {
   moneda: string;
   // (objetivo − precio unitario) / precio unitario, en % con una cifra decimal; null si la API no lo pudo comparar.
   margen: string | null;
+  // La cuenta de un objetivo en otra moneda que la obra (null en la misma moneda o sin tasa de su día).
+  equivalencia?: Equivalencia | null;
+  // «sin tasa del BCV del dd/mm/aaaa» si estaba en otra moneda y no hay tasa de ese día.
+  sin_tasa?: string | null;
 }
 
 interface RespuestaObjetivos {
@@ -75,21 +82,30 @@ export function margenEsVe(margen: string): string {
   return `${conSigno}${formatoEsVe(cifra!)}\u00a0%`;
 }
 
-// El texto de la celda de una fila (vacío sin objetivo).
-export function textoDelObjetivo(
+// La celda de una fila (vacía sin objetivo). El margen vale para el precio unitario que se envió por ese código: otro
+// renglón con otro precio no lo hereda.
+export function celdaDelObjetivo(
   objetivo: ObjetivoDeMercado | undefined,
   fila: { pu: string | null; enviado: string | undefined },
   moneda: string,
-): string {
+): ReactNode {
   if (objetivo === undefined) return "";
   const precio = formatoEsVe(objetivo.precio);
+  const margen =
+    objetivo.margen !== null && fila.pu === fila.enviado ? ` · margen ${margenEsVe(objetivo.margen)}` : " · sin margen";
   if (objetivo.moneda !== moneda) {
-    return `${precio} ${objetivo.moneda} · en otra moneda que la obra (${moneda}), sin margen`;
+    if (objetivo.equivalencia) {
+      return (
+        <>
+          <LineaDeEquivalencia equivalencia={objetivo.equivalencia} />
+          {fila.pu === null ? " · sin precio unitario, sin margen" : margen}
+        </>
+      );
+    }
+    return `${precio} ${objetivo.moneda} · ${objetivo.sin_tasa ?? `en otra moneda que la obra (${moneda})`}, sin margen`;
   }
   if (fila.pu === null) return `${precio} · sin precio unitario, sin margen`;
-  // El margen vale para el precio unitario que se envió por ese código: otro renglón con otro precio no lo hereda.
-  if (objetivo.margen !== null && fila.pu === fila.enviado) return `${precio} · margen ${margenEsVe(objetivo.margen)}`;
-  return `${precio} · sin margen`;
+  return `${precio}${margen}`;
 }
 
 interface Leidos {
@@ -153,7 +169,7 @@ export function useObjetivosDeMercado(
       ordenable: false,
       descripcion: conAyuda ? idAyuda : undefined,
       celda: (f: FilaDensa) =>
-        textoDelObjetivo(
+        celdaDelObjetivo(
           objetivos.get(f.partida!),
           { pu: f.pu_exacto ? f.pu_exacto : null, enviado: enviados.get(f.partida!) },
           moneda,
