@@ -526,9 +526,11 @@ describe("BarraLateral: carga de las obras", () => {
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
     await userEvent.type(screen.getByRole("textbox", { name: /^Nombre/ }), "Nueva");
     await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
-    expect(screen.getByRole("tree", { name: "Obras" })).toBeInTheDocument();
-    expect(screen.queryByText("Cargando obras…")).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull();
+      expect(screen.getByRole("tree", { name: "Obras" })).toBeInTheDocument();
+      expect(screen.queryByText("Cargando obras…")).toBeNull();
+    });
   });
 });
 
@@ -561,9 +563,11 @@ describe("BarraLateral: la obra recién creada", () => {
 
   it("con un código que no es un entero no navega a una ruta con NaN y deja la lista recargada", async () => {
     await crearConCodigo("abc");
-    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/pendientes");
-    expect(screen.getByTestId("ubicacion").textContent).not.toContain("NaN");
-    expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas").length).toBeGreaterThan(1);
+    await waitFor(() => {
+      expect(screen.getByTestId("ubicacion")).toHaveTextContent("/pendientes");
+      expect(screen.getByTestId("ubicacion").textContent).not.toContain("NaN");
+      expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas").length).toBeGreaterThan(1);
+    });
   });
 });
 
