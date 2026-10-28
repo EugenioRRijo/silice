@@ -56,7 +56,7 @@ def test_marco_gris_medio_da_los_avisos_exactos(tmp_path: Path) -> None:
         " 4,4:1, hace falta 4,5:1",
         "El texto de los botones principales no se lee bien sobre el color de acento:"
         " 2,6:1, hace falta 4,5:1",
-        "Los enlaces y los bordes con el color del marco no se leen bien sobre el fondo de la página:"
+        "Los enlaces y bordes del color del marco no se leen bien sobre el fondo de la página:"
         " 4,0:1, hace falta 4,5:1",
         "Los bordes de la barra superior casi no se ven sobre el color del marco:"
         " 1,3:1, hace falta 3:1",
@@ -99,10 +99,10 @@ def test_marco_gris_medio_no_avisa_de_la_raya_del_activo(tmp_path: Path) -> None
 
 
 def test_marco_sobre_el_fondo_de_la_pagina_para_enlaces_y_bordes() -> None:
-    # El fondo del contenido en Carbon g10 es #f4f4f4 (no blanco). A mano: L(#f4f4f4) = 0,905; el marco
-    # neutro #393939 (L = 0,041) da (0,905 + 0,05) / (0,041 + 0,05) = 10,5:1; #777777 (L = 0,184) da
-    # 4,07:1 (se muestra «4,0»); #767676 (L = 0,181) pasa el texto blanco de la barra (4,54:1) pero sobre
-    # #f4f4f4 da 4,13:1, y por eso el par propio hace falta.
+    # El fondo del contenido en Carbon g10 es #f4f4f4 (no blanco). A mano: L(#f4f4f4) = 0,905; el
+    # marco neutro #393939 (L = 0,041) da (0,905 + 0,05) / (0,041 + 0,05) = 10,5:1; #777777
+    # (L = 0,184) da 4,07:1 (se muestra «4,0»); #767676 (L = 0,181) pasa el texto blanco de la
+    # barra (4,54:1) pero sobre #f4f4f4 da 4,13:1, y por eso el par propio hace falta.
     assert tema.contraste("#393939", "#f4f4f4") == pytest.approx(10.5, abs=0.01)
     assert tema.contraste("#767676", "#f4f4f4") == pytest.approx(4.13, abs=0.01)
     assert tema.contraste("#767676", "#ffffff") == pytest.approx(4.54, abs=0.01)
@@ -111,7 +111,7 @@ def test_marco_sobre_el_fondo_de_la_pagina_para_enlaces_y_bordes() -> None:
 def test_marco_justo_para_el_texto_blanco_avisa_de_los_enlaces(tmp_path: Path) -> None:
     avisos = _con(tmp_path, marco="#767676", acento="#ffffff")
     frase = (
-        "Los enlaces y los bordes con el color del marco no se leen bien sobre el fondo de la página:"
+        "Los enlaces y bordes del color del marco no se leen bien sobre el fondo de la página:"
         " 4,1:1, hace falta 4,5:1"
     )
     assert frase in avisos

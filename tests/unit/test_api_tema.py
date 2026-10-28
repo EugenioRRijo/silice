@@ -209,7 +209,7 @@ def test_colores_sin_contraste_se_aplican_y_traen_avisos_exactos(
             " 1,0:1, hace falta 4,5:1",
             "El texto de los botones principales no se lee bien sobre el color de acento:"
             " 1,0:1, hace falta 4,5:1",
-            "Los enlaces y los bordes con el color del marco no se leen bien sobre el fondo de la"
+            "Los enlaces y bordes del color del marco no se leen bien sobre el fondo de la"
             " página: 1,0:1, hace falta 4,5:1",
             "El texto del menú lateral no se lee bien sobre el color lateral:"
             " 1,1:1, hace falta 4,5:1",
