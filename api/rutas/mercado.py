@@ -34,7 +34,8 @@ sesión (`SesionDep`); las que escriben van con `BEGIN IMMEDIATE` y confirman aq
   nada se guarda, se recalcula en cada lectura): trae su `equivalencia` (la misma de D2) y el margen
   se calcula sobre el convertido; sin tasa de ese día `margen` va vacío y `sin_tasa` dice «sin tasa
   del BCV del dd/mm/aaaa» (sin 409: una partida sin tasa no tumba la tanda). En la misma moneda
-  ambos van vacíos. Un `pu` mal formado es un 422 con su propio mensaje fijo.
+  ambos van vacíos. Un `pu` mal formado es un 422 con su propio mensaje fijo, y una
+  `moneda` que no sea Bs ni USD (`MONEDAS` del núcleo) también, sin repetir lo enviado.
 
 Errores: el 422 de forma (lado, fuente, fecha, precio que no es texto, códigos largos, ventana
 fuera de 1 a 3.650 días) es un mensaje fijo que no repite lo enviado; el 422 de una regla
@@ -92,6 +93,7 @@ from aplicacion.precios_declarados import ReglaDelCorte, declarar_desde_el_catal
 from aplicacion.proyectos import resolver_proyecto
 from core.catalog import Catalogo
 from core.catalog.errores import CatalogoIncompleto
+from core.catalog.moneda import MONEDAS
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
@@ -105,6 +107,8 @@ MENSAJE_PU = (
     "Los precios unitarios de la Hoja no son válidos: cada uno va como código:monto, separados "
     "por coma, con punto decimal y con la moneda de esos precios."
 )
+#: El 422 de `moneda` en `GET /objetivos` cuando no es una que el sistema admite: fijo, sin eco.
+MENSAJE_MONEDA = "La moneda de los precios unitarios no es válida: el sistema admite Bs o USD."
 MENSAJE_BASE = "No se pudo leer ni guardar el estudio de mercado de la carpeta de trabajo."
 MENSAJE_INESPERADO = "No se pudo procesar el estudio de mercado con esos datos."
 _LARGO_CODIGO = 40
@@ -392,6 +396,8 @@ def leer_objetivos(
     unitario de la Hoja, su margen. Un objetivo en otra moneda que `moneda` se convierte con la
     tasa del BCV del día en que se fijó (D3b) y el margen se calcula sobre el convertido."""
     codigos = [c.strip() for c in partidas.split(",") if c.strip()]
+    if moneda is not None and moneda not in MONEDAS:
+        raise HTTPException(422, MENSAJE_MONEDA)
     precios = _precios_unitarios(pu, moneda)
     filas = _traducir(lambda: objetivos(sesion, codigos))
     respuesta: list[ObjetivoConMargen] = []
