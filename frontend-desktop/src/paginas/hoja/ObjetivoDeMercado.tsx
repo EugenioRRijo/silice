@@ -102,7 +102,7 @@ export function celdaDelObjetivo(
         </>
       );
     }
-    return `${precio} ${objetivo.moneda} · ${objetivo.sin_tasa ?? `en otra moneda que la obra (${moneda})`}, sin margen`;
+    return `${precio} ${objetivo.moneda} · ${objetivo.sin_tasa}, sin margen`;
   }
   if (fila.pu === null) return `${precio} · sin precio unitario, sin margen`;
   return `${precio}${margen}`;
