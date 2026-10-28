@@ -25,11 +25,16 @@ sesión (`SesionDep`); las que escriben van con `BEGIN IMMEDIATE` y confirman aq
   y no cambia nada.
 - `POST /cobro/{codigo}/usar` `{precio, observaciones}` → 200 `{codigo, precio, moneda}`.
 - `GET /objetivos?partidas=A,B&pu=A:2074.44,B:30&moneda=Bs` → `{objetivos: [{codigo, precio, moneda,
-  margen}]}`. `pu` son los precios unitarios que la Hoja ya tiene (con utilidad, sin IVA; decimal
-  con punto) y `moneda` la de esos precios; `margen` lo calcula `margen()` de la lógica (Tarea 16:
-  el front no calcula) y va vacío sin el precio unitario de esa partida, con un precio unitario de
-  cero, con uno tan pequeño que el margen no cabe en la precisión, o con el objetivo en otra moneda
-  (no se compara ni se convierte). Un `pu` mal formado es un 422 con su propio mensaje fijo.
+  margen, equivalencia, sin_tasa}]}`. `pu` son los precios unitarios que la Hoja ya tiene (con
+  utilidad, sin IVA; decimal con punto) y `moneda` la de esos precios; `margen` lo calcula
+  `margen()` de la lógica (Tarea 16: el front no calcula) y va vacío sin el precio unitario de esa
+  partida, con un precio unitario de cero, con uno tan pequeño que el margen no cabe en la
+  precisión, o con el objetivo en otra moneda sin tasa de su día. Un objetivo en otra moneda que
+  `moneda` se convierte con la tasa del BCV del mismo día en que se fijó (`fecha_hora`, Tarea D3b;
+  nada se guarda, se recalcula en cada lectura): trae su `equivalencia` (la misma de D2) y el margen
+  se calcula sobre el convertido; sin tasa de ese día `margen` va vacío y `sin_tasa` dice «sin tasa
+  del BCV del dd/mm/aaaa» (sin 409: una partida sin tasa no tumba la tanda). En la misma moneda
+  ambos van vacíos. Un `pu` mal formado es un 422 con su propio mensaje fijo.
 
 Errores: el 422 de forma (lado, fuente, fecha, precio que no es texto, códigos largos, ventana
 fuera de 1 a 3.650 días) es un mensaje fijo que no repite lo enviado; el 422 de una regla
@@ -71,6 +76,7 @@ from aplicacion.mercado import (
     anular_observacion,
     apus_afectados,
     centimos,
+    convertir_o_sin_tasa,
     estadisticas,
     exigir_codigo,
     margen,
@@ -249,8 +255,25 @@ class ObjetivoConMargen(ObjetivoRespuesta):
     margen: str | None = Field(
         description=(
             "(objetivo − precio unitario) / precio unitario, en % con una cifra decimal; vacío sin "
-            "el precio unitario de la partida, con uno de cero o con el objetivo en otra moneda"
+            "el precio unitario de la partida, con uno de cero o con un objetivo en otra moneda "
+            "sin tasa del BCV de su día. Con el objetivo en otra moneda se calcula sobre el "
+            "convertido (`equivalencia`)"
         )
+    )
+    equivalencia: EquivalenciaRespuesta | None = Field(
+        default=None,
+        description=(
+            "Si el objetivo está en otra moneda que `moneda`: la cuenta con la que se convirtió "
+            "(tasa del BCV del mismo día en que se fijó el objetivo, Tarea D3b); nada se guarda, "
+            "se recalcula en cada lectura. Vacía en la misma moneda o sin tasa de ese día"
+        ),
+    )
+    sin_tasa: str | None = Field(
+        default=None,
+        description=(
+            "«sin tasa del BCV del dd/mm/aaaa» (la fecha del objetivo) si estaba en otra moneda y "
+            "no hay tasa de ese día; vacío en los demás casos"
+        ),
     )
 
 
@@ -366,23 +389,33 @@ def leer_objetivos(
     ] = None,
 ) -> ObjetivosRespuesta:
     """El último precio de venta objetivo de cada partida pedida que tenga uno y, con el precio
-    unitario de la Hoja en la misma moneda, su margen."""
+    unitario de la Hoja, su margen. Un objetivo en otra moneda que `moneda` se convierte con la
+    tasa del BCV del día en que se fijó (D3b) y el margen se calcula sobre el convertido."""
     codigos = [c.strip() for c in partidas.split(",") if c.strip()]
     precios = _precios_unitarios(pu, moneda)
     filas = _traducir(lambda: objetivos(sesion, codigos))
-    return ObjetivosRespuesta(
-        objetivos=[
+    respuesta: list[ObjetivoConMargen] = []
+    for f in filas:
+        valor, equivalencia, sin_tasa = f.precio, None, None
+        if moneda is not None and f.moneda != moneda:
+            # La tasa del día en que se fijó el objetivo (D3b); sin ella, sin margen y sin 409.
+            equivalencia, sin_tasa = convertir_o_sin_tasa(
+                sesion, f.precio, f.moneda, moneda, f.fecha_hora.date()
+            )
+            valor = None if equivalencia is None else equivalencia.convertido
+        respuesta.append(
             ObjetivoConMargen(
                 codigo=f.codigo_partida,
                 precio=_en_centimos(f.precio),
                 moneda=f.moneda,
-                margen=(
-                    _margen(f.precio, precios.get(f.codigo_partida)) if f.moneda == moneda else None
-                ),
+                margen=None if valor is None else _margen(valor, precios.get(f.codigo_partida)),
+                equivalencia=None
+                if equivalencia is None
+                else equivalencia_a_respuesta(equivalencia),
+                sin_tasa=sin_tasa,
             )
-            for f in filas
-        ]
-    )
+        )
+    return ObjetivosRespuesta(objetivos=respuesta)
 
 
 @router.get("/{lado}/{codigo}", response_model=EstudioRespuesta, dependencies=[EDITAR_HOJA])

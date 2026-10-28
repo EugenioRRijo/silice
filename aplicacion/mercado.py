@@ -86,6 +86,7 @@ __all__ = [
     "anular_observacion",
     "apus_afectados",
     "centimos",
+    "convertir_o_sin_tasa",
     "estadisticas",
     "exigir_codigo",
     "margen",
@@ -394,14 +395,26 @@ class ObservacionLeida:
         return self.fila.precio if self.equivalencia is None else self.equivalencia.convertido
 
 
-def _leer(sesion: Session, fila: ObservacionDeMercado, moneda: str) -> ObservacionLeida:
-    if fila.moneda == moneda:
-        return ObservacionLeida(fila, None, None)
+def convertir_o_sin_tasa(
+    sesion: Session, precio: Decimal, de: str, a: str, fecha: date
+) -> tuple[Equivalencia | None, str | None]:
+    """`precio` de la moneda `de` a `a` con la tasa del BCV de `fecha` (la regla D2b), para lo que
+    se lee de muchas partes a la vez: la equivalencia, o, sin tasa de ese día, el texto «sin tasa
+    del BCV del dd/mm/aaaa» (no se lanza: una sola sin tasa no tumba la lectura). En la misma
+    moneda no hay nada que convertir: `(None, None)`. Nada se escribe."""
+    if de == a:
+        return None, None
     try:
-        equivalencia = equivalencia_del_dia(sesion, fila.precio, fila.moneda, moneda, fila.fecha)
+        return equivalencia_del_dia(sesion, precio, de, a, fecha), None
     except SinTasaDelDia:
-        return ObservacionLeida(fila, None, f"sin tasa del BCV del {fila.fecha:%d/%m/%Y}")
-    return ObservacionLeida(fila, equivalencia, None)
+        return None, f"sin tasa del BCV del {fecha:%d/%m/%Y}"
+
+
+def _leer(sesion: Session, fila: ObservacionDeMercado, moneda: str) -> ObservacionLeida:
+    equivalencia, sin_tasa = convertir_o_sin_tasa(
+        sesion, fila.precio, fila.moneda, moneda, fila.fecha
+    )
+    return ObservacionLeida(fila, equivalencia, sin_tasa)
 
 
 def observaciones_leidas(
