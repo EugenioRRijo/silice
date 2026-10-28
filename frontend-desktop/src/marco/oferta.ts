@@ -28,6 +28,7 @@ export function ofertaDe(acciones: readonly string[], modoEntrega: boolean): Ofe
 }
 
 // Nunca se ofrece una obra que al abrirla daría 403: sin permiso para cambiar de carpeta, solo las de la abierta.
+// Siempre devuelve una lista nueva (copia o filtro), nunca `obras`: quien la reciba puede ordenarla sin mutar la fuente.
 export function obrasAlcanzables(
   obras: readonly ObraDeCarpeta[],
   carpetaActual: string | null,

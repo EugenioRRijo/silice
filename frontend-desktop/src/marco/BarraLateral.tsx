@@ -57,7 +57,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   // Por nombre (sin tildes ni mayúsculas) y, si se repite, por carpeta: la API las trae por carpeta (D-F3-3).
   const visibles = useMemo(
     () =>
-      obrasAlcanzables(obras, carpetaActual, puedeCambiarDeCarpeta).sort(
+      obrasAlcanzables(obras, carpetaActual, puedeCambiarDeCarpeta).toSorted(
         (a, b) =>
           a.obra.localeCompare(b.obra, "es", { sensitivity: "base" }) ||
           a.carpeta_titulo.localeCompare(b.carpeta_titulo, "es", { sensitivity: "base" }),
