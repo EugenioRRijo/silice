@@ -394,7 +394,7 @@ describe("cómo se llega", () => {
     montar("/aprobar", { proyecto: "9" });
     const lista = await screen.findByRole("list", { name: "Versiones que esperan dictamen en esta carpeta" });
     expect(within(lista).getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByText("Hay 1 envío en otras carpetas: ábralo desde el Inicio de presupuestos y obras.")).toBeInTheDocument();
+    expect(screen.getByText("Hay 1 envío en otras carpetas: ábralo desde Pendientes.")).toBeInTheDocument();
     await u.click(within(lista).getByRole("button", { name: "Abrir el envío" }));
     expect(await screen.findByRole("region", { name: "Galpón Sur · GS-001" })).toBeInTheDocument();
     expect(screen.getByTestId("ubicacion")).toHaveTextContent("/aprobar?envio=12");
