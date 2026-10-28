@@ -23,7 +23,8 @@ Rutas finas sobre `aplicacion.aprobaciones` (la regla y el rastro, en la carpeta
   hallazgos GUARDADOS de la versión (lo que su sello cubre), el total, el rastro de la obra, quién
   envió y si quien mira la armó. No abre borrador ni registra instantánea.
 - `POST /{envio_id}/dictamen` (`aprobar_version`, solo con sesión) `{resultado, notas}` → 201
-  `{id, estado}`.
+  `{id, estado}`. Con la cadena de versiones rota solo se acepta «devuelta» (notas obligatorias);
+  «aprobada» y «aprobada con observaciones» dan 409 con el motivo hasta reparar la cadena.
 
 Las que escriben en la carpeta usan la sesión de escritura (`BEGIN IMMEDIATE`, SL-E12): dos
 dictámenes a la vez se ordenan y el segundo recibe «Este envío ya tiene dictamen o fue retirado.».
@@ -588,7 +589,8 @@ def dictaminar(
     sesion: SesionDeEscrituraDep,
     instalacion: SesionInstalacionDep,
 ) -> AprobacionDictamenRespuesta:
-    """Registra el dictamen sobre el envío (solo con la cuenta de una persona)."""
+    """Registra el dictamen sobre el envío (solo con la cuenta de una persona). Con la cadena de
+    versiones rota solo se acepta «devuelta»: aprobar, también con observaciones, da 409."""
     cuenta = _con_cuenta(activa)
     try:
         evento = aprobaciones.dictaminar(

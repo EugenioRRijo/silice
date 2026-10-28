@@ -397,8 +397,9 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
   una cadena rota todavía se permite: solo se bloquea el dictamen. La mesa reusa la acción «Ver el envío».
 - Ronda 3: una versión de una cadena de versiones rota tampoco se envía (409), para no dejar envíos atascados que nadie
   puede dictaminar. El total del detalle con pendientes se verifica con `sqlite3`. El fallo del reflejo queda probado en el
-  registro. **Por decidir (Eugenio):** con la cadena rota, ¿permitir al menos devolver?; una versión antigua sin sellar
-  rompe la cadena y bloquea el dictamen de todas (igual que Trazabilidad y la entrega).
+  registro. ~~Por decidir (Eugenio): con la cadena rota, ¿permitir al menos devolver?~~ **Decidido el 2026-10-27: sí se
+  puede devolver; aprobar sigue bloqueado** (ver «T20, D4»). Sigue siendo cierto que una versión antigua sin sellar
+  rompe la cadena y bloquea el aprobar de todas (igual que Trazabilidad y la entrega).
 
 ## T21, plan desde los rendimientos
 
@@ -593,7 +594,7 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    servidor (409) conserva lo escrito. Con la cadena rota no se ofrece dictamen y se dice por qué.
 4. `GET /v1/entregas/versiones` trae `aprobacion` (estado de cada versión) y `ultima_aprobada` (la del último dictamen que
    aprobó, no la de número más alto). Entregar la propone por omisión y avisa si se elige otra o no hay ninguna, sin
-   impedir la entrega. **Por ratificar** (deja entregar una no aprobada).
+   impedir la entrega. ~~Por ratificar~~ **Ratificado por Eugenio el 2026-10-27, con rótulo** (ver «T20, D4» abajo).
 5. «Aprobada y sin entregar»: la entrega registra `sello_version` (el eslabón de la versión) en su evento; una aprobada se
    da por entregada si algún paquete lleva su sello, no su código (que se repite entre obras). Como el registro vive en la
    instalación, `aprobadas_sin_entregar` la abre ella misma (`sesion_de_instalacion`). Las entregas anteriores a este
@@ -608,6 +609,35 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    del responsable usa `src/comun/responsable.ts`.
 8. Commits: rojo `7d8b1065`, `badf39bd` (API, entrega y sello), rojo `94727c0c` y `35ac2b07` (fuente de la mesa),
    `84ef51d6` (front).
+
+### T20, D4 (decisiones de Eugenio del 2026-10-27: entregar sin aprobar y cadena rota)
+
+1. **Entregar una no aprobada: avisar y rotular (cierra «Por ratificar» del punto 4).** Una versión que no es
+   «aprobada» ni «aprobada con observaciones» (guardada, en aprobación, retirada o devuelta) se puede entregar, pero el
+   paquete lo dice: `manifiesto.json` lleva `version_no_aprobada` y `informe.json` (la portada) lleva `marca`, los dos
+   con `{texto: "Versión NO aprobada", fecha: <día de la entrega>, ultima_aprobada: <código o null>}`. Una aprobada no
+   lleva ninguno de los dos campos. El evento «paquete exportado» (y «firma») añade «version NO aprobada (ultima
+   aprobada 001)» o «(sin aprobada previa)» antes de `sello_version`. Todo el código vive en `aplicacion/entrega.py`
+   (`marca_de_no_aprobada`) y `paquete/`; `core/` no se tocó.
+2. **Cómo la cubre la firma.** La marca va en el manifiesto, que es lo que firma Ed25519: quitarla da «alterado/firma».
+   Además va en el informe, listado con su SHA-256 en el manifiesto: cambiarla ahí da «alterado/integridad». Sin firma
+   nada impide reescribir el manifiesto, así que `paquete.verificar` exige que manifiesto e informe digan lo mismo
+   («alterado/marca»). Límite declarado: un paquete sin firma al que se le quita la marca de los dos sitios y se
+   recalculan las huellas a mano no se detecta (las huellas sin firma solo prueban que no se dañó, ya se dice en el banner).
+3. **Fecha.** La del día de la entrega (`ahora`), no la de la versión.
+4. **Si el rastro no se puede leer** (una carpeta sin la tabla de aprobaciones) la versión se marca como no aprobada:
+   ante la duda se rotula, nunca se omite la marca.
+5. **Aviso en Entregar.** El aviso que ya existía («Esta versión no está aprobada.») dice ahora que el paquete saldrá
+   rotulado «Versión NO aprobada», con la fecha y la última aprobada si la hay. Sigue sin impedir la entrega.
+6. **Cadena rota: solo devolver (cierra el «Por decidir» de T18, ronda 3).** `dictaminar` salta la comprobación de la
+   cadena únicamente cuando el dictamen es «devuelta» (notas obligatorias, como siempre); «aprobada» y «aprobada con
+   observaciones» siguen en 409 con el motivo. La pantalla Aprobar ofrece solo «Devuelta» (marcada) y dice «… Aprobar
+   queda bloqueado hasta reparar la cadena; devolver no certifica nada.». El dictamen registrado responde 201, como siempre.
+7. **El bloqueo de T18 ronda 3 no se cambia** («una versión de una cadena rota tampoco se envía»): no impide devolver,
+   porque devolver actúa sobre un envío que ya existe. Queda sin devolver solo el caso de una cadena que se rompe con un
+   envío pendiente; ese envío se puede devolver ahora.
+8. **Pendiente (no pedido):** `Revisar` (quien recibe el paquete) todavía no muestra la marca en su banner; no se añadió
+   a `avisos` para no cambiar el resultado de los paquetes de versiones sin aprobar que ya se verifican sin avisos.
 
 ## T26, líneas del APU de la versión
 

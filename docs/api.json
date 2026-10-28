@@ -9561,7 +9561,7 @@
           "aprobaciones"
         ],
         "summary": "Dictaminar",
-        "description": "Registra el dictamen sobre el envío (solo con la cuenta de una persona).",
+        "description": "Registra el dictamen sobre el envío (solo con la cuenta de una persona). Con la cadena de\nversiones rota solo se acepta «devuelta»: aprobar, también con observaciones, da 409.",
         "operationId": "dictaminar_v1_aprobaciones__envio_id__dictamen_post",
         "parameters": [
           {
