@@ -17,9 +17,12 @@ function reglaDe(fuente: string, selector: string): string {
   return fuente.slice(i, fuente.indexOf("}", abre));
 }
 
-const marco = leer("marco/marco.scss");
-// Los diálogos se montan fuera de .silice-marco (portal en el body), así que las reasignaciones van en la raíz.
-const raiz = reglaDe(marco, ":root");
+// Van en tokens.scss, dentro del mismo `:root` que el tema de Carbon y después de él: en el CSS compilado marco.scss sale
+// ANTES que el tema, y a igual especificidad la última declaración gana (medido en dist/ con npm run build). Ese bloque
+// lleva interpolaciones `#{...}`, así que se lee desde `:root {` hasta el final del archivo.
+const tokens = leer("estilos/tokens.scss");
+const raiz = tokens.slice(tokens.indexOf(":root {"));
+const nuevas = raiz.split("\n").filter((l) => /--cds-(button-primary|link-primary|border-interactive|text-on-color)/.test(l));
 
 describe("color de acción de la empresa bajo el marco", () => {
   test("el botón principal toma el acento", () => {
@@ -36,8 +39,9 @@ describe("color de acción de la empresa bajo el marco", () => {
   });
 
   test("el texto del botón principal es del color del marco, solo en ese botón", () => {
-    expect(reglaDe(marco, ".cds--btn--primary")).toMatch(/--cds-text-on-color:\s*var\(--silice-marco\)/);
-    expect(raiz).not.toMatch(/--cds-text-on-color/);
+    expect(reglaDe(tokens, ".cds--btn--primary")).toMatch(/--cds-text-on-color:\s*var\(--silice-marco\)/);
+    // En la raíz no: --cds-text-on-color también se usa sobre otros fondos.
+    expect(raiz.slice(0, raiz.indexOf(".cds--btn--primary"))).not.toMatch(/--cds-text-on-color/);
   });
 
   test("enlaces, bordes interactivos y la raya de la pestaña activa son del color del marco", () => {
@@ -48,12 +52,12 @@ describe("color de acción de la empresa bajo el marco", () => {
   });
 
   test("el foco no se reasigna", () => {
-    expect(marco).not.toMatch(/--cds-focus\s*:/);
-    expect(marco).not.toMatch(/--cds-focus-inverse\s*:/);
+    expect(tokens).not.toMatch(/--cds-focus(-inverse)?\s*:/);
+    expect(leer("marco/marco.scss")).not.toMatch(/--cds-focus(-inverse)?\s*:/);
   });
 
   test("ninguna regla nueva lleva hexadecimales sueltos", () => {
-    expect(raiz).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-    expect(reglaDe(marco, ".cds--btn--primary")).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(nuevas.length).toBeGreaterThanOrEqual(7);
+    expect(nuevas.join("\n")).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 });
