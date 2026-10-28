@@ -505,7 +505,7 @@ describe("BarraLateral: la obra recién creada", () => {
 
   it("con un código entero abre la obra nueva", async () => {
     await crearConCodigo("9");
-    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Norte.db/9/resumen");
+    await waitFor(() => expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Norte.db/9/resumen"));
   });
 
   it("con un código que no es un entero no navega a una ruta con NaN y deja la lista recargada", async () => {
