@@ -1,4 +1,4 @@
-import { centesimasEsVe, fechaEsVe, formatoEsVe } from "../indicadores/formatoEsVe";
+import { centesimasEsVe, formatoEsVe } from "../indicadores/formatoEsVe";
 
 // La equivalencia de un precio del corte que se convirtio de otra moneda con la tasa del BCV (Tarea D2): precio
 // original, tasa con su fecha y resultado, en una linea que quien revise despues pueda reconstruir. Lo que llega de la
@@ -17,18 +17,22 @@ export interface Equivalencia {
   operacion: string;
 }
 
-// «31,50 USD × 36,50 Bs/USD (BCV del 20/10/2026) = 1.149,75 Bs». El resultado se lee en centesimas; el exacto va en el
+// «31,50 USD × 36,50 Bs/USD (BCV, publicacion del 20/10/2026) = 1.149,75 Bs». El resultado se lee en centesimas; el exacto va en el
 // `title` de `LineaDeEquivalencia`.
 export function textoDeEquivalencia(e: Equivalencia): string {
   return (
     `${formatoEsVe(e.precio_original)} ${e.moneda_original} ${e.operacion} ${formatoEsVe(e.tasa)} Bs/USD ` +
-    `(BCV del ${fechaEsVe(e.fecha_tasa)}) = ${centesimasEsVe(e.convertido)} ${e.moneda}`
+    `(${e.fuente_legible}) = ${centesimasEsVe(e.convertido)} ${e.moneda}`
   );
 }
 
 // Para las lineas de estado, que son texto: la linea y el resultado exacto aparte (la centesima redondea).
 export function textoDeEquivalenciaExacta(e: Equivalencia): string {
-  return `${textoDeEquivalencia(e)}. Resultado exacto: ${formatoEsVe(e.convertido)} ${e.moneda}.`;
+  const exacto = `${formatoEsVe(e.convertido)} ${e.moneda}`;
+  // Si la centesima ya es el exacto, no se repite.
+  return textoDeEquivalencia(e).endsWith(`= ${exacto}`)
+    ? textoDeEquivalencia(e)
+    : `${textoDeEquivalencia(e)}. Resultado exacto: ${exacto}.`;
 }
 
 export function LineaDeEquivalencia({ equivalencia }: { equivalencia: Equivalencia }) {

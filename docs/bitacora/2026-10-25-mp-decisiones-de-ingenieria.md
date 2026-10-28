@@ -503,6 +503,12 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    Desvíos del método de D2: (a) la migración `caso_0018_mp_corte_tasa` se escribió antes de sus pruebas, sin rojo
    propio; (b) el oráculo de `fuente_tasa` cambió después del rojo de `"https://www.bcv.org.ve/"` a `"importacion:1"`,
    porque la fuente que anota el catálogo (`ValorFechado.fuente`, `core`) es la referencia de la importación.
+   Desvío propio de D2b: en `514707da`, después del rojo `78fc82ad`, cambiaron la fixture y cuatro oráculos de
+   `test_precios_declarados_convertidos.py` (tasas sembradas los días 9, 10, 12 y 14 en vez de solo el 10;
+   `FUENTE_TASA` de `importacion:1` a `importacion:2`; el segundo precio del rastro del 11/11 al 12/11; las listas de
+   13/11 contra 10/11 pasaron a 16/11 contra 14/11), porque la regla del mismo día dejaba sin tasa las fechas
+   intermedias. En la ronda 2 la línea visible pasó de «(BCV del dd/mm/aaaa)» a «(BCV, publicación del dd/mm/aaaa)»
+   (la `fuente_legible`), y la línea de estado ya no repite el resultado exacto cuando coincide con las centésimas.
 3. **Unitarios del corte:** la partida que usa un material declarado se recalcula con `calcular_apu` del núcleo y los
    parámetros de su versión; las demás conservan su resultado de la línea base (desvío de precio exactamente cero).
    Ningún precio de una versión sellada cambia (prueba de guarda en las dos casillas).
