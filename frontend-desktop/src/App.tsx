@@ -11,6 +11,7 @@ import { Entrar } from "./sesion/Entrar";
 import { useSesion } from "./sesion/useSesion";
 import { TamanoLetra } from "./comun/TamanoLetra";
 import { Marco } from "./marco/Marco";
+import { ProveedorDelTema } from "./marco/useTema";
 import { MenuCuenta } from "./shell/MenuCuenta";
 import { crearAlmacen } from "./visor/almacen";
 import type { AlmacenDelVisor } from "./visor/almacen";
@@ -73,40 +74,42 @@ export function App({ crearHoja }: Props = {}) {
 
   return (
     <Theme theme="g10">
-      {estado.tipo === "activa" && !estado.sesion.debe_cambiar_clave ? (
-        <HashRouter>
-          <Marco
-            sesion={estado.sesion}
-            alSalir={alSalir}
-            alExpirar={expirar}
-            almacen={almacen}
-            crearHoja={crearHoja}
-          />
-        </HashRouter>
-      ) : (
-        <>
-          <CabeceraSinMarco nombre={estado.tipo === "activa" ? estado.sesion.nombre : undefined} alSalir={alSalir} />
-          {(estado.tipo === "cargando" || entrada?.tipo === "cargando") && (
-            <main className="silice-entrada">
-              <p className="silice-entrada__texto cds--type-body-compact-01" role="status">
-                {estado.tipo === "cargando" ? "Comprobando su sesión…" : "Comprobando su instalación…"}
-              </p>
-            </main>
-          )}
-          {entrada?.tipo === "sin_cuentas" && <Bienvenida info={entrada.info} onReclamar={reclamarYEntrar} />}
-          {entrada?.tipo === "con_cuentas" && !recuperando && (
-            <Entrar
-              onEntrar={entrar}
-              aviso={vencida ? "Su sesión venció. Entre de nuevo para seguir." : undefined}
-              alRecuperar={() => setRecuperando(true)}
+      <ProveedorDelTema>
+        {estado.tipo === "activa" && !estado.sesion.debe_cambiar_clave ? (
+          <HashRouter>
+            <Marco
+              sesion={estado.sesion}
+              alSalir={alSalir}
+              alExpirar={expirar}
+              almacen={almacen}
+              crearHoja={crearHoja}
             />
-          )}
-          {entrada?.tipo === "con_cuentas" && recuperando && (
-            <RecuperarAcceso info={entrada.info} onReclamar={reclamarYEntrar} alVolver={() => setRecuperando(false)} />
-          )}
-          {estado.tipo === "activa" && <CambiarContrasena alCambiar={cambiarContrasena} />}
-        </>
-      )}
+          </HashRouter>
+        ) : (
+          <>
+            <CabeceraSinMarco nombre={estado.tipo === "activa" ? estado.sesion.nombre : undefined} alSalir={alSalir} />
+            {(estado.tipo === "cargando" || entrada?.tipo === "cargando") && (
+              <main className="silice-entrada">
+                <p className="silice-entrada__texto cds--type-body-compact-01" role="status">
+                  {estado.tipo === "cargando" ? "Comprobando su sesión…" : "Comprobando su instalación…"}
+                </p>
+              </main>
+            )}
+            {entrada?.tipo === "sin_cuentas" && <Bienvenida info={entrada.info} onReclamar={reclamarYEntrar} />}
+            {entrada?.tipo === "con_cuentas" && !recuperando && (
+              <Entrar
+                onEntrar={entrar}
+                aviso={vencida ? "Su sesión venció. Entre de nuevo para seguir." : undefined}
+                alRecuperar={() => setRecuperando(true)}
+              />
+            )}
+            {entrada?.tipo === "con_cuentas" && recuperando && (
+              <RecuperarAcceso info={entrada.info} onReclamar={reclamarYEntrar} alVolver={() => setRecuperando(false)} />
+            )}
+            {estado.tipo === "activa" && <CambiarContrasena alCambiar={cambiarContrasena} />}
+          </>
+        )}
+      </ProveedorDelTema>
     </Theme>
   );
 }
