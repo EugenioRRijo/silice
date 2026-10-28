@@ -998,3 +998,17 @@ def test_un_objetivo_en_bs_con_la_hoja_en_usd_se_divide_por_la_tasa(ana, caso: P
         "USD",
     )
     assert Decimal(equivalencia["convertido"]) == Decimal("100")
+
+
+MENSAJE_MONEDA = "La moneda de los precios unitarios no es válida: el sistema admite Bs o USD."
+
+
+@pytest.mark.parametrize("moneda", ["EUR", "bs", "ZZZ-OTRA"])
+def test_una_moneda_que_el_sistema_no_admite_es_422_fijo_sin_eco(ana, caso: Path, moneda) -> None:
+    """Con un objetivo en USD y su tasa cargada, `moneda=EUR` no es un 500 (la conversión del
+    núcleo solo conoce Bs y USD): es un 422 con texto fijo que no repite lo enviado."""
+    _objetivo_en(caso, "OBRA-02", "31.50", "USD", 20, tasas=[(20, "36.50")])
+    respuesta = ana[0].get(f"{RUTA}/objetivos", params={"partidas": "OBRA-02", "moneda": moneda})
+    assert (respuesta.status_code, respuesta.json()) == (422, {"detalle": MENSAJE_MONEDA})
+    assert moneda not in respuesta.text
+    _sin_cache(respuesta)
