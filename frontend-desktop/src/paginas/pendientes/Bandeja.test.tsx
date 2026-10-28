@@ -387,17 +387,18 @@ describe("Pendientes: foco 5, muchos pendientes", () => {
     expect(reglaDe(".silice-bandeja__lista")).toMatch(/overflow-y:\s*auto/);
   });
 
+  // Los grosores de 1 a 3 px de divisores, rayas y foco son los del marco (BarraLateral.scss, Buscador.scss); lo que
+  // no puede haber es un ancho fijo.
   test("ningún ancho fijo: ni px ni rem en anchos, y las columnas pueden encogerse", () => {
     expect(estilos()).not.toMatch(/(?:^|[\s;{])(?:min-|max-)?(?:inline-size|width)\s*:\s*[\d.]+(?:px|rem|em)/m);
-    expect(estilos()).not.toMatch(/\d+px/);
     expect(reglaDe(".silice-bandeja__rejilla")).toMatch(/grid-template-columns:\s*minmax\(0,\s*2fr\)\s+minmax\(0,\s*3fr\)/);
   });
 
+  // Como BarraSuperior.scss: un `@each` sobre las escalas del mapa de umbrales, sin consultas de medios propias.
   test("por debajo del umbral de cada letra la lista pasa arriba (umbrales del marco, sin números nuevos)", () => {
-    expect(estilos()).toMatch(/@use\s+"\.\.\/\.\.\/marco\/umbrales"/);
-    for (const escala of ["normal", "grande", "muy-grande"]) {
-      expect(estilos()).toContain(`@include umbrales.por-debajo-del-umbral("${escala}")`);
-    }
+    expect(estilos()).toMatch(/@use\s+"\.\.\/\.\.\/marco\/umbrales"\s+as\s+u;/);
+    expect(estilos()).toMatch(/@each \$escala in map\.keys\(u\.\$umbrales-por-escala\) \{\s*@include u\.por-debajo-del-umbral\(\$escala\)/);
+    expect(estilos()).not.toMatch(/@media/);
   });
 
   test("con 200 pendientes todos van dentro de la columna de la lista y el detalle queda fuera de ella", async () => {
