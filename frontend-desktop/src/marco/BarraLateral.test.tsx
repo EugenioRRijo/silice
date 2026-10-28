@@ -408,7 +408,15 @@ describe("BarraLateral: Nueva obra", () => {
   it("los estilos lo pintan con el acento, el texto del marco, seminegrita y 40 px de alto, solo con variables del tema", () => {
     const estilos = leer("marco/BarraLateral.scss");
     const regla = /\.silice-marco-boton-principal\s*\{([^}]*)\}/.exec(estilos)?.[1] ?? "";
-    expect(regla).toContain("background-color: var(--silice-acento)");
+    // Mismo tono que el botón principal de Carbon (Tarea 4b): reutiliza sus tokens, sin repetir las mezclas.
+    expect(regla).toContain("background-color: var(--cds-button-primary)");
+    expect(regla).toMatch(/border:\s*1px solid var\(--silice-boton-borde\)/);
+    const hover = /&:hover\s*\{([^}]*)\}/.exec(estilos.slice(estilos.indexOf(".silice-marco-boton-principal")))?.[1] ?? "";
+    expect(hover).toContain("background-color: var(--cds-button-primary-hover)");
+    expect(hover).not.toMatch(/filter/);
+    const activo = /&:active\s*\{([^}]*)\}/.exec(estilos.slice(estilos.indexOf(".silice-marco-boton-principal")))?.[1] ?? "";
+    expect(activo).toContain("background-color: var(--cds-button-primary-active)");
+    expect(regla).not.toMatch(/color-mix/);
     expect(regla).toMatch(/(^|[\s;])color: var\(--silice-marco\)/);
     expect(regla).toMatch(/font-weight: 600/);
     expect(regla).toMatch(/block-size: 2\.5rem/);
