@@ -109,7 +109,7 @@ def test_la_equivalencia_de_la_observacion_trae_original_tasa_fecha_fuente_y_res
 
 
 def test_en_una_carpeta_en_usd_una_observacion_en_bs_se_divide_por_la_tasa() -> None:
-    for sesion in nueva_sesion(moneda="USD"):
+    for sesion in nueva_sesion(moneda="USD", con_lista=False):
         _tasas(sesion)
         observacion_cruda(sesion, "MAT-001", Decimal("146.00"), moneda="Bs", fecha=DIA_20)
         est = estadisticas(sesion, lado="compra", codigo="MAT-001", hoy=HOY)

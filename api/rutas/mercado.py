@@ -7,7 +7,12 @@ sesión (`SesionDep`); las que escriben van con `BEGIN IMMEDIATE` y confirman aq
 
 - `GET /{lado}/{codigo}?dias=90&proyecto=` → `{lado, codigo, moneda, estadisticas, propuesta,
   piso, precio_unitario, observaciones}`. Las estadísticas, la propuesta, el piso y el precio con
-  utilidad van en céntimos (lo que se muestra); el precio de cada observación, exacto. En cobro,
+  utilidad van en céntimos (lo que se muestra); el precio de cada observación, exacto y tal como se
+  anotó (`precio`, `moneda`). Una observación en otra moneda se cita **convertida** a la de la
+  carpeta con la tasa del BCV del mismo día de la observación (Tarea D3): trae su `equivalencia`
+  (la misma de D2) y entra en las cifras con el valor convertido (`estadisticas.convertidas`). Sin
+  tasa de ese día `sin_tasa` dice «sin tasa del BCV del dd/mm/aaaa», no entra en las cifras y se
+  cuenta en `estadisticas.sin_tasa` (antes `otras_monedas`). En cobro,
   `proyecto` (código o nombre de la obra abierta) da los parámetros del piso.
 - `POST /observaciones` → 201 `{id}`; `POST /observaciones/{id}/anular` → 200 `{id, anulada_por}`.
 - `GET /compra/{codigo}/afectados` → `{apus}` (lo que se muestra antes de «Usar este precio»).
@@ -70,7 +75,7 @@ from aplicacion.mercado import (
     exigir_codigo,
     margen,
     objetivos,
-    observaciones_vigentes,
+    observaciones_leidas,
     piso_de_cobro,
     propuesta,
     registrar_observacion,
@@ -129,7 +134,15 @@ class EstadisticasRespuesta(BaseModel):
     promedio: str | None
     maximo: str | None
     ids: list[int] = Field(description="Las observaciones de las que salen las cifras")
-    otras_monedas: int = Field(description="Observaciones de la ventana en otra moneda")
+    convertidas: int = Field(
+        description="De las que entran en las cifras, las que estaban en otra moneda (convertidas)"
+    )
+    sin_tasa: int = Field(
+        description=(
+            "Observaciones de la ventana en otra moneda sin tasa del BCV de su día: no entran en "
+            "las cifras"
+        )
+    )
     dias: int
 
 
@@ -147,7 +160,19 @@ class ObservacionRespuesta(BaseModel):
     precio: str
     nota: str
     responsable: str
-    cuenta: bool = Field(description="Está en la moneda de la carpeta y entra en las cifras")
+    cuenta: bool = Field(
+        description="Entra en las cifras: está en la moneda de la carpeta o se convirtió"
+    )
+    equivalencia: EquivalenciaRespuesta | None = Field(
+        description=(
+            "Si estaba en otra moneda y hay tasa del BCV de su día: el precio original, la tasa "
+            "con su fecha y fuente, y el precio convertido a la moneda de la carpeta (el que "
+            "entra en las cifras); `precio` y `moneda` son siempre los originales"
+        )
+    )
+    sin_tasa: str | None = Field(
+        description="«sin tasa del BCV del dd/mm/aaaa» si no se pudo convertir (no entra en cifras)"
+    )
 
 
 class EstudioRespuesta(BaseModel):
@@ -386,7 +411,7 @@ def leer_estudio(
                 sesion, Catalogo(sesion), cual, proyecto=obra, fecha=hoy
             )
         elegida = propuesta(lado, est, piso)
-        filas = observaciones_vigentes(sesion, lado=lado, codigo=cual, hoy=hoy, dias=dias)
+        filas = observaciones_leidas(sesion, lado, cual, hoy, dias)
         return EstudioRespuesta(
             lado=lado,
             codigo=cual,
@@ -399,7 +424,8 @@ def leer_estudio(
                 promedio=_texto(centimos(est.promedio)),
                 maximo=_texto(centimos(est.maximo)),
                 ids=list(est.ids),
-                otras_monedas=est.otras_monedas,
+                convertidas=est.convertidas,
+                sin_tasa=est.sin_tasa,
                 dias=est.dias,
             ),
             propuesta=PropuestaRespuesta(precio=_texto(elegida.precio), razon=elegida.razon),
@@ -407,17 +433,21 @@ def leer_estudio(
             precio_unitario=_texto(centimos(precio_unitario)),
             observaciones=[
                 ObservacionRespuesta(
-                    id=f.id,
-                    fuente_tipo=f.fuente_tipo,
-                    fuente=f.fuente,
-                    fecha=f.fecha.isoformat(),
-                    moneda=f.moneda,
-                    precio=format(f.precio, "f"),
-                    nota=f.nota,
-                    responsable=f.responsable,
-                    cuenta=f.moneda == est.moneda,
+                    id=o.fila.id,
+                    fuente_tipo=o.fila.fuente_tipo,
+                    fuente=o.fila.fuente,
+                    fecha=o.fila.fecha.isoformat(),
+                    moneda=o.fila.moneda,
+                    precio=format(o.fila.precio, "f"),
+                    nota=o.fila.nota,
+                    responsable=o.fila.responsable,
+                    cuenta=o.cuenta,
+                    equivalencia=(
+                        None if o.equivalencia is None else equivalencia_a_respuesta(o.equivalencia)
+                    ),
+                    sin_tasa=o.sin_tasa,
                 )
-                for f in filas
+                for o in filas
             ],
         )
 

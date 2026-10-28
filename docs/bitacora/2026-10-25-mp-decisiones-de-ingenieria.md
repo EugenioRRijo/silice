@@ -307,6 +307,23 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    «31,50 USD · en otra moneda que la obra (Bs), sin margen». **Por ratificar.**
 3. **El margen se compara con el precio exacto.** **Por ratificar.**
 4. **El signo es la única marca**, sin color. **Por ratificar** si el negativo va en rojo IBCS con ícono.
+   **Decidido por Eugenio el 2026-10-27 (Tarea D3, «si llega una moneda distinta se hace la equivalencia»):** las
+   **observaciones** del estudio de mercado en otra moneda ya no quedan fuera: se citan **convertidas** a la moneda de la
+   carpeta con la tasa del BCV **del mismo día de la observación** (D2b, `aplicacion/tasa_del_dia.py`), con la misma
+   `Equivalencia` y la misma línea que el precio del corte, y entran en las cifras con el valor convertido. Sin tasa de ese
+   día: «sin tasa del BCV del dd/mm/aaaa», fuera de las cifras y contada aparte. Dos decisiones de ingeniería donde el
+   plan calla: (a) **se convierte al leer, no se guarda**: la observación original no cambia ni se le agrega una columna;
+   la tasa del día queda en los índices (con su importación) y la equivalencia reconstruye la cuenta; guardar una copia
+   congelaría una tasa que Índices puede corregir después, y aquí no hay nada que sellar (los precios usados se guardan
+   ya en su lista u objetivo, con las observaciones citadas). (b) **El contrato cambia y se dice:** `otras_monedas`
+   desaparece (ya no significa «otra moneda»: ahora esas entran) y lo reemplazan `convertidas` y `sin_tasa`; cada
+   observación suma `equivalencia` y `sin_tasa`, y `cuenta` pasa a ser «entra en las cifras». «Usar este precio» también
+   puede citar una observación convertida (si no, las cifras propondrían ids que luego se rechazarían).
+   **El objetivo en otra moneda sigue «sin margen» (sin convertir), a propósito:** el objetivo no es una observación sino un
+   precio que la persona fijó, y su margen se mide contra el precio unitario de una versión de la Hoja que tiene su propia
+   fecha y su propia tasa; convertirlo mezclaría dos fechas y daría un margen que no concilia con ninguna de las dos.
+   **Por ratificar** por Eugenio: si quiere el margen convertido, ¿con la tasa de qué día (el del objetivo, el de la
+   versión o el de hoy)?
 5. **Hoja grande por tandas:** `partidas` ≤ 2.000 y `pu` ≤ 4.000 caracteres por pedido.
 6. **Si falla la lectura**, la Hoja sigue y lo dice bajo la tabla.
 7. Tres pruebas que fijaban las columnas del Presupuesto ganan «Objetivo de mercado».

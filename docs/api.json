@@ -15444,10 +15444,15 @@
             "title": "Ids",
             "description": "Las observaciones de las que salen las cifras"
           },
-          "otras_monedas": {
+          "convertidas": {
             "type": "integer",
-            "title": "Otras Monedas",
-            "description": "Observaciones de la ventana en otra moneda"
+            "title": "Convertidas",
+            "description": "De las que entran en las cifras, las que estaban en otra moneda (convertidas)"
+          },
+          "sin_tasa": {
+            "type": "integer",
+            "title": "Sin Tasa",
+            "description": "Observaciones de la ventana en otra moneda sin tasa del BCV de su día: no entran en las cifras"
           },
           "dias": {
             "type": "integer",
@@ -15463,7 +15468,8 @@
           "promedio",
           "maximo",
           "ids",
-          "otras_monedas",
+          "convertidas",
+          "sin_tasa",
           "dias"
         ],
         "title": "EstadisticasRespuesta"
@@ -19050,7 +19056,30 @@
           "cuenta": {
             "type": "boolean",
             "title": "Cuenta",
-            "description": "Está en la moneda de la carpeta y entra en las cifras"
+            "description": "Entra en las cifras: está en la moneda de la carpeta o se convirtió"
+          },
+          "equivalencia": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EquivalenciaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Si estaba en otra moneda y hay tasa del BCV de su día: el precio original, la tasa con su fecha y fuente, y el precio convertido a la moneda de la carpeta (el que entra en las cifras); `precio` y `moneda` son siempre los originales"
+          },
+          "sin_tasa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sin Tasa",
+            "description": "«sin tasa del BCV del dd/mm/aaaa» si no se pudo convertir (no entra en cifras)"
           }
         },
         "type": "object",
@@ -19063,7 +19092,9 @@
           "precio",
           "nota",
           "responsable",
-          "cuenta"
+          "cuenta",
+          "equivalencia",
+          "sin_tasa"
         ],
         "title": "ObservacionRespuesta"
       },

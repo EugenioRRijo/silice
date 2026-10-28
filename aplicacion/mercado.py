@@ -4,9 +4,14 @@ Tareas 13 y 14).
 Diseño de montar un presupuesto §5.1 y §10, con las decisiones que Eugenio ratificó el 2026-10-25:
 
 - Las observaciones son **datos de la empresa** y viven en la carpeta de trabajo
-  (`aplicacion/tablas_mercado.py`). Se cuentan en la moneda de la carpeta (D-MP1): las de otra
-  moneda no se mezclan, solo se cuentan aparte (`otras_monedas`). El precio tecleado se lee con
-  `cifra_escrita` (coma decimal, punto de miles).
+  (`aplicacion/tablas_mercado.py`). Se cuentan en la moneda de la carpeta (D-MP1). Una observación
+  en otra moneda **se cita convertida** (decisión de Eugenio del 2026-10-27, Tarea D3) con la tasa
+  del BCV del mismo día de la observación (`aplicacion/tasa_del_dia.py`, D2b), con la misma
+  `Equivalencia` que el precio del corte; entra en las cifras con el valor convertido. Sin tasa de
+  ese día queda fuera de las cifras con «sin tasa del BCV del dd/mm/aaaa» y se cuenta aparte
+  (`sin_tasa`). La observación original no se toca: se convierte al leer (la tasa queda en los
+  índices, y la equivalencia reconstruye la cuenta). El precio tecleado se lee con `cifra_escrita`
+  (coma decimal, punto de miles).
 - Ventana: las observaciones con `hoy − dias <= fecha <= hoy` (90 días por omisión, cambiable).
 - Cuartiles como `CUARTIL.INC` de Excel (interpolación lineal tipo 7): sobre los precios ordenados,
   posición `(n − 1)·p`. Las cifras de `Estadisticas` son **exactas**; se muestran en céntimos con
@@ -55,6 +60,7 @@ from aplicacion.listas_para_armar import (
 from aplicacion.parametros_de_costo import parametros_de_version
 from aplicacion.proyectos import proyectos_del_caso
 from aplicacion.tablas_mercado import ObservacionDeMercado, PrecioObjetivo
+from aplicacion.tasa_del_dia import Equivalencia, SinTasaDelDia, equivalencia_del_dia
 from core import models
 from core.budget.edicion import version_vigente
 from core.catalog import Catalogo
@@ -84,6 +90,8 @@ __all__ = [
     "exigir_codigo",
     "margen",
     "objetivos",
+    "ObservacionLeida",
+    "observaciones_leidas",
     "observaciones_vigentes",
     "pendientes_de_mercado",
     "piso_de_cobro",
@@ -144,8 +152,9 @@ class ReglaDeMercado(ValueError):  # noqa: N818
 class Estadisticas:
     """Las cifras de las observaciones que cuentan (exactas; `None` sin observaciones).
 
-    `ids` son las observaciones de las que salen (ordenadas); `otras_monedas`, las de la ventana
-    que están en otra moneda y no se mezclan; `dias`, la ventana usada."""
+    `ids` son las observaciones de las que salen (ordenadas); `convertidas`, cuántas de ellas
+    estaban en otra moneda y entran convertidas; `sin_tasa`, las de la ventana en otra moneda a las
+    que les falta la tasa del BCV de su día y por eso no entran; `dias`, la ventana usada."""
 
     moneda: str
     n: int
@@ -155,7 +164,8 @@ class Estadisticas:
     promedio: Decimal | None
     maximo: Decimal | None
     ids: tuple[int, ...]
-    otras_monedas: int
+    convertidas: int
+    sin_tasa: int
     dias: int
 
 
@@ -363,22 +373,66 @@ def observaciones_vigentes(
     )
 
 
+@dataclass(frozen=True)
+class ObservacionLeida:
+    """Una observación vigente vista en la moneda de la carpeta: la fila tal como se guardó, y si
+    estaba en otra moneda, su `equivalencia` (con la tasa del BCV de su día) o, si no hay tasa de
+    ese día, `sin_tasa` con el texto que ve la persona. Nada se escribe."""
+
+    fila: ObservacionDeMercado
+    equivalencia: Equivalencia | None
+    sin_tasa: str | None
+
+    @property
+    def cuenta(self) -> bool:
+        """Entra en las cifras: está en la moneda de la carpeta o se pudo convertir."""
+        return self.sin_tasa is None
+
+    @property
+    def valor(self) -> Decimal:
+        """El precio en la moneda de la carpeta (exacto): el original o el convertido."""
+        return self.fila.precio if self.equivalencia is None else self.equivalencia.convertido
+
+
+def _leer(sesion: Session, fila: ObservacionDeMercado, moneda: str) -> ObservacionLeida:
+    if fila.moneda == moneda:
+        return ObservacionLeida(fila, None, None)
+    try:
+        equivalencia = equivalencia_del_dia(sesion, fila.precio, fila.moneda, moneda, fila.fecha)
+    except SinTasaDelDia:
+        return ObservacionLeida(fila, None, f"sin tasa del BCV del {fila.fecha:%d/%m/%Y}")
+    return ObservacionLeida(fila, equivalencia, None)
+
+
+def observaciones_leidas(
+    sesion: Session, lado: str, codigo: str, hoy: date, dias: int = DIAS_POR_OMISION
+) -> list[ObservacionLeida]:
+    """Las observaciones vigentes de `codigo` (`observaciones_vigentes`) en la moneda de la
+    carpeta: las de otra moneda, convertidas con la tasa del BCV del mismo día (Tarea D3)."""
+    moneda = _exigir_moneda(sesion, hoy)
+    filas = observaciones_vigentes(sesion, lado=lado, codigo=codigo, hoy=hoy, dias=dias)
+    return [_leer(sesion, fila, moneda) for fila in filas]
+
+
 def estadisticas(
     sesion: Session, *, lado: str, codigo: str, hoy: date, dias: int = DIAS_POR_OMISION
 ) -> Estadisticas:
     """n, mínimo, primer cuartil, mediana, promedio y máximo de las observaciones vigentes (no
-    anuladas) de `codigo` en la moneda de la carpeta, con fecha entre `hoy − dias` y `hoy`."""
+    anuladas) de `codigo`, con fecha entre `hoy − dias` y `hoy`, en la moneda de la carpeta: las de
+    otra moneda entran convertidas con la tasa del BCV de su día, y las que no la tienen quedan
+    fuera y se cuentan aparte (`sin_tasa`)."""
     _exigir_lado(lado)
     if dias < 0:
         raise ValueError(f"dias {dias}; se espera 0 o más")
     moneda = _exigir_moneda(sesion, hoy)
-    filas = observaciones_vigentes(sesion, lado=lado, codigo=codigo, hoy=hoy, dias=dias)
-    cuentan = [f for f in filas if f.moneda == moneda]
-    otras = len(filas) - len(cuentan)
-    ids = tuple(f.id for f in cuentan)
+    leidas = observaciones_leidas(sesion, lado, codigo, hoy, dias)
+    cuentan = [o for o in leidas if o.cuenta]
+    convertidas = sum(1 for o in cuentan if o.equivalencia is not None)
+    sin_tasa = len(leidas) - len(cuentan)
+    ids = tuple(o.fila.id for o in cuentan)
     if not cuentan:
-        return Estadisticas(moneda, 0, None, None, None, None, None, ids, otras, dias)
-    precios = sorted(f.precio for f in cuentan)
+        return Estadisticas(moneda, 0, None, None, None, None, None, ids, 0, sin_tasa, dias)
+    precios = sorted(o.valor for o in cuentan)
     return Estadisticas(
         moneda=moneda,
         n=len(precios),
@@ -388,7 +442,8 @@ def estadisticas(
         promedio=sum(precios, Decimal(0)) / len(precios),
         maximo=precios[-1],
         ids=ids,
-        otras_monedas=otras,
+        convertidas=convertidas,
+        sin_tasa=sin_tasa,
         dias=dias,
     )
 
@@ -488,16 +543,19 @@ def margen(objetivo: Decimal, precio_unitario: Decimal) -> Decimal:
 def _citada(
     sesion: Session, observacion_id: int, lado: str, codigo: str, moneda: str
 ) -> ObservacionDeMercado:
-    """La observación citada si es vigente (no anulada), de ese lado, de ese código y en `moneda`
-    (la de la carpeta); si no, `ReglaDeMercado`. No se exige que esté en la ventana de 90 días:
+    """La observación citada si es vigente (no anulada), de ese lado y de ese código y entra en las
+    cifras en `moneda` (la de la carpeta): está en esa moneda o se convierte con la tasa del BCV de
+    su día (Tarea D3); si no, `ReglaDeMercado`. No se exige que esté en la ventana de 90 días:
     la persona puede ampliarla al estudiar, y una observación vieja no anulada sigue siendo
     cierta."""
     fila = sesion.get(ObservacionDeMercado, observacion_id)
     if fila is None or fila.anulada_por is not None or (fila.lado, fila.codigo) != (lado, codigo):
         raise ReglaDeMercado(MENSAJE_OBSERVACION_AJENA)
-    if fila.moneda != moneda:
+    leida = _leer(sesion, fila, moneda)
+    if not leida.cuenta:
         raise ReglaDeMercado(
-            f"La observación elegida está en {fila.moneda} y la carpeta trabaja en {moneda}."
+            f"La observación elegida está en {fila.moneda} y no hay tasa del BCV del "
+            f"{fila.fecha:%d/%m/%Y} para convertirla a {moneda}."
         )
     return fila
 

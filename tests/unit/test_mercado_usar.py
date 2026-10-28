@@ -491,10 +491,15 @@ def test_una_lista_de_hoy_copiada_por_otra_no_se_reescribe(s: Session, hija: str
     assert (otra.nombre, _en(s, hoy, "MAT-001")) == (f"{LISTA_DE_HOY} (2)", Decimal("400"))
 
 
-def test_no_se_cita_una_observacion_de_otra_moneda(s: Session) -> None:
+def test_no_se_cita_una_observacion_de_otra_moneda_sin_tasa_de_su_dia(s: Session) -> None:
     compra = observacion_cruda(s, "MAT-001", Decimal("3"), moneda="USD")
     cobro = observacion_cruda(s, "OBRA-04", Decimal("50"), moneda="USD", lado="cobro")
-    otra_moneda = "La observación elegida está en USD y la carpeta trabaja en Bs."
+    # Sin tasa del BCV del 25/10 no se puede convertir (con tasa se cita convertida:
+    # `test_mercado_convertido.py`).
+    otra_moneda = (
+        "La observación elegida está en USD y no hay tasa del BCV del 25/10/2026 para "
+        "convertirla a Bs."
+    )
     with pytest.raises(ValueError) as error:
         usar_precio_de_compra(
             s, "MAT-001", "480", observacion_id=compra, fecha=HOY, responsable=RESPONSABLE

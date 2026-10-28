@@ -363,13 +363,14 @@ def test_una_observacion_en_usd_se_cita_convertida_con_la_tasa_de_su_dia(ana, ca
     assert (por_id[convertida]["precio"], por_id[convertida]["moneda"]) == ("3.00", "USD")
     assert por_id[convertida]["cuenta"] is True and por_id[convertida]["sin_tasa"] is None
     equivalencia = por_id[convertida]["equivalencia"]
+    # El resultado es exacto (3,00 × 36,50 = 109,5000: los ceros finales de la multiplicación)
+    assert Decimal(equivalencia.pop("convertido")) == Decimal("109.50")
     assert {k: v for k, v in equivalencia.items() if k != "fuente_tasa"} == {
         "precio_original": "3.00",
         "moneda_original": "USD",
         "tasa": "36.50",
         "fecha_tasa": "2026-10-20",
         "fuente_legible": "BCV, publicación del 20/10/2026",
-        "convertido": "109.50",
         "moneda": "Bs",
         "operacion": "×",
     }

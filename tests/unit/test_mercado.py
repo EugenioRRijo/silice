@@ -263,7 +263,7 @@ def test_una_sola_observacion_es_todas_las_cifras(s: Session) -> None:
 
 def test_sin_observaciones_todo_es_none(s: Session) -> None:
     est = estadisticas(s, lado="compra", codigo="MAT-001", hoy=HOY)
-    assert est == Estadisticas("Bs", 0, None, None, None, None, None, (), 0, 90)
+    assert est == Estadisticas("Bs", 0, None, None, None, None, None, (), 0, 0, 90)
 
 
 def test_el_promedio_es_exacto_y_se_muestra_en_centimos(s: Session) -> None:
