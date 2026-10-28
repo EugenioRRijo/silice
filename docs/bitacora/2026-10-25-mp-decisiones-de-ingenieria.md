@@ -530,6 +530,9 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    13/11 contra 10/11 pasaron a 16/11 contra 14/11), porque la regla del mismo día dejaba sin tasa las fechas
    intermedias. En la ronda 2 la línea visible pasó de «(BCV del dd/mm/aaaa)» a «(BCV, publicación del dd/mm/aaaa)»
    (la `fuente_legible`), y la línea de estado ya no repite el resultado exacto cuando coincide con las centésimas.
+   **Fuera de alcance, anotado (no se tocó):** `DecimalExacto` en PostgreSQL pasa a `Numeric(18, 6)` y truncaría los
+   convertidos; ya ocurre con las listas convertidas. Hoy la instalación usa SQLite, que lo guarda exacto; quien migre a
+   PostgreSQL debe ampliar esa columna antes.
 3. **Unitarios del corte:** la partida que usa un material declarado se recalcula con `calcular_apu` del núcleo y los
    parámetros de su versión; las demás conservan su resultado de la línea base (desvío de precio exactamente cero).
    Ningún precio de una versión sellada cambia (prueba de guarda en las dos casillas).
@@ -628,8 +631,11 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    («alterado/marca»). Límite declarado: un paquete sin firma al que se le quita la marca de los dos sitios y se
    recalculan las huellas a mano no se detecta (las huellas sin firma solo prueban que no se dañó, ya se dice en el banner).
 3. **Fecha.** La del día de la entrega (`ahora`), no la de la versión.
-4. **Si el rastro no se puede leer** (una carpeta sin la tabla de aprobaciones) la versión se marca como no aprobada:
-   ante la duda se rotula, nunca se omite la marca.
+4. **Si la carpeta no tiene la tabla de aprobaciones** la versión se marca como no aprobada: ante la duda se rotula,
+   nunca se omite la marca. **Corregido en el cierre de los menores:** solo la tabla ausente (`OperationalError` «no such
+   table») cuenta así; antes se atrapaba todo `SQLAlchemyError` y un «database is locked» habría quedado firmado en el
+   manifiesto como «sin aprobada previa». Ahora cualquier otro fallo de la base sube, `POST /v1/entregas` responde 503
+   con un texto fijo (sin SQL ni rutas) y no se genera paquete ni se registra el evento.
 5. **Aviso en Entregar.** El aviso que ya existía («Esta versión no está aprobada.») dice ahora que el paquete saldrá
    rotulado «Versión NO aprobada», con la fecha y la última aprobada si la hay. Sigue sin impedir la entrega.
 6. **Cadena rota: solo devolver (cierra el «Por decidir» de T18, ronda 3).** `dictaminar` salta la comprobación de la
@@ -641,6 +647,10 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    envío pendiente; ese envío se puede devolver ahora.
 8. **Pendiente (no pedido):** `Revisar` (quien recibe el paquete) todavía no muestra la marca en su banner; no se añadió
    a `avisos` para no cambiar el resultado de los paquetes de versiones sin aprobar que ya se verifican sin avisos.
+9. **Notas del árbitro, aceptadas (cierre de los menores):** (a) el commit 245a65bf corrigió un oráculo de
+   `tests/unit/test_api_aprobaciones.py` (línea 693) dentro de un `feat`, no en el rojo: queda dicho; (b) `PanelDictamen.tsx`
+   (líneas 84-88): para un envío ya dictaminado o retirado con la cadena rota, el panel no menciona la cadena; se acepta,
+   porque ese envío ya no admite dictamen y el motivo que ve la persona es el del propio estado.
 
 ## T26, líneas del APU de la versión
 
