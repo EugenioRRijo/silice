@@ -31,8 +31,10 @@ from aplicacion.mercado import (
     estadisticas,
     observaciones_leidas,
     usar_precio_de_cobro,
+    usar_precio_de_compra,
 )
 from aplicacion.tablas_mercado import ObservacionDeMercado
+from core import models
 from tests.fixtures.hoja_versiones_api import registrar_tasa_en
 from tests.fixtures.mercado_ficticio import (
     AHORA,
@@ -151,3 +153,28 @@ def test_se_puede_citar_una_observacion_convertida_y_no_una_sin_tasa(s: Session)
         "La observación elegida está en USD y no hay tasa del BCV del 21/10/2026 para "
         "convertirla a Bs."
     )
+
+
+def test_un_precio_de_compra_puede_citar_una_observacion_convertida(s: Session) -> None:
+    """Caso positivo de compra: la observación en USD con tasa de su día se puede citar, y la fuente
+    del precio la nombra; una sin tasa de su día se rechaza (cubierto arriba para el cobro)."""
+    convertida = observacion_cruda(s, "MAT-001", Decimal("13.00"), moneda="USD", fecha=DIA_20)
+
+    lista = usar_precio_de_compra(
+        s,
+        "MAT-001",
+        "474,50",  # 13,00 USD x 36,50 Bs/USD, a mano
+        observacion_id=convertida,
+        fecha=HOY,
+        responsable=RESPONSABLE,
+    )
+
+    fila = s.scalars(
+        select(models.PrecioInsumo)
+        .join(models.Insumo)
+        .where(models.PrecioInsumo.lista_id == lista.id, models.Insumo.codigo == "MAT-001")
+    ).one()
+    assert fila.precio == Decimal("474.50")
+    origen = s.get(models.PrecioOrigen, fila.id)
+    assert origen is not None
+    assert origen.fuente == f"Estudio de mercado: observación n.º {convertida}, por ana"

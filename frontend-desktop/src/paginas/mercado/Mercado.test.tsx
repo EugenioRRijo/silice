@@ -309,6 +309,15 @@ describe("Estudio de mercado", () => {
     const linea = within(tabla).getByText("3,00 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 109,50 Bs");
     expect(linea).toHaveAttribute("title", expect.stringContaining("Fuente de la tasa: BCV, publicación del 20/10/2026."));
     expect(within(tabla).queryByText(/No:/)).toBeNull();
+    // La columna «En las cifras» lo dice con todas sus letras, y solo la fila convertida.
+    expect(within(tabla).getAllByText(/Sí, convertida:/)).toHaveLength(1);
+    // El selector de «Observación que respalda el precio» no muestra el 3,00 USD pelado: trae la misma equivalencia.
+    const respaldo = screen.getByRole("combobox", { name: "Observación que respalda el precio" });
+    expect(
+      within(respaldo).getByRole("option", {
+        name: "n.º 3 · Proveedor en divisas ficticio · 20/10/2026 · 3,00 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 109,50 Bs",
+      }),
+    ).toBeInTheDocument();
   });
 
   test("cobro: su costo (piso), el precio con utilidad y la razón cuando la competencia cobra menos que su costo", async () => {
