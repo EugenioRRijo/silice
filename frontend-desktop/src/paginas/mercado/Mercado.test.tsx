@@ -62,6 +62,8 @@ function observacion(id: number, precio: string, fuente: string, fecha: string, 
     nota: "",
     responsable: "ana",
     cuenta: true,
+    equivalencia: null,
+    sin_tasa: null,
     ...extra,
   };
 }
@@ -78,7 +80,8 @@ const ESTUDIO_COMPRA = {
     promedio: "140.00",
     maximo: "200.00",
     ids: [1, 2, 3, 4, 5],
-    otras_monedas: 1,
+    convertidas: 0,
+    sin_tasa: 1,
     dias: 90,
   },
   propuesta: { precio: "130.00", razon: "Mediana de 5 observaciones; la más barata vista: 100,00 Bs." },
@@ -90,7 +93,11 @@ const ESTUDIO_COMPRA = {
     observacion(3, "130.00", "Depósito Ejemplo", "2026-10-15"),
     observacion(4, "150.00", "Ferretería Demo, C.A.", "2026-10-02", { nota: "Precio de contado" }),
     observacion(5, "200.00", "Distribuidora Inventada", "2026-09-30"),
-    observacion(6, "9.50", "Proveedor en divisas ficticio", "2026-10-01", { moneda: "USD", cuenta: false }),
+    observacion(6, "9.50", "Proveedor en divisas ficticio", "2026-10-01", {
+      moneda: "USD",
+      cuenta: false,
+      sin_tasa: "sin tasa del BCV del 01/10/2026",
+    }),
   ],
 };
 
@@ -106,7 +113,8 @@ const ESTUDIO_COBRO = {
     promedio: "2012.50",
     maximo: "2200.00",
     ids: [11, 12, 13, 14],
-    otras_monedas: 0,
+    convertidas: 0,
+    sin_tasa: 0,
     dias: 90,
   },
   propuesta: { precio: "2010.50", razon: "La competencia cobra menos que su costo: se propone su costo." },
@@ -233,7 +241,7 @@ describe("Estudio de mercado", () => {
     expect(within(franja).getByText("140,00")).not.toHaveAttribute("title");
     expect(franja.querySelector("[title]")).toBeNull();
     expect(within(franja).getAllByText("de 5 observaciones")).toHaveLength(5);
-    expect(within(franja).getByText("1 observación en otra moneda no entra en las cifras.")).toBeInTheDocument();
+    expect(within(franja).getByText("1 observación en otra moneda sin tasa del BCV de su día no entra en las cifras.")).toBeInTheDocument();
     // La propuesta de compra (la mediana) con su razon; el campo de precio, prellenado como se escribe.
     expect(screen.getByText("Mediana de 5 observaciones; la más barata vista: 100,00 Bs.")).toBeInTheDocument();
     expect(campoPrecio()).toHaveValue("130,00");
@@ -244,9 +252,63 @@ describe("Estudio de mercado", () => {
     expect(within(tabla).getByText("Cotización")).toBeInTheDocument();
     expect(within(tabla).getByText("Precio de contado")).toBeInTheDocument();
     expect(within(tabla).getByText("9,50 USD")).toBeInTheDocument();
-    expect(within(tabla).getByText("No: está en USD")).toBeInTheDocument();
+    expect(within(tabla).getByText("No: sin tasa del BCV del 01/10/2026")).toBeInTheDocument();
     expect(tabla).not.toHaveTextContent("2026-10-20");
     expect(within(tabla).getByText("150,00 Bs")).not.toHaveAttribute("title");
+  });
+
+  // Tarea D3: una observacion en otra moneda se cita convertida con la tasa del BCV de su dia, con la misma linea de
+  // equivalencia del corte. Oraculo a mano: 3,00 USD x 36,50 Bs/USD = 109,50 Bs; con 20,00 y 22,50 Bs queda
+  // [20,00; 22,50; 109,50]: minimo 20,00, mediana 22,50, maximo 109,50. La pantalla no calcula: todo viene de la API.
+  test("compra: una observación en USD se muestra convertida con la tasa de su día y entra en las cifras", async () => {
+    const u = userEvent.setup();
+    responder("GET", /^\/v1\/mercado\/compra\/CEM-GRIS\?/, () =>
+      json({
+        ...ESTUDIO_COMPRA,
+        estadisticas: {
+          n: 3,
+          minimo: "20.00",
+          q1: "21.25",
+          mediana: "22.50",
+          promedio: "50.67",
+          maximo: "109.50",
+          ids: [1, 2, 3],
+          convertidas: 1,
+          sin_tasa: 0,
+          dias: 90,
+        },
+        propuesta: { precio: "22.50", razon: "Mediana de 3 observaciones; la más barata vista: 20,00 Bs." },
+        observaciones: [
+          observacion(1, "20.00", "Ferretería Demo, C.A.", "2026-10-20"),
+          observacion(2, "22.50", "Depósito Ejemplo", "2026-10-15"),
+          observacion(3, "3.00", "Proveedor en divisas ficticio", "2026-10-20", {
+            moneda: "USD",
+            equivalencia: {
+              precio_original: "3.00",
+              moneda_original: "USD",
+              tasa: "36.50",
+              fecha_tasa: "2026-10-20",
+              fuente_tasa: "importacion:2",
+              fuente_legible: "BCV, publicación del 20/10/2026",
+              convertido: "109.5000",
+              moneda: "Bs",
+              operacion: "×",
+            },
+          }),
+        ],
+      }),
+    );
+    montar();
+    await elegirInsumo(u);
+    expect(
+      within(cifras()).getByText("1 de las observaciones estaba en otra moneda y se convirtió con la tasa del BCV de su día."),
+    ).toBeInTheDocument();
+    const tabla = screen.getByRole("table", { name: "Observaciones de los últimos 90 días" });
+    // El precio anotado sigue siendo el original; la equivalencia es la misma linea del corte, con la fuente legible.
+    expect(within(tabla).getByText("3,00 USD")).toBeInTheDocument();
+    const linea = within(tabla).getByText("3,00 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 109,50 Bs");
+    expect(linea).toHaveAttribute("title", expect.stringContaining("Fuente de la tasa: BCV, publicación del 20/10/2026."));
+    expect(within(tabla).queryByText(/No:/)).toBeNull();
   });
 
   test("cobro: su costo (piso), el precio con utilidad y la razón cuando la competencia cobra menos que su costo", async () => {
@@ -446,7 +508,7 @@ describe("Estudio de mercado", () => {
     responder("GET", /^\/v1\/mercado\/compra\/CEM-GRIS\?/, () =>
       json({
         ...ESTUDIO_COMPRA,
-        estadisticas: { n: 0, minimo: null, q1: null, mediana: null, promedio: null, maximo: null, ids: [], otras_monedas: 0, dias: 90 },
+        estadisticas: { n: 0, minimo: null, q1: null, mediana: null, promedio: null, maximo: null, ids: [], convertidas: 0, sin_tasa: 0, dias: 90 },
         propuesta: { precio: null, razon: "Sin observaciones en los últimos 90 días." },
         observaciones: [],
       }),
