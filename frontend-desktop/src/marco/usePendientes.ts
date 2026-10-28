@@ -31,8 +31,11 @@ export function useCargaDePendientes(acciones: readonly string[], alExpirar: () 
   const [intento, setIntento] = useState(0);
   const [estado, setEstado] = useState<EstadoPendientes>(CARGANDO);
   const [entrada, setEntrada] = useState(key);
-  // La lectura en curso empezó estando en Pendientes (entonces no hace falta repetirla al entrar).
-  const [leyendoEnPendientes, setLeyendoEnPendientes] = useState(pathname === RUTA_DE_PENDIENTES);
+  // La lectura en curso empezó estando en Pendientes (entonces no hace falta repetirla al entrar). Una que empieza en
+  // «/» cuenta como tal: esa ruta redirige a Pendientes y repetirla pediría dos veces una lectura cara.
+  const [leyendoEnPendientes, setLeyendoEnPendientes] = useState(pathname === RUTA_DE_PENDIENTES || pathname === "/");
+  // Al salir a otra ruta esa lectura ya no cuenta: al volver se pide de nuevo (lo resuelto fuera no se queda).
+  if (leyendoEnPendientes && pathname !== RUTA_DE_PENDIENTES && pathname !== "/") setLeyendoEnPendientes(false);
   // Se ajusta durante el dibujo (sin efecto), como el aviso del marco.
   if (pathname === RUTA_DE_PENDIENTES && key !== entrada) {
     setEntrada(key);
