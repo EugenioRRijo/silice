@@ -293,7 +293,8 @@ def dictaminar(
     """Registra el dictamen sobre el envío `envio_id` y devuelve el id del evento. Notas
     obligatorias para devolver y para aprobar con observaciones. Confirma; `AprobacionInvalida`
     si el envío no existe, ya está cerrado o el dictamen no es válido; `ValueError` si `ahora`
-    trae zona horaria."""
+    trae zona horaria. Con la cadena de versiones rota solo se acepta «devuelta» (devolver no
+    certifica nada); aprobar, también con observaciones, se rechaza hasta repararla."""
     _exigir_hora_sin_zona(ahora)
 
     def operacion() -> int:
@@ -314,7 +315,9 @@ def dictaminar(
         if obra is None:  # la obra se borró después del envío: no hay a qué atar el dictamen
             raise NoSeEncontro(SIN_ENVIO)
         presupuesto = _version(sesion, obra, envio.version)
-        _exigir_cadena_integra(sesion, obra, envio.version, "dictaminar")
+        if resultado != "devuelta":
+            # Devolver no certifica nada: con la cadena rota solo se puede devolver (T20).
+            _exigir_cadena_integra(sesion, obra, envio.version, "dictaminar")
         fila = _insertar(
             sesion,
             anterior=_cabeza(sesion, obra.id),

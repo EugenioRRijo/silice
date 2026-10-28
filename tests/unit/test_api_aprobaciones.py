@@ -690,7 +690,7 @@ def test_con_la_cadena_rota_se_puede_devolver_con_notas(ana) -> None:
     assert devuelta.status_code == 201, devuelta.text
     eventos = ana[0].get(RAIZ, params={"proyecto": OBRA}).json()["eventos"]
     assert [(e["tipo"], e["resultado"]) for e in eventos] == [
-        ("envio", ""),
+        ("envio", None),
         ("dictamen", "devuelta"),
     ]
     assert ana[0].get(f"{RAIZ}/1").json()["estado"] == "devuelta"
