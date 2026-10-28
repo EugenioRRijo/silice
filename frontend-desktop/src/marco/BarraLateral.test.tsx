@@ -8,6 +8,8 @@ import { ContextoAplicacion } from "../shell/contexto";
 import { sesionDe } from "../shell/obras/datosDePrueba";
 import { BarraLateral } from "./BarraLateral";
 import type { SeccionId } from "./secciones";
+import { ContextoPendientes } from "./usePendientes";
+import type { PendientesDelMarco } from "./usePendientes";
 
 vi.mock("../api/cliente", async (importarOriginal) => ({
   ...(await importarOriginal<typeof import("../api/cliente")>()),
@@ -64,19 +66,31 @@ interface Opciones {
   abierta?: { carpeta: string | null; obraId: number } | null;
   seccion?: SeccionId | null;
   ruta?: string;
+  // Lo que el marco ya cargó de los pendientes; por omisión, ninguno.
+  pendientes?: PendientesDelMarco;
 }
+
+const SIN_PENDIENTES: PendientesDelMarco = { estado: "listo", pendientes: [], carpetasOmitidas: 0, recargar: vi.fn() };
 
 function Ubicacion() {
   return <output data-testid="ubicacion">{useLocation().pathname}</output>;
 }
 
-function pintar({ sesion = sesionDe("ana"), abierta = null, seccion = null, ruta = "/pendientes" }: Opciones = {}) {
+function pintar({
+  sesion = sesionDe("ana"),
+  abierta = null,
+  seccion = null,
+  ruta = "/pendientes",
+  pendientes = SIN_PENDIENTES,
+}: Opciones = {}) {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
       <ContextoAplicacion.Provider
         value={{ sesion, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}
       >
-        <BarraLateral obraAbierta={abierta} seccion={seccion} />
+        <ContextoPendientes.Provider value={pendientes}>
+          <BarraLateral obraAbierta={abierta} seccion={seccion} />
+        </ContextoPendientes.Provider>
         <Ubicacion />
       </ContextoAplicacion.Provider>
     </MemoryRouter>,
@@ -85,13 +99,19 @@ function pintar({ sesion = sesionDe("ana"), abierta = null, seccion = null, ruta
 
 const arbol = () => screen.findByRole("tree", { name: "Obras" });
 
-describe("BarraLateral: agrupación por carpeta", () => {
-  it("con obras de dos carpetas hay un grupo por carpeta con su nombre", async () => {
+describe("BarraLateral: árbol sin carpetas (D-F3-3)", () => {
+  it("con obras de dos carpetas no hay grupos por carpeta: las obras salen por nombre, seguidas", async () => {
     pintar();
-    const norte = await screen.findByRole("group", { name: "Carpeta Norte" });
-    const sur = screen.getByRole("group", { name: "Carpeta Sur" });
-    expect(within(norte).getAllByRole("treeitem").map((e) => e.textContent)).toEqual(["Clínica Las Mercedes", "Torre B"]);
-    expect(within(sur).getAllByRole("treeitem").map((e) => e.textContent)).toEqual(["Galpón Sur"]);
+    const lista = await arbol();
+    expect(within(lista).getAllByRole("treeitem").map((e) => e.textContent)).toEqual([
+      "Clínica Las Mercedes",
+      "Torre B",
+      "Galpón Sur",
+    ]);
+    expect(screen.queryByRole("group", { name: "Carpeta Norte" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Carpeta Sur" })).toBeNull();
+    expect(document.body.textContent).not.toContain("Carpeta Norte");
+    expect(document.body.textContent).not.toContain("Carpeta Sur");
   });
 
   it("con una sola carpeta no hay grupos ni se nombra la carpeta", async () => {
@@ -414,19 +434,19 @@ describe("BarraLateral: dónde se crea la obra", () => {
 describe("BarraLateral: niveles del árbol", () => {
   const nivel = (e: HTMLElement) => [e.getAttribute("aria-level"), e.getAttribute("aria-setsize"), e.getAttribute("aria-posinset")];
 
-  it("con carpetas, las obras son de nivel 2 y sus secciones de nivel 3, con su tamaño y su posición", async () => {
+  it("con obras de dos carpetas, todas son de nivel 1 y sus secciones de nivel 2, con su tamaño y su posición", async () => {
     pintar({ abierta: { carpeta: NORTE, obraId: 1 }, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
     const lista = await arbol();
-    expect(nivel(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" }))).toEqual(["2", "2", "1"]);
-    expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["2", "2", "2"]);
-    expect(nivel(within(lista).getByRole("treeitem", { name: "Galpón Sur" }))).toEqual(["2", "1", "1"]);
+    expect(nivel(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" }))).toEqual(["1", "3", "1"]);
+    expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "3", "2"]);
+    expect(nivel(within(lista).getByRole("treeitem", { name: "Galpón Sur" }))).toEqual(["1", "3", "3"]);
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
     expect(secciones.map(nivel)).toEqual([
-      ["3", "5", "1"],
-      ["3", "5", "2"],
-      ["3", "5", "3"],
-      ["3", "5", "4"],
-      ["3", "5", "5"],
+      ["2", "5", "1"],
+      ["2", "5", "2"],
+      ["2", "5", "3"],
+      ["2", "5", "4"],
+      ["2", "5", "5"],
     ]);
   });
 
