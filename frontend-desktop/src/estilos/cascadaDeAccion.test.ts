@@ -61,8 +61,18 @@ describe("el color de acción llega a los descendientes del tema g10", () => {
     expect(css).toMatch(/\.cds--btn--primary\s*\{[^}]*border-width:\s*1px;\s*border-style:\s*solid/);
   });
 
-  // WCAG 1.4.1: en el color del marco (#393939 en el tema neutro) el enlace dista 1,57:1 del texto (#161616) y solo se
-  // distinguiría por el color; Carbon trae `.cds--link { text-decoration: none }`, así que se subraya.
+  test("la regla propia del borde va DESPUÉS de la de Carbon (misma especificidad: gana la última)", () => {
+    const reglas = [...css.matchAll(/\.cds--btn--primary\s*\{([^}]*)\}/g)];
+    const deCarbon = reglas.find((m) => /border-color:\s*transparent/.test(m[1]!));
+    const propia = reglas.find((m) => /border-color:\s*var\(--silice-boton-borde\)/.test(m[1]!));
+    expect(deCarbon).toBeDefined();
+    expect(propia).toBeDefined();
+    expect(propia!.index).toBeGreaterThan(deCarbon!.index);
+  });
+
+  // WCAG 1.4.1: el enlace va en el complementario, que sin uno propio es el marco (#393939 en el tema neutro: dista
+  // 1,57:1 del texto #161616); con otro color la distancia cambia, pero solo se distinguiría por el color;
+  // Carbon trae `.cds--link { text-decoration: none }`, así que se subraya.
   test("los enlaces de Carbon van subrayados en reposo", () => {
     expect(getComputedStyle(document.getElementById("enlace")!).getPropertyValue("text-decoration")).toContain("underline");
     expect(getComputedStyle(document.getElementById("enlace-fuera")!).getPropertyValue("text-decoration")).toContain("underline");
