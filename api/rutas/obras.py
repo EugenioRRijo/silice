@@ -10,13 +10,17 @@ Rutas finas sobre `aplicacion.mesa` (diseño de módulos §6 y §12.6):
   siguiente paso.
 - `GET /v1/obras/pendientes` (`EDITAR_HOJA`: arma) → `{grupos: [{clave, titulo, items}]}`; solo los
   grupos con alguna fuente registrada, aunque estén vacíos (el front quita los vacíos).
+- `GET /v1/obras/pendientes/todas` (`LEER_PROYECTO`) → `{pendientes, carpetas_omitidas}`: lo mismo
+  que `/pendientes` en cada carpeta que `GET /v1/obras/todas` lista, en una sola lista con su
+  urgencia (aprobar y compras bloquean; precios y calidad avisan). `EDITAR_HOJA` ve todo; quien
+  solo puede dictaminar, lo que espera su dictamen; sin ninguno de los dos, la lista va vacía.
 
 Montos, índices y porcentajes viajan como **texto** con punto decimal (nunca como número JSON);
 la interfaz los formatea en es-VE sin recalcular. `hoy` es el día del reloj del servidor. Una obra
 en la otra moneda se suma con la tasa del BCV de su corte (`tasa_aplicable`, a lo sumo 7 días);
 sin tasa va a `fuera_de_suma`. Toda respuesta lleva `Cache-Control: no-store`; un fallo de la
 base es un 503 con un mensaje fijo (el texto del error lleva el SQL); el 422 no repite lo enviado.
-Las dos rutas solo leen.
+Las rutas solo leen.
 """
 
 from __future__ import annotations
@@ -25,7 +29,7 @@ from collections.abc import Callable
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -49,6 +53,7 @@ from aplicacion.mesa import (
     obras_de_la_mesa,
     pendientes,
 )
+from aplicacion.pendientes_todas import Alcance, pendientes_de_las_carpetas
 from aplicacion.proyectos import obras_de_las_carpetas
 from core.catalog import Catalogo
 from core.catalog.indices import TasaNoDisponible, tasa_aplicable
@@ -326,4 +331,68 @@ def obras_de_todas_las_carpetas(
             )
             for o in obras_de_las_carpetas(carpetas)
         ],
+    )
+
+
+class PendienteDeObraRespuesta(BaseModel):
+    carpeta: str | None = Field(
+        description="El nombre que acepta `POST /v1/casos/actual`; `null`: la carpeta de la empresa"
+    )
+    obra_id: int
+    obra: str = Field(description="El nombre de la obra")
+    grupo: str = Field(description="`aprobar`, `compras`, `precios` o `calidad`")
+    urgencia: Literal["bloquea", "aviso"] = Field(
+        description="`bloquea`: aprobar y compras; `aviso`: precios y calidad"
+    )
+    texto: str
+    accion: SiguienteRespuesta
+
+
+class PendientesTodasRespuesta(BaseModel):
+    pendientes: list[PendienteDeObraRespuesta] = Field(
+        description="Lo que bloquea primero; luego la carpeta de la empresa, las demás por nombre "
+        "y el grupo en el orden de la mesa"
+    )
+    carpetas_omitidas: int = Field(
+        description="Las carpetas que no se pudieron leer: sus pendientes no aparecen"
+    )
+
+
+def _alcance_de(activa: SesionActiva | None) -> Alcance | None:
+    """`todo` para quien edita la Hoja (y para la clave de API); `por_aprobar` para quien solo
+    puede dictaminar; `None` si no puede ninguna de las dos (no ve pendientes)."""
+    if activa is None or permitido(activa.roles, Accion.EDITAR_HOJA):
+        return "todo"
+    if permitido(activa.roles, Accion.APROBAR_VERSION):
+        return "por_aprobar"
+    return None
+
+
+@router.get("/pendientes/todas", response_model=PendientesTodasRespuesta)
+def pendientes_de_todas_las_carpetas(
+    request: Request,
+    activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.LEER_PROYECTO))],
+) -> PendientesTodasRespuesta:
+    """Los pendientes de las carpetas que la cuenta puede listar (las de `GET /v1/obras/todas`),
+    cada una abierta en solo lectura. Quien edita ve todo; quien solo revisa, lo que espera su
+    dictamen. Una carpeta ilegible se omite y se cuenta."""
+    alcance = _alcance_de(activa)
+    if alcance is None:
+        return PendientesTodasRespuesta(pendientes=[], carpetas_omitidas=0)
+    _, carpetas = _carpetas_visibles(request, activa)
+    resultado = pendientes_de_las_carpetas(carpetas, ahora().date(), alcance=alcance)
+    return PendientesTodasRespuesta(
+        pendientes=[
+            PendienteDeObraRespuesta(
+                carpeta=i.carpeta,
+                obra_id=i.obra_id,
+                obra=i.obra,
+                grupo=i.grupo,
+                urgencia=i.urgencia,
+                texto=i.texto,
+                accion=SiguienteRespuesta(texto=i.accion.texto, pagina=i.accion.pagina),
+            )
+            for i in resultado.items
+        ],
+        carpetas_omitidas=resultado.carpetas_omitidas,
     )
