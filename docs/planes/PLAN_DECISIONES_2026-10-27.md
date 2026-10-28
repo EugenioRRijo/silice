@@ -45,6 +45,23 @@ conversión), `aplicacion/mercado.py`, `aplicacion/procura.py` o donde viva la c
 - Pruebas en rojo con oráculo a mano: USD→Bs y Bs→USD con una tasa sembrada; sin tasa → 409 y nada guardado; el rastro
   trae original, tasa, fecha y fuente; el unitario del corte usa el convertido; una versión sellada no cambia.
 
+## Tarea D2b: tasa del día exacto y fuente legible (decisión de Eugenio, 2026-10-27, tras D2)
+
+Eugenio: «exigen la tasa del día» y «está bien como BCV publicación». D2 (aprobada, `c5220b3d..ba5dc395`) usa la regla
+general del sistema (S1-R2: la tasa más reciente de hasta 7 días antes) y muestra la fuente como `importacion:N`.
+
+- Para las conversiones de este plan (precio del corte en Estudio de mercado y Procura; y D3) la tasa debe ser **la del
+  mismo día** del precio: se sigue obteniendo con `tasa_aplicable` (sin tocar `core/`) y, si su fecha no es la del
+  precio, se rechaza con 409 y nada se guarda: «No hay tasa del BCV del dd/mm/aaaa (hace falta la del mismo día) para
+  convertir este precio a <moneda>. Cárguela en Índices y vuelva a intentarlo.». Las conversiones de versiones y listas
+  no cambian (siguen con S1-R2).
+- La fuente se muestra como **«BCV, publicación del dd/mm/aaaa»** (la fecha de la tasa) en la línea de equivalencia y en
+  su `title`; la API la da ya escrita (`fuente_legible`) y conserva `fuente_tasa` (`importacion:N`) para el rastro.
+- Consecuencia aceptada: fines de semana y feriados sin publicación del BCV no tienen tasa del día; el precio de esa
+  fecha no se convierte hasta cargarla.
+- Pruebas en rojo: tasa del día anterior → 409 y nada guardado (las dos casillas); tasa del mismo día → convierte; la
+  línea y el `title` dicen «BCV, publicación del …»; versiones y listas siguen aceptando la de días antes.
+
 ## Tarea D3: observaciones del estudio de mercado en otra moneda se citan convertidas
 
 **Archivos:** `aplicacion/mercado.py`, `api/rutas/mercado.py`, el front del estudio de mercado, sus pruebas, api.json,
