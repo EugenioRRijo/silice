@@ -124,9 +124,13 @@ function FormularioSucio() {
   return null;
 }
 
-function montar({ sesion = sesionDe("ana"), sucio = false }: { sesion?: SesionRespuesta; sucio?: boolean } = {}) {
+function montar({
+  sesion = sesionDe("ana"),
+  sucio = false,
+  inicial = "/pendientes",
+}: { sesion?: SesionRespuesta; sucio?: boolean; inicial?: string } = {}) {
   return render(
-    <MemoryRouter initialEntries={["/pendientes"]}>
+    <MemoryRouter initialEntries={[inicial]}>
       <Marco sesion={sesion} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras()} />
       <Ubicacion />
       {sucio && <FormularioSucio />}
@@ -417,6 +421,30 @@ describe("Pendientes: foco 4, volver después de resolver algo", () => {
     await u.click(within(lateral).getByRole("link", { name: /^Pendientes/ }));
     expect(await screen.findByText("1 bloquea · 2 avisos")).toBeInTheDocument();
     expect(pedidas()).toBe(2);
+    expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
+  });
+});
+
+describe("Pendientes: la lectura de la carga inicial no deja datos viejos", () => {
+  test("si la carga empezó en otra ruta y se entra en Pendientes antes de que llegue, se pide de nuevo y manda la nueva", async () => {
+    const u = userEvent.setup();
+    let soltarLaPrimera: (r: Response) => void = () => undefined;
+    let veces = 0;
+    bandeja = () => {
+      veces += 1;
+      if (veces === 1) return new Promise<Response>((resolver) => (soltarLaPrimera = resolver));
+      return json({ pendientes: [PRECIOS], carpetas_omitidas: 0 });
+    };
+    montar({ inicial: "/obras" });
+    await waitFor(() => expect(pedidas()).toBe(1));
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    await u.click(within(lateral).getByRole("link", { name: /^Pendientes/ }));
+    // La lectura de antes de entrar se descarta: entrar en Pendientes pide siempre una nueva.
+    await waitFor(() => expect(pedidas()).toBe(2));
+    // La vieja llega tarde, con datos que ya no valen.
+    soltarLaPrimera(await json({ pendientes: [CEMENTO], carpetas_omitidas: 0 }));
+    expect(await opciones()).toHaveLength(1);
+    expect(screen.getByText("3 precios con más de 90 días")).toBeInTheDocument();
     expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
   });
 });
