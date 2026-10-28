@@ -17,11 +17,12 @@ function reglaDe(fuente: string, selector: string): string {
   return fuente.slice(i, fuente.indexOf("}", abre));
 }
 
-// Van en tokens.scss, dentro del mismo `:root` que el tema de Carbon y después de él: en el CSS compilado marco.scss sale
-// ANTES que el tema, y a igual especificidad la última declaración gana (medido en dist/ con npm run build). Ese bloque
-// lleva interpolaciones `#{...}`, así que se lee desde `:root {` hasta el final del archivo.
+// Van en tokens.scss, en un bloque propio `:root, .cds--g10` DESPUÉS del tema de Carbon: la app va envuelta en un div
+// .cds--g10 (App.tsx) que Carbon llena con el azul, y a igual especificidad gana la última declaración. No pueden ir en
+// el `:root` del tema: allí también se declaran los --silice-*, que la empresa fija en la raíz y no deben repetirse en
+// el div. Se lee desde ese bloque hasta el final del archivo.
 const tokens = leer("estilos/tokens.scss");
-const raiz = tokens.slice(tokens.indexOf(":root"));
+const raiz = tokens.slice(tokens.indexOf(":root, .cds--g10"));
 const nuevas = raiz.split("\n").filter((l) => /--cds-(button-primary|link-primary|border-interactive|text-on-color)/.test(l));
 
 describe("color de acción de la empresa en toda la aplicación", () => {
