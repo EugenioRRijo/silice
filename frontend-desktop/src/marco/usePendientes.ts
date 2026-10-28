@@ -20,8 +20,10 @@ const NINGUNO: EstadoPendientes = { estado: "listo", pendientes: [], carpetasOmi
 // reparte por `ContextoPendientes` a la bandeja y a la barra lateral, que no vuelven a pedirlos.
 // - Sin `leer_proyecto` (el administrador) la API contestaría 403: no se piden y no hay ninguno (sin error). Un 403 que
 //   llegue igual se lee del mismo modo.
-// - Cada vez que se entra en `#/pendientes` se vuelven a pedir (foco 4: lo resuelto en la obra no se queda), salvo que
-//   ya haya una lectura en curso (la de la carga inicial, cuando `#/` redirige a Pendientes): no se pide dos veces.
+// - Cada vez que se entra en `#/pendientes` se vuelven a pedir (foco 4: lo resuelto en la obra no se queda). Una lectura
+//   que empezó antes de entrar (en otra ruta, o antes de la redirección de `#/`) se descarta y se vuelve a pedir, para
+//   que nunca queden datos de antes de entrar; solo no se repite la que ya empezó estando en Pendientes (la navegación
+//   puede cambiar la `key` dos veces seguidas).
 // - Un 401 da la sesión por vencida.
 export function useCargaDePendientes(acciones: readonly string[], alExpirar: () => void): PendientesDelMarco {
   const puedeLeer = acciones.includes("leer_proyecto");
@@ -29,12 +31,15 @@ export function useCargaDePendientes(acciones: readonly string[], alExpirar: () 
   const [intento, setIntento] = useState(0);
   const [estado, setEstado] = useState<EstadoPendientes>(CARGANDO);
   const [entrada, setEntrada] = useState(key);
+  // La lectura en curso empezó estando en Pendientes (entonces no hace falta repetirla al entrar).
+  const [leyendoEnPendientes, setLeyendoEnPendientes] = useState(pathname === RUTA_DE_PENDIENTES);
   // Se ajusta durante el dibujo (sin efecto), como el aviso del marco.
   if (pathname === RUTA_DE_PENDIENTES && key !== entrada) {
     setEntrada(key);
-    if (estado.estado !== "cargando") {
+    if (estado.estado !== "cargando" || !leyendoEnPendientes) {
       setEstado(CARGANDO);
       setIntento((n) => n + 1);
+      setLeyendoEnPendientes(true);
     }
   }
 
