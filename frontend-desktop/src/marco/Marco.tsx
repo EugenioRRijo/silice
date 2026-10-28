@@ -10,6 +10,7 @@ import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { EstadoVacio } from "../comun/EstadoVacio";
 import { useTituloDelDocumento } from "../comun/tituloDelDocumento";
 import { olvidarImportaciones } from "../paginas/hoja/useImportacion";
+import { Bandeja } from "../paginas/pendientes/Bandeja";
 import { hojasConCambios } from "../shell/carpetas/hojasConCambios";
 import { useCarpetaDeTrabajo } from "../shell/carpetas/useCarpetaDeTrabajo";
 import { BotonRecorrido, ColumnaRecorrido } from "../shell/ColumnaRecorrido";
@@ -45,6 +46,7 @@ import {
   seccionPorId,
 } from "./secciones";
 import { useObras } from "./useObras";
+import { ContextoPendientes, useCargaDePendientes } from "./usePendientes";
 
 export const MENSAJE_SIN_PERMISO = "Su cuenta no tiene permiso para esta pantalla o acción.";
 const CARPETA_CAMBIADA = "Carpeta cambiada";
@@ -124,6 +126,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     alExpirarDeApp();
   }, [olvidarLaSesion, alExpirarDeApp]);
   useEffect(() => () => olvidarLaSesion(), [olvidarLaSesion]);
+  // Los pendientes de todas las obras: los leen la bandeja y la barra lateral sin volver a pedirlos.
+  const pendientes = useCargaDePendientes(acciones, alExpirar);
 
   const fallo = useCallback(
     (razon: unknown) => {
@@ -309,79 +313,81 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
 
   return (
     <ContextoAplicacion.Provider value={aplicacion}>
-      <div className={`silice-marco${conRecorrido ? " silice-con-recorrido" : ""}`} onClickCapture={alClicAntes}>
-        {/* Con hash por enrutador un enlace #contenido cambiaría la ruta: se manda el foco a mano. */}
-        <button type="button" className="silice-saltar cds--type-body-compact-01" onClick={() => contenido.current?.focus()}>
-          Saltar al contenido
-        </button>
-        <BarraSuperior
-          migas={migas}
-          alAbrirBuscador={() => setBuscadorAbierto(true)}
-          nombre={sesion.nombre}
-          alSalir={alSalir}
-          extra={
-            <>
-              <MarcaDemostracion activa={casos?.es_demostracion === true} puedeVolver={acciones.includes("cambiar_caso")} alVolver={volver} />
-              <BotonRecorrido />
-            </>
-          }
-        />
-        <div className="silice-marco__cuerpo">
-          <BarraLateral obraAbierta={obraDeLaRuta(ubicacion.pathname)} seccion={seccionDeLaRuta(ubicacion.pathname)} />
-          <main id="contenido" ref={contenido} className="silice-contenido" tabIndex={-1}>
-            {(error !== null || aviso) && (
-              <div className="silice-avisos">
-                <AvisoError error={error} titulo="No se pudo completar la acción" alCerrar={() => setError(null)} />
-                {aviso && (
-                  <InlineNotification
-                    kind="info"
-                    title={aviso.titulo}
-                    subtitle={aviso.texto}
-                    lowContrast
-                    onClose={() => {
-                      setAviso(null);
-                      return false;
-                    }}
-                  />
-                )}
-              </div>
-            )}
-            <LimiteDeError key={`${ubicacion.pathname}|${generacion}`}>
-              <Suspense fallback={<EsqueletoPagina />}>
-                <Routes>
-                  <Route index element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />
-                  <Route path={RUTA_DE_PENDIENTES} element={pantalla(paginaPorId("obras", paginas))} />
-                  <Route
-                    path={PATRON_DE_OBRA}
-                    element={
-                      <EspacioDeObra
-                        obras={obras.obras}
-                        casos={casos}
-                        alEntrar={alEntrarEnObra}
-                        pantalla={(id) => pantalla(paginaPorId(id, paginas))}
-                        vigilante={vigilante}
-                      />
-                    }
-                  />
-                  <Route path={PATRON_DE_EMPRESA} element={<EntradaDeEmpresa paginas={paginas} pantalla={pantalla} />} />
-                  {paginas.map((p) => (
-                    <Route
-                      key={p.id}
-                      path={rutaDe(p)}
-                      element={<RutaVieja pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
+      <ContextoPendientes.Provider value={pendientes}>
+        <div className={`silice-marco${conRecorrido ? " silice-con-recorrido" : ""}`} onClickCapture={alClicAntes}>
+          {/* Con hash por enrutador un enlace #contenido cambiaría la ruta: se manda el foco a mano. */}
+          <button type="button" className="silice-saltar cds--type-body-compact-01" onClick={() => contenido.current?.focus()}>
+            Saltar al contenido
+          </button>
+          <BarraSuperior
+            migas={migas}
+            alAbrirBuscador={() => setBuscadorAbierto(true)}
+            nombre={sesion.nombre}
+            alSalir={alSalir}
+            extra={
+              <>
+                <MarcaDemostracion activa={casos?.es_demostracion === true} puedeVolver={acciones.includes("cambiar_caso")} alVolver={volver} />
+                <BotonRecorrido />
+              </>
+            }
+          />
+          <div className="silice-marco__cuerpo">
+            <BarraLateral obraAbierta={obraDeLaRuta(ubicacion.pathname)} seccion={seccionDeLaRuta(ubicacion.pathname)} />
+            <main id="contenido" ref={contenido} className="silice-contenido" tabIndex={-1}>
+              {(error !== null || aviso) && (
+                <div className="silice-avisos">
+                  <AvisoError error={error} titulo="No se pudo completar la acción" alCerrar={() => setError(null)} />
+                  {aviso && (
+                    <InlineNotification
+                      kind="info"
+                      title={aviso.titulo}
+                      subtitle={aviso.texto}
+                      lowContrast
+                      onClose={() => {
+                        setAviso(null);
+                        return false;
+                      }}
                     />
-                  ))}
-                  <Route path="*" element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />
-                </Routes>
-              </Suspense>
-            </LimiteDeError>
-          </main>
+                  )}
+                </div>
+              )}
+              <LimiteDeError key={`${ubicacion.pathname}|${generacion}`}>
+                <Suspense fallback={<EsqueletoPagina />}>
+                  <Routes>
+                    <Route index element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />
+                    <Route path={RUTA_DE_PENDIENTES} element={<Bandeja alAbrir={(ruta) => void irSeguro(ruta)} />} />
+                    <Route
+                      path={PATRON_DE_OBRA}
+                      element={
+                        <EspacioDeObra
+                          obras={obras.obras}
+                          casos={casos}
+                          alEntrar={alEntrarEnObra}
+                          pantalla={(id) => pantalla(paginaPorId(id, paginas))}
+                          vigilante={vigilante}
+                        />
+                      }
+                    />
+                    <Route path={PATRON_DE_EMPRESA} element={<EntradaDeEmpresa paginas={paginas} pantalla={pantalla} />} />
+                    {paginas.map((p) => (
+                      <Route
+                        key={p.id}
+                        path={rutaDe(p)}
+                        element={<RutaVieja pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
+                      />
+                    ))}
+                    <Route path="*" element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />
+                  </Routes>
+                </Suspense>
+              </LimiteDeError>
+            </main>
+          </div>
+          <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
+          <Buscador abierto={buscadorAbierto} alCerrar={() => setBuscadorAbierto(false)} alElegir={(ruta) => void irSeguro(ruta)} />
+          {/* Después de los diálogos: «Cambios sin guardar» puede abrirse encima de «Nueva obra». */}
+          <DialogoSalida paginas={paginas} />
         </div>
-        <ColumnaRecorrido paginas={paginas} acciones={acciones} modoEntrega={modoEntrega} />
-        <Buscador abierto={buscadorAbierto} alCerrar={() => setBuscadorAbierto(false)} alElegir={(ruta) => void irSeguro(ruta)} />
-        {/* Después de los diálogos: «Cambios sin guardar» puede abrirse encima de «Nueva obra». */}
-        <DialogoSalida paginas={paginas} />
-      </div>
+      </ContextoPendientes.Provider>
     </ContextoAplicacion.Provider>
   );
 }

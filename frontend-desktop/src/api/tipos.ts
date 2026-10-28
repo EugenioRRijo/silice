@@ -67,6 +67,24 @@ export interface ObrasTodasRespuesta {
   obras: ObraDeCarpetaRespuesta[];
 }
 
+// `GET /v1/obras/pendientes/todas` (rediseño F3, Tarea 1): lo que requiere atención en las obras de las carpetas de
+// `GET /v1/obras/todas`, ya ordenado (lo que bloquea primero). `carpeta` como en `ObraDeCarpetaRespuesta`; `accion.pagina`
+// es el id de la pantalla en `shell/rutas.ts`. `carpetas_omitidas`: las que no se pudieron leer.
+export interface PendienteDeObra {
+  carpeta: string | null;
+  obra_id: number;
+  obra: string;
+  grupo: string;
+  urgencia: "bloquea" | "aviso";
+  texto: string;
+  accion: { texto: string; pagina: string };
+}
+
+export interface PendientesTodasRespuesta {
+  pendientes: PendienteDeObra[];
+  carpetas_omitidas: number;
+}
+
 // `GET /v1/carpeta` y `PUT /v1/carpeta/moneda` (MP T2): la moneda de trabajo de la carpeta abierta.
 export interface CarpetaRespuesta {
   moneda: string | null;
