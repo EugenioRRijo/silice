@@ -93,6 +93,8 @@ def pendientes_de_las_carpetas(
             _registro.warning(
                 "Se omiten los pendientes de la carpeta «%s»: %s.", ruta.name, type(error).__name__
             )
+            # La traza completa, solo en el registro local y a nivel debug: nunca en el cuerpo.
+            _registro.debug("Traza de la carpeta «%s» omitida.", ruta.name, exc_info=True)
             continue
         finally:
             motor.dispose()
