@@ -31,6 +31,8 @@ from seguridad.json_estricto import JsonRechazado, leer_json
 
 __all__ = [
     "ANEXOS_ADMITIDOS",
+    "CAMPO_MARCA_EN_INFORME",
+    "CAMPO_NO_APROBADA",
     "FORMATO_PAQUETE",
     "LIMITE_ARCHIVO",
     "LIMITE_ENTRADA",
@@ -51,6 +53,11 @@ __all__ = [
 FORMATO_PAQUETE = "silice-paquete"
 VERSION_FORMATO = 1
 EXTENSION = ".silice"
+
+#: La marca «Versión NO aprobada» (Tarea D4): su clave en el manifiesto y, en `informe.json`, la
+#: suya (la portada del paquete).
+CAMPO_NO_APROBADA = "version_no_aprobada"
+CAMPO_MARCA_EN_INFORME = "marca"
 
 NOMBRE_MANIFIESTO = "manifiesto.json"
 NOMBRE_FIRMA = "firma.ed25519"

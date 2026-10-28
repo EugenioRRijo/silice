@@ -21,6 +21,7 @@ from datetime import datetime
 from core.budget.canonico import json_canonico
 from paquete.formato import (
     ANEXOS_ADMITIDOS,
+    CAMPO_NO_APROBADA,
     FORMATO_PAQUETE,
     NOMBRE_FIRMA,
     NOMBRE_MANIFIESTO,
@@ -69,8 +70,12 @@ def construir_paquete(
     version_silice: str,
     privada: bytes | None = None,
     paquete_id: str | None = None,
+    no_aprobada: Mapping[str, str | None] | None = None,
 ) -> bytes:
-    """El archivo `.silice`. Con `privada`, lo firma; sin ella, queda «sin firma»."""
+    """El archivo `.silice`. Con `privada`, lo firma; sin ella, queda «sin firma». `no_aprobada`
+    es la marca «Versión NO aprobada» (`aplicacion.entrega.marca_de_no_aprobada`): va en el
+    manifiesto, que la firma cubre, solo si la versión no es una aprobada (la misma marca viaja en
+    el informe, y `paquete.verificar` exige que digan lo mismo)."""
     desconocidos = sorted(set(anexos) - set(ANEXOS_ADMITIDOS))
     if desconocidos:
         raise PaqueteRechazado(f"anexo no admitido por el formato v1: {desconocidos[0]!r}")
@@ -82,30 +87,31 @@ def construir_paquete(
         "cadena.json": cadena,
         **anexos,
     }
-    manifiesto = json_canonico(
-        {
-            "formato": FORMATO_PAQUETE,
-            "version_formato": VERSION_FORMATO,
-            "version_silice": version_silice,
-            "paquete_id": paquete_id or str(uuid.uuid4()),
-            "emitido": ahora.isoformat(timespec="seconds"),
-            "empresa": emisor.empresa,
-            "huella_clave": emisor.huella_clave,
-            "usuario_emisor": emisor.usuario,
-            "destinatario": destinatario or None,
-            "proyecto": proyecto,
-            "codigo": codigo,
-            "moneda": moneda,
-            "total": total,
-            "archivos": [
-                {"nombre": n, "sha256": _sha(archivos[n]), "tamano": len(archivos[n])}
-                for n in sorted(archivos)
-            ],
-            "huella_anexos": huella_de_anexos(anexos),
-            "ultima_huella_eslabon": ultima_huella,
-            "algoritmo": "Ed25519",
-        }
-    )
+    campos = {
+        "formato": FORMATO_PAQUETE,
+        "version_formato": VERSION_FORMATO,
+        "version_silice": version_silice,
+        "paquete_id": paquete_id or str(uuid.uuid4()),
+        "emitido": ahora.isoformat(timespec="seconds"),
+        "empresa": emisor.empresa,
+        "huella_clave": emisor.huella_clave,
+        "usuario_emisor": emisor.usuario,
+        "destinatario": destinatario or None,
+        "proyecto": proyecto,
+        "codigo": codigo,
+        "moneda": moneda,
+        "total": total,
+        "archivos": [
+            {"nombre": n, "sha256": _sha(archivos[n]), "tamano": len(archivos[n])}
+            for n in sorted(archivos)
+        ],
+        "huella_anexos": huella_de_anexos(anexos),
+        "ultima_huella_eslabon": ultima_huella,
+        "algoritmo": "Ed25519",
+    }
+    if no_aprobada is not None:
+        campos[CAMPO_NO_APROBADA] = dict(no_aprobada)
+    manifiesto = json_canonico(campos)
     contenido: dict[str, bytes] = {NOMBRE_MANIFIESTO: manifiesto}
     if privada is not None:
         contenido[NOMBRE_FIRMA] = firma.firmar(privada, firma.DOMINIO_PAQUETE, manifiesto)

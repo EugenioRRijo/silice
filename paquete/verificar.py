@@ -34,6 +34,8 @@ from core.budget.cadena import (
 from core.budget.canonico import contar_filas
 from paquete.formato import (
     ADMITIDOS,
+    CAMPO_MARCA_EN_INFORME,
+    CAMPO_NO_APROBADA,
     FORMATO_PAQUETE,
     LIMITE_FILAS,
     NOMBRE_FIRMA,
@@ -258,6 +260,9 @@ def verificar(
     fallo = _comprobar_cadena(cadena, manifiesto, archivos)
     if fallo is not None:
         return resultado(ALTERADO, "cadena", fallo, cadena=cadena)
+    incoherente = _marca_incoherente(manifiesto, archivos)
+    if incoherente is not None:
+        return resultado(ALTERADO, "marca", incoherente, cadena=cadena)
     avisos = []
     nombre_mio, huella_mia = mi_empresa
     destinatario = manifiesto.get("destinatario")
@@ -274,6 +279,24 @@ def verificar(
         retirada=retirada,
         avisos=tuple(avisos),
     )
+
+
+def _marca_incoherente(manifiesto: Mapping[str, Any], archivos: Mapping[str, bytes]) -> str | None:
+    """La marca «Versión NO aprobada» (Tarea D4) va en el manifiesto y en el informe, y deben decir
+    lo mismo: quitarla de uno solo se detecta aunque el paquete no esté firmado. Un informe que no
+    es un objeto JSON no dice nada de la marca (su integridad ya la cubrió el manifiesto)."""
+    try:
+        informe = leer_json(archivos["informe.json"])
+    except (JsonRechazado, KeyError):
+        return None
+    if not isinstance(informe, dict):
+        return None
+    if manifiesto.get(CAMPO_NO_APROBADA) != informe.get(CAMPO_MARCA_EN_INFORME):
+        return (
+            "la marca «Versión NO aprobada» del manifiesto no es la del informe: "
+            "alguien la quitó o la cambió"
+        )
+    return None
 
 
 def _integridad(manifiesto: Mapping[str, Any], archivos: Mapping[str, bytes]) -> str | None:

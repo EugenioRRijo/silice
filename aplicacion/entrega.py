@@ -36,7 +36,7 @@ from core.contracts.verificacion import Severidad
 from core.models.cadena import EslabonVersion
 from paquete import anexos as anexos_paquete
 from paquete.exportar import Emisor, construir_paquete
-from paquete.formato import EXTENSION
+from paquete.formato import CAMPO_MARCA_EN_INFORME, EXTENSION
 from paquete.verificar import armar_cadena_json
 from seguridad import empresas, eventos
 
@@ -51,12 +51,14 @@ __all__ = [
     "con_anexos_de_cadena",
     "entregar",
     "estado_de_la_cadena",
+    "marca_de_no_aprobada",
     "nombre_de_archivo",
     "resumen_de_entrega",
 ]
 
 NOMBRE_ANEXO_ESPACIO = "anexos/espacio.json"
 FORMATO_INFORME = "silice-informe"
+TEXTO_NO_APROBADA = "Versión NO aprobada"
 
 
 class EntregaRechazada(ValueError):  # noqa: N818
@@ -69,6 +71,31 @@ def _aviso_de_sellado_legado(version: models.Presupuesto) -> str:
         "entregarse tal cual; confirme una versión nueva (quedará sellada con la cifra "
         "corregida) y entregue esa."
     )
+
+
+def marca_de_no_aprobada(
+    session: Session, version: models.Presupuesto, ahora: datetime
+) -> dict[str, str | None] | None:
+    """La marca «Versión NO aprobada» de un paquete, o `None` si la versión es una aprobada (con o
+    sin observaciones). Lleva la fecha de la entrega y, si la hay, la última aprobada de la obra
+    (la que no se eligió). Si el rastro de aprobaciones no se puede leer (una carpeta sin esa
+    tabla), nada consta como aprobado y se marca: ante la duda, rotular. Importa `aprobaciones`
+    aquí porque ese módulo importa `anexos_de_cadena` de este."""
+    from aplicacion import aprobaciones  # noqa: PLC0415  (import circular)
+
+    referencia = str(version.proyecto_id)
+    try:
+        estado = aprobaciones.estados(session, referencia).get(version.codigo)
+        ultima = aprobaciones.ultima_aprobada(session, referencia)
+    except SQLAlchemyError:
+        estado, ultima = None, None
+    if estado is not None and estado.estado in aprobaciones.APROBADAS:
+        return None
+    return {
+        "texto": TEXTO_NO_APROBADA,
+        "fecha": ahora.date().isoformat(),
+        "ultima_aprobada": ultima,
+    }
 
 
 def anexos_de_cadena(session: Session, version: models.Presupuesto) -> Mapping[str, bytes]:
@@ -264,6 +291,7 @@ def entregar(
         # Entregarla reintroduciria VB-1: un paquete verificable pero que Revisar no puede leer.
         raise EntregaRechazada(_aviso_de_sellado_legado(version))
     estructura = canonico.estructura(session, version)
+    marca = marca_de_no_aprobada(session, version, ahora)
     privada, huella_clave = None, None
     if contrasena_clave is not None:
         privada = empresas.abrir_privada(instalacion, contrasena_clave)
@@ -271,16 +299,17 @@ def entregar(
     empresa = empresas.empresa_propia(instalacion)
     total = sum((r.total for r in version.partidas), Decimal(0))
     paquete_id = str(uuid.uuid4())
+    informe = {
+        "formato": FORMATO_INFORME,
+        "version_formato": 1,
+        "codigo": version.codigo,
+        "hallazgos": estructura["hallazgos"],
+    }
+    if marca is not None:  # la portada del paquete: lo primero que lee quien lo abre
+        informe[CAMPO_MARCA_EN_INFORME] = marca
     datos = construir_paquete(
         presupuesto=canonico.json_canonico(estructura),
-        informe=canonico.json_canonico(
-            {
-                "formato": FORMATO_INFORME,
-                "version_formato": 1,
-                "codigo": version.codigo,
-                "hallazgos": estructura["hallazgos"],
-            }
-        ),
+        informe=canonico.json_canonico(informe),
         cadena=_cadena_json(session, version),
         anexos=anexos_del_paquete(session, version, ia),
         emisor=Emisor(empresa.nombre if empresa else None, huella_clave, usuario),
@@ -294,13 +323,26 @@ def entregar(
         version_silice=version_silice,
         privada=privada,
         paquete_id=paquete_id,
+        no_aprobada=marca,
     )
     sha = hashlib.sha256(datos).hexdigest()
     # UC-22 paso 5: SHA-256, `paquete_id`, versión y el usuario que entregó.
     # T20: el sello de la versión (su eslabón) dice cuál salió aunque su código se repita.
+    # D4: una entrega de una versión no aprobada lo dice en su propio rastro.
+    sin_aprobar = (
+        ""
+        if marca is None
+        else "version NO aprobada ("
+        + (
+            f"ultima aprobada {marca['ultima_aprobada']}"
+            if marca["ultima_aprobada"]
+            else "sin aprobada previa"
+        )
+        + "); "
+    )
     detalle = (
         f"{paquete_id}; version {version.codigo}; sha256 {sha}; usuario {usuario}; "
-        f"sello_version {eslabon.huella_eslabon}"
+        f"{sin_aprobar}sello_version {eslabon.huella_eslabon}"
     )
     quien = {"login": usuario[:60], "ip": ip}  # consultable en el registro de acceso
     if privada is not None:
