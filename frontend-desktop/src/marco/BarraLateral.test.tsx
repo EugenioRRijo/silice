@@ -671,3 +671,30 @@ describe("BarraLateral: obras con el mismo nombre (D-F3-3)", () => {
     expect(within(lista).getByRole("treeitem", { name: "Galpón, Carpeta Sur, 1 por hacer" })).toBeInTheDocument();
   });
 });
+
+// Cierre de F3 (H6): un nombre largo de obra ocupaba hasta 4 lineas en la barra lateral. Se limita a 2 con puntos
+// suspensivos; el nombre completo queda en `title` y en el nombre accesible.
+describe("BarraLateral: nombres largos de obra", () => {
+  const LARGO = "Rehabilitación integral del edificio de oficinas y estacionamiento de la urbanización Los Samanes, etapa dos";
+
+  it("el nombre de la obra lleva el nombre completo en title y el treeitem lo conserva como nombre accesible", async () => {
+    servidor([obra(NORTE, 7, LARGO), TORRE]);
+    pintar();
+    const lista = await arbol();
+    const fila = within(lista).getByRole("treeitem", { name: LARGO });
+    const nombre = within(fila).getByText(LARGO);
+    expect(nombre).toHaveAttribute("title", LARGO);
+    expect(nombre).toHaveClass("silice-marco-lateral__obra-nombre");
+  });
+
+  it("la hoja de estilos limita el nombre a 2 líneas con puntos suspensivos", () => {
+    const fuente = leer("marco/BarraLateral.scss");
+    const i = fuente.indexOf(".silice-marco-lateral__obra-nombre {");
+    expect(i).toBeGreaterThan(-1);
+    const regla = fuente.slice(i, fuente.indexOf("}", i));
+    expect(regla).toMatch(/-webkit-line-clamp:\s*2/);
+    expect(regla).toMatch(/-webkit-box-orient:\s*vertical/);
+    expect(regla).toMatch(/display:\s*-webkit-box/);
+    expect(regla).toMatch(/overflow:\s*hidden/);
+  });
+});
