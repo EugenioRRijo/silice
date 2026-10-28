@@ -454,7 +454,7 @@ describe("Control de obra", () => {
     )!;
     expect(within(bloque).getByText("Cemento gris (por saco), desde el 20/10/2026:")).toBeInTheDocument();
     expect(
-      within(bloque).getByText("31,50 USD × 36,50 Bs/USD (BCV del 20/10/2026) = 1.149,75 Bs"),
+      within(bloque).getByText("31,50 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 1.149,75 Bs"),
     ).toBeInTheDocument();
     expect(within(bloque).getByText("Fuente del precio: Estudio de mercado: precio propio.")).toBeInTheDocument();
   });

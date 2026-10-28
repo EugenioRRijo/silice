@@ -208,7 +208,8 @@ def test_sin_ninguna_tasa_no_se_convierte_ni_se_guarda_nada(obra_usd_sin_tasa) -
 def test_la_tasa_de_un_dia_anterior_no_sirve_aunque_este_a_menos_de_7_dias(
     obra_usd, fecha: date
 ) -> None:
-    # la única tasa es la del 10/11: para un precio del 11/11 (o del 17/11) no es la del mismo día
+    # hay tasa los días 9, 10, 12 y 14 pero no el 11 ni el 17: para un precio del 11/11 la más
+    # reciente es la del 10/11 y para uno del 17/11 la del 14/11; ninguna es la del mismo día
     with pytest.raises(SinTasaDelCorte) as error:
         _declarar(obra_usd, "146.00", "Bs", fecha)
     assert str(error.value) == SIN_TASA_10.replace("10/11/2026", f"{fecha:%d/%m/%Y}")

@@ -35,16 +35,16 @@ const EN_USD: Equivalencia = {
 
 describe("Línea de equivalencia", () => {
   test("USD a Bs: multiplica por la tasa y lo dice con coma decimal y punto de miles", () => {
-    expect(textoDeEquivalencia(EN_BS)).toBe("31,50 USD × 36,50 Bs/USD (BCV del 20/10/2026) = 1.149,75 Bs");
+    expect(textoDeEquivalencia(EN_BS)).toBe("31,50 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 1.149,75 Bs");
   });
 
   test("Bs a USD: divide por la tasa", () => {
-    expect(textoDeEquivalencia(EN_USD)).toBe("1.149,75 Bs ÷ 36,50 Bs/USD (BCV del 20/10/2026) = 31,50 USD");
+    expect(textoDeEquivalencia(EN_USD)).toBe("1.149,75 Bs ÷ 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 31,50 USD");
   });
 
   test("la fecha es la de la tasa que se usó, aunque el precio sea de un día posterior", () => {
-    const e = { ...EN_BS, fecha_tasa: "2026-10-18" };
-    expect(textoDeEquivalencia(e)).toContain("(BCV del 18/10/2026)");
+    const e = { ...EN_BS, fecha_tasa: "2026-10-18", fuente_legible: "BCV, publicación del 18/10/2026" };
+    expect(textoDeEquivalencia(e)).toContain("(BCV, publicación del 18/10/2026)");
   });
 
   test("el resultado se lee en centésimas y el exacto queda a un toque, sin perder cifras", () => {
@@ -56,15 +56,19 @@ describe("Línea de equivalencia", () => {
     expect(linea.getAttribute("title")).not.toContain("importacion");
   });
 
+  test("si el resultado en centésimas ya es el exacto no se repite", () => {
+    expect(textoDeEquivalenciaExacta(EN_BS)).toBe(textoDeEquivalencia(EN_BS));
+  });
+
   // El resultado en centesimas lleva el exacto a la vista para las lineas de estado, que son texto.
   test("la versión para una línea de estado agrega el resultado exacto", () => {
     expect(textoDeEquivalenciaExacta({ ...EN_BS, convertido: "1149.7512" })).toBe(
-      "31,50 USD × 36,50 Bs/USD (BCV del 20/10/2026) = 1.149,75 Bs. Resultado exacto: 1.149,7512 Bs.",
+      "31,50 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 1.149,75 Bs. Resultado exacto: 1.149,7512 Bs.",
     );
   });
 
   test("se pinta como una sola línea de texto", () => {
     render(<LineaDeEquivalencia equivalencia={EN_BS} />);
-    expect(screen.getByText("31,50 USD × 36,50 Bs/USD (BCV del 20/10/2026) = 1.149,75 Bs")).toBeInTheDocument();
+    expect(screen.getByText("31,50 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 1.149,75 Bs")).toBeInTheDocument();
   });
 });
