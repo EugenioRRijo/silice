@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router";
+import { MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { PendienteDeObra, SesionRespuesta } from "../../api/tipos";
@@ -117,6 +117,10 @@ function Ubicacion() {
   return <output data-testid="ruta">{pathname}</output>;
 }
 const ruta = () => screen.getByTestId("ruta").textContent;
+function IrA({ destino }: { destino: string }) {
+  const navegar = useNavigate();
+  return <button onClick={() => navegar(destino)}>{`Ir a ${destino}`}</button>;
+}
 
 // Un formulario con cambios sin guardar en otra pantalla (como Componer a medio llenar).
 function FormularioSucio() {
@@ -128,11 +132,13 @@ function montar({
   sesion = sesionDe("ana"),
   sucio = false,
   inicial = "/pendientes",
-}: { sesion?: SesionRespuesta; sucio?: boolean; inicial?: string } = {}) {
+  ir,
+}: { sesion?: SesionRespuesta; sucio?: boolean; inicial?: string; ir?: string } = {}) {
   return render(
     <MemoryRouter initialEntries={[inicial]}>
       <Marco sesion={sesion} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras()} />
       <Ubicacion />
+      {ir && <IrA destino={ir} />}
       {sucio && <FormularioSucio />}
     </MemoryRouter>,
   );
@@ -446,6 +452,36 @@ describe("Pendientes: la lectura de la carga inicial no deja datos viejos", () =
     expect(await opciones()).toHaveLength(1);
     expect(within(await lista()).getByText("3 precios con más de 90 días")).toBeInTheDocument();
     expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
+  });
+});
+
+describe("Pendientes: cuándo no se repite la lectura", () => {
+  test("si se sale de Pendientes con la lectura en curso y se vuelve, se pide de nuevo", async () => {
+    const u = userEvent.setup();
+    let soltarLaPrimera: (r: Response) => void = () => undefined;
+    let veces = 0;
+    bandeja = () => {
+      veces += 1;
+      if (veces === 1) return new Promise<Response>((resolver) => (soltarLaPrimera = resolver));
+      return json({ pendientes: [PRECIOS], carpetas_omitidas: 0 });
+    };
+    montar({ ir: "/obra/empresa/7/presupuesto" });
+    await waitFor(() => expect(pedidas()).toBe(1));
+    await u.click(screen.getByRole("button", { name: "Ir a /obra/empresa/7/presupuesto" }));
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto"));
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    await u.click(within(lateral).getByRole("link", { name: /^Pendientes/ }));
+    await waitFor(() => expect(pedidas()).toBe(2));
+    soltarLaPrimera(json({ pendientes: [CEMENTO], carpetas_omitidas: 0 }));
+    expect(within(await lista()).getByText("3 precios con más de 90 días")).toBeInTheDocument();
+    expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
+  });
+
+  test("al arrancar desde «/» (que redirige a Pendientes) se piden una sola vez", async () => {
+    montar({ inicial: "/" });
+    expect(await opciones()).toHaveLength(4);
+    await waitFor(() => expect(ruta()).toBe("/pendientes"));
+    expect(pedidas()).toBe(1);
   });
 });
 
