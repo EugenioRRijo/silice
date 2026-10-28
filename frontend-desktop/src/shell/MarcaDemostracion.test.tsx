@@ -96,7 +96,7 @@ describe("MarcaDemostracion en el armazón", () => {
     servidor = servidorFalso();
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarMarco(sesionDe("ana"), "/pendientes");
-    await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
+    await screen.findByRole("heading", { level: 1, name: "Pendientes" });
     await waitFor(() => expect(servidor.de("GET", "/v1/casos").length).toBeGreaterThan(0));
     expect(within(screen.getByRole("banner")).queryByRole("button", { name: /^Demostración/ })).toBeNull();
   });

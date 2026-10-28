@@ -47,9 +47,10 @@ describe("App", () => {
       // Lo que piden los inicios y Acerca, y el modulo recordado (MOD-1): sin esto caerian en el 401 de abajo y la
       // sesion se daria por vencida.
       if (ruta === "/v1/produccion/existencias") return json([]);
-      // Lo que pide el marco (las obras de la barra lateral, el tema) y la mesa de Pendientes: sin esto caerian en el 401
-      // de abajo y la sesion se daria por vencida.
+      // Lo que pide el marco (las obras de la barra lateral, el tema y la bandeja de Pendientes): sin esto caerian en el
+      // 401 de abajo y la sesion se daria por vencida.
       if (ruta === "/v1/obras/todas") return json({ carpeta_actual: null, obras: [] });
+      if (ruta === "/v1/obras/pendientes/todas") return json({ pendientes: [], carpetas_omitidas: 0 });
       if (ruta === "/v1/tema") return json({ acento: null, marco: null, lateral: null, tiene_logo: false, avisos: [] });
       if (metodo === "GET" && (ruta.startsWith("/v1/obras/") || ruta.startsWith("/v1/aprobaciones"))) {
         return json({ detalle: "No encontrado." }, 404);
@@ -110,9 +111,9 @@ describe("App", () => {
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
     expect(within(lateral).getByRole("link", { name: "Pendientes" })).toHaveAttribute("href", "#/pendientes");
     expect(within(lateral).getByRole("navigation", { name: "Empresa" })).toBeInTheDocument();
-    // La pagina llega por import() dinamico: con la suite entera en marcha tarda mas que el plazo por omision.
+    // Con la suite entera en marcha el marco tarda mas que el plazo por omision.
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" }, { timeout: 5000 }),
+      await screen.findByRole("heading", { level: 1, name: "Pendientes" }, { timeout: 5000 }),
     ).toBeInTheDocument();
     expect(window.location.hash).toBe("#/pendientes");
     // Ya no hay módulos ni nada que recordar de ellos.
@@ -135,7 +136,7 @@ describe("App", () => {
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
     // Sin acciones aterriza en Pendientes, que toda cuenta ve.
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" }, { timeout: 5000 }),
+      await screen.findByRole("heading", { level: 1, name: "Pendientes" }, { timeout: 5000 }),
     ).toBeInTheDocument();
     expect(window.location.hash).toBe("#/pendientes");
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();

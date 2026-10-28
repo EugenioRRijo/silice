@@ -7,7 +7,7 @@ import { fijarCsrf } from "../api/cliente";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import type { SesionRespuesta } from "../api/tipos";
 import { useAplicacion } from "../shell/contexto";
-import { ACCIONES, caso, estadoInicial, json, ligeras, servidorFalso, sesionDe } from "../shell/obras/datosDePrueba";
+import { ACCIONES, RUTA_DE_LA_MESA, caso, conLaMesa, estadoInicial, json, ligeras, servidorFalso, sesionDe } from "../shell/obras/datosDePrueba";
 import type { EstadoDelServidor } from "../shell/obras/datosDePrueba";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, recorridoEnCurso, terminarRecorrido } from "../shell/recorrido";
 import { PAGINAS, usable } from "../shell/rutas";
@@ -116,9 +116,9 @@ const enSur = (estado: EstadoDelServidor) => {
 };
 
 describe("Marco: las rutas viejas llevan al marco nuevo", () => {
-  test.each(["/", "/inicio", "/no-existe"])("%s acaba en #/pendientes, que muestra la mesa", async (de) => {
+  test.each(["/", "/inicio", "/no-existe"])("%s acaba en #/pendientes, que muestra la bandeja", async (de) => {
     montar({ en: de });
-    expect(await titulo("Inicio de presupuestos y obras")).toBeInTheDocument();
+    expect(await titulo("Pendientes")).toBeInTheDocument();
     expect(ruta()).toBe("/pendientes");
   });
 
@@ -131,7 +131,7 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
 
   test("#/hoja sin obra en la sesión acaba en #/pendientes", async () => {
     montar({ en: "/hoja" });
-    expect(await titulo("Inicio de presupuestos y obras")).toBeInTheDocument();
+    expect(await titulo("Pendientes")).toBeInTheDocument();
     expect(ruta()).toBe("/pendientes");
   });
 
@@ -226,25 +226,30 @@ describe("Marco: la obra como espacio de trabajo", () => {
     montar({ en: "/obra/empresa/99/resumen" });
     expect(await titulo("Esa obra ya no existe")).toBeInTheDocument();
     await u.click(screen.getByRole("link", { name: "Volver a Pendientes" }));
-    expect(await titulo("Inicio de presupuestos y obras")).toBeInTheDocument();
+    expect(await titulo("Pendientes")).toBeInTheDocument();
     expect(ruta()).toBe("/pendientes");
   });
 
-  test("la obra en que se entró queda elegida para las pantallas de fuera de la obra (Pendientes)", async () => {
+  // Rediseño F3, Tarea 2: Pendientes ya no monta la mesa (es la bandeja, que no muestra la obra elegida); se sigue por
+  // Pendientes hasta una entrada de Empresa, otra pantalla de fuera de la obra.
+  test("la obra en que se entró queda elegida para las pantallas de fuera de la obra (Pendientes y Empresa)", async () => {
     const u = userEvent.setup();
-    function MesaConObra() {
+    function ConLaObra() {
       const { proyecto } = useAplicacion();
       return (
         <>
-          <h1>Inicio de presupuestos y obras</h1>
+          <h1>Con la obra</h1>
           <p>{`obra elegida: ${proyecto ?? "ninguna"}`}</p>
         </>
       );
     }
-    montar({ en: "/obra/empresa/7/resumen", paginas: ligeras({ obras: MesaConObra }) });
+    montar({ en: "/obra/empresa/7/resumen", paginas: ligeras({ obras: ConLaObra, catalogo: ConLaObra }) });
     expect(await screen.findByText("obra elegida: 7")).toBeInTheDocument();
     await u.click(within(screen.getByRole("banner")).getByRole("link", { name: "Mis obras" }));
     await waitFor(() => expect(ruta()).toBe("/pendientes"));
+    expect(await titulo("Pendientes")).toBeInTheDocument();
+    await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Precios y catálogo" }));
+    await waitFor(() => expect(ruta()).toBe("/empresa/precios"));
     expect(await screen.findByText("obra elegida: 7")).toBeInTheDocument();
   });
 });
@@ -302,7 +307,7 @@ describe("Marco: lo que se monta con él", () => {
   test("Ctrl+K y el botón abren el buscador; Esc lo cierra y el foco vuelve al botón", async () => {
     const u = userEvent.setup();
     montar();
-    await titulo("Inicio de presupuestos y obras");
+    await titulo("Pendientes");
     const boton = within(screen.getByRole("banner")).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" });
     await u.click(boton);
     expect(screen.getByRole("dialog", { name: "Buscar" })).toBeInTheDocument();
@@ -363,7 +368,7 @@ describe("Marco: lo que se monta con él", () => {
         </>
       );
     }
-    montar({ paginas: ligeras({ obras: MesaConNuevaObra }) });
+    montar({ en: RUTA_DE_LA_MESA, paginas: conLaMesa(MesaConNuevaObra) });
     await u.click(await screen.findByRole("button", { name: "Cree su primera obra" }));
     const dialogo = await screen.findByRole("dialog", { name: "Nueva obra" });
     expect(await within(dialogo).findByText("Se creará en Carpeta de la empresa")).toBeInTheDocument();
@@ -376,7 +381,7 @@ describe("Marco: lo que se monta con él", () => {
   test("el diálogo «Nueva obra» se pinta fuera de la barra lateral, encima de todo", async () => {
     const u = userEvent.setup();
     montar();
-    await titulo("Inicio de presupuestos y obras");
+    await titulo("Pendientes");
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
     await u.click(within(lateral).getByRole("button", { name: "Nueva obra" }));
     const dialogo = await screen.findByRole("dialog", { name: "Nueva obra" });
@@ -406,7 +411,7 @@ describe("Marco: lo que se monta con él", () => {
     const u = userEvent.setup();
     iniciarRecorrido(RECORRIDO_AUDITAR);
     const { alSalir } = montar();
-    await titulo("Inicio de presupuestos y obras");
+    await titulo("Pendientes");
     await u.click(screen.getByRole("button", { name: "Cuenta de Ana Pérez" }));
     await u.click(screen.getByRole("button", { name: "Salir" }));
     expect(alSalir).toHaveBeenCalledTimes(1);
@@ -423,7 +428,7 @@ describe("Marco: lo que se monta con él", () => {
   test("«Saltar al contenido» es lo primero que se alcanza con Tab y hay una sola región main", async () => {
     const u = userEvent.setup();
     montar();
-    await titulo("Inicio de presupuestos y obras");
+    await titulo("Pendientes");
     expect(screen.getAllByRole("main")).toHaveLength(1);
     await u.tab();
     expect(screen.getByRole("button", { name: "Saltar al contenido" })).toHaveFocus();
@@ -535,7 +540,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     ["Ir a la obra", "Hoja de la obra"],
   ])("«%s», un botón de la pantalla que navega, deja el foco en el único h1 de la nueva («%s»)", async (boton, h1) => {
     const u = userEvent.setup();
-    montar({ paginas: ligeras({ obras: MesaQueVa }) });
+    montar({ en: RUTA_DE_LA_MESA, paginas: conLaMesa(MesaQueVa) });
     await u.click(await screen.findByRole("button", { name: boton }));
     const nuevo = await titulo(h1);
     await waitFor(() => expect(nuevo).toHaveFocus(), { timeout: 3000 });
@@ -549,7 +554,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     await titulo("Simulador de listas");
     const enlace = within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Pendientes" });
     await u.click(enlace);
-    await titulo("Inicio de presupuestos y obras");
+    await titulo("Pendientes");
     await new Promise((r) => setTimeout(r, 80));
     expect(enlace).toHaveFocus();
   });
@@ -571,7 +576,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     montar({ en: "/obra/empresa/7/presupuesto" });
     await titulo("Hoja de la obra");
     await u.click(within(screen.getByRole("navigation", { name: "Ruta" })).getByRole("link", { name: "Mis obras" }));
-    const nuevo = await titulo("Inicio de presupuestos y obras");
+    const nuevo = await titulo("Pendientes");
     expect(ruta()).toBe("/pendientes");
     expect(within(screen.getByRole("navigation", { name: "Ruta" })).queryByRole("link", { name: "Mis obras" })).toBeNull();
     await waitFor(() => expect(nuevo).toHaveFocus());
@@ -601,7 +606,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
   test("si la obra no se pudo abrir, el aviso tiene su h1 y el foco va a él; «Reintentar» la abre", async () => {
     const u = userEvent.setup();
     const caida = conLaObraCaida();
-    montar({ paginas: ligeras({ obras: MesaQueVa }) });
+    montar({ en: RUTA_DE_LA_MESA, paginas: conLaMesa(MesaQueVa) });
     await u.click(await screen.findByRole("button", { name: "Ir a la obra" }));
     const aviso = await titulo("No se pudo abrir la obra");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
@@ -679,7 +684,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
   test.each(["/pendientes", "/", "/inicio", "/no-existe"])("al cargar en %s no roba el foco: el primer Tab va a «Saltar al contenido»", async (entrada) => {
     const u = userEvent.setup();
     montar({ en: entrada });
-    await titulo("Inicio de presupuestos y obras");
+    await titulo("Pendientes");
     expect(ruta()).toBe("/pendientes");
     await new Promise((r) => setTimeout(r, 120));
     expect(document.body).toHaveFocus();
@@ -699,7 +704,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
       }, []);
       return lista ? <h1>Simulador listo</h1> : <EsqueletoPagina titulo="Simulador de listas" />;
     }
-    montar({ paginas: ligeras({ obras: MesaQueVa, simulador: Lenta }) });
+    montar({ en: RUTA_DE_LA_MESA, paginas: conLaMesa(MesaQueVa, { simulador: Lenta }) });
     await u.click(await screen.findByRole("button", { name: "Ir al simulador" }));
     const real = await titulo("Simulador listo");
     await waitFor(() => expect(real).toHaveFocus());

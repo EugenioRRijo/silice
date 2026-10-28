@@ -52,7 +52,7 @@ const botonNuevaObra = () => within(screen.getByRole("complementary", { name: "B
 
 async function abrirNuevaObra(u: ReturnType<typeof userEvent.setup>) {
   montarMarco(sesionDe("ana"), "/pendientes");
-  await screen.findByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" });
+  await screen.findByRole("heading", { level: 1, name: "Pendientes" });
   await u.click(botonNuevaObra());
   return screen.findByRole("dialog", { name: "Nueva obra" });
 }
