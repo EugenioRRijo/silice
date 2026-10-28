@@ -27,12 +27,13 @@ ajustan aquí cuando la construcción los fije.
   Carbon (14 px) sale a 16 px y la etiqueta más pequeña (12 px) a 14 px; todo va en rem. El control «Tamaño de letra» de la
   cabecera (Normal 100 %, Grande 125 %, Muy grande 150 %, guardado en el navegador) multiplica ese tamaño por la variable
   `--silice-escala-letra`. Con Grande y Muy grande el buscador de la barra superior queda en su ícono por debajo de 1536
-  y 1920 px (véase «Marco»), y la cuenta queda en su ícono. El texto de los gráficos de Carbon Charts
+  y 1920 px (véase «Marco»), y la cuenta queda en su círculo de iniciales. El texto de los gráficos de Carbon Charts
   también sigue la escala; el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). IBM Plex es la
   cara nativa de Carbon, que el brief fija: se aloja en el propio servidor, sin CDN.
 - **Forma:** esquinas rectas (radio 0, como Carbon); separación con divisores de 1 px `$border-subtle` y espacio,
   no con tarjetas con sombra. Sin gradientes, sin sombras decorativas, sin vidrio. Única excepción a las esquinas rectas:
-  la píldora de los contadores de la barra lateral (especificación 2026-10-26, §8 ter, aprobada por Eugenio).
+  la píldora de los contadores de la barra lateral (especificación 2026-10-26, §8 ter, aprobada por Eugenio) y el círculo
+  de iniciales del botón de la cuenta (rediseño F3, D-F3-5).
 - **Densidad:** la hoja replica la altura de fila del libro (24 px típica, `compact`); tablas de hallazgos en
   tamaño `sm` (32 px); controles táctiles de 48 px solo donde la ruta los pide (sesión 4).
 
@@ -66,8 +67,11 @@ ajustan aquí cuando la construcción los fije.
 - La tarjeta del indicador es una columna de dos filas que bajan de línea (título y meta; cifra y variación): con la letra Muy
   grande la variación ya no desplaza a la cifra a 0 px. La franja de indicadores tiene un alto mínimo de 64 px y **crece** lo que
   pida la etiqueta (una línea más con el marcador, varias con la completa).
-- Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El acento de interacción es el azul
-  de Carbon (`$interactive`) y solo en acciones, foco y selección.
+- Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El color de acción lo pone la empresa
+  (rediseño F3, D-F3-4): el botón principal lleva `--silice-acento` con texto `--silice-marco`; los enlaces (subrayados),
+  los bordes interactivos y la raya de la pestaña activa, `--silice-marco`; vale en toda la aplicación (también
+  bienvenida, entrar y recuperar acceso) y en los diálogos. El foco sigue siendo el azul de Carbon (`$focus`), y el tema
+  neutro del repositorio usa el amarillo y el gris de Carbon.
 
 ## Marco
 
@@ -79,8 +83,9 @@ pendientes, no por herramientas: nada de módulos ni áreas.
   inverso y raya inferior de 3 px `--silice-acento`; queda fija al desplazar. A la izquierda el logo de la empresa (o
   «Sílice»); luego las **migas** (`Mis obras / <obra> / <sección>`, `Empresa / <entrada>`, `Pendientes` o el título de la
   pantalla; la última con `aria-current`); a la derecha el botón **«Buscar… (Ctrl+K)»**, la marca de la demostración y
-  «Recorrido» cuando tocan, el tamaño de letra y la cuenta (nombre y un menú con «Salir»; con letra Grande o Muy grande,
-  solo su ícono, con el mismo nombre accesible).
+  «Recorrido» cuando tocan, el tamaño de letra y la cuenta (un círculo con las iniciales —primera y última palabra—, el
+  nombre y un menú con «Salir»; con letra Grande o Muy grande, solo el círculo, con el mismo nombre accesible; sin letras en
+  el nombre, el ícono de persona).
 - **Barra lateral** (`BarraLateral.tsx`): 14,75 rem, fondo `--silice-lateral`, fija al desplazar el contenido y con su
   propio desplazamiento. Tres zonas: **Pendientes**; **Obras**, con «Nueva obra» como botón principal fijo bajo su
   cabecera (relleno `--silice-acento`, texto `--silice-marco`) y el árbol de obras (patrón `tree` de WAI-ARIA: flechas,
