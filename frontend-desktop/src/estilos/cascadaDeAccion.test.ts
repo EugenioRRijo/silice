@@ -21,7 +21,10 @@ afterAll(() => {
   document.body.innerHTML = "";
 });
 
-const valor = (id: string, variable: string) => getComputedStyle(document.getElementById(id)!).getPropertyValue(variable).trim();
+// jsdom normaliza los espacios dentro de color-mix(...): se comparan sin ellos.
+const sinEspacios = (texto: string) => texto.replace(/\s+/g, "");
+const valor = (id: string, variable: string) =>
+  sinEspacios(getComputedStyle(document.getElementById(id)!).getPropertyValue(variable));
 
 const REPOSO = "color-mix(in srgb, var(--silice-acento) 55%, white)";
 const HOVER = "color-mix(in srgb, var(--silice-acento) 85%, white)";
@@ -41,7 +44,7 @@ describe("el color de acción llega a los descendientes del tema g10", () => {
     ["boton-fuera", "--silice-boton-borde", BORDE],
     ["enlace-fuera", "--cds-link-primary", "var(--silice-complementario)"],
   ])("%s resuelve %s a %s", (id, variable, esperado) => {
-    expect(valor(id, variable)).toBe(esperado);
+    expect(valor(id, variable)).toBe(sinEspacios(esperado));
   });
 
   test("el texto del botón principal es del marco, y el de otros fondos no se toca", () => {
@@ -50,9 +53,12 @@ describe("el color de acción llega a los descendientes del tema g10", () => {
   });
 
   test("el botón principal pinta su borde de 1 px con el borde mezclado, dentro y fuera del div", () => {
-    for (const id of ["boton", "boton-fuera"]) {
-      expect(getComputedStyle(document.getElementById(id)!).getPropertyValue("border-color")).toContain("var(--silice-boton-borde)");
-    }
+    // jsdom no resuelve var() dentro de border-color: se lee la regla compilada, que vale para los dos botones.
+    const regla = /\.cds--btn--primary\s*\{([^}]*)\}/g;
+    const propias = [...css.matchAll(regla)].map((m) => m[1]!).filter((r) => r.includes("--silice-boton-borde"));
+    expect(propias.some((r) => /border-color:\s*var\(--silice-boton-borde\)/.test(r))).toBe(true);
+    // Carbon pone el ancho de 1 px y el estilo sólido en el mismo botón; aquí solo cambia el color.
+    expect(css).toMatch(/\.cds--btn--primary\s*\{[^}]*border-width:\s*1px;\s*border-style:\s*solid/);
   });
 
   // WCAG 1.4.1: en el color del marco (#393939 en el tema neutro) el enlace dista 1,57:1 del texto (#161616) y solo se
