@@ -46,10 +46,27 @@
   --silice-lateral: #{colors.$warm-gray-10};
   --silice-lateral-activo: #{colors.$warm-gray-20};
 
+  // Color de accion de la empresa (D-F3-4): el boton principal lleva el acento (su texto, el marco: abajo); los enlaces, los
+  // bordes interactivos y la raya de la pestana activa (Carbon la pinta con --cds-border-interactive) van en el color del
+  // marco, porque el ambar sobre el fondo da ~2:1 y no sirve para texto ni bordes. Van aqui, tras el tema de Carbon y en
+  // la raiz (los dialogos se montan en el body). Hover y active mezclan el acento con el marco. El foco no se toca. El
+  // servidor mide el acento con el marco y el marco con el fondo (aplicacion/tema.py).
+  --cds-button-primary: var(--silice-acento);
+  --cds-button-primary-hover: color-mix(in srgb, var(--silice-acento) 85%, var(--silice-marco));
+  --cds-button-primary-active: color-mix(in srgb, var(--silice-acento) 80%, var(--silice-marco));
+  --cds-link-primary: var(--silice-marco);
+  --cds-link-primary-hover: var(--silice-marco);
+  --cds-border-interactive: var(--silice-marco);
+
   // Aliases de tokens de tema Carbon, para que el resto del CSS propio no repita var(--cds-*).
   --silice-fondo: var(--cds-background);
   --silice-texto: var(--cds-text-primary);
   --silice-texto-secundario: var(--cds-text-secondary);
   --silice-divisor: var(--cds-border-subtle);
   --silice-interactivo: var(--cds-interactive);
+}
+
+// El texto sobre color (text-on-color) tambien se usa sobre otros fondos (rojo, azul...): solo cambia dentro del boton principal.
+.cds--btn--primary {
+  --cds-text-on-color: var(--silice-marco);
 }
