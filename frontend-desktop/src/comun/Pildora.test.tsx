@@ -11,6 +11,13 @@ describe("Pildora", () => {
   });
 });
 
+describe("Pildora: formato es-VE", () => {
+  it("escribe el número con punto de miles", () => {
+    render(<Pildora valor={1234} />);
+    expect(screen.getByText("1.234")).toHaveClass("silice-pildora");
+  });
+});
+
 // jsdom no calcula CSS: la regla se lee del fuente (como marco/estilosMarco.test.ts).
 const nodo = (
   globalThis as unknown as {
