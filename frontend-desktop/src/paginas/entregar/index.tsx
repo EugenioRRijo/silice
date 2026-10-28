@@ -182,8 +182,8 @@ function Seleccion({
           title="Esta versión no está aprobada."
           subtitle={
             aprobada === undefined
-              ? "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde la Hoja."
-              : `La última aprobada es ${aprobada}. Si entrega esta, el cliente recibirá una versión que nadie aprobó.`
+              ? "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde la Hoja. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha."
+              : `La última aprobada es ${aprobada}. Si entrega esta, el paquete saldrá rotulado «Versión NO aprobada», con la fecha y esa última aprobada.`
           }
           lowContrast
           hideCloseButton
