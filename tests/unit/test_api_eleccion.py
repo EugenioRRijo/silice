@@ -26,7 +26,9 @@ from contextlib import closing
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
 from api.main import app
@@ -527,3 +529,70 @@ def test_quien_nunca_cambia_de_carpeta_recuerda_su_obra() -> None:
         "proyecto": "3",
         "aviso": None,
     }
+
+
+# --- D1 menores: si no se puede comprobar, no se guarda; el permiso se exige antes de mirar -----
+
+MENSAJE_NO_SE_PUDO_COMPROBAR = (
+    "No se pudo comprobar la obra en la carpeta de trabajo; no se guardó la elección."
+)
+MENSAJE_SIN_PERMISO = "Su cuenta no tiene permiso para esta acción."
+
+
+def _carpeta_que_no_se_abre(*_args, **_kwargs) -> None:
+    raise HTTPException(status_code=503, detail="No se pudo abrir /datos/s1.db")
+
+
+def _consulta_bloqueada(*_args, **_kwargs) -> None:
+    raise OperationalError("SELECT secreto FROM proyecto", {}, Exception("database is locked"))
+
+
+@pytest.mark.parametrize("falla", [_carpeta_que_no_se_abre, _consulta_bloqueada])
+def test_si_no_se_puede_comprobar_la_obra_da_503_fijo_y_no_guarda(
+    monkeypatch: pytest.MonkeyPatch, falla
+) -> None:
+    """«El servidor debe aprobar»: sin poder mirar la carpeta no se acepta la obra (antes, 204)."""
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "7").status_code == 204
+    with monkeypatch.context() as parche:
+        parche.setattr(rutas_sesion, "obtener_motor", falla)
+        parche.setattr(rutas_sesion, "resolver_proyecto", falla)
+        respuesta = _obra(navegador, ficha, "7")
+    assert respuesta.status_code == 503
+    assert respuesta.json() == {"detalle": MENSAJE_NO_SE_PUDO_COMPROBAR}
+    for rastro in ("datos", "secreto", "locked", "s1.db"):
+        assert rastro not in respuesta.text
+    esperado = {"caso": "s1.db", "proyecto": "7", "aviso": None}
+    assert navegador.get("/v1/sesion").json()["eleccion"] == esperado
+
+
+def test_soltar_la_obra_con_null_no_necesita_mirar_la_carpeta(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "7").status_code == 204
+    monkeypatch.setattr(rutas_sesion, "obtener_motor", _carpeta_que_no_se_abre)
+    assert _obra(navegador, ficha, None).status_code == 204
+
+
+def test_el_administrador_puro_no_puede_sondear_si_una_obra_existe() -> None:
+    """CAMBIAR_CASO sin LEER_PROYECTO: ni 204 ni 404 según exista; siempre 403 y no guarda."""
+    navegador, ficha = con_cuenta(app, "admin")
+    for codigo in ("3", "no-existe"):
+        respuesta = _obra(navegador, ficha, codigo)
+        assert respuesta.status_code == 403
+        assert respuesta.json() == {"detalle": MENSAJE_SIN_PERMISO}
+    assert navegador.get("/v1/sesion").json()["eleccion"]["proyecto"] is None
+    assert _obra(navegador, ficha, None).status_code == 204
+
+
+def test_sin_cambiar_caso_un_codigo_que_no_esta_en_la_carpeta_por_omision_da_404() -> None:
+    """El rol revisa (LEER_PROYECTO sin CAMBIAR_CASO) trabaja en la carpeta por omisión."""
+    navegador, ficha = con_cuenta(app, "rita")
+    respuesta = _obra(navegador, ficha, "99")
+    assert respuesta.status_code == 404
+    assert respuesta.json() == {"detalle": MENSAJE_OBRA_BORRADA}
+    assert "99" not in respuesta.text
+    assert navegador.get("/v1/sesion").json()["eleccion"] == SIN_ELECCION
