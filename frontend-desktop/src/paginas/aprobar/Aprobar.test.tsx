@@ -326,12 +326,32 @@ describe("el dictamen", () => {
     expect(await within(await panel()).findByText("Este envío fue retirado: se envió otra versión de la obra.")).toBeInTheDocument();
   });
 
-  test("con la cadena de versiones rota no se ofrece dictamen y se dice por qué", async () => {
+  test("con la cadena de versiones rota solo se ofrece devolver y se dice por qué", async () => {
     detalleDe = () => json(detalle({ cadena: { integra: false, mensaje: "Cadena rota en la versión GS-001: no tiene eslabón." } }));
     montar();
     const caja = await panel();
-    expect(await within(caja).findByText("Cadena rota en la versión GS-001: no tiene eslabón.")).toBeInTheDocument();
-    expect(within(caja).queryByRole("radio")).toBeNull();
+    expect(await within(caja).findByText(/Cadena rota en la versión GS-001: no tiene eslabón\./)).toBeInTheDocument();
+    expect(within(caja).getByText(/Aprobar queda bloqueado hasta reparar la cadena; devolver no certifica nada\./)).toBeInTheDocument();
+    expect(within(caja).queryByRole("radio", { name: "Aprobada" })).toBeNull();
+    expect(within(caja).queryByRole("radio", { name: "Aprobada con observaciones" })).toBeNull();
+    expect(within(caja).getAllByRole("radio")).toHaveLength(1);
+    expect(within(caja).getByRole("radio", { name: "Devuelta" })).toBeChecked();
+  });
+
+  test("con la cadena rota devolver pide notas y envía solo la devolución", async () => {
+    const u = userEvent.setup();
+    detalleDe = () => json(detalle({ cadena: { integra: false, mensaje: "Cadena rota en la versión GS-001: no tiene eslabón." } }));
+    montar();
+    const caja = await panel();
+    await u.click(await within(caja).findByRole("button", { name: "Registrar el dictamen…" }));
+    expect(within(caja).getByText(SIN_NOTAS)).toBeInTheDocument();
+    expect(dictamenes()).toEqual([]);
+    await u.type(within(caja).getByRole("textbox", { name: /Notas/ }), "La cadena está rota.");
+    await u.click(within(caja).getByRole("button", { name: "Registrar el dictamen…" }));
+    await u.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Registrar el dictamen" }));
+    await waitFor(() =>
+      expect(dictamenes()).toEqual([["/v1/aprobaciones/12/dictamen", { resultado: "devuelta", notas: "La cadena está rota." }]]),
+    );
   });
 });
 
