@@ -1,7 +1,7 @@
 """`GET /v1/tema` y `GET /v1/tema/logo`: el tema de la empresa (rediseño del marco, Tarea 1).
 
 Públicas (sin clave ni sesión): la pantalla de entrada se pinta con ellas antes de que haya
-cuenta. Solo dicen tres colores, si hay un logo y los avisos de contraste; nunca rutas ni nombres.
+cuenta. Solo dicen seis colores, si hay un logo y los avisos de contraste; nunca rutas ni nombres.
 La carpeta es `<datos>/tema/`, la misma raíz de datos que `instalacion.db`. La lógica vive en
 `aplicacion.tema`; cualquier archivo roto cae al tema neutro sin dar error.
 """
@@ -21,6 +21,9 @@ class TemaRespuesta(BaseModel):
     acento: str | None
     marco: str | None
     lateral: str | None
+    complementario: str | None
+    contador_numero: str | None
+    contador_fondo: str | None
     tiene_logo: bool
     avisos: list[str]
 
@@ -41,6 +44,9 @@ def ver_tema() -> TemaRespuesta:
         acento=leido.acento,
         marco=leido.marco,
         lateral=leido.lateral,
+        complementario=leido.complementario,
+        contador_numero=leido.contador_numero,
+        contador_fondo=leido.contador_fondo,
         tiene_logo=leido.tiene_logo,
         avisos=leido.avisos,
     )

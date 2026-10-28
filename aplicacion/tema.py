@@ -29,24 +29,32 @@ _COLOR = re.compile(r"#[0-9a-fA-F]{6}")
 
 #: Colores del tema neutro y de los textos y bordes del marco (frontend-desktop/src/estilos/
 #: tokens.scss: --silice-* y --cds-* del tema Carbon g10). Es la ÚNICA copia en el servidor; los
-#: avisos de contraste miden contra ella. Fuente: @carbon/colors (gray-80, gray-50, yellow-30,
+#: avisos de contraste miden contra ella. Fuente: @carbon/colors (gray-80, gray-50, yellow-20,
 #: warm-gray-10/-20) y @carbon/themes g10 (text-inverse, text-primary, background).
 _NEUTRO = {
     "marco": "#393939",  # --silice-marco = --cds-background-inverse (gray-80)
-    "acento": "#f1c21b",  # --silice-acento (yellow-30)
+    "acento": "#fddc69",  # --silice-acento (yellow-20)
     "lateral": "#f7f3f2",  # --silice-lateral (warm-gray-10)
     "lateral-activo": "#e5e0df",  # --silice-lateral-activo (warm-gray-20); el tema no lo cambia
     "texto-del-marco": "#ffffff",  # --cds-text-inverse
     "texto": "#161616",  # --cds-text-primary
     "borde": "#8d8d8d",  # --cds-border-strong-01 (gray-50)
     "fondo": "#f4f4f4",  # --cds-background (g10): el fondo del contenido, no el blanco de las capas
+    "blanco": "#ffffff",  # --cds-layer-01 (g10): las capas, los diálogos y los campos
 }
+#: Mezclas del botón principal, en porcentaje del primer color (tokens.scss: $mezcla-*; una prueba
+#: comprueba que las dos copias coinciden). `reposo`: acento con blanco; `hover`: acento con blanco;
+#: `borde`: acento con el marco. Al pulsar el botón es el acento puro.
+MEZCLAS = {"reposo": 55, "hover": 85, "borde": 50}
 _TEXTO = 4.5  # WCAG 2.x 1.4.3, texto normal
+_TEXTO_BOTON = 7.0  # decisión de Eugenio (2026-10-28): legibilidad para vista cansada
 _GRAFICO = 3.0  # WCAG 2.x 1.4.11, bordes y rayas
-#: (color delante, color de fondo, mínimo, frase del aviso). `marco`, `acento` y `lateral` los puede
-#: poner la empresa; uno ausente mide con el del tema neutro. La raya del elemento activo del menú
-#: lateral es del color del marco (no del acento) y se mide sobre `lateral-activo`, que el tema no
-#: cambia.
+#: (color delante, color de fondo, mínimo, frase del aviso). `marco`, `acento`, `lateral`,
+#: `complementario`, `contador-numero` y `contador-fondo` los puede poner la empresa; uno ausente
+#: mide con el del tema neutro (el complementario y el número del contador siguen al marco, y el
+#: fondo del contador al lateral). `boton-*` son derivados (MEZCLAS). La raya del activo del
+#: menú lateral es del color del marco (no del acento) y se mide sobre `lateral-activo`, que el
+#: tema no cambia.
 _PARES = (
     (
         "texto-del-marco",
@@ -56,15 +64,45 @@ _PARES = (
     ),
     (
         "marco",
-        "acento",
-        _TEXTO,
-        "El texto de los botones principales no se lee bien sobre el color de acento",
+        "boton-reposo",
+        _TEXTO_BOTON,
+        "El texto de los botones principales no se lee bien sobre su fondo",
     ),
     (
         "marco",
+        "boton-hover",
+        _TEXTO_BOTON,
+        "El texto de los botones principales no se lee bien al pasar el ratón",
+    ),
+    (
+        "marco",
+        "acento",
+        _TEXTO_BOTON,
+        "El texto de los botones principales no se lee bien al pulsarlos",
+    ),
+    (
+        "boton-borde",
+        "fondo",
+        _GRAFICO,
+        "El borde de los botones principales casi no se ve sobre el fondo de la página",
+    ),
+    (
+        "complementario",
         "fondo",
         _TEXTO,
-        "Los enlaces y bordes del color del marco no se leen bien sobre el fondo de la página",
+        "Los enlaces no se leen bien sobre el fondo de la página",
+    ),
+    (
+        "complementario",
+        "blanco",
+        _TEXTO,
+        "Los enlaces no se leen bien sobre las capas blancas",
+    ),
+    (
+        "complementario",
+        "lateral",
+        _TEXTO,
+        "Los enlaces no se leen bien sobre el color lateral",
     ),
     ("texto", "lateral", _TEXTO, "El texto del menú lateral no se lee bien sobre el color lateral"),
     (
@@ -97,6 +135,18 @@ _PARES = (
         _GRAFICO,
         "La raya del elemento activo del menú lateral casi no se ve sobre su fondo",
     ),
+    (
+        "contador-numero",
+        "contador-fondo",
+        _TEXTO,
+        "El número del contador no se lee bien sobre su fondo",
+    ),
+    (
+        "contador-numero",
+        "lateral",
+        _GRAFICO,
+        "El contorno del contador casi no se ve sobre el color lateral",
+    ),
 )
 
 
@@ -105,6 +155,9 @@ class Tema:
     acento: str | None
     marco: str | None
     lateral: str | None
+    complementario: str | None
+    contador_numero: str | None
+    contador_fondo: str | None
     tiene_logo: bool
     avisos: list[str]
 
@@ -122,15 +175,38 @@ def contraste(a: str, b: str) -> float:
     return (claro + 0.05) / (oscuro + 0.05)
 
 
+def mezclar(delante: str, detras: str, porcentaje: int) -> str:
+    """Mezcla sRGB canal a canal, como `color-mix(in srgb, delante P%, detras)` de CSS."""
+    peso = porcentaje / 100
+    canales = (
+        round(int(delante[i : i + 2], 16) * peso + int(detras[i : i + 2], 16) * (1 - peso))
+        for i in (1, 3, 5)
+    )
+    return "#" + "".join(f"{c:02x}" for c in canales)
+
+
 def _numero(valor: float) -> str:
     """Con coma decimal y un decimal, truncado (no redondeado): un 4,478 nunca se lee «4,5»."""
     return f"{int(valor * 10) / 10:.1f}".replace(".", ",")
 
 
-def avisos_de_contraste(acento: str | None, marco: str | None, lateral: str | None) -> list[str]:
+def avisos_de_contraste(
+    acento: str | None,
+    marco: str | None,
+    lateral: str | None,
+    complementario: str | None = None,
+    contador_numero: str | None = None,
+    contador_fondo: str | None = None,
+) -> list[str]:
     """Los pares del marco que no llegan a su mínimo, en español llano. El tema se aplica igual."""
     propios = {"acento": acento, "marco": marco, "lateral": lateral}
     colores = {**_NEUTRO, **{k: v for k, v in propios.items() if v}}
+    colores["complementario"] = complementario or colores["marco"]
+    colores["contador-numero"] = contador_numero or colores["marco"]
+    colores["contador-fondo"] = contador_fondo or colores["lateral"]
+    colores["boton-reposo"] = mezclar(colores["acento"], _NEUTRO["blanco"], MEZCLAS["reposo"])
+    colores["boton-hover"] = mezclar(colores["acento"], _NEUTRO["blanco"], MEZCLAS["hover"])
+    colores["boton-borde"] = mezclar(colores["acento"], colores["marco"], MEZCLAS["borde"])
     avisos = []
     for delante, fondo, minimo, frase in _PARES:
         razon = contraste(colores[delante], colores[fondo])
@@ -171,11 +247,19 @@ def leer_logo(carpeta: Path) -> tuple[bytes, str] | None:
 
 def leer_tema(carpeta: Path) -> Tema:
     colores = _colores(carpeta)
-    acento, marco, lateral = (_color(colores.get(k)) for k in ("acento", "marco", "lateral"))
+    claves = ("acento", "marco", "lateral", "complementario", "contador_numero", "contador_fondo")
+    acento, marco, lateral, complementario, contador_numero, contador_fondo = (
+        _color(colores.get(k)) for k in claves
+    )
     return Tema(
         acento=acento,
         marco=marco,
         lateral=lateral,
+        complementario=complementario,
+        contador_numero=contador_numero,
+        contador_fondo=contador_fondo,
         tiene_logo=leer_logo(carpeta) is not None,
-        avisos=avisos_de_contraste(acento, marco, lateral),
+        avisos=avisos_de_contraste(
+            acento, marco, lateral, complementario, contador_numero, contador_fondo
+        ),
     )
