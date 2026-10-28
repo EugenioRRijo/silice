@@ -37,6 +37,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
+from api.rutas.sesion import Detalle
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import aprobaciones
@@ -181,7 +182,10 @@ def resumen(sesion: SesionDep, response: Response, proyecto: str, version: str) 
     response_class=Response,
     responses={
         200: {"content": {"application/zip": {}}},
-        503: {"description": "La base de la carpeta no se pudo leer; no se generó el paquete."},
+        503: {
+            "model": Detalle,
+            "description": "La base de la carpeta no se pudo leer; no se generó el paquete.",
+        },
     },
     dependencies=[ENTREGAR],  # antes de abrir la base del caso; FastAPI no la corre dos veces
 )
