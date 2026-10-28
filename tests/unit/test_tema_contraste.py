@@ -188,17 +188,39 @@ def test_mezcla_srgb_canal_a_canal() -> None:
     assert tema.mezclar("#123456", "#abcdef", 100) == "#123456"
 
 
+def test_la_mezcla_redondea_la_mitad_hacia_arriba_como_el_navegador() -> None:
+    # 50 % de #fddc69 con #393939: canal g (220 + 57) / 2 = 138,5 -> 139 (0x8b), no el 138 par que
+    # daba round() de Python; r = 155 (0x9b) y b = 81 (0x51) son exactos. Otro empate: 50 % de
+    # #050505 con negro = 2,5 -> 3 (round() daba 2).
+    assert tema.mezclar("#fddc69", "#393939", 50) == "#9b8b51"
+    assert tema.mezclar("#050505", "#000000", 50) == "#030303"
+
+
 def test_proporciones_de_mezcla_en_un_solo_sitio() -> None:
     assert tema.MEZCLAS == {"reposo": 55, "hover": 85, "borde": 50}
 
 
 def test_tema_neutro_cumple_los_umbrales_del_boton_con_holgura() -> None:
     # Neutro: marco #393939 sobre el botón en reposo #feecac 9,79; al pasar el ratón #fde180 8,94;
-    # al pulsar (acento #fddc69) 8,59: los tres sobre 7:1. Borde #9b8a51 sobre #f4f4f4: 3,11.
+    # al pulsar (acento #fddc69) 8,59: los tres sobre 7:1. Borde #9b8b51 (mitad hacia arriba, como
+    # lo pinta el navegador) sobre #f4f4f4: (0,9047 + 0,05) / (0,2603 + 0,05) = 3,08.
     reposo = tema.mezclar("#fddc69", "#ffffff", 55)
     sobre = tema.mezclar("#fddc69", "#ffffff", 85)
     borde = tema.mezclar("#fddc69", "#393939", 50)
     assert tema.contraste("#393939", reposo) == pytest.approx(9.79, abs=0.01)
     assert tema.contraste("#393939", sobre) == pytest.approx(8.94, abs=0.01)
     assert tema.contraste("#393939", "#fddc69") == pytest.approx(8.59, abs=0.01)
-    assert tema.contraste(borde, "#f4f4f4") == pytest.approx(3.11, abs=0.01)
+    assert tema.contraste(borde, "#f4f4f4") == pytest.approx(3.08, abs=0.005)
+
+
+def test_el_contorno_del_contador_tambien_se_mide_sobre_el_fondo_de_la_opcion_activa(
+    tmp_path: Path,
+) -> None:
+    # La píldora de Pendientes activo queda sobre `lateral-activo` (#e5e0df, L = 0,753). Número
+    # #8a8a8a (L = 0,254) sobre el fondo del contador #1a1a1a (L = 0,0103): 5,04, pasa 4,5; sobre
+    # el lateral #f7f3f2 (L = 0,903): 3,13, pasa 3:1; pero sobre #e5e0df: (0,753 + 0,05) /
+    # (0,254 + 0,05) = 2,64, que se muestra truncado «2,6».
+    assert _con(tmp_path, contador_numero="#8a8a8a", contador_fondo="#1a1a1a") == [
+        "El contorno del contador casi no se ve sobre el fondo de la opción activa del menú"
+        " lateral: 2,6:1, hace falta 3:1"
+    ]
