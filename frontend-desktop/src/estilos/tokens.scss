@@ -88,8 +88,9 @@ $mezcla-borde: 50%;
   border-color: var(--silice-boton-borde);
 }
 
-// WCAG 1.4.1: en el color complementario el enlace dista ~1,6:1 del texto y solo se distinguiria por el color; Carbon pone
-// text-decoration: none en .cds--link, asi que se subraya.
+// WCAG 1.4.1: el enlace en el complementario puede quedar muy cerca del texto (en el tema neutro, donde sigue al marco,
+// ~1,6:1) y solo se distinguiria por el color; Carbon pone text-decoration: none en .cds--link, asi que se subraya
+// siempre, sea cual sea el complementario.
 .cds--link {
   text-decoration: underline;
 }

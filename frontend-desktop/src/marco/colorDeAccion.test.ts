@@ -2,7 +2,8 @@ import { describe, expect, test } from "vitest";
 
 // jsdom no calcula CSS: las reglas se leen del fuente (como estilosMarco.test.ts). D-F3-4: el botón principal lleva el
 // acento de la empresa con texto del color del marco; enlaces, bordes interactivos y la raya de la pestaña activa, el
-// color del marco (el ámbar sobre el fondo da ~2:1 y no sirve para texto ni bordes). El foco no se toca.
+// color complementario (que sin uno propio sigue al marco; el acento sobre el fondo da ~2:1 y no sirve para texto ni
+// bordes). El foco no se toca.
 const nodo = (
   globalThis as unknown as {
     process: { cwd(): string; getBuiltinModule(nombre: string): { readFileSync(ruta: string, codificacion: string): string } };
