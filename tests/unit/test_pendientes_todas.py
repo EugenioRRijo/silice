@@ -11,6 +11,7 @@ avisan). El último caso usa las fuentes reales con un envío devuelto sembrado.
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from contextlib import closing
 from datetime import date, datetime
@@ -227,7 +228,7 @@ def sembrar_fecha_no_iso(ruta: Path) -> None:
 
 
 def test_carpeta_con_datos_raros_se_omite_y_la_sana_sigue(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.undo()  # fuentes reales de la mesa
     rara, sana = tmp_path / "Carpeta Rara.db", tmp_path / "Carpeta Sana.db"
@@ -239,13 +240,36 @@ def test_carpeta_con_datos_raros_se_omite_y_la_sana_sigue(
         conexion.execute("UPDATE mp_aprobacion_evento SET fecha_hora = '2026-10-28 09:00:00'")
         conexion.commit()
         conexion.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-    resultado = pendientes_de_las_carpetas(
-        [("Carpeta Rara.db", rara), ("Carpeta Sana.db", sana)], HOY, alcance="todo"
-    )
+    with caplog.at_level(logging.WARNING, logger="aplicacion.pendientes_todas"):
+        resultado = pendientes_de_las_carpetas(
+            [("Carpeta Rara.db", rara), ("Carpeta Sana.db", sana)], HOY, alcance="todo"
+        )
     assert [(i.carpeta, i.obra, i.texto) for i in resultado.items] == [
         ("Carpeta Sana.db", "Vialidad", "V1 espera dictamen")
     ]
     assert resultado.carpetas_omitidas == 1
+    # el registro dice la carpeta y el tipo del error, no el texto de la excepción (trae datos)
+    avisos = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(avisos) == 1
+    assert "Carpeta Rara.db" in avisos[0] and "ValueError" in avisos[0]
+    for rastro in ("28/10/2026", "isoformat"):
+        assert rastro not in avisos[0]
+
+
+def test_la_traza_de_una_carpeta_omitida_va_solo_al_registro_local_en_debug(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.undo()
+    rara = tmp_path / "Carpeta Rara.db"
+    _crear(rara, ["Galpón"])
+    sembrar_fecha_no_iso(rara)
+    with caplog.at_level(logging.DEBUG, logger="aplicacion.pendientes_todas"):
+        pendientes_de_las_carpetas([("Carpeta Rara.db", rara)], HOY, alcance="todo")
+    trazas = [r for r in caplog.records if r.levelno == logging.DEBUG and r.exc_info]
+    assert len(trazas) == 1
+    assert trazas[0].exc_info[0] is ValueError
+    # la traza no viaja en el mensaje: solo el formateador del registro local la imprime
+    assert "28/10/2026" not in trazas[0].getMessage()
 
 
 def test_por_aprobar_exige_el_grupo_aprobar(carpetas) -> None:
