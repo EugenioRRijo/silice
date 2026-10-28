@@ -10,9 +10,10 @@ lo que bloquea primero; dentro de cada urgencia, la carpeta de la empresa (`None
 demás por nombre, luego el grupo en el orden de `GRUPOS` y por último el orden de cada fuente.
 Las fuentes no dan fecha, así que no se inventa «lo más antiguo arriba».
 
-Una carpeta ilegible (no SQLite, sin las tablas de las fuentes o con datos que una fuente no
-puede leer) se omite, se cuenta en
-`carpetas_omitidas` y queda en el registro; nunca tumba la lista.
+Una carpeta sin archivo (la de la empresa en la demostración) no tiene pendientes: se salta sin
+contarla. Una carpeta ilegible (no SQLite, sin las tablas de las fuentes o con datos que una
+fuente no puede leer) se omite, se cuenta en `carpetas_omitidas` y queda en el registro; nunca
+tumba la lista.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from typing import Literal
 
 from aplicacion import mesa
 from aplicacion.mesa import Siguiente
+from aplicacion.proyectos import carpetas_con_archivo
 from core.catalog import abrir_sesion
 from operacion.base_datos import motor_solo_lectura
 
@@ -82,7 +84,9 @@ def pendientes_de_las_carpetas(
     `alcance="por_aprobar"` quedan solo los de `accion.pagina == "aprobar"`."""
     items: list[PendienteDeObra] = []
     omitidas = 0
-    for nombre, ruta in sorted(carpetas, key=lambda c: (c[0] is not None, (c[0] or "").casefold())):
+    for nombre, ruta in sorted(
+        carpetas_con_archivo(carpetas), key=lambda c: (c[0] is not None, (c[0] or "").casefold())
+    ):
         motor = motor_solo_lectura(ruta)
         try:
             with abrir_sesion(motor) as sesion:

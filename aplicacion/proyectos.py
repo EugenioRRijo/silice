@@ -291,15 +291,27 @@ class ObraDeCarpeta:
     version_codigo: str | None
 
 
+def carpetas_con_archivo(
+    carpetas: list[tuple[str | None, Path]],
+) -> list[tuple[str | None, Path]]:
+    """Las carpetas cuyo archivo existe. Una sin archivo (la de la empresa en la demostración, que
+    aún no se creó) no tiene obras ni pendientes: no es un fallo y no se avisa. Una corrupta sí
+    existe y la tratan los lectores."""
+    return [(nombre, ruta) for nombre, ruta in carpetas if Path(ruta).is_file()]
+
+
 def obras_de_las_carpetas(carpetas: list[tuple[str | None, Path]]) -> list[ObraDeCarpeta]:
     """Las obras de cada carpeta (`(nombre, ruta)`), abiertas una a una en **solo lectura**
     (`motor_solo_lectura`: URI `mode=ro`, sin migrar ni crear `-wal`/`-shm`) y cerradas al
     terminar. Orden: la carpeta de la empresa (`None`), luego las demás por nombre, y dentro de
-    cada una las obras por nombre sin distinguir mayúsculas. Se omite (y queda en el registro) la
-    carpeta que no se puede leer: archivo no SQLite o ausente, tabla o columna que falta. Una más
+    cada una las obras por nombre sin distinguir mayúsculas. La de archivo ausente no tiene obras:
+    se salta sin aviso. Se omite (y queda en el registro) la
+    carpeta que no se puede leer: archivo no SQLite, tabla o columna que falta. Una más
     nueva que abre sin error se lista; abrirla dará el error de `preparar_base`."""
     filas: list[ObraDeCarpeta] = []
-    for nombre, ruta in sorted(carpetas, key=lambda c: (c[0] is not None, (c[0] or "").casefold())):
+    for nombre, ruta in sorted(
+        carpetas_con_archivo(carpetas), key=lambda c: (c[0] is not None, (c[0] or "").casefold())
+    ):
         motor = motor_solo_lectura(ruta)
         try:
             with abrir_sesion(motor) as sesion:
