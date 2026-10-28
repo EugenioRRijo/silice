@@ -1,3 +1,4 @@
+import { formatoEsVe } from "../indicadores/formatoEsVe";
 import "./Pildora.scss";
 
 // El contador pequeño de la barra lateral (maqueta aprobada: píldora, no bloque). Va oculto a los lectores de pantalla:
@@ -5,7 +6,7 @@ import "./Pildora.scss";
 export function Pildora({ valor }: { valor: number }) {
   return (
     <span className="silice-pildora" aria-hidden="true">
-      {valor}
+      {formatoEsVe(String(valor))}
     </span>
   );
 }
