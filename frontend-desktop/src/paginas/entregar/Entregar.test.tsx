@@ -423,7 +423,7 @@ describe("Entregar paquete", () => {
       await u.selectOptions(screen.getByLabelText("Versión"), "VIV-001");
       const aviso = await screen.findByText("Esta versión no está aprobada.");
       expect(aviso.closest("[role=status]")).toHaveTextContent(
-        "La última aprobada es VIV-002. Si entrega esta, el cliente recibirá una versión que nadie aprobó.",
+        "La última aprobada es VIV-002. Si entrega esta, el paquete saldrá rotulado «Versión NO aprobada», con la fecha y esa última aprobada.",
       );
       expect(
         screen.getByRole("button", { name: "Generar paquete" }),
@@ -441,7 +441,7 @@ describe("Entregar paquete", () => {
       expect(screen.getByLabelText("Versión")).toHaveValue("VIV-002");
       const aviso = await screen.findByText("Esta versión no está aprobada.");
       expect(aviso.closest("[role=status]")).toHaveTextContent(
-        "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde la Hoja.",
+        "Ninguna versión de esta obra está aprobada todavía: envíela a aprobación desde la Hoja. Si la entrega así, el paquete saldrá rotulado «Versión NO aprobada», con la fecha.",
       );
     });
 
