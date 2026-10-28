@@ -44,4 +44,22 @@ describe("obrasConMismoNombre (D-F3-3)", () => {
     ]);
     expect(m.size).toBe(3);
   });
+
+  it("un doble espacio interno no distingue", () => {
+    const m = obrasConMismoNombre([fila("a.db", 1, "Galpón  Sur", "Norte"), fila("b.db", 2, "Galpón Sur", "Sur")]);
+    expect(m.size).toBe(2);
+  });
+
+  it("«Galpón» escrito en NFD y en NFC es el mismo nombre", () => {
+    const m = obrasConMismoNombre([
+      fila("a.db", 1, "Galpón", "Norte"),
+      fila("b.db", 2, "Galpón", "Sur"),
+    ]);
+    expect(m.size).toBe(2);
+  });
+
+  it("«Galpón» frente a «Galpon» sigue siendo distinto", () => {
+    const m = obrasConMismoNombre([fila("a.db", 1, "Galpón", "Norte"), fila("b.db", 2, "Galpon", "Sur")]);
+    expect(m.size).toBe(0);
+  });
 });

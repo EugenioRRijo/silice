@@ -105,8 +105,8 @@ describe("BarraLateral: árbol sin carpetas (D-F3-3)", () => {
     const lista = await arbol();
     expect(within(lista).getAllByRole("treeitem").map((e) => e.textContent)).toEqual([
       "Clínica Las Mercedes",
-      "Torre B",
       "Galpón Sur",
+      "Torre B",
     ]);
     expect(screen.queryByRole("group", { name: "Carpeta Norte" })).toBeNull();
     expect(screen.queryByRole("group", { name: "Carpeta Sur" })).toBeNull();
@@ -121,6 +121,29 @@ describe("BarraLateral: árbol sin carpetas (D-F3-3)", () => {
     expect(within(lista).getAllByRole("treeitem")).toHaveLength(2);
     expect(screen.queryByRole("group", { name: "Carpeta Norte" })).toBeNull();
     expect(document.body.textContent).not.toContain("Carpeta Norte");
+  });
+
+  it("las obras van por nombre aunque la API las traiga por carpeta: una de la carpeta Sur que empieza por A queda primera", async () => {
+    servidor([CLINICA, TORRE, obra(SUR, 4, "Almacén Sur"), GALPON]);
+    pintar();
+    const lista = await arbol();
+    expect(within(lista).getAllByRole("treeitem").map((e) => e.textContent)).toEqual([
+      "Almacén Sur",
+      "Clínica Las Mercedes",
+      "Galpón Sur",
+      "Torre B",
+    ]);
+  });
+
+  it("el orden ignora tildes y mayúsculas, y con el mismo nombre desempata por el título de la carpeta", async () => {
+    servidor([obra(SUR, 3, "galpón"), obra(NORTE, 1, "Galpón"), obra(NORTE, 2, "Álamo")]);
+    pintar();
+    const lista = await arbol();
+    expect(within(lista).getAllByRole("treeitem").map((e) => e.textContent)).toEqual([
+      "Álamo",
+      "GalpónCarpeta Norte",
+      "galpónCarpeta Sur",
+    ]);
   });
 
   it("una cuenta sin CAMBIAR_CASO no ve obras de otra carpeta que la abierta, aunque la respuesta las traiga", async () => {
@@ -438,8 +461,8 @@ describe("BarraLateral: niveles del árbol", () => {
     pintar({ abierta: { carpeta: NORTE, obraId: 1 }, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
     const lista = await arbol();
     expect(nivel(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" }))).toEqual(["1", "3", "1"]);
-    expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "3", "2"]);
-    expect(nivel(within(lista).getByRole("treeitem", { name: "Galpón Sur" }))).toEqual(["1", "3", "3"]);
+    expect(nivel(within(lista).getByRole("treeitem", { name: "Galpón Sur" }))).toEqual(["1", "3", "2"]);
+    expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "3", "3"]);
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
     expect(secciones.map(nivel)).toEqual([
       ["2", "5", "1"],
