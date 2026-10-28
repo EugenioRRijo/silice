@@ -277,3 +277,18 @@ def test_por_aprobar_exige_el_grupo_aprobar(carpetas) -> None:
     ESCENARIO[("precios", "Galpón")] = ("Otro grupo con página aprobar", VER_EL_ENVIO)
     resultado = pendientes_de_las_carpetas(carpetas, HOY, alcance="por_aprobar")
     assert [(i.obra, i.grupo) for i in resultado.items] == [("Vialidad", "aprobar")]
+
+
+def test_carpeta_sin_archivo_no_se_cuenta_como_omitida_ni_deja_aviso(
+    carpetas, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Cierre de F3 (H2): la carpeta de la empresa de la demostración no existe como archivo;
+    sin archivo no hay obras ni pendientes, y no es un fallo."""
+    ESCENARIO[("aprobar", "Vialidad")] = ("V1 espera dictamen", VER_EL_ENVIO)
+    with caplog.at_level(logging.WARNING, logger="aplicacion.pendientes_todas"):
+        resultado = pendientes_de_las_carpetas(
+            [*carpetas, (None, tmp_path / "silice.db")], HOY, alcance="todo"
+        )
+    assert _claves(resultado) == [("Carpeta Sur.db", "Vialidad", "bloquea")]
+    assert resultado.carpetas_omitidas == 0
+    assert not [r for r in caplog.records if r.levelno == logging.WARNING]

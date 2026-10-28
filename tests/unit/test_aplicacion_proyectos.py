@@ -191,3 +191,29 @@ def test_obras_de_las_carpetas_trae_la_version_vigente_y_ordena(tmp_path):
         (None, NOMBRE_PROYECTO, vigente.codigo),
         ("con_version.db", NOMBRE_PROYECTO, vigente.codigo),
     ]
+
+
+def test_una_carpeta_sin_archivo_no_tiene_obras_y_no_escribe_aviso(tmp_path, caplog):
+    """Cierre de F3 (H2): la carpeta de la empresa de la demostración no existe como archivo; no
+    tiene obras y no es un fallo, así que no deja aviso en el registro. La sana sigue."""
+    con_version = tmp_path / "con_version.db"
+    guardar_base_con_pendiente(con_version)
+
+    with caplog.at_level("WARNING", logger="aplicacion.proyectos"):
+        filas = proyectos.obras_de_las_carpetas(
+            [(None, tmp_path / "silice.db"), ("con_version.db", con_version)]
+        )
+
+    assert [f.carpeta for f in filas] == ["con_version.db"]
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]
+
+
+def test_una_carpeta_corrupta_sigue_con_su_aviso(tmp_path, caplog):
+    rota = tmp_path / "rota.db"
+    rota.write_bytes(b"esto no es SQLite " * 40)
+
+    with caplog.at_level("WARNING", logger="aplicacion.proyectos"):
+        filas = proyectos.obras_de_las_carpetas([("rota.db", rota)])
+
+    assert filas == []
+    assert len([r for r in caplog.records if r.levelname == "WARNING"]) == 1
