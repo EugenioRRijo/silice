@@ -278,6 +278,20 @@ describe("Hoja: objetivo de mercado junto al precio unitario (Tarea 16)", () => 
     );
   });
 
+  // Si la API rompiera su contrato (sin equivalencia y sin motivo), la celda no escribe «null» ni «undefined».
+  test.each([
+    ["sin_tasa nulo", { equivalencia: null, sin_tasa: null }],
+    ["sin_tasa ausente", { equivalencia: null }],
+  ])("un objetivo en otra moneda con %s cae a un texto neutro y nunca escribe «null» ni «undefined»", async (_caso, extra) => {
+    alObjetivos = () => json({ objetivos: [{ codigo: "OBRA-06", precio: "31.50", moneda: "USD", margen: null, ...extra }] });
+    montar();
+    await waitFor(async () =>
+      expect(texto((await celdaDe("OBRA-06")).celda)).toBe("31,50 USD · en otra moneda que la obra (Bs), sin margen"),
+    );
+    const celda = (await celdaDe("OBRA-06")).celda;
+    expect(celda.textContent).not.toMatch(/null|undefined/);
+  });
+
   test("sin ningún objetivo, la columna queda vacía y no hay ayuda", async () => {
     alObjetivos = () => json({ objetivos: [] });
     montar();
