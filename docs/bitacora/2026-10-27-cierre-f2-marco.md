@@ -110,6 +110,17 @@ como estaba y se ajusta al ruteo nuevo en F7.
 - El recorrido guiado no marca el paso «Suba el libro» en `#/empresa/auditoria` (compara con `#/auditoria`).
 - Precios de la empresa, Índices del BCV, Simulador, Histórico, Tablero, Componer… solo se alcanzan por Ctrl+K (F4/F5).
 - `scripts/recorrido_ux_playwright.py` sigue midiendo la barra de módulos (F7).
+- Comparación con la maqueta aprobada (barra lateral marfil, 2026-10-28) sobre las capturas de T8 a 1366 px; lo que no
+  estaba anotado:
+  - El color de acción sigue siendo el azul de Carbon (botón principal, enlaces, pestañas activas); la maqueta usa el
+    ámbar y el carbón de la empresa. El tema de empresa colorea el marco pero no los tokens interactivos de Carbon
+    (decidir en F3 si el tema los cubre, con su medida de contraste).
+  - El árbol muestra los nombres técnicos de las carpetas (`demo`, `obra_control`, `of001`, `s1`) como títulos de
+    grupo; la maqueta solo muestra obras. Falta un nombre legible por carpeta o agrupar de otra forma (F3/F4).
+  - Encima de la barra superior queda una franja gris vacía en las capturas: confirmar en navegador si es del marco o
+    de la captura (F3).
+  - La cuenta se muestra como «Ana» con tres botones de tamaño de letra; la maqueta pone un círculo con iniciales
+    (decidir si los tamaños de letra pasan al menú de la cuenta).
 - ~~La cabecera de la obra pide `GET /v1/obras/resumen` solo para la moneda~~: resuelto en los menores (punto 40).
 
 ## Rondas de la Tarea 8
