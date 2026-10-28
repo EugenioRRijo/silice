@@ -75,10 +75,15 @@ def test_marco_gris_medio_da_los_avisos_exactos(tmp_path: Path) -> None:
     ]
 
 
-def test_lateral_oscuro_avisa_del_texto_y_las_lineas(tmp_path: Path) -> None:
-    # #161616 sobre #1a1a1a: casi 1:1 (el texto); #8d8d8d sobre #1a1a1a pasa 3:1 (5,2:1 a mano).
+def test_lateral_oscuro_avisa_del_texto_las_lineas_y_el_contador(tmp_path: Path) -> None:
+    # Lateral #1a1a1a (L = 0,0103): el texto #161616 da 1,04; el marco neutro #393939 (L = 0,041)
+    # como enlace y como número y contorno del contador da (0,091 / 0,0603) = 1,51 -> «1,5»; el
+    # borde #8d8d8d pasa (5,24).
     assert _con(tmp_path, lateral="#1a1a1a") == [
+        "Los enlaces no se leen bien sobre el color lateral: 1,5:1, hace falta 4,5:1",
         "El texto del menú lateral no se lee bien sobre el color lateral: 1,0:1, hace falta 4,5:1",
+        "El número del contador no se lee bien sobre su fondo: 1,5:1, hace falta 4,5:1",
+        "El contorno del contador casi no se ve sobre el color lateral: 1,5:1, hace falta 3:1",
     ]
 
 
@@ -145,6 +150,8 @@ def test_acento_azul_da_los_tres_avisos_del_texto_del_boton(tmp_path: Path) -> N
         "El texto de los botones principales no se lee bien al pasar el ratón:"
         " 2,9:1, hace falta 7:1",
         "El texto de los botones principales no se lee bien al pulsarlos: 2,1:1, hace falta 7:1",
+        "La raya de color de acento bajo la barra superior casi no se ve sobre el color del marco:"
+        " 2,1:1, hace falta 3:1",
     ]
 
 
