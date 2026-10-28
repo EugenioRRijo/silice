@@ -211,3 +211,45 @@ def test_con_las_fuentes_reales_una_devuelta_sale_como_bloquea(
         (OBRA, "bloquea", "VIV-001 devuelta: Falta el acero de la losa.", "hoja")
     ]
     assert devuelta[0].obra_id == 1
+
+
+def sembrar_fecha_no_iso(ruta: Path) -> None:
+    """Un envío con `fecha_hora` en texto no ISO: leerlo lanza `ValueError`."""
+    with closing(sqlite3.connect(ruta)) as conexion:
+        conexion.execute(
+            "INSERT INTO mp_aprobacion_evento (proyecto_id, tipo, version, huella_version, notas,"
+            " usuario, fecha_hora, armo, anterior, huella) VALUES (1, 'envio', 'V1', ?, '',"
+            " 'Ana <ana>', '28/10/2026 9:00', 0, ?, ?)",
+            ("a" * 64, "0" * 64, "b" * 64),
+        )
+        conexion.commit()
+        conexion.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+
+def test_carpeta_con_datos_raros_se_omite_y_la_sana_sigue(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.undo()  # fuentes reales de la mesa
+    rara, sana = tmp_path / "Carpeta Rara.db", tmp_path / "Carpeta Sana.db"
+    _crear(rara, ["Galpón"])
+    sembrar_fecha_no_iso(rara)
+    _crear(sana, ["Vialidad"])
+    sembrar_fecha_no_iso(sana)  # el mismo envío pero con fecha válida abajo
+    with closing(sqlite3.connect(sana)) as conexion:
+        conexion.execute("UPDATE mp_aprobacion_evento SET fecha_hora = '2026-10-28 09:00:00'")
+        conexion.commit()
+        conexion.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    resultado = pendientes_de_las_carpetas(
+        [("Carpeta Rara.db", rara), ("Carpeta Sana.db", sana)], HOY, alcance="todo"
+    )
+    assert [(i.carpeta, i.obra, i.texto) for i in resultado.items] == [
+        ("Carpeta Sana.db", "Vialidad", "V1 espera dictamen")
+    ]
+    assert resultado.carpetas_omitidas == 1
+
+
+def test_por_aprobar_exige_el_grupo_aprobar(carpetas) -> None:
+    ESCENARIO[("aprobar", "Vialidad")] = ("V1 espera dictamen", VER_EL_ENVIO)
+    ESCENARIO[("precios", "Galpón")] = ("Otro grupo con página aprobar", VER_EL_ENVIO)
+    resultado = pendientes_de_las_carpetas(carpetas, HOY, alcance="por_aprobar")
+    assert [(i.obra, i.grupo) for i in resultado.items] == [("Vialidad", "aprobar")]
