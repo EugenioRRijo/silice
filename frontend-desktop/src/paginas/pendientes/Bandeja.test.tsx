@@ -68,9 +68,17 @@ function obrasTodas(estado: EstadoDelServidor) {
   return {
     carpeta_actual: empresa ? null : estado.actual.nombre,
     carpeta_actual_titulo: empresa ? "Carpeta de la empresa" : estado.actual.nombre.replace(/\.db$/, ""),
-    obras: [fila(null, 7, "Casa Demo"), fila(null, 8, "Torre B"), fila(SUR, 3, "Galpón Sur")],
+    obras: [
+      fila(null, 7, "Casa Demo"),
+      fila(null, 8, "Torre B"),
+      fila(SUR, 3, "Galpón Sur"),
+      ...(conHomonima ? [fila(SUR, 4, "Casa Demo")] : []),
+    ],
   };
 }
+
+// D-F3-3: una obra de la carpeta Sur con el mismo nombre que la de la empresa.
+let conHomonima = false;
 
 let servidor: ReturnType<typeof servidorFalso>;
 // Lo que contesta la ruta de la bandeja; cada prueba lo cambia.
@@ -92,6 +100,7 @@ function instalar(preparar: (estado: EstadoDelServidor) => void = () => undefine
 const responder = (pendientes: PendienteDeObra[], carpetas_omitidas = 0): Respondedor => () => json({ pendientes, carpetas_omitidas });
 
 beforeEach(() => {
+  conHomonima = false;
   bandeja = responder(CUATRO);
   instalar();
   fijarCsrf("tok");
@@ -409,5 +418,41 @@ describe("Pendientes: foco 5, muchos pendientes", () => {
     expect(columna).toContainElement(await lista());
     expect(columna).not.toContainElement(detalle());
     expect(screen.getByText("200 por hacer")).toBeInTheDocument();
+  });
+});
+
+describe("Pendientes: obras con el mismo nombre (D-F3-3)", () => {
+  const HOMONIMA: PendienteDeObra = { ...CEMENTO, carpeta: SUR, obra_id: 4, texto: "Falta pedir la arena" };
+
+  test("en la lista y en el detalle, dos obras llamadas igual muestran su carpeta; las demás no", async () => {
+    conHomonima = true;
+    bandeja = responder([CEMENTO, HOMONIMA, PRECIOS]);
+    montar();
+    const [primera, segunda, tercera] = await opciones();
+    await waitFor(() => expect(primera).toHaveTextContent("Carpeta de la empresa"));
+    expect(segunda).toHaveTextContent("Carpeta Sur");
+    expect(tercera).not.toHaveTextContent("Carpeta");
+    expect(detalle()).toHaveTextContent("Carpeta de la empresa");
+    await userEvent.setup().click(segunda);
+    expect(detalle()).toHaveTextContent("Carpeta Sur");
+    await userEvent.setup().click(tercera);
+    expect(detalle()).not.toHaveTextContent("Carpeta");
+  });
+
+  test("sin obras homónimas no se muestra ninguna carpeta", async () => {
+    montar();
+    const todas = await opciones();
+    await new Promise((r) => setTimeout(r, 30));
+    for (const o of todas) expect(o).not.toHaveTextContent("Carpeta");
+  });
+
+  test("una obra que no está en la lista del marco no muestra nada extra", async () => {
+    conHomonima = true;
+    const FUERA: PendienteDeObra = { ...CEMENTO, carpeta: SUR, obra_id: 99 };
+    bandeja = responder([FUERA, CEMENTO]);
+    montar();
+    const [primera, segunda] = await opciones();
+    await waitFor(() => expect(segunda).toHaveTextContent("Carpeta de la empresa"));
+    expect(primera).not.toHaveTextContent("Carpeta");
   });
 });

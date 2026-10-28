@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorDeApi, pedir } from "../api/cliente";
-import type { ObraDeCarpetaRespuesta, SesionRespuesta } from "../api/tipos";
+import type { ObraDeCarpetaRespuesta, PendienteDeObra, SesionRespuesta } from "../api/tipos";
 import { ContextoAplicacion } from "../shell/contexto";
 import { sesionDe } from "../shell/obras/datosDePrueba";
 import { BarraLateral } from "./BarraLateral";
@@ -533,5 +533,104 @@ describe("BarraLateral: la obra recién creada", () => {
     expect(screen.getByTestId("ubicacion")).toHaveTextContent("/pendientes");
     expect(screen.getByTestId("ubicacion").textContent).not.toContain("NaN");
     expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas").length).toBeGreaterThan(1);
+  });
+});
+
+function pendiente(carpeta: string | null, obra_id: number, texto: string): PendienteDeObra {
+  const nombre = [CLINICA, TORRE, GALPON].find((o) => o.carpeta === carpeta && o.obra_id === obra_id)?.obra ?? "Otra";
+  return {
+    carpeta,
+    obra_id,
+    obra: nombre,
+    grupo: "compras",
+    urgencia: "bloquea",
+    texto,
+    accion: { texto: "Abrir", pagina: "hoja" },
+  };
+}
+const conPendientes = (pendientes: PendienteDeObra[]): PendientesDelMarco => ({
+  estado: "listo",
+  pendientes,
+  carpetasOmitidas: 0,
+  recargar: vi.fn(),
+});
+const enlacePendientes = (nombre: string) => screen.getByRole("link", { name: nombre });
+
+describe("BarraLateral: contadores (rediseño F3)", () => {
+  const CUATRO = [
+    pendiente(NORTE, 1, "a"),
+    pendiente(NORTE, 1, "b"),
+    pendiente(NORTE, 2, "c"),
+    pendiente(SUR, 3, "d"),
+  ];
+
+  it("Pendientes lleva una píldora con el total y su nombre accesible dice «Pendientes, 4 por hacer»", async () => {
+    pintar({ pendientes: conPendientes(CUATRO) });
+    await arbol();
+    const enlace = enlacePendientes("Pendientes, 4 por hacer");
+    expect(enlace).toHaveAttribute("href", "/pendientes");
+    expect(within(enlace).getByText("4")).toHaveClass("silice-pildora");
+  });
+
+  it("con un solo pendiente dice «Pendientes, 1 por hacer»", async () => {
+    pintar({ pendientes: conPendientes([CUATRO[0]!]) });
+    await arbol();
+    expect(enlacePendientes("Pendientes, 1 por hacer")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["sin ninguno", conPendientes([])],
+    ["mientras carga", { estado: "cargando", recargar: vi.fn() } as PendientesDelMarco],
+    ["con error", { estado: "error", mensaje: "falló", recargar: vi.fn() } as PendientesDelMarco],
+  ])("%s no hay píldora ni número, y el enlace se llama solo «Pendientes»", async (_caso, pendientes) => {
+    pintar({ pendientes });
+    await arbol();
+    const enlace = enlacePendientes("Pendientes");
+    expect(enlace.querySelector(".silice-pildora")).toBeNull();
+    expect(enlace.textContent).toBe("Pendientes");
+  });
+
+  it("cada obra con pendientes lleva la suya (carpeta y número); la de 0 no lleva ninguna", async () => {
+    pintar({ pendientes: conPendientes(CUATRO) });
+    const lista = await arbol();
+    const pildoraDe = (nombre: string) => within(lista).getByRole("treeitem", { name: new RegExp(`^${nombre}`) }).querySelector(".silice-pildora");
+    expect(pildoraDe("Clínica Las Mercedes")?.textContent).toBe("2");
+    expect(pildoraDe("Torre B")?.textContent).toBe("1");
+    expect(pildoraDe("Galpón Sur")?.textContent).toBe("1");
+    expect(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes, 2 por hacer" })).toBeInTheDocument();
+  });
+
+  it("la clave es carpeta más número: el mismo número en otra carpeta no cuenta", async () => {
+    servidor([obra(NORTE, 1, "Clínica"), obra(SUR, 1, "Galpón")]);
+    pintar({ pendientes: conPendientes([pendiente(SUR, 1, "x"), pendiente(SUR, 1, "y"), pendiente(SUR, 1, "z")]) });
+    const lista = await arbol();
+    expect(within(lista).getByRole("treeitem", { name: "Clínica" }).querySelector(".silice-pildora")).toBeNull();
+    expect(within(lista).getByRole("treeitem", { name: "Galpón, 3 por hacer" })).toBeInTheDocument();
+  });
+
+  it("una obra sin pendientes conserva su nombre accesible de siempre", async () => {
+    pintar({ pendientes: conPendientes([pendiente(NORTE, 2, "c")]) });
+    const lista = await arbol();
+    expect(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" })).toBeInTheDocument();
+  });
+});
+
+describe("BarraLateral: obras con el mismo nombre (D-F3-3)", () => {
+  it("dos obras llamadas igual en carpetas distintas muestran debajo su carpeta; las demás no", async () => {
+    servidor([obra(NORTE, 1, "Galpón"), obra(SUR, 3, "Galpón"), obra(NORTE, 2, "Torre B")]);
+    pintar();
+    const lista = await arbol();
+    const filas = within(lista).getAllByRole("treeitem");
+    expect(filas.map((f) => f.textContent)).toEqual(["GalpónCarpeta Norte", "GalpónCarpeta Sur", "Torre B"]);
+    expect(within(filas[0]!).getByText("Carpeta Norte")).toHaveClass("silice-marco-lateral__de-carpeta");
+    expect(within(filas[2]!).queryByText(/Carpeta/)).toBeNull();
+  });
+
+  it("el nombre accesible de la homónima incluye su carpeta, y con píldora también el contador", async () => {
+    servidor([obra(NORTE, 1, "Galpón"), obra(SUR, 3, "Galpón")]);
+    pintar({ pendientes: conPendientes([pendiente(SUR, 3, "x")]) });
+    const lista = await arbol();
+    expect(within(lista).getByRole("treeitem", { name: "Galpón, Carpeta Norte" })).toBeInTheDocument();
+    expect(within(lista).getByRole("treeitem", { name: "Galpón, Carpeta Sur, 1 por hacer" })).toBeInTheDocument();
   });
 });
