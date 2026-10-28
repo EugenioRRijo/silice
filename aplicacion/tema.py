@@ -30,7 +30,7 @@ _COLOR = re.compile(r"#[0-9a-fA-F]{6}")
 #: Colores del tema neutro y de los textos y bordes del marco (frontend-desktop/src/estilos/
 #: tokens.scss: --silice-* y --cds-* del tema Carbon g10). Es la ÚNICA copia en el servidor; los
 #: avisos de contraste miden contra ella. Fuente: @carbon/colors (gray-80, gray-50, yellow-30,
-#: warm-gray-10/-20) y @carbon/themes g10 (text-inverse, text-primary).
+#: warm-gray-10/-20) y @carbon/themes g10 (text-inverse, text-primary, background).
 _NEUTRO = {
     "marco": "#393939",  # --silice-marco = --cds-background-inverse (gray-80)
     "acento": "#f1c21b",  # --silice-acento (yellow-30)
@@ -39,6 +39,7 @@ _NEUTRO = {
     "texto-del-marco": "#ffffff",  # --cds-text-inverse
     "texto": "#161616",  # --cds-text-primary
     "borde": "#8d8d8d",  # --cds-border-strong-01 (gray-50)
+    "fondo": "#f4f4f4",  # --cds-background (g10): el fondo del contenido, no el blanco de las capas
 }
 _TEXTO = 4.5  # WCAG 2.x 1.4.3, texto normal
 _GRAFICO = 3.0  # WCAG 2.x 1.4.11, bordes y rayas
@@ -57,7 +58,13 @@ _PARES = (
         "marco",
         "acento",
         _TEXTO,
-        "El texto del botón Nueva obra no se lee bien sobre el color de acento",
+        "El texto de los botones principales no se lee bien sobre el color de acento",
+    ),
+    (
+        "marco",
+        "fondo",
+        _TEXTO,
+        "Los enlaces y bordes del color del marco no se leen bien sobre el fondo de la página",
     ),
     ("texto", "lateral", _TEXTO, "El texto del menú lateral no se lee bien sobre el color lateral"),
     (
