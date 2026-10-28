@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "./api/cliente";
@@ -120,6 +120,42 @@ describe("App", () => {
     expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();
     expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/sesion/preferencias")).toBe(false);
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
+  });
+
+  // Cierre de F3 (H4): el color de la empresa vale en TODA la aplicacion, tambien antes de entrar. GET /v1/tema es
+  // publico (no pide sesion), asi que se carga al arrancar y no solo dentro del marco. Colores inventados.
+  describe("tema de la empresa", () => {
+    const base = () => fetchFalso.getMockImplementation()!;
+    const conTema = () => {
+      const anterior = base();
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        if (String(entrada) === "/v1/tema") {
+          return json({ acento: "#123abc", marco: "#222222", lateral: null, tiene_logo: false, avisos: [] });
+        }
+        return anterior(entrada, init);
+      });
+    };
+    const pedidosDelTema = () => fetchFalso.mock.calls.filter((c) => String(c[0]) === "/v1/tema").length;
+    afterEach(() => {
+      document.documentElement.removeAttribute("style");
+    });
+
+    test("la pantalla de entrada, sin sesion, aplica el tema", async () => {
+      sesionActual = () => json({ detalle: "Sin sesión." }, 401);
+      conTema();
+      render(<App />);
+      await screen.findByRole("heading", { name: "Entrar" });
+      await waitFor(() => expect(document.documentElement.style.getPropertyValue("--silice-acento")).toBe("#123abc"));
+      expect(document.documentElement.style.getPropertyValue("--silice-marco")).toBe("#222222");
+    });
+
+    test("con sesion el tema se pide una sola vez (el marco comparte el logo, no repite el pedido)", async () => {
+      conTema();
+      render(<App />);
+      await screen.findByRole("complementary", { name: "Barra lateral" });
+      await waitFor(() => expect(document.documentElement.style.getPropertyValue("--silice-acento")).toBe("#123abc"));
+      expect(pedidosDelTema()).toBe(1);
+    });
   });
 
   test("una direccion con #/libros abre esa pagina", async () => {
