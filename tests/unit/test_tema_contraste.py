@@ -97,7 +97,6 @@ def test_marco_gris_medio_no_avisa_de_la_raya_del_activo(tmp_path: Path) -> None
     assert not any("raya del elemento activo" in a for a in _con(tmp_path, marco="#777777"))
 
 
-
 def test_marco_sobre_el_fondo_de_la_pagina_para_enlaces_y_bordes() -> None:
     # El fondo del contenido en Carbon g10 es #f4f4f4 (no blanco). A mano: L(#f4f4f4) = 0,905; el
     # marco neutro #393939 (L = 0,041) da (0,905 + 0,05) / (0,041 + 0,05) = 10,5:1; #777777
