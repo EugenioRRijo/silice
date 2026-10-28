@@ -522,6 +522,23 @@ describe("Pendientes: foco 5, muchos pendientes", () => {
     expect(estilos()).not.toMatch(/@media/);
   });
 
+  // Cierre de F3 (H1): bajo el umbral la rejilla apila lista y detalle; con la bandeja de alto fijo (100vh - 3rem) y la
+  // lista con `min-block-size: 0` la lista quedaba en alto 0 y solo se veía el detalle (letra Muy grande, 1056-1910 px).
+  test("por debajo del umbral la bandeja toma alto natural y la lista no puede quedar en alto 0", () => {
+    const fuente = estilos();
+    const abre = fuente.indexOf("@each $escala");
+    expect(abre).toBeGreaterThan(-1);
+    const bloque = fuente.slice(abre, fuente.indexOf("// La carpeta de una obra"));
+    const regla = (selector: string) => {
+      const i = bloque.indexOf(`${selector} {`);
+      return i < 0 ? "" : bloque.slice(i, bloque.indexOf("}", i));
+    };
+    expect(regla(".silice-bandeja")).toMatch(/block-size:\s*auto/);
+    expect(regla(".silice-bandeja__lista")).toMatch(/min-block-size:\s*auto/);
+    expect(regla(".silice-bandeja__lista")).toMatch(/max-block-size:\s*\d+vh/);
+    expect(regla(".silice-bandeja__rejilla")).not.toMatch(/minmax\(0,\s*1fr\)\s*auto/);
+  });
+
   test("con 200 pendientes todos van dentro de la columna de la lista y el detalle queda fuera de ella", async () => {
     bandeja = responder(Array.from({ length: 200 }, (_, i) => ({ ...PRECIOS, texto: `Pendiente ficticio ${i + 1}` })));
     const { container } = montar();
