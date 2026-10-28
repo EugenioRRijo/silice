@@ -147,6 +147,13 @@ _PARES = (
         _GRAFICO,
         "El contorno del contador casi no se ve sobre el color lateral",
     ),
+    (
+        "contador-numero",
+        "lateral-activo",
+        _GRAFICO,
+        "El contorno del contador casi no se ve sobre el fondo de la opción activa del menú"
+        " lateral",
+    ),
 )
 
 
@@ -176,10 +183,16 @@ def contraste(a: str, b: str) -> float:
 
 
 def mezclar(delante: str, detras: str, porcentaje: int) -> str:
-    """Mezcla sRGB canal a canal, como `color-mix(in srgb, delante P%, detras)` de CSS."""
-    peso = porcentaje / 100
+    """Mezcla sRGB canal a canal, como `color-mix(in srgb, delante P%, detras)` de CSS. Con enteros:
+    la mitad se redondea hacia arriba, como pinta el navegador (`round()` de Python la manda al
+    par y sesgaba hacia arriba el contraste medido)."""
     canales = (
-        round(int(delante[i : i + 2], 16) * peso + int(detras[i : i + 2], 16) * (1 - peso))
+        (
+            int(delante[i : i + 2], 16) * porcentaje
+            + int(detras[i : i + 2], 16) * (100 - porcentaje)
+            + 50
+        )
+        // 100
         for i in (1, 3, 5)
     )
     return "#" + "".join(f"{c:02x}" for c in canales)
