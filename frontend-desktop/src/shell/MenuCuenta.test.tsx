@@ -38,9 +38,15 @@ describe("MenuCuenta", () => {
     expect(within(screen.getByRole("button", { name: "Cuenta de Ana" })).getByText("A")).toHaveClass("silice-cuenta__iniciales");
   });
 
-  test("sin nombre no hay círculo vacío", () => {
+  test("sin letras en el nombre no hay círculo vacío y queda el ícono de persona", () => {
     render(<MenuCuenta nombre="  " alSalir={() => {}} />);
     expect(document.querySelector(".silice-cuenta__iniciales")).toBeNull();
+    expect(document.querySelector(".silice-cuenta__persona")).not.toBeNull();
+  });
+
+  test("con iniciales no se dibuja el ícono de respaldo", () => {
+    render(<MenuCuenta nombre="Ana" alSalir={() => {}} />);
+    expect(document.querySelector(".silice-cuenta__persona")).toBeNull();
   });
 
   test("el círculo es del color de acento con texto del color del marco", () => {

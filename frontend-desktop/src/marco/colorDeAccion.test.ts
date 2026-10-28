@@ -21,10 +21,14 @@ function reglaDe(fuente: string, selector: string): string {
 // ANTES que el tema, y a igual especificidad la última declaración gana (medido en dist/ con npm run build). Ese bloque
 // lleva interpolaciones `#{...}`, así que se lee desde `:root {` hasta el final del archivo.
 const tokens = leer("estilos/tokens.scss");
-const raiz = tokens.slice(tokens.indexOf(":root {"));
+const raiz = tokens.slice(tokens.indexOf(":root"));
 const nuevas = raiz.split("\n").filter((l) => /--cds-(button-primary|link-primary|border-interactive|text-on-color)/.test(l));
 
-describe("color de acción de la empresa bajo el marco", () => {
+describe("color de acción de la empresa en toda la aplicación", () => {
+  test("las reasignaciones cubren la raíz y la zona .cds--g10 del Theme de la app", () => {
+    expect(raiz).toMatch(/^:root,\s*\.cds--g10\s*\{/);
+  });
+
   test("el botón principal toma el acento", () => {
     expect(raiz).toMatch(/--cds-button-primary:\s*var\(--silice-acento\)/);
   });
