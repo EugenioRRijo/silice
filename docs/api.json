@@ -4415,7 +4415,14 @@
             }
           },
           "503": {
-            "description": "La base de la carpeta no se pudo leer; no se generó el paquete."
+            "description": "La base de la carpeta no se pudo leer; no se generó el paquete.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
