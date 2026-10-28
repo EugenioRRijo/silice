@@ -148,15 +148,23 @@
 }
 
 // Por debajo del umbral de cada letra (1056, 1536 y 1920 px para Normal, Grande y Muy grande) la lista pasa arriba y
-// el detalle debajo; la lista conserva su desplazamiento.
+// el detalle debajo; la lista conserva su desplazamiento (hasta media ventana) y la página, el resto.
 @each $escala in map.keys(u.$umbrales-por-escala) {
   @include u.por-debajo-del-umbral($escala) {
+    // Apilada, la bandeja toma su alto natural (la página se desplaza) y la lista se limita a la mitad de la ventana:
+    // con el alto fijo de arriba y `min-block-size: 0` la lista quedaba en alto 0 y solo se veía el detalle.
+    .silice-bandeja {
+      block-size: auto;
+    }
+
     .silice-bandeja__rejilla {
       grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: minmax(0, 1fr) auto;
+      grid-template-rows: auto auto;
     }
 
     .silice-bandeja__lista {
+      min-block-size: auto;
+      max-block-size: 50vh;
       border-inline-end: 0;
       border-block-end: 1px solid var(--silice-divisor);
     }
