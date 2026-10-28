@@ -60,7 +60,7 @@ CARPETAS = ("s1.db", "s2.db", "silice.db")
 
 @pytest.fixture(scope="module")
 def _plantillas(tmp_path_factory) -> dict[str, Path]:
-    """La instalación con cuentas y tres carpetas al día; `s1.db` trae las obras 7 «Torre B» y 8 «Torre C»."""
+    """La instalación con cuentas y tres carpetas al día; `s1.db` trae las obras 7 y 8."""
     carpeta = tmp_path_factory.mktemp("plantillas_eleccion")
     casos = {}
     for nombre in CARPETAS:
