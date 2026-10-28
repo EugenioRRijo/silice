@@ -1,4 +1,4 @@
-import { ChevronDown, Logout } from "@carbon/icons-react";
+import { ChevronDown, Logout, User } from "@carbon/icons-react";
 import { useId } from "react";
 import { iniciales } from "./iniciales";
 import { useDespliegue } from "./useDespliegue";
@@ -28,10 +28,12 @@ export function MenuCuenta({ nombre, alSalir }: Props) {
         title={nombre}
         onClick={alternar}
       >
-        {letras && (
+        {letras ? (
           <span className="silice-cuenta__iniciales cds--type-label-01" aria-hidden="true">
             {letras}
           </span>
+        ) : (
+          <User size={16} className="silice-cuenta__persona" aria-hidden="true" />
         )}
         <span className="silice-cuenta__nombre cds--type-body-compact-01">{nombre}</span>
         <ChevronDown size={16} aria-hidden="true" />
