@@ -84,6 +84,9 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- Cierre de F3, menores (Tarea 5): al entrar en Pendientes se descarta la lectura que había empezado en otra ruta y se pide de nuevo, para no dejar datos viejos; el aviso de Aprobar sobre envíos de otras carpetas remite a «Pendientes» (antes, a un Inicio que ya no existe); el resumen, el «por hacer» y el aviso de carpetas sin leer de la bandeja escriben los números con punto de miles (es-VE).
+- Cierre de F3, tema (Tarea 5): la mezcla del botón redondea la mitad hacia arriba, como el navegador (antes iba al par y el contraste del borde del botón se medía 3,11 en vez de 3,08 en el tema neutro), y los avisos de contraste suman el contorno del contador sobre el fondo de la opción activa del menú lateral (3:1).
+- `POST /v1/entregas`: el 503 declara el cuerpo `Detalle` en el OpenAPI (`docs/api.json`), como los de `/v1/sesion`.
 - Control de obra: los precios del corte se comparan en la perspectiva de la línea base (antes, siempre costo: con una línea base en precio, la escalatoria con Km = 1 daba desvío); el 422 de forma de `/v1/control` ya no repite lo enviado y sus respuestas van sin caché; un precio unitario absurdo en `GET /v1/mercado/objetivos` deja el margen vacío en vez de un 500, y su 422 tiene mensaje propio (T25, menores de T22 y T16).
 - Los cambios del borrador ya no pierden ni corren las líneas de un APU cuando cambia su número (antes se emparejaban por posición) (T26).
 - La ayuda del APU de la Hoja ya no dice que la coma no se acepta (T26).
