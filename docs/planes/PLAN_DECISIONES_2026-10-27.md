@@ -73,6 +73,30 @@ CHANGELOG.
   dd/mm/aaaa» y no entra en las estadísticas (se cuenta aparte, como hoy `otras_monedas`).
 - Pruebas en rojo con oráculo a mano: estadísticas con una observación convertida; observación sin tasa fuera y contada.
 
+## Tarea D3b: el objetivo en otra moneda se convierte con la tasa del día del objetivo (decisión de Eugenio, tras D3)
+
+Eugenio, sobre D3 (aprobada, `a1f1d3c3..177635cc`): «recalcular siempre» (convertir al leer, sin guardar la
+conversión, queda **ratificado**) y el precio objetivo en otra moneda **se convierte con la tasa del día del
+objetivo**. Hoy `GET /v1/mercado/objetivos` da `margen` vacío si el objetivo no está en la moneda de los precios
+unitarios de la Hoja (`api/rutas/mercado.py` `leer_objetivos`).
+
+**Archivos:** `aplicacion/mercado.py` (si hace falta una función que dé el objetivo convertido), `api/rutas/mercado.py`
+(`ObjetivoConMargen`, `leer_objetivos`), `frontend-desktop/src/paginas/hoja/ObjetivoDeMercado.tsx` y su prueba,
+`docs/api.json`, `CHANGELOG.md`, bitácora T16 (quitar el «por ratificar» de convertir al leer).
+
+- El día del objetivo es la fecha de `PrecioObjetivo.fecha_hora`. El objetivo se convierte a la moneda `moneda` de la
+  petición con `aplicacion/tasa_del_dia.equivalencia_del_dia` (regla D2b: tasa del **mismo día**; ninguna aritmética
+  nueva) y el margen se calcula con `margen()` sobre el convertido. Nada se guarda: se recalcula en cada lectura.
+- La respuesta suma a cada objetivo `equivalencia` (el mismo `EquivalenciaRespuesta` de D2/D3, con `fuente_legible`)
+  y `sin_tasa`. Sin tasa del BCV de ese día: `margen` vacío y `sin_tasa` = «sin tasa del BCV del dd/mm/aaaa» (sin 409:
+  es una lectura de muchas partidas, una sin tasa no tumba la tanda). En la misma moneda, todo igual que hoy
+  (`equivalencia` y `sin_tasa` nulos).
+- Front: el objetivo convertido muestra su `LineaDeEquivalencia` (componente común, sin copiarlo) y el margen; sin
+  tasa, el motivo en vez de «sin margen» a secas. Montos como texto, es-VE.
+- Pruebas en rojo con oráculo a mano: objetivo 31,50 USD del 20/10 con tasa 36,50 sembrada ese día y precio unitario
+  1.000,00 Bs → convertido 1.149,75 Bs y margen 15,0 %; tasa solo del 19/10 → margen vacío y `sin_tasa` con la fecha
+  del 20/10; objetivo en la misma moneda → sin cambios; Bs→USD con su ÷. Front: línea de equivalencia y motivo.
+
 ## Tarea D4: entregar sin aprobar queda rotulado y con la cadena rota se puede devolver (T20)
 
 Eugenio decidió el 2026-10-27: (a) **avisar y rotular**: se puede entregar una versión no aprobada, pero el paquete y su
@@ -92,4 +116,4 @@ CHANGELOG, bitácora (cierra los «Por ratificar» de T20 punto 4 y del T18/T19 
 - Pruebas en rojo: paquete de una no aprobada lleva la marca en manifiesto y portada, y la de una aprobada no; la firma
   falla si se quita la marca; con cadena rota devolver da 200 y aprobar 409; el front muestra solo «Devolver».
 
-Orden: D1 → D2 → D3 → D4 → menores agrupados → cierre (suite completa).
+Orden: D1 → D2 → D3 → D4 → D3b → menores agrupados → cierre (suite completa).
