@@ -613,3 +613,10 @@ def test_un_database_is_locked_al_entregar_da_503_fijo_y_no_deja_paquete_ni_even
     assert r.json() == {"detalle": MENSAJE_BASE_ENTREGA}
     assert "secreto" not in r.text and "locked" not in r.text
     assert len(_eventos()) == antes
+
+
+def test_el_503_de_entregar_declara_el_cuerpo_detalle_en_el_openapi() -> None:
+    """Como los 503 de `sesion.py`: el esquema del error es `Detalle`, no una descripcion suelta."""
+    respuesta = app.openapi()["paths"]["/v1/entregas"]["post"]["responses"]["503"]
+    esquema = respuesta["content"]["application/json"]["schema"]
+    assert esquema == {"$ref": "#/components/schemas/Detalle"}

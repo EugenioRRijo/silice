@@ -60,7 +60,7 @@ CARPETAS = ("s1.db", "s2.db", "silice.db")
 
 @pytest.fixture(scope="module")
 def _plantillas(tmp_path_factory) -> dict[str, Path]:
-    """La instalación con cuentas y tres carpetas al día; `s1.db` trae la obra 7 «Torre B»."""
+    """La instalación con cuentas y tres carpetas al día; `s1.db` trae las obras 7 «Torre B» y 8 «Torre C»."""
     carpeta = tmp_path_factory.mktemp("plantillas_eleccion")
     casos = {}
     for nombre in CARPETAS:
@@ -69,6 +69,9 @@ def _plantillas(tmp_path_factory) -> dict[str, Path]:
     with closing(sqlite3.connect(casos["s1.db"])) as conexion:
         conexion.execute(
             "INSERT INTO proyecto (id, nombre, descripcion, dominio) VALUES (7, 'Torre B', '', '')"
+        )
+        conexion.execute(
+            "INSERT INTO proyecto (id, nombre, descripcion, dominio) VALUES (8, 'Torre C', '', '')"
         )
         conexion.commit()
     # la carpeta por omisión trae otra obra con el mismo código 7, y la obra 3
@@ -558,12 +561,30 @@ def test_si_no_se_puede_comprobar_la_obra_da_503_fijo_y_no_guarda(
     with monkeypatch.context() as parche:
         parche.setattr(rutas_sesion, "obtener_motor", falla)
         parche.setattr(rutas_sesion, "resolver_proyecto", falla)
-        respuesta = _obra(navegador, ficha, "7")
+        # otra obra que SÍ existe en s1.db: si el servidor la guardara, se vería abajo
+        respuesta = _obra(navegador, ficha, "8")
     assert respuesta.status_code == 503
     assert respuesta.json() == {"detalle": MENSAJE_NO_SE_PUDO_COMPROBAR}
     for rastro in ("datos", "secreto", "locked", "s1.db"):
         assert rastro not in respuesta.text
     esperado = {"caso": "s1.db", "proyecto": "7", "aviso": None}
+    assert navegador.get("/v1/sesion").json()["eleccion"] == esperado
+
+
+def test_leer_la_sesion_conserva_la_obra_si_la_carpeta_no_se_puede_abrir(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`_restaurar`: si no se sabe si la obra sigue, se conserva lo recordado (no se borra)."""
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _elegir(navegador, ficha, "s1.db").status_code == 200
+    assert _obra(navegador, ficha, "7").status_code == 204
+    esperado = {"caso": "s1.db", "proyecto": "7", "aviso": None}
+    with monkeypatch.context() as parche:
+        parche.setattr(rutas_sesion, "obtener_motor", _carpeta_que_no_se_abre)
+        respuesta = navegador.get("/v1/sesion")
+    assert respuesta.status_code == 200
+    assert respuesta.json()["eleccion"] == esperado
+    # y al volver la carpeta, la obra sigue guardada en la instalación
     assert navegador.get("/v1/sesion").json()["eleccion"] == esperado
 
 
