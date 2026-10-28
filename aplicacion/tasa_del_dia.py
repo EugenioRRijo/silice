@@ -11,14 +11,16 @@ Sin Streamlit ni FastAPI; solo lee.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
 from core.catalog.indices import TasaNoDisponible, tasa_aplicable
-from core.catalog.moneda import TasaDeclarada
+from core.catalog.moneda import TasaDeclarada, convertir
 
-__all__ = ["SinTasaDelDia", "tasa_del_dia"]
+__all__ = ["Equivalencia", "SinTasaDelDia", "equivalencia_del_dia", "tasa_del_dia"]
 
 
 class SinTasaDelDia(ValueError):  # noqa: N818 (identificadores en español, NORMAS.md §3)
@@ -39,3 +41,47 @@ def tasa_del_dia(sesion: Session, fecha: date, moneda_destino: str) -> TasaDecla
             f"convertir este precio a {moneda_destino}. Cárguela en Índices y vuelva a intentarlo."
         )
     return tasa
+
+
+@dataclass(frozen=True, slots=True)
+class Equivalencia:
+    """La cuenta de un precio convertido, reconstruible por quien revise: el precio original (monto
+    y moneda), la tasa (Bs por USD) con su fecha y su fuente, y el resultado en la moneda de destino
+    (exacto: `core.catalog.moneda.convertir`, sin redondear)."""
+
+    precio_original: Decimal
+    moneda_original: str
+    tasa: Decimal
+    fecha_tasa: date
+    fuente_tasa: str
+    convertido: Decimal
+    moneda: str
+
+    @property
+    def operacion(self) -> str:
+        """«÷» si se dividió por la tasa (Bs a USD), «×» si se multiplicó (USD a Bs): lo que hace
+        `convertir`, dicho en un solo sitio."""
+        return "÷" if self.moneda_original == "Bs" else "×"
+
+    @property
+    def fuente_legible(self) -> str:
+        """La fuente de la tasa como se lee: «BCV, publicación del dd/mm/aaaa» (`fuente_tasa` es la
+        referencia interna del rastro)."""
+        return f"BCV, publicación del {self.fecha_tasa:%d/%m/%Y}"
+
+
+def equivalencia_del_dia(
+    sesion: Session, precio: Decimal, de: str, a: str, fecha: date
+) -> Equivalencia:
+    """`precio` de la moneda `de` a `a` con la tasa del BCV de `fecha` (`SinTasaDelDia` si no hay
+    tasa de ese día). Es la única aritmética de estas conversiones: la del núcleo."""
+    tasa = tasa_del_dia(sesion, fecha, a)
+    return Equivalencia(
+        precio_original=precio,
+        moneda_original=de,
+        tasa=tasa.valor,
+        fecha_tasa=tasa.fecha,
+        fuente_tasa=tasa.fuente,
+        convertido=convertir(precio, de, a, tasa.valor),
+        moneda=a,
+    )

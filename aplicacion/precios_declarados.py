@@ -44,13 +44,12 @@ from aplicacion.mercado import NoExiste
 from aplicacion.procura import explosion
 from aplicacion.proyectos import resolver_proyecto
 from aplicacion.tablas_corte import PrecioDelCorte, crear_esquema_corte, hay_tabla_corte
-from aplicacion.tasa_del_dia import SinTasaDelDia, tasa_del_dia
+from aplicacion.tasa_del_dia import Equivalencia, SinTasaDelDia, equivalencia_del_dia
 from core import models
 from core.budget.moneda import moneda_del_proyecto
 from core.budget.valor_ganado import PERSPECTIVA_COSTO, PreciosDelCorte
 from core.budget.valuaciones import instantanea_control, linea_base_vigente
 from core.catalog import Catalogo
-from core.catalog.moneda import convertir
 from core.contracts.unidades import normalizar_unidad
 from core.costing import calcular_apu
 
@@ -84,33 +83,6 @@ class SinTasaDelCorte(ReglaDelCorte):
 
 
 @dataclass(frozen=True, slots=True)
-class Equivalencia:
-    """La cuenta de un precio convertido, reconstruible por quien revise: el precio original (monto
-    y moneda), la tasa (Bs por USD) con su fecha y su fuente, y el resultado en la moneda de la obra
-    (exacto: `core.catalog.moneda.convertir`, sin redondear)."""
-
-    precio_original: Decimal
-    moneda_original: str
-    tasa: Decimal
-    fecha_tasa: date
-    fuente_tasa: str
-    convertido: Decimal
-    moneda: str
-
-    @property
-    def operacion(self) -> str:
-        """«÷» si se dividió por la tasa (Bs a USD), «×» si se multiplicó (USD a Bs): lo que hace
-        `convertir`, dicho en un solo sitio."""
-        return "÷" if self.moneda_original == "Bs" else "×"
-
-    @property
-    def fuente_legible(self) -> str:
-        """La fuente de la tasa como se lee: «BCV, publicación del dd/mm/aaaa» (`fuente_tasa` es la
-        referencia interna del rastro)."""
-        return f"BCV, publicación del {self.fecha_tasa:%d/%m/%Y}"
-
-
-@dataclass(frozen=True, slots=True)
 class PrecioConvertido:
     """Un precio del corte vigente que se declaró en otra moneda, con su equivalencia."""
 
@@ -124,18 +96,9 @@ class PrecioConvertido:
 def _convertir(sesion: Session, precio: Decimal, de: str, a: str, fecha: date) -> Equivalencia:
     """`precio` de `de` a `a` con la tasa del BCV de `fecha`; `SinTasaDelCorte` si no hay tasa."""
     try:
-        tasa = tasa_del_dia(sesion, fecha, a)
+        return equivalencia_del_dia(sesion, precio, de, a, fecha)
     except SinTasaDelDia as error:
         raise SinTasaDelCorte(str(error)) from None
-    return Equivalencia(
-        precio_original=precio,
-        moneda_original=de,
-        tasa=tasa.valor,
-        fecha_tasa=tasa.fecha,
-        fuente_tasa=tasa.fuente,
-        convertido=convertir(precio, de, a, tasa.valor),
-        moneda=a,
-    )
 
 
 def _equivalencia(fila: PrecioDelCorte) -> Equivalencia | None:
