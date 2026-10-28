@@ -51,7 +51,7 @@ describe("MenuCuenta", () => {
     expect(regla).toMatch(/background(-color)?:\s*var\(--silice-acento\)/);
     expect(regla).toMatch(/(^|[\s;])color:\s*var\(--silice-marco\)/);
     expect(regla).toMatch(/border-radius:\s*50%/);
-    expect(regla).not.toMatch(/#[0-9a-fA-F]{3,8}b/);
+    expect(regla).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 
   test("dos instancias no repiten el id del menú", () => {
