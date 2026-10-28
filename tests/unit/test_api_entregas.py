@@ -35,6 +35,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select
+from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
 from api.main import app
@@ -588,3 +589,27 @@ def test_una_aprobada_sin_su_eslabon_no_tumba_la_lista_de_pendientes(_entorno: P
 
     _en_el_caso(_entorno, borrar)
     assert _sin_entregar(_entorno) == []
+
+
+MENSAJE_BASE_ENTREGA = (
+    "No se pudo leer la carpeta de trabajo para entregar; no se generó el paquete."
+)
+
+
+def test_un_database_is_locked_al_entregar_da_503_fijo_y_no_deja_paquete_ni_evento(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Antes la marca se calculaba como «sin aprobada previa» ante cualquier error de la base."""
+
+    def ocupada(*_args, **_kwargs):
+        original = sqlite3.OperationalError("database is locked")
+        raise OperationalError("SELECT secreto FROM mp_aprobacion_envio", {}, original)
+
+    navegador, ficha = _ana()
+    antes = len(_eventos())
+    monkeypatch.setattr(aprobaciones, "estados", ocupada)
+    r = _pedir(navegador, ficha)
+    assert r.status_code == 503
+    assert r.json() == {"detalle": MENSAJE_BASE_ENTREGA}
+    assert "secreto" not in r.text and "locked" not in r.text
+    assert len(_eventos()) == antes

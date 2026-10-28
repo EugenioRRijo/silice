@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import sqlite3
 import uuid
 import zipfile
 from datetime import datetime
@@ -28,6 +29,7 @@ from pathlib import Path
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from adapters.espacio import crear_esquema_espacio, guardar_espacio
@@ -938,3 +940,62 @@ def test_con_el_rastro_de_aprobaciones_vacio_tambien_se_marca(emisor) -> None:
     crear_esquema_aprobacion(caso.get_bind())
     archivos = _zip(_entregar(caso, bd, version).datos)
     assert json.loads(archivos["manifiesto.json"])[LLAVE] == _marca()
+
+
+def _error_de_sqlite(texto: str) -> OperationalError:
+    """Un `OperationalError` de SQLAlchemy con el texto que dice SQLite, armado a mano."""
+    original = sqlite3.OperationalError(texto)
+    return OperationalError("SELECT ... FROM mp_aprobacion_envio", {}, original)
+
+
+def test_una_carpeta_sin_la_tabla_de_aprobaciones_se_marca_sin_aprobada_previa(emisor) -> None:
+    """Solo «no such table» es lo que significa «aquí nunca hubo aprobaciones»."""
+    caso, bd, _, version, _ = emisor
+    assert (
+        not caso.connection()
+        .execute(text("SELECT 1 FROM sqlite_master WHERE name = 'mp_aprobacion_envio'"))
+        .first()
+    )
+    archivos = _zip(_entregar(caso, bd, version).datos)
+    assert json.loads(archivos["manifiesto.json"])[LLAVE] == _marca()
+
+
+def test_un_database_is_locked_al_leer_el_rastro_no_se_firma_como_sin_aprobada(
+    emisor, monkeypatch
+) -> None:
+    """Un manifiesto firmado no debe afirmar «sin aprobada previa» porque la base estaba ocupada:
+    el error sube, no se genera paquete y no se registra nada."""
+
+    def ocupada(*_args, **_kwargs):
+        raise _error_de_sqlite("database is locked")
+
+    monkeypatch.setattr(aprobaciones, "estados", ocupada)
+    caso, bd, _, version, _ = emisor
+    eventos_antes = len(_eventos(bd))
+    with pytest.raises(OperationalError, match="database is locked"):
+        _entregar(caso, bd, version)
+    assert len(_eventos(bd)) == eventos_antes
+
+
+def test_sin_firma_la_marca_que_falta_en_el_informe_con_su_huella_recalculada_no_pasa(
+    emisor, revisor
+) -> None:
+    """El caso inverso: el manifiesto trae la marca, el informe no, y el manifiesto lista la huella
+    y el tamano del informe ya sin ella (sin firma nada lo impide). Manifiesto e informe deben
+    decir lo mismo."""
+    caso, bd, _, version, _ = emisor
+    archivos = _zip(_entregar(caso, bd, version).datos)
+    informe = json.loads(archivos["informe.json"])
+    assert "marca" in informe
+    del informe["marca"]
+    archivos["informe.json"] = _canon(informe)
+    manifiesto = json.loads(archivos["manifiesto.json"])
+    assert LLAVE in manifiesto  # la marca sigue en el manifiesto
+    for entrada in manifiesto["archivos"]:
+        if entrada["nombre"] == "informe.json":
+            entrada["sha256"] = _sha(archivos["informe.json"])
+            entrada["tamano"] = len(archivos["informe.json"])
+    archivos["manifiesto.json"] = _canon(manifiesto)
+    v = verificar(_rehacer_zip(archivos), buscar_empresa=_buscador(revisor), recibido_en=RECIBIDO)
+    assert (v.estado, v.motivo) == (ALTERADO, "marca")
+    assert "Versión NO aprobada" in v.detalle
