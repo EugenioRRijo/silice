@@ -230,7 +230,8 @@ def test_cinco_observaciones_dan_las_seis_cifras(s: Session) -> None:
         promedio=Decimal("140"),
         maximo=Decimal("200"),
         ids=tuple(ids),
-        otras_monedas=0,
+        convertidas=0,
+        sin_tasa=0,
         dias=90,
     )
 
@@ -304,11 +305,19 @@ def test_una_ventana_negativa_es_un_error(s: Session) -> None:
         estadisticas(s, lado="compra", codigo="MAT-001", hoy=HOY, dias=-1)
 
 
-def test_otra_moneda_no_se_mezcla_y_se_cuenta_aparte(s: Session) -> None:
+def test_otra_moneda_sin_tasa_del_dia_no_se_mezcla_y_se_cuenta_aparte(s: Session) -> None:
+    # Sin ninguna tasa del BCV sembrada no se puede convertir (la conversión, en
+    # `test_mercado_convertido.py`): la observación queda fuera y se cuenta aparte.
     ids = observar(s, "MAT-001", ["100", "200"])
     observacion_cruda(s, "MAT-001", Decimal("3"), moneda="USD")
     est = estadisticas(s, lado="compra", codigo="MAT-001", hoy=HOY)
-    assert (est.n, est.maximo, est.ids, est.otras_monedas) == (2, Decimal("200"), tuple(ids), 1)
+    assert (est.n, est.maximo, est.ids, est.convertidas, est.sin_tasa) == (
+        2,
+        Decimal("200"),
+        tuple(ids),
+        0,
+        1,
+    )
 
 
 def test_una_observacion_anulada_no_cuenta(s: Session) -> None:
@@ -316,7 +325,7 @@ def test_una_observacion_anulada_no_cuenta(s: Session) -> None:
     observacion_cruda(s, "MAT-001", Decimal("5"), moneda="Bs", anulada_por=ids[0])
     observacion_cruda(s, "MAT-001", Decimal("7"), moneda="USD", anulada_por=ids[0])
     est = estadisticas(s, lado="compra", codigo="MAT-001", hoy=HOY)
-    assert (est.n, est.minimo, est.otras_monedas) == (1, Decimal("100"), 0)
+    assert (est.n, est.minimo, est.sin_tasa) == (1, Decimal("100"), 0)
 
 
 def test_compra_y_cobro_y_cada_codigo_van_por_separado(s: Session) -> None:

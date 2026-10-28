@@ -291,7 +291,8 @@ def test_tres_observaciones_de_compra_dan_sus_cifras_como_texto(ana) -> None:
             "promedio": "20.50",
             "maximo": "22.50",
             "ids": ids,
-            "otras_monedas": 0,
+            "convertidas": 0,
+            "sin_tasa": 0,
             "dias": 90,
         },
         "propuesta": {
@@ -311,8 +312,70 @@ def test_tres_observaciones_de_compra_dan_sus_cifras_como_texto(ana) -> None:
         "nota": "",
         "responsable": "Ana <ana>",
         "cuenta": True,
+        "equivalencia": None,
+        "sin_tasa": None,
     }
     assert [o["id"] for o in cuerpo["observaciones"]] == ids
+
+
+def test_una_observacion_en_usd_se_cita_convertida_con_la_tasa_de_su_dia(ana, caso: Path) -> None:
+    """Oráculo a mano (D3): 20,00 y 22,50 Bs más 3,00 USD del 20/10 × 36,50 = 109,50 Bs; otra de
+    4,00 USD del 21/10 no tiene tasa de ese día (solo la del 20/10): fuera y contada aparte.
+    Ordenados [20,00; 22,50; 109,50]: mínimo 20,00, mediana 22,50, promedio 152,00 / 3 = 50,666…
+    → 50,67, máximo 109,50."""
+    from aplicacion.tablas_mercado import ObservacionDeMercado
+    from tests.fixtures.hoja_versiones_api import registrar_tasa_en
+
+    _observar(ana, "MAT-001", ["20,00", "22,50"])
+
+    def sembrar(s) -> list[int]:
+        registrar_tasa_en(s, date(2026, 10, 20), "36.50")
+        ids = []
+        for precio, dia in ((Decimal("3.00"), 20), (Decimal("4.00"), 21)):
+            fila = ObservacionDeMercado(
+                lado="compra",
+                codigo="MAT-001",
+                fuente_tipo="cotizacion",
+                fuente="Proveedor Ejemplo",
+                fecha=date(2026, 10, dia),
+                moneda="USD",
+                precio=precio,
+                nota="",
+                responsable="Ana <ana>",
+                fecha_hora=AHORA,
+            )
+            s.add(fila)
+            s.flush()
+            ids.append(fila.id)
+        return ids
+
+    convertida, sin_tasa = _en_el_caso(caso, sembrar)
+    cuerpo = ana[0].get(f"{RUTA}/compra/MAT-001").json()
+    est = cuerpo["estadisticas"]
+    assert (est["n"], est["convertidas"], est["sin_tasa"]) == (3, 1, 1)
+    assert (est["minimo"], est["mediana"], est["promedio"], est["maximo"]) == (
+        "20.00",
+        "22.50",
+        "50.67",
+        "109.50",
+    )
+    por_id = {o["id"]: o for o in cuerpo["observaciones"]}
+    assert (por_id[convertida]["precio"], por_id[convertida]["moneda"]) == ("3.00", "USD")
+    assert por_id[convertida]["cuenta"] is True and por_id[convertida]["sin_tasa"] is None
+    equivalencia = por_id[convertida]["equivalencia"]
+    assert {k: v for k, v in equivalencia.items() if k != "fuente_tasa"} == {
+        "precio_original": "3.00",
+        "moneda_original": "USD",
+        "tasa": "36.50",
+        "fecha_tasa": "2026-10-20",
+        "fuente_legible": "BCV, publicación del 20/10/2026",
+        "convertido": "109.50",
+        "moneda": "Bs",
+        "operacion": "×",
+    }
+    assert equivalencia["fuente_tasa"].startswith("importacion:")
+    assert por_id[sin_tasa]["cuenta"] is False and por_id[sin_tasa]["equivalencia"] is None
+    assert por_id[sin_tasa]["sin_tasa"] == "sin tasa del BCV del 21/10/2026"
 
 
 def test_la_ventana_se_cambia_con_dias(ana) -> None:
