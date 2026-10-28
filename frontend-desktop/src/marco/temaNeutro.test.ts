@@ -23,9 +23,9 @@ const g10 = (nodo.getBuiltinModule("node:module").createRequire(`${raiz}/`)("@ca
 describe("_NEUTRO de aplicacion/tema.py frente a Carbon", () => {
   const servidor = neutroDelServidor();
 
-  it("lleva exactamente las siete claves que mide", () => {
+  it("lleva exactamente las ocho claves que mide", () => {
     expect(Object.keys(servidor).sort()).toEqual(
-      ["acento", "borde", "lateral", "lateral-activo", "marco", "texto", "texto-del-marco"].sort(),
+      ["acento", "borde", "fondo", "lateral", "lateral-activo", "marco", "texto", "texto-del-marco"].sort(),
     );
   });
 
@@ -37,6 +37,7 @@ describe("_NEUTRO de aplicacion/tema.py frente a Carbon", () => {
     ["borde", () => gray[50], "gray-50 de @carbon/colors"],
     ["texto-del-marco", () => g10["textInverse"]!, "text-inverse del tema g10 de @carbon/themes"],
     ["texto", () => g10["textPrimary"]!, "text-primary del tema g10 de @carbon/themes"],
+    ["fondo", () => g10["background"]!, "background del tema g10 de @carbon/themes"],
   ])("%s coincide con %s", (clave, deCarbon) => {
     expect(servidor[clave]).toBe(deCarbon().toLowerCase());
   });

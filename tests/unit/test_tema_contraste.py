@@ -54,8 +54,10 @@ def test_marco_gris_medio_da_los_avisos_exactos(tmp_path: Path) -> None:
     assert _con(tmp_path, marco="#777777") == [
         "El texto de la barra superior no se lee bien sobre el color del marco:"
         " 4,4:1, hace falta 4,5:1",
-        "El texto del botón Nueva obra no se lee bien sobre el color de acento:"
+        "El texto de los botones principales no se lee bien sobre el color de acento:"
         " 2,6:1, hace falta 4,5:1",
+        "Los enlaces y los bordes con el color del marco no se leen bien sobre el fondo de la página:"
+        " 4,0:1, hace falta 4,5:1",
         "Los bordes de la barra superior casi no se ven sobre el color del marco:"
         " 1,3:1, hace falta 3:1",
         "La raya de color de acento bajo la barra superior casi no se ve sobre el color del marco: "
@@ -94,3 +96,30 @@ def test_marco_gris_medio_no_avisa_de_la_raya_del_activo(tmp_path: Path) -> None
     # #777777 sobre #e5e0df = 3,42:1 a mano: pasa 3:1, así que la raya no figura entre los avisos.
     assert not any("raya del elemento activo" in a for a in _con(tmp_path, marco="#777777"))
 
+
+
+def test_marco_sobre_el_fondo_de_la_pagina_para_enlaces_y_bordes() -> None:
+    # El fondo del contenido en Carbon g10 es #f4f4f4 (no blanco). A mano: L(#f4f4f4) = 0,905; el marco
+    # neutro #393939 (L = 0,041) da (0,905 + 0,05) / (0,041 + 0,05) = 10,5:1; #777777 (L = 0,184) da
+    # 4,07:1 (se muestra «4,0»); #767676 (L = 0,181) pasa el texto blanco de la barra (4,54:1) pero sobre
+    # #f4f4f4 da 4,13:1, y por eso el par propio hace falta.
+    assert tema.contraste("#393939", "#f4f4f4") == pytest.approx(10.5, abs=0.01)
+    assert tema.contraste("#767676", "#f4f4f4") == pytest.approx(4.13, abs=0.01)
+    assert tema.contraste("#767676", "#ffffff") == pytest.approx(4.54, abs=0.01)
+
+
+def test_marco_justo_para_el_texto_blanco_avisa_de_los_enlaces(tmp_path: Path) -> None:
+    avisos = _con(tmp_path, marco="#767676", acento="#ffffff")
+    frase = (
+        "Los enlaces y los bordes con el color del marco no se leen bien sobre el fondo de la página:"
+        " 4,1:1, hace falta 4,5:1"
+    )
+    assert frase in avisos
+    assert not any("barra superior no se lee" in a for a in avisos)
+
+
+def test_marco_gris_medio_avisa_de_los_botones_principales(tmp_path: Path) -> None:
+    # #777777 sobre #f1c21b: 2,66:1 a mano (ya medido arriba), por debajo de 4,5:1.
+    avisos = _con(tmp_path, acento="#f1c21b", marco="#777777")
+    assert any(a.startswith("El texto de los botones principales no se lee bien") for a in avisos)
+    assert not any("botón Nueva obra" in a for a in avisos)
