@@ -160,7 +160,9 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         >
           <Chevron size={16} aria-hidden="true" />
           <span className="silice-marco-lateral__nombre">
-            {o.obra}
+            <span className="silice-marco-lateral__obra-nombre" title={o.obra}>
+              {o.obra}
+            </span>
             {carpeta !== undefined && <span className="silice-marco-lateral__de-carpeta">{carpeta}</span>}
           </span>
           {cuenta > 0 && <Pildora valor={cuenta} />}
