@@ -68,10 +68,15 @@ ajustan aquí cuando la construcción los fije.
   grande la variación ya no desplaza a la cifra a 0 px. La franja de indicadores tiene un alto mínimo de 64 px y **crece** lo que
   pida la etiqueta (una línea más con el marcador, varias con la completa).
 - Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El color de acción lo pone la empresa
-  (rediseño F3, D-F3-4): el botón principal lleva `--silice-acento` con texto `--silice-marco`; los enlaces (subrayados),
-  los bordes interactivos y la raya de la pestaña activa, `--silice-marco`; vale en toda la aplicación (también
-  bienvenida, entrar y recuperar acceso) y en los diálogos. El foco sigue siendo el azul de Carbon (`$focus`), y el tema
-  neutro del repositorio usa el amarillo y el gris de Carbon.
+  (rediseño F3, D-F3-4 y Tarea 4b): el botón principal es el acento **aclarado** (55 % con blanco; 85 % al pasar el ratón; el
+  acento puro al pulsar) con un **borde de 1 px** (acento al 50 % con el marco) y texto `--silice-marco`; los enlaces
+  (subrayados), los bordes interactivos y la raya de la pestaña activa van en `--silice-complementario` (sin él, el marco);
+  los contadores de la barra lateral llevan su propio número y fondo (`--silice-contador-numero` y `--silice-contador-fondo`,
+  sin ellos el marco y el lateral) y un contorno de 1 px del color del número. Vale en toda la aplicación (también
+  bienvenida, entrar y recuperar acceso) y en los diálogos. El servidor avisa (`GET /v1/tema`, `avisos`) si el texto del
+  botón no llega a 7:1 en sus tres estados, el borde a 3:1, el complementario a 4,5:1 sobre el fondo, el blanco y el lateral,
+  y el contador a 4,5:1 (número) y 3:1 (contorno). El foco sigue siendo el azul de Carbon (`$focus`), y el tema neutro del
+  repositorio usa el amarillo claro (`yellow-20`) y el gris de Carbon.
 
 ## Marco
 
