@@ -401,8 +401,10 @@ describe("BarraLateral: Nueva obra", () => {
     await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
     await screen.findByRole("dialog", { name: "Nueva obra" });
     await escribirYCrear("USD");
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull());
-    expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas").length).toBeGreaterThan(1); // recargó
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull();
+      expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas").length).toBeGreaterThan(1); // recargó
+    });
   });
 
   it("los estilos lo pintan con el acento, el texto del marco, seminegrita y 40 px de alto, solo con variables del tema", () => {
