@@ -26,8 +26,13 @@
   }
 }
 
-.silice-bandeja__total {
+// El resumen por urgencia, encima de la lista (misma palabra y orden que la urgencia de cada fila).
+.silice-bandeja__resumen {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  border-block-end: 1px solid var(--cds-border-subtle);
   color: var(--silice-texto-secundario);
+  font-weight: 600;
 }
 
 .silice-bandeja__aviso {

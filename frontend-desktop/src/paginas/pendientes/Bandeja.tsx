@@ -11,7 +11,7 @@ import { usePendientes } from "../../marco/usePendientes";
 import { useAplicacion } from "../../shell/contexto";
 import { paginaPorId, usable } from "../../shell/rutas";
 import "./Bandeja.scss";
-import { claveDeObra, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
+import { claveDeObra, contarUrgencias, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
 import { TEXTOS } from "./textos";
 
 interface Props {
@@ -38,7 +38,6 @@ export function Bandeja({ alAbrir, obras = [] }: Props) {
     <div className="silice-pagina silice-bandeja">
       <div className="silice-bandeja__cabecera">
         <h1 className="cds--type-heading-04">{TEXTOS.titulo}</h1>
-        {total > 0 && <p className="silice-bandeja__total cds--type-body-compact-01">{TEXTOS.porHacer(total)}</p>}
       </div>
       {carga.estado === "cargando" && (
         <div className="silice-bandeja__cargando" role="status" aria-busy="true" aria-label={TEXTOS.cargando}>
@@ -91,6 +90,7 @@ function ListaYDetalle({
     setElegido(0);
   }
   const idDe = (i: number) => `${base}-pendiente-${i}`;
+  const { bloquea, aviso } = contarUrgencias(pendientes);
   const actual = Math.min(elegido, pendientes.length - 1);
 
   const alTeclear = (e: KeyboardEvent<HTMLUListElement>) => {
@@ -105,6 +105,7 @@ function ListaYDetalle({
   return (
     <div className="silice-bandeja__rejilla">
       <div className="silice-bandeja__lista">
+        <p className="silice-bandeja__resumen cds--type-label-01">{TEXTOS.resumen(bloquea, aviso)}</p>
         <ul
           className="silice-bandeja__opciones"
           role="listbox"

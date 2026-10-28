@@ -49,6 +49,13 @@ export function contarPorObra(pendientes: readonly PendienteDeObra[]): Map<strin
   return cuenta;
 }
 
+// Cuántos pendientes hay de cada urgencia (el resumen encima de la lista).
+export function contarUrgencias(pendientes: readonly PendienteDeObra[]): { bloquea: number; aviso: number } {
+  const cuenta = { bloquea: 0, aviso: 0 };
+  for (const p of pendientes) cuenta[p.urgencia] += 1;
+  return cuenta;
+}
+
 // Patrón listbox de WAI-ARIA: ↑ y ↓ no dan la vuelta; Inicio y Fin van a los extremos. null = la tecla no mueve.
 export function indiceTrasTecla(tecla: string, actual: number, total: number): number | null {
   switch (tecla) {

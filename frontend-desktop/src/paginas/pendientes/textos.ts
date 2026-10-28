@@ -2,7 +2,16 @@
 // de F3 (vacío y carpetas omitidas) van tal cual.
 export const TEXTOS = {
   titulo: "Pendientes",
+  // Lo usa también la barra lateral (nombre accesible de Pendientes y de cada obra).
   porHacer: (n: number) => `${n} por hacer`,
+  // «2 bloquean · 2 avisos»: las mismas palabras que la urgencia de cada fila; un grupo en cero no se nombra.
+  resumen: (bloquea: number, aviso: number) =>
+    [
+      bloquea > 0 ? (bloquea === 1 ? "1 bloquea" : `${bloquea} bloquean`) : null,
+      aviso > 0 ? (aviso === 1 ? "1 aviso" : `${aviso} avisos`) : null,
+    ]
+      .filter((parte) => parte !== null)
+      .join(" · "),
   lista: "Pendientes por hacer",
   detalle: "Detalle del pendiente",
   obra: "Obra",
