@@ -166,10 +166,13 @@ def test_acento_blanco_avisa_solo_del_borde_del_boton(tmp_path: Path) -> None:
 
 def test_contador_con_poco_contraste_da_dos_avisos(tmp_path: Path) -> None:
     # Número #999999 sobre el fondo #bbbbbb del contador: 1,48; el mismo número (contorno) sobre
-    # el lateral neutro #f7f3f2: 2,59 (se muestra «2,5»), por debajo de 3:1.
+    # el lateral neutro #f7f3f2: 2,59 (se muestra «2,5»), por debajo de 3:1; sobre el fondo de la
+    # opción activa #e5e0df (L = 0,753) con #999999 (L = 0,3185): 0,803 / 0,3685 = 2,18 («2,1»).
     assert _con(tmp_path, contador_numero="#999999", contador_fondo="#bbbbbb") == [
         "El número del contador no se lee bien sobre su fondo: 1,4:1, hace falta 4,5:1",
         "El contorno del contador casi no se ve sobre el color lateral: 2,5:1, hace falta 3:1",
+        "El contorno del contador casi no se ve sobre el fondo de la opción activa del menú"
+        " lateral: 2,1:1, hace falta 3:1",
     ]
 
 
