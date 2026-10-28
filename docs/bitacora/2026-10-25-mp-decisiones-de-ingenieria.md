@@ -322,8 +322,11 @@ pedido de sus árbitros. Las marcadas «por ratificar» esperan a Eugenio; las d
    **El objetivo en otra moneda sigue «sin margen» (sin convertir), a propósito:** el objetivo no es una observación sino un
    precio que la persona fijó, y su margen se mide contra el precio unitario de una versión de la Hoja que tiene su propia
    fecha y su propia tasa; convertirlo mezclaría dos fechas y daría un margen que no concilia con ninguna de las dos.
-   **Por ratificar** por Eugenio: si quiere el margen convertido, ¿con la tasa de qué día (el del objetivo, el de la
-   versión o el de hoy)?
+   **RATIFICADO por Eugenio el 2026-10-27** («recalcular siempre»: convertir al leer, sin guardar la conversión) y
+   decidido el día de la tasa: **D3b** convierte el objetivo con la tasa del BCV del día del objetivo
+   (`PrecioObjetivo.fecha_hora`, regla D2b del mismo día) y calcula el margen sobre el convertido; la respuesta suma
+   `equivalencia` y `sin_tasa` (sin tasa de ese día: margen vacío y el motivo, sin 409). Lo de arriba («sigue sin margen»)
+   quedó superado por esa decisión.
 5. **Hoja grande por tandas:** `partidas` ≤ 2.000 y `pu` ≤ 4.000 caracteres por pedido.
 6. **Si falla la lectura**, la Hoja sigue y lo dice bajo la tabla.
 7. Tres pruebas que fijaban las columnas del Presupuesto ganan «Objetivo de mercado».
