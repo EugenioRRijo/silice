@@ -155,7 +155,17 @@ def test_sin_cambiar_caso_solo_la_carpeta_abierta_y_solo_lo_que_espera_dictamen(
 
 
 @pytest.mark.usefixtures("_fuentes_falsas")
-def test_revisa_no_ve_devueltas_precios_ni_calidad() -> None:
+def test_revisa_no_ve_devueltas_precios_ni_calidad(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(
+        ESCENARIO,
+        ("aprobar", "Clínica"),
+        ("V3 aprobada y sin entregar", Siguiente("Entregar", "entregar")),
+    )
+    monkeypatch.setitem(
+        ESCENARIO,
+        ("compras", "Galpón"),
+        ("Falta registrar el avance", Siguiente("Control", "control")),
+    )
     navegador, ficha = con_cuenta(app, "rita")
     _abrir(ficha, NORTE)  # Norte tiene una devuelta (Galpón) y precios (Clínica)
     cuerpo = navegador.get("/v1/obras/pendientes/todas").json()
@@ -225,3 +235,23 @@ def test_sin_sesion_401() -> None:
     respuesta = cliente(app).get("/v1/obras/pendientes/todas")
     assert respuesta.status_code == 401
     assert "detalle" in respuesta.json()
+
+
+def test_carpeta_con_datos_raros_da_200_sin_el_texto_del_error(_entorno: Path) -> None:
+    """Un `fecha_hora` no ISO hace lanzar `ValueError` a la fuente real: la carpeta se omite y el
+    texto del error no sale en el cuerpo (los manejadores globales lo habrían puesto en un 422)."""
+    with closing(sqlite3.connect(_entorno / NORTE)) as conexion:
+        conexion.execute(
+            "INSERT INTO mp_aprobacion_evento (proyecto_id, tipo, version, huella_version, notas,"
+            " usuario, fecha_hora, armo, anterior, huella) VALUES (1, 'envio', 'V1', ?, '',"
+            " 'Ana <ana>', '28/10/2026 9:00', 0, ?, ?)",
+            ("a" * 64, "0" * 64, "b" * 64),
+        )
+        conexion.commit()
+        conexion.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    navegador, _ = con_cuenta(app, "ana")
+    respuesta = navegador.get("/v1/obras/pendientes/todas")
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json() == {"pendientes": [], "carpetas_omitidas": 1}
+    assert "28/10/2026" not in respuesta.text
+    assert "isoformat" not in respuesta.text
