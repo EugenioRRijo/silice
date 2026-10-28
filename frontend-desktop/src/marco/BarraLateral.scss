@@ -149,8 +149,9 @@
   inline-size: 100%;
   block-size: 2.5rem;
   padding-inline: 1rem;
-  border: 0;
-  background-color: var(--silice-acento);
+  // Mismo tono que el boton principal de Carbon (tokens de estilos/tokens.scss): aclarado, con borde de 1 px.
+  border: 1px solid var(--silice-boton-borde);
+  background-color: var(--cds-button-primary);
   color: var(--silice-marco);
   font-family: inherit;
   font-weight: 600;
@@ -164,7 +165,11 @@
   }
 
   &:hover {
-    filter: brightness(0.95);
+    background-color: var(--cds-button-primary-hover);
+  }
+
+  &:active {
+    background-color: var(--cds-button-primary-active);
   }
 
   &:focus-visible {
