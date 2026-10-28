@@ -415,7 +415,7 @@ describe("Pendientes: foco 4, volver después de resolver algo", () => {
     pendientes = [DEVUELTA, PRECIOS, SIN_APU];
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
     await u.click(within(lateral).getByRole("link", { name: /^Pendientes/ }));
-    expect(await screen.findByText("3 por hacer")).toBeInTheDocument();
+    expect(await screen.findByText("1 bloquea · 2 avisos")).toBeInTheDocument();
     expect(pedidas()).toBe(2);
     expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
   });
@@ -465,7 +465,7 @@ describe("Pendientes: foco 5, muchos pendientes", () => {
     const columna = container.querySelector(".silice-bandeja__lista");
     expect(columna).toContainElement(await lista());
     expect(columna).not.toContainElement(detalle());
-    expect(screen.getByText("200 por hacer")).toBeInTheDocument();
+    expect(screen.getByText("200 avisos")).toBeInTheDocument();
   });
 });
 
