@@ -240,6 +240,47 @@ componente, TDD con rojo visto, jscpd ≤ 1 %, commit por tarea con `git diff --
 - [ ] **Paso 2:** → FALLA. **Paso 3:** implementar; `TamanoLetra` no se mueve (D-F3-5). **Paso 4:** → PASA, lint,
   pytest del tema. **Commit.**
 
+### Tarea 4b: Paleta elegida por Eugenio y resumen de la bandeja (decisiones del 2026-10-28)
+
+**Modelo:** Sonnet.
+
+Eugenio probó combinaciones en un explorador local y eligió una paleta para su empresa. Sus valores viven **solo** en
+`data/tema/tema.json` (el orquestador los pone en local); el repositorio lleva valores neutros y las **reglas**:
+
+- **Color complementario** (clave nueva `complementario` del tema, token `--silice-complementario`, neutro =
+  `var(--silice-marco)`): enlaces (`--cds-link-primary`) y borde interactivo / raya de la pestaña activa
+  (`--cds-border-interactive`). Reemplaza al marco en esos dos tokens de la Tarea 4.
+- **Botón principal más claro y con borde** (regla genérica, en el repo): reposo = `color-mix(in srgb,
+  var(--silice-acento) 55%, white)`; al pasar el ratón = acento 85 % con blanco; al pulsar = el acento puro; borde de
+  1 px = acento 50 % con marco. El texto sigue en `--silice-marco`.
+- **Contadores con colores propios** (claves nuevas `contador_numero` y `contador_fondo`, tokens
+  `--silice-contador-numero` / `--silice-contador-fondo`, neutros = marco y lateral): la píldora pinta el número y un
+  contorno de 1 px del color del número sobre su fondo; deja de usar acento y marco.
+- **Avisos del servidor** (`aplicacion/tema.py`, `_PARES` y la medida de mezclas): el par «marco sobre acento» se
+  sustituye por tres — texto del botón en reposo, al pasar el ratón y al pulsar —, cada uno con mínimo **7:1**
+  (decisión de Eugenio: legibilidad para vista cansada); borde del botón sobre el fondo ≥ 3:1; complementario sobre
+  el fondo, sobre blanco y sobre el lateral ≥ 4,5:1 (el par «marco sobre fondo» de la Tarea 4 pasa al complementario);
+  número del contador sobre su fondo ≥ 4,5:1 y su contorno sobre el lateral ≥ 3:1. Las proporciones de mezcla (55 %,
+  85 %, 50 %) están en **un solo sitio por lado** y una prueba comprueba que el SCSS y Python usan las mismas.
+- **Bandeja** (Eugenio: «el 4 por hacer es muy sutil», «va así»): se quita «N por hacer» junto al h1; encima de la
+  lista va un resumen por urgencia con las mismas etiquetas de la lista: «2 bloquean · 2 avisos» (singular «1
+  bloquea», «1 aviso»; un grupo en cero no se nombra; lista vacía, sin resumen).
+
+**Archivos:** `aplicacion/tema.py`, `api/rutas/tema.py` (si la respuesta gana claves), sus pruebas
+(`tests/unit/test_tema_contraste.py`, `tests/unit/test_api_tema.py`), `frontend-desktop/src/marco/tema.ts` (+ prueba),
+`frontend-desktop/src/estilos/tokens.scss`, `temaNeutro.test.ts`, `colorDeAccion.test.ts`, `cascadaDeAccion.test.ts`,
+`frontend-desktop/src/comun/Pildora.scss` (+ prueba), `frontend-desktop/src/paginas/pendientes/` (Bandeja, textos,
+pruebas), `docs/api.json` si cambia la API, `CHANGELOG.md`, `DESIGN.md`.
+
+- [ ] **Paso 1: pruebas rojas** con oráculos a mano y **valores ficticios** (nunca los de la empresa): servidor (los
+  tres estados del botón con 7:1, borde, complementario en tres fondos, contador, y que el tema neutro no avisa; un
+  tema ficticio que falle cada par da su aviso exacto); front (`tema.ts` aplica las tres claves nuevas y rechaza lo
+  que no es `#rrggbb`; cascada dentro y fuera de `.cds--g10` para enlace y pestaña con el complementario y para los
+  tres estados y el borde del botón; píldora con los tokens del contador; resumen de la bandeja en sus casos).
+- [ ] **Paso 2:** → FALLA. **Paso 3:** implementar. **Paso 4:** → PASA; pytest del tema, vitest de `src/marco
+  src/estilos src/comun src/paginas/pendientes src/shell`, lint, build, duplicado, muerto. **Commits** (`test` antes de
+  `feat`).
+
 ### Tarea 5: Cierre de F3
 
 **Modelo:** Sonnet para los menores; el orquestador corre la suite y el navegador.
