@@ -13,8 +13,8 @@ beforeAll(() => {
   estilo.textContent = css;
   document.head.append(estilo);
   document.body.innerHTML = `
-    <div id="fuera"><a id="enlace-fuera" class="cds--link" href="#x">a</a><button id="boton-fuera" class="cds--btn cds--btn--primary">b</button></div>
-    <div class="cds--g10" id="tema"><a id="enlace" class="cds--link" href="#x">a</a><button id="boton" class="cds--btn cds--btn--primary">b</button><div class="cds--tabs"><button id="pestana" class="cds--tabs__nav-item cds--tabs__nav-item--selected">p</button></div></div>`;
+    <div id="fuera"><a id="enlace-fuera" class="cds--link" href="#x">a</a><button id="boton-fuera" class="cds--btn cds--btn--primary">b</button><button id="terciario-fuera" class="cds--btn cds--btn--tertiary">t</button></div>
+    <div class="cds--g10" id="tema"><a id="enlace" class="cds--link" href="#x">a</a><button id="boton" class="cds--btn cds--btn--primary">b</button><button id="terciario" class="cds--btn cds--btn--tertiary">t</button><button id="secundario" class="cds--btn cds--btn--secondary">s</button><div class="cds--tabs"><button id="pestana" class="cds--tabs__nav-item cds--tabs__nav-item--selected">p</button></div></div>`;
 }, 60_000);
 afterAll(() => {
   document.head.innerHTML = "";
@@ -45,6 +45,28 @@ describe("el color de acción llega a los descendientes del tema g10", () => {
     ["enlace-fuera", "--cds-link-primary", "var(--silice-complementario)"],
   ])("%s resuelve %s a %s", (id, variable, esperado) => {
     expect(valor(id, variable)).toBe(sinEspacios(esperado));
+  });
+
+  // Cierre de F3 (H5): el boton terciario (borde y texto) de Carbon g10 es azul (#0f62fe); pasa al complementario. Al pasar
+  // el raton Carbon lo llena y pone el texto en blanco (text-inverse): el fondo es el complementario, que el servidor ya
+  // mide contra el blanco (4,5:1), y al pulsar, ese mismo mas oscuro (el blanco se lee aun mejor). El secundario de g10
+  // es gris oscuro (#393939), no azul: no se toca.
+  test.each([
+    ["terciario", "--cds-button-tertiary", "var(--silice-complementario)"],
+    ["terciario", "--cds-button-tertiary-hover", "var(--silice-complementario)"],
+    ["terciario", "--cds-button-tertiary-active", "color-mix(in srgb, var(--silice-complementario) 75%, black)"],
+    ["terciario-fuera", "--cds-button-tertiary", "var(--silice-complementario)"],
+    ["terciario-fuera", "--cds-button-tertiary-hover", "var(--silice-complementario)"],
+    ["terciario-fuera", "--cds-button-tertiary-active", "color-mix(in srgb, var(--silice-complementario) 75%, black)"],
+  ])("%s resuelve %s a %s", (id, variable, esperado) => {
+    expect(valor(id, variable)).toBe(sinEspacios(esperado));
+  });
+
+  test("el secundario de g10 sigue en el gris de Carbon, sin azul ni color de la empresa", () => {
+    for (const variable of ["--cds-button-secondary", "--cds-button-secondary-hover", "--cds-button-secondary-active"]) {
+      expect(valor("secundario", variable)).not.toContain("--silice-");
+      expect(valor("secundario", variable).toLowerCase()).not.toMatch(/#0f62fe|#0043ce|#002d9c|#0050e6/);
+    }
   });
 
   test("el texto del botón principal es del marco, y el de otros fondos no se toca", () => {
