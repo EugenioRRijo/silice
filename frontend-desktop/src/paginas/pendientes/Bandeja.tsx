@@ -1,28 +1,38 @@
 import { Button, InlineNotification, SkeletonText } from "@carbon/react";
 import { WarningAltFilled, WarningFilled } from "@carbon/icons-react";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { PendienteDeObra } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { obrasConMismoNombre } from "../../marco/homonimas";
+import type { ObraDeCarpeta } from "../../marco/useObras";
 import { usePendientes } from "../../marco/usePendientes";
 import { useAplicacion } from "../../shell/contexto";
 import { paginaPorId, usable } from "../../shell/rutas";
 import "./Bandeja.scss";
-import { destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
+import { claveDeObra, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
 import { TEXTOS } from "./textos";
 
 interface Props {
   // Abre la sección del pendiente pasando por la confirmación de salida del marco (`irSeguro` de Marco.tsx): formularios
   // sin guardar y, si la obra está en otra carpeta, los borradores de la Hoja que el cambio de carpeta perdería (foco 3).
   alAbrir: (ruta: string) => void;
+  // Las obras que el marco ya cargó: de ahí sale la carpeta de las obras que se llaman igual (D-F3-3). Una obra que no
+  // esté en la lista no muestra carpeta.
+  obras?: readonly ObraDeCarpeta[];
 }
+
+// La carpeta de una obra, solo si otra obra de otra carpeta se llama igual (la misma regla que el árbol de la barra).
+type CarpetaDe = (p: PendienteDeObra) => string | undefined;
 
 // La bandeja de Pendientes (rediseño F3, Tarea 2; especificación §2.2 y §8 bis): lo que piden las obras de todas las
 // carpetas, en el orden que da la API (lo que bloquea primero), con el detalle del elegido y el botón para hacerlo. Los
 // datos los pide el marco (`usePendientes`), que los vuelve a pedir cada vez que se entra aquí.
-export function Bandeja({ alAbrir }: Props) {
+export function Bandeja({ alAbrir, obras = [] }: Props) {
   const carga = usePendientes();
+  const homonimas = useMemo(() => obrasConMismoNombre(obras), [obras]);
+  const carpetaDe: CarpetaDe = (p) => homonimas.get(claveDeObra(p.carpeta, p.obra_id));
   const total = carga.estado === "listo" ? carga.pendientes.length : 0;
   return (
     <div className="silice-pagina silice-bandeja">
@@ -56,7 +66,7 @@ export function Bandeja({ alAbrir }: Props) {
         (total === 0 ? (
           <EstadoVacio titulo={TEXTOS.vacio} descripcion={TEXTOS.vacioExplica} />
         ) : (
-          <ListaYDetalle pendientes={carga.pendientes} alAbrir={alAbrir} />
+          <ListaYDetalle pendientes={carga.pendientes} alAbrir={alAbrir} carpetaDe={carpetaDe} />
         ))}
     </div>
   );
@@ -64,7 +74,15 @@ export function Bandeja({ alAbrir }: Props) {
 
 // Patrón listbox de WAI-ARIA con `aria-activedescendant`: el foco se queda en la lista y las flechas eligen. El primero
 // queda elegido al llegar (y al llegar una lista nueva).
-function ListaYDetalle({ pendientes, alAbrir }: { pendientes: PendienteDeObra[]; alAbrir: Props["alAbrir"] }) {
+function ListaYDetalle({
+  pendientes,
+  alAbrir,
+  carpetaDe,
+}: {
+  pendientes: PendienteDeObra[];
+  alAbrir: Props["alAbrir"];
+  carpetaDe: CarpetaDe;
+}) {
   const base = useId();
   const [elegido, setElegido] = useState(0);
   const [deLaLista, setDeLaLista] = useState(pendientes);
@@ -106,21 +124,29 @@ function ListaYDetalle({ pendientes, alAbrir }: { pendientes: PendienteDeObra[];
             >
               <span className="silice-bandeja__texto">{p.texto}</span>
               <span className="silice-bandeja__pie">
-                <span>{p.obra}</span>
+                <NombreDeObra pendiente={p} carpetaDe={carpetaDe} />
                 <Urgencia valor={p.urgencia} />
               </span>
             </li>
           ))}
         </ul>
       </div>
-      <Detalle pendiente={pendientes[actual]} alAbrir={alAbrir} />
+      <Detalle pendiente={pendientes[actual]} alAbrir={alAbrir} carpetaDe={carpetaDe} />
     </div>
   );
 }
 
 // Qué pasó, de qué obra y el botón para hacerlo: el único botón principal de la pantalla. Si la cuenta no puede usar la
 // pantalla a la que lleva, no se ofrece (la API la rechazaría): se dice por qué (foco 1).
-function Detalle({ pendiente: p, alAbrir }: { pendiente: PendienteDeObra; alAbrir: Props["alAbrir"] }) {
+function Detalle({
+  pendiente: p,
+  alAbrir,
+  carpetaDe,
+}: {
+  pendiente: PendienteDeObra;
+  alAbrir: Props["alAbrir"];
+  carpetaDe: CarpetaDe;
+}) {
   const { sesion } = useAplicacion();
   const pagina = paginaPorId(paginaQueAbre(p));
   const puede = pagina !== undefined && usable(pagina, sesion.acciones, sesion.modo_entrega);
@@ -129,7 +155,9 @@ function Detalle({ pendiente: p, alAbrir }: { pendiente: PendienteDeObra; alAbri
       <h2 className="cds--type-heading-compact-02">{p.texto}</h2>
       <dl className="silice-bandeja__datos cds--type-body-compact-01">
         <dt>{TEXTOS.obra}</dt>
-        <dd>{p.obra}</dd>
+        <dd>
+          <NombreDeObra pendiente={p} carpetaDe={carpetaDe} />
+        </dd>
         <dt>{TEXTOS.urgencia}</dt>
         <dd>
           <Urgencia valor={p.urgencia} />
@@ -156,6 +184,17 @@ function Urgencia({ valor }: { valor: PendienteDeObra["urgencia"] }) {
     <span className={`silice-bandeja__urgencia silice-sev silice-sev--${bloquea ? "error" : "advertencia"}`}>
       <Icono size={16} className="silice-sev__icono" aria-hidden="true" />
       {TEXTOS.urgencias[valor]}
+    </span>
+  );
+}
+
+// El nombre de la obra y, si hay otra con el mismo nombre en otra carpeta, la suya en letra secundaria.
+function NombreDeObra({ pendiente: p, carpetaDe }: { pendiente: PendienteDeObra; carpetaDe: CarpetaDe }) {
+  const carpeta = carpetaDe(p);
+  return (
+    <span className="silice-bandeja__obra">
+      {p.obra}
+      {carpeta !== undefined && <span className="silice-bandeja__carpeta"> · {carpeta}</span>}
     </span>
   );
 }

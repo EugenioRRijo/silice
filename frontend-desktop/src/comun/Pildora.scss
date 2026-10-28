@@ -1,0 +1,20 @@
+@use "@carbon/styles/scss/type";
+
+// Píldora de contador: acento con el texto del marco (el par del botón principal, que el aviso de contraste del tema ya
+// vigila). Chica a propósito: una línea de texto de alto, no un bloque. Solo variables del tema.
+.silice-pildora {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin-inline-start: auto;
+  padding-inline: 0.375rem;
+  border-radius: 0.625rem;
+  background-color: var(--silice-acento);
+  color: var(--silice-marco);
+  font-weight: 600;
+  @include type.type-style("label-01");
+}

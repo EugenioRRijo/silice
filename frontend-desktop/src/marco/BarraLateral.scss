@@ -44,10 +44,18 @@
   overflow-y: auto;
 }
 
-.silice-marco-lateral__carpeta {
-  display: block;
-  padding: 0.5rem 1rem 0.25rem;
+// El nombre de la obra y, solo si otra obra se llama igual, su carpeta debajo en letra secundaria (D-F3-3).
+.silice-marco-lateral__nombre {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.silice-marco-lateral__de-carpeta {
   color: var(--cds-text-secondary);
+  font-weight: 400;
   @include type.type-style("label-01");
 }
 

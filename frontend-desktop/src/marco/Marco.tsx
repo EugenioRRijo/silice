@@ -355,7 +355,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                 <Suspense fallback={<EsqueletoPagina />}>
                   <Routes>
                     <Route index element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />
-                    <Route path={RUTA_DE_PENDIENTES} element={<Bandeja alAbrir={(ruta) => void irSeguro(ruta)} />} />
+                    <Route path={RUTA_DE_PENDIENTES} element={<Bandeja alAbrir={(ruta) => void irSeguro(ruta)} obras={obras.obras} />} />
                     <Route
                       path={PATRON_DE_OBRA}
                       element={

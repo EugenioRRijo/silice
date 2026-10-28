@@ -2,9 +2,13 @@ import { Add, ChevronDown, ChevronRight } from "@carbon/icons-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { Link, useMatch, useNavigate } from "react-router";
+import { Pildora } from "../comun/Pildora";
+import { contarPorObra } from "../paginas/pendientes/logica";
+import { TEXTOS as TEXTOS_PENDIENTES } from "../paginas/pendientes/textos";
 import { DialogoNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import type { DestinoDeNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import "./BarraLateral.scss";
+import { obrasConMismoNombre } from "./homonimas";
 import { abrirNuevaObra, cerrarNuevaObra, useNuevaObraAbierta } from "./nuevaObra";
 import { obrasAlcanzables, useOferta } from "./oferta";
 import {
@@ -15,6 +19,7 @@ import {
   type SeccionId,
 } from "./secciones";
 import { useObras, type ObraDeCarpeta } from "./useObras";
+import { usePendientes } from "./usePendientes";
 
 interface Props {
   obraAbierta: { carpeta: string | null; obraId: number } | null;
@@ -23,26 +28,10 @@ interface Props {
 
 const claveDe = (o: { carpeta: string | null; obra_id: number }) => `${o.carpeta ?? ""}|${o.obra_id}`;
 
-interface Grupo {
-  carpeta: string | null;
-  titulo: string;
-  obras: ObraDeCarpeta[];
-}
-
-function agruparPorCarpeta(obras: ObraDeCarpeta[]): Grupo[] {
-  const grupos = new Map<string, Grupo>();
-  for (const o of obras) {
-    const clave = o.carpeta ?? "";
-    const grupo = grupos.get(clave) ?? { carpeta: o.carpeta, titulo: o.carpeta_titulo, obras: [] };
-    grupo.obras.push(o);
-    grupos.set(clave, grupo);
-  }
-  return [...grupos.values()];
-}
-
 // Barra lateral del marco nuevo: Pendientes, el árbol de Obras (la abierta, desplegada con sus secciones) y Empresa. Es
-// un `tree` de WAI-ARIA: una sola parada de Tab, flechas para recorrer, derecha despliega e izquierda pliega. Todavía no
-// la monta marco/Marco (Tarea 8 del plan del marco). Los contadores llegan en F3.
+// un `tree` de WAI-ARIA: una sola parada de Tab, flechas para recorrer, derecha despliega e izquierda pliega. Sin
+// títulos de grupo por carpeta (D-F3-3): las obras van por nombre y solo las de nombre repetido dicen su carpeta. Las
+// píldoras de Pendientes y de cada obra salen de los pendientes que el marco ya cargó (`usePendientes`).
 // Pasa de 250 líneas porque el árbol, su teclado y la ventana de Nueva obra comparten un mismo estado (qué está desplegado,
 // qué fila tiene el foco); separarlos obligaría a subir ese estado sin quitar complejidad.
 export function BarraLateral({ obraAbierta, seccion }: Props) {
@@ -50,6 +39,10 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const navegar = useNavigate();
   const base = useId();
   const { obras, carpetaActual, tituloActual, estado, recargar } = useObras();
+  // Los contadores solo se pintan con la lectura lista y mayor que cero: cargando o con error no hay número (ni uno falso).
+  const carga = usePendientes();
+  const porObra = useMemo(() => contarPorObra(carga.estado === "listo" ? carga.pendientes : []), [carga]);
+  const total = carga.estado === "listo" ? carga.pendientes.length : 0;
   const enPendientes = useMatch(RUTA_DE_PENDIENTES) !== null;
   const entradaActiva = useMatch(PATRON_DE_EMPRESA)?.params["entrada"] ?? null;
   // El diálogo lo puede pedir también la mesa (marco/nuevaObra); al irse la barra (salir de la sesión) se cierra.
@@ -67,7 +60,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
     () => obrasAlcanzables(obras, carpetaActual, puedeCambiarDeCarpeta),
     [obras, carpetaActual, puedeCambiarDeCarpeta],
   );
-  const grupos = agruparPorCarpeta(visibles);
+  const carpetaDeHomonimas = useMemo(() => obrasConMismoNombre(visibles), [visibles]);
   // «Nueva obra» crea donde está la persona: en la carpeta de la obra abierta en la ruta o, sin obra, en la de la sesión.
   const carpetaDeCreacion = obraAbierta === null ? carpetaActual : obraAbierta.carpeta;
   // El título lo da el servidor: el de la carpeta de la sesión viene con la lista; el de otra, con sus obras.
@@ -135,10 +128,14 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
     }
   }
 
-  // `nivel` es el de la obra en el árbol (1 sin carpetas, 2 con ellas); sus secciones, el siguiente. Los grupos no son
-  // `treeitem`, así que los niveles se dicen con aria-level, aria-setsize y aria-posinset.
-  function filaDeObra(o: ObraDeCarpeta, nivel: number, tamano: number, posicion: number) {
+  // Las obras son de nivel 1 y sus secciones de nivel 2; los niveles se dicen con aria-level, aria-setsize y aria-posinset.
+  function filaDeObra(o: ObraDeCarpeta, tamano: number, posicion: number) {
+    const nivel = 1;
     const clave = claveDe(o);
+    const carpeta = carpetaDeHomonimas.get(clave);
+    const cuenta = porObra.get(clave) ?? 0;
+    // El nombre accesible dice lo mismo que se ve: la obra, su carpeta si hay homónima y cuántos pendientes tiene.
+    const nombre = [o.obra, carpeta, cuenta > 0 ? TEXTOS_PENDIENTES.porHacer(cuenta) : undefined].filter(Boolean).join(", ");
     const abierta = desplegada(clave);
     const Chevron = abierta ? ChevronDown : ChevronRight;
     return (
@@ -147,6 +144,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
           id={idDe(clave)}
           to={rutaDeObra(o.carpeta, o.obra_id, "resumen")}
           role="treeitem"
+          aria-label={nombre === o.obra ? undefined : nombre}
           aria-expanded={abierta}
           aria-level={nivel}
           aria-setsize={tamano}
@@ -157,7 +155,11 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
           className="silice-marco-lateral__fila silice-marco-lateral__obra"
         >
           <Chevron size={16} aria-hidden="true" />
-          {o.obra}
+          <span className="silice-marco-lateral__nombre">
+            {o.obra}
+            {carpeta !== undefined && <span className="silice-marco-lateral__de-carpeta">{carpeta}</span>}
+          </span>
+          {cuenta > 0 && <Pildora valor={cuenta} />}
         </Link>
         {abierta && (
           <ul role="group" aria-labelledby={idDe(clave)} className="silice-marco-lateral__secciones">
@@ -211,24 +213,9 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         <p className="silice-marco-lateral__aviso">Todavía no hay obras</p>
       );
     }
-    const conCarpetas = grupos.length > 1;
     return (
       <ul ref={arbol} role="tree" aria-label="Obras" className="silice-marco-lateral__arbol" onKeyDown={alTeclear}>
-        {conCarpetas
-          ? grupos.map((g) => {
-              const idGrupo = idDe(`g|${g.carpeta ?? ""}`);
-              return (
-                <li key={g.carpeta ?? ""} role="none">
-                  <span id={idGrupo} className="silice-marco-lateral__carpeta">
-                    {g.titulo}
-                  </span>
-                  <ul role="group" aria-labelledby={idGrupo}>
-                    {g.obras.map((o, i) => filaDeObra(o, 2, g.obras.length, i + 1))}
-                  </ul>
-                </li>
-              );
-            })
-          : visibles.map((o, i) => filaDeObra(o, 1, visibles.length, i + 1))}
+        {visibles.map((o, i) => filaDeObra(o, visibles.length, i + 1))}
       </ul>
     );
   }
@@ -238,9 +225,11 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
       <Link
         to={RUTA_DE_PENDIENTES}
         aria-current={enPendientes ? "page" : undefined}
+        aria-label={total > 0 ? `Pendientes, ${TEXTOS_PENDIENTES.porHacer(total)}` : undefined}
         className="silice-marco-lateral__fila silice-marco-lateral__pendientes"
       >
         Pendientes
+        {total > 0 && <Pildora valor={total} />}
       </Link>
 
       {/* Sin `leer_proyecto` la cuenta no ve obras: la zona no se pinta. */}
