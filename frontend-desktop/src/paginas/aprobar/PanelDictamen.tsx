@@ -7,7 +7,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { MarcoDeDialogo } from "../../shell/carpetas/MarcoDeDialogo";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
-import { OPCIONES, SIN_ELEGIR, SIN_NOTAS, frase, necesitaNotas } from "./logica";
+import { AVISO_CADENA_ROTA, OPCIONES, SIN_ELEGIR, SIN_NOTAS, SOLO_SI_ROTA, frase, necesitaNotas } from "./logica";
 import type { DetalleDeEnvio, Resultado } from "./logica";
 
 const ID_NOTAS = "aprobar-notas";
@@ -35,15 +35,19 @@ export function PanelDictamen({ detalle, alRegistrar }: Props) {
   useFormularioSucio("aprobar", notas.trim() !== "");
 
   const abierto = detalle.estado === "en_aprobacion";
+  // Con la cadena de versiones rota solo se puede devolver: devolver no certifica nada, aprobar si.
+  const cadenaRota = !detalle.cadena.integra;
+  const opciones = cadenaRota ? OPCIONES.filter((o) => o.valor === SOLO_SI_ROTA) : OPCIONES;
+  const elegido: Resultado | null = cadenaRota ? SOLO_SI_ROTA : resultado;
 
   function pedirConfirmacion() {
     setError(null);
-    if (resultado === null) {
+    if (elegido === null) {
       setFalta("dictamen");
-      document.getElementById(`${ID_NOTAS}-${OPCIONES[0]!.valor}`)?.focus();
+      document.getElementById(`${ID_NOTAS}-${opciones[0]!.valor}`)?.focus();
       return;
     }
-    if (necesitaNotas(resultado) && notas.trim() === "") {
+    if (necesitaNotas(elegido) && notas.trim() === "") {
       setFalta("notas");
       document.getElementById(ID_NOTAS)?.focus();
       return;
@@ -53,17 +57,17 @@ export function PanelDictamen({ detalle, alRegistrar }: Props) {
   }
 
   async function registrar() {
-    if (resultado === null || enviando) return;
+    if (elegido === null || enviando) return;
     setEnviando(true);
     try {
       await pedir(`/v1/aprobaciones/${detalle.envio_id}/dictamen`, {
         metodo: "POST",
-        cuerpo: { resultado, notas: notas.trim() },
+        cuerpo: { resultado: elegido, notas: notas.trim() },
       });
       setConfirmando(false);
       setEnviando(false);
       setNotas("");
-      alRegistrar(resultado);
+      alRegistrar(elegido);
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
       setConfirmando(false);
@@ -77,14 +81,15 @@ export function PanelDictamen({ detalle, alRegistrar }: Props) {
       <h2 id={titulo} className="cds--type-heading-compact-02">
         Dictamen
       </h2>
-      {!detalle.cadena.integra ? (
-        <p className="cds--type-body-compact-01">{detalle.cadena.mensaje}</p>
-      ) : detalle.estado === "retirada" ? (
+      {detalle.estado === "retirada" ? (
         <p className="cds--type-body-compact-01">Este envío fue retirado: se envió otra versión de la obra.</p>
       ) : !abierto ? (
         <p className="cds--type-body-compact-01">{`Este envío ya tiene dictamen: ${nombreDeEstado(detalle.estado)}.`}</p>
       ) : (
         <>
+          {cadenaRota && (
+            <p className="cds--type-body-compact-01">{`${detalle.cadena.mensaje} ${AVISO_CADENA_ROTA}`}</p>
+          )}
           {detalle.armo && (
             <p className="cds--type-body-compact-01">Usted armó esta versión: el dictamen quedará rotulado así.</p>
           )}
@@ -92,7 +97,7 @@ export function PanelDictamen({ detalle, alRegistrar }: Props) {
             legendText="Su dictamen"
             name="aprobar-dictamen"
             orientation="vertical"
-            valueSelected={resultado ?? ""}
+            valueSelected={elegido ?? ""}
             invalid={falta === "dictamen"}
             invalidText={SIN_ELEGIR}
             onChange={(valor) => {
@@ -100,7 +105,7 @@ export function PanelDictamen({ detalle, alRegistrar }: Props) {
               setFalta("");
             }}
           >
-            {OPCIONES.map((o) => (
+            {opciones.map((o) => (
               <RadioButton key={o.valor} id={`${ID_NOTAS}-${o.valor}`} labelText={o.texto} value={o.valor} />
             ))}
           </RadioButtonGroup>
@@ -125,7 +130,7 @@ export function PanelDictamen({ detalle, alRegistrar }: Props) {
           <AvisoError error={error} titulo="No se registró el dictamen" />
         </>
       )}
-      {confirmando && resultado !== null && (
+      {confirmando && elegido !== null && (
         <MarcoDeDialogo
           titulo="Registrar el dictamen"
           alCerrar={() => {
@@ -144,7 +149,7 @@ export function PanelDictamen({ detalle, alRegistrar }: Props) {
           }
         >
           <p className="cds--type-body-compact-01">
-            {`${detalle.version} de ${detalle.obra} quedará ${frase(resultado)}. El dictamen no se cambia después.`}
+            {`${detalle.version} de ${detalle.obra} quedará ${frase(elegido)}. El dictamen no se cambia después.`}
           </p>
         </MarcoDeDialogo>
       )}

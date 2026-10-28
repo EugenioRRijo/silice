@@ -55,6 +55,10 @@ export const OPCIONES: readonly { valor: Resultado; texto: string }[] = [
   { valor: "devuelta", texto: "Devuelta" },
 ];
 
+// Con la cadena de versiones rota el unico dictamen posible es devolver (api/rutas/aprobaciones.py, Tarea D4).
+export const SOLO_SI_ROTA: Resultado = "devuelta";
+export const AVISO_CADENA_ROTA = "Aprobar queda bloqueado hasta reparar la cadena; devolver no certifica nada.";
+
 export const SIN_ELEGIR = "Elija el dictamen: aprobada, aprobada con observaciones o devuelta.";
 export const SIN_NOTAS = "Escriba las notas: son obligatorias para devolver o aprobar con observaciones.";
 
