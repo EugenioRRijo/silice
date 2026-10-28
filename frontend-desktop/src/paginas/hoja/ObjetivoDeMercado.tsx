@@ -102,7 +102,9 @@ export function celdaDelObjetivo(
         </>
       );
     }
-    return `${precio} ${objetivo.moneda} · ${objetivo.sin_tasa}, sin margen`;
+    // `sin_tasa` es el motivo que da la API; si faltara (contrato roto), un texto neutro y no «null».
+    const motivo = objetivo.sin_tasa ? objetivo.sin_tasa : `en otra moneda que la obra (${moneda})`;
+    return `${precio} ${objetivo.moneda} · ${motivo}, sin margen`;
   }
   if (fila.pu === null) return `${precio} · sin precio unitario, sin margen`;
   return `${precio}${margen}`;
