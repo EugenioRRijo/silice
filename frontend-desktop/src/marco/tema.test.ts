@@ -10,7 +10,16 @@ vi.mock("../api/cliente", async (importarOriginal) => ({
 }));
 
 // Colores inventados: ningun valor de una empresa real vive en el repositorio.
-const NEUTRO: TemaRespuesta = { acento: null, marco: null, lateral: null, tiene_logo: false, avisos: [] };
+const NEUTRO: TemaRespuesta = {
+  acento: null,
+  marco: null,
+  lateral: null,
+  complementario: null,
+  contador_numero: null,
+  contador_fondo: null,
+  tiene_logo: false,
+  avisos: [],
+};
 
 describe("aplicarTema", () => {
   let raiz: HTMLElement;
@@ -35,6 +44,36 @@ describe("aplicarTema", () => {
     expect(raiz.style.getPropertyValue("--silice-acento")).toBe("#111111");
     expect(raiz.style.getPropertyValue("--silice-marco")).toBe("#222222");
     expect(raiz.style.getPropertyValue("--silice-lateral")).toBe("#AbCdEf");
+  });
+});
+
+describe("aplicarTema: complementario y contador", () => {
+  it("fija --silice-complementario, --silice-contador-numero y --silice-contador-fondo", () => {
+    const raiz = document.createElement("div");
+    aplicarTema({ ...NEUTRO, complementario: "#102030", contador_numero: "#304050", contador_fondo: "#AbCdEf" }, raiz);
+    expect(raiz.style.getPropertyValue("--silice-complementario")).toBe("#102030");
+    expect(raiz.style.getPropertyValue("--silice-contador-numero")).toBe("#304050");
+    expect(raiz.style.getPropertyValue("--silice-contador-fondo")).toBe("#AbCdEf");
+  });
+
+  it("no fija nada con lo que no es #rrggbb", () => {
+    const raiz = document.createElement("div");
+    aplicarTema({ ...NEUTRO, complementario: "azul", contador_numero: "#12345", contador_fondo: "url(x)" }, raiz);
+    expect(raiz.getAttribute("style") ?? "").toBe("");
+  });
+});
+
+describe("leerTema: claves nuevas", () => {
+  it("acepta solo #rrggbb y deja null lo demás o lo ausente", () => {
+    const leido = leerTema({ complementario: "#102030", contador_numero: "rojo", tiene_logo: true });
+    expect(leido.complementario).toBe("#102030");
+    expect(leido.contador_numero).toBeNull();
+    expect(leido.contador_fondo).toBeNull();
+  });
+
+  it("una respuesta vieja, sin las claves, da null en las tres", () => {
+    const leido = leerTema({ acento: "#111111", marco: null, lateral: null, tiene_logo: false, avisos: [] });
+    expect([leido.complementario, leido.contador_numero, leido.contador_fondo]).toEqual([null, null, null]);
   });
 });
 

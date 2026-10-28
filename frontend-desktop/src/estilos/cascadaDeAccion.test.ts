@@ -23,13 +23,23 @@ afterAll(() => {
 
 const valor = (id: string, variable: string) => getComputedStyle(document.getElementById(id)!).getPropertyValue(variable).trim();
 
+const REPOSO = "color-mix(in srgb, var(--silice-acento) 55%, white)";
+const HOVER = "color-mix(in srgb, var(--silice-acento) 85%, white)";
+const BORDE = "color-mix(in srgb, var(--silice-acento) 50%, var(--silice-marco))";
+
 describe("el color de acción llega a los descendientes del tema g10", () => {
   test.each([
-    ["boton", "--cds-button-primary", "var(--silice-acento)"],
-    ["enlace", "--cds-link-primary", "var(--silice-marco)"],
-    ["pestana", "--cds-border-interactive", "var(--silice-marco)"],
-    ["boton-fuera", "--cds-button-primary", "var(--silice-acento)"],
-    ["enlace-fuera", "--cds-link-primary", "var(--silice-marco)"],
+    ["boton", "--cds-button-primary", REPOSO],
+    ["boton", "--cds-button-primary-hover", HOVER],
+    ["boton", "--cds-button-primary-active", "var(--silice-acento)"],
+    ["boton", "--silice-boton-borde", BORDE],
+    ["enlace", "--cds-link-primary", "var(--silice-complementario)"],
+    ["pestana", "--cds-border-interactive", "var(--silice-complementario)"],
+    ["boton-fuera", "--cds-button-primary", REPOSO],
+    ["boton-fuera", "--cds-button-primary-hover", HOVER],
+    ["boton-fuera", "--cds-button-primary-active", "var(--silice-acento)"],
+    ["boton-fuera", "--silice-boton-borde", BORDE],
+    ["enlace-fuera", "--cds-link-primary", "var(--silice-complementario)"],
   ])("%s resuelve %s a %s", (id, variable, esperado) => {
     expect(valor(id, variable)).toBe(esperado);
   });
@@ -37,6 +47,12 @@ describe("el color de acción llega a los descendientes del tema g10", () => {
   test("el texto del botón principal es del marco, y el de otros fondos no se toca", () => {
     expect(valor("boton", "--cds-text-on-color")).toBe("var(--silice-marco)");
     expect(valor("enlace", "--cds-text-on-color")).not.toBe("var(--silice-marco)");
+  });
+
+  test("el botón principal pinta su borde de 1 px con el borde mezclado, dentro y fuera del div", () => {
+    for (const id of ["boton", "boton-fuera"]) {
+      expect(getComputedStyle(document.getElementById(id)!).getPropertyValue("border-color")).toContain("var(--silice-boton-borde)");
+    }
   });
 
   // WCAG 1.4.1: en el color del marco (#393939 en el tema neutro) el enlace dista 1,57:1 del texto (#161616) y solo se

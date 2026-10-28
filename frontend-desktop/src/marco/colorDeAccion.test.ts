@@ -23,24 +23,28 @@ function reglaDe(fuente: string, selector: string): string {
 // el div. Se lee desde ese bloque hasta el final del archivo.
 const tokens = leer("estilos/tokens.scss");
 const raiz = tokens.slice(tokens.indexOf(":root, .cds--g10"));
-const nuevas = raiz.split("\n").filter((l) => /--cds-(button-primary|link-primary|border-interactive|text-on-color)/.test(l));
+const nuevas = raiz.split("\n").filter((l) => /--(cds-(button-primary|link-primary|border-interactive|text-on-color)|silice-boton-borde)/.test(l));
 
 describe("color de acción de la empresa en toda la aplicación", () => {
   test("las reasignaciones cubren la raíz y la zona .cds--g10 del Theme de la app", () => {
     expect(raiz).toMatch(/^:root,\s*\.cds--g10\s*\{/);
   });
 
-  test("el botón principal toma el acento", () => {
-    expect(raiz).toMatch(/--cds-button-primary:\s*var\(--silice-acento\)/);
+  test("el botón principal en reposo es el acento aclarado con blanco", () => {
+    expect(raiz).toMatch(/--cds-button-primary:\s*color-mix\(in srgb,\s*var\(--silice-acento\)\s*#\{\$mezcla-reposo\},\s*white\)/);
   });
 
-  test("hover y active derivan del acento hacia el marco, sin hexadecimales", () => {
+  test("al pasar el ratón es el acento al 85 % con blanco y al pulsar, el acento puro", () => {
+    expect(raiz).toMatch(/--cds-button-primary-hover:\s*color-mix\(in srgb,\s*var\(--silice-acento\)\s*#\{\$mezcla-hover\},\s*white\)/);
+    expect(raiz).toMatch(/--cds-button-primary-active:\s*var\(--silice-acento\);/);
+  });
+
+  test("el borde de 1 px del botón mezcla el acento con el marco", () => {
     expect(raiz).toMatch(
-      /--cds-button-primary-hover:\s*color-mix\(in srgb,\s*var\(--silice-acento\)\s*85%,\s*var\(--silice-marco\)\)/,
+      /--silice-boton-borde:\s*color-mix\(in srgb,\s*var\(--silice-acento\)\s*#\{\$mezcla-borde\},\s*var\(--silice-marco\)\)/,
     );
-    expect(raiz).toMatch(
-      /--cds-button-primary-active:\s*color-mix\(in srgb,\s*var\(--silice-acento\)\s*80%,\s*var\(--silice-marco\)\)/,
-    );
+    const regla = reglaDe(tokens, ".cds--btn--primary");
+    expect(regla).toMatch(/border-color:\s*var\(--silice-boton-borde\)/);
   });
 
   test("el texto del botón principal es del color del marco, solo en ese botón", () => {
@@ -49,11 +53,17 @@ describe("color de acción de la empresa en toda la aplicación", () => {
     expect(raiz.slice(0, raiz.indexOf(".cds--btn--primary"))).not.toMatch(/--cds-text-on-color/);
   });
 
-  test("enlaces, bordes interactivos y la raya de la pestaña activa son del color del marco", () => {
-    expect(raiz).toMatch(/--cds-link-primary:\s*var\(--silice-marco\)/);
-    expect(raiz).toMatch(/--cds-link-primary-hover:\s*var\(--silice-marco\)/);
+  test("enlaces, bordes interactivos y la raya de la pestaña activa son del color complementario", () => {
+    expect(raiz).toMatch(/--cds-link-primary:\s*var\(--silice-complementario\)/);
+    expect(raiz).toMatch(/--cds-link-primary-hover:\s*var\(--silice-complementario\)/);
     // La raya de la pestaña seleccionada de Carbon usa --cds-border-interactive.
-    expect(raiz).toMatch(/--cds-border-interactive:\s*var\(--silice-marco\)/);
+    expect(raiz).toMatch(/--cds-border-interactive:\s*var\(--silice-complementario\)/);
+  });
+
+  test("los tokens nuevos del tema tienen su neutro en la raíz", () => {
+    expect(tokens).toMatch(/--silice-complementario:\s*var\(--silice-marco\)/);
+    expect(tokens).toMatch(/--silice-contador-numero:\s*var\(--silice-marco\)/);
+    expect(tokens).toMatch(/--silice-contador-fondo:\s*var\(--silice-lateral\)/);
   });
 
   test("el foco no se reasigna", () => {
@@ -62,7 +72,7 @@ describe("color de acción de la empresa en toda la aplicación", () => {
   });
 
   test("ninguna regla nueva lleva hexadecimales sueltos", () => {
-    expect(nuevas.length).toBeGreaterThanOrEqual(7);
+    expect(nuevas.length).toBeGreaterThanOrEqual(8);
     expect(nuevas.join("\n")).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 });
