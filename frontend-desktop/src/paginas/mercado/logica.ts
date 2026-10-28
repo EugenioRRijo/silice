@@ -3,6 +3,7 @@
 // insumos. Sin React. Ningun monto se convierte en numero: llegan como texto con punto y se formatean al pintarlos
 // (`formatoEsVe`), y lo que la persona teclea se envia tal cual (lo interpreta `aplicacion/cifras.py`).
 import { pedir } from "../../api/cliente";
+import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import type { GrupoDeResultados } from "../../comun/logicaBusqueda";
 
 export type Lado = "compra" | "cobro";
@@ -15,7 +16,8 @@ export interface Estadisticas {
   promedio: string | null;
   maximo: string | null;
   ids: number[]; // las observaciones de las que salen las cifras
-  otras_monedas: number; // observaciones de la ventana en otra moneda (no entran)
+  convertidas: number; // de las que entran en las cifras, las que estaban en otra moneda (convertidas)
+  sin_tasa: number; // observaciones en otra moneda sin tasa del BCV de su dia (no entran)
   dias: number;
 }
 
@@ -28,7 +30,9 @@ export interface Observacion {
   precio: string;
   nota: string;
   responsable: string;
-  cuenta: boolean; // esta en la moneda de la carpeta y entra en las cifras
+  cuenta: boolean; // entra en las cifras: esta en la moneda de la carpeta o se convirtio
+  equivalencia: Equivalencia | null; // en otra moneda con tasa de su dia: la cuenta (precio y moneda siguen siendo los originales)
+  sin_tasa: string | null; // «sin tasa del BCV del dd/mm/aaaa»: en otra moneda sin tasa de su dia, no entra
 }
 
 export interface Estudio {
@@ -116,10 +120,18 @@ export function deObservaciones(n: number): string {
   return n === 1 ? "de 1 observación" : `de ${n} observaciones`;
 }
 
-export function enOtraMoneda(n: number): string {
+// Las que no tienen tasa del BCV de su dia: se ven, no entran.
+export function sinTasaDelDia(n: number): string {
   return n === 1
-    ? "1 observación en otra moneda no entra en las cifras."
-    : `${n} observaciones en otra moneda no entran en las cifras.`;
+    ? "1 observación en otra moneda sin tasa del BCV de su día no entra en las cifras."
+    : `${n} observaciones en otra moneda sin tasa del BCV de su día no entran en las cifras.`;
+}
+
+// Las que estaban en otra moneda y entran convertidas (la linea de cada una esta en la tabla).
+export function convertidasConLaTasa(n: number): string {
+  return n === 1
+    ? "1 de las observaciones estaba en otra moneda y se convirtió con la tasa del BCV de su día."
+    : `${n} de las observaciones estaban en otra moneda y se convirtieron con la tasa del BCV de su día.`;
 }
 
 // Hoy, como lo da el selector de fecha (AAAA-MM-DD), en la hora local de quien usa la pagina.

@@ -2,6 +2,7 @@ import { Button } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
+import { LineaDeEquivalencia } from "../../comun/LineaDeEquivalencia";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -64,7 +65,22 @@ export function Observaciones({ estudio, alCambiar }: Props) {
     },
     { clave: "nota", titulo: "Nota", ordenable: false },
     { clave: "responsable", titulo: "Anotó" },
-    { clave: "cuenta", titulo: "En las cifras" },
+    {
+      clave: "cuenta",
+      titulo: "En las cifras",
+      celda: (f: FilaDensa) => {
+        const e = porId.get(f.id)?.equivalencia;
+        // En otra moneda con tasa de su dia: la misma linea de equivalencia del corte.
+        return e ? (
+          <span>
+            {"Sí, convertida: "}
+            <LineaDeEquivalencia equivalencia={e} />
+          </span>
+        ) : (
+          <span>{f.cuenta}</span>
+        );
+      },
+    },
     {
       clave: "accion",
       titulo: "Acción",
@@ -95,7 +111,7 @@ export function Observaciones({ estudio, alCambiar }: Props) {
     moneda: o.moneda,
     nota: o.nota,
     responsable: o.responsable,
-    cuenta: o.cuenta ? "Sí" : `No: está en ${o.moneda}`,
+    cuenta: o.cuenta ? "Sí" : `No: ${o.sin_tasa ?? `está en ${o.moneda}`}`,
     accion: "",
   }));
 
@@ -108,7 +124,7 @@ export function Observaciones({ estudio, alCambiar }: Props) {
         <>
           <TablaDensa etiqueta={nombreDeTabla} columnas={columnas} filas={filas} />
           <p className="silice-mercado__nota cds--type-helper-text-01">
-            {`Las cifras usan las observaciones en ${moneda}, la moneda de la carpeta de trabajo.`}
+            {`Las cifras usan las observaciones en ${moneda}, la moneda de la carpeta de trabajo; las de otra moneda se convierten con la tasa del BCV del día de la observación.`}
           </p>
         </>
       ) : (

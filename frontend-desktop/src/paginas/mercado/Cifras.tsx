@@ -1,6 +1,6 @@
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
-import { deObservaciones, enOtraMoneda } from "./logica";
+import { convertidasConLaTasa, deObservaciones, sinTasaDelDia } from "./logica";
 import type { Estudio } from "./logica";
 
 // Un monto de la API (texto con punto, ya en centimos) como se lee: «140,00 Bs». Se formatea una sola vez y nunca se
@@ -58,9 +58,10 @@ export function Cifras({ estudio, obra }: Props) {
             ))}
           </dl>
         )}
-        {est.otras_monedas > 0 && (
-          <p className="silice-mercado__nota cds--type-helper-text-01">{enOtraMoneda(est.otras_monedas)}</p>
+        {est.convertidas > 0 && (
+          <p className="silice-mercado__nota cds--type-helper-text-01">{convertidasConLaTasa(est.convertidas)}</p>
         )}
+        {est.sin_tasa > 0 && <p className="silice-mercado__nota cds--type-helper-text-01">{sinTasaDelDia(est.sin_tasa)}</p>}
       </section>
 
       {lado === "cobro" && estudio.piso !== null && estudio.precio_unitario !== null && (
