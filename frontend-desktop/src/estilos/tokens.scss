@@ -42,9 +42,14 @@
   // Marco de la empresa (rediseño del marco, Tarea 1): valores neutros del repositorio. El tema de la empresa los
   // reemplaza en la raiz desde GET /v1/tema (marco/tema.ts); aqui nunca va un color de la empresa.
   --silice-marco: var(--cds-background-inverse);
-  --silice-acento: #{colors.$yellow-30};
+  --silice-acento: #{colors.$yellow-20};
   --silice-lateral: #{colors.$warm-gray-10};
   --silice-lateral-activo: #{colors.$warm-gray-20};
+  // Color complementario (enlaces, bordes interactivos y raya de la pestana activa) y contador de la barra lateral: la
+  // empresa puede darles su color; sin el, siguen al marco y al lateral.
+  --silice-complementario: var(--silice-marco);
+  --silice-contador-numero: var(--silice-marco);
+  --silice-contador-fondo: var(--silice-lateral);
 
   // Aliases de tokens de tema Carbon, para que el resto del CSS propio no repita var(--cds-*).
   --silice-fondo: var(--cds-background);
@@ -54,28 +59,36 @@
   --silice-interactivo: var(--cds-interactive);
 }
 
-// Color de accion de la empresa (D-F3-4): el boton principal lleva el acento (su texto, el marco: abajo); los enlaces, los
-// bordes interactivos y la raya de la pestana activa (Carbon la pinta con --cds-border-interactive) van en el color del
-// marco, porque el ambar sobre el fondo da ~2:1 y no sirve para texto ni bordes. Dos zonas: :root (los dialogos se montan
-// en el body) y .cds--g10 (App.tsx envuelve la app en <Theme theme="g10">, que Carbon llena con el azul: los
-// descendientes heredan de ese div y no de :root). Va DESPUES del tema de Carbon para ganarle a igual especificidad, y en
-// un bloque aparte para no repetir los --silice-* en el div. Hover y active mezclan el acento con el marco. El foco no se
-// toca. El servidor mide el acento con el marco y el marco con el fondo (aplicacion/tema.py).
+// Proporciones de la mezcla del boton principal (en porcentaje del primer color). El servidor mide el contraste con las
+// mismas (MEZCLAS en aplicacion/tema.py); una prueba comprueba que las dos copias coinciden.
+$mezcla-reposo: 55%;
+$mezcla-hover: 85%;
+$mezcla-borde: 50%;
+
+// Color de accion de la empresa (D-F3-4 y Tarea 4b): el boton principal lleva el acento aclarado con blanco y un borde de
+// 1 px (acento con marco); al pasar el raton, mas claro; al pulsar, el acento puro; su texto, el marco (abajo). Los
+// enlaces, los bordes interactivos y la raya de la pestana activa (Carbon la pinta con --cds-border-interactive) van en
+// el color complementario. Dos zonas: :root (los dialogos se montan en el body) y .cds--g10 (App.tsx envuelve la app en
+// <Theme theme="g10">, que Carbon llena con el azul: los descendientes heredan de ese div y no de :root). Va DESPUES del
+// tema de Carbon para ganarle a igual especificidad, y en un bloque aparte para no repetir los --silice-* en el div. El
+// foco no se toca. El servidor mide estos pares (aplicacion/tema.py).
 :root, .cds--g10 {
-  --cds-button-primary: var(--silice-acento);
-  --cds-button-primary-hover: color-mix(in srgb, var(--silice-acento) 85%, var(--silice-marco));
-  --cds-button-primary-active: color-mix(in srgb, var(--silice-acento) 80%, var(--silice-marco));
-  --cds-link-primary: var(--silice-marco);
-  --cds-link-primary-hover: var(--silice-marco);
-  --cds-border-interactive: var(--silice-marco);
+  --cds-button-primary: color-mix(in srgb, var(--silice-acento) #{$mezcla-reposo}, white);
+  --cds-button-primary-hover: color-mix(in srgb, var(--silice-acento) #{$mezcla-hover}, white);
+  --cds-button-primary-active: var(--silice-acento);
+  --silice-boton-borde: color-mix(in srgb, var(--silice-acento) #{$mezcla-borde}, var(--silice-marco));
+  --cds-link-primary: var(--silice-complementario);
+  --cds-link-primary-hover: var(--silice-complementario);
+  --cds-border-interactive: var(--silice-complementario);
 }
 
 // El texto sobre color (text-on-color) tambien se usa sobre otros fondos (rojo, azul...): solo cambia dentro del boton principal.
 .cds--btn--primary {
   --cds-text-on-color: var(--silice-marco);
+  border-color: var(--silice-boton-borde);
 }
 
-// WCAG 1.4.1: en el color del marco el enlace dista ~1,6:1 del texto y solo se distinguiria por el color; Carbon pone
+// WCAG 1.4.1: en el color complementario el enlace dista ~1,6:1 del texto y solo se distinguiria por el color; Carbon pone
 // text-decoration: none en .cds--link, asi que se subraya.
 .cds--link {
   text-decoration: underline;
