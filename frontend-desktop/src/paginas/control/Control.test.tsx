@@ -439,6 +439,7 @@ describe("Control de obra", () => {
               tasa: "36.50",
               fecha_tasa: "2026-10-20",
               fuente_tasa: "importacion:3",
+              fuente_legible: "BCV, publicación del 20/10/2026",
               convertido: "1149.75",
               moneda: "Bs",
               operacion: "×",

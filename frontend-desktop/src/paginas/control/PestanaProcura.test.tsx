@@ -324,6 +324,7 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
           tasa: "36.50",
           fecha_tasa: "2026-11-02",
           fuente_tasa: "importacion:1",
+          fuente_legible: "BCV, publicación del 02/11/2026",
           convertido: "4",
           moneda: "USD",
           operacion: "÷",
@@ -338,7 +339,7 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
     await u.click(within(dialogo).getByRole("button", { name: "Anotar recepción" }));
     expect(
       await screen.findByText(
-        "Recepción de Cemento gris anotada con fecha 02/11/2026. Su precio queda como precio del corte desde esa fecha. Se convirtió con la tasa del BCV: 146,00 Bs ÷ 36,50 Bs/USD (BCV del 02/11/2026) = 4,00 USD",
+        "Recepción de Cemento gris anotada con fecha 02/11/2026. Su precio queda como precio del corte desde esa fecha. Se convirtió con la tasa del BCV: 146,00 Bs ÷ 36,50 Bs/USD (BCV del 02/11/2026) = 4,00 USD. Resultado exacto: 4 USD.",
       ),
     ).toBeInTheDocument();
   });

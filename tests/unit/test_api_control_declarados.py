@@ -472,13 +472,14 @@ EQUIVALENCIA = {
     "tasa": "36.50",
     "fecha_tasa": "2026-11-10",
     "fuente_tasa": "importacion:1",
+    "fuente_legible": "BCV, publicación del 10/11/2026",
     "convertido": "4",
     "moneda": "USD",
     "operacion": "÷",
 }
 SIN_TASA = (
-    "No hay tasa del BCV del 10/11/2026 para convertir este precio a USD. Cargue la tasa en "
-    "Índices y vuelva a intentarlo."
+    "No hay tasa del BCV del 10/11/2026 (hace falta la del mismo día) para convertir este precio a "
+    "USD. Cárguela en Índices y vuelva a intentarlo."
 )
 
 
@@ -593,3 +594,55 @@ def test_sin_tasa_del_bcv_la_recepcion_da_409_y_no_anota_ni_declara_nada(caso: P
     assert (respuesta.status_code, respuesta.json()) == (409, {"detalle": SIN_TASA})
     assert _compras(caso) == []
     assert _declarados(caso) == []
+
+
+# --- la tasa debe ser la del mismo día (D2b) ----------------------------------------------------
+# Solo hay tasa del 09/11; los precios de estas pruebas son del 10/11 (hoy en la prueba): no se
+# convierten, en ninguna de las dos casillas, y no se guarda nada.
+
+
+def test_con_la_tasa_del_dia_anterior_el_estudio_de_mercado_da_409_y_no_cambia_nada(
+    caso: Path,
+) -> None:
+    _carpeta_en_bs(caso, con_tasa=False)
+    registrar_tasa(caso, date(2026, 11, 9), "36.50")
+    navegador, cabeceras = _arma()
+
+    def listas(s) -> list[str]:
+        return list(s.scalars(select(models.ListaPrecios.nombre).order_by(models.ListaPrecios.id)))
+
+    antes = _en_el_caso(caso, listas)
+    respuesta = _usar_en_bs(navegador, cabeceras, caso)
+    assert (respuesta.status_code, respuesta.json()) == (409, {"detalle": SIN_TASA})
+    assert _en_el_caso(caso, listas) == antes
+    assert _declarados(caso) == []
+
+
+def test_con_la_tasa_del_dia_anterior_la_recepcion_da_409_y_no_anota_ni_declara_nada(
+    caso: Path,
+) -> None:
+    _carpeta_en_bs(caso, con_tasa=False)
+    registrar_tasa(caso, date(2026, 11, 9), "36.50")
+    navegador, cabeceras = _arma()
+    respuesta = _recibir(
+        navegador, cabeceras, declarar_corte=True, precio="146,00", fecha="2026-11-10"
+    )
+    assert (respuesta.status_code, respuesta.json()) == (409, {"detalle": SIN_TASA})
+    assert _compras(caso) == []
+    assert _declarados(caso) == []
+
+
+def test_con_la_tasa_del_dia_de_llegada_la_recepcion_convierte_aunque_hoy_sea_otro_dia(
+    caso: Path,
+) -> None:
+    # la recepción es del 09/11 y la tasa del 09/11 (40,00): 160,00 Bs / 40,00 = 4 USD
+    _carpeta_en_bs(caso, con_tasa=False)
+    registrar_tasa(caso, date(2026, 11, 9), "40.00")
+    navegador, cabeceras = _arma()
+    respuesta = _recibir(
+        navegador, cabeceras, declarar_corte=True, precio="160,00", fecha="2026-11-09"
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    equivalencia = respuesta.json()["equivalencia"]
+    assert (equivalencia["tasa"], equivalencia["convertido"]) == ("40.00", "4")
+    assert equivalencia["fuente_legible"] == "BCV, publicación del 09/11/2026"

@@ -228,6 +228,7 @@ def test_registrar_un_pedido_quita_la_alerta(ana, caso: Path) -> None:
     navegador, cabeceras = ana
     respuesta = navegador.post(f"{RUTA}/compras", json=_compra(), headers=cabeceras)
     assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json() == {"equivalencia": None}
     _sin_cache(respuesta)
     (compra,) = _compras(caso)
     assert (compra.evento, compra.fecha, compra.responsable) == (
@@ -248,6 +249,7 @@ def test_una_recepcion_con_precio_guarda_cantidad_precio_y_moneda(ana, caso: Pat
         headers=cabeceras,
     )
     assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json() == {"equivalencia": None}
     (compra,) = _compras(caso)
     assert (compra.evento, compra.cantidad, compra.precio, compra.moneda) == (
         "recibida",
@@ -288,6 +290,7 @@ def test_la_procura_sugiere_compra_tardia_a_la_partida_que_la_sufrio(
         headers=cabeceras,
     )
     assert recibida.status_code == 200, recibida.text
+    assert recibida.json() == {"equivalencia": None}
 
     al_09 = navegador.get(RUTA, params={"proyecto": pv.OBRA, "corte": "2026-11-09"}).json()
     assert al_09["causas_sugeridas"] == [{"partida": "OBRA-02", "causa": "compra_tardia"}]
@@ -438,6 +441,7 @@ def test_con_la_clave_de_api_consta_el_usuario_de_la_api(caso: Path) -> None:
         f"{RUTA}/compras", json=_compra(), headers={CABECERA: crear_clave_de_prueba()}
     )
     assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json() == {"equivalencia": None}
     assert [c.responsable for c in _compras(caso)] == ["api (clave de API)"]
 
 

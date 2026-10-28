@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
-import { LineaDeEquivalencia, textoDeEquivalencia } from "./LineaDeEquivalencia";
+import { LineaDeEquivalencia, textoDeEquivalencia, textoDeEquivalenciaExacta } from "./LineaDeEquivalencia";
 import type { Equivalencia } from "./LineaDeEquivalencia";
 
 // Tarea D2 (decisiones del 27/10/2026): un precio del corte en otra moneda se convierte con la tasa del BCV y la
@@ -16,6 +16,7 @@ const EN_BS: Equivalencia = {
   tasa: "36.50",
   fecha_tasa: "2026-10-20",
   fuente_tasa: "importacion:3",
+  fuente_legible: "BCV, publicación del 20/10/2026",
   convertido: "1149.75",
   moneda: "Bs",
   operacion: "×",
@@ -26,6 +27,7 @@ const EN_USD: Equivalencia = {
   tasa: "36.50",
   fecha_tasa: "2026-10-20",
   fuente_tasa: "importacion:3",
+  fuente_legible: "BCV, publicación del 20/10/2026",
   convertido: "31.5",
   moneda: "USD",
   operacion: "÷",
@@ -50,7 +52,15 @@ describe("Línea de equivalencia", () => {
     render(<LineaDeEquivalencia equivalencia={e} />);
     const linea = screen.getByText(/= 0,03 USD/);
     expect(linea).toHaveAttribute("title", expect.stringContaining("0,0273972602739726027397260274 USD"));
-    expect(linea).toHaveAttribute("title", expect.stringContaining("importacion:3"));
+    expect(linea).toHaveAttribute("title", expect.stringContaining("Fuente de la tasa: BCV, publicación del 20/10/2026."));
+    expect(linea.getAttribute("title")).not.toContain("importacion");
+  });
+
+  // El resultado en centesimas lleva el exacto a la vista para las lineas de estado, que son texto.
+  test("la versión para una línea de estado agrega el resultado exacto", () => {
+    expect(textoDeEquivalenciaExacta({ ...EN_BS, convertido: "1149.7512" })).toBe(
+      "31,50 USD × 36,50 Bs/USD (BCV del 20/10/2026) = 1.149,75 Bs. Resultado exacto: 1.149,7512 Bs.",
+    );
   });
 
   test("se pinta como una sola línea de texto", () => {

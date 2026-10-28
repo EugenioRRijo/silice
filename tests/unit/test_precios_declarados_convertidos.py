@@ -11,9 +11,8 @@ Oráculos a mano, ninguno sacado del código bajo prueba:
   4,00 y u' de B = 5 + (4 − 3) × 1 = 6,00 (memoria de OB-S2, §1).
 - USD → Bs (obra en Bs): 2,00 USD × 36,50 Bs/USD = 73,00 Bs. El material de B pasa de 3,00 a 73,00 y
   u' de B = 5 + (73 − 3) × 1 = 75,00.
-- Con la tasa del 10/11 y un precio del 17/11 (7 días después) la tasa aún vale (a lo sumo 7 días,
-  S1-R2) y la equivalencia dice la fecha de la tasa, 10/11; con el precio del 18/11 (8 días) no hay
-  tasa y no se guarda nada.
+- La tasa debe ser la del mismo día del precio (D2b): con la tasa del 10/11, un precio del 11/11 no
+  se convierte y no se guarda nada; las versiones y listas conservan los 7 días (S1-R2).
 """
 
 from __future__ import annotations
@@ -153,9 +152,12 @@ def test_un_precio_ya_en_la_moneda_de_la_obra_no_se_convierte_ni_deja_tasa(obra_
         assert (fila.fecha_tasa, fila.fuente_tasa) == (None, None)
 
 
-def test_la_tasa_vale_hasta_7_dias_y_la_equivalencia_dice_la_fecha_de_la_tasa(obra_usd) -> None:
-    equivalencia = _declarar(obra_usd, "146.00", "Bs", date(2026, 11, 17))
-    assert equivalencia.fecha_tasa == DIA_DE_LA_TASA
+def test_la_equivalencia_dice_su_fuente_legible_y_su_operacion(obra_usd, obra_bs) -> None:
+    en_usd = _declarar(obra_usd, "146.00", "Bs")
+    assert en_usd.fuente_legible == "BCV, publicación del 10/11/2026"
+    assert en_usd.fuente_tasa == FUENTE_TASA  # el rastro conserva la referencia interna
+    assert en_usd.operacion == "÷"  # Bs a USD divide
+    assert _declarar(obra_bs, "2.00", "USD").operacion == "×"  # USD a Bs multiplica
 
 
 # --- USD → Bs ----------------------------------------------------------------------------------
@@ -181,30 +183,52 @@ def test_el_unitario_de_la_obra_en_bs_usa_el_convertido(obra_bs) -> None:
     }
 
 
-# --- sin tasa ----------------------------------------------------------------------------------
+# --- sin tasa del mismo día ---------------------------------------------------------------------
+# Decisión de Eugenio del 2026-10-27 (D2b): «exigen la tasa del día». Las conversiones del precio
+# del corte piden la tasa de la fecha del precio, no la más reciente de hasta 7 días (S1-R2).
+
+SIN_TASA_10 = (
+    "No hay tasa del BCV del 10/11/2026 (hace falta la del mismo día) para convertir este precio a "
+    "USD. Cárguela en Índices y vuelva a intentarlo."
+)
 
 
-def test_sin_tasa_del_dia_no_se_convierte_ni_se_guarda_nada(obra_usd_sin_tasa) -> None:
+def test_sin_ninguna_tasa_no_se_convierte_ni_se_guarda_nada(obra_usd_sin_tasa) -> None:
     with pytest.raises(SinTasaDelCorte) as error:
         _declarar(obra_usd_sin_tasa, "146.00", "Bs")
-    assert str(error.value) == (
-        "No hay tasa del BCV del 10/11/2026 para convertir este precio a USD. Cargue la tasa en "
-        "Índices y vuelva a intentarlo."
-    )
+    assert str(error.value) == SIN_TASA_10
     assert isinstance(error.value, ReglaDelCorte)  # la API ya lo lleva a 409
     obra_usd_sin_tasa.rollback()
     assert obra_usd_sin_tasa.scalars(select(PrecioDelCorte)).all() == []
 
 
-def test_con_mas_de_7_dias_desde_la_tasa_tampoco_se_convierte(obra_usd) -> None:
+@pytest.mark.parametrize("fecha", [date(2026, 11, 11), date(2026, 11, 17)])
+def test_la_tasa_de_un_dia_anterior_no_sirve_aunque_este_a_menos_de_7_dias(
+    obra_usd, fecha: date
+) -> None:
+    # la única tasa es la del 10/11: para un precio del 11/11 (o del 17/11) no es la del mismo día
     with pytest.raises(SinTasaDelCorte) as error:
-        _declarar(obra_usd, "146.00", "Bs", date(2026, 11, 18))
-    assert str(error.value) == (
-        "No hay tasa del BCV del 18/11/2026 para convertir este precio a USD. Cargue la tasa en "
-        "Índices y vuelva a intentarlo."
-    )
+        _declarar(obra_usd, "146.00", "Bs", fecha)
+    assert str(error.value) == SIN_TASA_10.replace("10/11/2026", f"{fecha:%d/%m/%Y}")
     obra_usd.rollback()
     assert obra_usd.scalars(select(PrecioDelCorte)).all() == []
+
+
+def test_con_la_tasa_del_mismo_dia_si_convierte(obra_usd) -> None:
+    registrar_tasa_en(obra_usd, date(2026, 11, 11), "40.00", huella="a" * 64)
+    obra_usd.commit()
+    equivalencia = _declarar(obra_usd, "160.00", "Bs", date(2026, 11, 11))
+    # 160,00 Bs / 40,00 Bs/USD = 4 USD, con la tasa del 11/11 y no con la del 10/11
+    assert (equivalencia.convertido, equivalencia.tasa) == (D("4"), D("40.00"))
+    assert equivalencia.fecha_tasa == date(2026, 11, 11)
+
+
+def test_las_versiones_y_las_listas_siguen_aceptando_la_tasa_de_dias_antes(obra_usd) -> None:
+    from aplicacion.listas_para_armar import _tasa
+
+    # S1-R2 no cambia para ellas: a 3 días de la tasa del 10/11 todavía sirve
+    tasa = _tasa(obra_usd, date(2026, 11, 13))
+    assert (tasa.valor, tasa.fecha) == (D("36.50"), DIA_DE_LA_TASA)
 
 
 # --- lo que lee la pantalla del corte -----------------------------------------------------------

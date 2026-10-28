@@ -132,6 +132,7 @@ describe("Declararlo precio del corte", () => {
             tasa: "36.50",
             fecha_tasa: "2026-10-20",
             fuente_tasa: "importacion:3",
+            fuente_legible: "BCV, publicación del 20/10/2026",
             convertido: "1149.75",
             moneda: "Bs",
             operacion: "×",
@@ -145,7 +146,7 @@ describe("Declararlo precio del corte", () => {
     await usarYConfirmar(u);
     expect(
       await screen.findByText(
-        `Precio guardado en «Lista demo al 26/10/2026». ${CONFIRMADO} Se convirtió con la tasa del BCV: 31,50 USD × 36,50 Bs/USD (BCV del 20/10/2026) = 1.149,75 Bs`,
+        `Precio guardado en «Lista demo al 26/10/2026». ${CONFIRMADO} Se convirtió con la tasa del BCV: 31,50 USD × 36,50 Bs/USD (BCV del 20/10/2026) = 1.149,75 Bs. Resultado exacto: 1.149,75 Bs.`,
       ),
     ).toBeInTheDocument();
   });
