@@ -146,7 +146,8 @@ def test_producir_con_receta_consume_el_agregado_propio(http) -> None:
     )
     assert r.status_code == 201, r.text
     assert len(r.json()["movimientos"]) == 2
-    assert _existencias(http) == {"AGR-12": "-94", "MZ-1": "100"}
+    existencias = {c: Decimal(t) for c, t in _existencias(http).items()}
+    assert existencias == {"AGR-12": Decimal("-94"), "MZ-1": Decimal("100")}
     assert contar(Movimiento) == 2
 
 
