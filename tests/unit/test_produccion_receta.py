@@ -269,3 +269,39 @@ def test_material_en_m3_sin_densidad_nombra_su_codigo(sesion) -> None:
         producido_en_periodo(sesion, "2026-10")
     with pytest.raises(ValueError, match="periodo"):
         producido_en_periodo(sesion, "2026-13")
+
+
+def test_consumo_en_m3_se_cuantiza_a_cuatro_decimales(sesion) -> None:
+    """94 t / 1,7 t/m3 = 55,29411... -> 55,2941 (4 decimales, mitad al par)."""
+    crear_material(
+        sesion,
+        codigo="AGR-12",
+        nombre="Agregado",
+        unidad_venta="m3",
+        existencia_minima=D(0),
+        densidad_t_m3=D("1.7"),
+    )
+    crear_material(sesion, codigo="MZ-1", nombre="Mezcla", unidad_venta="t", existencia_minima=D(0))
+    _registrar(sesion, _mezcla())
+    ids = producir_con_receta(
+        sesion, "MZ-1", D("100"), date(2026, 10, 15), usuario="ana", ahora=AHORA
+    )
+    assert sesion.get(Movimiento, ids[1]).cantidad == D("55.2941")
+
+
+def test_una_sola_regla_t_a_unidad_de_venta() -> None:
+    from produccion.inventario import de_toneladas
+    from produccion.modelo import Material
+
+    m3 = Material(
+        codigo="X",
+        nombre="X",
+        unidad_venta="m3",
+        densidad_t_m3=D("1.7"),
+        existencia_minima=D(0),
+        activo=True,
+    )
+    assert de_toneladas(m3, D("94")) == D("55.2941")
+    assert de_toneladas(m3, D("0.00005")) == D("0.0000")  # mitad al par, no hacia arriba
+    t = Material(codigo="T", nombre="T", unidad_venta="t", existencia_minima=D(0), activo=True)
+    assert de_toneladas(t, D("94.12345")) == D("94.12345")

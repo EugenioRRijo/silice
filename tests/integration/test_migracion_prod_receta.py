@@ -111,3 +111,38 @@ def test_bajar_quita_las_tablas_y_los_consumos_y_conserva_lo_demas(tmp_path: Pat
     aplicar_revisiones(base, Destino.INSTALACION)
     with closing(sqlite3.connect(base)) as conexion:
         assert set(COLUMNAS) <= _tablas(conexion)
+
+
+def test_una_base_que_ya_trae_las_tablas_y_el_check_se_adopta(tmp_path: Path) -> None:
+    """Hecha con `create_all` (tablas nuevas y `CHECK` con consumo), la migracion no recrea nada."""
+    from sqlalchemy import create_engine
+
+    from produccion.modelo import Movimiento, RecetaComponente, RecetaRegistrada
+
+    base = tmp_path / "instalacion.db"
+    aplicar_revisiones(base, Destino.INSTALACION, ANTERIOR)
+    with closing(sqlite3.connect(base)) as conexion:
+        _con_material(conexion)
+        _movimiento(conexion, "entrada", "100")
+        conexion.commit()
+        conexion.execute("DROP TABLE prod_movimiento")
+        conexion.commit()
+    motor = create_engine(f"sqlite:///{base.as_posix()}")
+    try:
+        for tabla in (Movimiento, RecetaRegistrada, RecetaComponente):
+            tabla.__table__.create(motor)
+    finally:
+        motor.dispose()
+    with closing(sqlite3.connect(base)) as conexion:
+        _movimiento(conexion, "consumo", "7")
+        conexion.commit()
+
+    aplicar_revisiones(base, Destino.INSTALACION)
+
+    with closing(sqlite3.connect(base)) as conexion:
+        assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
+            (REVISION,)
+        ]
+        assert conexion.execute("SELECT tipo, cantidad FROM prod_movimiento").fetchall() == [
+            ("consumo", "7")
+        ]
