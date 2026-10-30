@@ -488,9 +488,10 @@ def publicar_costo_propio(
     """Publica un cálculo concreto como lista de empresa nueva en la carpeta del caso: un precio por
     producto con el valor exacto del cálculo y la fuente «Producción, período AAAA-MM, cálculo n.º
     N». La empresa es la de Administración (sin ella, 422); solo una cuenta de administrador
-    (la clave de API recibe 403). Parte de la lista vigente al cierre del período. Un cálculo alterado (huella o columnas que
-    no coinciden), sin lista vigente o sin tasa BCV para llevarla a la moneda del cálculo: 422, sin
-    escribir; inexistente: 404. Nada se sobrescribe: cada publicación es otra lista."""
+    (la clave de API recibe 403). Parte de la lista vigente al cierre del período. Un cálculo
+    alterado (huella o columnas que no coinciden), sin lista vigente o sin tasa BCV para llevarla
+    a la moneda del cálculo: 422, sin escribir; inexistente: 404.
+    Nada se sobrescribe: cada publicación es otra lista."""
     try:
         calculo = calculo_guardado(sesion, calculo_id)
     except CalculoInexistente as error:

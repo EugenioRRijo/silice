@@ -9124,7 +9124,7 @@
           "produccion"
         ],
         "summary": "Publicar Costo Propio",
-        "description": "Publica un cálculo concreto como lista de empresa nueva en la carpeta del caso: un precio por\nproducto con el valor exacto del cálculo y la fuente «Producción, período AAAA-MM, cálculo n.º\nN». La empresa es la de Administración (sin ella, 422); solo una cuenta de administrador\n(la clave de API recibe 403). Parte de la lista vigente al cierre del período. Un cálculo alterado (huella o columnas que\nno coinciden), sin lista vigente o sin tasa BCV para llevarla a la moneda del cálculo: 422, sin\nescribir; inexistente: 404. Nada se sobrescribe: cada publicación es otra lista.",
+        "description": "Publica un cálculo concreto como lista de empresa nueva en la carpeta del caso: un precio por\nproducto con el valor exacto del cálculo y la fuente «Producción, período AAAA-MM, cálculo n.º\nN». La empresa es la de Administración (sin ella, 422); solo una cuenta de administrador\n(la clave de API recibe 403). Parte de la lista vigente al cierre del período. Un cálculo\nalterado (huella o columnas que no coinciden), sin lista vigente o sin tasa BCV para llevarla\na la moneda del cálculo: 422, sin escribir; inexistente: 404.\nNada se sobrescribe: cada publicación es otra lista.",
         "operationId": "publicar_costo_propio_v1_produccion_calculos__calculo_id__publicar_post",
         "parameters": [
           {
