@@ -424,6 +424,11 @@ describe("BarraLateral: Nueva obra", () => {
     expect(regla).toMatch(/font-weight: 600/);
     expect(regla).toMatch(/block-size: 2\.5rem/);
     expect(regla).toMatch(/inline-size: 100%/);
+    // Foco: contorno blanco hacia dentro; el del marco no se vería sobre el complementario (en el neutro es el mismo color).
+    const foco = /&:focus-visible\s*\{([^}]*)\}/.exec(estilos.slice(estilos.indexOf(".silice-marco-boton-principal")))?.[1] ?? "";
+    expect(foco).toContain("outline: 2px solid var(--cds-text-on-color)");
+    expect(foco).toContain("outline-offset: -4px");
+    expect(foco).not.toContain("--silice-marco");
     expect(estilos).toContain("background-color: var(--silice-lateral)");
     expect(estilos).toMatch(/inline-size: 14\.75rem/);
     expect(estilos).toContain("var(--silice-lateral-activo)");
