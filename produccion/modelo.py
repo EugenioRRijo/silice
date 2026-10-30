@@ -147,6 +147,6 @@ class Costo(Base):
     usuario: Mapped[str] = mapped_column(String(120))
     registrado: Mapped[datetime] = mapped_column(DateTime)
     anula_id: Mapped[int | None] = mapped_column(
-        ForeignKey("prod_costo.id"), nullable=True, index=True
+        ForeignKey("prod_costo.id"), nullable=True, index=True, unique=True
     )
     motivo: Mapped[str] = mapped_column(String(300), default="")

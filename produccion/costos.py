@@ -27,7 +27,7 @@ MONEDAS = ("Bs", "USD")
 _PERIODO = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
 
 
-class ErrorDeCosto(ValueError):  # noqa: N818 - nombre fijado por el plan
+class ErrorDeCosto(ValueError):  # noqa: N818 - empieza por Error, como ErrorDeInventario
     """Dato de costo invalido; el mensaje esta escrito para el usuario."""
 
 
@@ -74,6 +74,7 @@ class CostoDelPeriodo:
             or self.monto < Decimal(0)
         ):
             raise ErrorDeCosto("El monto (monto) debe ser un número decimal de cero o más.")
+        object.__setattr__(self, "monto", self.monto + Decimal(0))  # -0 pasa a 0
         if not isinstance(self.fecha, date) or isinstance(self.fecha, datetime):
             raise ErrorDeCosto("La fecha (fecha) del costo debe ser una fecha.")
         if (self.fecha.year, self.fecha.month) != (anio, mes):
@@ -92,6 +93,7 @@ class CostoRegistrado:
     registrado: datetime
     anulado: bool
     anula_id: int | None = None
+    motivo: str = ""
 
 
 def _insertar(
@@ -184,6 +186,7 @@ def costos_del_periodo(
                 registrado=f.registrado,
                 anulado=anulado,
                 anula_id=f.anula_id,
+                motivo=f.motivo,
             )
         )
     return salida

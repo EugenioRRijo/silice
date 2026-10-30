@@ -10464,16 +10464,11 @@
           "motivo": {
             "type": "string",
             "title": "Motivo"
-          },
-          "ahora": {
-            "type": "string",
-            "title": "Ahora"
           }
         },
         "type": "object",
         "required": [
-          "motivo",
-          "ahora"
+          "motivo"
         ],
         "title": "AnularCostoEntrada"
       },
@@ -14059,10 +14054,6 @@
             "type": "string",
             "title": "Nota",
             "default": ""
-          },
-          "ahora": {
-            "type": "string",
-            "title": "Ahora"
           }
         },
         "type": "object",
@@ -14073,8 +14064,7 @@
           "monto",
           "moneda",
           "fecha",
-          "fuente",
-          "ahora"
+          "fuente"
         ],
         "title": "CostoEntrada"
       },
@@ -14138,6 +14128,10 @@
               }
             ],
             "title": "Anula Id"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
           }
         },
         "type": "object",
@@ -14154,7 +14148,8 @@
           "usuario",
           "registrado",
           "anulado",
-          "anula_id"
+          "anula_id",
+          "motivo"
         ],
         "title": "CostoRespuesta"
       },

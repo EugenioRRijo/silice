@@ -12,12 +12,17 @@ Reglas de la frontera:
   la diferencia con la existencia teórica a esa fecha.
 - **La API no usa el reloj** para decidir validez: `fecha_referencia` (para detectar fechas futuras
   en la báscula) es obligatoria y la manda el cliente; `ahora` al resolver o descartar también.
+  Excepción, los costos del periodo (`/costos`): su `registrado` es la hora del servidor y el
+  cuerpo no lleva `ahora` (si lo trae, se ignora).
 - **Cada petición es una transacción** (`SesionInstalacionDep`): lo que registra queda confirmado al
   terminar bien y un error, de cualquier tipo, no deja nada a medias.
 - **Dos entradas** (RT-9): la clave de API (`X-Silice-Clave`, integraciones) o la sesión web
   (cookie más `X-Silice-CSRF` y `Origin` en lo que escribe; solo arma y administrador,
   `Accion.OPERAR_ARENERA`). Una sola dependencia, `OPERAR_ARENERA`, protege el router y entrega la
   sesión a las rutas que escriben, sin validarla dos veces.
+  Las rutas de `/costos` suman una segunda puerta del mismo tipo, `REGISTRAR_COSTOS`
+  (`Accion.REGISTRAR_COSTOS_PRODUCCION`, hoy los mismos roles): se exigen las dos y la sesión se
+  toma de ésta.
 - **Usuario de lo que se escribe**: con clave, `USUARIO_API` (RT-S4-4), pues la clave no entrega su
   identidad a la ruta; con sesión web, el responsable de la cuenta (`Nombre <login>`, RF-82).
 
@@ -217,12 +222,10 @@ class CostoEntrada(BaseModel):
     fecha: str  # ISO, dentro del periodo
     fuente: str
     nota: str = ""
-    ahora: str  # fecha y hora ISO local, sin zona: la manda el cliente
 
 
 class AnularCostoEntrada(BaseModel):
     motivo: str
-    ahora: str
 
 
 class CostoCreado(BaseModel):
@@ -243,6 +246,7 @@ class CostoRespuesta(BaseModel):
     registrado: str
     anulado: bool
     anula_id: int | None
+    motivo: str
 
 
 # --- Frontera: texto a tipos ---------------------------------------------------------------------
@@ -648,6 +652,11 @@ def descartar_sospechoso(
 # --- Costos del periodo (plan vial, Tarea 1) -----------------------------------------------------
 
 
+def _ahora() -> datetime:
+    """La hora del servidor: `registrado` de un costo no la decide el cliente."""
+    return datetime.now().replace(microsecond=0)
+
+
 def _costo_respuesta(r: CostoRegistrado) -> CostoRespuesta:
     c = r.costo
     return CostoRespuesta(
@@ -664,6 +673,7 @@ def _costo_respuesta(r: CostoRegistrado) -> CostoRespuesta:
         registrado=r.registrado.isoformat(),
         anulado=r.anulado,
         anula_id=r.anula_id,
+        motivo=r.motivo,
     )
 
 
@@ -688,8 +698,7 @@ def registrar_un_costo(
         fuente=entrada.fuente,
         nota=entrada.nota,
     )
-    ahora = _instante(entrada.ahora, "ahora")
-    return CostoCreado(id=registrar_costo(sesion, costo, usuario=usuario, ahora=ahora))
+    return CostoCreado(id=registrar_costo(sesion, costo, usuario=usuario, ahora=_ahora()))
 
 
 @router.get(
@@ -721,9 +730,10 @@ def anular_un_costo(
 ) -> CostoCreado:
     """Anula un costo con un registro nuevo; el original no se borra. Inexistente: 404; ya
     anulado: 409; sin motivo: 422."""
-    ahora = _instante(entrada.ahora, "ahora")
     try:
-        nuevo = anular_costo(sesion, costo_id, motivo=entrada.motivo, usuario=usuario, ahora=ahora)
+        nuevo = anular_costo(
+            sesion, costo_id, motivo=entrada.motivo, usuario=usuario, ahora=_ahora()
+        )
     except CostoInexistente as error:
         raise HTTPException(404, str(error)) from None
     except CostoYaAnulado as error:

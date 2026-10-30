@@ -47,7 +47,7 @@ def upgrade() -> None:
         sa.CheckConstraint("length(monto) > 0", name="ck_prod_costo_monto"),
     )
     op.create_index("ix_prod_costo_periodo", TABLA, ["periodo"])
-    op.create_index("ix_prod_costo_anula_id", TABLA, ["anula_id"])
+    op.create_index("ix_prod_costo_anula_id", TABLA, ["anula_id"], unique=True)
 
 
 def downgrade() -> None:
