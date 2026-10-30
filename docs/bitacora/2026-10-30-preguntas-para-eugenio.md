@@ -21,6 +21,8 @@ IVSS, orden de trabajo, norma de carreteras).
 | 7 | T12 | No hay serie pública venezolana del cemento asfáltico. | Se usa el índice de precios de asfalto de EE. UU. (FRED `WPU05810212`) solo por su variación mensual, declarado proxy internacional | Cargar una serie propia cuando la empresa la tenga |
 | 9 | T2 | ¿Centro y concepto del costo parten de un valor por defecto? | El centro y la moneda son obligatorios (un centro mal puesto sesga el costo por tonelada: la cantera va a los agregados y la planta a la mezcla); el concepto parte del primero de la lista | Poner un valor por defecto en `FormularioDeCosto.tsx` |
 | 10 | T2 | ¿Dónde se entra a «Costos del período»? | En tres sitios: Existencias (lo que abre Empresa › Producción), Inicio de producción y el buscador (Ctrl+K) | Quitar los enlaces que sobren; la pantalla no cambia |
+| 11 | T3 | ¿El gasoil propio de la receta descuenta del inventario? | No: la receta lo declara en litros y cuenta en el costo de la mezcla (T4), pero el inventario de agregados es en toneladas | Añadir el combustible como material con inventario propio |
+| 12 | T3 | ¿Cuánto pueden desviarse los componentes de la receta de 1 t por t de mezcla? | ±0,02 t (supuesto declarado) hasta que la empresa confirme su dosificación | Cambiar `TOLERANCIA_MASA` en `produccion/fuentes.py` |
 
 ## Rediseño del front, F4
 
