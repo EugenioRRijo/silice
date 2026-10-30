@@ -321,8 +321,10 @@ Aplicación: `test_costo_en_bs_sin_tasa_ese_dia_falla_y_lo_nombra` (Foco 1); `te
   - `@dataclass(frozen=True) Tramo(id: str, progresiva_ini_km: Decimal, progresiva_fin_km: Decimal, ancho_m: Decimal,
     capas: tuple[Capa, ...], demarcacion: tuple[Demarcacion, ...] = (), distancia_planta_km: Decimal | None = None)`
     — `longitud_m` propiedad; progresiva final ≤ inicial → ValueError con el id
-  - `PARTIDAS_VIALES: dict[str, tuple[str, str, str]]` (clave → código, descripción, unidad); códigos internos
-    `VIA-…` con fuente «a cotejar con la norma COVENIN de vialidad»
+  - `PARTIDAS_VIALES: dict[str, tuple[str, str, str]]` (clave → código, descripción, unidad); códigos con la forma
+    de la norma de carreteras, `C-xxx.xxx.xxx` (letra «C» + nueve dígitos), con fuente «COVENIN 2000-1:1987, Parte I
+    Carreteras: código a cotejar con el texto de la norma» (no es la COVENIN 2000-92, que es de edificaciones; ver
+    `docs/fuentes/2026-10-30-fuentes-plan-vial.md` §3)
   - `FRACCION_PINTADA_DISCONTINUA = Constante(...)` con fuente «supuesto declarado»
   - `derivar_tramos(tramos: Sequence[Tramo]) -> list[ItemComputo]` — `dominio=Dominio.CIVIL`,
     `especificaciones={"especialidad": "vial", "capa": tipo}`, `origen_tipo=OrigenTipo.REGLA`,
@@ -389,13 +391,19 @@ Tabular: `test_lee_coma_decimal` («7,30» → `Decimal("7.30")`, Foco 3); `test
 - Produces: `auditar_vial(tramos: Sequence[Tramo], presupuesto: Presupuesto, *, receta: Receta | None = None) ->
   list[Hallazgo]` con las reglas:
   - `VR1` toneladas de carpeta en el presupuesto ≠ área × espesor × densidad (tolerancia `Constante` 0,5 %)
-  - `VR2` porcentaje de asfalto de la receta fuera del rango declarado
-  - `VR3` dosis de riego o imprimación fuera de rango (l/m²)
+  - `VR2` porcentaje de asfalto de la mezcla distinto de la **fórmula de trabajo** de la receta en más de **±0,5
+    puntos** (no hay rango universal; tolerancia contractual de LanammeUCR, «a cotejar con la especificación del
+    proyecto»)
+  - `VR3` ligante **residual** por debajo del mínimo: imprimación **≥ 500 g/m²** (y ≤ 2.000 g/m² con emulsión),
+    riego de adherencia **≥ 200 g/m²** (IDU Bogotá 500-05 / pliego de Madrid, «a cotejar con la especificación del
+    proyecto»). El residual se calcula de la dosis declarada en l/m² con dos `Constante` de supuesto declarado:
+    densidad del producto (1,0 kg/l) y fracción residual de la emulsión (0,60), a cotejar con la ficha del producto
   - `VR4` t·km de transporte ≠ toneladas × distancia declarada
-  - `VR5` pintura por kilómetro de línea fuera de rango
+  - `VR5` pintura fuera de **≈ 29 a 44 l por km de línea de 10 cm** (rendimiento teórico de fichas técnicas;
+    proporcional al ancho de la línea)
   - `VR6` progresivas solapadas o con huecos en la misma vía
   - `VR7` unidad de la partida incompatible con su capa
-  Cada rango es `Constante` en `adapters/vial/constantes.py` con fuente o «a cotejar».
+  Cada rango es `Constante` en `adapters/vial/constantes.py` con fuente o «a cotejar» (fuentes en `docs/fuentes/2026-10-30-fuentes-plan-vial.md` §4).
 
 - [ ] **Step 1: Pruebas** por regla, con su frontera: dentro del rango → sin hallazgo; justo fuera → un hallazgo con
   `origen_ids == ("tramo:T1:capa:1",)`, `valor_observado` y `valor_esperado` exactos. `VR6`: T1 0–1 km y T2 0,9–2 km →
@@ -460,8 +468,10 @@ Tabular: `test_lee_coma_decimal` («7,30» → `Decimal("7.30")`, Foco 3); `test
 **Interfaces:**
 - Consumes: `core/catalog/indices.registrar_importacion`, `DefinicionSerie`, `Observacion`, `valor_en`.
 - Produces:
-  - `SERIES_VIALES: tuple[DefinicionSerie, ...]` — `CEMENTO_ASFALTICO_USD` (USD/t, mensual), `GASOIL_USD` (USD/l,
-    mensual); la tasa BCV es la serie existente
+  - `SERIES_VIALES: tuple[DefinicionSerie, ...]` — `CEMENTO_ASFALTICO_PPI` (**índice**, mensual: PPI de asfalto de
+    EE. UU. `WPU05810212` de FRED/BLS, declarado **proxy internacional**; no hay serie pública venezolana; se usa por
+    su variación mensual, nunca como precio) y `GASOIL_USD` (USD/l, mensual; precio **administrado** por decreto: una
+    serie en escalones, «a cotejar en la Gaceta»); la tasa BCV es la serie existente. Fuentes en `docs/fuentes/2026-10-30-fuentes-plan-vial.md` §5
   - `importar_serie_csv(sesion, codigo: str, ruta: Path, *, fuente: str, responsable: str, hoy: date) -> int | None`
   - `@dataclass(frozen=True) MapaSeries(serie_por_insumo: Mapping[str, str])` — clave: **descripción** del insumo
     (así indexa `generar_escenario` sus `precios`)
@@ -611,13 +621,26 @@ def test_supuestos_declarados():  # "gasto uniforme", "USD fijo × tasa" en p.su
   `base` en `("dias", "porcentaje")`; `COMPONENTES_FCAS: tuple[ComponenteFCAS, ...]` con, entre otros, `paro_forzoso`
   (Régimen Prestacional de Empleo) y `utilidades` (de los trabajadores), cada uno con fuente en
   `docs/fuentes/LOTTT_GO_6076_Ext_2012-05-07.txt` o `docs/fuentes/CCT_Construccion_GO_6752_Ext_2023-07-06.txt`
-  (artículo o cláusula) o «a cotejar» si no se encuentra; `calcular_fcas(componentes, dias_trabajados: Decimal) ->
-  ResultadoFCAS(fcas: Decimal, desglose: tuple[tuple[str, Decimal], ...], a_cotejar: tuple[str, ...])` con
-  `fcas = Σ días ÷ días_trabajados + Σ porcentajes`; `POST /v1/fcas/calcular`.
+  (artículo o cláusula) o «a cotejar» si no se encuentra; `calcular_fcas(componentes, dias_calendario: Decimal,
+  dias_trabajados: Decimal) -> ResultadoFCAS(fcas: Decimal, fcas_por_dias: Decimal, dias_pagados: Decimal,
+  desglose: tuple[tuple[str, Decimal], ...], a_cotejar: tuple[str, ...])`; `POST /v1/fcas/calcular`.
+  **Método (corregido 2026-10-30 con `docs/fuentes/2026-10-30-fuentes-plan-vial.md` §1; Dodi y Salas 2019, `docs/fuentes/Dodi_Salas_2019_FCAS_UJAP.pdf`
+  §4.2):** `dias_pagados = dias_calendario + Σ bonificaciones en días de salario`; `fcas_por_dias = (dias_pagados −
+  dias_trabajados) ÷ dias_trabajados`; los aportes patronales son porcentaje del salario **pagado** y se llevan a días
+  trabajados: `fcas = (dias_pagados ÷ dias_trabajados) × (1 + Σ aportes) − 1`. Componentes y valores por defecto de
+  la tabla de §1.2 y §1.3 de las fuentes (vacaciones y bono 80 días, utilidades 100 días, asistencia 6 días/mes con
+  probabilidad declarada, garantía de prestaciones 72 días/año; paro forzoso 2 %, FAOV 2 %, INCES 2 %, IVSS **11 %
+  por defecto** «a cotejar» (9-11 % según el riesgo), pensiones **9 %** «a cotejar» (Ley de 2024 + Decreto 4.952)).
+  **El bono de alimentación NO es un componente** (Sílice ya lo lleva aparte en `bono_alimentacion`: contarlo dos
+  veces infla el costo). Unidades: el motor aplica `sueldo × (1 + fcas)`; la pantalla muestra las dos formas
+  («90 %» y «× 1,90») para que nadie confunda un multiplicador de libro con el `fcas` de Sílice.
 
-- [ ] **Step 1: Pruebas:** 120 días ÷ 240 + 0,10 → `Decimal("0.60")`; el desglose suma el total; un componente
-  «a cotejar» aparece en `a_cotejar` y la pantalla lo avisa; la pantalla muestra el FCAS calculado al lado del de la
-  versión (6,00 por defecto) y **no lo aplica sola**: aplicar usa la edición de parámetros que ya existe.
+- [ ] **Step 1: Pruebas** (oráculos a mano): caso de Dodi y Salas, 365 días calendario + 23,13 de bonificación,
+  217,28 trabajados, sin aportes → `fcas_por_dias` = 0,7863 (a 4 decimales; exacto 0,786312…); con un aporte de 2 %
+  → `fcas` = 0,8220 (0,822038…); un componente «bono_alimentacion» se rechaza con su motivo; el desglose suma el
+  total; un componente «a cotejar» aparece en `a_cotejar` y la pantalla lo avisa; la pantalla muestra «78,63 %» y
+  «× 1,7863»; muestra el FCAS calculado al lado del de la versión (6,00 por defecto) y **no lo aplica sola**: aplicar
+  usa la edición de parámetros que ya existe.
 - [ ] **Step 2–5:** rojo, implementar, verde, commit — `feat(costos): FCAS por componentes con su base legal`.
 
 ### Tarea 18: IVA sobre el presupuesto y las valuaciones
@@ -632,7 +655,7 @@ def test_supuestos_declarados():  # "gasto uniforme", "USD fijo × tasa" en p.su
 
 **Interfaces:**
 - Produces: `ALICUOTA_IVA = Constante("iva_general", "Alícuota general del IVA", Decimal("0.16"), "Ley del IVA, alícuota
-  general — a cotejar con la Gaceta vigente")`; `@dataclass(frozen=True) ResumenImpuestos(subtotal: Decimal,
+  general: Decreto 3.584, G.O. 6.395 Ext., 17-08-2018 (16 %) — a cotejar con la Gaceta vigente")`; `@dataclass(frozen=True) ResumenImpuestos(subtotal: Decimal,
   iva: Decimal, total: Decimal)`; `con_iva(subtotal: Decimal, alicuota: Decimal = ALICUOTA_IVA.valor) -> ResumenImpuestos`
   (dos decimales `ROUND_HALF_UP`).
 
