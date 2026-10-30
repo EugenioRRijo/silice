@@ -56,7 +56,8 @@
 - **Unidad de lo comprado**: la unidad del insumo en la lista debe ser la de la receta
   (`core.contracts.unidades.unidades_equivalentes`); si no, error que nombra el código y las dos
   unidades. Ojo: «ton» y «t» no son alias en la tabla del núcleo, así que una lista con «ton» se
-  rechaza con ese mensaje (ver pregunta 17). Un insumo sin unidad en la lista se acepta.
+  rechaza con ese mensaje, y lo mismo «lt» o «litro» frente a «l» (ver pregunta 17). Un insumo sin
+  unidad en la lista se acepta.
 - **Exacto y presentado**: toda operación con 28 cifras y mitad al par fijadas dentro de
   `produccion/costo.py` (no dependen del contexto del hilo; las mismas de
   `core.catalog.moneda.convertir`); se guarda así y se redondea solo al presentar (dos decimales,
@@ -79,3 +80,23 @@
   `CalculoRespuesta` ya existe en otra ruta (un nombre repetido renombra los dos en `docs/api.json`).
 - **Del plan al código**: `CalculoGuardado` lleva además `usuario`, `registrado` e `instantanea` (con
   valor por omisión; la Tarea 5 usa `id`, `periodo` y `por_tonelada`).
+
+### Tarea 4, ronda 2 (devolución del árbitro)
+
+- **Columnas que la huella no cubre**: `periodo` y `moneda` de `prod_calculo` solo sirven para
+  buscar; al leer un cálculo salen de la instantánea verificada y, si las columnas no dicen lo mismo,
+  «fue alterado» (422 por la API). Antes, cambiar la columna `moneda` devolvía un cálculo en USD
+  rotulado en Bs sin error. `usuario` y `registrado` siguen fuera de la huella a propósito (el mismo
+  cálculo de dos personas da la misma huella).
+- **Mezcla sin costos de planta (decisión del orquestador)**: se niega, simétrico a «agregados sin
+  costos de cantera»: «No hay costos de planta en AAAA-MM para las mezclas MZ-1: …». Antes salía con
+  planta 0 (MZ-1 a 38,70 en vez de 50,70).
+- **Pesos sin agregados producidos**: error en vez de ignorarlos y guardar «por pesos» sin validar.
+- **Tope de pesos**: se prueba en el esquema `CalculoDeCostoEntrada` (50 entra, 51 no).
+- **Regresión de la Tarea 1 corregida**: `test_api_sesion_web.py` fijaba la lista literal de
+  acciones de arma sin `registrar_costos_produccion`, que la Tarea 1 le dio a propósito (lo pide el
+  plan y la pantalla de existencias la usa). Se corrigió el oráculo, no el permiso.
+- **Deuda anotada, no se toca ahora**: `api/rutas/produccion_planta.py` importa nombres privados de
+  `api/rutas/produccion.py` (`_decimal`, `_fecha` y `_ahora` por el módulo). Lo limpio es un módulo de
+  frontera común con nombres públicos; las pruebas fijan `api.rutas.produccion._ahora`, así que
+  moverlo exige tocar esas pruebas.

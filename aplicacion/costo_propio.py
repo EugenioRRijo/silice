@@ -153,7 +153,8 @@ def _producido(sesion_ins: Session, periodo: str) -> _Producido:
 
 
 def _exigir_centros(periodo: str, costos: list[CostoRegistrado], producido: _Producido) -> None:
-    """Cada centro con costo tiene a quien cargarlo y cada agregado tiene costo de cantera."""
+    """Cada centro con costo tiene a quien cargarlo, cada agregado tiene costo de cantera y cada
+    mezcla costo de planta (sin ellos su costo por tonelada saldria corto)."""
     hay = {
         centro: any(r.costo.monto > CERO for r in costos if r.costo.centro == centro)
         for centro in ("cantera", "planta")
@@ -172,6 +173,11 @@ def _exigir_centros(periodo: str, costos: list[CostoRegistrado], producido: _Pro
         raise ErrorDeCalculo(
             f"Hay costos de planta en {periodo} pero no se produjo mezcla: no hay a quién "
             "cargarlos."
+        )
+    if producido.usos and not hay["planta"]:
+        raise ErrorDeCalculo(
+            f"No hay costos de planta en {periodo} para las mezclas "
+            f"{', '.join(sorted(producido.usos))}: su costo por tonelada saldría sin la planta."
         )
     for mezcla, usos in producido.usos.items():
         for receta, _ in usos.values():
@@ -346,6 +352,11 @@ def calcular_periodo(
     if not producido.toneladas:
         raise ErrorDeCalculo(f"No hubo producción en {periodo}.")
     _exigir_centros(periodo, costos, producido)
+    if pesos is not None and not producido.agregados:
+        raise ErrorDeCalculo(
+            f"Se pidió el reparto de la cantera por pesos, pero en {periodo} no se produjo "
+            "ningún agregado."
+        )
 
     faltan: list[str] = []
     convertidos = _convertir_costos(sesion_caso, costos, moneda, faltan)
@@ -423,16 +434,24 @@ def calcular_periodo(
 
 
 def _guardado(fila: Calculo) -> CalculoGuardado:
-    """El calculo de la fila, comprobando que su instantanea es la de su huella."""
+    """El calculo de la fila, comprobando que su instantanea es la de su huella. Periodo y moneda
+    salen de la instantanea verificada; las columnas (que la huella no cubre y solo sirven para
+    buscar) deben decir lo mismo."""
     if hashlib.sha256(fila.instantanea.encode("utf-8")).hexdigest() != fila.huella:
         raise ErrorDeCalculo(
             f"El cálculo n.º {fila.id} fue alterado: su huella no coincide con lo guardado."
         )
-    resultado = json.loads(fila.instantanea)["resultado"]
+    datos = json.loads(fila.instantanea)
+    entradas, resultado = datos["entradas"], datos["resultado"]
+    if (fila.periodo, fila.moneda) != (entradas["periodo"], entradas["moneda"]):
+        raise ErrorDeCalculo(
+            f"El cálculo n.º {fila.id} fue alterado: su período o su moneda no son los de su "
+            "instantánea."
+        )
     return CalculoGuardado(
         id=fila.id,
-        periodo=fila.periodo,
-        moneda=fila.moneda,
+        periodo=entradas["periodo"],
+        moneda=entradas["moneda"],
         por_tonelada={c: Decimal(v) for c, v in resultado["por_tonelada"].items()},
         huella=fila.huella,
         usuario=fila.usuario,
