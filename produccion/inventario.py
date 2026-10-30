@@ -16,11 +16,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from produccion.costos import validar_periodo
+from produccion.fuentes import CUANTO_T_A_M3
 from produccion.modelo import Material, Movimiento
 
 UNIDADES_VALIDAS = ("m3", "t")
 CERO = Decimal(0)
-CUATRO_DECIMALES = Decimal("0.0001")  # cuantizacion de t a m3 (importacion y receta)
 
 
 class ErrorDeInventario(ValueError):  # noqa: N818 - nombre fijado por el plan
@@ -282,7 +282,7 @@ def de_toneladas(material: Material, toneladas: Decimal) -> Decimal:
             f"El material {material.codigo} está en m3 y no tiene densidad (t/m3): "
             "indíquela para pasarlo desde toneladas."
         )
-    return (toneladas / material.densidad_t_m3).quantize(CUATRO_DECIMALES, rounding=ROUND_HALF_EVEN)
+    return (toneladas / material.densidad_t_m3).quantize(CUANTO_T_A_M3, rounding=ROUND_HALF_EVEN)
 
 
 @dataclass(frozen=True, slots=True)

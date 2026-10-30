@@ -39,6 +39,8 @@ TOLERANCIA_MASA = Decimal("0.02")
 CIFRAS_DEL_CALCULO = 28
 DECIMALES_AL_PRESENTAR = 2
 MAX_PESOS = 50
+MAX_COMPONENTES = 50
+CUANTO_T_A_M3 = Decimal("0.0001")
 
 CONSTANTES: tuple[Constante, ...] = (
     Constante(
@@ -100,5 +102,19 @@ CONSTANTES: tuple[Constante, ...] = (
         EstadoDato.CONSTRUIDO,
         "tope de productos con peso en el reparto por pesos de la cantera (cuerpo de la API)",
         False,
+    ),
+    Constante(
+        "MAX_COMPONENTES",
+        str(MAX_COMPONENTES),
+        EstadoDato.CONSTRUIDO,
+        "supuesto declarado: tope de componentes de una receta (cuerpo de la API)",
+        False,
+    ),
+    Constante(
+        "CUANTO_T_A_M3",
+        str(CUANTO_T_A_M3),
+        EstadoDato.CONSTRUIDO,
+        "tecnica: cuantizacion de t a m3 a cuatro decimales con mitad al par (importacion y receta)",
+        True,
     ),
 )

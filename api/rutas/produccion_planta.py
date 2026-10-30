@@ -56,7 +56,7 @@ from produccion.costos import (
     registrar_costo,
     totales_por_centro,
 )
-from produccion.fuentes import MAX_PESOS
+from produccion.fuentes import MAX_COMPONENTES, MAX_PESOS
 from produccion.receta import (
     Componente,
     Receta,
@@ -122,7 +122,7 @@ class ComponenteEntrada(BaseModel):
 
 class RecetaEntrada(BaseModel):
     producto: str  # código del material que se produce
-    componentes: list[ComponenteEntrada] = Field(max_length=50)
+    componentes: list[ComponenteEntrada] = Field(max_length=MAX_COMPONENTES)
     fuente: str
     vigente_desde: str  # ISO, AAAA-MM-DD
 

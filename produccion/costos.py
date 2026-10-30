@@ -74,7 +74,8 @@ class CostoDelPeriodo:
             or self.monto < Decimal(0)
         ):
             raise ErrorDeCosto("El monto (monto) debe ser un número decimal de cero o más.")
-        object.__setattr__(self, "monto", self.monto + Decimal(0))  # -0 pasa a 0
+        if self.monto.is_zero():  # -0 pasa a 0; el resto no se toca (no se redondea a 28 cifras)
+            object.__setattr__(self, "monto", self.monto.copy_abs())
         if not isinstance(self.fecha, date) or isinstance(self.fecha, datetime):
             raise ErrorDeCosto("La fecha (fecha) del costo debe ser una fecha.")
         if (self.fecha.year, self.fecha.month) != (anio, mes):
