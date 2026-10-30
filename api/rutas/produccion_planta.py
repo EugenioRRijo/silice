@@ -1,4 +1,4 @@
-"""`/v1/produccion`, la parte de la planta: costos del periodo, recetas y producciones (plan vial).
+"""`/v1/produccion`, la parte de la planta: costos, recetas, producciones y cálculos (plan vial).
 
 Mismo prefijo, misma etiqueta, misma puerta (`OPERAR_ARENERA`, el mismo objeto que en
 `api.rutas.produccion`, así FastAPI la evalúa una sola vez), `RutaSinCache` y reglas de frontera
@@ -9,23 +9,36 @@ después de aquél en `api.main`, así el orden de `docs/api.json` no cambia.
 - **Hora del servidor**: `registrado` de costos, recetas y producciones la pone el servidor con
   `api.rutas.produccion._ahora`, que se busca en su módulo en cada llamada (las pruebas la fijan
   allí); el cuerpo no lleva `ahora` (si lo trae, se ignora).
-- Las rutas de `/costos` suman una segunda puerta del mismo tipo, `REGISTRAR_COSTOS`
+- Las rutas de `/costos` y `/calculos` suman una segunda puerta del mismo tipo, `REGISTRAR_COSTOS`
   (`Accion.REGISTRAR_COSTOS_PRODUCCION`, hoy los mismos roles): se exigen las dos y la sesión se
-  toma de ésta.
+  toma de ésta. Un cálculo lee los costos, por eso comparte su puerta.
+- **Cálculo del costo por tonelada** (Tarea 4): `POST /calculos` lee la instalación y, para las
+  tasas BCV y la lista de precios, la carpeta del caso de la petición (`SesionDep`: la elegida por
+  la ficha o la del proceso). Responde el costo exacto (texto) y el presentado (dos decimales, mitad
+  hacia arriba), con la instantánea guardada. Falta de tasa, de precio, de producción o de costos:
+  422 con el mensaje, sin guardar nada. Cálculo inexistente: 404.
 """
 
 from __future__ import annotations
 
-from typing import Annotated
+import json
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from api.dependencias import USUARIO_API, SesionInstalacionDep
+from api.dependencias import USUARIO_API, SesionDep, SesionInstalacionDep
 from api.rutas import produccion as arenera
 from api.rutas.produccion import OPERAR_ARENERA, UsuarioDep, _decimal, _fecha
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
+from aplicacion.costo_propio import (
+    CalculoGuardado,
+    CalculoInexistente,
+    calcular_periodo,
+    calculo_guardado,
+)
+from produccion.costo import presentar
 from produccion.costos import (
     CostoDelPeriodo,
     CostoInexistente,
@@ -36,6 +49,7 @@ from produccion.costos import (
     registrar_costo,
     totales_por_centro,
 )
+from produccion.fuentes import MAX_PESOS
 from produccion.receta import (
     Componente,
     Receta,
@@ -135,6 +149,30 @@ class TotalDeCostos(BaseModel):
     centro: str
     moneda: str
     total: str  # decimal con punto, suma exacta de los costos vigentes
+
+
+class CalculoDeCostoEntrada(BaseModel):
+    periodo: str  # AAAA-MM
+    moneda: str  # "Bs" o "USD", la del cálculo
+    #: reparto de la cantera por pesos (D-V-1, opcional): código del agregado -> peso con punto
+    pesos: dict[str, str] | None = Field(default=None, max_length=MAX_PESOS)
+
+
+class CostoDeProducto(BaseModel):
+    codigo: str
+    por_tonelada: str  # exacto, como se guardó
+    presentado: str  # dos decimales, mitad hacia arriba
+
+
+class CalculoDeCostoRespuesta(BaseModel):
+    id: int
+    periodo: str
+    moneda: str
+    huella: str  # SHA-256 de la instantánea
+    usuario: str
+    registrado: str
+    productos: list[CostoDeProducto]  # por código
+    instantanea: dict[str, Any]  # entradas y resultado, decimales como texto
 
 
 class CostoRespuesta(BaseModel):
@@ -344,3 +382,70 @@ def ver_producido(
     """Toneladas producidas en el periodo por código de material (m3 por densidad)."""
     producido = producido_en_periodo(sesion, periodo.strip())
     return [ProducidoRespuesta(codigo=c, toneladas=format(t, "f")) for c, t in producido.items()]
+
+
+# --- Costo por tonelada del periodo (plan vial, Tarea 4) ------------------------------------------
+
+
+def _calculo_respuesta(calculo: CalculoGuardado) -> CalculoDeCostoRespuesta:
+    return CalculoDeCostoRespuesta(
+        id=calculo.id,
+        periodo=calculo.periodo,
+        moneda=calculo.moneda,
+        huella=calculo.huella,
+        usuario=calculo.usuario,
+        registrado=calculo.registrado.isoformat() if calculo.registrado else "",
+        productos=[
+            CostoDeProducto(
+                codigo=codigo, por_tonelada=format(valor, "f"), presentado=str(presentar(valor))
+            )
+            for codigo, valor in sorted(calculo.por_tonelada.items())
+        ],
+        instantanea=json.loads(calculo.instantanea),
+    )
+
+
+@router.post(
+    "/calculos",
+    response_model=CalculoDeCostoRespuesta,
+    status_code=201,
+    dependencies=[Depends(REGISTRAR_COSTOS)],
+)
+def calcular_costo_por_tonelada(
+    entrada: CalculoDeCostoEntrada,
+    sesion: SesionInstalacionDep,
+    caso: SesionDep,
+    usuario: UsuarioCostosDep,
+) -> CalculoDeCostoRespuesta:
+    """Calcula el costo por tonelada de cada producto del periodo en la moneda pedida y lo guarda
+    con sus entradas (otro registro cada vez; nada se sobrescribe). Sin costos, sin producción, sin
+    tasa BCV del día de algún monto o sin precio de un componente comprado: 422, sin guardar."""
+    pesos = (
+        None
+        if entrada.pesos is None
+        else {codigo.strip(): _decimal(peso, "pesos") for codigo, peso in entrada.pesos.items()}
+    )
+    calculo = calcular_periodo(
+        sesion,
+        caso,
+        entrada.periodo.strip(),
+        entrada.moneda.strip(),
+        pesos=pesos,
+        usuario=usuario,
+        ahora=arenera._ahora(),
+    )
+    return _calculo_respuesta(calculo)
+
+
+@router.get(
+    "/calculos/{calculo_id}",
+    response_model=CalculoDeCostoRespuesta,
+    dependencies=[Depends(REGISTRAR_COSTOS)],
+)
+def ver_calculo(calculo_id: int, sesion: SesionInstalacionDep) -> CalculoDeCostoRespuesta:
+    """Un cálculo guardado, tal como se calculó. Inexistente: 404; alterado: 422."""
+    try:
+        calculo = calculo_guardado(sesion, calculo_id)
+    except CalculoInexistente as error:
+        raise HTTPException(404, str(error)) from None
+    return _calculo_respuesta(calculo)

@@ -20,6 +20,7 @@ from sqlalchemy import (
     Integer,
     MetaData,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -181,3 +182,24 @@ class RecetaComponente(Base):
     cantidad_por_t: Mapped[Decimal] = mapped_column(Cantidad)
     unidad: Mapped[str] = mapped_column(String(1))
     tipo: Mapped[str] = mapped_column(String(8))
+
+
+class Calculo(Base):
+    """Un calculo del costo por tonelada de un periodo (Tarea 4 del plan vial), con sus entradas y
+    su resultado en `instantanea` (JSON canonico: claves ordenadas, decimales como texto) y la
+    huella SHA-256 de ese texto. Solo se inserta: recalcular es otra fila, aunque la huella se
+    repita."""
+
+    __tablename__ = "prod_calculo"
+    __table_args__ = (
+        CheckConstraint("moneda IN ('Bs', 'USD')", name="ck_prod_calculo_moneda"),
+        CheckConstraint("length(huella) = 64", name="ck_prod_calculo_huella"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    periodo: Mapped[str] = mapped_column(String(7), index=True)
+    moneda: Mapped[str] = mapped_column(String(3))
+    huella: Mapped[str] = mapped_column(String(64), index=True)
+    instantanea: Mapped[str] = mapped_column(Text)
+    usuario: Mapped[str] = mapped_column(String(120))
+    registrado: Mapped[datetime] = mapped_column(DateTime)

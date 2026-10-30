@@ -36,6 +36,9 @@ MAX_COLUMNAS = 60
 FILAS_DE_ENCABEZADO = 30
 TOLERANCIA_NETO_T = Decimal("0")
 TOLERANCIA_MASA = Decimal("0.02")
+CIFRAS_DEL_CALCULO = 28
+DECIMALES_AL_PRESENTAR = 2
+MAX_PESOS = 50
 
 CONSTANTES: tuple[Constante, ...] = (
     Constante(
@@ -73,5 +76,29 @@ CONSTANTES: tuple[Constante, ...] = (
         "supuesto declarado: las toneladas de componentes por tonelada de mezcla suman 1 +- 0,02 "
         "(merma y humedad); la empresa lo confirma con su dosificacion",
         True,
+    ),
+    Constante(
+        "CIFRAS_DEL_CALCULO",
+        str(CIFRAS_DEL_CALCULO),
+        EstadoDato.CONSTRUIDO,
+        "cifras significativas del costo por tonelada (division con redondeo de mitad al par); "
+        "las mismas 28 de core.catalog.moneda.convertir. Asi se guarda; no es un redondeo de "
+        "presentacion",
+        True,
+    ),
+    Constante(
+        "DECIMALES_AL_PRESENTAR",
+        str(DECIMALES_AL_PRESENTAR),
+        EstadoDato.CONSTRUIDO,
+        "plan vial, Tarea 4: el costo por tonelada se presenta con dos decimales y redondeo de "
+        "mitad hacia arriba; se guarda exacto",
+        False,
+    ),
+    Constante(
+        "MAX_PESOS",
+        str(MAX_PESOS),
+        EstadoDato.CONSTRUIDO,
+        "tope de productos con peso en el reparto por pesos de la cantera (cuerpo de la API)",
+        False,
     ),
 )

@@ -285,10 +285,19 @@ def de_toneladas(material: Material, toneladas: Decimal) -> Decimal:
     return (toneladas / material.densidad_t_m3).quantize(CUATRO_DECIMALES, rounding=ROUND_HALF_EVEN)
 
 
-def producido_en_periodo(sesion: Session, periodo: str) -> dict[str, Decimal]:
-    """Toneladas producidas en el periodo `AAAA-MM` por código de material: la suma de sus
-    entradas del mes (los despachos, ajustes y consumos no cuentan), con m3 x densidad. Ordenado
-    por código; un material sin entradas en el mes no aparece."""
+@dataclass(frozen=True, slots=True)
+class EntradaDelPeriodo:
+    """Una entrada (produccion) del periodo: codigo del material, su fecha y sus toneladas."""
+
+    codigo: str
+    fecha: date
+    toneladas: Decimal
+
+
+def entradas_del_periodo(sesion: Session, periodo: str) -> list[EntradaDelPeriodo]:
+    """Las entradas del periodo `AAAA-MM`, una por movimiento, en toneladas (m3 x densidad; un
+    material en m3 sin densidad es error que lo nombra). Los despachos, ajustes y consumos no
+    cuentan. Orden: codigo del material y luego orden de registro."""
     anio, mes = validar_periodo(periodo)
     desde = date(anio, mes, 1)
     hasta = date(anio + (mes == 12), mes % 12 + 1, 1)
@@ -298,9 +307,19 @@ def producido_en_periodo(sesion: Session, periodo: str) -> dict[str, Decimal]:
         .where(Movimiento.tipo == "entrada", Movimiento.fecha >= desde, Movimiento.fecha < hasta)
         .order_by(Material.codigo, Movimiento.id)
     )
-    sumas: dict[str, Decimal] = {}
-    for movimiento, material in sesion.execute(consulta):
-        sumas[material.codigo] = sumas.get(material.codigo, CERO) + a_toneladas(
-            material, movimiento.cantidad
+    return [
+        EntradaDelPeriodo(
+            material.codigo, movimiento.fecha, a_toneladas(material, movimiento.cantidad)
         )
+        for movimiento, material in sesion.execute(consulta)
+    ]
+
+
+def producido_en_periodo(sesion: Session, periodo: str) -> dict[str, Decimal]:
+    """Toneladas producidas en el periodo `AAAA-MM` por código de material: la suma de sus
+    entradas del mes (`entradas_del_periodo`). Ordenado por código; un material sin entradas en el
+    mes no aparece."""
+    sumas: dict[str, Decimal] = {}
+    for entrada in entradas_del_periodo(sesion, periodo):
+        sumas[entrada.codigo] = sumas.get(entrada.codigo, CERO) + entrada.toneladas
     return sumas

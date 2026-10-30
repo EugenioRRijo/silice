@@ -23,6 +23,11 @@ IVSS, orden de trabajo, norma de carreteras).
 | 10 | T2 | ¿Dónde se entra a «Costos del período»? | En tres sitios: Existencias (lo que abre Empresa › Producción), Inicio de producción y el buscador (Ctrl+K) | Quitar los enlaces que sobren; la pantalla no cambia |
 | 11 | T3 | ¿El gasoil propio de la receta descuenta del inventario? | No: la receta lo declara en litros y cuenta en el costo de la mezcla (T4), pero el inventario de agregados es en toneladas | Añadir el combustible como material con inventario propio |
 | 12 | T3 | ¿Cuánto pueden desviarse los componentes de la receta de 1 t por t de mezcla? | ±0,02 t (supuesto declarado) hasta que la empresa confirme su dosificación | Cambiar `TOLERANCIA_MASA` en `produccion/fuentes.py` |
+| 13 | T4 | ¿Qué producto es «mezcla» al repartir los costos? | El que tiene receta registrada al cierre del mes; lo demás producido es agregado y recibe la cantera. La planta va a las mezclas por tonelada | Marcar el tipo en el material |
+| 14 | T4 | ¿De qué fecha es el precio del cemento asfáltico y del gasoil de la mezcla? | De la lista de precios vigente de la carpeta el último día del mes; si está en otra moneda, con la tasa BCV del día en que empezó a regir esa lista | Usar la lista vigente en la fecha de cada producción |
+| 15 | T4 | La mezcla usa un agregado propio que ese mes no se produjo (salió del inventario). ¿Qué costo lleva? | Ninguno: el cálculo se niega y lo nombra (no se toma el costo de otro mes sin que alguien lo decida) | Tomar el último costo calculado de ese agregado |
+| 16 | T4 | Hay costos de cantera pero solo se produjo mezcla, o costos de planta sin mezcla. ¿Qué se hace? | Se niega el cálculo con un mensaje claro; ningún costo queda sin dueño ni se publica un costo cero | Acumular el costo al mes siguiente |
+| 17 | T4 | La lista tiene el cemento asfáltico por «ton» y la receta por «t». | Se rechaza con un mensaje que nombra las dos unidades: el núcleo no trata «ton» como alias de «t» | Añadir el alias en `core/contracts/unidades.py` (toca el núcleo) |
 
 ## Rediseño del front, F4
 

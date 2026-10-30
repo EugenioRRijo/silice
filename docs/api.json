@@ -9033,6 +9033,91 @@
         }
       }
     },
+    "/v1/produccion/calculos": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Calcular Costo Por Tonelada",
+        "description": "Calcula el costo por tonelada de cada producto del periodo en la moneda pedida y lo guarda\ncon sus entradas (otro registro cada vez; nada se sobrescribe). Sin costos, sin producción, sin\ntasa BCV del día de algún monto o sin precio de un componente comprado: 422, sin guardar.",
+        "operationId": "calcular_costo_por_tonelada_v1_produccion_calculos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculoDeCostoEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculoDeCostoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/produccion/calculos/{calculo_id}": {
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Ver Calculo",
+        "description": "Un cálculo guardado, tal como se calculó. Inexistente: 404; alterado: 422.",
+        "operationId": "ver_calculo_v1_produccion_calculos__calculo_id__get",
+        "parameters": [
+          {
+            "name": "calculo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Calculo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculoDeCostoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/buscar/partidas": {
       "get": {
         "tags": [
@@ -12893,6 +12978,91 @@
         ],
         "title": "CadenaHojaRespuesta"
       },
+      "CalculoDeCostoEntrada": {
+        "properties": {
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "pesos": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object",
+                "maxProperties": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pesos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo",
+          "moneda"
+        ],
+        "title": "CalculoDeCostoEntrada"
+      },
+      "CalculoDeCostoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "registrado": {
+            "type": "string",
+            "title": "Registrado"
+          },
+          "productos": {
+            "items": {
+              "$ref": "#/components/schemas/CostoDeProducto"
+            },
+            "type": "array",
+            "title": "Productos"
+          },
+          "instantanea": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Instantanea"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "periodo",
+          "moneda",
+          "huella",
+          "usuario",
+          "registrado",
+          "productos",
+          "instantanea"
+        ],
+        "title": "CalculoDeCostoRespuesta"
+      },
       "CalculoPeticion": {
         "properties": {
           "codigo": {
@@ -14285,6 +14455,29 @@
           "id"
         ],
         "title": "CostoCreado"
+      },
+      "CostoDeProducto": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "por_tonelada": {
+            "type": "string",
+            "title": "Por Tonelada"
+          },
+          "presentado": {
+            "type": "string",
+            "title": "Presentado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "por_tonelada",
+          "presentado"
+        ],
+        "title": "CostoDeProducto"
       },
       "CostoEntrada": {
         "properties": {
