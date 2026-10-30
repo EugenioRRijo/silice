@@ -56,8 +56,9 @@ def _con_material(conexion: sqlite3.Connection) -> None:
     )
 
 
-def test_es_la_cabeza_de_la_instalacion() -> None:
-    assert revision_head(Destino.INSTALACION) == REVISION
+def test_le_sigue_la_de_los_calculos() -> None:
+    """Plan vial, Tarea 4: la cabeza pasa a `ins_0008_prod_calculo`, que baja a esta."""
+    assert revision_head(Destino.INSTALACION) == "ins_0008_prod_calculo"
 
 
 def test_crea_las_dos_tablas_con_sus_columnas(tmp_path: Path) -> None:
@@ -94,13 +95,13 @@ def test_el_consumo_solo_cabe_despues_de_subir_y_lo_anterior_sobrevive(tmp_path:
 
 def test_bajar_quita_las_tablas_y_los_consumos_y_conserva_lo_demas(tmp_path: Path) -> None:
     base = tmp_path / "instalacion.db"
-    aplicar_revisiones(base, Destino.INSTALACION)
+    aplicar_revisiones(base, Destino.INSTALACION, REVISION)
     with closing(sqlite3.connect(base)) as conexion:
         _con_material(conexion)
         _movimiento(conexion, "entrada", "100")
         _movimiento(conexion, "consumo", "94")
         conexion.commit()
-    deshacer_revisiones(base, Destino.INSTALACION, "-1")
+    deshacer_revisiones(base, Destino.INSTALACION, ANTERIOR)
     with closing(sqlite3.connect(base)) as conexion:
         assert not set(COLUMNAS) & _tablas(conexion)
         assert conexion.execute("SELECT tipo, cantidad FROM prod_movimiento").fetchall() == [
@@ -137,7 +138,7 @@ def test_una_base_que_ya_trae_las_tablas_y_el_check_se_adopta(tmp_path: Path) ->
         _movimiento(conexion, "consumo", "7")
         conexion.commit()
 
-    aplicar_revisiones(base, Destino.INSTALACION)
+    aplicar_revisiones(base, Destino.INSTALACION, REVISION)
 
     with closing(sqlite3.connect(base)) as conexion:
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [

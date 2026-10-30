@@ -167,3 +167,33 @@ def test_tablero_omite_materiales_inactivos(sesion: Session) -> None:
     filas = tablero(sesion)
     assert [f.material.codigo for f in filas] == ["ARENA"]
     assert filas[0].material.id == mid
+
+
+def test_entradas_del_periodo_una_por_entrada_en_toneladas(sesion: Session) -> None:
+    """Plan vial, Tarea 4: lo mismo que suma `producido_en_periodo`, entrada por entrada (con su
+    fecha), para buscar la receta vigente en la fecha de cada produccion. Oraculo a mano: 10 m3 de
+    ARENA a 1,6 t/m3 son 16 t; el despacho y lo de otro mes no aparecen."""
+    from produccion.inventario import EntradaDelPeriodo, entradas_del_periodo
+
+    arena = crear_material(
+        sesion,
+        codigo="ARENA",
+        nombre="Arena",
+        unidad_venta="m3",
+        existencia_minima=D(0),
+        densidad_t_m3=D("1.6"),
+    ).id
+    piedra = crear_material(
+        sesion, codigo="PIEDRA", nombre="Piedra", unidad_venta="t", existencia_minima=D(0)
+    ).id
+    registrar_entrada(sesion, piedra, date(2026, 11, 2), D("50"), usuario=USUARIO)
+    registrar_entrada(sesion, arena, date(2026, 11, 9), D("10"), usuario=USUARIO)
+    registrar_entrada(sesion, arena, date(2026, 11, 3), D("5"), usuario=USUARIO)
+    registrar_despacho(sesion, arena, date(2026, 11, 4), D("3"), usuario=USUARIO)
+    registrar_entrada(sesion, arena, date(2026, 12, 1), D("99"), usuario=USUARIO)
+    assert entradas_del_periodo(sesion, "2026-11") == [
+        EntradaDelPeriodo("ARENA", date(2026, 11, 9), D("16.0")),
+        EntradaDelPeriodo("ARENA", date(2026, 11, 3), D("8.0")),
+        EntradaDelPeriodo("PIEDRA", date(2026, 11, 2), D("50")),
+    ]
+    assert entradas_del_periodo(sesion, "2026-10") == []

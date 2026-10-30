@@ -75,6 +75,15 @@ COLUMNAS = {
         "unidad",
         "tipo",
     },
+    "prod_calculo": {
+        "id",
+        "periodo",
+        "moneda",
+        "huella",
+        "instantanea",
+        "usuario",
+        "registrado",
+    },
 }
 
 

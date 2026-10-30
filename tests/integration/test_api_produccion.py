@@ -26,6 +26,7 @@ con `hashlib` (`sha256("csrf:" + ficha)`), no con el código bajo prueba.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 from decimal import Decimal
@@ -69,6 +70,8 @@ RUTAS = [
     ("GET", "/v1/produccion/recetas/vigente"),
     ("POST", "/v1/produccion/producciones"),
     ("GET", "/v1/produccion/producido"),
+    ("POST", "/v1/produccion/calculos"),
+    ("GET", "/v1/produccion/calculos/1"),
 ]
 
 
@@ -153,8 +156,9 @@ def test_sin_clave_toda_ruta_responde_401(metodo: str, ruta: str) -> None:
 
 def test_las_rutas_de_la_tabla_son_todas_las_de_produccion_en_la_aplicacion() -> None:
     """Si alguien agrega una ruta a `/v1/produccion` sin ponerla en `RUTAS`, esta prueba lo dice."""
+    ids = ("{id_sospechoso}", "{costo_id}", "{calculo_id}")
     esquema = {
-        (metodo.upper(), camino.replace("{id_sospechoso}", "1").replace("{costo_id}", "1"))
+        (metodo.upper(), functools.reduce(lambda c, i: c.replace(i, "1"), ids, camino))
         for camino, operaciones in app.openapi()["paths"].items()
         if camino.startswith("/v1/produccion")
         for metodo in operaciones
