@@ -30,6 +30,8 @@ const REGISTRO: [string, string, string | null][] = [
   // Sin su módulo, el inicio de producción exige lo mismo que la arenera (Tarea 8 del plan del marco).
   ["produccion", "Trabajo", "operar_arenera"],
   ["existencias", "Trabajo", "operar_arenera"],
+  // Plan vial, Tarea 2: los costos del periodo los registra quien arma o administra (API: registrar_costos_produccion).
+  ["costos", "Trabajo", "registrar_costos_produccion"],
   ["administracion", "Administración", "administrar_cuentas"],
   ["acerca", "Trabajo", null],
 ];
@@ -37,7 +39,7 @@ const REGISTRO: [string, string, string | null][] = [
 const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
 
 describe("registro de paginas", () => {
-  test("tiene las 26 pantallas en su orden, con su seccion y su accion", () => {
+  test("tiene las 27 pantallas en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(REGISTRO);
   });
 
@@ -86,13 +88,13 @@ describe("quien puede usar que", () => {
     expect(PAGINAS.filter((p) => usable(p, [], false)).map((p) => p.id)).toEqual(["auditoria", "obras", "acerca"]);
   });
 
-  test("con todas las acciones se usan las 26", () => {
-    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(26);
+  test("con todas las acciones se usan las 27", () => {
+    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(27);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (23)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (24)", () => {
     const vistas = PAGINAS.filter((p) => usable(p, todas, true));
-    expect(vistas).toHaveLength(23);
+    expect(vistas).toHaveLength(24);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 

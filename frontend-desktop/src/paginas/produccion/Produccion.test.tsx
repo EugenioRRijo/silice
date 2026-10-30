@@ -166,4 +166,14 @@ describe("Inicio de producción", () => {
     montar();
     expect(await screen.findByRole("alert")).toHaveTextContent("La base de la instalación no responde.");
   });
+
+  test("quien registra costos ve el paso a «Costos del período»; quien no, no", async () => {
+    const conCostos = { ...ANA, acciones: [...ANA.acciones, "registrar_costos_produccion"] };
+    const { unmount } = montar({ sesion: conCostos });
+    expect(await screen.findByRole("link", { name: "Costos del período" })).toHaveAttribute("href", "/costos");
+    unmount();
+    montar({ sesion: ANA });
+    await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
+    expect(screen.queryByRole("link", { name: "Costos del período" })).not.toBeInTheDocument();
+  });
 });

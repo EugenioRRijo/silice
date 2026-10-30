@@ -43,6 +43,7 @@ export const ACCIONES = {
     "decidir_recuperacion",
     "entregar_paquete",
     "operar_arenera",
+    "registrar_costos_produccion",
     "leer_proyecto",
     "aprobar_version",
     "cambiar_caso",
@@ -50,6 +51,7 @@ export const ACCIONES = {
   rita: ["leer_proyecto", "revisar_paquete", "aprobar_version"],
   admin: [
     "operar_arenera",
+    "registrar_costos_produccion",
     "cambiar_caso",
     "administrar_cuentas",
     "administrar_empresa",
