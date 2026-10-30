@@ -230,7 +230,7 @@ def test_la_receta_se_guarda_aparte_de_la_anterior(http) -> None:
 
 def test_una_receta_con_demasiados_componentes_es_422(http) -> None:
     componentes = [
-        {"codigo": f"C-{i}", "cantidad_por_t": "0.01", "unidad": "t", "tipo": "comprado"}
+        {"codigo": f"C-{i}", "cantidad_por_t": "0.0196", "unidad": "t", "tipo": "comprado"}
         for i in range(51)
     ]
     r = http.post("/v1/produccion/recetas", json=_receta(componentes=componentes))
