@@ -26,22 +26,21 @@ const sinEspacios = (texto: string) => texto.replace(/\s+/g, "");
 const valor = (id: string, variable: string) =>
   sinEspacios(getComputedStyle(document.getElementById(id)!).getPropertyValue(variable));
 
-const REPOSO = "color-mix(in srgb, var(--silice-acento) 55%, white)";
-const HOVER = "color-mix(in srgb, var(--silice-acento) 85%, white)";
-const BORDE = "color-mix(in srgb, var(--silice-acento) 50%, var(--silice-marco))";
+// Tarea 4c: el botón principal es el complementario con texto blanco; ratón y pulsado lo oscurecen con negro.
+const REPOSO = "var(--silice-complementario)";
+const HOVER = "color-mix(in srgb, var(--silice-complementario) 85%, black)";
+const PULSADO = "color-mix(in srgb, var(--silice-complementario) 70%, black)";
 
 describe("el color de acción llega a los descendientes del tema g10", () => {
   test.each([
     ["boton", "--cds-button-primary", REPOSO],
     ["boton", "--cds-button-primary-hover", HOVER],
-    ["boton", "--cds-button-primary-active", "var(--silice-acento)"],
-    ["boton", "--silice-boton-borde", BORDE],
+    ["boton", "--cds-button-primary-active", PULSADO],
     ["enlace", "--cds-link-primary", "var(--silice-complementario)"],
     ["pestana", "--cds-border-interactive", "var(--silice-complementario)"],
     ["boton-fuera", "--cds-button-primary", REPOSO],
     ["boton-fuera", "--cds-button-primary-hover", HOVER],
-    ["boton-fuera", "--cds-button-primary-active", "var(--silice-acento)"],
-    ["boton-fuera", "--silice-boton-borde", BORDE],
+    ["boton-fuera", "--cds-button-primary-active", PULSADO],
     ["enlace-fuera", "--cds-link-primary", "var(--silice-complementario)"],
   ])("%s resuelve %s a %s", (id, variable, esperado) => {
     expect(valor(id, variable)).toBe(sinEspacios(esperado));
@@ -69,27 +68,22 @@ describe("el color de acción llega a los descendientes del tema g10", () => {
     }
   });
 
-  test("el texto del botón principal es del marco, y el de otros fondos no se toca", () => {
-    expect(valor("boton", "--cds-text-on-color")).toBe("var(--silice-marco)");
-    expect(valor("enlace", "--cds-text-on-color")).not.toBe("var(--silice-marco)");
+  test("el texto del botón principal vuelve al blanco de Carbon: ya no se reasigna", () => {
+    expect(valor("boton", "--cds-text-on-color")).not.toContain("--silice-");
+    expect(valor("boton-fuera", "--cds-text-on-color")).not.toContain("--silice-");
+    expect(css).not.toMatch(/--cds-text-on-color/);
   });
 
-  test("el botón principal pinta su borde de 1 px con el borde mezclado, dentro y fuera del div", () => {
-    // jsdom no resuelve var() dentro de border-color: se lee la regla compilada, que vale para los dos botones.
-    const regla = /\.cds--btn--primary\s*\{([^}]*)\}/g;
-    const propias = [...css.matchAll(regla)].map((m) => m[1]!).filter((r) => r.includes("--silice-boton-borde"));
-    expect(propias.some((r) => /border-color:\s*var\(--silice-boton-borde\)/.test(r))).toBe(true);
-    // Carbon pone el ancho de 1 px y el estilo sólido en el mismo botón; aquí solo cambia el color.
-    expect(css).toMatch(/\.cds--btn--primary\s*\{[^}]*border-width:\s*1px;\s*border-style:\s*solid/);
+  test("el botón principal ya no tiene borde propio ni token de borde", () => {
+    expect(css).not.toContain("silice-boton-borde");
+    expect(valor("boton", "--silice-boton-borde")).toBe("");
+    // Ninguna regla propia de .cds--btn--primary toca el borde: queda el transparente de Carbon.
+    const propias = [...css.matchAll(/\.cds--btn--primary\s*\{([^}]*)\}/g)].map((m) => m[1]!);
+    expect(propias.some((r) => /--silice-/.test(r))).toBe(false);
   });
 
-  test("la regla propia del borde va DESPUÉS de la de Carbon (misma especificidad: gana la última)", () => {
-    const reglas = [...css.matchAll(/\.cds--btn--primary\s*\{([^}]*)\}/g)];
-    const deCarbon = reglas.find((m) => /border-color:\s*transparent/.test(m[1]!));
-    const propia = reglas.find((m) => /border-color:\s*var\(--silice-boton-borde\)/.test(m[1]!));
-    expect(deCarbon).toBeDefined();
-    expect(propia).toBeDefined();
-    expect(propia!.index).toBeGreaterThan(deCarbon!.index);
+  test("el acento ya no es relleno de ninguna acción: ningún token --cds-button-* lo usa", () => {
+    expect(css).not.toMatch(/--cds-button-[a-z-]+:[^;]*--silice-acento/);
   });
 
   // WCAG 1.4.1: el enlace va en el complementario, que sin uno propio es el marco (#393939 en el tema neutro: dista

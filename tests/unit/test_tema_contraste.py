@@ -51,21 +51,22 @@ def test_tema_sin_colores_propios_no_tiene_avisos(tmp_path: Path) -> None:
 
 
 def test_marco_gris_medio_da_los_avisos_exactos(tmp_path: Path) -> None:
-    # Marco #777777 (L = 0,184) y el resto neutro (acento #fddc69, lateral #f7f3f2, fondo
-    # #f4f4f4), a mano con (L1 + 0,05) / (L2 + 0,05): el texto sobre el botón en reposo (#feecac)
-    # 3,80; al pasar el ratón (#fde180) 3,47; al pulsar (#fddc69) 3,33; el borde del botón (mezcla
-    # 50 % con el marco, #baaa70) sobre el fondo 2,11; el marco como enlace sobre #f4f4f4 4,07,
-    # sobre blanco 4,48 y sobre el lateral 4,06; el mismo marco como número del contador sobre el
-    # lateral 4,06. La raya de acento (3,33) pasa 3:1.
+    # Marco #777777 (L = 0,1845) y el resto neutro (acento #fddc69, lateral #f7f3f2, fondo
+    # #f4f4f4); el complementario sigue al marco, así que el botón es #777777. A mano con
+    # (L1 + 0,05) / (L2 + 0,05): el blanco sobre el botón en reposo (#777777) 1,05 / 0,2345 = 4,48;
+    # al pasar el ratón (85 % con negro: 119 * 0,85 = 101 = #656565, L = 0,130) 1,05 / 0,180 =
+    # 5,83; al pulsar (70 %: 83 = #535353, L = 0,0865) 1,05 / 0,1365 = 7,69, que pasa 7:1. Las
+    # iniciales (#777777 sobre el acento #fddc69) dan 3,33. El marco como enlace sobre #f4f4f4
+    # 4,07, sobre blanco 4,48 y sobre el lateral 4,06; el mismo marco como número del contador
+    # sobre el lateral 4,06. La raya de acento (3,33) pasa 3:1.
     assert _con(tmp_path, marco="#777777") == [
         "El texto de la barra superior no se lee bien sobre el color del marco:"
         " 4,4:1, hace falta 4,5:1",
-        "El texto de los botones principales no se lee bien sobre su fondo: 3,7:1, hace falta 7:1",
+        "El texto de los botones principales no se lee bien sobre su fondo: 4,4:1, hace falta 7:1",
         "El texto de los botones principales no se lee bien al pasar el ratón:"
-        " 3,4:1, hace falta 7:1",
-        "El texto de los botones principales no se lee bien al pulsarlos: 3,3:1, hace falta 7:1",
-        "El borde de los botones principales casi no se ve sobre el fondo de la página:"
-        " 2,1:1, hace falta 3:1",
+        " 5,8:1, hace falta 7:1",
+        "Las iniciales de la cuenta no se leen bien sobre el color de acento:"
+        " 3,3:1, hace falta 4,5:1",
         "Los enlaces no se leen bien sobre el fondo de la página: 4,0:1, hace falta 4,5:1",
         "Los enlaces no se leen bien sobre las capas blancas: 4,4:1, hace falta 4,5:1",
         "Los enlaces no se leen bien sobre el color lateral: 4,0:1, hace falta 4,5:1",
@@ -131,37 +132,68 @@ def test_marco_justo_para_el_texto_blanco_avisa_de_los_enlaces(tmp_path: Path) -
     assert not any("barra superior no se lee" in a for a in avisos)
 
 
-def test_complementario_propio_avisa_solo_de_los_enlaces(tmp_path: Path) -> None:
+def test_complementario_propio_avisa_de_los_enlaces_y_del_boton(tmp_path: Path) -> None:
     # Complementario #767676 con el marco neutro: sobre #f4f4f4 4,13, sobre blanco 4,54 (pasa) y
-    # sobre el lateral #f7f3f2 4,12. Los bordes interactivos y los enlaces ya no miden el marco,
-    # sino este color.
+    # sobre el lateral #f7f3f2 4,12. Es también el botón: el blanco en reposo 4,54, al pasar el
+    # ratón (118 * 0,85 = 100 = #646464) 5,92 y al pulsar (#535353) 7,69, que pasa 7:1.
     assert _con(tmp_path, complementario="#767676") == [
+        "El texto de los botones principales no se lee bien sobre su fondo: 4,5:1, hace falta 7:1",
+        "El texto de los botones principales no se lee bien al pasar el ratón:"
+        " 5,9:1, hace falta 7:1",
         "Los enlaces no se leen bien sobre el fondo de la página: 4,1:1, hace falta 4,5:1",
         "Los enlaces no se leen bien sobre el color lateral: 4,1:1, hace falta 4,5:1",
     ]
 
 
-def test_acento_azul_da_los_tres_avisos_del_texto_del_boton(tmp_path: Path) -> None:
-    # Acento #2a6fa8 con el marco neutro #393939: en reposo (#8ab0cf) 5,06; al pasar el ratón
-    # (#4a85b5) 2,92; al pulsar (#2a6fa8) 2,17. El borde (mezcla con el marco, #325470) sobre
-    # #f4f4f4 da 7,24 y pasa.
-    assert _con(tmp_path, acento="#2a6fa8") == [
-        "El texto de los botones principales no se lee bien sobre su fondo: 5,0:1, hace falta 7:1",
+def test_complementario_que_solo_falla_en_reposo_da_ese_unico_aviso(tmp_path: Path) -> None:
+    # Complementario #1a5fa0 (azul ficticio): el blanco en reposo da 6,586 (< 7); al pasar el ratón
+    # (#165188) 8,18 y al pulsar (#124370) 10,18 pasan. Oscurecer sube el contraste con el blanco:
+    # si el reposo pasa, los otros dos también; por eso no puede fallar solo el hover.
+    assert _con(tmp_path, complementario="#1a5fa0") == [
+        "El texto de los botones principales no se lee bien sobre su fondo: 6,5:1, hace falta 7:1",
+    ]
+
+
+def test_complementario_que_falla_reposo_y_hover_pero_no_al_pulsar(tmp_path: Path) -> None:
+    # #2a6fa8: reposo 5,333; hover (#245e8f) 6,834; pulsado (#1d4e76) 8,737 (pasa).
+    assert _con(tmp_path, complementario="#2a6fa8") == [
+        "El texto de los botones principales no se lee bien sobre su fondo: 5,3:1, hace falta 7:1",
         "El texto de los botones principales no se lee bien al pasar el ratón:"
-        " 2,9:1, hace falta 7:1",
-        "El texto de los botones principales no se lee bien al pulsarlos: 2,1:1, hace falta 7:1",
+        " 6,8:1, hace falta 7:1",
+    ]
+
+
+def test_complementario_claro_da_los_tres_avisos_del_boton(tmp_path: Path) -> None:
+    # #e0b000: reposo 2,023; hover (#be9600) 2,781; pulsado (#9d7b00) 3,987.
+    avisos = _con(tmp_path, complementario="#e0b000")
+    assert avisos[:3] == [
+        "El texto de los botones principales no se lee bien sobre su fondo: 2,0:1, hace falta 7:1",
+        "El texto de los botones principales no se lee bien al pasar el ratón:"
+        " 2,7:1, hace falta 7:1",
+        "El texto de los botones principales no se lee bien al pulsarlos: 3,9:1, hace falta 7:1",
+    ]
+
+
+def test_el_borde_del_boton_ya_no_se_mide(tmp_path: Path) -> None:
+    # Ni un acento que dejaba el borde del botón en 2,4:1 ni un acento azul dan ya ese aviso, y el
+    # aviso de «al pulsarlos» solo sale por un complementario claro, nunca por el acento.
+    for acento in ("#ffffff", "#2a6fa8", "#fddc69"):
+        avisos = _con(tmp_path, acento=acento)
+        assert not any("borde de los botones" in a for a in avisos)
+        assert not any("pulsarlos" in a for a in avisos)
+
+
+def test_iniciales_de_la_cuenta_bajo_4_5_dan_su_aviso(tmp_path: Path) -> None:
+    # Acento #2a6fa8 (L = 0,1469) con el marco neutro #393939 (L = 0,0409) en las iniciales:
+    # (0,1469 + 0,05) / (0,0409 + 0,05) = 2,17 -> «2,1». La raya de acento (mismo par) da lo mismo
+    # contra el 3:1. Acento blanco: 11,55, sin avisos.
+    assert _con(tmp_path, acento="#2a6fa8") == [
+        "Las iniciales de la cuenta no se leen bien sobre el color de acento:"
+        " 2,1:1, hace falta 4,5:1",
         "La raya de color de acento bajo la barra superior casi no se ve sobre el color del marco:"
         " 2,1:1, hace falta 3:1",
     ]
-
-
-def test_acento_blanco_avisa_solo_del_borde_del_boton(tmp_path: Path) -> None:
-    # Acento #ffffff: el texto #393939 sobre blanco da 11,55 en los tres estados; el borde (50 %
-    # con el marco, #9c9c9c) sobre #f4f4f4 da 2,50 (se muestra «2,4»).
-    assert _con(tmp_path, acento="#ffffff") == [
-        "El borde de los botones principales casi no se ve sobre el fondo de la página:"
-        " 2,4:1, hace falta 3:1",
-    ]
+    assert _con(tmp_path, acento="#ffffff") == []
 
 
 def test_contador_con_poco_contraste_da_dos_avisos(tmp_path: Path) -> None:
@@ -199,21 +231,22 @@ def test_la_mezcla_redondea_la_mitad_hacia_arriba_como_el_navegador() -> None:
     assert tema.mezclar("#050505", "#000000", 50) == "#030303"
 
 
-def test_proporciones_de_mezcla_en_un_solo_sitio() -> None:
-    assert tema.MEZCLAS == {"reposo": 55, "hover": 85, "borde": 50}
+def test_proporciones_del_boton_en_un_solo_sitio() -> None:
+    assert tema.OSCURECIDO_DEL_BOTON == {"hover": 85, "pulsado": 70}
+    assert not hasattr(tema, "MEZCLAS")
 
 
 def test_tema_neutro_cumple_los_umbrales_del_boton_con_holgura() -> None:
-    # Neutro: marco #393939 sobre el botón en reposo #feecac 9,79; al pasar el ratón #fde180 8,94;
-    # al pulsar (acento #fddc69) 8,59: los tres sobre 7:1. Borde #9b8b51 (mitad hacia arriba, como
-    # lo pinta el navegador) sobre #f4f4f4: (0,9047 + 0,05) / (0,2603 + 0,05) = 3,08.
-    reposo = tema.mezclar("#fddc69", "#ffffff", 55)
-    sobre = tema.mezclar("#fddc69", "#ffffff", 85)
-    borde = tema.mezclar("#fddc69", "#393939", 50)
-    assert tema.contraste("#393939", reposo) == pytest.approx(9.79, abs=0.01)
-    assert tema.contraste("#393939", sobre) == pytest.approx(8.94, abs=0.01)
+    # Neutro: botón #393939 (L = 0,0409): el blanco da 1,05 / 0,0909 = 11,55; al pasar el ratón
+    # (57 * 0,85 = 48 = #303030) 13,20; al pulsar (#282828) 14,74: los tres sobre 7:1. Las
+    # iniciales #393939 sobre el acento #fddc69: 8,59.
+    hover = tema.mezclar("#393939", "#000000", 85)
+    pulsado = tema.mezclar("#393939", "#000000", 70)
+    assert (hover, pulsado) == ("#303030", "#282828")
+    assert tema.contraste("#ffffff", "#393939") == pytest.approx(11.55, abs=0.01)
+    assert tema.contraste("#ffffff", hover) == pytest.approx(13.20, abs=0.01)
+    assert tema.contraste("#ffffff", pulsado) == pytest.approx(14.74, abs=0.01)
     assert tema.contraste("#393939", "#fddc69") == pytest.approx(8.59, abs=0.01)
-    assert tema.contraste(borde, "#f4f4f4") == pytest.approx(3.08, abs=0.005)
 
 
 def test_el_contorno_del_contador_tambien_se_mide_sobre_el_fondo_de_la_opcion_activa(

@@ -223,7 +223,8 @@ def test_colores_sin_contraste_se_aplican_y_traen_avisos_exactos(
     1:1; #161616 (texto normal de Carbon g10, luminancia 0,0080) sobre negro = 1,16:1 -> «1,1».
     El borde #8d8d8d sobre blanco (3,3:1) y sobre negro (6,3:1) pasa. La raya del activo: el marco
     blanco sobre #e5e0df (luminancia 0,753) = 1,05 / 0,803 = 1,31:1 -> «1,3»; el número del
-    contador, que sigue al marco, da lo mismo sobre ese fondo.
+    contador, que sigue al marco, da lo mismo sobre ese fondo. El botón sigue al marco blanco:
+    blanco sobre blanco 1,0; al pasar el ratón (#d9d9d9) 1,41 y al pulsar (#b3b3b3) 2,10 -> «2,0».
     """
     (tema / "tema.json").write_text(
         json.dumps({"acento": "#ffffff", "marco": "#ffffff", "lateral": "#000000"}),
@@ -245,11 +246,11 @@ def test_colores_sin_contraste_se_aplican_y_traen_avisos_exactos(
             "El texto de los botones principales no se lee bien sobre su fondo:"
             " 1,0:1, hace falta 7:1",
             "El texto de los botones principales no se lee bien al pasar el ratón:"
-            " 1,0:1, hace falta 7:1",
+            " 1,4:1, hace falta 7:1",
             "El texto de los botones principales no se lee bien al pulsarlos:"
-            " 1,0:1, hace falta 7:1",
-            "El borde de los botones principales casi no se ve sobre el fondo de la página:"
-            " 1,0:1, hace falta 3:1",
+            " 2,0:1, hace falta 7:1",
+            "Las iniciales de la cuenta no se leen bien sobre el color de acento:"
+            " 1,0:1, hace falta 4,5:1",
             "Los enlaces no se leen bien sobre el fondo de la página: 1,0:1, hace falta 4,5:1",
             "Los enlaces no se leen bien sobre las capas blancas: 1,0:1, hace falta 4,5:1",
             "El texto del menú lateral no se lee bien sobre el color lateral:"

@@ -49,24 +49,26 @@ describe("_NEUTRO de aplicacion/tema.py frente a Carbon", () => {
   });
 });
 
-// Las proporciones de las mezclas del botón principal viven una vez en cada lado: MEZCLAS en aplicacion/tema.py y
-// $mezcla-* en tokens.scss. El servidor mide el contraste con las mismas que pinta el CSS.
-describe("las proporciones de mezcla del botón son las mismas en el servidor y en el SCSS", () => {
+// Las proporciones con que el botón principal se oscurece (ratón y pulsado) viven una vez en cada lado:
+// OSCURECIDO_DEL_BOTON en aplicacion/tema.py y $oscurecido-* en tokens.scss. El servidor mide el contraste con las
+// mismas que pinta el CSS.
+describe("las proporciones del botón son las mismas en el servidor y en el SCSS", () => {
   const leerTexto = (ruta: string) => nodo.getBuiltinModule("node:fs").readFileSync(`${raiz}/${ruta}`, "utf-8");
   const python = leerTexto("../aplicacion/tema.py");
-  const bloque = /MEZCLAS = \{([^}]*)\}/.exec(python)?.[1] ?? "";
+  const bloque = /OSCURECIDO_DEL_BOTON = \{([^}]*)\}/.exec(python)?.[1] ?? "";
   const delServidor = Object.fromEntries([...bloque.matchAll(/"([a-z]+)": (\d+)/g)].map((m) => [m[1]!, Number(m[2])]));
   const scss = leerTexto("src/estilos/tokens.scss");
-  const delScss = Object.fromEntries([...scss.matchAll(/^\$mezcla-([a-z]+): (\d+)%;/gm)].map((m) => [m[1]!, Number(m[2])]));
+  const delScss = Object.fromEntries([...scss.matchAll(/^\$oscurecido-([a-z]+): (\d+)%;/gm)].map((m) => [m[1]!, Number(m[2])]));
 
-  it("hay tres y coinciden", () => {
-    expect(delServidor).toEqual({ reposo: 55, hover: 85, borde: 50 });
+  it("hay dos y coinciden", () => {
+    expect(delServidor).toEqual({ hover: 85, pulsado: 70 });
     expect(delScss).toEqual(delServidor);
   });
 
-  it("el SCSS las usa en los tokens del botón, sin números sueltos", () => {
-    expect(scss).toContain("var(--silice-acento) #{$mezcla-reposo}, white");
-    expect(scss).toContain("var(--silice-acento) #{$mezcla-hover}, white");
-    expect(scss).toContain("var(--silice-acento) #{$mezcla-borde}, var(--silice-marco)");
+  it("el SCSS las usa en los tokens del botón, sin números sueltos, y ya no hay mezclas con blanco", () => {
+    expect(scss).toContain("var(--silice-complementario) #{$oscurecido-hover}, black");
+    expect(scss).toContain("var(--silice-complementario) #{$oscurecido-pulsado}, black");
+    expect(scss).not.toMatch(/\$mezcla-/);
+    expect(python).not.toContain("MEZCLAS");
   });
 });

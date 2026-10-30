@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-// jsdom no calcula CSS: las reglas se leen del fuente (como estilosMarco.test.ts). D-F3-4: el botón principal lleva el
-// acento de la empresa con texto del color del marco; enlaces, bordes interactivos y la raya de la pestaña activa, el
+// jsdom no calcula CSS: las reglas se leen del fuente (como estilosMarco.test.ts). Tarea 4c: el botón principal lleva el
+// color complementario con texto blanco (el acento es la marca, no una acción); enlaces, bordes interactivos y la raya de la pestaña activa, el
 // color complementario (que sin uno propio sigue al marco; el acento sobre el fondo da ~2:1 y no sirve para texto ni
 // bordes). El foco no se toca.
 const nodo = (
@@ -31,27 +31,24 @@ describe("color de acción de la empresa en toda la aplicación", () => {
     expect(raiz).toMatch(/^:root,\s*\.cds--g10\s*\{/);
   });
 
-  test("el botón principal en reposo es el acento aclarado con blanco", () => {
-    expect(raiz).toMatch(/--cds-button-primary:\s*color-mix\(in srgb,\s*var\(--silice-acento\)\s*#\{\$mezcla-reposo\},\s*white\)/);
+  test("el botón principal en reposo es el color complementario", () => {
+    expect(raiz).toMatch(/--cds-button-primary:\s*var\(--silice-complementario\);/);
   });
 
-  test("al pasar el ratón es el acento al 85 % con blanco y al pulsar, el acento puro", () => {
-    expect(raiz).toMatch(/--cds-button-primary-hover:\s*color-mix\(in srgb,\s*var\(--silice-acento\)\s*#\{\$mezcla-hover\},\s*white\)/);
-    expect(raiz).toMatch(/--cds-button-primary-active:\s*var\(--silice-acento\);/);
+  test("al pasar el ratón es el complementario al 85 % con negro y al pulsar, al 70 %", () => {
+    expect(raiz).toMatch(/--cds-button-primary-hover:\s*color-mix\(in srgb,\s*var\(--silice-complementario\)\s*#\{\$oscurecido-hover\},\s*black\)/);
+    expect(raiz).toMatch(/--cds-button-primary-active:\s*color-mix\(in srgb,\s*var\(--silice-complementario\)\s*#\{\$oscurecido-pulsado\},\s*black\)/);
   });
 
-  test("el borde de 1 px del botón mezcla el acento con el marco", () => {
-    expect(raiz).toMatch(
-      /--silice-boton-borde:\s*color-mix\(in srgb,\s*var\(--silice-acento\)\s*#\{\$mezcla-borde\},\s*var\(--silice-marco\)\)/,
-    );
-    const regla = reglaDe(tokens, ".cds--btn--primary");
-    expect(regla).toMatch(/border-color:\s*var\(--silice-boton-borde\)/);
+  test("el botón principal no tiene borde propio ni reasigna el texto sobre color", () => {
+    expect(tokens).not.toContain("silice-boton-borde");
+    expect(tokens).not.toMatch(/\$mezcla-/);
+    expect(tokens).not.toMatch(/--cds-text-on-color/);
+    expect(reglaDe(tokens, ".cds--btn--primary")).toBe("");
   });
 
-  test("el texto del botón principal es del color del marco, solo en ese botón", () => {
-    expect(reglaDe(tokens, ".cds--btn--primary")).toMatch(/--cds-text-on-color:\s*var\(--silice-marco\)/);
-    // En la raíz no: --cds-text-on-color también se usa sobre otros fondos.
-    expect(raiz.slice(0, raiz.indexOf(".cds--btn--primary"))).not.toMatch(/--cds-text-on-color/);
+  test("ningún token de botón usa el acento: el acento es la marca", () => {
+    expect(raiz).not.toMatch(/--cds-button-[a-z-]+:[^;]*--silice-acento/);
   });
 
   test("enlaces, bordes interactivos y la raya de la pestaña activa son del color complementario", () => {
