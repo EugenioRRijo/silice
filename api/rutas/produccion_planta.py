@@ -17,6 +17,9 @@ después de aquél en `api.main`, así el orden de `docs/api.json` no cambia.
   la ficha o la del proceso). Responde el costo exacto (texto) y el presentado (dos decimales, mitad
   hacia arriba), con la instantánea guardada. Falta de tasa, de precio, de producción o de costos:
   422 con el mensaje, sin guardar nada. Cálculo inexistente: 404.
+- **Publicar** (Tarea 5): `POST /calculos/{id}/publicar` suma la puerta `PUBLICAR_COSTO`
+  (`Accion.PUBLICAR_COSTO_PROPIO`, solo administrador) a la del router. Crea una lista de empresa
+  nueva en la carpeta del caso y la confirma aquí; la hora es la del servidor.
 """
 
 from __future__ import annotations
@@ -37,6 +40,8 @@ from aplicacion.costo_propio import (
     CalculoInexistente,
     calcular_periodo,
     calculo_guardado,
+    lista_base_del_periodo,
+    publicar_calculo,
 )
 from produccion.costo import presentar
 from produccion.costos import (
@@ -64,6 +69,8 @@ from seguridad.sesiones import SesionActiva
 #: La puerta de los costos del periodo (plan vial, Tarea 1): misma regla de entrada, con su propia
 #: acción. Se suma a la del router; `_usuario_costos` la reutiliza para no evaluarla dos veces.
 REGISTRAR_COSTOS = exigir_clave_o_sesion(Accion.REGISTRAR_COSTOS_PRODUCCION)
+#: La puerta de publicar un costo propio al catálogo (plan vial, Tarea 5): solo el administrador.
+PUBLICAR_COSTO = exigir_clave_o_sesion(Accion.PUBLICAR_COSTO_PROPIO)
 
 router = APIRouter(
     prefix="/v1/produccion",
@@ -72,7 +79,14 @@ router = APIRouter(
     route_class=RutaSinCache,  # costos y recetas no se guardan en el navegador
 )
 
-__all__ = ["REGISTRAR_COSTOS", "router"]
+__all__ = ["PUBLICAR_COSTO", "REGISTRAR_COSTOS", "router"]
+
+
+def _usuario_publica(activa: Annotated[SesionActiva | None, Depends(PUBLICAR_COSTO)]) -> str:
+    return USUARIO_API if activa is None else activa.usuario
+
+
+UsuarioPublicaDep = Annotated[str, Depends(_usuario_publica)]
 
 
 def _usuario_costos(activa: Annotated[SesionActiva | None, Depends(REGISTRAR_COSTOS)]) -> str:
@@ -156,6 +170,16 @@ class CalculoDeCostoEntrada(BaseModel):
     moneda: str  # "Bs" o "USD", la del cálculo
     #: reparto de la cantera por pesos (D-V-1, opcional): código del agregado -> peso con punto
     pesos: dict[str, str] | None = Field(default=None, max_length=MAX_PESOS)
+
+
+class PublicacionEntrada(BaseModel):
+    empresa_nombre: str  # la empresa es texto (RV-6); ficha de la lista de precios de empresa
+    empresa_rif: str
+
+
+class PublicacionCreada(BaseModel):
+    id: int  # la lista de empresa nueva
+    nombre: str
 
 
 class CostoDeProducto(BaseModel):
@@ -449,3 +473,39 @@ def ver_calculo(calculo_id: int, sesion: SesionInstalacionDep) -> CalculoDeCosto
     except CalculoInexistente as error:
         raise HTTPException(404, str(error)) from None
     return _calculo_respuesta(calculo)
+
+
+@router.post(
+    "/calculos/{calculo_id}/publicar",
+    response_model=PublicacionCreada,
+    status_code=201,
+    dependencies=[Depends(PUBLICAR_COSTO)],
+)
+def publicar_costo_propio(
+    calculo_id: int,
+    entrada: PublicacionEntrada,
+    sesion: SesionInstalacionDep,
+    caso: SesionDep,
+    usuario: UsuarioPublicaDep,
+) -> PublicacionCreada:
+    """Publica un cálculo concreto como lista de empresa nueva en la carpeta del caso: un precio por
+    producto con el valor exacto del cálculo y la fuente «Producción, período AAAA-MM, cálculo n.º
+    N». Parte de la lista vigente al cierre del período. Un cálculo alterado (huella o columnas que
+    no coinciden), sin lista vigente o sin tasa BCV para llevarla a la moneda del cálculo: 422, sin
+    escribir; inexistente: 404. Nada se sobrescribe: cada publicación es otra lista."""
+    try:
+        calculo = calculo_guardado(sesion, calculo_id)
+    except CalculoInexistente as error:
+        raise HTTPException(404, str(error)) from None
+    lista = publicar_calculo(
+        caso,
+        calculo,
+        base=lista_base_del_periodo(caso, calculo),
+        empresa_nombre=entrada.empresa_nombre,
+        empresa_rif=entrada.empresa_rif,
+        usuario=usuario,
+        ahora=arenera._ahora(),
+    )
+    publicada = PublicacionCreada(id=lista.id, nombre=lista.nombre)
+    caso.commit()
+    return publicada

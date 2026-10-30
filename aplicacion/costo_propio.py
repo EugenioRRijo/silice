@@ -23,6 +23,13 @@ Reglas (las decisiones estan en `docs/bitacora/2026-10-30-plan-vial-fase-a.md`, 
 - **Instantanea**: JSON canonico (claves ordenadas, sin espacios, decimales como texto) con
   `entradas` y `resultado`; su huella es el SHA-256 de ese texto. Mismas entradas, misma huella. Se
   guarda exacto (28 cifras); se redondea solo al presentar.
+
+Publicar (Tarea 5, `publicar_calculo`): un calculo concreto, ya verificado, pasa a la carpeta como
+lista de empresa nueva (alcance `empresa`: `lista_vigente` no la resuelve, asi los calculos
+siguientes siguen leyendo lo comprado de la lista global). Cada producto es el insumo `AGP-<codigo>`
+(agregado) o `MZP-<codigo>` (mezcla), material en t, dado de alta una sola vez (D-V-2). El precio
+es el valor exacto del calculo (no el presentado), con fecha el ultimo dia del periodo y fuente
+«Produccion, periodo AAAA-MM, calculo n.º N». No hace `commit`.
 """
 
 from __future__ import annotations
@@ -39,7 +46,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from aplicacion.tasa_del_dia import Equivalencia, SinTasaDelDia, equivalencia_del_dia
+from core import models
 from core.catalog import Catalogo, CatalogoIncompleto
+from core.catalog.empresa import PrecioPropio, crear_lista_de_empresa, lista_de_referencia
+from core.catalog.indices import tasa_aplicable
+from core.catalog.moneda import TasaDeclarada
 from core.contracts.unidades import unidades_equivalentes
 from produccion.costo import (
     ErrorDeCalculo,
@@ -58,6 +69,8 @@ __all__ = [
     "FaltanTasas",
     "calcular_periodo",
     "calculo_guardado",
+    "lista_base_del_periodo",
+    "publicar_calculo",
     "ultimo_calculo",
 ]
 
@@ -475,3 +488,104 @@ def ultimo_calculo(sesion_ins: Session, producto: str) -> CalculoGuardado | None
         if producto in calculo.por_tonelada:
             return calculo
     return None
+
+
+# --- Publicar al catalogo -------------------------------------------------------------------------
+
+#: El largo del codigo de un insumo del catalogo (`Insumo.codigo`).
+LARGO_DEL_CODIGO = 20
+PREFIJO_DE_AGREGADO = "AGP-"
+PREFIJO_DE_MEZCLA = "MZP-"
+
+
+def _insumo_propio(caso: Session, codigo: str, descripcion: str) -> models.Insumo:
+    """El insumo propio de ese codigo, dado de alta si falta (material en t). Si ya existe con otra
+    unidad o tipo, se niega: publicar a un insumo ajeno confundiria el catalogo."""
+    insumo = caso.scalar(select(models.Insumo).where(models.Insumo.codigo == codigo))
+    if insumo is None:
+        insumo = models.Insumo(codigo=codigo, tipo="material", descripcion=descripcion, unidad="t")
+        caso.add(insumo)
+        caso.flush()
+    elif (insumo.tipo, insumo.unidad) != ("material", "t"):
+        raise ErrorDeCalculo(
+            f"El insumo {codigo} del catálogo no es un material en t: no se puede publicar ahí."
+        )
+    return insumo
+
+
+def lista_base_del_periodo(sesion_caso: Session, calculo: CalculoGuardado) -> models.ListaPrecios:
+    """La lista global vigente de la carpeta al ultimo dia del periodo: la base natural de la lista
+    que se publica. Sin ninguna, `ErrorDeCalculo`."""
+    cierre = _ultimo_dia(calculo.periodo)
+    try:
+        return Catalogo(sesion_caso).lista_vigente(cierre)
+    except CatalogoIncompleto:
+        raise ErrorDeCalculo(
+            f"No hay lista de precios vigente en la carpeta al {cierre:%d/%m/%Y}: cárguela antes "
+            "de publicar el costo propio."
+        ) from None
+
+
+def publicar_calculo(
+    sesion_caso: Session,
+    calculo: CalculoGuardado,
+    *,
+    base: models.ListaPrecios,
+    empresa_nombre: str,
+    empresa_rif: str,
+    usuario: str,
+    ahora: datetime,
+) -> models.ListaPrecios:
+    """Publica el costo por tonelada de `calculo` como lista de empresa nueva sobre `base`.
+
+    `calculo` es lo que devuelve `calculo_guardado` (huella verificada): su periodo y su moneda son
+    los de la instantanea. La lista copia `base` (convertida con la tasa BCV aplicable al cierre del
+    periodo si esta en otra moneda) y pone encima un precio por producto. Todo se valida antes de
+    escribir. No hace `commit`; nunca toca una lista anterior."""
+    if not (empresa_nombre.strip() and empresa_rif.strip() and usuario.strip()):
+        raise ErrorDeCalculo("Faltan el nombre y el RIF de la empresa y el usuario que publica.")
+    cierre = _ultimo_dia(calculo.periodo)
+    es_agregado = set(json.loads(calculo.instantanea)["entradas"]["agregados"])
+    codigos = {
+        producto: (PREFIJO_DE_AGREGADO if producto in es_agregado else PREFIJO_DE_MEZCLA) + producto
+        for producto in sorted(calculo.por_tonelada)
+    }
+    largos = [c for c in codigos.values() if len(c) > LARGO_DEL_CODIGO]
+    if largos:
+        raise ErrorDeCalculo(
+            f"El código de insumo {', '.join(largos)} pasa de {LARGO_DEL_CODIGO} caracteres: "
+            "use un código de material más corto."
+        )
+    tasa_base = None
+    if base.moneda != calculo.moneda:
+        tasa_base = TasaDeclarada.de_importacion(tasa_aplicable(sesion_caso, cierre))
+    fuente = f"Producción, período {calculo.periodo}, cálculo n.º {calculo.id}"
+    propios = []
+    for producto, codigo in codigos.items():
+        tipo = "agregado" if producto in es_agregado else "mezcla"
+        insumo = _insumo_propio(sesion_caso, codigo, f"Costo propio de {tipo} {producto}")
+        propios.append(
+            PrecioPropio(
+                insumo.id,
+                calculo.por_tonelada[producto],
+                cierre,
+                fuente,
+                moneda_original=calculo.moneda,
+            )
+        )
+    publicado = (
+        f"publicado por {usuario.strip()} el {ahora:%d/%m/%Y %H:%M}; huella {calculo.huella[:16]}"
+    )
+    return crear_lista_de_empresa(
+        sesion_caso,
+        empresa_nombre,
+        empresa_rif,
+        base,
+        propios,
+        moneda=calculo.moneda,
+        fecha=cierre,
+        fuente=f"{fuente}; {publicado}",
+        referencia=lista_de_referencia(sesion_caso),
+        nombre=f"Costo propio {calculo.periodo}, cálculo n.º {calculo.id}",
+        tasa_base=tasa_base,
+    )

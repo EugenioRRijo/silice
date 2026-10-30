@@ -122,7 +122,7 @@ def test_la_hora_y_el_usuario_son_los_del_servidor(http, monkeypatch) -> None:
     r = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json=cuerpo)
     assert r.status_code == 201, r.text
     (_, origen, _) = _listas_de_empresa()[0]
-    assert "publicado por admin el 01/12/2026 07:30" in origen
+    assert "publicado por Admin de Prueba <admin> el 01/12/2026 07:30" in origen
     assert "2020" not in origen and "otro" not in origen
 
 

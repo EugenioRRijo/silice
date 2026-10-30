@@ -27,6 +27,7 @@ class Accion(StrEnum):
     ENTREGAR_PAQUETE = "entregar_paquete"
     OPERAR_ARENERA = "operar_arenera"  # existencias, movimientos e importar la báscula (UC-28/29)
     REGISTRAR_COSTOS_PRODUCCION = "registrar_costos_produccion"  # costos del periodo (plan vial)
+    PUBLICAR_COSTO_PROPIO = "publicar_costo_propio"  # costo propio al catálogo (plan vial, T5)
     # Lectura
     LEER_PROYECTO = "leer_proyecto"
     # Revisión (rol revisa)
@@ -64,6 +65,7 @@ PERMISOS: dict[Accion, frozenset[Rol]] = {
     Accion.ENTREGAR_PAQUETE: frozenset({_ARMA}),
     Accion.OPERAR_ARENERA: frozenset({_ARMA, _ADMIN}),
     Accion.REGISTRAR_COSTOS_PRODUCCION: frozenset({_ARMA, _ADMIN}),
+    Accion.PUBLICAR_COSTO_PROPIO: frozenset({_ADMIN}),
     Accion.LEER_PROYECTO: frozenset({_ARMA, _REVISA}),
     Accion.REVISAR_PAQUETE: frozenset({_REVISA}),
     Accion.APROBAR_VERSION: frozenset({_ARMA, _REVISA}),

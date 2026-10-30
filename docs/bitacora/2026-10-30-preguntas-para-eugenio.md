@@ -28,6 +28,7 @@ IVSS, orden de trabajo, norma de carreteras).
 | 15 | T4 | La mezcla usa un agregado propio que ese mes no se produjo (salió del inventario). ¿Qué costo lleva? | Ninguno: el cálculo se niega y lo nombra (no se toma el costo de otro mes sin que alguien lo decida) | Tomar el último costo calculado de ese agregado |
 | 16 | T4 | Hay costos de cantera pero solo se produjo mezcla, o costos de planta sin mezcla. ¿Qué se hace? | Se niega el cálculo con un mensaje claro; ningún costo queda sin dueño ni se publica un costo cero | Acumular el costo al mes siguiente |
 | 17 | T4 | La lista tiene el cemento asfáltico por «ton» (o el gasoil por «lt» o «litro») y la receta por «t» (o «l»). | Se rechaza con un mensaje que nombra las dos unidades: la tabla de alias del núcleo no trata «ton» como «t» ni «lt» o «litro» como «l» | Añadir los alias en `core/contracts/unidades.py` (toca el núcleo), o una tabla de alias propia en `produccion/fuentes.py` con su fuente (duplica un saber que ya es del núcleo) |
+| 18 | T5 | ¿El precio publicado al catálogo es el exacto o el redondeado a 2 decimales? | Exacto: se publica el valor del cálculo con todas sus cifras (p. ej. 5,005, no 5,01), trazable al cálculo n.º N por la fuente del precio; el redondeo a dos decimales es solo al presentar. | Redondear con `presentar` (`produccion/costo.py`) al armar el `PrecioPropio` en `publicar_calculo` (`aplicacion/costo_propio.py`) y cambiar `test_se_publica_el_valor_exacto_y_no_el_redondeado` |
 
 ## Rediseño del front, F4
 

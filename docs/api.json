@@ -9118,6 +9118,59 @@
         }
       }
     },
+    "/v1/produccion/calculos/{calculo_id}/publicar": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Publicar Costo Propio",
+        "description": "Publica un cálculo concreto como lista de empresa nueva en la carpeta del caso: un precio por\nproducto con el valor exacto del cálculo y la fuente «Producción, período AAAA-MM, cálculo n.º\nN». Parte de la lista vigente al cierre del período. Un cálculo alterado (huella o columnas que\nno coinciden), sin lista vigente o sin tasa BCV para llevarla a la moneda del cálculo: 422, sin\nescribir; inexistente: 404. Nada se sobrescribe: cada publicación es otra lista.",
+        "operationId": "publicar_costo_propio_v1_produccion_calculos__calculo_id__publicar_post",
+        "parameters": [
+          {
+            "name": "calculo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Calculo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicacionEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicacionCreada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/buscar/partidas": {
       "get": {
         "tags": [
@@ -21854,6 +21907,42 @@
         ],
         "title": "ProyectoRespuesta",
         "description": "El proyecto creado, tal como quedo guardado."
+      },
+      "PublicacionCreada": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre"
+        ],
+        "title": "PublicacionCreada"
+      },
+      "PublicacionEntrada": {
+        "properties": {
+          "empresa_nombre": {
+            "type": "string",
+            "title": "Empresa Nombre"
+          },
+          "empresa_rif": {
+            "type": "string",
+            "title": "Empresa Rif"
+          }
+        },
+        "type": "object",
+        "required": [
+          "empresa_nombre",
+          "empresa_rif"
+        ],
+        "title": "PublicacionEntrada"
       },
       "PuntoCurvaRespuesta": {
         "properties": {

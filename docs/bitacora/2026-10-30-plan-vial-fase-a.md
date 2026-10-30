@@ -100,3 +100,43 @@
   `api/rutas/produccion.py` (`_decimal`, `_fecha` y `_ahora` por el módulo). Lo limpio es un módulo de
   frontera común con nombres públicos; las pruebas fijan `api.rutas.produccion._ahora`, así que
   moverlo exige tocar esas pruebas.
+
+## Tarea 5: publicar el costo propio al catálogo
+
+- **Qué se publica**: un cálculo concreto, por su número (`calculo_guardado`: huella y columnas
+  verificadas; uno alterado da 422 «fue alterado» y no se escribe nada). Su `periodo` y su `moneda`
+  son los de la instantánea, nunca `ultimo_calculo`. La ruta `POST /v1/produccion/calculos/{id}/publicar`
+  recibe `empresa_nombre` y `empresa_rif` (la empresa es texto, como en la lista de empresa de UC-17)
+  y responde 201 con el id y el nombre de la lista. Cálculo inexistente: 404.
+- **Valor exacto (decisión del orquestador, pregunta 18)**: el precio publicado es el `DecimalExacto`
+  del cálculo, no el redondeado a dos decimales (el plan: se redondea solo al presentar). Con
+  1.001 USD de cantera sobre 200 t el agregado queda en 5,005 y no en 5,01. Cambiarlo es una línea
+  en `publicar_calculo` y una prueba.
+- **Lista nueva cada vez, de alcance de empresa**: `crear_lista_de_empresa` escribe
+  `ListaPreciosOrigen(alcance="empresa")`, que `lista_vigente` excluye (`ALCANCES_FUERA_DE_VIGENTE`).
+  Está probado (nota 2 del árbitro de la T4): tras publicar, `lista_vigente` del 31/12 sigue siendo la
+  de la carpeta y el cálculo de diciembre toma `CA-30` y `GO` de ella (`precios_comprados[..].lista.id`).
+  Nada se sobrescribe: publicar dos veces el mismo cálculo da dos listas y un solo insumo.
+- **Base y fecha**: la base es la lista global vigente de la carpeta al último día del período
+  (`lista_base_del_periodo`; sin ella 422 «No hay lista de precios vigente…»). La lista y cada precio
+  llevan como fecha ese último día. Si la base está en otra moneda que el cálculo, se lleva a la
+  moneda del cálculo con la tasa BCV aplicable a esa fecha (`tasa_aplicable`, hasta 7 días antes,
+  como UC-17); sin tasa, 422 y no se escribe nada.
+- **Insumos propios (D-V-2)**: `AGP-<código>` para lo que la instantánea lista como agregado y
+  `MZP-<código>` para el resto (mezclas), material en t; se dan de alta una vez. Un código de más de
+  20 caracteres (el límite de `Insumo.codigo`; el material admite 40) se niega nombrándolo, y un
+  insumo existente con otro tipo o unidad también. Con el código de material `MZ-1` el insumo es
+  `MZP-MZ-1` (el plan citaba `MZP-01` suponiendo materiales llamados `01`).
+- **Trazabilidad**: la fuente de cada precio es exactamente «Producción, período AAAA-MM, cálculo
+  n.º N»; la de la lista añade quién publicó (cuenta del servidor), la hora del servidor y los
+  primeros 16 caracteres de la huella. El cuerpo no lleva `ahora` ni usuario (si los trae, se
+  ignoran).
+- **Permiso**: acción nueva `publicar_costo_propio`, solo administrador; se exigen la del router
+  (`OPERAR_ARENERA`) y ésta, así que arma y revisa reciben 403. La clave de API, como en el resto de
+  `/v1/produccion`, también sirve. El oráculo de acciones de arma en `test_api_sesion_web.py` no
+  cambia (arma no la tiene).
+- **Confirmación**: el servicio no hace `commit`; la ruta confirma la carpeta del caso al final. Una
+  negativa en medio no deja insumos ni listas a medias.
+- **Ajuste en el verde**: dos oráculos del commit de prueba estaban mal escritos (el código largo del
+  caso de prueba es una mezcla, o sea `MZP-…`; y el usuario guardado es el nombre completo de la
+  cuenta) y se corrigieron junto con la implementación.

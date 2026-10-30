@@ -254,7 +254,7 @@ def test_codigo_de_insumo_demasiado_largo_se_niega_y_lo_nombra(ins, caso) -> Non
         instantanea=calculo.instantanea,
     )
     antes = _listas(caso)
-    with pytest.raises(ErrorDeCalculo, match="AGP-AGR-MUY-LARGO-123456"):
+    with pytest.raises(ErrorDeCalculo, match="MZP-AGR-MUY-LARGO-123456"):
         _publicar(caso, largo)
     assert _listas(caso) == antes
 
