@@ -76,3 +76,25 @@ describe("tamaño de letra en el CSS propio", () => {
     expect(cuenta).toMatch(/data-silice-letra="grande"\][^{]*data-silice-letra="muy-grande"\][^{]*\{\s*\.silice-cuenta__nombre\s*\{\s*display:\s*none/);
   });
 });
+
+// Cierre de F3 (menor 1): la raya de la opción activa del tamaño de letra. En la barra superior (marco oscuro) la pone el
+// acento; en Entrar el fondo es claro y el acento no llega a 3:1 (WCAG 1.4.11), así que allí va en el complementario, que
+// el servidor ya mide a 4,5:1 sobre el fondo. Nunca en el azul de Carbon (`--silice-interactivo`).
+describe("raya de la opción activa del tamaño de letra sobre fondo claro", () => {
+  const comun = () => leer(`${raiz}/comun/comun.scss`);
+
+  test("la raya de la opción pulsada usa el complementario, no el azul de Carbon", () => {
+    const fuente = comun();
+    const abre = fuente.indexOf('&[aria-pressed="true"]');
+    expect(abre).toBeGreaterThan(-1);
+    const pulsada = fuente.slice(abre, fuente.indexOf("}", abre));
+    expect(pulsada).toMatch(/border-block-end-color:\s*var\(--silice-complementario\)/);
+    expect(pulsada).not.toMatch(/silice-interactivo/);
+  });
+
+  test("la barra superior sigue poniendo la raya en el acento", () => {
+    const barra = leer(`${raiz}/marco/BarraSuperior.scss`);
+    const i = barra.indexOf(".silice-marco-barra .silice-letra__opcion");
+    expect(barra.slice(i, i + 600)).toMatch(/border-block-end-color:\s*var\(--silice-acento\)/);
+  });
+});
