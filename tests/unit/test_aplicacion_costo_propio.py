@@ -44,7 +44,7 @@ from operacion.base_datos import preparar_base
 from produccion.costo import ErrorDeCalculo
 from produccion.costos import anular_costo
 from produccion.modelo import METADATA_PRODUCCION, Calculo
-from produccion.receta import producido_en_periodo
+from produccion.receta import Componente, producido_en_periodo
 from tests.fixtures import costo_propio as cp
 
 D = Decimal
@@ -260,6 +260,35 @@ def test_agregados_sin_costos_de_cantera(ins, caso) -> None:
         _calcular(ins, caso)
 
 
+def test_mezcla_sin_costos_de_planta(ins, caso) -> None:
+    """Decision del orquestador (ronda 2), simetrica a «agregados sin costos de cantera»: sin costos
+    de planta la mezcla saldria a 38,70 (solo componentes) en vez de 50,70: se niega."""
+    cp.planta(ins)
+    cp.costo(ins, "cantera", "1000", "USD", cp.dia(3))
+    cp.lista(caso, "USD", cp.dia(1), cp.LISTA_USD)
+    with pytest.raises(
+        ErrorDeCalculo, match=r"^No hay costos de planta en 2026-11 para las mezclas MZ-1"
+    ):
+        _calcular(ins, caso)
+    assert _calculos(ins) == 0
+
+
+def test_pesos_sin_agregados_producidos(ins, caso) -> None:
+    """Pesos pedidos y ningun agregado en el periodo: no se ignoran en silencio."""
+    cp.materiales(ins)
+    solo_comprado = (
+        Componente("CA-30", D("0.99"), "t", "comprado"),
+        Componente("GO", D("8"), "l", "comprado"),
+    )
+    cp.receta(ins, solo_comprado)
+    cp.producir(ins, "100", cp.dia(10))
+    cp.costo(ins, "planta", "1200", "USD", cp.dia(12))
+    cp.lista(caso, "USD", cp.dia(1), cp.LISTA_USD)
+    with pytest.raises(ErrorDeCalculo, match="pesos.*ningún agregado"):
+        _calcular(ins, caso, pesos={"AGR-12": D("1")})
+    assert _calculos(ins) == 0
+
+
 def test_costos_de_planta_sin_mezcla(ins, caso) -> None:
     cp.materiales(ins)
     cp.entrada(ins, "AGR-12", "150", cp.dia(5))
@@ -433,3 +462,20 @@ def test_un_calculo_alterado_se_detecta(ins, caso) -> None:
     ins.expire_all()
     with pytest.raises(ErrorDeCalculo, match="alterado"):
         calculo_guardado(ins, calculo.id)
+
+
+@pytest.mark.parametrize(
+    "cambio",
+    ["moneda = 'Bs'", "periodo = '2026-10'", "moneda = 'Bs', periodo = '2026-10'"],
+)
+def test_alterar_las_columnas_que_la_huella_no_cubre_se_detecta(ins, caso, cambio) -> None:
+    """La huella cubre la instantanea; periodo y moneda salen de ella y las columnas deben
+    coincidir: un calculo en USD no puede leerse como Bs."""
+    _noviembre_usd(ins, caso)
+    calculo = _calcular(ins, caso)
+    ins.execute(text(f"UPDATE prod_calculo SET {cambio}"))
+    ins.expire_all()
+    with pytest.raises(ErrorDeCalculo, match="alterado"):
+        calculo_guardado(ins, calculo.id)
+    with pytest.raises(ErrorDeCalculo, match="alterado"):
+        ultimo_calculo(ins, "MZ-1")

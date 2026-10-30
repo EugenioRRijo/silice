@@ -187,9 +187,8 @@ def test_periodo_sin_produccion_es_422(http) -> None:
         {"periodo": "2026-11", "moneda": "EUR"},
         {"periodo": "2026-13", "moneda": "USD"},
         {"periodo": "2026-11", "moneda": "USD", "pesos": {"AGR-12": "seis", "AGR-34": "0.4"}},
-        {"periodo": "2026-11", "moneda": "USD", "pesos": {f"P-{n}": "0.01" for n in range(51)}},
     ],
-    ids=["moneda", "periodo", "peso no decimal", "demasiados pesos"],
+    ids=["moneda", "periodo", "peso no decimal"],
 )
 def test_datos_invalidos_son_422(http, cuerpo) -> None:
     _carpeta()
@@ -197,6 +196,48 @@ def test_datos_invalidos_son_422(http, cuerpo) -> None:
     r = http.post(CALCULOS, json=cuerpo)
     assert r.status_code == 422, r.text
     assert contar(Calculo) == 0
+
+
+def test_el_tope_de_pesos_es_50() -> None:
+    """`MAX_PESOS`: 50 pesos se admiten en el cuerpo y 51 no (la validacion es del esquema)."""
+    from pydantic import ValidationError
+
+    from api.rutas.produccion_planta import CalculoDeCostoEntrada
+
+    def cuerpo(n: int) -> dict:
+        return {
+            "periodo": "2026-11",
+            "moneda": "USD",
+            "pesos": {f"P-{i}": "0.02" for i in range(n)},
+        }
+
+    assert len(CalculoDeCostoEntrada.model_validate(cuerpo(50)).pesos) == 50
+    with pytest.raises(ValidationError, match="50"):
+        CalculoDeCostoEntrada.model_validate(cuerpo(51))
+
+
+def test_cincuenta_y_un_pesos_por_la_api_son_422_sin_guardar(http) -> None:
+    pesos = {f"P-{i}": "0.02" for i in range(51)}
+    r = http.post(CALCULOS, json={"periodo": "2026-11", "moneda": "USD", "pesos": pesos})
+    assert r.status_code == 422, r.text
+    assert contar(Calculo) == 0
+
+
+def test_un_calculo_con_la_moneda_alterada_es_422(http) -> None:
+    import sqlite3
+    from contextlib import closing
+
+    from operacion.config import ruta_instalacion
+
+    _carpeta()
+    _noviembre(http)
+    calculo = _ok(http.post(CALCULOS, json={"periodo": "2026-11", "moneda": "USD"}))
+    with closing(sqlite3.connect(ruta_instalacion())) as bd:
+        bd.execute("UPDATE prod_calculo SET moneda = 'Bs' WHERE id = ?", (calculo["id"],))
+        bd.commit()
+    r = http.get(f"{CALCULOS}/{calculo['id']}")
+    assert r.status_code == 422, r.text
+    assert "alterado" in r.json()["detalle"]
 
 
 def test_un_calculo_inexistente_es_404(http) -> None:
