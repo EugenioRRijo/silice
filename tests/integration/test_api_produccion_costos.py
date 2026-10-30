@@ -1,6 +1,6 @@
 """`/v1/produccion/costos`: costos del periodo por la API (Tarea 1 del plan vial). Datos FICTICIOS.
 
-Dos entradas: la clave de API (el usuario guardado es `USUARIO_API`) y la sesion web, donde la accion
+Dos entradas: la clave de API (el usuario guardado es `USUARIO_API`) y la sesion web, con la accion
 `registrar_costos_produccion` es de arma y administrador; `rita` (revisa) recibe 403. Los montos
 viajan como texto con punto: la coma decimal es cosa del front. Oraculo a mano: dos costos USD de la
 cantera, 1250.50 y 300, suman 1550.50.
@@ -14,7 +14,7 @@ import pytest
 
 from api.dependencias import USUARIO_API
 from produccion.modelo import Costo
-from tests.integration.test_api_produccion import (  # noqa: F401 - fixtures del modulo hermano
+from tests.fixtures.produccion_api import (  # noqa: F401 - fixtures del modulo hermano
     Web,
     _contar,
     _instalacion_de_la_prueba,
@@ -40,7 +40,7 @@ def _cuerpo(**cambios) -> dict:
     return {**base, **cambios}
 
 
-def test_alta_y_lista(http) -> None:  # noqa: F811
+def test_alta_y_lista(http) -> None:
     r = http.post("/v1/produccion/costos", json=_cuerpo())
     assert r.status_code == 201, r.text
     nuevo = r.json()["id"]
@@ -68,7 +68,7 @@ def test_alta_y_lista(http) -> None:  # noqa: F811
     assert http.get("/v1/produccion/costos", params={"periodo": "2026-10"}).json() == []
 
 
-def test_anular_conserva_la_fila_y_la_saca_de_la_lista(http) -> None:  # noqa: F811
+def test_anular_conserva_la_fila_y_la_saca_de_la_lista(http) -> None:
     i = http.post("/v1/produccion/costos", json=_cuerpo()).json()["id"]
     r = http.post(f"/v1/produccion/costos/{i}/anular", json={"motivo": "duplicado", "ahora": AHORA})
     assert r.status_code == 201, r.text
@@ -83,19 +83,19 @@ def test_anular_conserva_la_fila_y_la_saca_de_la_lista(http) -> None:  # noqa: F
     assert otra.status_code == 409, otra.text
 
 
-def test_anular_uno_que_no_existe_es_404(http) -> None:  # noqa: F811
+def test_anular_uno_que_no_existe_es_404(http) -> None:
     r = http.post("/v1/produccion/costos/999/anular", json={"motivo": "x", "ahora": AHORA})
     assert r.status_code == 404, r.text
 
 
-def test_monto_no_decimal_422(http) -> None:  # noqa: F811
+def test_monto_no_decimal_422(http) -> None:
     r = http.post("/v1/produccion/costos", json=_cuerpo(monto="diez"))
     assert r.status_code == 422, r.text
     assert "monto" in r.json()["detalle"]
     assert _contar(Costo) == 0
 
 
-def test_monto_con_coma_422(http) -> None:  # noqa: F811
+def test_monto_con_coma_422(http) -> None:
     r = http.post("/v1/produccion/costos", json=_cuerpo(monto="1250,50"))
     assert r.status_code == 422, r.text
     assert _contar(Costo) == 0
@@ -115,17 +115,17 @@ def test_monto_con_coma_422(http) -> None:  # noqa: F811
         {"ahora": "2026-11-20T09:00:00-04:00"},
     ],
 )
-def test_datos_invalidos_422_y_no_se_guarda_nada(http, cambio: dict) -> None:  # noqa: F811
+def test_datos_invalidos_422_y_no_se_guarda_nada(http, cambio: dict) -> None:
     r = http.post("/v1/produccion/costos", json=_cuerpo(**cambio))
     assert r.status_code == 422, r.text
     assert _contar(Costo) == 0
 
 
-def test_periodo_invalido_en_la_consulta_422(http) -> None:  # noqa: F811
+def test_periodo_invalido_en_la_consulta_422(http) -> None:
     assert http.get("/v1/produccion/costos", params={"periodo": "noviembre"}).status_code == 422
 
 
-def test_con_sesion_arma_y_administrador_registran(_instalacion_de_la_prueba) -> None:  # noqa: F811
+def test_con_sesion_arma_y_administrador_registran(_instalacion_de_la_prueba) -> None:
     for quien in ("ana", "admin"):
         web = Web(quien)
         r = web.post("/v1/produccion/costos", json=_cuerpo(fuente=f"factura de {quien}"))
@@ -135,7 +135,7 @@ def test_con_sesion_arma_y_administrador_registran(_instalacion_de_la_prueba) ->
     assert len({f["usuario"] for f in filas}) == 2
 
 
-def test_revisa_recibe_403(_instalacion_de_la_prueba) -> None:  # noqa: F811
+def test_revisa_recibe_403(_instalacion_de_la_prueba) -> None:
     rita = Web("rita")
     r = rita.post("/v1/produccion/costos", json=_cuerpo())
     assert r.status_code == 403, r.text
@@ -145,7 +145,7 @@ def test_revisa_recibe_403(_instalacion_de_la_prueba) -> None:  # noqa: F811
     assert _contar(Costo) == 0
 
 
-def test_una_escritura_con_sesion_sin_csrf_se_rechaza(_instalacion_de_la_prueba) -> None:  # noqa: F811
+def test_una_escritura_con_sesion_sin_csrf_se_rechaza(_instalacion_de_la_prueba) -> None:
     web = Web("ana")
     r = web.cliente.post("/v1/produccion/costos", json=_cuerpo())
     assert r.status_code == 403, r.text

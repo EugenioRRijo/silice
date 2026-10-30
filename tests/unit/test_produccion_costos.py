@@ -52,7 +52,13 @@ def sesion() -> Iterator[Session]:
 
 def test_los_catalogos_son_los_del_plan() -> None:
     assert CONCEPTOS == (
-        "gasoil", "equipo", "nomina", "mantenimiento", "explosivos", "energia", "otro",
+        "gasoil",
+        "equipo",
+        "nomina",
+        "mantenimiento",
+        "explosivos",
+        "energia",
+        "otro",
     )
     assert CENTROS == ("cantera", "planta")
 

@@ -117,3 +117,36 @@ class PesajeSospechoso(Base):
     estado: Mapped[str] = mapped_column(String(10), default="pendiente")
     resuelto_por: Mapped[str | None] = mapped_column(String(120), nullable=True)
     resuelto_en: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Costo(Base):
+    """Un costo del periodo (Tarea 1 del plan vial). Solo se inserta: anular es una fila nueva con
+    `anula_id` apuntando al original, que no cambia."""
+
+    __tablename__ = "prod_costo"
+    __table_args__ = (
+        CheckConstraint("centro IN ('cantera', 'planta')", name="ck_prod_costo_centro"),
+        CheckConstraint(
+            "concepto IN ('gasoil', 'equipo', 'nomina', 'mantenimiento', 'explosivos', "
+            "'energia', 'otro')",
+            name="ck_prod_costo_concepto",
+        ),
+        CheckConstraint("moneda IN ('Bs', 'USD')", name="ck_prod_costo_moneda"),
+        CheckConstraint("length(monto) > 0", name="ck_prod_costo_monto"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    periodo: Mapped[str] = mapped_column(String(7), index=True)
+    centro: Mapped[str] = mapped_column(String(10))
+    concepto: Mapped[str] = mapped_column(String(20))
+    monto: Mapped[Decimal] = mapped_column(Cantidad)
+    moneda: Mapped[str] = mapped_column(String(3))
+    fecha: Mapped[date] = mapped_column(Date)
+    fuente: Mapped[str] = mapped_column(String(200))
+    nota: Mapped[str] = mapped_column(String(300), default="")
+    usuario: Mapped[str] = mapped_column(String(120))
+    registrado: Mapped[datetime] = mapped_column(DateTime)
+    anula_id: Mapped[int | None] = mapped_column(
+        ForeignKey("prod_costo.id"), nullable=True, index=True
+    )
+    motivo: Mapped[str] = mapped_column(String(300), default="")

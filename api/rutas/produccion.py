@@ -54,6 +54,15 @@ from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from produccion.conectores.bascula import ReporteRechazado, leer
 from produccion.conectores.detector_columnas import MapeoNecesario
+from produccion.costos import (
+    CostoDelPeriodo,
+    CostoInexistente,
+    CostoRegistrado,
+    CostoYaAnulado,
+    anular_costo,
+    costos_del_periodo,
+    registrar_costo,
+)
 from produccion.importacion import descartar, importar, pendientes, resolver
 from produccion.inventario import (
     Conflicto,
@@ -72,6 +81,10 @@ from seguridad.sesiones import SesionActiva
 #: objeto en el router y en `_usuario`, así FastAPI la evalúa una sola vez por petición.
 OPERAR_ARENERA = exigir_clave_o_sesion(Accion.OPERAR_ARENERA)
 
+#: La puerta de los costos del periodo (plan vial, Tarea 1): misma regla de entrada, con su propia
+#: acción. Se suma a la del router; `_usuario_costos` la reutiliza para no evaluarla dos veces.
+REGISTRAR_COSTOS = exigir_clave_o_sesion(Accion.REGISTRAR_COSTOS_PRODUCCION)
+
 router = APIRouter(
     prefix="/v1/produccion",
     tags=["produccion"],
@@ -81,7 +94,7 @@ router = APIRouter(
 
 LOG = logging.getLogger(__name__)
 
-__all__ = ["OPERAR_ARENERA", "USUARIO_API", "router"]
+__all__ = ["OPERAR_ARENERA", "REGISTRAR_COSTOS", "USUARIO_API", "router"]
 
 EXTENSIONES = (".csv", ".xlsx")
 TIPOS_DE_MOVIMIENTO = ("entrada", "despacho", "ajuste")
@@ -98,6 +111,13 @@ def _usuario(activa: Annotated[SesionActiva | None, Depends(OPERAR_ARENERA)]) ->
 
 
 UsuarioDep = Annotated[str, Depends(_usuario)]
+
+
+def _usuario_costos(activa: Annotated[SesionActiva | None, Depends(REGISTRAR_COSTOS)]) -> str:
+    return USUARIO_API if activa is None else activa.usuario
+
+
+UsuarioCostosDep = Annotated[str, Depends(_usuario_costos)]
 
 
 # --- Esquemas ------------------------------------------------------------------------------------
@@ -186,6 +206,43 @@ class ResolverEntrada(BaseModel):
 
 class DescartarEntrada(BaseModel):
     ahora: str
+
+
+class CostoEntrada(BaseModel):
+    periodo: str  # AAAA-MM
+    centro: str  # "cantera" o "planta"
+    concepto: str
+    monto: str  # decimal con punto; la coma es cosa del front
+    moneda: str  # "Bs" o "USD"
+    fecha: str  # ISO, dentro del periodo
+    fuente: str
+    nota: str = ""
+    ahora: str  # fecha y hora ISO local, sin zona: la manda el cliente
+
+
+class AnularCostoEntrada(BaseModel):
+    motivo: str
+    ahora: str
+
+
+class CostoCreado(BaseModel):
+    id: int
+
+
+class CostoRespuesta(BaseModel):
+    id: int
+    periodo: str
+    centro: str
+    concepto: str
+    monto: str
+    moneda: str
+    fecha: str
+    fuente: str
+    nota: str
+    usuario: str
+    registrado: str
+    anulado: bool
+    anula_id: int | None
 
 
 # --- Frontera: texto a tipos ---------------------------------------------------------------------
@@ -586,3 +643,89 @@ def descartar_sospechoso(
     _sospechoso_pendiente(sesion, id_sospechoso)
     descartar(sesion, id_sospechoso, usuario=usuario, ahora=ahora)
     return Response(status_code=204)
+
+
+# --- Costos del periodo (plan vial, Tarea 1) -----------------------------------------------------
+
+
+def _costo_respuesta(r: CostoRegistrado) -> CostoRespuesta:
+    c = r.costo
+    return CostoRespuesta(
+        id=r.id,
+        periodo=c.periodo,
+        centro=c.centro,
+        concepto=c.concepto,
+        monto=format(c.monto, "f"),
+        moneda=c.moneda,
+        fecha=c.fecha.isoformat(),
+        fuente=c.fuente,
+        nota=c.nota,
+        usuario=r.usuario,
+        registrado=r.registrado.isoformat(),
+        anulado=r.anulado,
+        anula_id=r.anula_id,
+    )
+
+
+@router.post(
+    "/costos",
+    response_model=CostoCreado,
+    status_code=201,
+    dependencies=[Depends(REGISTRAR_COSTOS)],
+)
+def registrar_un_costo(
+    entrada: CostoEntrada, sesion: SesionInstalacionDep, usuario: UsuarioCostosDep
+) -> CostoCreado:
+    """Registra un costo del periodo (cantera o planta). Monto como texto con punto; periodo,
+    centro, concepto, moneda, fecha o fuente inválidos: 422. No guarda nada si algo falla."""
+    costo = CostoDelPeriodo(
+        periodo=entrada.periodo.strip(),
+        centro=entrada.centro.strip(),
+        concepto=entrada.concepto.strip(),
+        monto=_decimal(entrada.monto, "monto"),
+        moneda=entrada.moneda.strip(),
+        fecha=_fecha(entrada.fecha, "fecha"),
+        fuente=entrada.fuente,
+        nota=entrada.nota,
+    )
+    ahora = _instante(entrada.ahora, "ahora")
+    return CostoCreado(id=registrar_costo(sesion, costo, usuario=usuario, ahora=ahora))
+
+
+@router.get(
+    "/costos", response_model=list[CostoRespuesta], dependencies=[Depends(REGISTRAR_COSTOS)]
+)
+def listar_costos(
+    sesion: SesionInstalacionDep,
+    periodo: Annotated[str, Query(description="Periodo AAAA-MM")],
+    incluir_anulados: Annotated[
+        bool, Query(description="También los anulados y sus anulaciones")
+    ] = False,
+) -> list[CostoRespuesta]:
+    """Los costos del periodo en orden de registro; por omisión solo los vigentes."""
+    filas = costos_del_periodo(sesion, periodo.strip(), incluir_anulados=incluir_anulados)
+    return [_costo_respuesta(f) for f in filas]
+
+
+@router.post(
+    "/costos/{costo_id}/anular",
+    response_model=CostoCreado,
+    status_code=201,
+    dependencies=[Depends(REGISTRAR_COSTOS)],
+)
+def anular_un_costo(
+    costo_id: int,
+    entrada: AnularCostoEntrada,
+    sesion: SesionInstalacionDep,
+    usuario: UsuarioCostosDep,
+) -> CostoCreado:
+    """Anula un costo con un registro nuevo; el original no se borra. Inexistente: 404; ya
+    anulado: 409; sin motivo: 422."""
+    ahora = _instante(entrada.ahora, "ahora")
+    try:
+        nuevo = anular_costo(sesion, costo_id, motivo=entrada.motivo, usuario=usuario, ahora=ahora)
+    except CostoInexistente as error:
+        raise HTTPException(404, str(error)) from None
+    except CostoYaAnulado as error:
+        raise HTTPException(409, str(error)) from None
+    return CostoCreado(id=nuevo)

@@ -8641,6 +8641,160 @@
         }
       }
     },
+    "/v1/produccion/costos": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Registrar Un Costo",
+        "description": "Registra un costo del periodo (cantera o planta). Monto como texto con punto; periodo,\ncentro, concepto, moneda, fecha o fuente inválidos: 422. No guarda nada si algo falla.",
+        "operationId": "registrar_un_costo_v1_produccion_costos_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostoCreado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Listar Costos",
+        "description": "Los costos del periodo en orden de registro; por omisión solo los vigentes.",
+        "operationId": "listar_costos_v1_produccion_costos_get",
+        "parameters": [
+          {
+            "name": "periodo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Periodo AAAA-MM",
+              "title": "Periodo"
+            },
+            "description": "Periodo AAAA-MM"
+          },
+          {
+            "name": "incluir_anulados",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "También los anulados y sus anulaciones",
+              "default": false,
+              "title": "Incluir Anulados"
+            },
+            "description": "También los anulados y sus anulaciones"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CostoRespuesta"
+                  },
+                  "title": "Response Listar Costos V1 Produccion Costos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/produccion/costos/{costo_id}/anular": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Anular Un Costo",
+        "description": "Anula un costo con un registro nuevo; el original no se borra. Inexistente: 404; ya\nanulado: 409; sin motivo: 422.",
+        "operationId": "anular_un_costo_v1_produccion_costos__costo_id__anular_post",
+        "parameters": [
+          {
+            "name": "costo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Costo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnularCostoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostoCreado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/buscar/partidas": {
       "get": {
         "tags": [
@@ -10304,6 +10458,24 @@
           "anulada_por"
         ],
         "title": "Anulada"
+      },
+      "AnularCostoEntrada": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "ahora": {
+            "type": "string",
+            "title": "Ahora"
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo",
+          "ahora"
+        ],
+        "title": "AnularCostoEntrada"
       },
       "AprobacionAbrirPeticion": {
         "properties": {
@@ -13839,6 +14011,152 @@
           "fuente"
         ],
         "title": "ConvertirVersion"
+      },
+      "CostoCreado": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "CostoCreado"
+      },
+      "CostoEntrada": {
+        "properties": {
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "centro": {
+            "type": "string",
+            "title": "Centro"
+          },
+          "concepto": {
+            "type": "string",
+            "title": "Concepto"
+          },
+          "monto": {
+            "type": "string",
+            "title": "Monto"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota",
+            "default": ""
+          },
+          "ahora": {
+            "type": "string",
+            "title": "Ahora"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo",
+          "centro",
+          "concepto",
+          "monto",
+          "moneda",
+          "fecha",
+          "fuente",
+          "ahora"
+        ],
+        "title": "CostoEntrada"
+      },
+      "CostoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "centro": {
+            "type": "string",
+            "title": "Centro"
+          },
+          "concepto": {
+            "type": "string",
+            "title": "Concepto"
+          },
+          "monto": {
+            "type": "string",
+            "title": "Monto"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "registrado": {
+            "type": "string",
+            "title": "Registrado"
+          },
+          "anulado": {
+            "type": "boolean",
+            "title": "Anulado"
+          },
+          "anula_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anula Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "periodo",
+          "centro",
+          "concepto",
+          "monto",
+          "moneda",
+          "fecha",
+          "fuente",
+          "nota",
+          "usuario",
+          "registrado",
+          "anulado",
+          "anula_id"
+        ],
+        "title": "CostoRespuesta"
       },
       "CotizarVersion": {
         "properties": {
