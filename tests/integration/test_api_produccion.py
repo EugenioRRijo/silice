@@ -29,6 +29,7 @@ from __future__ import annotations
 import hashlib
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -39,20 +40,12 @@ from api.main import app
 from api.proteccion import LIMITE_CUERPO
 from operacion.instalacion import sesion_de_instalacion
 from produccion.modelo import Movimiento, PesajeSospechoso
+from seguridad import cuentas
 from tests.fixtures.bascula import construir
 from tests.fixtures.claves_api import ANFITRION, CABECERA, IP_LOCAL, crear_clave_de_prueba
-from tests.fixtures.produccion_api import (  # noqa: F401 - fixtures: pytest las busca por nombre
-    CABECERA_CSRF,
-    CONTRASENAS,
-    COOKIE,
-    NUEVA,
-    Web,
-    _contar,
-    _csrf,
-    _instalacion_de_la_prueba,
-    _instalacion_migrada,
-    http,
-)
+from tests.fixtures.produccion_api import Web, cliente_con_clave, contar
+from tests.fixtures.sesion_web import COOKIE, copiar_instalacion, csrf, plantilla_con_cuentas
+from tests.fixtures.sesion_web import CSRF as CABECERA_CSRF
 
 REFERENCIA = "2026-10-18"
 TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -72,6 +65,23 @@ RUTAS = [
     ("GET", "/v1/produccion/costos"),
     ("POST", "/v1/produccion/costos/1/anular"),
 ]
+
+
+@pytest.fixture(scope="module")
+def _instalacion_migrada(tmp_path_factory) -> Path:
+    return plantilla_con_cuentas(tmp_path_factory.mktemp("plantilla_produccion"))
+
+
+@pytest.fixture(autouse=True)
+def _instalacion_de_la_prueba(_instalacion_migrada: Path):
+    copiar_instalacion(_instalacion_migrada)
+    yield
+    cuentas.FRENO.reiniciar()
+
+
+@pytest.fixture
+def http() -> TestClient:
+    return cliente_con_clave()
 
 
 # --- Ayudas --------------------------------------------------------------------------------------
@@ -181,7 +191,7 @@ def test_un_ajuste_sin_diferencia_responde_200_con_null(http) -> None:
     _movimiento(http, "ARENA", "entrada", "2026-10-01", "40")
     r = _movimiento(http, "ARENA", "ajuste", "2026-10-02", "40")
     assert (r.status_code, r.json()) == (200, None)
-    assert _contar(Movimiento) == 1  # solo la entrada
+    assert contar(Movimiento) == 1  # solo la entrada
 
 
 def test_el_ajuste_negativo_guarda_la_diferencia_con_signo(http) -> None:
@@ -220,7 +230,7 @@ def test_lo_que_registra_una_ruta_queda_confirmado(http) -> None:
     """Se ve desde otra sesión: la dependencia hace el `commit` al terminar bien."""
     _material(http, "ARENA", "m3", "20", "1.60")
     _movimiento(http, "ARENA", "entrada", "2026-10-01", "100")
-    assert _contar(Movimiento) == 1
+    assert contar(Movimiento) == 1
 
 
 def test_el_listado_de_materiales_trae_los_datos_como_texto(http) -> None:
@@ -306,7 +316,7 @@ def test_movimiento_invalido_responde_422_y_no_guarda(http, cuerpo, que) -> None
     completo = {"material_codigo": "ARENA", **cuerpo}
     r = http.post("/v1/produccion/movimientos", json=completo)
     assert r.status_code == 422, (que, r.text)
-    assert _contar(Movimiento) == 0
+    assert contar(Movimiento) == 0
 
 
 def test_una_cantidad_como_numero_json_se_rechaza(http) -> None:
@@ -322,7 +332,7 @@ def test_una_cantidad_como_numero_json_se_rechaza(http) -> None:
         },
     )
     assert r.status_code == 422
-    assert _contar(Movimiento) == 0
+    assert contar(Movimiento) == 0
 
 
 def test_existencias_con_fecha_mal_escrita_responde_422(http) -> None:
@@ -387,7 +397,7 @@ def test_reimportar_no_duplica(http) -> None:
     assert r.status_code == 200, r.text
     cuerpo = r.json()
     assert (cuerpo["registrados"], cuerpo["ya_registrados"]) == (0, 2)
-    assert _contar(Movimiento) == 2
+    assert contar(Movimiento) == 2
     assert len(http.get("/v1/produccion/pesajes-sospechosos").json()) == 4
 
 
@@ -411,7 +421,7 @@ def test_importar_sin_unidad_responde_422_con_el_mensaje(http) -> None:
     r = _importar(http, construir.xlsx_sin_unidad())
     assert r.status_code == 422, r.text
     assert r.json() == {"detalle": MENSAJE_SIN_UNIDAD}
-    assert _contar(Movimiento) == 0 and _contar(PesajeSospechoso) == 0
+    assert contar(Movimiento) == 0 and contar(PesajeSospechoso) == 0
     # La unidad dicha por el usuario destraba el mismo archivo (ORACULO.md §2).
     con_unidad = _importar(http, construir.xlsx_sin_unidad(), unidad_peso="kg")
     assert con_unidad.status_code == 200, con_unidad.text
@@ -428,7 +438,7 @@ def test_archivo_con_macros_renombrado_responde_422(http) -> None:
     r = _importar(http, construir.xlsx_con_macros_renombrado())
     assert r.status_code == 422, r.text
     assert "macros" in r.json()["detalle"]
-    assert _contar(Movimiento) == 0 and _contar(PesajeSospechoso) == 0
+    assert contar(Movimiento) == 0 and contar(PesajeSospechoso) == 0
 
 
 def test_xlsx_que_no_es_un_zip_responde_422(http) -> None:
@@ -442,7 +452,7 @@ def test_archivo_desmedido_responde_422_sin_tocar_la_base(http) -> None:
     r = _importar(http, construir.csv_desmedido(100_001), "grande.csv", TIPO_CSV)
     assert r.status_code == 422, r.text
     assert "100000" in r.json()["detalle"]
-    assert _contar(Movimiento) == 0 and _contar(PesajeSospechoso) == 0
+    assert contar(Movimiento) == 0 and contar(PesajeSospechoso) == 0
 
 
 @pytest.mark.parametrize("nombre", ["reporte.txt", "reporte.xls", "reporte.xlsm", "reporte"])
@@ -456,7 +466,7 @@ def test_un_cuerpo_de_mas_de_20_mib_responde_413(http) -> None:
     assert LIMITE_CUERPO == 20 * 1024 * 1024
     r = _importar(http, b"a;b\n" * ((LIMITE_CUERPO // 4) + 10), "enorme.csv", TIPO_CSV)
     assert r.status_code == 413
-    assert _contar(Movimiento) == 0
+    assert contar(Movimiento) == 0
 
 
 def test_la_fecha_de_referencia_es_obligatoria(http) -> None:
@@ -536,7 +546,7 @@ def test_si_la_importacion_falla_a_medias_no_queda_nada(http, monkeypatch) -> No
     _catalogo_del_basico(http)
     monkeypatch.setattr(rutas, "importar", _importar_y_romper)
     assert _importar(http, construir.xlsx_basico()).status_code == 500
-    assert _contar(Movimiento) == 0 and _contar(PesajeSospechoso) == 0
+    assert contar(Movimiento) == 0 and contar(PesajeSospechoso) == 0
 
 
 # --- Bandeja: resolver y descartar ---------------------------------------------------------------
@@ -577,7 +587,7 @@ def test_resolver_y_descartar(http) -> None:
     assert {f["ticket"] for f in pendientes} == {"TCK-004", "TCK-005"}
     # PIEDRA34: −24,5 (TCK-002) − 18,0 (resuelto) = −42,5; el descartado no crea despacho.
     assert Decimal(_existencias(http)["PIEDRA34"]["existencia"]) == Decimal("-42.5")
-    assert _contar(Movimiento) == 3
+    assert contar(Movimiento) == 3
     with sesion_de_instalacion() as sesion:
         cerrados = {
             s.ticket: (s.estado, s.resuelto_por, s.resuelto_en.isoformat())
@@ -608,7 +618,7 @@ def test_resolver_dos_veces_responde_409(http) -> None:
     assert "resuelto" in de_nuevo.json()["detalle"]
     descartado = http.post(f"{ruta}/descartar", json={"ahora": "2026-10-18T10:00:00"})
     assert descartado.status_code == 409
-    assert _contar(Movimiento) == 3  # los 2 de la importación + el resuelto
+    assert contar(Movimiento) == 3  # los 2 de la importación + el resuelto
 
 
 def test_descartar_dos_veces_responde_409(http) -> None:
@@ -637,7 +647,7 @@ def test_resolver_con_un_ticket_ya_registrado_responde_409_y_deja_el_sospechoso_
     )
     assert r.status_code == 409, r.text
     assert "TCK-002" in r.json()["detalle"]
-    assert _contar(Movimiento) == 2
+    assert contar(Movimiento) == 2
     assert id_sospechoso in {f["id"] for f in http.get("/v1/produccion/pesajes-sospechosos").json()}
 
 
@@ -685,7 +695,7 @@ def test_resolver_con_datos_invalidos_responde_422_y_no_cierra_el_sospechoso(
     }
     r = http.post(f"/v1/produccion/pesajes-sospechosos/{id_sospechoso}/resolver", json=cuerpo)
     assert r.status_code == 422, r.text
-    assert _contar(Movimiento) == 2
+    assert contar(Movimiento) == 2
     assert id_sospechoso in {f["id"] for f in http.get("/v1/produccion/pesajes-sospechosos").json()}
 
 
@@ -748,7 +758,7 @@ def test_con_sesion_de_arma_o_administrador_se_opera_la_arenera(quien: str) -> N
     por_fecha = web.get("/v1/produccion/existencias", params={"a_fecha": "2026-10-02"})
     assert por_fecha.status_code == 200
     assert web.get("/v1/produccion/pesajes-sospechosos").status_code == 200
-    assert _contar(Movimiento) == 3
+    assert contar(Movimiento) == 3
 
 
 def test_con_sesion_se_importa_la_bascula_y_se_cierra_la_bandeja(ana) -> None:
@@ -782,7 +792,7 @@ def test_el_rol_revisa_recibe_403_en_toda_ruta_y_no_escribe_nada(rita, metodo: s
     r = rita.cliente.request(metodo, ruta, json={}, headers=rita.cabeceras())
     assert r.status_code == 403, r.text
     assert r.json()["detalle"] == "Su cuenta no tiene permiso para esta acción."
-    assert _contar(Movimiento) == 0 and _contar(PesajeSospechoso) == 0
+    assert contar(Movimiento) == 0 and contar(PesajeSospechoso) == 0
 
 
 @pytest.mark.parametrize("cookie", [None, "ficha-que-no-existe"], ids=["sin cookie", "ficha falsa"])
@@ -808,7 +818,7 @@ def test_un_post_con_sesion_sin_anti_csrf_se_rechaza_y_no_escribe(ana, falta: st
     if falta == "sin csrf":
         del cabeceras[CABECERA_CSRF]
     elif falta == "csrf ajeno":
-        cabeceras[CABECERA_CSRF] = _csrf("otra-ficha")
+        cabeceras[CABECERA_CSRF] = csrf("otra-ficha")
     elif falta == "sin origen":
         del cabeceras["Origin"]
     else:
@@ -829,7 +839,7 @@ def test_la_importacion_con_sesion_sin_csrf_se_rechaza(ana) -> None:
         data={"fecha_referencia": REFERENCIA},
     )
     assert r.status_code == 403, r.text
-    assert _contar(Movimiento) == 0
+    assert contar(Movimiento) == 0
 
 
 # --- El usuario que queda escrito ----------------------------------------------------------------
@@ -864,7 +874,7 @@ def test_con_sesion_lo_importado_y_lo_resuelto_queda_a_nombre_de_la_cuenta(ana) 
         },
     )
     ana.post(f"{ruta}/{por_ticket['TCK-003']}/descartar", json={"ahora": "2026-10-18T09:31:00"})
-    assert _contar(Movimiento) == 3  # 2 de la importación + el resuelto
+    assert contar(Movimiento) == 3  # 2 de la importación + el resuelto
     with sesion_de_instalacion() as sesion:
         assert set(sesion.scalars(select(Movimiento.usuario))) == {"Ana <ana>"}
         cerrados = {
@@ -1073,4 +1083,4 @@ def test_un_4xx_tras_una_escritura_parcial_no_deja_nada_y_va_sin_cache(http, mon
         r = _importar(http, construir.xlsx_basico())
         assert r.status_code == estado, r.text
         assert r.headers["Cache-Control"] == "no-store"
-        assert _contar(Movimiento) == 0 and _contar(PesajeSospechoso) == 0
+        assert contar(Movimiento) == 0 and contar(PesajeSospechoso) == 0

@@ -139,7 +139,7 @@ def test_una_base_que_ya_trae_la_tabla_se_adopta_sin_recrearla(tmp_path: Path) -
 
     aplicar_revisiones(ruta, Destino.INSTALACION)
 
-    assert leer_estado(ruta).revision == revision_head(Destino.INSTALACION)
+    assert leer_estado(ruta).revision == "ins_0006_prod_costo"
     with closing(sqlite3.connect(ruta)) as conexion:
         assert conexion.execute(f"SELECT caso, version FROM {TABLA}").fetchall() == [
             ("obra.db", "VIV-001")

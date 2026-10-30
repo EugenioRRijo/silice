@@ -67,9 +67,6 @@ select = ["E", "F", "W", "I", "B", "UP", "N"]
 "scripts/glosario_presupuestos.py" = ["E501"]
 # Revisiones de Alembic congeladas: el DDL literal de SQLite va tal cual (spec S5 §6.1).
 "migraciones/*/versions/*.py" = ["E501"]
-# Las fixtures de la API de produccion se importan por nombre (pytest las busca asi) y los
-# parametros de prueba las nombran: ruff lo lee como redefinicion.
-"tests/integration/test_api_produccion*.py" = ["F811"]
 
 [tool.ruff.lint.isort]
 known-first-party = [

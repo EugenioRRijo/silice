@@ -11,6 +11,7 @@ from decimal import Decimal
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from produccion.costos import (
@@ -21,7 +22,7 @@ from produccion.costos import (
     costos_del_periodo,
     registrar_costo,
 )
-from produccion.modelo import METADATA_PRODUCCION
+from produccion.modelo import METADATA_PRODUCCION, Costo
 
 D = Decimal
 AHORA = datetime(2026, 11, 20, 9, 0, 0)
@@ -152,3 +153,44 @@ def test_los_costos_salen_en_orden_de_registro(sesion: Session) -> None:
 def test_periodo_invalido_al_consultar(sesion: Session) -> None:
     with pytest.raises(ValueError, match="periodo"):
         costos_del_periodo(sesion, "noviembre")
+
+
+def test_el_motivo_de_la_anulacion_queda_en_su_registro(sesion: Session) -> None:
+    i = registrar_costo(sesion, _costo(), usuario="ana", ahora=AHORA)
+    n = anular_costo(sesion, i, motivo="  duplicado ", usuario="ana", ahora=AHORA)
+    por_id = {f.id: f for f in costos_del_periodo(sesion, "2026-11", incluir_anulados=True)}
+    assert (por_id[i].motivo, por_id[i].anula_id) == ("", None)
+    assert (por_id[n].motivo, por_id[n].anula_id) == ("duplicado", i)
+
+
+def test_dos_anulaciones_directas_del_mismo_costo_fallan_en_la_base(sesion: Session) -> None:
+    i = registrar_costo(sesion, _costo(), usuario="ana", ahora=AHORA)
+    anular_costo(sesion, i, motivo="duplicado", usuario="ana", ahora=AHORA)
+
+    def fila() -> Costo:
+        return Costo(
+            periodo="2026-11",
+            centro="cantera",
+            concepto="gasoil",
+            monto=D("1"),
+            moneda="USD",
+            fecha=FECHA,
+            fuente="f",
+            nota="",
+            usuario="x",
+            registrado=AHORA,
+            anula_id=i,
+            motivo="otra",
+        )
+
+    sesion.add(fila())
+    with pytest.raises(IntegrityError):
+        sesion.flush()
+
+
+def test_menos_cero_se_normaliza_a_cero(sesion: Session) -> None:
+    assert str(_costo(monto=D("-0")).monto) == "0"
+    assert str(_costo(monto=D("-0.00")).monto) == "0.00"
+    registrar_costo(sesion, _costo(monto=D("-0")), usuario="ana", ahora=AHORA)
+    [fila] = costos_del_periodo(sesion, "2026-11")
+    assert str(fila.costo.monto) == "0"
