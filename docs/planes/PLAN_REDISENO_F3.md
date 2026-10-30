@@ -63,7 +63,8 @@ componente, TDD con rojo visto, jscpd ≤ 1 %, commit por tarea con `git diff --
 - **D-F3-3 Árbol sin carpetas:** el árbol lista las obras por nombre, sin títulos de grupo por carpeta (§2.4: «la
   carpeta desaparece del uso diario»). Si dos obras se llaman igual, cada una muestra debajo, en letra secundaria, el
   nombre de su carpeta. El diálogo «Nueva obra» sigue diciendo dónde se creará.
-- **D-F3-4 Color de acción:** botón principal con fondo `--silice-acento` y texto `--silice-marco`; enlaces, pestaña
+- **D-F3-4 Color de acción** (superada por la Tarea 4b y luego por la 4c: la acción va en el complementario):
+  botón principal con fondo `--silice-acento` y texto `--silice-marco`; enlaces, pestaña
   activa y bordes interactivos en `--silice-marco` (el ámbar sobre blanco da ~2,1:1 y no sirve para texto ni bordes).
   El foco visible se queda como está.
 - **D-F3-5 Cuenta:** el botón de la cuenta es un círculo con las iniciales (fondo acento, texto marco) y conserva el
@@ -279,6 +280,52 @@ pruebas), `docs/api.json` si cambia la API, `CHANGELOG.md`, `DESIGN.md`.
   tres estados y el borde del botón; píldora con los tokens del contador; resumen de la bandeja en sus casos).
 - [ ] **Paso 2:** → FALLA. **Paso 3:** implementar. **Paso 4:** → PASA; pytest del tema, vitest de `src/marco
   src/estilos src/comun src/paginas/pendientes src/shell`, lint, build, duplicado, muerto. **Commits** (`test` antes de
+  `feat`).
+
+### Tarea 4c: La acción pasa al complementario; el acento queda para la marca (decisión del 2026-10-28)
+
+**Modelo:** Sonnet.
+
+En la pasada en navegador del cierre (hallazgo H3) Eugenio vio que el botón ámbar aclarado y los avisos amarillos de
+Carbon se confunden («esto es lo que quiero evitar»). Decidió repartir los papeles: **amarillo = precaución** (los
+avisos de Carbon se quedan como están), **ámbar = marca** (raya de la barra superior, logo, iniciales, selección) y
+**complementario = acción**. Sus valores siguen **solo** en `data/tema/tema.json` (ya puestos en local por el
+orquestador); el repositorio lleva las reglas y valores neutros. Sustituye el botón de la Tarea 4b y la D-F3-4.
+
+- **Botón principal en el complementario con texto blanco** (regla genérica, en el repo): reposo =
+  `var(--silice-complementario)`; al pasar el ratón = `color-mix(in srgb, var(--silice-complementario) 85%, black)`;
+  al pulsar = complementario 70 % con negro. El texto vuelve al blanco de Carbon (`--cds-text-on-color` deja de
+  reasignarse dentro del botón principal). Sin borde propio: el fondo oscuro ya se distingue del fondo de la página.
+  «Nueva obra» (`.silice-marco-boton-principal`) sigue la misma regla y los mismos tres estados.
+- **Se quita la regla de la Tarea 4b** (YAGNI): `$mezcla-reposo/-hover/-borde`, `--silice-boton-borde` y sus usos,
+  `MEZCLAS` de `aplicacion/tema.py` y la prueba que compara las dos copias. Las nuevas proporciones (85 y 70 con
+  negro) quedan, como antes, en **un solo sitio por lado** y la prueba de coincidencia SCSS/Python se reescribe para
+  ellas.
+- **Avisos del servidor** (`_PARES`): fuera los tres pares «marco sobre botón» y el borde del botón; entran «blanco
+  sobre el botón» en reposo, al pasar el ratón y al pulsar, cada uno con mínimo **7:1** (misma frase que hoy para cada
+  estado). Se quedan los del complementario sobre fondo, blanco y lateral (4,5:1) y los del contador. Las iniciales
+  de la cuenta (texto marco sobre acento) pasan a un par propio de texto, 4,5:1: «Las iniciales de la cuenta no se
+  leen bien sobre el color de acento».
+- **El acento solo como marca**: revisar cada uso de `--silice-acento` y de `--cds-button-primary` en `src/`; ninguno
+  puede quedar como relleno de una acción. Se listan en la bitácora con su papel.
+- **DESIGN.md** (`frontend-desktop/DESIGN.md`): una sección «Papeles del color» con el reparto de arriba y la regla de
+  identidad: el acento nunca va solo como identidad, siempre junto al marco y al complementario (el ámbar solo es
+  genérico del sector). Se corrige lo que DESIGN.md diga hoy del botón aclarado.
+- El acento neutro del repo (yellow-20) **no se cambia** en esta tarea.
+
+**Archivos:** `frontend-desktop/src/estilos/tokens.scss`, `marco/BarraLateral.scss`, `marco/colorDeAccion.test.ts`,
+`marco/temaNeutro.test.ts`, `estilos/cascadaDeAccion.test.ts`, `aplicacion/tema.py`, `tests/unit/test_tema_contraste.py`,
+`tests/unit/test_api_tema.py` (si fija avisos), `frontend-desktop/DESIGN.md`, `CHANGELOG.md`, bitácora del cierre de F3.
+
+- [ ] **Paso 1: pruebas rojas** con oráculos calculados a mano con la fórmula WCAG y **valores ficticios** (nunca los
+  de la empresa): servidor (tema neutro sin avisos; un complementario ficticio claro que deja el blanco por debajo de
+  7:1 en reposo da exactamente ese aviso; uno que solo falla al pasar el ratón no puede existir —oscurecer sube el
+  contraste con blanco—, así que se prueba que el aviso de cada estado sale cuando corresponde; iniciales por debajo
+  de 4,5:1 dan su aviso; los avisos de borde y de «marco sobre botón» ya no salen nunca); front (cascada dentro y fuera
+  de `.cds--g10`: los tres estados del botón con el complementario y el texto blanco; `--silice-boton-borde` ya no
+  existe; «Nueva obra» con los mismos tokens; coincidencia de proporciones SCSS/Python).
+- [ ] **Paso 2:** → FALLA. **Paso 3:** implementar. **Paso 4:** → PASA; pytest del tema, vitest de `src/marco
+  src/estilos src/comun src/shell src/paginas/pendientes`, lint, build, duplicado, muerto. **Commits** (`test` antes de
   `feat`).
 
 ### Tarea 5: Cierre de F3
