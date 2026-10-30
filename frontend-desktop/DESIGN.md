@@ -69,15 +69,17 @@ ajustan aquí cuando la construcción los fije.
   pida la etiqueta (una línea más con el marcador, varias con la completa).
 - Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El color de acción lo pone la empresa
   (rediseño F3, Tarea 4c; ver «Papeles del color» abajo): el botón principal es el **complementario** con texto blanco (el
-  de Carbon), el complementario al 85 % con negro al pasar el ratón y al 70 % al pulsar, sin borde propio; los enlaces
-  (subrayados), los bordes interactivos y la raya de la pestaña activa van también en `--silice-complementario` (sin él, el marco);
+  de Carbon), el complementario al 85 % con negro al pasar el ratón y al 70 % al pulsar, sin borde propio; el botón
+  terciario (H5) lleva contorno y texto en el complementario, se rellena de él con texto blanco al pasar el ratón y al 75 % con
+  negro al pulsar; los enlaces (subrayados), los bordes interactivos y la raya de la pestaña activa van también en
+  `--silice-complementario` (sin él, el marco);
   los contadores de la barra lateral llevan su propio número y fondo (`--silice-contador-numero` y `--silice-contador-fondo`,
   sin ellos el marco y el lateral) y un contorno de 1 px del color del número. Vale en toda la aplicación (también
   bienvenida, entrar y recuperar acceso) y en los diálogos. El servidor avisa (`GET /v1/tema`, `avisos`) si el texto del
   botón (blanco sobre el complementario) no llega a 7:1 en sus tres estados, el complementario a 4,5:1 sobre el fondo, el
   blanco y el lateral, las iniciales de la cuenta (marco sobre acento) a 4,5:1 y el contador a 4,5:1 (número) y 3:1
-  (contorno). El foco sigue siendo el azul de Carbon (`$focus`), salvo en «Nueva obra»: contorno blanco de 2 px por dentro, porque sobre el
-  complementario el azul y el marco no se verían. El tema neutro del repositorio usa el amarillo claro
+  (contorno). El foco sigue siendo el azul de Carbon (`$focus`), salvo en «Nueva obra»: contorno blanco de 2 px por dentro, porque el blanco es el único contorno cuyo
+  contraste con el botón ya garantiza el servidor (7:1). El tema neutro del repositorio usa el amarillo claro
   (`yellow-20`) y el gris de Carbon.
 
 ### Papeles del color (rediseño F3, Tarea 4c)
@@ -88,6 +90,10 @@ ajustan aquí cuando la construcción los fije.
 | **Marca** | `--silice-acento` (ámbar) | raya bajo la barra superior, opción de tamaño de letra activa, iniciales de la cuenta |
 | **Acción** | `--silice-complementario` | botón principal («Nueva obra» incluido), enlaces, bordes interactivos, raya de la pestaña activa, botón terciario |
 
+- **Selección sobre fondo claro = complementario.** La raya de la opción activa del tamaño de letra es el acento en la barra
+  superior (marco oscuro), pero en Entrar y en las demás pantallas sin marco el fondo es claro y el acento no llega a 3:1
+  (WCAG 1.4.11): allí va en `--silice-complementario` (el servidor lo mide ≥ 4,5:1 sobre el fondo, el blanco y el lateral).
+  Nunca queda en el azul de Carbon.
 - Regla de identidad: el acento **nunca** va solo como identidad; siempre junto al marco (`--silice-marco`) y al
   complementario. El ámbar solo es genérico del sector: en una empresa con otro color de acento, la identidad la llevan el
   marco y el complementario.
@@ -110,10 +116,14 @@ pendientes, no por herramientas: nada de módulos ni áreas.
 - **Barra lateral** (`BarraLateral.tsx`): 14,75 rem, fondo `--silice-lateral`, fija al desplazar el contenido y con su
   propio desplazamiento. Tres zonas: **Pendientes**; **Obras**, con «Nueva obra» como botón principal fijo bajo su
   cabecera (relleno `--silice-complementario`, texto blanco) y el árbol de obras (patrón `tree` de WAI-ARIA: flechas,
-  derecha despliega, izquierda pliega; agrupado por carpeta solo si hay más de una; la obra abierta desplegada en sus
-  secciones con una línea guía); y **Empresa** (Precios y catálogo, Auditar un presupuesto, Producción, Empresa y
+  derecha despliega, izquierda pliega; la obra abierta desplegada en sus secciones con una línea guía; el nombre de una obra
+  se recorta a 2 líneas con puntos suspensivos y su `title` con el nombre completo aparece solo si de verdad está recortado,
+  medido al pasar el ratón); y **Empresa** (Precios y catálogo, Auditar un presupuesto, Producción, Empresa y
   personas, Ayuda). Activo: fondo `--silice-lateral-activo` y raya de 3 px `--silice-marco`. Lo que la cuenta no puede
-  usar no aparece.
+  usar no aparece. **Letra Grande o Muy grande:** la cabecera de Obras y «Nueva obra» quedan fijas y solo el árbol se
+  desplaza; filas y títulos se compactan (mixin `con-letra-grande` de `_umbrales.scss`: filas de 1,5 rem, títulos con menos
+  relleno), la zona de obras conserva 10 rem como mínimo y, si aun así no cabe todo, se desplaza la barra entera. Nada se
+  esconde (los tres botones de tamaño de letra siguen).
 - **La obra** (`EspacioDeObra.tsx`, ruta `#/obra/<carpeta>/<obra>/<sección>`): antes de montar la sección se fija la obra
   en la sesión; encima va la cabecera de la obra (nombre, moneda, versión y la lista para armar de su carpeta), que no es
   un encabezado: el único h1 es el de la sección. «Esa obra ya no existe» (con «Volver a Pendientes») y «Esta obra se
