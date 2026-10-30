@@ -176,4 +176,16 @@ describe("Inicio de producción", () => {
     await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
     expect(screen.queryByRole("link", { name: "Costos del período" })).not.toBeInTheDocument();
   });
+
+  test("la receta y el costo por tonelada se ofrecen según la acción de cada uno", async () => {
+    const conCostos = { ...ANA, acciones: [...ANA.acciones, "registrar_costos_produccion"] };
+    const { unmount } = montar({ sesion: conCostos });
+    expect(await screen.findByRole("link", { name: "Receta de la planta" })).toHaveAttribute("href", "/receta_planta");
+    expect(screen.getByRole("link", { name: "Costo por tonelada" })).toHaveAttribute("href", "/costo_tonelada");
+    unmount();
+    montar({ sesion: ANA });
+    await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
+    expect(screen.getByRole("link", { name: "Receta de la planta" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Costo por tonelada" })).not.toBeInTheDocument();
+  });
 });

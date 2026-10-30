@@ -52,6 +52,7 @@ export const ACCIONES = {
   admin: [
     "operar_arenera",
     "registrar_costos_produccion",
+    "publicar_costo_propio",
     "cambiar_caso",
     "administrar_cuentas",
     "administrar_empresa",

@@ -99,6 +99,21 @@ describe("Existencias de la arenera", () => {
     });
   });
 
+  describe("paso a la receta y al costo por tonelada (plan vial, Tarea 6)", () => {
+    test("la receta se ofrece a quien opera la arenera y el costo por tonelada a quien registra costos", async () => {
+      montar({ ...SESION, acciones: [...SESION.acciones, "registrar_costos_produccion"] });
+      await screen.findByText("Arena lavada");
+      expect(screen.getByRole("link", { name: "Receta de la planta" })).toHaveAttribute("href", "/receta_planta");
+      expect(screen.getByRole("link", { name: "Costo por tonelada" })).toHaveAttribute("href", "/costo_tonelada");
+    });
+
+    test("sin registrar costos no hay enlace al costo por tonelada, pero sí a la receta", async () => {
+      await conExistencias();
+      expect(screen.getByRole("link", { name: "Receta de la planta" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Costo por tonelada" })).not.toBeInTheDocument();
+    });
+  });
+
   describe("pestana Existencias", () => {
     test("mientras llegan los datos muestra un esqueleto anunciado", async () => {
       let soltar: () => void = () => {};
