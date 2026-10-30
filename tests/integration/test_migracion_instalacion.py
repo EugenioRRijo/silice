@@ -40,6 +40,7 @@ NUEVAS = {
     "prod_costo",
     "prod_receta",
     "prod_receta_componente",
+    "prod_calculo",
 }
 
 
