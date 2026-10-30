@@ -21,6 +21,7 @@ from produccion.costos import (
     anular_costo,
     costos_del_periodo,
     registrar_costo,
+    totales_por_centro,
 )
 from produccion.modelo import METADATA_PRODUCCION, Costo
 
@@ -194,3 +195,34 @@ def test_menos_cero_se_normaliza_a_cero(sesion: Session) -> None:
     registrar_costo(sesion, _costo(monto=D("-0")), usuario="ana", ahora=AHORA)
     [fila] = costos_del_periodo(sesion, "2026-11")
     assert str(fila.costo.monto) == "0"
+
+
+def test_totales_por_centro_y_moneda_suman_exacto_sin_convertir(sesion: Session) -> None:
+    """Oraculo a mano: cantera 1250.50 + 300 USD = 1550.50; planta 800 Bs va aparte."""
+    registrar_costo(sesion, _costo(), usuario="ana", ahora=AHORA)
+    registrar_costo(sesion, _costo(monto=D("300"), concepto="equipo"), usuario="ana", ahora=AHORA)
+    registrar_costo(
+        sesion,
+        _costo(centro="planta", concepto="nomina", monto=D("800"), moneda="Bs"),
+        usuario="ana",
+        ahora=AHORA,
+    )
+    registrar_costo(sesion, _costo(monto=D("5"), moneda="Bs"), usuario="ana", ahora=AHORA)
+    assert totales_por_centro(sesion, "2026-11") == [
+        ("cantera", "Bs", D("5")),
+        ("cantera", "USD", D("1550.50")),
+        ("planta", "Bs", D("800")),
+    ]
+
+
+def test_los_totales_no_cuentan_un_anulado_ni_su_anulacion(sesion: Session) -> None:
+    registrar_costo(sesion, _costo(), usuario="ana", ahora=AHORA)
+    malo = registrar_costo(sesion, _costo(monto=D("300")), usuario="ana", ahora=AHORA)
+    anular_costo(sesion, malo, motivo="duplicado", usuario="ana", ahora=AHORA)
+    assert totales_por_centro(sesion, "2026-11") == [("cantera", "USD", D("1250.50"))]
+
+
+def test_totales_de_un_periodo_vacio_o_invalido(sesion: Session) -> None:
+    assert totales_por_centro(sesion, "2026-10") == []
+    with pytest.raises(ValueError, match="periodo"):
+        totales_por_centro(sesion, "noviembre")

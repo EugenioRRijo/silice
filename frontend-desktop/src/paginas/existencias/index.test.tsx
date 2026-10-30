@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import { AYUDA_CIFRAS, MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
 import type { SesionRespuesta } from "../../api/tipos";
+import { MemoryRouter } from "react-router";
 import { ContextoAplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaExistencias from "./index";
@@ -36,12 +37,14 @@ describe("Existencias de la arenera", () => {
   let alExpirar: ReturnType<typeof vi.fn<() => void>>;
   let usuario: Usuario;
 
-  function montar() {
+  function montar(sesion: SesionRespuesta = SESION) {
     render(
       <ContextoAplicacion.Provider
-        value={{ sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar }}
+        value={{ sesion, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar }}
       >
-        <PaginaExistencias />
+        <MemoryRouter>
+          <PaginaExistencias />
+        </MemoryRouter>
       </ContextoAplicacion.Provider>,
     );
   }
@@ -80,6 +83,19 @@ describe("Existencias de la arenera", () => {
       const pestanas = screen.getAllByRole("tab").map((t) => t.textContent);
       expect(pestanas).toEqual(["Existencias", "Registrar", "Importar báscula", "Pesajes sospechosos"]);
       expect(screen.getByRole("tab", { name: "Existencias" })).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  describe("paso a «Costos del período»", () => {
+    test("con la acción de registrar costos hay un enlace a la pantalla", async () => {
+      montar({ ...SESION, acciones: [...SESION.acciones, "registrar_costos_produccion"] });
+      await screen.findByText("Arena lavada");
+      expect(screen.getByRole("link", { name: "Costos del período" })).toHaveAttribute("href", "/costos");
+    });
+
+    test("sin ella no hay enlace", async () => {
+      await conExistencias();
+      expect(screen.queryByRole("link", { name: "Costos del período" })).not.toBeInTheDocument();
     });
   });
 

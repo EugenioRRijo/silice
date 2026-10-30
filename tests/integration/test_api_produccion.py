@@ -63,6 +63,7 @@ RUTAS = [
     ("POST", "/v1/produccion/pesajes-sospechosos/1/descartar"),
     ("POST", "/v1/produccion/costos"),
     ("GET", "/v1/produccion/costos"),
+    ("GET", "/v1/produccion/costos/totales"),
     ("POST", "/v1/produccion/costos/1/anular"),
 ]
 

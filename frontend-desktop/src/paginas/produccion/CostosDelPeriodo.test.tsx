@@ -71,6 +71,7 @@ type Usuario = ReturnType<typeof userEvent.setup>;
 describe("Costos del período", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let lista: (consulta: URLSearchParams) => Response;
+  let totales: (consulta: URLSearchParams) => Response;
   let alta: () => Response;
   let anulacion: () => Response;
   let usuario: Usuario;
@@ -91,6 +92,8 @@ describe("Costos del período", () => {
       .filter((c) => (c[1]?.method ?? "GET") === metodo)
       .map((c) => ({ ruta: String(c[0]), cuerpo: c[1]?.body ? JSON.parse(String(c[1].body)) : null }));
 
+  const listas = () => peticiones("GET").filter((p) => !p.ruta.includes("/totales"));
+
   async function abrirRegistro() {
     await usuario.click(screen.getByRole("button", { name: "Registrar un costo" }));
     return screen.getByRole("dialog", { name: "Registrar un costo" });
@@ -99,6 +102,14 @@ describe("Costos del período", () => {
   // La moneda no tiene valor por defecto: se elige siempre.
   async function elegirMoneda(dialogo: HTMLElement, moneda = "USD") {
     await usuario.selectOptions(within(dialogo).getByLabelText("Moneda"), moneda);
+  }
+  // El centro tampoco tiene valor por defecto: de él depende a qué producto se reparte el costo.
+  async function elegirCentro(dialogo: HTMLElement, centro = "cantera") {
+    await usuario.selectOptions(within(dialogo).getByLabelText("Centro"), centro);
+  }
+  async function elegirCentroYMoneda(dialogo: HTMLElement) {
+    await elegirCentro(dialogo);
+    await elegirCentroYMoneda(dialogo);
   }
 
   beforeEach(() => {
@@ -110,11 +121,18 @@ describe("Costos del período", () => {
     fetchFalso.mockReset();
     vi.stubGlobal("fetch", fetchFalso);
     lista = () => json(COSTOS);
+    // Los totales los calcula el servidor (la interfaz no suma montos).
+    totales = () =>
+      json([
+        { centro: "cantera", moneda: "USD", total: "1550.50" },
+        { centro: "planta", moneda: "Bs", total: "800" },
+      ]);
     alta = () => json({ id: 9 }, 201);
     anulacion = () => json({ id: 10 }, 201);
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = new URL(String(entrada), "http://prueba");
       const metodo = init?.method ?? "GET";
+      if (url.pathname === "/v1/produccion/costos/totales" && metodo === "GET") return totales(url.searchParams);
       if (url.pathname === "/v1/produccion/costos" && metodo === "GET") return lista(url.searchParams);
       if (url.pathname === "/v1/produccion/costos" && metodo === "POST") return alta();
       if (/\/costos\/\d+\/anular$/.test(url.pathname) && metodo === "POST") return anulacion();
@@ -134,14 +152,23 @@ describe("Costos del período", () => {
     expect(within(totales).getByText("Cantera: 1.550,50 USD")).toBeInTheDocument();
     expect(within(totales).getByText("Planta: 800,00 Bs")).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Gasoil/ })).toHaveTextContent("1.250,50");
-    expect(peticiones("GET")[0].ruta).toBe("/v1/produccion/costos?periodo=2026-11");
+    expect(listas()[0].ruta).toBe("/v1/produccion/costos?periodo=2026-11");
+    expect(peticiones("GET").map((p) => p.ruta)).toContain("/v1/produccion/costos/totales?periodo=2026-11");
+  });
+
+  test("los totales son los del servidor: la pantalla solo les da formato", async () => {
+    totales = () => json([{ centro: "cantera", moneda: "USD", total: "99999.99" }]);
+    montar();
+    expect(await screen.findByText("Cantera: 99.999,99 USD")).toBeInTheDocument();
   });
 
   test("cambiar el mes pide ese mes", async () => {
     montar();
     await screen.findByText("Cantera: 1.550,50 USD");
     fireEvent.change(screen.getByLabelText("Mes"), { target: { value: "2026-10" } });
-    await waitFor(() => expect(peticiones("GET").map((p) => p.ruta)).toContain("/v1/produccion/costos?periodo=2026-10"));
+    await waitFor(() => expect(peticiones("GET").map((p) => p.ruta)).toEqual(
+        expect.arrayContaining(["/v1/produccion/costos?periodo=2026-10", "/v1/produccion/costos/totales?periodo=2026-10"]),
+      ));
   });
 
   test("escribe el monto con coma y lo envía con punto", async () => {
@@ -149,7 +176,7 @@ describe("Costos del período", () => {
     await screen.findByText("Cantera: 1.550,50 USD");
     const dialogo = await abrirRegistro();
     await usuario.type(within(dialogo).getByLabelText("Monto"), "1.250,50");
-    await elegirMoneda(dialogo);
+    await elegirCentroYMoneda(dialogo);
     await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     await waitFor(() => expect(peticiones("POST")).toHaveLength(1));
@@ -165,7 +192,8 @@ describe("Costos del período", () => {
     });
     expect(peticiones("POST")[0].cuerpo).not.toHaveProperty("ahora");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(peticiones("GET")).toHaveLength(2); // recargó la lista
+    expect(listas()).toHaveLength(2); // recargó la lista
+    expect(peticiones("GET")).toHaveLength(4); // y los totales
   });
 
   test.each(["diez", "1,2,3", "1.2", ""])("el monto «%s» no se envía y dice por qué", async (monto) => {
@@ -173,10 +201,24 @@ describe("Costos del período", () => {
     await screen.findByText("Cantera: 1.550,50 USD");
     const dialogo = await abrirRegistro();
     if (monto) await usuario.type(within(dialogo).getByLabelText("Monto"), monto);
+    await elegirCentroYMoneda(dialogo);
+    await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
+    await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
+    expect(
+      await within(dialogo).findByText(/^(Escriba el monto|El monto está mal escrito)/, { selector: ".cds--form-requirement" }),
+    ).toBeInTheDocument();
+    expect(peticiones("POST")).toHaveLength(0);
+  });
+
+  test("sin elegir el centro no se envía", async () => {
+    montar();
+    await screen.findByText("Cantera: 1.550,50 USD");
+    const dialogo = await abrirRegistro();
+    await usuario.type(within(dialogo).getByLabelText("Monto"), "10");
     await elegirMoneda(dialogo);
     await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
-    expect((await within(dialogo).findAllByText(/^(Escriba el monto|El monto está mal escrito)/)).length).toBeGreaterThan(0);
+    expect(await within(dialogo).findByText("Elija el centro del costo.")).toBeInTheDocument();
     expect(peticiones("POST")).toHaveLength(0);
   });
 
@@ -184,6 +226,7 @@ describe("Costos del período", () => {
     montar();
     await screen.findByText("Cantera: 1.550,50 USD");
     const dialogo = await abrirRegistro();
+    await elegirCentro(dialogo);
     await usuario.type(within(dialogo).getByLabelText("Monto"), "10");
     await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
@@ -196,7 +239,7 @@ describe("Costos del período", () => {
     await screen.findByText("Cantera: 1.550,50 USD");
     const dialogo = await abrirRegistro();
     await usuario.type(within(dialogo).getByLabelText("Monto"), "10");
-    await elegirMoneda(dialogo);
+    await elegirCentroYMoneda(dialogo);
     fireEvent.change(within(dialogo).getByLabelText("Fecha"), { target: { value: "2026-12-01" } });
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     expect(await within(dialogo).findByText("La fecha debe caer en noviembre de 2026.")).toBeInTheDocument();
@@ -224,7 +267,7 @@ describe("Costos del período", () => {
     await screen.findByText("Cantera: 1.550,50 USD");
     const dialogo = await abrirRegistro();
     await usuario.type(within(dialogo).getByLabelText("Monto"), "10");
-    await elegirMoneda(dialogo);
+    await elegirCentroYMoneda(dialogo);
     await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 1");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     expect(await within(dialogo).findByText(texto)).toBeInTheDocument();
@@ -235,7 +278,7 @@ describe("Costos del período", () => {
   test("anular pide el motivo y no borra la fila hasta recargar", async () => {
     montar();
     await screen.findByText("Cantera: 1.550,50 USD");
-    await usuario.click(within(screen.getByRole("row", { name: /Equipo/ })).getByRole("button", { name: "Anular" }));
+    await usuario.click(within(screen.getByRole("row", { name: /Equipo/ })).getByRole("button", { name: /^Anular / }));
     const dialogo = screen.getByRole("dialog", { name: "Anular un costo" });
     // sin motivo no se envía
     await usuario.click(within(dialogo).getByRole("button", { name: "Anular costo" }));
@@ -245,23 +288,38 @@ describe("Costos del período", () => {
     let soltar: (r: Response) => void = () => undefined;
     const pendiente = new Promise<Response>((res) => (soltar = res));
     lista = () => json(COSTOS.filter((c) => c.id !== 2));
+    totales = () =>
+      json([
+        { centro: "cantera", moneda: "USD", total: "1250.50" },
+        { centro: "planta", moneda: "Bs", total: "800" },
+      ]);
     fetchFalso.mockImplementationOnce(async () => pendiente); // la anulación queda en vuelo
     await usuario.type(within(dialogo).getByLabelText("Motivo de la anulación"), "se cargó dos veces");
     await usuario.click(within(dialogo).getByRole("button", { name: "Anular costo" }));
-    await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(3)); // lista, totales y la anulación
     expect(screen.getByRole("row", { name: /Equipo/ })).toBeInTheDocument(); // sigue ahí mientras tanto
     soltar(json({ id: 10 }, 201));
     await waitFor(() => expect(screen.queryByRole("row", { name: /Equipo/ })).not.toBeInTheDocument());
     expect(screen.getByText("Cantera: 1.250,50 USD")).toBeInTheDocument();
-    expect(await screen.findByRole("status")).toHaveTextContent("Costo anulado.");
+    const aviso = await screen.findByRole("status");
+    expect(aviso).toHaveTextContent("Costo anulado.");
+    // El botón que tenía el foco desapareció con su fila: el foco pasa al aviso, no a BODY.
+    await waitFor(() => expect(aviso.closest("[tabindex='-1']")).toHaveFocus());
     expect(peticiones("POST")[0]).toEqual({ ruta: "/v1/produccion/costos/2/anular", cuerpo: { motivo: "se cargó dos veces" } });
+  });
+
+  test("cada botón de fila lleva su propio nombre, que empieza por lo que se ve", async () => {
+    montar();
+    await screen.findByText("Cantera: 1.550,50 USD");
+    expect(screen.getByRole("button", { name: "Anular Equipo de cantera del 03/11/2026 por 300,00 USD" })).toHaveTextContent("Anular");
+    expect(screen.getByRole("button", { name: "Anular Nómina de planta del 03/11/2026 por 800,00 Bs" })).toBeInTheDocument();
   });
 
   test("si la anulación falla, la fila queda y se dice por qué", async () => {
     anulacion = () => json({ detalle: "Ese costo ya fue anulado." }, 409);
     montar();
     await screen.findByText("Cantera: 1.550,50 USD");
-    await usuario.click(within(screen.getByRole("row", { name: /Equipo/ })).getByRole("button", { name: "Anular" }));
+    await usuario.click(within(screen.getByRole("row", { name: /Equipo/ })).getByRole("button", { name: /^Anular / }));
     const dialogo = screen.getByRole("dialog", { name: "Anular un costo" });
     await usuario.type(within(dialogo).getByLabelText("Motivo de la anulación"), "duplicado");
     await usuario.click(within(dialogo).getByRole("button", { name: "Anular costo" }));
@@ -280,16 +338,17 @@ describe("Costos del período", () => {
             ]
           : [fila(1)],
       );
+    totales = () => json([{ centro: "cantera", moneda: "USD", total: "1250.50" }]);
     montar();
     await screen.findByText("Cantera: 1.250,50 USD");
     expect(screen.queryByText("se cargó dos veces")).not.toBeInTheDocument();
     await usuario.click(screen.getByRole("checkbox", { name: "Mostrar anulados" }));
     expect(await screen.findByText("se cargó dos veces")).toBeInTheDocument();
-    expect(peticiones("GET").at(-1)?.ruta).toBe("/v1/produccion/costos?periodo=2026-11&incluir_anulados=true");
+    expect(listas().at(-1)?.ruta).toBe("/v1/produccion/costos?periodo=2026-11&incluir_anulados=true");
     expect(screen.getAllByText("Anulado").length).toBeGreaterThan(0);
     expect(screen.getByText("Anulación")).toBeInTheDocument();
     expect(screen.getByText("Cantera: 1.250,50 USD")).toBeInTheDocument(); // los anulados no suman
-    expect(screen.getAllByRole("button", { name: "Anular" })).toHaveLength(1); // solo el vigente
+    expect(screen.getAllByRole("button", { name: /^Anular / })).toHaveLength(1); // solo el vigente
   });
 
   test("sin la acción no aparece Registrar y no se pide nada", () => {

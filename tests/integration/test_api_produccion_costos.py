@@ -206,3 +206,32 @@ def test_la_lista_trae_el_motivo_de_la_anulacion(http) -> None:
         i: ("", None),
         n: ("duplicado", i),
     }
+
+
+def test_totales_por_centro_y_moneda(http) -> None:
+    """Oraculo a mano: cantera 1250.50 + 300 USD = 1550.50; planta 800 Bs aparte; el anulado y su
+    anulacion no suman."""
+    http.post("/v1/produccion/costos", json=_cuerpo())
+    http.post("/v1/produccion/costos", json=_cuerpo(monto="300", concepto="equipo"))
+    http.post(
+        "/v1/produccion/costos",
+        json=_cuerpo(centro="planta", concepto="nomina", monto="800", moneda="Bs"),
+    )
+    malo = http.post("/v1/produccion/costos", json=_cuerpo(monto="77")).json()["id"]
+    http.post(f"/v1/produccion/costos/{malo}/anular", json={"motivo": "duplicado"})
+    r = http.get("/v1/produccion/costos/totales", params={"periodo": "2026-11"})
+    assert r.status_code == 200, r.text
+    assert r.json() == [
+        {"centro": "cantera", "moneda": "USD", "total": "1550.50"},
+        {"centro": "planta", "moneda": "Bs", "total": "800"},
+    ]
+
+
+def test_totales_de_un_periodo_vacio_o_invalido(http) -> None:
+    assert http.get("/v1/produccion/costos/totales", params={"periodo": "2026-10"}).json() == []
+    assert http.get("/v1/produccion/costos/totales", params={"periodo": "noviembre"}).status_code == 422
+
+
+def test_totales_revisa_recibe_403(_instalacion_de_la_prueba) -> None:
+    r = Web("rita").get("/v1/produccion/costos/totales", params={"periodo": "2026-11"})
+    assert r.status_code == 403, r.text
