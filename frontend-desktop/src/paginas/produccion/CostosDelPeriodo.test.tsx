@@ -109,7 +109,7 @@ describe("Costos del período", () => {
   }
   async function elegirCentroYMoneda(dialogo: HTMLElement) {
     await elegirCentro(dialogo);
-    await elegirCentroYMoneda(dialogo);
+    await elegirMoneda(dialogo);
   }
 
   beforeEach(() => {

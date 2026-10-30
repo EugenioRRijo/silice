@@ -40,6 +40,18 @@ export function listarCostos(periodo: string, incluirAnulados = false, senal?: A
   return pedir<CostoRespuesta[]>(`${RUTA}?${consulta}`, { senal });
 }
 
+export interface TotalDeCostos {
+  centro: string;
+  moneda: string;
+  // Decimal con punto: la suma exacta de los costos vigentes que calcula el servidor.
+  total: string;
+}
+
+// Total vigente del mes por centro y moneda, sin convertir moneda. Lo calcula el servidor: la interfaz no suma montos.
+export function totalesDeCostos(periodo: string, senal?: AbortSignal): Promise<TotalDeCostos[]> {
+  return pedir<TotalDeCostos[]>(`${RUTA}/totales?periodo=${encodeURIComponent(periodo)}`, { senal });
+}
+
 export function registrarCosto(costo: CostoNuevo): Promise<{ id: number }> {
   return pedir<{ id: number }>(RUTA, { metodo: "POST", cuerpo: costo });
 }

@@ -1,5 +1,5 @@
 import { Button, Checkbox, InlineNotification } from "@carbon/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CostoRespuesta } from "../../api/costos";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -9,7 +9,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { hoyISO } from "../existencias/formato";
 import { DialogoAnular } from "./DialogoAnular";
 import { FormularioDeCosto } from "./FormularioDeCosto";
-import { CENTROS, CONCEPTOS, mensajeDeCostos, mostrarMonto, nombreDelMes, periodoValido, rotulo, totalesPorCentro } from "./logica";
+import { CENTROS, CONCEPTOS, fechaEsVe, mensajeDeCostos, mostrarMonto, nombreDelMes, periodoValido, rotulo } from "./logica";
 import { useCostos } from "./useCostos";
 import "./costos.scss";
 
@@ -21,8 +21,9 @@ function estadoDe(c: CostoRespuesta): string {
 }
 
 // «Costos del período»: lo que cuesta la cantera y la planta cada mes, con su fuente. Registrar y anular van por
-// diálogos; anular no borra, deja el costo marcado con su motivo. La lista y los totales los calcula el servidor y la
-// pantalla; nada se quita de la tabla hasta que la lista vuelve a leerse.
+// diálogos; anular no borra, deja el costo marcado con su motivo. La lista y los totales por centro y moneda los manda
+// el servidor (la pantalla no suma montos, solo les da formato); nada se quita de la tabla hasta que la lista vuelve a
+// leerse, y entonces el foco pasa al aviso para no perderse con la fila que desaparece.
 export default function CostosDelPeriodo() {
   const { alExpirar, sesion } = useAplicacion();
   const puede = sesion.acciones.includes(ACCION);
@@ -36,6 +37,14 @@ export default function CostosDelPeriodo() {
   const valido = periodoValido(periodo);
   const costos = useCostos(puede && valido ? periodo : null, conAnulados, version, alExpirar);
   const recargar = useCallback(() => setVersion((n) => n + 1), []);
+  const datos = costos.estado === "listo" ? costos.datos : null;
+
+  // Al registrar o anular, el botón que tenía el foco se va con el diálogo o con su fila: el foco queda en el aviso
+  // cuando la lista nueva llega, no en BODY.
+  const cajaDelAviso = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (aviso) cajaDelAviso.current?.focus();
+  }, [aviso, datos]);
 
   const columnas = useMemo<ColumnaDensa[]>(
     () => [
@@ -55,7 +64,12 @@ export default function CostosDelPeriodo() {
           const costo = costos.estado === "listo" ? costos.datos.find((c) => String(c.id) === fila.id) : undefined;
           if (!costo || costo.anulado) return null;
           return (
-            <Button kind="ghost" size="sm" onClick={() => setAnulando(costo)}>
+            <Button
+              kind="ghost"
+              size="sm"
+              aria-label={`Anular ${rotulo(CONCEPTOS, costo.concepto)} de ${rotulo(CENTROS, costo.centro).toLowerCase()} del ${fechaEsVe(costo.fecha)} por ${mostrarMonto(costo.monto)} ${costo.moneda}`}
+              onClick={() => setAnulando(costo)}
+            >
               Anular
             </Button>
           );
@@ -91,20 +105,37 @@ export default function CostosDelPeriodo() {
           accion: "",
         }))
       : [];
-  const totales = costos.estado === "listo" ? totalesPorCentro(costos.datos) : [];
+  const totales = costos.estado === "listo" ? costos.totales : [];
 
   return (
     <div className="costos silice-pagina">
       <h1 className="cds--type-heading-04">Costos del período</h1>
       <div className="costos-barra">
-        <CampoTexto id="costos-mes" type="month" labelText="Mes" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
-        <Checkbox id="costos-anulados" labelText="Mostrar anulados" checked={conAnulados} onChange={(_, { checked }) => setConAnulados(checked)} />
+        <CampoTexto id="costos-mes" type="month" labelText="Mes" value={periodo} onChange={(e) => {
+            setPeriodo(e.target.value);
+            setAviso(null);
+          }} />
+        <Checkbox id="costos-anulados" labelText="Mostrar anulados" checked={conAnulados} onChange={(_, { checked }) => {
+            setConAnulados(checked);
+            setAviso(null);
+          }} />
         <Button kind="primary" size="md" disabled={!valido} onClick={() => setRegistrando(true)}>
           Registrar un costo
         </Button>
       </div>
       {aviso && (
-        <InlineNotification kind="success" role="status" lowContrast title={aviso} onClose={() => { setAviso(null); return false; }} />
+        <div ref={cajaDelAviso} tabIndex={-1}>
+          <InlineNotification
+            kind="success"
+            role="status"
+            lowContrast
+            title={aviso}
+            onClose={() => {
+              setAviso(null);
+              return false;
+            }}
+          />
+        </div>
       )}
       {!valido && <p className="costos-nota cds--type-body-compact-01">Elija el mes de los costos que quiere ver.</p>}
       {valido && costos.estado === "error" && <AvisoError error={mensajeDeCostos(costos.error)} titulo="No se pudieron leer los costos" />}

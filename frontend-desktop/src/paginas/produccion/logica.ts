@@ -1,6 +1,8 @@
-// Lógica pura de «Costos del período»: leer lo que escribe la persona, sumar y decir en español. Los montos se
-// manejan como texto decimal y se suman con enteros grandes: nunca pasan por Number.
+// Lógica pura de «Costos del período»: leer lo que escribe la persona y decir en español. La interfaz no calcula
+// montos (los totales los suma el servidor): solo cambia cómo se escriben. Los montos son texto decimal y nunca
+// pasan por Number.
 import { ErrorDeApi } from "../../api/cliente";
+import { mensajeDeError } from "../../comun/errores";
 import { MENSAJE_CIFRA, leerCifra } from "../../indicadores/cifraEscrita";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
@@ -65,39 +67,10 @@ export function mostrarMonto(texto: string): string {
   return formatoEsVe(`${m[1]}.${(m[2] ?? "").padEnd(2, "0")}`);
 }
 
-interface FilaSumable {
-  centro: string;
-  monto: string;
-  moneda: string;
-  anulado: boolean;
-  anula_id: number | null;
-}
-
-export interface TotalDeCentro {
-  centro: string;
-  moneda: string;
-  total: string; // decimal con punto
-}
-
-// Los costos vigentes sumados por centro y moneda. Los anulados y sus filas de anulación no suman.
-export function totalesPorCentro(filas: readonly FilaSumable[]): TotalDeCentro[] {
-  const grupos = new Map<string, { centro: string; moneda: string; montos: [string, string][] }>();
-  for (const f of filas) {
-    const m = DECIMAL.exec(f.monto);
-    if (f.anulado || f.anula_id !== null || !m) continue;
-    const clave = `${f.centro}|${f.moneda}`;
-    const grupo = grupos.get(clave) ?? { centro: f.centro, moneda: f.moneda, montos: [] };
-    grupo.montos.push([m[1]!, m[2] ?? ""]);
-    grupos.set(clave, grupo);
-  }
-  return [...grupos.values()]
-    .map(({ centro, moneda, montos }) => {
-      const decimales = Math.max(2, ...montos.map(([, d]) => d.length));
-      const suma = montos.reduce((acc, [e, d]) => acc + BigInt(e + d.padEnd(decimales, "0")), 0n);
-      const texto = suma.toString().padStart(decimales + 1, "0");
-      return { centro, moneda, total: `${texto.slice(0, -decimales)}.${texto.slice(-decimales)}` };
-    })
-    .sort((a, b) => a.centro.localeCompare(b.centro) || a.moneda.localeCompare(b.moneda));
+// «2026-11-03» -> «03/11/2026».
+export function fechaEsVe(iso: string): string {
+  const [anio, mes, dia] = iso.split("-");
+  return anio && mes && dia ? `${dia}/${mes}/${anio}` : iso;
 }
 
 const SIN_DETALLE = /respondió con el estado \d+/;
@@ -105,10 +78,10 @@ const SIN_DETALLE = /respondió con el estado \d+/;
 // Lo que se le dice a la persona cuando la API rechaza una acción de costos: nunca el nombre de un estado ni el
 // cuerpo técnico de una validación. El `detalle` que escribe el servidor en español se muestra tal cual.
 export function mensajeDeCostos(error: unknown): string {
-  if (!(error instanceof ErrorDeApi)) return "Ocurrió un error inesperado. Inténtelo de nuevo.";
+  if (!(error instanceof ErrorDeApi)) return mensajeDeError(error);
   if (error.estado === 403) return "Su cuenta no tiene permiso para registrar costos.";
   if (error.estado === 404) return "Ese costo ya no existe.";
   if (error.estado === 422 && SIN_DETALLE.test(error.detalle)) return "Revise los datos: alguno no es válido.";
   if (error.estado === 409 && SIN_DETALLE.test(error.detalle)) return "Ese costo ya fue anulado.";
-  return error.detalle;
+  return mensajeDeError(error);
 }

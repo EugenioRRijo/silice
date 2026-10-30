@@ -20,6 +20,7 @@ interface Props {
 }
 
 interface Errores {
+  centro?: string;
   monto?: string;
   moneda?: string;
   fecha?: string;
@@ -29,11 +30,11 @@ interface Errores {
 const ID_FORMULARIO = "silice-costo-nuevo";
 
 // «Registrar un costo»: un costo de la cantera o de la planta en el mes abierto. Todo se valida aquí antes de
-// enviar; lo que la API rechaza se dice en español. La moneda no tiene valor por defecto: un monto sin su moneda
-// no es un dato.
+// enviar; lo que la API rechaza se dice en español. El centro y la moneda no tienen valor por defecto: de ellos
+// depende a qué producto se reparte el costo y un monto sin moneda no es un dato.
 export function FormularioDeCosto({ periodo, alCerrar, alRegistrar, alExpirar }: Props): JSX.Element {
   const base = useId();
-  const [centro, setCentro] = useState(CENTROS[0]!.valor);
+  const [centro, setCentro] = useState("");
   const [concepto, setConcepto] = useState(CONCEPTOS[0]!.valor);
   const [monto, setMonto] = useState("");
   const [moneda, setMoneda] = useState("");
@@ -49,6 +50,7 @@ export function FormularioDeCosto({ periodo, alCerrar, alRegistrar, alExpirar }:
     setError(null);
     const lectura = leerMonto(monto);
     const nuevos: Errores = {};
+    if (centro === "") nuevos.centro = "Elija el centro del costo.";
     if ("error" in lectura) nuevos.monto = lectura.error;
     if (moneda === "") nuevos.moneda = "Elija la moneda del monto.";
     if (!fecha.startsWith(`${periodo}-`)) nuevos.fecha = `La fecha debe caer en ${nombreDelMes(periodo)}.`;
@@ -86,7 +88,15 @@ export function FormularioDeCosto({ periodo, alCerrar, alRegistrar, alExpirar }:
     >
       <form id={ID_FORMULARIO} className="costos-formulario" onSubmit={(e) => void enviar(e)} noValidate>
         <p className="costos-nota cds--type-body-compact-01">Se registra en {nombreDelMes(periodo)}.</p>
-        <Select id={`${base}-centro`} labelText="Centro" value={centro} onChange={(e) => setCentro(e.target.value)}>
+        <Select
+          id={`${base}-centro`}
+          labelText="Centro"
+          value={centro}
+          onChange={(e) => setCentro(e.target.value)}
+          invalid={errores.centro !== undefined}
+          invalidText={errores.centro ?? ""}
+        >
+          <SelectItem value="" text="Elija el centro" />
           {CENTROS.map((c) => (
             <SelectItem key={c.valor} value={c.valor} text={c.texto} />
           ))}

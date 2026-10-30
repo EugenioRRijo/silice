@@ -39,7 +39,7 @@ describe("mensajeDeCostos", () => {
     expect(mensajeDeCostos(new ErrorDeApi(422, "El programa de Sílice respondió con el estado 422."))).toBe(
       "Revise los datos: alguno no es válido.",
     );
-    expect(mensajeDeCostos("algo que no es de la API")).toBe(MENSAJE_INESPERADO);
+    expect(mensajeDeCostos(new Error("detalle interno"))).toBe(MENSAJE_INESPERADO);
     expect(mensajeDeCostos(new ErrorDeApi(0, "No se pudo hablar con el programa de Sílice. Compruebe que esté encendido."))).toBe(
       "No se pudo hablar con el programa de Sílice. Compruebe que esté encendido.",
     );
