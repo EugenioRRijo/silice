@@ -148,3 +148,31 @@
 - **Ajuste en el verde**: dos oráculos del commit de prueba estaban mal escritos (el código largo del
   caso de prueba es una mezcla, o sea `MZP-…`; y el usuario guardado es el nombre completo de la
   cuenta) y se corrigieron junto con la implementación.
+
+## Menores del cierre
+
+Quince menores de los árbitros de las Tareas 1 a 6. Ninguno cambia un contrato: `docs/api.json`
+regenerado con `scripts/exportar_openapi.py` queda idéntico y `core/` no se toca. Commits de prueba
+en rojo: `076c664c` (servidor) y `751deb69` (front); arreglos: `cdefca7e` y `5e925c7a` (servidor) y
+el commit de front de este cierre.
+
+| # | Punto | Estado |
+|---|-------|--------|
+| 1 | `CostoDelPeriodo`: normalizar solo el cero (`copy_abs`), no `+ Decimal(0)` | Hecho, `cdefca7e`; prueba con 29 cifras y `-0` |
+| 2 | Prueba «mitad al par» con densidad 2 (0,0001 t a 0,0000; 0,0003 t a 0,0002) | Hecho, `076c664c`; no tenía rojo posible: el código ya era mitad al par, la prueba ahora distingue de HALF_UP |
+| 3 | Tope de 50 componentes y cuantización a 4 decimales como constantes de `fuentes.py` | Hecho, `cdefca7e`. Nombres `MAX_COMPONENTES` y `CUANTO_T_A_M3` (`MAX_FILAS` ya existe: 100000 filas de báscula). `CUATRO_DECIMALES` sale de `inventario.py` (la homónima de `hoja_partidas.py` es otra, queda) |
+| 4 | Adopción: comparar el `sql` de `prod_movimiento` antes y después | Hecho, `076c664c` |
+| 5 | Prueba de 51 pesos que daba 422 sin el tope | Hecho, `076c664c`: renombrada a lo que prueba («pesos sin materiales es 422 y no guarda nada»); el tope ya lo prueba `test_el_tope_de_pesos_es_50` |
+| 6 | 403 de la clave al publicar | Hecho con el 12 (servidor sin cambios, como se pidió) |
+| 7 | Columna Fecha con `fechaEsVe` | Hecho vía `presentar` de la columna: se ve 03/11/2026 y el orden sigue siendo el ISO |
+| 8 | Sangría de los `onChange` y comentario de `useCostos.ts` a 120 columnas | Hecho |
+| 9 | `AvisoConFoco` común a los tres | Hecho; las pruebas de foco existentes pasan sin tocarlas |
+| 10 | `SIN_DETALLE` una sola vez | Hecho: exportado de `logica.ts` y usado en `logicaPlanta.ts`. Los mensajes por estado difieren (costos y planta), así que solo se comparte la expresión |
+| 11 | Enlaces «Costos del período · Costo por tonelada» | Hecho: `comun/EnlacesDeCostos.tsx`; cada pantalla conserva su condición `puedeRegistrarCostos` |
+| 12 | 401 al leer la empresa llama a `alExpirar`; 403 al publicar con texto propio | Hecho (`mensajeAlPublicar` en `logicaPlanta.ts`) |
+| 13 | Ruta a `fuentes.py` con `import.meta.url` | Hecho; además `engines` sube a `>=22.3` (`process.getBuiltinModule` existe desde Node 22.3) en `package.json` y `package-lock.json` |
+| 14 | Coincidencia de `fuenteDelPrecio` y `nombreDeLista` con `costo_propio.py` | Hecho: la prueba lee el .py y busca las dos plantillas |
+| 15 | El mes de «Costo por tonelada» arranca en el mes anterior | Hecho: `mesAnterior()` en `logica.ts`, con prueba del cambio de año |
+
+Pendiente para la Tarea 20 (no tocado): códigos de producto y componente como texto libre a
+`comun/CampoConBusqueda`.

@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { EnlacesDeCostos } from "../../comun/EnlacesDeCostos";
 import { useAplicacion } from "../../shell/contexto";
 import { PanelArenera } from "../inicio/PanelArenera";
 import type { ExistenciaRespuesta } from "../inicio/PanelArenera";
@@ -31,17 +32,7 @@ export default function PaginaProduccion() {
           </Link>
         </p>
       )}
-      {puedeRegistrarCostos && (
-        <p className="cds--type-body-compact-01">
-          <Link className="cds--link" to="/costos">
-            Costos del período
-          </Link>{" "}
-          ·{" "}
-          <Link className="cds--link" to="/costo_tonelada">
-            Costo por tonelada
-          </Link>
-        </p>
-      )}
+      {puedeRegistrarCostos && <EnlacesDeCostos />}
     </div>
   );
 }

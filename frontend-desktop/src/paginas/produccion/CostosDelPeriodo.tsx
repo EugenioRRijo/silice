@@ -1,5 +1,5 @@
-import { Button, Checkbox, InlineNotification } from "@carbon/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Checkbox } from "@carbon/react";
+import { useCallback, useMemo, useState } from "react";
 import type { CostoRespuesta } from "../../api/costos";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -7,6 +7,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
 import { hoyISO } from "../existencias/formato";
+import { AvisoConFoco } from "./AvisoConFoco";
 import { DialogoAnular } from "./DialogoAnular";
 import { FormularioDeCosto } from "./FormularioDeCosto";
 import { CENTROS, CONCEPTOS, fechaEsVe, mensajeDeCostos, mostrarMonto, nombreDelMes, periodoValido, rotulo } from "./logica";
@@ -39,16 +40,9 @@ export default function CostosDelPeriodo() {
   const recargar = useCallback(() => setVersion((n) => n + 1), []);
   const datos = costos.estado === "listo" ? costos.datos : null;
 
-  // Al registrar o anular, el botón que tenía el foco se va con el diálogo o con su fila: el foco queda en el aviso
-  // cuando la lista nueva llega, no en BODY.
-  const cajaDelAviso = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (aviso) cajaDelAviso.current?.focus();
-  }, [aviso, datos]);
-
   const columnas = useMemo<ColumnaDensa[]>(
     () => [
-      { clave: "fecha", titulo: "Fecha" },
+      { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },
       { clave: "centro", titulo: "Centro" },
       { clave: "concepto", titulo: "Concepto" },
       { clave: "monto", titulo: "Monto", numerica: true, presentar: mostrarMonto },
@@ -111,32 +105,30 @@ export default function CostosDelPeriodo() {
     <div className="costos silice-pagina">
       <h1 className="cds--type-heading-04">Costos del período</h1>
       <div className="costos-barra">
-        <CampoTexto id="costos-mes" type="month" labelText="Mes" value={periodo} onChange={(e) => {
+        <CampoTexto
+          id="costos-mes"
+          type="month"
+          labelText="Mes"
+          value={periodo}
+          onChange={(e) => {
             setPeriodo(e.target.value);
             setAviso(null);
-          }} />
-        <Checkbox id="costos-anulados" labelText="Mostrar anulados" checked={conAnulados} onChange={(_, { checked }) => {
+          }}
+        />
+        <Checkbox
+          id="costos-anulados"
+          labelText="Mostrar anulados"
+          checked={conAnulados}
+          onChange={(_, { checked }) => {
             setConAnulados(checked);
             setAviso(null);
-          }} />
+          }}
+        />
         <Button kind="primary" size="md" disabled={!valido} onClick={() => setRegistrando(true)}>
           Registrar un costo
         </Button>
       </div>
-      {aviso && (
-        <div ref={cajaDelAviso} tabIndex={-1}>
-          <InlineNotification
-            kind="success"
-            role="status"
-            lowContrast
-            title={aviso}
-            onClose={() => {
-              setAviso(null);
-              return false;
-            }}
-          />
-        </div>
-      )}
+      <AvisoConFoco aviso={aviso} alCerrar={() => setAviso(null)} refoco={datos} />
       {!valido && <p className="costos-nota cds--type-body-compact-01">Elija el mes de los costos que quiere ver.</p>}
       {valido && costos.estado === "error" && <AvisoError error={mensajeDeCostos(costos.error)} titulo="No se pudieron leer los costos" />}
       {valido && costos.estado === "cargando" && <TablaDensa etiqueta="Costos del período" columnas={columnas} filas={[]} cargando />}

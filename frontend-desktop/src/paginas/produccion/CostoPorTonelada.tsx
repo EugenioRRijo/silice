@@ -1,4 +1,4 @@
-import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import { calcularCosto } from "../../api/produccionPlanta";
@@ -7,9 +7,9 @@ import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { hoyISO } from "../existencias/formato";
+import { AvisoConFoco } from "./AvisoConFoco";
 import { ErrorDeCalculo } from "./ErrorDeCalculo";
-import { MONEDAS, nombreDelMes, periodoValido } from "./logica";
+import { MONEDAS, mesAnterior, nombreDelMes, periodoValido } from "./logica";
 import { mensajeDePlanta } from "./logicaPlanta";
 import { PublicarCosto } from "./PublicarCosto";
 import { ResultadoDelCalculo } from "./ResultadoDelCalculo";
@@ -27,7 +27,7 @@ export default function CostoPorTonelada() {
   const { alExpirar, sesion } = useAplicacion();
   const puede = sesion.acciones.includes(ACCION);
   const puedePublicar = sesion.acciones.includes(ACCION_PUBLICAR);
-  const [periodo, setPeriodo] = useState(() => hoyISO().slice(0, 7));
+  const [periodo, setPeriodo] = useState(() => mesAnterior());
   const [moneda, setMoneda] = useState("");
   const [calculo, setCalculo] = useState<CalculoDeCosto | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -35,7 +35,6 @@ export default function CostoPorTonelada() {
   const [aviso, setAviso] = useState<string | null>(null);
   const region = useRef<HTMLElement>(null);
   const cajaDelError = useRef<HTMLDivElement>(null);
-  const cajaDelAviso = useRef<HTMLDivElement>(null);
 
   const valido = periodoValido(periodo);
   const producido = useProducido(puede && valido ? periodo : null, alExpirar);
@@ -47,9 +46,6 @@ export default function CostoPorTonelada() {
   useEffect(() => {
     if (error !== null) cajaDelError.current?.focus();
   }, [error]);
-  useEffect(() => {
-    if (aviso) cajaDelAviso.current?.focus();
-  }, [aviso]);
 
   // Un resultado de otro mes o de otra moneda no puede quedar a la vista como si fuera el de ahora.
   function cambiarDatos(accion: () => void) {
@@ -129,20 +125,7 @@ export default function CostoPorTonelada() {
           )}
         </>
       )}
-      {aviso && (
-        <div ref={cajaDelAviso} tabIndex={-1}>
-          <InlineNotification
-            kind="success"
-            role="status"
-            lowContrast
-            title={aviso}
-            onClose={() => {
-              setAviso(null);
-              return false;
-            }}
-          />
-        </div>
-      )}
+      <AvisoConFoco aviso={aviso} alCerrar={() => setAviso(null)} />
       <ErrorDeCalculo error={error} titulo="No se pudo calcular el costo" caja={cajaDelError} />
       {calculo && (
         <ResultadoDelCalculo calculo={calculo} region={region}>

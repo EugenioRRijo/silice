@@ -67,13 +67,20 @@ export function mostrarMonto(texto: string): string {
   return formatoEsVe(`${m[1]}.${(m[2] ?? "").padEnd(2, "0")}`);
 }
 
+// El mes ya cerrado respecto de `ahora` (AAAA-MM), también a través del cambio de año.
+export function mesAnterior(ahora: Date = new Date()): string {
+  const mes = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+  return `${mes.getFullYear()}-${String(mes.getMonth() + 1).padStart(2, "0")}`;
+}
+
 // «2026-11-03» -> «03/11/2026».
 export function fechaEsVe(iso: string): string {
   const [anio, mes, dia] = iso.split("-");
   return anio && mes && dia ? `${dia}/${mes}/${anio}` : iso;
 }
 
-const SIN_DETALLE = /respondió con el estado \d+/;
+// El cuerpo que arma el cliente cuando el servidor no mandó un `detalle` en español.
+export const SIN_DETALLE = /respondió con el estado \d+/;
 
 // Lo que se le dice a la persona cuando la API rechaza una acción de costos: nunca el nombre de un estado ni el
 // cuerpo técnico de una validación. El `detalle` que escribe el servidor en español se muestra tal cual.

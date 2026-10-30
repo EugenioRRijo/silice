@@ -1,6 +1,7 @@
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { EnlacesDeCostos } from "../../comun/EnlacesDeCostos";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
 import { SIN_PERMISO } from "./fallos";
@@ -72,17 +73,7 @@ export default function PaginaExistencias() {
           Receta de la planta
         </Link>
       </p>
-      {puedeRegistrarCostos && (
-        <p className="cds--type-body-compact-01">
-          <Link className="cds--link" to="/costos">
-            Costos del período
-          </Link>{" "}
-          ·{" "}
-          <Link className="cds--link" to="/costo_tonelada">
-            Costo por tonelada
-          </Link>
-        </p>
-      )}
+      {puedeRegistrarCostos && <EnlacesDeCostos />}
       <Tabs selectedIndex={pestana} onChange={({ selectedIndex }) => setPestana(selectedIndex)}>
         <TabList aria-label="Secciones de la arenera">
           <Tab>Existencias</Tab>

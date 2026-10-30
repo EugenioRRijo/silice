@@ -7,7 +7,7 @@ import { empresaDeAdministracion, publicarCalculo } from "../../api/produccionPl
 import type { CalculoDeCosto, EmpresaDeAdministracion } from "../../api/produccionPlanta";
 import { AvisoError } from "../../comun/AvisoError";
 import { MarcoDeDialogo } from "../../shell/carpetas/MarcoDeDialogo";
-import { fuenteDelPrecio, mensajeDePlanta, nombreDeLista, pideConfigurarEmpresa } from "./logicaPlanta";
+import { fuenteDelPrecio, mensajeAlPublicar, nombreDeLista, pideConfigurarEmpresa } from "./logicaPlanta";
 
 interface Props {
   calculo: CalculoDeCosto;
@@ -33,12 +33,14 @@ export function PublicarCosto({ calculo, alPublicar, alExpirar }: Props): JSX.El
     const control = new AbortController();
     empresaDeAdministracion(control.signal).then(
       (datos) => setEmpresa({ estado: "listo", datos }),
-      () => {
-        if (!control.signal.aborted) setEmpresa({ estado: "error" });
+      (razon: unknown) => {
+        if (control.signal.aborted) return;
+        if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
+        setEmpresa({ estado: "error" });
       },
     );
     return () => control.abort();
-  }, []);
+  }, [alExpirar]);
 
   const fuente = fuenteDelPrecio(calculo.periodo, calculo.id);
   const lista = nombreDeLista(calculo.periodo, calculo.id);
@@ -120,7 +122,7 @@ export function PublicarCosto({ calculo, alPublicar, alExpirar }: Props): JSX.El
               anteriores no cambian.
             </p>
             <p className="planta-nota cds--type-body-compact-01">Fuente de los precios: {fuente}</p>
-            <AvisoError error={error === null ? null : mensajeDePlanta(error)} titulo="No se pudo publicar" />
+            <AvisoError error={error === null ? null : mensajeAlPublicar(error)} titulo="No se pudo publicar" />
             {pideConfigurarEmpresa(error) && (
               <p className="cds--type-body-compact-01">
                 <Link className="cds--link" to={ADMINISTRACION} onClick={() => setConfirmando(false)}>

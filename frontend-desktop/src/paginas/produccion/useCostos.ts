@@ -12,9 +12,10 @@ export type Costos =
   | { estado: "listo"; datos: CostoRespuesta[]; totales: TotalDeCostos[] }
   | { estado: "error"; error: unknown };
 
-// Los costos de un mes y sus totales por centro y moneda (los dos los manda el servidor, juntos). Al cambiar de mes o del filtro de anulados queda «cargando»; cuando solo sube `version` (se
-// registró o anuló algo) se sigue mostrando la lista anterior hasta que llegue la nueva: la fila no desaparece por
-// adelantado. Sin mes válido (`periodo` null) no pide nada. Un 401 avisa a `alExpirar`.
+// Los costos de un mes y sus totales por centro y moneda (los dos los manda el servidor, juntos). Al cambiar de mes o
+// del filtro de anulados queda «cargando»; cuando solo sube `version` (se registró o anuló algo) se sigue mostrando la
+// lista anterior hasta que llegue la nueva: la fila no desaparece por adelantado. Sin mes válido (`periodo` null) no
+// pide nada. Un 401 avisa a `alExpirar`.
 export function useCostos(periodo: string | null, incluirAnulados: boolean, version: number, alExpirar: () => void): Costos {
   const [guardado, setGuardado] = useState<Guardado | null>(null);
   const clave = `${periodo}|${incluirAnulados}`;

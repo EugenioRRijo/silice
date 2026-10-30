@@ -6,6 +6,7 @@ import { ErrorDeApi } from "../../api/cliente";
 import { mensajeDeError } from "../../comun/errores";
 import { MENSAJE_CIFRA, leerCifra } from "../../indicadores/cifraEscrita";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { SIN_DETALLE } from "./logica";
 
 // La de `TOLERANCIA_MASA` en `produccion/fuentes.py` (suma de componentes en t por t de mezcla). Ninguna ruta la
 // publica, así que se copia; `logicaPlanta.test.ts` compara la copia con el valor de Python.
@@ -150,8 +151,6 @@ export function desgloseDeTasas(mensaje: string): DesgloseDeTasas | null {
   return { encabezado: m[1]!, faltan: m[2]!.split("; "), cierre: m[3]! };
 }
 
-const SIN_DETALLE = /respondió con el estado \d+/;
-
 // Lo que se le dice a la persona: el `detalle` en español del servidor tal cual; nunca un número de estado, el cuerpo
 // técnico de una validación ni el nombre de un caso de uso.
 export function mensajeDePlanta(error: unknown): string {
@@ -163,6 +162,12 @@ export function mensajeDePlanta(error: unknown): string {
     return "El programa de Sílice no pudo completar la acción. Inténtelo de nuevo.";
   }
   return mensajeDeError(error);
+}
+
+// Publicar es de quien administra y exige su clave: un 403 aquí no es el genérico de «sin permiso».
+export function mensajeAlPublicar(error: unknown): string {
+  if (error instanceof ErrorDeApi && error.estado === 403) return "Solo un administrador con sesión puede publicar el costo propio.";
+  return mensajeDePlanta(error);
 }
 
 // El servidor niega publicar si Administración no tiene la empresa: hay que mostrar el camino.

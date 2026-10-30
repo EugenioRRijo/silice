@@ -5,7 +5,7 @@
   "description": "Interfaz nueva de Silice: visor de solo lectura de libros de presupuesto",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.3"
   },
   "scripts": {
     "dev": "node scripts/inicio_rapido.mjs",

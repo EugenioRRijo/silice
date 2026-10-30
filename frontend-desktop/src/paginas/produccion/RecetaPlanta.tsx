@@ -1,4 +1,4 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import { recetaVigente } from "../../api/produccionPlanta";
@@ -9,6 +9,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
 import { hoyISO } from "../existencias/formato";
+import { AvisoConFoco } from "./AvisoConFoco";
 import { FormularioDeReceta } from "./FormularioDeReceta";
 import { fechaEsVe, mostrarMonto, rotulo } from "./logica";
 import { TIPOS, UNIDADES, mensajeDePlanta, sumaDeMasa } from "./logicaPlanta";
@@ -34,13 +35,7 @@ export default function RecetaPlanta() {
   const [registrando, setRegistrando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const region = useRef<HTMLElement>(null);
-  const cajaDelAviso = useRef<HTMLDivElement>(null);
   const enfocarReceta = useRef(false);
-
-  // Al terminar de registrar, el botón que abrió el diálogo sigue ahí, pero el aviso es lo que la persona debe leer.
-  useEffect(() => {
-    if (aviso) cajaDelAviso.current?.focus();
-  }, [aviso]);
 
   // El foco pasa a la receta cuando llega, no se queda en un botón que cambió de lugar.
   useEffect(() => {
@@ -83,20 +78,7 @@ export default function RecetaPlanta() {
           Registrar una receta nueva
         </Button>
       </div>
-      {aviso && (
-        <div ref={cajaDelAviso} tabIndex={-1}>
-          <InlineNotification
-            kind="success"
-            role="status"
-            lowContrast
-            title={aviso}
-            onClose={() => {
-              setAviso(null);
-              return false;
-            }}
-          />
-        </div>
-      )}
+      <AvisoConFoco aviso={aviso} alCerrar={() => setAviso(null)} />
       {vista.estado === "error" && <AvisoError error={mensajeDePlanta(vista.error)} titulo="No se encontró la receta" />}
       {receta && masa && (
         <section ref={region} tabIndex={-1} aria-label="Receta vigente" className="planta-resultado">
