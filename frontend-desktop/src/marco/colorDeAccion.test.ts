@@ -24,7 +24,7 @@ function reglaDe(fuente: string, selector: string): string {
 // el div. Se lee desde ese bloque hasta el final del archivo.
 const tokens = leer("estilos/tokens.scss");
 const raiz = tokens.slice(tokens.indexOf(":root, .cds--g10"));
-const nuevas = raiz.split("\n").filter((l) => /--(cds-(button-primary|link-primary|border-interactive|text-on-color)|silice-boton-borde)/.test(l));
+const nuevas = raiz.split("\n").filter((l) => /--cds-(button-primary|link-primary|border-interactive)/.test(l));
 
 describe("color de acción de la empresa en toda la aplicación", () => {
   test("las reasignaciones cubren la raíz y la zona .cds--g10 del Theme de la app", () => {

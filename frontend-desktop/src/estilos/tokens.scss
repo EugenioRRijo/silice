@@ -67,10 +67,11 @@ $oscurecido-pulsado: 70%;
 // Color de accion de la empresa (Tarea 4c): el boton principal, los enlaces, los bordes interactivos y la raya de la
 // pestana activa (Carbon la pinta con --cds-border-interactive) van en el color complementario. El boton lleva texto
 // blanco (el de Carbon, sin reasignar); al pasar el raton se oscurece al 85 % con negro y al pulsar, al 70 %. El acento
-// (amarillo/ambar) es la marca y no se usa como relleno de una accion; el amarillo de aviso de Carbon queda como esta. Dos zonas: :root (los dialogos se montan en el body) y .cds--g10 (App.tsx envuelve la app en
-// <Theme theme="g10">, que Carbon llena con el azul: los descendientes heredan de ese div y no de :root). Va DESPUES del
-// tema de Carbon para ganarle a igual especificidad, y en un bloque aparte para no repetir los --silice-* en el div. El
-// foco no se toca. El servidor mide estos pares (aplicacion/tema.py).
+// (amarillo/ambar) es la marca y no se usa como relleno de una accion; el amarillo de aviso de Carbon queda como esta.
+// Dos zonas: :root (los dialogos se montan en el body) y .cds--g10 (App.tsx envuelve la app en <Theme theme="g10">, que
+// Carbon llena con el azul: los descendientes heredan de ese div y no de :root). Va DESPUES del tema de Carbon para
+// ganarle a igual especificidad, y en un bloque aparte para no repetir los --silice-* en el div. El foco no se toca. El
+// servidor mide estos pares (aplicacion/tema.py).
 :root, .cds--g10 {
   --cds-button-primary: var(--silice-complementario);
   --cds-button-primary-hover: color-mix(in srgb, var(--silice-complementario) #{$oscurecido-hover}, black);

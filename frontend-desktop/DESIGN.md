@@ -76,7 +76,8 @@ ajustan aquí cuando la construcción los fije.
   bienvenida, entrar y recuperar acceso) y en los diálogos. El servidor avisa (`GET /v1/tema`, `avisos`) si el texto del
   botón (blanco sobre el complementario) no llega a 7:1 en sus tres estados, el complementario a 4,5:1 sobre el fondo, el
   blanco y el lateral, las iniciales de la cuenta (marco sobre acento) a 4,5:1 y el contador a 4,5:1 (número) y 3:1
-  (contorno). El foco sigue siendo el azul de Carbon (`$focus`), y el tema neutro del repositorio usa el amarillo claro
+  (contorno). El foco sigue siendo el azul de Carbon (`$focus`), salvo en «Nueva obra»: contorno blanco de 2 px por dentro, porque sobre el
+  complementario el azul y el marco no se verían. El tema neutro del repositorio usa el amarillo claro
   (`yellow-20`) y el gris de Carbon.
 
 ### Papeles del color (rediseño F3, Tarea 4c)
@@ -90,8 +91,8 @@ ajustan aquí cuando la construcción los fije.
 - Regla de identidad: el acento **nunca** va solo como identidad; siempre junto al marco (`--silice-marco`) y al
   complementario. El ámbar solo es genérico del sector: en una empresa con otro color de acento, la identidad la llevan el
   marco y el complementario.
-- Ningún uso de `--silice-acento` ni de `--cds-button-primary*` puede ser el relleno de una acción: el botón principal se
-  confunde con el aviso amarillo de Carbon si comparten familia de color (hallazgo H3 del cierre de F3).
+- Ningún uso de `--silice-acento` puede ser el relleno de una acción, y ningún `--cds-button-*` puede apuntar al acento: el
+  botón principal se confunde con el aviso amarillo de Carbon si comparten familia de color (hallazgo H3 del cierre de F3).
 
 ## Marco
 
