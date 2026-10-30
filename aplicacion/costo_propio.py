@@ -45,11 +45,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from aplicacion.tasa_del_dia import Equivalencia, SinTasaDelDia, equivalencia_del_dia
+from aplicacion.tasa_del_dia import Equivalencia, SinTasaDelDia, equivalencia_del_dia, tasa_del_dia
 from core import models
 from core.catalog import Catalogo, CatalogoIncompleto
 from core.catalog.empresa import PrecioPropio, crear_lista_de_empresa, lista_de_referencia
-from core.catalog.indices import tasa_aplicable
 from core.catalog.moneda import TasaDeclarada
 from core.contracts.unidades import unidades_equivalentes
 from produccion.costo import (
@@ -498,15 +497,11 @@ PREFIJO_DE_AGREGADO = "AGP-"
 PREFIJO_DE_MEZCLA = "MZP-"
 
 
-def _insumo_propio(caso: Session, codigo: str, descripcion: str) -> models.Insumo:
-    """El insumo propio de ese codigo, dado de alta si falta (material en t). Si ya existe con otra
-    unidad o tipo, se niega: publicar a un insumo ajeno confundiria el catalogo."""
+def _exigir_insumo_propio(caso: Session, codigo: str) -> models.Insumo | None:
+    """El insumo propio de ese codigo si ya existe; si es de otro tipo o unidad, se niega: publicar
+    a un insumo ajeno confundiria el catalogo. Solo lee."""
     insumo = caso.scalar(select(models.Insumo).where(models.Insumo.codigo == codigo))
-    if insumo is None:
-        insumo = models.Insumo(codigo=codigo, tipo="material", descripcion=descripcion, unidad="t")
-        caso.add(insumo)
-        caso.flush()
-    elif (insumo.tipo, insumo.unidad) != ("material", "t"):
+    if insumo is not None and (insumo.tipo, insumo.unidad) != ("material", "t"):
         raise ErrorDeCalculo(
             f"El insumo {codigo} del catálogo no es un material en t: no se puede publicar ahí."
         )
@@ -526,6 +521,19 @@ def lista_base_del_periodo(sesion_caso: Session, calculo: CalculoGuardado) -> mo
         ) from None
 
 
+def _tasa_de_la_base(sesion_caso: Session, base: models.ListaPrecios, moneda: str) -> TasaDeclarada:
+    """La tasa BCV del dia exacto en que rige la base (la misma fecha y regla con que el calculo
+    convirtio lo comprado). Sin ella, `SinTasaDelDia` que nombra la lista y la fecha."""
+    try:
+        return tasa_del_dia(sesion_caso, base.fecha_vigencia, moneda)
+    except SinTasaDelDia:
+        raise SinTasaDelDia(
+            f"No hay tasa del BCV del {base.fecha_vigencia:%d/%m/%Y} (hace falta la del mismo "
+            f"día) para llevar la lista «{base.nombre}» a {moneda}. Cárguela en Índices y vuelva "
+            "a publicar; no se publicó nada."
+        ) from None
+
+
 def publicar_calculo(
     sesion_caso: Session,
     calculo: CalculoGuardado,
@@ -539,8 +547,8 @@ def publicar_calculo(
     """Publica el costo por tonelada de `calculo` como lista de empresa nueva sobre `base`.
 
     `calculo` es lo que devuelve `calculo_guardado` (huella verificada): su periodo y su moneda son
-    los de la instantanea. La lista copia `base` (convertida con la tasa BCV aplicable al cierre del
-    periodo si esta en otra moneda) y pone encima un precio por producto. Todo se valida antes de
+    los de la instantanea. La lista copia `base` (convertida con la tasa BCV del dia exacto en que
+    rige, si esta en otra moneda) y pone encima un precio por producto. Todo se valida antes de
     escribir. No hace `commit`; nunca toca una lista anterior."""
     if not (empresa_nombre.strip() and empresa_rif.strip() and usuario.strip()):
         raise ErrorDeCalculo("Faltan el nombre y el RIF de la empresa y el usuario que publica.")
@@ -558,12 +566,22 @@ def publicar_calculo(
         )
     tasa_base = None
     if base.moneda != calculo.moneda:
-        tasa_base = TasaDeclarada.de_importacion(tasa_aplicable(sesion_caso, cierre))
+        tasa_base = _tasa_de_la_base(sesion_caso, base, calculo.moneda)
     fuente = f"Producción, período {calculo.periodo}, cálculo n.º {calculo.id}"
+    existentes = {c: _exigir_insumo_propio(sesion_caso, c) for c in codigos.values()}
     propios = []
     for producto, codigo in codigos.items():
-        tipo = "agregado" if producto in es_agregado else "mezcla"
-        insumo = _insumo_propio(sesion_caso, codigo, f"Costo propio de {tipo} {producto}")
+        insumo = existentes[codigo]
+        if insumo is None:
+            tipo = "agregado" if producto in es_agregado else "mezcla"
+            insumo = models.Insumo(
+                codigo=codigo,
+                tipo="material",
+                descripcion=f"Costo propio de {tipo} {producto}",
+                unidad="t",
+            )
+            sesion_caso.add(insumo)
+            sesion_caso.flush()
         propios.append(
             PrecioPropio(
                 insumo.id,

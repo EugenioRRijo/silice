@@ -18,7 +18,8 @@ después de aquél en `api.main`, así el orden de `docs/api.json` no cambia.
   hacia arriba), con la instantánea guardada. Falta de tasa, de precio, de producción o de costos:
   422 con el mensaje, sin guardar nada. Cálculo inexistente: 404.
 - **Publicar** (Tarea 5): `POST /calculos/{id}/publicar` suma la puerta `PUBLICAR_COSTO`
-  (`Accion.PUBLICAR_COSTO_PROPIO`, solo administrador) a la del router. Crea una lista de empresa
+  (`Accion.PUBLICAR_COSTO_PROPIO`, solo administrador con cuenta: la clave de API recibe 403) a la
+  del router. La empresa es la de Administración (`empresa_propia`). Crea una lista de empresa
   nueva en la carpeta del caso y la confirma aquí; la hora es la del servidor.
 """
 
@@ -30,6 +31,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from api.admin_acceso import administrar
 from api.dependencias import USUARIO_API, SesionDep, SesionInstalacionDep
 from api.rutas import produccion as arenera
 from api.rutas.produccion import OPERAR_ARENERA, UsuarioDep, _decimal, _fecha
@@ -63,6 +65,7 @@ from produccion.receta import (
     receta_vigente,
     registrar_receta,
 )
+from seguridad import empresas
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
@@ -70,7 +73,7 @@ from seguridad.sesiones import SesionActiva
 #: acción. Se suma a la del router; `_usuario_costos` la reutiliza para no evaluarla dos veces.
 REGISTRAR_COSTOS = exigir_clave_o_sesion(Accion.REGISTRAR_COSTOS_PRODUCCION)
 #: La puerta de publicar un costo propio al catálogo (plan vial, Tarea 5): solo el administrador.
-PUBLICAR_COSTO = exigir_clave_o_sesion(Accion.PUBLICAR_COSTO_PROPIO)
+PUBLICAR_COSTO = administrar(Accion.PUBLICAR_COSTO_PROPIO)
 
 router = APIRouter(
     prefix="/v1/produccion",
@@ -82,8 +85,8 @@ router = APIRouter(
 __all__ = ["PUBLICAR_COSTO", "REGISTRAR_COSTOS", "router"]
 
 
-def _usuario_publica(activa: Annotated[SesionActiva | None, Depends(PUBLICAR_COSTO)]) -> str:
-    return USUARIO_API if activa is None else activa.usuario
+def _usuario_publica(activa: Annotated[SesionActiva, Depends(PUBLICAR_COSTO)]) -> str:
+    return activa.usuario
 
 
 UsuarioPublicaDep = Annotated[str, Depends(_usuario_publica)]
@@ -170,11 +173,6 @@ class CalculoDeCostoEntrada(BaseModel):
     moneda: str  # "Bs" o "USD", la del cálculo
     #: reparto de la cantera por pesos (D-V-1, opcional): código del agregado -> peso con punto
     pesos: dict[str, str] | None = Field(default=None, max_length=MAX_PESOS)
-
-
-class PublicacionEntrada(BaseModel):
-    empresa_nombre: str  # la empresa es texto (RV-6); ficha de la lista de precios de empresa
-    empresa_rif: str
 
 
 class PublicacionCreada(BaseModel):
@@ -483,26 +481,29 @@ def ver_calculo(calculo_id: int, sesion: SesionInstalacionDep) -> CalculoDeCosto
 )
 def publicar_costo_propio(
     calculo_id: int,
-    entrada: PublicacionEntrada,
     sesion: SesionInstalacionDep,
     caso: SesionDep,
     usuario: UsuarioPublicaDep,
 ) -> PublicacionCreada:
     """Publica un cálculo concreto como lista de empresa nueva en la carpeta del caso: un precio por
     producto con el valor exacto del cálculo y la fuente «Producción, período AAAA-MM, cálculo n.º
-    N». Parte de la lista vigente al cierre del período. Un cálculo alterado (huella o columnas que
+    N». La empresa es la de Administración (sin ella, 422); solo una cuenta de administrador
+    (la clave de API recibe 403). Parte de la lista vigente al cierre del período. Un cálculo alterado (huella o columnas que
     no coinciden), sin lista vigente o sin tasa BCV para llevarla a la moneda del cálculo: 422, sin
     escribir; inexistente: 404. Nada se sobrescribe: cada publicación es otra lista."""
     try:
         calculo = calculo_guardado(sesion, calculo_id)
     except CalculoInexistente as error:
         raise HTTPException(404, str(error)) from None
+    propia = empresas.empresa_propia(sesion)
+    if propia is None:
+        raise HTTPException(422, "Configure la empresa en Administración antes de publicar.")
     lista = publicar_calculo(
         caso,
         calculo,
         base=lista_base_del_periodo(caso, calculo),
-        empresa_nombre=entrada.empresa_nombre,
-        empresa_rif=entrada.empresa_rif,
+        empresa_nombre=propia.nombre,
+        empresa_rif=propia.rif,
         usuario=usuario,
         ahora=arenera._ahora(),
     )

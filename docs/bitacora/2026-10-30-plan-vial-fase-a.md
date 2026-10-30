@@ -106,8 +106,10 @@
 - **Qué se publica**: un cálculo concreto, por su número (`calculo_guardado`: huella y columnas
   verificadas; uno alterado da 422 «fue alterado» y no se escribe nada). Su `periodo` y su `moneda`
   son los de la instantánea, nunca `ultimo_calculo`. La ruta `POST /v1/produccion/calculos/{id}/publicar`
-  recibe `empresa_nombre` y `empresa_rif` (la empresa es texto, como en la lista de empresa de UC-17)
-  y responde 201 con el id y el nombre de la lista. Cálculo inexistente: 404.
+  no lleva cuerpo: la empresa (nombre y RIF de la lista) es la configurada en Administración
+  (`seguridad.empresas.empresa_propia`, decisión del orquestador); sin ella, 422 «Configure la empresa
+  en Administración antes de publicar.» y nada escrito. Responde 201 con el id y el nombre de la
+  lista. Cálculo inexistente: 404.
 - **Valor exacto (decisión del orquestador, pregunta 18)**: el precio publicado es el `DecimalExacto`
   del cálculo, no el redondeado a dos decimales (el plan: se redondea solo al presentar). Con
   1.001 USD de cantera sobre 200 t el agregado queda en 5,005 y no en 5,01. Cambiarlo es una línea
@@ -120,21 +122,27 @@
 - **Base y fecha**: la base es la lista global vigente de la carpeta al último día del período
   (`lista_base_del_periodo`; sin ella 422 «No hay lista de precios vigente…»). La lista y cada precio
   llevan como fecha ese último día. Si la base está en otra moneda que el cálculo, se lleva a la
-  moneda del cálculo con la tasa BCV aplicable a esa fecha (`tasa_aplicable`, hasta 7 días antes,
-  como UC-17); sin tasa, 422 y no se escribe nada.
+  moneda del cálculo con la tasa BCV **del día exacto** en que rige la base (`base.fecha_vigencia`,
+  `aplicacion/tasa_del_dia.py`): la misma fecha y regla con que la Tarea 4 convirtió lo comprado, así
+  lo publicado coincide con lo que usó el cálculo. Sin tasa ese día (una de dos días antes no sirve),
+  `SinTasaDelDia` (422) que nombra la lista y la fecha, y no se escribe nada. (La primera versión usaba
+  `tasa_aplicable`, con ventana de 7 días; la devolvió el árbitro.)
 - **Insumos propios (D-V-2)**: `AGP-<código>` para lo que la instantánea lista como agregado y
   `MZP-<código>` para el resto (mezclas), material en t; se dan de alta una vez. Un código de más de
   20 caracteres (el límite de `Insumo.codigo`; el material admite 40) se niega nombrándolo, y un
-  insumo existente con otro tipo o unidad también. Con el código de material `MZ-1` el insumo es
+  insumo existente con otro tipo o unidad también, antes de escribir nada (ni siquiera los `AGP-`
+  que se darían de alta primero). Un `AGP-`/`MZP-` preexistente en t que no salió de publicar se
+  reutiliza tal cual. Con el código de material `MZ-1` el insumo es
   `MZP-MZ-1` (el plan citaba `MZP-01` suponiendo materiales llamados `01`).
 - **Trazabilidad**: la fuente de cada precio es exactamente «Producción, período AAAA-MM, cálculo
   n.º N»; la de la lista añade quién publicó (cuenta del servidor), la hora del servidor y los
   primeros 16 caracteres de la huella. El cuerpo no lleva `ahora` ni usuario (si los trae, se
   ignoran).
 - **Permiso**: acción nueva `publicar_costo_propio`, solo administrador; se exigen la del router
-  (`OPERAR_ARENERA`) y ésta, así que arma y revisa reciben 403. La clave de API, como en el resto de
-  `/v1/produccion`, también sirve. El oráculo de acciones de arma en `test_api_sesion_web.py` no
-  cambia (arma no la tiene).
+  (`OPERAR_ARENERA`) y ésta, con `administrar(...)` como en `precios_empresa`: arma y revisa reciben
+  403 y **la clave de API también** (publicar firma un precio de la empresa, es de una persona con
+  rol). El usuario guardado es el de la sesión. El oráculo de acciones de arma en
+  `test_api_sesion_web.py` no cambia (arma no la tiene).
 - **Confirmación**: el servicio no hace `commit`; la ruta confirma la carpeta del caso al final. Una
   negativa en medio no deja insumos ni listas a medias.
 - **Ajuste en el verde**: dos oráculos del commit de prueba estaban mal escritos (el código largo del
