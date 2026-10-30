@@ -6,7 +6,7 @@ IBM Carbon (tema g10) y, desde la tarea 2.4, Univer para dibujar la hoja. Produc
 
 ## Requisitos
 
-Node 22 (el mismo de la CI) y npm. No hace falta nada más: las fuentes IBM Plex vienen en los paquetes
+Node 22.3 o posterior (la CI usa Node 22) y npm. No hace falta nada más: las fuentes IBM Plex vienen en los paquetes
 `@ibm/plex-sans` y `@ibm/plex-mono` y Vite las copia al `dist`; la interfaz no pide nada a la red externa.
 
 ## Cómo correr
