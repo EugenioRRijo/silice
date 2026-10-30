@@ -80,6 +80,14 @@ from produccion.inventario import (
     tablero,
 )
 from produccion.modelo import Material, Movimiento, PesajeSospechoso
+from produccion.receta import (
+    Componente,
+    Receta,
+    producido_en_periodo,
+    producir_con_receta,
+    receta_vigente,
+    registrar_receta,
+)
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
@@ -223,6 +231,47 @@ class CostoEntrada(BaseModel):
     fecha: str  # ISO, dentro del periodo
     fuente: str
     nota: str = ""
+
+
+class ComponenteEntrada(BaseModel):
+    codigo: str
+    cantidad_por_t: str  # decimal con punto, por tonelada de mezcla
+    unidad: str  # "t" o "l"
+    tipo: str  # "propio" o "comprado"
+
+
+class RecetaEntrada(BaseModel):
+    producto: str  # código del material que se produce
+    componentes: list[ComponenteEntrada]
+    fuente: str
+    vigente_desde: str  # ISO, AAAA-MM-DD
+
+
+class RecetaCreada(BaseModel):
+    id: int
+
+
+class RecetaRespuesta(BaseModel):
+    id: int
+    producto: str
+    componentes: list[ComponenteEntrada]
+    fuente: str
+    vigente_desde: str
+
+
+class ProduccionEntrada(BaseModel):
+    producto: str
+    toneladas: str  # decimal con punto
+    fecha: str  # ISO, AAAA-MM-DD
+
+
+class ProduccionCreada(BaseModel):
+    movimientos: list[int]  # la entrada del producto y luego un consumo por componente propio
+
+
+class ProducidoRespuesta(BaseModel):
+    codigo: str
+    toneladas: str  # decimal con punto, entradas del periodo pasadas a toneladas
 
 
 class AnularCostoEntrada(BaseModel):
@@ -760,3 +809,94 @@ def anular_un_costo(
     except CostoYaAnulado as error:
         raise HTTPException(409, str(error)) from None
     return CostoCreado(id=nuevo)
+
+
+# --- Receta de la planta y consumos (plan vial, Tarea 3) -----------------------------------------
+
+
+def _receta_respuesta(r: Receta) -> RecetaRespuesta:
+    return RecetaRespuesta(
+        id=r.id,
+        producto=r.producto,
+        componentes=[
+            ComponenteEntrada(
+                codigo=c.codigo,
+                cantidad_por_t=format(c.cantidad_por_t, "f"),
+                unidad=c.unidad,
+                tipo=c.tipo,
+            )
+            for c in r.componentes
+        ],
+        fuente=r.fuente,
+        vigente_desde=r.vigente_desde.isoformat(),
+    )
+
+
+@router.post("/recetas", response_model=RecetaCreada, status_code=201)
+def registrar_una_receta(
+    entrada: RecetaEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
+) -> RecetaCreada:
+    """Registra una receta de la planta; una receta nueva no cambia las anteriores. Las toneladas
+    de componentes por tonelada de mezcla deben sumar 1 (con tolerancia); si no, 422 con la suma."""
+    componentes = [
+        Componente(
+            codigo=c.codigo,
+            cantidad_por_t=_decimal(c.cantidad_por_t, "cantidad_por_t"),
+            unidad=c.unidad.strip(),
+            tipo=c.tipo.strip(),
+        )
+        for c in entrada.componentes
+    ]
+    nueva = registrar_receta(
+        sesion,
+        entrada.producto,
+        componentes,
+        fuente=entrada.fuente,
+        vigente_desde=_fecha(entrada.vigente_desde, "vigente_desde"),
+        usuario=usuario,
+        ahora=_ahora(),
+    )
+    return RecetaCreada(id=nueva)
+
+
+@router.get("/recetas/vigente", response_model=RecetaRespuesta)
+def ver_receta_vigente(
+    sesion: SesionInstalacionDep,
+    producto: Annotated[str, Query(description="Código del producto")],
+    fecha: Annotated[str, Query(description="Fecha ISO, AAAA-MM-DD")],
+) -> RecetaRespuesta:
+    """La receta que rige para el producto en esa fecha; 404 si no hay ninguna."""
+    receta = receta_vigente(sesion, producto, _fecha(fecha, "fecha"))
+    if receta is None:
+        raise HTTPException(
+            404, f"No hay receta vigente de {producto.strip()[:40]} el {fecha.strip()[:10]}."
+        )
+    return _receta_respuesta(receta)
+
+
+@router.post("/producciones", response_model=ProduccionCreada, status_code=201)
+def producir_mezcla(
+    entrada: ProduccionEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
+) -> ProduccionCreada:
+    """Produce el producto con la receta vigente en la fecha: registra su entrada y un consumo por
+    cada componente propio. Sin receta vigente o con un material que no existe: 422, sin dejar
+    nada."""
+    movimientos = producir_con_receta(
+        sesion,
+        entrada.producto,
+        _decimal(entrada.toneladas, "toneladas"),
+        _fecha(entrada.fecha, "fecha"),
+        usuario=usuario,
+        ahora=_ahora(),
+    )
+    return ProduccionCreada(movimientos=movimientos)
+
+
+@router.get("/producido", response_model=list[ProducidoRespuesta])
+def ver_producido(
+    sesion: SesionInstalacionDep,
+    periodo: Annotated[str, Query(description="Periodo AAAA-MM")],
+) -> list[ProducidoRespuesta]:
+    """Toneladas producidas en el periodo por código de material (m3 por densidad)."""
+    producido = producido_en_periodo(sesion, periodo.strip())
+    return [ProducidoRespuesta(codigo=c, toneladas=format(t, "f")) for c, t in producido.items()]

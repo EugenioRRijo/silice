@@ -35,6 +35,7 @@ MAX_FILAS = 100000
 MAX_COLUMNAS = 60
 FILAS_DE_ENCABEZADO = 30
 TOLERANCIA_NETO_T = Decimal("0")
+TOLERANCIA_MASA = Decimal("0.02")
 
 CONSTANTES: tuple[Constante, ...] = (
     Constante(
@@ -63,6 +64,14 @@ CONSTANTES: tuple[Constante, ...] = (
         str(TOLERANCIA_NETO_T),
         EstadoDato.CONSTRUIDO,
         "la bascula entrega enteros en kg: el neto debe ser exactamente bruto - tara",
+        True,
+    ),
+    Constante(
+        "TOLERANCIA_MASA",
+        str(TOLERANCIA_MASA),
+        EstadoDato.CONSTRUIDO,
+        "supuesto declarado: las toneladas de componentes por tonelada de mezcla suman 1 +- 0,02 "
+        "(merma y humedad); la empresa lo confirma con su dosificacion",
         True,
     ),
 )

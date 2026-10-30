@@ -74,7 +74,8 @@ class Movimiento(Base):
     __table_args__ = (
         UniqueConstraint("ticket", name="uq_prod_movimiento_ticket"),
         CheckConstraint(
-            "tipo IN ('entrada', 'despacho', 'ajuste')", name="ck_prod_movimiento_tipo"
+            "tipo IN ('entrada', 'despacho', 'ajuste', 'consumo')",
+            name="ck_prod_movimiento_tipo",
         ),
         CheckConstraint("origen IN ('manual', 'bascula')", name="ck_prod_movimiento_origen"),
         CheckConstraint("length(cantidad) > 0", name="ck_prod_movimiento_cantidad"),
@@ -150,3 +151,33 @@ class Costo(Base):
         ForeignKey("prod_costo.id"), nullable=True, index=True, unique=True
     )
     motivo: Mapped[str] = mapped_column(String(300), default="")
+
+
+class RecetaRegistrada(Base):
+    """Una receta de la planta (Tarea 3 del plan vial): lo que lleva una tonelada de un producto.
+    Solo se inserta; una receta nueva es otra fila y rige desde su `vigente_desde`."""
+
+    __tablename__ = "prod_receta"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    producto: Mapped[str] = mapped_column(String(40), index=True)
+    fuente: Mapped[str] = mapped_column(String(200))
+    vigente_desde: Mapped[date] = mapped_column(Date)
+    usuario: Mapped[str] = mapped_column(String(120))
+    registrado: Mapped[datetime] = mapped_column(DateTime)
+
+
+class RecetaComponente(Base):
+    __tablename__ = "prod_receta_componente"
+    __table_args__ = (
+        CheckConstraint("unidad IN ('t', 'l')", name="ck_prod_receta_componente_unidad"),
+        CheckConstraint("tipo IN ('propio', 'comprado')", name="ck_prod_receta_componente_tipo"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    receta_id: Mapped[int] = mapped_column(ForeignKey("prod_receta.id"), index=True)
+    orden: Mapped[int] = mapped_column(Integer)
+    codigo: Mapped[str] = mapped_column(String(40))
+    cantidad_por_t: Mapped[Decimal] = mapped_column(Cantidad)
+    unidad: Mapped[str] = mapped_column(String(1))
+    tipo: Mapped[str] = mapped_column(String(8))

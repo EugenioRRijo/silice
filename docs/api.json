@@ -8844,6 +8844,195 @@
         }
       }
     },
+    "/v1/produccion/recetas": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Registrar Una Receta",
+        "description": "Registra una receta de la planta; una receta nueva no cambia las anteriores. Las toneladas\nde componentes por tonelada de mezcla deben sumar 1 (con tolerancia); si no, 422 con la suma.",
+        "operationId": "registrar_una_receta_v1_produccion_recetas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecetaEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecetaCreada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/produccion/recetas/vigente": {
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Ver Receta Vigente",
+        "description": "La receta que rige para el producto en esa fecha; 404 si no hay ninguna.",
+        "operationId": "ver_receta_vigente_v1_produccion_recetas_vigente_get",
+        "parameters": [
+          {
+            "name": "producto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Código del producto",
+              "title": "Producto"
+            },
+            "description": "Código del producto"
+          },
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Fecha ISO, AAAA-MM-DD",
+              "title": "Fecha"
+            },
+            "description": "Fecha ISO, AAAA-MM-DD"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecetaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/produccion/producciones": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Producir Mezcla",
+        "description": "Produce el producto con la receta vigente en la fecha: registra su entrada y un consumo por\ncada componente propio. Sin receta vigente o con un material que no existe: 422, sin dejar\nnada.",
+        "operationId": "producir_mezcla_v1_produccion_producciones_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProduccionEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProduccionCreada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/produccion/producido": {
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Ver Producido",
+        "description": "Toneladas producidas en el periodo por código de material (m3 por densidad).",
+        "operationId": "ver_producido_v1_produccion_producido_get",
+        "parameters": [
+          {
+            "name": "periodo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Periodo AAAA-MM",
+              "title": "Periodo"
+            },
+            "description": "Periodo AAAA-MM"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProducidoRespuesta"
+                  },
+                  "title": "Response Ver Producido V1 Produccion Producido Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/buscar/partidas": {
       "get": {
         "tags": [
@@ -13674,6 +13863,34 @@
         ],
         "title": "ComparativoRespuesta",
         "description": "El comparativo completo de UC-02: totales antes y después, y una fila por renglón."
+      },
+      "ComponenteEntrada": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "cantidad_por_t": {
+            "type": "string",
+            "title": "Cantidad Por T"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "cantidad_por_t",
+          "unidad",
+          "tipo"
+        ],
+        "title": "ComponenteEntrada"
       },
       "ComposicionRespuesta": {
         "properties": {
@@ -21156,6 +21373,63 @@
         ],
         "title": "ProcuraRespuesta"
       },
+      "ProduccionCreada": {
+        "properties": {
+          "movimientos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Movimientos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "movimientos"
+        ],
+        "title": "ProduccionCreada"
+      },
+      "ProduccionEntrada": {
+        "properties": {
+          "producto": {
+            "type": "string",
+            "title": "Producto"
+          },
+          "toneladas": {
+            "type": "string",
+            "title": "Toneladas"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          }
+        },
+        "type": "object",
+        "required": [
+          "producto",
+          "toneladas",
+          "fecha"
+        ],
+        "title": "ProduccionEntrada"
+      },
+      "ProducidoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "toneladas": {
+            "type": "string",
+            "title": "Toneladas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "toneladas"
+        ],
+        "title": "ProducidoRespuesta"
+      },
       "PropuestaPartidaRespuesta": {
         "properties": {
           "codigo": {
@@ -21627,6 +21901,86 @@
           "hallazgos"
         ],
         "title": "ReauditoriaRevision"
+      },
+      "RecetaCreada": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "RecetaCreada"
+      },
+      "RecetaEntrada": {
+        "properties": {
+          "producto": {
+            "type": "string",
+            "title": "Producto"
+          },
+          "componentes": {
+            "items": {
+              "$ref": "#/components/schemas/ComponenteEntrada"
+            },
+            "type": "array",
+            "title": "Componentes"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "vigente_desde": {
+            "type": "string",
+            "title": "Vigente Desde"
+          }
+        },
+        "type": "object",
+        "required": [
+          "producto",
+          "componentes",
+          "fuente",
+          "vigente_desde"
+        ],
+        "title": "RecetaEntrada"
+      },
+      "RecetaRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "producto": {
+            "type": "string",
+            "title": "Producto"
+          },
+          "componentes": {
+            "items": {
+              "$ref": "#/components/schemas/ComponenteEntrada"
+            },
+            "type": "array",
+            "title": "Componentes"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "vigente_desde": {
+            "type": "string",
+            "title": "Vigente Desde"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "producto",
+          "componentes",
+          "fuente",
+          "vigente_desde"
+        ],
+        "title": "RecetaRespuesta"
       },
       "RechazoRespuesta": {
         "properties": {
