@@ -23,7 +23,7 @@ openpyxl para reportes. Sin dependencias nuevas.
 **Especificación:** [docs/especificaciones/2026-10-30-vial-agregados-design.md](../especificaciones/2026-10-30-vial-agregados-design.md)
 (§2 objetivos 1–9, §2.1 requisitos transversales, §5 y §5.1 decisiones).
 
-**Base:** rama `inc/vial-agregados` creada en `58363454` (árbol `.worktrees/s2madm`).
+**Base:** rama `inc/vial-agregados` creada en `c1f436b2` (árbol `.worktrees/s2madm`).
 
 **Estado de los datos (2026-10-30):** los presupuestos reales disponibles son de edificación y aún no hay
 presupuestos viales ni de obras con piedra picada (llegarán; especificación §7). Nada de este plan depende de ellos:
@@ -37,7 +37,7 @@ Las de `PLAN_REDISENO_MARCO.md` siguen vigentes (es-VE con coma decimal y punto 
 1/1,25/1,5, accesibilidad AA, vocabulario del usuario, 250 líneas por componente, TDD con rojo visto, jscpd ≤ 1 %,
 commit por tarea con `git diff --cached --stat`). Además:
 
-- **`core/` intacto.** Al cerrar cada tarea: `git diff --stat 58363454 -- core/` vacío. Si una tarea cree necesitar el
+- **`core/` intacto.** Al cerrar cada tarea: `git diff --stat c1f436b2 -- core/` vacío. Si una tarea cree necesitar el
   núcleo, se detiene y lo dice; no lo toca.
 - **Ningún dato real en el repositorio**: ni nombre de empresa ni costos, tramos, precios o series reales. Casos y
   series del repositorio son ficticios y lo dicen en su encabezado. Lo real va en `data/` (ignorado), solo en local.
@@ -296,7 +296,7 @@ Aplicación: `test_costo_en_bs_sin_tasa_ese_dia_falla_y_lo_nombra` (Foco 1); `te
 - [ ] **Step 2–5:** rojo, implementar, verde + lint, commit — `feat(front): receta, costo por tonelada y publicacion`.
 
 **Cierre de fase A:** menores agrupados, `uv run --active pytest -q` y `npm --prefix frontend-desktop test` completos,
-`git diff --stat 58363454 -- core/` vacío. Árbitro de fase.
+`git diff --stat c1f436b2 -- core/` vacío. Árbitro de fase.
 
 ---
 
@@ -713,7 +713,7 @@ def test_supuestos_declarados():  # "gasto uniforme", "USD fijo × tasa" en p.su
 - [ ] **Step 2:** menores agrupados de las fases.
 - [ ] **Step 3:** `uv run --active pytest -q`, `npm --prefix frontend-desktop test`, `npm --prefix frontend-desktop run lint`
   completos; salidas guardadas en el scratchpad de la sesión.
-- [ ] **Step 4:** **medida del núcleo:** `git diff --stat 58363454 -- core/` vacío; anotar en la bitácora el número de
+- [ ] **Step 4:** **medida del núcleo:** `git diff --stat c1f436b2 -- core/` vacío; anotar en la bitácora el número de
   archivos y líneas añadidos fuera de `core/` (es la cifra de «ampliación sin tocar el núcleo» para la tesis).
 - [ ] **Step 5:** única pasada de navegador (1056/1366/1910, letra 1 y 1,5): costos del período, receta, cálculo,
   tramos, riesgo, módulos apagados; capturas de datos reales solo en el scratchpad.
