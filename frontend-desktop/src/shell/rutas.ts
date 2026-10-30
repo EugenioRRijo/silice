@@ -221,6 +221,14 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/existencias"),
   },
   {
+    id: "costos",
+    titulo: "Costos del período",
+    enUnaLinea: "Registre los costos de la cantera y la planta",
+    seccion: "Trabajo",
+    accion: "registrar_costos_produccion",
+    cargar: () => import("../paginas/produccion/CostosDelPeriodo"),
+  },
+  {
     id: "administracion",
     titulo: "Administración",
     enUnaLinea: "Cuentas, claves y ajustes de la instalación",

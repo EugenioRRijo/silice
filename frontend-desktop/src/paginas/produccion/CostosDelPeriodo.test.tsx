@@ -96,6 +96,11 @@ describe("Costos del período", () => {
     return screen.getByRole("dialog", { name: "Registrar un costo" });
   }
 
+  // La moneda no tiene valor por defecto: se elige siempre.
+  async function elegirMoneda(dialogo: HTMLElement, moneda = "USD") {
+    await usuario.selectOptions(within(dialogo).getByLabelText("Moneda"), moneda);
+  }
+
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 10, 15, 10, 0, 0));
@@ -144,6 +149,7 @@ describe("Costos del período", () => {
     await screen.findByText("Cantera: 1.550,50 USD");
     const dialogo = await abrirRegistro();
     await usuario.type(within(dialogo).getByLabelText("Monto"), "1.250,50");
+    await elegirMoneda(dialogo);
     await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     await waitFor(() => expect(peticiones("POST")).toHaveLength(1));
@@ -167,9 +173,21 @@ describe("Costos del período", () => {
     await screen.findByText("Cantera: 1.550,50 USD");
     const dialogo = await abrirRegistro();
     if (monto) await usuario.type(within(dialogo).getByLabelText("Monto"), monto);
+    await elegirMoneda(dialogo);
     await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
-    expect(await within(dialogo).findByText(/monto/i, { selector: ".cds--form-requirement" })).toBeInTheDocument();
+    expect((await within(dialogo).findAllByText(/^(Escriba el monto|El monto está mal escrito)/)).length).toBeGreaterThan(0);
+    expect(peticiones("POST")).toHaveLength(0);
+  });
+
+  test("sin elegir la moneda no se envía", async () => {
+    montar();
+    await screen.findByText("Cantera: 1.550,50 USD");
+    const dialogo = await abrirRegistro();
+    await usuario.type(within(dialogo).getByLabelText("Monto"), "10");
+    await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
+    await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
+    expect(await within(dialogo).findByText("Elija la moneda del monto.")).toBeInTheDocument();
     expect(peticiones("POST")).toHaveLength(0);
   });
 
@@ -178,6 +196,7 @@ describe("Costos del período", () => {
     await screen.findByText("Cantera: 1.550,50 USD");
     const dialogo = await abrirRegistro();
     await usuario.type(within(dialogo).getByLabelText("Monto"), "10");
+    await elegirMoneda(dialogo);
     fireEvent.change(within(dialogo).getByLabelText("Fecha"), { target: { value: "2026-12-01" } });
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     expect(await within(dialogo).findByText("La fecha debe caer en noviembre de 2026.")).toBeInTheDocument();
@@ -205,6 +224,7 @@ describe("Costos del período", () => {
     await screen.findByText("Cantera: 1.550,50 USD");
     const dialogo = await abrirRegistro();
     await usuario.type(within(dialogo).getByLabelText("Monto"), "10");
+    await elegirMoneda(dialogo);
     await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 1");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     expect(await within(dialogo).findByText(texto)).toBeInTheDocument();
