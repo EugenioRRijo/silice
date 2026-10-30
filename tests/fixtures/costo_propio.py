@@ -16,16 +16,21 @@ La planta de noviembre de 2026 (todo ficticio):
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from core import models
+from core.catalog import abrir_sesion, crear_motor
+from operacion.base_datos import preparar_base
 from produccion.costos import CostoDelPeriodo, registrar_costo
 from produccion.inventario import crear_material, registrar_entrada
-from produccion.modelo import Material
+from produccion.modelo import METADATA_PRODUCCION, Material
 from produccion.receta import Componente, producir_con_receta, registrar_receta
 from tests.fixtures.hoja_versiones_api import registrar_tasa_en
 
@@ -143,3 +148,37 @@ def tasas(caso: Session, dias: dict[date, str]) -> None:
     """Una importacion de la tasa BCV por dia (huellas distintas)."""
     for n, (fecha, valor) in enumerate(sorted(dias.items())):
         registrar_tasa_en(caso, fecha, valor, huella=f"{n:x}" * 64)
+
+
+@contextmanager
+def instalacion_en_memoria() -> Iterator[Session]:
+    """Una instalacion vacia (solo las tablas de produccion) en memoria."""
+    motor = create_engine("sqlite://")
+    METADATA_PRODUCCION.create_all(motor)
+    try:
+        with Session(motor) as sesion:
+            yield sesion
+    finally:
+        motor.dispose()
+
+
+@contextmanager
+def carpeta_del_caso(directorio: Path) -> Iterator[Session]:
+    """Una carpeta de caso nueva y migrada; lo que quede sin confirmar se deshace."""
+    ruta = directorio / "carpeta.db"
+    preparar_base(ruta)
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            yield sesion
+            sesion.rollback()
+    finally:
+        motor.dispose()
+
+
+def noviembre_usd(ins: Session, caso: Session) -> None:
+    """La planta, los costos en USD y la lista en USD de la carpeta: el calculo da
+    `AGR-12` 5, `AGR-34` 5 y `MZ-1` 50,70."""
+    planta(ins)
+    costos_usd(ins)
+    lista(caso, "USD", dia(1), LISTA_USD)
