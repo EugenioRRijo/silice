@@ -75,8 +75,8 @@ def _instantanea_de_la_tabla(ruta: Path) -> dict:
         motor.dispose()
 
 
-def test_la_revision_cuelga_de_la_eleccion_y_es_la_cabeza() -> None:
-    assert revision_head(Destino.INSTALACION) == REVISION
+def test_la_revision_cuelga_de_la_eleccion_y_la_sigue_el_costo_de_produccion() -> None:
+    assert revision_head(Destino.INSTALACION) == "ins_0006_prod_costo"
 
 
 def test_subir_crea_la_tabla_con_las_columnas_del_plan(tmp_path: Path) -> None:

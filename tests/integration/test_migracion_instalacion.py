@@ -37,6 +37,7 @@ NUEVAS = {
     "auditoria_libro",
     "mp_eleccion",
     "mp_indice_aprobacion",
+    "prod_costo",
 }
 
 
@@ -47,7 +48,7 @@ def _tablas(ruta: Path) -> set[str]:
 
 
 def test_la_cabeza_del_destino_instalacion_es_la_revision_del_historial() -> None:
-    assert revision_head(Destino.INSTALACION) == "ins_0005_mp_indice_aprobacion"
+    assert revision_head(Destino.INSTALACION) == "ins_0006_prod_costo"
     assert METADATAS_INSTALACION == (
         Base.metadata,
         METADATA_PRODUCCION,

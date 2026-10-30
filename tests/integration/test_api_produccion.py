@@ -67,6 +67,9 @@ RUTAS = [
     ("GET", "/v1/produccion/pesajes-sospechosos"),
     ("POST", "/v1/produccion/pesajes-sospechosos/1/resolver"),
     ("POST", "/v1/produccion/pesajes-sospechosos/1/descartar"),
+    ("POST", "/v1/produccion/costos"),
+    ("GET", "/v1/produccion/costos"),
+    ("POST", "/v1/produccion/costos/1/anular"),
 ]
 
 
@@ -183,7 +186,7 @@ def test_sin_clave_toda_ruta_responde_401(metodo: str, ruta: str) -> None:
 def test_las_rutas_de_la_tabla_son_todas_las_de_produccion_en_la_aplicacion() -> None:
     """Si alguien agrega una ruta a `/v1/produccion` sin ponerla en `RUTAS`, esta prueba lo dice."""
     esquema = {
-        (metodo.upper(), camino.replace("{id_sospechoso}", "1"))
+        (metodo.upper(), camino.replace("{id_sospechoso}", "1").replace("{costo_id}", "1"))
         for camino, operaciones in app.openapi()["paths"].items()
         if camino.startswith("/v1/produccion")
         for metodo in operaciones

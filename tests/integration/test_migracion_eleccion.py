@@ -32,7 +32,8 @@ TABLA = "mp_eleccion"
 REVISION = "ins_0004_mod_eleccion"
 ANTERIOR = "ins_0003_auditoria_libro"
 #: La que cuelga de esta (MP-4, T18) y es la cabeza de la instalación.
-SIGUIENTE = CABEZA = "ins_0005_mp_indice_aprobacion"
+SIGUIENTE = "ins_0005_mp_indice_aprobacion"
+CABEZA = "ins_0006_prod_costo"
 #: (nombre, tipo SQL declarado, admite nulo), en orden.
 COLUMNAS = [
     ("usuario_id", "INTEGER", False),

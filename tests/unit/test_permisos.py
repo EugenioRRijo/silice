@@ -33,6 +33,7 @@ MATRIZ = (
     (Accion.ADMINISTRAR_RED_Y_API, False, False, True),
     (Accion.CAMBIAR_CARPETA_DE_DATOS, False, False, True),
     (Accion.OPERAR_ARENERA, True, False, True),
+    (Accion.REGISTRAR_COSTOS_PRODUCCION, True, False, True),
 )
 
 

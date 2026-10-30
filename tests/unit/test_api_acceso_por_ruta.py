@@ -69,6 +69,7 @@ LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CUENTAS_ADM, CONTROLAR, DECIDIR
 ENTREGAR = "entregar_paquete"
 REAJUSTAR = "convertir_y_reajustar"
 OPERAR = "operar_arenera"
+COSTOS = "registrar_costos_produccion"
 PRECIOS = "administrar_precios"
 APROBAR = "aprobar_version"
 EMPRESA, RED_Y_API = (
@@ -87,6 +88,7 @@ ROLES = {
     REAJUSTAR: {"arma"},
     PRECIOS: {"administrador"},
     OPERAR: {"arma", "administrador"},
+    COSTOS: {"arma", "administrador"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CONTROLAR: {"arma"},
     DECIDIR: {"arma"},
@@ -259,6 +261,9 @@ TABLA = {
     ("GET", "/v1/produccion/pesajes-sospechosos"): OPERAR,
     ("POST", "/v1/produccion/pesajes-sospechosos/{id_sospechoso}/resolver"): OPERAR,
     ("POST", "/v1/produccion/pesajes-sospechosos/{id_sospechoso}/descartar"): OPERAR,
+    ("POST", "/v1/produccion/costos"): COSTOS,  # plan vial T1: costos del periodo
+    ("GET", "/v1/produccion/costos"): COSTOS,
+    ("POST", "/v1/produccion/costos/{costo_id}/anular"): COSTOS,
     ("GET", "/v1/hoja/versiones"): EDITAR,  # T10 3b-1: Hoja del proyecto; clave o sesion
     ("POST", "/v1/hoja/borradores"): EDITAR,  # ademas, solo con sesion (403 con clave)
     ("GET", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
