@@ -380,9 +380,17 @@ def test_la_instantanea_es_json_canonico_con_su_huella(ins, caso) -> None:
     texto = ins.get(Calculo, calculo.id).instantanea
 
     def sin_float(_valor):
-        raise AssertionError("un numero JSON en la instantanea: los decimales van como texto")
+        raise AssertionError("un decimal JSON en la instantanea: los decimales van como texto")
 
-    datos = json.loads(texto, parse_float=sin_float, parse_int=sin_float)
+    # los numeros de registro (id) son enteros JSON; ningun monto, tasa ni tonelada lo es
+    datos = json.loads(texto, parse_float=sin_float)
+    enteros: list[int] = []
+    json.loads(texto, parse_int=lambda v: enteros.append(int(v)) or int(v))
+    ids = {c["id"] for c in datos["entradas"]["costos"]} | {
+        r["id"] for r in datos["entradas"]["recetas"]
+    }
+    ids |= {datos["entradas"]["precios_comprados"]["CA-30"]["lista"]["id"]}
+    assert set(enteros) <= ids
     canonico = json.dumps(datos, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     assert texto == canonico
     assert calculo.huella == hashlib.sha256(texto.encode("utf-8")).hexdigest()
