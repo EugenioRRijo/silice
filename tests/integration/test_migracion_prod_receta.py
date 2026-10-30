@@ -40,6 +40,11 @@ def _tablas(conexion: sqlite3.Connection) -> set[str]:
     return {f[0] for f in filas}
 
 
+def _sql_de(conexion: sqlite3.Connection, tabla: str) -> str:
+    fila = conexion.execute("SELECT sql FROM sqlite_master WHERE name = ?", (tabla,)).fetchone()
+    return fila[0]
+
+
 def _movimiento(conexion: sqlite3.Connection, tipo: str, cantidad: str = "5") -> None:
     conexion.execute(
         "INSERT INTO prod_movimiento (material_id, fecha, tipo, cantidad, placa, cliente, nota, "
@@ -137,10 +142,12 @@ def test_una_base_que_ya_trae_las_tablas_y_el_check_se_adopta(tmp_path: Path) ->
     with closing(sqlite3.connect(base)) as conexion:
         _movimiento(conexion, "consumo", "7")
         conexion.commit()
+        sql_antes = _sql_de(conexion, "prod_movimiento")
 
     aplicar_revisiones(base, Destino.INSTALACION, REVISION)
 
     with closing(sqlite3.connect(base)) as conexion:
+        assert _sql_de(conexion, "prod_movimiento") == sql_antes  # adoptada, no recreada
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
             (REVISION,)
         ]

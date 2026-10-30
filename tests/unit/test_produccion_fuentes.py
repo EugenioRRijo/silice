@@ -24,6 +24,8 @@ def test_el_registro_trae_las_constantes_del_plan_con_su_estado():
         "CIFRAS_DEL_CALCULO": "28",
         "DECIMALES_AL_PRESENTAR": "2",
         "MAX_PESOS": "50",
+        "MAX_COMPONENTES": "50",
+        "CUANTO_T_A_M3": "0.0001",
     }
     assert {n: por_nombre[n].valor for n in esperadas} == esperadas
     assert all(por_nombre[n].estado is EstadoDato.CONSTRUIDO for n in esperadas)
@@ -52,6 +54,8 @@ def test_las_constantes_numericas_son_las_del_registro():
         fuentes.TOLERANCIA_MASA, Decimal
     )
     enteros = {"CIFRAS_DEL_CALCULO": 28, "DECIMALES_AL_PRESENTAR": 2, "MAX_PESOS": 50}
+    assert fuentes.MAX_COMPONENTES == 50 and isinstance(fuentes.MAX_COMPONENTES, int)
+    assert fuentes.CUANTO_T_A_M3 == Decimal("0.0001") and isinstance(fuentes.CUANTO_T_A_M3, Decimal)
     for nombre, valor in enteros.items():
         assert getattr(fuentes, nombre) == valor and isinstance(getattr(fuentes, nombre), int)
     assert por_nombre == {
@@ -63,4 +67,6 @@ def test_las_constantes_numericas_son_las_del_registro():
         "CIFRAS_DEL_CALCULO": "28",
         "DECIMALES_AL_PRESENTAR": "2",
         "MAX_PESOS": "50",
+        "MAX_COMPONENTES": "50",
+        "CUANTO_T_A_M3": "0.0001",
     }

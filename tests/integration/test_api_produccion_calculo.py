@@ -216,7 +216,7 @@ def test_el_tope_de_pesos_es_50() -> None:
         CalculoDeCostoEntrada.model_validate(cuerpo(51))
 
 
-def test_cincuenta_y_un_pesos_por_la_api_son_422_sin_guardar(http) -> None:
+def test_un_cuerpo_con_pesos_sin_materiales_es_422_y_no_guarda_nada(http) -> None:
     pesos = {f"P-{i}": "0.02" for i in range(51)}
     r = http.post(CALCULOS, json={"periodo": "2026-11", "moneda": "USD", "pesos": pesos})
     assert r.status_code == 422, r.text

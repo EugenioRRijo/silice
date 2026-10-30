@@ -302,6 +302,16 @@ def test_una_sola_regla_t_a_unidad_de_venta() -> None:
         activo=True,
     )
     assert de_toneladas(m3, D("94")) == D("55.2941")
-    assert de_toneladas(m3, D("0.00005")) == D("0.0000")  # mitad al par, no hacia arriba
+    m2 = Material(
+        codigo="Y",
+        nombre="Y",
+        unidad_venta="m3",
+        densidad_t_m3=D("2"),
+        existencia_minima=D(0),
+        activo=True,
+    )
+    # mitad al par: 0,00005 va al 0,0000 par (HALF_UP daria 0,0001) y 0,00015 al 0,0002 par
+    assert str(de_toneladas(m2, D("0.0001"))) == "0.0000"
+    assert str(de_toneladas(m2, D("0.0003"))) == "0.0002"
     t = Material(codigo="T", nombre="T", unidad_venta="t", existencia_minima=D(0), activo=True)
     assert de_toneladas(t, D("94.12345")) == D("94.12345")

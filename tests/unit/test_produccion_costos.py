@@ -197,6 +197,13 @@ def test_menos_cero_se_normaliza_a_cero(sesion: Session) -> None:
     assert str(fila.costo.monto) == "0"
 
 
+def test_el_monto_de_mas_de_28_cifras_se_conserva_exacto() -> None:
+    grande = D("12345678901234567890123456789.12")
+    assert _costo(monto=grande).monto == grande
+    assert str(_costo(monto=grande).monto) == "12345678901234567890123456789.12"
+    assert str(_costo(monto=D("-0")).monto) == "0"
+
+
 def test_totales_por_centro_y_moneda_suman_exacto_sin_convertir(sesion: Session) -> None:
     """Oraculo a mano: cantera 1250.50 + 300 USD = 1550.50; planta 800 Bs va aparte."""
     registrar_costo(sesion, _costo(), usuario="ana", ahora=AHORA)
