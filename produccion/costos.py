@@ -190,3 +190,13 @@ def costos_del_periodo(
             )
         )
     return salida
+
+
+def totales_por_centro(sesion: Session, periodo: str) -> list[tuple[str, str, Decimal]]:
+    """Total vigente del periodo por (centro, moneda), sin convertir moneda. Un costo anulado y su
+    fila de anulacion no suman. Orden estable: centro y luego moneda."""
+    sumas: dict[tuple[str, str], Decimal] = {}
+    for fila in costos_del_periodo(sesion, periodo):
+        clave = (fila.costo.centro, fila.costo.moneda)
+        sumas[clave] = sumas.get(clave, Decimal(0)) + fila.costo.monto
+    return [(centro, moneda, total) for (centro, moneda), total in sorted(sumas.items())]

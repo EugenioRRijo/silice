@@ -67,6 +67,7 @@ from produccion.costos import (
     anular_costo,
     costos_del_periodo,
     registrar_costo,
+    totales_por_centro,
 )
 from produccion.importacion import descartar, importar, pendientes, resolver
 from produccion.inventario import (
@@ -230,6 +231,12 @@ class AnularCostoEntrada(BaseModel):
 
 class CostoCreado(BaseModel):
     id: int
+
+
+class TotalDeCostos(BaseModel):
+    centro: str
+    moneda: str
+    total: str  # decimal con punto, suma exacta de los costos vigentes
 
 
 class CostoRespuesta(BaseModel):
@@ -714,6 +721,20 @@ def listar_costos(
     """Los costos del periodo en orden de registro; por omisión solo los vigentes."""
     filas = costos_del_periodo(sesion, periodo.strip(), incluir_anulados=incluir_anulados)
     return [_costo_respuesta(f) for f in filas]
+
+
+@router.get(
+    "/costos/totales",
+    response_model=list[TotalDeCostos],
+    dependencies=[Depends(REGISTRAR_COSTOS)],
+)
+def totales_de_costos(
+    sesion: SesionInstalacionDep,
+    periodo: Annotated[str, Query(description="Periodo AAAA-MM")],
+) -> list[TotalDeCostos]:
+    """Total vigente del periodo por centro y moneda, sin convertir; los anulados no suman."""
+    totales = totales_por_centro(sesion, periodo.strip())
+    return [TotalDeCostos(centro=c, moneda=m, total=format(t, "f")) for c, m, t in totales]
 
 
 @router.post(

@@ -229,7 +229,10 @@ def test_totales_por_centro_y_moneda(http) -> None:
 
 def test_totales_de_un_periodo_vacio_o_invalido(http) -> None:
     assert http.get("/v1/produccion/costos/totales", params={"periodo": "2026-10"}).json() == []
-    assert http.get("/v1/produccion/costos/totales", params={"periodo": "noviembre"}).status_code == 422
+    assert (
+        http.get("/v1/produccion/costos/totales", params={"periodo": "noviembre"}).status_code
+        == 422
+    )
 
 
 def test_totales_revisa_recibe_403(_instalacion_de_la_prueba) -> None:
