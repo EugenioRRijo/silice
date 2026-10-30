@@ -114,7 +114,7 @@ CONSTANTES: tuple[Constante, ...] = (
         "CUANTO_T_A_M3",
         str(CUANTO_T_A_M3),
         EstadoDato.CONSTRUIDO,
-        "tecnica: cuantizacion de t a m3 a cuatro decimales con mitad al par (importacion y receta)",
+        "tecnica: t a m3 a cuatro decimales con mitad al par (importacion y receta)",
         True,
     ),
 )
