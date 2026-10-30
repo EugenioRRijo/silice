@@ -683,14 +683,50 @@ describe("BarraLateral: obras con el mismo nombre (D-F3-3)", () => {
 describe("BarraLateral: nombres largos de obra", () => {
   const LARGO = "Rehabilitación integral del edificio de oficinas y estacionamiento de la urbanización Los Samanes, etapa dos";
 
-  it("el nombre de la obra lleva el nombre completo en title y el treeitem lo conserva como nombre accesible", async () => {
+  // jsdom no calcula el diseño: las medidas del recorte se simulan sobre el propio elemento.
+  function medir(el: HTMLElement, scrollHeight: number, clientHeight: number) {
+    Object.defineProperty(el, "scrollHeight", { configurable: true, value: scrollHeight });
+    Object.defineProperty(el, "clientHeight", { configurable: true, value: clientHeight });
+  }
+
+  async function nombreLargo() {
     servidor([obra(NORTE, 7, LARGO), TORRE]);
     pintar();
     const lista = await arbol();
     const fila = within(lista).getByRole("treeitem", { name: LARGO });
     const nombre = within(fila).getByText(LARGO);
-    expect(nombre).toHaveAttribute("title", LARGO);
     expect(nombre).toHaveClass("silice-marco-lateral__obra-nombre");
+    return nombre;
+  }
+
+  it("el treeitem conserva el nombre completo como nombre accesible y sin pasar el ratón no hay title", async () => {
+    const nombre = await nombreLargo();
+    expect(nombre).not.toHaveAttribute("title");
+  });
+
+  it("al pasar el ratón por un nombre recortado (scrollHeight mayor que clientHeight) aparece el title completo", async () => {
+    const nombre = await nombreLargo();
+    medir(nombre, 80, 40);
+    await userEvent.hover(nombre);
+    expect(nombre).toHaveAttribute("title", LARGO);
+  });
+
+  it("al pasar el ratón por un nombre que cabe no hay title", async () => {
+    const nombre = await nombreLargo();
+    medir(nombre, 40, 40);
+    await userEvent.hover(nombre);
+    expect(nombre).not.toHaveAttribute("title");
+  });
+
+  it("si el nombre deja de estar recortado, el title se quita en el siguiente paso del ratón", async () => {
+    const nombre = await nombreLargo();
+    medir(nombre, 80, 40);
+    await userEvent.hover(nombre);
+    expect(nombre).toHaveAttribute("title");
+    medir(nombre, 40, 40);
+    await userEvent.unhover(nombre);
+    await userEvent.hover(nombre);
+    expect(nombre).not.toHaveAttribute("title");
   });
 
   it("la hoja de estilos limita el nombre a 2 líneas con puntos suspensivos", () => {
