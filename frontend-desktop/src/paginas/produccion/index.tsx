@@ -24,10 +24,21 @@ export default function PaginaProduccion() {
           Su cuenta no opera la arenera. Pídale a quien administra Sílice que revise su rol.
         </p>
       )}
+      {puedeVerArenera && (
+        <p className="cds--type-body-compact-01">
+          <Link className="cds--link" to="/receta_planta">
+            Receta de la planta
+          </Link>
+        </p>
+      )}
       {puedeRegistrarCostos && (
         <p className="cds--type-body-compact-01">
           <Link className="cds--link" to="/costos">
             Costos del período
+          </Link>{" "}
+          ·{" "}
+          <Link className="cds--link" to="/costo_tonelada">
+            Costo por tonelada
           </Link>
         </p>
       )}

@@ -81,11 +81,11 @@ describe("Inicio de presupuestos y obras: «Lo que puede hacer aquí» (quien no
     return [...region.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? "");
   }
 
-  test("admin ve el h1 y, sin sitio en la barra lateral, «Inicio de producción», «Precios de la empresa» e «Índices del BCV»", () => {
+  test("admin ve el h1 y, sin sitio en la barra lateral, «Inicio de producción», «Receta de la planta», «Precios de la empresa» e «Índices del BCV»", () => {
     montar(ADMIN);
     expect(screen.getByRole("heading", { level: 1, name: "Inicio de presupuestos y obras" })).toHaveClass("cds--type-heading-04");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(accesos()).toEqual(["/precios_empresa", "/indices", "/produccion"]);
+    expect(accesos()).toEqual(["/precios_empresa", "/indices", "/produccion", "/receta_planta"]);
     expect(screen.getByRole("link", { name: "Precios de la empresa" })).toHaveAccessibleDescription(
       "Cargue y cree las listas de precios de la empresa",
     );

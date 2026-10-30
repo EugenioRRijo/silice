@@ -67,10 +67,19 @@ export default function PaginaExistencias() {
   return (
     <div className="existencias silice-pagina">
       <h1 className="cds--type-heading-04">Existencias de la arenera</h1>
+      <p className="cds--type-body-compact-01">
+        <Link className="cds--link" to="/receta_planta">
+          Receta de la planta
+        </Link>
+      </p>
       {puedeRegistrarCostos && (
         <p className="cds--type-body-compact-01">
           <Link className="cds--link" to="/costos">
             Costos del período
+          </Link>{" "}
+          ·{" "}
+          <Link className="cds--link" to="/costo_tonelada">
+            Costo por tonelada
           </Link>
         </p>
       )}

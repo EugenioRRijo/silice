@@ -229,6 +229,22 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/produccion/CostosDelPeriodo"),
   },
   {
+    id: "receta_planta",
+    titulo: "Receta de la planta",
+    enUnaLinea: "Qué lleva una tonelada de cada mezcla",
+    seccion: "Trabajo",
+    accion: "operar_arenera",
+    cargar: () => import("../paginas/produccion/RecetaPlanta"),
+  },
+  {
+    id: "costo_tonelada",
+    titulo: "Costo por tonelada",
+    enUnaLinea: "Calcule el costo propio de cada agregado y mezcla",
+    seccion: "Trabajo",
+    accion: "registrar_costos_produccion",
+    cargar: () => import("../paginas/produccion/CostoPorTonelada"),
+  },
+  {
     id: "administracion",
     titulo: "Administración",
     enUnaLinea: "Cuentas, claves y ajustes de la instalación",

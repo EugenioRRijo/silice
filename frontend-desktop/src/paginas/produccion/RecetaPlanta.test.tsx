@@ -181,8 +181,12 @@ describe("Receta de la planta", () => {
     expect(within(fila).getByLabelText("Unidad")).toHaveValue("");
     expect(within(fila).getByLabelText("Tipo")).toHaveValue("");
     expect(within(dialogo).getByLabelText("Vigente desde")).toHaveValue("");
+    // Con la masa en rango y sin producto, la pantalla dice qué falta.
+    await llenarComponente(dialogo, 1, "AGR-12", "1");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar receta" }));
     expect(await within(dialogo).findByText("Indique el código del producto.")).toBeInTheDocument();
+    expect(await within(dialogo).findByText("Indique desde qué fecha rige la receta.")).toBeInTheDocument();
+    expect(await within(dialogo).findByText("Indique la fuente de la receta (la dosificación de donde sale).")).toBeInTheDocument();
     expect(posts()).toHaveLength(0);
   });
 
@@ -190,10 +194,12 @@ describe("Receta de la planta", () => {
     montar();
     const dialogo = await abrir();
     await llenarCabecera(dialogo);
-    await llenarComponente(dialogo, 1, "AGR-12", "1", "l", "propio");
+    await llenarComponente(dialogo, 1, "CA-30", "1", "t", "comprado");
+    await usuario.click(within(dialogo).getByRole("button", { name: "Agregar un componente" }));
+    await llenarComponente(dialogo, 2, "AGR-12", "0,5", "l", "propio");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar receta" }));
     expect(await within(dialogo).findByRole("alert")).toHaveTextContent(
-      "Componente 1: un componente propio sale del inventario y va en t.",
+      "Componente 2: un componente propio sale del inventario y va en t.",
     );
     expect(posts()).toHaveLength(0);
   });
