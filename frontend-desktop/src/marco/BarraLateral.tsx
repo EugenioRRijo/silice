@@ -9,6 +9,7 @@ import { DialogoNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import type { DestinoDeNuevaObra } from "../shell/obras/DialogoNuevaObra";
 import "./BarraLateral.scss";
 import { obrasConMismoNombre } from "./homonimas";
+import { NombreDeObra } from "./NombreDeObra";
 import { abrirNuevaObra, cerrarNuevaObra, useNuevaObraAbierta } from "./nuevaObra";
 import { obrasAlcanzables, useOferta } from "./oferta";
 import {
@@ -160,9 +161,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         >
           <Chevron size={16} aria-hidden="true" />
           <span className="silice-marco-lateral__nombre">
-            <span className="silice-marco-lateral__obra-nombre" title={o.obra}>
-              {o.obra}
-            </span>
+            <NombreDeObra nombre={o.obra} />
             {carpeta !== undefined && <span className="silice-marco-lateral__de-carpeta">{carpeta}</span>}
           </span>
           {cuenta > 0 && <Pildora valor={cuenta} />}
