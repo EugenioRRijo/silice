@@ -18,3 +18,11 @@ $umbrales-por-escala: (
     }
   }
 }
+
+// Letra Grande o Muy grande, sin condicion de ancho: para compactar lo que el rem mayor vuelve desproporcionado.
+@mixin con-letra-grande {
+  html[data-silice-letra="grande"],
+  html[data-silice-letra="muy-grande"] {
+    @content;
+  }
+}

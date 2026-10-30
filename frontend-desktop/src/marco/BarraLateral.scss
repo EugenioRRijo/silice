@@ -1,3 +1,4 @@
+@use "umbrales" as u;
 @use "@carbon/styles/scss/type";
 
 // Barra lateral marfil del marco nuevo (maqueta aprobada): 236 px, fondo --silice-lateral. Sin hexadecimales: solo
@@ -185,5 +186,27 @@
     // Blanco: sobre el complementario (que sin uno propio es el marco) el contorno del marco no se veria.
     outline: 2px solid var(--cds-text-on-color);
     outline-offset: -4px;
+  }
+}
+
+// Letra Grande o Muy grande: el rem pasa de 24 o 28 px y Pendientes, los titulos y las cinco entradas de Empresa se comian
+// el alto (a 1366x768 la zona de obras quedaba en casi nada). Se compactan filas y titulos y la zona de obras conserva un
+// minimo; si no cabe todo, la barra se desplaza (marco.scss). Los tres botones de tamano de letra no se tocan (D-F3-5).
+@include u.con-letra-grande {
+  .silice-marco-lateral__fila {
+    min-block-size: 1.5rem;
+  }
+
+  .silice-marco-lateral__titulo {
+    padding: 0.5rem 1rem 0.25rem;
+  }
+
+  .silice-marco-lateral__pendientes,
+  .silice-marco-lateral__arbol {
+    margin-block-start: 0.25rem;
+  }
+
+  .silice-marco-lateral__obras {
+    min-block-size: 10rem;
   }
 }
