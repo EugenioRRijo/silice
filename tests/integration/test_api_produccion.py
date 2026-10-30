@@ -65,6 +65,10 @@ RUTAS = [
     ("GET", "/v1/produccion/costos"),
     ("GET", "/v1/produccion/costos/totales"),
     ("POST", "/v1/produccion/costos/1/anular"),
+    ("POST", "/v1/produccion/recetas"),
+    ("GET", "/v1/produccion/recetas/vigente"),
+    ("POST", "/v1/produccion/producciones"),
+    ("GET", "/v1/produccion/producido"),
 ]
 
 

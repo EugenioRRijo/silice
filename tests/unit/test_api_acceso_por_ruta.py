@@ -265,6 +265,10 @@ TABLA = {
     ("GET", "/v1/produccion/costos"): COSTOS,
     ("GET", "/v1/produccion/costos/totales"): COSTOS,
     ("POST", "/v1/produccion/costos/{costo_id}/anular"): COSTOS,
+    ("POST", "/v1/produccion/recetas"): OPERAR,  # plan vial T3: receta y consumos
+    ("GET", "/v1/produccion/recetas/vigente"): OPERAR,
+    ("POST", "/v1/produccion/producciones"): OPERAR,
+    ("GET", "/v1/produccion/producido"): OPERAR,
     ("GET", "/v1/hoja/versiones"): EDITAR,  # T10 3b-1: Hoja del proyecto; clave o sesion
     ("POST", "/v1/hoja/borradores"): EDITAR,  # ademas, solo con sesion (403 con clave)
     ("GET", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion

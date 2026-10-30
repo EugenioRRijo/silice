@@ -20,6 +20,7 @@ def test_el_registro_trae_las_constantes_del_plan_con_su_estado():
         "MAX_COLUMNAS": "60",
         "FILAS_DE_ENCABEZADO": "30",
         "TOLERANCIA_NETO_T": "0",
+        "TOLERANCIA_MASA": "0.02",
     }
     assert {n: por_nombre[n].valor for n in esperadas} == esperadas
     assert all(por_nombre[n].estado is EstadoDato.CONSTRUIDO for n in esperadas)
@@ -44,9 +45,13 @@ def test_las_constantes_numericas_son_las_del_registro():
     assert fuentes.TOLERANCIA_NETO_T == Decimal("0") and isinstance(
         fuentes.TOLERANCIA_NETO_T, Decimal
     )
+    assert fuentes.TOLERANCIA_MASA == Decimal("0.02") and isinstance(
+        fuentes.TOLERANCIA_MASA, Decimal
+    )
     assert por_nombre == {
         "MAX_FILAS": "100000",
         "MAX_COLUMNAS": "60",
         "FILAS_DE_ENCABEZADO": "30",
         "TOLERANCIA_NETO_T": "0",
+        "TOLERANCIA_MASA": "0.02",
     }

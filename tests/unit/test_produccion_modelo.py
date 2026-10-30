@@ -65,6 +65,16 @@ COLUMNAS = {
         "anula_id",
         "motivo",
     },
+    "prod_receta": {"id", "producto", "fuente", "vigente_desde", "usuario", "registrado"},
+    "prod_receta_componente": {
+        "id",
+        "receta_id",
+        "orden",
+        "codigo",
+        "cantidad_por_t",
+        "unidad",
+        "tipo",
+    },
 }
 
 

@@ -69,7 +69,7 @@ def _tablas(ruta: Path) -> set[str]:
 
 
 def test_migrar_crea_la_tabla_y_cero_deriva(tmp_path: Path) -> None:
-    assert revision_head(Destino.INSTALACION) == "ins_0006_prod_costo"
+    assert revision_head(Destino.INSTALACION) == "ins_0007_prod_receta"
     assert METADATA_HISTORIAL in METADATAS_INSTALACION
     migrada = tmp_path / "migrada.db"
     aplicar_revisiones(migrada, Destino.INSTALACION)
@@ -136,10 +136,10 @@ def test_la_base_de_la_1_0_0_se_respalda_y_migra(tmp_path: Path) -> None:
     resultado = preparar_base(ruta, Destino.INSTALACION)
 
     assert resultado.revision_origen == "ins_0002_produccion"
-    assert resultado.revision_destino == "ins_0006_prod_costo"
+    assert resultado.revision_destino == "ins_0007_prod_receta"
     assert resultado.juego is not None and resultado.juego.is_dir()
     assert respaldo.listar_juegos(config.carpeta_respaldos())
-    assert leer_estado(ruta).revision == "ins_0006_prod_costo"
+    assert leer_estado(ruta).revision == "ins_0007_prod_receta"
     with closing(sqlite3.connect(ruta)) as conexion:
         assert conexion.execute("SELECT codigo FROM prod_material").fetchall() == [("ARENA",)]
         assert conexion.execute(f"SELECT COUNT(*) FROM {TABLA}").fetchone() == (0,)
