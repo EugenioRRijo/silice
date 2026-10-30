@@ -12,6 +12,7 @@ la unidad de venta de ese material. Lo comprado no toca el inventario de la aren
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -121,7 +122,7 @@ def registrar_receta(
     if not componentes:
         raise ErrorDeReceta("La receta necesita al menos un componente.")
     codigos = [c.codigo for c in componentes]
-    repetidos = sorted({c for c in codigos if codigos.count(c) > 1})
+    repetidos = sorted(c for c, veces in Counter(codigos).items() if veces > 1)
     if repetidos:
         raise ErrorDeReceta(f"Componente repetido en la receta: {', '.join(repetidos)}.")
     masa = sum((c.cantidad_por_t for c in componentes if c.unidad == "t"), CERO)

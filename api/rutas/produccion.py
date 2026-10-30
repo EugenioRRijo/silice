@@ -12,8 +12,9 @@ Reglas de la frontera:
   la diferencia con la existencia teórica a esa fecha.
 - **La API no usa el reloj** para decidir validez: `fecha_referencia` (para detectar fechas futuras
   en la báscula) es obligatoria y la manda el cliente; `ahora` al resolver o descartar también.
-  Excepción, los costos del periodo (`/costos`): su `registrado` es la hora del servidor y el
-  cuerpo no lleva `ahora` (si lo trae, se ignora).
+  Excepción, los costos del periodo (`/costos`), las recetas (`/recetas`) y las producciones
+  (`/producciones`): su `registrado` es la hora del servidor y el cuerpo no lleva `ahora` (si lo
+  trae, se ignora).
 - **Cada petición es una transacción** (`SesionInstalacionDep`): lo que registra queda confirmado al
   terminar bien y un error, de cualquier tipo, no deja nada a medias.
 - **Dos entradas** (RT-9): la clave de API (`X-Silice-Clave`, integraciones) o la sesión web
@@ -47,7 +48,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
@@ -242,7 +243,7 @@ class ComponenteEntrada(BaseModel):
 
 class RecetaEntrada(BaseModel):
     producto: str  # código del material que se produce
-    componentes: list[ComponenteEntrada]
+    componentes: list[ComponenteEntrada] = Field(max_length=50)
     fuente: str
     vigente_desde: str  # ISO, AAAA-MM-DD
 

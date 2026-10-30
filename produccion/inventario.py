@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -20,6 +20,7 @@ from produccion.modelo import Material, Movimiento
 
 UNIDADES_VALIDAS = ("m3", "t")
 CERO = Decimal(0)
+CUATRO_DECIMALES = Decimal("0.0001")  # cuantizacion de t a m3 (importacion y receta)
 
 
 class ErrorDeInventario(ValueError):  # noqa: N818 - nombre fijado por el plan
@@ -271,15 +272,17 @@ def a_toneladas(material: Material, cantidad: Decimal) -> Decimal:
 
 
 def de_toneladas(material: Material, toneladas: Decimal) -> Decimal:
-    """Lo inverso de `a_toneladas`: toneladas a la unidad de venta del material."""
+    """Toneladas a la unidad de venta del material: la misma en t; en m3, t / densidad a cuatro
+    decimales con redondeo de mitad al par. Es la UNICA regla de esta conversion (la usan la
+    importacion de bascula y los consumos de la receta). Sin densidad (o no positiva): error."""
     if material.unidad_venta == "t":
         return toneladas
-    if material.densidad_t_m3 is None:
+    if material.densidad_t_m3 is None or material.densidad_t_m3 <= CERO:
         raise ErrorDeInventario(
             f"El material {material.codigo} está en m3 y no tiene densidad (t/m3): "
             "indíquela para pasarlo desde toneladas."
         )
-    return toneladas / material.densidad_t_m3
+    return (toneladas / material.densidad_t_m3).quantize(CUATRO_DECIMALES, rounding=ROUND_HALF_EVEN)
 
 
 def producido_en_periodo(sesion: Session, periodo: str) -> dict[str, Decimal]:

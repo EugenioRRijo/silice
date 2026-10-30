@@ -23,13 +23,13 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import ROUND_HALF_EVEN, Decimal
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from produccion.conectores.bascula import LecturaBascula, PesajeDudoso, PesajeLeido
-from produccion.inventario import ErrorDeInventario, registrar_despacho
+from produccion.inventario import ErrorDeInventario, de_toneladas, registrar_despacho
 from produccion.modelo import Material, Movimiento, PesajeSospechoso
 
 __all__ = [
@@ -45,7 +45,6 @@ MOTIVO_SIN_DENSIDAD = "material sin densidad"
 MOTIVO_CANTIDAD_EN_CERO = "peso neto en cero"
 
 _CERO = Decimal(0)
-_CUATRO_DECIMALES = Decimal("0.0001")
 _LOTE_DE_TICKETS = 500
 
 
@@ -87,14 +86,11 @@ class _Catalogo:
 
 def _cantidad_de_despacho(material: Material, neto_t: Decimal) -> tuple[Decimal | None, str]:
     """(cantidad en la unidad de venta del material, "") o (None, motivo de que no se puede)."""
-    if material.unidad_venta == "t":
-        cantidad = neto_t
-    else:
-        if material.densidad_t_m3 is None or material.densidad_t_m3 <= _CERO:
-            return None, MOTIVO_SIN_DENSIDAD
-        cantidad = (neto_t / material.densidad_t_m3).quantize(
-            _CUATRO_DECIMALES, rounding=ROUND_HALF_EVEN
-        )
+    if material.unidad_venta != "t" and (
+        material.densidad_t_m3 is None or material.densidad_t_m3 <= _CERO
+    ):
+        return None, MOTIVO_SIN_DENSIDAD
+    cantidad = de_toneladas(material, neto_t)
     if cantidad <= _CERO:
         return None, MOTIVO_CANTIDAD_EN_CERO
     return cantidad, ""
