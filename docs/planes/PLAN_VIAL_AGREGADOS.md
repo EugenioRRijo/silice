@@ -25,6 +25,12 @@ openpyxl para reportes. Sin dependencias nuevas.
 
 **Base:** rama `inc/vial-agregados` creada en `58363454` (árbol `.worktrees/s2madm`).
 
+**Estado de los datos (2026-10-30):** los presupuestos reales disponibles son de edificación y aún no hay
+presupuestos viales ni de obras con piedra picada (llegarán; especificación §7). Nada de este plan depende de ellos:
+toda prueba usa casos ficticios. Cuando lleguen, se usan **solo en local** para la medición, sin tocar el plan.
+
+**Aprobación:** diseño y plan aprobados por Eugenio el 2026-10-30, con la orden de desarrollarlo.
+
 ## Restricciones globales
 
 Las de `PLAN_REDISENO_MARCO.md` siguen vigentes (es-VE con coma decimal y punto de miles, 1056/1366/1910 px y letra

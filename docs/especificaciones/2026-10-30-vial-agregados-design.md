@@ -182,5 +182,9 @@ son las respuestas, marcadas como decisión del orquestador (Eugenio puede cambi
 - **Historia de precios del cemento asfáltico**: puede no existir una serie pública. Si falta, la proyección se apoya en
   la tasa BCV, el gasoil y lo que la empresa haya registrado, y la tesis lo declara.
 - **Costos reales de cantera y planta**: dependen de que la empresa los entregue o empiece a registrarlos.
-- **Supuesto sin confirmar**: que los datos reales del caso de estudio (presupuestos culminados y reajustes) son de
-  obras viales. Si no lo fueran, la medición de la tesis pierde sus datos reales.
+- **Datos reales (revisados en local el 2026-10-30).** Los presupuestos reales disponibles son de **edificación**
+  (rehabilitación de frisos y paredes), en versión definitiva y **sin obra terminada**; uno está en ejecución. Usan
+  agregados como insumo (arena lavada, arena amarilla, polvillo), con poco peso en el costo. **No hay todavía
+  presupuestos viales ni de obras con piedra picada**: Eugenio los añadirá pronto. Consecuencia: la fase A (costo de
+  producción) y las pruebas de errores, tiempo y comprobación hacia atrás no dependen de ellos; lo vial se construye
+  y se prueba con casos ficticios hasta que lleguen. El inventario real vive solo fuera del repositorio.
