@@ -13,17 +13,33 @@ import {
 
 // Lee el valor de Python con Node: con `css: false` ni el .py es un módulo del front.
 interface Nodo {
-  cwd(): string;
-  getBuiltinModule(nombre: "node:fs"): { readFileSync(ruta: string, codificacion: string): string };
+  getBuiltinModule(nombre: "node:fs"): { readFileSync(ruta: string | URL, codificacion: string): string };
 }
 const nodo = (globalThis as unknown as { process: Nodo }).process;
 
+// La ruta sale de este archivo (no del directorio desde donde se corre vitest).
+const leer = (relativa: string) => nodo.getBuiltinModule("node:fs").readFileSync(new URL(relativa, import.meta.url), "utf-8");
+
 describe("la tolerancia de masa", () => {
   test("es la misma que TOLERANCIA_MASA de produccion/fuentes.py", () => {
-    const fuente = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/../produccion/fuentes.py`, "utf-8");
+    const fuente = leer("../../../../produccion/fuentes.py");
     const valor = /^TOLERANCIA_MASA = Decimal\("([0-9.]+)"\)/m.exec(fuente)?.[1];
     expect(valor).toBeDefined();
     expect(TOLERANCIA_MASA).toBe(valor);
+  });
+});
+
+describe("los textos de la publicación", () => {
+  const fuentePython = leer("../../../../aplicacion/costo_propio.py");
+
+  test("la fuente del precio es la que escribe aplicacion/costo_propio.py", () => {
+    expect(fuentePython).toContain('f"Producción, período {calculo.periodo}, cálculo n.º {calculo.id}"');
+    expect(fuenteDelPrecio("2026-11", 7)).toBe("Producción, período 2026-11, cálculo n.º 7");
+  });
+
+  test("el nombre de la lista es el que escribe aplicacion/costo_propio.py", () => {
+    expect(fuentePython).toContain('f"Costo propio {calculo.periodo}, cálculo n.º {calculo.id}"');
+    expect(nombreDeLista("2026-11", 7)).toBe("Costo propio 2026-11, cálculo n.º 7");
   });
 });
 

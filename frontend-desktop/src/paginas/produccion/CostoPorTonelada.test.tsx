@@ -75,7 +75,7 @@ describe("Costo por tonelada", () => {
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date(2026, 10, 15, 10, 0, 0));
+    vi.setSystemTime(new Date(2026, 11, 15, 10, 0, 0)); // el mes por defecto es el anterior: 2026-11
     usuario = userEvent.setup();
     fijarCsrf("tok");
     alExpirar.mockReset();
@@ -112,6 +112,12 @@ describe("Costo por tonelada", () => {
     expect(await screen.findByText("AGR-12: 150 t")).toBeInTheDocument();
     expect(screen.getByText("MZP-01: 100 t")).toBeInTheDocument();
     expect(fetchFalso.mock.calls[0]![0]).toBe("/v1/produccion/producido?periodo=2026-11");
+  });
+
+  test("el mes arranca en el mes anterior, ya cerrado, no en el que corre", async () => {
+    montar();
+    await screen.findByText("AGR-12: 150 t");
+    expect(screen.getByLabelText("Mes")).toHaveValue("2026-11");
   });
 
   test("la moneda no tiene valor por defecto: sin elegirla no se calcula", async () => {
@@ -237,6 +243,25 @@ describe("Costo por tonelada", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const aviso = await screen.findByText('Publicado: lista "Costo propio 2026-11, cálculo n.º 7".');
     await waitFor(() => expect(document.activeElement).toBe(aviso.closest("[tabindex]")));
+  });
+
+  test("un 403 al publicar dice que solo un administrador con sesión puede publicar", async () => {
+    publicacion = () => json({ detalle: "Administrar la instalación requiere clave." }, 403);
+    montar(ADMIN);
+    const resultado = await calcular();
+    await usuario.click(within(resultado).getByRole("button", { name: "Publicar como precio propio" }));
+    const dialogo = screen.getByRole("dialog", { name: "Publicar el costo propio" });
+    await usuario.click(within(dialogo).getByRole("button", { name: "Publicar" }));
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent(
+      "Solo un administrador con sesión puede publicar el costo propio.",
+    );
+  });
+
+  test("un 401 al leer la empresa avisa a la aplicación", async () => {
+    empresa = () => json({ detalle: "Sesión vencida" }, 401);
+    montar(ADMIN);
+    await calcular();
+    await waitFor(() => expect(alExpirar).toHaveBeenCalled());
   });
 
   test("cancelar no publica y Esc devuelve el foco al botón", async () => {

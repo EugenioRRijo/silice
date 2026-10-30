@@ -308,6 +308,14 @@ describe("Costos del período", () => {
     expect(peticiones("POST")[0]).toEqual({ ruta: "/v1/produccion/costos/2/anular", cuerpo: { motivo: "se cargó dos veces" } });
   });
 
+  test("la columna Fecha se muestra con día, mes y año, no en ISO", async () => {
+    montar();
+    await screen.findByText("Cantera: 1.550,50 USD");
+    const fila = screen.getByRole("row", { name: /Equipo/ });
+    expect(within(fila).getByText("03/11/2026")).toBeInTheDocument();
+    expect(within(fila).queryByText("2026-11-03")).not.toBeInTheDocument();
+  });
+
   test("cada botón de fila lleva su propio nombre, que empieza por lo que se ve", async () => {
     montar();
     await screen.findByText("Cantera: 1.550,50 USD");

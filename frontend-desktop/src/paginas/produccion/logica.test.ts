@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { ErrorDeApi } from "../../api/cliente";
 import { MENSAJE_INESPERADO } from "../../comun/errores";
-import { fechaEsVe, leerMonto, mensajeDeCostos, mostrarMonto } from "./logica";
+import { fechaEsVe, leerMonto, mensajeDeCostos, mesAnterior, mostrarMonto } from "./logica";
 
 describe("leerMonto", () => {
   test.each([
@@ -29,6 +29,14 @@ describe("mostrarMonto", () => {
 
 describe("fechaEsVe", () => {
   test("«2026-11-03» se lee «03/11/2026»", () => expect(fechaEsVe("2026-11-03")).toBe("03/11/2026"));
+});
+
+describe("mesAnterior", () => {
+  test("es el mes ya cerrado, también a través del cambio de año", () => {
+    expect(mesAnterior(new Date(2026, 10, 15))).toBe("2026-10");
+    expect(mesAnterior(new Date(2027, 0, 3))).toBe("2026-12");
+    expect(mesAnterior(new Date(2026, 2, 31))).toBe("2026-02");
+  });
 });
 
 describe("mensajeDeCostos", () => {
