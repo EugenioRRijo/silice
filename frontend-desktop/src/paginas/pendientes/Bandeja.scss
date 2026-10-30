@@ -163,7 +163,7 @@
     }
 
     .silice-bandeja__lista {
-      min-block-size: auto;
+      block-size: auto;
       max-block-size: 50vh;
       border-inline-end: 0;
       border-block-end: 1px solid var(--silice-divisor);
