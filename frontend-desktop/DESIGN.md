@@ -68,15 +68,30 @@ ajustan aquí cuando la construcción los fije.
   grande la variación ya no desplaza a la cifra a 0 px. La franja de indicadores tiene un alto mínimo de 64 px y **crece** lo que
   pida la etiqueta (una línea más con el marcador, varias con la completa).
 - Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El color de acción lo pone la empresa
-  (rediseño F3, D-F3-4 y Tarea 4b): el botón principal es el acento **aclarado** (55 % con blanco; 85 % al pasar el ratón; el
-  acento puro al pulsar) con un **borde de 1 px** (acento al 50 % con el marco) y texto `--silice-marco`; los enlaces
-  (subrayados), los bordes interactivos y la raya de la pestaña activa van en `--silice-complementario` (sin él, el marco);
+  (rediseño F3, Tarea 4c; ver «Papeles del color» abajo): el botón principal es el **complementario** con texto blanco (el
+  de Carbon), el complementario al 85 % con negro al pasar el ratón y al 70 % al pulsar, sin borde propio; los enlaces
+  (subrayados), los bordes interactivos y la raya de la pestaña activa van también en `--silice-complementario` (sin él, el marco);
   los contadores de la barra lateral llevan su propio número y fondo (`--silice-contador-numero` y `--silice-contador-fondo`,
   sin ellos el marco y el lateral) y un contorno de 1 px del color del número. Vale en toda la aplicación (también
   bienvenida, entrar y recuperar acceso) y en los diálogos. El servidor avisa (`GET /v1/tema`, `avisos`) si el texto del
-  botón no llega a 7:1 en sus tres estados, el borde a 3:1, el complementario a 4,5:1 sobre el fondo, el blanco y el lateral,
-  y el contador a 4,5:1 (número) y 3:1 (contorno). El foco sigue siendo el azul de Carbon (`$focus`), y el tema neutro del
-  repositorio usa el amarillo claro (`yellow-20`) y el gris de Carbon.
+  botón (blanco sobre el complementario) no llega a 7:1 en sus tres estados, el complementario a 4,5:1 sobre el fondo, el
+  blanco y el lateral, las iniciales de la cuenta (marco sobre acento) a 4,5:1 y el contador a 4,5:1 (número) y 3:1
+  (contorno). El foco sigue siendo el azul de Carbon (`$focus`), y el tema neutro del repositorio usa el amarillo claro
+  (`yellow-20`) y el gris de Carbon.
+
+### Papeles del color (rediseño F3, Tarea 4c)
+
+| Papel | Color | Dónde |
+|---|---|---|
+| **Precaución** | amarillo de Carbon (avisos) | notificaciones y avisos de Carbon, tal como vienen; nunca relleno de una acción |
+| **Marca** | `--silice-acento` (ámbar) | raya bajo la barra superior, opción de tamaño de letra activa, iniciales de la cuenta |
+| **Acción** | `--silice-complementario` | botón principal («Nueva obra» incluido), enlaces, bordes interactivos, raya de la pestaña activa, botón terciario |
+
+- Regla de identidad: el acento **nunca** va solo como identidad; siempre junto al marco (`--silice-marco`) y al
+  complementario. El ámbar solo es genérico del sector: en una empresa con otro color de acento, la identidad la llevan el
+  marco y el complementario.
+- Ningún uso de `--silice-acento` ni de `--cds-button-primary*` puede ser el relleno de una acción: el botón principal se
+  confunde con el aviso amarillo de Carbon si comparten familia de color (hallazgo H3 del cierre de F3).
 
 ## Marco
 
@@ -93,7 +108,7 @@ pendientes, no por herramientas: nada de módulos ni áreas.
   el nombre, el ícono de persona).
 - **Barra lateral** (`BarraLateral.tsx`): 14,75 rem, fondo `--silice-lateral`, fija al desplazar el contenido y con su
   propio desplazamiento. Tres zonas: **Pendientes**; **Obras**, con «Nueva obra» como botón principal fijo bajo su
-  cabecera (relleno `--silice-acento`, texto `--silice-marco`) y el árbol de obras (patrón `tree` de WAI-ARIA: flechas,
+  cabecera (relleno `--silice-complementario`, texto blanco) y el árbol de obras (patrón `tree` de WAI-ARIA: flechas,
   derecha despliega, izquierda pliega; agrupado por carpeta solo si hay más de una; la obra abierta desplegada en sus
   secciones con una línea guía); y **Empresa** (Precios y catálogo, Auditar un presupuesto, Producción, Empresa y
   personas, Ayuda). Activo: fondo `--silice-lateral-activo` y raya de 3 px `--silice-marco`. Lo que la cuenta no puede

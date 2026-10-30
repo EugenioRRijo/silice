@@ -59,24 +59,22 @@
   --silice-interactivo: var(--cds-interactive);
 }
 
-// Proporciones de la mezcla del boton principal (en porcentaje del primer color). El servidor mide el contraste con las
-// mismas (MEZCLAS en aplicacion/tema.py); una prueba comprueba que las dos copias coinciden.
-$mezcla-reposo: 55%;
-$mezcla-hover: 85%;
-$mezcla-borde: 50%;
+// Cuanto del complementario queda en el boton principal al oscurecerlo con negro (en porcentaje). El servidor mide el
+// contraste con las mismas (OSCURECIDO_DEL_BOTON en aplicacion/tema.py); una prueba comprueba que las dos copias coinciden.
+$oscurecido-hover: 85%;
+$oscurecido-pulsado: 70%;
 
-// Color de accion de la empresa (D-F3-4 y Tarea 4b): el boton principal lleva el acento aclarado con blanco y un borde de
-// 1 px (acento con marco); al pasar el raton, mas claro; al pulsar, el acento puro; su texto, el marco (abajo). Los
-// enlaces, los bordes interactivos y la raya de la pestana activa (Carbon la pinta con --cds-border-interactive) van en
-// el color complementario. Dos zonas: :root (los dialogos se montan en el body) y .cds--g10 (App.tsx envuelve la app en
+// Color de accion de la empresa (Tarea 4c): el boton principal, los enlaces, los bordes interactivos y la raya de la
+// pestana activa (Carbon la pinta con --cds-border-interactive) van en el color complementario. El boton lleva texto
+// blanco (el de Carbon, sin reasignar); al pasar el raton se oscurece al 85 % con negro y al pulsar, al 70 %. El acento
+// (amarillo/ambar) es la marca y no se usa como relleno de una accion; el amarillo de aviso de Carbon queda como esta. Dos zonas: :root (los dialogos se montan en el body) y .cds--g10 (App.tsx envuelve la app en
 // <Theme theme="g10">, que Carbon llena con el azul: los descendientes heredan de ese div y no de :root). Va DESPUES del
 // tema de Carbon para ganarle a igual especificidad, y en un bloque aparte para no repetir los --silice-* en el div. El
 // foco no se toca. El servidor mide estos pares (aplicacion/tema.py).
 :root, .cds--g10 {
-  --cds-button-primary: color-mix(in srgb, var(--silice-acento) #{$mezcla-reposo}, white);
-  --cds-button-primary-hover: color-mix(in srgb, var(--silice-acento) #{$mezcla-hover}, white);
-  --cds-button-primary-active: var(--silice-acento);
-  --silice-boton-borde: color-mix(in srgb, var(--silice-acento) #{$mezcla-borde}, var(--silice-marco));
+  --cds-button-primary: var(--silice-complementario);
+  --cds-button-primary-hover: color-mix(in srgb, var(--silice-complementario) #{$oscurecido-hover}, black);
+  --cds-button-primary-active: color-mix(in srgb, var(--silice-complementario) #{$oscurecido-pulsado}, black);
   --cds-link-primary: var(--silice-complementario);
   --cds-link-primary-hover: var(--silice-complementario);
   --cds-border-interactive: var(--silice-complementario);
@@ -86,12 +84,6 @@ $mezcla-borde: 50%;
   --cds-button-tertiary: var(--silice-complementario);
   --cds-button-tertiary-hover: var(--silice-complementario);
   --cds-button-tertiary-active: color-mix(in srgb, var(--silice-complementario) 75%, black);
-}
-
-// El texto sobre color (text-on-color) tambien se usa sobre otros fondos (rojo, azul...): solo cambia dentro del boton principal.
-.cds--btn--primary {
-  --cds-text-on-color: var(--silice-marco);
-  border-color: var(--silice-boton-borde);
 }
 
 // WCAG 1.4.1: el enlace en el complementario puede quedar muy cerca del texto (en el tema neutro, donde sigue al marco,

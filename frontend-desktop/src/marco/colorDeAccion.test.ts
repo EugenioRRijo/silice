@@ -70,7 +70,7 @@ describe("color de acción de la empresa en toda la aplicación", () => {
   });
 
   test("ninguna regla nueva lleva hexadecimales sueltos", () => {
-    expect(nuevas.length).toBeGreaterThanOrEqual(8);
+    expect(nuevas.length).toBeGreaterThanOrEqual(6);
     expect(nuevas.join("\n")).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 });

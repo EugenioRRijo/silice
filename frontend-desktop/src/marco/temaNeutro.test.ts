@@ -23,9 +23,9 @@ const g10 = (nodo.getBuiltinModule("node:module").createRequire(`${raiz}/`)("@ca
 describe("_NEUTRO de aplicacion/tema.py frente a Carbon", () => {
   const servidor = neutroDelServidor();
 
-  it("lleva exactamente las nueve claves que mide", () => {
+  it("lleva exactamente las diez claves que mide", () => {
     expect(Object.keys(servidor).sort()).toEqual(
-      ["acento", "blanco", "borde", "fondo", "lateral", "lateral-activo", "marco", "texto", "texto-del-marco"].sort(),
+      ["acento", "blanco", "borde", "fondo", "lateral", "lateral-activo", "marco", "texto", "texto-del-boton", "texto-del-marco"].sort(),
     );
   });
 
@@ -35,6 +35,7 @@ describe("_NEUTRO de aplicacion/tema.py frente a Carbon", () => {
     ["lateral", () => warmGray[10], "warm-gray-10 de @carbon/colors"],
     ["lateral-activo", () => warmGray[20], "warm-gray-20 de @carbon/colors"],
     ["borde", () => gray[50], "gray-50 de @carbon/colors"],
+    ["texto-del-boton", () => g10["textOnColor"]!, "text-on-color del tema g10 de @carbon/themes"],
     ["texto-del-marco", () => g10["textInverse"]!, "text-inverse del tema g10 de @carbon/themes"],
     ["texto", () => g10["textPrimary"]!, "text-primary del tema g10 de @carbon/themes"],
     ["fondo", () => g10["background"]!, "background del tema g10 de @carbon/themes"],

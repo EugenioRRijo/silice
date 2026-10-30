@@ -37,22 +37,24 @@ _NEUTRO = {
     "lateral": "#f7f3f2",  # --silice-lateral (warm-gray-10)
     "lateral-activo": "#e5e0df",  # --silice-lateral-activo (warm-gray-20); el tema no lo cambia
     "texto-del-marco": "#ffffff",  # --cds-text-inverse
+    "texto-del-boton": "#ffffff",  # --cds-text-on-color (g10): el texto del botón principal
     "texto": "#161616",  # --cds-text-primary
     "borde": "#8d8d8d",  # --cds-border-strong-01 (gray-50)
     "fondo": "#f4f4f4",  # --cds-background (g10): el fondo del contenido, no el blanco de las capas
     "blanco": "#ffffff",  # --cds-layer-01 (g10): las capas, los diálogos y los campos
 }
-#: Mezclas del botón principal, en porcentaje del primer color (tokens.scss: $mezcla-*; una prueba
-#: comprueba que las dos copias coinciden). `reposo`: acento con blanco; `hover`: acento con blanco;
-#: `borde`: acento con el marco. Al pulsar el botón es el acento puro.
-MEZCLAS = {"reposo": 55, "hover": 85, "borde": 50}
+#: Cuánto del complementario queda en el botón principal al oscurecerlo con negro, en porcentaje
+#: (tokens.scss: $oscurecido-*; una prueba comprueba que las dos copias coinciden). En reposo el
+#: botón es el complementario tal cual.
+OSCURECIDO_DEL_BOTON = {"hover": 85, "pulsado": 70}
 _TEXTO = 4.5  # WCAG 2.x 1.4.3, texto normal
 _TEXTO_BOTON = 7.0  # decisión de Eugenio (2026-10-28): legibilidad para vista cansada
 _GRAFICO = 3.0  # WCAG 2.x 1.4.11, bordes y rayas
 #: (color delante, color de fondo, mínimo, frase del aviso). `marco`, `acento`, `lateral`,
 #: `complementario`, `contador-numero` y `contador-fondo` los puede poner la empresa; uno ausente
 #: mide con el del tema neutro (el complementario y el número del contador siguen al marco, y el
-#: fondo del contador al lateral). `boton-*` son derivados (MEZCLAS). La raya del activo del
+#: fondo del contador al lateral). `boton-*` son el complementario y sus dos oscurecidos
+#: (OSCURECIDO_DEL_BOTON); el texto del botón es blanco. La raya del activo del
 #: menú lateral es del color del marco (no del acento) y se mide sobre `lateral-activo`, que el
 #: tema no cambia.
 _PARES = (
@@ -63,28 +65,28 @@ _PARES = (
         "El texto de la barra superior no se lee bien sobre el color del marco",
     ),
     (
-        "marco",
+        "texto-del-boton",
         "boton-reposo",
         _TEXTO_BOTON,
         "El texto de los botones principales no se lee bien sobre su fondo",
     ),
     (
-        "marco",
+        "texto-del-boton",
         "boton-hover",
         _TEXTO_BOTON,
         "El texto de los botones principales no se lee bien al pasar el ratón",
     ),
     (
-        "marco",
-        "acento",
+        "texto-del-boton",
+        "boton-pulsado",
         _TEXTO_BOTON,
         "El texto de los botones principales no se lee bien al pulsarlos",
     ),
     (
-        "boton-borde",
-        "fondo",
-        _GRAFICO,
-        "El borde de los botones principales casi no se ve sobre el fondo de la página",
+        "marco",
+        "acento",
+        _TEXTO,
+        "Las iniciales de la cuenta no se leen bien sobre el color de acento",
     ),
     (
         "complementario",
@@ -217,9 +219,14 @@ def avisos_de_contraste(
     colores["complementario"] = complementario or colores["marco"]
     colores["contador-numero"] = contador_numero or colores["marco"]
     colores["contador-fondo"] = contador_fondo or colores["lateral"]
-    colores["boton-reposo"] = mezclar(colores["acento"], _NEUTRO["blanco"], MEZCLAS["reposo"])
-    colores["boton-hover"] = mezclar(colores["acento"], _NEUTRO["blanco"], MEZCLAS["hover"])
-    colores["boton-borde"] = mezclar(colores["acento"], colores["marco"], MEZCLAS["borde"])
+    negro = "#000000"
+    colores["boton-reposo"] = colores["complementario"]
+    colores["boton-hover"] = mezclar(
+        colores["complementario"], negro, OSCURECIDO_DEL_BOTON["hover"]
+    )
+    colores["boton-pulsado"] = mezclar(
+        colores["complementario"], negro, OSCURECIDO_DEL_BOTON["pulsado"]
+    )
     avisos = []
     for delante, fondo, minimo, frase in _PARES:
         razon = contraste(colores[delante], colores[fondo])

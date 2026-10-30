@@ -158,10 +158,10 @@
   inline-size: 100%;
   block-size: 2.5rem;
   padding-inline: 1rem;
-  // Mismo tono que el boton principal de Carbon (tokens de estilos/tokens.scss): aclarado, con borde de 1 px.
-  border: 1px solid var(--silice-boton-borde);
+  // Mismo tono que el boton principal de Carbon (tokens de estilos/tokens.scss): el complementario, texto blanco, sin borde.
+  border: none;
   background-color: var(--cds-button-primary);
-  color: var(--silice-marco);
+  color: var(--cds-text-on-color);
   font-family: inherit;
   font-weight: 600;
   text-align: start;
@@ -182,7 +182,8 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--silice-marco);
+    // Blanco: sobre el complementario (que sin uno propio es el marco) el contorno del marco no se veria.
+    outline: 2px solid var(--cds-text-on-color);
     outline-offset: -4px;
   }
 }

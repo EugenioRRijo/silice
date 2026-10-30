@@ -71,7 +71,7 @@ describe("el color de acción llega a los descendientes del tema g10", () => {
   test("el texto del botón principal vuelve al blanco de Carbon: ya no se reasigna", () => {
     expect(valor("boton", "--cds-text-on-color")).not.toContain("--silice-");
     expect(valor("boton-fuera", "--cds-text-on-color")).not.toContain("--silice-");
-    expect(css).not.toMatch(/--cds-text-on-color/);
+    expect(css).not.toMatch(/--cds-text-on-color:\s*var\(--silice-/);
   });
 
   test("el botón principal ya no tiene borde propio ni token de borde", () => {
