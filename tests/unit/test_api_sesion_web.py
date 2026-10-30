@@ -69,6 +69,7 @@ _ESTADO_DE_ARMA = {
         "decidir_recuperacion",
         "entregar_paquete",
         "operar_arenera",
+        "registrar_costos_produccion",  # plan vial, Tarea 1: arma y administrador
         "leer_proyecto",
         "aprobar_version",
         "cambiar_caso",
