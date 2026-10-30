@@ -740,3 +740,57 @@ describe("BarraLateral: nombres largos de obra", () => {
     expect(regla).toMatch(/overflow:\s*hidden/);
   });
 });
+
+// Cierre de F3 (menor 6): con letra «Muy grande» (1,5) a 1366×768 el rem pasa de 28 px y Pendientes, los títulos y las cinco
+// entradas de Empresa se comían el alto: la zona de obras quedaba en casi nada. La zona de obras se queda con el alto que
+// sobra y es la única que se desplaza; con letra Grande o Muy grande se compactan filas y títulos y la zona conserva un
+// mínimo. jsdom no calcula el diseño: la estructura se prueba en el DOM y las reglas en el fuente; la medida real
+// (cuántas obras caben a 1366×768) se hace en el navegador.
+describe("BarraLateral: la zona de obras con letra grande", () => {
+  const bloque = (fuente: string, apertura: string) => {
+    const i = fuente.indexOf(apertura);
+    if (i < 0) return "";
+    let nivel = 0;
+    for (let j = fuente.indexOf("{", i); j < fuente.length; j++) {
+      if (fuente[j] === "{") nivel++;
+      if (fuente[j] === "}" && --nivel === 0) return fuente.slice(i, j + 1);
+    }
+    return "";
+  };
+  const regla = (fuente: string, selector: string) => bloque(fuente, `${selector} {`);
+
+  it("la cabecera de Obras y «Nueva obra» quedan fuera del árbol, que es el único con desplazamiento propio", async () => {
+    servidor([obra(NORTE, 1, "Torre"), TORRE]);
+    pintar();
+    const lista = await arbol();
+    const zona = lista.closest(".silice-marco-lateral__obras");
+    expect(zona).not.toBeNull();
+    expect(lista.parentElement).toBe(zona);
+    expect(within(lista).queryByRole("button", { name: "Nueva obra" })).toBeNull();
+    expect(within(zona as HTMLElement).getByRole("heading", { name: "Obras" })).toBeInTheDocument();
+    const hojas = leer("marco/BarraLateral.scss");
+    expect(regla(hojas, ".silice-marco-lateral__obras")).toMatch(/flex:\s*1 1 auto/);
+    expect(regla(hojas, ".silice-marco-lateral__arbol")).toMatch(/overflow-y:\s*auto/);
+    expect(regla(hojas, ".silice-marco-lateral__empresa")).toMatch(/flex:\s*none/);
+  });
+
+  it("_umbrales.scss ofrece un mixin para letra Grande y Muy grande, sin consultas de ancho propias", () => {
+    const fuente = leer("marco/_umbrales.scss");
+    const mixin = bloque(fuente, "@mixin con-letra-grande");
+    expect(mixin).toMatch(/html\[data-silice-letra="grande"\]/);
+    expect(mixin).toMatch(/html\[data-silice-letra="muy-grande"\]/);
+    expect(mixin).not.toMatch(/@media/);
+  });
+
+  it("con letra grande se compactan filas y títulos y la zona de obras conserva un mínimo; nada se esconde", () => {
+    const hoja = leer("marco/BarraLateral.scss");
+    expect(hoja).toMatch(/@use\s+"umbrales"\s+as\s+u;/);
+    const compacta = bloque(hoja, "@include u.con-letra-grande");
+    expect(compacta).not.toBe("");
+    expect(regla(compacta, ".silice-marco-lateral__fila")).toMatch(/min-block-size:\s*1\.5rem/);
+    expect(regla(compacta, ".silice-marco-lateral__titulo")).toMatch(/padding:\s*0\.5rem 1rem 0\.25rem/);
+    expect(regla(compacta, ".silice-marco-lateral__obras")).toMatch(/min-block-size:\s*10rem/);
+    expect(compacta).not.toMatch(/display:\s*none/);
+    expect(compacta).not.toMatch(/silice-letra/);
+  });
+});
