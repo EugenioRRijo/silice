@@ -77,6 +77,23 @@ trazable a su origen, **sin un solo cambio en `core/`**.
 9. **Casos ficticios** en el repositorio: una vía ficticia con tramos, una cantera y una planta ficticias con costos e
    historia de índices inventada y declarada como tal.
 
+## 2.1 Requisitos transversales que pide Eugenio (aprobación del 2026-10-30)
+
+Eugenio aprobó este diseño con la condición de que el plan contemple estos puntos. Estado leído en el código el
+2026-10-30 y lo que hace el plan con cada uno (sin tocar `core/`):
+
+| Pedido | Estado hoy | Qué hace el plan |
+|---|---|---|
+| **Reportes** | Exportación a Excel de la hoja y del presupuesto (`aplicacion/hoja_exportar.py`), informe de revisión y de control | Reportes viales: cómputos por tramo, APU de la carpeta con el origen del costo propio, costo de producción por período, informe de riesgo, informe de mejora de la estimación y resumen del presupuesto con impuestos. Mismo mecanismo de exportación |
+| **Escalabilidad, fácil ampliación y reducción del alcance** | Especialidades enchufables por contrato (`AdaptadorDominio`); módulos de navegación (`2026-10-25-modulos-design.md`) | **Especialidades y módulos activables por instalación**: el administrador enciende o apaga vial, edificación y producción; lo apagado no aparece en la interfaz y su API responde que no está disponible. Pruebas de arquitectura: nada de `core/` importa `adapters/vial` ni `produccion/`, y la aplicación arranca con lo vial apagado. Medida para la tesis: líneas cambiadas en `core/` al agregar lo vial (meta: cero) |
+| **Multimoneda** | Bs y USD por proyecto, tasa BCV del día exacto, equivalencias con su rastro | Costos de producción, precios propios, proyección e informes en la moneda original con su equivalente y su tasa; nada nuevo en el núcleo |
+| **Impuestos** | **El núcleo no calcula IVA** (`ParametrosCosto` solo tiene FCAS, bono, administración y utilidad) | **IVA sobre el total del presupuesto y de cada valuación** (subtotal, IVA, total), en `aplicacion/`, con la alícuota como parámetro con fuente y fecha; retenciones en la valuación solo si el plan confirma la norma. El APU no cambia |
+| **Paro forzoso y utilidades** | FCAS es **un solo número** (6,00 por defecto, sin fuente normativa: deuda D4) | **Calculadora del FCAS por componentes** en `aplicacion/`: cada componente (entre ellos el paro forzoso, hoy Régimen Prestacional de Empleo, y las utilidades de los trabajadores) con su base legal, su cláusula de convención y su fecha; el resultado es el `fcas` que el núcleo ya recibe. Resuelve la D4 con fuentes. «Utilidad» de la empresa sigue siendo el parámetro existente. Los porcentajes de cada componente se cotejan con la norma antes de darlos por buenos |
+| **Roles** | Arma, revisa y administrador, con acciones (`seguridad/permisos.py`, fuera del núcleo) | Acciones nuevas: registrar costos de producción, publicar costo propio, ver y correr la proyección, encender o apagar especialidades |
+| **Tablas de búsqueda venezolanas** | Catálogo, MaPreX (julio 2026), tabulador CIV, tasa BCV; buscador global Ctrl+K; el autocompletado guiado en campos de datos está pedido y pendiente | **Búsqueda con autocompletado** en los campos viales y de producción: partidas viales, insumos (MaPreX y catálogo de la empresa), tasa BCV del día, salarios de la convención; cada sugerencia muestra su fuente |
+| **Comprobación entre APU y presupuestos** | El auditor (R1–R15) revisa coherencia del presupuesto | **Conciliación** por partida: precio unitario del presupuesto contra el recalculado de su APU, cantidad del presupuesto contra la de los tramos, y costo propio usado contra el último publicado; cada diferencia es un hallazgo con su origen |
+| **Estimación con valor final de mejora** | No existe | **Informe de mejora de la estimación**: para una obra culminada compara el costo final real con (a) el presupuesto original y (b) la estimación de Sílice con su reserva P80, y da el error de cada una y la mejora en puntos porcentuales. Es la cifra central de la tesis; con casos ficticios en el repositorio y datos reales solo en local |
+
 ## 3. No objetivos
 
 - Diseño estructural de pavimentos (espesores por tránsito, AASHTO): Sílice presupuesta y audita, no diseña.
