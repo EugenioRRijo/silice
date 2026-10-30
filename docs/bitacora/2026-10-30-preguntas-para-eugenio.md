@@ -19,6 +19,8 @@ IVSS, orden de trabajo, norma de carreteras).
 | 5 | T17 | IVSS: ¿qué porcentaje por defecto? | 11 % (el más alto de 9-11 %: subestimar el costo es peor que sobrestimarlo), «a cotejar» según el riesgo de la empresa | Cambiar el valor por defecto en `aplicacion/fcas.py` |
 | 6 | T9 | VR3 mide el ligante residual (g/m²), pero la obra declara la dosis en l/m². | Se convierte con densidad 1,0 kg/l y fracción residual 0,60 de la emulsión, ambos «supuesto declarado» y a cotejar con la ficha del producto | Pedir el residual directamente en la capa |
 | 7 | T12 | No hay serie pública venezolana del cemento asfáltico. | Se usa el índice de precios de asfalto de EE. UU. (FRED `WPU05810212`) solo por su variación mensual, declarado proxy internacional | Cargar una serie propia cuando la empresa la tenga |
+| 9 | T2 | ¿Centro y concepto del costo parten de un valor por defecto? | El centro y la moneda son obligatorios (un centro mal puesto sesga el costo por tonelada: la cantera va a los agregados y la planta a la mezcla); el concepto parte del primero de la lista | Poner un valor por defecto en `FormularioDeCosto.tsx` |
+| 10 | T2 | ¿Dónde se entra a «Costos del período»? | En tres sitios: Existencias (lo que abre Empresa › Producción), Inicio de producción y el buscador (Ctrl+K) | Quitar los enlaces que sobren; la pantalla no cambia |
 
 ## Rediseño del front, F4
 
