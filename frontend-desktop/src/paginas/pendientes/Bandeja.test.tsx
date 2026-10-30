@@ -534,7 +534,7 @@ describe("Pendientes: foco 5, muchos pendientes", () => {
       return i < 0 ? "" : bloque.slice(i, bloque.indexOf("}", i));
     };
     expect(regla(".silice-bandeja")).toMatch(/block-size:\s*auto/);
-    expect(regla(".silice-bandeja__lista")).toMatch(/(?<!min-)block-size:\s*auto/);
+    expect(regla(".silice-bandeja__lista")).toMatch(/(?:^|[;{\s])block-size:\s*auto/);
     expect(regla(".silice-bandeja__lista")).toMatch(/max-block-size:\s*\d+vh/);
     expect(regla(".silice-bandeja__rejilla")).not.toMatch(/minmax\(0,\s*1fr\)\s*auto/);
   });

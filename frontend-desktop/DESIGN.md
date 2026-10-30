@@ -70,7 +70,7 @@ ajustan aquí cuando la construcción los fije.
 - Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El color de acción lo pone la empresa
   (rediseño F3, Tarea 4c; ver «Papeles del color» abajo): el botón principal es el **complementario** con texto blanco (el
   de Carbon), el complementario al 85 % con negro al pasar el ratón y al 70 % al pulsar, sin borde propio; el botón
-  terciario (H5) lleva contorno y texto en el complementario, se rellena de él con texto blanco al pasar el ratón y al 75 % con
+  terciario lleva contorno y texto en el complementario, se rellena de él con texto blanco al pasar el ratón y al 75 % con
   negro al pulsar; los enlaces (subrayados), los bordes interactivos y la raya de la pestaña activa van también en
   `--silice-complementario` (sin él, el marco);
   los contadores de la barra lateral llevan su propio número y fondo (`--silice-contador-numero` y `--silice-contador-fondo`,
@@ -87,7 +87,7 @@ ajustan aquí cuando la construcción los fije.
 | Papel | Color | Dónde |
 |---|---|---|
 | **Precaución** | amarillo de Carbon (avisos) | notificaciones y avisos de Carbon, tal como vienen; nunca relleno de una acción |
-| **Marca** | `--silice-acento` (ámbar) | raya bajo la barra superior, opción de tamaño de letra activa, iniciales de la cuenta |
+| **Marca** | `--silice-acento` (ámbar) | raya bajo la barra superior, opción de tamaño de letra activa en la barra superior (sobre fondo claro, como en Entrar, va en el complementario), iniciales de la cuenta |
 | **Acción** | `--silice-complementario` | botón principal («Nueva obra» incluido), enlaces, bordes interactivos, raya de la pestaña activa, botón terciario |
 
 - **Selección sobre fondo claro = complementario.** La raya de la opción activa del tamaño de letra es el acento en la barra
@@ -120,8 +120,8 @@ pendientes, no por herramientas: nada de módulos ni áreas.
   se recorta a 2 líneas con puntos suspensivos y su `title` con el nombre completo aparece solo si de verdad está recortado,
   medido al pasar el ratón); y **Empresa** (Precios y catálogo, Auditar un presupuesto, Producción, Empresa y
   personas, Ayuda). Activo: fondo `--silice-lateral-activo` y raya de 3 px `--silice-marco`. Lo que la cuenta no puede
-  usar no aparece. **Letra Grande o Muy grande:** la cabecera de Obras y «Nueva obra» quedan fijas y solo el árbol se
-  desplaza; filas y títulos se compactan (mixin `con-letra-grande` de `_umbrales.scss`: filas de 1,5 rem, títulos con menos
+  usar no aparece. La cabecera de Obras y «Nueva obra» quedan fijas y el árbol tiene su propio
+  desplazamiento. **Letra Grande o Muy grande:** filas y títulos se compactan (mixin `con-letra-grande` de `_umbrales.scss`: filas de 1,5 rem, títulos con menos
   relleno), la zona de obras conserva 10 rem como mínimo y, si aun así no cabe todo, se desplaza la barra entera. Nada se
   esconde (los tres botones de tamaño de letra siguen).
 - **La obra** (`EspacioDeObra.tsx`, ruta `#/obra/<carpeta>/<obra>/<sección>`): antes de montar la sección se fija la obra

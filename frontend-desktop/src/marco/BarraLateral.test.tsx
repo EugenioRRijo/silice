@@ -759,7 +759,7 @@ describe("BarraLateral: la zona de obras con letra grande", () => {
   };
   const regla = (fuente: string, selector: string) => bloque(fuente, `${selector} {`);
 
-  it("la cabecera de Obras y «Nueva obra» quedan fuera del árbol, que es el único con desplazamiento propio", async () => {
+  it("la cabecera de Obras y «Nueva obra» quedan fuera del árbol, que tiene su propio desplazamiento", async () => {
     servidor([obra(NORTE, 1, "Torre"), TORRE]);
     pintar();
     const lista = await arbol();

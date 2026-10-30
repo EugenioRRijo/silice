@@ -54,7 +54,7 @@
   overflow-wrap: anywhere;
 }
 
-// Un nombre largo se limita a 2 lineas con puntos suspensivos (el nombre completo va en `title` y en el nombre accesible).
+// Un nombre largo se limita a 2 lineas con puntos suspensivos (el nombre completo va en el nombre accesible, y en `title` solo si esta recortado).
 .silice-marco-lateral__obra-nombre {
   display: -webkit-box;
   overflow: hidden;
