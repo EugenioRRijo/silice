@@ -27,10 +27,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from aplicacion.costo_propio import CalculoGuardado, calcular_periodo, publicar_calculo
+from aplicacion.tasa_del_dia import SinTasaDelDia
 from core import models
 from core.catalog import Catalogo
 from produccion.costo import ErrorDeCalculo
 from produccion.costos import CostoDelPeriodo, registrar_costo
+from produccion.inventario import crear_material
 from tests.fixtures import costo_propio as cp
 
 D = Decimal
@@ -211,52 +213,74 @@ def test_el_apu_usa_el_costo_publicado(ins, caso) -> None:
 # --- Moneda y negativas ---------------------------------------------------------------------------
 
 
-def test_en_bs_la_base_en_usd_se_convierte_con_la_tasa_del_dia(ins, caso) -> None:
+def _tasas_de_noviembre(caso, **extra: str) -> None:
+    dias = {cp.dia(1): cp.TASA, cp.dia(3): cp.TASA, cp.dia(4): cp.TASA, cp.dia(12): cp.TASA}
+    cp.tasas(caso, dias | {cp.dia(int(n[1:])): v for n, v in extra.items()})
+
+
+def test_en_bs_la_base_se_convierte_con_la_tasa_del_dia_de_su_vigencia(ins, caso) -> None:
+    """La lista rige desde el 01/11 (36,50); la del 26/11 (40) no cuenta: 600 x 36,50 = 21.900, lo
+    mismo que uso el calculo para el cemento asfaltico."""
     cp.noviembre_usd(ins, caso)
-    cp.tasas(
-        caso,
-        {
-            cp.dia(1): cp.TASA,
-            cp.dia(3): cp.TASA,
-            cp.dia(4): cp.TASA,
-            cp.dia(12): cp.TASA,
-            cp.dia(28): cp.TASA,
-        },
-    )
+    _tasas_de_noviembre(caso, d26="40")
     calculo = _calcular(ins, caso, "Bs")
     lista = _publicar(caso, calculo)
     precios = _precios(lista)
     assert lista.moneda == "Bs"
     assert precios["AGP-AGR-12"] == D("182.5") and precios["MZP-MZ-1"] == D("1850.55")
     assert precios["CA-30"] == D("21900")
+    usado = _instantanea(calculo)["precios_comprados"]["CA-30"]["convertido"]
+    assert D(usado) == precios["CA-30"]
 
 
-def test_sin_tasa_para_convertir_la_base_no_se_escribe_nada(ins, caso) -> None:
+def test_sin_tasa_el_dia_exacto_de_la_base_no_se_escribe_nada(ins, caso) -> None:
+    """Una base que rige desde el 05/11 y una tasa de 2 dias antes (03/11): no sirve."""
     cp.noviembre_usd(ins, caso)
-    # la ultima tasa es del 12/11: a mas de 7 dias del 30/11 no sirve para llevar la base a Bs
-    cp.tasas(caso, {fecha: cp.TASA for fecha in (cp.dia(1), cp.dia(3), cp.dia(4), cp.dia(12))})
+    _tasas_de_noviembre(caso)
     calculo = _calcular(ins, caso, "Bs")
-    antes = _listas(caso)
-    with pytest.raises(ValueError, match="tasa"):
-        _publicar(caso, calculo, Catalogo(caso).lista_vigente(date(2026, 11, 30)))
-    assert _listas(caso) == antes and _insumos(caso, "MZP-MZ-1") == []
+    otra = caso.get(models.ListaPrecios, cp.lista(caso, "USD", cp.dia(5), cp.LISTA_USD, "Otra"))
+    antes, insumos = _listas(caso), caso.scalar(select(func.count()).select_from(models.Insumo))
+    with pytest.raises(SinTasaDelDia, match=r"«Otra».*05/11/2026|05/11/2026.*«Otra»") as error:
+        _publicar(caso, calculo, otra)
+    assert "UC-17" not in str(error.value)
+    assert _listas(caso) == antes
+    assert caso.scalar(select(func.count()).select_from(models.Insumo)) == insumos
 
 
 def test_codigo_de_insumo_demasiado_largo_se_niega_y_lo_nombra(ins, caso) -> None:
-    cp.noviembre_usd(ins, caso)
+    """Un agregado REAL de 17 caracteres: `AGP-` + 17 = 21 pasa del limite de 20 del insumo."""
+    largo = "AGR-MUY-LARGO-123"
+    crear_material(ins, codigo=largo, nombre=largo, unidad_venta="t", existencia_minima=D(0))
+    cp.entrada(ins, largo, "100", cp.dia(5))
+    cp.costo(ins, "cantera", "500", "USD", cp.dia(3))
+    cp.lista(caso, "USD", cp.dia(1), {})
     calculo = _calcular(ins, caso)
-    largo = CalculoGuardado(
-        calculo.id,
-        P,
-        "USD",
-        {"AGR-MUY-LARGO-123456": D("5")},
-        calculo.huella,
-        instantanea=calculo.instantanea,
-    )
+    assert calculo.por_tonelada == {largo: D("5")}
     antes = _listas(caso)
-    with pytest.raises(ErrorDeCalculo, match="MZP-AGR-MUY-LARGO-123456"):
-        _publicar(caso, largo)
-    assert _listas(caso) == antes
+    with pytest.raises(ErrorDeCalculo, match="AGP-AGR-MUY-LARGO-123"):
+        _publicar(caso, calculo)
+    assert _listas(caso) == antes and _insumos(caso, f"AGP-{largo}") == []
+
+
+def test_un_insumo_propio_ajeno_se_niega_antes_de_escribir_nada(ins, caso) -> None:
+    """`MZP-MZ-1` ya existe en m3: se niega y `AGP-…` (que se daria de alta antes) tampoco queda."""
+    cp.noviembre_usd(ins, caso)
+    caso.add(models.Insumo(codigo="MZP-MZ-1", tipo="material", descripcion="ajeno", unidad="m3"))
+    caso.flush()
+    calculo = _calcular(ins, caso)
+    antes = _listas(caso)
+    with pytest.raises(ErrorDeCalculo, match="MZP-MZ-1"):
+        _publicar(caso, calculo)
+    assert not caso.new and not caso.dirty
+    assert _insumos(caso, "AGP-AGR-12") == [] and _listas(caso) == antes
+
+
+def test_un_insumo_propio_preexistente_en_toneladas_se_reutiliza(ins, caso) -> None:
+    cp.noviembre_usd(ins, caso)
+    caso.add(models.Insumo(codigo="MZP-MZ-1", tipo="material", descripcion="previo", unidad="t"))
+    caso.flush()
+    _publicar(caso, _calcular(ins, caso))
+    assert len(_insumos(caso, "MZP-MZ-1")) == 1
 
 
 def test_la_empresa_vacia_se_niega_sin_escribir(ins, caso) -> None:

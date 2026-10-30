@@ -24,7 +24,7 @@ from core import models
 from operacion.base_datos import preparar_base
 from operacion.config import ruta_caso_por_defecto, ruta_instalacion
 from operacion.instalacion import sesion_de_instalacion
-from seguridad import cuentas
+from seguridad import cuentas, empresas
 from tests.fixtures import costo_propio as cp
 from tests.fixtures.hoja_versiones_api import base
 from tests.fixtures.produccion_api import Web, cliente_con_clave
@@ -32,7 +32,8 @@ from tests.fixtures.sesion_web import copiar_instalacion, plantilla_con_cuentas
 
 CALCULOS = "/v1/produccion/calculos"
 HORA_DEL_SERVIDOR = datetime(2026, 12, 1, 7, 30, 0)
-EMPRESA = {"empresa_nombre": "Constructora Ejemplo, C.A.", "empresa_rif": "J-00000000-0"}
+EMPRESA = ("Constructora Ejemplo, C.A.", "J-00000000-0")
+SIN_EMPRESA = "Configure la empresa en Administración antes de publicar."
 
 
 @pytest.fixture(scope="module")
@@ -53,12 +54,15 @@ def http() -> TestClient:
     return cliente_con_clave()
 
 
-def _noviembre() -> None:
-    """La planta y los costos en la instalacion; la lista en USD en la carpeta del caso."""
+def _noviembre(con_empresa: bool = True) -> None:
+    """La planta y los costos en la instalacion (y la empresa configurada en Administracion); la
+    lista en USD en la carpeta del caso."""
     with sesion_de_instalacion() as ins:
         cp.planta(ins)
         cp.costos_usd(ins)
         ins.commit()
+        if con_empresa:
+            empresas.guardar_empresa_propia(ins, *EMPRESA, "Ciudad ficticia", "admin", cp.AHORA)
     ruta = ruta_caso_por_defecto()
     ruta.parent.mkdir(parents=True, exist_ok=True)
     preparar_base(ruta)
@@ -105,7 +109,7 @@ def test_el_administrador_publica_el_calculo(http) -> None:
     _noviembre()
     calculo = _calcular(http)
     admin = Web("admin")
-    r = admin.post(f"{CALCULOS}/{calculo}/publicar", json=EMPRESA)
+    r = admin.post(f"{CALCULOS}/{calculo}/publicar", json={})
     assert r.status_code == 201, r.text
     lista_id = r.json()["id"]
     assert [fila[0] for fila in _listas_de_empresa()] == [lista_id]
@@ -118,7 +122,7 @@ def test_la_hora_y_el_usuario_son_los_del_servidor(http, monkeypatch) -> None:
     monkeypatch.setattr("api.rutas.produccion._ahora", lambda: HORA_DEL_SERVIDOR)
     _noviembre()
     calculo = _calcular(http)
-    cuerpo = {**EMPRESA, "ahora": "2020-01-01T00:00:00", "usuario": "otro"}
+    cuerpo = {"ahora": "2020-01-01T00:00:00", "usuario": "otro"}
     r = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json=cuerpo)
     assert r.status_code == 201, r.text
     (_, origen, _) = _listas_de_empresa()[0]
@@ -130,8 +134,8 @@ def test_publicar_dos_veces_son_dos_listas_y_un_solo_insumo(http) -> None:
     _noviembre()
     calculo = _calcular(http)
     admin = Web("admin")
-    primera = admin.post(f"{CALCULOS}/{calculo}/publicar", json=EMPRESA).json()["id"]
-    segunda = admin.post(f"{CALCULOS}/{calculo}/publicar", json=EMPRESA).json()["id"]
+    primera = admin.post(f"{CALCULOS}/{calculo}/publicar", json={}).json()["id"]
+    segunda = admin.post(f"{CALCULOS}/{calculo}/publicar", json={}).json()["id"]
     assert primera != segunda
     assert len(_listas_de_empresa()) == 2
     assert _insumos_propios() == 3  # AGP-AGR-12, AGP-AGR-34 y MZP-MZ-1
@@ -141,7 +145,7 @@ def test_publicar_dos_veces_son_dos_listas_y_un_solo_insumo(http) -> None:
 def test_arma_y_revisa_reciben_403_al_publicar(http, quien: str) -> None:
     _noviembre()
     calculo = _calcular(http)
-    r = Web(quien).post(f"{CALCULOS}/{calculo}/publicar", json=EMPRESA)
+    r = Web(quien).post(f"{CALCULOS}/{calculo}/publicar", json={})
     assert r.status_code == 403, r.text
     assert r.json()["detalle"] == "Su cuenta no tiene permiso para esta acción."
     assert _listas_de_empresa() == [] and _insumos_propios() == 0
@@ -153,7 +157,7 @@ def test_un_calculo_alterado_no_se_publica(http) -> None:
     with closing(sqlite3.connect(ruta_instalacion())) as bd:
         bd.execute("UPDATE prod_calculo SET moneda = 'Bs' WHERE id = ?", (calculo,))
         bd.commit()
-    r = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json=EMPRESA)
+    r = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json={})
     assert r.status_code == 422, r.text
     assert "fue alterado" in r.json()["detalle"]
     assert _listas_de_empresa() == [] and _insumos_propios() == 0
@@ -161,26 +165,37 @@ def test_un_calculo_alterado_no_se_publica(http) -> None:
 
 def test_un_calculo_inexistente_es_404(http) -> None:
     _noviembre()
-    r = Web("admin").post(f"{CALCULOS}/99/publicar", json=EMPRESA)
+    r = Web("admin").post(f"{CALCULOS}/99/publicar", json={})
     assert r.status_code == 404, r.text
     assert "detalle" in r.json()
     assert _listas_de_empresa() == []
 
 
-@pytest.mark.parametrize(
-    "cuerpo",
-    [
-        {"empresa_nombre": "  ", "empresa_rif": "J-00000000-0"},
-        {"empresa_nombre": "Constructora Ejemplo, C.A.", "empresa_rif": ""},
-        {"empresa_nombre": "Constructora Ejemplo, C.A."},
-    ],
-    ids=["nombre vacio", "rif vacio", "sin rif"],
-)
-def test_la_empresa_es_obligatoria(http, cuerpo: dict) -> None:
+def test_sin_empresa_configurada_es_422_y_no_escribe(http) -> None:
+    _noviembre(con_empresa=False)
+    calculo = _calcular(http)
+    r = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json={})
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == SIN_EMPRESA
+    assert _listas_de_empresa() == [] and _insumos_propios() == 0
+
+
+def test_la_lista_lleva_la_empresa_de_administracion(http) -> None:
     _noviembre()
     calculo = _calcular(http)
+    cuerpo = {"empresa_nombre": "Otra, C.A.", "empresa_rif": "J-99999999-9"}  # se ignora
     r = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json=cuerpo)
-    assert r.status_code == 422, r.text
+    assert r.status_code == 201, r.text
+    with base(ruta_caso_por_defecto()) as caso:
+        fila = caso.scalar(select(models.ListaEmpresa))
+        assert (fila.empresa_nombre, fila.empresa_rif) == EMPRESA
+
+
+def test_la_clave_de_api_recibe_403_al_publicar(http) -> None:
+    _noviembre()
+    calculo = _calcular(http)
+    r = http.post(f"{CALCULOS}/{calculo}/publicar", json={})
+    assert r.status_code == 403, r.text
     assert _listas_de_empresa() == [] and _insumos_propios() == 0
 
 
@@ -192,7 +207,7 @@ def test_sin_lista_vigente_en_la_carpeta_es_422_y_no_escribe(http) -> None:
         caso.execute(delete(models.PrecioInsumo))
         caso.execute(delete(models.ListaPrecios))
         caso.commit()
-    r = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json=EMPRESA)
+    r = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json={})
     assert r.status_code == 422, r.text
     assert "lista de precios vigente" in r.json()["detalle"]
     assert _listas_de_empresa() == []
