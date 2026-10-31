@@ -118,6 +118,14 @@ IVSS, orden de trabajo, norma de carreteras).
 | 105 | Cierre C | Re-congelado del experimento (autorizado por Eugenio el 2026-10-31): ¿cómo se cumple el árbol limpio? | El worktree tiene 133 archivos sin seguimiento de otras líneas (`.impeccable/`, `data/instalacion.db.migrando-shm/-wal`, `docs/manual_nuevo/capturas/`), fuera de las huellas. No se borran: `congelar` se llamó con un `cambios_sin_commit` que deja pasar **solo** esas rutas sin seguimiento (cualquier cambio sin commit seguiría negándolo). Acta en `docs/bitacora/2026-10-31-recongelado-experimento.md`; commit declarado 0b477eba | Repetir el congelado con el árbol de verdad limpio (cuando esas líneas suban o quiten sus archivos) con `congelar(<sha>)` sin filtro |
 
 
+## Plan vial, fase D: preguntas en archivos aparte (líneas en paralelo)
+
+Las Tareas 17, 18 y 20 se hicieron en ramas paralelas y anotaron sus decisiones en su propio archivo, con el mismo formato:
+`docs/bitacora/2026-10-31-preguntas-t17-fcas.md` (T17-1 a T17-13), `docs/bitacora/2026-10-31-preguntas-t18-iva.md` (T18-1 a
+T18-7) y `docs/bitacora/2026-10-31-preguntas-t20-consulta.md` (T20-1 en adelante). Respuestas de Eugenio del 2026-10-31:
+el FCAS por componentes (278,67 % con los valores por defecto) se cita así en la tesis; el IVA del presupuesto se muestra en
+la sección Presupuesto del rediseño F4.
+
 ## Rediseño del front, F4
 
 | # | Pregunta | Lo que se hará | Cómo cambiarlo |
