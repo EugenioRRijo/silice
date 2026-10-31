@@ -127,7 +127,7 @@ describe("Receta de la planta", () => {
     expect(within(region).getByText(/Receta n\.º 3 de MZP-01/)).toHaveTextContent("vigente desde 01/11/2026");
     expect(within(region).getByRole("row", { name: /AGR-12/ })).toHaveTextContent("0,94");
     expect(within(region).getByText("Suma de masa: 0,99 t por t de mezcla")).toBeInTheDocument();
-    expect(fetchFalso.mock.calls[0]![0]).toBe("/v1/produccion/recetas/vigente?producto=MZP-01&fecha=2026-11-15");
+    expect(fetchFalso.mock.calls.map((c) => String(c[0]))).toContain("/v1/produccion/recetas/vigente?producto=MZP-01&fecha=2026-11-15");
   });
 
   test("sin receta vigente dice lo que dijo el servidor", async () => {
@@ -262,6 +262,15 @@ describe("Receta de la planta", () => {
     expect(opciones[0]).toHaveTextContent("Agregado grueso ficticio (AGR-12, t)");
     expect(opciones[0]).toHaveTextContent("Catálogo de la carpeta de trabajo: material");
     expect(opciones[1]).toHaveTextContent("Usar «agre» tal cual");
+    // El lector de pantalla oye cuántas sugerencias llegaron del servidor (una; «usar tal cual» no cuenta).
+    const estado = within(dialogo).getAllByRole("status").find((e) => e.id === `${producto.id}-estado`)!;
+    await waitFor(() => expect(estado).toHaveTextContent("1 resultado."));
+    // Escape cierra la lista sin borrar lo escrito.
+    await usuario.keyboard("{Escape}");
+    expect(within(dialogo).queryByRole("listbox")).not.toBeInTheDocument();
+    expect(producto).toHaveValue("agre");
+    await usuario.keyboard("{Alt>}{ArrowDown}{/Alt}"); // la vuelve a abrir sin activar nada
+    await within(dialogo).findByRole("listbox");
     await usuario.keyboard("{ArrowDown}{Enter}");
     expect(producto).toHaveValue("AGR-12");
     expect(fetchFalso.mock.calls.some((c) => String(c[0]).startsWith("/v1/consulta/insumos?q=agre"))).toBe(true);

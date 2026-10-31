@@ -22,7 +22,7 @@ const ROTULO: Record<TablaDeConsulta, string> = {
   partidas_viales: "Partidas viales",
   insumos: "Insumos del catálogo",
   tasa_bcv: "Tasas del BCV",
-  salarios_cct: "Salarios de la mano de obra",
+  salarios_cct: "Oficios de mano de obra del catálogo",
 };
 
 export function rutaDeConsulta(tabla: TablaDeConsulta, q: string, limite: number): string {
