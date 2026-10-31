@@ -1391,3 +1391,52 @@ Formato: pregunta · lo que se hizo · cómo cambiarlo.
     nombrar el mismo borrador dos veces («Hoja de la obra» por el registro y «Hoja de <obra>» por `hojasConCambios`).
     Tras guardar, la cabecera no relee la ficha ni la lista de obras (`recargarFicha`, `recargarProyectos`): la Tarea 5 o
     la 6 pueden llamarlas desde `alCrearVersion`. · —
+
+### Ronda 2 (el árbitro la devolvió por un mayor)
+
+18. **La ficha quedaba vieja (mayor).** · Al no volver a montarse la obra por sección (decisión 1), nadie relee
+    `GET /v1/obras/resumen`: tras guardar la primera versión el Resumen seguía en «sin versión» y «Te falta…», y tras
+    enviar a aprobación seguía «En elaboración». Ahora:
+    - `useGuardadoDeLaPagina` gana `alCrearseVersion`, que corre con cada versión creada (guardar, restaurar, cotizar,
+      retirar y convertir: todas pasan por `alCrearVersion`). El proveedor le da `recargarLaObra`, que llama a
+      `recargarFicha()` del `ContextoDeLaObra` (si hay obra) y a `recargarProyectos()` (la línea «Versión:» sale de la
+      lista de obras).
+    - `AprobacionDeVersion`, al enviar, llama a `recargarFicha()` (si hay obra; montada sola, nada).
+    - Decisión del orquestador: entrar al Resumen desde otra sección vuelve a leer la ficha (ajuste durante el render en
+      `ObraDeLaRuta`, que conoce la sección); mientras llega se ve la anterior (Tarea 1, decisión 3). Cubre lo que cambie
+      desde Aprobaciones o Control. Montar la obra directamente en el Resumen sigue siendo una sola lectura.
+    Pruebas: `Marco.test.tsx` (Resumen, Mercado, Resumen: una obra fijada y dos lecturas de la ficha);
+    `ProveedorDeLaHoja.test.tsx` (moverse entre Presupuesto, Versiones y Archivos no relee; «Guardar desde aquí» relee la
+    ficha y la lista de obras, y al entrar al Resumen hay otra lectura y la cabecera dice «Versión: 003»);
+    `AprobacionDeVersion.test.tsx` («dentro de una obra, enviar vuelve a leer la ficha de la obra»). · Quitar
+    `alCrearseVersion` del proveedor o el ajuste de `ObraDeLaRuta`.
+19. **El diálogo de salida cuando solo está el borrador (menor 2).** · El tercer parámetro de `useFormularioSucio` pasa a
+    ser un objeto `EnElServidor` (`conservaAlIrA`): marca un trabajo que vive en el servidor. `confirmarSalida` calcula
+    `retomable` (motivo «salir», sin extras y todo lo que cuenta es `EnElServidor`; `soloTrabajoEnElServidor` en
+    `shell/sucio.ts`) y `DialogoSalida` dice entonces «Sus cambios quedan guardados para retomarlos al volver.» con el
+    botón «Salir» (sin «descartar»). Al cambiar de carpeta no es retomable (el servidor olvida los borradores) y sigue
+    «Cambiar y descartar»; con cualquier otro formulario sucio, también el texto de antes. La prueba «al ir al Resumen con
+    cambios…» cambió su oráculo en el rojo de esta ronda. · `CONSECUENCIA_RETOMABLE` en `shell/DialogoSalida.tsx`.
+20. **Lo escrito en la pausa (menor 3).** · Prueba nueva: escribir una cantidad en Presupuesto, ir enseguida a Versiones
+    (sale el `PUT …/cantidades` al desmontarse la pestaña y el proveedor recibe el resumen con un cambio) y luego al
+    Resumen: pregunta y no hay `DELETE`. Para que pregunte, la prueba espera a que el `PUT` haya salido: si se pulsa
+    Resumen antes de que el servidor conteste, el marco aún no sabe que hay cambios y no pregunta, aunque el borrador
+    tampoco se descarta (`descartarSiNoQuedanCambios` espera los envíos). Ya funcionaba; en rojo cayó solo por el botón
+    «Salir» de la decisión 19.
+21. **Límite de error de fuera de la sección (menor 4).** · `LimiteDeError` gana `reinicio`: con `getDerivedStateFromProps`
+    olvida el error antes de pintar con otro `reinicio`; sin error no vuelve a montar nada. El marco le da
+    `reinicio={pathname}` al límite que envuelve las rutas (con la `key` de la obra): un fallo de la cabecera o del
+    proveedor se olvida al navegar sin volver a montarlos cuando no fallaron. Prueba propia: `shell/LimiteDeError.test.tsx`
+    (se olvida al cambiar, se queda con el mismo, no vuelve a montar sin error). · —
+22. **Rojo de la ronda (`8bf8aa30`).** · 6 fallas, todas de aserción: `expected { fijadas: 1, fichas: 1 } to deeply equal
+    { fijadas: 1, fichas: 2 }`; `expected { aviso: true, contenido: false } to deeply equal { aviso: false, contenido:
+    true }`; `expected "vi.fn()" to be called 1 times, but got 0 times`; la descripción del diálogo sin «Sus cambios quedan
+    guardados…»; `expected 1 to be 2` (lecturas de la ficha tras guardar); y sin botón «Salir» en el diálogo. `npm run lint`
+    pasó en el rojo (`reinicio` ya estaba declarado, sin uso).
+23. **Lo que cambia de la primera ronda.** · La decisión 6 queda así: con solo el borrador sucio el diálogo ya no dice «se
+    perderán» (decisión 19). Lo de la decisión 17 sobre la cabecera tras guardar queda resuelto por la 18; lo del nombre
+    repetido al cambiar de carpeta sigue igual. · —
+24. **Verificación de la ronda.** · `npx vitest run src/paginas/hoja src/marco src/shell src/paginas/obras
+    src/paginas/pendientes src/comun`: 99 archivos, 1450 de 1451 verdes; la que cayó es otra vez `PlanoEnHoja` «“Fusionar”
+    no se puede pulsar» por tiempo (4918 ms), verde al repetirla sola (4 de 4). `npm run lint` en 0. Grep de los colores
+    de la empresa: limpio. Sin servidor tocado; `core/` y `aplicacion/` sin cambios. · —
