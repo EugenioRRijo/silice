@@ -262,3 +262,72 @@ def test_lo_apagado_sobrevive_al_reinicio_del_proceso(admin) -> None:
 
     instalacion.cerrar_motores()
     assert _estado(admin)["riesgo"] is False
+
+
+APAGADO_EDIFICACION = "El módulo edificación está apagado en esta instalación."
+ID_BORRADOR = "id-borrador-plano-0001"
+#: Las rutas que SOLO sirven a edificación (planos DXF/IFC y el editor del espacio).
+RUTAS_DE_EDIFICACION = [
+    ("POST", f"/v1/hoja/borradores/{ID_BORRADOR}/plano"),
+    ("POST", f"/v1/hoja/borradores/{ID_BORRADOR}/plano/unidad"),
+    ("POST", f"/v1/hoja/borradores/{ID_BORRADOR}/plano/alturas"),
+    ("POST", f"/v1/hoja/borradores/{ID_BORRADOR}/plano/circuitos"),
+    ("POST", f"/v1/hoja/borradores/{ID_BORRADOR}/plano/fusionar"),
+    ("DELETE", f"/v1/hoja/borradores/{ID_BORRADOR}/plano"),
+    ("PUT", f"/v1/hoja/borradores/{ID_BORRADOR}/espacio"),
+]
+
+
+@pytest.mark.parametrize(("metodo", "ruta"), RUTAS_DE_EDIFICACION)
+def test_edificacion_apagada_cierra_planos_y_espacio(metodo: str, ruta: str, ana, admin) -> None:
+    assert _poner(admin, "edificacion", False).status_code == 200
+    navegador, ficha = ana
+    r = navegador.request(metodo, ruta, headers=protegida(ficha))
+    assert r.status_code == 404, (ruta, r.text)
+    assert r.json() == {"detalle": APAGADO_EDIFICACION}
+
+
+def test_edificacion_apagada_no_cierra_la_hoja_ni_el_presupuesto(ana, admin) -> None:
+    """Una obra vial también usa la Hoja: sus lecturas y sus ediciones de presupuesto siguen."""
+    assert _poner(admin, "edificacion", False).status_code == 200
+    navegador, ficha = ana
+    v = navegador.get("/v1/hoja/versiones", params={"proyecto": OBRA})
+    assert v.status_code == 200, v.text
+    assert navegador.get("/v1/hoja/borradores").status_code == 200
+    # Una edición de presupuesto llega a su ruta (borrador inexistente: 404 de la hoja, no el de D-V-4).
+    r = navegador.put(
+        f"/v1/hoja/borradores/{ID_BORRADOR}/cantidades",
+        json={"rev": 0, "filas": []},
+        headers=protegida(ficha),
+    )
+    assert r.json().get("detalle") != APAGADO_EDIFICACION
+
+
+def test_edificacion_apagada_y_luego_encendida_vuelve_a_abrir_los_planos(ana, admin) -> None:
+    assert _poner(admin, "edificacion", False).status_code == 200
+    assert _poner(admin, "edificacion", True).status_code == 200
+    navegador, ficha = ana
+    r = navegador.delete(f"/v1/hoja/borradores/{ID_BORRADOR}/plano", headers=protegida(ficha))
+    assert r.json().get("detalle") != APAGADO_EDIFICACION
+
+
+def test_vial_apagado_sin_editar_hoja_recibe_403_antes_que_404(admin) -> None:
+    """El módulo se comprueba DESPUÉS del acceso: `rita` (revisa) no edita la hoja."""
+    assert _poner(admin, "vial", False).status_code == 200
+    rita = con_cuenta(app, "rita")
+    r = _tramos(rita)
+    assert r.status_code == 403, r.text
+    assert r.json() == {"detalle": MENSAJE_PERMISO}
+    assert rita[0].get("/v1/vial/obras").status_code == 403
+
+
+def test_vial_apagado_con_el_rol_correcto_sigue_siendo_404(ana, admin) -> None:
+    assert _poner(admin, "vial", False).status_code == 200
+    r = _tramos(ana)
+    assert r.status_code == 404 and r.json() == {"detalle": APAGADO_VIAL}
+    llevar = ana[0].post(
+        "/v1/vial/tramos/llevar",
+        json={"proyecto": OBRA, "version": "VIV-002"},
+        headers=protegida(ana[1]),
+    )
+    assert llevar.status_code == 404 and llevar.json() == {"detalle": APAGADO_VIAL}

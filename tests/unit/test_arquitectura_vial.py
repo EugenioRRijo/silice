@@ -52,3 +52,41 @@ def test_los_routers_de_los_tres_modulos_exigen_el_modulo() -> None:
     ):
         nombres = [d.dependency.__name__ for d in router.dependencies]
         assert f"requiere_modulo_{clave}" in nombres, (clave, nombres)
+
+
+def _dependencias_de(ruta) -> list[str]:
+    return [d.call.__name__ for d in ruta.dependant.dependencies if d.call is not None]
+
+
+def test_cada_ruta_vial_comprueba_el_modulo_despues_del_acceso() -> None:
+    """T19 (menor del árbitro): ni el router vial pide `CUALQUIER_ROL` ni comprueba el módulo
+    antes que la acción; cada ruta lo declara y la acción va antes."""
+    from fastapi.routing import APIRoute
+
+    from api.rutas import vial
+
+    assert [d.dependency.__name__ for d in vial.router.dependencies] == []
+    rutas = [r for r in vial.router.routes if isinstance(r, APIRoute)]
+    assert rutas
+    for ruta in rutas:
+        nombres = _dependencias_de(ruta)  # incluye las de `dependencies=[...]`, que van primero
+        assert "requiere_modulo_vial" in nombres, (ruta.path, nombres)
+        antes = nombres[: nombres.index("requiere_modulo_vial")]
+        assert any("editar_hoja" in n for n in antes), (ruta.path, nombres)
+
+
+def test_las_rutas_de_planos_comprueban_edificacion() -> None:
+    from fastapi.routing import APIRoute
+
+    from api.rutas import hoja, hoja_plano
+
+    planos = [r for r in hoja_plano.router.routes if isinstance(r, APIRoute)]
+    assert len(planos) == 6
+    espacio = [
+        r
+        for r in hoja.router.routes
+        if isinstance(r, APIRoute) and r.path.endswith("/espacio") and "PUT" in r.methods
+    ]
+    assert len(espacio) == 1
+    for ruta in [*planos, *espacio]:
+        assert "requiere_modulo_edificacion" in _dependencias_de(ruta), ruta.path

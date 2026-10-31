@@ -54,3 +54,9 @@ describe("ofertaDe con módulos apagados (plan vial, Tarea 19)", () => {
     expect(ofertaDe(TODAS, false).entradas.map((e) => e.id)).toContain("produccion");
   });
 });
+
+describe("ofertaDe con edificación apagada (plan vial, Tarea 19, T19-5)", () => {
+  it("no oculta pantallas del registro: «Espacio y metrajes» es una pestaña de la hoja, no una pantalla", () => {
+    expect(ofertaDe(TODAS, false, ["edificacion"])).toEqual(ofertaDe(TODAS, false));
+  });
+});
