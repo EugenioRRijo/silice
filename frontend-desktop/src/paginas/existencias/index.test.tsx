@@ -110,6 +110,7 @@ describe("Existencias de la arenera", () => {
     test("sin registrar costos no hay enlace al costo por tonelada, pero sí a la receta", async () => {
       await conExistencias();
       expect(screen.getByRole("link", { name: "Receta de la planta" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Producir mezcla" })).toHaveAttribute("href", "/producir_mezcla");
       expect(screen.queryByRole("link", { name: "Costo por tonelada" })).not.toBeInTheDocument();
     });
   });

@@ -186,6 +186,8 @@ describe("Inicio de producción", () => {
     montar({ sesion: ANA });
     await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
     expect(screen.getByRole("link", { name: "Receta de la planta" })).toBeInTheDocument();
+    // Producir mezcla lo ofrece la misma acción que la receta (operar_arenera), no la de costos.
+    expect(screen.getByRole("link", { name: "Producir mezcla" })).toHaveAttribute("href", "/producir_mezcla");
     expect(screen.queryByRole("link", { name: "Costo por tonelada" })).not.toBeInTheDocument();
   });
 });
