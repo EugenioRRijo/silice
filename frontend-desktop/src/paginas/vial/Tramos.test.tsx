@@ -34,7 +34,7 @@ const CANTIDADES = [
   { tramo: "T1", codigo: "C-000.000.007", descripcion: "Mezcla asfáltica de la carpeta, tramo T1", unidad: "t", cantidad: "857.75", origen_id: "tramo:T1:capa:1", regla: "longitud*ancho*espesor*densidad" },
   { tramo: "T1", codigo: "C-000.000.014", descripcion: "Transporte de mezcla, tramo T1", unidad: "t·km", cantidad: "10293", origen_id: "tramo:T1:capa:1", regla: "longitud*ancho*espesor*densidad*distancia" },
 ];
-const VACIA = { proyecto: "Vía Demo", version: "VIA-001", editable: true, bloqueo: null, guardado: null, tramos: [], cantidades: [] };
+const VACIA = { proyecto: "Vía Demo", version: "VIA-001", editable: true, bloqueo: null, heredados_de: null, guardado: null, tramos: [], cantidades: [] };
 const CON_TRAMOS = {
   ...VACIA,
   guardado: { usuario: "Ana <ana>", fecha_hora: "2026-10-20T10:30:00", fuente: "Importado de via.csv" },
@@ -112,6 +112,18 @@ describe("Tramos de la vía", () => {
     ]);
     expect(screen.getByText("De 0 a 1 km · ancho 7,3 m · planta a 12 km")).toBeInTheDocument();
     expect(screen.getByText(/Guardado por Ana <ana> el 20\/10\/2026 10:30/)).toBeInTheDocument();
+  });
+
+  test("una versión que hereda sus tramos lo dice", async () => {
+    tramos = () => json({ ...CON_TRAMOS, heredados_de: "VIA-001" });
+    montar();
+    expect(await screen.findByText("Tramos heredados de la versión VIA-001")).toBeInTheDocument();
+  });
+
+  test("una versión con tramos propios no dice nada de herencia", async () => {
+    montar();
+    await screen.findByRole("table", { name: "Cantidades del tramo T1" });
+    expect(screen.queryByText(/heredados/)).toBeNull();
   });
 
   test("una versión sin tramos invita a importarlos", async () => {

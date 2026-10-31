@@ -1,6 +1,6 @@
 """`/v1/vial`: los tramos de una versión por la API (Tarea 8 del plan vial). Datos FICTICIOS.
 
-La carpeta es `vivienda.db` (la «Vivienda Demo 80 m2», VIV-001 y VIV-002, de
+La carpeta es `vivienda.db` (la «Vivienda Demo 80 m2», VIV-002 y VIV-002, de
 `tests/fixtures/carpeta_aprobaciones.py`) y las cuentas las de `tests/fixtures/sesion_web.py`. Los
 tramos viajan con las cifras como texto con punto (la coma es cosa del front). Oráculos a mano
 (Tarea 7): un tramo de 0 a 1 km de 7,3 m con carpeta de 0,05 m a 2,35 t/m3 y planta a 12 km da 7 300
@@ -19,11 +19,13 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import vial as rutas
 from aplicacion import aprobaciones
+from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
 from operacion.base_datos import preparar_base
@@ -103,16 +105,16 @@ def ana() -> tuple[TestClient, str]:
     return navegador, ficha
 
 
-def _params(version: str = "VIV-001") -> dict[str, str]:
+def _params(version: str = "VIV-002") -> dict[str, str]:
     return {"proyecto": OBRA, "version": version}
 
 
-def _leer(cuenta, version: str = "VIV-001"):
+def _leer(cuenta, version: str = "VIV-002"):
     navegador, _ = cuenta
     return navegador.get(f"{RAIZ}/tramos", params=_params(version))
 
 
-def _guardar(cuenta, tramos: list[dict], version: str = "VIV-001", fuente: str = ""):
+def _guardar(cuenta, tramos: list[dict], version: str = "VIV-002", fuente: str = ""):
     navegador, ficha = cuenta
     return navegador.put(
         f"{RAIZ}/tramos",
@@ -122,7 +124,7 @@ def _guardar(cuenta, tramos: list[dict], version: str = "VIV-001", fuente: str =
     )
 
 
-def _importar(cuenta, contenido: bytes, nombre: str = "via.csv", version: str = "VIV-001"):
+def _importar(cuenta, contenido: bytes, nombre: str = "via.csv", version: str = "VIV-002"):
     navegador, ficha = cuenta
     return navegador.post(
         f"{RAIZ}/tramos/importar",
@@ -152,9 +154,10 @@ def test_version_sin_tramos(ana) -> None:
     assert r.headers["cache-control"] == "no-store"
     assert r.json() == {
         "proyecto": OBRA,
-        "version": "VIV-001",
+        "version": "VIV-002",
         "editable": True,
         "bloqueo": None,
+        "heredados_de": None,
         "guardado": None,
         "tramos": [],
         "cantidades": [],
@@ -212,8 +215,39 @@ def test_la_coma_en_la_frontera_no_se_acepta(ana) -> None:
 def test_version_o_proyecto_inexistente_es_404(ana) -> None:
     assert _leer(ana, "XXX-001").status_code == 404
     navegador, _ = ana
-    r = navegador.get(f"{RAIZ}/tramos", params={"proyecto": "No existe", "version": "VIV-001"})
+    r = navegador.get(f"{RAIZ}/tramos", params={"proyecto": "No existe", "version": "VIV-002"})
     assert r.status_code == 404
+
+
+def test_una_version_anterior_no_se_edita(ana) -> None:
+    anterior = _guardar(ana, [TRAMO], version="VIV-001")
+    assert anterior.status_code == 409, anterior.text
+    assert (
+        anterior.json()["detalle"]
+        == "Solo se editan los tramos de la versión más reciente (VIV-002)."
+    )
+    assert _filas_guardadas() == 0
+    leida = _leer(ana, "VIV-001").json()
+    assert leida["editable"] is False and leida["heredados_de"] is None
+
+
+def test_heredados_de_dice_de_donde_vienen(ana) -> None:
+    assert _leer(ana).json()["heredados_de"] is None
+    assert _guardar(ana, [TRAMO]).status_code == 200
+    ruta = config.carpeta_casos() / "vivienda.db"
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as s:
+            obra = s.scalars(select(models.Proyecto)).one()
+            guardar_version(s, obra, "VIV-003", usuario=ANA)
+    finally:
+        motor.dispose()
+    dependencias.cerrar_motores()
+    tres = _leer(ana, "VIV-003").json()
+    assert tres["heredados_de"] == "VIV-002"
+    assert [t["id"] for t in tres["tramos"]] == ["T1"]
+    assert tres["editable"] is True
+    assert _filas_guardadas() == 1
 
 
 def test_version_aprobada_da_409_y_no_se_edita(ana) -> None:
@@ -222,7 +256,7 @@ def test_version_aprobada_da_409_y_no_se_edita(ana) -> None:
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         with abrir_sesion(motor) as s:
-            envio = aprobaciones.enviar(s, OBRA, "VIV-001", nota="ok", usuario=ANA, ahora=MARTES)
+            envio = aprobaciones.enviar(s, OBRA, "VIV-002", nota="ok", usuario=ANA, ahora=MARTES)
             aprobaciones.dictaminar(
                 s, envio.id, resultado="aprobada", notas="", usuario="Rita <rita>", ahora=MARTES
             )
@@ -231,7 +265,7 @@ def test_version_aprobada_da_409_y_no_se_edita(ana) -> None:
     dependencias.cerrar_motores()
     leido = _leer(ana).json()
     assert leido["editable"] is False
-    assert leido["bloqueo"].startswith("La versión VIV-001 está aprobada")
+    assert leido["bloqueo"].startswith("La versión VIV-002 está aprobada")
     r = _guardar(ana, [])
     assert r.status_code == 409, r.text
     assert r.json()["detalle"] == leido["bloqueo"]

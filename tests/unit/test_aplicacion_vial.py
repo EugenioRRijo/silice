@@ -76,7 +76,7 @@ def sesion(motor: Engine) -> Iterator[Session]:
         yield s
 
 
-def _version(s: Session, codigo: str = "VIV-001") -> int:
+def _version(s: Session, codigo: str = "VIV-002") -> int:
     return s.scalars(select(models.Presupuesto.id).where(models.Presupuesto.codigo == codigo)).one()
 
 
@@ -86,7 +86,13 @@ def _filas(motor: Engine, tabla: str) -> int:
         return conexion.execute(f"SELECT COUNT(*) FROM {tabla}").fetchone()[0]
 
 
-def _enviar(s: Session, version: str = "VIV-001") -> int:
+def _filas_si_existe(motor: Engine, tabla: str) -> int:
+    with closing(sqlite3.connect(motor.url.database)) as conexion:
+        existe = conexion.execute("SELECT 1 FROM sqlite_master WHERE name = ?", (tabla,)).fetchone()
+        return conexion.execute(f"SELECT COUNT(*) FROM {tabla}").fetchone()[0] if existe else 0
+
+
+def _enviar(s: Session, version: str = "VIV-002") -> int:
     return aprobaciones.enviar(
         s, "Vivienda Demo 80 m2", version, nota="listo", usuario=ANA, ahora=LUNES
     ).id
@@ -120,11 +126,59 @@ def test_un_guardado_nuevo_no_borra_el_anterior(sesion: Session, motor: Engine) 
     assert (ultimo.usuario, ultimo.fecha_hora, ultimo.fuente) == ("Rita <rita>", MARTES, "via.csv")
 
 
-def test_los_tramos_son_de_su_version(sesion: Session) -> None:
-    uno, dos = _version(sesion, "VIV-001"), _version(sesion, "VIV-002")
-    vial.guardar_tramos(sesion, uno, [T1], usuario=ANA, ahora=LUNES)
-    assert vial.tramos_de_version(sesion, dos) == []
-    assert vial.obras_con_tramos(sesion) == [sesion.scalars(select(models.Proyecto.id)).one()]
+def _tercera(s: Session) -> int:
+    obra = s.scalars(select(models.Proyecto)).one()
+    guardar_version(s, obra, "VIV-003", usuario=ANA)
+    return _version(s, "VIV-003")
+
+
+def test_version_sin_guardado_propio_hereda_de_la_anterior(sesion: Session, motor: Engine) -> None:
+    uno = _version(sesion, "VIV-001")
+    # VIV-002 existe: se guarda en la más reciente y la anterior queda sin guardado propio
+    assert vial.heredados_de(sesion, uno) is None
+    dos = _version(sesion, "VIV-002")
+    vial.guardar_tramos(sesion, dos, [T1], usuario=ANA, ahora=LUNES)
+    tres = _tercera(sesion)
+    assert vial.tramos_de_version(sesion, tres) == [T1]
+    assert vial.heredados_de(sesion, tres) == "VIV-002"
+    assert [c.tramo for c in vial.cantidades_de_tramos(vial.tramos_de_version(sesion, tres))][0] == "T1"
+    assert _filas_si_existe(motor, "vial_tramos_guardado") == 1  # heredar no escribe nada
+
+
+def test_viv003_hereda_de_viv002_tras_guardar_en_viv002(sesion: Session) -> None:
+    dos = _version(sesion, "VIV-002")
+    vial.guardar_tramos(sesion, dos, [T2], usuario=ANA, ahora=LUNES)
+    tres = _tercera(sesion)
+    assert vial.tramos_de_version(sesion, tres) == [T2]
+    assert vial.heredados_de(sesion, tres) == "VIV-002"
+    assert vial.guardado_de_version(sesion, tres).usuario == ANA  # el rastro es el del guardado usado
+    # y VIV-002 ya no es la más reciente: no se toca
+    assert "VIV-003" in vial.bloqueo_de_version(sesion, dos)
+
+
+def test_solo_se_guarda_en_la_version_mas_reciente(sesion: Session, motor: Engine) -> None:
+    uno = _version(sesion, "VIV-001")
+    texto = "Solo se editan los tramos de la versión más reciente (VIV-002)."
+    with pytest.raises(vial.VersionBloqueada) as error:
+        vial.guardar_tramos(sesion, uno, [T1], usuario=ANA, ahora=LUNES)
+    assert str(error.value) == texto
+    assert vial.bloqueo_de_version(sesion, uno) == texto
+    assert vial.bloqueo_de_version(sesion, _version(sesion, "VIV-002")) is None
+    assert _filas_si_existe(motor, "vial_tramos_guardado") == 0
+
+
+def test_obra_sin_ningun_guardado(sesion: Session) -> None:
+    assert vial.heredados_de(sesion, _version(sesion)) is None
+    assert vial.tramos_de_version(sesion, _version(sesion)) == []
+
+
+def test_un_guardado_que_falla_a_medias_no_deja_filas(sesion: Session, motor: Engine) -> None:
+    v = _version(sesion)
+    with pytest.raises(ValueError, match="repetido"):
+        vial.guardar_tramos(sesion, v, [T1, T1], usuario=ANA, ahora=LUNES)
+    assert _filas_si_existe(motor, "vial_tramos_guardado") == 0
+    assert _filas_si_existe(motor, "vial_tramo") == 0
+    assert vial.tramos_de_version(sesion, v) == []
 
 
 def test_version_inexistente(sesion: Session) -> None:
@@ -141,12 +195,12 @@ def test_version_aprobada_no_se_edita(sesion: Session, motor: Engine) -> None:
     aprobaciones.dictaminar(
         sesion, envio, resultado="aprobada", notas="", usuario="Rita <rita>", ahora=MARTES
     )
-    with pytest.raises(vial.VersionBloqueada, match="VIV-001 está aprobada"):
+    with pytest.raises(vial.VersionBloqueada, match="VIV-002 está aprobada"):
         vial.guardar_tramos(sesion, v, [T2], usuario=ANA, ahora=MARTES)
     assert vial.tramos_de_version(sesion, v) == [T1]  # nada cambió
     assert _filas(motor, "vial_tramos_guardado") == 1
     assert vial.bloqueo_de_version(sesion, v) == (
-        "La versión VIV-001 está aprobada: sus tramos ya no se editan. Guarde una versión nueva "
+        "La versión VIV-002 está aprobada: sus tramos ya no se editan. Guarde una versión nueva "
         "y cargue los tramos allí."
     )
 
@@ -166,8 +220,8 @@ def test_version_en_aprobacion_o_devuelta_tampoco(sesion: Session) -> None:
 
 def test_una_version_retirada_vuelve_a_editarse(sesion: Session) -> None:
     v = _version(sesion)
-    _enviar(sesion, "VIV-001")
-    _enviar(sesion, "VIV-002")  # retira el envío pendiente de VIV-001
+    _enviar(sesion, "VIV-002")
+    _enviar(sesion, "VIV-001")  # retira el envío pendiente de VIV-002
     assert vial.bloqueo_de_version(sesion, v) is None
     vial.guardar_tramos(sesion, v, [T1], usuario=ANA, ahora=MARTES)
 
