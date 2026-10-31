@@ -201,6 +201,22 @@ describe("Marco: la obra como espacio de trabajo", () => {
     expect(document.title).toBe("Presupuesto · Galpón Sur · Sílice");
   });
 
+  // F4, Tarea 3: el espacio de la obra no se vuelve a montar al cambiar de sección (el borrador de la Hoja vive en él).
+  test("cambiar de sección dentro de la misma obra no vuelve a fijar la obra ni a leer su ficha", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/resumen" });
+    expect(await titulo("Resumen de la obra")).toBeInTheDocument();
+    await waitFor(() => expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(1));
+    expect(servidor.de("PUT", "/v1/sesion/proyecto")).toHaveLength(1);
+    await u.click(await within(await screen.findByRole("tree", { name: "Obras" })).findByRole("treeitem", { name: "Mercado" }));
+    expect(await titulo("Estudio de mercado")).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 30));
+    expect({
+      fijadas: servidor.de("PUT", "/v1/sesion/proyecto").length,
+      fichas: servidor.de("GET", "/v1/obras/resumen").length,
+    }).toEqual({ fijadas: 1, fichas: 1 });
+  });
+
   test("una obra sin versión guardada lo dice en la cabecera", async () => {
     montar({ en: "/obra/empresa/8/presupuesto" });
     expect(await titulo("Hoja de la obra")).toBeInTheDocument();
