@@ -151,7 +151,7 @@ ANCHO_LINEA_REFERENCIA_CM = Constante(
     "V-13",
     "Ancho de línea al que se refiere el rango de pintura, cm (VR5)",
     Decimal("10"),
-    "las mismas fichas técnicas de V-11 y V-12",
+    "las mismas fichas técnicas de V-11 y V-12, a cotejar con la ficha del producto",
 )
 ANCHO_LINEA_SUPUESTO_CM = Constante(
     "V-14",

@@ -829,6 +829,9 @@ def test_supuestos_declarados():  # "gasto uniforme", "USD fijo × tasa" en p.su
   `informe_de_mejora(...)`, `resumen_con_iva(...)`, cada uno `-> bytes` (xlsx) con hoja de portada que dice la fuente
   de cada cifra; descarga con `GET …/reportes/{tipo}`.
 
+- **Añadido al cerrar la fase B (árbitro de la Tarea 10):** el reporte de APU con origen llama a
+  `aplicacion.conciliacion.conciliar` con `calculos_usados` armado desde la fuente de cada precio propio
+  (`numero_de_calculo`), para que CV3 diga el n.º del cálculo usado y no «ningún cálculo publicado conocido».
 - [ ] **Step 1: Pruebas:** abrir cada libro con openpyxl y comprobar nombres de hoja y celdas clave (857,75 t del
   tramo T1; la fuente «Producción, período …, cálculo n.º …» en el APU; P50/P80 y supuestos en el de riesgo; 23,08 /
   3,85 / 19,23 en el de mejora); formato numérico es-VE.

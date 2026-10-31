@@ -59,10 +59,15 @@ def numero(texto: str) -> Decimal:
         limpio = limpio.replace(".", "").replace(",", ".")
     elif _MILES_SIN_COMA.fullmatch(limpio) is not None:
         sin_puntos = limpio.replace(".", "")
-        opciones = (
-            sin_puntos if limpio.count(".") > 1 else f"{sin_puntos} o {limpio.replace('.', ',')}"
+        if limpio.count(".") > 1:
+            raise ValueError(
+                f"{texto!r} lleva puntos de miles sin coma decimal: "
+                f"escriba {sin_puntos} o {limpio},0"
+            )
+        raise ValueError(
+            f"{texto!r} es ambiguo (¿miles o decimales?): "
+            f"escriba {sin_puntos} o {limpio.replace('.', ',')}"
         )
-        raise ValueError(f"{texto!r} es ambiguo (¿miles o decimales?): escriba {opciones}")
     elif _SIN_COMA.fullmatch(limpio) is None:
         raise ValueError(f"{texto!r} no es una cifra bien escrita: use {_AYUDA}")
     valor = Decimal(limpio)
