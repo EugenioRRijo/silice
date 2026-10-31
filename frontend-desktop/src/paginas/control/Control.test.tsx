@@ -57,6 +57,7 @@ const VALUACIONES: Valuaciones = {
     alicuota: "0.16",
     fuente_alicuota: "Decreto 3.584, G.O. 6.395 Ext., 17-08-2018 (16 %) — a cotejar con la Gaceta vigente",
   },
+  perspectiva: "costo",
   aviso: "",
   anulables: [{ id: 7, rotulo: "V-01 (02/11/2026 a 06/11/2026)" }],
   corte_por_defecto: "2026-11-13",
@@ -226,6 +227,23 @@ describe("Control de obra", () => {
     const nota = screen.getByText(/IVA al 16 %/);
     expect(nota.textContent).toContain("a cotejar con la Gaceta vigente");
     expect(nota.textContent).toContain("1.160,00");
+  });
+
+  test("con la línea base en costo la nota del IVA avisa que no es facturable (T18-3)", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    expect(screen.getByText(/IVA al 16 %/).textContent).toContain(
+      "La línea base está en costo directo: este IVA no es una cifra facturable.",
+    );
+  });
+
+  test("con la línea base en precio la nota del IVA no lleva ese aviso (T18-3)", async () => {
+    valuaciones = () => json({ ...VALUACIONES, perspectiva: "precio" });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    expect(screen.getByText(/IVA al 16 %/).textContent).not.toContain("no es una cifra facturable");
   });
 
   test("la columna Número muestra el número que manda la API con la clave Numero (VB-3)", async () => {

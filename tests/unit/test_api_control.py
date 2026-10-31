@@ -765,3 +765,8 @@ def test_las_columnas_de_iva_del_front_existen_en_la_respuesta() -> None:
     # Los nombres de columna del front son claves de la fila (VB-3).
     columnas = _columnas_del_front("COLUMNAS_VALUACIONES")
     assert {"Subtotal", "IVA", "Total con IVA"} <= set(columnas)
+
+
+def test_las_valuaciones_dicen_la_perspectiva_de_la_linea_base() -> None:
+    # OB-S2 declara su línea base en costo: el IVA de lo medido no es facturable (T18-3).
+    assert _con_clave().get("/v1/control/valuaciones", params=P).json()["perspectiva"] == "costo"
