@@ -294,7 +294,7 @@ def test_edificacion_apagada_no_cierra_la_hoja_ni_el_presupuesto(ana, admin) -> 
     v = navegador.get("/v1/hoja/versiones", params={"proyecto": OBRA})
     assert v.status_code == 200, v.text
     assert navegador.get("/v1/hoja/borradores").status_code == 200
-    # Una edición de presupuesto llega a su ruta (borrador inexistente: 404 de la hoja, no el de D-V-4).
+    # Una edición de presupuesto llega a su ruta (borrador inexistente: error de la hoja).
     r = navegador.put(
         f"/v1/hoja/borradores/{ID_BORRADOR}/cantidades",
         json={"rev": 0, "filas": []},

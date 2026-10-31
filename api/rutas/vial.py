@@ -36,7 +36,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
-from api.acceso_modulos import CUALQUIER_ROL, requiere_modulo
+from api.acceso_modulos import ModuloVial
 from api.admin_acceso import cuenta_con
 from api.dependencias import SesionDep, url_de_la_peticion
 from api.esquemas_vial import (
@@ -84,13 +84,9 @@ class _RutaVial(RutaSinCache, RutaSinEco):
     mensaje_por_omision = MENSAJE_FORMA
 
 
-# Sesión de cualquier rol y luego el módulo: sin entrar sigue siendo 401; el rol va en cada ruta.
-router = APIRouter(
-    prefix="/v1/vial",
-    tags=["vial"],
-    dependencies=[Depends(CUALQUIER_ROL), Depends(requiere_modulo("vial"))],
-    route_class=_RutaVial,
-)
+# El módulo vial se comprueba en cada ruta (`ModuloVial`), DESPUÉS de la acción: sin entrar, 401;
+# sin el rol, 403; con el rol y el módulo apagado, 404 (D-V-4).
+router = APIRouter(prefix="/v1/vial", tags=["vial"], route_class=_RutaVial)
 
 LEER = Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))
 CuentaQueEdita = Annotated[
@@ -137,7 +133,9 @@ def _guardar(sesion, proyecto: str, codigo: str, tramos, activa: SesionActiva, f
 
 
 @router.get("/tramos", response_model=TramosRespuesta, dependencies=[LEER])
-def leer_tramos(sesion: SesionDep, proyecto: Proyecto, version: Version) -> TramosRespuesta:
+def leer_tramos(
+    _modulo: ModuloVial, sesion: SesionDep, proyecto: Proyecto, version: Version
+) -> TramosRespuesta:
     """Los tramos de la versión con sus cantidades, y si se pueden editar."""
     try:
         return _respuesta(sesion, proyecto, version)
@@ -148,6 +146,7 @@ def leer_tramos(sesion: SesionDep, proyecto: Proyecto, version: Version) -> Tram
 @router.put("/tramos", response_model=TramosRespuesta)
 def guardar_los_tramos(
     activa: CuentaQueEdita,
+    _modulo: ModuloVial,
     sesion: SesionDep,
     entrada: TramosEntrada,
     proyecto: Proyecto,
@@ -184,6 +183,7 @@ async def _leer_archivo(archivo: UploadFile) -> bytes:
 @router.post("/tramos/importar", response_model=TramosRespuesta)
 async def importar_tramos(
     activa: CuentaQueEdita,
+    _modulo: ModuloVial,
     sesion: SesionDep,
     proyecto: Proyecto,
     version: Version,
@@ -211,7 +211,7 @@ async def importar_tramos(
 
 
 @router.get("/obras", response_model=ObrasViales, dependencies=[LEER])
-def obras_con_tramos(sesion: SesionDep) -> ObrasViales:
+def obras_con_tramos(_modulo: ModuloVial, sesion: SesionDep) -> ObrasViales:
     """Las obras de la carpeta abierta que tienen tramos guardados."""
     try:
         return ObrasViales(obras=vial.obras_con_tramos(sesion))
@@ -227,7 +227,11 @@ def _hoy() -> date:
 @router.post("/tramos/llevar", response_model=TramosLlevados)
 @sin_eco(FORMA_LLEVAR)
 def llevar_al_presupuesto(
-    datos: LlevarTramos, request: Request, activa: CuentaDeLaHoja, sesion: SesionDep
+    datos: LlevarTramos,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    _modulo: ModuloVial,
+    sesion: SesionDep,
 ) -> TramosLlevados:
     """Lleva las cantidades de los tramos al borrador de la Hoja de la obra, todo o nada, sin
     guardar versión (`aplicacion.hoja_vial.llevar_tramos_a_la_hoja`). `activa` va antes que

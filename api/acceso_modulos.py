@@ -14,8 +14,9 @@ módulos no se anuncia a quien no entró. Lee `instalacion.db` (donde vive el es
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Annotated
 
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 
 from api.dependencias import SesionInstalacionDep
 from api.sesion_web import exigir_clave_o_sesion
@@ -25,7 +26,7 @@ from aplicacion.modulos import MENSAJE_APAGADO, MODULOS, NOMBRES, modulos_activo
 #: está apagado.
 CUALQUIER_ROL = exigir_clave_o_sesion(None)
 
-__all__ = ["CUALQUIER_ROL", "requiere_modulo"]
+__all__ = ["CUALQUIER_ROL", "ModuloEdificacion", "ModuloVial", "requiere_modulo"]
 
 
 def requiere_modulo(clave: str) -> Callable[..., None]:
@@ -40,3 +41,9 @@ def requiere_modulo(clave: str) -> Callable[..., None]:
 
     dependencia.__name__ = f"requiere_modulo_{clave}"
     return dependencia
+
+
+#: Para la firma de una ruta, justo después del parámetro que comprueba el acceso (las
+#: dependencias corren en el orden de la firma: primero quién es, luego si el módulo está activo).
+ModuloVial = Annotated[None, Depends(requiere_modulo("vial"))]
+ModuloEdificacion = Annotated[None, Depends(requiere_modulo("edificacion"))]

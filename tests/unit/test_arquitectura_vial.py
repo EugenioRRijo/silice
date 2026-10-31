@@ -40,14 +40,14 @@ def test_un_modulo_activable_no_se_importa_a_si_mismo_desde_el_otro() -> None:
     assert hallados == []
 
 
-def test_los_routers_de_los_tres_modulos_exigen_el_modulo() -> None:
-    """Cada router de un módulo activable declara `requiere_modulo` (la API es la que corta)."""
-    from api.rutas import produccion, produccion_planta, riesgo, vial
+def test_los_routers_de_produccion_y_riesgo_exigen_el_modulo() -> None:
+    """Producción y riesgo declaran `requiere_modulo` en el router (el rol también es del router);
+    vial lo declara por ruta, después de la acción (ver más abajo)."""
+    from api.rutas import produccion, produccion_planta, riesgo
 
     for router, clave in (
         (produccion.router, "produccion"),
         (produccion_planta.router, "produccion"),
-        (vial.router, "vial"),
         (riesgo.router, "riesgo"),
     ):
         nombres = [d.dependency.__name__ for d in router.dependencies]
@@ -68,11 +68,11 @@ def test_cada_ruta_vial_comprueba_el_modulo_despues_del_acceso() -> None:
     assert [d.dependency.__name__ for d in vial.router.dependencies] == []
     rutas = [r for r in vial.router.routes if isinstance(r, APIRoute)]
     assert rutas
-    for ruta in rutas:
-        nombres = _dependencias_de(ruta)  # incluye las de `dependencies=[...]`, que van primero
-        assert "requiere_modulo_vial" in nombres, (ruta.path, nombres)
+    for r in rutas:
+        nombres = _dependencias_de(r)  # incluye las de `dependencies=[...]`, que van primero
+        assert "requiere_modulo_vial" in nombres, (r.path, nombres)
         antes = nombres[: nombres.index("requiere_modulo_vial")]
-        assert any("editar_hoja" in n for n in antes), (ruta.path, nombres)
+        assert any("editar_hoja" in n for n in antes), (r.path, nombres)
 
 
 def test_las_rutas_de_planos_comprueban_edificacion() -> None:
@@ -88,5 +88,5 @@ def test_las_rutas_de_planos_comprueban_edificacion() -> None:
         if isinstance(r, APIRoute) and r.path.endswith("/espacio") and "PUT" in r.methods
     ]
     assert len(espacio) == 1
-    for ruta in [*planos, *espacio]:
-        assert "requiere_modulo_edificacion" in _dependencias_de(ruta), ruta.path
+    for r in [*planos, *espacio]:
+        assert "requiere_modulo_edificacion" in _dependencias_de(r), r.path
