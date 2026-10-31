@@ -99,7 +99,7 @@ export function ProveedorDeLaHoja({ children }: { children: ReactNode }) {
 }
 
 function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto: string; nombreProyecto: string | null; children: ReactNode }) {
-  const { alExpirar, sesion, recargarProyectos } = useAplicacion();
+  const { alExpirar, sesion, recargarProyectos, modulosApagados } = useAplicacion();
   // La obra abierta (null si la Hoja se monta sola, sin obra).
   const obra = useContext(ContextoDeLaObra);
   const recargarFicha = obra?.recargarFicha;
@@ -137,7 +137,8 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
     alExpirar,
     retomado?.id ?? null,
   );
-  const pestana = usePestanaDeLaHoja(proyecto, estado);
+  // Plan vial, Tarea 19: con «edificación» apagada en la instalación no hay «Espacio y metrajes».
+  const pestana = usePestanaDeLaHoja(proyecto, estado, modulosApagados?.includes("edificacion") ?? false);
   const hayCambios = estado.estado === "listo" && estado.borrador.resumen.cambios > 0;
   // F4 2b: una sola regla para lo que escribe (quien revisa, o un borrador de solo lectura, no edita).
   const puedeEditar = usePuedeEditarLaHoja(estado.estado === "listo" ? estado.borrador.base : null);

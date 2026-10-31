@@ -55,6 +55,16 @@ describe("lógica de la hoja del proyecto", () => {
     expect(ids({ espacio_vacio: false }, false)).toHaveLength(8);
   });
 
+  test("plan vial T19: con edificación apagada «Espacio y metrajes» no se ve nunca, ni pedido", () => {
+    const ids = (r: { espacio_vacio?: boolean }, pedido: boolean) => pestanasVisibles(r, pedido, true).map((p) => p.id);
+    const sinEspacio = ["partidas", "apu", "plan", "precios", "revision", "ajustes", "trazabilidad"];
+    expect(ids({ espacio_vacio: false }, false)).toEqual(sinEspacio);
+    expect(ids({ espacio_vacio: true }, true)).toEqual(sinEspacio);
+    expect(ids({}, true)).toEqual(sinEspacio);
+    // Encendida (el valor por omisión) se sigue la regla de la Tarea 4.
+    expect(pestanasVisibles({ espacio_vacio: false }, false, false)[0]!.id).toBe("espacio");
+  });
+
   test("el proyecto va codificado en la ruta de versiones", () => {
     expect(rutaDeVersiones("OF-001: oficina & baño")).toBe(
       "/v1/hoja/versiones?proyecto=OF-001%3A%20oficina%20%26%20ba%C3%B1o",

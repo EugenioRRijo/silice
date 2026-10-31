@@ -11,7 +11,6 @@ import {
   SIN_VERSIONES,
   TITULO,
   esBorradorAusente,
-  pestanasVisibles,
   rotuloDeVersion,
   textoDeCambios,
   versionesOfrecidas,
@@ -221,7 +220,7 @@ function CuerpoDeLaHoja() {
     inerte,
     pestana,
     irAPestana,
-    espacioPedido,
+    visibles,
   } = useHojaDeLaObra();
   const ofrecidas = versiones.estado === "listo" ? versionesOfrecidas(versiones.datos.versiones) : [];
 
@@ -232,7 +231,6 @@ function CuerpoDeLaHoja() {
     setFiltro(f);
     irAPestana("revision");
   };
-  const visibles = estado.estado === "listo" ? pestanasVisibles(estado.borrador.resumen, espacioPedido) : [];
 
   if (versiones.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las versiones" />;
   if (versiones.estado !== "listo") return <AvisoError error={versiones.error} />;

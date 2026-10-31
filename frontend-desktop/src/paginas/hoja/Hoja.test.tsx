@@ -171,21 +171,31 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     expect(pestanas[1]).toHaveFocus();
   });
 
-  test("plan vial T19: con edificación apagada no hay «Espacio y metrajes» y la hoja abre en Presupuesto", async () => {
+  // Plan vial T19 en el modelo por id de la Tarea 4 de F4: con edificación apagada «Espacio y metrajes» no se ve aunque la
+  // obra tenga espacio (los datos de prueba no traen `espacio_vacio`: obra con espacio, que abriría en «espacio»).
+  test("plan vial T19: con edificación apagada no hay «Espacio y metrajes» y la hoja abre en Partidas", async () => {
     servidor();
     montar("OF-001", ["edificacion"]);
     const lista = await screen.findByRole("tablist");
     const nombres = within(lista).getAllByRole("tab").map((p) => p.textContent);
-    expect(nombres).not.toContain("Espacio y metrajes");
-    expect(nombres).toEqual(["APU", "Presupuesto", "Plan y curva", "Punto de equilibrio", "Precios", "Parámetros", "Auditoría", "Trazabilidad"]);
-    expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Presupuesto");
+    expect(nombres).toEqual([
+      "Partidas",
+      "Análisis de precio (APU)",
+      "Plan y equilibrio",
+      "Precios",
+      "Revisión",
+      "Ajustes de costo",
+      "Trazabilidad",
+    ]);
+    expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Partidas");
   });
 
-  test("plan vial T19: con otro módulo apagado, la hoja conserva sus nueve pestañas", async () => {
+  test("plan vial T19: con otro módulo apagado, la hoja conserva sus ocho pestañas y abre en Espacio y metrajes", async () => {
     servidor();
     montar("OF-001", ["vial", "riesgo"]);
     const lista = await screen.findByRole("tablist");
-    expect(within(lista).getAllByRole("tab")).toHaveLength(9);
+    expect(within(lista).getAllByRole("tab")).toHaveLength(8);
+    expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Espacio y metrajes");
   });
 
   test("3b-F4: el selector ofrece las no descartadas, marca la vigente y preselecciona por_omision", async () => {

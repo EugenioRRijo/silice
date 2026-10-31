@@ -29,8 +29,14 @@ export const PESTANAS: readonly PestanaDef[] = [
 
 // «Espacio y metrajes» solo se ve si la obra tiene espacio (no es civil) o si la persona pidió describirlo (pregunta 3 del
 // plan). La API manda `espacio_vacio` siempre; los datos de prueba anteriores no lo traen y se tratan como obra con espacio.
-export function pestanasVisibles(r: { espacio_vacio?: boolean }, espacioPedido: boolean): readonly PestanaDef[] {
-  const conEspacio = r.espacio_vacio !== true || espacioPedido;
+// Con la especialidad «edificación» apagada en la instalación (plan vial, Tarea 19) no se ve nunca: la API cierra la edición
+// del espacio y los planos, y la Hoja sigue sirviendo a las obras viales desde «Partidas».
+export function pestanasVisibles(
+  r: { espacio_vacio?: boolean },
+  espacioPedido: boolean,
+  edificacionApagada = false,
+): readonly PestanaDef[] {
+  const conEspacio = !edificacionApagada && (r.espacio_vacio !== true || espacioPedido);
   return conEspacio ? PESTANAS : PESTANAS.filter((p) => p.id !== "espacio");
 }
 
