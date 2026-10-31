@@ -3,7 +3,6 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { Link, useMatch, useNavigate } from "react-router";
 import { Pildora } from "../comun/Pildora";
-import { useTamanoDeLetra } from "../comun/useTamanoDeLetra";
 import { claveDeObra, contarPorObra } from "../paginas/pendientes/logica";
 import { TEXTOS as TEXTOS_PENDIENTES } from "../paginas/pendientes/textos";
 import { DialogoNuevaObra } from "../shell/obras/DialogoNuevaObra";
@@ -16,13 +15,13 @@ import { obrasAlcanzables, seccionesDeLaObra, useOferta } from "./oferta";
 import {
   PATRON_DE_EMPRESA,
   RUTA_DE_PENDIENTES,
-  rutaDeEmpresa,
   rutaDeObra,
   type SeccionId,
 } from "./secciones";
 import { useObras, type ObraDeCarpeta } from "./useObras";
 import { useObrasViales } from "./useObrasViales";
 import { usePendientes } from "./usePendientes";
+import { ZonaEmpresa } from "./ZonaEmpresa";
 
 interface Props {
   obraAbierta: { carpeta: string | null; obraId: number } | null;
@@ -33,7 +32,7 @@ interface Props {
 // un `tree` de WAI-ARIA: una sola parada de Tab, flechas para recorrer, derecha despliega e izquierda pliega. Sin
 // títulos de grupo por carpeta (D-F3-3): las obras van por nombre y solo las de nombre repetido dicen su carpeta. Las
 // píldoras de Pendientes y de cada obra salen de los pendientes que el marco ya cargó (`usePendientes`).
-// Pasa de 250 líneas porque el árbol, su teclado y la ventana de Nueva obra comparten un mismo estado (qué está desplegado,
+// Empresa vive en ZonaEmpresa. Pasa de 250 líneas (276) porque el árbol, su teclado y la ventana de Nueva obra comparten un mismo estado (qué está desplegado,
 // qué fila tiene el foco); separarlos obligaría a subir ese estado sin quitar complejidad.
 export function BarraLateral({ obraAbierta, seccion }: Props) {
   const { acciones, puedeCambiarDeCarpeta, oferta } = useOferta();
@@ -53,17 +52,6 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const [manual, setManual] = useState<Record<string, boolean>>({});
   const [foco, setFoco] = useState<string | null>(null);
   const arbol = useRef<HTMLUListElement>(null);
-  // Empresa se pliega con letra Grande o Muy grande para darle su alto al árbol. Lo que la persona abre o cierra se
-  // recuerda mientras la barra esté montada; sin decisión, arranca abierta solo si la ruta es una entrada de Empresa.
-  // La decisión vale para el tamaño de letra con que se tomó: al cambiarlo el alto disponible es otro y el plegado vuelve
-  // a ser el de partida.
-  const tamanoDeLetra = useTamanoDeLetra();
-  const empresaPlegable = tamanoDeLetra !== "normal";
-  const [decisionDeEmpresa, setDecisionDeEmpresa] = useState<{ tamano: string; abierta: boolean } | null>(null);
-  const manualDeEmpresa = decisionDeEmpresa?.tamano === tamanoDeLetra ? decisionDeEmpresa.abierta : null;
-  const empresaAbierta = !empresaPlegable || (manualDeEmpresa ?? entradaActiva !== null);
-  const idDeEmpresa = `${base}-empresa`;
-
   const { entradas } = oferta;
   // «Tramos» solo en las obras viales (las que ya tienen tramos guardados) y en la que se está viendo.
   const viales = useObrasViales(carpetaActual, `${obraAbierta?.carpeta ?? ""}|${obraAbierta?.obraId ?? ""}|${seccion ?? ""}`);
@@ -270,39 +258,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         </div>
       )}
 
-      <nav aria-label="Empresa" className="silice-marco-lateral__empresa">
-        <h2 className="silice-marco-lateral__titulo">
-          {empresaPlegable ? (
-            <button
-              type="button"
-              className="silice-marco-lateral__empresa-boton"
-              aria-expanded={empresaAbierta}
-              aria-controls={idDeEmpresa}
-              onClick={() => setDecisionDeEmpresa({ tamano: tamanoDeLetra, abierta: !empresaAbierta })}
-            >
-              {empresaAbierta ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
-              Empresa
-            </button>
-          ) : (
-            "Empresa"
-          )}
-        </h2>
-        {empresaAbierta && (
-          <ul id={idDeEmpresa}>
-            {entradas.map((e) => (
-              <li key={e.id}>
-                <Link
-                  to={rutaDeEmpresa(e.id)}
-                  aria-current={entradaActiva === e.id ? "page" : undefined}
-                  className="silice-marco-lateral__fila"
-                >
-                  {e.titulo}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </nav>
+      <ZonaEmpresa entradas={entradas} entradaActiva={entradaActiva} idBase={base} />
 
       <DialogoNuevaObra
         abierto={nuevaAbierta}

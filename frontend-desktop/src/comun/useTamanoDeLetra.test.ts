@@ -28,10 +28,10 @@ describe("useTamanoDeLetra", () => {
   });
 
   test("al desmontarse desconecta su observador", () => {
+    const desconectar = vi.spyOn(MutationObserver.prototype, "disconnect");
     const { unmount } = renderHook(() => useTamanoDeLetra());
-    const antes = vi.spyOn(MutationObserver.prototype, "disconnect");
     unmount();
-    expect(antes).toHaveBeenCalled();
-    antes.mockRestore();
+    expect(desconectar).toHaveBeenCalled();
+    desconectar.mockRestore();
   });
 });

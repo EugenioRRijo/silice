@@ -821,7 +821,6 @@ describe("BarraLateral: nombres largos de obra", () => {
 // mínimo. jsdom no calcula el diseño: la estructura se prueba en el DOM y las reglas en el fuente; la medida real
 // (cuántas obras caben a 1366×768) se hace en el navegador.
 describe("BarraLateral: la zona de obras con letra grande", () => {
-
   it("la cabecera de Obras y «Nueva obra» quedan fuera del árbol, que tiene su propio desplazamiento", async () => {
     servidor([obra(NORTE, 1, "Torre"), TORRE]);
     pintar();
