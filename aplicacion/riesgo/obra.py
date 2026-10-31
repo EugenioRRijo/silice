@@ -14,7 +14,11 @@ calcular nada nuevo:
   sus cifras en su moneda; si no es la del presupuesto se convierten con la **tasa del cierre del
   mes del cálculo** (`equivalencia_del_cierre`, la misma con que el cálculo convirtió lo comprado).
   Si en el mes hubo dos recetas, la del período pondera por las toneladas hechas con cada una
-  (`costo_de_mezcla_del_periodo` hace lo mismo). Sin mezcla propia, todo vacío.
+  (`costo_de_mezcla_del_periodo` hace lo mismo). Sin mezcla propia, todo vacío. Un componente con
+  otro precio en el cálculo de otra mezcla se **desdobla** (fila 81, el mismo criterio que los
+  insumos de la proyección): en la receta de esa mezcla pasa a «CA-30 [2]» con su precio, sigue la
+  serie del original (`mapa_con_variantes`) y se declara en los supuestos. Así cada mezcla se
+  recalcula con los precios de su propio cálculo.
 - **La historia**: hasta el último día del mes anterior al inicio (`historia_para_proyectar`), así
   ningún mes queda a medias (fila 75).
 - **El inicio**: el declarado; si no se declara, la fecha de inicio del calendario de la última
@@ -27,7 +31,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Collection, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
@@ -47,6 +51,7 @@ from aplicacion.riesgo.proyeccion import (
     ParametrosProyeccion,
     Proyeccion,
     historia_para_proyectar,
+    nombre_de_variante,
     proyectar,
     series_del_mapa,
 )
@@ -69,8 +74,10 @@ __all__ = [
     "SerieOfrecida",
     "comprobar_obra",
     "insumos_de_la_obra",
+    "mapa_con_variantes",
     "mezclas_publicadas",
     "proyectar_obra",
+    "supuesto_de_componentes",
 ]
 
 CERO = Decimal(0)
@@ -86,12 +93,14 @@ SIN_INICIO = (
 class MezclasPropias:
     """Lo que `proyectar` recibe de las mezclas propias, por la descripción del insumo de la
     mezcla en el APU (y los componentes por su código), en la moneda del presupuesto; `calculos`
-    dice de qué cálculo publicado salió cada mezcla."""
+    dice de qué cálculo publicado salió cada mezcla y `componente_original` lleva cada variante de
+    un componente desdoblado («CA-30 [2]») a su código."""
 
     recetas: dict[str, Receta] = field(default_factory=dict)
     costo_planta_por_t: dict[str, Decimal] = field(default_factory=dict)
     precio_de_componente: dict[str, Decimal] = field(default_factory=dict)
     calculos: dict[str, int] = field(default_factory=dict)
+    componente_original: dict[str, str] = field(default_factory=dict)
 
 
 # --- La mezcla propia del cálculo publicado -------------------------------------------------------
@@ -164,6 +173,48 @@ def _en_la_moneda(caso: Session, calculo: CalculoGuardado, moneda: str):
     return convertir
 
 
+def _codigo_local(mezclas: MezclasPropias, codigo: str, precio: Decimal) -> str:
+    """El código con que entra el componente: el suyo si es su primer precio (o el mismo de antes);
+    si el cálculo de otra mezcla le dio otro precio, una variante («CA-30 [2]») con ese precio."""
+    for local, original in ((codigo, codigo), *mezclas.componente_original.items()):
+        if original == codigo and mezclas.precio_de_componente.get(local) == precio:
+            return local
+    if codigo not in mezclas.precio_de_componente:
+        mezclas.precio_de_componente[codigo] = precio
+        return codigo
+    variante = nombre_de_variante(codigo, mezclas.precio_de_componente)
+    mezclas.precio_de_componente[variante] = precio
+    mezclas.componente_original[variante] = codigo
+    return variante
+
+
+def mapa_con_variantes(
+    mapa: Mapping[str, str], componente_original: Mapping[str, str]
+) -> MapaSeries:
+    """El mapa declarado con cada variante de un componente desdoblado siguiendo la serie de su
+    original (sin serie para el original, la variante tampoco la tiene)."""
+    completo = {k: v for k, v in mapa.items() if k not in componente_original}
+    for variante, original in componente_original.items():
+        if original in mapa:
+            completo[variante] = mapa[original]
+    return MapaSeries(completo)
+
+
+def supuesto_de_componentes(mezclas: MezclasPropias) -> str | None:
+    """El supuesto que declara los componentes desdoblados, o `None` si no hay ninguno."""
+    if not mezclas.componente_original:
+        return None
+    cuantos: dict[str, int] = {}
+    for original in mezclas.componente_original.values():
+        cuantos[original] = cuantos.get(original, 1) + 1
+    cuales = "; ".join(f"{c} ({n} precios)" for c, n in sorted(cuantos.items()))
+    return (
+        "componente con otro precio en el cálculo publicado de otra mezcla, desdoblado en "
+        "variantes («código [2]», …) que siguen la serie del original: cada mezcla se recalcula "
+        f"con los precios de su propio cálculo: {cuales}"
+    )
+
+
 def mezclas_publicadas(
     sesion_ins: Session, sesion_caso: Session, descripciones: Collection[str], moneda: str
 ) -> MezclasPropias:
@@ -182,15 +233,11 @@ def mezclas_publicadas(
             raise ValueError(f"El cálculo n.º {calculo.id} no tiene costo de planta por tonelada.")
         receta = _receta_del_periodo(datos["entradas"]["recetas"], producto, calculo.id)
         convertir = _en_la_moneda(sesion_caso, calculo, moneda)
+        componentes = []
         for c in receta.componentes:
             precio = convertir(_precio_en_el_calculo(datos, c, calculo.id))
-            anterior = mezclas.precio_de_componente.setdefault(c.codigo, precio)
-            if anterior != precio:
-                raise ValueError(
-                    f"El componente {c.codigo} tiene dos precios en los cálculos publicados de "
-                    "las mezclas del presupuesto: la proyección lo variaría con uno solo."
-                )
-        mezclas.recetas[descripcion] = receta
+            componentes.append(replace(c, codigo=_codigo_local(mezclas, c.codigo, precio)))
+        mezclas.recetas[descripcion] = replace(receta, componentes=tuple(componentes))
         mezclas.costo_planta_por_t[descripcion] = convertir(Decimal(planta))
         mezclas.calculos[descripcion] = calculo.id
     return mezclas
@@ -291,7 +338,9 @@ def insumos_de_la_obra(
         version=codigo,
         moneda=moneda,
         insumos=[d for d in descripciones if d not in mezclas.recetas],
-        componentes=sorted(mezclas.precio_de_componente),
+        componentes=sorted(
+            {mezclas.componente_original.get(c, c) for c in mezclas.precio_de_componente}
+        ),
         mezclas=mezclas.calculos,
         series=_series_ofrecidas(moneda),
         inicio_linea_base=inicio_de_la_linea_base(sesion_caso, v.id),
@@ -351,9 +400,9 @@ def proyectar_obra(
     if inicio is None:
         raise ValueError(SIN_INICIO)
     p = ParametrosProyeccion(inicio=inicio, **parametros)
-    mapa_series = MapaSeries(mapa)
     moneda = v.presupuesto.moneda
     mezclas = mezclas_publicadas(sesion_ins, sesion_caso, _descripciones(v.composiciones), moneda)
+    mapa_series = mapa_con_variantes(mapa, mezclas.componente_original)
     historia = historia_para_proyectar(sesion_caso, mapa_series, p)
     proyeccion = proyectar(
         v.presupuesto,
@@ -364,6 +413,9 @@ def proyectar_obra(
         p,
         **_argumentos(mezclas),
     )
+    supuesto = supuesto_de_componentes(mezclas)
+    if supuesto is not None:
+        proyeccion = replace(proyeccion, supuestos=(*proyeccion.supuestos, supuesto))
     return ProyeccionDeLaObra(
         v.proyecto, codigo, moneda, inicio, origen, p, proyeccion, mezclas.calculos
     )
@@ -384,9 +436,9 @@ def comprobar_obra(
     ellos). `parametros`: meses, trayectorias (por corte), semilla y ventana_meses."""
     v = _version(sesion_caso, proyecto, codigo)
     p = ParametrosProyeccion(inicio=hoy, **parametros)
-    mapa_series = MapaSeries(mapa)
     moneda = v.presupuesto.moneda
     mezclas = mezclas_publicadas(sesion_ins, sesion_caso, _descripciones(v.composiciones), moneda)
+    mapa_series = mapa_con_variantes(mapa, mezclas.componente_original)
     hasta = hoy.replace(day=1) - timedelta(days=1)
     historia = historia_mensual(sesion_caso, series_del_mapa(mapa_series), date.min, hasta)
     comprobacion = comprobar_hacia_atras(
