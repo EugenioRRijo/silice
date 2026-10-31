@@ -95,6 +95,9 @@ export default function Tramos() {
                   <AvisoError error={error} titulo="No se importó ningún tramo" />
                 </div>
               )}
+              {carga.datos.heredados_de !== null && (
+                <p className="vial-nota cds--type-body-compact-01">{`Tramos heredados de la versión ${carga.datos.heredados_de}`}</p>
+              )}
               {carga.datos.guardado !== null && (
                 <p className="vial-nota cds--type-body-compact-01">
                   {`Guardado por ${carga.datos.guardado.usuario} el ${fechaEsVe(carga.datos.guardado.fecha_hora)} · ${carga.datos.guardado.fuente}`}

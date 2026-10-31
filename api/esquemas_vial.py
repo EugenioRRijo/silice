@@ -151,6 +151,7 @@ class TramosRespuesta(BaseModel):
     version: str
     editable: bool
     bloqueo: str | None
+    heredados_de: str | None
     guardado: RastroDeTramosRespuesta | None
     tramos: list[TramoRespuesta]
     cantidades: list[CantidadRespuesta]

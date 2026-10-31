@@ -141,7 +141,9 @@ def test_version_sin_guardado_propio_hereda_de_la_anterior(sesion: Session, moto
     tres = _tercera(sesion)
     assert vial.tramos_de_version(sesion, tres) == [T1]
     assert vial.heredados_de(sesion, tres) == "VIV-002"
-    assert [c.tramo for c in vial.cantidades_de_tramos(vial.tramos_de_version(sesion, tres))][0] == "T1"
+    assert [c.tramo for c in vial.cantidades_de_tramos(vial.tramos_de_version(sesion, tres))][
+        0
+    ] == "T1"
     assert _filas_si_existe(motor, "vial_tramos_guardado") == 1  # heredar no escribe nada
 
 
@@ -151,7 +153,9 @@ def test_viv003_hereda_de_viv002_tras_guardar_en_viv002(sesion: Session) -> None
     tres = _tercera(sesion)
     assert vial.tramos_de_version(sesion, tres) == [T2]
     assert vial.heredados_de(sesion, tres) == "VIV-002"
-    assert vial.guardado_de_version(sesion, tres).usuario == ANA  # el rastro es el del guardado usado
+    assert (
+        vial.guardado_de_version(sesion, tres).usuario == ANA
+    )  # el rastro es el del guardado usado
     # y VIV-002 ya no es la más reciente: no se toca
     assert "VIV-003" in vial.bloqueo_de_version(sesion, dos)
 

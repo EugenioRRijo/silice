@@ -25101,6 +25101,17 @@
             ],
             "title": "Bloqueo"
           },
+          "heredados_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heredados De"
+          },
           "guardado": {
             "anyOf": [
               {
@@ -25132,6 +25143,7 @@
           "version",
           "editable",
           "bloqueo",
+          "heredados_de",
           "guardado",
           "tramos",
           "cantidades"

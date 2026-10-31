@@ -38,6 +38,8 @@ export interface TramosDeVersion {
   editable: boolean;
   // Por qué ya no se editan (versión en aprobación, aprobada o devuelta); null si se pueden editar.
   bloqueo: string | null;
+  // La versión de la que hereda sus tramos (no tiene guardado propio); null si son suyos o no hay.
+  heredados_de: string | null;
   guardado: { usuario: string; fecha_hora: string; fuente: string } | null;
   tramos: TramoGuardado[];
   cantidades: CantidadDeTramo[];

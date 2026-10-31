@@ -6,8 +6,8 @@ cifras como texto; `Cache-Control: no-store` también en los errores; el 422 de 
 enviado. Acción `EDITAR_HOJA`:
 
 - `GET /tramos?proyecto=&version=` → los tramos de la versión, sus cantidades (m2, m3, l, t, t·km y
-  m, cada una con su regla y su origen), si se pueden editar y quién guardó por última vez. Clave de
-  API o sesión.
+  m, cada una con su regla y su origen), si se pueden editar, de qué versión los hereda
+  (`heredados_de`) y quién guardó por última vez. Clave de API o sesión.
 - `PUT /tramos?proyecto=&version=` `{tramos, fuente}` → guarda los tramos como los de la versión
   (un guardado nuevo: el anterior queda como rastro). Solo con una cuenta (la clave de API recibe
   403, como en la Hoja). 422 con el texto del dominio y el id del tramo; versión enviada, aprobada
@@ -88,6 +88,7 @@ def _respuesta(sesion, proyecto: str, codigo: str) -> TramosRespuesta:
         version=codigo,
         editable=bloqueo is None,
         bloqueo=bloqueo,
+        heredados_de=vial.heredados_de(sesion, version_id),
         guardado=rastro_a_respuesta(vial.guardado_de_version(sesion, version_id)),
         tramos=[tramo_a_respuesta(t) for t in tramos],
         cantidades=[cantidad_a_respuesta(c) for c in vial.cantidades_de_tramos(tramos)],

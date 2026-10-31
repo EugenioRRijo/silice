@@ -8,6 +8,10 @@ persisten como texto, así que el «7.30» vuelve como «7.30».
   su usuario, su hora y su fuente; al leer manda el último y los anteriores quedan en la base como
   rastro. (La Hoja tampoco pisa una versión: cada cambio es una versión nueva. Los tramos no
   forman parte del sello de la versión: son un anexo suyo, como el estudio de mercado.)
+- **Herencia al leer, sin copiar.** Una versión sin guardado propio usa el último guardado de la
+  versión anterior más cercana de la misma obra que tenga uno (`heredados_de` dice cuál). Leer no
+  escribe filas ni cuenta como guardado de nadie. Para que lo heredado no cambie bajo los pies de
+  una versión posterior, solo se guardan tramos en la versión más reciente de la obra.
 - **Versión enviada, aprobada o devuelta: no se edita** (`VersionBloqueada`, la API responde 409).
   Solo se editan los tramos de una versión guardada o cuyo envío se retiró. La Hoja no crea ese
   bloqueo por sí sola (cada edición suya ya es una versión nueva); aquí sí hace falta porque los
@@ -54,6 +58,7 @@ __all__ = [
     "bloqueo_de_version",
     "cantidades_de_tramos",
     "guardado_de_version",
+    "heredados_de",
     "guardar_tramos",
     "obras_con_tramos",
     "texto_decimal",
@@ -138,11 +143,20 @@ def _presupuesto(sesion: Session, version_id: int) -> models.Presupuesto:
 
 
 def bloqueo_de_version(sesion: Session, version_id: int) -> str | None:
-    """Por qué los tramos de la versión ya no se editan, o `None` si se pueden editar."""
+    """Por qué los tramos de la versión ya no se editan, o `None` si se pueden editar. Solo se
+    editan los de la versión más reciente de la obra (las anteriores quedan fijas, así lo que una
+    versión nueva hereda no cambia) y, en ella, mientras no se haya enviado a aprobación."""
     presupuesto = _presupuesto(sesion, version_id)
     obra = sesion.get(models.Proyecto, presupuesto.proyecto_id)
     if obra is None:  # una versión sin obra no existe a efectos de la API
         raise VersionInexistente(f"La versión n.º {version_id} no existe en este caso.")
+    reciente = sesion.scalars(
+        select(models.Presupuesto)
+        .where(models.Presupuesto.proyecto_id == obra.id)
+        .order_by(models.Presupuesto.id.desc())
+    ).first()
+    if reciente is not None and reciente.id != presupuesto.id:
+        return f"Solo se editan los tramos de la versión más reciente ({reciente.codigo})."
     estado = aprobaciones.estados(sesion, obra.nombre)[presupuesto.codigo].estado
     texto = _NO_EDITABLES.get(estado)
     if texto is None:
@@ -246,7 +260,8 @@ def _validar(tramos: Sequence[Tramo], usuario: str, fuente: str) -> None:
         raise ValueError(f"la fuente pasa de {LARGO_FUENTE} caracteres")
 
 
-def _ultimo(sesion: Session, version_id: int) -> GuardadoDeTramos | None:
+def _propio(sesion: Session, version_id: int) -> GuardadoDeTramos | None:
+    """El último guardado de la versión misma, sin herencia."""
     if not hay_tablas_viales(sesion):
         return None
     return sesion.scalars(
@@ -256,19 +271,52 @@ def _ultimo(sesion: Session, version_id: int) -> GuardadoDeTramos | None:
     ).first()
 
 
-def guardado_de_version(sesion: Session, version_id: int) -> RastroDeGuardado | None:
-    """Quién, cuándo y de dónde salió el último guardado de la versión; `None` si no hay."""
+def _vigente(sesion: Session, version_id: int) -> tuple[GuardadoDeTramos | None, str | None]:
+    """El guardado que vale para la versión y, si no es el suyo, el código de la versión de la que
+    se hereda. Una versión sin guardado propio usa el último guardado de la versión anterior más
+    cercana de la misma obra que tenga uno. Heredar no copia ni escribe nada."""
+    propio = _propio(sesion, version_id)
+    if propio is not None:
+        return propio, None
+    presupuesto = _presupuesto(sesion, version_id)
+    anteriores = sesion.execute(
+        select(models.Presupuesto.id, models.Presupuesto.codigo)
+        .where(
+            models.Presupuesto.proyecto_id == presupuesto.proyecto_id,
+            models.Presupuesto.id < version_id,
+        )
+        .order_by(models.Presupuesto.id.desc())
+    )
+    for id_, codigo in anteriores:
+        guardado = _propio(sesion, id_)
+        if guardado is not None:
+            return guardado, codigo
+    return None, None
+
+
+def heredados_de(sesion: Session, version_id: int) -> str | None:
+    """El código de la versión de la que la versión hereda sus tramos, o `None` si tiene los suyos
+    o no hay ninguno que heredar."""
     _presupuesto(sesion, version_id)
-    ultimo = _ultimo(sesion, version_id)
+    return _vigente(sesion, version_id)[1]
+
+
+def guardado_de_version(sesion: Session, version_id: int) -> RastroDeGuardado | None:
+    """Quién, cuándo y de dónde salió el guardado que vale para la versión (el propio o el
+    heredado); `None` si no hay."""
+    _presupuesto(sesion, version_id)
+    ultimo = _vigente(sesion, version_id)[0]
     if ultimo is None:
         return None
     return RastroDeGuardado(ultimo.usuario, ultimo.fecha_hora, ultimo.fuente)
 
 
 def tramos_de_version(sesion: Session, version_id: int) -> list[Tramo]:
-    """Los tramos del último guardado de la versión, en su orden; vacío si no tiene."""
+    """Los tramos que valen para la versión, en su orden: los de su último guardado o, si no tiene
+    uno propio, los de la versión anterior más cercana que lo tenga (`heredados_de`); vacío si
+    ninguna lo tiene."""
     _presupuesto(sesion, version_id)
-    ultimo = _ultimo(sesion, version_id)
+    ultimo = _vigente(sesion, version_id)[0]
     if ultimo is None:
         return []
     filas = sesion.scalars(
