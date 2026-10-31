@@ -56,7 +56,14 @@ def _entorno(_plantilla: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         with abrir_sesion(motor) as s:
-            s.add(Insumo(codigo="MAT-1", tipo="material", descripcion="Cemento gris ficticio", unidad="saco"))
+            s.add(
+                Insumo(
+                    codigo="MAT-1",
+                    tipo="material",
+                    descripcion="Cemento gris ficticio",
+                    unidad="saco",
+                )
+            )
             s.commit()
     finally:
         motor.dispose()
@@ -104,7 +111,9 @@ def test_hay_mas_cuando_sobran_coincidencias(ana: TestClient) -> None:
     assert len(cuerpo["resultados"]) == 1 and cuerpo["hay_mas"] is True
 
 
-@pytest.mark.parametrize("params", [{"q": "x" * 81}, {"q": "ab", "limite": 0}, {"q": "ab", "limite": 51}])
+@pytest.mark.parametrize(
+    "params", [{"q": "x" * 81}, {"q": "ab", "limite": 0}, {"q": "ab", "limite": 51}]
+)
 def test_forma_invalida_es_422(ana: TestClient, params: dict) -> None:
     r = ana.get("/v1/consulta/insumos", params=params)
     assert r.status_code == 422
@@ -119,4 +128,6 @@ def test_el_administrador_recibe_403_y_sin_sesion_401() -> None:
     admin = con_cuenta(APLICACION, "admin")[0]
     r = admin.get("/v1/consulta/insumos", params={"q": "cemento"})
     assert r.status_code == 403 and MENSAJE_PERMISO in r.text
-    assert cliente(APLICACION).get("/v1/consulta/insumos", params={"q": "cemento"}).status_code == 401
+    assert (
+        cliente(APLICACION).get("/v1/consulta/insumos", params={"q": "cemento"}).status_code == 401
+    )

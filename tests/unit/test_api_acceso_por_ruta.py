@@ -163,6 +163,7 @@ TABLA = {
     ("PUT", "/v1/carpeta/moneda"): EDITAR,
     ("POST", "/v1/carpeta/lista-para-armar"): EDITAR,
     ("GET", "/v1/buscar/partidas"): LEER,  # T10: buscador de partidas del catálogo (C-1)
+    ("GET", "/v1/consulta/{tabla}"): LEER,  # vial T20: autocompletado con tablas venezolanas
     # MOD-4a: la mesa de control (inicio de Presupuestos y obras)
     ("GET", "/v1/obras/resumen"): LEER,
     ("GET", "/v1/obras/pendientes"): EDITAR,

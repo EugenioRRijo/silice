@@ -4,6 +4,7 @@ import { ErrorDeApi } from "../../api/cliente";
 import { recetaVigente } from "../../api/produccionPlanta";
 import type { RecetaRespuesta } from "../../api/produccionPlanta";
 import { AvisoError } from "../../comun/AvisoError";
+import { CampoDeConsulta } from "../../comun/CampoDeConsulta";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
@@ -69,7 +70,7 @@ export default function RecetaPlanta() {
         Lo que lleva una tonelada de cada mezcla. Una receta nueva no cambia las anteriores: la producción usa la que rige en su fecha.
       </p>
       <div className="planta-barra">
-        <CampoTexto id="receta-producto" labelText="Producto (código)" autoComplete="off" value={producto} onChange={(e) => setProducto(e.target.value)} />
+        <CampoDeConsulta id="receta-producto" etiqueta="Producto (código)" tabla="insumos" texto={producto} alCambiarTexto={setProducto} alExpirar={alExpirar} />
         <CampoTexto id="receta-fecha" type="date" labelText="Fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         <Button kind="secondary" size="md" disabled={producto.trim() === "" || fecha === ""} onClick={() => void consultar(true)}>
           Ver la receta vigente

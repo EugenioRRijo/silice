@@ -31,10 +31,30 @@ def sesion(tmp_path: Path) -> Iterator[Session]:
         with abrir_sesion(motor) as s:
             s.add_all(
                 [
-                    Insumo(codigo="MAT-1", tipo="material", descripcion="Cemento gris ficticio", unidad="saco"),
-                    Insumo(codigo="MAT-2", tipo="material", descripcion="Arena lavada ficticia", unidad="m3"),
-                    Insumo(codigo="EQ-1", tipo="equipo", descripcion="Compactador ficticio", unidad="dia"),
-                    Insumo(codigo="MO-1", tipo="mano_obra", descripcion="Albañil de primera ficticio", unidad="dia"),
+                    Insumo(
+                        codigo="MAT-1",
+                        tipo="material",
+                        descripcion="Cemento gris ficticio",
+                        unidad="saco",
+                    ),
+                    Insumo(
+                        codigo="MAT-2",
+                        tipo="material",
+                        descripcion="Arena lavada ficticia",
+                        unidad="m3",
+                    ),
+                    Insumo(
+                        codigo="EQ-1",
+                        tipo="equipo",
+                        descripcion="Compactador ficticio",
+                        unidad="dia",
+                    ),
+                    Insumo(
+                        codigo="MO-1",
+                        tipo="mano_obra",
+                        descripcion="Albañil de primera ficticio",
+                        unidad="dia",
+                    ),
                 ]
             )
             registrar_importacion(
@@ -90,11 +110,13 @@ def test_el_codigo_exacto_va_primero_y_el_limite_se_respeta(sesion: Session) -> 
 
 
 def test_insumos_son_material_y_equipo_y_salarios_la_mano_de_obra(sesion: Session) -> None:
-    assert {s.valor for s in buscar(sesion, "insumos", "ficticio")} == {"MAT-1", "MAT-2", "EQ-1"}
-    assert [s.valor for s in buscar(sesion, "salarios_cct", "ficticio")] == ["MO-1"]
+    assert {s.valor for s in buscar(sesion, "insumos", "ficti")} == {"MAT-1", "MAT-2", "EQ-1"}
+    assert [s.valor for s in buscar(sesion, "salarios_cct", "ficti")] == ["MO-1"]
 
 
-def test_la_tasa_se_busca_por_fecha_en_dos_grafias_y_va_la_mas_reciente_primero(sesion: Session) -> None:
+def test_la_tasa_se_busca_por_fecha_en_dos_grafias_y_va_la_mas_reciente_primero(
+    sesion: Session,
+) -> None:
     por_mes = buscar(sesion, "tasa_bcv", "2026-10")
     assert [s.valor for s in por_mes] == ["2026-10-30", "2026-10-29"]
     assert buscar(sesion, "tasa_bcv", "30/10/2026")[0].valor == "2026-10-30"

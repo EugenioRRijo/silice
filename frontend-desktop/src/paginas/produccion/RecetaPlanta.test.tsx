@@ -256,7 +256,12 @@ describe("Receta de la planta", () => {
     const producto = within(dialogo).getByRole("combobox", { name: "Producto (código)" });
     await usuario.type(producto, "agre");
     const lista = await within(dialogo).findByRole("listbox");
-    expect(within(lista).getAllByRole("option")).toHaveLength(1);
+    // La sugerencia y, al final, usar lo escrito tal cual.
+    const opciones = within(lista).getAllByRole("option");
+    expect(opciones).toHaveLength(2);
+    expect(opciones[0]).toHaveTextContent("Agregado grueso ficticio (AGR-12, t)");
+    expect(opciones[0]).toHaveTextContent("Catálogo de la carpeta de trabajo: material");
+    expect(opciones[1]).toHaveTextContent("Usar «agre» tal cual");
     await usuario.keyboard("{ArrowDown}{Enter}");
     expect(producto).toHaveValue("AGR-12");
     expect(fetchFalso.mock.calls.some((c) => String(c[0]).startsWith("/v1/consulta/insumos?q=agre"))).toBe(true);

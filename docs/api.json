@@ -9721,6 +9721,74 @@
         }
       }
     },
+    "/v1/consulta/{tabla}": {
+      "get": {
+        "tags": [
+          "consulta"
+        ],
+        "summary": "Consultar",
+        "description": "Sugerencias de una tabla (partidas_viales, insumos, tasa_bcv o salarios_cct), por\nrelevancia, sin distinguir mayúsculas ni acentos. Con menos de 2 letras responde vacío (no\nes un error); una tabla desconocida es 404.",
+        "operationId": "consultar_v1_consulta__tabla__get",
+        "parameters": [
+          {
+            "name": "tabla",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tabla"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "description": "Código o palabras",
+              "default": "",
+              "title": "Q"
+            },
+            "description": "Código o palabras"
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/obras/resumen": {
       "get": {
         "tags": [
@@ -15123,6 +15191,33 @@
           "mensajes"
         ],
         "title": "ConfirmacionRespuesta"
+      },
+      "ConsultaRespuesta": {
+        "properties": {
+          "tabla": {
+            "type": "string",
+            "title": "Tabla"
+          },
+          "resultados": {
+            "items": {
+              "$ref": "#/components/schemas/SugerenciaDeConsultaRespuesta"
+            },
+            "type": "array",
+            "title": "Resultados"
+          },
+          "hay_mas": {
+            "type": "boolean",
+            "title": "Hay Mas",
+            "description": "Quedaron coincidencias fuera de `limite`"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tabla",
+          "resultados",
+          "hay_mas"
+        ],
+        "title": "ConsultaRespuesta"
       },
       "ConteoRespuesta": {
         "properties": {
@@ -25120,6 +25215,32 @@
           "estado"
         ],
         "title": "SospechosoRespuesta"
+      },
+      "SugerenciaDeConsultaRespuesta": {
+        "properties": {
+          "valor": {
+            "type": "string",
+            "title": "Valor",
+            "description": "Lo que se guarda al elegir"
+          },
+          "etiqueta": {
+            "type": "string",
+            "title": "Etiqueta",
+            "description": "Lo que se lee en la lista"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente",
+            "description": "De dónde sale el dato"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valor",
+          "etiqueta",
+          "fuente"
+        ],
+        "title": "SugerenciaDeConsultaRespuesta"
       },
       "SugerenciaRespuesta": {
         "properties": {
