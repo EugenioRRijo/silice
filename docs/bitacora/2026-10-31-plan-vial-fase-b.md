@@ -28,3 +28,12 @@ filas 33 a 62 de `2026-10-30-preguntas-para-eugenio.md`.
   - VR6 trata todos los tramos de la obra como una sola vía (fila 53): una obra con dos vías daría solapes falsos.
   - La matriz de detección (Tarea 11) cubre 17 de 17 mutantes con VR1 a VR7 más CV2; con VR solas, que es lo que
     muestra la Hoja (fila 58), se escapan cuatro. Queda declarado en la prueba y en la fila 62.
+
+## Suite completa del cierre (2026-10-31, sobre eddfab91)
+
+- Pytest: una regresión de la Tarea 8: `METADATA_VIAL` no estaba en `METADATAS_CASO`, y `test_migraciones` (deriva cero
+  contra `create_all`, autogeneración sin cambios y «ninguna metadata suelta») quedaba en rojo. Corregida en 58c634ac.
+- No son de la rama (las mismas del cierre de la fase A): `test_experimento_congelado_vigente`,
+  `test_huellas_rnf04::test_huella_del_contenido_del_libro` y `test_r11_los_hallazgos_son_los_de_la_memoria[TI-001]`
+  (R12 por el reloj).
+- Vitest: 3253 de 3253. Lint (eslint + tsc): limpio. `ruff check .`: limpio.
