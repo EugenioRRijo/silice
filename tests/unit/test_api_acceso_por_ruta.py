@@ -322,6 +322,7 @@ TABLA = {
     ("GET", "/v1/vial/tramos"): EDITAR,  # plan vial T8; clave o sesion (solo lee)
     ("PUT", "/v1/vial/tramos"): EDITAR,  # plan vial T8; escribe; solo sesion
     ("POST", "/v1/vial/tramos/importar"): EDITAR,  # plan vial T8; escribe; solo sesion
+    ("POST", "/v1/vial/tramos/llevar"): EDITAR,  # plan vial T8b; al borrador; solo sesion
     ("GET", "/v1/vial/obras"): EDITAR,  # plan vial T8; clave o sesion (solo lee)
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.

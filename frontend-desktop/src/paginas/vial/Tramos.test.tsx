@@ -50,6 +50,7 @@ describe("Tramos de la vía", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let tramos: () => Response;
   let importar: () => Response;
+  let llevar: () => Response;
   let usuario: ReturnType<typeof userEvent.setup>;
   const alExpirar = vi.fn();
 
@@ -73,6 +74,7 @@ describe("Tramos de la vía", () => {
     vi.stubGlobal("fetch", fetchFalso);
     tramos = () => json(CON_TRAMOS);
     importar = () => json(CON_TRAMOS);
+    llevar = () => json({ borrador_id: "b".repeat(22), renglones: 18 });
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = new URL(String(entrada), "http://prueba");
       const metodo = init?.method ?? "GET";
@@ -81,6 +83,7 @@ describe("Tramos de la vía", () => {
       }
       if (url.pathname === "/v1/vial/tramos" && metodo === "GET") return tramos();
       if (url.pathname === "/v1/vial/tramos/importar" && metodo === "POST") return importar();
+      if (url.pathname === "/v1/vial/tramos/llevar" && metodo === "POST") return llevar();
       return json({ detalle: "No encontrado." }, 404);
     });
   });
@@ -163,6 +166,46 @@ describe("Tramos de la vía", () => {
     expect(await screen.findByText(/La versión VIA-002 está aprobada/)).toBeInTheDocument();
     expect(campoDeArchivo()).toBeNull();
     expect(screen.getByRole("table", { name: "Cantidades del tramo T1" })).toBeInTheDocument();
+  });
+
+  test("llevar muestra cuántos renglones y enlaza a la Hoja", async () => {
+    montar();
+    await screen.findByRole("table", { name: "Cantidades del tramo T1" });
+    await usuario.click(screen.getByRole("button", { name: "Llevar al presupuesto" }));
+    const aviso = await screen.findByText("Se llevaron 18 renglones a la Hoja de la obra.");
+    await waitFor(() => expect(document.activeElement).toBe(aviso.closest("[tabindex]")));
+    expect(screen.getByRole("link", { name: "Abrir la Hoja de la obra" })).toHaveAttribute("href", "/hoja");
+    const llamada = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/vial/tramos/llevar");
+    expect(llamada?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(llamada?.[1]?.body))).toEqual({ proyecto: "Vía Demo" });
+  });
+
+  test("llevar un solo renglón lo dice en singular", async () => {
+    llevar = () => json({ borrador_id: "b".repeat(22), renglones: 1 });
+    montar();
+    await screen.findByRole("table", { name: "Cantidades del tramo T1" });
+    await usuario.click(screen.getByRole("button", { name: "Llevar al presupuesto" }));
+    expect(await screen.findByText("Se llevó 1 renglón a la Hoja de la obra.")).toBeInTheDocument();
+  });
+
+  test("el 404 nombra las partidas sin APU", async () => {
+    const detalle = "Las partidas «C-000.000.012» y «C-000.000.013» no están en el catálogo: compóngalas primero en Componer.";
+    llevar = () => json({ detalle }, 404);
+    montar();
+    await screen.findByRole("table", { name: "Cantidades del tramo T1" });
+    await usuario.click(screen.getByRole("button", { name: "Llevar al presupuesto" }));
+    const alerta = await screen.findByRole("alert");
+    expect(alerta).toHaveTextContent(detalle);
+    expect(alerta).toHaveTextContent("No se llevó nada al presupuesto");
+    await waitFor(() => expect(alerta.closest("[tabindex]")).toBe(document.activeElement));
+    expect(screen.queryByRole("link", { name: "Abrir la Hoja de la obra" })).toBeNull();
+  });
+
+  test("sin tramos no ofrece llevarlos", async () => {
+    tramos = () => json(VACIA);
+    montar();
+    await screen.findByText("Esta versión aún no tiene tramos. Importe el archivo de la vía.");
+    expect(screen.queryByRole("button", { name: "Llevar al presupuesto" })).toBeNull();
   });
 
   test("sin obra abierta lo dice y no pide nada", async () => {
