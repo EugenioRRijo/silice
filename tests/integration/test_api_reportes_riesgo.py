@@ -88,8 +88,8 @@ def _valor(libro, hoja: str, rotulo: str):
     raise AssertionError(f"no hay {rotulo!r} en {hoja}")
 
 
-@pytest.mark.parametrize("quien", ["ana", "rita", "admin"])
-def test_los_tres_roles_descargan_el_riesgo(quien: str) -> None:
+@pytest.mark.parametrize("quien", ["ana", "admin"])
+def test_quienes_cambian_de_carpeta_descargan_el_riesgo(quien: str) -> None:
     r = _en_la_via(quien).get(f"{RAIZ}/riesgo", params=_riesgo())
     libro = _libro(r)
     assert r.headers["content-type"] == XLSX
@@ -116,8 +116,10 @@ def test_el_mapa_y_las_mezclas_quedan_en_el_libro() -> None:
     assert declarado == MAPA
 
 
-def test_la_mejora_de_la_mano() -> None:
-    r = _en_la_via().get(f"{RAIZ}/mejora", params=_mejora())
+@pytest.mark.parametrize("quien", ["ana", "rita", "admin"])
+def test_la_mejora_de_la_mano_para_los_tres_roles(quien: str) -> None:
+    """`revisa` no cambia de carpeta, pero la mejora no la necesita: la puerta es `ver_riesgo`."""
+    r = Web(quien).get(f"{RAIZ}/mejora", params=_mejora())
     libro = _libro(r)
     assert libro.sheetnames == ["Portada", "Mejora"]
     assert D(str(_valor(libro, "Mejora", "Error del presupuesto original (%)"))) == D("23.08")

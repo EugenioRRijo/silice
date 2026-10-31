@@ -82,7 +82,7 @@ def _texto(libro: Workbook, hoja: str) -> str:
     return " | ".join(str(c) for fila in _filas(libro, hoja) for c in fila if c is not None)
 
 
-def _valor(libro: Workbook, hoja: str, rotulo: str, columna: int = 1):
+def _valor(libro: Workbook, hoja: str, rotulo: str, columna: int = 0):
     """El valor de la columna siguiente al `rotulo` de la columna `columna` (empieza en 0)."""
     for fila in _filas(libro, hoja):
         if fila[columna] == rotulo:

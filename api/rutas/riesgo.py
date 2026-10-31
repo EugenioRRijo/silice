@@ -16,6 +16,13 @@
   por omisión: con 2.000 tarda varias veces más (bitácora de la fase C). Lee la historia hasta el
   último día del mes anterior a hoy.
 
+- `GET /reportes/{tipo}` → un libro .xlsx (Tarea 21, `aplicacion.reportes_viales`) con una hoja de
+  portada que dice de dónde sale cada cifra. `riesgo`: `proyecto`, `version`, `mapa` (un objeto
+  JSON de insumo a serie, en texto), `inicio`, `meses`, `trayectorias`, `semilla`, `ventana_meses`
+  y, con `comprobar=true`, la comprobación hacia atrás (`trayectorias_por_corte`); `mejora`:
+  `costo_final_real`, `presupuesto_original` y `estimacion_silice` como texto con punto decimal.
+  Mismo acceso que el resto (`ver_riesgo`), solo lee y no deja caché; tipo que no existe, 404.
+
 Proyección y comprobación calculan y no guardan nada: leen la carpeta del caso (`SesionDep`) y la
 instalación (el cálculo publicado de la mezcla propia). Montos como **texto con punto decimal,
 exactos** (`format(x, "f")`, sin exponente); la pantalla redondea al presentar. Errores del cálculo
@@ -38,13 +45,23 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    StrictStr,
+    TypeAdapter,
+    ValidationError,
+)
 
 from api.dependencias import SesionDep, SesionInstalacionDep
+from api.rutas.hoja_exportar import TIPO_XLSX
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
+from aplicacion import reportes_viales
 from aplicacion.riesgo import obra
 from aplicacion.riesgo.mejora import mejora_de_estimacion
 from seguridad.permisos import Accion
@@ -347,3 +364,110 @@ def comprobacion_de_la_obra(
         n_cortes=c.n_cortes,
         mezclas=_mezclas(r.mezclas),
     )
+
+
+# --- Tarea 21: los reportes en Excel ----------------------------------------------------------
+
+MENSAJE_REPORTE_RIESGO = (
+    "El reporte de riesgo pide la obra (proyecto), la versión (version) y el mapa de series "
+    "(mapa) como un objeto JSON de insumo a serie, en texto."
+)
+_MAPA_EN_TEXTO = TypeAdapter(Mapa)
+
+
+def _mapa_de_la_consulta(texto: str) -> dict[str, str]:
+    try:
+        return _MAPA_EN_TEXTO.validate_json(texto)
+    except ValidationError:
+        raise HTTPException(status_code=422, detail=MENSAJE_REPORTE_RIESGO) from None
+
+
+def _libro_de_mejora(
+    costo_final_real: str | None, presupuesto_original: str | None, estimacion_silice: str | None
+) -> bytes:
+    if costo_final_real is None or presupuesto_original is None or estimacion_silice is None:
+        raise HTTPException(status_code=422, detail=MENSAJE_MEJORA)
+    real = _decimal("costo_final_real", costo_final_real)
+    original = _decimal("presupuesto_original", presupuesto_original)
+    silice = _decimal("estimacion_silice", estimacion_silice)
+    try:
+        mejora = mejora_de_estimacion(real, original, silice)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    return reportes_viales.informe_de_mejora(
+        mejora, costo_final_real=real, presupuesto_original=original, estimacion_silice=silice
+    )
+
+
+def _libro(contenido: bytes, tipo: str, *partes: str) -> Response:
+    nombre = reportes_viales.nombre_de_reporte(tipo, *partes)
+    return Response(
+        content=contenido,
+        media_type=TIPO_XLSX,
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
+@router.get(
+    "/reportes/{tipo}",
+    response_class=Response,
+    responses={200: {"content": {TIPO_XLSX: {}}, "description": "El libro .xlsx del reporte."}},
+)
+def descargar_reporte(
+    tipo: str,
+    sesion: SesionDep,
+    instalacion: SesionInstalacionDep,
+    proyecto: Annotated[str | None, Query(min_length=1, max_length=500)] = None,
+    version: Annotated[str | None, Query(min_length=1, max_length=40)] = None,
+    mapa: Annotated[str, Query(max_length=100_000)] = "{}",
+    inicio: date | None = None,
+    meses: Annotated[int, Query(ge=1, le=MAX_MESES)] = 6,
+    trayectorias: Annotated[int, Query(ge=1, le=MAX_TRAYECTORIAS)] = 2000,
+    semilla: Annotated[int, Query(ge=0, le=2**31 - 1)] = 1,
+    ventana_meses: Annotated[int, Query(ge=12, le=MAX_VENTANA)] = 36,
+    comprobar: bool = False,
+    trayectorias_por_corte: Annotated[int, Query(ge=1, le=MAX_TRAYECTORIAS_POR_CORTE)] = (
+        TRAYECTORIAS_POR_CORTE
+    ),
+    costo_final_real: Annotated[str | None, Query(max_length=60)] = None,
+    presupuesto_original: Annotated[str | None, Query(max_length=60)] = None,
+    estimacion_silice: Annotated[str | None, Query(max_length=60)] = None,
+) -> Response:
+    """Un reporte de riesgo o de mejora en Excel (`aplicacion.reportes_viales`); solo lee."""
+    if tipo == "mejora":
+        return _libro(
+            _libro_de_mejora(costo_final_real, presupuesto_original, estimacion_silice), "mejora"
+        )
+    if tipo != "riesgo":
+        raise HTTPException(status_code=404, detail=f"No existe el reporte «{tipo[:40]}».")
+    if proyecto is None or version is None:
+        raise HTTPException(status_code=422, detail=MENSAJE_REPORTE_RIESGO)
+    declarado = _mapa_de_la_consulta(mapa)
+    proyectada = obra.proyectar_obra(
+        sesion,
+        instalacion,
+        proyecto,
+        version,
+        declarado,
+        inicio=inicio,
+        meses=meses,
+        trayectorias=trayectorias,
+        semilla=semilla,
+        ventana_meses=ventana_meses,
+    )
+    comprobada = None
+    if comprobar:
+        comprobada = obra.comprobar_obra(
+            sesion,
+            instalacion,
+            proyecto,
+            version,
+            declarado,
+            hoy=hoy(),
+            meses=meses,
+            trayectorias=trayectorias_por_corte,
+            semilla=semilla,
+            ventana_meses=ventana_meses,
+        )
+    contenido = reportes_viales.informe_de_riesgo(proyectada, comprobada, mapa=declarado)
+    return _libro(contenido, "riesgo", proyectada.proyecto, version)
