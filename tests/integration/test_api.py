@@ -615,3 +615,31 @@ def test_el_excel_recargado_declara_el_pendiente_en_la_auditoria(
     celdas = [str(celda) for fila in hoja.iter_rows(values_only=True) for celda in fila]
     assert "PENDIENTE" in celdas
     assert any(CODIGO_SIN_PARTIDA in celda and "PEND-01" in celda for celda in celdas)
+
+
+def test_el_detalle_del_presupuesto_trae_el_iva_y_el_apu_no_cambia(cliente, items_payload):
+    """Tarea 18: el IVA se calcula sobre el total; el precio unitario del APU es el mismo."""
+    cliente.post(
+        "/presupuestos",
+        json={
+            "codigo": "API-IVA",
+            "fecha": "2026-04-28",
+            "moneda": "USD",
+            "proyecto": "Drenaje de la clínica",
+            "items": items_payload,
+        },
+    )
+    detalle = cliente.get("/presupuestos/API-IVA").json()
+    assert detalle["total"] == "1586.61"  # el campo de siempre no cambia
+    imp = detalle["impuestos"]
+    # a mano: 1586,61 x 0,16 = 253,8576 -> 253,86; total 1840,47
+    assert (imp["subtotal"], imp["iva"], imp["total"]) == ("1586.61", "253.86", "1840.47")
+    assert imp["alicuota"] == "0.16"
+    assert "a cotejar con la Gaceta vigente" in imp["fuente_alicuota"]
+    esperados = {
+        p.item.codigo_partida: p.resultado.precio_unitario.quantize(Decimal("0.01"), ROUND_HALF_UP)
+        for p in linea_base.PRESUPUESTO_AUDITADO
+    }
+    obtenidos = {p["codigo_partida"]: Decimal(p["precio_unitario"]) for p in detalle["partidas"]}
+    assert obtenidos == esperados
+    assert all("iva" not in p for p in detalle["partidas"])
