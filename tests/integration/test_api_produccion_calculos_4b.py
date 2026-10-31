@@ -133,10 +133,12 @@ def test_si_falla_la_lista_no_queda_publicacion(http, monkeypatch) -> None:
             raise RuntimeError("fallo forzado al confirmar la carpeta del caso")
         confirmar(sesion)
 
-    monkeypatch.setattr(Session, "commit", commit_que_falla_en_la_carpeta)
-    r = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json={})
+    # solo este cambio se deshace al salir (no los de las fixtures, que apuntan a la carpeta
+    # temporal de datos)
+    with monkeypatch.context() as parche:
+        parche.setattr(Session, "commit", commit_que_falla_en_la_carpeta)
+        r = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json={})
     assert r.status_code == 500, r.text
-    monkeypatch.undo()
     assert _listas() == antes and contar(PublicacionRegistrada) == 0
     otra_vez = Web("admin").post(f"{CALCULOS}/{calculo}/publicar", json={})
     assert otra_vez.status_code == 201, otra_vez.text
