@@ -5,10 +5,12 @@ cita; especificación §6 deja el muestreo al constructor siempre que sea reprod
 
 1. **Meses completos.** La ventana son los `ventana_meses` meses anteriores al mes de `inicio` (el
    mes de inicio y lo posterior no se ven). Un mes `m` es completo si **todas** las series que
-   intervienen (las del mapa y la tasa BCV) tienen valor en `m` y en `m − 1`: su variación es
+   intervienen tienen valor en `m` y en `m − 1`: su variación es
    `valor[m] / valor[m − 1]`. Un mes sin dato en una sola serie se descarta para todas, así que un
    hueco en medio cuesta dos variaciones (la del mes y la del siguiente). Con menos de
-   `MINIMO_DE_MESES` meses completos no se proyecta (foco de revisión 4).
+   `MINIMO_DE_MESES` meses completos no se proyecta (foco de revisión 4). Intervienen la tasa BCV
+   y las series del mapa que mueven un insumo de las composiciones o un componente de las recetas
+   (`series_presentes`): una entrada vieja del mapa, de algo que ya no está, no cuenta.
 2. **Trayectorias.** Por trayectoria se eligen `meses` meses completos con reemplazo, **el mismo
    mes histórico para todas las series** (conserva su correlación, también con la tasa). El
    multiplicador de la serie en el mes `k` del plazo es el producto de sus variaciones hasta `k`.
@@ -69,6 +71,7 @@ __all__ = [
     "meses_completos",
     "proyectar",
     "series_del_mapa",
+    "series_presentes",
     "total_con_variaciones_reales",
 ]
 
@@ -275,6 +278,25 @@ def series_del_mapa(mapa: MapaSeries) -> list[str]:
     return sorted(set(mapa.serie_por_insumo.values()) | {SERIE_TASA})
 
 
+def series_presentes(
+    mapa: MapaSeries,
+    composiciones: Mapping[str, ComposicionAPU],
+    recetas: Mapping[str, Receta] | None = None,
+) -> list[str]:
+    """Las series que intervienen en la proyección de **este** presupuesto, ordenadas: la tasa BCV
+    y las del mapa cuyo insumo (por descripción) está en las composiciones o cuyo componente (por
+    código) está en una de las `recetas`. Una entrada del mapa de algo que no está no cuenta para
+    los meses completos ni para los cortes."""
+    presentes = {
+        linea.descripcion
+        for apu in composiciones.values()
+        for linea in (*apu.materiales, *apu.equipos, *apu.mano_obra)
+    }
+    presentes |= {c.codigo for receta in (recetas or {}).values() for c in receta.componentes}
+    usadas = {s for insumo, s in mapa.serie_por_insumo.items() if insumo in presentes}
+    return sorted(usadas | {SERIE_TASA})
+
+
 def _validar_series(mapa: MapaSeries, moneda: str) -> None:
     desconocidas = sorted(set(mapa.serie_por_insumo.values()) - SERIES_EN_USD - {SERIE_TASA})
     if desconocidas:
@@ -391,7 +413,7 @@ class _Motor:
         self._parametros_costo = parametros_costo
         self._mapa = mapa
         self._precio_de_componente = precio_de_componente
-        self.series = series_del_mapa(mapa)
+        self.series = series_presentes(mapa, composiciones, recetas)
         self.precios = _precios_base(composiciones)
         self.mezclas = _mezclas(
             recetas, costo_planta_por_t, precio_de_componente, self.precios, mapa

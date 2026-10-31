@@ -9,7 +9,8 @@ las remuestreadas). Un corte está **dentro** si `real <= P80`.
 
 **Qué cortes entran.** Los que tienen ventana suficiente (al menos `MINIMO_DE_MESES` meses completos
 antes, contados con la misma regla que la proyección) y el plazo completo después (valor de
-todas las series desde el mes anterior al corte hasta el último mes del plazo). Los demás no
+todas las series desde el mes anterior al corte hasta el último mes del plazo). Las series son las
+de la proyección (`series_presentes`): una entrada vieja del mapa no quita cortes. Los demás no
 se cuentan:
 `n_cortes` informa cuántos entraron. La cobertura es `dentro / n_cortes`, en `Decimal`, sin
 redondear.
@@ -35,7 +36,7 @@ from aplicacion.riesgo.proyeccion import (
     ParametrosProyeccion,
     meses_completos,
     proyectar,
-    series_del_mapa,
+    series_presentes,
     total_con_variaciones_reales,
 )
 from aplicacion.riesgo.series import MapaSeries
@@ -108,7 +109,7 @@ def comprobar_hacia_atras(
     `historia` es la **completa** (`{serie: {primer día del mes: valor}}`), también lo posterior a
     cada corte: la proyección no lo ve, y lo real sí lo necesita. Los argumentos opcionales son los
     de `proyectar`. Las reglas están en el encabezado del módulo."""
-    series = series_del_mapa(mapa)
+    series = series_presentes(mapa, composiciones, recetas)
     cortes, hay = _cortes_posibles(historia, series, p)
     if not cortes:
         minimo = int(MINIMO_DE_MESES.valor)
