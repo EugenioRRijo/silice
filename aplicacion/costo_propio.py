@@ -107,6 +107,7 @@ __all__ = [
     "calcular_periodo",
     "calculo_guardado",
     "calculos_registrados",
+    "descripcion_de_costo_propio",
     "exigir_publicable",
     "lista_base_del_periodo",
     "publicacion_de",
@@ -704,6 +705,18 @@ PREFIJO_DE_AGREGADO = "AGP-"
 PREFIJO_DE_MEZCLA = "MZP-"
 
 
+def descripcion_de_costo_propio(codigo: str) -> str:
+    """La descripcion del insumo propio `AGP-<producto>` o `MZP-<producto>`: la que se le da al
+    publicar y, por tanto, la de la linea del APU que lo usa (la conciliacion CV3 la reconoce)."""
+    for prefijo, tipo in ((PREFIJO_DE_AGREGADO, "agregado"), (PREFIJO_DE_MEZCLA, "mezcla")):
+        if codigo.startswith(prefijo):
+            return f"Costo propio de {tipo} {codigo[len(prefijo) :]}"
+    raise ValueError(
+        f"{codigo!r} no es un insumo de costo propio: debe empezar por "
+        f"{PREFIJO_DE_AGREGADO!r} o {PREFIJO_DE_MEZCLA!r}."
+    )
+
+
 def _exigir_insumo_propio(caso: Session, codigo: str) -> models.Insumo | None:
     """El insumo propio de ese codigo si ya existe; si es de otro tipo o unidad, se niega: publicar
     a un insumo ajeno confundiria el catalogo. Solo lee."""
@@ -801,11 +814,10 @@ def publicar_calculo(
     for producto, codigo in codigos.items():
         insumo = existentes[codigo]
         if insumo is None:
-            tipo = "agregado" if producto in es_agregado else "mezcla"
             insumo = models.Insumo(
                 codigo=codigo,
                 tipo="material",
-                descripcion=f"Costo propio de {tipo} {producto}",
+                descripcion=descripcion_de_costo_propio(codigo),
                 unidad="t",
             )
             sesion_caso.add(insumo)

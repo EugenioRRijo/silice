@@ -159,3 +159,21 @@ ANCHO_LINEA_SUPUESTO_CM = Constante(
     Decimal("10"),
     SUPUESTO_DECLARADO,
 )
+
+# --- Tolerancias de la conciliación (plan vial, Tarea 10) -------------------------------------
+
+#: CV1 y CV3: diferencia admitida, en la moneda del presupuesto, entre dos precios.
+TOLERANCIA_PRECIO = Constante(
+    "V-15",
+    "Tolerancia de un precio, en la moneda del presupuesto (CV1 y CV3)",
+    Decimal("0.01"),
+    "plan vial, Tarea 10: un centavo",
+)
+
+#: CV2: diferencia relativa admitida entre la cantidad del presupuesto y la de los tramos.
+TOLERANCIA_CANTIDAD_CONCILIADA = Constante(
+    "V-16",
+    "Tolerancia relativa de la cantidad de una partida frente a la suma de sus tramos (CV2)",
+    Decimal("0.001"),
+    f"{SUPUESTO_DECLARADO}; la misma de R1 (`TrazabilidadGeometrica`)",
+)

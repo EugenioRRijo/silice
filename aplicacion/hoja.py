@@ -104,6 +104,7 @@ from aplicacion.parametros_de_costo import parametros_de_version
 from aplicacion.plan_rendimientos import plan_del_borrador
 from aplicacion.subidas import Subida, guardar_subida
 from aplicacion.tablas_medicion import guardar_notas, notas_de_version
+from aplicacion.vial import reglas_viales
 from core import models
 from core.budget import (
     CODIGO_PENDIENTE,
@@ -1881,7 +1882,8 @@ def abrir_version(
        sobre la instantanea del espacio y reemplazan las guardadas (§8.4).
     5. Con `fecha_evaluacion` (la pantalla pasa hoy, M §3.3), R11 y R12 se evaluan a esa fecha
        sobre la instantanea de precios de la version, **solo en memoria**: entran a la recarga y
-       quedan en `borrador.reglas_extra`; ninguna fila guardada cambia (S1 §4.3).
+       quedan en `borrador.reglas_extra`; ninguna fila guardada cambia (S1 §4.3). Si la version
+       tiene tramos viales, VR1 a VR7 entran igual (siempre, con o sin fecha de evaluacion).
 
     `HojaInvalida` si la version no existe o ya no se puede reconstruir.
     """
@@ -1909,6 +1911,10 @@ def abrir_version(
             extra = reglas_precios(
                 instantanea_precios(sesion, modelo, lista_de_referencia(sesion), fecha_evaluacion)
             )
+        # VR1 a VR7 (plan vial, Tarea 10): solo si la version tiene tramos (propios o heredados);
+        # se evaluan en memoria, como R11 y R12. VR2 queda sin evaluar: la formula de trabajo sale
+        # de una receta de la instalacion, que la Hoja no abre.
+        extra = (*extra, *reglas_viales(sesion, modelo.id))
         guardada = cargar_elaboracion(
             sesion,
             proyecto,
