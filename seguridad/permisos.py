@@ -30,6 +30,7 @@ class Accion(StrEnum):
     PUBLICAR_COSTO_PROPIO = "publicar_costo_propio"  # costo propio al catálogo (plan vial, T5)
     # Lectura
     LEER_PROYECTO = "leer_proyecto"
+    VER_RIESGO = "ver_riesgo"  # riesgo de la obra e informe de mejora (plan vial, Tarea 15)
     # Revisión (rol revisa)
     REVISAR_PAQUETE = "revisar_paquete"  # abrir paquetes, reauditar, dictamen
     APROBAR_VERSION = "aprobar_version"  # por aprobar, abrir un envío y dictaminar (MP-4)
@@ -67,6 +68,7 @@ PERMISOS: dict[Accion, frozenset[Rol]] = {
     Accion.REGISTRAR_COSTOS_PRODUCCION: frozenset({_ARMA, _ADMIN}),
     Accion.PUBLICAR_COSTO_PROPIO: frozenset({_ADMIN}),
     Accion.LEER_PROYECTO: frozenset({_ARMA, _REVISA}),
+    Accion.VER_RIESGO: frozenset({_ARMA, _REVISA, _ADMIN}),
     Accion.REVISAR_PAQUETE: frozenset({_REVISA}),
     Accion.APROBAR_VERSION: frozenset({_ARMA, _REVISA}),
     Accion.CAMBIAR_CASO: frozenset({_ARMA, _ADMIN}),

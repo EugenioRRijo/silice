@@ -53,6 +53,7 @@ from api.rutas import (
     reajuste,
     rendimientos,
     revision,
+    riesgo,
     sesion,
     similares,
     simulador,
@@ -191,6 +192,8 @@ app.include_router(produccion.router)
 app.include_router(produccion_planta.router)
 # Plan vial (T8): /v1/vial, los tramos de una via guardados por version; EDITAR_HOJA en cada ruta
 app.include_router(vial.router)
+# Plan vial (T15): /v1/riesgo, informe de mejora de la estimacion (VER_RIESGO, clave o sesion)
+app.include_router(riesgo.router)
 # T10 (montar un presupuesto): /v1/buscar/partidas, buscador C-1 (LEER_PROYECTO en la ruta)
 app.include_router(busqueda.router)
 # MOD-4a (plan de módulos): /v1/obras/resumen (LEER_PROYECTO) y /v1/obras/pendientes (EDITAR_HOJA),

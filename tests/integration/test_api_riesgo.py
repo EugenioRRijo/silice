@@ -76,7 +76,8 @@ def test_sin_ver_riesgo_403(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_la_mejora_negativa_se_informa() -> None:
     r = Web("ana").post(
-        RUTA, json=_cuerpo(costo_final_real="100", presupuesto_original="120", estimacion_silice="70")
+        RUTA,
+        json=_cuerpo(costo_final_real="100", presupuesto_original="120", estimacion_silice="70"),
     )
     assert r.status_code == 200, r.text
     assert r.json()["mejora_pp"] == "-10.00"

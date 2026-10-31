@@ -9465,6 +9465,47 @@
         }
       }
     },
+    "/v1/riesgo/mejora": {
+      "post": {
+        "tags": [
+          "riesgo"
+        ],
+        "summary": "Informe De Mejora",
+        "operationId": "informe_de_mejora_v1_riesgo_mejora_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MejoraEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MejoraRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/buscar/partidas": {
       "get": {
         "tags": [
@@ -19768,6 +19809,52 @@
           "activo"
         ],
         "title": "MaterialRespuesta"
+      },
+      "MejoraEntrada": {
+        "properties": {
+          "costo_final_real": {
+            "type": "string",
+            "title": "Costo Final Real"
+          },
+          "presupuesto_original": {
+            "type": "string",
+            "title": "Presupuesto Original"
+          },
+          "estimacion_silice": {
+            "type": "string",
+            "title": "Estimacion Silice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "costo_final_real",
+          "presupuesto_original",
+          "estimacion_silice"
+        ],
+        "title": "MejoraEntrada"
+      },
+      "MejoraRespuesta": {
+        "properties": {
+          "error_original_pct": {
+            "type": "string",
+            "title": "Error Original Pct"
+          },
+          "error_silice_pct": {
+            "type": "string",
+            "title": "Error Silice Pct"
+          },
+          "mejora_pp": {
+            "type": "string",
+            "title": "Mejora Pp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error_original_pct",
+          "error_silice_pct",
+          "mejora_pp"
+        ],
+        "title": "MejoraRespuesta"
       },
       "MensajeRespuesta": {
         "properties": {
