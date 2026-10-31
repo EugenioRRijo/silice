@@ -1166,3 +1166,108 @@ Formato: pregunta · lo que se hizo · cómo cambiarlo.
 10. **Herramientas.** · `knip` y `jscpd` no están en este `node_modules`; no se corrieron `npm run muerto` ni `npm run duplicado`. Verificación: `vitest` de `src/paginas/obras src/paginas/pendientes src/marco src/shell src/comun` (739 verdes) y `npm run lint` en 0. · —
 11. **`conLaMesa` y `RUTA_DE_LA_MESA`.** · Se quedan en `shell/obras/datosDePrueba.tsx` porque `Marco.test.tsx` los sigue usando con pantallas de mentira (no con la mesa real). El plan los daba por retirados. · Retirarlos junto con esas pruebas del marco.
 12. **`scripts/recorrido_ux_playwright.py`** sigue buscando clases `silice-mesa__*` que ya no existen; el guion es de auditoría visual y no forma parte de la CI. No se tocó (fuera del alcance). · Actualizarlo en la Tarea 14.
+
+## Decisiones de la Tarea 2b
+
+Formato: pregunta · lo que se hizo · cómo cambiarlo.
+
+### Clasificación de las rutas de la Hoja
+
+Se revisó cada ruta de `api/rutas/hoja.py`, `hoja_exportar.py`, `hoja_llevar.py`, `hoja_plano.py` y la lectura de
+`aprobaciones.py`. «Escribe» quiere decir: cambia el borrador vivo (su `rev`), escribe en la base del caso o deja
+archivos en el servidor. Las sesiones de lectura (`SesionDep`) no confirman nada al cerrarse (`Session.close` deshace),
+así que una lectura solo escribiría si llamara a `commit` en algún punto de su camino; se buscó cada `commit` de
+`aplicacion/hoja*.py`, `aprobaciones.py`, `atipicos.py`, `control.py` y `entrega.py`.
+
+| Ruta | Acción | Qué hace | Por qué |
+|---|---|---|---|
+| `GET /v1/hoja/versiones` | LEER | lee el historial | sin `commit` |
+| `GET /v1/hoja/antes-y-despues` | LEER | compara con la línea base | sin `commit` (`hoja_lineas_apu` no confirma) |
+| `GET /v1/hoja/precios` | LEER | evalúa R11 y R12 a hoy | en memoria (S1 §4.3) |
+| `GET /v1/hoja/precios/atipicos` | LEER | busca variaciones | sin `commit` ni archivos (`aplicacion/atipicos.py`) |
+| `GET /v1/hoja/trazabilidad` | LEER | historial y registros | sin `commit` |
+| `GET /v1/hoja/cadena` | LEER | recalcula cada huella | solo lee (`entrega.estado_de_la_cadena`) |
+| `GET /v1/hoja/borradores` | LEER, solo cuenta | lista los borradores de **su** ficha | memoria; listar no renueva el plazo |
+| `POST /v1/hoja/borradores` | LEER, solo cuenta | abre un borrador de **su** ficha | **escribe la instantánea UC-15e** si falta (ver la decisión 1) |
+| `GET /v1/hoja/borradores/{id}` | LEER, solo cuenta | base y resumen | memoria; otra ficha, 404 |
+| `DELETE /v1/hoja/borradores/{id}` | LEER, solo cuenta | cierra **su** borrador | memoria; uno ajeno es 204 y no se cierra |
+| `GET …/vistas/{espacio,presupuesto,apu,plan,equilibrio,parametros,auditoria}` | LEER, solo cuenta | vistas calculadas | memoria |
+| `GET …/insumos` | LEER, solo cuenta | candidatos de la lista de la versión | solo lee |
+| `GET …/cambios` | LEER, solo cuenta | diferencia con la versión abierta | memoria |
+| `GET …/excel` | LEER, solo cuenta | arma el libro en memoria y lo devuelve | no escribe ni la base, ni el borrador, ni un archivo (`aplicacion/hoja_exportar.py`) |
+| `GET /v1/aprobaciones?proyecto=` | LEER | rastro, fases y estados de la obra | solo lee; no llama a `_reflejar` (el índice de la instalación) |
+| `PUT …/espacio`, `/cantidades`, `/parametros`, `/plan` | EDITAR | cambian el borrador | sube el `rev` |
+| `POST …/plan/secuencial`, `/plan/rendimientos` | EDITAR | rehacen el plan del borrador | sube el `rev` |
+| `POST …/partidas`, `/partidas/quitar` | EDITAR | agregan o quitan renglones | sube el `rev` |
+| `PUT …/apu/{partida}`, `POST …/insumo`, `…/lineas`, `…/lineas/quitar` | EDITAR | cambian el APU de la copia | sube el `rev` |
+| `POST …/guardar` | EDITAR | guarda la versión | escribe en la base (`BEGIN IMMEDIATE`) |
+| `POST …/plano`, `/plano/unidad`, `/plano/alturas`, `/plano/circuitos`, `/plano/fusionar` | EDITAR | importan un plano | escriben en una carpeta temporal del servidor; fusionar cambia el borrador |
+| `DELETE …/plano` | EDITAR | descarta la importación | borra su carpeta temporal; quien revisa no puede importar, así que no tiene nada que descartar |
+| `POST /v1/hoja/llevar` | EDITAR | lleva cantidades al borrador | cambia el borrador |
+| `POST /v1/hoja/versiones/restaurar`, `/cotizar`, `/retirar-cotizacion` | EDITAR | crean una versión | escriben en la base |
+| `POST /v1/hoja/versiones/convertir` | CONVERTIR_Y_REAJUSTAR | crea una versión en otra moneda | escribe en la base (sin cambio) |
+| `GET /v1/aprobaciones/mias`, `POST /v1/aprobaciones` | EDITAR | lo de quien envía | sin cambio |
+
+1. **`POST /v1/hoja/borradores` escribe en la base.** · Abrir una versión sin instantánea (clínica, TI-001, importadas)
+   la crea: composiciones, plan inferido y un `RegistroCambio` a nombre de quien abre, y `aplicacion.hoja.abrir_version`
+   lo confirma (`sesion.commit()`). Que quien revisa firme ese registro no es inocuo. Como `aplicacion/hoja.py` es la
+   copia del congelado y no se toca, la guardia va en la API: sin `editar_hoja`, la ruta corre dentro de
+   `api.sin_escribir.sin_escribir(sesion)` (eventos `before_flush` y `do_orm_execute` de esa sesión), que lanza
+   `EscrituraNegada` antes de que nada llegue a la base; la ruta deshace y responde 409 «Esta versión todavía no se
+   puede ver en solo lectura: quien arma el presupuesto tiene que abrirla una vez para prepararla.». No hay carrera: la
+   guardia es de la sesión, no una comprobación previa. Con la instantánea ya hecha (lo normal: toda versión guardada
+   por la Hoja la tiene), abrir no escribe nada y quien revisa la ve. Prueba:
+   `test_revisa_no_crea_la_instantanea_al_abrir` (volcado de la base igual byte a byte). · Dejar la ruta en EDITAR (y
+   quien revisa no ve nada), o abrir sin instantánea en memoria si `aplicacion` ofreciera esa variante.
+2. **Lo que la guardia no cubre.** · Solo lo que pasa por la sesión. Una escritura por `connection().exec_driver_sql`
+   no la vería; el camino de `abrir_version` no la usa (se revisó `core/budget/instantanea.py`: todo es `session.add`).
+   · Una guardia de conexión (`PRAGMA query_only`) no sirve: `abrir_version` confirma a mitad y la conexión vuelve al
+   pool.
+3. **El mensaje de la clave de API no cambia.** · Las rutas «solo cuenta» de lectura usan el mismo
+   `MENSAJE_SOLO_CUENTA` («se edita y se guarda con una cuenta»): las pruebas de hoy lo fijan y el texto sigue siendo
+   cierto para la Hoja. · Otro texto en `CuentaQueVe`.
+4. **Pruebas viejas que decían 403 para quien revisa.** · Seis archivos fijaban la regla anterior en rutas que ahora son
+   de lectura (`test_api_hoja.py`, `test_api_hoja_apu_retomar.py`, `test_api_hoja_conversion_cadena.py`,
+   `test_api_hoja_exportar.py`, `test_api_hoja_lineas_apu.py`, y `test_api_aprobaciones.py`). Se cambiaron en el commit
+   del rojo, con la decisión de Eugenio citada, y el 403 que comprobaban pasa al administrador puro, que sigue sin
+   `leer_proyecto`. · —
+5. **Dónde vive la prueba nueva.** · `tests/integration/test_api_hoja_lectura_revisa.py`, como pidió el encargo (el plan
+   decía `tests/unit/`). · Moverla.
+6. **`usePuedeEditarLaHoja` en cada componente que escribe, con la base por prop.** · Cada pestaña que escribe (Espacio,
+   APU con sus factores, Presupuesto, Plan, Parámetros, Precios, Trazabilidad) y `AprobacionDeVersion` recibe `base`
+   (opcional) y llama al hook; la sesión la lee siempre el hook, así que sin `editar_hoja` nada se pinta aunque falte
+   la prop. Sin prop solo se pierde el `solo_lectura` de la base (las pruebas que montan una pestaña suelta, con una
+   sesión de arma, no cambian). `CampoDeCelda` y `TablaEditable` no deciden: reciben `soloLectura`. · La Tarea 3 lo
+   pasa a `HojaDeLaObra.puedeEditar`.
+7. **«No se pinta», no «deshabilitado».** · Una celda pasa a su texto tal como lo da la API (ya en es-VE); una lista
+   cerrada del espacio muestra su rótulo; la columna «Quitar» y «Acciones» desaparecen. Los textos de ayuda que hablan de
+   editar («Se edita la cantidad…», «Reparta cada partida…») tampoco salen para quien no edita. · —
+8. **Objetivos de mercado.** · `GET /v1/mercado/objetivos` exige `editar_hoja`: para quien revisa daría 403 y un aviso de
+   error. `useObjetivosDeMercado` gana `activo` (por omisión, verdadero) y sin permiso no pide nada ni pinta la columna.
+   · Pasar la ruta a `leer_proyecto` si Eugenio quiere que quien revisa vea el objetivo.
+9. **Un borrador de solo lectura en manos de quien arma.** · El plan aplica la misma regla («nada de guardar, agregar ni
+   enviar»): ya no hay «Guardar versión…» que abría un diálogo deshabilitado, sino la nota «Está viendo este presupuesto
+   en solo lectura. Esta versión no se puede guardar: alguna partida ya no tiene composición vigente en el catálogo.»
+   (`CAUSA_SOLO_LECTURA`, la misma frase del diálogo, en `logicaGuardar.ts`). La prueba de `Guardar.test.tsx` que
+   comprobaba el diálogo deshabilitado cambia a esto. Restaurar, cotizar, retirar, convertir y enviar también se ocultan
+   con esa base, aunque obren sobre la versión guardada: es la regla del plan. · Dejar `base` fuera de esos cinco.
+10. **Pruebas de registro que cambian con la decisión.** · `shell/rutas.test.ts` (la acción de `hoja`), `pendientes/Bandeja.test.tsx` (el ejemplo de «acción que la cuenta no puede usar» pasa de la Hoja a «Actualizar precios») y
+    `marco/BarraLateral.test.tsx` (quien revisa ve Resumen, Presupuesto y Aprobaciones) fijaban `editar_hoja`. · —
+11. **Rojo por aserción.** · Servidor: la tabla de acceso (21 rutas, `403` donde se esperaba pasar) y la prueba nueva
+    (`403 == 201`, `{versiones: 403, …} == {versiones: 200, …}`, `(403, …) == (409, …)`, `403 == 404`). Interfaz:
+    `puedeEditar.ts` del rojo es un stub con la regla de hoy (todo editable), así que fallan por aserción
+    (`expected true to be false`, `Unable to find role="note"`, botones de escritura presentes en «Espacio y metrajes»,
+    una petición a `/v1/mercado/objetivos`, sin botón «Abrir la Hoja» en el Resumen). · —
+12. **Oráculo corregido en el verde.** · `test_rita_no_envia_ni_tiene_versiones_propias` esperaba 200 en el rojo, pero
+    rita está en la carpeta de la empresa y la obra vive en `vivienda.db`: pasa el acceso y responde 404. El commit del
+    verde lo corrige (el 200 de quien revisa lo prueba `test_revisa_lee_las_aprobaciones_de_la_obra`). · —
+13. **Prueba que ya fallaba.** · `test_api_hoja.py::test_r11_los_hallazgos_son_los_de_la_memoria[TI-001]` falla igual
+    antes y después de esta tarea (sale un R12 además del R11): depende de la fecha de hoy (R12 evalúa la erosión de
+    los precios de TI-001 a hoy). No es de esta tarea; queda para quien la fijó. · Fijar `_hoy` en esa prueba.
+14. **Verificación.** · Servidor: `test_api_acceso_por_ruta.py`, `test_api_hoja_lectura_revisa.py`, los doce
+    `test_api_hoja*.py`, `test_api_aprobaciones.py` y `test_arquitectura*.py` con `-W error`: 1558 verdes y 3 rojos en la
+    primera corrida (api.json sin regenerar, el oráculo de la decisión 12 y la prueba de la decisión 13); tras
+    regenerar y corregir, los dos primeros verdes (48 verdes en la nueva corrida de esos archivos). `ruff check .` limpio;
+    `git diff c1f436b2 -- core/` vacío; `aplicacion/` sin tocar. Interfaz: `npx vitest run` completo, 3250 pruebas,
+    verdes salvo `PlanoEnHoja` «Fusionar» (verde suelta; se cae por tiempo con la máquina cargada) y la de `Bandeja`
+    de la decisión 10, ya corregida; `npm run lint` en 0. `knip` y `jscpd` siguen sin estar instalados. · —
