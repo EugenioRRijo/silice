@@ -259,3 +259,14 @@ preguntas, n.º 24 a 26):
   usos fuera de producción por una función de fecha. `test_arquitectura` lo admite. Si mercado o control llegan a necesitar
   períodos propios, se mueven ambas a un módulo común en ese momento.
 - Tarea 6b: el árbitro no dejó menores pendientes (el peso 0 lo cubre el bloqueo de porcentaje 0).
+
+## Suite completa del cierre (2026-10-31, sobre 39cd004d)
+
+- Pytest: dos regresiones de oráculo de la Tarea 4b (cabeza `ins_0009` y la tabla `prod_publicacion` en
+  `test_preparar_base` y `test_respaldo`), corregidas en c16c562a.
+- No son de la rama: `test_experimento_congelado_vigente` y `test_huellas_rnf04` (ya conocidas); seis de
+  `test_api_carpeta` que esperaban la fecha de hoy y la suite cruzó la medianoche (pasan solas);
+  `test_r11_los_hallazgos_son_los_de_la_memoria[TI-001]`, que ahora ve también R12 (precio vencido) porque la
+  lista del caso pasó su plazo de 30 días con el reloj: la prueba depende de la fecha de hoy. Fuera del alcance
+  del plan vial; anotado para quien mantenga los casos.
+- Vitest: 3222 de 3223; la única falla es el tiempo de espera de `CostosDelPeriodo` bajo carga (pasa sola).
