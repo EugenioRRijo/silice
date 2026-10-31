@@ -271,7 +271,7 @@ describe("la tabla de obras", () => {
     expect(within(fila).getByText("Contratista Demo, C.A.")).toBeInTheDocument();
     const etapa = within(fila).getByText("Atrasada");
     // «Atrasada» lleva su icono de advertencia y el texto (no solo color).
-    expect(etapa.closest(".silice-mesa__etapa")?.querySelector("svg")).not.toBeNull();
+    expect(etapa.closest(".silice-etapa")?.querySelector("svg")).not.toBeNull();
     expect(within(fila).getByText("30,0 % de 37,5 %")).toBeInTheDocument();
     expect(within(fila).getByText("4.876,56 Bs")).toBeInTheDocument();
     expect(within(fila).getByText("Atrasada 3 días hábiles (SPI 0,80)")).toBeInTheDocument();
@@ -512,8 +512,8 @@ describe("la mesa sigue a la obra recién creada", () => {
     await montar("ana");
     await u.click(within(await filaDe("OB-S2")).getByRole("button", { name: "Ver las alertas" }));
     await screen.findByRole("heading", { level: 1, name: "Control de obra" }, { timeout: 3000 });
-    // Solo la lectura de la mesa: la cabecera de la obra ya no pide el resumen (la moneda sale de la carpeta).
-    expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(1);
+    // La de la mesa y la ficha de la cabecera de la obra (Tarea 1 del plan F4: una vez por obra); elegir la obra no pide una tercera.
+    expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(2);
   });
 });
 

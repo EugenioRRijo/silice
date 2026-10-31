@@ -8,15 +8,10 @@ import type { Carga } from "../inicio/useCarga";
 import { paginaPorId, usable } from "../../shell/rutas";
 import { unirConY } from "../../shell/salida";
 import { nombreDeCarpeta } from "../../api/carpetaYObra";
+import type { ObraFilaRespuesta, SiguienteRespuesta } from "../../api/tipos";
 
 // Una cifra de la franja: la forma del indicador Fiori mas una linea debajo («1 obra atrasada; la mas atrasada, …»).
 export type CifraRespuesta = IndicadorRespuesta & { detalle: string | null };
-
-export interface SiguienteRespuesta {
-  texto: string;
-  // El id de la pantalla (rutas.ts) a la que lleva.
-  pagina: string;
-}
 
 export interface ConversionRespuesta {
   obra: string;
@@ -28,23 +23,6 @@ export interface ConversionRespuesta {
   fecha: string;
   // La fecha valor de la tasa del BCV que se uso (ISO): la que se declara.
   fecha_tasa: string;
-}
-
-export type Etapa = "en_elaboracion" | "en_aprobacion" | "aprobada" | "en_ejecucion" | "atrasada";
-
-export interface ObraFilaRespuesta {
-  codigo: string;
-  nombre: string;
-  cliente: string;
-  etapa: Etapa;
-  etapa_texto: string;
-  version: string | null;
-  total: string | null;
-  moneda: string;
-  avance_real: string | null;
-  avance_plan: string | null;
-  que_pasa: string | null;
-  siguiente: SiguienteRespuesta | null;
 }
 
 export interface ResumenObrasRespuesta {

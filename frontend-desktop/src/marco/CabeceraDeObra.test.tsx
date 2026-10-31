@@ -129,7 +129,7 @@ describe("CabeceraDeObra: el estado de la obra", () => {
       throw new ErrorDeApi(403, "No puede");
     });
     montar(rutaDeObra(null, 3, "resumen"));
-    expect(await screen.findByRole("heading", { level: 1, name: "Sección resumen" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Sección obras" })).toBeInTheDocument();
     await waitFor(() => expect(api.resumenes()).toBe(1));
     await act(async () => undefined);
     expect(cabecera()).not.toHaveTextContent("Estado:");
@@ -139,7 +139,7 @@ describe("CabeceraDeObra: el estado de la obra", () => {
   it("sin la fila de la obra no dice el estado y la sección se monta igual", async () => {
     const api = servidor(() => ({ ...RESUMEN, obras: RESUMEN.obras.filter((o) => o.codigo !== "3") }));
     montar(rutaDeObra(null, 3, "resumen"));
-    expect(await screen.findByRole("heading", { level: 1, name: "Sección resumen" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Sección obras" })).toBeInTheDocument();
     await waitFor(() => expect(api.resumenes()).toBe(1));
     await act(async () => undefined);
     expect(cabecera()).not.toHaveTextContent("Estado:");

@@ -1,12 +1,13 @@
-import { WarningFilled } from "@carbon/icons-react";
 import { Button, DataTableSkeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@carbon/react";
 import { useId } from "react";
 import type { JSX, ReactNode } from "react";
+import type { ObraFilaRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { EtapaDeObra } from "../../marco/EtapaDeObra";
 import type { Carga } from "../inicio/useCarga";
 import { etiquetaAvance, textoTotal } from "./logica";
-import type { ObraFilaRespuesta, ResumenObrasRespuesta } from "./logica";
+import type { ResumenObrasRespuesta } from "./logica";
 
 const COLUMNAS = ["Obra", "Etapa", "Avance", "Total", "Qué pasa"];
 const SIN_OBRAS = "Todavía no hay obras en esta carpeta de trabajo.";
@@ -63,17 +64,6 @@ export function TablaObras({ carga, puedeIr, alIr, vacio }: Props): JSX.Element 
   );
 }
 
-function Etapa({ obra }: { obra: ObraFilaRespuesta }) {
-  if (obra.etapa !== "atrasada") return <span className="silice-mesa__etapa">{obra.etapa_texto}</span>;
-  // El color no va solo: el icono de advertencia acompana a la palabra.
-  return (
-    <span className="silice-mesa__etapa silice-mesa__etapa--atrasada">
-      <WarningFilled size={16} aria-hidden="true" />
-      {obra.etapa_texto}
-    </span>
-  );
-}
-
 function Tabla({ obras, puedeIr, alIr }: { obras: ObraFilaRespuesta[]; puedeIr: Props["puedeIr"]; alIr: Props["alIr"] }) {
   const base = useId();
   const paso = (obra: ObraFilaRespuesta) => (obra.siguiente !== null && puedeIr(obra.siguiente.pagina) ? obra.siguiente : null);
@@ -106,7 +96,7 @@ function Tabla({ obras, puedeIr, alIr }: { obras: ObraFilaRespuesta[]; puedeIr: 
                   {obra.cliente && <span className="silice-mesa__obra-cliente cds--type-helper-text-01">{obra.cliente}</span>}
                 </TableCell>
                 <TableCell>
-                  <Etapa obra={obra} />
+                  <EtapaDeObra etapa={obra.etapa} texto={obra.etapa_texto} />
                 </TableCell>
                 <TableCell className="silice-cifra">{etiquetaAvance(obra.avance_real, obra.avance_plan)}</TableCell>
                 <TableCell className="silice-cifra">

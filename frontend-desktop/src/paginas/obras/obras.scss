@@ -137,19 +137,6 @@
   color: var(--silice-texto-secundario);
 }
 
-.silice-mesa__etapa {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  white-space: nowrap;
-}
-
-// «Atrasada»: el icono en el color de la severidad de error; la palabra, en la tinta normal.
-.silice-mesa__etapa--atrasada svg {
-  flex: none;
-  fill: var(--silice-sev-error);
-}
-
 .silice-mesa__sin-dato {
   color: var(--silice-texto-secundario);
 }

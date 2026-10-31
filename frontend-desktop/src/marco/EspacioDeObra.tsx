@@ -5,9 +5,13 @@ import { Link } from "react-router";
 import type { CasosRespuesta } from "../api/tipos";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { ContextoAplicacion } from "../shell/contexto";
-import { ListaDeLaCarpeta } from "../shell/ListaDeLaCarpeta";
+import { CabeceraDeObra } from "./CabeceraDeObra";
 import { enfocarElTitulo } from "./focoAlTitulo";
+import { ContextoDeLaObra } from "./obraAbierta";
+import type { ObraAbierta } from "./obraAbierta";
 import { RUTA_DE_PENDIENTES } from "./secciones";
+import { useFichaDeLaObra } from "./useFichaDeLaObra";
+import type { FichaDeLaObra } from "./useFichaDeLaObra";
 import { useObraDeLaRuta } from "./useObraDeLaRuta";
 import type { VigilanteDeObra } from "./otraPestana";
 import type { ObraDeCarpeta } from "./useObras";
@@ -98,19 +102,19 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
       );
     case "lista":
       return (
-        <ObraAbierta
+        <ObraDeLaRuta
           carpeta={estado.carpeta}
           obraId={estado.obraId}
           obra={obras.find((o) => o.carpeta === estado.carpeta && o.obra_id === estado.obraId)}
           casos={casos}
         >
           {estado.seccion.pagina !== null && pantalla(estado.seccion.pagina)}
-        </ObraAbierta>
+        </ObraDeLaRuta>
       );
   }
 }
 
-interface ObraAbiertaProps {
+interface ObraDeLaRutaProps {
   carpeta: string | null;
   obraId: number;
   obra: ObraDeCarpeta | undefined;
@@ -118,10 +122,12 @@ interface ObraAbiertaProps {
   children: ReactNode;
 }
 
-// La cabecera de la obra (nombre, versión y, de su carpeta, la moneda y la lista para armar) y la sección. La sección lee la obra y la carpeta de la ruta desde
-// el primer dibujo (no las del marco, que se ponen al día un momento después).
-function ObraAbierta({ carpeta, obraId, obra, casos, children }: ObraAbiertaProps) {
+// La obra lista: lee su ficha una vez, la comparte con las secciones (ContextoDeLaObra) y pinta la cabecera encima de la
+// sección. La sección lee la obra y la carpeta de la ruta desde el primer dibujo (no las del marco, que se ponen al día
+// un momento después).
+function ObraDeLaRuta({ carpeta, obraId, obra, casos, children }: ObraDeLaRutaProps) {
   const base = useContext(ContextoAplicacion);
+  const { recargar, ...ficha } = useFichaDeLaObra(obraId, carpeta);
   const valor = useMemo(() => {
     if (!base) return null;
     const caso =
@@ -130,17 +136,13 @@ function ObraAbierta({ carpeta, obraId, obra, casos, children }: ObraAbiertaProp
         : (casos?.casos.find((c) => c.nombre === carpeta) ?? { nombre: carpeta, ruta_relativa: "" });
     return { ...base, proyecto: String(obraId), nombreProyecto: obra?.obra ?? null, caso };
   }, [base, carpeta, obraId, obra, casos]);
+  // Sin useMemo: el valor cambia solo cuando cambia la ficha o la obra, que es cuando esta pieza vuelve a pintarse.
+  const abierta: ObraAbierta = { carpeta, obraId, ficha: ficha as FichaDeLaObra, recargarFicha: recargar };
 
   return (
-    <>
-      <section aria-label="Obra abierta" className="silice-obra-abierta">
-        <p className="silice-obra-abierta__nombre">{obra?.obra ?? `Obra ${obraId}`}</p>
-        <ul className="silice-obra-abierta__datos">
-          <li>{`Versión: ${obra?.version_codigo ?? "sin versión guardada"}`}</li>
-        </ul>
-        {base && <ListaDeLaCarpeta key={carpeta ?? ""} alExpirar={base.alExpirar} />}
-      </section>
+    <ContextoDeLaObra.Provider value={abierta}>
+      <CabeceraDeObra carpeta={carpeta} obraId={obraId} nombre={obra?.obra} version={obra?.version_codigo} ficha={abierta.ficha} />
       <ContextoAplicacion.Provider value={valor}>{children}</ContextoAplicacion.Provider>
-    </>
+    </ContextoDeLaObra.Provider>
   );
 }

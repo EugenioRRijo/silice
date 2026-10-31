@@ -1,0 +1,16 @@
+// La palabra de la etapa de una obra con su ícono (EtapaDeObra.tsx). Solo «atrasada» lleva color: el ícono, en el de la
+// severidad de error; la palabra queda en la tinta normal y el color nunca va solo.
+.silice-etapa {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.silice-etapa svg {
+  flex: none;
+}
+
+.silice-etapa--atrasada svg {
+  fill: var(--silice-sev-error);
+}
