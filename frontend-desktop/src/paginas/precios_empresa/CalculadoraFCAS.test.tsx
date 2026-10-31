@@ -15,7 +15,7 @@ const POR_DEFECTO = {
   fcas_version: "6.00",
   componentes: [
     { id: "utilidades", nombre: "Utilidades", base: "dias", valor: "100", fuente: "CCT 2023, cláusula 48", a_cotejar: false },
-    { id: "paro_forzoso", nombre: "Paro forzoso", base: "porcentaje", valor: "2", fuente: "Ley del Régimen Prestacional de Empleo, art. 46", a_cotejar: false },
+    { id: "paro_forzoso", nombre: "Paro forzoso", base: "porcentaje", valor: "2", fuente: "Ley del Régimen Prestacional de Empleo, art. 46 — a cotejar con el texto de la ley", a_cotejar: true },
     { id: "ivss", nombre: "Seguro social (IVSS)", base: "porcentaje", valor: "11", fuente: "Reglamento, art. 109 — a cotejar", a_cotejar: true },
     { id: "pensiones", nombre: "Contribución especial para pensiones", base: "porcentaje", valor: "9", fuente: "Ley de 2024 — a cotejar", a_cotejar: true },
   ],
@@ -78,7 +78,7 @@ describe("Calculadora del FCAS por componentes", () => {
     expect(screen.getByLabelText("Días calendario del período")).toHaveValue("365");
     expect(screen.getByLabelText("FCAS de la versión")).toHaveValue("6,00");
     expect(screen.getByText(/CCT 2023, cláusula 48/)).toBeInTheDocument();
-    expect(screen.getAllByText("a cotejar")).toHaveLength(2);
+    expect(screen.getAllByText("a cotejar")).toHaveLength(3);
     // el valor por defecto, como se escribe en es-VE
     expect(screen.getByLabelText(/Contribución especial para pensiones/, { selector: 'input[type="text"]' })).toHaveValue("9");
   });

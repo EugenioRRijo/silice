@@ -95,7 +95,7 @@ def test_los_componentes_por_defecto() -> None:
     assert (_por_id("pensiones").base, _por_id("pensiones").valor) == ("porcentaje", D("9"))
     assert (_por_id("ivss").base, _por_id("ivss").valor) == ("porcentaje", D("11"))
     r = calcular_fcas(COMPONENTES_FCAS, DIAS_CALENDARIO, D("217.28"))
-    assert r.a_cotejar == ("ivss", "pensiones")
+    assert r.a_cotejar == ("paro_forzoso", "faov", "inces", "ivss", "pensiones")
 
 
 def test_los_componentes_por_defecto_suman_a_mano() -> None:

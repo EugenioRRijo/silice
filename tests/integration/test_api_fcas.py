@@ -169,7 +169,10 @@ def test_la_lista_de_componentes_por_defecto() -> None:
     assert por_id["pensiones"]["a_cotejar"] is True
     assert por_id["ivss"]["valor"] == "11"
     assert por_id["ivss"]["a_cotejar"] is True
-    assert por_id["paro_forzoso"]["a_cotejar"] is False
+    for clave in ("paro_forzoso", "faov", "inces"):
+        assert por_id[clave]["a_cotejar"] is True
+        assert "a cotejar con el texto de la ley" in por_id[clave]["fuente"]
+    assert por_id["utilidades"]["a_cotejar"] is False
     assert por_id["utilidades"]["base"] == "dias"
     assert por_id["utilidades"]["valor"] == "100"
     assert all(c["fuente"] for c in cuerpo["componentes"])
