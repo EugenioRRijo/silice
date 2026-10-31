@@ -143,9 +143,27 @@ def test_real_cero_422() -> None:
     assert "costo final real" in r.json()["detalle"]
 
 
-def test_cuerpo_incompleto_o_con_numero_json_422() -> None:
-    assert Web("ana").post(RUTA, json={"costo_final_real": "130"}).status_code == 422
-    assert Web("ana").post(RUTA, json=_cuerpo(costo_final_real=130)).status_code == 422
+def test_cuerpo_incompleto_o_con_numero_json_422_sin_eco() -> None:
+    """El 422 de forma dice qué enviar y no repite lo enviado (`_RutaRiesgo`, como `_RutaVial`)."""
+    incompleto = Web("ana").post(RUTA, json={"costo_final_real": "130"})
+    assert incompleto.status_code == 422
+    assert incompleto.json() == {"detalle": rutas.MENSAJE_MEJORA}
+    con_numero = Web("ana").post(RUTA, json=_cuerpo(costo_final_real=130987))
+    assert con_numero.status_code == 422
+    assert con_numero.json() == {"detalle": rutas.MENSAJE_MEJORA}
+    assert "130987" not in con_numero.text
+
+
+def test_la_mejora_nunca_sale_con_exponente(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`format(x, "f")`, como las rutas de la obra: `str(Decimal("1E+1"))` sería «1E+1»."""
+    from aplicacion.riesgo.mejora import Mejora
+
+    monkeypatch.setattr(
+        rutas, "mejora_de_estimacion", lambda *_: Mejora(D("1E+1"), D("0E-2"), D("1E+1"))
+    )
+    r = Web("ana").post(RUTA, json=_cuerpo())
+    assert r.status_code == 200, r.text
+    assert r.json() == {"error_original_pct": "10", "error_silice_pct": "0.00", "mejora_pp": "10"}
 
 
 # --- Tarea 16: proyección, comprobación hacia atrás e insumos de la obra -------------------------
@@ -323,6 +341,28 @@ def test_proyeccion_con_forma_mala_422(cambio: dict) -> None:
 def test_comprobacion_con_forma_mala_422(cambio: dict) -> None:
     r = _en_la_via().post(COMPROBACION, json=_comprobacion(**cambio))
     assert r.status_code == 422, r.text
+
+
+@pytest.mark.parametrize(
+    ("ruta", "cuerpo"),
+    [
+        (PROYECCION, _proyeccion(meses="VALOR-ENVIADO-77")),
+        (COMPROBACION, _comprobacion(semilla="VALOR-ENVIADO-77")),
+        (PROYECCION, _proyeccion(mapa={"VALOR-ENVIADO-77": 7})),
+    ],
+)
+def test_el_422_de_forma_de_la_obra_no_repite_lo_enviado(ruta: str, cuerpo: dict) -> None:
+    r = _en_la_via().post(ruta, json=cuerpo)
+    assert r.status_code == 422, r.text
+    assert r.json() == {"detalle": rutas.MENSAJE_FORMA}
+    assert "VALOR-ENVIADO-77" not in r.text
+
+
+def test_el_422_de_los_insumos_sin_version_no_repite_lo_enviado() -> None:
+    r = _en_la_via().get(INSUMOS, params={"proyecto": "VALOR-ENVIADO-77"})
+    assert r.status_code == 422, r.text
+    assert r.json() == {"detalle": rutas.MENSAJE_FORMA}
+    assert "VALOR-ENVIADO-77" not in r.text
 
 
 def test_una_serie_que_no_es_de_la_proyeccion_422() -> None:
