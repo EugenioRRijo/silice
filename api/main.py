@@ -58,6 +58,7 @@ from api.rutas import (
     simulador,
     tablero,
     tema,
+    vial,
 )
 from api.rutas import (
     primer_arranque as rutas_primer_arranque,
@@ -188,6 +189,8 @@ app.include_router(produccion.router)
 # Plan vial (T1, T3 y T4): costos del periodo, recetas, producciones y calculos de la planta, mismo
 # prefijo y misma puerta; justo despues del de la arenera para no cambiar el orden de docs/api.json
 app.include_router(produccion_planta.router)
+# Plan vial (T8): /v1/vial, los tramos de una via guardados por version; EDITAR_HOJA en cada ruta
+app.include_router(vial.router)
 # T10 (montar un presupuesto): /v1/buscar/partidas, buscador C-1 (LEER_PROYECTO en la ruta)
 app.include_router(busqueda.router)
 # MOD-4a (plan de módulos): /v1/obras/resumen (LEER_PROYECTO) y /v1/obras/pendientes (EDITAR_HOJA),

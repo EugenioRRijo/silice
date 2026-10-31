@@ -9215,6 +9215,214 @@
         }
       }
     },
+    "/v1/vial/tramos": {
+      "get": {
+        "tags": [
+          "vial"
+        ],
+        "summary": "Leer Tramos",
+        "description": "Los tramos de la versión con sus cantidades, y si se pueden editar.",
+        "operationId": "leer_tramos_v1_vial_tramos_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TramosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "vial"
+        ],
+        "summary": "Guardar Los Tramos",
+        "description": "Guarda los tramos como los de la versión (un guardado nuevo; el anterior queda de rastro).",
+        "operationId": "guardar_los_tramos_v1_vial_tramos_put",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TramosEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TramosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/vial/tramos/importar": {
+      "post": {
+        "tags": [
+          "vial"
+        ],
+        "summary": "Importar Tramos",
+        "description": "Lee el CSV y lo guarda como los tramos de la versión. Todo o nada: una fila mala es 422 con\nsu número y no se guarda nada.",
+        "operationId": "importar_tramos_v1_vial_tramos_importar_post",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importar_tramos_v1_vial_tramos_importar_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TramosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/vial/obras": {
+      "get": {
+        "tags": [
+          "vial"
+        ],
+        "summary": "Obras Con Tramos",
+        "description": "Las obras de la carpeta abierta que tienen tramos guardados.",
+        "operationId": "obras_con_tramos_v1_vial_obras_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObrasViales"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/buscar/partidas": {
       "get": {
         "tags": [
@@ -12589,6 +12797,21 @@
         ],
         "title": "Body_importar_reporte_v1_produccion_bascula_importar_post"
       },
+      "Body_importar_tramos_v1_vial_tramos_importar_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo",
+            "description": "Tramos de la vía (.csv, UTF-8)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo"
+        ],
+        "title": "Body_importar_tramos_v1_vial_tramos_importar_post"
+      },
       "Body_importar_v1_control_importar_post": {
         "properties": {
           "archivo": {
@@ -13493,6 +13716,149 @@
           "origen"
         ],
         "title": "CantidadDerivadaRespuesta"
+      },
+      "CantidadRespuesta": {
+        "properties": {
+          "tramo": {
+            "type": "string",
+            "title": "Tramo"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "origen_id": {
+            "type": "string",
+            "title": "Origen Id"
+          },
+          "regla": {
+            "type": "string",
+            "title": "Regla"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tramo",
+          "codigo",
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "origen_id",
+          "regla"
+        ],
+        "title": "CantidadRespuesta"
+      },
+      "CapaEntrada": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Tipo"
+          },
+          "espesor_m": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espesor M"
+          },
+          "densidad_t_m3": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Densidad T M3"
+          },
+          "dosis_l_m2": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dosis L M2"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tipo"
+        ],
+        "title": "CapaEntrada"
+      },
+      "CapaRespuesta": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "espesor_m": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espesor M"
+          },
+          "densidad_t_m3": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Densidad T M3"
+          },
+          "dosis_l_m2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dosis L M2"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "espesor_m",
+          "densidad_t_m3",
+          "dosis_l_m2"
+        ],
+        "title": "CapaRespuesta"
       },
       "CargaListaRespuesta": {
         "properties": {
@@ -15089,6 +15455,44 @@
           "condiciones"
         ],
         "title": "DeclararRendimientoRespuesta"
+      },
+      "DemarcacionEntrada": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Tipo"
+          },
+          "lineas": {
+            "type": "integer",
+            "title": "Lineas"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tipo",
+          "lineas"
+        ],
+        "title": "DemarcacionEntrada"
+      },
+      "DemarcacionRespuesta": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "lineas": {
+            "type": "integer",
+            "title": "Lineas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "lineas"
+        ],
+        "title": "DemarcacionRespuesta"
       },
       "DescartarEntrada": {
         "properties": {
@@ -19952,6 +20356,22 @@
         ],
         "title": "ObrasTodasRespuesta"
       },
+      "ObrasViales": {
+        "properties": {
+          "obras": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Obras"
+          }
+        },
+        "type": "object",
+        "required": [
+          "obras"
+        ],
+        "title": "ObrasViales"
+      },
       "ObservacionNueva": {
         "properties": {
           "lado": {
@@ -22188,6 +22608,29 @@
           "clave"
         ],
         "title": "QuitarPartida"
+      },
+      "RastroDeTramosRespuesta": {
+        "properties": {
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "title": "Fecha Hora"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "usuario",
+          "fecha_hora",
+          "fuente"
+        ],
+        "title": "RastroDeTramosRespuesta"
       },
       "Reactivacion": {
         "properties": {
@@ -24489,6 +24932,211 @@
           "total"
         ],
         "title": "TotalDeCostos"
+      },
+      "TramoEntrada": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Id"
+          },
+          "progresiva_ini_km": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Progresiva Ini Km"
+          },
+          "progresiva_fin_km": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Progresiva Fin Km"
+          },
+          "ancho_m": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Ancho M"
+          },
+          "distancia_planta_km": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancia Planta Km"
+          },
+          "capas": {
+            "items": {
+              "$ref": "#/components/schemas/CapaEntrada"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Capas"
+          },
+          "demarcacion": {
+            "items": {
+              "$ref": "#/components/schemas/DemarcacionEntrada"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Demarcacion",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "progresiva_ini_km",
+          "progresiva_fin_km",
+          "ancho_m",
+          "capas"
+        ],
+        "title": "TramoEntrada"
+      },
+      "TramoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "progresiva_ini_km": {
+            "type": "string",
+            "title": "Progresiva Ini Km"
+          },
+          "progresiva_fin_km": {
+            "type": "string",
+            "title": "Progresiva Fin Km"
+          },
+          "ancho_m": {
+            "type": "string",
+            "title": "Ancho M"
+          },
+          "distancia_planta_km": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distancia Planta Km"
+          },
+          "capas": {
+            "items": {
+              "$ref": "#/components/schemas/CapaRespuesta"
+            },
+            "type": "array",
+            "title": "Capas"
+          },
+          "demarcacion": {
+            "items": {
+              "$ref": "#/components/schemas/DemarcacionRespuesta"
+            },
+            "type": "array",
+            "title": "Demarcacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "progresiva_ini_km",
+          "progresiva_fin_km",
+          "ancho_m",
+          "distancia_planta_km",
+          "capas",
+          "demarcacion"
+        ],
+        "title": "TramoRespuesta"
+      },
+      "TramosEntrada": {
+        "properties": {
+          "tramos": {
+            "items": {
+              "$ref": "#/components/schemas/TramoEntrada"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "title": "Tramos"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Fuente",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tramos"
+        ],
+        "title": "TramosEntrada"
+      },
+      "TramosRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "editable": {
+            "type": "boolean",
+            "title": "Editable"
+          },
+          "bloqueo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bloqueo"
+          },
+          "guardado": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RastroDeTramosRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tramos": {
+            "items": {
+              "$ref": "#/components/schemas/TramoRespuesta"
+            },
+            "type": "array",
+            "title": "Tramos"
+          },
+          "cantidades": {
+            "items": {
+              "$ref": "#/components/schemas/CantidadRespuesta"
+            },
+            "type": "array",
+            "title": "Cantidades"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "editable",
+          "bloqueo",
+          "guardado",
+          "tramos",
+          "cantidades"
+        ],
+        "title": "TramosRespuesta"
       },
       "TrazaRespuesta": {
         "properties": {

@@ -253,6 +253,14 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/produccion/CostoPorTonelada"),
   },
   {
+    id: "tramos",
+    titulo: "Tramos de la vía",
+    enUnaLinea: "Importe los tramos de una vía y vea sus cantidades",
+    seccion: "Trabajo",
+    accion: "editar_hoja",
+    cargar: () => import("../paginas/vial/Tramos"),
+  },
+  {
     id: "administracion",
     titulo: "Administración",
     enUnaLinea: "Cuentas, claves y ajustes de la instalación",

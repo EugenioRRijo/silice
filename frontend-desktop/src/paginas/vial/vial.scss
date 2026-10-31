@@ -1,0 +1,24 @@
+// Tramos de la vía. Sin tarjetas ni sombras (DESIGN.md): una sección por tramo con su título, su resumen y su tabla.
+
+.vial {
+  max-inline-size: 72rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.vial-nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+  margin: 0;
+}
+
+.vial-tramo {
+  display: grid;
+  gap: 0.5rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--cds-border-subtle);
+}
+
+.vial-tramo h2 {
+  margin: 0;
+}

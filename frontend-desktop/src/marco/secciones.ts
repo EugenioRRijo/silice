@@ -7,7 +7,7 @@
 // con su .db, que es el nombre que acepta `POST /v1/casos/actual`; la de la empresa se escribe `empresa` (ningún
 // nombre de carpeta puede serlo, porque todos terminan en .db).
 
-export type SeccionId = "resumen" | "presupuesto" | "archivos" | "versiones" | "aprobaciones" | "mercado" | "control";
+export type SeccionId = "resumen" | "presupuesto" | "tramos" | "archivos" | "versiones" | "aprobaciones" | "mercado" | "control";
 
 export interface SeccionDef {
   id: SeccionId;
@@ -15,11 +15,15 @@ export interface SeccionDef {
   pagina: string | null;
   // Para qué sirve, en una frase de hasta 90 caracteres, con las palabras de quien la usa.
   ayuda: string;
+  // Solo se ofrece en las obras viales (las que ya tienen tramos guardados): no hay otra marca de «obra vial» hasta el
+  // plan de módulos activables (Tarea 19). La pantalla igual se alcanza por el buscador para quien aún no tiene tramos.
+  soloVial?: boolean;
 }
 
 export const SECCIONES_DE_OBRA: readonly SeccionDef[] = [
   { id: "resumen", titulo: "Resumen", pagina: "obras", ayuda: "La obra de un vistazo: sus cifras, su versión vigente y lo pendiente." },
   { id: "presupuesto", titulo: "Presupuesto", pagina: "hoja", ayuda: "Las partidas de la obra con sus cantidades, precios y APU." },
+  { id: "tramos", titulo: "Tramos", pagina: "tramos", soloVial: true, ayuda: "Los tramos de la vía con sus cantidades de obra." },
   { id: "archivos", titulo: "Archivos y planos", pagina: null, ayuda: "Los planos y documentos de la obra." },
   { id: "versiones", titulo: "Versiones", pagina: null, ayuda: "Las versiones guardadas del presupuesto y qué cambió entre ellas." },
   { id: "aprobaciones", titulo: "Aprobaciones", pagina: "aprobar", ayuda: "Las versiones que esperan dictamen y lo que se entregó al cliente." },

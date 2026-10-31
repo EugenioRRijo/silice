@@ -420,6 +420,13 @@ accion = "(solo lectura) abrir «Costo por tonelada» del mes anterior"
 espera = { texto = "Costo por tonelada" }
 
 [[pantalla]]
+ruta = "tramos"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Tramos de la vía» de la obra elegida"
+espera = { texto = "Tramos de la vía" }
+
+[[pantalla]]
 ruta = "mercado"
 cuenta = "ana"
 carpeta = "demo.db"

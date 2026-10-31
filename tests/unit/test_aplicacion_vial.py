@@ -124,9 +124,7 @@ def test_los_tramos_son_de_su_version(sesion: Session) -> None:
     uno, dos = _version(sesion, "VIV-001"), _version(sesion, "VIV-002")
     vial.guardar_tramos(sesion, uno, [T1], usuario=ANA, ahora=LUNES)
     assert vial.tramos_de_version(sesion, dos) == []
-    assert vial.obras_con_tramos(sesion) == [
-        sesion.scalars(select(models.Proyecto.id)).one()
-    ]
+    assert vial.obras_con_tramos(sesion) == [sesion.scalars(select(models.Proyecto.id)).one()]
 
 
 def test_version_inexistente(sesion: Session) -> None:
