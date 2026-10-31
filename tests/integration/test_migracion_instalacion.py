@@ -41,6 +41,7 @@ NUEVAS = {
     "prod_receta",
     "prod_receta_componente",
     "prod_calculo",
+    "prod_publicacion",
 }
 
 

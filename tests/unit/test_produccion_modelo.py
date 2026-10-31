@@ -84,6 +84,7 @@ COLUMNAS = {
         "usuario",
         "registrado",
     },
+    "prod_publicacion": {"id", "calculo_id", "caso", "lista_id", "usuario", "registrado"},
 }
 
 
