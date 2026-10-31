@@ -212,8 +212,10 @@ preguntas, n.º 24 a 26):
 - **Lo que viene basta como costo** (pregunta 24): un mes con producción y sin costos propios, pero
   con algo que pasa del anterior, se calcula; «No hay costos registrados en AAAA-MM.» queda para
   cuando no hay ni costos ni nada que venga.
-- **Qué cálculo anterior** (pregunta 26): el de id mayor entre los de período anterior en la misma
-  moneda **que den costo a ese agregado** (si el más reciente no lo tiene, se busca en los otros).
+- **Qué cálculo anterior** (pregunta 26, decidido por el orquestador en la ronda 2): el del período
+  anterior más reciente y, dentro de él, el de id mayor, en la misma moneda y **que dé costo a ese
+  agregado** (si el más reciente no lo tiene, se busca en los otros). Septiembre recalculado después
+  de octubre no le gana a octubre.
 - **`GET /calculos`** verifica la huella de cada cálculo, como `ultimo_calculo`: uno alterado hace 422
   toda la lista (pregunta 25).
 - **`caso` de la publicación**: el nombre del archivo de la carpeta de trabajo (como `/v1/casos`;
@@ -226,3 +228,25 @@ preguntas, n.º 24 a 26):
   por un mes sin producción, la tasa de la vigencia de la lista y dos publicaciones del mismo
   cálculo cambian al comportamiento nuevo (commit de prueba en rojo). Las pruebas que nombran la
   cabeza de la instalación pasan a `ins_0009_prod_publicacion`.
+
+### Tarea 4b, ronda 2 (devolución del árbitro)
+
+- **Tasa del cierre lejos del último día** (mayor): `tasa_aplicable` del núcleo rechaza una tasa a
+  más de 7 días de la fecha pedida (S1-R2), y con una sola tasa el 03/11 noviembre quedaba sin tasa
+  del cierre. Sin tocar `core/`, `tasa_del_cierre` le pregunta desde el último día y, si no
+  encuentra, desde 7 días antes, hasta cubrir el día 1; la primera que aparece es la más reciente y
+  sirve si es del mes. Vale para lo comprado, lo que pasa del mes anterior y la base al publicar.
+- **Un solo último día del mes**: `produccion.costos.ultimo_dia_del_mes` (con `validar_periodo`) lo
+  usan la tasa del cierre y el costo por tonelada.
+- **Choque al publicar**: si dos publicaciones del mismo cálculo pasan la comprobación a la vez, el
+  `unique` de `prod_publicacion` frena la segunda dentro de un savepoint
+  (`produccion.importacion.abrir_transaccion`, que pasa a ser público) y sale 409 con el mismo
+  mensaje; la carpeta no se confirma.
+- **Riesgo residual**: la carpeta se confirma antes que la instalación. Si después de confirmar la
+  carpeta falla la confirmación de la instalación (disco lleno, base bloqueada más allá de la
+  espera), la lista queda en la carpeta sin su fila en `prod_publicacion`: una lista huérfana que
+  nadie borra y el cálculo se puede volver a publicar en otra lista. No se puede evitar sin una
+  transacción entre dos bases; queda a la vista por su nombre («Costo propio AAAA-MM, cálculo n.º
+  N») y su fuente.
+- **Fila 27**: si un mes no tiene cálculo, lo que pasaba del anterior no llega al siguiente (como el
+  plan); anotado como pregunta.
