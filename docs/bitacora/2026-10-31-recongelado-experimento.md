@@ -82,10 +82,10 @@ El commit declarado en el nuevo `congelado.json` es el de esta acta (como el ant
 **Árbol limpio (M5).** El worktree tiene archivos **sin seguimiento que no son de esta línea**: `.impeccable/` (1),
 `data/instalacion.db.migrando-shm` y `-wal` y `docs/manual_nuevo/capturas/` (130). Ninguno está en
 `archivos_del_auditor` ni en el banco, así que no entran en ninguna huella. No se borran ni se mueven (son de otras
-líneas). Para que `congelar` no se niegue por ellos, se le pasa un `cambios_sin_commit` que **solo** quita esas rutas
+líneas). Para que `congelar` no se niegue por ellos, como `congelar(commit, destino, **rutas)` no recibe ese parámetro, se **sustituyó en tiempo de ejecución** (desde un script fuera del repositorio) la función `cambios_sin_commit` por una que **solo** quita esas rutas
 sin seguimiento y deja cualquier otra cosa pendiente (un archivo con cambios sin commit, o algo sin seguimiento en otra
 ruta) negando el congelado como siempre. El fin de M5, que el commit declarado sea exactamente lo que se hashea, se
-cumple: las 50 rutas del auditor y el banco no tienen cambios sin commit.
+cumple: las 50 rutas del auditor y el banco no tienen cambios sin commit. **Comprobación del árbitro de cierre de la fase C:** las tres huellas, recalculadas desde los objetos de git (no desde el disco) en 0b477eba y en c15ceffc, dan exactamente las de `congelado.json` (auditor 63930d4b…, banco 29446b12…, protocolo e769c507…); el filtro no influyó y no hace falta repetir el congelado.
 
 ## Después
 

@@ -94,3 +94,16 @@ las filas 100 a 105 de las preguntas para Eugenio. `core/` intacto (`git diff --
   Cambiaron `aplicacion/hoja.py` y `aplicacion/composicion.py`, fuera del camino del experimento; solo cambia la huella
   `auditor` (`bc34b17e…` → `63930d4b…`). `test_experimento_congelado_vigente` vuelve a verde. Fila 105 (cómo se cumplió
   el árbol limpio). Acta: `docs/bitacora/2026-10-31-recongelado-experimento.md`.
+
+## Árbitro de cierre de la fase C (ronda 1, cabeza c15ceffc): APROBADA
+
+- Integración T12 → T16 y avisos entre tareas: cumplidos. La fila 81 se comprobó con un oráculo propio: sin doble
+  conteo y con un «Flete [2]» real separado. Re-congelado: las huellas se reproducen desde los objetos de git y el
+  procedimiento es equivalente al de 9832db3a; no hace falta repetirlo.
+- MENOR 1, pasado a la Tarea 16b: `aplicacion/riesgo/obra.py:185` (`_codigo_local`) solo mira los códigos ya vistos.
+  Un componente real con código «CA-30 [2]» se fundiría con la variante. Hay que reservar antes todos los códigos,
+  como hace `_desdoblar`.
+- MENOR 2, hecho: el acta dice que `cambios_sin_commit` se sustituyó en tiempo de ejecución y añade la comprobación
+  de huellas desde git.
+
+**Fase C cerrada.**
