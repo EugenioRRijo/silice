@@ -8,6 +8,7 @@ cuadrar. Detecta quien da algun hallazgo que no sea INFO: VR1 a VR7 o la concili
 from __future__ import annotations
 
 import dataclasses
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -56,20 +57,57 @@ def _presupuesto_coherente(tramos) -> Presupuesto:
 
 def test_misma_semilla_mismos_mutantes():
     tramos = leer_tramos(VIA)
-    a = sembrar_vial(tramos, semilla=7, por_tipo=3)
-    assert a == sembrar_vial(tramos, semilla=7, por_tipo=3)
-    assert a != sembrar_vial(tramos, semilla=8, por_tipo=3)
+    p = _presupuesto_coherente(tramos)
+    a = sembrar_vial(tramos, semilla=7, por_tipo=3, presupuesto=p)
+    assert a == sembrar_vial(tramos, semilla=7, por_tipo=3, presupuesto=p)
+    assert a != sembrar_vial(tramos, semilla=8, por_tipo=3, presupuesto=p)
     assert {m.tipo for m in a} == set(TIPOS_VIALES)
     assert all(sum(m.tipo == t for m in a) <= 3 for t in TIPOS_VIALES)
 
 
+def test_sin_presupuesto_no_se_siembra_ev4():
+    tramos = leer_tramos(VIA)
+    assert "EV4_unidad" not in {m.tipo for m in sembrar_vial(tramos, semilla=7, por_tipo=3)}
+
+
+#: Campos que cada tipo puede cambiar (la ultima parte de la ruta del valor); EV4 no toca tramos.
+CAMPOS_PERMITIDOS = {
+    "EV1_espesor_x10": {"espesor_m"},
+    "EV2_densidad_coma": {"densidad_t_m3"},
+    "EV3_dosis": {"dosis_l_m2"},
+    "EV4_unidad": set(),
+    "EV5_digitos": {"espesor_m", "densidad_t_m3", "dosis_l_m2", "ancho_m", "distancia_planta_km"},
+    "EV6_progresiva": {"progresiva_fin_km"},
+}
+
+
 def test_cada_tipo_altera_un_solo_campo():
     tramos = tuple(leer_tramos(VIA))
+    p = _presupuesto_coherente(tramos)
     base = dict(_hojas(tramos))
-    for mutante in sembrar_vial(tramos, semilla=11, por_tipo=4):
-        cambios = {r for r, v in _hojas(mutante.tramos) if base.get(r) != v}
-        assert len(cambios) == 1, (mutante.descripcion, cambios)
+    vistos = set()
+    for mutante in sembrar_vial(tramos, semilla=11, por_tipo=4, presupuesto=p):
+        vistos.add(mutante.tipo)
         assert mutante.tipo in mutante.descripcion
+        cambios = {r for r, v in _hojas(mutante.tramos) if base.get(r) != v}
+        campos = {r.rstrip(".").rsplit(".", 1)[-1] for r in cambios}
+        assert campos <= CAMPOS_PERMITIDOS[mutante.tipo], (mutante.descripcion, campos)
+        if mutante.tipo == "EV4_unidad":
+            # los tramos quedan iguales y una sola partida cambia, solo en su unidad
+            assert not cambios and mutante.presupuesto is not None
+            dif = [
+                (a.item, b.item)
+                for a, b in zip(p.partidas, mutante.presupuesto.partidas, strict=True)
+                if a != b
+            ]
+            assert len(dif) == 1
+            antes, despues = dif[0]
+            assert antes.unidad != despues.unidad
+            assert replace(antes, unidad=despues.unidad) == despues
+        else:
+            assert len(cambios) == 1, (mutante.descripcion, cambios)
+            assert mutante.presupuesto is None
+    assert vistos == set(TIPOS_VIALES)
 
 
 def test_matriz_sobre_via_ficticia():
@@ -77,10 +115,11 @@ def test_matriz_sobre_via_ficticia():
     presupuesto = _presupuesto_coherente(tramos)
 
     def detecta(mutante: MutanteVial) -> bool:
+        pres = mutante.presupuesto or presupuesto
         hallazgos = [
-            *auditar_vial(mutante.tramos, presupuesto),
+            *auditar_vial(mutante.tramos, pres),
             *conciliar(
-                presupuesto,
+                pres,
                 {},
                 ParametrosCosto(),
                 items_viales=derivar_tramos(mutante.tramos),
@@ -91,7 +130,7 @@ def test_matriz_sobre_via_ficticia():
 
     # La via sin mutar no da hallazgos: lo que se detecta es del mutante.
     assert not detecta(MutanteVial("ninguno", tuple(tramos), ""))
-    matriz = matriz_de_deteccion(sembrar_vial(tramos, semilla=2026, por_tipo=3), detecta)
+    matriz = matriz_de_deteccion(sembrar_vial(tramos, semilla=2026, por_tipo=3, presupuesto=presupuesto), detecta)
     assert matriz == {
         "EV1_espesor_x10": (3, 3),
         "EV2_densidad_coma": (3, 3),
@@ -105,13 +144,16 @@ def test_matriz_sobre_via_ficticia():
 def test_limite_declarado_las_reglas_viales_solas_no_ven_fresado_base_ni_riego():
     # VR1/VR4 solo miran carpeta y transporte, VR3 mira dosis fuera de rango: un espesor de fresado,
     # base o sub-base, o una dosis de riego aun razonable, solo la conciliacion CV2 los ve.
+    # EV3 da 2 mutantes con por_tipo=3: la via ficticia solo tiene dos capas de riego o imprimacion.
+    # EV4 (unidad de una partida) lo ve VR7 sola: CV2 compara cantidades, no unidades.
     tramos = leer_tramos(VIA)
     presupuesto = _presupuesto_coherente(tramos)
 
     def detecta(mutante: MutanteVial) -> bool:
-        return any(h.severidad != Severidad.INFO for h in auditar_vial(mutante.tramos, presupuesto))
+        pres = mutante.presupuesto or presupuesto
+        return any(h.severidad != Severidad.INFO for h in auditar_vial(mutante.tramos, pres))
 
-    matriz = matriz_de_deteccion(sembrar_vial(tramos, semilla=2026, por_tipo=3), detecta)
+    matriz = matriz_de_deteccion(sembrar_vial(tramos, semilla=2026, por_tipo=3, presupuesto=presupuesto), detecta)
     assert matriz == {
         "EV1_espesor_x10": (1, 3),
         "EV2_densidad_coma": (3, 3),
