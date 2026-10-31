@@ -130,7 +130,9 @@ def test_matriz_sobre_via_ficticia():
 
     # La via sin mutar no da hallazgos: lo que se detecta es del mutante.
     assert not detecta(MutanteVial("ninguno", tuple(tramos), ""))
-    matriz = matriz_de_deteccion(sembrar_vial(tramos, semilla=2026, por_tipo=3, presupuesto=presupuesto), detecta)
+    matriz = matriz_de_deteccion(
+        sembrar_vial(tramos, semilla=2026, por_tipo=3, presupuesto=presupuesto), detecta
+    )
     assert matriz == {
         "EV1_espesor_x10": (3, 3),
         "EV2_densidad_coma": (3, 3),
@@ -153,7 +155,9 @@ def test_limite_declarado_las_reglas_viales_solas_no_ven_fresado_base_ni_riego()
         pres = mutante.presupuesto or presupuesto
         return any(h.severidad != Severidad.INFO for h in auditar_vial(mutante.tramos, pres))
 
-    matriz = matriz_de_deteccion(sembrar_vial(tramos, semilla=2026, por_tipo=3, presupuesto=presupuesto), detecta)
+    matriz = matriz_de_deteccion(
+        sembrar_vial(tramos, semilla=2026, por_tipo=3, presupuesto=presupuesto), detecta
+    )
     assert matriz == {
         "EV1_espesor_x10": (1, 3),
         "EV2_densidad_coma": (3, 3),

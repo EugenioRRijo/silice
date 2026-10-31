@@ -7,9 +7,8 @@ mismos mutantes (como `mutaciones.py`, que no se toca: este archivo es nuevo y n
 * EV1 espesor de una capa multiplicado por 10 (0,05 m leído como 0,50 m);
 * EV2 densidad leída sin la coma (2,35 t/m3 queda 235);
 * EV3 dosis de un riego multiplicada por 10 (0,40 l/m2 queda 4,00);
-* EV4 unidad: el ancho del tramo escrito en cm en vez de m (7,30 queda 730). El `Tramo` no tiene un
-  campo de unidad (la unidad de una partida vive en el presupuesto, que aquí no se muta), así que el
-  error de unidad que cabe en los tramos es este;
+* EV4 unidad de UNA partida vial del presupuesto coherente cambiada por otra incompatible (m3 pasa
+  a m2). Es el único tipo que muta el presupuesto y no los tramos; sin `presupuesto` no se siembra;
 * EV5 dos dígitos contiguos transpuestos en espesor, densidad, dosis, ancho o distancia a la planta
   (0,25 queda 0,52);
 * EV6 progresiva final del tramo con el decimal corrido (1,2 km queda 12 km).
@@ -26,7 +25,10 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from adapters.vial.constantes import PARTIDAS_VIALES
 from adapters.vial.modelo import Tramo
+from core.contracts.presupuesto import Presupuesto
+from core.contracts.unidades import unidades_equivalentes
 
 TIPOS_VIALES = (
     "EV1_espesor_x10",
@@ -54,6 +56,8 @@ class MutanteVial:
     tipo: str
     tramos: tuple[Tramo, ...]
     descripcion: str
+    #: Presupuesto alterado (solo EV4); `None` si el mutante audita el presupuesto coherente.
+    presupuesto: Presupuesto | None = None
 
 
 def _coma(valor: Decimal) -> str:
@@ -77,9 +81,7 @@ def _pares_de_digitos(valor: Decimal) -> list[int]:
 def _candidatos(tipo: str, tramos: Sequence[Tramo]) -> list[_Candidato]:
     salida: list[_Candidato] = []
     for t, tramo in enumerate(tramos):
-        if tipo == "EV4_unidad":
-            salida.append((t, None, "ancho_m", None))
-        elif tipo == "EV6_progresiva":
+        if tipo == "EV6_progresiva":
             salida.append((t, None, "progresiva_fin_km", None))
         elif tipo == "EV5_digitos":
             for campo in _CAMPOS_DE_TRAMO_EV5:
@@ -101,8 +103,6 @@ def _candidatos(tipo: str, tramos: Sequence[Tramo]) -> list[_Candidato]:
 def _nuevo_valor(tipo: str, valor: Decimal, par: int | None) -> Decimal:
     if tipo in ("EV1_espesor_x10", "EV3_dosis", "EV6_progresiva"):
         return valor * 10
-    if tipo == "EV4_unidad":
-        return valor * 100
     if tipo == "EV2_densidad_coma":
         exponente = valor.as_tuple().exponent
         # Sin la coma: los mismos dígitos como entero (2,35 -> 235).
@@ -138,11 +138,59 @@ def _mutar(
     return mutados, f"{tipo}: {campo} de {lugar}: {_coma(valor)} pasa a {_coma(nuevo)}"
 
 
-def sembrar_vial(tramos: Sequence[Tramo], *, semilla: int, por_tipo: int) -> list[MutanteVial]:
-    """Hasta `por_tipo` mutantes de cada tipo de `TIPOS_VIALES`, en orden de tipo, sin repetidos."""
+UNIDADES_INCOMPATIBLES = ("m", "m2", "m3", "t", "l", "kg", "dia", "pieza")
+
+
+def _mutantes_de_unidad(
+    tramos: tuple[Tramo, ...], presupuesto: Presupuesto, semilla: int, por_tipo: int
+) -> list[MutanteVial]:
+    """EV4: la unidad de una partida vial del presupuesto, por otra; tramos intactos."""
+    codigos = {codigo for codigo, _, _ in PARTIDAS_VIALES.values()}
+    indices = [i for i, p in enumerate(presupuesto.partidas) if p.item.codigo_partida in codigos]
+    azar = random.Random(f"{semilla}:EV4_unidad")
+    azar.shuffle(indices)
+    salida: list[MutanteVial] = []
+    for i in indices[:por_tipo]:
+        partida = presupuesto.partidas[i]
+        opciones = [
+            u for u in UNIDADES_INCOMPATIBLES if not unidades_equivalentes(u, partida.item.unidad)
+        ]
+        nueva = azar.choice(opciones)
+        item = replace(partida.item, unidad=nueva)
+        partidas = (
+            *presupuesto.partidas[:i],
+            replace(partida, item=item),
+            *presupuesto.partidas[i + 1 :],
+        )
+        descripcion = (
+            f"EV4_unidad: unidad de la partida {item.codigo_partida} ({item.origen_id}): "
+            f"{partida.item.unidad} pasa a {nueva}"
+        )
+        salida.append(
+            MutanteVial("EV4_unidad", tramos, descripcion, replace(presupuesto, partidas=partidas))
+        )
+    return salida
+
+
+def sembrar_vial(
+    tramos: Sequence[Tramo],
+    *,
+    semilla: int,
+    por_tipo: int,
+    presupuesto: Presupuesto | None = None,
+) -> list[MutanteVial]:
+    """Hasta `por_tipo` mutantes de cada tipo de `TIPOS_VIALES`, en orden de tipo, sin repetidos.
+
+    `presupuesto` es el coherente, armado desde `tramos`: EV4 muta una unidad de él. Sin él, EV4 no
+    se siembra (no hay partida que alterar) y no aparece en la lista.
+    """
     originales = tuple(tramos)
     salida: list[MutanteVial] = []
     for tipo in TIPOS_VIALES:
+        if tipo == "EV4_unidad":
+            if presupuesto is not None:
+                salida += _mutantes_de_unidad(originales, presupuesto, semilla, por_tipo)
+            continue
         azar = random.Random(f"{semilla}:{tipo}")
         candidatos = _candidatos(tipo, originales)
         azar.shuffle(candidatos)
@@ -162,7 +210,7 @@ def matriz_de_deteccion(
     mutantes: Sequence[MutanteVial], auditar: Callable[[MutanteVial], bool]
 ) -> dict[str, tuple[int, int]]:
     """(detectados, total) por tipo. `auditar(mutante)` dice si algo lo detecta; quien llama arma el
-    auditor (las reglas viales y la conciliación contra el presupuesto de los tramos originales)."""
+    auditor: usa `mutante.presupuesto` si existe y, si no, el coherente de los tramos originales."""
     matriz = {tipo: (0, 0) for tipo in TIPOS_VIALES}
     for mutante in mutantes:
         detectados, total = matriz[mutante.tipo]
