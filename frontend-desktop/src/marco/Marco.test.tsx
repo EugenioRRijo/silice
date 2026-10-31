@@ -565,7 +565,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     await titulo("Hoja de la obra");
     const enlace = await within(screen.getByRole("navigation", { name: "Ruta" })).findByRole("link", { name: "Casa Demo" });
     await u.click(enlace);
-    await titulo("Inicio de presupuestos y obras");
+    await titulo("Resumen de la obra");
     expect(ruta()).toBe("/obra/empresa/7/resumen");
     await new Promise((r) => setTimeout(r, 80));
     expect(enlace).toHaveFocus();

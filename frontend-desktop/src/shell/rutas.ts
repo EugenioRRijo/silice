@@ -62,8 +62,8 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   {
     id: "obras",
-    titulo: "Inicio de presupuestos y obras",
-    enUnaLinea: "Cifras, obras y pendientes de un vistazo",
+    titulo: "Resumen de la obra",
+    enUnaLinea: "La obra abierta de un vistazo: cifras y pendientes",
     seccion: "Trabajo",
     accion: null,
     cargar: () => import("../paginas/obras"),

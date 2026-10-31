@@ -213,12 +213,17 @@ export function textoTotal(total: string | null, moneda: string): string | null 
   return total === null ? null : `${formatoEsVe(total)} ${moneda}`;
 }
 
-// STUB del rojo (Tarea 2): lo reemplaza la implementación.
+// Lo que la franja del Resumen dice de la obra (Tarea 2 del plan F4): «Te falta» si el servidor dice qué pasa, «Siguiente
+// paso» si solo trae la acción, y nada si no trae ninguna. La acción es la que da el servidor (`siguiente`); si la cuenta
+// puede abrir su pantalla lo decide quien pinta (`pantallaVisible`).
 export interface Paso {
   tipo: "falta" | "siguiente";
   texto: string;
   accion: { texto: string; pagina: string } | null;
 }
-export function pasoDeLaObra(_obra: ObraFilaRespuesta): Paso | null {
+
+export function pasoDeLaObra(obra: ObraFilaRespuesta): Paso | null {
+  if (obra.que_pasa) return { tipo: "falta", texto: obra.que_pasa, accion: obra.siguiente };
+  if (obra.siguiente !== null) return { tipo: "siguiente", texto: obra.siguiente.texto, accion: obra.siguiente };
   return null;
 }
