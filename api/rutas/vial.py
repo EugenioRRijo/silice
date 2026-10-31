@@ -36,6 +36,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
+from api.acceso_modulos import CUALQUIER_ROL, requiere_modulo
 from api.admin_acceso import cuenta_con
 from api.dependencias import SesionDep, url_de_la_peticion
 from api.esquemas_vial import (
@@ -83,7 +84,13 @@ class _RutaVial(RutaSinCache, RutaSinEco):
     mensaje_por_omision = MENSAJE_FORMA
 
 
-router = APIRouter(prefix="/v1/vial", tags=["vial"], route_class=_RutaVial)
+# Sesión de cualquier rol y luego el módulo: sin entrar sigue siendo 401; el rol va en cada ruta.
+router = APIRouter(
+    prefix="/v1/vial",
+    tags=["vial"],
+    dependencies=[Depends(CUALQUIER_ROL), Depends(requiere_modulo("vial"))],
+    route_class=_RutaVial,
+)
 
 LEER = Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))
 CuentaQueEdita = Annotated[

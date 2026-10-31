@@ -44,6 +44,7 @@ from api.rutas import (
     libros,
     listas,
     mercado,
+    modulos,
     obras,
     precios_empresa,
     presupuestos,
@@ -195,6 +196,9 @@ app.include_router(produccion_planta.router)
 app.include_router(vial.router)
 # Plan vial (T15): /v1/riesgo, informe de mejora de la estimacion (VER_RIESGO, clave o sesion)
 app.include_router(riesgo.router)
+# Plan vial (T19): /v1/modulos, especialidades y modulos activables (GET: cualquier rol;
+# PUT: administrador)
+app.include_router(modulos.router)
 # Plan vial (T17): /v1/fcas, el FCAS por componentes (cuenta pura; clave o sesion de cualquier rol)
 app.include_router(fcas.router)
 # T10 (montar un presupuesto): /v1/buscar/partidas, buscador C-1 (LEER_PROYECTO en la ruta)

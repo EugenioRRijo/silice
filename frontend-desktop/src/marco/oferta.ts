@@ -16,24 +16,25 @@ export interface Oferta {
   sueltas: readonly PaginaDef[];
 }
 
-function usableLa(pagina: string | null, acciones: readonly string[], modoEntrega: boolean): boolean {
+function usableLa(pagina: string | null, acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[]): boolean {
   const def = pagina === null ? undefined : paginaPorId(pagina);
-  return def !== undefined && usable(def, acciones, modoEntrega);
+  return def !== undefined && usable(def, acciones, modoEntrega, apagados);
 }
 
-export function ofertaDe(acciones: readonly string[], modoEntrega: boolean): Oferta {
+// `apagados` son los módulos que la instalación apagó (plan vial, Tarea 19): sus secciones, entradas y pantallas no se ofrecen.
+export function ofertaDe(acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[] = []): Oferta {
   // Una sección con `pagina: null` aún no tiene pantalla: no se ofrece.
-  const usables = SECCIONES_DE_OBRA.filter((s) => usableLa(s.pagina, acciones, modoEntrega));
+  const usables = SECCIONES_DE_OBRA.filter((s) => usableLa(s.pagina, acciones, modoEntrega, apagados));
   const secciones = usables.filter((s) => !s.soloVial);
   const soloVial = usables.filter((s) => s.soloVial);
-  const entradas = ENTRADAS_DE_EMPRESA.filter((e) => usableLa(e.pagina, acciones, modoEntrega));
+  const entradas = ENTRADAS_DE_EMPRESA.filter((e) => usableLa(e.pagina, acciones, modoEntrega, apagados));
   // Una sección solo de obras viales no es "sitio" de su pantalla: la pantalla sigue entre las sueltas, para que quien
   // aún no tiene tramos la encuentre con el buscador (Ctrl+K).
   const conSitio = new Set<string | null>([
     ...SECCIONES_DE_OBRA.filter((s) => !s.soloVial).map((s) => s.pagina),
     ...ENTRADAS_DE_EMPRESA.map((e) => e.pagina),
   ]);
-  const sueltas = PAGINAS.filter((p) => !conSitio.has(p.id) && usable(p, acciones, modoEntrega));
+  const sueltas = PAGINAS.filter((p) => !conSitio.has(p.id) && usable(p, acciones, modoEntrega, apagados));
   return { secciones, soloVial, entradas, sueltas };
 }
 
@@ -53,11 +54,12 @@ export function obrasAlcanzables(
 }
 
 export function useOferta() {
-  const sesion = useContext(ContextoAplicacion)?.sesion;
+  const aplicacion = useContext(ContextoAplicacion);
+  const sesion = aplicacion?.sesion;
   const acciones = sesion?.acciones ?? [];
   return {
     acciones,
     puedeCambiarDeCarpeta: acciones.includes("cambiar_caso"),
-    oferta: ofertaDe(acciones, sesion?.modo_entrega ?? false),
+    oferta: ofertaDe(acciones, sesion?.modo_entrega ?? false, aplicacion?.modulosApagados),
   };
 }

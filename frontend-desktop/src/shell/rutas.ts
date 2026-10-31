@@ -20,6 +20,9 @@ export interface PaginaDef {
   seccion: Seccion;
   // La `Accion` de seguridad/permisos.py que exige la pagina (la declara su router en api/acceso.py); null = toda cuenta la ve.
   accion: string | null;
+  // El módulo activable (`MODULOS` de aplicacion/modulos.py) al que pertenece: si la instalación lo apagó, la pantalla ni
+  // se ofrece ni se abre (plan vial, Tarea 19). Sin módulo, la pantalla es de siempre.
+  modulo?: "produccion" | "vial" | "riesgo" | "edificacion";
   // Carga perezosa: un archivo aparte en el dist, que solo se baja al abrir la pagina.
   cargar: () => Promise<{ default: ComponentType }>;
 }
@@ -210,6 +213,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     enUnaLinea: "Lo que requiere atención en la arenera",
     seccion: "Trabajo",
     accion: "operar_arenera",
+    modulo: "produccion",
     cargar: () => import("../paginas/produccion"),
   },
   {
@@ -218,6 +222,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     enUnaLinea: "Cuánto hay y cuánto queda de cada material",
     seccion: "Trabajo",
     accion: "operar_arenera",
+    modulo: "produccion",
     cargar: () => import("../paginas/existencias"),
   },
   {
@@ -226,6 +231,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     enUnaLinea: "Registre los costos de la cantera y la planta",
     seccion: "Trabajo",
     accion: "registrar_costos_produccion",
+    modulo: "produccion",
     cargar: () => import("../paginas/produccion/CostosDelPeriodo"),
   },
   {
@@ -234,6 +240,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     enUnaLinea: "Qué lleva una tonelada de cada mezcla",
     seccion: "Trabajo",
     accion: "operar_arenera",
+    modulo: "produccion",
     cargar: () => import("../paginas/produccion/RecetaPlanta"),
   },
   {
@@ -242,6 +249,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     enUnaLinea: "Registre lo que produjo la planta con su receta",
     seccion: "Trabajo",
     accion: "operar_arenera",
+    modulo: "produccion",
     cargar: () => import("../paginas/produccion/ProducirMezcla"),
   },
   {
@@ -250,6 +258,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     enUnaLinea: "Calcule el costo propio de cada agregado y mezcla",
     seccion: "Trabajo",
     accion: "registrar_costos_produccion",
+    modulo: "produccion",
     cargar: () => import("../paginas/produccion/CostoPorTonelada"),
   },
   {
@@ -258,6 +267,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     enUnaLinea: "Importe los tramos de una vía y vea sus cantidades",
     seccion: "Trabajo",
     accion: "editar_hoja",
+    modulo: "vial",
     cargar: () => import("../paginas/vial/Tramos"),
   },
   {
@@ -266,6 +276,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     enUnaLinea: "Cuánto puede subir el presupuesto si suben los precios",
     seccion: "Trabajo",
     accion: "ver_riesgo",
+    modulo: "riesgo",
     cargar: () => import("../paginas/riesgo/RiesgoDeLaObra"),
   },
   {
@@ -295,8 +306,10 @@ export function rutaDe(pagina: Pick<PaginaDef, "id">): string {
 }
 
 // Permisos y modo entrega. Con `modo_entrega` (SILICE_MODO_ENTREGA=1) la seccion Investigacion desaparece. La
-// navegacion no es el control (S3 5.1): la API vuelve a exigir cada accion; aqui solo se decide que se ofrece.
-export function usable(pagina: PaginaDef, acciones: readonly string[], modoEntrega: boolean): boolean {
+// navegacion no es el control (S3 5.1): la API vuelve a exigir cada accion; aqui solo se decide que se ofrece. `apagados`
+// son los modulos que la instalacion apago (plan vial, Tarea 19): sus pantallas no se ofrecen.
+export function usable(pagina: PaginaDef, acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[] = []): boolean {
   if (modoEntrega && pagina.seccion === "Investigación") return false;
+  if (pagina.modulo !== undefined && apagados.includes(pagina.modulo)) return false;
   return pagina.accion === null || acciones.includes(pagina.accion);
 }

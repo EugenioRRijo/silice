@@ -45,10 +45,12 @@ import {
   rutaDeObra,
   seccionPorId,
 } from "./secciones";
+import { useModulos } from "./useModulos";
 import { useObras } from "./useObras";
 import { ContextoPendientes, useCargaDePendientes } from "./usePendientes";
 
 export const MENSAJE_SIN_PERMISO = "Su cuenta no tiene permiso para esta pantalla o acción.";
+export const MENSAJE_APAGADA = "Esta función está apagada en esta instalación. Quien administra puede encenderla en Administración.";
 const CARPETA_CAMBIADA = "Carpeta cambiada";
 
 export interface PropsDelMarco {
@@ -107,6 +109,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
   const obras = useObras(acciones);
   const { recargar: recargarObras } = obras;
+  // Lo que la instalación apagó (plan vial, Tarea 19): no se ofrece ni se abre.
+  const { apagados: modulosApagados, recargar: recargarModulos } = useModulos();
 
   // Un recorrido en curso, la pregunta de salida abierta, los formularios sucios y el diálogo «Nueva obra» no
   // sobreviven a la sesión.
@@ -282,6 +286,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       proyecto,
       nombreProyecto,
       caso: casos?.actual ?? null,
+      modulosApagados,
+      recargarModulos,
       recargarProyectos: recargarObras,
       elegirObra,
       abrirNuevaObra,
@@ -293,7 +299,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       almacenDelLibro: almacen,
       crearHojaVisor: crearHoja,
     }),
-    [sesion, proyecto, nombreProyecto, casos, recargarObras, elegirObra, abrirCarpeta, monedaPendiente, declararMoneda, declarandoMoneda, alExpirar, almacen, crearHoja],
+    [sesion, proyecto, nombreProyecto, casos, modulosApagados, recargarModulos, recargarObras, elegirObra, abrirCarpeta, monedaPendiente, declararMoneda, declarandoMoneda, alExpirar, almacen, crearHoja],
   );
 
   let obraDeLaSesion: ObraDeLaSesion = null;
@@ -304,7 +310,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   }
 
   const pantalla = (pagina: PaginaDef | undefined): ReactNode => (
-    <PantallaDeRuta pagina={pagina} acciones={acciones} modoEntrega={modoEntrega} />
+    <PantallaDeRuta pagina={pagina} acciones={acciones} modoEntrega={modoEntrega} apagados={modulosApagados} />
   );
   // Con la columna del recorrido a la vista, el contenido le cede su ancho (ColumnaRecorrido.scss).
   const recorrido = useRecorrido();
@@ -393,8 +399,16 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
 }
 
 // La pantalla con su permiso: la que la cuenta no puede usar dice por qué (la API también la rechazaría).
-function PantallaDeRuta({ pagina, acciones, modoEntrega }: { pagina: PaginaDef | undefined; acciones: readonly string[]; modoEntrega: boolean }) {
+function PantallaDeRuta({ pagina, acciones, modoEntrega, apagados }: { pagina: PaginaDef | undefined; acciones: readonly string[]; modoEntrega: boolean; apagados: readonly string[] }) {
   if (!pagina) return <Navigate to={RUTA_DE_PENDIENTES} replace />;
+  // Una pantalla de una especialidad apagada lo dice (a quien sí podría usarla); las demás, «Sin permiso».
+  if (!usable(pagina, acciones, modoEntrega, apagados) && usable(pagina, acciones, modoEntrega)) {
+    return (
+      <div className="silice-pagina-aviso">
+        <EstadoVacio titulo="Apagada" descripcion={MENSAJE_APAGADA} />
+      </div>
+    );
+  }
   if (!usable(pagina, acciones, modoEntrega)) {
     return (
       <div className="silice-pagina-aviso">

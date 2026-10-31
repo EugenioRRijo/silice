@@ -16,7 +16,7 @@ const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";
 // Inicio de «Auditoría»: arriba el Excel de un presupuesto (con o sin recorrido guiado), debajo lo ultimo que se audito.
 // Cada bloque responde una pregunta («¿que hago?», «¿donde estaba?»); nada de tarjetas de adorno.
 export default function PaginaAuditoria() {
-  const { alExpirar, caso, proyecto, nombreProyecto, sesion } = useAplicacion();
+  const { alExpirar, caso, proyecto, nombreProyecto, sesion, modulosApagados } = useAplicacion();
   const navegar = useNavigate();
   const [archivo, setArchivo] = useState<File | null>(null);
   // Auditar y el historial son de quien puede leer proyectos (la API contestaria 403, VB-9); quien no puede no ve la
@@ -29,7 +29,7 @@ export default function PaginaAuditoria() {
   const posicion = recorrido ? pasoDeRuta(recorrido, "/auditoria") : null;
   const siguiente = recorrido && posicion !== null ? recorrido.pasos[posicion + 1] : undefined;
   const paginaSiguiente = siguiente ? paginaPorId(siguiente.pagina) : undefined;
-  const puedeSeguir = paginaSiguiente !== undefined && usable(paginaSiguiente, sesion.acciones, sesion.modo_entrega);
+  const puedeSeguir = paginaSiguiente !== undefined && usable(paginaSiguiente, sesion.acciones, sesion.modo_entrega, modulosApagados);
 
   const auditar = (modo: ModoDeAuditoria) => {
     if (!archivo) return;

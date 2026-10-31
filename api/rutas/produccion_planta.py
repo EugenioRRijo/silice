@@ -39,6 +39,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from api.acceso_modulos import requiere_modulo
 from api.admin_acceso import administrar
 from api.dependencias import (
     USUARIO_API,
@@ -97,7 +98,7 @@ PUBLICAR_COSTO = administrar(Accion.PUBLICAR_COSTO_PROPIO)
 router = APIRouter(
     prefix="/v1/produccion",
     tags=["produccion"],
-    dependencies=[Depends(OPERAR_ARENERA)],
+    dependencies=[Depends(OPERAR_ARENERA), Depends(requiere_modulo("produccion"))],
     route_class=RutaSinCache,  # costos y recetas no se guardan en el navegador
 )
 

@@ -878,7 +878,8 @@ describe("BarraLateral con módulos apagados (plan vial, Tarea 19)", () => {
 
   it("con producción apagada, «Producción» no aparece en la barra", async () => {
     pintarConApagados(["produccion"]);
-    await arbol();
+    const empresa = await screen.findByRole("navigation", { name: "Empresa" });
+    expect(within(empresa).getAllByRole("link").length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /Producción/ })).toBeNull();
   });
 });

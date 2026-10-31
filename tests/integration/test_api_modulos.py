@@ -1,4 +1,4 @@
-"""`/v1/modulos`: especialidades y módulos activables por instalación (plan vial, Tarea 19). FICTICIO.
+"""`/v1/modulos`: especialidades y módulos activables (plan vial, Tarea 19). Datos FICTICIOS.
 
 Oráculos a mano. Por defecto los cuatro módulos (producción, vial, edificación y riesgo) están
 activos. Apagar uno es cosa del administrador (`activar_modulos`): `ana` (arma) y `rita` (revisa)
@@ -103,9 +103,7 @@ def admin() -> tuple[TestClient, str]:
 
 def _poner(cuenta, clave: str, activo: bool):
     navegador, ficha = cuenta
-    return navegador.put(
-        f"/v1/modulos/{clave}", json={"activo": activo}, headers=protegida(ficha)
-    )
+    return navegador.put(f"/v1/modulos/{clave}", json={"activo": activo}, headers=protegida(ficha))
 
 
 def _estado(cuenta) -> dict[str, bool]:
@@ -162,7 +160,12 @@ def test_el_administrador_apaga_y_enciende_y_queda_quien_y_cuando(admin) -> None
     assert fila["activo"] is False
     assert fila["cambiado_por"] == "admin"
     assert abs(datetime.fromisoformat(fila["cambiado_el"]) - datetime.now()) < timedelta(minutes=2)
-    assert _estado(admin) == {"produccion": True, "vial": False, "edificacion": True, "riesgo": True}
+    assert _estado(admin) == {
+        "produccion": True,
+        "vial": False,
+        "edificacion": True,
+        "riesgo": True,
+    }
     assert _poner(admin, "vial", True).status_code == 200
     assert _estado(admin)["vial"] is True
 
@@ -172,7 +175,7 @@ def test_quien_no_administra_recibe_403(login: str, admin) -> None:
     quien = con_cuenta(app, login)
     r = _poner(quien, "vial", False)
     assert r.status_code == 403, r.text
-    assert r.json()["detail"] == MENSAJE_PERMISO
+    assert r.json()["detalle"] == MENSAJE_PERMISO
     assert _estado(admin)["vial"] is True
 
 
@@ -194,7 +197,7 @@ def test_vial_apagado_404_con_el_detalle_de_dv4_y_los_tramos_siguen(ana, admin) 
     assert _poner(admin, "vial", False).status_code == 200
     apagado = _tramos(ana)
     assert apagado.status_code == 404, apagado.text
-    assert apagado.json() == {"detail": APAGADO_VIAL}
+    assert apagado.json() == {"detalle": APAGADO_VIAL}
     assert _guardar_tramos(ana).status_code == 404
     assert ana[0].get("/v1/vial/obras").status_code == 404
     assert _filas_de_tramos() == 1  # nada se borró
@@ -219,19 +222,25 @@ def test_produccion_apagada_cierra_la_arenera_y_los_costos(ana, admin) -> None:
     for ruta in ("/v1/produccion/materiales", "/v1/produccion/costos", "/v1/produccion/calculos"):
         r = navegador.get(ruta)
         assert r.status_code == 404, (ruta, r.text)
-        assert r.json() == {"detail": APAGADO_PRODUCCION}
+        assert r.json() == {"detalle": APAGADO_PRODUCCION}
     assert _poner(admin, "produccion", True).status_code == 200
     assert navegador.get("/v1/produccion/materiales").status_code == 200
 
 
 def test_riesgo_apagado_404_y_al_encender_vuelve(ana, admin) -> None:
     navegador, ficha = ana
-    assert navegador.post("/v1/riesgo/mejora", json=MEJORA, headers=protegida(ficha)).status_code == 200
+    assert (
+        navegador.post("/v1/riesgo/mejora", json=MEJORA, headers=protegida(ficha)).status_code
+        == 200
+    )
     assert _poner(admin, "riesgo", False).status_code == 200
     r = navegador.post("/v1/riesgo/mejora", json=MEJORA, headers=protegida(ficha))
-    assert r.status_code == 404 and r.json() == {"detail": APAGADO_RIESGO}
+    assert r.status_code == 404 and r.json() == {"detalle": APAGADO_RIESGO}
     assert _poner(admin, "riesgo", True).status_code == 200
-    assert navegador.post("/v1/riesgo/mejora", json=MEJORA, headers=protegida(ficha)).status_code == 200
+    assert (
+        navegador.post("/v1/riesgo/mejora", json=MEJORA, headers=protegida(ficha)).status_code
+        == 200
+    )
 
 
 def test_la_aplicacion_arranca_y_responde_con_todo_apagado(ana, admin) -> None:

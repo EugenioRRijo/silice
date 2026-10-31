@@ -42,7 +42,7 @@ export default function PaginaObras() {
 }
 
 function Mesa({ recargadaPor, alObraNueva }: { recargadaPor: string | null; alObraNueva: (codigo: string) => void }) {
-  const { sesion, proyecto, caso, alExpirar, elegirObra, abrirNuevaObra, abrirCarpeta } = useAplicacion();
+  const { sesion, proyecto, caso, alExpirar, elegirObra, abrirNuevaObra, abrirCarpeta, modulosApagados } = useAplicacion();
   const { acciones, modo_entrega: modoEntrega } = sesion;
   const bloques = bloquesPedidos(acciones);
   const pideAprobar = bloques.includes("por_aprobar");
@@ -64,7 +64,7 @@ function Mesa({ recargadaPor, alObraNueva }: { recargadaPor: string | null; alOb
     if (desconocida && proyecto !== null) alObraNueva(proyecto);
   }, [desconocida, proyecto, alObraNueva]);
 
-  const puedeIr = useCallback((pagina: string) => pantallaVisible(pagina, acciones, modoEntrega), [acciones, modoEntrega]);
+  const puedeIr = useCallback((pagina: string) => pantallaVisible(pagina, acciones, modoEntrega, modulosApagados), [acciones, modoEntrega, modulosApagados]);
   // Primero se pregunta (si hay trabajo sin guardar); con «Quedarme» no se elige obra ni se navega.
   const alIr = useCallback(
     async (codigo: string, pagina: string) => {

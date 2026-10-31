@@ -12,6 +12,11 @@ export interface Aplicacion {
   nombreProyecto?: string | null;
   // Carpeta de trabajo (el caso en la API, la base de datos) en uso, o null mientras carga o si la API no lo informa.
   caso: CasoRespuesta | null;
+  // Las especialidades que la instalacion apago (`GET /v1/modulos`, plan vial Tarea 19): sus pantallas no se ofrecen ni se
+  // abren. Sin esta lista (pruebas, o la API no la dio) no se oculta nada: la API sigue cortando.
+  modulosApagados?: readonly string[];
+  // Vuelve a leer lo apagado; Administracion › Especialidades lo llama al encender o apagar una.
+  recargarModulos?: () => void;
   // Para volver a pedir la lista de proyectos (por ejemplo, despues de crear uno).
   recargarProyectos: () => void;
   // Plan de modulos, MOD-3b. Fija la obra (el proyecto en la API) y la recuerda para la cuenta (`PUT /v1/sesion/proyecto`).

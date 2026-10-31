@@ -53,6 +53,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from api.acceso_modulos import requiere_modulo
 from api.dependencias import USUARIO_API, SesionInstalacionDep
 from api.proteccion import LIMITE_CUERPO
 from api.sesion_web import exigir_clave_o_sesion
@@ -80,7 +81,7 @@ OPERAR_ARENERA = exigir_clave_o_sesion(Accion.OPERAR_ARENERA)
 router = APIRouter(
     prefix="/v1/produccion",
     tags=["produccion"],
-    dependencies=[Depends(OPERAR_ARENERA)],
+    dependencies=[Depends(OPERAR_ARENERA), Depends(requiere_modulo("produccion"))],
     route_class=RutaSinCache,  # existencias y pesajes no se guardan en el navegador
 )
 

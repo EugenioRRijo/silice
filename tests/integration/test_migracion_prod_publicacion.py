@@ -109,7 +109,7 @@ def test_una_base_que_ya_trae_la_tabla_se_adopta(tmp_path: Path) -> None:
 
     with closing(sqlite3.connect(base)) as conexion:
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            (REVISION,)
+            ("ins_0010_modulo",)
         ]
         assert conexion.execute("SELECT calculo_id, lista_id FROM prod_publicacion").fetchall() == [
             (1, 1)

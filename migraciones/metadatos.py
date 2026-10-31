@@ -18,6 +18,7 @@ from aplicacion.tablas_eleccion import METADATA_ELECCION
 from aplicacion.tablas_indice_aprobacion import METADATA_INDICE_APROBACION
 from aplicacion.tablas_medicion import METADATA_MEDICION
 from aplicacion.tablas_mercado import METADATA_MERCADO
+from aplicacion.tablas_modulos import METADATA_MODULOS
 from aplicacion.tablas_obra import METADATA_OBRA
 from aplicacion.tablas_procura import METADATA_PROCURA
 from aplicacion.tablas_vial import METADATA_VIAL
@@ -49,4 +50,5 @@ METADATAS_INSTALACION: tuple[MetaData, ...] = (
     METADATA_HISTORIAL,
     METADATA_ELECCION,
     METADATA_INDICE_APROBACION,
+    METADATA_MODULOS,
 )

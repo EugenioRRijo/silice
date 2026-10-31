@@ -39,7 +39,7 @@ const ADMIN: SesionRespuesta = {
     "administrar_empresa",
     "administrar_precios",
     "administrar_red_y_api",
-    "activar_modulos",  # plan vial, Tarea 19: solo el administrador
+    "activar_modulos",
     "cambiar_carpeta_de_datos",
   ],
 };
