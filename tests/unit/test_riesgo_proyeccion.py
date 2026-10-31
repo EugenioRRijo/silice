@@ -12,6 +12,7 @@ Todo es ficticio: insumos, recetas, series y tasa inventados para la prueba (nin
 
 from __future__ import annotations
 
+import hashlib
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -411,9 +412,28 @@ def test_serie_de_moneda_desconocida_se_niega():
     historia = _historia()
     historia["INDICE_BS_X"] = _creciente(D("1.01"))
 
+    mapa = MapaSeries({FLETE: "INDICE_BS_X"})
+
     with pytest.raises(ValueError, match="INDICE_BS_X"):
-        mapa = MapaSeries({FLETE: "INDICE_BS_X"})
         proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p())
+
+
+def test_insumo_que_sigue_la_tasa_en_presupuesto_en_usd_se_niega():
+    presupuesto, composiciones = _obra({TRANSPORTE: D(50)}, moneda="USD")
+    mapa = MapaSeries({FLETE: SERIE_TASA})
+
+    with pytest.raises(ValueError, match="presupuesto en USD .*: Flete$"):
+        proyectar(presupuesto, composiciones, PARAMETROS, _historia(), mapa, _p())
+
+
+def test_insumo_que_sigue_la_tasa_en_presupuesto_en_bs():
+    presupuesto, composiciones = _obra({TRANSPORTE: D(50)}, moneda="Bs")
+    mapa = MapaSeries({FLETE: SERIE_TASA})
+
+    p = proyectar(presupuesto, composiciones, PARAMETROS, _historia(tasa=D("1.02")), mapa, _p())
+
+    esperado = D("1265") * D("6.434283382464") / 6
+    assert abs(p.percentiles[50] - esperado) < TOLERANCIA
 
 
 def test_percentil_mas_cercano_por_rango():
@@ -479,7 +499,7 @@ def _sembrar(sesion, codigo: str, unidad: str, periodicidad: str, fechas: list[d
         DefinicionSerie(codigo, f"{codigo} ficticia", "Prueba", unidad, periodicidad),
         [Observacion(f, D(i + 1), False) for i, f in enumerate(fechas)],
         archivo=f"{codigo}.csv",
-        huella=f"huella-{codigo}",
+        huella=hashlib.sha256(codigo.encode()).hexdigest(),
         fuente="prueba ficticia",
         fecha_descarga=date(2027, 3, 1),
         responsable="Prueba",
