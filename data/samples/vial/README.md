@@ -7,8 +7,17 @@ empresa; no sirven como referencia de diseño.
 ## Formato
 
 Separador `;` y coma decimal (lo que exporta una hoja de cálculo en es-VE). El lector también acepta `,` como
-separador (si la cabecera no trae `;`) y punto decimal; con coma decimal, el punto se lee como separador de miles
-(`1.234,5` = 1234,5). Codificación UTF-8 (con o sin BOM).
+separador (si la cabecera no trae `;`). Codificación UTF-8 (con o sin BOM).
+
+Cifras (`adapters/vial/tabular.py`, `numero`), solo con cifras 0-9 y un «-» opcional:
+
+- **Con coma**: la coma es el decimal y los puntos separan los miles de tres en tres: `7,30`, `1234,5`,
+  `1.234,5`, `12.345.678,9` (la misma regla que `aplicacion/cifras.py`).
+- **Sin coma**: el punto es el decimal: `7.30`, `0.123`, `850`.
+- **Ambiguo**: un número sin coma con forma de miles (`1.234`) se rechaza con «escriba 1234 o 1,234»; con dos o
+  más grupos (`1.234.567`) se pide escribirlo sin puntos (`1234567`) o con coma (`1.234.567,0`).
+- Se rechazan, con la fila y la columna: `1,234.5`, `7.3,5`, `1.2345,6`, `1 234`, `1_000`, `1e3`, `+5`, `,5`, `5,`,
+  `.5`, `5.` y las cifras que no son 0-9 ASCII.
 
 Columnas, todas obligatorias en la cabecera:
 

@@ -114,10 +114,15 @@ class Tramo:
             raise ValueError("el tramo necesita un id")
         if len(self.id) > LARGO_MAXIMO_ID:
             raise ValueError(f"el id del tramo pasa de {LARGO_MAXIMO_ID} caracteres: {self.id!r}")
+        if ":" in self.id:
+            # «:» separa las partes de `origen_id` («tramo:<id>:capa:<n>»): lo haría ambiguo.
+            raise ValueError(f"el id del tramo no puede llevar «:»: {self.id!r}")
         for nombre in ("progresiva_ini_km", "progresiva_fin_km"):
             valor = getattr(self, nombre)
             if not isinstance(valor, Decimal) or not valor.is_finite():
                 raise ValueError(f"tramo {self.id}: {nombre} debe ser un Decimal finito")
+            if valor < 0:
+                raise ValueError(f"tramo {self.id}: la {nombre} no puede ser negativa: {valor}")
         if self.progresiva_fin_km <= self.progresiva_ini_km:
             raise ValueError(
                 f"tramo {self.id}: la progresiva final ({self.progresiva_fin_km}) debe ser mayor "

@@ -6,6 +6,10 @@ parámetros, así que la expresión guardada y la cantidad no pueden divergir (r
 
 Orden determinista: tramos en el orden recibido; dentro de cada tramo, las capas en su orden (n = 1,
 2, …) y, en cada capa, área, volumen, masa, litros y transporte; después la demarcación.
+
+La especialidad y el tipo de capa o de línea van como directivas (`_especialidad`, `_capa`,
+`_demarcacion`; convención DA-SF-3, `core/verification/directivas.es_directiva`): clasifican la
+cantidad y R4 no las contrasta con el texto del APU.
 """
 
 from __future__ import annotations
@@ -85,7 +89,7 @@ def _items_de_capa(tramo: Tramo, n: int, capa: Capa) -> list[ItemComputo]:
         if valor is not None:
             valores[nombre] = valor
     origen_id = f"tramo:{tramo.id}:capa:{n}"
-    especificaciones = {"especialidad": "vial", "capa": capa.tipo}
+    especificaciones = {"_especialidad": "vial", "_capa": capa.tipo}
     items = []
     for clave, regla in _PARTIDAS_POR_CAPA[capa.tipo]:
         if regla == MASA and "densidad" not in valores:
@@ -120,7 +124,7 @@ def derivar_tramos(tramos: Sequence[Tramo]) -> list[ItemComputo]:
                     valores,
                     tramo,
                     f"tramo:{tramo.id}:demarcacion:{n}",
-                    {"especialidad": "vial", "demarcacion": linea.tipo},
+                    {"_especialidad": "vial", "_demarcacion": linea.tipo},
                     nota_fraccion if linea.tipo == "discontinua" else "",
                 )
             )

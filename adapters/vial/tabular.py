@@ -1,16 +1,18 @@
 """Lector CSV de tramos viales y `AdaptadorVial` (plan vial, Tarea 7; Foco de revisión 3).
 
 Formato en `data/samples/vial/README.md`: una fila por capa o por línea de demarcación, separador
-`;` (o `,` si la cabecera no trae `;`), coma o punto decimal. Todo error nombra el archivo y la
-fila tal como la numera una hoja de cálculo (la cabecera es la fila 1) y se lanza como
-`ValueError`, que la API traduce a 422. Nada se adivina: lo que no sigue el formato se rechaza.
+`;` (o `,` si la cabecera no trae `;`), coma decimal con punto de miles o punto decimal
+(`numero`). Todo error nombra el archivo y la fila tal como la numera una hoja de cálculo (la
+cabecera es la fila 1) y se lanza como `ValueError`, que la API traduce a 422. Nada se
+adivina: lo que no sigue el formato se rechaza.
 """
 
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass, field
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from pathlib import Path
 
 from adapters.vial.derivacion import derivar_tramos
@@ -25,26 +27,50 @@ _CAPA = "capa"
 _DEMARCACION = "demarcacion"
 
 
-def numero(texto: str) -> Decimal:
-    """`"7,30"` -> `Decimal("7.30")`; `"1.234,5"` -> `Decimal("1234.5")`; `"7.30"` -> `7.30`.
+#: Lo que se recorta en los bordes de una celda, y nada más: copia de `aplicacion.cifras.BLANCOS`
+#: (un adaptador no importa de `aplicacion`; una prueba compara ambos lectores con el oráculo
+#: `tests/fixtures/cifras_escritas.json`).
+BLANCOS = " \t\n\r\x0b\x0c\xa0\x85\ufeff"
 
-    Con coma, la coma es el separador decimal y los puntos son de miles (es-VE); sin coma, el
-    punto es el decimal. Un texto que no es un número finito lanza `ValueError`.
+# `[0-9]` y no `\d`: en Python `\d` también acepta cifras arábigas o de ancho completo.
+#: Con coma: coma decimal y, en la parte entera, puntos de miles de tres en tres (es-VE, la regla
+#: de `aplicacion/cifras.py`).
+_CON_COMA = re.compile(r"-?(?:[0-9]+|[1-9][0-9]{0,2}(?:\.[0-9]{3})+),[0-9]+")
+#: Sin coma: entero o punto decimal («7.30»).
+_SIN_COMA = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
+#: Sin coma pero con forma de miles («1.234»): ¿mil doscientos treinta y cuatro o uno coma dos?
+_MILES_SIN_COMA = re.compile(r"-?[1-9][0-9]{0,2}(?:\.[0-9]{3})+")
+
+_AYUDA = "coma decimal y punto de miles (1.234,5) o punto decimal sin miles (1234.5)"
+
+
+def numero(texto: str) -> Decimal:
+    """El `Decimal` exacto de una cifra del archivo de tramos; `ValueError` si no sigue la regla.
+
+    - Con coma: la coma es el decimal y los puntos, de miles («7,30», «1.234,5», «12.345.678,9»).
+    - Sin coma: el punto es el decimal («7.30», «0.123», «1.2345»), salvo la forma de miles
+      («1.234», «1.234.567»), que es ambigua y se rechaza pidiendo cómo escribirla.
+    - Solo cifras 0-9 ASCII y un «-» opcional: ni espacios, ni «_», ni exponentes, ni «+».
     """
-    limpio = texto.strip().replace(" ", "")
+    limpio = texto.strip(BLANCOS)
     if "," in limpio:
+        if _CON_COMA.fullmatch(limpio) is None:
+            raise ValueError(f"{texto!r} no es una cifra bien escrita: use {_AYUDA}")
         limpio = limpio.replace(".", "").replace(",", ".")
-    try:
-        valor = Decimal(limpio)
-    except InvalidOperation:
-        raise ValueError(f"no es un número: {texto!r}") from None
-    if not valor.is_finite():
-        raise ValueError(f"no es un número finito: {texto!r}")
-    return valor
+    elif _MILES_SIN_COMA.fullmatch(limpio) is not None:
+        sin_puntos = limpio.replace(".", "")
+        opciones = (
+            sin_puntos if limpio.count(".") > 1 else f"{sin_puntos} o {limpio.replace('.', ',')}"
+        )
+        raise ValueError(f"{texto!r} es ambiguo (¿miles o decimales?): escriba {opciones}")
+    elif _SIN_COMA.fullmatch(limpio) is None:
+        raise ValueError(f"{texto!r} no es una cifra bien escrita: use {_AYUDA}")
+    valor = Decimal(limpio)
+    return valor.copy_abs() if valor.is_zero() else valor
 
 
 def _celda(fila: dict[str, str | None], columna: str) -> str:
-    return (fila.get(columna) or "").strip()
+    return (fila.get(columna) or "").strip(BLANCOS)
 
 
 def _decimal(fila: dict[str, str | None], columna: str) -> Decimal | None:
@@ -54,7 +80,7 @@ def _decimal(fila: dict[str, str | None], columna: str) -> Decimal | None:
     try:
         return numero(texto)
     except ValueError as error:
-        raise ValueError(f"la columna {columna!r} {error}") from None
+        raise ValueError(f"la columna {columna!r}: {error}") from None
 
 
 @dataclass
