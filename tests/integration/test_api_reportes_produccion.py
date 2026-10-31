@@ -3,10 +3,10 @@
 fase D). Datos FICTICIOS.
 
 El costo es el de noviembre de 2026 en USD de `tests/fixtures/costo_propio.py` (`AGR-12` a 5 USD/t,
-`MZ-1` a 50,70). Acceso: `registrar_costos_produccion` (arma y administrador; rita 403; sin sesión
-401) y DESPUÉS el módulo producción (apagado: 404 con el texto de D-V-4). Solo lee la instalación:
-el administrador lo baja sin carpeta abierta. La ruta vieja `/v1/vial/reportes/produccion` ya no
-existe (nadie la usaba fuera de las pruebas).
+`AGR-34` a 5 y `MZ-1` a 50,70). Acceso: `registrar_costos_produccion` (arma y administrador;
+rita 403; sin sesión 401) y DESPUÉS el módulo producción (apagado: 404 con el texto de D-V-4).
+Solo lee la instalación: el administrador lo baja sin carpeta abierta. La ruta vieja
+`/v1/vial/reportes/produccion` ya no existe (nadie la usaba fuera de las pruebas).
 """
 
 from __future__ import annotations
@@ -123,7 +123,11 @@ def _costos(respuesta) -> dict[str, tuple[int, Decimal]]:
 
 def test_quien_registra_costos_baja_el_reporte_de_la_mano(ana, calculo) -> None:
     r = _pedir(ana, periodo=cp.PERIODO)
-    assert _costos(r) == {"AGR-12": (calculo, D(5)), "MZ-1": (calculo, D("50.70"))}
+    assert _costos(r) == {
+        "AGR-12": (calculo, D(5)),
+        "AGR-34": (calculo, D(5)),
+        "MZ-1": (calculo, D("50.70")),
+    }
     assert r.headers["content-type"] == XLSX
     assert r.headers["cache-control"] == "no-store"
     assert r.headers["content-disposition"] == 'attachment; filename="produccion_2026-11.xlsx"'
