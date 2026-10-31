@@ -97,7 +97,10 @@ export function ProveedorDeLaHoja({ children }: { children: ReactNode }) {
 }
 
 function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto: string; nombreProyecto: string | null; children: ReactNode }) {
-  const { alExpirar, sesion } = useAplicacion();
+  const { alExpirar, sesion, recargarProyectos } = useAplicacion();
+  // La obra abierta (null si la Hoja se monta sola, sin obra).
+  const obra = useContext(ContextoDeLaObra);
+  const recargarFicha = obra?.recargarFicha;
   const carga = useCarga<VersionesRespuesta>(rutaDeVersiones(proyecto), alExpirar);
   const { ofertas, recargar: recargarOfertas } = useOfertas(proyecto, nombreProyecto, alExpirar);
   const [elegida, setElegida] = useState<{ proyecto: string; codigo: string } | null>(null);
@@ -168,6 +171,12 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
     () => ({ anfitrion, abiertos: dialogosAbiertos, registrar: registrarDialogo }),
     [anfitrion, dialogosAbiertos, registrarDialogo],
   );
+  // Ronda 2 (mayor del árbitro): la obra ya no se vuelve a montar al cambiar de sección, así que tras crear una versión
+  // se vuelven a leer su ficha (el estado y el «Te falta» del Resumen) y la lista de obras (la línea «Versión:»).
+  const recargarLaObra = useCallback(() => {
+    recargarFicha?.();
+    recargarProyectos();
+  }, [recargarFicha, recargarProyectos]);
   const { guardado, exito, quitarExito, cancelarYDevolverFoco, abrirDesdeElGuardado, alCrearVersion, devolverFocoA } = useGuardadoDeLaPagina({
     proyecto,
     id: estado.estado === "listo" ? estado.borrador.id : null,
@@ -179,6 +188,7 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
     elegirVersion,
     pedirVersion,
     hayConfirmacion: versionPendiente !== null || dialogosAbiertos > 0,
+    alCrearseVersion: recargarLaObra,
   });
   const seguirEditando = useCallback(() => {
     setVersionPendiente(null);
@@ -235,15 +245,15 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
   }, [hayCambios]);
 
   // Dentro de una obra, salir con cambios por el marco pregunta («Cambios sin guardar», foco 1), salvo hacia otra sección
-  // con Hoja de la misma obra, que comparte este borrador. Fuera de una obra (la Hoja montada sola) no se registra.
-  const obra = useContext(ContextoDeLaObra);
+  // con Hoja de la misma obra, que comparte este borrador. Es trabajo en el servidor: el diálogo dice que se retoma al
+  // volver. Fuera de una obra (la Hoja montada sola) no se registra.
   const carpetaDeLaObra = obra?.carpeta ?? null;
   const obraId = obra?.obraId ?? null;
-  const conserva = useMemo(
-    () => (obraId === null ? null : (destino: string) => quedaEnLaHoja(destino, carpetaDeLaObra, obraId)),
+  const enElServidor = useMemo(
+    () => (obraId === null ? null : { conservaAlIrA: (destino: string) => quedaEnLaHoja(destino, carpetaDeLaObra, obraId) }),
     [carpetaDeLaObra, obraId],
   );
-  useFormularioSucio("hoja", conserva !== null && hayCambios, conserva);
+  useFormularioSucio("hoja", enElServidor !== null && hayCambios, enElServidor);
 
   const enRuta = useInRouterContext();
   const versiones: VersionesDeLaObra =

@@ -351,7 +351,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                   )}
                 </div>
               )}
-              <LimiteDeError key={`${claveDelContenido(ubicacion.pathname)}|${generacion}`}>
+              <LimiteDeError key={`${claveDelContenido(ubicacion.pathname)}|${generacion}`} reinicio={ubicacion.pathname}>
                 <Suspense fallback={<EsqueletoPagina />}>
                   <Routes>
                     <Route index element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />

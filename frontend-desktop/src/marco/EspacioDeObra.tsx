@@ -140,6 +140,14 @@ interface ObraDeLaRutaProps {
 function ObraDeLaRuta({ carpeta, obraId, obra, casos, seccion, children }: ObraDeLaRutaProps) {
   const base = useContext(ContextoAplicacion);
   const { recargar, ...ficha } = useFichaDeLaObra(obraId, carpeta);
+  // Ronda 2 de la Tarea 3 (decisión del orquestador): volver al Resumen desde otra sección vuelve a leer la ficha, para
+  // que diga lo que cambió en Presupuesto, Aprobaciones o Control. Mientras llega se ve la anterior (Tarea 1, decisión 3).
+  // Ajuste durante el render (react.dev, «You might not need an effect»): `recargar` es estado de esta misma pieza.
+  const [seccionVista, setSeccionVista] = useState(seccion);
+  if (seccionVista !== seccion) {
+    setSeccionVista(seccion);
+    if (seccion === "resumen") recargar();
+  }
   const valor = useMemo(() => {
     if (!base) return null;
     const caso =

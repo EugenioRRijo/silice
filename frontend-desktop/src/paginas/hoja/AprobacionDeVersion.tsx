@@ -7,6 +7,7 @@ import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AreaTexto } from "../../comun/AreaTexto";
 import { AvisoError } from "../../comun/AvisoError";
 import { nombreDeResponsable } from "../../comun/responsable";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
@@ -88,6 +89,9 @@ interface Props {
 // (la Hoja no depende de esto).
 export function AprobacionDeVersion({ proyecto, version, cambios, alHacerVersionNueva, base }: Props) {
   const { alExpirar } = useAplicacion();
+  // Tras enviar, la ficha de la obra (su etapa en la cabecera y en el Resumen) se vuelve a leer: la obra ya no se monta de
+  // nuevo al cambiar de sección (Tarea 3 del plan F4, ronda 2). Sin obra (la Hoja montada sola) no hay ficha.
+  const recargarFicha = useContext(ContextoDeLaObra)?.recargarFicha;
   // Enviar obra sobre la versión GUARDADA: su regla es solo el permiso (Eugenio, 2026-10-31). «Hacer una versión
   // nueva» lleva a editar el borrador: ahí sí cuenta la base.
   const puedeEnviar = usePuedeEditarLaHoja(null);
@@ -128,9 +132,10 @@ export function AprobacionDeVersion({ proyecto, version, cambios, alHacerVersion
       setEnviando(false);
       setAviso(textoDeEnvio(version, retirada));
       setIntento((n) => n + 1);
+      recargarFicha?.();
       enfocarAlCerrar(idZona);
     },
-    [version, enfocarAlCerrar, idZona],
+    [version, enfocarAlCerrar, idZona, recargarFicha],
   );
 
   const hacerVersionNueva = () => {

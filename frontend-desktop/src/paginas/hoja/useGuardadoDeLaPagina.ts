@@ -20,6 +20,9 @@ interface Opciones {
   pedirVersion: (codigo: string) => void;
   // Hay una confirmación de cambio de versión a la vista: el foco no se devuelve hasta que se cierre.
   hayConfirmacion: boolean;
+  // Se creó una versión (guardar, restaurar, cotizar, retirar, convertir): lo que vive fuera de la Hoja y la nombra (la
+  // ficha de la obra y la lista de obras) se vuelve a leer (Tarea 3 del plan F4, ronda 2).
+  alCrearseVersion?: () => void;
 }
 
 export type DestinoDelFoco = "version" | "guardar";
@@ -38,6 +41,7 @@ export function useGuardadoDeLaPagina({
   elegirVersion,
   pedirVersion,
   hayConfirmacion,
+  alCrearseVersion,
 }: Opciones) {
   const [exito, setExito] = useState<{ proyecto: string; texto: string } | null>(null);
   // El foco vuelve a su sitio cuando el diálogo ya se cerró y el `inert` se quitó (en un navegador real no se puede enfocar
@@ -63,9 +67,10 @@ export function useGuardadoDeLaPagina({
   const alCrearVersion = useCallback(
     async (nueva: string, texto: string) => {
       setExito({ proyecto, texto });
+      alCrearseVersion?.();
       await abrirGuardada(nueva);
     },
-    [proyecto, abrirGuardada],
+    [proyecto, abrirGuardada, alCrearseVersion],
   );
   const alGuardada = useCallback(
     async (r: GuardadoRespuesta) => {

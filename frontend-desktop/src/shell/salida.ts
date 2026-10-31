@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { formulariosSucios, olvidarFormularios } from "./sucio";
+import { formulariosSucios, olvidarFormularios, soloTrabajoEnElServidor } from "./sucio";
 
 // Confirmacion al salir con trabajo sin guardar (diseno de modulos §4 y §12.5). Un solo punto para todas las
 // navegaciones que inician los controles de Silice; atras/adelante del navegador no se interceptan (sin migrar de
@@ -18,6 +18,9 @@ export interface SalidaPendiente {
   extras: readonly string[];
   // La consecuencia dicha por quien pregunta («Si elige otro insumo o partida, se perderán.»); null = la del motivo.
   consecuencia: string | null;
+  // Todo lo sucio vive en el servidor y se retoma al volver (el borrador de la Hoja, Tarea 3 del plan F4): solo al salir
+  // («salir»), sin extras; cambiar de carpeta si lo pierde.
+  retomable: boolean;
 }
 
 let pendiente: (SalidaPendiente & { resolver: (salir: boolean) => void }) | null = null;
@@ -57,7 +60,8 @@ export function confirmarSalida(
   return new Promise<boolean>((resolver) => {
     const anterior = pendiente;
     numero += 1;
-    pendiente = { numero, motivo, pantallas, extras: [...extras], consecuencia, resolver };
+    const retomable = motivo === "salir" && extras.length === 0 && soloTrabajoEnElServidor(destino);
+    pendiente = { numero, motivo, pantallas, extras: [...extras], consecuencia, retomable, resolver };
     anterior?.resolver(false);
     avisar();
   });
