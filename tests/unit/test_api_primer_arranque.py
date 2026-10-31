@@ -85,6 +85,8 @@ CLAVES_DE_SESION = {
 #: Matriz de `seguridad/permisos.py`, en el orden de `Accion`, de cada combinación de roles.
 ACCIONES_ADMINISTRADOR = [
     "operar_arenera",
+    "registrar_costos_produccion",  # plan vial, Tarea 1
+    "publicar_costo_propio",  # plan vial, Tarea 5: solo el administrador
     "cambiar_caso",
     "administrar_cuentas",
     "administrar_empresa",
@@ -99,6 +101,8 @@ ACCIONES_ADMINISTRADOR_Y_ARMA = [
     "decidir_recuperacion",
     "entregar_paquete",
     "operar_arenera",
+    "registrar_costos_produccion",
+    "publicar_costo_propio",
     "leer_proyecto",
     "aprobar_version",
     "cambiar_caso",

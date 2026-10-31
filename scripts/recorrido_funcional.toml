@@ -389,6 +389,29 @@ requiere = ["existencias"]
 accion = "(solo lectura) ver «Lo que requiere atención» de la arenera con el material de la fila anterior"
 espera = { textos = ["Arenera: lo que requiere atención", "Todo sobre el mínimo"] }
 
+# Plan vial, Tareas 2-6: filas de solo lectura; la Tarea 22 (la pasada de navegador) les pone
+# pasos con datos ficticios.
+[[pantalla]]
+ruta = "costos"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Costos del período» del mes en curso"
+espera = { texto = "Costos del período" }
+
+[[pantalla]]
+ruta = "receta_planta"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Receta de la planta»"
+espera = { texto = "Receta de la planta" }
+
+[[pantalla]]
+ruta = "costo_tonelada"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Costo por tonelada» del mes anterior"
+espera = { texto = "Costo por tonelada" }
+
 [[pantalla]]
 ruta = "mercado"
 cuenta = "ana"
