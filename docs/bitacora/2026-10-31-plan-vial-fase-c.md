@@ -8,6 +8,7 @@ ausencia de Eugenio están en `docs/bitacora/2026-10-30-preguntas-para-eugenio.m
 | 12 Series viales y su mapa a insumos | 0effc269, a139bd28 | aprobada r1 |
 | 13 Proyección del riesgo | 841e59f3, 0e2ca161 | aprobada r1 |
 | 14 Comprobación hacia atrás | fa954b78, 03151cdf | aprobada r1 |
+| 15 Informe de mejora de la estimación | d3895216, d2fac136 | aprobada r1 |
 
 ## Menores y avisos para las tareas siguientes
 
@@ -29,9 +30,12 @@ ausencia de Eugenio están en `docs/bitacora/2026-10-30-preguntas-para-eugenio.m
 - Para la tesis: los plazos de los cortes se solapan. La cobertura es un indicador y no una probabilidad con
   intervalo.
 
+- T15 → T16: la pantalla nueva suma su ruta en `shell/rutas.ts` y su fila en `scripts/recorrido_funcional.toml`, con la
+  acción `ver_riesgo`. La API de riesgo recibe cifras con punto: el front convierte la coma es-VE (fila 90).
+
 ## Menores para el cierre de la fase C
 
-- Línea del CHANGELOG de las Tareas 12 y 13.
+- Línea del CHANGELOG de las Tareas 12 a 16.
 - Fila 81. **Decisión del orquestador** sobre la recomendación del árbitro de la T13: un insumo con el mismo nombre y
   dos precios ya no niega la proyección. Se desdobla en variantes locales («Flete [2]»), sin tocar `core/`, cada una con
   el factor de su serie. Se declara en los supuestos y la contribución se agrupa por el nombre original.
@@ -45,3 +49,5 @@ ausencia de Eugenio están en `docs/bitacora/2026-10-30-preguntas-para-eugenio.m
 - T14: en el comentario de `test_un_choque_queda_fuera` hay un salto de línea indebido.
 - T14: `tests/fixtures/riesgo_proyeccion.py` expone nombres con guion bajo (`_mes`, `_obra`, `_historia_variable`,
   `_meses`). Hay que exponerlos sin guion bajo.
+- T15: `api/rutas/riesgo.py` devuelve `str(Decimal)`; conviene `format(x, "f")` para que nunca salga notación
+  exponencial.
