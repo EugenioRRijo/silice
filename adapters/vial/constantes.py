@@ -72,3 +72,90 @@ PARTIDAS_VIALES: dict[str, tuple[str, str, str]] = {
         "t·km",
     ),
 }
+
+
+# --- Rangos de las reglas viales VR1 a VR7 (plan vial, Tarea 9; fuentes del plan, §4) -------------
+
+_A_COTEJAR = "a cotejar con la especificación del proyecto"
+
+#: VR1: diferencia relativa admitida entre las toneladas de carpeta del presupuesto y las derivadas.
+TOLERANCIA_CARPETA = Constante(
+    "V-3",
+    "Tolerancia relativa de las toneladas de carpeta (VR1)",
+    Decimal("0.005"),
+    SUPUESTO_DECLARADO,
+)
+
+#: VR2: puntos de porcentaje admitidos sobre la fórmula de trabajo de la receta.
+TOLERANCIA_ASFALTO_PUNTOS = Constante(
+    "V-4",
+    "Tolerancia del porcentaje de asfalto sobre la fórmula de trabajo, en puntos (VR2)",
+    Decimal("0.5"),
+    f"tolerancia contractual de LanammeUCR (Costa Rica), ±0,5 %; {_A_COTEJAR}",
+)
+
+#: VR3: ligante residual mínimo y máximo, en g/m².
+IMPRIMACION_RESIDUAL_MIN_G_M2 = Constante(
+    "V-5",
+    "Ligante residual mínimo de la imprimación, g/m² (VR3)",
+    Decimal("500"),
+    f"IDU Bogotá 500-05 / pliego de Madrid; {_A_COTEJAR}",
+)
+IMPRIMACION_RESIDUAL_MAX_G_M2 = Constante(
+    "V-6",
+    "Ligante residual máximo de la imprimación con emulsión, g/m² (VR3)",
+    Decimal("2000"),
+    f"IDU Bogotá 610-18 / pliego de Madrid (1.000 a 2.000 g/m² según el suelo); {_A_COTEJAR}",
+)
+ADHERENCIA_RESIDUAL_MIN_G_M2 = Constante(
+    "V-7",
+    "Ligante residual mínimo del riego de adherencia, g/m² (VR3)",
+    Decimal("200"),
+    f"pliego de Madrid; {_A_COTEJAR}",
+)
+DENSIDAD_LIGANTE_KG_L = Constante(
+    "V-8",
+    "Densidad del producto ligante, kg/l (VR3)",
+    Decimal("1.0"),
+    f"{SUPUESTO_DECLARADO}; a cotejar con la ficha del producto",
+)
+FRACCION_RESIDUAL_EMULSION = Constante(
+    "V-9",
+    "Fracción residual de la emulsión asfáltica (VR3)",
+    Decimal("0.60"),
+    f"{SUPUESTO_DECLARADO}; a cotejar con la ficha del producto",
+)
+
+#: VR4: diferencia relativa admitida entre los t·km del presupuesto y toneladas × distancia.
+TOLERANCIA_TRANSPORTE = Constante(
+    "V-10",
+    "Tolerancia relativa de los t·km de transporte (VR4)",
+    Decimal("0.005"),
+    SUPUESTO_DECLARADO,
+)
+
+#: VR5: litros de pintura por km de línea de 10 cm (rendimiento teórico, sin pérdidas).
+PINTURA_MIN_L_KM = Constante(
+    "V-11",
+    "Pintura mínima, l por km de línea de 10 cm (VR5)",
+    Decimal("29"),
+    f"fichas técnicas de Comex, Hempel, Gruposur y Sherwin-Williams; {_A_COTEJAR}",
+)
+PINTURA_MAX_L_KM = Constante(
+    "V-12",
+    "Pintura máxima, l por km de línea de 10 cm (VR5)",
+    Decimal("44"),
+    f"fichas técnicas de Comex, Hempel, Gruposur y Sherwin-Williams; {_A_COTEJAR}",
+)
+ANCHO_LINEA_REFERENCIA_CM = Constante(
+    "V-13",
+    "Ancho de línea al que se refiere el rango de pintura, cm (VR5)",
+    Decimal("10"),
+    "las mismas fichas técnicas de V-11 y V-12",
+)
+ANCHO_LINEA_SUPUESTO_CM = Constante(
+    "V-14",
+    "Ancho de línea cuando la partida de pintura no lo declara, cm (VR5)",
+    Decimal("10"),
+    SUPUESTO_DECLARADO,
+)

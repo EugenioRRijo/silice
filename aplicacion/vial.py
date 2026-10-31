@@ -39,6 +39,7 @@ from sqlalchemy.orm import Session
 
 from adapters.vial.derivacion import derivar_tramos
 from adapters.vial.modelo import Capa, Demarcacion, Tramo
+from adapters.vial.reglas import ReglasViales
 from adapters.vial.tabular import leer_tramos
 from aplicacion import aprobaciones
 from aplicacion.proyectos import resolver_proyecto
@@ -49,6 +50,7 @@ from aplicacion.tablas_vial import (
     hay_tablas_viales,
 )
 from core import models
+from produccion.receta import Receta
 
 __all__ = [
     "CantidadVial",
@@ -57,10 +59,12 @@ __all__ = [
     "VersionInexistente",
     "bloqueo_de_version",
     "cantidades_de_tramos",
+    "formula_asfalto_de_receta",
     "guardado_de_version",
     "heredados_de",
     "guardar_tramos",
     "obras_con_tramos",
+    "reglas_viales",
     "texto_decimal",
     "tramos_de_version",
     "tramos_desde_csv",
@@ -389,3 +393,37 @@ def tramos_desde_csv(contenido: bytes, nombre: str) -> list[Tramo]:
             return leer_tramos(ruta)
         except ValueError as error:
             raise ValueError(str(error).replace(repr(seguro), repr(nombre[:100]))) from None
+
+
+# --- reglas del auditor ---------------------------------------------------------------------------
+
+
+def formula_asfalto_de_receta(receta: Receta | None, codigo_ligante: str | None) -> Decimal | None:
+    """El porcentaje de asfalto (en puntos: 5,5 es 5,5 %) de la fórmula de trabajo de `receta`.
+
+    La fórmula es el componente ligante de la receta: el que lleva `codigo_ligante`, en t por
+    tonelada de mezcla. Sin receta, sin código o sin ese componente en t, `None` (VR2 no se evalúa).
+    """
+    if receta is None or not codigo_ligante:
+        return None
+    for componente in receta.componentes:
+        if componente.codigo == codigo_ligante and componente.unidad == "t":
+            return componente.cantidad_por_t * 100
+    return None
+
+
+def reglas_viales(
+    sesion: Session,
+    version_id: int,
+    *,
+    receta: Receta | None = None,
+    codigo_ligante: str | None = None,
+) -> tuple[ReglasViales, ...]:
+    """Las reglas VR1 a VR7 de la versión, para `elaborar(reglas=(*REGLAS, *reglas_viales(…)))` o
+    `reglas_extra` de la Hoja: sus hallazgos entran en la auditoría como los de `Espacio` (regla
+    ajena a `REGLAS`, que `hallazgos_externos` vuelve a declarar). Vacío si la versión no tiene
+    tramos (propios o heredados)."""
+    tramos = tramos_de_version(sesion, version_id)
+    if not tramos:
+        return ()
+    return (ReglasViales(tramos, formula_asfalto_de_receta(receta, codigo_ligante)),)

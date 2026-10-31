@@ -22,10 +22,12 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from adapters.vial.modelo import Capa, Demarcacion, Tramo
+from adapters.vial.reglas import ReglasViales
 from aplicacion import aprobaciones, vial
 from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion.base_datos import preparar_base
+from produccion.receta import Componente, Receta
 from tests.fixtures.carpeta_aprobaciones import guardar_version, sembrar_vivienda
 
 D = Decimal
@@ -246,3 +248,43 @@ def test_csv_con_fila_mala_dice_la_fila() -> None:
 def test_csv_que_no_es_texto_utf8() -> None:
     with pytest.raises(ValueError, match="ilegible"):
         vial.tramos_desde_csv(b"\xff\xfe\x00\x00", "x.csv")
+
+
+# --- Tarea 9: reglas del auditor ------------------------------------------------------------------
+
+MEZCLA = Receta(
+    1,
+    "MZP-001",
+    (
+        Componente("AGP-001", D("0.945"), "t", "propio"),
+        Componente("LIG-001", D("0.055"), "t", "comprado"),
+        Componente("DIE-001", D("2"), "l", "comprado"),
+    ),
+    "fórmula ficticia",
+    datetime(2026, 10, 1).date(),
+)
+
+
+def test_formula_de_trabajo_es_el_ligante_de_la_receta_en_puntos() -> None:
+    assert vial.formula_asfalto_de_receta(MEZCLA, "LIG-001") == D("5.5")
+
+
+@pytest.mark.parametrize("codigo", [None, "", "NO-HAY", "DIE-001"])
+def test_sin_ligante_en_toneladas_no_hay_formula(codigo: str | None) -> None:
+    assert vial.formula_asfalto_de_receta(MEZCLA, codigo) is None
+
+
+def test_sin_receta_no_hay_formula() -> None:
+    assert vial.formula_asfalto_de_receta(None, "LIG-001") is None
+
+
+def test_reglas_viales_de_una_version_con_tramos_heredados(sesion: Session) -> None:
+    v1, v2 = _version(sesion, "VIV-001"), _version(sesion, "VIV-002")
+    assert vial.reglas_viales(sesion, v2) == ()  # sin tramos, sin reglas
+    vial.guardar_tramos(sesion, v2, [T1, T2], usuario=ANA, ahora=LUNES)
+    (regla,) = vial.reglas_viales(sesion, v2, receta=MEZCLA, codigo_ligante="LIG-001")
+    assert isinstance(regla, ReglasViales)
+    assert regla.tramos == (T1, T2) and regla.formula_asfalto_pct == D("5.5")
+    (sin_receta,) = vial.reglas_viales(sesion, v2)
+    assert sin_receta.formula_asfalto_pct is None
+    assert v1 != v2
