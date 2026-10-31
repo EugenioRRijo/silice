@@ -25,13 +25,13 @@ enviado. Acción `EDITAR_HOJA`:
   que no existe, 404 sin eco; partidas sin APU, 404 con todos los códigos; borrador de otra
   versión, versión que no existe o sin tramos, sin lista o que ya no se abre, o borrador que
   cambió entretanto, 409; cifra mala, 422; la base, 503.
-- `GET /reportes/{tipo}?proyecto=&version=&periodo=` → un libro .xlsx (Tarea 21,
+- `GET /reportes/{tipo}?proyecto=&version=` → un libro .xlsx (Tarea 21,
   `aplicacion.reportes_viales`) con una hoja de portada que dice de dónde sale cada cifra. `tipo`:
   `computos` (tramos y cantidades), `apu` (APU con el origen de cada precio y la conciliación CV1 a
-  CV3), `resumen` (subtotal, IVA y total) —los tres piden `proyecto` y `version`— y `produccion`
-  (costo de producción de un `periodo` AAAA-MM). Mismo acceso que `GET /tramos` (clave de API o
-  sesión), solo lee y no deja caché. Tipo que no existe y período sin cálculos: 404; falta de un
-  dato, período mal escrito o versión sin tramos: 422; la base, 503.
+  CV3) y `resumen` (subtotal, IVA y total); los tres piden `proyecto` y `version`. Mismo acceso que
+  `GET /tramos` (clave de API o sesión), solo lee y no deja caché. Tipo que no existe: 404; falta
+  de un dato o versión sin tramos: 422; la base, 503. El de costo de producción se mudó a
+  `GET /v1/produccion/reportes/produccion` (`api.rutas.produccion_reportes`, fila 112).
 """
 
 from __future__ import annotations
@@ -81,13 +81,9 @@ MENSAJE_BASE = (
     "programa."
 )
 FORMA_LLEVAR = "Envíe la obra y la versión cuyos tramos se llevan al presupuesto."
-#: Los reportes de la Tarea 21 que piden una versión, y el que pide un período.
+#: Los reportes de la Tarea 21 de una versión (el de producción vive en `/v1/produccion`).
 REPORTES_DE_VERSION = ("computos", "apu", "resumen")
-REPORTE_DE_PERIODO = "produccion"
-MENSAJE_REPORTE = (
-    "Este reporte pide la obra y la versión (proyecto y version en la consulta); el de "
-    "producción, el período como AAAA-MM (periodo)."
-)
+MENSAJE_REPORTE = "Este reporte pide la obra y la versión (proyecto y version en la consulta)."
 TOPE_BYTES = 2 * 1024 * 1024
 BLOQUE = 64 * 1024
 EXTENSION = ".csv"
@@ -297,30 +293,22 @@ def descargar_reporte(
     instalacion: SesionInstalacionDep,
     proyecto: Annotated[str | None, Query(min_length=1, max_length=500)] = None,
     version: Annotated[str | None, Query(min_length=1, max_length=40)] = None,
-    periodo: Annotated[str | None, Query(min_length=1, max_length=20)] = None,
 ) -> Response:
     """Un reporte de la obra vial en Excel (`aplicacion.reportes_viales`); solo lee."""
-    if tipo not in (*REPORTES_DE_VERSION, REPORTE_DE_PERIODO):
+    if tipo not in REPORTES_DE_VERSION:
         raise HTTPException(status_code=404, detail=f"No existe el reporte «{tipo[:40]}».")
-    if tipo == REPORTE_DE_PERIODO and periodo is None:
-        raise HTTPException(status_code=422, detail=MENSAJE_REPORTE)
-    if tipo in REPORTES_DE_VERSION and (proyecto is None or version is None):
+    if proyecto is None or version is None:
         raise HTTPException(status_code=422, detail=MENSAJE_REPORTE)
     try:
         if tipo == "computos":
             contenido = reportes_viales.computos_de_la_version(sesion, proyecto, version)
         elif tipo == "apu":
             contenido = reportes_viales.apu_de_la_version(sesion, instalacion, proyecto, version)
-        elif tipo == "resumen":
-            contenido = reportes_viales.resumen_de_la_version(sesion, proyecto, version)
         else:
-            contenido = reportes_viales.costo_de_produccion_del_periodo(instalacion, periodo)
-    except reportes_viales.SinCalculosDelPeriodo as error:
-        raise HTTPException(status_code=404, detail=str(error)) from None
+            contenido = reportes_viales.resumen_de_la_version(sesion, proyecto, version)
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
-    partes = (x for x in (proyecto, version, periodo) if x)
-    nombre = reportes_viales.nombre_de_reporte(tipo, *partes)
+    nombre = reportes_viales.nombre_de_reporte(tipo, proyecto, version)
     return Response(
         content=contenido,
         media_type=TIPO_XLSX,

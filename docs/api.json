@@ -9215,6 +9215,54 @@
         }
       }
     },
+    "/v1/produccion/reportes/produccion": {
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Reporte De Produccion",
+        "description": "El costo de producción de un período en Excel; solo lee.",
+        "operationId": "reporte_de_produccion_v1_produccion_reportes_produccion_get",
+        "parameters": [
+          {
+            "name": "periodo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Periodo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El libro .xlsx del reporte.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/vial/tramos": {
       "get": {
         "tags": [
@@ -9517,24 +9565,6 @@
                 }
               ],
               "title": "Version"
-            }
-          },
-          {
-            "name": "periodo",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 20
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Periodo"
             }
           }
         ],

@@ -52,6 +52,7 @@ from api.rutas import (
     procura,
     produccion,
     produccion_planta,
+    produccion_reportes,
     proyectos,
     reajuste,
     rendimientos,
@@ -193,6 +194,9 @@ app.include_router(produccion.router)
 # Plan vial (T1, T3 y T4): costos del periodo, recetas, producciones y calculos de la planta, mismo
 # prefijo y misma puerta; justo despues del de la arenera para no cambiar el orden de docs/api.json
 app.include_router(produccion_planta.router)
+# Pantallas de informes (fila 112): el reporte de costo de produccion en Excel, con la puerta de
+# los costos (REGISTRAR_COSTOS_PRODUCCION) y despues el modulo produccion
+app.include_router(produccion_reportes.router)
 # Plan vial (T8): /v1/vial, los tramos de una via guardados por version; EDITAR_HOJA en cada ruta
 app.include_router(vial.router)
 # Plan vial (T15): /v1/riesgo, informe de mejora de la estimacion (VER_RIESGO, clave o sesion)

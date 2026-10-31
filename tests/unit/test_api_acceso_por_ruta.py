@@ -280,6 +280,7 @@ TABLA = {
     ("GET", "/v1/produccion/calculos"): COSTOS,  # plan vial T4b: calculos anteriores
     ("GET", "/v1/produccion/calculos/{calculo_id}"): COSTOS,
     ("POST", "/v1/produccion/calculos/{calculo_id}/publicar"): PUBLICAR,  # plan vial T5
+    ("GET", "/v1/produccion/reportes/produccion"): COSTOS,  # pantallas de informes; un xlsx
     ("POST", "/v1/riesgo/mejora"): VER_RIESGO,  # plan vial T15
     ("POST", "/v1/riesgo/proyeccion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
     ("POST", "/v1/riesgo/comprobacion"): VER_RIESGO,  # plan vial T16; calcula, no guarda

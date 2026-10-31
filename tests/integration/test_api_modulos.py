@@ -331,3 +331,33 @@ def test_vial_apagado_con_el_rol_correcto_sigue_siendo_404(ana, admin) -> None:
         headers=protegida(ana[1]),
     )
     assert llevar.status_code == 404 and llevar.json() == {"detalle": APAGADO_VIAL}
+
+
+@pytest.mark.parametrize("tipo", ["computos", "apu", "resumen"])
+def test_vial_apagado_cierra_los_reportes_con_el_texto_de_dv4(tipo: str, ana, admin) -> None:
+    """MENOR 2 del árbitro de la fase D: los reportes viales también dicen que el módulo está
+    apagado, con el mismo texto, y rita (sin `editar_hoja`) sigue recibiendo 403 antes."""
+    params = {"proyecto": OBRA, "version": "VIV-002"}
+    assert _guardar_tramos(ana).status_code == 200
+    assert ana[0].get(f"/v1/vial/reportes/{tipo}", params=params).status_code == 200
+    assert _poner(admin, "vial", False).status_code == 200
+    r = ana[0].get(f"/v1/vial/reportes/{tipo}", params=params)
+    assert r.status_code == 404, r.text
+    assert r.json() == {"detalle": APAGADO_VIAL}
+    rita = con_cuenta(app, "rita")
+    assert rita[0].get(f"/v1/vial/reportes/{tipo}", params=params).status_code == 403
+
+
+def test_produccion_apagada_cierra_el_reporte_de_produccion(ana, admin) -> None:
+    """MENOR 2, para el reporte de producción: 404 con el texto de D-V-4 aunque el período sea
+    malo (el módulo se mira antes que los datos) y, al encender, vuelve su error propio."""
+    ruta, params = "/v1/produccion/reportes/produccion", {"periodo": "2026-01"}
+    assert ana[0].get(ruta, params=params).status_code == 404  # sin cálculos de enero
+    assert _poner(admin, "produccion", False).status_code == 200
+    for cuenta in (ana, admin):
+        r = cuenta[0].get(ruta, params=params)
+        assert r.status_code == 404, r.text
+        assert r.json() == {"detalle": APAGADO_PRODUCCION}
+    assert _poner(admin, "produccion", True).status_code == 200
+    r = ana[0].get(ruta, params=params)
+    assert r.status_code == 404 and r.json()["detalle"] != APAGADO_PRODUCCION

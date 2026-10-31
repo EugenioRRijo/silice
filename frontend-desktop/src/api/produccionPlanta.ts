@@ -130,3 +130,9 @@ export interface EmpresaDeAdministracion {
 export function empresaDeAdministracion(senal?: AbortSignal): Promise<EmpresaDeAdministracion> {
   return pedir<EmpresaDeAdministracion>("/v1/admin/empresa", { senal });
 }
+
+// El reporte de costo de producción de un mes en Excel (`GET /v1/produccion/reportes/produccion`): todos los cálculos
+// guardados de ese mes, con su costo por tonelada, los costos y lo producido. Lo baja quien registra costos.
+export function rutaDelReporteDeProduccion(periodo: string): string {
+  return `${RUTA}/reportes/produccion?periodo=${encodeURIComponent(periodo)}`;
+}

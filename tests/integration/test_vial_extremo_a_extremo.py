@@ -323,7 +323,10 @@ def _reportes_viales(ana: Web) -> None:
     assert (D(str(cv3[3])), D(str(cv3[4])), cv3[5]) == (D(6), D(7), "tramo:T2:capa:1")
     assert "el último cálculo publicado, el cálculo n.º 2 (período 2026-11)" in cv3[2]
 
-    produccion = pedir("produccion", periodo="2026-11")
+    # El de producción vive bajo /v1/produccion (pantallas de informes, fila 112).
+    produccion = _libro(
+        ana.get("/v1/produccion/reportes/produccion", params={"periodo": "2026-11"})
+    )
     costo = {f[2]: D(str(f[4])) for f in _hoja(produccion, "Costo por tonelada")[1:]}
     assert costo == {"PC-19": D(7), "AR-01": D(7), "MZ-C": D("51.65")}
 

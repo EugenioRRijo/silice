@@ -19,6 +19,7 @@ import type { VersionesRespuesta } from "../hoja/logica";
 import { useCarga } from "../inicio/useCarga";
 import { CAMPOS_INICIALES, ROTULOS, leerCampos, rutaDelInformeDeRiesgo } from "./logica";
 import type { Campos } from "./logica";
+import { MejoraDeLaEstimacion } from "./MejoraDeLaEstimacion";
 import { ParametrosDelRiesgo } from "./ParametrosDelRiesgo";
 import { ResultadoDeLaComprobacion, ResultadoDeLaProyeccion } from "./ResultadoDelRiesgo";
 import "./riesgo.scss";
@@ -36,7 +37,8 @@ function rutaDeInsumos(proyecto: string, version: string): string {
 
 // «Riesgo de la obra»: la proyección del riesgo de precios de una versión (P50, P80, la reserva y los insumos que más
 // empujan) y su comprobación hacia atrás (cobertura y número de cortes). Todo lo calcula el servidor con semilla fija;
-// la pantalla solo lee lo tecleado (coma decimal, punto de miles) y escribe lo que llega en centésimas.
+// la pantalla solo lee lo tecleado (coma decimal, punto de miles) y escribe lo que llega en centésimas. Al pie, la
+// mejora de la estimación (Tarea 15), que no lee la obra: se ofrece aunque no haya una abierta.
 export default function RiesgoDeLaObra() {
   const { nombreProyecto, alExpirar } = useAplicacion();
   const nombre = nombreProyecto ?? null;
@@ -200,6 +202,10 @@ export default function RiesgoDeLaObra() {
           {comprobacion.estado === "listo" && <ResultadoDeLaComprobacion datos={comprobacion.datos} region={regionComprobacion} />}
         </>
       )}
+      <MejoraDeLaEstimacion
+        precarga={proyeccion.estado === "listo" ? { cifra: proyeccion.datos.p50, version: proyeccion.datos.version, moneda: proyeccion.datos.moneda } : null}
+        alExpirar={alExpirar}
+      />
     </div>
   );
 }

@@ -60,3 +60,15 @@
   margin: 0;
   text-align: end;
 }
+
+// La mejora de la estimación, al pie: separada del riesgo por una línea, como los resultados.
+.riesgo-mejora {
+  display: grid;
+  gap: 1rem;
+  padding-block-start: 1.5rem;
+  border-block-start: 1px solid var(--cds-border-subtle);
+}
+
+.riesgo-mejora h2 {
+  margin: 0;
+}
