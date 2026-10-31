@@ -55,7 +55,7 @@ CENTINELA = "VALOR-CENTINELA"
 MEZCLA_T1 = "C-000.000.009|tramo:T1:capa:3"
 SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
 SIN_OBRA = "Esa obra no está en esta carpeta de trabajo: elíjala de nuevo en el selector de obra."
-FORMA = "Envíe la obra cuyos tramos se llevan al presupuesto."
+FORMA = "Envíe la obra y la versión cuyos tramos se llevan al presupuesto."
 CODIGOS = [f"C-000.000.{n:03d}" for n in range(1, 15)]
 SIN_APU = (
     "Las partidas "
@@ -147,9 +147,11 @@ def _importar(cuenta, contenido: bytes, nombre: str = "via.csv"):
     )
 
 
-def _llevar(cuenta, proyecto: str = OBRA):
+def _llevar(cuenta, proyecto: str = OBRA, version: str = "VIV-002"):
     navegador, ficha = cuenta
-    return navegador.post(RUTA, json={"proyecto": proyecto}, headers=protegida(ficha))
+    return navegador.post(
+        RUTA, json={"proyecto": proyecto, "version": version}, headers=protegida(ficha)
+    )
 
 
 def _borradores(navegador: TestClient) -> list[dict]:
@@ -178,8 +180,8 @@ def test_importar_llevar_escribir_900_y_la_auditoria_muestra_vr1(ana) -> None:
     assert llevado.status_code == 200, llevado.text
     assert llevado.headers["cache-control"] == "no-store"
     cuerpo = llevado.json()
-    assert list(cuerpo) == ["borrador_id", "renglones"]
-    assert cuerpo["renglones"] == 18
+    assert list(cuerpo) == ["borrador_id", "renglones", "version"]
+    assert (cuerpo["renglones"], cuerpo["version"]) == (18, "VIV-002")
     id_ = cuerpo["borrador_id"]
     ((borrador,),) = [[b] for b in _borradores(navegador)]
     assert (borrador["id"], borrador["proyecto"], borrador["version"]) == (id_, OBRA, "VIV-002")
@@ -213,6 +215,43 @@ def test_llevar_otra_vez_usa_el_mismo_borrador_y_no_duplica(ana) -> None:
     assert segundo == primero
     filas = navegador.get(f"/v1/hoja/borradores/{primero['borrador_id']}/vistas/presupuesto")
     assert len([f for f in filas.json()["filas"] if "|tramo:" in f["clave"]]) == 18
+
+
+# --- la versión que se ve es la del borrador (ronda 2) --------------------------------------------
+
+
+def test_un_borrador_abierto_de_otra_version_da_409_y_no_cambia(ana) -> None:
+    navegador, ficha = ana
+    assert _importar(ana, MUESTRA.read_bytes()).status_code == 200
+    abierto = navegador.post(
+        "/v1/hoja/borradores",
+        json={"proyecto": OBRA, "version": "VIV-001"},
+        headers=protegida(ficha),
+    )
+    assert abierto.status_code == 201, abierto.text
+    id_ = abierto.json()["id"]
+    antes = _borradores(navegador)
+    filas = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/presupuesto").json()["filas"]
+
+    respuesta = _llevar(ana, version="VIV-002")
+
+    assert respuesta.status_code == 409
+    assert respuesta.headers["cache-control"] == "no-store"
+    assert respuesta.json() == {
+        "detalle": "La Hoja de la obra tiene abierto un borrador de VIV-001; está viendo los "
+        "tramos de VIV-002. Guarde o descarte ese borrador en la Hoja, o elija VIV-001 aquí, y "
+        "vuelva a llevar."
+    }
+    assert _borradores(navegador) == antes  # mismo borrador, mismo rev
+    despues = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/presupuesto").json()["filas"]
+    assert despues == filas
+
+
+def test_una_version_que_no_existe_es_409(ana) -> None:
+    respuesta = _llevar(ana, version="VIV-099")
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {"detalle": f"La versión VIV-099 no existe en la obra «{OBRA}»."}
+    assert _borradores(ana[0]) == []
 
 
 # --- errores ------------------------------------------------------------------------------------
@@ -262,8 +301,16 @@ def test_una_obra_que_no_existe_es_404_sin_eco(ana) -> None:
 
 @pytest.mark.parametrize(
     "cuerpo",
-    [{}, {"proyecto": ""}, {"proyecto": OBRA, "x": CENTINELA}, {"proyecto": 7}],
-    ids=["vacio", "obra_vacia", "campo_de_mas", "numero"],
+    [
+        {},
+        {"proyecto": OBRA},
+        {"proyecto": "", "version": "VIV-002"},
+        {"proyecto": OBRA, "version": ""},
+        {"proyecto": OBRA, "version": "VIV-002", "x": CENTINELA},
+        {"proyecto": 7, "version": "VIV-002"},
+        {"proyecto": OBRA, "version": CENTINELA * 5},
+    ],
+    ids=["vacio", "sin_version", "obra_vacia", "version_vacia", "campo_de_mas", "numero", "larga"],
 )
 def test_la_forma_mala_es_422_sin_eco(ana, cuerpo: dict) -> None:
     navegador, ficha = ana
@@ -277,14 +324,15 @@ def test_la_forma_mala_es_422_sin_eco(ana, cuerpo: dict) -> None:
 
 
 def test_la_clave_de_api_no_lleva_nada(ana) -> None:
-    respuesta = cliente_con_clave().post(RUTA, json={"proyecto": OBRA})
+    respuesta = cliente_con_clave().post(RUTA, json={"proyecto": OBRA, "version": "VIV-002"})
     assert respuesta.status_code == 403
     assert respuesta.json() == {"detalle": SOLO_CUENTA}
 
 
 def test_rita_no_lleva(ana) -> None:
     rita, ficha = con_cuenta(app, "rita")
-    respuesta = rita.post(RUTA, json={"proyecto": OBRA}, headers=protegida(ficha))
+    cuerpo = {"proyecto": OBRA, "version": "VIV-002"}
+    respuesta = rita.post(RUTA, json=cuerpo, headers=protegida(ficha))
     assert respuesta.status_code == 403
     assert respuesta.json() == {"detalle": MENSAJE_PERMISO}
 
@@ -292,7 +340,7 @@ def test_rita_no_lleva(ana) -> None:
 def test_llevar_exige_csrf_y_origen_propio(ana) -> None:
     navegador, ficha = ana
     assert _importar(ana, MUESTRA.read_bytes()).status_code == 200
-    cuerpo = {"proyecto": OBRA}
+    cuerpo = {"proyecto": OBRA, "version": "VIV-002"}
     assert navegador.post(RUTA, json=cuerpo).status_code == 403
     ajeno = protegida(ficha, origen="http://evil.example")
     assert navegador.post(RUTA, json=cuerpo, headers=ajeno).status_code == 403

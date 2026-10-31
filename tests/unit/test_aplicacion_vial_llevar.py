@@ -27,13 +27,13 @@ from sqlalchemy.orm import Session
 
 from adapters.vial.modelo import Tramo
 from adapters.vial.reglas import ReglasViales
-from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_vista, vial
+from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_vial, hoja_vista, vial
 from core import models
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.contracts import Dominio, ItemComputo, OrigenTipo
 from core.contracts.apu import ComposicionAPU, LineaMaterial
 from operacion.base_datos import preparar_base
-from tests.fixtures.carpeta_aprobaciones import FECHA, sembrar_vivienda
+from tests.fixtures.carpeta_aprobaciones import FECHA, guardar_version, sembrar_vivienda
 
 D = Decimal
 ANA = "Ana <ana>"
@@ -136,9 +136,9 @@ def _obra(sesion: Session) -> models.Proyecto:
     return sesion.scalars(select(models.Proyecto)).one()
 
 
-def _llevar(sesion: Session) -> tuple[str, int]:
-    return vial.llevar_tramos_a_la_hoja(
-        sesion, HUELLA, CASO, _obra(sesion), responsable=ANA, hoy=HOY
+def _llevar(sesion: Session, version: str = "VIV-001") -> tuple[str, int]:
+    return hoja_vial.llevar_tramos_a_la_hoja(
+        sesion, HUELLA, CASO, _obra(sesion), version, responsable=ANA, hoy=HOY
     )
 
 
@@ -252,7 +252,7 @@ def test_lo_escrito_en_una_version_guardada_se_conserva_al_sincronizar() -> None
     borrador = hoja.Borrador(fecha=HOY, moneda="Bs", items_base=(viejo, escrito))
     tramo_t1 = _tramos()[:1]
 
-    nuevo = vial.sincronizar_renglones(borrador, vial.items_de_tramos(tramo_t1), ())
+    nuevo = hoja_vial.sincronizar_renglones(borrador, hoja_vial.items_de_tramos(tramo_t1), ())
 
     por_clave = dict(zip(hoja.claves_de_items(nuevo.items_base), nuevo.items_base, strict=True))
     assert por_clave["C-000.000.008|tramo:T1:capa:3"].cantidad == D("8760")
@@ -276,9 +276,9 @@ def test_los_renglones_de_tramo_quedan_donde_estaban() -> None:
             parametros={},
         )
 
-    viales = vial.items_de_tramos(_tramos()[2:])  # T3: tres renglones
+    viales = hoja_vial.items_de_tramos(_tramos()[2:])  # T3: tres renglones
     borrador = hoja.Borrador(fecha=HOY, moneda="Bs", items_base=(a_mano(1), *viales, a_mano(2)))
-    nuevo = vial.sincronizar_renglones(borrador, viales, ())
+    nuevo = hoja_vial.sincronizar_renglones(borrador, viales, ())
     assert [i.origen_id for i in nuevo.items_base] == [
         "a-mano:1",
         "tramo:T3:capa:1",
@@ -321,13 +321,77 @@ def test_partidas_sin_apu_no_tocan_el_borrador_que_ya_estaba(tmp_path: Path) -> 
 def test_una_obra_sin_tramos_no_lleva_nada(tmp_path: Path) -> None:
     for sesion in _preparar(tmp_path):
         vial.guardar_tramos(sesion, _version_id(sesion), [], usuario=ANA, ahora=LUNES)
-        with pytest.raises(vial.SinTramos) as error:
+        with pytest.raises(hoja_vial.SinTramos) as error:
             _llevar(sesion)
         assert str(error.value) == (
             "La versión VIV-001 no tiene tramos: impórtelos en «Tramos de la vía» antes de "
             "llevarlos al presupuesto."
         )
         assert hoja_edicion.borradores_para_retomar(HUELLA, CASO) == []
+
+
+# --- la versión que se ve es la del borrador (ronda 2, MAYOR del árbitro) -----------------------
+
+
+def _con_viv002(sesion: Session) -> None:
+    """VIV-002, posterior a VIV-001: es la vigente y hereda sus tramos."""
+    guardar_version(sesion, _obra(sesion), "VIV-002", usuario=ANA)
+
+
+def test_un_borrador_de_otra_version_da_409_y_no_cambia_nada(sesion: Session) -> None:
+    _con_viv002(sesion)
+    nombre = _obra(sesion).nombre
+    abierta = hoja.abrir_version(sesion, Catalogo(sesion), nombre, "VIV-001")
+    vivo = hoja_borradores.crear(HUELLA, CASO, nombre, "VIV-001", abierta.borrador, abierta)
+    antes = (vivo.borrador, vivo.rev)
+
+    with pytest.raises(hoja_vial.BorradorDeOtraVersion) as error:
+        _llevar(sesion, "VIV-002")
+
+    assert str(error.value) == (
+        "La Hoja de la obra tiene abierto un borrador de VIV-001; está viendo los tramos de "
+        "VIV-002. Guarde o descarte ese borrador en la Hoja, o elija VIV-001 aquí, y vuelva a "
+        "llevar."
+    )
+    assert (vivo.borrador, vivo.rev) == antes
+    assert not _de_tramo(vivo)
+
+
+def test_sin_borrador_y_otra_version_que_la_vigente_da_409_y_no_abre_nada(sesion: Session) -> None:
+    _con_viv002(sesion)
+
+    with pytest.raises(hoja_vial.BorradorDeOtraVersion) as error:
+        _llevar(sesion, "VIV-001")
+
+    assert str(error.value) == (
+        "La Hoja de la obra se abrirá sobre la versión vigente, VIV-002; está viendo los tramos "
+        "de VIV-001. Elija VIV-002 aquí, o abra VIV-001 en la Hoja, y vuelva a llevar."
+    )
+    assert hoja_edicion.borradores_para_retomar(HUELLA, CASO) == []
+
+
+def test_con_la_version_del_borrador_se_lleva(sesion: Session) -> None:
+    _con_viv002(sesion)
+    id_, renglones = _llevar(sesion, "VIV-002")
+    vivo = hoja_borradores.obtener(HUELLA, id_)
+    assert (vivo.version, renglones) == ("VIV-002", 18)
+    assert _filas(_de_tramo(vivo)) == ESPERADO  # los heredados de VIV-001
+
+
+def test_una_version_que_no_existe_no_lleva_nada(sesion: Session) -> None:
+    with pytest.raises(vial.VersionInexistente):
+        _llevar(sesion, "VIV-099")
+    assert hoja_edicion.borradores_para_retomar(HUELLA, CASO) == []
+
+
+def test_la_eleccion_del_borrador_es_una_sola() -> None:
+    """La versión del borrador la decide `elaboracion.version_del_borrador_de_la_obra`, la misma
+    que usa `borrador_de_la_obra` al abrirlo (menor 3 del árbitro)."""
+    from aplicacion import elaboracion
+
+    assert callable(elaboracion.version_del_borrador_de_la_obra)
+    assert callable(elaboracion.borrador_de_la_obra)
+    assert not hasattr(hoja_vial, "_version_del_borrador")
 
 
 # --- regla 4: llevar rearma las reglas viales ---------------------------------------------------
