@@ -197,7 +197,6 @@ function ContenidoDePestana({
         alAusente={alAusente}
         cambios={borrador.resumen.cambios}
         alCrearVersion={alCrearVersion}
-        base={borrador.base}
       />
     );
   }
@@ -234,7 +233,6 @@ function ContenidoDePestana({
       alAusente={alAusente}
       cambios={borrador.resumen.cambios}
       alCrearVersion={alCrearVersion}
-      base={borrador.base}
     />
   );
 }

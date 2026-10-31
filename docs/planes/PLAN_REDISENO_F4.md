@@ -1217,7 +1217,7 @@ así que una lectura solo escribiría si llamara a `commit` en algún punto de s
    puede ver en solo lectura: quien arma el presupuesto tiene que abrirla una vez para prepararla.». No hay carrera: la
    guardia es de la sesión, no una comprobación previa. Con la instantánea ya hecha (lo normal: toda versión guardada
    por la Hoja la tiene), abrir no escribe nada y quien revisa la ve. Prueba:
-   `test_revisa_no_crea_la_instantanea_al_abrir` (volcado de la base igual byte a byte). · Dejar la ruta en EDITAR (y
+   `test_revisa_no_crea_la_instantanea_al_abrir` (compara las filas de todas las tablas, antes y después). · Dejar la ruta en EDITAR (y
    quien revisa no ve nada), o abrir sin instantánea en memoria si `aplicacion` ofreciera esa variante.
 2. **Lo que la guardia no cubre.** · Solo lo que pasa por la sesión. Una escritura por `connection().exec_driver_sql`
    no la vería; el camino de `abrir_version` no la usa (se revisó `core/budget/instantanea.py`: todo es `session.add`).
@@ -1242,10 +1242,11 @@ así que una lectura solo escribiría si llamara a `commit` en algún punto de s
 7. **«No se pinta», no «deshabilitado».** · Una celda pasa a su texto tal como lo da la API (ya en es-VE); una lista
    cerrada del espacio muestra su rótulo; la columna «Quitar» y «Acciones» desaparecen. Los textos de ayuda que hablan de
    editar («Se edita la cantidad…», «Reparta cada partida…») tampoco salen para quien no edita. · —
-8. **Objetivos de mercado.** · `GET /v1/mercado/objetivos` exige `editar_hoja`: para quien revisa daría 403 y un aviso de
+8. **Objetivos de mercado.** (Reemplazada por la 15.) · `GET /v1/mercado/objetivos` exige `editar_hoja`: para quien revisa daría 403 y un aviso de
    error. `useObjetivosDeMercado` gana `activo` (por omisión, verdadero) y sin permiso no pide nada ni pinta la columna.
    · Pasar la ruta a `leer_proyecto` si Eugenio quiere que quien revisa vea el objetivo.
-9. **Un borrador de solo lectura en manos de quien arma.** · El plan aplica la misma regla («nada de guardar, agregar ni
+9. **Un borrador de solo lectura en manos de quien arma.** (Lo de las acciones sobre la versión guardada lo reemplaza la
+   16.) · El plan aplica la misma regla («nada de guardar, agregar ni
    enviar»): ya no hay «Guardar versión…» que abría un diálogo deshabilitado, sino la nota «Está viendo este presupuesto
    en solo lectura. Esta versión no se puede guardar: alguna partida ya no tiene composición vigente en el catálogo.»
    (`CAUSA_SOLO_LECTURA`, la misma frase del diálogo, en `logicaGuardar.ts`). La prueba de `Guardar.test.tsx` que
@@ -1271,3 +1272,30 @@ así que una lectura solo escribiría si llamara a `commit` en algún punto de s
     `git diff c1f436b2 -- core/` vacío; `aplicacion/` sin tocar. Interfaz: `npx vitest run` completo, 3250 pruebas,
     verdes salvo `PlanoEnHoja` «Fusionar» (verde suelta; se cae por tiempo con la máquina cargada) y la de `Bandeja`
     de la decisión 10, ya corregida; `npm run lint` en 0. `knip` y `jscpd` siguen sin estar instalados. · —
+
+### Ronda tras el árbitro (aprobada la tarea; Eugenio respondió las dos decisiones abiertas)
+
+15. **Objetivo de mercado para quien revisa (Eugenio, 2026-10-31).** · Se rastreó `GET /v1/mercado/objetivos` hasta
+    `aplicacion/`: `aplicacion.mercado.objetivos` hace dos `select` y `convertir_o_sin_tasa` llama a
+    `tasa_del_dia.equivalencia_del_dia`, que lee `core.catalog.indices.tasa_aplicable` (un `select`); ninguna escribe
+    ni confirma, y la ruta usa la sesión de lectura. La ruta pasa a `LEER_PROYECTO` (la TABLA de acceso cambia y
+    `test_api_mercado.py` gana `test_los_objetivos_los_lee_quien_revisa_y_no_el_administrador`, que cuenta las filas
+    de `PrecioObjetivo` antes y después). En la interfaz, `useObjetivosDeMercado` pierde el parámetro `activo`: la
+    columna sale para todos. · Volver a `EDITAR_HOJA` en `api/rutas/mercado.py` y la línea de la TABLA.
+16. **Acciones sobre la versión guardada (Eugenio, 2026-10-31).** · Restaurar, Registrar y Retirar una cotización,
+    Convertir y Enviar a aprobación obran sobre la versión guardada, no sobre el borrador: su regla es solo el permiso.
+    Precios, Trazabilidad y el «Enviar» de `AprobacionDeVersion` llaman a `usePuedeEditarLaHoja(null)` (solo la sesión;
+    Precios y Trazabilidad ya no reciben `base`); Convertir pide `convertir_y_reajustar` en la sesión (además del
+    `puede_convertir` que da la API), no `editar_hoja`. «Hacer una versión nueva a partir de esta» sigue con la regla
+    completa: lleva a editar el borrador. Para quien revisa siguen ocultas. Pruebas: «con un borrador de solo lectura,
+    las acciones sobre la versión guardada sí se ofrecen» (arma) y «tampoco ve las acciones sobre la versión guardada»
+    (revisa). · Volver a pasar `base` a esas tres.
+17. **Guardia `sin_escribir` más estricta (menor 1 del árbitro).** · Antes un texto que empezara por `WITH` o `PRAGMA`
+    pasaba, así que `WITH x AS (SELECT 1) INSERT …` y `PRAGMA user_version = 7` escribían. Ahora una sentencia de
+    SQLAlchemy pasa solo si `estado.is_select` (también un `WITH` armado con `cte()`), y un texto SQL solo si empieza por
+    `SELECT` o `EXPLAIN`, o es un `PRAGMA` sin `=`; todo lo demás, también un `WITH` escrito como texto, se niega (lo más
+    prudente: el camino de `abrir_version` no usa texto). Prueba propia: `tests/unit/test_sin_escribir.py` (insert
+    Core, `INSERT` y `DELETE` con `text`, `WITH…INSERT`, `PRAGMA` con asignación con y sin espacios, el volcado de un
+    objeto nuevo, las lecturas que pasan y la sesión que vuelve a escribir al salir). · —
+18. **Menor 3.** · La decisión 1 decía «byte a byte»; la prueba compara las filas de todas las tablas (`_volcado`). · —
+

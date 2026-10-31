@@ -2,7 +2,9 @@
 presupuesto; diseño §5.1 y §10, D-MP2).
 
 Rutas finas sobre `aplicacion.mercado`, todas con `EDITAR_HOJA` (arma, o la clave de API: es
-trabajo de quien arma); revisa y administra reciben 403. Operan sobre la carpeta de trabajo de la
+trabajo de quien arma); revisa y administra reciben 403. La excepción es `GET /objetivos`, que solo
+lee y exige `LEER_PROYECTO`: quien revisa ve la columna «Objetivo de mercado» de la Hoja en solo
+lectura (F4 2b; Eugenio, 2026-10-31). Operan sobre la carpeta de trabajo de la
 sesión (`SesionDep`); las que escriben van con `BEGIN IMMEDIATE` y confirman aquí (todo o nada).
 
 - `GET /{lado}/{codigo}?dias=90&proyecto=` → `{lado, codigo, moneda, estadisticas, propuesta,
@@ -129,6 +131,7 @@ class _RutaMercado(RutaSinCache, RutaSinEco):
 
 router = APIRouter(prefix="/v1/mercado", tags=["mercado"], route_class=_RutaMercado)
 EDITAR_HOJA = Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))
+LEER_PROYECTO = Depends(exigir_clave_o_sesion(Accion.LEER_PROYECTO))
 Activa = Annotated[SesionActiva | None, EDITAR_HOJA]
 Codigo = Annotated[str, Path(min_length=1, max_length=_LARGO_CODIGO)]
 
@@ -373,7 +376,7 @@ def _margen(objetivo: Decimal, precio_unitario: Decimal | None) -> str | None:
 # --- rutas --------------------------------------------------------------------------------------
 
 
-@router.get("/objetivos", response_model=ObjetivosRespuesta, dependencies=[EDITAR_HOJA])
+@router.get("/objetivos", response_model=ObjetivosRespuesta, dependencies=[LEER_PROYECTO])
 def leer_objetivos(
     sesion: SesionDep,
     partidas: Annotated[str, Query(max_length=2000, description="Códigos separados por coma")] = "",
