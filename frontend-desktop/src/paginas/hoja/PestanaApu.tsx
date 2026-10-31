@@ -13,7 +13,6 @@ import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { CambioDeInsumo } from "./CambioDeInsumo";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
-import { FactoresDeLaVersion } from "./PestanaParametros";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
 import { enteroDeDigitos, rutaDeVista } from "./logica";
@@ -364,20 +363,6 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
         )}
       </div>
       <div className="silice-hoja__apu-cierre">
-        <section className="silice-hoja__seccion">
-          <h3 className="cds--type-heading-compact-01">Factores de la versión</h3>
-          <FactoresDeLaVersion
-            id={id}
-            rev={rev}
-            moneda={moneda}
-            alAusente={alAusente}
-            alAceptar={alAceptar}
-            alRecargarBorrador={alRecargarBorrador}
-            alReabrir={alReabrir}
-            alCambiar={alRelectura}
-            base={base}
-          />
-        </section>
         <section className="silice-hoja__seccion">
           <h3 className="cds--type-heading-compact-01">Cierre de partida</h3>
           <TablaDensa

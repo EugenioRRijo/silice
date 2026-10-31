@@ -31,7 +31,7 @@ interface Props {
 }
 
 // Lo que hace falta para convertir la moneda (S5): la versión guardada abierta, los cambios sin guardar y qué hacer al crearse
-// una versión. Solo la pestaña «Parámetros» lo ofrece; los factores del APU no.
+// una versión.
 export interface Conversion {
   proyecto: string;
   version: string | null;
@@ -43,11 +43,9 @@ interface PropsContenido extends Props {
   conversion?: Conversion;
   vista: VistaParametros;
   alRelectura: () => void;
-  // En el APU solo van los campos: sin explicación larga, sin moneda del proyecto y sin total.
-  compacto?: boolean;
 }
 
-function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, conversion, compacto = false, base }: PropsContenido) {
+function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, conversion, base }: PropsContenido) {
   const { alExpirar, sesion } = useAplicacion();
   const puedeEditar = usePuedeEditarLaHoja(base ?? null);
   const idDelError = useId();
@@ -70,7 +68,7 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
 
   return (
     <div className="silice-hoja__pestana">
-      {!compacto && puedeEditar && (
+      {puedeEditar && (
       <p className="cds--type-body-compact-01">
         Los parámetros de costo del borrador. {AYUDA_CIFRAS} Cambiarlos recalcula todos los
         APU y el total; los cambios se aplican al borrador cuando deja de escribir y no se guardan como versión hasta que lo pida.
@@ -95,12 +93,12 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
           />
         ))}
       </div>
-      {!compacto && vista.moneda_proyecto !== null && (
+      {vista.moneda_proyecto !== null && (
         <p className="cds--type-body-compact-01">Moneda del proyecto: {vista.moneda_proyecto}</p>
       )}
       {/* Convertir crea una versión desde la GUARDADA: su regla es solo el permiso (`convertir_y_reajustar`, y el
           `puede_convertir` que da la API), no la base del borrador (Eugenio, 2026-10-31). */}
-      {!compacto && conversion !== undefined && sesion.acciones.includes("convertir_y_reajustar") && (
+      {conversion !== undefined && sesion.acciones.includes("convertir_y_reajustar") && (
         <ConvertirMoneda
           proyecto={conversion.proyecto}
           version={conversion.version}
@@ -110,11 +108,9 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
           alCrearVersion={conversion.alCrearVersion}
         />
       )}
-      {!compacto && (
-        <p className="silice-hoja__total cds--type-heading-03">
-          Total del presupuesto <Cifra monto={vista.total} unidad={moneda} />
-        </p>
-      )}
+      <p className="silice-hoja__total cds--type-heading-03">
+        Total del presupuesto <Cifra monto={vista.total} unidad={moneda} />
+      </p>
     </div>
   );
 }
@@ -128,26 +124,6 @@ export function PestanaParametros(props: Props & { conversion: Conversion }) {
   return (
     <VistaCarga<VistaParametros> ruta={rutaDeVista(props.id, "parametros")} etiqueta="Parámetros" alAusente={props.alAusente} recarga={lecturas}>
       {(vista) => <ContenidoParametros {...props} vista={vista} alRelectura={alRelectura} />}
-    </VistaCarga>
-  );
-}
-
-interface PropsFactores extends Props {
-  // Se pide volver a leer lo que depende de los factores (el cierre de la partida) tras aceptar un cambio.
-  alCambiar: () => void;
-}
-
-// Los cuatro factores de la versión dentro de la pestaña APU (ui/paginas/hoja.py:1680): se editan igual que en «Parámetros»,
-// para que los subtotales y el cierre de la partida salgan con los factores vigentes.
-export function FactoresDeLaVersion({ alCambiar, ...props }: PropsFactores) {
-  const [lecturas, setLecturas] = useState(0);
-  const alRelectura = useCallback(() => {
-    setLecturas((n) => n + 1);
-    alCambiar();
-  }, [alCambiar]);
-  return (
-    <VistaCarga<VistaParametros> ruta={rutaDeVista(props.id, "parametros")} etiqueta="Factores de la versión" alAusente={props.alAusente} recarga={lecturas}>
-      {(vista) => <ContenidoParametros {...props} vista={vista} alRelectura={alRelectura} compacto />}
     </VistaCarga>
   );
 }
