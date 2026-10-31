@@ -39,6 +39,7 @@ import {
 import type { Atipicos, Base, Estado, Hallazgos, ListaCreada, ListaEmpresa } from "./logica";
 import "./precios_empresa.scss";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { SeccionFcas } from "./SeccionFcas";
 
 type Lectura =
   | { tipo: "cargando" }
@@ -122,6 +123,7 @@ export default function PaginaPreciosEmpresa() {
           <SeccionHallazgos listas={lectura.estado.listas} alExpirar={expirada} />
         </>
       )}
+      <SeccionFcas alExpirar={expirada} />
     </div>
   );
 }

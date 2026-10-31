@@ -281,6 +281,8 @@ TABLA = {
     ("POST", "/v1/riesgo/proyeccion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
     ("POST", "/v1/riesgo/comprobacion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
     ("GET", "/v1/riesgo/insumos"): VER_RIESGO,  # plan vial T16; solo lee
+    ("POST", "/v1/fcas/calcular"): CUALQUIERA,  # plan vial T17; cuenta pura, cualquier rol
+    ("GET", "/v1/fcas/componentes"): CUALQUIERA,  # plan vial T17; los valores por defecto
     ("GET", "/v1/hoja/versiones"): EDITAR,  # T10 3b-1: Hoja del proyecto; clave o sesion
     ("POST", "/v1/hoja/borradores"): EDITAR,  # ademas, solo con sesion (403 con clave)
     ("GET", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
