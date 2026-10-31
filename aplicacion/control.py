@@ -28,6 +28,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from aplicacion.causas import causas_de_las_filas
+from aplicacion.impuestos import ResumenImpuestos, con_iva
 from aplicacion.precios_declarados import precios_declarados
 from aplicacion.tablas_causas import guardar_causas
 from core import models
@@ -579,10 +580,41 @@ def estado_de_valuaciones(resultado: ResultadoControl) -> dict[str, str]:
     return {clave: texto for clave, (_, texto) in peores.items()}
 
 
+def subtotales_de_valuaciones(resultado: ResultadoControl) -> dict[str, Decimal]:
+    """Por clave de valuación, su monto sin IVA: la suma de cantidad × unitario de la línea base
+    (en su perspectiva, en la moneda del proyecto). Una línea cuya partida no está en la línea base
+    no suma: R13 ya la señala como hallazgo. Es lo medido, no lo aprobado ni lo pagado."""
+    instantanea = resultado.instantanea
+    costo = instantanea.linea_base.perspectiva == "costo"
+    unitarios = {
+        p.item.codigo_partida: p.resultado.costo_directo if costo else p.resultado.precio_unitario
+        for p in instantanea.presupuesto.partidas
+    }
+    return {
+        v.clave: sum(
+            (
+                linea.cantidad * unitarios.get(linea.codigo_partida, Decimal(0))
+                for linea in v.lineas
+            ),
+            Decimal(0),
+        )
+        for v in instantanea.valuaciones
+    }
+
+
+def impuestos_de_valuaciones(resultado: ResultadoControl | None) -> ResumenImpuestos:
+    """El IVA sobre lo medido en todas las valuaciones juntas (IVA del acumulado, no suma de los
+    IVA de cada una: pueden diferir en un céntimo). Sin valuaciones, ceros."""
+    if resultado is None:
+        return con_iva(Decimal(0))
+    return con_iva(sum(subtotales_de_valuaciones(resultado).values(), Decimal(0)))
+
+
 def filas_de_valuaciones(resultado: ResultadoControl) -> list[dict[str, str]]:
     """Las valuaciones guardadas, en solo lectura, con su fecha de registro y su Estado. Las fechas
     van en dd/mm/aaaa, cada una en su columna: el número y el inspector los escribió el usuario."""
     estados = estado_de_valuaciones(resultado)
+    montos = subtotales_de_valuaciones(resultado)
     return [
         {
             "Numero": v.numero or f"#{v.id}",
@@ -591,6 +623,9 @@ def filas_de_valuaciones(resultado: ResultadoControl) -> list[dict[str, str]]:
             "Inspector": v.inspector,
             "Registrada": "" if v.fecha_hora is None else v.fecha_hora.strftime("%d/%m/%Y %H:%M"),
             "Estado": estados.get(v.clave, "sin hallazgos"),
+            "Subtotal": _monto(con_iva(montos[v.clave]).subtotal),
+            "IVA": _monto(con_iva(montos[v.clave]).iva),
+            "Total con IVA": _monto(con_iva(montos[v.clave]).total),
         }
         for v in resultado.instantanea.valuaciones
     ]

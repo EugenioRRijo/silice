@@ -7,16 +7,19 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import {
   COLUMNAS_VALUACIONES,
   LINEA_VACIA,
+  NUMERICAS_VALUACIONES,
   cifraParaApi,
   columnasDe,
   conId,
   errorDeCarga,
   errorDeCifra,
   lineaParaApi,
+  porcentajeDeAlicuota,
   rutaDe,
   sinLineasVacias,
   useAccion,
@@ -305,7 +308,12 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         {datos.filas.length === 0 ? (
           <p className="cds--type-body-compact-01">Aún no hay valuaciones registradas.</p>
         ) : (
-          <TablaDensa etiqueta="Valuaciones registradas" columnas={columnasDe(COLUMNAS_VALUACIONES)} filas={conId(datos.filas)} />
+          <TablaDensa etiqueta="Valuaciones registradas" columnas={columnasDe(COLUMNAS_VALUACIONES, NUMERICAS_VALUACIONES)} filas={conId(datos.filas)} />
+        )}
+        {datos.filas.length > 0 && (
+          <p className="silice-control__nota cds--type-helper-text-01">
+            {`Lo medido hasta hoy: ${formatoEsVe(datos.impuestos.subtotal)} sin IVA; IVA al ${porcentajeDeAlicuota(datos.impuestos.alicuota)} %: ${formatoEsVe(datos.impuestos.iva)}; total con IVA: ${formatoEsVe(datos.impuestos.total)}. Fuente de la alícuota: ${datos.impuestos.fuente_alicuota}.`}
+          </p>
         )}
         <p className="silice-control__nota cds--type-helper-text-01">
           Una valuación registrada cuenta desde su registro; solo anularla la saca del cálculo. Si el cliente no la

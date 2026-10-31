@@ -42,6 +42,7 @@ from sqlalchemy.orm import Session
 
 from api.archivos import guardar_subida
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
+from api.esquemas import ImpuestosRespuesta, impuestos_a_respuesta
 from api.esquemas_corte import EquivalenciaRespuesta, equivalencia_a_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
@@ -284,6 +285,8 @@ class ValuacionesRespuesta(BaseModel):
     causas: list[CausaRespuesta] = Field(
         default_factory=lambda: [CausaRespuesta(clave=c, nombre=n) for c, n in CAUSAS.items()]
     )
+    #: Tarea 18: el IVA sobre lo medido en todas las valuaciones (cada fila trae el suyo).
+    impuestos: ImpuestosRespuesta
 
 
 @router.get("/valuaciones", response_model=ValuacionesRespuesta)
@@ -292,10 +295,15 @@ def valuaciones(sesion: SesionDep, proyecto: str) -> ValuacionesRespuesta:
     proyecto = _existe(sesion, proyecto)
     if not logica.tiene_linea_base(sesion, proyecto):
         return ValuacionesRespuesta(
-            tiene_linea_base=False, filas=[], anulables=[], corte_por_defecto=None
+            tiene_linea_base=False,
+            filas=[],
+            anulables=[],
+            corte_por_defecto=None,
+            impuestos=impuestos_a_respuesta(logica.impuestos_de_valuaciones(None)),
         )
     filas: list[Fila] = []
     aviso = ""
+    resultado = None
     if logica.hay_valuaciones(sesion, proyecto):
         try:
             resultado = logica.calcular_el_control(sesion, proyecto, Catalogo(sesion))
@@ -310,6 +318,7 @@ def valuaciones(sesion: SesionDep, proyecto: str) -> ValuacionesRespuesta:
             Anulable(id=i, rotulo=r) for i, r in logica.valuaciones_para_anular(sesion, proyecto)
         ],
         corte_por_defecto=logica.corte_por_defecto(sesion, proyecto).isoformat(),
+        impuestos=impuestos_a_respuesta(logica.impuestos_de_valuaciones(resultado)),
     )
 
 

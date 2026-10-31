@@ -142,9 +142,20 @@ export interface CausaDeRetraso {
   nombre: string;
 }
 
+// El IVA sobre un total (Tarea 18): montos con punto decimal tal como los manda la API; la alicuota es una fraccion
+// («0.16») y la fuente dice de donde sale y que hay que cotejarla con la Gaceta vigente.
+export interface Impuestos {
+  subtotal: string;
+  iva: string;
+  total: string;
+  alicuota: string;
+  fuente_alicuota: string;
+}
+
 export interface Valuaciones {
   tiene_linea_base: boolean;
   filas: Fila[];
+  impuestos: Impuestos;
   aviso: string;
   anulables: { id: number; rotulo: string }[];
   corte_por_defecto: string | null;
@@ -298,7 +309,29 @@ export const PESTANAS = [
 export type Pestana = (typeof PESTANAS)[number];
 
 // Son las claves de cada fila tal como las manda la API (sin tilde); el título visible sale de TITULOS_VISIBLES.
-export const COLUMNAS_VALUACIONES = ["Numero", "Periodo", "Fecha", "Inspector", "Registrada", "Estado"];
+export const COLUMNAS_VALUACIONES = [
+  "Numero",
+  "Periodo",
+  "Fecha",
+  "Inspector",
+  "Registrada",
+  "Estado",
+  "Subtotal",
+  "IVA",
+  "Total con IVA",
+];
+// La alicuota como fraccion de la API («0.16») a porcentaje es-VE («16»; «8,5» si hubiera decimales), sin pasar por float.
+export function porcentajeDeAlicuota(fraccion: string): string {
+  const m = /^(\d+)(?:\.(\d+))?$/.exec(fraccion.trim());
+  if (!m) return fraccion;
+  const decimales = (m[2] ?? "").padEnd(2, "0");
+  const entero = `${BigInt(m[1]! + decimales.slice(0, 2))}`;
+  const resto = decimales.slice(2).replace(/0+$/, "");
+  return formatoEsVe(resto ? `${entero}.${resto}` : entero);
+}
+
+// Las cifras de las valuaciones (Tarea 18): el IVA va sobre lo medido, nunca dentro del APU.
+export const NUMERICAS_VALUACIONES = ["Subtotal", "IVA", "Total con IVA"];
 export const COLUMNAS_INDICADORES = ["Indicador", "Valor", "En la otra moneda", "Nota"];
 export const COLUMNAS_ALERTAS = ["Alerta", "Severidad", "Descripcion", "Observado", "Umbral"];
 export const COLUMNAS_REPROYECCION = ["Partida", "Indice", "Fin (dia habil)", "Nota"];

@@ -1,5 +1,6 @@
-"""Tarea 18 del plan vial: el IVA va sobre el total del presupuesto y de cada valuación, nunca dentro
-del APU. Oráculos hechos a mano (no salen del código que se prueba)."""
+"""Tarea 18 del plan vial: el IVA va sobre el total, nunca dentro del APU.
+
+Oráculos hechos a mano (no salen del código que se prueba)."""
 
 from __future__ import annotations
 
@@ -27,7 +28,7 @@ def test_cinco_centesimas_dan_iva_un_centimo_mitad_hacia_arriba() -> None:
 
 
 def test_el_redondeo_es_half_up_y_no_el_del_banquero() -> None:
-    # 0,5 x 0,16 = 0,08 exacto; 3,125 x 0,16 = 0,5 -> 0,50; 0,03125 x 0,16 = 0,005 -> 0,01 (half-even daria 0,00)
+    # 0,03125 x 0,16 = 0,005 exacto -> 0,01 (el redondeo del banquero daria 0,00)
     assert con_iva(D("0.03125")).iva == D("0.01")
 
 

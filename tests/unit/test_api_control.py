@@ -735,7 +735,10 @@ def test_la_respuesta_de_opciones_del_front_es_la_de_la_api_real() -> None:
 def test_cada_valuacion_trae_subtotal_iva_y_total_con_iva() -> None:
     # Oraculo a mano, perspectiva costo: V-01 = 40 x 10,00 = 400,00 -> IVA 64,00 -> 464,00;
     # V-02 = 50 x 10,00 + 60 x 5,00 = 800,00 -> IVA 128,00 -> 928,00.
-    filas = {f["Numero"]: f for f in _con_clave().get("/v1/control/valuaciones", params=P).json()["filas"]}
+    filas = {
+        f["Numero"]: f
+        for f in _con_clave().get("/v1/control/valuaciones", params=P).json()["filas"]
+    }
     v1, v2 = filas["V-01"], filas["V-02"]
     assert (v1["Subtotal"], v1["IVA"], v1["Total con IVA"]) == ("400.00", "64.00", "464.00")
     assert (v2["Subtotal"], v2["IVA"], v2["Total con IVA"]) == ("800.00", "128.00", "928.00")

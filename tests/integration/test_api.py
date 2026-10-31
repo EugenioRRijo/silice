@@ -637,7 +637,7 @@ def test_el_detalle_del_presupuesto_trae_el_iva_y_el_apu_no_cambia(cliente, item
     assert imp["alicuota"] == "0.16"
     assert "a cotejar con la Gaceta vigente" in imp["fuente_alicuota"]
     esperados = {
-        p.item.codigo_partida: p.resultado.precio_unitario.quantize(Decimal("0.01"), ROUND_HALF_UP)
+        p.codigo_partida: p.precio_unitario.quantize(Decimal("0.01"), ROUND_HALF_UP)
         for p in linea_base.PRESUPUESTO_AUDITADO
     }
     obtenidos = {p["codigo_partida"]: Decimal(p["precio_unitario"]) for p in detalle["partidas"]}
