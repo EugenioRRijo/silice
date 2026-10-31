@@ -2,7 +2,7 @@
 
 La via es `data/samples/vial/via_ficticia.csv`. El presupuesto que se audita es el coherente, armado
 desde los tramos ORIGINALES; el mutante altera los tramos, de modo que presupuesto y tramos dejan de
-cuadrar. Detecta quien da algun hallazgo que no sea INFO: las reglas VR1 a VR7 o la conciliacion CV2.
+cuadrar. Detecta quien da algun hallazgo que no sea INFO: VR1 a VR7 o la conciliacion CV2.
 """
 
 from __future__ import annotations
@@ -98,5 +98,25 @@ def test_matriz_sobre_via_ficticia():
         "EV3_dosis": (2, 2),
         "EV4_unidad": (3, 3),
         "EV5_digitos": (3, 3),
+        "EV6_progresiva": (3, 3),
+    }
+
+
+def test_limite_declarado_las_reglas_viales_solas_no_ven_fresado_base_ni_riego():
+    # VR1/VR4 solo miran carpeta y transporte, VR3 mira dosis fuera de rango: un espesor de fresado,
+    # base o sub-base, o una dosis de riego aun razonable, solo la conciliacion CV2 los ve.
+    tramos = leer_tramos(VIA)
+    presupuesto = _presupuesto_coherente(tramos)
+
+    def detecta(mutante: MutanteVial) -> bool:
+        return any(h.severidad != Severidad.INFO for h in auditar_vial(mutante.tramos, presupuesto))
+
+    matriz = matriz_de_deteccion(sembrar_vial(tramos, semilla=2026, por_tipo=3), detecta)
+    assert matriz == {
+        "EV1_espesor_x10": (1, 3),
+        "EV2_densidad_coma": (3, 3),
+        "EV3_dosis": (1, 2),
+        "EV4_unidad": (3, 3),
+        "EV5_digitos": (2, 3),
         "EV6_progresiva": (3, 3),
     }
