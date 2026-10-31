@@ -203,3 +203,19 @@ class Calculo(Base):
     instantanea: Mapped[str] = mapped_column(Text)
     usuario: Mapped[str] = mapped_column(String(120))
     registrado: Mapped[datetime] = mapped_column(DateTime)
+
+
+class PublicacionRegistrada(Base):
+    """La publicacion de un calculo al catalogo (Tarea 4b del plan vial, pregunta 22): cada calculo
+    se publica una sola vez (`calculo_id` unico). `caso` es el nombre de la carpeta de trabajo y
+    `lista_id` la lista de empresa creada en ella. Solo se inserta, en la misma operacion que crea
+    la lista; la instalacion se confirma despues de la carpeta."""
+
+    __tablename__ = "prod_publicacion"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    calculo_id: Mapped[int] = mapped_column(ForeignKey("prod_calculo.id"), unique=True)
+    caso: Mapped[str] = mapped_column(String(255))
+    lista_id: Mapped[int] = mapped_column(Integer)
+    usuario: Mapped[str] = mapped_column(String(120))
+    registrado: Mapped[datetime] = mapped_column(DateTime)

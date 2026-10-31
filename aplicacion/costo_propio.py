@@ -6,10 +6,21 @@ guarda una instantanea en `prod_calculo`. Nada se sobrescribe: recalcular es otr
 
 Reglas (las decisiones estan en `docs/bitacora/2026-10-30-plan-vial-fase-a.md`, Tarea 4):
 
-- **Guardas (Foco 2)**: si la suma de los costos vigentes es cero (ninguno, todos anulados o todos
-  en cero) «No hay costos registrados en AAAA-MM.»; sin entradas, «No hubo producción en AAAA-MM.».
-  Ademas: costos de cantera sin agregados que los reciban, agregados sin costos de cantera (su costo
-  seria cero), costos de planta sin mezcla, y ningun costo por tonelada publicado en cero o menos.
+- **Guardas (Foco 2)**: si no hay ningun costo mayor que cero (ninguno, todos anulados o todos en
+  cero) ni nada que venga del mes anterior, «No hay costos registrados en AAAA-MM.». Ademas:
+  agregados sin costos de cantera (su costo seria cero), mezclas sin costos de planta, y ningun
+  costo por tonelada en cero o menos.
+- **Lo que no tiene quien lo reciba pasa al mes siguiente** (Tarea 4b, pregunta 16): el total de
+  la cantera sin agregados o de la planta sin mezcla queda en `pasa_al_mes_siguiente`; un mes con
+  costos y sin ninguna produccion tambien se calcula (sin costo por tonelada; no se publica). El
+  calculo de M suma a cada centro lo que pasa del **ultimo calculo de M-1** (id mayor; sin
+  calculo de M-1 no pasa nada), convertido con la tasa del cierre de M-1 si las monedas difieren,
+  y lo anota en `viene_del_mes_anterior` con el calculo de donde vino: recalcular M-1 despues no
+  cambia el calculo ya guardado de M. Lo que de nuevo no tiene receptor pasa a M+1 sumado (con los
+  costos de donde viene).
+- **Agregado propio no producido en el mes** (Tarea 4b, pregunta 15): la mezcla lo toma al costo
+  del ultimo calculo (id mayor) de un periodo anterior en la misma moneda que lo tenga, anotado en
+  `de_otro_calculo`; nunca de un mes posterior. Sin ninguno, se niega.
 - **Que es mezcla**: un producto con receta registrada que rija al ultimo dia del periodo; el
   resto de lo producido son agregados y reciben la cantera (D-V-1: por tonelada, o por pesos). La
   planta va a las mezclas por tonelada.
@@ -18,18 +29,28 @@ Reglas (las decisiones estan en `docs/bitacora/2026-10-30-plan-vial-fase-a.md`, 
 - **Moneda (Foco 1)**: cada costo en otra moneda se convierte con la tasa BCV del dia exacto de
   su fecha (`aplicacion.tasa_del_dia`). Un componente comprado toma su precio de la lista global
   vigente de la carpeta al ultimo dia del periodo; si esa lista esta en otra moneda, se convierte
-  con la tasa del dia de su `fecha_vigencia` (la fecha del precio). Si falta alguna tasa, no se
-  calcula nada y `FaltanTasas` nombra cada costo (n.º y fecha) y la lista sin tasa.
-- **Instantanea**: JSON canonico (claves ordenadas, sin espacios, decimales como texto) con
-  `entradas` y `resultado`; su huella es el SHA-256 de ese texto. Mismas entradas, misma huella. Se
-  guarda exacto (28 cifras); se redondea solo al presentar.
+  con la **tasa del cierre del mes** (Tarea 4b, pregunta 14: la ultima publicada dentro del mes),
+  no con la de su vigencia. Si falta alguna tasa, no se calcula nada y `FaltanTasas` nombra cada
+  costo (n.º y fecha), la lista y lo que pasa del mes anterior sin tasa.
+- **Instantanea** (version 2; la 1 se sigue leyendo): JSON canonico (claves ordenadas, sin
+  espacios, decimales como texto) con `entradas` y `resultado`; su huella es el SHA-256 de ese
+  texto. Mismas entradas, misma huella. Se guarda exacto (28 cifras); se redondea solo al
+  presentar. La version 2 suma a `entradas` `tasa_del_cierre` (`{valor, fecha, fuente}` o nula si
+  no hizo falta convertir lo comprado), `de_otro_calculo` (codigo -> `{costo, calculo, periodo}`) y
+  `viene_del_mes_anterior` (centro -> `{total, calculo, periodo, costos, tasa}`), y a `resultado`
+  `pasa_al_mes_siguiente` (centro -> `{total, costos}`). `total_cantera` y `total_planta` incluyen
+  lo que vino del mes anterior.
 
 Publicar (Tarea 5, `publicar_calculo`): un calculo concreto, ya verificado, pasa a la carpeta como
 lista de empresa nueva (alcance `empresa`: `lista_vigente` no la resuelve, asi los calculos
 siguientes siguen leyendo lo comprado de la lista global). Cada producto es el insumo `AGP-<codigo>`
 (agregado) o `MZP-<codigo>` (mezcla), material en t, dado de alta una sola vez (D-V-2). El precio
 es el valor exacto del calculo (no el presentado), con fecha el ultimo dia del periodo y fuente
-«Produccion, periodo AAAA-MM, calculo n.º N». No hace `commit`.
+«Produccion, periodo AAAA-MM, calculo n.º N». Cada calculo se publica **una sola vez** (Tarea 4b,
+pregunta 22): `publicar_calculo` registra `prod_publicacion` en la instalacion en la misma
+operacion (un segundo intento es `CalculoYaPublicado`, sin escribir nada) y un calculo sin costo
+por tonelada no se publica. No hace `commit`: quien llama confirma la carpeta antes que la
+instalacion, asi un fallo al escribir la lista no deja la publicacion registrada.
 """
 
 from __future__ import annotations
@@ -45,7 +66,13 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from aplicacion.tasa_del_dia import Equivalencia, SinTasaDelDia, equivalencia_del_dia, tasa_del_dia
+from aplicacion.tasa_del_dia import (
+    Equivalencia,
+    SinTasaDelDia,
+    equivalencia_del_cierre,
+    equivalencia_del_dia,
+    tasa_del_cierre,
+)
 from core import models
 from core.catalog import Catalogo, CatalogoIncompleto
 from core.catalog.empresa import PrecioPropio, crear_lista_de_empresa, lista_de_referencia
@@ -59,31 +86,43 @@ from produccion.costo import (
 )
 from produccion.costos import MONEDAS, CostoRegistrado, costos_del_periodo, validar_periodo
 from produccion.inventario import entradas_del_periodo
-from produccion.modelo import Calculo
+from produccion.modelo import Calculo, PublicacionRegistrada
 from produccion.receta import Receta, receta_vigente
 
 __all__ = [
+    "VERSION_DE_LA_INSTANTANEA",
     "CalculoGuardado",
     "CalculoInexistente",
+    "CalculoYaPublicado",
     "FaltanTasas",
+    "Publicacion",
     "calcular_periodo",
     "calculo_guardado",
+    "calculos_registrados",
+    "exigir_publicable",
     "lista_base_del_periodo",
+    "publicacion_de",
     "publicar_calculo",
     "ultimo_calculo",
 ]
 
 CERO = Decimal(0)
-VERSION_DE_LA_INSTANTANEA = 1
+VERSION_DE_LA_INSTANTANEA = 2
+CENTROS = ("cantera", "planta")
 
 
 class CalculoInexistente(ErrorDeCalculo):
     """No hay un calculo con ese numero: la API lo responde 404."""
 
 
+class CalculoYaPublicado(ErrorDeCalculo):
+    """El calculo ya se publico (pregunta 22): la API lo responde 409 y no se escribe nada."""
+
+
 class FaltanTasas(ErrorDeCalculo):
-    """Falta la tasa BCV del dia de uno o mas montos: no se calcula nada. `faltan` nombra cada
-    uno («costo n.º 7 del 07/11/2026», «lista «X» vigente desde el 01/11/2026»)."""
+    """Falta la tasa BCV de uno o mas montos: no se calcula nada. `faltan` nombra cada uno
+    («costo n.º 7 del 07/11/2026», «lista «X» sin tasa del BCV publicada en 2026-11 ...»). El
+    encabezado no cambia con la Tarea 4b: la pantalla lo reconoce para listar cada falta."""
 
     def __init__(self, moneda: str, faltan: tuple[str, ...]) -> None:
         self.faltan = faltan
@@ -105,6 +144,18 @@ class CalculoGuardado:
     instantanea: str = field(default="", repr=False)
 
 
+@dataclass(frozen=True)
+class Publicacion:
+    """La publicacion de un calculo (pregunta 22): en que carpeta y en que lista quedo."""
+
+    id: int
+    calculo_id: int
+    caso: str
+    lista_id: int
+    usuario: str
+    registrado: datetime
+
+
 def _t(valor: Decimal) -> str:
     return format(valor, "f")
 
@@ -112,6 +163,11 @@ def _t(valor: Decimal) -> str:
 def _ultimo_dia(periodo: str) -> date:
     anio, mes = validar_periodo(periodo)
     return date(anio + (mes == 12), mes % 12 + 1, 1) - timedelta(days=1)
+
+
+def _mes_anterior(periodo: str) -> str:
+    anio, mes = validar_periodo(periodo)
+    return f"{anio - 1}-12" if mes == 1 else f"{anio:04d}-{mes - 1:02d}"
 
 
 def _tasa(equivalencia: Equivalencia | None) -> dict[str, str] | None:
@@ -164,41 +220,75 @@ def _producido(sesion_ins: Session, periodo: str) -> _Producido:
     return producido
 
 
-def _exigir_centros(periodo: str, costos: list[CostoRegistrado], producido: _Producido) -> None:
-    """Cada centro con costo tiene a quien cargarlo, cada agregado tiene costo de cantera y cada
-    mezcla costo de planta (sin ellos su costo por tonelada saldria corto)."""
-    hay = {
-        centro: any(r.costo.monto > CERO for r in costos if r.costo.centro == centro)
-        for centro in ("cantera", "planta")
-    }
-    if hay["cantera"] and not producido.agregados:
-        raise ErrorDeCalculo(
-            f"Hay costos de cantera en {periodo} pero no se produjo ningún agregado: no hay a "
-            "quién repartirlos."
-        )
+def _exigir_centros(periodo: str, hay: Mapping[str, bool], producido: _Producido) -> None:
+    """Cada agregado tiene costo de cantera y cada mezcla costo de planta (sin ellos su costo por
+    tonelada saldria corto). Un centro con costo y sin receptor ya no se niega: pasa al mes
+    siguiente (pregunta 16)."""
     if producido.agregados and not hay["cantera"]:
         raise ErrorDeCalculo(
             f"No hay costos de cantera en {periodo} para los agregados "
             f"{', '.join(sorted(producido.agregados))}: su costo por tonelada sería cero."
-        )
-    if hay["planta"] and not producido.usos:
-        raise ErrorDeCalculo(
-            f"Hay costos de planta en {periodo} pero no se produjo mezcla: no hay a quién "
-            "cargarlos."
         )
     if producido.usos and not hay["planta"]:
         raise ErrorDeCalculo(
             f"No hay costos de planta en {periodo} para las mezclas "
             f"{', '.join(sorted(producido.usos))}: su costo por tonelada saldría sin la planta."
         )
-    for mezcla, usos in producido.usos.items():
+
+
+# --- Lo que viene de otros calculos (Tarea 4b) ----------------------------------------------------
+
+
+def _de_otro_calculo(
+    sesion_ins: Session, periodo: str, moneda: str, producido: _Producido
+) -> dict[str, CalculoGuardado]:
+    """Por cada agregado propio de una mezcla que no se produjo en `periodo`, el ultimo calculo
+    (id mayor) de un periodo anterior, en `moneda`, que le da costo (pregunta 15). Nunca uno de un
+    mes posterior. Sin ninguno, `ErrorDeCalculo` que nombra la mezcla y el agregado."""
+    faltan: dict[str, str] = {}  # agregado -> la primera mezcla que lo usa
+    for mezcla, usos in sorted(producido.usos.items()):
         for receta, _ in usos.values():
             for c in receta.componentes:
                 if c.tipo == "propio" and c.codigo not in producido.agregados:
-                    raise ErrorDeCalculo(
-                        f"La mezcla {mezcla} (receta n.º {receta.id}) usa {c.codigo}, que no se "
-                        f"produjo en {periodo}: no tiene costo propio del periodo."
-                    )
+                    faltan.setdefault(c.codigo, mezcla)
+    if not faltan:
+        return {}
+    anteriores = [
+        _guardado(fila)
+        for fila in sesion_ins.scalars(
+            select(Calculo)
+            .where(Calculo.periodo < periodo, Calculo.moneda == moneda)
+            .order_by(Calculo.id.desc())
+        )
+    ]
+    hallados: dict[str, CalculoGuardado] = {}
+    for codigo, mezcla in sorted(faltan.items()):
+        hallado = next((c for c in anteriores if codigo in c.por_tonelada), None)
+        if hallado is None:
+            raise ErrorDeCalculo(
+                f"La mezcla {mezcla} usa {codigo}, que no se produjo en {periodo} ni tiene un "
+                f"costo calculado antes en {moneda}."
+            )
+        hallados[codigo] = hallado
+    return hallados
+
+
+def _ultimo_del_mes_anterior(sesion_ins: Session, periodo: str) -> CalculoGuardado | None:
+    """El ultimo calculo (id mayor) del mes anterior a `periodo`, verificado, o `None`."""
+    fila = sesion_ins.scalar(
+        select(Calculo)
+        .where(Calculo.periodo == _mes_anterior(periodo))
+        .order_by(Calculo.id.desc())
+        .limit(1)
+    )
+    return None if fila is None else _guardado(fila)
+
+
+def _lo_que_pasa(calculo: CalculoGuardado | None) -> dict[str, Any]:
+    """Lo que `calculo` deja para el mes siguiente; un calculo de la version 1 no dejaba nada."""
+    if calculo is None:
+        return {}
+    return json.loads(calculo.instantanea)["resultado"].get("pasa_al_mes_siguiente", {})
 
 
 # --- Moneda ---------------------------------------------------------------------------------------
@@ -222,6 +312,42 @@ def _convertir_costos(
     return convertidos
 
 
+def _convertir_lo_que_viene(
+    sesion_caso: Session, anterior: CalculoGuardado | None, moneda: str, faltan: list[str]
+) -> dict[str, tuple[Decimal, dict[str, Any]]]:
+    """Lo que pasa del calculo `anterior`, por centro, en `moneda`: si la del calculo anterior es
+    otra, con la tasa del cierre de su mes. Sin tasa: se anota en `faltan`."""
+    viene: dict[str, tuple[Decimal, dict[str, Any]]] = {}
+    if anterior is None:
+        return viene
+    for centro, dato in sorted(_lo_que_pasa(anterior).items()):
+        total = Decimal(dato["total"])
+        equivalencia: Equivalencia | None = None
+        if anterior.moneda != moneda:
+            try:
+                equivalencia = equivalencia_del_cierre(
+                    sesion_caso, total, anterior.moneda, moneda, anterior.periodo
+                )
+            except SinTasaDelDia:
+                faltan.append(
+                    f"lo que pasó de {anterior.periodo} ({centro}, cálculo n.º {anterior.id}) "
+                    f"sin tasa del BCV publicada en {anterior.periodo} (la del cierre del mes)"
+                )
+                continue
+        valor = total if equivalencia is None else equivalencia.convertido
+        viene[centro] = (
+            valor,
+            {
+                "total": _t(valor),
+                "calculo": anterior.id,
+                "periodo": anterior.periodo,
+                "costos": list(dato["costos"]),
+                "tasa": _tasa(equivalencia),
+            },
+        )
+    return viene
+
+
 def _unidades_compradas(producido: _Producido) -> dict[str, set[str]]:
     unidades: dict[str, set[str]] = {}
     for usos in producido.usos.values():
@@ -235,15 +361,17 @@ def _unidades_compradas(producido: _Producido) -> dict[str, set[str]]:
 def _precios_comprados(
     sesion_caso: Session,
     unidades: Mapping[str, set[str]],
-    cierre: date,
+    periodo: str,
     moneda: str,
     faltan: list[str],
-) -> tuple[dict[str, Decimal], dict[str, Any]]:
-    """Precio de cada componente comprado en la lista global vigente de la carpeta al `cierre`,
-    convertido a `moneda` con la tasa del dia de la vigencia de la lista. Sin lista, sin precio o
-    con otra unidad: `ErrorDeCalculo` que nombra los codigos. Sin tasa: se anota en `faltan`."""
+) -> tuple[dict[str, Decimal], dict[str, Any], Equivalencia | None]:
+    """Precio de cada componente comprado en la lista global vigente de la carpeta al cierre del
+    `periodo`, convertido a `moneda` con la tasa del cierre del mes (pregunta 14), que tambien se
+    devuelve (`None` si no hizo falta convertir). Sin lista, sin precio o con otra unidad:
+    `ErrorDeCalculo` que nombra los codigos. Sin tasa: se anota en `faltan`."""
     if not unidades:
-        return {}, {}
+        return {}, {}, None
+    cierre = _ultimo_dia(periodo)
     codigos = sorted(unidades)
     try:
         lista = Catalogo(sesion_caso).lista_vigente(cierre)
@@ -270,19 +398,22 @@ def _precios_comprados(
         raise ErrorDeCalculo(f"En la lista {vigencia}, {'; '.join(otra_unidad)}.")
     precios: dict[str, Decimal] = {}
     detalle: dict[str, Any] = {}
+    usada: Equivalencia | None = None
     for codigo in codigos:
         fila = filas[codigo]
         equivalencia: Equivalencia | None = None
         if lista.moneda != moneda:
             try:
-                equivalencia = equivalencia_del_dia(
-                    sesion_caso, fila.precio, lista.moneda, moneda, lista.fecha_vigencia
+                equivalencia = equivalencia_del_cierre(
+                    sesion_caso, fila.precio, lista.moneda, moneda, periodo
                 )
             except SinTasaDelDia:
                 faltan.append(
-                    f"lista «{lista.nombre}» vigente desde el {lista.fecha_vigencia:%d/%m/%Y}"
+                    f"lista «{lista.nombre}» vigente desde el {lista.fecha_vigencia:%d/%m/%Y} "
+                    f"sin tasa del BCV publicada en {periodo} (la del cierre del mes)"
                 )
-                return {}, {}
+                return {}, {}, None
+            usada = equivalencia
         precios[codigo] = fila.precio if equivalencia is None else equivalencia.convertido
         detalle[codigo] = {
             "precio": _t(fila.precio),
@@ -296,7 +427,7 @@ def _precios_comprados(
                 "fecha_vigencia": lista.fecha_vigencia.isoformat(),
             },
         }
-    return precios, detalle
+    return precios, detalle, usada
 
 
 # --- El calculo -----------------------------------------------------------------------------------
@@ -355,31 +486,41 @@ def calcular_periodo(
     ahora: datetime,
 ) -> CalculoGuardado:
     """Calcula el costo por tonelada de cada producto del periodo en `moneda` y lo guarda con sus
-    entradas. Todo se valida y convierte antes de escribir: un error no deja nada."""
+    entradas, lo que vino del mes anterior y lo que pasa al siguiente. Todo se valida y convierte
+    antes de escribir: un error no deja nada."""
     _validar_entrada(periodo, moneda, usuario)
     costos = costos_del_periodo(sesion_ins, periodo)
-    if sum((r.costo.monto for r in costos), CERO) == CERO:
-        raise ErrorDeCalculo(f"No hay costos registrados en {periodo}.")
     producido = _producido(sesion_ins, periodo)
-    if not producido.toneladas:
-        raise ErrorDeCalculo(f"No hubo producción en {periodo}.")
-    _exigir_centros(periodo, costos, producido)
+    anterior = _ultimo_del_mes_anterior(sesion_ins, periodo)
+    pasa_de_antes = _lo_que_pasa(anterior)
+    hay = {
+        centro: any(r.costo.monto > CERO for r in costos if r.costo.centro == centro)
+        or Decimal(pasa_de_antes.get(centro, {"total": "0"})["total"]) > CERO
+        for centro in CENTROS
+    }
+    if not any(hay.values()):
+        raise ErrorDeCalculo(f"No hay costos registrados en {periodo}.")
+    _exigir_centros(periodo, hay, producido)
     if pesos is not None and not producido.agregados:
         raise ErrorDeCalculo(
             f"Se pidió el reparto de la cantera por pesos, pero en {periodo} no se produjo "
             "ningún agregado."
         )
+    de_otro = _de_otro_calculo(sesion_ins, periodo, moneda, producido)
 
     faltan: list[str] = []
     convertidos = _convertir_costos(sesion_caso, costos, moneda, faltan)
-    precios, detalle_precios = _precios_comprados(
-        sesion_caso, _unidades_compradas(producido), _ultimo_dia(periodo), moneda, faltan
+    viene = _convertir_lo_que_viene(sesion_caso, anterior, moneda, faltan)
+    precios, detalle_precios, cierre_usado = _precios_comprados(
+        sesion_caso, _unidades_compradas(producido), periodo, moneda, faltan
     )
     if faltan:
         raise FaltanTasas(moneda, tuple(faltan))
 
     def total(centro: str) -> Decimal:
-        return exacto(lambda: sum((v for r, v, _ in convertidos if r.costo.centro == centro), CERO))
+        del_mes = (v for r, v, _ in convertidos if r.costo.centro == centro)
+        de_antes = viene[centro][0] if centro in viene else CERO
+        return exacto(lambda: sum(del_mes, CERO) + de_antes)
 
     cantera, planta = total("cantera"), total("planta")
     por_tonelada: dict[str, Decimal] = {}
@@ -389,9 +530,10 @@ def calcular_periodo(
     if producido.usos:
         mezclas = {m: sum((t for _, t in u.values()), CERO) for m, u in producido.usos.items()}
         planta_por_t = costo_por_tonelada(planta, mezclas)[next(iter(mezclas))]
+        propios = por_tonelada | {c: calc.por_tonelada[c] for c, calc in de_otro.items()}
         for mezcla, usos in sorted(producido.usos.items()):
             por_tonelada[mezcla] = costo_de_mezcla_del_periodo(
-                [usos[i] for i in sorted(usos)], por_tonelada, precios, planta_por_t
+                [usos[i] for i in sorted(usos)], propios, precios, planta_por_t
             )
     en_cero = sorted(c for c, v in por_tonelada.items() if not v > CERO)
     if en_cero:
@@ -399,6 +541,16 @@ def calcular_periodo(
             f"El costo por tonelada de {', '.join(en_cero)} en {periodo} da cero: revise los "
             "costos y los precios; no se guardó nada."
         )
+    sin_receptor = {"cantera": not producido.agregados, "planta": not producido.usos}
+    pasa = {
+        centro: {
+            "total": _t(valor),
+            "costos": (viene[centro][1]["costos"] if centro in viene else [])
+            + [r.id for r, _, _ in convertidos if r.costo.centro == centro],
+        }
+        for centro, valor in (("cantera", cantera), ("planta", planta))
+        if sin_receptor[centro] and valor > CERO
+    }
 
     entradas = {
         "version": VERSION_DE_LA_INSTANTANEA,
@@ -416,12 +568,23 @@ def calcular_periodo(
             for receta, toneladas in (usos[i] for i in sorted(usos))
         ],
         "precios_comprados": detalle_precios,
+        "tasa_del_cierre": _tasa(cierre_usado),
+        "de_otro_calculo": {
+            codigo: {
+                "costo": _t(calc.por_tonelada[codigo]),
+                "calculo": calc.id,
+                "periodo": calc.periodo,
+            }
+            for codigo, calc in de_otro.items()
+        },
+        "viene_del_mes_anterior": {centro: dato for centro, (_, dato) in viene.items()},
     }
     resultado = {
         "total_cantera": _t(cantera),
         "total_planta": _t(planta),
         "planta_por_t": None if planta_por_t is None else _t(planta_por_t),
         "por_tonelada": {c: _t(v) for c, v in por_tonelada.items()},
+        "pasa_al_mes_siguiente": pasa,
     }
     texto = json.dumps(
         {"entradas": entradas, "resultado": resultado},
@@ -480,6 +643,45 @@ def calculo_guardado(sesion_ins: Session, calculo_id: int) -> CalculoGuardado:
     return _guardado(fila)
 
 
+def _publicacion(fila: PublicacionRegistrada) -> Publicacion:
+    return Publicacion(
+        id=fila.id,
+        calculo_id=fila.calculo_id,
+        caso=fila.caso,
+        lista_id=fila.lista_id,
+        usuario=fila.usuario,
+        registrado=fila.registrado,
+    )
+
+
+def publicacion_de(sesion_ins: Session, calculo_id: int) -> Publicacion | None:
+    """La publicacion del calculo `calculo_id`, o `None` si no se ha publicado."""
+    fila = sesion_ins.scalar(
+        select(PublicacionRegistrada).where(PublicacionRegistrada.calculo_id == calculo_id)
+    )
+    return None if fila is None else _publicacion(fila)
+
+
+def calculos_registrados(
+    sesion_ins: Session, periodo: str | None = None
+) -> list[tuple[CalculoGuardado, Publicacion | None]]:
+    """Los calculos (de `periodo`, si se da), del mas reciente al mas viejo, cada uno verificado
+    contra su huella (uno alterado es `ErrorDeCalculo`) y con su publicacion, si la tiene."""
+    consulta = select(Calculo).order_by(Calculo.id.desc())
+    if periodo is not None:
+        validar_periodo(periodo)
+        consulta = consulta.where(Calculo.periodo == periodo)
+    calculos = [_guardado(fila) for fila in sesion_ins.scalars(consulta)]
+    ids = [c.id for c in calculos]
+    publicaciones = {
+        fila.calculo_id: _publicacion(fila)
+        for fila in sesion_ins.scalars(
+            select(PublicacionRegistrada).where(PublicacionRegistrada.calculo_id.in_(ids))
+        )
+    }
+    return [(c, publicaciones.get(c.id)) for c in calculos]
+
+
 def ultimo_calculo(sesion_ins: Session, producto: str) -> CalculoGuardado | None:
     """El calculo mas reciente (mayor numero) que da costo por tonelada a `producto`, o `None`."""
     for fila in sesion_ins.scalars(select(Calculo).order_by(Calculo.id.desc())):
@@ -521,37 +723,58 @@ def lista_base_del_periodo(sesion_caso: Session, calculo: CalculoGuardado) -> mo
         ) from None
 
 
-def _tasa_de_la_base(sesion_caso: Session, base: models.ListaPrecios, moneda: str) -> TasaDeclarada:
-    """La tasa BCV del dia exacto en que rige la base (la misma fecha y regla con que el calculo
-    convirtio lo comprado). Sin ella, `SinTasaDelDia` que nombra la lista y la fecha."""
+def _tasa_de_la_base(
+    sesion_caso: Session, base: models.ListaPrecios, calculo: CalculoGuardado
+) -> TasaDeclarada:
+    """La tasa del cierre del mes del calculo (pregunta 14: la misma con que el calculo convirtio
+    lo comprado). Sin ella, `SinTasaDelDia` que nombra la lista y el mes."""
     try:
-        return tasa_del_dia(sesion_caso, base.fecha_vigencia, moneda)
+        return tasa_del_cierre(sesion_caso, calculo.periodo, calculo.moneda)
     except SinTasaDelDia:
         raise SinTasaDelDia(
-            f"No hay tasa del BCV del {base.fecha_vigencia:%d/%m/%Y} (hace falta la del mismo "
-            f"día) para llevar la lista «{base.nombre}» a {moneda}. Cárguela en Índices y vuelva "
-            "a publicar; no se publicó nada."
+            f"No hay tasa del BCV publicada en {calculo.periodo} (hace falta la del cierre del "
+            f"mes) para llevar la lista «{base.nombre}» a {calculo.moneda}. Cárguela en Índices y "
+            "vuelva a publicar; no se publicó nada."
         ) from None
+
+
+def exigir_publicable(sesion_ins: Session, calculo: CalculoGuardado) -> None:
+    """Un calculo sin costo por tonelada (un mes sin produccion) no se publica; uno ya publicado
+    tampoco (`CalculoYaPublicado`, pregunta 22). Solo lee."""
+    if not calculo.por_tonelada:
+        raise ErrorDeCalculo("Este cálculo no tiene costos por tonelada que publicar.")
+    previa = publicacion_de(sesion_ins, calculo.id)
+    if previa is not None:
+        raise CalculoYaPublicado(
+            f"El cálculo n.º {calculo.id} ya se publicó en la lista n.º {previa.lista_id}."
+        )
 
 
 def publicar_calculo(
     sesion_caso: Session,
     calculo: CalculoGuardado,
     *,
+    sesion_ins: Session,
+    nombre_del_caso: str,
     base: models.ListaPrecios,
     empresa_nombre: str,
     empresa_rif: str,
     usuario: str,
     ahora: datetime,
 ) -> models.ListaPrecios:
-    """Publica el costo por tonelada de `calculo` como lista de empresa nueva sobre `base`.
+    """Publica el costo por tonelada de `calculo` como lista de empresa nueva sobre `base` y lo
+    registra en `prod_publicacion` de `sesion_ins` (una sola vez por calculo).
 
     `calculo` es lo que devuelve `calculo_guardado` (huella verificada): su periodo y su moneda son
-    los de la instantanea. La lista copia `base` (convertida con la tasa BCV del dia exacto en que
-    rige, si esta en otra moneda) y pone encima un precio por producto. Todo se valida antes de
-    escribir. No hace `commit`; nunca toca una lista anterior."""
+    los de la instantanea. La lista copia `base` (convertida con la tasa del cierre del mes del
+    calculo, si esta en otra moneda) y pone encima un precio por producto. Todo se valida antes de
+    escribir. No hace `commit` en ninguna de las dos bases: quien llama confirma primero la carpeta
+    y despues la instalacion. Nunca toca una lista anterior."""
     if not (empresa_nombre.strip() and empresa_rif.strip() and usuario.strip()):
         raise ErrorDeCalculo("Faltan el nombre y el RIF de la empresa y el usuario que publica.")
+    if not nombre_del_caso.strip():
+        raise ErrorDeCalculo("Falta la carpeta de trabajo donde se publica.")
+    exigir_publicable(sesion_ins, calculo)
     cierre = _ultimo_dia(calculo.periodo)
     es_agregado = set(json.loads(calculo.instantanea)["entradas"]["agregados"])
     codigos = {
@@ -566,7 +789,7 @@ def publicar_calculo(
         )
     tasa_base = None
     if base.moneda != calculo.moneda:
-        tasa_base = _tasa_de_la_base(sesion_caso, base, calculo.moneda)
+        tasa_base = _tasa_de_la_base(sesion_caso, base, calculo)
     fuente = f"Producción, período {calculo.periodo}, cálculo n.º {calculo.id}"
     existentes = {c: _exigir_insumo_propio(sesion_caso, c) for c in codigos.values()}
     propios = []
@@ -594,7 +817,7 @@ def publicar_calculo(
     publicado = (
         f"publicado por {usuario.strip()} el {ahora:%d/%m/%Y %H:%M}; huella {calculo.huella[:16]}"
     )
-    return crear_lista_de_empresa(
+    lista = crear_lista_de_empresa(
         sesion_caso,
         empresa_nombre,
         empresa_rif,
@@ -607,3 +830,14 @@ def publicar_calculo(
         nombre=f"Costo propio {calculo.periodo}, cálculo n.º {calculo.id}",
         tasa_base=tasa_base,
     )
+    sesion_ins.add(
+        PublicacionRegistrada(
+            calculo_id=calculo.id,
+            caso=nombre_del_caso.strip(),
+            lista_id=lista.id,
+            usuario=usuario.strip(),
+            registrado=ahora,
+        )
+    )
+    sesion_ins.flush()
+    return lista

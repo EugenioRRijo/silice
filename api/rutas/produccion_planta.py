@@ -21,6 +21,13 @@ después de aquél en `api.main`, así el orden de `docs/api.json` no cambia.
   (`Accion.PUBLICAR_COSTO_PROPIO`, solo administrador con cuenta: la clave de API recibe 403) a la
   del router. La empresa es la de Administración (`empresa_propia`). Crea una lista de empresa
   nueva en la carpeta del caso y la confirma aquí; la hora es la del servidor.
+- **Tarea 4b** (respuestas de Eugenio): `GET /calculos?periodo=AAAA-MM` (periodo opcional) lista
+  los cálculos, del más reciente al más viejo, con su publicación (`publicado`: lista, carpeta y
+  hora, o `null`); `GET /calculos/{id}` añade el mismo `publicado`. Cada cálculo se publica una
+  sola vez: el segundo intento es 409 sin escribir nada; un cálculo sin costo por tonelada (un mes
+  sin producción) es 422. La publicación se anota en la instalación en la misma operación: aquí se
+  confirma la carpeta y, al volver, la dependencia confirma la instalación; si la carpeta falla, la
+  instalación se deshace y no queda publicación.
 """
 
 from __future__ import annotations
@@ -28,11 +35,17 @@ from __future__ import annotations
 import json
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from api.admin_acceso import administrar
-from api.dependencias import USUARIO_API, SesionDep, SesionInstalacionDep
+from api.dependencias import (
+    USUARIO_API,
+    SesionDep,
+    SesionInstalacionDep,
+    ruta_de_url,
+    url_de_la_peticion,
+)
 from api.rutas import produccion as arenera
 from api.rutas.produccion import OPERAR_ARENERA, UsuarioDep, _decimal, _fecha
 from api.sesion_web import exigir_clave_o_sesion
@@ -40,9 +53,14 @@ from api.sin_cache import RutaSinCache
 from aplicacion.costo_propio import (
     CalculoGuardado,
     CalculoInexistente,
+    CalculoYaPublicado,
+    Publicacion,
     calcular_periodo,
     calculo_guardado,
+    calculos_registrados,
+    exigir_publicable,
     lista_base_del_periodo,
+    publicacion_de,
     publicar_calculo,
 )
 from produccion.costo import presentar
@@ -186,6 +204,12 @@ class CostoDeProducto(BaseModel):
     presentado: str  # dos decimales, mitad hacia arriba
 
 
+class PublicadoRespuesta(BaseModel):
+    lista_id: int  # la lista de empresa donde quedó
+    caso: str  # el nombre de la carpeta de trabajo
+    registrado: str  # hora del servidor, ISO
+
+
 class CalculoDeCostoRespuesta(BaseModel):
     id: int
     periodo: str
@@ -195,6 +219,17 @@ class CalculoDeCostoRespuesta(BaseModel):
     registrado: str
     productos: list[CostoDeProducto]  # por código
     instantanea: dict[str, Any]  # entradas y resultado, decimales como texto
+    publicado: PublicadoRespuesta | None = None  # Tarea 4b: una sola publicación por cálculo
+
+
+class CalculoResumen(BaseModel):
+    id: int
+    periodo: str
+    moneda: str
+    usuario: str
+    registrado: str
+    huella: str
+    publicado: PublicadoRespuesta | None
 
 
 class CostoRespuesta(BaseModel):
@@ -409,7 +444,19 @@ def ver_producido(
 # --- Costo por tonelada del periodo (plan vial, Tarea 4) ------------------------------------------
 
 
-def _calculo_respuesta(calculo: CalculoGuardado) -> CalculoDeCostoRespuesta:
+def _publicado(publicacion: Publicacion | None) -> PublicadoRespuesta | None:
+    if publicacion is None:
+        return None
+    return PublicadoRespuesta(
+        lista_id=publicacion.lista_id,
+        caso=publicacion.caso,
+        registrado=publicacion.registrado.isoformat(),
+    )
+
+
+def _calculo_respuesta(
+    calculo: CalculoGuardado, publicacion: Publicacion | None = None
+) -> CalculoDeCostoRespuesta:
     return CalculoDeCostoRespuesta(
         id=calculo.id,
         periodo=calculo.periodo,
@@ -424,6 +471,7 @@ def _calculo_respuesta(calculo: CalculoGuardado) -> CalculoDeCostoRespuesta:
             for codigo, valor in sorted(calculo.por_tonelada.items())
         ],
         instantanea=json.loads(calculo.instantanea),
+        publicado=_publicado(publicacion),
     )
 
 
@@ -460,17 +508,42 @@ def calcular_costo_por_tonelada(
 
 
 @router.get(
+    "/calculos", response_model=list[CalculoResumen], dependencies=[Depends(REGISTRAR_COSTOS)]
+)
+def listar_calculos(
+    sesion: SesionInstalacionDep,
+    periodo: Annotated[str | None, Query(description="Periodo AAAA-MM (opcional)")] = None,
+) -> list[CalculoResumen]:
+    """Los cálculos guardados (del período, si se pide), del más reciente al más viejo, con su
+    publicación. Período inválido o un cálculo alterado: 422."""
+    filas = calculos_registrados(sesion, None if periodo is None else periodo.strip())
+    return [
+        CalculoResumen(
+            id=c.id,
+            periodo=c.periodo,
+            moneda=c.moneda,
+            usuario=c.usuario,
+            registrado=c.registrado.isoformat() if c.registrado else "",
+            huella=c.huella,
+            publicado=_publicado(p),
+        )
+        for c, p in filas
+    ]
+
+
+@router.get(
     "/calculos/{calculo_id}",
     response_model=CalculoDeCostoRespuesta,
     dependencies=[Depends(REGISTRAR_COSTOS)],
 )
 def ver_calculo(calculo_id: int, sesion: SesionInstalacionDep) -> CalculoDeCostoRespuesta:
-    """Un cálculo guardado, tal como se calculó. Inexistente: 404; alterado: 422."""
+    """Un cálculo guardado, tal como se calculó, con su publicación. Inexistente: 404; alterado:
+    422."""
     try:
         calculo = calculo_guardado(sesion, calculo_id)
     except CalculoInexistente as error:
         raise HTTPException(404, str(error)) from None
-    return _calculo_respuesta(calculo)
+    return _calculo_respuesta(calculo, publicacion_de(sesion, calculo.id))
 
 
 @router.post(
@@ -481,6 +554,7 @@ def ver_calculo(calculo_id: int, sesion: SesionInstalacionDep) -> CalculoDeCosto
 )
 def publicar_costo_propio(
     calculo_id: int,
+    request: Request,
     sesion: SesionInstalacionDep,
     caso: SesionDep,
     usuario: UsuarioPublicaDep,
@@ -490,18 +564,25 @@ def publicar_costo_propio(
     N». La empresa es la de Administración (sin ella, 422); solo una cuenta de administrador
     (la clave de API recibe 403). Parte de la lista vigente al cierre del período. Un cálculo
     alterado (huella o columnas que no coinciden), sin lista vigente o sin tasa BCV para llevarla
-    a la moneda del cálculo: 422, sin escribir; inexistente: 404.
-    Nada se sobrescribe: cada publicación es otra lista."""
+    a la moneda del cálculo: 422, sin escribir; inexistente: 404. Sin costo por tonelada: 422;
+    ya publicado: 409, sin escribir nada (Tarea 4b). Nada se sobrescribe: cada publicación es otra
+    lista, anotada en la instalación, que se confirma después de la carpeta."""
     try:
         calculo = calculo_guardado(sesion, calculo_id)
+        exigir_publicable(sesion, calculo)
     except CalculoInexistente as error:
         raise HTTPException(404, str(error)) from None
+    except CalculoYaPublicado as error:
+        raise HTTPException(409, str(error)) from None
     propia = empresas.empresa_propia(sesion)
     if propia is None:
         raise HTTPException(422, "Configure la empresa en Administración antes de publicar.")
+    ruta = ruta_de_url(url_de_la_peticion(request))
     lista = publicar_calculo(
         caso,
         calculo,
+        sesion_ins=sesion,
+        nombre_del_caso=ruta.name if ruta is not None else "(carpeta sin archivo)",
         base=lista_base_del_periodo(caso, calculo),
         empresa_nombre=propia.nombre,
         empresa_rif=propia.rif,
@@ -509,5 +590,5 @@ def publicar_costo_propio(
         ahora=arenera._ahora(),
     )
     publicada = PublicacionCreada(id=lista.id, nombre=lista.nombre)
-    caso.commit()
+    caso.commit()  # primero la carpeta; la instalación la confirma su dependencia al volver
     return publicada

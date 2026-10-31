@@ -9042,14 +9042,14 @@
         "description": "Calcula el costo por tonelada de cada producto del periodo en la moneda pedida y lo guarda\ncon sus entradas (otro registro cada vez; nada se sobrescribe). Sin costos, sin producción, sin\ntasa BCV del día de algún monto o sin precio de un componente comprado: 422, sin guardar.",
         "operationId": "calcular_costo_por_tonelada_v1_produccion_calculos_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CalculoDeCostoEntrada"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -9073,6 +9073,60 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Listar Calculos",
+        "description": "Los cálculos guardados (del período, si se pide), del más reciente al más viejo, con su\npublicación. Período inválido o un cálculo alterado: 422.",
+        "operationId": "listar_calculos_v1_produccion_calculos_get",
+        "parameters": [
+          {
+            "name": "periodo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Periodo AAAA-MM (opcional)",
+              "title": "Periodo"
+            },
+            "description": "Periodo AAAA-MM (opcional)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CalculoResumen"
+                  },
+                  "title": "Response Listar Calculos V1 Produccion Calculos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/produccion/calculos/{calculo_id}": {
@@ -9081,7 +9135,7 @@
           "produccion"
         ],
         "summary": "Ver Calculo",
-        "description": "Un cálculo guardado, tal como se calculó. Inexistente: 404; alterado: 422.",
+        "description": "Un cálculo guardado, tal como se calculó, con su publicación. Inexistente: 404; alterado:\n422.",
         "operationId": "ver_calculo_v1_produccion_calculos__calculo_id__get",
         "parameters": [
           {
@@ -9124,7 +9178,7 @@
           "produccion"
         ],
         "summary": "Publicar Costo Propio",
-        "description": "Publica un cálculo concreto como lista de empresa nueva en la carpeta del caso: un precio por\nproducto con el valor exacto del cálculo y la fuente «Producción, período AAAA-MM, cálculo n.º\nN». La empresa es la de Administración (sin ella, 422); solo una cuenta de administrador\n(la clave de API recibe 403). Parte de la lista vigente al cierre del período. Un cálculo\nalterado (huella o columnas que no coinciden), sin lista vigente o sin tasa BCV para llevarla\na la moneda del cálculo: 422, sin escribir; inexistente: 404.\nNada se sobrescribe: cada publicación es otra lista.",
+        "description": "Publica un cálculo concreto como lista de empresa nueva en la carpeta del caso: un precio por\nproducto con el valor exacto del cálculo y la fuente «Producción, período AAAA-MM, cálculo n.º\nN». La empresa es la de Administración (sin ella, 422); solo una cuenta de administrador\n(la clave de API recibe 403). Parte de la lista vigente al cierre del período. Un cálculo\nalterado (huella o columnas que no coinciden), sin lista vigente o sin tasa BCV para llevarla\na la moneda del cálculo: 422, sin escribir; inexistente: 404. Sin costo por tonelada: 422;\nya publicado: 409, sin escribir nada (Tarea 4b). Nada se sobrescribe: cada publicación es otra\nlista, anotada en la instalación, que se confirma después de la carpeta.",
         "operationId": "publicar_costo_propio_v1_produccion_calculos__calculo_id__publicar_post",
         "parameters": [
           {
@@ -13091,6 +13145,16 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Instantanea"
+          },
+          "publicado": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicadoRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -13168,6 +13232,55 @@
         ],
         "title": "CalculoPeticion",
         "description": "UC-01 en modo «solo calcular»: nada se guarda. `plan` son las filas de la tabla del\nproyectista; sin ellas, el plan por defecto (`plan_secuencial`). Con `proyecto` (el código o\nel nombre de la obra, Tarea 12 de montar un presupuesto) se valora con la lista de la obra y en\nsu moneda, y `moneda` no se usa."
+      },
+      "CalculoResumen": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "registrado": {
+            "type": "string",
+            "title": "Registrado"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          },
+          "publicado": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicadoRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "periodo",
+          "moneda",
+          "usuario",
+          "registrado",
+          "huella",
+          "publicado"
+        ],
+        "title": "CalculoResumen"
       },
       "CambiadosRespuesta": {
         "properties": {
@@ -21915,6 +22028,29 @@
           "nombre"
         ],
         "title": "PublicacionCreada"
+      },
+      "PublicadoRespuesta": {
+        "properties": {
+          "lista_id": {
+            "type": "integer",
+            "title": "Lista Id"
+          },
+          "caso": {
+            "type": "string",
+            "title": "Caso"
+          },
+          "registrado": {
+            "type": "string",
+            "title": "Registrado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lista_id",
+          "caso",
+          "registrado"
+        ],
+        "title": "PublicadoRespuesta"
       },
       "PuntoCurvaRespuesta": {
         "properties": {
