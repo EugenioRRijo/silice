@@ -261,6 +261,14 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/vial/Tramos"),
   },
   {
+    id: "riesgo",
+    titulo: "Riesgo de la obra",
+    enUnaLinea: "Cuánto puede subir el presupuesto si suben los precios",
+    seccion: "Trabajo",
+    accion: "ver_riesgo",
+    cargar: () => import("../paginas/riesgo/RiesgoDeLaObra"),
+  },
+  {
     id: "administracion",
     titulo: "Administración",
     enUnaLinea: "Cuentas, claves y ajustes de la instalación",

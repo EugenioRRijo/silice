@@ -1,0 +1,62 @@
+// Riesgo de la obra. Sin tarjetas ni sombras (DESIGN.md): secciones con su título y listas de cifras alineadas.
+
+.riesgo {
+  max-inline-size: 72rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.riesgo-nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+  margin: 0;
+}
+
+.riesgo-campos,
+.riesgo-series {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.riesgo-campos legend,
+.riesgo-series legend {
+  margin-block-end: 0.5rem;
+}
+
+.riesgo-campos .riesgo-nota {
+  grid-column: 1 / -1;
+}
+
+.riesgo-acciones {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.riesgo-resultado {
+  display: grid;
+  gap: 0.75rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--cds-border-subtle);
+}
+
+.riesgo-resultado h2 {
+  margin: 0;
+}
+
+.riesgo-cifras {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: 0.25rem 2rem;
+  margin: 0;
+}
+
+.riesgo-cifras dd {
+  margin: 0;
+  text-align: end;
+}

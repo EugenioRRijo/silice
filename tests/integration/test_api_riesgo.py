@@ -10,14 +10,17 @@ Oráculo a mano de la obra (`tests/fixtures/riesgo_obra.py`): total base 1.000 U
 son cemento asfáltico; su serie sube exactamente 10 % cada mes, así que todas las trayectorias dan
 lo mismo. Con gasto uniforme en 6 meses el factor es (1,1 + 1,21 + 1,331 + 1,4641 + 1,61051 +
 1,771561) ÷ 6 = 8,487171 ÷ 6 = 1,4145285, y 600 × 1,4145285 = 848,7171: P50 = P80 = 1.248,7171 y la
-reserva 248,7171, toda del asfalto. Hay 24 meses completos (febrero de 2025 a enero de 2027). En la
-comprobación (25 meses de historia) entran los cortes de febrero a agosto de 2026: 7, cada uno con
+reserva 248,7171, toda del asfalto. Hay 24 meses completos (octubre de 2024 a septiembre de 2026).
+En la comprobación (25 meses de historia) entran los cortes de octubre de 2025 a abril de 2026: 7,
+cada uno con
 12 meses completos antes y su plazo de 6 meses después, y en todos lo real es igual al P80:
-cobertura 1 (100,00 %). Con el inicio en enero de 2026 solo hay 11 meses completos.
+cobertura 1 (100,00 %). Con el inicio en septiembre de 2025 solo hay 11 meses completos. La
+comprobación lee la historia hasta el mes anterior a «hoy», que se fija en el 31/10/2026.
 """
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -25,6 +28,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api import caso_web, dependencias
+from api.rutas import riesgo as rutas
 from operacion import config
 from seguridad import cuentas
 from tests.fixtures.produccion_api import Web, cliente_con_clave
@@ -66,6 +70,7 @@ def _instalacion_de_la_prueba(_plantillas: dict[str, Path], monkeypatch: pytest.
     (casos / ARCHIVO).write_bytes(_plantillas["via"].read_bytes())
     dependencias.cerrar_motores()
     caso_web.olvidar_todo()
+    monkeypatch.setattr(rutas, "hoy", lambda: date(2026, 10, 31))
     yield
     caso_web.olvidar_todo()
     dependencias.cerrar_motores()
@@ -184,7 +189,7 @@ def test_la_proyeccion_toma_el_inicio_de_la_linea_base_y_da_el_oraculo() -> None
     r = _en_la_via().post(PROYECCION, json=_proyeccion())
     assert r.status_code == 200, r.text
     cuerpo = r.json()
-    assert (cuerpo["inicio"], cuerpo["inicio_de"]) == ("2027-02-01", "linea_base")
+    assert (cuerpo["inicio"], cuerpo["inicio_de"]) == ("2026-10-01", "linea_base")
     assert (cuerpo["moneda"], cuerpo["meses_usados"], cuerpo["semilla"]) == ("USD", 24, 1)
     assert D(cuerpo["total_base"]) == D(1000)
     assert D(cuerpo["p50"]) == P80
@@ -198,10 +203,10 @@ def test_la_proyeccion_toma_el_inicio_de_la_linea_base_y_da_el_oraculo() -> None
 
 def test_sin_linea_base_vale_el_inicio_declarado() -> None:
     r = _en_la_via("admin").post(
-        PROYECCION, json=_proyeccion(version=SIN_LINEA_BASE, inicio="2027-02-01")
+        PROYECCION, json=_proyeccion(version=SIN_LINEA_BASE, inicio="2026-10-01")
     )
     assert r.status_code == 200, r.text
-    assert (r.json()["inicio"], r.json()["inicio_de"]) == ("2027-02-01", "declarado")
+    assert (r.json()["inicio"], r.json()["inicio_de"]) == ("2026-10-01", "declarado")
     assert D(r.json()["p80"]) == P80
 
 
@@ -212,8 +217,8 @@ def test_sin_linea_base_ni_inicio_declarado_422() -> None:
 
 
 def test_el_error_de_pocos_meses_dice_el_numero() -> None:
-    """Foco de revisión 4: con el inicio en enero de 2026 solo hay 11 meses completos."""
-    r = _en_la_via().post(PROYECCION, json=_proyeccion(inicio="2026-01-01"))
+    """Foco de revisión 4: con el inicio en septiembre de 2025 solo hay 11 meses completos."""
+    r = _en_la_via().post(PROYECCION, json=_proyeccion(inicio="2025-09-01"))
     assert r.status_code == 422, r.text
     assert r.json()["detalle"] == "solo hay 11 meses completos; se necesitan 12"
 
@@ -225,7 +230,10 @@ def test_la_comprobacion_informa_cortes_y_cobertura() -> None:
     assert (cuerpo["n_cortes"], cuerpo["dentro"], cuerpo["trayectorias_por_corte"]) == (7, 7, 20)
     assert D(cuerpo["cobertura"]) == 1
     assert cuerpo["cobertura_pct"] == "100.00"
-    assert [c["corte"] for c in cuerpo["cortes"]] == [f"2026-0{m}-01" for m in range(2, 9)]
+    assert [c["corte"] for c in cuerpo["cortes"]] == [
+        *(f"2025-{m}-01" for m in (10, 11, 12)),
+        *(f"2026-0{m}-01" for m in (1, 2, 3, 4)),
+    ]
     for corte in cuerpo["cortes"]:
         assert D(corte["p50"]) == D(corte["p80"]) == D(corte["real"]) == P80
         assert corte["dentro"] is True
@@ -248,7 +256,7 @@ def test_insumos_de_la_version_y_series_que_admite() -> None:
     assert cuerpo["mezclas"] == []
     # en un presupuesto en USD ningún insumo puede seguir a la tasa (fila 78)
     assert [s["codigo"] for s in cuerpo["series"]] == ["CEMENTO_ASFALTICO_PPI", "GASOIL_USD"]
-    assert cuerpo["inicio_linea_base"] == "2027-02-01"
+    assert cuerpo["inicio_linea_base"] == "2026-10-01"
 
 
 def test_obra_o_version_que_no_existe_404() -> None:
@@ -310,7 +318,7 @@ def test_proyeccion_con_forma_mala_422(cambio: dict) -> None:
 
 @pytest.mark.parametrize(
     "cambio",
-    [{"trayectorias_por_corte": 0}, {"trayectorias_por_corte": 2001}, {"inicio": "2027-02-01"}],
+    [{"trayectorias_por_corte": 0}, {"trayectorias_por_corte": 2001}, {"inicio": "2026-10-01"}],
 )
 def test_comprobacion_con_forma_mala_422(cambio: dict) -> None:
     r = _en_la_via().post(COMPROBACION, json=_comprobacion(**cambio))

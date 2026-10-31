@@ -32,6 +32,10 @@ ausencia de Eugenio están en `docs/bitacora/2026-10-30-preguntas-para-eugenio.m
 
 - T15 → T16: la pantalla nueva suma su ruta en `shell/rutas.ts` y su fila en `scripts/recorrido_funcional.toml`, con la
   acción `ver_riesgo`. La API de riesgo recibe cifras con punto: el front convierte la coma es-VE (fila 90).
+- T16, tiempo medido de la comprobación con 500 trayectorias por corte (el valor por omisión de
+  `trayectorias_por_corte`): **14,3 s** con 18 renglones, 43 insumos y 19 cortes, en el proceso, sin la API; 1,0 s
+  en la vía ficticia de las pruebas (3 renglones, 7 cortes). Queda por debajo de 30 s: la pantalla avisa de la
+  espera y no se calcula en segundo plano (fila 95).
 
 ## Menores para el cierre de la fase C
 

@@ -1,7 +1,7 @@
 """Una vía ficticia para «Riesgo de la obra» (plan vial, Tarea 16). Datos FICTICIOS, ninguno real.
 
 La obra «Vía Ficticia Riesgo» tiene dos versiones en USD, VR-001 (con línea base de control que
-empieza el 01/02/2027) y VR-002 (sin línea base), con las mismas tres partidas de un solo material
+empieza el 01/10/2026) y VR-002 (sin línea base), con las mismas tres partidas de un solo material
 y los parámetros de costo en cero, así el total es la suma de cantidad × precio, a mano:
 
 - VIA-01: 1 × (1 t de «Cemento asfáltico» a 600) = 600
@@ -10,10 +10,10 @@ y los parámetros de costo en cero, así el total es la suma de cantidad × prec
 
 Total base: 1.000 USD.
 
-Series (25 meses, de enero de 2025 a enero de 2027): el PPI de asfalto sube 10 % cada mes con
-valores enteros exactos (`11^i × 10^(24 − i)`), así cada variación es exactamente 1,1 y todas las
-trayectorias dan lo mismo; el gasoil queda en 0,50 USD/l y la tasa BCV en 40,00 Bs/USD (una
-observación el día 15 de cada mes). Con el gasoil quieto, solo el asfalto se mueve.
+Series (25 meses, de septiembre de 2024 a septiembre de 2026): el PPI de asfalto sube 10 % cada
+mes con valores enteros exactos (`11^i × 10^(24 − i)`), así cada variación es exactamente 1,1 y
+todas las trayectorias dan lo mismo; el gasoil queda en 0,50 USD/l y la tasa BCV en 40,00 Bs/USD
+(una observación el día 15 de cada mes). Con el gasoil quieto, solo el asfalto se mueve.
 """
 
 from __future__ import annotations
@@ -46,15 +46,15 @@ OBRA = "Vía Ficticia Riesgo"
 CON_LINEA_BASE = "VR-001"
 SIN_LINEA_BASE = "VR-002"
 ARCHIVO = "via_riesgo.db"
-FECHA = date(2026, 12, 15)
-INICIO_DE_LA_LINEA_BASE = date(2027, 2, 1)
+FECHA = date(2026, 9, 15)
+INICIO_DE_LA_LINEA_BASE = date(2026, 10, 1)
 PARAMETROS = ParametrosCosto(fcas=D(0), bono_alimentacion=D(0), administracion=D(0), utilidad=D(0))
 ASFALTO = "Cemento asfáltico"
 GASOIL = "Gasoil"
 SENALES = "Señalización"
 MAPA = {ASFALTO: CEMENTO_ASFALTICO_PPI.codigo, GASOIL: GASOIL_USD.codigo}
-#: Enero de 2025 a enero de 2027.
-MESES = [date(2025 + (m // 12), m % 12 + 1, 1) for m in range(25)]
+#: Septiembre de 2024 a septiembre de 2026.
+MESES = [date(2024 + (m + 8) // 12, (m + 8) % 12 + 1, 1) for m in range(25)]
 
 #: (código, insumo, unidad, cantidad del material por unidad de partida, precio, cantidad)
 PARTIDAS = (
@@ -123,11 +123,11 @@ def _serie(sesion: Session, definicion: DefinicionSerie, valores: dict[date, Dec
         archivo="ficticio.csv",
         huella=definicion.codigo.encode().hex()[:64].ljust(64, "0"),
         fuente="serie ficticia de prueba",
-        fecha_descarga=date(2027, 2, 1),
+        fecha_descarga=date(2026, 10, 1),
         responsable="Prueba",
         filas_leidas=len(valores),
         filas_rechazadas=0,
-        ahora=datetime(2027, 2, 1, 8, 0),
+        ahora=datetime(2026, 10, 1, 8, 0),
     )
 
 
@@ -170,7 +170,7 @@ def crear_via(ruta: Path) -> Path:
                 calendario=Calendario(INICIO_DE_LA_LINEA_BASE, 22),
                 fuente="línea base ficticia",
                 responsable="Ana",
-                ahora=datetime(2026, 12, 20, 9, 0),
+                ahora=datetime(2026, 9, 20, 9, 0),
             )
             sembrar_series(sesion)
             sesion.commit()
