@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { ObraDeCarpetaRespuesta, PendienteDeObra, SesionRespuesta } from "../api/tipos";
 import { ContextoAplicacion } from "../shell/contexto";
@@ -26,6 +26,19 @@ const nodo = (
 ).process;
 const fs = nodo.getBuiltinModule("node:fs");
 const leer = (ruta: string) => fs.readFileSync(`${nodo.cwd()}/src/${ruta}`, "utf-8");
+
+// Bloque `{ … }` que sigue a `apertura` en un fuente SCSS, con sus llaves anidadas.
+const bloque = (fuente: string, apertura: string) => {
+  const i = fuente.indexOf(apertura);
+  if (i < 0) return "";
+  let nivel = 0;
+  for (let j = fuente.indexOf("{", i); j < fuente.length; j++) {
+    if (fuente[j] === "{") nivel++;
+    if (fuente[j] === "}" && --nivel === 0) return fuente.slice(i, j + 1);
+  }
+  return "";
+};
+const regla = (fuente: string, selector: string) => bloque(fuente, `${selector} {`);
 
 // Carpetas y obras inventadas.
 const NORTE = "Carpeta Norte.db";
@@ -808,17 +821,6 @@ describe("BarraLateral: nombres largos de obra", () => {
 // mínimo. jsdom no calcula el diseño: la estructura se prueba en el DOM y las reglas en el fuente; la medida real
 // (cuántas obras caben a 1366×768) se hace en el navegador.
 describe("BarraLateral: la zona de obras con letra grande", () => {
-  const bloque = (fuente: string, apertura: string) => {
-    const i = fuente.indexOf(apertura);
-    if (i < 0) return "";
-    let nivel = 0;
-    for (let j = fuente.indexOf("{", i); j < fuente.length; j++) {
-      if (fuente[j] === "{") nivel++;
-      if (fuente[j] === "}" && --nivel === 0) return fuente.slice(i, j + 1);
-    }
-    return "";
-  };
-  const regla = (fuente: string, selector: string) => bloque(fuente, `${selector} {`);
 
   it("la cabecera de Obras y «Nueva obra» quedan fuera del árbol, que tiene su propio desplazamiento", async () => {
     servidor([obra(NORTE, 1, "Torre"), TORRE]);
@@ -853,5 +855,90 @@ describe("BarraLateral: la zona de obras con letra grande", () => {
     expect(regla(compacta, ".silice-marco-lateral__obras")).toMatch(/min-block-size:\s*10rem/);
     expect(compacta).not.toMatch(/display:\s*none/);
     expect(compacta).not.toMatch(/silice-letra/);
+  });
+});
+
+// Tarea 0 de F4: con letra Grande o Muy grande «Empresa» se pliega para darle su alto al árbol (decisión de Eugenio al
+// cierre de F3). Con letra normal sigue como antes. El tamaño se pone a mano en la raíz, como lo deja `aplicarTamanoLetra`.
+describe("BarraLateral: Empresa plegable con letra grande (F4, Tarea 0)", () => {
+  const CINCO = ["Precios y catálogo", "Auditar un presupuesto", "Producción", "Empresa y personas", "Ayuda"];
+  const todo = () => sesionDe("admin", { acciones: [...sesionDe("admin").acciones, "leer_proyecto"] });
+  const ponerLetra = (valor: string) => document.documentElement.setAttribute("data-silice-letra", valor);
+  const zona = () => screen.getByRole("navigation", { name: "Empresa" });
+  afterEach(() => document.documentElement.removeAttribute("data-silice-letra"));
+
+  it("con letra normal Empresa es un h2 sin botón y se ven sus entradas", async () => {
+    pintar({ sesion: todo() });
+    await arbol();
+    const titulo = within(zona()).getByRole("heading", { name: "Empresa" });
+    expect(within(titulo).queryByRole("button")).toBeNull();
+    expect(within(zona()).getAllByRole("link").map((e) => e.textContent)).toEqual(CINCO);
+  });
+
+  it("con letra grande Empresa arranca plegada", async () => {
+    ponerLetra("grande");
+    pintar({ sesion: todo() });
+    await arbol();
+    const boton = within(zona()).getByRole("button", { name: "Empresa" });
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    expect(boton.parentElement?.tagName).toBe("H2");
+    expect(screen.queryByRole("link", { name: "Precios y catálogo" })).toBeNull();
+  });
+
+  it("al pulsar Empresa se despliega, con clic, Enter o Espacio, y aria-controls apunta a su lista", async () => {
+    ponerLetra("muy-grande");
+    const usuario = userEvent.setup();
+    pintar({ sesion: todo() });
+    await arbol();
+    const boton = within(zona()).getByRole("button", { name: "Empresa" });
+    await usuario.click(boton);
+    expect(boton).toHaveAttribute("aria-expanded", "true");
+    expect(within(zona()).getAllByRole("link").map((e) => e.textContent)).toEqual(CINCO);
+    const lista = document.getElementById(boton.getAttribute("aria-controls") ?? "");
+    expect(lista).not.toBeNull();
+    expect(lista?.tagName).toBe("UL");
+    expect(lista).toContainElement(screen.getByRole("link", { name: "Ayuda" }));
+    await usuario.click(boton);
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    boton.focus();
+    await usuario.keyboard("{Enter}");
+    expect(boton).toHaveAttribute("aria-expanded", "true");
+    await usuario.keyboard("{Enter}");
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    await usuario.keyboard(" ");
+    expect(boton).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("con una entrada de Empresa abierta arranca desplegada", async () => {
+    ponerLetra("muy-grande");
+    pintar({ sesion: todo(), ruta: "/empresa/precios" });
+    await arbol();
+    expect(within(zona()).getByRole("button", { name: "Empresa" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("pasar de normal a muy grande en vivo la pliega, y volver a normal la muestra sin botón", async () => {
+    pintar({ sesion: todo() });
+    await arbol();
+    expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
+    act(() => ponerLetra("muy-grande"));
+    const boton = await within(zona()).findByRole("button", { name: "Empresa" });
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Ayuda" })).toBeNull();
+    act(() => ponerLetra("normal"));
+    await waitFor(() => expect(within(zona()).queryByRole("button", { name: "Empresa" })).toBeNull());
+    expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
+  });
+
+  it("el botón hereda la letra del título, tiene foco visible y con letra grande mide al menos 1,5 rem", () => {
+    const hoja = leer("marco/BarraLateral.scss");
+    const boton = regla(hoja, ".silice-marco-lateral__empresa-boton");
+    expect(boton).not.toBe("");
+    expect(boton).toMatch(/font:\s*inherit/);
+    expect(boton).toMatch(/color:\s*inherit/);
+    expect(boton).toMatch(/text-transform:\s*inherit/);
+    expect(regla(boton, "&:focus-visible")).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
+    const compacta = bloque(hoja, "@include u.con-letra-grande");
+    expect(regla(compacta, ".silice-marco-lateral__empresa-boton")).toMatch(/min-block-size:\s*1\.5rem/);
   });
 });
