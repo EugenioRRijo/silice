@@ -35,10 +35,11 @@ from tests.fixtures.riesgo_proyeccion import (
     PPI,
     RECETA,
     RIEGO,
-    _historia_variable,
-    _mes,
-    _meses,
-    _obra,
+    apu_ficticio,
+    historia_variable,
+    mes_desplazado,
+    meses_hasta,
+    obra_ficticia,
 )
 
 D = Decimal
@@ -56,7 +57,7 @@ def _p(**cambios) -> ParametrosProyeccion:
 
 
 def _serie(valores: list[Decimal]) -> dict[date, Decimal]:
-    return dict(zip(_meses(len(valores)), valores, strict=True))
+    return dict(zip(meses_hasta(len(valores)), valores, strict=True))
 
 
 def _exponencial(n: int, razon: Decimal = RAZON) -> dict[str, dict[date, Decimal]]:
@@ -74,7 +75,7 @@ def _plana(n: int) -> dict[str, dict[date, Decimal]]:
 
 
 def _comprobar(historia, p=None, **kw) -> Comprobacion:
-    presupuesto, composiciones = _obra({RIEGO: D(100)})
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     return comprobar_hacia_atras(
         presupuesto, composiciones, PARAMETROS, historia, MAPA, p or _p(meses=6), **kw
     )
@@ -86,7 +87,9 @@ def test_sin_sorpresas_cobertura_uno():
 
     esperado = BASE * FACTOR_MEDIO  # 38.582,5 × 5,1953125 = 200.447,0703125 (a mano)
     assert c.n_cortes == 4
-    assert [r.corte for r in c.cortes] == [_mes(INICIO, -22 + i) for i in (13, 14, 15, 16)]
+    assert [r.corte for r in c.cortes] == [
+        mes_desplazado(INICIO, -22 + i) for i in (13, 14, 15, 16)
+    ]
     for r in c.cortes:
         assert r.dentro is True
         assert r.p50 == r.p80 == r.real
@@ -97,15 +100,14 @@ def test_sin_sorpresas_cobertura_uno():
 
 def test_un_choque_queda_fuera():
     # historia plana y, en el mes 20, un salto de +40 % en el asfalto y el gasoil que se queda.
-    # Ningún
-    # corte lo ve en su ventana (c ≤ 16), así que todos proyectan el total base. En su plazo (meses
-    # c .. c + 5): c = 13 y 14 no lo alcanzan (real = base, dentro); c = 15 lo tiene en el 6.º mes
-    # (multiplicadores 1, 1, 1, 1, 1, 1,4: promedio 6,4/6) y c = 16 en el 5.º (1, 1, 1, 1, 1,4, 1,4:
-    # promedio 6,8/6); ambos quedan fuera.
+    # Ningún corte lo ve en su ventana (c ≤ 16), así que todos proyectan el total base. En su plazo
+    # (meses c .. c + 5): c = 13 y 14 no lo alcanzan (real = base, dentro); c = 15 lo tiene en el
+    # 6.º mes (multiplicadores 1, 1, 1, 1, 1, 1,4: promedio 6,4/6) y c = 16 en el 5.º (1, 1, 1, 1,
+    # 1,4, 1,4: promedio 6,8/6); ambos quedan fuera.
     historia = _plana(22)
     for s in (PPI, GASOIL):
         for i in (20, 21):
-            historia[s][_mes(INICIO, -22 + i)] = D(140)
+            historia[s][mes_desplazado(INICIO, -22 + i)] = D(140)
 
     c = _comprobar(historia)
 
@@ -121,9 +123,9 @@ def test_un_choque_queda_fuera():
 def test_la_proyeccion_no_ve_el_futuro():
     # historia con variaciones distintas (36 meses) y se altera un valor del futuro de los primeros
     # cortes: el P50 y el P80 de todo corte anterior o igual a esa fecha no se mueven; el real sí
-    historia = _historia_variable()
+    historia = historia_variable()
     alterada = {s: dict(v) for s, v in historia.items()}
-    mes_alterado = _mes(INICIO, -20)  # dentro del plazo del primer corte (-24 .. -19)
+    mes_alterado = mes_desplazado(INICIO, -20)  # dentro del plazo del primer corte (-24 .. -19)
     for s in (PPI, GASOIL, SERIE_TASA):
         alterada[s][mes_alterado] = alterada[s][mes_alterado] * 3
     p = _p(meses=6)
@@ -153,28 +155,60 @@ def test_informa_el_numero_de_cortes():
     assert len(c3.cortes) == c3.n_cortes
 
 
+def test_una_entrada_vieja_del_mapa_no_quita_cortes():
+    # un insumo que ya no está en el presupuesto sigue en el mapa con el gasoil, que no tiene
+    # historia: no cuenta para los cortes ni para lo real (los mismos 4 cortes que sin esa entrada)
+    mapa = MapaSeries({ASFALTO: PPI, "Insumo retirado": GASOIL})
+    historia = _exponencial(22)
+    del historia[GASOIL]
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
+
+    c = comprobar_hacia_atras(presupuesto, composiciones, PARAMETROS, historia, mapa, _p(meses=6))
+
+    assert c.n_cortes == 4
+    assert c.cobertura == D(1)
+
+
+def test_un_insumo_con_dos_precios_ya_no_niega_la_comprobacion():
+    # fila 81: el asfalto a 600 (riego) y a 700 (otro APU) se desdobla; las dos variantes siguen el
+    # PPI. Todo sube 50 % al mes: lo real de cada corte es el total base × 5,1953125, igual al P80.
+    # A mano: base (100 × 305 + 1 × 700) × 1,265 = 31.200 × 1,265 = 39.468
+    caro = apu_ficticio("VIA-05", [(ASFALTO, "t", D(1), D(700))])
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100), caro: D(1)})
+
+    c = comprobar_hacia_atras(
+        presupuesto, composiciones, PARAMETROS, _exponencial(22), MAPA, _p(meses=6)
+    )
+
+    assert c.n_cortes == 4
+    for r in c.cortes:
+        assert abs(r.real - D(39468) * FACTOR_MEDIO) < TOLERANCIA
+        assert r.p80 == r.real
+    assert c.cobertura == D(1)
+
+
 def test_un_corte_sin_el_plazo_completo_no_entra():
     # 30 meses planos: sin hueco hay 12 cortes (c = 13..24); falta el último mes de una serie y el
     # corte 24 (su plazo llega al mes 29) sale, y también los de plazo que lo tocan: c + 5 ≥ 29
     historia = _plana(30)
     assert _comprobar(historia).n_cortes == 12
 
-    del historia[GASOIL][_mes(INICIO, -1)]
+    del historia[GASOIL][mes_desplazado(INICIO, -1)]
     c = _comprobar(historia)
 
     assert c.n_cortes == 11
-    assert c.cortes[-1].corte == _mes(INICIO, -30 + 23)
+    assert c.cortes[-1].corte == mes_desplazado(INICIO, -30 + 23)
 
 
 def test_un_corte_con_ventana_corta_no_entra():
     # el primer corte posible es el 13: antes de él hay 12 variaciones. Un hueco en el mes 3 de la
     # serie quita dos variaciones (la del 3 y la del 4): el corte 13 ya no tiene 12 -> empieza en 15
     historia = _plana(30)
-    del historia[PPI][_mes(INICIO, -30 + 3)]
+    del historia[PPI][mes_desplazado(INICIO, -30 + 3)]
 
     c = _comprobar(historia)
 
-    assert c.cortes[0].corte == _mes(INICIO, -30 + 15)
+    assert c.cortes[0].corte == mes_desplazado(INICIO, -30 + 15)
     assert c.n_cortes == 10
 
 
@@ -195,7 +229,7 @@ def test_sin_datos_de_una_serie_el_error_dice_cero_meses():
 def test_la_mezcla_y_la_moneda_siguen_las_mismas_reglas_que_la_proyeccion():
     # presupuesto en Bs con mezcla propia y un insumo sin serie: con crecimiento constante la
     # proyección y lo real salen de la misma regla, así que coinciden exactos
-    presupuesto, composiciones = _obra({CARPETA: D(1000), RIEGO: D(100)}, moneda="Bs")
+    presupuesto, composiciones = obra_ficticia({CARPETA: D(1000), RIEGO: D(100)}, moneda="Bs")
     mapa = MapaSeries({"CA-30": PPI, ASFALTO: PPI})
 
     c = comprobar_hacia_atras(

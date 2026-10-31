@@ -12,6 +12,9 @@ from decimal import Decimal, InvalidOperation
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from aplicacion.impuestos import ALICUOTA_IVA, ResumenImpuestos
+from core.verification.texto import formatear_decimal
+
 
 def decimal_desde_texto(texto: str, campo: str) -> Decimal:
     """`Decimal` construido desde el texto de la peticion, o `ValueError` con el campo culpable.
@@ -228,6 +231,28 @@ class PartidaPresupuestadaRespuesta(BaseModel):
     total: str
 
 
+class ImpuestosRespuesta(BaseModel):
+    """IVA sobre un total (Tarea 18): subtotal sin IVA, IVA y total con IVA, más la alícuota como
+    fracción («0.16») y su fuente. El IVA va sobre el total, nunca en el APU."""
+
+    subtotal: str
+    iva: str
+    total: str
+    alicuota: str
+    fuente_alicuota: str
+
+
+def impuestos_a_respuesta(resumen: ResumenImpuestos) -> ImpuestosRespuesta:
+    """El `ResumenImpuestos` de `aplicacion.impuestos` con su alícuota y fuente, a dos decimales."""
+    return ImpuestosRespuesta(
+        subtotal=formatear_decimal(resumen.subtotal, 2),
+        iva=formatear_decimal(resumen.iva, 2),
+        total=formatear_decimal(resumen.total, 2),
+        alicuota=str(ALICUOTA_IVA.valor),
+        fuente_alicuota=ALICUOTA_IVA.fuente,
+    )
+
+
 class PresupuestoDetalleRespuesta(BaseModel):
     """El presupuesto completo, reconstruido desde el catálogo (`cargar_presupuesto`)."""
 
@@ -236,6 +261,8 @@ class PresupuestoDetalleRespuesta(BaseModel):
     moneda: str
     total: str
     partidas: list[PartidaPresupuestadaRespuesta]
+    #: Tarea 18: el IVA sobre `total`. Solo se añade; `total` sigue siendo el subtotal sin IVA.
+    impuestos: ImpuestosRespuesta
 
 
 class PresupuestoResumenRespuesta(BaseModel):

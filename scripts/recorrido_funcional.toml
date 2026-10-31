@@ -427,6 +427,13 @@ accion = "(solo lectura) abrir «Tramos de la vía» de la obra elegida"
 espera = { texto = "Tramos de la vía" }
 
 [[pantalla]]
+ruta = "riesgo"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Riesgo de la obra» de la obra elegida (ver_riesgo)"
+espera = { texto = "Riesgo de la obra" }
+
+[[pantalla]]
 ruta = "mercado"
 cuenta = "ana"
 carpeta = "demo.db"

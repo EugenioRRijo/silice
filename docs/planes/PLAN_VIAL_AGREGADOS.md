@@ -774,6 +774,36 @@ def test_supuestos_declarados():  # "gasto uniforme", "USD fijo × tasa" en p.su
 
 ## Fase D: pedidos transversales
 
+### Tarea 16b: Respuestas de Eugenio del 2026-10-31 (filas 27, 51 y 58)
+
+**Modelo:** Opus.
+
+1. **Fila 27:** `calcular_periodo` de M+1 se **niega** si el último cálculo de M−1 dejó algo en `pasa_al_mes_siguiente`
+   y M no tiene cálculo. Mensaje: «Calcule primero AAAA-MM (M): el cálculo de AAAA-MM (M−1) dejó costos que pasan a
+   ese mes.» No escribe nada. Prueba con oráculo a mano en `aplicacion/costo_propio`, más el 422 de la API.
+2. **Filas 51 y 63, VR5:** se agrega una partida de pintura de demarcación en `l` a `PARTIDAS_VIALES`, con código
+   provisional correlativo (`C-000.000.015`, fila 34). `derivar_tramos` la produce por cada línea de demarcación:
+   litros = km de línea × rendimiento por defecto (V-11/V-12, «a cotejar»), con la directiva `_ancho_linea_cm` del
+   ancho de la línea. Así, llevar los tramos a la Hoja la incluye y VR5 se dispara desde la interfaz. Prueba de punta a
+   punta por la API, como la de VR1 de la Tarea 8b: se escriben otros litros y aparece VR5.
+3. **Filas 58 y 63, VR2:** al llevar los tramos (`aplicacion/hoja_vial.py`) y al abrir una versión con tramos, las
+   reglas viales reciben la fórmula de trabajo de la receta **vigente** de la mezcla propia (`formula_asfalto_de_receta`,
+   Tarea 9), leída de la base de la instalación. Sin receta vigente, VR2 sigue sin evaluarse y lo declara. Prueba de
+   punta a punta por la API: se escribe un `_porcentaje_asfalto` fuera de la fórmula y aparece VR2.
+4. Actualizar las filas 63 y 70 con el alcance nuevo: desde la interfaz se disparan VR1 a VR6, y VR7 solo por la API.
+
+- [ ] Rojo, implementar, verde (+ `ruff`, `npm run lint`, `docs/api.json`, `core/` vacío), commit —
+  `feat(vial): respuestas de Eugenio (arrastre, pintura y formula en la Hoja)`.
+
+
+### Tarea 16c: El ligante marcado en la receta (después de la entrega de prueba; fila 109)
+
+**Modelo:** Sonnet. Eugenio respondió el 2026-10-31 que las recetas de la planta compran otros materiales por tonelada
+(arena, filler), así que la regla «el ligante es el único comprado en t» deja VR2 en INFO. La receta de la planta lleva
+una marca opcional por componente, `es_ligante`, y `formula_asfalto_de_receta` la usa antes que la regla anterior. Sin
+marca y con un solo comprado en t se mantiene la regla vieja. La pantalla de la receta muestra la casilla. Pruebas:
+receta con arena y asfalto, este marcado: VR2 compara con el asfalto. Migración aditiva de la instalación si hace falta.
+
 ### Tarea 17: FCAS por componentes
 
 **Modelo:** Sonnet.
@@ -891,7 +921,8 @@ def test_supuestos_declarados():  # "gasto uniforme", "USD fijo × tasa" en p.su
   `aplicacion.conciliacion.conciliar` con `calculos_usados` armado desde la fuente de cada precio propio
   (`numero_de_calculo`), para que CV3 diga el n.º del cálculo usado y no «ningún cálculo publicado conocido».
 - [ ] **Step 1: Pruebas:** abrir cada libro con openpyxl y comprobar nombres de hoja y celdas clave (857,75 t del
-  tramo T1; la fuente «Producción, período …, cálculo n.º …» en el APU; P50/P80 y supuestos en el de riesgo; 23,08 /
+  tramo T1 — *corregido en la Tarea 22 (T21-1): 857,75 t es el T1 de `test_vial_derivacion.py`; en
+  `data/samples/vial/via_ficticia.csv` el T1 da 1.029,3 t*; la fuente «Producción, período …, cálculo n.º …» en el APU; P50/P80 y supuestos en el de riesgo; 23,08 /
   3,85 / 19,23 en el de mejora); formato numérico es-VE.
 - [ ] **Step 2–5:** rojo, implementar, verde, commit — `feat(reportes): reportes viales, de riesgo y de mejora`.
 
@@ -899,13 +930,13 @@ def test_supuestos_declarados():  # "gasto uniforme", "USD fijo × tasa" en p.su
 
 **Modelo:** Sonnet para los menores; el orquestador corre la suite, la medida del núcleo y el navegador.
 
-- [ ] **Step 1:** crear `data/samples/produccion/` con una cantera y una planta ficticias (materiales, producción de
+- [x] **Step 1:** crear `data/samples/produccion/` con una cantera y una planta ficticias (materiales, producción de
   dos meses, costos por centro y una receta), declaradas ficticias en su README; prueba de punta a punta
   `tests/integration/test_vial_extremo_a_extremo.py` con la vía, la cantera, la planta y las series ficticias: costos → cálculo → publicación → tramos → APU → auditoría y conciliación →
   proyección → comprobación → mejora → reportes.
   Los tramos llegan al presupuesto por `POST /v1/vial/tramos/llevar` (Tarea 8b), nunca con `derivar_tramos` ni con un
   `origen_id` fabricado en la prueba (árbitro de la fase B).
-- [ ] **Step 2:** menores agrupados de las fases.
+- [x] **Step 2:** menores agrupados de las fases (lo hecho y lo que queda en `docs/bitacora/2026-10-31-plan-vial-fase-d.md`).
 - [ ] **Step 3:** `uv run --active pytest -q`, `npm --prefix frontend-desktop test`, `npm --prefix frontend-desktop run lint`
   completos; salidas guardadas en el scratchpad de la sesión.
 - [ ] **Step 4:** **medida del núcleo:** `git diff --stat c1f436b2 -- core/` vacío; anotar en la bitácora el número de

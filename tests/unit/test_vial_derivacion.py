@@ -6,7 +6,7 @@ Oraculos calculados a mano y escritos como literales (nunca con la formula del c
 - carpeta: 7300 x 0,05 = 365 m3; 365 x 2,35 = 857,75 t
 - base granular: 7300 x 0,20 = 1460 m3
 - riego de adherencia: 7300 m2; 7300 x 0,5 = 3650 l
-- demarcacion continua: 1000 m x 2 lineas = 2000 m
+- demarcacion continua: 1000 m x 2 lineas = 2000 m; su pintura, 2000 x 0,0365 = 73 l
 - transporte de la mezcla: 857,75 t x 12 km = 10293 t.km
 """
 
@@ -22,6 +22,7 @@ from adapters.vial.constantes import (
     FRACCION_PINTADA_DISCONTINUA,
     FUENTE_CODIGOS_VIALES,
     PARTIDAS_VIALES,
+    PINTURA_POR_DEFECTO_L_KM,
     SUPUESTO_DECLARADO,
 )
 from adapters.vial.derivacion import derivar_tramos
@@ -106,6 +107,53 @@ def test_demarcacion_discontinua_usa_la_fraccion_declarada():
     assert "supuesto declarado" in linea.descripcion
 
 
+# --- Tarea 16b (filas 51 y 63): la pintura de cada linea, en litros -------------------------------
+# Rendimiento por defecto 36,5 l por km de linea de 10 cm (punto medio de 29 y 44, V-11 y V-12, a
+# cotejar), es decir 0,0365 l por m; sin ancho en la linea, 10 cm (V-14).
+
+
+def test_cada_linea_continua_da_su_pintura_en_litros():  # 2000 m x 0,0365 = 73 l
+    pintura = _uno(derivar_tramos([TRAMO]), "pintura_demarcacion")
+    assert (pintura.codigo_partida, pintura.unidad) == ("C-000.000.015", "l")
+    assert pintura.cantidad == Decimal("73")
+    assert pintura.origen_id == "tramo:T1:demarcacion:1"
+    assert pintura.regla == "longitud*lineas*pintura_l_m"
+    assert dict(pintura.parametros) == {
+        "longitud": Decimal("1000"),
+        "lineas": Decimal("2"),
+        "pintura_l_m": Decimal("0.0365"),
+    }
+    assert dict(pintura.especificaciones) == {
+        "_especialidad": "vial",
+        "_demarcacion": "continua",
+        "_ancho_linea_cm": "10",
+    }
+
+
+def test_la_discontinua_pinta_solo_su_fraccion():  # 1000 x 1 x 0,375 x 0,0365 = 13,6875 l
+    tramo = Tramo(
+        "D1",
+        Decimal("0"),
+        Decimal("1"),
+        Decimal("7.3"),
+        (),
+        (Demarcacion("discontinua", 1),),
+    )
+    pintura = _uno(derivar_tramos([tramo]), "pintura_demarcacion")
+    assert pintura.cantidad == Decimal("13.6875")
+    assert pintura.regla == "longitud*lineas*fraccion_pintada*pintura_l_m"
+
+
+def test_la_partida_y_el_rendimiento_de_la_pintura_tienen_fuente():
+    assert PARTIDAS_VIALES["pintura_demarcacion"] == (
+        "C-000.000.015",
+        "Pintura de demarcación",
+        "l",
+    )
+    assert PINTURA_POR_DEFECTO_L_KM.valor == Decimal("36.5")
+    assert "a cotejar" in PINTURA_POR_DEFECTO_L_KM.fuente
+
+
 def test_transporte_t_km():  # 857,75 x 12 = 10293 t.km
     transporte = _uno(derivar_tramos([TRAMO]), "transporte_mezcla")
     assert (transporte.cantidad, transporte.unidad) == (Decimal("10293"), "t·km")
@@ -153,6 +201,7 @@ def test_orden_determinista():
         (_codigo("riego_adherencia"), "tramo:T1:capa:3"),
         (_codigo("riego_adherencia_ligante"), "tramo:T1:capa:3"),
         (_codigo("demarcacion_continua"), "tramo:T1:demarcacion:1"),
+        (_codigo("pintura_demarcacion"), "tramo:T1:demarcacion:1"),
     ]
     assert derivar_tramos([TRAMO]) == items
 
@@ -257,4 +306,4 @@ def test_rendimiento_quinientos_tramos():
     inicio = time.perf_counter()
     items = derivar_tramos(tramos)
     assert time.perf_counter() - inicio < 2
-    assert len(items) == 500 * 7
+    assert len(items) == 500 * 8

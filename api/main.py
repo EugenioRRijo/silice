@@ -32,9 +32,11 @@ from api.rutas import (
     catalogo,
     composicion,
     computos,
+    consulta,
     control,
     cuentas,
     entregas,
+    fcas,
     hoja,
     hoja_exportar,
     hoja_llevar,
@@ -43,12 +45,14 @@ from api.rutas import (
     libros,
     listas,
     mercado,
+    modulos,
     obras,
     precios_empresa,
     presupuestos,
     procura,
     produccion,
     produccion_planta,
+    produccion_reportes,
     proyectos,
     reajuste,
     rendimientos,
@@ -190,12 +194,23 @@ app.include_router(produccion.router)
 # Plan vial (T1, T3 y T4): costos del periodo, recetas, producciones y calculos de la planta, mismo
 # prefijo y misma puerta; justo despues del de la arenera para no cambiar el orden de docs/api.json
 app.include_router(produccion_planta.router)
+# Pantallas de informes (fila 112): el reporte de costo de produccion en Excel, con la puerta de
+# los costos (REGISTRAR_COSTOS_PRODUCCION) y despues el modulo produccion
+app.include_router(produccion_reportes.router)
 # Plan vial (T8): /v1/vial, los tramos de una via guardados por version; EDITAR_HOJA en cada ruta
 app.include_router(vial.router)
 # Plan vial (T15): /v1/riesgo, informe de mejora de la estimacion (VER_RIESGO, clave o sesion)
 app.include_router(riesgo.router)
+# Plan vial (T19): /v1/modulos, especialidades y modulos activables (GET: cualquier rol;
+# PUT: administrador)
+app.include_router(modulos.router)
+# Plan vial (T17): /v1/fcas, el FCAS por componentes (cuenta pura; clave o sesion de cualquier rol)
+app.include_router(fcas.router)
 # T10 (montar un presupuesto): /v1/buscar/partidas, buscador C-1 (LEER_PROYECTO en la ruta)
 app.include_router(busqueda.router)
+# Plan vial (T20): /v1/consulta/{tabla}, autocompletado con tablas venezolanas (LEER_PROYECTO
+# en la ruta)
+app.include_router(consulta.router)
 # MOD-4a (plan de módulos): /v1/obras/resumen (LEER_PROYECTO) y /v1/obras/pendientes (EDITAR_HOJA),
 # los datos de la mesa de control; el acceso va en cada ruta
 app.include_router(obras.router)

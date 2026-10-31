@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 
 from aplicacion.tablas_eleccion import METADATA_ELECCION
 from aplicacion.tablas_indice_aprobacion import METADATA_INDICE_APROBACION
+from aplicacion.tablas_modulos import METADATA_MODULOS
 from fusion.historial_modelo import METADATA_HISTORIAL
 from migraciones.comun import metadata_unida
 from migraciones.metadatos import METADATAS_INSTALACION
@@ -42,6 +43,7 @@ NUEVAS = {
     "prod_receta_componente",
     "prod_calculo",
     "prod_publicacion",
+    "modulo_cambio",
 }
 
 
@@ -52,13 +54,14 @@ def _tablas(ruta: Path) -> set[str]:
 
 
 def test_la_cabeza_del_destino_instalacion_es_la_revision_del_historial() -> None:
-    assert revision_head(Destino.INSTALACION) == "ins_0009_prod_publicacion"
+    assert revision_head(Destino.INSTALACION) == "ins_0010_modulo"
     assert METADATAS_INSTALACION == (
         Base.metadata,
         METADATA_PRODUCCION,
         METADATA_HISTORIAL,
         METADATA_ELECCION,
         METADATA_INDICE_APROBACION,
+        METADATA_MODULOS,
     )
 
 

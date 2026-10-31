@@ -942,3 +942,31 @@ describe("BarraLateral: Empresa plegable con letra grande (F4, Tarea 0)", () => 
     expect(regla(compacta, ".silice-marco-lateral__empresa-boton")).toMatch(/min-block-size:\s*1\.5rem/);
   });
 });
+
+describe("BarraLateral con módulos apagados (plan vial, Tarea 19)", () => {
+  function pintarConApagados(apagados: string[]) {
+    return render(
+      <MemoryRouter initialEntries={["/pendientes"]}>
+        <ContextoAplicacion.Provider
+          value={{ sesion: sesionDe("admin"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), modulosApagados: apagados }}
+        >
+          <ContextoPendientes.Provider value={SIN_PENDIENTES}>
+            <BarraLateral obraAbierta={null} seccion={null} />
+          </ContextoPendientes.Provider>
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
+    );
+  }
+
+  it("encendida, la zona Empresa ofrece «Producción»", async () => {
+    pintarConApagados([]);
+    expect(await screen.findByRole("link", { name: /Producción/ })).toBeTruthy();
+  });
+
+  it("con producción apagada, «Producción» no aparece en la barra", async () => {
+    pintarConApagados(["produccion"]);
+    const empresa = await screen.findByRole("navigation", { name: "Empresa" });
+    expect(within(empresa).getAllByRole("link").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: /Producción/ })).toBeNull();
+  });
+});

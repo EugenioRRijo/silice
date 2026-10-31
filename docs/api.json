@@ -9215,6 +9215,54 @@
         }
       }
     },
+    "/v1/produccion/reportes/produccion": {
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Reporte De Produccion",
+        "description": "El costo de producción de un período en Excel; solo lee.",
+        "operationId": "reporte_de_produccion_v1_produccion_reportes_produccion_get",
+        "parameters": [
+          {
+            "name": "periodo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Periodo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El libro .xlsx del reporte.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/vial/tramos": {
       "get": {
         "tags": [
@@ -9465,6 +9513,81 @@
         }
       }
     },
+    "/v1/vial/reportes/{tipo}": {
+      "get": {
+        "tags": [
+          "vial"
+        ],
+        "summary": "Descargar Reporte",
+        "description": "Un reporte de la obra vial en Excel (`aplicacion.reportes_viales`); solo lee.",
+        "operationId": "descargar_reporte_v1_vial_reportes__tipo__get",
+        "parameters": [
+          {
+            "name": "tipo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El libro .xlsx del reporte.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/riesgo/mejora": {
       "post": {
         "tags": [
@@ -9489,6 +9612,507 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MejoraRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/riesgo/insumos": {
+      "get": {
+        "tags": [
+          "riesgo"
+        ],
+        "summary": "Insumos De La Obra",
+        "description": "Los insumos de la versión y las series que puede seguir cada uno.",
+        "operationId": "insumos_de_la_obra_v1_riesgo_insumos_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsumosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/riesgo/proyeccion": {
+      "post": {
+        "tags": [
+          "riesgo"
+        ],
+        "summary": "Proyeccion De La Obra",
+        "description": "La proyección del riesgo de precios de la versión (no guarda nada).",
+        "operationId": "proyeccion_de_la_obra_v1_riesgo_proyeccion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProyeccionEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProyeccionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/riesgo/comprobacion": {
+      "post": {
+        "tags": [
+          "riesgo"
+        ],
+        "summary": "Comprobacion De La Obra",
+        "description": "La comprobación hacia atrás de la versión con cortes móviles (no guarda nada).",
+        "operationId": "comprobacion_de_la_obra_v1_riesgo_comprobacion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComprobacionEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComprobacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/riesgo/reportes/{tipo}": {
+      "get": {
+        "tags": [
+          "riesgo"
+        ],
+        "summary": "Descargar Reporte",
+        "description": "Un reporte de riesgo o de mejora en Excel (`aplicacion.reportes_viales`); solo lee.",
+        "operationId": "descargar_reporte_v1_riesgo_reportes__tipo__get",
+        "parameters": [
+          {
+            "name": "tipo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          },
+          {
+            "name": "mapa",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100000,
+              "default": "{}",
+              "title": "Mapa"
+            }
+          },
+          {
+            "name": "inicio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Inicio"
+            }
+          },
+          {
+            "name": "meses",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 60,
+              "minimum": 1,
+              "default": 6,
+              "title": "Meses"
+            }
+          },
+          {
+            "name": "trayectorias",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20000,
+              "minimum": 1,
+              "default": 2000,
+              "title": "Trayectorias"
+            }
+          },
+          {
+            "name": "semilla",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 0,
+              "default": 1,
+              "title": "Semilla"
+            }
+          },
+          {
+            "name": "ventana_meses",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 240,
+              "minimum": 12,
+              "default": 36,
+              "title": "Ventana Meses"
+            }
+          },
+          {
+            "name": "comprobar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Comprobar"
+            }
+          },
+          {
+            "name": "trayectorias_por_corte",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Trayectorias Por Corte"
+            }
+          },
+          {
+            "name": "costo_final_real",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Costo Final Real"
+            }
+          },
+          {
+            "name": "presupuesto_original",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Presupuesto Original"
+            }
+          },
+          {
+            "name": "estimacion_silice",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estimacion Silice"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El libro .xlsx del reporte.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/modulos": {
+      "get": {
+        "tags": [
+          "modulos"
+        ],
+        "summary": "Ver",
+        "description": "El estado de los cuatro módulos.",
+        "operationId": "ver_v1_modulos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EspecialidadesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/modulos/{clave}": {
+      "put": {
+        "tags": [
+          "modulos"
+        ],
+        "summary": "Cambiar",
+        "description": "Enciende o apaga un módulo (un registro nuevo; los datos del módulo no se tocan).",
+        "operationId": "cambiar_v1_modulos__clave__put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioDeEspecialidad"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EspecialidadesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/fcas/componentes": {
+      "get": {
+        "tags": [
+          "fcas"
+        ],
+        "summary": "Componentes Por Defecto",
+        "operationId": "componentes_por_defecto_v1_fcas_componentes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentesFcasRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/fcas/calcular": {
+      "post": {
+        "tags": [
+          "fcas"
+        ],
+        "summary": "Calcular",
+        "operationId": "calcular_v1_fcas_calcular_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculoFcasEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculoFcasRespuesta"
                 }
               }
             }
@@ -9564,6 +10188,74 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PartidasHalladasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consulta/{tabla}": {
+      "get": {
+        "tags": [
+          "consulta"
+        ],
+        "summary": "Consultar",
+        "description": "Sugerencias de una tabla (partidas_viales, insumos, tasa_bcv o salarios_cct), por\nrelevancia, sin distinguir mayúsculas ni acentos. Con menos de 2 letras responde vacío (no\nes un error); una tabla desconocida es 404.",
+        "operationId": "consultar_v1_consulta__tabla__get",
+        "parameters": [
+          {
+            "name": "tabla",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tabla"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "description": "Código o palabras",
+              "default": "",
+              "title": "Q"
+            },
+            "description": "Código o palabras"
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultaRespuesta"
                 }
               }
             }
@@ -12302,6 +12994,24 @@
         "title": "AvisoAtipicos",
         "description": "Un aviso de la busqueda, con el nivel de la pagina clasica (`info` o `success`)."
       },
+      "AvisoFcas": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre"
+        ],
+        "title": "AvisoFcas"
+      },
       "BajaDeClave": {
         "properties": {
           "motivo": {
@@ -13476,6 +14186,104 @@
         ],
         "title": "CalculoDeCostoRespuesta"
       },
+      "CalculoFcasEntrada": {
+        "properties": {
+          "dias_calendario": {
+            "type": "string",
+            "title": "Dias Calendario"
+          },
+          "dias_trabajados": {
+            "type": "string",
+            "title": "Dias Trabajados"
+          },
+          "componentes": {
+            "items": {
+              "$ref": "#/components/schemas/ComponenteFcasEntrada"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Componentes"
+          },
+          "fcas_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fcas Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dias_calendario",
+          "dias_trabajados",
+          "componentes"
+        ],
+        "title": "CalculoFcasEntrada"
+      },
+      "CalculoFcasRespuesta": {
+        "properties": {
+          "fcas": {
+            "type": "string",
+            "title": "Fcas"
+          },
+          "fcas_por_dias": {
+            "type": "string",
+            "title": "Fcas Por Dias"
+          },
+          "dias_pagados": {
+            "type": "string",
+            "title": "Dias Pagados"
+          },
+          "porcentaje": {
+            "type": "string",
+            "title": "Porcentaje"
+          },
+          "multiplicador": {
+            "type": "string",
+            "title": "Multiplicador"
+          },
+          "desglose": {
+            "items": {
+              "$ref": "#/components/schemas/RenglonFcas"
+            },
+            "type": "array",
+            "title": "Desglose"
+          },
+          "a_cotejar": {
+            "items": {
+              "$ref": "#/components/schemas/AvisoFcas"
+            },
+            "type": "array",
+            "title": "A Cotejar"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionFcas"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "fcas",
+          "fcas_por_dias",
+          "dias_pagados",
+          "porcentaje",
+          "multiplicador",
+          "desglose",
+          "a_cotejar",
+          "version"
+        ],
+        "title": "CalculoFcasRespuesta"
+      },
       "CalculoPeticion": {
         "properties": {
           "codigo": {
@@ -13620,6 +14428,20 @@
           "nueva"
         ],
         "title": "CambioDeContrasena"
+      },
+      "CambioDeEspecialidad": {
+        "properties": {
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "activo"
+        ],
+        "title": "CambioDeEspecialidad"
       },
       "CambioDeInsumo": {
         "properties": {
@@ -13885,6 +14707,18 @@
               }
             ],
             "title": "Dosis L M2"
+          },
+          "asfalto_pct": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asfalto Pct"
           }
         },
         "additionalProperties": false,
@@ -13932,6 +14766,17 @@
               }
             ],
             "title": "Dosis L M2"
+          },
+          "asfalto_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asfalto Pct"
           }
         },
         "type": "object",
@@ -14667,6 +15512,109 @@
         ],
         "title": "ComponenteEntrada"
       },
+      "ComponenteFcasEntrada": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "base": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Base"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 600,
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "base",
+          "valor",
+          "fuente"
+        ],
+        "title": "ComponenteFcasEntrada"
+      },
+      "ComponenteFcasRespuesta": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "base": {
+            "type": "string",
+            "title": "Base"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "a_cotejar": {
+            "type": "boolean",
+            "title": "A Cotejar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "base",
+          "valor",
+          "fuente",
+          "a_cotejar"
+        ],
+        "title": "ComponenteFcasRespuesta"
+      },
+      "ComponentesFcasRespuesta": {
+        "properties": {
+          "dias_calendario": {
+            "type": "string",
+            "title": "Dias Calendario"
+          },
+          "fcas_version": {
+            "type": "string",
+            "title": "Fcas Version"
+          },
+          "componentes": {
+            "items": {
+              "$ref": "#/components/schemas/ComponenteFcasRespuesta"
+            },
+            "type": "array",
+            "title": "Componentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dias_calendario",
+          "fcas_version",
+          "componentes"
+        ],
+        "title": "ComponentesFcasRespuesta"
+      },
       "ComposicionRespuesta": {
         "properties": {
           "unidad": {
@@ -14789,6 +15737,146 @@
         "type": "object",
         "title": "CompraRegistrada"
       },
+      "ComprobacionEntrada": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "meses": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Meses",
+            "default": 6
+          },
+          "trayectorias_por_corte": {
+            "type": "integer",
+            "maximum": 2000.0,
+            "minimum": 1.0,
+            "title": "Trayectorias Por Corte",
+            "default": 500
+          },
+          "semilla": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Semilla",
+            "default": 1
+          },
+          "ventana_meses": {
+            "type": "integer",
+            "maximum": 240.0,
+            "minimum": 12.0,
+            "title": "Ventana Meses",
+            "default": 36
+          },
+          "mapa": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 1
+            },
+            "propertyNames": {
+              "maxLength": 500,
+              "minLength": 1
+            },
+            "type": "object",
+            "maxProperties": 500,
+            "title": "Mapa",
+            "default": {}
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version"
+        ],
+        "title": "ComprobacionEntrada"
+      },
+      "ComprobacionRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "meses": {
+            "type": "integer",
+            "title": "Meses"
+          },
+          "trayectorias_por_corte": {
+            "type": "integer",
+            "title": "Trayectorias Por Corte"
+          },
+          "semilla": {
+            "type": "integer",
+            "title": "Semilla"
+          },
+          "cortes": {
+            "items": {
+              "$ref": "#/components/schemas/CorteRespuesta"
+            },
+            "type": "array",
+            "title": "Cortes"
+          },
+          "cobertura": {
+            "type": "string",
+            "title": "Cobertura"
+          },
+          "cobertura_pct": {
+            "type": "string",
+            "title": "Cobertura Pct"
+          },
+          "dentro": {
+            "type": "integer",
+            "title": "Dentro"
+          },
+          "n_cortes": {
+            "type": "integer",
+            "title": "N Cortes"
+          },
+          "mezclas": {
+            "items": {
+              "$ref": "#/components/schemas/MezclaRespuesta"
+            },
+            "type": "array",
+            "title": "Mezclas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "moneda",
+          "meses",
+          "trayectorias_por_corte",
+          "semilla",
+          "cortes",
+          "cobertura",
+          "cobertura_pct",
+          "dentro",
+          "n_cortes",
+          "mezclas"
+        ],
+        "title": "ComprobacionRespuesta"
+      },
       "Configuracion": {
         "properties": {
           "activo": {
@@ -14843,6 +15931,33 @@
           "mensajes"
         ],
         "title": "ConfirmacionRespuesta"
+      },
+      "ConsultaRespuesta": {
+        "properties": {
+          "tabla": {
+            "type": "string",
+            "title": "Tabla"
+          },
+          "resultados": {
+            "items": {
+              "$ref": "#/components/schemas/SugerenciaDeConsultaRespuesta"
+            },
+            "type": "array",
+            "title": "Resultados"
+          },
+          "hay_mas": {
+            "type": "boolean",
+            "title": "Hay Mas",
+            "description": "Quedaron coincidencias fuera de `limite`"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tabla",
+          "resultados",
+          "hay_mas"
+        ],
+        "title": "ConsultaRespuesta"
       },
       "ConteoRespuesta": {
         "properties": {
@@ -14932,6 +16047,24 @@
           "dentro_de_rango"
         ],
         "title": "Contraste"
+      },
+      "ContribucionRespuesta": {
+        "properties": {
+          "insumo": {
+            "type": "string",
+            "title": "Insumo"
+          },
+          "monto": {
+            "type": "string",
+            "title": "Monto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insumo",
+          "monto"
+        ],
+        "title": "ContribucionRespuesta"
       },
       "ControlRespuesta": {
         "properties": {
@@ -15047,6 +16180,40 @@
           "fuente"
         ],
         "title": "ConvertirVersion"
+      },
+      "CorteRespuesta": {
+        "properties": {
+          "corte": {
+            "type": "string",
+            "format": "date",
+            "title": "Corte"
+          },
+          "p50": {
+            "type": "string",
+            "title": "P50"
+          },
+          "p80": {
+            "type": "string",
+            "title": "P80"
+          },
+          "real": {
+            "type": "string",
+            "title": "Real"
+          },
+          "dentro": {
+            "type": "boolean",
+            "title": "Dentro"
+          }
+        },
+        "type": "object",
+        "required": [
+          "corte",
+          "p50",
+          "p80",
+          "real",
+          "dentro"
+        ],
+        "title": "CorteRespuesta"
       },
       "CostoCreado": {
         "properties": {
@@ -16832,6 +17999,69 @@
         "title": "EscenariosRespuesta",
         "description": "La comparación completa de UC-08. Nada de esto queda persistido (RF-30).\n\n`pendientes_base` lista los ítems pendientes del presupuesto base (sin partida en el\ncatálogo): ningún escenario los recalcula ni los suma a su total, y los hallazgos de cada\nescenario no los cuentan. Queda vacía si el base no tiene pendientes o si se guardó sin\nregistrarlos."
       },
+      "EspecialidadRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          },
+          "cambiado_por": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cambiado Por"
+          },
+          "cambiado_el": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cambiado El"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "nombre",
+          "activo",
+          "cambiado_por",
+          "cambiado_el"
+        ],
+        "title": "EspecialidadRespuesta"
+      },
+      "EspecialidadesRespuesta": {
+        "properties": {
+          "modulos": {
+            "items": {
+              "$ref": "#/components/schemas/EspecialidadRespuesta"
+            },
+            "type": "array",
+            "title": "Modulos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "modulos"
+        ],
+        "title": "EspecialidadesRespuesta"
+      },
       "EstadisticasRespuesta": {
         "properties": {
           "n": {
@@ -18571,6 +19801,40 @@
         ],
         "title": "ImportadasRespuesta"
       },
+      "ImpuestosRespuesta": {
+        "properties": {
+          "subtotal": {
+            "type": "string",
+            "title": "Subtotal"
+          },
+          "iva": {
+            "type": "string",
+            "title": "Iva"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "alicuota": {
+            "type": "string",
+            "title": "Alicuota"
+          },
+          "fuente_alicuota": {
+            "type": "string",
+            "title": "Fuente Alicuota"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subtotal",
+          "iva",
+          "total",
+          "alicuota",
+          "fuente_alicuota"
+        ],
+        "title": "ImpuestosRespuesta",
+        "description": "IVA sobre un total (Tarea 18): subtotal sin IVA, IVA y total con IVA, más la alícuota como\nfracción («0.16») y su fuente. El IVA va sobre el total, nunca en el APU."
+      },
       "IndicadorRespuesta": {
         "properties": {
           "clave": {
@@ -18898,6 +20162,74 @@
           "hay_mas"
         ],
         "title": "InsumosHojaRespuesta"
+      },
+      "InsumosRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "insumos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Insumos"
+          },
+          "componentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Componentes"
+          },
+          "mezclas": {
+            "items": {
+              "$ref": "#/components/schemas/MezclaRespuesta"
+            },
+            "type": "array",
+            "title": "Mezclas"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/api__rutas__riesgo__SerieRespuesta"
+            },
+            "type": "array",
+            "title": "Series"
+          },
+          "inicio_linea_base": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inicio Linea Base"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "moneda",
+          "insumos",
+          "componentes",
+          "mezclas",
+          "series",
+          "inicio_linea_base"
+        ],
+        "title": "InsumosRespuesta"
       },
       "ItemComputoPeticion": {
         "properties": {
@@ -19910,6 +21242,24 @@
           "precio_unitario"
         ],
         "title": "MetricasApuRespuesta"
+      },
+      "MezclaRespuesta": {
+        "properties": {
+          "insumo": {
+            "type": "string",
+            "title": "Insumo"
+          },
+          "calculo": {
+            "type": "integer",
+            "title": "Calculo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insumo",
+          "calculo"
+        ],
+        "title": "MezclaRespuesta"
       },
       "ModuloRespuesta": {
         "properties": {
@@ -22081,6 +23431,9 @@
             },
             "type": "array",
             "title": "Partidas"
+          },
+          "impuestos": {
+            "$ref": "#/components/schemas/ImpuestosRespuesta"
           }
         },
         "type": "object",
@@ -22089,7 +23442,8 @@
           "fecha",
           "moneda",
           "total",
-          "partidas"
+          "partidas",
+          "impuestos"
         ],
         "title": "PresupuestoDetalleRespuesta",
         "description": "El presupuesto completo, reconstruido desde el catálogo (`cargar_presupuesto`)."
@@ -22410,6 +23764,182 @@
           "etiqueta"
         ],
         "title": "Proveedor"
+      },
+      "ProyeccionEntrada": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "inicio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inicio"
+          },
+          "meses": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Meses",
+            "default": 6
+          },
+          "trayectorias": {
+            "type": "integer",
+            "maximum": 20000.0,
+            "minimum": 1.0,
+            "title": "Trayectorias",
+            "default": 2000
+          },
+          "semilla": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Semilla",
+            "default": 1
+          },
+          "ventana_meses": {
+            "type": "integer",
+            "maximum": 240.0,
+            "minimum": 12.0,
+            "title": "Ventana Meses",
+            "default": 36
+          },
+          "mapa": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 1
+            },
+            "propertyNames": {
+              "maxLength": 500,
+              "minLength": 1
+            },
+            "type": "object",
+            "maxProperties": 500,
+            "title": "Mapa",
+            "default": {}
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version"
+        ],
+        "title": "ProyeccionEntrada"
+      },
+      "ProyeccionRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "inicio": {
+            "type": "string",
+            "format": "date",
+            "title": "Inicio"
+          },
+          "inicio_de": {
+            "type": "string",
+            "title": "Inicio De"
+          },
+          "meses": {
+            "type": "integer",
+            "title": "Meses"
+          },
+          "trayectorias": {
+            "type": "integer",
+            "title": "Trayectorias"
+          },
+          "semilla": {
+            "type": "integer",
+            "title": "Semilla"
+          },
+          "total_base": {
+            "type": "string",
+            "title": "Total Base"
+          },
+          "p50": {
+            "type": "string",
+            "title": "P50"
+          },
+          "p80": {
+            "type": "string",
+            "title": "P80"
+          },
+          "reserva": {
+            "type": "string",
+            "title": "Reserva"
+          },
+          "contribucion": {
+            "items": {
+              "$ref": "#/components/schemas/ContribucionRespuesta"
+            },
+            "type": "array",
+            "title": "Contribucion"
+          },
+          "meses_usados": {
+            "type": "integer",
+            "title": "Meses Usados"
+          },
+          "supuestos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Supuestos"
+          },
+          "mezclas": {
+            "items": {
+              "$ref": "#/components/schemas/MezclaRespuesta"
+            },
+            "type": "array",
+            "title": "Mezclas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "moneda",
+          "inicio",
+          "inicio_de",
+          "meses",
+          "trayectorias",
+          "semilla",
+          "total_base",
+          "p50",
+          "p80",
+          "reserva",
+          "contribucion",
+          "meses_usados",
+          "supuestos",
+          "mezclas"
+        ],
+        "title": "ProyeccionRespuesta"
       },
       "ProyectoDelCasoRespuesta": {
         "properties": {
@@ -23446,6 +24976,29 @@
         ],
         "title": "RendimientosRespuesta",
         "description": "El historico completo de una partida, con dispersion y propuesta (RF-26)."
+      },
+      "RenglonFcas": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "aporte": {
+            "type": "string",
+            "title": "Aporte"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "aporte"
+        ],
+        "title": "RenglonFcas"
       },
       "ResolverEntrada": {
         "properties": {
@@ -24526,6 +26079,32 @@
           "estado"
         ],
         "title": "SospechosoRespuesta"
+      },
+      "SugerenciaDeConsultaRespuesta": {
+        "properties": {
+          "valor": {
+            "type": "string",
+            "title": "Valor",
+            "description": "Lo que se guarda al elegir"
+          },
+          "etiqueta": {
+            "type": "string",
+            "title": "Etiqueta",
+            "description": "Lo que se lee en la lista"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente",
+            "description": "De dónde sale el dato"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valor",
+          "etiqueta",
+          "fuente"
+        ],
+        "title": "SugerenciaDeConsultaRespuesta"
       },
       "SugerenciaRespuesta": {
         "properties": {
@@ -25613,6 +27192,14 @@
             },
             "type": "array",
             "title": "Causas"
+          },
+          "impuestos": {
+            "$ref": "#/components/schemas/ImpuestosRespuesta"
+          },
+          "perspectiva": {
+            "type": "string",
+            "title": "Perspectiva",
+            "default": ""
           }
         },
         "type": "object",
@@ -25620,7 +27207,8 @@
           "tiene_linea_base",
           "filas",
           "anulables",
-          "corte_por_defecto"
+          "corte_por_defecto",
+          "impuestos"
         ],
         "title": "ValuacionesRespuesta"
       },
@@ -25731,6 +27319,29 @@
           "ultima_aprobada"
         ],
         "title": "VersionEntregable"
+      },
+      "VersionFcas": {
+        "properties": {
+          "fcas": {
+            "type": "string",
+            "title": "Fcas"
+          },
+          "porcentaje": {
+            "type": "string",
+            "title": "Porcentaje"
+          },
+          "multiplicador": {
+            "type": "string",
+            "title": "Multiplicador"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fcas",
+          "porcentaje",
+          "multiplicador"
+        ],
+        "title": "VersionFcas"
       },
       "VersionHojaRespuesta": {
         "properties": {
@@ -27428,6 +29039,24 @@
           "revalorada"
         ],
         "title": "VersionRespuesta"
+      },
+      "api__rutas__riesgo__SerieRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nombre"
+        ],
+        "title": "SerieRespuesta"
       },
       "api__rutas__similares__PropuestaRespuesta": {
         "properties": {

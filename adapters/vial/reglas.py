@@ -9,15 +9,19 @@ conciliación, Tarea 10).
 
 - **VR1** toneladas de carpeta del presupuesto ≠ área × espesor × densidad (tolerancia relativa).
 - **VR2** porcentaje de asfalto declarado en la partida de mezcla (`especificaciones
-  ["_porcentaje_asfalto"]`) a más de ±0,5 puntos de la fórmula de trabajo. Sin fórmula (`None`),
-  no se evalúa. La fórmula es un número plano: este adaptador no importa de `produccion/`
-  (`tests/unit/test_arquitectura.py`); `aplicacion/vial.py` la saca de la receta.
+  ["_porcentaje_asfalto"]`, que pone `derivar_tramos` desde `Capa.asfalto_pct`) a más de ±0,5
+  puntos de la fórmula de trabajo. Sin fórmula no se evalúa; si quien arma la regla dice por qué
+  (`sin_formula`, Tarea 16b), lo declara como INFO. La fórmula es un número plano por código de
+  partida: este adaptador no importa de `produccion/` (`tests/unit/test_arquitectura.py`);
+  `aplicacion/vial.py` la saca de la receta vigente de la mezcla propia.
 - **VR3** ligante residual de imprimación y riego de adherencia fuera de su mínimo (y del máximo de
   la imprimación). El residual sale de la dosis en l/m² con la densidad del producto y la fracción
   residual de la emulsión (supuestos declarados).
 - **VR4** t·km de transporte ≠ toneladas × distancia declarada.
 - **VR5** litros de pintura (partida en `l` con origen de una línea) por km de línea de 10 cm fuera
-  de su rango; el ancho sale de `especificaciones["_ancho_linea_cm"]` o, sin él, del supuesto.
+  de su rango; el ancho sale de `especificaciones["_ancho_linea_cm"]` o, sin él, del supuesto. Los
+  km pintados son los de la partida de la línea en m; la pintura que `derivar_tramos` pone a cada
+  línea (`pintura_demarcacion`, Tarea 16b) es una partida en `l` más, la que llega a la Hoja.
 - **VR6** progresivas solapadas (ERROR) o con huecos (ADVERTENCIA) entre los tramos de la obra,
   que son los de una misma vía. Cita `tramo:<id>` de los dos.
 - **VR7** unidad de la partida incompatible con su capa o su línea, o código de partida que esa
@@ -31,7 +35,7 @@ ADVERTENCIA. Los mensajes llevan coma decimal y punto de miles.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 
 from adapters.vial.constantes import (
@@ -159,22 +163,38 @@ def _contra_derivado(
 def _vr2(
     derivados: Sequence[ItemComputo],
     indice: dict[str, list[ItemComputo]],
-    formula: Decimal | None,
+    formula_comun: Decimal | None,
+    formulas: Mapping[str, Decimal],
+    sin_formula: Mapping[str, str],
 ) -> list[Hallazgo]:
-    if formula is None:
-        return []
     tolerancia = Decimal(TOLERANCIA_ASFALTO_PUNTOS.valor)
     claves = {_codigo("carpeta_mezcla"), _codigo("bacheo_mezcla")}
     hallazgos = []
     for derivado in derivados:
         if derivado.codigo_partida not in claves:
             continue
+        formula = formulas.get(derivado.codigo_partida, formula_comun)
+        motivo = sin_formula.get(derivado.codigo_partida)
+        if formula is None and motivo is None:
+            continue
         for item in indice.get(derivado.origen_id, ()):
             texto = item.especificaciones.get(ESPEC_PORCENTAJE_ASFALTO)
             if item.codigo_partida != derivado.codigo_partida or texto is None:
                 continue
             declarado = _numero(texto)
-            if declarado is None:
+            if formula is None:
+                escrito = texto if declarado is None else _n(declarado)
+                hallazgos.append(
+                    _hallazgo(
+                        "VR2",
+                        Severidad.INFO,
+                        derivado.origen_id,
+                        f"{derivado.origen_id}: asfalto de {escrito} % sin comparar con la "
+                        f"fórmula de trabajo: {motivo}",
+                        declarado,
+                    )
+                )
+            elif declarado is None:
                 hallazgos.append(
                     _hallazgo(
                         "VR2",
@@ -256,7 +276,8 @@ def _vr5(derivados: Sequence[ItemComputo], indice: dict[str, list[ItemComputo]])
     referencia = Decimal(ANCHO_LINEA_REFERENCIA_CM.valor)
     hallazgos = []
     for derivado in derivados:
-        if ":demarcacion:" not in derivado.origen_id:
+        # el largo pintado de la línea (en m); la pintura que también deriva es lo que se mide
+        if ":demarcacion:" not in derivado.origen_id or derivado.unidad != "m":
             continue
         km_pintados = derivado.cantidad / _MIL
         for item in indice.get(derivado.origen_id, ()):
@@ -370,11 +391,16 @@ def auditar_vial(
     presupuesto: Presupuesto,
     *,
     formula_asfalto_pct: Decimal | None = None,
+    formulas: Mapping[str, Decimal] | None = None,
+    sin_formula: Mapping[str, str] | None = None,
 ) -> list[Hallazgo]:
     """Los hallazgos VR1 a VR7 de `presupuesto` frente a `tramos`, en orden de regla y de tramo.
 
     `formula_asfalto_pct` es el porcentaje de asfalto de la fórmula de trabajo, en puntos
-    (5,5 es 5,5 %); `None` si no hay receta, y VR2 no se evalúa.
+    (5,5 es 5,5 %); `None` si no hay receta, y VR2 no se evalúa. `formulas` da la fórmula de cada
+    partida de mezcla por su código (gana a `formula_asfalto_pct`) y `sin_formula`, por código, el
+    motivo de que una partida no la tenga: VR2 lo declara (INFO) en cada mezcla que dice su
+    porcentaje.
     """
     derivados = derivar_tramos(tramos)
     indice = _por_origen(presupuesto)
@@ -382,7 +408,7 @@ def auditar_vial(
         *_contra_derivado(
             "VR1", "carpeta_mezcla", derivados, indice, Decimal(TOLERANCIA_CARPETA.valor), "carpeta"
         ),
-        *_vr2(derivados, indice, formula_asfalto_pct),
+        *_vr2(derivados, indice, formula_asfalto_pct, formulas or {}, sin_formula or {}),
         *_vr3(tramos),
         *_contra_derivado(
             "VR4",
@@ -409,9 +435,24 @@ class ReglasViales(ReglaVerificacion):
     codigo = CODIGO_VR
     nombre = "Reglas viales"
 
-    def __init__(self, tramos: Sequence[Tramo], formula_asfalto_pct: Decimal | None = None) -> None:
+    def __init__(
+        self,
+        tramos: Sequence[Tramo],
+        formula_asfalto_pct: Decimal | None = None,
+        *,
+        formulas: Mapping[str, Decimal] | None = None,
+        sin_formula: Mapping[str, str] | None = None,
+    ) -> None:
         self.tramos = tuple(tramos)
         self.formula_asfalto_pct = formula_asfalto_pct
+        self.formulas = dict(formulas or {})
+        self.sin_formula = dict(sin_formula or {})
 
     def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]:
-        return auditar_vial(self.tramos, presupuesto, formula_asfalto_pct=self.formula_asfalto_pct)
+        return auditar_vial(
+            self.tramos,
+            presupuesto,
+            formula_asfalto_pct=self.formula_asfalto_pct,
+            formulas=self.formulas,
+            sin_formula=self.sin_formula,
+        )

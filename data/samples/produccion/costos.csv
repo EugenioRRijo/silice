@@ -1,0 +1,7 @@
+periodo,centro,concepto,monto,moneda,fecha,fuente
+2026-10,cantera,gasoil,2000,USD,2026-10-03,factura ficticia C-101
+2026-10,cantera,nomina,36500,Bs,2026-10-06,nómina ficticia de octubre
+2026-10,planta,energia,4000,USD,2026-10-12,factura ficticia P-201
+2026-11,cantera,gasoil,2500,USD,2026-11-03,factura ficticia C-102
+2026-11,cantera,nomina,49275,Bs,2026-11-04,nómina ficticia de noviembre
+2026-11,planta,energia,5500,USD,2026-11-12,factura ficticia P-202

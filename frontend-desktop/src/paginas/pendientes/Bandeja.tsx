@@ -148,9 +148,9 @@ function Detalle({
   alAbrir: Props["alAbrir"];
   carpetaDe: CarpetaDe;
 }) {
-  const { sesion } = useAplicacion();
+  const { sesion, modulosApagados } = useAplicacion();
   const pagina = paginaPorId(paginaQueAbre(p));
-  const puede = pagina !== undefined && usable(pagina, sesion.acciones, sesion.modo_entrega);
+  const puede = pagina !== undefined && usable(pagina, sesion.acciones, sesion.modo_entrega, modulosApagados);
   return (
     <section className="silice-bandeja__detalle" aria-label={TEXTOS.detalle}>
       <h2 className="cds--type-heading-compact-02">{p.texto}</h2>

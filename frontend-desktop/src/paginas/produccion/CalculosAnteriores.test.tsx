@@ -163,4 +163,68 @@ describe("Cálculos anteriores", () => {
     await waitFor(() => expect(document.activeElement).toBe(aviso.closest("[tabindex]")));
     await waitFor(() => expect(lecturas("/v1/produccion/calculos?periodo=2026-11")).toBe(antes + 1));
   });
+
+  // Pantallas de informes (fila 112): el reporte de costo de producción en Excel se baja de `GET
+  // /v1/produccion/reportes/produccion` con el mes que se ve; trae todos los cálculos de ese mes.
+  describe("reporte de costo de producción", () => {
+    const libros: URL[] = [];
+    let reporte: () => Response;
+
+    beforeEach(() => {
+      libros.length = 0;
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+      Object.defineProperty(URL, "createObjectURL", { value: () => "blob:falso", configurable: true });
+      Object.defineProperty(URL, "revokeObjectURL", { value: () => undefined, configurable: true });
+      reporte = () => new Response("PK", { status: 200, headers: { "Content-Disposition": 'attachment; filename="produccion_2026-11.xlsx"' } });
+      const leer = fetchFalso.getMockImplementation();
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        const url = new URL(String(entrada), "http://prueba");
+        if (url.pathname === "/v1/produccion/reportes/produccion") {
+          libros.push(url);
+          return reporte();
+        }
+        return leer!(entrada, init);
+      });
+    });
+    afterEach(() => vi.restoreAllMocks());
+
+    test("baja el reporte del mes elegido", async () => {
+      montar();
+      const seccion = await screen.findByRole("region", { name: "Cálculos anteriores" });
+      await within(seccion).findByRole("list", { name: "Cálculos anteriores de noviembre de 2026" });
+      expect(within(seccion).queryByRole("button", { name: "Descargar el reporte de costo de producción (Excel)" })).not.toBeNull();
+      await usuario.click(within(seccion).getByRole("button", { name: "Descargar el reporte de costo de producción (Excel)" }));
+      await waitFor(() => expect(libros).toHaveLength(1));
+      expect(Object.fromEntries(libros[0].searchParams)).toEqual({ periodo: "2026-11" });
+      expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
+    });
+
+    test("el administrador también lo baja", async () => {
+      montar(ADMIN);
+      await usuario.click(await screen.findByRole("button", { name: "Descargar el reporte de costo de producción (Excel)" }));
+      await waitFor(() => expect(libros).toHaveLength(1));
+    });
+
+    test("sin cálculos en el mes no se ofrece", async () => {
+      const leer = fetchFalso.getMockImplementation();
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        const url = new URL(String(entrada), "http://prueba");
+        return url.pathname === "/v1/produccion/calculos" ? json([]) : leer!(entrada, init);
+      });
+      montar();
+      expect(await screen.findByText("Todavía no se calculó este mes.")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Descargar el reporte de costo de producción/ })).toBeNull();
+    });
+
+    test("si no se pudo bajar muestra el texto del servidor y el botón conserva el foco", async () => {
+      reporte = () => json({ detalle: "No hay cálculos de producción en el período 2026-11." }, 404);
+      montar();
+      const boton = await screen.findByRole("button", { name: "Descargar el reporte de costo de producción (Excel)" });
+      await usuario.click(boton);
+      const alerta = await screen.findByRole("alert");
+      expect(alerta).toHaveTextContent("No hay cálculos de producción en el período 2026-11.");
+      await waitFor(() => expect(document.activeElement).toBe(boton));
+      expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
+    });
+  });
 });

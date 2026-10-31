@@ -60,6 +60,7 @@ export const ACCIONES = {
     "administrar_empresa",
     "administrar_precios",
     "administrar_red_y_api",
+    "activar_modulos",
     "cambiar_carpeta_de_datos",
   ],
 } as const;

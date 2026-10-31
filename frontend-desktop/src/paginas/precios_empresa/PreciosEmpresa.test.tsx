@@ -378,4 +378,20 @@ describe("Precios de la empresa", () => {
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);
   });
+
+  test("la calculadora del FCAS se abre a pedido: antes no consulta nada", async () => {
+    fetchFalso.mockImplementation(async (ruta, opciones) => {
+      const url = String(ruta);
+      if (url === "/v1/fcas/componentes") return json({ dias_calendario: "365", fcas_version: "6.00", componentes: [] });
+      if (url === "/v1/precios-empresa" && (opciones?.method ?? "GET") === "GET") return json(SOLO_BASES);
+      return json({ detalle: "ruta inesperada " + url }, 404);
+    });
+    montar();
+    const usuario = userEvent.setup();
+    await screen.findByLabelText("Empresa (nombre)");
+    expect(llamadas("/v1/fcas/componentes")).toHaveLength(0);
+    await usuario.click(screen.getByRole("button", { name: "Abrir la calculadora del FCAS" }));
+    await screen.findByLabelText("Días calendario del período");
+    expect(llamadas("/v1/fcas/componentes")).toHaveLength(1);
+  });
 });

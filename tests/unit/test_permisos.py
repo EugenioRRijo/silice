@@ -31,6 +31,7 @@ MATRIZ = (
     (Accion.ADMINISTRAR_EMPRESA, False, False, True),
     (Accion.ADMINISTRAR_PRECIOS, False, False, True),
     (Accion.ADMINISTRAR_RED_Y_API, False, False, True),
+    (Accion.ACTIVAR_MODULOS, False, False, True),  # plan vial, Tarea 19
     (Accion.CAMBIAR_CARPETA_DE_DATOS, False, False, True),
     (Accion.OPERAR_ARENERA, True, False, True),
     (Accion.REGISTRAR_COSTOS_PRODUCCION, True, False, True),

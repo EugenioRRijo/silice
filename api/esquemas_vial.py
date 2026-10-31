@@ -44,6 +44,8 @@ class CapaEntrada(_Estricto):
     espesor_m: Cifra | None = None
     densidad_t_m3: Cifra | None = None
     dosis_l_m2: Cifra | None = None
+    #: Porcentaje de asfalto de la mezcla de la carpeta o del bacheo (Tarea 16b; lo compara VR2).
+    asfalto_pct: Cifra | None = None
 
 
 class DemarcacionEntrada(_Estricto):
@@ -97,6 +99,7 @@ def a_tramos(entrada: Sequence[TramoEntrada]) -> list[Tramo]:
                 _cifra(t.id, "espesor_m", c.espesor_m),
                 _cifra(t.id, "densidad_t_m3", c.densidad_t_m3),
                 _cifra(t.id, "dosis_l_m2", c.dosis_l_m2),
+                _cifra(t.id, "asfalto_pct", c.asfalto_pct),
             )
             for c in t.capas
         )
@@ -119,6 +122,7 @@ class CapaRespuesta(BaseModel):
     espesor_m: str | None
     densidad_t_m3: str | None
     dosis_l_m2: str | None
+    asfalto_pct: str | None = None
 
 
 class DemarcacionRespuesta(BaseModel):
@@ -201,6 +205,7 @@ def tramo_a_respuesta(t: Tramo) -> TramoRespuesta:
                 espesor_m=_texto(c.espesor_m),
                 densidad_t_m3=_texto(c.densidad_t_m3),
                 dosis_l_m2=_texto(c.dosis_l_m2),
+                asfalto_pct=_texto(c.asfalto_pct),
             )
             for c in t.capas
         ],

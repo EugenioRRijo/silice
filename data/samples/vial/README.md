@@ -32,6 +32,10 @@ Columnas, todas obligatorias en la cabecera:
   (obligatoria) y el bacheo (opcional); dosis para imprimación y riego de adherencia. Un dato que el tipo no usa
   se rechaza: nada se ignora en silencio.
 - Demarcación: `tipo` ∈ {`continua`, `discontinua`} y `lineas` (entero ≥ 1).
+- Columna **opcional** `asfalto_pct` (Tarea 16b): el porcentaje de asfalto que el proyecto pide a la mezcla de
+  la carpeta o del bacheo (mayor que 0 y menor que 100; «6,5» es 6,5 %). Va en la partida de la mezcla y la
+  regla VR2 lo compara con la fórmula de trabajo de la receta vigente de la planta. Un archivo sin esa columna
+  se lee igual; en otra capa o en una demarcación se rechaza.
 - Los errores nombran el archivo y la **fila** tal como la ve una hoja de cálculo (la cabecera es la fila 1).
 
 ## Memoria de cálculo (a mano, escrita antes del código)
@@ -49,7 +53,9 @@ Longitud = (progresiva final − inicial) × 1000. Área = longitud × ancho.
 | | 8760 × 0,05 = 438 m³; 438 × 2,35 | **1029,3 t** |
 | | 1029,3 × 15 | **15439,5 t·km** |
 | demarcación 1, continua, 2 líneas | 1200 × 2 | **2400 m** |
+| | pintura: 2400 × 0,0365 | **87,6 l** |
 | demarcación 2, discontinua, 1 línea | 1200 × 1 × 0,375 | **450 m** |
+| | pintura: 450 × 0,0365 | **16,425 l** |
 
 **T2** (1,2 a 2,0 km: 800 m; ancho 6,50 m; planta a 18 km). Área = 800 × 6,50 = **5200 m²**.
 
@@ -71,8 +77,11 @@ Longitud = (progresiva final − inicial) × 1000. Área = longitud × ancho.
 | | 15 × 2,30 | **34,5 t** |
 | | 34,5 × 18 | **621 t·km** |
 
-En total, 18 cantidades. La fracción pintada de la línea discontinua (0,375: 3 m pintados de cada 8 m) es un
-**supuesto declarado** (`FRACCION_PINTADA_DISCONTINUA`), no una norma.
+En total, 20 cantidades. La fracción pintada de la línea discontinua (0,375: 3 m pintados de cada 8 m) es un
+**supuesto declarado** (`FRACCION_PINTADA_DISCONTINUA`), no una norma. La pintura de cada línea (Tarea 16b) usa
+0,0365 l por m de línea de 10 cm: 36,5 l por km, el punto medio del rango de VR5 (`PINTURA_POR_DEFECTO_L_KM`,
+V-17, supuesto declarado, a cotejar con la ficha del producto); el modelo no trae el ancho de la línea y se
+supone 10 cm (V-14).
 
 ## Códigos de partida
 

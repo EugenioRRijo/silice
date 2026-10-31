@@ -39,37 +39,39 @@ FLETE = "Flete"
 # --- Historia ficticia ----------------------------------------------------------------------------
 
 
-def _mes(base: date, desplazamiento: int) -> date:
+def mes_desplazado(base: date, desplazamiento: int) -> date:
     indice = base.year * 12 + base.month - 1 + desplazamiento
     return date(indice // 12, indice % 12 + 1, 1)
 
 
-def _meses(n: int, *, hasta_antes_de: date = INICIO) -> list[date]:
+def meses_hasta(n: int, *, hasta_antes_de: date = INICIO) -> list[date]:
     """Los `n` meses que terminan el mes anterior a `hasta_antes_de`, en orden."""
-    return [_mes(hasta_antes_de, -i) for i in range(n, 0, -1)]
+    return [mes_desplazado(hasta_antes_de, -i) for i in range(n, 0, -1)]
 
 
-def _creciente(variacion: Decimal, n: int = 37, inicial: Decimal = CIEN) -> dict[date, Decimal]:
+def serie_creciente(
+    variacion: Decimal, n: int = 37, inicial: Decimal = CIEN
+) -> dict[date, Decimal]:
     """`n` meses con la misma variación mensual (37 puntos = 36 variaciones antes de INICIO)."""
-    return {m: inicial * variacion**i for i, m in enumerate(_meses(n))}
+    return {m: inicial * variacion**i for i, m in enumerate(meses_hasta(n))}
 
 
 def _con_variaciones(variaciones: list[Decimal], inicial: Decimal = CIEN) -> dict[date, Decimal]:
     valores = [inicial]
     for v in variaciones:
         valores.append(valores[-1] * v)
-    return dict(zip(_meses(len(valores)), valores, strict=True))
+    return dict(zip(meses_hasta(len(valores)), valores, strict=True))
 
 
-def _historia(ppi=UNO, gasoil=UNO, tasa=UNO, n: int = 37):
+def historia_uniforme(ppi=UNO, gasoil=UNO, tasa=UNO, n: int = 37):
     return {
-        PPI: _creciente(ppi, n),
-        GASOIL: _creciente(gasoil, n),
-        SERIE_TASA: _creciente(tasa, n, inicial=D(40)),
+        PPI: serie_creciente(ppi, n),
+        GASOIL: serie_creciente(gasoil, n),
+        SERIE_TASA: serie_creciente(tasa, n, inicial=D(40)),
     }
 
 
-def _promedio_compuesto(variacion: Decimal, meses: int = 6) -> Decimal:
+def promedio_compuesto(variacion: Decimal, meses: int = 6) -> Decimal:
     """El oráculo del gasto uniforme: promedio de variacion^k, k = 1..meses."""
     return sum((variacion**k for k in range(1, meses + 1)), D(0)) / meses
 
@@ -77,7 +79,7 @@ def _promedio_compuesto(variacion: Decimal, meses: int = 6) -> Decimal:
 # --- Presupuesto ficticio -------------------------------------------------------------------------
 
 
-def _apu(codigo: str, lineas: list[tuple[str, str, Decimal, Decimal]]) -> ComposicionAPU:
+def apu_ficticio(codigo: str, lineas: list[tuple[str, str, Decimal, Decimal]]) -> ComposicionAPU:
     return ComposicionAPU(
         codigo_partida=codigo,
         descripcion=f"Partida ficticia {codigo}",
@@ -87,12 +89,14 @@ def _apu(codigo: str, lineas: list[tuple[str, str, Decimal, Decimal]]) -> Compos
     )
 
 
-CARPETA = _apu("VIA-01", [(MEZCLA, "t", D(1), D("46.75"))])
-RIEGO = _apu("VIA-02", [(ASFALTO, "t", D("0.5"), D(600)), (GASOIL_LITRO, "l", D(10), D("0.5"))])
-TRANSPORTE = _apu("VIA-03", [(FLETE, "t", D(1), D(20))])
+CARPETA = apu_ficticio("VIA-01", [(MEZCLA, "t", D(1), D("46.75"))])
+RIEGO = apu_ficticio(
+    "VIA-02", [(ASFALTO, "t", D("0.5"), D(600)), (GASOIL_LITRO, "l", D(10), D("0.5"))]
+)
+TRANSPORTE = apu_ficticio("VIA-03", [(FLETE, "t", D(1), D(20))])
 
 
-def _obra(cantidades: dict[ComposicionAPU, Decimal], moneda: str = "USD"):
+def obra_ficticia(cantidades: dict[ComposicionAPU, Decimal], moneda: str = "USD"):
     composiciones = {apu.codigo_partida: apu for apu in cantidades}
     items = [
         ItemComputo(
@@ -126,7 +130,7 @@ RECETA = Receta(
 COMPONENTES = {"AGR-12": D(5), "CA-30": D(600)}
 
 
-def _historia_variable():
+def historia_variable():
     """Variaciones escritas a mano (36), distintas entre series para que el remuestreo importe."""
     ppi = [D(x) for x in ("1.03", "0.97", "1.05", "1.00", "0.98", "1.08")] * 6
     gasoil = [D(x) for x in ("1.00", "1.00", "1.10", "1.00", "1.00", "0.95")] * 6

@@ -735,3 +735,49 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     await waitFor(() => expect(real).toHaveFocus());
   });
 });
+
+// Plan vial, Tarea 19: lo que la instalación apagó no se ofrece ni se abre por enlace directo.
+describe("Marco: especialidades apagadas", () => {
+  const MENSAJE_APAGADO = "Esta función está apagada en esta instalación. Quien administra puede encenderla en Administración.";
+  function apagar(...claves: string[]) {
+    instalar();
+    const base = servidor.fetchFalso;
+    const nombres: Record<string, string> = { produccion: "producción", vial: "vial", edificacion: "edificación", riesgo: "riesgo" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+        if (String(entrada) === "/v1/modulos" && (init?.method ?? "GET") === "GET") {
+          return json({
+            modulos: Object.keys(nombres).map((clave) => ({ clave, nombre: nombres[clave], activo: !claves.includes(clave), cambiado_por: null, cambiado_el: null })),
+          });
+        }
+        return base(entrada, init);
+      }),
+    );
+  }
+
+  test("con el riesgo apagado, abrir #/riesgo por enlace directo dice que está apagado", async () => {
+    apagar("riesgo");
+    montar({ sesion: sesionDe("ana"), en: "/riesgo" });
+    expect(await screen.findByText(MENSAJE_APAGADO)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Riesgo de la obra" })).toBeNull();
+  });
+
+  test("con el riesgo encendido, #/riesgo abre su pantalla", async () => {
+    apagar();
+    montar({ sesion: sesionDe("ana"), en: "/riesgo" });
+    expect(await titulo("Riesgo de la obra")).toBeInTheDocument();
+    expect(screen.queryByText(MENSAJE_APAGADO)).toBeNull();
+  });
+
+  test("con producción apagada, la entrada de Empresa dice que está apagada", async () => {
+    apagar("produccion");
+    montar({ sesion: sesionDe("admin"), en: "/empresa/produccion" });
+    expect(await screen.findByText(MENSAJE_APAGADO)).toBeInTheDocument();
+  });
+
+  test("si no se puede leer el estado, nada se oculta (la API sigue cortando)", async () => {
+    montar({ sesion: sesionDe("ana"), en: "/riesgo" });
+    expect(await titulo("Riesgo de la obra")).toBeInTheDocument();
+  });
+});

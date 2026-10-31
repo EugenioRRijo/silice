@@ -55,6 +55,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Res
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
+from api.acceso_modulos import ModuloEdificacion
 from api.admin_acceso import cuenta_con
 from api.dependencias import SesionDeEscrituraDep, SesionDep, url_de_la_peticion
 from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
@@ -451,7 +452,7 @@ def _abrir_borrador(
                     Catalogo(sesion),
                     nombre,
                     datos.version,
-                    fecha_evaluacion=date.today(),
+                    fecha_evaluacion=_hoy(),
                     responsable=activa.usuario,
                 )
             except HojaInvalida as error:
@@ -667,6 +668,7 @@ def editar_espacio(
     datos: EdicionEspacio,
     request: Request,
     activa: CuentaDeLaHoja,
+    _edificacion: ModuloEdificacion,
     sesion: SesionDep,
 ) -> EdicionEspacioRespuesta:
     """E1: aplica las cinco tablas del editor al espacio del borrador y lo devuelve recalculado.

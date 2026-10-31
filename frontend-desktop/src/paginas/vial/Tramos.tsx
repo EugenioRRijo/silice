@@ -12,6 +12,7 @@ import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
 import { useCarga } from "../inicio/useCarga";
 import { AvisoConFoco } from "../produccion/AvisoConFoco";
+import { ReportesDeLaVia } from "./ReportesDeLaVia";
 import { TramoConCantidades } from "./TramoConCantidades";
 import { useTramos } from "./useTramos";
 import "./vial.scss";
@@ -153,6 +154,9 @@ export default function Tramos() {
                 <div ref={cajaDelErrorAlLlevar} tabIndex={-1}>
                   <AvisoError error={errorAlLlevar} titulo="No se llevó nada al presupuesto" alCerrar={() => setErrorAlLlevar(null)} />
                 </div>
+              )}
+              {carga.datos.tramos.length > 0 && nombre !== null && (
+                <ReportesDeLaVia proyecto={nombre} version={version} alExpirar={alExpirar} />
               )}
               {carga.datos.tramos.length === 0 && carga.datos.editable && <EstadoVacio titulo={SIN_TRAMOS} />}
               {carga.datos.tramos.map((t) => (

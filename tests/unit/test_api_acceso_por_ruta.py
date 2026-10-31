@@ -72,6 +72,7 @@ OPERAR = "operar_arenera"
 COSTOS = "registrar_costos_produccion"
 PUBLICAR = "publicar_costo_propio"
 VER_RIESGO = "ver_riesgo"
+MODULOS = "activar_modulos"
 PRECIOS = "administrar_precios"
 APROBAR = "aprobar_version"
 EMPRESA, RED_Y_API = (
@@ -93,6 +94,7 @@ ROLES = {
     COSTOS: {"arma", "administrador"},
     PUBLICAR: {"administrador"},
     VER_RIESGO: {"arma", "revisa", "administrador"},
+    MODULOS: {"administrador"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CONTROLAR: {"arma"},
     DECIDIR: {"arma"},
@@ -163,6 +165,7 @@ TABLA = {
     ("PUT", "/v1/carpeta/moneda"): EDITAR,
     ("POST", "/v1/carpeta/lista-para-armar"): EDITAR,
     ("GET", "/v1/buscar/partidas"): LEER,  # T10: buscador de partidas del catálogo (C-1)
+    ("GET", "/v1/consulta/{tabla}"): LEER,  # vial T20: autocompletado con tablas venezolanas
     # MOD-4a: la mesa de control (inicio de Presupuestos y obras)
     ("GET", "/v1/obras/resumen"): LEER,
     ("GET", "/v1/obras/pendientes"): EDITAR,
@@ -277,7 +280,16 @@ TABLA = {
     ("GET", "/v1/produccion/calculos"): COSTOS,  # plan vial T4b: calculos anteriores
     ("GET", "/v1/produccion/calculos/{calculo_id}"): COSTOS,
     ("POST", "/v1/produccion/calculos/{calculo_id}/publicar"): PUBLICAR,  # plan vial T5
+    ("GET", "/v1/produccion/reportes/produccion"): COSTOS,  # pantallas de informes; un xlsx
     ("POST", "/v1/riesgo/mejora"): VER_RIESGO,  # plan vial T15
+    ("POST", "/v1/riesgo/proyeccion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
+    ("POST", "/v1/riesgo/comprobacion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
+    ("GET", "/v1/riesgo/insumos"): VER_RIESGO,  # plan vial T16; solo lee
+    ("GET", "/v1/modulos"): CUALQUIERA,  # plan vial T19; el marco oculta lo apagado
+    ("PUT", "/v1/modulos/{clave}"): MODULOS,  # plan vial T19; solo con sesion
+    ("GET", "/v1/riesgo/reportes/{tipo}"): VER_RIESGO,  # plan vial T21; descarga un xlsx
+    ("POST", "/v1/fcas/calcular"): CUALQUIERA,  # plan vial T17; cuenta pura, cualquier rol
+    ("GET", "/v1/fcas/componentes"): CUALQUIERA,  # plan vial T17; los valores por defecto
     # F4 2b: solo lectura para revisa. Las lecturas de la Hoja (y GET /v1/aprobaciones) son
     # LEER; todo lo que cambia el borrador o la base sigue en EDITAR.
     ("GET", "/v1/hoja/versiones"): LEER,  # T10 3b-1: Hoja del proyecto; clave o sesion
@@ -329,6 +341,7 @@ TABLA = {
     ("POST", "/v1/vial/tramos/importar"): EDITAR,  # plan vial T8; escribe; solo sesion
     ("POST", "/v1/vial/tramos/llevar"): EDITAR,  # plan vial T8b; al borrador; solo sesion
     ("GET", "/v1/vial/obras"): EDITAR,  # plan vial T8; clave o sesion (solo lee)
+    ("GET", "/v1/vial/reportes/{tipo}"): EDITAR,  # plan vial T21; descarga un xlsx
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {

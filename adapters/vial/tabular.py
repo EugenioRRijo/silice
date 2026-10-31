@@ -22,6 +22,9 @@ from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 _COLUMNAS_TRAMO = ("progresiva_ini_km", "progresiva_fin_km", "ancho_m", "distancia_planta_km")
 _COLUMNAS_CAPA = ("espesor_m", "densidad_t_m3", "dosis_l_m2")
 COLUMNAS = ("tramo", *_COLUMNAS_TRAMO, "elemento", "tipo", *_COLUMNAS_CAPA, "lineas")
+#: Columna opcional (Tarea 16b): el porcentaje de asfalto de la mezcla de la carpeta o del bacheo.
+#: Un archivo sin ella se lee igual que antes.
+ASFALTO = "asfalto_pct"
 
 _CAPA = "capa"
 _DEMARCACION = "demarcacion"
@@ -125,10 +128,10 @@ def _agregar_elemento(fila: dict[str, str | None], borrador: _Borrador) -> None:
     if elemento == _CAPA:
         if _celda(fila, "lineas"):
             raise ValueError("una capa no usa la columna 'lineas': déjela vacía")
-        valores = (_decimal(fila, columna) for columna in _COLUMNAS_CAPA)
+        valores = (_decimal(fila, columna) for columna in (*_COLUMNAS_CAPA, ASFALTO))
         borrador.capas.append(Capa(tipo, *valores))
     elif elemento == _DEMARCACION:
-        llenas = [columna for columna in _COLUMNAS_CAPA if _celda(fila, columna)]
+        llenas = [columna for columna in (*_COLUMNAS_CAPA, ASFALTO) if _celda(fila, columna)]
         if llenas:
             raise ValueError(f"una demarcación no usa {', '.join(llenas)}: déjelas vacías")
         lineas = _celda(fila, "lineas")

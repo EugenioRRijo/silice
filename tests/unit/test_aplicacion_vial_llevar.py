@@ -1,10 +1,10 @@
 """Plan vial, Tarea 8b: llevar los tramos al presupuesto (borrador de la Hoja). Datos FICTICIOS.
 
 La carpeta es la «Vivienda Demo 80 m2» de `tests/fixtures/carpeta_aprobaciones.py` (VIV-001) con
-las 14 partidas viales en la lista «Lista Bs de prueba». Los tramos salen de
+las 15 partidas viales en la lista «Lista Bs de prueba». Los tramos salen de
 `data/samples/vial/via_ficticia.csv` (leídos con `tramos_desde_csv`, como los importa la API) y se
 guardan en VIV-001. Las pruebas no llaman a `derivar_tramos`: lo esperado es la memoria de cálculo
-del README de la muestra, escrita a mano (18 cantidades).
+del README de la muestra, escrita a mano (20 cantidades: cada línea con su pintura, Tarea 16b).
 
 Reglas (plan, Tarea 8b): cada cantidad entra como renglón con el `origen_id` y el `origen_tipo` de
 la derivación, nunca «a-mano:n»; llevar otra vez sincroniza (los renglones «tramo:» se reemplazan,
@@ -43,7 +43,7 @@ HUELLA = "h" * 64
 CASO = "caso-de-prueba"
 MUESTRA = Path(__file__).resolve().parents[2] / "data" / "samples" / "vial" / "via_ficticia.csv"
 
-#: Las 14 partidas viales (código, descripción, unidad), copiadas a mano de la tabla del README.
+#: Las 15 partidas viales (código, descripción, unidad), copiadas a mano de la tabla del README.
 PARTIDAS = (
     ("C-000.000.001", "Fresado de pavimento asfáltico", "m3"),
     ("C-000.000.002", "Base granular compactada", "m3"),
@@ -59,6 +59,7 @@ PARTIDAS = (
     ("C-000.000.012", "Demarcación con línea continua", "m"),
     ("C-000.000.013", "Demarcación con línea discontinua", "m"),
     ("C-000.000.014", "Transporte de mezcla asfáltica desde la planta", "t·km"),
+    ("C-000.000.015", "Pintura de demarcación", "l"),
 )
 
 #: La memoria de cálculo de `data/samples/vial/README.md`: (código, origen, cantidad), en orden.
@@ -70,7 +71,9 @@ ESPERADO = [
     ("C-000.000.009", "tramo:T1:capa:3", D("1029.3")),
     ("C-000.000.014", "tramo:T1:capa:3", D("15439.5")),
     ("C-000.000.012", "tramo:T1:demarcacion:1", D("2400")),
+    ("C-000.000.015", "tramo:T1:demarcacion:1", D("87.6")),
     ("C-000.000.013", "tramo:T1:demarcacion:2", D("450")),
+    ("C-000.000.015", "tramo:T1:demarcacion:2", D("16.425")),
     ("C-000.000.003", "tramo:T2:capa:1", D("1300")),
     ("C-000.000.002", "tramo:T2:capa:2", D("1040")),
     ("C-000.000.004", "tramo:T2:capa:3", D("5200")),
@@ -162,7 +165,7 @@ def _escribir(sesion: Session, vivo, clave: str, cantidad: str):
 def test_llevar_crea_renglones_con_origen_de_tramo(sesion: Session) -> None:
     id_, renglones = _llevar(sesion)
 
-    assert renglones == 18
+    assert renglones == 20
     vivo = hoja_borradores.obtener(HUELLA, id_)
     assert vivo.version == "VIV-001"
     assert _filas(_de_tramo(vivo)) == ESPERADO
@@ -194,7 +197,7 @@ def test_llevar_dos_veces_no_duplica_y_conserva_lo_escrito(sesion: Session) -> N
 
     otra_vez, renglones = _llevar(sesion)
 
-    assert (otra_vez, renglones) == (id_, 18)
+    assert (otra_vez, renglones) == (id_, 20)
     vivo = hoja_borradores.obtener(HUELLA, id_)
     assert _filas(_de_tramo(vivo)) == ESPERADO  # ni uno de más
     assert vivo.borrador.cantidades[MEZCLA_T1] == D("900")
@@ -217,7 +220,7 @@ def test_tramo_quitado_desaparece_al_volver_a_llevar(sesion: Session) -> None:
 
     _, renglones = _llevar(sesion)
 
-    assert renglones == 15
+    assert renglones == 17
     vivo = hoja_borradores.obtener(HUELLA, id_)
     assert _filas(_de_tramo(vivo)) == SIN_T3
     assert MEZCLA_T3 not in vivo.borrador.cantidades
@@ -374,7 +377,7 @@ def test_con_la_version_del_borrador_se_lleva(sesion: Session) -> None:
     _con_viv002(sesion)
     id_, renglones = _llevar(sesion, "VIV-002")
     vivo = hoja_borradores.obtener(HUELLA, id_)
-    assert (vivo.version, renglones) == ("VIV-002", 18)
+    assert (vivo.version, renglones) == ("VIV-002", 20)
     assert _filas(_de_tramo(vivo)) == ESPERADO  # los heredados de VIV-001
 
 

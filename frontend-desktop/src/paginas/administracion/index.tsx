@@ -10,6 +10,7 @@ import CarpetasDeTrabajo, { tomarVueltaACarpetas } from "./CarpetasDeTrabajo";
 import ClavesApi from "./ClavesApi";
 import Cuentas from "./Cuentas";
 import Empresa from "./Empresa";
+import Especialidades from "./Especialidades";
 import EmpresasRegistradas from "./EmpresasRegistradas";
 import Instalacion from "./Instalacion";
 import { PESTANAS } from "./logica";
@@ -40,6 +41,8 @@ const CONTENIDOS: Record<IdDePestana, ComponentType> = {
 
 // Plan de modulos, MOD-3b (diseno de modulos §7): «Carpetas de trabajo» se administra aqui, al final, para quien puede
 // cambiar de carpeta (`cambiar_caso`). No es de la clasica: no esta en PESTANAS.
+// Plan vial, Tarea 19: las especialidades de la instalacion se encienden y apagan aqui, para quien tiene `activar_modulos`.
+const ESPECIALIDADES = { id: "especialidades", titulo: "Especialidades", Contenido: Especialidades };
 const CARPETAS = { id: "carpetas", titulo: "Carpetas de trabajo", Contenido: CarpetasDeTrabajo };
 
 // «Administracion» (UC-21): las siete pestañas de la clásica, todas migradas (la última, el Asistente de IA, en T6
@@ -51,6 +54,7 @@ export default function PaginaAdministracion() {
   const puede = sesion.acciones.includes("administrar_cuentas");
   const pestanas = [
     ...PESTANAS.map((p) => ({ id: p.id, titulo: p.titulo, Contenido: CONTENIDOS[p.id] })),
+    ...(sesion.acciones.includes("activar_modulos") ? [ESPECIALIDADES] : []),
     ...(sesion.acciones.includes("cambiar_caso") ? [CARPETAS] : []),
   ];
   // Tras abrir una carpeta desde su pestana la pagina se vuelve a montar: se vuelve a ella.

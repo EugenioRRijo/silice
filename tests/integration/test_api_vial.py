@@ -57,7 +57,13 @@ TRAMO = {
     "ancho_m": "7.3",
     "distancia_planta_km": "12",
     "capas": [
-        {"tipo": "carpeta", "espesor_m": "0.05", "densidad_t_m3": "2.35", "dosis_l_m2": None},
+        {
+            "tipo": "carpeta",
+            "espesor_m": "0.05",
+            "densidad_t_m3": "2.35",
+            "dosis_l_m2": None,
+            "asfalto_pct": None,
+        },
         {"tipo": "base_granular", "espesor_m": "0.20", "densidad_t_m3": None, "dosis_l_m2": None},
         {"tipo": "riego_adherencia", "espesor_m": None, "densidad_t_m3": None, "dosis_l_m2": "0.5"},
     ],
@@ -183,6 +189,21 @@ def test_guardar_y_leer_con_sus_cantidades(ana) -> None:
     (transporte,) = [c for c in leido["cantidades"] if c["unidad"] == "t·km"]
     assert transporte["origen_id"] == "tramo:T1:capa:1"
     assert transporte["regla"] == "longitud*ancho*espesor*densidad*distancia"
+
+
+def test_el_porcentaje_de_asfalto_de_la_carpeta_se_guarda_y_se_lee(ana) -> None:
+    """Tarea 16b: la capa de carpeta lleva el porcentaje de asfalto que compara VR2."""
+    carpeta = {**TRAMO["capas"][0], "asfalto_pct": "6.5"}
+    r = _guardar(ana, [{**TRAMO, "capas": [carpeta]}])
+    assert r.status_code == 200, r.text
+    assert _leer(ana).json()["tramos"][0]["capas"] == [carpeta]
+    base = {**TRAMO["capas"][1], "asfalto_pct": "6.5"}
+    r = _guardar(ana, [{**TRAMO, "capas": [base]}])
+    assert r.status_code == 422, r.text
+    assert "la capa base_granular no usa asfalto" in r.json()["detalle"]
+    assert (
+        _guardar(ana, [{**TRAMO, "capas": [{**carpeta, "asfalto_pct": "6,5"}]}]).status_code == 422
+    )
 
 
 def test_las_cantidades_no_pierden_cifras(ana) -> None:

@@ -233,6 +233,43 @@ describe("Tramos de la vía", () => {
     expect(screen.queryByRole("button", { name: "Llevar al presupuesto" })).toBeNull();
   });
 
+  // Tarea 22: los reportes de la Tarea 21 se descargan desde la pantalla (`GET /v1/vial/reportes/{tipo}`) con la obra y
+  // la versión que se ven; el servidor arma el libro y propone el nombre.
+  test("ofrece los tres reportes de la vía y baja cada uno con la obra y la versión que se ven", async () => {
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    Object.defineProperty(URL, "createObjectURL", { value: () => "blob:falso", configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: () => undefined, configurable: true });
+    const libros: URL[] = [];
+    const leer = fetchFalso.getMockImplementation();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://prueba");
+      if (url.pathname.startsWith("/v1/vial/reportes/")) {
+        libros.push(url);
+        return new Response("PK", { status: 200, headers: { "Content-Disposition": 'attachment; filename="libro.xlsx"' } });
+      }
+      return leer!(entrada, init);
+    });
+    montar();
+    const grupo = await screen.findByRole("region", { name: "Reportes de la vía" });
+    for (const etiqueta of ["Cómputos por tramo", "APU con origen y conciliación", "Resumen con IVA"]) {
+      await usuario.click(within(grupo).getByRole("button", { name: etiqueta }));
+    }
+    await waitFor(() => expect(libros).toHaveLength(3));
+    expect(libros.map((u) => [u.pathname, u.searchParams.get("proyecto"), u.searchParams.get("version")])).toEqual([
+      ["/v1/vial/reportes/computos", "Vía Demo", "VIA-002"],
+      ["/v1/vial/reportes/apu", "Vía Demo", "VIA-002"],
+      ["/v1/vial/reportes/resumen", "Vía Demo", "VIA-002"],
+    ]);
+    vi.restoreAllMocks();
+  });
+
+  test("sin tramos no ofrece los reportes de la vía", async () => {
+    tramos = () => json(VACIA);
+    montar();
+    await screen.findByText("Esta versión aún no tiene tramos. Importe el archivo de la vía.");
+    expect(screen.queryByRole("region", { name: "Reportes de la vía" })).toBeNull();
+  });
+
   test("sin obra abierta lo dice y no pide nada", async () => {
     montar(null);
     expect(screen.getByText("Abra una obra para ver o importar sus tramos.")).toBeInTheDocument();

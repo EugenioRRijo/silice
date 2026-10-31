@@ -17,7 +17,9 @@ Reglas (las decisiones estan en `docs/bitacora/2026-10-30-plan-vial-fase-a.md`, 
   calculo de M-1 no pasa nada), convertido con la tasa del cierre de M-1 si las monedas difieren,
   y lo anota en `viene_del_mes_anterior` con el calculo de donde vino: recalcular M-1 despues no
   cambia el calculo ya guardado de M. Lo que de nuevo no tiene receptor pasa a M+1 sumado (con los
-  costos de donde viene).
+  costos de donde viene). **Sin calculo de M** (Tarea 16b, fila 27): si el ultimo calculo de un mes
+  anterior dejo algo que pasa, calcular un mes posterior se niega («Calcule primero AAAA-MM: …»)
+  pidiendo el mes que debia recibirlo, y no escribe nada.
 - **Agregado propio no producido en el mes** (Tarea 4b, pregunta 15): la mezcla lo toma al costo
   del calculo del periodo anterior mas reciente (y dentro de el, el de id mayor) en la misma moneda
   que lo tenga, anotado en `de_otro_calculo`; nunca de un mes posterior. Sin ninguno, se niega.
@@ -174,6 +176,11 @@ def _mes_anterior(periodo: str) -> str:
     return f"{anio - 1}-12" if mes == 1 else f"{anio:04d}-{mes - 1:02d}"
 
 
+def _mes_siguiente(periodo: str) -> str:
+    anio, mes = validar_periodo(periodo)
+    return f"{anio + 1}-01" if mes == 12 else f"{anio:04d}-{mes + 1:02d}"
+
+
 def _tasa(equivalencia: Equivalencia | None) -> dict[str, str] | None:
     if equivalencia is None:
         return None
@@ -295,6 +302,26 @@ def _lo_que_pasa(calculo: CalculoGuardado | None) -> dict[str, Any]:
     if calculo is None:
         return {}
     return json.loads(calculo.instantanea)["resultado"].get("pasa_al_mes_siguiente", {})
+
+
+def _exigir_el_mes_que_recibe(sesion_ins: Session, periodo: str) -> None:
+    """Fila 27 (Eugenio, 2026-10-31): si el ultimo calculo anterior a `periodo` es de un mes P
+    que no es el anterior a `periodo` (hay un hueco sin calculo) y dejo algo que pasa, se niega
+    pidiendo calcular primero P+1, el mes que debia recibirlo. Asi nada de lo que pasa se pierde
+    al saltar un mes. Solo lee."""
+    fila = sesion_ins.scalar(
+        select(Calculo)
+        .where(Calculo.periodo < periodo)
+        .order_by(Calculo.periodo.desc(), Calculo.id.desc())
+        .limit(1)
+    )
+    if fila is None or fila.periodo == _mes_anterior(periodo):
+        return
+    if _lo_que_pasa(_guardado(fila)):
+        raise ErrorDeCalculo(
+            f"Calcule primero {_mes_siguiente(fila.periodo)}: el cálculo de {fila.periodo} dejó "
+            "costos que pasan a ese mes."
+        )
 
 
 # --- Moneda ---------------------------------------------------------------------------------------
@@ -495,6 +522,7 @@ def calcular_periodo(
     entradas, lo que vino del mes anterior y lo que pasa al siguiente. Todo se valida y convierte
     antes de escribir: un error no deja nada."""
     _validar_entrada(periodo, moneda, usuario)
+    _exigir_el_mes_que_recibe(sesion_ins, periodo)
     costos = costos_del_periodo(sesion_ins, periodo)
     producido = _producido(sesion_ins, periodo)
     anterior = _ultimo_del_mes_anterior(sesion_ins, periodo)

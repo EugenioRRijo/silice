@@ -1668,9 +1668,13 @@ def test_r10_de_ti001_trae_los_parametros_y_el_total_de_rf58(_casos) -> None:
         pytest.param("ti001", NOMBRE_TI001, caso_ti001.CODIGO, 39, id="TI-001"),  # 28 + 7 + 4
     ],
 )
-def test_r11_los_hallazgos_son_los_de_la_memoria(_casos, clave, proyecto, version, insumos) -> None:
+def test_r11_los_hallazgos_son_los_de_la_memoria(
+    _casos, _hoy_fijo, clave, proyecto, version, insumos
+) -> None:
     """OF-001: R8 advierte los 33 elementos del espacio (6 + 6 + 21) y R11 informa de los
-    insumos sin referencia MaPreX; TI-001 no tiene espacio: solo el R11 informativo."""
+    insumos sin referencia MaPreX; TI-001 no tiene espacio: solo el R11 informativo. La fecha de
+    evaluación es la fija (`_hoy_fijo`, 06/10/2026): con el reloj del equipo, los precios de
+    MaPreX de julio de 2026 de TI-001 vencen y R12 aparece según el día en que se corra."""
     navegador, id_ = _abrir_caso(_casos, clave, proyecto, version)
     cuerpo = _vista(navegador, id_, "auditoria").json()
     por_regla: dict[str, list] = {}

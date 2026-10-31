@@ -49,8 +49,16 @@ const LINEA_BASE: LineaBase = {
 const VALUACIONES: Valuaciones = {
   tiene_linea_base: true,
   filas: [
-    { Numero: "V-01", Periodo: "02/11/2026 a 06/11/2026", Fecha: "09/11/2026", Inspector: "<b>Ing. Ficticio</b>", Registrada: "09/11/2026 09:00", Estado: "sin hallazgos" },
+    { Numero: "V-01", Periodo: "02/11/2026 a 06/11/2026", Fecha: "09/11/2026", Inspector: "<b>Ing. Ficticio</b>", Registrada: "09/11/2026 09:00", Estado: "sin hallazgos", Subtotal: "1000.00", IVA: "160.00", "Total con IVA": "1160.00" },
   ],
+  impuestos: {
+    subtotal: "1000.00",
+    iva: "160.00",
+    total: "1160.00",
+    alicuota: "0.16",
+    fuente_alicuota: "Decreto 3.584, G.O. 6.395 Ext., 17-08-2018 (16 %) — a cotejar con la Gaceta vigente",
+  },
+  perspectiva: "costo",
   aviso: "",
   anulables: [{ id: 7, rotulo: "V-01 (02/11/2026 a 06/11/2026)" }],
   corte_por_defecto: "2026-11-13",
@@ -211,6 +219,38 @@ describe("Control de obra", () => {
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
     const tabla = await screen.findByRole("table", { name: "Valuaciones registradas" });
     expect(within(tabla).getByRole("columnheader", { name: "Número" })).toBeInTheDocument();
+  });
+
+  test("las valuaciones muestran subtotal, IVA y total con IVA en es-VE, con la alícuota y su fuente (Tarea 18)", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    const tabla = await screen.findByRole("table", { name: "Valuaciones registradas" });
+    for (const encabezado of ["Subtotal", "IVA", "Total con IVA"]) {
+      expect(within(tabla).getByRole("columnheader", { name: encabezado })).toBeInTheDocument();
+    }
+    expect(within(tabla).getAllByText("1.000,00").length).toBeGreaterThan(0);
+    expect(within(tabla).getByText("160,00")).toBeInTheDocument();
+    expect(within(tabla).getByText("1.160,00")).toBeInTheDocument();
+    const nota = screen.getByText(/IVA al 16 %/);
+    expect(nota.textContent).toContain("a cotejar con la Gaceta vigente");
+    expect(nota.textContent).toContain("1.160,00");
+  });
+
+  test("con la línea base en costo la nota del IVA avisa que no es facturable (T18-3)", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    expect(screen.getByText(/IVA al 16 %/).textContent).toContain(
+      "La línea base está en costo directo: este IVA no es una cifra facturable.",
+    );
+  });
+
+  test("con la línea base en precio la nota del IVA no lleva ese aviso (T18-3)", async () => {
+    valuaciones = () => json({ ...VALUACIONES, perspectiva: "precio" });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    expect(screen.getByText(/IVA al 16 %/).textContent).not.toContain("no es una cifra facturable");
   });
 
   test("la columna Número muestra el número que manda la API con la clave Numero (VB-3)", async () => {

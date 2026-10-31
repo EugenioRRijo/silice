@@ -25,6 +25,13 @@ enviado. Acción `EDITAR_HOJA`:
   que no existe, 404 sin eco; partidas sin APU, 404 con todos los códigos; borrador de otra
   versión, versión que no existe o sin tramos, sin lista o que ya no se abre, o borrador que
   cambió entretanto, 409; cifra mala, 422; la base, 503.
+- `GET /reportes/{tipo}?proyecto=&version=` → un libro .xlsx (Tarea 21,
+  `aplicacion.reportes_viales`) con una hoja de portada que dice de dónde sale cada cifra. `tipo`:
+  `computos` (tramos y cantidades), `apu` (APU con el origen de cada precio y la conciliación CV1 a
+  CV3) y `resumen` (subtotal, IVA y total); los tres piden `proyecto` y `version`. Mismo acceso que
+  `GET /tramos` (clave de API o sesión), solo lee y no deja caché. Tipo que no existe: 404; falta
+  de un dato o versión sin tramos: 422; la base, 503. El de costo de producción se mudó a
+  `GET /v1/produccion/reportes/produccion` (`api.rutas.produccion_reportes`, fila 112).
 """
 
 from __future__ import annotations
@@ -32,12 +39,13 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
+from api.acceso_modulos import ModuloVial
 from api.admin_acceso import cuenta_con
-from api.dependencias import SesionDep, url_de_la_peticion
+from api.dependencias import SesionDep, SesionInstalacionDep, url_de_la_peticion
 from api.esquemas_vial import (
     LlevarTramos,
     ObrasViales,
@@ -50,11 +58,12 @@ from api.esquemas_vial import (
     tramo_a_respuesta,
 )
 from api.rutas.hoja import CuentaDeLaHoja
+from api.rutas.hoja_exportar import TIPO_XLSX
 from api.rutas.hoja_llevar import MENSAJE_CAMBIO
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
-from aplicacion import elaboracion, hoja_edicion, hoja_vial, vial
+from aplicacion import elaboracion, hoja_edicion, hoja_vial, reportes_viales, vial
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorInexistente, RevDesactualizado
@@ -72,6 +81,9 @@ MENSAJE_BASE = (
     "programa."
 )
 FORMA_LLEVAR = "Envíe la obra y la versión cuyos tramos se llevan al presupuesto."
+#: Los reportes de la Tarea 21 de una versión (el de producción vive en `/v1/produccion`).
+REPORTES_DE_VERSION = ("computos", "apu", "resumen")
+MENSAJE_REPORTE = "Este reporte pide la obra y la versión (proyecto y version en la consulta)."
 TOPE_BYTES = 2 * 1024 * 1024
 BLOQUE = 64 * 1024
 EXTENSION = ".csv"
@@ -83,6 +95,8 @@ class _RutaVial(RutaSinCache, RutaSinEco):
     mensaje_por_omision = MENSAJE_FORMA
 
 
+# El módulo vial se comprueba en cada ruta (`ModuloVial`), DESPUÉS de la acción: sin entrar, 401;
+# sin el rol, 403; con el rol y el módulo apagado, 404 (D-V-4).
 router = APIRouter(prefix="/v1/vial", tags=["vial"], route_class=_RutaVial)
 
 LEER = Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))
@@ -130,7 +144,9 @@ def _guardar(sesion, proyecto: str, codigo: str, tramos, activa: SesionActiva, f
 
 
 @router.get("/tramos", response_model=TramosRespuesta, dependencies=[LEER])
-def leer_tramos(sesion: SesionDep, proyecto: Proyecto, version: Version) -> TramosRespuesta:
+def leer_tramos(
+    _modulo: ModuloVial, sesion: SesionDep, proyecto: Proyecto, version: Version
+) -> TramosRespuesta:
     """Los tramos de la versión con sus cantidades, y si se pueden editar."""
     try:
         return _respuesta(sesion, proyecto, version)
@@ -141,6 +157,7 @@ def leer_tramos(sesion: SesionDep, proyecto: Proyecto, version: Version) -> Tram
 @router.put("/tramos", response_model=TramosRespuesta)
 def guardar_los_tramos(
     activa: CuentaQueEdita,
+    _modulo: ModuloVial,
     sesion: SesionDep,
     entrada: TramosEntrada,
     proyecto: Proyecto,
@@ -177,6 +194,7 @@ async def _leer_archivo(archivo: UploadFile) -> bytes:
 @router.post("/tramos/importar", response_model=TramosRespuesta)
 async def importar_tramos(
     activa: CuentaQueEdita,
+    _modulo: ModuloVial,
     sesion: SesionDep,
     proyecto: Proyecto,
     version: Version,
@@ -204,7 +222,7 @@ async def importar_tramos(
 
 
 @router.get("/obras", response_model=ObrasViales, dependencies=[LEER])
-def obras_con_tramos(sesion: SesionDep) -> ObrasViales:
+def obras_con_tramos(_modulo: ModuloVial, sesion: SesionDep) -> ObrasViales:
     """Las obras de la carpeta abierta que tienen tramos guardados."""
     try:
         return ObrasViales(obras=vial.obras_con_tramos(sesion))
@@ -220,7 +238,11 @@ def _hoy() -> date:
 @router.post("/tramos/llevar", response_model=TramosLlevados)
 @sin_eco(FORMA_LLEVAR)
 def llevar_al_presupuesto(
-    datos: LlevarTramos, request: Request, activa: CuentaDeLaHoja, sesion: SesionDep
+    datos: LlevarTramos,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    _modulo: ModuloVial,
+    sesion: SesionDep,
 ) -> TramosLlevados:
     """Lleva las cantidades de los tramos al borrador de la Hoja de la obra, todo o nada, sin
     guardar versión (`aplicacion.hoja_vial.llevar_tramos_a_la_hoja`). `activa` va antes que
@@ -256,3 +278,39 @@ def llevar_al_presupuesto(
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
     return TramosLlevados(borrador_id=borrador_id, renglones=renglones, version=datos.version)
+
+
+@router.get(
+    "/reportes/{tipo}",
+    response_class=Response,
+    dependencies=[LEER],
+    responses={200: {"content": {TIPO_XLSX: {}}, "description": "El libro .xlsx del reporte."}},
+)
+def descargar_reporte(
+    tipo: str,
+    _modulo: ModuloVial,
+    sesion: SesionDep,
+    instalacion: SesionInstalacionDep,
+    proyecto: Annotated[str | None, Query(min_length=1, max_length=500)] = None,
+    version: Annotated[str | None, Query(min_length=1, max_length=40)] = None,
+) -> Response:
+    """Un reporte de la obra vial en Excel (`aplicacion.reportes_viales`); solo lee."""
+    if tipo not in REPORTES_DE_VERSION:
+        raise HTTPException(status_code=404, detail=f"No existe el reporte «{tipo[:40]}».")
+    if proyecto is None or version is None:
+        raise HTTPException(status_code=422, detail=MENSAJE_REPORTE)
+    try:
+        if tipo == "computos":
+            contenido = reportes_viales.computos_de_la_version(sesion, proyecto, version)
+        elif tipo == "apu":
+            contenido = reportes_viales.apu_de_la_version(sesion, instalacion, proyecto, version)
+        else:
+            contenido = reportes_viales.resumen_de_la_version(sesion, proyecto, version)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    nombre = reportes_viales.nombre_de_reporte(tipo, proyecto, version)
+    return Response(
+        content=contenido,
+        media_type=TIPO_XLSX,
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )

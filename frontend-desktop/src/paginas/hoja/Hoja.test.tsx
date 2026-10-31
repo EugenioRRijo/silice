@@ -104,9 +104,10 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     });
   }
 
-  function montar(proyecto: string | null = "OF-001") {
+  function montar(proyecto: string | null = "OF-001", modulosApagados?: readonly string[]) {
     const valor: Aplicacion = {
       sesion: SESION,
+      modulosApagados,
       proyecto,
       caso: { nombre: "obra", ruta_relativa: "data/obra.db" },
       recargarProyectos: vi.fn(),
@@ -168,6 +169,23 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     pestanas[0]!.focus();
     await userEvent.keyboard("{ArrowRight}");
     expect(pestanas[1]).toHaveFocus();
+  });
+
+  test("plan vial T19: con edificación apagada no hay «Espacio y metrajes» y la hoja abre en Presupuesto", async () => {
+    servidor();
+    montar("OF-001", ["edificacion"]);
+    const lista = await screen.findByRole("tablist");
+    const nombres = within(lista).getAllByRole("tab").map((p) => p.textContent);
+    expect(nombres).not.toContain("Espacio y metrajes");
+    expect(nombres).toEqual(["APU", "Presupuesto", "Plan y curva", "Punto de equilibrio", "Precios", "Parámetros", "Auditoría", "Trazabilidad"]);
+    expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Presupuesto");
+  });
+
+  test("plan vial T19: con otro módulo apagado, la hoja conserva sus nueve pestañas", async () => {
+    servidor();
+    montar("OF-001", ["vial", "riesgo"]);
+    const lista = await screen.findByRole("tablist");
+    expect(within(lista).getAllByRole("tab")).toHaveLength(9);
   });
 
   test("3b-F4: el selector ofrece las no descartadas, marca la vigente y preselecciona por_omision", async () => {

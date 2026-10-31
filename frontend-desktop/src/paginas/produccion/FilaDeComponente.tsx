@@ -1,5 +1,6 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import type { JSX } from "react";
+import { CampoDeConsulta } from "../../comun/CampoDeConsulta";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { TIPOS, UNIDADES } from "./logicaPlanta";
@@ -14,21 +15,23 @@ interface Props {
   sePuedeQuitar: boolean;
   alCambiar: (cambio: Partial<Fila>) => void;
   alQuitar: () => void;
+  alExpirar: () => void;
 }
 
 // Un componente de la receta. La unidad y el tipo no tienen valor por defecto: de ellos depende si el consumo sale del
 // inventario o se compra a precio de lista, y de ahí el costo de la mezcla.
-export function FilaDeComponente({ numero, base, fila, sePuedeQuitar, alCambiar, alQuitar }: Props): JSX.Element {
+export function FilaDeComponente({ numero, base, fila, sePuedeQuitar, alCambiar, alQuitar, alExpirar }: Props): JSX.Element {
   const nombre = `Componente ${numero}`;
   return (
     <fieldset className="receta-componente">
       <legend className="cds--type-label-02">{nombre}</legend>
-      <CampoTexto
+      <CampoDeConsulta
         id={`${base}-codigo`}
-        labelText="Código"
-        autoComplete="off"
-        value={fila.codigo}
-        onChange={(e) => alCambiar({ codigo: e.target.value })}
+        etiqueta="Código"
+        tabla="insumos"
+        texto={fila.codigo}
+        alCambiarTexto={(codigo) => alCambiar({ codigo })}
+        alExpirar={alExpirar}
       />
       <CampoTexto
         id={`${base}-cantidad`}
