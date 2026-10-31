@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
@@ -120,6 +120,14 @@ describe("Administracion: Cuentas y Accesos", () => {
     const tabla = await cargada();
     expect(within(tabla).getByText("luis")).toBeInTheDocument();
     expect(within(tabla).getAllByText("no")).toHaveLength(1);
+  });
+
+  test("la pestana «Especialidades» solo la tiene quien puede activar modulos (plan vial, Tarea 19)", () => {
+    montar();
+    expect(screen.queryByRole("tab", { name: "Especialidades" })).toBeNull();
+    cleanup();
+    montar({ ...SESION, acciones: [...SESION.acciones, "activar_modulos"] });
+    expect(screen.getByRole("tab", { name: "Especialidades" })).toBeInTheDocument();
   });
 
   test("ninguna pestana queda en la interfaz clasica: ni marca «clásica» ni enlace a ella", () => {

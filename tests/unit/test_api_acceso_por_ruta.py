@@ -72,6 +72,7 @@ OPERAR = "operar_arenera"
 COSTOS = "registrar_costos_produccion"
 PUBLICAR = "publicar_costo_propio"
 VER_RIESGO = "ver_riesgo"
+MODULOS = "activar_modulos"
 PRECIOS = "administrar_precios"
 APROBAR = "aprobar_version"
 EMPRESA, RED_Y_API = (
@@ -93,6 +94,7 @@ ROLES = {
     COSTOS: {"arma", "administrador"},
     PUBLICAR: {"administrador"},
     VER_RIESGO: {"arma", "revisa", "administrador"},
+    MODULOS: {"administrador"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CONTROLAR: {"arma"},
     DECIDIR: {"arma"},
@@ -282,6 +284,8 @@ TABLA = {
     ("POST", "/v1/riesgo/proyeccion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
     ("POST", "/v1/riesgo/comprobacion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
     ("GET", "/v1/riesgo/insumos"): VER_RIESGO,  # plan vial T16; solo lee
+    ("GET", "/v1/modulos"): CUALQUIERA,  # plan vial T19; el marco oculta lo apagado
+    ("PUT", "/v1/modulos/{clave}"): MODULOS,  # plan vial T19; solo con sesion
     ("POST", "/v1/fcas/calcular"): CUALQUIERA,  # plan vial T17; cuenta pura, cualquier rol
     ("GET", "/v1/fcas/componentes"): CUALQUIERA,  # plan vial T17; los valores por defecto
     ("GET", "/v1/hoja/versiones"): EDITAR,  # T10 3b-1: Hoja del proyecto; clave o sesion

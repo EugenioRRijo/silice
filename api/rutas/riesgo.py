@@ -41,6 +41,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 
+from api.acceso_modulos import requiere_modulo
 from api.dependencias import SesionDep, SesionInstalacionDep
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
@@ -71,7 +72,7 @@ class _RutaRiesgo(RutaSinCache, RutaSinEco):
 router = APIRouter(
     prefix="/v1/riesgo",
     tags=["riesgo"],
-    dependencies=[Depends(VER_RIESGO)],
+    dependencies=[Depends(VER_RIESGO), Depends(requiere_modulo("riesgo"))],
     route_class=_RutaRiesgo,
 )
 

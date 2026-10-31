@@ -184,9 +184,9 @@ export function etiquetaAvance(real: string | null, plan: string | null): string
 
 // Un boton de la mesa solo se ofrece si su pantalla existe en el registro y la cuenta puede usarla: la de aprobar aun no
 // existe y quien revisa no abre la Hoja ni el Control (la API lo negaria igual).
-export function pantallaVisible(pagina: string, acciones: readonly string[], modoEntrega: boolean): boolean {
+export function pantallaVisible(pagina: string, acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[] = []): boolean {
   const def = paginaPorId(pagina);
-  return def !== undefined && usable(def, acciones, modoEntrega);
+  return def !== undefined && usable(def, acciones, modoEntrega, apagados);
 }
 
 // Lo que pinta la columna de pendientes con las dos lecturas que la alimentan: los pendientes de las obras (con

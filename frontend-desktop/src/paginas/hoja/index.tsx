@@ -262,7 +262,7 @@ function textoDeCambiarVersion(cambios: number): string {
 }
 
 function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombreProyecto: string | null }) {
-  const { alExpirar, sesion } = useAplicacion();
+  const { alExpirar, sesion, modulosApagados } = useAplicacion();
   const versiones = useCarga<VersionesRespuesta>(rutaDeVersiones(proyecto), alExpirar);
   const { ofertas, recargar: recargarOfertas } = useOfertas(proyecto, nombreProyecto, alExpirar);
   const [elegida, setElegida] = useState<{ proyecto: string; codigo: string } | null>(null);
@@ -386,6 +386,11 @@ function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombre
     setPestanaDe(proyecto);
     setPestana(pestanaInicial(estado.borrador.resumen));
   }
+  // Con edificación apagada (plan vial, T19-5) no hay «Espacio y metrajes» ni planos: la hoja abre en Presupuesto y sigue
+  // sirviendo a las obras viales. `visibles` guarda el índice de cada pestaña en PESTANAS, que es el que usan las demás.
+  const sinEspacio = modulosApagados?.includes("edificacion") ?? false;
+  const visibles = PESTANAS.map((p, i) => ({ p, i })).filter(({ i }) => !(sinEspacio && i === 0));
+  const activa = sinEspacio && pestana === 0 ? PESTANAS.indexOf("Presupuesto") : pestana;
   // «Ver en Auditoría» desde el Estado de una fila: va a esa pestaña con el filtro de la fila.
   const [filtro, setFiltro] = useState<FiltroDeAuditoria | null>(null);
   const verEnAuditoria = (f: FiltroDeAuditoria) => {
@@ -495,21 +500,21 @@ function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombre
 
       <ContextoAuditoria.Provider value={verEnAuditoria}>
         <Tabs
-          selectedIndex={pestana}
+          selectedIndex={visibles.findIndex(({ i }) => i === activa)}
           onChange={({ selectedIndex }) => {
             setFiltro(null);
-            setPestana(selectedIndex);
+            setPestana(visibles[selectedIndex]?.i ?? 0);
           }}
         >
           <TabList aria-label="Secciones de la hoja">
-            {PESTANAS.map((p) => (
+            {visibles.map(({ p }) => (
               <Tab key={p}>{p}</Tab>
             ))}
           </TabList>
           <TabPanels>
-            {PESTANAS.map((p, i) => (
+            {visibles.map(({ p, i }) => (
               <TabPanel key={p}>
-                {i === pestana && (
+                {i === activa && (
                   <ContenidoDePestana
                     indice={i}
                     borrador={estado.estado === "listo" ? estado.borrador : null}

@@ -136,3 +136,34 @@ describe("linea de ayuda", () => {
     }
   });
 });
+
+describe("módulos apagados (plan vial, Tarea 19)", () => {
+  // Oráculo a mano: qué módulo activable cierra cada pantalla.
+  const DEL_MODULO: [string, string][] = [
+    ["produccion", "produccion"],
+    ["existencias", "produccion"],
+    ["costos", "produccion"],
+    ["receta_planta", "produccion"],
+    ["producir_mezcla", "produccion"],
+    ["costo_tonelada", "produccion"],
+    ["tramos", "vial"],
+    ["riesgo", "riesgo"],
+  ];
+  const TODAS_LAS_ACCIONES = PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion]));
+
+  test.each(DEL_MODULO)("«%s» pertenece al módulo %s", (id, modulo) => {
+    expect(paginaPorId(id)!.modulo).toBe(modulo);
+  });
+
+  test.each(DEL_MODULO)("«%s» deja de ser usable cuando su módulo está apagado, y vuelve al encender", (id, modulo) => {
+    const pagina = paginaPorId(id)!;
+    expect(usable(pagina, TODAS_LAS_ACCIONES, false, [modulo])).toBe(false);
+    expect(usable(pagina, TODAS_LAS_ACCIONES, false, [])).toBe(true);
+    expect(usable(pagina, TODAS_LAS_ACCIONES, false)).toBe(true);
+  });
+
+  test("apagar un módulo no toca las pantallas de los otros ni las de ninguno", () => {
+    expect(usable(paginaPorId("tramos")!, TODAS_LAS_ACCIONES, false, ["produccion", "riesgo"])).toBe(true);
+    expect(usable(paginaPorId("hoja")!, TODAS_LAS_ACCIONES, false, ["produccion", "vial", "riesgo", "edificacion"])).toBe(true);
+  });
+});

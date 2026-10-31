@@ -1,7 +1,9 @@
 import { Button } from "@carbon/react";
+import { useContext } from "react";
 import { NavLink, useLocation } from "react-router";
 import { paginaPorId, rutaDe, usable } from "./rutas";
 import type { PaginaDef } from "./rutas";
+import { ContextoAplicacion } from "./contexto";
 import { pasoDeRuta, terminarRecorrido, useRecorrido } from "./recorrido";
 
 interface Props {
@@ -25,9 +27,12 @@ function alTerminar() {
   }
 }
 
+const SIN_APAGAR: readonly string[] = [];
+
 export function PanelRecorrido({ paginas, acciones, modoEntrega, enColumna = false }: Props) {
   const recorrido = useRecorrido();
   const { pathname } = useLocation();
+  const apagados = useContext(ContextoAplicacion)?.modulosApagados ?? SIN_APAGAR;
   if (!recorrido) return null;
   const actual = pasoDeRuta(recorrido, pathname);
   const total = recorrido.pasos.length;
@@ -45,7 +50,7 @@ export function PanelRecorrido({ paginas, acciones, modoEntrega, enColumna = fal
       <ol className="silice-recorrido__pasos">
         {recorrido.pasos.map((paso, i) => {
           const pagina = paginaPorId(paso.pagina, paginas);
-          const enlazable = pagina !== undefined && usable(pagina, acciones, modoEntrega);
+          const enlazable = pagina !== undefined && usable(pagina, acciones, modoEntrega, apagados);
           const esActual = i === actual;
           return (
             <li key={paso.pagina} aria-current={esActual ? "step" : undefined} className="silice-recorrido__paso">

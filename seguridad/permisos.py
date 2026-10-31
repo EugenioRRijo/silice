@@ -41,6 +41,7 @@ class Accion(StrEnum):
     ADMINISTRAR_EMPRESA = "administrar_empresa"  # empresa, clave de firma, empresas registradas
     ADMINISTRAR_PRECIOS = "administrar_precios"  # lista de la empresa e importar el BCV (S1)
     ADMINISTRAR_RED_Y_API = "administrar_red_y_api"  # red local, API y claves de API
+    ACTIVAR_MODULOS = "activar_modulos"  # especialidades y módulos (plan vial, T19)
     CAMBIAR_CARPETA_DE_DATOS = "cambiar_carpeta_de_datos"  # (S5)
 
 
@@ -76,6 +77,7 @@ PERMISOS: dict[Accion, frozenset[Rol]] = {
     Accion.ADMINISTRAR_EMPRESA: frozenset({_ADMIN}),
     Accion.ADMINISTRAR_PRECIOS: frozenset({_ADMIN}),
     Accion.ADMINISTRAR_RED_Y_API: frozenset({_ADMIN}),
+    Accion.ACTIVAR_MODULOS: frozenset({_ADMIN}),
     Accion.CAMBIAR_CARPETA_DE_DATOS: frozenset({_ADMIN}),
 }
 
