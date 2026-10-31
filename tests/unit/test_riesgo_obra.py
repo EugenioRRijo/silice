@@ -180,11 +180,18 @@ MZ1 = "Costo propio de mezcla MZ-1"
 MZ2 = "Costo propio de mezcla MZ-2"
 
 
-def _instantanea(producto: str, propio: tuple[str, str], ca30: str, planta: str, recetas=True):
+def _instantanea(
+    producto: str,
+    propio: tuple[str, str],
+    ca30: str,
+    planta: str,
+    recetas=True,
+    comprado: str = "CA-30",
+):
     codigo, costo = propio
     componentes = [
         {"codigo": codigo, "unidad": "t", "tipo": "propio", "cantidad_por_t": "0.95"},
-        {"codigo": "CA-30", "unidad": "t", "tipo": "comprado", "cantidad_por_t": "0.05"},
+        {"codigo": comprado, "unidad": "t", "tipo": "comprado", "cantidad_por_t": "0.05"},
     ]
     receta = {
         "id": 1,
@@ -198,7 +205,7 @@ def _instantanea(producto: str, propio: tuple[str, str], ca30: str, planta: str,
         {
             "entradas": {
                 "recetas": [receta] if recetas else [],
-                "precios_comprados": {"CA-30": {"convertido": ca30}},
+                "precios_comprados": {comprado: {"convertido": ca30}},
                 "de_otro_calculo": {},
                 "agregados": [codigo],
             },
@@ -244,6 +251,36 @@ def test_un_componente_con_dos_precios_en_dos_mezclas_se_desdobla(monkeypatch) -
     assert costo_de_mezcla(mezclas.recetas[MZ2], precios, precios, D(10)) == D("48.2")
     assert supuesto_de_componentes(mezclas) is not None
     assert "CA-30 (2 precios)" in supuesto_de_componentes(mezclas)
+
+
+def test_la_variante_no_se_funde_con_un_componente_real_con_ese_nombre(monkeypatch) -> None:
+    """Menor 1 del arbitro de cierre de la fase C: MZ-3 trae un componente que de verdad se llama
+    «CA-30 [2]» (650). La variante del CA-30 de MZ-2 (650) no puede tomar ese nombre: se reservan
+    antes todos los codigos de todas las recetas y la variante pasa a «CA-30 [3]». Oraculo a mano:
+    MZ-3 = 0,95 x 7 + 0,05 x 650 + 9 = 6,65 + 32,5 + 9 = 48,15, con el precio de su calculo."""
+    calculos = {
+        "MZP-MZ-1": _calculo(1, _instantanea("MZ-1", ("AGR-12", "5"), "600", "12")),
+        "MZP-MZ-2": _calculo(2, _instantanea("MZ-2", ("AGR-34", "6"), "650", "10")),
+        "MZP-MZ-3": _calculo(
+            3, _instantanea("MZ-3", ("AGR-56", "7"), "650", "9", comprado="CA-30 [2]")
+        ),
+    }
+    monkeypatch.setattr(obra, "costos_propios_publicados", lambda _sesion: calculos)
+    mz3 = "Costo propio de mezcla MZ-3"
+    mezclas = mezclas_publicadas(None, None, {MZ1, MZ2, mz3}, "USD")
+    assert [c.codigo for c in mezclas.recetas[MZ2].componentes] == ["AGR-34", "CA-30 [3]"]
+    assert [c.codigo for c in mezclas.recetas[mz3].componentes] == ["AGR-56", "CA-30 [2]"]
+    assert mezclas.componente_original == {"CA-30 [3]": "CA-30"}
+    assert mezclas.precio_de_componente == {
+        "AGR-12": D(5),
+        "CA-30": D(600),
+        "AGR-34": D(6),
+        "CA-30 [3]": D(650),
+        "AGR-56": D(7),
+        "CA-30 [2]": D(650),
+    }
+    precios = mezclas.precio_de_componente
+    assert costo_de_mezcla(mezclas.recetas[mz3], precios, precios, D(9)) == D("48.15")
 
 
 def test_un_componente_con_el_mismo_precio_en_dos_mezclas_no_se_desdobla(monkeypatch) -> None:

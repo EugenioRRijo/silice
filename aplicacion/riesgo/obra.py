@@ -173,16 +173,21 @@ def _en_la_moneda(caso: Session, calculo: CalculoGuardado, moneda: str):
     return convertir
 
 
-def _codigo_local(mezclas: MezclasPropias, codigo: str, precio: Decimal) -> str:
+def _codigo_local(
+    mezclas: MezclasPropias, codigo: str, precio: Decimal, reservados: Collection[str]
+) -> str:
     """El código con que entra el componente: el suyo si es su primer precio (o el mismo de antes);
-    si el cálculo de otra mezcla le dio otro precio, una variante («CA-30 [2]») con ese precio."""
+    si el cálculo de otra mezcla le dio otro precio, una variante («CA-30 [2]») con ese precio.
+    `reservados` son los códigos de **todos** los componentes de todas las recetas (como los
+    `ocupados` de `_desdoblar`): una variante nunca toma el nombre de un componente de verdad que
+    aparezca después (menor 1 del árbitro de cierre de la fase C)."""
     for local, original in ((codigo, codigo), *mezclas.componente_original.items()):
         if original == codigo and mezclas.precio_de_componente.get(local) == precio:
             return local
     if codigo not in mezclas.precio_de_componente:
         mezclas.precio_de_componente[codigo] = precio
         return codigo
-    variante = nombre_de_variante(codigo, mezclas.precio_de_componente)
+    variante = nombre_de_variante(codigo, {*reservados, *mezclas.precio_de_componente})
     mezclas.precio_de_componente[variante] = precio
     mezclas.componente_original[variante] = codigo
     return variante
@@ -222,6 +227,7 @@ def mezclas_publicadas(
     usa el presupuesto (`descripciones`: las de sus insumos), del último cálculo publicado, en
     `moneda` (véase el encabezado del módulo). Sin mezcla propia, todo vacío."""
     mezclas = MezclasPropias()
+    usadas = []
     for codigo, calculo in sorted(costos_propios_publicados(sesion_ins).items()):
         descripcion = descripcion_de_costo_propio(codigo)
         if not codigo.startswith(PREFIJO_DE_MEZCLA) or descripcion not in descripciones:
@@ -232,11 +238,15 @@ def mezclas_publicadas(
         if planta is None:
             raise ValueError(f"El cálculo n.º {calculo.id} no tiene costo de planta por tonelada.")
         receta = _receta_del_periodo(datos["entradas"]["recetas"], producto, calculo.id)
+        usadas.append((descripcion, calculo, datos, planta, receta))
+    reservados = {c.codigo for *_, receta in usadas for c in receta.componentes}
+    for descripcion, calculo, datos, planta, receta in usadas:
         convertir = _en_la_moneda(sesion_caso, calculo, moneda)
         componentes = []
         for c in receta.componentes:
             precio = convertir(_precio_en_el_calculo(datos, c, calculo.id))
-            componentes.append(replace(c, codigo=_codigo_local(mezclas, c.codigo, precio)))
+            local = _codigo_local(mezclas, c.codigo, precio, reservados)
+            componentes.append(replace(c, codigo=local))
         mezclas.recetas[descripcion] = replace(receta, componentes=tuple(componentes))
         mezclas.costo_planta_por_t[descripcion] = convertir(Decimal(planta))
         mezclas.calculos[descripcion] = calculo.id
