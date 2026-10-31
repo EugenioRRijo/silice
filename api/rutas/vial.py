@@ -292,6 +292,7 @@ def llevar_al_presupuesto(
 )
 def descargar_reporte(
     tipo: str,
+    _modulo: ModuloVial,
     sesion: SesionDep,
     instalacion: SesionInstalacionDep,
     proyecto: Annotated[str | None, Query(min_length=1, max_length=500)] = None,

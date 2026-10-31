@@ -128,7 +128,8 @@ IVSS, orden de trabajo, norma de carreteras).
 
 Las Tareas 17, 18 y 20 se hicieron en ramas paralelas y anotaron sus decisiones en su propio archivo, con el mismo formato:
 `docs/bitacora/2026-10-31-preguntas-t17-fcas.md` (T17-1 a T17-13), `docs/bitacora/2026-10-31-preguntas-t18-iva.md` (T18-1 a
-T18-7) y `docs/bitacora/2026-10-31-preguntas-t20-consulta.md` (T20-1 en adelante). Respuestas de Eugenio del 2026-10-31:
+T18-7) `docs/bitacora/2026-10-31-preguntas-t20-consulta.md` (T20-1 a T20-13), `docs/bitacora/2026-10-31-preguntas-t19-modulos.md`
+(T19-1 a T19-14) y `docs/bitacora/2026-10-31-preguntas-t21-reportes.md` (T21-1 a T21-11). Respuestas de Eugenio del 2026-10-31:
 el FCAS por componentes (278,67 % con los valores por defecto) se cita así en la tesis; el IVA del presupuesto se muestra en
 la sección Presupuesto del rediseño F4.
 
