@@ -417,7 +417,7 @@ def abrir_borrador(
                     Catalogo(sesion),
                     nombre,
                     datos.version,
-                    fecha_evaluacion=date.today(),
+                    fecha_evaluacion=_hoy(),
                     responsable=activa.usuario,
                 )
             except HojaInvalida as error:
