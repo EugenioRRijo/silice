@@ -1,5 +1,5 @@
 import { Checkbox } from "@carbon/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import { recetaVigente } from "../../api/produccionPlanta";
@@ -28,6 +28,7 @@ interface Props {
 }
 
 type Agregados = { estado: "cargando" } | { estado: "listo"; codigos: string[] } | { estado: "error"; error: unknown };
+const NINGUNO: string[] = [];
 const CARGANDO: Agregados = { estado: "cargando" }; // una sola referencia: el efecto de abajo depende de ella
 
 // Producir un agregado es producir lo que no tiene receta: se pregunta, para cada código producido en el mes, si tiene
@@ -69,23 +70,38 @@ export function RepartoPorPesos({ periodo, producido, alCambiar, alExpirar }: Pr
   const [activo, setActivo] = useState(false);
   const [escritos, setEscritos] = useState<Record<string, string>>({});
   const agregados = useAgregados(activo, periodo, producido, alExpirar);
-  const codigos = agregados.estado === "listo" ? agregados.codigos : [];
+  const codigos = useMemo(() => (agregados.estado === "listo" ? agregados.codigos : NINGUNO), [agregados]);
 
-  const lecturas = codigos.map((c) => ({ codigo: c, texto: escritos[c] ?? "", lectura: leerCifra(escritos[c] ?? "") }));
-  const mal = (l: (typeof lecturas)[number]) => l.texto.trim() !== "" && "error" in l.lectura;
-  const completos = lecturas.length > 0 && lecturas.every((l) => l.texto.trim() !== "" && "valor" in l.lectura && !l.lectura.valor.startsWith("-"));
-  const suma = completos ? sumaDePorcentajes(lecturas.map((l) => ("valor" in l.lectura ? l.lectura.valor : "0"))) : null;
-  const valido = activo && suma === "100";
+  const lecturas = useMemo(
+    () =>
+      codigos.map((c) => {
+        const texto = escritos[c] ?? "";
+        const lectura = leerCifra(texto);
+        const valor = "valor" in lectura ? lectura.valor : null;
+        return {
+          codigo: c,
+          texto,
+          valor,
+          error: texto.trim() === "" ? null : "error" in lectura ? lectura.error : valor !== null && valor.startsWith("-") ? "El porcentaje no puede ser negativo." : valor !== null && !/[1-9]/.test(valor) ? `El porcentaje de ${c} debe ser mayor que cero.` : null,
+        };
+      }),
+    [codigos, escritos],
+  );
+  const faltan = lecturas.filter((l) => l.texto.trim() === "").map((l) => l.codigo);
+  const completos = lecturas.length > 0 && faltan.length === 0 && lecturas.every((l) => l.error === null && l.valor !== null);
+  const suma = completos ? sumaDePorcentajes(lecturas.map((l) => l.valor ?? "0")) : null;
 
-  useEffect(() => {
-    if (!activo) alCambiar(SIN_REPARTO);
-    else {
-      const pesos = valido ? Object.fromEntries(lecturas.map((l) => [l.codigo, porcentajeAFraccion("valor" in l.lectura ? l.lectura.valor : "0")])) : null;
-      alCambiar({ activo: true, valido, pesos });
-    }
-    // `lecturas` se rehace en cada vuelta: lo que cuenta es lo escrito y los agregados.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activo, valido, escritos, agregados]);
+  // Lo que se le informa a la pantalla de arriba, derivado de lo escrito (sin estado propio que se desactualice).
+  const reparto = useMemo<Reparto>(() => {
+    if (!activo) return SIN_REPARTO;
+    const valido = suma === "100";
+    return {
+      activo: true,
+      valido,
+      pesos: valido ? Object.fromEntries(lecturas.map((l) => [l.codigo, porcentajeAFraccion(l.valor ?? "0")])) : null,
+    };
+  }, [activo, suma, lecturas]);
+  useEffect(() => alCambiar(reparto), [reparto, alCambiar]);
 
   return (
     <div className="planta-reparto">
@@ -111,15 +127,17 @@ export function RepartoPorPesos({ periodo, producido, alCambiar, alExpirar }: Pr
               autoComplete="off"
               inputMode="decimal"
               value={l.texto}
-              invalid={mal(l) || (l.texto.trim() !== "" && "valor" in l.lectura && l.lectura.valor.startsWith("-"))}
-              invalidText={"error" in l.lectura ? l.lectura.error : "El porcentaje no puede ser negativo."}
+              invalid={l.error !== null}
+              invalidText={l.error ?? undefined}
               onChange={(e) => setEscritos((antes) => ({ ...antes, [l.codigo]: e.target.value }))}
             />
           ))}
         </div>
       )}
-      {activo && codigos.length > 0 && !completos && !lecturas.some(mal) && (
-        <p className="planta-nota cds--type-body-compact-01">Escriba el porcentaje de cada agregado; deben sumar 100 %.</p>
+      {activo && faltan.length > 0 && (
+        <p className="planta-nota cds--type-body-compact-01">
+          {faltan.map((c) => `Falta el porcentaje de ${c}.`).join(" ")} Los porcentajes deben sumar 100 %.
+        </p>
       )}
       {activo && suma !== null && suma !== "100" && (
         <p className="planta-nota cds--type-body-compact-01" role="status">

@@ -1,5 +1,5 @@
 import { Button, Select, SelectItem } from "@carbon/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import { calcularCosto, calculoGuardado } from "../../api/produccionPlanta";
 import type { CalculoDeCosto } from "../../api/produccionPlanta";
@@ -36,15 +36,22 @@ export default function CostoPorTonelada() {
   const [error, setError] = useState<unknown>(null);
   const [calculando, setCalculando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [reparto, setReparto] = useState<Reparto>(SIN_REPARTO);
+  const [errorDePublicar, setErrorDePublicar] = useState<unknown>(null);
+  // El reparto lo informa RepartoPorPesos con el mes al que pertenece; si el componente no está montado (otro mes, sin
+  // producción, lectura en curso o fallida) o el aviso es de otro mes, vale «sin reparto»: nunca queda un reparto viejo.
+  const [informado, setInformado] = useState<{ periodo: string; reparto: Reparto } | null>(null);
   // Sube cuando algo pudo cambiar la lista de cálculos del mes; y «enfocar», cuando hay un resultado nuevo que mostrar.
   const [version, setVersion] = useState(0);
   const [enfocar, setEnfocar] = useState(0);
   const region = useRef<HTMLElement>(null);
   const cajaDelError = useRef<HTMLDivElement>(null);
+  const cajaDelErrorDePublicar = useRef<HTMLDivElement>(null);
 
   const valido = periodoValido(periodo);
   const producido = useProducido(puede && valido ? periodo : null, alExpirar);
+  const conReparto = valido && producido.estado === "listo" && producido.datos.length > 0;
+  const reparto = conReparto && informado?.periodo === periodo ? informado.reparto : SIN_REPARTO;
+  const informarReparto = useCallback((r: Reparto) => setInformado({ periodo, reparto: r }), [periodo]);
 
   // El botón se desactiva mientras se calcula: el foco pasa a lo que llegó (el resultado o el error), no a BODY.
   useEffect(() => {
@@ -53,17 +60,22 @@ export default function CostoPorTonelada() {
   useEffect(() => {
     if (error !== null) cajaDelError.current?.focus();
   }, [error]);
+  useEffect(() => {
+    if (errorDePublicar !== null) cajaDelErrorDePublicar.current?.focus();
+  }, [errorDePublicar]);
 
   // Un resultado de otro mes o de otra moneda no puede quedar a la vista como si fuera el de ahora.
   function cambiarDatos(accion: () => void) {
     accion();
     setCalculo(null);
     setError(null);
+    setErrorDePublicar(null);
     setAviso(null);
   }
 
   async function calcular() {
     setError(null);
+    setErrorDePublicar(null);
     setAviso(null);
     setCalculando(true);
     try {
@@ -144,11 +156,12 @@ export default function CostoPorTonelada() {
           )}
         </>
       )}
-      {valido && producido.estado === "listo" && producido.datos.length > 0 && (
-        <RepartoPorPesos key={periodo} periodo={periodo} producido={producido.datos} alCambiar={setReparto} alExpirar={alExpirar} />
+      {conReparto && (
+        <RepartoPorPesos key={periodo} periodo={periodo} producido={producido.datos} alCambiar={informarReparto} alExpirar={alExpirar} />
       )}
       <AvisoConFoco aviso={aviso} alCerrar={() => setAviso(null)} />
-      <ErrorDeCalculo error={error} titulo={error instanceof ErrorDeApi && error.estado === 409 ? "No se pudo publicar el costo" : "No se pudo calcular el costo"} caja={cajaDelError} />
+      <ErrorDeCalculo error={error} titulo="No se pudo calcular el costo" caja={cajaDelError} />
+      <ErrorDeCalculo error={errorDePublicar} titulo="No se pudo publicar el costo" caja={cajaDelErrorDePublicar} />
       {calculo && (
         <ResultadoDelCalculo calculo={calculo} region={region}>
           {puedePublicar && !calculo.publicado && calculo.productos.length > 0 && (
@@ -160,7 +173,7 @@ export default function CostoPorTonelada() {
                 void releer(calculo.id);
               }}
               alConflicto={(razon) => {
-                setError(razon);
+                setErrorDePublicar(razon);
                 void releer(calculo.id);
               }}
             />
@@ -174,6 +187,7 @@ export default function CostoPorTonelada() {
           alExpirar={alExpirar}
           alAbrir={(abierto) => {
             setError(null);
+            setErrorDePublicar(null);
             setAviso(null);
             setCalculo(abierto);
             setEnfocar((n) => n + 1);

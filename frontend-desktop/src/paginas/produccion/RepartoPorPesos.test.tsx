@@ -183,7 +183,7 @@ describe("Reparto de la cantera por pesos", () => {
     expect(screen.getByRole("button", { name: "Calcular costo por tonelada" })).toBeDisabled();
     expect(screen.getByText("El porcentaje de AGR-19 debe ser mayor que cero.")).toBeInTheDocument();
     await usuario.clear(screen.getByLabelText("Porcentaje de AGR-19"));
-    expect(screen.getByText("Falta el porcentaje de AGR-19.")).toBeInTheDocument();
+    expect(screen.getByText(/Falta el porcentaje de AGR-19./)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Calcular costo por tonelada" })).toBeDisabled();
   });
 });
