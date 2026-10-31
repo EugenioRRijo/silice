@@ -1,11 +1,12 @@
-import { InlineNotification, Select, SelectItem } from "@carbon/react";
+import { Button, InlineLoading, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { ErrorDeApi } from "../../api/cliente";
-import { importarTramos } from "../../api/vial";
+import { importarTramos, llevarTramos } from "../../api/vial";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
-import { fechaEsVe } from "../../indicadores/formatoEsVe";
+import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
@@ -19,9 +20,16 @@ const SIN_OBRA = "Abra una obra para ver o importar sus tramos.";
 const SIN_VERSIONES = "Esta obra aún no tiene versiones guardadas. Guarde una en la Hoja para cargar sus tramos.";
 const SIN_TRAMOS = "Esta versión aún no tiene tramos. Importe el archivo de la vía.";
 
+// El aviso de llevar los tramos al presupuesto, con el número de renglones en es-VE (punto de miles).
+function textoLlevados(renglones: number): string {
+  const n = formatoEsVe(String(renglones));
+  return renglones === 1 ? `Se llevó ${n} renglón a la Hoja de la obra.` : `Se llevaron ${n} renglones a la Hoja de la obra.`;
+}
+
 // «Tramos de la vía»: los tramos de una versión con sus cantidades de obra (m2, m3, l, t, t·km y m) y la importación del
 // archivo CSV de la vía. La importación es todo o nada: si una fila está mal, el servidor dice cuál y no se guarda nada.
-// La pantalla no calcula: lee lo que manda el servidor con coma decimal y punto de miles.
+// La pantalla no calcula: lee lo que manda el servidor con coma decimal y punto de miles. «Llevar al presupuesto» mete
+// las cantidades en el borrador de la Hoja de la obra (Tarea 8b); el aviso, bueno o malo, recibe el foco.
 export default function Tramos() {
   const { nombreProyecto, alExpirar } = useAplicacion();
   const nombre = nombreProyecto ?? null;
@@ -39,6 +47,29 @@ export default function Tramos() {
   useEffect(() => {
     if (error !== null) cajaDelError.current?.focus();
   }, [error]);
+  const [llevando, setLlevando] = useState(false);
+  const [llevados, setLlevados] = useState<string | null>(null);
+  const [errorAlLlevar, setErrorAlLlevar] = useState<unknown>(null);
+  const cajaDelErrorAlLlevar = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (errorAlLlevar !== null) cajaDelErrorAlLlevar.current?.focus();
+  }, [errorAlLlevar]);
+
+  async function llevar() {
+    if (nombre === null) return;
+    setLlevados(null);
+    setErrorAlLlevar(null);
+    setLlevando(true);
+    try {
+      const { renglones } = await llevarTramos(nombre);
+      setLlevados(textoLlevados(renglones));
+    } catch (razon) {
+      if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
+      else setErrorAlLlevar(razon);
+    } finally {
+      setLlevando(false);
+    }
+  }
 
   async function importar(archivo: File) {
     if (nombre === null || version === null) return;
@@ -102,6 +133,24 @@ export default function Tramos() {
                 <p className="vial-nota cds--type-body-compact-01">
                   {`Guardado por ${carga.datos.guardado.usuario} el ${fechaEsVe(carga.datos.guardado.fecha_hora)} · ${carga.datos.guardado.fuente}`}
                 </p>
+              )}
+              {carga.datos.tramos.length > 0 && (
+                <div className="vial-llevar">
+                  <Button kind="primary" size="md" disabled={llevando} onClick={() => void llevar()}>
+                    Llevar al presupuesto
+                  </Button>
+                  {llevando && <InlineLoading description="Llevando al presupuesto..." />}
+                </div>
+              )}
+              <AvisoConFoco aviso={llevados} alCerrar={() => setLlevados(null)}>
+                <Link className="cds--link" to="/hoja">
+                  Abrir la Hoja de la obra
+                </Link>
+              </AvisoConFoco>
+              {errorAlLlevar !== null && (
+                <div ref={cajaDelErrorAlLlevar} tabIndex={-1}>
+                  <AvisoError error={errorAlLlevar} titulo="No se llevó nada al presupuesto" alCerrar={() => setErrorAlLlevar(null)} />
+                </div>
               )}
               {carga.datos.tramos.length === 0 && carga.datos.editable && <EstadoVacio titulo={SIN_TRAMOS} />}
               {carga.datos.tramos.map((t) => (

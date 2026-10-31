@@ -150,14 +150,25 @@ class PartidaSinApu(Exception):  # noqa: N818
 
 
 class PartidaFueraDelCatalogo(Exception):  # noqa: N818
-    """La partida que se quiere agregar no esta en el catalogo de la carpeta."""
+    """La partida que se quiere agregar no esta en el catalogo de la carpeta. Con varios codigos
+    (llevar los tramos al presupuesto, plan vial Tarea 8b) el mensaje los nombra todos."""
 
-    def __init__(self, codigo: str) -> None:
-        super().__init__(codigo)
+    def __init__(self, codigo: str, *otros: str) -> None:
+        super().__init__(codigo, *otros)
         self.codigo = codigo
+        self.codigos = (codigo, *otros)
 
     def __str__(self) -> str:
-        return f"La partida «{self.codigo}» no está en el catálogo: compóngala primero en Componer."
+        if len(self.codigos) == 1:
+            return (
+                f"La partida «{self.codigo}» no está en el catálogo: compóngala primero en "
+                "Componer."
+            )
+        primeras = ", ".join(f"«{codigo}»" for codigo in self.codigos[:-1])
+        return (
+            f"Las partidas {primeras} y «{self.codigos[-1]}» no están en el catálogo: "
+            "compóngalas primero en Componer."
+        )
 
 
 class SinListaDeLaObra(Exception):  # noqa: N818

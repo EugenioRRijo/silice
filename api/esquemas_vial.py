@@ -15,11 +15,17 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
 from adapters.vial.modelo import Capa, Demarcacion, Tramo
-from aplicacion.vial import CantidadVial, RastroDeGuardado, texto_decimal
+from aplicacion.vial import (
+    MAX_CAPAS,
+    MAX_LINEAS_DE_DEMARCACION,
+    MAX_TRAMOS,
+    CantidadVial,
+    RastroDeGuardado,
+    texto_decimal,
+)
 
-MAX_TRAMOS = 2000
-MAX_CAPAS = 50
-MAX_LINEAS_DE_DEMARCACION = 20
+#: Los topes de tramos, capas y líneas (`MAX_*`) viven en `aplicacion.vial`: los aplica también
+#: la importación del CSV (Tarea 8b).
 LARGO_CIFRA = 40
 LARGO_FUENTE = 300
 
@@ -159,6 +165,19 @@ class TramosRespuesta(BaseModel):
 
 class ObrasViales(BaseModel):
     obras: list[int]
+
+
+class LlevarTramos(_Estricto):
+    """La obra cuyos tramos se llevan al presupuesto: su código de `/v1/proyectos` o su nombre."""
+
+    proyecto: Annotated[str, Field(strict=True, min_length=1, max_length=500)]
+
+
+class TramosLlevados(BaseModel):
+    """El borrador de la Hoja de la obra, con los renglones de tramo ya puestos (sin guardar)."""
+
+    borrador_id: str
+    renglones: int
 
 
 def _texto(valor: Decimal | None) -> str | None:

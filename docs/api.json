@@ -9423,6 +9423,48 @@
         }
       }
     },
+    "/v1/vial/tramos/llevar": {
+      "post": {
+        "tags": [
+          "vial"
+        ],
+        "summary": "Llevar Al Presupuesto",
+        "description": "Lleva las cantidades de los tramos al borrador de la Hoja de la obra, todo o nada, sin\nguardar versión (`aplicacion.vial.llevar_tramos_a_la_hoja`). `activa` va antes que `sesion`:\nel acceso responde antes de abrir la base del caso.",
+        "operationId": "llevar_al_presupuesto_v1_vial_tramos_llevar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlevarTramos"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TramosLlevados"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/buscar/partidas": {
       "get": {
         "tags": [
@@ -19593,6 +19635,23 @@
         ],
         "title": "LlevarALaHoja"
       },
+      "LlevarTramos": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proyecto"
+        ],
+        "title": "LlevarTramos",
+        "description": "La obra cuyos tramos se llevan al presupuesto: su código de `/v1/proyectos` o su nombre."
+      },
       "LoteDeHallazgos": {
         "properties": {
           "titulo": {
@@ -25075,6 +25134,25 @@
           "tramos"
         ],
         "title": "TramosEntrada"
+      },
+      "TramosLlevados": {
+        "properties": {
+          "borrador_id": {
+            "type": "string",
+            "title": "Borrador Id"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "borrador_id",
+          "renglones"
+        ],
+        "title": "TramosLlevados",
+        "description": "El borrador de la Hoja de la obra, con los renglones de tramo ya puestos (sin guardar)."
       },
       "TramosRespuesta": {
         "properties": {
