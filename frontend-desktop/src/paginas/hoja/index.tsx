@@ -420,7 +420,7 @@ export default function PaginaHoja() {
     <section className="silice-pagina silice-hoja">
       <h1 className="cds--type-heading-04">{TITULO}</h1>
       {proyecto === null ? (
-        <EstadoVacio titulo="Elija una obra" descripcion="Use el selector de obra de la cabecera para abrir su hoja." />
+        <EstadoVacio titulo="Elija una obra" />
       ) : deLaObra !== null ? (
         <CuerpoDeLaHoja />
       ) : (

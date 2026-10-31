@@ -132,12 +132,11 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     );
   });
 
-  test("3b-F2: sin obra en la cabecera pide elegir una con el selector de obra y no llama a la API", () => {
+  test("3b-F2: sin obra pide elegir una y no llama a la API", () => {
     montar(null);
     expect(screen.getByRole("heading", { level: 1, name: "Presupuesto" })).toBeInTheDocument();
-    // Tarea 11 (F11 de MOD-3b): «obra» y el selector de obra, no «proyecto» ni «el selector de la cabecera».
+    // F4, baja 8: ya no se manda al «selector de obra de la cabecera» (no existe; dentro de una obra siempre hay obra).
     expect(screen.getByText("Elija una obra")).toBeInTheDocument();
-    expect(screen.getByText("Use el selector de obra de la cabecera para abrir su hoja.")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
