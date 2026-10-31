@@ -30,6 +30,17 @@ const VIGENTE = {
   vigente_desde: "2026-11-01",
 };
 
+const INSUMOS = [
+  { valor: "AGR-12", etiqueta: "Agregado grueso ficticio (AGR-12, t)", fuente: "Catálogo de la carpeta de trabajo: material" },
+  { valor: "CA-30", etiqueta: "Cemento asfáltico ficticio (CA-30, t)", fuente: "Catálogo de la carpeta de trabajo: material" },
+];
+
+function consulta(q: string) {
+  const buscado = q.toLowerCase();
+  const resultados = INSUMOS.filter((i) => i.etiqueta.toLowerCase().includes(buscado));
+  return { tabla: "insumos", resultados, hay_mas: false };
+}
+
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
 }
@@ -90,6 +101,7 @@ describe("Receta de la planta", () => {
       const metodo = init?.method ?? "GET";
       if (url.pathname === "/v1/produccion/recetas/vigente" && metodo === "GET") return vigente();
       if (url.pathname === "/v1/produccion/recetas" && metodo === "POST") return alta();
+      if (url.pathname === "/v1/consulta/insumos") return json(consulta(url.searchParams.get("q") ?? ""));
       return json({ detalle: "No encontrado." }, 404);
     });
   });
@@ -236,5 +248,32 @@ describe("Receta de la planta", () => {
     await usuario.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(document.activeElement).toBe(boton);
+  });
+
+  test("el código del producto y el de cada componente se buscan en los insumos del catálogo", async () => {
+    montar();
+    const dialogo = await abrir();
+    const producto = within(dialogo).getByRole("combobox", { name: "Producto (código)" });
+    await usuario.type(producto, "agre");
+    const lista = await within(dialogo).findByRole("listbox");
+    expect(within(lista).getAllByRole("option")).toHaveLength(1);
+    await usuario.keyboard("{ArrowDown}{Enter}");
+    expect(producto).toHaveValue("AGR-12");
+    expect(fetchFalso.mock.calls.some((c) => String(c[0]).startsWith("/v1/consulta/insumos?q=agre"))).toBe(true);
+
+    const fila = within(dialogo).getByRole("group", { name: "Componente 1" });
+    const componente = within(fila).getByRole("combobox", { name: "Código" });
+    await usuario.type(componente, "cemento");
+    await within(dialogo).findByRole("listbox");
+    await usuario.keyboard("{ArrowDown}{Enter}");
+    expect(componente).toHaveValue("CA-30");
+  });
+
+  test("un código que no está en la lista se puede usar tal cual", async () => {
+    montar();
+    const dialogo = await abrir();
+    const producto = within(dialogo).getByRole("combobox", { name: "Producto (código)" });
+    await usuario.type(producto, "MZP-77");
+    expect(producto).toHaveValue("MZP-77");
   });
 });
