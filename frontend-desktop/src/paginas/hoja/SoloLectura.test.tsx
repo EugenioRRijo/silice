@@ -103,6 +103,24 @@ const APROBACIONES = {
   ultima_aprobada: null,
 };
 
+// Un insumo cotizado: con permiso se ofrece «Retirar una cotización…» además de «Registrar…».
+const PRECIOS = preciosRespuesta();
+PRECIOS.filas[0]!["cotizacion"] = "Ferretería Demo, C.A., COT-001, 2026-10-05";
+
+// El objetivo de mercado de AF-LLAVE (ficticio): la columna lo muestra también a quien revisa.
+const OBJETIVOS = {
+  objetivos: [{ codigo: "AF-LLAVE", precio: "15.00", moneda: "USD", margen: "13.6", equivalencia: null, sin_tasa: null }],
+};
+
+// Las acciones sobre la versión GUARDADA: su regla es solo el permiso, no la base del borrador (Eugenio, 2026-10-31).
+const DE_LA_VERSION = [
+  "Restaurar una versión…",
+  "Registrar una cotización…",
+  "Retirar una cotización…",
+  "Convertir la moneda…",
+  "Enviar a aprobación…",
+];
+
 const fetchFalso = vi.fn<typeof fetch>();
 
 function servidor(soloLectura = false) {
@@ -115,11 +133,11 @@ function servidor(soloLectura = false) {
     if (url.includes("/vistas/presupuesto")) return json(PRESUPUESTO);
     if (url.includes("/vistas/")) return json(cuerpoDeVista(url));
     if (url.startsWith("/v1/hoja/precios/atipicos")) return json({ disponible: false, mensaje: "", variaciones: [] });
-    if (url.startsWith("/v1/hoja/precios")) return json(preciosRespuesta());
+    if (url.startsWith("/v1/hoja/precios")) return json(PRECIOS);
     if (url.startsWith("/v1/hoja/trazabilidad")) return json(trazabilidadRespuesta());
     if (url.startsWith("/v1/hoja/cadena")) return json({ integra: true, mensaje: "La cadena está íntegra.", declaracion: null });
     if (url.startsWith("/v1/aprobaciones")) return json(APROBACIONES);
-    if (url.startsWith("/v1/mercado/objetivos")) return json({ objetivos: [] });
+    if (url.startsWith("/v1/mercado/objetivos")) return json(OBJETIVOS);
     if (metodo === "DELETE") return new Response(null, { status: 204 });
     return json({ detalle: "ruta inesperada" }, 500);
   });
@@ -257,12 +275,26 @@ describe("Quien revisa ve el Presupuesto en solo lectura", () => {
     expect(screen.getByRole("searchbox", { name: "Buscar partida" })).toBeInTheDocument();
   });
 
-  test("no pide los objetivos de mercado (son de quien arma)", async () => {
+  test("ve la columna «Objetivo de mercado» (Eugenio, 2026-10-31)", async () => {
     servidor();
     montar(ACCIONES_REVISA);
     await screen.findByRole("region", { name: "Estado del borrador" });
     await irA("Presupuesto");
-    expect(fetchFalso.mock.calls.map(([r]) => String(r)).filter((r) => r.startsWith("/v1/mercado"))).toEqual([]);
+    const tabla = screen.getByRole("table", { name: "Presupuesto" });
+    expect(within(tabla).getByRole("columnheader", { name: /Objetivo de mercado/ })).toBeInTheDocument();
+    expect(await within(tabla).findByText(/15,00/)).toBeInTheDocument();
+    expect(fetchFalso.mock.calls.map(([r]) => String(r)).some((r) => r.startsWith("/v1/mercado/objetivos"))).toBe(true);
+  });
+
+  test("tampoco ve las acciones sobre la versión guardada", async () => {
+    servidor();
+    montar(ACCIONES_REVISA);
+    await screen.findByRole("region", { name: "Estado del borrador" });
+    await irA("Precios");
+    await irA("Parámetros");
+    await irA("Trazabilidad");
+    await screen.findByRole("region", { name: "Aprobación de la versión" });
+    for (const nombre of DE_LA_VERSION) expect(screen.queryByRole("button", { name: nombre })).toBeNull();
   });
 });
 
@@ -296,7 +328,23 @@ describe("Quien arma conserva sus controles", () => {
     montar(ACCIONES_ARMA);
     expect(await screen.findByRole("note")).toHaveTextContent("Está viendo este presupuesto en solo lectura.");
     await irA("Presupuesto");
-    expect(botonesQueEscriben()).toEqual([]);
+    expect(botonesQueEscriben().filter((n) => !DE_LA_VERSION.includes(n))).toEqual([]);
     expect(camposQueEscriben()).toEqual([]);
+  });
+
+  test("con un borrador de solo lectura, las acciones sobre la versión guardada sí se ofrecen (Eugenio, 2026-10-31)", async () => {
+    servidor(true);
+    montar(ACCIONES_ARMA);
+    await screen.findByRole("note");
+    expect(await screen.findByRole("button", { name: "Enviar a aprobación…" })).toBeInTheDocument();
+    await irA("Precios");
+    expect(screen.getByRole("button", { name: "Registrar una cotización…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retirar una cotización…" })).toBeInTheDocument();
+    await irA("Parámetros");
+    expect(screen.getByRole("button", { name: "Convertir la moneda…" })).toBeInTheDocument();
+    await irA("Trazabilidad");
+    expect(screen.getByRole("button", { name: "Restaurar una versión…" })).toBeInTheDocument();
+    // Lo que edita el borrador sigue sin pintarse.
+    expect(screen.queryByRole("button", { name: /^Guardar/ })).toBeNull();
   });
 });
