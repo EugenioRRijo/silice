@@ -44,13 +44,15 @@ export function useSalidaPendiente(): SalidaPendiente | null {
 }
 
 // Resuelve true sin preguntar si no hay nada que perder; si lo hay, abre el dialogo y resuelve con la respuesta. Una
-// pregunta nueva deja sin efecto la anterior (que resuelve false: nadie navega por ella).
+// pregunta nueva deja sin efecto la anterior (que resuelve false: nadie navega por ella). Con `destino` (la ruta a la que
+// se va) no cuenta lo que sobrevive al ir alli (el borrador de la Hoja entre las secciones de su obra, sucio.ts).
 export function confirmarSalida(
   motivo: MotivoSalida,
   extras: readonly string[] = [],
   consecuencia: string | null = null,
+  destino: string | null = null,
 ): Promise<boolean> {
-  const pantallas = formulariosSucios();
+  const pantallas = formulariosSucios(destino);
   if (pantallas.length === 0 && extras.length === 0) return Promise.resolve(true);
   return new Promise<boolean>((resolver) => {
     const anterior = pendiente;

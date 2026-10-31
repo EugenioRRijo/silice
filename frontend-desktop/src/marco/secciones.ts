@@ -54,6 +54,16 @@ export function seccionPorId(id: string): SeccionDef | undefined {
   return SECCIONES_DE_OBRA.find((s) => s.id === id);
 }
 
+// Las secciones que trabajan sobre el borrador de la Hoja (Tarea 3 del plan F4): lo comparten por `ProveedorDeLaHoja`,
+// así que pasar de una a otra de la misma obra no lo cierra ni pregunta por sus cambios.
+export const SECCIONES_CON_HOJA: readonly SeccionId[] = ["presupuesto", "archivos", "versiones"];
+
+// Si `destino` (una ruta, con o sin consulta) es una sección con Hoja de esa misma obra.
+export function quedaEnLaHoja(destino: string, carpeta: string | null, obraId: number): boolean {
+  const camino = destino.split(/[?#]/)[0];
+  return SECCIONES_CON_HOJA.some((s) => camino === rutaDeObra(carpeta, obraId, s));
+}
+
 export const RUTA_DE_PENDIENTES = "/pendientes";
 export const PATRON_DE_OBRA = "/obra/:carpeta/:obraId/:seccion";
 export const PATRON_DE_EMPRESA = "/empresa/:entrada";

@@ -246,7 +246,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       const cambiaDeCarpeta = carpeta !== undefined && carpeta !== carpetaActual;
       try {
         const borradores = cambiaDeCarpeta && puedeEditarHoja ? await hojasConCambios(obrasDeLaCarpeta) : [];
-        if (await confirmarSalida(cambiaDeCarpeta ? "carpeta" : "salir", borradores)) navegar(destino);
+        if (await confirmarSalida(cambiaDeCarpeta ? "carpeta" : "salir", borradores, null, destino)) navegar(destino);
       } catch (e) {
         fallo(e);
       }
@@ -266,7 +266,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     const destino = href.startsWith("#") ? href.slice(1) : href;
     if (!destino.startsWith("/") || destino === `${ubicacion.pathname}${ubicacion.search}`) return;
     const carpeta = carpetaDelDestino(destino);
-    if (formulariosSucios().length === 0 && (carpeta === undefined || carpeta === carpetaActual)) return;
+    if (formulariosSucios(destino).length === 0 && (carpeta === undefined || carpeta === carpetaActual)) return;
     e.preventDefault();
     void irSeguro(destino);
   };
@@ -351,7 +351,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                   )}
                 </div>
               )}
-              <LimiteDeError key={`${ubicacion.pathname}|${generacion}`}>
+              <LimiteDeError key={`${claveDelContenido(ubicacion.pathname)}|${generacion}`}>
                 <Suspense fallback={<EsqueletoPagina />}>
                   <Routes>
                     <Route index element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />
@@ -426,6 +426,14 @@ function RutaVieja({ pagina, obraDeLaSesion, pantalla }: { pagina: PaginaDef; ob
   if (obraDeLaSesion === "cargando") return <EsqueletoPagina />;
   if (obraDeLaSesion) return <Navigate to={`${rutaDeObra(obraDeLaSesion.carpeta, obraDeLaSesion.obraId, seccion.id)}${search}`} replace />;
   return search ? pantalla(pagina) : <Navigate to={RUTA_DE_PENDIENTES} replace />;
+}
+
+// Lo que vuelve a montar el contenido al navegar: cada pantalla, salvo las secciones de una misma obra, que comparten el
+// espacio de la obra (su ficha, la obra fijada en la sesión y el borrador de la Hoja, Tarea 3 del plan F4). Dentro de la
+// obra, EspacioDeObra reinicia su propio límite de error con cada sección.
+function claveDelContenido(pathname: string): string {
+  const obra = obraDeLaRuta(pathname);
+  return obra === null ? pathname : `obra|${obra.carpeta ?? ""}|${obra.obraId}`;
 }
 
 // La obra y la sección de la ruta, para marcarlas en la barra lateral.

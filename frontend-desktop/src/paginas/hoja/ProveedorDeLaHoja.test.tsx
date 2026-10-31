@@ -244,7 +244,7 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
     await borradorListoEnElRelleno();
     await u.click(screen.getByRole("button", { name: "Simular dos cambios" }));
     await u.click(screen.getByRole("button", { name: "Abrir la 001" }));
-    const pregunta = await screen.findByRole("dialog", { name: "Descartar los cambios" });
+    const pregunta = await screen.findByRole("alertdialog", { name: "Descartar los cambios" });
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
     expect(aperturas()).toHaveLength(1);
     await u.click(within(pregunta).getByRole("button", { name: "Descartar y abrir" }));

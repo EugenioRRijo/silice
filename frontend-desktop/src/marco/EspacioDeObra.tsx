@@ -1,15 +1,18 @@
 import { Button } from "@carbon/react";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { Suspense, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import type { CasosRespuesta } from "../api/tipos";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
+import { ProveedorDeLaHoja } from "../paginas/hoja/ProveedorDeLaHoja";
 import { ContextoAplicacion } from "../shell/contexto";
+import { LimiteDeError } from "../shell/LimiteDeError";
 import { CabeceraDeObra } from "./CabeceraDeObra";
 import { enfocarElTitulo } from "./focoAlTitulo";
 import { ContextoDeLaObra } from "./obraAbierta";
 import type { ObraAbierta } from "./obraAbierta";
-import { RUTA_DE_PENDIENTES } from "./secciones";
+import { RUTA_DE_PENDIENTES, SECCIONES_CON_HOJA } from "./secciones";
+import type { SeccionId } from "./secciones";
 import { useFichaDeLaObra } from "./useFichaDeLaObra";
 import type { FichaDeLaObra } from "./useFichaDeLaObra";
 import { useObraDeLaRuta } from "./useObraDeLaRuta";
@@ -107,6 +110,7 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
           obraId={estado.obraId}
           obra={obras.find((o) => o.carpeta === estado.carpeta && o.obra_id === estado.obraId)}
           casos={casos}
+          seccion={estado.seccion.id}
         >
           {estado.seccion.pagina !== null && pantalla(estado.seccion.pagina)}
         </ObraDeLaRuta>
@@ -119,13 +123,21 @@ interface ObraDeLaRutaProps {
   obraId: number;
   obra: ObraDeCarpeta | undefined;
   casos: CasosRespuesta | null;
+  seccion: SeccionId;
   children: ReactNode;
 }
 
 // La obra lista: lee su ficha una vez, la comparte con las secciones (ContextoDeLaObra) y pinta la cabecera encima de la
 // sección. La sección lee la obra y la carpeta de la ruta desde el primer dibujo (no las del marco, que se ponen al día
 // un momento después).
-function ObraDeLaRuta({ carpeta, obraId, obra, casos, children }: ObraDeLaRutaProps) {
+//
+// Tarea 3 del plan F4: en Presupuesto, Archivos y planos y Versiones (SECCIONES_CON_HOJA) la cabecera y la sección van
+// dentro de `ProveedorDeLaHoja`, siempre en esta posición y con la clave de la obra: pasar entre esas tres no lo
+// desmonta (el borrador sigue abierto) y cambiar de obra o de carpeta sí (se descarta, o se conserva para retomarlo si
+// tiene cambios, como al salir de la Hoja). En las demás no se abre ningún borrador. Sin `leer_proyecto` (la acción de
+// la Hoja y de sus lecturas, Tarea 2b) tampoco: la sección dice «Sin permiso» y el proveedor solo daría 403. El límite
+// de error y la espera de la pantalla perezosa son de la sección: el marco ya no los reinicia al cambiar de sección.
+function ObraDeLaRuta({ carpeta, obraId, obra, casos, seccion, children }: ObraDeLaRutaProps) {
   const base = useContext(ContextoAplicacion);
   const { recargar, ...ficha } = useFichaDeLaObra(obraId, carpeta);
   const valor = useMemo(() => {
@@ -139,10 +151,31 @@ function ObraDeLaRuta({ carpeta, obraId, obra, casos, children }: ObraDeLaRutaPr
   // Sin useMemo: el valor cambia solo cuando cambia la ficha o la obra, que es cuando esta pieza vuelve a pintarse.
   const abierta: ObraAbierta = { carpeta, obraId, ficha: ficha as FichaDeLaObra, recargarFicha: recargar };
 
+  const conHoja = SECCIONES_CON_HOJA.includes(seccion) && base?.sesion.acciones.includes("leer_proyecto") === true;
+  const cabecera = (
+    <CabeceraDeObra carpeta={carpeta} obraId={obraId} nombre={obra?.obra} version={obra?.version_codigo} ficha={abierta.ficha} />
+  );
+  const pantalla = (
+    <LimiteDeError key={seccion}>
+      <Suspense fallback={<EsqueletoPagina />}>{children}</Suspense>
+    </LimiteDeError>
+  );
+
   return (
     <ContextoDeLaObra.Provider value={abierta}>
-      <CabeceraDeObra carpeta={carpeta} obraId={obraId} nombre={obra?.obra} version={obra?.version_codigo} ficha={abierta.ficha} />
-      <ContextoAplicacion.Provider value={valor}>{children}</ContextoAplicacion.Provider>
+      <ContextoAplicacion.Provider value={valor}>
+        {conHoja ? (
+          <ProveedorDeLaHoja key={JSON.stringify([carpeta, obraId])}>
+            {cabecera}
+            {pantalla}
+          </ProveedorDeLaHoja>
+        ) : (
+          <>
+            {cabecera}
+            {pantalla}
+          </>
+        )}
+      </ContextoAplicacion.Provider>
     </ContextoDeLaObra.Provider>
   );
 }
