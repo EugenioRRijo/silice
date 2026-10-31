@@ -155,6 +155,42 @@ describe("Riesgo de la obra", () => {
     expect(cuerpo.mapa).toEqual({ "Cemento asfáltico": "CEMENTO_ASFALTICO_PPI" });
   });
 
+  // Tarea 22: el informe de riesgo de la Tarea 21 (`GET /v1/riesgo/reportes/riesgo`) se baja con lo mismo que se proyectó:
+  // el servidor vuelve a calcular con la misma semilla y el libro dice de dónde sale cada cifra.
+  test("después de proyectar baja el informe de riesgo con lo mismo que se proyectó", async () => {
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    Object.defineProperty(URL, "createObjectURL", { value: () => "blob:falso", configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: () => undefined, configurable: true });
+    const libros: URL[] = [];
+    const leer = fetchFalso.getMockImplementation();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://prueba");
+      if (url.pathname === "/v1/riesgo/reportes/riesgo") {
+        libros.push(url);
+        return new Response("PK", { status: 200, headers: { "Content-Disposition": 'attachment; filename="riesgo.xlsx"' } });
+      }
+      return leer!(entrada, init);
+    });
+    montar();
+    await usuario.selectOptions(await screen.findByLabelText("Cemento asfáltico"), "CEMENTO_ASFALTICO_PPI");
+    expect(screen.queryByRole("button", { name: "Descargar el informe de riesgo" })).toBeNull();
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    const region = await screen.findByRole("region", { name: "Resultado de la proyección" });
+    await usuario.click(within(region).getByRole("button", { name: "Descargar el informe de riesgo" }));
+    await waitFor(() => expect(libros).toHaveLength(1));
+    const consulta = Object.fromEntries(libros[0].searchParams);
+    expect(consulta).toEqual({
+      proyecto: "Vía Demo",
+      version: "VIA-002",
+      meses: "6",
+      trayectorias: "2000",
+      semilla: "1",
+      ventana_meses: "36",
+      mapa: JSON.stringify({ "Cemento asfáltico": "CEMENTO_ASFALTICO_PPI" }),
+    });
+    vi.restoreAllMocks();
+  });
+
   test("una cifra mal escrita no se envía y se dice junto al campo", async () => {
     montar();
     const trayectorias = await screen.findByLabelText("Trayectorias");

@@ -1,4 +1,4 @@
-import type { JSX, Ref } from "react";
+import type { JSX, ReactNode, Ref } from "react";
 import type { ComprobacionDeLaObra, ProyeccionDeLaObra } from "../../api/riesgo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
@@ -8,11 +8,13 @@ import { MAS_EMPUJAN, monto } from "./logica";
 interface Props<T> {
   datos: T;
   region: Ref<HTMLElement>;
+  // Lo que va al pie del resultado (la descarga del informe).
+  children?: ReactNode;
 }
 
 // La proyección como la manda el servidor: P50, P80, la reserva que cubre el P80 y los insumos que más la empujan. Nada
 // se calcula aquí; los montos exactos se leen en centésimas con coma decimal y punto de miles.
-export function ResultadoDeLaProyeccion({ datos, region }: Props<ProyeccionDeLaObra>): JSX.Element {
+export function ResultadoDeLaProyeccion({ datos, region, children }: Props<ProyeccionDeLaObra>): JSX.Element {
   const m = (exacto: string) => monto(exacto, datos.moneda);
   const columnas: ColumnaDensa[] = [
     { clave: "insumo", titulo: "Insumo", ordenable: false },
@@ -50,6 +52,7 @@ export function ResultadoDeLaProyeccion({ datos, region }: Props<ProyeccionDeLaO
           ))}
         </ul>
       </details>
+      {children}
     </section>
   );
 }

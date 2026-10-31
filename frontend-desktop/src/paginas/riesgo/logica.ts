@@ -1,5 +1,6 @@
 // Lo que la pantalla «Riesgo de la obra» lee de lo tecleado y cómo escribe lo que llega. No calcula ningún monto: los
 // percentiles, la reserva y la cobertura los manda el servidor, exactos; aquí solo se redondean a centésimas para leerlos.
+import type { PedidoDeProyeccion } from "../../api/riesgo";
 import { leerCifra } from "../../indicadores/cifraEscrita";
 import { centesimasEsVe, fechaEsVe } from "../../indicadores/formatoEsVe";
 
@@ -62,4 +63,20 @@ export function ayudaDelInicio(inicioLineaBase: string | null): string {
   return inicioLineaBase !== null
     ? `Si la deja vacía se toma la de la línea base: ${fechaEsVe(inicioLineaBase)}.`
     : "Esta versión no tiene línea base de control: escriba la fecha de inicio.";
+}
+
+// El informe de riesgo en Excel (`GET /v1/riesgo/reportes/riesgo`) con lo mismo que se proyectó: el servidor vuelve a
+// calcular con la misma semilla. El mapa viaja como JSON en la consulta; sin fecha de inicio manda la de la línea base.
+export function rutaDelInformeDeRiesgo(pedido: PedidoDeProyeccion): string {
+  const consulta = new URLSearchParams({
+    proyecto: pedido.proyecto,
+    version: pedido.version,
+    meses: String(pedido.meses),
+    trayectorias: String(pedido.trayectorias),
+    semilla: String(pedido.semilla),
+    ventana_meses: String(pedido.ventana_meses),
+    mapa: JSON.stringify(pedido.mapa),
+  });
+  if (pedido.inicio !== null) consulta.set("inicio", pedido.inicio);
+  return `/v1/riesgo/reportes/riesgo?${consulta.toString()}`;
 }

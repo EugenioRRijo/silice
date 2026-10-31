@@ -2,15 +2,22 @@ import { Button, InlineLoading, Select, SelectItem } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import { comprobarObra, proyectarObra } from "../../api/riesgo";
-import type { ComprobacionDeLaObra, InsumosDeLaObra, MapaDeSeries, ProyeccionDeLaObra } from "../../api/riesgo";
+import type {
+  ComprobacionDeLaObra,
+  InsumosDeLaObra,
+  MapaDeSeries,
+  PedidoDeProyeccion,
+  ProyeccionDeLaObra,
+} from "../../api/riesgo";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
 import { useCarga } from "../inicio/useCarga";
-import { CAMPOS_INICIALES, ROTULOS, leerCampos } from "./logica";
+import { CAMPOS_INICIALES, ROTULOS, leerCampos, rutaDelInformeDeRiesgo } from "./logica";
 import type { Campos } from "./logica";
 import { ParametrosDelRiesgo } from "./ParametrosDelRiesgo";
 import { ResultadoDeLaComprobacion, ResultadoDeLaProyeccion } from "./ResultadoDelRiesgo";
@@ -46,6 +53,8 @@ export default function RiesgoDeLaObra() {
   const [mapaDe, setMapaDe] = useState<{ version: string | null; mapa: MapaDeSeries }>({ version: null, mapa: {} });
   const mapa = mapaDe.version === version ? mapaDe.mapa : {};
   const [proyeccion, setProyeccion] = useState<Pedido<ProyeccionDeLaObra>>(NADA);
+  // Lo que se pidió en la última proyección: el informe en Excel se baja con lo mismo.
+  const [proyectado, setProyectado] = useState<PedidoDeProyeccion | null>(null);
   const [comprobacion, setComprobacion] = useState<Pedido<ComprobacionDeLaObra>>(NADA);
   const regionProyeccion = useRef<HTMLElement>(null);
   const regionComprobacion = useRef<HTMLElement>(null);
@@ -96,6 +105,7 @@ export default function RiesgoDeLaObra() {
     setComprobacion(NADA);
     const inicio = campos.inicio === "" ? null : campos.inicio;
     const pedido = { proyecto: nombre, version, inicio, meses, trayectorias, semilla, ventana_meses: ventana, mapa };
+    setProyectado(pedido);
     void pedir(setProyeccion, () => proyectarObra(pedido));
   }
 
@@ -173,7 +183,20 @@ export default function RiesgoDeLaObra() {
               <AvisoError error={errorVisible} titulo="No se pudo calcular el riesgo" />
             </div>
           )}
-          {proyeccion.estado === "listo" && <ResultadoDeLaProyeccion datos={proyeccion.datos} region={regionProyeccion} />}
+          {proyeccion.estado === "listo" && (
+            <ResultadoDeLaProyeccion datos={proyeccion.datos} region={regionProyeccion}>
+              {proyectado !== null && (
+                <DescargaArchivo
+                  ruta={rutaDelInformeDeRiesgo(proyectado)}
+                  etiqueta="Descargar el informe de riesgo"
+                  nombrePorOmision="riesgo.xlsx"
+                  alExpirar={alExpirar}
+                  kind="tertiary"
+                  size="sm"
+                />
+              )}
+            </ResultadoDeLaProyeccion>
+          )}
           {comprobacion.estado === "listo" && <ResultadoDeLaComprobacion datos={comprobacion.datos} region={regionComprobacion} />}
         </>
       )}
