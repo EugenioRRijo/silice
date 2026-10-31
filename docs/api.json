@@ -9039,7 +9039,7 @@
           "produccion"
         ],
         "summary": "Calcular Costo Por Tonelada",
-        "description": "Calcula el costo por tonelada de cada producto del periodo en la moneda pedida y lo guarda\ncon sus entradas (otro registro cada vez; nada se sobrescribe). Sin costos, sin producción, sin\ntasa BCV del día de algún monto o sin precio de un componente comprado: 422, sin guardar.",
+        "description": "Calcula el costo por tonelada de cada producto del periodo en la moneda pedida y lo guarda\ncon sus entradas (otro registro cada vez; nada se sobrescribe). Sin costos, sin la tasa BCV que\npide algún monto (la del día de cada costo, la del cierre del mes para lo comprado) o sin precio\nde un componente comprado: 422, sin guardar. Un mes sin producción se calcula y todo pasa.",
         "operationId": "calcular_costo_por_tonelada_v1_produccion_calculos_post",
         "requestBody": {
           "required": true,

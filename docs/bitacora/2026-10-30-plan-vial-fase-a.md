@@ -270,3 +270,15 @@ preguntas, n.º 24 a 26):
   lista del caso pasó su plazo de 30 días con el reloj: la prueba depende de la fecha de hoy. Fuera del alcance
   del plan vial; anotado para quien mantenga los casos.
 - Vitest: 3222 de 3223; la única falla es el tiempo de espera de `CostosDelPeriodo` bajo carga (pasa sola).
+
+## Árbitro de cierre de la fase A (ronda 1, cabeza 38f8a199): devuelta por E501
+
+- MAYOR: `tests/unit/test_recorrido_ux_playwright.py` pasaba de 100 columnas (único error de `ruff check .`, dejaba la CI
+  en rojo): corregido; `ruff check .` limpio.
+- Menores hechos: línea de la Tarea 6b en el CHANGELOG; descripción de `POST /v1/produccion/calculos` al día con la 4b
+  (mes sin producción se calcula; tasa del cierre para lo comprado) y `docs/api.json` regenerado; las pruebas del front
+  ya no usan el mensaje retirado «No hubo producción en AAAA-MM.».
+- Menor aceptado sin cambio: el encabezado de `FaltanTasas` dice «del mismo día» y las faltas de lo comprado añaden «(la
+  del cierre del mes)». Cambiar el encabezado obliga a mover la expresión `TASAS` del front y sus pruebas; cada falta ya
+  dice qué tasa pide. Se revisa en la Tarea 20 (textos de la interfaz).
+- El árbitro pide a Eugenio confirmar pronto la fila 27 (lo que pasa de un mes sin cálculo se pierde en silencio).

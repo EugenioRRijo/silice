@@ -127,13 +127,13 @@ describe("tasas faltantes", () => {
   });
 
   test("otro mensaje no se desglosa", () => {
-    expect(desgloseDeTasas("No hubo producción en 2026-11.")).toBeNull();
+    expect(desgloseDeTasas("Este cálculo no tiene costos por tonelada que publicar.")).toBeNull();
   });
 });
 
 describe("mensajes de error", () => {
   test("el detalle del servidor va tal cual", () => {
-    expect(mensajeDePlanta(new ErrorDeApi(422, "No hubo producción en 2026-11."))).toBe("No hubo producción en 2026-11.");
+    expect(mensajeDePlanta(new ErrorDeApi(422, "Este cálculo no tiene costos por tonelada que publicar."))).toBe("Este cálculo no tiene costos por tonelada que publicar.");
   });
   test("nunca el estado ni el cuerpo de una validación", () => {
     expect(mensajeDePlanta(new ErrorDeApi(422, "El programa de Sílice respondió con el estado 422."))).toBe(

@@ -15,8 +15,9 @@ después de aquél en `api.main`, así el orden de `docs/api.json` no cambia.
 - **Cálculo del costo por tonelada** (Tarea 4): `POST /calculos` lee la instalación y, para las
   tasas BCV y la lista de precios, la carpeta del caso de la petición (`SesionDep`: la elegida por
   la ficha o la del proceso). Responde el costo exacto (texto) y el presentado (dos decimales, mitad
-  hacia arriba), con la instantánea guardada. Falta de tasa, de precio, de producción o de costos:
-  422 con el mensaje, sin guardar nada. Cálculo inexistente: 404.
+  hacia arriba), con la instantánea guardada. Falta de tasa, de precio o de costos: 422 con el
+  mensaje, sin guardar nada. Un mes sin producción se calcula (todo pasa al mes siguiente, Tarea
+  4b). Cálculo inexistente: 404.
 - **Publicar** (Tarea 5): `POST /calculos/{id}/publicar` suma la puerta `PUBLICAR_COSTO`
   (`Accion.PUBLICAR_COSTO_PROPIO`, solo administrador con cuenta: la clave de API recibe 403) a la
   del router. La empresa es la de Administración (`empresa_propia`). Crea una lista de empresa
@@ -488,8 +489,9 @@ def calcular_costo_por_tonelada(
     usuario: UsuarioCostosDep,
 ) -> CalculoDeCostoRespuesta:
     """Calcula el costo por tonelada de cada producto del periodo en la moneda pedida y lo guarda
-    con sus entradas (otro registro cada vez; nada se sobrescribe). Sin costos, sin producción, sin
-    tasa BCV del día de algún monto o sin precio de un componente comprado: 422, sin guardar."""
+    con sus entradas (otro registro cada vez; nada se sobrescribe). Sin costos, sin la tasa BCV que
+    pide algún monto (la del día de cada costo, la del cierre del mes para lo comprado) o sin precio
+    de un componente comprado: 422, sin guardar. Un mes sin producción se calcula y todo pasa."""
     pesos = (
         None
         if entrada.pesos is None

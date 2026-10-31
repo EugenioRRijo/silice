@@ -178,7 +178,7 @@ describe("Costo por tonelada", () => {
   });
 
   test.each([
-    ["No hubo producción en 2026-11.", 422],
+    ["Este cálculo no tiene costos por tonelada que publicar.", 422],
     ["No hay costos registrados en 2026-11.", 422],
   ])("el rechazo «%s» se muestra tal cual", async (detalle, estado) => {
     calculo = () => json({ detalle }, estado);
