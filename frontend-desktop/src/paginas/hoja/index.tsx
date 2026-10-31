@@ -8,16 +8,15 @@ import { useAplicacion } from "../../shell/contexto";
 import { AprobacionDeVersion } from "./AprobacionDeVersion";
 import { OfertaDeRetomar as OfertaDeRetomarVista } from "./OfertaDeRetomar";
 import {
-  PESTANAS,
   SIN_VERSIONES,
   TITULO,
   esBorradorAusente,
-  pestanaInicial,
+  pestanasVisibles,
   rotuloDeVersion,
   textoDeCambios,
   versionesOfrecidas,
 } from "./logica";
-import type { BorradorAbierto, Resumen } from "./logica";
+import type { BorradorAbierto, PestanaId, Resumen } from "./logica";
 import { CAUSA_SOLO_LECTURA } from "./logicaGuardar";
 import { BotonExcel } from "./BotonExcel";
 import { ContextoAuditoria } from "./ContextoAuditoria";
@@ -36,8 +35,10 @@ import { ContextoDeLaHoja, ProveedorDeLaHoja, useHojaDeLaObra } from "./Proveedo
 import "./hoja.scss";
 
 // La Hoja de la obra (pantalla `hoja`, la sección Presupuesto): el estado del borrador, el reparto de las pestañas y el
-// cuerpo que los junta. Desde la Tarea 3 del plan F4 el borrador es de `ProveedorDeLaHoja`. Pasa de 250 líneas por el
-// reparto de las nueve pestañas (`ContenidoDePestana`), que la Tarea 4 reordena.
+// cuerpo que los junta. Desde la Tarea 3 del plan F4 el borrador es de `ProveedorDeLaHoja`, y desde la 4 también la pestaña
+// abierta. Pasa de 250 líneas porque junta tres piezas que solo se entienden juntas: el estado del borrador, el cuerpo con
+// sus avisos y el reparto de las pestañas (`ContenidoDePestana`); la Tarea 6 (Versiones) y la 11 (Archivos y planos) le
+// quitan lo que se va a sus secciones.
 
 function EstadoDelBorrador({
   borrador,
@@ -97,9 +98,11 @@ function EstadoDelBorrador({
   );
 }
 
-// Solo se monta la pestaña activa y solo cuando el borrador está abierto: así solo se pide su vista.
+// Solo se monta la pestaña activa y solo cuando el borrador está abierto: así solo se pide su vista. Las que se editan no se
+// vuelven a montar con cada `rev` (perdería lo escrito; llevan `key` del borrador) y cada una vuelve a leer su vista; las de
+// solo lectura se vuelven a montar con cada cambio (llevan `llave`).
 function ContenidoDePestana({
-  indice,
+  pestana,
   borrador,
   alAusente,
   alAceptar,
@@ -109,7 +112,7 @@ function ContenidoDePestana({
   alQuitarFiltro,
   alCrearVersion,
 }: {
-  indice: number;
+  pestana: PestanaId;
   borrador: BorradorAbierto | null;
   alAusente: () => void;
   alAceptar: (resumen: Resumen) => void;
@@ -123,110 +126,68 @@ function ContenidoDePestana({
   if (borrador === null) return null;
   const llave = `${borrador.id}-${borrador.resumen.rev}`;
   const moneda = borrador.resumen.moneda;
-  if (indice === 0) {
-    return (
-      <PestanaEspacio
-        key={borrador.id}
-        id={borrador.id}
-        base={borrador.base}
-        rev={borrador.resumen.rev}
-        alAusente={alAusente}
-        alAceptar={alAceptar}
-        alRecargarBorrador={alRecargarBorrador}
-        alReabrir={alReabrir}
-      />
-    );
+  const deEdicion = {
+    id: borrador.id,
+    base: borrador.base,
+    rev: borrador.resumen.rev,
+    alAusente,
+    alAceptar,
+    alRecargarBorrador,
+    alReabrir,
+  };
+  switch (pestana) {
+    case "espacio":
+      return <PestanaEspacio key={borrador.id} {...deEdicion} />;
+    case "partidas":
+      return <PestanaPresupuesto key={borrador.id} {...deEdicion} />;
+    case "apu":
+      return <PestanaApu key={borrador.id} {...deEdicion} moneda={moneda} />;
+    case "plan":
+      // «Plan y equilibrio» (baja 23): la matriz y la curva, y debajo el punto de equilibrio, que solo se lee.
+      return (
+        <>
+          <PestanaPlan key={borrador.id} {...deEdicion} />
+          <PestanaEquilibrio key={llave} id={borrador.id} alAusente={alAusente} />
+        </>
+      );
+    case "precios":
+      return (
+        <PestanaPrecios
+          key={llave}
+          proyecto={borrador.base.proyecto}
+          version={borrador.base.version}
+          alAusente={alAusente}
+          cambios={borrador.resumen.cambios}
+          alCrearVersion={alCrearVersion}
+        />
+      );
+    case "revision":
+      return <PestanaAuditoria key={llave} id={borrador.id} alAusente={alAusente} filtro={filtro} alQuitarFiltro={alQuitarFiltro} />;
+    case "ajustes":
+      return (
+        <PestanaParametros
+          key={borrador.id}
+          {...deEdicion}
+          conversion={{
+            proyecto: borrador.base.proyecto,
+            version: borrador.base.version,
+            cambios: borrador.resumen.cambios,
+            alCrearVersion,
+          }}
+        />
+      );
+    case "trazabilidad":
+      return (
+        <PestanaTrazabilidad
+          key={llave}
+          proyecto={borrador.base.proyecto}
+          version={borrador.base.version}
+          alAusente={alAusente}
+          cambios={borrador.resumen.cambios}
+          alCrearVersion={alCrearVersion}
+        />
+      );
   }
-  if (indice === 1) {
-    return (
-      <PestanaApu
-        key={borrador.id}
-        id={borrador.id}
-        base={borrador.base}
-        rev={borrador.resumen.rev}
-        moneda={moneda}
-        alAusente={alAusente}
-        alAceptar={alAceptar}
-        alRecargarBorrador={alRecargarBorrador}
-        alReabrir={alReabrir}
-      />
-    );
-  }
-  if (indice === 2) {
-    return (
-      <PestanaPresupuesto
-        key={borrador.id}
-        id={borrador.id}
-        base={borrador.base}
-        rev={borrador.resumen.rev}
-        alAusente={alAusente}
-        alAceptar={alAceptar}
-        alRecargarBorrador={alRecargarBorrador}
-        alReabrir={alReabrir}
-      />
-    );
-  }
-  if (indice === 3) {
-    return (
-      <PestanaPlan
-        key={borrador.id}
-        id={borrador.id}
-        base={borrador.base}
-        rev={borrador.resumen.rev}
-        alAusente={alAusente}
-        alAceptar={alAceptar}
-        alRecargarBorrador={alRecargarBorrador}
-        alReabrir={alReabrir}
-      />
-    );
-  }
-  if (indice === 4) return <PestanaEquilibrio key={llave} id={borrador.id} alAusente={alAusente} />;
-  if (indice === 5) {
-    return (
-      <PestanaPrecios
-        key={llave}
-        proyecto={borrador.base.proyecto}
-        version={borrador.base.version}
-        alAusente={alAusente}
-        cambios={borrador.resumen.cambios}
-        alCrearVersion={alCrearVersion}
-      />
-    );
-  }
-  // Las que se editan no se vuelven a montar con cada `rev` (perdería lo escrito); cada una vuelve a leer su vista.
-  if (indice === 6) {
-    return (
-      <PestanaParametros
-        key={borrador.id}
-        id={borrador.id}
-        base={borrador.base}
-        rev={borrador.resumen.rev}
-        alAusente={alAusente}
-        alAceptar={alAceptar}
-        alRecargarBorrador={alRecargarBorrador}
-        alReabrir={alReabrir}
-        conversion={{
-          proyecto: borrador.base.proyecto,
-          version: borrador.base.version,
-          cambios: borrador.resumen.cambios,
-          alCrearVersion,
-        }}
-      />
-    );
-  }
-  if (indice === 7) {
-    return <PestanaAuditoria key={llave} id={borrador.id} alAusente={alAusente} filtro={filtro} alQuitarFiltro={alQuitarFiltro} />;
-  }
-  return (
-    <PestanaTrazabilidad
-      key={llave}
-      proyecto={borrador.base.proyecto}
-      version={borrador.base.version}
-      alAusente={alAusente}
-      cambios={borrador.resumen.cambios}
-      alCrearVersion={alCrearVersion}
-    />
-  );
 }
 
 const NOTA_SOLO_LECTURA = "Está viendo este presupuesto en solo lectura.";
@@ -258,24 +219,20 @@ function CuerpoDeLaHoja() {
     exito,
     quitarExito,
     inerte,
+    pestana,
+    irAPestana,
+    espacioPedido,
   } = useHojaDeLaObra();
   const ofrecidas = versiones.estado === "listo" ? versionesOfrecidas(versiones.datos.versiones) : [];
 
-  const [pestana, setPestana] = useState(0);
-  // La pestaña con que abre la obra (Tarea 11): sin espacio, «Presupuesto». Se fija una vez por obra, con su primer borrador;
-  // cambiar de versión no mueve a la persona de la pestaña en que está. Ajuste durante el render (react.dev, «You might
-  // not need an effect»).
-  const [pestanaDe, setPestanaDe] = useState<string | null>(null);
-  if (estado.estado === "listo" && pestanaDe !== proyecto) {
-    setPestanaDe(proyecto);
-    setPestana(pestanaInicial(estado.borrador.resumen));
-  }
-  // «Ver en Auditoría» desde el Estado de una fila: va a esa pestaña con el filtro de la fila.
+  // «Ver en Revisión» desde el Estado de una fila: va a esa pestaña con el filtro de la fila. La pestaña abierta es del
+  // proveedor (Tarea 4): sobrevive al pasar a Archivos y planos o a Versiones.
   const [filtro, setFiltro] = useState<FiltroDeAuditoria | null>(null);
-  const verEnAuditoria = (f: FiltroDeAuditoria) => {
+  const verEnRevision = (f: FiltroDeAuditoria) => {
     setFiltro(f);
-    setPestana(PESTANAS.indexOf("Auditoría"));
+    irAPestana("revision");
   };
+  const visibles = estado.estado === "listo" ? pestanasVisibles(estado.borrador.resumen, espacioPedido) : [];
 
   if (versiones.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las versiones" />;
   if (versiones.estado !== "listo") return <AvisoError error={versiones.error} />;
@@ -349,7 +306,7 @@ function CuerpoDeLaHoja() {
               base={estado.borrador.base}
               alHacerVersionNueva={() => {
                 setFiltro(null);
-                setPestana(PESTANAS.indexOf("Presupuesto"));
+                irAPestana("partidas");
               }}
             />
           )}
@@ -369,40 +326,42 @@ function CuerpoDeLaHoja() {
           {estado.estado === "listo" && estado.borrador.base.solo_lectura && ` Esta versión no se puede guardar: ${CAUSA_SOLO_LECTURA}.`}
         </p>
       )}
-      <ContextoAuditoria.Provider value={verEnAuditoria}>
-        <Tabs
-          selectedIndex={pestana}
-          onChange={({ selectedIndex }) => {
-            setFiltro(null);
-            setPestana(selectedIndex);
-          }}
-        >
-          <TabList aria-label="Secciones de la hoja">
-            {PESTANAS.map((p) => (
-              <Tab key={p}>{p}</Tab>
-            ))}
-          </TabList>
-          <TabPanels>
-            {PESTANAS.map((p, i) => (
-              <TabPanel key={p}>
-                {i === pestana && (
-                  <ContenidoDePestana
-                    indice={i}
-                    borrador={estado.estado === "listo" ? estado.borrador : null}
-                    alAusente={refrescar}
-                    alAceptar={aplicar}
-                    alRecargarBorrador={refrescar}
-                    alReabrir={reabrirNuevo}
-                    filtro={filtro}
-                    alQuitarFiltro={() => setFiltro(null)}
-                    alCrearVersion={alCrearVersion}
-                  />
-                )}
-              </TabPanel>
-            ))}
-          </TabPanels>
-        </Tabs>
-      </ContextoAuditoria.Provider>
+      {estado.estado === "listo" && (
+        <ContextoAuditoria.Provider value={verEnRevision}>
+          <Tabs
+            selectedIndex={Math.max(0, visibles.findIndex((p) => p.id === pestana))}
+            onChange={({ selectedIndex }) => {
+              setFiltro(null);
+              irAPestana(visibles[selectedIndex]!.id);
+            }}
+          >
+            <TabList aria-label="Secciones del presupuesto">
+              {visibles.map((p) => (
+                <Tab key={p.id}>{p.titulo}</Tab>
+              ))}
+            </TabList>
+            <TabPanels>
+              {visibles.map((p) => (
+                <TabPanel key={p.id}>
+                  {p.id === pestana && (
+                    <ContenidoDePestana
+                      pestana={p.id}
+                      borrador={estado.borrador}
+                      alAusente={refrescar}
+                      alAceptar={aplicar}
+                      alRecargarBorrador={refrescar}
+                      alReabrir={reabrirNuevo}
+                      filtro={filtro}
+                      alQuitarFiltro={() => setFiltro(null)}
+                      alCrearVersion={alCrearVersion}
+                    />
+                  )}
+                </TabPanel>
+              ))}
+            </TabPanels>
+          </Tabs>
+        </ContextoAuditoria.Provider>
+      )}
       {/* Punto de acoplamiento del asistente de IA (diseño §2.10): vacío y oculto hasta que exista. */}
       <aside aria-label="Asistente de IA" hidden />
     </div>

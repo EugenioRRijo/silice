@@ -194,22 +194,21 @@ function camposQueEscriben(): HTMLElement[] {
 }
 
 // Lo que cada pestaña muestra cuando ya cargó (para no mirar antes de tiempo).
-const CARGADA: Record<(typeof PESTANAS)[number], string> = {
+const CARGADA: Record<string, string> = {
   "Espacio y metrajes": "Cantidades derivadas",
-  APU: "Cierre de partida",
-  Presupuesto: "Total del presupuesto",
-  "Plan y curva": "Curva de inversión",
-  "Punto de equilibrio": "Punto de equilibrio",
+  Partidas: "Total del presupuesto",
+  "Análisis de precio (APU)": "Cierre de partida",
+  "Plan y equilibrio": "Punto de equilibrio",
   Precios: "Evaluada al",
-  Parámetros: "Utilidad",
-  Auditoría: "El informe se genera siempre",
+  Revisión: "Resultado:",
+  "Ajustes de costo": "Utilidad",
   Trazabilidad: "Versiones del proyecto",
 };
 
-async function irA(pestana: (typeof PESTANAS)[number]) {
+async function irA(pestana: string) {
   await userEvent.click(screen.getByRole("tab", { name: pestana }));
   const panel = screen.getByRole("tabpanel");
-  await within(panel).findAllByText(new RegExp(CARGADA[pestana]));
+  await within(panel).findAllByText(new RegExp(CARGADA[pestana]!));
 }
 
 beforeEach(() => {
@@ -243,7 +242,8 @@ describe("Quien revisa ve el Presupuesto en solo lectura", () => {
     servidor();
     montar(ACCIONES_REVISA);
     expect(await screen.findByRole("note")).toHaveTextContent("Está viendo este presupuesto en solo lectura.");
-    await irA("Presupuesto");
+    await screen.findByRole("region", { name: "Estado del borrador" }); // las pestañas aparecen con el borrador abierto
+    await irA("Partidas");
     const tabla = screen.getByRole("table", { name: "Presupuesto" });
     expect(within(tabla).getByText("1.234,5")).toBeInTheDocument();
     expect(within(tabla).getByText("15.431,25")).toBeInTheDocument();
@@ -254,7 +254,7 @@ describe("Quien revisa ve el Presupuesto en solo lectura", () => {
     servidor();
     montar(ACCIONES_REVISA);
     await screen.findByRole("region", { name: "Estado del borrador" });
-    for (const pestana of PESTANAS) {
+    for (const { titulo: pestana } of PESTANAS) {
       await irA(pestana);
       expect({ pestana, botones: botonesQueEscriben() }).toEqual({ pestana, botones: [] });
       expect({ pestana, campos: camposQueEscriben().map((c) => c.id) }).toEqual({ pestana, campos: [] });
@@ -264,13 +264,13 @@ describe("Quien revisa ve el Presupuesto en solo lectura", () => {
     expect(screen.queryByRole("button", { name: /Enviar a aprobación/ })).toBeNull();
   });
 
-  test("sí están «Descargar Excel», «Ver en Auditoría» y la búsqueda de partida del APU", async () => {
+  test("sí están «Descargar Excel», «Ver en Revisión» y la búsqueda de partida del APU", async () => {
     servidor();
     montar(ACCIONES_REVISA);
     expect(await screen.findByRole("button", { name: "Descargar Excel" })).toBeInTheDocument();
-    await irA("Presupuesto");
-    expect(screen.getAllByRole("button", { name: /^Ver en Auditoría/ }).length).toBeGreaterThan(0);
-    await irA("APU");
+    await irA("Partidas");
+    expect(screen.getAllByRole("button", { name: /^Ver en Revisión/ }).length).toBeGreaterThan(0);
+    await irA("Análisis de precio (APU)");
     expect(screen.getByRole("searchbox", { name: "Buscar partida" })).toBeInTheDocument();
   });
 
@@ -278,7 +278,7 @@ describe("Quien revisa ve el Presupuesto en solo lectura", () => {
     servidor();
     montar(ACCIONES_REVISA);
     await screen.findByRole("region", { name: "Estado del borrador" });
-    await irA("Presupuesto");
+    await irA("Partidas");
     const tabla = screen.getByRole("table", { name: "Presupuesto" });
     expect(within(tabla).getByRole("columnheader", { name: /Objetivo de mercado/ })).toBeInTheDocument();
     expect(await within(tabla).findByText(/15,00/)).toBeInTheDocument();
@@ -290,7 +290,7 @@ describe("Quien revisa ve el Presupuesto en solo lectura", () => {
     montar(ACCIONES_REVISA);
     await screen.findByRole("region", { name: "Estado del borrador" });
     await irA("Precios");
-    await irA("Parámetros");
+    await irA("Ajustes de costo");
     await irA("Trazabilidad");
     await screen.findByRole("region", { name: "Aprobación de la versión" });
     for (const nombre of DE_LA_VERSION) expect(screen.queryByRole("button", { name: nombre })).toBeNull();
@@ -306,16 +306,16 @@ describe("Quien arma conserva sus controles", () => {
     await irA("Espacio y metrajes");
     expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^Agregar fila/ }).length).toBeGreaterThan(0);
-    await irA("Presupuesto");
+    await irA("Partidas");
     expect(screen.getByRole("button", { name: "Agregar partida" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Quitar OC-EXC/ })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^Volver a la calculada/ }).length).toBeGreaterThan(0);
     expect(camposQueEscriben().length).toBeGreaterThan(0);
-    await irA("APU");
+    await irA("Análisis de precio (APU)");
     expect(screen.getByRole("button", { name: "Agregar línea" })).toBeInTheDocument();
-    await irA("Plan y curva");
+    await irA("Plan y equilibrio");
     expect(screen.getByRole("button", { name: "Plan desde los rendimientos" })).toBeInTheDocument();
-    await irA("Parámetros");
+    await irA("Ajustes de costo");
     expect(await screen.findByRole("button", { name: "Convertir la moneda…" })).toBeInTheDocument();
     await irA("Trazabilidad");
     expect(await screen.findByRole("button", { name: "Restaurar una versión…" })).toBeInTheDocument();
@@ -326,7 +326,7 @@ describe("Quien arma conserva sus controles", () => {
     servidor(true);
     montar(ACCIONES_ARMA);
     expect(await screen.findByRole("note")).toHaveTextContent("Está viendo este presupuesto en solo lectura.");
-    await irA("Presupuesto");
+    await irA("Partidas");
     expect(botonesQueEscriben().filter((n) => !DE_LA_VERSION.includes(n))).toEqual([]);
     expect(camposQueEscriben()).toEqual([]);
   });
@@ -339,7 +339,7 @@ describe("Quien arma conserva sus controles", () => {
     await irA("Precios");
     expect(screen.getByRole("button", { name: "Registrar una cotización…" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retirar una cotización…" })).toBeInTheDocument();
-    await irA("Parámetros");
+    await irA("Ajustes de costo");
     expect(screen.getByRole("button", { name: "Convertir la moneda…" })).toBeInTheDocument();
     await irA("Trazabilidad");
     expect(screen.getByRole("button", { name: "Restaurar una versión…" })).toBeInTheDocument();

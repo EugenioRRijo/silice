@@ -21,6 +21,8 @@ import { useBorrador } from "./useBorrador";
 import type { EstadoBorrador } from "./useBorrador";
 import { useGuardadoDeLaPagina } from "./useGuardadoDeLaPagina";
 import { useOfertas } from "./useOfertas";
+import { usePestanaDeLaHoja } from "./usePestanaDeLaHoja";
+import type { PestanaDeLaHoja } from "./usePestanaDeLaHoja";
 import { useVersiones } from "./useVersiones";
 import "./hoja.scss";
 
@@ -29,7 +31,7 @@ import "./hoja.scss";
 // desmontarse; aquí vive a nivel de la obra (lo monta EspacioDeObra en esas tres secciones) y la Hoja solo lo consume.
 // Es la lógica de `HojaDeProyecto` sin cambios: las versiones, las ofertas de retomar, el borrador, cambiar de versión
 // (con su confirmación), guardar y los diálogos de las operaciones sobre versiones, que se pintan aquí, fuera del
-// contenido inerte de la sección. Lo usan la Hoja (`PaginaHoja`), la cabecera de la obra (la versión abierta) y, desde las
+// contenido inerte de la sección. Desde la Tarea 4 guarda también la pestaña abierta (`usePestanaDeLaHoja`). Lo usan la Hoja (`PaginaHoja`), la cabecera de la obra (la versión abierta) y, desde las
 // Tareas 6 y 11, Versiones y Archivos y planos. Pasa de 250 líneas porque reúne ese estado, que es uno solo.
 
 export type VersionesDeLaObra =
@@ -37,7 +39,7 @@ export type VersionesDeLaObra =
   | { estado: "listo"; datos: VersionesRespuesta }
   | { estado: "error"; error: unknown };
 
-export interface HojaDeLaObra {
+export interface HojaDeLaObra extends PestanaDeLaHoja {
   proyecto: string;
   nombreProyecto: string | null;
   // La lista de versiones: la que se leyó al abrir o la que se volvió a leer tras guardar.
@@ -135,6 +137,7 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
     alExpirar,
     retomado?.id ?? null,
   );
+  const pestana = usePestanaDeLaHoja(proyecto, estado);
   const hayCambios = estado.estado === "listo" && estado.borrador.resumen.cambios > 0;
   // F4 2b: una sola regla para lo que escribe (quien revisa, o un borrador de solo lectura, no edita).
   const puedeEditar = usePuedeEditarLaHoja(estado.estado === "listo" ? estado.borrador.base : null);
@@ -263,6 +266,7 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
         ? { estado: "listo", datos }
         : { estado: "error", error: "error" in carga ? carga.error : null };
   const hoja: HojaDeLaObra = {
+    ...pestana,
     proyecto,
     nombreProyecto,
     versiones,

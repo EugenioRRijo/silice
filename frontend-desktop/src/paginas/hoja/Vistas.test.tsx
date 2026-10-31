@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { vistaApu, vistaEspacio, vistaPlan, vistaPresupuesto } from "./datosDePrueba";
+import { vistaApu, vistaEquilibrio, vistaEspacio, vistaPlan, vistaPresupuesto } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 
@@ -55,7 +55,7 @@ const BORRADOR: BorradorAbierto = {
   instantanea: { creadas: 0, mensaje: null },
 };
 
-type Respuestas = Partial<Record<"espacio" | "presupuesto" | "apu" | "plan", (url: string) => Response | Promise<Response>>>;
+type Respuestas = Partial<Record<"espacio" | "presupuesto" | "apu" | "plan" | "equilibrio", (url: string) => Response | Promise<Response>>>;
 
 describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
@@ -80,7 +80,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
         const nombre = /\/vistas\/([a-z]+)/.exec(url)![1] as keyof Respuestas;
         const propia = respuestas[nombre];
         if (propia) return propia(url);
-        const porOmision = { espacio: vistaEspacio, presupuesto: vistaPresupuesto, apu: vistaApu, plan: vistaPlan }[nombre]!;
+        const porOmision = { espacio: vistaEspacio, presupuesto: vistaPresupuesto, apu: vistaApu, plan: vistaPlan, equilibrio: vistaEquilibrio }[nombre]!;
         return json(porOmision());
       }
       return new Response(null, { status: 204 });
@@ -118,7 +118,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     montar();
     await screen.findByRole("heading", { level: 3, name: "Ambientes" });
     expect(vistasPedidas()).toEqual(["/v1/hoja/borradores/id-borrador-aaaaaaaaaaaa/vistas/espacio"]);
-    await userEvent.click(screen.getByRole("tab", { name: "Presupuesto" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Partidas" }));
     await screen.findByRole("table", { name: "Presupuesto" });
     expect(vistasPedidas()).toHaveLength(2);
     expect(vistasPedidas()[1]).toMatch(/\/vistas\/presupuesto$/);
@@ -147,6 +147,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
       "Estado",
       "Acciones",
     ]);
+    await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
     expect(screen.getByText(/^Describa el espacio en metros/)).toBeInTheDocument();
   });
 
@@ -229,7 +230,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   test("3b-F7: la lista de partidas, su selección y el detalle con los tres rubros", async () => {
     servidor();
     montar();
-    await irA("APU");
+    await irA("Análisis de precio (APU)");
     const lista = await screen.findByRole("group", { name: "Partidas" });
     const radios = within(lista).getAllByRole("radio");
     expect(radios).toHaveLength(2);
@@ -250,7 +251,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   test("APU: el cierre sale en el orden de la clásica con el exacto en el title", async () => {
     servidor();
     montar();
-    await irA("APU");
+    await irA("Análisis de precio (APU)");
     const cierre = await screen.findByRole("table", { name: "Cierre de partida" });
     const filas = within(cierre).getAllByRole("row").slice(1);
     expect(filas.map((f) => within(f).getAllByRole("cell")[0]!.textContent)).toEqual([
@@ -273,7 +274,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     // pantalla las formateaba de nuevo y un precio de mil quinientos («1.500») se veía «1,500», mil veces menos.
     servidor();
     montar();
-    await irA("APU");
+    await irA("Análisis de precio (APU)");
     const materiales = await screen.findByRole("table", { name: "Materiales" });
     expect(within(materiales).getByText("7,7483")).toBeInTheDocument();
   });
@@ -289,7 +290,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     );
     servidor({ apu: () => json(vistaApu({ detalle: { ...detalle, grupos } })) });
     montar();
-    await irA("APU");
+    await irA("Análisis de precio (APU)");
     const materiales = await screen.findByRole("table", { name: "Materiales" });
     expect(within(materiales).getByText("1.500")).toBeInTheDocument();
     expect(within(materiales).queryByText("1,500")).toBeNull();
@@ -300,7 +301,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   test("3b-F7: escribir en «Buscar partida» pide al servidor la lista filtrada", async () => {
     servidor();
     montar();
-    await irA("APU");
+    await irA("Análisis de precio (APU)");
     await screen.findByRole("group", { name: "Partidas" });
     await userEvent.type(screen.getByRole("searchbox", { name: "Buscar partida" }), "pic");
     await waitFor(() => expect(vistasPedidas().some((u) => u.includes("/vistas/apu?buscar=pic"))).toBe(true), {
@@ -313,14 +314,14 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   test("3b-F7: sin coincidencias avisa que se muestran todas", async () => {
     servidor({ apu: () => json(vistaApu({ sin_coincidencias: true })) });
     montar();
-    await irA("APU");
+    await irA("Análisis de precio (APU)");
     expect(await screen.findByText("Ninguna partida coincide; se muestran todas.")).toBeInTheDocument();
   });
 
   test("APU: elegir otra partida la pide al servidor por su código", async () => {
     servidor();
     montar();
-    await irA("APU");
+    await irA("Análisis de precio (APU)");
     const lista = await screen.findByRole("group", { name: "Partidas" });
     await userEvent.click(within(lista).getByLabelText(/^AF-CODO-1\/2/));
     await waitFor(() => expect(vistasPedidas().some((u) => u.includes("partida=AF-CODO-1%2F2"))).toBe(true));
@@ -330,7 +331,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     const detalle = vistaApu().detalle!;
     servidor({ apu: () => json(vistaApu({ detalle: { ...detalle, estados: ["Estado de AF-LLAVE|x: ADVERTENCIA: algo"] } })) });
     montar();
-    await irA("APU");
+    await irA("Análisis de precio (APU)");
     // 3c-3: solo el texto del estado, sin el «Estado de {clave}: » crudo que arma el servidor.
     expect(await screen.findByText("ADVERTENCIA: algo")).toBeInTheDocument();
     expect(screen.queryByText(/Estado de AF-LLAVE/)).toBeNull();
@@ -340,7 +341,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     const mensaje = "Todavía no hay partidas valoradas: derive cantidades en Espacio y metrajes.";
     servidor({ apu: () => json(vistaApu({ partidas: [], seleccionada: null, detalle: null, vacio_mensaje: mensaje })) });
     montar();
-    await irA("APU");
+    await irA("Análisis de precio (APU)");
     expect(await screen.findByText(mensaje)).toBeInTheDocument();
     expect(screen.queryByRole("radio")).toBeNull();
   });
@@ -350,7 +351,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   test("Presupuesto: renglones con cantidad, precio unitario, total y Estado", async () => {
     servidor();
     montar();
-    await irA("Presupuesto");
+    await irA("Partidas");
     const tabla = await screen.findByRole("table", { name: "Presupuesto" });
     expect(within(tabla).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
       "Partida",
@@ -375,7 +376,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   test("Presupuesto: una cantidad escrita a mano dice cuál era la calculada y una partida sin APU queda pendiente", async () => {
     servidor();
     montar();
-    await irA("Presupuesto");
+    await irA("Partidas");
     const tabla = await screen.findByRole("table", { name: "Presupuesto" });
     const pendiente = within(tabla).getAllByRole("row")[2]!;
     // Desde 3c-2 la cantidad es un campo editable y la calculada se dice al lado.
@@ -389,7 +390,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     const mensaje = "El presupuesto no tiene renglones todavía.";
     servidor({ presupuesto: () => json(vistaPresupuesto({ filas: [], vacio_mensaje: mensaje })) });
     montar();
-    await irA("Presupuesto");
+    await irA("Partidas");
     expect(await screen.findByText(mensaje)).toBeInTheDocument();
   });
 
@@ -398,7 +399,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   test("3b-F8: con plan, la matriz de fracciones, el gráfico y la tabla de la curva", async () => {
     servidor();
     montar();
-    await irA("Plan y curva");
+    await irA("Plan y equilibrio");
     const matriz = await screen.findByRole("table", { name: "Plan de trabajo" });
     expect(within(matriz).getAllByRole("columnheader").map((c) => c.textContent)).toEqual(["Partida", "Día 1", "Día 2"]);
     // Desde 3c-2 las fracciones son campos editables (su valor es el texto que llegó).
@@ -426,7 +427,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
       plan: () => json(vistaPlan({ hay_plan: false, etiquetas: [], filas: [], curva: [], mensaje })),
     });
     montar();
-    await irA("Plan y curva");
+    await irA("Plan y equilibrio");
     expect(await screen.findByText(mensaje)).toBeInTheDocument();
     expect(screen.queryByTestId("grafico")).toBeNull();
     expect(screen.queryByRole("table", { name: "Plan de trabajo" })).toBeNull();
@@ -443,7 +444,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
   test("3b-F13: un error de la vista muestra su detalle tal cual", async () => {
     servidor({ presupuesto: () => json({ detalle: "No se pudo calcular el presupuesto." }, 500) });
     montar();
-    await irA("Presupuesto");
+    await irA("Partidas");
     expect(await screen.findByText("No se pudo calcular el presupuesto.")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
@@ -478,7 +479,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     servidor();
     const { container } = montar();
     await screen.findByRole("table", { name: "Ambientes" });
-    for (const p of ["APU", "Presupuesto", "Plan y curva"]) {
+    for (const p of ["Análisis de precio (APU)", "Partidas", "Plan y equilibrio"]) {
       await act(async () => {
         await userEvent.click(screen.getByRole("tab", { name: p }));
       });

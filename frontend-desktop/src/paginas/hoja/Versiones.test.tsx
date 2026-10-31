@@ -214,7 +214,7 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
 
     test("Parámetros: no se ofrece convertir la moneda (P:2081)", async () => {
       montar();
-      await irA("Parámetros");
+      await irA("Ajustes de costo");
       await screen.findByRole("textbox", { name: /^FCAS/ });
       expect(
         screen.getByText("Cambiar la moneda crea una versión nueva desde la guardada: guarde o descarte primero los 3 cambios pendientes."),
@@ -478,7 +478,7 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
     test("la moneda destino excluye la actual; manda moneda, lado y fuente; abre la versión convertida", async () => {
       alOperacion = () => json({ codigo: "003", proyecto: "OF-001", mensaje: "Se guardó la versión 003, convertida a Bs." });
       montar();
-      await irA("Parámetros");
+      await irA("Ajustes de costo");
       await screen.findByRole("textbox", { name: /^FCAS/ });
       const dialogo = await abrirDialogo("Convertir la moneda…");
       expect(dialogo).toHaveAccessibleName("Convertir la moneda");
@@ -511,7 +511,7 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
       const detalle = "No se convirtio nada: no hay tasa del BCV en los 7 dias anteriores al 2026-10-20";
       alOperacion = () => json({ detalle }, 422);
       montar();
-      await irA("Parámetros");
+      await irA("Ajustes de costo");
       const dialogo = await abrirDialogo("Convertir la moneda…");
       escribir(dialogo, "Por qué se cambia la moneda (fuente)", "Gerencia");
       fireEvent.click(boton(dialogo, "Convertir la versión"));
@@ -524,7 +524,7 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
     test("si el servidor dice que la cuenta no puede convertir, no se ofrece", async () => {
       parametros = { ...vistaParametros(), puede_convertir: false };
       montar();
-      await irA("Parámetros");
+      await irA("Ajustes de costo");
       await screen.findByRole("textbox", { name: /^FCAS/ });
       expect(screen.queryByRole("button", { name: "Convertir la moneda…" })).toBeNull();
     });

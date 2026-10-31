@@ -1,5 +1,4 @@
 import { Button, Checkbox, InlineNotification, RadioButton, RadioButtonGroup } from "@carbon/react";
-import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useCallback, useId, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -7,6 +6,7 @@ import { CurvaPlanAvance, periodoLegible } from "../../comun/CurvaPlanAvance";
 import { mensajeDeError } from "../../comun/errores";
 import { useAplicacion } from "../../shell/contexto";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { TablaPaginada } from "./TablaPaginada";
@@ -346,18 +346,6 @@ function EditorDelPlan({ id, rev, vista, semilla, alAusente, alAceptar, alRecarg
 
   return (
     <div className="silice-hoja__pestana">
-      {puedeEditar && (
-        <>
-      <p className="cds--type-body-compact-01">
-        Reparta cada partida entre los períodos: cada fila debe sumar exactamente 1. Los montos, los acumulados y los porcentajes de la
-        curva se calculan.
-      </p>
-      <p className="cds--type-helper-text-01">
-        {AYUDA_CIFRAS} Los cambios se aplican al borrador cuando deja de escribir; no se
-        guardan como versión hasta que lo pida.
-      </p>
-        </>
-      )}
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && (
         <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir}>
@@ -445,6 +433,7 @@ function ContenidoPlan(props: PropsContenido) {
   // sus avisos siguen a la vista.
   return (
     <div className="silice-hoja__pestana">
+      <AyudaDePestana id="plan" puedeEditar={puedeEditar} />
       {!vista.hay_plan && (
         <div className="silice-hoja__seccion">
           <p className="cds--type-body-compact-01">{vista.mensaje}</p>

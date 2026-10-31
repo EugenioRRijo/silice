@@ -253,7 +253,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     // Las tablas salen del borrador del servidor (no de la versión guardada).
     expect(await screen.findByRole("textbox", { name: "Largo (m), Ambientes fila 1" })).toHaveValue("2");
     // Y la siguiente edición lleva el rev con que quedó el borrador.
-    await userEvent.click(screen.getByRole("tab", { name: "Parámetros" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Ajustes de costo" }));
     const campo = await screen.findByRole("textbox", { name: /^Administración/ });
     const cuerpos: Array<{ rev: number }> = [];
     alPonerParametros = (c) => {
@@ -507,7 +507,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     alPonerParametros = respuesta;
     const pagina = montar();
     await screen.findByText(/Sin cambios sin guardar/);
-    await userEvent.click(screen.getByRole("tab", { name: "Parámetros" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Ajustes de costo" }));
     const campo = await screen.findByRole("textbox", { name: /^Administración/ });
     relojFalso();
     fireEvent.change(campo, { target: { value: "0,20" } });
@@ -546,7 +546,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     });
     const pagina = montar();
     await screen.findByText(/Sin cambios sin guardar/);
-    await userEvent.click(screen.getByRole("tab", { name: "Parámetros" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Ajustes de costo" }));
     const campo = await screen.findByRole("textbox", { name: /^Administración/ });
     relojFalso();
     fetchFalso.mockImplementation(

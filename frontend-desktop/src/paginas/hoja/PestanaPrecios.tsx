@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { useAplicacion } from "../../shell/contexto";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
 import { TablaPaginada } from "./TablaPaginada";
@@ -232,11 +233,7 @@ export function PestanaPrecios({ proyecto, version, alAusente, cambios, alCrearV
     <VistaCarga<PreciosRespuesta> ruta={rutaDePrecios(proyecto, version)} etiqueta="Precios" alAusente={alAusente}>
       {(vista) => (
         <div className="silice-hoja__pestana">
-          <p className="cds--type-body-compact-01">
-            Lista, referencia, fecha, moneda y tasa de cada insumo, su origen y cuánto valor perdió hasta hoy (erosión). Una
-            cotización (con su proveedor, número y fecha) vale solo para este proyecto y prevalece sobre la lista global
-            hasta que se retire.
-          </p>
+          <AyudaDePestana id="precios" puedeEditar={puedeEditar} />
           <p className="cds--type-helper-text-01">
             Se muestra la versión guardada, no los cambios sin guardar. Evaluada al {fechaCorta(vista.fecha_evaluacion)}.
           </p>

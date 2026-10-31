@@ -311,7 +311,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
   test("3d-F2: guardar manda rev y fuente (sin responsable), dice «Se guardó la versión 003 con 2 cambios registrados.» y abre la 003", async () => {
     montar();
     // El contexto no se pierde: la pestaña elegida sigue siendo la misma.
-    await userEvent.click(await screen.findByRole("tab", { name: "Parámetros" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Ajustes de costo" }));
     const dialogo = await abrirModal();
     await escribirFuente(dialogo);
     versiones = VERSIONES_CON_003;
@@ -326,7 +326,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     await within(region).findByText(/Versión 003 · Sin cambios sin guardar/);
     expect(screen.queryByRole("button", { name: "Guardar versión…" })).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("tab", { name: "Parámetros" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Ajustes de costo" })).toHaveAttribute("aria-selected", "true");
     // El borrador guardado ya no sirve: se descarta una sola vez, y la lista de versiones se volvió a pedir.
     await esperar(() => expect(borrados()).toHaveLength(1));
     expect(fetchFalso.mock.calls.filter(([r]) => String(r).startsWith("/v1/hoja/versiones")).length).toBeGreaterThanOrEqual(2);

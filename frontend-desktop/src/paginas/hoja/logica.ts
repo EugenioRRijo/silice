@@ -7,18 +7,32 @@ import { leerCifra } from "../../indicadores/cifraEscrita";
 export const TITULO = "Presupuesto";
 export const SIN_VERSIONES = "Esta obra aún no tiene versiones";
 
-// El orden de la página clásica (ui/paginas/hoja.py, PESTANAS).
-export const PESTANAS = [
-  "Espacio y metrajes",
-  "APU",
-  "Presupuesto",
-  "Plan y curva",
-  "Punto de equilibrio",
-  "Precios",
-  "Parámetros",
-  "Auditoría",
-  "Trazabilidad",
-] as const;
+// Las pestañas del Presupuesto (Tarea 4 del plan F4): cada una con su id estable, que guarda el proveedor y que
+// usan las otras secciones para abrir una, y su título, que ve la persona. «Plan y equilibrio» junta lo que eran dos
+// (baja 23) y «Trazabilidad» se queda hasta que Versiones la absorba (Tarea 6).
+export type PestanaId = "espacio" | "partidas" | "apu" | "plan" | "precios" | "revision" | "ajustes" | "trazabilidad";
+export interface PestanaDef {
+  id: PestanaId;
+  titulo: string;
+}
+
+export const PESTANAS: readonly PestanaDef[] = [
+  { id: "espacio", titulo: "Espacio y metrajes" },
+  { id: "partidas", titulo: "Partidas" },
+  { id: "apu", titulo: "Análisis de precio (APU)" },
+  { id: "plan", titulo: "Plan y equilibrio" },
+  { id: "precios", titulo: "Precios" },
+  { id: "revision", titulo: "Revisión" },
+  { id: "ajustes", titulo: "Ajustes de costo" },
+  { id: "trazabilidad", titulo: "Trazabilidad" },
+];
+
+// «Espacio y metrajes» solo se ve si la obra tiene espacio (no es civil) o si la persona pidió describirlo (pregunta 3 del
+// plan). La API manda `espacio_vacio` siempre; los datos de prueba anteriores no lo traen y se tratan como obra con espacio.
+export function pestanasVisibles(r: { espacio_vacio?: boolean }, espacioPedido: boolean): readonly PestanaDef[] {
+  const conEspacio = r.espacio_vacio !== true || espacioPedido;
+  return conEspacio ? PESTANAS : PESTANAS.filter((p) => p.id !== "espacio");
+}
 
 export interface Monto {
   texto: string;
@@ -617,10 +631,10 @@ export function ubicarError(detalle: string, tablas: TablaEspacio[]): UbicacionD
 
 // --- Tarea 11: agregar y quitar partidas (rutas de la Tarea 9) ---
 
-// La pestaña con que abre la Hoja: una obra sin espacio (obra civil) abre en «Presupuesto»; las de instalaciones, en
+// La pestaña con que abre la Hoja: una obra sin espacio (obra civil) abre en «Partidas»; las de instalaciones, en
 // «Espacio y metrajes», como siempre.
-export function pestanaInicial(resumen: { espacio_vacio?: boolean }): number {
-  return resumen.espacio_vacio === true ? PESTANAS.indexOf("Presupuesto") : 0;
+export function pestanaInicial(resumen: { espacio_vacio?: boolean }): PestanaId {
+  return resumen.espacio_vacio === true ? "partidas" : "espacio";
 }
 
 export const rutaDeAgregarPartida = (id: string) => `/v1/hoja/borradores/${id}/partidas`;

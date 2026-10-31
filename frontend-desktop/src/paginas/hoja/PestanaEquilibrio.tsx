@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { periodoLegible } from "../../comun/CurvaPlanAvance";
 import { Cifra } from "./Cifra";
 import { VistaCarga } from "./VistaCarga";
@@ -59,11 +60,18 @@ function ContenidoEquilibrio({ vista }: { vista: VistaEquilibrio }) {
   );
 }
 
-// Pestaña «Punto de equilibrio»: solo lectura (se mueve con las cantidades, los precios, los parámetros y el plan).
+// El bloque «Punto de equilibrio» de la pestaña «Plan y equilibrio» (baja 23: era una pestaña aparte): solo lectura, se
+// mueve con las cantidades, los precios, los parámetros y el plan. Su título va fuera de la carga para que siempre se vea.
 export function PestanaEquilibrio({ id, alAusente }: Props) {
+  const titulo = useId();
   return (
-    <VistaCarga<VistaEquilibrio> ruta={rutaDeVista(id, "equilibrio")} etiqueta="Punto de equilibrio" alAusente={alAusente}>
-      {(vista) => <ContenidoEquilibrio vista={vista} />}
-    </VistaCarga>
+    <section className="silice-hoja__seccion" aria-labelledby={titulo}>
+      <h2 id={titulo} className="cds--type-heading-compact-02">
+        Punto de equilibrio
+      </h2>
+      <VistaCarga<VistaEquilibrio> ruta={rutaDeVista(id, "equilibrio")} etiqueta="Punto de equilibrio" alAusente={alAusente}>
+        {(vista) => <ContenidoEquilibrio vista={vista} />}
+      </VistaCarga>
+    </section>
   );
 }

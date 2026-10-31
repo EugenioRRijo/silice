@@ -1,12 +1,12 @@
 import { Button } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
-import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { ConfirmarQuitar, DialogoAgregarPartida, useFocoAlCerrar } from "./AgregarPartida";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
@@ -342,16 +342,9 @@ function ContenidoPresupuesto(props: PropsContenido) {
 
   return (
     <div className="silice-hoja__pestana">
+      <AyudaDePestana id="partidas" puedeEditar={puedeEditar} />
       {puedeEditar && (
         <>
-      <p className="cds--type-body-compact-01">
-        Las cantidades salen del espacio o de las partidas que agrega con «Agregar partida», y los precios de la composición de cada
-        partida. Aquí se edita la cantidad: una cantidad escrita a mano se marca en el Estado y puede volver a la calculada.
-      </p>
-      <p className="cds--type-helper-text-01">
-        {AYUDA_CIFRAS} Los cambios se aplican al borrador cuando deja de escribir; no se
-        guardan como versión hasta que lo pida.
-      </p>
       <div className="silice-hoja__acciones">
         <Button
           id={ID_AGREGAR}

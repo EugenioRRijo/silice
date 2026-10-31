@@ -213,6 +213,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
       "Estado",
       "Acciones",
     ]);
+    await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
     expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
     expect(screen.queryByText(/la coma no se acepta/)).toBeNull();
   });
@@ -318,7 +319,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     await abrirConRelojFalso();
     fireEvent.change(celda("Nombre, Ambientes fila 2"), { target: { value: "Cocina" } });
     await act(async () => {
-      fireEvent.click(screen.getByRole("tab", { name: "Presupuesto" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Partidas" }));
     });
     expect(puestas()).toHaveLength(1);
     expect(puestas()[0]!.cuerpo.tablas.ambientes![1]!.nombre).toBe("Cocina");

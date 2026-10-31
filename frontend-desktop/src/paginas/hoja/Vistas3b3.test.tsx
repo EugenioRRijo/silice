@@ -137,7 +137,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
   test("3b-F9: las cuatro métricas, el punto, su porcentaje y la frase del caso (cifras de OF-001)", async () => {
     servidor();
     montar();
-    await irA("Punto de equilibrio");
+    await irA("Plan y equilibrio");
     const rotulo = await screen.findByText("Ventas (contrato)");
     const dl = rotulo.closest("dl")!;
     expect(within(dl).getByText("Ventas (contrato)").nextElementSibling).toHaveTextContent("2.703,86 USD");
@@ -162,7 +162,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
       },
     });
     montar();
-    await irA("Punto de equilibrio");
+    await irA("Plan y equilibrio");
     expect(await screen.findByText(mensaje)).toBeInTheDocument();
     expect(screen.getByText("Ventas (contrato)")).toBeInTheDocument();
     expect(screen.queryByText("Punto de equilibrio", { selector: "dt" })).toBeNull();
@@ -174,7 +174,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     const mensaje = "Sin curva de inversión: el punto de equilibrio no se ubica en el plan.";
     servidor({ vistas: { equilibrio: () => json(vistaEquilibrio({ periodo: null, fraccion_periodo: null, mensaje })) } });
     montar();
-    await irA("Punto de equilibrio");
+    await irA("Plan y equilibrio");
     expect(await screen.findByText(mensaje)).toBeInTheDocument();
     expect(screen.getByText("Punto de equilibrio", { selector: "dt" })).toBeInTheDocument();
     expect(screen.queryByText("Se alcanza en")).toBeNull();
@@ -184,14 +184,14 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     const largo = "1234567890123456789012345.123456789012";
     servidor({ vistas: { equilibrio: () => json(vistaEquilibrio({ venta: { texto: largo, exacto: largo } })) } });
     montar();
-    await irA("Punto de equilibrio");
+    await irA("Plan y equilibrio");
     expect(await screen.findByText(/1\.234\.567\.890\.123\.456\.789\.012\.345,123456789012 USD/)).toBeInTheDocument();
   });
 
   test("3b-F9: la moneda que manda la vista es la de las cifras", async () => {
     servidor({ vistas: { equilibrio: () => json(vistaEquilibrio({ moneda: "Bs" })) } });
     montar();
-    await irA("Punto de equilibrio");
+    await irA("Plan y equilibrio");
     expect(await screen.findByText("Ventas (contrato)")).toBeInTheDocument();
     expect(screen.getByTitle("1530.4912345")).toHaveTextContent("1.530,49 Bs");
   });
@@ -199,7 +199,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
   test("3b-F9: el período se lee sin los códigos entre corchetes que le pone el servidor", async () => {
     servidor({ vistas: { equilibrio: () => json(vistaEquilibrio({ periodo: "Dia 6 [TI-PTO, TI-UTP, TI-LAP]" })) } });
     montar();
-    await irA("Punto de equilibrio");
+    await irA("Plan y equilibrio");
     const dd = (await screen.findByText("Se alcanza en")).nextElementSibling!;
     expect(dd).toHaveTextContent("Día 6");
     expect(dd).not.toHaveTextContent(/TI-PTO|\[/);
@@ -208,7 +208,8 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
   test("Parámetros: desde 3c-2 el texto de ayuda habla de edición (cambiarlos recalcula), ya no de lectura", async () => {
     servidor();
     montar();
-    await irA("Parámetros");
+    await irA("Ajustes de costo");
+    await userEvent.click(await screen.findByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
     expect(await screen.findByText(/Cambiarlos recalcula/)).toBeInTheDocument();
     expect(screen.queryByText(/solo se leen/)).toBeNull();
   });
@@ -218,7 +219,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
   test("Parámetros: los cuatro parámetros de costo como campos de texto con su valor tal como llegó (3c-2)", async () => {
     servidor();
     montar();
-    await irA("Parámetros");
+    await irA("Ajustes de costo");
     expect(await screen.findByRole("textbox", { name: /^FCAS/ })).toHaveValue("6,00");
     expect(screen.getByRole("textbox", { name: /^Bono de alimentación/ })).toHaveValue("5,8100");
     expect(screen.getByRole("textbox", { name: /^Administración/ })).toHaveValue("0,15");
@@ -230,7 +231,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
   test("Parámetros: no repite el total del presupuesto ni la moneda del proyecto", async () => {
     servidor();
     montar();
-    await irA("Parámetros");
+    await irA("Ajustes de costo");
     await screen.findByRole("textbox", { name: /^FCAS/ });
     expect(screen.queryByText(/Moneda del proyecto/)).toBeNull();
     expect(screen.queryByText(/Total del presupuesto/)).toBeNull();
@@ -242,7 +243,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
   test("Auditoría: el veredicto, la tabla de hallazgos con R17 nombrando el punto y las reglas evaluadas", async () => {
     servidor();
     montar();
-    await irA("Auditoría");
+    await irA("Revisión");
     const informe = await screen.findByRole("region", { name: "Informe de auditoría" });
     expect(within(informe).getByText(/Presupuesto OF-001-001/)).toBeInTheDocument();
     expect(within(informe).getByText(/Resultado: NO CUMPLE/)).toBeInTheDocument();
@@ -250,13 +251,14 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     expect(within(tabla).getAllByRole("row")).toHaveLength(3);
     expect(within(tabla).getByText("R17")).toBeInTheDocument();
     expect(within(tabla).getByText("El punto P1 no tiene fuente que lo alimente")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
     expect(screen.getByText("El informe se genera siempre, con todas las reglas, sobre el borrador vigente.")).toBeInTheDocument();
   });
 
   test("3b-F12: la descripción de un hallazgo es texto plano: un Markdown de imagen no crea una imagen", async () => {
     servidor();
     montar();
-    await irA("Auditoría");
+    await irA("Revisión");
     const informe = await screen.findByRole("region", { name: "Informe de auditoría" });
     expect(within(informe).getByText(/!\[x\]\(http:\/\/ejemplo\.invalid\/a\.png\)/)).toBeInTheDocument();
     expect(informe.querySelector("img")).toBeNull();
@@ -274,17 +276,17 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     });
     servidor({ vistas: { auditoria: () => json(limpio) } });
     montar();
-    await irA("Auditoría");
+    await irA("Revisión");
     expect(await screen.findByText("Se verificaron 17 reglas y no hubo hallazgos.")).toBeInTheDocument();
     expect(screen.getByText(/Resultado: CUMPLE/)).toBeInTheDocument();
   });
 
-  test("3b-F6b: «Ver en Auditoría» lleva a la pestaña con solo los hallazgos de esa fila", async () => {
+  test("3b-F6b: «Ver en Revisión» lleva a la pestaña con solo los hallazgos de esa fila", async () => {
     servidor();
     montar();
     const tabla = await screen.findByRole("table", { name: "Fuentes" });
-    await userEvent.click(within(tabla).getByRole("button", { name: "Ver en Auditoría: Fuente F1" }));
-    expect(await screen.findByRole("tab", { name: "Auditoría", selected: true })).toBeInTheDocument();
+    await userEvent.click(within(tabla).getByRole("button", { name: "Ver en Revisión: Fuente F1" }));
+    expect(await screen.findByRole("tab", { name: "Revisión", selected: true })).toBeInTheDocument();
     const informe = await screen.findByRole("region", { name: "Informe de auditoría" });
     expect(screen.getByText("Hallazgos de Fuente F1").parentElement).toHaveFocus();
     const hallazgos = within(informe).getByRole("table", { name: "Hallazgos" });
@@ -300,15 +302,15 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     servidor();
     montar();
     const tabla = await screen.findByRole("table", { name: "Ambientes" });
-    expect(within(tabla).getByRole("button", { name: "Ver en Auditoría: Ambiente BAN-01" })).toBeInTheDocument();
-    expect(within(tabla).getAllByRole("button", { name: /Ver en Auditoría/ })).toHaveLength(1); // COC-01 está OK
+    expect(within(tabla).getByRole("button", { name: "Ver en Revisión: Ambiente BAN-01" })).toBeInTheDocument();
+    expect(within(tabla).getAllByRole("button", { name: /Ver en Revisión/ })).toHaveLength(1); // COC-01 está OK
   });
 
   test("3b-F6b: una fila cuyos hallazgos no están en el informe lo dice, sin tabla vacía", async () => {
     servidor();
     montar();
     const tabla = await screen.findByRole("table", { name: "Ambientes" });
-    await userEvent.click(within(tabla).getByRole("button", { name: "Ver en Auditoría: Ambiente BAN-01" }));
+    await userEvent.click(within(tabla).getByRole("button", { name: "Ver en Revisión: Ambiente BAN-01" }));
     expect(await screen.findByText("Ningún hallazgo del informe nombra a Ambiente BAN-01.")).toBeInTheDocument();
     expect(screen.queryByRole("table", { name: "Hallazgos" })).toBeNull();
   });
@@ -317,10 +319,10 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     servidor();
     montar();
     const tabla = await screen.findByRole("table", { name: "Fuentes" });
-    await userEvent.click(within(tabla).getByRole("button", { name: "Ver en Auditoría: Fuente F1" }));
+    await userEvent.click(within(tabla).getByRole("button", { name: "Ver en Revisión: Fuente F1" }));
     await screen.findByText("Hallazgos de Fuente F1");
-    await userEvent.click(screen.getByRole("tab", { name: "APU" }));
-    await userEvent.click(screen.getByRole("tab", { name: "Auditoría" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Revisión" }));
     const hallazgos = await screen.findByRole("table", { name: "Hallazgos" });
     expect(within(hallazgos).getAllByRole("row")).toHaveLength(3);
     expect(screen.queryByText("Hallazgos de Fuente F1")).toBeNull();
@@ -331,9 +333,9 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     const propio = { ...informe.hallazgos[1]!, numero: 7, origen: ["esp_puntos:P2"], descripcion: "El punto P2 sin APU" };
     servidor({ vistas: { auditoria: () => json({ ...informe, hallazgos: [informe.hallazgos[0]!, propio] }) } });
     montar();
-    await irA("Presupuesto");
+    await irA("Partidas");
     const tabla = await screen.findByRole("table", { name: "Presupuesto" });
-    await userEvent.click(within(tabla).getByRole("button", { name: "Ver en Auditoría: AF-SALIDA, Punto P2" }));
+    await userEvent.click(within(tabla).getByRole("button", { name: "Ver en Revisión: AF-SALIDA, Punto P2" }));
     const hallazgos = await screen.findByRole("table", { name: "Hallazgos" });
     expect(within(hallazgos).getAllByRole("row")).toHaveLength(2);
     expect(within(hallazgos).getByText("El punto P2 sin APU")).toBeInTheDocument();
@@ -588,15 +590,16 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
 
   // --- navegación de las nueve pestañas -----------------------------------------------------------
 
-  test("3b-F3: las nueve pestañas son alcanzables con el teclado y ninguna es un marcador de lugar", async () => {
+  test("3b-F3: las ocho pestañas (siete sin espacio) son alcanzables con el teclado y ninguna es un marcador de lugar", async () => {
     servidor();
     montar();
     await screen.findByRole("region", { name: "Estado del borrador" });
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([...PESTANAS]);
-    screen.getByRole("tab", { name: PESTANAS[0] }).focus();
-    for (let i = 1; i < PESTANAS.length; i++) {
+    const titulos = PESTANAS.map((p) => p.titulo);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(titulos);
+    screen.getByRole("tab", { name: titulos[0] }).focus();
+    for (let i = 1; i < titulos.length; i++) {
       await userEvent.keyboard("{ArrowRight}");
-      expect(screen.getByRole("tab", { name: PESTANAS[i] })).toHaveFocus();
+      expect(screen.getByRole("tab", { name: titulos[i] })).toHaveFocus();
     }
     await userEvent.keyboard("{Enter}");
     expect(screen.getByRole("tab", { name: "Trazabilidad", selected: true })).toBeInTheDocument();
@@ -607,11 +610,11 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     servidor();
     montar();
     await screen.findByRole("heading", { level: 3, name: "Ambientes" });
-    await userEvent.click(screen.getByRole("tab", { name: "Punto de equilibrio" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Plan y equilibrio" }));
     await screen.findByText("Ventas (contrato)");
-    await userEvent.click(screen.getByRole("tab", { name: "Parámetros" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Ajustes de costo" }));
     await screen.findByText(/^FCAS/);
-    await userEvent.click(screen.getByRole("tab", { name: "Auditoría" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Revisión" }));
     await screen.findByRole("region", { name: "Informe de auditoría" });
     await userEvent.click(screen.getByRole("tab", { name: "Precios" }));
     await screen.findByRole("table", { name: "Precios" });
@@ -619,6 +622,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     await screen.findByRole("table", { name: "Versiones del proyecto" });
     expect(pedidas("/vistas/")).toEqual([
       `/v1/hoja/borradores/${ID}/vistas/espacio`,
+      `/v1/hoja/borradores/${ID}/vistas/plan`,
       `/v1/hoja/borradores/${ID}/vistas/equilibrio`,
       `/v1/hoja/borradores/${ID}/vistas/parametros`,
       `/v1/hoja/borradores/${ID}/vistas/auditoria`,

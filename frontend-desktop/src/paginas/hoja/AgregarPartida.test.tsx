@@ -262,11 +262,11 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     await userEvent.click(await screen.findByRole("option", { name: /OBRA-04/ }));
   }
 
-  test("una obra sin espacio abre en «Presupuesto» y solo pide esa vista", async () => {
+  test("una obra sin espacio abre en «Partidas» y solo pide esa vista", async () => {
     montar();
-    const pestana = await screen.findByRole("tab", { name: "Presupuesto" });
+    const pestana = await screen.findByRole("tab", { name: "Partidas" });
     await waitFor(() => expect(pestana).toHaveAttribute("aria-selected", "true"));
-    expect(screen.getByRole("tab", { name: "Espacio y metrajes" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.queryByRole("tab", { name: "Espacio y metrajes" })).toBeNull(); // sin espacio, la pestaña no se ofrece
     await screen.findByText(SIN_RENGLONES);
     expect(vistasPedidas()).toEqual([`/v1/hoja/borradores/${ID}/vistas/presupuesto`]);
   });
@@ -276,7 +276,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     montar();
     await screen.findByRole("region", { name: "Estado del borrador" });
     expect(screen.getByRole("tab", { name: "Espacio y metrajes" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "Presupuesto" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tab", { name: "Partidas" })).toHaveAttribute("aria-selected", "false");
   });
 
   test("la obra sin versiones lo dice con «obra» y explica cómo empezar por Presupuesto", async () => {

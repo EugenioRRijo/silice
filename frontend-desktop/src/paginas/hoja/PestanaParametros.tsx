@@ -1,8 +1,8 @@
 import { useCallback, useId, useState } from "react";
-import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { pedir } from "../../api/cliente";
 import { useAplicacion } from "../../shell/contexto";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { ConvertirMoneda } from "./ConvertirMoneda";
 import type { AlCrearVersion } from "./OperacionesDePrecios";
@@ -66,12 +66,7 @@ function ContenidoParametros({ id, rev, vista, alAusente, alAceptar, alRecargarB
 
   return (
     <div className="silice-hoja__pestana">
-      {puedeEditar && (
-      <p className="cds--type-body-compact-01">
-        Los parámetros de costo del borrador. {AYUDA_CIFRAS} Cambiarlos recalcula todos los
-        APU y el total; los cambios se aplican al borrador cuando deja de escribir y no se guardan como versión hasta que lo pida.
-      </p>
-      )}
+      <AyudaDePestana id="ajustes" puedeEditar={puedeEditar} />
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir} />}
       <div className="silice-hoja__campos">

@@ -196,7 +196,7 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
   async function irAApu() {
     montar();
     await screen.findByRole("region", { name: "Estado del borrador" });
-    await userEvent.click(screen.getByRole("tab", { name: "APU" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
     await screen.findByRole("textbox", { name: "Cantidad, Materiales fila 1" });
   }
 

@@ -1,8 +1,8 @@
 import { Button } from "@carbon/react";
-import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useCallback, useId, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { TablaPaginada } from "./TablaPaginada";
 import { TablaEditable } from "./TablaEditable";
 import type { IrA } from "./TablaEditable";
@@ -104,15 +104,7 @@ function ContenidoEspacio({
 
   return (
     <div className="silice-hoja__pestana">
-      <p className="cds--type-body-compact-01">{vista.ayuda}</p>
-      {puedeEditar && (
-      <p className="cds--type-helper-text-01">
-        {AYUDA_CIFRAS} En «Vértices» cada punto se escribe x,y,z: ahí la coma
-        separa las coordenadas y los decimales van con punto (0,0,0; 2.5,0,0).
-        Los cambios se aplican al borrador cuando deja de escribir; no se
-        guardan como versión hasta que lo pida.
-      </p>
-      )}
+      <AyudaDePestana id="espacio" puedeEditar={puedeEditar} delServidor={vista.ayuda} />
       {puedeEditar && (
       <ImportarPlano
         id={id}

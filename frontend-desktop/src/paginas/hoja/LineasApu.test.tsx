@@ -177,7 +177,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
   async function irAApu() {
     montar();
     await screen.findByRole("region", { name: "Estado del borrador" });
-    await userEvent.click(screen.getByRole("tab", { name: "APU" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
     await screen.findByRole("textbox", { name: "Cantidad, Materiales fila 1" });
   }
 
@@ -470,6 +470,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
 
   test("la ayuda del APU dice la regla de la coma y que también se agregan y se quitan líneas", async () => {
     await irAApu();
+    await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
     expect(screen.queryByText(/la coma no se acepta/)).toBeNull();
     expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56\./)).toBeInTheDocument();
     expect(screen.getByText(/agregar una línea \(un insumo de la lista de la versión o uno nuevo con su precio\)/)).toBeInTheDocument();

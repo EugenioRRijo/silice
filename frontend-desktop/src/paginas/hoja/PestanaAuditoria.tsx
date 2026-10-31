@@ -1,6 +1,7 @@
 import { Button } from "@carbon/react";
 import { useEffect, useRef } from "react";
 import { InformeAuditoria } from "../../comun/InformeAuditoria";
+import { AyudaDePestana } from "./AyudaDePestana";
 import type { FiltroDeAuditoria } from "./ContextoAuditoria";
 import { VistaCarga } from "./VistaCarga";
 import { hallazgosDeOrigen, rutaDeVista } from "./logica";
@@ -29,9 +30,7 @@ function ContenidoAuditoria({ informe, filtro, alQuitarFiltro }: PropsContenido)
   const propios = filtro === null ? informe.hallazgos : hallazgosDeOrigen(informe.hallazgos, filtro.claves);
   return (
     <div className="silice-hoja__pestana">
-      <p className="cds--type-body-compact-01">
-        El informe se genera siempre, con todas las reglas, sobre el borrador vigente.
-      </p>
+      <AyudaDePestana id="revision" puedeEditar={false} />
       {filtro !== null && (
         <div className="silice-hoja__filtro" ref={aviso} tabIndex={-1} role="status">
           <p className="cds--type-body-compact-01">Hallazgos de {filtro.rotulo}</p>

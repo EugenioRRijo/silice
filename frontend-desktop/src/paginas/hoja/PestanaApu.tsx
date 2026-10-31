@@ -4,12 +4,12 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
-import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useAplicacion } from "../../shell/contexto";
 import { ConfirmarQuitarLinea, DialogoAgregarLinea } from "./AgregarLineaApu";
 import type { LineaAgregada } from "./AgregarLineaApu";
 import { useFocoAlCerrar } from "./AgregarPartida";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { CambioDeInsumo } from "./CambioDeInsumo";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
@@ -262,13 +262,6 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
         <h2 className="cds--type-heading-compact-02">
           {detalle.codigo} · {detalle.descripcion} · {detalle.unidad}
         </h2>
-        {puedeEditar && (
-        <p className="cds--type-helper-text-01">
-          Se edita la cantidad de cada línea y el rendimiento, y se puede agregar una línea (un insumo de la lista de la versión
-          o uno nuevo con su precio) o quitar otra, en la copia de esta versión: el catálogo no cambia. {AYUDA_CIFRAS} Los
-          cambios se aplican al borrador cuando deja de escribir; no se guardan como versión hasta que lo pida.
-        </p>
-        )}
         <AvisoDeEnvio envio={edicion.envio} />
         {error !== null && (
           <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void recargar()} alReabrir={alReabrir} />
@@ -422,6 +415,7 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
 // Pestaña «APU»: lista con buscador (lo filtra el servidor), tres rubros editables, factores y cierre de la partida
 // (rebanada 3c-3). Cada edición recalcula en el servidor; la pestaña vuelve a leer su vista.
 export function PestanaApu(props: Props) {
+  const puedeEditar = usePuedeEditarLaHoja(props.base ?? null);
   const [escrito, setEscrito] = useState("");
   const [buscar, setBuscar] = useState("");
   const [partida, setPartida] = useState<string | undefined>(undefined);
@@ -441,8 +435,10 @@ export function PestanaApu(props: Props) {
       alAusente={props.alAusente}
       recarga={lecturas}
     >
-      {(vista, actualizando) =>
-        vista.vacio_mensaje !== null ? (
+      {(vista, actualizando) => (
+        <>
+          <AyudaDePestana id="apu" puedeEditar={puedeEditar} />
+          {vista.vacio_mensaje !== null ? (
           <p className="cds--type-body-compact-01">{vista.vacio_mensaje}</p>
         ) : (
           <div className="silice-hoja__apu" aria-busy={actualizando}>
@@ -473,8 +469,9 @@ export function PestanaApu(props: Props) {
               <EditorDeApu key={vista.detalle.codigo} {...props} detalle={vista.detalle} alRelectura={alRelectura} />
             )}
           </div>
-        )
-      }
+        )}
+        </>
+      )}
     </VistaCarga>
   );
 }

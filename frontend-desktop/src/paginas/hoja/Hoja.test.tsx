@@ -149,20 +149,19 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     expect(JSON.parse(String(init?.body))).toEqual({ proyecto: "Nuevo", version: null });
   });
 
-  test("3b-F3: las nueve pestañas, en el orden de la clásica, con las flechas", async () => {
+  test("3b-F3: las ocho pestañas del plan de F4 (Tarea 4), en su orden, con las flechas", async () => {
     servidor();
     montar();
     const lista = await screen.findByRole("tablist");
     const pestanas = within(lista).getAllByRole("tab");
     expect(pestanas.map((p) => p.textContent)).toEqual([
       "Espacio y metrajes",
-      "APU",
-      "Presupuesto",
-      "Plan y curva",
-      "Punto de equilibrio",
+      "Partidas",
+      "Análisis de precio (APU)",
+      "Plan y equilibrio",
       "Precios",
-      "Parámetros",
-      "Auditoría",
+      "Revisión",
+      "Ajustes de costo",
       "Trazabilidad",
     ]);
     expect(screen.getAllByRole("tabpanel").length).toBeGreaterThan(0);

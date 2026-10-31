@@ -410,9 +410,9 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       montar();
       const zona = await region();
       expect(zona).toHaveTextContent("Notas de Rita: Falta el acero de la losa.");
-      expect(screen.getByRole("tab", { name: "Presupuesto" })).toHaveAttribute("aria-selected", "false");
+      expect(screen.getByRole("tab", { name: "Partidas" })).toHaveAttribute("aria-selected", "false");
       await u.click(within(zona).getByRole("button", { name: "Hacer una versión nueva a partir de esta" }));
-      await esperar(() => expect(screen.getByRole("tab", { name: "Presupuesto" })).toHaveAttribute("aria-selected", "true"));
+      await esperar(() => expect(screen.getByRole("tab", { name: "Partidas" })).toHaveAttribute("aria-selected", "true"));
       expect(within(zona).getByRole("status")).toHaveTextContent("Corrija y guarde: será una versión nueva.");
       // No reabre ni envía nada: el borrador de esa versión ya está abierto.
       expect(envios()).toEqual([]);
