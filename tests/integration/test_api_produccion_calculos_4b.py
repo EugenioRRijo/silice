@@ -118,6 +118,24 @@ def test_publicar_dos_veces_da_409_y_no_crea_otra_lista(http) -> None:
     assert _listas() == antes and contar(PublicacionRegistrada) == 1
 
 
+def test_un_choque_en_la_base_al_publicar_es_409_y_no_escribe(http, monkeypatch) -> None:
+    """Ronda 2: dos publicaciones que pasan la comprobacion a la vez (simulado saltandola); la
+    segunda choca con el `unique` de `prod_publicacion`: 409 con el mismo mensaje y la carpeta no
+    se confirma."""
+    _sembrar()
+    calculo = _calcular(http)["id"]
+    admin = Web("admin")
+    lista = admin.post(f"{CALCULOS}/{calculo}/publicar", json={}).json()["id"]
+    antes = _listas()
+    with monkeypatch.context() as parche:
+        for donde in ("api.rutas.produccion_planta", "aplicacion.costo_propio"):
+            parche.setattr(f"{donde}.exigir_publicable", lambda *a, **k: None)
+        r = admin.post(f"{CALCULOS}/{calculo}/publicar", json={})
+    assert r.status_code == 409, r.text
+    assert r.json()["detalle"] == f"El cálculo n.º {calculo} ya se publicó en la lista n.º {lista}."
+    assert _listas() == antes and contar(PublicacionRegistrada) == 1
+
+
 def test_si_falla_la_lista_no_queda_publicacion(http, monkeypatch) -> None:
     """Fallo forzado al confirmar la carpeta del caso: la instalacion se confirma despues, asi que
     tampoco guarda la publicacion; el calculo se puede publicar luego."""

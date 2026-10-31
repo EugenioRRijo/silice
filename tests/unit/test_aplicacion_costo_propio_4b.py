@@ -16,6 +16,9 @@ bajo prueba:
   (1.000 + 500) / 150 = 10. Con un mes mas sin receptor: (1.000 + 500 + 300) / 100 = 18.
 - Arrastre en otra moneda: 36.500 Bs de octubre con la tasa del cierre de octubre (36,50 del 30/10)
   son 1.000 USD; con la de noviembre (50) serian 730 y el agregado saldria a 8,20, no a 10.
+- Ronda 2: la tasa del cierre es la ultima del mes aunque este a mas de 7 dias del ultimo dia (la
+  del 03/11 o la del 02/10 sirven). Entre varios calculos anteriores, el del periodo mas reciente:
+  octubre (5) aunque septiembre (7) se recalcule despues.
 """
 
 from __future__ import annotations
@@ -150,6 +153,40 @@ def test_la_lista_sin_tasa_del_cierre_falla_y_la_nombra(ins, caso) -> None:
     assert _calculos(ins) == 0
 
 
+def test_lo_comprado_con_una_tasa_lejos_del_cierre(ins, caso) -> None:
+    """Ronda 2: la unica tasa de noviembre es la del 03/11 (200), 27 dias antes del cierre."""
+    cp.planta(ins)
+    _costo(ins, NOV, "cantera", "1000", "Bs", cp.dia(3))
+    _costo(ins, NOV, "planta", "1200", "Bs", cp.dia(12))
+    cp.lista(caso, "USD", date(2026, 6, 1), cp.LISTA_USD)
+    cp.tasas(caso, {date(2026, 6, 1): "50", date(2026, 11, 3): "200"})
+    calculo = _calcular(ins, caso, NOV, "Bs")
+    assert calculo.por_tonelada["MZ-1"] == D("6816.70")
+    assert _datos(calculo)["entradas"]["tasa_del_cierre"]["fecha"] == "2026-11-03"
+
+
+def test_la_base_al_publicar_con_una_tasa_lejos_del_cierre(ins, caso) -> None:
+    """Calculo en USD sobre una base en Bs; la unica tasa de noviembre es la del 03/11 (36,50):
+    21.900 / 36,50 = 600."""
+    cp.noviembre_usd(ins, caso)
+    cp.tasas(caso, {cp.dia(3): cp.TASA})
+    calculo = _calcular(ins, caso, NOV)
+    otra = caso.get(models.ListaPrecios, cp.lista(caso, "Bs", cp.dia(5), cp.LISTA_BS, "Otra"))
+    lista = publicar_calculo(
+        caso,
+        calculo,
+        sesion_ins=ins,
+        nombre_del_caso=CARPETA,
+        base=otra,
+        empresa_nombre=EMPRESA[0],
+        empresa_rif=EMPRESA[1],
+        usuario="admin",
+        ahora=cp.AHORA,
+    )
+    precios = {p.insumo.codigo: p.precio for p in lista.precios}
+    assert precios["CA-30"] == D("600") and precios["MZP-MZ-1"] == D("50.70")
+
+
 # --- P15: agregado propio no producido en el mes --------------------------------------------------
 
 
@@ -184,6 +221,20 @@ def test_de_varios_calculos_anteriores_toma_el_de_id_mayor(ins, caso) -> None:
     noviembre = _calcular(ins, caso, NOV)
     assert noviembre.por_tonelada == {"MZ-1": D("0.94") * 6 + D("46")}
     assert _datos(noviembre)["entradas"]["de_otro_calculo"]["AGR-12"]["calculo"] == segundo.id
+
+
+def test_de_varios_meses_anteriores_toma_el_periodo_mas_reciente(ins, caso) -> None:
+    """Decision del orquestador (fila 26): septiembre recalculado despues de octubre no gana."""
+    _mezcla_de_noviembre_sin_agregados(ins, caso)
+    cp.entrada(ins, "AGR-12", "100", date(2026, 9, 5))
+    _costo(ins, OCT, "cantera", "500", "USD", date(2026, 10, 3))
+    _costo(ins, "2026-09", "cantera", "700", "USD", date(2026, 9, 3))
+    octubre = _calcular(ins, caso, OCT)
+    septiembre = _calcular(ins, caso, "2026-09")
+    assert septiembre.id > octubre.id and septiembre.por_tonelada == {"AGR-12": D("7")}
+    noviembre = _calcular(ins, caso, NOV)
+    assert noviembre.por_tonelada == {"MZ-1": D("50.70")}
+    assert _datos(noviembre)["entradas"]["de_otro_calculo"]["AGR-12"]["calculo"] == octubre.id
 
 
 def test_agregado_no_producido_de_otra_moneda_no_sirve(ins, caso) -> None:
@@ -342,6 +393,20 @@ def test_arrastre_en_otra_moneda_se_convierte_con_el_cierre_del_mes_de_origen(in
     assert (viene["tasa"]["valor"], viene["tasa"]["fecha"]) == ("36.50", "2026-10-30")
 
 
+def test_arrastre_con_una_tasa_lejos_del_cierre_de_origen(ins, caso) -> None:
+    """Ronda 2: la unica tasa de octubre es la del 02/10 (36,50), 29 dias antes del 31/10."""
+    cp.materiales(ins)
+    _costo(ins, OCT, "cantera", "36500", "Bs", date(2026, 10, 5))
+    _calcular(ins, caso, OCT, "Bs")
+    cp.tasas(caso, {date(2026, 10, 2): cp.TASA, date(2026, 11, 3): "50"})
+    cp.entrada(ins, "AGR-12", "150", cp.dia(5))
+    _costo(ins, NOV, "cantera", "500", "USD", cp.dia(3))
+    noviembre = _calcular(ins, caso, NOV)
+    assert noviembre.por_tonelada == {"AGR-12": D("10")}
+    viene = _datos(noviembre)["entradas"]["viene_del_mes_anterior"]["cantera"]
+    assert viene["tasa"]["fecha"] == "2026-10-02"
+
+
 def test_arrastre_en_otra_moneda_sin_tasa_del_cierre_de_origen_falla(ins, caso) -> None:
     cp.materiales(ins)
     _costo(ins, OCT, "cantera", "36500", "Bs", date(2026, 10, 5))
@@ -404,6 +469,21 @@ def test_publicar_dos_veces_se_niega_sin_escribir_nada(ins, caso) -> None:
     despues = _listas(caso), caso.scalar(select(func.count()).select_from(models.Insumo))
     assert despues == antes
     assert not caso.new and not ins.new
+
+
+def test_un_choque_al_registrar_la_publicacion_es_ya_publicado(ins, caso, monkeypatch) -> None:
+    """Menor (a) de la ronda 2: si dos publicaciones del mismo calculo pasan la comprobacion a la
+    vez, el `unique` de `prod_publicacion` frena la segunda al escribir; se simula saltando la
+    comprobacion previa. Sale `CalculoYaPublicado` con la lista de la primera."""
+    cp.noviembre_usd(ins, caso)
+    calculo = _calcular(ins, caso, NOV)
+    lista = _publicar(ins, caso, calculo)
+    monkeypatch.setattr("aplicacion.costo_propio.exigir_publicable", lambda *a, **k: None)
+    with pytest.raises(CalculoYaPublicado) as error:
+        _publicar(ins, caso, calculo)
+    esperado = f"El cálculo n.º {calculo.id} ya se publicó en la lista n.º {lista.id}."
+    assert str(error.value) == esperado
+    assert publicacion_de(ins, calculo.id).lista_id == lista.id
 
 
 # --- La version 1 de la instantanea se sigue leyendo ----------------------------------------------

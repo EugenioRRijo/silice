@@ -4,6 +4,10 @@ Datos FICTICIOS. Oraculos a mano: con tasas el 03/11 (40), el 28/11 (42) y el 01
 cierre de 2026-11 es la del 28/11, 42 (la ultima con fecha dentro del mes; la del 01/12 es de otro
 mes). Con una sola tasa el 31/10, noviembre no tiene tasa del cierre aunque la busqueda general
 («la mas reciente hasta esa fecha») la devolveria.
+
+Ronda 2 (arbitro): la busqueda general del nucleo rechaza una tasa a mas de 7 dias (S1-R2), pero la
+del cierre es la ultima DENTRO del mes, aunque este lejos del ultimo dia: con una sola tasa el 03/11
+(40), la de noviembre es esa, 27 dias antes del 30/11.
 """
 
 from __future__ import annotations
@@ -64,6 +68,45 @@ def test_sin_ninguna_tasa_falla_igual(caso) -> None:
 def test_periodo_invalido(caso, periodo: str) -> None:
     with pytest.raises(ValueError, match="AAAA-MM"):
         tasa_del_cierre(caso, periodo, "Bs")
+
+
+def test_una_tasa_lejos_del_cierre_dentro_del_mes_sirve(caso) -> None:
+    cp.tasas(caso, {date(2026, 11, 3): "40"})
+    tasa = tasa_del_cierre(caso, "2026-11", "Bs")
+    assert (tasa.valor, tasa.fecha) == (Decimal("40"), date(2026, 11, 3))
+
+
+def test_la_primera_del_mes_sirve(caso) -> None:
+    cp.tasas(caso, {date(2026, 10, 31): "39", date(2026, 11, 1): "41"})
+    assert tasa_del_cierre(caso, "2026-11", "Bs").fecha == date(2026, 11, 1)
+
+
+def test_la_del_mes_lejos_gana_a_una_del_mes_anterior(caso) -> None:
+    """Con tasas el 31/10 (39) y el 03/11 (40): noviembre da la del 03/11; diciembre, sin ninguna
+    propia, falla con el mensaje exacto aunque la del 03/11 sea la mas reciente."""
+    cp.tasas(caso, {date(2026, 10, 31): "39", date(2026, 11, 3): "40"})
+    tasa = tasa_del_cierre(caso, "2026-11", "Bs")
+    assert (tasa.valor, tasa.fecha) == (Decimal("40"), date(2026, 11, 3))
+    with pytest.raises(SinTasaDelDia) as error:
+        tasa_del_cierre(caso, "2026-12", "Bs")
+    assert str(error.value) == (
+        "No hay tasa del BCV publicada en 2026-12 para convertir a Bs. Cárguela en Índices y "
+        "vuelva a intentarlo."
+    )
+
+
+@pytest.mark.parametrize(
+    ("periodo", "ultimo"),
+    [
+        ("2026-11", date(2026, 11, 30)),
+        ("2026-12", date(2026, 12, 31)),
+        ("2028-02", date(2028, 2, 29)),
+    ],
+)
+def test_un_solo_ultimo_dia_del_mes(periodo: str, ultimo: date) -> None:
+    from produccion.costos import ultimo_dia_del_mes
+
+    assert ultimo_dia_del_mes(periodo) == ultimo
 
 
 def test_equivalencia_del_cierre(caso) -> None:
