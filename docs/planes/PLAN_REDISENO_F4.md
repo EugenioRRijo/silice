@@ -15,7 +15,9 @@ de su borrador: `ProveedorDeLaHoja` lo abre una vez y lo comparten Presupuesto, 
 que pasar entre esas tres secciones no lo cierra. El Resumen se queda con la pantalla `obras`, ya reescrita (la mesa de
 todas las obras se da de baja). Archivos y planos y Versiones pasan a ser pantallas propias (`paginas/archivos/`,
 `paginas/versiones/`) y absorben el plano, Elaborar, la Trazabilidad y el selector de versión. El servidor solo añade
-el registro de importaciones (tabla aditiva y una ruta de lectura). `core/` no se toca.
+el registro de importaciones (tabla aditiva y una ruta de lectura) y pasa las **lecturas** de la Hoja de `editar_hoja`
+a `leer_proyecto`, que ya existe, para que quien revisa vea las tres secciones en solo lectura (Tarea 2b, decisión de
+Eugenio del 2026-10-31). `core/` no se toca.
 
 **Stack:** React 19, TypeScript, Carbon 11 (g10), react-router 7 (HashRouter) y Vitest; FastAPI, SQLAlchemy, Alembic y
 pytest. **Sin dependencias nuevas.**
@@ -83,11 +85,11 @@ una razón escrita en su cabecera, jscpd ≤ 1 % y commit por tarea con `git dif
 2. **Obra sin ninguna versión (borrador en blanco).** El Resumen dice «Te falta: agregue la primera partida». Versiones
    muestra su estado vacío sin errores. Archivos y planos importa sobre el borrador en blanco. Pruebas en las Tareas 2,
    5, 6 y 11.
-3. **Cuenta que solo revisa (sin `editar_hoja`) y borrador de solo lectura.** Todas las rutas de `api/rutas/hoja.py`
-   exigen `editar_hoja`, incluso las de lectura (`LEER`, línea 254). Por eso Presupuesto, Archivos y planos y
-   Versiones no aparecen en el árbol, y su ruta da el aviso de permiso del marco, nunca un 403 a medio pintar. El
-   Resumen sí se ve. Con un borrador `solo_lectura`, ninguna franja ofrece guardar, agregar ni enviar. Pruebas en las
-   Tareas 2, 5, 6 y 11.
+3. **Cuenta que solo revisa (sin `editar_hoja`) y borrador de solo lectura.** Eugenio decidió el 2026-10-31 que quien
+   revisa vea Presupuesto, Archivos y planos y Versiones **en solo lectura**. Las lecturas de la Hoja pasan a
+   `leer_proyecto` (Tarea 2b) y las escrituras siguen exigiendo `editar_hoja`. En esas tres secciones no aparece ningún
+   control de edición ni ninguna franja con una acción que daría 403. Con un borrador `solo_lectura`, el criterio es el
+   mismo: nada de guardar, agregar ni enviar. Pruebas en las Tareas 2, 2b, 5, 6, 7, 8, 11 y 13.
 4. **Letra «Muy grande» a 1366×768 y a 1056 px con el panel lateral abierto.** No hay desplazamiento horizontal: la
    tabla se desplaza dentro de su caja y, por debajo del umbral de la letra, el panel pasa por encima. Prueba de
    estructura en la Tarea 7; la medida real, en la Tarea 14.
@@ -100,7 +102,7 @@ una razón escrita en su cabecera, jscpd ≤ 1 % y commit por tarea con `git dif
 |---|---|---|---|
 | 1 | Botón «Nueva obra» arriba del Resumen | 2 | «Nueva obra» de la barra lateral |
 | 2 | Tabla «Obras» de toda la carpeta | 2 | Árbol de obras; las cifras de la obra abierta, en el Resumen |
-| 3 | Cifras sumadas de toda la carpeta, notas de conversión y «fuera de la suma» | 2 | Ninguna por ahora (pregunta abierta 1) |
+| 3 | Cifras sumadas de toda la carpeta, notas de conversión y «fuera de la suma» | 2 | **Pendiente de F5:** vuelven en Empresa (Eugenio, 2026-10-31; pregunta abierta 1) |
 | 4 | Columna «Pendientes» de la mesa | 2 | Bandeja de F3; el Resumen muestra los de la obra |
 | 5 | «Lo que puede hacer aquí» | 2 | Ctrl+K |
 | 6 | «Cree su primera obra» y «Probar con datos de demostración» | 2 | Barra lateral; Empresa › Carpetas de trabajo; «Empieza aquí» (F6) |
@@ -135,6 +137,7 @@ planos (Tarea 11). Su commit de retiro también se anota en la tabla de la bitá
 | 0 | Plegar «Empresa» con letra grande | Sonnet | S | — |
 | 1 | Cabecera de la obra con su estado | Sonnet | S | — |
 | 2 | Resumen de la obra y la franja del paso | Sonnet | M | 1-6 |
+| 2b | La Hoja en solo lectura para quien revisa | Opus | L | — |
 | 3 | La Hoja sube a la obra (`ProveedorDeLaHoja`) | Opus | L | — |
 | 4 | Presupuesto: de nueve pestañas a seis | Sonnet | M | 7, 8, 10, 11, 12, 23, 25 |
 | 5 | Presupuesto: franja, botón principal único y filas afectadas | Opus | M | — |
@@ -148,8 +151,12 @@ planos (Tarea 11). Su commit de retiro también se anota en la tabla de la bitá
 | 13 | Mercado: histórico de precios y cotizaciones | Sonnet | M | — |
 | 14 | Cierre de F4 | Opus (orquestador) y Sonnet (menores) | M | — |
 
-Orden: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14. La 3 tiene que estar antes que la 4 y que la
-11; la 5, antes que la 6, porque Versiones usa `useAprobacionDeVersion`; y la 10, antes que la 11.
+Orden: 0 → 1 → 2 → 2b → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14. La 2b tiene que estar antes que la 3,
+que hereda su `usePuedeEditarLaHoja`, y antes que toda tarea que añada controles de edición. La 3, antes que la 4 y que
+la 11; la 5, antes que la 6, porque Versiones usa `useAprobacionDeVersion`; y la 10, antes que la 11.
+
+**Regla para las tareas 4 a 13:** todo control nuevo que escriba (botón, celda editable, campo, diálogo) se pinta solo
+si `puedeEditar` es verdadero (Tarea 2b), y cada una de esas tareas lleva su prueba «cuenta que revisa» (Foco 3).
 
 ---
 
@@ -320,8 +327,9 @@ alto al árbol.
     - de los pendientes de la obra 3 en Norte y de la obra 3 en Sur, solo se ven los de Norte;
     - sin pendientes: «Nada pendiente por ahora»;
     - sin dato (403 o sin fila): aviso «No hay datos de esta obra todavía.» y ninguna franja;
-    - cuenta que revisa (sin `editar_hoja`), con `siguiente` hacia `hoja`: ve las cifras y el texto de la franja, pero
-      ningún botón (Foco 3);
+    - cuenta que revisa (sin `editar_hoja` ni `control_de_obra`), con `siguiente` «Registrar el avance» hacia
+      `control`: ve las cifras y el texto de la franja, pero ningún botón. Con `siguiente` hacia `hoja`, el botón sí
+      sale, porque desde la Tarea 2b ve Presupuesto en solo lectura (Foco 3);
     - en toda la pantalla hay como mucho un `.cds--btn--primary`;
     - no hay botón «Nueva obra», ni tabla «Obras», ni «Lo que puede hacer aquí», ni «Probar con datos de
       demostración» (bajas 1, 2, 5 y 6).
@@ -332,7 +340,93 @@ alto al árbol.
 - [ ] **Paso 5: baja.** Medir (`npm run muerto`, `npx knip --reporter compact`). Quitar la mesa (la lista de
   «Archivos» de arriba). Comprobar que `npm run muerto` sale en 0 y que pasan `npx vitest run src/paginas src/marco
   src/shell`. **Commit** `refactor(resumen): baja 1 a 6, la mesa de todas las obras`, solo con las bajas. Anotar las
-  seis filas en la bitácora; la 3 remite a la pregunta abierta 1.
+  seis filas en la bitácora. La 3 queda como **pendiente de F5**: Eugenio decidió el 2026-10-31 que las cifras vuelvan
+  en Empresa (pregunta abierta 1).
+
+### Tarea 2b: La Hoja en solo lectura para quien revisa
+
+**Modelo:** Opus. **Tamaño:** L. **Bajas:** ninguna.
+
+**Por qué:** Eugenio decidió el 2026-10-31 que el rol «revisa» vea Presupuesto, Archivos y planos y Versiones en solo
+lectura. Hoy todas las rutas de `api/rutas/hoja.py` exigen `editar_hoja`, incluso las de lectura: `LEER =
+Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))` en la línea 254, y `CuentaDeLaHoja` para los borradores. La acción
+de leer ya existe: `Accion.LEER_PROYECTO`, que tienen arma y revisa (`seguridad/permisos.py`). **No se crea ninguna
+acción nueva** ni cambia la matriz de permisos.
+
+Abrir un borrador no escribe nada en la base: vive en memoria, es de la ficha de cada cuenta (`_vivo` comprueba
+`huella_ficha`) y se va solo. Por eso quien revisa puede abrir el suyo para ver las vistas calculadas, y todo lo que
+lo cambia sigue exigiendo `editar_hoja`.
+
+**Archivos:**
+- Modificar: `api/rutas/hoja.py`, con la dependencia de lectura `VER = Depends(exigir_clave_o_sesion(Accion.LEER_PROYECTO))`
+  y `CuentaQueVe = Annotated[SesionActiva, Depends(cuenta_con(Accion.LEER_PROYECTO, MENSAJE_SOLO_CUENTA))]`;
+  `api/rutas/aprobaciones.py` (`GET /v1/aprobaciones?proyecto=` pasa a `LEER_PROYECTO`, porque Versiones lo lee);
+  `tests/unit/test_api_acceso_por_ruta.py` (la `TABLA`); `docs/api.json` si cambia (con el truco de `git archive
+  HEAD`); y `CHANGELOG.md`.
+- Front: `shell/rutas.ts` (la pantalla `hoja` pasa a `accion: "leer_proyecto"`); `paginas/hoja/puedeEditar.ts`
+  (nuevo); y los componentes de la Hoja que escriben, que se listan en las pruebas.
+- Pruebas: `tests/unit/test_api_hoja_lectura_revisa.py` (nueva), `test_api_acceso_por_ruta.py` y
+  `paginas/hoja/SoloLectura.test.tsx` (nueva).
+
+**Interfaces:**
+- Rutas que pasan a `LEER_PROYECTO`, y nada más:
+  - con clave o sesión (`VER`): `GET /v1/hoja/versiones`, `/antes-y-despues`, `/precios`, `/precios/atipicos`,
+    `/trazabilidad`, `/cadena` y `GET /v1/aprobaciones`;
+  - solo con sesión (`CuentaQueVe`): `GET /v1/hoja/borradores`, `POST /v1/hoja/borradores`,
+    `GET|DELETE /v1/hoja/borradores/{id}`, `GET /borradores/{id}/vistas/{espacio,presupuesto,apu,plan,equilibrio,parametros,auditoria}`,
+    `GET /borradores/{id}/insumos`, `/cambios` y `/excel`.
+
+  `DELETE` de un borrador propio es cerrar la consulta, no tocar datos. Con `reemplazar: true`, `POST
+  /v1/hoja/borradores` solo descarta borradores de la propia ficha, y uno de quien revisa nunca tiene cambios.
+- **Toda otra ruta de `/v1/hoja` sigue en `EDITAR_HOJA`** (`PUT`, los demás `POST`, guardar, plano, llevar, restaurar,
+  cotizar y convertir). La ruta de la Tarea 10 nace en `LEER_PROYECTO`.
+- Front:
+  ```ts
+  // paginas/hoja/puedeEditar.ts. Por qué: una sola regla para todos los controles que escriben en la Hoja y en las
+  // secciones que la comparten; la Tarea 3 la expone como `HojaDeLaObra.puedeEditar`.
+  export function puedeEditarLaHoja(acciones: readonly string[], base: Pick<BaseAbierta, "solo_lectura"> | null): boolean;
+  export function usePuedeEditarLaHoja(base: Pick<BaseAbierta, "solo_lectura"> | null): boolean;   // lee la sesión
+  ```
+  El resultado es `acciones.includes("editar_hoja") && base?.solo_lectura !== true`. Sin `puedeEditar`, los controles
+  que escriben **no se pintan** (no se dejan deshabilitados): una celda editable pasa a texto, igual que una celda de
+  solo lectura de hoy. Encima de las pestañas, una nota (`role="note"`) dice «Está viendo este presupuesto en solo
+  lectura.».
+
+- [ ] **Paso 1: pruebas rojas del servidor.**
+  - `test_api_acceso_por_ruta.py`: en la `TABLA`, las rutas de la lista de arriba pasan de `EDITAR` a `LEER` (que ya
+    vale `{"arma", "revisa"}` en `ROLES`). Las demás de `/v1/hoja` siguen en `EDITAR`, con un comentario
+    `# F4 2b: solo lectura para revisa`. `test_cada_ruta_exige_el_rol_de_su_accion` falla en rojo para esas rutas.
+  - `test_api_hoja_lectura_revisa.py`, con una cuenta «revisa» y una obra ficticia con VIV-001 guardada:
+    - `test_revisa_lee_las_versiones_y_la_trazabilidad`: 200 en `/versiones`, `/trazabilidad`, `/cadena` y
+      `/precios`;
+    - `test_revisa_abre_su_borrador_y_ve_las_vistas`: `POST /borradores` → 201 y las siete vistas → 200;
+    - `test_revisa_no_escribe`: con ese mismo borrador, `PUT /cantidades`, `POST /partidas`, `POST /guardar`,
+      `POST /plano`, `POST /v1/hoja/llevar` y `POST /versiones/restaurar` → 403, y el `rev` del borrador no cambia;
+    - `test_el_administrador_no_ve_la_hoja`: un administrador puro → 403 en `/versiones` (no tiene `leer_proyecto`);
+    - `test_revisa_no_ve_el_borrador_de_otra_ficha`: el `id` del borrador de quien arma → 404 para quien revisa;
+    - `test_revisa_lee_las_aprobaciones_de_la_obra`: `GET /v1/aprobaciones?proyecto=` → 200.
+- [ ] **Paso 2:** `uv run --active pytest tests/unit/test_api_acceso_por_ruta.py tests/unit/test_api_hoja_lectura_revisa.py -q -W error -p no:cacheprovider`
+  → FALLA.
+- [ ] **Paso 3:** cambiar las dependencias de esas rutas (ninguna más) → PASA; `ruff check`; `git diff 51d3ceb4..HEAD --
+  core/ seguridad/permisos.py` vacío. **Commits:** `test(hoja): lecturas de la hoja para quien revisa (rojo)` y luego
+  `feat(hoja): las lecturas de la hoja exigen leer_proyecto`.
+- [ ] **Paso 4: pruebas rojas del front** (`SoloLectura.test.tsx`, sesión con las acciones de «revisa»:
+  `leer_proyecto`, `aprobar_version`, `revisar_paquete`, `ver_riesgo`):
+  - `puedeEditarLaHoja`: arma con base normal → `true`; revisa → `false`; arma con `solo_lectura` → `false`;
+  - el árbol ofrece «Presupuesto» a quien revisa;
+  - en Presupuesto se ve la nota «Está viendo este presupuesto en solo lectura.» y la tabla con sus cifras en es-VE;
+  - en ninguna pestaña hay botón «Agregar partida», «Quitar», «Volver a la calculada», «Guardar versión…»,
+    «Guardar primera versión…», «Descartar cambios», «Agregar línea», «Cambiar insumo», «Usar este insumo», «Plan desde
+    los rendimientos», «Crear plan secuencial», «Agregar fila», «Quitar fila», «Convertir la moneda…», «Registrar una
+    cotización…», «Retirar una cotización…», «Restaurar una versión…», «Enviar a aprobación…» ni «Importar plano (DXF o
+    IFC)»;
+  - en ninguna pestaña hay un `textbox` ni un `spinbutton` sin `readonly` (los que existan son de búsqueda, como el de
+    la partida en el APU, y van con `role="searchbox"`) y la tabla del espacio no se pinta como `role="grid"` editable;
+  - sí están «Descargar Excel», «Ver en Auditoría» y la búsqueda de partida del APU (solo lee);
+  - con la sesión de «arma», todos esos controles siguen ahí (las pruebas de la Hoja de hoy, verdes y sin cambios).
+- [ ] **Paso 5:** `npx vitest run src/paginas/hoja src/shell src/marco` → FALLA; implementar con `usePuedeEditarLaHoja`
+  en cada componente que escribe → PASA; lint; duplicado. **Commits:** `test(hoja): presupuesto en solo lectura para
+  quien revisa (rojo)` y luego `feat(hoja): presupuesto en solo lectura para quien revisa`.
 
 ### Tarea 3: La Hoja sube a la obra (`ProveedorDeLaHoja`)
 
@@ -365,6 +459,7 @@ a «Retomar».
     codigo: string | null;                 // la versión abierta (null: borrador en blanco)
     estado: EstadoBorrador;                // el de useBorrador
     hayCambios: boolean;
+    puedeEditar: boolean;                  // puedeEditarLaHoja(acciones, base) de la Tarea 2b
     ofrecidos: OfertaDeRetomar[]; retomar: (o: OfertaDeRetomar) => void; descartarOfrecidos: () => Promise<void>;
     pedirVersion: (codigo: string) => void; // con cambios, pregunta (DialogoDeVersion) como hoy
     refrescar: () => Promise<void>; aplicar: (r: Resumen) => void; reabrirNuevo: () => void;
@@ -504,7 +599,7 @@ nueva», «Enviar a aprobación…» y la columna Estado).
   export interface EntradaDelPaso {
     version: string | null; vigente: string | null; cambios: number; graves: number;   // graves = CRITICO + ERROR
     aprobacion: string | null;   // clave de comun/aprobacion.ts o null si no hay lectura
-    puedeEditar: boolean;        // !base.solo_lectura
+    puedeEditar: boolean;        // HojaDeLaObra.puedeEditar (Tarea 2b): editar_hoja y no solo_lectura
     puedeEnviar: boolean;        // puedeEditar y la lectura de aprobación no falló
   }
   export interface PasoDelPresupuesto { tipo: "falta" | "siguiente"; texto: string; accion: AccionDelPresupuesto | null }
@@ -542,7 +637,8 @@ nueva», «Enviar a aprobación…» y la columna Estado).
     - devuelta: «Hacer una versión nueva» lleva a «Partidas» (lo que hacía `alHacerVersionNueva`);
     - «Enviar a aprobación…» abre el diálogo de envío con nota opcional, igual que hoy;
     - versión abierta distinta de la vigente: la franja no ofrece enviar;
-    - borrador `solo_lectura`: ninguna franja tiene botón de agregar, guardar, versión nueva ni enviar (Foco 3);
+    - borrador `solo_lectura`, y aparte una cuenta que revisa: la franja sale con su texto, pero sin botón de agregar,
+      guardar, versión nueva ni enviar (Foco 3);
     - un renglón con un hallazgo ERROR tiene `silice-fila--afectada` y la palabra «Error» en su Estado; uno sin
       hallazgos no lleva la clase.
 - [ ] **Paso 2:** → FALLA.
@@ -560,7 +656,8 @@ nueva», «Enviar a aprobación…» y la columna Estado).
   `comun/PanelLateral.tsx` con su `.scss`. Por qué el panel va en `comun/`: lo usan el registro de cambios (aquí), el
   APU (Tarea 7), Componer (Tarea 9) y el informe de importación (Tarea 11). Es una región acoplada a la derecha, no
   modal, como la columna del recorrido; el inventario la pide en las cuatro secciones.
-- Modificar: `shell/rutas.ts` (nueva pantalla `versiones`, acción `editar_hoja`, la misma que exigen sus rutas),
+- Modificar: `shell/rutas.ts` (nueva pantalla `versiones`, acción `leer_proyecto`, la misma que exigen sus lecturas
+  desde la Tarea 2b),
   `marco/secciones.ts`
   (`versiones.pagina = "versiones"`), `paginas/hoja/index.tsx` (fuera el selector «Versión» y la pestaña
   «Trazabilidad»), `paginas/hoja/logica.ts` (fuera `trazabilidad` de `PESTANAS`) y `paginas/aprobar/index.tsx` (gana el
@@ -596,8 +693,8 @@ nueva», «Enviar a aprobación…» y la columna Estado).
   con la palabra «abierta», no solo con color. Cada fila tiene «Abrir», que navega a
   `rutaDeObra(c, o, "presupuesto") + "?version=<código>"`, «Ver cambios», que abre el panel «Registro de cambios de la
   versión V», y «Restaurar…», que es el diálogo de hoy y solo aparece con `editar_hoja`.
-- En Aprobaciones se añade el h2 «Rastro de la obra» con el `RastroDeAprobaciones` de hoy, solo para cuentas con
-  `editar_hoja`.
+- En Aprobaciones se añade el h2 «Rastro de la obra» con el `RastroDeAprobaciones` de hoy, para cuentas con
+  `leer_proyecto`: desde la Tarea 2b, `GET /v1/aprobaciones` lo exige, así que quien revisa también lo ve.
 
 - [ ] **Paso 1: pruebas rojas.**
   - `logica.test.ts`: `filasDeVersiones` combina el estado («devuelta» en VIV-001) y marca la abierta; con
@@ -613,12 +710,14 @@ nueva», «Enviar a aprobación…» y la columna Estado).
     - una cadena rota da el aviso «Se rompió en la versión VIV-002» con su ícono;
     - una obra sin versiones muestra el estado vacío «Esta obra aún no tiene versiones guardadas.» y ningún error
       (Foco 2);
-    - cuenta sin `editar_hoja`: «Versiones» no aparece en el árbol y la ruta da el aviso de permiso del marco (Foco 3);
+    - cuenta que revisa: ve la tabla con el estado de aprobación, «Abrir» y «Ver cambios», pero no «Restaurar…» ni
+      «Guardar versión…», y la franja no tiene botón (Foco 3);
+    - administrador puro (sin `leer_proyecto`): «Versiones» no aparece en el árbol;
     - si `GET /v1/aprobaciones` falla, la columna de estado queda vacía y el resto de la tabla se pinta, sin aviso de
       error que tape la tabla;
     - con VIV-001 abierta y VIV-002 vigente, la fila de VIV-001 dice «abierta» (Foco 5).
   - `hoja/Pestanas.test.tsx`: ya no hay combobox «Versión» (baja 9) ni pestaña «Trazabilidad» (baja 24).
-  - `Aprobar.test.tsx`: con `editar_hoja` se ve el h2 «Rastro de la obra»; sin él, no.
+  - `Aprobar.test.tsx`: con la sesión de «revisa» se ve el h2 «Rastro de la obra»; sin `leer_proyecto`, no.
   - `marco/secciones.test.ts`: `versiones` tiene `pagina: "versiones"` y aparece en el árbol.
 - [ ] **Paso 2:** → FALLA.
 - [ ] **Paso 3:** implementar.
@@ -655,6 +754,8 @@ nueva», «Enviar a aprobación…» y la columna Estado).
     actualiza el total bajo la tabla;
   - cerrar el panel (Esc) devuelve el foco al botón de esa fila;
   - con el panel abierto, ir a «Análisis de precio (APU)» muestra E-01 elegida;
+  - cuenta que revisa: el panel se abre y muestra el APU con sus cifras, sin campos de cantidad ni de rendimiento
+    editables y sin «Agregar línea» ni «Quitar» (Foco 3);
   - estructura (Foco 4): la caja de la tabla de Partidas tiene `overflow-x: auto` y el contenedor de la pestaña no
     fija ningún ancho mayor que el visible; con la clase de letra muy grande, el panel usa la regla de pasar por encima.
 - [ ] **Paso 2:** → FALLA. **Paso 3:** implementar. **Paso 4:** → PASA; lint; duplicado. **Commits:**
@@ -681,7 +782,8 @@ nueva», «Enviar a aprobación…» y la columna Estado).
 
 - [ ] **Paso 1: pruebas rojas:** en modo `cambiar` el diálogo trae el tipo de línea y la línea fijos y solo pide el
   insumo nuevo; al aceptar se manda el `POST …/insumo` con el cuerpo de hoy; en modo `agregar` se comporta como
-  `AgregarLineaApu`; Esc cierra y el foco vuelve al botón que lo abrió.
+  `AgregarLineaApu`; Esc cierra y el foco vuelve al botón que lo abrió; con una cuenta que revisa, `EditorDeApu` no
+  pinta «Cambiar», «Quitar» ni «Agregar línea» (Foco 3).
 - [ ] **Paso 2:** → FALLA. **Paso 3:** implementar. **Paso 4:** → PASA; lint; duplicado; muerto. **Commits:**
   `test(apu): un dialogo para las lineas (rojo)` y luego `refactor(apu): agregar y cambiar insumo en un solo dialogo`.
 
@@ -769,7 +871,8 @@ quién y qué produjo) **sin guardar copia del archivo**. Hoy nada lo registra: 
   La ruta es `GET /v1/hoja/importaciones?proyecto=<código o nombre>` y devuelve `{"importaciones": [{"tipo", "archivo",
   "fecha_hora", "usuario", "resumen", "version": str|null, "guardada": bool}]}`, de la más nueva a la más vieja. Las no
   guardadas salen de los borradores vivos de la ficha para esa obra. Permiso: el `LEER` de `api/rutas/hoja.py`, que
-  exige `editar_hoja`, igual que `GET /v1/hoja/versiones`. Lleva `Cache-Control: no-store`.
+  exige `leer_proyecto` desde la Tarea 2b, igual que `GET /v1/hoja/versiones`; quien revisa ve el registro. Lleva
+  `Cache-Control: no-store`. En la `TABLA` de `test_api_acceso_por_ruta.py` entra como `LEER`.
 
 - [ ] **Paso 1: pruebas rojas**, con una obra ficticia «Galpón Norte» y oráculos escritos a mano:
   - `test_fusionar_un_plano_lo_anota_en_el_borrador`: tras `fusionar`, `vivo.importaciones` trae el tipo `plano`, el
@@ -802,7 +905,8 @@ quién y qué produjo) **sin guardar copia del archivo**. Hoy nada lo registra: 
   `paginas/archivos/`, con `git mv`; fuera los comentarios `ui/paginas/hoja.py:1225-1485` y `COLUMNAS_DEL_INFORME de la
   clásica` (hallazgo 7). `ImportarPlano` pasa a ser el cuerpo del diálogo.
 - Modificar: `PestanaEspacio.tsx` (fuera el bloque del plano y, en su lugar, un enlace «Importar un plano en Archivos y
-  planos»), `shell/rutas.ts` (nueva pantalla `archivos`, acción `editar_hoja`) y `marco/secciones.ts`
+  planos»), `shell/rutas.ts` (nueva pantalla `archivos`, acción `leer_proyecto`; subir exige `puedeEditar`) y
+  `marco/secciones.ts`
   (`archivos.pagina = "archivos"`).
 - Pruebas: `paginas/archivos/Archivos.test.tsx` y `logica.test.ts`. `ImportarPlano.test.tsx` y `PlanoEnHoja.test.tsx` se
   mudan; sus aserciones del flujo (unidad, alturas, circuitos, fusionar, descartar, informe) se conservan y el informe
@@ -833,8 +937,8 @@ quién y qué produjo) **sin guardar copia del archivo**. Hoy nada lo registra: 
   - ir a Presupuesto tras fusionar no abre otro borrador (sigue el mismo `id`);
   - el registro vacío dice «Todavía no se ha importado ningún archivo en esta obra.»;
   - en una obra en blanco, el plano se importa sobre el borrador en blanco (Foco 2);
-  - cuenta sin `editar_hoja`: la sección no aparece en el árbol y `#/obra/…/archivos` da el aviso de permiso del
-    marco (Foco 3);
+  - cuenta que revisa: ve la tabla del registro y el panel del informe, pero no «Subir plano o cómputo», ni «Describir
+    el espacio a mano», ni ninguna franja con botón; la pantalla no tiene `.cds--btn--primary` (Foco 3);
   - «Describir el espacio a mano» lleva a Presupuesto con la pestaña «Espacio y metrajes» visible y elegida;
   - en Espacio y metrajes ya no está el bloque «Importar plano (DXF o IFC)» y sí el enlace a Archivos y planos.
 - [ ] **Paso 2:** → FALLA. **Paso 3:** implementar. **Paso 4:** → PASA; `npx vitest run src/paginas/archivos
@@ -924,6 +1028,8 @@ quién y qué produjo) **sin guardar copia del archivo**. Hoy nada lo registra: 
     «Cotizaciones de la obra»);
   - en «Histórico de precios», elegir «Cemento gris» en el autocompletado y «Filtrar» pide el histórico con esa
     descripción y pinta la variación en es-VE («12,50 %»);
+  - con una cuenta que revisa, «Cotizaciones de la obra» muestra las cotizaciones sin «Registrar una cotización…» ni
+    «Retirar una cotización…», porque cotizar sigue exigiendo `editar_hoja` (Foco 3);
   - «Registrar una cotización…» manda `POST /v1/hoja/versiones/cotizar` con la versión vigente y el aviso enlaza a
     `…/presupuesto?version=V`;
   - en Presupuesto › Precios ya no hay «Registrar una cotización…» y sí el enlace a Mercado;
@@ -968,6 +1074,10 @@ quién y qué produjo) **sin guardar copia del archivo**. Hoy nada lo registra: 
 
 - El rediseño visual de Aprobaciones, Mercado (más allá de las dos pestañas de la Tarea 13) y Control de obra: es el
   resto de F4 según §7 y queda para un plan aparte, con su propio inventario.
+- **Pendiente de F5 (Eugenio, 2026-10-31):** las cifras de valor ganado sumadas de toda la carpeta, con sus notas de
+  conversión y «fuera de la suma», que la baja 3 quita del Resumen, vuelven en Empresa. El plan de F5 parte del commit
+  de esa baja (`git checkout <sha>^ -- frontend-desktop/src/paginas/obras/CifrasMesa.tsx` y lo que use) y las monta en
+  la entrada de Empresa que corresponda.
 - F5 Empresa (Componer queda alcanzable por Ctrl+K hasta que Precios y catálogo lo aloje), F6 Ayuda (el
   «¿Qué es esto?» de la Tarea 4 pasa a panel con guías; «Empieza aquí» recoge lo de la baja 6) y F7, el retiro final de
   las rutas viejas (`/hoja`, `/componer`) y del enlace `to="/hoja"` de `paginas/vial/Tramos.tsx`, que hoy funciona por la
@@ -979,7 +1089,7 @@ quién y qué produjo) **sin guardar copia del archivo**. Hoy nada lo registra: 
 
 | # | Pregunta | Lo que se hará | Cómo cambiarlo |
 |---|---|---|---|
-| 1 | La baja 3 quita las cifras de valor ganado sumadas de toda la carpeta, que no son de una obra. ¿Dónde las quiere ver? | Salen del Resumen y no van a ningún otro sitio en F4 (commit revertible de la Tarea 2). La recomendación es devolverlas en F5, dentro de Empresa, como «Cómo van las obras». | `git checkout <sha de la baja>^ -- frontend-desktop/src/paginas/obras/CifrasMesa.tsx` y montarlas en la entrada de Empresa que diga |
+| 1 | La baja 3 quita las cifras de valor ganado sumadas de toda la carpeta, que no son de una obra. ¿Dónde las quiere ver? | **Respondida por Eugenio (2026-10-31):** se quitan de la carpeta en F4 (commit revertible de la Tarea 2) y vuelven en F5, en Empresa. Queda como pendiente de F5 en «Fuera de esta tanda». | — |
 | 2 | El Resumen y la cabecera leen `GET /v1/obras/resumen`, que calcula todas las obras de la carpeta, y se quedan con una. ¿Pesa? | Se usa así: es la ruta que ya existe y se lee una vez por obra, no por sección | Ruta `GET /v1/obras/{id}/ficha` en `api/rutas/obras.py` que filtre antes de calcular, y cambiar solo `useFichaDeLaObra` |
 | 3 | No hay una marca de «obra de instalaciones» (el proyecto no guarda dominio). ¿Cuándo se ve «Espacio y metrajes»? | Cuando el espacio no está vacío, o después de «Describir el espacio a mano» en Archivos y planos (dura mientras la obra esté abierta) | `pestanasVisibles` en `paginas/hoja/logica.ts` (mostrarla siempre, o leer un dominio si el servidor lo da) |
 | 4 | §3.2 pide la pestaña APU y además el APU en panel desde la fila. ¿Las dos? | Las dos, con el mismo `EditorDeApu` y la partida elegida en común | Quitar la pestaña de `PESTANAS` (el panel se queda) |
@@ -994,3 +1104,4 @@ quién y qué produjo) **sin guardar copia del archivo**. Hoy nada lo registra: 
 | 13 | «Empresa» plegada: ¿se recuerda entre sesiones? | No: arranca plegada con letra Grande o Muy grande, salvo con una entrada de Empresa abierta | Guardarlo junto al tamaño de letra en `comun/preferenciaDeLetra.ts` |
 | 14 | La migración `caso_0020` puede chocar con la línea vial. | Se renumera según la cabeza real al escribirla y otra vez al integrar | — |
 | 15 | La «franja amarilla con un solo botón amarillo» de la maqueta frente a los papeles del color de la Tarea 4c de F3. | La franja es precaución (fondo amarillo claro) y su botón es la acción (complementario, texto blanco) | Las clases de `comun/FranjaDelPaso.scss` |
+| 16 | Todas las rutas de la Hoja exigían `editar_hoja`, incluso las de lectura, así que quien revisa no habría visto Presupuesto, Archivos y planos ni Versiones. ¿Las debe ver? | **Respondida por Eugenio (2026-10-31):** sí, en solo lectura. Tarea 2b: las lecturas pasan a `leer_proyecto` (acción que ya existe), las escrituras siguen en `editar_hoja` y el front no pinta controles de edición sin `puedeEditar` | — |
