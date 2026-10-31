@@ -38,6 +38,9 @@ const CLINICA = obra(NORTE, 1, "Clínica Las Mercedes");
 const TORRE = obra(NORTE, 2, "Torre B");
 const GALPON = obra(SUR, 3, "Galpón Sur");
 
+// Las obras de la carpeta abierta que ya tienen tramos viales guardados (`GET /v1/vial/obras`).
+let vialesDelServidor: number[] = [];
+
 let respuesta:
   | { carpeta_actual: string | null; carpeta_actual_titulo: string; obras: ObraDeCarpetaRespuesta[] }
   | ErrorDeApi;
@@ -50,12 +53,14 @@ function servidor(obras: ObraDeCarpetaRespuesta[], carpetaActual: string | null 
 
 beforeEach(() => {
   servidor([CLINICA, TORRE, GALPON]);
+  vialesDelServidor = [];
   pedirFalso.mockReset();
   pedirFalso.mockImplementation(async (ruta: string) => {
     if (ruta === "/v1/obras/todas") {
       if (respuesta instanceof ErrorDeApi) throw respuesta;
       return respuesta;
     }
+    if (ruta === "/v1/vial/obras") return { obras: vialesDelServidor };
     if (ruta === "/v1/carpeta") return { moneda: "Bs", declarada: true, lista: null, aviso: null };
     throw new Error(`petición inesperada: ${ruta}`);
   });
@@ -194,6 +199,62 @@ describe("BarraLateral: obra abierta", () => {
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
     // «hoja» y «mercado» exigen editar_hoja y «control», control_de_obra: quien solo revisa no los ve.
     expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Aprobaciones"]);
+  });
+});
+
+describe("BarraLateral: «Tramos» solo en las obras viales (plan vial, Tarea 8)", () => {
+  const nombres = (obraAbierta: string) =>
+    within(screen.getByRole("group", { name: obraAbierta })).getAllByRole("treeitem").map((s) => s.textContent);
+  const clinica = { carpeta: NORTE, obraId: 1 };
+  const rutaDeClinica = "/obra/Carpeta%20Norte.db/1/resumen";
+
+  it("una obra sin tramos guardados no ofrece «Tramos»", async () => {
+    pintar({ abierta: clinica, seccion: "resumen", ruta: rutaDeClinica });
+    await arbol();
+    await waitFor(() => expect(pedirFalso).toHaveBeenCalledWith("/v1/vial/obras"));
+    expect(nombres("Clínica Las Mercedes")).toEqual(["Resumen", "Presupuesto", "Aprobaciones", "Mercado", "Control de obra"]);
+  });
+
+  it("una obra con tramos guardados lo ofrece, entre Presupuesto y Aprobaciones", async () => {
+    vialesDelServidor = [1];
+    pintar({ abierta: clinica, seccion: "resumen", ruta: rutaDeClinica });
+    await arbol();
+    expect(await screen.findByRole("treeitem", { name: "Tramos" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/tramos");
+    expect(nombres("Clínica Las Mercedes")).toEqual(["Resumen", "Presupuesto", "Tramos", "Aprobaciones", "Mercado", "Control de obra"]);
+  });
+
+  it("solo la obra que tiene los tramos: otra de la misma carpeta no", async () => {
+    vialesDelServidor = [1];
+    pintar({ abierta: { carpeta: NORTE, obraId: 2 }, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/2/resumen" });
+    await arbol();
+    await waitFor(() => expect(pedirFalso).toHaveBeenCalledWith("/v1/vial/obras"));
+    expect(screen.queryByRole("treeitem", { name: "Tramos" })).toBeNull();
+  });
+
+  it("la sección en la que se está se ofrece aunque aún no haya tramos (quien llegó por el buscador no la pierde)", async () => {
+    pintar({ abierta: clinica, seccion: "tramos", ruta: "/obra/Carpeta%20Norte.db/1/tramos" });
+    await arbol();
+    expect(await screen.findByRole("treeitem", { name: "Tramos" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("si la lista de tramos no llega, la barra sigue igual y sin avisos", async () => {
+    pedirFalso.mockImplementation(async (ruta: string) => {
+      if (ruta === "/v1/vial/obras") throw new ErrorDeApi(500, "falló");
+      if (ruta === "/v1/obras/todas") return respuesta;
+      if (ruta === "/v1/carpeta") return { moneda: "Bs", declarada: true, lista: null, aviso: null };
+      throw new Error(`petición inesperada: ${ruta}`);
+    });
+    pintar({ abierta: clinica, seccion: "resumen", ruta: rutaDeClinica });
+    await arbol();
+    await waitFor(() => expect(pedirFalso).toHaveBeenCalledWith("/v1/vial/obras"));
+    expect(nombres("Clínica Las Mercedes")).not.toContain("Tramos");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("quien no edita la hoja no pide la lista", async () => {
+    pintar({ sesion: sesionDe("rita"), abierta: clinica, seccion: "resumen", ruta: rutaDeClinica });
+    await arbol();
+    expect(pedirFalso).not.toHaveBeenCalledWith("/v1/vial/obras");
   });
 });
 

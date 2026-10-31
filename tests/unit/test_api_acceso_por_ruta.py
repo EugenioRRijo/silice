@@ -319,6 +319,10 @@ TABLA = {
     ("POST", "/v1/hoja/versiones/retirar-cotizacion"): EDITAR,  # S4; escribe; solo sesion
     ("POST", "/v1/hoja/versiones/convertir"): REAJUSTAR,  # S5; escribe; solo sesion
     ("GET", "/v1/hoja/cadena"): EDITAR,  # S6; clave o sesion (solo lee)
+    ("GET", "/v1/vial/tramos"): EDITAR,  # plan vial T8; clave o sesion (solo lee)
+    ("PUT", "/v1/vial/tramos"): EDITAR,  # plan vial T8; escribe; solo sesion
+    ("POST", "/v1/vial/tramos/importar"): EDITAR,  # plan vial T8; escribe; solo sesion
+    ("GET", "/v1/vial/obras"): EDITAR,  # plan vial T8; clave o sesion (solo lee)
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {

@@ -23,10 +23,11 @@ describe("SECCIONES_DE_OBRA", () => {
     expect("cada tarea").not.toMatch(PROHIBIDAS);
   });
 
-  it("son las siete, en este orden", () => {
+  it("son las ocho, en este orden", () => {
     expect(SECCIONES_DE_OBRA.map((s) => s.id)).toEqual([
       "resumen",
       "presupuesto",
+      "tramos",
       "archivos",
       "versiones",
       "aprobaciones",
@@ -39,6 +40,7 @@ describe("SECCIONES_DE_OBRA", () => {
     expect(Object.fromEntries(SECCIONES_DE_OBRA.map((s) => [s.id, s.pagina]))).toEqual({
       resumen: "obras",
       presupuesto: "hoja",
+      tramos: "tramos",
       archivos: null,
       versiones: null,
       aprobaciones: "aprobar",
@@ -48,6 +50,10 @@ describe("SECCIONES_DE_OBRA", () => {
     for (const s of SECCIONES_DE_OBRA) {
       if (s.pagina !== null) expect(paginaPorId(s.pagina), s.id).toBeDefined();
     }
+  });
+
+  it("solo «Tramos» es de las obras viales; las demás son de toda obra", () => {
+    expect(SECCIONES_DE_OBRA.filter((s) => s.soloVial).map((s) => s.id)).toEqual(["tramos"]);
   });
 
   it("hablan en el vocabulario de la persona, con una ayuda corta", () => {
