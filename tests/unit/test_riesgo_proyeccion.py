@@ -150,6 +150,19 @@ def test_un_hueco_en_medio_cuesta_dos_meses():
     assert p.meses_usados == 34
 
 
+def test_una_entrada_vieja_del_mapa_no_baja_los_meses():
+    # el mapa aún nombra el asfalto, que ya no está en el presupuesto (solo el flete, en Bs), y su
+    # serie solo tiene 6 meses: los meses completos se cuentan con las series de lo que sí está
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50)}, moneda="Bs")
+    mapa = MapaSeries({FLETE: SERIE_TASA, ASFALTO: PPI})
+    historia = historia_uniforme()
+    historia[PPI] = {m: v for m, v in historia[PPI].items() if m >= date(2026, 7, 1)}
+
+    p = proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p())
+
+    assert p.meses_usados == 36
+
+
 def test_la_historia_posterior_al_inicio_no_cuenta():
     presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})

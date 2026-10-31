@@ -154,6 +154,20 @@ def test_informa_el_numero_de_cortes():
     assert len(c3.cortes) == c3.n_cortes
 
 
+def test_una_entrada_vieja_del_mapa_no_quita_cortes():
+    # un insumo que ya no está en el presupuesto sigue en el mapa con el gasoil, que no tiene
+    # historia: no cuenta para los cortes ni para lo real (los mismos 4 cortes que sin esa entrada)
+    mapa = MapaSeries({ASFALTO: PPI, "Insumo retirado": GASOIL})
+    historia = _exponencial(22)
+    del historia[GASOIL]
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
+
+    c = comprobar_hacia_atras(presupuesto, composiciones, PARAMETROS, historia, mapa, _p(meses=6))
+
+    assert c.n_cortes == 4
+    assert c.cobertura == D(1)
+
+
 def test_un_corte_sin_el_plazo_completo_no_entra():
     # 30 meses planos: sin hueco hay 12 cortes (c = 13..24); falta el último mes de una serie y el
     # corte 24 (su plazo llega al mes 29) sale, y también los de plazo que lo tocan: c + 5 ≥ 29
