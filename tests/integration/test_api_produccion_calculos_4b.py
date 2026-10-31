@@ -23,7 +23,7 @@ from core import models
 from operacion.base_datos import preparar_base
 from operacion.config import ruta_caso_por_defecto
 from operacion.instalacion import sesion_de_instalacion
-from produccion.modelo import PublicacionRegistrada
+from produccion.modelo import Calculo, PublicacionRegistrada
 from seguridad import cuentas, empresas
 from tests.fixtures import costo_propio as cp
 from tests.fixtures.hoja_versiones_api import base
@@ -97,6 +97,21 @@ def test_mes_sin_produccion_se_calcula_y_no_se_publica(http) -> None:
     assert r.status_code == 422, r.text
     assert r.json()["detalle"] == "Este cálculo no tiene costos por tonelada que publicar."
     assert _listas() == antes and contar(PublicacionRegistrada) == 0
+
+
+def test_sin_el_calculo_del_mes_lo_que_paso_niega_el_siguiente_con_422(http) -> None:
+    """Tarea 16b, fila 27: noviembre deja la cantera y la planta sin receptor; diciembre no tiene
+    calculo, asi que calcular enero de 2027 se niega pidiendo diciembre y no guarda nada."""
+    _sembrar(produccion=False)
+    _calcular(http)
+    antes = contar(Calculo)
+    r = http.post(CALCULOS, json={"periodo": "2027-01", "moneda": "USD"})
+    assert r.status_code == 422, r.text
+    assert r.json() == {
+        "detalle": "Calcule primero 2026-12: el cálculo de 2026-11 dejó costos que pasan a ese "
+        "mes."
+    }
+    assert contar(Calculo) == antes == 1
 
 
 # --- P22: una sola publicacion --------------------------------------------------------------------

@@ -542,3 +542,50 @@ def test_instantanea_v1_se_sigue_leyendo(ins, caso) -> None:
     entradas = _datos(noviembre)["entradas"]
     assert entradas["viene_del_mes_anterior"] == {}
     assert entradas["de_otro_calculo"]["AGR-12"]["calculo"] == v1
+
+
+# --- Tarea 16b, fila 27: sin el calculo de M, lo que dejo M-1 no se pierde ------------------------
+#
+# Oraculos a mano: octubre deja 1.000 USD de cantera sin agregados (la mezcla es solo de comprados);
+# noviembre no tiene calculo. Calcular diciembre se niega pidiendo noviembre y no escribe nada. Si
+# octubre no dejo nada (sus 1.000 los recibieron 100 t de AGR-12), diciembre se calcula sin
+# noviembre: 300 / 100 t = 3. Con un hueco de dos meses (diciembre deja, enero y febrero sin
+# calculo), marzo pide enero, el primero que falta, aunque el ano cambie.
+
+FALTA_NOVIEMBRE = (
+    "Calcule primero 2026-11: el cálculo de 2026-10 dejó costos que pasan a ese mes."
+)
+
+
+def test_sin_calculo_de_m_lo_que_dejo_m_menos_1_niega_m_mas_1(ins, caso) -> None:
+    _octubre_con_cantera_sin_agregados(ins, caso)
+    cp.entrada(ins, "AGR-12", "100", date(2026, 12, 5))
+    _costo(ins, DIC, "cantera", "300", "USD", date(2026, 12, 3))
+    with pytest.raises(ErrorDeCalculo) as error:
+        _calcular(ins, caso, DIC)
+    assert str(error.value) == FALTA_NOVIEMBRE
+    assert _calculos(ins) == 1
+
+
+def test_si_m_menos_1_no_dejo_nada_el_hueco_no_importa(ins, caso) -> None:
+    cp.materiales(ins)
+    cp.entrada(ins, "AGR-12", "100", date(2026, 10, 5))
+    _costo(ins, OCT, "cantera", "1000", "USD", date(2026, 10, 3))
+    assert _datos(_calcular(ins, caso, OCT))["resultado"]["pasa_al_mes_siguiente"] == {}
+    cp.entrada(ins, "AGR-12", "100", date(2026, 12, 5))
+    _costo(ins, DIC, "cantera", "300", "USD", date(2026, 12, 3))
+    assert _calcular(ins, caso, DIC).por_tonelada == {"AGR-12": D("3")}
+
+
+def test_con_un_hueco_mas_largo_pide_el_primer_mes_que_falta(ins, caso) -> None:
+    cp.materiales(ins)
+    _costo(ins, DIC, "cantera", "1000", "USD", date(2026, 12, 3))
+    _calcular(ins, caso, DIC)
+    cp.entrada(ins, "AGR-12", "100", date(2027, 3, 5))
+    _costo(ins, "2027-03", "cantera", "300", "USD", date(2027, 3, 3))
+    with pytest.raises(ErrorDeCalculo) as error:
+        _calcular(ins, caso, "2027-03")
+    assert str(error.value) == (
+        "Calcule primero 2027-01: el cálculo de 2026-12 dejó costos que pasan a ese mes."
+    )
+    assert _calculos(ins) == 1
