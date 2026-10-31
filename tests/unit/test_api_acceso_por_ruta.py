@@ -282,6 +282,7 @@ TABLA = {
     ("POST", "/v1/riesgo/proyeccion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
     ("POST", "/v1/riesgo/comprobacion"): VER_RIESGO,  # plan vial T16; calcula, no guarda
     ("GET", "/v1/riesgo/insumos"): VER_RIESGO,  # plan vial T16; solo lee
+    ("GET", "/v1/riesgo/reportes/{tipo}"): VER_RIESGO,  # plan vial T21; descarga un xlsx
     ("POST", "/v1/fcas/calcular"): CUALQUIERA,  # plan vial T17; cuenta pura, cualquier rol
     ("GET", "/v1/fcas/componentes"): CUALQUIERA,  # plan vial T17; los valores por defecto
     ("GET", "/v1/hoja/versiones"): EDITAR,  # T10 3b-1: Hoja del proyecto; clave o sesion
@@ -333,6 +334,7 @@ TABLA = {
     ("POST", "/v1/vial/tramos/importar"): EDITAR,  # plan vial T8; escribe; solo sesion
     ("POST", "/v1/vial/tramos/llevar"): EDITAR,  # plan vial T8b; al borrador; solo sesion
     ("GET", "/v1/vial/obras"): EDITAR,  # plan vial T8; clave o sesion (solo lee)
+    ("GET", "/v1/vial/reportes/{tipo}"): EDITAR,  # plan vial T21; descarga un xlsx
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {
