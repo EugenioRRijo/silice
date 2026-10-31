@@ -71,6 +71,10 @@ export default function PaginaExistencias() {
       <p className="cds--type-body-compact-01">
         <Link className="cds--link" to="/receta_planta">
           Receta de la planta
+        </Link>{" "}
+        ·{" "}
+        <Link className="cds--link" to="/producir_mezcla">
+          Producir mezcla
         </Link>
       </p>
       {puedeRegistrarCostos && <EnlacesDeCostos />}

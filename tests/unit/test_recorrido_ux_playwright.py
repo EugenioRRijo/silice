@@ -113,7 +113,7 @@ def test_cada_ruta_se_lee_del_registro_sin_modulos() -> None:
     from scripts.recorrido_ux_playwright import rutas_de_la_interfaz
 
     rutas = {r["id"]: r for r in rutas_de_la_interfaz()}
-    assert len(rutas) == 29  # + costos, receta_planta y costo_tonelada (plan vial, T2-T6)
+    assert len(rutas) == 30  # + costos, receta_planta, costo_tonelada y producir_mezcla (plan vial, T2-T6b)
     assert "inicio" not in rutas
     assert rutas["hoja"]["titulo"] == "Hoja de la obra"
     assert rutas["hoja"]["accion"] == "editar_hoja"

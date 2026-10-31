@@ -29,17 +29,17 @@ export interface FilaDeComponente {
 }
 
 // «0.94» -> (94n, 2): el entero y sus decimales.
-function escalar(decimal: string, decimales: number): bigint {
+export function escalar(decimal: string, decimales: number): bigint {
   const [entera = "0", fraccion = ""] = decimal.split(".");
   return BigInt(entera + fraccion.padEnd(decimales, "0"));
 }
 
-function decimalesDe(decimal: string): number {
+export function decimalesDe(decimal: string): number {
   return (decimal.split(".")[1] ?? "").length;
 }
 
 // El entero escalado a su decimal con punto, sin ceros de sobra: (990n, 3) -> «0.99».
-function desescalar(valor: bigint, decimales: number): string {
+export function desescalar(valor: bigint, decimales: number): string {
   const texto = valor.toString().padStart(decimales + 1, "0");
   const entera = texto.slice(0, texto.length - decimales);
   const fraccion = texto.slice(texto.length - decimales).replace(/0+$/, "");

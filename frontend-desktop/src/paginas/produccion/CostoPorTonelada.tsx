@@ -1,17 +1,20 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
-import { calcularCosto } from "../../api/produccionPlanta";
+import { calcularCosto, calculoGuardado } from "../../api/produccionPlanta";
 import type { CalculoDeCosto } from "../../api/produccionPlanta";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { AvisoConFoco } from "./AvisoConFoco";
+import { CalculosAnteriores } from "./CalculosAnteriores";
 import { ErrorDeCalculo } from "./ErrorDeCalculo";
 import { MONEDAS, mesAnterior, nombreDelMes, periodoValido } from "./logica";
 import { mensajeDePlanta } from "./logicaPlanta";
 import { PublicarCosto } from "./PublicarCosto";
+import { RepartoPorPesos, SIN_REPARTO } from "./RepartoPorPesos";
+import type { Reparto } from "./RepartoPorPesos";
 import { ResultadoDelCalculo } from "./ResultadoDelCalculo";
 import { useProducido } from "./useProducido";
 import "./planta.scss";
@@ -33,6 +36,10 @@ export default function CostoPorTonelada() {
   const [error, setError] = useState<unknown>(null);
   const [calculando, setCalculando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [reparto, setReparto] = useState<Reparto>(SIN_REPARTO);
+  // Sube cuando algo pudo cambiar la lista de cálculos del mes; y «enfocar», cuando hay un resultado nuevo que mostrar.
+  const [version, setVersion] = useState(0);
+  const [enfocar, setEnfocar] = useState(0);
   const region = useRef<HTMLElement>(null);
   const cajaDelError = useRef<HTMLDivElement>(null);
 
@@ -41,8 +48,8 @@ export default function CostoPorTonelada() {
 
   // El botón se desactiva mientras se calcula: el foco pasa a lo que llegó (el resultado o el error), no a BODY.
   useEffect(() => {
-    if (calculo) region.current?.focus();
-  }, [calculo]);
+    if (enfocar > 0) region.current?.focus();
+  }, [enfocar]);
   useEffect(() => {
     if (error !== null) cajaDelError.current?.focus();
   }, [error]);
@@ -60,7 +67,9 @@ export default function CostoPorTonelada() {
     setAviso(null);
     setCalculando(true);
     try {
-      setCalculo(await calcularCosto(periodo, moneda));
+      setCalculo(await calcularCosto(periodo, moneda, reparto.activo ? (reparto.pesos ?? undefined) : undefined));
+      setEnfocar((n) => n + 1);
+      setVersion((n) => n + 1);
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
       else {
@@ -69,6 +78,16 @@ export default function CostoPorTonelada() {
       }
     } finally {
       setCalculando(false);
+    }
+  }
+
+  // Tras publicar (o tras un 409) se vuelve a leer el cálculo abierto para que muestre dónde quedó, sin mover el foco.
+  async function releer(id: number) {
+    setVersion((n) => n + 1);
+    try {
+      setCalculo(await calculoGuardado(id));
+    } catch (razon) {
+      if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
     }
   }
 
@@ -103,7 +122,7 @@ export default function CostoPorTonelada() {
             <SelectItem key={m.valor} value={m.valor} text={m.texto} />
           ))}
         </Select>
-        <Button kind="primary" size="md" disabled={!valido || moneda === "" || calculando} onClick={() => void calcular()}>
+        <Button kind="primary" size="md" disabled={!valido || moneda === "" || calculando || (reparto.activo && !reparto.valido)} onClick={() => void calcular()}>
           Calcular costo por tonelada
         </Button>
       </div>
@@ -125,14 +144,41 @@ export default function CostoPorTonelada() {
           )}
         </>
       )}
+      {valido && producido.estado === "listo" && producido.datos.length > 0 && (
+        <RepartoPorPesos key={periodo} periodo={periodo} producido={producido.datos} alCambiar={setReparto} alExpirar={alExpirar} />
+      )}
       <AvisoConFoco aviso={aviso} alCerrar={() => setAviso(null)} />
-      <ErrorDeCalculo error={error} titulo="No se pudo calcular el costo" caja={cajaDelError} />
+      <ErrorDeCalculo error={error} titulo={error instanceof ErrorDeApi && error.estado === 409 ? "No se pudo publicar el costo" : "No se pudo calcular el costo"} caja={cajaDelError} />
       {calculo && (
         <ResultadoDelCalculo calculo={calculo} region={region}>
-          {puedePublicar && (
-            <PublicarCosto calculo={calculo} alExpirar={alExpirar} alPublicar={(nombre) => setAviso(`Publicado: lista "${nombre}".`)} />
+          {puedePublicar && !calculo.publicado && calculo.productos.length > 0 && (
+            <PublicarCosto
+              calculo={calculo}
+              alExpirar={alExpirar}
+              alPublicar={(nombre) => {
+                setAviso(`Publicado: lista "${nombre}".`);
+                void releer(calculo.id);
+              }}
+              alConflicto={(razon) => {
+                setError(razon);
+                void releer(calculo.id);
+              }}
+            />
           )}
         </ResultadoDelCalculo>
+      )}
+      {valido && (
+        <CalculosAnteriores
+          periodo={periodo}
+          version={version}
+          alExpirar={alExpirar}
+          alAbrir={(abierto) => {
+            setError(null);
+            setAviso(null);
+            setCalculo(abierto);
+            setEnfocar((n) => n + 1);
+          }}
+        />
       )}
     </div>
   );

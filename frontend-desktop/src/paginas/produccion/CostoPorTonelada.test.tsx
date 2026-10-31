@@ -94,6 +94,7 @@ describe("Costo por tonelada", () => {
       const metodo = init?.method ?? "GET";
       if (url.pathname === "/v1/produccion/producido" && metodo === "GET") return producido();
       if (url.pathname === "/v1/produccion/calculos" && metodo === "POST") return calculo();
+      if (url.pathname === "/v1/produccion/calculos" && metodo === "GET") return json([]); // Tarea 6b: cálculos anteriores
       if (url.pathname === "/v1/produccion/calculos/7/publicar" && metodo === "POST") return publicacion();
       if (url.pathname === "/v1/admin/empresa" && metodo === "GET") return empresa();
       return json({ detalle: "No encontrado." }, 404);
@@ -111,7 +112,7 @@ describe("Costo por tonelada", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Costo por tonelada" })).toBeInTheDocument();
     expect(await screen.findByText("AGR-12: 150 t")).toBeInTheDocument();
     expect(screen.getByText("MZP-01: 100 t")).toBeInTheDocument();
-    expect(fetchFalso.mock.calls[0]![0]).toBe("/v1/produccion/producido?periodo=2026-11");
+    expect(fetchFalso.mock.calls.map((c) => String(c[0]))).toContain("/v1/produccion/producido?periodo=2026-11");
   });
 
   test("el mes arranca en el mes anterior, ya cerrado, no en el que corre", async () => {

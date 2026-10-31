@@ -406,6 +406,13 @@ accion = "(solo lectura) abrir «Receta de la planta»"
 espera = { texto = "Receta de la planta" }
 
 [[pantalla]]
+ruta = "producir_mezcla"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Producir mezcla»"
+espera = { texto = "Producir mezcla" }
+
+[[pantalla]]
 ruta = "costo_tonelada"
 cuenta = "ana"
 carpeta = "demo.db"

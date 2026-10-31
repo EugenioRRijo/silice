@@ -14,6 +14,8 @@ interface Props {
   // Se publicó: la pantalla avisa con el nombre de la lista que creó el servidor.
   alPublicar: (nombreDeLaLista: string) => void;
   alExpirar: () => void;
+  // El servidor dijo que ya estaba publicado (409): la pantalla muestra su texto y recarga lo que sabe.
+  alConflicto: (razon: unknown) => void;
 }
 
 type Empresa = { estado: "cargando" } | { estado: "listo"; datos: EmpresaDeAdministracion } | { estado: "error" };
@@ -23,7 +25,7 @@ const ADMINISTRACION = "/administracion";
 // Publicar un cálculo como precio propio de la empresa. Solo se monta con la acción `publicar_costo_propio`; la ruta no
 // lleva cuerpo (el servidor publica el cálculo tal como lo guardó). La empresa es la de Administración y se lee, no se
 // escribe aquí. Cada publicación es otra lista de precios, así que se confirma antes.
-export function PublicarCosto({ calculo, alPublicar, alExpirar }: Props): JSX.Element {
+export function PublicarCosto({ calculo, alPublicar, alExpirar, alConflicto }: Props): JSX.Element {
   const [empresa, setEmpresa] = useState<Empresa>({ estado: "cargando" });
   const [confirmando, setConfirmando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -55,7 +57,10 @@ export function PublicarCosto({ calculo, alPublicar, alExpirar }: Props): JSX.El
       alPublicar(publicada.nombre);
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
-      else setError(razon);
+      else if (razon instanceof ErrorDeApi && razon.estado === 409) {
+        setConfirmando(false);
+        alConflicto(razon);
+      } else setError(razon);
     } finally {
       setEnviando(false);
     }

@@ -90,3 +90,42 @@
   padding-inline-start: 1.25rem;
   list-style: disc;
 }
+
+// Producir mezcla (Tarea 6b): reparto por pesos, constancias de la 4b y cálculos anteriores.
+.planta-reparto {
+  display: grid;
+  gap: 0.5rem;
+  padding-block: 0.5rem;
+}
+
+.planta-constancia {
+  display: grid;
+  gap: 0.25rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 2px solid var(--cds-border-subtle);
+}
+
+.planta-anteriores {
+  display: grid;
+  gap: 0.5rem;
+  margin-block-start: 1.5rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--cds-border-subtle);
+}
+
+.planta-anteriores__lista {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.planta-anteriores__lista li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}

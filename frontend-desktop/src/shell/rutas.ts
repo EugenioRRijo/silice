@@ -237,6 +237,14 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/produccion/RecetaPlanta"),
   },
   {
+    id: "producir_mezcla",
+    titulo: "Producir mezcla",
+    enUnaLinea: "Registre lo que produjo la planta con su receta",
+    seccion: "Trabajo",
+    accion: "operar_arenera",
+    cargar: () => import("../paginas/produccion/ProducirMezcla"),
+  },
+  {
     id: "costo_tonelada",
     titulo: "Costo por tonelada",
     enUnaLinea: "Calcule el costo propio de cada agregado y mezcla",

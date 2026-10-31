@@ -47,6 +47,13 @@ export interface CostoDeProducto {
   presentado: string; // dos decimales, mitad hacia arriba
 }
 
+// Dónde quedó publicado un cálculo (Tarea 4b: una sola publicación por cálculo).
+export interface PublicadoEn {
+  lista_id: number;
+  caso: string;
+  registrado: string; // ISO, hora del servidor
+}
+
 export interface CalculoDeCosto {
   id: number;
   periodo: string;
@@ -57,10 +64,53 @@ export interface CalculoDeCosto {
   productos: CostoDeProducto[];
   // Entradas y resultado guardados; los decimales van como texto. Solo se leen para mostrar.
   instantanea: Record<string, unknown>;
+  publicado: PublicadoEn | null;
 }
 
-export function calcularCosto(periodo: string, moneda: string): Promise<CalculoDeCosto> {
-  return pedir<CalculoDeCosto>(`${RUTA}/calculos`, { metodo: "POST", cuerpo: { periodo, moneda } });
+// `pesos` (opcional): código del agregado -> fracción con punto («0.75»); sin ellos la cantera se reparte por tonelada.
+export function calcularCosto(periodo: string, moneda: string, pesos?: Record<string, string>): Promise<CalculoDeCosto> {
+  const cuerpo = pesos === undefined ? { periodo, moneda } : { periodo, moneda, pesos };
+  return pedir<CalculoDeCosto>(`${RUTA}/calculos`, { metodo: "POST", cuerpo });
+}
+
+export interface ResumenDeCalculo {
+  id: number;
+  periodo: string;
+  moneda: string;
+  usuario: string;
+  registrado: string;
+  huella: string;
+  publicado: PublicadoEn | null;
+}
+
+// Los cálculos guardados del mes, del más reciente al más viejo.
+export function calculosDelPeriodo(periodo: string, senal?: AbortSignal): Promise<ResumenDeCalculo[]> {
+  return pedir<ResumenDeCalculo[]>(`${RUTA}/calculos?periodo=${encodeURIComponent(periodo)}`, { senal });
+}
+
+export function calculoGuardado(id: number, senal?: AbortSignal): Promise<CalculoDeCosto> {
+  return pedir<CalculoDeCosto>(`${RUTA}/calculos/${id}`, { senal });
+}
+
+export interface MaterialDeArenera {
+  codigo: string;
+  nombre: string;
+  activo: boolean;
+}
+
+export function materialesDeArenera(senal?: AbortSignal): Promise<MaterialDeArenera[]> {
+  return pedir<MaterialDeArenera[]>(`${RUTA}/materiales`, { senal });
+}
+
+export interface ProduccionNueva {
+  producto: string;
+  toneladas: string; // decimal con punto
+  fecha: string; // AAAA-MM-DD
+}
+
+// Produce con la receta vigente en la fecha: la entrada del producto y un consumo por cada componente propio.
+export function producirMezcla(produccion: ProduccionNueva): Promise<{ movimientos: number[] }> {
+  return pedir<{ movimientos: number[] }>(`${RUTA}/producciones`, { metodo: "POST", cuerpo: produccion });
 }
 
 export interface Publicacion {
