@@ -8,7 +8,11 @@ llama (la API, cuando se conecte) le pasa lo que ya tiene en la pantalla.
 
 El asistente solo narra. La **validación de citas** de `asistente.validacion` (S4 §7.3: «todo
 número trae una cita») se aplica a la narración: cada cifra del texto debe estar en lo que la
-herramienta devolvió en esta conversación. Una cifra que no está es `NUMERO_AUSENTE_DE_LA_CITA`
+herramienta devolvió en esta conversación, **en sus valores**: los rótulos («P80», «P50») no dan
+cifras citables, así que «cubre el 80 por ciento» no se apoya en el rótulo «P80»; nombrar el rótulo
+en la narración sí vale. Cada cifra de los valores se lee con `cifra_escrita`: una que no sigue la
+regla es un error de quien llama (`ValueError`) y la herramienta no la entrega. Una cifra que no
+está es `NUMERO_AUSENTE_DE_LA_CITA`
 (también un redondeo propio: 1.248,7 no es 1.248,72); una escrita fuera de la regla de las cifras
 («248.72», decimal anglosajón) es `NUMERO_INVALIDO`. Sin haber llamado a la herramienta, ninguna
 cifra vale. La herramienta va aparte de `HERRAMIENTAS` (`asistente/herramientas.py`): esa tupla y
@@ -76,8 +80,36 @@ _CIFRA = re.compile(r"[0-9](?:[0-9.,]*[0-9])?")
 
 
 def salida_de_la_herramienta(cifras: Mapping[str, str]) -> str:
-    """Lo que la herramienta devuelve al modelo: las cifras tal cual, como JSON."""
+    """Lo que la herramienta devuelve al modelo: las cifras tal cual, como JSON. `ValueError` si
+    una cifra de un valor no sigue la regla de las cifras (coma decimal y punto de miles)."""
+    for rotulo, valor in cifras.items():
+        malas = [crudo for crudo, leida in _cifras(valor) if leida is None]
+        if malas:
+            raise ValueError(
+                f"el valor de «{rotulo}» trae {', '.join(malas)}, que no sigue la regla de coma "
+                "decimal y punto de miles"
+            )
     return json.dumps(dict(cifras), ensure_ascii=False, sort_keys=True)
+
+
+def _devuelto(salida: str) -> dict[str, str]:
+    """Lo que devolvió la herramienta, `{rótulo: valor}` (vacío si no es eso)."""
+    try:
+        datos = json.loads(salida)
+    except ValueError:
+        return {}
+    if not isinstance(datos, dict):
+        return {}
+    return {str(k): v for k, v in datos.items() if isinstance(v, str)}
+
+
+def _sin_rotulos(texto: str, rotulos: set[str]) -> str:
+    """El texto sin los rótulos de la herramienta que llevan dígitos («P80»), como palabra entera:
+    nombrarlos no es citar una cifra. Una cifra pegada a otra palabra («Bs250») sigue contando."""
+    for rotulo in sorted(rotulos, key=len, reverse=True):
+        if any(ch.isdigit() for ch in rotulo):
+            texto = re.sub(rf"(?<!\w){re.escape(rotulo)}(?!\w)", " ", texto)
+    return texto
 
 
 def _cifras(texto: str) -> list[tuple[str, Decimal | None]]:
@@ -92,9 +124,18 @@ def _cifras(texto: str) -> list[tuple[str, Decimal | None]]:
 
 
 def validar_explicacion(texto: str, salidas: Sequence[str]) -> Rechazo | None:
-    """`None` si toda cifra de `texto` está en alguna de las `salidas` de la herramienta."""
-    citables = {v for salida in salidas for _, v in _cifras(salida) if v is not None}
-    for crudo, valor in _cifras(texto):
+    """`None` si toda cifra de `texto` está en los valores de alguna de las `salidas` de la
+    herramienta (los rótulos no cuentan como cifras)."""
+    devueltos = [_devuelto(salida) for salida in salidas]
+    citables = {
+        leida
+        for devuelto in devueltos
+        for valor in devuelto.values()
+        for _, leida in _cifras(valor)
+        if leida is not None
+    }
+    rotulos = {rotulo for devuelto in devueltos for rotulo in devuelto}
+    for crudo, valor in _cifras(_sin_rotulos(texto, rotulos)):
         if valor is None:
             return Rechazo(
                 Causa.NUMERO_INVALIDO,
@@ -117,19 +158,21 @@ class Explicacion:
     turnos: int
 
 
-def _responder(llamada, cifras: Mapping[str, str]) -> ResultadoHerramienta:
+def _responder(llamada, salida: str) -> ResultadoHerramienta:
     if llamada.nombre != NOMBRE:
         return ResultadoHerramienta(llamada.id, f"herramienta desconocida: {llamada.nombre}", True)
     if llamada.argumentos:
         return ResultadoHerramienta(llamada.id, SIN_CIFRAS, True)
-    return ResultadoHerramienta(llamada.id, salida_de_la_herramienta(cifras))
+    return ResultadoHerramienta(llamada.id, salida)
 
 
 def explicar(
     proveedor: ProveedorIA, cifras: Mapping[str, str], *, max_turnos: int = MAX_TURNOS
 ) -> Explicacion:
     """Pide al proveedor la narración del riesgo con la única herramienta `explicar_riesgo` y la
-    valida contra lo que la herramienta devolvió. Se corta a los `max_turnos` turnos."""
+    valida contra lo que la herramienta devolvió. Se corta a los `max_turnos` turnos. Las `cifras`
+    se validan antes de pedir el primer turno (`salida_de_la_herramienta`)."""
+    salida = salida_de_la_herramienta(cifras)
     esquema = EsquemaHerramienta(NOMBRE, HERRAMIENTA.descripcion, HERRAMIENTA.esquema())
     mensajes = [Mensaje("usuario", PEDIDO)]
     salidas: list[str] = []
@@ -141,7 +184,7 @@ def explicar(
         if turno.fin is not FinTurno.HERRAMIENTAS:  # cortada por el límite o rechazada
             motivo = f"el proveedor no terminó la explicación ({turno.fin.value})"
             return Explicacion(None, Rechazo(Causa.FILA_NO_CONSTRUIBLE, motivo), n)
-        resultados = tuple(_responder(llamada, cifras) for llamada in turno.llamadas)
+        resultados = tuple(_responder(llamada, salida) for llamada in turno.llamadas)
         salidas += [r.contenido for r in resultados if not r.es_error]
         mensajes += [
             Mensaje("asistente", turno.texto, turno.llamadas, crudo=turno.crudo),
