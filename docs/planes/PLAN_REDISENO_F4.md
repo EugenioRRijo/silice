@@ -1299,3 +1299,95 @@ así que una lectura solo escribiría si llamara a `commit` en algún punto de s
     objeto nuevo, las lecturas que pasan y la sesión que vuelve a escribir al salir). · —
 18. **Menor 3.** · La decisión 1 decía «byte a byte»; la prueba compara las filas de todas las tablas (`_volcado`). · —
 
+## Decisiones de la Tarea 3
+
+Formato: pregunta · lo que se hizo · cómo cambiarlo.
+
+1. **El marco volvía a montar la obra en cada sección.** · `Marco.tsx` envolvía las rutas en `LimiteDeError` con `key`
+   igual al `pathname`, así que cambiar de sección desmontaba `EspacioDeObra` entero: el proveedor no habría sobrevivido,
+   y además se repetían `PUT /v1/sesion/proyecto` y `GET /v1/obras/resumen` (lo que la Tarea 1 prometía no se cumplía en
+   el marco real; sus pruebas montan `EspacioDeObra` solo). Ahora la clave del contenido es la obra
+   (`claveDelContenido`: `obra|<carpeta>|<obra>`) y `EspacioDeObra` pone su propio `LimiteDeError` (con `key` = sección)
+   y su `Suspense` alrededor de la sección: un fallo de una sección se sigue reiniciando al cambiar de sección, y mientras
+   llega la pantalla perezosa la cabecera queda a la vista. Prueba: `Marco.test.tsx`, «cambiar de sección dentro de la
+   misma obra no vuelve a fijar la obra ni a leer su ficha». · Volver a `key={`${ubicacion.pathname}|${generacion}`}` en
+   `Marco.tsx` (y el proveedor se perdería al cambiar de sección).
+2. **Dónde va el proveedor.** · En `ObraDeLaRuta`, dentro del `ContextoAplicacion` de la obra (lo necesita para el
+   proyecto), con `key={JSON.stringify([carpeta, obraId])}`, y envuelve la cabecera y la sección. Solo en
+   `SECCIONES_CON_HOJA` y solo con `leer_proyecto` (la acción de la pantalla `hoja` y de sus lecturas desde la 2b): sin
+   ella la sección dice «Sin permiso» y el proveedor solo daría 403. · `conHoja` en `marco/EspacioDeObra.tsx`.
+3. **La cabecera dentro del proveedor.** · Así lee la versión abierta. Consecuencia: al cruzar entre una sección con Hoja
+   y otra sin ella la cabecera se vuelve a montar y `ListaDeLaCarpeta` relee `GET /v1/carpeta` (antes de esta tarea se
+   releía en cada cambio de sección). Entre las tres secciones con Hoja no se vuelve a montar. · Dejar la cabecera fuera
+   y subir la versión abierta como estado de `ObraDeLaRuta`.
+4. **De dónde sale «Versión abierta».** · Del borrador: `base.version` y `base.vigente`, cuando las dos existen y
+   difieren; si no, la línea de la Tarea 1 («Versión: <vigente de la lista de obras>»). No se compara con `useObras`
+   porque tras guardar esa lista queda vieja hasta recargarla y diría una vigente que ya no lo es. · `lineaDeVersion` en
+   `marco/CabeceraDeObra.tsx`.
+5. **La regla de salida.** · `shell/sucio.ts` gana un tercer parámetro, `conservaAlIrA(destino)`, y
+   `formulariosSucios(destino)` deja fuera lo que sobrevive al ir allí; `confirmarSalida` recibe el `destino` (cuarto
+   parámetro). El proveedor registra la pantalla `hoja` mientras hay cambios, solo dentro de una obra, con
+   `quedaEnLaHoja(destino, carpeta, obra)` (`marco/secciones.ts`). Lo usan el marco (barra lateral, migas, buscador:
+   `alClicAntes` e `irSeguro`) y `useNavegarSeguro` (lo usará «Abrir» de Versiones). Los demás formularios (un
+   «Agregar partida» a medio llenar) siguen preguntando también entre secciones con Hoja, porque esos sí se pierden. Fuera
+   de una obra (la Hoja montada sola) no se registra nada, como antes. · Quitar `conservaAlIrA` del registro en
+   `ProveedorDeLaHoja.tsx`.
+6. **Qué pasa con el borrador al salir.** · Sin cambios se descarta (`DELETE`), como al salir de la Hoja; con cambios se
+   pregunta «Cambios sin guardar» y, si la persona sale, el borrador se conserva en el servidor y la Hoja ofrece
+   retomarlo al volver (E10), como antes. Cambiar de obra o de carpeta desmonta el proveedor (su `key` y la del marco):
+   es la misma salida. El texto del diálogo («Si sale de esta pantalla, se perderán.») es el que ya existía; no es del todo
+   exacto porque se pueden retomar. · Pasar una `consecuencia` propia a `confirmarSalida` desde el marco.
+7. **La interfaz crece un poco respecto del plan.** · `codigo` admite `undefined` (aún no se sabe: se leen las versiones o
+   se espera la respuesta a la oferta de retomar); se añaden `descartando`, `falloAlDescartar`, `existente`, `exito`,
+   `quitarExito` (el cuerpo los pinta) e `inerte` (hay un diálogo de la Hoja abierto: Versiones lo necesitará para su
+   contenido). `versiones` toma la lista fresca de `useVersiones` y pasa un 403 o un 404 a `error`, como hacía la Hoja.
+   · `HojaDeLaObra` en `ProveedorDeLaHoja.tsx`.
+8. **Lo que se movió y lo que no.** · Al proveedor, sin cambiar la lógica: `useCarga` de versiones, `useOfertas`,
+   `useVersiones`, `useBorrador`, retomar, `pedirVersion`, `useGuardadoDeLaPagina`, los efectos de `visibilitychange` y
+   `beforeunload`, `DialogoDeGuardar`, `DialogoDeVersion` y el anfitrión de los diálogos de operaciones
+   (`ContextoDeDialogos`). El orden de los hooks es el mismo, así que el de las peticiones también. En el cuerpo se quedan
+   la pestaña, el filtro de Auditoría y la pestaña inicial: la Tarea 4 sube la pestaña al proveedor; hasta entonces, ir a
+   Versiones y volver deja la pestaña inicial. · —
+9. **`useOfertas` en su propio archivo.** · El plan lo ponía en el proveedor, que ya pasa de 250 líneas (350, con su razón
+   en la cabecera). `paginas/hoja/index.tsx` baja de 610 a 433 líneas y declara su razón (el reparto de las nueve
+   pestañas, que reordena la Tarea 4). · Pegarlo en `ProveedorDeLaHoja.tsx`.
+10. **`PaginaHoja` monta su propio proveedor solo si no hay uno encima.** · `useContext(ContextoDeLaHoja) === null`; sin
+    obra (`proyecto === null`) sigue «Elija una obra», sin proveedor. El suyo no lleva `key`: cuando la prueba cambia el
+    proyecto, la lógica movida lo maneja igual que antes. · —
+11. **`?version=` solo dentro de un enrutador.** · `VersionDeLaRuta` se monta si `useInRouterContext()`, porque las
+    pruebas de la Hoja la montan sin enrutador. Llama al `pedirVersion` del último dibujo (por referencia, para que el
+    efecto dependa solo del parámetro) y quita el parámetro con `setSearchParams(…, { replace: true })`. · —
+12. **Estilos y peso del marco.** · El proveedor importa `hoja.scss`: los diálogos de guardar y de versión son suyos y
+    Versiones o Archivos y planos los abrirán sin que la Hoja se haya cargado. Así el CSS de la Hoja (todas sus clases
+    llevan el prefijo `silice-hoja`) y el código del proveedor van en el paquete del marco, no en el perezoso de la Hoja.
+    · Cargar el proveedor de forma perezosa si el paquete del marco pesa.
+13. **Pruebas.** · `ProveedorDeLaHoja.test.tsx` monta el marco entero con la Hoja real en Presupuesto. Archivos y planos y
+    Versiones tienen `pagina: null` hasta las Tareas 6 y 11: la prueba simula `marco/secciones` (`vi.mock`) para darles la
+    pantalla de la Hoja y pinta, según la sección de la ruta, la Hoja o una pantalla de relleno que lee el contexto con
+    `useContext` (no con `useHojaDeLaObra`, que lanzaría) para que el rojo falle por lo que dice. Sus botones «Simular dos
+    cambios» (llama a `aplicar`) y «Guardar desde aquí» (`abrirGuardado`) usan la interfaz del proveedor. Hay una prueba
+    más que las del plan: «Guardar versión…» desde otra sección manda el `rev` al día (riesgo del 409 «El borrador
+    cambió»), y otra que va al Presupuesto de otra obra (el proveedor se vuelve a montar: `DELETE` del de esta y `POST` del
+    de aquella). · —
+14. **Rojo por aserción (`b4e018eb`).** · Con el esbozo del contexto: 9 fallas, todas de aserción: `expected { fijadas: 2,
+    fichas: 2 } to deeply equal { fijadas: 1, fichas: 1 }`; `expected 'borrador: sin hoja' to be 'borrador: listo'` (seis
+    pruebas: Versiones no tenía borrador); `expected '/obra/empresa/7/presupuesto?version=001' to be
+    '/obra/empresa/7/presupuesto'`; y la cabecera sin «Versión abierta: 001 (la vigente es 002)». Tres pasaban ya en rojo
+    porque fijan lo que no debe cambiar: «al ir al Resumen sin cambios descarta el borrador», «en Resumen y Mercado no se
+    abre ningún borrador» y «con la vigente abierta, la cabecera dice la versión como antes». · —
+15. **Oráculo corregido en el verde.** · La prueba «con cambios, “Abrir la 001”…» buscaba `role="dialog"` para «Descartar
+    los cambios», pero `DialogoDeVersion` es `alertdialog` (así lo prueba `Retomar.test.tsx`); en rojo no llegaba a esa
+    línea. Se corrigió el rol en el commit del verde. · —
+16. **Verificación.** · `npx vitest run src/paginas/hoja src/marco src/shell src/paginas/obras`: 70 archivos, 1186 de 1187
+    verdes en la corrida completa; la que cayó es `PlanoEnHoja` «con una edición del espacio en la pausa, “Fusionar” no se
+    puede pulsar» por tiempo (4979 ms con la máquina cargada, el mismo caso de la Tarea 2b), verde al repetirla sola (4 de
+    4). `Edicion.test.tsx` pasó en la corrida completa. Además `aprobar/Aprobar`, `componer/Moneda`,
+    `control/PestanaProcura`, `mercado/Mercado`, `src/paginas/pendientes` y `src/comun` (usan `sucio`, `salida` o el
+    marco): 342 verdes. Las pruebas que montan `PaginaHoja` no cambiaron: el diff de pruebas desde `341ee6da` son solo
+    `ProveedorDeLaHoja.test.tsx` (nueva) y una prueba añadida a `Marco.test.tsx`. `npm run lint` en 0. `knip` y `jscpd`
+    siguen sin estar en este `node_modules`: no se corrieron `npm run muerto` ni `npm run duplicado`. Sin servidor tocado.
+    `git diff 341ee6da -- core/ aplicacion/` vacío. · —
+17. **Lo que queda para otras tareas.** · Si se cambia de carpeta con cambios en el borrador abierto, el diálogo puede
+    nombrar el mismo borrador dos veces («Hoja de la obra» por el registro y «Hoja de <obra>» por `hojasConCambios`).
+    Tras guardar, la cabecera no relee la ficha ni la lista de obras (`recargarFicha`, `recargarProyectos`): la Tarea 5 o
+    la 6 pueden llamarlas desde `alCrearVersion`. · —
