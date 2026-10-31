@@ -58,7 +58,10 @@ def _cuantos_valores(sesion) -> int:
 
 def test_las_series_viales_declaran_unidad_y_periodicidad():
     assert [s.codigo for s in SERIES_VIALES] == ["CEMENTO_ASFALTICO_PPI", "GASOIL_USD"]
-    assert (CEMENTO_ASFALTICO_PPI.unidad, CEMENTO_ASFALTICO_PPI.periodicidad) == ("indice", "mensual")
+    assert (CEMENTO_ASFALTICO_PPI.unidad, CEMENTO_ASFALTICO_PPI.periodicidad) == (
+        "indice",
+        "mensual",
+    )
     assert (GASOIL_USD.unidad, GASOIL_USD.periodicidad) == ("USD/l", "mensual")
     assert "proxy internacional" in CEMENTO_ASFALTICO_PPI.nombre
     assert "WPU05810212" in CEMENTO_ASFALTICO_PPI.nombre
@@ -66,7 +69,9 @@ def test_las_series_viales_declaran_unidad_y_periodicidad():
 
 
 def test_importar_dos_veces_misma_huella_no_duplica(sesion, tmp_path):
-    ruta = _csv(tmp_path, "g.csv", ["GASOIL_USD,2026-01-01,0.32,no,f", "GASOIL_USD,2026-02-01,0.32,no,f"])
+    ruta = _csv(
+        tmp_path, "g.csv", ["GASOIL_USD,2026-01-01,0.32,no,f", "GASOIL_USD,2026-02-01,0.32,no,f"]
+    )
     primera = _importar(sesion, "GASOIL_USD", ruta)
     segunda = _importar(sesion, "GASOIL_USD", ruta)
     assert isinstance(primera, int)
@@ -81,8 +86,13 @@ def test_unidad_distinta_rechazada(sesion, tmp_path):
         sesion,
         DefinicionSerie("GASOIL_USD", "otra", "x", "Bs/l", "mensual"),
         [Observacion(date(2026, 1, 1), D("1"))],
-        archivo="a.csv", huella="b" * 64, fuente="f", fecha_descarga=HOY, responsable="r",
-        filas_leidas=1, filas_rechazadas=0,
+        archivo="a.csv",
+        huella="b" * 64,
+        fuente="f",
+        fecha_descarga=HOY,
+        responsable="r",
+        filas_leidas=1,
+        filas_rechazadas=0,
     )
     ruta = _csv(tmp_path, "g.csv", ["GASOIL_USD,2026-02-01,0.32,no,f"])
     with pytest.raises(ValueError, match="ya existe con otra unidad o periodicidad"):
@@ -90,13 +100,17 @@ def test_unidad_distinta_rechazada(sesion, tmp_path):
 
 
 def test_historia_por_mes(sesion, tmp_path):
-    ruta = _csv(tmp_path, "p.csv", [
-        "CEMENTO_ASFALTICO_PPI,2026-01-01,100.5,no,f",
-        "CEMENTO_ASFALTICO_PPI,2026-02-01,101.5,no,f",
-        "CEMENTO_ASFALTICO_PPI,2026-03-01,103,si,f",
-        "CEMENTO_ASFALTICO_PPI,2026-04-01,104,no,f",
-        "GASOIL_USD,2026-02-01,0.32,no,f",
-    ])
+    ruta = _csv(
+        tmp_path,
+        "p.csv",
+        [
+            "CEMENTO_ASFALTICO_PPI,2026-01-01,100.5,no,f",
+            "CEMENTO_ASFALTICO_PPI,2026-02-01,101.5,no,f",
+            "CEMENTO_ASFALTICO_PPI,2026-03-01,103,si,f",
+            "CEMENTO_ASFALTICO_PPI,2026-04-01,104,no,f",
+            "GASOIL_USD,2026-02-01,0.32,no,f",
+        ],
+    )
     _importar(sesion, "CEMENTO_ASFALTICO_PPI", ruta)
     _importar(sesion, "GASOIL_USD", ruta)
     historia = historia_mensual(
@@ -110,11 +124,20 @@ def test_historia_por_mes(sesion, tmp_path):
 
 def test_una_serie_diaria_aporta_su_ultimo_valor_del_mes(sesion):
     registrar_importacion(
-        sesion, definicion_tasa("venta"),
-        [Observacion(date(2026, 1, 5), D("40")), Observacion(date(2026, 1, 30), D("42")),
-         Observacion(date(2026, 2, 2), D("43"))],
-        archivo="t.csv", huella="c" * 64, fuente="f", fecha_descarga=HOY, responsable="r",
-        filas_leidas=3, filas_rechazadas=0,
+        sesion,
+        definicion_tasa("venta"),
+        [
+            Observacion(date(2026, 1, 5), D("40")),
+            Observacion(date(2026, 1, 30), D("42")),
+            Observacion(date(2026, 2, 2), D("43")),
+        ],
+        archivo="t.csv",
+        huella="c" * 64,
+        fuente="f",
+        fecha_descarga=HOY,
+        responsable="r",
+        filas_leidas=3,
+        filas_rechazadas=0,
     )
     historia = historia_mensual(sesion, ["BCV-USD-VENTA"], date(2026, 1, 1), date(2026, 2, 28))
     assert historia == {"BCV-USD-VENTA": {date(2026, 1, 1): D("42"), date(2026, 2, 1): D("43")}}
@@ -149,7 +172,9 @@ def test_el_archivo_sin_la_serie_pedida_se_rechaza(sesion, tmp_path):
 
 
 def test_una_fila_rechazada_no_se_calla(sesion, tmp_path):
-    ruta = _csv(tmp_path, "x.csv", ["GASOIL_USD,2026-01-01,0.32,no,f", "GASOIL_USD,2026-02-01,0,no,f"])
+    ruta = _csv(
+        tmp_path, "x.csv", ["GASOIL_USD,2026-01-01,0.32,no,f", "GASOIL_USD,2026-02-01,0,no,f"]
+    )
     with pytest.raises(ValueError, match="x.csv:3"):
         _importar(sesion, "GASOIL_USD", ruta)
     assert _cuantos_valores(sesion) == 0
