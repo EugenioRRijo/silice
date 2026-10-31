@@ -34,6 +34,9 @@ IVSS, orden de trabajo, norma de carreteras).
 | 21 | T6 | ¿Quiere repartir la cantera por pesos desde la pantalla? | No: la pantalla reparte por tonelada (D-V-1); el reparto por pesos existe en el servidor | **Respondida (2026-10-30): sí.** Reparto por pesos en la pantalla (Tarea 6b). |
 | 22 | T6 | ¿Quiere reabrir y publicar cálculos de meses anteriores? | No: solo se publica el cálculo recién hecho; publicar dos veces el mismo crea dos listas con el mismo nombre | **Respondida (2026-10-30): sí.** Lista de cálculos anteriores y una sola publicación por cálculo (Tareas 4b y 6b). |
 | 23 | T6 | ¿En qué mes arranca la pantalla de costo por tonelada? | En el mes anterior (ya cerrado): arrancar en el mes en curso invitaba a calcular y publicar un período incompleto | Volver al mes en curso en `CostoPorTonelada.tsx` |
+| 24 | T4b | Un mes con producción pero sin costos propios registrados, y con costos que pasan del mes anterior (pregunta 16), ¿se calcula? | Sí: lo que viene del mes anterior cuenta como costo del mes (se reparte entre lo producido); «No hay costos registrados» queda para cuando no hay ni costos ni nada que venga | Exigir al menos un costo del mes en `calcular_periodo` (`aplicacion/costo_propio.py`) |
+| 25 | T4b | La lista de cálculos anteriores encuentra uno alterado (su huella no cuadra). | Toda la lista responde 422 «fue alterado», igual que cuando se abre ese cálculo: nada alterado se muestra como bueno | Saltar el alterado y marcarlo en la lista (`calculos_registrados`) |
+| 26 | T4b | El agregado no producido toma «el último cálculo anterior» (pregunta 15). ¿El de id mayor o el del mes más reciente? | El de id mayor entre los de meses anteriores en la misma moneda que le den costo, como dice la respuesta: si se recalcula septiembre después de octubre, noviembre toma el de septiembre | Ordenar por período y luego por id en `_de_otro_calculo` |
 
 ## Rediseño del front, F4
 

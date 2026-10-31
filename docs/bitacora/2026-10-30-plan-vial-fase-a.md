@@ -176,3 +176,53 @@ el commit de front de este cierre.
 
 Pendiente para la Tarea 20 (no tocado): códigos de producto y componente como texto libre a
 `comun/CampoConBusqueda`.
+
+## Tarea 4b: respuestas de Eugenio al cálculo y a la publicación
+
+Reglas decididas por el orquestador sobre las respuestas a las preguntas 14, 15, 16 y 22 (plan,
+Tarea 4b):
+
+1. **P14, tasa del cierre del mes**: lo comprado (lista vigente el último día del mes) se convierte
+   con `tasa_del_cierre(periodo)` (`aplicacion/tasa_del_dia.py`: la última tasa BCV con fecha valor
+   dentro del mes), no con la de la vigencia de la lista; la copia de la base al publicar usa la
+   misma. Los costos del período siguen con la tasa del día exacto de su fecha.
+2. **P15, agregado no producido en el mes**: la mezcla lo toma del último cálculo (id mayor) de un
+   período anterior en la misma moneda, anotado en `de_otro_calculo`; nunca de un mes posterior; sin
+   ninguno, se niega con «La mezcla {M} usa {A}, que no se produjo en AAAA-MM ni tiene un costo
+   calculado antes en {moneda}.».
+3. **P16, costos sin receptor**: pasan al mes siguiente (`pasa_al_mes_siguiente`); un mes con costos
+   y sin producción se calcula sin costo por tonelada y no se publica (422); M suma lo que pasa del
+   último cálculo de M−1 (convertido con la tasa del cierre de M−1 si cambia la moneda) y lo anota en
+   `viene_del_mes_anterior` con su cálculo: recalcular M−1 después no cambia el cálculo guardado de M.
+4. **P22, una sola publicación**: `publicar_calculo` registra `prod_publicacion` (`calculo_id` único,
+   migración `ins_0009_prod_publicacion`) en la misma operación; el segundo intento es 409 «El
+   cálculo n.º N ya se publicó en la lista n.º L.» sin escribir nada; la carpeta se confirma antes que
+   la instalación (probado con un fallo forzado al confirmar la carpeta).
+
+Decisiones de implementación (las que Eugenio puede querer cambiar están también en la tabla de
+preguntas, n.º 24 a 26):
+
+- **Instantánea versión 2**: `tasa_del_cierre`, `de_otro_calculo` y `viene_del_mes_anterior` van en
+  `entradas`; `pasa_al_mes_siguiente` en `resultado` (es lo que sale del cálculo). Las cuatro claves
+  están siempre (vacías o nulas si no aplican). `total_cantera` y `total_planta` incluyen lo que vino
+  del mes anterior. La versión 1 se sigue leyendo (no tiene `pasa_al_mes_siguiente`: como mes
+  anterior no deja nada; como costo de otro cálculo sirve igual).
+- **`costos` de lo que pasa**: los ids de lo que vino del mes anterior y luego los del mes, así la
+  cadena completa (octubre → noviembre → diciembre) se lee en el último cálculo.
+- **Lo que viene basta como costo** (pregunta 24): un mes con producción y sin costos propios, pero
+  con algo que pasa del anterior, se calcula; «No hay costos registrados en AAAA-MM.» queda para
+  cuando no hay ni costos ni nada que venga.
+- **Qué cálculo anterior** (pregunta 26): el de id mayor entre los de período anterior en la misma
+  moneda **que den costo a ese agregado** (si el más reciente no lo tiene, se busca en los otros).
+- **`GET /calculos`** verifica la huella de cada cálculo, como `ultimo_calculo`: uno alterado hace 422
+  toda la lista (pregunta 25).
+- **`caso` de la publicación**: el nombre del archivo de la carpeta de trabajo (como `/v1/casos`;
+  ninguna ruta absoluta).
+- **Mensaje de tasas faltantes**: el encabezado de `FaltanTasas` no cambia («No hay tasa del BCV del
+  mismo día para convertir a …:») porque la pantalla lo reconoce para listar cada falta (Tarea 6b
+  puede cambiarlo); las faltas nuevas dicen «… sin tasa del BCV publicada en AAAA-MM (la del cierre
+  del mes)».
+- **Ajuste de pruebas de las Tareas 4 y 5**: las que esperaban la negativa por costos sin receptor o
+  por un mes sin producción, la tasa de la vigencia de la lista y dos publicaciones del mismo
+  cálculo cambian al comportamiento nuevo (commit de prueba en rojo). Las pruebas que nombran la
+  cabeza de la instalación pasan a `ins_0009_prod_publicacion`.
