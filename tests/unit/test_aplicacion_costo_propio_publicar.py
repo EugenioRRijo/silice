@@ -26,7 +26,12 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from aplicacion.costo_propio import CalculoGuardado, calcular_periodo, publicar_calculo
+from aplicacion.costo_propio import (
+    CalculoGuardado,
+    calcular_periodo,
+    descripcion_de_costo_propio,
+    publicar_calculo,
+)
 from aplicacion.tasa_del_dia import SinTasaDelDia
 from core import models
 from core.catalog import Catalogo
@@ -126,6 +131,20 @@ def test_los_insumos_propios_son_material_en_toneladas(ins, caso) -> None:
     for codigo in ("AGP-AGR-12", "AGP-AGR-34", "MZP-MZ-1"):
         (insumo,) = _insumos(caso, codigo)
         assert (insumo.tipo, insumo.unidad) == ("material", "t")
+
+
+def test_la_descripcion_publicada_es_la_que_reconoce_la_conciliacion(ins, caso) -> None:
+    """CV3 (`aplicacion/conciliacion.py`) reconoce la línea del APU por esta descripción."""
+    cp.noviembre_usd(ins, caso)
+    _publicar(ins, caso, _calcular(ins, caso))
+    esperadas = {
+        "AGP-AGR-12": "Costo propio de agregado AGR-12",
+        "AGP-AGR-34": "Costo propio de agregado AGR-34",
+        "MZP-MZ-1": "Costo propio de mezcla MZ-1",
+    }
+    for codigo, descripcion in esperadas.items():
+        (insumo,) = _insumos(caso, codigo)
+        assert insumo.descripcion == descripcion == descripcion_de_costo_propio(codigo)
 
 
 def test_se_publica_el_valor_exacto_y_no_el_redondeado(ins, caso) -> None:

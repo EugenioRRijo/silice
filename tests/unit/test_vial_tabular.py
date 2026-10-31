@@ -123,6 +123,23 @@ def test_punto_de_miles_sin_coma_es_ambiguo(tmp_path):
         leer_tramos(ruta)
 
 
+def test_dos_grupos_de_miles_sin_coma_piden_quitar_los_puntos_o_poner_la_coma():
+    """Con dos o más grupos solo pueden ser miles: el mensaje no pregunta «¿miles o decimales?»."""
+    with pytest.raises(ValueError) as error:
+        numero("1.234.567")
+    assert str(error.value) == (
+        "'1.234.567' lleva puntos de miles sin coma decimal: escriba 1234567 o 1.234.567,0"
+    )
+
+
+def test_los_blancos_del_borde_son_los_de_aplicacion_cifras():
+    """`adapters/` no puede importar `aplicacion/`: la copia de BLANCOS no debe desviarse."""
+    from adapters.vial import tabular
+    from aplicacion import cifras
+
+    assert tabular.BLANCOS == cifras.BLANCOS
+
+
 def _casos_de_cifras() -> list[tuple[str, str | None]]:
     oraculo = json.loads(
         (RAIZ / "tests" / "fixtures" / "cifras_escritas.json").read_text(encoding="utf-8")
