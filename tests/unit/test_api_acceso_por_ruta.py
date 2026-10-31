@@ -278,6 +278,8 @@ TABLA = {
     ("GET", "/v1/produccion/calculos/{calculo_id}"): COSTOS,
     ("POST", "/v1/produccion/calculos/{calculo_id}/publicar"): PUBLICAR,  # plan vial T5
     ("POST", "/v1/riesgo/mejora"): VER_RIESGO,  # plan vial T15
+    ("POST", "/v1/fcas/calcular"): CUALQUIERA,  # plan vial T17; cuenta pura, cualquier rol
+    ("GET", "/v1/fcas/componentes"): CUALQUIERA,  # plan vial T17; los valores por defecto
     ("GET", "/v1/hoja/versiones"): EDITAR,  # T10 3b-1: Hoja del proyecto; clave o sesion
     ("POST", "/v1/hoja/borradores"): EDITAR,  # ademas, solo con sesion (403 con clave)
     ("GET", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
