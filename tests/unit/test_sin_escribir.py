@@ -51,6 +51,8 @@ ESCRITURAS = {
     "PRAGMA con asignación": lambda s: s.execute(text("PRAGMA user_version = 7")),
     "PRAGMA con asignación, sin espacios": lambda s: s.execute(text("pragma user_version=7")),
     "DELETE con text": lambda s: s.execute(text("DELETE FROM filas")),
+    "PRAGMA con paréntesis": lambda s: s.execute(text("PRAGMA user_version(7)")),
+    "PRAGMA con esquema y paréntesis": lambda s: s.execute(text("PRAGMA main.user_version (8)")),
 }
 
 
