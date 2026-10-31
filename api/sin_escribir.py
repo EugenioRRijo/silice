@@ -25,7 +25,8 @@ from sqlalchemy import event
 from sqlalchemy.orm import ORMExecuteState, Session
 from sqlalchemy.sql.elements import TextClause
 
-#: Lo que puede empezar un texto SQL que solo lee (un `PRAGMA` aparte: solo sin asignación).
+#: Lo que puede empezar un texto SQL que solo lee (un `PRAGMA` aparte: solo sin asignación ni
+#: paréntesis, porque `PRAGMA x(7)` también asigna).
 _LECTURAS = ("SELECT", "EXPLAIN")
 
 
@@ -41,7 +42,7 @@ def _volcaria(sesion: Session, _contexto, _instancias) -> None:
 def _texto_que_lee(texto: str) -> bool:
     limpio = texto.strip().upper()
     if limpio.startswith("PRAGMA"):
-        return "=" not in limpio
+        return "=" not in limpio and "(" not in limpio
     return limpio.startswith(_LECTURAS)
 
 
