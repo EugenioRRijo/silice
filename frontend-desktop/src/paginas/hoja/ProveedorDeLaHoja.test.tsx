@@ -1,4 +1,4 @@
-import { act, configure, render, screen, waitFor, within } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useContext } from "react";
 import { MemoryRouter, useLocation, useParams } from "react-router";
@@ -45,10 +45,13 @@ function resumen(extra: Partial<Resumen> = {}): Resumen {
   };
 }
 
+// La vigente: la 002, hasta que la prueba guarda la 003.
+let vigente = "002";
+
 function borrador(id: string, proyecto: string, version: string | null): BorradorAbierto {
   return {
     id,
-    base: { proyecto, version, vigente: "002", lista: "Lista", espacio_de: version, solo_lectura: false, moneda: "Bs" },
+    base: { proyecto, version, vigente, lista: "Lista", espacio_de: version, solo_lectura: false, moneda: "Bs" },
     resumen: resumen(),
     instantanea: { creadas: 0, mensaje: null },
   };
@@ -58,9 +61,12 @@ function versiones(proyecto: string): VersionesRespuesta {
   return {
     proyecto,
     moneda: "Bs",
-    por_omision: "002",
+    por_omision: vigente,
     versiones: [
-      { codigo: "002", fecha: "2026-10-06", motivo: "edicion", origen: "001", vigente: true, descartada: false, cambios: 1 },
+      ...(vigente === "003"
+        ? [{ codigo: "003", fecha: "2026-10-31", motivo: "edicion", origen: "002", vigente: true, descartada: false, cambios: 2 }]
+        : []),
+      { codigo: "002", fecha: "2026-10-06", motivo: "edicion", origen: "001", vigente: vigente === "002", descartada: false, cambios: 1 },
       { codigo: "001", fecha: "2026-10-05", motivo: "", origen: "", vigente: false, descartada: false, cambios: 0 },
     ],
   };
@@ -73,6 +79,7 @@ beforeEach(() => {
   // Las dos obras con la 002 vigente, como dice la Hoja.
   estado.proyectos = estado.proyectos.map((p) => ({ ...p, version_vigente: 2 }));
   let abiertos = 0;
+  vigente = "002";
   servidor = servidorFalso(estado, (metodo, ruta, cuerpo) => {
     const url = new URL(ruta, "http://silice.local");
     const camino = url.pathname;
@@ -84,7 +91,14 @@ beforeEach(() => {
     }
     if (/^\/v1\/hoja\/borradores\/[^/]+$/.test(camino) && metodo === "DELETE") return new Response(null, { status: 204 });
     if (camino.endsWith("/cambios")) return json({ cambios: [] });
+    if (camino.endsWith("/cantidades") && metodo === "PUT") {
+      const rev = (cuerpo as { rev: number }).rev + 1;
+      return json({ rev, resumen: resumen({ rev, cambios: 1 }) });
+    }
     if (camino.endsWith("/guardar") && metodo === "POST") {
+      // La obra 7 pasa a tener la 003 vigente: lo dirán la lista de obras y la de versiones.
+      vigente = "003";
+      estado.proyectos = estado.proyectos.map((p) => (p.codigo === "7" ? { ...p, version_vigente: 3 } : p));
       return json({ codigo: "003", proyecto: "7", cambios: 2, total: m("1234.5"), primera: false, mensaje: "Guardada." });
     }
     const vista = cuerpoDeVista(camino);
@@ -157,6 +171,7 @@ function montar(en: string) {
 
 const ruta = () => screen.getByTestId("ruta").textContent;
 const textoDelBorrador = () => screen.queryByTestId("borrador")?.textContent ?? null;
+const fichas = () => servidor.de("GET", "/v1/obras/resumen").length;
 const aperturas = () => servidor.de("POST", "/v1/hoja/borradores").map((l) => l.cuerpo as { proyecto: string; version: string | null });
 const descartes = () => servidor.llamadas.filter((l) => l.metodo === "DELETE" && l.ruta.startsWith("/v1/hoja/borradores/")).map((l) => l.ruta);
 const arbol = () => screen.findByRole("tree", { name: "Obras" });
@@ -182,6 +197,8 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
     await pausa();
     expect(aperturas()).toEqual([{ proyecto: "7", version: "002" }]);
     expect(descartes()).toEqual([]);
+    // Moverse entre Presupuesto, Versiones y Archivos no vuelve a leer la ficha de la obra.
+    expect(fichas()).toBe(1);
   });
 
   test("al ir al Resumen sin cambios descarta el borrador", async () => {
@@ -198,8 +215,12 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
     await u.click(screen.getByRole("button", { name: "Simular dos cambios" }));
     await irA(u, "Resumen");
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
-    expect(pregunta).toHaveAccessibleDescription("Tiene cambios sin guardar en Hoja de la obra. Si sale de esta pantalla, se perderán.");
-    await u.click(within(pregunta).getByRole("button", { name: "Salir y descartar" }));
+    // Ronda 2, menor 2: el borrador se conserva en el servidor y se retoma al volver; el diálogo lo dice y no habla de descartar.
+    expect(pregunta).toHaveAccessibleDescription(
+      "Tiene cambios sin guardar en Hoja de la obra. Sus cambios quedan guardados para retomarlos al volver.",
+    );
+    expect(within(pregunta).queryByRole("button", { name: /descartar/i })).toBeNull();
+    await u.click(within(pregunta).getByRole("button", { name: "Salir" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/resumen"));
     await pausa();
     expect(descartes()).toEqual([]);
@@ -292,5 +313,40 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
       { proyecto: "7", version: "002" },
       { proyecto: "8", version: "002" },
     ]);
+  });
+  // Ronda 2 (mayor del árbitro): tras guardar, la ficha y la lista de obras se vuelven a leer, y entrar al Resumen la lee otra vez.
+  test("tras «Guardar versión…» se vuelven a leer la ficha y la lista de obras, y el Resumen ve la versión nueva", async () => {
+    const u = montar("/obra/empresa/7/versiones");
+    await borradorListoEnElRelleno();
+    await waitFor(() => expect(fichas()).toBe(1));
+    const obrasAntes = servidor.de("GET", "/v1/obras/todas").length;
+    await u.click(screen.getByRole("button", { name: "Simular dos cambios" }));
+    await u.click(screen.getByRole("button", { name: "Guardar desde aquí" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Guardar versión" });
+    await u.type(within(dialogo).getByRole("textbox", { name: /^Fuente/ }), "Acta de obra 4");
+    await u.click(within(dialogo).getByRole("button", { name: "Guardar versión" }));
+    await waitFor(() => expect(fichas()).toBe(2));
+    expect(servidor.de("GET", "/v1/obras/todas").length).toBeGreaterThan(obrasAntes);
+    await irA(u, "Resumen");
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/resumen"));
+    await waitFor(() => expect(fichas()).toBe(3));
+    await waitFor(() => expect(screen.getByRole("region", { name: "Obra abierta" })).toHaveTextContent("Versión: 003"));
+  });
+
+  // Ronda 2, menor 3: lo escrito en la pausa sale al dejar Presupuesto y queda en el borrador; luego salir pregunta.
+  test("escribir una cantidad y pasar enseguida a Versiones y luego al Resumen pregunta y no descarta", async () => {
+    const u = montar("/obra/empresa/7/presupuesto");
+    await borradorListoEnLaHoja();
+    fireEvent.change(await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" }), { target: { value: "5" } });
+    await irA(u, "Versiones");
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/versiones"));
+    await waitFor(() => expect(servidor.de("PUT", "/v1/hoja/borradores/b-1/cantidades")).toHaveLength(1));
+    await pausa();
+    await irA(u, "Resumen");
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    await u.click(within(pregunta).getByRole("button", { name: "Salir" }));
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/resumen"));
+    await pausa();
+    expect(descartes()).toEqual([]);
   });
 });

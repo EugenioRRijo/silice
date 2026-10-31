@@ -4,6 +4,8 @@ import { AvisoError } from "../comun/AvisoError";
 
 interface Props {
   children: ReactNode;
+  // Rojo de la ronda 2 de la Tarea 3 (F4): todavía no se usa.
+  reinicio?: string;
 }
 
 interface Estado {

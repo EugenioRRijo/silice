@@ -2,6 +2,7 @@ import { act, configure, fireEvent, render, screen, within } from "@testing-libr
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
@@ -304,6 +305,26 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       const dialogo = await screen.findByRole("dialog", { name: "Enviar a aprobación" });
       await u.click(within(dialogo).getByRole("button", { name: "Enviar a aprobación" }));
       await esperar(() => expect(envios()).toEqual([{ proyecto: "OF-001", version: "VIV-001", nota: "" }]));
+    });
+
+    // F4, Tarea 3, ronda 2 (mayor del árbitro): la obra ya no se vuelve a montar al cambiar de sección, así que tras
+    // enviar se pide otra vez su ficha (la cabecera dice la etapa nueva). Montada sola, sin obra, no pide nada.
+    test("dentro de una obra, enviar vuelve a leer la ficha de la obra", async () => {
+      const u = userEvent.setup();
+      const recargarFicha = vi.fn();
+      render(
+        <ContextoAplicacion.Provider value={valor()}>
+          <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 1, ficha: { estado: "cargando" }, recargarFicha }}>
+            <PaginaHoja />
+          </ContextoDeLaObra.Provider>
+        </ContextoAplicacion.Provider>,
+      );
+      await u.click(await screen.findByRole("button", { name: "Enviar a aprobación…" }));
+      const dialogo = await screen.findByRole("dialog", { name: "Enviar a aprobación" });
+      expect(recargarFicha).not.toHaveBeenCalled();
+      await u.click(within(dialogo).getByRole("button", { name: "Enviar a aprobación" }));
+      await esperar(() => expect(envios()).toHaveLength(1));
+      await esperar(() => expect(recargarFicha).toHaveBeenCalledTimes(1));
     });
 
     test("con `retirada` avisa «Se retiró VIV-001 de la aprobación.»", async () => {
