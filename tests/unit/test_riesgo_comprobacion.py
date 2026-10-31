@@ -23,7 +23,7 @@ import pytest
 from aplicacion.riesgo.comprobacion import Comprobacion, ResultadoCorte, comprobar_hacia_atras
 from aplicacion.riesgo.proyeccion import SERIE_TASA, ParametrosProyeccion
 from aplicacion.riesgo.series import MapaSeries
-from tests.unit.test_riesgo_proyeccion import (
+from tests.fixtures.riesgo_proyeccion import (
     ASFALTO,
     CARPETA,
     COMPONENTES,
@@ -45,19 +45,22 @@ D = Decimal
 TOLERANCIA = D("0.000001")
 BASE = D("38582.5")  # 100 × (0,5 × 600 + 10 × 0,5) × 1,265
 MAPA = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
+RAZON = D("1.5")
 FACTOR_MEDIO = D("5.1953125")  # promedio de 1,5^k, k = 1..6, a mano (véase el encabezado)
 
 
 def _p(**cambios) -> ParametrosProyeccion:
-    return ParametrosProyeccion(inicio=INICIO, trayectorias=cambios.pop("trayectorias", 30), **cambios)
+    return ParametrosProyeccion(
+        inicio=INICIO, trayectorias=cambios.pop("trayectorias", 30), **cambios
+    )
 
 
 def _serie(valores: list[Decimal]) -> dict[date, Decimal]:
     return dict(zip(_meses(len(valores)), valores, strict=True))
 
 
-def _exponencial(n: int, razon: Decimal = D("1.5")) -> dict[str, dict[date, Decimal]]:
-    """`n` meses que suben `razon` cada mes en las tres series; el último es el mes anterior a INICIO."""
+def _exponencial(n: int, razon: Decimal = RAZON) -> dict[str, dict[date, Decimal]]:
+    """`n` meses que suben `razon` cada mes en las tres series (el último, el anterior a INICIO)."""
     valores = [D(100) * razon**i for i in range(n)]
     return {
         PPI: _serie(valores),
@@ -93,7 +96,8 @@ def test_sin_sorpresas_cobertura_uno():
 
 
 def test_un_choque_queda_fuera():
-    # historia plana y, en el mes 20, un salto de +40 % en el asfalto y el gasoil que se queda. Ningún
+    # historia plana y, en el mes 20, un salto de +40 % en el asfalto y el gasoil que se queda.
+    # Ningún
     # corte lo ve en su ventana (c ≤ 16), así que todos proyectan el total base. En su plazo (meses
     # c .. c + 5): c = 13 y 14 no lo alcanzan (real = base, dentro); c = 15 lo tiene en el 6.º mes
     # (multiplicadores 1, 1, 1, 1, 1, 1,4: promedio 6,4/6) y c = 16 en el 5.º (1, 1, 1, 1, 1,4, 1,4:

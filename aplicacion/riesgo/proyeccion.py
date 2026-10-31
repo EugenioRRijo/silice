@@ -66,7 +66,10 @@ __all__ = [
     "Proyeccion",
     "historia_para_proyectar",
     "percentil_mas_cercano_por_rango",
+    "meses_completos",
     "proyectar",
+    "series_del_mapa",
+    "total_con_variaciones_reales",
 ]
 
 FUENTE_D_V_3 = "D-V-3, decisión por defecto del plan vial (aprobada por Eugenio el 2026-10-30)"
@@ -158,17 +161,26 @@ def historia_para_proyectar(
     return historia_mensual(sesion, codigos, desde, inicio - timedelta(days=1))
 
 
-def _variaciones(
+def meses_completos(
     historia: Mapping[str, Mapping[date, Decimal]], series: Sequence[str], p: ParametrosProyeccion
-) -> tuple[list[date], dict[str, list[Decimal]]]:
-    """Los meses completos de la ventana y, por serie, su variación en cada uno."""
+) -> list[date]:
+    """Los meses completos de la ventana de `p`: los `ventana_meses` anteriores al mes de
+    `p.inicio` con valor en ese mes y en el anterior en todas las `series` (la comprobación hacia
+    atrás los cuenta por corte con esta misma regla)."""
     inicio = p.inicio.replace(day=1)
     ventana = [_mes(inicio, -i) for i in range(p.ventana_meses, 0, -1)]
-    completos = [
+    return [
         m
         for m in ventana
         if all(m in historia.get(s, {}) and _mes(m, -1) in historia.get(s, {}) for s in series)
     ]
+
+
+def _variaciones(
+    historia: Mapping[str, Mapping[date, Decimal]], series: Sequence[str], p: ParametrosProyeccion
+) -> tuple[list[date], dict[str, list[Decimal]]]:
+    """Los meses completos de la ventana y, por serie, su variación en cada uno."""
+    completos = meses_completos(historia, series, p)
     minimo = int(MINIMO_DE_MESES.valor)
     if len(completos) < minimo:
         raise ValueError(f"solo hay {len(completos)} meses completos; se necesitan {minimo}")
@@ -181,6 +193,28 @@ def _variaciones(
                     raise ValueError(f"la serie {s} tiene un valor no positivo en {mes:%m/%Y}")
         variaciones[s] = [valores[m] / valores[_mes(m, -1)] for m in completos]
     return completos, variaciones
+
+
+def _variaciones_reales(
+    historia: Mapping[str, Mapping[date, Decimal]], series: Sequence[str], inicio: date, meses: int
+) -> dict[str, list[Decimal]]:
+    """Las variaciones que de verdad ocurrieron en los `meses` meses desde `inicio` (el mes de
+    inicio incluido), por serie y en orden. Se niega si a una serie le falta un valor."""
+    primero = inicio.replace(day=1)
+    variaciones: dict[str, list[Decimal]] = {}
+    for s in series:
+        valores = historia.get(s, {})
+        lista = []
+        for k in range(meses):
+            m = _mes(primero, k)
+            for mes in (_mes(m, -1), m):
+                if mes not in valores:
+                    raise ValueError(f"a la serie {s} le falta el valor de {mes:%m/%Y}")
+                if not valores[mes] > CERO:
+                    raise ValueError(f"la serie {s} tiene un valor no positivo en {mes:%m/%Y}")
+            lista.append(valores[m] / valores[_mes(m, -1)])
+        variaciones[s] = lista
+    return variaciones
 
 
 # --- Precios y factores ---------------------------------------------------------------------------
@@ -236,6 +270,11 @@ def _mezclas(
     return mezclas
 
 
+def series_del_mapa(mapa: MapaSeries) -> list[str]:
+    """Las series que intervienen en una proyección: las del mapa y la tasa BCV, ordenadas."""
+    return sorted(set(mapa.serie_por_insumo.values()) | {SERIE_TASA})
+
+
 def _validar_series(mapa: MapaSeries, moneda: str) -> None:
     desconocidas = sorted(set(mapa.serie_por_insumo.values()) - SERIES_EN_USD - {SERIE_TASA})
     if desconocidas:
@@ -280,11 +319,17 @@ def _trayectoria(
 ) -> _Trayectoria:
     n = len(next(iter(variaciones.values())))
     elegidos = [int(rng.random() * n) for _ in range(meses)]  # el mismo mes para todas las series
+    return _acumulada({s: [v[i] for i in elegidos] for s, v in variaciones.items()}, en_bs)
+
+
+def _acumulada(variaciones_del_plazo: Mapping[str, Sequence[Decimal]], en_bs: bool) -> _Trayectoria:
+    """La trayectoria que sigue estas variaciones, mes a mes del plazo (las remuestreadas o las
+    reales: el factor sale por la misma regla)."""
     acumulados: dict[str, list[Decimal]] = {}
-    for serie, valores in variaciones.items():
+    for serie, valores in variaciones_del_plazo.items():
         acumulado, lista = UNO, []
-        for i in elegidos:
-            acumulado *= valores[i]
+        for v in valores:
+            acumulado *= v
             lista.append(acumulado)
         acumulados[serie] = lista
     return _Trayectoria(acumulados, en_bs)
@@ -322,6 +367,95 @@ def percentil_mas_cercano_por_rango(valores: Sequence[Decimal], p: int) -> Decim
     return ordenados[rango - 1]
 
 
+class _Motor:
+    """Lo que comparten `proyectar` y `total_con_variaciones_reales`: los precios base, las
+    mezclas con receta, el total por el motor del núcleo y los factores de una trayectoria. Se
+    construye dentro de `_contexto()`. Valida la moneda, las series y que las composiciones
+    reproduzcan el total del presupuesto."""
+
+    def __init__(
+        self,
+        presupuesto: Presupuesto,
+        composiciones: Mapping[str, ComposicionAPU],
+        parametros_costo: ParametrosCosto,
+        mapa: MapaSeries,
+        recetas: Mapping[str, Receta],
+        costo_planta_por_t: Mapping[str, Decimal],
+        precio_de_componente: Mapping[str, Decimal],
+    ) -> None:
+        if presupuesto.moneda not in MONEDAS:
+            raise ValueError(f"moneda del presupuesto {presupuesto.moneda!r}; se espera Bs o USD")
+        _validar_series(mapa, presupuesto.moneda)
+        self._presupuesto = presupuesto
+        self._composiciones = composiciones
+        self._parametros_costo = parametros_costo
+        self._mapa = mapa
+        self._precio_de_componente = precio_de_componente
+        self.series = series_del_mapa(mapa)
+        self.precios = _precios_base(composiciones)
+        self.mezclas = _mezclas(
+            recetas, costo_planta_por_t, precio_de_componente, self.precios, mapa
+        )
+        recalculado = self.total({}, "base")
+        if recalculado != presupuesto.total:
+            raise ValueError(
+                f"las composiciones y los parámetros no reproducen el total del presupuesto "
+                f"({recalculado} frente a {presupuesto.total}): la proyección compararía cosas "
+                "distintas"
+            )
+
+    def total(self, con: Mapping[str, Decimal], nombre: str) -> Decimal:
+        escenario = generar_escenario(
+            nombre,
+            self._presupuesto,
+            self._composiciones,
+            self._parametros_costo,
+            precios=con,
+            reglas=(),
+        )
+        return escenario.presupuesto.total
+
+    def factores(self, t: _Trayectoria) -> dict[str, Decimal]:
+        return _factores(t, self.precios, self._mapa, self.mezclas, self._precio_de_componente)
+
+
+def total_con_variaciones_reales(
+    presupuesto: Presupuesto,
+    composiciones: Mapping[str, ComposicionAPU],
+    parametros_costo: ParametrosCosto,
+    historia: Mapping[str, Mapping[date, Decimal]],
+    mapa: MapaSeries,
+    inicio: date,
+    meses: int,
+    *,
+    recetas: Mapping[str, Receta] | None = None,
+    costo_planta_por_t: Mapping[str, Decimal] | None = None,
+    precio_de_componente: Mapping[str, Decimal] | None = None,
+) -> Decimal:
+    """El total del presupuesto revalorizado con lo que **de verdad pasó** en los `meses` meses
+    desde `inicio` (el mes de inicio incluido), por las mismas reglas que `proyectar`: el
+    multiplicador de cada serie en el mes `k` del plazo es el producto de sus variaciones reales
+    hasta `k`, el factor de cada insumo es el promedio de sus multiplicadores (gasto uniforme), y
+    valen la misma regla de la moneda y la misma recomposición de la mezcla. Es el valor contra el
+    que la comprobación hacia atrás compara el P80. Pide el valor de cada serie desde el mes
+    anterior a `inicio` hasta el último mes del plazo."""
+    if not _entero(meses) or meses < 1:
+        raise ValueError("los meses del plazo deben ser un entero mayor que cero")
+    with _contexto():
+        motor = _Motor(
+            presupuesto,
+            composiciones,
+            parametros_costo,
+            mapa,
+            recetas or {},
+            costo_planta_por_t or {},
+            precio_de_componente or {},
+        )
+        reales = _variaciones_reales(historia, motor.series, inicio, meses)
+        factores = motor.factores(_acumulada(reales, presupuesto.moneda == "Bs"))
+        return motor.total({d: motor.precios[d] * f for d, f in factores.items()}, "real")
+
+
 # --- La proyección --------------------------------------------------------------------------------
 
 
@@ -344,31 +478,18 @@ def proyectar(
     las composiciones; `precio_de_componente` da el precio base de cada componente de las recetas
     por su **código** (en la moneda del presupuesto), y el mapa puede dar la serie de un
     componente por ese mismo código. Las reglas del método están en el encabezado del módulo."""
-    recetas = recetas or {}
-    costo_planta_por_t = costo_planta_por_t or {}
-    precio_de_componente = precio_de_componente or {}
-    if presupuesto.moneda not in MONEDAS:
-        raise ValueError(f"moneda del presupuesto {presupuesto.moneda!r}; se espera Bs o USD")
-    _validar_series(mapa, presupuesto.moneda)
     with _contexto():
-        precios = _precios_base(composiciones)
-        mezclas = _mezclas(recetas, costo_planta_por_t, precio_de_componente, precios, mapa)
-
-        def total(con: Mapping[str, Decimal], nombre: str) -> Decimal:
-            escenario = generar_escenario(
-                nombre, presupuesto, composiciones, parametros_costo, precios=con, reglas=()
-            )
-            return escenario.presupuesto.total
-
-        recalculado = total({}, "base")
-        if recalculado != presupuesto.total:
-            raise ValueError(
-                f"las composiciones y los parámetros no reproducen el total del presupuesto "
-                f"({recalculado} frente a {presupuesto.total}): la proyección compararía cosas "
-                "distintas"
-            )
-        series = sorted(set(mapa.serie_por_insumo.values()) | {SERIE_TASA})
-        completos, variaciones = _variaciones(historia, series, p)
+        motor = _Motor(
+            presupuesto,
+            composiciones,
+            parametros_costo,
+            mapa,
+            recetas or {},
+            costo_planta_por_t or {},
+            precio_de_componente or {},
+        )
+        precios, mezclas, total = motor.precios, motor.mezclas, motor.total
+        completos, variaciones = _variaciones(historia, motor.series, p)
 
         rng = random.Random(p.semilla)
         en_bs = presupuesto.moneda == "Bs"
@@ -376,7 +497,7 @@ def proyectar(
         suma_de_factores = dict.fromkeys(precios, CERO)
         for n in range(p.trayectorias):
             t = _trayectoria(rng, variaciones, p.meses, en_bs)
-            factores = _factores(t, precios, mapa, mezclas, precio_de_componente)
+            factores = motor.factores(t)
             for d, f in factores.items():
                 suma_de_factores[d] += f
             totales.append(total({d: precios[d] * f for d, f in factores.items()}, f"t{n + 1}"))
