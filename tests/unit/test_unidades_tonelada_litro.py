@@ -11,7 +11,9 @@ import pytest
 from core.contracts.unidades import normalizar_unidad, unidades_equivalentes
 
 
-@pytest.mark.parametrize("grafia", ["ton", "tn", "tonelada", "toneladas", "t", "TON", " Toneladas "])
+@pytest.mark.parametrize(
+    "grafia", ["ton", "tn", "tonelada", "toneladas", "t", "TON", " Toneladas "]
+)
 def test_tonelada(grafia):
     assert normalizar_unidad(grafia) == "t"
 
