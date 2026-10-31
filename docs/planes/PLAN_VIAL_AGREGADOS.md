@@ -482,6 +482,64 @@ Tabular: `test_lee_coma_decimal` («7,30» → `Decimal("7.30")`, Foco 3); `test
 - [ ] **Step 2–5:** rojo, implementar (`caso_0019`, `down_revision = "caso_0018_mp_corte_tasa"`), verde, commit —
   `feat(vial): tramos por version, API y pantalla`.
 
+### Tarea 8b: Llevar los tramos al presupuesto (añadida al cerrar la fase B, árbitro de fase r1)
+
+**Modelo:** Opus (toca el borrador de la Hoja).
+
+El árbitro de la fase B encontró que VR1, VR2, VR4, VR5 y VR7 casan cada partida por su `origen_id`
+«tramo:T:capa:N» y que en el producto ninguna partida lo lleva: la Hoja agrega renglones «a-mano:n»,
+`/v1/computos` no ofrece el adaptador vial y ni `/v1/vial` ni la pantalla «Tramos» llevan las cantidades al
+presupuesto. Las reglas solo se disparaban en pruebas que fabrican el presupuesto con `derivar_tramos`. Esta tarea
+construye ese camino (bitácora de preguntas, fila 63).
+
+**Archivos:**
+- Modify: `aplicacion/vial.py`, `api/rutas/vial.py`, `api/esquemas_vial.py`, `frontend-desktop/src/paginas/vial/`
+  (pantalla «Tramos»), `docs/api.json`
+- Test: `tests/unit/test_aplicacion_vial_llevar.py`, `tests/integration/test_api_vial_llevar.py`, prueba Vitest de la
+  pantalla
+
+**Interfaces:**
+- Consumes: `cantidades_de_tramos` y `tramos_de_version` (Tarea 8), `reglas_viales` (Tarea 9), el mecanismo de
+  `aplicacion.elaboracion.llevar_a_la_hoja` y `api/rutas/hoja_llevar.py` (borrador vivo de la ficha y la obra o uno
+  nuevo sobre la versión vigente; todo o nada; sin guardar versión; mismos errores 404/409/422/503).
+- Produces:
+  - `aplicacion/vial.llevar_tramos_a_la_hoja(sesion, huella_ficha, url, proyecto, *, responsable, hoy) -> tuple[int,
+    int]` (id del borrador y número de renglones llevados).
+  - `POST /v1/vial/tramos/llevar` con cuerpo `{proyecto}` → 200 `{borrador_id, renglones}`; mismo acceso, CSRF,
+    `Origin` y `no-store` que `POST /v1/hoja/llevar`.
+
+**Reglas:**
+1. Cada cantidad derivada entra en el borrador como renglón con el `origen_id` y el `origen_tipo` que da
+   `derivar_tramos`, **sin** pasar a «a-mano:n». La clave del renglón es la de siempre (`codigo|origen_id`).
+2. Llevar otra vez **sincroniza**: los renglones del borrador cuyo `origen_id` empieza por «tramo:» se reemplazan
+   por la derivación actual. Los demás renglones no se tocan. La cantidad escrita por la persona sobre un renglón cuya
+   clave sigue existiendo se conserva, así VR1 sigue avisando la diferencia. La de una clave que desaparece se
+   descarta con ella.
+3. Una partida vial sin APU en la lista de la obra da el mismo 404 de `hoja_edicion.PartidaFueraDelCatalogo`, y el
+   mensaje nombra **todos** los códigos que faltan, no solo el primero. No se lleva nada.
+4. Llevar rearma las reglas viales del borrador (`reglas_extra`) con los tramos de ese momento. Es el menor 3 del
+   árbitro: antes quedaban congeladas al abrir. Reimportar tramos con la Hoja abierta sin volver a llevar sigue
+   mostrando las reglas anteriores, y eso queda anotado en la fila 63.
+5. Menor 2 del árbitro: `tramos_desde_csv` aplica `MAX_TRAMOS`, `MAX_CAPAS` y `MAX_LINEAS_DE_DEMARCACION` (que pasan
+   a un sitio que importen la API y la aplicación). Pasarse da un 422 que dice el tope y no guarda nada.
+6. Pantalla «Tramos»: botón «Llevar al presupuesto». Si sale bien, aviso con foco («Se llevaron N renglones a la Hoja
+   de la obra.») y enlace a la Hoja. Si sale mal, el texto del servidor tal cual, con foco.
+
+- [ ] **Step 1: Pruebas que fallan** (oráculos a mano con `data/samples/vial/`):
+  - `test_llevar_crea_renglones_con_origen_de_tramo`: cada renglón llevado tiene `origen_id` que empieza por «tramo:».
+    Hay uno por cantidad derivada y ninguno «a-mano:».
+  - `test_llevar_dos_veces_no_duplica_y_conserva_lo_escrito`.
+  - `test_tramo_quitado_desaparece_al_volver_a_llevar`.
+  - `test_partidas_sin_apu_dan_404_con_todos_los_codigos_y_no_llevan_nada`.
+  - `test_csv_con_mas_de_2000_tramos_da_422_y_no_guarda`.
+  - De punta a punta por la API, **sin llamar a `derivar_tramos` en la prueba**:
+    `test_importar_llevar_escribir_900_y_la_auditoria_muestra_vr1`. Se importa el CSV, se lleva, se escribe en la
+    Hoja una cantidad distinta de la derivada en un renglón de carpeta y la auditoría del borrador trae VR1 para ese
+    tramo.
+  - Front: `llevar muestra cuántos renglones y enlaza a la Hoja`, `el 404 nombra las partidas sin APU`.
+- [ ] **Step 2–5:** rojo, implementar, verde (+ `ruff`, `npm run lint`, `docs/api.json` regenerado,
+  `git diff --stat c1f436b2 -- core/` vacío), commit — `feat(vial): llevar los tramos al presupuesto`.
+
 ### Tarea 9: Reglas viales del auditor
 
 **Modelo:** Sonnet.
@@ -845,6 +903,8 @@ def test_supuestos_declarados():  # "gasto uniforme", "USD fijo × tasa" en p.su
   dos meses, costos por centro y una receta), declaradas ficticias en su README; prueba de punta a punta
   `tests/integration/test_vial_extremo_a_extremo.py` con la vía, la cantera, la planta y las series ficticias: costos → cálculo → publicación → tramos → APU → auditoría y conciliación →
   proyección → comprobación → mejora → reportes.
+  Los tramos llegan al presupuesto por `POST /v1/vial/tramos/llevar` (Tarea 8b), nunca con `derivar_tramos` ni con un
+  `origen_id` fabricado en la prueba (árbitro de la fase B).
 - [ ] **Step 2:** menores agrupados de las fases.
 - [ ] **Step 3:** `uv run --active pytest -q`, `npm --prefix frontend-desktop test`, `npm --prefix frontend-desktop run lint`
   completos; salidas guardadas en el scratchpad de la sesión.

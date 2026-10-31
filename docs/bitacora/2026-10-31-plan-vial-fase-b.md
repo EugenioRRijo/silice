@@ -37,3 +37,15 @@ filas 33 a 62 de `2026-10-30-preguntas-para-eugenio.md`.
   `test_huellas_rnf04::test_huella_del_contenido_del_libro` y `test_r11_los_hallazgos_son_los_de_la_memoria[TI-001]`
   (R12 por el reloj).
 - Vitest: 3253 de 3253. Lint (eslint + tsc): limpio. `ruff check .`: limpio.
+
+## Árbitro de cierre de la fase B (ronda 1, cabeza 49759e24): devuelta
+
+- MAYOR: VR1, VR2, VR4, VR5 y VR7 casan por el `origen_id` «tramo:…», que ninguna partida del producto llevaba. En la
+  Hoja solo funcionaban VR3 y VR6, y la prueba de la Hoja fabricaba el presupuesto con `derivar_tramos`. Se arregla
+  con un camino de producto (no solo anotarlo): la **Tarea 8b** «Llevar los tramos al presupuesto», añadida al plan,
+  con la fila 63 en las preguntas. La Tarea 22 queda obligada a recorrer ese camino.
+- MENOR 2: los topes de tramos, capas y líneas no se aplicaban al importar el CSV. Entra en la Tarea 8b (regla 5).
+- MENOR 3: las reglas viales quedaban congeladas al abrir la versión. La Tarea 8b las rearma al llevar, y el resto
+  queda anotado en la fila 63.
+- Verificado por el árbitro: unas 984 pruebas de la fase en verde; arquitectura, migración y `ruff` limpios; `core/`
+  intacto; experimento congelado intacto; `docs/api.json` idéntico; front 271 de 271 y lint limpio.
