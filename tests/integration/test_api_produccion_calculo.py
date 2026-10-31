@@ -172,13 +172,15 @@ def test_un_costo_sin_tasa_de_su_dia_es_422_y_no_guarda_nada(http) -> None:
     assert contar(Calculo) == 0
 
 
-def test_periodo_sin_produccion_es_422(http) -> None:
+def test_periodo_sin_produccion_se_calcula_sin_productos(http) -> None:
+    """Tarea 4b (P16): ya no es 422; se guarda y la cantera pasa al mes siguiente."""
     _carpeta()
     _costo(http, "cantera", "1000", "USD", "2026-11-03")
-    r = http.post(CALCULOS, json={"periodo": "2026-11", "moneda": "USD"})
-    assert r.status_code == 422, r.text
-    assert r.json()["detalle"] == "No hubo producción en 2026-11."
-    assert contar(Calculo) == 0
+    cuerpo = _ok(http.post(CALCULOS, json={"periodo": "2026-11", "moneda": "USD"}))
+    assert cuerpo["productos"] == []
+    pasa = cuerpo["instantanea"]["resultado"]["pasa_al_mes_siguiente"]
+    assert pasa["cantera"]["total"] == "1000"
+    assert contar(Calculo) == 1
 
 
 @pytest.mark.parametrize(

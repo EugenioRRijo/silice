@@ -38,8 +38,9 @@ def _calculo(conexion: sqlite3.Connection, moneda: str = "USD", huella: str = HU
     )
 
 
-def test_es_la_cabeza_de_la_instalacion() -> None:
-    assert revision_head(Destino.INSTALACION) == REVISION
+def test_le_sigue_la_de_las_publicaciones() -> None:
+    """Plan vial, Tarea 4b: la cabeza pasa a `ins_0009_prod_publicacion`, que baja a esta."""
+    assert revision_head(Destino.INSTALACION) == "ins_0009_prod_publicacion"
 
 
 def test_crea_la_tabla_con_sus_columnas_y_sus_reglas(tmp_path: Path) -> None:
@@ -97,7 +98,7 @@ def test_una_base_que_ya_trae_la_tabla_se_adopta(tmp_path: Path) -> None:
         _calculo(conexion)
         conexion.commit()
 
-    aplicar_revisiones(base, Destino.INSTALACION)
+    aplicar_revisiones(base, Destino.INSTALACION, REVISION)
 
     with closing(sqlite3.connect(base)) as conexion:
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [

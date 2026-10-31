@@ -62,8 +62,9 @@ def _con_material(conexion: sqlite3.Connection) -> None:
 
 
 def test_le_sigue_la_de_los_calculos() -> None:
-    """Plan vial, Tarea 4: la cabeza pasa a `ins_0008_prod_calculo`, que baja a esta."""
-    assert revision_head(Destino.INSTALACION) == "ins_0008_prod_calculo"
+    """Plan vial, Tareas 4 y 4b: encima de esta van `ins_0008_prod_calculo` y
+    `ins_0009_prod_publicacion`, la cabeza."""
+    assert revision_head(Destino.INSTALACION) == "ins_0009_prod_publicacion"
 
 
 def test_crea_las_dos_tablas_con_sus_columnas(tmp_path: Path) -> None:

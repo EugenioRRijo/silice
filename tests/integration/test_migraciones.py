@@ -271,7 +271,7 @@ def test_la_instalacion_nace_con_las_tablas_de_seguridad_y_su_alembic_version(
     """S3-1 llena el destino de la instalación (hasta la 0.7.0 nacía vacío)."""
     base = tmp_path / "instalacion.db"
     aplicar_revisiones(base, Destino.INSTALACION)
-    assert revision_head(Destino.INSTALACION) == "ins_0008_prod_calculo"
+    assert revision_head(Destino.INSTALACION) == "ins_0009_prod_publicacion"
     with closing(sqlite3.connect(base)) as conexion:
         tablas = {
             n for (n,) in conexion.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
@@ -297,7 +297,8 @@ def test_la_instalacion_nace_con_las_tablas_de_seguridad_y_su_alembic_version(
             "prod_receta",
             "prod_receta_componente",
             "prod_calculo",
+            "prod_publicacion",
         }
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            ("ins_0008_prod_calculo",)
+            ("ins_0009_prod_publicacion",)
         ]

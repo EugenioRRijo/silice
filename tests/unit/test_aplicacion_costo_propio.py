@@ -210,12 +210,13 @@ def test_moneda_invalida(ins, caso) -> None:
 # --- Foco 2: nunca division entre cero ni costo cero ----------------------------------------------
 
 
-def test_periodo_sin_produccion(ins, caso) -> None:
+def test_periodo_sin_produccion_se_calcula_sin_costo_por_tonelada(ins, caso) -> None:
+    """Tarea 4b (P16): ya no se niega; nada recibe costo y todo pasa al mes siguiente (las
+    constancias se prueban en `test_aplicacion_costo_propio_4b`). Nunca un costo cero."""
     cp.materiales(ins)
     cp.costos_usd(ins)
-    with pytest.raises(ErrorDeCalculo, match=r"^No hubo producción en 2026-11\.$"):
-        _calcular(ins, caso)
-    assert _calculos(ins) == 0
+    assert _calcular(ins, caso).por_tonelada == {}
+    assert _calculos(ins) == 1
 
 
 def test_periodo_sin_costos(ins, caso) -> None:
@@ -242,14 +243,22 @@ def test_todos_los_costos_anulados(ins, caso) -> None:
         _calcular(ins, caso)
 
 
-def test_costos_de_cantera_sin_agregados_producidos(ins, caso) -> None:
+def test_costos_de_cantera_sin_agregados_producidos_pasan(ins, caso) -> None:
+    """Tarea 4b (P16): la cantera sin agregados pasa al mes siguiente; la mezcla (solo de
+    comprados) se calcula: 0,99 x 600 + 8 x 0,5 + 1.200 / 100 = 610."""
     cp.materiales(ins)
-    cp.receta(ins)
+    solo_comprado = (
+        Componente("CA-30", D("0.99"), "t", "comprado"),
+        Componente("GO", D("8"), "l", "comprado"),
+    )
+    cp.receta(ins, solo_comprado)
     cp.producir(ins, "100", cp.dia(10))
     cp.costos_usd(ins)
     cp.lista(caso, "USD", cp.dia(1), cp.LISTA_USD)
-    with pytest.raises(ErrorDeCalculo, match="cantera.*ningún agregado"):
-        _calcular(ins, caso)
+    calculo = _calcular(ins, caso)
+    assert calculo.por_tonelada == {"MZ-1": D("610")}
+    pasa = _instantanea(ins, calculo.id)["resultado"]["pasa_al_mes_siguiente"]
+    assert list(pasa) == ["cantera"] and pasa["cantera"]["total"] == "1000"
 
 
 def test_agregados_sin_costos_de_cantera(ins, caso) -> None:
@@ -289,12 +298,15 @@ def test_pesos_sin_agregados_producidos(ins, caso) -> None:
     assert _calculos(ins) == 0
 
 
-def test_costos_de_planta_sin_mezcla(ins, caso) -> None:
+def test_costos_de_planta_sin_mezcla_pasan(ins, caso) -> None:
+    """Tarea 4b (P16): 1.000 / 150 al agregado; la planta pasa al mes siguiente."""
     cp.materiales(ins)
     cp.entrada(ins, "AGR-12", "150", cp.dia(5))
     cp.costos_usd(ins)
-    with pytest.raises(ErrorDeCalculo, match="planta.*no se produjo mezcla"):
-        _calcular(ins, caso)
+    calculo = _calcular(ins, caso)
+    assert calculo.por_tonelada == {"AGR-12": D("1000") / D("150")}
+    pasa = _instantanea(ins, calculo.id)["resultado"]["pasa_al_mes_siguiente"]
+    assert list(pasa) == ["planta"] and pasa["planta"]["total"] == "1200"
 
 
 def test_la_mezcla_usa_un_agregado_que_no_se_produjo(ins, caso) -> None:
@@ -336,27 +348,29 @@ def test_la_unidad_del_comprado_debe_ser_la_de_la_receta(ins, caso) -> None:
         _calcular(ins, caso)
 
 
-def test_la_lista_en_otra_moneda_usa_la_tasa_de_su_fecha_de_vigencia(ins, caso) -> None:
+def test_la_lista_en_otra_moneda_usa_la_tasa_del_cierre(ins, caso) -> None:
+    """Tarea 4b (P14): la ultima tasa del mes (36,50 del 30/11), no la del dia en que empezo a
+    regir la lista (30 del 02/11): 21.900 / 36,50 = 600."""
     cp.planta(ins)
     cp.costos_usd(ins)
     cp.lista(caso, "Bs", cp.dia(2), cp.LISTA_BS)
-    cp.tasas(caso, {cp.dia(2): cp.TASA, cp.dia(30): "99"})
+    cp.tasas(caso, {cp.dia(2): "30", cp.dia(30): cp.TASA})
     calculo = _calcular(ins, caso)
     assert calculo.por_tonelada["MZ-1"] == D("50.70")
     precio = _instantanea(ins, calculo.id)["entradas"]["precios_comprados"]["CA-30"]
     assert (precio["precio"], precio["moneda"], precio["tasa"]["fecha"]) == (
         "21900",
         "Bs",
-        "2026-11-02",
+        "2026-11-30",
     )
 
 
-def test_la_lista_en_otra_moneda_sin_tasa_de_su_fecha(ins, caso) -> None:
+def test_la_lista_en_otra_moneda_sin_tasa_del_cierre(ins, caso) -> None:
     cp.planta(ins)
     cp.costos_usd(ins)
-    cp.lista(caso, "Bs", cp.dia(1), cp.LISTA_BS, nombre="Lista Bs ficticia")  # domingo 01/11
-    cp.tasas(caso, {cp.dia(2): cp.TASA})
-    with pytest.raises(FaltanTasas, match="Lista Bs ficticia.*01/11/2026"):
+    cp.lista(caso, "Bs", cp.dia(1), cp.LISTA_BS, nombre="Lista Bs ficticia")
+    cp.tasas(caso, {date(2026, 10, 30): cp.TASA})  # solo de octubre
+    with pytest.raises(FaltanTasas, match="Lista Bs ficticia.*2026-11"):
         _calcular(ins, caso)
 
 

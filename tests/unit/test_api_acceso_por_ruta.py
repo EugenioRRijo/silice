@@ -272,6 +272,7 @@ TABLA = {
     ("POST", "/v1/produccion/producciones"): OPERAR,
     ("GET", "/v1/produccion/producido"): OPERAR,
     ("POST", "/v1/produccion/calculos"): COSTOS,  # plan vial T4: costo por tonelada
+    ("GET", "/v1/produccion/calculos"): COSTOS,  # plan vial T4b: calculos anteriores
     ("GET", "/v1/produccion/calculos/{calculo_id}"): COSTOS,
     ("POST", "/v1/produccion/calculos/{calculo_id}/publicar"): PUBLICAR,  # plan vial T5
     ("GET", "/v1/hoja/versiones"): EDITAR,  # T10 3b-1: Hoja del proyecto; clave o sesion

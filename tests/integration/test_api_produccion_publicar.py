@@ -130,12 +130,12 @@ def test_la_hora_y_el_usuario_son_los_del_servidor(http, monkeypatch) -> None:
     assert "2020" not in origen and "otro" not in origen
 
 
-def test_publicar_dos_veces_son_dos_listas_y_un_solo_insumo(http) -> None:
+def test_publicar_dos_calculos_son_dos_listas_y_un_solo_insumo(http) -> None:
+    """Tarea 4b (P22): cada calculo se publica una vez (el 409 esta en `..._calculos_4b`)."""
     _noviembre()
-    calculo = _calcular(http)
     admin = Web("admin")
-    primera = admin.post(f"{CALCULOS}/{calculo}/publicar", json={}).json()["id"]
-    segunda = admin.post(f"{CALCULOS}/{calculo}/publicar", json={}).json()["id"]
+    primera = admin.post(f"{CALCULOS}/{_calcular(http)}/publicar", json={}).json()["id"]
+    segunda = admin.post(f"{CALCULOS}/{_calcular(http)}/publicar", json={}).json()["id"]
     assert primera != segunda
     assert len(_listas_de_empresa()) == 2
     assert _insumos_propios() == 3  # AGP-AGR-12, AGP-AGR-34 y MZP-MZ-1
