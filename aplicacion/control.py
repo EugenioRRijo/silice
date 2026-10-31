@@ -145,7 +145,17 @@ MENSAJE_SIN_DECLARADOS = (
     "al recibir una compra en Procura."
 )
 COLUMNAS_LINEAS = ("Partida", "Cantidad", "Fecha de medicion", "Observacion")
-COLUMNAS_VALUACIONES = ("Numero", "Periodo", "Fecha", "Inspector", "Registrada", "Estado")
+COLUMNAS_VALUACIONES = (
+    "Numero",
+    "Periodo",
+    "Fecha",
+    "Inspector",
+    "Registrada",
+    "Estado",
+    "Subtotal",
+    "IVA",
+    "Total con IVA",
+)
 COLUMNAS_INDICADORES = ("Indicador", "Valor", "En la otra moneda", "Nota")
 COLUMNAS_ALERTAS = ("Alerta", "Severidad", "Descripcion", "Observado", "Umbral")
 COLUMNAS_REPROYECCION = ("Partida", "Indice", "Fin (dia habil)", "Nota")

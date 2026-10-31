@@ -312,7 +312,7 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         )}
         {datos.filas.length > 0 && (
           <p className="silice-control__nota cds--type-helper-text-01">
-            {`Lo medido hasta hoy: ${formatoEsVe(datos.impuestos.subtotal)} sin IVA; IVA al ${porcentajeDeAlicuota(datos.impuestos.alicuota)} %: ${formatoEsVe(datos.impuestos.iva)}; total con IVA: ${formatoEsVe(datos.impuestos.total)}. Fuente de la alícuota: ${datos.impuestos.fuente_alicuota}.`}
+            {`Lo medido hasta hoy: ${formatoEsVe(datos.impuestos.subtotal)} sin IVA; IVA al ${porcentajeDeAlicuota(datos.impuestos.alicuota)} %: ${formatoEsVe(datos.impuestos.iva)}; total con IVA: ${formatoEsVe(datos.impuestos.total)}. Fuente de la alícuota: ${datos.impuestos.fuente_alicuota}.${datos.perspectiva === "costo" ? " La línea base está en costo directo: este IVA no es una cifra facturable." : ""}`}
           </p>
         )}
         <p className="silice-control__nota cds--type-helper-text-01">

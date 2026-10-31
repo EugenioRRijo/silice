@@ -25654,6 +25654,11 @@
           },
           "impuestos": {
             "$ref": "#/components/schemas/ImpuestosRespuesta"
+          },
+          "perspectiva": {
+            "type": "string",
+            "title": "Perspectiva",
+            "default": ""
           }
         },
         "type": "object",

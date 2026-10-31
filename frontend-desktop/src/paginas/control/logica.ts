@@ -156,6 +156,8 @@ export interface Valuaciones {
   tiene_linea_base: boolean;
   filas: Fila[];
   impuestos: Impuestos;
+  // La perspectiva de la linea base («costo» o «precio»); vacia sin linea base.
+  perspectiva: string;
   aviso: string;
   anulables: { id: number; rotulo: string }[];
   corte_por_defecto: string | null;

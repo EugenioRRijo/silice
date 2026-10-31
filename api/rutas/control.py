@@ -287,6 +287,9 @@ class ValuacionesRespuesta(BaseModel):
     )
     #: Tarea 18: el IVA sobre lo medido en todas las valuaciones (cada fila trae el suyo).
     impuestos: ImpuestosRespuesta
+    #: La perspectiva de la línea base («costo» o «precio»); vacía sin línea base. Con «costo»
+    #: el IVA de lo medido no es una cifra facturable (T18-3).
+    perspectiva: str = ""
 
 
 @router.get("/valuaciones", response_model=ValuacionesRespuesta)
@@ -300,6 +303,7 @@ def valuaciones(sesion: SesionDep, proyecto: str) -> ValuacionesRespuesta:
             anulables=[],
             corte_por_defecto=None,
             impuestos=impuestos_a_respuesta(logica.impuestos_de_valuaciones(None)),
+            perspectiva="",
         )
     filas: list[Fila] = []
     aviso = ""
@@ -319,6 +323,7 @@ def valuaciones(sesion: SesionDep, proyecto: str) -> ValuacionesRespuesta:
         ],
         corte_por_defecto=logica.corte_por_defecto(sesion, proyecto).isoformat(),
         impuestos=impuestos_a_respuesta(logica.impuestos_de_valuaciones(resultado)),
+        perspectiva=logica.perspectiva_de_la_linea_base(sesion, proyecto, None),
     )
 
 
