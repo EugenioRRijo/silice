@@ -1134,3 +1134,35 @@ Formato: pregunta · lo que se hizo · cómo cambiarlo.
 7. **La versión es la vigente de `useObras`** (la de `ObraDeCarpeta.version_codigo`), no la de la ficha; la versión abierta en el borrador se añade en la Tarea 3. · Leer `ficha.obra.version`.
 8. **Tipos movidos.** · `Etapa`, `ObraFilaRespuesta` y `SiguienteRespuesta` pasan de `paginas/obras/logica.ts` a `api/tipos.ts`; `logica.ts` y `TablaObras.tsx` actualizan sus imports.
 9. **Rojo por módulos ausentes.** · Las pruebas rojas fallaron al no existir `obraAbierta`, `useFichaDeLaObra` ni el nuevo `EspacioDeObra`; el rojo es de importación, no de aserción. `npm run duplicado` no se corrió (sigue sin `jscpd` en este `node_modules`, ver Tarea 0, decisión 10).
+
+## Bajas aplicadas
+
+Formato: baja · qué se quitó · commit · dónde vive hoy la función · cómo volver. `knip` no está instalado en este `node_modules` (no se instaló nada): la medida se hizo con `grep` de importaciones y con `npm run lint` (eslint y tsc) en 0. Antes: `paginas/obras/` con 2.427 líneas en 12 archivos; después, 7 archivos.
+
+| # | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| 1 | Botón «Nueva obra» de la cabecera del Resumen (ya no estaba en `index.tsx` desde el commit `b62d3679`, que reescribió la página) | `023c4416` (los archivos) y `b62d3679` (la página) | «Nueva obra» de la barra lateral | `git revert 023c4416` y `git checkout b62d3679^ -- frontend-desktop/src/paginas/obras/index.tsx` |
+| 2 | `TablaObras.tsx`: tabla «Obras» de toda la carpeta | `023c4416` | Árbol de obras; cifras de la obra abierta en el Resumen | `git revert 023c4416` |
+| 3 | `CifrasMesa.tsx`, notas de conversión y «fuera de la suma» (y `textoConversion`, `textoFueraDeSuma`, tipos de cifras) | `023c4416` | **Pendiente de F5:** vuelven en Empresa | `git revert 023c4416` |
+| 4 | `ColumnaPendientes.tsx`, `columnaDeLaMesa`, `gruposDeLaMesa` y los tipos de «Aprobar» | `023c4416` | Bandeja de F3; el Resumen muestra los pendientes de la obra | `git revert 023c4416` |
+| 5 | `LoQuePuedeHacer.tsx` y su hoja | `023c4416` | Ctrl+K | `git revert 023c4416` |
+| 6 | «Cree su primera obra» y «Probar con datos de demostración» (`PrimerosPasos`) | `b62d3679` (salió con la página) | Barra lateral; Empresa › Carpetas de trabajo; «Empieza aquí» (F6) | `git checkout b62d3679^ -- frontend-desktop/src/paginas/obras/index.tsx` |
+
+Las seis van en un solo commit de baja (`023c4416`) porque el plan lo pide así para esta tarea y porque la mesa es una sola pieza: las bajas 1, 5 y 6 ya habían salido de la página en el commit de la implementación. No es posible deshacer una baja suelta con `git revert`; se deshace el grupo. Las pruebas de la mesa (`Mesa`, `PorAprobar`, `Obras`) se quitaron con ella. Tras `git revert 023c4416`, la mesa vuelve a existir pero ya no está montada (la pantalla `obras` es el Resumen).
+
+## Decisiones de la Tarea 2
+
+Formato: pregunta · lo que se hizo · cómo cambiarlo.
+
+1. **Rojo por aserción.** · Las pruebas rojas (`72adbd4e`) usan stubs mínimos de `FranjaDelPaso`, `pasoDeLaObra` y `destinoDeLaAccion` y la página antigua: fallan por `Unable to find ... "Siguiente paso"`, `expected null to deeply equal {...}` y `expected '' to be '/obra/Carpeta%20Sur.db/3/presupuesto'`, no por una importación ausente. `pedir` se simula con una respuesta vacía para que la mesa antigua no caiga antes de la aserción. · —
+2. **Una lectura del resumen por obra abierta.** · `Resumen.test.tsx` monta `EspacioDeObra` con la página real y cuenta las llamadas a `GET /v1/obras/resumen`: una, y los nombres de las otras obras no aparecen. La página no pide nada por su cuenta. · —
+3. **`pasoDeLaObra` con «qué pasa» vacío.** · Un texto vacío cuenta como ausente (`if (obra.que_pasa)`), igual que `null`. · Comparar con `!== null`.
+4. **Pendientes.** · Se filtran con `claveDeObra(carpeta, obraId)` (la carpeta cuenta). Cada uno es una fila con su texto y un botón `tertiary` `sm`; el botón navega con `useNavegarSeguro`, que pregunta si hay formularios sin guardar. No se usa `elegirObra` ni `confirmarSalida` aparte: el destino es una ruta de la propia obra. · —
+5. **Total.** · Se muestra con `textoTotal` (`formatoEsVe`), sin recortar decimales, así que el texto visible ya es el exacto; no hay un segundo texto accesible. · Pasar a `centesimasEsVe` con el exacto en `title`.
+6. **Cifras como lista de definiciones.** · `dl` dentro de un `div role="group"` etiquetado «Cifras de la obra»: la pareja nombre y valor la leen bien los lectores de pantalla; la rejilla `auto-fit` baja a una columna con letra grande sin desplazamiento horizontal. · —
+7. **Título del registro.** · La pantalla `obras` pasa a «Resumen de la obra» (`shell/rutas.ts`) con otra línea para Ctrl+K. Dos pruebas ajenas se adaptan: `titulos.test.tsx` da a cada página un contexto de obra (cargando) y `Marco.test.tsx` espera el nuevo título. · —
+8. **Cuenta que revisa.** · La prueba cubre el botón ausente hacia `control`. El caso «hacia `hoja` sí sale el botón» depende de que la Tarea 2b ponga `hoja` en `leer_proyecto`; hoy `hoja` exige `editar_hoja`, así que no se probó. Queda anotado en el propio test. · Añadirlo en la Tarea 2b.
+9. **Commit de la implementación con pruebas de la mesa en rojo.** · Entre `b62d3679` y `023c4416` las pruebas de la mesa antigua fallan (la página ya es el Resumen); el commit de la baja las quita. Cada commit se puede revertir, pero `b62d3679` solo es verde junto con `023c4416`. · —
+10. **Herramientas.** · `knip` y `jscpd` no están en este `node_modules`; no se corrieron `npm run muerto` ni `npm run duplicado`. Verificación: `vitest` de `src/paginas/obras src/paginas/pendientes src/marco src/shell src/comun` (739 verdes) y `npm run lint` en 0. · —
+11. **`conLaMesa` y `RUTA_DE_LA_MESA`.** · Se quedan en `shell/obras/datosDePrueba.tsx` porque `Marco.test.tsx` los sigue usando con pantallas de mentira (no con la mesa real). El plan los daba por retirados. · Retirarlos junto con esas pruebas del marco.
+12. **`scripts/recorrido_ux_playwright.py`** sigue buscando clases `silice-mesa__*` que ya no existen; el guion es de auditoría visual y no forma parte de la CI. No se tocó (fuera del alcance). · Actualizarlo en la Tarea 14.
