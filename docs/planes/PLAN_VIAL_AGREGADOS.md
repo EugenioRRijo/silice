@@ -796,6 +796,14 @@ def test_supuestos_declarados():  # "gasto uniforme", "USD fijo × tasa" en p.su
   `feat(vial): respuestas de Eugenio (arrastre, pintura y formula en la Hoja)`.
 
 
+### Tarea 16c: El ligante marcado en la receta (después de la entrega de prueba; fila 109)
+
+**Modelo:** Sonnet. Eugenio respondió el 2026-10-31 que las recetas de la planta compran otros materiales por tonelada
+(arena, filler), así que la regla «el ligante es el único comprado en t» deja VR2 en INFO. La receta de la planta lleva
+una marca opcional por componente, `es_ligante`, y `formula_asfalto_de_receta` la usa antes que la regla anterior. Sin
+marca y con un solo comprado en t se mantiene la regla vieja. La pantalla de la receta muestra la casilla. Pruebas:
+receta con arena y asfalto, este marcado: VR2 compara con el asfalto. Migración aditiva de la instalación si hace falta.
+
 ### Tarea 17: FCAS por componentes
 
 **Modelo:** Sonnet.
