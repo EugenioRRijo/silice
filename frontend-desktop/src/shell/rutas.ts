@@ -73,7 +73,8 @@ export const PAGINAS: readonly PaginaDef[] = [
     titulo: "Hoja de la obra",
     enUnaLinea: "El presupuesto completo, como en Excel",
     seccion: "Trabajo",
-    accion: "editar_hoja",
+    // F4 2b (Eugenio, 2026-10-31): quien revisa la ve en solo lectura; lo que escribe lo decide `puedeEditarLaHoja`.
+    accion: "leer_proyecto",
     cargar: () => import("../paginas/hoja"),
   },
   {

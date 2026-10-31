@@ -294,15 +294,16 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(confirmar(dialogo)).toBeEnabled();
   });
 
-  test("una versión en solo lectura no se guarda: el botón está deshabilitado y dice por qué", async () => {
+  // F4 2b (Eugenio, 2026-10-31): con un borrador de solo lectura no se ofrece guardar (antes, el botón abría un diálogo
+  // deshabilitado); la nota de solo lectura dice por qué.
+  test("una versión en solo lectura no se guarda: no hay «Guardar versión…» y la nota dice por qué", async () => {
     alAbrir = () => borrador("002", {}, "OF-001", true);
     montar();
-    const dialogo = await abrirModal();
-    await escribirFuente(dialogo);
-    expect(confirmar(dialogo)).toBeDisabled();
-    expect(
-      within(dialogo).getByText("Esta versión está en solo lectura: alguna partida ya no tiene composición vigente en el catálogo."),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("note")).toHaveTextContent(
+      "Está viendo este presupuesto en solo lectura. Esta versión no se puede guardar: alguna partida ya no tiene composición vigente en el catálogo.",
+    );
+    await screen.findByRole("region", { name: "Estado del borrador" });
+    expect(screen.queryByRole("button", { name: /^Guardar/ })).toBeNull();
   });
 
   // --- 3d-F2: éxito ------------------------------------------------------------------------------------------------------

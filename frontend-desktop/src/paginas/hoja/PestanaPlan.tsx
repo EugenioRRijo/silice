@@ -12,7 +12,7 @@ import { Cifra } from "./Cifra";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
 import { enteroDeDigitos, esBorradorAusente, rutaDeVista } from "./logica";
-import type { Resumen, VistaPlan } from "./logica";
+import type { BaseAbierta, Resumen, VistaPlan } from "./logica";
 import {
   FRASES_DE_RECHAZO,
   cambiarFraccion,
@@ -26,6 +26,7 @@ import {
 import type { EdicionDelPlan } from "./logicaSecciones";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 import type { ErrorDeSeccion, Peticion } from "./useEdicionDeSeccion";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
   id: string;
@@ -37,6 +38,8 @@ interface Props {
   alRecargarBorrador: () => Promise<void>;
   // Descarta lo que se ve y abre otro borrador de la versión (cuando recargar no sirve).
   alReabrir: () => void;
+  // La base del borrador: con `solo_lectura` (o sin permiso de edición) no se pinta nada que escriba (F4 2b).
+  base?: Pick<BaseAbierta, "solo_lectura">;
 }
 
 interface PropsContenido extends Props {
@@ -47,6 +50,8 @@ interface PropsContenido extends Props {
 interface PropsEditor extends PropsContenido {
   // El plan que acaba de rehacerse desde los rendimientos: siembra la matriz en vez de `vista`, que llega después.
   semilla: VistaPlan | null;
+  // F4 2b: sin permiso, cada fracción es texto.
+  puedeEditar: boolean;
 }
 
 // --- plan desde los rendimientos (Tarea 21) ---
@@ -314,7 +319,7 @@ function CurvaDeInversion({ vista }: { vista: VistaPlan }) {
   );
 }
 
-function EditorDelPlan({ id, rev, vista, semilla, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura }: PropsEditor) {
+function EditorDelPlan({ id, rev, vista, semilla, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, puedeEditar }: PropsEditor) {
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<EdicionDelPlan, string>({
@@ -342,6 +347,8 @@ function EditorDelPlan({ id, rev, vista, semilla, alAusente, alAceptar, alRecarg
 
   return (
     <div className="silice-hoja__pestana">
+      {puedeEditar && (
+        <>
       <p className="cds--type-body-compact-01">
         Reparta cada partida entre los períodos: cada fila debe sumar exactamente 1. Los montos, los acumulados y los porcentajes de la
         curva se calculan.
@@ -350,6 +357,8 @@ function EditorDelPlan({ id, rev, vista, semilla, alAusente, alAceptar, alRecarg
         {AYUDA_CIFRAS} Los cambios se aplican al borrador cuando deja de escribir; no se
         guardan como versión hasta que lo pida.
       </p>
+        </>
+      )}
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && (
         <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir}>
@@ -374,6 +383,7 @@ function EditorDelPlan({ id, rev, vista, semilla, alAusente, alAceptar, alRecarg
               const n = enteroDeDigitos(f.n!);
               return (
                 <CampoDeCelda
+                  soloLectura={!puedeEditar}
                   id={idDeFraccion(n, j)}
                   etiqueta={`${periodoLegible(etiqueta)}, Plan de trabajo fila ${n}`}
                   valor={f[`e${j}`]!}
@@ -413,6 +423,7 @@ const crearPlan = (rev: number, id: string): Peticion => ({ ruta: rutaDePlanSecu
 function ContenidoPlan(props: PropsContenido) {
   const { id, rev, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura } = props;
   const { alExpirar } = useAplicacion();
+  const puedeEditar = usePuedeEditarLaHoja(props.base ?? null);
   const idDelError = useId();
   // Cada plan rehecho desde los rendimientos vuelve a montar la matriz con el plan que contestó el servidor (la matriz solo
   // se siembra al montar).
@@ -462,6 +473,7 @@ function ContenidoPlan(props: PropsContenido) {
         <div className="silice-hoja__seccion">
           <p className="cds--type-body-compact-01">{vista.mensaje}</p>
           <AvisoDeEnvio envio={creacion.envio} />
+          {puedeEditar && (
           <div>
             <Button
               kind="tertiary"
@@ -472,10 +484,13 @@ function ContenidoPlan(props: PropsContenido) {
               Crear plan secuencial (una partida por período)
             </Button>
           </div>
+          )}
         </div>
       )}
-      {rendimientos}
-      {vista.hay_plan && <EditorDelPlan key={rehecho?.n ?? 0} {...props} semilla={rehecho?.plan ?? null} />}
+      {puedeEditar && rendimientos}
+      {vista.hay_plan && (
+        <EditorDelPlan key={rehecho?.n ?? 0} {...props} semilla={rehecho?.plan ?? null} puedeEditar={puedeEditar} />
+      )}
     </div>
   );
 }

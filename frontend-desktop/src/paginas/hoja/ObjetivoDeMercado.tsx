@@ -122,16 +122,18 @@ const SIN_OBJETIVOS: ReadonlyMap<string, ObjetivoDeMercado> = new Map();
 // «Objetivo de mercado» y lo que va bajo la tabla: la ayuda (si hay algún objetivo), que describe la cabecera, y la
 // región `role="status"` del error de la lectura, montada vacía desde el principio para que el lector de pantalla
 // anuncie lo que entre. Si la lectura falla, la Hoja sigue igual con la columna vacía. Lo leído vale solo para los
-// códigos y precios con que se pidió: mientras llega la respuesta a otros, la columna queda vacía y sin error.
+// códigos y precios con que se pidió: mientras llega la respuesta a otros, la columna queda vacía y sin error. Con
+// `activo` falso (quien revisa, F4 2b: el estudio de mercado es de quien arma) no se pide nada.
 export function useObjetivosDeMercado(
   filas: FilaPresupuesto[],
   moneda: string,
+  activo = true,
 ): { columna: ColumnaDensa; aviso: ReactNode } {
   const { alExpirar } = useAplicacion();
   const idAyuda = useId();
   // Se arma una vez por filas y moneda, no en cada pintura (editar una cantidad vuelve a pintar la Hoja).
   const { rutas, enviados } = useMemo(() => consultasDeObjetivos(filas, moneda), [filas, moneda]);
-  const clave = rutas.join("\n");
+  const clave = activo ? rutas.join("\n") : "";
   const [leidos, setLeidos] = useState<Leidos | null>(null);
 
   useEffect(() => {

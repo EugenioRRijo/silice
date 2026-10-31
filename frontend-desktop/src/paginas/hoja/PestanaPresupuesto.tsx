@@ -11,10 +11,11 @@ import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
 import { useObjetivosDeMercado } from "./ObjetivoDeMercado";
+import type { FilaDensa } from "../../comun/TablaDensa";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
 import { clavesDeAuditoria, comoSeMidio, enteroDeDigitos, rotuloDeOrigen, rutaDeQuitarPartida, rutaDeVista } from "./logica";
-import type { FilaPresupuesto, Resumen, VistaPresupuesto } from "./logica";
+import type { BaseAbierta, FilaPresupuesto, Resumen, VistaPresupuesto } from "./logica";
 import {
   FRASES_DE_RECHAZO,
   cambiarCantidad,
@@ -27,6 +28,7 @@ import {
 import type { EdicionDeCantidades } from "./logicaSecciones";
 import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
   id: string;
@@ -38,6 +40,8 @@ interface Props {
   alRecargarBorrador: () => Promise<void>;
   // Descarta lo que se ve y abre otro borrador de la versión (cuando recargar no sirve).
   alReabrir: () => void;
+  // La base del borrador: con `solo_lectura` (o sin permiso de edición) no se pinta nada que escriba (F4 2b).
+  base?: Pick<BaseAbierta, "solo_lectura">;
 }
 
 interface PropsContenido extends Props {
@@ -52,6 +56,8 @@ interface PropsEditor extends PropsContenido {
   alQuitada: (codigo: string) => void;
   // Lleva el foco a un elemento cuando ya no queda ningún diálogo abierto.
   enfocar: (id: string) => void;
+  // F4 2b: sin permiso, la cantidad es texto y no hay «Volver a la calculada», «Quitar» ni objetivos de mercado.
+  puedeEditar: boolean;
 }
 
 const PENDIENTE = "Pendiente";
@@ -89,6 +95,7 @@ function EditorDePresupuesto({
   registrarEspera,
   alQuitada,
   enfocar,
+  puedeEditar,
 }: PropsEditor) {
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
@@ -108,7 +115,7 @@ function EditorDePresupuesto({
   });
   const { error, esperarEnvios, accionarEnOrden, resembrar } = edicion;
   // Tarea 16: el objetivo de mercado de cada partida y su margen (lo calcula la API) junto al precio unitario.
-  const objetivos = useObjetivosDeMercado(vista.filas, vista.moneda);
+  const objetivos = useObjetivosDeMercado(vista.filas, vista.moneda, puedeEditar);
   const filaInvalida = error?.ubicacion ?? null;
   const mover = (desde: number, paso: 1 | -1) => document.getElementById(idDeCantidad(desde + paso))?.focus();
   // La fila que la persona pidió quitar: espera su confirmación.
@@ -166,6 +173,7 @@ function EditorDePresupuesto({
               return (
                 <div className="silice-hoja__cantidad">
                   <CampoDeCelda
+                    soloLectura={!puedeEditar}
                     id={idDeCantidad(f.n!)}
                     etiqueta={`Cantidad, Presupuesto fila ${f.n}`}
                     valor={edicion.estado.textos[clave] ?? f.cantidad!}
@@ -183,6 +191,7 @@ function EditorDePresupuesto({
                   {f.escrita === "si" && (
                     <>
                       <span className="cds--type-helper-text-01">(calculada: {formatoEsVe(f.calculada!)})</span>
+                      {puedeEditar && (
                       <Button
                         kind="ghost"
                         size="sm"
@@ -191,6 +200,7 @@ function EditorDePresupuesto({
                       >
                         Volver a la calculada
                       </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -210,7 +220,7 @@ function EditorDePresupuesto({
             ordenable: false,
             celda: (f) => (f.pu_texto === "" ? PENDIENTE : <Cifra monto={{ texto: f.pu_texto!, exacto: f.pu_exacto! }} />),
           },
-          objetivos.columna,
+          ...(puedeEditar ? [objetivos.columna] : []),
           {
             clave: "total",
             titulo: "Total",
@@ -231,12 +241,12 @@ function EditorDePresupuesto({
               />
             ),
           },
-          {
+          ...(puedeEditar ? [{
             clave: "quitar",
             titulo: "Quitar",
             ordenable: false,
             // Solo los renglones de la versión; los del espacio se cambian en «Espacio y metrajes».
-            celda: (f) =>
+            celda: (f: FilaDensa) =>
               f.quitable === "si" ? (
                 <Button
                   id={idDeQuitar(f.n!)}
@@ -250,7 +260,7 @@ function EditorDePresupuesto({
               ) : (
                 ""
               ),
-          },
+          }] : []),
         ]}
         filas={vista.filas.map((f, i) => ({
           id: `renglon-${i}`,
@@ -273,7 +283,7 @@ function EditorDePresupuesto({
           nota: f.nota ?? "",
         }))}
       />
-      {objetivos.aviso}
+      {puedeEditar && objetivos.aviso}
       <p className="silice-hoja__total cds--type-heading-03">
         Total del presupuesto <Cifra monto={vista.total} unidad={vista.moneda} />
       </p>
@@ -294,6 +304,7 @@ function EditorDePresupuesto({
 // La pestaña: su explicación, «Agregar partida» (también con el presupuesto vacío) y la tabla.
 function ContenidoPresupuesto(props: PropsContenido) {
   const { id, rev, vista, alAceptar, alRelectura, alAusente, alRecargarBorrador } = props;
+  const puedeEditar = usePuedeEditarLaHoja(props.base ?? null);
   const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
   const enfocar = useFocoAlCerrar();
   const [aviso, setAviso] = useState("");
@@ -331,6 +342,8 @@ function ContenidoPresupuesto(props: PropsContenido) {
 
   return (
     <div className="silice-hoja__pestana">
+      {puedeEditar && (
+        <>
       <p className="cds--type-body-compact-01">
         Las cantidades salen del espacio o de las partidas que agrega con «Agregar partida», y los precios de la composición de cada
         partida. Aquí se edita la cantidad: una cantidad escrita a mano se marca en el Estado y puede volver a la calculada.
@@ -354,13 +367,21 @@ function ContenidoPresupuesto(props: PropsContenido) {
           Agregar partida
         </Button>
       </div>
+        </>
+      )}
       <p className="cds--type-helper-text-01" role="status">
         {aviso}
       </p>
       {vista.vacio_mensaje !== null ? (
         <p className="cds--type-body-compact-01">{vista.vacio_mensaje}</p>
       ) : (
-        <EditorDePresupuesto {...props} registrarEspera={registrarEspera} alQuitada={alQuitada} enfocar={enfocar} />
+        <EditorDePresupuesto
+          {...props}
+          registrarEspera={registrarEspera}
+          alQuitada={alQuitada}
+          enfocar={enfocar}
+          puedeEditar={puedeEditar}
+        />
       )}
       {abierto && anfitrion !== null && (
         <DialogoAgregarPartida

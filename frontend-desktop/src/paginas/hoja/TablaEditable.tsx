@@ -37,6 +37,8 @@ interface Props {
   alCambiarFilas: (filas: FilaEditable[]) => void;
   // Lo último que aceptó el servidor para una celda (Esc devuelve la celda a eso).
   valorAceptado: (filaClave: number, columna: string) => string;
+  // F4 2b: quien no puede editar ve los mismos datos como texto, sin «Quitar» ni «Agregar fila».
+  soloLectura?: boolean;
 }
 
 type PorEnfocar = { clave: number; columna: string } | "agregar";
@@ -63,8 +65,9 @@ function EstadoDeLaFila({ tabla, fila, estado }: { tabla: TablaEspacio; fila: Fi
 
 // Una de las tablas del espacio, editable: cada celda es un campo con nombre accesible, las listas cerradas son select
 // (se guarda el valor interno, se ve el rótulo), y la persona agrega y quita filas. No calcula nada: los textos salen
-// tal cual los escribió la persona y el servidor los valida (diseño §7.3).
-export function TablaEditable({ tabla, filas, estado, invalida, idDelError, irA, alCambiarFilas, valorAceptado }: Props) {
+// tal cual los escribió la persona y el servidor los valida (diseño §7.3). Pasa de 250 líneas porque la misma tabla, con
+// `soloLectura`, es la del espacio de quien revisa (F4 2b): partirla en dos repetiría cabecera, paginación y Estado.
+export function TablaEditable({ tabla, filas, estado, invalida, idDelError, irA, alCambiarFilas, valorAceptado, soloLectura = false }: Props) {
   const [pagina, setPagina] = useState(1);
   // La celda a la que hay que dar el foco en cuanto exista en la página (tras agregar, quitar o cambiar de página).
   const porEnfocar = useRef<PorEnfocar | null>(null);
@@ -166,7 +169,7 @@ export function TablaEditable({ tabla, filas, estado, invalida, idDelError, irA,
                 <TableHeader key={c.clave}>{c.rotulo}</TableHeader>
               ))}
               {tabla.con_estado && <TableHeader>Estado</TableHeader>}
-              <TableHeader>Acciones</TableHeader>
+              {!soloLectura && <TableHeader>Acciones</TableHeader>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -192,7 +195,9 @@ export function TablaEditable({ tabla, filas, estado, invalida, idDelError, irA,
                     const valor = fila.valores[c.clave] ?? "";
                     return (
                       <TableCell key={c.clave}>
-                        {c.lista !== null ? (
+                        {soloLectura ? (
+                          (c.lista?.find((o) => o.valor === valor)?.rotulo ?? valor)
+                        ) : c.lista !== null ? (
                           <Select {...comunes} value={valor} onChange={(e) => cambiar(fila.clave, c.clave, e.target.value)}>
                             {c.lista.some((o) => o.valor === valor) ? null : <SelectItem value={valor} text={valor} />}
                             {c.lista.map((o) => (
@@ -217,11 +222,13 @@ export function TablaEditable({ tabla, filas, estado, invalida, idDelError, irA,
                       <EstadoDeLaFila tabla={tabla} fila={fila} estado={estado} />
                     </TableCell>
                   )}
-                  <TableCell>
-                    <Button kind="ghost" size="sm" aria-label={`Quitar fila ${indice + 1} de ${tabla.rotulo}`} onClick={() => quitar(indice)}>
-                      Quitar
-                    </Button>
-                  </TableCell>
+                  {!soloLectura && (
+                    <TableCell>
+                      <Button kind="ghost" size="sm" aria-label={`Quitar fila ${indice + 1} de ${tabla.rotulo}`} onClick={() => quitar(indice)}>
+                        Quitar
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
@@ -242,6 +249,7 @@ export function TablaEditable({ tabla, filas, estado, invalida, idDelError, irA,
           onChange={({ page }) => setPagina(page)}
         />
       )}
+      {!soloLectura && (
       <div className="silice-hoja__agregar">
         <Button id={idAgregar} kind="tertiary" size="sm" disabled={llenaDelTodo} aria-label={`Agregar fila a ${tabla.rotulo}`} onClick={agregar}>
           Agregar fila
@@ -252,6 +260,7 @@ export function TablaEditable({ tabla, filas, estado, invalida, idDelError, irA,
           </span>
         )}
       </div>
+      )}
     </section>
   );
 }
