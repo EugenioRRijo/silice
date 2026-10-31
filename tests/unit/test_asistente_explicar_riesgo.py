@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from asistente.explicar_riesgo import (
     HERRAMIENTA,
     explicar,
@@ -125,3 +127,34 @@ def test_un_guion_que_no_termina_se_corta_en_el_tope_de_turnos() -> None:
     resultado = explicar(proveedor, CIFRAS, max_turnos=3)
     assert resultado.texto is None
     assert len(proveedor.recibidos) == 3
+
+
+def test_el_numero_de_un_rotulo_no_es_una_cifra_citable() -> None:
+    """«P80» es un rótulo: su 80 no se puede citar como si fuera una cifra que dio el sistema."""
+    salida = salida_de_la_herramienta(CIFRAS)
+    rechazo = validar_explicacion("Cubre el 80 por ciento de los casos.", [salida])
+    assert rechazo is not None
+    assert rechazo.causa is Causa.NUMERO_AUSENTE_DE_LA_CITA
+    assert "80" in rechazo.motivo
+
+
+def test_el_rotulo_se_puede_nombrar_en_la_narracion() -> None:
+    """Nombrar el rótulo «P80» no es citar la cifra 80: la narración buena lo usa."""
+    salida = salida_de_la_herramienta(CIFRAS)
+    assert validar_explicacion("El P80 y el P50 coinciden: 1.248,72.", [salida]) is None
+
+
+def test_una_cifra_pegada_a_una_palabra_tambien_se_valida() -> None:
+    """Solo se quitan los rótulos de la herramienta: «Bs250,00» no se escapa de la validación."""
+    salida = salida_de_la_herramienta(CIFRAS)
+    rechazo = validar_explicacion("La reserva es Bs250,00.", [salida])
+    assert rechazo is not None and rechazo.causa is Causa.NUMERO_AUSENTE_DE_LA_CITA
+
+
+def test_cada_valor_de_la_herramienta_sigue_la_regla_de_las_cifras() -> None:
+    """Las cifras de los valores se leen con `cifra_escrita`: «248.72» no es una cifra es-VE y la
+    herramienta no la entrega (quien llama le pasa lo que ya ve la persona)."""
+    with pytest.raises(ValueError, match="Reserva"):
+        salida_de_la_herramienta({**CIFRAS, "Reserva": "248.72"})
+    with pytest.raises(ValueError, match="Reserva"):
+        explicar(ProveedorGuionado([_llamada(), _texto(BUENA)]), {**CIFRAS, "Reserva": "248.72"})
