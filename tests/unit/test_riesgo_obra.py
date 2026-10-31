@@ -18,6 +18,7 @@ del cierre de su mes). Sin mezcla propia, todo vacío. Datos FICTICIOS
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from datetime import date
 from decimal import Decimal
@@ -27,10 +28,29 @@ import pytest
 from sqlalchemy.orm import Session
 
 from aplicacion.costo_propio import CalculoGuardado, calcular_periodo, publicar_calculo
-from aplicacion.riesgo.obra import MezclasPropias, mezclas_publicadas
+from aplicacion.riesgo import obra
+from aplicacion.riesgo.obra import (
+    MezclasPropias,
+    mapa_con_variantes,
+    mezclas_publicadas,
+    supuesto_de_componentes,
+)
+from aplicacion.riesgo.proyeccion import ParametrosProyeccion, proyectar
+from aplicacion.riesgo.series import MapaSeries
 from core.catalog import Catalogo
 from produccion.costo import costo_de_mezcla
 from tests.fixtures import costo_propio as cp
+from tests.fixtures.riesgo_proyeccion import (
+    CASCADA,
+    F_UNO,
+    INICIO,
+    PARAMETROS,
+    PPI,
+    TOLERANCIA,
+    apu_ficticio,
+    historia_uniforme,
+    obra_ficticia,
+)
 
 D = Decimal
 MEZCLA = "Costo propio de mezcla MZ-1"
@@ -144,3 +164,141 @@ def test_dos_recetas_en_el_mes_se_ponderan_por_toneladas(ins, caso) -> None:
     receta = mezclas.recetas[MEZCLA]
     planta = mezclas.costo_planta_por_t[MEZCLA]
     assert costo_de_mezcla(receta, precios, precios, planta) == D("48.72")
+
+
+# --- Ramas de `mezclas_publicadas` con cálculos escritos a mano ---------------------------------
+#
+# Los cálculos publicados se sustituyen por instantáneas mínimas escritas aquí (solo lo que lee
+# `mezclas_publicadas`). Oráculos a mano:
+#
+# - MZ-1 (cálculo 1): 0,95 t de AGR-12 a 5 (propio) + 0,05 t de CA-30 a 600 (comprado) + planta 12
+#   = 4,75 + 30 + 12 = 46,75.
+# - MZ-2 (cálculo 2): 0,95 t de AGR-34 a 6 + 0,05 t de CA-30 a 650 + planta 10 = 5,7 + 32,5 + 10
+#   = 48,2. El CA-30 vale 650 en este cálculo y 600 en el otro: se desdobla en «CA-30 [2]».
+
+MZ1 = "Costo propio de mezcla MZ-1"
+MZ2 = "Costo propio de mezcla MZ-2"
+
+
+def _instantanea(producto: str, propio: tuple[str, str], ca30: str, planta: str, recetas=True):
+    codigo, costo = propio
+    componentes = [
+        {"codigo": codigo, "unidad": "t", "tipo": "propio", "cantidad_por_t": "0.95"},
+        {"codigo": "CA-30", "unidad": "t", "tipo": "comprado", "cantidad_por_t": "0.05"},
+    ]
+    receta = {
+        "id": 1,
+        "producto": producto,
+        "toneladas": "100",
+        "componentes": componentes,
+        "fuente": "Dosificación ficticia",
+        "vigente_desde": "2026-01-01",
+    }
+    return json.dumps(
+        {
+            "entradas": {
+                "recetas": [receta] if recetas else [],
+                "precios_comprados": {"CA-30": {"convertido": ca30}},
+                "de_otro_calculo": {},
+                "agregados": [codigo],
+            },
+            "resultado": {"planta_por_t": planta, "por_tonelada": {codigo: costo, producto: "0"}},
+        }
+    )
+
+
+def _calculo(numero: int, instantanea: str) -> CalculoGuardado:
+    return CalculoGuardado(
+        id=numero,
+        periodo="2026-11",
+        moneda="USD",
+        por_tonelada={},
+        huella="",
+        instantanea=instantanea,
+    )
+
+
+def _publicados(monkeypatch, ca30_de_mz2: str = "650", *, recetas: bool = True) -> None:
+    calculos = {
+        "MZP-MZ-1": _calculo(1, _instantanea("MZ-1", ("AGR-12", "5"), "600", "12", recetas)),
+        "MZP-MZ-2": _calculo(2, _instantanea("MZ-2", ("AGR-34", "6"), ca30_de_mz2, "10")),
+    }
+    monkeypatch.setattr(obra, "costos_propios_publicados", lambda _sesion: calculos)
+
+
+def test_un_componente_con_dos_precios_en_dos_mezclas_se_desdobla(monkeypatch) -> None:
+    _publicados(monkeypatch)
+    mezclas = mezclas_publicadas(None, None, {MZ1, MZ2}, "USD")
+    assert mezclas.precio_de_componente == {
+        "AGR-12": D(5),
+        "CA-30": D(600),
+        "AGR-34": D(6),
+        "CA-30 [2]": D(650),
+    }
+    assert [c.codigo for c in mezclas.recetas[MZ1].componentes] == ["AGR-12", "CA-30"]
+    assert [c.codigo for c in mezclas.recetas[MZ2].componentes] == ["AGR-34", "CA-30 [2]"]
+    assert mezclas.componente_original == {"CA-30 [2]": "CA-30"}
+    # cada mezcla se costea con los precios de su propio cálculo
+    precios = mezclas.precio_de_componente
+    assert costo_de_mezcla(mezclas.recetas[MZ1], precios, precios, D(12)) == D("46.75")
+    assert costo_de_mezcla(mezclas.recetas[MZ2], precios, precios, D(10)) == D("48.2")
+    assert supuesto_de_componentes(mezclas) is not None
+    assert "CA-30 (2 precios)" in supuesto_de_componentes(mezclas)
+
+
+def test_un_componente_con_el_mismo_precio_en_dos_mezclas_no_se_desdobla(monkeypatch) -> None:
+    _publicados(monkeypatch, ca30_de_mz2="600")
+    mezclas = mezclas_publicadas(None, None, {MZ1, MZ2}, "USD")
+    assert mezclas.precio_de_componente["CA-30"] == D(600)
+    assert "CA-30 [2]" not in mezclas.precio_de_componente
+    assert mezclas.componente_original == {}
+    assert supuesto_de_componentes(mezclas) is None
+
+
+def test_un_calculo_que_no_guarda_la_receta_del_producto_se_niega(monkeypatch) -> None:
+    _publicados(monkeypatch, recetas=False)
+    with pytest.raises(ValueError, match=r"n\.º 1 no guarda la receta de MZ-1"):
+        mezclas_publicadas(None, None, {MZ1, MZ2}, "USD")
+
+
+def test_la_variante_del_componente_sigue_la_serie_del_original() -> None:
+    mapa = mapa_con_variantes({"CA-30": PPI, "Gasoil": "GASOIL_USD"}, {"CA-30 [2]": "CA-30"})
+    assert dict(mapa.serie_por_insumo) == {
+        "CA-30": PPI,
+        "CA-30 [2]": PPI,
+        "Gasoil": "GASOIL_USD",
+    }
+    # sin serie para el original, la variante tampoco la tiene (aunque el pedido la nombre)
+    sin = mapa_con_variantes({"CA-30 [2]": PPI}, {"CA-30 [2]": "CA-30"})
+    assert dict(sin.serie_por_insumo) == {}
+
+
+def test_dos_mezclas_con_el_componente_desdoblado_se_proyectan_a_mano(monkeypatch) -> None:
+    # 1.000 t de cada mezcla, el CA-30 sigue el PPI (+1 % mensual) en las dos. A mano:
+    # MZ-1 pasa a 16,75 + 30 × F y MZ-2 a 15,7 + 32,5 × F; total 1.000 × (32,45 + 62,5 × F) × 1,265
+    _publicados(monkeypatch)
+    mezclas = mezclas_publicadas(None, None, {MZ1, MZ2}, "USD")
+    presupuesto, composiciones = obra_ficticia(
+        {
+            apu_ficticio("VIA-01", [(MZ1, "t", D(1), D("46.75"))]): D(1000),
+            apu_ficticio("VIA-02", [(MZ2, "t", D(1), D("48.2"))]): D(1000),
+        }
+    )
+    mapa = mapa_con_variantes({"CA-30": PPI}, mezclas.componente_original)
+
+    p = proyectar(
+        presupuesto,
+        composiciones,
+        PARAMETROS,
+        historia_uniforme(ppi=D("1.01")),
+        mapa,
+        ParametrosProyeccion(inicio=INICIO, trayectorias=50),
+        recetas=mezclas.recetas,
+        costo_planta_por_t=mezclas.costo_planta_por_t,
+        precio_de_componente=mezclas.precio_de_componente,
+    )
+
+    assert p.total_base == D(1000) * D("94.95") * CASCADA
+    esperado = D(1000) * (D("32.45") + D("62.5") * F_UNO) * CASCADA
+    assert abs(p.percentiles[80] - esperado) < TOLERANCIA
+    assert isinstance(mapa, MapaSeries)
