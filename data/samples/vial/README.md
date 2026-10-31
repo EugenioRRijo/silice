@@ -32,6 +32,10 @@ Columnas, todas obligatorias en la cabecera:
   (obligatoria) y el bacheo (opcional); dosis para imprimación y riego de adherencia. Un dato que el tipo no usa
   se rechaza: nada se ignora en silencio.
 - Demarcación: `tipo` ∈ {`continua`, `discontinua`} y `lineas` (entero ≥ 1).
+- Columna **opcional** `asfalto_pct` (Tarea 16b): el porcentaje de asfalto que el proyecto pide a la mezcla de
+  la carpeta o del bacheo (mayor que 0 y menor que 100; «6,5» es 6,5 %). Va en la partida de la mezcla y la
+  regla VR2 lo compara con la fórmula de trabajo de la receta vigente de la planta. Un archivo sin esa columna
+  se lee igual; en otra capa o en una demarcación se rechaza.
 - Los errores nombran el archivo y la **fila** tal como la ve una hoja de cálculo (la cabecera es la fila 1).
 
 ## Memoria de cálculo (a mano, escrita antes del código)

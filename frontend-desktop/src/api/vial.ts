@@ -9,6 +9,8 @@ export interface CapaDeTramo {
   espesor_m: string | null;
   densidad_t_m3: string | null;
   dosis_l_m2: string | null;
+  // Porcentaje de asfalto de la mezcla de la carpeta o del bacheo (columna opcional del CSV); lo compara VR2.
+  asfalto_pct?: string | null;
 }
 
 export interface TramoGuardado {

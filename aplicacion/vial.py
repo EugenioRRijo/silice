@@ -22,8 +22,19 @@ persisten como texto, así que el «7.30» vuelve como «7.30».
   Aplica los mismos topes que la API (`MAX_TRAMOS`, `MAX_CAPAS`, `MAX_LINEAS_DE_DEMARCACION`).
 - **Llevar al presupuesto** (Tarea 8b) vive en `aplicacion/hoja_vial.py`: este módulo lo importa
   la Hoja (`reglas_viales`) y no puede importarla a ella.
+- **La fórmula de trabajo de VR2** (Tarea 16b, filas 58 y 63; `formulas_de_trabajo`): por cada
+  partida de mezcla que dan los tramos (carpeta y bacheo), su APU en el catálogo de la carpeta dice
+  qué mezcla propia usa (la línea «Costo propio de mezcla <producto>», la de la publicación); la
+  receta **vigente** de ese producto sale de la base de la instalación, y el ligante es su único
+  componente comprado en t (la fórmula, su cantidad por tonelada × 100). No se adivina: si el APU
+  no usa una mezcla propia o usa varias, si no hay receta vigente, o si la receta no tiene un único
+  comprado en t, esa partida queda sin fórmula y el motivo va a VR2, que lo declara. La
+  instalación solo se abre si algún APU usa una mezcla propia. El porcentaje que se compara lo
+  declara la capa (`Capa.asfalto_pct`, columna `asfalto_pct` del CSV).
 
-Cuándo se hace cada cosa lo decide quien llama: aquí no hay reloj ni usuario implícitos.
+Cuándo se hace cada cosa lo decide quien llama: aquí no hay reloj ni usuario implícitos, salvo
+la fecha con que `reglas_viales` busca la receta vigente cuando la Hoja abre una versión sin pasarla
+(fila 110 de las preguntas: esa llamada es parte del experimento congelado).
 """
 
 from __future__ import annotations
@@ -32,20 +43,24 @@ import json
 import re
 import tempfile
 from collections.abc import Sequence
+from contextlib import AbstractContextManager, ExitStack
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from adapters.vial.constantes import PARTIDAS_VIALES
 from adapters.vial.derivacion import derivar_tramos
 from adapters.vial.modelo import Capa, Demarcacion, Tramo
 from adapters.vial.reglas import ReglasViales
 from adapters.vial.tabular import leer_tramos
 from aplicacion import aprobaciones
 from aplicacion.cifras import texto_de_cifra
+from aplicacion.costo_propio import PREFIJO_DE_MEZCLA, descripcion_de_costo_propio
 from aplicacion.proyectos import resolver_proyecto
 from aplicacion.tablas_vial import (
     GuardadoDeTramos,
@@ -54,7 +69,8 @@ from aplicacion.tablas_vial import (
     hay_tablas_viales,
 )
 from core import models
-from produccion.receta import Receta
+from core.catalog import Catalogo
+from produccion.receta import Receta, receta_vigente
 
 __all__ = [
     "MAX_CAPAS",
@@ -67,6 +83,7 @@ __all__ = [
     "bloqueo_de_version",
     "cantidades_de_tramos",
     "formula_asfalto_de_receta",
+    "formulas_de_trabajo",
     "guardado_de_version",
     "heredados_de",
     "guardar_tramos",
@@ -193,6 +210,8 @@ def _capas_a_texto(capas: Sequence[Capa]) -> str:
                 "espesor_m": None if c.espesor_m is None else str(c.espesor_m),
                 "densidad_t_m3": None if c.densidad_t_m3 is None else str(c.densidad_t_m3),
                 "dosis_l_m2": None if c.dosis_l_m2 is None else str(c.dosis_l_m2),
+                # Tarea 16b: solo si la capa lo declara, así lo guardado antes no cambia
+                **({} if c.asfalto_pct is None else {"asfalto_pct": str(c.asfalto_pct)}),
             }
             for c in capas
         ],
@@ -205,7 +224,13 @@ def _capas_de_texto(texto: str) -> tuple[Capa, ...]:
         return None if valor is None else Decimal(valor)
 
     return tuple(
-        Capa(c["tipo"], cifra(c["espesor_m"]), cifra(c["densidad_t_m3"]), cifra(c["dosis_l_m2"]))
+        Capa(
+            c["tipo"],
+            cifra(c["espesor_m"]),
+            cifra(c["densidad_t_m3"]),
+            cifra(c["dosis_l_m2"]),
+            cifra(c.get("asfalto_pct")),
+        )
         for c in json.loads(texto)
     )
 
@@ -431,6 +456,18 @@ def _dentro_de_los_topes(tramos: Sequence[Tramo], nombre: str) -> None:
 
 # --- reglas del auditor ---------------------------------------------------------------------------
 
+#: Partidas de mezcla asfáltica cuyo porcentaje de asfalto mide VR2.
+_PARTIDAS_DE_MEZCLA = (PARTIDAS_VIALES["carpeta_mezcla"][0], PARTIDAS_VIALES["bacheo_mezcla"][0])
+#: «Costo propio de mezcla »: lo que precede al producto en la línea del APU de una mezcla propia.
+_LINEA_DE_MEZCLA_PROPIA = descripcion_de_costo_propio(PREFIJO_DE_MEZCLA)
+
+
+def _abrir_instalacion() -> AbstractContextManager[Session]:
+    """La base de la instalación (importada aquí: solo hace falta si un APU usa mezcla propia)."""
+    from operacion.instalacion import sesion_de_instalacion
+
+    return sesion_de_instalacion()
+
 
 def formula_asfalto_de_receta(receta: Receta | None, codigo_ligante: str | None) -> Decimal | None:
     """El porcentaje de asfalto (en puntos: 5,5 es 5,5 %) de la fórmula de trabajo de `receta`.
@@ -446,18 +483,115 @@ def formula_asfalto_de_receta(receta: Receta | None, codigo_ligante: str | None)
     return None
 
 
+def _mezclas_del_apu(sesion: Session, codigo: str) -> list[str]:
+    """Los productos de las mezclas propias que usa el APU de la partida `codigo` (`KeyError` si
+    la partida no está en el catálogo)."""
+    partida = Catalogo(sesion).partida(codigo)
+    largo = len(_LINEA_DE_MEZCLA_PROPIA)
+    return sorted(
+        {
+            linea.insumo.descripcion[largo:]
+            for linea in partida.composicion
+            if linea.insumo.descripcion.startswith(_LINEA_DE_MEZCLA_PROPIA)
+            and len(linea.insumo.descripcion) > largo
+        }
+    )
+
+
+def _formula_de_la_receta(receta: Receta | None, producto: str, hoy: date) -> Decimal | str:
+    """La fórmula de trabajo de la receta vigente de `producto`, o el motivo de no tenerla."""
+    if receta is None:
+        return f"la mezcla propia {producto} no tiene receta vigente al {hoy:%d/%m/%Y}"
+    comprados = [c for c in receta.componentes if c.tipo == "comprado" and c.unidad == "t"]
+    if len(comprados) != 1:
+        cuales = f" ({', '.join(c.codigo for c in comprados)})" if comprados else ""
+        return (
+            f"la receta n.º {receta.id} de {producto} tiene {len(comprados)} componentes "
+            f"comprados en t{cuales} y no se sabe cuál es el ligante"
+        )
+    # el único comprado en t es el ligante: lo mismo que `formula_asfalto_de_receta` con su código
+    return comprados[0].cantidad_por_t * 100
+
+
+def formulas_de_trabajo(
+    sesion: Session,
+    tramos: Sequence[Tramo],
+    hoy: date,
+    instalacion: Session | None = None,
+) -> tuple[dict[str, Decimal], dict[str, str]]:
+    """Por código de partida de mezcla de `tramos`, la fórmula de trabajo (puntos de asfalto) de la
+    receta vigente a `hoy` de la mezcla propia que usa su APU, y, de las que no la tienen, el motivo
+    (véase el encabezado del módulo). `instalacion` es la sesión de la base de la instalación; sin
+    ella se abre una, y solo si algún APU usa una mezcla propia."""
+    presentes = {item.codigo_partida for item in derivar_tramos(tramos)}
+    formulas: dict[str, Decimal] = {}
+    sin_formula: dict[str, str] = {}
+    productos: dict[str, str] = {}
+    for codigo in (c for c in _PARTIDAS_DE_MEZCLA if c in presentes):
+        try:
+            mezclas = _mezclas_del_apu(sesion, codigo)
+        except KeyError:
+            sin_formula[codigo] = f"la partida {codigo} no está en el catálogo"
+            continue
+        if len(mezclas) == 1:
+            productos[codigo] = mezclas[0]
+        elif mezclas:
+            sin_formula[codigo] = (
+                f"el APU de la partida {codigo} usa varias mezclas propias ({', '.join(mezclas)})"
+            )
+        else:
+            sin_formula[codigo] = (
+                f"el APU de la partida {codigo} no usa una mezcla propia (una línea "
+                f"«{_LINEA_DE_MEZCLA_PROPIA}…»)"
+            )
+    if not productos:
+        return formulas, sin_formula
+    try:
+        with ExitStack() as pila:
+            ins = (
+                instalacion if instalacion is not None else pila.enter_context(_abrir_instalacion())
+            )
+            recetas = {p: receta_vigente(ins, p, hoy) for p in set(productos.values())}
+    except SQLAlchemyError:
+        # VR2 es un aviso: una instalación que no se puede leer no impide auditar ni abrir la Hoja
+        for codigo, producto in productos.items():
+            sin_formula[codigo] = (
+                f"no se pudo leer la base de la instalación para buscar la receta de {producto}"
+            )
+        return formulas, sin_formula
+    for codigo, producto in productos.items():
+        formula = _formula_de_la_receta(recetas[producto], producto, hoy)
+        if isinstance(formula, str):
+            sin_formula[codigo] = formula
+        else:
+            formulas[codigo] = formula
+    return formulas, sin_formula
+
+
 def reglas_viales(
     sesion: Session,
     version_id: int,
     *,
     receta: Receta | None = None,
     codigo_ligante: str | None = None,
+    hoy: date | None = None,
+    instalacion: Session | None = None,
 ) -> tuple[ReglasViales, ...]:
     """Las reglas VR1 a VR7 de la versión, para `elaborar(reglas=(*REGLAS, *reglas_viales(…)))` o
     `reglas_extra` de la Hoja: sus hallazgos entran en la auditoría como los de `Espacio` (regla
     ajena a `REGLAS`, que `hallazgos_externos` vuelve a declarar). Vacío si la versión no tiene
-    tramos (propios o heredados)."""
+    tramos (propios o heredados).
+
+    Con `receta` o `codigo_ligante` (la forma de la Tarea 9), VR2 usa esa fórmula para todas las
+    mezclas. Sin ellos (llevar los tramos y abrir una versión, Tarea 16b), cada partida de mezcla
+    recibe la de la receta vigente a `hoy` de su mezcla propia (`formulas_de_trabajo`). `hoy` lo
+    pasa quien llama; `abrir_version` de la Hoja no lo pasa (su llamada es parte del experimento
+    congelado) y entonces es la fecha del día."""
     tramos = tramos_de_version(sesion, version_id)
     if not tramos:
         return ()
-    return (ReglasViales(tramos, formula_asfalto_de_receta(receta, codigo_ligante)),)
+    if receta is not None or codigo_ligante is not None:
+        return (ReglasViales(tramos, formula_asfalto_de_receta(receta, codigo_ligante)),)
+    dia = hoy if hoy is not None else date.today()
+    formulas, sin_formula = formulas_de_trabajo(sesion, tramos, dia, instalacion)
+    return (ReglasViales(tramos, formulas=formulas, sin_formula=sin_formula),)

@@ -14,6 +14,10 @@ defecto (`PINTURA_POR_DEFECTO_L_KM`, V-17, por km de línea de 10 cm) ÷ 1.000 �
 modelo no trae el ancho de la línea, así que es el supuesto V-14 (10 cm) y va en la directiva
 `_ancho_linea_cm`, la que lee VR5. Así llevar los tramos a la Hoja pone la pintura y VR5 la mide.
 
+**Asfalto** (Tarea 16b, filas 58 y 63): si la capa de carpeta o de bacheo declara `asfalto_pct`,
+la partida de su mezcla (la de t) lleva la directiva `_porcentaje_asfalto` con ese número; es el
+que VR2 compara con la fórmula de trabajo de la planta.
+
 La especialidad y el tipo de capa o de línea van como directivas (`_especialidad`, `_capa`,
 `_demarcacion`; convención DA-SF-3, `core/verification/directivas.es_directiva`): clasifican la
 cantidad y R4 no las contrasta con el texto del APU.
@@ -42,6 +46,8 @@ TRANSPORTE = "longitud*ancho*espesor*densidad*distancia"
 LINEA_CONTINUA = "longitud*lineas"
 LINEA_DISCONTINUA = "longitud*lineas*fraccion_pintada"
 PINTURA = "pintura_l_m"
+#: Directiva con el porcentaje de asfalto de la capa en la partida de su mezcla (la lee VR2).
+PORCENTAJE_ASFALTO = "_porcentaje_asfalto"
 
 #: Por tipo de capa, las partidas que produce y la regla de cada una, en orden.
 _PARTIDAS_POR_CAPA: dict[str, tuple[tuple[str, str], ...]] = {
@@ -104,11 +110,15 @@ def _items_de_capa(tramo: Tramo, n: int, capa: Capa) -> list[ItemComputo]:
             valores[nombre] = valor
     origen_id = f"tramo:{tramo.id}:capa:{n}"
     especificaciones = {"_especialidad": "vial", "_capa": capa.tipo}
+    de_la_mezcla = dict(especificaciones)
+    if capa.asfalto_pct is not None:
+        de_la_mezcla[PORCENTAJE_ASFALTO] = format(capa.asfalto_pct, "f")
     items = []
     for clave, regla in _PARTIDAS_POR_CAPA[capa.tipo]:
         if regla == MASA and "densidad" not in valores:
             continue  # bacheo sin densidad: solo su volumen
-        items.append(_item(clave, regla, valores, tramo, origen_id, especificaciones))
+        espec = de_la_mezcla if regla == MASA else especificaciones
+        items.append(_item(clave, regla, valores, tramo, origen_id, espec))
         if regla == MASA and "distancia" in valores:
             items.append(
                 _item("transporte_mezcla", TRANSPORTE, valores, tramo, origen_id, especificaciones)

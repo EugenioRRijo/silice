@@ -7,6 +7,10 @@ y la auditoría del borrador trae VR1 para esa capa. Oráculos a mano (memoria d
 README de la muestra): 20 renglones; la mezcla de T1 es 1200 × 7,30 × 0,05 × 2,35 = 1029,3 t.
 Tarea 16b: la línea continua de T1 (2 líneas × 1200 m = 2,4 km) lleva su pintura, 2.400 × 0,0365 =
 87,6 l; escribir 50 l son 50 ÷ 2,4 = 20,83 l por km de línea de 10 cm, bajo 29, y aparece VR5.
+Tarea 16b, VR2: el APU de la mezcla de la carpeta (`C-000.000.009`) usa la mezcla propia MZ-1
+(«Costo propio de mezcla MZ-1»); la instalación tiene su receta A desde el 01/10/2026 (CA-30
+0,05 t/t, fórmula 5 %). Se importa la muestra con la columna `asfalto_pct` en 6,5 para la carpeta de
+T1: 6,5 − 5 = 1,5 puntos > 0,5 y aparece VR2. Sin receta, VR2 lo declara (INFO) con el motivo.
 
 `via.db` lleva las 15 partidas viales en «Lista Bs de prueba»; `sin_apu.db` es la misma carpeta
 sin ninguna, y llevar da 404 con los 15 códigos. Mismo acceso que `POST /v1/hoja/llevar`: solo
@@ -37,6 +41,8 @@ from core.contracts import Dominio
 from core.contracts.apu import ComposicionAPU, LineaMaterial
 from operacion import config
 from operacion.base_datos import preparar_base
+from operacion.instalacion import sesion_de_instalacion
+from tests.fixtures import costo_propio as cp
 from tests.fixtures.carpeta_aprobaciones import FECHA, OBRA, guardar_version, sembrar_vivienda
 from tests.fixtures.produccion_api import cliente_con_clave
 from tests.fixtures.sesion_web import (
@@ -78,7 +84,10 @@ def _catalogar(sesion) -> None:
     ).one()
     unidades = ["m3", "m3", "m3", "m2", "l", "m2", "l", "m2", "t", "m3", "t", "m", "m", "t·km", "l"]
     for codigo, unidad in zip(CODIGOS, unidades, strict=True):
-        linea = LineaMaterial(f"Material de {codigo}", unidad, D("1"), D("3"))
+        material = (
+            "Costo propio de mezcla MZ-1" if codigo == "C-000.000.009" else f"Material de {codigo}"
+        )
+        linea = LineaMaterial(material, unidad, D("1"), D("3"))
         apu = ComposicionAPU(codigo, f"Partida vial {codigo}", unidad, D("10"), materiales=(linea,))
         Catalogo(sesion).cargar_composicion(apu, lista, Dominio.CIVIL, FECHA, "prueba")
     sesion.commit()
@@ -233,6 +242,59 @@ def test_importar_llevar_escribir_otros_litros_y_la_auditoria_muestra_vr5(ana) -
     viales = [h for h in informe["hallazgos"] if h["regla"].startswith("VR")]
     assert [(h["regla"], h["origen"]) for h in viales] == [("VR5", ["tramo:T1:demarcacion:1"])]
     assert "50 l de pintura en 2,4 km de línea de 10 cm son 20,83 l" in viales[0]["descripcion"]
+
+
+def _con_asfalto(porcentaje: str) -> bytes:
+    """La muestra con la columna opcional `asfalto_pct`, llena solo en la carpeta de T1."""
+    filas = MUESTRA.read_text(encoding="utf-8").splitlines()
+    salida = [filas[0] + ";asfalto_pct"]
+    for fila in filas[1:]:
+        celda = porcentaje if fila.startswith("T1;") and ";capa;carpeta;" in fila else ""
+        salida.append(f"{fila};{celda}")
+    return ("\n".join(salida) + "\n").encode()
+
+
+def _viales_tras_llevar(cuenta) -> list[dict]:
+    navegador, _ = cuenta
+    llevado = _llevar(cuenta)
+    assert llevado.status_code == 200, llevado.text
+    id_ = llevado.json()["borrador_id"]
+    informe = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/auditoria")
+    assert informe.status_code == 200, informe.text
+    return [h for h in informe.json()["hallazgos"] if h["regla"].startswith("VR")]
+
+
+def test_importar_con_asfalto_llevar_y_la_auditoria_muestra_vr2(ana) -> None:
+    """Tarea 16b (filas 58 y 63): la fórmula de la receta vigente llega a VR2 desde la Hoja."""
+    with sesion_de_instalacion() as ins:
+        cp.materiales(ins)
+        cp.receta(ins)  # A, desde el 01/10/2026: CA-30 0,05 t/t
+        ins.commit()
+    assert _importar(ana, _con_asfalto("6,5")).status_code == 200
+
+    viales = _viales_tras_llevar(ana)
+
+    assert [(h["regla"], h["origen"]) for h in viales] == [("VR2", ["tramo:T1:capa:3"])]
+    assert "asfalto de 6,5 % y la fórmula de trabajo dice 5 %" in viales[0]["descripcion"]
+
+
+def test_sin_receta_vigente_vr2_lo_declara(ana, monkeypatch) -> None:
+    """La receta A rige desde el 01/10/2026; el día de la ruta es el 30/09/2026 (el de llevar, no
+    el del reloj del equipo): ninguna rige y VR2 lo dice."""
+    with sesion_de_instalacion() as ins:
+        cp.materiales(ins)
+        cp.receta(ins)
+        ins.commit()
+    monkeypatch.setattr(rutas, "_hoy", lambda: date(2026, 9, 30))
+    assert _importar(ana, _con_asfalto("6,5")).status_code == 200
+
+    viales = _viales_tras_llevar(ana)
+
+    assert [(h["regla"], h["origen"]) for h in viales] == [("VR2", ["tramo:T1:capa:3"])]
+    assert viales[0]["descripcion"] == (
+        "tramo:T1:capa:3: asfalto de 6,5 % sin comparar con la fórmula de trabajo: la mezcla "
+        "propia MZ-1 no tiene receta vigente al 30/09/2026"
+    )
 
 
 def test_llevar_otra_vez_usa_el_mismo_borrador_y_no_duplica(ana) -> None:

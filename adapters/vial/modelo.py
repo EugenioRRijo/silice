@@ -25,15 +25,16 @@ _OBLIGATORIO = "obligatorio"
 _OPCIONAL = "opcional"
 _NO_USA = "no usa"
 
-#: Qué datos usa cada tipo de capa: (espesor, densidad, dosis).
-_DATOS_POR_TIPO: dict[str, tuple[str, str, str]] = {
-    "fresado": (_OBLIGATORIO, _NO_USA, _NO_USA),
-    "base_granular": (_OBLIGATORIO, _NO_USA, _NO_USA),
-    "subbase_granular": (_OBLIGATORIO, _NO_USA, _NO_USA),
-    "imprimacion": (_NO_USA, _NO_USA, _OBLIGATORIO),
-    "riego_adherencia": (_NO_USA, _NO_USA, _OBLIGATORIO),
-    "carpeta": (_OBLIGATORIO, _OBLIGATORIO, _NO_USA),
-    "bacheo": (_OBLIGATORIO, _OPCIONAL, _NO_USA),
+#: Qué datos usa cada tipo de capa: (espesor, densidad, dosis, asfalto). El porcentaje de asfalto
+#: del proyecto (Tarea 16b) es opcional y solo de las capas de mezcla asfáltica.
+_DATOS_POR_TIPO: dict[str, tuple[str, str, str, str]] = {
+    "fresado": (_OBLIGATORIO, _NO_USA, _NO_USA, _NO_USA),
+    "base_granular": (_OBLIGATORIO, _NO_USA, _NO_USA, _NO_USA),
+    "subbase_granular": (_OBLIGATORIO, _NO_USA, _NO_USA, _NO_USA),
+    "imprimacion": (_NO_USA, _NO_USA, _OBLIGATORIO, _NO_USA),
+    "riego_adherencia": (_NO_USA, _NO_USA, _OBLIGATORIO, _NO_USA),
+    "carpeta": (_OBLIGATORIO, _OBLIGATORIO, _NO_USA, _OPCIONAL),
+    "bacheo": (_OBLIGATORIO, _OPCIONAL, _NO_USA, _OPCIONAL),
 }
 
 #: `origen_id` es `String(120)` en la base; "tramo:<id>:demarcacion:<n>" debe caber.
@@ -49,12 +50,17 @@ def _positivo(nombre: str, valor: Decimal) -> None:
 
 @dataclass(frozen=True, slots=True)
 class Capa:
-    """Una capa del paquete estructural o un riego, con los datos que su tipo usa."""
+    """Una capa del paquete estructural o un riego, con los datos que su tipo usa.
+
+    `asfalto_pct` es el porcentaje de asfalto que el proyecto pide a la mezcla de la carpeta o del
+    bacheo, en puntos (5,5 es 5,5 %), mayor que 0 y menor que 100. VR2 lo compara con la fórmula
+    de trabajo de la planta (Tarea 16b, filas 58 y 63)."""
 
     tipo: str
     espesor_m: Decimal | None
     densidad_t_m3: Decimal | None
     dosis_l_m2: Decimal | None
+    asfalto_pct: Decimal | None = None
 
     def __post_init__(self) -> None:
         if self.tipo not in _DATOS_POR_TIPO:
@@ -65,6 +71,7 @@ class Capa:
             ("espesor", self.espesor_m),
             ("densidad", self.densidad_t_m3),
             ("dosis", self.dosis_l_m2),
+            ("asfalto", self.asfalto_pct),
         )
         for (nombre, valor), uso in zip(datos, _DATOS_POR_TIPO[self.tipo], strict=True):
             if valor is None:
@@ -74,6 +81,11 @@ class Capa:
             if uso == _NO_USA:
                 raise ValueError(f"la capa {self.tipo} no usa {nombre}: déjelo vacío")
             _positivo(f"{nombre} de la capa {self.tipo}", valor)
+        if self.asfalto_pct is not None and self.asfalto_pct >= 100:
+            raise ValueError(
+                f"asfalto de la capa {self.tipo} debe ser un porcentaje menor que 100: "
+                f"{self.asfalto_pct}"
+            )
 
 
 @dataclass(frozen=True, slots=True)

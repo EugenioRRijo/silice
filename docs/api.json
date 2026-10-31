@@ -14271,6 +14271,18 @@
               }
             ],
             "title": "Dosis L M2"
+          },
+          "asfalto_pct": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asfalto Pct"
           }
         },
         "additionalProperties": false,
@@ -14318,6 +14330,17 @@
               }
             ],
             "title": "Dosis L M2"
+          },
+          "asfalto_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asfalto Pct"
           }
         },
         "type": "object",

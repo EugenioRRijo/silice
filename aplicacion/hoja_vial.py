@@ -14,7 +14,8 @@ renglones quedan como altas del borrador, que se guarda desde la Hoja.
   una clave que sigue se conserva y la de una que desaparece se descarta.
 - **Partidas sin APU:** el 404 de `hoja_edicion.PartidaFueraDelCatalogo`, con todos los códigos.
 - **Reglas:** llevar rearma las reglas viales del borrador (`reglas_extra`) con los tramos de ese
-  momento.
+  momento y, para VR2, la fórmula de la receta vigente el día `hoy` de la mezcla propia de cada
+  partida de mezcla (`vial.formulas_de_trabajo`, Tarea 16b).
 - **Todo o nada**, con el cerrojo del borrador: si algo falla, el borrador abierto aquí se descarta
   y uno que ya existía vuelve a como estaba, con su `rev`.
 
@@ -196,7 +197,7 @@ def llevar_tramos_a_la_hoja(
     faltan = _sin_apu(sesion, items)
     if faltan:
         raise hoja_edicion.PartidaFueraDelCatalogo(*faltan)
-    reglas = vial.reglas_viales(sesion, version_id)
+    reglas = vial.reglas_viales(sesion, version_id, hoy=hoy)  # VR2: la receta vigente de hoy
 
     vivo, nuevo = elaboracion.borrador_de_la_obra(
         sesion, huella_ficha, url, proyecto, responsable=responsable, hoy=hoy
