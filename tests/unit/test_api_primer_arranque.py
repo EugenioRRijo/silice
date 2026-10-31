@@ -87,6 +87,7 @@ ACCIONES_ADMINISTRADOR = [
     "operar_arenera",
     "registrar_costos_produccion",  # plan vial, Tarea 1
     "publicar_costo_propio",  # plan vial, Tarea 5: solo el administrador
+    "ver_riesgo",  # plan vial, Tarea 15
     "cambiar_caso",
     "administrar_cuentas",
     "administrar_empresa",
@@ -104,6 +105,7 @@ ACCIONES_ADMINISTRADOR_Y_ARMA = [
     "registrar_costos_produccion",
     "publicar_costo_propio",
     "leer_proyecto",
+    "ver_riesgo",
     "aprobar_version",
     "cambiar_caso",
     "administrar_cuentas",

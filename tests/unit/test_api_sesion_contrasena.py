@@ -58,14 +58,16 @@ ACCIONES = {
         "operar_arenera",
         "registrar_costos_produccion",  # plan vial, Tarea 1: arma y administrador
         "leer_proyecto",
+        "ver_riesgo",  # plan vial, Tarea 15
         "aprobar_version",
         "cambiar_caso",
     ],
-    "rita": ["leer_proyecto", "revisar_paquete", "aprobar_version"],
+    "rita": ["leer_proyecto", "ver_riesgo", "revisar_paquete", "aprobar_version"],
     "admin": [
         "operar_arenera",
         "registrar_costos_produccion",
         "publicar_costo_propio",  # plan vial, Tarea 5: solo el administrador
+        "ver_riesgo",
         "cambiar_caso",
         "administrar_cuentas",
         "administrar_empresa",

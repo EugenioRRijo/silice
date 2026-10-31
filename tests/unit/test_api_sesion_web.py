@@ -71,6 +71,7 @@ _ESTADO_DE_ARMA = {
         "operar_arenera",
         "registrar_costos_produccion",  # plan vial, Tarea 1: arma y administrador
         "leer_proyecto",
+        "ver_riesgo",  # plan vial, Tarea 15: arma, revisa y administrador
         "aprobar_version",
         "cambiar_caso",
     ],
@@ -423,7 +424,7 @@ def test_get_sesion_con_cookie_da_el_usuario() -> None:
         "roles": ["revisa"],
         "csrf": _csrf(ficha),
         "debe_cambiar_clave": False,
-        "acciones": ["leer_proyecto", "revisar_paquete", "aprobar_version"],
+        "acciones": ["leer_proyecto", "ver_riesgo", "revisar_paquete", "aprobar_version"],
         "modo_entrega": False,
         "eleccion": {"caso": None, "proyecto": None, "aviso": None},  # MOD-0
         "preferencias": {"modulo": None, "sidebar_fijado": False},

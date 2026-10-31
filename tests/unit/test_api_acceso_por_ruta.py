@@ -71,6 +71,7 @@ REAJUSTAR = "convertir_y_reajustar"
 OPERAR = "operar_arenera"
 COSTOS = "registrar_costos_produccion"
 PUBLICAR = "publicar_costo_propio"
+VER_RIESGO = "ver_riesgo"
 PRECIOS = "administrar_precios"
 APROBAR = "aprobar_version"
 EMPRESA, RED_Y_API = (
@@ -91,6 +92,7 @@ ROLES = {
     OPERAR: {"arma", "administrador"},
     COSTOS: {"arma", "administrador"},
     PUBLICAR: {"administrador"},
+    VER_RIESGO: {"arma", "revisa", "administrador"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CONTROLAR: {"arma"},
     DECIDIR: {"arma"},
@@ -275,6 +277,7 @@ TABLA = {
     ("GET", "/v1/produccion/calculos"): COSTOS,  # plan vial T4b: calculos anteriores
     ("GET", "/v1/produccion/calculos/{calculo_id}"): COSTOS,
     ("POST", "/v1/produccion/calculos/{calculo_id}/publicar"): PUBLICAR,  # plan vial T5
+    ("POST", "/v1/riesgo/mejora"): VER_RIESGO,  # plan vial T15
     ("GET", "/v1/hoja/versiones"): EDITAR,  # T10 3b-1: Hoja del proyecto; clave o sesion
     ("POST", "/v1/hoja/borradores"): EDITAR,  # ademas, solo con sesion (403 con clave)
     ("GET", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
