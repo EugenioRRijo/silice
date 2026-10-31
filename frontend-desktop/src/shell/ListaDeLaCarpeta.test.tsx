@@ -155,7 +155,7 @@ describe("La lista de la carpeta en la cabecera de la obra", () => {
 
   test("va en la cabecera de la obra y se lee al entrar en ella", async () => {
     montarMarco(sesionDe("ana"), "/obra/empresa/7/presupuesto");
-    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" });
+    await screen.findByRole("heading", { level: 1, name: "Presupuesto" });
     const cabecera = screen.getByRole("region", { name: "Obra abierta" });
     expect(
       await within(cabecera).findByText("Moneda: Bs · Lista para armar: Lista ficticia de Bs, al 25/10/2026"),

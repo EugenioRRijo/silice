@@ -70,7 +70,7 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   {
     id: "hoja",
-    titulo: "Hoja de la obra",
+    titulo: "Presupuesto",
     enUnaLinea: "El presupuesto completo, como en Excel",
     seccion: "Trabajo",
     // F4 2b (Eugenio, 2026-10-31): quien revisa la ve en solo lectura; lo que escribe lo decide `puedeEditarLaHoja`.

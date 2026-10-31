@@ -276,7 +276,7 @@ describe("Pendientes: la bandeja", () => {
     montar();
     await u.click((await opciones())[1]);
     await u.click(within(detalle()).getByRole("button", { name: "Abrir la Hoja" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Presupuesto" }, { timeout: 3000 })).toBeInTheDocument();
     expect(ruta()).toBe("/obra/empresa/7/presupuesto");
   });
 
@@ -422,7 +422,7 @@ describe("Pendientes: foco 4, volver después de resolver algo", () => {
     await u.click((await opciones())[1]);
     expect(pedidas()).toBe(1);
     await u.click(within(detalle()).getByRole("button", { name: "Abrir la Hoja" }));
-    await screen.findByRole("heading", { level: 1, name: "Hoja de la obra" }, { timeout: 3000 });
+    await screen.findByRole("heading", { level: 1, name: "Presupuesto" }, { timeout: 3000 });
     // En la Hoja se resolvió lo del cemento.
     pendientes = [DEVUELTA, PRECIOS, SIN_APU];
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });

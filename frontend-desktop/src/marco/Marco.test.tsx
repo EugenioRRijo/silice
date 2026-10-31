@@ -125,7 +125,7 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
   test("#/hoja con la obra 3 abierta en «Carpeta Sur.db» acaba en su Presupuesto", async () => {
     instalar(enSur);
     montar({ sesion: sesionConObra("3"), en: "/hoja" });
-    expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
     expect(ruta()).toBe("/obra/Carpeta%20Sur.db/3/presupuesto");
   });
 
@@ -173,7 +173,7 @@ describe("Marco: la obra como espacio de trabajo", () => {
     const { proyecto, nombreProyecto } = useAplicacion();
     return (
       <>
-        <h1>Hoja de la obra</h1>
+        <h1>Presupuesto</h1>
         <p>{`obra de la página: ${proyecto ?? "ninguna"} (${nombreProyecto ?? "?"})`}</p>
       </>
     );
@@ -185,7 +185,7 @@ describe("Marco: la obra como espacio de trabajo", () => {
       estado.moneda = "USD";
     });
     montar({ en: "/obra/Carpeta%20Sur.db/3/presupuesto", paginas: ligeras({ hoja: PaginaConObra }) });
-    expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
     expect(screen.getByText("obra de la página: 3 (Galpón Sur)")).toBeInTheDocument();
     const cabecera = screen.getByRole("region", { name: "Obra abierta" });
     expect(within(cabecera).getByText("Galpón Sur")).toBeInTheDocument();
@@ -228,7 +228,7 @@ describe("Marco: la obra como espacio de trabajo", () => {
 
   test("una obra sin versión guardada lo dice en la cabecera", async () => {
     montar({ en: "/obra/empresa/8/presupuesto" });
-    expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Obra abierta" })).toHaveTextContent("Versión: sin versión guardada");
   });
 
@@ -236,13 +236,13 @@ describe("Marco: la obra como espacio de trabajo", () => {
     const u = userEvent.setup();
     const canal: CanalDeObra = { onmessage: null, postMessage: vi.fn() };
     montar({ en: "/obra/empresa/7/presupuesto", canal });
-    expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
     const fijadas = servidor.de("PUT", "/v1/sesion/proyecto").length;
     canal.onmessage?.({ data: { carpeta: SUR, obraId: 3 } } as MessageEvent);
     expect(await titulo("Esta obra se abrió en otra pestaña")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 1, name: "Hoja de la obra" })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 1, name: "Presupuesto" })).toBeNull();
     await u.click(screen.getByRole("button", { name: "Retomar" }));
-    expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
     expect(servidor.de("PUT", "/v1/sesion/proyecto").length).toBe(fijadas + 1);
   });
 
@@ -282,17 +282,17 @@ describe("Marco: la obra como espacio de trabajo", () => {
 describe("Marco: cambiar de obra con cambios sin guardar (foco 5)", () => {
   function HojaSucia() {
     useFormularioSucio("hoja", true);
-    return <h1>Hoja de la obra</h1>;
+    return <h1>Presupuesto</h1>;
   }
 
   test("con la Hoja a medio llenar, elegir otra obra en el árbol pregunta; «Quedarme» deja la ruta igual", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto", paginas: ligeras({ hoja: HojaSucia }) });
-    expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
     const arbol = await screen.findByRole("tree", { name: "Obras" });
     await u.click(await within(arbol).findByRole("treeitem", { name: "Torre B" }));
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
-    expect(pregunta).toHaveAccessibleDescription("Tiene cambios sin guardar en Hoja de la obra. Si sale de esta pantalla, se perderán.");
+    expect(pregunta).toHaveAccessibleDescription("Tiene cambios sin guardar en Presupuesto. Si sale de esta pantalla, se perderán.");
     await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
     expect(ruta()).toBe("/obra/empresa/7/presupuesto");
@@ -307,7 +307,7 @@ describe("Marco: cambiar de obra con cambios sin guardar (foco 5)", () => {
       estado.borradores = [{ id: "b-1", proyecto: "7", version: "001", cambios: 2, rev: 3, tocado: "2026-10-27T10:00:00" }];
     });
     montar({ en: "/obra/empresa/7/presupuesto" });
-    expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
     await u.click(await within(await screen.findByRole("tree", { name: "Obras" })).findByRole("treeitem", { name: "Galpón Sur" }));
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     expect(pregunta).toHaveAccessibleDescription("Tiene cambios sin guardar en Hoja de Casa Demo. Si cambia de carpeta, se perderán.");
@@ -320,7 +320,7 @@ describe("Marco: cambiar de obra con cambios sin guardar (foco 5)", () => {
   test("sin nada que perder, una obra de otra carpeta se abre sin preguntar", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto" });
-    expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
     await u.click(await within(await screen.findByRole("tree", { name: "Obras" })).findByRole("treeitem", { name: "Galpón Sur" }));
     await waitFor(() => expect(ruta()).toBe("/obra/Carpeta%20Sur.db/3/resumen"));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
@@ -510,7 +510,7 @@ describe("Marco: vocabulario y alcance", () => {
   test("ningún texto visible del marco dice «módulo», «área», «página», «carpeta de trabajo» ni «Streamlit»", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto" });
-    await titulo("Hoja de la obra");
+    await titulo("Presupuesto");
     await u.keyboard("{Control>}k{/Control}");
     // La página montada es ligera (solo su h1): todo lo demás es del marco.
     for (const palabra of [/módulo/i, /área/i, /página/i, /carpeta de trabajo/i, /streamlit/i]) {
@@ -562,7 +562,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
 
   test.each([
     ["Ir al simulador", "Simulador de listas"],
-    ["Ir a la obra", "Hoja de la obra"],
+    ["Ir a la obra", "Presupuesto"],
   ])("«%s», un botón de la pantalla que navega, deja el foco en el único h1 de la nueva («%s»)", async (boton, h1) => {
     const u = userEvent.setup();
     montar({ en: RUTA_DE_LA_MESA, paginas: conLaMesa(MesaQueVa) });
@@ -587,7 +587,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
   test("un enlace de las migas que sigue tras navegar conserva el foco", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto" });
-    await titulo("Hoja de la obra");
+    await titulo("Presupuesto");
     const enlace = await within(screen.getByRole("navigation", { name: "Ruta" })).findByRole("link", { name: "Casa Demo" });
     await u.click(enlace);
     await titulo("Resumen de la obra");
@@ -599,7 +599,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
   test("un enlace de las migas que desaparece al navegar («Mis obras») deja el foco en el h1 de la nueva", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto" });
-    await titulo("Hoja de la obra");
+    await titulo("Presupuesto");
     await u.click(within(screen.getByRole("navigation", { name: "Ruta" })).getByRole("link", { name: "Mis obras" }));
     const nuevo = await titulo("Pendientes");
     expect(ruta()).toBe("/pendientes");
@@ -639,7 +639,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     await waitFor(() => expect(aviso).toHaveFocus());
     caida.caido = false;
     await u.click(screen.getByRole("button", { name: "Reintentar" }));
-    expect(await titulo("Hoja de la obra")).toBeInTheDocument();
+    expect(await titulo("Presupuesto")).toBeInTheDocument();
   });
 
   // Ronda 3 del árbitro: con el h1 el aviso solo se anunciaba si el foco iba a él, y no va en la carga inicial (un
@@ -673,7 +673,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     await titulo("No se pudo abrir la obra");
     caida.caido = false;
     await u.click(screen.getByRole("button", { name: "Reintentar" }));
-    const seccion = await titulo("Hoja de la obra");
+    const seccion = await titulo("Presupuesto");
     await waitFor(() => expect(seccion).toHaveFocus());
     expect(screen.queryByRole("alert")).toBeNull();
   });
@@ -685,7 +685,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
   async function abrirEnOtraPestana() {
     const canal: CanalDeObra = { onmessage: null, postMessage: vi.fn() };
     montar({ en: "/obra/empresa/7/presupuesto", canal });
-    await titulo("Hoja de la obra");
+    await titulo("Presupuesto");
     canal.onmessage?.({ data: { carpeta: SUR, obraId: 3 } } as MessageEvent);
     return titulo("Esta obra se abrió en otra pestaña");
   }
@@ -699,7 +699,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     const u = userEvent.setup();
     await abrirEnOtraPestana();
     await u.click(screen.getByRole("button", { name: "Retomar" }));
-    const seccion = await titulo("Hoja de la obra");
+    const seccion = await titulo("Presupuesto");
     await waitFor(() => expect(seccion).toHaveFocus());
     expect(screen.queryByRole("alert")).toBeNull();
   });

@@ -4,7 +4,7 @@ import { ErrorDeApi } from "../../api/cliente";
 import type { HallazgoInformeRespuesta, InformeAuditoriaRespuesta } from "../../api/tipos";
 import { leerCifra } from "../../indicadores/cifraEscrita";
 
-export const TITULO = "Hoja de la obra";
+export const TITULO = "Presupuesto";
 export const SIN_VERSIONES = "Esta obra aún no tiene versiones";
 
 // El orden de la página clásica (ui/paginas/hoja.py, PESTANAS).

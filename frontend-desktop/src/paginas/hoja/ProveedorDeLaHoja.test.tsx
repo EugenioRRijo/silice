@@ -217,7 +217,7 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     // Ronda 2, menor 2: el borrador se conserva en el servidor y se retoma al volver; el diálogo lo dice y no habla de descartar.
     expect(pregunta).toHaveAccessibleDescription(
-      "Tiene cambios sin guardar en Hoja de la obra. Sus cambios quedan guardados para retomarlos al volver.",
+      "Tiene cambios sin guardar en Presupuesto. Sus cambios quedan guardados para retomarlos al volver.",
     );
     expect(within(pregunta).queryByRole("button", { name: /descartar/i })).toBeNull();
     await u.click(within(pregunta).getByRole("button", { name: "Salir" }));
