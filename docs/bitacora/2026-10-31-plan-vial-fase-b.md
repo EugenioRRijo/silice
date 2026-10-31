@@ -62,3 +62,14 @@ filas 33 a 62 de `2026-10-30-preguntas-para-eugenio.md`.
 - Menor del árbitro r2 hecho: la fila 72 ya no dice que una versión aprobada se lleva a un borrador de otra.
 - Menor aceptado sin cambio: `test_un_borrador_abierto_de_otra_version_da_409_y_no_cambia` no compara `tocado`, que
   renueva la lectura de la vista. Compara id, versión, `rev`, cambios y filas, y la unitaria compara el borrador entero.
+
+## Árbitro de cierre de la fase B (ronda 2, cabeza 7d741861): APROBADA
+
+- El MAYOR de la r1 quedó resuelto con la Tarea 8b: VR1 y VR4 se disparan desde la interfaz, y VR3 y VR6 ya se
+  disparaban. Los menores 2 y 3 también quedaron resueltos.
+- MENOR nuevo, hecho: las filas 63 y 70 declaran que VR2, VR5 y VR7 no se alcanzan desde la interfaz, y cómo cambiarlo.
+  El reporte de la Tarea 22 y la tesis no deben decir «VR1 a VR7 en el producto».
+- Verificado por el árbitro: pruebas de la fase, migraciones y arquitectura en verde; `ruff` limpio; front 418 de 418 y
+  lint limpio; `core/` intacto; `docs/api.json` idéntico.
+
+**Fase B cerrada.**
