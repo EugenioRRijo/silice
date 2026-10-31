@@ -26,7 +26,9 @@ Acceso: `Accion.VER_RIESGO` (arma, revisa y administrador), con clave de API o s
 más `X-Silice-CSRF` y `Origin`, porque el método escribe). Las cifras entran como **texto con punto
 decimal**, igual que en el resto de la API (la coma es cosa del front, `cifraEscrita.ts`); un texto
 que no es decimal, un costo real que no es positivo o una estimación negativa es 422 con
-`{"detalle": ...}`.
+`{"detalle": ...}`. Un cuerpo o una consulta sin la forma esperada es 422 con un mensaje fijo que
+no repite lo enviado (`_RutaRiesgo`, como `_RutaVial`): `MENSAJE_MEJORA` en `/mejora` y
+`MENSAJE_FORMA` en las demás.
 """
 
 from __future__ import annotations
@@ -42,20 +44,38 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 from api.dependencias import SesionDep, SesionInstalacionDep
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
+from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion.riesgo import obra
 from aplicacion.riesgo.mejora import mejora_de_estimacion
 from seguridad.permisos import Accion
 
 VER_RIESGO = exigir_clave_o_sesion(Accion.VER_RIESGO)
 
+MENSAJE_FORMA = (
+    "Los datos del riesgo no tienen la forma esperada: envíe la obra y la versión, el mapa como "
+    "insumo y serie (texto), y los meses, las trayectorias, la semilla y la ventana como números "
+    "enteros dentro de sus topes."
+)
+MENSAJE_MEJORA = (
+    "Envíe el costo final real, el presupuesto original y la estimación de Sílice, cada uno como "
+    "texto con punto decimal, por ejemplo 1250.50."
+)
+
+
+class _RutaRiesgo(RutaSinCache, RutaSinEco):
+    """El orden importa: `RutaSinCache` envuelve a `RutaSinEco` (como `_RutaVial`)."""
+
+    mensaje_por_omision = MENSAJE_FORMA
+
+
 router = APIRouter(
     prefix="/v1/riesgo",
     tags=["riesgo"],
     dependencies=[Depends(VER_RIESGO)],
-    route_class=RutaSinCache,
+    route_class=_RutaRiesgo,
 )
 
-__all__ = ["VER_RIESGO", "hoy", "router"]
+__all__ = ["MENSAJE_FORMA", "MENSAJE_MEJORA", "VER_RIESGO", "hoy", "router"]
 
 #: Un decimal con punto, sin exponente, NaN ni infinito (lo mismo que el resto de la API).
 _DECIMAL = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
@@ -83,6 +103,7 @@ def _decimal(nombre: str, texto: str) -> Decimal:
 
 
 @router.post("/mejora", response_model=MejoraRespuesta)
+@sin_eco(MENSAJE_MEJORA)
 def informe_de_mejora(cuerpo: MejoraEntrada) -> MejoraRespuesta:
     real = _decimal("costo_final_real", cuerpo.costo_final_real)
     original = _decimal("presupuesto_original", cuerpo.presupuesto_original)
@@ -92,9 +113,9 @@ def informe_de_mejora(cuerpo: MejoraEntrada) -> MejoraRespuesta:
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from None
     return MejoraRespuesta(
-        error_original_pct=str(mejora.error_original_pct),
-        error_silice_pct=str(mejora.error_silice_pct),
-        mejora_pp=str(mejora.mejora_pp),
+        error_original_pct=_texto(mejora.error_original_pct),
+        error_silice_pct=_texto(mejora.error_silice_pct),
+        mejora_pp=_texto(mejora.mejora_pp),
     )
 
 
