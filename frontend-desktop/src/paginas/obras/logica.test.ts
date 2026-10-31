@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { bloquesPedidos, etiquetaAvance, gruposConItems } from "./logica";
+import type { ObraFilaRespuesta } from "../../api/tipos";
+import { bloquesPedidos, etiquetaAvance, gruposConItems, pasoDeLaObra } from "./logica";
 import type { GrupoRespuesta } from "./logica";
 
 // Plan de modulos, MOD-4b: la logica pura de la mesa de control. Acciones por rol copiadas a mano de
@@ -79,5 +80,44 @@ describe("gruposConItems", () => {
 
   test("todos vacíos: ninguno", () => {
     expect(gruposConItems([{ clave: "precios", titulo: "Precios", items: [] }])).toEqual([]);
+  });
+});
+
+// Tarea 2 del plan F4: qué dice la franja del Resumen. Obra ficticia; los textos son los que daría el servidor.
+const OBRA: ObraFilaRespuesta = {
+  codigo: "3",
+  nombre: "Galpón Norte",
+  cliente: "",
+  etapa: "en_elaboracion",
+  etapa_texto: "En elaboración",
+  version: "001",
+  total: "100.00",
+  moneda: "Bs",
+  avance_real: null,
+  avance_plan: null,
+  que_pasa: null,
+  siguiente: null,
+};
+const IR_A_LA_HOJA = { texto: "Abrir la Hoja", pagina: "hoja" };
+
+describe("pasoDeLaObra", () => {
+  test("con «qué pasa» y siguiente paso, lo que falta, con la acción", () => {
+    expect(pasoDeLaObra({ ...OBRA, que_pasa: "Faltan 2 precios", siguiente: IR_A_LA_HOJA })).toEqual({
+      tipo: "falta",
+      texto: "Faltan 2 precios",
+      accion: IR_A_LA_HOJA,
+    });
+  });
+
+  test("con «qué pasa» y sin siguiente paso, lo que falta, sin acción", () => {
+    expect(pasoDeLaObra({ ...OBRA, que_pasa: "Faltan 2 precios" })).toEqual({ tipo: "falta", texto: "Faltan 2 precios", accion: null });
+  });
+
+  test("solo con siguiente paso, el siguiente paso con el texto de la acción", () => {
+    expect(pasoDeLaObra({ ...OBRA, siguiente: IR_A_LA_HOJA })).toEqual({ tipo: "siguiente", texto: "Abrir la Hoja", accion: IR_A_LA_HOJA });
+  });
+
+  test("sin ninguno de los dos, no hay franja", () => {
+    expect(pasoDeLaObra(OBRA)).toBeNull();
   });
 });

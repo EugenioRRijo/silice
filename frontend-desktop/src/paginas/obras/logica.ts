@@ -212,3 +212,13 @@ export function textoFueraDeSuma(obras: readonly string[]): string | null {
 export function textoTotal(total: string | null, moneda: string): string | null {
   return total === null ? null : `${formatoEsVe(total)} ${moneda}`;
 }
+
+// STUB del rojo (Tarea 2): lo reemplaza la implementación.
+export interface Paso {
+  tipo: "falta" | "siguiente";
+  texto: string;
+  accion: { texto: string; pagina: string } | null;
+}
+export function pasoDeLaObra(_obra: ObraFilaRespuesta): Paso | null {
+  return null;
+}

@@ -27,6 +27,11 @@ function destino(p: PendienteDeObra): Destino {
   return { ruta: rutaDeObra(p.carpeta, p.obra_id, llegada?.id ?? "resumen"), pagina: llegada?.pagina ?? id };
 }
 
+// STUB del rojo (Tarea 2): lo reemplaza la implementación.
+export function destinoDeLaAccion(_carpeta: string | null, _obraId: number, _pagina: string): string {
+  return "";
+}
+
 export function destinoDelPendiente(p: PendienteDeObra): string {
   return destino(p).ruta;
 }
