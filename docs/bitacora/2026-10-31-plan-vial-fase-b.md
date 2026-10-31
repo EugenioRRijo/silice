@@ -49,3 +49,16 @@ filas 33 a 62 de `2026-10-30-preguntas-para-eugenio.md`.
   queda anotado en la fila 63.
 - Verificado por el árbitro: unas 984 pruebas de la fase en verde; arquitectura, migración y `ruff` limpios; `core/`
   intacto; experimento congelado intacto; `docs/api.json` idéntico; front 271 de 271 y lint limpio.
+
+## Tarea 8b: llevar los tramos al presupuesto
+
+| Tarea | Commits | Árbitro |
+|---|---|---|
+| 8b Llevar los tramos al presupuesto | 4e2fa742 (plan), 6fc6c9bd, 29b3c67a; r2 8e6eea6d, 54f22f49 | devuelta r1 (el botón llevaba los tramos de la versión del borrador sin decirlo), aprobada r2 |
+
+- r2: el cuerpo trae `{proyecto, version}`. Si el borrador es de otra versión, 409 sin llevar nada; el aviso nombra la
+  versión; módulo `aplicacion/hoja_vial.py`; `elaboracion.version_del_borrador_de_la_obra` y
+  `hoja_edicion.cambiar_borrador` públicas; `VersionInexistente` → 409. Filas 63 a 72.
+- Menor del árbitro r2 hecho: la fila 72 ya no dice que una versión aprobada se lleva a un borrador de otra.
+- Menor aceptado sin cambio: `test_un_borrador_abierto_de_otra_version_da_409_y_no_cambia` no compara `tocado`, que
+  renueva la lectura de la vista. Compara id, versión, `rev`, cambios y filas, y la unitaria compara el borrador entero.
