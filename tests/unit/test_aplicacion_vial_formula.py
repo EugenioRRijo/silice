@@ -178,10 +178,8 @@ def test_el_porcentaje_de_asfalto_se_guarda_y_se_lee(sesion) -> None:
 # --- al abrir una versión con tramos (la llamada de `hoja.abrir_version`, sin `hoy`) ------------
 
 
-def test_al_abrir_una_version_con_tramos_vr2_usa_la_receta_vigente(sesion, monkeypatch) -> None:
-    """`abrir_version` llama `reglas_viales(sesion, id)` (su llamada es parte del experimento
-    congelado y no cambia): la fórmula se lee de la instalación con la fecha del día. La receta
-    rige desde el 01/01/2026, así el día del reloj no cambia el oráculo: 6,5 contra 5."""
+def _guardar_vial_001(sesion: Session) -> Catalogo:
+    """La versión VIAL-001 de la obra con las cantidades de T1, guardada como en la Hoja."""
     obra = sesion.scalars(select(models.Proyecto).where(models.Proyecto.nombre == OBRA)).one()
     _componer(sesion, "C-000.000.008", "m2", "Material de C-000.000.008")
     lista = sesion.scalars(
@@ -209,7 +207,14 @@ def test_al_abrir_una_version_con_tramos_vr2_usa_la_receta_vigente(sesion, monke
         usuario=ANA,
     )
     sesion.commit()
+    return catalogo
 
+
+def test_al_abrir_una_version_con_tramos_vr2_usa_la_receta_vigente(sesion, monkeypatch) -> None:
+    """`abrir_version` llama `reglas_viales(sesion, id)` (su llamada es parte del experimento
+    congelado y no cambia): la fórmula se lee de la instalación con la fecha del día. La receta
+    rige desde el 01/01/2026, así el día del reloj no cambia el oráculo: 6,5 contra 5."""
+    catalogo = _guardar_vial_001(sesion)
     with cp.instalacion_en_memoria() as ins:
         cp.materiales(ins)
         cp.receta(ins, desde=date(2026, 1, 1))
@@ -226,15 +231,37 @@ def test_al_abrir_una_version_con_tramos_vr2_usa_la_receta_vigente(sesion, monke
     assert (vr2.valor_observado, vr2.valor_esperado) == (D("6.5"), D("5"))
 
 
-def test_si_la_instalacion_no_se_puede_leer_vr2_lo_declara_y_la_hoja_abre(sesion, monkeypatch):
-    """VR2 es un aviso: una base de la instalación que no se puede leer no impide auditar."""
+@pytest.mark.parametrize(
+    "falla",
+    [
+        OperationalError("SELECT", {}, Exception("database is locked")),
+        PermissionError(13, "Acceso denegado", "instalacion.db"),
+    ],
+    ids=["base_bloqueada", "archivo_ilegible"],
+)
+def test_si_la_instalacion_no_se_puede_leer_vr2_lo_declara_y_la_hoja_abre(
+    sesion, monkeypatch, falla
+):
+    """VR2 es un aviso: una base de la instalación bloqueada (`SQLAlchemyError`) o un archivo que
+    el sistema no deja leer (`OSError`, p. ej. la carpeta sincronizada sin permiso) no impide
+    abrir la Hoja: la versión abre y VR2 declara el motivo (MENOR 2 del árbitro de la 16b)."""
 
     def rota():
-        raise OperationalError("SELECT", {}, Exception("database is locked"))
+        raise falla
 
+    catalogo = _guardar_vial_001(sesion)
     monkeypatch.setattr(vial, "_abrir_instalacion", rota)
     regla = _regla(sesion, None, date(2026, 10, 31))
     assert regla.formulas == {}
     assert regla.sin_formula == {
         MEZCLA: "no se pudo leer la base de la instalación para buscar la receta de MZ-1"
     }
+
+    abierta = hoja.abrir_version(sesion, catalogo, OBRA, "VIAL-001")
+
+    (vr2,) = [h for h in abierta.guardada.informe.hallazgos if h.regla == "VR2"]
+    assert vr2.severidad == Severidad.INFO
+    assert vr2.descripcion == (
+        "tramo:T1:capa:1: asfalto de 6,5 % sin comparar con la fórmula de trabajo: no se pudo "
+        "leer la base de la instalación para buscar la receta de MZ-1"
+    )

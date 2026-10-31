@@ -552,8 +552,9 @@ def formulas_de_trabajo(
                 instalacion if instalacion is not None else pila.enter_context(_abrir_instalacion())
             )
             recetas = {p: receta_vigente(ins, p, hoy) for p in set(productos.values())}
-    except SQLAlchemyError:
-        # VR2 es un aviso: una instalación que no se puede leer no impide auditar ni abrir la Hoja
+    except (SQLAlchemyError, OSError):
+        # VR2 es un aviso: una instalación que no se puede leer (la base bloqueada o el archivo sin
+        # permiso) no impide auditar ni abrir la Hoja
         for codigo, producto in productos.items():
             sin_formula[codigo] = (
                 f"no se pudo leer la base de la instalación para buscar la receta de {producto}"
