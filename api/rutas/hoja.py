@@ -6,7 +6,7 @@ y `aplicacion.hoja_borradores`. Esta rebanada trae las rutas R1 a R4 del diseño
 (`docs/especificaciones/2026-10-19-hoja-react-design.md`, §4.3):
 
 - `GET /v1/hoja/versiones?proyecto=` → las versiones del proyecto y la que se preselecciona
-  (`por_omision`, calculada aquí). Clave de API o sesión con `EDITAR_HOJA`.
+  (`por_omision`, calculada aquí). Clave de API o sesión con `LEER_PROYECTO` (F4 2b).
 - `POST /v1/hoja/borradores` `{proyecto, version}` → 201: abre la versión como borrador VIVO del
   servidor (el equivalente de `st.session_state["hoja_borrador"]`). Escribe, y solo eso, la
   instantánea de las composiciones si faltaba (UC-15e), a nombre de la persona de la sesión.
@@ -19,7 +19,7 @@ y `aplicacion.hoja_borradores`. Esta rebanada trae las rutas R1 a R4 del diseño
   `PUT /apu/{partida}` y E7 `POST /apu/{partida}/insumo`, la lectura de los candidatos E8
   (`/insumos`) y de los cambios E9 (`/cambios`), E10 `GET /borradores` (retomar) y E11, el
   `reemplazar` de R2 (3c-3). Nada de esto escribe en la base: el guardado es 3d.
-- Lecturas de una versión GUARDADA (3b-3; clave de API o sesión con `EDITAR_HOJA`; sin borrador y
+- Lecturas de una versión GUARDADA (3b-3; clave de API o sesión con `LEER_PROYECTO`; sin borrador y
   solo leen): R12 `GET /precios?proyecto=&version=`, R13 `GET /precios/atipicos?...` y R14
   `GET /trazabilidad?...`.
 - Líneas del APU de la versión (Tarea 26): `POST /borradores/{id}/apu/{partida}/lineas` agrega un
@@ -30,6 +30,12 @@ y `aplicacion.hoja_borradores`. Esta rebanada trae las rutas R1 a R4 del diseño
   partida del catálogo con su cantidad, su cálculo y su nota, y `POST /borradores/{id}/partidas/
   quitar` quita un renglón de la versión. El borrador en blanco nace en la moneda de la obra y se
   valora con `lista_para_el_proyecto` (la de la carpeta o su conversión con la tasa del BCV).
+
+**Quién lee y quién escribe (F4 2b, Eugenio, 2026-10-31).** Quien revisa ve la Hoja en solo
+lectura: las rutas que solo leen, y abrir, leer y cerrar el borrador PROPIO (vive en memoria),
+exigen `LEER_PROYECTO`; todo lo que cambia el borrador o la base exige `EDITAR_HOJA`. Abrir una
+versión sin instantánea la escribiría (UC-15e): sin `EDITAR_HOJA`, la sesión va `sin_escribir` y
+responde 409 sin tocar la base.
 
 Los borradores y todo lo que los toca son **solo de una cuenta** (RF-82: el responsable es la
 persona de la sesión, nunca un campo): con `X-Silice-Clave`, 403. Un borrador de otra ficha no
@@ -121,6 +127,7 @@ from api.esquemas_informe import InformeAuditoriaRespuesta, informe_a_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
+from api.sin_escribir import EscrituraNegada, sin_escribir
 from aplicacion import atipicos as busqueda_atipica
 from aplicacion import (
     hoja,
@@ -155,6 +162,10 @@ MENSAJE_OTRO_CASO = (
 MENSAJE_BASE = (
     "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro "
     "programa."
+)
+MENSAJE_SIN_PREPARAR = (
+    "Esta versión todavía no se puede ver en solo lectura: quien arma el presupuesto tiene que "
+    "abrirla una vez para prepararla."
 )
 MENSAJE_CON_VERSIONES = "Este proyecto ya tiene versiones: elija una de la lista."
 MENSAJE_REV = "El borrador cambió en otra ventana: vuelva a cargarlo."
@@ -251,7 +262,13 @@ class _RutaHoja(RutaSinCache, RutaSinEco):
 
 router = APIRouter(prefix="/v1/hoja", tags=["hoja"], route_class=_RutaHoja)
 
-LEER = Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))
+#: F4 2b (Eugenio, 2026-10-31): quien revisa ve la Hoja en solo lectura. Las rutas que solo leen
+#: (o abren y cierran el borrador propio, que vive en memoria) exigen `LEER_PROYECTO` (arma y
+#: revisa); todo lo que cambia el borrador o la base sigue exigiendo `EDITAR_HOJA` (arma).
+VER = Depends(exigir_clave_o_sesion(Accion.LEER_PROYECTO))
+CuentaQueVe = Annotated[
+    SesionActiva, Depends(cuenta_con(Accion.LEER_PROYECTO, MENSAJE_SOLO_CUENTA))
+]
 CuentaDeLaHoja = Annotated[
     SesionActiva, Depends(cuenta_con(Accion.EDITAR_HOJA, MENSAJE_SOLO_CUENTA))
 ]
@@ -324,7 +341,7 @@ def _respuesta(sesion, vivo: BorradorVivo) -> dict:
     }
 
 
-@router.get("/versiones", response_model=VersionesHojaRespuesta, dependencies=[LEER])
+@router.get("/versiones", response_model=VersionesHojaRespuesta, dependencies=[VER])
 def listar_versiones(
     sesion: SesionDep, proyecto: Annotated[str, Query(min_length=1, max_length=500)]
 ) -> VersionesHojaRespuesta:
@@ -359,7 +376,7 @@ def _pendiente_sin_guardar(vivo: BorradorVivo, cambios: int) -> JSONResponse:
 
 
 @router.get("/borradores", response_model=BorradoresHojaRespuesta)
-def listar_borradores(request: Request, activa: CuentaDeLaHoja) -> BorradoresHojaRespuesta:
+def listar_borradores(request: Request, activa: CuentaQueVe) -> BorradoresHojaRespuesta:
     """E10: los borradores de MI ficha abiertos en el caso de ahora (sin los ya guardados), el
     usado más recientemente primero: lo que se puede retomar tras recargar o cambiar de proyecto.
     Listar no renueva el plazo de ninguno."""
@@ -370,7 +387,7 @@ def listar_borradores(request: Request, activa: CuentaDeLaHoja) -> BorradoresHoj
 
 @router.post("/borradores", response_model=BorradorAbierto, status_code=201)
 def abrir_borrador(
-    datos: BorradorNuevo, request: Request, activa: CuentaDeLaHoja, sesion: SesionDep
+    datos: BorradorNuevo, request: Request, activa: CuentaQueVe, sesion: SesionDep
 ) -> BorradorAbierto | JSONResponse:
     """R2: abre la versión como borrador vivo. Escribe la instantánea si faltaba (UC-15e).
 
@@ -381,7 +398,25 @@ def abrir_borrador(
     nada.
 
     En la firma `activa` va antes que `sesion`: FastAPI resuelve en ese orden y el acceso (401,
-    403) debe responder antes de abrir la base del caso."""
+    403) debe responder antes de abrir la base del caso.
+
+    F4 2b: quien solo lee (sin `EDITAR_HOJA`) abre su borrador para ver las vistas, pero no
+    escribe en la base: la sesión va `sin_escribir` y una versión sin instantánea da 409
+    (`MENSAJE_SIN_PREPARAR`) sin dejar nada; quien arma la prepara al abrirla una vez."""
+    if permitido(activa.roles, Accion.EDITAR_HOJA):
+        return _abrir_borrador(datos, request, activa, sesion)
+    try:
+        with sin_escribir(sesion):
+            return _abrir_borrador(datos, request, activa, sesion)
+    except EscrituraNegada:
+        sesion.rollback()
+        raise HTTPException(status_code=409, detail=MENSAJE_SIN_PREPARAR) from None
+
+
+def _abrir_borrador(
+    datos: BorradorNuevo, request: Request, activa: SesionActiva, sesion
+) -> BorradorAbierto | JSONResponse:
+    """El cuerpo de R2, con la sesión que le toque a la cuenta (la normal o `sin_escribir`)."""
     try:
         con_anexos_de_cadena(sesion)  # el sello de lo que se escriba cubre los anexos (§1.2)
         encontrado = _proyecto(sesion, datos.proyecto)
@@ -446,7 +481,7 @@ def abrir_borrador(
 
 @router.get("/borradores/{id}", response_model=BorradorHojaRespuesta)
 def leer_borrador(
-    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja, sesion: SesionDep
+    id: IdDeBorrador, request: Request, activa: CuentaQueVe, sesion: SesionDep
 ) -> BorradorHojaRespuesta:
     """R3: el estado del borrador vivo (su base y su resumen)."""
     vivo = _vivo(request, activa, id)
@@ -457,7 +492,7 @@ def leer_borrador(
 
 
 @router.delete("/borradores/{id}", status_code=204, response_class=Response)
-def descartar_borrador(id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja) -> Response:
+def descartar_borrador(id: IdDeBorrador, request: Request, activa: CuentaQueVe) -> Response:
     """R4: descarta el borrador. Idempotente: un id desconocido, vencido o ajeno también es 204."""
     try:
         _vivo(request, activa, id)
@@ -940,7 +975,7 @@ def quitar_linea_apu(
     )
 
 
-@router.get("/antes-y-despues", response_model=AntesYDespuesRespuesta, dependencies=[LEER])
+@router.get("/antes-y-despues", response_model=AntesYDespuesRespuesta, dependencies=[VER])
 @sin_eco(FORMA_ANTES)
 def antes_y_despues(
     sesion: SesionDep,
@@ -983,7 +1018,7 @@ def antes_y_despues(
 def buscar_insumos(
     id: IdDeBorrador,
     request: Request,
-    activa: CuentaDeLaHoja,
+    activa: CuentaQueVe,
     sesion: SesionDep,
     tipo: Annotated[Literal["material", "equipo", "mano_obra"], Query()],
     texto: Annotated[str, Query(max_length=500)] = "",
@@ -1008,7 +1043,7 @@ def buscar_insumos(
 
 @router.get("/borradores/{id}/cambios", response_model=CambiosHojaRespuesta)
 def cambios_del_borrador(
-    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja
+    id: IdDeBorrador, request: Request, activa: CuentaQueVe
 ) -> CambiosHojaRespuesta:
     """E9: la lista de cambios entre la versión abierta y el borrador (la que cuenta
     `resumen.cambios`), con el `rev` con que se calculó."""
@@ -1016,16 +1051,14 @@ def cambios_del_borrador(
 
 
 @router.get("/borradores/{id}/vistas/espacio", response_model=VistaEspacioRespuesta)
-def vista_espacio(
-    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja
-) -> VistaEspacioRespuesta:
+def vista_espacio(id: IdDeBorrador, request: Request, activa: CuentaQueVe) -> VistaEspacioRespuesta:
     """R5: Espacio y metrajes en lectura (tablas, Estado por fila, cantidades derivadas)."""
     return vista_espacio_a_respuesta(hoja_vista.vista_espacio(_vivo(request, activa, id)))
 
 
 @router.get("/borradores/{id}/vistas/presupuesto", response_model=VistaPresupuestoRespuesta)
 def vista_presupuesto(
-    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja
+    id: IdDeBorrador, request: Request, activa: CuentaQueVe
 ) -> VistaPresupuestoRespuesta:
     """R6: Presupuesto en lectura (renglones, cantidad calculada y escrita, PU, total, Estado)."""
     return vista_presupuesto_a_respuesta(hoja_vista.vista_presupuesto(_vivo(request, activa, id)))
@@ -1035,7 +1068,7 @@ def vista_presupuesto(
 def vista_apu(
     id: IdDeBorrador,
     request: Request,
-    activa: CuentaDeLaHoja,
+    activa: CuentaQueVe,
     partida: Annotated[str | None, Query(max_length=500)] = None,
     buscar: Annotated[str | None, Query(max_length=500)] = None,
 ) -> VistaApuRespuesta:
@@ -1045,14 +1078,14 @@ def vista_apu(
 
 
 @router.get("/borradores/{id}/vistas/plan", response_model=VistaPlanRespuesta)
-def vista_plan(id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja) -> VistaPlanRespuesta:
+def vista_plan(id: IdDeBorrador, request: Request, activa: CuentaQueVe) -> VistaPlanRespuesta:
     """R8: Plan y curva en lectura (matriz partida por periodo y curva de inversión)."""
     return vista_plan_a_respuesta(hoja_vista.vista_plan(_vivo(request, activa, id)))
 
 
 @router.get("/borradores/{id}/vistas/equilibrio", response_model=VistaEquilibrioRespuesta)
 def vista_equilibrio(
-    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja
+    id: IdDeBorrador, request: Request, activa: CuentaQueVe
 ) -> VistaEquilibrioRespuesta:
     """R9: Punto de equilibrio en lectura (ventas, costos, utilidad, punto y la frase del caso)."""
     return vista_equilibrio_a_respuesta(hoja_vista.vista_equilibrio(_vivo(request, activa, id)))
@@ -1060,7 +1093,7 @@ def vista_equilibrio(
 
 @router.get("/borradores/{id}/vistas/parametros", response_model=VistaParametrosRespuesta)
 def vista_parametros(
-    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja, sesion: SesionDep
+    id: IdDeBorrador, request: Request, activa: CuentaQueVe, sesion: SesionDep
 ) -> VistaParametrosRespuesta:
     """R10: Parámetros en lectura (los cuatro factores, el total y la moneda del proyecto)."""
     vivo = _vivo(request, activa, id)
@@ -1077,21 +1110,21 @@ def vista_parametros(
 
 @router.get("/borradores/{id}/vistas/auditoria", response_model=InformeAuditoriaRespuesta)
 def vista_auditoria(
-    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja
+    id: IdDeBorrador, request: Request, activa: CuentaQueVe
 ) -> InformeAuditoriaRespuesta:
     """R11: el informe de auditoría del borrador, con todas las reglas y R17 (conexión de cada
     punto) ligada a su espacio; texto plano, sin Markdown."""
     return informe_a_respuesta(hoja_vista.informe_de_auditoria(_vivo(request, activa, id)))
 
 
-@router.get("/trazabilidad", response_model=TrazabilidadHojaRespuesta, dependencies=[LEER])
+@router.get("/trazabilidad", response_model=TrazabilidadHojaRespuesta, dependencies=[VER])
 def trazabilidad(
     sesion: SesionDep,
     proyecto: Annotated[str, Query(min_length=1, max_length=500)],
     version: Annotated[str, Query(min_length=1, max_length=500)],
 ) -> TrazabilidadHojaRespuesta:
     """R14: el historial del proyecto y los registros de cambio de una versión guardada. Clave de
-    API o sesión con `EDITAR_HOJA`; solo lee."""
+    API o sesión con `LEER_PROYECTO`; solo lee."""
     try:
         nombre, _ = _version_guardada(sesion, proyecto, version)
         return trazabilidad_a_respuesta(
@@ -1104,14 +1137,14 @@ def trazabilidad(
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
 
 
-@router.get("/precios", response_model=PreciosHojaRespuesta, dependencies=[LEER])
+@router.get("/precios", response_model=PreciosHojaRespuesta, dependencies=[VER])
 def precios(
     sesion: SesionDep,
     proyecto: Annotated[str, Query(min_length=1, max_length=500)],
     version: Annotated[str, Query(min_length=1, max_length=500)],
 ) -> PreciosHojaRespuesta:
     """R12: el origen de cada precio de una versión guardada, evaluado a hoy (erosión y avisos de
-    R11 y R12 en memoria). Clave de API o sesión con `EDITAR_HOJA`; solo lee."""
+    R11 y R12 en memoria). Clave de API o sesión con `LEER_PROYECTO`; solo lee."""
     try:
         nombre, lista = _version_guardada(sesion, proyecto, version)
         hoy = _hoy()
@@ -1121,7 +1154,7 @@ def precios(
     return precios_a_respuesta(hoja_vista.vista_precios(filas, lista.moneda, hoy))
 
 
-@router.get("/precios/atipicos", response_model=AtipicosRespuesta, dependencies=[LEER])
+@router.get("/precios/atipicos", response_model=AtipicosRespuesta, dependencies=[VER])
 def precios_atipicos(
     sesion: SesionDep,
     proyecto: Annotated[str, Query(min_length=1, max_length=500)],
@@ -1129,7 +1162,7 @@ def precios_atipicos(
 ) -> AtipicosRespuesta:
     """R13: «Buscar variaciones atípicas de precio» (RF-100) sobre los insumos de una versión
     guardada, como el botón de la pestaña Precios. Solo lee: nada se guarda ni se bloquea. Sin el
-    extra `ml` responde `disponible: false` y lo dice. Clave de API o sesión con `EDITAR_HOJA`."""
+    extra `ml` responde `disponible: false` y lo dice. Clave de API o sesión con `LEER_PROYECTO`."""
     try:
         nombre, _ = _version_guardada(sesion, proyecto, version)
         precios_de_la_version = hoja.precios_de_version(sesion, nombre, version)
@@ -1243,13 +1276,13 @@ def convertir_version(
     )
 
 
-@router.get("/cadena", response_model=CadenaHojaRespuesta, dependencies=[LEER])
+@router.get("/cadena", response_model=CadenaHojaRespuesta, dependencies=[VER])
 @sin_eco(FORMA_CADENA)
 def cadena_de_sellos(
     sesion: SesionDep, proyecto: Annotated[str, Query(min_length=1, max_length=500)]
 ) -> CadenaHojaRespuesta:
     """S6: el estado de integridad de la cadena de sellos del proyecto (recalcula cada huella).
-    Clave de API o sesión con `EDITAR_HOJA`; solo lee."""
+    Clave de API o sesión con `LEER_PROYECTO`; solo lee."""
     try:
         return cadena_a_respuesta(hoja_versiones.estado_de_la_cadena(sesion, proyecto))
     except ProyectoInexistente as error:
