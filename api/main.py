@@ -32,6 +32,7 @@ from api.rutas import (
     catalogo,
     composicion,
     computos,
+    consulta,
     control,
     cuentas,
     entregas,
@@ -199,6 +200,9 @@ app.include_router(riesgo.router)
 app.include_router(fcas.router)
 # T10 (montar un presupuesto): /v1/buscar/partidas, buscador C-1 (LEER_PROYECTO en la ruta)
 app.include_router(busqueda.router)
+# Plan vial (T20): /v1/consulta/{tabla}, autocompletado con tablas venezolanas (LEER_PROYECTO
+# en la ruta)
+app.include_router(consulta.router)
 # MOD-4a (plan de módulos): /v1/obras/resumen (LEER_PROYECTO) y /v1/obras/pendientes (EDITAR_HOJA),
 # los datos de la mesa de control; el acceso va en cada ruta
 app.include_router(obras.router)

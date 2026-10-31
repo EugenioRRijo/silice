@@ -4,6 +4,7 @@ import type { FormEvent, JSX } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import { registrarReceta } from "../../api/produccionPlanta";
 import { AvisoError } from "../../comun/AvisoError";
+import { CampoDeConsulta } from "../../comun/CampoDeConsulta";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { MarcoDeDialogo } from "../../shell/carpetas/MarcoDeDialogo";
 import { FilaDeComponente } from "./FilaDeComponente";
@@ -122,14 +123,15 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
         <p className="planta-nota cds--type-body-compact-01">
           Una receta nueva no cambia las anteriores: rige desde la fecha que indique.
         </p>
-        <CampoTexto
+        <CampoDeConsulta
           id={`${base}-producto`}
-          labelText="Producto (código)"
-          autoComplete="off"
-          value={producto}
-          onChange={(e) => setProducto(e.target.value)}
-          invalid={errores.producto !== undefined}
-          invalidText={errores.producto ?? ""}
+          etiqueta="Producto (código)"
+          tabla="insumos"
+          texto={producto}
+          alCambiarTexto={setProducto}
+          alExpirar={alExpirar}
+          invalido={errores.producto !== undefined}
+          textoInvalido={errores.producto ?? ""}
         />
         <CampoTexto
           id={`${base}-vigente`}
@@ -158,6 +160,7 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
             sePuedeQuitar={filas.length > 1}
             alCambiar={(cambio) => cambiar(f.id, cambio)}
             alQuitar={() => quitar(f.id)}
+            alExpirar={alExpirar}
           />
         ))}
         <div>

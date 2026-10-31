@@ -30,6 +30,17 @@ const VIGENTE = {
   vigente_desde: "2026-11-01",
 };
 
+const INSUMOS = [
+  { valor: "AGR-12", etiqueta: "Agregado grueso ficticio (AGR-12, t)", fuente: "Catálogo de la carpeta de trabajo: material" },
+  { valor: "CA-30", etiqueta: "Cemento asfáltico ficticio (CA-30, t)", fuente: "Catálogo de la carpeta de trabajo: material" },
+];
+
+function consulta(q: string) {
+  const buscado = q.toLowerCase();
+  const resultados = INSUMOS.filter((i) => i.etiqueta.toLowerCase().includes(buscado));
+  return { tabla: "insumos", resultados, hay_mas: false };
+}
+
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
 }
@@ -90,6 +101,7 @@ describe("Receta de la planta", () => {
       const metodo = init?.method ?? "GET";
       if (url.pathname === "/v1/produccion/recetas/vigente" && metodo === "GET") return vigente();
       if (url.pathname === "/v1/produccion/recetas" && metodo === "POST") return alta();
+      if (url.pathname === "/v1/consulta/insumos") return json(consulta(url.searchParams.get("q") ?? ""));
       return json({ detalle: "No encontrado." }, 404);
     });
   });
@@ -115,7 +127,7 @@ describe("Receta de la planta", () => {
     expect(within(region).getByText(/Receta n\.º 3 de MZP-01/)).toHaveTextContent("vigente desde 01/11/2026");
     expect(within(region).getByRole("row", { name: /AGR-12/ })).toHaveTextContent("0,94");
     expect(within(region).getByText("Suma de masa: 0,99 t por t de mezcla")).toBeInTheDocument();
-    expect(fetchFalso.mock.calls[0]![0]).toBe("/v1/produccion/recetas/vigente?producto=MZP-01&fecha=2026-11-15");
+    expect(fetchFalso.mock.calls.map((c) => String(c[0]))).toContain("/v1/produccion/recetas/vigente?producto=MZP-01&fecha=2026-11-15");
   });
 
   test("sin receta vigente dice lo que dijo el servidor", async () => {
@@ -236,5 +248,46 @@ describe("Receta de la planta", () => {
     await usuario.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(document.activeElement).toBe(boton);
+  });
+
+  test("el código del producto y el de cada componente se buscan en los insumos del catálogo", async () => {
+    montar();
+    const dialogo = await abrir();
+    const producto = within(dialogo).getByRole("combobox", { name: "Producto (código)" });
+    await usuario.type(producto, "agre");
+    const lista = await within(dialogo).findByRole("listbox");
+    // La sugerencia y, al final, usar lo escrito tal cual.
+    const opciones = within(lista).getAllByRole("option");
+    expect(opciones).toHaveLength(2);
+    expect(opciones[0]).toHaveTextContent("Agregado grueso ficticio (AGR-12, t)");
+    expect(opciones[0]).toHaveTextContent("Catálogo de la carpeta de trabajo: material");
+    expect(opciones[1]).toHaveTextContent("Usar «agre» tal cual");
+    // El lector de pantalla oye cuántas sugerencias llegaron del servidor (una; «usar tal cual» no cuenta).
+    const estado = within(dialogo).getAllByRole("status").find((e) => e.id === `${producto.id}-estado`)!;
+    await waitFor(() => expect(estado).toHaveTextContent("1 resultado."));
+    // Escape cierra la lista sin borrar lo escrito.
+    await usuario.keyboard("{Escape}");
+    expect(within(dialogo).queryByRole("listbox")).not.toBeInTheDocument();
+    expect(producto).toHaveValue("agre");
+    await usuario.keyboard("{Alt>}{ArrowDown}{/Alt}"); // la vuelve a abrir sin activar nada
+    await within(dialogo).findByRole("listbox");
+    await usuario.keyboard("{ArrowDown}{Enter}");
+    expect(producto).toHaveValue("AGR-12");
+    expect(fetchFalso.mock.calls.some((c) => String(c[0]).startsWith("/v1/consulta/insumos?q=agre"))).toBe(true);
+
+    const fila = within(dialogo).getByRole("group", { name: "Componente 1" });
+    const componente = within(fila).getByRole("combobox", { name: "Código" });
+    await usuario.type(componente, "cemento");
+    await within(dialogo).findByRole("listbox");
+    await usuario.keyboard("{ArrowDown}{Enter}");
+    expect(componente).toHaveValue("CA-30");
+  });
+
+  test("un código que no está en la lista se puede usar tal cual", async () => {
+    montar();
+    const dialogo = await abrir();
+    const producto = within(dialogo).getByRole("combobox", { name: "Producto (código)" });
+    await usuario.type(producto, "MZP-77");
+    expect(producto).toHaveValue("MZP-77");
   });
 });
