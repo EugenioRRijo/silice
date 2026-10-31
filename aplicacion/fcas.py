@@ -129,7 +129,8 @@ COMPONENTES_FCAS: tuple[ComponenteFCAS, ...] = (
         "porcentaje",
         Decimal("2"),
         "Ley del Régimen Prestacional de Empleo, art. 46, citado por Dodi y Salas (2019): "
-        "cotización de 2,50 % del salario normal, el patrono paga el 80 % (2 %)",
+        "cotización de 2,50 % del salario normal, el patrono paga el 80 % (2 %)"
+        " — a cotejar con el texto de la ley",
     ),
     ComponenteFCAS(
         "faov",
@@ -137,7 +138,8 @@ COMPONENTES_FCAS: tuple[ComponenteFCAS, ...] = (
         "porcentaje",
         Decimal("2"),
         "Ley del Régimen Prestacional de Vivienda y Hábitat, art. 30, citado por Dodi y Salas "
-        "(2019): aporte de 3 % del salario integral, 2/3 el patrono (2 %)",
+        "(2019): aporte de 3 % del salario integral, 2/3 el patrono (2 %)"
+        " — a cotejar con el texto de la ley",
     ),
     ComponenteFCAS(
         "inces",
@@ -145,7 +147,7 @@ COMPONENTES_FCAS: tuple[ComponenteFCAS, ...] = (
         "porcentaje",
         Decimal("2"),
         "Ley del INCES, citada por Dodi y Salas (2019): 2 % del salario normal "
-        "(empresas de 5 o más trabajadores)",
+        "(empresas de 5 o más trabajadores) — a cotejar con el texto de la ley",
     ),
     ComponenteFCAS(
         "ivss",
