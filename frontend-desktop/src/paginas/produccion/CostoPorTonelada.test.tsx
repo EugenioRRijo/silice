@@ -313,4 +313,15 @@ describe("Costo por tonelada", () => {
     expect(await within(resultado).findByText(/Todavía no se configuró la empresa/)).toBeInTheDocument();
     expect(within(resultado).getByRole("link", { name: "Ir a Administración" })).toHaveAttribute("href", "/administracion");
   });
+
+  test("un 409 al calcular no se rotula «No se pudo publicar el costo»", async () => {
+    calculo = () => json({ detalle: "Conflicto al calcular." }, 409);
+    montar();
+    await screen.findByText("AGR-12: 150 t");
+    await usuario.selectOptions(screen.getByLabelText("Moneda del cálculo"), "Bs");
+    await usuario.click(screen.getByRole("button", { name: "Calcular costo por tonelada" }));
+    const alerta = await screen.findByRole("alert");
+    expect(alerta).toHaveTextContent("No se pudo calcular el costo");
+    expect(alerta).not.toHaveTextContent("No se pudo publicar el costo");
+  });
 });

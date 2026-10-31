@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -66,6 +66,7 @@ describe("Reparto de la cantera por pesos", () => {
       const url = new URL(String(entrada), "http://prueba");
       const metodo = init?.method ?? "GET";
       if (url.pathname === "/v1/produccion/producido") {
+        if (url.searchParams.get("periodo") === "2026-10") return json([]); // un mes sin producción
         return json([
           { codigo: "AGR-12", toneladas: "150" },
           { codigo: "AGR-19", toneladas: "50" },
@@ -142,6 +143,47 @@ describe("Reparto de la cantera por pesos", () => {
     await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
     await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "7.5");
     expect(screen.getByText(/Use la coma para los decimales/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Calcular costo por tonelada" })).toBeDisabled();
+  });
+
+  async function cambiarMes(mes: string) {
+    fireEvent.change(screen.getByLabelText("Mes"), { target: { value: mes } });
+    await screen.findByText(mes === "2026-10" ? "Todavía no hay producción registrada en este mes." : /AGR-12: 150 t/);
+  }
+
+  test("con porcentajes a medias, cambiar a un mes sin producción deja Calcular habilitado y sin pesos", async () => {
+    await montarYElegirMoneda();
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "70");
+    await cambiarMes("2026-10");
+    const boton = screen.getByRole("button", { name: "Calcular costo por tonelada" });
+    expect(boton).toBeEnabled();
+    await usuario.click(boton);
+    await waitFor(() => expect(posts()).toHaveLength(1));
+    expect(posts()[0]!.cuerpo).toEqual({ periodo: "2026-10", moneda: "Bs" });
+  });
+
+  test("con un reparto válido, cambiar de mes apaga la casilla y no manda los pesos del mes anterior", async () => {
+    await montarYElegirMoneda();
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "75");
+    await usuario.type(screen.getByLabelText("Porcentaje de AGR-19"), "25");
+    fireEvent.change(screen.getByLabelText("Mes"), { target: { value: "2026-09" } });
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" })).not.toBeChecked());
+    await usuario.click(screen.getByRole("button", { name: "Calcular costo por tonelada" }));
+    await waitFor(() => expect(posts()).toHaveLength(1));
+    expect(posts()[0]!.cuerpo).toEqual({ periodo: "2026-09", moneda: "Bs" });
+  });
+
+  test("un porcentaje en cero o vacío bloquea Calcular y nombra el agregado", async () => {
+    await montarYElegirMoneda();
+    await usuario.click(screen.getByRole("checkbox", { name: "Repartir la cantera por pesos" }));
+    await usuario.type(await screen.findByLabelText("Porcentaje de AGR-12"), "100");
+    await usuario.type(screen.getByLabelText("Porcentaje de AGR-19"), "0");
+    expect(screen.getByRole("button", { name: "Calcular costo por tonelada" })).toBeDisabled();
+    expect(screen.getByText("El porcentaje de AGR-19 debe ser mayor que cero.")).toBeInTheDocument();
+    await usuario.clear(screen.getByLabelText("Porcentaje de AGR-19"));
+    expect(screen.getByText("Falta el porcentaje de AGR-19.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Calcular costo por tonelada" })).toBeDisabled();
   });
 });
