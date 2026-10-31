@@ -1150,6 +1150,20 @@ Formato: baja · qué se quitó · commit · dónde vive hoy la función · cóm
 
 Las seis van en un solo commit de baja (`023c4416`) porque el plan lo pide así para esta tarea y porque la mesa es una sola pieza: las bajas 1, 5 y 6 ya habían salido de la página en el commit de la implementación. No es posible deshacer una baja suelta con `git revert`; se deshace el grupo. Las pruebas de la mesa (`Mesa`, `PorAprobar`, `Obras`) se quitaron con ella. Tras `git revert 023c4416`, la mesa vuelve a existir pero ya no está montada (la pantalla `obras` es el Resumen).
 
+### Tarea 4 (2026-10-31)
+
+Mismo formato. Las 7, 8, 10, 11 y 12 van cada una en su commit, **antes** del `feat` (así `git revert` devuelve la función entera y no un bloque muerto); la 23 y la 25 van con el `feat` (ver «Decisiones de la Tarea 4», punto 1).
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| 7 | Título «Hoja de la obra» (h1, `rutas.ts`, diálogo de salida) | `bc11a3c3` | Título «Presupuesto» | `git revert bc11a3c3` |
+| 8 | Aviso «Use el selector de obra de la cabecera para abrir su hoja» (sin obra ahora solo dice «Elija una obra») | `da1b03b3` | Dentro de la obra siempre hay obra | `git revert da1b03b3` |
+| 10 | Bloque «Factores de la versión» de la pestaña APU, `FactoresDeLaVersion` y la variante `compacto` de los ajustes | `963f6485` | Pestaña «Ajustes de costo» | `git revert 963f6485` |
+| 11 | Botón «Crear plan secuencial» y su llamada (`crearPlan`, `rutaDePlanSecuencial`); la ruta del servidor no se toca | `04569ebb` | «Plan desde los rendimientos» | `git revert 04569ebb` |
+| 12 | «Total del presupuesto» de Espacio y de Parámetros, la línea «Moneda del proyecto» y la propiedad `moneda` de `PestanaParametros` | `b41c38b9` | Total bajo la tabla de «Partidas» | `git revert b41c38b9` |
+| 23 | Pestaña «Punto de equilibrio» separada (ahora es el bloque de debajo del plan) | `b0f976d6` (con el feat) | Pestaña «Plan y equilibrio» | `git revert b0f976d6` (deshace el feat entero) |
+| 25 | Texto largo de ayuda encima de cada pestaña | `b0f976d6` (con el feat) | `paginas/hoja/textos.ts`, tras «¿Qué es esto?» (`comun/QueEsEsto.tsx`) | igual que la 23 |
+
 ## Decisiones de la Tarea 2
 
 Formato: pregunta · lo que se hizo · cómo cambiarlo.
@@ -1440,3 +1454,21 @@ Formato: pregunta · lo que se hizo · cómo cambiarlo.
     src/paginas/pendientes src/comun`: 99 archivos, 1450 de 1451 verdes; la que cayó es otra vez `PlanoEnHoja` «“Fusionar”
     no se puede pulsar» por tiempo (4918 ms), verde al repetirla sola (4 de 4). `npm run lint` en 0. Grep de los colores
     de la empresa: limpio. Sin servidor tocado; `core/` y `aplicacion/` sin cambios. · —
+
+## Decisiones de la Tarea 4
+
+Formato: pregunta · lo que se hizo · cómo cambiarlo.
+
+1. **Orden de los commits y bajas que salen con el feat.** · El plan decía «feat primero (los bloques dejan de pintarse) y bajas después», pero eso deja código muerto entre dos commits y hace que `git revert` de una baja no devuelva la función. Se hizo al revés: rojo (`dac451ec`), bajas 7, 8, 10, 11 y 12 (cada una quita pantalla y código y arregla las pruebas que la nombraban) y al final el `feat` (`b0f976d6`). Las bajas **23** (fusionar «Punto de equilibrio» en «Plan y equilibrio») y **25** (los textos largos al catálogo, tras «¿Qué es esto?») son estructura, no borrado: salen con el `feat`. · Revertir el `feat` entero.
+2. **El rojo de las bajas 10, 11 y 12 no se ve por aserción hasta el `feat`.** · Sus pruebas navegan a «Análisis de precio (APU)», «Plan y equilibrio» y «Ajustes de costo», que no existen antes del `feat`; la aserción de ausencia solo se alcanza después. Las de las bajas 7, 8, 12 (Espacio), 25 y «Ver en Revisión» sí caen por aserción. Cada baja se verificó con las pruebas viejas que la nombraban (`EdicionApu`, `Edicion3c2`, `Vistas3b3`...).
+3. **Títulos en `logica.ts`, ayudas en `textos.ts`.** · El plan pedía los dos en el catálogo; los títulos ya viven en `PESTANAS` (los usan la lista de pestañas, `pestanasVisibles` y las pruebas) y duplicarlos habría dado dos fuentes. `textos.ts` solo lleva la explicación, con dos partes: `general` (cualquiera) y `alEditar` (cómo se escribe y cuándo se aplica; solo si `puedeEditar`, para que quien revisa no lea instrucciones de controles que no ve). · Mover los títulos a `textos.ts`.
+4. **`AyudaDePestana` y `usePestanaDeLaHoja`, dos piezas que el plan no nombra.** · La primera evita repetir en siete pestañas el reparto `general`/`alEditar` y el nombre de la región; la segunda saca del proveedor (ya en 364 líneas) un estado con regla propia: la pestaña con que abre cada obra, la que sigue vigente si la elegida desapareció, y `espacioPedido`. · Pegarlas en `ProveedorDeLaHoja.tsx` y en cada pestaña.
+5. **Las pestañas solo se pintan con el borrador abierto.** · Antes la lista se veía siempre, con paneles vacíos; ahora «Espacio y metrajes» depende de `espacio_vacio`, que llega con el borrador, y pintar la lista para quitar una pestaña después sería parpadeo. Las pruebas que buscaban una pestaña antes de que cargara esperan ahora a «Estado del borrador». · Quitar la condición `estado.estado === "listo"` en `CuerpoDeLaHoja`.
+6. **«Ver en Revisión».** · Cambió el rótulo del botón de cada fila y su `aria-label` («Ver en Revisión: Fuente F1»). El contexto se sigue llamando `ContextoAuditoria` (nombre interno, no se ve).
+7. **Baja 8: qué dice sin obra.** · Solo «Elija una obra»: el «selector de obra de la cabecera» ya no existe y dentro de una obra siempre hay obra. No se inventó otra instrucción.
+8. **Pregunta para Eugenio: la ayuda de cómo escribir cifras (coma decimal) queda plegada.** · Antes `AYUDA_CIFRAS` estaba siempre visible junto a los campos; ahora hay que pulsar «¿Qué es esto?». El plan lo pide (baja 25), pero la regla de la coma es de Eugenio (2026-10-25) y cada campo ya da un error claro si se escribe un punto decimal. Si prefiere verla siempre, basta sacar esa frase de `alEditar` y pintarla bajo la tabla. · `textos.ts`.
+9. **Menor 1 del árbitro de la Tarea 3 (la línea «Estado:» vieja).** · `PanelDictamen` llama a `recargarFicha()` tras registrar el dictamen. En Control toda escritura pasa por `cambiar` en `paginas/control/index.tsx` (línea base, parámetros, valuaciones —registrar, importar, anular—, costos, procura y elegir recuperación), así que se llama allí una sola vez y no en `PestanaLineaBase`, `PestanaValuaciones` y `PestanasDeResultados` por separado. Con una escritura rechazada no se llama. Sin obra abierta (pantalla sola) no hay ficha. Rojo `d7e56728`, fix `92106c12`. · Llamarla desde cada pestaña.
+10. **Rojo (por aserción) del menor 1.** · `expected "vi.fn()" to be called 1 times, but got 0 times` en el dictamen, la línea base, la valuación y la recuperación; las dos pruebas de «escritura rechazada» pasan en rojo porque fijan lo que no debe cambiar.
+11. **Pruebas viejas que cambiaron** (solo nombres de pestaña, textos plegados y servidores falsos): `AgregarPartida`, `AprobacionDeVersion`, `Edicion`, `Edicion3c2`, `EdicionApu`, `Guardar`, `Hoja`, `LineasApu`, `Retomar`, `SoloLectura`, `Versiones`, `Vistas` y `Vistas3b3` (todas en `paginas/hoja`), y fuera de la Hoja `Marco`, `Bandeja`, `ListaDeLaCarpeta`, `rutas` y `salida` (solo «Hoja de la obra» pasa a «Presupuesto»). Los servidores falsos de `Edicion3c2` y `Vistas` ahora contestan `vistas/equilibrio`, porque «Plan y equilibrio» lo pide junto con el plan. Salieron las pruebas de lo dado de baja: factores del APU (`EdicionApu`) y cuatro de «Crear plan secuencial» (`Edicion3c2`).
+12. **Verificación.** · `npx vitest run src/paginas/hoja src/marco src/shell src/paginas/obras src/paginas/aprobar src/paginas/control src/comun src/paginas/pendientes`: 109 archivos, 1587 verdes (`Edicion` y `PlanoEnHoja` pasaron en la corrida completa). `npm run lint` en 0. `knip` y `jscpd` no están instalados. Colores de la empresa: limpio en cada commit. Sin servidor tocado; `core/`, `aplicacion/hoja.py`, `aplicacion/composicion.py` y `asistente/experimento` intactos.
+13. **Lo que preocupa.** · (a) El punto 8 (ayuda de cifras plegada). (b) «Trazabilidad» sigue sin «¿Qué es esto?» hasta la Tarea 6. (c) «Plan y equilibrio» pide dos vistas al abrirse (`plan` y `equilibrio`). (d) La descripción del estado vacío («Agregue las partidas en «Presupuesto»…») nombra la sección, no la pestaña «Partidas».

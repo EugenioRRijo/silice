@@ -122,3 +122,18 @@ Inventario aprobado por Eugenio (fila 8). Formato: baja · qué se quitó · com
 | 4 | `ColumnaPendientes.tsx`, `columnaDeLaMesa`, `gruposDeLaMesa` y los tipos de «Aprobar» | `023c4416` | Bandeja de F3; el Resumen muestra los pendientes de la obra | `git revert 023c4416` |
 | 5 | `LoQuePuedeHacer.tsx` y su hoja | `023c4416` | Ctrl+K | `git revert 023c4416` |
 | 6 | «Cree su primera obra» y «Probar con datos de demostración» (`PrimerosPasos`) | `b62d3679` (salió con la página) | Barra lateral; Empresa › Carpetas de trabajo; «Empieza aquí» (F6) | `git checkout b62d3679^ -- frontend-desktop/src/paginas/obras/index.tsx` |
+
+### Bajas de F4 aplicadas (Tarea 4, 2026-10-31)
+
+Las siete del Presupuesto. Cinco van en su propio commit y se deshacen con `git revert`; la 23 y la 25 no dejan código muerto (son estructura: fusionar una pestaña y mover los textos a un catálogo) y salieron dentro del commit del `feat`, que es el único que las deshace. `knip` y `jscpd` no están instalados: se midió con `grep` de importaciones y `npm run lint` (eslint y tsc) en 0.
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| 7 | Título «Hoja de la obra» (h1, `rutas.ts`, diálogo de salida) | `bc11a3c3` | Título «Presupuesto» | `git revert bc11a3c3` |
+| 8 | Aviso «Use el selector de obra de la cabecera para abrir su hoja» (sin obra ahora solo dice «Elija una obra») | `da1b03b3` | Dentro de la obra siempre hay obra | `git revert da1b03b3` |
+| 10 | Bloque «Factores de la versión» de la pestaña APU, `FactoresDeLaVersion` y la variante `compacto` de los ajustes | `963f6485` | Pestaña «Ajustes de costo» | `git revert 963f6485` |
+| 11 | Botón «Crear plan secuencial» y su llamada (`crearPlan`, `rutaDePlanSecuencial`); la ruta del servidor no se toca | `04569ebb` | «Plan desde los rendimientos» | `git revert 04569ebb` |
+| 12 | «Total del presupuesto» de Espacio y de Parámetros, la línea «Moneda del proyecto» y la propiedad `moneda` de `PestanaParametros` | `b41c38b9` | Total bajo la tabla de «Partidas» | `git revert b41c38b9` |
+| 23 | Pestaña «Punto de equilibrio» separada (ahora es el bloque de debajo del plan) | `b0f976d6` (con el feat) | Pestaña «Plan y equilibrio» | `git revert b0f976d6` (deshace el feat entero) |
+| 25 | Texto largo de ayuda encima de cada pestaña | `b0f976d6` (con el feat) | `paginas/hoja/textos.ts`, tras «¿Qué es esto?» (`comun/QueEsEsto.tsx`) | igual que la 23 |
+
