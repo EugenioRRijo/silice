@@ -23,11 +23,12 @@ Tambien lee: los candidatos de insumo (E8), la lista de cambios (E9) y los borra
 retomar o que estorban al abrir la misma version (E10, E11).
 
 Tarea 9 (montar un presupuesto): `agregar` y `quitar` partidas a mano (`aplicacion.hoja_partidas`)
-pasan por el mismo `_cambiar`. La composicion de una partida nueva sale de la lista de la version
-abierta o, en un borrador en blanco, de la lista para armar de la carpeta, convertida en memoria con
-la tasa del BCV si la obra esta en la otra moneda (foco de revision 1). Aqui no se escribe la lista
-convertida: la escribe el guardado, a nombre de quien guarda, y toma de ella los precios de los APU;
-sin tasa de los ultimos 7 dias o sin lista para armar, `SinListaDeLaObra` y el borrador no cambia.
+pasan por el mismo `cambiar_borrador`. La composicion de una partida nueva sale de la lista de la
+version abierta o, en un borrador en blanco, de la lista para armar de la carpeta, convertida en
+memoria con la tasa del BCV si la obra esta en la otra moneda (foco de revision 1). Aqui no se
+escribe la lista convertida: la escribe el guardado, a nombre de quien guarda, y toma de ella los
+precios de los APU; sin tasa de los ultimos 7 dias o sin lista para armar, `SinListaDeLaObra` y el
+borrador no cambia.
 
 Sin FastAPI ni Streamlit (RM-1).
 """
@@ -80,6 +81,7 @@ __all__ = [
     "agregar",
     "agregar_linea_apu",
     "borradores_para_retomar",
+    "cambiar_borrador",
     "cambiar_insumo_de_linea",
     "cambios_del_borrador",
     "candidatos_de_insumo",
@@ -206,14 +208,15 @@ def _completar(sesion: Session, vivo: BorradorVivo, nuevo: hoja.Borrador) -> hoj
     )
 
 
-def _cambiar(
+def cambiar_borrador(
     sesion: Session,
     huella: str,
     id: str,
     rev: int,
     construir: Callable[[BorradorVivo], hoja.Borrador | None],
 ) -> BorradorVivo:
-    """El nucleo comun de las cinco ediciones (`_poner_borrador`, P:256-275).
+    """El nucleo comun de las ediciones (`_poner_borrador`, P:256-275); publico porque lo usan
+    tambien la importacion del plano (`hoja_plano`) y llevar los tramos (`hoja_vial`).
 
     Dentro del cerrojo del borrador: ya guardado, `rev` (ANTES que el contenido: una ventana
     rezagada debe recargar, no corregir datos), `construir` (que lanza `HojaInvalida` o el error de
@@ -240,7 +243,7 @@ def editar_espacio(
     Lanza `BorradorInexistente` (no existe para la ficha), `BorradorYaGuardado`,
     `RevDesactualizado` o `HojaInvalida` con el texto de la clasica (P:1213-1217).
     """
-    return _cambiar(
+    return cambiar_borrador(
         sesion,
         huella,
         id,
@@ -286,7 +289,7 @@ def editar_cantidades(
             return None
         return replace(borrador, cantidades=escritas)
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def editar_parametros(
@@ -300,7 +303,7 @@ def editar_parametros(
             return None
         return replace(vivo.borrador, parametros=parametros)
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def _canonico(plan: Sequence[PeriodoPlan]) -> tuple:
@@ -342,7 +345,7 @@ def editar_plan(
             return None
         return replace(borrador, plan=plan)
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def crear_plan_secuencial(sesion: Session, huella: str, id: str, rev: int) -> BorradorVivo:
@@ -354,7 +357,7 @@ def crear_plan_secuencial(sesion: Session, huella: str, id: str, rev: int) -> Bo
             raise YaTienePlan
         return hoja.con_plan_secuencial(vivo.borrador)
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def plan_desde_rendimientos(
@@ -398,7 +401,7 @@ def plan_desde_rendimientos(
             return None
         return replace(borrador, plan=tuple(plan))
 
-    return _cambiar(sesion, huella, id, rev, construir), avisos
+    return cambiar_borrador(sesion, huella, id, rev, construir), avisos
 
 
 # --- el APU de una partida y el cambio de insumo (3c-3) ----------------------------------------
@@ -439,7 +442,7 @@ def editar_apu(
             return None
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def _insumo_de_la_lista(
@@ -512,7 +515,7 @@ def cambiar_insumo_de_linea(
             return None
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 # --- agregar y quitar lineas del APU de la version (Tarea 26) ------------------------------------
@@ -607,7 +610,7 @@ def agregar_linea_apu(
         borrador = vivo.borrador
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def quitar_linea_apu(
@@ -623,7 +626,7 @@ def quitar_linea_apu(
         borrador = vivo.borrador
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 # --- partidas agregadas y quitadas a mano (Tarea 9) ---------------------------------------------
@@ -672,13 +675,15 @@ def agregar(
         clave.append(nueva)
         return nuevo
 
-    return _cambiar(sesion, huella, id, rev, construir), clave[0]
+    return cambiar_borrador(sesion, huella, id, rev, construir), clave[0]
 
 
 def quitar(sesion: Session, huella: str, id: str, rev: int, clave: str) -> BorradorVivo:
     """Quita del borrador el renglon `clave`, con su cantidad escrita y su nota
     (`hoja_partidas.quitar_partida`): solo los de la version; uno del espacio es `HojaInvalida`."""
-    return _cambiar(sesion, huella, id, rev, lambda vivo: quitar_partida(vivo.borrador, clave))
+    return cambiar_borrador(
+        sesion, huella, id, rev, lambda vivo: quitar_partida(vivo.borrador, clave)
+    )
 
 
 # --- lo que se lee: candidatos, cambios, retomar (3c-3) ----------------------------------------

@@ -14,7 +14,7 @@ borrador, que es aleatorio y solo se alcanza despues de que
 `hoja_borradores.obtener(huella, id)` comprobo que es de la ficha; asi la
 importacion sigue a su borrador cuando la ficha cambia de huella (`heredar`, cambio de contrasena).
 Leer, reanudar, cargar alturas y declarar circuitos comprueban `rev` y NO lo suben; fusionar cambia
-el borrador por el mismo nucleo de la edicion (`hoja_edicion._cambiar`: ya guardado, `rev`,
+el borrador por el mismo nucleo de la edicion (`hoja_edicion.cambiar_borrador`: ya guardado, `rev`,
 `completar_composiciones` y `reemplazar`, que sube `rev`) y descarta la importacion.
 
 Cada importacion tiene su carpeta temporal (`tempfile.mkdtemp`, prefijo `silice_planos_`,
@@ -483,7 +483,7 @@ def fusionar(sesion: Session, vivo: BorradorVivo, rev: int) -> Fusion:
         return nuevo
 
     with vivo.cerrojo:
-        fundido = hoja_edicion._cambiar(sesion, vivo.huella, vivo.id, rev, construir)
+        fundido = hoja_edicion.cambiar_borrador(sesion, vivo.huella, vivo.id, rev, construir)
         IMPORTACIONES.quitar(vivo.id)
     resultado: ResultadoImportacion = hechas["resultado"]  # type: ignore[assignment]
     informe: tuple[ItemInforme, ...] = hechas["informe"]  # type: ignore[assignment]

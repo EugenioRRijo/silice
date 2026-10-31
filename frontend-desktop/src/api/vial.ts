@@ -64,14 +64,17 @@ export function obrasConTramos(): Promise<{ obras: number[] }> {
   return pedir<{ obras: number[] }>(`${RUTA}/obras`);
 }
 
-// Lo que devuelve llevar los tramos al presupuesto: el borrador de la Hoja de la obra y cuántos renglones de tramo tiene.
+// Lo que devuelve llevar los tramos al presupuesto: el borrador de la Hoja de la obra, cuántos renglones de tramo tiene
+// y la versión de la que salieron.
 export interface TramosLlevados {
   borrador_id: string;
   renglones: number;
+  version: string;
 }
 
 // Lleva las cantidades de los tramos al borrador de la Hoja de la obra (sin guardar versión); llevar otra vez sincroniza.
-// Todo o nada: si una partida vial no tiene APU, un 404 las nombra todas y no se lleva nada.
-export function llevarTramos(proyecto: string): Promise<TramosLlevados> {
-  return pedir<TramosLlevados>(`${RUTA}/tramos/llevar`, { metodo: "POST", cuerpo: { proyecto } });
+// Todo o nada: si una partida vial no tiene APU, un 404 las nombra todas y no se lleva nada. `version` es la que se ve:
+// si la Hoja de la obra tiene (o abriría) un borrador de otra versión, un 409 lo dice y no se lleva nada.
+export function llevarTramos(proyecto: string, version: string): Promise<TramosLlevados> {
+  return pedir<TramosLlevados>(`${RUTA}/tramos/llevar`, { metodo: "POST", cuerpo: { proyecto, version } });
 }

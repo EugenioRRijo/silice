@@ -20,9 +20,8 @@ persisten como texto, así que el «7.30» vuelve como «7.30».
 - **Importar un CSV** (`tramos_desde_csv`) lee con `adapters.vial.leer_tramos`: un solo error de
   cualquier fila y no se guarda nada; el mensaje nombra la fila como la numera una hoja de cálculo.
   Aplica los mismos topes que la API (`MAX_TRAMOS`, `MAX_CAPAS`, `MAX_LINEAS_DE_DEMARCACION`).
-- **Llevar al presupuesto** (Tarea 8b, `llevar_tramos_a_la_hoja`): las cantidades de los tramos
-  entran en el borrador de la Hoja de la obra como renglones con su origen de tramo
-  («tramo:T1:capa:3»), y llevar otra vez sincroniza (`sincronizar_renglones`). No guarda versión.
+- **Llevar al presupuesto** (Tarea 8b) vive en `aplicacion/hoja_vial.py`: este módulo lo importa
+  la Hoja (`reglas_viales`) y no puede importarla a ella.
 
 Cuándo se hace cada cosa lo decide quien llama: aquí no hay reloj ni usuario implícitos.
 """
@@ -33,11 +32,10 @@ import json
 import re
 import tempfile
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -56,23 +54,14 @@ from aplicacion.tablas_vial import (
     hay_tablas_viales,
 )
 from core import models
-from core.contracts import ItemComputo, OrigenTipo
 from produccion.receta import Receta
-
-if TYPE_CHECKING:
-    from datetime import date
-
-    from aplicacion.hoja import Borrador
-    from core.contracts.verificacion import ReglaVerificacion
 
 __all__ = [
     "MAX_CAPAS",
     "MAX_LINEAS_DE_DEMARCACION",
     "MAX_TRAMOS",
-    "PREFIJO_TRAMO",
     "CantidadVial",
     "RastroDeGuardado",
-    "SinTramos",
     "VersionBloqueada",
     "VersionInexistente",
     "bloqueo_de_version",
@@ -81,11 +70,8 @@ __all__ = [
     "guardado_de_version",
     "heredados_de",
     "guardar_tramos",
-    "items_de_tramos",
-    "llevar_tramos_a_la_hoja",
     "obras_con_tramos",
     "reglas_viales",
-    "sincronizar_renglones",
     "texto_decimal",
     "tramos_de_version",
     "tramos_desde_csv",
@@ -106,8 +92,6 @@ LARGO_USUARIO = 200
 MAX_TRAMOS = 2000
 MAX_CAPAS = 50
 MAX_LINEAS_DE_DEMARCACION = 20
-#: Prefijo del `origen_id` de una cantidad derivada de un tramo («tramo:T1:capa:3»).
-PREFIJO_TRAMO = "tramo:"
 _NOMBRE_INVALIDO = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
@@ -117,10 +101,6 @@ class VersionInexistente(LookupError):  # noqa: N818
 
 class VersionBloqueada(ValueError):  # noqa: N818
     """La versión ya no admite cambios en sus tramos (la API responde 409)."""
-
-
-class SinTramos(LookupError):  # noqa: N818
-    """La versión del borrador no tiene tramos que llevar al presupuesto (la API responde 409)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -481,171 +461,3 @@ def reglas_viales(
     if not tramos:
         return ()
     return (ReglasViales(tramos, formula_asfalto_de_receta(receta, codigo_ligante)),)
-
-
-# --- llevar los tramos al presupuesto (Tarea 8b) --------------------------------------------------
-#
-# `aplicacion.hoja` importa este módulo (`reglas_viales`), así que la Hoja, su edición y la
-# elaboración se importan dentro de cada función: arriba el ciclo dejaría `hoja` a medio cargar.
-
-
-def items_de_tramos(tramos: Sequence[Tramo]) -> list[ItemComputo]:
-    """Los renglones que los tramos llevan a la Hoja: las cantidades de `derivar_tramos`, tal cual
-    (origen «tramo:…», origen REGLA, su regla y sus parámetros)."""
-    return derivar_tramos(tramos)
-
-
-def _de_tramo(item: ItemComputo) -> bool:
-    return item.origen_id.startswith(PREFIJO_TRAMO)
-
-
-def sincronizar_renglones(
-    borrador: Borrador, items: Sequence[ItemComputo], reglas: Sequence[ReglaVerificacion]
-) -> Borrador:
-    """El borrador con los renglones de tramo reemplazados por `items` y las reglas viales por
-    `reglas` (Tarea 8b, reglas 1, 2 y 4).
-
-    - Los renglones cuyo `origen_id` empieza por «tramo:» salen; `items` entran en el sitio del
-      primero de ellos (al final si no había ninguno), así llevar otra vez no reordena la Hoja.
-      Los demás renglones, sus cantidades escritas y sus notas no se tocan.
-    - La cantidad escrita sobre un renglón de tramo cuya clave (`codigo|origen_id`) sigue se
-      conserva; la de una clave que desaparece se descarta, con su nota. Un renglón que volvió de
-      una versión guardada con su cantidad escrita a mano llega en `items_base` como MANUAL con esa
-      cantidad: se conserva como escrita sobre la derivada (así VR1 sigue avisando).
-    - `reglas_extra`: las `ReglasViales` anteriores salen y entran `reglas`; R11 y R12 quedan.
-    """
-    from adapters.vial.reglas import ReglasViales
-    from aplicacion.hoja import claves_de_items, items_sin_escribir
-
-    base = borrador.items_base
-    claves = claves_de_items(items_sin_escribir(borrador))[: len(base)]
-    viejos = {clave: item for clave, item in zip(claves, base, strict=True) if _de_tramo(item)}
-    resto = [item for item in base if not _de_tramo(item)]
-    primero = next((n for n, item in enumerate(base) if _de_tramo(item)), len(base))
-    sitio = sum(1 for item in base[:primero] if not _de_tramo(item))
-    nueva_base = (*resto[:sitio], *items, *resto[sitio:])
-
-    provisional = replace(borrador, items_base=nueva_base)
-    nuevas_claves = claves_de_items(items_sin_escribir(provisional))[: len(nueva_base)]
-    pares = zip(nuevas_claves, nueva_base, strict=True)
-    nuevos = {clave: item for clave, item in pares if _de_tramo(item)}
-
-    def sigue(clave: str) -> bool:
-        return clave not in viejos or clave in nuevos
-
-    cantidades = {clave: v for clave, v in borrador.cantidades.items() if sigue(clave)}
-    for clave, item in nuevos.items():
-        viejo = viejos.get(clave)
-        if (
-            clave not in cantidades
-            and viejo is not None
-            and viejo.origen_tipo is OrigenTipo.MANUAL
-            and viejo.cantidad != item.cantidad
-        ):
-            cantidades[clave] = viejo.cantidad
-    return replace(
-        provisional,
-        cantidades=cantidades,
-        notas={clave: nota for clave, nota in borrador.notas.items() if sigue(clave)},
-        reglas_extra=(
-            *(r for r in borrador.reglas_extra if not isinstance(r, ReglasViales)),
-            *reglas,
-        ),
-    )
-
-
-def _version_del_borrador(
-    sesion: Session, huella: str, caso: str, obra: models.Proyecto
-) -> str | None:
-    """El código de la versión sobre la que está (o se abrirá) el borrador de la obra: la del
-    borrador vivo de esa ficha y obra, o la vigente (la misma elección que
-    `elaboracion._borrador_de_la_obra`, sin abrir nada todavía). `None` si no hay versiones."""
-    from aplicacion import hoja, hoja_edicion
-
-    for vivo, _cambios in hoja_edicion.borradores_para_retomar(huella, caso):
-        if vivo.proyecto == obra.nombre:
-            return vivo.version
-    return hoja.codigo_vigente(sesion, obra.nombre)
-
-
-def _sin_apu(sesion: Session, items: Sequence[ItemComputo]) -> list[str]:
-    """Los códigos de `items` que no están en el catálogo de la carpeta, ordenados."""
-    from core.catalog import Catalogo
-
-    catalogo = Catalogo(sesion)
-    faltan = []
-    for codigo in sorted({item.codigo_partida for item in items}):
-        try:
-            catalogo.partida(codigo)
-        except KeyError:
-            faltan.append(codigo)
-    return faltan
-
-
-def llevar_tramos_a_la_hoja(
-    sesion: Session,
-    huella_ficha: str,
-    url: str,
-    proyecto: models.Proyecto,
-    *,
-    responsable: str,
-    hoy: date,
-) -> tuple[str, int]:
-    """Lleva las cantidades de los tramos al borrador de la Hoja de la obra y devuelve el id del
-    borrador y cuántos renglones de tramo tiene ahora. No guarda versión.
-
-    Usa el borrador vivo de esa ficha y obra o abre uno sobre la versión vigente, con el mecanismo
-    de `elaboracion.llevar_a_la_hoja`; los tramos son los de la versión de ese borrador (propios o
-    heredados). Antes de abrir nada: `SinTramos` si esa versión no tiene tramos (o la obra no tiene
-    versiones) y `hoja_edicion.PartidaFueraDelCatalogo` con **todos** los códigos que faltan si
-    alguna partida vial no está en el catálogo. Después sincroniza (`sincronizar_renglones`) con
-    las reglas viales de los tramos de ahora. **Todo o nada:** si algo falla, el borrador abierto
-    aquí se descarta y uno que ya existía vuelve a como estaba, con su `rev`.
-
-    Si los renglones no cambian, el `rev` no sube: solo se rearman las reglas (no son un cambio) y
-    se invalida la vista calculada, para que la auditoría las use."""
-    from aplicacion import elaboracion, hoja_borradores, hoja_edicion
-
-    codigo = _version_del_borrador(sesion, huella_ficha, url, proyecto)
-    if codigo is None:
-        raise SinTramos(
-            f"La obra «{proyecto.nombre}» aún no tiene versiones guardadas: guarde una en la Hoja "
-            "y cargue allí sus tramos."
-        )
-    version_id = version_de(sesion, proyecto.nombre, codigo)
-    tramos = tramos_de_version(sesion, version_id)
-    if not tramos:
-        raise SinTramos(
-            f"La versión {codigo} no tiene tramos: impórtelos en «Tramos de la vía» antes de "
-            "llevarlos al presupuesto."
-        )
-    items = items_de_tramos(tramos)
-    faltan = _sin_apu(sesion, items)
-    if faltan:
-        raise hoja_edicion.PartidaFueraDelCatalogo(*faltan)
-    reglas = reglas_viales(sesion, version_id)
-
-    vivo, nuevo = elaboracion._borrador_de_la_obra(
-        sesion, huella_ficha, url, proyecto, responsable=responsable, hoy=hoy
-    )
-
-    def construir(actual: hoja_borradores.BorradorVivo) -> Borrador | None:
-        sincronizado = sincronizar_renglones(actual.borrador, items, reglas)
-        if sincronizado == actual.borrador:  # `reglas_extra` no cuenta en la igualdad
-            actual.borrador, actual.calculo = sincronizado, None
-            return None
-        return sincronizado
-
-    with vivo.cerrojo:
-        antes = (vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano)
-        try:
-            if vivo.version != codigo:  # otra ventana abrió otro borrador entretanto
-                raise hoja_borradores.RevDesactualizado(vivo.id)
-            hoja_edicion._cambiar(sesion, huella_ficha, vivo.id, vivo.rev, construir)
-        except BaseException:
-            if nuevo:
-                hoja_borradores.descartar(huella_ficha, vivo.id)
-            else:
-                vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano = antes
-            raise
-    return vivo.id, len(items)

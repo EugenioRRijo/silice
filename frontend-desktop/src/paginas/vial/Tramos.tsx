@@ -20,10 +20,12 @@ const SIN_OBRA = "Abra una obra para ver o importar sus tramos.";
 const SIN_VERSIONES = "Esta obra aún no tiene versiones guardadas. Guarde una en la Hoja para cargar sus tramos.";
 const SIN_TRAMOS = "Esta versión aún no tiene tramos. Importe el archivo de la vía.";
 
-// El aviso de llevar los tramos al presupuesto, con el número de renglones en es-VE (punto de miles).
-function textoLlevados(renglones: number): string {
+// El aviso de llevar los tramos al presupuesto: el número de renglones en es-VE (punto de miles) y la versión.
+function textoLlevados(renglones: number, version: string): string {
   const n = formatoEsVe(String(renglones));
-  return renglones === 1 ? `Se llevó ${n} renglón a la Hoja de la obra.` : `Se llevaron ${n} renglones a la Hoja de la obra.`;
+  return renglones === 1
+    ? `Se llevó ${n} renglón de ${version} a la Hoja de la obra.`
+    : `Se llevaron ${n} renglones de ${version} a la Hoja de la obra.`;
 }
 
 // «Tramos de la vía»: los tramos de una versión con sus cantidades de obra (m2, m3, l, t, t·km y m) y la importación del
@@ -56,13 +58,13 @@ export default function Tramos() {
   }, [errorAlLlevar]);
 
   async function llevar() {
-    if (nombre === null) return;
+    if (nombre === null || version === null) return;
     setLlevados(null);
     setErrorAlLlevar(null);
     setLlevando(true);
     try {
-      const { renglones } = await llevarTramos(nombre);
-      setLlevados(textoLlevados(renglones));
+      const llevado = await llevarTramos(nombre, version);
+      setLlevados(textoLlevados(llevado.renglones, llevado.version));
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
       else setErrorAlLlevar(razon);

@@ -398,7 +398,21 @@ def _validar(sesion: Session, partidas: Sequence[PartidaParaLlevar]) -> None:
             raise HojaInvalida(f"{partida.codigo}: {error}") from None
 
 
-def _borrador_de_la_obra(
+def version_del_borrador_de_la_obra(
+    sesion: Session, huella: str, caso: str, proyecto: str
+) -> tuple[BorradorVivo | None, str | None]:
+    """El borrador de la Hoja de la obra `proyecto` (su nombre) que usan llevar a la Hoja y llevar
+    los tramos: el vivo mas reciente de esa ficha y esa obra en el caso, si lo hay, y el codigo de
+    la version sobre la que esta o, sin vivo, sobre la que se abriria (la vigente); `None` si es
+    (o seria) un borrador en blanco. Solo lee: no abre ni registra nada. Es la unica eleccion del
+    borrador de la obra: `borrador_de_la_obra` la usa para abrirlo."""
+    for vivo, _cambios in hoja_edicion.borradores_para_retomar(huella, caso):
+        if vivo.proyecto == proyecto:
+            return vivo, vivo.version
+    return None, hoja.codigo_vigente(sesion, proyecto)
+
+
+def borrador_de_la_obra(
     sesion: Session,
     huella: str,
     caso: str,
@@ -407,18 +421,17 @@ def _borrador_de_la_obra(
     responsable: str,
     hoy: date,
 ) -> tuple[BorradorVivo, bool]:
-    """El borrador vivo mas reciente de esa ficha y esa obra en el caso (`False`: ya existia) o uno
-    nuevo (`True`) sobre la version vigente o, sin versiones, en blanco en la moneda de la obra,
-    como `POST /v1/hoja/borradores`. Abrir la vigente escribe su instantanea si faltaba (UC-15e),
-    la misma y unica escritura de abrir la Hoja; `VersionQueNoSeAbre` si ya no se puede
-    reconstruir. En blanco, comprueba antes de registrarlo que haya lista con que valorar la obra
+    """El borrador de `version_del_borrador_de_la_obra` (`False`: ya existia) o uno nuevo (`True`)
+    sobre la version vigente o, sin versiones, en blanco en la moneda de la obra, como
+    `POST /v1/hoja/borradores`. Abrir la vigente escribe su instantanea si faltaba (UC-15e), la
+    misma y unica escritura de abrir la Hoja; `VersionQueNoSeAbre` si ya no se puede reconstruir.
+    En blanco, comprueba antes de registrarlo que haya lista con que valorar la obra
     (`SinListaDeLaObra`): registrar uno nuevo puede expulsar el menos usado de la ficha
     (`POR_FICHA`), asi que solo se registra cuando ya no queda nada previsible que pueda fallar."""
     nombre = proyecto.nombre
-    for vivo, _cambios in hoja_edicion.borradores_para_retomar(huella, caso):
-        if vivo.proyecto == nombre:
-            return vivo, False
-    vigente = hoja.codigo_vigente(sesion, nombre)
+    existente, vigente = version_del_borrador_de_la_obra(sesion, huella, caso, nombre)
+    if existente is not None:
+        return existente, False
     if vigente is None:
         try:  # el 409 de la Hoja en blanco, antes de registrar el borrador (ronda 2)
             valoracion_de_la_obra(sesion, nombre, hoy)
@@ -458,7 +471,7 @@ def llevar_a_la_hoja(
     """Agrega `partidas` al borrador de la Hoja de la obra `proyecto` y devuelve su id. No guarda
     version: los renglones quedan como altas del borrador, que se guardan desde la Hoja.
 
-    Usa el borrador vivo mas reciente de esa ficha y obra o abre uno (`_borrador_de_la_obra`) y
+    Usa el borrador vivo mas reciente de esa ficha y obra o abre uno (`borrador_de_la_obra`) y
     agrega cada partida con `hoja_edicion.agregar` (Tarea 9), la cantidad escrita como la teclearia
     la persona (`texto_de_cifra`: «1.125» del computo es uno coma ciento veinticinco). **Todo o
     nada:** con el cerrojo del borrador tomado de punta a punta, si una partida falla
@@ -471,7 +484,7 @@ def llevar_a_la_hoja(
     ANTES de abrir el borrador, porque registrar uno nuevo puede expulsar el menos usado de la
     ficha: un llevar que falla por algo previsible no quita ningun otro borrador."""
     _validar(sesion, partidas)
-    vivo, nuevo = _borrador_de_la_obra(
+    vivo, nuevo = borrador_de_la_obra(
         sesion, huella, caso, proyecto, responsable=responsable, hoy=hoy
     )
     with vivo.cerrojo:

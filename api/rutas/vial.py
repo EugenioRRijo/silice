@@ -17,13 +17,14 @@ enviado. Acción `EDITAR_HOJA`:
   el número de fila, y no se guarda nada. Archivo que no es `.csv`: 415; de más de 2 MiB: 413.
 - `GET /obras` → los `id` de las obras de la carpeta abierta con tramos guardados (lo usa el marco
   para ofrecer «Tramos» solo donde hay una vía).
-- `POST /tramos/llevar` `{proyecto}` → 200 `{borrador_id, renglones}` (Tarea 8b): lleva las
-  cantidades de los tramos al borrador de la Hoja de la obra (el vivo de esa ficha y obra o uno
-  nuevo sobre la versión vigente), cada una con su origen de tramo; llevar otra vez sincroniza. No
-  guarda versión. Mismo acceso que `POST /v1/hoja/llevar` (solo una cuenta, CSRF, `Origin`,
-  `no-store`) y sus mismos errores: obra que no existe, 404 sin eco; partidas sin APU, 404 con
-  todos los códigos; versión sin tramos, sin lista o que ya no se abre, o borrador que cambió
-  entretanto, 409; cifra mala, 422; la base, 503.
+- `POST /tramos/llevar` `{proyecto, version}` → 200 `{borrador_id, renglones, version}` (Tarea
+  8b, `aplicacion.hoja_vial`): lleva las cantidades de los tramos de esa versión al borrador de la
+  Hoja de la obra (el vivo de esa ficha y obra o uno nuevo sobre la vigente), cada una con su
+  origen de tramo; llevar otra vez sincroniza. No guarda versión. Mismo acceso que
+  `POST /v1/hoja/llevar` (solo una cuenta, CSRF, `Origin`, `no-store`) y sus mismos errores: obra
+  que no existe, 404 sin eco; partidas sin APU, 404 con todos los códigos; borrador de otra
+  versión, versión que no existe o sin tramos, sin lista o que ya no se abre, o borrador que
+  cambió entretanto, 409; cifra mala, 422; la base, 503.
 """
 
 from __future__ import annotations
@@ -53,7 +54,7 @@ from api.rutas.hoja_llevar import MENSAJE_CAMBIO
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
-from aplicacion import elaboracion, hoja_edicion, vial
+from aplicacion import elaboracion, hoja_edicion, hoja_vial, vial
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorInexistente, RevDesactualizado
@@ -70,7 +71,7 @@ MENSAJE_BASE = (
     "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro "
     "programa."
 )
-FORMA_LLEVAR = "Envíe la obra cuyos tramos se llevan al presupuesto."
+FORMA_LLEVAR = "Envíe la obra y la versión cuyos tramos se llevan al presupuesto."
 TOPE_BYTES = 2 * 1024 * 1024
 BLOQUE = 64 * 1024
 EXTENSION = ".csv"
@@ -222,25 +223,28 @@ def llevar_al_presupuesto(
     datos: LlevarTramos, request: Request, activa: CuentaDeLaHoja, sesion: SesionDep
 ) -> TramosLlevados:
     """Lleva las cantidades de los tramos al borrador de la Hoja de la obra, todo o nada, sin
-    guardar versión (`aplicacion.vial.llevar_tramos_a_la_hoja`). `activa` va antes que `sesion`:
-    el acceso responde antes de abrir la base del caso."""
+    guardar versión (`aplicacion.hoja_vial.llevar_tramos_a_la_hoja`). `activa` va antes que
+    `sesion`: el acceso responde antes de abrir la base del caso."""
     try:
         con_anexos_de_cadena(sesion)  # el sello de lo que se escriba cubre los anexos (§1.2)
         proyecto = resolver_proyecto(sesion, datos.proyecto)
         if proyecto is None:
             raise HTTPException(status_code=404, detail=elaboracion.MENSAJE_SIN_OBRA)
-        borrador_id, renglones = vial.llevar_tramos_a_la_hoja(
+        borrador_id, renglones = hoja_vial.llevar_tramos_a_la_hoja(
             sesion,
             activa.huella_ficha,
             url_de_la_peticion(request),
             proyecto,
+            datos.version,
             responsable=activa.usuario,
             hoy=_hoy(),
         )
     except hoja_edicion.PartidaFueraDelCatalogo as error:
         raise HTTPException(status_code=404, detail=str(error)) from None
     except (
-        vial.SinTramos,
+        hoja_vial.BorradorDeOtraVersion,
+        hoja_vial.SinTramos,
+        vial.VersionInexistente,
         hoja_edicion.SinListaDeLaObra,
         elaboracion.VersionQueNoSeAbre,
     ) as error:
@@ -251,4 +255,4 @@ def llevar_al_presupuesto(
         raise HTTPException(status_code=422, detail=str(error)) from None
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
-    return TramosLlevados(borrador_id=borrador_id, renglones=renglones)
+    return TramosLlevados(borrador_id=borrador_id, renglones=renglones, version=datos.version)

@@ -168,9 +168,11 @@ class ObrasViales(BaseModel):
 
 
 class LlevarTramos(_Estricto):
-    """La obra cuyos tramos se llevan al presupuesto: su código de `/v1/proyectos` o su nombre."""
+    """La obra (su código de `/v1/proyectos` o su nombre) y la versión (código) cuyos tramos se
+    llevan al presupuesto: la que muestra la pantalla «Tramos»."""
 
     proyecto: Annotated[str, Field(strict=True, min_length=1, max_length=500)]
+    version: Annotated[str, Field(strict=True, min_length=1, max_length=40)]
 
 
 class TramosLlevados(BaseModel):
@@ -178,6 +180,8 @@ class TramosLlevados(BaseModel):
 
     borrador_id: str
     renglones: int
+    #: La versión cuyos tramos se llevaron (la del borrador).
+    version: str
 
 
 def _texto(valor: Decimal | None) -> str | None:

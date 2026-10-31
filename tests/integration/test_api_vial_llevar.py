@@ -242,7 +242,10 @@ def test_un_borrador_abierto_de_otra_version_da_409_y_no_cambia(ana) -> None:
         "tramos de VIV-002. Guarde o descarte ese borrador en la Hoja, o elija VIV-001 aquí, y "
         "vuelva a llevar."
     }
-    assert _borradores(navegador) == antes  # mismo borrador, mismo rev
+    # mismo borrador, mismo rev y ningún cambio (`tocado` se renueva con solo leerlo)
+    assert [{**b, "tocado": None} for b in _borradores(navegador)] == [
+        {**b, "tocado": None} for b in antes
+    ]
     despues = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/presupuesto").json()["filas"]
     assert despues == filas
 

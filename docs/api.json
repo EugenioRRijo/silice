@@ -9429,7 +9429,7 @@
           "vial"
         ],
         "summary": "Llevar Al Presupuesto",
-        "description": "Lleva las cantidades de los tramos al borrador de la Hoja de la obra, todo o nada, sin\nguardar versión (`aplicacion.vial.llevar_tramos_a_la_hoja`). `activa` va antes que `sesion`:\nel acceso responde antes de abrir la base del caso.",
+        "description": "Lleva las cantidades de los tramos al borrador de la Hoja de la obra, todo o nada, sin\nguardar versión (`aplicacion.hoja_vial.llevar_tramos_a_la_hoja`). `activa` va antes que\n`sesion`: el acceso responde antes de abrir la base del caso.",
         "operationId": "llevar_al_presupuesto_v1_vial_tramos_llevar_post",
         "requestBody": {
           "content": {
@@ -19642,15 +19642,22 @@
             "maxLength": 500,
             "minLength": 1,
             "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "proyecto"
+          "proyecto",
+          "version"
         ],
         "title": "LlevarTramos",
-        "description": "La obra cuyos tramos se llevan al presupuesto: su código de `/v1/proyectos` o su nombre."
+        "description": "La obra (su código de `/v1/proyectos` o su nombre) y la versión (código) cuyos tramos se\nllevan al presupuesto: la que muestra la pantalla «Tramos»."
       },
       "LoteDeHallazgos": {
         "properties": {
@@ -25144,12 +25151,17 @@
           "renglones": {
             "type": "integer",
             "title": "Renglones"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
           }
         },
         "type": "object",
         "required": [
           "borrador_id",
-          "renglones"
+          "renglones",
+          "version"
         ],
         "title": "TramosLlevados",
         "description": "El borrador de la Hoja de la obra, con los renglones de tramo ya puestos (sin guardar)."
