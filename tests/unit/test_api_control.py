@@ -727,3 +727,46 @@ def test_la_respuesta_de_opciones_del_front_es_la_de_la_api_real() -> None:
     navegador, cabeceras = _arma()
     real = _opciones(navegador, cabeceras).json()
     assert json.loads(OPCIONES_DEL_FRONT.read_text(encoding="utf-8")) == real
+
+
+# --- IVA sobre las valuaciones (plan vial, Tarea 18) -----------------------------------------
+
+
+def test_cada_valuacion_trae_subtotal_iva_y_total_con_iva() -> None:
+    # Oraculo a mano, perspectiva costo: V-01 = 40 x 10,00 = 400,00 -> IVA 64,00 -> 464,00;
+    # V-02 = 50 x 10,00 + 60 x 5,00 = 800,00 -> IVA 128,00 -> 928,00.
+    filas = {
+        f["Numero"]: f
+        for f in _con_clave().get("/v1/control/valuaciones", params=P).json()["filas"]
+    }
+    v1, v2 = filas["V-01"], filas["V-02"]
+    assert (v1["Subtotal"], v1["IVA"], v1["Total con IVA"]) == ("400.00", "64.00", "464.00")
+    assert (v2["Subtotal"], v2["IVA"], v2["Total con IVA"]) == ("800.00", "128.00", "928.00")
+
+
+def test_las_valuaciones_traen_el_acumulado_con_alicuota_y_fuente() -> None:
+    imp = _con_clave().get("/v1/control/valuaciones", params=P).json()["impuestos"]
+    assert (imp["subtotal"], imp["iva"], imp["total"]) == ("1200.00", "192.00", "1392.00")
+    assert imp["alicuota"] == "0.16"
+    assert "a cotejar con la Gaceta vigente" in imp["fuente_alicuota"]
+
+
+def test_sin_valuaciones_el_acumulado_con_iva_es_cero(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    datos = _con_clave().get("/v1/control/valuaciones", params=P).json()
+    imp = datos["impuestos"]
+    assert (imp["subtotal"], imp["iva"], imp["total"]) == ("0.00", "0.00", "0.00")
+    assert imp["alicuota"] == "0.16"
+
+
+def test_las_columnas_de_iva_del_front_existen_en_la_respuesta() -> None:
+    # Los nombres de columna del front son claves de la fila (VB-3).
+    columnas = _columnas_del_front("COLUMNAS_VALUACIONES")
+    assert {"Subtotal", "IVA", "Total con IVA"} <= set(columnas)
+
+
+def test_las_valuaciones_dicen_la_perspectiva_de_la_linea_base() -> None:
+    # OB-S2 declara su línea base en costo: el IVA de lo medido no es facturable (T18-3).
+    assert _con_clave().get("/v1/control/valuaciones", params=P).json()["perspectiva"] == "costo"

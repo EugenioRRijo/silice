@@ -19184,6 +19184,40 @@
         ],
         "title": "ImportadasRespuesta"
       },
+      "ImpuestosRespuesta": {
+        "properties": {
+          "subtotal": {
+            "type": "string",
+            "title": "Subtotal"
+          },
+          "iva": {
+            "type": "string",
+            "title": "Iva"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "alicuota": {
+            "type": "string",
+            "title": "Alicuota"
+          },
+          "fuente_alicuota": {
+            "type": "string",
+            "title": "Fuente Alicuota"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subtotal",
+          "iva",
+          "total",
+          "alicuota",
+          "fuente_alicuota"
+        ],
+        "title": "ImpuestosRespuesta",
+        "description": "IVA sobre un total (Tarea 18): subtotal sin IVA, IVA y total con IVA, más la alícuota como\nfracción («0.16») y su fuente. El IVA va sobre el total, nunca en el APU."
+      },
       "IndicadorRespuesta": {
         "properties": {
           "clave": {
@@ -22780,6 +22814,9 @@
             },
             "type": "array",
             "title": "Partidas"
+          },
+          "impuestos": {
+            "$ref": "#/components/schemas/ImpuestosRespuesta"
           }
         },
         "type": "object",
@@ -22788,7 +22825,8 @@
           "fecha",
           "moneda",
           "total",
-          "partidas"
+          "partidas",
+          "impuestos"
         ],
         "title": "PresupuestoDetalleRespuesta",
         "description": "El presupuesto completo, reconstruido desde el catálogo (`cargar_presupuesto`)."
@@ -26511,6 +26549,14 @@
             },
             "type": "array",
             "title": "Causas"
+          },
+          "impuestos": {
+            "$ref": "#/components/schemas/ImpuestosRespuesta"
+          },
+          "perspectiva": {
+            "type": "string",
+            "title": "Perspectiva",
+            "default": ""
           }
         },
         "type": "object",
@@ -26518,7 +26564,8 @@
           "tiene_linea_base",
           "filas",
           "anulables",
-          "corte_por_defecto"
+          "corte_por_defecto",
+          "impuestos"
         ],
         "title": "ValuacionesRespuesta"
       },

@@ -54,6 +54,7 @@ from api.esquemas import (
     RendimientoPorDeclararRespuesta,
     RendimientosPorDeclararRespuesta,
     decimal_desde_texto,
+    impuestos_a_respuesta,
 )
 from api.esquemas_informe import informe_a_respuesta
 from api.esquemas_ola2 import (
@@ -77,6 +78,7 @@ from api.rutas.rendimientos import propuesta_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import actualizacion as aplicacion_actualizacion
 from aplicacion import elaboracion as aplicacion_elaboracion
+from aplicacion.impuestos import con_iva
 from aplicacion.listas_para_armar import SinListaParaArmar, lista_para_el_proyecto
 from aplicacion.proyectos import resolver_proyecto
 from core import models
@@ -321,6 +323,7 @@ def obtener_presupuesto(
             )
             for partida in presupuesto.partidas
         ],
+        impuestos=impuestos_a_respuesta(con_iva(presupuesto.total)),
     )
 
 
