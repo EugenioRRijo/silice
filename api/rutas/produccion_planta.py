@@ -578,17 +578,20 @@ def publicar_costo_propio(
     if propia is None:
         raise HTTPException(422, "Configure la empresa en Administración antes de publicar.")
     ruta = ruta_de_url(url_de_la_peticion(request))
-    lista = publicar_calculo(
-        caso,
-        calculo,
-        sesion_ins=sesion,
-        nombre_del_caso=ruta.name if ruta is not None else "(carpeta sin archivo)",
-        base=lista_base_del_periodo(caso, calculo),
-        empresa_nombre=propia.nombre,
-        empresa_rif=propia.rif,
-        usuario=usuario,
-        ahora=arenera._ahora(),
-    )
+    try:
+        lista = publicar_calculo(
+            caso,
+            calculo,
+            sesion_ins=sesion,
+            nombre_del_caso=ruta.name if ruta is not None else "(carpeta sin archivo)",
+            base=lista_base_del_periodo(caso, calculo),
+            empresa_nombre=propia.nombre,
+            empresa_rif=propia.rif,
+            usuario=usuario,
+            ahora=arenera._ahora(),
+        )
+    except CalculoYaPublicado as error:  # otra publicación ganó la carrera (el `unique`)
+        raise HTTPException(409, str(error)) from None
     publicada = PublicacionCreada(id=lista.id, nombre=lista.nombre)
     caso.commit()  # primero la carpeta; la instalación la confirma su dependencia al volver
     return publicada

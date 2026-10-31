@@ -19,8 +19,8 @@ Reglas (las decisiones estan en `docs/bitacora/2026-10-30-plan-vial-fase-a.md`, 
   cambia el calculo ya guardado de M. Lo que de nuevo no tiene receptor pasa a M+1 sumado (con los
   costos de donde viene).
 - **Agregado propio no producido en el mes** (Tarea 4b, pregunta 15): la mezcla lo toma al costo
-  del ultimo calculo (id mayor) de un periodo anterior en la misma moneda que lo tenga, anotado en
-  `de_otro_calculo`; nunca de un mes posterior. Sin ninguno, se niega.
+  del calculo del periodo anterior mas reciente (y dentro de el, el de id mayor) en la misma moneda
+  que lo tenga, anotado en `de_otro_calculo`; nunca de un mes posterior. Sin ninguno, se niega.
 - **Que es mezcla**: un producto con receta registrada que rija al ultimo dia del periodo; el
   resto de lo producido son agregados y reciben la cantera (D-V-1: por tonelada, o por pesos). La
   planta va a las mezclas por tonelada.
@@ -59,11 +59,12 @@ import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from aplicacion.tasa_del_dia import (
@@ -84,7 +85,14 @@ from produccion.costo import (
     costo_por_tonelada,
     exacto,
 )
-from produccion.costos import MONEDAS, CostoRegistrado, costos_del_periodo, validar_periodo
+from produccion.costos import (
+    MONEDAS,
+    CostoRegistrado,
+    costos_del_periodo,
+    ultimo_dia_del_mes,
+    validar_periodo,
+)
+from produccion.importacion import abrir_transaccion
 from produccion.inventario import entradas_del_periodo
 from produccion.modelo import Calculo, PublicacionRegistrada
 from produccion.receta import Receta, receta_vigente
@@ -160,11 +168,6 @@ def _t(valor: Decimal) -> str:
     return format(valor, "f")
 
 
-def _ultimo_dia(periodo: str) -> date:
-    anio, mes = validar_periodo(periodo)
-    return date(anio + (mes == 12), mes % 12 + 1, 1) - timedelta(days=1)
-
-
 def _mes_anterior(periodo: str) -> str:
     anio, mes = validar_periodo(periodo)
     return f"{anio - 1}-12" if mes == 1 else f"{anio:04d}-{mes - 1:02d}"
@@ -194,7 +197,7 @@ class _Producido:
 def _producido(sesion_ins: Session, periodo: str) -> _Producido:
     """Cada entrada del periodo, clasificada: una mezcla (con receta al cierre) suma a la receta
     vigente en la fecha de esa entrada; lo demas es agregado."""
-    cierre = _ultimo_dia(periodo)
+    cierre = ultimo_dia_del_mes(periodo)
     producido = _Producido()
     es_mezcla: dict[str, bool] = {}
     recetas: dict[tuple[str, date], Receta | None] = {}
@@ -242,9 +245,11 @@ def _exigir_centros(periodo: str, hay: Mapping[str, bool], producido: _Producido
 def _de_otro_calculo(
     sesion_ins: Session, periodo: str, moneda: str, producido: _Producido
 ) -> dict[str, CalculoGuardado]:
-    """Por cada agregado propio de una mezcla que no se produjo en `periodo`, el ultimo calculo
-    (id mayor) de un periodo anterior, en `moneda`, que le da costo (pregunta 15). Nunca uno de un
-    mes posterior. Sin ninguno, `ErrorDeCalculo` que nombra la mezcla y el agregado."""
+    """Por cada agregado propio de una mezcla que no se produjo en `periodo`, el calculo en
+    `moneda` que le da costo del periodo anterior mas reciente y, dentro de el, el de id mayor
+    (pregunta 15; fila 26 de la bitacora: recalcular septiembre despues de octubre no gana a
+    octubre). Nunca uno de un mes posterior. Sin ninguno, `ErrorDeCalculo` que nombra la mezcla y
+    el agregado."""
     faltan: dict[str, str] = {}  # agregado -> la primera mezcla que lo usa
     for mezcla, usos in sorted(producido.usos.items()):
         for receta, _ in usos.values():
@@ -258,7 +263,7 @@ def _de_otro_calculo(
         for fila in sesion_ins.scalars(
             select(Calculo)
             .where(Calculo.periodo < periodo, Calculo.moneda == moneda)
-            .order_by(Calculo.id.desc())
+            .order_by(Calculo.periodo.desc(), Calculo.id.desc())
         )
     ]
     hallados: dict[str, CalculoGuardado] = {}
@@ -371,7 +376,7 @@ def _precios_comprados(
     `ErrorDeCalculo` que nombra los codigos. Sin tasa: se anota en `faltan`."""
     if not unidades:
         return {}, {}, None
-    cierre = _ultimo_dia(periodo)
+    cierre = ultimo_dia_del_mes(periodo)
     codigos = sorted(unidades)
     try:
         lista = Catalogo(sesion_caso).lista_vigente(cierre)
@@ -558,7 +563,7 @@ def calcular_periodo(
         "moneda": moneda,
         "reparto_cantera": "por tonelada" if pesos is None else "por pesos",
         "pesos": None if pesos is None else {c: _t(p) for c, p in pesos.items()},
-        "fecha_de_la_lista": _ultimo_dia(periodo).isoformat(),
+        "fecha_de_la_lista": ultimo_dia_del_mes(periodo).isoformat(),
         "costos": [_costo_json(r, v, eq) for r, v, eq in convertidos],
         "producido": {c: _t(t) for c, t in producido.toneladas.items()},
         "agregados": sorted(producido.agregados),
@@ -713,7 +718,7 @@ def _exigir_insumo_propio(caso: Session, codigo: str) -> models.Insumo | None:
 def lista_base_del_periodo(sesion_caso: Session, calculo: CalculoGuardado) -> models.ListaPrecios:
     """La lista global vigente de la carpeta al ultimo dia del periodo: la base natural de la lista
     que se publica. Sin ninguna, `ErrorDeCalculo`."""
-    cierre = _ultimo_dia(calculo.periodo)
+    cierre = ultimo_dia_del_mes(calculo.periodo)
     try:
         return Catalogo(sesion_caso).lista_vigente(cierre)
     except CatalogoIncompleto:
@@ -775,7 +780,7 @@ def publicar_calculo(
     if not nombre_del_caso.strip():
         raise ErrorDeCalculo("Falta la carpeta de trabajo donde se publica.")
     exigir_publicable(sesion_ins, calculo)
-    cierre = _ultimo_dia(calculo.periodo)
+    cierre = ultimo_dia_del_mes(calculo.periodo)
     es_agregado = set(json.loads(calculo.instantanea)["entradas"]["agregados"])
     codigos = {
         producto: (PREFIJO_DE_AGREGADO if producto in es_agregado else PREFIJO_DE_MEZCLA) + producto
@@ -830,14 +835,35 @@ def publicar_calculo(
         nombre=f"Costo propio {calculo.periodo}, cálculo n.º {calculo.id}",
         tasa_base=tasa_base,
     )
-    sesion_ins.add(
-        PublicacionRegistrada(
-            calculo_id=calculo.id,
-            caso=nombre_del_caso.strip(),
-            lista_id=lista.id,
-            usuario=usuario.strip(),
-            registrado=ahora,
-        )
-    )
-    sesion_ins.flush()
+    _registrar_publicacion(sesion_ins, calculo, nombre_del_caso, lista.id, usuario, ahora)
     return lista
+
+
+def _registrar_publicacion(
+    sesion_ins: Session,
+    calculo: CalculoGuardado,
+    nombre_del_caso: str,
+    lista_id: int,
+    usuario: str,
+    ahora: datetime,
+) -> None:
+    """Anota la publicacion. Si otra del mismo calculo gano la carrera despues de la
+    comprobacion, el `unique` de `calculo_id` frena esta: se deshace solo su savepoint y sale
+    `CalculoYaPublicado` con la lista de la otra (la API: 409, sin confirmar la carpeta)."""
+    abrir_transaccion(sesion_ins)
+    try:
+        with sesion_ins.begin_nested():
+            sesion_ins.add(
+                PublicacionRegistrada(
+                    calculo_id=calculo.id,
+                    caso=nombre_del_caso.strip(),
+                    lista_id=lista_id,
+                    usuario=usuario.strip(),
+                    registrado=ahora,
+                )
+            )
+            sesion_ins.flush()
+    except IntegrityError:
+        previa = publicacion_de(sesion_ins, calculo.id)
+        donde = "" if previa is None else f" en la lista n.º {previa.lista_id}"
+        raise CalculoYaPublicado(f"El cálculo n.º {calculo.id} ya se publicó{donde}.") from None

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -47,6 +47,13 @@ def validar_periodo(periodo: str) -> tuple[int, int]:
             f"El periodo debe ser AAAA-MM, con mes de 01 a 12: «{str(periodo)[:20]}»."
         )
     return int(coincide.group(1)), int(coincide.group(2))
+
+
+def ultimo_dia_del_mes(periodo: str) -> date:
+    """El ultimo dia del periodo `AAAA-MM` (`validar_periodo`); el unico calculo de esta fecha
+    para el costo por tonelada y la tasa del cierre (plan vial, Tarea 4b)."""
+    anio, mes = validar_periodo(periodo)
+    return date(anio + (mes == 12), mes % 12 + 1, 1) - timedelta(days=1)
 
 
 @dataclass(frozen=True)

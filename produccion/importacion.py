@@ -34,6 +34,7 @@ from produccion.modelo import Material, Movimiento, PesajeSospechoso
 
 __all__ = [
     "ResultadoImportacion",
+    "abrir_transaccion",
     "descartar",
     "importar",
     "pendientes",
@@ -174,7 +175,7 @@ def _bandeja_por_ticket(sesion: Session, lectura: LecturaBascula) -> set[tuple[s
 # --------------------------------------------------------------------------------------- API
 
 
-def _abrir_transaccion(sesion: Session) -> None:
+def abrir_transaccion(sesion: Session) -> None:
     """Deja abierta la transaccion de la conexion antes de un `begin_nested()`.
 
     `pysqlite` solo emite `BEGIN` antes de un `INSERT`/`UPDATE`/`DELETE`, no antes de un
@@ -196,7 +197,7 @@ def importar(sesion: Session, lectura: LecturaBascula, *, usuario: str) -> Resul
     registrados = 0
     ya_registrados = 0
     a_la_bandeja = 0
-    _abrir_transaccion(sesion)
+    abrir_transaccion(sesion)
     with sesion.begin_nested():
         catalogo = _Catalogo(sesion)
         en_bandeja = set(
@@ -315,7 +316,7 @@ def resolver(
         raise ErrorDeInventario(
             "El peso neto es demasiado pequeño para la unidad del material; revise el valor."
         )
-    _abrir_transaccion(sesion)
+    abrir_transaccion(sesion)
     with sesion.begin_nested():
         movimiento = registrar_despacho(
             sesion,
