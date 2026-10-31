@@ -774,6 +774,28 @@ def test_supuestos_declarados():  # "gasto uniforme", "USD fijo × tasa" en p.su
 
 ## Fase D: pedidos transversales
 
+### Tarea 16b: Respuestas de Eugenio del 2026-10-31 (filas 27, 51 y 58)
+
+**Modelo:** Opus.
+
+1. **Fila 27:** `calcular_periodo` de M+1 se **niega** si el último cálculo de M−1 dejó algo en `pasa_al_mes_siguiente`
+   y M no tiene cálculo. Mensaje: «Calcule primero AAAA-MM (M): el cálculo de AAAA-MM (M−1) dejó costos que pasan a
+   ese mes.» No escribe nada. Prueba con oráculo a mano en `aplicacion/costo_propio`, más el 422 de la API.
+2. **Filas 51 y 63, VR5:** se agrega una partida de pintura de demarcación en `l` a `PARTIDAS_VIALES`, con código
+   provisional correlativo (`C-000.000.015`, fila 34). `derivar_tramos` la produce por cada línea de demarcación:
+   litros = km de línea × rendimiento por defecto (V-11/V-12, «a cotejar»), con la directiva `_ancho_linea_cm` del
+   ancho de la línea. Así, llevar los tramos a la Hoja la incluye y VR5 se dispara desde la interfaz. Prueba de punta a
+   punta por la API, como la de VR1 de la Tarea 8b: se escriben otros litros y aparece VR5.
+3. **Filas 58 y 63, VR2:** al llevar los tramos (`aplicacion/hoja_vial.py`) y al abrir una versión con tramos, las
+   reglas viales reciben la fórmula de trabajo de la receta **vigente** de la mezcla propia (`formula_asfalto_de_receta`,
+   Tarea 9), leída de la base de la instalación. Sin receta vigente, VR2 sigue sin evaluarse y lo declara. Prueba de
+   punta a punta por la API: se escribe un `_porcentaje_asfalto` fuera de la fórmula y aparece VR2.
+4. Actualizar las filas 63 y 70 con el alcance nuevo: desde la interfaz se disparan VR1 a VR6, y VR7 solo por la API.
+
+- [ ] Rojo, implementar, verde (+ `ruff`, `npm run lint`, `docs/api.json`, `core/` vacío), commit —
+  `feat(vial): respuestas de Eugenio (arrastre, pintura y formula en la Hoja)`.
+
+
 ### Tarea 17: FCAS por componentes
 
 **Modelo:** Sonnet.
