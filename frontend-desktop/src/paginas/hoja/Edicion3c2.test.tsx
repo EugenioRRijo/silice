@@ -10,7 +10,7 @@ import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaParametros, Vis
 
 // Rebanada 3c-2: cantidades, parámetros y plan se editan. El servidor se simula con respuestas ficticias con la forma del
 // contrato (docs/bitacora/2026-10-19-hoja-3c2-contrato-rutas.md, diseño §4.4): E2 `PUT …/cantidades`, E3 `PUT …/parametros`,
-// E4 `PUT …/plan`, E5 `POST …/plan/secuencial`, todas con `{rev}` y respuesta `{rev, resumen, <vista>}`; 422 con el
+// E4 `PUT …/plan`, todas con `{rev}` y respuesta `{rev, resumen, <vista>}`; 422 con el
 // `detalle` de la clásica; 409 por `rev` viejo. Caso ficticio OF-001; los literales son de su memoria y del diseño.
 configure({ asyncUtilTimeout: 5000 });
 
@@ -69,7 +69,7 @@ function borrador(extra: Partial<Resumen> = {}): BorradorAbierto {
   };
 }
 
-type Seccion = "cantidades" | "parametros" | "plan" | "secuencial";
+type Seccion = "cantidades" | "parametros" | "plan";
 type Cuerpo = Record<string, unknown> & { rev: number };
 
 describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () => {
@@ -95,7 +95,6 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     cantidades: `/v1/hoja/borradores/${ID}/cantidades`,
     parametros: `/v1/hoja/borradores/${ID}/parametros`,
     plan: `/v1/hoja/borradores/${ID}/plan`,
-    secuencial: `/v1/hoja/borradores/${ID}/plan/secuencial`,
   };
 
   beforeEach(() => {
@@ -108,7 +107,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     presupuesto = vistaPresupuesto();
     parametros = vistaParametros();
     plan = vistaPlan();
-    alPoner = { cantidades: acepta, parametros: acepta, plan: acepta, secuencial: acepta };
+    alPoner = { cantidades: acepta, parametros: acepta, plan: acepta };
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = String(ruta);
       const metodo = init?.method ?? "GET";
@@ -807,74 +806,15 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(campo("Día 1, Plan de trabajo fila 2")).not.toHaveAttribute("aria-invalid", "true");
     });
 
-    test("3c-F12 (P20): sin plan se ofrece «Crear plan secuencial»; al crearlo aparece la matriz y el botón desaparece", async () => {
+    // F4, baja 11: ya no hay «Crear plan secuencial»; sin plan se dice por qué y se ofrece «Plan desde los rendimientos».
+    test("3c-F12 (P20): sin plan se dice por qué, no hay matriz ni «Crear plan secuencial», y sí «Plan desde los rendimientos»", async () => {
       plan = sinPlan();
       await irA("Plan y curva");
       expect(await screen.findByText(SIN_PLAN)).toBeInTheDocument();
       expect(screen.queryByRole("table", { name: "Plan de trabajo" })).toBeNull();
-      const boton = screen.getByRole("button", { name: "Crear plan secuencial (una partida por período)" });
-      alPoner.secuencial = (c) => {
-        plan = vistaPlan();
-        return acepta(c, { hay_plan: true });
-      };
-      fireEvent.click(boton);
-      expect(await screen.findByRole("table", { name: "Plan de trabajo" })).toBeInTheDocument();
-      expect(escrituras("secuencial")).toEqual([{ rev: 0 }]);
       expect(screen.queryByRole("button", { name: /Crear plan secuencial/ })).toBeNull();
-      expect(campo("Día 1, Plan de trabajo fila 1")).toHaveValue("1");
-      expect(await screen.findByTestId("grafico")).toHaveAttribute("data-filas", "2");
-      expect(within(regionDeEstado()).getByText(/· 1 cambio sin guardar/)).toBeInTheDocument();
-      // Ya con matriz, la siguiente edición lleva el rev que contestó el servidor.
-      relojFalso();
-      fireEvent.change(campo("Día 1, Plan de trabajo fila 1"), { target: { value: "0.5" } });
-      await pausa(400);
-      expect(escrituras("plan")[0]!.rev).toBe(1);
-    });
-
-    test("crear el plan con el rev viejo (409): avisa y ofrece recargar; recargar trae el plan que ya existe", async () => {
-      plan = sinPlan();
-      await irA("Plan y curva");
-      await screen.findByRole("button", { name: /Crear plan secuencial/ });
-      alPoner.secuencial = () => json({ detalle: REV_VIEJO }, 409);
-      fireEvent.click(screen.getByRole("button", { name: /Crear plan secuencial/ }));
-      expect(await screen.findByText(REV_VIEJO)).toBeInTheDocument();
-      abierto = borrador({ rev: 3, cambios: 1 });
-      plan = vistaPlan();
-      fireEvent.click(screen.getByRole("button", { name: "Recargar el borrador" }));
-      expect(await screen.findByRole("table", { name: "Plan de trabajo" })).toBeInTheDocument();
-      expect(avisos()).toHaveLength(0);
-    });
-
-    test("«ya tiene plan» (409 de E5) se muestra con su detalle, sin pedir recargar ni abrir de nuevo, y se vuelve a leer el plan", async () => {
-      plan = sinPlan();
-      await irA("Plan y curva");
-      await screen.findByRole("button", { name: /Crear plan secuencial/ });
-      const YA_TIENE = "Esta versión ya tiene plan de trabajo: edítelo en la matriz del plan.";
-      alPoner.secuencial = () => json({ detalle: YA_TIENE }, 409);
-      plan = vistaPlan(); // otra ventana lo creó
-      fireEvent.click(screen.getByRole("button", { name: /Crear plan secuencial/ }));
-      expect(await screen.findByRole("table", { name: "Plan de trabajo" })).toBeInTheDocument();
-      expect(aviso()).toHaveTextContent(YA_TIENE);
-      expect(screen.queryByRole("button", { name: "Recargar el borrador" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Abrir de nuevo" })).toBeNull();
-    });
-
-    test("mientras se crea el plan el botón no se puede pulsar otra vez: una sola petición", async () => {
-      plan = sinPlan();
-      await irA("Plan y curva");
-      const boton = await screen.findByRole("button", { name: /Crear plan secuencial/ });
-      let terminar: (r: Response) => void = () => undefined;
-      alPoner.secuencial = () =>
-        new Promise<Response>((resolver) => {
-          terminar = resolver;
-        });
-      fireEvent.click(boton);
-      await esperar(() => expect(screen.getByRole("button", { name: /Crear plan secuencial/ })).toBeDisabled());
-      fireEvent.click(screen.getByRole("button", { name: /Crear plan secuencial/ }));
-      expect(escrituras("secuencial")).toHaveLength(1);
-      plan = vistaPlan();
-      await act(async () => terminar(acepta({ rev: 0 }, { hay_plan: true })));
-      expect(await screen.findByRole("table", { name: "Plan de trabajo" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Plan desde los rendimientos" })).toBeInTheDocument();
+      expect(escrituras("plan")).toHaveLength(0);
     });
   });
 

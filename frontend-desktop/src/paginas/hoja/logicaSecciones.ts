@@ -9,7 +9,6 @@ const rutaDelBorrador = (id: string) => `/v1/hoja/borradores/${id}`;
 export const rutaDeCantidades = (id: string) => `${rutaDelBorrador(id)}/cantidades`;
 export const rutaDeParametros = (id: string) => `${rutaDelBorrador(id)}/parametros`;
 export const rutaDePlan = (id: string) => `${rutaDelBorrador(id)}/plan`;
-export const rutaDePlanSecuencial = (id: string) => `${rutaDelBorrador(id)}/plan/secuencial`;
 
 // Lo que la clásica agrega tras el error de cada sección (ui/paginas/hoja.py:1674, 1773, 1827, 2053).
 export const FRASES_DE_RECHAZO = {

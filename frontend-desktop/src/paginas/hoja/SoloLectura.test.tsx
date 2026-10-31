@@ -171,7 +171,6 @@ const QUE_ESCRIBEN = [
   "Cambiar el insumo de una línea",
   "Usar este insumo",
   "Plan desde los rendimientos",
-  "Crear plan secuencial",
   "Agregar fila",
   "Quitar fila",
   "Convertir la moneda…",

@@ -203,11 +203,11 @@ describe("Hoja: plan desde los rendimientos (Tarea 21)", () => {
     expect(await screen.findByText("Plan hecho desde los rendimientos: 1 período.")).toBeInTheDocument();
   });
 
-  test("sin plan, el botón está junto al secuencial y envía una cuadrilla por partida en días", async () => {
+  test("sin plan, el botón envía una cuadrilla por partida en días (ya no hay «Crear plan secuencial», baja 11)", async () => {
     vista = sinPlan();
     montar(0);
     expect(await screen.findByText(SIN_PLAN)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Crear plan secuencial/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Crear plan secuencial/ })).toBeNull();
     await userEvent.click(boton());
     expect(envios()).toEqual([{ rev: 0, cuadrillas: {}, paralelas: [], unidad: "dia" }]);
     expect(await screen.findByRole("table", { name: "Plan de trabajo" })).toBeInTheDocument();
