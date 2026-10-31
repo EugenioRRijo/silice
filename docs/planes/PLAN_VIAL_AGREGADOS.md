@@ -921,7 +921,8 @@ receta con arena y asfalto, este marcado: VR2 compara con el asfalto. Migración
   `aplicacion.conciliacion.conciliar` con `calculos_usados` armado desde la fuente de cada precio propio
   (`numero_de_calculo`), para que CV3 diga el n.º del cálculo usado y no «ningún cálculo publicado conocido».
 - [ ] **Step 1: Pruebas:** abrir cada libro con openpyxl y comprobar nombres de hoja y celdas clave (857,75 t del
-  tramo T1; la fuente «Producción, período …, cálculo n.º …» en el APU; P50/P80 y supuestos en el de riesgo; 23,08 /
+  tramo T1 — *corregido en la Tarea 22 (T21-1): 857,75 t es el T1 de `test_vial_derivacion.py`; en
+  `data/samples/vial/via_ficticia.csv` el T1 da 1.029,3 t*; la fuente «Producción, período …, cálculo n.º …» en el APU; P50/P80 y supuestos en el de riesgo; 23,08 /
   3,85 / 19,23 en el de mejora); formato numérico es-VE.
 - [ ] **Step 2–5:** rojo, implementar, verde, commit — `feat(reportes): reportes viales, de riesgo y de mejora`.
 
@@ -929,13 +930,13 @@ receta con arena y asfalto, este marcado: VR2 compara con el asfalto. Migración
 
 **Modelo:** Sonnet para los menores; el orquestador corre la suite, la medida del núcleo y el navegador.
 
-- [ ] **Step 1:** crear `data/samples/produccion/` con una cantera y una planta ficticias (materiales, producción de
+- [x] **Step 1:** crear `data/samples/produccion/` con una cantera y una planta ficticias (materiales, producción de
   dos meses, costos por centro y una receta), declaradas ficticias en su README; prueba de punta a punta
   `tests/integration/test_vial_extremo_a_extremo.py` con la vía, la cantera, la planta y las series ficticias: costos → cálculo → publicación → tramos → APU → auditoría y conciliación →
   proyección → comprobación → mejora → reportes.
   Los tramos llegan al presupuesto por `POST /v1/vial/tramos/llevar` (Tarea 8b), nunca con `derivar_tramos` ni con un
   `origen_id` fabricado en la prueba (árbitro de la fase B).
-- [ ] **Step 2:** menores agrupados de las fases.
+- [x] **Step 2:** menores agrupados de las fases (lo hecho y lo que queda en `docs/bitacora/2026-10-31-plan-vial-fase-d.md`).
 - [ ] **Step 3:** `uv run --active pytest -q`, `npm --prefix frontend-desktop test`, `npm --prefix frontend-desktop run lint`
   completos; salidas guardadas en el scratchpad de la sesión.
 - [ ] **Step 4:** **medida del núcleo:** `git diff --stat c1f436b2 -- core/` vacío; anotar en la bitácora el número de

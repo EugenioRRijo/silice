@@ -3,8 +3,8 @@
 **Caso ficticio.** La cantera, la planta, sus materiales, su producción, sus costos, su receta, los precios de lo
 que compran, la vía y las series de precios de esta carpeta son **inventados** para la prueba de punta a punta del
 plan vial (`tests/integration/test_vial_extremo_a_extremo.py`, Tarea 22). No vienen de ninguna empresa, cantera,
-planta ni obra, ni de ninguna fuente pública; no sirven como referencia de costos ni de diseño. Los datos reales se
-usan solo en local y nunca entran al repositorio.
+planta ni obra, ni de ninguna fuente pública; no sirven como referencia de costos ni de diseño.
+Lo de la empresa no entra al repositorio: se usa solo en local.
 
 ## Archivos
 
