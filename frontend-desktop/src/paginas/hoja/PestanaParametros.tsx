@@ -4,7 +4,6 @@ import { pedir } from "../../api/cliente";
 import { useAplicacion } from "../../shell/contexto";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { CampoDeCelda } from "./CampoDeCelda";
-import { Cifra } from "./Cifra";
 import { ConvertirMoneda } from "./ConvertirMoneda";
 import type { AlCrearVersion } from "./OperacionesDePrecios";
 import { VistaCarga } from "./VistaCarga";
@@ -19,7 +18,6 @@ interface Props {
   id: string;
   // El `rev` del borrador según la página.
   rev: number;
-  moneda: string;
   alAusente: () => void;
   // El servidor aceptó una edición: su resumen pasa a la barra de estado de la página.
   alAceptar: (resumen: Resumen) => void;
@@ -45,7 +43,7 @@ interface PropsContenido extends Props {
   alRelectura: () => void;
 }
 
-function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, conversion, base }: PropsContenido) {
+function ContenidoParametros({ id, rev, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, conversion, base }: PropsContenido) {
   const { alExpirar, sesion } = useAplicacion();
   const puedeEditar = usePuedeEditarLaHoja(base ?? null);
   const idDelError = useId();
@@ -93,9 +91,6 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
           />
         ))}
       </div>
-      {vista.moneda_proyecto !== null && (
-        <p className="cds--type-body-compact-01">Moneda del proyecto: {vista.moneda_proyecto}</p>
-      )}
       {/* Convertir crea una versión desde la GUARDADA: su regla es solo el permiso (`convertir_y_reajustar`, y el
           `puede_convertir` que da la API), no la base del borrador (Eugenio, 2026-10-31). */}
       {conversion !== undefined && sesion.acciones.includes("convertir_y_reajustar") && (
@@ -108,9 +103,6 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
           alCrearVersion={conversion.alCrearVersion}
         />
       )}
-      <p className="silice-hoja__total cds--type-heading-03">
-        Total del presupuesto <Cifra monto={vista.total} unidad={moneda} />
-      </p>
     </div>
   );
 }

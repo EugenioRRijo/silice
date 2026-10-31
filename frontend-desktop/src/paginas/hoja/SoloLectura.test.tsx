@@ -201,7 +201,7 @@ const CARGADA: Record<(typeof PESTANAS)[number], string> = {
   "Plan y curva": "Curva de inversión",
   "Punto de equilibrio": "Punto de equilibrio",
   Precios: "Evaluada al",
-  Parámetros: "Moneda del proyecto",
+  Parámetros: "Utilidad",
   Auditoría: "El informe se genera siempre",
   Trazabilidad: "Versiones del proyecto",
 };

@@ -215,10 +215,6 @@ function ContenidoEspacio({
           />
         )}
       </section>
-      <p className="silice-hoja__total cds--type-heading-03">
-        Total del presupuesto{" "}
-        <Cifra monto={vista.total} unidad={vista.moneda} />
-      </p>
       {vista.pendientes > 0 && (
         <p className="cds--type-body-compact-01">
           {vista.pendientes} partida(s) no tienen composición en el catálogo del

@@ -175,7 +175,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     expect(within(fuentes).getByText("Error")).toBeInTheDocument();
   });
 
-  test("Espacio: las cantidades derivadas, el total y el exacto accesible", async () => {
+  test("Espacio: las cantidades derivadas y el exacto accesible, sin repetir el total (baja 12)", async () => {
     servidor();
     montar();
     const derivadas = await screen.findByRole("table", { name: "Cantidades derivadas" });
@@ -184,9 +184,8 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     expect(within(filas[1]!).getByText("3,00")).toBeInTheDocument();
     expect(within(filas[2]!).getByText("8,25")).toBeInTheDocument();
     expect(within(filas[2]!).getByTitle("8.250000000000000000000000000")).toBeInTheDocument();
-    const total = screen.getByTitle("2703.86023234404403");
-    expect(total).toHaveTextContent("2.703,86 USD");
-    expect(screen.getByText("Valor exacto 2703.86023234404403")).toBeInTheDocument();
+    expect(screen.queryByText(/Total del presupuesto/)).toBeNull();
+    expect(screen.queryByTitle("2703.86023234404403")).toBeNull();
   });
 
   test("Espacio: avisa de las partidas pendientes del catálogo", async () => {

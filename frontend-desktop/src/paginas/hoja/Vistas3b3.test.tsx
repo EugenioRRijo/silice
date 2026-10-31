@@ -11,7 +11,6 @@ import {
   preciosRespuesta,
   trazabilidadRespuesta,
   vistaEquilibrio,
-  vistaParametros,
 } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import { PESTANAS } from "./logica";
@@ -227,20 +226,15 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     expect(screen.getAllByRole("textbox")).toHaveLength(4);
   });
 
-  test("Parámetros: la moneda del proyecto y el total del presupuesto", async () => {
+  // F4, baja 12: el total vive bajo la tabla de «Partidas»; «Parámetros» ya no repite ni el total ni la moneda del proyecto.
+  test("Parámetros: no repite el total del presupuesto ni la moneda del proyecto", async () => {
     servidor();
     montar();
     await irA("Parámetros");
-    expect(await screen.findByText("Moneda del proyecto: USD")).toBeInTheDocument();
-    expect(screen.getByTitle("2703.860232344044")).toHaveTextContent("2.703,86 USD");
-  });
-
-  test("Parámetros: sin moneda del proyecto no se inventa una", async () => {
-    servidor({ vistas: { parametros: () => json(vistaParametros({ moneda_proyecto: null })) } });
-    montar();
-    await irA("Parámetros");
-    await screen.findByText(/^FCAS/);
+    await screen.findByRole("textbox", { name: /^FCAS/ });
     expect(screen.queryByText(/Moneda del proyecto/)).toBeNull();
+    expect(screen.queryByText(/Total del presupuesto/)).toBeNull();
+    expect(screen.queryByTitle("2703.860232344044")).toBeNull();
   });
 
   // --- Auditoría ----------------------------------------------------------------------------------

@@ -215,7 +215,7 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
     test("Parámetros: no se ofrece convertir la moneda (P:2081)", async () => {
       montar();
       await irA("Parámetros");
-      await screen.findByText("Moneda del proyecto: USD");
+      await screen.findByRole("textbox", { name: /^FCAS/ });
       expect(
         screen.getByText("Cambiar la moneda crea una versión nueva desde la guardada: guarde o descarte primero los 3 cambios pendientes."),
       ).toBeInTheDocument();
@@ -479,7 +479,7 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
       alOperacion = () => json({ codigo: "003", proyecto: "OF-001", mensaje: "Se guardó la versión 003, convertida a Bs." });
       montar();
       await irA("Parámetros");
-      await screen.findByText("Moneda del proyecto: USD");
+      await screen.findByRole("textbox", { name: /^FCAS/ });
       const dialogo = await abrirDialogo("Convertir la moneda…");
       expect(dialogo).toHaveAccessibleName("Convertir la moneda");
       expect(within(dialogo).getByText(/crea una versión convertida; la actual no cambia/)).toBeInTheDocument();
@@ -525,7 +525,7 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
       parametros = { ...vistaParametros(), puede_convertir: false };
       montar();
       await irA("Parámetros");
-      await screen.findByText("Moneda del proyecto: USD");
+      await screen.findByRole("textbox", { name: /^FCAS/ });
       expect(screen.queryByRole("button", { name: "Convertir la moneda…" })).toBeNull();
     });
   });

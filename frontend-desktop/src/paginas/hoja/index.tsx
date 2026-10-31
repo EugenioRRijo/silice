@@ -201,7 +201,6 @@ function ContenidoDePestana({
         id={borrador.id}
         base={borrador.base}
         rev={borrador.resumen.rev}
-        moneda={moneda}
         alAusente={alAusente}
         alAceptar={alAceptar}
         alRecargarBorrador={alRecargarBorrador}

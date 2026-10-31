@@ -492,12 +492,11 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
       expect(screen.getByText(/Cambiarlos recalcula/)).toBeInTheDocument();
       expect(screen.queryByText(/solo se leen/)).toBeNull();
-      expect(screen.getByText("Moneda del proyecto: USD")).toBeInTheDocument();
       // La etiqueta se ve (no está oculta): es el rótulo de la clásica.
       expect(screen.getByText(/^Administración \(fracción del costo directo\)/)).toBeVisible();
     });
 
-    test("3c-B1 (P13): administración 0.20 manda los cuatro textos y el total pasa a 2.821,42 en la pestaña y en el estado", async () => {
+    test("3c-B1 (P13): administración 0.20 manda los cuatro textos y el total pasa a 2.821,42 en el estado (la pestaña ya no lo repite, baja 12)", async () => {
       await irA("Parámetros");
       await screen.findByRole("textbox", { name: /^Administración/ });
       relojFalso();
@@ -513,8 +512,8 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(escrituras("parametros")).toEqual([
         { rev: 0, fcas: "6,00", bono_alimentacion: "5,8100", administracion: "0,20", utilidad: "0,10" },
       ]);
-      await esperar(() => expect(screen.getAllByTitle("2821.4208")).toHaveLength(2)); // el estado y el total de la pestaña
-      expect(screen.getAllByTitle("2821.4208")[0]).toHaveTextContent("2.821,42 USD");
+      await esperar(() => expect(screen.getAllByTitle("2821.4208")).toHaveLength(1)); // solo el estado del borrador
+      expect(screen.getByTitle("2821.4208")).toHaveTextContent("2.821,42 USD");
       expect(lecturas("parametros")).toBe(antes + 1);
       expect(within(regionDeEstado()).getByText(/· 1 cambio sin guardar/)).toBeInTheDocument();
       expect(campo(/^Administración/)).toHaveValue("0,20");
