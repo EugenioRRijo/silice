@@ -71,6 +71,9 @@ PARTIDAS_VIALES: dict[str, tuple[str, str, str]] = {
         "Transporte de mezcla asfáltica desde la planta",
         "t·km",
     ),
+    # Tarea 16b (filas 34, 51 y 63): la pintura de cada línea de demarcación, para que VR5 se
+    # dispare desde la interfaz. Código provisional y correlativo, como los demás.
+    "pintura_demarcacion": ("C-000.000.015", "Pintura de demarcación", "l"),
 }
 
 
@@ -158,6 +161,15 @@ ANCHO_LINEA_SUPUESTO_CM = Constante(
     "Ancho de línea cuando la partida de pintura no lo declara, cm (VR5)",
     Decimal("10"),
     SUPUESTO_DECLARADO,
+)
+
+#: Litros de pintura que la derivación pone a cada línea de demarcación (Tarea 16b, filas 51 y 63):
+#: el punto medio del rango de VR5 (V-11 y V-12), por km de línea de 10 cm.
+PINTURA_POR_DEFECTO_L_KM = Constante(
+    "V-17",
+    "Pintura que se deriva por defecto, l por km de línea de 10 cm",
+    Decimal("36.5"),
+    f"{SUPUESTO_DECLARADO}: punto medio de V-11 y V-12; a cotejar con la ficha del producto",
 )
 
 # --- Tolerancias de la conciliación (plan vial, Tarea 10) -------------------------------------

@@ -4,10 +4,12 @@ De punta a punta por la API y **sin llamar a `derivar_tramos`**: se importa
 `data/samples/vial/via_ficticia.csv` en VIV-002 de la «Vivienda Demo 80 m2», se lleva al borrador
 de la Hoja, se escribe a mano una cantidad distinta de la derivada en la mezcla de la carpeta de T1
 y la auditoría del borrador trae VR1 para esa capa. Oráculos a mano (memoria de cálculo del
-README de la muestra): 18 renglones; la mezcla de T1 es 1200 × 7,30 × 0,05 × 2,35 = 1029,3 t.
+README de la muestra): 20 renglones; la mezcla de T1 es 1200 × 7,30 × 0,05 × 2,35 = 1029,3 t.
+Tarea 16b: la línea continua de T1 (2 líneas × 1200 m = 2,4 km) lleva su pintura, 2.400 × 0,0365 =
+87,6 l; escribir 50 l son 50 ÷ 2,4 = 20,83 l por km de línea de 10 cm, bajo 29, y aparece VR5.
 
-`via.db` lleva las 14 partidas viales en «Lista Bs de prueba»; `sin_apu.db` es la misma carpeta
-sin ninguna, y llevar da 404 con los 14 códigos. Mismo acceso que `POST /v1/hoja/llevar`: solo
+`via.db` lleva las 15 partidas viales en «Lista Bs de prueba»; `sin_apu.db` es la misma carpeta
+sin ninguna, y llevar da 404 con los 15 códigos. Mismo acceso que `POST /v1/hoja/llevar`: solo
 una cuenta con `editar_hoja`, CSRF, `Origin` y `no-store`.
 """
 
@@ -53,10 +55,11 @@ MUESTRA = Path(__file__).resolve().parents[2] / "data" / "samples" / "vial" / "v
 RUTA = "/v1/vial/tramos/llevar"
 CENTINELA = "VALOR-CENTINELA"
 MEZCLA_T1 = "C-000.000.009|tramo:T1:capa:3"
+PINTURA_T1 = "C-000.000.015|tramo:T1:demarcacion:1"
 SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
 SIN_OBRA = "Esa obra no está en esta carpeta de trabajo: elíjala de nuevo en el selector de obra."
 FORMA = "Envíe la obra y la versión cuyos tramos se llevan al presupuesto."
-CODIGOS = [f"C-000.000.{n:03d}" for n in range(1, 15)]
+CODIGOS = [f"C-000.000.{n:03d}" for n in range(1, 16)]
 SIN_APU = (
     "Las partidas "
     + ", ".join(f"«{c}»" for c in CODIGOS[:-1])
@@ -69,11 +72,11 @@ CABECERA = (
 
 
 def _catalogar(sesion) -> None:
-    """Las 14 partidas viales con un APU de una línea (precio inventado) en la lista de la obra."""
+    """Las 15 partidas viales con un APU de una línea (precio inventado) en la lista de la obra."""
     lista = sesion.scalars(
         select(models.ListaPrecios).where(models.ListaPrecios.nombre == "Lista Bs de prueba")
     ).one()
-    unidades = ["m3", "m3", "m3", "m2", "l", "m2", "l", "m2", "t", "m3", "t", "m", "m", "t·km"]
+    unidades = ["m3", "m3", "m3", "m2", "l", "m2", "l", "m2", "t", "m3", "t", "m", "m", "t·km", "l"]
     for codigo, unidad in zip(CODIGOS, unidades, strict=True):
         linea = LineaMaterial(f"Material de {codigo}", unidad, D("1"), D("3"))
         apu = ComposicionAPU(codigo, f"Partida vial {codigo}", unidad, D("10"), materiales=(linea,))
@@ -181,14 +184,14 @@ def test_importar_llevar_escribir_900_y_la_auditoria_muestra_vr1(ana) -> None:
     assert llevado.headers["cache-control"] == "no-store"
     cuerpo = llevado.json()
     assert list(cuerpo) == ["borrador_id", "renglones", "version"]
-    assert (cuerpo["renglones"], cuerpo["version"]) == (18, "VIV-002")
+    assert (cuerpo["renglones"], cuerpo["version"]) == (20, "VIV-002")
     id_ = cuerpo["borrador_id"]
     ((borrador,),) = [[b] for b in _borradores(navegador)]
     assert (borrador["id"], borrador["proyecto"], borrador["version"]) == (id_, OBRA, "VIV-002")
 
     filas = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/presupuesto").json()["filas"]
     claves = [f["clave"] for f in filas]
-    assert len([c for c in claves if "|tramo:" in c]) == 18
+    assert len([c for c in claves if "|tramo:" in c]) == 20
     assert not [c for c in claves if "|a-mano:" in c]
     (mezcla,) = [f for f in filas if f["clave"] == MEZCLA_T1]
     assert mezcla["cantidad"] == "1.029,3"
@@ -207,6 +210,31 @@ def test_importar_llevar_escribir_900_y_la_auditoria_muestra_vr1(ana) -> None:
     assert "900 t" in viales[0]["descripcion"] and "1.029,3 t" in viales[0]["descripcion"]
 
 
+def test_importar_llevar_escribir_otros_litros_y_la_auditoria_muestra_vr5(ana) -> None:
+    """Tarea 16b (filas 51 y 63): la pintura llega a la Hoja con los tramos y VR5 se dispara."""
+    navegador, ficha = ana
+    assert _importar(ana, MUESTRA.read_bytes()).status_code == 200
+    id_ = _llevar(ana).json()["borrador_id"]
+    filas = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/presupuesto").json()["filas"]
+    (pintura,) = [f for f in filas if f["clave"] == PINTURA_T1]
+    assert pintura["cantidad"] == "87,6"
+    informe = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/auditoria").json()
+    assert not [h for h in informe["hallazgos"] if h["regla"].startswith("VR")]
+
+    (borrador,) = _borradores(navegador)
+    escrita = navegador.put(
+        f"/v1/hoja/borradores/{id_}/cantidades",
+        json={"rev": borrador["rev"], "filas": [{"clave": PINTURA_T1, "cantidad": "50"}]},
+        headers=protegida(ficha),
+    )
+    assert escrita.status_code == 200, escrita.text
+
+    informe = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/auditoria").json()
+    viales = [h for h in informe["hallazgos"] if h["regla"].startswith("VR")]
+    assert [(h["regla"], h["origen"]) for h in viales] == [("VR5", ["tramo:T1:demarcacion:1"])]
+    assert "50 l de pintura en 2,4 km de línea de 10 cm son 20,83 l" in viales[0]["descripcion"]
+
+
 def test_llevar_otra_vez_usa_el_mismo_borrador_y_no_duplica(ana) -> None:
     navegador, _ = ana
     assert _importar(ana, MUESTRA.read_bytes()).status_code == 200
@@ -214,7 +242,7 @@ def test_llevar_otra_vez_usa_el_mismo_borrador_y_no_duplica(ana) -> None:
     segundo = _llevar(ana).json()
     assert segundo == primero
     filas = navegador.get(f"/v1/hoja/borradores/{primero['borrador_id']}/vistas/presupuesto")
-    assert len([f for f in filas.json()["filas"] if "|tramo:" in f["clave"]]) == 18
+    assert len([f for f in filas.json()["filas"] if "|tramo:" in f["clave"]]) == 20
 
 
 # --- la versión que se ve es la del borrador (ronda 2) --------------------------------------------

@@ -243,6 +243,15 @@ def test_vr5_discontinua_mide_el_largo_pintado():
     assert h.valor_esperado == D("29") and round(h.valor_observado, 2) == D("26.67")
 
 
+def test_vr5_sobre_la_pintura_que_dan_los_tramos():
+    """Tarea 16b: la partida de pintura que deriva la linea (36,5 l en 1 km) entra en la regla
+    como cualquier otra en l con ese origen; con 20 l, 20 l por km de 10 cm, bajo 29."""
+    assert auditar_vial([T1], _presupuesto(derivar_tramos([T1]))) == []
+    presupuesto = _cambiar([T1], "pintura_demarcacion", LINEA1, cantidad=D("20"))
+    h = _solo(auditar_vial([T1], presupuesto), "VR5")
+    assert (h.origen_ids, h.valor_observado, h.valor_esperado) == ((LINEA1,), D("20"), D("29"))
+
+
 def test_vr5_un_ancho_ilegible_se_avisa():
     h = _solo(auditar_vial([T1], _con_pintura("36", "ancho")), "VR5")
     assert h.origen_ids == (LINEA1,)

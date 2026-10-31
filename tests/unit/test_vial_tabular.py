@@ -252,7 +252,8 @@ def test_lee_la_muestra_con_sus_tramos_y_demarcacion():
 
 
 def test_via_ficticia_completa():
-    """La muestra produce los 18 items de la memoria de calculo del README, en este orden."""
+    """La muestra produce los 20 items de la memoria de calculo del README, en este orden (cada
+    linea con su pintura, Tarea 16b: 2400 x 0,0365 = 87,6 l y 450 x 0,0365 = 16,425 l)."""
     adaptador = AdaptadorVial()
     assert isinstance(adaptador, AdaptadorDominio)
     assert AdaptadorVial.dominio is Dominio.CIVIL
@@ -267,7 +268,9 @@ def test_via_ficticia_completa():
         (c["carpeta_mezcla"], "tramo:T1:capa:3", Decimal("1029.3"), "t"),
         (c["transporte_mezcla"], "tramo:T1:capa:3", Decimal("15439.5"), "t·km"),
         (c["demarcacion_continua"], "tramo:T1:demarcacion:1", Decimal("2400"), "m"),
+        (c["pintura_demarcacion"], "tramo:T1:demarcacion:1", Decimal("87.6"), "l"),
         (c["demarcacion_discontinua"], "tramo:T1:demarcacion:2", Decimal("450"), "m"),
+        (c["pintura_demarcacion"], "tramo:T1:demarcacion:2", Decimal("16.425"), "l"),
         (c["subbase_granular"], "tramo:T2:capa:1", Decimal("1300"), "m3"),
         (c["base_granular"], "tramo:T2:capa:2", Decimal("1040"), "m3"),
         (c["imprimacion"], "tramo:T2:capa:3", Decimal("5200"), "m2"),
@@ -286,7 +289,7 @@ def test_r4_no_da_hallazgos_en_la_muestra():
     """Las marcas de especialidad y capa son directivas (DA-SF-3): R4 no las contrasta con un APU
     cuyo texto no dice «vial» ni el tipo de capa, asi que no hay ruido «no contrastable»."""
     items = AdaptadorVial().extraer(MUESTRA)
-    assert len(items) == 18
+    assert len(items) == 20
     cero = Decimal(0)
     partidas = tuple(
         PartidaPresupuestada(

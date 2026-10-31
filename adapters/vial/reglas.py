@@ -17,7 +17,9 @@ conciliación, Tarea 10).
   residual de la emulsión (supuestos declarados).
 - **VR4** t·km de transporte ≠ toneladas × distancia declarada.
 - **VR5** litros de pintura (partida en `l` con origen de una línea) por km de línea de 10 cm fuera
-  de su rango; el ancho sale de `especificaciones["_ancho_linea_cm"]` o, sin él, del supuesto.
+  de su rango; el ancho sale de `especificaciones["_ancho_linea_cm"]` o, sin él, del supuesto. Los
+  km pintados son los de la partida de la línea en m; la pintura que `derivar_tramos` pone a cada
+  línea (`pintura_demarcacion`, Tarea 16b) es una partida en `l` más, la que llega a la Hoja.
 - **VR6** progresivas solapadas (ERROR) o con huecos (ADVERTENCIA) entre los tramos de la obra,
   que son los de una misma vía. Cita `tramo:<id>` de los dos.
 - **VR7** unidad de la partida incompatible con su capa o su línea, o código de partida que esa
@@ -256,7 +258,8 @@ def _vr5(derivados: Sequence[ItemComputo], indice: dict[str, list[ItemComputo]])
     referencia = Decimal(ANCHO_LINEA_REFERENCIA_CM.valor)
     hallazgos = []
     for derivado in derivados:
-        if ":demarcacion:" not in derivado.origen_id:
+        # el largo pintado de la línea (en m); la pintura que también deriva es lo que se mide
+        if ":demarcacion:" not in derivado.origen_id or derivado.unidad != "m":
             continue
         km_pintados = derivado.cantidad / _MIL
         for item in indice.get(derivado.origen_id, ()):
