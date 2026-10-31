@@ -12,10 +12,11 @@ lo mismo. Con gasto uniforme en 6 meses el factor es (1,1 + 1,21 + 1,331 + 1,464
 1,771561) ÷ 6 = 8,487171 ÷ 6 = 1,4145285, y 600 × 1,4145285 = 848,7171: P50 = P80 = 1.248,7171 y la
 reserva 248,7171, toda del asfalto. Hay 24 meses completos (octubre de 2024 a septiembre de 2026).
 En la comprobación (25 meses de historia) entran los cortes de octubre de 2025 a abril de 2026: 7,
-cada uno con
-12 meses completos antes y su plazo de 6 meses después, y en todos lo real es igual al P80:
-cobertura 1 (100,00 %). Con el inicio en septiembre de 2025 solo hay 11 meses completos. La
-comprobación lee la historia hasta el mes anterior a «hoy», que se fija en el 31/10/2026.
+cada uno con 12 meses completos antes y su plazo de 6 meses después, y en todos lo real es igual al
+P80: cobertura 1 (100,00 %). Con el inicio en septiembre de 2025 solo hay 11 meses completos. La
+comprobación lee la historia hasta el mes anterior a «hoy», que se fija en el 31/10/2026. Con «hoy»
+el 15/05/2026 la historia llega a abril de 2026 y el plazo de 6 meses solo cabe tras los cortes de
+octubre y noviembre de 2025: 2 cortes (medido por el árbitro de la T16).
 """
 
 from __future__ import annotations
@@ -255,6 +256,18 @@ def test_la_comprobacion_informa_cortes_y_cobertura() -> None:
     for corte in cuerpo["cortes"]:
         assert D(corte["p50"]) == D(corte["p80"]) == D(corte["real"]) == P80
         assert corte["dentro"] is True
+
+
+def test_la_comprobacion_corta_la_historia_en_el_mes_anterior_a_hoy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # hasta el 30/04/2026: un corte c necesita su plazo c .. c + 5 dentro, así que c ≤ 11/2025
+    monkeypatch.setattr(rutas, "hoy", lambda: date(2026, 5, 15))
+    r = _en_la_via().post(COMPROBACION, json=_comprobacion())
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["n_cortes"] == 2
+    assert [c["corte"] for c in cuerpo["cortes"]] == ["2025-10-01", "2025-11-01"]
 
 
 def test_la_comprobacion_trae_500_trayectorias_por_corte_por_omision() -> None:
