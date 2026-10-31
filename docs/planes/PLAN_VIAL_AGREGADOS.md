@@ -531,6 +531,10 @@ Tabular: `test_lee_coma_decimal` («7,30» → `Decimal("7.30")`, Foco 3); `test
     comprobar si una regla R existente ya lo hace; si sí, se reutiliza y `CV1` no se crea** (decirlo en el commit).
   - `CV2` cantidad del renglón ≠ suma de las cantidades de los tramos para esa partida
   - `CV3` precio de `AGP-…`/`MZP-…` usado ≠ el del último cálculo publicado (con el n.º de ambos)
+- **Añadido al cerrar la Tarea 9 (árbitro):** enchufar `aplicacion.vial.reglas_viales` en `reglas_extra` de
+  `aplicacion/hoja.py` (evaluadas al abrir, como R11 y R12; no cambian filas guardadas), para que la auditoría de una
+  versión con tramos muestre VR1–VR7 y, con ellos, CV1–CV3. Prueba: una versión con tramos y la carpeta alterada
+  muestra su `VR1` en la vista de hallazgos de la Hoja; una versión sin tramos no muestra ningún VR.
 
 - [ ] **Step 1: Pruebas:** un caso coherente → `[]`; cada CV alterada aisladamente → exactamente su hallazgo con
   origen.
