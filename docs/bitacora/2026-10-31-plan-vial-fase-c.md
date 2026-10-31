@@ -7,6 +7,7 @@ ausencia de Eugenio están en `docs/bitacora/2026-10-30-preguntas-para-eugenio.m
 |---|---|---|
 | 12 Series viales y su mapa a insumos | 0effc269, a139bd28 | aprobada r1 |
 | 13 Proyección del riesgo | 841e59f3, 0e2ca161 | aprobada r1 |
+| 14 Comprobación hacia atrás | fa954b78, 03151cdf | aprobada r1 |
 
 ## Menores y avisos para las tareas siguientes
 
@@ -21,6 +22,13 @@ ausencia de Eugenio están en `docs/bitacora/2026-10-30-preguntas-para-eugenio.m
 - T13 → T16: `proyectar` compara exacto contra el total del presupuesto. Hay que pasarle un `Presupuesto` recalculado
   con el motor, nunca un total guardado ya redondeado.
 
+- T14 → T16: la comprobación tarda unos 95 s con 2.000 trayectorias por corte (19 cortes, 18 renglones) y unos
+  20 s con 500. Medido por el árbitro de la T14. La ruta `…/riesgo/comprobacion` lleva su propio parámetro
+  `trayectorias_por_corte`, 500 por defecto. Si pasa de unos 30 s, la pantalla muestra un aviso de espera o la
+  calcula en segundo plano. El tiempo medido se anota en la bitácora de la T16.
+- Para la tesis: los plazos de los cortes se solapan. La cobertura es un indicador y no una probabilidad con
+  intervalo.
+
 ## Menores para el cierre de la fase C
 
 - Línea del CHANGELOG de las Tareas 12 y 13.
@@ -34,3 +42,6 @@ ausencia de Eugenio están en `docs/bitacora/2026-10-30-preguntas-para-eugenio.m
     las dos discriminan.
   - El asunto del commit verde no es el del plan.
   - Rendimiento medido por el árbitro: 18 renglones, 43 insumos y 2.000 trayectorias tardan unos 4 s. Escala lineal.
+- T14: en el comentario de `test_un_choque_queda_fuera` hay un salto de línea indebido.
+- T14: `tests/fixtures/riesgo_proyeccion.py` expone nombres con guion bajo (`_mes`, `_obra`, `_historia_variable`,
+  `_meses`). Hay que exponerlos sin guion bajo.
