@@ -98,3 +98,27 @@ export function proyectarObra(pedido: PedidoDeProyeccion): Promise<ProyeccionDeL
 export function comprobarObra(pedido: PedidoDeComprobacion): Promise<ComprobacionDeLaObra> {
   return pedir<ComprobacionDeLaObra>(`${RUTA}/comprobacion`, { metodo: "POST", cuerpo: pedido });
 }
+
+// El informe de mejora de la estimación (Tarea 15): las tres cifras como texto con punto decimal (la pantalla ya leyó la
+// coma), en la misma moneda y a la misma fecha de precios. El servidor responde los dos errores y la mejora en puntos,
+// con dos decimales y punto; la mejora es negativa si Sílice acertó menos. No guarda nada.
+export interface PedidoDeMejora {
+  costo_final_real: string;
+  presupuesto_original: string;
+  estimacion_silice: string;
+}
+
+export interface MejoraDeLaEstimacion {
+  error_original_pct: string;
+  error_silice_pct: string;
+  mejora_pp: string;
+}
+
+export function calcularMejora(pedido: PedidoDeMejora): Promise<MejoraDeLaEstimacion> {
+  return pedir<MejoraDeLaEstimacion>(`${RUTA}/mejora`, { metodo: "POST", cuerpo: pedido });
+}
+
+// El mismo informe en Excel (`GET /v1/riesgo/reportes/mejora`), con las cifras en la consulta.
+export function rutaDelInformeDeMejora(pedido: PedidoDeMejora): string {
+  return `${RUTA}/reportes/mejora?${new URLSearchParams({ ...pedido }).toString()}`;
+}

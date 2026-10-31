@@ -2,9 +2,10 @@ import { Button } from "@carbon/react";
 import { useEffect, useState } from "react";
 import type { JSX } from "react";
 import { ErrorDeApi } from "../../api/cliente";
-import { calculoGuardado, calculosDelPeriodo } from "../../api/produccionPlanta";
+import { calculoGuardado, calculosDelPeriodo, rutaDelReporteDeProduccion } from "../../api/produccionPlanta";
 import type { CalculoDeCosto, ResumenDeCalculo } from "../../api/produccionPlanta";
 import { AvisoError } from "../../comun/AvisoError";
+import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { fechaEsVe, nombreDelMes } from "./logica";
 import { mensajeDePlanta } from "./logicaPlanta";
 
@@ -19,7 +20,8 @@ interface Props {
 type Lista = { periodo: string; version: number; ok: true; datos: ResumenDeCalculo[] } | { periodo: string; version: number; ok: false; error: unknown };
 
 // Los cálculos que ya se guardaron del mes, del más reciente al más viejo, con su fecha y si se publicaron. Abrir uno trae
-// el cálculo tal como se guardó (con su huella verificada por el servidor); nada se recalcula aquí.
+// el cálculo tal como se guardó (con su huella verificada por el servidor); nada se recalcula aquí. Si el mes tiene
+// cálculos, el reporte de costo de producción en Excel los trae todos (sin cálculos el servidor diría 404: no se ofrece).
 export function CalculosAnteriores({ periodo, version, alAbrir, alExpirar }: Props): JSX.Element {
   const [lista, setLista] = useState<Lista | null>(null);
   const [errorAlAbrir, setErrorAlAbrir] = useState<unknown>(null);
@@ -71,6 +73,16 @@ export function CalculosAnteriores({ periodo, version, alAbrir, alExpirar }: Pro
             </li>
           ))}
         </ul>
+      )}
+      {actual?.ok && actual.datos.length > 0 && (
+        <DescargaArchivo
+          ruta={rutaDelReporteDeProduccion(periodo)}
+          etiqueta="Descargar el reporte de costo de producción (Excel)"
+          nombrePorOmision={`produccion_${periodo}.xlsx`}
+          alExpirar={alExpirar}
+          kind="tertiary"
+          size="md"
+        />
       )}
       <AvisoError error={errorAlAbrir === null ? null : mensajeDePlanta(errorAlAbrir)} titulo="No se pudo abrir el cálculo" />
     </section>
