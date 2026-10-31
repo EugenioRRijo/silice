@@ -79,3 +79,15 @@ En total, 18 cantidades. La fracción pintada de la línea discontinua (0,375: 3
 Los códigos tienen la forma de la norma de carreteras (`C-xxx.xxx.xxx`, COVENIN 2000-1:1987, Parte I), pero
 los números son **provisionales** (`C-000.000.001` en adelante) y están **a cotejar** con el texto de la norma:
 no se tomaron de ella (ver `docs/fuentes/2026-10-30-fuentes-plan-vial.md` §3).
+
+## `series_ficticias.csv` (series de precios, datos FICTICIOS)
+
+**Datos ficticios.** Las dos series (`CEMENTO_ASFALTICO_PPI` y `GASOIL_USD`), de octubre de 2023 a septiembre de
+2026 (36 meses), son inventadas para probar `aplicacion/riesgo/series.py` (plan vial, Tarea 12) y la proyección del
+riesgo. **No son** el PPI de asfalto de FRED/BLS ni el precio del gasoil de ninguna Gaceta, ni vienen de ninguna
+empresa; cada fila lo dice en su columna `fuente`. Sirven para la forma, no para el valor.
+
+Formato: el CSV canónico de series (`serie,fecha,valor,provisional,fuente`; punto decimal; fecha `AAAA-MM-DD`,
+primer día del mes). El PPI se declara **índice** (proxy internacional, solo se usa su variación mensual); el gasoil
+es una serie en **escalones** (precio administrado, «a cotejar en la Gaceta»). Las series reales se importan solo
+en local, nunca al repositorio.
