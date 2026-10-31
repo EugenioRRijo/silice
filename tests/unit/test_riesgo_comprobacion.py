@@ -35,6 +35,7 @@ from tests.fixtures.riesgo_proyeccion import (
     PPI,
     RECETA,
     RIEGO,
+    apu_ficticio,
     historia_variable,
     mes_desplazado,
     meses_hasta,
@@ -165,6 +166,24 @@ def test_una_entrada_vieja_del_mapa_no_quita_cortes():
     c = comprobar_hacia_atras(presupuesto, composiciones, PARAMETROS, historia, mapa, _p(meses=6))
 
     assert c.n_cortes == 4
+    assert c.cobertura == D(1)
+
+
+def test_un_insumo_con_dos_precios_ya_no_niega_la_comprobacion():
+    # fila 81: el asfalto a 600 (riego) y a 700 (otro APU) se desdobla; las dos variantes siguen el
+    # PPI. Todo sube 50 % al mes: lo real de cada corte es el total base × 5,1953125, igual al P80.
+    # A mano: base (100 × 305 + 1 × 700) × 1,265 = 31.200 × 1,265 = 39.468
+    caro = apu_ficticio("VIA-05", [(ASFALTO, "t", D(1), D(700))])
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100), caro: D(1)})
+
+    c = comprobar_hacia_atras(
+        presupuesto, composiciones, PARAMETROS, _exponencial(22), MAPA, _p(meses=6)
+    )
+
+    assert c.n_cortes == 4
+    for r in c.cortes:
+        assert abs(r.real - D(39468) * FACTOR_MEDIO) < TOLERANCIA
+        assert r.p80 == r.real
     assert c.cobertura == D(1)
 
 

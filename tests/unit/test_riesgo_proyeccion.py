@@ -309,12 +309,55 @@ def test_supuestos_declarados():
     assert any("36 meses completos" in s for s in p.supuestos)
 
 
-def test_dos_precios_para_el_mismo_insumo_se_niega():
-    otro = apu_ficticio("VIA-04", [(FLETE, "t", D(1), D(25))])
-    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(1), otro: D(1)})
+FLETE_CARO = apu_ficticio("VIA-04", [(FLETE, "t", D(1), D(25))])
 
-    with pytest.raises(ValueError, match="«Flete» tiene dos precios"):
-        proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(), MapaSeries({}), _p())
+
+def test_dos_precios_para_el_mismo_insumo_se_desdoblan_con_la_serie_del_original():
+    # fila 81: el flete a 20 (50 t) y a 25 (10 t) no niega la proyección; las dos variantes siguen
+    # la serie del flete (el gasoil, +1 % mensual), cada una con su precio. A mano:
+    # base (50 × 20 + 10 × 25) × 1,265 = 1.250 × 1,265 = 1.581,25 y el total proyectado 1.581,25 × F
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50), FLETE_CARO: D(10)})
+    mapa = MapaSeries({FLETE: GASOIL})
+
+    p = proyectar(
+        presupuesto, composiciones, PARAMETROS, historia_uniforme(gasoil=D("1.01")), mapa, _p()
+    )
+
+    assert p.total_base == D("1581.25")
+    esperado = D("1581.25") * F_UNO
+    assert abs(p.percentiles[50] - esperado) < TOLERANCIA
+    assert abs(p.percentiles[80] - esperado) < TOLERANCIA
+    # si la variante cara no siguiera la serie, quedaría fija en USD: (1.000 × F + 250) × 1,265
+    [(insumo, monto)] = p.contribucion  # agrupada por el nombre original
+    assert insumo == FLETE
+    assert abs(monto - D("1581.25") * (F_UNO - 1)) < TOLERANCIA
+    assert any("Flete" in s and "desdobl" in s and "2 precios" in s for s in p.supuestos)
+
+
+def test_la_variante_no_pisa_un_insumo_que_ya_se_llama_asi():
+    # un insumo de verdad llamado «Flete [2]» (30, sin serie, fijo en USD) no se confunde con la
+    # variante del flete caro. A mano: base (1.000 + 250 + 300) × 1,265 = 1.960,75 y el total
+    # (1.250 × F + 300) × 1,265
+    otro = apu_ficticio("VIA-05", [("Flete [2]", "t", D(1), D(30))])
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50), FLETE_CARO: D(10), otro: D(10)})
+    mapa = MapaSeries({FLETE: GASOIL})
+
+    p = proyectar(
+        presupuesto, composiciones, PARAMETROS, historia_uniforme(gasoil=D("1.01")), mapa, _p()
+    )
+
+    assert p.total_base == D("1960.75")
+    esperado = (D(1250) * F_UNO + D(300)) * CASCADA
+    assert abs(p.percentiles[80] - esperado) < TOLERANCIA
+    assert [insumo for insumo, _ in p.contribucion] == [FLETE]
+
+
+def test_un_insumo_con_un_solo_precio_no_se_declara_desdoblado():
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50)})
+
+    p = proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(), MapaSeries({}), _p())
+
+    assert not any("desdobl" in s for s in p.supuestos)
 
 
 def test_composiciones_que_no_reproducen_el_total_se_niegan():
