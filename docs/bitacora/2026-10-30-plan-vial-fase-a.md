@@ -250,3 +250,12 @@ preguntas, n.º 24 a 26):
   N») y su fuente.
 - **Fila 27**: si un mes no tiene cálculo, lo que pasaba del anterior no llega al siguiente (como el
   plan); anotado como pregunta.
+
+## Menores del cierre, Tareas 4b y 6b
+
+- `CHANGELOG.md`: la línea de la 4b dice que corrige también la de la Tarea 5 (la base ya no se convierte con la tasa del día en que rige).
+- Se acepta que `aplicacion/tasa_del_dia.py` importe `produccion.costos.ultimo_dia_del_mes`: `aplicacion` ya depende de `produccion`
+  y `produccion` no puede importar de `aplicacion`, así que un módulo neutro obligaría a mover también `validar_periodo` y sus
+  usos fuera de producción por una función de fecha. `test_arquitectura` lo admite. Si mercado o control llegan a necesitar
+  períodos propios, se mueven ambas a un módulo común en ese momento.
+- Tarea 6b: el árbitro no dejó menores pendientes (el peso 0 lo cubre el bloqueo de porcentaje 0).
