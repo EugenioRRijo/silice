@@ -173,7 +173,13 @@ describe("Resumen de la obra abierta", () => {
     await screen.findByRole("heading", { level: 1, name: "Resumen" });
     expect(franja()).toHaveTextContent("Te falta: Faltan 2 precios");
     expect(within(franja()).queryByRole("button")).toBeNull();
-    // Cuando la Hoja se abra en solo lectura (Tarea 2b), `hoja` dejará de exigir `editar_hoja` y el botón saldrá.
+  });
+
+  it("quien revisa sí tiene el botón hacia la Hoja: la ve en solo lectura (Tarea 2b)", async () => {
+    const u = userEvent.setup();
+    montar({ sesion: sesionDe("rita") });
+    await u.click(await within(franja()).findByRole("button", { name: "Abrir la Hoja" }));
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Norte.db/3/presupuesto");
   });
 
   it("a lo sumo hay un botón principal", async () => {
