@@ -295,6 +295,111 @@ Aplicación: `test_costo_en_bs_sin_tasa_ese_dia_falla_y_lo_nombra` (Foco 1); `te
   fecha` (Foco 1); `Publicar solo aparece con la acción y muestra la fuente con que quedará el precio`.
 - [ ] **Step 2–5:** rojo, implementar, verde + lint, commit — `feat(front): receta, costo por tonelada y publicacion`.
 
+### Tarea 4b: Respuestas de Eugenio al cálculo y a la publicación (P14, P15, P16, P22)
+
+**Modelo:** Opus (cambia la instantánea que la tesis cita y la regla de la tasa).
+
+Eugenio respondió el 2026-10-30 (`docs/bitacora/2026-10-30-preguntas-para-eugenio.md`, preguntas 14, 15, 16 y 22).
+Esta tarea cambia el comportamiento de las Tareas 4 y 5 sin cambiar sus rutas existentes.
+
+**Archivos:**
+- Modify: `aplicacion/tasa_del_dia.py`, `aplicacion/costo_propio.py`, `produccion/modelo.py` (`prod_publicacion`),
+  `api/rutas/produccion_planta.py`
+- Create: `migraciones/instalacion/versions/ins_0009_prod_publicacion.py` (`down_revision = "ins_0008_prod_calculo"`)
+- Test: `tests/unit/test_tasa_del_cierre.py`, `tests/unit/test_aplicacion_costo_propio_4b.py`,
+  `tests/integration/test_api_produccion_calculos_4b.py`, `tests/integration/test_migracion_prod_publicacion.py`
+
+**Interfaces:**
+- Consumes: Tareas 4 y 5 (`calcular_periodo`, `ultimo_calculo`, `calculo_guardado`, `publicar_calculo`,
+  `FaltanTasas`).
+- Produces:
+  - `aplicacion/tasa_del_dia.py`: `tasa_del_cierre(sesion, periodo: str, moneda_destino: str) -> TasaDeclarada` — la
+    última tasa del BCV con fecha valor **dentro** del mes `periodo` (la más reciente hasta el último día, y solo si es
+    de ese mes); si no hay, `SinTasaDelDia` con el mensaje «No hay tasa del BCV publicada en AAAA-MM para convertir
+    a {moneda}. Cárguela en Índices y vuelva a intentarlo.». Mismo módulo: sigue siendo el único sitio de la regla.
+  - Instantánea `VERSION_DE_LA_INSTANTANEA = 2` con cuatro claves nuevas (las de la versión 1 se siguen leyendo):
+    `"tasa_del_cierre"` (`{valor, fecha, fuente}` o `null` si no hizo falta convertir),
+    `"de_otro_calculo"` (código → `{costo, calculo, periodo}`),
+    `"viene_del_mes_anterior"` (centro → `{total, calculo, periodo, costos: [ids], tasa}`) y
+    `"pasa_al_mes_siguiente"` (centro → `{total, costos: [ids]}`).
+  - `publicacion_de(sesion_ins, calculo_id: int) -> Publicacion | None`; tabla `prod_publicacion(id, calculo_id`
+    **único**`, caso, lista_id, usuario, registrado)`.
+  - `GET /v1/produccion/calculos?periodo=AAAA-MM` (periodo opcional) → lista, de la más reciente a la más vieja, de
+    `{id, periodo, moneda, usuario, registrado, huella, publicado: {lista_id, caso, registrado} | null}`; acción
+    `registrar_costos_produccion`. `GET /calculos/{id}` añade el mismo `publicado`.
+
+**Reglas (decididas por el orquestador sobre las respuestas; anotarlas en la bitácora):**
+1. **P14, tasa del cierre del mes:** el precio de cada componente comprado (lista vigente el último día del mes) se
+   convierte con `tasa_del_cierre(periodo)`, no con la tasa de la vigencia de la lista. La copia de la base al publicar
+   (Tarea 5, `_tasa_de_la_base`) usa la misma tasa, para que publicación y cálculo cuenten igual. Los costos del período
+   siguen con la tasa del día exacto de su fecha (sin cambio: es lo que se pagó ese día).
+2. **P15, agregado propio no producido en el mes:** toma el costo por tonelada del **último cálculo de un período
+   anterior** (`periodo < el calculado`, el de id mayor) **en la misma moneda**; se anota en `"de_otro_calculo"`. Sin
+   ninguno: se niega con «La mezcla {M} usa {A}, que no se produjo en AAAA-MM ni tiene un costo calculado antes en
+   {moneda}.» Nunca toma un cálculo de un mes posterior (recalcular octubre en diciembre no usa noviembre).
+3. **P16, costos sin quien los reciba:** ya no se niega. El total del centro sin receptor (cantera sin agregados,
+   planta sin mezcla) queda en `"pasa_al_mes_siguiente"`. Un mes con costos y **sin ninguna producción** también se
+   calcula: `por_tonelada` vacío y todo pasa (esos cálculos no se publican: 422 «Este cálculo no tiene costos por
+   tonelada que publicar.»). El cálculo de M toma lo que pasa del **último cálculo de M−1** (id mayor; si M−1 no tiene
+   cálculo, nada pasa y la instantánea no dice nada) y lo suma al centro; si las monedas difieren, lo convierte con
+   `tasa_del_cierre(M−1)` y la anota. Lo que vuelve a quedar sin receptor en M pasa a M+1 sumado. Los costos de
+   M−1 que pasan nunca cuentan dos veces: un cálculo de M−1 hecho **después** del de M no cambia el de M (la
+   instantánea de M guarda de qué cálculo vino).
+4. **P22, publicar una sola vez:** `publicar_calculo` registra `prod_publicacion` en la misma operación; un segundo
+   intento da 409 «El cálculo n.º N ya se publicó en la lista n.º L.» y no escribe nada en ninguna base. Si la
+   escritura de la lista falla, no queda fila en `prod_publicacion` (la de instalación se confirma después de la del
+   caso; probarlo con un fallo forzado).
+
+- [ ] **Step 1: Pruebas que fallan.** Oráculos a mano:
+  - `test_tasa_del_cierre_es_la_ultima_del_mes`: tasas el 2026-11-03 (40) y el 2026-11-28 (42) y el 2026-12-01 (45)
+    → para `2026-11`, 42 del 28/11; `test_sin_tasa_en_el_mes_falla` (solo una del 2026-10-31 → `SinTasaDelDia` con el
+    mensaje exacto).
+  - `test_lista_vieja_se_convierte_con_la_tasa_del_cierre`: lista en USD vigente desde 2026-06-01 (tasa ese día 50),
+    cálculo en Bs de 2026-11 con cierre a 200: CA-30 a 600 USD/t → 120.000 Bs/t (no 30.000).
+  - `test_agregado_no_producido_toma_el_ultimo_calculo_anterior` (AGR-12 a 5 en el cálculo de 2026-10; la mezcla de
+    2026-11 lo usa a 5 y lo anota con su cálculo y período); `…_de_otra_moneda_no_sirve`; `…_nunca_de_un_mes_posterior`.
+  - `test_cantera_sin_agregados_pasa_al_mes_siguiente`: 2026-10 cantera 1.000 sin agregados, planta 120 con 10 t de
+    mezcla → `pasa_al_mes_siguiente.cantera.total == 1000`; 2026-11 cantera 500 y 150 t de agregados → 1.500 / 150 =
+    10 por t, con `viene_del_mes_anterior.cantera`.
+  - `test_mes_sin_produccion_se_calcula_y_todo_pasa`; `test_ese_calculo_no_se_publica` (422 y nada escrito).
+  - `test_arrastre_en_otra_moneda_se_convierte_con_el_cierre_del_mes_de_origen`.
+  - `test_publicar_dos_veces_da_409_y_no_crea_otra_lista`; `test_si_falla_la_lista_no_queda_publicacion`.
+  - `test_lista_de_calculos_por_periodo_y_su_publicacion`; `test_quien_solo_revisa_recibe_403`.
+  - `test_instantanea_v1_se_sigue_leyendo` (un cálculo guardado con la versión 1 abre sin error y su huella cuadra).
+  - Migración `ins_0009`: sube y baja; la tabla vacía; `calculo_id` único.
+- [ ] **Step 2: Rojo. Step 3: Implementar. Step 4: Verde** (+ `ruff`, `git diff --stat c1f436b2 -- core/` vacío).
+  **Step 5: Commit** — `feat(produccion): tasa del cierre, costo anterior, arrastre y una sola publicacion`.
+
+### Tarea 6b: Pantallas de producir mezcla, cálculos anteriores y reparto por pesos (P20, P21, P22)
+
+**Modelo:** Sonnet.
+
+**Archivos:**
+- Create: `frontend-desktop/src/paginas/produccion/ProducirMezcla.tsx`, `CalculosAnteriores.tsx`,
+  `RepartoPorPesos.tsx` (+ pruebas)
+- Modify: `CostoPorTonelada.tsx`, `PublicarCosto.tsx`, `api/produccionPlanta.ts`, `shell/rutas.ts` (ruta
+  `producir_mezcla`, acción `operar_arenera`), `comun/EnlacesDeCostos.tsx`, `scripts/recorrido_funcional.toml` (fila de
+  solo lectura de la ruta nueva; la Tarea 22 le pone pasos)
+
+**Interfaces:**
+- Consumes: `POST /v1/produccion/producciones`, `GET /recetas/vigente`, Tarea 4b (`GET /calculos`, `publicado`, 409).
+
+- [ ] **Step 1: Pruebas** (Vitest, servidor simulado):
+  - Producir mezcla: `elige la mezcla entre los productos con receta vigente y muestra lo que consumirá` (2,5 t con
+    0,94 t/t de AGR-12 → «2,35 t de AGR-12»); `toneladas con coma decimal y punto de miles` («1.234,5» se manda
+    `"1234.5"`); `el 422 del servidor se muestra tal cual y el foco va al aviso`; `tras registrar, el aviso de éxito
+    recibe el foco` (`AvisoConFoco`).
+  - Cálculos anteriores (dentro de Costo por tonelada): `lista los cálculos del período con su fecha es-VE y si se
+    publicaron`; `abrir uno muestra su costo por tonelada y su fuente`; `Publicar no aparece en uno ya publicado y dice
+    en qué lista quedó`; `un 409 al publicar se muestra con su texto y recarga la lista`.
+  - Reparto por pesos: `con la casilla apagada no se mandan pesos`; `un campo de porcentaje por agregado producido`;
+    `Calcular se bloquea si los porcentajes no suman 100 %` (y dice cuánto suman); `75 % y 25 % se mandan como "0.75" y
+    "0.25"`.
+  - Constancias de la 4b: `el cálculo muestra lo que viene del mes anterior y lo que pasa al siguiente`; `un agregado
+    con costo de otro cálculo lo dice con su período`.
+- [ ] **Step 2–5:** rojo, implementar, verde + lint, commit — `feat(front): producir mezcla, calculos anteriores y
+  reparto por pesos`.
+
 **Cierre de fase A:** menores agrupados, `uv run --active pytest -q` y `npm --prefix frontend-desktop test` completos,
 `git diff --stat c1f436b2 -- core/` vacío. Árbitro de fase.
 
