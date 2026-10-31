@@ -576,8 +576,19 @@ def test_sin_sesion_ni_clave_es_401(metodo: str, ruta: str, acepta_clave: bool) 
 
 
 @pytest.mark.parametrize(("metodo", "ruta", "acepta_clave"), _RUTAS)
-def test_rita_que_revisa_no_puede_usar_la_hoja(metodo: str, ruta: str, acepta_clave: bool) -> None:
+def test_rita_que_revisa_lee_la_hoja(metodo: str, ruta: str, acepta_clave: bool) -> None:
+    """F4 2b (Eugenio, 2026-10-31): quien revisa ve la Hoja en solo lectura. Estas rutas solo
+    leen (o abren y cierran el borrador propio, en memoria): pasa el acceso y llega a la ruta, que
+    responde por la obra «P» o el borrador inventado que no existen (404) o cierra (204)."""
     navegador, ficha = con_cuenta(app, "rita")
+    respuesta = _pedir(navegador, metodo, ruta, ficha)
+    assert respuesta.status_code == (204 if metodo == "DELETE" else 404), respuesta.text
+    assert respuesta.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize(("metodo", "ruta", "acepta_clave"), _RUTAS)
+def test_el_administrador_puro_no_lee_la_hoja(metodo: str, ruta: str, acepta_clave: bool) -> None:
+    navegador, ficha = con_cuenta(app, "admin")
     respuesta = _pedir(navegador, metodo, ruta, ficha)
     assert respuesta.status_code == 403
     assert respuesta.json() == {"detalle": MENSAJE_PERMISO}

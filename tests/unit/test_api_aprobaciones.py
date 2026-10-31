@@ -488,7 +488,8 @@ def test_rita_no_envia_ni_tiene_versiones_propias(rita) -> None:
     assert respuesta.status_code == 403
     assert respuesta.json() == {"detalle": MENSAJE_PERMISO}
     assert rita[0].get(f"{RAIZ}/mias").status_code == 403
-    assert rita[0].get(RAIZ, params={"proyecto": OBRA}).status_code == 403
+    # F4 2b: el rastro de la obra lo lee quien revisa, para Versiones en solo lectura
+    assert rita[0].get(RAIZ, params={"proyecto": OBRA}).status_code == 200
 
 
 def test_sin_sesion_es_401() -> None:
