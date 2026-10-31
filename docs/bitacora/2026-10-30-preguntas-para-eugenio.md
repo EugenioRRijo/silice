@@ -109,3 +109,16 @@ IVSS, orden de trabajo, norma de carreteras).
 | # | Pregunta | Lo que se hará | Cómo cambiarlo |
 |---|---|---|---|
 | 8 | ¿Aprueba el inventario de F4 y sus 25 bajas (4 dudosas)? | Pendiente: al terminar el plan vial se escribe el plan de F4 con las recomendaciones del inventario; ninguna baja borra código sin dejarlo reversible y anotado aquí | **Respondida (2026-10-30): aprobado con las recomendaciones del inventario.** Las bajas quedan reversibles. |
+
+### Bajas de F4 aplicadas (Tarea 2, 2026-10-31)
+
+Inventario aprobado por Eugenio (fila 8). Formato: baja · qué se quitó · commit · dónde vive hoy · cómo volver. Las seis se deshacen en grupo (`git revert 023c4416`; la página con `git checkout b62d3679^ -- frontend-desktop/src/paginas/obras/index.tsx`).
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| 1 | Botón «Nueva obra» de la cabecera del Resumen (ya no estaba en `index.tsx` desde el commit `b62d3679`, que reescribió la página) | `023c4416` (los archivos) y `b62d3679` (la página) | «Nueva obra» de la barra lateral | `git revert 023c4416` y `git checkout b62d3679^ -- frontend-desktop/src/paginas/obras/index.tsx` |
+| 2 | `TablaObras.tsx`: tabla «Obras» de toda la carpeta | `023c4416` | Árbol de obras; cifras de la obra abierta en el Resumen | `git revert 023c4416` |
+| 3 | `CifrasMesa.tsx`, notas de conversión y «fuera de la suma» (y `textoConversion`, `textoFueraDeSuma`, tipos de cifras) | `023c4416` | **Pendiente de F5:** vuelven en Empresa | `git revert 023c4416` |
+| 4 | `ColumnaPendientes.tsx`, `columnaDeLaMesa`, `gruposDeLaMesa` y los tipos de «Aprobar» | `023c4416` | Bandeja de F3; el Resumen muestra los pendientes de la obra | `git revert 023c4416` |
+| 5 | `LoQuePuedeHacer.tsx` y su hoja | `023c4416` | Ctrl+K | `git revert 023c4416` |
+| 6 | «Cree su primera obra» y «Probar con datos de demostración» (`PrimerosPasos`) | `b62d3679` (salió con la página) | Barra lateral; Empresa › Carpetas de trabajo; «Empieza aquí» (F6) | `git checkout b62d3679^ -- frontend-desktop/src/paginas/obras/index.tsx` |
