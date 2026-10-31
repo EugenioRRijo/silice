@@ -108,8 +108,7 @@ def test_sin_el_calculo_del_mes_lo_que_paso_niega_el_siguiente_con_422(http) -> 
     r = http.post(CALCULOS, json={"periodo": "2027-01", "moneda": "USD"})
     assert r.status_code == 422, r.text
     assert r.json() == {
-        "detalle": "Calcule primero 2026-12: el cálculo de 2026-11 dejó costos que pasan a ese "
-        "mes."
+        "detalle": "Calcule primero 2026-12: el cálculo de 2026-11 dejó costos que pasan a ese mes."
     }
     assert contar(Calculo) == antes == 1
 

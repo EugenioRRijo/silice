@@ -552,9 +552,7 @@ def test_instantanea_v1_se_sigue_leyendo(ins, caso) -> None:
 # noviembre: 300 / 100 t = 3. Con un hueco de dos meses (diciembre deja, enero y febrero sin
 # calculo), marzo pide enero, el primero que falta, aunque el ano cambie.
 
-FALTA_NOVIEMBRE = (
-    "Calcule primero 2026-11: el cálculo de 2026-10 dejó costos que pasan a ese mes."
-)
+FALTA_NOVIEMBRE = "Calcule primero 2026-11: el cálculo de 2026-10 dejó costos que pasan a ese mes."
 
 
 def test_sin_calculo_de_m_lo_que_dejo_m_menos_1_niega_m_mas_1(ins, caso) -> None:
