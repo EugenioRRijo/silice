@@ -1,10 +1,10 @@
-"""`GET /v1/vial/reportes/{tipo}`: cómputos, APU con origen, costo de producción y resumen con IVA
-(Tarea 21 del plan vial). Datos FICTICIOS.
+"""`GET /v1/vial/reportes/{tipo}`: cómputos, APU con origen y resumen con IVA (Tarea 21 del plan
+vial). Datos FICTICIOS. El de costo de producción se mudó a `/v1/produccion/reportes/produccion`
+(`test_api_reportes_produccion.py`).
 
 La carpeta es `vivienda.db` (la «Vivienda Demo 80 m2», VIV-002, de `tests/fixtures/
 carpeta_aprobaciones.py`); los tramos son los de `data/samples/vial/via_ficticia.csv` (T1: mezcla de
-la carpeta 1.200 x 7,30 x 0,05 x 2,35 = 1.029,3 t) y el costo de producción es el de noviembre de
-2026 en USD de `tests/fixtures/costo_propio.py` (`AGR-12` a 5 USD/t, `MZ-1` a 50,70). El resumen
+la carpeta 1.200 x 7,30 x 0,05 x 2,35 = 1.029,3 t). El resumen
 compara con el motor (`calcular_apu`) sobre las composiciones del fixture: subtotal = suma de
 cantidad x precio unitario, IVA 16 %. Mismo acceso que las vecinas de `/v1/vial`: `editar_hoja`
 (arma); rita 403; sin sesión 401.
@@ -23,13 +23,10 @@ from openpyxl import load_workbook
 
 from api import caso_web, dependencias
 from api.main import app
-from aplicacion.costo_propio import calcular_periodo
 from core.catalog import abrir_sesion, crear_motor
 from core.costing import calcular_apu
 from operacion import config
 from operacion.base_datos import preparar_base
-from operacion.instalacion import sesion_de_instalacion
-from tests.fixtures import costo_propio as cp
 from tests.fixtures.carpeta_aprobaciones import (
     COMPOSICIONES,
     OBRA,
@@ -81,21 +78,6 @@ def _entorno(_plantillas, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     yield
     caso_web.olvidar_todo()
     dependencias.cerrar_motores()
-
-
-@pytest.fixture
-def calculo() -> int:
-    """El cálculo de noviembre de 2026 (USD), en la instalación y la carpeta de la prueba."""
-    motor = crear_motor(f"sqlite:///{(config.carpeta_casos() / 'vivienda.db').as_posix()}")
-    try:
-        with abrir_sesion(motor) as caso, sesion_de_instalacion() as ins:
-            cp.noviembre_usd(ins, caso)
-            guardado = calcular_periodo(ins, caso, cp.PERIODO, "USD", usuario="ana", ahora=cp.AHORA)
-            caso.commit()
-            ins.commit()
-            return guardado.id
-    finally:
-        motor.dispose()
 
 
 @pytest.fixture
@@ -181,25 +163,6 @@ def test_apu_con_origen_concilia_los_tramos_que_el_presupuesto_no_tiene(ana) -> 
     _con_tramos(ana)
     texto = " ".join(str(c) for f in _filas(_libro(_pedir(ana, "apu")), "Conciliación") for c in f)
     assert "CV2" in texto
-
-
-def test_costo_de_produccion_de_la_mano(ana, calculo) -> None:
-    libro = _libro(_pedir(ana, "produccion", periodo=cp.PERIODO))
-    assert libro.sheetnames[:3] == ["Portada", "Cálculos", "Costo por tonelada"]
-    por_producto = {f[2]: (f[0], D(str(f[4]))) for f in _filas(libro, "Costo por tonelada")[1:]}
-    assert por_producto["AGR-12"] == (calculo, D(5))
-    assert por_producto["MZ-1"] == (calculo, D("50.70"))
-
-
-def test_costo_de_produccion_de_un_periodo_sin_calculos_404(ana) -> None:
-    r = _pedir(ana, "produccion", periodo="2026-01")
-    assert r.status_code == 404, r.text
-    assert "2026-01" in r.json()["detalle"]
-
-
-def test_costo_de_produccion_sin_periodo_o_con_periodo_malo_422(ana) -> None:
-    assert _pedir(ana, "produccion").status_code == 422
-    assert _pedir(ana, "produccion", periodo="2026-13").status_code == 422
 
 
 def test_tipo_desconocido_404(ana) -> None:
