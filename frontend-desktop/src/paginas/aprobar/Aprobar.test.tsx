@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { formulariosSucios, olvidarFormularios } from "../../shell/sucio";
@@ -120,7 +121,7 @@ function Ubicacion() {
   return <p data-testid="ubicacion">{`${pathname}${search}`}</p>;
 }
 
-function montar(ruta = "/aprobar?envio=12", parcial: Partial<Aplicacion> = {}) {
+function montar(ruta = "/aprobar?envio=12", parcial: Partial<Aplicacion> = {}, recargarFicha?: () => void) {
   const aplicacion: Aplicacion = {
     sesion: SESION,
     proyecto: null,
@@ -129,21 +130,30 @@ function montar(ruta = "/aprobar?envio=12", parcial: Partial<Aplicacion> = {}) {
     alExpirar,
     ...parcial,
   };
+  const pagina = (
+    <MemoryRouter initialEntries={[ruta]}>
+      <Routes>
+        <Route
+          path="/aprobar"
+          element={
+            <>
+              <PaginaAprobar />
+              <Ubicacion />
+            </>
+          }
+        />
+      </Routes>
+    </MemoryRouter>
+  );
   return render(
     <ContextoAplicacion.Provider value={aplicacion}>
-      <MemoryRouter initialEntries={[ruta]}>
-        <Routes>
-          <Route
-            path="/aprobar"
-            element={
-              <>
-                <PaginaAprobar />
-                <Ubicacion />
-              </>
-            }
-          />
-        </Routes>
-      </MemoryRouter>
+      {recargarFicha ? (
+        <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha }}>
+          {pagina}
+        </ContextoDeLaObra.Provider>
+      ) : (
+        pagina
+      )}
     </ContextoAplicacion.Provider>,
   );
 }
@@ -259,6 +269,36 @@ describe("el dictamen", () => {
     const despues = await panel();
     expect(await within(despues).findByText("Este envío ya tiene dictamen: Devuelta.")).toBeInTheDocument();
     expect(within(despues).queryByRole("button", { name: "Registrar el dictamen…" })).toBeNull();
+  });
+
+  // F4, Tarea 3 (menor 1 del árbitro): la obra ya no se vuelve a montar al cambiar de sección; tras un dictamen, la línea
+  // «Estado:» de la cabecera se actualiza si se vuelve a leer la ficha. Sin obra abierta (la pantalla sola) no hay ficha.
+  test("dentro de una obra, registrar el dictamen vuelve a leer la ficha de la obra", async () => {
+    const u = userEvent.setup();
+    const recargarFicha = vi.fn();
+    montar("/aprobar?envio=12", {}, recargarFicha);
+    const caja = await panel();
+    await u.click(within(caja).getByRole("radio", { name: "Aprobada" }));
+    await u.click(within(caja).getByRole("button", { name: "Registrar el dictamen…" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Registrar el dictamen" });
+    expect(recargarFicha).not.toHaveBeenCalled();
+    await u.click(within(dialogo).getByRole("button", { name: "Registrar el dictamen" }));
+    await waitFor(() => expect(recargarFicha).toHaveBeenCalledTimes(1));
+  });
+
+  test("un dictamen que el servidor rechaza no vuelve a leer la ficha", async () => {
+    const u = userEvent.setup();
+    const recargarFicha = vi.fn();
+    alDictaminar = () => json({ detalle: "Ya tiene dictamen." }, 409);
+    montar("/aprobar?envio=12", {}, recargarFicha);
+    const caja = await panel();
+    await u.click(within(caja).getByRole("radio", { name: "Aprobada" }));
+    await u.click(within(caja).getByRole("button", { name: "Registrar el dictamen…" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Registrar el dictamen" });
+    await u.click(within(dialogo).getByRole("button", { name: "Registrar el dictamen" }));
+    await waitFor(() => expect(dictamenes()).toHaveLength(1));
+    await screen.findByText("Ya tiene dictamen.");
+    expect(recargarFicha).not.toHaveBeenCalled();
   });
 
   test("aprobar sin notas se permite", async () => {

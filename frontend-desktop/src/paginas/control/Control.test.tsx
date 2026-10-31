@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ErrorDeApi } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
@@ -128,7 +129,7 @@ describe("Control de obra", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  function montar(proyecto: string | null = "OB-S2", sesion: SesionRespuesta = SESION) {
+  function montar(proyecto: string | null = "OB-S2", sesion: SesionRespuesta = SESION, recargarFicha?: () => void) {
     const valor: Aplicacion = {
       sesion,
       proyecto,
@@ -138,7 +139,13 @@ describe("Control de obra", () => {
     };
     render(
       <ContextoAplicacion.Provider value={valor}>
-        <PaginaControl />
+        {recargarFicha ? (
+          <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha }}>
+            <PaginaControl />
+          </ContextoDeLaObra.Provider>
+        ) : (
+          <PaginaControl />
+        )}
       </ContextoAplicacion.Provider>,
     );
     return userEvent.setup();
@@ -389,6 +396,65 @@ describe("Control de obra", () => {
     const cuerpo = cuerpoDe("/v1/control/valuaciones");
     expect(cuerpo).toMatchObject({ proyecto: "OB-S2", numero: "V-03", fuente: "acta 3" });
     expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "", causa: null }]);
+  });
+
+  // F4, Tarea 3 (menor 1 del árbitro): la obra ya no se vuelve a montar al cambiar de sección; tras escribir en Control la
+  // línea «Estado:» de la cabecera solo se actualiza si se vuelve a leer la ficha de la obra. Sin obra, nada que leer.
+  test("dentro de una obra, declarar la línea base vuelve a leer la ficha de la obra", async () => {
+    const recargarFicha = vi.fn();
+    const u = montar("OB-S2", SESION, recargarFicha);
+    await screen.findByText(/perspectiva costo/);
+    await u.type(screen.getByLabelText("Vigente desde"), "2026-11-02");
+    await u.type(screen.getByLabelText("Inicio de obra"), "2026-11-02");
+    expect(recargarFicha).not.toHaveBeenCalled();
+    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    expect(await screen.findByText("Línea base declarada.")).toBeInTheDocument();
+    expect(recargarFicha).toHaveBeenCalledTimes(1);
+  });
+
+  test("dentro de una obra, registrar una valuación vuelve a leer la ficha de la obra", async () => {
+    const recargarFicha = vi.fn();
+    const u = montar("OB-S2", SESION, recargarFicha);
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    await u.type(screen.getByLabelText("Número"), "V-03");
+    await u.type(screen.getByLabelText("Partida 1"), "OB-A");
+    await u.type(screen.getByLabelText("Cantidad 1"), "50");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await screen.findByText(/Valuación registrada/);
+    expect(recargarFicha).toHaveBeenCalledTimes(1);
+  });
+
+  test("dentro de una obra, elegir una opción de recuperación vuelve a leer la ficha de la obra", async () => {
+    const recargarFicha = vi.fn();
+    const u = montar("OB-S2", SESION, recargarFicha);
+    await u.click(await screen.findByRole("tab", { name: "Recuperación" }));
+    await screen.findByText(/Las opciones se calculan a pedido/);
+    await u.type(screen.getByLabelText(/Día hábil objetivo/), "11");
+    await u.click(screen.getByRole("button", { name: "Calcular opciones" }));
+    await screen.findByRole("table", { name: "Opciones de recuperación" });
+    await u.click(screen.getByRole("radio", { name: "Frentes en paralelo" }));
+    await u.type(screen.getByLabelText("Declaro que estas partidas no dependen de las que están en curso (con su fuente)"), "plano 3");
+    await u.type(screen.getByLabelText("Fuente de la decisión"), "reunion");
+    await u.click(screen.getByRole("button", { name: "Elegir y crear la versión" }));
+    await screen.findByText("Versión OB-002 creada con el plan de la opción elegida.");
+    expect(recargarFicha).toHaveBeenCalledTimes(1);
+  });
+
+  test("dentro de una obra, una escritura rechazada no vuelve a leer la ficha", async () => {
+    const recargarFicha = vi.fn();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = String(entrada);
+      if ((init?.method ?? "GET") === "POST") return json({ detalle: "falta la partida" }, 422);
+      if (url.startsWith("/v1/control/valuaciones")) return json(VALUACIONES);
+      return json(LINEA_BASE);
+    });
+    const u = montar("OB-S2", SESION, recargarFicha);
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await screen.findByText("falta la partida");
+    expect(recargarFicha).not.toHaveBeenCalled();
   });
 
   test("un 422 de la API se muestra con su detalle y no se da por registrado", async () => {
