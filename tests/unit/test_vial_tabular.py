@@ -6,6 +6,8 @@ Las cantidades esperadas de la muestra salen de la memoria de calculo a mano de
 
 from __future__ import annotations
 
+import json
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -13,8 +15,17 @@ import pytest
 
 from adapters.vial.constantes import PARTIDAS_VIALES
 from adapters.vial.modelo import Capa, Demarcacion, Tramo
-from adapters.vial.tabular import AdaptadorVial, leer_tramos
-from core.contracts import AdaptadorDominio, Dominio
+from adapters.vial.tabular import AdaptadorVial, leer_tramos, numero
+from aplicacion.cifras import cifra_escrita
+from core.contracts import (
+    AdaptadorDominio,
+    ComposicionAPU,
+    Dominio,
+    PartidaPresupuestada,
+    Presupuesto,
+    ResultadoAPU,
+)
+from core.verification.reglas import CorrespondenciaEspecificaciones
 
 RAIZ = Path(__file__).resolve().parents[2]
 MUESTRA = RAIZ / "data" / "samples" / "vial" / "via_ficticia.csv"
@@ -58,6 +69,85 @@ def test_punto_de_miles_con_coma_decimal(tmp_path):
     ruta = _csv(tmp_path, "T1;0;1.000,5;7,30;;capa;base_granular;0,20;;;")
     (tramo,) = leer_tramos(ruta)
     assert tramo.progresiva_fin_km == Decimal("1000.5")
+
+
+@pytest.mark.parametrize(
+    ("escrito", "esperado"),
+    [
+        ("7,30", Decimal("7.30")),
+        ("7.30", Decimal("7.30")),
+        ("1.234,5", Decimal("1234.5")),
+        ("12.345.678,9", Decimal("12345678.9")),
+        ("1234,5", Decimal("1234.5")),
+        ("0.123", Decimal("0.123")),
+        ("1.2345", Decimal("1.2345")),
+        ("850", Decimal("850")),
+    ],
+)
+def test_cifras_bien_escritas(tmp_path, escrito, esperado):
+    ruta = _csv(tmp_path, f"T1;0;1;{escrito};;capa;base_granular;0,20;;;")
+    (tramo,) = leer_tramos(ruta)
+    assert tramo.ancho_m == esperado
+
+
+@pytest.mark.parametrize(
+    "escrito",
+    [
+        "1,234.5",  # punto de miles tras la coma decimal
+        "7.3,5",  # grupo de miles de una cifra
+        "1.2345,6",  # grupo de miles de cuatro cifras
+        "01.234,5",  # cero a la izquierda del primer grupo
+        "1 234",  # espacio de miles
+        "1_000",
+        "1e3",
+        "1,2,3",
+        ",5",
+        "5,",
+        ".5",
+        "5.",
+        "+5",
+        "١٢",  # cifras arabigo-indicas
+        "1.234.567",  # miles sin coma decimal: se pide escribirla sin puntos
+    ],
+)
+def test_cifra_mal_escrita_dice_fila_y_columna(tmp_path, escrito):
+    ruta = _csv(tmp_path, f"T1;0;1;{escrito};;capa;base_granular;0,20;;;")
+    with pytest.raises(ValueError, match=r"fila 2\b.*ancho_m"):
+        leer_tramos(ruta)
+
+
+def test_punto_de_miles_sin_coma_es_ambiguo(tmp_path):
+    """«1.234»: ¿mil doscientos treinta y cuatro o uno coma dos? Se pregunta, no se adivina."""
+    ruta = _csv(tmp_path, "T1;0;1;1.234;;capa;base_granular;0,20;;;")
+    with pytest.raises(ValueError, match=r"fila 2\b.*ancho_m.*escriba 1234 o 1,234"):
+        leer_tramos(ruta)
+
+
+def _casos_de_cifras() -> list[tuple[str, str | None]]:
+    oraculo = json.loads(
+        (RAIZ / "tests" / "fixtures" / "cifras_escritas.json").read_text(encoding="utf-8")
+    )
+    return [(c["texto"], c["valor"]) for c in oraculo["aceptados"]] + [
+        (c["texto"], None) for c in oraculo["rechazados"]
+    ]
+
+
+@pytest.mark.parametrize(
+    ("texto", "valor"),
+    [(t, v) for t, v in _casos_de_cifras() if "," in t or ("." not in t and t.strip())],
+)
+def test_coincide_con_aplicacion_cifras_con_coma_o_sin_punto(texto, valor):
+    """Con coma decimal (o sin punto ni coma), `numero` lee lo mismo que `aplicacion/cifras.py`
+    (oraculo `tests/fixtures/cifras_escritas.json`). Con punto y sin coma difieren a proposito: el
+    archivo de tramos admite el punto decimal («7.30») y rechaza como ambiguo «1.234»."""
+    if valor is None:
+        with pytest.raises(ValueError):
+            cifra_escrita(texto)
+        with pytest.raises(ValueError):
+            numero(texto)
+    else:
+        assert cifra_escrita(texto) == Decimal(valor)
+        assert numero(texto) == Decimal(valor)
 
 
 def test_fila_invertida_dice_su_numero(tmp_path):
@@ -173,3 +263,26 @@ def test_via_ficticia_completa():
         (c["transporte_mezcla"], "tramo:T3:capa:1", Decimal("621"), "t·km"),
     ]
     assert adaptador.extraer(MUESTRA) == items  # determinista
+
+
+def test_r4_no_da_hallazgos_en_la_muestra():
+    """Las marcas de especialidad y capa son directivas (DA-SF-3): R4 no las contrasta con un APU
+    cuyo texto no dice «vial» ni el tipo de capa, asi que no hay ruido «no contrastable»."""
+    items = AdaptadorVial().extraer(MUESTRA)
+    assert len(items) == 18
+    cero = Decimal(0)
+    partidas = tuple(
+        PartidaPresupuestada(
+            item=item,
+            apu=ComposicionAPU(
+                codigo_partida=item.codigo_partida,
+                descripcion="Partida de prueba sin especificaciones",
+                unidad=item.unidad,
+                rendimiento=Decimal(1),
+            ),
+            resultado=ResultadoAPU(cero, cero, cero, cero, cero, cero),
+        )
+        for item in items
+    )
+    presupuesto = Presupuesto("VIAL-R4", date(2026, 10, 31), "USD", partidas)
+    assert CorrespondenciaEspecificaciones().evaluar(presupuesto) == []

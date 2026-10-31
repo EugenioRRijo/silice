@@ -130,10 +130,15 @@ def test_origen_y_especialidad():  # origen_id "tramo:T1:capa:1", especialidad "
     assert carpeta.origen_id == "tramo:T1:capa:1"
     assert carpeta.origen_tipo is OrigenTipo.REGLA
     assert carpeta.dominio is Dominio.CIVIL
-    assert dict(carpeta.especificaciones) == {"especialidad": "vial", "capa": "carpeta"}
+    # Directivas DA-SF-3 (claves con «_»): clasifican sin que R4 las contraste con el APU.
+    assert dict(carpeta.especificaciones) == {"_especialidad": "vial", "_capa": "carpeta"}
+    assert dict(_uno(items, "demarcacion_continua").especificaciones) == {
+        "_especialidad": "vial",
+        "_demarcacion": "continua",
+    }
     assert _uno(items, "base_granular").origen_id == "tramo:T1:capa:2"
     assert _uno(items, "riego_adherencia").origen_id == "tramo:T1:capa:3"
-    assert all(i.especificaciones["especialidad"] == "vial" for i in items)
+    assert all(i.especificaciones["_especialidad"] == "vial" for i in items)
     assert all(i.dominio is Dominio.CIVIL for i in items)
 
 
@@ -160,6 +165,19 @@ def test_progresiva_invertida():  # Tramo("T2", 2, 1, ...) -> ValueError("T2")
 def test_progresiva_igual_tambien_se_rechaza():
     with pytest.raises(ValueError, match="T3"):
         Tramo("T3", Decimal("1"), Decimal("1"), Decimal("7.3"), ())
+
+
+def test_id_con_dos_puntos_se_rechaza():
+    """«:» separa las partes de `origen_id` («tramo:<id>:capa:<n>»): un id con «:» lo haria
+    ambiguo («tramo:A:capa:1:capa:2»)."""
+    with pytest.raises(ValueError, match="A:capa"):
+        Tramo("A:capa", Decimal("0"), Decimal("1"), Decimal("7.3"), ())
+
+
+@pytest.mark.parametrize(("ini", "fin"), [("-1", "1"), ("-2", "-1")])
+def test_progresiva_negativa_se_rechaza(ini, fin):
+    with pytest.raises(ValueError, match=r"N1.*negativa"):
+        Tramo("N1", Decimal(ini), Decimal(fin), Decimal("7.3"), ())
 
 
 def test_longitud_en_metros():
