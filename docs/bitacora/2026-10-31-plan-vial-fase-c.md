@@ -107,3 +107,7 @@ las filas 100 a 105 de las preguntas para Eugenio. `core/` intacto (`git diff --
   de huellas desde git.
 
 **Fase C cerrada.**
+
+## Suite completa del cierre (sobre c15ceffc, con T17 y T18 unidas)
+
+- Pytest: solo las dos fallas conocidas ajenas a la rama (`test_r11…[TI-001]` por el reloj y `test_huellas_rnf04`); el experimento congelado vuelve a verde. Vitest completo y lint: verdes.
