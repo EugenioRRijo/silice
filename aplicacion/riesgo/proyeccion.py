@@ -32,6 +32,12 @@ cita; especificación §6 deja el muestreo al constructor siempre que sea reprod
 7. **Contribución.** Por insumo, el total con solo ese insumo a su factor medio menos el total base
    (es «cantidad × precio × (factor medio − 1)» con la administración y la utilidad del motor);
    de mayor a menor, sin los que no se movieron.
+8. **Un insumo con varios precios** (la misma descripción con otro precio en otro APU) se
+   desdobla en variantes locales: el primer precio conserva el nombre y los demás pasan a
+   «Flete [2]», «Flete [3]»… (`nombre_de_variante`, sin pisar un insumo que ya se llame así). Cada
+   variante sigue la serie del original con su propio precio, se declara en los supuestos y su
+   contribución se suma bajo el nombre original (fila 81). El núcleo no se toca: las variantes
+   viven en una copia local de las composiciones.
 
 **Reproducible.** `random.Random(semilla)` y solo su método `random()`, el único cuya secuencia
 Python garantiza entre versiones para la misma semilla. Todo en `Decimal` con 28 cifras y redondeo
@@ -41,8 +47,8 @@ de mitad al par; se redondea solo al presentar. La IA nunca calcula estas cifras
 from __future__ import annotations
 
 import random
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Collection, Mapping, Sequence
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_EVEN, Decimal, localcontext
 
@@ -69,6 +75,7 @@ __all__ = [
     "historia_para_proyectar",
     "percentil_mas_cercano_por_rango",
     "meses_completos",
+    "nombre_de_variante",
     "proyectar",
     "series_del_mapa",
     "series_presentes",
@@ -223,21 +230,71 @@ def _variaciones_reales(
 # --- Precios y factores ---------------------------------------------------------------------------
 
 
-def _precios_base(composiciones: Mapping[str, ComposicionAPU]) -> dict[str, Decimal]:
-    """El precio de cada insumo por su descripción (como lo indexa `generar_escenario`). Un insumo
-    con dos precios distintos se niega: el escenario lo variaría con uno solo."""
+def nombre_de_variante(nombre: str, ocupados: Collection[str]) -> str:
+    """El nombre local de otra variante de `nombre`: el primer «nombre [k]» (k = 2, 3, …) que no
+    está en `ocupados` (los insumos que ya existen y las variantes ya puestas)."""
+    k = 2
+    while f"{nombre} [{k}]" in ocupados:
+        k += 1
+    return f"{nombre} [{k}]"
+
+
+@dataclass(frozen=True)
+class _Insumos:
+    """Los insumos del presupuesto por su **nombre local**: la descripción o, si tiene varios
+    precios, la de cada variante. `original` lleva cada nombre local a la descripción del APU;
+    `desdoblados`, cuántos precios tiene cada insumo desdoblado."""
+
+    composiciones: dict[str, ComposicionAPU]
+    precios: dict[str, Decimal]
+    original: dict[str, str]
+    desdoblados: dict[str, int]
+
+
+def _desdoblar(composiciones: Mapping[str, ComposicionAPU]) -> _Insumos:
+    """El precio de cada insumo por su nombre local (como lo indexa `generar_escenario`). Un
+    insumo con varios precios se desdobla en variantes en una copia de las composiciones (fila
+    81): el escenario variaría con un solo precio todas las líneas con la misma descripción."""
+    ocupados = {
+        linea.descripcion
+        for apu in composiciones.values()
+        for linea in (*apu.materiales, *apu.equipos, *apu.mano_obra)
+    }
+    vistos: dict[str, dict[Decimal, str]] = {}
     precios: dict[str, Decimal] = {}
-    for apu in composiciones.values():
-        lineas = [(x.descripcion, x.precio) for x in (*apu.materiales, *apu.equipos)]
-        lineas += [(x.descripcion, x.sueldo) for x in apu.mano_obra]
-        for descripcion, precio in lineas:
-            anterior = precios.setdefault(descripcion, precio)
-            if anterior != precio:
-                raise ValueError(
-                    f"el insumo «{descripcion}» tiene dos precios en las composiciones "
-                    f"({anterior} y {precio}): la proyección lo variaría con uno solo"
-                )
-    return precios
+    original: dict[str, str] = {}
+
+    def local(descripcion: str, precio: Decimal) -> str:
+        variantes = vistos.setdefault(descripcion, {})
+        if precio not in variantes:
+            nombre = nombre_de_variante(descripcion, ocupados) if variantes else descripcion
+            ocupados.add(nombre)
+            variantes[precio] = nombre
+            precios[nombre], original[nombre] = precio, descripcion
+        return variantes[precio]
+
+    copia = {
+        codigo: replace(
+            apu,
+            materiales=tuple(
+                replace(x, descripcion=local(x.descripcion, x.precio)) for x in apu.materiales
+            ),
+            equipos=tuple(
+                replace(x, descripcion=local(x.descripcion, x.precio)) for x in apu.equipos
+            ),
+            mano_obra=tuple(
+                replace(x, descripcion=local(x.descripcion, x.sueldo)) for x in apu.mano_obra
+            ),
+        )
+        for codigo, apu in composiciones.items()
+    }
+    desdoblados = {d: len(v) for d, v in vistos.items() if len(v) > 1}
+    return _Insumos(
+        composiciones=copia if desdoblados else dict(composiciones),
+        precios=precios,
+        original=original,
+        desdoblados=desdoblados,
+    )
 
 
 @dataclass(frozen=True)
@@ -251,12 +308,13 @@ def _mezclas(
     recetas: Mapping[str, Receta],
     costo_planta_por_t: Mapping[str, Decimal],
     precio_de_componente: Mapping[str, Decimal],
-    precios: Mapping[str, Decimal],
+    insumos: Collection[str],
     mapa: MapaSeries,
 ) -> dict[str, _Mezcla]:
+    """Las mezclas con receta, por la descripción original de su insumo (`insumos`)."""
     mezclas: dict[str, _Mezcla] = {}
     for descripcion, receta in recetas.items():
-        if descripcion not in precios:
+        if descripcion not in insumos:
             raise ValueError(f"la mezcla «{descripcion}» tiene receta pero no está en ningún APU")
         if descripcion in mapa.serie_por_insumo:
             raise ValueError(
@@ -359,21 +417,26 @@ def _acumulada(variaciones_del_plazo: Mapping[str, Sequence[Decimal]], en_bs: bo
 
 def _factores(
     t: _Trayectoria,
-    precios: Mapping[str, Decimal],
+    original: Mapping[str, str],
     mapa: MapaSeries,
     mezclas: Mapping[str, _Mezcla],
     precio_de_componente: Mapping[str, Decimal],
 ) -> dict[str, Decimal]:
+    """El factor de cada insumo por su nombre local: una variante sigue la serie (o la mezcla) de
+    su original."""
     serie = mapa.serie_por_insumo
-    factores = {d: t.factor(serie.get(d)) for d in precios if d not in mezclas}
+    de_la_mezcla = {}
     for descripcion, m in mezclas.items():
         componentes = {
             c.codigo: precio_de_componente[c.codigo] * t.factor(serie.get(c.codigo))
             for c in m.receta.componentes
         }
         simulado = costo_de_mezcla(m.receta, componentes, componentes, m.planta * t.factor(None))
-        factores[descripcion] = simulado / m.costo_base
-    return factores
+        de_la_mezcla[descripcion] = simulado / m.costo_base
+    return {
+        nombre: de_la_mezcla[d] if d in de_la_mezcla else t.factor(serie.get(d))
+        for nombre, d in original.items()
+    }
 
 
 def percentil_mas_cercano_por_rango(valores: Sequence[Decimal], p: int) -> Decimal:
@@ -390,10 +453,10 @@ def percentil_mas_cercano_por_rango(valores: Sequence[Decimal], p: int) -> Decim
 
 
 class _Motor:
-    """Lo que comparten `proyectar` y `total_con_variaciones_reales`: los precios base, las
-    mezclas con receta, el total por el motor del núcleo y los factores de una trayectoria. Se
-    construye dentro de `_contexto()`. Valida la moneda, las series y que las composiciones
-    reproduzcan el total del presupuesto."""
+    """Lo que comparten `proyectar` y `total_con_variaciones_reales`: los precios base (por nombre
+    local, con los insumos de varios precios desdoblados), las mezclas con receta, el total por el
+    motor del núcleo y los factores de una trayectoria. Se construye dentro de `_contexto()`.
+    Valida la moneda, las series y que las composiciones reproduzcan el total del presupuesto."""
 
     def __init__(
         self,
@@ -408,15 +471,18 @@ class _Motor:
         if presupuesto.moneda not in MONEDAS:
             raise ValueError(f"moneda del presupuesto {presupuesto.moneda!r}; se espera Bs o USD")
         _validar_series(mapa, presupuesto.moneda)
+        insumos = _desdoblar(composiciones)
         self._presupuesto = presupuesto
-        self._composiciones = composiciones
+        self._composiciones = insumos.composiciones
         self._parametros_costo = parametros_costo
         self._mapa = mapa
         self._precio_de_componente = precio_de_componente
         self.series = series_presentes(mapa, composiciones, recetas)
-        self.precios = _precios_base(composiciones)
+        self.precios = insumos.precios
+        self.original = insumos.original
+        self.desdoblados = insumos.desdoblados
         self.mezclas = _mezclas(
-            recetas, costo_planta_por_t, precio_de_componente, self.precios, mapa
+            recetas, costo_planta_por_t, precio_de_componente, set(self.original.values()), mapa
         )
         recalculado = self.total({}, "base")
         if recalculado != presupuesto.total:
@@ -438,7 +504,7 @@ class _Motor:
         return escenario.presupuesto.total
 
     def factores(self, t: _Trayectoria) -> dict[str, Decimal]:
-        return _factores(t, self.precios, self._mapa, self.mezclas, self._precio_de_componente)
+        return _factores(t, self.original, self._mapa, self.mezclas, self._precio_de_componente)
 
 
 def total_con_variaciones_reales(
@@ -525,13 +591,16 @@ def proyectar(
             totales.append(total({d: precios[d] * f for d, f in factores.items()}, f"t{n + 1}"))
 
         percentiles = {q: percentil_mas_cercano_por_rango(totales, q) for q in p.percentiles}
-        contribucion = []
-        for d, suma in suma_de_factores.items():
+        movidos: dict[str, dict[str, Decimal]] = {}  # por el nombre original: sus variantes
+        for nombre, suma in suma_de_factores.items():
             medio = suma / p.trayectorias
             if medio != UNO:
-                monto = total({d: precios[d] * medio}, f"solo {d}") - presupuesto.total
-                if monto != CERO:
-                    contribucion.append((d, monto))
+                movidos.setdefault(motor.original[nombre], {})[nombre] = precios[nombre] * medio
+        contribucion = []
+        for d, con in movidos.items():
+            monto = total(con, f"solo {d}") - presupuesto.total
+            if monto != CERO:
+                contribucion.append((d, monto))
         contribucion.sort(key=lambda par: (-par[1], par[0]))
         return Proyeccion(
             total_base=presupuesto.total,
@@ -540,12 +609,16 @@ def proyectar(
             contribucion=tuple(contribucion),
             meses_usados=len(completos),
             semilla=p.semilla,
-            supuestos=_supuestos(p, completos, en_bs, bool(mezclas)),
+            supuestos=_supuestos(p, completos, en_bs, bool(mezclas), motor.desdoblados),
         )
 
 
 def _supuestos(
-    p: ParametrosProyeccion, completos: Sequence[date], en_bs: bool, hay_mezcla: bool
+    p: ParametrosProyeccion,
+    completos: Sequence[date],
+    en_bs: bool,
+    hay_mezcla: bool,
+    desdoblados: Mapping[str, int],
 ) -> tuple[str, ...]:
     supuestos = [
         f"gasto uniforme en el plazo: el factor de cada insumo es el promedio de sus "
@@ -571,5 +644,12 @@ def _supuestos(
             "mezcla propia recalculada con su receta en cada trayectoria; la planta sigue la "
             "regla del insumo sin serie; el precio de la mezcla se escala por costo simulado ÷ "
             "costo base"
+        )
+    if desdoblados:
+        cuales = "; ".join(f"{d} ({n} precios)" for d, n in sorted(desdoblados.items()))
+        supuestos.append(
+            "insumo con varios precios en los APU, desdoblado en variantes locales («nombre [2]», "
+            "…) que siguen la serie del original, cada una con su precio; su contribución se suma "
+            f"bajo el nombre original: {cuales}"
         )
     return tuple(supuestos)
