@@ -1,12 +1,11 @@
 """FCAS por componentes (plan vial, Tarea 17). Casos y cifras FICTICIOS salvo el oráculo publicado.
 
-Oráculo a mano (Dodi y Salas, 2019, §4.2, su caso 1): 365 días calendario, 23,13 días de bonificación
-y 217,28 días trabajados dan días pagados 388,13 y FCAS por días (388,13 − 217,28) ÷ 217,28 = 0,7863
-(78,63 %, el valor que publican). Con un aporte patronal de 2 % del salario pagado:
-(388,13 ÷ 217,28) × 1,02 − 1 = 0,8220 (0,822038…).
-Con los componentes por defecto (80 + 100 + 36 + 72 = 288 días y aportes 2 + 2 + 2 + 11 + 9 = 26 %):
-dias_pagados 653; (653 ÷ 217,28) × 1,26 − 1 = 2,7867 (3,005339… × 1,26 = 3,786727…).
-"""
+Oráculo a mano (Dodi y Salas, 2019, §4.2, su caso 1): 365 días calendario, 23,13 días de
+bonificación y 217,28 días trabajados dan días pagados 388,13 y FCAS por días (388,13 − 217,28) ÷
+217,28 = 0,7863 (78,63 %, el valor que publican). Con un aporte patronal de 2 % del salario
+pagado: (388,13 ÷ 217,28) × 1,02 − 1 = 0,8220 (0,822038…). Con los componentes por defecto (80 +
+100 + 36 + 72 = 288 días y aportes 2 + 2 + 2 + 11 + 9 = 26 %): dias_pagados 653; (653 ÷ 217,28) ×
+1,26 − 1 = 2,7867 (3,005339… × 1,26 = 3,786727…)."""
 
 from __future__ import annotations
 
@@ -24,7 +23,11 @@ from aplicacion.fcas import (
 D = Decimal
 CUATRO = D("0.0001")
 BONIFICACION = ComponenteFCAS(
-    "bonificaciones", "Bonificaciones (Dodi y Salas)", "dias", D("23.13"), "Dodi y Salas (2019), caso 1"
+    "bonificaciones",
+    "Bonificaciones (Dodi y Salas)",
+    "dias",
+    D("23.13"),
+    "Dodi y Salas (2019), caso 1",
 )
 APORTE_2 = ComponenteFCAS("aporte_demo", "Aporte de demostración", "porcentaje", D("2"), "ficticio")
 
@@ -66,7 +69,9 @@ def test_el_bono_de_alimentacion_se_rechaza_con_su_motivo() -> None:
 
 
 def test_un_componente_a_cotejar_se_avisa() -> None:
-    dudoso = ComponenteFCAS("aporte_dudoso", "Aporte dudoso", "porcentaje", D("5"), "Decreto X — a cotejar")
+    dudoso = ComponenteFCAS(
+        "aporte_dudoso", "Aporte dudoso", "porcentaje", D("5"), "Decreto X — a cotejar"
+    )
     r = calcular_fcas((BONIFICACION, APORTE_2, dudoso), D("365"), D("217.28"))
     assert r.a_cotejar == ("aporte_dudoso",)
     assert calcular_fcas((BONIFICACION,), D("365"), D("217.28")).a_cotejar == ()
@@ -82,7 +87,10 @@ def test_los_componentes_por_defecto() -> None:
     assert "cláusula 48" in _por_id("utilidades").fuente
     assert (_por_id("paro_forzoso").base, _por_id("paro_forzoso").valor) == ("porcentaje", D("2"))
     assert "Régimen Prestacional de Empleo" in _por_id("paro_forzoso").fuente
-    assert (_por_id("vacaciones_bono").valor, _por_id("garantia_prestaciones").valor) == (D("80"), D("72"))
+    assert (_por_id("vacaciones_bono").valor, _por_id("garantia_prestaciones").valor) == (
+        D("80"),
+        D("72"),
+    )
     # Decisión de Eugenio (2026-10-31): pensiones 9 % activado y el IVSS 11 %, los dos «a cotejar»
     assert (_por_id("pensiones").base, _por_id("pensiones").valor) == ("porcentaje", D("9"))
     assert (_por_id("ivss").base, _por_id("ivss").valor) == ("porcentaje", D("11"))

@@ -9506,6 +9506,68 @@
         }
       }
     },
+    "/v1/fcas/componentes": {
+      "get": {
+        "tags": [
+          "fcas"
+        ],
+        "summary": "Componentes Por Defecto",
+        "operationId": "componentes_por_defecto_v1_fcas_componentes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentesFcasRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/fcas/calcular": {
+      "post": {
+        "tags": [
+          "fcas"
+        ],
+        "summary": "Calcular",
+        "operationId": "calcular_v1_fcas_calcular_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculoFcasEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculoFcasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/buscar/partidas": {
       "get": {
         "tags": [
@@ -12302,6 +12364,24 @@
         "title": "AvisoAtipicos",
         "description": "Un aviso de la busqueda, con el nivel de la pagina clasica (`info` o `success`)."
       },
+      "AvisoFcas": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre"
+        ],
+        "title": "AvisoFcas"
+      },
       "BajaDeClave": {
         "properties": {
           "motivo": {
@@ -13475,6 +13555,104 @@
           "instantanea"
         ],
         "title": "CalculoDeCostoRespuesta"
+      },
+      "CalculoFcasEntrada": {
+        "properties": {
+          "dias_calendario": {
+            "type": "string",
+            "title": "Dias Calendario"
+          },
+          "dias_trabajados": {
+            "type": "string",
+            "title": "Dias Trabajados"
+          },
+          "componentes": {
+            "items": {
+              "$ref": "#/components/schemas/ComponenteFcasEntrada"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Componentes"
+          },
+          "fcas_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fcas Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dias_calendario",
+          "dias_trabajados",
+          "componentes"
+        ],
+        "title": "CalculoFcasEntrada"
+      },
+      "CalculoFcasRespuesta": {
+        "properties": {
+          "fcas": {
+            "type": "string",
+            "title": "Fcas"
+          },
+          "fcas_por_dias": {
+            "type": "string",
+            "title": "Fcas Por Dias"
+          },
+          "dias_pagados": {
+            "type": "string",
+            "title": "Dias Pagados"
+          },
+          "porcentaje": {
+            "type": "string",
+            "title": "Porcentaje"
+          },
+          "multiplicador": {
+            "type": "string",
+            "title": "Multiplicador"
+          },
+          "desglose": {
+            "items": {
+              "$ref": "#/components/schemas/RenglonFcas"
+            },
+            "type": "array",
+            "title": "Desglose"
+          },
+          "a_cotejar": {
+            "items": {
+              "$ref": "#/components/schemas/AvisoFcas"
+            },
+            "type": "array",
+            "title": "A Cotejar"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionFcas"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "fcas",
+          "fcas_por_dias",
+          "dias_pagados",
+          "porcentaje",
+          "multiplicador",
+          "desglose",
+          "a_cotejar",
+          "version"
+        ],
+        "title": "CalculoFcasRespuesta"
       },
       "CalculoPeticion": {
         "properties": {
@@ -14666,6 +14844,109 @@
           "tipo"
         ],
         "title": "ComponenteEntrada"
+      },
+      "ComponenteFcasEntrada": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "base": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Base"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 600,
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "base",
+          "valor",
+          "fuente"
+        ],
+        "title": "ComponenteFcasEntrada"
+      },
+      "ComponenteFcasRespuesta": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "base": {
+            "type": "string",
+            "title": "Base"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "a_cotejar": {
+            "type": "boolean",
+            "title": "A Cotejar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "base",
+          "valor",
+          "fuente",
+          "a_cotejar"
+        ],
+        "title": "ComponenteFcasRespuesta"
+      },
+      "ComponentesFcasRespuesta": {
+        "properties": {
+          "dias_calendario": {
+            "type": "string",
+            "title": "Dias Calendario"
+          },
+          "fcas_version": {
+            "type": "string",
+            "title": "Fcas Version"
+          },
+          "componentes": {
+            "items": {
+              "$ref": "#/components/schemas/ComponenteFcasRespuesta"
+            },
+            "type": "array",
+            "title": "Componentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dias_calendario",
+          "fcas_version",
+          "componentes"
+        ],
+        "title": "ComponentesFcasRespuesta"
       },
       "ComposicionRespuesta": {
         "properties": {
@@ -23447,6 +23728,29 @@
         "title": "RendimientosRespuesta",
         "description": "El historico completo de una partida, con dispersion y propuesta (RF-26)."
       },
+      "RenglonFcas": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "aporte": {
+            "type": "string",
+            "title": "Aporte"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "aporte"
+        ],
+        "title": "RenglonFcas"
+      },
       "ResolverEntrada": {
         "properties": {
           "material_codigo": {
@@ -25731,6 +26035,29 @@
           "ultima_aprobada"
         ],
         "title": "VersionEntregable"
+      },
+      "VersionFcas": {
+        "properties": {
+          "fcas": {
+            "type": "string",
+            "title": "Fcas"
+          },
+          "porcentaje": {
+            "type": "string",
+            "title": "Porcentaje"
+          },
+          "multiplicador": {
+            "type": "string",
+            "title": "Multiplicador"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fcas",
+          "porcentaje",
+          "multiplicador"
+        ],
+        "title": "VersionFcas"
       },
       "VersionHojaRespuesta": {
         "properties": {

@@ -40,3 +40,48 @@
 .silice-precios-empresa__nota {
   color: var(--silice-texto-secundario);
 }
+
+// Calculadora del FCAS por componentes.
+.silice-fcas {
+  display: grid;
+  gap: 1.5rem;
+  min-inline-size: 0;
+}
+
+.silice-fcas__componentes {
+  display: grid;
+  gap: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.silice-fcas__componente {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.5rem 1rem;
+  align-items: end;
+  min-inline-size: 0;
+
+  > p {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+}
+
+.silice-fcas__cotejar {
+  color: var(--silice-texto);
+  text-decoration: underline;
+}
+
+.silice-fcas__resultado {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-fcas__lado-a-lado {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1.5rem;
+}

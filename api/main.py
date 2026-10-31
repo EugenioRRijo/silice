@@ -35,6 +35,7 @@ from api.rutas import (
     control,
     cuentas,
     entregas,
+    fcas,
     hoja,
     hoja_exportar,
     hoja_llevar,
@@ -194,6 +195,8 @@ app.include_router(produccion_planta.router)
 app.include_router(vial.router)
 # Plan vial (T15): /v1/riesgo, informe de mejora de la estimacion (VER_RIESGO, clave o sesion)
 app.include_router(riesgo.router)
+# Plan vial (T17): /v1/fcas, el FCAS por componentes (cuenta pura; clave o sesion de cualquier rol)
+app.include_router(fcas.router)
 # T10 (montar un presupuesto): /v1/buscar/partidas, buscador C-1 (LEER_PROYECTO en la ruta)
 app.include_router(busqueda.router)
 # MOD-4a (plan de módulos): /v1/obras/resumen (LEER_PROYECTO) y /v1/obras/pendientes (EDITAR_HOJA),

@@ -1,10 +1,10 @@
-"""`/v1/fcas`: FCAS por componentes (Tarea 17 del plan vial). Datos FICTICIOS salvo el oráculo publicado.
+"""`/v1/fcas`: FCAS por componentes (Tarea 17 del plan vial). Datos FICTICIOS salvo el oráculo
+publicado.
 
-Cualquier rol con sesión (o la clave de API) calcula: es una cuenta pura, no toca la base. Las cifras
-viajan como texto con punto decimal. Oráculo a mano (Dodi y Salas 2019): 365 días, 23,13 de
-bonificación y 217,28 trabajados dan días pagados 388,13, FCAS 0,7863, «78,63 %» y «× 1,7863»; con un
-aporte de 2 % del salario pagado, 0,8220.
-"""
+Cualquier rol con sesión (o la clave de API) calcula: es una cuenta pura, no toca la base. Las
+cifras viajan como texto con punto decimal. Oráculo a mano (Dodi y Salas 2019): 365 días, 23,13 de
+bonificación y 217,28 trabajados dan días pagados 388,13, FCAS 0,7863, «78,63 %» y «× 1,7863»; con
+un aporte de 2 % del salario pagado, 0,8220."""
 
 from __future__ import annotations
 
@@ -80,7 +80,11 @@ def test_con_un_aporte_de_2_por_ciento() -> None:
     assert cuerpo["fcas_por_dias"] == "0.7863"
     assert cuerpo["porcentaje"] == "82.20"
     assert cuerpo["multiplicador"] == "1.8220"
-    assert [fila["id"] for fila in cuerpo["desglose"]] == ["dias_no_trabajados", "bonificaciones", "aporte_demo"]
+    assert [fila["id"] for fila in cuerpo["desglose"]] == [
+        "dias_no_trabajados",
+        "bonificaciones",
+        "aporte_demo",
+    ]
     assert cuerpo["desglose"][0]["nombre"].startswith("Días pagados sin trabajar")
     assert cuerpo["desglose"][2]["nombre"] == "Aporte de demostración"
 
@@ -89,12 +93,17 @@ def test_el_fcas_de_la_version_va_al_lado_y_no_se_aplica_solo() -> None:
     r = Web("ana").post(CALCULAR, json=_cuerpo(fcas_version="6.00"))
     assert r.status_code == 200, r.text
     assert r.json()["version"] == {"fcas": "6.00", "porcentaje": "600.00", "multiplicador": "7.00"}
-    # Calcular no guarda nada: ninguna ruta de parámetros fue llamada y la respuesta no trae «aplicado»
+    # Calcular no guarda nada: la respuesta no trae «aplicado»
     assert "aplicado" not in r.json()
 
 
 def test_un_componente_a_cotejar_se_avisa() -> None:
-    dudoso = {**APORTE_2, "id": "ivss", "nombre": "Seguro social", "fuente": "Reglamento — a cotejar"}
+    dudoso = {
+        **APORTE_2,
+        "id": "ivss",
+        "nombre": "Seguro social",
+        "fuente": "Reglamento — a cotejar",
+    }
     r = Web("ana").post(CALCULAR, json=_cuerpo(BONIFICACION, dudoso))
     assert r.json()["a_cotejar"] == [{"id": "ivss", "nombre": "Seguro social"}]
 
