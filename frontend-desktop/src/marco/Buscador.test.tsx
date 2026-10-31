@@ -205,3 +205,30 @@ describe("Buscador", () => {
     expect(opciones()[0]).toContain("Precios y catálogo");
   });
 });
+
+describe("Buscador con módulos apagados (plan vial, Tarea 19)", () => {
+  function pintarConApagados(apagados: string[]) {
+    return render(
+      <MemoryRouter initialEntries={["/pendientes"]}>
+        <ContextoAplicacion.Provider
+          value={{ sesion: sesionDe("ana"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), modulosApagados: apagados }}
+        >
+          <Arnes inicialAbierto />
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
+    );
+  }
+
+  it("encendido, «tramos» encuentra la pantalla Tramos de la vía", async () => {
+    pintarConApagados([]);
+    await userEvent.type(await campo(), "tramos");
+    await waitFor(() => expect(opciones().join("|")).toContain("Tramos de la vía"));
+  });
+
+  it("con vial apagado, «tramos» ya no la encuentra", async () => {
+    pintarConApagados(["vial"]);
+    await userEvent.type(await campo(), "tramos");
+    await waitFor(() => expect(estado()).toBe("Sin resultados"));
+    expect(opciones().join("|")).not.toContain("Tramos de la vía");
+  });
+});

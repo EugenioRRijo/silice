@@ -855,3 +855,30 @@ describe("BarraLateral: la zona de obras con letra grande", () => {
     expect(compacta).not.toMatch(/silice-letra/);
   });
 });
+
+describe("BarraLateral con módulos apagados (plan vial, Tarea 19)", () => {
+  function pintarConApagados(apagados: string[]) {
+    return render(
+      <MemoryRouter initialEntries={["/pendientes"]}>
+        <ContextoAplicacion.Provider
+          value={{ sesion: sesionDe("admin"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), modulosApagados: apagados }}
+        >
+          <ContextoPendientes.Provider value={SIN_PENDIENTES}>
+            <BarraLateral obraAbierta={null} seccion={null} />
+          </ContextoPendientes.Provider>
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
+    );
+  }
+
+  it("encendida, la zona Empresa ofrece «Producción»", async () => {
+    pintarConApagados([]);
+    expect(await screen.findByRole("link", { name: /Producción/ })).toBeTruthy();
+  });
+
+  it("con producción apagada, «Producción» no aparece en la barra", async () => {
+    pintarConApagados(["produccion"]);
+    await arbol();
+    expect(screen.queryByRole("link", { name: /Producción/ })).toBeNull();
+  });
+});

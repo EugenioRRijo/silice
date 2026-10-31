@@ -47,8 +47,9 @@ def _publicacion(conexion: sqlite3.Connection, calculo_id: int, lista_id: int = 
     )
 
 
-def test_es_la_cabeza_de_la_instalacion() -> None:
-    assert revision_head(Destino.INSTALACION) == REVISION
+def test_le_sigue_la_de_los_modulos() -> None:
+    """Plan vial, Tarea 19: la cabeza pasa a `ins_0010_modulo`, que baja a esta."""
+    assert revision_head(Destino.INSTALACION) == "ins_0010_modulo"
 
 
 def test_crea_la_tabla_vacia_con_sus_columnas_y_calculo_id_unico(tmp_path: Path) -> None:
