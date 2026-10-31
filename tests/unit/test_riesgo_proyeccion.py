@@ -47,12 +47,12 @@ from tests.fixtures.riesgo_proyeccion import (
     TOLERANCIA,
     TRANSPORTE,
     D,
-    _apu,
-    _creciente,
-    _historia,
-    _historia_variable,
-    _obra,
-    _promedio_compuesto,
+    apu_ficticio,
+    historia_uniforme,
+    historia_variable,
+    obra_ficticia,
+    promedio_compuesto,
+    serie_creciente,
 )
 
 
@@ -65,9 +65,9 @@ def _p(**cambios) -> ParametrosProyeccion:
 
 def test_crecimiento_constante_da_un_solo_valor():
     # toda la historia sube 1 % mensual: todas las trayectorias son iguales
-    presupuesto, composiciones = _obra({RIEGO: D(100)})
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
-    historia = _historia(ppi=D("1.01"), gasoil=D("1.01"), tasa=D("1.01"))
+    historia = historia_uniforme(ppi=D("1.01"), gasoil=D("1.01"), tasa=D("1.01"))
 
     p = proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p(meses=6))
 
@@ -82,9 +82,9 @@ def test_crecimiento_constante_da_un_solo_valor():
 
 
 def test_misma_semilla_mismo_resultado():
-    presupuesto, composiciones = _obra({RIEGO: D(100), TRANSPORTE: D(40)}, moneda="Bs")
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100), TRANSPORTE: D(40)}, moneda="Bs")
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
-    historia = _historia_variable()
+    historia = historia_variable()
 
     a = proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p(semilla=7))
     b = proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p(semilla=7))
@@ -95,9 +95,9 @@ def test_misma_semilla_mismo_resultado():
 
 
 def test_otra_semilla_otro_resultado():
-    presupuesto, composiciones = _obra({RIEGO: D(100), TRANSPORTE: D(40)}, moneda="Bs")
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100), TRANSPORTE: D(40)}, moneda="Bs")
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
-    historia = _historia_variable()
+    historia = historia_variable()
 
     a = proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p(semilla=1))
     b = proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p(semilla=2))
@@ -108,17 +108,17 @@ def test_otra_semilla_otro_resultado():
 
 def test_menos_de_12_meses_completos():
     # Foco de revisión 4: 10 meses de historia dan solo 9 variaciones
-    presupuesto, composiciones = _obra({RIEGO: D(100)})
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
 
     with pytest.raises(ValueError, match="^solo hay 9 meses completos; se necesitan 12$"):
-        proyectar(presupuesto, composiciones, PARAMETROS, _historia(n=10), mapa, _p())
+        proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(n=10), mapa, _p())
 
 
 def test_una_serie_del_mapa_sin_historia_deja_cero_meses():
-    presupuesto, composiciones = _obra({RIEGO: D(100)})
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
-    historia = _historia()
+    historia = historia_uniforme()
     del historia[GASOIL]
 
     with pytest.raises(ValueError, match="^solo hay 0 meses completos; se necesitan 12$"):
@@ -126,11 +126,11 @@ def test_una_serie_del_mapa_sin_historia_deja_cero_meses():
 
 
 def test_mes_faltante_en_una_serie_se_descarta_para_todas():
-    presupuesto, composiciones = _obra({RIEGO: D(100)})
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
-    completa = proyectar(presupuesto, composiciones, PARAMETROS, _historia(), mapa, _p())
+    completa = proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(), mapa, _p())
 
-    sin_el_ultimo = _historia()
+    sin_el_ultimo = historia_uniforme()
     del sin_el_ultimo[GASOIL][date(2026, 12, 1)]
     p = proyectar(presupuesto, composiciones, PARAMETROS, sin_el_ultimo, mapa, _p())
 
@@ -140,9 +140,9 @@ def test_mes_faltante_en_una_serie_se_descarta_para_todas():
 
 def test_un_hueco_en_medio_cuesta_dos_meses():
     # sin junio de 2025 no hay variación de junio (le falta el mes) ni de julio (le falta la base)
-    presupuesto, composiciones = _obra({RIEGO: D(100)})
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
-    historia = _historia()
+    historia = historia_uniforme()
     del historia[SERIE_TASA][date(2025, 6, 1)]
 
     p = proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p())
@@ -151,9 +151,9 @@ def test_un_hueco_en_medio_cuesta_dos_meses():
 
 
 def test_la_historia_posterior_al_inicio_no_cuenta():
-    presupuesto, composiciones = _obra({RIEGO: D(100)})
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
-    historia = _historia(ppi=D("1.01"), gasoil=D("1.01"), tasa=D("1.01"))
+    historia = historia_uniforme(ppi=D("1.01"), gasoil=D("1.01"), tasa=D("1.01"))
     base = proyectar(presupuesto, composiciones, PARAMETROS, historia, mapa, _p())
 
     for serie in historia.values():
@@ -166,14 +166,14 @@ def test_la_historia_posterior_al_inicio_no_cuenta():
 
 def test_la_mezcla_sube_si_sube_el_asfalto():
     # solo el PPI sube 1 % mensual; el cemento asfáltico CA-30 lo sigue y la mezcla se recalcula
-    presupuesto, composiciones = _obra({CARPETA: D(1000)})
+    presupuesto, composiciones = obra_ficticia({CARPETA: D(1000)})
     mapa = MapaSeries({"CA-30": PPI})
 
     p = proyectar(
         presupuesto,
         composiciones,
         PARAMETROS,
-        _historia(ppi=D("1.01")),
+        historia_uniforme(ppi=D("1.01")),
         mapa,
         _p(),
         recetas={MEZCLA: RECETA},
@@ -192,14 +192,14 @@ def test_la_mezcla_sube_si_sube_el_asfalto():
 
 
 def test_mezcla_sin_costo_de_planta_se_niega():
-    presupuesto, composiciones = _obra({CARPETA: D(1000)})
+    presupuesto, composiciones = obra_ficticia({CARPETA: D(1000)})
 
     with pytest.raises(ValueError, match="costo de planta por tonelada de «Costo propio de mezcla"):
         proyectar(
             presupuesto,
             composiciones,
             PARAMETROS,
-            _historia(),
+            historia_uniforme(),
             MapaSeries({"CA-30": PPI}),
             _p(),
             recetas={MEZCLA: RECETA},
@@ -209,10 +209,15 @@ def test_mezcla_sin_costo_de_planta_se_niega():
 
 def test_insumo_en_bs_sin_serie_sigue_la_tasa():
     # presupuesto en Bs, el flete no tiene serie: USD fijo × tasa, y la tasa sube 2 % mensual
-    presupuesto, composiciones = _obra({TRANSPORTE: D(50)}, moneda="Bs")
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50)}, moneda="Bs")
 
     p = proyectar(
-        presupuesto, composiciones, PARAMETROS, _historia(tasa=D("1.02")), MapaSeries({}), _p()
+        presupuesto,
+        composiciones,
+        PARAMETROS,
+        historia_uniforme(tasa=D("1.02")),
+        MapaSeries({}),
+        _p(),
     )
 
     # 50 × 20 × 1,265 = 1.265; 1,02^k suma 6,434283382464 (k = 1..6)
@@ -222,10 +227,15 @@ def test_insumo_en_bs_sin_serie_sigue_la_tasa():
 
 
 def test_insumo_en_usd_sin_serie_queda_fijo():
-    presupuesto, composiciones = _obra({TRANSPORTE: D(50)}, moneda="USD")
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50)}, moneda="USD")
 
     p = proyectar(
-        presupuesto, composiciones, PARAMETROS, _historia(tasa=D("1.02")), MapaSeries({}), _p()
+        presupuesto,
+        composiciones,
+        PARAMETROS,
+        historia_uniforme(tasa=D("1.02")),
+        MapaSeries({}),
+        _p(),
     )
 
     assert p.percentiles == {50: D("1265"), 80: D("1265")}
@@ -235,34 +245,34 @@ def test_insumo_en_usd_sin_serie_queda_fijo():
 
 def test_serie_en_usd_en_presupuesto_en_bs_se_compone_con_la_tasa():
     # el PPI sube 1 % y la tasa 2 %: el asfalto en Bs sube 1,01 × 1,02 = 1,0302 por mes
-    presupuesto, composiciones = _obra({RIEGO: D(100)}, moneda="Bs")
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100)}, moneda="Bs")
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
 
     p = proyectar(
         presupuesto,
         composiciones,
         PARAMETROS,
-        _historia(ppi=D("1.01"), tasa=D("1.02")),
+        historia_uniforme(ppi=D("1.01"), tasa=D("1.02")),
         mapa,
         _p(),
     )
 
     # asfalto 100 × 300 y gasoil 100 × 5, cada uno × 1,265
-    asfalto = D(100) * D(300) * CASCADA * _promedio_compuesto(D("1.0302"))
-    gasoil = D(100) * D(5) * CASCADA * _promedio_compuesto(D("1.02"))
+    asfalto = D(100) * D(300) * CASCADA * promedio_compuesto(D("1.0302"))
+    gasoil = D(100) * D(5) * CASCADA * promedio_compuesto(D("1.02"))
     assert abs(p.percentiles[50] - (asfalto + gasoil)) < TOLERANCIA
 
 
 def test_contribucion_por_insumo_de_mayor_a_menor():
     # asfalto con el PPI (+1 %), gasoil con su serie (+0,5 %), flete en USD sin serie (fijo)
-    presupuesto, composiciones = _obra({RIEGO: D(100), TRANSPORTE: D(10)})
+    presupuesto, composiciones = obra_ficticia({RIEGO: D(100), TRANSPORTE: D(10)})
     mapa = MapaSeries({ASFALTO: PPI, GASOIL_LITRO: GASOIL})
 
     p = proyectar(
         presupuesto,
         composiciones,
         PARAMETROS,
-        _historia(ppi=D("1.01"), gasoil=D("1.005")),
+        historia_uniforme(ppi=D("1.01"), gasoil=D("1.005")),
         mapa,
         _p(),
     )
@@ -270,15 +280,15 @@ def test_contribucion_por_insumo_de_mayor_a_menor():
     assert [insumo for insumo, _ in p.contribucion] == [ASFALTO, GASOIL_LITRO]
     (_, asfalto), (_, gasoil) = p.contribucion
     assert abs(asfalto - D(100) * D(300) * CASCADA * (F_UNO - 1)) < TOLERANCIA
-    assert abs(gasoil - D(100) * D(5) * CASCADA * (_promedio_compuesto(D("1.005")) - 1)) < (
+    assert abs(gasoil - D(100) * D(5) * CASCADA * (promedio_compuesto(D("1.005")) - 1)) < (
         TOLERANCIA
     )
 
 
 def test_supuestos_declarados():
-    presupuesto, composiciones = _obra({TRANSPORTE: D(50)}, moneda="Bs")
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50)}, moneda="Bs")
 
-    p = proyectar(presupuesto, composiciones, PARAMETROS, _historia(), MapaSeries({}), _p())
+    p = proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(), MapaSeries({}), _p())
 
     assert any("gasto uniforme" in s for s in p.supuestos)
     assert any("USD fijo × tasa" in s for s in p.supuestos)
@@ -287,27 +297,27 @@ def test_supuestos_declarados():
 
 
 def test_dos_precios_para_el_mismo_insumo_se_niega():
-    otro = _apu("VIA-04", [(FLETE, "t", D(1), D(25))])
-    presupuesto, composiciones = _obra({TRANSPORTE: D(1), otro: D(1)})
+    otro = apu_ficticio("VIA-04", [(FLETE, "t", D(1), D(25))])
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(1), otro: D(1)})
 
     with pytest.raises(ValueError, match="«Flete» tiene dos precios"):
-        proyectar(presupuesto, composiciones, PARAMETROS, _historia(), MapaSeries({}), _p())
+        proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(), MapaSeries({}), _p())
 
 
 def test_composiciones_que_no_reproducen_el_total_se_niegan():
-    presupuesto, composiciones = _obra({TRANSPORTE: D(50)})
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50)})
     otros = ParametrosCosto(
         fcas=D(0), bono_alimentacion=D(0), administracion=D("0.20"), utilidad=D("0.10")
     )
 
     with pytest.raises(ValueError, match="no reproducen el total del presupuesto"):
-        proyectar(presupuesto, composiciones, otros, _historia(), MapaSeries({}), _p())
+        proyectar(presupuesto, composiciones, otros, historia_uniforme(), MapaSeries({}), _p())
 
 
 def test_serie_de_moneda_desconocida_se_niega():
-    presupuesto, composiciones = _obra({TRANSPORTE: D(50)}, moneda="Bs")
-    historia = _historia()
-    historia["INDICE_BS_X"] = _creciente(D("1.01"))
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50)}, moneda="Bs")
+    historia = historia_uniforme()
+    historia["INDICE_BS_X"] = serie_creciente(D("1.01"))
 
     mapa = MapaSeries({FLETE: "INDICE_BS_X"})
 
@@ -316,18 +326,20 @@ def test_serie_de_moneda_desconocida_se_niega():
 
 
 def test_insumo_que_sigue_la_tasa_en_presupuesto_en_usd_se_niega():
-    presupuesto, composiciones = _obra({TRANSPORTE: D(50)}, moneda="USD")
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50)}, moneda="USD")
     mapa = MapaSeries({FLETE: SERIE_TASA})
 
     with pytest.raises(ValueError, match="presupuesto en USD .*: Flete$"):
-        proyectar(presupuesto, composiciones, PARAMETROS, _historia(), mapa, _p())
+        proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(), mapa, _p())
 
 
 def test_insumo_que_sigue_la_tasa_en_presupuesto_en_bs():
-    presupuesto, composiciones = _obra({TRANSPORTE: D(50)}, moneda="Bs")
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50)}, moneda="Bs")
     mapa = MapaSeries({FLETE: SERIE_TASA})
 
-    p = proyectar(presupuesto, composiciones, PARAMETROS, _historia(tasa=D("1.02")), mapa, _p())
+    p = proyectar(
+        presupuesto, composiciones, PARAMETROS, historia_uniforme(tasa=D("1.02")), mapa, _p()
+    )
 
     esperado = D("1265") * D("6.434283382464") / 6
     assert abs(p.percentiles[50] - esperado) < TOLERANCIA
@@ -371,8 +383,8 @@ def test_parametros_por_defecto_son_los_de_d_v_3():
 
 
 def test_proyeccion_es_inmutable():
-    presupuesto, composiciones = _obra({TRANSPORTE: D(50)})
-    p = proyectar(presupuesto, composiciones, PARAMETROS, _historia(), MapaSeries({}), _p())
+    presupuesto, composiciones = obra_ficticia({TRANSPORTE: D(50)})
+    p = proyectar(presupuesto, composiciones, PARAMETROS, historia_uniforme(), MapaSeries({}), _p())
     assert isinstance(p, Proyeccion)
     with pytest.raises(AttributeError):
         p.reserva = D(0)  # type: ignore[misc]
