@@ -11,6 +11,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
 import { useCarga } from "../inicio/useCarga";
+import { AvisoDeLlevar } from "./AvisoDeLlevar";
 import { AvisoConFoco } from "../produccion/AvisoConFoco";
 import { ReportesDeLaVia } from "./ReportesDeLaVia";
 import { TramoConCantidades } from "./TramoConCantidades";
@@ -152,7 +153,7 @@ export default function Tramos() {
               </AvisoConFoco>
               {errorAlLlevar !== null && (
                 <div ref={cajaDelErrorAlLlevar} tabIndex={-1}>
-                  <AvisoError error={errorAlLlevar} titulo="No se llevó nada al presupuesto" alCerrar={() => setErrorAlLlevar(null)} />
+                  <AvisoDeLlevar error={errorAlLlevar} titulo="No se llevó nada al presupuesto" alCerrar={() => setErrorAlLlevar(null)} />
                 </div>
               )}
               {carga.datos.tramos.length > 0 && nombre !== null && (

@@ -43,3 +43,29 @@
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+// El aviso de «No se llevó nada al presupuesto» (AvisoDeLlevar): párrafos, listas y «Qué hacer» resaltado.
+.silice-llevar {
+  display: grid;
+  gap: 0.5rem;
+
+  p {
+    margin: 0;
+  }
+}
+
+.silice-llevar__que-hacer {
+  padding-inline-start: 0.75rem;
+  border-inline-start: 4px solid var(--cds-support-error);
+}
+
+.silice-llevar__lista {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  list-style: disc;
+}
+
+// Un código no se parte en dos líneas.
+.silice-codigo-sin-partir {
+  white-space: nowrap;
+}
