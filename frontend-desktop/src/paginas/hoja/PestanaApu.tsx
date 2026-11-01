@@ -17,7 +17,7 @@ import { FactoresDeLaVersion } from "./PestanaParametros";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
 import { enteroDeDigitos, rutaDeVista } from "./logica";
-import type { DetalleApu, GrupoApu, Resumen, VistaApu } from "./logica";
+import type { BaseAbierta, DetalleApu, GrupoApu, Resumen, VistaApu } from "./logica";
 import {
   FRASE_DE_APU,
   RUBROS,
@@ -35,6 +35,7 @@ import {
 import type { EdicionDeApu, UbicacionDeApu } from "./logicaApu";
 import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
   id: string;
@@ -47,6 +48,8 @@ interface Props {
   alRecargarBorrador: () => Promise<void>;
   // Descarta lo que se ve y abre otro borrador de la versión (cuando recargar no sirve).
   alReabrir: () => void;
+  // La base del borrador: con `solo_lectura` (o sin permiso de edición) no se pinta nada que escriba (F4 2b).
+  base?: Pick<BaseAbierta, "solo_lectura">;
 }
 
 // Espera tras la última tecla antes de pedir la lista filtrada al servidor.
@@ -78,6 +81,7 @@ function TablaDelRubro({
   ubicacion,
   idDelError,
   quitable,
+  soloLectura,
   alCambiar,
   alRestaurar,
   alQuitar,
@@ -89,6 +93,8 @@ function TablaDelRubro({
   idDelError: string;
   // Las líneas se quitan solo en el borrador de una versión guardada (Tarea 26).
   quitable: boolean;
+  // F4 2b: sin permiso de edición la cantidad de cada línea es texto.
+  soloLectura: boolean;
   alCambiar: (indice: number, texto: string) => void;
   alRestaurar: (indice: number) => void;
   alQuitar: (linea: PorQuitar) => void;
@@ -105,6 +111,7 @@ function TablaDelRubro({
           const n = enteroDeDigitos(f.n!);
           return (
             <CampoDeCelda
+              soloLectura={soloLectura}
               id={idDeCantidad(grupo.clave, n)}
               etiqueta={`Cantidad, ${grupo.rotulo} fila ${n}`}
               valor={edicion.cantidades[grupo.clave]?.[n - 1] ?? f.cantidad!}
@@ -173,8 +180,9 @@ function TablaDelRubro({
 
 // El APU de una partida: las cantidades de cada línea y el rendimiento se editan (se aplican al borrador del servidor tras
 // la pausa de 400 ms); el cierre y los subtotales se vuelven a leer. A la derecha, los factores de la versión y el cierre.
-function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura }: PropsEditor) {
+function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, base }: PropsEditor) {
   const { alExpirar } = useAplicacion();
+  const puedeEditar = usePuedeEditarLaHoja(base ?? null);
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<EdicionDeApu, UbicacionDeApu>({
     borrador: id,
@@ -196,7 +204,7 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
   const { error, accionarEnOrden, esperarEnvios, resembrar, recargar } = edicion;
   const ubicacion = error?.ubicacion ?? null;
   // Agregar y quitar líneas (Tarea 26): solo en el borrador de una versión guardada.
-  const conLineas = !detalle.solo_lectura_insumos;
+  const conLineas = puedeEditar && !detalle.solo_lectura_insumos;
   const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
   const enfocar = useFocoAlCerrar();
   const [porQuitar, setPorQuitar] = useState<PorQuitar | null>(null);
@@ -255,11 +263,13 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
         <h2 className="cds--type-heading-compact-02">
           {detalle.codigo} · {detalle.descripcion} · {detalle.unidad}
         </h2>
+        {puedeEditar && (
         <p className="cds--type-helper-text-01">
           Se edita la cantidad de cada línea y el rendimiento, y se puede agregar una línea (un insumo de la lista de la versión
           o uno nuevo con su precio) o quitar otra, en la copia de esta versión: el catálogo no cambia. {AYUDA_CIFRAS} Los
           cambios se aplican al borrador cuando deja de escribir; no se guardan como versión hasta que lo pida.
         </p>
+        )}
         <AvisoDeEnvio envio={edicion.envio} />
         {error !== null && (
           <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void recargar()} alReabrir={alReabrir} />
@@ -275,6 +285,7 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
               ubicacion={ubicacion}
               idDelError={idDelError}
               quitable={conLineas}
+              soloLectura={!puedeEditar}
               alCambiar={(indice, texto) => edicion.cambiar((previo) => cambiarCantidadDeLinea(previo, g.clave, indice, texto))}
               alRestaurar={(indice) =>
                 edicion.cambiar((previo) =>
@@ -287,6 +298,7 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
               }}
             />
           ))}
+          {puedeEditar && (
           <div className="silice-hoja__acciones">
             {conLineas ? (
               <Button
@@ -306,10 +318,12 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
               <p className="cds--type-helper-text-01">{SIN_VERSION_GUARDADA}</p>
             )}
           </div>
+          )}
           <p className="cds--type-helper-text-01" role="status">
             {aviso}
           </p>
           <CampoDeCelda
+            soloLectura={!puedeEditar}
             id="hoja-apu-rendimiento"
             etiqueta="Rendimiento (unidades por día)"
             etiquetaVisible
@@ -320,13 +334,9 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
             alRestaurar={() => edicion.cambiar((previo) => cambiarRendimiento(previo, edicion.aceptado().rendimiento))}
           />
         </fieldset>
-        <CambioDeInsumo
-          id={id}
-          detalle={detalle}
-          alCambiar={accionarEnOrden}
-          alAusente={alAusente}
-          alExpirar={alExpirar}
-        />
+        {puedeEditar && (
+          <CambioDeInsumo id={id} detalle={detalle} alCambiar={accionarEnOrden} alAusente={alAusente} alExpirar={alExpirar} />
+        )}
         {porQuitar !== null && (
           <ConfirmarQuitarLinea
             partida={detalle.codigo}
@@ -365,6 +375,7 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
             alRecargarBorrador={alRecargarBorrador}
             alReabrir={alReabrir}
             alCambiar={alRelectura}
+            base={base}
           />
         </section>
         <section className="silice-hoja__seccion">

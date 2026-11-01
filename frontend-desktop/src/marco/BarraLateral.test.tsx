@@ -197,8 +197,9 @@ describe("BarraLateral: obra abierta", () => {
     pintar({ sesion: sesionDe("rita"), abierta, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
     await arbol();
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
-    // «hoja» y «mercado» exigen editar_hoja y «control», control_de_obra: quien solo revisa no los ve.
-    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Aprobaciones"]);
+    // «mercado» exige editar_hoja y «control», control_de_obra: quien solo revisa no los ve. «Presupuesto» sí, en
+    // solo lectura (F4 2b, Eugenio, 2026-10-31).
+    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Aprobaciones"]);
   });
 });
 

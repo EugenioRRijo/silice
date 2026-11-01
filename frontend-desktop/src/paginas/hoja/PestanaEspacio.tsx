@@ -19,6 +19,7 @@ import {
   ubicarError,
 } from "./logica";
 import type {
+  BaseAbierta,
   FilaEditable,
   Resumen,
   TablasEditables,
@@ -27,6 +28,7 @@ import type {
 } from "./logica";
 import { ImportarPlano } from "./ImportarPlano";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
   id: string;
@@ -38,6 +40,8 @@ interface Props {
   alRecargarBorrador: () => Promise<void>;
   // Descarta lo que se ve y abre otro borrador de la versión (cuando recargar no sirve).
   alReabrir: () => void;
+  // La base del borrador: con `solo_lectura` (o sin permiso de edición) no se pinta nada que escriba (F4 2b).
+  base?: Pick<BaseAbierta, "solo_lectura">;
 }
 
 interface PropsContenido extends Props {
@@ -54,8 +58,10 @@ function ContenidoEspacio({
   alRecargarBorrador,
   alReabrir,
   alRelectura,
+  base,
 }: PropsContenido) {
   const { alExpirar } = useAplicacion();
+  const puedeEditar = usePuedeEditarLaHoja(base ?? null);
   const idDelError = useId();
   const [irA, setIrA] = useState<(IrA & { tabla: string }) | null>(null);
   // El plano se fusiona y se vuelve a leer el espacio: hasta que termina, las tablas no se editan (3e-2).
@@ -99,12 +105,15 @@ function ContenidoEspacio({
   return (
     <div className="silice-hoja__pestana">
       <p className="cds--type-body-compact-01">{vista.ayuda}</p>
+      {puedeEditar && (
       <p className="cds--type-helper-text-01">
         {AYUDA_CIFRAS} En «Vértices» cada punto se escribe x,y,z: ahí la coma
         separa las coordenadas y los decimales van con punto (0,0,0; 2.5,0,0).
         Los cambios se aplican al borrador cuando deja de escribir; no se
         guardan como versión hasta que lo pida.
       </p>
+      )}
+      {puedeEditar && (
       <ImportarPlano
         id={id}
         rev={rev}
@@ -116,6 +125,7 @@ function ContenidoEspacio({
         alExpirar={alExpirar}
         alOcuparse={setFusionando}
       />
+      )}
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && (
         <AvisoDeEdicion
@@ -164,6 +174,7 @@ function ContenidoEspacio({
             valorAceptado={(filaClave, columna) =>
               valorAceptado(t.clave, filaClave, columna)
             }
+            soloLectura={!puedeEditar}
           />
         ))}
       </fieldset>
