@@ -62,9 +62,9 @@ function EstadoDelBorrador({
       <p className="cds--type-body-compact-01">
         {base.version === null ? "Borrador en blanco" : `Versión ${base.version}`} · {textoDeCambios(resumen.cambios)}
       </p>
-      <p className="silice-hoja__total cds--type-heading-03" aria-live="polite" title={resumen.total.exacto}>
+      <p className="silice-hoja__total cds--type-heading-03" aria-live="polite" title={formatoEsVe(resumen.total.exacto)}>
         Total {formatoEsVe(resumen.total.texto)} {resumen.moneda}
-        <span className="cds--visually-hidden"> Valor exacto {resumen.total.exacto}</span>
+        <span className="cds--visually-hidden"> Valor exacto {formatoEsVe(resumen.total.exacto)}</span>
       </p>
       {resumen.version_mas_nueva !== null && (
         <p className="cds--type-helper-text-01">La versión vigente ahora es la {resumen.version_mas_nueva}.</p>

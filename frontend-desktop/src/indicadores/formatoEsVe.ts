@@ -36,6 +36,15 @@ export function centesimasEsVe(exacto: string): string {
   return formatoEsVe(signo === "-" && /[1-9]/.test(total) ? `-${texto}` : texto);
 }
 
+// Un texto libre de la API con decimales de punto dentro («FCAS (fracción: 6.00 = …)», «FCAS 6 y bono 5.81», «15.0 % del
+// costo directo») a es-VE: solo se tocan los decimales con punto sueltos, no los enteros (un año, «600 %») ni los
+// códigos con varios puntos («C-000.000.006») ni lo que ya está en es-VE («1.234,56»). Para rótulos y notas que el servidor arma con texto (D-8).
+const DECIMAL_EN_TEXTO = /(?<![\d.,])\d+\.\d+(?![\d.]|,\d)/g;
+
+export function cifrasEnTextoEsVe(texto: string): string {
+  return texto.replace(DECIMAL_EN_TEXTO, (decimal) => formatoEsVe(decimal));
+}
+
 // Una fecha ISO de la API a como se lee en es-VE: «2026-11-02» -> «02/11/2026» y «2026-10-18T14:32:05» ->
 // «18/10/2026 14:32». Lo que se envia a la API sigue siendo AAAA-MM-DD; esto es solo para leer (VB-19). Lo que no es
 // una fecha ISO se devuelve tal cual.
@@ -44,9 +53,4 @@ export function fechaEsVe(iso: string): string {
   if (!m) return iso;
   const dia = `${m[3]}/${m[2]}/${m[1]}`;
   return m[4] ? `${dia} ${m[4]}:${m[5]}` : dia;
-}
-
-// Esqueleto para la prueba en rojo: todavía no convierte nada.
-export function cifrasEnTextoEsVe(texto: string): string {
-  return texto;
 }

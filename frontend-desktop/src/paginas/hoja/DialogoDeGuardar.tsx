@@ -146,10 +146,10 @@ export function DialogoDeGuardar(p: Props) {
         </p>
         <p className="cds--type-body-compact-01">
           Total{" "}
-          <span title={p.total.exacto}>
+          <span title={formatoEsVe(p.total.exacto)}>
             {formatoEsVe(p.total.texto)} {p.moneda}
           </span>
-          <span className="cds--visually-hidden"> Valor exacto {p.total.exacto}</span>
+          <span className="cds--visually-hidden"> Valor exacto {formatoEsVe(p.total.exacto)}</span>
         </p>
         <CampoTexto
           id={idFuente}

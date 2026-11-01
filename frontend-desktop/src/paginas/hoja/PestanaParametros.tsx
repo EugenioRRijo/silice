@@ -1,5 +1,6 @@
 import { useCallback, useId, useState } from "react";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
+import { cifrasEnTextoEsVe } from "../../indicadores/formatoEsVe";
 import { pedir } from "../../api/cliente";
 import { useAplicacion } from "../../shell/contexto";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
@@ -79,7 +80,7 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
           <CampoDeCelda
             key={c.clave}
             id={`hoja-parametro-${c.clave}`}
-            etiqueta={c.rotulo}
+            etiqueta={cifrasEnTextoEsVe(c.rotulo)}
             etiquetaVisible
             valor={edicion.estado[c.clave] ?? ""}
             invalido={ubicacion !== null && ubicacion.campo === c.clave}
