@@ -107,7 +107,9 @@ def _entorno(_plantillas: dict[str, Path], monkeypatch: pytest.MonkeyPatch) -> I
 @pytest.fixture
 def ana() -> tuple[TestClient, str]:
     navegador, ficha = con_cuenta(app, "ana")
-    elegida = navegador.post("/v1/casos/actual", json={"nombre": "via.db"}, headers=protegida(ficha))
+    elegida = navegador.post(
+        "/v1/casos/actual", json={"nombre": "via.db"}, headers=protegida(ficha)
+    )
     assert elegida.status_code == 200, elegida.text
     return navegador, ficha
 

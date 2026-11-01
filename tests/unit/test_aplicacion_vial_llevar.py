@@ -321,6 +321,97 @@ def test_partidas_sin_apu_no_tocan_el_borrador_que_ya_estaba(tmp_path: Path) -> 
         assert (vivo.borrador, vivo.rev) == antes
 
 
+# --- partidas que la Hoja no puede valorar (pasada de navegador del 31/10/2026) ------------------
+
+
+def _componer_aparte(
+    sesion: Session, codigo: str, material: str, lista: models.ListaPrecios, rendimiento: date
+) -> None:
+    """La partida `codigo` (de `PARTIDAS`) con su precio en `lista` y su rendimiento a esa fecha."""
+    _codigo, descripcion, unidad = next(p for p in PARTIDAS if p[0] == codigo)
+    linea = LineaMaterial(material, unidad, D("1"), D("3"))
+    apu = ComposicionAPU(codigo, descripcion, unidad, D("10"), materiales=(linea,))
+    Catalogo(sesion).cargar_composicion(apu, lista, Dominio.CIVIL, rendimiento, "prueba")
+    sesion.commit()
+
+
+def _lista(sesion: Session, nombre: str, vigencia: date) -> models.ListaPrecios:
+    lista = models.ListaPrecios(nombre=nombre, moneda="Bs", fecha_vigencia=vigencia, origen="x")
+    sesion.add(lista)
+    sesion.flush()
+    return lista
+
+
+DE_NUEVO = (
+    "si la partida ya existía, cambie también las condiciones del rendimiento para que se "
+    "registre de nuevo"
+)
+
+
+def test_insumo_sin_precio_en_la_lista_de_la_version_da_409_y_no_lleva_nada(
+    tmp_path: Path,
+) -> None:
+    """El precio quedó en otra lista: la Hoja dejaría la partida PENDIENTE."""
+    for sesion in _preparar(tmp_path, sin=("C-000.000.012",)):
+        vieja = _lista(sesion, "Lista vieja de prueba", date(2026, 9, 1))
+        _componer_aparte(sesion, "C-000.000.012", "Pintura de la otra lista", vieja, FECHA)
+        with pytest.raises(hoja_vial.PartidasSinValorar) as error:
+            _llevar(sesion)
+        assert str(error.value) == (
+            "No se llevó nada: 1 partida quedaría pendiente en la Hoja, sin precio, porque la "
+            "Hoja arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, al "
+            "01/10/2026, y con ella no se pueden valorar. Insumos sin precio en «Lista Bs de "
+            "prueba»: «C-000.000.012» («Pintura de la otra lista»). Esos precios están en «Lista "
+            "vieja de prueba». Qué hacer: en Componer, guarde esas partidas con fecha 01/10/2026: "
+            "sus precios quedan en «Lista Bs de prueba» y su rendimiento a esa fecha "
+            f"({DE_NUEVO}). Luego vuelva a llevar."
+        )
+        assert hoja_edicion.borradores_para_retomar(HUELLA, CASO) == []
+
+
+def test_sin_rendimiento_a_la_fecha_de_la_version_da_409_y_no_toca_el_borrador(
+    tmp_path: Path,
+) -> None:
+    """El APU se compuso después de la fecha de la versión (precio en su lista, rendimiento no)."""
+    for sesion in _preparar(tmp_path, sin=("C-000.000.013",)):
+        lista = sesion.scalars(
+            select(models.ListaPrecios).where(models.ListaPrecios.nombre == "Lista Bs de prueba")
+        ).one()
+        _componer_aparte(sesion, "C-000.000.013", "Pintura tardía", lista, date(2026, 10, 15))
+        abierta = hoja.abrir_version(sesion, Catalogo(sesion), _obra(sesion).nombre, "VIV-001")
+        vivo = hoja_borradores.crear(
+            HUELLA, CASO, _obra(sesion).nombre, "VIV-001", abierta.borrador, abierta
+        )
+        antes = (vivo.borrador, vivo.rev)
+        with pytest.raises(hoja_vial.PartidasSinValorar) as error:
+            _llevar(sesion)
+        assert str(error.value) == (
+            "No se llevó nada: 1 partida quedaría pendiente en la Hoja, sin precio, porque la "
+            "Hoja arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, al "
+            "01/10/2026, y con ella no se pueden valorar. Sin rendimiento registrado al "
+            "01/10/2026 o antes: «C-000.000.013». Qué hacer: en Componer, guarde esas partidas "
+            "con fecha 01/10/2026: sus precios quedan en «Lista Bs de prueba» y su rendimiento a "
+            f"esa fecha ({DE_NUEVO}). Luego vuelva a llevar."
+        )
+        assert (vivo.borrador, vivo.rev) == antes
+
+
+def test_si_componer_no_escribe_en_la_lista_de_la_version_pide_cargar_los_precios(
+    tmp_path: Path,
+) -> None:
+    """Otra lista rige desde el mismo día y es la para armar: Componer no escribiría en la de la
+    versión, así que el mensaje no lo propone para los precios."""
+    for sesion in _preparar(tmp_path, sin=("C-000.000.012",)):
+        otra = _lista(sesion, "Lista para armar nueva", FECHA)
+        _componer_aparte(sesion, "C-000.000.012", "Pintura de la nueva", otra, FECHA)
+        with pytest.raises(hoja_vial.PartidasSinValorar) as error:
+            _llevar(sesion)
+        assert str(error.value).endswith(
+            "Esos precios están en «Lista para armar nueva». Qué hacer: cargue esos precios en "
+            "«Lista Bs de prueba». Luego vuelva a llevar."
+        )
+
+
 def test_una_obra_sin_tramos_no_lleva_nada(tmp_path: Path) -> None:
     for sesion in _preparar(tmp_path):
         vial.guardar_tramos(sesion, _version_id(sesion), [], usuario=ANA, ahora=LUNES)

@@ -22,8 +22,10 @@ enviado. Acción `EDITAR_HOJA`:
   Hoja de la obra (el vivo de esa ficha y obra o uno nuevo sobre la vigente), cada una con su
   origen de tramo; llevar otra vez sincroniza. No guarda versión. Mismo acceso que
   `POST /v1/hoja/llevar` (solo una cuenta, CSRF, `Origin`, `no-store`) y sus mismos errores: obra
-  que no existe, 404 sin eco; partidas sin APU, 404 con todos los códigos; borrador de otra
-  versión, versión que no existe o sin tramos, sin lista o que ya no se abre, o borrador que
+  que no existe, 404 sin eco; partidas sin APU, 404 con todos los códigos; partidas que la Hoja
+  no puede valorar con la lista de la versión y a su fecha (insumos sin precio en esa lista o sin
+  rendimiento a esa fecha), 409 con las partidas, los insumos, la lista y qué hacer; borrador de
+  otra versión, versión que no existe o sin tramos, sin lista o que ya no se abre, o borrador que
   cambió entretanto, 409; cifra mala, 422; la base, 503.
 - `GET /reportes/{tipo}?proyecto=&version=` → un libro .xlsx (Tarea 21,
   `aplicacion.reportes_viales`) con una hoja de portada que dice de dónde sale cada cifra. `tipo`:
@@ -265,6 +267,7 @@ def llevar_al_presupuesto(
         raise HTTPException(status_code=404, detail=str(error)) from None
     except (
         hoja_vial.BorradorDeOtraVersion,
+        hoja_vial.PartidasSinValorar,
         hoja_vial.SinTramos,
         vial.VersionInexistente,
         hoja_edicion.SinListaDeLaObra,
