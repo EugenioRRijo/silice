@@ -141,6 +141,14 @@ llevar otra vez después de arreglar el APU compone la partida aunque los renglo
 pendiente). Pruebas: `tests/integration/test_api_vial_llevar_valorable.py` (por la API, con Componer) y cuatro nuevas
 en `tests/unit/test_aplicacion_vial_llevar.py`. `docs/api.json` no cambia.
 
+Ronda 2 (MAYOR del árbitro, DRY): la primera versión copiaba la regla de la Hoja (un bucle de `catalogo.composicion`
+y la elección de lista). Ahora la decisión es la de la Hoja misma: `hoja_edicion._completar` pasó a pública como
+`hoja_edicion.completar` (misma conducta) y la elección de lista quedó en un único sitio,
+`hoja_edicion.lista_para_completar`, que usan `completar` y llevar. `hoja_edicion.py` no está bajo el congelado
+(`asistente/experimento/protocolo.json`, `archivos_del_auditor`); `hoja.py` sí y no se tocó. Llevar mira qué partidas
+no salen compuestas de `completar`; `catalogo.composicion` y `_por_que` quedan solo para redactar el motivo. Dos
+pruebas lo vigilan: si `hoja.completar_composiciones` o `lista_para_completar` cambian, llevar cambia con ellas.
+
 **Lo que Eugenio debe preparar para mostrar Llevar en la carpeta de demostración (DEMO-001):**
 
 - **La lista:** «Lista de referencia del caso de demostracion de Sílice» (USD), la de DEMO-001, vigente desde el

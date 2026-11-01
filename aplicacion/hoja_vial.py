@@ -15,8 +15,8 @@ renglones quedan como altas del borrador, que se guarda desde la Hoja.
 - **Partidas sin APU:** el 404 de `hoja_edicion.PartidaFueraDelCatalogo`, con todos los códigos.
 - **Partidas que la Hoja no puede valorar:** `PartidasSinValorar` (409). La Hoja arma el APU de
   cada partida nueva desde el catálogo con la lista de la versión abierta y a la fecha del borrador
-  (`hoja_edicion.cambiar_borrador` → `hoja.completar_composiciones`) y, si no puede, la deja
-  PENDIENTE sin decir por qué. Llevar comprueba lo mismo, con la misma lista y la misma fecha,
+  (`hoja_edicion.cambiar_borrador` → `hoja_edicion.completar` → `hoja.completar_composiciones`) y,
+  si no puede, la deja PENDIENTE sin decir por qué. Llevar corre esa misma función (no una copia)
   antes de cambiar nada, y dice qué partidas, qué insumos faltan en qué lista y qué rendimiento
   falta a esa fecha (pasada de navegador del 31/10/2026: APU compuestos en Componer en otra fecha
   dejaban pendientes los 20 renglones de la vía en DEMO-001).
@@ -42,7 +42,7 @@ from adapters.vial.derivacion import derivar_tramos
 from adapters.vial.modelo import Tramo
 from adapters.vial.reglas import ReglasViales
 from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion, vial
-from aplicacion.listas_para_armar import lista_para_armar, valoracion_de_la_obra
+from aplicacion.listas_para_armar import lista_para_armar
 from core import models
 from core.catalog import Catalogo, CatalogoIncompleto
 from core.contracts import ItemComputo, OrigenTipo, TipoRendimiento
@@ -188,23 +188,10 @@ class _SinValorar:
     otro: str | None  # el motivo del catálogo cuando no es ninguno de los dos
 
 
-def _lista_de_la_hoja(sesion: Session, vivo: hoja_borradores.BorradorVivo) -> models.ListaPrecios:
-    """La lista con que la Hoja completa las composiciones de este borrador: la de la versión
-    abierta o, en blanco, la para armar de la obra a la fecha del borrador (la misma elección que
-    `hoja_edicion.cambiar_borrador`)."""
-    if vivo.abierta is not None:
-        return hoja.lista_de_version(sesion, vivo.abierta.proyecto, vivo.abierta.codigo)
-    try:
-        return valoracion_de_la_obra(sesion, vivo.proyecto, vivo.borrador.fecha).base
-    except ValueError as error:
-        raise hoja_edicion.SinListaDeLaObra(str(error)) from None
-
-
-def _por_que(
-    sesion: Session, codigo: str, lista: models.ListaPrecios, fecha: date, error: Exception
-) -> _SinValorar:
-    """Lo que le falta a la partida `codigo`: rendimiento estimado al `fecha` o antes, y los
-    insumos de su APU sin precio en `lista`; si no es nada de eso, el motivo del catálogo."""
+def _por_que(sesion: Session, codigo: str, lista: models.ListaPrecios, fecha: date) -> _SinValorar:
+    """Por qué la Hoja no armó la partida `codigo` (solo para redactar el mensaje; quien decide es
+    `hoja_edicion.completar`): rendimiento estimado al `fecha` o antes, y los insumos de su APU
+    sin precio en `lista`; si no es nada de eso, el motivo del catálogo."""
     partida = sesion.scalars(select(models.Partida).where(models.Partida.codigo == codigo)).one()
     con_rendimiento = any(
         r.tipo == TipoRendimiento.ESTIMADO.value and r.fecha <= fecha for r in partida.rendimientos
@@ -215,7 +202,11 @@ def _por_que(
         )
     )
     faltan = [linea.insumo for linea in partida.composicion if linea.insumo_id not in con_precio]
-    otro = None if faltan or not con_rendimiento else str(error)
+    otro = (
+        None
+        if faltan or not con_rendimiento
+        else _motivo_del_catalogo(sesion, codigo, lista, fecha)
+    )
     return _SinValorar(
         codigo,
         not con_rendimiento,
@@ -223,6 +214,16 @@ def _por_que(
         tuple(insumo.id for insumo in faltan),
         otro,
     )
+
+
+def _motivo_del_catalogo(
+    sesion: Session, codigo: str, lista: models.ListaPrecios, fecha: date
+) -> str:
+    try:
+        Catalogo(sesion).composicion(codigo, fecha=fecha, lista=lista)
+    except (KeyError, ValueError, CatalogoIncompleto) as error:
+        return str(error)
+    return "la Hoja no pudo armar su APU con esa lista"
 
 
 def _listas_con_precio(sesion: Session, insumos: set[int], fuera: int) -> list[str]:
@@ -253,7 +254,7 @@ def _insumos(descripciones: Sequence[str]) -> str:
 def _mensaje_sin_valorar(
     faltas: Sequence[_SinValorar],
     lista: models.ListaPrecios,
-    version: str | None,
+    version: str,
     fecha: date,
     otras_listas: Sequence[str],
     *,
@@ -263,17 +264,17 @@ def _mensaje_sin_valorar(
     `componer_sirve`: guardar en Componer con la fecha del borrador deja los precios en `lista`
     (es la lista para armar de esa misma fecha, `listas_para_armar.lista_de_hoy`)."""
     dia = f"{fecha:%d/%m/%Y}"
-    de = "de la obra" if version is None else f"de la versión {version}"
     cuantas = (
         "1 partida quedaría pendiente"
         if len(faltas) == 1
         else f"{len(faltas)} partidas quedarían pendientes"
     )
-    partes = [
-        f"No se llevó nada: {cuantas} en la Hoja, sin precio, porque la Hoja arma cada APU con "
-        f"la lista «{lista.nombre}» {de}, al {dia}, y con ella no se pueden valorar."
-    ]
     sin_precio = [f for f in faltas if f.sin_precio]
+    como = ", sin precio," if sin_precio else ""
+    partes = [
+        f"No se llevó nada: {cuantas} en la Hoja{como} porque la Hoja arma cada APU con la lista "
+        f"«{lista.nombre}» de la versión {version}, al {dia}, y con ella no se pueden valorar."
+    ]
     if sin_precio:
         detalle = "; ".join(f"«{f.codigo}» ({_insumos(f.sin_precio)})" for f in sin_precio)
         partes.append(f"Insumos sin precio en «{lista.nombre}»: {detalle}.")
@@ -309,43 +310,38 @@ def _valorado(
     vivo: hoja_borradores.BorradorVivo,
     borrador: hoja.Borrador,
     items: Sequence[ItemComputo],
+    version: str,
 ) -> hoja.Borrador:
     """`borrador` con el APU de cada partida de `items` que aún no compone, o
     `PartidasSinValorar` si la Hoja dejaría PENDIENTE alguna.
 
-    Cada una se arma como lo hace `hoja.completar_composiciones` (catálogo, la lista de la Hoja,
-    la fecha del borrador); cada una que falla se explica (`_por_que`). Si todas se arman, se
-    completan aquí con esa misma lista (lo que haría `hoja_edicion.cambiar_borrador`): así llevar
-    otra vez compone una partida que había quedado pendiente aunque los renglones no cambien. En
-    un borrador en blanco las completa `cambiar_borrador`, que además convierte la moneda."""
+    Quien decide es la Hoja misma: `hoja_edicion.completar` (la lista de `lista_para_completar`,
+    la fecha del borrador, `hoja.completar_composiciones`), lo mismo que corre
+    `hoja_edicion.cambiar_borrador`; una partida de `items` que no sale compuesta quedaría
+    pendiente. `_por_que` solo redacta el motivo. Si todas salen, se devuelve ese borrador
+    completo: así llevar otra vez compone una partida que había quedado pendiente aunque los
+    renglones no cambien."""
     nuevas = sorted({item.codigo_partida for item in items} - set(borrador.composiciones))
     if not nuevas:
         return borrador
-    lista = _lista_de_la_hoja(sesion, vivo)
-    catalogo = Catalogo(sesion)
-    faltas = []
-    for codigo in nuevas:
-        try:
-            catalogo.composicion(codigo, fecha=borrador.fecha, lista=lista)
-        except (KeyError, ValueError, CatalogoIncompleto) as error:
-            faltas.append(_por_que(sesion, codigo, lista, borrador.fecha, error))
-    if faltas:
-        insumos = {insumo for falta in faltas for insumo in falta.insumos_sin_precio}
-        version = None if vivo.abierta is None else vivo.abierta.codigo
-        otras = _listas_con_precio(sesion, insumos, lista.id)
-        raise PartidasSinValorar(
-            _mensaje_sin_valorar(
-                faltas,
-                lista,
-                version,
-                borrador.fecha,
-                otras,
-                componer_sirve=_componer_escribe_en(sesion, lista, borrador.fecha),
-            )
+    completo = hoja_edicion.completar(sesion, vivo, borrador)
+    faltan = [codigo for codigo in nuevas if codigo not in completo.composiciones]
+    if not faltan:
+        return completo
+    lista, _valoracion = hoja_edicion.lista_para_completar(sesion, vivo, borrador.fecha)
+    faltas = [_por_que(sesion, codigo, lista, borrador.fecha) for codigo in faltan]
+    insumos = {insumo for falta in faltas for insumo in falta.insumos_sin_precio}
+    otras = _listas_con_precio(sesion, insumos, lista.id)
+    raise PartidasSinValorar(
+        _mensaje_sin_valorar(
+            faltas,
+            lista,
+            version,
+            borrador.fecha,
+            otras,
+            componer_sirve=_componer_escribe_en(sesion, lista, borrador.fecha),
         )
-    if vivo.abierta is None:
-        return borrador
-    return hoja.completar_composiciones(catalogo, borrador, lista=lista)
+    )
 
 
 def _componer_escribe_en(sesion: Session, lista: models.ListaPrecios, fecha: date) -> bool:
@@ -408,7 +404,7 @@ def llevar_tramos_a_la_hoja(
 
     def construir(actual: hoja_borradores.BorradorVivo) -> hoja.Borrador | None:
         sincronizado = sincronizar_renglones(actual.borrador, items, reglas)
-        sincronizado = _valorado(sesion, actual, sincronizado, items)
+        sincronizado = _valorado(sesion, actual, sincronizado, items, version)
         if sincronizado == actual.borrador:  # `reglas_extra` no cuenta en la igualdad
             actual.borrador, actual.calculo = sincronizado, None
             return None

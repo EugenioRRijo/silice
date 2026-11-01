@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -54,7 +55,7 @@ from aplicacion.hoja_partidas import (
     agregar_partida,
     quitar_partida,
 )
-from aplicacion.listas_para_armar import valoracion_de_la_obra
+from aplicacion.listas_para_armar import ValoracionDeLaObra, valoracion_de_la_obra
 from aplicacion.plan_rendimientos import (
     CuadrillasInvalidas,
     PlanDemasiadoLargo,
@@ -85,6 +86,7 @@ __all__ = [
     "cambiar_insumo_de_linea",
     "cambios_del_borrador",
     "candidatos_de_insumo",
+    "completar",
     "crear_plan_secuencial",
     "descartar_de_la_version",
     "editar_apu",
@@ -92,6 +94,7 @@ __all__ = [
     "editar_espacio",
     "editar_parametros",
     "editar_plan",
+    "lista_para_completar",
     "pendiente_de_la_version",
     "plan_desde_rendimientos",
     "quitar",
@@ -178,25 +181,37 @@ class SinListaDeLaObra(Exception):  # noqa: N818
     del BCV de los ultimos 7 dias); el mensaje es el que ve la persona."""
 
 
-def _completar(sesion: Session, vivo: BorradorVivo, nuevo: hoja.Borrador) -> hoja.Borrador:
-    """`nuevo` con la composicion de cada partida nueva que el catalogo conoce, con la lista de la
-    version abierta o, en blanco, con la de la obra a la fecha del borrador
-    (`valoracion_de_la_obra`). En blanco no se busca lista si no hay partidas nuevas, y nada se
-    escribe: en la otra moneda, el APU de la lista para armar se convierte con la tasa del BCV
-    (`hoja.composicion_convertida`, la misma cuenta que la lista convertida); la lista convertida
-    la escribe el guardado, que vuelve a tomar los precios de ella."""
+def lista_para_completar(
+    sesion: Session, vivo: BorradorVivo, fecha: date
+) -> tuple[models.ListaPrecios, ValoracionDeLaObra | None]:
+    """La lista con que se arman las partidas nuevas del borrador `vivo` a `fecha`: la de la
+    version abierta (sin valoracion) o, en blanco, la lista para armar de la obra con su valoracion
+    (`valoracion_de_la_obra`: la tasa del BCV si la obra esta en la otra moneda). Sin lista o sin
+    tasa, `SinListaDeLaObra`. Es el UNICO sitio de esta eleccion: la usan `completar` y llevar los
+    tramos al presupuesto (`aplicacion.hoja_vial`), para que los dos valoren con la misma lista."""
     if vivo.abierta is not None:
-        lista = hoja.lista_de_version(sesion, vivo.abierta.proyecto, vivo.abierta.codigo)
-        return hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
-    nuevas = hoja.partidas_sin_composicion(nuevo)
-    if not nuevas:
-        return nuevo
+        return hoja.lista_de_version(sesion, vivo.abierta.proyecto, vivo.abierta.codigo), None
     try:
-        valoracion = valoracion_de_la_obra(sesion, vivo.proyecto, nuevo.fecha)
+        valoracion = valoracion_de_la_obra(sesion, vivo.proyecto, fecha)
     except ValueError as error:  # SinListaParaArmar (sin lista o sin tasa) u obra que no existe
         raise SinListaDeLaObra(str(error)) from None
-    completo = hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=valoracion.base)
-    if valoracion.tasa is None:
+    return valoracion.base, valoracion
+
+
+def completar(sesion: Session, vivo: BorradorVivo, nuevo: hoja.Borrador) -> hoja.Borrador:
+    """`nuevo` con la composicion de cada partida nueva que el catalogo conoce, con la lista de
+    `lista_para_completar`: la de la version abierta o, en blanco, la de la obra a la fecha del
+    borrador. En blanco no se busca lista si no hay partidas nuevas, y nada se escribe: en la otra
+    moneda, el APU de la lista para armar se convierte con la tasa del BCV
+    (`hoja.composicion_convertida`, la misma cuenta que la lista convertida); la lista convertida
+    la escribe el guardado, que vuelve a tomar los precios de ella. Publico porque llevar los
+    tramos (`aplicacion.hoja_vial`) decide con el mismo resultado que la Hoja."""
+    nuevas = hoja.partidas_sin_composicion(nuevo)
+    if vivo.abierta is None and not nuevas:
+        return nuevo
+    lista, valoracion = lista_para_completar(sesion, vivo, nuevo.fecha)
+    completo = hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
+    if valoracion is None or valoracion.tasa is None:
         return completo
     de, a, tasa = valoracion.base.moneda, valoracion.moneda, valoracion.tasa.valor
     return replace(
@@ -232,7 +247,7 @@ def cambiar_borrador(
         nuevo = construir(vivo)
         if nuevo is None or nuevo == vivo.borrador:
             return vivo
-        return hoja_borradores.reemplazar(huella, id, _completar(sesion, vivo, nuevo), rev)
+        return hoja_borradores.reemplazar(huella, id, completar(sesion, vivo, nuevo), rev)
 
 
 def editar_espacio(

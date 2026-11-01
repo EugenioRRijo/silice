@@ -3,7 +3,7 @@
 Reproduce el bloqueo de la pasada de navegador del 31/10/2026 (carpeta de demostración, DEMO-001):
 llevar respondía 200 («Se llevaron 20 renglones») porque solo miraba que la partida estuviera en el
 catálogo, pero la Hoja valora cada APU con la lista de la VERSIÓN abierta y a la fecha de esa
-versión (`hoja_edicion._completar` → `hoja.completar_composiciones`, que calla el
+versión (`hoja_edicion.completar` → `hoja.completar_composiciones`, que calla el
 `CatalogoIncompleto`). Si el APU se compuso en Componer en otra fecha, sus precios quedaron en la
 lista de esa fecha y su rendimiento con esa fecha: la Hoja no lo puede valorar y los 20 renglones
 quedan PENDIENTE, «sin composición de APU», sin decir por qué.

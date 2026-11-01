@@ -449,6 +449,19 @@ def test_la_decision_de_llevar_es_la_de_la_hoja(sesion: Session, monkeypatch) ->
     assert hoja_edicion.borradores_para_retomar(HUELLA, CASO) == []
 
 
+def test_la_lista_de_llevar_es_la_de_la_hoja(sesion: Session, monkeypatch) -> None:
+    """La lista sale de un único sitio (`hoja_edicion.lista_para_completar`): si la Hoja eligiera
+    otra, llevar valoraría y hablaría de esa otra."""
+    vacia = _lista(sesion, "Lista sin las partidas viales", date(2026, 9, 1))
+    monkeypatch.setattr(hoja_edicion, "lista_para_completar", lambda *_: (vacia, None))
+    with pytest.raises(hoja_vial.PartidasSinValorar) as error:
+        _llevar(sesion)
+    mensaje = str(error.value)
+    assert "15 partidas quedarían pendientes" in mensaje
+    assert "con la lista «Lista sin las partidas viales» de la versión VIV-001" in mensaje
+    assert "Esos precios están en «Lista Bs de prueba»." in mensaje
+
+
 def test_si_componer_no_escribe_en_la_lista_de_la_version_pide_cargar_los_precios(
     tmp_path: Path,
 ) -> None:
