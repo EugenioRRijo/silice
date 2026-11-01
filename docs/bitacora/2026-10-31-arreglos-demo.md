@@ -12,8 +12,8 @@ Cada arreglo tiene su prueba, vista en rojo antes del arreglo. Todo en es-VE, so
 | 5 | Receta de la planta: «Producto (código)» buscaba en el catálogo de la carpeta y no hallaba las mezclas | 05_receta_escribiendo, 05c_receta_formulario | Los materiales de la arenera viven en la base de la instalación (no en la de la carpeta que lee `/v1/consulta`), así que no se añadió tabla en `aplicacion/consulta.py`: se usa `GET /v1/produccion/materiales`, que la pantalla ya pide, con filtro local (sin tildes, todas las palabras). Producto: `materiales_produccion`; componentes: materiales propios y, debajo, insumos del catálogo | 3d3efdfa, 04901688 |
 | 6 | Diálogos «Registrar un costo» y «Registrar una receta nueva» cortados contra el pie sin señal de desplazamiento | 04b_costos_formulario, 05c_receta_formulario | El cuerpo de `MarcoDeDialogo` ya se desplazaba; ahora lleva sombras de desplazamiento (CSS puro, solo si hay más contenido). La fila del componente de la receta va en una línea (código, cantidad, unidad, tipo, Quitar) y «Quitar» queda alineado | d9bd1652 |
 | 7 | Control › Valuaciones: «Total con IVA» cortada a la derecha | 21a_valuaciones | Relleno compacto (0,5 rem) en las celdas de las tablas de Control y cifras sin partir; si aun así no cupiera, `.silice-tabla` ya se desplaza dentro de su caja | 91f24249 |
-| 8a | Unidades «m2»/«m3» en las tablas de Tramos | 10_tramos_llevados_ok | Se presentan «m²»/«m³» solo en la columna Unidad (`presentar`); el valor del servidor no cambia | commit de detalles |
-| 8b | El foco del aviso verde se veía como una caja negra más ancha que el aviso | 09c_tramos_llevados | `AvisoConFoco` lleva `.silice-aviso-foco`: `fit-content` y anillo `--cds-focus` por dentro | commit de detalles |
+| 8a | Unidades «m2»/«m3» en las tablas de Tramos | 10_tramos_llevados_ok | Se presentan «m²»/«m³» solo en la columna Unidad (`presentar`); el valor del servidor no cambia | 38d2814a |
+| 8b | El foco del aviso verde se veía como una caja negra más ancha que el aviso | 09c_tramos_llevados | `AvisoConFoco` lleva `.silice-aviso-foco`: `fit-content` y anillo `--cds-focus` por dentro | 38d2814a |
 
 ## Notas
 
