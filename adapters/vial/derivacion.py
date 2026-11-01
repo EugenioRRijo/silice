@@ -139,7 +139,8 @@ def derivar_tramos(tramos: Sequence[Tramo]) -> list[ItemComputo]:
     """Las cantidades de obra de `tramos`, trazables a su tramo y a su capa o línea."""
     items: list[ItemComputo] = []
     fraccion = Decimal(FRACCION_PINTADA_DISCONTINUA.valor)
-    nota_fraccion = f" (fracción pintada {fraccion}: {FRACCION_PINTADA_DISCONTINUA.fuente})"
+    con_coma = str(fraccion).replace(".", ",")  # se lee en es-VE (solo biblioteca estándar)
+    nota_fraccion = f" (fracción pintada {con_coma}: {FRACCION_PINTADA_DISCONTINUA.fuente})"
     pintura_l_m, ancho_cm = _pintura_l_m()
     for tramo in tramos:
         for n, capa in enumerate(tramo.capas, start=1):
