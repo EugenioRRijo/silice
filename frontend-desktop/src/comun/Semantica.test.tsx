@@ -31,7 +31,7 @@ describe("Variacion (IBCS de costo)", () => {
     const { container } = render(<Variacion valor="12.43" />);
 
     expect(container.querySelector(".ibcs-desfavorable")).not.toBeNull();
-    expect(screen.getByText("12.43")).toBeInTheDocument();
+    expect(screen.getByText("12,43")).toBeInTheDocument();
     expect(screen.getByText("(desfavorable)")).toBeInTheDocument();
     expect(container.querySelector("svg")).not.toBeNull();
   });
