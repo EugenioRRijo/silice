@@ -35,3 +35,14 @@ Origen: la pasada de confirmación a 1366x768 (`scratchpad/navegador/capturas2/`
 | 5b | Foco de «Abrir la Hoja de la obra» con recuadro del ancho del aviso | NO se hizo: sin navegador no se pudo ver de dónde sale el recuadro y un arreglo a ciegas podía empeorarlo. `.silice-aviso-foco` ya es `fit-content`; queda para mirar en el navegador | - |
 
 Notas de método: la prueba del código de la Hoja (`estilosCodigo.test.ts`) y la de `AvisoDeLlevar` se escribieron con el módulo o la regla aún por crear (rojo por importación o aserción de la Hoja en `Edicion.test.tsx`, que sí falló por aserción); la medición real a 1366 px sigue siendo cosa del navegador.
+
+## Tercera y cuarta pasada (31-10, noche)
+
+- Confirmados en el navegador a 1366×768: filas de la Hoja, «Tramos» en toda obra, coma decimal en la auditoría,
+  «0,375» y m²/m³, autocompletado de la receta, códigos en una línea en la Hoja y el aviso ordenado de Llevar.
+- Llevar en DEMO-001: con las partidas compuestas hoy, 409 sin llevar nada; con las 15 partidas compuestas al
+  20/09/2026, 20 renglones con precio, 0 PENDIENTE y CUMPLE.
+- Valuaciones: el arreglo de la segunda pasada ensanchaba la página (1.507 px). Corregido en 454655f9: los hijos de
+  la rejilla de Control se encogen y la tabla se desplaza en su caja. El diálogo de costo usa ahora una gradiente
+  gris con raya; la blanca no se veía.
+- Pendiente de mirar en un Chrome o Edge normal: el Chromium sin pantalla no dibuja barras de desplazamiento.
