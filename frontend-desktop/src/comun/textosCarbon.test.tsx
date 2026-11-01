@@ -2,6 +2,7 @@
 // «Clear search input», «close notification», «error icon», «Click to sort rows by…», la paginación…). Estas pruebas
 // dibujan los componentes de Sílice que los usan y buscan esos textos en lo que se ve y en lo que se lee (atributos y
 // títulos de los íconos); la última lee el fuente y exige que esos componentes se importen del envoltorio en español.
+import { Tab, Tabs } from "@carbon/react";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -12,6 +13,7 @@ import { TablaPaginada } from "../paginas/hoja/TablaPaginada";
 import { ContextoAplicacion } from "../shell/contexto";
 import type { Aplicacion } from "../shell/contexto";
 import { AvisoError } from "./AvisoError";
+import { TabList } from "./carbonEs";
 import { TablaDensa } from "./TablaDensa";
 
 const INGLES = [
@@ -106,6 +108,19 @@ describe("textos de Carbon en español", () => {
     expect(container.querySelector('button[aria-label="Desplazar las pestañas a la izquierda"]')).not.toBeNull();
     expect(container.querySelector('button[aria-label="Desplazar las pestañas a la derecha"]')).not.toBeNull();
     expect(screen.getByRole("button", { name: "Borrar la búsqueda" })).toBeInTheDocument();
+  });
+
+  test("un aria-label sin valor en las flechas de las pestañas no pisa el texto en español", () => {
+    const { container } = render(
+      <Tabs>
+        <TabList aria-label="Secciones" leftOverflowButtonProps={{ "aria-label": undefined }} rightOverflowButtonProps={{}}>
+          <Tab>Uno</Tab>
+          <Tab>Dos</Tab>
+        </TabList>
+      </Tabs>,
+    );
+    expect(container.querySelector('button[aria-label="Desplazar las pestañas a la izquierda"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Desplazar las pestañas a la derecha"]')).not.toBeNull();
   });
 
   test("una tabla ordenable describe el orden en español", () => {
