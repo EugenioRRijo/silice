@@ -89,4 +89,13 @@ describe("materiales de producción de la arenera", () => {
     const grupos = await buscadorDeComponentes()("agr", new AbortController().signal, 8);
     expect(grupos.map((g) => g.rotulo)).toEqual(["Materiales de la arenera", "Insumos del catálogo"]);
   });
+
+  test("si los materiales fallan (módulo de producción apagado), siguen los insumos del catálogo", async () => {
+    fetchFalso.mockImplementation(async (entrada) => {
+      if (String(entrada) === "/v1/produccion/materiales") return new Response("{}", { status: 404 });
+      return new Response(JSON.stringify(RESPUESTA), { status: 200 });
+    });
+    const grupos = await buscadorDeComponentes()("agr", new AbortController().signal, 8);
+    expect(grupos.map((g) => g.rotulo)).toEqual(["Insumos del catálogo"]);
+  });
 });
