@@ -44,3 +44,16 @@ describe("la tabla de valuaciones cabe a 1366 px o dice que se desplaza", () => 
     expect(tabla).toMatch(/scrollbar-width:\s*auto/);
   });
 });
+
+// Tercera pasada (31-10): la tabla empujaba la celda de la rejilla y la página entera medía 1.507 px de ancho.
+describe("la tabla de valuaciones no ensancha la página", () => {
+  const scss = leer("paginas/control/control.scss");
+
+  test("los hijos de la rejilla de Control pueden encogerse por debajo del ancho de la tabla", () => {
+    expect(reglaDe(scss, ".silice-control > *")).toMatch(/min-inline-size:\s*0/);
+  });
+
+  test("el bloque de valuaciones se desplaza dentro de su caja", () => {
+    expect(reglaDe(scss, ".silice-control__valuaciones")).toMatch(/overflow-x:\s*auto/);
+  });
+});

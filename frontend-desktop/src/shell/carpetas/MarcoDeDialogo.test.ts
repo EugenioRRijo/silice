@@ -27,7 +27,9 @@ describe("el cuerpo de un diálogo se desplaza y lo dice", () => {
   test("la señal es una gradiente al pie (no un fondo del contenedor, que tapan los campos) y una barra visible", () => {
     const fuente = leer("shell/carpetas/MarcoDeDialogo.scss");
     expect(cuerpo).not.toMatch(/background-attachment/);
-    expect(reglaDe(fuente, ".silice-dialogo__zona--mas-abajo::after")).toMatch(/linear-gradient\(to bottom, transparent, var\(--cds-layer-01\)\)/);
+    // Tercera pasada (31-10): la gradiente al blanco del fondo no se notaba sobre un campo blanco; va a gris y con raya.
+    expect(reglaDe(fuente, ".silice-dialogo__zona--mas-abajo::after")).toMatch(/linear-gradient\(to bottom, transparent, var\(--cds-layer-accent-01\)\)/);
+    expect(reglaDe(fuente, ".silice-dialogo__zona--mas-abajo::after")).toMatch(/border-block-end:\s*2px solid var\(--cds-border-strong-01\)/);
     expect(reglaDe(fuente, ".silice-dialogo__zona--mas-abajo::after")).toMatch(/pointer-events:\s*none/);
     expect(cuerpo).toMatch(/scrollbar-color:\s*var\(--cds-border-strong\)/);
   });
