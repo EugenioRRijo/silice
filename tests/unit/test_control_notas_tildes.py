@@ -186,7 +186,7 @@ def test_la_nota_de_las_opciones_sale_con_tilde_y_los_codigos_del_usuario_no_cam
             "no existe punto de equilibrio: el margen de contribución no es positivo",
         ),
         (
-            "sin curva de inversion: el punto de equilibrio no se ubica en el plan",
+            "sin curva de inversión: el punto de equilibrio no se ubica en el plan",
             "sin curva de inversión: el punto de equilibrio no se ubica en el plan",
         ),
         ("ninguna partida pasa del objetivo", "ninguna partida pasa del objetivo"),

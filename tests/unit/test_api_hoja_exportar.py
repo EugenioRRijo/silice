@@ -692,7 +692,7 @@ def test_los_precios_se_evaluan_a_la_fecha_de_hoy_de_la_ruta(
     assert estados["pasada"] == sin_fuente
     assert estados["lejana"] == (
         f"{sin_fuente}; R12 ADVERTENCIA: Herramientas menores [ALB213]: precio del 05/10/2026 "
-        "con 3010 dias al 01/01/2035 (plazo 30)"
+        "con 3010 días al 01/01/2035 (plazo 30)"
     )
 
 

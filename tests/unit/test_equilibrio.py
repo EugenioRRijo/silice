@@ -133,7 +133,7 @@ def test_sin_curva_hay_pe_sin_ubicacion():
     assert r.estado is EstadoEquilibrio.CALCULADO
     assert r.punto == D(585)
     assert (r.periodo, r.fraccion_periodo) == (None, None)
-    assert "curva" in r.mensaje
+    assert r.mensaje == "sin curva de inversión: el punto de equilibrio no se ubica en el plan"
 
 
 def test_ventas_cero_no_es_aplicable():
