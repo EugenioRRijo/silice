@@ -246,7 +246,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     expect(llamadas("GET", `/v1/hoja/borradores/${ID}`)).toHaveLength(1);
     expect(aperturas()).toHaveLength(0); // se retoma, no se abre otro
     expect(within(estado()).getByText(/Versión 002 · 2 cambios sin guardar/)).toBeInTheDocument();
-    expect(within(estado()).getByTitle("2800.5")).toBeInTheDocument();
+    expect(within(estado()).getByTitle("2.800,5")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("002");
     expect(saleLaPagina()).toBe(true); // hay cambios sin guardar
     expect(screen.queryByRole("button", { name: /Retomar borrador/ })).toBeNull();

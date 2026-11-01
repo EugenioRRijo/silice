@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { centesimasEsVe, fechaEsVe, formatoEsVe, formatoMontoEsVe } from "./formatoEsVe";
+import { centesimasEsVe, cifrasEnTextoEsVe, fechaEsVe, formatoEsVe, formatoMontoEsVe } from "./formatoEsVe";
 
 describe("formatoEsVe", () => {
   test("miles con punto y decimales con coma", () => {
@@ -93,5 +93,21 @@ describe("fechaEsVe (VB-19)", () => {
     expect(fechaEsVe("ayer")).toBe("ayer");
     expect(fechaEsVe("")).toBe("");
     expect(fechaEsVe("02/11/2026")).toBe("02/11/2026");
+  });
+});
+
+describe("cifrasEnTextoEsVe", () => {
+  test("los decimales con punto de un rótulo o una nota del servidor pasan a es-VE", () => {
+    expect(cifrasEnTextoEsVe("FCAS (fracción: 6.00 = prestaciones del 600 %)")).toBe("FCAS (fracción: 6,00 = prestaciones del 600 %)");
+    expect(cifrasEnTextoEsVe("FCAS 6 y bono 5.81, entre el rendimiento")).toBe("FCAS 6 y bono 5,81, entre el rendimiento");
+    expect(cifrasEnTextoEsVe("15.0 % del costo directo")).toBe("15,0 % del costo directo");
+    expect(cifrasEnTextoEsVe("total 12345.678 USD")).toBe("total 12.345,678 USD");
+  });
+
+  test("no toca enteros, códigos con varios puntos ni cifras ya en es-VE", () => {
+    expect(cifrasEnTextoEsVe("prestaciones del 600 % en 2026")).toBe("prestaciones del 600 % en 2026");
+    expect(cifrasEnTextoEsVe("partida C-000.000.006")).toBe("partida C-000.000.006");
+    expect(cifrasEnTextoEsVe("ya escrito 1.234,56")).toBe("ya escrito 1.234,56");
+    expect(cifrasEnTextoEsVe("versión 1.2.0")).toBe("versión 1.2.0");
   });
 });

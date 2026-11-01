@@ -202,7 +202,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(screen.getByRole("combobox", { name: "Versión", hidden: true }).closest("[inert]")).not.toBeNull();
     // Resumen de lo que se guarda: cambios, de qué versión sale y el total (con el exacto accesible).
     expect(within(dialogo).getByText(/Se registrarán 2 cambios en una versión nueva \(sale de la 002\)/)).toBeInTheDocument();
-    expect(within(dialogo).getByTitle("2703.860232344044033333333333")).toHaveTextContent("2.703,86 USD");
+    expect(within(dialogo).getByTitle("2.703,860232344044033333333333")).toHaveTextContent("2.703,86 USD");
     // El responsable es la persona de la sesión, de solo lectura.
     expect(within(dialogo).getByText("Responsable: Ana Pérez <ana>")).toBeInTheDocument();
     expect(within(dialogo).queryByRole("textbox", { name: /Responsable/ })).toBeNull();

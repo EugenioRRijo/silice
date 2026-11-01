@@ -45,3 +45,8 @@ export function fechaEsVe(iso: string): string {
   const dia = `${m[3]}/${m[2]}/${m[1]}`;
   return m[4] ? `${dia} ${m[4]}:${m[5]}` : dia;
 }
+
+// Esqueleto para la prueba en rojo: todavía no convierte nada.
+export function cifrasEnTextoEsVe(texto: string): string {
+  return texto;
+}
