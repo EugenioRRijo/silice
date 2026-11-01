@@ -102,3 +102,8 @@ mismo `lxml` explica las tres de `test_excel_m1` que vio F2 (el retorno de carro
   (fila 114): conviene decirlo antes de que lo pregunten.
 - La comprobación hacia atrás tarda: unos 14 a 20 s con las 500 trayectorias por corte de la pantalla en una obra
   mediana, y cerca de 95 s si se suben a 2.000 (medido en la fase C). La pantalla avisa de la espera.
+
+## Suite completa de la versión que se muestra el 2026-11-01 (sobre b8820ad3)
+
+- Pytest (con `OPENPYXL_LXML=False`): 11.665 verdes y 2 rojas, ambas listas literales sin actualizar tras las merges (la ruta del reporte de producción en `test_api_produccion` y `METADATA_MODULOS` en `test_migraciones_metadatos`); corregidas y verdes. Vitest: 3.332 de 3.332. Lint: limpio. Las fallas antiguas (TI-001 por el reloj y la huella RNF-04 por lxml) ya no aparecen.
+- F4 queda para una sesión posterior por decisión de Eugenio; la rama vial ya está unida a `inc/rediseno-f4`.
