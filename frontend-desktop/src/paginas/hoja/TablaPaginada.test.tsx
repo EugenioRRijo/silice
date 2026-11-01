@@ -29,4 +29,11 @@ describe("TablaPaginada", () => {
     expect(bloque).not.toBe("");
     expect(bloque).not.toMatch(/text-overflow|nowrap/);
   });
+
+  test("el texto del Estado tiene ancho minimo y se limita a pocas lineas: un aviso largo no estira la fila", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/paginas/hoja/hoja.scss"), "utf-8");
+    const bloque = /\.silice-hoja__estado-texto\s*\{[^}]*\}/.exec(css)?.[0] ?? "";
+    expect(bloque).toMatch(/min-inline-size:\s*\d+(\.\d+)?rem/);
+    expect(bloque).toMatch(/-webkit-line-clamp:\s*[2-4]/);
+  });
 });
