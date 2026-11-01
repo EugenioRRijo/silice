@@ -386,9 +386,9 @@ def test_sin_rendimiento_a_la_fecha_de_la_version_da_409_y_no_toca_el_borrador(
         with pytest.raises(hoja_vial.PartidasSinValorar) as error:
             _llevar(sesion)
         assert str(error.value) == (
-            "No se llevó nada: 1 partida quedaría pendiente en la Hoja, sin precio, porque la "
-            "Hoja arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, al "
-            "01/10/2026, y con ella no se pueden valorar. Sin rendimiento registrado al "
+            "No se llevó nada: 1 partida quedaría pendiente en la Hoja porque la Hoja arma cada "
+            "APU con la lista «Lista Bs de prueba» de la versión VIV-001, al 01/10/2026, y con "
+            "ella no se pueden valorar. Sin rendimiento registrado al "
             "01/10/2026 o antes: «C-000.000.013». Qué hacer: en Componer, guarde esas partidas "
             "con fecha 01/10/2026: sus precios quedan en «Lista Bs de prueba» y su rendimiento a "
             f"esa fecha ({DE_NUEVO}). Luego vuelva a llevar."
@@ -425,6 +425,28 @@ def test_llevar_otra_vez_completa_el_apu_de_una_partida_que_habia_quedado_pendie
         _llevar(sesion)
 
         assert "C-000.000.013" in hoja_borradores.obtener(HUELLA, vivo.id).borrador.composiciones
+
+
+def test_la_decision_de_llevar_es_la_de_la_hoja(sesion: Session, monkeypatch) -> None:
+    """DRY (ronda 2 del árbitro): llevar no copia la regla de la Hoja, la usa. Si la Hoja deja de
+    poder armar una partida (aquí, `hoja.completar_composiciones` deja fuera C-000.000.013 aunque
+    el catálogo la arma), llevar lo ve y no lleva nada; una copia de la regla no lo vería."""
+    original = hoja.completar_composiciones
+
+    def sin_013(catalogo, borrador, lista=None):
+        completo = original(catalogo, borrador, lista=lista)
+        composiciones = {c: a for c, a in completo.composiciones.items() if c != "C-000.000.013"}
+        return replace(completo, composiciones=composiciones)
+
+    monkeypatch.setattr(hoja, "completar_composiciones", sin_013)
+    try:
+        _llevar(sesion)
+        mensaje = None
+    except hoja_vial.PartidasSinValorar as error:
+        mensaje = str(error)
+    assert mensaje is not None, "llevar no vio la partida que la Hoja deja pendiente"
+    assert "1 partida quedaría pendiente" in mensaje and "«C-000.000.013»" in mensaje
+    assert hoja_edicion.borradores_para_retomar(HUELLA, CASO) == []
 
 
 def test_si_componer_no_escribe_en_la_lista_de_la_version_pide_cargar_los_precios(
