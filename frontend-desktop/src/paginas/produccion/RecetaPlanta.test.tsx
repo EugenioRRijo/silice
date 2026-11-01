@@ -35,6 +35,12 @@ const INSUMOS = [
   { valor: "CA-30", etiqueta: "Cemento asfáltico ficticio (CA-30, t)", fuente: "Catálogo de la carpeta de trabajo: material" },
 ];
 
+// Las mezclas y los agregados de la arenera: el producto de una receta se busca aquí, no en el catálogo de la carpeta.
+const MATERIALES = [
+  { id: 1, codigo: "MZP-01", nombre: "Mezcla asfáltica en caliente ficticia", activo: true },
+  { id: 2, codigo: "AGR-12", nombre: "Agregado grueso ficticio", activo: true },
+];
+
 function consulta(q: string) {
   const buscado = q.toLowerCase();
   const resultados = INSUMOS.filter((i) => i.etiqueta.toLowerCase().includes(buscado));
@@ -101,6 +107,7 @@ describe("Receta de la planta", () => {
       const metodo = init?.method ?? "GET";
       if (url.pathname === "/v1/produccion/recetas/vigente" && metodo === "GET") return vigente();
       if (url.pathname === "/v1/produccion/recetas" && metodo === "POST") return alta();
+      if (url.pathname === "/v1/produccion/materiales") return json(MATERIALES);
       if (url.pathname === "/v1/consulta/insumos") return json(consulta(url.searchParams.get("q") ?? ""));
       return json({ detalle: "No encontrado." }, 404);
     });
@@ -250,7 +257,7 @@ describe("Receta de la planta", () => {
     expect(document.activeElement).toBe(boton);
   });
 
-  test("el código del producto y el de cada componente se buscan en los insumos del catálogo", async () => {
+  test("el producto se busca entre los materiales de la arenera y cada componente, también entre los insumos del catálogo", async () => {
     montar();
     const dialogo = await abrir();
     const producto = within(dialogo).getByRole("combobox", { name: "Producto (código)" });
@@ -259,8 +266,9 @@ describe("Receta de la planta", () => {
     // La sugerencia y, al final, usar lo escrito tal cual.
     const opciones = within(lista).getAllByRole("option");
     expect(opciones).toHaveLength(2);
-    expect(opciones[0]).toHaveTextContent("Agregado grueso ficticio (AGR-12, t)");
-    expect(opciones[0]).toHaveTextContent("Catálogo de la carpeta de trabajo: material");
+    expect(opciones[0]).toHaveTextContent("Agregado grueso ficticio");
+    expect(opciones[0]).toHaveTextContent("AGR-12");
+    expect(opciones[0]).toHaveTextContent("Materiales de la arenera");
     expect(opciones[1]).toHaveTextContent("Usar «agre» tal cual");
     // El lector de pantalla oye cuántas sugerencias llegaron del servidor (una; «usar tal cual» no cuenta).
     const estado = within(dialogo).getAllByRole("status").find((e) => e.id === `${producto.id}-estado`)!;
@@ -273,7 +281,8 @@ describe("Receta de la planta", () => {
     await within(dialogo).findByRole("listbox");
     await usuario.keyboard("{ArrowDown}{Enter}");
     expect(producto).toHaveValue("AGR-12");
-    expect(fetchFalso.mock.calls.some((c) => String(c[0]).startsWith("/v1/consulta/insumos?q=agre"))).toBe(true);
+    expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/produccion/materiales")).toBe(true);
+    expect(fetchFalso.mock.calls.some((c) => String(c[0]).startsWith("/v1/consulta/insumos?q=agre"))).toBe(false);
 
     const fila = within(dialogo).getByRole("group", { name: "Componente 1" });
     const componente = within(fila).getByRole("combobox", { name: "Código" });

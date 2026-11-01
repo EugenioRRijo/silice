@@ -1,13 +1,13 @@
 import type { JSX } from "react";
 import { CampoConBusqueda } from "./CampoConBusqueda";
-import { buscadorDeConsulta } from "./consulta";
-import type { TablaDeConsulta } from "./consulta";
+import { buscadorDeComponentes, buscadorDeConsulta, buscadorDeMateriales } from "./consulta";
+import type { TablaDeBusqueda } from "./consulta";
 
 interface Props {
   id: string;
   etiqueta: string;
   ayuda?: string;
-  tabla: TablaDeConsulta;
+  tabla: TablaDeBusqueda;
   texto: string;
   alCambiarTexto: (texto: string) => void;
   alExpirar: () => void;
@@ -15,12 +15,18 @@ interface Props {
   textoInvalido?: string;
 }
 
-const buscadores = new Map<TablaDeConsulta, ReturnType<typeof buscadorDeConsulta>>();
+const buscadores = new Map<TablaDeBusqueda, ReturnType<typeof buscadorDeConsulta>>();
 
-function buscadorDe(tabla: TablaDeConsulta) {
+function crearBuscador(tabla: TablaDeBusqueda) {
+  if (tabla === "materiales_produccion") return buscadorDeMateriales();
+  if (tabla === "componentes_de_receta") return buscadorDeComponentes();
+  return buscadorDeConsulta(tabla);
+}
+
+function buscadorDe(tabla: TablaDeBusqueda) {
   let buscador = buscadores.get(tabla);
   if (buscador === undefined) {
-    buscador = buscadorDeConsulta(tabla);
+    buscador = crearBuscador(tabla);
     buscadores.set(tabla, buscador);
   }
   return buscador;

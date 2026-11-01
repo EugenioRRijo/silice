@@ -7,7 +7,6 @@ import "./Buscador.scss";
 import { resultadosDe } from "./busqueda";
 import { obrasAlcanzables, useOferta } from "./oferta";
 import { useObras } from "./useObras";
-import { useObrasViales } from "./useObrasViales";
 
 interface Props {
   abierto: boolean;
@@ -39,7 +38,6 @@ function Caja({ alCerrar, alElegir }: Omit<Props, "abierto">) {
   const atrapar = useAtraparFoco(caja);
   const { puedeCambiarDeCarpeta, oferta } = useOferta();
   const { obras, carpetaActual, estado } = useObras();
-  const viales = useObrasViales(carpetaActual, "buscador");
   const [texto, setTexto] = useState("");
   const [activo, setActivo] = useState(0);
   // Quien tenía el foco al abrir (el botón de la barra, si se abrió con un clic).
@@ -47,7 +45,7 @@ function Caja({ alCerrar, alElegir }: Omit<Props, "abierto">) {
   const devolverFoco = useRef(true);
   const entrada = useRef<HTMLInputElement>(null);
 
-  const resultados = resultadosDe(texto, obrasAlcanzables(obras, carpetaActual, puedeCambiarDeCarpeta), oferta, viales);
+  const resultados = resultadosDe(texto, obrasAlcanzables(obras, carpetaActual, puedeCambiarDeCarpeta), oferta);
   const indice = Math.min(activo, Math.max(resultados.length - 1, 0));
   const idDe = (i: number) => `${base}-opcion-${i}`;
 

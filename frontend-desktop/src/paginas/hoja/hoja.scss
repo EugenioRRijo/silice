@@ -77,9 +77,16 @@
 }
 
 .silice-hoja__estado-texto {
-  // El texto completo se ve y se lee con el teclado: envuelve, no se recorta.
+  // Un aviso largo (cientos de caracteres) no puede estirar la fila: ancho minimo para que no quede una letra por
+  // linea, y a lo mas 3 lineas; el texto completo va en el title de la fila.
+  min-inline-size: 14rem;
   max-inline-size: 28rem;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 
 // APU: lista · tabla · cierre. Bajo ~1200 px se apilan en vez de comprimirse.
