@@ -3,6 +3,8 @@ import { useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { unidadEscrita } from "../../comun/unidades";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import { coincide } from "./filtro";
@@ -20,6 +22,8 @@ interface Insumo {
   unidad: string | null;
   precio_vigente: string | null;
 }
+
+const SIN_PRECIO = "Sin precio vigente";
 
 // «Catálogo de partidas e insumos» (solo lectura): las dos tablas de la página clásica, con una búsqueda.
 export default function PaginaCatalogo() {
@@ -44,7 +48,7 @@ export default function PaginaCatalogo() {
 
   const filasPartidas = partidas.datos
     .filter((p) => coincide([p.codigo, p.descripcion, p.unidad, p.dominio], busqueda))
-    .map((p) => ({ id: p.codigo, codigo: p.codigo, descripcion: p.descripcion, unidad: p.unidad, dominio: p.dominio }));
+    .map((p) => ({ id: p.codigo, codigo: p.codigo, descripcion: p.descripcion, unidad: unidadEscrita(p.unidad), dominio: p.dominio }));
   const filasInsumos = insumos.datos
     .filter((i) => coincide([i.codigo, i.descripcion, i.tipo, i.unidad], busqueda))
     .map((i) => ({
@@ -52,8 +56,9 @@ export default function PaginaCatalogo() {
       codigo: i.codigo,
       tipo: i.tipo,
       descripcion: i.descripcion,
-      unidad: i.unidad ?? "",
-      precio_vigente: i.precio_vigente ?? "",
+      unidad: i.unidad === null ? "" : unidadEscrita(i.unidad),
+      // Sin lista vigente se dice con palabras: una celda vacía parecía un fallo. El orden la deja tras los números.
+      precio_vigente: i.precio_vigente ?? SIN_PRECIO,
     }));
 
   return (
@@ -96,7 +101,7 @@ export default function PaginaCatalogo() {
                 { clave: "tipo", titulo: "Tipo" },
                 { clave: "descripcion", titulo: "Descripción" },
                 { clave: "unidad", titulo: "Unidad" },
-                { clave: "precio_vigente", titulo: "Precio vigente", numerica: true },
+                { clave: "precio_vigente", titulo: "Precio vigente", numerica: true, presentar: formatoEsVe },
               ]}
               filas={filasInsumos}
               vacio={{ titulo: "No hay insumos para mostrar", descripcion: "El catálogo no tiene insumos con esa búsqueda." }}
