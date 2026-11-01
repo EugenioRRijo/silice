@@ -38,8 +38,10 @@ export function centesimasEsVe(exacto: string): string {
 
 // Un texto libre de la API con decimales de punto dentro («FCAS (fracción: 6.00 = …)», «FCAS 6 y bono 5.81», «15.0 % del
 // costo directo») a es-VE: solo se tocan los decimales con punto sueltos, no los enteros (un año, «600 %») ni los
-// códigos con varios puntos («C-000.000.006») ni lo que ya está en es-VE («1.234,56»). Para rótulos y notas que el servidor arma con texto (D-8).
-const DECIMAL_EN_TEXTO = /(?<![\d.,])\d+\.\d+(?![\d.]|,\d)/g;
+// códigos con varios puntos («C-000.000.006») o con guion delante («P-01.03») ni lo que ya está en es-VE («1.234,56»);
+// el punto que cierra la frase no cuenta («6.00.» -> «6,00.»). Solo para textos del servidor con decimales sueltos: una
+// versión de dos partes («1.2») o miles al estilo de EE. UU. («1,234.56») no se distinguen de un decimal (D-8).
+const DECIMAL_EN_TEXTO = /(?<![\d.,]|[A-Za-z0-9]-)\d+\.\d+(?!\d|\.\d|,\d)/g;
 
 export function cifrasEnTextoEsVe(texto: string): string {
   return texto.replace(DECIMAL_EN_TEXTO, (decimal) => formatoEsVe(decimal));
