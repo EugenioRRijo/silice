@@ -77,7 +77,7 @@ interface Props {
   cambios: number;
   // «Hacer una versión nueva a partir de esta»: la Hoja va a «Presupuesto» con el borrador de esta versión (ya abierto).
   alHacerVersionNueva: () => void;
-  // La base del borrador: con `solo_lectura` (o sin permiso de edición) la aprobación se ve, pero no se envía (F4 2b).
+  // La base del borrador: con `solo_lectura` no se ofrece «Hacer una versión nueva» (F4 2b); enviar solo pide el permiso.
   base?: Pick<BaseAbierta, "solo_lectura">;
 }
 
@@ -88,6 +88,9 @@ interface Props {
 // (la Hoja no depende de esto).
 export function AprobacionDeVersion({ proyecto, version, cambios, alHacerVersionNueva, base }: Props) {
   const { alExpirar } = useAplicacion();
+  // Enviar obra sobre la versión GUARDADA: su regla es solo el permiso (Eugenio, 2026-10-31). «Hacer una versión
+  // nueva» lleva a editar el borrador: ahí sí cuenta la base.
+  const puedeEnviar = usePuedeEditarLaHoja(null);
   const puedeEditar = usePuedeEditarLaHoja(base ?? null);
   const [intento, setIntento] = useState(0);
   const [lectura, setLectura] = useState<Lectura>({ estado: "leyendo" });
@@ -162,14 +165,14 @@ export function AprobacionDeVersion({ proyecto, version, cambios, alHacerVersion
           {datos.estado === "en_aprobacion" && (
             <p className="cds--type-helper-text-01">La versión enviada no se edita: si guarda cambios, será una versión nueva.</p>
           )}
-          {puedeEditar && (
+          {(puedeEnviar || puedeEditar) && (
           <div className="silice-hoja__acciones">
-            {SE_ENVIAN.has(datos.estado) && (
+            {puedeEnviar && SE_ENVIAN.has(datos.estado) && (
               <Button id={idBoton} kind="tertiary" size="sm" onClick={() => setEnviando(true)}>
                 Enviar a aprobación…
               </Button>
             )}
-            {datos.estado === "devuelta" && (
+            {puedeEditar && datos.estado === "devuelta" && (
               <Button kind="tertiary" size="sm" onClick={hacerVersionNueva}>
                 Hacer una versión nueva a partir de esta
               </Button>

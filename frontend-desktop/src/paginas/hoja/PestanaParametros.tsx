@@ -48,7 +48,7 @@ interface PropsContenido extends Props {
 }
 
 function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, conversion, compacto = false, base }: PropsContenido) {
-  const { alExpirar } = useAplicacion();
+  const { alExpirar, sesion } = useAplicacion();
   const puedeEditar = usePuedeEditarLaHoja(base ?? null);
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<ValoresDeParametros, UbicacionDeParametro>({
@@ -98,7 +98,9 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
       {!compacto && vista.moneda_proyecto !== null && (
         <p className="cds--type-body-compact-01">Moneda del proyecto: {vista.moneda_proyecto}</p>
       )}
-      {!compacto && puedeEditar && conversion !== undefined && (
+      {/* Convertir crea una versión desde la GUARDADA: su regla es solo el permiso (`convertir_y_reajustar`, y el
+          `puede_convertir` que da la API), no la base del borrador (Eugenio, 2026-10-31). */}
+      {!compacto && conversion !== undefined && sesion.acciones.includes("convertir_y_reajustar") && (
         <ConvertirMoneda
           proyecto={conversion.proyecto}
           version={conversion.version}

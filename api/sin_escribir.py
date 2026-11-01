@@ -9,9 +9,11 @@ lo que la sesión intentaría escribir lanza `EscrituraNegada` **antes** de lleg
 carreras con otra petición. Hoy solo la usa esa ruta.
 
 Cubre lo que pasa por la sesión: el volcado de la unidad de trabajo (`before_flush`, objetos
-nuevos, borrados o cambiados) y las sentencias que se ejecutan con ella (`do_orm_execute`:
-`insert`, `update`, `delete` y el texto SQL que no sea una lectura). No cubre lo que se mande por
-fuera de la sesión (`connection().exec_driver_sql`), que `abrir_version` no usa.
+nuevos, borrados o cambiados) y las sentencias que se ejecutan con ella (`do_orm_execute`). Una
+sentencia de SQLAlchemy pasa solo si es una lectura (`is_select`, también con `WITH`); un texto SQL
+pasa solo si empieza por `SELECT` o `EXPLAIN`, o es un `PRAGMA` sin `=` (consultar, no asignar).
+Todo lo demás se niega, también `WITH … INSERT` escrito como texto (menor 1 del árbitro). No cubre
+lo que se mande por fuera de la sesión (`connection().exec_driver_sql`), que `abrir_version` no usa.
 """
 
 from __future__ import annotations
@@ -23,8 +25,8 @@ from sqlalchemy import event
 from sqlalchemy.orm import ORMExecuteState, Session
 from sqlalchemy.sql.elements import TextClause
 
-#: Lo que puede empezar un texto SQL que solo lee.
-_LECTURAS = ("SELECT", "WITH", "PRAGMA", "EXPLAIN")
+#: Lo que puede empezar un texto SQL que solo lee (un `PRAGMA` aparte: solo sin asignación).
+_LECTURAS = ("SELECT", "EXPLAIN")
 
 
 class EscrituraNegada(Exception):  # noqa: N818 (el nombre dice lo que pasó, como `PermisoDenegado`)
@@ -36,13 +38,18 @@ def _volcaria(sesion: Session, _contexto, _instancias) -> None:
         raise EscrituraNegada
 
 
+def _texto_que_lee(texto: str) -> bool:
+    limpio = texto.strip().upper()
+    if limpio.startswith("PRAGMA"):
+        return "=" not in limpio
+    return limpio.startswith(_LECTURAS)
+
+
 def _ejecutaria(estado: ORMExecuteState) -> None:
     sentencia = estado.statement
-    if estado.is_insert or estado.is_update or estado.is_delete:
+    lee = _texto_que_lee(sentencia.text) if isinstance(sentencia, TextClause) else estado.is_select
+    if not lee:
         raise EscrituraNegada
-    if isinstance(sentencia, TextClause):
-        if not sentencia.text.lstrip().upper().startswith(_LECTURAS):
-            raise EscrituraNegada
 
 
 @contextmanager

@@ -57,7 +57,7 @@ interface PropsEditor extends PropsContenido {
   alQuitada: (codigo: string) => void;
   // Lleva el foco a un elemento cuando ya no queda ningún diálogo abierto.
   enfocar: (id: string) => void;
-  // F4 2b: sin permiso, la cantidad es texto y no hay «Volver a la calculada», «Quitar» ni objetivos de mercado.
+  // F4 2b: sin permiso, la cantidad es texto y no hay «Volver a la calculada» ni «Quitar».
   puedeEditar: boolean;
 }
 
@@ -116,7 +116,7 @@ function EditorDePresupuesto({
   });
   const { error, esperarEnvios, accionarEnOrden, resembrar } = edicion;
   // Tarea 16: el objetivo de mercado de cada partida y su margen (lo calcula la API) junto al precio unitario.
-  const objetivos = useObjetivosDeMercado(vista.filas, vista.moneda, puedeEditar);
+  const objetivos = useObjetivosDeMercado(vista.filas, vista.moneda);
   const filaInvalida = error?.ubicacion ?? null;
   const mover = (desde: number, paso: 1 | -1) => document.getElementById(idDeCantidad(desde + paso))?.focus();
   // La fila que la persona pidió quitar: espera su confirmación.
@@ -227,7 +227,7 @@ function EditorDePresupuesto({
             ordenable: false,
             celda: (f) => (f.pu_texto === "" ? PENDIENTE : <Cifra monto={{ texto: f.pu_texto!, exacto: f.pu_exacto! }} />),
           },
-          ...(puedeEditar ? [objetivos.columna] : []),
+          objetivos.columna,
           {
             clave: "total",
             titulo: "Total",
@@ -290,7 +290,7 @@ function EditorDePresupuesto({
           nota: f.nota ?? "",
         }))}
       />
-      {puedeEditar && objetivos.aviso}
+      {objetivos.aviso}
       <p className="silice-hoja__total cds--type-heading-03">
         Total del presupuesto <Cifra monto={vista.total} unidad={vista.moneda} />
       </p>
