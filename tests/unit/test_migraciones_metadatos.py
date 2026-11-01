@@ -5,6 +5,7 @@ from __future__ import annotations
 from adapters.espacio import persistencia
 from aplicacion.tablas_eleccion import METADATA_ELECCION
 from aplicacion.tablas_indice_aprobacion import METADATA_INDICE_APROBACION
+from aplicacion.tablas_modulos import METADATA_MODULOS
 from core.models import Base
 from fusion.historial_modelo import METADATA_HISTORIAL
 from migraciones.metadatos import METADATAS_CASO, METADATAS_INSTALACION
@@ -37,6 +38,7 @@ def test_la_instalacion_lleva_seguridad_la_arenera_el_historial_y_la_eleccion() 
         METADATA_HISTORIAL,
         METADATA_ELECCION,
         METADATA_INDICE_APROBACION,
+        METADATA_MODULOS,
     )
 
 
