@@ -70,6 +70,16 @@ describe("verificarDist", () => {
     expect(problemas[0]).toContain("localhost");
   });
 
+  test("la sugerencia de polyfill de react-router (github.com) pasa solo dentro del bundle principal", () => {
+    const texto = 'warning(false, "If you need to support Internet Explorer 11, we recommend you load a polyfill such as https://github.com/ungap/url-search-params.");';
+    writeFileSync(join(dir, "index-AbC123.js"), texto);
+    expect(verificarDist(dir).problemas).toEqual([]);
+    writeFileSync(join(dir, "otro-AbC123.js"), texto);
+    const { problemas } = verificarDist(dir);
+    expect(problemas).toHaveLength(1);
+    expect(problemas[0]).toContain("github.com");
+  });
+
   test("el bundle principal tampoco puede hablar con otro anfitrion", () => {
     writeFileSync(join(dir, "index-AbC123.js"), 'fetch("https://telemetria.example.net/e")');
     expect(verificarDist(dir).problemas).toHaveLength(1);
