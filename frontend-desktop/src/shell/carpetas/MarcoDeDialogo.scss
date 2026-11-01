@@ -36,27 +36,36 @@
   margin: 0;
 }
 
-// El cuerpo se desplaza solo, entre el titulo y el pie, si no cabe (letra Muy grande en 768 px de alto).
+// La zona del cuerpo: caja de referencia para la gradiente al pie y tope de altura para que el cuerpo se desplace.
+.silice-dialogo__zona {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-block-size: 0;
+}
+
+// Cuando queda contenido debajo, una gradiente sobre el borde inferior (no un fondo del cuerpo: el campo blanco la tapaba).
+// No recibe el ratón ni el foco.
+.silice-dialogo__zona--mas-abajo::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  block-size: 2rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--cds-layer-01));
+}
+
+// El cuerpo se desplaza solo, entre el titulo y el pie, si no cabe (letra Muy grande en 768 px de alto). La barra es
+// visible y con los colores del tema: la superpuesta del sistema se esconde y no avisaba de nada.
 .silice-dialogo__cuerpo {
   min-block-size: 0;
   overflow-y: auto;
   // Que el anillo de foco de los campos no quede cortado por el desplazamiento.
   padding: 0.125rem;
   margin: -0.125rem;
-  // Señal de que hay más: una franja de sombra arriba o abajo que solo se ve mientras queda contenido por desplazar
-  // (las dos primeras capas, ancladas al contenido, la tapan al llegar al borde).
-  background:
-    linear-gradient(var(--cds-layer-01) 30%, transparent) center top,
-    linear-gradient(transparent, var(--cds-layer-01) 70%) center bottom,
-    linear-gradient(to bottom, var(--cds-border-strong), transparent) center top,
-    linear-gradient(to top, var(--cds-border-strong), transparent) center bottom;
-  background-repeat: no-repeat;
-  background-size:
-    100% 1.5rem,
-    100% 1.5rem,
-    100% 0.5rem,
-    100% 0.5rem;
-  background-attachment: local, local, scroll, scroll;
+  scrollbar-width: auto;
+  scrollbar-color: var(--cds-border-strong) var(--cds-layer-accent);
 }
 
 .silice-dialogo__pie {

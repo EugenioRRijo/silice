@@ -13,6 +13,8 @@ interface Props {
   alExpirar: () => void;
   invalido?: boolean;
   textoInvalido?: string;
+  // «sm» por omisión; «md» cuando el campo va junto a campos de 40 px (la fila de un componente de receta).
+  tamano?: "sm" | "md";
 }
 
 const buscadores = new Map<TablaDeBusqueda, ReturnType<typeof buscadorDeConsulta>>();
@@ -45,6 +47,7 @@ export function CampoDeConsulta({
   alExpirar,
   invalido,
   textoInvalido,
+  tamano,
 }: Props): JSX.Element {
   return (
     <CampoConBusqueda
@@ -63,6 +66,7 @@ export function CampoDeConsulta({
       alExpirar={alExpirar}
       invalido={invalido}
       textoInvalido={textoInvalido}
+      tamano={tamano}
     />
   );
 }

@@ -24,9 +24,12 @@ describe("el cuerpo de un diálogo se desplaza y lo dice", () => {
     expect(cuerpo).toMatch(/overflow-y:\s*auto/);
   });
 
-  test("lleva una sombra de desplazamiento arriba y abajo que solo se ve cuando hay más contenido", () => {
-    expect(cuerpo).toMatch(/background-attachment:[^;]*local/);
-    expect(cuerpo).toMatch(/linear-gradient/);
+  test("la señal es una gradiente al pie (no un fondo del contenedor, que tapan los campos) y una barra visible", () => {
+    const fuente = leer("shell/carpetas/MarcoDeDialogo.scss");
+    expect(cuerpo).not.toMatch(/background-attachment/);
+    expect(reglaDe(fuente, ".silice-dialogo__zona--mas-abajo::after")).toMatch(/linear-gradient\(to bottom, transparent, var\(--cds-layer-01\)\)/);
+    expect(reglaDe(fuente, ".silice-dialogo__zona--mas-abajo::after")).toMatch(/pointer-events:\s*none/);
+    expect(cuerpo).toMatch(/scrollbar-color:\s*var\(--cds-border-strong\)/);
   });
 });
 
@@ -36,6 +39,13 @@ describe("el componente de la receta", () => {
   test("su fila reparte los campos en una sola línea y alinea «Quitar» con ellos", () => {
     expect(reglaDe(scss, ".receta-componente")).toMatch(/grid-template-columns:[^;]*auto\s*;/);
     expect(scss).toMatch(/\.receta-componente[^}]*\.receta-componente__quitar|\.receta-componente__quitar\s*\{[^}]*align-self/s);
+  });
+});
+
+describe("los selectores de unidad y tipo de la receta no recortan «Elija la unidad»", () => {
+  test("sus columnas tienen un mínimo en rem para que quepa el texto y la flecha", () => {
+    const rejilla = reglaDe(leer("paginas/produccion/planta.scss"), ".receta-componente");
+    expect(rejilla).toMatch(/repeat\(2,\s*minmax\(11rem,/);
   });
 });
 

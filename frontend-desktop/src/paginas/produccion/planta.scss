@@ -63,7 +63,7 @@
 .receta-componente {
   display: grid;
   // Código, cantidad, unidad y tipo en una línea, y «Quitar» al final; en una caja angosta se reparten en filas.
-  grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) repeat(2, minmax(11rem, 1.2fr)) auto;
   gap: 0.75rem 1rem;
   align-items: start;
   margin: 0;
