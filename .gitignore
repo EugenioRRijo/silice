@@ -88,3 +88,17 @@ docs/auditoria/expectativas.json
 # Interfaz nueva (frontend-desktop): dependencias y compilado no se versionan (el lock si)
 frontend-desktop/node_modules/
 frontend-desktop/dist/
+
+# Paquetes portables de distribucion
+dist_portable/
+
+# Locales: artefactos de compilacion, registros y documentos personales o de terceros (decision 2026-10-19)
+demo_dist/
+junit_*.xml
+suite_final.txt
+npm_ci_*.log
+COMPARTIR_ONLINE.bat
+docs/Carta de aceptacion*.docx
+docs/Informe - *.docx
+docs/tesis/anteproyecto/
+MANUAL de la USM*.pdf
