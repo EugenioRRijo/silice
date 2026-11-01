@@ -6,6 +6,17 @@
   padding: 1.5rem 1rem 2rem;
 }
 
+// Los hijos de la rejilla pueden encogerse: si no, una tabla ancha (valuaciones) empuja la celda y ensancha la página
+// entera (tercera pasada de navegador, 31-10: 1.507 px en una ventana de 1.366).
+.silice-control > * {
+  min-inline-size: 0;
+}
+
+// Valuaciones se desplaza dentro de su propia caja, no la página.
+.silice-control__valuaciones {
+  overflow-x: auto;
+}
+
 .silice-control__bloque {
   display: grid;
   gap: 1rem;

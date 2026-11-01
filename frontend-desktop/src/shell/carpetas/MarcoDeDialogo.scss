@@ -53,7 +53,9 @@
   inset-block-end: 0;
   block-size: 2rem;
   pointer-events: none;
-  background: linear-gradient(to bottom, transparent, var(--cds-layer-01));
+  // Al gris, no al blanco del fondo: sobre un campo blanco la gradiente blanca no se notaba (tercera pasada, 31-10).
+  background: linear-gradient(to bottom, transparent, var(--cds-layer-accent-01));
+  border-block-end: 2px solid var(--cds-border-strong-01);
 }
 
 // El cuerpo se desplaza solo, entre el titulo y el pie, si no cabe (letra Muy grande en 768 px de alto). La barra es
