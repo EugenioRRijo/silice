@@ -11,10 +11,10 @@ import type { TablaDeDiferencia } from "./tipos";
 export function Monto({ texto, exacto }: { texto: string; exacto: string }) {
   return (
     <>
-      <span className="silice-revisar__cifra" title={`Valor exacto: ${exacto}`}>
+      <span className="silice-revisar__cifra" title={`Valor exacto: ${formatoEsVe(exacto)}`}>
         {formatoEsVe(texto)}
       </span>
-      <span className="cds--visually-hidden">{`. Valor exacto: ${exacto}`}</span>
+      <span className="cds--visually-hidden">{`. Valor exacto: ${formatoEsVe(exacto)}`}</span>
     </>
   );
 }

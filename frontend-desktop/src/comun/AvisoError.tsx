@@ -1,4 +1,4 @@
-import { InlineNotification } from "@carbon/react";
+import { InlineNotification } from "./carbonEs";
 import { mensajeDeError } from "./errores";
 
 interface Props {

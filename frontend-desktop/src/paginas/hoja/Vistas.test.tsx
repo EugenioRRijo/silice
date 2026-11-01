@@ -183,10 +183,10 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     expect(within(filas[1]!).getByText("AF-LLAVE")).toBeInTheDocument();
     expect(within(filas[1]!).getByText("3,00")).toBeInTheDocument();
     expect(within(filas[2]!).getByText("8,25")).toBeInTheDocument();
-    expect(within(filas[2]!).getByTitle("8.250000000000000000000000000")).toBeInTheDocument();
-    const total = screen.getByTitle("2703.86023234404403");
+    expect(within(filas[2]!).getByTitle("8,250000000000000000000000000")).toBeInTheDocument();
+    const total = screen.getByTitle("2.703,86023234404403");
     expect(total).toHaveTextContent("2.703,86 USD");
-    expect(screen.getByText("Valor exacto 2703.86023234404403")).toBeInTheDocument();
+    expect(screen.getByText("Valor exacto 2.703,86023234404403")).toBeInTheDocument();
   });
 
   test("Espacio: avisa de las partidas pendientes del catálogo", async () => {
@@ -265,8 +265,8 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
       "= Precio unitario",
     ]);
     expect(within(filas[7]!).getByText("13,20 USD")).toBeInTheDocument();
-    expect(within(filas[7]!).getByTitle("13.198738025")).toBeInTheDocument();
-    expect(within(filas[2]!).getByText("FCAS 6 y bono 5.81, entre el rendimiento")).toBeInTheDocument();
+    expect(within(filas[7]!).getByTitle("13,198738025")).toBeInTheDocument();
+    expect(within(filas[2]!).getByText("FCAS 6 y bono 5,81, entre el rendimiento")).toBeInTheDocument();
   });
 
   test("APU: las líneas llegan ya en es-VE y se muestran tal cual, sin convertirlas otra vez", async () => {
@@ -367,10 +367,10 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     ]);
     const filas = within(tabla).getAllByRole("row");
     expect(within(filas[1]!).getByText("13,20")).toBeInTheDocument();
-    expect(within(filas[1]!).getByTitle("13.198738025")).toBeInTheDocument();
+    expect(within(filas[1]!).getByTitle("13,198738025")).toBeInTheDocument();
     expect(within(filas[1]!).getByText("39,60")).toBeInTheDocument();
     expect(within(filas[1]!).getByText("OK")).toBeInTheDocument();
-    expect(screen.getByTitle("2703.8602323440440333")).toHaveTextContent("2.703,86 USD");
+    expect(screen.getByTitle("2.703,8602323440440333")).toHaveTextContent("2.703,86 USD");
   });
 
   test("Presupuesto: una cantidad escrita a mano dice cuál era la calculada y una partida sin APU queda pendiente", async () => {
@@ -418,7 +418,7 @@ describe("Hoja de la obra: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     const primera = within(curva).getAllByRole("row")[1]!;
     expect(within(primera).getAllByText("11,18")).toHaveLength(2); // monto y acumulado del primer período
     expect(within(primera).getByText("0,41")).toBeInTheDocument();
-    expect(within(primera).getByTitle("0.4134")).toBeInTheDocument();
+    expect(within(primera).getByTitle("0,4134")).toBeInTheDocument();
   });
 
   test("3b-F8: sin plan muestra el mensaje y no hay curva", async () => {

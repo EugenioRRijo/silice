@@ -1,10 +1,12 @@
-import { Button, RadioButton, RadioButtonGroup, Search } from "@carbon/react";
+import { Button, RadioButton, RadioButtonGroup } from "@carbon/react";
+import { Search } from "../../comun/carbonEs";
 import { Add } from "@carbon/icons-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
+import { cifrasEnTextoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { ConfirmarQuitarLinea, DialogoAgregarLinea } from "./AgregarLineaApu";
 import type { LineaAgregada } from "./AgregarLineaApu";
@@ -387,7 +389,8 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
               concepto: c.concepto,
               monto: c.monto.texto,
               monto_exacto: c.monto.exacto,
-              nota: c.nota,
+              // La nota la arma el servidor con punto decimal («FCAS 6 y bono 5.81», «15.0 %»): se lee en es-VE.
+              nota: cifrasEnTextoEsVe(c.nota),
             }))}
           />
         </section>

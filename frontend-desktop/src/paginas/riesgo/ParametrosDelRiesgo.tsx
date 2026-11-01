@@ -33,6 +33,8 @@ export function ParametrosDelRiesgo({ campos, errores, alCambiar, insumos, mapa,
     />
   );
   const conSerie = [...insumos.insumos, ...insumos.componentes];
+  // Sin línea base de control no hay de dónde tomar el inicio: el campo es obligatorio y se dice en el rótulo.
+  const obligatoria = insumos.inicio_linea_base === null;
   return (
     <>
       <fieldset className="riesgo-campos">
@@ -40,9 +42,14 @@ export function ParametrosDelRiesgo({ campos, errores, alCambiar, insumos, mapa,
         <CampoTexto
           id="riesgo-inicio"
           type="date"
-          labelText="Fecha de inicio"
+          labelText={obligatoria ? "Fecha de inicio (obligatoria)" : "Fecha de inicio"}
+          required={obligatoria}
           helperText={ayudaDelInicio(insumos.inicio_linea_base)}
           value={campos.inicio}
+          invalid={errores.inicio !== undefined}
+          invalidText={errores.inicio}
+          // Carbon no enlaza su texto de error al campo: se enlaza aquí para que la lectora lo diga con el foco.
+          aria-describedby={errores.inicio !== undefined ? "riesgo-inicio-error-msg" : undefined}
           onChange={(e) => alCambiar("inicio", e.target.value)}
         />
         {numero("meses")}

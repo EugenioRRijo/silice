@@ -5,7 +5,7 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { PALETA_GRAFICOS, colorPorGrupo, formatoNumeroEsVe } from "../../comun/paletaGraficos";
-import { fechaEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
+import { fechaEsVe, formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import {
@@ -33,11 +33,11 @@ function Tarjetas({ tarjetas, moneda }: { tarjetas: Tarjeta[]; moneda: string })
           <dt className="cds--type-label-01">{t.rotulo}</dt>
           <dd
             className="cds--type-heading-04"
-            title={t.exacto ? `Valor exacto: ${t.exacto} ${moneda}`.trim() : t.valor}
+            title={t.exacto ? `Valor exacto: ${formatoEsVe(t.exacto)} ${moneda}`.trim() : t.valor}
           >
             {formatoMontoEsVe(t.valor)}
             {t.exacto && (
-              <span className="cds--visually-hidden">{`. Valor exacto: ${t.exacto} ${moneda}`.trimEnd()}</span>
+              <span className="cds--visually-hidden">{`. Valor exacto: ${formatoEsVe(t.exacto)} ${moneda}`.trimEnd()}</span>
             )}
           </dd>
           {t.detalle && <dd className="cds--type-helper-text-01">{detalleDeTarjeta(t)}</dd>}

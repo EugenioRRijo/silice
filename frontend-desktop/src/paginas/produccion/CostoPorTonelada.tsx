@@ -21,6 +21,7 @@ import "./planta.scss";
 
 const ACCION = "registrar_costos_produccion";
 const ACCION_PUBLICAR = "publicar_costo_propio";
+const FALTA_MONEDA = "Elija la moneda del cálculo: no tiene valor por defecto.";
 
 // «Costo por tonelada»: el costo propio de cada agregado y de cada mezcla en un mes, calculado por el servidor con los
 // costos del período, lo producido y las recetas. Cada cálculo se guarda con sus entradas (recalcular crea otro) y la
@@ -32,6 +33,10 @@ export default function CostoPorTonelada() {
   const puedePublicar = sesion.acciones.includes(ACCION_PUBLICAR);
   const [periodo, setPeriodo] = useState(() => mesAnterior());
   const [moneda, setMoneda] = useState("");
+  // Hallazgo 12 del recorrido: el botón queda activo y, sin moneda, el error se dice en el campo y el foco va a él (un
+  // botón inactivo no recibe el foco ni explica por qué; es el mismo patrón que Procura y Riesgo).
+  const [faltaMoneda, setFaltaMoneda] = useState(false);
+  const campoMoneda = useRef<HTMLSelectElement>(null);
   const [calculo, setCalculo] = useState<CalculoDeCosto | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [calculando, setCalculando] = useState(false);
@@ -74,6 +79,11 @@ export default function CostoPorTonelada() {
   }
 
   async function calcular() {
+    if (moneda === "") {
+      setFaltaMoneda(true);
+      campoMoneda.current?.focus();
+      return;
+    }
     setError(null);
     setErrorDePublicar(null);
     setAviso(null);
@@ -126,15 +136,23 @@ export default function CostoPorTonelada() {
         <Select
           id="costo-moneda"
           labelText="Moneda del cálculo"
+          ref={campoMoneda}
           value={moneda}
-          onChange={(e) => cambiarDatos(() => setMoneda(e.target.value))}
+          invalid={faltaMoneda && moneda === ""}
+          invalidText={FALTA_MONEDA}
+          onChange={(e) =>
+            cambiarDatos(() => {
+              setMoneda(e.target.value);
+              setFaltaMoneda(false);
+            })
+          }
         >
           <SelectItem value="" text="Elija la moneda" />
           {MONEDAS.map((m) => (
             <SelectItem key={m.valor} value={m.valor} text={m.texto} />
           ))}
         </Select>
-        <Button kind="primary" size="md" disabled={!valido || moneda === "" || calculando || (reparto.activo && !reparto.valido)} onClick={() => void calcular()}>
+        <Button kind="primary" size="md" disabled={!valido || calculando || (reparto.activo && !reparto.valido)} onClick={() => void calcular()}>
           Calcular costo por tonelada
         </Button>
       </div>

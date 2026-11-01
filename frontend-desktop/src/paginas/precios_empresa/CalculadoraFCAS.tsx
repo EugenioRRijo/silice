@@ -1,4 +1,5 @@
-import { Button, Checkbox, InlineLoading, InlineNotification } from "@carbon/react";
+import { Button, Checkbox } from "@carbon/react";
+import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, JSX, Ref } from "react";
 import { pedir } from "../../api/cliente";

@@ -1,4 +1,5 @@
-import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { AvisoError } from "../../comun/AvisoError";

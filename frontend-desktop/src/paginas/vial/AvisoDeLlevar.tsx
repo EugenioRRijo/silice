@@ -1,4 +1,4 @@
-import { InlineNotification } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import type { JSX, ReactNode } from "react";
 import { mensajeDeError } from "../../comun/errores";
 

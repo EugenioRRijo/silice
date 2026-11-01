@@ -1,13 +1,5 @@
-import {
-  DataTable,
-  DataTableSkeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@carbon/react";
+import { DataTable, DataTableSkeleton, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
+import { TableHeader } from "./carbonEs";
 import type { ReactNode } from "react";
 import { EstadoVacio } from "./EstadoVacio";
 import { Severidad } from "./Severidad";

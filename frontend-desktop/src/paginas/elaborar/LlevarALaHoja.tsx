@@ -1,4 +1,5 @@
-import { Button, InlineLoading } from "@carbon/react";
+import { Button } from "@carbon/react";
+import { InlineLoading } from "../../comun/carbonEs";
 import { useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";

@@ -31,7 +31,7 @@ describe("Variacion (IBCS de costo)", () => {
     const { container } = render(<Variacion valor="12.43" />);
 
     expect(container.querySelector(".ibcs-desfavorable")).not.toBeNull();
-    expect(screen.getByText("12.43")).toBeInTheDocument();
+    expect(screen.getByText("12,43")).toBeInTheDocument();
     expect(screen.getByText("(desfavorable)")).toBeInTheDocument();
     expect(container.querySelector("svg")).not.toBeNull();
   });
@@ -69,5 +69,22 @@ describe("TablaDensa con celdas de semantica", () => {
     expect(within(tabla).getByText("R3")).toBeInTheDocument();
     expect(within(tabla).getByText("Error")).toBeInTheDocument();
     expect(within(tabla).getByText("(desfavorable)")).toBeInTheDocument();
+  });
+
+  test("la cifra de variación se lee en es-VE (coma decimal y punto de miles)", () => {
+    render(
+      <TablaDensa
+        etiqueta="Prueba"
+        columnas={[{ clave: "var", titulo: "Variación", numerica: true, celda: "variacion" }]}
+        filas={[
+          { id: "1", var: "1234.50" },
+          { id: "2", var: "-9.09" },
+        ]}
+      />,
+    );
+    const tabla = screen.getByRole("table", { name: "Prueba" });
+    expect(within(tabla).getByText("1.234,50")).toBeInTheDocument();
+    expect(within(tabla).getByText("-9,09")).toBeInTheDocument();
+    expect(tabla).not.toHaveTextContent(/\d\.\d{2}(?!\d)/);
   });
 });

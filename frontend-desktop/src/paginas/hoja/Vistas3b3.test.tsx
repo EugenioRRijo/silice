@@ -149,8 +149,8 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     expect(within(dl).getByText("Como % de las ventas").nextElementSibling).toHaveTextContent("56,60 %");
     expect(within(dl).getByText("Se alcanza en").nextElementSibling).toHaveTextContent("Día 23");
     // El exacto va en el title y en un texto accesible; nada se redondea en la interfaz.
-    expect(within(dl).getByTitle("1530.4912345")).toBeInTheDocument();
-    expect(within(dl).getByText(/Valor exacto 1530.4912345/)).toBeInTheDocument();
+    expect(within(dl).getByTitle("1.530,4912345")).toBeInTheDocument();
+    expect(within(dl).getByText(/Valor exacto 1.530,4912345/)).toBeInTheDocument();
     expect(screen.getByText("Se alcanza en Dia 23, al 50 % de ese periodo.")).toBeInTheDocument();
   });
 
@@ -194,7 +194,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     montar();
     await irA("Punto de equilibrio");
     expect(await screen.findByText("Ventas (contrato)")).toBeInTheDocument();
-    expect(screen.getByTitle("1530.4912345")).toHaveTextContent("1.530,49 Bs");
+    expect(screen.getByTitle("1.530,4912345")).toHaveTextContent("1.530,49 Bs");
   });
 
   test("3b-F9: el período se lee sin los códigos entre corchetes que le pone el servidor", async () => {
@@ -225,6 +225,9 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     expect(screen.getByRole("textbox", { name: /^Administración/ })).toHaveValue("0,15");
     expect(screen.getByRole("textbox", { name: /^Utilidad/ })).toHaveValue("0,10");
     expect(screen.getAllByRole("textbox")).toHaveLength(4);
+    // El rótulo lo arma el servidor con punto («6.00»); se lee con coma decimal (D-8).
+    expect(screen.getByRole("textbox", { name: "FCAS (fracción: 6,00 = prestaciones del 600 %)" })).toBeInTheDocument();
+    expect(screen.queryByText(/6\.00/)).toBeNull();
   });
 
   test("Parámetros: la moneda del proyecto y el total del presupuesto", async () => {
@@ -232,7 +235,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     montar();
     await irA("Parámetros");
     expect(await screen.findByText("Moneda del proyecto: USD")).toBeInTheDocument();
-    expect(screen.getByTitle("2703.860232344044")).toHaveTextContent("2.703,86 USD");
+    expect(screen.getByTitle("2.703,860232344044")).toHaveTextContent("2.703,86 USD");
   });
 
   test("Parámetros: sin moneda del proyecto no se inventa una", async () => {
@@ -374,7 +377,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     ]);
     const fila = within(tabla).getAllByRole("row")[1]!;
     expect(within(fila).getByText("Tubo PVC 1/2")).toBeInTheDocument();
-    expect(within(fila).getByTitle("3.1034")).toHaveTextContent("3,10");
+    expect(within(fila).getByTitle("3,1034")).toHaveTextContent("3,10");
     expect(within(fila).getByText("01/07/2026")).toBeInTheDocument();
     expect(within(fila).getByText("OK")).toBeInTheDocument();
     // Lo que no es principal no está en la tabla.
@@ -393,7 +396,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     expect(campo("Erosión USD")).toHaveTextContent("0,12");
     expect(campo("Erosión Bs")).toHaveTextContent("78,15");
     expect(campo("Erosión %")).toHaveTextContent("3,98 %");
-    expect(within(detalle).getByTitle("78.1500")).toBeInTheDocument();
+    expect(within(detalle).getByTitle("78,1500")).toBeInTheDocument();
     expect(within(detalle).queryByText("Erosión por índice")).toBeNull();
   });
 
@@ -462,7 +465,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     const tabla = await screen.findByRole("table", { name: "Variaciones atípicas de precio" });
     const fila = within(tabla).getAllByRole("row")[1]!;
     expect(within(fila).getByText("MAT-001")).toBeInTheDocument();
-    expect(within(fila).getByTitle("38.4000123")).toHaveTextContent("38,40 %");
+    expect(within(fila).getByTitle("38,4000123")).toHaveTextContent("38,40 %");
     expect(within(fila).getByText("01/01/2026")).toBeInTheDocument();
     expect(within(fila).getByText("01/07/2026")).toBeInTheDocument();
     // La severidad dice «Advertencia» con su ícono; solo su color es el de los atípicos (DESIGN.md).

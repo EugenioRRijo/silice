@@ -263,9 +263,9 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
       },
     });
     const estado = await esperar(() => screen.getByRole("region", { name: "Estado del borrador" }));
-    expect(await esperar(() => within(estado).getByTitle("2800.5"))).toHaveTextContent("2.800,50 USD");
+    expect(await esperar(() => within(estado).getByTitle("2.800,5"))).toHaveTextContent("2.800,50 USD");
     expect(within(estado).getByText(/· 1 cambio sin guardar/)).toBeInTheDocument();
-    expect(within(estado).getByTitle("2800.5")).toHaveAttribute("aria-live", "polite");
+    expect(within(estado).getByTitle("2.800,5")).toHaveAttribute("aria-live", "polite");
     expect(lecturasDelEspacio()).toBe(antes + 1);
     const derivadas = await esperar(() => screen.getByRole("table", { name: "Cantidades derivadas" }));
     expect(await esperar(() => within(derivadas).getByText("4,00"))).toBeInTheDocument();
@@ -347,7 +347,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     expect(screen.getByText("Valor no válido")).toBeInTheDocument();
     // El total mostrado es el anterior y el borrador no avanzó.
     const estado = screen.getByRole("region", { name: "Estado del borrador" });
-    expect(within(estado).getByTitle("2703.860232344044033333333333")).toBeInTheDocument();
+    expect(within(estado).getByTitle("2.703,860232344044033333333333")).toBeInTheDocument();
     expect(within(estado).getByText(/Sin cambios sin guardar/)).toBeInTheDocument();
     // Corregir y volver a mandar: sigue con el rev que el servidor no avanzó y el alert desaparece.
     alPonerse = ACEPTA;

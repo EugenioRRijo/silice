@@ -1,4 +1,5 @@
-import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useCallback, useState } from "react";
 import type { FormEvent } from "react";
 import { pedir } from "../../api/cliente";

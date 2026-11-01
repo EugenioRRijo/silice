@@ -58,6 +58,14 @@ export function monto(exacto: string, moneda: string): string {
   return `${centesimasEsVe(exacto)} ${moneda}`;
 }
 
+// Sin línea base de control la fecha de inicio es obligatoria: el mismo texto que el 422 de la API
+// (aplicacion/riesgo/obra.py, SIN_INICIO), para decirlo en el campo antes de enviar y reconocerlo si llega del servidor.
+export const SIN_INICIO = "Indique la fecha de inicio de la obra: la versión no tiene línea base de control de la que tomarla.";
+
+export function pideLaFechaDeInicio(detalle: string): boolean {
+  return detalle.startsWith("Indique la fecha de inicio");
+}
+
 // La ayuda del campo de la fecha de inicio: de dónde sale si se deja vacía.
 export function ayudaDelInicio(inicioLineaBase: string | null): string {
   return inicioLineaBase !== null

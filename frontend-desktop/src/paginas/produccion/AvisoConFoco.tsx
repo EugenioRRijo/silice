@@ -1,4 +1,4 @@
-import { InlineNotification } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useEffect, useRef } from "react";
 import type { JSX, ReactNode } from "react";
 

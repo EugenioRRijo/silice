@@ -1,4 +1,5 @@
-import { Button, Select, SelectItem, SkeletonText, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { Button, Select, SelectItem, SkeletonText, Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { TabList } from "../../comun/carbonEs";
 import { useCallback, useContext, useEffect, useId, useState } from "react";
 import type { FormEvent, JSX } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";

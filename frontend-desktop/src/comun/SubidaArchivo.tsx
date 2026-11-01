@@ -1,4 +1,5 @@
-import { FileUploaderDropContainer, InlineNotification } from "@carbon/react";
+import { FileUploaderDropContainer } from "@carbon/react";
+import { InlineNotification } from "./carbonEs";
 import { useState } from "react";
 
 interface Props {

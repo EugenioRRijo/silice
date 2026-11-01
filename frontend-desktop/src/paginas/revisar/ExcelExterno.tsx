@@ -1,4 +1,4 @@
-import { InlineLoading, InlineNotification } from "@carbon/react";
+import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import { useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";

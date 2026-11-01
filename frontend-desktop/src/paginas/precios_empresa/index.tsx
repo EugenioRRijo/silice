@@ -1,4 +1,5 @@
-import { Button, InlineLoading, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
+import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -75,7 +76,7 @@ type Lectura3 =
   | { tipo: "error"; clave: string; error: unknown };
 
 // «Precios de la empresa» (UC-17 4-5): la referencia MaPreX en Bs, la lista de una empresa y sus hallazgos de R11 y
-// R12. La interfaz no calcula nada: el impacto llega como texto y se muestra tal cual. El archivo lo valida la API.
+// R12. La interfaz no calcula nada: el impacto llega como texto y solo se presenta en es-VE. El archivo lo valida la API.
 export default function PaginaPreciosEmpresa() {
   const { alExpirar } = useAplicacion();
   const [lectura, setLectura] = useState<Lectura>({ tipo: "cargando" });

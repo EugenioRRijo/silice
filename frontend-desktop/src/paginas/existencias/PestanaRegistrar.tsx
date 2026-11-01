@@ -1,4 +1,5 @@
-import { Button, InlineNotification, Select, SelectItem, SkeletonText, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { Button, Select, SelectItem, SkeletonText, Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { InlineNotification, TabList } from "../../comun/carbonEs";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { pedir } from "../../api/cliente";

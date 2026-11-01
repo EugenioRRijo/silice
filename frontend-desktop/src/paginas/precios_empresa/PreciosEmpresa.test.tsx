@@ -259,13 +259,15 @@ describe("Precios de la empresa", () => {
     expect(screen.queryByText(/creada con/)).toBeNull();
   });
 
-  test("los hallazgos se piden con la fecha de evaluacion y se muestran tal cual llegan", async () => {
+  test("los hallazgos se piden con la fecha de evaluacion y el impacto se lee en es-VE", async () => {
     estado = () => json(CON_LISTA);
     montar();
     expect(await screen.findByText("ARENA LAVADA: precio vencido")).toBeInTheDocument();
     const [ruta] = llamadas("/listas/5/hallazgos?fecha=")[0];
     expect(String(ruta)).toBe(`/v1/precios-empresa/listas/5/hallazgos?fecha=${hoyIso()}`);
-    expect(screen.getByText("11328.78")).toBeInTheDocument();
+    // El servidor manda el impacto con punto ("11328.78"); se lee con coma decimal y punto de miles (D-8).
+    expect(screen.getByText("11.328,78")).toBeInTheDocument();
+    expect(screen.queryByText("11328.78")).toBeNull();
     expect(screen.getByText("Sin versión, el impacto es por unidad de insumo. Nada de esto se guarda.")).toBeInTheDocument();
     expect(screen.getByText("Advertencia")).toBeInTheDocument();
     expect(screen.getByText("Error")).toBeInTheDocument();
