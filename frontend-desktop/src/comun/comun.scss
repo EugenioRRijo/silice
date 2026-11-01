@@ -180,3 +180,8 @@ html div.cds--cc--legend div.legend-item p,
 html .cds--cc--tooltip p {
   font-size: 0.75rem !important;
 }
+
+// Un código de partida («C-000.000.001») se lee entero: no se parte en dos líneas.
+.silice-informe__codigo {
+  white-space: nowrap;
+}

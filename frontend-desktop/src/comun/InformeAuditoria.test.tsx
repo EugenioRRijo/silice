@@ -84,6 +84,23 @@ describe("InformeAuditoria", () => {
     expect(within(tabla).getByText("T-01; T-02")).toBeInTheDocument();
   });
 
+  test("impacto, observado y esperado se leen en es-VE (coma decimal, punto de miles) y el código no se parte", () => {
+    const informe: InformeAuditoriaRespuesta = {
+      ...CON_HALLAZGOS,
+      hallazgos: [
+        { ...CON_HALLAZGOS.hallazgos[0]!, partida: "C-000.000.001", impacto: "180.00", observado: "4358.20", esperado: "1234567.5" },
+      ],
+    };
+    render(<InformeAuditoria informe={informe} />);
+
+    const tabla = screen.getByRole("table", { name: "Hallazgos" });
+    expect(within(tabla).getByText("180,00")).toBeInTheDocument();
+    expect(within(tabla).getByText("4.358,20")).toBeInTheDocument();
+    expect(within(tabla).getByText("1.234.567,5")).toBeInTheDocument();
+    expect(within(tabla).queryByText("180.00")).toBeNull();
+    expect(within(tabla).getByText("C-000.000.001")).toHaveClass("silice-informe__codigo");
+  });
+
   test("una partida, un monto o un origen ausentes se ven vacíos, no como 'null'", () => {
     render(<InformeAuditoria informe={CON_HALLAZGOS} />);
 
