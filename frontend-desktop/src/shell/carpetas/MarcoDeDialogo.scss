@@ -43,6 +43,20 @@
   // Que el anillo de foco de los campos no quede cortado por el desplazamiento.
   padding: 0.125rem;
   margin: -0.125rem;
+  // Señal de que hay más: una franja de sombra arriba o abajo que solo se ve mientras queda contenido por desplazar
+  // (las dos primeras capas, ancladas al contenido, la tapan al llegar al borde).
+  background:
+    linear-gradient(var(--cds-layer-01) 30%, transparent) center top,
+    linear-gradient(transparent, var(--cds-layer-01) 70%) center bottom,
+    linear-gradient(to bottom, var(--cds-border-strong), transparent) center top,
+    linear-gradient(to top, var(--cds-border-strong), transparent) center bottom;
+  background-repeat: no-repeat;
+  background-size:
+    100% 1.5rem,
+    100% 1.5rem,
+    100% 0.5rem,
+    100% 0.5rem;
+  background-attachment: local, local, scroll, scroll;
 }
 
 .silice-dialogo__pie {

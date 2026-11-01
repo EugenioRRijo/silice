@@ -55,6 +55,7 @@ export function FilaDeComponente({ numero, base, fila, sePuedeQuitar, alCambiar,
         ))}
       </Select>
       <Button
+        className="receta-componente__quitar"
         kind="ghost"
         size="sm"
         disabled={!sePuedeQuitar}
