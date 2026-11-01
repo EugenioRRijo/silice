@@ -21,7 +21,7 @@ export function InformeAuditoria({ informe }: Props) {
     { clave: "regla", titulo: "Regla" },
     { clave: "severidad", titulo: "Severidad", celda: "severidad" },
     { clave: "partida", titulo: "Partida", celda: (f) => <span className="silice-informe__codigo">{f["partida"]}</span> },
-    { clave: "descripcion", titulo: "Descripción" },
+    { clave: "descripcion", titulo: "Descripción", celda: (f) => <span className="silice-informe__descripcion">{f["descripcion"]}</span> },
     ...(hay("impacto") ? [{ clave: "impacto", titulo: "Impacto", numerica: true, presentar: formatoEsVe }] : []),
     ...(hay("observado") ? [{ clave: "observado", titulo: "Observado", numerica: true, presentar: formatoEsVe }] : []),
     ...(hay("esperado") ? [{ clave: "esperado", titulo: "Esperado", numerica: true, presentar: formatoEsVe }] : []),

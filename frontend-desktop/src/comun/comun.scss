@@ -201,3 +201,9 @@ html .cds--cc--tooltip p {
 .silice-informe__codigo {
   white-space: nowrap;
 }
+
+// La descripción de un hallazgo no se estrecha hasta una palabra por línea cuando la tabla es ancha.
+.silice-informe__descripcion {
+  display: inline-block;
+  min-inline-size: 18rem;
+}
