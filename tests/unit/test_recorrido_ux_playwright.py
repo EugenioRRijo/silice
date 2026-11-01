@@ -118,7 +118,9 @@ def test_cada_ruta_se_lee_del_registro_sin_modulos() -> None:
     assert len(rutas) == 32
     assert "inicio" not in rutas
     assert rutas["hoja"]["titulo"] == "Hoja de la obra"
-    assert rutas["hoja"]["accion"] == "editar_hoja"
+    # F4 2b (Eugenio, 2026-10-31): quien revisa ve la Hoja en solo lectura; la pantalla pide
+    # leer_proyecto y lo que escribe lo decide puedeEditarLaHoja (y la API, editar_hoja).
+    assert rutas["hoja"]["accion"] == "leer_proyecto"
     assert rutas["produccion"]["accion"] == "operar_arenera"
     assert rutas["acerca"]["accion"] is None
     assert all(r["modulo"] is None and r["area"] is None for r in rutas.values())
