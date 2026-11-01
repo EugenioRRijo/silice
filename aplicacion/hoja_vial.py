@@ -304,18 +304,23 @@ def _mensaje_sin_valorar(
     return " ".join(partes)
 
 
-def _exigir_valorables(
+def _valorado(
     sesion: Session,
     vivo: hoja_borradores.BorradorVivo,
     borrador: hoja.Borrador,
     items: Sequence[ItemComputo],
-) -> None:
-    """`PartidasSinValorar` si la Hoja dejaría PENDIENTE alguna partida de `items`. Las que el
-    borrador aún no compone se arman como lo hará `hoja.completar_composiciones` (catálogo, la
-    lista de la Hoja, la fecha del borrador); cada una que falla se explica (`_por_que`)."""
+) -> hoja.Borrador:
+    """`borrador` con el APU de cada partida de `items` que aún no compone, o
+    `PartidasSinValorar` si la Hoja dejaría PENDIENTE alguna.
+
+    Cada una se arma como lo hace `hoja.completar_composiciones` (catálogo, la lista de la Hoja,
+    la fecha del borrador); cada una que falla se explica (`_por_que`). Si todas se arman, se
+    completan aquí con esa misma lista (lo que haría `hoja_edicion.cambiar_borrador`): así llevar
+    otra vez compone una partida que había quedado pendiente aunque los renglones no cambien. En
+    un borrador en blanco las completa `cambiar_borrador`, que además convierte la moneda."""
     nuevas = sorted({item.codigo_partida for item in items} - set(borrador.composiciones))
     if not nuevas:
-        return
+        return borrador
     lista = _lista_de_la_hoja(sesion, vivo)
     catalogo = Catalogo(sesion)
     faltas = []
@@ -338,6 +343,9 @@ def _exigir_valorables(
                 componer_sirve=_componer_escribe_en(sesion, lista, borrador.fecha),
             )
         )
+    if vivo.abierta is None:
+        return borrador
+    return hoja.completar_composiciones(catalogo, borrador, lista=lista)
 
 
 def _componer_escribe_en(sesion: Session, lista: models.ListaPrecios, fecha: date) -> bool:
@@ -369,7 +377,7 @@ def llevar_tramos_a_la_hoja(
     la versión no tiene tramos (propios ni heredados); `hoja_edicion.PartidaFueraDelCatalogo` con
     **todos** los códigos que faltan. Después abre o toma el borrador
     (`elaboracion.borrador_de_la_obra`), exige que la Hoja pueda valorar cada partida con la lista
-    del borrador y a su fecha (`PartidasSinValorar` si no; `_exigir_valorables`) y sincroniza
+    del borrador y a su fecha (`PartidasSinValorar` si no; `_valorado`) y sincroniza
     (`sincronizar_renglones`) con las reglas viales de los tramos de ahora, por el núcleo de
     edición de la Hoja (`hoja_edicion.cambiar_borrador`). Todo o nada: si algo falla, el borrador
     abierto aquí se descarta y el que ya estaba queda como estaba.
@@ -400,7 +408,7 @@ def llevar_tramos_a_la_hoja(
 
     def construir(actual: hoja_borradores.BorradorVivo) -> hoja.Borrador | None:
         sincronizado = sincronizar_renglones(actual.borrador, items, reglas)
-        _exigir_valorables(sesion, actual, sincronizado, items)
+        sincronizado = _valorado(sesion, actual, sincronizado, items)
         if sincronizado == actual.borrador:  # `reglas_extra` no cuenta en la igualdad
             actual.borrador, actual.calculo = sincronizado, None
             return None
