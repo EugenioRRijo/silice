@@ -1,12 +1,10 @@
 import type { JSX } from "react";
 import type { CantidadDeTramo, TramoGuardado } from "../../api/vial";
+import { unidadEscrita } from "../../comun/unidades";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
-// «m2» y «m3» se leen «m²» y «m³»; el valor que manda el servidor no cambia, solo cómo se presenta.
-const ESCRITA: Record<string, string> = { m2: "m²", m3: "m³" };
-const unidadEscrita = (unidad: string) => ESCRITA[unidad] ?? unidad;
 
 const COLUMNAS: ColumnaDensa[] = [
   { clave: "descripcion", titulo: "Partida", ordenable: false },

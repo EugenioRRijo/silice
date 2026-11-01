@@ -3,6 +3,7 @@ import { Add } from "@carbon/icons-react";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { pedir } from "../../api/cliente";
+import { unidadEscrita } from "../../comun/unidades";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { ConfirmarQuitar, DialogoAgregarPartida, useFocoAlCerrar } from "./AgregarPartida";
@@ -152,9 +153,15 @@ function EditorDePresupuesto({
         etiqueta="Presupuesto"
         desplazable
         columnas={[
-          { clave: "partida", titulo: "Partida", ordenable: false },
+          {
+            clave: "partida",
+            titulo: "Partida",
+            ordenable: false,
+            // El código no se parte en líneas («C-000.000.001» salía en dos).
+            celda: (f) => <span className="silice-hoja__codigo">{f.partida}</span>,
+          },
           { clave: "descripcion", titulo: "Descripción", ordenable: false },
-          { clave: "unidad", titulo: "Unidad", ordenable: false },
+          { clave: "unidad", titulo: "Unidad", ordenable: false, celda: (f) => unidadEscrita(f.unidad ?? "") },
           {
             clave: "cantidad",
             titulo: "Cantidad",
