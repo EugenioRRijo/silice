@@ -56,3 +56,36 @@ Severidad: **A** = conviene resolver o esquivar antes de mostrarlo; **M** = se n
 3. En Riesgo: escribir la fecha de inicio **antes** de Proyectar y el presupuesto original (139.278,27) antes de
    «Calcular la mejora»; tener a mano la explicación de P50 = P80 o no enseñar los percentiles (5).
 4. En Costo por tonelada, elegir la moneda primero.
+
+## Arreglos del mismo día (pedido de Eugenio)
+
+Decisiones de Eugenio: arreglar en la candidata (no en F4) y traer de F4 solo la Hoja en solo lectura para quien
+revisa; tocar `core/` solo para las tildes. Tres líneas en paralelo, cada una con su par rojo/verde, unidas con merge:
+
+| Hallazgo | Arreglo | Commits |
+|----------|---------|---------|
+| 1 | 2b de F4 llevada por cherry-pick adaptado: «Presupuesto» en el árbol para quien revisa, Hoja en solo lectura, lecturas de `/v1/hoja` con `leer_proyecto`, escrituras con `editar_hoja`, guardia `api/sin_escribir.py` | merge f98f5cd0 |
+| 3, 4, 8 | Formato es-VE en Catálogo, Impacto, Variación, Actualizar precios, «Valor exacto» y textos de la Hoja (`cifrasEnTextoEsVe`) | merge dc79fcfb, f2cd5edb |
+| 4, 17 | Tildes de R12 y del punto de equilibrio en `core/` (solo texto). La R2 de `reglas.py` NO: está en la huella del experimento congelado | a89aa4d4 |
+| 7 | Barra superior: no ceden la cuenta ni la letra; ceden el buscador y las migas intermedias | merge dc79fcfb |
+| 9 | Riesgo: fecha de inicio obligatoria y con su error en el campo; presupuesto original precargado con el total base | merge dc79fcfb |
+| 12 | Costo por tonelada: el botón queda activo y marca el campo de moneda | merge dc79fcfb |
+| 14 | Textos de Carbon en español en `comun/carbonEs.tsx` con regla de eslint | merge dc79fcfb, fa7bc284 |
+| 15 | «No hay receta vigente de … el dd/mm/aaaa» | c5eb04da |
+
+Riesgo, P50 = P80 (hallazgo 5): no es un defecto. La carpeta de demostración usa `data/samples/produccion/series.csv`
+(hecha para el cálculo a mano): en sus 24 meses completos el PPI del asfalto sube 10 % cada mes y el gasoil y la tasa no
+se mueven, así que toda trayectoria remuestreada es la misma. Con `data/samples/vial/series_ficticias.csv` la misma obra
+da P50 139.911,79 y P80 140.637,12. Para mostrar el riesgo conviene cargar esas series.
+
+Árbitro (ronda 1): APROBADO CON MENORES. Cerrados por el orquestador: M1 (códigos de dos partes y punto final en
+`cifrasEnTextoEsVe`), M2 (CHANGELOG), M3 (`aria-label` sin valor en las flechas de las pestañas; el `forwardRef` no
+hace falta con React 19) y M4 (prueba del Tablero). Quedan: M5, la celda de solo lectura de la Hoja pierde su etiqueta
+accesible (la cabecera da el contexto); M6, decisión de Eugenio: quien revisa, en una obra sin versiones, abre un
+«borrador en blanco» en memoria que no escribe.
+
+Tercera grabación sobre el mismo guion (73 pasos, 4 min 38 s): sin textos de Carbon en inglés, sin cifras con punto,
+la cuenta dentro de la ventana en todas las pantallas, Rita lee la Hoja, el catálogo con «0,50», «2.000» y m², y la
+mejora de la estimación calcula (12,74 puntos). Siguen, fuera del pedido: el Resumen de la obra y la cabecera alta
+de la Hoja (F4), el 401 del borrador al salir desde la Hoja, dos 404 en consola en Producir mezcla y botones sin
+nombre en el visor de auditoría y en Administración.
