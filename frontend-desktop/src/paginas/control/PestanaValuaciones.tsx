@@ -6,6 +6,7 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
+import type { FilaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
@@ -295,8 +296,8 @@ const COLUMNAS_DE_VALUACIONES = columnasDe(COLUMNAS_VALUACIONES, NUMERICAS_VALUA
   c.clave === "Periodo"
     ? {
         ...c,
-        celda: (fila: { Periodo?: string }) => {
-          const completo = fila.Periodo ?? "";
+        celda: (fila: FilaDensa) => {
+          const completo = fila["Periodo"] ?? "";
           return <span title={completo}>{periodoCompacto(completo)}</span>;
         },
       }

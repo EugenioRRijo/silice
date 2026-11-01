@@ -81,12 +81,13 @@ export function AvisoDeLlevar({ error, titulo, alCerrar }: Props): JSX.Element {
       kind="error"
       role="alert"
       title={titulo}
-      subtitle={cuerpo}
       lowContrast
       onClose={() => {
         alCerrar();
         return false; // el padre decide si desaparece
       }}
-    />
+    >
+      {cuerpo}
+    </InlineNotification>
   );
 }
