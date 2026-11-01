@@ -352,8 +352,8 @@ describe("Elaborar un presupuesto", () => {
     expect(screen.getByText("Total del presupuesto")).toBeInTheDocument();
     // VB-6: el total en es-VE y el exacto de la API a un toque (title) y para el lector de pantalla
     const total = screen.getByText("1.234,50 USD");
-    expect(total).toHaveAttribute("title", "Valor exacto: 1234.5012500 USD");
-    expect(screen.getByText(/Valor exacto: 1234\.5012500 USD/, { selector: "span.cds--visually-hidden" })).toBeInTheDocument();
+    expect(total).toHaveAttribute("title", "Valor exacto: 1.234,5012500 USD");
+    expect(screen.getByText(/Valor exacto: 1\.234,5012500 USD/, { selector: "span.cds--visually-hidden" })).toBeInTheDocument();
     const metricas = screen.getByRole("group", { name: "Métricas del presupuesto" });
     expect(within(metricas).getByText("Error")).toBeInTheDocument();
     expect(within(metricas).getByText("2")).toBeInTheDocument();

@@ -169,7 +169,7 @@ describe("Tablero del proyecto", () => {
     );
     montar("OB-S2");
     const tarjeta = await screen.findByText("95.066,60 USD");
-    expect(tarjeta).toHaveAttribute("title", "Valor exacto: 95066.60006250 USD");
+    expect(tarjeta).toHaveAttribute("title", "Valor exacto: 95.066,60006250 USD");
     const [anillo] = await screen.findAllByTestId("grafico-anillo");
     expect(anillo).toHaveAttribute("data-centro", "95.066,60");
   });
