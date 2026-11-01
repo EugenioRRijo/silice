@@ -28,7 +28,7 @@ export function FilaDeComponente({ numero, base, fila, sePuedeQuitar, alCambiar,
       <CampoDeConsulta
         id={`${base}-codigo`}
         etiqueta="Código"
-        tabla="insumos"
+        tabla="componentes_de_receta"
         texto={fila.codigo}
         alCambiarTexto={(codigo) => alCambiar({ codigo })}
         alExpirar={alExpirar}

@@ -70,7 +70,7 @@ export default function RecetaPlanta() {
         Lo que lleva una tonelada de cada mezcla. Una receta nueva no cambia las anteriores: la producción usa la que rige en su fecha.
       </p>
       <div className="planta-barra">
-        <CampoDeConsulta id="receta-producto" etiqueta="Producto (código)" tabla="insumos" texto={producto} alCambiarTexto={setProducto} alExpirar={alExpirar} />
+        <CampoDeConsulta id="receta-producto" etiqueta="Producto (código)" tabla="materiales_produccion" texto={producto} alCambiarTexto={setProducto} alExpirar={alExpirar} />
         <CampoTexto id="receta-fecha" type="date" labelText="Fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         <Button kind="secondary" size="md" disabled={producto.trim() === "" || fecha === ""} onClick={() => void consultar(true)}>
           Ver la receta vigente
