@@ -219,10 +219,11 @@ describe("Buscador con módulos apagados (plan vial, Tarea 19)", () => {
     );
   }
 
-  it("encendido, «tramos» encuentra la pantalla Tramos de la vía", async () => {
+  it("encendido, «tramos» encuentra la sección Tramos de cada obra, no una pantalla sin obra", async () => {
     pintarConApagados([]);
     await userEvent.type(await campo(), "tramos");
-    await waitFor(() => expect(opciones().join("|")).toContain("Tramos de la vía"));
+    await waitFor(() => expect(opciones().join("|")).toContain("› Tramos"));
+    expect(opciones().join("|")).not.toContain("Tramos de la vía");
   });
 
   it("con vial apagado, «tramos» ya no la encuentra", async () => {

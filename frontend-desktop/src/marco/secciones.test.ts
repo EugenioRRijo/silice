@@ -52,8 +52,9 @@ describe("SECCIONES_DE_OBRA", () => {
     }
   });
 
-  it("solo «Tramos» es de las obras viales; las demás son de toda obra", () => {
-    expect(SECCIONES_DE_OBRA.filter((s) => s.soloVial).map((s) => s.id)).toEqual(["tramos"]);
+  it("«Tramos» es una sección como las demás: toda obra la tiene mientras el módulo vial esté encendido", () => {
+    expect(SECCIONES_DE_OBRA.map((s) => s.id)).toContain("tramos");
+    expect(Object.keys(SECCIONES_DE_OBRA[0]!)).not.toContain("soloVial");
   });
 
   it("hablan en el vocabulario de la persona, con una ayuda corta", () => {

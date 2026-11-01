@@ -18,21 +18,16 @@ const COMPLETA = ofertaDe(
   false,
 );
 
-describe("resultadosDe: «Tramos» solo en las obras viales", () => {
-  it("la sección Tramos de una obra sin tramos no se encuentra", () => {
-    expect(resultadosDe("clin tramos", OBRAS, COMPLETA)).toEqual([]);
-  });
-
-  it("la de una obra con tramos sí, con su ruta", () => {
-    const viales = new Set(["Carpeta Norte.db|1"]);
-    expect(resultadosDe("clin tramos", OBRAS, COMPLETA, viales)).toEqual([
+describe("resultadosDe: «Tramos» en toda obra", () => {
+  it("la sección Tramos se encuentra en cualquier obra, tenga o no tramos guardados", () => {
+    expect(resultadosDe("clin tramos", OBRAS, COMPLETA)).toEqual([
       { texto: "Clínica Las Mercedes › Tramos", detalle: "Los tramos de la vía con sus cantidades de obra.", ruta: "/obra/Carpeta%20Norte.db/1/tramos" },
     ]);
-    expect(resultadosDe("torre tramos", OBRAS, COMPLETA, viales)).toEqual([]);
+    expect(resultadosDe("torre tramos", OBRAS, COMPLETA)).toHaveLength(1);
   });
 
-  it("la pantalla «Tramos de la vía» se encuentra siempre, para quien aún no tiene tramos", () => {
-    expect(resultadosDe("tramos", [], COMPLETA)[0]).toMatchObject({ texto: "Tramos de la vía", ruta: "/tramos" });
+  it("sin obra no se ofrece «Tramos de la vía» (llevaría a Pendientes sin decir nada)", () => {
+    expect(resultadosDe("tramos", [], COMPLETA)).toEqual([]);
   });
 });
 
