@@ -110,4 +110,10 @@ describe("cifrasEnTextoEsVe", () => {
     expect(cifrasEnTextoEsVe("ya escrito 1.234,56")).toBe("ya escrito 1.234,56");
     expect(cifrasEnTextoEsVe("versión 1.2.0")).toBe("versión 1.2.0");
   });
+
+  test("no toca un código de dos partes y sí el decimal que cierra la frase", () => {
+    expect(cifrasEnTextoEsVe("partida P-01.03 del tramo")).toBe("partida P-01.03 del tramo");
+    expect(cifrasEnTextoEsVe("FCAS de la fracción 6.00.")).toBe("FCAS de la fracción 6,00.");
+    expect(cifrasEnTextoEsVe("baja -5.81 en el mes")).toBe("baja -5,81 en el mes");
+  });
 });
