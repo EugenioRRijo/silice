@@ -17,6 +17,16 @@
   border-block-end: 0;
 }
 
+// Las tablas de Control (valuaciones con nueve columnas) caben en la pantalla de 1366 px: relleno compacto en las celdas y
+// las cifras sin partir. Si aun asi no cupieran, `.silice-tabla` se desplaza dentro de su caja.
+.silice-control__bloque .silice-tabla :is(th, td) {
+  padding-inline: 0.5rem;
+}
+
+.silice-control__bloque .silice-tabla .silice-cifra {
+  white-space: nowrap;
+}
+
 .silice-control__nota {
   max-inline-size: 65ch;
   color: var(--silice-texto-secundario);
