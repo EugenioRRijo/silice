@@ -177,7 +177,7 @@ TABLA = {
     ("GET", "/v1/mercado/compra/{codigo}/afectados"): EDITAR,
     ("POST", "/v1/mercado/compra/{codigo}/usar"): EDITAR,
     ("POST", "/v1/mercado/cobro/{codigo}/usar"): EDITAR,
-    ("GET", "/v1/mercado/objetivos"): EDITAR,
+    ("GET", "/v1/mercado/objetivos"): LEER,  # F4 2b: quien revisa ve el objetivo en la Hoja
     # MP-7 T23: procura con fechas
     ("GET", "/v1/procura"): CONTROLAR,
     ("POST", "/v1/procura/compras"): CONTROLAR,
