@@ -92,3 +92,7 @@ nombre en el visor de auditoría y en Administración.
 
 Suite completa sobre cb0324bf: pytest 11.715 verdes, 0 fallas, 0 omitidas; vitest 3.386 verdes y 1 falla intermitente
 conocida bajo carga (Costos del período, que sola pasa 24/24); `tsc`, `eslint` y el build limpios.
+
+M6 resuelto por Eugenio el mismo día («prefiero que vea un aviso»): quien no edita la Hoja, en una obra sin versiones,
+ve «Aún no hay nada que revisar» y no se abre ningún borrador; quien arma sigue con el borrador en blanco. Pruebas
+en `SoloLectura.test.tsx` (rojo visto); Hoja y Obra 773 verdes, `tsc`, `eslint` y build limpios.

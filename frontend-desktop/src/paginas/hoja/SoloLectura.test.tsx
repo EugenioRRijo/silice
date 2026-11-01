@@ -298,6 +298,39 @@ describe("Quien revisa ve el Presupuesto en solo lectura", () => {
   });
 });
 
+// M6 del árbitro (Eugenio, 2026-11-01): en una obra sin versiones quien revisa no abre un «borrador en blanco», ve un aviso.
+describe("Quien revisa, en una obra sin versiones", () => {
+  function sinVersiones() {
+    servidor();
+    const anterior = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (ruta, init) =>
+      String(ruta).startsWith("/v1/hoja/versiones")
+        ? json({ proyecto: "OF-001", moneda: "USD", por_omision: null, versiones: [] })
+        : anterior(ruta, init),
+    );
+  }
+
+  test("ve que no hay nada que revisar y no se abre ningún borrador", async () => {
+    sinVersiones();
+    montar(ACCIONES_REVISA);
+    expect(await screen.findByText("Aún no hay nada que revisar")).toBeInTheDocument();
+    expect(
+      screen.getByText("Esta obra no tiene versiones guardadas. Cuando quien arma el presupuesto guarde la primera, podrá revisarla aquí."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Borrador en blanco/)).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(fetchFalso.mock.calls.some(([, init]) => (init?.method ?? "GET") === "POST")).toBe(false);
+  });
+
+  test("quien arma sigue abriendo el borrador en blanco para guardar la primera versión", async () => {
+    sinVersiones();
+    montar(ACCIONES_ARMA);
+    expect(await screen.findByText("Esta obra aún no tiene versiones")).toBeInTheDocument();
+    expect(screen.queryByText("Aún no hay nada que revisar")).toBeNull();
+    await waitFor(() => expect(fetchFalso.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
+  });
+});
+
 describe("Quien arma conserva sus controles", () => {
   test("con permiso y base normal: sin nota y con los controles de cada pestaña", async () => {
     servidor();

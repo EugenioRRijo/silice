@@ -44,7 +44,7 @@ import { PestanaParametros } from "./PestanaParametros";
 import { PestanaPlan } from "./PestanaPlan";
 import { PestanaPresupuesto } from "./PestanaPresupuesto";
 import { useBorrador } from "./useBorrador";
-import { usePuedeEditarLaHoja } from "./puedeEditar";
+import { puedeEditarLaHoja, usePuedeEditarLaHoja } from "./puedeEditar";
 import "./hoja.scss";
 
 function EstadoDelBorrador({
@@ -294,8 +294,10 @@ function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombre
   const { datos, recargarVersiones } = useVersiones(proyecto, cargadas, alExpirar);
   const ofrecidas = datos ? versionesOfrecidas(datos.versiones) : [];
   const delProyecto = elegida?.proyecto === proyecto ? elegida.codigo : null;
+  // M6 (Eugenio, 2026-11-01): quien no edita la Hoja, en una obra sin versiones, no abre un borrador en blanco: ve un aviso.
+  const nadaQueRevisar = datos !== null && ofrecidas.length === 0 && !puedeEditarLaHoja(sesion.acciones, null);
   const codigo =
-    datos === null || ofertas.estado !== "listo" || ofrecidos.length > 0
+    datos === null || nadaQueRevisar || ofertas.estado !== "listo" || ofrecidos.length > 0
       ? undefined
       : retomado !== null
         ? retomado.version
@@ -433,6 +435,14 @@ function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombre
 
   if (versiones.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las versiones" />;
   if (versiones.estado !== "listo") return <AvisoError error={versiones.error} />;
+  if (nadaQueRevisar) {
+    return (
+      <EstadoVacio
+        titulo="Aún no hay nada que revisar"
+        descripcion="Esta obra no tiene versiones guardadas. Cuando quien arma el presupuesto guarde la primera, podrá revisarla aquí."
+      />
+    );
+  }
 
   return (
     <ContextoDeDialogos.Provider value={dialogos}>
