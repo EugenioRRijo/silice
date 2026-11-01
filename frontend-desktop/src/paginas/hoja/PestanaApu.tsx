@@ -1,4 +1,5 @@
-import { Button, RadioButton, RadioButtonGroup, Search } from "@carbon/react";
+import { Button, RadioButton, RadioButtonGroup } from "@carbon/react";
+import { Search } from "../../comun/carbonEs";
 import { Add } from "@carbon/icons-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { pedir } from "../../api/cliente";

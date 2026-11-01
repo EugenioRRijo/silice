@@ -138,7 +138,7 @@ describe("textos de Carbon en español", () => {
     const vigilados = ["TabList", "Search", "InlineNotification", "InlineLoading", "PasswordInput", "Pagination", "TableHeader"];
     const infractores: string[] = [];
     for (const [ruta, fuente] of Object.entries(fuentes)) {
-      if (ruta.endsWith("/comun/carbonEs.tsx")) continue;
+      if (ruta.endsWith("carbonEs.tsx")) continue; // el envoltorio mismo
       for (const m of fuente.matchAll(/import\s*\{([^}]*)\}\s*from\s*"@carbon\/react"/g)) {
         const nombres = m[1]!.split(",").map((n) => n.trim().replace(/^type\s+/, "").split(/\s+as\s+/)[0]!);
         for (const n of nombres) if (vigilados.includes(n)) infractores.push(`${ruta}: ${n}`);

@@ -1,4 +1,5 @@
-import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import type { JSX } from "react";
 import { useState } from "react";

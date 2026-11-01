@@ -1,4 +1,5 @@
-import { Accordion, AccordionItem, Button, InlineNotification } from "@carbon/react";
+import { Accordion, AccordionItem, Button } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";

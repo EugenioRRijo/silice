@@ -1,4 +1,5 @@
-import { Button, InlineNotification, SkeletonText } from "@carbon/react";
+import { Button, SkeletonText } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { WarningAltFilled, WarningFilled } from "@carbon/icons-react";
 import { useId, useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";

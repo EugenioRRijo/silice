@@ -1,4 +1,5 @@
-import { Accordion, AccordionItem, Button, Checkbox, InlineLoading, RadioButton, RadioButtonGroup, Select, SelectItem } from "@carbon/react";
+import { Accordion, AccordionItem, Button, Checkbox, RadioButton, RadioButtonGroup, Select, SelectItem } from "@carbon/react";
+import { InlineLoading } from "../../comun/carbonEs";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";

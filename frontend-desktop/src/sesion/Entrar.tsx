@@ -1,4 +1,5 @@
-import { Button, Form, InlineNotification, PasswordInput } from "@carbon/react";
+import { Button, Form } from "@carbon/react";
+import { InlineNotification, PasswordInput } from "../comun/carbonEs";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { mensajeDeError } from "../comun/errores";

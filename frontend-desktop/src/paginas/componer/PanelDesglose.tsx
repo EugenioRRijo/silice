@@ -1,4 +1,5 @@
-import { InlineNotification, Table, TableBody, TableCell, TableRow } from "@carbon/react";
+import { Table, TableBody, TableCell, TableRow } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { AvisoError } from "../../comun/AvisoError";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import type { Advertencia, Contraste, Desglose, Evaluacion } from "./cliente";

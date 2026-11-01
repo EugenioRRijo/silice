@@ -1,4 +1,5 @@
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { TabList } from "../../comun/carbonEs";
 import { useAplicacion } from "../../shell/contexto";
 import { PestanaExcelExterno } from "./ExcelExterno";
 import { PestanaPaquete } from "./Paquete";

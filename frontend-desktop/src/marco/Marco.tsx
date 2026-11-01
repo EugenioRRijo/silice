@@ -1,4 +1,4 @@
-import { InlineNotification } from "@carbon/react";
+import { InlineNotification } from "../comun/carbonEs";
 import { Suspense, createElement, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent, ReactElement, ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate, useNavigationType, useParams } from "react-router";

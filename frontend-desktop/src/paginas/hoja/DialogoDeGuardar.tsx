@@ -1,13 +1,5 @@
-import {
-  Button,
-  InlineNotification,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@carbon/react";
+import { Button, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
+import { InlineNotification, TableHeader } from "../../comun/carbonEs";
 import { useCallback, useId, useRef } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";

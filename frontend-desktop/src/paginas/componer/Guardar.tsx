@@ -1,4 +1,5 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { useState } from "react";
 import type { RefObject } from "react";

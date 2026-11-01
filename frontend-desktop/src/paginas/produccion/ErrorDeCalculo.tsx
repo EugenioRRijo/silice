@@ -1,4 +1,4 @@
-import { InlineNotification } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import type { JSX, Ref } from "react";
 import { desgloseDeTasas, mensajeDePlanta } from "./logicaPlanta";
 

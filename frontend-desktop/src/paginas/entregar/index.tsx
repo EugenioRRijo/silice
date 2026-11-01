@@ -1,11 +1,5 @@
-import {
-  Button,
-  Form,
-  InlineNotification,
-  PasswordInput,
-  Select,
-  SelectItem,
-} from "@carbon/react";
+import { Button, Form, Select, SelectItem } from "@carbon/react";
+import { InlineNotification, PasswordInput } from "../../comun/carbonEs";
 import { Download } from "@carbon/icons-react";
 import { useState } from "react";
 import type { FormEvent } from "react";

@@ -1,5 +1,6 @@
 import { WarningFilled } from "@carbon/icons-react";
-import { Button, DataTableSkeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@carbon/react";
+import { Button, DataTableSkeleton, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
+import { TableHeader } from "../../comun/carbonEs";
 import { useId } from "react";
 import type { JSX, ReactNode } from "react";
 import { AvisoError } from "../../comun/AvisoError";

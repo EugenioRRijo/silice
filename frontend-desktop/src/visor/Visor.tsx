@@ -1,4 +1,5 @@
-import { FileUploaderButton, FileUploaderDropContainer, InlineNotification, SkeletonPlaceholder, SkeletonText, Tab, TabList, Tabs } from "@carbon/react";
+import { FileUploaderButton, FileUploaderDropContainer, SkeletonPlaceholder, SkeletonText, Tab, Tabs } from "@carbon/react";
+import { InlineNotification, TabList } from "../comun/carbonEs";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";

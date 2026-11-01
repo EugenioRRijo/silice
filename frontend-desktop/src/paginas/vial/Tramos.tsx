@@ -1,4 +1,5 @@
-import { Button, InlineLoading, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
+import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ErrorDeApi } from "../../api/cliente";

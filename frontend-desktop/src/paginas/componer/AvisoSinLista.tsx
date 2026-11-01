@@ -1,4 +1,5 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useEffect, useRef } from "react";
 import type { CarpetaRespuesta } from "../../api/tipos";
 import { ErrorDeApi } from "../../api/cliente";

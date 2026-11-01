@@ -1,4 +1,5 @@
-import { Button, InlineNotification, RadioButton, RadioButtonGroup, Select, SelectItem } from "@carbon/react";
+import { Button, RadioButton, RadioButtonGroup, Select, SelectItem } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useState } from "react";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";

@@ -1,15 +1,5 @@
-import {
-  DataTable,
-  InlineNotification,
-  SelectableTag,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@carbon/react";
+import { DataTable, SelectableTag, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@carbon/react";
+import { InlineNotification, TableHeader } from "../comun/carbonEs";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { HallazgoLibroRespuesta, HojaVisualRespuesta } from "../api/tipos";
