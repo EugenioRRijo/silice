@@ -89,3 +89,6 @@ la cuenta dentro de la ventana en todas las pantallas, Rita lee la Hoja, el cat�
 mejora de la estimación calcula (12,74 puntos). Siguen, fuera del pedido: el Resumen de la obra y la cabecera alta
 de la Hoja (F4), el 401 del borrador al salir desde la Hoja, dos 404 en consola en Producir mezcla y botones sin
 nombre en el visor de auditoría y en Administración.
+
+Suite completa sobre cb0324bf: pytest 11.715 verdes, 0 fallas, 0 omitidas; vitest 3.386 verdes y 1 falla intermitente
+conocida bajo carga (Costos del período, que sola pasa 24/24); `tsc`, `eslint` y el build limpios.
