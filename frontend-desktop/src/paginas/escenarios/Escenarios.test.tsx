@@ -70,7 +70,7 @@ function escenario(nombre: string, total: string): EscenarioRespuesta {
 }
 
 // Carbon antepone al titulo el aviso de ordenacion: se compara el final.
-const titulo = (c: HTMLElement) => (c.textContent ?? "").replace(/^Click to sort rows by .* header in ascending order/, "");
+const titulo = (c: HTMLElement) => (c.textContent ?? "").replace(/^Pulse para ordenar las filas por .* de menor a mayor/, "");
 
 describe("Escenarios de sensibilidad", () => {
   const fetchFalso = vi.fn<typeof fetch>();
