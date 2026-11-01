@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -29,6 +29,8 @@ const PARTIDAS = [
 const INSUMOS = [
   { codigo: "INS-1", descripcion: "Cemento ficticio", tipo: "material", unidad: "saco", precio_vigente: "12.3400" },
   { codigo: "INS-2", descripcion: "Peón ficticio", tipo: "mano_obra", unidad: null, precio_vigente: null },
+  { codigo: "INS-3", descripcion: "Arena ficticia", tipo: "material", unidad: "m3", precio_vigente: "0.50" },
+  { codigo: "INS-4", descripcion: "Bloque ficticio", tipo: "material", unidad: "m2", precio_vigente: "2000" },
 ];
 
 describe("Catálogo de partidas e insumos", () => {
@@ -74,14 +76,28 @@ describe("Catálogo de partidas e insumos", () => {
     expect(screen.getByRole("table", { name: "Partidas" })).not.toHaveTextContent("Relleno compactado");
   });
 
-  test("los insumos traen el precio tal como llega y vacio si no hay lista vigente", async () => {
+  test("los insumos traen el precio en es-VE, la unidad escrita y un texto si no hay precio vigente", async () => {
     const usuario = userEvent.setup();
     montar();
     await screen.findByRole("table", { name: "Partidas" });
     await usuario.click(screen.getByRole("tab", { name: /Insumos/ }));
     const tabla = await screen.findByRole("table", { name: "Insumos" });
-    expect(tabla).toHaveTextContent("12.3400");
-    expect(tabla).toHaveTextContent("Peón ficticio");
+    const fila = (codigo: string) => within(tabla).getByText(codigo).closest("tr") as HTMLElement;
+    expect(fila("INS-1")).toHaveTextContent("12,3400");
+    expect(fila("INS-3")).toHaveTextContent("0,50");
+    expect(fila("INS-3")).toHaveTextContent("m³");
+    expect(fila("INS-4")).toHaveTextContent("2.000");
+    expect(fila("INS-4")).toHaveTextContent("m²");
+    expect(fila("INS-2")).toHaveTextContent("Sin precio vigente");
+    expect(tabla).not.toHaveTextContent(/\d\.\d{2}(?!\d)/);
+    expect(tabla).not.toHaveTextContent(/m[23]/);
+  });
+
+  test("las partidas escriben la unidad con superindice", async () => {
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Partidas" });
+    expect(tabla).toHaveTextContent("m³");
+    expect(tabla).not.toHaveTextContent(/m3/);
   });
   test.each([
     [404, "No existe el catálogo en este caso."],
