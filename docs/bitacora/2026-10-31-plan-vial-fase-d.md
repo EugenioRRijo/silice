@@ -107,3 +107,56 @@ mismo `lxml` explica las tres de `test_excel_m1` que vio F2 (el retorno de carro
 
 - Pytest (con `OPENPYXL_LXML=False`): 11.665 verdes y 2 rojas, ambas listas literales sin actualizar tras las merges (la ruta del reporte de producción en `test_api_produccion` y `METADATA_MODULOS` en `test_migraciones_metadatos`); corregidas y verdes. Vitest: 3.332 de 3.332. Lint: limpio. Las fallas antiguas (TI-001 por el reloj y la huella RNF-04 por lxml) ya no aparecen.
 - F4 queda para una sesión posterior por decisión de Eugenio; la rama vial ya está unida a `inc/rediseno-f4`.
+
+## Llevar en una obra que ya existe: bloqueo de la pasada de navegador (arreglado)
+
+**Lo que se vio.** En la carpeta de demostración, «Llevar al presupuesto» de los 20 renglones de
+`data/samples/vial/via_ficticia.csv` en DEMO-001 decía «Se llevaron 20 renglones», pero la auditoría de la Hoja daba
+20 errores «PENDIENTE: … no tiene composicion de APU» y NO CUMPLE. Recomponer los APU con fecha 20/09/2026 no lo
+cambiaba.
+
+**Causa exacta.** La Hoja arma el APU de cada partida nueva desde el catálogo con **la lista de la versión abierta y a
+la fecha de esa versión** (`hoja_edicion.cambiar_borrador` → `hoja.completar_composiciones(catalogo, borrador,
+lista=lista_de_version)`), y si `Catalogo.composicion` lanza `CatalogoIncompleto` se lo calla y deja la partida
+PENDIENTE. Para DEMO-001 eso es «Lista de referencia del caso de demostracion de Sílice», al 20/09/2026. Llevar, en
+cambio, solo miraba que la partida existiera en el catálogo. Un APU compuesto en Componer con la fecha de hoy falla de
+dos maneras:
+
+1. **Rendimiento:** `composicion` pide un rendimiento estimado con fecha ≤ 20/09/2026, y el de la partida quedó con la
+   fecha en que se compuso (en la carpeta del revisor, 01/11/2026). Volver a guardar con fecha 20/09/2026 **no**
+   registra otro rendimiento si el valor y las condiciones son los mismos (`reemplazar_composicion` solo registra uno
+   nuevo si algo cambió): por eso repetirlo «con los APU fechados el 20/09/2026» dio lo mismo. Comprobado sobre una
+   copia de su `demo.db`: las 15 partidas, «no tiene rendimiento estimado al 2026-09-20».
+2. **Precios:** Componer escribe los precios en la lista para armar de la fecha que se teclea, o en una derivada de esa
+   fecha (`listas_para_armar.lista_de_hoy`): con fecha de hoy quedan en «… al 31/10/2026», no en la lista de DEMO-001.
+
+La prueba de punta a punta pasaba porque cataloga las partidas directamente en la lista de su versión y a su fecha.
+
+**Arreglo** (`aplicacion/hoja_vial.py`, sin tocar `hoja.py`, `composicion.py` ni `core/`): dentro del cerrojo del
+borrador y antes de cambiar nada, llevar arma cada partida que el borrador aún no compone exactamente como lo hará la
+Hoja (misma lista, misma fecha). Si alguna falla: `PartidasSinValorar`, 409, **no lleva nada** (el borrador abierto
+para llevar se descarta; el que ya estaba no cambia) y el mensaje dice qué partidas, qué insumos faltan en qué lista y
+en cuál están, qué rendimiento falta a esa fecha y qué hacer. Si todas se arman, llevar las deja compuestas: así,
+llevar otra vez después de arreglar el APU compone la partida aunque los renglones no cambien (antes seguía
+pendiente). Pruebas: `tests/integration/test_api_vial_llevar_valorable.py` (por la API, con Componer) y cuatro nuevas
+en `tests/unit/test_aplicacion_vial_llevar.py`. `docs/api.json` no cambia.
+
+**Lo que Eugenio debe preparar para mostrar Llevar en la carpeta de demostración (DEMO-001):**
+
+- **La lista:** «Lista de referencia del caso de demostracion de Sílice» (USD), la de DEMO-001, vigente desde el
+  20/09/2026. No hay que crear otra.
+- **Las partidas:** las 15 de la vía, `C-000.000.001` a `C-000.000.015`, compuestas en **Componer con el campo Fecha en
+  20/09/2026** (Componer trae la fecha de hoy: hay que cambiarla). Así sus precios quedan en esa lista y su rendimiento
+  a esa fecha. Insumos y precios ficticios: los de `data/samples/produccion/apu.csv` (en USD); ese archivo no trae
+  `C-000.000.001` (fresado), `C-000.000.003` (sub-base) ni `C-000.000.013` (línea discontinua): el revisor usó
+  «Fresado (ficticio)» 3,50 USD/m3, «Granzón (ficticio)» 1,3 m3 a 4 USD y «Señalización (ficticia)» 0,80 USD/m.
+- **Si esas partidas ya existen en la carpeta** con otra fecha (como en la del revisor): al guardarlas otra vez con
+  fecha 20/09/2026, **cambiar también el texto de «Condiciones»** (por ejemplo, añadir «al 20/09/2026») para que el
+  rendimiento se registre con esa fecha. O empezar limpio con `uv run start.py --reiniciar-demo` (recopia demo, of001,
+  ti001, s1 y obra_control: se pierde lo hecho en esos casos).
+- **El orden en vivo:** con las partidas ya compuestas antes de la reunión, en la obra «Sílice: caso de demostracion»
+  → Tramos (DEMO-001) → importar `via_ficticia.csv` → «Llevar al presupuesto» → Hoja: los 20 renglones con precio y
+  ninguno PENDIENTE. Si algo falta, llevar ahora responde con un aviso que dice qué partida, qué insumo y qué lista, y
+  no lleva nada.
+- Comprobado sobre una copia de la `demo.db` del revisor: recompuestas las 15 con fecha 20/09/2026 y otras
+  condiciones, llevar deja los 20 renglones y las 15 partidas compuestas.
