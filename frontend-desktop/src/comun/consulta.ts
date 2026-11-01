@@ -58,7 +58,7 @@ export function buscadorDeConsulta(tabla: TablaDeConsulta) {
 export type TablaDeBusqueda = TablaDeConsulta | "materiales_produccion" | "componentes_de_receta";
 
 const ROTULO_MATERIALES = "Materiales de la arenera";
-const sinTildes = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const sinTildes = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 // Los materiales activos de la arenera que contienen todas las palabras escritas, en su código o su nombre.
 export function buscadorDeMateriales() {
