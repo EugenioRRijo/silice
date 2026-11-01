@@ -38,3 +38,19 @@ describe("el componente de la receta", () => {
     expect(scss).toMatch(/\.receta-componente[^}]*\.receta-componente__quitar|\.receta-componente__quitar\s*\{[^}]*align-self/s);
   });
 });
+
+// El aviso verde que recibe el foco (Tramos, Receta, Costos): su caja enfocada no puede verse como un recuadro negro más
+// ancho que el aviso.
+describe("la caja del aviso con foco", () => {
+  const aviso = reglaDe(leer("comun/comun.scss"), ".silice-aviso-foco");
+  const enfocada = reglaDe(leer("comun/comun.scss"), ".silice-aviso-foco:focus");
+
+  test("mide lo que el aviso, no todo el ancho", () => {
+    expect(aviso).toMatch(/inline-size:\s*fit-content/);
+  });
+
+  test("su foco usa el anillo del tema, por dentro", () => {
+    expect(enfocada).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
+    expect(enfocada).toMatch(/outline-offset:\s*-2px/);
+  });
+});
