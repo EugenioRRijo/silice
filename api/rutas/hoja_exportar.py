@@ -6,7 +6,8 @@ la trazabilidad, los precios y las hojas de control si hay una version abierta) 
 adjunto. **No escribe nada** (ni la base ni el borrador ni su `rev`).
 
 Acceso, borrador ajeno (404), otro caso (409) y `no-store` son los de las demas rutas del borrador
-(`api.rutas.hoja`): solo una cuenta con `EDITAR_HOJA`; con `X-Silice-Clave`, 403. El router lleva
+(`api.rutas.hoja`): solo una cuenta con `LEER_PROYECTO` (F4 2b: quien revisa descarga el Excel de su
+borrador en solo lectura); con `X-Silice-Clave`, 403. El router lleva
 `RutaSinCache` y `RutaSinEco` EN ESE ORDEN (al reves, la primera atrapa el 422 de forma antes y lo
 devuelve con eco).
 
@@ -21,7 +22,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import SesionDep
 from api.rutas import hoja as rutas_hoja
-from api.rutas.hoja import CuentaDeLaHoja, IdDeBorrador
+from api.rutas.hoja import CuentaQueVe, IdDeBorrador
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
 from aplicacion import hoja_exportar
@@ -44,7 +45,7 @@ router = APIRouter(prefix="/v1/hoja", tags=["hoja"], route_class=_RutaExportar)
     responses={200: {"content": {TIPO_XLSX: {}}, "description": "El libro .xlsx del borrador."}},
 )
 def exportar_excel(
-    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja, sesion: SesionDep
+    id: IdDeBorrador, request: Request, activa: CuentaQueVe, sesion: SesionDep
 ) -> Response:
     """X1: el libro del borrador vivo. En la firma `activa` va antes que `sesion`: el acceso (401,
     403) debe responder antes de abrir la base del caso."""

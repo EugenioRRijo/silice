@@ -19,6 +19,8 @@ interface Props {
   alRestaurar: () => void;
   // ↑/↓/Enter pasan a la misma columna de la fila vecina; sin esta función no se interceptan.
   alMover?: (paso: 1 | -1) => void;
+  // F4 2b: sin permiso de edición la celda no es un campo, es su texto (no se deja un campo deshabilitado).
+  soloLectura?: boolean;
 }
 
 // Un campo de texto de una sección editable: el valor es siempre el texto que escribió la persona (nada se convierte) y el
@@ -34,7 +36,17 @@ export function CampoDeCelda({
   alCambiar,
   alRestaurar,
   alMover,
+  soloLectura = false,
 }: Props) {
+  if (soloLectura) {
+    if (!etiquetaVisible) return <span>{valor}</span>;
+    return (
+      <div className="silice-hoja__campo-lectura">
+        <span className="cds--label">{etiqueta}</span>
+        <span className="cds--type-body-compact-01">{valor}</span>
+      </div>
+    );
+  }
   const alTeclear = (e: KeyboardEvent<HTMLInputElement>) => {
     if (alMover !== undefined && (e.key === "ArrowDown" || e.key === "Enter")) {
       e.preventDefault();

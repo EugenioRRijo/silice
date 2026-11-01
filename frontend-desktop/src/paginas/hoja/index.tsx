@@ -26,7 +26,7 @@ import {
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 import { RUTA_DE_BORRADORES, borradorExistente, ofertasDeRetomar } from "./logicaRetomar";
 import type { OfertaDeRetomar } from "./logicaRetomar";
-import { usuarioDeSesion } from "./logicaGuardar";
+import { CAUSA_SOLO_LECTURA, usuarioDeSesion } from "./logicaGuardar";
 import { useGuardadoDeLaPagina } from "./useGuardadoDeLaPagina";
 import { useVersiones } from "./useVersiones";
 import { BotonExcel } from "./BotonExcel";
@@ -44,16 +44,20 @@ import { PestanaParametros } from "./PestanaParametros";
 import { PestanaPlan } from "./PestanaPlan";
 import { PestanaPresupuesto } from "./PestanaPresupuesto";
 import { useBorrador } from "./useBorrador";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 import "./hoja.scss";
 
 function EstadoDelBorrador({
   borrador,
   alDescartar,
   alGuardar,
+  puedeEditar,
 }: {
   borrador: BorradorAbierto;
   alDescartar: () => void;
   alGuardar: () => void;
+  // F4 2b: sin permiso de edición (o con un borrador de solo lectura) no se ofrece guardar ni descartar.
+  puedeEditar: boolean;
 }) {
   const { base, resumen } = borrador;
   const [confirmando, setConfirmando] = useState(false);
@@ -70,7 +74,7 @@ function EstadoDelBorrador({
       {resumen.version_mas_nueva !== null && (
         <p className="cds--type-helper-text-01">La versión vigente ahora es la {resumen.version_mas_nueva}.</p>
       )}
-      {(resumen.cambios > 0 || base.version === null) && !confirmando && (
+      {puedeEditar && (resumen.cambios > 0 || base.version === null) && !confirmando && (
         <div className="silice-hoja__acciones">
           <Button id="hoja-guardar-version" kind="primary" size="sm" onClick={alGuardar}>
             {base.version === null ? "Guardar primera versión…" : "Guardar versión…"}
@@ -132,6 +136,7 @@ function ContenidoDePestana({
       <PestanaEspacio
         key={borrador.id}
         id={borrador.id}
+        base={borrador.base}
         rev={borrador.resumen.rev}
         alAusente={alAusente}
         alAceptar={alAceptar}
@@ -145,6 +150,7 @@ function ContenidoDePestana({
       <PestanaApu
         key={borrador.id}
         id={borrador.id}
+        base={borrador.base}
         rev={borrador.resumen.rev}
         moneda={moneda}
         alAusente={alAusente}
@@ -159,6 +165,7 @@ function ContenidoDePestana({
       <PestanaPresupuesto
         key={borrador.id}
         id={borrador.id}
+        base={borrador.base}
         rev={borrador.resumen.rev}
         alAusente={alAusente}
         alAceptar={alAceptar}
@@ -172,6 +179,7 @@ function ContenidoDePestana({
       <PestanaPlan
         key={borrador.id}
         id={borrador.id}
+        base={borrador.base}
         rev={borrador.resumen.rev}
         alAusente={alAusente}
         alAceptar={alAceptar}
@@ -199,6 +207,7 @@ function ContenidoDePestana({
       <PestanaParametros
         key={borrador.id}
         id={borrador.id}
+        base={borrador.base}
         rev={borrador.resumen.rev}
         moneda={moneda}
         alAusente={alAusente}
@@ -258,6 +267,8 @@ function useOfertas(proyecto: string, nombre: string | null, alExpirar: () => vo
   return { ofertas, recargar };
 }
 
+const NOTA_SOLO_LECTURA = "Está viendo este presupuesto en solo lectura.";
+
 function textoDeCambiarVersion(cambios: number): string {
   return `Tiene ${textoDeCambios(cambios)}. Si abre otra versión se pierden: guarde primero o descarte.`;
 }
@@ -299,6 +310,8 @@ function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombre
     retomado?.id ?? null,
   );
   const hayCambios = estado.estado === "listo" && estado.borrador.resumen.cambios > 0;
+  // F4 2b: una sola regla para lo que escribe (quien revisa, o un borrador de solo lectura, no edita).
+  const puedeEditar = usePuedeEditarLaHoja(estado.estado === "listo" ? estado.borrador.base : null);
 
   // E11: si al abrir el servidor dice que ya hay un borrador con cambios de esa versión, se ofrece retomarlo.
   const existente = estado.estado === "error" ? borradorExistente(estado.error) : null;
@@ -488,17 +501,29 @@ function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombre
               proyecto={proyecto}
               version={estado.borrador.base.version}
               cambios={estado.borrador.resumen.cambios}
+              base={estado.borrador.base}
               alHacerVersionNueva={() => {
                 setFiltro(null);
                 setPestana(PESTANAS.indexOf("Presupuesto"));
               }}
             />
           )}
-          <EstadoDelBorrador borrador={estado.borrador} alDescartar={() => void descartarCambios()} alGuardar={guardado.abrir} />
+          <EstadoDelBorrador
+            borrador={estado.borrador}
+            alDescartar={() => void descartarCambios()}
+            alGuardar={guardado.abrir}
+            puedeEditar={puedeEditar}
+          />
           <BotonExcel id={estado.borrador.id} />
         </>
       )}
 
+      {!puedeEditar && (
+        <p role="note" className="silice-hoja__solo-lectura cds--type-body-compact-01">
+          {NOTA_SOLO_LECTURA}
+          {estado.estado === "listo" && estado.borrador.base.solo_lectura && ` Esta versión no se puede guardar: ${CAUSA_SOLO_LECTURA}.`}
+        </p>
+      )}
       <ContextoAuditoria.Provider value={verEnAuditoria}>
         <Tabs
           selectedIndex={visibles.findIndex(({ i }) => i === activa)}

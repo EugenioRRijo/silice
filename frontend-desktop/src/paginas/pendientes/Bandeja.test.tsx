@@ -369,7 +369,9 @@ describe("Pendientes: foco 1, quien revisa", () => {
   });
 
   test("una acción que su cuenta no puede usar no se ofrece como botón: se dice por qué", async () => {
-    bandeja = responder([CEMENTO]);
+    // «Actualizar precios» exige editar_hoja. (Antes el ejemplo era la Hoja, que desde F4 2b quien revisa ve en solo
+    // lectura: ese botón sí le sale.)
+    bandeja = responder([PRECIOS]);
     montar({ sesion: sesionDe("rita") });
     await lista();
     expect(within(detalle()).queryByRole("button")).toBeNull();

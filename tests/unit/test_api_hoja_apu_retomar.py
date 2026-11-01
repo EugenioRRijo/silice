@@ -1060,6 +1060,13 @@ GENERALES = PEDIDOS + [
     ),
 ]
 IDS_GENERALES = [*IDS, "e10", "e11"]
+#: F4 2b: lo que quien revisa sí puede pedir (leer, o abrir su borrador en memoria); escrito a mano.
+_LEE_QUIEN_REVISA = {
+    ("get", "/v1/hoja/borradores/{id}/insumos?tipo=material"),
+    ("get", "/v1/hoja/borradores/{id}/cambios"),
+    ("get", "/v1/hoja/borradores"),
+    ("post", "/v1/hoja/borradores"),
+}
 
 
 def _enviar(navegador, ficha, id_, metodo, ruta, cuerpo):
@@ -1085,7 +1092,10 @@ def test_rita_que_revisa_y_tomas_con_clave_temporal_no_pueden(
 ) -> None:
     rita, ficha = con_cuenta(app, "rita")
     respuesta = _enviar(rita, ficha, ID_AJENO, metodo, ruta, cuerpo)
-    assert respuesta.status_code == 403 and respuesta.json() == {"detalle": MENSAJE_PERMISO}
+    if (metodo, ruta) in _LEE_QUIEN_REVISA:  # F4 2b: solo lectura (Eugenio, 2026-10-31)
+        assert respuesta.status_code not in (401, 403), respuesta.text
+    else:
+        assert respuesta.status_code == 403 and respuesta.json() == {"detalle": MENSAJE_PERMISO}
     assert respuesta.headers["cache-control"] == "no-store"
     tomas, ficha_tomas = con_cuenta(app, "tomas")
     assert _enviar(tomas, ficha_tomas, ID_AJENO, metodo, ruta, cuerpo).status_code == 403

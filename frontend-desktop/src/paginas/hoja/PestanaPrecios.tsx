@@ -13,6 +13,7 @@ import type { AlCrearVersion } from "./OperacionesDePrecios";
 import { VistaCarga } from "./VistaCarga";
 import { fechaCorta, partirColumnasDePrecios, rutaDeAtipicos, rutaDePrecios } from "./logica";
 import type { AtipicosRespuesta, CeldaPrecio, ColumnaPrecio, PreciosRespuesta } from "./logica";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
   proyecto: string;
@@ -224,6 +225,9 @@ function BuscarAtipicos({ proyecto, version }: { proyecto: string; version: stri
 // Pestaña «Precios»: el origen del precio de cada insumo de la versión GUARDADA (no del borrador), evaluado a la fecha
 // del servidor. Registrar y retirar una cotización crean una versión nueva (3d-2).
 export function PestanaPrecios({ proyecto, version, alAusente, cambios, alCrearVersion }: Props) {
+  // Registrar y retirar crean una versión desde la GUARDADA: su regla es solo el permiso, no la base del borrador
+  // (Eugenio, 2026-10-31).
+  const puedeEditar = usePuedeEditarLaHoja(null);
   if (version === null) return <p className="cds--type-body-compact-01">{SIN_VERSION}</p>;
   return (
     <VistaCarga<PreciosRespuesta> ruta={rutaDePrecios(proyecto, version)} etiqueta="Precios" alAusente={alAusente}>
@@ -239,7 +243,9 @@ export function PestanaPrecios({ proyecto, version, alAusente, cambios, alCrearV
           </p>
           <TablaDePrecios vista={vista} />
           <BuscarAtipicos proyecto={proyecto} version={version} />
-          <OperacionesDePrecios proyecto={proyecto} version={version} filas={vista.filas} cambios={cambios} alCrearVersion={alCrearVersion} />
+          {puedeEditar && (
+            <OperacionesDePrecios proyecto={proyecto} version={version} filas={vista.filas} cambios={cambios} alCrearVersion={alCrearVersion} />
+          )}
         </div>
       )}
     </VistaCarga>

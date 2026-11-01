@@ -10,7 +10,7 @@ const REGISTRO: [string, string, string | null][] = [
   ["revisar", "Revisión", "revisar_paquete"],
   ["historial", "Revisión", "leer_proyecto"],
   ["obras", "Trabajo", null],
-  ["hoja", "Trabajo", "editar_hoja"],
+  ["hoja", "Trabajo", "leer_proyecto"], // F4 2b: quien revisa la ve en solo lectura
   ["elaborar", "Trabajo", "editar_hoja"],
   ["tablero", "Trabajo", "leer_proyecto"],
   ["entregar", "Trabajo", "entregar_paquete"],
@@ -64,7 +64,7 @@ describe("registro de paginas", () => {
   test("toda pagina del registro carga su pantalla", () => {
     expect(PAGINAS.every((p) => typeof p.cargar === "function")).toBe(true);
     expect(paginaPorId("libros")?.titulo).toBe("Libro de la empresa");
-    expect(paginaPorId("hoja")).toMatchObject({ titulo: "Hoja de la obra", seccion: "Trabajo", accion: "editar_hoja" });
+    expect(paginaPorId("hoja")).toMatchObject({ titulo: "Hoja de la obra", seccion: "Trabajo", accion: "leer_proyecto" });
     expect(paginaPorId("mercado")).toMatchObject({
       titulo: "Estudio de mercado",
       enUnaLinea: "Compare precios del mercado y elija los suyos",

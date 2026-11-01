@@ -371,6 +371,12 @@ describe("foco 5: cada bloque según lo que la cuenta puede leer", () => {
     expect(screen.queryByRole("button", { name: "Ver las alertas" })).toBeNull();
   });
 
+  // F4 2b (Eugenio, 2026-10-31): quien revisa ve la Hoja en solo lectura, así que el paso «Abrir la Hoja» sí le sale.
+  test("rita sí tiene «Abrir la Hoja» en la fila de Torre B: la ve en solo lectura (Tarea 2b)", async () => {
+    await montar("rita");
+    expect(within(await filaDe("Torre B")).getByRole("button", { name: "Abrir la Hoja" })).toBeInTheDocument();
+  });
+
   test("ana ve la columna «Siguiente paso» y «Nueva obra» (botón principal)", async () => {
     await montar("ana");
     await filaDe("OB-S2");

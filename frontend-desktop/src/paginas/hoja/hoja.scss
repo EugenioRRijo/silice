@@ -202,6 +202,19 @@
   gap: 1rem;
 }
 
+// F4 2b: la nota «Está viendo este presupuesto en solo lectura.» encima de las pestañas (texto neutro, sin color propio).
+.silice-hoja__solo-lectura {
+  margin-block: 1rem 0.5rem;
+  color: var(--cds-text-secondary);
+}
+
+// F4 2b: un campo con su etiqueta, en solo lectura (quien revisa): la etiqueta arriba y el valor como texto.
+.silice-hoja__campo-lectura {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 // La cantidad editable de un renglón del Presupuesto: el campo y, debajo, la calculada y el atajo para volver a ella.
 .silice-hoja__cantidad {
   display: flex;

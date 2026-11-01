@@ -177,14 +177,14 @@ TABLA = {
     ("GET", "/v1/mercado/compra/{codigo}/afectados"): EDITAR,
     ("POST", "/v1/mercado/compra/{codigo}/usar"): EDITAR,
     ("POST", "/v1/mercado/cobro/{codigo}/usar"): EDITAR,
-    ("GET", "/v1/mercado/objetivos"): EDITAR,
+    ("GET", "/v1/mercado/objetivos"): LEER,  # F4 2b: quien revisa ve el objetivo en la Hoja
     # MP-7 T23: procura con fechas
     ("GET", "/v1/procura"): CONTROLAR,
     ("POST", "/v1/procura/compras"): CONTROLAR,
     ("PUT", "/v1/procura/plazos"): CONTROLAR,
     # MP-4 T18: ciclo de aprobación
     ("POST", "/v1/aprobaciones"): EDITAR,
-    ("GET", "/v1/aprobaciones"): EDITAR,
+    ("GET", "/v1/aprobaciones"): LEER,
     ("GET", "/v1/aprobaciones/pendientes"): APROBAR,
     ("GET", "/v1/aprobaciones/mias"): EDITAR,
     ("GET", "/v1/aprobaciones/resumen"): APROBAR,
@@ -290,15 +290,17 @@ TABLA = {
     ("GET", "/v1/riesgo/reportes/{tipo}"): VER_RIESGO,  # plan vial T21; descarga un xlsx
     ("POST", "/v1/fcas/calcular"): CUALQUIERA,  # plan vial T17; cuenta pura, cualquier rol
     ("GET", "/v1/fcas/componentes"): CUALQUIERA,  # plan vial T17; los valores por defecto
-    ("GET", "/v1/hoja/versiones"): EDITAR,  # T10 3b-1: Hoja del proyecto; clave o sesion
-    ("POST", "/v1/hoja/borradores"): EDITAR,  # ademas, solo con sesion (403 con clave)
-    ("GET", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
-    ("DELETE", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
+    # F4 2b: solo lectura para revisa. Las lecturas de la Hoja (y GET /v1/aprobaciones) son
+    # LEER; todo lo que cambia el borrador o la base sigue en EDITAR.
+    ("GET", "/v1/hoja/versiones"): LEER,  # T10 3b-1: Hoja del proyecto; clave o sesion
+    ("POST", "/v1/hoja/borradores"): LEER,  # ademas, solo con sesion (403 con clave)
+    ("GET", "/v1/hoja/borradores/{id}"): LEER,  # ademas, solo con sesion
+    ("DELETE", "/v1/hoja/borradores/{id}"): LEER,  # ademas, solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/guardar"): EDITAR,  # T10 3d-1 (S1); escribe; solo sesion
     ("POST", "/v1/hoja/borradores/{id}/partidas"): EDITAR,  # MP T9; solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/partidas/quitar"): EDITAR,  # MP T9; solo con sesion
     ("POST", "/v1/hoja/llevar"): EDITAR,  # MP T12; solo con sesion
-    ("GET", "/v1/hoja/borradores/{id}/excel"): EDITAR,  # T10 3e-1 (X1); ademas, solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/excel"): LEER,  # T10 3e-1 (X1); ademas, solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/plano"): EDITAR,  # T10 3e-2; ademas, solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/plano/unidad"): EDITAR,  # T10 3e-2; ademas, solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/plano/alturas"): EDITAR,  # T10 3e-2; ademas, solo con sesion
@@ -315,25 +317,25 @@ TABLA = {
     ("POST", "/v1/hoja/borradores/{id}/apu/{partida:path}/insumo"): EDITAR,  # E7; solo sesion
     ("POST", "/v1/hoja/borradores/{id}/apu/{partida:path}/lineas"): EDITAR,  # MP T26; solo sesion
     ("POST", "/v1/hoja/borradores/{id}/apu/{partida:path}/lineas/quitar"): EDITAR,  # T26; sesion
-    ("GET", "/v1/hoja/antes-y-despues"): EDITAR,  # MP T26; clave o sesion (solo lee)
-    ("GET", "/v1/hoja/borradores/{id}/insumos"): EDITAR,  # E8; solo sesion
-    ("GET", "/v1/hoja/borradores/{id}/cambios"): EDITAR,  # E9; solo sesion
-    ("GET", "/v1/hoja/borradores"): EDITAR,  # E10 (retomar); solo sesion
-    ("GET", "/v1/hoja/borradores/{id}/vistas/espacio"): EDITAR,  # T10 3b-2 (R5); solo con sesion
-    ("GET", "/v1/hoja/borradores/{id}/vistas/presupuesto"): EDITAR,  # R6; solo con sesion
-    ("GET", "/v1/hoja/borradores/{id}/vistas/apu"): EDITAR,  # R7; solo con sesion
-    ("GET", "/v1/hoja/borradores/{id}/vistas/plan"): EDITAR,  # R8; solo con sesion
-    ("GET", "/v1/hoja/borradores/{id}/vistas/equilibrio"): EDITAR,  # T10 3b-3 (R9); solo con sesion
-    ("GET", "/v1/hoja/borradores/{id}/vistas/parametros"): EDITAR,  # R10; solo con sesion
-    ("GET", "/v1/hoja/borradores/{id}/vistas/auditoria"): EDITAR,  # R11; solo con sesion
-    ("GET", "/v1/hoja/precios"): EDITAR,  # R12; clave o sesion (lee una version guardada)
-    ("GET", "/v1/hoja/precios/atipicos"): EDITAR,  # R13; clave o sesion (solo lee)
-    ("GET", "/v1/hoja/trazabilidad"): EDITAR,  # R14; clave o sesion (lee una version guardada)
+    ("GET", "/v1/hoja/antes-y-despues"): LEER,  # MP T26; clave o sesion (solo lee)
+    ("GET", "/v1/hoja/borradores/{id}/insumos"): LEER,  # E8; solo sesion
+    ("GET", "/v1/hoja/borradores/{id}/cambios"): LEER,  # E9; solo sesion
+    ("GET", "/v1/hoja/borradores"): LEER,  # E10 (retomar); solo sesion
+    ("GET", "/v1/hoja/borradores/{id}/vistas/espacio"): LEER,  # T10 3b-2 (R5); solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/vistas/presupuesto"): LEER,  # R6; solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/vistas/apu"): LEER,  # R7; solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/vistas/plan"): LEER,  # R8; solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/vistas/equilibrio"): LEER,  # T10 3b-3 (R9); solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/vistas/parametros"): LEER,  # R10; solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/vistas/auditoria"): LEER,  # R11; solo con sesion
+    ("GET", "/v1/hoja/precios"): LEER,  # R12; clave o sesion (lee una version guardada)
+    ("GET", "/v1/hoja/precios/atipicos"): LEER,  # R13; clave o sesion (solo lee)
+    ("GET", "/v1/hoja/trazabilidad"): LEER,  # R14; clave o sesion (lee una version guardada)
     ("POST", "/v1/hoja/versiones/restaurar"): EDITAR,  # T10 3d-2 (S2); escribe; solo sesion
     ("POST", "/v1/hoja/versiones/cotizar"): EDITAR,  # S3; escribe; solo sesion
     ("POST", "/v1/hoja/versiones/retirar-cotizacion"): EDITAR,  # S4; escribe; solo sesion
     ("POST", "/v1/hoja/versiones/convertir"): REAJUSTAR,  # S5; escribe; solo sesion
-    ("GET", "/v1/hoja/cadena"): EDITAR,  # S6; clave o sesion (solo lee)
+    ("GET", "/v1/hoja/cadena"): LEER,  # S6; clave o sesion (solo lee)
     ("GET", "/v1/vial/tramos"): EDITAR,  # plan vial T8; clave o sesion (solo lee)
     ("PUT", "/v1/vial/tramos"): EDITAR,  # plan vial T8; escribe; solo sesion
     ("POST", "/v1/vial/tramos/importar"): EDITAR,  # plan vial T8; escribe; solo sesion

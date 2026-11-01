@@ -122,7 +122,8 @@ const SIN_OBJETIVOS: ReadonlyMap<string, ObjetivoDeMercado> = new Map();
 // «Objetivo de mercado» y lo que va bajo la tabla: la ayuda (si hay algún objetivo), que describe la cabecera, y la
 // región `role="status"` del error de la lectura, montada vacía desde el principio para que el lector de pantalla
 // anuncie lo que entre. Si la lectura falla, la Hoja sigue igual con la columna vacía. Lo leído vale solo para los
-// códigos y precios con que se pidió: mientras llega la respuesta a otros, la columna queda vacía y sin error.
+// códigos y precios con que se pidió: mientras llega la respuesta a otros, la columna queda vacía y sin error. Quien
+// revisa también la ve (F4 2b; Eugenio, 2026-10-31): la ruta solo lee y exige `leer_proyecto`.
 export function useObjetivosDeMercado(
   filas: FilaPresupuesto[],
   moneda: string,

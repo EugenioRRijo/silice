@@ -6,6 +6,7 @@ import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
 import { fechaCorta, rotuloDeOrigen, rutaDeTrazabilidad } from "./logica";
 import type { TrazabilidadRespuesta } from "./logica";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
   proyecto: string;
@@ -25,7 +26,9 @@ function ContenidoTrazabilidad({
   proyecto,
   cambios,
   alCrearVersion,
+  puedeEditar,
 }: {
+  puedeEditar: boolean;
   vista: TrazabilidadRespuesta;
   version: string;
   proyecto: string;
@@ -98,7 +101,9 @@ function ContenidoTrazabilidad({
           />
         )}
       </section>
-      <RestaurarVersion proyecto={proyecto} versiones={vista.versiones.map((v) => v.codigo)} cambios={cambios} alCrearVersion={alCrearVersion} />
+      {puedeEditar && (
+        <RestaurarVersion proyecto={proyecto} versiones={vista.versiones.map((v) => v.codigo)} cambios={cambios} alCrearVersion={alCrearVersion} />
+      )}
     </div>
   );
 }
@@ -106,11 +111,21 @@ function ContenidoTrazabilidad({
 // Pestaña «Trazabilidad»: las versiones del proyecto y el registro de cambios de la versión abierta (guardada). Restaurar
 // una versión (3d-2) y la cadena de sellos viven aquí.
 export function PestanaTrazabilidad({ proyecto, version, alAusente, cambios, alCrearVersion }: Props) {
+  // Restaurar crea una versión desde la GUARDADA: su regla es solo el permiso, no la base del borrador
+  // (Eugenio, 2026-10-31).
+  const puedeEditar = usePuedeEditarLaHoja(null);
   if (version === null) return <p className="cds--type-body-compact-01">{SIN_VERSION}</p>;
   return (
     <VistaCarga<TrazabilidadRespuesta> ruta={rutaDeTrazabilidad(proyecto, version)} etiqueta="Trazabilidad" alAusente={alAusente}>
       {(vista) => (
-        <ContenidoTrazabilidad vista={vista} version={version} proyecto={proyecto} cambios={cambios} alCrearVersion={alCrearVersion} />
+        <ContenidoTrazabilidad
+          vista={vista}
+          version={version}
+          proyecto={proyecto}
+          cambios={cambios}
+          alCrearVersion={alCrearVersion}
+          puedeEditar={puedeEditar}
+        />
       )}
     </VistaCarga>
   );

@@ -13,6 +13,8 @@ import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
 import { useFocoAlCerrar } from "./AgregarPartida";
 import { ContextoDeDialogos } from "./ContextoDeDialogos";
+import type { BaseAbierta } from "./logica";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 import "./AprobacionDeVersion.scss";
 
 // El estado de una versión en el ciclo de aprobación, como lo da `GET /v1/aprobaciones?proyecto=` (api/rutas/aprobaciones.py,
@@ -75,6 +77,8 @@ interface Props {
   cambios: number;
   // «Hacer una versión nueva a partir de esta»: la Hoja va a «Presupuesto» con el borrador de esta versión (ya abierto).
   alHacerVersionNueva: () => void;
+  // La base del borrador: con `solo_lectura` no se ofrece «Hacer una versión nueva» (F4 2b); enviar solo pide el permiso.
+  base?: Pick<BaseAbierta, "solo_lectura">;
 }
 
 // Junto a la versión de la Hoja (Tarea 19; diseño §5.4): la etiqueta de su aprobación, «Enviar a aprobación…» y, si la
@@ -82,8 +86,12 @@ interface Props {
 // tras salir, entrar o reiniciar la API: lo guarda la carpeta) y otra vez tras enviar. Quien la monta le da una `key` por obra
 // y versión: cambiar de versión empieza de cero. Si la lectura falla por el servidor se dice; un 403 o un 404 no dicen nada
 // (la Hoja no depende de esto).
-export function AprobacionDeVersion({ proyecto, version, cambios, alHacerVersionNueva }: Props) {
+export function AprobacionDeVersion({ proyecto, version, cambios, alHacerVersionNueva, base }: Props) {
   const { alExpirar } = useAplicacion();
+  // Enviar obra sobre la versión GUARDADA: su regla es solo el permiso (Eugenio, 2026-10-31). «Hacer una versión
+  // nueva» lleva a editar el borrador: ahí sí cuenta la base.
+  const puedeEnviar = usePuedeEditarLaHoja(null);
+  const puedeEditar = usePuedeEditarLaHoja(base ?? null);
   const [intento, setIntento] = useState(0);
   const [lectura, setLectura] = useState<Lectura>({ estado: "leyendo" });
   const [aviso, setAviso] = useState("");
@@ -157,18 +165,20 @@ export function AprobacionDeVersion({ proyecto, version, cambios, alHacerVersion
           {datos.estado === "en_aprobacion" && (
             <p className="cds--type-helper-text-01">La versión enviada no se edita: si guarda cambios, será una versión nueva.</p>
           )}
+          {(puedeEnviar || puedeEditar) && (
           <div className="silice-hoja__acciones">
-            {SE_ENVIAN.has(datos.estado) && (
+            {puedeEnviar && SE_ENVIAN.has(datos.estado) && (
               <Button id={idBoton} kind="tertiary" size="sm" onClick={() => setEnviando(true)}>
                 Enviar a aprobación…
               </Button>
             )}
-            {datos.estado === "devuelta" && (
+            {puedeEditar && datos.estado === "devuelta" && (
               <Button kind="tertiary" size="sm" onClick={hacerVersionNueva}>
                 Hacer una versión nueva a partir de esta
               </Button>
             )}
           </div>
+          )}
         </>
       )}
       <p className="silice-hoja__aprobacion-aviso cds--type-body-compact-01" role="status">

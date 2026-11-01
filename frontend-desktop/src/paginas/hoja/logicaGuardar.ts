@@ -58,10 +58,13 @@ export interface DatosParaGuardar {
   soloLectura: boolean;
 }
 
+// Por qué una versión de solo lectura no se guarda (la dicen el diálogo de guardar y la nota de solo lectura, F4 2b).
+export const CAUSA_SOLO_LECTURA = "alguna partida ya no tiene composición vigente en el catálogo";
+
 // Por qué no se puede guardar todavía, o null si se puede (ui/hoja.py:1786 y 1882; el servidor vuelve a validar).
 export function motivoParaNoGuardar({ fuente, primera, cambios, soloLectura }: DatosParaGuardar): string | null {
   if (soloLectura) {
-    return "Esta versión está en solo lectura: alguna partida ya no tiene composición vigente en el catálogo.";
+    return `Esta versión está en solo lectura: ${CAUSA_SOLO_LECTURA}.`;
   }
   if (!primera && cambios === 0) return "No hay cambios para guardar: edite alguna celda primero.";
   if (fuente.trim() === "") {

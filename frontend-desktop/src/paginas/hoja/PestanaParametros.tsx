@@ -10,10 +10,11 @@ import { ConvertirMoneda } from "./ConvertirMoneda";
 import type { AlCrearVersion } from "./OperacionesDePrecios";
 import { VistaCarga } from "./VistaCarga";
 import { rutaDeVista } from "./logica";
-import type { Resumen, VistaParametros } from "./logica";
+import type { BaseAbierta, Resumen, VistaParametros } from "./logica";
 import { FRASES_DE_RECHAZO, cuerpoDeParametros, rutaDeParametros, sembrarParametros, ubicarErrorDeParametro } from "./logicaSecciones";
 import type { UbicacionDeParametro, ValoresDeParametros } from "./logicaSecciones";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
   id: string;
@@ -26,6 +27,8 @@ interface Props {
   alRecargarBorrador: () => Promise<void>;
   // Descarta lo que se ve y abre otro borrador de la versión (cuando recargar no sirve).
   alReabrir: () => void;
+  // La base del borrador: con `solo_lectura` (o sin permiso de edición) no se pinta nada que escriba (F4 2b).
+  base?: Pick<BaseAbierta, "solo_lectura">;
 }
 
 // Lo que hace falta para convertir la moneda (S5): la versión guardada abierta, los cambios sin guardar y qué hacer al crearse
@@ -45,8 +48,9 @@ interface PropsContenido extends Props {
   compacto?: boolean;
 }
 
-function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, conversion, compacto = false }: PropsContenido) {
-  const { alExpirar } = useAplicacion();
+function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, conversion, compacto = false, base }: PropsContenido) {
+  const { alExpirar, sesion } = useAplicacion();
+  const puedeEditar = usePuedeEditarLaHoja(base ?? null);
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<ValoresDeParametros, UbicacionDeParametro>({
     borrador: id,
@@ -67,7 +71,7 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
 
   return (
     <div className="silice-hoja__pestana">
-      {!compacto && (
+      {!compacto && puedeEditar && (
       <p className="cds--type-body-compact-01">
         Los parámetros de costo del borrador. {AYUDA_CIFRAS} Cambiarlos recalcula todos los
         APU y el total; los cambios se aplican al borrador cuando deja de escribir y no se guardan como versión hasta que lo pida.
@@ -78,6 +82,7 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
       <div className="silice-hoja__campos">
         {vista.campos.map((c) => (
           <CampoDeCelda
+            soloLectura={!puedeEditar}
             key={c.clave}
             id={`hoja-parametro-${c.clave}`}
             etiqueta={cifrasEnTextoEsVe(c.rotulo)}
@@ -94,7 +99,9 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
       {!compacto && vista.moneda_proyecto !== null && (
         <p className="cds--type-body-compact-01">Moneda del proyecto: {vista.moneda_proyecto}</p>
       )}
-      {!compacto && conversion !== undefined && (
+      {/* Convertir crea una versión desde la GUARDADA: su regla es solo el permiso (`convertir_y_reajustar`, y el
+          `puede_convertir` que da la API), no la base del borrador (Eugenio, 2026-10-31). */}
+      {!compacto && conversion !== undefined && sesion.acciones.includes("convertir_y_reajustar") && (
         <ConvertirMoneda
           proyecto={conversion.proyecto}
           version={conversion.version}

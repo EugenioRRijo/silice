@@ -453,12 +453,15 @@ def test_la_cadena_solo_lee_y_la_clave_de_api_tambien_puede(_entorno) -> None:
     assert volcado(_entorno) == antes
 
 
-def test_la_cadena_sin_sesion_es_401_y_rita_o_tomas_no_pasan() -> None:
+def test_la_cadena_sin_sesion_es_401_rita_la_lee_y_tomas_no_pasa() -> None:
     sin = cliente(app).get(CADENA, params={"proyecto": "P"})
     assert sin.status_code == 401 and sin.headers["cache-control"] == "no-store"
-    rita, _ = con_cuenta(app, "rita")
+    rita, _ = con_cuenta(app, "rita")  # F4 2b: quien revisa lee la Hoja (Eugenio, 2026-10-31)
     respuesta = rita.get(CADENA, params={"proyecto": "P"})
-    assert respuesta.status_code == 403 and respuesta.json() == {"detalle": MENSAJE_PERMISO}
+    assert respuesta.status_code == 404  # pasó el acceso: la obra «P» no existe
+    admin, _ = con_cuenta(app, "admin")
+    negada = admin.get(CADENA, params={"proyecto": "P"})
+    assert negada.status_code == 403 and negada.json() == {"detalle": MENSAJE_PERMISO}
     tomas, _ = con_cuenta(app, "tomas")
     assert tomas.get(CADENA, params={"proyecto": "P"}).status_code == 403
 
