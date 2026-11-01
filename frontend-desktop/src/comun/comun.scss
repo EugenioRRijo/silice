@@ -18,6 +18,10 @@
 .silice-tabla {
   min-inline-size: 0;
   overflow-x: auto;
+  // Si la tabla no cabe, el desplazamiento horizontal se ve: barra de ancho normal con los colores del tema (la barra
+  // superpuesta del sistema desaparecía y la tabla parecía cortada).
+  scrollbar-width: auto;
+  scrollbar-color: var(--cds-border-strong) var(--cds-layer-accent);
 
   .silice-cifra {
     text-align: end;

@@ -27,3 +27,20 @@ describe("las tablas de Control caben en su contenedor", () => {
     expect(reglaDe(scss, ".silice-control__bloque .silice-tabla .silice-cifra")).toMatch(/white-space:\s*nowrap/);
   });
 });
+
+// Segunda pasada (31-10): la tabla de valuaciones medía 1.403 px en una caja de 1.016 y «Período» ocupaba tres líneas.
+describe("la tabla de valuaciones cabe a 1366 px o dice que se desplaza", () => {
+  const scss = leer("paginas/control/control.scss");
+  const comun = leer("comun/comun.scss");
+
+  test("ninguna celda de valuaciones se parte en líneas", () => {
+    expect(reglaDe(scss, ".silice-control__valuaciones .silice-tabla :is(th, td)")).toMatch(/white-space:\s*nowrap/);
+  });
+
+  test("si aun así no cupiera, el desplazamiento horizontal se ve (barra con color del tema)", () => {
+    const tabla = reglaDe(comun, ".silice-tabla");
+    expect(tabla).toMatch(/overflow-x:\s*auto/);
+    expect(tabla).toMatch(/scrollbar-color:\s*var\(--cds-border-strong\)/);
+    expect(tabla).toMatch(/scrollbar-width:\s*auto/);
+  });
+});

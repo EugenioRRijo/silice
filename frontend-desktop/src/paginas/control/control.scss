@@ -27,6 +27,11 @@
   white-space: nowrap;
 }
 
+// Valuaciones: ninguna celda se parte en líneas (el período en tres líneas y «Total con IVA» cortada eran lo visto a 1366 px).
+.silice-control__valuaciones .silice-tabla :is(th, td) {
+  white-space: nowrap;
+}
+
 .silice-control__nota {
   max-inline-size: 65ch;
   color: var(--silice-texto-secundario);

@@ -26,7 +26,7 @@ import {
   useCargaSuave,
 } from "./logica";
 import type { CausaDeRetraso, LineaEditable, Valuaciones } from "./logica";
-import { fechaDeRanura } from "./fechas";
+import { fechaDeRanura, periodoCompacto } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { AYUDA_CAUSA_SUGERIDA, causaDeLinea, sugeridasPorPartida } from "./procura";
 import type { Procura } from "./procura";
@@ -289,6 +289,20 @@ function Costo({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => voi
   );
 }
 
+// A 1366 px las nueve columnas no caben con el período en dos fechas completas: se lee «02/11 a 06/11/2026» y el texto
+// completo queda en el title. Es solo presentación; el orden y el valor de la fila no cambian.
+const COLUMNAS_DE_VALUACIONES = columnasDe(COLUMNAS_VALUACIONES, NUMERICAS_VALUACIONES).map((c) =>
+  c.clave === "Periodo"
+    ? {
+        ...c,
+        celda: (fila: { Periodo?: string }) => {
+          const completo = fila.Periodo ?? "";
+          return <span title={completo}>{periodoCompacto(completo)}</span>;
+        },
+      }
+    : c,
+);
+
 export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
   const { alExpirar } = useAplicacion();
   const carga = useCargaSuave<Valuaciones>(rutaDe("/v1/control/valuaciones", proyecto, { n: String(clave) }), alExpirar);
@@ -308,7 +322,9 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         {datos.filas.length === 0 ? (
           <p className="cds--type-body-compact-01">Aún no hay valuaciones registradas.</p>
         ) : (
-          <TablaDensa etiqueta="Valuaciones registradas" columnas={columnasDe(COLUMNAS_VALUACIONES, NUMERICAS_VALUACIONES)} filas={conId(datos.filas)} />
+          <div className="silice-control__valuaciones">
+            <TablaDensa etiqueta="Valuaciones registradas" columnas={COLUMNAS_DE_VALUACIONES} filas={conId(datos.filas)} />
+          </div>
         )}
         {datos.filas.length > 0 && (
           <p className="silice-control__nota cds--type-helper-text-01">

@@ -214,6 +214,15 @@ describe("Control de obra", () => {
     expect(within(tabla).getByRole("columnheader", { name: "Número" })).toBeInTheDocument();
   });
 
+  test("el período de la valuación se lee compacto y conserva el texto completo al pasar el ratón", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    const tabla = await screen.findByRole("table", { name: "Valuaciones registradas" });
+    const periodo = within(tabla).getByText("02/11 a 06/11/2026");
+    expect(periodo).toHaveAttribute("title", "02/11/2026 a 06/11/2026");
+    expect(tabla.closest(".silice-control__valuaciones")).not.toBeNull();
+  });
+
   test("las valuaciones muestran subtotal, IVA y total con IVA en es-VE, con la alícuota y su fuente (Tarea 18)", async () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
@@ -353,7 +362,7 @@ describe("Control de obra", () => {
     await u.click(screen.getByRole("tab", { name: "Valuaciones" }));
     const tabla = await screen.findByRole("table", { name: "Valuaciones registradas" });
     expect(within(tabla).getByText("2026-11-10")).toBeInTheDocument();
-    expect(within(tabla).getByText("02/11/2026 a 06/11/2026")).toBeInTheDocument();
+    expect(within(tabla).getByText("02/11 a 06/11/2026")).toBeInTheDocument();
     const anular = screen.getByLabelText("Valuación");
     expect(within(anular).getByRole("option", { name: "2026-11-10 (02/11/2026 a 06/11/2026)" })).toHaveValue("7");
   });
