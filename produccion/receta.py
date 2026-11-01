@@ -211,7 +211,7 @@ def producir_con_receta(
     receta = receta_vigente(sesion, producto, fecha)
     if receta is None:
         raise ErrorDeReceta(
-            f"No hay receta vigente de {producto} el {fecha.isoformat()}. "
+            f"No hay receta vigente de {producto} el {fecha:%d/%m/%Y}. "
             "Registre la receta antes de producir."
         )
     material_producto = _material(sesion, producto)

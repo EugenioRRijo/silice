@@ -407,10 +407,11 @@ def ver_receta_vigente(
     fecha: Annotated[str, Query(description="Fecha ISO, AAAA-MM-DD")],
 ) -> RecetaRespuesta:
     """La receta que rige para el producto en esa fecha; 404 si no hay ninguna."""
-    receta = receta_vigente(sesion, producto, _fecha(fecha, "fecha"))
+    dia = _fecha(fecha, "fecha")
+    receta = receta_vigente(sesion, producto, dia)
     if receta is None:
         raise HTTPException(
-            404, f"No hay receta vigente de {producto.strip()[:40]} el {fecha.strip()[:10]}."
+            404, f"No hay receta vigente de {producto.strip()[:40]} el {dia:%d/%m/%Y}."
         )
     return _receta_respuesta(receta)
 
