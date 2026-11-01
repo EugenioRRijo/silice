@@ -396,6 +396,37 @@ def test_sin_rendimiento_a_la_fecha_de_la_version_da_409_y_no_toca_el_borrador(
         assert (vivo.borrador, vivo.rev) == antes
 
 
+def test_llevar_otra_vez_completa_el_apu_de_una_partida_que_habia_quedado_pendiente(
+    tmp_path: Path,
+) -> None:
+    """El borrador ya tiene los renglones de tramo (los dejó un llevar de antes del arreglo, o una
+    versión guardada con ellos pendientes) y a C-000.000.013 le falta el APU. Se arregla en
+    Componer, a la fecha de la versión, y se lleva otra vez: los renglones no cambian, pero la
+    partida debe quedar compuesta (antes `cambiar_borrador` no completaba nada si los renglones
+    eran los mismos y la partida seguía PENDIENTE)."""
+    for sesion in _preparar(tmp_path, sin=("C-000.000.013",)):
+        lista = sesion.scalars(
+            select(models.ListaPrecios).where(models.ListaPrecios.nombre == "Lista Bs de prueba")
+        ).one()
+        _componer_aparte(sesion, "C-000.000.013", "Pintura tardía", lista, date(2026, 10, 15))
+        abierta = hoja.abrir_version(sesion, Catalogo(sesion), _obra(sesion).nombre, "VIV-001")
+        vivo = hoja_borradores.crear(
+            HUELLA, CASO, _obra(sesion).nombre, "VIV-001", abierta.borrador, abierta
+        )
+        items = hoja_vial.items_de_tramos(_tramos())
+        con_tramos = hoja_vial.sincronizar_renglones(vivo.borrador, items, ())
+        completo = hoja.completar_composiciones(Catalogo(sesion), con_tramos, lista=lista)
+        vivo = hoja_borradores.reemplazar(HUELLA, vivo.id, completo, vivo.rev)
+        assert "C-000.000.013" not in vivo.borrador.composiciones  # PENDIENTE en la Hoja
+        apu = Catalogo(sesion).composicion("C-000.000.013", fecha=date(2026, 10, 15), lista=lista)
+        Catalogo(sesion).reemplazar_composicion(apu, lista, Dominio.CIVIL, FECHA, "al 01/10/2026")
+        sesion.commit()
+
+        _llevar(sesion)
+
+        assert "C-000.000.013" in hoja_borradores.obtener(HUELLA, vivo.id).borrador.composiciones
+
+
 def test_si_componer_no_escribe_en_la_lista_de_la_version_pide_cargar_los_precios(
     tmp_path: Path,
 ) -> None:
