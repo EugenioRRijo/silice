@@ -88,7 +88,14 @@ export function buscadorDeComponentes() {
   const materiales = buscadorDeMateriales();
   const insumos = buscadorDeConsulta("insumos");
   return async (q: string, senal: AbortSignal, limite: number): Promise<GrupoDeResultados<SugerenciaDeConsulta>[]> => {
-    const [propios, delCatalogo] = await Promise.all([materiales(q, senal, limite), insumos(q, senal, limite)]);
+    // Si los materiales fallan (p. ej. el módulo de producción apagado), el catálogo sigue ofreciéndose.
+    const [propios, delCatalogo] = await Promise.all([
+      materiales(q, senal, limite).catch((error: unknown) => {
+        if (senal.aborted) throw error;
+        return [];
+      }),
+      insumos(q, senal, limite),
+    ]);
     return [...propios, ...delCatalogo];
   };
 }
