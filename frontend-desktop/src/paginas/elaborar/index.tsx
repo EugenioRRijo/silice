@@ -13,7 +13,7 @@ import { LlevarALaHoja } from "./LlevarALaHoja";
 import { PlanDeTrabajo, avisoDelPlan, conIds, erroresDelPlan, sinIds } from "./PlanDeTrabajo";
 import type { FilaEditable } from "./PlanDeTrabajo";
 import { Severidad } from "../../comun/Severidad";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import {
   AVISO_SIN_PARTIDAS_CIVILES,
   AYUDA,
@@ -78,10 +78,10 @@ function Metrica({ titulo, valor, exacto }: { titulo: ReactNode; valor: string; 
       <span className="silice-elaborar__metrica-titulo cds--type-label-01">{titulo}</span>
       <span
         className="silice-elaborar__metrica-valor cds--type-heading-03 silice-cifra"
-        title={exacto !== undefined ? `Valor exacto: ${exacto}` : undefined}
+        title={exacto !== undefined ? `Valor exacto: ${formatoMontoEsVe(exacto)}` : undefined}
       >
         {valor}
-        {exacto !== undefined && <span className="cds--visually-hidden">{`. Valor exacto: ${exacto}`}</span>}
+        {exacto !== undefined && <span className="cds--visually-hidden">{`. Valor exacto: ${formatoMontoEsVe(exacto)}`}</span>}
       </span>
     </div>
   );
