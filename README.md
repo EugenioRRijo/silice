@@ -83,15 +83,29 @@ La suite corre en verde con `-W error` y 0 omitidas en Linux y Windows en cada P
 
 ## Mapa del repositorio
 
-```
-core/        núcleo cerrado: contracts (estables), costing, models, catalog, budget, verification
-adapters/    un paquete por dominio (civil IFC y tabular, telecom, industrial, sistemas); solo importan core.contracts
-ml/          normalization, anomaly, prediction (técnica de reglas por la compuerta G2)
-aplicacion/  lógica de la aplicación sin interfaz (hoja, composición, control, entrega...), la que usan la API y el asistente
-api/         FastAPI; esquema OpenAPI exportado a docs/api.json; sirve la interfaz de React en /app/
-frontend-desktop/  la interfaz: React + TypeScript (Vite), compilada a dist/
-tests/       unit, integration, fixtures (la línea base vive en tests/fixtures/apu_linea_base.py)
-data/        linea_base (evidencia primaria), samples (fuentes por dominio), precios (MaPreX jul‑2026), fuentes por dominio
-docs/        ERS, plan de pruebas, calidad, manuales, arquitectura, modelo de datos, protocolos, tesis, bitácoras
-scripts/     siembra, datos derivados, medición, guardias de la CI y metas de sprint (índice en scripts/README.md)
-```
+Cada parte del programa es una **carpeta**, no una rama: todas viven juntas en `main`, que es el
+programa completo.
+
+| Área | Carpetas | Qué hay |
+|---|---|---|
+| Interfaz (front) | `frontend-desktop/` | React + TypeScript (Vite), compilada a `dist/`; la sirve la API en `/app/` |
+| Servidor (back) | `api/`, `aplicacion/` | FastAPI (esquema en `docs/api.json`) y la lógica de la aplicación sin interfaz (hoja, composición, control, entrega...) |
+| Núcleo de cálculo | `core/`, `adapters/`, `ml/` | núcleo cerrado (contracts, costing, models, catalog, budget, verification); un adaptador por dominio que solo importa `core.contracts`; normalización, anomalías y predicción |
+| Producción y fusión | `produccion/`, `fusion/` | arenera: materiales, movimientos, existencias y costos; fusión con los libros de la empresa (Sílice 1.5) |
+| Asistente de IA | `asistente/` | la IA propone datos de entrada en el borrador; el sistema deriva, valora y audita |
+| Auditoría | `auditoria/`, `paquete/` | reauditoría de un documento ajeno y el paquete auditado que se exporta y se verifica |
+| Base de datos | `migraciones/`, `operacion/`, `data/` | migraciones Alembic (caso e instalación), carpetas de datos, respaldo y adopción de bases; datos de muestra ficticios, línea base y precios MaPreX |
+| Seguridad | `seguridad/` | cuentas, sesiones, secretos, firma y empresas (base de la instalación) |
+| Pruebas | `tests/` | unit, integration y fixtures (la línea base vive en `tests/fixtures/apu_linea_base.py`); las del front están junto a cada componente (`*.test.tsx`) |
+| Especificaciones y documentos | `docs/`, `NORMAS.md`, `PLAN_*.md` | ERS, specs, planes, manuales, arquitectura, modelo de datos, bitácoras ([índice](docs/README.md)) |
+| Herramientas | `scripts/`, `instalador/`, `.github/` | siembra, medición, guardias y metas de la CI ([índice](scripts/README.md)); construcción del instalador de Windows; la CI |
+
+## Ramas
+
+- **`main` es el programa**: lo que está en `main` pasó la CI completa (Linux y Windows) y es la
+  versión vigente de Sílice.
+- **Una rama por tarea**, con nombre `<tipo>/<tema>` (`feature/`, `fix/`, `docs/`, `ci/`): se abre
+  desde `main`, se trabaja, se une a `main` por PR con la CI en verde y **se borra** (GitHub la borra
+  sola al fusionar). En todo momento debería haber `main` y unas pocas ramas vivas.
+- El trabajo viejo que no entró al programa no se pierde: queda como etiqueta `archivo/<rama>`
+  (`git tag -l "archivo/*"`), que se puede recuperar con `git switch -c <nombre> archivo/<rama>`.
