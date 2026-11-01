@@ -24,8 +24,14 @@ export function TabList({ leftOverflowButtonProps, rightOverflowButtonProps, ...
   return (
     <CarbonTabList
       {...props}
-      leftOverflowButtonProps={{ "aria-label": DESPLAZAR_IZQUIERDA, ...leftOverflowButtonProps }}
-      rightOverflowButtonProps={{ "aria-label": DESPLAZAR_DERECHA, ...rightOverflowButtonProps }}
+      leftOverflowButtonProps={{
+        ...leftOverflowButtonProps,
+        "aria-label": leftOverflowButtonProps?.["aria-label"] ?? DESPLAZAR_IZQUIERDA,
+      }}
+      rightOverflowButtonProps={{
+        ...rightOverflowButtonProps,
+        "aria-label": rightOverflowButtonProps?.["aria-label"] ?? DESPLAZAR_DERECHA,
+      }}
     />
   );
 }
