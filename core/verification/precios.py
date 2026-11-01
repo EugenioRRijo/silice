@@ -185,7 +185,7 @@ def _r12(inst: InstantaneaPrecios) -> list[tuple[int | None, Hallazgo]]:
     salida: list[tuple[int | None, Hallazgo]] = []
     for p in inst.precios:
         dias = (inst.fecha_evaluacion - p.fecha_precio).days
-        motivo = "" if p.erosion is not None else "; sin tasa a la fecha del precio o de evaluacion"
+        motivo = "" if p.erosion is not None else "; sin tasa a la fecha del precio o de evaluación"
         if dias > inst.plazo_vigencia_dias:
             salida.append(
                 (
@@ -193,7 +193,7 @@ def _r12(inst: InstantaneaPrecios) -> list[tuple[int | None, Hallazgo]]:
                     Hallazgo(
                         CODIGO_R12,
                         Severidad.ADVERTENCIA,
-                        f"{p.descripcion}: precio del {p.fecha_precio:%d/%m/%Y} con {dias} dias "
+                        f"{p.descripcion}: precio del {p.fecha_precio:%d/%m/%Y} con {dias} días "
                         f"al {inst.fecha_evaluacion:%d/%m/%Y} (plazo {inst.plazo_vigencia_dias})"
                         f"{motivo}",
                         impacto=_impacto(inst, p.insumo_id, p.erosion),
@@ -217,7 +217,7 @@ def _r12(inst: InstantaneaPrecios) -> list[tuple[int | None, Hallazgo]]:
                 )
             )
         elif p.tasa is not None and not p.fuente_tasa.strip():
-            usd = " (precio original en USD: erosion 0 declarada)"
+            usd = " (precio original en USD: erosión 0 declarada)"
             salida.append(
                 (
                     p.insumo_id,

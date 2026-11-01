@@ -25,10 +25,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation, localcontext
 from typing import Any
 
 from sqlalchemy import select
@@ -60,6 +62,7 @@ __all__ = [
     "RenglonDeclarado",
     "documento",
     "estructura",
+    "formato_legado",
     "contar_filas",
     "huella",
     "json_canonico",
@@ -79,9 +82,35 @@ class DocumentoInvalido(ValueError):  # noqa: N818
 # --- serialización --------------------------------------------------------------------------
 
 
+_DECIMALES_MAXIMOS = 28
+_PASO = Decimal(1).scaleb(-_DECIMALES_MAXIMOS)
+_LEGADO: ContextVar[bool] = ContextVar("formato_legado", default=False)
+
+
+@contextmanager
+def formato_legado() -> Iterator[None]:
+    """Serializa como antes de VB-1 (sin cuantizar). Solo para reconocer huellas selladas antes
+    de la corrección (`cadena.verificar_cadena`); nunca para escribir un documento nuevo."""
+    token = _LEGADO.set(True)
+    try:
+        yield
+    finally:
+        _LEGADO.reset(token)
+
+
 def texto_decimal(valor: Decimal | None) -> str | None:
-    """El texto posicional exacto de un `Decimal` (sin exponente); `None` queda `None`."""
-    return None if valor is None else format(valor, "f")
+    """El texto posicional de un `Decimal` (sin exponente); `None` queda `None`.
+
+    VB-1: lo que trae más de 28 decimales (un cociente `1/12` del contexto por omisión tiene 29)
+    se cuantiza a 28 con ROUND_HALF_EVEN, el modo del motor para montos, para que el lector
+    estricto (`PATRON_CIFRA`) lo acepte. Lo que ya cabe sale idéntico a `format(valor, "f")`, así
+    que ninguna huella ni firma existente cambia. El error máximo es 0,5E-28."""
+    if valor is None:
+        return None
+    if _LEGADO.get() or not valor.is_finite() or valor.as_tuple().exponent >= -_DECIMALES_MAXIMOS:
+        return format(valor, "f")
+    with localcontext(prec=80, rounding=ROUND_HALF_EVEN):  # 20 enteros + 28 decimales caben
+        return format(valor.quantize(_PASO), "f")
 
 
 def json_canonico(objeto: Any) -> bytes:
