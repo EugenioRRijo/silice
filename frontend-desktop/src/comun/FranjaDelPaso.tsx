@@ -6,12 +6,12 @@ interface Props {
   tipo: "falta" | "siguiente";
   texto: string;
   // El único botón principal de la pantalla mientras la franja esté a la vista. Sin acción (la cuenta no puede usar la
-  // pantalla de destino) la franja solo informa.
-  accion?: { texto: string; alPulsar: () => void; deshabilitada?: boolean };
+  // pantalla de destino) la franja solo informa. `id`: a él vuelve el foco al cerrar el diálogo que abre (Tarea 5).
+  accion?: { texto: string; alPulsar: () => void; deshabilitada?: boolean; id?: string };
 }
 
 // La franja «Te falta / Siguiente paso» (Tarea 2 del plan F4; especificación §2.3 y §6.4): es el molde de toda sección de
-// la obra, así que vive en `comun/`. La usa el Resumen y la usará Presupuesto (Tarea 5). «Te falta» es una precaución
+// la obra, así que vive en `comun/`. La usan el Resumen y el Presupuesto (Tarea 5). «Te falta» es una precaución
 // (fondo y raya de aviso, con el ícono: la palabra ya basta y el color no va solo); «Siguiente paso» solo orienta, sin
 // ícono. El botón es la acción de la pantalla: uno solo, el principal.
 export function FranjaDelPaso({ tipo, texto, accion }: Props) {
@@ -23,7 +23,7 @@ export function FranjaDelPaso({ tipo, texto, accion }: Props) {
         <strong>{falta ? "Te falta:" : "Siguiente paso:"}</strong> {texto}
       </p>
       {accion && (
-        <Button kind="primary" size="md" disabled={accion.deshabilitada} onClick={accion.alPulsar}>
+        <Button id={accion.id} kind="primary" size="md" disabled={accion.deshabilitada} onClick={accion.alPulsar}>
           {accion.texto}
         </Button>
       )}

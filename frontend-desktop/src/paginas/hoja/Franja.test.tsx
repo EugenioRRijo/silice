@@ -1,5 +1,6 @@
 import { configure, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
@@ -127,11 +128,14 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
   function aplicacion(sesion: SesionRespuesta): Aplicacion {
     return { sesion, proyecto: "OF-001", caso: { nombre: "obra", ruta_relativa: "data/obra.db" }, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
   }
+  // Dentro de un enrutador: el diálogo «Agregar partida» lo necesita (como en AgregarPartida.test.tsx).
   function montar(sesion: SesionRespuesta = ARMA) {
     return render(
-      <ContextoAplicacion.Provider value={aplicacion(sesion)}>
-        <PaginaHoja />
-      </ContextoAplicacion.Provider>,
+      <MemoryRouter initialEntries={["/hoja"]}>
+        <ContextoAplicacion.Provider value={aplicacion(sesion)}>
+          <PaginaHoja />
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
     );
   }
 

@@ -69,6 +69,14 @@
   }
 }
 
+// Tarea 5 del plan F4: el renglón con un hallazgo crítico, de error o de advertencia lleva el fondo de precaución (nunca
+// el acento), también en la celda fija de la izquierda. La severidad se sigue diciendo en palabra en su Estado: con
+// contraste forzado el fondo se va y la palabra queda.
+.silice-hoja tr.silice-fila--afectada td,
+.silice-hoja tr.silice-fila--afectada td:first-child {
+  background: var(--silice-aviso-fondo);
+}
+
 .silice-hoja__estado-fila {
   display: inline-flex;
   align-items: center;

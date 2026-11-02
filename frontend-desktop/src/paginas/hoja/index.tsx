@@ -6,7 +6,6 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { AprobacionDeVersion } from "./AprobacionDeVersion";
 import { OfertaDeRetomar as OfertaDeRetomarVista } from "./OfertaDeRetomar";
 import {
   SIN_VERSIONES,
@@ -19,6 +18,7 @@ import {
 import type { BorradorAbierto, PestanaId, Resumen } from "./logica";
 import { CAUSA_SOLO_LECTURA } from "./logicaGuardar";
 import { BotonExcel } from "./BotonExcel";
+import { FranjaDelPresupuesto } from "./FranjaDelPresupuesto";
 import { ContextoAuditoria } from "./ContextoAuditoria";
 import type { AlCrearVersion } from "./OperacionesDePrecios";
 import type { FiltroDeAuditoria } from "./ContextoAuditoria";
@@ -36,20 +36,21 @@ import "./hoja.scss";
 
 // La Hoja de la obra (pantalla `hoja`, la sección Presupuesto): el estado del borrador, el reparto de las pestañas y el
 // cuerpo que los junta. Desde la Tarea 3 del plan F4 el borrador es de `ProveedorDeLaHoja`, y desde la 4 también la pestaña
-// abierta. Pasa de 250 líneas porque junta tres piezas que solo se entienden juntas: el estado del borrador, el cuerpo con
-// sus avisos y el reparto de las pestañas (`ContenidoDePestana`); la Tarea 6 (Versiones) y la 11 (Archivos y planos) le
+// abierta. Desde la 5, la franja del paso (`FranjaDelPresupuesto`) va encima de todo y su botón es el único principal.
+// Pasa de 250 líneas porque junta tres piezas que solo se entienden juntas: el estado del borrador, el cuerpo con sus
+// avisos y el reparto de las pestañas (`ContenidoDePestana`); la Tarea 6 (Versiones) y la 11 (Archivos y planos) le
 // quitan lo que se va a sus secciones.
 
+// El total y «Descartar cambios» (fantasma). «Guardar versión…» pasó a la franja del paso en la Tarea 5: es la acción
+// principal mientras haya cambios.
 function EstadoDelBorrador({
   borrador,
   alDescartar,
-  alGuardar,
   puedeEditar,
 }: {
   borrador: BorradorAbierto;
   alDescartar: () => void;
-  alGuardar: () => void;
-  // F4 2b: sin permiso de edición (o con un borrador de solo lectura) no se ofrece guardar ni descartar.
+  // F4 2b: sin permiso de edición (o con un borrador de solo lectura) no se ofrece descartar.
   puedeEditar: boolean;
 }) {
   const { base, resumen } = borrador;
@@ -67,16 +68,11 @@ function EstadoDelBorrador({
       {resumen.version_mas_nueva !== null && (
         <p className="cds--type-helper-text-01">La versión vigente ahora es la {resumen.version_mas_nueva}.</p>
       )}
-      {puedeEditar && (resumen.cambios > 0 || base.version === null) && !confirmando && (
+      {puedeEditar && resumen.cambios > 0 && !confirmando && (
         <div className="silice-hoja__acciones">
-          <Button id="hoja-guardar-version" kind="primary" size="sm" onClick={alGuardar}>
-            {base.version === null ? "Guardar primera versión…" : "Guardar versión…"}
+          <Button kind="ghost" size="sm" onClick={() => setConfirmando(true)}>
+            Descartar cambios
           </Button>
-          {resumen.cambios > 0 && (
-            <Button kind="ghost" size="sm" onClick={() => setConfirmando(true)}>
-              Descartar cambios
-            </Button>
-          )}
         </div>
       )}
       {resumen.cambios > 0 && confirmando && (
@@ -111,6 +107,8 @@ function ContenidoDePestana({
   filtro,
   alQuitarFiltro,
   alCrearVersion,
+  pedirAgregar,
+  alAtenderAgregar,
 }: {
   pestana: PestanaId;
   borrador: BorradorAbierto | null;
@@ -122,6 +120,9 @@ function ContenidoDePestana({
   alQuitarFiltro: () => void;
   // Se creó una versión nueva (restaurar, cotizar, retirar, convertir): la página la abre.
   alCrearVersion: AlCrearVersion;
+  // La franja pidió «Agregar la primera partida» (Tarea 5): Partidas abre su diálogo y avisa que lo atendió.
+  pedirAgregar: boolean;
+  alAtenderAgregar: () => void;
 }) {
   if (borrador === null) return null;
   const llave = `${borrador.id}-${borrador.resumen.rev}`;
@@ -139,7 +140,7 @@ function ContenidoDePestana({
     case "espacio":
       return <PestanaEspacio key={borrador.id} {...deEdicion} />;
     case "partidas":
-      return <PestanaPresupuesto key={borrador.id} {...deEdicion} />;
+      return <PestanaPresupuesto key={borrador.id} {...deEdicion} pedirAgregar={pedirAgregar} alAtenderAgregar={alAtenderAgregar} />;
     case "apu":
       return <PestanaApu key={borrador.id} {...deEdicion} moneda={moneda} />;
     case "plan":
@@ -233,6 +234,13 @@ function CuerpoDeLaHoja() {
     setFiltro(f);
     irAPestana("revision");
   };
+  // La franja pidió agregar la primera partida: se va a «Partidas» y su pestaña abre el diálogo (Tarea 5).
+  const [pedirAgregar, setPedirAgregar] = useState(false);
+  const alAtenderAgregar = () => setPedirAgregar(false);
+  const irAPartidas = () => {
+    setFiltro(null);
+    irAPestana("partidas");
+  };
 
   if (versiones.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las versiones" />;
   if (versiones.estado !== "listo") return <AvisoError error={versiones.error} />;
@@ -304,26 +312,24 @@ function CuerpoDeLaHoja() {
               subtitle={estado.borrador.instantanea.mensaje}
             />
           )}
-          {/* Tarea 19: la aprobación de la versión abierta, junto a ella (una versión guardada; el borrador en blanco no). */}
-          {estado.borrador.base.version !== null && (
-            <AprobacionDeVersion
-              key={`${proyecto}|${estado.borrador.base.version}`}
-              proyecto={proyecto}
-              version={estado.borrador.base.version}
-              cambios={estado.borrador.resumen.cambios}
-              base={estado.borrador.base}
-              alHacerVersionNueva={() => {
-                setFiltro(null);
-                irAPestana("partidas");
-              }}
-            />
-          )}
-          <EstadoDelBorrador
+          {/* Tarea 5: la franja del paso, con el único botón principal, y la aprobación de la versión abierta (Tarea 19). */}
+          <FranjaDelPresupuesto
+            key={`${proyecto}|${estado.borrador.base.version ?? ""}`}
+            proyecto={proyecto}
             borrador={estado.borrador}
-            alDescartar={() => void descartarCambios()}
-            alGuardar={abrirGuardado}
             puedeEditar={puedeEditar}
+            alAgregarPartida={() => {
+              irAPartidas();
+              setPedirAgregar(true);
+            }}
+            alGuardar={abrirGuardado}
+            alVerRevision={() => {
+              setFiltro(null);
+              irAPestana("revision");
+            }}
+            alHacerVersionNueva={irAPartidas}
           />
+          <EstadoDelBorrador borrador={estado.borrador} alDescartar={() => void descartarCambios()} puedeEditar={puedeEditar} />
           <BotonExcel id={estado.borrador.id} />
         </>
       )}
@@ -362,6 +368,8 @@ function CuerpoDeLaHoja() {
                       filtro={filtro}
                       alQuitarFiltro={() => setFiltro(null)}
                       alCrearVersion={alCrearVersion}
+                      pedirAgregar={pedirAgregar}
+                      alAtenderAgregar={alAtenderAgregar}
                     />
                   )}
                 </TabPanel>

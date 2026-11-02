@@ -393,25 +393,30 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       await esperar(() => expect(alExpirar).toHaveBeenCalled());
     });
 
-    test("con cambios sin guardar el diálogo dice que no se envían", async () => {
-      const u = userEvent.setup();
+    // Tarea 5 del plan F4 (regla 2 de la franja): con cambios sin guardar el paso es guardarlos; enviar no se ofrece hasta
+    // entonces. Antes se ofrecía y el diálogo avisaba que los cambios no viajaban.
+    test("con cambios sin guardar no se ofrece enviar: la franja pide guardar antes", async () => {
       alAbrir = (c) => borrador(c.version, { cambios: 2 });
       montar();
-      await u.click(await screen.findByRole("button", { name: "Enviar a aprobación…" }));
-      const dialogo = await screen.findByRole("dialog", { name: "Enviar a aprobación" });
-      expect(dialogo).toHaveTextContent("Los 2 cambios sin guardar no se envían: guárdelos antes si deben revisarse.");
+      const franja = await screen.findByRole("region", { name: "Siguiente paso" });
+      expect(franja).toHaveTextContent("Siguiente paso: Hay 2 cambios sin guardar");
+      expect(within(franja).getByRole("button", { name: "Guardar versión…" })).toBeInTheDocument();
+      await textoDeEtiqueta();
+      expect(screen.queryByRole("button", { name: "Enviar a aprobación…" })).toBeNull();
     });
   });
 
   describe("devuelta: las notas y una versión nueva", () => {
-    test("se leen las notas y «Hacer una versión nueva a partir de esta» lleva a «Presupuesto» con el aviso", async () => {
+    // Tarea 5 del plan F4: el botón está en la franja del paso y se llama «Hacer una versión nueva».
+    test("se leen las notas y «Hacer una versión nueva» (de la franja) lleva a «Partidas» con el aviso", async () => {
       const u = userEvent.setup();
       aprobaciones = { "VIV-001": DEVUELTA };
       montar();
       const zona = await region();
       expect(zona).toHaveTextContent("Notas de Rita: Falta el acero de la losa.");
       expect(screen.getByRole("tab", { name: "Partidas" })).toHaveAttribute("aria-selected", "false");
-      await u.click(within(zona).getByRole("button", { name: "Hacer una versión nueva a partir de esta" }));
+      const franja = screen.getByRole("region", { name: "Siguiente paso" });
+      await u.click(within(franja).getByRole("button", { name: "Hacer una versión nueva" }));
       await esperar(() => expect(screen.getByRole("tab", { name: "Partidas" })).toHaveAttribute("aria-selected", "true"));
       expect(within(zona).getByRole("status")).toHaveTextContent("Corrija y guarde: será una versión nueva.");
       // No reabre ni envía nada: el borrador de esa versión ya está abierto.

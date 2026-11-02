@@ -15,6 +15,7 @@ import { useObjetivosDeMercado } from "./ObjetivoDeMercado";
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
+import { esFilaAfectada } from "./pasoDelPresupuesto";
 import { clavesDeAuditoria, comoSeMidio, enteroDeDigitos, rotuloDeOrigen, rutaDeQuitarPartida, rutaDeVista } from "./logica";
 import type { BaseAbierta, FilaPresupuesto, Resumen, VistaPresupuesto } from "./logica";
 import {
@@ -43,6 +44,10 @@ interface Props {
   alReabrir: () => void;
   // La base del borrador: con `solo_lectura` (o sin permiso de edición) no se pinta nada que escriba (F4 2b).
   base?: Pick<BaseAbierta, "solo_lectura">;
+  // La franja del Presupuesto pidió «Agregar la primera partida» (Tarea 5 del plan F4): la pestaña abre su diálogo en
+  // cuanto tiene la vista y avisa que lo atendió (así volver a la pestaña no lo abre otra vez).
+  pedirAgregar?: boolean;
+  alAtenderAgregar?: () => void;
 }
 
 interface PropsContenido extends Props {
@@ -159,6 +164,9 @@ function EditorDePresupuesto({
       <TablaPaginada
         etiqueta="Presupuesto"
         desplazable
+        // Tarea 5 del plan F4: el renglón con un hallazgo crítico, de error o de advertencia lleva el fondo de precaución; la
+        // severidad sigue dicha en palabra en su Estado (el color nunca va solo).
+        claseDeFila={(f) => (esFilaAfectada(f.estado_severidad || null) ? "silice-fila--afectada" : undefined)}
         columnas={[
           {
             clave: "partida",
@@ -310,9 +318,15 @@ function EditorDePresupuesto({
 
 // La pestaña: su explicación, «Agregar partida» (también con el presupuesto vacío) y la tabla.
 function ContenidoPresupuesto(props: PropsContenido) {
-  const { id, rev, vista, alAceptar, alRelectura, alAusente, alRecargarBorrador } = props;
+  const { id, rev, vista, alAceptar, alRelectura, alAusente, alRecargarBorrador, pedirAgregar, alAtenderAgregar } = props;
   const puedeEditar = usePuedeEditarLaHoja(props.base ?? null);
   const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
+  // El pedido de la franja (Tarea 5) se atiende una vez: se abre el diálogo, que es el mismo de «Agregar partida».
+  useEffect(() => {
+    if (!pedirAgregar) return;
+    alAtenderAgregar?.();
+    if (puedeEditar) abrir();
+  }, [pedirAgregar, alAtenderAgregar, puedeEditar, abrir]);
   const enfocar = useFocoAlCerrar();
   const [aviso, setAviso] = useState("");
   // Con el editor montado, el `rev` sale de él (después de lo que tenga por mandar); sin renglones, de la página.
