@@ -1,0 +1,67 @@
+@use "sass:map";
+@use "../marco/umbrales" as u;
+
+// Panel acoplado a la derecha del contenido (plan F4, Tareas 6 y 7). Sin sombra ni animación (DESIGN.md): un borde lo
+// separa del contenido. El contenido de la izquierda se encoge (`minmax(0, 1fr)`) y sus tablas se desplazan en su caja.
+
+.silice-con-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+  min-inline-size: 0;
+}
+
+.silice-panel-lateral {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  inline-size: 24rem;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  padding: 0 0 1rem 1rem;
+  border-inline-start: 1px solid var(--cds-border-subtle);
+}
+
+.silice-panel-lateral--ancho {
+  inline-size: 40rem;
+}
+
+.silice-panel-lateral__cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+// El h2 recibe el foco al abrirse: se ve con el contorno de foco de las demás filas.
+.silice-panel-lateral__titulo:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+
+// Por debajo del umbral de cada escala de letra (marco/_umbrales.scss) no hay ancho para los dos: el panel pasa por encima
+// del contenido, bajo la barra superior, y a lo más ocupa todo el ancho. Se desplaza dentro de sí.
+@each $escala in map.keys(u.$umbrales-por-escala) {
+  @include u.por-debajo-del-umbral($escala) {
+    .silice-con-panel {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .silice-panel-lateral {
+      position: fixed;
+      inset-block: 3rem 0;
+      inset-inline-end: 0;
+      z-index: 6000;
+      inline-size: min(24rem, 100%);
+      max-inline-size: 100%;
+      overflow-y: auto;
+      padding: 0 1rem 1rem;
+      background: var(--cds-layer-01);
+    }
+
+    .silice-panel-lateral--ancho {
+      inline-size: min(40rem, 100%);
+    }
+  }
+}
