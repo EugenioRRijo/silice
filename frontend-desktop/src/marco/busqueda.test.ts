@@ -70,7 +70,14 @@ describe("resultadosDe", () => {
   });
 
   it("ordena obras, secciones de obras, entradas de Empresa y pantallas sin sitio", () => {
-    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], COMPLETA).map((r) => r.texto);
+    // Con «edificación» apagada (sin «Archivos y planos», F4 Tarea 11) caben en las ocho la obra, sus cinco secciones y dos
+    // de Empresa, como antes de esa sección.
+    const sinEdificacion = ofertaDe(
+      PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion])),
+      false,
+      ["edificacion"],
+    );
+    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], sinEdificacion).map((r) => r.texto);
     expect(textos[0]).toBe("Precio alto");
     expect(textos[1]).toBe("Precio alto › Presupuesto");
     const i = (t: string) => textos.indexOf(t);

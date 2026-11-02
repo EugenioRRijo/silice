@@ -209,9 +209,9 @@ describe("BarraLateral: obra abierta", () => {
     pintar({ sesion: sesionDe("rita"), abierta, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
     await arbol();
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
-    // «mercado» exige editar_hoja y «control», control_de_obra: quien solo revisa no los ve. «Presupuesto» sí, en
-    // solo lectura (F4 2b, Eugenio, 2026-10-31).
-    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Aprobaciones"]);
+    // «mercado» exige editar_hoja y «control», control_de_obra: quien solo revisa no los ve. «Presupuesto» y «Archivos y
+    // planos» sí, en solo lectura (F4 2b, Eugenio, 2026-10-31; Tarea 11).
+    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Archivos y planos", "Aprobaciones"]);
   });
 });
 
@@ -225,7 +225,7 @@ describe("BarraLateral: «Tramos» en toda obra mientras el módulo vial esté e
     pintar({ abierta: clinica, seccion: "resumen", ruta: rutaDeClinica });
     await arbol();
     expect(await screen.findByRole("treeitem", { name: "Tramos" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/tramos");
-    expect(nombres("Clínica Las Mercedes")).toEqual(["Resumen", "Presupuesto", "Tramos", "Aprobaciones", "Mercado", "Control de obra"]);
+    expect(nombres("Clínica Las Mercedes")).toEqual(["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Aprobaciones", "Mercado", "Control de obra"]);
   });
 
   it("otra obra de la misma carpeta también", async () => {
@@ -326,10 +326,10 @@ describe("BarraLateral: teclado (patrón tree de WAI-ARIA)", () => {
     clinica.focus();
     await u.keyboard("{ArrowDown}");
     expect(within(lista).getByRole("treeitem", { name: "Resumen" })).toHaveFocus();
-    await u.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+    await u.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}");
     expect(within(lista).getByRole("treeitem", { name: "Aprobaciones" })).toHaveFocus();
     await u.keyboard("{ArrowUp}");
-    expect(within(lista).getByRole("treeitem", { name: "Tramos" })).toHaveFocus();
+    expect(within(lista).getByRole("treeitem", { name: "Archivos y planos" })).toHaveFocus();
   });
 
   it("flecha derecha despliega una obra plegada y flecha izquierda la pliega", async () => {
@@ -531,12 +531,13 @@ describe("BarraLateral: niveles del árbol", () => {
     expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "3", "3"]);
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
     expect(secciones.map(nivel)).toEqual([
-      ["2", "6", "1"],
-      ["2", "6", "2"],
-      ["2", "6", "3"],
-      ["2", "6", "4"],
-      ["2", "6", "5"],
-      ["2", "6", "6"],
+      ["2", "7", "1"],
+      ["2", "7", "2"],
+      ["2", "7", "3"],
+      ["2", "7", "4"],
+      ["2", "7", "5"],
+      ["2", "7", "6"],
+      ["2", "7", "7"],
     ]);
   });
 
@@ -547,7 +548,7 @@ describe("BarraLateral: niveles del árbol", () => {
     expect(nivel(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" }))).toEqual(["1", "2", "1"]);
     expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "2", "2"]);
     const primera = within(screen.getByRole("group", { name: "Torre B" })).getAllByRole("treeitem")[0]!;
-    expect(nivel(primera)).toEqual(["2", "6", "1"]);
+    expect(nivel(primera)).toEqual(["2", "7", "1"]);
   });
 });
 

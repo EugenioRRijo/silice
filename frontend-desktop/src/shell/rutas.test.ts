@@ -11,6 +11,7 @@ const REGISTRO: [string, string, string | null][] = [
   ["historial", "Revisión", "leer_proyecto"],
   ["obras", "Trabajo", null],
   ["hoja", "Trabajo", "leer_proyecto"], // F4 2b: quien revisa la ve en solo lectura
+  ["archivos", "Trabajo", "leer_proyecto"], // F4 Tarea 11: quien revisa ve el registro; subir exige editar_hoja
   ["elaborar", "Trabajo", "editar_hoja"],
   ["tablero", "Trabajo", "leer_proyecto"],
   ["entregar", "Trabajo", "entregar_paquete"],
@@ -48,7 +49,7 @@ const REGISTRO: [string, string, string | null][] = [
 const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
 
 describe("registro de paginas", () => {
-  test("tiene las 32 pantallas en su orden, con su seccion y su accion", () => {
+  test("tiene las 33 pantallas en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(REGISTRO);
   });
 
