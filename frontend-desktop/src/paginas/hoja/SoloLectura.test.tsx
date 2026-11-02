@@ -338,7 +338,8 @@ describe("Quien arma conserva sus controles", () => {
     await screen.findByRole("region", { name: "Estado del borrador" });
     expect(screen.queryByRole("note")).toBeNull();
     await irA("Espacio y metrajes");
-    expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toBeInTheDocument();
+    // F4, Tarea 11: el plano se importa en Archivos y planos; aquí queda el enlace (solo dentro de una obra).
+    expect(screen.queryByRole("button", { name: "Importar plano (DXF o IFC)" })).toBeNull();
     expect(screen.getAllByRole("button", { name: /^Agregar fila/ }).length).toBeGreaterThan(0);
     await irA("Partidas");
     expect(screen.getByRole("button", { name: "Agregar partida" })).toBeInTheDocument();

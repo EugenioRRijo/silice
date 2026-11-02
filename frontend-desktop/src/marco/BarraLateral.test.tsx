@@ -192,10 +192,9 @@ describe("BarraLateral: obra abierta", () => {
     expect(filaClinica).toHaveAttribute("aria-expanded", "true");
     expect(within(lista).getByRole("treeitem", { name: "Torre B" })).toHaveAttribute("aria-expanded", "false");
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
-    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Tramos", "Aprobaciones", "Mercado", "Control de obra"]);
-    expect(secciones.map((s) => s.getAttribute("aria-current"))).toEqual([null, "page", null, null, null, null]);
+    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Aprobaciones", "Mercado", "Control de obra"]);
+    expect(secciones.map((s) => s.getAttribute("aria-current"))).toEqual([null, "page", null, null, null, null, null]);
     expect(secciones[1]).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/presupuesto");
-    expect(screen.queryByRole("treeitem", { name: "Archivos y planos" })).toBeNull();
     expect(screen.queryByRole("treeitem", { name: "Versiones" })).toBeNull();
   });
 

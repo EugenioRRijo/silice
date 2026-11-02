@@ -162,7 +162,7 @@ function Ubicacion() {
 function montar(en: string) {
   render(
     <MemoryRouter initialEntries={[en]}>
-      <Marco sesion={sesionDe("ana")} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras({ hoja: PorSeccion })} />
+      <Marco sesion={sesionDe("ana")} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras({ hoja: PorSeccion, archivos: PorSeccion })} />
       <Ubicacion />
     </MemoryRouter>,
   );

@@ -94,7 +94,6 @@ describe("resultadosDe", () => {
   });
 
   it("no ofrece las secciones sin pantalla, ni lo que la cuenta no puede usar", () => {
-    expect(resultadosDe("archivos", OBRAS, COMPLETA)).toEqual([]);
     expect(resultadosDe("versiones", OBRAS, COMPLETA)).toEqual([]);
     const sinPermisos = ofertaDe([], false);
     // Control positivo: la misma búsqueda con todos los permisos sí encuentra la entrada.

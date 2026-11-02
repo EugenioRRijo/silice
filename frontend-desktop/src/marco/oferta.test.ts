@@ -8,7 +8,7 @@ describe("ofertaDe: «Tramos» (plan vial)", () => {
   it("la sección Tramos es de toda obra mientras el módulo vial esté encendido", () => {
     const oferta = ofertaDe(TODAS, false);
     expect(oferta.secciones.map((s) => s.id)).toContain("tramos");
-    expect(seccionesDeLaObra(oferta).map((s) => s.id)).toEqual(["resumen", "presupuesto", "tramos", "aprobaciones", "mercado", "control"]);
+    expect(seccionesDeLaObra(oferta).map((s) => s.id)).toEqual(["resumen", "presupuesto", "tramos", "archivos", "aprobaciones", "mercado", "control"]);
   });
 
   it("sin obra no hay pantalla suelta «Tramos de la vía»: el buscador la ofrece dentro de cada obra", () => {
@@ -50,7 +50,15 @@ describe("ofertaDe con módulos apagados (plan vial, Tarea 19)", () => {
 });
 
 describe("ofertaDe con edificación apagada (plan vial, Tarea 19, T19-5)", () => {
-  it("no oculta pantallas del registro: «Espacio y metrajes» es una pestaña de la hoja, no una pantalla", () => {
-    expect(ofertaDe(TODAS, false, ["edificacion"])).toEqual(ofertaDe(TODAS, false));
+  // «Espacio y metrajes» es una pestaña de la hoja, no una pantalla: la oculta la Hoja. Desde la Tarea 11 de F4, «Archivos y
+  // planos» (el plano) es una sección del módulo «edificación»: no se ofrece, y lo demás sigue igual.
+  it("no ofrece «Archivos y planos» y deja el resto como está", () => {
+    const apagada = ofertaDe(TODAS, false, ["edificacion"]);
+    const siempre = ofertaDe(TODAS, false);
+    expect(apagada.secciones.map((s) => s.id)).not.toContain("archivos");
+    expect(siempre.secciones.map((s) => s.id)).toContain("archivos");
+    expect(apagada.secciones.map((s) => s.id)).toEqual(siempre.secciones.map((s) => s.id).filter((id) => id !== "archivos"));
+    expect(apagada.entradas).toEqual(siempre.entradas);
+    expect(apagada.sueltas).toEqual(siempre.sueltas);
   });
 });

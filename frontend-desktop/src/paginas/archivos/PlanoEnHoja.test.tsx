@@ -1,17 +1,24 @@
 import { configure, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { importada, respuestaDeFusion } from "./datosDePlano";
 import { informeAuditoria, vistaEspacio } from "../hoja/datosDePrueba";
 import PaginaHoja from "../hoja/index";
-import { olvidarImportaciones } from "./useImportacion";
 import type { BorradorAbierto, VersionesRespuesta } from "../hoja/logica";
+import { ProveedorDeLaHoja } from "../hoja/ProveedorDeLaHoja";
+import { importada, respuestaDeFusion } from "./datosDePlano";
+import PaginaArchivos from "./index";
+import { olvidarImportaciones } from "./useImportacion";
 
-// Rebanada 3e-2: el enganche del flujo «Importar plano» en la pestaña Espacio de la página. Tras fusionar, el borrador cambió:
-// la barra de estado toma el resumen nuevo y las tablas del espacio muestran las filas que entraron (3e-F3).
+// Rebanada 3e-2, enganche del plano con la Hoja. Desde la Tarea 11 de F4 el plano se importa en Archivos y planos, no en la
+// pestaña Espacio: las dos pantallas comparten el borrador (`ProveedorDeLaHoja`), así que lo fusionado allí se ve en el
+// Presupuesto: la barra de estado toma el resumen nuevo y las tablas del espacio muestran las filas que entraron (3e-F3).
+// Cambió el montaje (las dos pantallas bajo un mismo proveedor); las aserciones son las de antes. Las dos pruebas de la
+// pausa de edición del espacio («Fusionar» no se pulsa con una edición en vuelo; las tablas no se editan mientras se
+// fusiona) se retiraron: el plano y las tablas del espacio ya no están nunca en la misma pantalla.
 configure({ asyncUtilTimeout: 5000 });
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -24,7 +31,7 @@ const SESION: SesionRespuesta = {
   roles: ["arma"],
   csrf: "tok",
   debe_cambiar_clave: false,
-  acciones: ["editar_hoja"],
+  acciones: ["editar_hoja", "leer_proyecto"],
   modo_entrega: false,
 };
 const ID = "id-borrador-plano-0001";
@@ -53,30 +60,36 @@ const BORRADOR: BorradorAbierto = {
 
 const RESUMEN_FUSIONADO = { ...BORRADOR.resumen, rev: 1, cambios: 3, total: { texto: "3000.50", exacto: "3000.50" } };
 
-describe("Hoja: importar plano en la pestaña Espacio (3e-2)", () => {
+// Archivos y planos y el Presupuesto bajo el mismo proveedor, como en la obra: el botón cambia de sección.
+function DosSecciones() {
+  const [seccion, setSeccion] = useState<"archivos" | "presupuesto">("archivos");
+  return (
+    <ProveedorDeLaHoja>
+      <button type="button" onClick={() => setSeccion("presupuesto")}>
+        Ir al Presupuesto
+      </button>
+      {seccion === "archivos" ? <PaginaArchivos /> : <PaginaHoja />}
+    </ProveedorDeLaHoja>
+  );
+}
+
+describe("el plano importado en Archivos y planos entra en la Hoja (3e-2)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   let fusionado = false;
-  // Si no es null, el GET del borrador (la relectura tras fusionar) espera a que se abra.
-  let compuerta: Promise<void> | null = null;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
     fusionado = false;
-    compuerta = null;
     olvidarImportaciones(); // lo último que se leyó de un borrador se recuerda por id: cada prueba parte de cero
     fetchFalso.mockImplementation(async (ruta, init) => {
       const camino = new URL(String(ruta), "http://silice.local").pathname;
       const metodo = init?.method ?? "GET";
       if (camino === "/v1/hoja/versiones") return json(VERSIONES);
+      if (camino === "/v1/hoja/importaciones") return json({ importaciones: [] });
       if (camino === "/v1/hoja/borradores" && metodo === "GET") return json({ borradores: [] });
       if (camino === "/v1/hoja/borradores" && metodo === "POST") return json(BORRADOR, 201);
-      if (camino === `/v1/hoja/borradores/${ID}` && metodo === "GET" && compuerta !== null) await compuerta;
-      if (camino === `/v1/hoja/borradores/${ID}/espacio` && metodo === "PUT") {
-        const { rev } = JSON.parse(String(init?.body)) as { rev: number };
-        return json({ rev: rev + 1, resumen: { ...BORRADOR.resumen, rev: rev + 1, cambios: 1 } });
-      }
       if (camino === `/v1/hoja/borradores/${ID}` && metodo === "GET") return json({ id: ID, base: BORRADOR.base, resumen: fusionado ? RESUMEN_FUSIONADO : BORRADOR.resumen });
       if (camino === `/v1/hoja/borradores/${ID}/plano` && metodo === "POST") return json(importada());
       if (camino === `/v1/hoja/borradores/${ID}/plano/fusionar`) {
@@ -109,75 +122,29 @@ describe("Hoja: importar plano en la pestaña Espacio (3e-2)", () => {
     alExpirar,
   });
 
-  test("el bloque está en la pestaña Espacio, antes de las tablas", async () => {
-    render(
-      <ContextoAplicacion.Provider value={valor()}>
-        <PaginaHoja />
-      </ContextoAplicacion.Provider>,
-    );
-    const boton = await screen.findByRole("button", { name: "Importar plano (DXF o IFC)" });
-    const tabla = await screen.findByRole("table", { name: /Ambientes/ });
-    expect(boton.compareDocumentPosition(tabla) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
   test("tras fusionar: el total de la barra de estado es el nuevo y las tablas muestran las filas del plano", async () => {
     const usuario = userEvent.setup();
     render(
       <ContextoAplicacion.Provider value={valor()}>
-        <PaginaHoja />
+        <DosSecciones />
       </ContextoAplicacion.Provider>,
     );
-    await usuario.click(await screen.findByRole("button", { name: "Importar plano (DXF o IFC)" }));
-    await usuario.upload(document.querySelector('input[type="file"]') as HTMLInputElement, new File(["0\nEOF"], "of001.dxf"));
-    await usuario.click(screen.getByRole("button", { name: "Leer plano" }));
-    await usuario.click(await screen.findByRole("button", { name: "Fusionar con el espacio del borrador" }));
-    await screen.findByText(/Se fusionó «of001.dxf» con el borrador de la hoja: 6 ambientes, 6 fuentes y 21 puntos/);
-    const estado = screen.getByRole("region", { name: "Estado del borrador" });
+    await usuario.click(await screen.findByRole("button", { name: "Subir plano o cómputo" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Subir plano o cómputo" });
+    await usuario.upload(dialogo.querySelector('input[type="file"]') as HTMLInputElement, new File(["0\nEOF"], "of001.dxf"));
+    await usuario.click(within(dialogo).getByRole("button", { name: "Leer plano" }));
+    await usuario.click(await within(dialogo).findByRole("button", { name: "Fusionar con el espacio del borrador" }));
+    await within(dialogo).findByText(/Se fusionó «of001.dxf» con el borrador de la hoja: 6 ambientes, 6 fuentes y 21 puntos/);
+    await waitFor(() => expect(within(dialogo).getByRole("button", { name: "Cerrar" })).toBeEnabled());
+    await usuario.click(within(dialogo).getByRole("button", { name: "Cerrar" }));
+    await usuario.click(screen.getByRole("button", { name: "Ir al Presupuesto" }));
+    const estado = await screen.findByRole("region", { name: "Estado del borrador" });
     expect(await within(estado).findByText(/Total 3\.000,50 USD/)).toBeInTheDocument();
     expect(within(estado).getByText(/3 cambios sin guardar/)).toBeInTheDocument();
-    const tabla = screen.getByRole("table", { name: /Ambientes/ });
+    const tabla = await screen.findByRole("table", { name: /Ambientes/ });
     expect(await within(tabla).findByDisplayValue("PLN-01")).toBeInTheDocument();
     expect(within(tabla).queryByDisplayValue("BAN-01")).toBeNull();
-  });
-  async function hastaLeido(usuario: ReturnType<typeof userEvent.setup>) {
-    render(
-      <ContextoAplicacion.Provider value={valor()}>
-        <PaginaHoja />
-      </ContextoAplicacion.Provider>,
-    );
-    await usuario.click(await screen.findByRole("button", { name: "Importar plano (DXF o IFC)" }));
-    await usuario.upload(document.querySelector('input[type="file"]') as HTMLInputElement, new File(["x"], "of001.dxf"));
-    await usuario.click(screen.getByRole("button", { name: "Leer plano" }));
-    await screen.findByRole("button", { name: "Fusionar con el espacio del borrador" });
-  }
-  const puts = () => fetchFalso.mock.calls.filter(([r, i]) => String(r).endsWith("/espacio") && i?.method === "PUT");
-
-  test("con una edición del espacio en la pausa, «Fusionar» no se puede pulsar (el enganche ocupadoPorEdicion)", async () => {
-    const usuario = userEvent.setup();
-    await hastaLeido(usuario);
-    const tabla = screen.getByRole("table", { name: /Ambientes/ });
-    await usuario.type(within(tabla).getAllByRole("textbox")[1]!, "9");
-    expect(screen.getByRole("button", { name: "Fusionar con el espacio del borrador" })).toBeDisabled();
-    await waitFor(() => expect(puts()).toHaveLength(1)); // la edición sale; luego se puede fusionar
-    await waitFor(() => expect(screen.getByRole("button", { name: "Fusionar con el espacio del borrador" })).toBeEnabled());
-  });
-
-  test("desde «Fusionar» hasta que la relectura termina, las tablas no se editan: ningún PUT sale con el rev nuevo y las filas viejas", async () => {
-    const usuario = userEvent.setup();
-    await hastaLeido(usuario);
-    let abrirCompuerta: () => void = () => undefined;
-    compuerta = new Promise<void>((resolver) => (abrirCompuerta = resolver));
-    await usuario.click(screen.getByRole("button", { name: "Fusionar con el espacio del borrador" }));
-    await screen.findByText(/Se fusionó «of001.dxf»/); // el aviso ya está y la relectura sigue en vuelo
-    const tabla = screen.getByRole("table", { name: /Ambientes/ });
-    const celda = within(tabla).getAllByRole("textbox")[1]!;
-    expect(celda).toBeDisabled();
-    await usuario.type(celda, "zzz");
-    await new Promise((r) => setTimeout(r, 700)); // más que la pausa de 400 ms
-    expect(puts()).toHaveLength(0);
-    abrirCompuerta();
-    expect(await within(screen.getByRole("table", { name: /Ambientes/ })).findByDisplayValue("PLN-01")).toBeInTheDocument();
-    await waitFor(() => expect(within(screen.getByRole("table", { name: /Ambientes/ })).getAllByRole("textbox")[1]).toBeEnabled());
-    expect(puts()).toHaveLength(0);
+    // Un solo borrador para las dos secciones.
+    expect(fetchFalso.mock.calls.filter(([r, i]) => String(r) === "/v1/hoja/borradores" && i?.method === "POST")).toHaveLength(1);
   });
 });

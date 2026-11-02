@@ -97,13 +97,13 @@ describe("quien puede usar que", () => {
     expect(PAGINAS.filter((p) => usable(p, [], false)).map((p) => p.id)).toEqual(["auditoria", "obras", "acerca"]);
   });
 
-  test("con todas las acciones se usan las 32", () => {
-    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(32);
+  test("con todas las acciones se usan las 33", () => {
+    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(33);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (29)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (30)", () => {
     const vistas = PAGINAS.filter((p) => usable(p, todas, true));
-    expect(vistas).toHaveLength(29);
+    expect(vistas).toHaveLength(30);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 
@@ -148,14 +148,17 @@ describe("módulos apagados (plan vial, Tarea 19)", () => {
     ["costo_tonelada", "produccion"],
     ["tramos", "vial"],
     ["riesgo", "riesgo"],
+    // F4, Tarea 11: Archivos y planos es el plano, de edificación.
+    ["archivos", "edificacion"],
   ];
   const TODAS_LAS_ACCIONES = PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion]));
 
   test.each(DEL_MODULO)("«%s» pertenece al módulo %s", (id, modulo) => {
-    expect(paginaPorId(id)!.modulo).toBe(modulo);
+    expect(paginaPorId(id)?.modulo).toBe(modulo);
   });
 
   test.each(DEL_MODULO)("«%s» deja de ser usable cuando su módulo está apagado, y vuelve al encender", (id, modulo) => {
+    expect(paginaPorId(id), id).toBeDefined();
     const pagina = paginaPorId(id)!;
     expect(usable(pagina, TODAS_LAS_ACCIONES, false, [modulo])).toBe(false);
     expect(usable(pagina, TODAS_LAS_ACCIONES, false, [])).toBe(true);

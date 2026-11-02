@@ -41,7 +41,7 @@ describe("SECCIONES_DE_OBRA", () => {
       resumen: "obras",
       presupuesto: "hoja",
       tramos: "tramos",
-      archivos: null,
+      archivos: "archivos",
       versiones: null,
       aprobaciones: "aprobar",
       mercado: "mercado",
