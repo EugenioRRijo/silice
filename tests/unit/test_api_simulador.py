@@ -308,18 +308,38 @@ def test_variaciones_fuera_de_rango_tienen_su_mensaje(motor, ruta, variacion, me
         assert r.json() == {"detalle": mensaje}
 
 
+VARIACIONES_GIGANTES = ["1E+999999", "1E+999999999", "9" * 5000]
+
+
 @pytest.mark.parametrize("ruta", [RUTA, RUTA_CSV])
-@pytest.mark.parametrize("variacion", ["1E+999999", "1E+999999999", "9" * 5000])
-def test_variacion_gigante_se_rechaza_rapido(motor, ruta, variacion) -> None:
-    """Sin tope `int(Decimal("1E+200000") * 100)` tarda segundos de CPU."""
+@pytest.mark.parametrize("variacion", VARIACIONES_GIGANTES)
+def test_variacion_gigante_se_rechaza_por_el_tope(motor, ruta, variacion) -> None:
+    """El mensaje prueba que la ruta se detiene en la validacion, antes de simular.
+
+    Mas de 40 caracteres los corta antes el esquema (`max_length`), con su propio mensaje.
+    """
+    _usar(motor)
+    r = _con_clave().post(ruta, json=_cuerpo(variacion_max=variacion))
+    assert r.status_code == 422, r.text
+    if len(variacion) <= 40:
+        assert r.json() == {"detalle": MENSAJE_TOPE}
+    else:
+        assert "40" in r.text, r.text
+
+
+@pytest.mark.parametrize("variacion", VARIACIONES_GIGANTES)
+def test_variacion_gigante_se_rechaza_rapido(variacion) -> None:
+    """Sin tope `int(Decimal("1E+200000") * 100)` tarda segundos de CPU.
+
+    Se cronometra solo la validacion: la peticion entera suma la clave (Argon2), el hilo del
+    cliente y el recolector, que en un runner cargado pasaron de 3 s (CI del 01/11).
+    """
     import time
 
-    _usar(motor)
-    cliente = _con_clave()
     inicio = time.perf_counter()
-    r = cliente.post(ruta, json=_cuerpo(variacion_max=variacion))
+    with pytest.raises(ValueError, match="no puede pasar de 1000 %"):
+        aplicacion_simulador.variacion_de_texto(variacion)
     assert time.perf_counter() - inicio < 1
-    assert r.status_code == 422, r.text
 
 
 def test_variacion_vacia_no_es_decimal(motor) -> None:
