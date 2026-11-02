@@ -154,6 +154,7 @@ _MARCAS: tuple[str, ...] = (
     "tiempo real",
     "estado real",
     "plan real",
+    "contra real",  # IBCS: presupuesto contra real (lo ejecutado)
 )
 
 
