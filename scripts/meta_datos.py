@@ -146,6 +146,14 @@ _MARCAS: tuple[str, ...] = (
     "pdf de arenaza",
     "real-confidencial",
     "anonimizad",
+    # NORMAS (2026-10-18): los datos reales viven fuera del repositorio; decirlo no los presenta.
+    "en local",
+    "scratchpad",
+    # «Real» como termino de control de obra (valor ganado, recuperacion), no como dato.
+    "costo real",
+    "tiempo real",
+    "estado real",
+    "plan real",
 )
 
 

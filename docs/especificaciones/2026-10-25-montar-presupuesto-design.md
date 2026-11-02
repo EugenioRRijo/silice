@@ -38,7 +38,7 @@ que Sílice relea su propio Excel (O-24, va con la Fase 1 de auditoría), varias
 
 **Anti-metas:** que un precio cambie de moneda en silencio; que una conversión Bs/USD no diga su tasa y su fecha; que Sílice
 elija el precio por la persona; que una versión aprobada se pueda editar; que se pierda el rastro de quién aprobó qué; un `float`
-en dinero; tocar `core/`; subir al repositorio datos reales de la empresa (precios de la competencia incluidos).
+en dinero; tocar `core/`; subir al repositorio datos reales de la empresa (precios de la competencia incluidos), que van solo en local.
 
 ## 3. Restricciones y hechos del código
 
