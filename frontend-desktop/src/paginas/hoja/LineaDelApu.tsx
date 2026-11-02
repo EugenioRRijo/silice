@@ -1,6 +1,6 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import { InlineNotification } from "../../comun/carbonEs";
-import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -13,19 +13,20 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
-import { ContextoDeDialogos } from "./ContextoDeDialogos";
-import { DialogoDeVersion } from "./DialogoDeVersion";
 import { esBorradorAusente } from "./logica";
 import type { Resumen } from "./logica";
 import {
   TIPOS_DE_LINEA,
+  RUBROS,
   campoDelErrorDeLinea,
+  cuerpoDeInsumo,
   cuerpoDeLinea,
   grupoDelTipo,
+  rutaDeInsumo,
   rutaDeInsumos,
   rutaDeLineas,
 } from "./logicaApu";
-import type { CampoDeLinea, InsumoCandidato, InsumosRespuesta, LineaNueva, TipoDeLinea } from "./logicaApu";
+import type { CampoDeLinea, InsumoCandidato, InsumosRespuesta, LineaApu, LineaNueva, TipoDeLinea } from "./logicaApu";
 import { claseDeConflicto } from "./logicaSecciones";
 
 const ID = "hoja-apu-linea";
@@ -40,7 +41,9 @@ const ID_DE_CAMPO: Record<CampoDeLinea, string> = {
 };
 
 export const ELEGIR_UN_INSUMO = "Elija un insumo de la lista o escriba uno nuevo con «Insumo nuevo».";
+export const ELEGIR_DE_LA_LISTA = "Elija un insumo de la lista de precios de la versión.";
 const RECARGADO = "Ya se volvió a leer el borrador: puede agregar la línea otra vez.";
+const RECARGADO_AL_CAMBIAR = "Ya se volvió a leer el borrador: puede cambiar el insumo otra vez.";
 const AYUDA_INSUMO = "Busque en la lista de precios de la versión por una palabra de la descripción, por ejemplo «cemento».";
 const AYUDA_DEPRECIACION = "La fracción del precio que cuesta un día de uso, mayor que 0 y hasta 1; por ejemplo 0,005.";
 
@@ -82,7 +85,11 @@ export interface LineaAgregada {
   cantidad: string;
 }
 
+// Los dos modos del diálogo: agregar una línea nueva o cambiar el insumo de una que ya está (su tipo y su lugar vienen fijos).
+export type ModoDeLinea = { tipo: "agregar" } | { tipo: "cambiar"; linea: LineaApu };
+
 interface Props {
+  modo: ModoDeLinea;
   // El borrador y la partida cuyo APU se cambia.
   id: string;
   partida: string;
@@ -91,24 +98,29 @@ interface Props {
   anfitrion: HTMLElement;
   // El `rev` con que se manda: primero sale lo que la pestaña tenga por mandar.
   revActual: () => Promise<number>;
-  alAgregada: (linea: LineaAgregada) => void;
-  alCancelar: () => void;
+  // El servidor aceptó: su resumen y lo que la pestaña necesita para poner al día lo que se ve.
+  alAceptar: (linea: LineaAgregada) => void;
+  alCerrar: () => void;
   alAusente: () => void;
   // Vuelve a leer el borrador (su `rev`) y el APU, tras un 409 por `rev` viejo.
   alReleer: () => Promise<void>;
 }
 
-// «Agregar línea» (Tarea 26, diseño de montar un presupuesto §11 meta 5): para solventar una crisis de precio o de material
-// se agrega al APU de la versión un insumo de su lista de precios (con su precio) o uno nuevo con su precio tecleado. Lo
-// escrito viaja tal cual y lo lee el servidor con la regla de las cifras; su error vuelve junto al campo que lo causó.
-// Diálogo propio (como «Agregar partida»): foco atrapado, Esc cierra (primero la lista del buscador) y, mientras va la
-// petición, no se cierra para no perder la respuesta.
-export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual, alAgregada, alCancelar, alAusente, alReleer }: Props) {
+// Por qué existe (Tarea 8 del plan F4): «Agregar línea» (Tarea 26, diseño de montar un presupuesto §11 meta 5) y «Cambiar el
+// insumo de una línea» (E7) eran dos formularios que pedían casi lo mismo; ahora son un solo diálogo con dos modos, y lo usa
+// `EditorDeApu` en la pestaña APU y en el panel lateral. Agregar: un insumo de la lista de precios de la versión (con su
+// precio) o uno nuevo con su precio tecleado. Cambiar: el tipo y la línea vienen fijos y solo se pide el insumo nuevo, de la
+// lista de la versión; la línea conserva su cantidad. Lo escrito viaja tal cual y lo lee el servidor con la regla de las
+// cifras; su error vuelve junto al campo que lo causó. Diálogo propio (como «Agregar partida»): foco atrapado, Esc cierra
+// (primero la lista del buscador) y, mientras va la petición, no se cierra para no perder la respuesta. Pasa de 250 líneas
+// porque es un formulario con dos modos que comparten estado, errores y foco; separarlos repetiría ese manejo.
+export function LineaDelApu({ modo, id, partida, moneda, anfitrion, revActual, alAceptar, alCerrar, alAusente, alReleer }: Props) {
   const { alExpirar } = useAplicacion();
+  const cambiando = modo.tipo === "cambiar";
   const caja = useRef<HTMLDivElement>(null);
   const atrapar = useAtraparFoco(caja);
   const idTitulo = useId();
-  const [tipo, setTipo] = useState<TipoDeLinea>("material");
+  const [tipo, setTipo] = useState<TipoDeLinea>(modo.tipo === "cambiar" ? (RUBROS[modo.linea.grupo]?.tipo ?? "material") : "material");
   const [texto, setTexto] = useState("");
   const [elegido, setElegido] = useState<InsumoCandidato | null>(null);
   // La descripción de un insumo nuevo (elegido con «Insumo nuevo «X»»).
@@ -150,8 +162,8 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
   }, [enviando, errores, nuevo]);
 
   const cancelar = useCallback(() => {
-    if (!enviando) alCancelar();
-  }, [alCancelar, enviando]);
+    if (!enviando) alCerrar();
+  }, [alCerrar, enviando]);
 
   const alTeclear = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape") {
@@ -175,11 +187,11 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
     modalidad: tipo === "mano_obra" ? modalidad : "jornal",
   });
 
-  async function agregar(evento: FormEvent) {
+  async function aceptar(evento: FormEvent) {
     evento.preventDefault();
     if (enviando) return;
-    if (elegido === null && nuevo === null) {
-      setErrores({ ...SIN_ERRORES, insumo: ELEGIR_UN_INSUMO });
+    if (elegido === null && (cambiando || nuevo === null)) {
+      setErrores({ ...SIN_ERRORES, insumo: cambiando ? ELEGIR_DE_LA_LISTA : ELEGIR_UN_INSUMO });
       focoPendiente.current = ID_INSUMO;
       return;
     }
@@ -188,11 +200,17 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
     const escrita = linea();
     try {
       const rev = await revActual();
-      const r = await pedir<{ rev: number; resumen: Resumen }>(rutaDeLineas(id, partida), {
-        metodo: "POST",
-        cuerpo: cuerpoDeLinea(rev, escrita),
-      });
-      alAgregada({
+      const r =
+        modo.tipo === "cambiar" && elegido !== null
+          ? await pedir<{ rev: number; resumen: Resumen }>(rutaDeInsumo(id, partida), {
+              metodo: "POST",
+              cuerpo: cuerpoDeInsumo(rev, tipo, modo.linea.indice, elegido.codigo),
+            })
+          : await pedir<{ rev: number; resumen: Resumen }>(rutaDeLineas(id, partida), {
+              metodo: "POST",
+              cuerpo: cuerpoDeLinea(rev, escrita),
+            });
+      alAceptar({
         resumen: r.resumen,
         grupo: grupoDelTipo(tipo),
         descripcion: elegido?.descripcion ?? nuevo ?? "",
@@ -202,14 +220,14 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
       if (e instanceof ErrorDeApi && e.estado === 401) {
         alExpirar();
       } else if (esBorradorAusente(e)) {
-        alCancelar();
+        alCerrar();
         alAusente();
       } else if (e instanceof ErrorDeApi && e.estado === 422) {
         const campo = campoDelErrorDeLinea(e.detalle);
         setErrores({ ...SIN_ERRORES, [campo ?? "general"]: e.detalle });
         focoPendiente.current = campo === null ? ID_DIALOGO : ID_DE_CAMPO[campo];
       } else if (e instanceof ErrorDeApi && e.estado === 409 && claseDeConflicto(e.detalle) === "rev") {
-        setErrores({ ...SIN_ERRORES, general: `${e.detalle} ${RECARGADO}` });
+        setErrores({ ...SIN_ERRORES, general: `${e.detalle} ${cambiando ? RECARGADO_AL_CAMBIAR : RECARGADO}` });
         focoPendiente.current = ID_DIALOGO;
         await alReleer();
       } else {
@@ -257,30 +275,34 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
         className="silice-hoja__dialogo silice-hoja__dialogo--operacion"
       >
         <h2 id={idTitulo} className="cds--type-heading-compact-02">
-          Agregar línea al APU
+          {modo.tipo === "cambiar" ? `Cambiar el insumo de ${modo.linea.descripcion}` : "Agregar una línea"}
         </h2>
         <p className="cds--type-body-compact-01">
-          Partida {partida}. La línea se agrega en la copia de esta versión; el catálogo no cambia.
+          {modo.tipo === "cambiar"
+            ? `Partida ${partida}, línea ${modo.linea.indice + 1} de ${RUBROS[modo.linea.grupo]?.enFrase ?? modo.linea.grupo}. Conserva su cantidad; el cambio es en la copia de esta versión.`
+            : `Partida ${partida}. La línea se agrega en la copia de esta versión; el catálogo no cambia.`}
         </p>
-        <form id={`${ID}-formulario`} className="silice-hoja__campos-operacion" noValidate onSubmit={(e) => void agregar(e)}>
-          <Select
-            id={`${ID}-tipo`}
-            labelText="Tipo de línea"
-            size="md"
-            value={tipo}
-            disabled={enviando}
-            onChange={(e) => {
-              setTipo(e.target.value as TipoDeLinea);
-              setTexto("");
-              setElegido(null);
-              setNuevo(null);
-              setErrores(SIN_ERRORES);
-            }}
-          >
-            {TIPOS_DE_LINEA.map((t) => (
-              <SelectItem key={t.valor} value={t.valor} text={t.rotulo} />
-            ))}
-          </Select>
+        <form id={`${ID}-formulario`} className="silice-hoja__campos-operacion" noValidate onSubmit={(e) => void aceptar(e)}>
+          {!cambiando && (
+            <Select
+              id={`${ID}-tipo`}
+              labelText="Tipo de línea"
+              size="md"
+              value={tipo}
+              disabled={enviando}
+              onChange={(e) => {
+                setTipo(e.target.value as TipoDeLinea);
+                setTexto("");
+                setElegido(null);
+                setNuevo(null);
+                setErrores(SIN_ERRORES);
+              }}
+            >
+              {TIPOS_DE_LINEA.map((t) => (
+                <SelectItem key={t.valor} value={t.valor} text={t.rotulo} />
+              ))}
+            </Select>
+          )}
           <CampoConBusqueda<InsumoCandidato>
             id={ID_INSUMO}
             etiqueta="Insumo"
@@ -299,19 +321,25 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
               setTexto(opcion.valor.descripcion);
               limpiar("insumo");
             }}
-            valorPropio={{
-              rotulo: (t) => `Insumo nuevo «${t.trim()}»`,
-              alUsar: (t) => {
-                setNuevo(t.trim());
-                setElegido(null);
-                setTexto(t.trim());
-                limpiar("insumo");
-                focoPendiente.current = tipo === "material" ? ID_DE_CAMPO.unidad : ID_DE_CAMPO.precio;
-              },
-            }}
+            valorPropio={
+              cambiando
+                ? undefined
+                : {
+                    rotulo: (t) => `Insumo nuevo «${t.trim()}»`,
+                    alUsar: (t) => {
+                      setNuevo(t.trim());
+                      setElegido(null);
+                      setTexto(t.trim());
+                      limpiar("insumo");
+                      focoPendiente.current = tipo === "material" ? ID_DE_CAMPO.unidad : ID_DE_CAMPO.precio;
+                    },
+                  }
+            }
             vacio={{
               titulo: "¿No lo encuentra?",
-              pasos: "Pruebe con otra palabra de la descripción o use «Insumo nuevo» para escribir su precio.",
+              pasos: cambiando
+                ? "Pruebe con otra palabra de la descripción: el insumo nuevo debe estar en la lista de precios de la versión."
+                : "Pruebe con otra palabra de la descripción o use «Insumo nuevo» para escribir su precio.",
             }}
             alExpirar={alExpirar}
             invalido={errores.insumo !== null}
@@ -327,7 +355,7 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
           )}
           {nuevo !== null && tipo === "material" && campoTexto("unidad", "Unidad", unidad, setUnidad, "Por ejemplo m3, kg o saco.")}
           {nuevo !== null && campoTexto("precio", rotuloDelPrecio(tipo, modalidad, moneda), precio, setPrecio, AYUDA_CIFRAS)}
-          {tipo === "mano_obra" && (
+          {!cambiando && tipo === "mano_obra" && (
             <Select
               id={`${ID}-modalidad`}
               labelText="Modalidad"
@@ -340,11 +368,11 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
               <SelectItem value="destajo" text="Destajo (por unidad de la partida)" />
             </Select>
           )}
-          {tipo === "equipo" && campoTexto("depreciacion", "Depreciación", depreciacion, setDepreciacion, AYUDA_DEPRECIACION)}
-          {campoTexto("cantidad", `Cantidad${unidadDeLaCantidad}`, cantidad, setCantidad, AYUDA_CIFRAS)}
+          {!cambiando && tipo === "equipo" && campoTexto("depreciacion", "Depreciación", depreciacion, setDepreciacion, AYUDA_DEPRECIACION)}
+          {!cambiando && campoTexto("cantidad", `Cantidad${unidadDeLaCantidad}`, cantidad, setCantidad, AYUDA_CIFRAS)}
         </form>
         <p className="cds--type-helper-text-01" aria-live="polite">
-          {enviando ? "Agregando la línea al borrador…" : ""}
+          {enviando ? (cambiando ? "Cambiando el insumo en el borrador…" : "Agregando la línea al borrador…") : ""}
         </p>
         {errores.general !== null && (
           <InlineNotification
@@ -352,7 +380,7 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
             role="alert"
             lowContrast
             hideCloseButton
-            title="No se agregó la línea"
+            title={cambiando ? "No se cambió el insumo" : "No se agregó la línea"}
             subtitle={errores.general}
           />
         )}
@@ -361,41 +389,11 @@ export function DialogoAgregarLinea({ id, partida, moneda, anfitrion, revActual,
             Cancelar
           </Button>
           <Button kind="primary" size="md" type="submit" form={`${ID}-formulario`} disabled={enviando}>
-            Agregar al APU
+            {cambiando ? "Usar este insumo" : "Agregar al APU"}
           </Button>
         </div>
       </div>
     </div>,
-    anfitrion,
-  );
-}
-
-interface PropsQuitar {
-  partida: string;
-  descripcion: string;
-  enFrase: string;
-  alQuitar: () => void;
-  alCancelar: () => void;
-}
-
-// «Quitar» de una línea: la confirmación de siempre de la Hoja (`DialogoDeVersion`), pintada fuera de la página, que queda
-// `inert` mientras está abierta.
-export function ConfirmarQuitarLinea({ partida, descripcion, enFrase, alQuitar, alCancelar }: PropsQuitar) {
-  const { anfitrion, registrar } = useContext(ContextoDeDialogos);
-  useEffect(() => {
-    registrar(1);
-    return () => registrar(-1);
-  }, [registrar]);
-  if (anfitrion === null) return null;
-  return createPortal(
-    <DialogoDeVersion
-      titulo="Quitar línea"
-      texto={`¿Quitar «${descripcion}» de ${enFrase} de ${partida}? Lo puede descartar antes de guardar.`}
-      textoConfirmar="Quitar"
-      textoCancelar="Cancelar"
-      alConfirmar={alQuitar}
-      alCancelar={alCancelar}
-    />,
     anfitrion,
   );
 }

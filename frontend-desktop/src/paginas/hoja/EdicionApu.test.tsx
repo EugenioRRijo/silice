@@ -515,9 +515,9 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
     await irAApu();
     await abrirInsumo();
     await userEvent.type(within(dialogoDeCambio()).getByRole("combobox", { name: "Insumo" }), " zzz ");
-    await screen.findByText("¿No lo encuentra?");
+    await screen.findByText("No encontramos «zzz».");
     expect(urlsDeInsumos().at(-1)).toMatch(/tipo=material&texto=zzz&limite=\d+$/);
-    expect(screen.queryByRole("option")).toBeNull();
+    expect(screen.getByText(/el insumo nuevo debe estar en la lista de precios de la versión/)).toBeInTheDocument();
   });
 
   test("la etiqueta de la búsqueda promete solo lo que E8 hace: filtrar por descripción, no por código", async () => {

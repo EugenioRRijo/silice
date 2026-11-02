@@ -6,15 +6,14 @@ import { pedir } from "../../api/cliente";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { cifrasEnTextoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { ConfirmarQuitarLinea, DialogoAgregarLinea } from "./AgregarLineaApu";
-import type { LineaAgregada } from "./AgregarLineaApu";
+import { ConfirmarQuitarLinea } from "./ConfirmarQuitarLinea";
+import { LineaDelApu } from "./LineaDelApu";
+import type { LineaAgregada, ModoDeLinea } from "./LineaDelApu";
 import { useFocoAlCerrar } from "./AgregarPartida";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
-import { CambioDeInsumo } from "./CambioDeInsumo";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { TablaDelRubro } from "./TablaDelRubro";
-import type { PorQuitar } from "./TablaDelRubro";
 import { VistaCarga } from "./VistaCarga";
 import { rutaDeVista } from "./logica";
 import type { BaseAbierta, BorradorAbierto, DetalleApu, Resumen, VistaApu } from "./logica";
@@ -32,7 +31,7 @@ import {
   textoDeEstado,
   ubicarErrorDeApu,
 } from "./logicaApu";
-import type { EdicionDeApu, UbicacionDeApu } from "./logicaApu";
+import type { EdicionDeApu, LineaApu, UbicacionDeApu } from "./logicaApu";
 import { useHojaDeLaObra } from "./ProveedorDeLaHoja";
 import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
@@ -43,7 +42,7 @@ import { usePuedeEditarLaHoja } from "./puedeEditar";
 // título, las tablas por rubro (`TablaDelRubro`), el rendimiento, agregar y quitar líneas, cambiar un insumo, el cierre, las
 // cifras y el estado de la partida. Sin `puedeEditar` (quien revisa, o un borrador de solo lectura) no pinta nada que
 // escriba (Tarea 2b). Pasa de 250 líneas porque el editor es uno solo: sus estados (lo escrito, la línea por quitar, el
-// diálogo de agregar) se comparten entre las tablas, el rendimiento y los diálogos; la Tarea 8 junta sus dos diálogos.
+// diálogo de las líneas) se comparten entre las tablas, el rendimiento y los diálogos; desde la Tarea 8 agregar y cambiar insumo son el modo de un solo diálogo (`LineaDelApu`).
 
 const ID_AGREGAR_LINEA = "hoja-apu-agregar-linea";
 const SIN_VERSION_GUARDADA = "Las líneas del APU se agregan y se quitan en una versión guardada.";
@@ -110,13 +109,24 @@ export function EditorDelDetalle({
   const conLineas = puedeEditar && !detalle.solo_lectura_insumos;
   const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
   const enfocar = useFocoAlCerrar();
-  const [porQuitar, setPorQuitar] = useState<PorQuitar | null>(null);
+  const [porQuitar, setPorQuitar] = useState<LineaApu | null>(null);
   // Mientras va la petición de quitar, la tabla no se edita: lo escrito tendría la forma del APU de antes.
   const [quitando, setQuitando] = useState(false);
   const [aviso, setAviso] = useState("");
 
-  const alAgregada = useCallback(
+  const [modo, setModo] = useState<ModoDeLinea>({ tipo: "agregar" });
+
+  const alAceptada = useCallback(
     ({ resumen, grupo, descripcion, cantidad }: LineaAgregada) => {
+      if (modo.tipo === "cambiar") {
+        // El insumo cambia y la línea conserva su cantidad: nada que resembrar; la vista se relee para el precio y el cierre.
+        alAceptar(resumen);
+        alRelectura();
+        setAviso(`Insumo de la línea ${modo.linea.indice + 1} cambiado: ${descripcion}.`);
+        cerrar(false);
+        enfocar(modo.linea.boton);
+        return;
+      }
       // La línea nueva va al final de su rubro: su cantidad entra en lo que se edita (lo demás se conserva).
       resembrar((escrito, yaAceptado) => ({
         estado: conLineaAgregada(escrito, grupo, cantidad),
@@ -127,8 +137,18 @@ export function EditorDelDetalle({
       setAviso(`Se agregó «${descripcion}» a ${RUBROS[grupo]?.enFrase ?? grupo} de ${detalle.codigo}.`);
       cerrar(true);
     },
-    [resembrar, alAceptar, alRelectura, cerrar, detalle.codigo],
+    [modo, resembrar, alAceptar, alRelectura, cerrar, enfocar, detalle.codigo],
   );
+
+  // Cerrar sin cambios: «Agregar línea» devuelve el foco a su botón; «Cambiar», al de la línea que lo abrió.
+  const alCerrarElDialogo = () => {
+    if (modo.tipo === "cambiar") {
+      cerrar(false);
+      enfocar(modo.linea.boton);
+    } else {
+      cerrar(true);
+    }
+  };
 
   const quitar = async () => {
     if (porQuitar === null) return;
@@ -194,6 +214,11 @@ export function EditorDelDetalle({
                 setAviso("");
                 setPorQuitar(linea);
               }}
+              alCambiarInsumo={(linea) => {
+                setAviso("");
+                setModo({ tipo: "cambiar", linea });
+                abrir();
+              }}
             />
           ))}
           {puedeEditar && (
@@ -207,6 +232,7 @@ export function EditorDelDetalle({
                 renderIcon={Add}
                 onClick={() => {
                   setAviso("");
+                  setModo({ tipo: "agregar" });
                   abrir();
                 }}
               >
@@ -232,9 +258,6 @@ export function EditorDelDetalle({
             alRestaurar={() => edicion.cambiar((previo) => cambiarRendimiento(previo, edicion.aceptado().rendimiento))}
           />
         </fieldset>
-        {puedeEditar && (
-          <CambioDeInsumo id={id} detalle={detalle} alCambiar={accionarEnOrden} alAusente={alAusente} alExpirar={alExpirar} />
-        )}
         {porQuitar !== null && (
           <ConfirmarQuitarLinea
             partida={detalle.codigo}
@@ -248,14 +271,15 @@ export function EditorDelDetalle({
           />
         )}
         {abierto && anfitrion !== null && (
-          <DialogoAgregarLinea
+          <LineaDelApu
+            modo={modo}
             id={id}
             partida={detalle.codigo}
             moneda={moneda}
             anfitrion={anfitrion}
             revActual={esperarEnvios}
-            alAgregada={alAgregada}
-            alCancelar={() => cerrar(true)}
+            alAceptar={alAceptada}
+            alCerrar={alCerrarElDialogo}
             alAusente={alAusente}
             alReleer={recargar}
           />
