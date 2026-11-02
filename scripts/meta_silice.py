@@ -91,6 +91,16 @@ REGRESION: dict[str, tuple[str, ...]] = {
 ARCHIVOS_REGRESION: tuple[str, ...] = tuple(
     sorted({nodo.partition("::")[0] for nodos in REGRESION.values() for nodo in nodos})
 )
+#: Rulings de reanclaje: archivo de regresion -> (commit desde el que se compara, ruling). El resto
+#: sigue contra `BASE_REGRESION`; un archivo reanclado no puede cambiar despues de su commit.
+REANCLAJES: dict[str, tuple[str, str]] = {
+    "tests/integration/test_composicion_extremo_a_extremo.py": (
+        "f2b3c5e5",
+        "ruling 2026-11-02: el retiro de Streamlit (F7) quito ui/ y el import de"
+        " composicion_desde_tablas paso a aplicacion.composicion; la prueba y sus cifras no cambian"
+        " (docs/bitacora/2026-11-01-recorrido-en-video.md)",
+    ),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -352,11 +362,29 @@ def _referencia_existe(ref: str) -> bool:
     return r is not None and r.returncode == 0
 
 
-def _diff_desde_base(rutas: Sequence[str]) -> tuple[bool, str | None]:
-    if not _referencia_existe(BASE_REGRESION):
-        return False, None
-    r = _git("diff", "--stat", f"{BASE_REGRESION}..HEAD", "--", *rutas)
-    return True, (r.stdout if r is not None and r.returncode == 0 else None)
+def bases_de_regresion(
+    rutas: Sequence[str], reanclajes: Mapping[str, tuple[str, str]]
+) -> dict[str, tuple[str, ...]]:
+    """Cada archivo con la base contra la que se compara: la de su reanclaje o `BASE_REGRESION`."""
+    bases: dict[str, list[str]] = {}
+    for ruta in rutas:
+        base = reanclajes[ruta][0] if ruta in reanclajes else BASE_REGRESION
+        bases.setdefault(base, []).append(ruta)
+    return {base: tuple(grupo) for base, grupo in bases.items()}
+
+
+def _diff_desde_base(
+    rutas: Sequence[str], reanclajes: Mapping[str, tuple[str, str]] | None = None
+) -> tuple[bool, str | None]:
+    salidas: list[str] = []
+    for base, grupo in bases_de_regresion(rutas, reanclajes or {}).items():
+        if not _referencia_existe(base):
+            return False, None
+        r = _git("diff", "--stat", f"{base}..HEAD", "--", *grupo)
+        if r is None or r.returncode != 0:
+            return True, None
+        salidas.append(r.stdout)
+    return True, "".join(salidas)
 
 
 def _primer_commit(ruta: str) -> str | None:
@@ -405,7 +433,9 @@ def _c4(ctx: Contexto) -> tuple[Estado, str]:
 
 
 def _c5(ctx: Contexto) -> tuple[Estado, str]:
-    estado_diff = evaluar_diff_vacio("archivos de regresion", *_diff_desde_base(ARCHIVOS_REGRESION))
+    estado_diff = evaluar_diff_vacio(
+        "archivos de regresion", *_diff_desde_base(ARCHIVOS_REGRESION, REANCLAJES)
+    )
     presentes = {g: ids for g, ids in REGRESION.items() if all(_existe(i) for i in ids)}
     ausentes = [g for g in REGRESION if g not in presentes]
     ids = [i for grupo in presentes.values() for i in grupo]
