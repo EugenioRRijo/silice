@@ -13,7 +13,7 @@ import {
 } from "./datosDePlano";
 import { ImportarPlano } from "./ImportarPlano";
 import { olvidarImportaciones } from "./useImportacion";
-import type { Resumen } from "./logica";
+import type { Resumen } from "../hoja/logica";
 
 // Rebanada 3e-2 (frente): el flujo «Importar plano (DXF o IFC)» de la pestaña Espacio. El servidor se simula con las
 // respuestas del contrato (docs/bitacora/2026-10-20-hoja-3e-contrato-rutas.md, P1 a P6). Los literales (textos, conteos 33/0/9/6,

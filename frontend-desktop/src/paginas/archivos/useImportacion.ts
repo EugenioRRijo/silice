@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { mensajeDeError } from "../../comun/errores";
-import { esBorradorAusente } from "./logica";
-import type { Resumen } from "./logica";
+import { esBorradorAusente } from "../hoja/logica";
+import type { Resumen } from "../hoja/logica";
 import {
   AVISO_SIN_ARCHIVO,
   cuerpoDeAlturas,
@@ -26,7 +26,7 @@ import type {
   ResumenDeFusionRespuesta,
   ValoresDeCircuito,
 } from "./logicaPlano";
-import { claseDeConflicto } from "./logicaSecciones";
+import { claseDeConflicto } from "../hoja/logicaSecciones";
 
 // Lo que quedó de la última fusión: se muestra como «Informe de la última fusión» (ui/paginas/hoja.py:1479-1485).
 export interface FusionGuardada {

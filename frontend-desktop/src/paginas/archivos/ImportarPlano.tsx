@@ -6,9 +6,9 @@ import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
-import { AvisoDeEdicion } from "./AvisoDeEdicion";
-import { LARGO_DE_CELDA } from "./logica";
-import type { Resumen } from "./logica";
+import { AvisoDeEdicion } from "../hoja/AvisoDeEdicion";
+import { LARGO_DE_CELDA } from "../hoja/logica";
+import type { Resumen } from "../hoja/logica";
 import {
   AYUDA_ALTURAS,
   AYUDA_CIRCUITOS,

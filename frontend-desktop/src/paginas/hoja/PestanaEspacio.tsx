@@ -26,7 +26,7 @@ import type {
   UbicacionDeError,
   VistaEspacio,
 } from "./logica";
-import { ImportarPlano } from "./ImportarPlano";
+import { ImportarPlano } from "../archivos/ImportarPlano";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 import { usePuedeEditarLaHoja } from "./puedeEditar";
 

@@ -3,7 +3,7 @@
 // sus tildes. Lo que escribe la persona (alturas, circuitos) viaja como TEXTO, tal cual: la coma decimal la decide el
 // servidor. Aquí nada se convierte a número.
 import type { FilaDensa } from "../../comun/TablaDensa";
-import type { Resumen } from "./logica";
+import type { Resumen } from "../hoja/logica";
 
 export const ROTULO_IMPORTAR = "Importar plano (DXF o IFC)";
 export const ROTULO_LEER_PLANO = "Leer plano";

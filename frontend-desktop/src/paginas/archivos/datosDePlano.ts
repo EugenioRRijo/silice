@@ -2,7 +2,7 @@
 // Los conteos son los del caso OF-001 con su plano de muestra (tests/unit/test_ui_hoja_planos.py: 33 importados, 0 no reconocidos,
 // 9 aproximados, 6 pendientes; 48 líneas de informe; 6 alturas pendientes y 2 circuitos supuestos), escritos a mano. Todo ficticio.
 import type { ImportacionRespuesta, FilaDeInforme, ResumenDeFusionRespuesta } from "./logicaPlano";
-import type { Resumen } from "./logica";
+import type { Resumen } from "../hoja/logica";
 
 export const UNIDADES = ["m", "cm", "mm", "dm", "in", "ft"];
 

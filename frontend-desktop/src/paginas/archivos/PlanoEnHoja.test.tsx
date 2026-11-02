@@ -5,10 +5,10 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { importada, respuestaDeFusion } from "./datosDePlano";
-import { informeAuditoria, vistaEspacio } from "./datosDePrueba";
-import PaginaHoja from "./index";
+import { informeAuditoria, vistaEspacio } from "../hoja/datosDePrueba";
+import PaginaHoja from "../hoja/index";
 import { olvidarImportaciones } from "./useImportacion";
-import type { BorradorAbierto, VersionesRespuesta } from "./logica";
+import type { BorradorAbierto, VersionesRespuesta } from "../hoja/logica";
 
 // Rebanada 3e-2: el enganche del flujo «Importar plano» en la pestaña Espacio de la página. Tras fusionar, el borrador cambió:
 // la barra de estado toma el resumen nuevo y las tablas del espacio muestran las filas que entraron (3e-F3).
