@@ -119,7 +119,8 @@ const LLAVE_DEL_ESPACIO: FilaPresupuesto = {
 };
 
 function vista(filas: FilaPresupuesto[], total = { texto: "17913.00", exacto: "17913" }): VistaPresupuesto {
-  return { filas, total, moneda: "Bs", vacio_mensaje: filas.length === 0 ? SIN_RENGLONES : null };
+  const impuestos = { subtotal: total.texto, iva: "0.00", total: total.texto, alicuota: "0.16", fuente_alicuota: "Fuente ficticia" };
+  return { filas, total, moneda: "Bs", vacio_mensaje: filas.length === 0 ? SIN_RENGLONES : null, impuestos };
 }
 
 const HALLADAS = {

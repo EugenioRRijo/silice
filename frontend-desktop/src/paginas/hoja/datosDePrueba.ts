@@ -149,6 +149,8 @@ export function vistaPresupuesto(extra: Partial<VistaPresupuesto> = {}): VistaPr
     total: m("2703.86", "2703.8602323440440333"),
     moneda: "USD",
     vacio_mensaje: null,
+    // 2.703,86 x 0,16 = 432,6176 -> 432,62 (escrito a mano; el servidor lo calcula)
+    impuestos: { subtotal: "2703.86", iva: "432.62", total: "3136.48", alicuota: "0.16", fuente_alicuota: "Fuente ficticia de la alícuota" },
     ...extra,
   };
 }

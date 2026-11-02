@@ -134,11 +134,11 @@ describe("Presupuesto: subtotal, IVA y total con IVA (Tarea 5b)", () => {
     expect(within(region).getByText("Total con IVA").closest("p")).toHaveTextContent("Total con IVA 0,04 USD");
   });
 
-  test("la fuente de la alícuota está en «¿Qué es esto?», plegada hasta pulsarlo", async () => {
-    const region = await regionDelIva();
-    expect(within(region).queryByText(new RegExp("a cotejar con la Gaceta vigente"))).toBeNull();
-    await userEvent.click(within(region).getByRole("button", { name: "¿Qué es esto?" }));
-    expect(within(region).getByRole("region", { name: "IVA" })).toHaveTextContent(FUENTE);
+  test("la fuente de la alícuota está en el «¿Qué es esto?» de la pestaña, plegada hasta pulsarlo", async () => {
+    await regionDelIva();
+    expect(screen.queryByText(new RegExp("a cotejar con la Gaceta vigente"))).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" }));
+    expect(screen.getByRole("region", { name: "Partidas" })).toHaveTextContent(`Alícuota: 16 %. Fuente: ${FUENTE}.`);
   });
 
   test("quien revisa también lo ve", async () => {

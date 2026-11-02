@@ -27782,6 +27782,9 @@
               }
             ],
             "title": "Vacio Mensaje"
+          },
+          "impuestos": {
+            "$ref": "#/components/schemas/ImpuestosRespuesta"
           }
         },
         "type": "object",
@@ -27789,7 +27792,8 @@
           "filas",
           "total",
           "moneda",
-          "vacio_mensaje"
+          "vacio_mensaje",
+          "impuestos"
         ],
         "title": "VistaPresupuestoRespuesta"
       },

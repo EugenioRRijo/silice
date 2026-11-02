@@ -1,8 +1,8 @@
 """Tarea 5b del rediseño F4: la vista `presupuesto` del borrador trae el IVA sobre su total.
 
-El IVA se calcula con `aplicacion.impuestos.con_iva` sobre el total EXACTO de la vista, en la capa de la
-API (`aplicacion/hoja.py` está congelado por el experimento). El APU no cambia y `total` sigue siendo el
-costo sin IVA. Los oráculos están escritos a mano.
+El IVA se calcula con `aplicacion.impuestos.con_iva` sobre el total EXACTO de la vista, en la capa
+de la API (`aplicacion/hoja.py` está congelado por el experimento). El APU no cambia y `total` sigue
+siendo el costo sin IVA. Los oráculos están escritos a mano.
 """
 
 from __future__ import annotations

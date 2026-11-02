@@ -85,3 +85,15 @@ export function textoDelBoton(accion: AccionDelPresupuesto, enBlanco: boolean): 
       return "Enviar a aprobación…";
   }
 }
+
+// Tarea 5b: el IVA debajo del total del presupuesto. La fuente de la alícuota llega del servidor (`fuente_alicuota`) y se
+// cita en la ayuda «¿Qué es esto?», no en una nota suelta.
+export const TEXTOS_DEL_IVA = {
+  region: "IVA del presupuesto",
+  subtotal: "Subtotal",
+  iva: (porcentaje: string) => `IVA (${porcentaje} %)`,
+  totalConIva: "Total con IVA",
+  explicacion:
+    "El IVA se calcula sobre el total del presupuesto, nunca dentro del análisis de precio: el precio unitario y el total del presupuesto son costo sin IVA.",
+  fuente: (porcentaje: string, fuente: string) => `Alícuota: ${porcentaje} %. Fuente: ${fuente}.`,
+} as const;

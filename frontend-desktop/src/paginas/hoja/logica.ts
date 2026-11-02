@@ -3,6 +3,7 @@
 import { ErrorDeApi } from "../../api/cliente";
 import type { HallazgoInformeRespuesta, InformeAuditoriaRespuesta } from "../../api/tipos";
 import { leerCifra } from "../../indicadores/cifraEscrita";
+import type { Impuestos } from "../control/logica";
 
 export const TITULO = "Presupuesto";
 export const SIN_VERSIONES = "Esta obra aún no tiene versiones";
@@ -216,6 +217,8 @@ export interface VistaPresupuesto {
   total: Monto;
   moneda: string;
   vacio_mensaje: string | null;
+  // El IVA sobre `total` (Tarea 5b), calculado por el servidor; `total` sigue siendo el costo sin IVA.
+  impuestos: Impuestos;
 }
 
 export interface PartidaDeLista {

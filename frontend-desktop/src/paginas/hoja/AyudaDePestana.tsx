@@ -14,13 +14,16 @@ export function AyudaDePestana({
   id,
   puedeEditar,
   delServidor,
+  extra = [],
 }: {
   id: Exclude<PestanaId, "trazabilidad">;
   puedeEditar: boolean;
   delServidor?: string;
+  // Párrafos que la vista añade al final (Tarea 5b: la fuente de la alícuota del IVA, que llega del servidor).
+  extra?: string[];
 }): JSX.Element {
   const ayuda = AYUDAS[id];
-  const parrafos: string[] = [delServidor ?? ayuda.general, puedeEditar ? ayuda.alEditar : ""].filter((t) => t !== "");
+  const parrafos: string[] = [delServidor ?? ayuda.general, puedeEditar ? ayuda.alEditar : "", ...extra].filter((t) => t !== "");
   const titulo = PESTANAS.find((p) => p.id === id)!.titulo;
   return (
     <>

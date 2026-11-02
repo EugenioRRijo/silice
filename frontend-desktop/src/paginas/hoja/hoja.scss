@@ -18,6 +18,17 @@
   font-variant-numeric: tabular-nums;
 }
 
+// El IVA debajo del total (Tarea 5b): tres líneas de cifras alineadas y la ayuda plegada.
+.silice-hoja__iva {
+  display: grid;
+  gap: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-hoja__iva-linea {
+  margin: 0;
+}
+
 .silice-hoja__ausente {
   display: grid;
   gap: 0.75rem;

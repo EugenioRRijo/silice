@@ -11,6 +11,7 @@ import { AyudaDePestana } from "./AyudaDePestana";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
+import { IvaDelPresupuesto, parrafosDeAyudaDelIva } from "./IvaDelPresupuesto";
 import { useObjetivosDeMercado } from "./ObjetivoDeMercado";
 import { PanelDeApu } from "./PanelDeApu";
 import type { PartidaDelPanel } from "./PanelDeApu";
@@ -321,6 +322,7 @@ function EditorDePresupuesto({
       <p className="silice-hoja__total cds--type-heading-03">
         Total del presupuesto <Cifra monto={vista.total} unidad={vista.moneda} />
       </p>
+      {vista.filas.length > 0 && <IvaDelPresupuesto impuestos={vista.impuestos} moneda={vista.moneda} />}
       {porQuitar !== null && (
         <ConfirmarQuitar
           partida={porQuitar.partida}
@@ -380,9 +382,11 @@ function ContenidoPresupuesto(props: PropsContenido) {
     alRelectura();
   }, [alRecargarBorrador, alRelectura]);
 
+  // Sin partidas no se pinta el IVA ni su ayuda (Tarea 5b).
+  const conIva = vista.filas.length > 0;
   return (
     <div className="silice-hoja__pestana">
-      <AyudaDePestana id="partidas" puedeEditar={puedeEditar} />
+      <AyudaDePestana id="partidas" puedeEditar={puedeEditar} extra={conIva ? parrafosDeAyudaDelIva(vista.impuestos) : []} />
       {puedeEditar && (
         <>
       <div className="silice-hoja__acciones">
