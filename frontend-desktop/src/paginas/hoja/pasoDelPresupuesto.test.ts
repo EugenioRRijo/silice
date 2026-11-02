@@ -94,6 +94,36 @@ describe("pasoDelPresupuesto: las reglas en su orden", () => {
   });
 });
 
+// Ronda 2 del árbitro: cada caso de arriba parte de «guardada» y de la vigente abierta, así que no fija el orden de las
+// reglas 3 a 7. Estos cruzan dos reglas a la vez; gana la de número menor.
+describe("pasoDelPresupuesto: precedencia de las reglas 3 a 7", () => {
+  const GRAVES_2 = { tipo: "falta", texto: "Hay 2 hallazgos graves: revíselos antes de enviar", accion: "ver_revision" };
+
+  test.each(["devuelta", "en_aprobacion", "aprobada"])("3 gana a la aprobación %s", (aprobacion) => {
+    expect(pasoDelPresupuesto(con({ graves: 2, aprobacion }))).toEqual(GRAVES_2);
+  });
+
+  test("3 gana a la versión abierta distinta de la vigente (7)", () => {
+    expect(pasoDelPresupuesto(con({ graves: 2, version: "001", vigente: "002" }))).toEqual(GRAVES_2);
+  });
+
+  test("4 gana a la versión abierta distinta de la vigente (7)", () => {
+    expect(pasoDelPresupuesto(con({ aprobacion: "devuelta", version: "001", vigente: "002" }))).toEqual({
+      tipo: "falta",
+      texto: "La versión 001 fue devuelta: corrija lo observado",
+      accion: "version_nueva",
+    });
+  });
+
+  test("5 gana a la versión abierta distinta de la vigente (7)", () => {
+    expect(pasoDelPresupuesto(con({ aprobacion: "en_aprobacion", version: "001", vigente: "002" }))).toEqual({
+      tipo: "siguiente",
+      texto: "La versión 001 espera dictamen",
+      accion: null,
+    });
+  });
+});
+
 describe("pasoDelPresupuesto: sin permiso el texto se queda y la acción se va (Foco 3)", () => {
   test("1 sin puedeEditar: sin agregar", () => {
     expect(pasoDelPresupuesto(con({ version: null, vigente: null, aprobacion: null, puedeEditar: false }))).toEqual({
