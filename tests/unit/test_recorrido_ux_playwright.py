@@ -117,7 +117,8 @@ def test_cada_ruta_se_lee_del_registro_sin_modulos() -> None:
     # riesgo (T16)
     assert len(rutas) == 32
     assert "inicio" not in rutas
-    assert rutas["hoja"]["titulo"] == "Hoja de la obra"
+    # F4, Tarea 4 (baja 7): la pantalla de la Hoja se titula «Presupuesto».
+    assert rutas["hoja"]["titulo"] == "Presupuesto"
     # F4 2b (Eugenio, 2026-10-31): quien revisa ve la Hoja en solo lectura; la pantalla pide
     # leer_proyecto y lo que escribe lo decide puedeEditarLaHoja (y la API, editar_hoja).
     assert rutas["hoja"]["accion"] == "leer_proyecto"
