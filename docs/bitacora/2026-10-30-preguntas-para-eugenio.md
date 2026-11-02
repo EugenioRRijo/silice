@@ -177,3 +177,12 @@ Las siete del Presupuesto. Cinco van en su propio commit y se deshacen con `git 
 | Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
 |---|---|---|---|---|
 | (fusión del inventario) | Bloque plegado «Cambiar el insumo de una línea (en la copia de esta versión)» (`CambioDeInsumo.tsx`, con su tipo, línea, búsqueda y «Usar este insumo») | `4ca6b4d0` (con el `refactor`) | «Cambiar» en cada línea del APU, que abre el diálogo «Cambiar el insumo de <línea>» (`LineaDelApu.tsx`) | `git revert 4ca6b4d0` |
+
+### Traslado y baja de F4 (Tarea 11, 2026-11-02)
+
+`knip` y `jscpd` no están instalados en este `node_modules`: se midió con `grep` (nada nombra ya `ocupadoPorEdicion`, `ROTULO_IMPORTAR`, `ETIQUETA_DE_SUBIDA` ni `silice-hoja__bloqueable`) y `npm run lint` (eslint y tsc) en 0.
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| (traslado del inventario) | Bloque «Importar plano (DXF o IFC)» de la pestaña «Espacio y metrajes» (en su lugar, el enlace «Importar un plano en Archivos y planos»), el bloqueo de las tablas del espacio mientras se fusionaba y `ocupadoPorEdicion` | `d8ca1a07` (mueve los archivos a `paginas/archivos/`, sin cambios) y `bcb0cae1` (el retiro, con el `feat`) | Archivos y planos › «Subir plano o cómputo» (`paginas/archivos/SubirArchivo.tsx` e `ImportarPlano.tsx`) | `git revert bcb0cae1` (deshace la sección entera; el bloque vuelve a Espacio) |
+| 22 | «Libro de la empresa» como parte de la obra | sin commit (no cambia código) | Empresa › Auditar un presupuesto; Archivos y planos no ofrece el libro ni las carpetas | — |
