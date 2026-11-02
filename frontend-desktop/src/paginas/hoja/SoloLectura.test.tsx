@@ -168,7 +168,7 @@ const QUE_ESCRIBEN = [
   "Guardar primera versión…",
   "Descartar cambios",
   "Agregar línea",
-  "Cambiar el insumo de una línea",
+  "Cambiar el insumo de",
   "Usar este insumo",
   "Plan desde los rendimientos",
   "Agregar fila",

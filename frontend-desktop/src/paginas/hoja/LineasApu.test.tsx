@@ -183,7 +183,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
 
   const regionDeEstado = () => screen.getByRole("region", { name: "Estado del borrador" });
   const campo = (nombre: string | RegExp) => screen.getByRole("textbox", { name: nombre });
-  const dialogo = () => screen.getByRole("dialog", { name: "Agregar línea al APU" });
+  const dialogo = () => screen.getByRole("dialog", { name: "Agregar una línea" });
 
   async function abrirDialogo() {
     await userEvent.click(screen.getByRole("button", { name: "Agregar línea" }));
@@ -206,7 +206,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     expect(within(caja).getByRole("combobox", { name: "Insumo" })).toHaveFocus();
     expect(within(caja).getByRole("combobox", { name: "Tipo de línea" })).toHaveValue("material");
     await userEvent.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog", { name: "Agregar línea al APU" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Agregar una línea" })).toBeNull();
     await vi.waitFor(() => expect(screen.getByRole("button", { name: "Agregar línea" })).toHaveFocus());
     expect(altas()).toHaveLength(0);
   });
@@ -487,7 +487,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
 
   test("los archivos de las líneas del APU no convierten cifras (sin Number, parseFloat, toFixed ni + unario)", () => {
     const fuentes = import.meta.glob("./*.{ts,tsx}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
-    for (const ruta of ["./logicaApu.ts", "./PestanaApu.tsx", "./AgregarLineaApu.tsx"]) {
+    for (const ruta of ["./logicaApu.ts", "./PestanaApu.tsx", "./LineaDelApu.tsx"]) {
       expect(Object.keys(fuentes), ruta).toContain(ruta);
       expect(fuentes[ruta], ruta).not.toMatch(
         /\bNumber\s*\(|\bparseFloat\s*\(|\bparseInt\s*\(|\.toFixed\s*\(|(?:[=(,:?]|\breturn)\s*\+\s*[A-Za-z_$(]/,
