@@ -12,6 +12,9 @@ import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
 import { useObjetivosDeMercado } from "./ObjetivoDeMercado";
+import { PanelDeApu } from "./PanelDeApu";
+import type { PartidaDelPanel } from "./PanelDeApu";
+import { useHojaDeLaObra } from "./ProveedorDeLaHoja";
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
@@ -48,6 +51,8 @@ interface Props {
 interface PropsContenido extends Props {
   vista: VistaPresupuesto;
   alRelectura: () => void;
+  // Tarea 7 del plan F4: el código de una fila abre su APU en el panel lateral.
+  alAbrirApu: (p: PartidaDelPanel) => void;
 }
 
 interface PropsEditor extends PropsContenido {
@@ -97,6 +102,7 @@ function EditorDePresupuesto({
   alQuitada,
   enfocar,
   puedeEditar,
+  alAbrirApu,
 }: PropsEditor) {
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
@@ -164,8 +170,21 @@ function EditorDePresupuesto({
             clave: "partida",
             titulo: "Partida",
             ordenable: false,
-            // El código no se parte en líneas («C-000.000.001» salía en dos).
-            celda: (f) => <span className="silice-hoja__codigo">{f.partida}</span>,
+            // El código no se parte en líneas («C-000.000.001» salía en dos). Con precio, abre su APU en el panel (Tarea 7;
+            // también para quien revisa: es lectura). Sin precio no hay APU que abrir (el servidor daría el de otra partida).
+            celda: (f) =>
+              f.pu_texto === "" ? (
+                <span className="silice-hoja__codigo">{f.partida}</span>
+              ) : (
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  aria-label={`Abrir el APU de ${f.partida}`}
+                  onClick={() => alAbrirApu({ partida: f.partida!, descripcion: f.descripcion ?? "", unidad: f.unidad ?? "" })}
+                >
+                  <span className="silice-hoja__codigo">{f.partida}</span>
+                </Button>
+              ),
           },
           { clave: "descripcion", titulo: "Descripción", ordenable: false },
           { clave: "unidad", titulo: "Unidad", ordenable: false, celda: (f) => unidadEscrita(f.unidad ?? "") },
@@ -404,9 +423,31 @@ export function PestanaPresupuesto(props: Props) {
   // Sube cada vez que hay que volver a leer la vista tras una edición: la anterior sigue a la vista mientras llega.
   const [lecturas, setLecturas] = useState(0);
   const alRelectura = useCallback(() => setLecturas((n) => n + 1), []);
+  // Tarea 7 del plan F4: el APU de una partida en el panel lateral, junto a la tabla. La partida queda elegida en el
+  // proveedor, así que la pestaña APU la muestra; una edición en el panel vuelve a leer la tabla (su total cambia).
+  const { elegirPartida } = useHojaDeLaObra();
+  const [enPanel, setEnPanel] = useState<PartidaDelPanel | null>(null);
+  const alAbrirApu = useCallback(
+    (p: PartidaDelPanel) => {
+      elegirPartida(p.partida);
+      setEnPanel(p);
+    },
+    [elegirPartida],
+  );
+  const { alAceptar } = props;
+  const alAceptarDelApu = useCallback(
+    (r: Resumen) => {
+      alAceptar(r);
+      alRelectura();
+    },
+    [alAceptar, alRelectura],
+  );
   return (
-    <VistaCarga<VistaPresupuesto> ruta={rutaDeVista(props.id, "presupuesto")} etiqueta="Presupuesto" alAusente={props.alAusente} recarga={lecturas}>
-      {(vista) => <ContenidoPresupuesto {...props} vista={vista} alRelectura={alRelectura} />}
-    </VistaCarga>
+    <div className={enPanel === null ? undefined : "silice-con-panel"}>
+      <VistaCarga<VistaPresupuesto> ruta={rutaDeVista(props.id, "presupuesto")} etiqueta="Presupuesto" alAusente={props.alAusente} recarga={lecturas}>
+        {(vista) => <ContenidoPresupuesto {...props} vista={vista} alRelectura={alRelectura} alAbrirApu={alAbrirApu} />}
+      </VistaCarga>
+      <PanelDeApu abierta={enPanel} alCerrar={() => setEnPanel(null)} alAceptar={alAceptarDelApu} />
+    </div>
   );
 }

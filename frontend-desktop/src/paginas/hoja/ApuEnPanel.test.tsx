@@ -103,6 +103,10 @@ function apu(partida: string | null): VistaApu {
 
 type Cuerpo = Record<string, unknown> & { rev: number };
 
+// jsdom no dibuja: se compila el SCSS real. La ruta va en una variable (con el literal, Vite reescribe el `new URL` como
+// recurso; ver `componer/estilosComponer.test.ts`).
+const compilar = (ruta: string) => sass.compile(fileURLToPath(new URL(ruta, import.meta.url))).css;
+
 describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let total: string;
@@ -259,13 +263,13 @@ describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => 
     expect(conPanel!.contains(caja)).toBe(true);
     expect(panel).toHaveClass("silice-panel-lateral", "silice-panel-lateral--ancho");
 
-    const hoja = sass.compile(fileURLToPath(new URL("./hoja.scss", import.meta.url))).css;
+    const hoja = compilar("./hoja.scss");
     expect(hoja).toMatch(/\.silice-hoja__desplazable\s*\{[^}]*overflow-x:\s*auto/);
     // Ni la pestaña ni el contenedor fijan un ancho: se encogen hasta el visible.
     const pestana = /\.silice-hoja__pestana\s*\{([^}]*)\}/.exec(hoja)?.[1] ?? "";
     expect(pestana).toMatch(/min-inline-size:\s*0/);
     expect(pestana).not.toMatch(/(?:^|[;\s])(?:inline-size|width|min-width):\s*[1-9]/);
-    const panelCss = sass.compile(fileURLToPath(new URL("../../comun/PanelLateral.scss", import.meta.url))).css;
+    const panelCss = compilar("../../comun/PanelLateral.scss");
     expect(panelCss).toMatch(/\.silice-con-panel\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto/);
     const muyGrande = /@media \(max-width: 1919\.98px\)\s*\{[\s\S]*?html\[data-silice-letra=["']?muy-grande["']?\] \.silice-panel-lateral--ancho\s*\{([^}]*)\}/.exec(
       panelCss,

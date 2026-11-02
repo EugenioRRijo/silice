@@ -115,6 +115,13 @@
   min-inline-size: 0;
 }
 
+// El APU en el panel lateral de «Partidas» (Tarea 7 de F4): sin lista, el editor y el cierre uno bajo el otro.
+.silice-hoja__apu-en-panel {
+  display: grid;
+  gap: 1.5rem;
+  min-inline-size: 0;
+}
+
 // Las líneas y el rendimiento del APU van en un fieldset (se deshabilita mientras se quita una línea, Tarea 26): sin marco
 // ni sangría, con el mismo espaciado que la columna.
 .silice-hoja__sin-marco {
