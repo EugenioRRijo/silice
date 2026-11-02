@@ -1,4 +1,4 @@
-import { configure, render, screen, waitFor, within } from "@testing-library/react";
+import { configure, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
@@ -9,7 +9,6 @@ import {
   cuerpoDeVista,
   informeAuditoria,
   preciosRespuesta,
-  trazabilidadRespuesta,
   vistaEquilibrio,
 } from "./datosDePrueba";
 import PaginaHoja from "./index";
@@ -73,11 +72,10 @@ interface Propias {
   vistas?: Partial<Record<"espacio" | "presupuesto" | "equilibrio" | "parametros" | "auditoria", Respuesta>>;
   precios?: Respuesta;
   atipicos?: Respuesta;
-  trazabilidad?: Respuesta;
   version?: string | null;
 }
 
-describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazabilidad (3b-3)", () => {
+describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría y Precios (3b-3)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
 
@@ -103,7 +101,6 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
       }
       if (url.startsWith("/v1/hoja/precios/atipicos")) return (propias.atipicos ?? (() => json(atipicosRespuesta())))(url);
       if (url.startsWith("/v1/hoja/precios")) return (propias.precios ?? (() => json(preciosRespuesta())))(url);
-      if (url.startsWith("/v1/hoja/trazabilidad")) return (propias.trazabilidad ?? (() => json(trazabilidadRespuesta())))(url);
       return new Response(null, { status: 204 });
     });
   }
@@ -490,110 +487,9 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     expect(screen.getByRole("table", { name: "Precios" })).toBeInTheDocument();
   });
 
-  // --- Trazabilidad -------------------------------------------------------------------------------
+  // --- navegación de las pestañas -----------------------------------------------------------------
 
-  test("Trazabilidad: sin versión abierta lo dice y no pide nada", async () => {
-    servidor({ version: null });
-    montar();
-    await irA("Trazabilidad");
-    expect(
-      await screen.findByText("Abra una versión guardada para ver su historial y sus registros de cambio."),
-    ).toBeInTheDocument();
-    expect(pedidas("/v1/hoja/trazabilidad")).toEqual([]);
-  });
-
-  test("3b-F11: las versiones del proyecto, con «elaborada» donde no hay motivo y la vigente dicha en texto", async () => {
-    servidor();
-    montar();
-    await irA("Trazabilidad");
-    const tabla = await screen.findByRole("table", { name: "Versiones del proyecto" });
-    expect(within(tabla).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
-      "Versión",
-      "Fecha",
-      "Motivo",
-      "Sale de",
-      "Cambios",
-      "Vigente",
-    ]);
-    const filas = within(tabla).getAllByRole("row");
-    expect(filas).toHaveLength(3);
-    expect(within(filas[1]!).getByText("001")).toBeInTheDocument();
-    expect(within(filas[1]!).getByText("05/10/2026")).toBeInTheDocument();
-    expect(within(filas[1]!).getByText("elaborada")).toBeInTheDocument();
-    expect(within(filas[2]!).getByText("edicion")).toBeInTheDocument();
-    expect(within(filas[2]!).getByText("Sí")).toBeInTheDocument();
-    expect(within(filas[1]!).queryByText("Sí")).toBeNull();
-    expect(screen.getByRole("heading", { level: 2, name: "Versiones del proyecto" })).toHaveClass(
-      "cds--type-heading-compact-02",
-    );
-  });
-
-  test("3b-F11: el registro de cambios de la versión abierta, con la clave en palabras y la hora legible", async () => {
-    servidor();
-    montar();
-    await irA("Trazabilidad");
-    expect(await screen.findByRole("heading", { level: 2, name: "Registro de cambios de la versión 002" })).toBeInTheDocument();
-    const tabla = screen.getByRole("table", { name: "Registro de cambios de la versión 002" });
-    expect(within(tabla).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
-      "Objeto",
-      "Clave",
-      "Campo",
-      "Antes",
-      "Después",
-      "Fuente",
-      "Responsable",
-      "Fecha y hora",
-    ]);
-    const fila = within(tabla).getAllByRole("row")[1]!;
-    expect(within(fila).getByText("AF-LLAVE, Fuente F1, Fuente FC1, Punto P1, Punto P2, Punto PC1")).toHaveAttribute(
-      "title",
-      "AF-LLAVE|esp_fuentes:F1;esp_fuentes:FC1;esp_puntos:P1;esp_puntos:P2;esp_puntos:PC1",
-    );
-    expect(within(fila).queryByText(/esp_/)).toBeNull();
-    expect(within(fila).getByText("3")).toBeInTheDocument();
-    expect(within(fila).getByText("5")).toBeInTheDocument();
-    expect(within(fila).getByText("Plano revisado en obra")).toBeInTheDocument();
-    expect(within(fila).getByText("Ana Pérez <ana>")).toBeInTheDocument();
-    expect(within(fila).getByText("06/10/2026 09:30:00")).toBeInTheDocument();
-  });
-
-  test("3b-F11: una versión que no nació de una edición dice por qué no hay registros, sin tabla vacía", async () => {
-    const mensaje = "Esta versión no nació de una edición: no tiene registros de cambio.";
-    servidor({ trazabilidad: () => json(trazabilidadRespuesta({ registros: [], vacio_mensaje: mensaje })) });
-    montar();
-    await irA("Trazabilidad");
-    expect(await screen.findByText(mensaje)).toBeInTheDocument();
-    expect(screen.getByRole("table", { name: "Versiones del proyecto" })).toBeInTheDocument();
-    expect(screen.queryByRole("table", { name: /Registro de cambios/ })).toBeNull();
-  });
-
-  test("Trazabilidad: un error de la vista se muestra tal cual", async () => {
-    servidor({ trazabilidad: () => json({ detalle: "El proyecto «OF-001» no existe en este caso." }, 404) });
-    montar();
-    await irA("Trazabilidad");
-    expect(await screen.findByText("El proyecto «OF-001» no existe en este caso.")).toBeInTheDocument();
-  });
-
-  test("Trazabilidad: un 401 llama a alExpirar", async () => {
-    servidor({ trazabilidad: () => json({ detalle: "Inicie sesión." }, 401) });
-    montar();
-    await irA("Trazabilidad");
-    await waitFor(() => expect(alExpirar).toHaveBeenCalled());
-  });
-
-  test("Trazabilidad: lo escrito va como texto plano, no como Markdown", async () => {
-    const registro = { ...trazabilidadRespuesta().registros[0]!, despues: "![x](http://ejemplo.invalid/b.png)" };
-    servidor({ trazabilidad: () => json(trazabilidadRespuesta({ registros: [registro] })) });
-    montar();
-    await irA("Trazabilidad");
-    const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión 002" });
-    expect(within(tabla).getByText("![x](http://ejemplo.invalid/b.png)")).toBeInTheDocument();
-    expect(tabla.querySelector("img")).toBeNull();
-  });
-
-  // --- navegación de las nueve pestañas -----------------------------------------------------------
-
-  test("3b-F3: las ocho pestañas (siete sin espacio) son alcanzables con el teclado y ninguna es un marcador de lugar", async () => {
+  test("3b-F3: las siete pestañas (seis sin espacio) son alcanzables con el teclado y ninguna es un marcador de lugar", async () => {
     servidor();
     montar();
     await screen.findByRole("region", { name: "Estado del borrador" });
@@ -605,7 +501,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
       expect(screen.getByRole("tab", { name: titulos[i] })).toHaveFocus();
     }
     await userEvent.keyboard("{Enter}");
-    expect(screen.getByRole("tab", { name: "Trazabilidad", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Ajustes de costo", selected: true })).toBeInTheDocument();
     expect(screen.queryByText(/llega en la siguiente entrega/)).toBeNull();
   });
 
@@ -621,8 +517,6 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
     await screen.findByRole("region", { name: "Informe de auditoría" });
     await userEvent.click(screen.getByRole("tab", { name: "Precios" }));
     await screen.findByRole("table", { name: "Precios" });
-    await userEvent.click(screen.getByRole("tab", { name: "Trazabilidad" }));
-    await screen.findByRole("table", { name: "Versiones del proyecto" });
     expect(pedidas("/vistas/")).toEqual([
       `/v1/hoja/borradores/${ID}/vistas/espacio`,
       `/v1/hoja/borradores/${ID}/vistas/plan`,
@@ -631,6 +525,7 @@ describe("Hoja de la obra: Equilibrio, Parámetros, Auditoría, Precios y Trazab
       `/v1/hoja/borradores/${ID}/vistas/auditoria`,
     ]);
     expect(pedidas("/v1/hoja/precios")).toEqual(["/v1/hoja/precios?proyecto=OF-001&version=002"]);
-    expect(pedidas("/v1/hoja/trazabilidad")).toEqual(["/v1/hoja/trazabilidad?proyecto=OF-001&version=002"]);
+    // «Trazabilidad» salió con la baja 24 (Tarea 6): ninguna pestaña la pide.
+    expect(pedidas("/v1/hoja/trazabilidad")).toEqual([]);
   });
 });

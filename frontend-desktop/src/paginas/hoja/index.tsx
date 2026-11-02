@@ -27,7 +27,6 @@ import { PestanaAuditoria } from "./PestanaAuditoria";
 import { PestanaEquilibrio } from "./PestanaEquilibrio";
 import { PestanaEspacio } from "./PestanaEspacio";
 import { PestanaPrecios } from "./PestanaPrecios";
-import { PestanaTrazabilidad } from "./PestanaTrazabilidad";
 import { PestanaParametros } from "./PestanaParametros";
 import { PestanaPlan } from "./PestanaPlan";
 import { PestanaPresupuesto } from "./PestanaPresupuesto";
@@ -175,17 +174,6 @@ function ContenidoDePestana({
             cambios: borrador.resumen.cambios,
             alCrearVersion,
           }}
-        />
-      );
-    case "trazabilidad":
-      return (
-        <PestanaTrazabilidad
-          key={llave}
-          proyecto={borrador.base.proyecto}
-          version={borrador.base.version}
-          alAusente={alAusente}
-          cambios={borrador.resumen.cambios}
-          alCrearVersion={alCrearVersion}
         />
       );
   }

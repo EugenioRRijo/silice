@@ -10,8 +10,8 @@ export const SIN_VERSIONES = "Esta obra aún no tiene versiones";
 
 // Las pestañas del Presupuesto (Tarea 4 del plan F4): cada una con su id estable, que guarda el proveedor y que
 // usan las otras secciones para abrir una, y su título, que ve la persona. «Plan y equilibrio» junta lo que eran dos
-// (baja 23) y «Trazabilidad» se queda hasta que Versiones la absorba (Tarea 6).
-export type PestanaId = "espacio" | "partidas" | "apu" | "plan" | "precios" | "revision" | "ajustes" | "trazabilidad";
+// (baja 23); «Trazabilidad» salió con la baja 24 (Tarea 6): su historial vive en la sección Versiones.
+export type PestanaId = "espacio" | "partidas" | "apu" | "plan" | "precios" | "revision" | "ajustes";
 export interface PestanaDef {
   id: PestanaId;
   titulo: string;
@@ -25,7 +25,6 @@ export const PESTANAS: readonly PestanaDef[] = [
   { id: "precios", titulo: "Precios" },
   { id: "revision", titulo: "Revisión" },
   { id: "ajustes", titulo: "Ajustes de costo" },
-  { id: "trazabilidad", titulo: "Trazabilidad" },
 ];
 
 // «Espacio y metrajes» solo se ve si la obra tiene espacio (no es civil) o si la persona pidió describirlo (pregunta 3 del

@@ -150,7 +150,7 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     expect(JSON.parse(String(init?.body))).toEqual({ proyecto: "Nuevo", version: null });
   });
 
-  test("3b-F3: las ocho pestañas del plan de F4 (Tarea 4), en su orden, con las flechas", async () => {
+  test("3b-F3: las siete pestañas del plan de F4 (Tareas 4 y 6), en su orden, con las flechas", async () => {
     servidor();
     montar();
     const lista = await screen.findByRole("tablist");
@@ -163,7 +163,6 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
       "Precios",
       "Revisión",
       "Ajustes de costo",
-      "Trazabilidad",
     ]);
     expect(screen.getAllByRole("tabpanel").length).toBeGreaterThan(0);
     pestanas[0]!.focus();
@@ -185,16 +184,15 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
       "Precios",
       "Revisión",
       "Ajustes de costo",
-      "Trazabilidad",
     ]);
     expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Partidas");
   });
 
-  test("plan vial T19: con otro módulo apagado, la hoja conserva sus ocho pestañas y abre en Espacio y metrajes", async () => {
+  test("plan vial T19: con otro módulo apagado, la hoja conserva sus siete pestañas y abre en Espacio y metrajes", async () => {
     servidor();
     montar("OF-001", ["vial", "riesgo"]);
     const lista = await screen.findByRole("tablist");
-    expect(within(lista).getAllByRole("tab")).toHaveLength(8);
+    expect(within(lista).getAllByRole("tab")).toHaveLength(7);
     expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Espacio y metrajes");
   });
 

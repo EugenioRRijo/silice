@@ -16,7 +16,7 @@ export function AyudaDePestana({
   delServidor,
   extra = [],
 }: {
-  id: Exclude<PestanaId, "trazabilidad">;
+  id: PestanaId;
   puedeEditar: boolean;
   delServidor?: string;
   // Párrafos que la vista añade al final (Tarea 5b: la fuente de la alícuota del IVA, que llega del servidor).

@@ -68,7 +68,6 @@ const TITULOS_DE_UNA_OBRA_CIVIL = [
   "Precios",
   "Revisión",
   "Ajustes de costo",
-  "Trazabilidad",
 ];
 
 describe("Presupuesto: las pestañas de la Tarea 4", () => {
@@ -124,7 +123,7 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     await screen.findByRole("region", { name: "Estado del borrador" });
   });
 
-  test("una obra civil ve siete pestañas, con los títulos del plan y en su orden", async () => {
+  test("una obra civil ve seis pestañas, con los títulos del plan y en su orden", async () => {
     servidor(true);
     montar();
     const lista = await screen.findByRole("tablist", { name: "Secciones del presupuesto" });
@@ -322,7 +321,7 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     montar();
     const lista = await screen.findByRole("tablist", { name: "Secciones del presupuesto" });
     expect(within(lista).queryByRole("tab", { name: "Trazabilidad" })).toBeNull();
-    expect(within(lista).getAllByRole("tab")).toHaveLength(7);
+    expect(within(lista).getAllByRole("tab")).toHaveLength(7); // con «Espacio y metrajes»
     expect(fetchFalso.mock.calls.map(([r]) => String(r)).some((r) => r.startsWith("/v1/hoja/trazabilidad"))).toBe(false);
   });
 });

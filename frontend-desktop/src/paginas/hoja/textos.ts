@@ -17,7 +17,7 @@ export interface AyudaDePestana {
   cifras: boolean;
 }
 
-export const AYUDAS: Record<Exclude<PestanaId, "trazabilidad">, AyudaDePestana> = {
+export const AYUDAS: Record<PestanaId, AyudaDePestana> = {
   // La explicación de las tablas llega con la vista (`vista.ayuda`): aquí solo va lo de escribir.
   espacio: {
     general: "",

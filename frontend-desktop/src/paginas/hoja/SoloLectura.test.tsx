@@ -6,7 +6,7 @@ import { ofertaDe } from "../../marco/oferta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { paginaPorId, usable } from "../../shell/rutas";
-import { cuerpoDeVista, preciosRespuesta, trazabilidadRespuesta, vistaPresupuesto } from "./datosDePrueba";
+import { cuerpoDeVista, preciosRespuesta, vistaPresupuesto } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import { PESTANAS } from "./logica";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
@@ -113,8 +113,8 @@ const OBJETIVOS = {
 };
 
 // Las acciones sobre la versión GUARDADA: su regla es solo el permiso, no la base del borrador (Eugenio, 2026-10-31).
+// Restaurar se mudó a Versiones con la baja 24 (Tarea 6): lo prueba `paginas/versiones/Versiones.test.tsx`.
 const DE_LA_VERSION = [
-  "Restaurar una versión…",
   "Registrar una cotización…",
   "Retirar una cotización…",
   "Convertir la moneda…",
@@ -134,7 +134,6 @@ function servidor(soloLectura = false) {
     if (url.includes("/vistas/")) return json(cuerpoDeVista(url));
     if (url.startsWith("/v1/hoja/precios/atipicos")) return json({ disponible: false, mensaje: "", variaciones: [] });
     if (url.startsWith("/v1/hoja/precios")) return json(PRECIOS);
-    if (url.startsWith("/v1/hoja/trazabilidad")) return json(trazabilidadRespuesta());
     if (url.startsWith("/v1/hoja/cadena")) return json({ integra: true, mensaje: "La cadena está íntegra.", declaracion: null });
     if (url.startsWith("/v1/aprobaciones")) return json(APROBACIONES);
     if (url.startsWith("/v1/mercado/objetivos")) return json(OBJETIVOS);
@@ -202,7 +201,6 @@ const CARGADA: Record<string, string> = {
   Precios: "Evaluada al",
   Revisión: "Resultado:",
   "Ajustes de costo": "Utilidad",
-  Trazabilidad: "Versiones del proyecto",
 };
 
 async function irA(pestana: string) {
@@ -291,7 +289,6 @@ describe("Quien revisa ve el Presupuesto en solo lectura", () => {
     await screen.findByRole("region", { name: "Estado del borrador" });
     await irA("Precios");
     await irA("Ajustes de costo");
-    await irA("Trazabilidad");
     await screen.findByRole("region", { name: "Aprobación de la versión" });
     for (const nombre of DE_LA_VERSION) expect(screen.queryByRole("button", { name: nombre })).toBeNull();
   });
@@ -351,8 +348,6 @@ describe("Quien arma conserva sus controles", () => {
     expect(screen.getByRole("button", { name: "Plan desde los rendimientos" })).toBeInTheDocument();
     await irA("Ajustes de costo");
     expect(await screen.findByRole("button", { name: "Convertir la moneda…" })).toBeInTheDocument();
-    await irA("Trazabilidad");
-    expect(await screen.findByRole("button", { name: "Restaurar una versión…" })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: "Enviar a aprobación…" })).toBeInTheDocument());
   });
 
@@ -375,8 +370,6 @@ describe("Quien arma conserva sus controles", () => {
     expect(screen.getByRole("button", { name: "Retirar una cotización…" })).toBeInTheDocument();
     await irA("Ajustes de costo");
     expect(screen.getByRole("button", { name: "Convertir la moneda…" })).toBeInTheDocument();
-    await irA("Trazabilidad");
-    expect(screen.getByRole("button", { name: "Restaurar una versión…" })).toBeInTheDocument();
     // Lo que edita el borrador sigue sin pintarse.
     expect(screen.queryByRole("button", { name: /^Guardar/ })).toBeNull();
   });

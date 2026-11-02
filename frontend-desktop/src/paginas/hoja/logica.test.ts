@@ -32,7 +32,7 @@ function version(codigo: string, extra: Partial<VersionFila> = {}): VersionFila 
 }
 
 describe("lógica de la hoja del proyecto", () => {
-  test("las ocho pestañas, con su id y su título, van en el orden del plan de F4 (Tarea 4)", () => {
+  test("las siete pestañas, con su id y su título, van en el orden del plan de F4 (Tareas 4 y 6)", () => {
     expect(PESTANAS.map((p) => [p.id, p.titulo])).toEqual([
       ["espacio", "Espacio y metrajes"],
       ["partidas", "Partidas"],
@@ -41,23 +41,22 @@ describe("lógica de la hoja del proyecto", () => {
       ["precios", "Precios"],
       ["revision", "Revisión"],
       ["ajustes", "Ajustes de costo"],
-      ["trazabilidad", "Trazabilidad"],
     ]);
   });
 
   test("«Espacio y metrajes» se ve si el espacio no está vacío o si se pidió describirlo", () => {
     const ids = (r: { espacio_vacio?: boolean }, pedido: boolean) => pestanasVisibles(r, pedido).map((p) => p.id);
-    expect(ids({ espacio_vacio: true }, false)).toEqual(["partidas", "apu", "plan", "precios", "revision", "ajustes", "trazabilidad"]);
+    expect(ids({ espacio_vacio: true }, false)).toEqual(["partidas", "apu", "plan", "precios", "revision", "ajustes"]);
     expect(ids({ espacio_vacio: false }, false)[0]).toBe("espacio");
     expect(ids({ espacio_vacio: true }, true)[0]).toBe("espacio");
     // Los datos de prueba anteriores no traen la marca: se tratan como obra con espacio.
     expect(ids({}, false)[0]).toBe("espacio");
-    expect(ids({ espacio_vacio: false }, false)).toHaveLength(8);
+    expect(ids({ espacio_vacio: false }, false)).toHaveLength(7);
   });
 
   test("plan vial T19: con edificación apagada «Espacio y metrajes» no se ve nunca, ni pedido", () => {
     const ids = (r: { espacio_vacio?: boolean }, pedido: boolean) => pestanasVisibles(r, pedido, true).map((p) => p.id);
-    const sinEspacio = ["partidas", "apu", "plan", "precios", "revision", "ajustes", "trazabilidad"];
+    const sinEspacio = ["partidas", "apu", "plan", "precios", "revision", "ajustes"];
     expect(ids({ espacio_vacio: false }, false)).toEqual(sinEspacio);
     expect(ids({ espacio_vacio: true }, true)).toEqual(sinEspacio);
     expect(ids({}, true)).toEqual(sinEspacio);

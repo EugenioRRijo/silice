@@ -4,13 +4,15 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { atipicosRespuesta, cuerpoDeVista, preciosRespuesta, trazabilidadRespuesta, vistaParametros } from "./datosDePrueba";
+import { atipicosRespuesta, cuerpoDeVista, preciosRespuesta, vistaParametros } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, PreciosRespuesta, Resumen, VersionesRespuesta } from "./logica";
 
-// Rebanada 3d-2 (front): restaurar (S2), cotizar (S3), retirar (S4), convertir (S5) y la cadena de sellos (S6), contrato
+// Rebanada 3d-2 (front): cotizar (S3), retirar (S4) y convertir (S5), contrato
 // `2026-10-20-hoja-3d2-contrato-rutas.md`. El servidor se simula con respuestas ficticias con la forma del contrato. Caso ficticio
 // OF-001; los literales de los mensajes están escritos a mano desde el contrato y la clásica (ui/paginas/hoja.py:1946-2213).
+// Restaurar (S2) y la cadena de sellos (S6) se mudaron a la sección Versiones con la baja 24 (Tarea 6 del plan F4): sus
+// pruebas están en `paginas/versiones/Versiones.test.tsx`.
 configure({ asyncUtilTimeout: 5000 });
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -83,13 +85,7 @@ function preciosConCotizacion(): PreciosRespuesta {
   };
 }
 
-const CADENA_INTEGRA = {
-  integra: true,
-  mensaje: "La cadena de 2 versiones está íntegra: cada sello coincide con su contenido.",
-  declaracion: null,
-};
-
-describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3d-2)", () => {
+describe("Hoja de la obra: cotizar, retirar y convertir (3d-2)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   let versiones: VersionesRespuesta;
@@ -97,7 +93,6 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
   let soloLectura: boolean;
   let precios: PreciosRespuesta;
   let parametros: ReturnType<typeof vistaParametros>;
-  let cadena: () => Response;
   let alOperacion: (ruta: string, cuerpo: Record<string, unknown>) => Response | Promise<Response>;
 
   beforeEach(() => {
@@ -109,7 +104,6 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
     soloLectura = false;
     precios = preciosConCotizacion();
     parametros = vistaParametros();
-    cadena = () => json(CADENA_INTEGRA);
     alOperacion = () => json({ codigo: "003", proyecto: "OF-001", mensaje: "Se guardó la versión 003 sin la cotización." });
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = new URL(String(ruta), "http://silice.local");
@@ -128,8 +122,6 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
       }
       if (camino === "/v1/hoja/precios") return json(precios);
       if (camino === "/v1/hoja/precios/atipicos") return json(atipicosRespuesta());
-      if (camino === "/v1/hoja/trazabilidad") return json(trazabilidadRespuesta());
-      if (camino === "/v1/hoja/cadena") return cadena();
       if (camino.endsWith("/vistas/parametros")) return json(parametros);
       if (camino.includes("/vistas/")) return json(cuerpoDeVista(camino));
       const propio = /^\/v1\/hoja\/borradores\/([^/]+)$/.exec(camino);
@@ -196,7 +188,7 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
 
   // --- 3d-F5: con cambios sin guardar no se ofrece nada ---------------------------------------------------------------------
 
-  describe("3d-F5: con cambios sin guardar no se ofrecen cotizar, retirar, convertir ni restaurar", () => {
+  describe("3d-F5: con cambios sin guardar no se ofrecen cotizar, retirar ni convertir", () => {
     beforeEach(() => {
       cambiosSinGuardar = 3;
     });
@@ -220,14 +212,6 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
         screen.getByText("Cambiar la moneda crea una versión nueva desde la guardada: guarde o descarte primero los 3 cambios pendientes."),
       ).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Convertir la moneda…" })).toBeNull();
-    });
-
-    test("Trazabilidad: no se ofrece restaurar (P:2201)", async () => {
-      montar();
-      await irA("Trazabilidad");
-      await screen.findByRole("table", { name: "Versiones del proyecto" });
-      expect(screen.getByText("Guarde o descarte los cambios pendientes antes de restaurar otra versión.")).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Restaurar una versión…" })).toBeNull();
     });
 
     test("al descartar los cambios (sin cambios) las acciones aparecen", async () => {
@@ -530,97 +514,6 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
     });
   });
 
-  // --- 3d-F6: restaurar -----------------------------------------------------------------------------------------------------
-
-  describe("3d-F6: restaurar una versión (S2)", () => {
-    test("elige la versión, pide la fuente, manda proyecto, versión y fuente y dice el mensaje del servidor", async () => {
-      alOperacion = () =>
-        json({ codigo: "003", proyecto: "OF-001", mensaje: "La versión 001 se restauró como la versión 003 (la vigente)." });
-      montar();
-      await irA("Trazabilidad");
-      await screen.findByRole("table", { name: "Versiones del proyecto" });
-      const dialogo = await abrirDialogo("Restaurar una versión…");
-      expect(dialogo).toHaveAccessibleName("Restaurar una versión");
-      expect(within(dialogo).getByText(/Crea una versión nueva, copia de la elegida; nada se borra\./)).toBeInTheDocument();
-      const elegida = within(dialogo).getByRole("combobox", { name: "Versión a restaurar" });
-      expect(elegida).toHaveFocus();
-      expect(within(elegida).getAllByRole("option").map((o) => o.textContent)).toEqual(["001", "002"]);
-      const restaurar = boton(dialogo, "Restaurar");
-      expect(restaurar).toBeDisabled();
-      expect(within(dialogo).getByText("Escriba la fuente: por qué se restaura la versión.")).toBeInTheDocument();
-      await userEvent.selectOptions(elegida, "001");
-      escribir(dialogo, "Fuente (por qué se restaura)", "La 002 salió con un error");
-      versiones = VERSIONES_CON_003;
-      fireEvent.click(restaurar);
-      expect(await screen.findByText("La versión 001 se restauró como la versión 003 (la vigente).")).toBeInTheDocument();
-      expect(enviados("/restaurar")).toEqual([{ proyecto: "OF-001", version: "001", fuente: "La 002 salió con un error" }]);
-      await esperar(() => expect(aperturas().map((a) => a.version)).toEqual(["002", "003"]));
-    });
-
-    test("un 422 (fuente) se muestra tal cual con el título «No se restauró nada»", async () => {
-      alOperacion = () => json({ detalle: "la fuente del cambio es obligatoria: diga por que y con que respaldo" }, 422);
-      montar();
-      await irA("Trazabilidad");
-      await screen.findByRole("table", { name: "Versiones del proyecto" });
-      const dialogo = await abrirDialogo("Restaurar una versión…");
-      escribir(dialogo, "Fuente (por qué se restaura)", "x");
-      fireEvent.click(boton(dialogo, "Restaurar"));
-      const alerta = await within(dialogo).findByRole("alert");
-      expect(within(alerta).getByText("No se restauró nada")).toBeInTheDocument();
-      expect(within(alerta).getByText("la fuente del cambio es obligatoria: diga por que y con que respaldo")).toBeInTheDocument();
-    });
-  });
-
-  // --- 3d-F7: la cadena -----------------------------------------------------------------------------------------------------
-
-  describe("3d-F7: Trazabilidad muestra el estado de la cadena de sellos (S6)", () => {
-    test("íntegra: ícono y texto, con el mensaje del servidor", async () => {
-      montar();
-      await irA("Trazabilidad");
-      const region = await screen.findByRole("region", { name: "Cadena de sellos" });
-      expect(await within(region).findByText("Cadena íntegra")).toBeInTheDocument();
-      expect(within(region).getByText(CADENA_INTEGRA.mensaje)).toBeInTheDocument();
-      expect(region.querySelector("svg")).not.toBeNull(); // el color nunca va solo
-      expect(llamadas("GET", "/v1/hoja/cadena").map(([r]) => String(r))).toEqual(["/v1/hoja/cadena?proyecto=OF-001"]);
-    });
-
-    test("rota: lo dice con su mensaje y la declaración de selladas, si la hay", async () => {
-      cadena = () =>
-        json({
-          integra: false,
-          mensaje: "Cadena rota en la versión 002: el contenido no coincide con su sello.",
-          declaracion: "Versiones 001 a 002 selladas el 2026-10-01.",
-        });
-      montar();
-      await irA("Trazabilidad");
-      const region = await screen.findByRole("region", { name: "Cadena de sellos" });
-      expect(await within(region).findByText("Cadena rota")).toBeInTheDocument();
-      expect(within(region).getByText("Cadena rota en la versión 002: el contenido no coincide con su sello.")).toBeInTheDocument();
-      expect(within(region).getByText("Versiones 001 a 002 selladas el 2026-10-01.")).toBeInTheDocument();
-    });
-
-    test("si la cadena no se puede leer, lo dice sin romper el resto de la pestaña", async () => {
-      cadena = () => json({ detalle: "El proyecto «OF-001» no existe en este caso." }, 404);
-      montar();
-      await irA("Trazabilidad");
-      expect(await screen.findByText("El proyecto «OF-001» no existe en este caso.")).toBeInTheDocument();
-      expect(screen.getByRole("table", { name: "Versiones del proyecto" })).toBeInTheDocument();
-    });
-  });
-
-  describe("3d-F7: una respuesta de la cadena que no tiene la forma del contrato no se pinta", () => {
-    test.each([
-      ["vacía", () => new Response(null, { status: 204 })],
-      ["sin integra", () => json({ mensaje: "x" })],
-    ])("%s: lo dice y la pestaña sigue entera", async (_n, respuesta) => {
-      cadena = respuesta;
-      montar();
-      await irA("Trazabilidad");
-      expect(await screen.findByText("La respuesta de la cadena de sellos no tiene la forma esperada.")).toBeInTheDocument();
-      expect(screen.getByRole("table", { name: "Versiones del proyecto" })).toBeInTheDocument();
-    });
-  });
-
   // --- 3e-3: un diálogo abierto cuyo panel se vuelve a montar por un cambio de rev no deja la página inerte ----------------
 
   describe("3e-3: el rev cambia con un diálogo abierto (otra ventana) y la página no queda [inert]", () => {
@@ -644,7 +537,6 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
 
     test.each([
       ["Precios", "Registrar una cotización…", "Registrar una cotización"],
-      ["Trazabilidad", "Restaurar una versión…", "Restaurar una versión"],
     ])("%s: el diálogo se cierra con el panel y nada queda inerte ni se pierde el contador", async (pestana, boton, nombre) => {
       montar();
       await irA(pestana);
