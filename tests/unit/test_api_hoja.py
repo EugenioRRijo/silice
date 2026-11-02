@@ -774,6 +774,7 @@ def test_docs_api_json_esta_al_dia() -> None:
     rutas = {r for r in guardado["paths"] if r.startswith("/v1/hoja")}
     assert rutas == {
         "/v1/hoja/versiones",
+        "/v1/hoja/importaciones",
         "/v1/hoja/llevar",
         "/v1/hoja/antes-y-despues",
         "/v1/hoja/borradores",
