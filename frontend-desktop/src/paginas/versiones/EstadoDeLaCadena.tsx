@@ -3,8 +3,8 @@ import { useId } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
-import { esCadena, rutaDeCadena } from "./logicaVersiones";
-import type { CadenaRespuesta } from "./logicaVersiones";
+import { esCadena, rutaDeCadena } from "../hoja/logicaVersiones";
+import type { CadenaRespuesta } from "../hoja/logicaVersiones";
 
 // El estado de la cadena de sellos del proyecto (S6, RF-83): recalcula cada huella. Es una mejora declarada sobre la clásica
 // (DV-7). Ícono y texto: el color nunca va solo. Si no se puede leer, lo dice sin romper el resto de la pestaña.

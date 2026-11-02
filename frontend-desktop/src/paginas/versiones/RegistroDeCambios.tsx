@@ -1,12 +1,12 @@
 import { EstadoDeLaCadena } from "./EstadoDeLaCadena";
-import { RastroDeAprobaciones } from "./RastroDeAprobaciones";
+import { RastroDeAprobaciones } from "../aprobar/RastroDeAprobaciones";
 import { RestaurarVersion } from "./RestaurarVersion";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
-import { TablaPaginada } from "./TablaPaginada";
-import { VistaCarga } from "./VistaCarga";
-import { fechaCorta, rotuloDeOrigen, rutaDeTrazabilidad } from "./logica";
-import type { TrazabilidadRespuesta } from "./logica";
-import { usePuedeEditarLaHoja } from "./puedeEditar";
+import type { AlCrearVersion } from "../hoja/OperacionesDePrecios";
+import { TablaPaginada } from "../hoja/TablaPaginada";
+import { VistaCarga } from "../hoja/VistaCarga";
+import { fechaCorta, rotuloDeOrigen, rutaDeTrazabilidad } from "../hoja/logica";
+import type { TrazabilidadRespuesta } from "../hoja/logica";
+import { usePuedeEditarLaHoja } from "../hoja/puedeEditar";
 
 interface Props {
   proyecto: string;

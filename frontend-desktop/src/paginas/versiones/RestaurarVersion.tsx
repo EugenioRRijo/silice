@@ -3,19 +3,19 @@ import { InlineNotification } from "../../comun/carbonEs";
 import { useState } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { useAplicacion } from "../../shell/contexto";
-import { DialogoDeOperacion } from "./DialogoDeOperacion";
-import { usuarioDeSesion } from "./logicaGuardar";
+import { DialogoDeOperacion } from "../hoja/DialogoDeOperacion";
+import { usuarioDeSesion } from "../hoja/logicaGuardar";
 import {
   RUTA_DE_RESTAURAR,
   avisoDeCambiosPendientes,
   cuerpoDeRestaurar,
   motivoParaNoRestaurar,
   textoDeVersionCreada,
-} from "./logicaVersiones";
-import type { VersionCreada } from "./logicaVersiones";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
-import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
-import { useOperacion } from "./useOperacion";
+} from "../hoja/logicaVersiones";
+import type { VersionCreada } from "../hoja/logicaVersiones";
+import type { AlCrearVersion } from "../hoja/OperacionesDePrecios";
+import { useDialogoDeOperacion } from "../hoja/useDialogoDeOperacion";
+import { useOperacion } from "../hoja/useOperacion";
 
 const LARGO_DE_FUENTE = 300;
 

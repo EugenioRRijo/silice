@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { trazabilidadRespuesta } from "./datosDePrueba";
-import { PestanaTrazabilidad } from "./PestanaTrazabilidad";
+import { trazabilidadRespuesta } from "../hoja/datosDePrueba";
+import { PestanaTrazabilidad } from "../versiones/RegistroDeCambios";
 
 // Tarea 20: la pestaña «Trazabilidad» de la Hoja muestra las fases de aprobación de la obra («VIV-001 devuelta → VIV-002
 // aprobada»), si su rastro está íntegro y cada movimiento (quién, cuándo, versión, desenlace y notas), leídos de

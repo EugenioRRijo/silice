@@ -566,15 +566,12 @@ describe("Hoja de la obra: cotizar, retirar y convertir (3d-2)", () => {
       "./DialogoDeOperacion.tsx",
       "./OperacionesDePrecios.tsx",
       "./ConvertirMoneda.tsx",
-      "./RestaurarVersion.tsx",
-      "./EstadoDeLaCadena.tsx",
       "./useOperacion.ts",
       "./useDialogoDeOperacion.ts",
       "./useGuardadoDeLaPagina.ts",
       "./useVersiones.ts",
       "./PestanaPrecios.tsx",
       "./PestanaParametros.tsx",
-      "./PestanaTrazabilidad.tsx",
     ]) {
       expect(Object.keys(fuentes), ruta).toContain(ruta);
       expect(fuentes[ruta], ruta).not.toMatch(
