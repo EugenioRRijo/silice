@@ -28,7 +28,7 @@ import type {
 } from "./logicaPlano";
 import { claseDeConflicto } from "../hoja/logicaSecciones";
 
-// Lo que quedó de la última fusión: se muestra como «Informe de la última fusión» (ui/paginas/hoja.py:1479-1485).
+// Lo que quedó de la última fusión: se muestra como «Informe de la última fusión».
 export interface FusionGuardada {
   mensaje: string;
   fusion: ResumenDeFusionRespuesta;
@@ -75,16 +75,14 @@ interface Opciones {
   alAusente: () => void;
   // El servidor aceptó una fusión: su resumen (rev, total, cambios...) es ahora el del borrador.
   alAceptar: (resumen: Resumen) => void;
-  // Vuelve a leer el borrador y las tablas del espacio (tras un 409 de `rev` y tras fusionar, que cambia el borrador).
+  // Vuelve a leer el borrador (tras un 409 de `rev` y tras fusionar, que cambia el borrador).
   alRecargar: () => Promise<void>;
   alExpirar: () => void;
-  // Avisa a la página que el flujo ocupa el espacio (desde que se pulsa «Fusionar» hasta que se vuelve a leer): mientras tanto
-  // las tablas del espacio no se editan. Una edición que saliera con el `rev` nuevo y las filas de antes borraría lo fusionado.
-  alOcuparse?: (ocupada: boolean) => void;
 }
 
 // El estado del flujo «Importar plano» (P1 a P6): guarda la última respuesta, manda una petición a la vez con el `rev`
 // vigente y deja el error del servidor para mostrarlo tal cual. No calcula nada: las cuentas y los textos vienen del servidor.
+// Pasa de 250 líneas porque las seis peticiones comparten un solo turno (`ejecutar`) y un solo trato de errores.
 export function useImportacion(opciones: Opciones) {
   const [datos, setDatos] = useState<DatosDelPlano>(() => recuerdos.get(opciones.id) ?? VACIO);
   const [ocupado, setOcupado] = useState<string | null>(null);
@@ -140,7 +138,6 @@ export function useImportacion(opciones: Opciones) {
       ocupadoCon: string,
       llamar: (rev: number) => Promise<T>,
       alExito: (respuesta: T) => void | Promise<void>,
-      bloqueaElEspacio = false,
     ) => {
       const m = motor.current;
       if (m.enVuelo || m.detenido) return;
@@ -148,14 +145,12 @@ export function useImportacion(opciones: Opciones) {
       setOcupado(ocupadoCon);
       setError(null);
       setAviso(null);
-      if (bloqueaElEspacio) actuales.current.alOcuparse?.(true);
       try {
         await alExito(await llamar(actuales.current.rev));
       } catch (e) {
         tratar(e, titulo);
       } finally {
         m.enVuelo = false;
-        if (bloqueaElEspacio) actuales.current.alOcuparse?.(false);
         setOcupado(null);
         setFoco((n) => n + 1);
       }
@@ -235,12 +230,11 @@ export function useImportacion(opciones: Opciones) {
             fusion: { mensaje: r.mensaje, fusion: r.fusion, informe: r.informe },
             lectura: vigentes.current.lectura,
           });
-          // La fusión cambió el borrador: la página toma su resumen y el espacio vuelve a leer sus tablas.
+          // La fusión cambió el borrador: la página toma su resumen y lo vuelve a leer.
           actuales.current.alAceptar(r.resumen);
-          // Hasta que la relectura termina el flujo sigue ocupado y el espacio sin editar.
+          // Hasta que la relectura termina el flujo sigue ocupado.
           await actuales.current.alRecargar().catch(() => undefined);
         },
-        true,
       ),
     [ejecutar, aplicar],
   );

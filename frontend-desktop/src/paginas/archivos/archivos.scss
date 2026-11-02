@@ -1,0 +1,32 @@
+// Archivos y planos (Tarea 11 de F4). Sin tarjetas ni animaciones (DESIGN.md); sin colores propios: los del tema.
+
+.silice-archivos__principal {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  min-inline-size: 0;
+}
+
+.silice-archivos__registro {
+  display: grid;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+// El diálogo lleva el informe del plano (conteos, una tabla de cuatro columnas y los campos de alturas y circuitos): más
+// ancho que la confirmación de 36 rem, sin pasar del ancho de la ventana; el cuerpo se desplaza y el pie queda fijo.
+.silice-hoja__dialogo.silice-archivos__dialogo {
+  inline-size: 100%;
+  max-inline-size: min(64rem, 100%);
+}
+
+// El informe guardado de una importación, en el panel lateral: rótulo arriba y valor debajo.
+.silice-archivos__informe {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+
+  dd {
+    margin: 0;
+  }
+}

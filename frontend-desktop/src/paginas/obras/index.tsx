@@ -30,7 +30,7 @@ export default function PaginaObras() {
 }
 
 function Cuerpo({ ficha, carpeta, obraId }: Pick<ObraAbierta, "ficha" | "carpeta" | "obraId">) {
-  const { sesion } = useAplicacion();
+  const { sesion, modulosApagados } = useAplicacion();
   const navegarSeguro = useNavegarSeguro();
   if (ficha.estado === "cargando") {
     return (
@@ -43,8 +43,10 @@ function Cuerpo({ ficha, carpeta, obraId }: Pick<ObraAbierta, "ficha" | "carpeta
 
   const { obra } = ficha;
   const paso = pasoDeLaObra(obra);
-  // El botón solo sale si la cuenta puede usar la pantalla de destino: la API le negaría el paso de todos modos.
-  const accion = paso?.accion && pantallaVisible(paso.accion.pagina, sesion.acciones, sesion.modo_entrega) ? paso.accion : null;
+  // El botón solo sale si la cuenta puede usar la pantalla de destino y su módulo está encendido: la API le negaría el paso
+  // de todos modos.
+  const accion =
+    paso?.accion && pantallaVisible(paso.accion.pagina, sesion.acciones, sesion.modo_entrega, modulosApagados) ? paso.accion : null;
   const total = textoTotal(obra.total, obra.moneda);
   return (
     <>

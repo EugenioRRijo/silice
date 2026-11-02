@@ -1,5 +1,6 @@
 import { Button } from "@carbon/react";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useContext, useId, useState } from "react";
+import { Link, useInRouterContext } from "react-router";
 import { pedir } from "../../api/cliente";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { AyudaDePestana } from "./AyudaDePestana";
@@ -8,6 +9,8 @@ import { TablaEditable } from "./TablaEditable";
 import type { IrA } from "./TablaEditable";
 import { Cifra } from "./Cifra";
 import { VistaCarga } from "./VistaCarga";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import { rutaDeObra } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
 import {
   FRASE_DE_RECHAZO,
@@ -26,7 +29,7 @@ import type {
   UbicacionDeError,
   VistaEspacio,
 } from "./logica";
-import { ImportarPlano } from "../archivos/ImportarPlano";
+import { ENLACE_DESDE_EL_ESPACIO } from "../archivos/textos";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 import { usePuedeEditarLaHoja } from "./puedeEditar";
 
@@ -62,10 +65,11 @@ function ContenidoEspacio({
 }: PropsContenido) {
   const { alExpirar } = useAplicacion();
   const puedeEditar = usePuedeEditarLaHoja(base ?? null);
+  // Dentro de una obra (y de un enrutador), el enlace a Archivos y planos, donde se importa el plano desde la Tarea 11 de F4.
+  const obra = useContext(ContextoDeLaObra);
+  const enRuta = useInRouterContext();
   const idDelError = useId();
   const [irA, setIrA] = useState<(IrA & { tabla: string }) | null>(null);
-  // El plano se fusiona y se vuelve a leer el espacio: hasta que termina, las tablas no se editan (3e-2).
-  const [fusionando, setFusionando] = useState(false);
   const edicion = useEdicionDeSeccion<TablasEditables, UbicacionDeError>({
     borrador: id,
     inicial: sembrarTablas(vista.tablas, vista.filas, nuevaClaveDeFila),
@@ -105,18 +109,12 @@ function ContenidoEspacio({
   return (
     <div className="silice-hoja__pestana">
       <AyudaDePestana id="espacio" puedeEditar={puedeEditar} delServidor={vista.ayuda} />
-      {puedeEditar && (
-      <ImportarPlano
-        id={id}
-        rev={rev}
-        ocupadoPorEdicion={edicion.envio !== "quieto"}
-        alAusente={alAusente}
-        alAceptar={alAceptar}
-        alRecargar={edicion.recargar}
-        alReabrir={alReabrir}
-        alExpirar={alExpirar}
-        alOcuparse={setFusionando}
-      />
+      {puedeEditar && obra !== null && enRuta && (
+        <p className="cds--type-body-compact-01">
+          <Link className="cds--link" to={rutaDeObra(obra.carpeta, obra.obraId, "archivos")}>
+            {ENLACE_DESDE_EL_ESPACIO}
+          </Link>
+        </p>
       )}
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && (
@@ -144,11 +142,7 @@ function ContenidoEspacio({
           )}
         </AvisoDeEdicion>
       )}
-      <fieldset
-        disabled={fusionando}
-        aria-label="Tablas del espacio"
-        className="silice-hoja__bloqueable"
-      >
+      <div className="silice-hoja__tablas-espacio">
         {vista.tablas.map((t) => (
           <TablaEditable
             key={t.clave}
@@ -169,7 +163,7 @@ function ContenidoEspacio({
             soloLectura={!puedeEditar}
           />
         ))}
-      </fieldset>
+      </div>
       <section className="silice-hoja__seccion">
         <h2 className="cds--type-heading-compact-02">Cantidades derivadas</h2>
         {vista.vacio_mensaje !== null ? (

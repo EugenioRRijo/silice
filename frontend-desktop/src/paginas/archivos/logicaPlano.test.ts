@@ -62,7 +62,7 @@ describe("rótulos y textos de la clásica, con tildes", () => {
     expect(EXTENSIONES_DE_PLANO).toEqual([".dxf", ".ifc"]);
   });
 
-  test("las cuatro columnas del informe (COLUMNAS_DEL_INFORME de la clásica)", () => {
+  test("las cuatro columnas del informe", () => {
     expect(COLUMNAS_DEL_INFORME.map((c) => c.titulo)).toEqual(["Tipo", "En el plano", "Fila de la hoja", "Qué pasó"]);
     expect(COLUMNAS_DEL_INFORME.map((c) => c.clave)).toEqual(["tipo", "referencia", "fila", "mensaje"]);
   });

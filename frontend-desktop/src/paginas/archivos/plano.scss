@@ -1,13 +1,8 @@
-// Importar plano (DXF o IFC) en la pestaña Espacio. Sin tarjetas ni animaciones (DESIGN.md); la página no se desplaza
-// horizontalmente: las tablas anchas se desplazan dentro de su región (`.silice-tabla`).
+// Importar plano (DXF o IFC), dentro del diálogo «Subir plano o cómputo» de Archivos y planos. Sin tarjetas ni animaciones
+// (DESIGN.md); el diálogo no se desplaza horizontalmente: las tablas anchas se desplazan dentro de su región (`.silice-tabla`).
 
 .silice-plano {
   min-inline-size: 0;
-
-  // El encabezado del bloque lleva el botón que lo abre; el botón toma la tipografía del encabezado.
-  > h2 {
-    margin: 0;
-  }
 }
 
 .silice-plano__cuerpo {
@@ -86,16 +81,4 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-}
-
-
-// Las tablas editables van en un `fieldset` para dejarlas de solo lectura mientras se fusiona el plano; se ve como antes: una
-// columna con el mismo espacio entre tablas, sin borde.
-.silice-hoja__bloqueable {
-  display: grid;
-  gap: 1.5rem;
-  min-inline-size: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
