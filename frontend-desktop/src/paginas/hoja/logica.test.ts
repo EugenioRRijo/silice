@@ -8,7 +8,6 @@ import {
   esBorradorAusente,
   pestanaInicial,
   pestanasVisibles,
-  rotuloDeVersion,
   rutaDeAgregarPartida,
   rutaDeQuitarPartida,
   rutaDeVersiones,
@@ -77,11 +76,6 @@ describe("lógica de la hoja del proyecto", () => {
     expect(versionesOfrecidas([a, b, c]).map((v) => v.codigo)).toEqual(["001", "002"]);
     expect(versionesOfrecidas([{ ...a, descartada: true }, c]).map((v) => v.codigo)).toEqual(["001", "003"]);
     expect(versionesOfrecidas([])).toEqual([]);
-  });
-
-  test("la vigente se rotula con ' (vigente)' y las demás con su código", () => {
-    expect(rotuloDeVersion(version("002", { vigente: true }))).toBe("002 (vigente)");
-    expect(rotuloDeVersion(version("001"))).toBe("001");
   });
 
   test("los cambios sin guardar se dicen en singular y plural", () => {

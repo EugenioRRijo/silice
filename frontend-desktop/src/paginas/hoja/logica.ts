@@ -113,10 +113,6 @@ export function versionesOfrecidas(versiones: VersionFila[]): VersionFila[] {
   return vivas.length > 0 ? vivas : versiones;
 }
 
-export function rotuloDeVersion(version: VersionFila): string {
-  return version.vigente ? `${version.codigo} (vigente)` : version.codigo;
-}
-
 export function textoDeCambios(cambios: number): string {
   if (cambios === 0) return "Sin cambios sin guardar";
   return cambios === 1 ? "1 cambio sin guardar" : `${cambios} cambios sin guardar`;

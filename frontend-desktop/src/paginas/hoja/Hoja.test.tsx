@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
@@ -6,6 +6,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
 import PaginaHoja from "./index";
+import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "./rutaDePrueba";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 
 const fuentes = import.meta.glob("./*.{ts,tsx}", { query: "?raw", import: "default", eager: true }) as Record<
@@ -114,9 +115,7 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
       alExpirar,
     };
     return render(
-      <ContextoAplicacion.Provider value={valor}>
-        <PaginaHoja />
-      </ContextoAplicacion.Provider>,
+      <ContextoAplicacion.Provider value={valor}>{conEnrutador(<PaginaHoja />)}</ContextoAplicacion.Provider>,
     );
   }
 
@@ -196,13 +195,13 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Espacio y metrajes");
   });
 
-  test("3b-F4: el selector ofrece las no descartadas, marca la vigente y preselecciona por_omision", async () => {
+  // Baja 9 (Tarea 6 del plan F4): sin selector, la Hoja abre `por_omision` y el estado del borrador dice cuál; las versiones
+  // que se ofrecen (las no descartadas) las lista Versiones (`paginas/versiones/logica.test.ts`).
+  test("3b-F4: abre por_omision y el estado del borrador lo dice", async () => {
     servidor();
     montar();
-    const selector = await screen.findByRole("combobox", { name: "Versión" });
-    const opciones = within(selector).getAllByRole("option").map((o) => o.textContent);
-    expect(opciones).toEqual(["001", "002 (vigente)"]);
-    expect(selector).toHaveValue("002");
+    await screen.findByRole("region", { name: "Estado del borrador" });
+    expect(versionAbierta()).toBe("002");
     await waitFor(() => expect(llamadas("POST", "/v1/hoja/borradores")).toHaveLength(1));
     expect(JSON.parse(String(llamadas("POST", "/v1/hoja/borradores")[0]![1]?.body))).toEqual({
       proyecto: "OF-001",
@@ -213,9 +212,8 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
   test("cambiar de versión abre otro borrador y descarta el anterior (sin cambios)", async () => {
     servidor();
     montar();
-    const selector = await screen.findByRole("combobox", { name: "Versión" });
     await screen.findByRole("region", { name: "Estado del borrador" });
-    await userEvent.selectOptions(selector, "001");
+    pedirVersionPorLaRuta("001");
     await waitFor(() => expect(llamadas("POST", "/v1/hoja/borradores")).toHaveLength(2));
     expect(JSON.parse(String(llamadas("POST", "/v1/hoja/borradores")[1]![1]?.body)).version).toBe("001");
     await waitFor(() => expect(llamadas("DELETE", "/v1/hoja/borradores/id-002-aaaaaaaaaa")).toHaveLength(1));
@@ -368,8 +366,8 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
       return new Response(null, { status: 204 });
     });
     montar();
-    const selector = await screen.findByRole("combobox", { name: "Versión" });
-    fireEvent.change(selector, { target: { value: "001" } });
+    await waitFor(() => expect(llamadas("POST", "/v1/hoja/borradores")).toHaveLength(1));
+    pedirVersionPorLaRuta("001");
     await screen.findByRole("region", { name: "Estado del borrador" });
     await act(async () => soltar(json(borrador("id-002-tardio-aaaaaaa", "002"), 201)));
     await waitFor(() => expect(llamadas("DELETE", "/v1/hoja/borradores/id-002-tardio-aaaaaaa")).toHaveLength(1));

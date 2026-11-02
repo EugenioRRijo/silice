@@ -27,6 +27,10 @@ interface Opciones {
 
 export type DestinoDelFoco = "version" | "guardar";
 
+// El h1 de la sección que comparte el borrador (Presupuesto; Versiones desde la Tarea 6). Tras abrir otra versión, o si el
+// botón de guardar ya no está, el foco vuelve allí: el selector «Versión» al que volvía salió con la baja 9.
+export const ID_DEL_TITULO = "hoja-titulo";
+
 // Lo que la página hace alrededor de guardar una versión: el estado del modal, el aviso de éxito, abrir la versión recién creada
 // (la que guardó el modal o la que crearon restaurar, cotizar, retirar o convertir) y devolver el foco a su sitio cuando un
 // diálogo se cierra.
@@ -89,7 +93,7 @@ export function useGuardadoDeLaPagina({
     const destino = devolverFoco.current;
     devolverFoco.current = null;
     const boton = destino === "guardar" ? document.getElementById("hoja-guardar-version") : null;
-    (boton ?? document.getElementById("hoja-version"))?.focus();
+    (boton ?? document.getElementById(ID_DEL_TITULO))?.focus();
   });
 
   // Un fallo del guardado que pide ir a otra versión. Con «versión más nueva» la persona aún tiene cambios: pasa por la misma

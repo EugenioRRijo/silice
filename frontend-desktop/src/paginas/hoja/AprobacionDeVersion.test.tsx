@@ -7,6 +7,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
 import PaginaHoja from "./index";
+import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "./rutaDePrueba";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 
 // Tarea 19 del plan de montar un presupuesto (con los cambios por el diseño de módulos): en la Hoja, junto a la versión, la
@@ -171,9 +172,7 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
   }
   function montar() {
     return render(
-      <ContextoAplicacion.Provider value={valor()}>
-        <PaginaHoja />
-      </ContextoAplicacion.Provider>,
+      <ContextoAplicacion.Provider value={valor()}>{conEnrutador(<PaginaHoja />)}</ContextoAplicacion.Provider>,
     );
   }
   async function esperar<T>(comprobar: () => T): Promise<T> {
@@ -283,7 +282,7 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       const nota = within(dialogo).getByRole("textbox", { name: "Nota para quien revisa (opcional)" });
       expect(nota).toHaveFocus();
       expect(nota).toHaveAttribute("maxlength", "2000");
-      expect(screen.getByRole("combobox", { name: "Versión", hidden: true }).closest("[inert]")).not.toBeNull();
+      expect(screen.getByRole("region", { name: "Estado del borrador", hidden: true }).closest("[inert]")).not.toBeNull();
       expect(dialogo).toHaveTextContent("Quien revisa verá la versión VIV-001 tal como se guardó y dará su dictamen.");
       await u.type(nota, "Lista para revisar.");
       await u.click(within(dialogo).getByRole("button", { name: "Enviar a aprobación" }));
@@ -450,13 +449,13 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
     aprobaciones = { "VIV-001": EN_APROBACION, "VIV-002": GUARDADA };
     alAbrir = (c) => borrador(c.version, { cambios: 0, rev: 0 });
     fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar versión" }));
-    await esperar(() => expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("VIV-002"));
+    await esperar(() => expect(versionAbierta()).toBe("VIV-002"));
     await esperar(() => expect(document.querySelector(".silice-hoja__aprobacion-etiqueta")).toHaveTextContent("Guardada"));
     expect(screen.getByRole("button", { name: "Enviar a aprobación…" })).toBeInTheDocument();
     // Guardar no toca la aprobación.
     expect(envios()).toEqual([]);
     // VIV-001 sigue «En aprobación».
-    fireEvent.change(screen.getByRole("combobox", { name: "Versión" }), { target: { value: "VIV-001" } });
+    pedirVersionPorLaRuta("VIV-001");
     await esperar(() => expect(document.querySelector(".silice-hoja__aprobacion-etiqueta")).toHaveTextContent("En aprobación"));
   });
 

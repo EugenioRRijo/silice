@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem, Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { Button, Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
 import { InlineNotification, TabList } from "../../comun/carbonEs";
 import { useContext, useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
@@ -7,14 +7,7 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { OfertaDeRetomar as OfertaDeRetomarVista } from "./OfertaDeRetomar";
-import {
-  SIN_VERSIONES,
-  TITULO,
-  esBorradorAusente,
-  rotuloDeVersion,
-  textoDeCambios,
-  versionesOfrecidas,
-} from "./logica";
+import { SIN_VERSIONES, TITULO, esBorradorAusente, textoDeCambios, versionesOfrecidas } from "./logica";
 import type { BorradorAbierto, PestanaId, Resumen } from "./logica";
 import { CAUSA_SOLO_LECTURA } from "./logicaGuardar";
 import { BotonExcel } from "./BotonExcel";
@@ -31,6 +24,7 @@ import { PestanaParametros } from "./PestanaParametros";
 import { PestanaPlan } from "./PestanaPlan";
 import { PestanaPresupuesto } from "./PestanaPresupuesto";
 import { ContextoDeLaHoja, ProveedorDeLaHoja, useHojaDeLaObra } from "./ProveedorDeLaHoja";
+import { ID_DEL_TITULO } from "./useGuardadoDeLaPagina";
 import "./hoja.scss";
 
 // La Hoja de la obra (pantalla `hoja`, la sección Presupuesto): el estado del borrador, el reparto de las pestañas y el
@@ -181,15 +175,15 @@ function ContenidoDePestana({
 
 const NOTA_SOLO_LECTURA = "Está viendo este presupuesto en solo lectura.";
 
-// El cuerpo de la Hoja: lo que se ve de la obra abierta (la oferta de retomar, el selector de versión, el estado del
-// borrador y las pestañas). El borrador, las versiones y los diálogos de guardar y de cambiar de versión son de
-// `ProveedorDeLaHoja` (Tarea 3 del plan F4), que comparte la obra con Archivos y planos y Versiones.
+// El cuerpo de la Hoja: lo que se ve de la obra abierta (la oferta de retomar, el estado del borrador y las pestañas). La
+// versión se abre desde Versiones («Abrir», baja 9 de la Tarea 6) y el estado del borrador dice cuál es. El borrador, las
+// versiones y los diálogos de guardar y de cambiar de versión son de `ProveedorDeLaHoja` (Tarea 3 del plan F4), que comparte
+// la obra con Archivos y planos y Versiones.
 function CuerpoDeLaHoja() {
   const {
     proyecto,
     nombreProyecto,
     versiones,
-    codigo,
     estado,
     puedeEditar,
     ofrecidos,
@@ -199,7 +193,6 @@ function CuerpoDeLaHoja() {
     falloAlDescartar,
     existente,
     nadaQueRevisar,
-    pedirVersion,
     refrescar,
     aplicar,
     reabrirNuevo,
@@ -263,19 +256,12 @@ function CuerpoDeLaHoja() {
         />
       )}
       {falloAlDescartar !== null && <AvisoError error={falloAlDescartar} titulo="No se pudo descartar el borrador" />}
-      {ofrecidos.length === 0 &&
-        (ofrecidas.length > 0 ? (
-          <Select id="hoja-version" labelText="Versión" value={codigo ?? ""} onChange={(e) => pedirVersion(e.target.value)}>
-            {ofrecidas.map((v) => (
-              <SelectItem key={v.codigo} value={v.codigo} text={rotuloDeVersion(v)} />
-            ))}
-          </Select>
-        ) : (
-          <EstadoVacio
-            titulo={SIN_VERSIONES}
-            descripcion="Agregue las partidas en «Presupuesto» (o, en una obra de instalaciones, describa el espacio o importe un plano) y guarde la primera versión con «Guardar primera versión…»."
-          />
-        ))}
+      {ofrecidos.length === 0 && ofrecidas.length === 0 && (
+        <EstadoVacio
+          titulo={SIN_VERSIONES}
+          descripcion="Agregue las partidas en «Presupuesto» (o, en una obra de instalaciones, describa el espacio o importe un plano) y guarde la primera versión con «Guardar primera versión…»."
+        />
+      )}
 
       {estado.estado === "abriendo" && <EsqueletoPagina etiqueta="Abriendo el borrador" />}
       {estado.estado === "error" &&
@@ -380,7 +366,9 @@ export default function PaginaHoja() {
   const deLaObra = useContext(ContextoDeLaHoja);
   return (
     <section className="silice-pagina silice-hoja">
-      <h1 className="cds--type-heading-04">{TITULO}</h1>
+      <h1 id={ID_DEL_TITULO} tabIndex={-1} className="cds--type-heading-04">
+        {TITULO}
+      </h1>
       {proyecto === null ? (
         <EstadoVacio titulo="Elija una obra" />
       ) : deLaObra !== null ? (

@@ -6,6 +6,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { atipicosRespuesta, cuerpoDeVista, preciosRespuesta, vistaParametros } from "./datosDePrueba";
 import PaginaHoja from "./index";
+import { versionAbierta } from "./rutaDePrueba";
 import type { BorradorAbierto, PreciosRespuesta, Resumen, VersionesRespuesta } from "./logica";
 
 // Rebanada 3d-2 (front): cotizar (S3), retirar (S4) y convertir (S5), contrato
@@ -298,10 +299,10 @@ describe("Hoja de la obra: cotizar, retirar y convertir (3d-2)", () => {
       ]);
       expect(typeof enviados("/cotizar")[0]!["precio"]).toBe("string");
       await esperar(() => expect(aperturas().map((a) => a.version)).toEqual(["002", "003"]));
-      await esperar(() => expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("003"));
+      await esperar(() => expect(versionAbierta()).toBe("003"));
       expect(screen.queryByRole("dialog")).toBeNull();
       // La lista de versiones se volvió a pedir y el foco queda en el selector de versión.
-      await esperar(() => expect(screen.getByRole("combobox", { name: "Versión" })).toHaveFocus());
+      await esperar(() => expect(screen.getByRole("heading", { level: 1, name: "Presupuesto" })).toHaveFocus());
     });
 
     test("con evidencia, la manda tal cual", async () => {
