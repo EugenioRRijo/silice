@@ -39,7 +39,15 @@ export function CampoDeCelda({
   soloLectura = false,
 }: Props) {
   if (soloLectura) {
-    if (!etiquetaVisible) return <span>{valor}</span>;
+    // En una tabla la cabecera da la columna pero no la fila: la etiqueta sigue para el lector de pantalla (un
+    // aria-label no vale en un span genérico) y el valor va aparte para que la vista muestre solo la cifra.
+    if (!etiquetaVisible)
+      return (
+        <span>
+          <span className="cds--visually-hidden">{etiqueta}: </span>
+          <span>{valor}</span>
+        </span>
+      );
     return (
       <div className="silice-hoja__campo-lectura">
         <span className="cds--label">{etiqueta}</span>
