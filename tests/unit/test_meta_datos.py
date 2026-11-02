@@ -55,8 +55,8 @@ def test_datos_reales_que_quedan_en_local_no_se_reportan():
 
 
 def test_real_como_termino_tecnico_no_se_reporta():
-    """«Costo real», «tiempo real», «estado real», «plan real» y «contra real» (IBCS) son vocabulario de control de obra
-    (valor ganado, recuperacion), no afirmaciones sobre los datos."""
+    """«Costo real», «tiempo real», «estado real», «plan real» y «contra real» (IBCS) son
+    vocabulario de control de obra (valor ganado, recuperacion), no afirmaciones sobre los datos."""
     for texto in (
         "En costos y presupuestos: si el costo real es mayor a la meta, es desfavorable.",
         "Recalcula el presupuesto en tiempo real.",
