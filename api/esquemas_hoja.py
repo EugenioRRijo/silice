@@ -945,11 +945,17 @@ class CadenaHojaRespuesta(BaseModel):
     integra: bool
     mensaje: str
     declaracion: str | None
+    rota_en: str | None = Field(
+        description="El código de la versión donde se rompió la cadena; null si está íntegra"
+    )
 
 
 def cadena_a_respuesta(estado: EstadoDeLaCadena) -> CadenaHojaRespuesta:
     return CadenaHojaRespuesta(
-        integra=estado.integra, mensaje=estado.mensaje, declaracion=estado.declaracion
+        integra=estado.integra,
+        mensaje=estado.mensaje,
+        declaracion=estado.declaracion,
+        rota_en=estado.rota_en,
     )
 
 

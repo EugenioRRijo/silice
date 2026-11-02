@@ -14081,13 +14081,26 @@
               }
             ],
             "title": "Declaracion"
+          },
+          "rota_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rota En",
+            "description": "El código de la versión donde se rompió la cadena; null si está íntegra"
           }
         },
         "type": "object",
         "required": [
           "integra",
           "mensaje",
-          "declaracion"
+          "declaracion",
+          "rota_en"
         ],
         "title": "CadenaHojaRespuesta"
       },

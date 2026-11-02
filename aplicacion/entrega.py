@@ -190,6 +190,9 @@ class EstadoDeLaCadena:
     integra: bool
     mensaje: str
     declaracion: str | None  # «Versiones 001 a 004 selladas el …», si hay retroactivas
+    # El código de la versión donde se rompió, o None si está íntegra (F4, Tarea 6: Versiones lo
+    # dice sin leer el texto de `mensaje`).
+    rota_en: str | None = None
 
 
 def estado_de_la_cadena(session: Session, proyecto_nombre: str) -> EstadoDeLaCadena | None:
@@ -204,6 +207,7 @@ def estado_de_la_cadena(session: Session, proyecto_nombre: str) -> EstadoDeLaCad
         resultado.integra,
         cadena.mensaje_de_cadena(resultado),
         cadena.texto_retroactivo(session, proyecto),
+        None if resultado.fallo is None else resultado.fallo.codigo_version,
     )
 
 
