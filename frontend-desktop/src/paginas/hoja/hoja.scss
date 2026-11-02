@@ -368,27 +368,6 @@
   gap: 1rem;
 }
 
-// Estado de la cadena de sellos: ícono y texto en la misma línea; el color solo acompaña.
-.silice-hoja__cadena {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.silice-hoja__cadena-estado {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-}
-
-.silice-hoja__cadena-integra {
-  fill: var(--silice-verificado);
-}
-
-.silice-hoja__cadena-rota {
-  fill: var(--silice-sev-critico, #da1e28);
-}
-
 // El código de una partida no se parte en líneas.
 .silice-hoja__codigo {
   white-space: nowrap;

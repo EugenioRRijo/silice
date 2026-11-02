@@ -353,6 +353,18 @@ describe("Versiones: la cadena de sellos encima de la tabla", () => {
     expect(region.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  // Mudada de la pestaña «Trazabilidad» de la Hoja con la baja 24 (era «3d-F7: una respuesta de la cadena que no tiene la
+  // forma del contrato no se pinta»): pasaba ya allí y aquí fija lo que no debe cambiar.
+  test.each([
+    ["vacía", () => new Response(null, { status: 204 })],
+    ["sin integra", () => json({ mensaje: "x" })],
+  ])("una respuesta de la cadena %s no se pinta: lo dice y la tabla sigue", async (_n, respuesta) => {
+    cadena = respuesta;
+    montar();
+    expect(await screen.findByText("La respuesta de la cadena de sellos no tiene la forma esperada.")).toBeInTheDocument();
+    expect(await tabla()).toBeInTheDocument();
+  });
+
   test("si la cadena no se puede leer, lo dice sin romper la tabla", async () => {
     cadena = () => json({ detalle: "El proyecto «3» no existe en este caso." }, 404);
     montar();
@@ -431,4 +443,13 @@ describe("Versiones: quien solo revisa (Foco 3)", () => {
     expect(deLaObra(ACCIONES.admin)).not.toContain("versiones");
     expect(deLaObra(ACCIONES.rita)).toContain("versiones");
   });
+});
+
+// Mudada con los archivos (la de 3d-2 de la Hoja los listaba): la interfaz no convierte texto en número.
+test("los archivos de Versiones están bajo la prueba estática (sin Number, parseFloat, toFixed ni + unario)", () => {
+  const fuentes = import.meta.glob("./*.{ts,tsx}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+  for (const ruta of ["./index.tsx", "./logica.ts", "./RestaurarVersion.tsx", "./EstadoDeLaCadena.tsx", "./RegistroDeCambios.tsx"]) {
+    expect(Object.keys(fuentes), ruta).toContain(ruta);
+    expect(fuentes[ruta], ruta).not.toMatch(/\bNumber\s*\(|\bparseFloat\s*\(|\bparseInt\s*\(|\.toFixed\s*\(|(?:[=(,:?]|\breturn)\s*\+\s*[A-Za-z_$(]/);
+  }
 });

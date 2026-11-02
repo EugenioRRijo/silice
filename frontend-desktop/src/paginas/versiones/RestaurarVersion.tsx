@@ -1,17 +1,10 @@
 import { Button, Select, SelectItem } from "@carbon/react";
-import { InlineNotification } from "../../comun/carbonEs";
 import { useState } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { useAplicacion } from "../../shell/contexto";
 import { DialogoDeOperacion } from "../hoja/DialogoDeOperacion";
 import { usuarioDeSesion } from "../hoja/logicaGuardar";
-import {
-  RUTA_DE_RESTAURAR,
-  avisoDeCambiosPendientes,
-  cuerpoDeRestaurar,
-  motivoParaNoRestaurar,
-  textoDeVersionCreada,
-} from "../hoja/logicaVersiones";
+import { RUTA_DE_RESTAURAR, cuerpoDeRestaurar, motivoParaNoRestaurar, textoDeVersionCreada } from "../hoja/logicaVersiones";
 import type { VersionCreada } from "../hoja/logicaVersiones";
 import type { AlCrearVersion } from "../hoja/OperacionesDePrecios";
 import { useDialogoDeOperacion } from "../hoja/useDialogoDeOperacion";
@@ -22,14 +15,15 @@ const LARGO_DE_FUENTE = 300;
 interface PropsDeFormulario {
   proyecto: string;
   versiones: string[];
+  inicial: string;
   anfitrion: HTMLElement;
   alCancelar: () => void;
   alCrearVersion: AlCrearVersion;
 }
 
-function FormularioDeRestaurar({ proyecto, versiones, anfitrion, alCancelar, alCrearVersion }: PropsDeFormulario) {
+function FormularioDeRestaurar({ proyecto, versiones, inicial, anfitrion, alCancelar, alCrearVersion }: PropsDeFormulario) {
   const { alExpirar, sesion } = useAplicacion();
-  const [elegida, setElegida] = useState(versiones[0] ?? "");
+  const [elegida, setElegida] = useState(inicial);
   const [fuente, setFuente] = useState("");
   const operacion = useOperacion({
     ruta: RUTA_DE_RESTAURAR,
@@ -69,39 +63,28 @@ function FormularioDeRestaurar({ proyecto, versiones, anfitrion, alCancelar, alC
 
 interface Props {
   proyecto: string;
-  // Los códigos de las versiones del proyecto, de la más nueva a la más vieja (el historial de Trazabilidad).
+  // Los códigos de las versiones de la obra, en el orden de la tabla de Versiones.
   versiones: string[];
-  cambios: number;
+  // La versión de la fila: el diálogo la trae elegida.
+  inicial: string;
   alCrearVersion: AlCrearVersion;
 }
 
-// «Restaurar una versión» (S2) de la pestaña Trazabilidad (RF-54): una versión nueva, copia de la elegida, que queda vigente.
-export function RestaurarVersion({ proyecto, versiones, cambios, alCrearVersion }: Props) {
+// «Restaurar una versión» (S2, RF-54): una versión nueva, copia de la elegida, que queda vigente. Desde la Tarea 6 del plan F4
+// es el botón «Restaurar…» de cada fila de Versiones (antes, uno solo en la pestaña «Trazabilidad»): el diálogo es el mismo y
+// trae elegida la versión de la fila. Quien lo monta decide si se ofrece (el permiso y que no haya cambios sin guardar).
+export function RestaurarVersion({ proyecto, versiones, inicial, alCrearVersion }: Props) {
   const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
-  if (cambios > 0) {
-    return (
-      <InlineNotification
-        kind="warning"
-        role="status"
-        lowContrast
-        hideCloseButton
-        title="Hay cambios sin guardar"
-        subtitle={avisoDeCambiosPendientes("restaurar", cambios)}
-      />
-    );
-  }
-  if (versiones.length === 0) return null;
   return (
-    <section className="silice-hoja__seccion" aria-label="Restaurar">
-      <div className="silice-hoja__acciones">
-        <Button ref={anclaDelBoton} kind="tertiary" size="md" onClick={abrir}>
-          Restaurar una versión…
-        </Button>
-      </div>
+    <>
+      <Button ref={anclaDelBoton} kind="ghost" size="sm" aria-label={`Restaurar ${inicial}…`} onClick={abrir}>
+        Restaurar…
+      </Button>
       {abierto && anfitrion !== null && (
         <FormularioDeRestaurar
           proyecto={proyecto}
           versiones={versiones}
+          inicial={inicial}
           anfitrion={anfitrion}
           alCancelar={() => cerrar(true)}
           alCrearVersion={async (codigo, texto) => {
@@ -110,6 +93,6 @@ export function RestaurarVersion({ proyecto, versiones, cambios, alCrearVersion 
           }}
         />
       )}
-    </section>
+    </>
   );
 }

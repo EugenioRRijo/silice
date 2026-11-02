@@ -24,6 +24,8 @@ export interface CadenaRespuesta {
   mensaje: string;
   // Las versiones selladas retroactivamente, o null.
   declaracion: string | null;
+  // La versión donde se rompió, o null si está íntegra (F4, Tarea 6). Un servidor anterior no la manda.
+  rota_en?: string | null;
 }
 
 // La respuesta de S6 con la forma del contrato (una respuesta vacía o ajena no se pinta).

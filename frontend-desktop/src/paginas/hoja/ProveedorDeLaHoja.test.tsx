@@ -16,8 +16,8 @@ import { ContextoDeLaHoja, useHojaDeLaObra } from "./ProveedorDeLaHoja";
 
 // Tarea 3 del plan F4: el borrador de la Hoja vive en la obra (`ProveedorDeLaHoja`) y lo comparten Presupuesto, Archivos
 // y planos y Versiones. Se monta el marco entero (barra lateral, «Cambios sin guardar») con la Hoja real en Presupuesto.
-// Archivos y planos y Versiones aún no tienen pantalla (Tareas 6 y 11): aquí se les da la de la Hoja y la prueba pinta,
-// según la sección de la ruta, la Hoja real o una pantalla de relleno que solo lee el contexto. Oráculos escritos a mano:
+// Archivos y planos aún no tiene pantalla (Tarea 11) y Versiones tiene la suya desde la Tarea 6: aquí las dos reciben la de
+// la Hoja y la prueba pinta, según la sección de la ruta, la Hoja real o una pantalla de relleno que solo lee el contexto. Oráculos escritos a mano:
 // obras ficticias 7 («Casa Demo») y 8 («Torre B») de la carpeta de la empresa, versiones 002 (vigente) y 001.
 configure({ asyncUtilTimeout: 5000 });
 
@@ -162,7 +162,7 @@ function Ubicacion() {
 function montar(en: string) {
   render(
     <MemoryRouter initialEntries={[en]}>
-      <Marco sesion={sesionDe("ana")} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras({ hoja: PorSeccion })} />
+      <Marco sesion={sesionDe("ana")} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras({ hoja: PorSeccion, versiones: PorSeccion })} />
       <Ubicacion />
     </MemoryRouter>,
   );

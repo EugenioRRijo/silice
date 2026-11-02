@@ -70,7 +70,10 @@ describe("resultadosDe", () => {
   });
 
   it("ordena obras, secciones de obras, entradas de Empresa y pantallas sin sitio", () => {
-    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], COMPLETA).map((r) => r.texto);
+    // Sin el módulo vial (sin «Tramos»): con «Versiones» (Tarea 6 de F4) la obra y sus seis secciones ya llenarían siete de
+    // los ocho resultados y no cabrían las dos pantallas de Empresa cuyo orden se mira.
+    const sinVial = ofertaDe(PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion])), false, ["vial"]);
+    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], sinVial).map((r) => r.texto);
     expect(textos[0]).toBe("Precio alto");
     expect(textos[1]).toBe("Precio alto › Presupuesto");
     const i = (t: string) => textos.indexOf(t);
@@ -95,7 +98,9 @@ describe("resultadosDe", () => {
 
   it("no ofrece las secciones sin pantalla, ni lo que la cuenta no puede usar", () => {
     expect(resultadosDe("archivos", OBRAS, COMPLETA)).toEqual([]);
-    expect(resultadosDe("versiones", OBRAS, COMPLETA)).toEqual([]);
+    // «Versiones» ya tiene pantalla (Tarea 6 de F4): se ofrece en cada obra, y no a quien no lee las obras.
+    expect(resultadosDe("clin versiones", OBRAS, COMPLETA).map((r) => r.ruta)).toEqual(["/obra/Carpeta%20Norte.db/1/versiones"]);
+    expect(resultadosDe("versiones", OBRAS, ofertaDe([], false))).toEqual([]);
     const sinPermisos = ofertaDe([], false);
     // Control positivo: la misma búsqueda con todos los permisos sí encuentra la entrada.
     expect(resultadosDe("personas", [], COMPLETA).map((r) => r.texto)).toContain("Empresa y personas");

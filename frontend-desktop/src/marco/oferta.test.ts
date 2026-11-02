@@ -8,7 +8,7 @@ describe("ofertaDe: «Tramos» (plan vial)", () => {
   it("la sección Tramos es de toda obra mientras el módulo vial esté encendido", () => {
     const oferta = ofertaDe(TODAS, false);
     expect(oferta.secciones.map((s) => s.id)).toContain("tramos");
-    expect(seccionesDeLaObra(oferta).map((s) => s.id)).toEqual(["resumen", "presupuesto", "tramos", "aprobaciones", "mercado", "control"]);
+    expect(seccionesDeLaObra(oferta).map((s) => s.id)).toEqual(["resumen", "presupuesto", "tramos", "versiones", "aprobaciones", "mercado", "control"]);
   });
 
   it("sin obra no hay pantalla suelta «Tramos de la vía»: el buscador la ofrece dentro de cada obra", () => {

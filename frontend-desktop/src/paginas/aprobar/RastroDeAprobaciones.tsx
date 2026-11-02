@@ -20,9 +20,10 @@ function desenlaceDe(e: EventoDeAprobacion): string {
 
 const TIPOS: Record<string, string> = { envio: "Envío", dictamen: "Dictamen", retiro: "Retiro" };
 
-// «Aprobaciones» de la pestaña Trazabilidad (Tarea 20; diseño §5.4): las fases de la obra («VIV-001 devuelta → VIV-002
-// aprobada»), si su rastro está íntegro (ícono y texto: el color nunca va solo) y cada movimiento, de `GET
-// /v1/aprobaciones?proyecto=`. Un 403 o un 404 no dicen nada (la pestaña no depende de esto); un fallo del servidor se dice.
+// «Rastro de la obra» (Tarea 20; diseño §5.4): las fases de la obra («VIV-001 devuelta → VIV-002 aprobada»), si su rastro
+// está íntegro (ícono y texto: el color nunca va solo) y cada movimiento, de `GET /v1/aprobaciones?proyecto=`. Vivía en la
+// pestaña «Trazabilidad» de la Hoja; desde la Tarea 6 del plan F4 es un bloque de la sección Aprobaciones. Un 403 o un 404
+// no dicen nada (la pantalla no depende de esto); un fallo del servidor se dice.
 function esRastro(valor: unknown): valor is AprobacionesDeObra {
   const r = valor as Partial<AprobacionesDeObra> | null | undefined;
   return typeof r?.rastro?.mensaje === "string" && Array.isArray(r.eventos) && typeof r.fases === "string";
@@ -33,12 +34,12 @@ export function RastroDeAprobaciones({ proyecto }: { proyecto: string }) {
   const titulo = useId();
   const carga = useCarga<AprobacionesDeObra>(`/v1/aprobaciones?${new URLSearchParams({ proyecto }).toString()}`, alExpirar);
   if (carga.estado === "sin_permiso" || carga.estado === "no_disponible") return null;
-  // Un servidor sin la ruta (o con otra forma) no dice nada: la pestaña no depende de esto.
+  // Un servidor sin la ruta (o con otra forma) no dice nada: la pantalla no depende de esto.
   if (carga.estado === "listo" && !esRastro(carga.datos)) return null;
   return (
-    <section className="silice-hoja__seccion" aria-labelledby={titulo}>
+    <section className="silice-aprobar__rastro" aria-labelledby={titulo}>
       <h2 id={titulo} className="cds--type-heading-compact-02">
-        Aprobaciones
+        Rastro de la obra
       </h2>
       {carga.estado === "cargando" && (
         <p className="cds--type-helper-text-01" aria-live="polite">
@@ -82,11 +83,11 @@ function Contenido({ datos }: { datos: AprobacionesDeObra }) {
           />
         </>
       )}
-      <p className="cds--type-body-compact-01 silice-hoja__cadena-estado" role="status">
+      <p className="cds--type-body-compact-01 silice-aprobar__rastro-estado" role="status">
         <Icono
           size={16}
           aria-hidden="true"
-          className={datos.rastro.integro ? "silice-hoja__cadena-integra" : "silice-hoja__cadena-rota"}
+          className={datos.rastro.integro ? "silice-aprobar__rastro-integro" : "silice-aprobar__rastro-roto"}
         />
         {datos.rastro.mensaje}
       </p>

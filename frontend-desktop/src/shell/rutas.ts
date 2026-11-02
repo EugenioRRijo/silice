@@ -81,6 +81,15 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/hoja"),
   },
   {
+    id: "versiones",
+    titulo: "Versiones",
+    enUnaLinea: "Las versiones guardadas y lo que cambió en cada una",
+    seccion: "Trabajo",
+    // F4, Tarea 6: lee lo mismo que la Hoja (Tarea 2b); restaurar y guardar los decide `puedeEditarLaHoja`.
+    accion: "leer_proyecto",
+    cargar: () => import("../paginas/versiones"),
+  },
+  {
     id: "elaborar",
     titulo: "Elaborar un presupuesto",
     enUnaLinea: "Junte partidas y cantidades",

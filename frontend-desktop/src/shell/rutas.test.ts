@@ -11,6 +11,7 @@ const REGISTRO: [string, string, string | null][] = [
   ["historial", "Revisión", "leer_proyecto"],
   ["obras", "Trabajo", null],
   ["hoja", "Trabajo", "leer_proyecto"], // F4 2b: quien revisa la ve en solo lectura
+  ["versiones", "Trabajo", "leer_proyecto"], // F4, Tarea 6: la sección Versiones de la obra
   ["elaborar", "Trabajo", "editar_hoja"],
   ["tablero", "Trabajo", "leer_proyecto"],
   ["entregar", "Trabajo", "entregar_paquete"],
@@ -48,7 +49,7 @@ const REGISTRO: [string, string, string | null][] = [
 const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
 
 describe("registro de paginas", () => {
-  test("tiene las 32 pantallas en su orden, con su seccion y su accion", () => {
+  test("tiene las 33 pantallas en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(REGISTRO);
   });
 
@@ -97,13 +98,13 @@ describe("quien puede usar que", () => {
     expect(PAGINAS.filter((p) => usable(p, [], false)).map((p) => p.id)).toEqual(["auditoria", "obras", "acerca"]);
   });
 
-  test("con todas las acciones se usan las 32", () => {
-    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(32);
+  test("con todas las acciones se usan las 33", () => {
+    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(33);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (29)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (30)", () => {
     const vistas = PAGINAS.filter((p) => usable(p, todas, true));
-    expect(vistas).toHaveLength(29);
+    expect(vistas).toHaveLength(30);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 
