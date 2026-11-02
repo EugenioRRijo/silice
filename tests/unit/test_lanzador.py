@@ -579,3 +579,17 @@ def test_un_archivo_de_codigo_enorme_no_se_lee_entero(entorno) -> None:
     assert escenario.correr(entorno) == 0
     impreso = " ".join(escenario.salida)
     assert "ABCD-EFGH-IJKL-MNOP-QRST" in impreso and len(impreso) < 4096
+
+
+def test_el_archivo_del_codigo_se_abre_con_su_carpeta_como_directorio_de_trabajo(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """El Bloc de notas heredaba `{app}/codigo` como directorio de trabajo y, abierto, impedía
+    borrar esa carpeta al desinstalar (error 32 en el humo del 02/11)."""
+    llamadas: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    monkeypatch.setattr(
+        lanzador.os, "startfile", lambda *a, **k: llamadas.append((a, k)), raising=False
+    )
+    archivo = tmp_path / "datos" / "codigo_instalacion.txt"
+    lanzador._abrir_con_el_sistema(archivo)
+    assert llamadas == [((str(archivo),), {"cwd": str(archivo.parent)})]
