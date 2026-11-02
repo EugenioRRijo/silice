@@ -141,6 +141,7 @@ planos (Tarea 11). Su commit de retiro también se anota en la tabla de la bitá
 | 3 | La Hoja sube a la obra (`ProveedorDeLaHoja`) | Opus | L | — |
 | 4 | Presupuesto: de nueve pestañas a seis | Sonnet | M | 7, 8, 10, 11, 12, 23, 25 |
 | 5 | Presupuesto: franja, botón principal único y filas afectadas | Opus | M | — |
+| 5b | Presupuesto: el IVA en pantalla | Sonnet | S | — |
 | 6 | Versiones | Opus | L | 9, 24 |
 | 7 | El APU de una partida en panel lateral | Opus | M | — |
 | 8 | Un solo diálogo para las líneas del APU | Sonnet | M | — |
@@ -151,7 +152,7 @@ planos (Tarea 11). Su commit de retiro también se anota en la tabla de la bitá
 | 13 | Mercado: histórico de precios y cotizaciones | Sonnet | M | — |
 | 14 | Cierre de F4 | Opus (orquestador) y Sonnet (menores) | M | — |
 
-Orden: 0 → 1 → 2 → 2b → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14. La 2b tiene que estar antes que la 3,
+Orden: 0 → 1 → 2 → 2b → 3 → 4 → 5 → 5b → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14. La 2b tiene que estar antes que la 3,
 que hereda su `usePuedeEditarLaHoja`, y antes que toda tarea que añada controles de edición. La 3, antes que la 4 y que
 la 11; la 5, antes que la 6, porque Versiones usa `useAprobacionDeVersion`; y la 10, antes que la 11.
 
@@ -646,6 +647,32 @@ nueva», «Enviar a aprobación…» y la columna Estado).
 - [ ] **Paso 4:** → PASA; `npx vitest run src/paginas/hoja`; lint; duplicado; muerto. **Commits:**
   `test(presupuesto): franja del paso y boton principal unico (rojo)` y luego `feat(presupuesto): franja del paso,
   boton principal unico y filas afectadas`.
+
+### Tarea 5b: Presupuesto, el IVA en pantalla
+
+**Modelo:** Sonnet. **Tamaño:** S. **Bajas:** ninguna. Decisión de Eugenio del 31/10/2026 (plan vial, Tarea 18): el
+IVA del presupuesto se ve en la sección Presupuesto de F4. Se añadió el 02/11/2026, con la T18 ya unida a F4.
+
+**Archivos:**
+- Servidor: la vista `presupuesto` del borrador de la Hoja añade `impuestos` con `subtotal`, `iva`, `total` (texto
+  decimal, dos cifras), `alicuota` («16») y `fuente` (la de `ALICUOTA_IVA`, «a cotejar con la Gaceta vigente»),
+  calculados con `aplicacion/impuestos.con_iva` sobre el total de la vista. **No se toca `aplicacion/hoja.py`** (está
+  en el congelado del experimento, acta del 31/10): el cálculo va en la capa de la API o en un módulo nuevo de
+  `aplicacion/`. `docs/api.json` se regenera.
+- Front: `PestanaPresupuesto.tsx` (o la pieza del total), `textos.ts`; prueba nueva `IvaDelPresupuesto.test.tsx`.
+
+**Reglas:**
+- Debajo de «Total del presupuesto» se leen «Subtotal», «IVA (16 %)» y «Total con IVA», con `Cifra` en es-VE y la
+  moneda de la obra; la alícuota cita su fuente en la ayuda («¿Qué es esto?»), no en una nota suelta.
+- Igual para quien arma y para quien revisa (es lectura). Sin borrador o sin partidas, no se pinta.
+- El APU no cambia y el total del presupuesto sigue siendo el costo sin IVA (como en la T18).
+
+- [ ] **Paso 1: pruebas rojas.** API: la vista trae `impuestos` con el oráculo 1.000,00 → 160,00 → 1.160,00 y uno con
+  medio céntimo (mitad hacia arriba). Front: las tres cifras con coma decimal; quien revisa también las ve; sin
+  partidas no aparecen.
+- [ ] **Paso 2:** → FALLA. **Paso 3:** implementar. **Paso 4:** → PASA; `npx vitest run src/paginas/hoja`, lint,
+  pytest de la vista. **Commits:** `test(presupuesto): IVA en pantalla (rojo)` y `feat(presupuesto): subtotal, IVA y
+  total con IVA en Presupuesto`.
 
 ### Tarea 6: Versiones
 
