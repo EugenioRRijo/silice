@@ -171,3 +171,9 @@ Las siete del Presupuesto. Cinco van en su propio commit y se deshacen con `git 
 | 23 | Pestaña «Punto de equilibrio» separada (ahora es el bloque de debajo del plan) | `b0f976d6` (con el feat) | Pestaña «Plan y equilibrio» | `git revert b0f976d6` (deshace el feat entero) |
 | 25 | Texto largo de ayuda encima de cada pestaña | `b0f976d6` (con el feat) | `paginas/hoja/textos.ts`, tras «¿Qué es esto?» (`comun/QueEsEsto.tsx`) | igual que la 23 |
 
+
+### Bajas de F4 aplicadas (Tarea 8, 2026-11-02)
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| (fusión del inventario) | Bloque plegado «Cambiar el insumo de una línea (en la copia de esta versión)» (`CambioDeInsumo.tsx`, con su tipo, línea, búsqueda y «Usar este insumo») | `4ca6b4d0` (con el `refactor`) | «Cambiar» en cada línea del APU, que abre el diálogo «Cambiar el insumo de <línea>» (`LineaDelApu.tsx`) | `git revert 4ca6b4d0` |
