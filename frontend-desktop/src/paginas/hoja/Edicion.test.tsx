@@ -6,7 +6,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { vistaEspacio, vistaPresupuesto } from "./datosDePrueba";
 import PaginaHoja from "./index";
-import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaEspacio } from "./logica";
+import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaEspacio, VistaPresupuesto } from "./logica";
 
 // Rebanada 3c-1: las cinco tablas del espacio se editan. El servidor se simula con respuestas ficticias con la forma del
 // contrato E1 (diseño §4.4: `PUT /v1/hoja/borradores/{id}/espacio` con `{rev, tablas}` y respuesta `{rev, resumen}`;
@@ -76,6 +76,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
   const alExpirar = vi.fn();
   // Lo que el servidor simulado contesta; cada prueba lo cambia.
   let vista: VistaEspacio;
+  let presupuesto: VistaPresupuesto;
   let abierto: BorradorAbierto;
   let alPonerse: (cuerpo: Cuerpo) => Response | Promise<Response>;
 
@@ -92,6 +93,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     localStorage.clear();
     sessionStorage.clear();
     vista = vistaEspacio();
+    presupuesto = vistaPresupuesto();
     abierto = borrador();
     alPonerse = ACEPTA;
     fetchFalso.mockImplementation(async (ruta, init) => {
@@ -106,7 +108,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
         return alPonerse(JSON.parse(String(init?.body)) as Cuerpo);
       }
       if (url.endsWith("/vistas/espacio")) return json(vista);
-      if (url.endsWith("/vistas/presupuesto")) return json(vistaPresupuesto());
+      if (url.endsWith("/vistas/presupuesto")) return json(presupuesto);
       return new Response(null, { status: 204 });
     });
   });
@@ -262,9 +264,9 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
       },
     });
     const estado = await esperar(() => screen.getByRole("region", { name: "Estado del borrador" }));
-    expect(await esperar(() => within(estado).getByTitle("2800.5"))).toHaveTextContent("2.800,50 USD");
+    expect(await esperar(() => within(estado).getByTitle("2.800,5"))).toHaveTextContent("2.800,50 USD");
     expect(within(estado).getByText(/· 1 cambio sin guardar/)).toBeInTheDocument();
-    expect(within(estado).getByTitle("2800.5")).toHaveAttribute("aria-live", "polite");
+    expect(within(estado).getByTitle("2.800,5")).toHaveAttribute("aria-live", "polite");
     expect(lecturasDelEspacio()).toBe(antes + 1);
     const derivadas = await esperar(() => screen.getByRole("table", { name: "Cantidades derivadas" }));
     expect(await esperar(() => within(derivadas).getByText("4,00"))).toBeInTheDocument();
@@ -346,7 +348,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     expect(screen.getByText("Valor no válido")).toBeInTheDocument();
     // El total mostrado es el anterior y el borrador no avanzó.
     const estado = screen.getByRole("region", { name: "Estado del borrador" });
-    expect(within(estado).getByTitle("2703.860232344044033333333333")).toBeInTheDocument();
+    expect(within(estado).getByTitle("2.703,860232344044033333333333")).toBeInTheDocument();
     expect(within(estado).getByText(/Sin cambios sin guardar/)).toBeInTheDocument();
     // Corregir y volver a mandar: sigue con el rev que el servidor no avanzó y el alert desaparece.
     alPonerse = ACEPTA;
@@ -606,6 +608,25 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     await waitFor(() => expect(llamadas("POST", "/v1/hoja/borradores")).toBe(2));
     expect(await screen.findByText(/Sin cambios sin guardar/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Descartar cambios" })).toBeNull();
+  });
+
+  // La pestaña «Presupuesto» se llama «Partidas» desde la Tarea 4 de F4.
+  test("Partidas: el código no se parte en líneas y m2 y m3 se leen m² y m³ (segunda pasada de navegador)", async () => {
+    const base = vistaPresupuesto();
+    presupuesto = {
+      ...base,
+      filas: [
+        { ...base.filas[0]!, partida: "C-000.000.001", unidad: "m2" },
+        { ...base.filas[1]!, partida: "C-000.000.002", unidad: "m3" },
+      ],
+    };
+    await abrir();
+    fireEvent.click(screen.getByRole("tab", { name: "Partidas" }));
+    const codigo = await screen.findByText("C-000.000.001");
+    expect(codigo).toHaveClass("silice-hoja__codigo");
+    expect(screen.getByText("m²")).toBeInTheDocument();
+    expect(screen.getByText("m³")).toBeInTheDocument();
+    expect(screen.queryByText("m2")).toBeNull();
   });
 
   test("sin cambios no hay «Descartar cambios»", async () => {
