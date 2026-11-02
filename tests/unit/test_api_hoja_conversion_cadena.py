@@ -329,6 +329,7 @@ def test_la_cadena_sana_esta_integra_y_lo_dice(_entorno) -> None:
         "integra": True,
         "mensaje": "Cadena íntegra: 1 versiones",
         "declaracion": None,
+        "rota_en": None,
     }
 
 
@@ -363,6 +364,7 @@ def test_la_cadena_sigue_integra_tras_restaurar_cotizar_y_convertir(_casos) -> N
         "integra": True,
         "mensaje": "Cadena íntegra: 4 versiones",
         "declaracion": None,
+        "rota_en": None,
     }
     assert cadena(ruta, NOMBRE_OF001).integra
 
@@ -376,7 +378,13 @@ def test_alterar_a_mano_el_registro_de_cambios_rompe_la_cadena_en_esa_version(_c
         bd.commit()
     respuesta = _cadena(navegador)
     assert respuesta.status_code == 200
-    assert respuesta.json() == {"integra": False, "mensaje": ROTA_REGISTRO, "declaracion": None}
+    # F4, Tarea 6: la versión donde se rompió viaja aparte, para que la interfaz no lea el texto.
+    assert respuesta.json() == {
+        "integra": False,
+        "mensaje": ROTA_REGISTRO,
+        "declaracion": None,
+        "rota_en": "002",
+    }
 
 
 def test_alterar_a_mano_una_celda_del_espacio_rompe_el_anexo(_entorno) -> None:
@@ -386,7 +394,12 @@ def test_alterar_a_mano_una_celda_del_espacio_rompe_el_anexo(_entorno) -> None:
         bd.execute("UPDATE esp_ambientes SET alto = '9.9' WHERE id = 'BAN-01'")
         bd.commit()
     respuesta = _cadena(navegador)
-    assert respuesta.json() == {"integra": False, "mensaje": ROTA_ANEXO, "declaracion": None}
+    assert respuesta.json() == {
+        "integra": False,
+        "mensaje": ROTA_ANEXO,
+        "declaracion": None,
+        "rota_en": "001",
+    }
 
 
 def test_las_versiones_selladas_despues_se_declaran_retroactivas(_casos) -> None:
@@ -396,7 +409,7 @@ def test_las_versiones_selladas_despues_se_declaran_retroactivas(_casos) -> None
         bd.commit()
     navegador, _ = _ana()
     sin = _cadena(navegador).json()
-    assert sin == {"integra": False, "mensaje": SIN_ESLABON, "declaracion": None}
+    assert sin == {"integra": False, "mensaje": SIN_ESLABON, "declaracion": None, "rota_en": "001"}
     with base(ruta) as sesion:
         entrega.con_anexos_de_cadena(sesion)
         sellar_historial(
@@ -411,6 +424,7 @@ def test_las_versiones_selladas_despues_se_declaran_retroactivas(_casos) -> None
         "mensaje": "Cadena íntegra: 2 versiones",
         "declaracion": "Versiones 001 a 002 selladas el 2026-10-20: prueban que no cambiaron "
         "desde esa fecha; antes no hay garantía.",
+        "rota_en": None,
     }
 
 
@@ -425,6 +439,7 @@ def test_un_proyecto_sin_versiones_tiene_la_cadena_vacia_integra(_entorno) -> No
         "integra": True,
         "mensaje": "Cadena íntegra: 0 versiones",
         "declaracion": None,
+        "rota_en": None,
     }
 
 
