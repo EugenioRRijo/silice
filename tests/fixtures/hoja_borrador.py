@@ -13,11 +13,11 @@ from datetime import date
 from decimal import Decimal
 
 from adapters.espacio import Espacio, OrigenMedida, TipoOrigen
+from aplicacion import hoja
 from core.budget import plan_secuencial
 from core.contracts import ComposicionAPU, ItemComputo, ParametrosCosto
 from core.contracts.apu import LineaMaterial
 from tests.fixtures.espacio_bano import espacio_bano
-from ui import hoja
 
 D = Decimal
 FECHA = date(2026, 10, 5)

@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from datetime import date
 
+from aplicacion.hoja import Borrador
 from asistente.catalogo import CatalogoDeLaBase, PartidaVista
 from asistente.propuestas import OrigenIA
 from asistente.validacion import Contexto
 from core.contracts.dominio import Dominio
-from ui.hoja import Borrador
 
 PEDIDO = "Bano de 2,4 x 1,5 m con alto de 2,5 m, con un lavamanos a 60 cm del piso."
 FECHA = date(2026, 10, 5)

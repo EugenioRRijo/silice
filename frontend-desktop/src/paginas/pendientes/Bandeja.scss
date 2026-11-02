@@ -1,0 +1,177 @@
+@use "sass:map";
+@use "@carbon/styles/scss/type";
+@use "../../marco/umbrales" as u;
+
+// La bandeja de Pendientes (rediseño F3, Tarea 2; DESIGN.md): la lista a la izquierda (~40 %) y el detalle a la
+// derecha. Carbon g10, esquinas rectas, divisores de 1 px, sin sombras ni animación. La bandeja mide el alto que deja la
+// barra superior fija (3 rem, como el marco): con muchos pendientes la lista se desplaza dentro de su columna y el
+// detalle sigue a la vista (foco 5). Ningún ancho fijo: las columnas son fracciones que pueden encogerse.
+.silice-bandeja {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  block-size: calc(100vh - 3rem);
+  padding-block-end: 1rem;
+}
+
+.silice-bandeja__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+
+  h1,
+  p {
+    margin: 0;
+  }
+}
+
+// El resumen por urgencia, encima de la lista (misma palabra y orden que la urgencia de cada fila).
+.silice-bandeja__resumen {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  border-block-end: 1px solid var(--cds-border-subtle);
+  color: var(--silice-texto-secundario);
+  font-weight: 600;
+}
+
+.silice-bandeja__aviso {
+  max-inline-size: none;
+  margin: 0;
+}
+
+.silice-bandeja__rejilla {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  min-block-size: 0;
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
+.silice-bandeja__lista {
+  min-block-size: 0;
+  overflow-y: auto;
+  border-inline-end: 1px solid var(--silice-divisor);
+}
+
+.silice-bandeja__opciones {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.silice-bandeja__opcion {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  border-block-end: 1px solid var(--silice-divisor);
+  border-inline-start: 3px solid transparent;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+
+  // La elegida se marca por forma (raya y relleno), no solo por color, como en el buscador.
+  &[aria-selected="true"] {
+    background: var(--cds-layer-selected-01);
+    border-inline-start-color: var(--cds-border-interactive);
+  }
+}
+
+.silice-bandeja__texto {
+  @include type.type-style("body-compact-01");
+}
+
+.silice-bandeja__opcion[aria-selected="true"] .silice-bandeja__texto {
+  font-weight: 600;
+}
+
+.silice-bandeja__pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  color: var(--silice-texto-secundario);
+  @include type.type-style("label-01");
+}
+
+.silice-bandeja__urgencia {
+  display: inline-flex;
+  align-items: center;
+  color: var(--cds-text-primary);
+}
+
+.silice-bandeja__detalle {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  min-block-size: 0;
+  overflow-y: auto;
+  padding: 1rem 1.5rem;
+
+  h2,
+  p {
+    margin: 0;
+  }
+}
+
+.silice-bandeja__datos {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+
+  dt {
+    color: var(--silice-texto-secundario);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.silice-bandeja__cargando,
+.silice-bandeja__error {
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+}
+
+// Por debajo del umbral de cada letra (1056, 1536 y 1920 px para Normal, Grande y Muy grande) la lista pasa arriba y
+// el detalle debajo; la lista conserva su desplazamiento (hasta media ventana) y la página, el resto.
+@each $escala in map.keys(u.$umbrales-por-escala) {
+  @include u.por-debajo-del-umbral($escala) {
+    // Apilada, la bandeja toma su alto natural (la página se desplaza) y la lista se limita a la mitad de la ventana:
+    // con el alto fijo de arriba y `min-block-size: 0` la lista quedaba en alto 0 y solo se veía el detalle.
+    .silice-bandeja {
+      block-size: auto;
+    }
+
+    .silice-bandeja__rejilla {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto auto;
+    }
+
+    .silice-bandeja__lista {
+      block-size: auto;
+      max-block-size: 50vh;
+      border-inline-end: 0;
+      border-block-end: 1px solid var(--silice-divisor);
+    }
+  }
+}
+
+// La carpeta de una obra de nombre repetido (D-F3-3): más tenue que el nombre, en el mismo renglón.
+.silice-bandeja__carpeta {
+  color: var(--silice-texto-secundario);
+}

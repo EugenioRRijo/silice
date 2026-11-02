@@ -1,0 +1,8 @@
+tramo;progresiva_ini_km;progresiva_fin_km;ancho_m;distancia_planta_km;elemento;tipo;espesor_m;densidad_t_m3;dosis_l_m2;lineas;asfalto_pct
+T1;0;1,0;7,00;20;capa;riego_adherencia;;;0,30;;
+T1;;;;;capa;carpeta;0,05;2,40;;;6,5
+T1;;;;;demarcacion;continua;;;;2;
+T2;1,0;1,5;7,00;20;capa;base_granular;0,20;;;;
+T2;;;;;capa;imprimacion;;;1,00;;
+T2;;;;;capa;carpeta;0,05;2,40;;;
+T3;1,6;1,65;3,00;20;capa;bacheo;0,10;2,40;;;

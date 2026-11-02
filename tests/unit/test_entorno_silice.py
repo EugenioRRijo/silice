@@ -15,14 +15,13 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
-from ui.app import modo_entrega_activo
-from ui.caso import resolver_ruta
-from ui.entorno import (
+from aplicacion.entorno import (
     ALIAS_ANTERIORES,
     ULTIMA_VERSION_CON_ALIAS,
     VARIABLE_CASO,
     VARIABLE_MODO_ENTREGA,
     leer_variable,
+    modo_entrega_activo,
 )
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -61,10 +60,7 @@ def test_la_variable_nueva_en_blanco_no_cede_a_la_vieja(nueva: str, vieja: str) 
     assert leer_variable({nueva: "  "}, nueva) is None
 
 
-def test_el_caso_y_el_modo_entrega_leen_con_el_ayudante() -> None:
-    assert resolver_ruta(None, {"ARENIA_CASO": "viejo.db"}, "d.db") == Path("d.db")
-    entorno = {"SILICE_CASO": "nuevo.db", "ARENIA_CASO": "viejo.db"}
-    assert resolver_ruta(None, entorno, "d.db") == Path("nuevo.db")
+def test_el_modo_entrega_ignora_el_alias_retirado() -> None:
     assert modo_entrega_activo({"ARENIA_MODO_ENTREGA": "1"}) is False
     assert modo_entrega_activo({"SILICE_MODO_ENTREGA": "0", "ARENIA_MODO_ENTREGA": "1"}) is False
     assert modo_entrega_activo({"SILICE_MODO_ENTREGA": "1"}) is True
@@ -84,8 +80,9 @@ def test_el_alias_se_retira_despues_de_la_0_6_0() -> None:
     )
 
 
-def test_el_ayudante_solo_usa_la_biblioteca_estandar() -> None:
-    arbol = ast.parse((RAIZ / "ui" / "entorno.py").read_text(encoding="utf-8"))
+def test_el_ayudante_solo_usa_la_biblioteca_estandar_y_operacion() -> None:
+    """`tests/conftest.py` lo importa antes que nada: no puede arrastrar `ui`, `api` ni terceros."""
+    arbol = ast.parse((RAIZ / "aplicacion" / "entorno.py").read_text(encoding="utf-8"))
     importados = {
         alias.name.split(".")[0]
         for nodo in ast.walk(arbol)
@@ -96,4 +93,4 @@ def test_el_ayudante_solo_usa_la_biblioteca_estandar() -> None:
         for nodo in ast.walk(arbol)
         if isinstance(nodo, ast.ImportFrom) and nodo.module
     }
-    assert importados <= set(sys.stdlib_module_names) | {"__future__"}
+    assert importados <= set(sys.stdlib_module_names) | {"__future__", "operacion"}

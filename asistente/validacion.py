@@ -17,6 +17,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ValidationError
 
+from aplicacion.hoja import Borrador, HojaInvalida
 from asistente.catalogo import CatalogoVista
 from asistente.herramientas import (
     POR_NOMBRE,
@@ -31,7 +32,6 @@ from asistente.herramientas import (
 )
 from asistente.propuestas import EstadoPropuesta, OrigenIA, Propuesta, TipoPropuesta, aplicar
 from core.contracts.unidades import unidades_equivalentes
-from ui.hoja import Borrador, HojaInvalida
 
 
 class Causa(StrEnum):

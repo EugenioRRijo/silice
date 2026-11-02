@@ -1,0 +1,71 @@
+// Tramos de la vía. Sin tarjetas ni sombras (DESIGN.md): una sección por tramo con su título, su resumen y su tabla.
+
+.vial {
+  max-inline-size: 72rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.vial-nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+  margin: 0;
+}
+
+.vial-tramo {
+  display: grid;
+  gap: 0.5rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--cds-border-subtle);
+}
+
+.vial-tramo h2 {
+  margin: 0;
+}
+
+.vial-llevar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.vial-reportes {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.vial-reportes h2 {
+  margin: 0;
+}
+
+.vial-reportes__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+// El aviso de «No se llevó nada al presupuesto» (AvisoDeLlevar): párrafos, listas y «Qué hacer» resaltado.
+.silice-llevar {
+  display: grid;
+  gap: 0.5rem;
+
+  p {
+    margin: 0;
+  }
+}
+
+.silice-llevar__que-hacer {
+  padding-inline-start: 0.75rem;
+  border-inline-start: 4px solid var(--cds-support-error);
+}
+
+.silice-llevar__lista {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  list-style: disc;
+}
+
+// Un código no se parte en dos líneas.
+.silice-codigo-sin-partir {
+  white-space: nowrap;
+}

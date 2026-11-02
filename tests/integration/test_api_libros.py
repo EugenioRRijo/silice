@@ -24,8 +24,9 @@ Oráculos, ninguno sale de la función bajo prueba:
 - Los mensajes de error de la guardia y del lector son los literales que el spec manda mostrar
   tal cual (F-D10).
 
-Nada se escribe en disco ni en la base (F-D9): se cuentan las filas de todas las tablas antes y
-después, y se vigila toda apertura de archivo para escribir durante las peticiones.
+Nada se escribe en disco ni en la base del caso (F-D9): se cuentan las filas de todas las tablas
+antes y después, y se vigila toda apertura de archivo para escribir durante las peticiones. El
+historial (RM-6) vive en `instalacion.db` y lo cubre `test_api_libros_historial.py`.
 """
 
 from __future__ import annotations
@@ -50,6 +51,7 @@ from sqlalchemy import func, select
 
 from api.main import app
 from api.proteccion import LIMITE_CUERPO, MENSAJE_SIN_CLAVE
+from api.sesion_web import MENSAJE_SIN_SESION
 from core.catalog.indices import Observacion, definicion_tasa, registrar_importacion
 from core.models.base import Base
 from operacion import config
@@ -238,18 +240,25 @@ def escrituras(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "ruta", ["/v1/libros/auditoria", "/v1/libros/devolucion", "/v1/libros/pdf"]
+    "ruta",
+    ["/v1/libros/auditoria", "/v1/libros/devolucion", "/v1/libros/pdf", "/v1/libros/replica"],
 )
 def test_sin_clave_valida_401_y_no_se_procesa_nada(cliente, limpio, monkeypatch, ruta):
-    """Sin cabecera, vacía o desconocida: 401 con el mensaje único, y la ruta no llega a leer ni
-    a procesar nada (la clave se exige antes)."""
+    """Clave vacía o desconocida: 401 con el mensaje de la clave; sin la cabecera (ni cookie),
+    401 con el de la sesión (RS2-5: sin `X-Silice-Clave` se busca la cookie del navegador). En
+    ningún caso la ruta llega a leer ni a procesar nada (el acceso se exige antes)."""
     import api.rutas.libros as rutas
 
     llamadas: list[str] = []
     monkeypatch.setattr(rutas, "procesar_libro", lambda *a, **k: llamadas.append("libro"))
     monkeypatch.setattr(rutas, "auditar_pdf_simple", lambda *a, **k: llamadas.append("pdf"))
+    monkeypatch.setattr(rutas, "replicar_libro", lambda *a, **k: llamadas.append("replica"))
     pdf = _pdf_simple([RENGLON_MAL], "1446,65")
-    for clave in (None, "", "desconocida.secreto"):
+    for clave, mensaje in (
+        (None, MENSAJE_SIN_SESION),
+        ("", MENSAJE_SIN_CLAVE),
+        ("desconocida.secreto", MENSAJE_SIN_CLAVE),
+    ):
         cabeceras = {} if clave is None else {CABECERA: clave}
         ajeno = TestClient(app, base_url=ANFITRION, client=IP_LOCAL, headers=cabeceras)
         if ruta.endswith("/pdf"):
@@ -257,13 +266,15 @@ def test_sin_clave_valida_401_y_no_se_procesa_nada(cliente, limpio, monkeypatch,
         else:
             r = _post(ajeno, ruta, limpio.datos)
         assert r.status_code == 401, (clave, r.text)
-        assert r.json() == {"detalle": MENSAJE_SIN_CLAVE}
+        assert r.json() == {"detalle": mensaje}
     assert llamadas == []
 
 
-def test_con_clave_valida_las_tres_rutas_responden_200(cliente, limpio) -> None:
+def test_con_clave_valida_las_cuatro_rutas_responden_200(cliente, limpio) -> None:
     assert _post(cliente, "/v1/libros/auditoria", limpio.datos).status_code == 200
     assert _post(cliente, "/v1/libros/devolucion", limpio.datos).status_code == 200
+    replica = cliente.post("/v1/libros/replica", files={"libro": ("libro.xlsx", limpio.datos)})
+    assert replica.status_code == 200
     pdf = _pdf_simple([RENGLON_MAL], "1446,65")
     assert cliente.post("/v1/libros/pdf", files={"pdf": ("p.pdf", pdf)}).status_code == 200
 
@@ -426,6 +437,128 @@ def test_libro_con_h1_totales_del_libro_y_de_silice(cliente, con_h1) -> None:
     assert Decimal(d["totales_libro"]["SUBSINIVA"]) == MEMORIA["SUBSINIVA"] - Decimal("154.275")
     for clave in ("SUBSINIVA", "IVATOT", "TOTALGEN"):
         assert Decimal(d["totales_silice"][clave]) == MEMORIA[clave]
+
+
+# --- Indicadores (RS2-7, RF-116): actual = libro, meta = Silice, sentido «costo» ---
+
+
+def _indicadores(d: dict) -> dict[str, tuple[str, str, str, str | None]]:
+    return {
+        i["clave"]: (i["actual"], i["meta"], i["delta"], i["delta_pct"]) for i in d["indicadores"]
+    }
+
+
+def test_indicadores_del_libro_limpio_no_tienen_variacion(cliente, limpio) -> None:
+    d = _auditar(cliente, limpio.datos).json()
+    assert [(i["clave"], i["titulo"], i["sentido"]) for i in d["indicadores"]] == [
+        ("SUBSINIVA", "Subtotal sin IVA", "exactitud"),
+        ("IVATOT", "IVA", "exactitud"),
+        ("TOTALGEN", "Total general", "exactitud"),
+    ]
+    # El libro guarda la memoria (4 358,20825; 697,31332; 5 055,52157) y Silice recalcula los
+    # mismos valores; la franja los presenta en centésimas al par (RS2-12): Δ = 0,00.
+    assert _indicadores(d) == {
+        "SUBSINIVA": ("4358.21", "4358.21", "0.00", "0.00"),
+        "IVATOT": ("697.31", "697.31", "0.00", "0.00"),
+        "TOTALGEN": ("5055.52", "5055.52", "0.00", "0.00"),
+    }
+    for clave, (actual, meta, _, _) in _indicadores(d).items():
+        assert Decimal(actual) == Decimal(d["totales_libro"][clave]).quantize(Decimal("0.01"))
+        assert Decimal(meta) == Decimal(d["totales_silice"][clave]).quantize(Decimal("0.01"))
+        assert Decimal(d["totales_libro"][clave]) == MEMORIA[clave]
+        assert actual == meta
+
+
+def test_indicadores_con_sobreprecio_sembrado(cliente) -> None:
+    """P guardado de APU-01 = 15 (Silice: 14,486725). Cuenta a mano:
+    monto del libro 120 × 15 = 1 800; SUBSINIVA del libro 1 800 + 2 416,975 + 202,82625 =
+    4 419,80125; Δ = 120 × (15 − 14,486725) = 120 × 0,513275 = 61,593. IVA 0,16 × 4 419,80125 =
+    707,1682; Δ = 0,16 × 61,593 = 9,85488. Total 4 419,80125 + 707,1682 = 5 126,96945;
+    Δ = 61,593 + 9,85488 = 71,44788. Los tres Δ guardan la misma proporción (el IVA es el 16 %
+    de cada subtotal): Δ% = 61,593 ÷ 4 358,20825 × 100, y como 4 358,20825 × 0,01405 = 61,23283
+    ≤ 61,593 < 61,66865 = 4 358,20825 × 0,01415, cae en [1,405 ; 1,415): 1,41."""
+    sobreprecio = construir_libro(siembra=Siembra(p_guardado={1: Decimal("15")}))
+    d = _auditar(cliente, sobreprecio.datos).json()
+    meta = MEMORIA["SUBSINIVA"]
+    assert meta * Decimal("0.01405") <= Decimal("61.593") < meta * Decimal("0.01415")
+    assert _indicadores(d) == {
+        "SUBSINIVA": ("4419.80", "4358.21", "61.59", "1.41"),
+        "IVATOT": ("707.17", "697.31", "9.85", "1.41"),
+        "TOTALGEN": ("5126.97", "5055.52", "71.45", "1.41"),
+    }
+    assert Decimal("120") * (Decimal("15") - Decimal("14.486725")) == Decimal("61.593")
+    assert Decimal("0.16") * Decimal("61.593") == Decimal("9.85488")
+
+
+def test_indicadores_con_h1_bajo_el_costo_de_silice(cliente, con_h1) -> None:
+    """H1: el libro declara 154,275 menos sin IVA (cabecera del módulo). Δ IVA = 0,16 × −154,275
+    = −24,684; Δ total = −154,275 − 24,684 = −178,959. Δ% = −154,275 ÷ 4 358,20825 × 100, y como
+    4 358,20825 × 0,03535 = 154,06266 ≤ 154,275 < 154,49848 = 4 358,20825 × 0,03545: −3,54."""
+    d = _auditar(cliente, con_h1.datos).json()
+    meta = MEMORIA["SUBSINIVA"]
+    assert meta * Decimal("0.03535") <= Decimal("154.275") < meta * Decimal("0.03545")
+    assert _indicadores(d) == {
+        "SUBSINIVA": ("4203.93", "4358.21", "-154.28", "-3.54"),
+        "IVATOT": ("672.63", "697.31", "-24.68", "-3.54"),
+        "TOTALGEN": ("4876.56", "5055.52", "-178.96", "-3.54"),
+    }
+
+
+# --- Libro menor (V-16): las partidas con el costo directo que no suma sus componentes (L4) ---
+
+
+def test_partidas_con_omision_del_libro_con_h1_es_la_partida_2(cliente, con_h1) -> None:
+    """H1 quita los equipos del CD de APU-02, que es la partida 2: el libro es menor (Δ < 0) y el
+    único hallazgo L4 cae en esa partida. El número sale de la partida cuya hoja APU es la de la
+    celda del hallazgo (`APU-02!G..`), no del texto."""
+    d = _auditar(cliente, con_h1.datos).json()
+    assert d["partidas_con_omision"] == [2]
+    assert d["indicadores"][0]["delta"].startswith("-")
+
+
+def test_partidas_con_omision_vacio_si_el_libro_cuadra_o_sobra(cliente, limpio) -> None:
+    assert _auditar(cliente, limpio.datos).json()["partidas_con_omision"] == []
+    sobreprecio = construir_libro(siembra=Siembra(p_guardado={1: Decimal("15")}))
+    assert _auditar(cliente, sobreprecio.datos).json()["partidas_con_omision"] == []
+
+
+def test_partidas_con_omision_dos_partidas_con_el_mismo_apu_cuenta_la_primera() -> None:
+    """Como `reglas._Contexto.partida_de_apu` (la PRIMERA partida que apunta a una hoja APU), no la
+    última: si las partidas 3 y 7 comparten `APU-02`, el L4 de `APU-02` es de la partida 3."""
+    from types import SimpleNamespace
+
+    from api.rutas.libros import partidas_con_omision
+
+    def partida(numero: int, hoja: str | None):
+        return SimpleNamespace(numero=numero, hoja_apu=hoja)
+
+    resultado = SimpleNamespace(
+        libro=SimpleNamespace(
+            partidas=[
+                partida(1, "APU-01"),
+                partida(3, "APU-02"),
+                partida(7, "APU-02"),
+                partida(9, None),
+            ]
+        ),
+        hallazgos_tabla=[
+            SimpleNamespace(codigo="L4", celda="APU-02!G36"),
+            SimpleNamespace(codigo="L2", celda="APU-01!G36"),
+            SimpleNamespace(codigo="L4", celda="APU-99!G36"),
+        ],
+    )
+    assert partidas_con_omision(resultado) == [3]
+
+
+def test_libro_menor_sin_l4_no_inventa_omisiones(cliente) -> None:
+    """P guardado de APU-01 = 14 (Silice: 14,486725): el libro sale menor sin que ningún APU deje
+    componentes fuera de su CD. Sin dato de omisión, la lista va vacía (la etiqueta del frente es la
+    fija, sin números)."""
+    menor = construir_libro(siembra=Siembra(p_guardado={1: Decimal("14")}))
+    d = _auditar(cliente, menor.datos).json()
+    assert d["indicadores"][0]["delta"].startswith("-")
+    assert "L4" not in {h["codigo"] for h in d["hallazgos"]}
+    assert d["partidas_con_omision"] == []
 
 
 def test_libro_y_pdf_simple_juntos_suman_l10_informado(cliente, limpio) -> None:

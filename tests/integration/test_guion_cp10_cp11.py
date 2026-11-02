@@ -22,9 +22,9 @@ from decimal import Decimal
 
 import pytest
 
+from aplicacion import hoja
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from tests.fixtures.hoja_en_base import NOMBRE_OF001, plantilla_of001
-from ui import hoja
 
 D = Decimal
 TOL = D("0.01")

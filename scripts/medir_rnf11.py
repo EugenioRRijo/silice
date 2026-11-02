@@ -1,14 +1,14 @@
-"""Mide RNF-11: el tiempo de la hoja del proyecto con 500 puntos, en `ui.hoja`, sin Streamlit.
+"""Mide RNF-11: el tiempo de la hoja del proyecto con 500 puntos, en `aplicacion`, sin Streamlit.
 
 La metrica de la spec del sprint final (§4.3) pide, para un proyecto de 500 puntos, una mediana
 de **2 s o menos** desde que se aplica una edicion hasta que se tiene el presupuesto, el informe de
 auditoria y el punto de equilibrio, **sin persistir**. Este script produce esa evidencia:
 
 1. genera los 500 puntos con el generador determinista (`scripts/generar_hoja_prueba.py`, semilla
-   0) y arma con ellos el borrador de la hoja (`ui.hoja.Borrador`) con su plan secuencial;
+   0) y arma con ellos el borrador de la hoja (`aplicacion.hoja.Borrador`) con su plan secuencial;
 2. cada corrida aplica una edicion (escribe a mano la cantidad de un punto, DA-SF-5) y llama a
-   `ui.hoja.elaborar_borrador`: valora, ajusta el plan, audita con R1 a R10 y calcula el punto de
-   equilibrio y el Estado por fila. No toca ninguna base de datos;
+   `aplicacion.hoja.elaborar_borrador`: valora, ajusta el plan, audita con R1 a R10 y calcula el
+   punto de equilibrio y el Estado por fila. No toca ninguna base de datos;
 3. se hace **una corrida de calentamiento** (no cuenta) y se miden **cinco**; la cifra es la
    **mediana**.
 
@@ -42,12 +42,12 @@ RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
+from aplicacion import hoja  # noqa: E402
 from scripts.generar_hoja_prueba import (  # noqa: E402
     PARAMETROS_PRUEBA,
     composiciones_de_prueba,
     generar_items,
 )
-from ui import hoja  # noqa: E402
 
 PUNTOS = 500
 CORRIDAS = 5

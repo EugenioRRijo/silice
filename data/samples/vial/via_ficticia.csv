@@ -1,0 +1,11 @@
+tramo;progresiva_ini_km;progresiva_fin_km;ancho_m;distancia_planta_km;elemento;tipo;espesor_m;densidad_t_m3;dosis_l_m2;lineas
+T1;0;1,2;7,30;15;capa;fresado;0,05;;;
+T1;;;;;capa;riego_adherencia;;;0,40;
+T1;;;;;capa;carpeta;0,05;2,35;;
+T1;;;;;demarcacion;continua;;;;2
+T1;;;;;demarcacion;discontinua;;;;1
+T2;1,2;2,0;6,50;18;capa;subbase_granular;0,25;;;
+T2;;;;;capa;base_granular;0,20;;;
+T2;;;;;capa;imprimacion;;;1,20;
+T2;;;;;capa;carpeta;0,04;2,30;;
+T3;2,0;2,05;3,00;18;capa;bacheo;0,10;2,30;;

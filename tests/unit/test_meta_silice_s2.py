@@ -67,7 +67,7 @@ def test_cada_par_nombra_una_prueba_y_un_modulo_distintos_en_su_fase():
         "core/budget/valor_ganado.py",
         "core/budget/recuperacion.py",
         "core/budget/decision.py",
-        "ui/control.py",
+        "aplicacion/control.py",
     } <= nuevos
 
 

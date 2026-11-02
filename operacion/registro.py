@@ -4,8 +4,8 @@
 escriben contraseñas, códigos de instalación, claves de API o de IA, bloques PEM, cuerpos de
 petición ni cadenas de consulta; la carpeta del usuario se reescribe como `%USERPROFILE%`. Las
 trazas guardan el tipo, el mensaje (también filtrado) y `archivo:línea`, nunca el texto de la
-línea ni los valores de las variables. El lanzador pasa por el mismo filtro la salida de Streamlit
-y de Uvicorn (`copiar_salida`).
+línea ni los valores de las variables. El lanzador pasa por el mismo filtro la salida de Uvicorn
+(`copiar_salida`).
 """
 
 from __future__ import annotations

@@ -11,7 +11,8 @@ from pathlib import Path
 
 from cryptography.exceptions import InvalidTag
 
-from operacion import base_datos, config, firma_sumas, lanzador, red
+from operacion import base_datos, config, firma_sumas, lanzador, primer_arranque, red
+from seguridad import cuentas
 
 
 def _arrancar(argumentos: argparse.Namespace) -> int:
@@ -22,21 +23,45 @@ def _parar(_argumentos: argparse.Namespace) -> int:
     return lanzador.parar()
 
 
-def _demostracion(_argumentos: argparse.Namespace) -> int:
-    ruta = base_datos.resolver_caso("demostracion")
+def _demostracion(argumentos: argparse.Namespace) -> int:
+    """Sin `--salida`, el caso `demostracion` de la carpeta de casos (como siempre). Con `--salida`
+    (BCP-2), la ruta absoluta que arma el servidor en su cuarentena: no pasa por `resolver_caso`
+    porque no viene de la persona, y la publica `aplicacion.casos.demostracion`."""
+    salida = getattr(argumentos, "salida", None)
+    if salida is None:
+        ruta = base_datos.resolver_caso("demostracion")
+    elif not Path(salida).is_absolute():
+        print("--salida debe ser una ruta absoluta.", file=sys.stderr)
+        return 2
+    else:
+        ruta = Path(salida)
     base_datos.preparar_base(ruta)
     from scripts.seed_demo import main as sembrar  # diferido: scripts/ viaja solo por el manifiesto
 
     return int(sembrar(["--db", str(ruta)]))
 
 
+def _restablecer_administrador(argumentos: argparse.Namespace) -> int:
+    """Devuelve el acceso de un administrador con acceso al equipo (S3 §5.4; BCP-1): un código de
+    un solo uso que caduca a las 24 horas y cierra las sesiones de los administradores."""
+    codigo, archivo = primer_arranque.restablecer_administrador()
+    horas = int(cuentas.CADUCIDAD_RESTABLECIMIENTO.total_seconds() // 3600)
+    print("Código de restablecimiento nuevo (de un solo uso):")
+    print(f"  {cuentas.formato_codigo(codigo)}")
+    print(f"También está en {archivo}. Sirve {horas} horas.")
+    print("Las sesiones de los administradores quedaron cerradas.")
+    print("Abra Sílice y escríbalo en «Perdí el acceso de administrador».")
+    if argumentos.esperar:  # lanzada desde el acceso directo: la ventana se cerraría sola
+        input("Cópielo y pulse Enter para cerrar esta ventana. ")
+    return 0
+
+
 def _estado_red() -> int:
     ajustes = config.cargar_ajustes(config.ruta_ajustes())
     if ajustes.red_local:
-        print(f"Red local: encendida en http://{ajustes.direccion}:{ajustes.puerto}")
+        print(f"Red local: encendida en http://{ajustes.direccion}:{ajustes.puerto}/app/")
     else:
-        print(f"Red local: apagada (solo http://127.0.0.1:{ajustes.puerto})")
-    print(f"API: {'activa' if ajustes.api_activa else 'apagada'} (puerto {ajustes.puerto_api})")
+        print(f"Red local: apagada (solo http://127.0.0.1:{ajustes.puerto}/app/)")
     return 0
 
 
@@ -77,7 +102,7 @@ def _red_local(argumentos: argparse.Namespace) -> int:
     ):
         return 1
     ajustes = config.cargar_ajustes(ruta)
-    puertos = [ajustes.puerto] + ([ajustes.puerto_api] if ajustes.api_activa else [])
+    puertos = [ajustes.puerto]  # un solo proceso, un solo puerto
     resultado = red.activar(
         elegida.ip,
         programa=Path(sys.executable),
@@ -231,7 +256,13 @@ def registrar(
     arrancar = ordenes.add_parser("arrancar", help="prepara las bases y abre Sílice")
     arrancar.add_argument("--sin-navegador", action="store_true")
     ordenes.add_parser("parar", help="detiene la instancia en marcha")
-    ordenes.add_parser("demostracion", help="crea el caso de demostración (datos construidos)")
+    ordenes.add_parser(
+        "demostracion", help="crea el caso de demostración (datos construidos)"
+    ).add_argument("--salida", help=argparse.SUPPRESS)  # BCP-2: la arma el servidor
+    ordenes.add_parser(
+        "restablecer-administrador",
+        help="emite un código de un solo uso para recuperar el acceso de administrador",
+    ).add_argument("--esperar", action="store_true", help="espera Enter antes de cerrar")
     local = ordenes.add_parser("red-local", help="activa, apaga o describe la red local")
     acciones = local.add_subparsers(dest="accion", required=True)
     activar = acciones.add_parser("activar", help="elegir una interfaz y abrir el cortafuegos")
@@ -269,6 +300,7 @@ def registrar(
             "arrancar": _arrancar,
             "parar": _parar,
             "demostracion": _demostracion,
+            "restablecer-administrador": _restablecer_administrador,
             "red-local": _red_local,
             "diagnostico-similitud": _diagnostico_similitud,
             "verificar-programa": _verificar_programa,

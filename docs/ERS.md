@@ -100,6 +100,10 @@
 
 > **Enmienda de Sílice 1.0.0 (S5‑0; spec S5 §4 y §10.3):** se agregan UC‑24, RF‑97 a RF‑99 y RNF‑19; RNF‑07 aclara que el instalador de Windows es el camino de usuario; RNF‑08 queda con su redacción final (dos excepciones declaradas y three.js incrustado). RF‑96 y RNF‑20 llegaron con la 0.6.0. Los conteos los calcula la meta (maestro §6.1).
 
+**Enmienda de la ruta, sesión 4 (arenera; plan [PLAN_SESION_4_ARENERA.md](planes/PLAN_SESION_4_ARENERA.md)):** se agregan UC‑28 y UC‑29, RF‑127 a RF‑136 y RNF‑25. La arenera empieza por el inventario («cuánto hay y cuánto queda» de cada material) y por el reporte de la báscula; el costo horario de maquinaria espera a tener fuente verificada.
+
+**Enmienda de la ruta, sesión 4 (historial de auditorías; plan [PLAN_SESION_4_HISTORIAL.md](planes/PLAN_SESION_4_HISTORIAL.md)):** se agregan UC‑30, RF‑142 a RF‑146 y RNF‑28. Eugenio decide que cada auditoría de «Libro de la empresa» se guarda (resumen y hallazgos, nunca el libro ni el PDF); UC‑25 deja de decir «nada se guarda» y lo dice solo del archivo.
+
 ## 1. Introducción
 
 ### 1.1 Propósito
@@ -149,7 +153,7 @@ sección 4 los traza a los casos de uso y a las pruebas.
 ## 2. Descripción general
 
 ### 2.1 Perspectiva del producto
-Sistema de escritorio/servidor local: núcleo Python con base SQLite, interfaz Streamlit y API FastAPI.
+Sistema de escritorio/servidor local: núcleo Python con base SQLite, API FastAPI e interfaz de React servida por la propia API (enmienda del 2026‑10‑21).
 Recibe cantidades de obra de adaptadores de dominio (IFC, CSV, tablas) y listas de precios (CSV/Excel);
 produce presupuesto, curva de inversión, informe de auditoría y exportación a Excel. Ver
 [docs/arquitectura.md](arquitectura.md).
@@ -182,8 +186,8 @@ produce presupuesto, curva de inversión, informe de auditoría y exportación a
 **Enmienda S4.0 (2026‑10‑11):** UC‑09 queda definido en §2.2 y sus requisitos son RF‑32 y RF‑90 a RF‑95 (RF‑64 pertenece a S1). Lo que sigue es la historia de la reserva. UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no
 ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades del usuario». UC‑10 y
 UC‑11 se declararon en la Sesión P0.1 del sprint del prototipo AREN.IA (hoy Sílice)
-([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)); su implementación en `ui/composicion.py` y
-`ui/paginas/componer.py` corresponde a las Fases P1 y P2 de ese plan
+([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)); su implementación en `aplicacion/composicion.py` (antes `ui/composicion.py`) y
+la pantalla de composición corresponde a las Fases P1 y P2 de ese plan
 (`docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2). Esta sección no lleva estado: la prueba o el caso manual de cada paso y de cada flujo alternativo de **los quince** casos de uso,
 y los pasos y flujos que el sistema no realiza, con su registro en el inventario, están en [plan_pruebas.md §8.1](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba) (INV‑032, INV‑033).
 
@@ -1057,7 +1061,7 @@ reconocimiento de planos en PDF o escaneados (la importación de DXF e IFC ya no
 ## 3. Requisitos específicos
 
 ### 3.1 Interfaces externas
-- **Usuario:** interfaz web local (Streamlit) con una pantalla de Inicio que lleva al usuario por
+- **Usuario:** interfaz web local (React, servida por la API en `/app/`; enmienda del 2026‑10‑21) con una pantalla de Inicio que lleva al usuario por
   recorridos guiados (UC‑12). No todos los casos de uso tienen pantalla: la tabla siguiente declara la
   capa que realiza cada uno (INV‑030). UC‑09 queda vacante (sección 2.2).
 - **Software:** API REST (FastAPI) con esquema OpenAPI en `docs/api.json`.
@@ -1073,7 +1077,7 @@ reconocimiento de planos en PDF o escaneados (la importación de DXF e IFC ya no
 | UC‑07 | «Componer una partida» contrasta el precio con la estimación por reglas (clase 3 de AACE); para una partida nueva, avisa que el contraste no es posible (flujo 3a); desde C6, «Actualizar precios» incorpora los precios atípicos de la lista nueva al informe de la versión revalorada (paso 5, con su alcance vigente) | `POST /presupuestos/{codigo}/actualizacion` (desde C6, paso 5: los atípicos de la lista nueva entran como `ATIPICO` ADVERTENCIA al informe de la versión nueva, que sirve `GET /presupuestos/{codigo_nuevo}/informe`; con el extra `ml` y al menos 8 variaciones en el histórico) | `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md` |
 | UC‑08 | «Escenarios de sensibilidad» | `POST /presupuestos/{codigo}/escenarios` | — |
 | UC‑10, UC‑11 | «Componer una partida» | ninguna | — |
-| UC‑12 | «Inicio» y el marco común de las pantallas (`ui/app.py`) | ninguna | — |
+| UC‑12 | «Inicio» y el marco común de las pantallas (interfaz de React; antes `ui/app.py`) | ninguna | — |
 | UC‑13, UC‑15, UC‑16 | «Hoja del proyecto» (pestañas Espacio y metrajes, APU, Presupuesto, Plan y curva, Punto de equilibrio, Precios, Parámetros, Auditoría y Trazabilidad) | ninguna: la API conserva sus rutas | — |
 | UC‑17, UC‑18 | páginas «Índices», «Precios de la empresa» y «Reajuste» (Sílice 0.6.0) | ninguna | `adapters/bcv` (importación sin conexión) |
 | UC‑14 | herramienta «Importar plano» de la barra superior (RF‑60) | ninguna | — |
@@ -1183,11 +1187,11 @@ la corrija.
 | RF‑78 | A pedido, el sistema calculará las opciones **más cuadrillas, horas extra, partidas en paralelo y aceptar el retraso** (§4.6) desde el rendimiento y la cuadrilla del APU de cada partida, con su término, costo directo adicional, costo indirecto, EAC y PE, y la lista de supuestos usados con su naturaleza (fuente o supuesto declarado) | Esencial | UC‑20 | S2‑3 | OB‑S2: los cuatro resultados de §7.1 con el PE' de sus dos escenarios; horas extra nunca superan los límites de la LOTTT (§4.6.2); cada supuesto aparece en la salida; una partida de TI‑001 y una de SIS‑001 sin mano de obra a jornal (§4.6) dan «no aplica» tipado en cuadrillas y horas extra, sin división entre cero (ARQ‑H3) |
 | RF‑79 | Elegir una opción creará una **versión nueva** (motivo `recuperacion`) con el plan de la opción, su curva y su informe, un `RegistroCambio` por fracción del plan que cambió y una `DecisionRecuperacion` con la foto de indicadores, opción y supuestos; fuente y responsable obligatorios; la línea base no cambia | Esencial | UC‑20 | S2‑3 | tras elegir «más cuadrillas» en OB‑S2: R2 y R7 sin hallazgos, la curva cierra en el total, los registros de §7.1, la decisión recarga idéntica y el SPI al mismo corte sigue en 0,80 |
 | RF‑96 | **Migraciones con respaldo y vuelta atrás, en dos bases.** El esquema se versiona con Alembic en dos destinos, cada uno con su `alembic_version` y su lista `METADATAS` explícita: la **instalación** (`seguridad`) y el **caso** (`core.models`, `METADATA_ESPACIO`, `paquete`, `asistente`). La revisión base del caso es el esquema de la 0.5.0 y cada cambio posterior trae su revisión, desde la 0.6.0. Antes de aplicar cualquier revisión pendiente se respaldan **juntas** la instalación y los casos que se migran, en un juego con una sola ficha; si la migración falla, la base no queda modificada. Las bases de la 0.5.0 se adoptan. Un caso se abre solo con `preparar_base` y desde `datos\casos\` | Esencial | UC‑24 (S5‑0) | S5‑1 (0.6.0) | (a) una base vacía, una base de la 0.5.0 sin `alembic_version` y la base de prueba de cada versión 0.6.0…0.9.0 (generada en su compuerta con el código de su etiqueta) llegan a `head` y sus presupuestos recargan con el total literal, la huella del informe y las filas por tabla de su ficha; lo mismo para `instalacion.db` desde la 0.8.0; (b) cada base del juego de respaldo pasa `PRAGMA integrity_check` y su huella está en la ficha; (c) con un fallo inyectado en una revisión, la huella SHA‑256 de cada base tras el intento es igual a la de antes; (d) una base con revisión desconocida o no adoptable no se modifica (huella igual) y el mensaje dice qué hacer; (e) una ruta UNC, absoluta o con `..` se rechaza sin crear archivo, y `estado_caso` no emite DDL; (f) restaurar un juego con `instalacion.db` lista los eventos de seguridad perdidos y deja pendiente la revisión del administrador |
-| RF‑97 | **Instalador para Windows.** Un `Silice-<versión>.exe` (básico) y un `Silice-<versión>-completo.exe` (con el módulo de similitud) instalan sin internet ni permisos de administrador: Python autónomo, dependencias y código según el manifiesto; crean el acceso directo «Sílice» que arranca y abre el navegador y «Detener Sílice»; la actualización detiene Sílice, reemplaza el programa y migra con respaldo; la desinstalación borra el programa y **conserva los datos** | Esencial (básico); Deseable (completo) | UC‑24 | S5‑3 (1.0.0) | prueba de humo de §11.2: (a) instalación silenciosa en una ruta con espacios y acentos; (b) salud `200` ≤ 60 s; (c) solo `127.0.0.1` escuchando y nada en `0.0.0.0` ni en `::`; (d) nada escrito en la carpeta del programa (inventario igual antes y después); (e) actualización con un juego de respaldo y las dos bases en `head`; (f) desinstalación sin carpeta de programa y con la carpeta de datos intacta; (g) sin el módulo de similitud, la pantalla de similares lo dice con su nombre; (h) `{app}\codigo` contiene exactamente lo del manifiesto: ni `tests/fixtures/` completo ni otro `.streamlit/config.toml` que el oficial |
-| RF‑98 | **Operación segura por defecto.** Arranque y parada con una sola instancia; red local **apagada**, activable solo desde el equipo servidor con elevación, escuchando en la **IP explícita** de la interfaz elegida (nunca `0.0.0.0`) con regla de cortafuegos limitada a esa IP, a la subred local y al perfil Privado; API **apagada**, en la misma dirección, con clave en **todas** sus rutas salvo `/salud`, `TrustedHostMiddleware` y filtro de redes privadas (defensa adicional; el control es la clave); las operaciones sensibles solo desde el propio equipo y el aviso «sin cifrar» en la pantalla de acceso para clientes remotos (§8.2); registro de errores rotativo **sin secretos**; **ninguna conexión saliente salvo el asistente en modo nube activado por el administrador** (excepción de RNF‑08) | Esencial | UC‑24 | S5‑2 (1.0.0) | pruebas de §12: configuración por defecto; ninguna configuración produce `0.0.0.0` en la orden de Streamlit ni de Uvicorn; con la API activa, `401` sin clave en cada ruta del esquema, `403` desde una IP pública simulada y `400` con un `Host` ajeno; una operación sensible pedida desde una IP remota se rechaza; un registro con secretos sembrados no contiene ninguno; prueba de humo **con el asistente apagado**: **0** conexiones salientes desde el arranque hasta la parada (cortafuegos de salida, muestreo de conexiones, proxy testigo y navegador sin interfaz, §11.2) |
+| RF‑97 | **Instalador para Windows.** Un `Silice-<versión>.exe` (básico) y un `Silice-<versión>-completo.exe` (con el módulo de similitud) instalan sin internet ni permisos de administrador: Python autónomo, dependencias y código según el manifiesto; crean el acceso directo «Sílice» que arranca y abre el navegador y «Detener Sílice»; la actualización detiene Sílice, reemplaza el programa y migra con respaldo; la desinstalación borra el programa y **conserva los datos** | Esencial (básico); Deseable (completo) | UC‑24 | S5‑3 (1.0.0) | prueba de humo de §11.2: (a) instalación silenciosa en una ruta con espacios y acentos; (b) salud `200` ≤ 60 s; (c) solo `127.0.0.1` escuchando y nada en `0.0.0.0` ni en `::`; (d) nada escrito en la carpeta del programa (inventario igual antes y después); (e) actualización con un juego de respaldo y las dos bases en `head`; (f) desinstalación sin carpeta de programa y con la carpeta de datos intacta; (g) sin el módulo de similitud, la pantalla de similares lo dice con su nombre; (h) `{app}\codigo` contiene exactamente lo del manifiesto: ni `tests/fixtures/` completo ni carpeta `ui/` ni `.streamlit/` |
+| RF‑98 | **Operación segura por defecto.** Arranque y parada con una sola instancia; red local **apagada**, activable solo desde el equipo servidor con elevación, escuchando en la **IP explícita** de la interfaz elegida (nunca `0.0.0.0`) con regla de cortafuegos limitada a esa IP, a la subred local y al perfil Privado; API **apagada**, en la misma dirección, con clave en **todas** sus rutas salvo `/salud`, `TrustedHostMiddleware` y filtro de redes privadas (defensa adicional; el control es la clave); las operaciones sensibles solo desde el propio equipo y el aviso «sin cifrar» en la pantalla de acceso para clientes remotos (§8.2); registro de errores rotativo **sin secretos**; **ninguna conexión saliente salvo el asistente en modo nube activado por el administrador** (excepción de RNF‑08) | Esencial | UC‑24 | S5‑2 (1.0.0) | pruebas de §12: configuración por defecto; ninguna configuración produce `0.0.0.0` en la orden de Uvicorn (antes, también la de Streamlit); con la API activa, `401` sin clave en cada ruta del esquema, `403` desde una IP pública simulada y `400` con un `Host` ajeno; una operación sensible pedida desde una IP remota se rechaza; un registro con secretos sembrados no contiene ninguno; prueba de humo **con el asistente apagado**: **0** conexiones salientes desde el arranque hasta la parada (cortafuegos de salida, muestreo de conexiones, proxy testigo y navegador sin interfaz, §11.2) |
 | RF‑99 | **Versión y registro de cambios.** Una sola fuente de la versión (`pyproject.toml`); la API, la pantalla «Acerca de» y el instalador la leen de ahí; «Acerca de» muestra además las revisiones de los dos esquemas, la carpeta de datos y los módulos instalados; `CHANGELOG.md` con una sección por versión; una etiqueta anotada por versión | Esencial | UC‑24 | S5‑0, S5‑2, S5‑4 (1.0.0) | `scripts/meta_silice.py --version <x>` (RV‑17): versión de `pyproject` = la de la API = la del instalador; sección del `CHANGELOG` para la versión en curso con fecha; en un *push* de etiqueta, la etiqueta (`v` + SemVer) coincide con `pyproject` normalizado (PEP 440) o la CI falla |
 | RF‑80 | Cuentas locales con roles *arma*, *revisa* y *administrador de la instalación* (uno o varios por cuenta) y la matriz de §5.1; contraseñas con Argon2; el primer administrador se crea solo con el **código de instalación** de un solo uso, de al menos 100 bits | Esencial | UC‑21 | S3‑1 | sin código o con código usado se rechaza; el código tiene 20 caracteres base32; ninguna contraseña aparece en la base, en el registro de accesos ni en los mensajes; cada página y cada acción de la matriz rechaza un rol que no le corresponde aunque se llegue por URL |
-| RF‑81 | Sesión propia en Streamlit: expira por inactividad (30 min) y por antigüedad (12 h); ficha nueva al entrar y al cambiar la contraseña; todas las sesiones de una cuenta se cierran al restablecerla, desactivarla o cambiar sus roles; roles leídos de la base en cada ejecución; bloqueo tras 5 intentos fallidos seguidos durante 15 min, con el mismo contador y mensaje para usuarios inexistentes; freno global con espera progresiva; cierre de sesión; varios usuarios a la vez sin mezclar estado | Esencial | UC‑21 | S3‑1 | reloj inyectado: 29:59 sigue, 30:00 expira; 4 fallos no bloquean, el 5.º sí, con un login existente y con uno inexistente; cambiar los roles en la base cambia el menú en la ejecución siguiente; dos sesiones AppTest con usuarios distintos no comparten borrador ni caso; prueba de concurrencia de §13.4 |
+| RF‑81 | Sesión propia (cookie de `/v1/sesion` de la API; antes, sesión de Streamlit): expira por inactividad (30 min) y por antigüedad (12 h); ficha nueva al entrar y al cambiar la contraseña; todas las sesiones de una cuenta se cierran al restablecerla, desactivarla o cambiar sus roles; roles leídos de la base en cada petición; bloqueo tras 5 intentos fallidos seguidos durante 15 min, con el mismo contador y mensaje para usuarios inexistentes; freno global con espera progresiva; cierre de sesión; varios usuarios a la vez sin mezclar estado | Esencial | UC‑21 | S3‑1 | reloj inyectado: 29:59 sigue, 30:00 expira; 4 fallos no bloquean, el 5.º sí, con un login existente y con uno inexistente; cambiar los roles en la base cambia el menú en la petición siguiente; dos sesiones de la API con usuarios distintos no comparten borrador ni caso; prueba de concurrencia de §13.4 |
 | RF‑82 | El responsable de todo `RegistroCambio`, de todo eslabón y de **todo campo `responsable`** de las tablas de S1 y S2 (`importacion_indice`, `moneda_proyecto`, `clausula_reajuste`, `estudio_reajuste`, `linea_base_control`, `valuacion`, `anulacion_valuacion`, `costo_real`, `decision_recuperacion`) es el **usuario autenticado**, congelado como `Nombre <login>` en el momento del cambio; la caja «Responsable» desaparece de la hoja y de las pantallas de S1 y S2 | Esencial | UC‑15, UC‑21 | S3‑1 | guardar, restaurar, cotizar, convertir, decidir una recuperación, crear la primera versión, asegurar la instantánea, importar índices, registrar valuaciones, anulaciones y costos reales registran al usuario de la sesión; una prueba recorre los metadatos y lista **toda** columna `responsable`: cada una tiene su prueba, y una columna nueva sin prueba hace fallar la lista; ningún camino de `ui/` pasa `"sistema"`; desactivar una cuenta no cambia sus registros |
 | RF‑83 | Registro encadenado: cada versión nueva, que nace en el embudo `guardar_presupuesto`, se sella **al confirmar la transacción que la crea** (evento `before_commit`, §6.2) y en esa misma transacción, con un eslabón SHA‑256 que encadena su contenido, sus `RegistroCambio`, sus anexos y el eslabón anterior (§6); el sellado es una invariante de **todo** `MOTIVOS_VERSION` (incluidos `conversion` de S1 y `recuperacion` de S2) y del motivo vacío (versión sin origen); las versiones anteriores se sellan una vez de forma **retroactiva** y declarada; el sistema verifica la cadena | Esencial | UC‑15, UC‑22 | S3‑2 | una prueba recorre la tupla `MOTIVOS_VERSION` y el motivo vacío, y crea una versión de cada uno; otra enumera a **todos** los llamadores del embudo (§1.2) y falla si aparece uno nuevo sin prueba; cambiar un byte de una partida, de un registro, de un anexo o de un eslabón en la base rompe la cadena **en esa versión** y lo dice; una versión posterior al génesis sin eslabón es un error de cadena; confirmar una versión sin usuario se rechaza; guardar y recargar no cambia ninguna huella |
 | RF‑84 | Clave de firma de la empresa Ed25519 generada en el equipo, con la privada **cifrada con su propia contraseña** por `seguridad/secretos.py` (Argon2id → AES‑GCM, maestro §4.4); huella corta legible (§7.2); registro de claves públicas de otras empresas con la comprobación de su huella; retiro (se destruye la privada) y revocación; separación de dominio en todo lo que se firma | Esencial | UC‑21 | S3‑3 | la privada nunca aparece sin cifrar en disco ni en el paquete; contraseña de clave errónea da `InvalidTag` y un mensaje sin traza; una contraseña de la lista corta de comunes se rechaza; la huella es la misma en las dos instalaciones; al retirar, la privada deja de existir en la base; una clave revocada deja de verificar |
@@ -1256,14 +1260,14 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | Mantenibilidad | RNF‑05 agregar un dominio no modifica `core/` | `git diff --stat core/`, `test_arquitectura.py` | vacío / verde |
 | Mantenibilidad | RNF‑06 cobertura de pruebas del núcleo | pytest‑cov | ≥ 80 % |
 | Portabilidad | RNF‑07 instalación con `uv sync` en Windows y Linux. Desde la 1.0.0 el camino de usuario es el instalador de Windows (RF‑97); `uv sync` sigue siendo el camino de desarrollo y el de Linux. | pasos manuales | 0 |
-| Seguridad | RNF‑08 ejecución local: el sistema funciona sin conexión a internet; sus únicas credenciales son las cuentas locales de la instalación (S3), que no dependen de ningún servicio externo; los datos residen en archivos SQLite del equipo servidor (la base de la instalación y las de los casos). | credenciales versionadas, 0; conexiones fuera del equipo durante la operación, 0, con dos excepciones declaradas: (1) en el camino de desarrollo, la descarga inicial del modelo de `sentence-transformers` (I2), que se cachea localmente (el instalador completo lo trae incluido y corre con `HF_HUB_OFFLINE=1`); (2) el asistente de IA en modo nube, apagado por defecto, que solo activa el administrador de la instalación al registrar la clave de IA de la empresa y que envía al proveedor solo lo de la lista blanca de S4. La excepción de three.js se retira: se sirve desde el propio sistema. | 0 y 0, con dos excepciones declaradas |
+| Seguridad | RNF‑08 ejecución local: el sistema funciona sin conexión a internet; sus únicas credenciales son las cuentas locales de la instalación (S3), que no dependen de ningún servicio externo; los datos residen en archivos SQLite del equipo servidor (la base de la instalación y las de los casos). | credenciales versionadas, 0; conexiones fuera del equipo durante la operación, 0, con dos excepciones declaradas: (1) en el camino de desarrollo, la descarga inicial del modelo de `sentence-transformers` (I2), que se cachea localmente (el instalador completo lo trae incluido y corre con `HF_HUB_OFFLINE=1`); (2) el asistente de IA en modo nube, apagado por defecto, que solo activa el administrador de la instalación al registrar la clave de IA de la empresa y que envía al proveedor solo lo de la lista blanca de S4. La excepción de three.js se retiró: primero se sirvió desde el propio sistema y, desde el 2026-10-19, el Visor 3D que lo usaba ya no existe (retirado 2026-10-19, decisión de Eugenio; el retiro es definitivo desde el 2026‑10‑21, ver la enmienda de retiro al final; pendiente de avisar al tutor por escrito). | 0 y 0, con dos excepciones declaradas |
 | Compatibilidad | RNF‑09 entrada IFC 4 de cualquier modelador | archivos de ≥ 2 herramientas (p. ej. Revit y Bonsai) | cantidades extraídas iguales al cálculo manual en ambos; la compuerta G1 (I3.1) se cruzó con salvedad sobre un modelo generado programáticamente (sección 2.5); faltan los exports de dos modeladores, y la alternativa declarada es la entrada tabular |
 | Usabilidad | RNF‑10 capacidad de aprendizaje de la interfaz: una persona que nunca vio la aplicación llega sola del Inicio a un presupuesto en Excel con su hoja de auditoría | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)) y bloque B del anexo A de [dossier_g0.md](dossier_g0.md) | en cada uno de los dos escenarios de CP‑07 (CP‑07 pasa solo si pasan ambos): sin ayuda, ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 |
-| Eficiencia de desempeño | RNF‑11 en `ui.hoja`, sin Streamlit, desde aplicar una edición hasta tener presupuesto, informe y punto de equilibrio (sin persistir) para un proyecto de 500 puntos | mediana de cinco corridas tras una de calentamiento, con `scripts/medir_rnf11.py` (se crea en SF3) y un generador determinista versionado (`scripts/generar_hoja_prueba.py`, ya en SF0) | ≤ 2 s. El veredicto se toma en el equipo de desarrollo, como RNF‑03; la CI ejecuta el script en Linux y Windows y **registra** la cifra sin romper la corrida; todo se anota en plan_pruebas §10 |
+| Eficiencia de desempeño | RNF‑11 en `aplicacion.hoja`, sin interfaz, desde aplicar una edición hasta tener presupuesto, informe y punto de equilibrio (sin persistir) para un proyecto de 500 puntos | mediana de cinco corridas tras una de calentamiento, con `scripts/medir_rnf11.py` (se crea en SF3) y un generador determinista versionado (`scripts/generar_hoja_prueba.py`, ya en SF0) | ≤ 2 s. El veredicto se toma en el equipo de desarrollo, como RNF‑03; la CI ejecuta el script en Linux y Windows y **registra** la cifra sin romper la corrida; todo se anota en plan_pruebas §10 |
 | Seguridad | RNF‑12 ningún texto exportado se interpreta como fórmula (prefijos `=`, `+`, `-`, `@`, tabulador, retorno de carro) y un número negativo sigue siendo número; ningún archivo subido sale de su carpeta (`..\`, `../`, ruta absoluta, nombres reservados de Windows); un DXF o IFC de más de 20 MB, malformado o con más entidades o elementos que el tope (`MAX_ENTIDADES_DXF`, `MAX_ELEMENTOS_IFC`) se rechaza con un mensaje | pruebas por caso | 0 casos que se evalúen como fórmula o escapen de su carpeta; 100 % de los rechazos con mensaje y sin *traceback* |
 | Usabilidad | RNF‑13 capacidad de uso de la hoja: en las condiciones de CP‑07, con el **mismo número y perfil** de participantes que CP‑07 pero **personas distintas**, cada caso de CP‑08 a CP‑11 se completa sin ayuda | guion de pruebas con personas, en la fase Med; consigna, paradas y criterio fijados antes de medir | ≤ 15 min por todos los participantes, bloque B ≥ 4,0 y ningún ítem < 3; veredicto por caso. El costo en participantes se suma al plan de Med |
 | Fiabilidad | RNF‑14 reproducible y sin conexión: importar, convertir, auditar con R11/R12 y reajustar no hacen ninguna llamada de red; el mismo estudio de reajuste, con las mismas importaciones citadas, da el mismo resultado aunque después se importe una revisión de los índices | suite bajo la guardia de red única de `tests/conftest.py` (solo 127.0.0.1 y ::1) y recálculo del estudio tras importar una revisión | cero intentos de conexión a otro destino, guardia activa verificada por la meta; diferencia 0 exacta |
-| Eficiencia de desempeño | RNF‑15 en `ui.control`, sin Streamlit, desde registrar una valuación hasta tener informe de control, indicadores, alertas y reproyección, y desde pedir las opciones hasta tener las cuatro, para una obra de 500 partidas, 52 períodos semanales y 26 valuaciones | mediana de cinco corridas tras una de calentamiento, con `scripts/medir_rnf15.py` y un generador determinista versionado (`scripts/generar_obra_control.py`) | ≤ 2 s en cada uno de los dos trabajos. El veredicto se toma en el equipo de desarrollo, como RNF‑03 y RNF‑11; la CI ejecuta el script en Linux y Windows y **registra** la cifra sin romper la corrida; la meta comprueba que el script corrió y dejó su cifra: sin cifra es FALLA, no OK (PRU‑H21) |
+| Eficiencia de desempeño | RNF‑15 en `aplicacion.control`, sin interfaz, desde registrar una valuación hasta tener informe de control, indicadores, alertas y reproyección, y desde pedir las opciones hasta tener las cuatro, para una obra de 500 partidas, 52 períodos semanales y 26 valuaciones | mediana de cinco corridas tras una de calentamiento, con `scripts/medir_rnf15.py` y un generador determinista versionado (`scripts/generar_obra_control.py`) | ≤ 2 s en cada uno de los dos trabajos. El veredicto se toma en el equipo de desarrollo, como RNF‑03 y RNF‑11; la CI ejecuta el script en Linux y Windows y **registra** la cifra sin romper la corrida; la meta comprueba que el script corrió y dejó su cifra: sin cifra es FALLA, no OK (PRU‑H21) |
 | Seguridad (confidencialidad) | RNF‑18 **(a)** En modo local, cero conexiones fuera del equipo: el anfitrión de Ollama debe ser de bucle local, comprobado por la **IP resuelta** (`127.0.0.0/8` o `::1`), no por el nombre; si no lo es, se trata como modo nube y se avisa. Se exige una **versión mínima** de Ollama, fijada en S4.0 (no tiene autenticación y ha tenido vulnerabilidades, SEG‑18). **(b)** En modo nube, solo viaja lo de la lista blanca de §8.1. **(c)** La clave de IA de la empresa nunca aparece en la base, en el registro `ia_*`, en los registros de la aplicación, en `st.session_state`, en el Excel ni en el paquete (incluido `anexos/ia.json`), y la pantalla nunca la muestra completa. **(d)** Ninguna prueba de la CI abre la red | pruebas por caso (§10.1): la guardia única de red de `tests/conftest.py` (RV‑17); búsqueda de la clave de prueba en todos esos destinos tras una sesión; instantánea de lo enviado; anfitrión cuyo nombre resuelve a una IP no local → tratado como nube | cero apariciones de la clave de IA; cero conexiones en la CI |
 | Portabilidad | RNF‑19 Instalabilidad: artefactos comprimidos (los `.exe`) del instalador básico ≤ 150 MB y del completo ≤ 650 MB (1 MB = 10⁶ bytes); instalado, el básico ≤ 900 MB. Se instala sin internet y sin administrador en Windows 10 22H2 y 11 x64, en una ruta con espacios y caracteres no ASCII. Del acceso directo a la salud 200: ≤ 60 s en la CI y ≤ 20 s en el equipo de desarrollo. Actualizar conserva el 100 % de los datos de las dos bases | tamaño de los artefactos de la CI (falla si se pasa); prueba de humo; arranque medido (mediana de cinco, con fecha y los cinco valores en plan_pruebas §10); instalación en una cuenta estándar, a mano | cumplir los tres límites |
 | Mantenibilidad | RNF‑20 cero deriva de esquema en cada destino: una base llevada a `head` por las migraciones es igual a la creada con `create_all` de sus `METADATAS`, la autogeneración de Alembic contra ella no propone cambios, toda `MetaData` con tablas está en la lista de su destino y cada revisión baja y vuelve a subir | `tests/integration/test_migraciones.py` en Linux y Windows en cada PR | deriva 0 en los dos destinos, desde la 0.6.0 |
@@ -1345,6 +1349,10 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑21 | RF‑80, RF‑81, RF‑82, RF‑84 | S3‑0 (declarado), S3‑1, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
 | UC‑22 | RF‑83, RF‑84, RF‑85 | S3‑0 (declarado), S3‑2, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
 | UC‑23 | RF‑86, RF‑87, RF‑88, RF‑89, RF‑100, RF‑141 | S3‑0 (declarado), S3‑4, S3‑5, S3‑6, ruta S1 (1.1.0) | indicador del administrador (horizonte §6.1) |
+| UC‑26 | RF‑111, RF‑112, RF‑113, RF‑114, RF‑115, RF‑116, RF‑117, RF‑118 | ruta S2 (Sílice 1.2.0) | 1 (errores detectados, ahora ubicados sobre la hoja) |
+| UC‑28 | RF‑127, RF‑128, RF‑129, RF‑135, RF‑136 | Sesión 4 de la ruta (Sílice 1.4.0) | fuera de los cinco indicadores (gestor de producción) |
+| UC‑29 | RF‑130, RF‑131, RF‑132, RF‑133, RF‑134, RNF‑25 | Sesión 4 de la ruta (Sílice 1.4.0) | fuera de los cinco indicadores (gestor de producción) |
+| UC‑30 | RF‑142, RF‑143, RF‑144, RF‑145, RF‑146, RNF‑28 | Sesión 4 de la ruta (historial; Sílice 1.2.0) | indicador 1 (errores detectados), como UC‑25 |
 
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
 RNF‑03 en UC‑02 (RF‑11), con `scripts/medir_rnf03.py`; RNF‑04 con el juicio de expertos sobre el
@@ -1354,7 +1362,7 @@ RNF‑09 en la compuerta G1 (RF‑04); RNF‑10 con el caso con persona CP‑07,
 (fase Med) de [PLAN_UI.md](../PLAN_UI.md); RNF‑11 en UC‑15 (RF‑52), con `scripts/medir_rnf11.py`
 (SF3); RNF‑12 en UC‑14 y UC‑15 (RF‑50, RF‑51 y RF‑59), por pruebas por caso; RNF‑13 en UC‑13 a
 UC‑16, con los casos con personas CP‑08 a CP‑11 de la fase Med; RNF‑14 en UC‑17 y UC‑18 (RF‑69, RF‑71), con la guardia de red única de la suite; RNF‑16 en UC‑21 a UC‑23 (RF‑80 a RF‑89), con las pruebas de seguridad de S3 (§13.3 y §13.4 del spec) y la revisión del encargo de seguridad; RNF‑17 en UC‑23, con los casos con personas CP‑R1 y CP‑R2 de la fase Med; RNF‑18 en UC‑09 (RF‑94), con las pruebas por caso de S4 y la misma guardia. RNF‑04 y RNF‑10 son requisitos
-distintos, con mediciones distintas. El resultado de cada verificación está en [plan_pruebas.md §9](plan_pruebas.md#9-trazabilidad-rnf--verificación).
+distintos, con mediciones distintas; RNF‑22 y RNF‑23 en UC‑26 (RF‑112 a RF‑118), con el trabajo `interfaz` de la CI y la verificación manual en el navegador (plan_pruebas §9). El resultado de cada verificación está en [plan_pruebas.md §9](plan_pruebas.md#9-trazabilidad-rnf--verificación).
 
 La columna "Indicador" enlaza con [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) y
 con la matriz de [docs/tesis/esqueleto_tesis.md](tesis/esqueleto_tesis.md).
@@ -1382,14 +1390,17 @@ del formato neutro, Sílice lee el libro de la empresa tal como es.
      precio en USD y Bs y la trazabilidad.
   6. El usuario descarga el libro devuelto: mismo aspecto, APU de forma uniforme, valores de Sílice, y las hojas
      AUDITORÍA, TRAZABILIDAD y ALERTAS USD‑Bs.
+  7. Sílice guarda el resumen y los hallazgos de la auditoría en el historial de la instalación (UC‑30, RF‑142); el libro no.
 - **Flujos alternativos**
   - *2a. Archivo rechazado* (macros, extensión, tamaño, combinadas o dimensiones desmedidas): mensaje claro; no se
     lee nada.
   - *2b. Libro que no se puede interpretar* (sin PRESUPUESTO, FCAS menor que 1): mensaje claro.
-  - *1a. Solo un PDF simple* (sin Excel): Sílice aplica L10 y muestra los hallazgos, sin devolución.
+  - *1a. Solo un PDF simple* (sin Excel): Sílice aplica L10 y muestra los hallazgos, sin devolución; la revisión también queda en el historial, con el tipo `pdf`.
   - *5a. La instalación no tiene la tasa del BCV de la fecha:* las alertas en Bs dicen «no contrastable».
-- **Postcondiciones:** nada se guarda en la base ni en disco (F‑D9); el libro devuelto lleva el SHA‑256 del
-  recibido.
+  - *7a. No se pudo guardar el historial:* el informe se muestra igual, con el aviso «No se pudo guardar el historial» (RF‑144).
+- **Postcondiciones:** el libro y el PDF no se guardan, ni en la base ni en disco (F‑D9, RNF‑28); el resumen y los
+  hallazgos de la auditoría sí quedan en el historial de la instalación (enmienda del historial, RF‑142 a RF‑144);
+  el libro devuelto lleva el SHA‑256 del recibido.
 
 | RF | Requisito | Fuente |
 |---|---|---|
@@ -1442,7 +1453,196 @@ Origen: [ruta por sesiones](planes/RUTA_SESIONES.md) (decisiones RS-x de Eugenio
 
 - **Numeración reservada para la ruta** (para que las sesiones en paralelo no choquen): sesión 2 UC-26, RF-111 a
   RF-118, RNF-22 y RNF-23; sesión 3 UC-27, RF-119 a RF-126, RNF-24; sesión 4 UC-28 y UC-29, RF-127 a RF-136, RNF-25;
-  sesión 5 RF-137 a RF-140, RNF-26 y RNF-27; la sesión 1 usa RF-141.
+  sesión 5 RF-137 a RF-140, RNF-26 y RNF-27; la sesión 1 usa RF-141; el historial de auditorías de la sesión 4 toma UC-30, RF-142 a RF-146 y RNF-28; la migración de Streamlit (plan 2b) toma RF-147 a RF-155 (ruling T1, 2026-10-19: el historial conserva RF-142 a RF-146).
+
+## Enmienda Sílice 1.2.0 (2026-10-18): interfaz nueva y visor de solo lectura
+
+Ruta por sesiones, sesión 2 ([RUTA_SESIONES.md](planes/RUTA_SESIONES.md) §5; decisiones RS‑1 a RS‑7 de Eugenio y
+rulings RT‑1 a RT‑9), [plan de la sesión](planes/PLAN_SESION_2_VISUAL.md) (rulings RS2‑1 a RS2‑15). Criterio de
+diseño: IBM Carbon, SAP Fiori e IBCS (RS‑6), registrado en `frontend-desktop/PRODUCT.md` y `DESIGN.md`. La interfaz
+la interfaz de Streamlit era entonces la principal (RT‑4; superado el 2026‑10‑21: la interfaz es React sobre la API, ver la enmienda de retiro al final). **Esta enmienda modifica dos requisitos anteriores:** RF‑98 (la API exige
+clave en toda ruta salvo `/salud`; desde la 1.2.0 tampoco la llevan `/v1/sesion`, que se protege con la contraseña,
+el freno y el bloqueo de UC‑21, ni `/app`, que es estático y sin secretos) y RF‑109 (las rutas `/v1/libros` aceptan
+la clave de API **o** la sesión del navegador con un rol que arma o revisa; con la cabecera `X-Silice-Clave` se
+comportan como en la 1.5). Todo lo demás se conserva.
+
+#### UC‑26 — Auditar un libro en el visor
+
+- **Actor principal:** el ingeniero de costos que audita (rol arma o revisa; acción `LEER_PROYECTO`).
+- **Precondiciones:** la API de la instalación está encendida (`[api] activa = true`) y la persona tiene cuenta;
+  un libro `.xlsx` de la empresa (la plantilla de UC‑25).
+- **Flujo principal**
+  1. La persona abre `/app/` en el navegador de su PC o de otra de la red local y entra con su cuenta.
+  2. Suelta el libro y la fecha de devolución (hoy, por omisión).
+  3. Sílice responde la réplica visual del libro (`POST /v1/libros/replica`) y su auditoría
+     (`POST /v1/libros/auditoria`, UC‑25).
+  4. La hoja se ve como en Excel (hojas, anchos, altos, combinadas, ocultas, formatos), sin poder editarse, con un
+     halo de severidad e ícono sobre la celda de cada hallazgo y la franja de indicadores (libro frente a Sílice).
+  5. Al tocar un hallazgo de la lista, la hoja va a su celda; al tocar una celda marcada, la lista resalta su hallazgo.
+- **Flujos alternativos**
+  - *1a. Credenciales malas o cuenta bloqueada:* 401 o 423 con el mensaje de UC‑21, sin sesión.
+  - *1b. La cuenta debe cambiar su contraseña:* 403 sin cookie; se le indica hacerlo en la interfaz clásica.
+  - *1c. Freno global de intentos fallidos (RS2‑11):* 429 con `Retry-After`; la pantalla dice cuántos segundos esperar.
+    El intento frenado no prueba la contraseña ni suma fallo a la cuenta.
+  - *2a. Archivo rechazado o libro no interpretable:* el mensaje de UC‑25 (2a, 2b), sin réplica. La pantalla no
+    envía un archivo que no sea `.xlsx`.
+  - *4a. Un hallazgo sin celda ubicable* (la celda no es una referencia A1, su hoja no existe en el libro o está
+    oculta): aparece en la lista, en el grupo «Sin celda en el libro».
+  - *4b. Un hallazgo en una fila o columna oculta:* queda en la lista y no se dibuja halo, porque la celda no se ve.
+  - *Sesión vencida* (30 min de inactividad o 12 h): ante el primer 401 la pantalla vuelve a la entrada con el aviso
+    «Su sesión venció»; el libro abierto se conserva en memoria y reaparece al volver a entrar con la misma cuenta
+    (con otra cuenta se descarta).
+- **Postcondiciones:** el libro no se guarda ni se modifica y la réplica no escribe nada (F‑D9). La auditoría deja
+  su resumen y sus hallazgos en el historial (UC‑25, UC‑30). La base de la instalación guarda además la ficha de
+  sesión y el registro de accesos (UC‑21).
+
+| RF | Requisito | Prioridad | UC | Incremento | Criterio de aceptación |
+|---|---|---|---|---|---|
+| RF‑111 | Réplica visual del libro (`POST /v1/libros/replica`): hojas en orden y visibilidad, anchos, altos, combinadas, filas y columnas ocultas, paneles fijos y, por celda con valor o estilo propio, el valor guardado como texto decimal exacto (campo `mostrado`), la fórmula, el código de formato de número y el estilo, con coordenadas de Excel (base 1). Las celdas cubiertas por una combinada no se listan salvo que traigan valor o borde propio (RS2‑10). Un libro de más de 200 000 celdas se rechaza con 422 | Esencial | UC‑26 | Sílice 1.2.0 (ruta, sesión 2) | El libro del oráculo (`tests/fixtures/replica/`, escrito a mano) reproduce su tabla celda por celda en Python (`test_replica_oraculo.py`), en la API (`test_api_replica_oraculo.py`) y en la conversión del front (`aUniver.test.ts`); un libro de 200 001 celdas da 422 (`test_visual_libro.py`) |
+| RF‑112 | La interfaz nueva se sirve en `/app` como archivos estáticos sin secretos, con CSP `default-src 'self'`, sin `unsafe-eval`; excepciones declaradas: `style-src 'unsafe-inline'` (Univer inyecta estilos) e `img-src data: blob:`; más `nosniff` y `Referrer-Policy: no-referrer` | Esencial | UC‑26 | Sílice 1.2.0 (ruta, sesión 2) | Pruebas de `/app` (`test_api_interfaz.py`): CSP exacta, sin clave en el HTML, 404 claro si no está compilada |
+| RF‑113 | Acceso del navegador por cuenta: `POST/GET/DELETE /v1/sesion` con cookie `HttpOnly` y `SameSite=Strict`, sin `Secure` (la red local va por HTTP; límite declarado, se revisa en la sesión 5; RS2‑6); token anti‑CSRF recalculable desde la cookie (RS2‑4) en `X-Silice-CSRF` y `Origin` propio en toda escritura con cookie; rol con `LEER_PROYECTO` (arma o revisa) en las rutas de libros (RS2‑5); la clave de API sigue para integraciones. Las credenciales pasan por el control de UC‑21: 401 mala, 423 bloqueada, 403 si debe cambiar la contraseña (sin cookie), 429 con `Retry-After` si el freno global lo pide, sin dormir el hilo y sin contar fallo (RS2‑11); el 422 no repite lo enviado. Sesión: 30 min de inactividad o 12 h | Esencial | UC‑26 | Sílice 1.2.0 (ruta, sesión 2) | `test_api_sesion_web.py`: sin cookie 401; sin CSRF u `Origin` ajeno o ausente 403; administrador sin arma ni revisa 403; 429 con `Retry-After` y sin intento contado; con clave, igual que en la 1.5 |
+| RF‑114 | Visor de solo lectura en lienzo (Univer, solo Apache‑2.0) con el aspecto de RF‑111: los números se muestran con el código de formato de Excel de la celda y los separadores de es‑VE (RS2‑14) | Esencial | UC‑26 | Sílice 1.2.0 (ruta, sesión 2) | No se puede editar ninguna celda (verificación manual: sin barras ni menú contextual, doble clic sin efecto); la conversión a coordenadas, estilos y formatos del lienzo está en un solo módulo con prueba (`aUniver.test.ts`, `formatoNumero.test.ts`): `1738.407` con `#,##0.00` se ve `1.738,41` |
+| RF‑115 | Halo de severidad con ícono y texto accesible sobre la celda de cada hallazgo, alineado al desplazar, acercar y cambiar de hoja; la celda de una fila o columna oculta no lleva halo | Esencial | UC‑26 | Sílice 1.2.0 (ruta, sesión 2) | `halos.test.ts`, `CapaHalos.test.tsx`, `Visor.test.tsx`; verificación manual a 1366×768 (desplazar, acercar, cambiar de hoja), con capturas en la bitácora |
+| RF‑116 | Indicadores Fiori (valor, meta, Δ, Δ%) calculados por la API con `Decimal` (campo `indicadores`: «Subtotal sin IVA», «IVA» y «Total general», los presentes en los dos totales). Actual = total del libro; meta = total de Sílice. Son presentación (RS2‑12, NORMAS §2.3): actual, meta, Δ y Δ% van en centésimas con redondeo al par, calculados desde los valores exactos, que siguen en `totales_libro` y `totales_silice`; un Δ de menos de medio centavo es «sin variación» (Δ `0.00` y Δ% `0.00`, sin signo); Δ% es nulo si la meta es cero o no cabe en la precisión. (**Superado por la decisión V-16 de Eugenio (2026-10-21): libro menor = favorable.** Para el libro contra Sílice, `delta = actual − meta`: negativo (libro menor que Sílice) es favorable (verde), positivo (libro mayor) es desfavorable (rojo) y cero es neutro. Riesgo aceptado y declarado: un libro que omite costos puede salir en verde.) Texto anterior, conservado por trazabilidad: sentido «exactitud» (RS2‑13, a ratificar por Eugenio): la meta es el valor correcto de Sílice, así que toda desviación del libro, por encima o por debajo, es desfavorable (rojo) y «sin variación» es neutro (gris); el color nunca depende del signo y la flecha, con su texto accesible, dice si el libro declara más o menos que Sílice. El valor exacto de los totales del libro y de Sílice está siempre en el tooltip accesible de cada indicador | Esencial | UC‑26 | Sílice 1.2.0 (ruta, sesión 2) | `indicadores_de` y las rutas (`tests/unit/test_api_libros_replica.py`, `tests/integration/test_api_libros.py`): libro limpio sin variación, sobreprecio sembrado y libro bajo el costo de Sílice (ambos desfavorables), meta cero con Δ% nulo, redondeo al par, ruido menor que medio centavo sin variación, montos sin notación científica; `semanticaIbcs` con sentido «exactitud» y el tooltip con el exacto (`frontend-desktop/src/indicadores/ibcs.test.ts`, `IndicadorFiori.test.tsx`) |
+| RF‑117 | El instalador lleva la interfaz compilada y el flujo de la CI la compila con Node 22 antes de construir | Esencial | UC‑26 | Sílice 1.2.0 (ruta, sesión 2) | `test_instalador_interfaz.py` y `test_manifiesto.py`: el manifiesto declara el `dist` y la construcción falla con mensaje claro si falta o está vacío; el instalador básico sigue ≤ 150 MB (RNF‑19, medido por `instalador.yml`) |
+| RF‑118 | Lista de hallazgos filtrable por severidad y sincronizada con la hoja (tocar uno lleva la hoja a su celda; tocar una celda marcada resalta su hallazgo); los hallazgos sin celda ubicable se listan aparte en «Sin celda en el libro» | Esencial | UC‑26 | Sílice 1.2.0 (ruta, sesión 2) | `ListaHallazgos.test.tsx` (filtro, texto de severidad, salto a la celda, teclado), `halos.test.ts` (`sinCelda`), `Visor.test.tsx` |
+
+| RNF | Requisito | Verificación |
+|---|---|---|
+| RNF‑22 | Sin red externa ni secretos en el navegador: CSP sin `unsafe-eval` ni anfitriones externos; fuentes IBM Plex alojadas; ninguna URL se consulta a otro anfitrión (el `dist` solo contiene los textos y espacios de nombres de la lista blanca de `scripts/verificar_dist.mjs`, que ninguna rutina pide a la red); nada en `localStorage` ni `sessionStorage` (el token anti‑CSRF solo vive en memoria); sin telemetría; ningún script de instalación de npm (`.npmrc` con `ignore-scripts=true`, RS2‑15: el de Carbon envía telemetría a IBM); dependencias de producción con licencias permisivas (MIT, Apache‑2.0, BSD, ISC, 0BSD, OFL‑1.1, BlueOak‑1.0.0, CC0‑1.0, Python‑2.0, MIT‑0; MPL‑2.0 y CC‑BY‑4.0 solo de desarrollo) y sin `@univerjs-pro` | Trabajo `interfaz` de la CI: `npm run licencias`, `npm run dist`; `test_api_interfaz.py`; `Entrar.test.tsx` |
+| RNF‑23 | Usabilidad y accesibilidad: WCAG 2.1 AA (texto 4,5:1, gráficos 3:1, el color nunca solo, teclado); 1366×768 sin desplazamiento horizontal de la página; `prefers-reduced-motion` respetado; sin animación propia (solo las transiciones de estado de Carbon, ≤ 110 ms, anuladas con `prefers-reduced-motion`); `dist` ≤ 15 000 000 bytes sin comprimir | Tamaño: `npm run dist` (automático). Resto: revisión manual con la lista de `DESIGN.md` y el detector de impeccable, capturas a 1366×768 y 1920×1080 en la bitácora; sin prueba automática de contraste ni de teclado |
+
+Trazabilidad: UC‑26 → RF‑111 … RF‑118, RNF‑22, RNF‑23 → ruta sesión 2 (Sílice 1.2.0) → indicador 1 (errores
+detectados, ahora ubicados sobre la hoja). Pruebas por requisito: [plan_pruebas.md §8.0f](plan_pruebas.md).
+
+#### UC‑28 — Saber cuánto hay y cuánto queda de cada material de la arenera
+
+- **Actor principal:** quien arma o el administrador (acción `OPERAR_ARENERA`). **Secundario:** quien pesa en la
+  báscula de salida.
+- **Precondiciones:** los materiales están registrados con su unidad de venta (`m3` o `t`), su existencia mínima y,
+  si se venden en m³ y se pesan en t, su densidad aparente (dato de la empresa; no hay valor por defecto).
+- **Flujo principal**
+  1. El usuario registra una entrada de producción, un despacho o un conteo físico de un material.
+  2. Sílice guarda el movimiento con su fecha, su origen (manual o báscula) y quién lo registró.
+  3. El tablero muestra por material la existencia a una fecha (Σ entradas − Σ despachos ± ajustes) frente a la
+     mínima, con la alerta «queda poco» cuando la existencia es menor o igual que la mínima.
+- **Flujos alternativos**
+  - *1a. Conteo distinto de lo registrado:* se guarda el ajuste (diferencia con signo); si no hay diferencia, no se
+    guarda nada.
+  - *1b. Despacho que deja la existencia negativa:* se registra igual (el camión salió) y el tablero lo marca
+    «falta registrar producción o conteo».
+  - *1c. Cantidad cero o negativa, o código repetido:* mensaje claro; no se guarda.
+- **Postcondiciones:** los movimientos quedan en la base de la instalación; ningún cálculo usa una cifra sin fuente.
+
+#### UC‑29 — Importar el reporte de la báscula
+
+- **Actor principal:** quien arma o el administrador (acción `OPERAR_ARENERA`).
+- **Precondiciones:** un reporte `.xlsx` o `.csv` de la báscula de salida y los materiales ya registrados.
+- **Flujo principal**
+  1. El usuario sube el reporte e indica la fecha de referencia (hoy) y, si el encabezado no la trae, la unidad
+     del peso (kg o t).
+  2. Sílice comprueba el archivo, detecta las columnas (ticket, fecha, placa, cliente, material, bruto, tara,
+     neto) y la unidad del peso.
+  3. Valida cada pesaje: lo coherente se registra como despacho; lo dudoso va a la bandeja «Pesajes sospechosos».
+  4. Muestra cuántos se registraron, cuántos ya estaban y cuántos esperan revisión.
+  5. El usuario resuelve (con los valores corregidos) o descarta cada pesaje sospechoso.
+- **Flujos alternativos**
+  - *2a. Archivo rechazado* (macros, extensión, tamaño, filas o columnas desmedidas): mensaje claro; no se lee nada.
+  - *2b. Faltan columnas o la unidad del peso:* se pide el mapeo o la unidad; no se importa nada.
+  - *3a. Reimportar el mismo reporte:* no se duplica nada.
+- **Postcondiciones:** los despachos y la bandeja quedan en la base de la instalación; el reporte original no se
+  guarda.
+
+| RF | Requisito |
+|---|---|
+| RF‑127 | Materiales de la arenera: código, nombre, unidad de venta (`m3` o `t`), densidad aparente (dato de la empresa, sin valor por defecto) y existencia mínima |
+| RF‑128 | Movimientos de producción (entrada), despacho y ajuste por conteo; existencia = Σ entradas − Σ despachos ± ajustes, por material y fecha |
+| RF‑129 | Tablero «cuánto hay y cuánto queda» con la alerta «queda poco» (existencia ≤ mínima) y la señal de existencia negativa |
+| RF‑130 | Importar reportes de báscula `.xlsx` y `.csv` con detección de columnas, del separador decimal y de la unidad del peso; sin unidad no se importa |
+| RF‑131 | Validar cada pesaje (tara ≥ bruto, neto ≠ bruto − tara, fecha futura o ilegible, número ambiguo, ticket repetido, material desconocido o sin densidad) y enviar lo dudoso a la bandeja «Pesajes sospechosos» |
+| RF‑132 | Reimportar el mismo reporte no duplica despachos ni sospechosos |
+| RF‑133 | Resolver (con valores corregidos) o descartar un pesaje sospechoso, con quién y cuándo |
+| RF‑134 | Rutas `/v1/produccion/*` con clave de API; las cantidades viajan como texto |
+| RF‑135 | Pantalla «Existencias de la arenera» con permiso por rol (acción `OPERAR_ARENERA`) |
+| RF‑136 | Registro de constantes con el estado de su fuente; los reportes reales de báscula nunca se versionan |
+
+| RNF | Requisito |
+|---|---|
+| RNF‑25 | Límites de recursos al leer reportes de báscula ajenos: 20 MiB, 100 000 filas, 60 columnas, solo lectura |
+
+Trazabilidad: UC‑28 → RF‑127 … RF‑129, RF‑135 y RF‑136; UC‑29 → RF‑130 … RF‑134, RNF‑25 → Sílice 1.4.0 (sesión 4 de
+la [ruta](planes/RUTA_SESIONES.md)). Fuera de los cinco indicadores de la tesis. Pruebas: oráculo a mano en
+`tests/fixtures/bascula/ORACULO.md` y `tests/unit/test_produccion_inventario.py`.
+
+## Enmienda Sílice 1.2.0 (2026-10-18): historial de auditorías de «Libro de la empresa»
+
+Sesión 4 de la [ruta](planes/RUTA_SESIONES.md), [plan del historial](planes/PLAN_SESION_4_HISTORIAL.md). Decisión de
+Eugenio (2026-10-18): **cada auditoría se guarda**; se guarda el resumen y los hallazgos, **nunca el libro ni el PDF**.
+Cambia la regla F‑D9 de la 1.5 («no hay tablas nuevas»): hay una, `auditoria_libro`, en la base de la instalación.
+
+#### UC‑30 — Consultar el historial de auditorías
+
+- **Actor principal:** quien arma o quien revisa (acción `LEER_PROYECTO`) o una integración con clave de API.
+- **Precondiciones:** se corrió al menos una auditoría de UC‑25 (de un libro o de un PDF simple).
+- **Flujo principal**
+  1. El usuario abre el historial (el Inicio muestra las últimas cinco; la pantalla «Historial de auditorías» muestra
+     la lista completa).
+  2. Sílice responde las auditorías de la instalación, la más reciente primero, con su archivo, su fecha y hora, su
+     tipo (`libro` o `pdf`) y su cuenta de errores y de advertencias.
+  3. Al elegir una, muestra su resumen (quién, cuándo, huella SHA‑256, fecha y totales del libro y de Sílice, conteos
+     por severidad) y sus hallazgos, en solo lectura.
+- **Flujos alternativos**
+  - *2a. Aún no hay auditorías:* la lista llega vacía y se dice cómo empezar.
+  - *3a. La auditoría no existe:* mensaje claro (404).
+  - *3b. La auditoría tuvo más de 500 hallazgos:* se muestran los primeros 500 y el aviso de que se recortó; los
+    conteos son los de todos.
+- **Postcondiciones:** solo lectura. Para volver a trabajar sobre el libro hay que subirlo otra vez: no se conserva.
+
+| RF | Requisito | Criterio de aceptación |
+|---|---|---|
+| RF‑142 | Cada auditoría correcta de «Libro de la empresa» (libro o PDF simple) guarda **una fila nueva** en `auditoria_libro` de `instalacion.db`, sin deduplicar por SHA‑256 (repetirla es un hecho): usuario, fecha y hora, tipo, nombre y SHA‑256 del archivo, fecha del libro, total del libro y total de Sílice (texto decimal exacto; nulos en un PDF) y conteos por severidad (`errores`, `advertencias`, `informativos`, `atipicos`) | `tests/integration/test_historial_auditorias.py`: la fila guardada coincide con la escrita a mano, repetir deja dos filas, un PDF va sin totales ni fecha del libro |
+| RF‑143 | Los hallazgos se guardan **compactos** (regla, hoja, celda, severidad y mensaje, y nada más), a lo sumo 500 por auditoría; pasado el tope se guardan los primeros 500, `recortado` es verdadero y los conteos siguen siendo los de todos | 503 hallazgos dan 500 guardados, `recortado` y 503 en el conteo; con exactamente 500 no se recorta |
+| RF‑144 | Un fallo al guardar el historial **no tumba la auditoría**: el informe se responde igual, el fallo queda en el registro del servidor y la pantalla avisa «No se pudo guardar el historial» | Con el guardado forzado a fallar, `POST /v1/libros/auditoria` y `/pdf` responden 200 con el informe y el registro lleva el fallo (pruebas de la tarea que aplica el parche de [PLAN_SESION_4_HISTORIAL.md](planes/PLAN_SESION_4_HISTORIAL.md)) |
+| RF‑145 | `GET /v1/auditorias-libro?limite=N` (1 a 100, 20 por omisión) responde la lista de `{id, archivo, fecha, tipo, errores, advertencias}`, la más reciente primero, con la fecha en ISO con hora; clave de API o cuenta que arma o revisa | `tests/integration/test_api_auditorias_libro.py`: claves literales, orden, límites, 422 fuera de rango, 401 sin credenciales, 403 al administrador solo |
+| RF‑146 | `GET /v1/auditorias-libro/{id}` responde el resumen completo y los hallazgos compactos; los montos como texto; 404 si no existe | Igual archivo de pruebas: detalle exacto de una auditoría sembrada, nulos de un PDF y 404 |
+
+| RNF | Requisito |
+|---|---|
+| RNF‑28 | **Nunca se conserva el libro ni el PDF** auditados: ni sus bytes, ni una copia temporal; de ellos solo queda el nombre del archivo (sin ruta) y su SHA‑256. La tabla no tiene columna binaria y el mensaje de cada hallazgo se corta a 500 caracteres |
+
+Trazabilidad: UC‑25 → RF‑142 … RF‑144 y RNF‑28 (el guardado de cada auditoría); UC‑30 → RF‑142 … RF‑146 y
+RNF‑28 → Sílice 1.2.0 (sesión 4 de la ruta). Pruebas: `tests/integration/test_migracion_auditoria_libro.py`,
+`tests/integration/test_historial_auditorias.py`, `tests/integration/test_api_auditorias_libro.py` y
+`tests/unit/test_documentos_historial_auditorias.py`. Modelo de datos: [modelo_datos.md §10](modelo_datos.md).
+
+## Enmienda Sílice 1.5 (2026-10-21): retiro definitivo de Streamlit y del Visor 3D
+
+**Ruling de Eugenio: retiro definitivo de Streamlit y del Visor 3D; Eugenio informa que el tutor lo avalaría; no consta por escrito; falta avisarle.**
+Plan: [PLAN_RETIRO_STREAMLIT.md](planes/PLAN_RETIRO_STREAMLIT.md). La enmienda cambia solo la tecnología y la superficie donde se
+miden o se realizan los requisitos; **no agrega requisitos ni cambia ninguna cifra o umbral**.
+
+> **Estado provisional de UC‑12 y UC‑21 (2026-10-21):** el paso de «Primera vez» (21a: emitir el código de instalación y crear el primer
+> administrador con él) lo daba la pantalla de acceso de Streamlit y la interfaz React aún no lo tiene. Es una deuda **bloqueante para el
+> instalador**, pendiente de Eugenio (flujo de bienvenida). Detalle: `docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8.
+
+| Requisito | Antes | Ahora |
+|---|---|---|
+| RT‑4 (ruling) | «Streamlit sigue siendo la principal» | la interfaz es React sobre la API, servida por el mismo proceso Uvicorn en `/app/`; Streamlit no existe en el producto ni en las dependencias |
+| RF‑81 | sesión propia en Streamlit | la misma sesión (30 min de inactividad, 12 h de antigüedad, bloqueo tras 5 intentos) en la cookie de `/v1/sesion`; la verificación pasa de AppTest a la API |
+| RNF‑08 | Visor 3D retirado el 2026‑10‑19 (pendiente de ratificar) | retiro definitivo del Visor 3D; las excepciones declaradas de RNF‑08 no cambian |
+| RNF‑11 | medido en `ui.hoja` | medido en `aplicacion.hoja`, mismo escenario y mismo umbral (≤ 2 s) |
+| RNF‑15 | medido en `ui.control` | medido en `aplicacion.control`, mismo escenario y mismo umbral (≤ 2 s) |
+| RF‑97 (h) | el manifiesto excluía la carpeta `ui/` y `.streamlit/` | texto de criterio de aceptación ajustado por el retiro (sin cambiar cifras ni umbrales): ya no hay `ui/` ni `.streamlit/` que excluir; el manifiesto sigue siendo exacto |
+| RF‑98 (criterio) | la prueba por defecto también cubría la orden de Streamlit | texto de criterio de aceptación ajustado por el retiro (sin cambiar cifras ni umbrales): la orden de Uvicorn es la única que se comprueba |
+| RF‑98 («API apagada») | red local apagada y API apagada, activable por separado | **PENDIENTE DE DECISIÓN (Eugenio / tutor):** con un solo proceso Uvicorn que sirve API y front, ya no existe una «API apagada»; este documento no fija su texto nuevo |
+| RF‑81 (criterio) | la verificación de la sesión se hacía con AppTest | texto de criterio de aceptación ajustado por el retiro (sin cambiar cifras ni umbrales): la verificación pasa a las pruebas de la API |
+| Protocolo del experimento (RS‑9) | la guardia del congelado estaba rota por el retiro de `ui/composicion.py` y `ui/hoja.py` (pendiente de Eugenio, opciones A/B/C) | re‑congelado a propósito el 2026‑10‑21, opción A; solo cambian las rutas del auditor; el banco queda intacto (`docs/bitacora/2026-10-21-recongelado-del-experimento.md`) |
+
+Lectura del resto del documento: las menciones de Streamlit, `ui/`, `AppTest` y «pantalla» en UC‑12, RF‑36 a RF‑43, RF‑60, RF‑82,
+RF‑97, RF‑98, RF‑100 y los criterios que de ellas dependen describen la interfaz anterior y se leen sobre la interfaz de React
+(véase el plan de la migración, [PLAN_SESION_2B_MIGRACION.md](planes/PLAN_SESION_2B_MIGRACION.md)). Su criterio de aceptación con `AppTest` ya no existe; el homólogo en React de los recorridos
+guiados y de algunas funciones de `ui.libros` **no está comprobado** (ver `docs/bitacora/2026-10-21-retiro-f3-triaje.md` §7b y
+`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md`). El asistente de IA de la Hoja queda sin interfaz (deuda registrada).
 
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).

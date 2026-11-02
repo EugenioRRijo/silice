@@ -24,7 +24,7 @@ RT-2..RT-5 y §4, y la tarea de tu plan de sesión.
 8. **Sin red externa (RNF-08):** fuentes IBM Plex alojadas en el propio servidor (revisar `$font-path` de Carbon),
    ningún CDN; CSP `default-src 'self'` (y `worker-src 'self' blob:` solo si Univer lo exige, justificado).
 9. **Sin secretos en el navegador (RT-9):** la sesión va en cookie `HttpOnly` que pone la API; nada de claves en
-   `localStorage` ni en el HTML.
+   `localStorage` ni en el HTML, salvo la preferencia de tamaño de letra, que no es un secreto.
 10. TDD con Vitest (rojo visto); `npm run lint` y `npm run build` limpios.
 
 **Entrega.** Resumen; salida real de `npm test`, `npm run lint`, `npm run build`; capturas si se pidieron; rulings.

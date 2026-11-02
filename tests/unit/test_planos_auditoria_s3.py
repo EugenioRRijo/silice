@@ -45,8 +45,9 @@ def _dxf_con_tipo_de_linea_inexistente() -> bytes:
     doc.header["$INSUNITS"] = 6
     doc.layers.add("AMBIENTES")
     msp = doc.modelspace()
-    msp.add_lwpolyline([(0, 0), (4, 0), (4, 3), (0, 3)], close=True,
-                       dxfattribs={"layer": "AMBIENTES"})
+    msp.add_lwpolyline(
+        [(0, 0), (4, 0), (4, 3), (0, 3)], close=True, dxfattribs={"layer": "AMBIENTES"}
+    )
     msp.add_line((0, 0), (1, 1), dxfattribs={"layer": "OTRA", "linetype": "NO_EXISTE"})
     flujo = io.StringIO()
     doc.write(flujo)
@@ -94,7 +95,10 @@ def test_el_informe_cuenta_los_errores_y_cita_solo_los_primeros() -> None:
 def test_el_ids_versionado_es_el_que_genera_el_script() -> None:
     resultado = subprocess.run(
         [sys.executable, str(RAIZ / "scripts" / "generar_ids_silice.py"), "--comprobar"],
-        capture_output=True, text=True, cwd=RAIZ, check=False,
+        capture_output=True,
+        text=True,
+        cwd=RAIZ,
+        check=False,
     )
     assert resultado.returncode == 0, resultado.stdout + resultado.stderr
 
@@ -119,8 +123,11 @@ def test_sin_ninguna_propiedad_fallan_los_cuatro_requisitos_con_su_global_id() -
 
 @pytest.mark.parametrize(
     "falta,fragmento",
-    [("altura", "Espacio con altura"), ("diametro", "Aparato sanitario"),
-     ("circuito", "Tomacorriente")],
+    [
+        ("altura", "Espacio con altura"),
+        ("diametro", "Aparato sanitario"),
+        ("circuito", "Tomacorriente"),
+    ],
 )
 def test_un_fallo_por_requisito(falta: str, fragmento: str) -> None:
     con = tuple(r for r in ("altura", "diametro", "circuito") if r != falta)
@@ -148,8 +155,9 @@ def test_un_ifc2x3_recibe_un_item_que_dice_que_el_ids_es_de_ifc4() -> None:
 def test_el_ids_existe_y_ifctester_se_importa_de_forma_diferida() -> None:
     assert RUTA_IDS.is_file()
     codigo = "import sys; import adapters.espacio.planos.ids; print('ifctester' in sys.modules)"
-    salida = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True,
-                            cwd=RAIZ, check=True)
+    salida = subprocess.run(
+        [sys.executable, "-c", codigo], capture_output=True, text=True, cwd=RAIZ, check=True
+    )
     assert salida.stdout.strip() == "False"
 
 
@@ -174,9 +182,7 @@ def test_las_cifras_del_espacio_se_validan_con_la_funcion_que_se_inyecta() -> No
     assert Decimal("1E+5") == Decimal(100000)  # el Decimal corriente sí la tragaría
 
 
-@pytest.mark.parametrize(
-    "clave,tope", [("ambientes", LIMITE_AMBIENTES), ("puntos", LIMITE_PUNTOS)]
-)
+@pytest.mark.parametrize("clave,tope", [("ambientes", LIMITE_AMBIENTES), ("puntos", LIMITE_PUNTOS)])
 def test_los_limites_del_anexo_de_espacio_en_su_frontera(clave: str, tope: int) -> None:
     comprobar_limites({clave: [{}] * tope})  # pasa
     with pytest.raises(LimiteExcedido, match=str(tope)):

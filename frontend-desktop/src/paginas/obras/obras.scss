@@ -1,0 +1,218 @@
+// Mesa de control, inicio de «Presupuestos y obras» (plan de modulos, MOD-4b; DESIGN.md). Carbon g10: esquinas rectas,
+// separacion con divisores de 1 px y espacio (no tarjetas), sin sombras, sin gradientes, sin animacion propia; el azul
+// queda para los botones y el foco. Las cifras siguen la franja Fiori del sistema (`indicadores.scss`).
+
+// La pagina es el contenedor: las dos columnas dependen del ancho que le queda al contenido (con el sidebar fijado o la
+// columna del recorrido a la vista es menor que la ventana), no del ancho de la ventana. En una consulta de contenedor
+// el rem es el de la raiz, que sigue la escala de letra de Silice: con letra Grande o Muy grande la mesa pasa antes a
+// una sola columna.
+.silice-mesa {
+  container: mesa / inline-size;
+}
+
+.silice-mesa__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+
+  h1 {
+    margin: 0;
+  }
+}
+
+.silice-mesa__rejilla {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 2rem;
+}
+
+.silice-mesa__principal {
+  display: grid;
+  gap: 2rem;
+  min-inline-size: 0;
+}
+
+.silice-mesa__bloque {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-inline-size: 0;
+
+  > h2 {
+    margin: 0;
+  }
+}
+
+// Una sola columna: los pendientes van debajo, separados por un divisor.
+.silice-mesa__pendientes {
+  padding-block-start: 1.5rem;
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
+// Dos columnas desde 60 rem de contenedor; la de pendientes mide 380 px con letra Normal y crece con la escala (como el
+// sidebar fijado), para que con letra Muy grande sus textos no queden en una palabra por renglon.
+@container mesa (min-width: 60rem) {
+  .silice-mesa__rejilla--con-pendientes {
+    grid-template-columns: minmax(0, 1fr) calc(380px * var(--silice-escala-letra));
+  }
+
+  .silice-mesa__rejilla--con-pendientes .silice-mesa__pendientes {
+    padding-block-start: 0;
+    padding-inline-start: 1.5rem;
+    border-block-start: 0;
+    border-inline-start: 1px solid var(--silice-divisor);
+  }
+}
+
+// La franja de cifras: una sola pieza con divisores de 1 px entre cifras (el hueco de 1 px deja ver el color del
+// divisor), no tarjetas sueltas. Al estrecharse, las cifras bajan de fila y el divisor pasa a ser horizontal.
+.silice-mesa__franja {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background: var(--silice-divisor);
+  border-block: 1px solid var(--silice-divisor);
+}
+
+.silice-mesa__cifra {
+  display: grid;
+  flex: 1 1 18rem;
+  align-content: start;
+  min-inline-size: 0;
+  padding-block-end: 0.75rem;
+  background: var(--cds-layer);
+
+  // El indicador del sistema trae su propio divisor para la franja del libro; aqui los pone la franja.
+  .fiori-kpi {
+    padding: 0.75rem 1rem 0.25rem;
+    border-inline-end: 0;
+  }
+}
+
+.silice-mesa__cifra--esqueleto {
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+}
+
+.silice-mesa__detalle {
+  margin: 0;
+  padding-inline: 1rem;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-mesa__nota {
+  margin: 0;
+  color: var(--silice-texto-secundario);
+}
+
+// Lo que hay que saber para leer la suma: las conversiones y lo que no se sumo.
+.silice-mesa__notas {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-mesa__nota--fuera {
+  color: var(--silice-texto);
+}
+
+// Tabla de obras: el nombre manda; el cliente, debajo y en gris.
+.silice-mesa__tabla td {
+  vertical-align: top;
+}
+
+.silice-mesa__obra-nombre {
+  display: block;
+  font-weight: 600;
+}
+
+.silice-mesa__obra-cliente {
+  display: block;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-mesa__etapa {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+// «Atrasada»: el icono en el color de la severidad de error; la palabra, en la tinta normal.
+.silice-mesa__etapa--atrasada svg {
+  flex: none;
+  fill: var(--silice-sev-error);
+}
+
+.silice-mesa__sin-dato {
+  color: var(--silice-texto-secundario);
+}
+
+// El boton del siguiente paso ocupa la celda sin agrandar la fila de 32 px.
+.silice-mesa__tabla td.silice-mesa__paso {
+  padding-block: 0;
+  white-space: nowrap;
+}
+
+.silice-mesa__primeros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+}
+
+// Pendientes: un grupo por tema, cada pendiente un renglon con su obra, su texto y su accion.
+.silice-mesa__grupos {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.silice-mesa__grupo {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.silice-mesa__grupo-titulo {
+  margin: 0;
+}
+
+.silice-mesa__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
+.silice-mesa__pendiente {
+  display: grid;
+  justify-items: start;
+  gap: 0.125rem;
+  padding-block: 0.5rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.silice-mesa__pendiente-obra {
+  color: var(--silice-texto-secundario);
+}
+
+.silice-mesa__pendiente-texto {
+  max-inline-size: 65ch;
+  overflow-wrap: anywhere;
+}
+
+// Tarea 19: la linea de un envio por aprobar (total, quien y cuando; su nota), en gris bajo el texto.
+.silice-mesa__pendiente-detalle {
+  max-inline-size: 65ch;
+  overflow-wrap: anywhere;
+  color: var(--silice-texto-secundario);
+}
+
+// La marca de «Por aprobar»: la etiqueta de advertencia pegada del sistema (`fiori-kpi__aviso`), alineada con la cifra.
+.silice-mesa__marca {
+  margin: 0.25rem 1rem 0;
+}

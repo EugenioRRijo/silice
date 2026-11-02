@@ -3,7 +3,7 @@
 Lista blanca (`manifiesto.toml`): los paquetes del producto completos, de `scripts/` y
 `tests/fixtures/` solo el cierre de importaciones de los sembradores y del simulador (calculado
 leyendo el árbol sintáctico), la lista blanca de `data/`, `pyproject.toml` y `LICENSE`, más el
-`config.toml` oficial. Todo lo demás (`.venv`, `*.db`, `docs/`, los `.xls` del BCV, las bases de
+que el producto necesita. Todo lo demás (`.venv`, `*.db`, `docs/`, los `.xls` del BCV, las bases de
 prueba) está prohibido y, si algo lo trae, el armado falla en vez de copiarlo.
 """
 
@@ -18,18 +18,18 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 RUTA_MANIFIESTO = Path(__file__).with_name("manifiesto.toml")
-RUTA_CONFIG_OFICIAL = Path(__file__).with_name("streamlit_config.toml")
 RAICES_PROPIAS = frozenset(
     {
         "core",
         "adapters",
         "ml",
-        "ui",
         "api",
         "operacion",
         "migraciones",
         "seguridad",
         "asistente",
+        "aplicacion",
+        "produccion",
         "scripts",
         "tests",
     }
@@ -67,6 +67,7 @@ class Manifiesto:
     cierre_desde: tuple[str, ...]
     datos_incluir: tuple[str, ...]
     datos_excluir_sufijos: tuple[str, ...]
+    interfaz_dist: str
 
 
 def cargar(ruta: Path = RUTA_MANIFIESTO) -> Manifiesto:
@@ -85,6 +86,7 @@ def cargar(ruta: Path = RUTA_MANIFIESTO) -> Manifiesto:
             cierre_desde=tuple(datos["codigo"]["cierre_desde"]),
             datos_incluir=tuple(datos["datos"]["incluir"]),
             datos_excluir_sufijos=tuple(datos["datos"]["excluir_sufijos"]),
+            interfaz_dist=str(datos["interfaz"]["dist"]),
         )
     except KeyError as error:
         raise ManifiestoInvalido(f"{ruta.name}: falta la clave {error}") from error
@@ -192,14 +194,38 @@ def archivos_de_codigo(raiz: Path, m: Manifiesto) -> list[Path]:
 
 
 def armar_arbol(raiz: Path, destino: Path, m: Manifiesto) -> list[Path]:
-    """Copia los archivos del manifiesto a `destino` (= `{app}\\codigo`) y deja el `config.toml`
-    oficial como único `.streamlit/config.toml`. Devuelve las rutas relativas copiadas."""
+    """Copia los archivos del manifiesto a `destino` (= `{app}\\codigo`). No añade nada más: ya no
+    hay `.streamlit/config.toml`. Devuelve las rutas relativas copiadas."""
     archivos = archivos_de_codigo(raiz, m)
     for relativa in archivos:
         origen, copia = raiz / relativa, destino / relativa
         copia.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(origen, copia)
-    oficial = destino / ".streamlit" / "config.toml"
-    oficial.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(RUTA_CONFIG_OFICIAL, oficial)
-    return [*archivos, Path(".streamlit/config.toml")]
+    return list(archivos)
+
+
+def copiar_interfaz(raiz: Path, destino: Path, m: Manifiesto) -> list[Path]:
+    r"""Copia el `dist` ya compilado de la interfaz a `destino / <misma ruta relativa>` (con
+    `destino` = `{app}\codigo`, `RAIZ` del producto, donde `api/interfaz.py` lo busca). No compila:
+    si falta, está vacío o no trae `index.html`, falla diciendo cómo compilarlo."""
+    origen = raiz / m.interfaz_dist
+    como_compilar = (
+        "compílela antes de construir el instalador: `npm ci && npm run build` en frontend-desktop"
+    )
+    archivos = sorted(p for p in origen.rglob("*") if p.is_file()) if origen.is_dir() else []
+    if not archivos:
+        raise ManifiestoInvalido(
+            f"la interfaz compilada no existe o está vacía ({m.interfaz_dist}); {como_compilar}"
+        )
+    if not (origen / "index.html").is_file():
+        raise ManifiestoInvalido(
+            f"la interfaz compilada no trae index.html ({m.interfaz_dist}); {como_compilar}"
+        )
+    copiados: list[Path] = []
+    for archivo in archivos:
+        relativa = archivo.relative_to(raiz)
+        copia = destino / relativa
+        copia.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(archivo, copia)
+        copiados.append(relativa)
+    return copiados

@@ -264,6 +264,18 @@ def _num(valor: Decimal) -> str:
     return formatear_decimal(valor)
 
 
+def _cifra(valor: Decimal, decimales: int | None = None) -> str:
+    """Cifra para leer en el texto de F1, como las de las reglas L (`reglas._fmt`, «4 331,43»):
+    espacio de miles y coma decimal (VB-8). Sin `decimales` conserva todos los dígitos (un P.U. del
+    motor no se redondea); con ellos, `formatear_decimal` redondea ROUND_HALF_UP. TRAZABILIDAD
+    sigue con `_num`."""
+    texto = formatear_decimal(valor, decimales)
+    signo = "-" if texto.startswith("-") else ""
+    entera, _, fraccion = texto.lstrip("-").partition(".")
+    miles = f"{int(entera):,}".replace(",", " ")
+    return f"{signo}{miles}{',' + fraccion if fraccion else ''}"
+
+
 def _hallazgo_f1(calculo: CalculoPartida, hoja: str, col_pu: str) -> Hallazgo | None:
     """F1 (spec §3): el P.U. del motor del núcleo contra el P guardado en PRESUPUESTO.
 
@@ -292,9 +304,9 @@ def _hallazgo_f1(calculo: CalculoPartida, hoja: str, col_pu: str) -> Hallazgo | 
         severidad=Severidad.ERROR,
         descripcion=(
             f"partida {p.numero} ({calculo.codigo}): PRESUPUESTO guarda un P.U. de "
-            f"{_num(guardado)} y el motor de Silice lo recalcula en {_num(silice)} con el APU "
-            f"{calculo.apu.hoja}; la diferencia por la cantidad ({_num(p.cantidad)}) mueve el "
-            f"total sin IVA en {formatear_decimal(impacto, 2)}"
+            f"{_cifra(guardado)} y el motor de Sílice lo recalcula en {_cifra(silice)} con el APU "
+            f"{calculo.apu.hoja}; la diferencia por la cantidad ({_cifra(p.cantidad)}) mueve el "
+            f"total sin IVA en {_cifra(impacto, 2)}"
         ),
         impacto=impacto,
         origen_ids=(

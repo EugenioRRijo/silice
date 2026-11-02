@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
+from api.acceso import REVISAR
 from api.dependencias import SesionDep
 from auditoria.reauditoria import Servicios, leer_documento_json, reauditar
 from core.budget.canonico import DocumentoInvalido
@@ -121,6 +122,7 @@ def _hallazgo(h) -> HallazgoRespuesta:
             },
         }
     },
+    dependencies=REVISAR,
 )
 async def auditar_documento(peticion: Request, servicios: ServiciosDep) -> AuditoriaRespuesta:
     cuerpo = await peticion.body()

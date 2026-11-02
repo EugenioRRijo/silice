@@ -17,8 +17,8 @@ import pytest
 
 from adapters.espacio import Espacio
 from adapters.espacio.planos import EstadoImportacion, TipoItem
+from aplicacion import hoja
 from tests.fixtures.espacio_of001 import espacio_of001
-from ui import hoja
 
 D = Decimal
 RAIZ = Path(__file__).resolve().parents[2]

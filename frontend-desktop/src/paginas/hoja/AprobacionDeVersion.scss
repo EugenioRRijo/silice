@@ -1,0 +1,45 @@
+// La aprobacion de la version, junto a ella en la Hoja (Tarea 19; DESIGN.md). Carbon g10: esquinas rectas, divisor de 1 px,
+// sin sombras ni animacion; la etiqueta es texto con borde (no un color que signifique «bien»): la devuelta lleva su icono.
+.silice-hoja__aprobacion {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-hoja__aprobacion-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+}
+
+.silice-hoja__aprobacion-rotulo {
+  color: var(--silice-texto-secundario);
+}
+
+.silice-hoja__aprobacion-etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  font-weight: 600;
+  border: 1px solid var(--silice-divisor);
+  overflow-wrap: anywhere;
+}
+
+.silice-hoja__aprobacion-icono {
+  flex: none;
+  fill: var(--silice-aviso-borde);
+}
+
+.silice-hoja__aprobacion-notas {
+  margin: 0;
+  max-inline-size: 65ch;
+  overflow-wrap: anywhere;
+}
+
+.silice-hoja__aprobacion-aviso {
+  margin: 0;
+}

@@ -1,0 +1,109 @@
+{
+  "nombre": "libro_minimo.xlsx",
+  "hojas": [
+    {
+      "nombre": "PORTADA",
+      "visible": true,
+      "filas": 4,
+      "columnas": 2,
+      "anchos": { "1": "24.7109375", "2": "14.7109375", "3": "14.7109375" },
+      "altos": { "1": "21.75" },
+      "ocultas_filas": [],
+      "ocultas_columnas": [],
+      "combinadas": [],
+      "fijas": null,
+      "celdas": [
+        { "ref": "A1", "fila": 1, "columna": 1, "mostrado": "Obra ficticia", "formula": null, "estilo": 0 },
+        { "ref": "A2", "fila": 2, "columna": 1, "mostrado": "Monto contratado", "formula": null, "estilo": 1 },
+        { "ref": "B2", "fila": 2, "columna": 2, "mostrado": "1234.5", "formula": null, "estilo": 2 },
+        { "ref": "A3", "fila": 3, "columna": 1, "mostrado": "Fecha de corte", "formula": null, "estilo": 1 },
+        { "ref": "B3", "fila": 3, "columna": 2, "mostrado": "2026-10-18", "formula": null, "estilo": 3 },
+        { "ref": "A4", "fila": 4, "columna": 1, "mostrado": "Vigente", "formula": null, "estilo": 1 },
+        { "ref": "B4", "fila": 4, "columna": 2, "mostrado": "TRUE", "formula": null, "estilo": 1 }
+      ]
+    },
+    {
+      "nombre": "PLAN DE PAGOS",
+      "visible": true,
+      "filas": 12,
+      "columnas": 27,
+      "anchos": {
+        "1": "20.7109375",
+        "2": "12.7109375",
+        "3": "12.7109375",
+        "4": "15.7109375",
+        "6": "10.7109375"
+      },
+      "altos": { "1": "30" },
+      "ocultas_filas": [5],
+      "ocultas_columnas": [3],
+      "combinadas": ["A1:D1"],
+      "fijas": "B3",
+      "celdas": [
+        { "ref": "A1", "fila": 1, "columna": 1, "mostrado": "Plan de pagos ficticio", "formula": null, "estilo": 4 },
+        { "ref": "A2", "fila": 2, "columna": 1, "mostrado": "Hito", "formula": null, "estilo": 5 },
+        { "ref": "B2", "fila": 2, "columna": 2, "mostrado": "Monto", "formula": null, "estilo": 5 },
+        { "ref": "D2", "fila": 2, "columna": 4, "mostrado": "Fecha", "formula": null, "estilo": 5 },
+        { "ref": "A3", "fila": 3, "columna": 1, "mostrado": "Anticipo", "formula": null, "estilo": 1 },
+        { "ref": "B3", "fila": 3, "columna": 2, "mostrado": "1500.5", "formula": null, "estilo": 2 },
+        { "ref": "D3", "fila": 3, "columna": 4, "mostrado": "Tras la columna oculta", "formula": null, "estilo": 1 },
+        { "ref": "AA3", "fila": 3, "columna": 27, "mostrado": "Nota lejana", "formula": null, "estilo": 6 },
+        { "ref": "A5", "fila": 5, "columna": 1, "mostrado": "Fila oculta", "formula": null, "estilo": 1 },
+        { "ref": "F11", "fila": 11, "columna": 6, "mostrado": "100", "formula": null, "estilo": 2 },
+        { "ref": "F12", "fila": 12, "columna": 6, "mostrado": "200", "formula": "=F11*2", "estilo": 2 }
+      ]
+    },
+    {
+      "nombre": "AUX",
+      "visible": false,
+      "filas": 1,
+      "columnas": 1,
+      "anchos": {},
+      "altos": {},
+      "ocultas_filas": [],
+      "ocultas_columnas": [],
+      "combinadas": [],
+      "fijas": null,
+      "celdas": [
+        { "ref": "A1", "fila": 1, "columna": 1, "mostrado": "Hoja oculta", "formula": null, "estilo": 1 }
+      ]
+    }
+  ],
+  "estilos": [
+    {
+      "relleno": null, "fuente": "Calibri", "tamano": "14", "negrita": true, "cursiva": false,
+      "subrayado": false, "color": "#000000", "alineacion_h": null, "alineacion_v": null,
+      "ajustar_texto": false, "formato_numero": "General", "bordes": [null, null, null, null]
+    },
+    {
+      "relleno": null, "fuente": "Calibri", "tamano": "11", "negrita": false, "cursiva": false,
+      "subrayado": false, "color": "#000000", "alineacion_h": null, "alineacion_v": null,
+      "ajustar_texto": false, "formato_numero": "General", "bordes": [null, null, null, null]
+    },
+    {
+      "relleno": null, "fuente": "Calibri", "tamano": "11", "negrita": false, "cursiva": false,
+      "subrayado": false, "color": "#000000", "alineacion_h": null, "alineacion_v": null,
+      "ajustar_texto": false, "formato_numero": "#,##0.00", "bordes": [null, null, null, null]
+    },
+    {
+      "relleno": null, "fuente": "Calibri", "tamano": "11", "negrita": false, "cursiva": false,
+      "subrayado": false, "color": "#000000", "alineacion_h": null, "alineacion_v": null,
+      "ajustar_texto": false, "formato_numero": "dd/mm/yyyy", "bordes": [null, null, null, null]
+    },
+    {
+      "relleno": "#D9E1F2", "fuente": "Arial", "tamano": "12", "negrita": true, "cursiva": false,
+      "subrayado": false, "color": "#1F3864", "alineacion_h": "center", "alineacion_v": "center",
+      "ajustar_texto": true, "formato_numero": "General", "bordes": [null, null, null, null]
+    },
+    {
+      "relleno": null, "fuente": "Calibri", "tamano": "11", "negrita": true, "cursiva": false,
+      "subrayado": false, "color": "#000000", "alineacion_h": null, "alineacion_v": null,
+      "ajustar_texto": false, "formato_numero": "General", "bordes": ["thin", "thin", "thin", "thin"]
+    },
+    {
+      "relleno": null, "fuente": "Calibri", "tamano": "11", "negrita": false, "cursiva": true,
+      "subrayado": true, "color": "#C00000", "alineacion_h": "right", "alineacion_v": "top",
+      "ajustar_texto": false, "formato_numero": "General", "bordes": [null, null, null, null]
+    }
+  ]
+}

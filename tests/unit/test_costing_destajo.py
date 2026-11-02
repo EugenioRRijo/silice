@@ -66,9 +66,7 @@ def test_el_destajo_entra_completo():
         unidad="m2",
         rendimiento=Decimal("50"),
         mano_obra=(
-            LineaManoObra(
-                "Instalador", Decimal("1"), Decimal("6"), ModalidadManoObra.DESTAJO
-            ),
+            LineaManoObra("Instalador", Decimal("1"), Decimal("6"), ModalidadManoObra.DESTAJO),
         ),
     )
 

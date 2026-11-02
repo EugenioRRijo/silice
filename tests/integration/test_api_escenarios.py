@@ -148,7 +148,9 @@ def test_el_escenario_base_de_una_version_editada_en_la_hoja_cuadra_con_su_presu
     assert respuesta.status_code == 200
     cuerpo = respuesta.json()
     escenario = cuerpo["escenarios"][0]
-    assert escenario["total"] == cuerpo["total_base"] == formatear_decimal(
-        guardada.total, DECIMALES_PRESENTACION
+    assert (
+        escenario["total"]
+        == cuerpo["total_base"]
+        == formatear_decimal(guardada.total, DECIMALES_PRESENTACION)
     )
     assert escenario["variacion"] == "0.00"

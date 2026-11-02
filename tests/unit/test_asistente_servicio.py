@@ -15,6 +15,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 
+from aplicacion import hoja
+from aplicacion.hoja import Borrador, HojaInvalida
 from asistente.orquestador import ESPERAR, MotivoFin, Servicios
 from asistente.propuestas import EstadoPropuesta, Propuesta, TipoPropuesta
 from asistente.proveedores.base import FinTurno, LlamadaHerramienta, Tarifa, Turno, Uso
@@ -35,8 +37,6 @@ from asistente.servicio import (
 )
 from asistente.tarifas import cargar_tarifas
 from tests.fixtures.asistente_pedidos import AMBIENTE, FECHA, PEDIDO, catalogo
-from ui import hoja
-from ui.hoja import Borrador, HojaInvalida
 
 TARIFA = Tarifa(entrada=Decimal(1_000_000), salida=Decimal(2_000_000))
 FUENTE = {

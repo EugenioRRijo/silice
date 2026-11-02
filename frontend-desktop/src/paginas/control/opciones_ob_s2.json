@@ -1,0 +1,170 @@
+{
+  "opciones": [
+    {
+      "clave": "cuadrillas",
+      "titulo": "Más cuadrillas",
+      "aplica": true,
+      "motivo": "",
+      "requisitos": [],
+      "requiere_declaracion": false,
+      "fila": {
+        "Opcion": "Más cuadrillas",
+        "Termino": "día 17",
+        "Retraso (dias)": "0",
+        "Costo directo adicional": "120.00",
+        "Costo indirecto": "-90.00",
+        "Penalizacion": "0.00",
+        "Punto de equilibrio": "no aplica",
+        "Nota": "eta de cuadrillas: 0.80 (SUPUESTO_DECLARADO); cuadrillas máximas: 3 (SUPUESTO_DECLARADO); penalización diaria: 0 (DATO_DEL_CONTRATO); costo diario de la cuadrilla: composiciones de la línea base (SUPUESTO_DECLARADO); costo fijo en el tiempo: CF' = CF · D'/D (SUPUESTO_DECLARADO)"
+      },
+      "supuestos": [
+        {
+          "nombre": "eta de cuadrillas",
+          "valor": "0.80",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        },
+        {
+          "nombre": "cuadrillas máximas",
+          "valor": "3",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        },
+        {
+          "nombre": "penalización diaria",
+          "valor": "0",
+          "naturaleza": "DATO_DEL_CONTRATO"
+        },
+        {
+          "nombre": "costo diario de la cuadrilla",
+          "valor": "composiciones de la línea base",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        },
+        {
+          "nombre": "costo fijo en el tiempo",
+          "valor": "CF' = CF · D'/D",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        }
+      ]
+    },
+    {
+      "clave": "horas_extra",
+      "titulo": "Horas extra",
+      "aplica": true,
+      "motivo": "",
+      "requisitos": [
+        "permiso de la Inspectoría del Trabajo (LOTTT art. 182) para las horas extra"
+      ],
+      "requiere_declaracion": false,
+      "fila": {
+        "Opcion": "Horas extra",
+        "Termino": "día 21",
+        "Retraso (dias)": "1",
+        "Costo directo adicional": "115.31",
+        "Costo indirecto": "30.00",
+        "Penalizacion": "0.00",
+        "Punto de equilibrio": "no aplica",
+        "Nota": "horas extra por día: 2 (SUPUESTO_DECLARADO); eta de horas extra: 0.80 (SUPUESTO_DECLARADO); recargo: 0.50 (FUENTE_VERIFICADA); FCAS sobre las horas extra: sí (SUPUESTO_DECLARADO); jornada ordinaria: 8 h (FUENTE_VERIFICADA); límites de horas extra: 10 h por semana, 100 h por año (FUENTE_VERIFICADA); penalización diaria: 0 (DATO_DEL_CONTRATO); costo diario de la cuadrilla: composiciones de la línea base (SUPUESTO_DECLARADO); costo fijo en el tiempo: CF' = CF · D'/D (SUPUESTO_DECLARADO)"
+      },
+      "supuestos": [
+        {
+          "nombre": "horas extra por día",
+          "valor": "2",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        },
+        {
+          "nombre": "eta de horas extra",
+          "valor": "0.80",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        },
+        {
+          "nombre": "recargo",
+          "valor": "0.50",
+          "naturaleza": "FUENTE_VERIFICADA"
+        },
+        {
+          "nombre": "FCAS sobre las horas extra",
+          "valor": "sí",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        },
+        {
+          "nombre": "jornada ordinaria",
+          "valor": "8 h",
+          "naturaleza": "FUENTE_VERIFICADA"
+        },
+        {
+          "nombre": "límites de horas extra",
+          "valor": "10 h por semana, 100 h por año",
+          "naturaleza": "FUENTE_VERIFICADA"
+        },
+        {
+          "nombre": "penalización diaria",
+          "valor": "0",
+          "naturaleza": "DATO_DEL_CONTRATO"
+        },
+        {
+          "nombre": "costo diario de la cuadrilla",
+          "valor": "composiciones de la línea base",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        },
+        {
+          "nombre": "costo fijo en el tiempo",
+          "valor": "CF' = CF · D'/D",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        }
+      ]
+    },
+    {
+      "clave": "paralelo",
+      "titulo": "Partidas en paralelo",
+      "aplica": false,
+      "motivo": "ninguna partida sin empezar con inicio posterior al período siguiente",
+      "requisitos": [],
+      "requiere_declaracion": false,
+      "fila": {
+        "Opcion": "Partidas en paralelo",
+        "Nota": "ninguna partida sin empezar con inicio posterior al período siguiente",
+        "Termino": "no aplica",
+        "Retraso (dias)": "no aplica",
+        "Costo directo adicional": "no aplica",
+        "Costo indirecto": "no aplica",
+        "Penalizacion": "no aplica",
+        "Punto de equilibrio": "no aplica"
+      },
+      "supuestos": []
+    },
+    {
+      "clave": "aceptar",
+      "titulo": "Aceptar el retraso",
+      "aplica": true,
+      "motivo": "",
+      "requisitos": [],
+      "requiere_declaracion": false,
+      "fila": {
+        "Opcion": "Aceptar el retraso",
+        "Termino": "día 23",
+        "Retraso (dias)": "3",
+        "Costo directo adicional": "0.00",
+        "Costo indirecto": "90.00",
+        "Penalizacion": "0.00",
+        "Punto de equilibrio": "no aplica",
+        "Nota": "penalización diaria: 0 (DATO_DEL_CONTRATO); costo diario de la cuadrilla: composiciones de la línea base (SUPUESTO_DECLARADO); costo fijo en el tiempo: CF' = CF · D'/D (SUPUESTO_DECLARADO)"
+      },
+      "supuestos": [
+        {
+          "nombre": "penalización diaria",
+          "valor": "0",
+          "naturaleza": "DATO_DEL_CONTRATO"
+        },
+        {
+          "nombre": "costo diario de la cuadrilla",
+          "valor": "composiciones de la línea base",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        },
+        {
+          "nombre": "costo fijo en el tiempo",
+          "valor": "CF' = CF · D'/D",
+          "naturaleza": "SUPUESTO_DECLARADO"
+        }
+      ]
+    }
+  ]
+}

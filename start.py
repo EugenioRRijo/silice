@@ -8,8 +8,8 @@
 Siembra en `data/casos/` (carpeta de datos de desarrollo, no versionada) cinco casos DIDÁCTICOS,
 todos ficticios (NORMAS.md §1): `demo`, `of001`, `ti001`, `s1` (copias de las bases de prueba de
 la 0.6.0) y `obra_control` (una obra generada con valuaciones y costos para Control de obra).
-Nunca toca `data/apu.db`. La aplicación escucha solo en 127.0.0.1 y sin telemetría
-(`.streamlit/config.toml`).
+Nunca toca `data/apu.db`. Un solo proceso (Uvicorn, `api.main:app`) sirve la API y la interfaz
+de React (`/app/`, compilada con `npm run build` en frontend-desktop) y escucha solo en 127.0.0.1.
 """
 
 from __future__ import annotations
@@ -33,6 +33,8 @@ if str(RAIZ) not in sys.path:
 CASOS_COPIADOS = ("demo", "of001", "ti001", "s1")
 BASES_PRUEBA = RAIZ / "tests" / "fixtures" / "bases" / "v0_6_0"
 PUERTO_POR_OMISION = 8501
+RUTA_INTERFAZ = "/app/"
+RUTA_SALUD = "/salud"
 
 
 def carpeta_casos() -> Path:
@@ -66,6 +68,51 @@ def sembrar_obra_control(destino: Path) -> None:
         motor.dispose()
 
 
+def sellar_caso_copiado(destino: Path) -> None:
+    """Lleva una base copiada de antes de la cadena a `head` y sella su historial (D3).
+
+    Las bases de `tests/fixtures/bases/` son inmutables (su ficha lleva el hash) y nacen sin
+    eslabones: sin esto, «Entregar paquete» dice «Cadena rota... no tiene eslabon». El sello es
+    el declarado de siempre (`tipo = "retroactivo"`, que la Trazabilidad muestra) y usa la forma
+    actual de las cifras (28 decimales, VB-1), asi que la version queda entregable.
+
+    `preparar_base` puede migrar con respaldo en `SILICE_RESPALDOS` (el juego nombra el archivo
+    que se le pasa, o sea el temporal de `preparar_demo`). Deja la base cerrada al volver."""
+    from aplicacion.entrega import anexos_de_cadena
+    from core.budget.cadena import sellar_historial
+    from core.catalog.sesion import abrir_sesion, crear_motor
+    from operacion.base_datos import preparar_base
+
+    preparar_base(destino)
+    motor = crear_motor(f"sqlite:///{destino.resolve().as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            sellar_historial(sesion, "script:start", anexos_de=anexos_de_cadena)
+            sesion.commit()
+    finally:
+        motor.dispose()
+
+
+def _sembrar_copia(origen: Path, destino: Path) -> None:
+    """Todo o nada: copia, sella en un temporal de la misma carpeta y publica con `os.replace`.
+    Si algo falla, el temporal (y sus -wal/-shm/-journal) se borra y `destino` no existe."""
+    temporal = destino.with_name(f".{destino.name}.tmp")
+    restos = [temporal] + [
+        temporal.with_name(temporal.name + s) for s in ("-wal", "-shm", "-journal")
+    ]
+    try:
+        for resto in restos:
+            resto.unlink(missing_ok=True)
+        shutil.copyfile(origen, temporal)
+        sellar_caso_copiado(temporal)
+        for resto in restos[1:]:
+            resto.unlink(missing_ok=True)
+        os.replace(temporal, destino)
+    finally:
+        for resto in restos:
+            resto.unlink(missing_ok=True)
+
+
 def preparar_demo(*, reiniciar: bool = False) -> list[str]:
     """Deja los casos de demostración en la carpeta de casos; devuelve lo que sembró."""
     casos = carpeta_casos()
@@ -78,7 +125,7 @@ def preparar_demo(*, reiniciar: bool = False) -> list[str]:
             print(f"  (no está {origen.relative_to(RAIZ)}; se omite {nombre})")
             continue
         if reiniciar or not destino.exists():
-            shutil.copyfile(origen, destino)
+            _sembrar_copia(origen, destino)
             sembrados.append(nombre)
     destino = casos / "obra_control.db"
     if reiniciar or not destino.exists():
@@ -91,9 +138,9 @@ def _abrir_navegador_cuando_responda(puerto: int) -> None:
     direccion = f"http://127.0.0.1:{puerto}"
     for _ in range(120):
         try:
-            with urllib.request.urlopen(f"{direccion}/_stcore/health", timeout=1) as respuesta:
+            with urllib.request.urlopen(f"{direccion}{RUTA_SALUD}", timeout=1) as respuesta:
                 if respuesta.status == 200:
-                    webbrowser.open(direccion)
+                    webbrowser.open(f"{direccion}{RUTA_INTERFAZ}")
                     return
         except (urllib.error.URLError, OSError):
             time.sleep(0.5)
@@ -112,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
         sembrados = preparar_demo(reiniciar=args.reiniciar_demo)
         print(f"  casos sembrados: {', '.join(sembrados) if sembrados else 'ya estaban todos'}")
     print(f"  carpeta de casos: {carpeta_casos()}")
-    print(f"  http://127.0.0.1:{args.puerto}   (Ctrl+C para detener)")
+    print(f"  http://127.0.0.1:{args.puerto}{RUTA_INTERFAZ}   (Ctrl+C para detener)")
 
     if not args.sin_navegador:
         threading.Thread(
@@ -121,13 +168,13 @@ def main(argv: list[str] | None = None) -> int:
     orden = [
         sys.executable,
         "-m",
-        "streamlit",
-        "run",
-        str(RAIZ / "ui" / "app.py"),
-        "--server.port",
+        "uvicorn",
+        "api.main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
         str(args.puerto),
-        "--server.headless",
-        "true",
+        "--no-access-log",
     ]
     try:
         return subprocess.call(orden, cwd=RAIZ, env=dict(os.environ))

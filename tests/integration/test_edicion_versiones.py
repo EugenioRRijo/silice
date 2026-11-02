@@ -106,8 +106,12 @@ def _modelo(sesion, codigo) -> models.Presupuesto:
 
 @pytest.mark.parametrize(
     ("fuente", "responsable", "campo"),
-    [("", RESPONSABLE, "fuente"), ("   ", RESPONSABLE, "fuente"), (FUENTE, "", "responsable"),
-     (FUENTE, "  ", "responsable")],
+    [
+        ("", RESPONSABLE, "fuente"),
+        ("   ", RESPONSABLE, "fuente"),
+        (FUENTE, "", "responsable"),
+        (FUENTE, "  ", "responsable"),
+    ],
 )
 def test_guardar_sin_fuente_o_sin_responsable_se_rechaza_y_no_deja_filas(
     sesion, v001, fuente, responsable, campo
@@ -289,8 +293,14 @@ def test_restaurar_crea_una_version_copia_de_n_y_n_sigue_existiendo(sesion, v001
     catalogo = Catalogo(sesion)
 
     nueva = restaurar_version(
-        sesion, NOMBRE_PROYECTO, CODIGO, "003", catalogo,
-        fuente="se descarta la edicion de cemento", responsable=RESPONSABLE, ahora=AHORA,
+        sesion,
+        NOMBRE_PROYECTO,
+        CODIGO,
+        "003",
+        catalogo,
+        fuente="se descarta la edicion de cemento",
+        responsable=RESPONSABLE,
+        ahora=AHORA,
     )
     sesion.commit()
 
@@ -314,13 +324,23 @@ def test_restaurar_crea_una_version_copia_de_n_y_n_sigue_existiendo(sesion, v001
 def test_restaurar_exige_fuente_y_responsable(sesion, v001):
     with pytest.raises(ValueError, match="fuente"):
         restaurar_version(
-            sesion, NOMBRE_PROYECTO, CODIGO, "002", Catalogo(sesion),
-            fuente="", responsable=RESPONSABLE,
+            sesion,
+            NOMBRE_PROYECTO,
+            CODIGO,
+            "002",
+            Catalogo(sesion),
+            fuente="",
+            responsable=RESPONSABLE,
         )
     with pytest.raises(ValueError, match="responsable"):
         restaurar_version(
-            sesion, NOMBRE_PROYECTO, CODIGO, "002", Catalogo(sesion),
-            fuente=FUENTE, responsable="",
+            sesion,
+            NOMBRE_PROYECTO,
+            CODIGO,
+            "002",
+            Catalogo(sesion),
+            fuente=FUENTE,
+            responsable="",
         )
     assert _contar(sesion, models.Presupuesto) == 1
 
@@ -343,8 +363,13 @@ def test_restaurar_una_version_sin_instantanea_funciona_y_la_nueva_si_la_tiene(s
     sesion.expire_all()
 
     nueva = restaurar_version(
-        sesion, NOMBRE_PROYECTO, CODIGO, "002", Catalogo(sesion),
-        fuente=FUENTE, responsable=RESPONSABLE,
+        sesion,
+        NOMBRE_PROYECTO,
+        CODIGO,
+        "002",
+        Catalogo(sesion),
+        fuente=FUENTE,
+        responsable=RESPONSABLE,
     )
 
     congeladas = composiciones_de_version(sesion, nueva)
@@ -426,8 +451,13 @@ def test_asegurar_instantanea_registra_su_creacion_una_sola_vez(sesion, v001):
 def test_restaurar_una_version_inexistente_es_un_error_y_no_deja_filas(sesion, v001):
     with pytest.raises(KeyError, match="999"):
         restaurar_version(
-            sesion, NOMBRE_PROYECTO, "999", "002", Catalogo(sesion),
-            fuente=FUENTE, responsable=RESPONSABLE,
+            sesion,
+            NOMBRE_PROYECTO,
+            "999",
+            "002",
+            Catalogo(sesion),
+            fuente=FUENTE,
+            responsable=RESPONSABLE,
         )
 
     assert _contar(sesion, models.Presupuesto) == 1
@@ -448,8 +478,14 @@ def test_restaurar_una_version_descartada_crea_una_nueva_vigente_y_la_descartada
     assert version_vigente(sesion, NOMBRE_PROYECTO).codigo == "001"
 
     nueva = restaurar_version(
-        sesion, NOMBRE_PROYECTO, "002", "003", Catalogo(sesion),
-        fuente="se reconsidera la edicion de cemento", responsable=RESPONSABLE, ahora=AHORA,
+        sesion,
+        NOMBRE_PROYECTO,
+        "002",
+        "003",
+        Catalogo(sesion),
+        fuente="se reconsidera la edicion de cemento",
+        responsable=RESPONSABLE,
+        ahora=AHORA,
     )
     sesion.commit()
 
@@ -486,8 +522,13 @@ def test_restaurar_sin_instantanea_con_una_lista_nueva_en_el_catalogo_da_la_line
     _sin_instantanea(sesion)
 
     nueva = restaurar_version(
-        sesion, NOMBRE_PROYECTO, CODIGO, "002", Catalogo(sesion),
-        fuente=FUENTE, responsable=RESPONSABLE,
+        sesion,
+        NOMBRE_PROYECTO,
+        CODIGO,
+        "002",
+        Catalogo(sesion),
+        fuente=FUENTE,
+        responsable=RESPONSABLE,
     )
 
     # la 001 referencia su propia lista: una lista posterior en el catalogo no la mueve
@@ -509,8 +550,13 @@ def test_restaurar_sin_instantanea_con_la_lista_de_la_version_editada_se_rechaza
 
     with pytest.raises(ValueError, match="LB-04-CON|precio"):
         restaurar_version(
-            sesion, NOMBRE_PROYECTO, CODIGO, "002", Catalogo(sesion),
-            fuente=FUENTE, responsable=RESPONSABLE,
+            sesion,
+            NOMBRE_PROYECTO,
+            CODIGO,
+            "002",
+            Catalogo(sesion),
+            fuente=FUENTE,
+            responsable=RESPONSABLE,
         )
     sesion.rollback()
 
@@ -559,8 +605,13 @@ def test_restaurar_copia_el_insumo_id_de_cada_linea_de_la_instantanea_de_origen(
     assert sum(1 for v in esperado.values() if v[2] is None) >= 1
 
     restaurar_version(
-        sesion, NOMBRE_PROYECTO, CODIGO, "002", Catalogo(sesion),
-        fuente=FUENTE, responsable=RESPONSABLE,
+        sesion,
+        NOMBRE_PROYECTO,
+        CODIGO,
+        "002",
+        Catalogo(sesion),
+        fuente=FUENTE,
+        responsable=RESPONSABLE,
     )
 
     assert _lineas(sesion, "002") == esperado
@@ -575,9 +626,7 @@ def test_una_edicion_de_cantidad_hereda_el_insumo_de_todas_las_lineas(sesion, v0
     assert {k: v[2] for k, v in copia.items()} == {k: v[2] for k, v in origen.items()}
 
 
-def test_un_precio_editado_a_mano_pierde_su_insumo_y_las_demas_lineas_lo_conservan(
-    sesion, v001
-):
+def test_un_precio_editado_a_mano_pierde_su_insumo_y_las_demas_lineas_lo_conservan(sesion, v001):
     """Regla (SF3 R-7): una linea cuyo precio difiere del de la instantanea de origen es un precio
     manual; queda sin `insumo_id` para que UC-02 no la revalore con la lista. Las demas heredan."""
     from dataclasses import replace
@@ -645,8 +694,15 @@ def test_editar_el_fcas_se_guarda_se_registra_y_la_version_recarga_con_los_pu_a_
     cambio = CambioEditado("parametro", "fcas", "valor", "6.00", "5.00")
 
     nueva = guardar_edicion(
-        sesion, NOMBRE_PROYECTO, CODIGO, editada, nuevos, [cambio],
-        fuente=FUENTE, responsable=RESPONSABLE, ahora=AHORA,
+        sesion,
+        NOMBRE_PROYECTO,
+        CODIGO,
+        editada,
+        nuevos,
+        [cambio],
+        fuente=FUENTE,
+        responsable=RESPONSABLE,
+        ahora=AHORA,
     )
     sesion.commit()
 
@@ -654,7 +710,10 @@ def test_editar_el_fcas_se_guarda_se_registra_y_la_version_recarga_con_los_pu_a_
     assert _modelo(sesion, CODIGO).fcas == D("6.00")  # la 001 conserva el suyo
     (registro,) = registros_de_version(sesion, nueva)
     assert (registro.objeto, registro.clave, registro.valor_anterior, registro.valor_nuevo) == (
-        "parametro", "fcas", "6.00", "5.00",
+        "parametro",
+        "fcas",
+        "6.00",
+        "5.00",
     )
     antes, despues = _pu_por_partida(sesion, CODIGO), _pu_por_partida(sesion, "002")
     assert antes == {k: v for k, v in linea_base.PRECIO_UNITARIO_EXACTO.items()}
@@ -707,8 +766,13 @@ def test_restaurar_conserva_el_hallazgo_externo_y_el_informe_recargado_es_identi
     assert [h for h in emitido.hallazgos if h.regla == "R8"] == [R8]
 
     restaurar_version(
-        sesion, NOMBRE_PROYECTO, CODIGO, "002", Catalogo(sesion),
-        fuente=FUENTE, responsable=RESPONSABLE,
+        sesion,
+        NOMBRE_PROYECTO,
+        CODIGO,
+        "002",
+        Catalogo(sesion),
+        fuente=FUENTE,
+        responsable=RESPONSABLE,
     )
     sesion.commit()
     sesion.expunge_all()

@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from datetime import date
 
+from aplicacion import hoja
 from core.contracts.verificacion import Severidad
 from tests.fixtures.espacio_minimo import ambiente, espacio
 from tests.fixtures.espacio_of001 import espacio_of001
-from ui import hoja
 
 
 def _r15(resultado) -> list:

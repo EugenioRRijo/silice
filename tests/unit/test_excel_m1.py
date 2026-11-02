@@ -64,9 +64,11 @@ def _presupuesto(prefijo: str):
     return resultado.presupuesto, replace(resultado.informe, hallazgos=(hallazgo,))
 
 
-def _leido(prefijo: str) -> str:
-    """Como vuelve el prefijo tras guardar y leer el XML: el analizador normaliza CR a LF."""
-    return "\n" if prefijo == "\r" else prefijo
+def _leido(prefijo: str) -> tuple[str, ...]:
+    """Como puede volver el prefijo tras guardar y leer el XML: según la versión de lxml y de
+    et-xmlfile el CR llega como CR o el analizador lo normaliza a LF. Lo que se vigila (texto
+    `s` con `quotePrefix` en cada celda) no depende de cuál de los dos sea."""
+    return ("\r", "\n") if prefijo == "\r" else (prefijo,)
 
 
 def _celdas_de_texto(ruta: Path, prefijo: str):
@@ -221,6 +223,6 @@ def test_una_tabla_exportable_escapa_cada_prefijo_en_celdas_y_encabezados(prefij
     hoja = load_workbook(ruta)["Directa"]
     for direccion, esperado in (("A1", "uno"), ("A2", "a"), ("B3", "d")):
         celda = hoja[direccion]
-        assert celda.value == _leido(prefijo) + esperado, direccion
+        assert celda.value in [leido + esperado for leido in _leido(prefijo)], direccion
         assert (celda.data_type, celda.quotePrefix) == ("s", True), direccion
     assert _formulas_con_carga(ruta) == []

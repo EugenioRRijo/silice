@@ -1,8 +1,8 @@
 # MANUAL MAESTRO DE ORQUESTACIÓN Y OPTIMIZACIÓN INTEGRAL
 ## Para el Orquestador Claude y el Enjambre de Subagentes de Sílice
 
-> **Artefacto:** `MANUAL_MAESTRO_OPTIMIZACION_ORQUESTADOR.md` (copia única versionada; la de `docs/manual_orquestador_optimizacion.md` era un duplicado y no se versiona)  
-> **Orden de trabajo, subagentes y modelos:** [RUTA_SESIONES.md](./RUTA_SESIONES.md) (prevalece sobre §3 de este manual)  
+> **Artefacto:** `MANUAL_MAESTRO_OPTIMIZACION_ORQUESTADOR.md`  
+> **Archivo en Repositorio:** `docs/manual_orquestador_optimizacion.md`  
 > **Versión:** 1.0.0-PRODUCCION  
 > **Fecha:** 18 de Octubre de 2026  
 > **Garantía Fundamental:** Inviolabilidad absoluta de `core/` (`git diff origin/main -- core/` == vacío)
@@ -11,7 +11,7 @@
 
 ## 1. Visión y Alcance
 
-Este manual constituye la norma canónica para que el **Orquestador Claude** coordine a los subagentes (ocho constructores, seis revisores y un escriba; [ruta §3](./RUTA_SESIONES.md#3-subagentes-modelo-y-esfuerzo)) en la construcción y optimización de los subsistemas pendientes de Sílice, cubriendo:
+Este manual constituye la norma canónica para que el **Orquestador Claude** coordine a los 5 subagentes en la construcción y optimización de los subsistemas pendientes de Sílice, cubriendo:
 
 1. **Frontend Desktop:** Tauri v2 + React 19 + Univer Canvas Grid con estándares **IBM Carbon**, **SAP Fiori** e **IBCS**.
 2. **Backend & IPC:** FastAPI local sobre **Named Pipes de Windows** (`\\.\pipe\silice-ipc-local`) preservando la pureza de `core/`.
@@ -69,16 +69,14 @@ graph TD
 
 ### 2.3. IBCS (International Business Communication Standards)
 * **Semántica Favorable vs. Desfavorable:**
-  * En costos y presupuestos: si el costo medido es mayor a la meta ($\Delta > 0$), es **Desfavorable $\rightarrow$ Rojo (`#da1e28`)**.
-  * Si el costo medido es menor a la meta ($\Delta < 0$), es **Favorable $\rightarrow$ Verde (`#24a148`)**.
+  * En costos y presupuestos: si el costo real es mayor a la meta ($\Delta > 0$), es **Desfavorable $\rightarrow$ Rojo (`#da1e28`)**.
+  * Si el costo real es menor a la meta ($\Delta < 0$), es **Favorable $\rightarrow$ Verde (`#24a148`)**.
   * En rendimientos y producción: mayor producción ($\Delta > 0$) es **Favorable $\rightarrow$ Verde**.
 * **Representación Gráfica:** Datos reales en relleno **sólido**; metas y presupuestos en **contorno o achurado**.
 
 ---
 
 ## 3. Matriz de Asignación Concurrente para Subagentes
-
-> **Reemplazada** por la [ruta §3](./RUTA_SESIONES.md#3-subagentes-modelo-y-esfuerzo) (un subagente por skill, con modelo y esfuerzo). Se conserva como antecedente.
 
 | Subagente | Rol | Área de Código | Skill Aplicada |
 |---|---|---|---|
@@ -93,14 +91,14 @@ graph TD
 ## 4. Skills Creadas en el Sistema
 
 Las siguientes 8 skills operativas están instaladas y disponibles en `.agents/skills/`:
-1. [front-carbon-fiori-ibcs](../../.agents/skills/front-carbon-fiori-ibcs/SKILL.md): Diseño de alta densidad, tarjetas analíticas y semántica IBCS.
-2. [back-clean-arch](../../.agents/skills/back-clean-arch/SKILL.md): Clean architecture, Named Pipes y protección de `core/`.
-3. [pruebas-cobertura](../../.agents/skills/pruebas-cobertura/SKILL.md): Pytest `-W error`, cobertura $\ge 80\%$ y cero omitidas.
-4. [base-datos-migraciones](../../.agents/skills/base-datos-migraciones/SKILL.md): SQLite multi-caso, Alembic y respaldos automáticos.
-5. [asistente-ia](../../.agents/skills/asistente-ia/SKILL.md): Claude, Ollama offline, keyring y Isolation Forest.
-6. [replicacion-excel](../../.agents/skills/replicacion-excel/SKILL.md): Parser dual `openpyxl` y Univer Canvas Grid.
-7. [auditoria-forense](../../.agents/skills/auditoria-forense/SKILL.md): Popovers de 1 clic y parches Delta inmutables.
-8. [gestor-produccion-aridos](../../.agents/skills/gestor-produccion-aridos/SKILL.md): Canteras de arena/piedra, costo horario Caterpillar y básculas.
+1. [front-carbon-fiori-ibcs](file:///c:/Users/euger/OneDrive/Escritorio/TESIS/.agents/skills/front-carbon-fiori-ibcs/SKILL.md): Diseño de alta densidad, tarjetas analíticas y semántica IBCS.
+2. [back-clean-arch](file:///c:/Users/euger/OneDrive/Escritorio/TESIS/.agents/skills/back-clean-arch/SKILL.md): Clean architecture, Named Pipes y protección de `core/`.
+3. [pruebas-cobertura](file:///c:/Users/euger/OneDrive/Escritorio/TESIS/.agents/skills/pruebas-cobertura/SKILL.md): Pytest `-W error`, cobertura $\ge 80\%$ y cero omitidas.
+4. [base-datos-migraciones](file:///c:/Users/euger/OneDrive/Escritorio/TESIS/.agents/skills/base-datos-migraciones/SKILL.md): SQLite multi-caso, Alembic y respaldos automáticos.
+5. [asistente-ia](file:///c:/Users/euger/OneDrive/Escritorio/TESIS/.agents/skills/asistente-ia/SKILL.md): Claude, Ollama offline, keyring y Isolation Forest.
+6. [replicacion-excel](file:///c:/Users/euger/OneDrive/Escritorio/TESIS/.agents/skills/replicacion-excel/SKILL.md): Parser dual `openpyxl` y Univer Canvas Grid.
+7. [auditoria-forense](file:///c:/Users/euger/OneDrive/Escritorio/TESIS/.agents/skills/auditoria-forense/SKILL.md): Popovers de 1 clic y parches Delta inmutables.
+8. [gestor-produccion-aridos](file:///c:/Users/euger/OneDrive/Escritorio/TESIS/.agents/skills/gestor-produccion-aridos/SKILL.md): Canteras de arena/piedra, costo horario Caterpillar y básculas.
 
 ---
 

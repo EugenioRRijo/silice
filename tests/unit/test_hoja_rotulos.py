@@ -26,7 +26,7 @@ from adapters.espacio.modelo import (
     TipoPunto,
 )
 from adapters.espacio.origen import TipoOrigen
-from ui import hoja
+from aplicacion import hoja
 
 DXF = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "planos" / "of001.dxf"
 

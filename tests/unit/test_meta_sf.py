@@ -572,11 +572,13 @@ def test_s6_pendiente_si_faltan_las_pruebas_o_no_recolectaron_casos():
     assert evaluar_s6_barra(True, None)[0] is Estado.PENDIENTE
 
 
-def test_las_pruebas_de_s6_existen_en_disco():
+def test_las_pruebas_de_s6_se_borraron_con_la_capa_streamlit():
+    """Retiro de Streamlit (F4): las AppTest de la barra ya no existen, de modo que S6 queda
+    PENDIENTE (`evaluar_s6_barra(False, None)`); la constante se conserva como historia."""
     from scripts.meta_sf import RUTA_PRUEBAS_BARRA, _existe
 
     assert RUTA_PRUEBAS_BARRA
-    assert all(_existe(ruta) for ruta in RUTA_PRUEBAS_BARRA)
+    assert not any(_existe(ruta) for ruta in RUTA_PRUEBAS_BARRA)
 
 
 def test_s4_hasta_sf3_compara_solo_el_fin_de_sf2():

@@ -21,6 +21,7 @@ from adapters.espacio import (
     guardar_espacio,
 )
 from adapters.espacio.reglas import reglas_espacio
+from aplicacion import hoja
 from core.budget import cargar_elaboracion, elaborar, guardar_presupuesto, plan_secuencial
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import Severidad
@@ -30,7 +31,6 @@ from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.base_con_pendiente import url_sqlite
 from tests.fixtures.computo_auditado import items_auditados
 from tests.fixtures.espacio_bano import espacio_bano
-from ui import hoja
 
 CODIGO = linea_base.CODIGO_PRESUPUESTO
 

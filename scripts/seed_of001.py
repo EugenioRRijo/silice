@@ -29,11 +29,11 @@ RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
+from aplicacion import hoja  # noqa: E402
 from core.catalog import Catalogo, abrir_sesion, crear_motor  # noqa: E402
 from scripts.seed import RUTA_POR_DEFECTO as RUTA_TRABAJO  # noqa: E402
 from scripts.seed import agregar_opciones_de_reinicio, linea_auditoria, monto  # noqa: E402
 from tests.fixtures.hoja_en_base import NOMBRE_OF001, plantilla_of001  # noqa: E402
-from ui import hoja  # noqa: E402
 
 RUTA_POR_DEFECTO = "data/prueba_sf.db"
 CODIGO_VERSION = "001"

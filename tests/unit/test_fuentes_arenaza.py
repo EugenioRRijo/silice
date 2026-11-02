@@ -1,4 +1,5 @@
 """Los CSV ARENAZA suman exactamente los totales de cada PDF y registran el 80/90."""
+
 import csv
 from decimal import Decimal
 from pathlib import Path
@@ -58,8 +59,10 @@ def test_inconsistencia_80_90_registrada():
 
 
 def test_fixture_coincide_con_csv():
-    for renglones, nombre in [(PRESUPUESTO_1, "presupuesto_1_arenaza.csv"),
-                              (PRESUPUESTO_2, "presupuesto_2_arenaza.csv")]:
+    for renglones, nombre in [
+        (PRESUPUESTO_1, "presupuesto_1_arenaza.csv"),
+        (PRESUPUESTO_2, "presupuesto_2_arenaza.csv"),
+    ]:
         assert sum(r.total for r in renglones) == _total_csv(nombre)
         # Reconciliacion campo a campo (las 7 columnas, las 40 filas): la unica copia
         # estructurada es el fixture (NORMAS.md seccion 2, principio DRY); esta comparacion

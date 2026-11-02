@@ -20,6 +20,8 @@ from dataclasses import asdict, replace
 from datetime import date
 from decimal import Decimal
 
+from aplicacion import hoja
+from aplicacion.hoja import Borrador
 from asistente.catalogo import CatalogoVista
 from asistente.experimento.banco import (
     Ficha,
@@ -40,8 +42,6 @@ from asistente.propuestas import EstadoPropuesta, OrigenIA, Propuesta, TipoPropu
 from asistente.proveedores.base import ProveedorIA, Tarifa
 from core.contracts import Hallazgo
 from core.verification.informe import InformeAuditoria
-from ui import hoja
-from ui.hoja import Borrador
 
 Auditor = Callable[[Borrador], tuple[Hallazgo, ...]]
 #: R12 se evalua en la fecha FIJA del protocolo, no en la del dia de la corrida (§9.1, M2)

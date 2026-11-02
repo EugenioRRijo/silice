@@ -13,6 +13,7 @@ import openpyxl
 import pytest
 from sqlalchemy import func, select
 
+from aplicacion import control
 from core import models
 from core.budget import exportar_hoja
 from core.budget.excel import (
@@ -27,7 +28,6 @@ from core.catalog import Catalogo
 from core.catalog.indices import Observacion, definicion_tasa, registrar_importacion
 from tests.fixtures import control_ob_s2 as ob
 from tests.fixtures import reajuste_ob_s2 as rz
-from ui import control
 
 D = Decimal
 FILAS_V01 = [
@@ -124,7 +124,7 @@ def test_la_tabla_de_valuaciones_muestra_la_fecha_de_registro_y_el_peor_hallazgo
     resultado = control.calcular_el_control(obra, ob.NOMBRE, Catalogo(obra), corte=ob.CORTE_DE_VS)
     filas = control.filas_de_valuaciones(resultado)
     assert [f["Numero"] for f in filas] == ["V-01", "V-02", "V-03"]
-    assert filas[0]["Registrada"] == "2026-11-09 09:00" and filas[0]["Estado"] == "sin hallazgos"
+    assert filas[0]["Registrada"] == "09/11/2026 09:00" and filas[0]["Estado"] == "sin hallazgos"
     # V-S trae seis hallazgos, todos ERROR (memoria §10); el informe lista primero R13 y, ante un
     # empate de severidad, la columna conserva el primero.
     assert filas[2]["Estado"] == "ERROR: R13"
@@ -147,9 +147,9 @@ def test_los_indicadores_salen_en_las_dos_monedas_con_la_tasa_del_corte(obra):
     assert filas["PV (USD)"]["En la otra moneda"] == "1275000.00 Bs"
     assert filas["SPI"]["Valor"] == "0.8000" and filas["CPI"]["Valor"] == "0.9375"
     assert filas["EAC (sistema) (USD)"]["Valor"] == "4480.00"
-    assert filas["Desvio de precio (USD)"]["Valor"] == "-60.00"
-    assert filas["Desvio de consumo (USD)"]["Valor"] == "-20.00"
-    assert filas["Metodo y fuente del precio del corte"]["Valor"] == "comprobacion"
+    assert filas["Desvío de precio (USD)"]["Valor"] == "-60.00"
+    assert filas["Desvío de consumo (USD)"]["Valor"] == "-20.00"
+    assert filas["Método y fuente del precio del corte"]["Valor"] == "comprobacion"
 
 
 def test_sin_tasa_del_corte_la_otra_moneda_dice_no_disponible(obra):
@@ -158,8 +158,8 @@ def test_sin_tasa_del_corte_la_otra_moneda_dice_no_disponible(obra):
     filas = {f["Indicador"]: f for f in control.filas_de_indicadores(obra, resultado)}
     assert filas["PV (USD)"]["En la otra moneda"] == "no disponible"
     assert filas["Tasa del corte"]["Valor"] == "no disponible"
-    assert filas["Desvio de precio (USD)"]["Valor"] == "no disponible"  # sin precios del corte
-    assert "sin precios del corte" in filas["Desvio de precio (USD)"]["Nota"]
+    assert filas["Desvío de precio (USD)"]["Valor"] == "no disponible"  # sin precios del corte
+    assert "sin precios del corte" in filas["Desvío de precio (USD)"]["Nota"]
 
 
 def test_las_alertas_y_la_reproyeccion_se_muestran_siempre(obra):
@@ -185,19 +185,19 @@ def test_las_opciones_se_calculan_a_pedido_y_elegir_una_crea_la_version(obra):
     )
     todas = control.calcular_las_opciones(resultado)
     filas = {f["Opcion"]: f for f in control.filas_de_opciones(todas)}
-    assert filas["Mas cuadrillas"]["Termino"] == "dia 17"
-    assert filas["Mas cuadrillas"]["Costo directo adicional"] == "120.00"
-    assert filas["Horas extra"]["Termino"] == "dia 21"
+    assert filas["Más cuadrillas"]["Termino"] == "día 17"
+    assert filas["Más cuadrillas"]["Costo directo adicional"] == "120.00"
+    assert filas["Horas extra"]["Termino"] == "día 21"
     assert filas["Partidas en paralelo"]["Nota"].startswith("ninguna partida sin empezar")
     assert filas["Aceptar el retraso"]["Costo indirecto"] == "90.00"
-    assert "eta de cuadrillas: 0.80 (SUPUESTO_DECLARADO)" in filas["Mas cuadrillas"]["Nota"]
+    assert "eta de cuadrillas: 0.80 (SUPUESTO_DECLARADO)" in filas["Más cuadrillas"]["Nota"]
     version = control.elegir_opcion(
         obra, resultado, todas[0], catalogo, fuente="decision ficticia", responsable="Ing."
     )
     assert version == "OB-002"
     (decision,) = control.filas_de_decisiones(obra, ob.NOMBRE)
     assert (decision["Version"], decision["Opcion"], decision["Termino"]) == (
-        "OB-002", "cuadrillas", "2026-11-24",
+        "OB-002", "cuadrillas", "24/11/2026",
     )  # fmt: skip
 
 
@@ -346,7 +346,7 @@ def test_los_parametros_por_defecto_ida_y_vuelta_por_las_filas():
     # Valores por defecto declarados en el spec S2 §4.5 y §4.6 (SUPUESTO_DECLARADO).
     assert por_campo["spi_error"]["Valor"] == "0.90"
     assert por_campo["cuadrillas_max"]["Valor"] == "3"
-    assert por_campo["fcas_en_horas_extra"]["Valor"] == "si"
+    assert por_campo["fcas_en_horas_extra"]["Valor"] == "sí"
     assert por_campo["penalizacion_diaria"]["Naturaleza"] == control.NATURALEZA_DATO
     assert control.parametros_desde_filas(filas) == ParametrosControl()
 

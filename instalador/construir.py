@@ -210,7 +210,10 @@ def licencias(python: Path, app: Path, ejecutar: Ejecutar = _ejecutar) -> None:
 
 
 def copiar_codigo(m: mf.Manifiesto, destino: Path) -> None:
+    r"""El código de la lista blanca más el `dist` de la interfaz, en `{app}\codigo`."""
     mf.armar_arbol(RAIZ, destino, m)
+    # la interfaz nueva ya compilada (la compila la CI con Node, nunca este script)
+    mf.copiar_interfaz(RAIZ, destino, m)
 
 
 def compilar(python: Path, codigo: Path, ejecutar: Ejecutar = _ejecutar) -> None:

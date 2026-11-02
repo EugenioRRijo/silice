@@ -1,7 +1,8 @@
 """La orquestacion de la elaboracion fuera de la pagina de componer (INV-043, 11b y 11c).
 
-`ui/elaboracion.py` no importa Streamlit: se prueba como funciones sobre una base en `tmp_path`
-sembrada con `scripts.seed.sembrar` (la salvaguarda de `tests/conftest.py` vigila `data/apu.db`).
+`aplicacion/elaboracion.py` no importa Streamlit: se prueba como funciones sobre una base en
+`tmp_path` sembrada con `scripts.seed.sembrar` (la salvaguarda de `tests/conftest.py` vigila
+`data/apu.db`).
 Los oraculos son la fixture de la linea base, no el nucleo que se orquesta.
 """
 
@@ -19,6 +20,13 @@ import openpyxl
 import pytest
 from sqlalchemy.orm import Session
 
+from aplicacion.composicion import Guardado, desglose, guardar_composicion
+from aplicacion.elaboracion import (
+    elaborar_desde_catalogo,
+    items_desde_filas,
+    libro_excel,
+)
+from aplicacion.tablas_carpeta import crear_esquema_carpeta
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import Dominio
 from scripts.seed import sembrar
@@ -30,20 +38,13 @@ from tests.fixtures.apu_linea_base import (
     TOTAL_EXACTO_LINEA_BASE,
 )
 from tests.fixtures.computo_auditado import items_auditados
-from ui.composicion import desglose
-from ui.elaboracion import (
-    Guardado,
-    elaborar_desde_catalogo,
-    guardar_composicion,
-    items_desde_filas,
-    libro_excel,
-)
 
 
 def _sembrar(base: Path) -> Path:
     motor = crear_motor(f"sqlite:///{base.as_posix()}")
     try:
         crear_esquema(motor)
+        crear_esquema_carpeta(motor)  # Componer lee la moneda de la carpeta (MP-1, Tarea 3)
         with abrir_sesion(motor) as sesion:
             sembrar(sesion)
             sesion.commit()
@@ -158,7 +159,7 @@ def test_una_cabecera_distinta_da_el_motivo_sin_escribir_nada(tmp_path: Path) ->
     distinta = dataclasses.replace(APU_TUBERIA, descripcion="Otra descripcion", equipos=())
     with _sesion(base) as sesion:
         guardado = guardar_composicion(
-            Catalogo(sesion), distinta, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES
+            sesion, distinta, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES
         )
         sesion.commit()  # aun confirmando, nada se escribio
     assert guardado.resultado is None
@@ -172,13 +173,12 @@ def test_una_partida_nueva_se_persiste_y_se_relee(tmp_path: Path) -> None:
     base = _sembrar(tmp_path / "caso.db")
     nueva = dataclasses.replace(APU_TUBERIA, codigo_partida="XX-01-NUE")
     with _sesion(base) as sesion:
-        guardado = guardar_composicion(
-            Catalogo(sesion), nueva, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES
-        )
+        guardado = guardar_composicion(sesion, nueva, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES)
         sesion.commit()  # la prueba confirma, como la pagina: guardar_composicion no lo hace
     assert guardado.motivo is None
-    assert guardado.resultado.precio_unitario.quantize(Decimal("0.01")) == (
-        PRECIO_UNITARIO_ESPERADO["LB-02-TUB"]
+    assert (
+        guardado.resultado.precio_unitario.quantize(Decimal("0.01"))
+        == (PRECIO_UNITARIO_ESPERADO["LB-02-TUB"])
     )
     with _catalogo(base) as catalogo:  # motor propio: relee lo confirmado
         releida = catalogo.composicion("XX-01-NUE", fecha=FECHA_LINEA_BASE)
@@ -195,9 +195,7 @@ def test_guardar_no_confirma_el_commit_es_de_la_pagina(tmp_path: Path) -> None:
     base = _sembrar(tmp_path / "caso.db")
     nueva = dataclasses.replace(APU_TUBERIA, codigo_partida="XX-02-NUE")
     with _sesion(base) as sesion:
-        guardado = guardar_composicion(
-            Catalogo(sesion), nueva, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES
-        )
+        guardado = guardar_composicion(sesion, nueva, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES)
     assert guardado.resultado is not None  # se escribio en la sesion, pero no se confirmo
     with _catalogo(base) as catalogo, pytest.raises(KeyError):
         catalogo.partida("XX-02-NUE")

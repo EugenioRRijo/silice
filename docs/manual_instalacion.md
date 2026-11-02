@@ -56,6 +56,16 @@ Como todavía no hay usuarios, Sílice deja un **código de instalación de un s
 ventana del servidor y en `%LOCALAPPDATA%\Silice\datos\codigo_instalacion.txt`. Úselo en la pantalla
 de acceso para crear el primer administrador. El código nunca se guarda en el registro.
 
+> **Estado provisional (2026-10-21) — deuda bloqueante del instalador:** el paso de arriba lo daba la
+> pantalla de acceso de Streamlit (`ui/acceso.py`), que se retiró. La interfaz nueva (React) **no
+> tiene** ese flujo: ninguna ruta de la API ni pantalla llama a `cuentas.preparar_primera_vez` (que
+> emite el código) ni a `cuentas.reclamar_instalacion` (que crea el primer administrador con él).
+> Hoy el arranque solo muestra un código si el archivo `codigo_instalacion.txt` ya existe. Una
+> instalación nueva, sin cuentas, **no puede entrar**. `scripts/restablecer_administrador.py` emite un
+> código de restablecimiento, pero tampoco hay pantalla donde usarlo: no es una salida. El flujo de
+> bienvenida y la pantalla de «primera vez» están pendientes de Eugenio (se diseñan y construyen
+> aparte, con árbitro). No se debe empaquetar ni entregar el instalador hasta tenerlos.
+
 ## Casos
 
 Los casos viven en `%LOCALAPPDATA%\Silice\datos\casos\`. En **Inicio** se elige uno de la lista, se

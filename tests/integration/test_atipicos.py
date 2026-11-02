@@ -1,5 +1,9 @@
 """RF-100 sobre las listas del caso: ADVERTENCIA, nunca ERROR; listas de proyecto fuera; la tasa
-de cada precio; y sin el extra `ml`, nada (S3 §3.2 y §13.2)."""
+de cada precio; y sin el extra `ml`, nada (S3 §3.2 y §13.2).
+
+La logica vive en `aplicacion/atipicos.py` (RM-1, T4 de la migracion final): la usan la ruta
+`GET /v1/precios-empresa/listas/{id}/atipicos` y la pestana Precios de la hoja. El escape Markdown
+de Streamlit (`ui.atipicos.avisos`) se retiro con la interfaz (F5)."""
 
 from __future__ import annotations
 
@@ -12,12 +16,12 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from aplicacion import atipicos
 from core import models
 from core.catalog.empresa import PrecioPropio, crear_lista_de_empresa
 from core.contracts.verificacion import Severidad
 from ml.anomaly.series import a_usd, variaciones
 from tests.fixtures.sin_extra import SinExtra
-from ui import atipicos
 
 D = Decimal
 SERIE_CON_ATIPICO = [1, 2, 4, 8, 16, 32, 64, 128, 256, 257]
@@ -347,14 +351,24 @@ def test_la_busqueda_no_escribe_nada_en_la_base(sesion, insumo) -> None:
     assert {t: sesion.scalar(select(func.count()).select_from(t)) for t in tablas} == antes
 
 
-def test_solo_las_dos_pantallas_de_precios_importan_la_busqueda_de_rf_100() -> None:
+def test_solo_las_dos_pantallas_de_precios_y_su_ruta_importan_la_busqueda_de_rf_100() -> None:
     """RF-100 no entra al informe de verificación, a la entrega ni al guardado: ningún módulo de
-    `core/`, `paquete/`, `api/`, `seguridad/`, `operacion/`, `asistente/`, `ui/` (salvo las dos
-    pantallas) ni `ml/` importa `ui.atipicos` ni `ml.anomaly.series`."""
+    `core/`, `paquete/`, `api/`, `seguridad/`, `operacion/`, `asistente/`, `aplicacion/`, `ui/` ni
+    `ml/` importa `aplicacion.atipicos` ni `ml.anomaly.series`, salvo la búsqueda misma
+    (`aplicacion/atipicos.py`) y las rutas de «Precios de la empresa» y de la hoja (T4 de la
+    migración final)."""
     raiz = Path(__file__).resolve().parents[2]
-    permitidos = {"ui/paginas/hoja.py", "ui/paginas/precios_empresa.py", "ui/atipicos.py"}
+    permitidos = {
+        "aplicacion/atipicos.py",
+        "api/rutas/precios_empresa.py",
+        # La pestaña Precios de la hoja (R13, 3b-3) usa la misma búsqueda y su esquema.
+        "api/rutas/hoja.py",
+        "api/esquemas_atipicos.py",
+    }
+    vigilados = {"aplicacion.atipicos", "ml.anomaly.series"}
+    carpetas = ("core", "paquete", "api", "seguridad", "operacion", "asistente", "aplicacion")
     importadores = set()
-    for carpeta in ("core", "paquete", "api", "seguridad", "operacion", "asistente", "ui", "ml"):
+    for carpeta in (*carpetas, "ml"):
         for archivo in (raiz / carpeta).rglob("*.py"):
             nombres = set()
             for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
@@ -363,9 +377,12 @@ def test_solo_las_dos_pantallas_de_precios_importan_la_busqueda_de_rf_100() -> N
                 elif isinstance(nodo, ast.ImportFrom) and nodo.module:
                     nombres.add(nodo.module)
                     nombres.update(f"{nodo.module}.{a.name}" for a in nodo.names)
-            if nombres & {"ui.atipicos", "ml.anomaly.series"}:
+            if nombres & vigilados:
                 importadores.add(archivo.relative_to(raiz).as_posix())
     assert importadores <= permitidos, importadores - permitidos
+    # la guardia no vigila un conjunto vacío: la búsqueda tiene quien la use en cada lado
+    usados = {"aplicacion/atipicos.py", "api/rutas/precios_empresa.py"}
+    assert usados <= importadores, usados - importadores
 
 
 def test_un_propio_igual_al_de_la_base_pero_de_otra_fecha_no_es_herencia(sesion, insumo) -> None:
@@ -406,5 +423,82 @@ def test_una_moneda_invalida_no_tumba_la_busqueda_de_los_demas_insumos(sesion, i
     [(codigo, motivo)] = busqueda.no_analizados
     assert codigo == "ATIP-002" and "EUR" in motivo
     avisos = atipicos.avisos(busqueda)
-    assert avisos[0][0] == "info" and avisos[0][1].startswith("ATIP\\-002: no se pudo analizar")
+    assert avisos[0][0] == "info" and avisos[0][1].startswith("ATIP-002: no se pudo analizar")
     assert [nivel for nivel, _ in avisos[1:]] == ["warning"]
+
+
+# --- los avisos que manda la API (T4 de la migración final) ------------------------------------
+
+
+def test_los_avisos_de_la_aplicacion_dicen_el_texto_tal_cual(sesion, insumo) -> None:
+    """La API los manda sin escapar: React no pinta Markdown."""
+    otro = _otro_insumo(sesion)
+    _precio(sesion, _lista(sesion, 1, "Lista en euros", "EUR"), otro, 5)
+    _precio(sesion, _lista(sesion, 2, "Lista-Bs sin tasa", "Bs"), insumo, 720)
+    busqueda = atipicos.atipicos_de_insumos(sesion, ["ATIP-001", "ATIP-002"])
+    [(_, motivo)] = busqueda.no_analizados
+    assert atipicos.avisos(busqueda) == [
+        ("info", "Precio en Bs sin tasa, omitido: Lista-Bs sin tasa"),
+        ("info", f"ATIP-002: no se pudo analizar ({motivo})"),
+        (
+            "success",
+            "Ninguna variación atípica de precio (una serie de menos de 8 variaciones no se "
+            "juzga).",
+        ),
+    ]
+    sin_ml = (
+        "La búsqueda de variaciones atípicas necesita el extra `ml` (scikit-learn), que no está "
+        "instalado en este equipo. No se buscó nada y nada se bloquea."
+    )
+    assert atipicos.avisos(None) == [("info", sin_ml)]
+
+
+def test_los_avisos_generales_no_repiten_los_hallazgos(sesion, insumo) -> None:
+    """La API manda los hallazgos en su tabla: los avisos generales son el resto, en su orden."""
+    _sembrar(sesion, insumo, SERIE_CON_ATIPICO)
+    _precio(sesion, _lista(sesion, 11, "Lista en Bs sin tasa", "Bs"), insumo, 720)
+    busqueda = atipicos.atipicos_de_insumos(sesion, ["ATIP-001"])
+    assert atipicos.avisos_generales(busqueda) == [
+        ("info", "Precio en Bs sin tasa, omitido: Lista en Bs sin tasa"),
+    ]
+    assert [nivel for nivel, _ in atipicos.avisos(busqueda)] == ["info", "warning"]
+
+
+def test_la_variacion_atipica_trae_insumo_porcentaje_y_tramo(sesion, insumo) -> None:
+    """Memoria `atipicos_s3.md`: la serie 1, 2, 4 ... 256, 257 marca solo el paso de 256 a 257
+    (septiembre a octubre de 2026): +1/256 = 0,390625 %, presentado en centésimas como 0.39."""
+    _sembrar(sesion, insumo, SERIE_CON_ATIPICO)
+    busqueda = atipicos.atipicos_de_insumos(sesion, ["ATIP-001"])
+    [v] = atipicos.variaciones_atipicas(busqueda)
+    assert (v.insumo, v.porcentaje, v.desde, v.hasta) == (
+        "ATIP-001",
+        "0.39",
+        date(2026, 9, 1),
+        date(2026, 10, 1),
+    )
+    assert v.severidad is Severidad.ADVERTENCIA
+    assert v.descripcion == (
+        "ATIP-001: variación de 0.39 % entre 2026-09-01 y 2026-10-01 (en USD) se aparta del "
+        "historial de variaciones del insumo"
+    )
+    assert atipicos.variaciones_atipicas(None) == []
+
+
+def test_la_variacion_atipica_trae_tambien_el_porcentaje_exacto(sesion, insumo) -> None:
+    """DESIGN.md: ninguna cifra redondeada sin el exacto a la vista. Memoria `atipicos_s3.md` §1:
+    (257 − 256) / 256 = 0,00390625, es decir 0,390625 % (sin redondear ni ceros de relleno)."""
+    _sembrar(sesion, insumo, SERIE_CON_ATIPICO)
+    [v] = atipicos.variaciones_atipicas(atipicos.atipicos_de_insumos(sesion, ["ATIP-001"]))
+    assert (v.porcentaje, v.porcentaje_exacto) == ("0.39", "0.390625")
+
+
+def test_un_codigo_con_barra_vertical_no_rompe_la_variacion(sesion) -> None:
+    """El origen es «código|id»: el id de la variación no lleva «|», el código sí podría."""
+    raro = models.Insumo(
+        codigo="ATIP|003", tipo=models.TipoInsumo.MATERIAL, descripcion="Cal", unidad="kg"
+    )
+    sesion.add(raro)
+    sesion.flush()
+    _sembrar(sesion, raro, SERIE_CON_ATIPICO)
+    [v] = atipicos.variaciones_atipicas(atipicos.atipicos_de_insumos(sesion, ["ATIP|003"]))
+    assert (v.insumo, v.desde, v.hasta) == ("ATIP|003", date(2026, 9, 1), date(2026, 10, 1))

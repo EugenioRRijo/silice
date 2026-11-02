@@ -1,9 +1,10 @@
 """Reglas de arquitectura de S2 en su propio archivo (RV-2), con los ayudantes compartidos de
 `tests/fixtures/arquitectura.py` (sección B, Tarea 1).
 
-* `ui/control.py` no pinta: ni Streamlit, ni `pandas`, ni `ui.caso` (la misma regla que
-  `PROHIBIDOS_EN_UI["ui/hoja.py"]` de `test_arquitectura.py`; un módulo de prueba no importa de
-  otro, así que aquí se declara y la prueba lo ata a la regla de `ui/hoja.py` por su contenido);
+* `aplicacion/control.py` (antes `ui/control.py`) no pinta: ni Streamlit, ni `pandas`
+  (la misma regla que `PROHIBIDOS_EN_LA_HOJA["aplicacion/hoja.py"]` de `test_arquitectura.py`; un
+  módulo de prueba no importa de otro, así que aquí se declara y la prueba lo ata a esa regla por su
+  contenido);
 * `valor_ganado`, `calendario` y las opciones de recuperación son puras: sin `sqlalchemy` ni
   `core.models`; la decisión, que escribe, vive en `decision.py`;
 * `core/verification/valuaciones.py` no importa `core.budget` (la capa de reglas queda debajo);
@@ -20,7 +21,7 @@ import pytest
 
 from tests.fixtures.arquitectura import RAIZ, importaciones
 
-PROHIBIDOS_EN_UI_CONTROL = ("streamlit", "pandas", "ui.caso")
+PROHIBIDOS_EN_CONTROL = ("streamlit", "pandas")
 PUROS = (
     "core/budget/valor_ganado.py",
     "core/budget/calendario.py",
@@ -31,29 +32,29 @@ SOLO_AGREGAR = (
     "core/budget/puente.py",
     "core/budget/decision.py",
 )
-PAGINAS_DE_S2 = ("ui/control.py", "ui/paginas/control.py")
+PAGINAS_DE_S2 = ("aplicacion/control.py",)  # `ui/paginas/control.py` se fue con Streamlit (F4)
 
 
 def _coincide(modulo: str, prefijo: str) -> bool:
     return modulo == prefijo or modulo.startswith(prefijo + ".")
 
 
-def test_ui_control_no_pinta_ni_lee_la_sesion_de_streamlit():
+def test_control_no_pinta_ni_lee_la_sesion_de_streamlit():
     prohibidos = {
         modulo
-        for modulo in importaciones(RAIZ / "ui" / "control.py")
-        for prefijo in PROHIBIDOS_EN_UI_CONTROL
+        for modulo in importaciones(RAIZ / "aplicacion" / "control.py")
+        for prefijo in PROHIBIDOS_EN_CONTROL
         if _coincide(modulo, prefijo)
     }
     assert prohibidos == set()
 
 
-def test_la_regla_de_ui_control_es_la_misma_que_la_de_ui_hoja():
-    """Si la regla de `ui/hoja.py` cambia, la de `ui/control.py` se revisa junto con ella."""
+def test_la_regla_de_control_es_la_misma_que_la_de_la_hoja():
+    """Si cambia la regla de `aplicacion/hoja.py`, se revisa la de `aplicacion/control.py`."""
     texto = (RAIZ / "tests" / "unit" / "test_arquitectura.py").read_text(encoding="utf-8")
-    regla = re.search(r'"ui/hoja\.py": \(([^)]*)\)', texto)
+    regla = re.search(r'"aplicacion/hoja\.py": \(([^)]*)\)', texto)
     assert regla is not None
-    assert tuple(re.findall(r'"([^"]+)"', regla.group(1))) == PROHIBIDOS_EN_UI_CONTROL
+    assert tuple(re.findall(r'"([^"]+)"', regla.group(1))) == PROHIBIDOS_EN_CONTROL
 
 
 @pytest.mark.parametrize("modulo", PUROS)

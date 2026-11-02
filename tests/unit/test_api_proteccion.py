@@ -155,5 +155,34 @@ def test_el_tope_cuenta_los_bytes_cuando_no_hay_content_length() -> None:
     assert cliente.post("/eco", content=partes(11)).status_code == 413
 
 
+def test_el_cuerpo_por_partes_de_mas_del_tope_en_una_ruta_con_cuerpo_json_es_413() -> None:
+    """Defecto real: si la ruta lee el cuerpo como JSON, FastAPI convertia la excepcion del tope
+    en un 400 «There was an error parsing the body» (en ingles, clave `detail`). Debe ser el 413
+    con el texto fijo y la clave `detalle`, igual que con `Content-Length`."""
+    app = _app_minima()
+
+    @app.post("/json")
+    async def _json(datos: dict) -> dict[str, int]:
+        return {"claves": len(datos)}
+
+    app.add_middleware(proteccion.LimiteDeCuerpo, limite=100)
+    cliente = TestClient(app)
+
+    def partes(total: int):
+        yield b'{"a":"'
+        for _ in range(total):
+            yield b"x"
+        yield b'"}'
+
+    esperado = {"detalle": "El cuerpo de la peticion excede el maximo de 20 MiB."}
+    respuesta = cliente.post(
+        "/json", content=partes(200), headers={"Content-Type": "application/json"}
+    )
+    assert respuesta.status_code == 413 and respuesta.json() == esperado
+    assert cliente.post("/json", json={"a": "x" * 200}).json() == esperado  # con Content-Length
+    ok = cliente.post("/json", content=partes(50), headers={"Content-Type": "application/json"})
+    assert ok.status_code == 200 and ok.json() == {"claves": 1}  # dentro del tope pasa
+
+
 def test_el_tope_de_la_api_es_20_mib() -> None:
     assert proteccion.LIMITE_CUERPO == 20_971_520

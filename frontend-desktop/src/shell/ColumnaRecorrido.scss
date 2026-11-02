@@ -1,0 +1,43 @@
+@use "sass:map";
+@use "../marco/umbrales" as u;
+
+// Columna «Recorrido» acoplada a la derecha (spec de la barra superior, §5.5). El armazon pone `silice-con-recorrido`
+// en el contenedor mientras la columna esta a la vista; el `main` cede el ancho de la columna.
+$ancho-columna-recorrido: 16rem;
+
+.silice-columna-recorrido {
+  position: fixed;
+  inset-block: 3rem 0;
+  inset-inline-end: 0;
+  inline-size: $ancho-columna-recorrido;
+  overflow-y: auto;
+  background: var(--cds-layer-01);
+  border-inline-start: 1px solid var(--cds-border-subtle);
+
+  &__acciones {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.25rem 0.5rem 0;
+  }
+}
+
+.silice-con-recorrido .silice-contenido {
+  margin-inline-end: $ancho-columna-recorrido;
+}
+
+// Por debajo del umbral de cada escala de letra (marco/_umbrales.scss), la columna pasa a franja bajo la barra.
+@each $escala in map.keys(u.$umbrales-por-escala) {
+  @include u.por-debajo-del-umbral($escala) {
+    .silice-columna-recorrido {
+      position: static;
+      inline-size: auto;
+      max-block-size: 40vh;
+      border-inline-start: 0;
+      border-block-end: 1px solid var(--cds-border-subtle);
+    }
+
+    .silice-con-recorrido .silice-contenido {
+      margin-inline-end: 0;
+    }
+  }
+}

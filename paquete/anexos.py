@@ -62,8 +62,16 @@ TABLAS_DE_CONTROL = (
     "decision_recuperacion",
 )
 #: Tablas con columna `responsable` que NO viajan: ya están en `presupuesto.json` y `cadena.json`
-#: (el `RegistroCambio` va en la cadena) o son del catálogo.
-TABLAS_QUE_NO_VIAJAN = ("registro_cambio",)
+#: (el `RegistroCambio` va en la cadena), son del catálogo, o son de la procura y del mercado de
+#: MP-7 (T23 a T25), que el paquete todavía no lleva: si algún día viajan, pasan a un anexo propio
+#: (decisión pendiente de Eugenio y del tutor; no cambia lo que hoy se exporta).
+TABLAS_QUE_NO_VIAJAN = (
+    "registro_cambio",
+    "mp_compra",
+    "mp_observacion",
+    "mp_precio_corte",
+    "mp_precio_objetivo",
+)
 
 
 def _valor(valor: Any) -> Any:

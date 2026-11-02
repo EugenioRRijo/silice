@@ -1,20 +1,82 @@
-"""API FastAPI que expone las operaciones del nucleo (Sesion F.1)."""
+"""API FastAPI que expone las operaciones del nucleo (Sesion F.1).
+
+Acceso (RM-3, sesion 2b): cada ruta lleva en su decorador la clave de API o la sesion del navegador
+con la accion de su pagina Streamlit; la tabla ruta -> accion esta en `api/acceso.py`. Aqui los
+routers se incluyen sin dependencias propias, salvo los de libros (RS2-5).
+"""
+
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
-from api.proteccion import exigir_clave_api, opciones_documentacion, proteger
+from api import interfaz
+from api.proteccion import opciones_documentacion, proteger
 from api.rutas import (
+    acerca,
+    admin_asistente,
+    admin_claves_api,
+    admin_empresa,
+    admin_empresas_registradas,
+    admin_instalacion,
+    aprobaciones,
     auditorias,
+    auditorias_libro,
+    busqueda,
+    carpeta,
+    casos,
     catalogo,
+    composicion,
     computos,
+    consulta,
+    control,
+    cuentas,
+    entregas,
+    fcas,
+    hoja,
+    hoja_exportar,
+    hoja_llevar,
+    hoja_plano,
+    indices,
     libros,
     listas,
+    mercado,
+    modulos,
+    obras,
+    precios_empresa,
     presupuestos,
+    procura,
+    produccion,
+    produccion_planta,
+    produccion_reportes,
+    proyectos,
+    reajuste,
     rendimientos,
+    revision,
+    riesgo,
+    sesion,
+    similares,
+    simulador,
+    tablero,
+    tema,
+    vial,
 )
+from api.rutas import (
+    primer_arranque as rutas_primer_arranque,
+)
+from api.sesion_web import exigir_clave_o_sesion
+from aplicacion import casos as casos_aplicacion
 from core.catalog import CatalogoIncompleto
+from operacion import config, primer_arranque
+from operacion.instalacion import sesion_de_instalacion
 from operacion.version import version
+from seguridad.permisos import Accion
+
+LEER_PROYECTO = Accion.LEER_PROYECTO  # arma o revisa (RS2-5)
 
 DESCRIPCION = """API HTTP sobre el nucleo del sistema de Analisis de Precios Unitarios (APU).
 
@@ -25,18 +87,142 @@ DESCRIPCION = """API HTTP sobre el nucleo del sistema de Analisis de Precios Uni
 la perdida de precision de `float` en JSON (regla 3 de NORMAS.md).
 """
 
+
+def _preparar_primer_arranque() -> None:
+    """Sin cuentas, sin `codigo_instalacion.txt` o con uno rancio, emite el código de instalación
+    (BCP-1; expediente §7). Un fallo se registra (nunca con el código) y no impide servir: el acceso
+    normal sigue funcionando."""
+    try:
+        with sesion_de_instalacion() as sesion:
+            primer_arranque.asegurar_codigo(sesion, config.carpeta_datos(), datetime.now())
+    except Exception:  # noqa: BLE001
+        logging.getLogger("silice.api").exception("no se pudo preparar el primer arranque")
+    try:  # BCP-2: lo que dejó en la cuarentena un corte a mitad de una creación
+        casos_aplicacion.purgar_cuarentena()
+    except Exception:  # noqa: BLE001
+        logging.getLogger("silice.api").exception("no se pudo purgar la cuarentena de casos")
+
+
+@asynccontextmanager
+async def _arranque(_aplicacion: FastAPI) -> AsyncIterator[None]:
+    """El ÚNICO gancho de ciclo de vida de la API (RULING del diseño §14): al arrancar prepara el
+    primer arranque. Costura: el asistente de la Hoja registra después, tras el `yield`, su
+    `apagar()`; no abre un segundo `lifespan`."""
+    await run_in_threadpool(_preparar_primer_arranque)
+    yield
+
+
 app = FastAPI(
-    title="Sílice", version=version(), description=DESCRIPCION, **opciones_documentacion()
+    title="Sílice",
+    version=version(),
+    description=DESCRIPCION,
+    lifespan=_arranque,
+    **opciones_documentacion(),
 )
-CON_CLAVE = [Depends(exigir_clave_api)]  # RF-98: clave en todas las rutas salvo /salud
-app.include_router(catalogo.router, dependencies=CON_CLAVE)
-app.include_router(listas.router, dependencies=CON_CLAVE)
-app.include_router(computos.router, dependencies=CON_CLAVE)
-app.include_router(presupuestos.router, dependencies=CON_CLAVE)
-app.include_router(rendimientos.router, dependencies=CON_CLAVE)
-app.include_router(auditorias.router, dependencies=CON_CLAVE)  # S3 §10: POST /v1/auditorias
-# 1.5: /v1/libros (auditoria, devolucion y pdf)
-app.include_router(libros.router, dependencies=CON_CLAVE)
+# RF-98: clave (o, desde la ola 0a, sesion) en todas las rutas salvo /salud. El `CON_CLAVE` por
+# router se retiro (RM-3): cada ruta declara `exigir_clave_o_sesion(<accion>)` (`api/acceso.py`),
+# que con `X-Silice-Clave` es `exigir_clave_api`.
+app.include_router(catalogo.router)
+app.include_router(listas.router)
+app.include_router(computos.router)
+app.include_router(presupuestos.router)
+app.include_router(rendimientos.router)
+app.include_router(auditorias.router)  # S3 §10: POST /v1/auditorias
+# 1.5: /v1/libros (auditoria, devolucion y pdf); 1.2.0: replica, y clave o sesión (RS2-5)
+app.include_router(libros.router, dependencies=[Depends(libros.ACCESO_LIBROS)])
+# Migracion: el simulador de listas (no escribe en la base); clave o sesion con EDITAR_HOJA
+app.include_router(
+    simulador.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]
+)
+# 1.2.0 (sesion 4, historial): /v1/auditorias-libro, lo que se auditó en «Libro de la empresa»
+app.include_router(
+    auditorias_libro.router, dependencies=[Depends(exigir_clave_o_sesion(LEER_PROYECTO))]
+)
+# 1.2.0 (RT-9): acceso del navegador por cuenta y cookie; sin clave de API a propósito
+app.include_router(sesion.router)
+# BCP-1: el primer administrador de una instalación nueva (P0 y P1); públicas, solo el propio equipo
+app.include_router(rutas_primer_arranque.router)
+# Ola 1 (sesion 2b): GET /v1/acerca, con la clave de API o la sesion de cualquier rol
+app.include_router(acerca.router)
+# 2b: «Partidas similares» de la interfaz nueva (UC-03); clave o sesión con editar_hoja
+app.include_router(
+    similares.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]
+)
+# Ola 0a (sesion 2b): el caso de la sesion web (RM-2) y los proyectos del caso
+app.include_router(carpeta.router)
+app.include_router(casos.router)
+app.include_router(proyectos.router)
+# Migracion: Administracion, pestañas Cuentas y Accesos (ADMINISTRAR_CUENTAS, solo sesion)
+app.include_router(cuentas.router)
+# Ola 3 (S2-B): «Componer una partida» (UC-10, UC-11)
+app.include_router(composicion.router)
+# Ola 4 (S2-C): el tablero de la obra (UC-13)
+app.include_router(tablero.router)
+# Ola 4 (S2-C): el control de obra (UC-19, UC-20)
+app.include_router(control.router)
+# Ola 4 (sesion 2b): entregar el paquete auditado
+app.include_router(entregas.router)
+# Ola 4 (sesion 2b): Reajuste de precios
+app.include_router(reajuste.router)
+# 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
+# Ola 5 (sesion 2b): Administracion (empresa y firma, claves de API, instalacion); solo con sesion
+app.include_router(admin_empresa.router)
+app.include_router(admin_claves_api.router)
+app.include_router(admin_instalacion.router)
+# Migracion: «Indices del BCV» (UC-17) y «Precios de la empresa» (UC-17 4-5); ADMINISTRAR_PRECIOS
+app.include_router(indices.router)
+app.include_router(precios_empresa.router)
+# Migracion final (T5): Administracion, «Empresas registradas» (ADMINISTRAR_EMPRESA, solo sesion)
+app.include_router(admin_empresas_registradas.router)
+# Migracion final (T6): Administracion, «Asistente de IA» (clave solo desde el equipo)
+app.include_router(admin_asistente.router)
+# Migracion final (T7): «Revisar un paquete» (UC-23; REVISAR_PAQUETE con clave o sesion)
+app.include_router(revision.router)
+# Migracion final (T10 · 3b): «Hoja del proyecto»; lecturas con clave o sesion, borradores
+# solo con sesion
+app.include_router(hoja.router)
+# Montar un presupuesto (T12): Elaborar lleva sus items a la Hoja de la obra, solo con sesion
+app.include_router(hoja_llevar.router)
+# Migracion final (T10 · 3e-1): «Descargar Excel» de la hoja (X1), solo con sesion
+app.include_router(hoja_exportar.router)
+# Migracion final (T10 · 3e-2): importar un plano a la hoja (P1 a P6), solo con sesion
+app.include_router(hoja_plano.router)
+interfaz.montar(app)
+# 1.4 (sesion 4 de la ruta): /v1/produccion, existencias de la arenera y bascula; clave o sesion
+# (Accion.OPERAR_ARENERA): la dependencia vive en el router, que la comparte con el `usuario`
+app.include_router(produccion.router)
+# Plan vial (T1, T3 y T4): costos del periodo, recetas, producciones y calculos de la planta, mismo
+# prefijo y misma puerta; justo despues del de la arenera para no cambiar el orden de docs/api.json
+app.include_router(produccion_planta.router)
+# Pantallas de informes (fila 112): el reporte de costo de produccion en Excel, con la puerta de
+# los costos (REGISTRAR_COSTOS_PRODUCCION) y despues el modulo produccion
+app.include_router(produccion_reportes.router)
+# Plan vial (T8): /v1/vial, los tramos de una via guardados por version; EDITAR_HOJA en cada ruta
+app.include_router(vial.router)
+# Plan vial (T15): /v1/riesgo, informe de mejora de la estimacion (VER_RIESGO, clave o sesion)
+app.include_router(riesgo.router)
+# Plan vial (T19): /v1/modulos, especialidades y modulos activables (GET: cualquier rol;
+# PUT: administrador)
+app.include_router(modulos.router)
+# Plan vial (T17): /v1/fcas, el FCAS por componentes (cuenta pura; clave o sesion de cualquier rol)
+app.include_router(fcas.router)
+# T10 (montar un presupuesto): /v1/buscar/partidas, buscador C-1 (LEER_PROYECTO en la ruta)
+app.include_router(busqueda.router)
+# Plan vial (T20): /v1/consulta/{tabla}, autocompletado con tablas venezolanas (LEER_PROYECTO
+# en la ruta)
+app.include_router(consulta.router)
+# MOD-4a (plan de módulos): /v1/obras/resumen (LEER_PROYECTO) y /v1/obras/pendientes (EDITAR_HOJA),
+# los datos de la mesa de control; el acceso va en cada ruta
+app.include_router(obras.router)
+# T14 (montar un presupuesto): /v1/mercado, estudio de mercado y «Usar este precio»
+# (EDITAR_HOJA en la ruta)
+app.include_router(mercado.router)
+# T23 (montar un presupuesto): /v1/procura, procura con fechas, compras y plazos (control_de_obra)
+app.include_router(procura.router)
+# MP-4 T18: ciclo de aprobación
+app.include_router(aprobaciones.router)
+# Rediseño del marco, Tarea 1: tema de la empresa (publico: la pantalla de entrada lo pinta)
+app.include_router(tema.router)
 
 
 @app.get("/salud", tags=["catalogo"])
@@ -57,7 +243,10 @@ def manejar_http_exception(_request: Request, exc: HTTPException) -> JSONRespons
     proyectos, o UC-02 sin nada que confirmar): mismo formato `{"detalle": ...}` que el resto de
     la API, en vez del `{"detail": ...}` que usa FastAPI por defecto.
     """
-    return JSONResponse(status_code=exc.status_code, content={"detalle": exc.detail})
+    # Las cabeceras de la excepcion (p. ej. `Retry-After` del 429) viajan con la respuesta.
+    return JSONResponse(
+        status_code=exc.status_code, content={"detalle": exc.detail}, headers=exc.headers
+    )
 
 
 @app.exception_handler(LookupError)
@@ -70,6 +259,15 @@ def manejar_lookup_error(_request: Request, exc: LookupError) -> JSONResponse:
 def manejar_value_error(_request: Request, exc: ValueError) -> JSONResponse:
     """Datos de entrada invalidos segun las reglas del nucleo."""
     return JSONResponse(status_code=422, content={"detalle": str(exc)})
+
+
+@app.exception_handler(ArithmeticError)
+def manejar_error_aritmetico(_request: Request, _exc: ArithmeticError) -> JSONResponse:
+    """Un importe mal formado o fuera de rango (`decimal.InvalidOperation`, `Overflow`)."""
+    return JSONResponse(
+        status_code=422,
+        content={"detalle": "un importe esta mal formado o fuera de rango"},
+    )
 
 
 proteger(app)  # al final: ya están todas las rutas y los filtros envuelven la aplicación

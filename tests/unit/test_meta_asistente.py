@@ -78,9 +78,9 @@ def test_plan_con_sesion_sin_commit_falla_citando_la_sesion():
 
 
 def test_el_commit_de_una_seccion_posterior_no_tapa_el_de_la_ultima_sesion():
-    sin_commit = PLAN_COMPLETO.replace(
-        "**Commit.** `feat(asistente): herramientas`", ""
-    ).replace("## Resumen del recorrido", "## Resumen del recorrido\n\n**Commit.** ajeno")
+    sin_commit = PLAN_COMPLETO.replace("**Commit.** `feat(asistente): herramientas`", "").replace(
+        "## Resumen del recorrido", "## Resumen del recorrido\n\n**Commit.** ajeno"
+    )
 
     estado, _ = meta.evaluar_plan(sin_commit)
 

@@ -1,4 +1,5 @@
 """Oráculo: tests/fixtures/memorias/s1_conversion.md (S1 §9.1.1)."""
+
 from datetime import date
 from decimal import Decimal, localcontext
 

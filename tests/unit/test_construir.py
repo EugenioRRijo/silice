@@ -87,7 +87,7 @@ def test_las_ordenes_de_uv_son_las_del_spec(tmp_path: Path) -> None:
         "--install-dir",
         str(rutas.py),
     ]
-    c.exportar(["ui", "api"], tmp_path / "req.txt", ejecutar)
+    c.exportar(["api", "planos"], tmp_path / "req.txt", ejecutar)
     assert ejecutar.ordenes[1] == [
         "uv",
         "export",
@@ -96,9 +96,9 @@ def test_las_ordenes_de_uv_son_las_del_spec(tmp_path: Path) -> None:
         "--no-emit-project",
         "--no-hashes",
         "--extra",
-        "ui",
-        "--extra",
         "api",
+        "--extra",
+        "planos",
         "--output-file",
         str(tmp_path / "req.txt"),
     ]
@@ -251,14 +251,14 @@ def test_las_sumas_son_sha256sum_con_saltos_de_linea_lf(tmp_path: Path) -> None:
 
 
 def test_el_manifiesto_json_cubre_codigo_y_python(tmp_path: Path) -> None:
-    (tmp_path / "codigo" / "ui").mkdir(parents=True)
+    (tmp_path / "codigo" / "api").mkdir(parents=True)
     (tmp_path / "python").mkdir()
-    (tmp_path / "codigo" / "ui" / "app.py").write_text("x", encoding="utf-8")
+    (tmp_path / "codigo" / "api" / "main.py").write_text("x", encoding="utf-8")
     (tmp_path / "python" / "python.exe").write_bytes(b"MZ")
     (tmp_path / "python" / "otro.dll").write_bytes(b"dll")
     destino = c.escribir_manifiesto_json(tmp_path, "1.0.0")
     datos = json.loads(destino.read_text(encoding="utf-8"))
-    assert [a["ruta"] for a in datos["archivos"]] == ["codigo/ui/app.py", "python/python.exe"]
+    assert [a["ruta"] for a in datos["archivos"]] == ["codigo/api/main.py", "python/python.exe"]
     assert datos["version"] == "1.0.0"
 
 

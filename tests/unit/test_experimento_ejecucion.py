@@ -194,9 +194,9 @@ def test_el_auditor_del_experimento_corre_exactamente_las_reglas_del_protocolo()
     import json
     from datetime import date
 
+    from aplicacion.hoja import Borrador
     from asistente.experimento.congelado import PROTOCOLO
     from asistente.experimento.ejecucion import reglas_del_auditor
-    from ui.hoja import Borrador
 
     protocolo = json.loads(PROTOCOLO.read_text(encoding="utf-8"))
     corridas = reglas_del_auditor(Borrador(fecha=date(2026, 10, 31)))

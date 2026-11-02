@@ -17,15 +17,16 @@ from tests.fixtures.claves_api import cliente_de_prueba
 
 @pytest.fixture
 def cliente_sobre(monkeypatch):
-    monkeypatch.setattr(dependencias, "_motor", None)
+    """Ola 0a (sesión 2b): el motor se guarda uno por caso (`obtener_motor`); antes era uno solo
+    (`_motor`). La prueba parte sin motores y los cierra al terminar."""
+    dependencias.cerrar_motores()
 
     def abrir(ruta: Path) -> TestClient:
         monkeypatch.setenv(dependencias.VARIABLE_BASE, f"sqlite:///{ruta.as_posix()}")
         return cliente_de_prueba()
 
     yield abrir
-    if dependencias._motor is not None:
-        dependencias._motor.dispose()
+    dependencias.cerrar_motores()
 
 
 def test_la_api_adopta_una_base_de_la_0_5_0_y_responde(tmp_path: Path, cliente_sobre) -> None:

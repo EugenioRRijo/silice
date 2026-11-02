@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 
 from adapters.espacio import ModoRecorrido, TipoOrigen
+from aplicacion import hoja
+from aplicacion.hoja import Borrador
 from asistente.propuestas import (
     EstadoPropuesta,
     Pendientes,
@@ -12,11 +14,10 @@ from asistente.propuestas import (
     aplicar,
 )
 from asistente.validacion import Propuesta, Rechazo, validar_llamada
+from core.budget import CambioEditado
 from core.contracts import Severidad
 from core.contracts.item_computo import OrigenTipo
 from tests.fixtures.asistente_pedidos import AMBIENTE, FECHA, ORIGEN, catalogo, contexto
-from ui import hoja
-from ui.hoja import Borrador
 
 TEXTO = "Bano de 2,4 x 1,5 m con alto de 2,5 m, con un lavamanos a 60 cm del piso. Cantidad 2."
 FUENTE = {
@@ -124,6 +125,16 @@ def test_aceptar_aplica_exactamente_las_filas_esperadas_con_origen_ia():
         OrigenTipo.MANUAL,
     )
     assert not item.parametros and not item.especificaciones  # DA-SF-8
+
+
+def test_la_partida_aceptada_es_un_alta_en_los_cambios_del_borrador():
+    """La partida propuesta (AF-SALIDA, 2 puntos, quinta propuesta de la sesión 7) entra en los
+    renglones de la versión: en los cambios del borrador es un alta, como una agregada a mano
+    (plan de montar un presupuesto, Tarea 8). Antes no contaba como cambio."""
+    vacio = Borrador(fecha=FECHA)
+    borrador = aplicar(vacio, _pendientes().propuestas, ORIGEN, catalogo())
+    de_cantidad = [c for c in hoja.cambios_entre(vacio, borrador) if c.objeto == "cantidad"]
+    assert de_cantidad == [CambioEditado("cantidad", "AF-SALIDA|ia:7:P5", "alta", "", "2")]
 
 
 def test_el_auditor_marca_exactamente_los_siete_supuestos_de_la_ia():

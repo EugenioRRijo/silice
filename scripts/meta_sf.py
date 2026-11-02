@@ -120,7 +120,8 @@ BASES_S4_FINAL: tuple[str, ...] = ("gsf4", "gsf3", "inc/sf3", "inc/sf3-nucleo")
 #: Fin del tramo final de S4: el commit de cierre de SF (etiqueta `v0.5.0`; si no existe, el
 #: merge #29, 8610053). S4 vigila el sprint SF, no lo que venga despues (Silice: `core/` cambia).
 PUNTAS_S4_FINAL: tuple[str, ...] = ("v0.5.0", "8610053")
-#: Pruebas AppTest de la navegacion superior y de las herramientas de la barra (S6).
+#: Pruebas AppTest de la navegacion superior y de las herramientas de la barra (S6). Se borraron con
+#: la capa Streamlit (retiro, F4): S6 queda PENDIENTE ("faltan las pruebas AppTest de la barra").
 RUTA_PRUEBAS_BARRA = ("tests/unit/test_ui_barra.py", "tests/unit/test_ui_app.py")
 
 #: S5 (nucleo de SF3): grupo -> archivos de prueba que deben existir y pasar.
@@ -133,11 +134,11 @@ GRUPOS_S5: dict[str, tuple[str, ...]] = {
     "cotizacion por proyecto": ("tests/integration/test_cotizacion_proyecto.py",),
     "punto de equilibrio": ("tests/unit/test_equilibrio.py",),
     "Excel": ("tests/unit/test_excel_hoja.py", "tests/unit/test_excel_m1.py"),
-    # rama `inc/sf3`: la hoja sobre el nucleo (borrador, versiones en una base y pantalla)
+    # rama `inc/sf3`: la hoja sobre el nucleo (borrador y versiones en una base; la prueba de la
+    # pantalla, `test_ui_hoja.py`, se borro con Streamlit en el retiro, F4)
     "hoja del proyecto": (
         "tests/unit/test_hoja_borrador.py",
         "tests/integration/test_hoja_versiones.py",
-        "tests/unit/test_ui_hoja.py",
     ),
 }
 

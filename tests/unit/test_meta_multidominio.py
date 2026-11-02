@@ -11,8 +11,7 @@ from scripts import meta_multidominio
 def test_codigos_partida_industrial_distingue_partidas_del_mismo_activo():
     """`MNT-\\w+` cortaba en el segundo guion y contaba MNT-BOM-CEN y MNT-BOM-SUM como una."""
     texto = (
-        '"MNT-BOM-CEN": 20, "MNT-BOM-SUM": 30, "MNT-COM-REC": 30, "MNT-MOT-TRI": 20, '
-        '"MNT-BOM-CEN"'
+        '"MNT-BOM-CEN": 20, "MNT-BOM-SUM": 30, "MNT-COM-REC": 30, "MNT-MOT-TRI": 20, "MNT-BOM-CEN"'
     )
 
     assert meta_multidominio.codigos_partida_industrial(texto) == [

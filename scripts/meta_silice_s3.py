@@ -41,11 +41,24 @@ PROTOCOLOS = (
 )
 RUTA_LIMPIO = RAIZ / "tests" / "fixtures" / "errores_planos" / "of001_limpio.py"
 RUTA_CI = RAIZ / ".github" / "workflows" / "ci.yml"
-CARPETAS_SIN_HTML_INSEGURO = ("ui", "api", "seguridad", "paquete", "auditoria")
+CARPETAS_SIN_HTML_INSEGURO = ("api", "seguridad", "paquete", "auditoria")
 RAMAS_SIN_NUCLEO = ("inc/080-s3-5", "inc/080-s3-6")
 REQUISITOS_S3_0 = (
-    "UC-21", "UC-22", "UC-23", "RF-80", "RF-81", "RF-82", "RF-83", "RF-84", "RF-85", "RF-86",
-    "RF-87", "RF-88", "RF-89", "RNF-16", "RNF-17",
+    "UC-21",
+    "UC-22",
+    "UC-23",
+    "RF-80",
+    "RF-81",
+    "RF-82",
+    "RF-83",
+    "RF-84",
+    "RF-85",
+    "RF-86",
+    "RF-87",
+    "RF-88",
+    "RF-89",
+    "RNF-16",
+    "RNF-17",
 )
 
 #: Prueba -> implementación, por fase (C3: el commit de la prueba va antes).
@@ -58,8 +71,6 @@ PARES_S3: tuple[ParTDD, ...] = (
     ParTDD("tests/unit/test_permisos.py", "seguridad/permisos.py", "S3-1"),
     ParTDD("tests/unit/test_cuentas.py", "seguridad/cuentas.py", "S3-1"),
     ParTDD("tests/unit/test_sesiones.py", "seguridad/sesiones.py", "S3-1"),
-    ParTDD("tests/unit/test_ui_acceso.py", "ui/acceso.py", "S3-1"),
-    ParTDD("tests/unit/test_ui_marco.py", "ui/sesion.py", "S3-1"),
     ParTDD("tests/integration/test_concurrencia.py", "core/catalog/sesion.py", "S3-2"),
     ParTDD("tests/integration/test_canonico.py", "core/budget/canonico.py", "S3-2"),
     ParTDD("tests/integration/test_cadena.py", "core/budget/cadena.py", "S3-2"),
@@ -69,22 +80,21 @@ PARES_S3: tuple[ParTDD, ...] = (
     ParTDD("tests/unit/test_paquete_formato.py", "paquete/formato.py", "S3-3"),
     ParTDD("tests/unit/test_paquete_verificar.py", "paquete/verificar.py", "S3-3"),
     ParTDD("tests/unit/test_paquete_anterioridad.py", "paquete/verificar.py", "S3-3"),
-    ParTDD("tests/integration/test_entrega.py", "ui/entrega.py", "S3-3"),
-    ParTDD("tests/unit/test_ui_administracion.py", "ui/paginas/administracion.py", "S3-3"),
-    ParTDD("tests/unit/test_ui_revision.py", "ui/revision.py", "S3-4"),
-    ParTDD("tests/integration/test_revision_recibir.py", "ui/revision.py", "S3-4"),
-    ParTDD("tests/unit/test_ui_revisar.py", "ui/paginas/revisar.py", "S3-4"),
-    ParTDD("tests/unit/test_ui_roles.py", "ui/paginas/revisar.py", "S3-4"),
+    ParTDD("tests/integration/test_entrega.py", "aplicacion/entrega.py", "S3-3"),
+    ParTDD("tests/unit/test_ui_revision.py", "aplicacion/revision.py", "S3-4"),
+    ParTDD("tests/integration/test_revision_recibir.py", "aplicacion/revision.py", "S3-4"),
     ParTDD("tests/integration/test_api_auditorias.py", "api/rutas/auditorias.py", "S3-4"),
     ParTDD("tests/unit/test_claves_api_y_red.py", "seguridad/claves_api.py", "S3-3"),
-    ParTDD("tests/unit/test_r15_geometria_plano.py",
-           "adapters/espacio/planos/geometria_plano.py", "S3-5"),
+    ParTDD(
+        "tests/unit/test_r15_geometria_plano.py",
+        "adapters/espacio/planos/geometria_plano.py",
+        "S3-5",
+    ),
     ParTDD("tests/unit/test_r16_contraste.py", "adapters/espacio/planos/contraste.py", "S3-5"),
-    ParTDD("tests/unit/test_ui_contraste.py", "ui/contraste.py", "S3-5"),
     ParTDD("tests/unit/test_planos_auditoria_s3.py", "adapters/espacio/planos/ids.py", "S3-5"),
     ParTDD("tests/unit/test_deteccion_planos.py", "scripts/medir_deteccion_planos.py", "S3-5"),
     ParTDD("tests/unit/test_series_atipicas.py", "ml/anomaly/series.py", "S3-6"),
-    ParTDD("tests/integration/test_atipicos.py", "ui/atipicos.py", "S3-6"),
+    ParTDD("tests/integration/test_atipicos.py", "aplicacion/atipicos.py", "S3-6"),
 )
 
 
@@ -111,7 +121,8 @@ def evaluar_protocolos(raiz: Path, huellas: Path) -> tuple[Estado, str]:
     if malos:
         return Estado.FALLA, "; ".join(malos)
     return Estado.OK, "huella escrita de los protocolos y su lista: " + ", ".join(
-        p.rpartition("/")[2] for p in PROTOCOLOS)
+        p.rpartition("/")[2] for p in PROTOCOLOS
+    )
 
 
 def evaluar_literal_of001(ruta: Path) -> tuple[Estado, str]:

@@ -261,7 +261,7 @@ entregable fue correcto hasta terminar la segunda condición.
 1. **Copia desechable** del repositorio, como en la sección 4 del
    [guion de prueba](guion_prueba_arenia.md), nunca la copia de trabajo:
    `git worktree add ../tesis-indicador3 <commit>` y, dentro de ella,
-   `uv sync --extra ui --extra ml` (los mismos extras que CP‑07). El `<commit>` es un commit de `main` con su
+   `uv sync --extra api --extra ml` (los mismos extras que CP‑07). El `<commit>` es un commit de `main` con su
    corrida de CI en verde; se anotan el commit (`git log -1 --oneline`) y el enlace a esa corrida.
    Todas las sesiones usan **el mismo commit**; si hubiera que cambiarlo, se registra y se
    declara.
@@ -272,8 +272,8 @@ entregable fue correcto hasta terminar la segunda condición.
 3. **Base del participante:** `uv run python scripts/seed.py --db data/i3/<código>.db` (la línea
    base: cinco partidas y la lista del 28/04/2026). Nunca sin `--db`: sin esa opción escribe en
    `data/apu.db`.
-4. **Aplicación:** en bash, `SILICE_CASO=data/i3/<código>.db uv run python -m streamlit run ui/app.py`;
-   en PowerShell, `$env:SILICE_CASO = "data/i3/<código>.db"; uv run python -m streamlit run ui/app.py`.
+4. **Aplicación:** en bash, `SILICE_CASO=data/i3/<código>.db uv run uvicorn api.main:app --host 127.0.0.1 --port 8501`;
+   en PowerShell, `$env:SILICE_CASO = "data/i3/<código>.db"; uv run uvicorn api.main:app --host 127.0.0.1 --port 8501`.
    Comprobar que abre en **Inicio** y que la barra lateral, bajo **Caso abierto**, nombra esa base
    con 5 partidas. Sin modo entrega (`SILICE_MODO_ENTREGA` sin definir).
 5. **Plantillas:** `data/i3/<código>_plantilla.csv` (contenido de la sección 4) y

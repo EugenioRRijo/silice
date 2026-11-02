@@ -14,6 +14,7 @@ from datetime import date
 import pytest
 
 from adapters.espacio.reglas import CoherenciaEspacial
+from aplicacion import hoja
 from asistente.experimento.banco import (
     CARPETA_TAREAS,
     NO_SE,
@@ -25,7 +26,6 @@ from asistente.experimento.banco import (
 )
 from core.contracts import Severidad
 from core.contracts.presupuesto import Presupuesto
-from ui import hoja
 
 BANCO = cargar_banco()
 VACIO = Presupuesto(codigo="X", fecha=date(2026, 1, 1), moneda="USD", partidas=())

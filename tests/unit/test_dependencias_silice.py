@@ -105,6 +105,17 @@ def test_el_pyproject_declara_las_dependencias_de_silice() -> None:
         assert set(requisitos) <= set(extras[extra]), extra
 
 
+def test_la_api_declara_python_multipart_por_si_misma() -> None:
+    """Retiro de Streamlit (F9): las rutas con `UploadFile`/`Form` exigen `python-multipart`.
+
+    Antes llegaba solo como dependencia de streamlit (uv.lock); sin el extra `ui`, `import api.main`
+    falla. El extra `api` lo declara, y `ui` ya no existe.
+    """
+    extras = _proyecto()["optional-dependencies"]
+    assert any(r.startswith("python-multipart") for r in extras["api"])
+    assert "ui" not in extras
+
+
 def test_ml_reune_anomalias_similitud_y_xgboost() -> None:
     extras = _proyecto()["optional-dependencies"]
     esperado = set(extras["anomalias"]) | set(extras["similitud"]) | {"xgboost>=2.0"}

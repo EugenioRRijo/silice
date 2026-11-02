@@ -1,0 +1,56 @@
+// «Demostración» en la barra superior (plan de modulos, MOD-3b). Los tokens del aviso de DESIGN.md (fondo yellow-10 con
+// la tinta normal, 16,4:1, y franja yellow-50 de 4 px, 3,02:1 como grafico): se nota sin depender del color, porque
+// lleva icono y texto. Rem, esquinas rectas, sin sombra ni animacion. El texto no se oculta con letra grande: es corto y
+// es lo que dice en que carpeta se esta.
+
+.silice-demo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+// Con el envoltorio delante, para ganarle a `.cds--header__action` de Carbon (3 rem), que va despues (D-1 de MOD-5a).
+.silice-demo .silice-demo__boton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  inline-size: auto;
+  padding-inline: 0.75rem;
+  border-inline-start: 4px solid var(--silice-aviso-borde);
+  background: var(--silice-aviso-fondo);
+  color: var(--cds-text-primary);
+  white-space: nowrap;
+
+  @media (forced-colors: active) {
+    border: 1px solid CanvasText;
+  }
+}
+
+.silice-demo__panel {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  z-index: 8000;
+  box-sizing: border-box;
+  display: grid;
+  gap: 0.5rem;
+  inline-size: 20rem;
+  max-inline-size: calc(100vw - 1rem);
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-primary);
+
+  p {
+    margin: 0;
+  }
+
+  .cds--btn {
+    justify-self: start;
+  }
+}
+
+.silice-demo__ayuda {
+  color: var(--cds-text-secondary);
+}

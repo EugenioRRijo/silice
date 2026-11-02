@@ -1,0 +1,489 @@
+"""`POST /v1/proyectos` (BCP-3; diseño `2026-10-21-bienvenida-casos-proyectos-design.md` §5, §9.3).
+
+Pruebas B19 y B20, la parte J1 de S8 y la propiedad P-13 (crear un proyecto: nombre único sin
+distinguir mayúsculas, moneda elegida, responsable humano, en el caso de la ficha).
+
+Oráculos escritos a mano: lo guardado se lee con `sqlite3` directo del archivo del caso (sin
+SQLAlchemy ni `core`); los textos de error, con tildes (DV-BCP-3), están copiados del diseño; los
+roles de cada cuenta son los de `tests/fixtures/sesion_web.py` (`ana` arma, `rita` revisa, `admin`
+administra; `ana` se llama «Ana» y su responsable es «Ana <ana>»).
+"""
+
+from __future__ import annotations
+
+import sqlite3
+from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+from api import caso_web, dependencias
+from api.main import app
+from api.sesion_web import MENSAJE_CAMBIAR_CLAVE
+from aplicacion import obras
+from operacion import config
+from operacion.base_datos import preparar_base
+from seguridad.permisos import PERMISOS, Accion, Rol
+from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
+from tests.fixtures.sesion_web import (
+    MENSAJE_PERMISO,
+    cliente,
+    con_cuenta,
+    copiar_instalacion,
+    plantilla_con_cuentas,
+    protegida,
+)
+
+RUTA = "/v1/proyectos"
+FORMA = {
+    "codigo",
+    "nombre",
+    "version_vigente",
+    "version_codigo",
+    "actualizado",
+    "cliente",
+    "ubicacion",
+}
+VACIO = "Escriba un nombre para la obra: no puede quedar vacío."
+
+
+@pytest.fixture(scope="module")
+def _plantillas(tmp_path_factory) -> dict[str, Path]:
+    carpeta = tmp_path_factory.mktemp("plantillas_proyectos_crear")
+    casos = {}
+    for nombre in ("silice.db", "Obra Norte.db"):
+        casos[nombre] = carpeta / nombre
+        preparar_base(casos[nombre])
+    return {"instalacion": plantilla_con_cuentas(carpeta), **casos}
+
+
+@pytest.fixture(autouse=True)
+def _entorno(_plantillas: dict[str, Path], monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
+    monkeypatch.delenv(dependencias.VARIABLE_BASE, raising=False)
+    copiar_instalacion(_plantillas["instalacion"])
+    carpeta = config.carpeta_casos()
+    carpeta.mkdir(parents=True, exist_ok=True)
+    for nombre in ("silice.db", "Obra Norte.db"):
+        (carpeta / nombre).write_bytes(_plantillas[nombre].read_bytes())
+    caso_web.olvidar_todo()
+    yield carpeta
+    caso_web.olvidar_todo()
+    dependencias.cerrar_motores()
+
+
+def _crear(navegador: TestClient, ficha: str, cuerpo: dict, **extra):
+    return navegador.post(RUTA, json=cuerpo, headers=protegida(ficha), **extra)
+
+
+def _filas(caso: str, consulta: str) -> list[tuple]:
+    with closing(sqlite3.connect(config.carpeta_casos() / caso)) as base:
+        return base.execute(consulta).fetchall()
+
+
+def _nombres(caso: str) -> list[str]:
+    return sorted(f[0] for f in _filas(caso, "select nombre from proyecto"))
+
+
+# --- B19: la ruta -----------------------------------------------------------------------------
+
+
+def test_crea_con_la_forma_de_la_lista_y_la_moneda_con_responsable_humano() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(navegador, ficha, {"nombre": "Torre B", "moneda": "Bs"})
+    assert respuesta.status_code == 201, respuesta.text
+    cuerpo = respuesta.json()
+    assert set(cuerpo) == FORMA
+    assert cuerpo["nombre"] == "Torre B"
+    assert cuerpo["version_vigente"] is None
+    assert cuerpo["version_codigo"] is None
+    assert cuerpo["actualizado"] is None
+    assert cuerpo["codigo"] == "1"  # el primer proyecto de una base vacía
+    # el elemento de GET /v1/proyectos es el mismo
+    assert navegador.get(RUTA).json() == [cuerpo]
+    assert _filas("silice.db", "select nombre, dominio, descripcion from proyecto") == [
+        ("Torre B", "", "")
+    ]
+    assert _filas("silice.db", "select proyecto_id, moneda, responsable from moneda_proyecto") == [
+        (1, "Bs", "Ana <ana>")
+    ]
+
+
+def test_sin_moneda_crea_el_proyecto_sin_declararla() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(navegador, ficha, {"nombre": "Sin moneda", "moneda": None})
+    assert respuesta.status_code == 201, respuesta.text
+    assert _nombres("silice.db") == ["Sin moneda"]
+    assert _filas("silice.db", "select count(*) from moneda_proyecto") == [(0,)]
+
+
+def test_dominio_y_descripcion_se_guardan() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    cuerpo = {"nombre": "Nodo", "moneda": "USD", "dominio": "telecom", "descripcion": "Fibra"}
+    assert _crear(navegador, ficha, cuerpo).status_code == 201
+    assert _filas("silice.db", "select dominio, descripcion from proyecto") == [
+        ("telecom", "Fibra")
+    ]
+    assert _filas("silice.db", "select moneda from moneda_proyecto") == [("USD",)]
+
+
+def test_el_nombre_se_guarda_sin_espacios_sobrantes() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(navegador, ficha, {"nombre": "  Torre    B  ", "moneda": "Bs"})
+    assert respuesta.status_code == 201
+    assert respuesta.json()["nombre"] == "Torre B"
+    assert _nombres("silice.db") == ["Torre B"]
+
+
+@pytest.mark.parametrize("nombre", ["   ", "", "\t \n"])
+def test_nombre_vacio_da_422_con_el_texto_y_no_crea(nombre: str) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(navegador, ficha, {"nombre": nombre, "moneda": "Bs"})
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {"detalle": VACIO}
+    assert _nombres("silice.db") == []
+
+
+@pytest.mark.parametrize("otro", ["Torre B", "  torre   b ", "TORRE B"])
+def test_nombre_repetido_sin_distinguir_mayusculas_da_409(otro: str) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _crear(navegador, ficha, {"nombre": "Torre B", "moneda": "Bs"}).status_code == 201
+    respuesta = _crear(navegador, ficha, {"nombre": otro, "moneda": "USD"})
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {
+        "detalle": "Ya existe una obra llamada «Torre B»: elija otro nombre o abra esa."
+    }
+    assert _nombres("silice.db") == ["Torre B"]
+
+
+def test_el_409_nombra_al_proyecto_que_ya_existe() -> None:
+    """Ruling: «abra ese» apunta al existente, así que el texto lleva SU nombre (B19)."""
+    navegador, ficha = con_cuenta(app, "ana")
+    _crear(navegador, ficha, {"nombre": "Torre B", "moneda": "Bs"})
+    respuesta = _crear(navegador, ficha, {"nombre": "  torre   b ", "moneda": "Bs"})
+    assert respuesta.status_code == 409
+    assert "«Torre B»" in respuesta.json()["detalle"]
+    assert "torre b" not in respuesta.json()["detalle"]
+
+
+def test_la_mayuscula_no_ascii_tambien_cuenta_como_repetida() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    assert _crear(navegador, ficha, {"nombre": "Clínica", "moneda": "Bs"}).status_code == 201
+    assert _crear(navegador, ficha, {"nombre": "CLÍNICA", "moneda": "Bs"}).status_code == 409
+
+
+@pytest.mark.parametrize("moneda", ["EUR", "bs", "usd", "Bs "])
+def test_moneda_fuera_de_bs_usd_da_422_y_no_crea(moneda: str) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(navegador, ficha, {"nombre": "Torre C", "moneda": moneda})
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {"detalle": "Elija la moneda: Bs o USD."}
+    assert _nombres("silice.db") == []  # todo o nada
+    assert _filas("silice.db", "select count(*) from moneda_proyecto") == [(0,)]
+
+
+@pytest.mark.parametrize("dominio", ["x", "Civil", "telecomunicaciones"])
+def test_tipo_de_obra_desconocido_da_422_y_no_crea(dominio: str) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(navegador, ficha, {"nombre": "Torre C", "moneda": "Bs", "dominio": dominio})
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {"detalle": "El tipo de obra no es uno de los de la lista."}
+    assert _nombres("silice.db") == []
+
+
+@pytest.mark.parametrize("dominio", ["", "civil", "telecom", "industrial", "sistemas"])
+def test_los_cinco_tipos_de_obra_validos(dominio: str) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    cuerpo = {"nombre": "Obra", "moneda": "Bs", "dominio": dominio}
+    assert _crear(navegador, ficha, cuerpo).status_code == 201
+    assert _filas("silice.db", "select dominio from proyecto") == [(dominio,)]
+
+
+def test_limites_de_longitud_del_cuerpo_sin_eco() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    eco = "SECRETO-NO-DEBE-VOLVER"
+    for cuerpo in (
+        {"nombre": "a" * 121, "moneda": "Bs"},
+        {"nombre": eco, "moneda": "Bs", "descripcion": "d" * 501},
+        {"nombre": eco, "moneda": 5},
+        {"moneda": "Bs"},
+    ):
+        respuesta = _crear(navegador, ficha, cuerpo)
+        assert respuesta.status_code == 422
+        assert eco not in respuesta.text
+    assert _crear(navegador, ficha, {"nombre": "a" * 120, "moneda": "Bs"}).status_code == 201
+    assert _crear(navegador, ficha, {"nombre": "b", "descripcion": "d" * 500}).status_code == 201
+
+
+def test_dos_peticiones_simultaneas_con_el_mismo_nombre_dan_201_y_409() -> None:
+    uno, ficha_uno = con_cuenta(app, "ana")
+    otro, ficha_otro = con_cuenta(app, "ana")
+    cuerpos = [
+        (uno, ficha_uno, {"nombre": "Torre B", "moneda": "Bs"}),
+        (otro, ficha_otro, {"nombre": "torre b", "moneda": "USD"}),
+    ]
+    with ThreadPoolExecutor(max_workers=2) as piscina:
+        codigos = sorted(
+            r.status_code for r in piscina.map(lambda c: _crear(c[0], c[1], c[2]), cuerpos)
+        )
+    assert codigos == [201, 409]
+    assert len(_nombres("silice.db")) == 1
+    assert _filas("silice.db", "select count(*) from moneda_proyecto") == [(1,)]
+
+
+def test_con_clave_de_api_el_responsable_es_la_api_y_crea_en_el_caso_del_proceso() -> None:
+    respuesta = cliente(app).post(
+        RUTA,
+        json={"nombre": "Integración", "moneda": "USD"},
+        headers={CABECERA: crear_clave_de_prueba()},
+    )
+    assert respuesta.status_code == 201, respuesta.text
+    assert _nombres("silice.db") == ["Integración"]
+    assert _filas("silice.db", "select responsable from moneda_proyecto") == [
+        ("api (clave de API)",)
+    ]
+
+
+# --- B20: el caso de la ficha ----------------------------------------------------------------
+
+
+def test_crea_en_el_caso_de_la_ficha_y_no_en_el_del_proceso() -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    elegido = ana.post(
+        "/v1/casos/actual", json={"nombre": "Obra Norte.db"}, headers=protegida(ficha)
+    )
+    assert elegido.status_code == 200, elegido.text
+    assert _crear(ana, ficha, {"nombre": "Torre B", "moneda": "Bs"}).status_code == 201
+    assert _nombres("Obra Norte.db") == ["Torre B"]
+    assert _nombres("silice.db") == []
+    assert [p["nombre"] for p in ana.get(RUTA).json()] == ["Torre B"]
+    # otra persona, sin elegir caso, sigue en el del proceso y no ve el proyecto
+    rita, _ = con_cuenta(app, "rita")
+    assert rita.get(RUTA).json() == []
+
+
+# --- S8 (parte J1) y P-13 ---------------------------------------------------------------------
+
+
+def test_sin_sesion_ni_clave_da_401() -> None:
+    assert cliente(app).post(RUTA, json={"nombre": "X", "moneda": "Bs"}).status_code == 401
+
+
+@pytest.mark.parametrize("login", ["rita", "admin"])
+def test_sin_editar_hoja_da_403_y_no_crea(login: str) -> None:
+    navegador, ficha = con_cuenta(app, login)
+    respuesta = _crear(navegador, ficha, {"nombre": "Torre B", "moneda": "Bs"})
+    assert respuesta.status_code == 403
+    assert respuesta.json()["detalle"] == MENSAJE_PERMISO
+    assert _nombres("silice.db") == []
+
+
+def test_sin_csrf_o_sin_origin_da_403_y_no_crea() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    cuerpo = {"nombre": "Torre B", "moneda": "Bs"}
+    sin_csrf = navegador.post(RUTA, json=cuerpo, headers={"Origin": protegida(ficha)["Origin"]})
+    assert sin_csrf.status_code == 403
+    sin_origen = navegador.post(RUTA, json=cuerpo, headers=protegida(ficha, origen=None))
+    assert sin_origen.status_code == 403
+    assert _nombres("silice.db") == []
+
+
+def test_contrasena_temporal_pendiente_da_403() -> None:
+    navegador, ficha = con_cuenta(app, "tomas")
+    respuesta = _crear(navegador, ficha, {"nombre": "Torre B", "moneda": "Bs"})
+    assert respuesta.status_code == 403
+    assert respuesta.json()["detalle"] == MENSAJE_CAMBIAR_CLAVE
+    assert _nombres("silice.db") == []
+
+
+def test_p13_el_historico_y_el_get_no_cambian() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    historico = navegador.post("/proyectos", json={"nombre": "Histórico"}, headers=protegida(ficha))
+    assert historico.status_code == 201, historico.text
+    assert [p["nombre"] for p in navegador.get(RUTA).json()] == ["Histórico"]
+
+
+def test_el_422_de_forma_habla_de_obra() -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(navegador, ficha, {"moneda": "Bs"})
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {
+        "detalle": "Indique el nombre de la obra (hasta 120 caracteres), la moneda (Bs o USD), "
+        "el tipo de obra y una descripción de hasta 500 caracteres."
+    }
+
+
+# --- Tarea 6b del rediseño del marco: crear en otra carpeta sin cambiar la sesión ----------------
+
+NO_ESTA = "La carpeta no está en la lista: elija una de las que ofrece la barra lateral."
+
+
+def _con_carpeta(carpeta: str | None, nombre: str = "Torre B") -> dict:
+    return {"nombre": nombre, "moneda": "Bs", "carpeta": carpeta}
+
+
+def _actual(navegador: TestClient) -> str:
+    return navegador.get("/v1/casos").json()["actual"]["nombre"]
+
+
+def test_crea_en_otra_carpeta_y_la_sesion_se_queda_donde_estaba(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    olvidadas: list[str] = []
+    monkeypatch.setattr(
+        "aplicacion.hoja_borradores.olvidar", lambda huella: olvidadas.append(huella)
+    )
+    ana, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(ana, ficha, _con_carpeta("Obra Norte.db"))
+    assert respuesta.status_code == 201, respuesta.text
+    assert set(respuesta.json()) == FORMA
+    assert _nombres("Obra Norte.db") == ["Torre B"]
+    assert _nombres("silice.db") == []
+    assert _filas("Obra Norte.db", "select moneda, responsable from moneda_proyecto") == [
+        ("Bs", "Ana <ana>")
+    ]
+    assert _actual(ana) == "silice.db"  # la sesión no cambió de carpeta
+    assert olvidadas == []  # ni olvidó borradores
+    assert ana.get(RUTA).json() == []  # la lista de la sesión sigue siendo la de silice.db
+
+
+def test_la_ficha_de_la_obra_va_a_la_carpeta_de_destino() -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    cuerpo = {**_con_carpeta("Obra Norte.db"), "cliente": "Contratista", "ubicacion": "Maracay"}
+    respuesta = _crear(ana, ficha, cuerpo)
+    assert respuesta.status_code == 201, respuesta.text
+    assert (respuesta.json()["cliente"], respuesta.json()["ubicacion"]) == (
+        "Contratista",
+        "Maracay",
+    )
+    assert _filas("Obra Norte.db", "select cliente, ubicacion from ficha_obra") == [
+        ("Contratista", "Maracay")
+    ]
+    assert _filas("silice.db", "select count(*) from ficha_obra") == [(0,)]
+
+
+def test_la_carpeta_de_la_empresa_se_nombra_empresa() -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    ana.post("/v1/casos/actual", json={"nombre": "Obra Norte.db"}, headers=protegida(ficha))
+    respuesta = _crear(ana, ficha, _con_carpeta("empresa"))
+    assert respuesta.status_code == 201, respuesta.text
+    assert _nombres("silice.db") == ["Torre B"]  # la del proceso
+    assert _nombres("Obra Norte.db") == []
+    assert _actual(ana) == "Obra Norte.db"
+
+
+def test_la_misma_carpeta_de_la_sesion_o_ninguna_es_lo_de_siempre(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # sin CAMBIAR_CASO tampoco hace falta: no cambia de carpeta
+    monkeypatch.setitem(PERMISOS, Accion.CAMBIAR_CASO, frozenset({Rol.ADMINISTRADOR}))
+    ana, ficha = con_cuenta(app, "ana")
+    assert _crear(ana, ficha, _con_carpeta("silice.db", "Uno")).status_code == 201
+    assert _crear(ana, ficha, _con_carpeta("empresa", "Dos")).status_code == 201
+    assert _crear(ana, ficha, _con_carpeta(None, "Tres")).status_code == 201
+    assert _nombres("silice.db") == ["Dos", "Tres", "Uno"]
+
+
+def test_otra_carpeta_sin_cambiar_caso_da_403_y_no_crea(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(PERMISOS, Accion.CAMBIAR_CASO, frozenset({Rol.ADMINISTRADOR}))
+    ana, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(ana, ficha, _con_carpeta("Obra Norte.db"))
+    assert respuesta.status_code == 403
+    assert respuesta.json()["detalle"] == MENSAJE_PERMISO
+    assert _nombres("Obra Norte.db") == []
+    assert _nombres("silice.db") == []
+
+
+def test_con_clave_de_api_no_se_crea_en_otra_carpeta() -> None:
+    cabeceras = {CABECERA: crear_clave_de_prueba()}
+    respuesta = cliente(app).post(RUTA, json=_con_carpeta("Obra Norte.db"), headers=cabeceras)
+    assert respuesta.status_code == 409
+    assert _nombres("Obra Norte.db") == []
+
+
+@pytest.mark.parametrize(
+    "carpeta",
+    [
+        "../silice.db",
+        "..",
+        "a/../Obra Norte.db",
+        "..\\Obra Norte.db",
+        "C:\\x.db",
+        "/etc/x.db",
+        "   ",
+        "CON",
+        "NUL.db",
+        "silice.db:x",
+        r"\\servidor\recurso\x.db",
+    ],
+)
+def test_nombre_con_rutas_da_422_sin_eco_y_no_crea(carpeta: str, _entorno: Path) -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(ana, ficha, _con_carpeta(carpeta))
+    assert respuesta.status_code == 422, respuesta.text
+    assert carpeta.strip() not in respuesta.text or carpeta.strip() == ""
+    assert str(_entorno) not in respuesta.text and _entorno.as_posix() not in respuesta.text
+    assert _nombres("silice.db") == [] and _nombres("Obra Norte.db") == []
+
+
+def test_carpeta_inexistente_da_422_sin_eco_y_no_crea(_entorno: Path) -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(ana, ficha, _con_carpeta("Fantasma"))
+    assert respuesta.status_code == 422, respuesta.text
+    assert respuesta.json() == {"detalle": NO_ESTA}
+    assert "Fantasma" not in respuesta.text
+    assert not (_entorno / "Fantasma.db").exists()  # nada de crear el archivo con la entrada
+    assert _nombres("silice.db") == []
+
+
+def test_carpeta_que_no_es_texto_da_422_de_forma() -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    respuesta = _crear(ana, ficha, {"nombre": "X", "moneda": "Bs", "carpeta": 7})
+    assert respuesta.status_code == 422
+    assert "7" not in respuesta.text
+
+
+def test_todo_o_nada_en_la_carpeta_de_destino() -> None:
+    ana, ficha = con_cuenta(app, "ana")
+    assert _crear(ana, ficha, _con_carpeta("Obra Norte.db")).status_code == 201
+    # el nombre repetido se compara con las obras del DESTINO
+    repetida = _crear(ana, ficha, _con_carpeta("Obra Norte.db", "torre b"))
+    assert repetida.status_code == 409
+    mala = _crear(ana, ficha, {**_con_carpeta("Obra Norte.db", "Otra"), "moneda": "EUR"})
+    assert mala.status_code == 422
+    assert _nombres("Obra Norte.db") == ["Torre B"]
+    # el mismo nombre en la carpeta de la sesión no choca con el del destino
+    assert _crear(ana, ficha, _con_carpeta(None)).status_code == 201
+    assert _nombres("silice.db") == ["Torre B"]
+
+
+def test_si_guardar_la_ficha_falla_no_queda_la_obra_en_la_carpeta_de_destino(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def falla(*_args, **_kwargs):
+        raise RuntimeError("falla ficticia al guardar la ficha")
+
+    ana, ficha = con_cuenta(app, "ana")
+    with monkeypatch.context() as parche:
+        parche.setattr(obras, "guardar_ficha", falla)
+        respuesta = _crear(ana, ficha, _con_carpeta("Obra Norte.db"))
+    assert respuesta.status_code == 500
+    # todo o nada: ni la obra ni la ficha quedaron en el destino, y la sesión sigue donde estaba
+    assert _nombres("Obra Norte.db") == []
+    assert _nombres("silice.db") == []
+    assert _actual(ana) == "silice.db"
+    assert _crear(ana, ficha, _con_carpeta("Obra Norte.db")).status_code == 201
+    assert _nombres("Obra Norte.db") == ["Torre B"]
+
+
+def test_el_esquema_declara_los_errores_de_crear_una_obra() -> None:
+    declaradas = app.openapi()["paths"][RUTA]["post"]["responses"]
+    # 403 sin CAMBIAR_CASO (o sin CSRF), 409 con la clave de API o nombre repetido, 503 sin carpeta
+    # de la empresa
+    assert {"201", "403", "409", "503"} <= set(declaradas)
+    for codigo in ("403", "409", "503"):
+        esquema = declaradas[codigo]["content"]["application/json"]["schema"]
+        assert esquema["$ref"].endswith("/Detalle")
+        assert declaradas[codigo]["description"]

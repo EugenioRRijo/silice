@@ -11,6 +11,8 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import create_engine
 
+from aplicacion import hoja
+from aplicacion.hoja import Borrador
 from asistente.orquestador import MotivoFin, Servicios, Topes, ejecutar, herramientas_visibles
 from asistente.propuestas import EstadoPropuesta, TipoPropuesta
 from asistente.proveedores.base import (
@@ -24,8 +26,6 @@ from asistente.proveedores.base import (
 from asistente.proveedores.guionado import ProveedorGuionado
 from asistente.registro import RegistroIA, anexo_ia, crear_esquema_ia, volcado
 from tests.fixtures.asistente_pedidos import AMBIENTE, FECHA, PEDIDO, catalogo
-from ui import hoja
-from ui.hoja import Borrador
 
 #: 1 USD por ficha de entrada y 2 USD por ficha de salida: el costo de un turno es un entero.
 TARIFA = Tarifa(entrada=Decimal(1_000_000), salida=Decimal(2_000_000))

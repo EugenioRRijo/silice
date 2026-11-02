@@ -1,0 +1,68 @@
+// Revisar un paquete. Sin tarjetas con sombra ni animaciones (DESIGN.md): secciones separadas por un divisor de
+// 1 px y espacio; cifras tabulares.
+
+.silice-revisar {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem 1rem 2rem;
+  min-inline-size: 0;
+}
+
+.silice-revisar__pestana,
+.silice-revisar__resultado {
+  display: grid;
+  gap: 1rem;
+  padding-block-start: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-revisar__seccion {
+  display: grid;
+  gap: 0.75rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--silice-divisor);
+  min-inline-size: 0;
+}
+
+.silice-revisar__datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 3rem;
+  margin: 0;
+
+  dt {
+    color: var(--silice-texto-secundario);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.silice-revisar__cifra {
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-revisar__nota {
+  max-inline-size: 75ch;
+  margin: 0;
+  color: var(--silice-texto-secundario);
+  overflow-wrap: anywhere;
+}
+
+.silice-revisar__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.silice-revisar__formulario {
+  display: grid;
+  gap: 1rem;
+  max-inline-size: 36rem;
+}
+
+.silice-revisar .cds--select {
+  max-inline-size: 24rem;
+}

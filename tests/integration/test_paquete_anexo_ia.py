@@ -20,6 +20,7 @@ from datetime import datetime
 import pytest
 from sqlalchemy import select
 
+from aplicacion import entrega
 from asistente.propuestas import EstadoPropuesta
 from asistente.registro import anexo_ia, crear_esquema_ia
 from core import models
@@ -32,7 +33,6 @@ from tests.fixtures.asistente_base import PROYECTO, QUIEN, VERSION, plantilla_s4
 from tests.fixtures.asistente_pedidos import AMBIENTE, PEDIDO
 from tests.fixtures.hoja_en_base import plantilla_of001
 from tests.fixtures.instalacion import instalacion
-from ui import entrega
 
 AHORA = datetime(2026, 10, 13, 9, 0)
 CONTRASENA_FIRMA = "una contrasena de firma larga"

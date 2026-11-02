@@ -14,6 +14,7 @@ comparte transacción con ningún caso). El reloj `ahora` y la espera `dormir` s
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import secrets
 import threading
@@ -26,7 +27,8 @@ from pathlib import Path
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from seguridad import eventos, sesiones
@@ -39,9 +41,13 @@ MENSAJE_BLOQUEO = (
     "Demasiados intentos fallidos. Espere 15 minutos o pida al administrador que desbloquee "
     "la cuenta."
 )
+MENSAJE_BASE_OCUPADA = "La base está ocupada; reintente en unos segundos."
 MENSAJE_CODIGO = "El código de instalación no es válido o ya se usó."
 FALLOS_PARA_BLOQUEAR = 5
 BLOQUEO = timedelta(minutes=15)
+#: Un código de RESTABLECIMIENTO sirve menos de 24 h (a las 24:00 exactas ya no); el de la primera
+#: vez no caduca (BCP-1, diseño §3.3).
+CADUCIDAD_RESTABLECIMIENTO = timedelta(hours=24)
 FRENO_FALLOS = 20
 FRENO_VENTANA = timedelta(minutes=10)
 FRENO_ESPERA_MAXIMA_S = 60.0
@@ -54,6 +60,8 @@ CLAVE_INTENTOS_CODIGO = "!codigo-de-instalacion"
 NOMBRE_ARCHIVO_CODIGO = "codigo_instalacion.txt"
 PATRON_LOGIN = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
 PURGA_DE_INEXISTENTES = timedelta(hours=24)
+#: Lo que se guarda (evento y contador) cuando lo tecleado no puede ser un usuario.
+LOGIN_NO_VALIDO = "(usuario no válido)"
 
 _hasher = PasswordHasher()
 _semaforo = threading.BoundedSemaphore(VERIFICACIONES_SIMULTANEAS)
@@ -138,6 +146,22 @@ def validar_contrasena(contrasena: str, login: str = "") -> None:
         raise ContrasenaInvalida("Esa contraseña es demasiado común; elija otra.")
 
 
+def _tomar_escritura(session: Session) -> None:
+    """Toma el bloqueo de escritura de SQLite (`BEGIN IMMEDIATE`) ANTES de leer lo que se va a
+    comprobar. pysqlite no abre transacción en un SELECT y el motor de `seguridad.base` no
+    controla el `BEGIN`: sin esto, dos administradores que se desactivan a la vez leen ambos
+    «queda otro» y confirman ambos, y no queda ninguno. El segundo espera (`busy_timeout`) hasta
+    que el primero confirma y entonces ve su resultado. Si la sesión ya escribió, su
+    transacción ya tiene el bloqueo y no se repite."""
+    conexion = session.connection()
+    if not conexion.connection.dbapi_connection.in_transaction:
+        try:
+            conexion.exec_driver_sql("BEGIN IMMEDIATE")
+        except OperationalError as error:  # venció `busy_timeout`: otra escritura no termina
+            session.rollback()
+            raise ValueError(MENSAJE_BASE_OCUPADA) from error
+
+
 def _huella(contrasena: str) -> str:
     with _semaforo:
         return _hasher.hash(contrasena)
@@ -209,6 +233,22 @@ def _fallar(session: Session, fila: IntentoAcceso, ahora: datetime, freno: Freno
     return False
 
 
+def clave_de_intento(login: str) -> str:
+    """El login normalizado si puede ser un usuario (`PATRON_LOGIN`); si no, un marcador fijo.
+
+    Lo que un anónimo teclea en el campo usuario se guarda en `evento_acceso` y se muestra al
+    administrador: una contraseña pegada ahí quedaría legible. Una cuenta real siempre cumple el
+    patrón (`validar_login`), así que el marcador nunca es el login de nadie: su contador y su
+    bloqueo, compartidos por todo texto imposible, no pueden negarle el acceso a una persona
+    real, y cada fallo sigue alimentando el freno global (`_fallar`).
+
+    Limitación conocida: una contraseña que cumpla `PATRON_LOGIN` (3 a 40 caracteres de
+    `[a-z0-9._-]`, sin espacios ni mayúsculas) se guarda como si fuera un login; no se distingue
+    de uno. No se resuelve con un hash del marcador (decisión de la revisión)."""
+    normal = normalizar_login(login)
+    return normal if PATRON_LOGIN.fullmatch(normal) else LOGIN_NO_VALIDO
+
+
 def _bloqueado(fila: IntentoAcceso, ahora: datetime) -> bool:
     """Bloqueado mientras `ahora < bloqueado_hasta`; al llegar la hora se libera y se reinicia."""
     if fila.bloqueado_hasta is None:
@@ -238,7 +278,7 @@ def autenticar(
     espera = freno.espera(ahora)
     if espera:
         dormir(espera)
-    clave = normalizar_login(login)[:60]
+    clave = clave_de_intento(login)
     fila = _intento(session, clave)
     if _bloqueado(fila, ahora):
         eventos.registrar(session, "bloqueo", ahora, login=clave, ip=ip, detalle="login bloqueado")
@@ -274,7 +314,8 @@ def purgar_intentos_de_inexistentes(session: Session, ahora: datetime) -> int:
     """Borra los contadores de logins que no existen y llevan 24 h sin fallar (S3 §5.4)."""
     existentes = set(session.scalars(select(Usuario.login)))
     viejos = [
-        fila for fila in session.scalars(select(IntentoAcceso))
+        fila
+        for fila in session.scalars(select(IntentoAcceso))
         if fila.login_normalizado not in existentes
         and not fila.login_normalizado.startswith("!")
         and fila.ultimo_fallo is not None
@@ -289,9 +330,54 @@ def purgar_intentos_de_inexistentes(session: Session, ahora: datetime) -> int:
 # --- primer administrador y código de instalación -------------------------------------------
 
 
+#: Cifras que **nunca** salen en un código (el alfabeto no tiene 0, 1, 8 ni 9) y que quien copia a
+#: mano escribe por la letra que se les parece. Leerlas como esa letra es inequívoco: ningún código
+#: real cambia de huella. No se traduce la L (es una letra del alfabeto) ni el 9.
+_CIFRAS_POR_LETRAS = str.maketrans({"0": "O", "1": "I", "8": "B"})
+_BLOQUE = r"[A-Z0-9]{4}"
+#: Lo que separa los bloques de un código pegado: guiones (también el largo de un procesador de
+#: texto), con o sin espacios alrededor; o solo espacios.
+_SEPARADORES = (r"\s*[-‐-―]\s*", r"\s+")
+_RACHAS = tuple(
+    re.compile(rf"(?<!\w){_BLOQUE}(?:{separador}{_BLOQUE})*(?!\w)") for separador in _SEPARADORES
+)
+
+
+def _grupo_con_forma_de_codigo(texto: str) -> str | None:
+    """El único grupo de cinco bloques de cuatro del texto (la línea entera de la consola, el
+    archivo con una nota): primero separados por guion, luego por espacios. Una racha de bloques
+    de otro largo no cuenta (los separadores no son letras ni cifras: cinco bloques son 20); con
+    dos grupos no se adivina cuál es (`None`)."""
+    for racha in _RACHAS:
+        grupos = [
+            m.group()
+            for m in racha.finditer(texto)
+            if sum(c.isalnum() for c in m.group()) == LONGITUD_CODIGO
+        ]
+        if grupos:
+            return grupos[0] if len(grupos) == 1 else None
+    return None
+
+
+def normalizar_codigo(codigo: str) -> str:
+    """Lo que se compara de un código escrito o pegado: mayúsculas; 0, 1 y 8 leídos como O, I y
+    B; si el texto trae un único grupo con la forma del código, solo ese grupo; y sin nada que no
+    sea letra o cifra. Lo que no es un código sigue sin serlo: solo cambia qué huella se busca,
+    una por intento, y el freno cuenta el intento igual."""
+    texto = codigo.upper().translate(_CIFRAS_POR_LETRAS)
+    grupo = _grupo_con_forma_de_codigo(texto)
+    return "".join(c for c in (texto if grupo is None else grupo) if c.isalnum())
+
+
 def _huella_codigo(codigo: str) -> str:
-    limpio = "".join(c for c in codigo.upper() if c.isalnum())
-    return hashlib.sha256(limpio.encode("ascii", "ignore")).hexdigest()
+    return hashlib.sha256(normalizar_codigo(codigo).encode("ascii", "ignore")).hexdigest()
+
+
+def _caducado(pendiente: CodigoInstalacion, ahora: datetime) -> bool:
+    return (
+        pendiente.motivo == "restablecimiento"
+        and ahora - pendiente.creado >= CADUCIDAD_RESTABLECIMIENTO
+    )
 
 
 def formato_codigo(codigo: str) -> str:
@@ -302,31 +388,97 @@ def emitir_codigo(
     session: Session, carpeta: Path, ahora: datetime, *, motivo: str = "primera vez"
 ) -> str:
     """Un código de instalación de un solo uso: 20 caracteres base32 (100 bits) de `secrets`.
-    Guarda su SHA-256 y lo escribe en `carpeta/codigo_instalacion.txt`. Confirma."""
+    Guarda su SHA-256 y lo escribe en `carpeta/codigo_instalacion.txt`. Toma el bloqueo de
+    escritura, **invalida los códigos pendientes anteriores** (`usado` = `ahora`: solo el último
+    sirve y el archivo siempre lleva el último), escribe el archivo (atómico) con el bloqueo aún
+    tomado y solo entonces confirma; si escribir falla, deshace y la base queda como estaba."""
     if motivo not in {"primera vez", "restablecimiento"}:
         raise ValueError("motivo de codigo desconocido")
+    _tomar_escritura(session)
+    reemplazados = session.execute(
+        update(CodigoInstalacion).where(CodigoInstalacion.usado.is_(None)).values(usado=ahora)
+    ).rowcount
     codigo = "".join(secrets.choice(ALFABETO_CODIGO) for _ in range(LONGITUD_CODIGO))
     session.add(CodigoInstalacion(huella=_huella_codigo(codigo), creado=ahora, motivo=motivo))
-    eventos.registrar(session, "codigo de instalacion", ahora, detalle=motivo)
-    session.commit()
-    carpeta.mkdir(parents=True, exist_ok=True)
-    (carpeta / NOMBRE_ARCHIVO_CODIGO).write_text(formato_codigo(codigo) + "\n", encoding="ascii")
+    detalle = motivo if not reemplazados else f"{motivo}; reemplaza {reemplazados} pendiente(s)"
+    eventos.registrar(session, "codigo de instalacion", ahora, detalle=detalle)
+    try:
+        # con el bloqueo tomado y ANTES de confirmar: si escribir falla, base y archivo no divergen
+        _escribir_archivo_del_codigo(carpeta, formato_codigo(codigo) + "\n")
+        session.commit()
+    except BaseException:
+        session.rollback()
+        raise
     return codigo
+
+
+def _escribir_archivo_del_codigo(carpeta: Path, texto: str) -> None:
+    """Escribe `codigo_instalacion.txt` de forma atómica: un temporal en la misma carpeta y
+    `os.replace`. Quien lo lea ve el archivo anterior o el nuevo entero, nunca a medias. El texto
+    no se registra ni se devuelve; si algo falla, el temporal no queda."""
+    carpeta.mkdir(parents=True, exist_ok=True)
+    temporal = carpeta / f"{NOMBRE_ARCHIVO_CODIGO}.{secrets.token_hex(4)}.tmp"
+    try:
+        temporal.write_text(texto, encoding="ascii")
+        os.replace(temporal, carpeta / NOMBRE_ARCHIVO_CODIGO)
+    except BaseException:
+        temporal.unlink(missing_ok=True)
+        raise
 
 
 def hay_usuarios(session: Session) -> bool:
     return bool(session.scalar(select(func.count()).select_from(Usuario)))
 
 
+#: Lo que se lee de `codigo_instalacion.txt` para compararlo (el archivo lleva 25 bytes).
+_LECTURA_DEL_ARCHIVO = 1024
+
+
+def leer_archivo_del_codigo(archivo: Path) -> str | None:
+    """Lo que lleva `codigo_instalacion.txt`: como mucho 1 KiB, decodificado con `errors="replace"`
+    (un archivo enorme o con bytes inválidos no rompe a quien lo lee). `None` si no se puede leer.
+    Es el único lugar que lo lee (la base y el lanzador)."""
+    try:
+        with archivo.open("rb") as abierto:
+            return abierto.read(_LECTURA_DEL_ARCHIVO).decode("utf-8", "replace")
+    except OSError:
+        return None
+
+
+def _archivo_lleva_un_codigo_vigente(session: Session, carpeta: Path, ahora: datetime) -> bool:
+    """`codigo_instalacion.txt` existe y su código es uno que la base aceptaría ahora: vigente y,
+    si es de restablecimiento, sin caducar. Un archivo rancio (la base se recreó o se restauró y
+    el archivo quedó), vacío o ilegible no lo lleva. El texto leído no sale de aquí."""
+    texto = leer_archivo_del_codigo(carpeta / NOMBRE_ARCHIVO_CODIGO)
+    if texto is None:
+        return False
+    pendiente = session.get(CodigoInstalacion, _huella_codigo(texto))
+    return pendiente is not None and pendiente.usado is None and not _caducado(pendiente, ahora)
+
+
 def preparar_primera_vez(session: Session, carpeta: Path, ahora: datetime) -> str | None:
-    """Si no hay cuentas ni un código vigente, emite el de la primera vez (la pantalla de acceso
-    lo llama al arrancar). Devuelve el código o `None` si no hacía falta."""
-    vigente = session.scalar(
-        select(func.count()).select_from(CodigoInstalacion).where(CodigoInstalacion.usado.is_(None))
-    )
-    if hay_usuarios(session) or vigente:
+    """Si no hay cuentas, asegura que `codigo_instalacion.txt` lleve un código que la base acepte:
+    emite el de la primera vez (invalida los pendientes y reescribe el archivo) si falta el
+    archivo (alguien lo borró y el código vigente quedó sin dueño) o si su código no es uno
+    vigente de la base (archivo rancio: la base se recreó o se restauró y el archivo quedó; antes
+    mostraba un código que la base no conoce y el reclamo fallaba para siempre). Con cuentas no
+    toca nada, ni el archivo de un restablecimiento. Toma el bloqueo de escritura antes de mirar.
+    Devuelve el código o `None` si no hacía falta."""
+    _tomar_escritura(session)
+    if hay_usuarios(session) or _archivo_lleva_un_codigo_vigente(session, carpeta, ahora):
+        session.rollback()  # no se escribió nada: se suelta el bloqueo
         return None
     return emitir_codigo(session, carpeta, ahora)
+
+
+def _rechazar_codigo(session: Session, ahora: datetime, freno: FrenoGlobal, ip: str) -> None:
+    """Un código inválido, usado, caducado o perdido en una carrera: cuenta el fallo (contador
+    global del código y freno), lo registra sin el código y lanza el error de siempre."""
+    fila = _intento(session, CLAVE_INTENTOS_CODIGO)
+    bloquea = _fallar(session, fila, ahora, freno)
+    eventos.registrar(session, "fallo", ahora, login="(codigo)", ip=ip, detalle="codigo")
+    session.commit()
+    raise CuentaBloqueada(MENSAJE_BLOQUEO) if bloquea else ErrorDeAcceso(MENSAJE_CODIGO)
 
 
 def reclamar_instalacion(
@@ -341,52 +493,97 @@ def reclamar_instalacion(
     ip: str = "",
     freno: FrenoGlobal | None = None,
     dormir: Dormir = time.sleep,
+    ademas_arma: bool = False,
 ) -> Usuario:
     """Crea el primer administrador (o, con un código de restablecimiento, devuelve el acceso a
     un administrador). El código solo se acepta mientras no haya cuentas o haya un
-    restablecimiento pendiente, con el mismo freno que el acceso; al usarse se borra el archivo
-    y se invalida la huella."""
+    restablecimiento pendiente (y este, menos de 24 h), con el mismo freno que el acceso; al
+    usarse se borra el archivo y se invalida la huella.
+
+    Dos reclamos del mismo código nunca crean dos cuentas: el bloqueo de escritura se toma
+    antes de leer y el uso del código es un `UPDATE ... WHERE usado IS NULL` que debe afectar
+    una fila. `ademas_arma` da también el rol de armar a la cuenta NUEVA (no cambia nada más en
+    un restablecimiento). `ValueError(MENSAJE_BASE_OCUPADA)` si otra escritura no termina."""
     freno = FRENO if freno is None else freno
     espera = freno.espera(ahora)
     if espera:
         dormir(espera)
+    # Bloqueo de escritura ANTES de leer si el código sigue vivo y si hay cuentas: dos reclamos
+    # simultáneos del mismo código se serializan (el segundo espera y ve `usado` fijado).
+    _tomar_escritura(session)
     fila = _intento(session, CLAVE_INTENTOS_CODIGO)
     if _bloqueado(fila, ahora):
         session.commit()
         raise CuentaBloqueada(MENSAJE_BLOQUEO)
     pendiente = session.get(CodigoInstalacion, _huella_codigo(codigo))
+    vigente = pendiente is not None and pendiente.usado is None
+    caducado = vigente and _caducado(pendiente, ahora)
     aceptable = (
-        pendiente is not None
-        and pendiente.usado is None
+        vigente
+        and not caducado
         and (not hay_usuarios(session) or pendiente.motivo == "restablecimiento")
     )
     if not aceptable:
-        bloquea = _fallar(session, fila, ahora, freno)
-        eventos.registrar(session, "fallo", ahora, login="(codigo)", ip=ip, detalle="codigo")
-        session.commit()
-        raise CuentaBloqueada(MENSAJE_BLOQUEO) if bloquea else ErrorDeAcceso(MENSAJE_CODIGO)
-    login_normal = validar_login(login)
-    validar_contrasena(contrasena, login_normal)
-    usuario = session.scalar(select(Usuario).where(Usuario.login == login_normal))
+        _rechazar_codigo(session, ahora, freno, ip)
+    try:
+        login_normal = validar_login(login)
+        validar_contrasena(contrasena, login_normal)
+    except ValueError:
+        session.rollback()  # la forma estaba mal: no se gasta el código y se suelta el bloqueo
+        raise
     huella = _huella(contrasena)
+    # Defensa extra: el uso del código es atómico. Si otra transacción lo gastó entre la lectura
+    # y aquí (el bloqueo de arriba no debería permitirlo), se rechaza como un código usado.
+    gastado = session.execute(
+        update(CodigoInstalacion)
+        .where(CodigoInstalacion.huella == pendiente.huella, CodigoInstalacion.usado.is_(None))
+        .values(usado=ahora)
+    )
+    if gastado.rowcount != 1:
+        session.rollback()
+        _rechazar_codigo(session, ahora, freno, ip)
+    motivo = pendiente.motivo
+    usuario = session.scalar(select(Usuario).where(Usuario.login == login_normal))
     if usuario is None:
+        roles = [Rol.ADMINISTRADOR, *([Rol.ARMA] if ademas_arma else [])]
         usuario = Usuario(
-            login=login_normal, nombre=nombre.strip() or login_normal, huella_clave=huella,
-            roles=texto_de_roles([Rol.ADMINISTRADOR]), activo=True, debe_cambiar_clave=False,
-            restablecida_por_admin=False, creado=ahora, creado_por="código de instalación",
+            login=login_normal,
+            nombre=nombre.strip() or login_normal,
+            huella_clave=huella,
+            roles=texto_de_roles(roles),
+            activo=True,
+            debe_cambiar_clave=False,
+            restablecida_por_admin=False,
+            creado=ahora,
+            creado_por="código de instalación",
         )
         session.add(usuario)
         session.flush()
     else:  # restablecimiento: el administrador recupera su cuenta
+        eran = roles_de(usuario.roles)
         usuario.huella_clave, usuario.activo = huella, True
-        usuario.roles = texto_de_roles({*roles_de(usuario.roles), Rol.ADMINISTRADOR})
+        usuario.roles = texto_de_roles({*eran, Rol.ADMINISTRADOR})
         usuario.debe_cambiar_clave = False
         sesiones.cerrar_todas(session, usuario.id, "restablecimiento")
-    pendiente.usado = ahora
+        if Rol.ADMINISTRADOR not in eran:
+            eventos.registrar(
+                session,
+                "cambio de roles",
+                ahora,
+                login=login_normal,
+                usuario_id=usuario.id,
+                ip=ip,
+                detalle=f"{usuario.roles}; promovida a administrador por restablecimiento",
+            )
     fila.fallos_seguidos, fila.bloqueado_hasta = 0, None
     eventos.registrar(
-        session, "alta", ahora, login=login_normal, usuario_id=usuario.id, ip=ip,
-        detalle=f"administrador por {pendiente.motivo}",
+        session,
+        "alta",
+        ahora,
+        login=login_normal,
+        usuario_id=usuario.id,
+        ip=ip,
+        detalle=f"administrador por {motivo}",
     )
     session.commit()
     (carpeta / NOMBRE_ARCHIVO_CODIGO).unlink(missing_ok=True)
@@ -394,8 +591,10 @@ def reclamar_instalacion(
 
 
 def emitir_codigo_de_restablecimiento(session: Session, carpeta: Path, ahora: datetime) -> str:
-    """`scripts/restablecer_administrador.py` (exige acceso al equipo): un código nuevo y cierra
-    las sesiones de los administradores (S3 §5.4)."""
+    """`python -m operacion restablecer-administrador` (exige acceso al equipo): un código nuevo
+    (caduca a las 24 h; invalida los pendientes) y cierra las sesiones de los administradores
+    (S3 §5.4)."""
+    _tomar_escritura(session)
     for usuario in session.scalars(select(Usuario)):
         if Rol.ADMINISTRADOR in roles_de(usuario.roles):
             sesiones.cerrar_todas(session, usuario.id, "restablecimiento")
@@ -421,15 +620,24 @@ def crear_usuario(
     if session.scalar(select(Usuario.id).where(Usuario.login == login_normal)) is not None:
         raise ValueError(f"Ya existe una cuenta con el usuario {login_normal!r}.")
     usuario = Usuario(
-        login=login_normal, nombre=nombre.strip() or login_normal,
-        huella_clave=_huella(contrasena_temporal), roles=texto_de_roles(roles), activo=True,
-        debe_cambiar_clave=True, restablecida_por_admin=False, creado=ahora,
+        login=login_normal,
+        nombre=nombre.strip() or login_normal,
+        huella_clave=_huella(contrasena_temporal),
+        roles=texto_de_roles(roles),
+        activo=True,
+        debe_cambiar_clave=True,
+        restablecida_por_admin=False,
+        creado=ahora,
         creado_por=_quien(actor),
     )
     session.add(usuario)
     session.flush()
     eventos.registrar(
-        session, "alta", ahora, login=login_normal, usuario_id=usuario.id,
+        session,
+        "alta",
+        ahora,
+        login=login_normal,
+        usuario_id=usuario.id,
         detalle=f"roles {usuario.roles}; por {actor.login}",
     )
     session.commit()
@@ -439,15 +647,22 @@ def crear_usuario(
 def cambiar_roles(
     session: Session, actor: Usuario, usuario_id: int, roles: Iterable[Rol | str], ahora: datetime
 ) -> Usuario:
+    _tomar_escritura(session)
+    session.refresh(actor)  # puede haber sido desactivado mientras tanto
     _exigir_administrador(actor)
     usuario = _usuario(session, usuario_id)
+    session.refresh(usuario)
     nuevos = texto_de_roles(roles)
     if Rol.ADMINISTRADOR in roles_de(usuario.roles) and Rol.ADMINISTRADOR not in roles_de(nuevos):
         _exigir_otro_administrador(session, usuario)
     usuario.roles = nuevos
     sesiones.cerrar_todas(session, usuario.id, "cambio de roles")
     eventos.registrar(
-        session, "cambio de roles", ahora, login=usuario.login, usuario_id=usuario.id,
+        session,
+        "cambio de roles",
+        ahora,
+        login=usuario.login,
+        usuario_id=usuario.id,
         detalle=f"{nuevos}; por {actor.login}",
     )
     session.commit()
@@ -456,7 +671,12 @@ def cambiar_roles(
 
 def _exigir_otro_administrador(session: Session, usuario: Usuario) -> None:
     otros = [
-        u for u in session.scalars(select(Usuario).where(Usuario.activo.is_(True)))
+        u
+        for u in session.scalars(
+            select(Usuario)
+            .where(Usuario.activo.is_(True))
+            .execution_options(populate_existing=True)
+        )
         if u.id != usuario.id and Rol.ADMINISTRADOR in roles_de(u.roles)
     ]
     if not otros:
@@ -465,14 +685,21 @@ def _exigir_otro_administrador(session: Session, usuario: Usuario) -> None:
 
 def desactivar(session: Session, actor: Usuario, usuario_id: int, ahora: datetime) -> None:
     """Las cuentas no se borran: se desactivan, para que sus registros sigan teniendo dueño."""
+    _tomar_escritura(session)
+    session.refresh(actor)  # puede haber sido desactivado mientras tanto
     _exigir_administrador(actor)
     usuario = _usuario(session, usuario_id)
+    session.refresh(usuario)
     if Rol.ADMINISTRADOR in roles_de(usuario.roles):
         _exigir_otro_administrador(session, usuario)
     usuario.activo = False
     sesiones.cerrar_todas(session, usuario.id, "cuenta desactivada")
     eventos.registrar(
-        session, "baja", ahora, login=usuario.login, usuario_id=usuario.id,
+        session,
+        "baja",
+        ahora,
+        login=usuario.login,
+        usuario_id=usuario.id,
         detalle=f"por {actor.login}",
     )
     session.commit()
@@ -483,7 +710,11 @@ def reactivar(session: Session, actor: Usuario, usuario_id: int, ahora: datetime
     usuario = _usuario(session, usuario_id)
     usuario.activo = True
     eventos.registrar(
-        session, "alta", ahora, login=usuario.login, usuario_id=usuario.id,
+        session,
+        "alta",
+        ahora,
+        login=usuario.login,
+        usuario_id=usuario.id,
         detalle=f"reactivada por {actor.login}",
     )
     session.commit()
@@ -514,7 +745,11 @@ def restablecer(
         fila.fallos_seguidos, fila.bloqueado_hasta = 0, None
     sesiones.cerrar_todas(session, usuario.id, "restablecimiento")
     eventos.registrar(
-        session, "restablecimiento", ahora, login=usuario.login, usuario_id=usuario.id,
+        session,
+        "restablecimiento",
+        ahora,
+        login=usuario.login,
+        usuario_id=usuario.id,
         detalle=f"por {actor.login}",
     )
     session.commit()
@@ -531,8 +766,6 @@ def cambiar_contrasena(
     usuario.huella_clave = _huella(nueva)
     usuario.debe_cambiar_clave, usuario.restablecida_por_admin = False, False
     sesiones.cerrar_todas(session, usuario.id, "cambio de clave")
-    eventos.registrar(
-        session, "cambio de clave", ahora, login=usuario.login, usuario_id=usuario.id
-    )
+    eventos.registrar(session, "cambio de clave", ahora, login=usuario.login, usuario_id=usuario.id)
     session.commit()
     return sesiones.abrir(session, usuario, ahora)

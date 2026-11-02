@@ -81,9 +81,7 @@ def test_computar_con_nombre_hostil_no_escribe_fuera(cliente, raiz_temporal, ind
     nombre = _con_nombres_hostiles(raiz_temporal, ".csv")[indice]
     contenido = (RAIZ / "data" / "samples" / "industrial" / "activos_planta.csv").read_bytes()
 
-    r = cliente.post(
-        "/computos/industrial", files={"archivo": (nombre, contenido, "text/csv")}
-    )
+    r = cliente.post("/computos/industrial", files={"archivo": (nombre, contenido, "text/csv")})
 
     assert r.status_code == 200, r.text
     assert r.json()

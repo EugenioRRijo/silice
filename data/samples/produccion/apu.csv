@@ -1,0 +1,14 @@
+codigo;descripcion;unidad;material;unidad_material;cantidad;precio
+MOV-01;Movilización y desmovilización de equipos (ficticia);u;Movilización de equipos (ficticia);u;1;2.000
+C-000.000.002;Base granular;m3;Costo propio de agregado PC-19;t;2,2;6
+C-000.000.004;Imprimación;m2;Preparación de superficie (ficticia);m2;1;0,40
+C-000.000.005;Ligante de imprimación;l;Emulsión asfáltica de imprimación (ficticia);l;1;0,80
+C-000.000.006;Riego de adherencia;m2;Preparación de superficie (ficticia);m2;1;0,40
+C-000.000.007;Ligante del riego de adherencia;l;Emulsión asfáltica de riego (ficticia);l;1;0,80
+C-000.000.008;Carpeta asfáltica;m2;Colocación de carpeta (ficticia);m2;1;1,50
+C-000.000.009;Mezcla asfáltica de la carpeta;t;Costo propio de mezcla MZ-C;t;1;51,65
+C-000.000.010;Bacheo;m3;Corte y limpieza de bache (ficticio);m3;1;25
+C-000.000.011;Mezcla asfáltica del bacheo;t;Costo propio de mezcla MZ-C;t;1;51,65
+C-000.000.012;Demarcación con línea continua;m;Premarcado de línea (ficticio);m;1;0,10
+C-000.000.014;Transporte de la mezcla asfáltica;t·km;Flete de mezcla (ficticio);t·km;1;0,25
+C-000.000.015;Pintura de demarcación;l;Pintura de tráfico (ficticia);l;1;6

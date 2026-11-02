@@ -6,9 +6,11 @@ un tercero escribe un adaptador de dominio nuevo. La constitución del proyecto 
 [NORMAS.md](../NORMAS.md); la arquitectura completa (vistas 4+1), [arquitectura.md](arquitectura.md);
 el modelo de datos, [modelo_datos.md](modelo_datos.md). Este manual no los repite: los recorre.
 
+> **Enmienda del 2026‑10‑21 (retiro de Streamlit).** La interfaz de Streamlit (`ui/`) y su extra `ui` ya no existen: la interfaz es React (`frontend-desktop/`) servida por la API en `/app/`, en un solo proceso Uvicorn, y la lógica que estaba en `ui/` vive en `aplicacion/`. Las secciones 10.3 y 11 y las menciones a páginas, `AppTest` o `st.*` describen cómo se construyó la interfaz anterior y se conservan como registro; léase `ui.X` como `aplicacion.X` donde el módulo existe. Las pruebas citadas como «retirado con Streamlit» ya no existen.
+
 ## 1. La regla que gobierna todo
 
-`core/` no conoce a `adapters/`, `ml/`, `ui/` ni `api/`. Los adaptadores importan de `core`
+`core/` no conoce a `adapters/`, `ml/`, `aplicacion/` ni `api/`. Los adaptadores importan de `core`
 **únicamente `core.contracts`**. La regla no es una convención de estilo: es la hipótesis central
 de la tesis, y está vigilada por dos guardias automáticas:
 
@@ -23,7 +25,7 @@ documentan en `docs/bitacora/`, no se parchean (NORMAS.md §9).
 ## 2. Entorno de desarrollo
 
 ```
-uv sync --extra ui --extra api --extra civil --extra planos --extra ml   # todo
+uv sync --extra api --extra civil --extra planos --extra ml   # todo
 uv run pytest -W error                                    # la suite (advertencia = error)
 uv run ruff check .                                       # estilo (E, F, W, I, B, UP, N)
 ```
@@ -56,12 +58,12 @@ usuario en la 1.0.0, T19).
 - Clonar o copiar la carpeta del proyecto y, dentro de ella, ejecutar:
 
 ```
-uv sync --extra ui --extra api --extra civil --extra planos --extra ml
+uv sync --extra api --extra civil --extra planos --extra ml
 ```
 
 No hay más pasos (RNF‑07). Notas:
 
-- El extra `ui` exige **Streamlit 1.62 o superior**: el menú superior (`position="top"`) no existe en versiones anteriores.
+- El extra `api` trae FastAPI, Uvicorn y `python-multipart` (las subidas de archivos); el extra `ui` ya no existe. La interfaz de React se compila con `npm run build` en `frontend-desktop/` (Node ≥ 22) y Uvicorn sirve `frontend-desktop/dist` en `/app/`.
 - El extra `planos` instala `ezdxf` (importar planos DXF en la hoja del proyecto) y `civil`,
   `ifcopenshell` (importar planos IFC); sin ellos, importar un plano avisa que falta el componente.
 - El extra `civil` instala `ifcopenshell` (modelos IFC); `ml` instala scikit‑learn y
@@ -83,7 +85,8 @@ No hay más pasos (RNF‑07). Notas:
 | `adapters/{civil,telecom,industrial,sistemas}` | fuente de cada dominio → `ItemComputo` | sección 4 |
 | `ml/` | normalización, anomalías, predicción | no conoce la base de datos: recibe datos planos |
 | `api/` | FastAPI sobre el núcleo | montos como texto; OpenAPI exportado a `docs/api.json` |
-| `ui/` | Streamlit multipágina | presentación; llama a `core` directo. La composición de APU a mano vive en la capa pura `ui/composicion.py` (sección 10.2). Tres páginas importan de `scripts/`: el Inicio siembra con `scripts.seed_demo`, la de actualización con `scripts.seed` y el simulador con `scripts.simular_lista` |
+| `aplicacion/` | lógica de la aplicación sin interfaz | la usan `api/` y `asistente/`; la composición de APU a mano vive en `aplicacion/composicion.py` (sección 10.2). Sin Streamlit ni FastAPI |
+| `frontend-desktop/` | interfaz de React (Vite) | se compila a `dist/`, que sirve `api/interfaz.py` en `/app/` |
 | `scripts/` | operaciones reproducibles | índice en [scripts/README.md](../scripts/README.md) (sección 8) |
 
 El flujo completo de UC‑01: `AdaptadorDominio.extraer(fuente)` → `list[ItemComputo]` →
@@ -187,7 +190,7 @@ cantidad la produjo una regla paramétrica, `regla` lleva la expresión y `param
    módulo nuevo sin registrarlo en ningún lado) y `git diff --stat core/` → vacío.
 6. **Cablear la entrada (opcional).** Para que la fuente se pueda subir por la interfaz:
    añadir el caso en `api/rutas/computos.py::_adaptador` y en la página
-   `ui/paginas/elaborar.py`. Son las dos únicas listas de despacho; el núcleo no se toca.
+   `ui/paginas/elaborar.py` (retirada). Son las dos únicas listas de despacho; el núcleo no se toca.
 
 ### 4.3 Los límites, dichos honestamente
 
@@ -336,12 +339,12 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
   partida no sume exactamente 1, que nombre una partida que el presupuesto no tiene o con una
   fracción que no es un decimal responde **422 sin guardar** (las dos primeras son `PlanInvalido`,
   un `ValueError`: la regla del plan vive una sola vez, en `core.budget.curva`). La pantalla hace lo mismo con la tabla
-  «Plan de trabajo» (`ui.elaboracion.plan_desde_filas` y `plan_de`). Fracciones negativas o
+  «Plan de trabajo» (`aplicacion.elaboracion.plan_desde_filas` y `plan_de`). Fracciones negativas o
   mayores que 1 pasan si la partida suma 1: es la regla de `core.budget.curva`, y ni la pantalla ni
   la API añaden otra (INV‑101, a limitaciones; lo fija
   `tests/integration/test_api_plan_y_rendimiento.py::test_fracciones_fuera_de_0_1_pasan_si_la_partida_suma_1`).
   Un `plan` vacío no es la ausencia del campo: cada partida suma 0 y responde 422
-  (`::test_un_plan_vacio_responde_422_sin_guardar`).
+  (`tests/integration/test_api_plan_y_rendimiento.py::test_un_plan_vacio_responde_422_sin_guardar`).
 - **El 409 del flujo 3b (UC‑01; INV‑088).** Si a una partida le falta un rendimiento **estimado**
   vigente (de fecha no posterior a la del presupuesto), `POST /presupuestos` responde **409 sin
   guardar** con el esquema `RendimientosPorDeclararRespuesta`: `detalle` y, por partida,
@@ -352,7 +355,7 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
   desbloquea, porque la elaboración usa solo el estimado (`Catalogo._rendimiento_estimado`). Si lo
   que falta es la lista de precios vigente o un precio, el 409 es el de siempre, solo con
   `detalle`. El criterio «estimado vigente» está escrito en `api.rutas.presupuestos` y en
-  `ui.elaboracion` porque la API no puede importar `ui/` y C5 no tocó `core.catalog`: si cambia la
+  `aplicacion.elaboracion` porque la API no puede importar `ui/` y C5 no tocó `core.catalog`: si cambia la
   política, hay que cambiar los dos y `core` (deuda U‑5, [arquitectura §6.1](arquitectura.md#61-deuda-arquitectónica-declarada)).
 - **`tests/fixtures/apu_linea_base.py` es la única copia de la línea base.** `seed.py`,
   `generar_resultados_ml.py`, `medir_rnf03.py`, `meta_prototipo.py` y `probar_precios_maprex.py` la
@@ -360,7 +363,7 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
   dependen de `tests/fixtures/`
   ([arquitectura §4](arquitectura.md#4-vista-de-desarrollo-definitivo)): esos cinco,
   `seed_telecom.py`, `seed_industrial.py`, `seed_sistemas.py` y `extraer_arenaza.py`. Como la
-  interfaz importa `scripts.seed`, la aplicación Streamlit no arranca sin `tests/fixtures/`.
+  siembra de demostración (`start.py`, `scripts.seed`) los importa, el arranque de demostración no siembra sin `tests/fixtures/`.
 - **Las rutas de C6** (dos nuevas y tres campos; esquema en `docs/api.json`):
   - `POST /proyectos` (UC‑01 1): cuerpo `{nombre, descripcion?, dominio?}`. 201 con el proyecto; 422 si
     el nombre está vacío o repetido o el dominio no es de `Dominio`. La interfaz no crea proyectos.
@@ -477,16 +480,18 @@ La modalidad se persiste en la columna `composicion_apu.modalidad` (anulable: `N
 | `ModalidadManoObra` | `core.contracts` (reexportado en su `__all__`) | la enumeración de la sección 10.1 |
 | `Catalogo.reemplazar_composicion(composicion, lista, dominio, fecha_rendimiento, condiciones) -> ResumenCarga` | `core/catalog/repositorio.py` | UC‑11: sustituye el desglose de una partida existente; registra un rendimiento ESTIMADO nuevo **solo si** cambia el valor o las condiciones respecto del último estimado, sin pisar el histórico |
 | `Catalogo.cargar_composicion(..., condiciones)` | ídem | UC‑10: `condiciones` pasó a ser obligatorio (RF‑33); vacío lanza `ValueError` **antes** de crear la partida, así que no deja partida huérfana |
-| `ui/composicion.py` | capa pura de la interfaz | `composicion_desde_tablas`, `formulario_vacio`, `item_desde_cantidad` (origen `MANUAL`), `buscar_referencia` y `FilaReferencia` (los cuatro CSV de la referencia MaPreX), `fila_*_desde_referencia`, y las cuatro ayudas (`sugerir_partidas_similares`, `advertencia_precio_atipico`, `veredicto_ml_rendimiento`, `contrastar_precio_con_reglas`) con `ml` importado de forma perezosa |
+| `aplicacion/composicion.py` | capa pura de la interfaz | `composicion_desde_tablas`, `formulario_vacio`, `item_desde_cantidad` (origen `MANUAL`), `buscar_referencia` y `FilaReferencia` (los cuatro CSV de la referencia MaPreX), `fila_*_desde_referencia`, y las cuatro ayudas (`sugerir_partidas_similares`, `advertencia_precio_atipico`, `veredicto_ml_rendimiento`, `contrastar_precio_con_reglas`) con `ml` importado de forma perezosa |
 
-`ui/composicion.py` recibe filas de texto (`dict[str, str]`) y devuelve tipos del contrato; los
+`aplicacion/composicion.py` recibe filas de texto (`dict[str, str]`) y devuelve tipos del contrato; los
 errores (`ComposicionInvalida`) dicen tabla, fila y campo. **No importa `streamlit` ni `pandas`**,
 ni siquiera dentro de una función: lo vigila la meta P7 de `scripts/meta_prototipo.py`. La página
 `ui/paginas/componer.py` solo pinta y decide entre `cargar_composicion` y `reemplazar_composicion`.
 
-### 10.3 Probar la interfaz con `AppTest`
+### 10.3 Probar la interfaz con `AppTest` (retirado el 2026‑10‑21)
 
-`tests/unit/test_ui_componer.py` son las primeras pruebas del repositorio que ejecutan una pantalla
+> Streamlit y `AppTest` ya no existen; esta sección se conserva como registro de cómo se probó la interfaz anterior. La lógica se prueba hoy en `tests/unit/test_aplicacion_*.py` y la interfaz de React, con Vitest.
+
+test_ui_componer.py (retirado con Streamlit) son las primeras pruebas del repositorio que ejecutan una pantalla
 (`streamlit.testing.v1.AppTest`, Streamlit 1.62). Corren dentro de la CI normal con `-W error`,
 sin `filterwarnings` ni marcador. Lo que hay que saber para escribir otra:
 
@@ -569,8 +574,10 @@ C3‑3). Para que su informe recargado declare los pendientes, esa base se vuelv
 
 ## 11. Interfaz del sprint final: menú superior, barra de herramientas y subidas (SF4)
 
+> **Retirado el 2026‑10‑21:** este apartado describe la interfaz de Streamlit (`ui/app.py`, `ui/barra.py`, `st.navigation`), que ya no existe. Se conserva como registro; el menú, la barra y las subidas de la interfaz actual están en `frontend-desktop/` y en `api/`.
+
 **Menú y marco.** `ui/app.py` llama a `st.navigation(secciones, position="top")` (Streamlit ≥ 1.62,
-fijado en el extra `ui` de `pyproject.toml`; `tests/unit/test_ui_app.py` falla con una versión sin
+fijado en el extra `ui` de `pyproject.toml`; test_ui_app.py (retirado con Streamlit) falla con una versión sin
 `position="top"`). Son once pantallas en dos grupos, Trabajo e Investigación; la «Hoja del
 proyecto» va en Trabajo, justo después de Elaborar; `SILICE_MODO_ENTREGA=1` sigue omitiendo
 Investigación. `marco()` pinta, en este orden: la barra de herramientas, el título, el subtítulo
@@ -579,7 +586,7 @@ del caso de uso, el caso abierto (barra lateral), el paso del recorrido, la pant
 
 > **Nombres de las variables.** Desde la 0.6.0 se llaman `SILICE_CASO` y `SILICE_MODO_ENTREGA`.
 > Los nombres anteriores, `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, se aceptaron como alias hasta la
-> 0.6.0 y ya no se aceptan desde la 0.7.0 (`ui/entorno.py`).
+> 0.6.0 y ya no se aceptan desde la 0.7.0 (`aplicacion/entorno.py`).
 
 **Barra de herramientas (`ui/barra.py`).** La importa **solo** `ui/app.py` (lo vigila
 `test_solo_ui_app_importa_la_barra_de_herramientas`); ninguna página importa el marco. No conoce
@@ -592,14 +599,14 @@ Tres ganchos de detección, hoy **todos conectados**:
 | Gancho | Detección | Estado hoy |
 |---|---|---|
 | Importar plano (SF5) | `hay_importacion_de_planos()`: `importlib.util.find_spec("adapters.espacio.planos")` | disponible: abre el flujo de importar de la pestaña *Espacio y metrajes*; se oculta si el paquete no existe |
-| Guardar versión y Exportar Excel (SF3) | `hay_guardado_y_exportacion()`: `ui.hoja` expone las funciones de `FUNCIONES_DE_SF3` (`guardar_version`, `exportar_excel`) | disponibles (la hoja las expone): llevan al panel de guardado y preparan el Excel; si faltaran, se deshabilitan con la ayuda y el aviso visible |
+| Guardar versión y Exportar Excel (SF3) | `hay_guardado_y_exportacion()`: `aplicacion.hoja` expone las funciones de `FUNCIONES_DE_SF3` (`guardar_version`, `exportar_excel`) | disponibles (la hoja las expone): llevan al panel de guardado y preparan el Excel; si faltaran, se deshabilitan con la ayuda y el aviso visible |
 | Precios (SF3) | `"Precios" in ui.paginas.hoja.PESTANAS` | la pestaña existe: lleva a *Precios* de la hoja (sin ella, a Actualizar precios) |
 
 El guardado exige fuente y responsable (RF‑53) y el Excel se genera solo al pulsar, así que ambos
-viven en la pantalla de la hoja, no en la barra. Si alguien renombra las funciones de `ui/hoja.py`,
+viven en la pantalla de la hoja, no en la barra. Si alguien renombra las funciones de `aplicacion/hoja.py`,
 hay que cambiar `FUNCIONES_DE_SF3` en un solo lugar. La acción pedida pasa por `CLAVE_ACCION_PENDIENTE`
 de la pantalla, porque abrir una versión reinicia la ejecución y la acción no puede perderse.
-`tests/unit/test_ui_barra_con_la_hoja.py` corre la barra y la hoja **reales** en el mismo guion
+test_ui_barra_con_la_hoja.py (retirado con Streamlit) corre la barra y la hoja **reales** en el mismo guion
 (sin parchar nada) y prueba los dos caminos: con las funciones y borrándolas.
 
 **La hoja sigue al proyecto de la barra.** `_seguir_al_proyecto_de_la_barra` (en la pantalla de la
@@ -607,15 +614,15 @@ hoja) compara el proyecto que abrió la barra (`ui.caso.proyecto_abierto()`) con
 vio; solo cuando cambia, fija el selector *Proyecto* de la hoja. Así lo que el usuario elige después en
 la hoja no se pisa en cada ejecución.
 
-**Proyectos (`ui/proyectos.py`, sin Streamlit).** `crear_proyecto_nuevo` valida (nombre no vacío,
+**Proyectos (`aplicacion/proyectos.py`, sin Streamlit).** `crear_proyecto_nuevo` valida (nombre no vacío,
 único sin distinguir mayúsculas ni espacios sobrantes, caso existente) antes de llamar a
 `core.budget.crear_proyecto`, que repite las dos reglas; `version_vigente` y `resumen_auditoria`
 leen el último presupuesto no descartado del proyecto. Ninguna función crea el archivo de la base.
-`ui.proyectos._vigente` (último presupuesto no descartado) es la versión vigente de la barra; la hoja
-usa la suya (`ui.hoja.codigo_vigente`, la que marca el historial). Coinciden mientras no se restaure una
+`aplicacion.proyectos._vigente` (último presupuesto no descartado) es la versión vigente de la barra; la hoja
+usa la suya (`aplicacion.hoja.codigo_vigente`, la que marca el historial). Coinciden mientras no se restaure una
 versión anterior.
 
-**Subidas (`ui/subidas.py`, A‑1).** `guardar_subida(directorio, archivo)` es la única forma de
+**Subidas (`aplicacion/subidas.py`, A‑1).** `guardar_subida(directorio, archivo)` es la única forma de
 escribir una subida de Streamlit: conserva solo el último componente del nombre (separadores `/` y
 `\`), reemplaza los caracteres prohibidos en Windows, quita espacios y puntos finales, renombra con
 `_` los nombres reservados (`CON`, `NUL`, `COM1`…), acota a 100 caracteres conservando la extensión
@@ -623,19 +630,19 @@ y rechaza con `ValueError` el nombre sin componente utilizable. `actualizacion`,
 `visor` la usan; un test impide volver a unir `archivo.name` a una carpeta. Imita las reglas de
 `api/archivos.py` sin importarlo (`ui` no importa `api`).
 
-**Probar la barra con `AppTest`.** `tests/unit/test_ui_barra.py` corre `pintar_barra(ruta, ir_a)` en
+**Probar la barra con `AppTest`.** test_ui_barra.py (retirado con Streamlit) corre `pintar_barra(ruta, ir_a)` en
 un guion de cuatro líneas, con un `ir_a` que solo anota el destino en `st.session_state`; los
 popovers se localizan con `at.get("popover")` (`.proto.popover.label`) y sus widgets con su `key`.
 Los estados sin la hoja se simulan quitando los atributos del objeto módulo
-(`monkeypatch.delattr(ui.hoja, ...)`).
+(`monkeypatch.delattr(aplicacion.hoja, ...)`).
 
 ## 12. Importar planos en la hoja (integración de SF3, SF4 y SF5)
 
 **Capas.** `adapters/espacio/planos/` lee el plano (`dxf.importar_dxf`, `ifc.importar_ifc`) y deja un
 `ResultadoImportacion` con las filas por tabla y el informe; su `__init__` solo reexporta el informe,
 así que importar `adapters.espacio` (que carga la interfaz) no carga `ezdxf` ni `ifcopenshell`
-(extras perezosos). `ui/hoja.py` (sin Streamlit) orquesta: `leer_plano` (importa el lector al leer y
-traduce la falta del extra a `HojaInvalida`), `subir_plano` (`ui.subidas.guardar_subida`, A‑1, y rechaza
+(extras perezosos). `aplicacion/hoja.py` (sin Streamlit) orquesta: `leer_plano` (importa el lector al leer y
+traduce la falta del extra a `HojaInvalida`), `subir_plano` (`aplicacion.subidas.guardar_subida`, A‑1, y rechaza
 un formato ajeno antes de escribir), `resumen_del_informe`, `filas_del_informe` (quita las
 referencias internas entre paréntesis), `alturas_pendientes` y `cargar_alturas_desde_texto` (acepta coma
 decimal, hasta 250 m, todo o nada), `circuitos_supuestos` y `declarar_circuitos_desde_texto`, y
@@ -646,11 +653,11 @@ resultado vive en `st.session_state[CLAVE_IMPORTACION]`, que no es de ningún wi
 **Garantías (DA‑SF‑6).** El plano nunca salta la hoja ni la auditoría: `fusionar_plano` solo cambia el
 `espacio` del borrador; `elaborar_borrador` audita con `REGLAS + reglas_espacio`, y R8 marca las filas
 que siguen siendo supuestos (circuitos sin declarar). `tests/unit/test_hoja_planos.py` (lógica),
-`tests/unit/test_ui_hoja_planos.py` (pintado con la importación precargada: `AppTest` no sube
+test_ui_hoja_planos.py (retirado con Streamlit) (pintado con la importación precargada: `AppTest` no sube
 archivos) y `tests/integration/test_aceptacion_sf.py` (del DXF de OF‑001 al Excel evaluado con
 `formulas`) lo comprueban.
 
-**Límites conocidos.** (1) La primera versión de un proyecto nuevo se guarda con `ui.hoja.crear_primera_version` (RI‑7):
+**Límites conocidos.** (1) La primera versión de un proyecto nuevo se guarda con `aplicacion.hoja.crear_primera_version` (RI‑7):
 lista vigente a la fecha del borrador, parámetros del borrador, plan secuencial si no hay plan, un
 `RegistroCambio` de creación y sin `VersionOrigen` (el núcleo no tiene motivo `creacion`; propuesta en la
 bitácora, RI‑17). (2) El Excel de la hoja no se reimporta (RS‑3). (3) Un
@@ -680,7 +687,7 @@ cambió.
 | `core/verification/precios.py` | R11 `PrecioFueraDeRango` y R12 `PrecioVencido`: reglas **externas** (como R8–R10), fuera de `REGLAS`; reciben la instantánea con la fecha de evaluación explícita y nunca leen el reloj |
 | `core/budget/reajuste.py` | Las funciones puras del reajuste (`calcular_estudio` y sus partes) y `guardar_estudio` / `cargar_estudio` |
 | `adapters/bcv/` | `libro.py` convierte `.xls` (`xlrd`, importado dentro de la función) y `.xlsx` en una **cuadrícula neutra**; `tasa.py`, `inpc.py` y `csv_canonico.py` la interpretan; no importa `core` |
-| `ui/indices.py`, `ui/precios_empresa.py`, `ui/reajuste.py`, `ui/texto_seguro.py` | Sin Streamlit, sin pandas y sin `ui.caso` (`tests/unit/test_arquitectura_s1.py`) |
+| `aplicacion/indices.py`, `aplicacion/precios_empresa.py`, `aplicacion/reajuste.py`, `ui/texto_seguro.py` | Sin Streamlit, sin pandas y sin `ui.caso` (`tests/unit/test_arquitectura_s1.py`) |
 | `ui/paginas/indices.py`, `precios_empresa.py`, `reajuste.py` | Abren el caso con `preparar_base` antes de `crear_motor` (están en `PAGINAS_QUE_ABREN_EL_CASO`) |
 
 **Reglas que no se rompen.** Todo monto es `Decimal`; cada división fija su contexto dentro de la
@@ -761,9 +768,9 @@ hoja, el sistema deriva, valora y audita, y una persona acepta y guarda.
 
 **Capas** (las vigila `tests/unit/test_arquitectura_asistente.py`):
 
-- `ui.hoja` queda debajo de `asistente`, y `asistente` debajo de `ui.paginas`. De `ui`, `asistente`
-  solo importa `ui.hoja`; solo `ui/paginas/hoja.py`, `ui/paginas/administracion.py` y
-  `ui/entrega.py` importan `asistente` (este último, solo `asistente.registro`, para el anexo).
+- `aplicacion.hoja` queda debajo de `asistente`, y `asistente` debajo de `ui.paginas`. De `ui`, `asistente`
+  solo importa `aplicacion.hoja`; solo `ui/paginas/hoja.py`, `ui/paginas/administracion.py` y
+  `aplicacion/entrega.py` importan `asistente` (este último, solo `asistente.registro`, para el anexo).
 - `anthropic` solo en `proveedores/claude.py`; el cliente de Ollama solo en
   `proveedores/ollama_local.py`; `keyring` solo en `clave.py`; `streamlit` en ningún módulo del
   paquete. Los tres son del extra `ia` (`uv sync --extra ia`) y se importan de forma diferida.
@@ -801,7 +808,7 @@ pausa la sesión y la pantalla la contesta.
 fichas y el costo por turno, las llamadas con su validación y la decisión de cada propuesta (quién y
 cuándo). La clave de IA nunca se guarda ahí.
 
-**Anexo `anexos/ia.json`.** `ui/entrega.py` (`anexo_de_ia`, `anexos_del_paquete`) llama a
+**Anexo `anexos/ia.json`.** `aplicacion/entrega.py` (`anexo_de_ia`, `anexos_del_paquete`) llama a
 `asistente.registro.anexo_ia(conexion, proyecto, hasta_codigo)`. Al guardar una versión con
 propuestas aceptadas, la hoja marca la sesión con
 `RegistroIA.marcar_guardada(sesion, codigo, proyecto=...)` (si la sesión se hizo en un borrador sin

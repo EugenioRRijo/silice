@@ -10,10 +10,12 @@ from scripts.meta_alpha import Estado
 from scripts.meta_silice import (
     ARCHIVOS_REGRESION,
     PARTE_T0,
+    REANCLAJES,
     REGRESION,
     CifraDeTiempo,
     ParTDD,
     Parte,
+    bases_de_regresion,
     evaluar_cifras,
     evaluar_diff_vacio,
     evaluar_guardia,
@@ -125,7 +127,10 @@ def test_orden_tdd() -> None:
 
 
 def test_el_orden_de_a1_se_lee_del_historial_real() -> None:
-    assert orden_de_par(ParTDD("tests/unit/test_entorno_silice.py", "ui/entorno.py", "T0")) is True
+    assert (
+        orden_de_par(ParTDD("tests/unit/test_entorno_silice.py", "aplicacion/entorno.py", "T0"))
+        is True
+    )
 
 
 def test_diff_vacio() -> None:
@@ -134,6 +139,25 @@ def test_diff_vacio() -> None:
     cambio = " core/contracts/apu.py | 2 +-\n"
     assert evaluar_diff_vacio("core/contracts/", True, cambio)[0] is Estado.FALLA
     assert evaluar_diff_vacio("core/contracts/", True, "")[0] is Estado.OK
+
+
+def test_sin_reanclajes_todo_se_compara_con_la_base() -> None:
+    assert bases_de_regresion(("a.py", "b.py"), {}) == {"v0.5.0": ("a.py", "b.py")}
+
+
+def test_un_reanclaje_compara_solo_su_archivo_desde_su_commit() -> None:
+    reanclajes = {"b.py": ("abc1234", "ruling: b.py cambio de import")}
+    assert bases_de_regresion(("a.py", "b.py", "c.py"), reanclajes) == {
+        "v0.5.0": ("a.py", "c.py"),
+        "abc1234": ("b.py",),
+    }
+
+
+def test_cada_reanclaje_es_de_un_archivo_de_regresion_y_lleva_su_ruling() -> None:
+    for ruta, (commit, ruling) in REANCLAJES.items():
+        assert ruta in ARCHIVOS_REGRESION
+        assert len(commit) >= 7
+        assert ruling.startswith("ruling")
 
 
 def test_una_prueba_de_regresion_borrada_es_falla() -> None:

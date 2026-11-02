@@ -210,7 +210,7 @@ delante del jurado.
 | Ramas de incremento | `inc/I1-actualizacion-precios`, `inc/I3-civil`, … creadas desde `main` a partir de I0.3 |
 | Commits | Conventional Commits en español, asunto sin tildes, tipo(ámbito): `feat(core)`, `test(core)`, `docs(ers)`, `chore` |
 | Etiquetas | una por compuerta cruzada: `g0-docs`, `g-nucleo`, `g1-ifc`, `g-nucleo-intacto`, `g2-datos` |
-| Entorno | `uv sync`; extras por capa (`--extra civil`, `--extra ml`, `--extra ui --extra api`) |
+| Entorno | `uv sync`; extras por capa (`--extra civil`, `--extra ml`, `--extra api`) |
 | Datos | `data/linea_base/` es evidencia primaria y no se edita; `data/samples/` se versiona; las bases SQLite se regeneran con `scripts/seed.py` |
 | Un PR por fase | Se fusiona en su compuerta, con etiqueta. Porque: el PR #7 vivió una semana abierto con 49 commits y necesitó una auditoría de ~11 000 líneas antes de poder fusionarse (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa») |
 | Ratificación de las decisiones del agente | Toda decisión tomada durante la ejecución («ruling») queda en la bitácora con su costo si es errónea y se ratifica por Eugenio al cruzar la compuerta; sin ratificación la compuerta no se cruza. Porque: las decisiones del controlador de la auditoría del PR #7 y del sprint de UI quedaron registradas sin esa ratificación explícita (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa»; `docs/bitacora/2026-09-23-sprint-ui.md`, «Decisiones del controlador») |

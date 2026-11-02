@@ -1,12 +1,12 @@
-"""Mide RNF-15: el tiempo del control de obra en `ui.control`, sin Streamlit (spec S2 §3.3).
+"""Mide RNF-15: el tiempo del control de obra en `aplicacion.control`, sin Streamlit (spec S2 §3.3).
 
 La métrica de la spec de S2 pide, para una obra de 500 partidas, 52 períodos semanales y 26
 valuaciones, una mediana de **2 s o menos** en dos trabajos:
 
 1. desde registrar una valuación hasta tener el informe de control, los indicadores, las alertas y
-   la reproyección (`ui.control.registrar_y_controlar`), sobre una base con las 25 valuaciones
-   anteriores; y
-2. calcular las cuatro opciones de recuperación (`ui.control.calcular_las_opciones`).
+   la reproyección (`aplicacion.control.registrar_y_controlar`), sobre una base con las 25
+   valuaciones anteriores; y
+2. calcular las cuatro opciones de recuperación (`aplicacion.control.calcular_las_opciones`).
 
 Genera la obra con el generador determinista (`scripts/generar_obra_control.py`, semilla 0), la
 guarda una vez en un archivo SQLite temporal y, para que cada corrida parta del mismo estado,
@@ -42,10 +42,10 @@ RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
+from aplicacion import control  # noqa: E402
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor  # noqa: E402
 from scripts import generar_obra_control as generador  # noqa: E402
 from scripts.medir_rnf11 import medir  # noqa: E402
-from ui import control  # noqa: E402
 
 PARTIDAS = 500
 PERIODOS = 52

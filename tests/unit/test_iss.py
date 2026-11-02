@@ -117,9 +117,14 @@ def test_files_lleva_el_arbol_de_construir_y_el_manifiesto() -> None:
 def test_los_accesos_directos_usan_las_banderas_de_aislamiento() -> None:
     iconos = _sin_directivas(_secciones()["Icons"])
     nombres = " ".join(iconos)
-    for nombre in ("Sílice", "Detener Sílice", "Sílice: red local (administrador)"):
+    for nombre in (
+        "Sílice",
+        "Detener Sílice",
+        "Sílice: red local (administrador)",
+        "Sílice: recuperar acceso de administrador",
+    ):
         assert f'Name: "{{autoprograms}}\\{nombre}"' in nombres
-    assert len(iconos) == 4  # los tres del menú y el del escritorio (tarea opcional)
+    assert len(iconos) == 5  # los cuatro del menú y el del escritorio (tarea opcional)
     for linea in iconos:
         assert "Filename: {app}\\python\\python.exe" in linea
         assert "WorkingDir: {app}\\codigo" in linea
@@ -132,6 +137,14 @@ def test_las_ordenes_de_los_accesos_son_las_de_la_cli() -> None:
     iconos = " ".join(_secciones()["Icons"])
     assert f"{PARAMETROS} arrancar" in iconos and f"{PARAMETROS} parar" in iconos
     assert f"{PARAMETROS} red-local activar" in iconos
+    assert f"{PARAMETROS} restablecer-administrador --esperar" in iconos
+
+
+def test_el_acceso_de_recuperar_el_acceso_deja_la_consola_visible() -> None:
+    """D-7: la persona debe alcanzar a leer y copiar el código, así que no va minimizado."""
+    iconos = _sin_directivas(_secciones()["Icons"])
+    [recuperar] = [i for i in iconos if "recuperar acceso" in i]
+    assert "runminimized" not in recuperar and "runhidden" not in recuperar
 
 
 def test_la_migracion_corre_despues_de_copiar_y_antes_de_ofrecer_abrir() -> None:

@@ -33,8 +33,9 @@ def test_la_ers_declara_rf_100_como_deseable_y_la_enmienda_unica_de_rnf_08() -> 
 
 
 def test_el_vector_de_huella_se_calcula_aparte_con_el_json_estandar() -> None:
-    canonico = json.dumps(EJEMPLO_V1, sort_keys=True, separators=(",", ":"),
-                          ensure_ascii=False).encode("utf-8")
+    canonico = json.dumps(
+        EJEMPLO_V1, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
     assert len(canonico) == BYTES_EJEMPLO_V1 == 2271
     assert hashlib.sha256(canonico).hexdigest() == HUELLA_EJEMPLO_V1
     assert HUELLA_EJEMPLO_V1 == "b4b952dd4d049df5a18f53c00f2594a077c67f49e2b2fd1fb163cf5999003936"
@@ -42,10 +43,25 @@ def test_el_vector_de_huella_se_calcula_aparte_con_el_json_estandar() -> None:
 
 def test_la_memoria_de_diferencias_trae_las_cifras_escritas_a_mano() -> None:
     texto = (MEMORIAS / "diferencias_s3.md").read_text(encoding="utf-8")
-    for cifra in ("**840**", "**1130**", "**250**", "**40**", "**290**", "**550**", "**589**",
-                  "**39**", "**48,797375**",
-                  "**139,15**", "**47,532375**", "**113,85**", "**−59,604**", "**+2,928**",
-                  "**+59,604**", "101,640", "85,470"):
+    for cifra in (
+        "**840**",
+        "**1130**",
+        "**250**",
+        "**40**",
+        "**290**",
+        "**550**",
+        "**589**",
+        "**39**",
+        "**48,797375**",
+        "**139,15**",
+        "**47,532375**",
+        "**113,85**",
+        "**−59,604**",
+        "**+2,928**",
+        "**+59,604**",
+        "101,640",
+        "85,470",
+    ):
         assert cifra in texto, cifra
 
 
@@ -56,8 +72,11 @@ def test_la_memoria_de_atipicos_fija_el_conjunto_esperado_antes_del_codigo() -> 
 
 
 def test_el_catalogo_de_errores_trae_los_17_bloques_y_sus_tres_controles() -> None:
-    ids = [linea[4:].strip() for linea in CATALOGO.read_text(encoding="utf-8").splitlines()
-           if linea.startswith("### ")]
+    ids = [
+        linea[4:].strip()
+        for linea in CATALOGO.read_text(encoding="utf-8").splitlines()
+        if linea.startswith("### ")
+    ]
     assert len(ids) == len(set(ids)) == 17 and sum(i.startswith("NO-DET") for i in ids) == 3
 
 
@@ -70,13 +89,26 @@ def test_los_dos_protocolos_estan_escritos_y_su_huella_coincide() -> None:
 
 def test_el_protocolo_de_planos_fija_la_meta_los_controles_y_las_amenazas() -> None:
     texto = (RAIZ / "docs" / "protocolo_deteccion_planos.md").read_text(encoding="utf-8")
-    for fragmento in ("100 %", "cero falsas alarmas", "semilla 42", "no detectables",
-                      "validez de constructo", "validez externa"):
+    for fragmento in (
+        "100 %",
+        "cero falsas alarmas",
+        "semilla 42",
+        "no detectables",
+        "validez de constructo",
+        "validez externa",
+    ):
         assert fragmento in texto.lower().replace("**", ""), fragmento
 
 
 def test_el_protocolo_del_administrador_fija_condiciones_orden_y_sesgo() -> None:
     texto = (RAIZ / "docs" / "protocolo_indicador_administrador.md").read_text(encoding="utf-8")
-    for fragmento in ("a mano", "con el sistema", "contrabalanceado", "lista congelada",
-                      "sesgo del autor", "tasa de detección", "falsas alarmas"):
+    for fragmento in (
+        "a mano",
+        "con el sistema",
+        "contrabalanceado",
+        "lista congelada",
+        "sesgo del autor",
+        "tasa de detección",
+        "falsas alarmas",
+    ):
         assert fragmento in texto.lower().replace("**", ""), fragmento

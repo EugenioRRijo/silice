@@ -40,7 +40,10 @@ def test_cada_fila_del_catalogo_declara_una_deteccion_con_una_forma_conocida() -
 def test_el_catalogo_tiene_tres_controles_y_casi_todo_escrito_sin_ver_el_codigo() -> None:
     filas = siembra.catalogo().values()
     assert sorted(f.id for f in filas if not f.detectable) == [
-        "NO-DET-LUCES", "NO-DET-PERMUTA", "NO-DET-TRASLADO"]
+        "NO-DET-LUCES",
+        "NO-DET-PERMUTA",
+        "NO-DET-TRASLADO",
+    ]
     assert sum(1 for f in filas if f.autor == "P") >= 10  # la mayoría, escrita por pruebas
 
 
@@ -82,7 +85,8 @@ def test_ningun_error_sembrado_da_r9_y_r15_a_la_vez() -> None:
         for variante in range(s.variantes):
             sembrado = siembra.sembrar(id_, variante)
             nuevos = medicion.agregado(
-                medicion.auditar(sembrado.contenido, "dxf"), base, None).hallazgos
+                medicion.auditar(sembrado.contenido, "dxf"), base, None
+            ).hallazgos
             reglas = {h[0] for h in nuevos}
             assert not {"R9", "R15"} <= reglas, (id_, variante, reglas)
 
@@ -102,8 +106,11 @@ def test_si_r15_dejara_de_funcionar_la_medicion_lo_nota(monkeypatch) -> None:
     monkeypatch.setattr(geometria_plano, "reglas_plano", lambda espacio: ())
     roto = medicion.medir()
     assert roto["tasa"] < 1
-    perdidas = {i for i, c in roto["categorias"].items()
-                if c["detectables"] and c["detectados"] < c["sembrados"]}
+    perdidas = {
+        i
+        for i, c in roto["categorias"].items()
+        if c["detectables"] and c["detectados"] < c["sembrados"]
+    }
     assert perdidas == {"ESCALA-X1000", "SUPERPUESTO", "PUNTO-DUPLICADO"}
 
 

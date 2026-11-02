@@ -15,15 +15,15 @@ from decimal import Decimal
 from enum import StrEnum
 
 from adapters.espacio import ModoRecorrido, Recorrido
-from asistente.catalogo import CatalogoVista
-from core.contracts.item_computo import ItemComputo, OrigenTipo
-from ui.hoja import (
+from aplicacion.hoja import (
     PREFIJO_ORIGEN_IA,
     Borrador,
     HojaInvalida,
     espacio_desde_filas,
     filas_desde_espacio,
 )
+from asistente.catalogo import CatalogoVista
+from core.contracts.item_computo import ItemComputo, OrigenTipo
 
 
 class TipoPropuesta(StrEnum):
@@ -42,7 +42,7 @@ class EstadoPropuesta(StrEnum):
     RECHAZADA = "rechazada"
 
 
-#: Tabla del editor de la hoja donde cae cada tipo (`ui.hoja.COLUMNAS`).
+#: Tabla del editor de la hoja donde cae cada tipo (`aplicacion.hoja.COLUMNAS`).
 TABLA_DE = {
     TipoPropuesta.AMBIENTE: "ambientes",
     TipoPropuesta.FUENTE: "fuentes",

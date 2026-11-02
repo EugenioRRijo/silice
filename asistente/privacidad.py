@@ -19,9 +19,9 @@ from collections.abc import Iterable, Mapping
 from decimal import Decimal
 
 from adapters.espacio import Espacio
+from aplicacion.hoja import Borrador
 from asistente.catalogo import PartidaVista
 from core.verification.informe import InformeAuditoria
-from ui.hoja import Borrador
 
 LIMITE_DE_TEXTO = 80
 TOPE_DE_PARTIDAS = 50

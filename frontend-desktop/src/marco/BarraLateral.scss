@@ -1,0 +1,212 @@
+@use "umbrales" as u;
+@use "@carbon/styles/scss/type";
+
+// Barra lateral marfil del marco nuevo (maqueta aprobada): 236 px, fondo --silice-lateral. Sin hexadecimales: solo
+// --silice-* y --cds-*. Rem, sin sombra ni animacion.
+.silice-marco-lateral {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  inline-size: 14.75rem;
+  flex: none;
+  min-block-size: 0;
+  overflow: hidden;
+  background-color: var(--silice-lateral);
+  color: var(--cds-text-primary);
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
+.silice-marco-lateral__titulo {
+  margin: 0;
+  padding: 1rem 1rem 0.5rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  @include type.type-style("label-01");
+}
+
+// La zona de obras ocupa lo que sobra: su cabecera y «Nueva obra» quedan fijas y solo el arbol se desplaza.
+.silice-marco-lateral__obras {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
+.silice-marco-lateral__arbol {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  margin-block-start: 0.5rem;
+  overflow-y: auto;
+}
+
+// El nombre de la obra y, solo si otra obra se llama igual, su carpeta debajo en letra secundaria (D-F3-3).
+.silice-marco-lateral__nombre {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+// Un nombre largo se limita a 2 lineas con puntos suspensivos (el nombre completo va en el nombre accesible, y en `title` solo si esta recortado).
+.silice-marco-lateral__obra-nombre {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.silice-marco-lateral__de-carpeta {
+  color: var(--cds-text-secondary);
+  font-weight: 400;
+  @include type.type-style("label-01");
+}
+
+// Una fila del arbol, de Pendientes o de Empresa. La raya del activo ocupa su sitio siempre (transparente) para que el
+// texto no se mueva al activarse.
+.silice-marco-lateral__fila {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  min-block-size: 2rem;
+  padding-inline: 0.75rem 1rem;
+  border-inline-start: 3px solid transparent;
+  color: inherit;
+  text-decoration: none;
+  @include type.type-style("body-compact-01");
+
+  svg {
+    flex: none;
+    fill: currentcolor;
+  }
+
+  &:hover {
+    background-color: var(--silice-lateral-activo);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
+  &[aria-current="page"] {
+    background-color: var(--silice-lateral-activo);
+    border-inline-start: 3px solid var(--silice-marco);
+    font-weight: 600;
+  }
+}
+
+.silice-marco-lateral__pendientes {
+  margin-block-start: 0.5rem;
+}
+
+.silice-marco-lateral__obra {
+  padding-inline-start: 0.5rem;
+}
+
+// Las secciones de la obra abierta, unidas por una linea guia a la izquierda.
+.silice-marco-lateral__secciones {
+  margin-inline-start: 1.25rem;
+  border-inline-start: 1px solid var(--cds-border-strong-01);
+}
+
+.silice-marco-lateral__seccion {
+  padding-inline-start: 0.75rem;
+}
+
+.silice-marco-lateral__aviso {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  color: var(--cds-text-secondary);
+  @include type.type-style("body-compact-01");
+}
+
+.silice-marco-lateral__reintentar {
+  margin-block-start: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cds-link-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+  }
+}
+
+.silice-marco-lateral__empresa {
+  flex: none;
+  padding-block-end: 0.5rem;
+}
+
+// «Nueva obra»: boton vistoso de ancho completo, 40 px, siempre visible bajo la cabecera de Obras.
+.silice-marco-boton-principal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: 2.5rem;
+  padding-inline: 1rem;
+  // Mismo tono que el boton principal de Carbon (tokens de estilos/tokens.scss): el complementario, texto blanco, sin borde.
+  border: none;
+  background-color: var(--cds-button-primary);
+  color: var(--cds-text-on-color);
+  font-family: inherit;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+  @include type.type-style("body-compact-01");
+
+  svg {
+    flex: none;
+    fill: currentcolor;
+  }
+
+  &:hover {
+    background-color: var(--cds-button-primary-hover);
+  }
+
+  &:active {
+    background-color: var(--cds-button-primary-active);
+  }
+
+  &:focus-visible {
+    // Blanco: sobre el complementario (que sin uno propio es el marco) el contorno del marco no se veria.
+    outline: 2px solid var(--cds-text-on-color);
+    outline-offset: -4px;
+  }
+}
+
+// Letra Grande o Muy grande: el rem pasa de 24 o 28 px y Pendientes, los titulos y las cinco entradas de Empresa se comian
+// el alto (a 1366x768 la zona de obras quedaba en casi nada). Se compactan filas y titulos y la zona de obras conserva un
+// minimo; si no cabe todo, la barra se desplaza (marco.scss). Los tres botones de tamano de letra no se tocan (D-F3-5).
+@include u.con-letra-grande {
+  .silice-marco-lateral__fila {
+    min-block-size: 1.5rem;
+  }
+
+  .silice-marco-lateral__titulo {
+    padding: 0.5rem 1rem 0.25rem;
+  }
+
+  .silice-marco-lateral__pendientes,
+  .silice-marco-lateral__arbol {
+    margin-block-start: 0.25rem;
+  }
+
+  .silice-marco-lateral__obras {
+    min-block-size: 10rem;
+  }
+}

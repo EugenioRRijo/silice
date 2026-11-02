@@ -209,7 +209,6 @@ def test_hay_un_par_de_prueba_e_implementacion_por_cada_tarea() -> None:
         "operacion/red.py",
         "api/proteccion.py",
         "operacion/eventos_perdidos.py",
-        "ui/cliente.py",
         "instalador/manifiesto.py",
         "instalador/construir.py",
         "instalador/silice.iss",

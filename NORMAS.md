@@ -26,7 +26,9 @@ construcción). Detalle en [docs/linea_base.md](docs/linea_base.md).
   versionan.
 - **Real autorizado:** los dos PDF de ARENAZA de `data/samples/telecom/` son **presupuestos
   reales** (antes se declararon ejercicio de clase) y se quedan en el repositorio por decisión de Eugenio.
-- **Anonimizado:** derivado de un real con `scripts/anonimizar_libro.py`; puede versionarse tras revisión.
+- **Anonimizado:** derivado de un real con `scripts/anonimizar_libro.py`. **No se versiona** (regla de Eugenio,
+  2026-10-18): conserva los montos reales y sigue siendo dato real. Vive solo en el equipo, para trabajar; nunca en
+  commits, pruebas, capturas ni PR.
 
 Lo que sigue describe los casos **construidos**, que son **ficticios**. El de la clínica (línea base) proviene de un ejercicio de clase y
 no representa valores reales ni obras ejecutadas. `MNT-001` (industrial), `SIS-001`
@@ -34,9 +36,9 @@ no representa valores reales ni obras ejecutadas. `MNT-001` (industrial), `SIS-0
 para el proyecto. Reproducen el contenido y el formato de la práctica
 venezolana: por eso sirven como línea base normativa de las pruebas y como casos **didácticos** en la
 tesis. Los listados MaPreX de julio de 2026 y el tabulador CIV son referencias publicadas aportadas por
-el usuario. Cuando se suministren APU de casos reales, entran al repositorio **solo como casos anonimizados**
-(con fixture propio en `tests/fixtures/`) sin sustituir la línea base, salvo decisión explícita
-documentada en `docs/bitacora/`. Este párrafo es la **fuente única** de la naturaleza de los datos; los
+el usuario. Cuando se suministren APU de casos reales, **no entran al repositorio** (ni siquiera anonimizados, regla del
+2026-10-18): las pruebas usan casos **construidos** ficticios con la forma de los reales (`tests/fixtures/libros_empresa.py`,
+`tests/fixtures/libro_visual.py`), sin sustituir la línea base. Este párrafo es la **fuente única** de la naturaleza de los datos; los
 demás documentos lo enlazan.
 
 **Hipótesis central.** El núcleo (`core/`) no cambia cuando se agrega un dominio. Se demuestra con
@@ -55,7 +57,7 @@ del motor en verde (I0.3); la compuerta G1 de extracción IFC (I3.1); el `git di
    enlazan. La tabla de fuentes únicas de verdad está en [docs/metodologia.md](docs/metodologia.md#5-dry).
    En código: constantes de cálculo solo en `core.contracts.apu.ParametrosCosto`; alias de unidades solo
    en `core.contracts.unidades`; la línea base solo en `tests/fixtures/apu_linea_base.py`.
-2. **Núcleo cerrado, adaptadores abiertos.** `core/` no conoce a `adapters/`, `ml/`, `ui/` ni `api/`.
+2. **Núcleo cerrado, adaptadores abiertos.** `core/` no conoce a `adapters/`, `ml/`, `aplicacion/` ni `api/`.
    Los adaptadores solo importan `core.contracts`. Si un adaptador "necesita" tocar `core/`, el hallazgo
    se documenta en `docs/bitacora/`, no se parchea (regla de la sección 9).
 3. **`Decimal` para todo lo monetario y todo lo dimensional.** Nunca `float` en cantidades, precios,
@@ -177,7 +179,7 @@ Las anotaciones «— sesión» de las carpetas de código nombran las sesiones 
 `tests/` y `docs/` crecen en casi todas las sesiones y no llevan anotación.
 
 ```
-NORMAS.md  README.md  LICENSE  pyproject.toml  uv.lock  .streamlit/config.toml
+NORMAS.md  README.md  LICENSE  pyproject.toml  uv.lock
 PLAN_DESARROLLO.md  PLAN_MULTIDOMINIO.md  PLAN_PROTOTIPO.md  PLAN_UI.md  PLAN_ASISTENTE.md  PLAN_CIERRE.md  PLAN_SF.md
 core/
   contracts/      estables (sección 5)                                   — I0.1
@@ -216,16 +218,13 @@ ml/
   normalization/  sentence-transformers, similitud del coseno             — I2
   anomaly/        Isolation Forest sobre precios y rendimientos           — I6.1
   prediction/     sistema de reglas; técnica según compuerta G2 (sección 8.1) — I6.3
-ui/               Streamlit: app.py (enrutador), paginas/ (diez pantallas) y los módulos sin pantalla
-                  composicion, elaboracion, resultado, caso, recorridos, visor3d — I1, F.1;
-                  SF agrega hoja.py (lógica de la hoja, sin Streamlit), barra.py (barra superior,
-                  solo la importa app.py) y paginas/hoja.py
-                  S2 (0.7.0, en construcción) agrega control.py (sin Streamlit) y paginas/control.py
-                  («Control de obra»)
-                - `estilo.py` (paleta y formatos), `tablero.py` (datos del tablero, solo lectura) y
-                  `graficos.py` (gráficos en Altair): sin Streamlit (PLAN_SILICE_UI).
-                - `paginas/tablero.py` («Tablero del proyecto»).
-api/              FastAPI (main.py, rutas/); esquema OpenAPI exportado a docs/api.json — F.1
+aplicacion/       lógica de la aplicación sin interfaz (hoja, composición, elaboración, control, entrega,
+                  tablero, atípicos...); la usan api/ y asistente/; sin Streamlit ni FastAPI. Es lo que
+                  antes vivía en ui/ (retirada el 2026-10-21) — I1, F.1, SF, S2, PLAN_SILICE_UI
+api/              FastAPI (main.py, rutas/); esquema OpenAPI exportado a docs/api.json; monta la interfaz
+                  de React en /app/ (interfaz.py) — F.1
+frontend-desktop/ la interfaz: React + TypeScript (Vite); `npm run build` deja dist/, que sirve Uvicorn
+operacion/        arranque y configuración del producto: lanzador (un solo proceso Uvicorn), puerto, silice.toml
 scripts/          siembra (seed*.py), simulación, extracción de fuentes, metas (meta_*.py) y
                   utilidades de la suite; una fila por script en scripts/README.md
 data/
@@ -235,8 +234,8 @@ data/
   civil/  telecom/  industrial/  sistemas/   plantilla de precios de cada dominio; fuentes/ salvo civil
 tests/
   fixtures/       apu_linea_base.py — única copia de la línea base; los demás datos compartidos de prueba.
-                  scripts/ también los importa, y ui/ por scripts.seed: la interfaz no arranca sin ellos
-  unit/           contratos, arquitectura, línea base, costing, adaptadores, ml, ui y scripts
+                  scripts/ también los importa, y start.py lee tests/fixtures/bases: el arranque de demostración no siembra sin ellos
+  unit/           contratos, arquitectura, línea base, costing, adaptadores, ml, aplicacion, api y scripts
   integration/    persistencia, API y flujos completos
 docs/             README, ERS, modelo_datos, arquitectura, plan_pruebas, calidad_iso25010,
                   manual_tecnico, manual_usuario, metodologia, linea_base, dossier_g0, protocolo_precios,

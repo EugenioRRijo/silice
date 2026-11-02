@@ -24,7 +24,8 @@ def test_genera_una_tanquilla_con_pset_y_volumen(tmp_path):
     concreto = linea_base.APU_CONCRETO.codigo_partida
     assert apu["COVENIN_Codigo"] == concreto and apu["Unidad"] == "m3"
     qto = psets["Qto_APU"]
-    assert Decimal(str(qto["VolumenConcreto"])) == (
-        linea_base.CANTIDAD_POR_TANQUILLA_MEMORIA[concreto]
+    assert (
+        Decimal(str(qto["VolumenConcreto"]))
+        == (linea_base.CANTIDAD_POR_TANQUILLA_MEMORIA[concreto])
     )
     assert elementos[0].GlobalId

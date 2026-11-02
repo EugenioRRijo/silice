@@ -10,13 +10,13 @@ from datetime import date
 
 import pytest
 
+from aplicacion import hoja
+from aplicacion.hoja import Borrador
 from asistente.experimento.banco import cargar_banco, referencia_de
 from asistente.experimento.comparador import comparar
 from asistente.experimento.metricas import TIPOS
 from asistente.experimento.mutaciones import generar, mutar
 from tests.fixtures.asistente_banco import codigos_y_unidades
-from ui import hoja
-from ui.hoja import Borrador
 
 SEMILLA = 20261011
 N = 24

@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from scripts.meta_alpha import Estado
 from scripts.meta_prototipo import (
     FASES,
+    RETIRADAS,
     TITULOS,
     _archivos_de_fuentes,
     _generador_corpus_simulado,
     _referencias_ml_a_corpus,
     evaluar_p2_fuentes_referenciadas,
+    evaluar_p7_composicion,
     evaluar_p11_ml_sin_corpus_simulado,
     main,
 )
@@ -104,3 +108,24 @@ def test_referencias_ml_a_corpus_detecta_un_modulo_de_un_ml_temporal(tmp_path):
     generador = tmp_path / "scripts" / "simular_corpus.py"
 
     assert _referencias_ml_a_corpus(raiz_ml, generador) == ("ml/prediction/entrena.py",)
+
+
+# --- retiro de Streamlit (F8): P7 apunta a aplicacion/; P8 y P10 no cuentan -----------------------
+
+
+def test_p7_composicion_existe_falta_o_importa_streamlit():
+    assert evaluar_p7_composicion(None)[0] is Estado.PENDIENTE
+    assert evaluar_p7_composicion("import json\n")[0] is Estado.OK
+    assert evaluar_p7_composicion("x = 1\nimport streamlit as st\n")[0] is Estado.FALLA
+    assert evaluar_p7_composicion("from streamlit import x\n")[0] is Estado.FALLA
+    assert "aplicacion/composicion.py" in evaluar_p7_composicion("x = 1\n")[1]
+
+
+def test_p8_y_p10_estan_retiradas_y_no_suman_ni_restan(capsys):
+    vivas = {codigo for metas in FASES.values() for codigo in metas}
+    assert set(RETIRADAS) == {"P8", "P10"}
+    assert not set(RETIRADAS) & vivas and not set(RETIRADAS) & set(TITULOS)
+    assert len(vivas) == 10
+    main(["--json"])
+    codigos = {fila["codigo"] for fila in json.loads(capsys.readouterr().out)}
+    assert codigos == vivas

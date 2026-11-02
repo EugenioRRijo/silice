@@ -102,8 +102,7 @@ def test_cada_renglon_reproduce_su_total_impreso(sesion_telecom, numero):
     for renglon in RENGLONES[numero]:
         partida = partidas[codigo_partida(numero, renglon.renglon)]
         assert abs(partida.total - renglon.total) <= TOLERANCIA, (
-            f"renglon {renglon.renglon} ({renglon.descripcion}): "
-            f"{partida.total} != {renglon.total}"
+            f"renglon {renglon.renglon} ({renglon.descripcion}): {partida.total} != {renglon.total}"
         )
 
 
@@ -153,8 +152,9 @@ def test_el_tubo_del_presupuesto_2_registra_los_80_m_de_computos(sesion_telecom)
     partida = _por_codigo(presupuesto_arenaza(sesion_telecom, 2))[codigo_partida(2, 5)]
 
     assert partida.item.cantidad == arenaza.TUBO_CORRUGADO["cantidad_presupuesto"]
-    assert partida.item.parametros["cantidad_computos"] == (
-        arenaza.TUBO_CORRUGADO["cantidad_computos"]
+    assert (
+        partida.item.parametros["cantidad_computos"]
+        == (arenaza.TUBO_CORRUGADO["cantidad_computos"])
     )
     assert partida.item.origen_id == arenaza.TUBO_CORRUGADO["origen_presupuesto"]
 

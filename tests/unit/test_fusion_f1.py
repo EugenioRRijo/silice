@@ -104,3 +104,25 @@ def test_utilidad_escrita_a_mano_no_da_f1():
     """F-D7: el 2 % escrito a mano se conserva; el motor usa la utilidad del APU y coincide."""
     f1, _ = _f1((A1, con(A2, utilidad_literal=D("0.02")), A3))
     assert f1 == []
+
+
+def test_el_texto_de_f1_escribe_las_cifras_como_l9_y_nombra_a_silice_con_tilde():
+    """VB-8: F1 escribía «28.28375 … 154.28» (punto decimal) junto a L9 «4 331,43 USD»; en es-VE
+    «154.28» se lee ciento cincuenta y cuatro mil. Las cifras de F1 van con coma decimal y espacio
+    de miles, como `_fmt` de las reglas L: P.U. con todos sus decimales, impacto en céntimos.
+    Oráculo del caso H1 (arriba): 28,28375 guardado, 30,2121875 del motor, cantidad 80, 154,28."""
+    f1, _ = _f1((A1, con(A2, cd_sin_equipos=True), A3))
+    texto = f1[0].descripcion
+    assert (
+        "PRESUPUESTO guarda un P.U. de 28,28375 y el motor de Sílice lo recalcula en 30,2121875 "
+        "con el APU APU-02; la diferencia por la cantidad (80) mueve el total sin IVA en 154,28"
+    ) in texto
+    assert "Silice" not in texto
+
+
+def test_el_impacto_de_f1_con_miles_lleva_espacio_de_miles():
+    """80 × (30,2121875 − 1) = 2 336,975 -> 2 336,98 (el caso de la partida con cantidad 0)."""
+    apus = (A1, A2, con(A2, hoja="APU-07", cantidad=D("0"), rendimiento=D("10")))
+    f1, _ = _f1(apus, p_guardado={2: D("1")})
+    assert f1[0].descripcion.endswith("mueve el total sin IVA en 2 336,98")
+    assert "P.U. de 1 y el motor de Sílice lo recalcula en 30,2121875" in f1[0].descripcion

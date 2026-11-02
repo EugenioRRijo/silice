@@ -25,12 +25,18 @@ MATRIZ = (
     (Accion.ENTREGAR_PAQUETE, True, False, False),
     (Accion.LEER_PROYECTO, True, True, False),
     (Accion.REVISAR_PAQUETE, False, True, False),
+    (Accion.APROBAR_VERSION, True, True, False),
     (Accion.CAMBIAR_CASO, True, False, True),
     (Accion.ADMINISTRAR_CUENTAS, False, False, True),
     (Accion.ADMINISTRAR_EMPRESA, False, False, True),
     (Accion.ADMINISTRAR_PRECIOS, False, False, True),
     (Accion.ADMINISTRAR_RED_Y_API, False, False, True),
+    (Accion.ACTIVAR_MODULOS, False, False, True),  # plan vial, Tarea 19
     (Accion.CAMBIAR_CARPETA_DE_DATOS, False, False, True),
+    (Accion.OPERAR_ARENERA, True, False, True),
+    (Accion.REGISTRAR_COSTOS_PRODUCCION, True, False, True),
+    (Accion.PUBLICAR_COSTO_PROPIO, False, False, True),
+    (Accion.VER_RIESGO, True, True, True),  # plan vial, Tarea 15
 )
 
 
@@ -44,9 +50,7 @@ def test_cada_fila_de_la_matriz(accion: Accion, arma: bool, revisa: bool, admin:
     assert permitido({Rol.REVISA}, accion) is revisa
     assert permitido({Rol.ADMINISTRADOR}, accion) is admin
     # varios roles suman
-    assert permitido({Rol.ARMA, Rol.REVISA, Rol.ADMINISTRADOR}, accion) is (
-        arma or revisa or admin
-    )
+    assert permitido({Rol.ARMA, Rol.REVISA, Rol.ADMINISTRADOR}, accion) is (arma or revisa or admin)
 
 
 def test_exigir_rechaza_con_un_mensaje_llano() -> None:

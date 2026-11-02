@@ -1,0 +1,146 @@
+// Control de obra. Sin tarjetas con sombra ni animaciones (DESIGN.md): formularios en columna y bloques con divisor.
+
+.silice-control {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+}
+
+// Los hijos de la rejilla pueden encogerse: si no, una tabla ancha (valuaciones) empuja la celda y ensancha la página
+// entera (tercera pasada de navegador, 31-10: 1.507 px en una ventana de 1.366).
+.silice-control > * {
+  min-inline-size: 0;
+}
+
+// Valuaciones se desplaza dentro de su propia caja, no la página.
+.silice-control__valuaciones {
+  overflow-x: auto;
+}
+
+.silice-control__bloque {
+  display: grid;
+  gap: 1rem;
+  padding-block: 1rem 1.5rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.silice-control__bloque:last-child {
+  border-block-end: 0;
+}
+
+// Las tablas de Control (valuaciones con nueve columnas) caben en la pantalla de 1366 px: relleno compacto en las celdas y
+// las cifras sin partir. Si aun asi no cupieran, `.silice-tabla` se desplaza dentro de su caja.
+.silice-control__bloque .silice-tabla :is(th, td) {
+  padding-inline: 0.5rem;
+}
+
+.silice-control__bloque .silice-tabla .silice-cifra {
+  white-space: nowrap;
+}
+
+// Valuaciones: ninguna celda se parte en líneas (el período en tres líneas y «Total con IVA» cortada eran lo visto a 1366 px).
+.silice-control__valuaciones .silice-tabla :is(th, td) {
+  white-space: nowrap;
+}
+
+.silice-control__nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-control__formulario {
+  display: grid;
+  gap: 1rem;
+  max-inline-size: 36rem;
+  padding-block: 1rem;
+}
+
+.silice-control__corte {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  align-items: end;
+  gap: 1rem;
+  padding-block: 1rem;
+}
+
+.silice-control__lineas {
+  display: grid;
+  gap: 0.75rem;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.silice-control__linea {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+}
+
+details > summary {
+  cursor: pointer;
+  padding-block: 0.5rem;
+}
+
+// Procura (Tarea 24): el plazo con su botón en la misma celda, y la línea de estado de lo hecho (texto neutro).
+.silice-control__plazo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.silice-control__estado:empty {
+  display: none;
+}
+
+.silice-control__estado:focus {
+  outline: 2px solid var(--silice-interactivo, #0f62fe);
+  outline-offset: 2px;
+}
+
+// Diálogos de la procura («Recibida…», plazo): como los de operación de la Hoja; caben a 1366×768 con la letra grande
+// (el cuerpo se desplaza y el pie con las acciones queda a la vista).
+.silice-control__dialogo-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(22 22 22 / 50%);
+}
+
+.silice-control__dialogo {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  inline-size: min(32rem, 100%);
+  max-block-size: calc(100vh - 2rem);
+  max-block-size: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.5rem 0;
+  background: var(--cds-layer, #fff);
+  border-inline-start: 4px solid var(--silice-interactivo, #0f62fe);
+
+  &:focus {
+    outline: 2px solid var(--silice-interactivo, #0f62fe);
+  }
+}
+
+.silice-control__dialogo-campos {
+  display: grid;
+  gap: 1rem;
+}
+
+.silice-control__dialogo-acciones {
+  position: sticky;
+  inset-block-end: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1px;
+  margin-inline: -1.5rem;
+  padding: 0.75rem 1.5rem 1rem;
+  background: var(--cds-layer, #fff);
+  border-block-start: 1px solid var(--silice-divisor);
+}

@@ -19,6 +19,7 @@ from openpyxl import load_workbook
 from sqlalchemy import func, select, text
 
 from adapters.espacio import cargar_espacio
+from aplicacion import hoja
 from core import models
 from core.budget import crear_proyecto
 from core.budget.instantanea import composiciones_de_version
@@ -27,7 +28,6 @@ from core.contracts import ParametrosCosto
 from tests.fixtures import caso_of001, caso_ti001
 from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.hoja_en_base import NOMBRE_OF001, plantilla_of001
-from ui import hoja
 
 D = Decimal
 NUEVO = "Proyecto nuevo: bano de la oficina"
@@ -184,7 +184,9 @@ def test_el_historial_dice_que_la_001_nacio_de_cero_con_un_registro(base):
     ]
 
 
-def test_sin_plan_en_el_borrador_la_primera_version_lleva_el_plan_secuencial(base):
+def test_sin_plan_en_el_borrador_la_primera_version_lleva_el_plan_de_rendimientos(base):
+    # Tarea 21 (choque 10): ya no es una partida por dia; el oraculo a mano de las duraciones esta
+    # en tests/unit/test_plan_rendimientos.py (la vivienda: 58 dias). Aqui, que hay plan y curva.
     sesion, catalogo = base
     _crear(base)
 

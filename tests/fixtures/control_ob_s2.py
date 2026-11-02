@@ -118,22 +118,23 @@ def items() -> list[ItemComputo]:
     ]
 
 
-def elaborar_ob_s2(codigo: str = CODIGO, plan=PLAN):
+def elaborar_ob_s2(codigo: str = CODIGO, plan=PLAN, moneda: str = MONEDA):
     """El presupuesto OB-001 con su curva y su informe (puro: no toca la base)."""
     return elaborar(
-        items(), composiciones(), PARAMETROS, codigo=codigo, fecha=FECHA, moneda=MONEDA, plan=plan
+        items(), composiciones(), PARAMETROS, codigo=codigo, fecha=FECHA, moneda=moneda, plan=plan
     )
 
 
-def sembrar(sesion) -> models.Presupuesto:
-    """El proyecto OB-S2 con la versión OB-001 guardada y su plan. No confirma."""
-    lista = models.ListaPrecios(nombre="OB-S2 USD", moneda=MONEDA, fecha_vigencia=FECHA)
+def sembrar(sesion, moneda: str = MONEDA) -> models.Presupuesto:
+    """El proyecto OB-S2 con la versión OB-001 guardada y su plan. No confirma. `moneda` rotula la
+    lista y la versión (los mismos números): una variante en Bs para probar conversiones."""
+    lista = models.ListaPrecios(nombre=f"OB-S2 {moneda}", moneda=moneda, fecha_vigencia=FECHA)
     sesion.add(lista)
     sesion.flush()
     catalogo = Catalogo(sesion)
     for apu in composiciones().values():
         catalogo.cargar_composicion(apu, lista, Dominio.CIVIL, FECHA, "memoria OB-S2")
-    resultado = elaborar_ob_s2()
+    resultado = elaborar_ob_s2(moneda=moneda)
     proyecto = crear_proyecto(sesion, NOMBRE)
     return guardar_presupuesto(
         sesion,

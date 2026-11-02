@@ -17,8 +17,8 @@ from instalador import medir_capas as mc
 from instalador.manifiesto import cargar
 
 BASE = "alfa==1.0\nBeta_Uno==2.0 ; sys_platform == 'win32'\n"
-UI = BASE + "streamlit==1.62.0\nnumpy==2.3.0\n"
-CIVIL = UI + "ifcopenshell==0.8.1\nshapely==2.1.0\n"
+API = BASE + "fastapi==0.115.0\nnumpy==2.3.0\n"
+CIVIL = API + "ifcopenshell==0.8.1\nshapely==2.1.0\n"
 ANOMALIAS = CIVIL + "scikit-learn==1.7.0\nnumpy==2.3.0\n"
 
 
@@ -44,12 +44,12 @@ def test_paquetes_de_lee_nombre_y_version_y_salta_lo_demas() -> None:
 
 
 def test_cada_capa_trae_solo_lo_que_las_anteriores_no_tenian() -> None:
-    capas = mc.capas_nuevas({"base": BASE, "ui": UI, "civil": CIVIL, "anomalias": ANOMALIAS})
+    capas = mc.capas_nuevas({"base": BASE, "api": API, "civil": CIVIL, "anomalias": ANOMALIAS})
     assert capas == {
         "base": {"alfa", "beta-uno"},
-        "ui": {"streamlit", "numpy"},
+        "api": {"fastapi", "numpy"},
         "civil": {"ifcopenshell", "shapely"},
-        "anomalias": {"scikit-learn"},  # numpy ya estaba en «ui»
+        "anomalias": {"scikit-learn"},  # numpy ya estaba en «api»
     }
 
 
@@ -180,3 +180,7 @@ def test_main_escribe_el_json_y_la_tabla_sin_medir_de_verdad(
     assert pedidas == [cargar().python]  # por defecto, la misma versión que el manifiesto (T13)
     assert json.loads(salida.read_text(encoding="utf-8")) == datos
     assert "| basica | 42 | 231,2 | 45,8 |" in capsys.readouterr().out
+
+
+def test_ninguna_capa_medida_incluye_el_extra_ui_retirado() -> None:
+    assert all("ui" not in extras for extras in mc.CAPAS.values())

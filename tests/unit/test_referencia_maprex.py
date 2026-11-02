@@ -1,15 +1,31 @@
 """Verifica los CSV de referencia MaPreX: formato, conversion y procedencia."""
+
 import csv
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
 CARPETA = RAIZ / "data" / "precios" / "maprex_2026-07"
-ARCHIVOS = ["referencia_civil.csv", "referencia_telecom.csv",
-            "referencia_industrial.csv", "referencia_sistemas.csv"]
+ARCHIVOS = [
+    "referencia_civil.csv",
+    "referencia_telecom.csv",
+    "referencia_industrial.csv",
+    "referencia_sistemas.csv",
+]
 TASA = Decimal("633.3644")
-CABECERA = ["tipo", "insumo", "unidad", "precio_bs", "bono_bs", "factor_depreciacion",
-            "precio_usd", "fecha_vigencia", "archivo", "ref_maprex", "notas"]
+CABECERA = [
+    "tipo",
+    "insumo",
+    "unidad",
+    "precio_bs",
+    "bono_bs",
+    "factor_depreciacion",
+    "precio_usd",
+    "fecha_vigencia",
+    "archivo",
+    "ref_maprex",
+    "notas",
+]
 
 
 def _filas(nombre):
@@ -28,7 +44,8 @@ def test_conversion_usd_con_tasa_declarada():
     for nombre in ARCHIVOS:
         for fila in _filas(nombre):
             esperado = (Decimal(fila["precio_bs"]) / TASA).quantize(
-                Decimal("0.0001"), rounding=ROUND_HALF_UP)
+                Decimal("0.0001"), rounding=ROUND_HALF_UP
+            )
             assert Decimal(fila["precio_usd"]) == esperado, f"{nombre}: {fila['insumo']}"
 
 

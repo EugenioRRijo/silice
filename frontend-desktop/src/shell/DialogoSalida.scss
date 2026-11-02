@@ -1,0 +1,45 @@
+// «Cambios sin guardar» (DialogoSalida.tsx). Carbon g10: capa `$overlay`, caja `$layer-01`, esquinas rectas, sin sombra ni
+// animacion; el pie con los dos botones a lo ancho, como el pie de un modal de Carbon. Todo en rem: sigue la letra.
+.silice-salida__fondo {
+  position: fixed;
+  inset: 0;
+  // Por encima de la barra y del sidebar en capa: la pregunta tapa todo hasta que se contesta.
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--cds-overlay);
+}
+
+.silice-salida {
+  box-sizing: border-box;
+  display: grid;
+  gap: 1rem;
+  inline-size: min(32rem, 100%);
+  max-block-size: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 1rem 1rem 0;
+  background: var(--cds-layer-01);
+  color: var(--cds-text-primary);
+
+  &:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.silice-salida__titulo,
+.silice-salida__texto {
+  margin: 0;
+}
+
+.silice-salida__acciones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-inline: -1rem;
+
+  .cds--btn {
+    max-inline-size: none;
+    inline-size: 100%;
+  }
+}

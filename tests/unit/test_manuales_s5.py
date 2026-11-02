@@ -132,7 +132,7 @@ def test_el_camino_de_desarrollo_esta_en_el_manual_tecnico() -> None:
 
 def test_el_readme_tiene_los_dos_caminos_y_la_direccion_explicita() -> None:
     readme = _leer("README.md")
-    assert "Silice-" in readme and "uv sync" in readme and "--server.address 127.0.0.1" in readme
+    assert "Silice-" in readme and "uv sync" in readme and "--host 127.0.0.1" in readme
 
 
 def test_calidad_declara_rnf_19_y_la_ers_el_camino_del_instalador() -> None:

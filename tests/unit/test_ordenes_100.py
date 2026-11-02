@@ -74,14 +74,14 @@ def test_red_local_estado_describe_la_configuracion(capsys) -> None:
     )
     assert cli.main(["red-local", "estado"]) == 0
     texto = capsys.readouterr().out
-    assert "encendida" in texto and "http://10.0.0.5:8501" in texto
-    assert "API: apagada (puerto 8000)" in texto
+    assert "encendida" in texto and "http://10.0.0.5:8501/app/" in texto
+    assert "API" not in texto and "Streamlit" not in texto  # un solo puerto
 
 
 def test_red_local_estado_apagada_por_defecto(capsys) -> None:
     assert cli.main(["red-local", "estado"]) == 0
     texto = capsys.readouterr().out
-    assert "Red local: apagada (solo http://127.0.0.1:8501)" in texto
+    assert "Red local: apagada (solo http://127.0.0.1:8501/app/)" in texto
     assert not config.ruta_ajustes().exists()  # describir no crea el archivo
 
 
@@ -102,8 +102,10 @@ def test_red_local_activar_con_ip_pide_confirmacion_y_activa(monkeypatch, capsys
     assert red.AVISO_SIN_CIFRAR in salida and "listo" in salida
 
 
-def test_red_local_activar_con_la_api_abre_los_dos_puertos(monkeypatch) -> None:
-    config.guardar_ajustes(config.ruta_ajustes(), config.Ajustes(api_activa=True, puerto_api=8010))
+def test_red_local_activar_abre_solo_el_puerto_unico_aunque_haya_tabla_api(monkeypatch) -> None:
+    ruta = config.ruta_ajustes()
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    ruta.write_text("[servidor]\npuerto = 8501\n[api]\nactiva = true\npuerto = 8010\n", "utf-8")
     visto: dict = {}
     monkeypatch.setattr(red, "interfaces_privadas", lambda: [red.Interfaz("Ethernet", "10.0.0.5")])
     monkeypatch.setattr(red, "es_administrador", lambda: True)
@@ -111,7 +113,7 @@ def test_red_local_activar_con_la_api_abre_los_dos_puertos(monkeypatch) -> None:
         red, "activar", lambda ip, **k: visto.update(k) or red.ResultadoRed(True, "listo")
     )
     assert cli.main(["red-local", "activar", "--ip", "10.0.0.5", "--si"]) == 0
-    assert visto["puertos"] == [8501, 8010]
+    assert visto["puertos"] == [8501]
 
 
 def test_red_local_activar_si_no_se_confirma_no_cambia_nada(monkeypatch) -> None:
@@ -253,4 +255,5 @@ def test_las_ordenes_de_la_1_0_0_estan_registradas() -> None:
         "firmar-sumas",
         "verificar-instalador",
         "huella-clave-proyecto",
+        "restablecer-administrador",  # BCP-1
     }

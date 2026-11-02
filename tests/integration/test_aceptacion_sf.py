@@ -39,6 +39,7 @@ from openpyxl import load_workbook
 from sqlalchemy import select
 
 from adapters.espacio import cargar_espacio
+from aplicacion import hoja
 from core import models
 from core.budget import crear_proyecto
 from core.catalog import Catalogo, abrir_sesion, crear_motor
@@ -46,7 +47,6 @@ from tests.fixtures import caso_of001, caso_ti001
 from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.evaluador_excel import _celda, evaluar
 from tests.fixtures.hoja_en_base import NOMBRE_OF001, plantilla_of001
-from ui import hoja
 
 D = Decimal
 DXF = Path(__file__).resolve().parents[1] / "fixtures" / "planos" / "of001.dxf"

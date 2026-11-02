@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from tests.conftest import RUTA_BASE_REAL
 
-CONFTEST_INTERNO = '''
+CONFTEST_INTERNO = """
 from pathlib import Path
 
 import pytest
@@ -29,7 +29,7 @@ RUTA = Path({ruta!r})
 @pytest.fixture(scope="session", autouse=True)
 def _base_intacta():
     yield from vigilar_base(RUTA)
-'''
+"""
 
 
 def _correr(pytester, ruta, cuerpo):

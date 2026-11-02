@@ -1,4 +1,4 @@
-"""Meta del sprint del prototipo AREN.IA (hoy Sílice): 12 metas agrupadas en seis fases (P0-P5).
+"""Meta del sprint del prototipo AREN.IA (hoy Sílice): 10 metas vivas, dos retiradas, en seis fases.
 
 Se define ANTES de las sesiones de `PLAN_PROTOTIPO.md`, igual que `meta_asistente.py`: las metas
 existen primero y cada fase se trabaja para ponerlas en OK. Reutiliza de `scripts/meta_alpha.py`
@@ -31,10 +31,18 @@ from scripts.meta_alpha import Estado, Fila, _filas_a_json, render_tabla  # noqa
 FASES: dict[str, tuple[str, ...]] = {
     "P0": ("P1", "P2", "P3"),
     "P1": ("P4", "P5", "P6"),
-    "P2": ("P7", "P8"),
+    "P2": ("P7",),
     "P3": ("P9",),
-    "P4": ("P10", "P11"),
+    "P4": ("P11",),
     "P5": ("P12",),
+}
+
+#: Metas retiradas con Streamlit (F4/F8): no se evaluan y NO cuentan ni suman ni restan (el
+#: denominador son las metas vivas). P8 pedia listar `ui.paginas.componer` en
+#: `tests/unit/test_ui_importable.py`; P10, una prueba con `AppTest`. Ya no hay interfaz que probar.
+RETIRADAS: dict[str, str] = {
+    "P8": "(P2) ui.paginas.componer esta listado en tests/unit/test_ui_importable.py",
+    "P10": "(P4) Alguna prueba usa AppTest",
 }
 
 TITULOS: dict[str, str] = {
@@ -44,10 +52,8 @@ TITULOS: dict[str, str] = {
     "P4": "(P1) ModalidadManoObra existe en core.contracts.apu",
     "P5": "(P1) Los cinco APU de la linea base reproducen su precio unitario esperado",
     "P6": "(P1) Catalogo.reemplazar_composicion existe en core.catalog",
-    "P7": "(P2) ui/composicion.py existe y no importa streamlit",
-    "P8": "(P2) ui.paginas.componer esta listado en tests/unit/test_ui_importable.py",
+    "P7": "(P2) aplicacion/composicion.py existe y no importa streamlit",
     "P9": "(P3) Existe tests/integration/test_composicion_extremo_a_extremo.py",
-    "P10": "(P4) Alguna prueba usa AppTest",
     "P11": "(P4) Ningun modulo de ml/ referencia el corpus simulado ni su generador",
     "P12": "(P5) Existe la bitacora del sprint en docs/bitacora/",
 }
@@ -64,8 +70,7 @@ RUTA_FUENTES_README = RUTA_FUENTES / "README.md"
 RUTA_DOSSIER_G0 = RAIZ / "docs" / "dossier_g0.md"
 RUTA_CONTRACTS_APU = RAIZ / "core" / "contracts" / "apu.py"
 RUTA_CATALOGO_REPOSITORIO = RAIZ / "core" / "catalog" / "repositorio.py"
-RUTA_UI_COMPOSICION = RAIZ / "ui" / "composicion.py"
-RUTA_TEST_UI_IMPORTABLE = RAIZ / "tests" / "unit" / "test_ui_importable.py"
+RUTA_COMPOSICION = RAIZ / "aplicacion" / "composicion.py"
 RUTA_PRUEBA_EXTREMO_A_EXTREMO = (
     RAIZ / "tests" / "integration" / "test_composicion_extremo_a_extremo.py"
 )
@@ -205,23 +210,13 @@ def evaluar_p6_reemplazar_composicion(texto_catalogo: str | None) -> tuple[Estad
 # --------------------------------------------------------------------------------------
 
 
-def evaluar_p7_ui_composicion(texto: str | None) -> tuple[Estado, str]:
+def evaluar_p7_composicion(texto: str | None) -> tuple[Estado, str]:
+    """La composicion vive en `aplicacion/composicion.py` (antes `ui/composicion.py`)."""
     if texto is None:
-        return Estado.PENDIENTE, "falta ui/composicion.py"
+        return Estado.PENDIENTE, "falta aplicacion/composicion.py"
     if re.search(r"^\s*(import\s+streamlit\b|from\s+streamlit\b)", texto, re.MULTILINE):
-        return Estado.FALLA, "ui/composicion.py importa streamlit"
-    return Estado.OK, "ui/composicion.py existe y no importa streamlit"
-
-
-def evaluar_p8_ui_paginas_componer(texto_test: str | None) -> tuple[Estado, str]:
-    if texto_test is None:
-        return Estado.PENDIENTE, "falta tests/unit/test_ui_importable.py"
-    if re.search(r"""["']ui\.paginas\.componer["']""", texto_test):
-        return Estado.OK, "ui.paginas.componer esta listado en tests/unit/test_ui_importable.py"
-    return (
-        Estado.PENDIENTE,
-        "ui.paginas.componer todavia no esta listado en tests/unit/test_ui_importable.py",
-    )
+        return Estado.FALLA, "aplicacion/composicion.py importa streamlit"
+    return Estado.OK, "aplicacion/composicion.py existe y no importa streamlit"
 
 
 def evaluar_p9_prueba_extremo_a_extremo(existe: bool) -> tuple[Estado, str]:
@@ -229,12 +224,6 @@ def evaluar_p9_prueba_extremo_a_extremo(existe: bool) -> tuple[Estado, str]:
     if existe:
         return Estado.OK, f"{ruta} existe"
     return Estado.PENDIENTE, f"falta {ruta}"
-
-
-def evaluar_p10_apptest(encontrado: bool) -> tuple[Estado, str]:
-    if encontrado:
-        return Estado.OK, "alguna prueba usa AppTest"
-    return Estado.PENDIENTE, "ninguna prueba usa AppTest todavia"
 
 
 def evaluar_p11_ml_sin_corpus_simulado(
@@ -282,16 +271,6 @@ def _archivos_de_fuentes(raiz_fuentes: Path) -> tuple[str, ...]:
             for ruta in raiz_fuentes.iterdir()
             if ruta.is_file() and ruta.name not in ARCHIVOS_FUENTES_SIN_FICHA
         )
-    )
-
-
-def _alguna_prueba_usa_apptest(raiz_tests: Path) -> bool:
-    if not raiz_tests.is_dir():
-        return False
-    return any(
-        "AppTest" in ruta.read_text(encoding="utf-8")
-        for ruta in raiz_tests.rglob("*.py")
-        if not any(parte in CARPETAS_EXCLUIDAS for parte in ruta.parts)
     )
 
 
@@ -346,10 +325,8 @@ def _evaluar_metas(codigos: list[str]) -> list[Fila]:
         "P4": lambda: evaluar_p4_modalidad_mano_obra(_leer(RUTA_CONTRACTS_APU)),
         "P5": evaluar_p5_linea_base,
         "P6": lambda: evaluar_p6_reemplazar_composicion(_leer(RUTA_CATALOGO_REPOSITORIO)),
-        "P7": lambda: evaluar_p7_ui_composicion(_leer(RUTA_UI_COMPOSICION)),
-        "P8": lambda: evaluar_p8_ui_paginas_componer(_leer(RUTA_TEST_UI_IMPORTABLE)),
+        "P7": lambda: evaluar_p7_composicion(_leer(RUTA_COMPOSICION)),
         "P9": lambda: evaluar_p9_prueba_extremo_a_extremo(RUTA_PRUEBA_EXTREMO_A_EXTREMO.exists()),
-        "P10": lambda: evaluar_p10_apptest(_alguna_prueba_usa_apptest(RUTA_TESTS)),
         "P11": lambda: evaluar_p11_ml_sin_corpus_simulado(
             generador_corpus.relative_to(RAIZ).as_posix() if generador_corpus else None,
             _referencias_ml_a_corpus(RUTA_ML, generador_corpus) if generador_corpus else (),
@@ -368,14 +345,14 @@ def _parsear_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="meta_prototipo.py",
         description=(
-            "Evalua las 12 metas del sprint del prototipo AREN.IA (hoy Sílice), agrupadas en P0-P5."
+            "Evalua las 10 metas vivas del sprint del prototipo AREN.IA (hoy Sílice), en P0-P5."
         ),
     )
     parser.add_argument(
         "--hasta",
         choices=list(FASES),
         default=None,
-        help="evalua solo las metas de esta fase y las anteriores (por defecto, las doce)",
+        help="evalua solo las metas de esta fase y las anteriores (por defecto, las diez vivas)",
     )
     parser.add_argument("--json", action="store_true", help="imprime JSON en vez de la tabla")
     return parser.parse_args(argv)
@@ -389,6 +366,8 @@ def main(argv: list[str] | None = None) -> int:
         codigos = [codigo for metas in FASES.values() for codigo in metas]
     filas = _evaluar_metas(codigos)
     print(_filas_a_json(filas) if args.json else render_tabla(filas))
+    if not args.json:
+        print(f"Retiradas (no cuentan): {', '.join(RETIRADAS)}")
     return 0 if all(fila.estado is Estado.OK for fila in filas) else 1
 
 

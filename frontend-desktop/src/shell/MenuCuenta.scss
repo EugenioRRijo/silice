@@ -1,0 +1,90 @@
+// Menu de la cuenta en la barra superior: nombre y «Salir». Rem, esquinas rectas, sin sombra ni animacion. Con letra
+// Grande o Muy grande, o por debajo de 1366 px, el nombre se oculta y queda el circulo de las iniciales.
+
+.silice-cuenta {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+// Con el envoltorio delante, para ganarle a `.cds--header__action` de Carbon (3 rem), que va despues (D-1 de MOD-5a).
+.silice-cuenta .silice-cuenta__boton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  inline-size: auto;
+  padding-inline: 0.75rem;
+  color: var(--cds-text-primary);
+}
+
+// Circulo de las iniciales: acento de la empresa con texto del color del marco (el servidor mide ese par, aplicacion/tema.py).
+.silice-cuenta__iniciales {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  border-radius: 50%;
+  background: var(--silice-acento);
+  color: var(--silice-marco);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.silice-cuenta__nombre {
+  max-inline-size: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.silice-cuenta__panel {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  z-index: 8000;
+  box-sizing: border-box;
+  min-inline-size: 10rem;
+  max-inline-size: calc(100vw - 1rem);
+  padding: 0.25rem 0;
+  background: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.silice-cuenta__salir {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  inline-size: 100%;
+  min-block-size: 2rem;
+  padding: 0 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--cds-text-primary);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+:root[data-silice-letra="grande"],
+:root[data-silice-letra="muy-grande"] {
+  .silice-cuenta__nombre {
+    display: none;
+  }
+}
+
+@media (max-width: 1365.98px) {
+  .silice-cuenta__nombre {
+    display: none;
+  }
+}

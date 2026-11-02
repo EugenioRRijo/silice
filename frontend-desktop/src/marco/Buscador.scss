@@ -1,0 +1,109 @@
+@use "@carbon/styles/scss/type";
+
+// Buscador Ctrl+K del marco nuevo (Buscador.tsx). Carbon g10: capa `$overlay`, caja `$layer-01`, esquinas rectas, sin
+// sombra ni animación. Sin hexadecimales: solo --silice-* y --cds-*. Todo en rem: sigue la letra. Por debajo de «Cambios
+// sin guardar» (9000), que puede abrirse encima.
+.silice-buscador__fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 8600;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding: 10vh 1rem 1rem;
+  background: var(--cds-overlay);
+}
+
+.silice-buscador {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  inline-size: min(40rem, 100%);
+  max-block-size: calc(100vh - 12vh - 1rem);
+  background: var(--cds-layer-01);
+  color: var(--cds-text-primary);
+
+  &:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.silice-buscador__campo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-inline: 1rem;
+  border-block-end: 1px solid var(--cds-border-subtle);
+  color: var(--cds-icon-secondary);
+}
+
+.silice-buscador__entrada {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  box-sizing: border-box;
+  block-size: 3rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cds-text-primary);
+  @include type.type-style("body-01");
+
+  &::placeholder {
+    color: var(--cds-text-placeholder);
+  }
+
+  // El foco se ve en el campo entero, con el anillo de Carbon (no se suprime).
+  &:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 0.25rem;
+  }
+}
+
+.silice-buscador__lista {
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.silice-buscador__opcion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-inline-start: 3px solid transparent;
+
+  // La opción activa se marca por forma (barra y relleno), no solo por color.
+  &[aria-selected="true"] {
+    background: var(--cds-layer-selected-01);
+    border-inline-start-color: var(--cds-border-interactive);
+  }
+}
+
+.silice-buscador__texto {
+  @include type.type-style("body-compact-01");
+}
+
+.silice-buscador__detalle {
+  color: var(--cds-text-secondary);
+  @include type.type-style("helper-text-01");
+}
+
+.silice-buscador__aviso,
+.silice-buscador__estado {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  border-block-start: 1px solid var(--cds-border-subtle);
+  @include type.type-style("helper-text-01");
+}
+
+.silice-buscador__aviso {
+  color: var(--cds-text-error);
+}
+
+.silice-buscador__estado {
+  color: var(--cds-text-secondary);
+}

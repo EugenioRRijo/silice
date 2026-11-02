@@ -18,10 +18,10 @@ from pathlib import Path
 import pytest
 
 from adapters.espacio import Coord, derivar
+from aplicacion import hoja
 from core.contracts import Severidad
 from tests.fixtures import caso_of001 as caso
 from tests.fixtures.caso_ti001 import TASA
-from ui import hoja
 
 MEMORIAS = Path(__file__).resolve().parents[1] / "fixtures" / "memorias"
 TOLERANCIA = Decimal("0.001")
