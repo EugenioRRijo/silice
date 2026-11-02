@@ -309,7 +309,7 @@ def test_la_reevaluacion_a_otra_fecha_cambia_solo_r12(api) -> None:
     pronto, tarde = pronto.json(), tarde.json()
     assert not [h for h in pronto["no_declarados"] if h["regla"] == "R12"]
     r12 = [h for h in tarde["no_declarados"] if h["regla"] == "R12"]
-    assert len(r12) == 3 and all("70 dias al 10/11/2026" in h["descripcion"] for h in r12)
+    assert len(r12) == 3 and all("70 días al 10/11/2026" in h["descripcion"] for h in r12)
     otras = [(h["regla"], h["severidad"]) for h in pronto["no_declarados"]]
     assert otras == [(h["regla"], h["severidad"]) for h in tarde["no_declarados"] if h not in r12]
 

@@ -171,7 +171,7 @@ def test_r12_se_evalua_a_la_fecha_de_emision_y_no_cambia_de_un_dia_a_otro() -> N
     segunda = revision.reauditar(v, Servicios())
     r12 = [h for h in primera.nuevos if h.regla == "R12"]
     # del 01/09/2026 al 10/11/2026 (emisión): 29 + 31 + 10 = 70 días
-    assert len(r12) == 3 and all("70 dias al 10/11/2026" in h.descripcion for h in r12)
+    assert len(r12) == 3 and all("70 días al 10/11/2026" in h.descripcion for h in r12)
     otras = [h.descripcion for h in segunda.nuevos if h.regla == "R12"]
     assert [h.descripcion for h in r12] == otras
 
