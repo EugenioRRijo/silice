@@ -45,6 +45,32 @@ def test_rendimientos_reales_de_obra_no_se_reportan():
     assert meta.oraciones_como_reales(texto) == []
 
 
+def test_datos_reales_que_quedan_en_local_no_se_reportan():
+    """NORMAS (2026-10-18): los datos reales nunca se suben; decir que viven en local, o en el
+    scratchpad, no presenta como reales los del repositorio.
+    """
+    assert meta.oraciones_como_reales("La medicion se hace con datos reales en local.") == []
+    texto = "Capturas de datos reales solo en el scratchpad."
+    assert meta.oraciones_como_reales(texto) == []
+
+
+def test_real_como_termino_tecnico_no_se_reporta():
+    """«Costo real», «tiempo real», «estado real» y «plan real» son vocabulario de control de obra
+    (valor ganado, recuperacion), no afirmaciones sobre los datos."""
+    for texto in (
+        "En costos y presupuestos: si el costo real es mayor a la meta, es desfavorable.",
+        "Recalcula el presupuesto en tiempo real.",
+        "Una replica de los datos que se alimenta del estado real de la obra.",
+        "Agregar lineas en el APU de la version; recuperacion con el plan real.",
+    ):
+        assert meta.oraciones_como_reales(texto) == [], texto
+
+
+def test_un_dato_real_junto_a_una_marca_tecnica_se_sigue_reportando():
+    texto = "Los APU del repositorio son reales."
+    assert meta.oraciones_como_reales(texto) == [texto]
+
+
 def test_un_mensaje_de_commit_citado_no_se_reporta():
     """Sobre el repositorio real: `PLAN_MULTIDOMINIO.md` cita mensajes de commit ya hechos, que no
     se reescriben porque son historia. Lo que va entre comillas invertidas se cita, no se afirma.
