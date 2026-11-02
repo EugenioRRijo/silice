@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { atipicosRespuesta, cuerpoDeVista, preciosRespuesta, trazabilidadRespuesta, vistaPlan } from "./datosDePrueba";
@@ -242,6 +243,27 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     montar();
     await irA("Revisión");
     expect(await screen.findByRole("region", { name: "Informe de auditoría" })).toBeInTheDocument();
+  });
+
+  // Menor de la Tarea 4 (decisión 8), resuelto en la Tarea 5: la regla de la coma decimal no se pliega para quien escribe.
+  test.each(["Partidas", "Análisis de precio (APU)", "Plan y equilibrio", "Ajustes de costo"])(
+    "quien edita ve sin plegar cómo se escriben las cifras en «%s»",
+    async (titulo) => {
+      servidor(true);
+      montar();
+      await irA(titulo);
+      expect(await screen.findByText(AYUDA_CIFRAS)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "¿Qué es esto?" })).toHaveAttribute("aria-expanded", "false");
+    },
+  );
+
+  test("quien revisa no ve cómo se escriben las cifras, ni plegado ni a la vista", async () => {
+    servidor(true);
+    montar(REVISA);
+    await screen.findByRole("table", { name: "Presupuesto" });
+    expect(screen.queryByText(AYUDA_CIFRAS, { exact: false })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" }));
+    expect(screen.queryByText(AYUDA_CIFRAS, { exact: false })).toBeNull();
   });
 
   test("cuenta que revisa: ve las siete pestañas y cada «¿Qué es esto?», y ningún control que escriba", async () => {
