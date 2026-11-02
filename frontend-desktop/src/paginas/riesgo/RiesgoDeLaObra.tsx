@@ -1,4 +1,5 @@
-import { Button, InlineLoading, Select, SelectItem } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
+import { InlineLoading } from "../../comun/carbonEs";
 import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import { comprobarObra, proyectarObra } from "../../api/riesgo";
@@ -17,7 +18,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
 import { useCarga } from "../inicio/useCarga";
-import { CAMPOS_INICIALES, ROTULOS, leerCampos, rutaDelInformeDeRiesgo } from "./logica";
+import { CAMPOS_INICIALES, ROTULOS, SIN_INICIO, leerCampos, pideLaFechaDeInicio, rutaDelInformeDeRiesgo } from "./logica";
 import type { Campos } from "./logica";
 import { MejoraDeLaEstimacion } from "./MejoraDeLaEstimacion";
 import { ParametrosDelRiesgo } from "./ParametrosDelRiesgo";
@@ -61,6 +62,11 @@ export default function RiesgoDeLaObra() {
   const regionProyeccion = useRef<HTMLElement>(null);
   const regionComprobacion = useRef<HTMLElement>(null);
   const cajaDelError = useRef<HTMLDivElement>(null);
+  // Sube cuando falta la fecha de inicio (hallazgo 9 del recorrido): el error va al campo y el foco también.
+  const [enfocarInicio, setEnfocarInicio] = useState(0);
+  useEffect(() => {
+    if (enfocarInicio > 0) document.getElementById("riesgo-inicio")?.focus();
+  }, [enfocarInicio]);
 
   // Lo que llega (el resultado o el error) recibe el foco: el botón queda desactivado mientras se espera.
   useEffect(() => {
@@ -86,12 +92,23 @@ export default function RiesgoDeLaObra() {
     setMapaDe({ version, mapa: nuevo });
   }
 
+  function marcarInicio(texto: string) {
+    setErrores((e) => ({ ...e, inicio: texto }));
+    setEnfocarInicio((n) => n + 1);
+  }
+
   async function pedir<T>(fijar: (p: Pedido<T>) => void, llamar: () => Promise<T>) {
     fijar({ estado: "cargando" });
     try {
       fijar({ estado: "listo", datos: await llamar() });
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
+      // El 422 de la fecha de inicio es de un campo: se dice en él, no en un aviso bajo los botones.
+      if (razon instanceof ErrorDeApi && razon.estado === 422 && pideLaFechaDeInicio(razon.detalle)) {
+        fijar(NADA);
+        marcarInicio(razon.detalle);
+        return;
+      }
       fijar({ estado: "error", error: razon });
     }
   }
@@ -99,8 +116,10 @@ export default function RiesgoDeLaObra() {
   function proyectar() {
     if (nombre === null || version === null) return;
     const lectura = leerCampos(campos, ["meses", "trayectorias", "semilla", "ventana"] as const);
-    if ("errores" in lectura) {
-      setErrores(lectura.errores);
+    const faltaInicio = campos.inicio === "" && insumos.estado === "listo" && insumos.datos.inicio_linea_base === null;
+    if ("errores" in lectura || faltaInicio) {
+      setErrores("errores" in lectura ? lectura.errores : {});
+      if (faltaInicio) marcarInicio(SIN_INICIO);
       return;
     }
     const { meses, trayectorias, semilla, ventana } = lectura.valores;
@@ -203,7 +222,11 @@ export default function RiesgoDeLaObra() {
         </>
       )}
       <MejoraDeLaEstimacion
-        precarga={proyeccion.estado === "listo" ? { cifra: proyeccion.datos.p50, version: proyeccion.datos.version, moneda: proyeccion.datos.moneda } : null}
+        precarga={
+          proyeccion.estado === "listo"
+            ? { cifra: proyeccion.datos.p50, base: proyeccion.datos.total_base, version: proyeccion.datos.version, moneda: proyeccion.datos.moneda }
+            : null
+        }
         alExpirar={alExpirar}
       />
     </div>

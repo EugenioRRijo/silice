@@ -121,12 +121,24 @@ describe("Costo por tonelada", () => {
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-11");
   });
 
-  test("la moneda no tiene valor por defecto: sin elegirla no se calcula", async () => {
+  test("la moneda no tiene valor por defecto: sin elegirla no se calcula y el campo dice por qué", async () => {
     montar();
     await screen.findByText("AGR-12: 150 t");
-    expect(screen.getByLabelText("Moneda del cálculo")).toHaveValue("");
-    expect(screen.getByRole("button", { name: "Calcular costo por tonelada" })).toBeDisabled();
+    const campo = screen.getByLabelText("Moneda del cálculo");
+    expect(campo).toHaveValue("");
+    // Hallazgo 12 del recorrido: el botón inactivo no decía por qué. Ahora se pulsa y el campo se marca con su error.
+    const boton = screen.getByRole("button", { name: "Calcular costo por tonelada" });
+    expect(boton).toBeEnabled();
+    await usuario.click(boton);
     expect(posts()).toHaveLength(0);
+    expect(campo).toHaveAttribute("aria-invalid", "true");
+    expect(campo).toHaveAccessibleDescription("Elija la moneda del cálculo: no tiene valor por defecto.");
+    expect(campo).toHaveFocus();
+    // Al elegirla, el error se va y el cálculo sale.
+    await usuario.selectOptions(campo, "USD");
+    expect(campo).not.toHaveAttribute("aria-invalid", "true");
+    await usuario.click(boton);
+    expect(posts()).toEqual([{ ruta: "/v1/produccion/calculos", cuerpo: { periodo: "2026-11", moneda: "USD" } }]);
   });
 
   test("el cálculo muestra costo por tonelada por producto y su fuente", async () => {

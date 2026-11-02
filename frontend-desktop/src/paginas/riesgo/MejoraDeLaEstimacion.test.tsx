@@ -170,6 +170,26 @@ describe("Mejora de la estimación", () => {
     expect(cuerpoDeLaMejora()).toMatchObject({ estimacion_silice: "150000" });
   });
 
+  // Hallazgo 9 del recorrido: el presupuesto original llegaba vacío aunque la proyección conoce el total base.
+  test("el presupuesto original viene con el total base de la proyección y se puede cambiar", async () => {
+    montar();
+    const original = within(seccion()).getByLabelText("Presupuesto original");
+    expect(original).toHaveValue("");
+    await usuario.selectOptions(await screen.findByLabelText("Cemento asfáltico"), "CEMENTO_ASFALTICO_PPI");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    await screen.findByRole("region", { name: "Resultado de la proyección" });
+    expect(within(seccion()).getByLabelText("Presupuesto original")).toHaveValue("1.000,00");
+    expect(
+      within(seccion()).getByText("Viene del total base de la proyección de VIA-002 (USD); puede cambiarlo."),
+    ).toBeInTheDocument();
+    await escribir("Presupuesto original", "141.700,50");
+    expect(within(seccion()).queryByText(/Viene del total base/)).toBeNull();
+    await escribir("Costo final real", "160.000");
+    await usuario.click(within(seccion()).getByRole("button", { name: "Calcular la mejora" }));
+    await screen.findByRole("region", { name: "Resultado de la mejora" });
+    expect(cuerpoDeLaMejora()).toMatchObject({ presupuesto_original: "141700.50", estimacion_silice: "159666.11" });
+  });
+
   test("una mejora negativa se muestra con su signo y se dice", async () => {
     mejora = () => json({ error_original_pct: "2.00", error_silice_pct: "5.50", mejora_pp: "-3.50" });
     montar();

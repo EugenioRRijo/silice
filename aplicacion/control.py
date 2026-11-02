@@ -760,7 +760,7 @@ PLANTILLAS_DEL_NUCLEO: tuple[tuple[str, str], ...] = (
         "el punto de equilibrio proyectado: se alcanza en {periodo}",
     ),
     (
-        "el punto de equilibrio proyectado: sin curva de inversion: el punto de equilibrio no "
+        "el punto de equilibrio proyectado: sin curva de inversión: el punto de equilibrio no "
         "se ubica en el plan",
         "el punto de equilibrio proyectado: sin curva de inversión: el punto de equilibrio no "
         "se ubica en el plan",
@@ -893,7 +893,7 @@ PLANTILLAS_DEL_NUCLEO: tuple[tuple[str, str], ...] = (
     ("el presupuesto no tiene ventas: no aplica", "el presupuesto no tiene ventas: no aplica"),
     ("se alcanza en {periodo}", "se alcanza en {periodo}"),
     (
-        "sin curva de inversion: el punto de equilibrio no se ubica en el plan",
+        "sin curva de inversión: el punto de equilibrio no se ubica en el plan",
         "sin curva de inversión: el punto de equilibrio no se ubica en el plan",
     ),
 )

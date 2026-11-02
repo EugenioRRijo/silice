@@ -1,4 +1,4 @@
-import { InlineNotification } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useEffect, useRef } from "react";
 import type { JSX, ReactNode } from "react";
 
@@ -20,7 +20,7 @@ export function AvisoConFoco({ aviso, alCerrar, refoco, children }: Props): JSX.
   }, [aviso, refoco]);
   if (!aviso) return null;
   return (
-    <div ref={caja} tabIndex={-1}>
+    <div ref={caja} tabIndex={-1} className="silice-aviso-foco">
       <InlineNotification
         kind="success"
         role="status"

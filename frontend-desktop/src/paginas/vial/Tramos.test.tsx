@@ -109,7 +109,7 @@ describe("Tramos de la vía", () => {
     const tabla = await screen.findByRole("table", { name: "Cantidades del tramo T1" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     expect(filas.map((f) => within(f).getAllByRole("cell").map((c) => c.textContent))).toEqual([
-      ["Carpeta asfáltica, tramo T1", "m2", "7.300"],
+      ["Carpeta asfáltica, tramo T1", "m²", "7.300"],
       ["Mezcla asfáltica de la carpeta, tramo T1", "t", "857,75"],
       ["Transporte de mezcla, tramo T1", "t·km", "10.293"],
     ]);

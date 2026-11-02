@@ -56,7 +56,7 @@ CASOS = [
         "el punto de equilibrio proyectado: se alcanza en Mes 3",
     ),
     (
-        "el punto de equilibrio proyectado: sin curva de inversion: el punto de equilibrio no "
+        "el punto de equilibrio proyectado: sin curva de inversión: el punto de equilibrio no "
         "se ubica en el plan",
         "el punto de equilibrio proyectado: sin curva de inversión: el punto de equilibrio no "
         "se ubica en el plan",
@@ -198,7 +198,7 @@ CASOS = [
     ),
     ("se alcanza en Mes 3", "se alcanza en Mes 3"),
     (
-        "sin curva de inversion: el punto de equilibrio no se ubica en el plan",
+        "sin curva de inversión: el punto de equilibrio no se ubica en el plan",
         "sin curva de inversión: el punto de equilibrio no se ubica en el plan",
     ),
 ]

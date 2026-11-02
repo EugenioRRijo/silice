@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { fechaDeRanura, leerFeriados } from "./fechas";
+import { fechaDeRanura, leerFeriados, periodoCompacto } from "./fechas";
 
 describe("fechas de Control y Reajuste (VB-19)", () => {
   test("fechaDeRanura lee en dd/mm/aaaa una fecha ISO real y deja intacto lo demás (ronda 1)", () => {
@@ -25,6 +25,19 @@ describe("fechas de Control y Reajuste (VB-19)", () => {
       expect(leerFeriados(`01/01/2027, ${malo}`)).toEqual({
         error: `Escriba los feriados como dd/mm/aaaa, separados por comas: «${malo}» no es una fecha.`,
       });
+    }
+  });
+});
+
+describe("el período de una valuación se lee compacto", () => {
+  test("si los dos extremos son del mismo año, el año va una sola vez", () => {
+    expect(periodoCompacto("02/11/2026 a 06/11/2026")).toBe("02/11 a 06/11/2026");
+    expect(periodoCompacto("28/12/2026 a 03/01/2027")).toBe("28/12/2026 a 03/01/2027");
+  });
+
+  test("lo que no es «dd/mm/aaaa a dd/mm/aaaa» se deja intacto", () => {
+    for (const intacto of ["", "sin período", "02/11/2026", "02/11/2026 a"]) {
+      expect(periodoCompacto(intacto)).toBe(intacto);
     }
   });
 });

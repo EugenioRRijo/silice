@@ -1,5 +1,6 @@
 import { ErrorFilled, WarningAltFilled } from "@carbon/icons-react";
-import { SkeletonText, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@carbon/react";
+import { SkeletonText, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
+import { TableHeader } from "../../comun/carbonEs";
 import { Link } from "react-router";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";

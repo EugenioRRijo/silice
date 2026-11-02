@@ -1,4 +1,5 @@
-import { Button, Checkbox, InlineNotification, RadioButton, RadioButtonGroup } from "@carbon/react";
+import { Button, Checkbox, RadioButton, RadioButtonGroup } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useCallback, useId, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { CampoTexto } from "../../comun/CampoTexto";

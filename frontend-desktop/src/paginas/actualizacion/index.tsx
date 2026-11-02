@@ -1,4 +1,5 @@
-import { Button, Checkbox, CheckboxGroup, InlineLoading, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { Button, Checkbox, CheckboxGroup, Select, SelectItem } from "@carbon/react";
+import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -10,6 +11,7 @@ import { InformeAuditoria } from "../../comun/InformeAuditoria";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { Variacion } from "../../comun/Variacion";
+import { cifrasEnTextoEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import {
   AYUDA,
@@ -346,16 +348,16 @@ function ResultadoRevaloracion({
       </h2>
       <section className="silice-actualizacion__totales" aria-label="Total del presupuesto">
         <p className="cds--type-label-01">
-          Total del presupuesto <span className="cds--visually-hidden">{respuesta.resumen}</span>
+          Total del presupuesto <span className="cds--visually-hidden">{cifrasEnTextoEsVe(respuesta.resumen)}</span>
         </p>
         <dl className="silice-actualizacion__datos">
           <div>
             <dt className="cds--type-label-01">Anterior</dt>
-            <dd className="cds--type-heading-04">{respuesta.total_anterior}</dd>
+            <dd className="cds--type-heading-04">{formatoEsVe(respuesta.total_anterior)}</dd>
           </div>
           <div>
             <dt className="cds--type-label-01">Nuevo</dt>
-            <dd className="cds--type-heading-04">{respuesta.total_nuevo}</dd>
+            <dd className="cds--type-heading-04">{formatoEsVe(respuesta.total_nuevo)}</dd>
           </div>
           <div>
             <dt className="cds--type-label-01">Variación</dt>

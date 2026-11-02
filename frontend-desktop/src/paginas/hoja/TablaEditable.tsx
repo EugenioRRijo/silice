@@ -1,5 +1,6 @@
 import { CheckmarkOutline } from "@carbon/icons-react";
-import { Button, Pagination, Select, SelectItem, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@carbon/react";
+import { Button, Select, SelectItem, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
+import { Pagination, TableHeader } from "../../comun/carbonEs";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { EstadoDeFila } from "./EstadoDeFila";

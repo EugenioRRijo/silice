@@ -1,4 +1,5 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import type { ReactNode } from "react";
 import { useCallback, useId, useRef } from "react";
 import { createPortal } from "react-dom";

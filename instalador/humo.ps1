@@ -326,7 +326,20 @@ try {
     Start-Process -FilePath $desinstalador -Wait `
         -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
     $limite = (Get-Date).AddSeconds(60)
+    $inicioBaja = Get-Date
     while ((Test-Path $Programa) -and (Get-Date) -lt $limite) { Start-Sleep -Seconds 2 }
+    if (Test-Path $Programa) {
+        # Diagnóstico: qué quedó, quién lo sostiene y si el desinstalador sigue en marcha.
+        $resto = @(Get-ChildItem $Programa -Recurse -Force -ErrorAction SilentlyContinue)
+        Write-Host "  quedan $($resto.Count) entradas en {app} tras $([int]((Get-Date) - $inicioBaja).TotalSeconds) s"
+        $resto | Select-Object -First 40 | ForEach-Object {
+            Write-Host "    $($_.FullName.Substring($Programa.Length))"
+        }
+        Get-CimInstance Win32_Process | Where-Object {
+            ($_.ExecutablePath -and $_.ExecutablePath.StartsWith($Programa)) -or
+            ($_.Name -like '_iu*') -or ($_.Name -like 'unins*')
+        } | ForEach-Object { Write-Host "    proceso vivo: $($_.ProcessId) $($_.Name) $($_.ExecutablePath)" }
+    }
     Afirmar (-not (Test-Path $Programa)) '{app} ya no existe'
     $quedan = (Test-Path (Join-Path $Datos 'instalacion.db')) -and (Test-Path $casos) -and
         (Test-Path $Respaldos)

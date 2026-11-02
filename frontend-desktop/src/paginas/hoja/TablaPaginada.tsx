@@ -1,4 +1,4 @@
-import { Pagination } from "@carbon/react";
+import { Pagination } from "../../comun/carbonEs";
 import { useState } from "react";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";

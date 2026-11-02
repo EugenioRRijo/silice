@@ -16,7 +16,7 @@ import { usuarioDeSesion } from "./logicaGuardar";
 import { RUTA_DE_BORRADORES, borradorExistente } from "./logicaRetomar";
 import type { OfertaDeRetomar } from "./logicaRetomar";
 import type { AlCrearVersion } from "./OperacionesDePrecios";
-import { usePuedeEditarLaHoja } from "./puedeEditar";
+import { puedeEditarLaHoja, usePuedeEditarLaHoja } from "./puedeEditar";
 import { useBorrador } from "./useBorrador";
 import type { EstadoBorrador } from "./useBorrador";
 import { useGuardadoDeLaPagina } from "./useGuardadoDeLaPagina";
@@ -51,6 +51,9 @@ export interface HojaDeLaObra extends PestanaDeLaHoja {
   hayCambios: boolean;
   // `puedeEditarLaHoja` (Tarea 2b) con la base del borrador abierto: editar_hoja y no solo_lectura.
   puedeEditar: boolean;
+  // M6 (Eugenio, 2026-11-01): quien no edita la Hoja, en una obra sin versiones, no abre un borrador en blanco; la
+  // sección dice «Aún no hay nada que revisar».
+  nadaQueRevisar: boolean;
   // Los borradores con cambios que el servidor conserva de esta obra (E10) y lo que se hace con ellos.
   ofrecidos: OfertaDeRetomar[];
   retomar: (o: OfertaDeRetomar) => void;
@@ -122,8 +125,10 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
   const { datos, recargarVersiones } = useVersiones(proyecto, cargadas, alExpirar);
   const ofrecidas = datos ? versionesOfrecidas(datos.versiones) : [];
   const delProyecto = elegida?.proyecto === proyecto ? elegida.codigo : null;
+  // M6 (Eugenio, 2026-11-01): quien no edita la Hoja, en una obra sin versiones, no abre un borrador en blanco: ve un aviso.
+  const nadaQueRevisar = datos !== null && ofrecidas.length === 0 && !puedeEditarLaHoja(sesion.acciones, null);
   const codigo =
-    datos === null || ofertas.estado !== "listo" || ofrecidos.length > 0
+    datos === null || nadaQueRevisar || ofertas.estado !== "listo" || ofrecidos.length > 0
       ? undefined
       : retomado !== null
         ? retomado.version
@@ -275,6 +280,7 @@ function ProveedorDeProyecto({ proyecto, nombreProyecto, children }: { proyecto:
     estado,
     hayCambios,
     puedeEditar,
+    nadaQueRevisar,
     ofrecidos,
     retomar,
     descartarOfrecidos,

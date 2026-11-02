@@ -255,7 +255,7 @@ describe("Revisar un paquete", () => {
     expect(screen.getByText("Versión 005 del 2026-11-10; es la primera que recibe de este proyecto.")).toBeInTheDocument();
     expect(screen.getByText("Este paquete se emitió para Obra Norte.")).toBeInTheDocument();
     const recalculado = screen.getByText("Total recalculado").parentElement as HTMLElement;
-    expect(within(recalculado).getByText("836,80")).toHaveAttribute("title", "Valor exacto: 836.79750000");
+    expect(within(recalculado).getByText("836,80")).toHaveAttribute("title", "Valor exacto: 836,79750000");
     expect(screen.getByText("Reglas corridas a la fecha de emisión (2026-11-10): R1-R7, R11-R12.")).toBeInTheDocument();
     expect(
       screen.getByText("Los precios y totales que declara el paquete coinciden con los recalculados."),
@@ -276,11 +276,11 @@ describe("Revisar un paquete", () => {
     const usuario = await subirYEsperar();
     expect(screen.getByText("No contrastables (no están en mi lista; no suman): EQU-001, MO-001")).toBeInTheDocument();
     const contraste = screen.getByRole("region", { name: "El paquete con los precios de mi lista" });
-    expect(within(contraste).getByText("887,40")).toHaveAttribute("title", "Valor exacto: 887.3975");
+    expect(within(contraste).getByText("887,40")).toHaveAttribute("title", "Valor exacto: 887,3975");
     // el reparto en es-VE, como el resto de las cifras, con el exacto de cada parte a mano
     const reparto = () => contraste.querySelector(".silice-revisar__reparto") as HTMLElement;
     expect(visible(reparto())).toBe("Por cantidad: 0,00. Por precio: 50,60.");
-    expect(within(reparto()).getByText("50,60")).toHaveAttribute("title", "Valor exacto: 50.6000");
+    expect(within(reparto()).getByText("50,60")).toHaveAttribute("title", "Valor exacto: 50,6000");
     await usuario.selectOptions(screen.getByLabelText("Contrastar con mi lista"), "1");
     await waitFor(() => expect(llamadas("/v1/revision/contra-lista")).toHaveLength(1));
     const cuerpo = llamadas("/v1/revision/contra-lista")[0][1]?.body as FormData;
@@ -416,7 +416,7 @@ describe("Revisar un paquete", () => {
     expect(await screen.findByText(EXTERNO.aviso)).toBeInTheDocument();
     const cuerpo = llamadas("/v1/revision/excel-externo")[0][1]?.body as FormData;
     expect((cuerpo.get("presupuesto") as File).name).toBe("externo.xlsx");
-    expect(screen.getByText("836,80")).toHaveAttribute("title", "Valor exacto: 836.79750000");
+    expect(screen.getByText("836,80")).toHaveAttribute("title", "Valor exacto: 836,79750000");
     expect(within(screen.getByRole("table", { name: "Hallazgos del presupuesto en Excel" })).getByText("R2")).toBeInTheDocument();
   });
 });

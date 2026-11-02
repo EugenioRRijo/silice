@@ -269,7 +269,7 @@ export function vistaEquilibrio(extra: Partial<VistaEquilibrio> = {}): VistaEqui
 export function vistaParametros(extra: Partial<VistaParametros> = {}): VistaParametros {
   return {
     campos: [
-      { clave: "fcas", rotulo: "FCAS (fracción: 6,00 = prestaciones del 600 %)", valor: "6,00" },
+      { clave: "fcas", rotulo: "FCAS (fracción: 6.00 = prestaciones del 600 %)", valor: "6,00" },
       { clave: "bono_alimentacion", rotulo: "Bono de alimentación (por obrero y día)", valor: "5,8100" },
       { clave: "administracion", rotulo: "Administración (fracción del costo directo)", valor: "0,15" },
       { clave: "utilidad", rotulo: "Utilidad (fracción, en cascada sobre la administración)", valor: "0,10" },

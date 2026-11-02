@@ -1,12 +1,14 @@
 import type { JSX } from "react";
 import type { CantidadDeTramo, TramoGuardado } from "../../api/vial";
+import { unidadEscrita } from "../../comun/unidades";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
+
 const COLUMNAS: ColumnaDensa[] = [
   { clave: "descripcion", titulo: "Partida", ordenable: false },
-  { clave: "unidad", titulo: "Unidad", ordenable: false },
+  { clave: "unidad", titulo: "Unidad", ordenable: false, presentar: unidadEscrita },
   { clave: "cantidad", titulo: "Cantidad", numerica: true, ordenable: false, presentar: formatoEsVe },
 ];
 

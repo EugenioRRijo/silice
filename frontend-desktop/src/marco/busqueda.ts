@@ -1,5 +1,4 @@
 import { rutaDe } from "../shell/rutas";
-import { claveDeObra } from "../paginas/pendientes/logica";
 import { seccionesDeLaObra } from "./oferta";
 import type { Oferta } from "./oferta";
 import { rutaDeEmpresa, rutaDeObra } from "./secciones";
@@ -32,8 +31,6 @@ export function resultadosDe(
   texto: string,
   obras: readonly ObraDeCarpeta[],
   oferta: Oferta,
-  // Las obras (carpeta|número) con tramos guardados: solo ellas ofrecen la sección «Tramos».
-  viales: ReadonlySet<string> = new Set(),
 ): Resultado[] {
   const palabras = normalizar(texto).split(/\s+/).filter(Boolean);
   const deLaObra = (o: ObraDeCarpeta): Resultado => ({
@@ -46,7 +43,7 @@ export function resultadosDe(
   const todos: Resultado[] = [
     ...obras.map(deLaObra),
     ...obras.flatMap((o) =>
-      seccionesDeLaObra(oferta, viales.has(claveDeObra(o.carpeta, o.obra_id))).map((s) => ({
+      seccionesDeLaObra(oferta).map((s) => ({
         texto: `${o.obra} › ${s.titulo}`,
         detalle: s.ayuda,
         ruta: rutaDeObra(o.carpeta, o.obra_id, s.id),

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { buscadorDeConsulta, gruposDeConsulta, rutaDeConsulta } from "./consulta";
+import { buscadorDeComponentes, buscadorDeConsulta, buscadorDeMateriales, gruposDeConsulta, rutaDeConsulta } from "./consulta";
 import type { SugerenciasHalladas } from "./consulta";
 
 // Plan vial, Tarea 20: el adaptador de GET /v1/consulta/{tabla} para CampoConBusqueda. Datos ficticios.
@@ -49,5 +49,53 @@ describe("buscadorDeConsulta pide la ruta con la señal de aborto", () => {
     expect(fetchFalso.mock.calls[0][0]).toBe("/v1/consulta/insumos?q=cemento&limite=8");
     expect(fetchFalso.mock.calls[0][1]?.signal).toBe(controlador.signal);
     expect(grupos[0].opciones).toHaveLength(2);
+  });
+});
+
+describe("materiales de producción de la arenera", () => {
+  const fetchFalso = vi.fn<typeof fetch>();
+  const MATERIALES = [
+    { codigo: "MZP-01", nombre: "Mezcla asfáltica ficticia", activo: true },
+    { codigo: "AGR-12", nombre: "Agregado grueso ficticio", activo: true },
+    { codigo: "AGR-99", nombre: "Agregado retirado ficticio", activo: false },
+  ];
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchFalso);
+    fetchFalso.mockReset();
+    fetchFalso.mockImplementation(async (entrada) => {
+      const ruta = String(entrada);
+      if (ruta === "/v1/produccion/materiales") return new Response(JSON.stringify(MATERIALES), { status: 200 });
+      return new Response(JSON.stringify(RESPUESTA), { status: 200 });
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test("busca por código o por palabras en los materiales activos, sin distinguir tildes ni mayúsculas", async () => {
+    const control = new AbortController();
+    const [porNombre] = await buscadorDeMateriales()("MEZCLA asfal", control.signal, 8);
+    expect(porNombre!.rotulo).toBe("Materiales de la arenera");
+    expect(porNombre!.opciones.map((o) => o.valor.valor)).toEqual(["MZP-01"]);
+    const [porCodigo] = await buscadorDeMateriales()("agr", control.signal, 8);
+    expect(porCodigo!.opciones.map((o) => o.valor.valor)).toEqual(["AGR-12"]); // el inactivo no se ofrece
+  });
+
+  test("sin coincidencias no hay grupo", async () => {
+    expect(await buscadorDeMateriales()("zzz", new AbortController().signal, 8)).toEqual([]);
+  });
+
+  test("los componentes ofrecen los materiales de la arenera y los insumos del catálogo", async () => {
+    const grupos = await buscadorDeComponentes()("agr", new AbortController().signal, 8);
+    expect(grupos.map((g) => g.rotulo)).toEqual(["Materiales de la arenera", "Insumos del catálogo"]);
+  });
+
+  test("si los materiales fallan (módulo de producción apagado), siguen los insumos del catálogo", async () => {
+    fetchFalso.mockImplementation(async (entrada) => {
+      if (String(entrada) === "/v1/produccion/materiales") return new Response("{}", { status: 404 });
+      return new Response(JSON.stringify(RESPUESTA), { status: 200 });
+    });
+    const grupos = await buscadorDeComponentes()("agr", new AbortController().signal, 8);
+    expect(grupos.map((g) => g.rotulo)).toEqual(["Insumos del catálogo"]);
   });
 });

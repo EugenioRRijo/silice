@@ -218,6 +218,52 @@ describe("Riesgo de la obra", () => {
     await waitFor(() => expect(screen.queryByText(/puede tardar/)).toBeNull());
   });
 
+  // Hallazgo 9 del recorrido: sin línea base de control la fecha de inicio es necesaria; el aviso salía bajo el botón, lejos
+  // del campo, y el campo no se marcaba.
+  const SIN_INICIO = "Indique la fecha de inicio de la obra: la versión no tiene línea base de control de la que tomarla.";
+
+  test("sin línea base la fecha de inicio se marca obligatoria y, vacía, el error va al campo sin llamar al servidor", async () => {
+    const leer = fetchFalso.getMockImplementation();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://prueba");
+      if (url.pathname === "/v1/riesgo/insumos") return json({ ...INSUMOS, inicio_linea_base: null });
+      return leer!(entrada, init);
+    });
+    montar();
+    const campo = await screen.findByLabelText("Fecha de inicio (obligatoria)");
+    expect(campo).toBeRequired();
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    expect(fetchFalso.mock.calls.some((c) => String(c[0]).includes("/v1/riesgo/proyeccion"))).toBe(false);
+    expect(campo).toHaveAttribute("aria-invalid", "true");
+    expect(campo).toHaveAccessibleDescription(expect.stringContaining(SIN_INICIO));
+    expect(campo).toHaveFocus();
+    expect(screen.queryByRole("alert", { name: /No se pudo calcular el riesgo/ })).toBeNull();
+    // Con la fecha escrita, el error se va y la proyección sale con ella.
+    await usuario.type(campo, "2027-03-01");
+    expect(campo).not.toHaveAttribute("aria-invalid", "true");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    await screen.findByRole("region", { name: "Resultado de la proyección" });
+    expect(cuerpoDe("/v1/riesgo/proyeccion")).toMatchObject({ inicio: "2027-03-01" });
+  });
+
+  test("con línea base la fecha de inicio no es obligatoria", async () => {
+    montar();
+    const campo = await screen.findByLabelText("Fecha de inicio");
+    expect(campo).not.toBeRequired();
+  });
+
+  test("si el servidor pide la fecha de inicio (422), el error se muestra en el campo y lleva el foco a él", async () => {
+    proyeccion = () => json({ detalle: SIN_INICIO }, 422);
+    montar();
+    await screen.findByLabelText("Cemento asfáltico");
+    await usuario.click(screen.getByRole("button", { name: "Proyectar" }));
+    const campo = screen.getByLabelText(/^Fecha de inicio/);
+    await waitFor(() => expect(campo).toHaveAttribute("aria-invalid", "true"));
+    expect(campo).toHaveAccessibleDescription(expect.stringContaining(SIN_INICIO));
+    await waitFor(() => expect(campo).toHaveFocus());
+    expect(screen.queryByText("No se pudo calcular el riesgo")).toBeNull();
+  });
+
   test("el error de pocos meses muestra el número", async () => {
     proyeccion = () => json({ detalle: "solo hay 9 meses completos; se necesitan 12" }, 422);
     montar();

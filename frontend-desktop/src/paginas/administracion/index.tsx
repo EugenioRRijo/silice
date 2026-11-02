@@ -1,4 +1,5 @@
-import { Layer, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { Layer, Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { TabList } from "../../comun/carbonEs";
 import { useState } from "react";
 import type { ComponentType } from "react";
 import { EstadoVacio } from "../../comun/EstadoVacio";

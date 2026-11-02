@@ -10,9 +10,11 @@ import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { AYUDA_CIFRAS, leerCifra } from "../../indicadores/cifraEscrita";
 import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 
-// La cifra de la proyección que se ofrece como estimación de Sílice: el P50 exacto, de qué versión y en qué moneda.
+// Lo que se ofrece de la proyección: el P50 exacto como estimación de Sílice y el total base como presupuesto original,
+// de qué versión y en qué moneda.
 export interface Precarga {
   cifra: string;
+  base: string;
   version: string;
   moneda: string;
 }
@@ -50,7 +52,9 @@ function lecturaDeLaMejora(mejoraPp: string): string {
 export function MejoraDeLaEstimacion({ precarga, alExpirar }: Props): JSX.Element {
   const llave = precarga === null ? null : `${precarga.version}|${precarga.cifra}`;
   const [real, setReal] = useState("");
-  const [original, setOriginal] = useState("");
+  // Como la de Sílice: el presupuesto original viene con el total base de la proyección hasta que la persona lo cambia.
+  const [original, setOriginal] = useState<{ de: string | null; texto: string }>({ de: null, texto: "" });
+  const textoOriginal = original.de === llave || precarga === null ? original.texto : centesimasEsVe(precarga.base);
   // Lo que la persona escribió en la de Sílice y sobre qué proyección: una proyección nueva vuelve a precargar.
   const [silice, setSilice] = useState<{ de: string | null; texto: string }>({ de: null, texto: "" });
   const textoSilice = silice.de === llave || precarga === null ? silice.texto : centesimasEsVe(precarga.cifra);
@@ -59,7 +63,7 @@ export function MejoraDeLaEstimacion({ precarga, alExpirar }: Props): JSX.Elemen
   const region = useRef<HTMLElement>(null);
   const cajaDelError = useRef<HTMLDivElement>(null);
 
-  const textos = JSON.stringify([real, original, textoSilice]);
+  const textos = JSON.stringify([real, textoOriginal, textoSilice]);
   const resultado = pedido.estado === "listo" && pedido.textos === textos ? pedido : null;
   const error = pedido.estado === "error" && pedido.textos === textos ? pedido.error : null;
 
@@ -69,16 +73,16 @@ export function MejoraDeLaEstimacion({ precarga, alExpirar }: Props): JSX.Elemen
     if (pedido.estado === "error") cajaDelError.current?.focus();
   }, [pedido]);
 
-  const valores: Record<Clave, string> = { real, original, silice: textoSilice };
+  const valores: Record<Clave, string> = { real, original: textoOriginal, silice: textoSilice };
   function cambiar(clave: Clave, texto: string) {
     if (clave === "real") setReal(texto);
-    else if (clave === "original") setOriginal(texto);
+    else if (clave === "original") setOriginal({ de: llave, texto });
     else setSilice({ de: llave, texto });
     setErrores((e) => ({ ...e, [clave]: undefined }));
   }
 
   async function calcular() {
-    const leidas = { real: leerCifra(real), original: leerCifra(original), silice: leerCifra(textoSilice) };
+    const leidas = { real: leerCifra(real), original: leerCifra(textoOriginal), silice: leerCifra(textoSilice) };
     const malas: Partial<Record<Clave, string>> = {};
     for (const clave of Object.keys(leidas) as Clave[]) {
       const lectura = leidas[clave];
@@ -106,6 +110,11 @@ export function MejoraDeLaEstimacion({ precarga, alExpirar }: Props): JSX.Elemen
     precarga !== null && silice.de !== llave
       ? `Viene con el P50 de la proyección de ${precarga.version} (${precarga.moneda}); puede cambiarla.`
       : undefined;
+  const ayudaOriginal =
+    precarga !== null && original.de !== llave
+      ? `Viene del total base de la proyección de ${precarga.version} (${precarga.moneda}); puede cambiarlo.`
+      : undefined;
+  const ayudas: Partial<Record<Clave, string>> = { original: ayudaOriginal, silice: ayudaSilice };
   return (
     <section aria-labelledby="mejora-titulo" className="riesgo-mejora">
       <h2 id="mejora-titulo" className="cds--type-heading-compact-02">
@@ -123,7 +132,7 @@ export function MejoraDeLaEstimacion({ precarga, alExpirar }: Props): JSX.Elemen
             labelText={ROTULOS[clave]}
             inputMode="decimal"
             value={valores[clave]}
-            helperText={clave === "silice" ? ayudaSilice : undefined}
+            helperText={ayudas[clave]}
             invalid={errores[clave] !== undefined}
             invalidText={errores[clave]}
             onChange={(e) => cambiar(clave, e.target.value)}

@@ -1,14 +1,5 @@
-import {
-  Button,
-  Select,
-  SelectItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@carbon/react";
+import { Button, Select, SelectItem, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
+import { TableHeader } from "../../comun/carbonEs";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { COLUMNAS, TITULOS } from "./tablas";
 import type { Fila, TipoTabla } from "./tablas";

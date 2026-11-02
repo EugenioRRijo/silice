@@ -120,7 +120,7 @@ def equilibrio(
     mensaje = (
         f"se alcanza en {ubicacion[0]}"
         if ubicacion[0] is not None
-        else "sin curva de inversion: el punto de equilibrio no se ubica en el plan"
+        else "sin curva de inversión: el punto de equilibrio no se ubica en el plan"
     )
     return resultado(
         EstadoEquilibrio.CALCULADO,

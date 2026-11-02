@@ -1,4 +1,5 @@
-import { Button, InlineLoading, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
+import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";

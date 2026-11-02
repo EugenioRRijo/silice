@@ -1,4 +1,5 @@
-import { SkeletonText, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@carbon/react";
+import { SkeletonText, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
+import { TableHeader } from "../../comun/carbonEs";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";

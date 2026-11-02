@@ -1,7 +1,8 @@
 // Logica pura de «Actualizar precios» (UC-02): arma los textos y el formulario con lo que manda la API. No calcula ni
-// redondea importes: los montos llegan como texto y se muestran tal cual.
+// redondea importes: los montos llegan como texto y solo se presentan en es-VE.
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import type { InformeAuditoriaRespuesta } from "../../api/tipos";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 export const AYUDA =
   "Carga una lista de precios nueva (CSV o XLSX con las columnas tipo, insumo, unidad y precio) y el sistema revalora el presupuesto guardado, registra qué cambió y audita la versión nueva.";
@@ -65,12 +66,12 @@ export interface Revaloracion {
 export const COLUMNAS_COMPARATIVO: ColumnaDensa[] = [
   { clave: "codigo_partida", titulo: "Partida" },
   { clave: "descripcion", titulo: "Descripción" },
-  { clave: "cantidad", titulo: "Cantidad", numerica: true },
-  { clave: "pu_anterior", titulo: "P.U. anterior", numerica: true },
-  { clave: "pu_nuevo", titulo: "P.U. nuevo", numerica: true },
+  { clave: "cantidad", titulo: "Cantidad", numerica: true, presentar: formatoEsVe },
+  { clave: "pu_anterior", titulo: "P.U. anterior", numerica: true, presentar: formatoEsVe },
+  { clave: "pu_nuevo", titulo: "P.U. nuevo", numerica: true, presentar: formatoEsVe },
   { clave: "variacion_pct", titulo: "Variación %", numerica: true, celda: "variacion" },
-  { clave: "total_anterior", titulo: "Total anterior", numerica: true },
-  { clave: "total_nuevo", titulo: "Total nuevo", numerica: true },
+  { clave: "total_anterior", titulo: "Total anterior", numerica: true, presentar: formatoEsVe },
+  { clave: "total_nuevo", titulo: "Total nuevo", numerica: true, presentar: formatoEsVe },
   { clave: "incidencia_pct", titulo: "Incidencia %", numerica: true, celda: "variacion" },
 ];
 

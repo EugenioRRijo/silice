@@ -1,26 +1,34 @@
 import type { JSX } from "react";
 import { CampoConBusqueda } from "./CampoConBusqueda";
-import { buscadorDeConsulta } from "./consulta";
-import type { TablaDeConsulta } from "./consulta";
+import { buscadorDeComponentes, buscadorDeConsulta, buscadorDeMateriales } from "./consulta";
+import type { TablaDeBusqueda } from "./consulta";
 
 interface Props {
   id: string;
   etiqueta: string;
   ayuda?: string;
-  tabla: TablaDeConsulta;
+  tabla: TablaDeBusqueda;
   texto: string;
   alCambiarTexto: (texto: string) => void;
   alExpirar: () => void;
   invalido?: boolean;
   textoInvalido?: string;
+  // «sm» por omisión; «md» cuando el campo va junto a campos de 40 px (la fila de un componente de receta).
+  tamano?: "sm" | "md";
 }
 
-const buscadores = new Map<TablaDeConsulta, ReturnType<typeof buscadorDeConsulta>>();
+const buscadores = new Map<TablaDeBusqueda, ReturnType<typeof buscadorDeConsulta>>();
 
-function buscadorDe(tabla: TablaDeConsulta) {
+function crearBuscador(tabla: TablaDeBusqueda) {
+  if (tabla === "materiales_produccion") return buscadorDeMateriales();
+  if (tabla === "componentes_de_receta") return buscadorDeComponentes();
+  return buscadorDeConsulta(tabla);
+}
+
+function buscadorDe(tabla: TablaDeBusqueda) {
   let buscador = buscadores.get(tabla);
   if (buscador === undefined) {
-    buscador = buscadorDeConsulta(tabla);
+    buscador = crearBuscador(tabla);
     buscadores.set(tabla, buscador);
   }
   return buscador;
@@ -39,6 +47,7 @@ export function CampoDeConsulta({
   alExpirar,
   invalido,
   textoInvalido,
+  tamano,
 }: Props): JSX.Element {
   return (
     <CampoConBusqueda
@@ -57,6 +66,7 @@ export function CampoDeConsulta({
       alExpirar={alExpirar}
       invalido={invalido}
       textoInvalido={textoInvalido}
+      tamano={tamano}
     />
   );
 }

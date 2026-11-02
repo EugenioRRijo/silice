@@ -276,10 +276,14 @@ describe("Actualizar precios", () => {
     expect(screen.getByText("Aviso de advertencia ficticio.")).toBeInTheDocument();
     expect(screen.getByText("Aviso informativo ficticio.")).toBeInTheDocument();
     expect(screen.getByText("Total del presupuesto")).toBeInTheDocument();
-    expect(screen.getByText(REVALORACION.resumen.replace(/\s+/g, " "))).toBeInTheDocument();
+    expect(screen.getByText("1.000,00 -> 1.100,00 USD (variacion 100,00 USD, 10,00 %)")).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: /Comparativo/ });
     expect(within(tabla).getAllByRole("columnheader")).toHaveLength(9);
-    expect(within(tabla).getByText("1100.00")).toBeInTheDocument();
+    // El comparativo llega con punto decimal; se lee en es-VE (D-8).
+    for (const cifra of ["10,00", "100,00", "110,00", "1.000,00", "1.100,00"]) {
+      expect(within(tabla).getAllByText(cifra).length).toBeGreaterThan(0);
+    }
+    expect(tabla).not.toHaveTextContent(/\d\.\d{2}(?!\d)/);
     expect(
       screen.getByText("Se dieron de alta en el catálogo, con precio solo en la lista nueva: Tornillo ficticio"),
     ).toBeInTheDocument();
@@ -351,9 +355,10 @@ describe("Actualizar precios", () => {
     for (const rotulo of ["Anterior", "Nuevo", "Variación", "Variación %"]) {
       expect(within(total).getByText(rotulo)).toBeInTheDocument();
     }
-    expect(within(total).getByText("1000.00")).toBeInTheDocument();
-    expect(within(total).getByText("1100.00")).toBeInTheDocument();
-    expect(within(total).getByText("100.00")).toBeInTheDocument();
+    expect(within(total).getByText("1.000,00")).toBeInTheDocument();
+    expect(within(total).getByText("1.100,00")).toBeInTheDocument();
+    expect(within(total).getByText("100,00")).toBeInTheDocument();
+    expect(within(total).getByText("10,00")).toBeInTheDocument();
     expect(within(total).getAllByText(/desfavorable/).length).toBeGreaterThan(0);
   });
 

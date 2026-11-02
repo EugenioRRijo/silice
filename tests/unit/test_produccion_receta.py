@@ -176,7 +176,8 @@ def test_un_propio_en_m3_se_consume_en_m3_con_su_densidad(sesion) -> None:
 
 def test_sin_receta_vigente_no_produce(sesion) -> None:
     _planta(sesion)
-    with pytest.raises(ErrorDeReceta, match="MZ-1"):
+    # la fecha en dd/mm/aaaa, como lee el usuario (recorrido en video del 2026-11-01)
+    with pytest.raises(ErrorDeReceta, match=r"^No hay receta vigente de MZ-1 el 15/10/2026\. "):
         producir_con_receta(
             sesion, "MZ-1", D("100"), date(2026, 10, 15), usuario="ana", ahora=AHORA
         )

@@ -1,4 +1,5 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";

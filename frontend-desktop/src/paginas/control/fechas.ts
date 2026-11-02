@@ -39,3 +39,13 @@ export function leerFeriados(texto: string): { feriados: string } | { error: str
   }
   return { feriados: leidos.join(", ") };
 }
+
+// «02/11/2026 a 06/11/2026» -> «02/11 a 06/11/2026»: si los dos extremos son del mismo año, el año va una sola vez (la
+// tabla de valuaciones cabe a 1366 px). Lo que no tiene esa forma se devuelve tal cual; el texto completo va en el title.
+const PERIODO = /^(\d{2}\/\d{2})\/(\d{4}) a (\d{2}\/\d{2})\/(\d{4})$/;
+
+export function periodoCompacto(texto: string): string {
+  const m = PERIODO.exec(texto);
+  if (!m || m[2] !== m[4]) return texto;
+  return `${m[1]} a ${m[3]}/${m[4]}`;
+}

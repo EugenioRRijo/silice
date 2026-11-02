@@ -112,7 +112,9 @@ def test_sin_receta_vigente_es_404(http) -> None:
     r = http.get(
         "/v1/produccion/recetas/vigente", params={"producto": "MZ-1", "fecha": "2026-09-30"}
     )
-    assert r.status_code == 404 and "MZ-1" in r.json()["detalle"]
+    assert r.status_code == 404
+    # la fecha en dd/mm/aaaa, como lee el usuario (recorrido en video del 2026-11-01)
+    assert r.json()["detalle"] == "No hay receta vigente de MZ-1 el 30/09/2026."
 
 
 def test_la_suma_mala_y_los_datos_invalidos_son_422_y_no_guardan(http) -> None:
@@ -157,7 +159,7 @@ def test_producir_sin_receta_vigente_es_422_y_no_deja_nada(http) -> None:
         "/v1/produccion/producciones",
         json={"producto": "MZ-1", "toneladas": "100", "fecha": "2026-10-15"},
     )
-    assert r.status_code == 422 and "MZ-1" in r.json()["detalle"]
+    assert r.status_code == 422 and "MZ-1 el 15/10/2026." in r.json()["detalle"]
     texto = http.post(
         "/v1/produccion/producciones",
         json={"producto": "MZ-1", "toneladas": "cien", "fecha": "2026-10-15"},

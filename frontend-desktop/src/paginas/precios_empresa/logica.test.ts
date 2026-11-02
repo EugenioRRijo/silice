@@ -67,6 +67,9 @@ describe("logica de Precios de la empresa", () => {
       ["Descripción", undefined, undefined],
       ["Impacto", undefined, true],
     ]);
+    const impacto = columnas.find((c) => c.clave === "Impacto");
+    expect(impacto?.presentar?.("0.00")).toBe("0,00");
+    expect(impacto?.presentar?.("11328.78")).toBe("11.328,78");
   });
 
   test("las filas llevan un id y conservan el texto exacto", () => {

@@ -1,4 +1,5 @@
-import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@carbon/react";
+import { Button, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
+import { TableHeader } from "../../comun/carbonEs";
 import { Add, TrashCan } from "@carbon/icons-react";
 import { useEffect, useRef } from "react";
 import { AVISO_PLAN_REINICIADO, TEXTO_PLAN, periodoAVista, periodoAlServidor } from "./logica";

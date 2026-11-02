@@ -227,9 +227,9 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     servidor();
     montar();
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
-    const total = await within(estado).findByTitle("2703.856");
+    const total = await within(estado).findByTitle("2.703,856");
     expect(total).toHaveTextContent("2.703,86 USD");
-    expect(within(estado).getByText("Valor exacto 2703.856")).toBeInTheDocument();
+    expect(within(estado).getByText("Valor exacto 2.703,856")).toBeInTheDocument();
     expect(within(estado).getByText(/Sin cambios sin guardar/)).toBeInTheDocument();
   });
 
@@ -248,7 +248,7 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     });
     montar();
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
-    expect(await within(estado).findByTitle(`${largo}.1234`)).toHaveTextContent(
+    expect(await within(estado).findByTitle("123.456.789.012.345.678.901.234.567.890,1234")).toHaveTextContent(
       "123.456.789.012.345.678.901.234.567.890,12 USD",
     );
   });

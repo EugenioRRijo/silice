@@ -266,7 +266,7 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
     await esperar(() => within(regionDeEstado()).getByText(/· 1 cambio sin guardar/));
     // El subtotal se vuelve a leer del servidor; lo escrito se queda como lo escribió la persona.
     await esperar(() => expect(lecturasDeApu()).toBeGreaterThan(lecturas));
-    await esperar(() => screen.getByTitle("15.5"));
+    await esperar(() => screen.getByTitle("15,5"));
     expect(campo("Cantidad, Materiales fila 1")).toHaveValue("2.5");
   });
 

@@ -1,4 +1,5 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { createPortal } from "react-dom";

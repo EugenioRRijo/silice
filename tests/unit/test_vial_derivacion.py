@@ -144,6 +144,14 @@ def test_la_discontinua_pinta_solo_su_fraccion():  # 1000 x 1 x 0,375 x 0,0365 =
     assert pintura.regla == "longitud*lineas*fraccion_pintada*pintura_l_m"
 
 
+def test_la_descripcion_de_la_discontinua_lee_la_fraccion_con_coma():
+    discontinua = (Demarcacion("discontinua", 1),)
+    tramo = Tramo("D1", Decimal("0"), Decimal("1"), Decimal("7.3"), (), discontinua)
+    pintura = _uno(derivar_tramos([tramo]), "pintura_demarcacion")
+    assert "fracción pintada 0,375:" in pintura.descripcion
+    assert "0.375" not in pintura.descripcion
+
+
 def test_la_partida_y_el_rendimiento_de_la_pintura_tienen_fuente():
     assert PARTIDAS_VIALES["pintura_demarcacion"] == (
         "C-000.000.015",

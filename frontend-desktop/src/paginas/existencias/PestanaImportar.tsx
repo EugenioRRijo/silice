@@ -1,4 +1,5 @@
-import { Button, InlineNotification, RadioButton, RadioButtonGroup } from "@carbon/react";
+import { Button, RadioButton, RadioButtonGroup } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";

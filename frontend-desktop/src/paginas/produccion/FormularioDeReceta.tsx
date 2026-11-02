@@ -126,7 +126,7 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
         <CampoDeConsulta
           id={`${base}-producto`}
           etiqueta="Producto (código)"
-          tabla="insumos"
+          tabla="materiales_produccion"
           texto={producto}
           alCambiarTexto={setProducto}
           alExpirar={alExpirar}

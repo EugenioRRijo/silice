@@ -19,7 +19,6 @@ import {
   type SeccionId,
 } from "./secciones";
 import { useObras, type ObraDeCarpeta } from "./useObras";
-import { useObrasViales } from "./useObrasViales";
 import { usePendientes } from "./usePendientes";
 import { ZonaEmpresa } from "./ZonaEmpresa";
 
@@ -53,8 +52,6 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const [foco, setFoco] = useState<string | null>(null);
   const arbol = useRef<HTMLUListElement>(null);
   const { entradas } = oferta;
-  // «Tramos» solo en las obras viales (las que ya tienen tramos guardados) y en la que se está viendo.
-  const viales = useObrasViales(carpetaActual, `${obraAbierta?.carpeta ?? ""}|${obraAbierta?.obraId ?? ""}|${seccion ?? ""}`);
   const puedeCrear = acciones.includes("editar_hoja");
 
   // Por nombre (sin tildes ni mayúsculas) y, si se repite, por carpeta: la API las trae por carpeta (D-F3-3).
@@ -82,10 +79,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   };
 
   const claveAbierta = obraAbierta === null ? null : claveDeObra(obraAbierta.carpeta, obraAbierta.obraId);
-  const seccionesDe = (o: ObraDeCarpeta) => {
-    const clave = claveDeObra(o.carpeta, o.obra_id);
-    return seccionesDeLaObra(oferta, viales.has(clave) || (seccion === "tramos" && clave === claveAbierta));
-  };
+  const seccionesDe = () => seccionesDeLaObra(oferta);
   const desplegada = (clave: string) => manual[clave] ?? clave === claveAbierta;
   const claveActiva = claveAbierta !== null && seccion !== null ? `${claveAbierta}|${seccion}` : claveAbierta;
   const idDe = (clave: string) => `${base}-${clave.replace(/[^A-Za-z0-9]/g, "_")}`;
@@ -95,7 +89,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   for (const o of visibles) {
     const clave = claveDeObra(o.carpeta, o.obra_id);
     clavesVisibles.push(clave);
-    if (desplegada(clave)) for (const s of seccionesDe(o)) clavesVisibles.push(`${clave}|${s.id}`);
+    if (desplegada(clave)) for (const s of seccionesDe()) clavesVisibles.push(`${clave}|${s.id}`);
   }
   const tabulable = [foco, claveActiva].find((c) => c !== null && clavesVisibles.includes(c)) ?? clavesVisibles[0] ?? null;
 
@@ -148,7 +142,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
     // El nombre accesible dice lo mismo que se ve: la obra, su carpeta si hay homónima y cuántos pendientes tiene.
     const nombre = [o.obra, carpeta, cuenta > 0 ? TEXTOS_PENDIENTES.porHacer(cuenta) : undefined].filter(Boolean).join(", ");
     const abierta = desplegada(clave);
-    const secciones = seccionesDe(o);
+    const secciones = seccionesDe();
     const Chevron = abierta ? ChevronDown : ChevronRight;
     return (
       <li key={clave} role="none">

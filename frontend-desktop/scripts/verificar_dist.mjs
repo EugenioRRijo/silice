@@ -39,7 +39,8 @@ export const ANFITRIONES_DE_UNIVER = new Set([
 // lleva dentro y que nunca se piden a la red:
 //  - reactrouter.com: enlace dentro de un mensaje de error («must be used within a data router. See ...»).
 //  - localhost: base falsa de `new URL(ruta, "http://localhost")`, para interpretar rutas relativas.
-export const ANFITRIONES_DEL_ENRUTADOR = new Set(["reactrouter.com", "localhost"]);
+//  - github.com: sugerencia de polyfill en un aviso de consola («load a polyfill such as https://github.com/ungap/...»).
+export const ANFITRIONES_DEL_ENRUTADOR = new Set(["reactrouter.com", "localhost", "github.com"]);
 // Solo en el bundle de los graficos (GraficoCarbon-*.js, Carbon Charts): enlaces de documentacion dentro de avisos de
 // consola y de mensajes de error (charts.carbondesignsystem.com, el de date-fns en github.com). Nunca se piden a la red.
 export const ANFITRIONES_DE_GRAFICOS = new Set(["charts.carbondesignsystem.com", "github.com"]);
