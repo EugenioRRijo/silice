@@ -170,7 +170,7 @@ def test_llevar_un_computo_lo_anota_como_sin_guardar(_entorno: Path) -> None:
     assert (fila["tipo"], fila["archivo"], fila["usuario"], fila["resumen"]) == (
         "computo",
         "computo.csv",
-        "ana",
+        "Ana <ana>",
         "2 partidas llevadas",
     )
     assert (fila["version"], fila["guardada"]) == (None, False)
@@ -211,7 +211,7 @@ def test_guardar_registra_las_importaciones_con_la_version(_entorno: Path) -> No
         _entorno, "SELECT pr.id FROM presupuesto pr WHERE pr.codigo = ?", "VIV-001"
     )
     assert _filas_del_registro(_entorno) == [
-        (id_001, "computo", "computo.csv", "ana", "1 partida llevada")
+        (id_001, "computo", "computo.csv", "Ana <ana>", "1 partida llevada")
     ]
     ((fila,),) = [[f] for f in _registro(navegador)]
     assert (fila["version"], fila["guardada"], fila["archivo"]) == ("VIV-001", True, "computo.csv")
@@ -325,7 +325,7 @@ def test_fusionar_un_plano_lo_anota_en_el_borrador(con_of001: Path) -> None:
     assert (por_tipo["Importado"], por_tipo["No reconocido"]) == (33, 0)
     ((fila,),) = [[f] for f in _registro(navegador, NOMBRE_OF001)]
     assert set(fila) == CLAVES
-    assert (fila["tipo"], fila["archivo"], fila["usuario"]) == ("plano", "planta.dxf", "ana")
+    assert (fila["tipo"], fila["archivo"], fila["usuario"]) == ("plano", "planta.dxf", "Ana <ana>")
     assert fila["resumen"] == "33 filas en el espacio"
     assert (fila["version"], fila["guardada"]) == (None, False)
     assert _filas_del_registro(con_of001) == []  # nada se escribe hasta guardar
