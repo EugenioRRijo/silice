@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { paginaPorId } from "../shell/rutas";
+import { ofertaDe } from "./oferta";
 import {
   ENTRADAS_DE_EMPRESA,
   PATRON_DE_EMPRESA,
@@ -42,7 +43,7 @@ describe("SECCIONES_DE_OBRA", () => {
       presupuesto: "hoja",
       tramos: "tramos",
       archivos: null,
-      versiones: null,
+      versiones: "versiones",
       aprobaciones: "aprobar",
       mercado: "mercado",
       control: "control",
@@ -50,6 +51,13 @@ describe("SECCIONES_DE_OBRA", () => {
     for (const s of SECCIONES_DE_OBRA) {
       if (s.pagina !== null) expect(paginaPorId(s.pagina), s.id).toBeDefined();
     }
+  });
+
+  it("«Versiones» tiene su pantalla (Tarea 6 del plan F4) y aparece en el árbol de quien lee la obra", () => {
+    expect(seccionPorId("versiones")?.pagina).toBe("versiones");
+    expect(paginaPorId("versiones")?.accion).toBe("leer_proyecto");
+    expect(ofertaDe(["leer_proyecto"], false).secciones.map((s) => s.id)).toContain("versiones");
+    expect(ofertaDe([], false).secciones.map((s) => s.id)).not.toContain("versiones");
   });
 
   it("«Tramos» es una sección como las demás: toda obra la tiene mientras el módulo vial esté encendido", () => {

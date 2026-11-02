@@ -469,3 +469,43 @@ describe("cómo se llega", () => {
     expect(await screen.findByText("No hay versiones esperando dictamen.")).toBeInTheDocument();
   });
 });
+
+// Tarea 6 del plan F4: el rastro de aprobaciones de la obra se muda de la pestaña «Trazabilidad» de la Hoja a esta
+// sección. Lo ve toda cuenta con `leer_proyecto` (desde la Tarea 2b `GET /v1/aprobaciones?proyecto=` lo exige), dentro
+// de la obra abierta. Datos ficticios.
+describe("Rastro de la obra (Tarea 6 del plan F4)", () => {
+  const RASTRO = {
+    rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." },
+    fases: "GS-001 en aprobación",
+    versiones: { "GS-001": { estado: "en_aprobacion", por: null, el: null, notas: "", armo: false } },
+    eventos: [{ id: 12, tipo: "envio", version: "GS-001", resultado: null, notas: "", por: "Ana Pérez <ana>", el: "2026-10-20T09:15:00", armo: false, cierre_de: null }],
+    ultima_aprobada: null,
+  };
+  const conRastro = () => {
+    const anterior = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) =>
+      String(entrada) === "/v1/aprobaciones?proyecto=3" ? json(RASTRO) : anterior(entrada, init),
+    );
+  };
+
+  test("con la sesión de «revisa», dentro de la obra, se ve el h2 «Rastro de la obra» con las fases y los movimientos", async () => {
+    conRastro();
+    montar("/aprobar?envio=12", { proyecto: "3" }, vi.fn());
+    const titulo = await screen.findByRole("heading", { level: 2, name: "Rastro de la obra" });
+    expect(titulo).toHaveClass("cds--type-heading-compact-02");
+    const region = screen.getByRole("region", { name: "Rastro de la obra" });
+    expect(await within(region).findByText("GS-001 en aprobación")).toBeInTheDocument();
+    expect(within(region).getByText("Rastro de aprobaciones íntegro.")).toBeInTheDocument();
+    expect(within(region).getByRole("table", { name: "Movimientos de aprobación" })).toBeInTheDocument();
+    expect(region.querySelector("svg")).not.toBeNull(); // el color nunca va solo
+  });
+
+  test("sin `leer_proyecto` no se ve ni se pide", async () => {
+    conRastro();
+    montar("/aprobar?envio=12", { proyecto: "3", sesion: { ...SESION, acciones: ["aprobar_version"] } }, vi.fn());
+    await screen.findByRole("region", { name: "Galpón Sur · GS-001" });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("heading", { name: "Rastro de la obra" })).toBeNull();
+    expect(fetchFalso.mock.calls.map(([e]) => String(e))).not.toContain("/v1/aprobaciones?proyecto=3");
+  });
+});

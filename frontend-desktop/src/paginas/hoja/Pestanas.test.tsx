@@ -307,4 +307,22 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cambiar de sección" }));
     expect(await screen.findByRole("tab", { name: "Precios", selected: true })).toBeInTheDocument();
   });
+
+  // Tarea 6 del plan F4: la versión se abre desde Versiones («Abrir») y su historial vive allí.
+  test("baja 9: ya no hay selector «Versión»; la versión abierta la dice el estado del borrador", async () => {
+    servidor(true);
+    montar();
+    const estado = await screen.findByRole("region", { name: "Estado del borrador" });
+    expect(within(estado).getByText(/^Versión 001 ·/)).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Versión" })).toBeNull();
+  });
+
+  test("baja 24: ya no hay pestaña «Trazabilidad» y no se pide la trazabilidad", async () => {
+    servidor(false);
+    montar();
+    const lista = await screen.findByRole("tablist", { name: "Secciones del presupuesto" });
+    expect(within(lista).queryByRole("tab", { name: "Trazabilidad" })).toBeNull();
+    expect(within(lista).getAllByRole("tab")).toHaveLength(7);
+    expect(fetchFalso.mock.calls.map(([r]) => String(r)).some((r) => r.startsWith("/v1/hoja/trazabilidad"))).toBe(false);
+  });
 });
