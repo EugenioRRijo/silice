@@ -243,6 +243,10 @@ de una partida, el registro de cambios de una versión, Componer y el informe de
   cerrarlo o al volver a caber; junto al contenido no se toca nada.
 - **Componer en panel** va siempre por encima (modo `en-capa`, en la capa del diálogo «Agregar partida», por encima de su
   velo) y es la excepción del foco: atrapa Tab dentro del panel, porque el diálogo del que sale queda oculto debajo.
+  **Esc en Componer** (pulido F5, H6): fuera de un campo, un Esc cierra el panel y el foco vuelve a «Partida»; en un campo
+  de texto que cambió desde que recibió el foco, el primer Esc lo devuelve a ese valor (como las celdas de la Hoja) y el
+  segundo cierra; con una lista de sugerencias abierta, Esc la cierra primero. De vuelta en «Partida», lo que se usó para
+  componer no cuenta como elegido: el Esc siguiente cierra el diálogo.
 
 ### Filas afectadas
 

@@ -102,3 +102,26 @@ Formato: pregunta · lo que se hizo · cómo cambiarlo.
    lo acepta), `Unable to find an accessible element with the role "combobox" and name "Código"`, `Unable to find
    role="option" and name "Componer una partida nueva con la descripción «excavación de zanja»"` y
    `toHaveAccessibleDescription` / `toHaveValue` sin el valor esperado. · —
+
+### Tarea 2
+
+1. **A qué valor vuelve el primer Esc.** · Al que tenía el campo al recibir el foco: en Componer no hay un valor
+   «aceptado por el servidor» como en las celdas de la Hoja, y ese es el análogo (deshace lo escrito en esa visita). Vale
+   para todo campo de texto del panel (cabecera, condiciones, filas de insumos, justificación); las listas desplegables y
+   los botones cierran de una vez. · `alEntrar` y `alEsc` en `paginas/hoja/ComponerEnPanel.tsx`.
+2. **Quién atiende Esc.** · El contenedor del panel, en la fase de captura, antes que el campo y que `PanelLateral`: así un
+   «Código» con lo elegido no se borra antes de cerrar (habría sido otro Esc). Con la lista de sugerencias abierta deja
+   pasar la tecla para que se cierre la lista. Solo lo que nace dentro del panel en el DOM: el Esc de «Precios distintos…»
+   sigue siendo de su diálogo. `PanelLateral` no cambia: en las demás secciones su Esc es el de siempre. · Quitar
+   `onKeyDownCapture` del contenedor.
+3. **De vuelta en «Partida».** · Lo que se usó para componer ya no cuenta como elegido (`valorPropio.esEleccion: false`,
+   prop nueva de `CampoConBusqueda`, `true` por omisión): el Esc siguiente cierra el diálogo, sin el paso intermedio de
+   borrar el texto. Del panel al presupuesto quedan dos Esc, uno por capa visible (panel y diálogo). Lo escrito en el
+   diálogo (cantidad, cálculo, nota) se pierde al cerrarlo, como antes con el tercer Esc. · `esEleccion: false` en
+   `AgregarPartida.tsx`.
+4. **Lo que preocupa.** · Restaurar el «Código» es como escribirlo: sus sugerencias se vuelven a buscar y, a los 300 ms,
+   se abren otra vez (un Esc las cierra). Restaurar usa el `set` nativo del valor y un evento `input` para que React lo
+   lea; si React cambiara su manera de seguir el valor, la prueba de restaurar lo notaría. · —
+5. **Rojo (`d9f3f862`).** · Tres fallas de aserción: `expected <div role="dialog" …> to be null` (el segundo Esc borraba
+   el texto de «Partida» y el diálogo seguía) y dos `expected null not to be null` (el primer Esc en un campo con cambios
+   cerraba el panel). Pasaba ya «en un campo sin cambios, un solo Esc cierra el panel», que fija lo que no cambia. · —

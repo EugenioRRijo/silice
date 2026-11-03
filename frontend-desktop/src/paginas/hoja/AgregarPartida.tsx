@@ -258,6 +258,8 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
               rotulo: (t) =>
                 pareceCodigo(t) ? `Componer una partida nueva con el código «${t}»` : `Componer una partida nueva con la descripción «${t}»`,
               alUsar: (t) => setComponiendo(pareceCodigo(t) ? { codigo: t, descripcion: "" } : { codigo: "", descripcion: t }),
+              // Componer no elige nada: de vuelta del panel sin guardar, Esc en «Partida» cierra el diálogo (Tarea 2).
+              esEleccion: false,
             }}
             vacio={{ titulo: "¿No la encuentra?", pasos: PASOS_SIN_RESULTADO }}
             alExpirar={alExpirar}
