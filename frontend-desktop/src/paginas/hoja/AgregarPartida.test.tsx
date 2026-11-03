@@ -1,5 +1,7 @@
+import { fileURLToPath } from "node:url";
 import { configure, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import * as sass from "sass";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
@@ -140,6 +142,43 @@ const HALLADAS = {
 
 type Cuerpo = Record<string, unknown> & { rev: number };
 
+// Tarea 9 del plan F4: «Parecidas a esta descripción» (`POST /v1/similares`, la ruta de la pantalla que se da de baja) y
+// «Componer una partida nueva» en panel (`/v1/composicion/*` y `/v1/carpeta`, como `componer/Moneda.test.tsx`).
+const EXCAVACION = {
+  codigo: "FIC-01",
+  descripcion: "Excavación de zanja ficticia a mano",
+  puntaje: "0.9137",
+  puntaje_corto: "0.91",
+  aviso: null,
+  composicion: { unidad: "m3", rendimiento: "8.00", materiales: [], equipos: [], mano_obra: [] },
+};
+const EVALUACION_VACIA = {
+  estado: "vacio",
+  aviso: "Comience por la cabecera (código y descripción) y declare al menos un insumo.",
+  desglose: null,
+  advertencias: [],
+  requiere_justificacion: false,
+  contraste: null,
+};
+const COMPOSICION_GUARDADA = {
+  precio_unitario: "120.00",
+  mensaje: "Composición guardada para la partida Z-99: precio unitario 120,00.",
+  justificada: false,
+  avisos: [],
+};
+const CARPETA_CON_LISTA = {
+  moneda: "Bs",
+  declarada: true,
+  lista: { nombre: "Lista ficticia de Bs", moneda: "Bs", fecha: "2026-10-25", origen: "prueba" },
+  aviso: null,
+};
+const AVISO_DEL_CATALOGO = "Esto cambia el catálogo de la empresa: la partida queda para todas las obras.";
+const SESION_REVISA: SesionRespuesta = { ...SESION, login: "rita", roles: ["revisa"], acciones: ["leer_proyecto", "aprobar_version"] };
+
+// jsdom no dibuja: se compila el SCSS real. La ruta va en una variable (con el literal, Vite reescribe el `new URL` como
+// recurso; ver `componer/estilosComponer.test.ts`).
+const compilar = (ruta: string) => sass.compile(fileURLToPath(new URL(ruta, import.meta.url))).css;
+
 function Ubicacion() {
   const { pathname, search } = useLocation();
   return <p data-testid="ubicacion">{`${pathname}${search}`}</p>;
@@ -193,6 +232,18 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
         const q = new URL(url, "http://local").searchParams.get("q") ?? "";
         return json(q.toLowerCase().includes("bloq") ? HALLADAS : { ...HALLADAS, resultados: [] });
       }
+      if (url === "/v1/similares" && metodo === "POST") return json({ propuestas: [EXCAVACION], falla: null, mensaje: null });
+      if (url === "/v1/composicion/opciones") return json({ dominios: ["civil"], modalidades: ["jornal"] });
+      if (url === "/v1/composicion/evaluar") return json(EVALUACION_VACIA);
+      if (url.startsWith("/v1/composicion/partidas/")) {
+        return json({ existe: false, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
+      }
+      if (url.startsWith("/v1/composicion/referencia") || url.startsWith("/v1/composicion/similares")) return json([]);
+      if (url === "/v1/composicion/prever") {
+        return json({ lista: { nombre: "Lista ficticia de Bs", moneda: "Bs", fecha: "2026-10-26" }, lista_nueva: false, variantes: [] });
+      }
+      if (url === "/v1/composicion/guardar") return json(COMPOSICION_GUARDADA);
+      if (url === "/v1/carpeta") return json(CARPETA_CON_LISTA);
       return json({ detalle: `ruta inesperada ${metodo} ${url}` }, 500);
     });
   });
@@ -230,9 +281,9 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
   }
   const vistasPedidas = () => fetchFalso.mock.calls.map(([r]) => String(r)).filter((r) => r.includes("/vistas/"));
 
-  function montar() {
+  function montar(sesion: SesionRespuesta = SESION) {
     const valor: Aplicacion = {
-      sesion: SESION,
+      sesion,
       proyecto: "VIV-80",
       nombreProyecto: "Vivienda de 80 m²",
       caso: { nombre: "obra", ruta_relativa: "data/obra.db" },
@@ -244,8 +295,9 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
         <MemoryRouter initialEntries={["/hoja"]}>
           <Routes>
             <Route path="/hoja" element={<PaginaHoja />} />
-            <Route path="/componer" element={<Ubicacion />} />
+            <Route path="/componer" element={<p>Pantalla de Componer</p>} />
           </Routes>
+          <Ubicacion />
           <DialogoSalida />
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
@@ -543,34 +595,115 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     expect(screen.getByRole("textbox", { name: "Cantidad, Presupuesto fila 1" })).toHaveValue("4");
   });
 
-  test("«Componer una partida nueva» con algo escrito pregunta antes; «Quedarme» conserva lo escrito", async () => {
+  // --- Tarea 9 del plan F4: puerta única ---
+
+  const pedidosDeParecidas = () =>
+    fetchFalso.mock.calls
+      .filter(([r, init]) => String(r) === "/v1/similares" && init?.method === "POST")
+      .map(([, init]) => JSON.parse(String(init?.body)) as unknown);
+  const guardadasEnElCatalogo = () =>
+    fetchFalso.mock.calls
+      .filter(([r, init]) => String(r) === "/v1/composicion/guardar" && init?.method === "POST")
+      .map(([, init]) => JSON.parse(String(init?.body)) as Record<string, unknown>);
+
+  async function abrirComponer(dialogo: HTMLElement, codigo: string) {
+    await userEvent.type(within(dialogo).getByRole("combobox", { name: "Partida" }), codigo);
+    await userEvent.click(await screen.findByRole("option", { name: `Componer una partida nueva con el código «${codigo}»` }));
+    return screen.findByRole("complementary", { name: "Componer una partida" });
+  }
+
+  test("«Buscar parecidas» lista las propuestas para lo escrito y «Usar esta partida» la deja elegida", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    await userEvent.type(within(dialogo).getByRole("combobox", { name: "Partida" }), "excavación de zanja");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Buscar parecidas" }));
+    const usar = await within(dialogo).findByRole("button", { name: "Usar esta partida: FIC-01" });
+    expect(pedidosDeParecidas()).toEqual([{ descripcion: "excavación de zanja" }]);
+    await userEvent.click(usar);
+
+    expect(within(dialogo).getByRole("combobox", { name: "Partida" })).toHaveValue("FIC-01 · Excavación de zanja ficticia a mano");
+    const cantidad = within(dialogo).getByRole("textbox", { name: "Cantidad (m3)" });
+    await waitFor(() => expect(cantidad).toHaveFocus());
+    await userEvent.type(cantidad, "12");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
+    await waitFor(() => expect(escrituras(RUTA_AGREGAR)).toEqual([{ rev: 0, codigo: "FIC-01", cantidad: "12", calculo: "", nota: "" }]));
+  });
+
+  test("«Componer una partida nueva con el código «Z-99»» abre el panel sin cambiar la ruta, con el aviso del catálogo", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    expect(within(panel).getByRole("note")).toHaveTextContent(AVISO_DEL_CATALOGO);
+    const titulo = within(panel).getByRole("heading", { level: 2, name: "Componer una partida" });
+    await waitFor(() => expect(titulo).toHaveFocus());
+    expect(within(panel).queryByRole("heading", { level: 1 })).toBeNull();
+    expect(within(panel).getByRole("heading", { name: "Cabecera de la partida" })).toHaveProperty("tagName", "H3");
+    expect(within(panel).getByLabelText("Código")).toHaveValue("Z-99");
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/hoja$/);
+    expect(screen.queryByText("Pantalla de Componer")).toBeNull();
+    // Una tarea a la vez: el diálogo espera detrás, oculto, y a la vista queda un solo botón principal (el de guardar).
+    expect(screen.queryByRole("dialog", { name: "Agregar partida" })).toBeNull();
+    expect(screen.getAllByRole("button").filter((b) => b.classList.contains("cds--btn--primary"))).toHaveLength(1);
+  });
+
+  test("al guardar la composición el panel se cierra, el foco vuelve al diálogo y la partida nueva queda elegida", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    await userEvent.type(within(panel).getByLabelText("Descripción"), "Zanja ficticia");
+    await userEvent.type(within(panel).getByLabelText("Unidad"), "m3");
+    await userEvent.type(within(panel).getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
+    await userEvent.click(within(panel).getByRole("button", { name: "Guardar composición" }));
+
+    await waitFor(() => expect(screen.queryByRole("complementary", { name: "Componer una partida" })).toBeNull());
+    expect(guardadasEnElCatalogo()).toHaveLength(1);
+    expect(guardadasEnElCatalogo()[0]).toMatchObject({ codigo: "Z-99", descripcion: "Zanja ficticia", unidad: "m3" });
+    const otra = screen.getByRole("dialog", { name: "Agregar partida" });
+    const partida = within(otra).getByRole("combobox", { name: "Partida" });
+    expect(partida).toHaveValue("Z-99 · Zanja ficticia");
+    await waitFor(() => expect(partida).toHaveFocus());
+    await userEvent.type(within(otra).getByRole("textbox", { name: "Cantidad (m3)" }), "5");
+    await userEvent.click(within(otra).getByRole("button", { name: "Agregar al presupuesto" }));
+    await waitFor(() => expect(escrituras(RUTA_AGREGAR)).toEqual([{ rev: 0, codigo: "Z-99", cantidad: "5", calculo: "", nota: "" }]));
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/hoja$/);
+  });
+
+  test("componer con algo escrito no pregunta; Esc cierra el panel sin guardar y lo escrito sigue en el diálogo", async () => {
     montar();
     const dialogo = await abrirDialogo();
     await userEvent.type(within(dialogo).getByRole("textbox", { name: /^Cantidad/ }), "210");
     await userEvent.type(within(dialogo).getByRole("textbox", { name: "Nota de medición (opcional)" }), "muro norte");
-    const partida = within(dialogo).getByRole("combobox", { name: "Partida" });
-    await userEvent.type(partida, "OBRA-99");
-    await userEvent.click(await screen.findByRole("option", { name: "Componer una partida nueva con el código «OBRA-99»" }));
+    const panel = await abrirComponer(dialogo, "OBRA-99");
+    expect(screen.queryByRole("button", { name: "Quedarme" })).toBeNull();
+    await waitFor(() => expect(within(panel).getByRole("heading", { level: 2, name: "Componer una partida" })).toHaveFocus());
 
-    await userEvent.click(await screen.findByRole("button", { name: "Quedarme" }));
-    expect(screen.queryByTestId("ubicacion")).toBeNull();
-    expect(screen.getByRole("dialog", { name: "Agregar partida" })).toBeInTheDocument();
-    expect(within(dialogo).getByRole("textbox", { name: /^Cantidad/ })).toHaveValue("210");
-    expect(within(dialogo).getByRole("textbox", { name: "Nota de medición (opcional)" })).toHaveValue("muro norte");
-
-    await userEvent.clear(partida);
-    await userEvent.type(partida, "OBRA-99");
-    await userEvent.click(await screen.findByRole("option", { name: "Componer una partida nueva con el código «OBRA-99»" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Salir y descartar" }));
-    expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/componer?codigo=OBRA-99&volver=hoja");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("complementary", { name: "Componer una partida" })).toBeNull());
+    const otra = screen.getByRole("dialog", { name: "Agregar partida" });
+    expect(within(otra).getByRole("textbox", { name: /^Cantidad/ })).toHaveValue("210");
+    expect(within(otra).getByRole("textbox", { name: "Nota de medición (opcional)" })).toHaveValue("muro norte");
+    await waitFor(() => expect(within(otra).getByRole("combobox", { name: "Partida" })).toHaveFocus());
+    expect(guardadasEnElCatalogo()).toEqual([]);
   });
 
-  test("«Componer una partida nueva» lleva a Componer con el código y la vuelta a la Hoja", async () => {
-    montar();
-    const dialogo = await abrirDialogo();
-    await userEvent.type(within(dialogo).getByRole("combobox", { name: "Partida" }), "OBRA-99");
-    await userEvent.click(await screen.findByRole("option", { name: "Componer una partida nueva con el código «OBRA-99»" }));
-    expect(await screen.findByTestId("ubicacion")).toHaveTextContent("/componer?codigo=OBRA-99&volver=hoja");
+  test("cuenta que revisa: no hay puerta (ni «Agregar partida», ni parecidas, ni componer)", async () => {
+    // Quien revisa solo ve versiones guardadas: la obra tiene VIV-001 con un renglón.
+    conVersion([PARED]);
+    montar(SESION_REVISA);
+    expect(await screen.findByRole("table", { name: "Presupuesto" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Agregar (la primera )?partida/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Buscar parecidas" })).toBeNull();
+    expect(screen.queryByRole("complementary", { name: "Componer una partida" })).toBeNull();
+  });
+
+  test("estructura: el diálogo oculto no se pinta y, con el panel, el fondo queda bajo los diálogos del marco", () => {
+    const hoja = compilar("./hoja.scss");
+    expect(hoja).toMatch(/\.silice-hoja__dialogo\[hidden\]\s*\{[^}]*display:\s*none/);
+    const conPanel = /\.silice-hoja__dialogo-fondo--con-panel\s*\{([^}]*)\}/.exec(hoja)?.[1] ?? "";
+    const capa = Number(/z-index:\s*(\d+)/.exec(conPanel)?.[1] ?? "NaN");
+    // «Precios distintos a los de la lista» (MarcoDeDialogo, 8500) se abre desde el panel y tiene que verse encima.
+    expect(capa).toBeLessThan(8500);
+    expect(capa).toBeGreaterThan(8000);
   });
 
   test("Esc cierra el diálogo sin mandar nada y el foco vuelve a «Agregar partida»", async () => {

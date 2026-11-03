@@ -96,6 +96,11 @@ describe("resultadosDe", () => {
     expect(resultadosDe("historico", [], COMPLETA)[0]?.ruta).toBe("/historico");
   });
 
+  // F4, Tarea 9, baja 20: buscar parecidas es una salida de «Agregar partida», no una pantalla.
+  it("no ofrece «Partidas similares»", () => {
+    expect(resultadosDe("similares", [], COMPLETA)).toEqual([]);
+  });
+
   it("no ofrece las secciones sin pantalla, ni lo que la cuenta no puede usar", () => {
     expect(resultadosDe("archivos", OBRAS, COMPLETA)).toEqual([]);
     // «Versiones» ya tiene pantalla (Tarea 6 de F4): se ofrece en cada obra, y no a quien no lee las obras.

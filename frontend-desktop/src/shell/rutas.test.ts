@@ -17,7 +17,6 @@ const REGISTRO: [string, string, string | null][] = [
   ["entregar", "Trabajo", "entregar_paquete"],
   ["componer", "Trabajo", "editar_hoja"],
   ["catalogo", "Trabajo", "leer_proyecto"],
-  ["similares", "Investigación", "editar_hoja"],
   ["mercado", "Trabajo", "editar_hoja"],
   ["precios_empresa", "Trabajo", "administrar_precios"],
   ["actualizacion", "Trabajo", "editar_hoja"],
@@ -49,12 +48,18 @@ const REGISTRO: [string, string, string | null][] = [
 const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
 
 describe("registro de paginas", () => {
-  test("tiene las 33 pantallas en su orden, con su seccion y su accion", () => {
+  test("tiene las 32 pantallas en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(REGISTRO);
   });
 
   test("ya no existe la pantalla «inicio»: la direccion /inicio solo redirige", () => {
     expect(paginaPorId("inicio")).toBeUndefined();
+  });
+
+  // F4, Tarea 9, baja 20: «Partidas similares» pasa a «Parecidas a esta descripción», dentro de «Agregar partida».
+  test("ya no existe la pantalla «Partidas similares»", () => {
+    expect(paginaPorId("similares")).toBeUndefined();
+    expect(PAGINAS.some((p) => p.titulo === "Partidas similares")).toBe(false);
   });
 
   test("los ids son unicos y las secciones de permisos son cuatro", () => {
@@ -98,13 +103,13 @@ describe("quien puede usar que", () => {
     expect(PAGINAS.filter((p) => usable(p, [], false)).map((p) => p.id)).toEqual(["auditoria", "obras", "acerca"]);
   });
 
-  test("con todas las acciones se usan las 33", () => {
-    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(33);
+  test("con todas las acciones se usan las 32", () => {
+    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(32);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (30)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (29)", () => {
     const vistas = PAGINAS.filter((p) => usable(p, todas, true));
-    expect(vistas).toHaveLength(30);
+    expect(vistas).toHaveLength(29);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 
