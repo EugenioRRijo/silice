@@ -278,19 +278,6 @@ pasos = [
 espera = { textos = ["Comparativo por partida", "Informe de auditoría de la versión nueva"] }
 
 [[pantalla]]
-ruta = "historico"
-cuenta = "ana"
-carpeta = "demo.db"
-requiere = ["actualizacion"]
-accion = "filtrar los cambios de precio desde hoy -> quedan los de hoy y desaparecen los del 01/10/2026 (siembra)"
-pasos = [
-  { accion = "esperar", texto = "01/10/2026" },
-  { accion = "llenar", rotulo = "Desde", valor = "{hoy}" },
-  { accion = "pulsar", nombre = "Filtrar" },
-]
-espera = { textos = ["Cemento Portland", "Arena lavada"], ausentes = ["01/10/2026"] }
-
-[[pantalla]]
 ruta = "reajuste"
 cuenta = "ana"
 carpeta = "s1.db"

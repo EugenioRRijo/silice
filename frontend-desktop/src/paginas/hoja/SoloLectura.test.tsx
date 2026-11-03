@@ -371,9 +371,7 @@ describe("Quien arma conserva sus controles", () => {
     montar(ACCIONES_ARMA);
     await screen.findByRole("note");
     expect(await screen.findByRole("button", { name: "Enviar a aprobación…" })).toBeInTheDocument();
-    await irA("Precios");
-    expect(screen.getByRole("button", { name: "Registrar una cotización…" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Retirar una cotización…" })).toBeInTheDocument();
+    // «Registrar» y «Retirar una cotización…» viven en Mercado desde la Tarea 13 (paginas/mercado/Cotizaciones.test.tsx).
     await irA("Ajustes de costo");
     expect(screen.getByRole("button", { name: "Convertir la moneda…" })).toBeInTheDocument();
     await irA("Trazabilidad");

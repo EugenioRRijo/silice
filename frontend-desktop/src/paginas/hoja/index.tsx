@@ -157,8 +157,6 @@ function ContenidoDePestana({
           proyecto={borrador.base.proyecto}
           version={borrador.base.version}
           alAusente={alAusente}
-          cambios={borrador.resumen.cambios}
-          alCrearVersion={alCrearVersion}
         />
       );
     case "revision":

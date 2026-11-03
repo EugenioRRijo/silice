@@ -208,6 +208,38 @@ describe("Mercado › Cotizaciones de la obra", () => {
     expect(document.querySelector("[inert]")).toBeNull();
   });
 
+  test("falta algo: «Cotizar» queda deshabilitado y dice qué falta, en el orden del formulario", async () => {
+    montar();
+    await abrirPestana();
+    const dialogo = await abrirDialogo("Registrar una cotización…");
+    const cotizar = within(dialogo).getByRole("button", { name: "Cotizar" });
+    expect(cotizar).toBeDisabled();
+    expect(within(dialogo).getByText("Escriba el precio cotizado.")).toBeInTheDocument();
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Precio cotizado" }), { target: { value: "1.003,50" } });
+    expect(within(dialogo).getByText("Escriba el proveedor de la cotización.")).toBeInTheDocument();
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
+    expect(within(dialogo).getByText("Escriba el número de la cotización.")).toBeInTheDocument();
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Número de la cotización" }), { target: { value: "COT-18" } });
+    expect(cotizar).toBeEnabled();
+    expect(within(dialogo).getByText("Escriba los decimales con coma: 2,5; el punto separa los miles: 1.234,56.")).toBeInTheDocument();
+  });
+
+  test.each([
+    [409, "No se guardó nada: la composición de la partida AF-LLAVE ya no está vigente."],
+    [403, "Su cuenta no tiene permiso para esta acción."],
+  ])("un %i muestra el texto del servidor tal cual y no cierra el diálogo", async (estado, detalle) => {
+    alOperacion = () => json({ detalle }, estado);
+    montar();
+    await abrirPestana();
+    const dialogo = await abrirDialogo("Registrar una cotización…");
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Precio cotizado" }), { target: { value: "10" } });
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Número de la cotización" }), { target: { value: "COT-18" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cotizar" }));
+    expect(await within(dialogo).findByText(detalle)).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBe(dialogo);
+  });
+
   test("los archivos de la tarea no calculan (sin Number, parseFloat, toFixed ni + unario)", () => {
     const fuentes = import.meta.glob("./*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
     for (const ruta of ["./CotizacionesDeLaObra.tsx", "./OperacionesDePrecios.tsx", "./HistoricoDePrecios.tsx"]) {

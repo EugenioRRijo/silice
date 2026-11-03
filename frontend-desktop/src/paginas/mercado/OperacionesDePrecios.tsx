@@ -21,11 +21,11 @@ import {
   motivoParaNoRetirar,
   rotuloDeCotizada,
   rotuloDeInsumo,
-  textoDeVersionCreada,
 } from "../hoja/logicaVersiones";
 import type { AlCrearVersion, InsumoDePrecios, VersionCreada } from "../hoja/logicaVersiones";
 import { useDialogoDeOperacion } from "../hoja/useDialogoDeOperacion";
 import { useOperacion } from "../hoja/useOperacion";
+import "../hoja/hoja.scss";
 
 // Los topes del contrato de S3 y S4 (proveedor y número son el ancho de las columnas; la evidencia, lo que cabe en la fuente).
 const LARGO = { precio: 500, proveedor: 120, numero: 60, evidencia: 90, motivo: 300 };
@@ -51,7 +51,7 @@ function FormularioDeCotizar({ proyecto, version, insumos, anfitrion, alCancelar
     ruta: RUTA_DE_COTIZAR,
     alExpirar,
     alCrear: (r: VersionCreada) =>
-      alCrearVersion(r.codigo, textoDeVersionCreada(r, `Se guardó la versión ${r.codigo} con la cotización de ${insumo}.`)),
+      alCrearVersion(r.codigo, `Se creó la versión ${r.codigo} con la cotización.`),
   });
   const motivo = motivoParaNoCotizar({ precio, proveedor, numero, fecha });
   return (
@@ -124,7 +124,7 @@ function FormularioDeRetirar({ proyecto, version, insumos, anfitrion, alCancelar
     ruta: RUTA_DE_RETIRAR,
     alExpirar,
     alCrear: (r: VersionCreada) =>
-      alCrearVersion(r.codigo, textoDeVersionCreada(r, `Se guardó la versión ${r.codigo} sin la cotización.`)),
+      alCrearVersion(r.codigo, `Se creó la versión ${r.codigo} sin la cotización.`),
   });
   return (
     <DialogoDeOperacion
@@ -195,8 +195,10 @@ interface Props {
   alCrearVersion: AlCrearVersion;
 }
 
-// «Registrar una cotización» y «Retirar una cotización» (S3 y S4) de la pestaña Precios. Cada una crea una versión nueva desde la
-// guardada, así que con cambios sin guardar se dice por qué no se ofrecen (la regla es de pantalla, como en la clásica).
+// Por qué existe (Tarea 13 del plan F4): «Registrar una cotización» y «Retirar una cotización» (S3 y S4) salieron de Presupuesto ›
+// Precios; las usa la pestaña «Cotizaciones de la obra» de Mercado (`CotizacionesDeLaObra.tsx`). Cada una crea una versión nueva
+// desde la vigente. Con cambios sin guardar se dice por qué no se ofrecen (la regla es de pantalla, como en la clásica); Mercado
+// no tiene borrador y pasa 0.
 export function OperacionesDePrecios({ proyecto, version, filas, cambios, alCrearVersion }: Props) {
   const insumos = insumosDePrecios(filas);
   const cotizadas = cotizadasDePrecios(filas);

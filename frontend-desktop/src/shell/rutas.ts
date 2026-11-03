@@ -155,14 +155,6 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/actualizacion"),
   },
   {
-    id: "historico",
-    titulo: "Histórico de cambios de precio",
-    enUnaLinea: "Vea cómo cambió el precio de un insumo",
-    seccion: "Trabajo",
-    accion: "leer_proyecto",
-    cargar: () => import("../paginas/mercado/HistoricoDePrecios"),
-  },
-  {
     id: "indices",
     titulo: "Índices del BCV",
     enUnaLinea: "Cargue los índices publicados por el BCV",
