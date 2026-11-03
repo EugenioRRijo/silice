@@ -3,6 +3,7 @@
 // ni se recalculan.
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { paginaPorId, usable } from "../../shell/rutas";
+import { textoDeLaAccion } from "../pendientes/logica";
 import type { ObraFilaRespuesta } from "../../api/tipos";
 
 // «30,0 % de 37,5 %»: lo avanzado contra lo planificado al corte. Sin alguno de los dos no hay avance que decir.
@@ -33,7 +34,8 @@ export interface Paso {
 }
 
 export function pasoDeLaObra(obra: ObraFilaRespuesta): Paso | null {
-  if (obra.que_pasa) return { tipo: "falta", texto: obra.que_pasa, accion: obra.siguiente };
-  if (obra.siguiente !== null) return { tipo: "siguiente", texto: obra.siguiente.texto, accion: obra.siguiente };
+  const accion = obra.siguiente === null ? null : { ...obra.siguiente, texto: textoDeLaAccion(obra.siguiente) };
+  if (obra.que_pasa) return { tipo: "falta", texto: obra.que_pasa, accion };
+  if (accion !== null) return { tipo: "siguiente", texto: accion.texto, accion };
   return null;
 }

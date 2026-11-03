@@ -9,7 +9,7 @@ import type { ObraAbierta } from "../../marco/obraAbierta";
 import { usePendientes } from "../../marco/usePendientes";
 import { useAplicacion } from "../../shell/contexto";
 import { useNavegarSeguro } from "../../shell/navegarSeguro";
-import { claveDeObra, destinoDeLaAccion, destinoDelPendiente } from "../pendientes/logica";
+import { claveDeObra, destinoDeLaAccion, destinoDelPendiente, textoDeLaAccion } from "../pendientes/logica";
 import { etiquetaAvance, pantallaVisible, pasoDeLaObra, textoTotal } from "./logica";
 import "./obras.scss";
 import { TEXTOS } from "./textos";
@@ -112,7 +112,7 @@ function Pendientes({ carpeta, obraId }: Pick<ObraAbierta, "carpeta" | "obraId">
             <li key={`${p.grupo}|${p.texto}`} className="silice-resumen__pendiente">
               <span className="cds--type-body-compact-01">{p.texto}</span>
               <Button kind="tertiary" size="sm" onClick={() => void navegarSeguro(destinoDelPendiente(p))}>
-                {p.accion.texto}
+                {textoDeLaAccion(p.accion)}
               </Button>
             </li>
           ))}

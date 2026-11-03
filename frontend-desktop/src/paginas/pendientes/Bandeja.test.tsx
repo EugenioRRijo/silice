@@ -275,7 +275,7 @@ describe("Pendientes: la bandeja", () => {
     const u = userEvent.setup();
     montar();
     await u.click((await opciones())[1]);
-    await u.click(within(detalle()).getByRole("button", { name: "Abrir la Hoja" }));
+    await u.click(within(detalle()).getByRole("button", { name: "Abrir el presupuesto" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Presupuesto" }, { timeout: 3000 })).toBeInTheDocument();
     expect(ruta()).toBe("/obra/empresa/7/presupuesto");
   });
@@ -384,7 +384,7 @@ describe("Pendientes: foco 3, salir sin perder trabajo", () => {
     const u = userEvent.setup();
     montar({ sucio: true });
     await u.click((await opciones())[1]);
-    await u.click(within(detalle()).getByRole("button", { name: "Abrir la Hoja" }));
+    await u.click(within(detalle()).getByRole("button", { name: "Abrir el presupuesto" }));
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
@@ -421,7 +421,7 @@ describe("Pendientes: foco 4, volver después de resolver algo", () => {
     montar();
     await u.click((await opciones())[1]);
     expect(pedidas()).toBe(1);
-    await u.click(within(detalle()).getByRole("button", { name: "Abrir la Hoja" }));
+    await u.click(within(detalle()).getByRole("button", { name: "Abrir el presupuesto" }));
     await screen.findByRole("heading", { level: 1, name: "Presupuesto" }, { timeout: 3000 });
     // En la Hoja se resolvió lo del cemento.
     pendientes = [DEVUELTA, PRECIOS, SIN_APU];

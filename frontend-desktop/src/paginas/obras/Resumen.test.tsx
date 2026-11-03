@@ -118,7 +118,7 @@ describe("Resumen de la obra abierta", () => {
     montar();
     await screen.findByRole("heading", { level: 1, name: "Resumen" });
     expect(franja()).toHaveTextContent("Te falta: Faltan 2 precios");
-    const boton = within(franja()).getByRole("button", { name: "Abrir la Hoja" });
+    const boton = within(franja()).getByRole("button", { name: "Abrir el presupuesto" });
     await u.click(boton);
     expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Norte.db/3/presupuesto");
   });
@@ -133,7 +133,7 @@ describe("Resumen de la obra abierta", () => {
   it("solo con siguiente paso, la franja dice «Siguiente paso:»", async () => {
     montar({ ficha: { estado: "lista", obra: { ...FILA, que_pasa: null } } });
     await screen.findByRole("heading", { level: 1, name: "Resumen" });
-    expect(franja()).toHaveTextContent("Siguiente paso: Abrir la Hoja");
+    expect(franja()).toHaveTextContent("Siguiente paso: Abrir el presupuesto");
   });
 
   it("sin «qué pasa» ni siguiente paso no hay franja", async () => {
@@ -180,7 +180,7 @@ describe("Resumen de la obra abierta", () => {
   it("quien revisa sí tiene el botón hacia la Hoja: la ve en solo lectura (Tarea 2b)", async () => {
     const u = userEvent.setup();
     montar({ sesion: sesionDe("rita") });
-    await u.click(await within(franja()).findByRole("button", { name: "Abrir la Hoja" }));
+    await u.click(await within(franja()).findByRole("button", { name: "Abrir el presupuesto" }));
     expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Norte.db/3/presupuesto");
   });
 

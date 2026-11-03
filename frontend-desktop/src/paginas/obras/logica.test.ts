@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { ObraFilaRespuesta } from "../../api/tipos";
+import { textoDeLaAccion } from "../pendientes/logica";
 import { etiquetaAvance, pasoDeLaObra } from "./logica";
 
 // Lógica pura del Resumen de la obra.
@@ -34,12 +35,24 @@ const OBRA: ObraFilaRespuesta = {
 };
 const IR_A_LA_HOJA = { texto: "Abrir la Hoja", pagina: "hoja" };
 
+// Pasada de navegador del cierre de F4 (H9): la sección se llama «Presupuesto» (DESIGN.md retira «Hoja de la obra»), pero
+// el servidor (`aplicacion/mesa.py`, fuera del alcance del front) sigue diciendo «Abrir la Hoja»: el botón lo dice al día.
+const AL_PRESUPUESTO = { texto: "Abrir el presupuesto", pagina: "hoja" };
+
+describe("textoDeLaAccion", () => {
+  test("«Abrir la Hoja» se dice «Abrir el presupuesto»; las demás, tal cual", () => {
+    expect(textoDeLaAccion(IR_A_LA_HOJA)).toBe("Abrir el presupuesto");
+    expect(textoDeLaAccion({ texto: "Registrar el avance", pagina: "control" })).toBe("Registrar el avance");
+    expect(textoDeLaAccion({ texto: "Ver el envío", pagina: "hoja" })).toBe("Ver el envío");
+  });
+});
+
 describe("pasoDeLaObra", () => {
   test("con «qué pasa» y siguiente paso, lo que falta, con la acción", () => {
     expect(pasoDeLaObra({ ...OBRA, que_pasa: "Faltan 2 precios", siguiente: IR_A_LA_HOJA })).toEqual({
       tipo: "falta",
       texto: "Faltan 2 precios",
-      accion: IR_A_LA_HOJA,
+      accion: AL_PRESUPUESTO,
     });
   });
 
@@ -48,7 +61,7 @@ describe("pasoDeLaObra", () => {
   });
 
   test("solo con siguiente paso, el siguiente paso con el texto de la acción", () => {
-    expect(pasoDeLaObra({ ...OBRA, siguiente: IR_A_LA_HOJA })).toEqual({ tipo: "siguiente", texto: "Abrir la Hoja", accion: IR_A_LA_HOJA });
+    expect(pasoDeLaObra({ ...OBRA, siguiente: IR_A_LA_HOJA })).toEqual({ tipo: "siguiente", texto: "Abrir el presupuesto", accion: AL_PRESUPUESTO });
   });
 
   test("sin ninguno de los dos, no hay franja", () => {
