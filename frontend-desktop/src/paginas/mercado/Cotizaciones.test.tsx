@@ -62,7 +62,7 @@ const OBRA = { carpeta: null, obraId: 3, ficha: { estado: "sin_dato" }, recargar
 const fetchFalso = vi.fn<typeof fetch>();
 const alExpirar = vi.fn();
 let versiones: VersionesRespuesta;
-let alOperacion: (ruta: string) => Response;
+let alOperacion: (ruta: string) => Response | Promise<Response>;
 // Los borradores que el servidor conserva de esta ficha (`GET /v1/hoja/borradores`): los cambios sin guardar del Presupuesto.
 let borradores: unknown[];
 
