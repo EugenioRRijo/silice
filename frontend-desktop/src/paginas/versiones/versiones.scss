@@ -38,6 +38,11 @@
   font-weight: 600;
 }
 
+// La descartada: la palabra «descartada» lo dice (sigue en el historial, RF-54); el gris solo acompaña.
+.silice-versiones__descartada {
+  color: var(--cds-text-secondary);
+}
+
 .silice-versiones__acciones {
   display: inline-flex;
   flex-wrap: nowrap;

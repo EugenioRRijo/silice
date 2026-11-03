@@ -9,6 +9,7 @@ export const TEXTOS_DE_VERSIONES = {
     "La primera versión se guarda desde «Presupuesto», con «Guardar primera versión…», cuando la obra ya tiene partidas.",
   sinEstados: "No se pudo leer el estado de aprobación de las versiones.",
   abierta: "abierta",
+  descartada: "descartada",
   elaborada: "elaborada",
   vigente: "Sí",
   columnas: {

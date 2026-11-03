@@ -74,8 +74,8 @@ describe("filasDeVersiones", () => {
 
 describe("pasoDeVersiones", () => {
   const filas = (vigente: string | null): FilaDeVersion[] => [
-    { ...fila("VIV-002", true), estado: vigente, abierta: true },
-    { ...fila("VIV-001", false), estado: "devuelta", abierta: false },
+    { ...fila("VIV-002", true), estado: vigente, abierta: true, seAbre: true },
+    { ...fila("VIV-001", false), estado: "devuelta", abierta: false, seAbre: true },
   ];
 
   test("con cambios sin guardar, el paso es guardarlos (en plural y en singular)", () => {

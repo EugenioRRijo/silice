@@ -132,7 +132,9 @@ interface PropsDeLaTabla {
   alCrearVersion: AlCrearVersion;
 }
 
-// Las siete columnas del plan y las acciones de cada fila. La abierta lleva la palabra «abierta» (Foco 5): no solo un color.
+// Las siete columnas del plan y las acciones de cada fila. La abierta lleva la palabra «abierta» (Foco 5) y la descartada la
+// palabra «descartada»: no solo un color. La descartada no tiene «Abrir» (salvo que todas lo estén, `seAbre`), pero sí «Ver
+// cambios» y, con permiso, «Restaurar…»; el diálogo de restaurar ofrece todo el historial, descartadas incluidas.
 function TablaDeVersiones({ proyecto, filas, restaurar, alAbrir, alVerCambios, alCrearVersion }: PropsDeLaTabla) {
   const C = T.columnas;
   const codigos = filas.map((f) => f.codigo);
@@ -148,6 +150,7 @@ function TablaDeVersiones({ proyecto, filas, restaurar, alAbrir, alVerCambios, a
             <span className="silice-versiones__codigo">
               {f.codigo}
               {f["abierta"] === "sí" && <span className="silice-versiones__abierta">{` (${T.abierta})`}</span>}
+              {f["descartada"] === "sí" && <span className="silice-versiones__descartada">{` (${T.descartada})`}</span>}
             </span>
           ),
         },
@@ -163,9 +166,11 @@ function TablaDeVersiones({ proyecto, filas, restaurar, alAbrir, alVerCambios, a
           ordenable: false,
           celda: (f) => (
             <span className="silice-versiones__acciones">
-              <Button kind="ghost" size="sm" aria-label={T.abrirLa(f.codigo!)} onClick={() => alAbrir(f.codigo!)}>
-                {T.abrir}
-              </Button>
+              {f["seAbre"] === "sí" && (
+                <Button kind="ghost" size="sm" aria-label={T.abrirLa(f.codigo!)} onClick={() => alAbrir(f.codigo!)}>
+                  {T.abrir}
+                </Button>
+              )}
               <Button kind="ghost" size="sm" aria-label={T.verCambiosDe(f.codigo!)} onClick={() => alVerCambios(f.codigo!)}>
                 {T.verCambios}
               </Button>
@@ -184,6 +189,8 @@ function TablaDeVersiones({ proyecto, filas, restaurar, alAbrir, alVerCambios, a
         estado: f.estado === null ? "" : nombreDeEstado(f.estado),
         vigente: f.vigente ? T.vigente : "",
         abierta: f.abierta ? "sí" : "",
+        descartada: f.descartada ? "sí" : "",
+        seAbre: f.seAbre ? "sí" : "",
         acciones: "",
       }))}
     />

@@ -11,19 +11,25 @@ export interface FilaDeVersion extends VersionFila {
   // La clave del estado de aprobación (`guardada`, `en_aprobacion`, `devuelta`…), o null si no se pudo leer.
   estado: string | null;
   abierta: boolean;
+  // Si se ofrece «Abrir»: no en una descartada, salvo que todas lo estén (`versionesOfrecidas`, la regla del proveedor).
+  seAbre: boolean;
 }
 
-// Las versiones que se pueden abrir (las no descartadas; si todas lo están, todas: la misma regla que el proveedor usa para
-// abrir una, así que «Abrir» nunca pide una que abriría otra), cada una con su estado y la marca de la abierta.
+// Todo el historial de la obra, porque solo crece (RF-54): también las descartadas, que siguen guardadas, se pueden mirar y
+// restaurar (restaurar es la única manera de deshacer un descarte) y la cadena de sellos puede romperse en una de ellas. La
+// descartada lleva `descartada` (la tabla lo dice con la palabra) y no se abre: abrirla pediría una versión que el proveedor
+// cambiaría por otra sin decirlo. Cada fila lleva su estado de aprobación y la marca de la abierta.
 export function filasDeVersiones(
   v: VersionesRespuesta,
   estados: Record<string, EstadoDeAprobacion> | null,
   abierta: string | null,
 ): FilaDeVersion[] {
-  return versionesOfrecidas(v.versiones).map((f) => ({
+  const ofrecidas = new Set(versionesOfrecidas(v.versiones).map((f) => f.codigo));
+  return v.versiones.map((f) => ({
     ...f,
     estado: estados?.[f.codigo]?.estado ?? null,
     abierta: abierta !== null && f.codigo === abierta,
+    seAbre: ofrecidas.has(f.codigo),
   }));
 }
 
