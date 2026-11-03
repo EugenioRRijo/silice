@@ -6,7 +6,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaEspacio, vistaParametros } from "./datosDePrueba";
 import PaginaHoja from "./index";
-import { versionAbierta } from "./rutaDePrueba";
+import { versionAbierta } from "../../test/rutaDeLaHoja";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 
 // Rebanada 3d-1 (front): el modal «Guardar versión», la primera versión y la reacción a cada resultado de S1

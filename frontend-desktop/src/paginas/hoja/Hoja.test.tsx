@@ -6,7 +6,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
 import PaginaHoja from "./index";
-import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "./rutaDePrueba";
+import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "../../test/rutaDeLaHoja";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 
 const fuentes = import.meta.glob("./*.{ts,tsx}", { query: "?raw", import: "default", eager: true }) as Record<

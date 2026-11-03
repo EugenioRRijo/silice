@@ -7,7 +7,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
 import PaginaHoja from "./index";
-import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "./rutaDePrueba";
+import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "../../test/rutaDeLaHoja";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 
 // Tarea 19 del plan de montar un presupuesto (con los cambios por el diseño de módulos): en la Hoja, junto a la versión, la

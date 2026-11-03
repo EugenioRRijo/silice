@@ -4,10 +4,11 @@ import type { ReactNode } from "react";
 import { MemoryRouter, useNavigate } from "react-router";
 import type { NavigateFunction } from "react-router";
 
-// Solo lo importan las pruebas. Por qué existe (baja 9 de la Tarea 6 del plan F4): sin el selector «Versión», la Hoja abre
-// otra versión por `?version=<código>` en la ruta, que es lo que hace «Abrir» de Versiones. Las pruebas que montan la Hoja
-// sola la envuelven en un enrutador de memoria (`conEnrutador`) y piden la versión con `pedirVersionPorLaRuta`; la versión
-// abierta la leen en el estado del borrador (`versionAbierta`), que es donde la ve la persona.
+// Solo lo importan las pruebas (vive en `src/test/` desde el cierre de F4, menor 3 de la Tarea 6). Por qué existe (baja 9
+// de la Tarea 6 del plan F4): sin el selector «Versión», la Hoja abre otra versión por `?version=<código>` en la ruta, que
+// es lo que hace «Abrir» de Versiones. Las pruebas que montan la Hoja sola la envuelven en un enrutador de memoria
+// (`conEnrutador`) y piden la versión con `pedirVersionPorLaRuta`; la versión abierta la leen en el estado del borrador
+// (`versionAbierta`), que es donde la ve la persona.
 
 let navegar: NavigateFunction | null = null;
 

@@ -6,7 +6,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaEspacio, vistaParametros } from "./datosDePrueba";
 import PaginaHoja from "./index";
-import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "./rutaDePrueba";
+import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "../../test/rutaDeLaHoja";
 import { ID_DEL_TITULO } from "./useGuardadoDeLaPagina";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 
