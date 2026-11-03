@@ -238,3 +238,51 @@ def test_una_receta_con_demasiados_componentes_es_422(http) -> None:
     r = http.post("/v1/produccion/recetas", json=_receta(componentes=componentes))
     assert r.status_code == 422, r.text
     assert contar(RecetaRegistrada) == 0
+
+
+def test_el_ligante_marcado_viaja_por_la_api(http) -> None:
+    """Tarea 16c: `es_ligante` se guarda y se devuelve; sin el campo es falso."""
+    receta = _receta(
+        componentes=[
+            {"codigo": "AGR-12", "cantidad_por_t": "0.80", "unidad": "t", "tipo": "propio"},
+            {"codigo": "ARE-1", "cantidad_por_t": "0.15", "unidad": "t", "tipo": "comprado"},
+            {
+                "codigo": "CA-30",
+                "cantidad_por_t": "0.05",
+                "unidad": "t",
+                "tipo": "comprado",
+                "es_ligante": True,
+            },
+        ]
+    )
+    assert http.post("/v1/produccion/recetas", json=receta).status_code == 201
+    r = http.get(
+        "/v1/produccion/recetas/vigente", params={"producto": "MZ-1", "fecha": "2026-10-15"}
+    )
+    assert r.status_code == 200, r.text
+    assert [(c["codigo"], c["es_ligante"]) for c in r.json()["componentes"]] == [
+        ("AGR-12", False),
+        ("ARE-1", False),
+        ("CA-30", True),
+    ]
+
+
+def test_dos_ligantes_marcados_se_rechazan_con_422(http) -> None:
+    componentes = [
+        {
+            "codigo": "ARE-1",
+            "cantidad_por_t": "0.5",
+            "unidad": "t",
+            "tipo": "comprado",
+            "es_ligante": True,
+        },
+        {
+            "codigo": "CA-30",
+            "cantidad_por_t": "0.5",
+            "unidad": "t",
+            "tipo": "comprado",
+            "es_ligante": True,
+        },
+    ]
+    r = http.post("/v1/produccion/recetas", json=_receta(componentes=componentes))
+    assert r.status_code == 422 and "un solo ligante" in r.text
