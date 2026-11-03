@@ -641,9 +641,11 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     expect(within(panel).getByLabelText("Código")).toHaveValue("Z-99");
     expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/hoja$/);
     expect(screen.queryByText("Pantalla de Componer")).toBeNull();
-    // Una tarea a la vez: el diálogo espera detrás, oculto, y a la vista queda un solo botón principal (el de guardar).
+    // Una tarea a la vez: el diálogo espera detrás, oculto, y en la capa del diálogo (la página está inerte) queda a la vista
+    // un solo botón principal, el de guardar la composición.
     expect(screen.queryByRole("dialog", { name: "Agregar partida" })).toBeNull();
-    expect(screen.getAllByRole("button").filter((b) => b.classList.contains("cds--btn--primary"))).toHaveLength(1);
+    const principales = within(panel.parentElement!).getAllByRole("button").filter((b) => b.classList.contains("cds--btn--primary"));
+    expect(principales.map((b) => b.textContent)).toEqual(["Guardar composición"]);
   });
 
   test("al guardar la composición el panel se cierra, el foco vuelve al diálogo y la partida nueva queda elegida", async () => {

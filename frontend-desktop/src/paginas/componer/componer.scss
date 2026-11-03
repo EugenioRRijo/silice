@@ -8,6 +8,13 @@
   min-inline-size: 0;
 }
 
+// El cuerpo de la composicion (plan F4, Tarea 9): el mismo en la pantalla y en el panel de «Agregar partida».
+.silice-componer__cuerpo {
+  display: grid;
+  gap: 1.5rem;
+  min-inline-size: 0;
+}
+
 .silice-componer__bloque {
   display: grid;
   gap: 0.75rem;

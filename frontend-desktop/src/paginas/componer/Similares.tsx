@@ -6,6 +6,8 @@ import { COLUMNAS, TIPOS, TITULOS } from "./tablas";
 
 interface Props {
   similares: Similar[];
+  // El nivel de su titulo: h2 en la pantalla, h3 en el panel de «Agregar partida» (plan F4, Tarea 9).
+  nivel?: 2 | 3;
 }
 
 function tituloDe(s: Similar): string {
@@ -15,13 +17,14 @@ function tituloDe(s: Similar): string {
 }
 
 // Ayuda 1: partidas parecidas, de solo lectura. La persona copia a mano lo que le sirva; nada se llena solo.
-export function Similares({ similares }: Props) {
+export function Similares({ similares, nivel = 2 }: Props) {
   if (similares.length === 0) return null;
+  const Titulo = `h${nivel}` as const;
   return (
     <section className="silice-componer__bloque" aria-labelledby="componer-similares">
-      <h2 id="componer-similares" className="cds--type-heading-compact-02">
+      <Titulo id="componer-similares" className="cds--type-heading-compact-02">
         Partidas similares del catálogo
-      </h2>
+      </Titulo>
       <p className="silice-componer__nota cds--type-body-compact-01">
         Sugerencias de solo lectura: copie a mano lo que le sirva en las tablas de abajo; el sistema no llena nada por
         su cuenta.

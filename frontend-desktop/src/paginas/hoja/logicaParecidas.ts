@@ -1,4 +1,4 @@
-// Logica pura de «Partidas similares»: arma lo que se muestra con el texto que manda la API. No calcula ni
+// Logica pura de «Parecidas a esta descripción» (antes la pantalla «Partidas similares»; plan F4, Tarea 9): arma lo que se muestra con el texto que manda la API. No calcula ni
 // redondea nada: los montos y puntajes llegan de la API con punto y solo se escriben en es-VE.
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -43,8 +43,6 @@ export interface SimilaresRespuesta {
   mensaje: string | null;
 }
 
-export const AVISO_SIN_DESCRIPCION = "Escriba una descripción para buscar partidas similares.";
-
 export function descripcionLista(texto: string): boolean {
   return texto.trim() !== "";
 }
@@ -68,7 +66,7 @@ export const ROTULO_EQUIPOS = "Equipos";
 export const ROTULO_MANO_DE_OBRA = "Mano de obra";
 
 export const AYUDA =
-  "Escriba la descripción de la partida: Sílice propone las más parecidas del catálogo para reutilizar su desglose y su rendimiento.";
+  "¿No la encuentra por su código? Escriba en «Partida» cómo se describe y pulse «Buscar parecidas»: Sílice propone las más parecidas del catálogo, con su análisis.";
 
 // Unidad y rendimiento de la API; la interfaz solo escribe el rendimiento en es-VE y le agrega la unidad de tiempo.
 export function rendimientoEnTexto(c: Composicion): { unidad: string; rendimiento: string } {

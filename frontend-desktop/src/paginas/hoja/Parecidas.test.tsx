@@ -98,7 +98,9 @@ describe("Parecidas a esta descripción (Tarea 9)", () => {
     expect(opciones?.method).toBe("POST");
     expect(JSON.parse(String(opciones?.body))).toEqual({ descripcion: "excavación de zanja" });
     const lista = screen.getByRole("list", { name: "Partidas parecidas" });
-    expect(within(lista).getAllByRole("listitem").map((li) => li.querySelector("p")?.textContent)).toEqual([
+    // Solo las propuestas (el análisis plegado de cada una es otra lista, la del acordeón).
+    const propuestas = within(lista).getAllByRole("listitem").filter((li) => li.parentElement === lista);
+    expect(propuestas.map((li) => li.querySelector("p")?.textContent)).toEqual([
       "Puntaje 0,91 - FIC-01 - Excavación de zanja ficticia a mano",
       "Puntaje 0,64 - FIC-02 - Zanja ficticia con entibado",
     ]);

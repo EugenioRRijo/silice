@@ -11,15 +11,18 @@ import { mensajeDeError } from "../../comun/errores";
 import { buscadorDePartidas } from "../../comun/logicaBusqueda";
 import type { PartidaHallada } from "../../comun/logicaBusqueda";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
-import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
+import type { PartidaCompuesta } from "../componer/ComponerPartida";
+import { ComponerEnPanel } from "./ComponerEnPanel";
 import { ContextoDeDialogos } from "./ContextoDeDialogos";
 import { DialogoDeVersion } from "./DialogoDeVersion";
 import { campoDelErrorDePartida, cuerpoDeAgregarPartida, esBorradorAusente, rutaDeAgregarPartida } from "./logica";
 import type { Resumen } from "./logica";
 import { claseDeConflicto } from "./logicaSecciones";
+import { Parecidas } from "./Parecidas";
+import type { PartidaParecida } from "./Parecidas";
 
 const ID_PARTIDA = "hoja-agregar-partida";
 const ID_CANTIDAD = "hoja-agregar-cantidad";
@@ -29,6 +32,8 @@ const ID_DIALOGO = "hoja-agregar-dialogo";
 
 export const ELEGIR_DE_LA_LISTA = "Elija la partida de la lista de sugerencias.";
 const AYUDA_PARTIDA = "Busque por código o por una palabra de la descripción, por ejemplo «bloque».";
+const PASOS_SIN_RESULTADO =
+  "Pruebe con otra palabra, busque las parecidas con «Buscar parecidas» o compóngala con «Componer una partida nueva».";
 const AYUDA_CALCULO = "Por ejemplo 6*3-2 o 2,5*4. Si lo escribe, Sílice puede verificar la cantidad.";
 const CANTIDAD_DEL_CALCULO = "Si la deja vacía, Sílice la toma del resultado del cálculo al agregar.";
 const AYUDA_NOTA = "Por ejemplo: 6 m × 35 m de muro, menos vanos.";
@@ -39,6 +44,12 @@ interface PartidaAgregada {
   resumen: Resumen;
   clave: string;
 }
+
+// La partida elegida: del catálogo, de las parecidas o recién compuesta. Sin unidad (una parecida sin desglose) la cantidad
+// no dice en qué se mide.
+type Elegida = Pick<PartidaHallada, "codigo" | "descripcion"> & { unidad: string | null };
+
+const textoDeLaElegida = (p: Elegida) => (p.descripcion.trim() === "" ? p.codigo : `${p.codigo} · ${p.descripcion}`);
 
 interface Errores {
   partida: string | null;
@@ -75,14 +86,21 @@ interface Props {
 // interfaz no evalúa el cálculo: si la cantidad queda vacía, el servidor la toma del resultado. Diálogo propio (no el
 // Modal de Carbon, como los demás de la Hoja): foco atrapado, Esc cierra (primero la lista del buscador, que se queda la
 // tecla) y, mientras va la petición, no se cierra para no perder la respuesta.
+//
+// Puerta única (plan F4, Tarea 9): la partida se elige de tres maneras sin salir del diálogo: buscándola en el catálogo
+// (el campo con sugerencias), con «Buscar parecidas» a lo escrito (`Parecidas`, baja 20) o componiéndola en el panel
+// (`ComponerEnPanel`, baja 21). Mientras se compone, el diálogo espera oculto (un solo trabajo y un solo botón principal a
+// la vista) y, al guardar, vuelve con la partida nueva elegida. El archivo pasa de 250 líneas porque junta los dos
+// diálogos de las partidas del Presupuesto (agregar y quitar) y el foco que comparten al cerrarse.
 export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, alCancelar, alAusente, alReleer }: Props) {
   const { alExpirar } = useAplicacion();
-  const navegarSeguro = useNavegarSeguro();
   const caja = useRef<HTMLDivElement>(null);
   const atrapar = useAtraparFoco(caja);
   const idTitulo = useId();
   const [texto, setTexto] = useState("");
-  const [elegida, setElegida] = useState<PartidaHallada | null>(null);
+  const [elegida, setElegida] = useState<Elegida | null>(null);
+  // El código con que se compone una partida nueva en el panel, o null.
+  const [componiendo, setComponiendo] = useState<string | null>(null);
   const [cantidad, setCantidad] = useState("");
   const [calculo, setCalculo] = useState("");
   const [nota, setNota] = useState("");
@@ -94,8 +112,7 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
   // campos y el botón están deshabilitados (no se pueden enfocar): se enfoca cuando vuelven.
   const focoPendiente = useRef<string | null>(null);
 
-  // Lo escrito cuenta como trabajo sin guardar: «Componer una partida nueva» (la única salida con el diálogo abierto)
-  // pregunta antes de perderlo.
+  // Lo escrito cuenta como trabajo sin guardar: salir de la obra con el diálogo abierto pregunta antes de perderlo.
   useFormularioSucio("hoja", cantidad.trim() !== "" || calculo.trim() !== "" || nota.trim() !== "");
 
   useEffect(() => {
@@ -103,11 +120,11 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
   }, []);
 
   useEffect(() => {
-    if (enviando || focoPendiente.current === null) return;
+    if (enviando || componiendo !== null || focoPendiente.current === null) return;
     const destino = focoPendiente.current;
     focoPendiente.current = null;
     (destino === ID_DIALOGO ? caja.current : document.getElementById(destino))?.focus();
-  }, [enviando, errores]);
+  }, [enviando, errores, componiendo]);
 
   const cancelar = useCallback(() => {
     if (!enviando) alCancelar();
@@ -122,9 +139,22 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
     atrapar(e);
   };
 
-  // Con algo escrito, `navegarSeguro` pregunta («Cambios sin guardar»); con «Quedarme» el diálogo sigue como estaba.
-  const componerNueva = (codigo: string) => {
-    void navegarSeguro(`/componer?${new URLSearchParams({ codigo, volver: "hoja" }).toString()}`);
+  // Deja elegida una partida que no salió de la lista de sugerencias (una parecida o la recién compuesta) y lleva el foco
+  // a `destino`. Cambiar los errores vuelve a pintar el diálogo, y su efecto mueve el foco.
+  const elegirFueraDeLaLista = (partida: Elegida, destino: string) => {
+    setElegida(partida);
+    setTexto(textoDeLaElegida(partida));
+    focoPendiente.current = destino;
+    setErrores((previos) => ({ ...previos, partida: null }));
+  };
+  const usarParecida = (p: PartidaParecida) => elegirFueraDeLaLista(p, ID_CANTIDAD);
+  const cerrarComponer = () => {
+    focoPendiente.current = ID_PARTIDA;
+    setComponiendo(null);
+  };
+  const alCompuesta = (p: PartidaCompuesta) => {
+    elegirFueraDeLaLista({ ...p, unidad: p.unidad === "" ? null : p.unidad }, ID_PARTIDA);
+    setComponiendo(null);
   };
 
   async function agregar(evento: FormEvent) {
@@ -172,13 +202,14 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
     }
   }
 
-  const unidad = elegida !== null ? ` (${elegida.unidad})` : "";
+  const unidad = elegida?.unidad ? ` (${elegida.unidad})` : "";
   const ayudaCantidad = calculoVisto && calculo.trim() !== "" && cantidad.trim() === "" ? `${CANTIDAD_DEL_CALCULO} ${AYUDA_CIFRAS}` : AYUDA_CIFRAS;
 
   return createPortal(
-    <div className="silice-hoja__dialogo-fondo">
+    <div className={componiendo === null ? "silice-hoja__dialogo-fondo" : "silice-hoja__dialogo-fondo silice-hoja__dialogo-fondo--con-panel"}>
       <div
         ref={caja}
+        hidden={componiendo !== null}
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
@@ -208,18 +239,16 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
             }}
             valorPropio={{
               rotulo: (t) => `Componer una partida nueva con el código «${t}»`,
-              alUsar: componerNueva,
+              alUsar: setComponiendo,
             }}
-            vacio={{
-              titulo: "¿No la encuentra?",
-              pasos: "Pruebe con otra palabra de la descripción o compóngala con «Componer una partida nueva».",
-            }}
+            vacio={{ titulo: "¿No la encuentra?", pasos: PASOS_SIN_RESULTADO }}
             alExpirar={alExpirar}
             invalido={errores.partida !== null}
             textoInvalido={errores.partida ?? undefined}
             deshabilitado={enviando}
             tamano="md"
           />
+          <Parecidas descripcion={texto} alUsar={usarParecida} deshabilitado={enviando} />
           <CampoTexto
             id={ID_CANTIDAD}
             labelText={`Cantidad${unidad}`}
@@ -289,6 +318,7 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
           </Button>
         </div>
       </div>
+      <ComponerEnPanel codigo={componiendo} alCerrar={cerrarComponer} alGuardar={alCompuesta} />
     </div>,
     anfitrion,
   );
