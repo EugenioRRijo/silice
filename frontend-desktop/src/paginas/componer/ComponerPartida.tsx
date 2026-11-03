@@ -78,8 +78,8 @@ const AYUDA_CODIGO =
 // repartiria ese estado entre piezas que no se usan solas.
 //
 // UC-10 (componer) y UC-11 (editar) una partida a mano. El navegador no calcula nada: el desglose, las advertencias
-// y el guardado los hace la API. La cola de la pagina clasica (cantidades de obra, elaborar) vive en «Elaborar un
-// presupuesto» (RB-1).
+// y el guardado los hace la API. La cola de la pagina clasica (cantidades de obra, elaborar) vive en Archivos y planos ›
+// «Cargar cómputo» (F4, Tarea 12, baja 19; antes, «Elaborar un presupuesto», RB-1).
 export function ComponerPartida({ codigoInicial, nivelDelTitulo, alGuardar }: Props): JSX.Element {
   const nivel = nivelDelTitulo === 1 ? 2 : 3;
   const Titulo = `h${nivel}` as const;

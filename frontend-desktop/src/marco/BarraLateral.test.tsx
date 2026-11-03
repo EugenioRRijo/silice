@@ -192,10 +192,9 @@ describe("BarraLateral: obra abierta", () => {
     expect(filaClinica).toHaveAttribute("aria-expanded", "true");
     expect(within(lista).getByRole("treeitem", { name: "Torre B" })).toHaveAttribute("aria-expanded", "false");
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
-    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Tramos", "Versiones", "Aprobaciones", "Mercado", "Control de obra"]);
-    expect(secciones.map((s) => s.getAttribute("aria-current"))).toEqual([null, "page", null, null, null, null, null]);
+    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Control de obra"]);
+    expect(secciones.map((s) => s.getAttribute("aria-current"))).toEqual([null, "page", null, null, null, null, null, null]);
     expect(secciones[1]).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/presupuesto");
-    expect(screen.queryByRole("treeitem", { name: "Archivos y planos" })).toBeNull();
   });
 
   it("sin obra abierta ninguna está desplegada", async () => {
@@ -209,9 +208,9 @@ describe("BarraLateral: obra abierta", () => {
     pintar({ sesion: sesionDe("rita"), abierta, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
     await arbol();
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
-    // «mercado» exige editar_hoja y «control», control_de_obra: quien solo revisa no los ve. «Presupuesto» sí, en
-    // solo lectura (F4 2b, Eugenio, 2026-10-31), y «Versiones» también (Tarea 6).
-    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Versiones", "Aprobaciones"]);
+    // «mercado» exige editar_hoja y «control», control_de_obra: quien solo revisa no los ve. «Presupuesto» sí, en solo
+    // lectura (F4 2b, Eugenio, 2026-10-31), y también «Archivos y planos» (Tarea 11) y «Versiones» (Tarea 6).
+    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Archivos y planos", "Versiones", "Aprobaciones"]);
   });
 });
 
@@ -225,7 +224,7 @@ describe("BarraLateral: «Tramos» en toda obra mientras el módulo vial esté e
     pintar({ abierta: clinica, seccion: "resumen", ruta: rutaDeClinica });
     await arbol();
     expect(await screen.findByRole("treeitem", { name: "Tramos" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/tramos");
-    expect(nombres("Clínica Las Mercedes")).toEqual(["Resumen", "Presupuesto", "Tramos", "Versiones", "Aprobaciones", "Mercado", "Control de obra"]);
+    expect(nombres("Clínica Las Mercedes")).toEqual(["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Control de obra"]);
   });
 
   it("otra obra de la misma carpeta también", async () => {
@@ -326,7 +325,7 @@ describe("BarraLateral: teclado (patrón tree de WAI-ARIA)", () => {
     clinica.focus();
     await u.keyboard("{ArrowDown}");
     expect(within(lista).getByRole("treeitem", { name: "Resumen" })).toHaveFocus();
-    await u.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}");
+    await u.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}");
     expect(within(lista).getByRole("treeitem", { name: "Aprobaciones" })).toHaveFocus();
     await u.keyboard("{ArrowUp}");
     expect(within(lista).getByRole("treeitem", { name: "Versiones" })).toHaveFocus();

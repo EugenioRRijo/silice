@@ -1,5 +1,6 @@
 import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   ALTURAS_OF001,
@@ -11,11 +12,12 @@ import {
   respuestaDeFusion,
   sinPendientes,
 } from "./datosDePlano";
-import { ImportarPlano } from "./ImportarPlano";
+import { SubirArchivo } from "./SubirArchivo";
 import { olvidarImportaciones } from "./useImportacion";
-import type { Resumen } from "./logica";
+import type { Resumen } from "../hoja/logica";
 
-// Rebanada 3e-2 (frente): el flujo «Importar plano (DXF o IFC)» de la pestaña Espacio. El servidor se simula con las
+// Rebanada 3e-2 (frente): el flujo «Importar plano (DXF o IFC)». Desde la Tarea 11 de F4 vive dentro del diálogo «Subir
+// plano o cómputo» de Archivos y planos: estas pruebas montan el diálogo (cambió el montaje, no el flujo). El servidor se simula con las
 // respuestas del contrato (docs/bitacora/2026-10-20-hoja-3e-contrato-rutas.md, P1 a P6). Los literales (textos, conteos 33/0/9/6,
 // 48 líneas de informe, 6 alturas, 2 circuitos, 6+6+21 filas) salen de la clásica (ui/paginas/hoja.py:1238-1385) y de
 // tests/unit/test_ui_hoja_planos.py, escritos a mano.
@@ -40,7 +42,7 @@ describe("Importar plano (3e-2)", () => {
   const alRecargar = vi.fn<() => Promise<void>>();
   const alReabrir = vi.fn();
   const alExpirar = vi.fn();
-  const alOcuparse = vi.fn<(ocupada: boolean) => void>();
+  const alCerrar = vi.fn();
   // Lo que el servidor simulado contesta a cada ruta; cada prueba lo cambia.
   let alLeer: (cuerpo: FormData) => Response | Promise<Response>;
   let alUnidad: (cuerpo: { rev: number; unidades: string }) => Response | Promise<Response>;
@@ -52,7 +54,7 @@ describe("Importar plano (3e-2)", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
-    for (const f of [alAusente, alAceptar, alRecargar, alReabrir, alExpirar, alOcuparse]) f.mockReset();
+    for (const f of [alAusente, alAceptar, alRecargar, alReabrir, alExpirar, alCerrar]) f.mockReset();
     alRecargar.mockResolvedValue(undefined);
     alLeer = () => json(importada());
     alUnidad = () => json(importada());
@@ -83,58 +85,56 @@ describe("Importar plano (3e-2)", () => {
   let contador = 0;
   // Cada prueba usa un borrador propio: lo último que se leyó de un borrador se recuerda por su id (ver la última prueba).
   let id = ID;
-  function montar(rev = 3, extra: { ocupadoPorEdicion?: boolean; id?: string } = {}) {
+  // El diálogo de Archivos y planos con el flujo del plano; sin `cuerpoDelComputo` solo acepta planos (la Tarea 12 trae el
+  // cómputo). Se pinta en `document.body`, como en la pantalla (el anfitrión del proveedor de la Hoja).
+  function montar(rev = 3, extra: { id?: string; cuerpoDelComputo?: (archivo: File) => ReactNode } = {}) {
     contador += 1;
     id = extra.id ?? `${ID.slice(0, 18)}${String(contador).padStart(6, "0")}`;
-    const propiedades = (r: number, o?: boolean) => (
-      <ImportarPlano
+    const propiedades = (r: number) => (
+      <SubirArchivo
         id={id}
         rev={r}
-        ocupadoPorEdicion={o ?? extra.ocupadoPorEdicion ?? false}
+        anfitrion={document.body}
+        alCerrar={alCerrar}
         alAusente={alAusente}
         alAceptar={alAceptar}
         alRecargar={alRecargar}
         alReabrir={alReabrir}
         alExpirar={alExpirar}
-        alOcuparse={alOcuparse}
+        cuerpoDelComputo={extra.cuerpoDelComputo}
       />
     );
     const dibujo = render(propiedades(rev));
     return { ...dibujo, conRev: (r: number) => dibujo.rerender(propiedades(r)), propiedades };
   }
 
-  const campoDeArchivo = () => document.querySelector('input[type="file"]') as HTMLInputElement;
+  const campoDeArchivo = () => {
+    const campo = document.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(campo, "el campo de archivo del diálogo").not.toBeNull();
+    return campo!;
+  };
   const llamadas = () => fetchFalso.mock.calls;
 
-  async function abrir(usuario: ReturnType<typeof userEvent.setup>) {
-    await usuario.click(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" }));
-  }
+  const principales = () => document.querySelectorAll(".cds--btn--primary");
   async function leer(usuario: ReturnType<typeof userEvent.setup>, nombre = "of001.dxf") {
-    await abrir(usuario);
     await usuario.upload(campoDeArchivo(), new File(["0\nEOF"], nombre));
     await usuario.click(screen.getByRole("button", { name: "Leer plano" }));
   }
   const encabezado = (nombre: string) => screen.findByRole("heading", { name: nombre });
 
   describe("3e-F1: elegir y leer el plano", () => {
-    test("plegado al montar: el botón del bloque dice que está cerrado, sin pedir nada", () => {
+    test("al abrirse no pide nada: es un diálogo modal «Subir plano o cómputo», con su h2 y el foco adentro", () => {
       montar();
-      const boton = screen.getByRole("button", { name: "Importar plano (DXF o IFC)" });
-      expect(boton).toHaveAttribute("aria-expanded", "false");
-      expect(screen.queryByRole("button", { name: "Leer plano" })).toBeNull();
+      const dialogo = screen.getByRole("dialog", { name: "Subir plano o cómputo" });
+      expect(dialogo).toHaveAttribute("aria-modal", "true");
+      expect(within(dialogo).getByRole("heading", { level: 2, name: "Subir plano o cómputo" })).toBeInTheDocument();
+      expect(dialogo.contains(document.activeElement)).toBe(true);
+      expect(screen.queryByRole("button", { name: "Importar plano (DXF o IFC)" })).toBeNull();
       expect(llamadas()).toHaveLength(0);
     });
 
-    test("el título del bloque es un h2 de la página", () => {
+    test("dice qué formatos acepta (la ayuda de la clásica) y ofrece la zona de soltar y «Leer plano»", () => {
       montar();
-      expect(screen.getByRole("heading", { level: 2, name: "Importar plano (DXF o IFC)" })).toBeInTheDocument();
-    });
-
-    test("abierto: dice qué formatos acepta (la ayuda de la clásica) y ofrece la zona de soltar y «Leer plano»", async () => {
-      const usuario = userEvent.setup();
-      montar();
-      await abrir(usuario);
-      expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toHaveAttribute("aria-expanded", "true");
       expect(
         screen.getByText(
           "Suba un plano en formato DXF o IFC. El plano crea filas en el borrador de esta hoja, con el archivo como origen de medida, y un informe de lo que importó, lo que no reconoció, lo que aproximó y lo que queda pendiente. Nada salta la hoja ni la auditoría: las filas entran para que las revise.",
@@ -148,7 +148,6 @@ describe("Importar plano (3e-2)", () => {
     test("con otra extensión no sube nada y lo dice antes de subir", async () => {
       const usuario = userEvent.setup({ applyAccept: false });
       montar();
-      await abrir(usuario);
       await usuario.upload(campoDeArchivo(), new File(["x"], "libro.exe"));
       expect(screen.getByText("Solo se aceptan archivos .dxf o .ifc.")).toBeInTheDocument();
       await usuario.click(screen.getByRole("button", { name: "Leer plano" }));
@@ -160,7 +159,6 @@ describe("Importar plano (3e-2)", () => {
     test("sin archivo elegido, «Leer plano» dice el texto de la clásica y no manda nada", async () => {
       const usuario = userEvent.setup();
       montar();
-      await abrir(usuario);
       await usuario.click(screen.getByRole("button", { name: "Leer plano" }));
       expect(screen.getByText("Elija primero un archivo de plano (DXF o IFC) y pulse Leer plano.")).toBeInTheDocument();
       expect(llamadas()).toHaveLength(0);
@@ -169,7 +167,6 @@ describe("Importar plano (3e-2)", () => {
     test("el archivo elegido se nombra y «Leer plano» lo manda por multipart con el rev vigente", async () => {
       const usuario = userEvent.setup();
       montar(7);
-      await abrir(usuario);
       await usuario.upload(campoDeArchivo(), new File(["0\nEOF"], "of001.DXF"));
       expect(screen.getByText("Archivo elegido: of001.DXF")).toBeInTheDocument();
       await usuario.click(screen.getByRole("button", { name: "Leer plano" }));
@@ -186,7 +183,6 @@ describe("Importar plano (3e-2)", () => {
     test("el nombre del archivo es texto: nada de HTML, y un nombre largo no cuesta un segundo", async () => {
       const usuario = userEvent.setup({ applyAccept: false });
       montar();
-      await abrir(usuario);
       await usuario.upload(campoDeArchivo(), new File(["x"], "<img src=x onerror=alert(1)>.dxf"));
       expect(screen.getByText("Archivo elegido: <img src=x onerror=alert(1)>.dxf")).toBeInTheDocument();
       expect(document.querySelector("img")).toBeNull();
@@ -240,7 +236,7 @@ describe("Importar plano (3e-2)", () => {
       alLeer = () => new Promise<Response>((resolver) => (soltar = resolver));
       montar();
       await leer(usuario);
-      const cuerpo = document.getElementById(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" }).getAttribute("aria-controls")!)!;
+      const cuerpo = screen.getByRole("dialog").querySelector<HTMLElement>("[aria-busy]")!;
       expect(cuerpo).toHaveAttribute("aria-busy", "true");
       // el anuncio no vive dentro de una región ocupada: algunos lectores retienen lo que se anuncia ahí
       const estado = screen.getByRole("status");
@@ -713,17 +709,6 @@ describe("Importar plano (3e-2)", () => {
       const llamada = llamadas().find(([r]) => String(r).endsWith("/plano/fusionar"))!;
       expect(JSON.parse(String(llamada[1]?.body))).toEqual({ rev: 4 });
     });
-
-    test("con una edición del espacio en curso no se fusiona ni se manda nada", async () => {
-      const usuario = userEvent.setup();
-      const { propiedades, rerender } = montar(1);
-      await leer(usuario);
-      await encabezado("Alturas pendientes");
-      rerender(propiedades(1, true));
-      for (const nombre of ["Cargar alturas", "Declarar circuitos", "Fusionar con el espacio del borrador", "Leer plano"]) {
-        expect(screen.getByRole("button", { name: nombre })).toBeDisabled();
-      }
-    });
   });
 
   describe("estado de la importación", () => {
@@ -746,7 +731,6 @@ describe("Importar plano (3e-2)", () => {
       // vuelve abierto y con el informe, sin pedir nada
       await encabezado("Informe de la importación de of001.dxf");
       expect(llamadas()).toHaveLength(antes);
-      expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toHaveAttribute("aria-expanded", "true");
     });
 
     test("otro borrador no hereda lo del anterior", async () => {
@@ -756,7 +740,6 @@ describe("Importar plano (3e-2)", () => {
       await encabezado("Informe de la importación de of001.dxf");
       unmount();
       montar();
-      expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toHaveAttribute("aria-expanded", "false");
       expect(screen.queryByRole("heading", { name: "Informe de la importación de of001.dxf" })).toBeNull();
     });
 
@@ -916,11 +899,13 @@ describe("Importar plano (3e-2)", () => {
       await waitFor(() => expect(aviso).toHaveFocus());
     });
 
-    test("abrir el bloque no mueve el foco del botón que lo abre", async () => {
+    test("Esc o «Cerrar» cierran el diálogo cuando no hay nada en vuelo", async () => {
       const usuario = userEvent.setup();
       montar();
-      await abrir(usuario);
-      expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toHaveFocus();
+      await usuario.keyboard("{Escape}");
+      expect(alCerrar).toHaveBeenCalledTimes(1);
+      await usuario.click(screen.getByRole("button", { name: "Cerrar" }));
+      expect(alCerrar).toHaveBeenCalledTimes(2);
     });
   });
   describe("ronda 1 del árbitro", () => {
@@ -948,7 +933,6 @@ describe("Importar plano (3e-2)", () => {
     test("«Leer plano» sin archivo lleva el foco al aviso", async () => {
       const usuario = userEvent.setup();
       montar();
-      await abrir(usuario);
       await usuario.click(screen.getByRole("button", { name: "Leer plano" }));
       const aviso = screen.getByText("Elija primero un archivo de plano (DXF o IFC) y pulse Leer plano.").closest("[tabindex]");
       await waitFor(() => expect(aviso).toHaveFocus());
@@ -981,7 +965,7 @@ describe("Importar plano (3e-2)", () => {
       await waitFor(() => expect(alExpirar).toHaveBeenCalledTimes(1));
       unmount();
       montar(3, { id: mismo });
-      expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByRole("heading", { name: "Alturas pendientes" })).toBeNull();
       // y por orden explícita
       const segundo = userEvent.setup();
       await leer(segundo);
@@ -990,10 +974,10 @@ describe("Importar plano (3e-2)", () => {
       screen.getByRole("button", { name: "Descartar la importación" }); // sigue a la vista mientras la página no se va
       cleanup();
       montar(3, { id: mismo });
-      expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByRole("heading", { name: "Informe de la importación de of001.dxf" })).toBeNull();
     });
 
-    test("al fusionar avisa a la página que ocupa el espacio y no lo suelta hasta que la relectura termina", async () => {
+    test("desde «Fusionar» hasta que la relectura termina el diálogo no se cierra (ni Esc ni «Cerrar»)", async () => {
       const usuario = userEvent.setup();
       let terminar: () => void = () => undefined;
       alRecargar.mockImplementation(() => new Promise<void>((resolver) => (terminar = resolver)));
@@ -1001,11 +985,86 @@ describe("Importar plano (3e-2)", () => {
       await leer(usuario);
       await usuario.click(await screen.findByRole("button", { name: "Fusionar con el espacio del borrador" }));
       await screen.findByText(MENSAJE_DE_FUSION);
-      expect(alOcuparse).toHaveBeenLastCalledWith(true);
+      expect(screen.getByRole("button", { name: "Cerrar" })).toBeDisabled();
       expect(screen.getByRole("button", { name: "Leer plano" })).toBeDisabled();
+      await usuario.keyboard("{Escape}");
+      expect(alCerrar).not.toHaveBeenCalled();
       terminar();
-      await waitFor(() => expect(alOcuparse).toHaveBeenLastCalledWith(false));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Cerrar" })).toBeEnabled());
       await waitFor(() => expect(screen.getByRole("button", { name: "Leer plano" })).toBeEnabled());
+      await usuario.click(screen.getByRole("button", { name: "Cerrar" }));
+      expect(alCerrar).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // Tarea 11 de F4: un solo botón principal a la vista en cada paso del flujo (antes «Leer plano» convivía con
+  // «Continuar con esta unidad» o con «Fusionar»).
+  describe("un solo botón principal en cada paso", () => {
+    test("al abrir, «Leer plano»", () => {
+      montar();
+      expect([...principales()].map((b) => b.textContent)).toEqual(["Leer plano"]);
+    });
+
+    test("con la importación lista, «Fusionar con el espacio del borrador»", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await leer(usuario);
+      await encabezado("Informe de la importación de of001.dxf");
+      expect([...principales()].map((b) => b.textContent)).toEqual(["Fusionar con el espacio del borrador"]);
+      expect(screen.getByRole("button", { name: "Leer plano" })).toBeEnabled();
+    });
+
+    test("si falta la unidad, «Continuar con esta unidad»", async () => {
+      const usuario = userEvent.setup();
+      alLeer = () => json(detenida());
+      montar();
+      await leer(usuario);
+      await screen.findByRole("button", { name: "Continuar con esta unidad" });
+      expect([...principales()].map((b) => b.textContent)).toEqual(["Continuar con esta unidad"]);
+    });
+
+    test("rechazada o ya fusionada, otra vez «Leer plano»", async () => {
+      const usuario = userEvent.setup();
+      alLeer = () => json(rechazada());
+      montar();
+      await leer(usuario, "roto.dxf");
+      await screen.findByText(/No se pudo importar/);
+      expect([...principales()].map((b) => b.textContent)).toEqual(["Leer plano"]);
+      alLeer = () => json(importada());
+      await leer(usuario);
+      await usuario.click(await screen.findByRole("button", { name: "Fusionar con el espacio del borrador" }));
+      await screen.findByText(MENSAJE_DE_FUSION);
+      await waitFor(() => expect([...principales()].map((b) => b.textContent)).toEqual(["Leer plano"]));
+    });
+  });
+
+  // La Tarea 12 trae «Cargar cómputo»: el diálogo elige el flujo por la extensión. Mientras tanto la pantalla no acepta
+  // .csv (no hay pantallas «pronto»); aquí se le da un cuerpo de prueba para fijar el reparto.
+  describe("el flujo se elige por la extensión", () => {
+    const COMPUTO = (archivo: File) => <p>{`Pronto: cargar cómputo (${archivo.name})`}</p>;
+
+    test("sin el cómputo, la zona de soltar solo acepta .dxf o .ifc", () => {
+      montar();
+      expect(campoDeArchivo()).toHaveAttribute("accept", ".dxf,.ifc");
+      expect(screen.queryByText(/Pronto/)).toBeNull();
+    });
+
+    test("con el cómputo, un .csv va a su flujo y no al del plano", async () => {
+      const usuario = userEvent.setup();
+      montar(3, { cuerpoDelComputo: COMPUTO });
+      expect(campoDeArchivo()).toHaveAttribute("accept", ".dxf,.ifc,.csv");
+      await usuario.upload(campoDeArchivo(), new File(["a;b"], "computo.CSV"));
+      expect(screen.getByText("Pronto: cargar cómputo (computo.CSV)")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Leer plano" })).toBeNull();
+      expect(llamadas()).toHaveLength(0);
+    });
+
+    test("con el cómputo, un .dxf sigue siendo el plano", async () => {
+      const usuario = userEvent.setup();
+      montar(3, { cuerpoDelComputo: COMPUTO });
+      await leer(usuario, "of001.dxf");
+      await encabezado("Informe de la importación de of001.dxf");
+      expect(screen.queryByText(/Pronto/)).toBeNull();
     });
   });
 });

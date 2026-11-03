@@ -9,7 +9,7 @@ import { AvisoError } from "../comun/AvisoError";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { EstadoVacio } from "../comun/EstadoVacio";
 import { useTituloDelDocumento } from "../comun/tituloDelDocumento";
-import { olvidarImportaciones } from "../paginas/hoja/useImportacion";
+import { olvidarImportaciones } from "../paginas/archivos/useImportacion";
 import { Bandeja } from "../paginas/pendientes/Bandeja";
 import { hojasConCambios } from "../shell/carpetas/hojasConCambios";
 import { useCarpetaDeTrabajo } from "../shell/carpetas/useCarpetaDeTrabajo";

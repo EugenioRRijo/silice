@@ -199,6 +199,14 @@
   }
 }
 
+// Las tablas editables del espacio, una bajo otra con el mismo espacio entre ellas (antes en un `fieldset` que se bloqueaba
+// mientras se fusionaba un plano; desde la Tarea 11 de F4 el plano se importa en Archivos y planos).
+.silice-hoja__tablas-espacio {
+  display: grid;
+  gap: 1.5rem;
+  min-inline-size: 0;
+}
+
 .silice-hoja__sin-evaluar {
   opacity: 0.6;
 }

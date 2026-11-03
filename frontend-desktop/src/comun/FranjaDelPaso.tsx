@@ -7,7 +7,9 @@ interface Props {
   texto: string;
   // El único botón principal de la pantalla mientras la franja esté a la vista. Sin acción (la cuenta no puede usar la
   // pantalla de destino) la franja solo informa. `id`: a él vuelve el foco al cerrar el diálogo que abre (Tarea 5).
-  accion?: { texto: string; alPulsar: () => void; deshabilitada?: boolean; id?: string };
+  // `enSegundoPlano`: un diálogo de la pantalla está abierto y su paso lleva el principal (Archivos y planos, Tarea 11 de
+  // F4); mientras tanto el botón de la franja pasa a secundario, para que no haya dos principales a la vista.
+  accion?: { texto: string; alPulsar: () => void; deshabilitada?: boolean; id?: string; enSegundoPlano?: boolean };
 }
 
 // La franja «Te falta / Siguiente paso» (Tarea 2 del plan F4; especificación §2.3 y §6.4): es el molde de toda sección de
@@ -23,7 +25,13 @@ export function FranjaDelPaso({ tipo, texto, accion }: Props) {
         <strong>{falta ? "Te falta:" : "Siguiente paso:"}</strong> {texto}
       </p>
       {accion && (
-        <Button id={accion.id} kind="primary" size="md" disabled={accion.deshabilitada} onClick={accion.alPulsar}>
+        <Button
+          id={accion.id}
+          kind={accion.enSegundoPlano ? "secondary" : "primary"}
+          size="md"
+          disabled={accion.deshabilitada}
+          onClick={accion.alPulsar}
+        >
           {accion.texto}
         </Button>
       )}

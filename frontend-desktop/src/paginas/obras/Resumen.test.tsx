@@ -64,13 +64,15 @@ interface Opciones {
   ficha?: ObraAbierta["ficha"];
   sesion?: ReturnType<typeof sesionDe>;
   pendientes?: PendienteDeObra[];
+  // Los módulos que la instalación apagó (plan vial, Tarea 19).
+  apagados?: string[];
 }
 
 // La página sola, con la obra 3 de «Carpeta Norte.db» ya abierta (el marco la provee; aquí se arma el contexto a mano).
-function montar({ ficha = { estado: "lista", obra: FILA }, sesion = sesionDe("ana"), pendientes = [] }: Opciones = {}) {
+function montar({ ficha = { estado: "lista", obra: FILA }, sesion = sesionDe("ana"), pendientes = [], apagados }: Opciones = {}) {
   // La página no pide nada por su cuenta; si lo hiciera, recibiría una respuesta vacía y la prueba lo vería en el texto.
   pedirFalso.mockResolvedValue({ obras: [], pendientes: [], grupos: [] });
-  const aplicacion: Aplicacion = { sesion, proyecto: "3", caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
+  const aplicacion: Aplicacion = { sesion, proyecto: "3", caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), modulosApagados: apagados };
   const abierta: ObraAbierta = { carpeta: NORTE, obraId: 3, ficha, recargarFicha: vi.fn() };
   return render(
     <MemoryRouter initialEntries={[rutaDeObra(NORTE, 3, "resumen")]}>
@@ -180,6 +182,18 @@ describe("Resumen de la obra abierta", () => {
     montar({ sesion: sesionDe("rita") });
     await u.click(await within(franja()).findByRole("button", { name: "Abrir la Hoja" }));
     expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Norte.db/3/presupuesto");
+  });
+
+  // F4, Tarea 11: el botón de la franja tampoco lleva a una pantalla cuyo módulo la instalación apagó (la API la cortaría).
+  it("con el módulo de la pantalla apagado la franja solo informa; encendido, ofrece el botón", async () => {
+    const tramos = { estado: "lista" as const, obra: { ...FILA, siguiente: { texto: "Ver los tramos", pagina: "tramos" } } };
+    const { unmount } = montar({ ficha: tramos, apagados: ["vial"] });
+    await screen.findByRole("heading", { level: 1, name: "Resumen" });
+    expect(franja()).toHaveTextContent("Te falta: Faltan 2 precios");
+    expect(within(franja()).queryByRole("button")).toBeNull();
+    unmount();
+    montar({ ficha: tramos, apagados: ["produccion"] });
+    expect(await within(franja()).findByRole("button", { name: "Ver los tramos" })).toBeInTheDocument();
   });
 
   it("a lo sumo hay un botón principal", async () => {

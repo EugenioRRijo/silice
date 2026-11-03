@@ -130,6 +130,13 @@ describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => 
         total = "2800.50";
         return json({ rev: cuerpo.rev + 1, resumen: resumen({ rev: cuerpo.rev + 1, cambios: 1, total: m("2800.50") }), apu: apu("E-01") });
       }
+      if (camino === `/v1/hoja/borradores/${ID}/insumos`) {
+        return json({ insumos: [{ codigo: "MAT-010", descripcion: "Llave de bola PVC 3/4", unidad: "pieza", precio: m("8.10") }], hay_mas: false });
+      }
+      if (camino === `/v1/hoja/borradores/${ID}/apu/E-01/insumo` && metodo === "POST") {
+        const cuerpo = JSON.parse(String(init?.body)) as Cuerpo;
+        return json({ rev: cuerpo.rev + 1, resumen: resumen({ rev: cuerpo.rev + 1, cambios: 1 }), apu: apu("E-01") });
+      }
       if (camino.endsWith("/vistas/presupuesto")) return json(presupuesto(total));
       if (camino.endsWith("/vistas/apu")) return json(apu(url.searchParams.get("partida")));
       return new Response(null, { status: 204 });
@@ -137,9 +144,9 @@ describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => 
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  const escrituras = (patron: RegExp) =>
+  const escrituras = (patron: RegExp, metodo = "PUT") =>
     fetchFalso.mock.calls
-      .filter(([r, init]) => (init?.method ?? "GET") === "PUT" && patron.test(decodeURIComponent(String(r))))
+      .filter(([r, init]) => (init?.method ?? "GET") === metodo && patron.test(decodeURIComponent(String(r))))
       .map(([r, init]) => ({ ruta: decodeURIComponent(String(r)), cuerpo: JSON.parse(String(init?.body)) as Cuerpo }));
   const lecturasDeApu = () =>
     fetchFalso.mock.calls.map(([r]) => new URL(String(r), "http://silice.local")).filter((u) => u.pathname.endsWith("/vistas/apu"));
@@ -252,6 +259,20 @@ describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => 
     expect(within(panel).queryByRole("button", { name: /^Quitar/ })).toBeNull();
     expect(within(panel).queryByRole("button", { name: /Cambiar/ })).toBeNull();
     expect(escrituras(/./)).toEqual([]);
+  });
+
+  test("el mismo diálogo de líneas sirve en el panel: «Cambiar» manda el insumo de esa partida y el foco vuelve a su botón", async () => {
+    const panel = await abrirPanel();
+    const nombre = "Cambiar el insumo de Llave de bola PVC 1/2, Materiales fila 1";
+    await userEvent.click(await within(panel).findByRole("button", { name: nombre }));
+    const dialogo = screen.getByRole("dialog", { name: "Cambiar el insumo de Llave de bola PVC 1/2" });
+    await userEvent.type(within(dialogo).getByRole("combobox", { name: "Insumo" }), "llave");
+    await userEvent.click(await screen.findByRole("option", { name: /Llave de bola PVC 3\/4/ }));
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Usar este insumo" }));
+    await waitFor(() => expect(escrituras(/\/apu\/E-01\/insumo$/, "POST")).toHaveLength(1));
+    expect(escrituras(/\/insumo$/, "POST")[0]!.cuerpo).toEqual({ rev: 0, tipo: "material", indice: 0, insumo: "MAT-010" });
+    expect(await within(panel).findByText("Insumo de la línea 1 cambiado: Llave de bola PVC 3/4.")).toBeInTheDocument();
+    await waitFor(() => expect(within(panel).getByRole("button", { name: nombre })).toHaveFocus());
   });
 
   test("estructura (Foco 4): la tabla se desplaza en su caja y el panel queda al lado, con la regla de pasar por encima", async () => {

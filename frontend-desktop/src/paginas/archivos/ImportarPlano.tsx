@@ -4,25 +4,21 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
-import { AvisoDeEdicion } from "./AvisoDeEdicion";
-import { LARGO_DE_CELDA } from "./logica";
-import type { Resumen } from "./logica";
+import { AvisoDeEdicion } from "../hoja/AvisoDeEdicion";
+import { LARGO_DE_CELDA } from "../hoja/logica";
+import type { Resumen } from "../hoja/logica";
 import {
   AYUDA_ALTURAS,
   AYUDA_CIRCUITOS,
   AYUDA_PLANO,
   CAMPOS_DE_CIRCUITO,
   COLUMNAS_DEL_INFORME,
-  ETIQUETA_DE_SUBIDA,
-  EXTENSIONES_DE_PLANO,
   ROTULO_CARGAR_ALTURAS,
   ROTULO_CONTINUAR_UNIDAD,
   ROTULO_DECLARAR_CIRCUITOS,
   ROTULO_DESCARTAR_PLANO,
   ROTULO_FUSIONAR,
-  ROTULO_IMPORTAR,
   ROTULO_LEER_PLANO,
   etiquetaDeAltura,
   etiquetaDeCampoDeCircuito,
@@ -39,8 +35,8 @@ interface Props {
   id: string;
   // El `rev` del borrador según la página.
   rev: number;
-  // Hay una edición del espacio esperando su pausa o en vuelo: no se manda nada hasta que termine (el `rev` cambiaría).
-  ocupadoPorEdicion?: boolean;
+  // El plano que la persona eligió en el diálogo (null: aún ninguno).
+  archivo: File | null;
   alAusente: () => void;
   alAceptar: (resumen: Resumen) => void;
   // Vuelve a leer el borrador y las tablas del espacio.
@@ -48,7 +44,7 @@ interface Props {
   // Descarta lo que se ve y abre otro borrador de la versión.
   alReabrir: () => void;
   alExpirar: () => void;
-  // El flujo ocupa el espacio mientras fusiona y vuelve a leerlo: la página no deja editar las tablas.
+  // Hay una petición en vuelo (desde «Fusionar», hasta que la relectura del borrador termina): el diálogo no se cierra.
   alOcuparse?: (ocupada: boolean) => void;
 }
 
@@ -82,7 +78,7 @@ interface PropsDeAlturas {
   alCargar: (textos: Record<string, string>) => void;
 }
 
-// «Alturas pendientes» (ui/paginas/hoja.py:1368-1381): un campo por ambiente, en metros. Todo viaja como texto, tal cual.
+// «Alturas pendientes»: un campo por ambiente, en metros. Todo viaja como texto, tal cual.
 function FormularioDeAlturas({ pendientes, deshabilitado, alCargar }: PropsDeAlturas) {
   const base = useId();
   const [textos, setTextos] = useState<Record<string, string>>({});
@@ -128,7 +124,7 @@ interface PropsDeCircuitos {
   alDeclarar: (valores: Record<string, ValoresDeCircuito>) => void;
 }
 
-// «Circuitos por declarar» (ui/paginas/hoja.py:1384-1400): cuatro campos por circuito, con lo que supuso el plano.
+// «Circuitos por declarar»: cuatro campos por circuito, con lo que supuso el plano.
 function FormularioDeCircuitos({ supuestos, deshabilitado, alDeclarar }: PropsDeCircuitos) {
   const base = useId();
   const [valores, setValores] = useState<Record<string, ValoresDeCircuito>>(() => valoresDeCircuitos(supuestos));
@@ -186,7 +182,7 @@ interface PropsDeUnidad {
   alContinuar: (unidad: string) => void;
 }
 
-// El plano no dice su unidad: el servidor manda las que acepta y la persona elige (ui/paginas/hoja.py:1319-1325).
+// El plano no dice su unidad: el servidor manda las que acepta y la persona elige.
 function UnidadDelDibujo({ unidades, deshabilitado, alContinuar }: PropsDeUnidad) {
   const idSelector = useId();
   const [unidad, setUnidad] = useState(unidades[0] ?? "");
@@ -216,17 +212,25 @@ function Resultado({ activo, children }: { activo: boolean; children: ReactNode 
   );
 }
 
-// «Importar plano (DXF o IFC)» de la pestaña Espacio y metrajes (RF-50, RF-51; ui/paginas/hoja.py:1225-1485): subir un .dxf o
-// .ifc, leerlo (P1), pedir la unidad si falta (P2), cargar las alturas (P3) y declarar los circuitos (P4), fusionar con el
-// borrador (P5) o descartar (P6). La importación vive en el servidor, aparte del borrador, hasta fusionarla.
-export function ImportarPlano({ id, rev, ocupadoPorEdicion = false, alAusente, alAceptar, alRecargar, alReabrir, alExpirar, alOcuparse }: Props) {
-  const imp = useImportacion({ id, rev, alAusente, alAceptar, alRecargar, alExpirar, alOcuparse });
+// El flujo del plano (RF-50, RF-51), cuerpo del diálogo «Subir plano o cómputo» de Archivos y planos (Tarea 11 de F4; antes
+// era un bloque de la pestaña Espacio y metrajes): leer el .dxf o .ifc elegido (P1), pedir la unidad si falta (P2), cargar
+// las alturas (P3) y declarar los circuitos (P4), fusionar con el borrador (P5) o descartar (P6). La importación vive en el
+// servidor, aparte del borrador, hasta fusionarla. Un solo botón principal por paso: «Leer plano» mientras no hay una
+// importación que seguir; luego, «Continuar con esta unidad» o «Fusionar». El archivo pasa de 250 líneas porque reúne los
+// formularios de los seis pasos, que comparten el estado y el foco de `useImportacion`.
+export function ImportarPlano({ id, rev, archivo, alAusente, alAceptar, alRecargar, alReabrir, alExpirar, alOcuparse }: Props) {
+  const imp = useImportacion({ id, rev, alAusente, alAceptar, alRecargar, alExpirar });
   const idCuerpo = useId();
   const cuerpo = useRef<HTMLDivElement>(null);
   const { importacion, fusion, lectura } = imp.datos;
-  const [abierto, setAbierto] = useState(importacion !== null || fusion !== null);
-  const [archivo, setArchivo] = useState<File | null>(null);
-  const bloqueado = imp.ocupado !== null || ocupadoPorEdicion || imp.detenido;
+  const bloqueado = imp.ocupado !== null || imp.detenido;
+  const ocupado = imp.ocupado !== null;
+  const leerEsPrincipal = importacion === null || importacion.estado === "rechazada";
+
+  // Quien monta el flujo sabe cuándo hay algo en vuelo (el diálogo no se cierra a medias).
+  useEffect(() => {
+    alOcuparse?.(ocupado);
+  }, [alOcuparse, ocupado]);
 
   // Tras leer, cargar alturas, declarar circuitos, fusionar o descartar (o fallar), el foco va al resultado: el botón que lo
   // tenía puede haber desaparecido y no debe quedar en `body`.
@@ -246,138 +250,129 @@ export function ImportarPlano({ id, rev, ocupadoPorEdicion = false, alAusente, a
   const circuitos = importacion?.circuitos_supuestos ?? [];
 
   return (
-    <section className="silice-hoja__seccion silice-plano">
-      <h2 className="cds--type-heading-compact-02">
-        <Button kind="ghost" size="sm" aria-expanded={abierto} aria-controls={idCuerpo} onClick={() => setAbierto((a) => !a)}>
-          {ROTULO_IMPORTAR}
-        </Button>
-      </h2>
+    <section className="silice-plano">
       {/* Fuera del cuerpo ocupado (aria-busy): algunos lectores retienen lo que se anuncia dentro de una región ocupada. */}
       <p className="cds--type-helper-text-01" role="status">
         {imp.ocupado ?? ""}
       </p>
-      {abierto && (
-        <div id={idCuerpo} ref={cuerpo} className="silice-plano__cuerpo" aria-busy={imp.ocupado !== null}>
-          <p className="cds--type-body-compact-01">{AYUDA_PLANO}</p>
-          <SubidaArchivo etiqueta={ETIQUETA_DE_SUBIDA} extensiones={EXTENSIONES_DE_PLANO} alElegir={setArchivo} deshabilitada={bloqueado} />
-          {archivo !== null && <p className="cds--type-body-compact-01">Archivo elegido: {archivo.name}</p>}
-          <div>
-            <Button
-              kind="primary"
-              size="sm"
-              disabled={bloqueado}
-              data-leer=""
-              onClick={() => {
-                if (archivo === null) imp.faltaArchivo();
-                else void imp.leer(archivo);
-              }}
-            >
-              {ROTULO_LEER_PLANO}
-            </Button>
-          </div>
-          {imp.error !== null && (
-            <Resultado activo={marca("error")}>
-              {imp.error.tipo === "otro" ? (
-                <AvisoError error={imp.error.mensaje} titulo={imp.error.titulo} />
-              ) : (
-                <AvisoDeEdicion error={imp.error} id={`${idCuerpo}-error`} alRecargar={() => void imp.recargar()} alReabrir={alReabrir} />
-              )}
-            </Resultado>
-          )}
-
-          {imp.aviso !== null && (
-            <Resultado activo={marca("aviso")}>
-              <InlineNotification kind="success" role="status" lowContrast hideCloseButton title={imp.aviso} />
-            </Resultado>
-          )}
-
-          {importacion !== null && importacion.estado === "rechazada" && (
-            <>
-              <Resultado activo={marca("importacion")}>
-                <AvisoError error={`No se pudo importar «${importacion.archivo}»: ${importacion.mensaje}`} titulo="Plano no importado" />
-              </Resultado>
-              <div>
-                <Button kind="tertiary" size="sm" disabled={bloqueado} onClick={() => void imp.descartar()}>
-                  {ROTULO_DESCARTAR_PLANO}
-                </Button>
-              </div>
-            </>
-          )}
-
-          {importacion !== null && importacion.estado === "detenida" && (
-            <>
-              <Resultado activo={marca("importacion")}>
-                <InlineNotification kind="warning" role="status" lowContrast hideCloseButton title="Falta la unidad del dibujo" subtitle={importacion.mensaje} />
-              </Resultado>
-              <UnidadDelDibujo
-                key={lectura}
-                unidades={importacion.unidades}
-                deshabilitado={bloqueado}
-                alContinuar={(unidad) => void imp.reanudar(unidad)}
-              />
-              <div>
-                <Button kind="tertiary" size="sm" disabled={bloqueado} onClick={() => void imp.descartar()}>
-                  {ROTULO_DESCARTAR_PLANO}
-                </Button>
-              </div>
-            </>
-          )}
-
-          {importacion !== null && importacion.estado === "importada" && (
-            <>
-              <h3
-                {...(marca("importacion") ? { "data-resultado": "" } : {})}
-                tabIndex={-1}
-                className="cds--type-heading-compact-02 silice-plano__resultado"
-              >
-                {`Informe de la importación de ${importacion.archivo}`}
-              </h3>
-              <Conteos conteos={importacion.conteos} />
-              <TablaDelInforme etiqueta="Informe de la importación" informe={importacion.informe} />
-              {alturas.length > 0 && (
-                <FormularioDeAlturas
-                  key={`${lectura}-${alturas.map((a) => a.id).join("|")}`}
-                  pendientes={alturas}
-                  deshabilitado={bloqueado}
-                  alCargar={(textos) => void imp.cargarAlturas(textos)}
-                />
-              )}
-              {circuitos.length > 0 && (
-                <FormularioDeCircuitos
-                  key={`${lectura}-${circuitos.map((c) => c.id).join("|")}`}
-                  supuestos={circuitos}
-                  deshabilitado={bloqueado}
-                  alDeclarar={(valores) => void imp.declarar(valores)}
-                />
-              )}
-              {importacion.aviso_pendientes !== null && (
-                <InlineNotification kind="info" role="status" lowContrast hideCloseButton title="Antes de fusionar" subtitle={importacion.aviso_pendientes} />
-              )}
-              <div className="silice-plano__acciones">
-                <Button kind="primary" size="sm" disabled={bloqueado} onClick={() => void imp.fusionar()}>
-                  {ROTULO_FUSIONAR}
-                </Button>
-                <Button kind="tertiary" size="sm" disabled={bloqueado} onClick={() => void imp.descartar()}>
-                  {ROTULO_DESCARTAR_PLANO}
-                </Button>
-              </div>
-            </>
-          )}
-
-          {importacion === null && fusion !== null && (
-            <section className="silice-hoja__seccion">
-              <Resultado activo={marca("fusion")}>
-                <InlineNotification kind="success" role="status" lowContrast hideCloseButton title="Importación fusionada" subtitle={fusion.mensaje} />
-              </Resultado>
-              <h3 className="cds--type-heading-compact-02">Informe de la última fusión</h3>
-              <Conteos conteos={fusion.fusion.por_tipo} />
-              <p className="cds--type-helper-text-01">{lineaDeFilasPorTabla(fusion.fusion.filas_por_tabla)}</p>
-              <p className="cds--type-helper-text-01">{lineaDeOrigenes(fusion.fusion.origenes)}</p>
-              <TablaDelInforme etiqueta="Informe de la fusión" informe={fusion.informe} />
-            </section>
-          )}
+      <div id={idCuerpo} ref={cuerpo} className="silice-plano__cuerpo" aria-busy={ocupado}>
+        <p className="cds--type-body-compact-01">{AYUDA_PLANO}</p>
+        <div>
+          <Button
+            kind={leerEsPrincipal ? "primary" : "secondary"}
+            size="sm"
+            disabled={bloqueado}
+            data-leer=""
+            onClick={() => {
+              if (archivo === null) imp.faltaArchivo();
+              else void imp.leer(archivo);
+            }}
+          >
+            {ROTULO_LEER_PLANO}
+          </Button>
         </div>
-      )}
+        {imp.error !== null && (
+          <Resultado activo={marca("error")}>
+            {imp.error.tipo === "otro" ? (
+              <AvisoError error={imp.error.mensaje} titulo={imp.error.titulo} />
+            ) : (
+              <AvisoDeEdicion error={imp.error} id={`${idCuerpo}-error`} alRecargar={() => void imp.recargar()} alReabrir={alReabrir} />
+            )}
+          </Resultado>
+        )}
+
+        {imp.aviso !== null && (
+          <Resultado activo={marca("aviso")}>
+            <InlineNotification kind="success" role="status" lowContrast hideCloseButton title={imp.aviso} />
+          </Resultado>
+        )}
+
+        {importacion !== null && importacion.estado === "rechazada" && (
+          <>
+            <Resultado activo={marca("importacion")}>
+              <AvisoError error={`No se pudo importar «${importacion.archivo}»: ${importacion.mensaje}`} titulo="Plano no importado" />
+            </Resultado>
+            <div>
+              <Button kind="tertiary" size="sm" disabled={bloqueado} onClick={() => void imp.descartar()}>
+                {ROTULO_DESCARTAR_PLANO}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {importacion !== null && importacion.estado === "detenida" && (
+          <>
+            <Resultado activo={marca("importacion")}>
+              <InlineNotification kind="warning" role="status" lowContrast hideCloseButton title="Falta la unidad del dibujo" subtitle={importacion.mensaje} />
+            </Resultado>
+            <UnidadDelDibujo
+              key={lectura}
+              unidades={importacion.unidades}
+              deshabilitado={bloqueado}
+              alContinuar={(unidad) => void imp.reanudar(unidad)}
+            />
+            <div>
+              <Button kind="tertiary" size="sm" disabled={bloqueado} onClick={() => void imp.descartar()}>
+                {ROTULO_DESCARTAR_PLANO}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {importacion !== null && importacion.estado === "importada" && (
+          <>
+            <h3
+              {...(marca("importacion") ? { "data-resultado": "" } : {})}
+              tabIndex={-1}
+              className="cds--type-heading-compact-02 silice-plano__resultado"
+            >
+              {`Informe de la importación de ${importacion.archivo}`}
+            </h3>
+            <Conteos conteos={importacion.conteos} />
+            <TablaDelInforme etiqueta="Informe de la importación" informe={importacion.informe} />
+            {alturas.length > 0 && (
+              <FormularioDeAlturas
+                key={`${lectura}-${alturas.map((a) => a.id).join("|")}`}
+                pendientes={alturas}
+                deshabilitado={bloqueado}
+                alCargar={(textos) => void imp.cargarAlturas(textos)}
+              />
+            )}
+            {circuitos.length > 0 && (
+              <FormularioDeCircuitos
+                key={`${lectura}-${circuitos.map((c) => c.id).join("|")}`}
+                supuestos={circuitos}
+                deshabilitado={bloqueado}
+                alDeclarar={(valores) => void imp.declarar(valores)}
+              />
+            )}
+            {importacion.aviso_pendientes !== null && (
+              <InlineNotification kind="info" role="status" lowContrast hideCloseButton title="Antes de fusionar" subtitle={importacion.aviso_pendientes} />
+            )}
+            <div className="silice-plano__acciones">
+              <Button kind="primary" size="sm" disabled={bloqueado} onClick={() => void imp.fusionar()}>
+                {ROTULO_FUSIONAR}
+              </Button>
+              <Button kind="tertiary" size="sm" disabled={bloqueado} onClick={() => void imp.descartar()}>
+                {ROTULO_DESCARTAR_PLANO}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {importacion === null && fusion !== null && (
+          <section className="silice-hoja__seccion">
+            <Resultado activo={marca("fusion")}>
+              <InlineNotification kind="success" role="status" lowContrast hideCloseButton title="Importación fusionada" subtitle={fusion.mensaje} />
+            </Resultado>
+            <h3 className="cds--type-heading-compact-02">Informe de la última fusión</h3>
+            <Conteos conteos={fusion.fusion.por_tipo} />
+            <p className="cds--type-helper-text-01">{lineaDeFilasPorTabla(fusion.fusion.filas_por_tabla)}</p>
+            <p className="cds--type-helper-text-01">{lineaDeOrigenes(fusion.fusion.origenes)}</p>
+            <TablaDelInforme etiqueta="Informe de la fusión" informe={fusion.informe} />
+          </section>
+        )}
+      </div>
     </section>
   );
 }

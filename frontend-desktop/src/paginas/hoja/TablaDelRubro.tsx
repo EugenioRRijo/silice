@@ -5,7 +5,7 @@ import { Cifra } from "./Cifra";
 import { TablaPaginada } from "./TablaPaginada";
 import { enteroDeDigitos } from "./logica";
 import type { GrupoApu } from "./logica";
-import type { EdicionDeApu, UbicacionDeApu } from "./logicaApu";
+import type { EdicionDeApu, LineaApu, UbicacionDeApu } from "./logicaApu";
 
 // Una tabla del APU por rubro (materiales, equipos, mano de obra) con su subtotal. Sale de `PestanaApu.tsx` en la Tarea 7
 // del plan F4 junto con `EditorDeApu`, que la usa en la pestaña y en el panel lateral; aparte porque es una pieza con sus
@@ -14,15 +14,8 @@ import type { EdicionDeApu, UbicacionDeApu } from "./logicaApu";
 const NUMERICAS = new Set(["precio", "depreciacion", "sueldo"]);
 
 const idDeCantidad = (rubro: string, n: number) => `hoja-apu-${rubro.replace(/\s+/g, "-")}-${n}`;
+const idDeCambiar = (rubro: string, n: number) => `hoja-apu-cambiar-${rubro.replace(/\s+/g, "-")}-${n}`;
 const idDeQuitar = (rubro: string, n: number) => `hoja-apu-quitar-${rubro.replace(/\s+/g, "-")}-${n}`;
-
-// La línea que la persona pidió quitar: espera su confirmación.
-export interface PorQuitar {
-  grupo: string;
-  indice: number;
-  descripcion: string;
-  boton: string;
-}
 
 export function TablaDelRubro({
   grupo,
@@ -35,6 +28,7 @@ export function TablaDelRubro({
   alCambiar,
   alRestaurar,
   alQuitar,
+  alCambiarInsumo,
 }: {
   grupo: GrupoApu;
   moneda: string;
@@ -47,7 +41,9 @@ export function TablaDelRubro({
   soloLectura: boolean;
   alCambiar: (indice: number, texto: string) => void;
   alRestaurar: (indice: number) => void;
-  alQuitar: (linea: PorQuitar) => void;
+  alQuitar: (linea: LineaApu) => void;
+  // Abre el diálogo único de las líneas en modo «cambiar» (Tarea 8); se pinta donde se pinta «Quitar».
+  alCambiarInsumo: (linea: LineaApu) => void;
 }) {
   const mover = (desde: number, paso: 1 | -1) => document.getElementById(idDeCantidad(grupo.clave, desde + paso))?.focus();
   const columnas: ColumnaDensa[] = grupo.columnas.map((c) => {
@@ -85,6 +81,26 @@ export function TablaDelRubro({
     };
   });
   if (quitable) {
+    columnas.push({
+      clave: "cambiar",
+      titulo: "Cambiar",
+      ordenable: false,
+      celda: (f) => {
+        const n = enteroDeDigitos(f.n!);
+        const descripcion = f.descripcion ?? "";
+        return (
+          <Button
+            id={idDeCambiar(grupo.clave, n)}
+            kind="ghost"
+            size="sm"
+            aria-label={`Cambiar el insumo de ${descripcion}, ${grupo.rotulo} fila ${n}`}
+            onClick={() => alCambiarInsumo({ grupo: grupo.clave, indice: n - 1, descripcion, boton: idDeCambiar(grupo.clave, n) })}
+          >
+            Cambiar
+          </Button>
+        );
+      },
+    });
     columnas.push({
       clave: "quitar",
       titulo: "Quitar",

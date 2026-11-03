@@ -1,14 +1,15 @@
-// Logica pura de «Elaborar un presupuesto» (UC-01): arma cuerpos, textos y filas con lo que manda la API. No calcula
-// ni redondea montos (llegan como texto); el unico numero es el puntaje de una propuesta, que se muestra a 2 decimales.
-// Las cifras se leen en es-VE con todos los decimales que trae la API (VB-6).
+// Lógica pura de «Cargar cómputo» (Tarea 12 del plan F4, antes la pantalla «Elaborar un presupuesto», UC-01): arma
+// cuerpos, textos y filas con lo que manda la API. No calcula ni redondea montos (llegan como texto); el único número es
+// el puntaje de una propuesta, que se muestra a 2 decimales. Las cifras se leen en es-VE con todos los decimales que trae
+// la API (VB-6).
 import { ErrorDeApi } from "../../api/cliente";
+import type { CarpetaRespuesta } from "../../api/tipos";
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import type {
   CalculoRespuesta,
   CuerpoCalculo,
   Dominio,
-  FilaPlan,
   ItemComputo,
   PartidaParaLlevar,
   PendienteConPropuestas,
@@ -17,43 +18,29 @@ import type {
   RendimientosPorDeclararRespuesta,
 } from "./tipos";
 
-// Valores de core/contracts/dominio.py.
+// Valores de core/contracts/dominio.py, con el nombre que lee la persona («Tipo de obra del archivo»).
 export const DOMINIOS: Dominio[] = ["civil", "telecom", "industrial", "sistemas"];
-export const CODIGO_POR_DEFECTO = "P-001";
-export const MONEDA_POR_DEFECTO = "USD";
-
-export const AYUDA =
-  "Elige un dominio, carga su archivo de muestra (.csv) y extrae el cómputo con el adaptador " +
-  "correspondiente; luego elabora el presupuesto, que se audita siempre.";
+export const NOMBRE_DEL_DOMINIO: Record<Dominio, string> = {
+  civil: "Civil",
+  telecom: "Telecomunicaciones",
+  industrial: "Industrial",
+  sistemas: "Sistemas",
+};
 export const AVISO_SIN_PARTIDAS_CIVILES =
   "El catálogo no tiene partidas del dominio civil todavía (o la base de datos no se pudo leer; revise el mensaje " +
   "de error de arriba, si lo hay): cargue primero un presupuesto civil (por ejemplo, sembrando la línea base en la " +
   "página de Actualización) antes de extraer un cómputo civil.";
-export const SIN_HALLAZGOS = "Sin hallazgos: la auditoría no encontró ninguna inconsistencia.";
 export const TEXTO_PENDIENTES =
-  "Estos ítems del cómputo no tienen partida en el catálogo: el presupuesto se elaboró sin ellos y el informe de " +
-  "auditoría los declara.";
-export const ERROR_COMPUTO_CAMBIO =
-  "El cómputo cambió después de esta elaboración: extráigalo de nuevo y vuelva a elaborar el presupuesto antes de " +
-  "aceptar una propuesta.";
-export const TEXTO_PLAN =
-  "Distribuya las partidas en períodos: cada fila es la fracción de una partida que se ejecuta en un período, y las " +
-  "fracciones de cada partida suman 1. Por defecto, una partida por día; la curva de inversión sale de este plan y " +
-  "cierra en el total.";
-export const AVISO_PLAN_REINICIADO =
-  "Al volver a elaborar, el plan de trabajo volvió a una partida por día: el plan editado antes se descartó. Vuelva " +
-  "a distribuirlo y aplique el plan.";
-export const ERROR_SIN_ITEMS_PLAN = "Extraiga de nuevo el cómputo antes de aplicar el plan.";
-export const ERROR_SIN_ITEMS_RENDIMIENTO = "Extraiga de nuevo el cómputo antes de registrar el rendimiento.";
+  "Estos ítems del cómputo no tienen partida en el catálogo y no se pueden llevar así. Aplique una propuesta y vuelva " +
+  "a pulsar «Llevar al presupuesto», o lleve el resto sin ellos.";
+export const ERROR_COMPUTO_CAMBIO = "El cómputo cambió: extráigalo de nuevo y vuelva a llevarlo antes de aplicar una propuesta.";
 export const TEXTO_RENDIMIENTOS =
-  "Estas partidas no tienen rendimiento estimado vigente a la fecha del presupuesto: se propone el del histórico " +
-  "con su dispersión. Declare si es estimado o medido para registrarlo y volver a elaborar.";
-
-export function hoy(): string {
-  const d = new Date();
-  const dos = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`;
-}
+  "Estas partidas no tienen rendimiento estimado vigente a la fecha de la lista de precios: se propone el del " +
+  "histórico con su dispersión. Declare si es estimado o medido para registrarlo y vuelva a pulsar «Llevar al " +
+  "presupuesto».";
+// Va tras «Te falta:» en la franja del cómputo: sin moneda o sin lista en la carpeta no hay con qué valorar.
+export const FALTA_LA_LISTA = "la carpeta no tiene lista de precios para armar";
+export const SIN_NADA_QUE_LLEVAR = "Ningún ítem del cómputo tiene partida en el catálogo: no hay nada que llevar.";
 
 export interface SeleccionCivil {
   concreto: string;
@@ -87,30 +74,6 @@ export function aceptarPropuesta(
   );
   if (posicion < 0) return null;
   return items.map((i, n) => (n === posicion ? { ...i, codigo_partida: elegido } : i));
-}
-
-// El nucleo nombra los periodos del plan por defecto «Dia N» (core/budget/curva.py): se leen «Día N» y vuelven al
-// servidor como «Dia N», asi la etiqueta guardada no cambia. Otro periodo escrito a mano no se toca (VB-6).
-export function periodoAVista(periodo: string): string {
-  return periodo.replace(/^Dia (?=[0-9])/, "Día ");
-}
-
-export function periodoAlServidor(periodo: string): string {
-  return periodo.replace(/^Día (?=[0-9])/, "Dia ");
-}
-
-// El veredicto del informe con mayuscula inicial («No cumple»), no en mayusculas como lo manda la API (VB-6).
-export function veredictoLegible(cumple: boolean): string {
-  return cumple ? "Cumple" : "No cumple";
-}
-
-export function filasIguales(a: FilaPlan[], b: FilaPlan[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every(
-      (f, n) => f.periodo === b[n].periodo && f.codigo_partida === b[n].codigo_partida && f.fraccion === b[n].fraccion,
-    )
-  );
 }
 
 export function lineaPendiente(p: Pick<PendienteConPropuestas, "origen_id" | "codigo_partida" | "descripcion">): string {
@@ -155,18 +118,6 @@ export function filasDeItems(items: ItemComputo[]): FilaDensa[] {
     origen_id: i.origen_id,
     origen_tipo: i.origen_tipo,
     regla: i.regla ?? "",
-  }));
-}
-
-export function filasDePartidas(calculo: CalculoRespuesta): FilaDensa[] {
-  return calculo.partidas.map((p, n) => ({
-    id: String(n),
-    codigo_partida: p.codigo_partida,
-    descripcion: p.descripcion,
-    unidad: p.unidad,
-    cantidad: p.cantidad,
-    precio_unitario: p.precio_unitario,
-    total: p.total,
   }));
 }
 
@@ -218,16 +169,7 @@ export async function calcular(cuerpo: CuerpoCalculo, csrf: string | null): Prom
   );
 }
 
-// --- Tarea 12 de montar un presupuesto: llevar los items a la Hoja de la obra ---------------------------------------
-
-export const BOTON_LLEVAR = "Llevar a la Hoja de la obra";
-export const TEXTO_ELABORAR_DE_NUEVO = "Elabore de nuevo el presupuesto con la obra elegida para llevarlo a su Hoja.";
-
-export function textoObraElegida(obra: string | null): string {
-  return obra
-    ? `Se valora con la lista de precios de la obra «${obra}», en su moneda.`
-    : "Se valora con la lista de precios de la obra elegida, en su moneda.";
-}
+// --- Llevar los ítems al presupuesto de la obra (Tarea 12 de montar un presupuesto; F4, Tarea 12) ---------------------
 
 // Los items del computo con que se elaboro, sin los pendientes (no tienen partida en el catalogo: la API los rechazaria
 // y no llevaria ninguno). La cantidad viaja tal cual salio de /computos: la pagina no la convierte ni la redondea.
@@ -240,15 +182,20 @@ export function partidasParaLlevar(
   return items.filter((i) => !pendiente(i)).map((i) => ({ codigo: i.codigo_partida, cantidad: i.cantidad, calculo: "" }));
 }
 
-export function textoLlevar(partidas: number, obra: string | null): string {
-  const cuantas = partidas === 1 ? "1 partida" : `${partidas} partidas`;
-  const destino = obra ? `de «${obra}»` : "de la obra";
-  return `Lleva ${cuantas} al borrador de la Hoja ${destino}, sin guardar una versión: la guarda usted desde la Hoja.`;
+// La moneda y la fecha con que se valora: las de la carpeta y su lista para armar (`GET /v1/carpeta`). Sin moneda o sin
+// lista, null: no se valora ni se lleva (bajas 13 y 14: ya no se escriben a mano).
+export function listaParaValorar(carpeta: CarpetaRespuesta): { moneda: string; fecha: string } | null {
+  if (carpeta.moneda === null || carpeta.lista === null) return null;
+  return { moneda: carpeta.moneda, fecha: carpeta.lista.fecha };
 }
 
-export function textoPendientesNoSeLlevan(pendientes: number): string | null {
-  if (pendientes === 0) return null;
-  return pendientes === 1
-    ? "El ítem pendiente no se lleva: no tiene partida en el catálogo."
-    : `Los ${pendientes} ítems pendientes no se llevan: no tienen partida en el catálogo.`;
+// El cuerpo de `POST /presupuestos/calcular`: el código del presupuesto es el de la obra, la moneda la de la carpeta y la
+// fecha la de su lista. Con `proyecto`, la API valora con la lista de la obra y en su moneda (como la Hoja al llevar).
+// Los ítems viajan tal cual salieron de `/computos` (RA-5).
+export function cuerpoDeValoracion(p: { proyecto: string; moneda: string; fecha: string; items: ItemComputo[] }): CuerpoCalculo {
+  return { codigo: p.proyecto, fecha: p.fecha, moneda: p.moneda, items: p.items, proyecto: p.proyecto };
+}
+
+export function textoLlevadas(partidas: number): string {
+  return partidas === 1 ? "Se llevó 1 partida al presupuesto." : `Se llevaron ${partidas} partidas al presupuesto.`;
 }

@@ -12,7 +12,7 @@ const REGISTRO: [string, string, string | null][] = [
   ["obras", "Trabajo", null],
   ["hoja", "Trabajo", "leer_proyecto"], // F4 2b: quien revisa la ve en solo lectura
   ["versiones", "Trabajo", "leer_proyecto"], // F4, Tarea 6: la sección Versiones de la obra
-  ["elaborar", "Trabajo", "editar_hoja"],
+  ["archivos", "Trabajo", "leer_proyecto"], // F4 Tarea 11: quien revisa ve el registro; subir exige editar_hoja
   ["tablero", "Trabajo", "leer_proyecto"],
   ["entregar", "Trabajo", "entregar_paquete"],
   ["componer", "Trabajo", "editar_hoja"],
@@ -60,6 +60,12 @@ describe("registro de paginas", () => {
   test("ya no existe la pantalla «Partidas similares»", () => {
     expect(paginaPorId("similares")).toBeUndefined();
     expect(PAGINAS.some((p) => p.titulo === "Partidas similares")).toBe(false);
+  });
+
+  // F4, Tarea 12 (baja 19): «Elaborar un presupuesto» es ahora «Cargar cómputo», dentro de Archivos y planos.
+  test("ya no existe la pantalla «elaborar»", () => {
+    expect(paginaPorId("elaborar")).toBeUndefined();
+    expect(PAGINAS.some((p) => p.titulo === "Elaborar un presupuesto")).toBe(false);
   });
 
   test("los ids son unicos y las secciones de permisos son cuatro", () => {
@@ -158,10 +164,11 @@ describe("módulos apagados (plan vial, Tarea 19)", () => {
   const TODAS_LAS_ACCIONES = PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion]));
 
   test.each(DEL_MODULO)("«%s» pertenece al módulo %s", (id, modulo) => {
-    expect(paginaPorId(id)!.modulo).toBe(modulo);
+    expect(paginaPorId(id)?.modulo).toBe(modulo);
   });
 
   test.each(DEL_MODULO)("«%s» deja de ser usable cuando su módulo está apagado, y vuelve al encender", (id, modulo) => {
+    expect(paginaPorId(id), id).toBeDefined();
     const pagina = paginaPorId(id)!;
     expect(usable(pagina, TODAS_LAS_ACCIONES, false, [modulo])).toBe(false);
     expect(usable(pagina, TODAS_LAS_ACCIONES, false, [])).toBe(true);
@@ -171,5 +178,12 @@ describe("módulos apagados (plan vial, Tarea 19)", () => {
   test("apagar un módulo no toca las pantallas de los otros ni las de ninguno", () => {
     expect(usable(paginaPorId("tramos")!, TODAS_LAS_ACCIONES, false, ["produccion", "riesgo"])).toBe(true);
     expect(usable(paginaPorId("hoja")!, TODAS_LAS_ACCIONES, false, ["produccion", "vial", "riesgo", "edificacion"])).toBe(true);
+  });
+
+  // F4, Tarea 12 (decisión del orquestador, regla de la T19 del plan vial): «edificación» apaga los planos y el espacio,
+  // no los cómputos. Archivos y planos no es de ningún módulo: con edificación apagada se sigue usando para el cómputo.
+  test("«Archivos y planos» no es de ningún módulo y se usa con «edificación» apagada", () => {
+    expect(paginaPorId("archivos")?.modulo).toBeUndefined();
+    expect(usable(paginaPorId("archivos")!, TODAS_LAS_ACCIONES, false, ["edificacion"])).toBe(true);
   });
 });

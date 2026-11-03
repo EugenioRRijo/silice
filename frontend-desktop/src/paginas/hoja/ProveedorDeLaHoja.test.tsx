@@ -16,16 +16,11 @@ import { ContextoDeLaHoja, useHojaDeLaObra } from "./ProveedorDeLaHoja";
 
 // Tarea 3 del plan F4: el borrador de la Hoja vive en la obra (`ProveedorDeLaHoja`) y lo comparten Presupuesto, Archivos
 // y planos y Versiones. Se monta el marco entero (barra lateral, «Cambios sin guardar») con la Hoja real en Presupuesto.
-// Archivos y planos aún no tiene pantalla (Tarea 11) y Versiones tiene la suya desde la Tarea 6: aquí las dos reciben la de
-// la Hoja y la prueba pinta, según la sección de la ruta, la Hoja real o una pantalla de relleno que solo lee el contexto. Oráculos escritos a mano:
-// obras ficticias 7 («Casa Demo») y 8 («Torre B») de la carpeta de la empresa, versiones 002 (vigente) y 001.
+// Archivos y planos tiene su pantalla desde la Tarea 11 y Versiones desde la Tarea 6; aquí las tres secciones reciben la
+// misma pantalla de prueba, que pinta según la sección de la ruta la Hoja real (Presupuesto) o un relleno que solo lee el
+// contexto (Archivos y planos, Versiones). Oráculos escritos a mano: obras ficticias 7 («Casa Demo») y 8 («Torre B») de
+// la carpeta de la empresa, versiones 002 (vigente) y 001.
 configure({ asyncUtilTimeout: 5000 });
-
-vi.mock("../../marco/secciones", async (original) => {
-  const real = await original<typeof import("../../marco/secciones")>();
-  const SECCIONES_DE_OBRA = real.SECCIONES_DE_OBRA.map((s) => (s.pagina === null ? { ...s, pagina: "hoja" } : s));
-  return { ...real, SECCIONES_DE_OBRA, seccionPorId: (id: string) => SECCIONES_DE_OBRA.find((s) => s.id === id) };
-});
 
 const m = (texto: string, exacto = texto) => ({ texto, exacto });
 
@@ -162,7 +157,12 @@ function Ubicacion() {
 function montar(en: string) {
   render(
     <MemoryRouter initialEntries={[en]}>
-      <Marco sesion={sesionDe("ana")} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras({ hoja: PorSeccion, versiones: PorSeccion })} />
+      <Marco
+        sesion={sesionDe("ana")}
+        alSalir={vi.fn()}
+        alExpirar={vi.fn()}
+        paginas={ligeras({ hoja: PorSeccion, versiones: PorSeccion, archivos: PorSeccion })}
+      />
       <Ubicacion />
     </MemoryRouter>,
   );

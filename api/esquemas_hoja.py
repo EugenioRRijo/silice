@@ -36,6 +36,7 @@ from aplicacion.hoja_vista import (
     VistaTrazabilidad,
     monto,
 )
+from aplicacion.importaciones import ImportacionDeObra
 from aplicacion.impuestos import con_iva
 
 #: Cada texto de celda o de código llega acotado (diseño §4.1): ≤ 500 caracteres.
@@ -103,6 +104,40 @@ class VersionesHojaRespuesta(BaseModel):
     moneda: str
     por_omision: str | None
     versiones: list[VersionHojaRespuesta]
+
+
+class ImportacionDeObraRespuesta(BaseModel):
+    """Una fila del registro de importaciones de la obra (F4, Tarea 10). `version: null` y
+    `guardada: false` son lo importado que sigue en un borrador sin guardar."""
+
+    tipo: Literal["plano", "computo"]
+    archivo: str
+    fecha_hora: str
+    usuario: str
+    resumen: str
+    version: str | None
+    guardada: bool
+
+
+class ImportacionesRespuesta(BaseModel):
+    importaciones: list[ImportacionDeObraRespuesta]
+
+
+def importaciones_a_respuesta(filas: list[ImportacionDeObra]) -> ImportacionesRespuesta:
+    return ImportacionesRespuesta(
+        importaciones=[
+            ImportacionDeObraRespuesta(
+                tipo=f.tipo,
+                archivo=f.archivo,
+                fecha_hora=f.fecha_hora.isoformat(timespec="seconds"),
+                usuario=f.usuario,
+                resumen=f.resumen,
+                version=f.version,
+                guardada=f.guardada,
+            )
+            for f in filas
+        ]
+    )
 
 
 class BorradorNuevo(BaseModel):

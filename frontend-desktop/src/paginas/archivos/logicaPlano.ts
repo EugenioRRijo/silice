@@ -1,11 +1,10 @@
-// Lógica pura del flujo «Importar plano (DXF o IFC)» de la pestaña Espacio (rebanada 3e-2: P1 a P6 del contrato
-// docs/bitacora/2026-10-20-hoja-3e-contrato-rutas.md). Los textos son los de la clásica (ui/paginas/hoja.py:1238-1385) con
-// sus tildes. Lo que escribe la persona (alturas, circuitos) viaja como TEXTO, tal cual: la coma decimal la decide el
+// Lógica pura del flujo «Importar plano (DXF o IFC)» (rebanada 3e-2: P1 a P6 del contrato
+// docs/bitacora/2026-10-20-hoja-3e-contrato-rutas.md), que desde la Tarea 11 de F4 vive en Archivos y planos. Los textos
+// son los de la interfaz anterior, con sus tildes. Lo que escribe la persona (alturas, circuitos) viaja como TEXTO, tal cual: la coma decimal la decide el
 // servidor. Aquí nada se convierte a número.
 import type { FilaDensa } from "../../comun/TablaDensa";
-import type { Resumen } from "./logica";
+import type { Resumen } from "../hoja/logica";
 
-export const ROTULO_IMPORTAR = "Importar plano (DXF o IFC)";
 export const ROTULO_LEER_PLANO = "Leer plano";
 export const ROTULO_CARGAR_ALTURAS = "Cargar alturas";
 export const ROTULO_DECLARAR_CIRCUITOS = "Declarar circuitos";
@@ -13,7 +12,6 @@ export const ROTULO_CONTINUAR_UNIDAD = "Continuar con esta unidad";
 export const ROTULO_FUSIONAR = "Fusionar con el espacio del borrador";
 export const ROTULO_DESCARTAR_PLANO = "Descartar la importación";
 
-export const ETIQUETA_DE_SUBIDA = "Suelte aquí el plano .dxf o .ifc, o haga clic para elegirlo";
 export const EXTENSIONES_DE_PLANO = [".dxf", ".ifc"];
 
 export const AYUDA_PLANO =
@@ -24,7 +22,7 @@ export const AYUDA_CIRCUITOS =
   "El plano no dice cuántos conductores tiene cada circuito ni cuántos puntos admite: se supusieron. Confírmelos o corríjalos; mientras sean supuestos, la auditoría lo advierte.";
 export const AVISO_SIN_ARCHIVO = "Elija primero un archivo de plano (DXF o IFC) y pulse Leer plano.";
 
-// Las cuatro columnas de la tabla del informe (COLUMNAS_DEL_INFORME de la clásica).
+// Las cuatro columnas de la tabla del informe.
 export const COLUMNAS_DEL_INFORME = [
   { clave: "tipo", titulo: "Tipo" },
   { clave: "referencia", titulo: "En el plano" },
@@ -148,7 +146,7 @@ export function cuerpoDeCircuitos(
 
 // --- etiquetas ---
 
-// Como la clásica (ui/paginas/hoja.py:1383): el id y, si el nombre difiere, el nombre entre paréntesis.
+// Como la interfaz anterior: el id y, si el nombre difiere, el nombre entre paréntesis.
 export function etiquetaDeAltura(p: AlturaPendiente): string {
   const nombre = p.nombre === p.id ? p.id : `${p.id} (${p.nombre})`;
   return `Altura de ${nombre}, en metros`;
@@ -188,7 +186,7 @@ export function textoDeCircuitosDeclarados(n: number): string {
   return n === 1 ? "Se declaró 1 circuito." : `Se declararon ${n} circuitos.`;
 }
 
-// ui/paginas/hoja.py:1385-1390.
+// Las filas que la fusión llevó a cada tabla del espacio, en una línea.
 export function lineaDeFilasPorTabla(filasPorTabla: ConteoDePlano[]): string {
   const texto = filasPorTabla.map((f) => `${f.rotulo} ${f.cantidad}`).join(" · ");
   return `Filas que entraron al borrador: ${texto || "ninguna"}.`;

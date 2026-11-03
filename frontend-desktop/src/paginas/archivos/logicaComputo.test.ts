@@ -3,16 +3,14 @@ import { ErrorDeApi } from "../../api/cliente";
 import {
   aceptarPropuesta,
   calcular,
-  filasIguales,
+  cuerpoDeValoracion,
   lineaPendiente,
   lineaPropuesta,
   mapeoCodigos,
-  periodoAlServidor,
-  periodoAVista,
+  partidasParaLlevar,
   textoDispersion,
   textoPropuestaRendimiento,
-  veredictoLegible,
-} from "./logica";
+} from "./logicaComputo";
 import type { CuerpoCalculo, ItemComputo, RendimientoPorDeclarar } from "./tipos";
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -50,13 +48,6 @@ describe("logica de Elaborar", () => {
     expect(aceptarPropuesta([ITEM("o1", "X")], { origen_id: "o9", codigo_partida: "X" }, "Z")).toBeNull();
   });
 
-  test("filasIguales compara periodo, partida y fraccion en orden", () => {
-    const a = [{ periodo: "1", codigo_partida: "P", fraccion: "1" }];
-    expect(filasIguales(a, [{ ...a[0] }])).toBe(true);
-    expect(filasIguales(a, [{ ...a[0], fraccion: "0.5" }])).toBe(false);
-    expect(filasIguales(a, [])).toBe(false);
-  });
-
   test("las lineas de pendientes y propuestas siguen el texto de Streamlit", () => {
     expect(lineaPendiente({ origen_id: "o1", codigo_partida: "X", descripcion: "Zanja" })).toBe("o1 · X · Zanja");
     expect(lineaPropuesta({ codigo: "Z", descripcion: "Zanja tipo", puntaje: 0.9137 })).toBe("Z · Zanja tipo (0,91)");
@@ -79,25 +70,6 @@ describe("logica de Elaborar", () => {
     expect(textoDispersion(entrada)).toBe(
       "Dispersión del histórico: 3 observaciones (1 medidas, 2 estimadas), media 8,10, rango [7,50; 9,00].",
     );
-  });
-});
-
-describe("periodos del plan y veredicto (VB-6)", () => {
-  test("«Dia N» del nucleo se lee «Día N» y vuelve al servidor como «Dia N»", () => {
-    expect(periodoAVista("Dia 1")).toBe("Día 1");
-    expect(periodoAVista("Dia 12 [LB-01-EXC]")).toBe("Día 12 [LB-01-EXC]");
-    expect(periodoAlServidor("Día 1")).toBe("Dia 1");
-    expect(periodoAlServidor("Día 12 [LB-01-EXC]")).toBe("Dia 12 [LB-01-EXC]");
-  });
-  test("un periodo escrito a mano que no es «Dia N» no se toca", () => {
-    for (const p of ["Semana 2", "1", "", "Diario 3", "Día de pago"]) {
-      expect(periodoAVista(p)).toBe(p);
-      expect(periodoAlServidor(p)).toBe(p);
-    }
-  });
-  test("el veredicto se lee con mayuscula inicial", () => {
-    expect(veredictoLegible(true)).toBe("Cumple");
-    expect(veredictoLegible(false)).toBe("No cumple");
   });
 });
 
@@ -147,5 +119,35 @@ describe("calcular", () => {
     fetchFalso.mockRejectedValue(new TypeError("red"));
     const error = await calcular(CUERPO, "tok").catch((e: unknown) => e);
     expect((error as ErrorDeApi).estado).toBe(0);
+  });
+});
+
+// F4, Tarea 12 (bajas 13 y 14): «Cargar cómputo» no pide código, moneda ni fecha. Valora con el código de la obra, la
+// moneda de la carpeta y la fecha de su lista para armar (`GET /v1/carpeta`). Oráculos escritos a mano.
+describe("cuerpoDeValoracion", () => {
+  const ITEMS = [ITEM("fila-1", "FIC-C1"), ITEM("fila-2", "FIC-C2")];
+
+  test("usa el código de la obra, la moneda de la carpeta y la fecha de su lista, nunca «P-001» ni «USD»", () => {
+    const cuerpo = cuerpoDeValoracion({ proyecto: "7", moneda: "Bs", fecha: "2026-10-26", items: ITEMS });
+    expect(cuerpo).toEqual({ codigo: "7", fecha: "2026-10-26", moneda: "Bs", items: ITEMS, proyecto: "7" });
+    expect(JSON.stringify(cuerpo)).not.toContain("P-001");
+    expect(JSON.stringify(cuerpo)).not.toContain("USD");
+  });
+
+  test("los ítems viajan tal cual salieron del cómputo, sin copiarlos ni cambiarlos", () => {
+    const cuerpo = cuerpoDeValoracion({ proyecto: "OF-001", moneda: "USD", fecha: "2026-09-30", items: ITEMS });
+    expect(cuerpo.items).toBe(ITEMS);
+    expect(cuerpo).toMatchObject({ codigo: "OF-001", proyecto: "OF-001", moneda: "USD", fecha: "2026-09-30" });
+  });
+});
+
+describe("partidasParaLlevar", () => {
+  test("lleva cada ítem con su código y su cantidad de máquina, sin los pendientes", () => {
+    const items = [ITEM("fila-1", "FIC-C1"), { ...ITEM("fila-2", "FIC-X"), cantidad: "1.125" }, ITEM("fila-3", "FIC-C3")];
+    expect(partidasParaLlevar(items, [{ origen_id: "fila-2", codigo_partida: "FIC-X" }])).toEqual([
+      { codigo: "FIC-C1", cantidad: "12.5000", calculo: "" },
+      { codigo: "FIC-C3", cantidad: "12.5000", calculo: "" },
+    ]);
+    expect(partidasParaLlevar(items, [])).toHaveLength(3);
   });
 });

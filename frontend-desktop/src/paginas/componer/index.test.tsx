@@ -279,7 +279,7 @@ describe("Componer una partida", () => {
     expect(screen.getByLabelText(/Justificación de la advertencia/)).toBeInTheDocument();
   });
 
-  test("guarda con condiciones, fecha y justificación, y muestra el resultado con el enlace a Elaborar", async () => {
+  test("guarda con condiciones, fecha y justificación, y muestra el resultado", async () => {
     const usuario = userEvent.setup();
     evaluacion = () => json(valida("29.70", { requiere_justificacion: true, advertencias: [{ tipo: "rendimiento", texto: "Aviso de rendimiento." }] }));
     montar();
@@ -297,7 +297,6 @@ describe("Componer una partida", () => {
       justificacion: "Cuadrilla reforzada",
     });
     expect(String(envio.cuerpo?.fecha)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(screen.getByRole("link", { name: "Elaborar un presupuesto" })).toBeInTheDocument();
   });
 
   test("sin advertencia de rendimiento la justificación viaja nula", async () => {
@@ -318,7 +317,6 @@ describe("Componer una partida", () => {
     await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
     expect(await screen.findByText("La composición no es válida: falta un precio.", {}, ESPERA)).toBeInTheDocument();
     expect(screen.getByLabelText("Código")).toHaveValue("FIC-1");
-    expect(screen.queryByRole("link", { name: "Elaborar un presupuesto" })).not.toBeInTheDocument();
   });
 
   test("la ayuda de las cifras dice la regla: coma decimal, punto de miles (Eugenio, 2026-10-25)", () => {

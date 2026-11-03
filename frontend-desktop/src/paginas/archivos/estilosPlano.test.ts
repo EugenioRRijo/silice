@@ -6,7 +6,7 @@ const nodo = (
     process: { cwd(): string; getBuiltinModule(nombre: string): { readFileSync(ruta: string, codificacion: string): string } };
   }
 ).process;
-const plano = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/paginas/hoja/plano.scss`, "utf-8");
+const plano = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/paginas/archivos/plano.scss`, "utf-8");
 const hoja = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/paginas/hoja/hoja.scss`, "utf-8");
 const comun = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/comun/comun.scss`, "utf-8");
 

@@ -70,10 +70,17 @@ describe("resultadosDe", () => {
   });
 
   it("ordena obras, secciones de obras, entradas de Empresa y pantallas sin sitio", () => {
-    // Sin el módulo vial (sin «Tramos»): con «Versiones» (Tarea 6 de F4) la obra y sus seis secciones ya llenarían siete de
-    // los ocho resultados y no cabrían las dos pantallas de Empresa cuyo orden se mira.
-    const sinVial = ofertaDe(PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion])), false, ["vial"]);
-    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], sinVial).map((r) => r.texto);
+    // Las ocho secciones de una obra (Resumen, Presupuesto, Tramos, Archivos y planos, Versiones, Aprobaciones, Mercado y
+    // Control de obra) ya no caben con las dos pantallas de Empresa cuyo orden se mira. Con «vial» apagado se va «Tramos»
+    // y sin `aprobar_version` se va «Aprobaciones»; «Resumen» no sale porque lleva a la misma ruta que la obra. Quedan la
+    // obra, sus cinco secciones y dos de Empresa: ocho. No se apaga «edificación»: desde la Tarea 12 de F4 «Archivos y
+    // planos» no es de ningún módulo y no se quita con él.
+    const sinVialNiAprobar = ofertaDe(
+      PAGINAS.flatMap((p) => (p.accion === null || p.accion === "aprobar_version" ? [] : [p.accion])),
+      false,
+      ["vial"],
+    );
+    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], sinVialNiAprobar).map((r) => r.texto);
     expect(textos[0]).toBe("Precio alto");
     expect(textos[1]).toBe("Precio alto › Presupuesto");
     const i = (t: string) => textos.indexOf(t);
@@ -101,10 +108,12 @@ describe("resultadosDe", () => {
     expect(resultadosDe("similares", [], COMPLETA)).toEqual([]);
   });
 
-  it("no ofrece las secciones sin pantalla, ni lo que la cuenta no puede usar", () => {
-    expect(resultadosDe("archivos", OBRAS, COMPLETA)).toEqual([]);
-    // «Versiones» ya tiene pantalla (Tarea 6 de F4): se ofrece en cada obra, y no a quien no lee las obras.
+  it("ofrece las secciones que ya tienen pantalla, y no lo que la cuenta no puede usar", () => {
+    // «Archivos y planos» (Tarea 11 de F4) y «Versiones» (Tarea 6) ya tienen pantalla: se ofrecen en cada obra, y no a
+    // quien no lee las obras.
+    expect(resultadosDe("clin archivos", OBRAS, COMPLETA).map((r) => r.ruta)).toEqual(["/obra/Carpeta%20Norte.db/1/archivos"]);
     expect(resultadosDe("clin versiones", OBRAS, COMPLETA).map((r) => r.ruta)).toEqual(["/obra/Carpeta%20Norte.db/1/versiones"]);
+    expect(resultadosDe("archivos", OBRAS, ofertaDe([], false))).toEqual([]);
     expect(resultadosDe("versiones", OBRAS, ofertaDe([], false))).toEqual([]);
     const sinPermisos = ofertaDe([], false);
     // Control positivo: la misma búsqueda con todos los permisos sí encuentra la entrada.

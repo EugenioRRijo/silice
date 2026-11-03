@@ -8,7 +8,6 @@ import {
   ROTULO_DECLARAR_CIRCUITOS,
   ROTULO_DESCARTAR_PLANO,
   ROTULO_FUSIONAR,
-  ROTULO_IMPORTAR,
   ROTULO_LEER_PLANO,
   cuerpoDeAlturas,
   cuerpoDeCircuitos,
@@ -47,7 +46,6 @@ describe("rutas del plano (P1 a P6)", () => {
 
 describe("rótulos y textos de la clásica, con tildes", () => {
   test("los siete rótulos de los botones", () => {
-    expect(ROTULO_IMPORTAR).toBe("Importar plano (DXF o IFC)");
     expect(ROTULO_LEER_PLANO).toBe("Leer plano");
     expect(ROTULO_CARGAR_ALTURAS).toBe("Cargar alturas");
     expect(ROTULO_DECLARAR_CIRCUITOS).toBe("Declarar circuitos");
@@ -64,7 +62,7 @@ describe("rótulos y textos de la clásica, con tildes", () => {
     expect(EXTENSIONES_DE_PLANO).toEqual([".dxf", ".ifc"]);
   });
 
-  test("las cuatro columnas del informe (COLUMNAS_DEL_INFORME de la clásica)", () => {
+  test("las cuatro columnas del informe", () => {
     expect(COLUMNAS_DEL_INFORME.map((c) => c.titulo)).toEqual(["Tipo", "En el plano", "Fila de la hoja", "Qué pasó"]);
     expect(COLUMNAS_DEL_INFORME.map((c) => c.clave)).toEqual(["tipo", "referencia", "fila", "mensaje"]);
   });
