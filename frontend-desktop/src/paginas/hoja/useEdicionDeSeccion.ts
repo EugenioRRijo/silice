@@ -181,9 +181,6 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     [enviarEdicion],
   );
 
-  // Una acción que no espera la pausa (por ejemplo «Crear plan secuencial»). Con una petición en vuelo no se repite.
-  const accionar = useCallback((peticion: (rev: number) => Peticion) => mandar((rev) => peticion(rev), false), [mandar]);
-
   // Una acción que no puede adelantarse a lo escrito (por ejemplo «Usar este insumo»): primero sale la edición que espera la
   // pausa, se espera a la que va en vuelo y solo entonces se manda la acción con el `rev` que contestó el servidor.
   const accionarEnOrden = useCallback(
@@ -265,5 +262,5 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
   // Lo último que aceptó el servidor (Esc devuelve un campo a eso).
   const aceptado = useCallback((): E => motor.current.aceptado, []);
 
-  return { estado, envio, error, cambiar, accionar, accionarEnOrden, esperarEnvios, resembrar, recargar, aceptado };
+  return { estado, envio, error, cambiar, accionarEnOrden, esperarEnvios, resembrar, recargar, aceptado };
 }

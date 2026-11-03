@@ -257,7 +257,7 @@ function CuerpoDeLaHoja() {
       {ofrecidos.length === 0 && ofrecidas.length === 0 && (
         <EstadoVacio
           titulo={SIN_VERSIONES}
-          descripcion="Agregue las partidas en «Presupuesto» (o, en una obra de instalaciones, describa el espacio o importe un plano) y guarde la primera versión con «Guardar primera versión…»."
+          descripcion="Agregue las partidas en la pestaña «Partidas» (o, en una obra de instalaciones, describa el espacio o importe un plano en «Archivos y planos») y guarde la primera versión con «Guardar primera versión…»."
         />
       )}
 

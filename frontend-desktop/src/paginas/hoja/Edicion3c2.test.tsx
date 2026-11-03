@@ -256,8 +256,8 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       },
     },
     {
-      nombre: "Plan y curva",
-      pestana: "Plan y curva",
+      nombre: "Plan y equilibrio",
+      pestana: "Plan y equilibrio",
       seccion: "plan",
       frase: "La hoja sigue con el último plan válido.",
       abrir: async () => {
@@ -712,9 +712,9 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
   });
 
-  // --- Plan y curva (E4, E5) ----------------------------------------------------------------------------------------------
+  // --- Plan y equilibrio (E4, E5) ----------------------------------------------------------------------------------------------
 
-  describe("Plan y curva (E4 y E5)", () => {
+  describe("Plan y equilibrio (E4 y E5)", () => {
     const SIN_PLAN = "Esta versión no tiene plan de trabajo, así que no hay curva de inversión.";
     const sinPlan = () => vistaPlan({ hay_plan: false, etiquetas: [], filas: [], curva: [], mensaje: SIN_PLAN });
 

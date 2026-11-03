@@ -448,14 +448,14 @@ function ContenidoPlan(props: PropsContenido) {
   );
 }
 
-// Pestaña «Plan y curva»: la matriz de fracciones se edita como texto y la curva se recalcula (rebanada 3c-2); el plan se
+// Pestaña «Plan y equilibrio» (antes «Plan y curva», Tarea 4): la matriz de fracciones se edita como texto y la curva se recalcula (rebanada 3c-2); el plan se
 // puede rehacer desde los rendimientos (Tarea 21).
 export function PestanaPlan(props: Props) {
   // Sube cada vez que hay que volver a leer la vista tras una edición: la anterior sigue a la vista mientras llega.
   const [lecturas, setLecturas] = useState(0);
   const alRelectura = useCallback(() => setLecturas((n) => n + 1), []);
   return (
-    <VistaCarga<VistaPlan> ruta={rutaDeVista(props.id, "plan")} etiqueta="Plan y curva" alAusente={props.alAusente} recarga={lecturas}>
+    <VistaCarga<VistaPlan> ruta={rutaDeVista(props.id, "plan")} etiqueta="el plan de trabajo" alAusente={props.alAusente} recarga={lecturas}>
       {(vista) => <ContenidoPlan {...props} vista={vista} alRelectura={alRelectura} />}
     </VistaCarga>
   );

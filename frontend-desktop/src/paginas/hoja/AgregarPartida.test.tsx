@@ -335,7 +335,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
   test("la obra sin versiones lo dice con «obra» y explica cómo empezar por Presupuesto", async () => {
     montar();
     expect(await screen.findByText("Esta obra aún no tiene versiones")).toBeInTheDocument();
-    expect(screen.getByText(/Agregue las partidas en «Presupuesto»/)).toBeInTheDocument();
+    expect(screen.getByText(/Agregue las partidas en la pestaña «Partidas»/)).toBeInTheDocument();
   });
 
   test("buscar «bloq», elegir OBRA-04 y escribir 210 manda la partida tal cual y la fila aparece", async () => {

@@ -265,6 +265,17 @@ describe("Presupuesto: las pestañas de la Tarea 4", () => {
     expect(screen.queryByText(AYUDA_CIFRAS, { exact: false })).toBeNull();
   });
 
+  // Arrastrado de la Tarea 4 (decisión 3): `alEditar` explica controles que quien revisa no ve; solo le llega `general`.
+  test("quien revisa lee la explicación general de «¿Qué es esto?», sin la parte de cómo se edita", async () => {
+    servidor(true);
+    montar(REVISA);
+    await screen.findByRole("table", { name: "Presupuesto" });
+    await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" }));
+    expect(await screen.findByText(/Las cantidades salen del espacio o de las partidas/)).toBeInTheDocument();
+    expect(screen.queryByText(/Aquí se edita la cantidad/)).toBeNull();
+    expect(screen.queryByText(/se aplican al borrador cuando deja de escribir/)).toBeNull();
+  });
+
   test("cuenta que revisa: ve las siete pestañas y cada «¿Qué es esto?», y ningún control que escriba", async () => {
     servidor(true);
     montar(REVISA);
