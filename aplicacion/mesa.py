@@ -118,6 +118,7 @@ class Siguiente:
 
 
 ABRIR_LA_HOJA = Siguiente("Abrir la Hoja", "hoja")
+ABRIR_EL_PRESUPUESTO = ABRIR_LA_HOJA  # esbozo del rojo (pulido F5, Tarea 4)
 REGISTRAR_EL_AVANCE = Siguiente("Registrar el avance", "control")
 VER_LAS_ALERTAS = Siguiente("Ver las alertas", "control")
 ACTUALIZAR_PRECIOS = Siguiente("Actualizar precios", "actualizacion")

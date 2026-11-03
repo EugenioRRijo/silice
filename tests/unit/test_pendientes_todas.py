@@ -39,7 +39,7 @@ OBRAS = {
     "Carpeta Sur.db": ["Vialidad"],
 }
 VER_EL_ENVIO = Siguiente("Ver el envío", "aprobar")
-ABRIR_LA_HOJA = Siguiente("Abrir la Hoja", "hoja")
+ABRIR_EL_PRESUPUESTO = Siguiente("Abrir el presupuesto", "hoja")
 ACTUALIZAR = Siguiente("Actualizar precios", "actualizacion")
 VER_COMPRAS = Siguiente("Ver las compras", "compras")
 
@@ -94,7 +94,7 @@ def _claves(resultado) -> list[tuple[str | None, str, str]]:
 
 def test_une_las_carpetas_y_pone_primero_lo_que_bloquea(carpetas) -> None:
     ESCENARIO[("precios", "Galpón")] = ("Galpón: precios viejos", ACTUALIZAR)
-    ESCENARIO[("aprobar", "Vialidad")] = ("V2 devuelta: falta acero", ABRIR_LA_HOJA)
+    ESCENARIO[("aprobar", "Vialidad")] = ("V2 devuelta: falta acero", ABRIR_EL_PRESUPUESTO)
     resultado = pendientes_de_las_carpetas(carpetas, HOY, alcance="todo")
     assert _claves(resultado) == [
         ("Carpeta Sur.db", "Vialidad", "bloquea"),
@@ -108,7 +108,7 @@ def test_une_las_carpetas_y_pone_primero_lo_que_bloquea(carpetas) -> None:
         grupo="aprobar",
         urgencia="bloquea",
         texto="V2 devuelta: falta acero",
-        accion=ABRIR_LA_HOJA,
+        accion=ABRIR_EL_PRESUPUESTO,
     )
 
 
@@ -141,7 +141,7 @@ def test_urgencia_por_grupo() -> None:
 
 
 def test_obra_id_y_nombre_de_la_obra(carpetas) -> None:
-    ESCENARIO[("calidad", "Clínica")] = ("Hallazgo grave", ABRIR_LA_HOJA)
+    ESCENARIO[("calidad", "Clínica")] = ("Hallazgo grave", ABRIR_EL_PRESUPUESTO)
     (item,) = pendientes_de_las_carpetas(carpetas, HOY, alcance="todo").items
     assert (item.carpeta, item.obra_id, item.obra, item.grupo) == (
         "Carpeta Norte.db",
@@ -165,7 +165,7 @@ def test_carpeta_ilegible_se_omite_y_se_cuenta(carpetas, tmp_path: Path, conteni
 
 def test_alcance_por_aprobar_deja_solo_lo_que_espera_dictamen(carpetas) -> None:
     ESCENARIO[("aprobar", "Vialidad")] = ("V1 espera dictamen", VER_EL_ENVIO)
-    ESCENARIO[("aprobar", "Galpón")] = ("V2 devuelta: falta acero", ABRIR_LA_HOJA)
+    ESCENARIO[("aprobar", "Galpón")] = ("V2 devuelta: falta acero", ABRIR_EL_PRESUPUESTO)
     ESCENARIO[("compras", "Clínica")] = ("Falta comprar", VER_COMPRAS)
     ESCENARIO[("precios", "Edificio Central")] = ("Precios viejos", ACTUALIZAR)
     todo = pendientes_de_las_carpetas(carpetas, HOY, alcance="todo")

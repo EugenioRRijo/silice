@@ -73,7 +73,10 @@ HOY = date(2026, 10, 25)
 CORTE_A = date(2026, 10, 23)
 REGISTRAR = Siguiente("Registrar el avance", "control")
 ALERTAS = Siguiente("Ver las alertas", "control")
-HOJA = Siguiente("Abrir la Hoja", "hoja")
+# Pulido F5, Tarea 4 (H9 del cierre de F4): la sección se llama «Presupuesto» desde F4; una obra
+# sin ninguna versión guardada (en blanco) dice qué le falta hacer allí.
+HOJA = Siguiente("Abrir el presupuesto", "hoja")
+PRIMERA_PARTIDA = Siguiente("Agregue la primera partida", "hoja")
 ACTUALIZAR = Siguiente("Actualizar precios", "actualizacion")
 CATALOGO = Siguiente("Ver el catálogo", "catalogo")
 VER_EL_ENVIO = Siguiente("Ver el envío", "aprobar")
@@ -383,7 +386,8 @@ def test_una_obra_sin_linea_base_esta_en_elaboracion(sesion) -> None:
         "",
     )
     assert (casa.ev, casa.pv, casa.spi, casa.que_pasa) == (None, None, None, None)
-    assert casa.siguiente == HOJA
+    # en blanco (sin ninguna versión guardada): su paso es agregar la primera partida
+    assert casa.siguiente == PRIMERA_PARTIDA
     # OB-S2 con su versión guardada y sin línea base: el total es el de la versión vigente
     ob_s2 = obras["OB-S2"]
     assert (ob_s2.etapa, ob_s2.version) == ("en_elaboracion", "OB-001")
@@ -822,8 +826,8 @@ def test_los_ayudantes_de_las_fuentes_son_publicos(sesion) -> None:
     assert mesa.plural(1200, "día", "días") == "1.200 días"
     ((fila, vigente),) = list(mesa.versiones_vigentes(sesion))
     assert (fila.nombre, vigente.codigo) == ("Casa Demo", version.codigo)
-    assert mesa.pendiente(fila, "texto", mesa.ABRIR_LA_HOJA) == Pendiente(
-        _codigo(sesion, "Casa Demo"), "Casa Demo", "texto", mesa.ABRIR_LA_HOJA
+    assert mesa.pendiente(fila, "texto", mesa.ABRIR_EL_PRESUPUESTO) == Pendiente(
+        _codigo(sesion, "Casa Demo"), "Casa Demo", "texto", mesa.ABRIR_EL_PRESUPUESTO
     )
 
 
