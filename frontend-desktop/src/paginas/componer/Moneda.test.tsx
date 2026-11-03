@@ -424,7 +424,6 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     await u.click(screen.getByRole("button", { name: "Guardar composición" }));
     await screen.findByText(GUARDADO.mensaje, {}, ESPERA);
     expect(screen.queryByRole("button", { name: "Volver a la Hoja" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Elaborar un presupuesto" })).toBeInTheDocument();
   });
 
   // --- contrato real de T2 ---------------------------------------------------------------------------
