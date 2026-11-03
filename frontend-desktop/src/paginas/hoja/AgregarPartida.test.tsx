@@ -742,8 +742,13 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     expect(hoja).toMatch(/\.silice-hoja__dialogo\[hidden\]\s*\{[^}]*display:\s*none/);
     const conPanel = /\.silice-hoja__dialogo-fondo--con-panel\s*\{([^}]*)\}/.exec(hoja)?.[1] ?? "";
     const capa = Number(/z-index:\s*(\d+)/.exec(conPanel)?.[1] ?? "NaN");
-    // «Precios distintos a los de la lista» (MarcoDeDialogo, 8500) se abre desde el panel y tiene que verse encima.
-    expect(capa).toBeLessThan(8500);
+    // «Precios distintos a los de la lista» (MarcoDeDialogo) se abre desde el panel y tiene que verse encima. Su capa se lee
+    // de su hoja de estilos, no se copia aquí (menor 3 de la Tarea 9, cierre de F4): si cambia, esta prueba lo nota.
+    const marco = compilar("../../shell/carpetas/MarcoDeDialogo.scss");
+    const fondoDelMarco = /\.silice-dialogo__fondo\s*\{([^}]*)\}/.exec(marco)?.[1] ?? "";
+    const capaDelMarco = Number(/z-index:\s*(\d+)/.exec(fondoDelMarco)?.[1] ?? "NaN");
+    expect(capaDelMarco).toBeGreaterThan(8000);
+    expect(capa).toBeLessThan(capaDelMarco);
     expect(capa).toBeGreaterThan(8000);
   });
 

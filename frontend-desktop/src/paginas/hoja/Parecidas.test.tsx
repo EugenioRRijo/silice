@@ -165,6 +165,15 @@ describe("Parecidas a esta descripción (Tarea 9)", () => {
     expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
   });
 
+  // Menor 2 del árbitro de la Tarea 9 (cierre de F4): vuelve la de la pantalla «Partidas similares» (Similares.test.tsx:192).
+  test("un error de la API muestra su detalle", async () => {
+    respuesta = () => json({ detalle: "Su cuenta no tiene permiso para esta acción." }, 403);
+    const { alExpirar } = montar("algo");
+    await userEvent.click(screen.getByRole("button", { name: "Buscar parecidas" }));
+    expect(await screen.findByText("Su cuenta no tiene permiso para esta acción.")).toBeInTheDocument();
+    expect(alExpirar).not.toHaveBeenCalled();
+  });
+
   test("un 401 avisa a alExpirar", async () => {
     respuesta = () => json({ detalle: "Sesión ausente o vencida." }, 401);
     const { alExpirar } = montar("algo");
