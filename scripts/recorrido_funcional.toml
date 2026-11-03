@@ -174,7 +174,7 @@ pasos = [
   { accion = "llenar", rotulo = "Consumo por unidad, fila 1", valor = "0,5" },
   { accion = "llenar", rotulo = "Precio, fila 1", valor = "18" },
   { accion = "pulsar", nombre = "Guardar composición" },
-  { accion = "esperar", texto = "Siguiente paso" },
+  { accion = "esperar", texto = "Guardado" },
   { accion = "ir", ruta = "catalogo" },
   { accion = "llenar", rotulo = "Buscar en el catálogo", valor = "FUN-001" },
 ]

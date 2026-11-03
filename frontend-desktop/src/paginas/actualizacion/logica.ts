@@ -11,7 +11,7 @@ export const MONEDA_POR_DEFECTO = "USD";
 export const EXTENSIONES = [".csv", ".xlsx"];
 export const SIN_PRESUPUESTOS = "No hay presupuestos guardados todavía";
 export const INDICACION_SIN_PRESUPUESTOS =
-  "Elabore un presupuesto en la página Elaborar y guárdelo; después podrá revalorarlo aquí con una lista de precios nueva.";
+  "Guarde una versión del presupuesto de la obra (en su sección Presupuesto); después podrá revalorarlo aquí con una lista de precios nueva.";
 
 export interface PresupuestoListado {
   codigo: string;
