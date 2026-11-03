@@ -227,7 +227,7 @@ la franja solo informa.
 `comun/PanelLateral.tsx` (Tareas 6 y 7 de F4). Un `aside` acoplado a la derecha del contenido, nombrado por su h2: el APU
 de una partida, el registro de cambios de una versión, Componer y el informe de una importación.
 
-- **No es un diálogo**: no atrapa el foco ni deja la página inerte; se queda junto al contenido, como la columna del
+- **No es un diálogo**: no atrapa el foco; se queda junto al contenido, como la columna del
   recorrido. Quien lo usa lo pone en `silice-con-panel` (contenido `minmax(0, 1fr)` a la izquierda y el panel a la
   derecha): las tablas del contenido se desplazan en su caja.
 - Dos anchos: **24 rem** (normal: el informe de una importación) y **40 rem** (ancho: el APU, el registro de cambios y
@@ -235,9 +235,14 @@ de una partida, el registro de cambios de una versión, Componer y el informe de
 - Separado por un borde de 1 px `--cds-border-subtle`, sin sombra ni animación.
 - Al abrirse el foco va a su h2, con el contorno de foco visible; **Esc** (nacido dentro del panel y no usado ya por un
   campo) o **«Cerrar»** lo cierran y el foco vuelve al control que lo abrió (el último, si otra fila lo volvió a abrir).
-- **Por debajo del umbral de la letra** (`marco/_umbrales.scss`) pasa por encima del contenido, fijo bajo la barra
-  superior, a lo más del ancho de la ventana y con su propio desplazamiento. Componer en panel es la excepción: atrapa
-  Tab dentro del panel, porque el diálogo «Agregar partida» del que sale queda oculto debajo.
+- **Cuando no cabe junto al contenido** pasa por encima (clase `silice-panel-lateral--superpuesto`): lo decide el ancho
+  real del contenedor, con cualquier letra, si no hay sitio para el panel, 1 rem de espacio y **32 rem** de contenido (a
+  1366 px con letra Normal el panel ancho dejaba la tabla en 251 px). Va fijo bajo la barra superior, por encima de las
+  columnas fijas de las tablas, opaco, a lo más del ancho de la ventana y con su propio desplazamiento: la página nunca se
+  desplaza a lo ancho. Mientras tapa, **lo tapado queda `inert`** (Tab no llega a lo que no se ve) y se suelta al
+  cerrarlo o al volver a caber; junto al contenido no se toca nada.
+- **Componer en panel** va siempre por encima (modo `en-capa`, en la capa del diálogo «Agregar partida», por encima de su
+  velo) y es la excepción del foco: atrapa Tab dentro del panel, porque el diálogo del que sale queda oculto debajo.
 
 ### Filas afectadas
 
