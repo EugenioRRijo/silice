@@ -445,6 +445,70 @@ describe("Versiones: quien solo revisa (Foco 3)", () => {
   });
 });
 
+// Ronda 2 de la Tarea 6: el historial solo crece (RF-54). La pestaña «Trazabilidad» (baja 24) listaba todas las versiones y
+// su «Restaurar» las ofrecía todas; restaurar es la única manera de deshacer un descarte. VIV-000 es una versión ficticia
+// descartada.
+describe("Versiones: las descartadas siguen en el historial", () => {
+  const VIV_000: VersionFila = { ...fila("VIV-000", "2026-10-19", "", "", false, 0), descartada: true };
+  beforeEach(() => {
+    versiones = { ...versiones, versiones: [VIV_002, VIV_001, VIV_000] };
+  });
+
+  test("la descartada va en la tabla con la palabra «descartada», sin «Abrir», con «Ver cambios» y «Restaurar…»", async () => {
+    const u = montar();
+    await listo();
+    await waitFor(async () =>
+      expect((await celdas()).map((c) => c[0])).toEqual(["VIV-002 (abierta)", "VIV-001", "VIV-000 (descartada)"]),
+    );
+    const viv000 = await renglon("VIV-000");
+    expect(within(viv000).queryByRole("button", { name: "Abrir VIV-000" })).toBeNull();
+    expect(within(await renglon("VIV-001")).getByRole("button", { name: "Abrir VIV-001" })).toBeInTheDocument();
+    expect(within(viv000).getByRole("button", { name: "Restaurar VIV-000…" })).toBeInTheDocument();
+    await u.click(within(viv000).getByRole("button", { name: "Ver cambios de VIV-000" }));
+    expect(await screen.findByRole("complementary", { name: "Registro de cambios de la versión VIV-000" })).toBeInTheDocument();
+    expect(fetchFalso.mock.calls.map(([e]) => String(e))).toContain("/v1/hoja/trazabilidad?proyecto=3&version=VIV-000");
+  });
+
+  test("«Restaurar VIV-000…» ofrece todo el historial en el diálogo y manda la descartada", async () => {
+    const u = montar();
+    await listo();
+    await waitFor(async () => expect((await celdas()).map((c) => c[0])).toContain("VIV-000 (descartada)"));
+    fireEvent.click(within(await renglon("VIV-000")).getByRole("button", { name: "Restaurar VIV-000…" }));
+    const dialogo = await screen.findByRole("dialog");
+    const elegida = within(dialogo).getByRole("combobox", { name: "Versión a restaurar" });
+    expect(elegida).toHaveValue("VIV-000");
+    expect(within(elegida).getAllByRole("option").map((o) => o.textContent)).toEqual(["VIV-002", "VIV-001", "VIV-000"]);
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Fuente (por qué se restaura)" }), {
+      target: { value: "El descarte fue un error" },
+    });
+    await u.click(within(dialogo).getByRole("button", { name: "Restaurar" }));
+    await waitFor(() =>
+      expect(
+        fetchFalso.mock.calls
+          .filter(([e, init]) => String(e) === "/v1/hoja/versiones/restaurar" && init?.method === "POST")
+          .map(([, init]) => JSON.parse(String(init?.body)) as unknown),
+      ).toEqual([{ proyecto: "3", version: "VIV-000", fuente: "El descarte fue un error" }]),
+    );
+  });
+
+  test("una cadena rota en la descartada nombra una versión que sí está en la tabla", async () => {
+    cadena = () => json({ ...CADENA_ROTA, mensaje: "Cadena rota en la versión VIV-000.", rota_en: "VIV-000" });
+    montar();
+    const region = await screen.findByRole("region", { name: "Cadena de sellos" });
+    expect(await within(region).findByText("Se rompió en la versión VIV-000")).toBeInTheDocument();
+    await waitFor(async () => expect((await celdas()).map((c) => c[0])).toContain("VIV-000 (descartada)"));
+  });
+
+  test("quien revisa ve la descartada y su «Ver cambios», pero no «Restaurar…» ni «Abrir» (Foco 3)", async () => {
+    montar(REVISA);
+    await waitFor(async () => expect((await celdas()).map((c) => c[0])).toContain("VIV-000 (descartada)"));
+    const viv000 = await renglon("VIV-000");
+    expect(within(viv000).getByRole("button", { name: "Ver cambios de VIV-000" })).toBeInTheDocument();
+    expect(within(viv000).queryByRole("button", { name: /^Restaurar/ })).toBeNull();
+    expect(within(viv000).queryByRole("button", { name: "Abrir VIV-000" })).toBeNull();
+  });
+});
+
 // Mudada con los archivos (la de 3d-2 de la Hoja los listaba): la interfaz no convierte texto en número.
 test("los archivos de Versiones están bajo la prueba estática (sin Number, parseFloat, toFixed ni + unario)", () => {
   const fuentes = import.meta.glob("./*.{ts,tsx}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;

@@ -31,8 +31,8 @@ describe("filasDeVersiones", () => {
   test("combina el estado de aprobación de cada versión y marca la abierta", () => {
     const estados = { "VIV-001": estado("devuelta"), "VIV-002": estado("guardada") };
     expect(filasDeVersiones(VERSIONES, estados, "VIV-001")).toEqual([
-      { ...fila("VIV-002", true, { origen: "VIV-001", cambios: 4 }), estado: "guardada", abierta: false },
-      { ...fila("VIV-001", false), estado: "devuelta", abierta: true },
+      { ...fila("VIV-002", true, { origen: "VIV-001", cambios: 4 }), estado: "guardada", abierta: false, seAbre: true },
+      { ...fila("VIV-001", false), estado: "devuelta", abierta: true, seAbre: true },
     ]);
   });
 
@@ -51,11 +51,24 @@ describe("filasDeVersiones", () => {
     ]);
   });
 
-  test("las descartadas no se ofrecen (la misma regla que abrir una versión); si todas lo están, van todas", () => {
+  // Ronda 2 de la Tarea 6: el historial solo crece (RF-54), así que la descartada sigue en la tabla, marcada, y se puede
+  // restaurar; lo que no se ofrece es abrirla (la regla del proveedor: abrir una descartada abriría otra sin decirlo).
+  test("la descartada sigue en el historial, marcada y sin «Abrir»; las demás se abren", () => {
     const conDescartada = { ...VERSIONES, versiones: [...VERSIONES.versiones, fila("VIV-000", false, { descartada: true })] };
-    expect(filasDeVersiones(conDescartada, null, null).map((f) => f.codigo)).toEqual(["VIV-002", "VIV-001"]);
-    const todas = { ...VERSIONES, versiones: [fila("VIV-000", false, { descartada: true })] };
-    expect(filasDeVersiones(todas, null, null).map((f) => f.codigo)).toEqual(["VIV-000"]);
+    expect(filasDeVersiones(conDescartada, { "VIV-000": estado("devuelta") }, null)).toEqual([
+      { ...fila("VIV-002", true, { origen: "VIV-001", cambios: 4 }), estado: null, abierta: false, seAbre: true },
+      { ...fila("VIV-001", false), estado: null, abierta: false, seAbre: true },
+      { ...fila("VIV-000", false, { descartada: true }), estado: "devuelta", abierta: false, seAbre: false },
+    ]);
+  });
+
+  test("si todas están descartadas, todas van marcadas y todas se abren (el proveedor abre cualquiera)", () => {
+    const viv001 = fila("VIV-001", false, { descartada: true });
+    const viv000 = fila("VIV-000", false, { descartada: true });
+    expect(filasDeVersiones({ ...VERSIONES, versiones: [viv001, viv000] }, null, "VIV-001")).toEqual([
+      { ...viv001, estado: null, abierta: true, seAbre: true },
+      { ...viv000, estado: null, abierta: false, seAbre: true },
+    ]);
   });
 });
 
