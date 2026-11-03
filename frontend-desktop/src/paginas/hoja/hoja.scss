@@ -371,20 +371,12 @@
   display: none;
 }
 
-// Con el panel «Componer una partida» el fondo del diálogo lo acopla a la derecha, a todo el alto. El fondo baja de 9000 a
-// 8400 para que «Precios distintos a los de la lista» (`MarcoDeDialogo`, 8500), que se abre desde el panel, quede encima;
-// «Cambios sin guardar» (9000) y las listas de los buscadores (9100) siguen por encima. Por debajo del umbral de la letra
-// manda la regla de `comun/PanelLateral.scss` (el panel fijo, bajo la barra).
+// Con el panel «Componer una partida» el fondo del diálogo baja de 9000 a 8400 para que «Precios distintos a los de la
+// lista» (`MarcoDeDialogo`, 8500), que se abre desde el panel, quede encima; «Cambios sin guardar» (9000) y las listas de
+// los buscadores (9100) siguen por encima. El panel mismo (fijo bajo la barra, opaco, con su desplazamiento) es la clase
+// `--superpuesto` de `comun/PanelLateral.scss`, con cualquier letra (H1 de la pasada de navegador del cierre de F4).
 .silice-hoja__dialogo-fondo--con-panel {
   z-index: 8400;
-  place-items: stretch end;
-  padding: 0;
-}
-
-.silice-hoja__dialogo-fondo--con-panel > .silice-panel-lateral {
-  overflow-y: auto;
-  padding: 1rem;
-  background: var(--cds-layer-01);
 }
 
 .silice-hoja__aviso-catalogo {

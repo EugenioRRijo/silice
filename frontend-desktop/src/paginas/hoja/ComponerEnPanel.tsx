@@ -24,6 +24,10 @@ interface Props {
 // maquetación): Tab y Mayús+Tab circulan solo dentro del panel. Mayús+Tab desde el título (el foco inicial, que no está
 // en el orden de tabulación) también da la vuelta. Los eventos del diálogo «Precios distintos…» (otro sitio del DOM) llegan
 // aquí por el árbol de React, pero su foco no es ni el primero ni el último del panel, así que no los toca.
+//
+// Capa (pasada de navegador del cierre de F4, H1): el panel va «en-capa», siempre por encima del velo, fijo bajo la barra
+// superior, opaco y con su propio desplazamiento, con cualquier letra. Antes eso lo daba una regla de hijo directo del
+// fondo que nunca aplicaba por este envoltorio, y con letra Normal el panel salía transparente y de 2190 px de alto.
 export function ComponerEnPanel({ codigo, alCerrar, alGuardar }: Props): JSX.Element | null {
   const contenedor = useRef<HTMLDivElement>(null);
   const atrapar = useAtraparFoco(contenedor);
@@ -46,7 +50,7 @@ export function ComponerEnPanel({ codigo, alCerrar, alGuardar }: Props): JSX.Ele
   };
   return (
     <div ref={contenedor} style={{ display: "contents" }} onKeyDown={alTeclear}>
-      <PanelLateral titulo="Componer una partida" abierto={codigo !== null} alCerrar={alCerrar} ancho="ancho">
+      <PanelLateral titulo="Componer una partida" abierto={codigo !== null} alCerrar={alCerrar} ancho="ancho" modo="en-capa">
         <p role="note" className="silice-hoja__aviso-catalogo cds--type-body-compact-01">
           {AVISO_DEL_CATALOGO}
         </p>

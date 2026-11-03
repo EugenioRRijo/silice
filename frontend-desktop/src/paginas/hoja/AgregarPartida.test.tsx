@@ -658,6 +658,9 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     expect(screen.queryByRole("dialog", { name: "Agregar partida" })).toBeNull();
     const principales = within(panel.parentElement!).getAllByRole("button").filter((b) => b.classList.contains("cds--btn--primary"));
     expect(principales.map((b) => b.textContent)).toEqual(["Guardar composición"]);
+    // Pasada de navegador del cierre de F4 (H1): con cualquier letra va por encima del velo, fijo bajo la barra y con su
+    // propio desplazamiento (la regla es la de `comun/PanelLateral.scss`).
+    expect(panel).toHaveClass("silice-panel-lateral--superpuesto");
   });
 
   test("al guardar la composición el panel se cierra, el foco vuelve al diálogo y la partida nueva queda elegida", async () => {
@@ -740,6 +743,9 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
   test("estructura: el diálogo oculto no se pinta y, con el panel, el fondo queda bajo los diálogos del marco", () => {
     const hoja = compilar("./hoja.scss");
     expect(hoja).toMatch(/\.silice-hoja__dialogo\[hidden\]\s*\{[^}]*display:\s*none/);
+    // H1 de la pasada: entre el fondo y el panel hay un envoltorio `display: contents` (el que atrapa el foco), así que una
+    // regla de hijo directo nunca aplicaba; el panel en la capa lo resuelve su propia clase, no una regla de aquí.
+    expect(hoja).not.toMatch(/\.silice-hoja__dialogo-fondo--con-panel\s*>\s*\.silice-panel-lateral/);
     const conPanel = /\.silice-hoja__dialogo-fondo--con-panel\s*\{([^}]*)\}/.exec(hoja)?.[1] ?? "";
     const capa = Number(/z-index:\s*(\d+)/.exec(conPanel)?.[1] ?? "NaN");
     // «Precios distintos a los de la lista» (MarcoDeDialogo) se abre desde el panel y tiene que verse encima. Su capa se lee
