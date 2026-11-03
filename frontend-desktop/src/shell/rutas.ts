@@ -92,14 +92,6 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/archivos"),
   },
   {
-    id: "elaborar",
-    titulo: "Elaborar un presupuesto",
-    enUnaLinea: "Junte partidas y cantidades",
-    seccion: "Trabajo",
-    accion: "editar_hoja",
-    cargar: () => import("../paginas/elaborar"),
-  },
-  {
     id: "tablero",
     titulo: "Tablero del proyecto",
     enUnaLinea: "Cómo va el proyecto de un vistazo",

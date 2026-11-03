@@ -291,21 +291,6 @@ pasos = [
 espera = { textos = ["Cemento Portland", "Arena lavada"], ausentes = ["01/10/2026"] }
 
 [[pantalla]]
-ruta = "elaborar"
-cuenta = "ana"
-carpeta = "ti001.db"
-accion = "extraer el cómputo de la topología ficticia TI-001 y elaborar el presupuesto -> métricas e informe de auditoría"
-pasos = [
-  { accion = "elegir", rotulo = "Dominio", opcion = "telecom" },
-  { accion = "llenar", rotulo = "Código del presupuesto", valor = "FUN-TI" },
-  { accion = "subir", zona = "Suelte aquí el archivo de muestra", archivo = "topologia_ti001" },
-  { accion = "pulsar", nombre = "Extraer cómputo" },
-  { accion = "esperar", texto = "Cómputo extraído" },
-  { accion = "pulsar", nombre = "Elaborar presupuesto" },
-]
-espera = { textos = ["Presupuesto elaborado", "Informe de auditoría"] }
-
-[[pantalla]]
 ruta = "reajuste"
 cuenta = "ana"
 carpeta = "s1.db"

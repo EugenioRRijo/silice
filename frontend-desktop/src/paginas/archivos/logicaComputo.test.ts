@@ -4,16 +4,12 @@ import {
   aceptarPropuesta,
   calcular,
   cuerpoDeValoracion,
-  filasIguales,
   lineaPendiente,
   lineaPropuesta,
   mapeoCodigos,
   partidasParaLlevar,
-  periodoAlServidor,
-  periodoAVista,
   textoDispersion,
   textoPropuestaRendimiento,
-  veredictoLegible,
 } from "./logicaComputo";
 import type { CuerpoCalculo, ItemComputo, RendimientoPorDeclarar } from "./tipos";
 
@@ -52,13 +48,6 @@ describe("logica de Elaborar", () => {
     expect(aceptarPropuesta([ITEM("o1", "X")], { origen_id: "o9", codigo_partida: "X" }, "Z")).toBeNull();
   });
 
-  test("filasIguales compara periodo, partida y fraccion en orden", () => {
-    const a = [{ periodo: "1", codigo_partida: "P", fraccion: "1" }];
-    expect(filasIguales(a, [{ ...a[0] }])).toBe(true);
-    expect(filasIguales(a, [{ ...a[0], fraccion: "0.5" }])).toBe(false);
-    expect(filasIguales(a, [])).toBe(false);
-  });
-
   test("las lineas de pendientes y propuestas siguen el texto de Streamlit", () => {
     expect(lineaPendiente({ origen_id: "o1", codigo_partida: "X", descripcion: "Zanja" })).toBe("o1 · X · Zanja");
     expect(lineaPropuesta({ codigo: "Z", descripcion: "Zanja tipo", puntaje: 0.9137 })).toBe("Z · Zanja tipo (0,91)");
@@ -81,25 +70,6 @@ describe("logica de Elaborar", () => {
     expect(textoDispersion(entrada)).toBe(
       "Dispersión del histórico: 3 observaciones (1 medidas, 2 estimadas), media 8,10, rango [7,50; 9,00].",
     );
-  });
-});
-
-describe("periodos del plan y veredicto (VB-6)", () => {
-  test("«Dia N» del nucleo se lee «Día N» y vuelve al servidor como «Dia N»", () => {
-    expect(periodoAVista("Dia 1")).toBe("Día 1");
-    expect(periodoAVista("Dia 12 [LB-01-EXC]")).toBe("Día 12 [LB-01-EXC]");
-    expect(periodoAlServidor("Día 1")).toBe("Dia 1");
-    expect(periodoAlServidor("Día 12 [LB-01-EXC]")).toBe("Dia 12 [LB-01-EXC]");
-  });
-  test("un periodo escrito a mano que no es «Dia N» no se toca", () => {
-    for (const p of ["Semana 2", "1", "", "Diario 3", "Día de pago"]) {
-      expect(periodoAVista(p)).toBe(p);
-      expect(periodoAlServidor(p)).toBe(p);
-    }
-  });
-  test("el veredicto se lee con mayuscula inicial", () => {
-    expect(veredictoLegible(true)).toBe("Cumple");
-    expect(veredictoLegible(false)).toBe("No cumple");
   });
 });
 

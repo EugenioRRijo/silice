@@ -55,8 +55,8 @@ function hayDatos(cabecera: Cabecera, condiciones: string, tablas: Tablas): bool
 }
 
 // UC-10 (componer) y UC-11 (editar) una partida a mano. El navegador no calcula nada: el desglose, las advertencias
-// y el guardado los hace la API. La cola de la pagina clasica (cantidades de obra, elaborar) vive en «Elaborar un
-// presupuesto» (RB-1).
+// y el guardado los hace la API. La cola de la pagina clasica (cantidades de obra, elaborar) vive en Archivos y planos ›
+// «Cargar cómputo» (F4, Tarea 12, baja 19; antes, «Elaborar un presupuesto», RB-1).
 export default function PaginaComponer() {
   const { alExpirar } = useAplicacion();
   const ultimoExpirar = useRef(alExpirar);
