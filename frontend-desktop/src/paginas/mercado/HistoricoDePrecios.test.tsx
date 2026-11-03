@@ -124,6 +124,15 @@ describe("Histórico de cambios de precio", () => {
     expect((await screen.findAllByRole("alert")).length).toBeGreaterThan(0);
   });
 
+  // Menor de la Tarea 13 (cierre de F4): Mercado ya tiene sus principales; el histórico no suma ninguno («Filtrar» es
+  // secundario, decisión 2).
+  test("el histórico no pinta ningún botón principal: «Filtrar» es secundario", async () => {
+    montar();
+    await screen.findByRole("table", { name: "Cambios de precio" });
+    expect(document.querySelectorAll(".cds--btn--primary")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Filtrar" })).toHaveClass("cds--btn--secondary");
+  });
+
   test("el título es un h2: el h1 es el de Mercado (un solo h1 por pantalla)", async () => {
     montar();
     expect(await screen.findByRole("heading", { level: 2, name: "Histórico de cambios de precio" })).toBeInTheDocument();

@@ -84,7 +84,8 @@ describe("registro de paginas", () => {
     expect(paginaPorId("hoja")).toMatchObject({ titulo: "Presupuesto", seccion: "Trabajo", accion: "leer_proyecto" });
     expect(paginaPorId("mercado")).toMatchObject({
       titulo: "Estudio de mercado",
-      enUnaLinea: "Compare precios del mercado y elija los suyos",
+      // Cierre de F4 (menor de la Tarea 13): la línea vale también para quien revisa, que no elige precios.
+      enUnaLinea: "Compare precios del mercado, su histórico y las cotizaciones",
     });
     expect(paginaPorId("aprobar")).toMatchObject({
       titulo: "Aprobar una versión",

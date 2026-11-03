@@ -414,6 +414,17 @@ describe("Mercado › Cotizaciones de la obra", () => {
     });
   });
 
+  // Menor de la Tarea 13 (cierre de F4): a lo sumo un botón principal en la pestaña; con el diálogo abierto, el suyo.
+  test("las cotizaciones no pintan un botón principal propio; con el diálogo abierto solo «Cotizar»", async () => {
+    montar();
+    await abrirPestana();
+    await screen.findByRole("button", { name: "Registrar una cotización…" });
+    const principales = () => [...document.querySelectorAll(".cds--btn--primary")].map((b) => b.textContent);
+    expect(principales()).toEqual([]);
+    await abrirDialogo("Registrar una cotización…");
+    expect(principales()).toEqual(["Cotizar"]);
+  });
+
   test("los archivos de la tarea no calculan (sin Number, parseFloat, toFixed ni + unario)", () => {
     const fuentes = import.meta.glob("./*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
     for (const ruta of ["./CotizacionesDeLaObra.tsx", "./OperacionesDePrecios.tsx", "./HistoricoDePrecios.tsx"]) {

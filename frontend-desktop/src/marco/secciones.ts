@@ -24,7 +24,7 @@ export const SECCIONES_DE_OBRA: readonly SeccionDef[] = [
   { id: "archivos", titulo: "Archivos y planos", pagina: "archivos", ayuda: "Los planos y documentos de la obra." },
   { id: "versiones", titulo: "Versiones", pagina: "versiones", ayuda: "Las versiones guardadas del presupuesto y lo que cambió en cada una." },
   { id: "aprobaciones", titulo: "Aprobaciones", pagina: "aprobar", ayuda: "Las versiones que esperan dictamen y lo que se entregó al cliente." },
-  { id: "mercado", titulo: "Mercado", pagina: "mercado", ayuda: "Los precios del mercado para los insumos de la obra; elija los suyos." },
+  { id: "mercado", titulo: "Mercado", pagina: "mercado", ayuda: "Los precios del mercado para los insumos de la obra, su histórico y las cotizaciones." },
   { id: "control", titulo: "Control de obra", pagina: "control", ayuda: "Lo avanzado en obra frente a lo planificado, con sus valuaciones." },
 ];
 
