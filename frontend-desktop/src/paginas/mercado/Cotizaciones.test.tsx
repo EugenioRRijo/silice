@@ -358,6 +358,62 @@ describe("Mercado › Cotizaciones de la obra", () => {
     expect(cotizar).toHaveFocus();
   });
 
+  // 3e-3 (de `hoja/Versiones.test.tsx`, donde estaba con la pestaña Precios; se retiró al quedarse vacía): con el diálogo
+  // abierto, lo que pasa en otra ventana o fuera de la pantalla no deja la pantalla `[inert]` ni pierde el contador.
+  describe("3e-3: con el diálogo de cotizar abierto la pantalla no queda [inert]", () => {
+    test("al volver de otra ventana que dejó cambios sin guardar, el diálogo sigue usable y al cancelarlo nada queda inerte", async () => {
+      montar();
+      await abrirPestana();
+      await abrirDialogo("Registrar una cotización…");
+      expect(document.querySelector("[inert]")).not.toBeNull();
+      borradores = [{ id: "b-otra", proyecto: "OF-001", version: "002", cambios: 3, tocado: "2026-11-03T08:00:00" }];
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      // Mercado no relee los borradores con la pestaña abierta (decisión 22 b de la Tarea 13): el diálogo sigue.
+      const dialogo = screen.getByRole("dialog", { name: "Registrar una cotización" });
+      expect(dialogo.closest("[inert]")).toBeNull();
+      fireEvent.click(within(dialogo).getByRole("button", { name: "Cancelar" }));
+      await waitFor(() => expect(document.querySelector("[inert]")).toBeNull());
+      const otro = await abrirDialogo("Registrar una cotización…");
+      expect(otro.closest("[inert]")).toBeNull();
+      fireEvent.click(within(otro).getByRole("button", { name: "Cancelar" }));
+      await waitFor(() => expect(document.querySelector("[inert]")).toBeNull());
+    });
+
+    test("si la obra cambia con el diálogo abierto, el cuerpo se vuelve a montar, el diálogo se va con él y nada queda inerte", async () => {
+      const valor = (proyecto: string): Aplicacion => ({
+        sesion: EDITA,
+        proyecto,
+        caso: { nombre: "obra", ruta_relativa: "data/obra.db" },
+        recargarProyectos: vi.fn(),
+        alExpirar,
+      });
+      const arbol = (proyecto: string) => (
+        <ContextoAplicacion.Provider value={valor(proyecto)}>
+          <ContextoDeLaObra.Provider value={OBRA}>
+            <MemoryRouter>
+              <PaginaMercado />
+            </MemoryRouter>
+          </ContextoDeLaObra.Provider>
+        </ContextoAplicacion.Provider>
+      );
+      const { rerender } = render(arbol("OF-001"));
+      await abrirPestana();
+      await abrirDialogo("Registrar una cotización…");
+      expect(document.querySelector("[inert]")).not.toBeNull();
+      rerender(arbol("OF-002"));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() => expect(document.querySelector("[inert]")).toBeNull());
+      // el contador no quedó en 1: el botón de la obra nueva abre otro diálogo y «Cancelar» deja la pantalla libre
+      const otro = await abrirDialogo("Registrar una cotización…");
+      expect(otro.closest("[inert]")).toBeNull();
+      fireEvent.click(within(otro).getByRole("button", { name: "Cancelar" }));
+      await waitFor(() => expect(document.querySelector("[inert]")).toBeNull());
+    });
+  });
+
   test("los archivos de la tarea no calculan (sin Number, parseFloat, toFixed ni + unario)", () => {
     const fuentes = import.meta.glob("./*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
     for (const ruta of ["./CotizacionesDeLaObra.tsx", "./OperacionesDePrecios.tsx", "./HistoricoDePrecios.tsx"]) {

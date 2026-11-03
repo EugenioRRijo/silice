@@ -416,6 +416,71 @@ describe("Versiones: restaurar", () => {
   });
 });
 
+// 3e-3 (de la pestaña «Trazabilidad» de la Hoja, que esta sección absorbe; se retiró de `hoja/Versiones.test.tsx` al
+// quedarse vacía): el borrador cambia de rev en otra ventana con el diálogo de restaurar abierto. Al volver a la ventana el
+// proveedor relee el borrador; ni la página queda `[inert]` ni se pierde el contador de diálogos abiertos.
+describe("3e-3: el rev cambia con el diálogo de restaurar abierto (otra ventana) y la página no queda [inert]", () => {
+  const hacerQueElServidorTengaOtroRev = (cambios: number) => {
+    const previa = fetchFalso.getMockImplementation();
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const camino = new URL(String(entrada), "http://silice.local").pathname;
+      if (camino === "/v1/hoja/borradores/b-VIV-002" && (init?.method ?? "GET") === "GET") {
+        const b = borrador("VIV-002");
+        return json({ id: b.id, base: b.base, resumen: { ...b.resumen, rev: 4, cambios } });
+      }
+      return previa!(entrada, init);
+    });
+  };
+  const volverALaVentana = async () => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  };
+  const abrirRestaurar = async () => {
+    fireEvent.click(within(await renglon("VIV-001")).getByRole("button", { name: "Restaurar VIV-001…" }));
+    const dialogo = await screen.findByRole("dialog");
+    expect(dialogo).toHaveAccessibleName("Restaurar una versión");
+    return dialogo;
+  };
+
+  test("sin cambios en la otra ventana: el diálogo sigue usable y, al cancelarlo, nada queda inerte", async () => {
+    montar();
+    await listo();
+    await abrirRestaurar();
+    expect(document.querySelector("[inert]")).not.toBeNull();
+    hacerQueElServidorTengaOtroRev(0);
+    await volverALaVentana();
+    await waitFor(() =>
+      expect(fetchFalso.mock.calls.filter(([e]) => String(e) === "/v1/hoja/borradores/b-VIV-002").length).toBeGreaterThan(0),
+    );
+    await pausa();
+    const dialogo = screen.getByRole("dialog", { name: "Restaurar una versión" });
+    expect(dialogo.closest("[inert]")).toBeNull();
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.querySelector("[inert]")).toBeNull());
+  });
+
+  test("con cambios en la otra ventana: «Restaurar…» se va, el diálogo se cierra con él y nada queda inerte ni se pierde el contador", async () => {
+    montar();
+    await listo();
+    await abrirRestaurar();
+    expect(document.querySelector("[inert]")).not.toBeNull();
+    hacerQueElServidorTengaOtroRev(2);
+    await volverALaVentana();
+    expect(await screen.findByText("Guarde o descarte los cambios pendientes antes de restaurar otra versión.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.querySelector("[inert]")).toBeNull());
+    // la página sigue usable: «Guardar versión…» de la franja abre su diálogo y «Cancelar» la vuelve a dejar libre
+    fireEvent.click(screen.getByRole("button", { name: "Guardar versión…" }));
+    const otro = await screen.findByRole("dialog");
+    expect(otro.closest("[inert]")).toBeNull();
+    fireEvent.click(within(otro).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(document.querySelector("[inert]")).toBeNull());
+  });
+});
+
 describe("Versiones: quien solo revisa (Foco 3)", () => {
   test("ve la tabla con el estado de aprobación, «Abrir» y «Ver cambios», pero no «Restaurar…» ni «Guardar versión…»", async () => {
     aprobaciones = () =>
