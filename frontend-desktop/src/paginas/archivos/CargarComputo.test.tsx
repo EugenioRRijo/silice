@@ -160,6 +160,7 @@ let registro: ImportacionDeObra[];
 let apagados: string[];
 let llevado: boolean;
 let servidor: ReturnType<typeof servidorFalso>;
+const alExpirar = vi.fn();
 
 function borrador(id: string, proyecto: string): BorradorAbierto {
   return {
@@ -176,6 +177,7 @@ beforeEach(() => {
   computo = () => json(DIECIOCHO);
   calcular = () => json(calculo());
   llevar = () => json({ borrador_id: "b-1" });
+  alExpirar.mockReset();
   declarar = () => json({ codigo_partida: "FIC-C1", valor: "8.5", tipo: "estimado", fecha: "2026-10-26", condiciones: "" });
   registro = [];
   apagados = [];
@@ -253,7 +255,7 @@ function Ubicacion() {
 function montar(sesion: SesionRespuesta = sesionDe("ana")) {
   render(
     <MemoryRouter initialEntries={["/obra/empresa/7/archivos"]}>
-      <Marco sesion={sesion} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras({ hoja: PaginaHoja, archivos: PaginaArchivos })} />
+      <Marco sesion={sesion} alSalir={vi.fn()} alExpirar={alExpirar} paginas={ligeras({ hoja: PaginaHoja, archivos: PaginaArchivos })} />
       <Ubicacion />
     </MemoryRouter>,
   );
@@ -385,6 +387,29 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     expect(principales()).toEqual(["Llevar al presupuesto"]);
   });
 
+  // Menor 5 del árbitro de la Tarea 12 (cierre de F4): los otros tres pasos del flujo.
+  test("un solo botón principal también con rendimientos por declarar, con pendientes y ninguno tras llevar", async () => {
+    calcular = () => json({ detalle: "Faltan.", rendimientos_por_declarar: [RENDIMIENTO] }, 409);
+    const u = montar();
+    const dialogo = await elegirElComputo(u);
+    await extraerTelecom(u, dialogo);
+    await u.click(botonLlevar(dialogo));
+    await within(dialogo).findByRole("heading", { name: "Rendimientos por declarar" });
+    expect(principales()).toEqual(["Llevar al presupuesto"]);
+
+    computo = () => json(CON_PENDIENTES);
+    calcular = () => json(calculo(PENDIENTES));
+    await u.click(within(dialogo).getByRole("button", { name: "Extraer cómputo" }));
+    await waitFor(() => expect(botonLlevar(dialogo)).toBeEnabled());
+    await u.click(botonLlevar(dialogo));
+    await within(dialogo).findByRole("region", { name: "Pendientes" });
+    expect(principales()).toEqual(["Llevar al presupuesto"]);
+
+    await u.click(within(dialogo).getByRole("button", { name: "Llevar sin los pendientes" }));
+    await within(dialogo).findByText("Se llevó 1 partida al presupuesto.");
+    expect(principales()).toEqual([]);
+  });
+
   test("«Llevar al presupuesto» valora con la obra, la carpeta y su lista, lleva las 18 partidas con el archivo y refresca el borrador", async () => {
     const u = montar();
     const dialogo = await elegirElComputo(u);
@@ -464,6 +489,30 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     await u.click(botonLlevar(dialogo));
     expect(await within(dialogo).findByText("Se llevaron 18 partidas al presupuesto.")).toBeInTheDocument();
     expect(within(dialogo).queryByText(/otro borrador de esta obra/)).toBeNull();
+  });
+
+  // Menor 6 del árbitro de la Tarea 12 (cierre de F4): el 409 de la valoración que no trae rendimientos (sin lista o sin tasa)
+  // y el 401, que salieron con Elaborar.
+  test("un 409 de la valoración sin rendimientos (sin tasa del BCV) dice su detalle y no lleva nada", async () => {
+    calcular = () => json({ detalle: "No hay tasa del BCV de los últimos 7 días para convertir los precios." }, 409);
+    const u = montar();
+    const dialogo = await elegirElComputo(u);
+    await extraerTelecom(u, dialogo);
+    await u.click(botonLlevar(dialogo));
+    expect(await alertaConTexto()).toHaveTextContent("No hay tasa del BCV de los últimos 7 días para convertir los precios.");
+    expect(within(dialogo).queryByRole("heading", { name: "Rendimientos por declarar" })).toBeNull();
+    expect(llamadas("POST", "/v1/hoja/llevar")).toHaveLength(0);
+    expect(botonLlevar(dialogo)).toBeEnabled();
+  });
+
+  test("un 401 al valorar avisa a la sesión y no lleva nada", async () => {
+    calcular = () => json({ detalle: "Inicie sesión de nuevo." }, 401);
+    const u = montar();
+    const dialogo = await elegirElComputo(u);
+    await extraerTelecom(u, dialogo);
+    await u.click(botonLlevar(dialogo));
+    await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+    expect(llamadas("POST", "/v1/hoja/llevar")).toHaveLength(0);
   });
 
   test("si la API no lo lleva, dice su detalle, no refresca nada y deja volver a intentarlo", async () => {
