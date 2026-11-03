@@ -129,17 +129,19 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar, conTitulo = true 
     await hoja.refrescar();
   }
 
-  const llevar = () =>
+  // «Llevar al presupuesto» valora y, sin nada que resolver, lleva. «Llevar sin los pendientes» (`sinPendientes`) también
+  // vuelve a valorar antes, como Elaborar: una propuesta aplicada cambió el código de un ítem que aún no se valoró (menor 4
+  // de la Tarea 12); deja fuera los pendientes que dé esta valoración. Si pide rendimientos, se muestran y no se lleva nada.
+  const valorarYLlevar = (sinPendientes: boolean) =>
     ocupar("llevando", "No se llevó nada al presupuesto", async () => {
       if (items === null || valorar === null) return;
       const r = await calcular(cuerpoDeValoracion({ proyecto: hoja.proyecto, ...valorar, items }), sesion.csrf);
       if (r.tipo === "rendimientos") setPaso({ tipo: "rendimientos", lista: r.lista });
-      else if (r.respuesta.pendientes.length > 0) setPaso({ tipo: "pendientes", lista: r.respuesta.pendientes });
-      else await enviar(partidasParaLlevar(items, []));
+      else if (!sinPendientes && r.respuesta.pendientes.length > 0) setPaso({ tipo: "pendientes", lista: r.respuesta.pendientes });
+      else await enviar(partidasParaLlevar(items, sinPendientes ? r.respuesta.pendientes : []));
     });
-
-  const llevarSinPendientes = (pendientes: PendienteConPropuestas[]) =>
-    ocupar("llevando", "No se llevó nada al presupuesto", () => enviar(partidasParaLlevar(items ?? [], pendientes)));
+  const llevar = () => valorarYLlevar(false);
+  const llevarSinPendientes = () => valorarYLlevar(true);
 
   const registrar = (entrada: RendimientoPorDeclarar, tipo: TipoRendimiento) =>
     ocupar("registrando", "No se pudo registrar el rendimiento", async () => {
@@ -218,7 +220,7 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar, conTitulo = true 
           lista={paso.lista}
           ocupado={ocupado !== null}
           alAplicar={aplicar}
-          alLlevarSinEllos={partidasParaLlevar(items ?? [], paso.lista).length > 0 ? () => void llevarSinPendientes(paso.lista) : undefined}
+          alLlevarSinEllos={partidasParaLlevar(items ?? [], paso.lista).length > 0 ? () => void llevarSinPendientes() : undefined}
         />
       )}
       {hayItems && paso.tipo !== "llevadas" && (
