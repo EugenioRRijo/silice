@@ -688,6 +688,33 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     expect(guardadasEnElCatalogo()).toEqual([]);
   });
 
+  test("con el panel abierto el foco circula solo dentro del panel (Tab y Mayús+Tab dan la vuelta)", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    const cerrar = within(panel).getByRole("button", { name: "Cerrar" });
+    cerrar.focus();
+    // Mayús+Tab desde «Cerrar» (el primero) va al último enfocable del panel, no a la página tapada por el velo.
+    await userEvent.tab({ shift: true });
+    const ultimo = document.activeElement as HTMLElement;
+    expect(ultimo).not.toBe(cerrar);
+    expect(panel.contains(ultimo)).toBe(true);
+    // Tab desde el último vuelve a «Cerrar».
+    await userEvent.tab();
+    expect(cerrar).toHaveFocus();
+  });
+
+  test("con el panel abierto, Mayús+Tab desde el título del panel también va al último enfocable del panel", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    const titulo = within(panel).getByRole("heading", { level: 2, name: "Componer una partida" });
+    await waitFor(() => expect(titulo).toHaveFocus());
+    await userEvent.tab({ shift: true });
+    expect(panel.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).not.toBe(titulo);
+  });
+
   test("cuenta que revisa: no hay puerta (ni «Agregar partida», ni parecidas, ni componer)", async () => {
     // Quien revisa solo ve versiones guardadas: la obra tiene VIV-001 con un renglón.
     conVersion([PARED]);
