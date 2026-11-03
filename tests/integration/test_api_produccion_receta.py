@@ -103,6 +103,7 @@ def test_registrar_y_leer_la_receta_vigente(http) -> None:
         "cantidad_por_t": "0.94",
         "unidad": "t",
         "tipo": "propio",
+        "es_ligante": False,
     }
     assert [c["codigo"] for c in cuerpo["componentes"]] == ["AGR-12", "CA-30", "GO"]
 

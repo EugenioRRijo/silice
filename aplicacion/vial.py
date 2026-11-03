@@ -472,10 +472,16 @@ def _abrir_instalacion() -> AbstractContextManager[Session]:
 def formula_asfalto_de_receta(receta: Receta | None, codigo_ligante: str | None) -> Decimal | None:
     """El porcentaje de asfalto (en puntos: 5,5 es 5,5 %) de la fórmula de trabajo de `receta`.
 
-    La fórmula es el componente ligante de la receta: el que lleva `codigo_ligante`, en t por
-    tonelada de mezcla. Sin receta, sin código o sin ese componente en t, `None` (VR2 no se evalúa).
+    La fórmula es el componente ligante de la receta, en t por tonelada de mezcla. Manda el
+    componente marcado `es_ligante` (Tarea 16c); sin marca, el que lleva `codigo_ligante`. Sin
+    receta, sin marca ni código o sin ese componente en t, `None` (VR2 no se evalúa).
     """
-    if receta is None or not codigo_ligante:
+    if receta is None:
+        return None
+    for componente in receta.componentes:
+        if componente.es_ligante and componente.unidad == "t":
+            return componente.cantidad_por_t * 100
+    if not codigo_ligante:
         return None
     for componente in receta.componentes:
         if componente.codigo == codigo_ligante and componente.unidad == "t":
@@ -502,6 +508,11 @@ def _formula_de_la_receta(receta: Receta | None, producto: str, hoy: date) -> De
     """La fórmula de trabajo de la receta vigente de `producto`, o el motivo de no tenerla."""
     if receta is None:
         return f"la mezcla propia {producto} no tiene receta vigente al {hoy:%d/%m/%Y}"
+    if any(c.es_ligante for c in receta.componentes):
+        # el ligante marcado manda sobre la regla del único comprado en t (Tarea 16c)
+        formula = formula_asfalto_de_receta(receta, None)
+        if formula is not None:
+            return formula
     comprados = [c for c in receta.componentes if c.tipo == "comprado" and c.unidad == "t"]
     if len(comprados) != 1:
         cuales = f" ({', '.join(c.codigo for c in comprados)})" if comprados else ""
@@ -509,7 +520,7 @@ def _formula_de_la_receta(receta: Receta | None, producto: str, hoy: date) -> De
             f"la receta n.º {receta.id} de {producto} tiene {len(comprados)} componentes "
             f"comprados en t{cuales} y no se sabe cuál es el ligante"
         )
-    # el único comprado en t es el ligante: lo mismo que `formula_asfalto_de_receta` con su código
+    # sin marca, el único comprado en t es el ligante: lo mismo que `formula_asfalto_de_receta`
     return comprados[0].cantidad_por_t * 100
 
 

@@ -31,6 +31,7 @@ COLUMNAS = {
         "cantidad_por_t",
         "unidad",
         "tipo",
+        "es_ligante",  # Tarea 16c, ins_0011: la ultima, tras subir a la cabeza
     ],
 }
 

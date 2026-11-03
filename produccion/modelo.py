@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -182,6 +183,8 @@ class RecetaComponente(Base):
     cantidad_por_t: Mapped[Decimal] = mapped_column(Cantidad)
     unidad: Mapped[str] = mapped_column(String(1))
     tipo: Mapped[str] = mapped_column(String(8))
+    # Tarea 16c: marca opcional del ligante; las recetas anteriores quedan sin marca
+    es_ligante: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
 
 class Calculo(Base):

@@ -23,6 +23,7 @@ const COLUMNAS: ColumnaDensa[] = [
   { clave: "cantidad", titulo: "Cantidad por t", numerica: true, presentar: mostrarMonto },
   { clave: "unidad", titulo: "Unidad" },
   { clave: "tipo", titulo: "Tipo" },
+  { clave: "ligante", titulo: "Ligante" },
 ];
 
 // «Receta de la planta»: lo que lleva una tonelada de cada mezcla. Se consulta la receta que rige para un producto en una
@@ -60,6 +61,7 @@ export default function RecetaPlanta() {
     cantidad: c.cantidad_por_t,
     unidad: rotulo(UNIDADES, c.unidad),
     tipo: rotulo(TIPOS, c.tipo),
+    ligante: c.es_ligante === true ? "Sí" : "",
   }));
   const masa = receta ? sumaDeMasa(receta.componentes.map((c) => ({ cantidad: mostrarComa(c.cantidad_por_t), unidad: c.unidad }))) : null;
 

@@ -15559,6 +15559,11 @@
           "tipo": {
             "type": "string",
             "title": "Tipo"
+          },
+          "es_ligante": {
+            "type": "boolean",
+            "title": "Es Ligante",
+            "default": false
           }
         },
         "type": "object",

@@ -138,6 +138,7 @@ class ComponenteEntrada(BaseModel):
     cantidad_por_t: str  # decimal con punto, por tonelada de mezcla
     unidad: str  # "t" o "l"
     tipo: str  # "propio" o "comprado"
+    es_ligante: bool = False  # Tarea 16c: marca opcional; VR2 compara con este componente
 
 
 class RecetaEntrada(BaseModel):
@@ -365,6 +366,7 @@ def _receta_respuesta(r: Receta) -> RecetaRespuesta:
                 cantidad_por_t=format(c.cantidad_por_t, "f"),
                 unidad=c.unidad,
                 tipo=c.tipo,
+                es_ligante=c.es_ligante,
             )
             for c in r.componentes
         ],
@@ -385,6 +387,7 @@ def registrar_una_receta(
             cantidad_por_t=_decimal(c.cantidad_por_t, "cantidad_por_t"),
             unidad=c.unidad.strip(),
             tipo=c.tipo.strip(),
+            es_ligante=c.es_ligante,
         )
         for c in entrada.componentes
     ]
