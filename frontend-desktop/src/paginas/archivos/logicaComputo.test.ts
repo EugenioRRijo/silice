@@ -12,7 +12,7 @@ import {
   textoDispersion,
   textoPropuestaRendimiento,
   veredictoLegible,
-} from "./logica";
+} from "./logicaComputo";
 import type { CuerpoCalculo, ItemComputo, RendimientoPorDeclarar } from "./tipos";
 
 function json(cuerpo: unknown, estado = 200): Response {

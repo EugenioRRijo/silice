@@ -8,8 +8,8 @@ import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaElaborar from "./index";
 import { AYUDA_CIFRAS, MENSAJE_CIFRA } from "../../indicadores/cifraEscrita";
-import { hoy } from "./logica";
-import type { CalculoRespuesta, ItemComputo, PartidaCatalogo, RendimientoPorDeclarar } from "./tipos";
+import { hoy } from "../archivos/logicaComputo";
+import type { CalculoRespuesta, ItemComputo, PartidaCatalogo, RendimientoPorDeclarar } from "../archivos/tipos";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });

@@ -2,8 +2,8 @@ import { Button, Table, TableBody, TableCell, TableHead, TableRow } from "@carbo
 import { TableHeader } from "../../comun/carbonEs";
 import { Add, TrashCan } from "@carbon/icons-react";
 import { useEffect, useRef } from "react";
-import { AVISO_PLAN_REINICIADO, TEXTO_PLAN, periodoAVista, periodoAlServidor } from "./logica";
-import type { FilaPlan } from "./tipos";
+import { AVISO_PLAN_REINICIADO, TEXTO_PLAN, periodoAVista, periodoAlServidor } from "../archivos/logicaComputo";
+import type { FilaPlan } from "../archivos/tipos";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { AYUDA_CIFRAS, leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
 

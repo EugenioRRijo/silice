@@ -8,7 +8,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaElaborar from "./index";
-import type { CalculoRespuesta, ItemComputo } from "./tipos";
+import type { CalculoRespuesta, ItemComputo } from "../archivos/tipos";
 
 // Tarea 12 del plan de montar un presupuesto: Elaborar lleva sus items a la Hoja de la obra elegida (sin guardar version)
 // y navega a /hoja. Datos ficticios; los cuerpos esperados se escriben a mano.

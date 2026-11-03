@@ -4,8 +4,8 @@ import { useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { useNavegarSeguro } from "../../shell/navegarSeguro";
-import { BOTON_LLEVAR, partidasParaLlevar, textoLlevar, textoPendientesNoSeLlevan } from "./logica";
-import type { ItemComputo, PendienteConPropuestas } from "./tipos";
+import { BOTON_LLEVAR, partidasParaLlevar, textoLlevar, textoPendientesNoSeLlevan } from "../archivos/logicaComputo";
+import type { ItemComputo, PendienteConPropuestas } from "../archivos/tipos";
 
 interface Props {
   // El codigo de la obra con que se elaboro (el de la cabecera en ese momento).

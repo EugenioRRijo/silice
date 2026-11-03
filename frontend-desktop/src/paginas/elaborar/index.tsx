@@ -42,7 +42,7 @@ import {
   textoObraElegida,
   textoPropuestaRendimiento,
   veredictoLegible,
-} from "./logica";
+} from "../archivos/logicaComputo";
 import type {
   CalculoRespuesta,
   CuerpoCalculo,
@@ -53,7 +53,7 @@ import type {
   PendienteConPropuestas,
   RendimientoPorDeclarar,
   TipoRendimiento,
-} from "./tipos";
+} from "../archivos/tipos";
 import "./elaborar.scss";
 import { CampoTexto } from "../../comun/CampoTexto";
 
