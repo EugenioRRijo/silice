@@ -334,9 +334,9 @@ describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => 
     expect(pestana).not.toMatch(/(?:^|[;\s])(?:inline-size|width|min-width):\s*[1-9]/);
     const panelCss = compilar("../../comun/PanelLateral.scss");
     expect(panelCss).toMatch(/\.silice-con-panel\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto/);
-    const muyGrande = /@media \(max-width: 1919\.98px\)\s*\{[\s\S]*?html\[data-silice-letra=["']?muy-grande["']?\] \.silice-panel-lateral--ancho\s*\{([^}]*)\}/.exec(
-      panelCss,
-    );
-    expect(muyGrande?.[1] ?? "", "con letra muy grande el panel ancho pasa por encima").toMatch(/inline-size:\s*min\(40rem, 100%\)/);
+    // Pasada de navegador del cierre de F4 (H2): pasar por encima ya no lo decide el umbral de la letra sino el ancho real
+    // (`comun/PanelLateral.test.tsx`); el panel ancho por encima mide a lo más 40 rem y nunca más que la ventana.
+    const encima = /\.silice-panel-lateral--ancho\.silice-panel-lateral--superpuesto\s*\{([^}]*)\}/.exec(panelCss);
+    expect(encima?.[1] ?? "", "el panel ancho, por encima").toMatch(/inline-size:\s*min\(40rem, 100%\)/);
   });
 });
