@@ -210,3 +210,58 @@ def test_los_resumenes_se_escriben_en_singular_y_plural() -> None:
     assert m.resumen_de_plano(filas=1, sin_reconocer=0) == "1 fila en el espacio"
     assert m.resumen_de_computo(18) == "18 partidas llevadas"
     assert m.resumen_de_computo(1) == "1 partida llevada"
+
+
+# --- casos del árbitro de la Tarea 10, copiados al repo (menor 1; cierre de F4) ---------------
+
+
+def _nueva_version(sesion, codigo: str) -> None:
+    """Una versión más de la OF-001 dentro de la transacción de `sesion`: copia la 001 con otro
+    código (lo que hace guardar, sin pasar por `aplicacion/hoja.py`)."""
+    from sqlalchemy import text
+
+    sesion.execute(
+        text(
+            "INSERT INTO presupuesto (codigo, proyecto_id, fecha, moneda, lista_precios_id, fcas,"
+            " bono_alimentacion, administracion, utilidad) SELECT :codigo, proyecto_id, fecha,"
+            " moneda, lista_precios_id, fcas, bono_alimentacion, administracion, utilidad"
+            " FROM presupuesto WHERE codigo = '001'"
+        ),
+        {"codigo": codigo},
+    )
+
+
+def test_dos_commits_seguidos_con_version_nueva_registran_solo_en_el_primero(base: Path) -> None:
+    """Un guardado que confirmara dos veces (no ocurre hoy; decisión 9 b de la Tarea 10) anota
+    las importaciones una sola vez, con la versión del primer `commit` que ve una nueva."""
+    m = _modulo()
+    vivo = _vivo(_imp("planta.dxf", A))
+    sesion = _sesion(base)
+    try:
+        with m.con_la_version(sesion, vivo):
+            _nueva_version(sesion, "002")
+            sesion.commit()
+            _nueva_version(sesion, "003")
+            sesion.commit()
+    finally:
+        _cerrar(sesion)
+    assert _filas(base) == [
+        (_id_de_la_version(base, "002"), "plano", "planta.dxf", "ana", "resumen de planta.dxf")
+    ]
+
+
+def test_el_gancho_se_quita_aunque_lo_de_dentro_lance_una_excepcion(base: Path) -> None:
+    """Si guardar falla dentro del `with`, el `before_commit` no queda enganchado a la sesión: un
+    `commit` posterior con una versión nueva no escribe nada."""
+    m = _modulo()
+    vivo = _vivo(_imp("planta.dxf", A))
+    sesion = _sesion(base)
+    try:
+        with pytest.raises(RuntimeError, match="falló el guardado"):
+            with m.con_la_version(sesion, vivo):
+                raise RuntimeError("falló el guardado")
+        _nueva_version(sesion, "002")
+        sesion.commit()
+    finally:
+        _cerrar(sesion)
+    assert _filas(base) == []

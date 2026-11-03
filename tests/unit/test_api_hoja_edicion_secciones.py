@@ -273,6 +273,26 @@ def test_e2_la_respuesta_es_lo_mismo_que_piden_despues_r6_y_r3() -> None:
     assert _resumen(navegador, id_) == respuesta["resumen"]
 
 
+def test_e2_la_respuesta_de_cantidades_trae_el_iva_del_total_nuevo() -> None:
+    """F4, Tarea 5b (menor 5 del arbitro): `PUT .../cantidades` usa la misma respuesta de la vista,
+    asi que su IVA es el del total ya editado, no el de antes. Antes: 2 703,86 x 0,16 = 432,6176
+    -> 432,62. Despues: el 16 % del total EXACTO nuevo, a dos decimales (mitad hacia arriba)."""
+    navegador, ficha = _ana()
+    id_ = _abrir(navegador, ficha)
+    assert _vista(navegador, id_, "presupuesto")["impuestos"]["iva"] == "432.62"
+    respuesta = _cantidades(navegador, ficha, id_, 0, [{"clave": LLAVE, "cantidad": "5"}])
+    assert respuesta.status_code == 200, respuesta.text
+    presupuesto = respuesta.json()["presupuesto"]
+    exacto = D(presupuesto["total"]["exacto"])
+    iva = (exacto * D("0.16")).quantize(D("0.01"), rounding="ROUND_HALF_UP")
+    subtotal = exacto.quantize(D("0.01"), rounding="ROUND_HALF_UP")
+    impuestos = presupuesto["impuestos"]
+    assert impuestos["subtotal"] == str(subtotal) == presupuesto["total"]["texto"]
+    assert impuestos["iva"] == str(iva) != "432.62"
+    assert impuestos["total"] == str(subtotal + iva)
+    assert impuestos["alicuota"] == "0.16"
+
+
 def test_e2_escribir_el_valor_calculado_no_es_una_cantidad_escrita() -> None:
     """3c-B4: «3» (o «3,000») no cambia nada; volver a 3 tras escribir 5 libera el renglon."""
     navegador, ficha = _ana()
