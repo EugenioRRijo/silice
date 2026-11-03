@@ -263,7 +263,67 @@ describe("Hoja de la obra: cotizar, retirar y convertir (3d-2)", () => {
     });
   });
 
-  // --- 3e-3: un diálogo abierto cuyo panel se vuelve a montar por un cambio de rev no deja la página inerte ----------------
+  // --- 3e-3: el rev cambia con «Convertir la moneda» abierto (otra ventana) y la página no queda inerte ---------------------
+  // Restaurar y cotizar se mudaron (Versiones y Mercado, con su 3e-3). Aquí queda convertir, que antes no estaba cubierto. A
+  // diferencia de las pestañas de solo lectura (llevan `llave` y se vuelven a montar con cada `rev`), «Ajustes de costo» se
+  // edita y lleva la `key` del borrador: un `rev` nuevo no la vuelve a montar y el diálogo sigue abierto, que es lo diseñado
+  // (convertir parte de la versión GUARDADA, no del borrador). Si la otra ventana dejó cambios, el botón se va y el diálogo
+  // con él.
+
+  describe("3e-3: el rev cambia con «Convertir la moneda» abierto (otra ventana) y la página no queda [inert]", () => {
+    const hacerQueElServidorTengaOtroRev = (cambios: number) => {
+      const previa = fetchFalso.getMockImplementation();
+      fetchFalso.mockImplementation(async (ruta, init) => {
+        const url = new URL(String(ruta), "http://silice.local");
+        if (url.pathname === `/v1/hoja/borradores/${ID}` && (init?.method ?? "GET") === "GET") {
+          const b = borrador("002", { rev: 4, cambios });
+          return json({ id: ID, base: b.base, resumen: b.resumen });
+        }
+        return previa!(ruta, init);
+      });
+    };
+    const volverALaVentana = async () => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+    };
+    const relecturas = () => llamadas("GET", `/v1/hoja/borradores/${ID}`).length;
+
+    test("sin cambios en la otra ventana: el diálogo sigue con lo escrito y, al cancelarlo, nada queda inerte", async () => {
+      montar();
+      await irA("Ajustes de costo");
+      const dialogo = await abrirDialogo("Convertir la moneda…");
+      escribir(dialogo, "Por qué se cambia la moneda (fuente)", "Pedido de la gerencia");
+      expect(document.querySelector("[inert]")).not.toBeNull();
+      const antes = relecturas();
+      hacerQueElServidorTengaOtroRev(0);
+      await volverALaVentana();
+      await esperar(() => expect(relecturas()).toBeGreaterThan(antes));
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 30));
+      });
+      expect(screen.getByRole("dialog")).toBe(dialogo);
+      expect(campo(dialogo, "Por qué se cambia la moneda (fuente)")).toHaveValue("Pedido de la gerencia");
+      fireEvent.click(boton(dialogo, "Cancelar"));
+      await esperar(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await esperar(() => expect(document.querySelector("[inert]")).toBeNull());
+    });
+
+    test("con cambios en la otra ventana: el botón se va, el diálogo se cierra con él y nada queda inerte ni se pierde el contador", async () => {
+      montar();
+      await irA("Ajustes de costo");
+      await abrirDialogo("Convertir la moneda…");
+      expect(document.querySelector("[inert]")).not.toBeNull();
+      hacerQueElServidorTengaOtroRev(2);
+      await volverALaVentana();
+      expect(
+        await screen.findByText("Cambiar la moneda crea una versión nueva desde la guardada: guarde o descarte primero los 2 cambios pendientes."),
+      ).toBeInTheDocument();
+      await esperar(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await esperar(() => expect(document.querySelector("[inert]")).toBeNull());
+    });
+  });
 
   // --- Estática ---------------------------------------------------------------------------------------------------------------
 
