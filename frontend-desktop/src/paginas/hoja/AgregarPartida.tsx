@@ -248,7 +248,12 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
             deshabilitado={enviando}
             tamano="md"
           />
-          <Parecidas descripcion={texto} alUsar={usarParecida} deshabilitado={enviando} />
+          {/* Con una partida elegida el campo dice «código · descripción»: por parecido se busca su descripción (menor 5 de T9). */}
+          <Parecidas
+            descripcion={elegida !== null && elegida.descripcion.trim() !== "" ? elegida.descripcion : texto}
+            alUsar={usarParecida}
+            deshabilitado={enviando}
+          />
           <CampoTexto
             id={ID_CANTIDAD}
             labelText={`Cantidad${unidad}`}
