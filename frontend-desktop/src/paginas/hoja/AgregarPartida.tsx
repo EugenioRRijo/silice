@@ -10,7 +10,7 @@ import { CampoTexto } from "../../comun/CampoTexto";
 import { mensajeDeError } from "../../comun/errores";
 import { buscadorDePartidas } from "../../comun/logicaBusqueda";
 import type { PartidaHallada } from "../../comun/logicaBusqueda";
-import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
+import { AYUDA_CIFRAS, MENSAJE_CIFRA_VACIA, leerCifra } from "../../indicadores/cifraEscrita";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
@@ -60,6 +60,12 @@ interface Errores {
 }
 
 const SIN_ERRORES: Errores = { partida: null, cantidad: null, calculo: null, general: null };
+
+// Vacío según la regla de las cifras (recorta los mismos blancos que el servidor, `aplicacion/cifras.py`).
+const estaVacio = (texto: string) => {
+  const lectura = leerCifra(texto);
+  return "error" in lectura && lectura.error === MENSAJE_CIFRA_VACIA;
+};
 
 // Carbon no liga el texto del error al campo inválido (solo la ayuda, y solo si es válido): se liga a mano.
 function describirError(id: string, invalido: boolean): { "aria-describedby"?: string } {
@@ -163,6 +169,13 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
     if (elegida === null) {
       setErrores({ ...SIN_ERRORES, partida: ELEGIR_DE_LA_LISTA });
       focoPendiente.current = ID_PARTIDA;
+      return;
+    }
+    // Sin cantidad ni cálculo no hay de dónde sacarla: se dice antes de mandar, con el texto del servidor (pasada del cierre
+    // de F4, H7: Enter mandaba y solo el 422 lo decía). Con cálculo, la cantidad vacía la toma el servidor del resultado.
+    if (estaVacio(cantidad) && estaVacio(calculo)) {
+      setErrores({ ...SIN_ERRORES, cantidad: MENSAJE_CIFRA_VACIA });
+      focoPendiente.current = ID_CANTIDAD;
       return;
     }
     setErrores(SIN_ERRORES);

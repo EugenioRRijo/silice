@@ -416,6 +416,26 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     expect(within(dialogo).getByRole("textbox", { name: "Cálculo (opcional)" })).not.toHaveAttribute("aria-invalid", "true");
   });
 
+  // Pasada de navegador del cierre de F4 (H7): con la partida elegida y la cantidad y el cálculo vacíos, Enter mandaba el
+  // formulario y solo el 422 del servidor decía «Escriba un número…». Ahora se dice antes, sin petición: es el mismo texto
+  // del servidor (`aplicacion/cifras.py`, MENSAJE_CIFRA_VACIA). Con un cálculo escrito la cantidad vacía sigue valiendo.
+  // La regla está en el envío del formulario (Enter o el botón): jsdom no envía con Enter cuando el botón de enviar está
+  // fuera del formulario (`form=`), así que aquí se pulsa el botón; Enter se comprobó en el navegador.
+  test("con la partida elegida, sin cantidad ni cálculo, no se manda nada y lo dice junto a «Cantidad»", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    await elegirPared(dialogo);
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
+    const cantidad = within(dialogo).getByRole("textbox", { name: /^Cantidad/ });
+    await waitFor(() => expect(cantidad).toHaveAttribute("aria-invalid", "true"));
+    expect(cantidad).toHaveAccessibleDescription(
+      expect.stringContaining("Escriba un número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."),
+    );
+    await waitFor(() => expect(cantidad).toHaveFocus());
+    expect(escrituras(RUTA_AGREGAR)).toEqual([]);
+    expect(screen.getByRole("dialog", { name: "Agregar partida" })).toBeInTheDocument();
+  });
+
   test("sin elegir una partida de la lista no se manda nada y lo dice en el campo", async () => {
     montar();
     const dialogo = await abrirDialogo();
