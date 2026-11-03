@@ -6,7 +6,7 @@ import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import PaginaHistorico from "./HistoricoDePrecios";
+import { HistoricoDePrecios } from "./HistoricoDePrecios";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -22,6 +22,10 @@ const SESION: SesionRespuesta = {
   modo_entrega: false,
 };
 
+const INSUMOS = [
+  { codigo: "CEM-GRIS", descripcion: "Cemento ficticio", tipo: "material", unidad: "saco", precio_vigente: "18.00" },
+];
+
 const CAMBIOS = [
   { insumo: "Cemento ficticio", precio_anterior: "10.0000", precio_nuevo: "10.6250", variacion: "0.0625", fecha: "2026-02-01" },
 ];
@@ -33,7 +37,7 @@ describe("Histórico de cambios de precio", () => {
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
     fijarCsrf("tok");
-    fetchFalso.mockResolvedValue(json(CAMBIOS));
+    fetchFalso.mockImplementation(async (url) => (String(url) === "/insumos" ? json(INSUMOS) : json(CAMBIOS)));
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -51,7 +55,7 @@ describe("Histórico de cambios de precio", () => {
     return render(
       <ContextoAplicacion.Provider value={valor}>
         <MemoryRouter>
-          <PaginaHistorico />
+          <HistoricoDePrecios />
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
     );
@@ -64,9 +68,9 @@ describe("Histórico de cambios de precio", () => {
     expect(within(tabla).getByText("01/02/2026")).toHaveAttribute("title", "2026-02-01");
     expect(within(tabla).getByText("10,6250")).toHaveAttribute("title", "10.6250");
     expect(within(tabla).getByText("10,0000")).toHaveAttribute("title", "10.0000");
-    expect(within(tabla).getByText("6,25")).toBeInTheDocument();
+    expect(within(tabla).getByText("6,25 %")).toBeInTheDocument();
     expect(tabla).not.toHaveTextContent("2026-02-01");
-    expect(fetchFalso.mock.calls[0][0]).toBe("/cambios-precio");
+    expect(fetchFalso.mock.calls[0]![0]).toBe("/cambios-precio");
   });
 
   test("los filtros de fecha son selectores de fecha y se envian AAAA-MM-DD (VB-19)", async () => {
@@ -81,7 +85,9 @@ describe("Histórico de cambios de precio", () => {
     const usuario = userEvent.setup();
     montar();
     await screen.findByRole("table", { name: "Cambios de precio" });
-    await usuario.type(screen.getByLabelText("Insumo (descripción exacta)"), "Cemento ficticio");
+    // El insumo se elige de la lista (autocompletado), ya no se escribe la descripción exacta.
+    await usuario.type(screen.getByRole("combobox", { name: "Insumo" }), "cemento");
+    await usuario.click(await screen.findByRole("option", { name: /Cemento ficticio/ }));
     await usuario.type(screen.getByLabelText("Desde"), "2026-01-01");
     await usuario.click(screen.getByRole("button", { name: "Filtrar" }));
     await waitFor(() =>
@@ -100,7 +106,7 @@ describe("Histórico de cambios de precio", () => {
     await usuario.type(screen.getByLabelText("Hasta"), "2026-02-01");
     expect(screen.getByText("Rango invertido")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Filtrar" }));
-    expect(fetchFalso).toHaveBeenCalledTimes(1);
+    expect(fetchFalso.mock.calls.filter(([u]) => String(u).startsWith("/cambios-precio"))).toHaveLength(1);
   });
   test.each([
     [404, "No existe el histórico en este caso."],
@@ -118,8 +124,9 @@ describe("Histórico de cambios de precio", () => {
     expect((await screen.findAllByRole("alert")).length).toBeGreaterThan(0);
   });
 
-  test("el título de la página es un h1", async () => {
+  test("el título es un h2: el h1 es el de Mercado (un solo h1 por pantalla)", async () => {
     montar();
-    expect(await screen.findByRole("heading", { level: 1, name: "Histórico de cambios de precio" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 2, name: "Histórico de cambios de precio" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 });

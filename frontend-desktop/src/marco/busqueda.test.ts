@@ -97,7 +97,7 @@ describe("resultadosDe", () => {
 
   it("alcanza las pantallas que no tienen sitio en el árbol", () => {
     expect(resultadosDe("simulador", [], COMPLETA)[0]).toMatchObject({ texto: "Simulador de listas", ruta: "/simulador" });
-    expect(resultadosDe("historico", [], COMPLETA)[0]?.ruta).toBe("/historico");
+    expect(resultadosDe("historico", [], COMPLETA)).toEqual([]);
   });
 
   it("no ofrece las secciones sin pantalla, ni lo que la cuenta no puede usar", () => {

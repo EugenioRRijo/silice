@@ -127,3 +127,6 @@ export default function PaginaHistorico() {
     </section>
   );
 }
+
+// Provisional del rojo (Tarea 13): el componente con nombre llega en el feat.
+export const HistoricoDePrecios = PaginaHistorico;
