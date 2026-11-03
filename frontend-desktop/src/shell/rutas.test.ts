@@ -107,9 +107,9 @@ describe("quien puede usar que", () => {
     expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(32);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (29)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (30)", () => {
     const vistas = PAGINAS.filter((p) => usable(p, todas, true));
-    expect(vistas).toHaveLength(29);
+    expect(vistas).toHaveLength(30);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 
