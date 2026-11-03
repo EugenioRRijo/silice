@@ -1,6 +1,6 @@
 import { Button, Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
 import { InlineNotification, TabList } from "../../comun/carbonEs";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
@@ -177,6 +177,8 @@ const NOTA_SOLO_LECTURA = "Está viendo este presupuesto en solo lectura.";
 // versión se abre desde Versiones («Abrir», baja 9 de la Tarea 6) y el estado del borrador dice cuál es. El borrador, las
 // versiones y los diálogos de guardar y de cambiar de versión son de `ProveedorDeLaHoja` (Tarea 3 del plan F4), que comparte
 // la obra con Archivos y planos y Versiones.
+const SECCIONES = "Secciones del presupuesto";
+
 function CuerpoDeLaHoja() {
   const {
     proyecto,
@@ -220,6 +222,17 @@ function CuerpoDeLaHoja() {
     setFiltro(null);
     irAPestana("partidas");
   };
+  // «Hacer una versión nueva» (franja de una versión devuelta) lleva a «Partidas» y le pasa el foco: ya en ella, el botón no
+  // daba respuesta (pasada de navegador del cierre de F4, H8). La pestaña queda a la vista, con la tabla debajo.
+  const focoEnPartidas = useRef(false);
+  const [pedidoDeFoco, setPedidoDeFoco] = useState(0);
+  useEffect(() => {
+    if (!focoEnPartidas.current || pestana !== "partidas") return;
+    focoEnPartidas.current = false;
+    document
+      .querySelector<HTMLElement>(`[role="tablist"][aria-label="${SECCIONES}"] [role="tab"][aria-selected="true"]`)
+      ?.focus();
+  }, [pedidoDeFoco, pestana]);
 
   if (versiones.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las versiones" />;
   if (versiones.estado !== "listo") return <AvisoError error={versiones.error} />;
@@ -299,7 +312,11 @@ function CuerpoDeLaHoja() {
               setFiltro(null);
               irAPestana("revision");
             }}
-            alHacerVersionNueva={irAPartidas}
+            alHacerVersionNueva={() => {
+              irAPartidas();
+              focoEnPartidas.current = true;
+              setPedidoDeFoco((n) => n + 1);
+            }}
           />
           <EstadoDelBorrador borrador={estado.borrador} alDescartar={() => void descartarCambios()} puedeEditar={puedeEditar} />
           <BotonExcel id={estado.borrador.id} />
@@ -321,7 +338,7 @@ function CuerpoDeLaHoja() {
               irAPestana(visibles[selectedIndex]!.id);
             }}
           >
-            <TabList aria-label="Secciones del presupuesto">
+            <TabList aria-label={SECCIONES}>
               {visibles.map((p) => (
                 <Tab key={p.id}>{p.titulo}</Tab>
               ))}

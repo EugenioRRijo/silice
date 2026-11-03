@@ -230,7 +230,10 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
     const zona = await franja();
     expect(zona).toHaveTextContent("Te falta: La versión 001 fue devuelta: corrija lo observado");
     await userEvent.click(within(zona).getByRole("button", { name: "Hacer una versión nueva" }));
-    expect(await screen.findByRole("tab", { name: "Partidas", selected: true })).toBeInTheDocument();
+    const partidas = await screen.findByRole("tab", { name: "Partidas", selected: true });
+    // Pasada de navegador del cierre de F4 (H8): ya en «Partidas» el botón no daba respuesta (el foco se quedaba en él y la
+    // tabla seguía bajo el pliegue). El foco va a la pestaña «Partidas», que queda a la vista con la tabla debajo.
+    await waitFor(() => expect(partidas).toHaveFocus());
     const aprobacion = screen.getByRole("region", { name: "Aprobación de la versión" });
     expect(within(aprobacion).getByRole("status")).toHaveTextContent("Corrija y guarde: será una versión nueva.");
     expect(aprobacion).toHaveTextContent("Notas de Rita Gómez: Falta el acero de la losa.");
