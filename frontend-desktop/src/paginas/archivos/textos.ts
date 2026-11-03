@@ -1,8 +1,10 @@
 // Los textos de «Archivos y planos» (Tarea 11 del plan F4), con las palabras de quien arma el presupuesto. Los del flujo
-// del plano siguen en `logicaPlano.ts`, que los comparte con sus pruebas.
+// del plano siguen en `logicaPlano.ts` y los del cómputo en `logicaComputo.ts`, que los comparten con sus pruebas.
 export const TEXTOS = {
   titulo: "Archivos y planos",
   subir: "Subir plano o cómputo",
+  // Con la especialidad «edificación» apagada no hay planos: la misma puerta solo carga el cómputo (Tarea 12).
+  cargarComputo: "Cargar cómputo",
   // Va tras «Te falta:» en la franja (pregunta abierta 3 del plan: solo si se pidió describir el espacio y sigue vacío).
   falta: "subir el plano o describir el espacio",
   registro: "Registro de importaciones",

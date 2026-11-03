@@ -602,7 +602,8 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     expect(screen.getByRole("dialog", { name: "Subir plano o cómputo" })).toBeInTheDocument();
     soltar(json(calculo()));
     expect(await within(dialogo).findByText("Se llevaron 18 partidas al presupuesto.")).toBeInTheDocument();
-    expect(within(dialogo).getByRole("button", { name: "Cerrar" })).toBeEnabled();
+    // Se cierra cuando termina también la relectura del borrador, como tras fusionar un plano.
+    await waitFor(() => expect(within(dialogo).getByRole("button", { name: "Cerrar" })).toBeEnabled());
   });
 
   test("cuenta que revisa: ni «Subir plano o cómputo» ni «Cargar cómputo» (Foco 3)", async () => {
@@ -645,7 +646,7 @@ describe("Archivos y planos con «edificación» apagada", () => {
   test("el diálogo acepta solo el .csv, su texto no menciona planos y rechaza un .dxf", async () => {
     const u = montar();
     const dialogo = await abrirElDialogo(u, "Cargar cómputo");
-    expect(within(dialogo).getByText("Suelte aquí el cómputo .csv, o haga clic para elegirlo")).toBeInTheDocument();
+    expect(within(dialogo).getByRole("button", { name: "Suelte aquí el cómputo .csv, o haga clic para elegirlo" })).toBeInTheDocument();
     expect(dialogo.textContent ?? "").not.toMatch(/plano/i);
     expect(within(dialogo).queryByRole("button", { name: "Leer plano" })).toBeNull();
     expect(campoDeArchivo(dialogo).getAttribute("accept")).toBe(".csv");

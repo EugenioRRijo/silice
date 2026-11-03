@@ -83,12 +83,11 @@ export const PAGINAS: readonly PaginaDef[] = [
   {
     id: "archivos",
     titulo: "Archivos y planos",
-    enUnaLinea: "Suba un plano y vea lo que se importó en la obra",
+    enUnaLinea: "Suba un plano o un cómputo y vea lo que se importó",
     seccion: "Trabajo",
-    // F4, Tarea 11: quien revisa ve el registro; subir lo decide `puedeEditarLaHoja` (la API exige `editar_hoja`). Es el
-    // plano, de la especialidad «edificación»: con ella apagada no se ofrece.
+    // F4, Tarea 11: quien revisa ve el registro; subir lo decide `puedeEditarLaHoja` (la API exige `editar_hoja`). F4,
+    // Tarea 12: no es de ningún módulo. Con «edificación» apagada no hay planos, pero el cómputo se sigue cargando aquí.
     accion: "leer_proyecto",
-    modulo: "edificacion",
     cargar: () => import("../paginas/archivos"),
   },
   {

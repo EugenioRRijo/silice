@@ -1,5 +1,5 @@
 import { Button } from "@carbon/react";
-import { useCallback, useId, useRef, useState } from "react";
+import { Fragment, useCallback, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
@@ -24,20 +24,26 @@ export interface PropsDeSubirArchivo {
   alRecargar: () => Promise<void>;
   alReabrir: () => void;
   alExpirar: () => void;
-  // El flujo de un .csv («Cargar cómputo», Tarea 12). Sin él la subida no acepta .csv.
-  cuerpoDelComputo?: (archivo: File) => ReactNode;
+  // El flujo de un .csv («Cargar cómputo», Tarea 12). Sin él la subida no acepta .csv. `alOcuparse` avisa mientras
+  // hay una petición en vuelo: entonces el diálogo no se cierra.
+  cuerpoDelComputo?: (archivo: File, alOcuparse: (ocupado: boolean) => void) => ReactNode;
+  // Con la especialidad «edificación» apagada no hay planos (Tarea 12): solo el cómputo, y nada habla de planos.
+  conPlano?: boolean;
 }
 
 // Por qué existe (Tarea 11 del plan F4): «Subir plano o cómputo» es la única puerta de Archivos y planos para lo que entra
 // en el borrador desde un archivo. Una sola zona de soltar; el flujo lo elige la extensión: .dxf y .ifc van al plano
-// (`ImportarPlano`, que antes vivía en la pestaña Espacio) y .csv al cómputo, que trae la Tarea 12. Es un diálogo propio
-// (RNF-22), como los de las operaciones sobre versiones: foco adentro al abrirse, Tab atrapado y Esc o «Cerrar» lo cierran,
+// (`ImportarPlano`, que antes vivía en la pestaña Espacio) y .csv al cómputo (`CargarComputo`, Tarea 12, que absorbió
+// Elaborar). Con «edificación» apagada (`conPlano` falso) se titula «Cargar cómputo» y solo acepta el .csv. Es un diálogo
+// propio (RNF-22), como los de las operaciones sobre versiones: foco adentro al abrirse, Tab atrapado y Esc o «Cerrar» lo cierran,
 // salvo con una petición en vuelo (desde «Fusionar» hasta que se vuelve a leer el borrador), para no perder su resultado.
 // Cerrarlo no descarta nada: la importación vive en el servidor y se ve al volver a abrirlo.
-export function SubirArchivo({ id, rev, anfitrion, alCerrar, alAusente, alAceptar, alRecargar, alReabrir, alExpirar, cuerpoDelComputo }: PropsDeSubirArchivo) {
+export function SubirArchivo(props: PropsDeSubirArchivo) {
+  const { id, rev, anfitrion, alCerrar, alAusente, alAceptar, alRecargar, alReabrir, alExpirar, cuerpoDelComputo, conPlano = true } = props;
   const caja = useRef<HTMLDivElement>(null);
   const idTitulo = useId();
-  const [archivo, setArchivo] = useState<File | null>(null);
+  // `vez` cuenta cada elección: elegir otra vez un archivo empieza su flujo de cero.
+  const [{ archivo, vez }, setEleccion] = useState<{ archivo: File | null; vez: number }>({ archivo: null, vez: 0 });
   const [ocupado, setOcupado] = useState(false);
   const cerrar = useCallback(() => {
     if (!ocupado) alCerrar();
@@ -45,6 +51,8 @@ export function SubirArchivo({ id, rev, anfitrion, alCerrar, alAusente, alAcepta
   const { atrapar } = useDialogo(caja, cerrar);
   const conComputo = cuerpoDelComputo !== undefined;
   const flujo = archivo === null ? null : flujoDelArchivo(archivo.name);
+  const flujos = { plano: conPlano, computo: conComputo };
+  const titulo = conPlano ? TEXTOS.subir : TEXTOS.cargarComputo;
 
   return createPortal(
     <div className="silice-hoja__dialogo-fondo">
@@ -58,13 +66,18 @@ export function SubirArchivo({ id, rev, anfitrion, alCerrar, alAusente, alAcepta
         className="silice-hoja__dialogo silice-archivos__dialogo"
       >
         <h2 id={idTitulo} className="cds--type-heading-compact-02">
-          {TEXTOS.subir}
+          {titulo}
         </h2>
-        <SubidaArchivo etiqueta={etiquetaDeSubida({ plano: true, computo: conComputo })} extensiones={extensionesDeSubida({ plano: true, computo: conComputo })} alElegir={setArchivo} deshabilitada={ocupado} />
+        <SubidaArchivo
+          etiqueta={etiquetaDeSubida(flujos)}
+          extensiones={extensionesDeSubida(flujos)}
+          alElegir={(elegido) => setEleccion((e) => ({ archivo: elegido, vez: e.vez + 1 }))}
+          deshabilitada={ocupado}
+        />
         {archivo !== null && <p className="cds--type-body-compact-01">Archivo elegido: {archivo.name}</p>}
         {flujo === "computo" && archivo !== null && cuerpoDelComputo ? (
-          cuerpoDelComputo(archivo)
-        ) : (
+          <Fragment key={vez}>{cuerpoDelComputo(archivo, setOcupado)}</Fragment>
+        ) : conPlano ? (
           <ImportarPlano
             id={id}
             rev={rev}
@@ -76,7 +89,7 @@ export function SubirArchivo({ id, rev, anfitrion, alCerrar, alAusente, alAcepta
             alExpirar={alExpirar}
             alOcuparse={setOcupado}
           />
-        )}
+        ) : null}
         <div className="silice-hoja__acciones">
           <Button kind="secondary" size="md" disabled={ocupado} onClick={cerrar}>
             {TEXTOS.cerrar}
