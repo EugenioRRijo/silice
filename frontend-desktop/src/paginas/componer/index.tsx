@@ -7,7 +7,6 @@ import { ErrorDeApi } from "../../api/cliente";
 import type { CarpetaRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
 import { useAplicacion } from "../../shell/contexto";
-import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { useFormularioSucio } from "../../shell/sucio";
 import { BuscadorReferencia } from "./BuscadorReferencia";
 import { AvisoSinLista } from "./AvisoSinLista";
@@ -76,10 +75,8 @@ export default function PaginaComponer() {
     [expirar],
   );
 
-  // Desde la Hoja (plan de montar, T4 y T11): `?codigo=X&volver=hoja` trae el codigo y, guardada, ofrece volver.
+  // `?codigo=X` trae el codigo de la partida (plan de montar, T4).
   const [parametros] = useSearchParams();
-  const volverAHoja = parametros.get("volver") === "hoja";
-  const navegarSeguro = useNavegarSeguro();
   const [cabecera, setCabecera] = useState<Cabecera>(() => ({
     ...CABECERA_INICIAL,
     codigo: parametros.get("codigo")?.trim() ?? "",
@@ -454,7 +451,6 @@ export default function PaginaComponer() {
         error={errorGuardado}
         alGuardar={(j) => void guardarComposicion(j)}
         sinLista={Boolean(carpeta?.aviso)}
-        alVolverAHoja={volverAHoja ? () => void navegarSeguro("/hoja") : undefined}
         refBoton={botonGuardar}
       />
       {porConfirmar && (

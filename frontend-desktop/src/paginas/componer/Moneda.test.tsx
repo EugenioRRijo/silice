@@ -173,7 +173,6 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
         <MemoryRouter initialEntries={[ruta]}>
           <Routes>
             <Route path="/componer" element={<PaginaComponer />} />
-            <Route path="/hoja" element={<p>Pantalla ficticia de la Hoja</p>} />
           </Routes>
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
