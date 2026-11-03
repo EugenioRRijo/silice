@@ -44,7 +44,8 @@ interface Props {
   // Descarta lo que se ve y abre otro borrador de la versión.
   alReabrir: () => void;
   alExpirar: () => void;
-  // Hay una petición en vuelo (desde «Fusionar», hasta que la relectura del borrador termina): el diálogo no se cierra.
+  // Hay una petición del flujo en vuelo (cualquiera; tras «Fusionar», hasta que la relectura del borrador termina): el
+  // diálogo no se cierra.
   alOcuparse?: (ocupada: boolean) => void;
 }
 

@@ -143,6 +143,7 @@ la sección Presupuesto del rediseño F4.
 | # | Pregunta | Lo que se hará | Cómo cambiarlo |
 |---|---|---|---|
 | 8 | ¿Aprueba el inventario de F4 y sus 25 bajas (4 dudosas)? | Pendiente: al terminar el plan vial se escribe el plan de F4 con las recomendaciones del inventario; ninguna baja borra código sin dejarlo reversible y anotado aquí | **Respondida (2026-10-30): aprobado con las recomendaciones del inventario.** Las bajas quedan reversibles. |
+| 9 | F4, Tarea 9 (decisión 5): cerrar el panel de Componer (Esc o «Cerrar») pierde lo compuesto sin preguntar. ¿Pedimos confirmación? | Se cierra sin preguntar, como cerrar un diálogo pierde lo escrito en él; lo escrito en «Agregar partida» (cantidad, cálculo, nota) sigue y el foco vuelve a «Partida». El árbitro recomienda preguntar | Pedir confirmación en `cerrarComponer` (`paginas/hoja/AgregarPartida.tsx`) si `formulariosSucios()` incluye `componer` |
 
 ### Bajas de F4 aplicadas (Tarea 2, 2026-10-31)
 
