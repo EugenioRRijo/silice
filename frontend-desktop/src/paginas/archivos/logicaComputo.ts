@@ -196,6 +196,11 @@ export function cuerpoDeValoracion(p: { proyecto: string; moneda: string; fecha:
   return { codigo: p.proyecto, fecha: p.fecha, moneda: p.moneda, items: p.items, proyecto: p.proyecto };
 }
 
+// `POST /v1/hoja/llevar` escribe en el borrador vivo MÁS RECIENTE de la ficha y la obra (menor 1 de la Tarea 12): si no es
+// el que comparte el proveedor, lo llevado no se ve aquí y se dice.
+export const OTRO_BORRADOR =
+  "Ojo: fueron a otro borrador de esta obra, el más reciente (quizá abierto en otra ventana), no al que tiene abierto aquí, así que no se ven en este Presupuesto.";
+
 export function textoLlevadas(partidas: number): string {
   return partidas === 1 ? "Se llevó 1 partida al presupuesto." : `Se llevaron ${partidas} partidas al presupuesto.`;
 }

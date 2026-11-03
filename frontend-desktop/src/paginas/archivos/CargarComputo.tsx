@@ -29,6 +29,7 @@ import {
   mapeoCodigos,
   partidasParaLlevar,
   textoLlevadas,
+  OTRO_BORRADOR,
 } from "./logicaComputo";
 import type { Dominio, ItemComputo, PartidaCatalogo, PartidaParaLlevar, PendienteConPropuestas, RendimientoPorDeclarar, TipoRendimiento } from "./tipos";
 import "./computo.scss";
@@ -47,7 +48,8 @@ type Paso =
   | { tipo: "nada" }
   | { tipo: "rendimientos"; lista: RendimientoPorDeclarar[] }
   | { tipo: "pendientes"; lista: PendienteConPropuestas[] }
-  | { tipo: "llevadas"; cuantas: number };
+  // `otroBorrador`: la API las llevó a otro borrador de la obra (el más reciente de la ficha), no al abierto aquí.
+  | { tipo: "llevadas"; cuantas: number; otroBorrador: boolean };
 const NADA: Paso = { tipo: "nada" };
 type Ocupacion = "extrayendo" | "llevando" | "registrando" | null;
 
@@ -115,8 +117,12 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar }: Props) {
       setFallo({ titulo: "No se llevó nada al presupuesto", error: SIN_NADA_QUE_LLEVAR });
       return;
     }
-    await pedir("/v1/hoja/llevar", { metodo: "POST", cuerpo: { proyecto: hoja.proyecto, partidas: lista, archivo: archivo.name } });
-    setPaso({ tipo: "llevadas", cuantas: lista.length });
+    const abierto = hoja.estado.estado === "listo" ? hoja.estado.borrador.id : null;
+    const r = await pedir<{ borrador_id: string }>("/v1/hoja/llevar", {
+      metodo: "POST",
+      cuerpo: { proyecto: hoja.proyecto, partidas: lista, archivo: archivo.name },
+    });
+    setPaso({ tipo: "llevadas", cuantas: lista.length, otroBorrador: r.borrador_id !== abierto });
     alLlevar();
     await hoja.refrescar();
   }
@@ -223,6 +229,7 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar }: Props) {
       {paso.tipo === "llevadas" && (
         <div role="status" className="silice-computo__exito">
           <p className="cds--type-body-compact-01">{textoLlevadas(paso.cuantas)}</p>
+          {paso.otroBorrador && <p className="cds--type-body-compact-01">{OTRO_BORRADOR}</p>}
           {obra !== null && enRuta && (
             <Link className="cds--link" to={rutaDeObra(obra.carpeta, obra.obraId, "presupuesto")} onClick={() => hoja.irAPestana("partidas")}>
               Ver en Partidas
