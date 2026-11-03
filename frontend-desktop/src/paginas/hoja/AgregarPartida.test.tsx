@@ -736,6 +736,76 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     expect(guardadasEnElCatalogo()).toEqual([]);
   });
 
+  // Pulido F5, Tarea 2 (H6 del cierre de F4): del panel al presupuesto hacían falta tres Esc (el panel, el texto de «Partida»,
+  // que contaba como elegido, y el diálogo). Un Esc fuera de un campo cierra Componer; dentro de un campo con cambios, el
+  // primero restaura el valor (como las celdas de la Hoja) y el segundo cierra.
+  const panelDeComponer = () => screen.queryByRole("complementary", { name: "Componer una partida" });
+
+  test("un Esc fuera de un campo cierra Componer con el foco en «Partida», y el siguiente cierra el diálogo", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    await waitFor(() => expect(within(panel).getByRole("heading", { level: 2, name: "Componer una partida" })).toHaveFocus());
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(panelDeComponer()).toBeNull());
+    const partida = within(screen.getByRole("dialog", { name: "Agregar partida" })).getByRole("combobox", { name: "Partida" });
+    await waitFor(() => expect(partida).toHaveFocus());
+    expect(partida).toHaveValue("Z-99");
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Agregar partida" })).toBeNull());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Agregar partida" })).toHaveFocus());
+  });
+
+  test("en un campo de Componer con cambios, el primer Esc restaura su valor y el segundo cierra el panel", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    const descripcion = within(panel).getByLabelText("Descripción");
+    await userEvent.click(descripcion);
+    await userEvent.type(descripcion, "Zanja ficticia");
+
+    await userEvent.keyboard("{Escape}");
+    expect(panelDeComponer()).not.toBeNull();
+    expect(descripcion).toHaveValue("");
+    expect(descripcion).toHaveFocus();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(panelDeComponer()).toBeNull());
+    await waitFor(() => expect(within(screen.getByRole("dialog", { name: "Agregar partida" })).getByRole("combobox", { name: "Partida" })).toHaveFocus());
+  });
+
+  test("en un campo de Componer sin cambios, un solo Esc cierra el panel", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    await userEvent.click(within(panel).getByLabelText("Unidad"));
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(panelDeComponer()).toBeNull());
+  });
+
+  test("en el «Código» de Componer, Esc cierra primero las sugerencias, luego restaura el código y luego cierra el panel", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    const codigo = within(panel).getByRole("combobox", { name: "Código" });
+    await userEvent.click(codigo);
+    await userEvent.type(codigo, "0");
+    await within(panel).findByRole("listbox", { name: "Código" });
+
+    await userEvent.keyboard("{Escape}");
+    expect(within(panel).queryByRole("listbox", { name: "Código" })).toBeNull();
+    expect(codigo).toHaveValue("Z-990");
+
+    await userEvent.keyboard("{Escape}");
+    expect(panelDeComponer()).not.toBeNull();
+    expect(codigo).toHaveValue("Z-99");
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(panelDeComponer()).toBeNull());
+  });
+
   test("con el panel abierto el foco circula solo dentro del panel (Tab y Mayús+Tab dan la vuelta)", async () => {
     montar();
     const dialogo = await abrirDialogo();
