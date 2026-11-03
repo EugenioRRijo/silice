@@ -3,7 +3,7 @@
 Carga páginas de la interfaz de Sílice con Edge sin interfaz (Playwright) y anota **toda**
 petición y todo websocket: la lista de anfitriones fuera de 127.0.0.1 debe quedar vacía (lo que
 el navegador pide por su cuenta, el proxy no lo ve). Sale con 1 si hay alguno. La interfaz es la
-de React, que sirve Uvicorn en `/app/` con rutas por almohadilla (`/app/#/similares`).
+de React, que sirve Uvicorn en `/app/` con rutas por almohadilla (`/app/#/catalogo`).
 
     uv run --no-project --with playwright python instalador/navegador.py \\
         --url http://127.0.0.1:8501/app --salida humo-salida/peticiones.json
@@ -51,7 +51,7 @@ def recorrer(url: str, paginas: list[str]) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analizador.add_argument("--url", required=True)
-    analizador.add_argument("--paginas", nargs="+", default=["", "#/similares", "#/simulador"])
+    analizador.add_argument("--paginas", nargs="+", default=["", "#/catalogo", "#/simulador"])
     analizador.add_argument("--salida", type=Path, required=True)
     argumentos = analizador.parse_args(argv)
     vistas = recorrer(argumentos.url.rstrip("/"), argumentos.paginas)
