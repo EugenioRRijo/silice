@@ -41,7 +41,7 @@ export function destinoDelPendiente(p: PendienteDeObra): string {
 // Lo usan la franja y los pendientes del Resumen y la bandeja de Pendientes.
 const TEXTOS_AL_DIA: Readonly<Record<string, string>> = { "Abrir la Hoja": "Abrir el presupuesto" };
 
-export function textoDeLaAccion(accion: { texto: string }): string {
+export function textoDeLaAccion(accion: { texto: string; pagina: string }): string {
   return TEXTOS_AL_DIA[accion.texto] ?? accion.texto;
 }
 
