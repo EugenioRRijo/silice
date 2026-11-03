@@ -529,14 +529,16 @@ describe("BarraLateral: niveles del árbol", () => {
     expect(nivel(within(lista).getByRole("treeitem", { name: "Galpón Sur" }))).toEqual(["1", "3", "2"]);
     expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "3", "3"]);
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
+    // Resumen, Presupuesto, Tramos, Archivos y planos, Versiones, Aprobaciones, Mercado y Control de obra.
     expect(secciones.map(nivel)).toEqual([
-      ["2", "7", "1"],
-      ["2", "7", "2"],
-      ["2", "7", "3"],
-      ["2", "7", "4"],
-      ["2", "7", "5"],
-      ["2", "7", "6"],
-      ["2", "7", "7"],
+      ["2", "8", "1"],
+      ["2", "8", "2"],
+      ["2", "8", "3"],
+      ["2", "8", "4"],
+      ["2", "8", "5"],
+      ["2", "8", "6"],
+      ["2", "8", "7"],
+      ["2", "8", "8"],
     ]);
   });
 
@@ -547,7 +549,7 @@ describe("BarraLateral: niveles del árbol", () => {
     expect(nivel(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" }))).toEqual(["1", "2", "1"]);
     expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "2", "2"]);
     const primera = within(screen.getByRole("group", { name: "Torre B" })).getAllByRole("treeitem")[0]!;
-    expect(nivel(primera)).toEqual(["2", "7", "1"]);
+    expect(nivel(primera)).toEqual(["2", "8", "1"]);
   });
 });
 
