@@ -387,6 +387,45 @@ def test_alterar_a_mano_el_registro_de_cambios_rompe_la_cadena_en_esa_version(_c
     }
 
 
+def test_una_version_rota_en_medio_de_la_cadena_es_la_que_se_nombra(_casos) -> None:
+    """F4, Tarea 6 (menor 2 del arbitro): con cuatro versiones (restaurar, cotizar y convertir),
+    alterar a mano solo el registro de la 003 nombra la 003, no la primera ni la ultima."""
+    ruta = _poner(_casos["con_tasa"])
+    navegador, ficha = _ana()
+    cabeceras = protegida(ficha)
+    cuerpo = {"proyecto": NOMBRE_OF001, "version": "001"}
+    restaurar = {**cuerpo, "fuente": "x"}
+    navegador.post("/v1/hoja/versiones/restaurar", json=restaurar, headers=cabeceras)
+    cotizar = {
+        **cuerpo,
+        "insumo": "EQU-001",
+        "precio": "99,5",
+        "proveedor": "Ferreteria Demo, C.A.",
+        "numero": "C-1",
+        "fecha": "2026-10-05",
+    }
+    assert (
+        navegador.post("/v1/hoja/versiones/cotizar", json=cotizar, headers=cabeceras).json()[
+            "codigo"
+        ]
+        == "003"
+    )
+    assert _convertir(navegador, ficha, version="003").json()["codigo"] == "004"
+    assert _cadena(navegador).json()["integra"] is True
+    with closing(sqlite3.connect(ruta.as_posix())) as bd:
+        ((id_003,),) = bd.execute("SELECT id FROM presupuesto WHERE codigo = '003'").fetchall()
+        alteradas = bd.execute(
+            "UPDATE registro_cambio SET valor_nuevo = '0.99' WHERE version_resultante_id = ?",
+            (id_003,),
+        ).rowcount
+        bd.commit()
+    assert alteradas > 0
+    respuesta = _cadena(navegador).json()
+    assert respuesta["integra"] is False
+    assert respuesta["rota_en"] == "003"
+    assert respuesta["mensaje"] == ROTA_REGISTRO.replace("versión 002", "versión 003")
+
+
 def test_alterar_a_mano_una_celda_del_espacio_rompe_el_anexo(_entorno) -> None:
     navegador, _ = _ana()
     assert _cadena(navegador).json()["integra"] is True
