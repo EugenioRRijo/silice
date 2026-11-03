@@ -135,7 +135,9 @@ export const PAGINAS: readonly PaginaDef[] = [
     titulo: "Estudio de mercado",
     enUnaLinea: "Compare precios del mercado y elija los suyos",
     seccion: "Trabajo",
-    accion: "editar_hoja",
+    // F4, Tarea 13 (ronda 2): quien revisa entra a leer el histórico y las cotizaciones de la obra; las pestañas que
+    // anotan y usan precios, y las operaciones de cotizar, solo se pintan con `editar_hoja` (la API lo vuelve a exigir).
+    accion: "leer_proyecto",
     cargar: () => import("../paginas/mercado"),
   },
   {

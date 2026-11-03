@@ -17,7 +17,7 @@ const REGISTRO: [string, string, string | null][] = [
   ["componer", "Trabajo", "editar_hoja"],
   ["catalogo", "Trabajo", "leer_proyecto"],
   ["similares", "Investigación", "editar_hoja"],
-  ["mercado", "Trabajo", "editar_hoja"],
+  ["mercado", "Trabajo", "leer_proyecto"], // F4, Tarea 13, ronda 2: quien revisa lee el histórico y las cotizaciones
   ["precios_empresa", "Trabajo", "administrar_precios"],
   ["actualizacion", "Trabajo", "editar_hoja"],
   ["indices", "Trabajo", "administrar_precios"],

@@ -198,7 +198,7 @@ interface Props {
 // Por qué existe (Tarea 13 del plan F4): «Registrar una cotización» y «Retirar una cotización» (S3 y S4) salieron de Presupuesto ›
 // Precios; las usa la pestaña «Cotizaciones de la obra» de Mercado (`CotizacionesDeLaObra.tsx`). Cada una crea una versión nueva
 // desde la vigente. Con cambios sin guardar se dice por qué no se ofrecen (la regla es de pantalla, como en la clásica); Mercado
-// no tiene borrador y pasa 0.
+// no tiene el borrador y pasa los cambios de los borradores de la obra que el servidor conserva (ronda 2 de la Tarea 13).
 export function OperacionesDePrecios({ proyecto, version, filas, cambios, alCrearVersion }: Props) {
   const insumos = insumosDePrecios(filas);
   const cotizadas = cotizadasDePrecios(filas);
@@ -210,7 +210,7 @@ export function OperacionesDePrecios({ proyecto, version, filas, cambios, alCrea
         lowContrast
         hideCloseButton
         title="Hay cambios sin guardar"
-        subtitle={avisoDeCambiosPendientes("cotizar", cambios)}
+        subtitle={`${avisoDeCambiosPendientes("cotizar", cambios)} Están en el Presupuesto de esta obra.`}
       />
     );
   }

@@ -62,6 +62,8 @@ const OBRA = { carpeta: null, obraId: 3, ficha: { estado: "sin_dato" }, recargar
 const fetchFalso = vi.fn<typeof fetch>();
 let versiones: VersionesRespuesta;
 let alOperacion: (ruta: string) => Response;
+// Los borradores que el servidor conserva de esta ficha (`GET /v1/hoja/borradores`): los cambios sin guardar del Presupuesto.
+let borradores: unknown[];
 
 const posts = (termina: string) =>
   fetchFalso.mock.calls
@@ -95,12 +97,14 @@ describe("Mercado › Cotizaciones de la obra", () => {
     fetchFalso.mockReset();
     fijarCsrf("tok");
     versiones = VERSIONES;
+    borradores = [];
     alOperacion = () => json({ codigo: "003", proyecto: "OF-001", mensaje: "mensaje del servidor" });
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = new URL(String(ruta), "http://silice.local");
       if (url.pathname === "/v1/hoja/versiones" && (init?.method ?? "GET") === "GET") return json(versiones);
       if (url.pathname.startsWith("/v1/hoja/versiones/") && init?.method === "POST") return alOperacion(url.pathname);
       if (url.pathname === "/v1/hoja/precios") return json(precios());
+      if (url.pathname === "/v1/hoja/borradores" && (init?.method ?? "GET") === "GET") return json({ borradores });
       return json({ detail: `Ruta no simulada: ${String(ruta)}` }, 404);
     });
   });
@@ -129,6 +133,36 @@ describe("Mercado › Cotizaciones de la obra", () => {
     await screen.findByRole("table", { name: "Cotizaciones de la obra" });
     expect(screen.queryByRole("button", { name: "Registrar una cotización…" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Retirar una cotización…" })).toBeNull();
+  });
+
+  // Ronda 2 de la Tarea 13 (decisión 6): cotizar crea una versión nueva desde la vigente guardada. Si el Presupuesto de la obra
+  // tiene un borrador con cambios sin guardar, se quedarían en un borrador de una versión vieja; se dice, como en la clásica.
+  test("con cambios sin guardar en el Presupuesto de la obra no se ofrece cotizar y se dice por qué", async () => {
+    borradores = [
+      { id: "b-1", proyecto: "OF-001", version: "002", cambios: 3, tocado: "2026-11-02T09:00:00" },
+      { id: "b-2", proyecto: "OF-009", version: "001", cambios: 5, tocado: "2026-11-02T09:00:00" },
+    ];
+    montar();
+    await abrirPestana();
+    await screen.findByRole("table", { name: "Cotizaciones de la obra" });
+    expect(
+      await screen.findByText(
+        "Cotizar crea una versión nueva desde la guardada: guarde o descarte primero los 3 cambios pendientes. Están en el Presupuesto de esta obra.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Registrar una cotización…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Retirar una cotización…" })).toBeNull();
+  });
+
+  test("los borradores sin cambios o de otra obra no impiden cotizar", async () => {
+    borradores = [
+      { id: "b-1", proyecto: "OF-001", version: "002", cambios: 0, tocado: "2026-11-02T09:00:00" },
+      { id: "b-2", proyecto: "OF-009", version: "001", cambios: 5, tocado: "2026-11-02T09:00:00" },
+    ];
+    montar();
+    await abrirPestana();
+    expect(await screen.findByRole("button", { name: "Registrar una cotización…" })).toBeInTheDocument();
+    expect(screen.queryByText(/cambios pendientes/)).toBeNull();
   });
 
   test("una obra sin versiones guardadas lo dice y no ofrece cotizar ni da error", async () => {

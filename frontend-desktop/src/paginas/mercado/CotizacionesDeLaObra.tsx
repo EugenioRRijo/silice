@@ -14,6 +14,7 @@ import { ContextoDeDialogos } from "../hoja/ContextoDeDialogos";
 import { rutaDePrecios, rutaDeVersiones } from "../hoja/logica";
 import type { CeldaPrecio, PreciosRespuesta, VersionesRespuesta } from "../hoja/logica";
 import { cotizadasDePrecios } from "../hoja/logicaVersiones";
+import { useOfertas } from "../hoja/useOfertas";
 import { useCarga } from "../inicio/useCarga";
 import { OperacionesDePrecios } from "./OperacionesDePrecios";
 
@@ -44,6 +45,20 @@ function textoDe(celda: CeldaPrecio | undefined, exacto: boolean): string {
 
 type AlCrear = (codigo: string, texto: string) => Promise<void>;
 
+type Filas = PreciosRespuesta["filas"];
+
+// Ronda 2 de la Tarea 13: cotizar crea una versión nueva desde la vigente GUARDADA. Si el Presupuesto de esta obra tiene un
+// borrador con cambios sin guardar (los que el servidor conserva de esta ficha, los mismos que la Hoja ofrece retomar), esos
+// cambios quedarían en un borrador de una versión vieja: no se ofrece cotizar y se dice por qué, como hacía la pestaña Precios
+// (la clásica, P:1946). Mientras se leen los borradores no se ofrece nada.
+function Operaciones({ proyecto, version, filas, alCrearVersion }: { proyecto: string; version: string; filas: Filas; alCrearVersion: AlCrear }) {
+  const { alExpirar, nombreProyecto } = useAplicacion();
+  const { ofertas } = useOfertas(proyecto, nombreProyecto ?? null, alExpirar);
+  if (ofertas.estado !== "listo") return null;
+  const cambios = ofertas.lista.reduce((suma, o) => suma + o.cambios, 0);
+  return <OperacionesDePrecios proyecto={proyecto} version={version} filas={filas} cambios={cambios} alCrearVersion={alCrearVersion} />;
+}
+
 function ConPrecios({ proyecto, version, alCrearVersion }: { proyecto: string; version: string; alCrearVersion: AlCrear }) {
   const { alExpirar, sesion } = useAplicacion();
   const carga = useCarga<PreciosRespuesta>(rutaDePrecios(proyecto, version), alExpirar);
@@ -62,7 +77,7 @@ function ConPrecios({ proyecto, version, alCrearVersion }: { proyecto: string; v
         vacio={{ titulo: "Esta versión no tiene cotizaciones propias", descripcion: "Los precios vienen de la lista de la obra." }}
       />
       {sesion.acciones.includes("editar_hoja") && (
-        <OperacionesDePrecios proyecto={proyecto} version={version} filas={filas} cambios={0} alCrearVersion={alCrearVersion} />
+        <Operaciones proyecto={proyecto} version={version} filas={filas} alCrearVersion={alCrearVersion} />
       )}
     </>
   );
