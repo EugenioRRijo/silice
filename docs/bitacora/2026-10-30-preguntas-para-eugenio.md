@@ -219,3 +219,12 @@ Las siete salen en un commit (`969ad67f`, más `7cf1358f` con tres aserciones de
 | 17 | «Informe de auditoría» de Elaborar | `969ad67f` | Pestaña «Revisión» | igual que la 13 |
 | 18 | Bloque «Presupuesto elaborado» (con «Llevar a la Hoja de la obra») | `969ad67f` | El resultado va directo a «Partidas» | igual que la 13 |
 | 19 | Pantalla «Elaborar un presupuesto» (`paginas/elaborar/`, su entrada del registro, el enlace de Componer y la fila del recorrido funcional) | `969ad67f` y `7cf1358f` | Archivos y planos › «Subir plano o cómputo» › «Cargar cómputo» (`paginas/archivos/CargarComputo.tsx`) | igual que la 13 |
+
+### Traslados de F4 (Tarea 13, 2026-11-02)
+
+Ninguna baja: dos traslados. Sin `knip` ni `jscpd` (no están instalados); se midió con `grep` y `npm run lint` en 0.
+
+| Qué se movió | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|
+| Pantalla «Histórico de cambios de precio» (`historico`) | `feat(mercado)` de la Tarea 13 (movida antes con `83f73c50`) | Mercado › «Histórico de precios» | `git revert <feat>` devuelve la pantalla y su entrada en `shell/rutas.ts` y en `recorrido_funcional.toml` |
+| «Registrar / Retirar una cotización…» de Presupuesto › Precios | igual | Mercado › «Cotizaciones de la obra» | igual |

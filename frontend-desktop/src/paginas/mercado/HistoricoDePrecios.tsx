@@ -1,13 +1,16 @@
 import { Button } from "@carbon/react";
 import { InlineNotification } from "../../comun/carbonEs";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
-import { aPorcentaje, fechaValida, rangoInvertido } from "./porcentaje";
+import { buscadorDeInsumos } from "./logica";
+import type { InsumoDelCatalogo } from "./logica";
+import { aPorcentaje, fechaValida, rangoInvertido } from "../../comun/porcentaje";
+import { CampoConBusqueda } from "../../comun/CampoConBusqueda";
 import { CampoTexto } from "../../comun/CampoTexto";
 
 interface Cambio {
@@ -34,21 +37,25 @@ function rutaDe({ insumo, desde, hasta }: Filtros): string {
 
 const fechaMala = (t: string) => t !== "" && !fechaValida(t);
 
-// «Histórico de cambios de precio» (UC-02, solo lectura): filtros por insumo y fechas; la tabla muestra los
-// montos de la API en es-VE (el texto original queda en el `title`), la fecha dd/mm/aaaa y la variación en por
-// ciento. A la API las fechas se envían AAAA-MM-DD, como las da el selector de fecha (VB-19).
-export default function PaginaHistorico() {
+// Por qué existe (Tarea 13 del plan F4; preguntas 4 y 8 del inventario): el histórico de cambios de precio (UC-02) era una
+// pantalla suelta; ahora es la pestaña «Histórico de precios» de Mercado (`index.tsx`), el único que la usa. Solo lectura:
+// filtros por insumo y fechas; la tabla muestra los montos de la API en es-VE (el texto original queda en el `title`), la
+// fecha dd/mm/aaaa y la variación en por ciento. El insumo se elige de la lista del catálogo (autocompletado, decisión de
+// Eugenio del 2026-10-21) y al servidor va su descripción, como antes. A la API las fechas se envían AAAA-MM-DD (VB-19).
+export function HistoricoDePrecios() {
   const { alExpirar } = useAplicacion();
+  const [texto, setTexto] = useState("");
   const [borrador, setBorrador] = useState<Filtros>({ insumo: "", desde: "", hasta: "" });
   const [aplicado, setAplicado] = useState<Filtros>(borrador);
+  const buscar = useMemo(() => buscadorDeInsumos(), []);
   const carga = useCarga<Cambio[]>(rutaDe(aplicado), alExpirar);
   const invertido = rangoInvertido(borrador.desde, borrador.hasta);
 
   return (
-    <section className="silice-pagina" aria-labelledby="historico-titulo">
-      <h1 id="historico-titulo" className="cds--type-heading-04">
+    <section className="silice-mercado__historico" aria-labelledby="historico-titulo">
+      <h2 id="historico-titulo" className="cds--type-heading-compact-02">
         Histórico de cambios de precio
-      </h1>
+      </h2>
       <p className="cds--type-body-compact-01">
         Cada fila es un insumo que cambió de precio entre la lista anterior y la lista nueva de una actualización.
       </p>
@@ -58,12 +65,24 @@ export default function PaginaHistorico() {
           if (!invertido && !fechaMala(borrador.desde) && !fechaMala(borrador.hasta)) setAplicado(borrador);
         }}
       >
-        <CampoTexto
+        <CampoConBusqueda<InsumoDelCatalogo>
           id="hist-insumo"
-          size="sm"
-          labelText="Insumo (descripción exacta)"
-          value={borrador.insumo}
-          onChange={(e) => setBorrador({ ...borrador, insumo: e.target.value })}
+          etiqueta="Insumo"
+          ayuda="Escriba parte del nombre o el código del insumo; por ejemplo «cemento». Vacío, muestra todos."
+          texto={texto}
+          alCambiarTexto={(t) => {
+            setTexto(t);
+            // Lo escrito es una búsqueda: si se cambia después de elegir, ya no vale el insumo elegido.
+            if (t !== borrador.insumo) setBorrador({ ...borrador, insumo: "" });
+          }}
+          buscar={buscar}
+          alElegir={(opcion) => {
+            setTexto(opcion.valor.descripcion);
+            setBorrador({ ...borrador, insumo: opcion.valor.descripcion });
+          }}
+          vacio={{ titulo: "¿No lo encuentra?", pasos: "Pruebe con otra palabra del nombre o revise el Catálogo de partidas e insumos." }}
+          alExpirar={alExpirar}
+          tamano="sm"
         />
         <CampoTexto
           id="hist-desde"
@@ -95,7 +114,7 @@ export default function PaginaHistorico() {
             hideCloseButton
           />
         )}
-        <Button type="submit" size="sm" kind="primary">
+        <Button type="submit" size="sm" kind="secondary">
           Filtrar
         </Button>
       </form>
@@ -111,7 +130,7 @@ export default function PaginaHistorico() {
             { clave: "insumo", titulo: "Insumo" },
             { clave: "precio_anterior", titulo: "Precio anterior", numerica: true, presentar: formatoEsVe },
             { clave: "precio_nuevo", titulo: "Precio nuevo", numerica: true, presentar: formatoEsVe },
-            { clave: "variacion_pct", titulo: "Variación (%)", numerica: true, presentar: formatoEsVe },
+            { clave: "variacion_pct", titulo: "Variación", numerica: true, presentar: (v) => `${formatoEsVe(v)} %` },
           ]}
           filas={carga.datos.map((c, i) => ({
             id: String(i),

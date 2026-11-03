@@ -151,7 +151,11 @@ function Detalle({
 }) {
   const { sesion, modulosApagados } = useAplicacion();
   const pagina = paginaPorId(paginaQueAbre(p));
-  const puede = pagina !== undefined && usable(pagina, sesion.acciones, sesion.modo_entrega, modulosApagados);
+  // La pantalla de la acción también: «Actualizar precios» lleva a Mercado, que quien revisa abre en lectura (Tarea 13,
+  // ronda 2), pero actualizar exige `editar_hoja`. Es la misma regla de la franja del Resumen (`pantallaVisible`).
+  const propia = paginaPorId(p.accion.pagina);
+  const permite = (def: typeof pagina) => def !== undefined && usable(def, sesion.acciones, sesion.modo_entrega, modulosApagados);
+  const puede = permite(pagina) && (propia === undefined || permite(propia));
   return (
     <section className="silice-bandeja__detalle" aria-label={TEXTOS.detalle}>
       <h2 className="cds--type-heading-compact-02">{p.texto}</h2>

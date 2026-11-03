@@ -14,7 +14,7 @@ import { rutaDeObra } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
 import { useNavegarSeguro } from "../../shell/navegarSeguro";
 import { avisoDeCambiosPendientes } from "../hoja/logicaVersiones";
-import type { AlCrearVersion } from "../hoja/OperacionesDePrecios";
+import type { AlCrearVersion } from "../hoja/logicaVersiones";
 import { ContextoDeLaHoja, useHojaDeLaObra } from "../hoja/ProveedorDeLaHoja";
 import { usePuedeEditarLaHoja } from "../hoja/puedeEditar";
 import { textoDelBoton } from "../hoja/textos";

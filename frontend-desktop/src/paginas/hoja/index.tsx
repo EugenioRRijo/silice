@@ -13,7 +13,7 @@ import { CAUSA_SOLO_LECTURA } from "./logicaGuardar";
 import { BotonExcel } from "./BotonExcel";
 import { FranjaDelPresupuesto } from "./FranjaDelPresupuesto";
 import { ContextoAuditoria } from "./ContextoAuditoria";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
+import type { AlCrearVersion } from "./logicaVersiones";
 import type { FiltroDeAuditoria } from "./ContextoAuditoria";
 import { PestanaApu } from "./PestanaApu";
 import { PestanaAuditoria } from "./PestanaAuditoria";
@@ -151,8 +151,6 @@ function ContenidoDePestana({
           proyecto={borrador.base.proyecto}
           version={borrador.base.version}
           alAusente={alAusente}
-          cambios={borrador.resumen.cambios}
-          alCrearVersion={alCrearVersion}
         />
       );
     case "revision":

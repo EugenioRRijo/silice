@@ -4,9 +4,13 @@ import { CampoTexto } from "../../comun/CampoTexto";
 import { useAplicacion } from "../../shell/contexto";
 import { DialogoDeOperacion } from "../hoja/DialogoDeOperacion";
 import { usuarioDeSesion } from "../hoja/logicaGuardar";
-import { RUTA_DE_RESTAURAR, cuerpoDeRestaurar, motivoParaNoRestaurar, textoDeVersionCreada } from "../hoja/logicaVersiones";
-import type { VersionCreada } from "../hoja/logicaVersiones";
-import type { AlCrearVersion } from "../hoja/OperacionesDePrecios";
+import {
+  RUTA_DE_RESTAURAR,
+  cuerpoDeRestaurar,
+  motivoParaNoRestaurar,
+  textoDeVersionCreada,
+} from "../hoja/logicaVersiones";
+import type { AlCrearVersion, VersionCreada } from "../hoja/logicaVersiones";
 import { useDialogoDeOperacion } from "../hoja/useDialogoDeOperacion";
 import { useOperacion } from "../hoja/useOperacion";
 

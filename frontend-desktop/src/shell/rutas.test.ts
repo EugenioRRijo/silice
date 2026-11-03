@@ -17,10 +17,9 @@ const REGISTRO: [string, string, string | null][] = [
   ["entregar", "Trabajo", "entregar_paquete"],
   ["componer", "Trabajo", "editar_hoja"],
   ["catalogo", "Trabajo", "leer_proyecto"],
-  ["mercado", "Trabajo", "editar_hoja"],
+  ["mercado", "Trabajo", "leer_proyecto"], // F4, Tarea 13, ronda 2: quien revisa lee el histórico y las cotizaciones
   ["precios_empresa", "Trabajo", "administrar_precios"],
   ["actualizacion", "Trabajo", "editar_hoja"],
-  ["historico", "Trabajo", "leer_proyecto"],
   ["indices", "Trabajo", "administrar_precios"],
   ["simulador", "Investigación", "editar_hoja"],
   ["aprobar", "Revisión", "aprobar_version"],
@@ -48,7 +47,7 @@ const REGISTRO: [string, string, string | null][] = [
 const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
 
 describe("registro de paginas", () => {
-  test("tiene las 32 pantallas en su orden, con su seccion y su accion", () => {
+  test("tiene las 31 pantallas en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(REGISTRO);
   });
 
@@ -66,6 +65,12 @@ describe("registro de paginas", () => {
   test("ya no existe la pantalla «elaborar»", () => {
     expect(paginaPorId("elaborar")).toBeUndefined();
     expect(PAGINAS.some((p) => p.titulo === "Elaborar un presupuesto")).toBe(false);
+  });
+
+  // F4, Tarea 13: el histórico de cambios de precio es ahora una pestaña de Mercado.
+  test("ya no existe la pantalla «historico»", () => {
+    expect(paginaPorId("historico")).toBeUndefined();
+    expect(PAGINAS.some((p) => p.titulo === "Histórico de cambios de precio")).toBe(false);
   });
 
   test("los ids son unicos y las secciones de permisos son cuatro", () => {
@@ -109,13 +114,13 @@ describe("quien puede usar que", () => {
     expect(PAGINAS.filter((p) => usable(p, [], false)).map((p) => p.id)).toEqual(["auditoria", "obras", "acerca"]);
   });
 
-  test("con todas las acciones se usan las 32", () => {
-    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(32);
+  test("con todas las acciones se usan las 31", () => {
+    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(31);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (30)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (29)", () => {
     const vistas = PAGINAS.filter((p) => usable(p, todas, true));
-    expect(vistas).toHaveLength(30);
+    expect(vistas).toHaveLength(29);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 

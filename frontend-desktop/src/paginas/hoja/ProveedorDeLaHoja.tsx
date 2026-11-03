@@ -15,7 +15,7 @@ import type { Resumen, VersionesRespuesta } from "./logica";
 import { usuarioDeSesion } from "./logicaGuardar";
 import { RUTA_DE_BORRADORES, borradorExistente } from "./logicaRetomar";
 import type { OfertaDeRetomar } from "./logicaRetomar";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
+import type { AlCrearVersion } from "./logicaVersiones";
 import { puedeEditarLaHoja, usePuedeEditarLaHoja } from "./puedeEditar";
 import { useBorrador } from "./useBorrador";
 import type { EstadoBorrador } from "./useBorrador";

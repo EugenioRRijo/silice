@@ -14,7 +14,7 @@ import {
   textoDeVersionCreada,
 } from "./logicaVersiones";
 import type { LadoDeLaTasa, VersionCreada } from "./logicaVersiones";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
+import type { AlCrearVersion } from "./logicaVersiones";
 import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useOperacion } from "./useOperacion";
 

@@ -13,6 +13,9 @@ export const RUTA_DE_CONVERTIR = "/v1/hoja/versiones/convertir";
 export const rutaDeCadena = (proyecto: string) => `/v1/hoja/cadena?proyecto=${encodeURIComponent(proyecto)}`;
 
 // Lo que contestan S2 a S5: la versión nueva (que la página abre) y el texto de lo que pasó.
+// Qué hace la página al crearse una versión nueva por una operación (restaurar, cotizar, retirar, convertir): decirlo y abrirla.
+export type AlCrearVersion = (codigo: string, texto: string) => Promise<void>;
+
 export interface VersionCreada {
   codigo: string;
   proyecto: string;
