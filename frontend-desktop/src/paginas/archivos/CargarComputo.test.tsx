@@ -592,6 +592,45 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     });
   });
 
+    // Menor 4 del árbitro de la Tarea 12 (cierre de F4): aplicar una propuesta cambia el código de un ítem; «Llevar sin los
+    // pendientes» lo vuelve a valorar antes de llevar (como Elaborar), en vez de llevar un código que nadie valoró.
+    test("tras aplicar una propuesta, «Llevar sin los pendientes» vuelve a valorar y lleva lo que la valoración deja", async () => {
+      computo = () => json(CON_PENDIENTES);
+      calcular = () => json(calculo(PENDIENTES));
+      const u = montar();
+      const dialogo = await elegirElComputo(u);
+      await extraerTelecom(u, dialogo);
+      await u.click(botonLlevar(dialogo));
+      const bloque = await within(dialogo).findByRole("region", { name: "Pendientes" });
+      await u.selectOptions(within(bloque).getByLabelText("Propuesta para fila-9"), "FIC-Z2");
+      await u.click(within(bloque).getByRole("button", { name: "Aplicar la propuesta" }));
+      await waitFor(() => expect(within(dialogo).queryByText("fila-9 · FIC-X · Zanja inexistente")).toBeNull());
+      calcular = () => json(calculo(PENDIENTES.filter((p) => p.origen_id === "fila-10")));
+      await u.click(within(dialogo).getByRole("button", { name: "Llevar sin los pendientes" }));
+      expect(await within(dialogo).findByText("Se llevaron 2 partidas al presupuesto.")).toBeInTheDocument();
+      expect(llamadas("POST", "/presupuestos/calcular")).toHaveLength(2);
+      const items = cuerpoDe("POST", "/presupuestos/calcular", 1).items as ItemComputo[];
+      expect(items.map((i) => i.codigo_partida)).toEqual(["FIC-C1", "FIC-Z2", "FIC-Y"]);
+      expect((cuerpoDe("POST", "/v1/hoja/llevar") as { partidas: { codigo: string }[] }).partidas.map((p) => p.codigo)).toEqual([
+        "FIC-C1",
+        "FIC-Z2",
+      ]);
+    });
+
+    test("si al volver a valorar aparecen rendimientos por declarar, «Llevar sin los pendientes» los muestra y no lleva nada", async () => {
+      computo = () => json(CON_PENDIENTES);
+      calcular = () => json(calculo(PENDIENTES));
+      const u = montar();
+      const dialogo = await elegirElComputo(u);
+      await extraerTelecom(u, dialogo);
+      await u.click(botonLlevar(dialogo));
+      await within(dialogo).findByRole("region", { name: "Pendientes" });
+      calcular = () => json({ detalle: "Faltan.", rendimientos_por_declarar: [RENDIMIENTO] }, 409);
+      await u.click(within(dialogo).getByRole("button", { name: "Llevar sin los pendientes" }));
+      expect(await within(dialogo).findByRole("heading", { name: "Rendimientos por declarar" })).toBeInTheDocument();
+      expect(llamadas("POST", "/v1/hoja/llevar")).toHaveLength(0);
+    });
+
   test("sin lista en la carpeta, «Llevar al presupuesto» está deshabilitado y la franja dice el motivo", async () => {
     carpeta = SIN_LISTA;
     const u = montar();
