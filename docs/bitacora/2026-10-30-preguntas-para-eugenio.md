@@ -186,3 +186,17 @@ Las siete del Presupuesto. Cinco van en su propio commit y se deshacen con `git 
 |---|---|---|---|---|
 | (traslado del inventario) | Bloque «Importar plano (DXF o IFC)» de la pestaña «Espacio y metrajes» (en su lugar, el enlace «Importar un plano en Archivos y planos»), el bloqueo de las tablas del espacio mientras se fusionaba y `ocupadoPorEdicion` | `d8ca1a07` (mueve los archivos a `paginas/archivos/`, sin cambios) y `bcb0cae1` (el retiro, con el `feat`) | Archivos y planos › «Subir plano o cómputo» (`paginas/archivos/SubirArchivo.tsx` e `ImportarPlano.tsx`) | `git revert bcb0cae1` (deshace la sección entera; el bloque vuelve a Espacio) |
 | 22 | «Libro de la empresa» como parte de la obra | sin commit (no cambia código) | Empresa › Auditar un presupuesto; Archivos y planos no ofrece el libro ni las carpetas | — |
+
+### Bajas de F4 aplicadas (Tarea 12, 2026-11-02)
+
+Las siete salen en un commit (`969ad67f`, más `7cf1358f` con tres aserciones de Componer): son piezas de la pantalla Elaborar, que se va entera. `knip` y `jscpd` no están instalados: se midió con `grep` (nada nombra ya `paginas/elaborar`, `CODIGO_POR_DEFECTO`, `PlanDeTrabajo`, `LlevarALaHoja` ni `silice-elaborar`) y `npm run lint` en 0. Decisión aparte, para Eugenio: «Archivos y planos» ya no es del módulo «edificación» (plan F4, «Decisiones de la Tarea 12», punto 1).
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| 13 | Campo «Código del presupuesto» de Elaborar y `CODIGO_POR_DEFECTO` | `969ad67f` | El código de la obra | `git revert 7cf1358f 969ad67f` |
+| 14 | Campos «Moneda» y «Fecha» propios de Elaborar, `MONEDA_POR_DEFECTO` y `hoy()` | `969ad67f` | La moneda de la carpeta y la fecha de su lista (`GET /v1/carpeta`) | igual que la 13 |
+| 15 | «Exportar a Excel» de Elaborar | `969ad67f` | «Descargar Excel» del Presupuesto | igual que la 13 |
+| 16 | «Plan de trabajo» de Elaborar (`PlanDeTrabajo.tsx`) | `969ad67f` | Pestaña «Plan y equilibrio» | igual que la 13 |
+| 17 | «Informe de auditoría» de Elaborar | `969ad67f` | Pestaña «Revisión» | igual que la 13 |
+| 18 | Bloque «Presupuesto elaborado» (con «Llevar a la Hoja de la obra») | `969ad67f` | El resultado va directo a «Partidas» | igual que la 13 |
+| 19 | Pantalla «Elaborar un presupuesto» (`paginas/elaborar/`, su entrada del registro, el enlace de Componer y la fila del recorrido funcional) | `969ad67f` y `7cf1358f` | Archivos y planos › «Subir plano o cómputo» › «Cargar cómputo» (`paginas/archivos/CargarComputo.tsx`) | igual que la 13 |
