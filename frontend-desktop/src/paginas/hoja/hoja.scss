@@ -267,17 +267,6 @@
   overflow-wrap: anywhere;
 }
 
-// APU editable (3c-3): el cambio de insumo se pliega; sus campos se apilan.
-.silice-hoja__insumo-cuerpo {
-  display: grid;
-  gap: 0.75rem;
-  max-inline-size: 32rem;
-
-  &[hidden] {
-    display: none;
-  }
-}
-
 .silice-hoja__acciones {
   display: flex;
   flex-wrap: wrap;
