@@ -22,7 +22,11 @@ function Registros({ vista, titulo }: { vista: TrazabilidadRespuesta; titulo: st
     <TablaPaginada
       etiqueta={titulo}
       desplazable
+      // Cuándo y quién primero, como en un registro de auditoría: al final quedaban fuera de la caja del panel (pasada de
+      // navegador del cierre de F4, H5).
       columnas={[
+        { clave: "fecha_hora", titulo: "Fecha y hora", ordenable: false, presentar: fechaCorta },
+        { clave: "responsable", titulo: "Responsable", ordenable: false },
         { clave: "objeto", titulo: "Objeto", ordenable: false },
         {
           clave: "clave",
@@ -34,8 +38,6 @@ function Registros({ vista, titulo }: { vista: TrazabilidadRespuesta; titulo: st
         { clave: "antes", titulo: "Antes", ordenable: false },
         { clave: "despues", titulo: "Después", ordenable: false },
         { clave: "fuente", titulo: "Fuente", ordenable: false },
-        { clave: "responsable", titulo: "Responsable", ordenable: false },
-        { clave: "fecha_hora", titulo: "Fecha y hora", ordenable: false, presentar: fechaCorta },
       ]}
       filas={vista.registros.map((r, i) => ({
         id: `registro-${i}`,

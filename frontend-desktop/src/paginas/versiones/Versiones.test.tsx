@@ -254,15 +254,17 @@ describe("Versiones: el registro de cambios en el panel", () => {
     await u.click(within(await renglon("VIV-002")).getByRole("button", { name: "Ver cambios de VIV-002" }));
     const panel = await screen.findByRole("complementary", { name: "Registro de cambios de la versión VIV-002" });
     const registro = await within(panel).findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
+    // Pasada de navegador del cierre de F4 (H5): cuándo y quién van primero, como en un registro de auditoría; al final
+    // quedaban tras el recorte de la caja (970 px de tabla en 727 a 1366 con letra Normal).
     expect(within(registro).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
+      "Fecha y hora",
+      "Responsable",
       "Objeto",
       "Clave",
       "Campo",
       "Antes",
       "Después",
       "Fuente",
-      "Responsable",
-      "Fecha y hora",
     ]);
     const r = within(registro).getAllByRole("row")[1]!;
     expect(within(r).getByText("AF-LLAVE, Fuente F1, Fuente FC1, Punto P1, Punto P2, Punto PC1")).toHaveAttribute(
