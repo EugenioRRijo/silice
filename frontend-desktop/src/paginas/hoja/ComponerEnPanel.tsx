@@ -7,9 +7,16 @@ import type { PartidaCompuesta } from "../componer/ComponerPartida";
 
 const AVISO_DEL_CATALOGO = "Esto cambia el catálogo de la empresa: la partida queda para todas las obras.";
 
+// Con qué se pidió componer: el código escrito en «Partida» o, si lo escrito no parecía un código, su descripción (y el
+// código vacío, por elegir en el panel; pulido F5, Tarea 1).
+export interface PartidaPorComponer {
+  codigo: string;
+  descripcion: string;
+}
+
 interface Props {
-  // El código con que se pidió componer, o null con el panel cerrado.
-  codigo: string | null;
+  // Con qué se pidió componer, o null con el panel cerrado.
+  partida: PartidaPorComponer | null;
   alCerrar: () => void;
   alGuardar: (partida: PartidaCompuesta) => void;
 }
@@ -28,7 +35,7 @@ interface Props {
 // Capa (pasada de navegador del cierre de F4, H1): el panel va «en-capa», siempre por encima del velo, fijo bajo la barra
 // superior, opaco y con su propio desplazamiento, con cualquier letra. Antes eso lo daba una regla de hijo directo del
 // fondo que nunca aplicaba por este envoltorio, y con letra Normal el panel salía transparente y de 2190 px de alto.
-export function ComponerEnPanel({ codigo, alCerrar, alGuardar }: Props): JSX.Element | null {
+export function ComponerEnPanel({ partida, alCerrar, alGuardar }: Props): JSX.Element | null {
   const contenedor = useRef<HTMLDivElement>(null);
   const atrapar = useAtraparFoco(contenedor);
   const alTeclear = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -50,11 +57,18 @@ export function ComponerEnPanel({ codigo, alCerrar, alGuardar }: Props): JSX.Ele
   };
   return (
     <div ref={contenedor} style={{ display: "contents" }} onKeyDown={alTeclear}>
-      <PanelLateral titulo="Componer una partida" abierto={codigo !== null} alCerrar={alCerrar} ancho="ancho" modo="en-capa">
+      <PanelLateral titulo="Componer una partida" abierto={partida !== null} alCerrar={alCerrar} ancho="ancho" modo="en-capa">
         <p role="note" className="silice-hoja__aviso-catalogo cds--type-body-compact-01">
           {AVISO_DEL_CATALOGO}
         </p>
-        {codigo !== null && <ComponerPartida codigoInicial={codigo} nivelDelTitulo={2} alGuardar={alGuardar} />}
+        {partida !== null && (
+          <ComponerPartida
+            codigoInicial={partida.codigo}
+            descripcionInicial={partida.descripcion}
+            nivelDelTitulo={2}
+            alGuardar={alGuardar}
+          />
+        )}
       </PanelLateral>
     </div>
   );

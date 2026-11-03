@@ -14,8 +14,10 @@ import { AYUDA_CIFRAS, MENSAJE_CIFRA_VACIA, leerCifra } from "../../indicadores/
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
+import { pareceCodigo } from "../componer/codigo";
 import type { PartidaCompuesta } from "../componer/ComponerPartida";
 import { ComponerEnPanel } from "./ComponerEnPanel";
+import type { PartidaPorComponer } from "./ComponerEnPanel";
 import { ContextoDeDialogos } from "./ContextoDeDialogos";
 import { DialogoDeVersion } from "./DialogoDeVersion";
 import { campoDelErrorDePartida, cuerpoDeAgregarPartida, esBorradorAusente, rutaDeAgregarPartida } from "./logica";
@@ -105,8 +107,8 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
   const idTitulo = useId();
   const [texto, setTexto] = useState("");
   const [elegida, setElegida] = useState<Elegida | null>(null);
-  // El código con que se compone una partida nueva en el panel, o null.
-  const [componiendo, setComponiendo] = useState<string | null>(null);
+  // Con qué se compone una partida nueva en el panel (un código, o una descripción y el código por elegir), o null.
+  const [componiendo, setComponiendo] = useState<PartidaPorComponer | null>(null);
   const [cantidad, setCantidad] = useState("");
   const [calculo, setCalculo] = useState("");
   const [nota, setNota] = useState("");
@@ -251,8 +253,11 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
               setErrores((previos) => ({ ...previos, partida: null }));
             }}
             valorPropio={{
-              rotulo: (t) => `Componer una partida nueva con el código «${t}»`,
-              alUsar: setComponiendo,
+              // Pulido F5, Tarea 1: lo escrito solo se toma como código si lo parece («Z-99»); si no («excavación de
+              // zanja»), es la descripción de la partida y el código se elige en el panel.
+              rotulo: (t) =>
+                pareceCodigo(t) ? `Componer una partida nueva con el código «${t}»` : `Componer una partida nueva con la descripción «${t}»`,
+              alUsar: (t) => setComponiendo(pareceCodigo(t) ? { codigo: t, descripcion: "" } : { codigo: "", descripcion: t }),
             }}
             vacio={{ titulo: "¿No la encuentra?", pasos: PASOS_SIN_RESULTADO }}
             alExpirar={alExpirar}
@@ -336,7 +341,7 @@ export function DialogoAgregarPartida({ id, anfitrion, revActual, alAgregada, al
           </Button>
         </div>
       </div>
-      <ComponerEnPanel codigo={componiendo} alCerrar={cerrarComponer} alGuardar={alCompuesta} />
+      <ComponerEnPanel partida={componiendo} alCerrar={cerrarComponer} alGuardar={alCompuesta} />
     </div>,
     anfitrion,
   );

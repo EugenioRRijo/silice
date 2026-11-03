@@ -73,4 +73,32 @@ el ancho mínimo de la tabla más ancha.
 
 Formato: pregunta · lo que se hizo · cómo cambiarlo.
 
-(Se completan al cerrar cada tarea.)
+### Tarea 1
+
+1. **Qué cuenta como código en «Agregar partida».** · Lo escrito con forma de código y con alguna cifra («Z-99»,
+   «OBRA-99», «C-000.000.001»); «zanja», «Excavacion» o «excavación de zanja» son descripciones: la opción dice «Componer
+   una partida nueva con la descripción «…»» y el panel abre con «Descripción» llena y «Código» vacío. · `pareceCodigo`
+   en `paginas/componer/codigo.ts` (p. ej. quitar la exigencia de la cifra).
+2. **La forma del código.** · El `PATRON_CODIGO` del servidor (`api/esquemas_ola2.py`) sin el espacio: el código de una
+   partida con espacios se confunde con una descripción. Solo en el cliente; el servidor no cambia. · `FORMA_DEL_CODIGO`
+   en `codigo.ts`.
+3. **Cuándo se reclama el formato.** · Mientras se escribe el campo es una búsqueda (se puede buscar «excavación»): el
+   error sale al dejar el campo y, mientras el código esté mal formado, «Guardar composición» espera con la nota «Para
+   guardar, corrija el código de la cabecera…». Con el error a la vista Carbon cambia la ayuda por el error, así que el
+   error trae su propio ejemplo y cómo buscar. Uno mal formado no se ofrece «tal cual». · `revisado` en
+   `CampoDelCodigo.tsx`; `codigoInvalido` en `Guardar.tsx`.
+4. **Dónde se busca.** · En las partidas del catálogo (la búsqueda de «Partida», sin filtrar por tipo de obra, para no
+   proponer un código que ya existe en otro) y en las partidas viales de Sílice. Elegir del catálogo llena «Descripción» y
+   «Unidad» solo si están vacías (y carga sus tablas, como al teclear un código que existe). Si una de las dos búsquedas
+   falla, la otra se ofrece igual; un 401 cierra la sesión. · `buscadorDeCodigos` en `CampoDelCodigo.tsx`.
+5. **Pregunta para Eugenio: proponer un código libre nuevo.** · No se propone el siguiente código libre de una serie
+   (haría falta una ruta del servidor que lo calcule); el campo propone los códigos que ya existen y deja escribir uno
+   propio con forma de código. · Una ruta `GET /v1/composicion/codigo-libre` y un grupo más en `buscadorDeCodigos`.
+6. **Un selector de `componer/index.test.tsx`.** · En «un dato mal escrito no borra el último desglose», dos
+   `getByLabelText("Código")` pasan a `getByRole("combobox", { name: "Código" })`: con las sugerencias abiertas, la lista
+   también se llama «Código». No cambia ninguna aserción. En `ComponerPartida.test.tsx` cambió el texto esperado de la
+   ayuda del código (ahora dice también cómo se busca). · —
+7. **Rojo (`671fc402`).** · 20 fallas, todas de aserción: `expected true to be false` (la regla, con un esbozo que todo
+   lo acepta), `Unable to find an accessible element with the role "combobox" and name "Código"`, `Unable to find
+   role="option" and name "Componer una partida nueva con la descripción «excavación de zanja»"` y
+   `toHaveAccessibleDescription` / `toHaveValue` sin el valor esperado. · —

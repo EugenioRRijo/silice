@@ -9,6 +9,8 @@ import { AvisoError } from "../../comun/AvisoError";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { BuscadorReferencia } from "./BuscadorReferencia";
+import { CampoDelCodigo } from "./CampoDelCodigo";
+import { esCodigoValido } from "./codigo";
 import { AvisoSinLista } from "./AvisoSinLista";
 import type { Desde } from "./AvisoSinLista";
 import {
@@ -63,15 +65,12 @@ export interface PartidaCompuesta {
 
 interface Props {
   codigoInicial: string;
-  // Esbozo del rojo (pulido F5, Tarea 1): la descripción con que se pidió componer.
+  // La descripción con que se pidió componer (pulido F5, Tarea 1): en «Agregar partida», lo escrito que no es un código.
   descripcionInicial?: string;
   // El nivel del titulo que la encabeza (el h1 de la pantalla o el h2 del panel): sus bloques van un nivel por debajo.
   nivelDelTitulo: 1 | 2;
   alGuardar: (partida: PartidaCompuesta) => void;
 }
-
-const AYUDA_CODIGO =
-  "Con este código la partida queda en el catálogo de la empresa, por ejemplo «E-411» o uno propio. Si ya existe, se cargan sus tablas.";
 
 // Por que existe (plan F4, Tarea 9): la composicion de una partida sin h1 ni navegacion, para la pantalla «Componer una
 // partida» (que sigue en Ctrl+K hasta F5) y para el panel de «Agregar partida» (`paginas/hoja/ComponerEnPanel.tsx`), que
@@ -82,7 +81,7 @@ const AYUDA_CODIGO =
 // UC-10 (componer) y UC-11 (editar) una partida a mano. El navegador no calcula nada: el desglose, las advertencias
 // y el guardado los hace la API. La cola de la pagina clasica (cantidades de obra, elaborar) vive en Archivos y planos ›
 // «Cargar cómputo» (F4, Tarea 12, baja 19; antes, «Elaborar un presupuesto», RB-1).
-export function ComponerPartida({ codigoInicial, nivelDelTitulo, alGuardar }: Props): JSX.Element {
+export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelDelTitulo, alGuardar }: Props): JSX.Element {
   const nivel = nivelDelTitulo === 1 ? 2 : 3;
   const Titulo = `h${nivel}` as const;
   const { alExpirar } = useAplicacion();
@@ -103,7 +102,11 @@ export function ComponerPartida({ codigoInicial, nivelDelTitulo, alGuardar }: Pr
     [expirar],
   );
 
-  const [cabecera, setCabecera] = useState<Cabecera>(() => ({ ...CABECERA_INICIAL, codigo: codigoInicial.trim() }));
+  const [cabecera, setCabecera] = useState<Cabecera>(() => ({
+    ...CABECERA_INICIAL,
+    codigo: codigoInicial.trim(),
+    descripcion: descripcionInicial.trim(),
+  }));
   const [fecha, setFecha] = useState(hoy);
   const [condiciones, setCondiciones] = useState("");
   const [tablas, setTablas] = useState<Tablas>(tablasVacias);
@@ -347,13 +350,16 @@ export function ComponerPartida({ codigoInicial, nivelDelTitulo, alGuardar }: Pr
           Cabecera de la partida
         </Titulo>
         <div className="silice-componer__rejilla">
-          <CampoTexto
-            id="componer-codigo"
-            size="sm"
-            labelText="Código"
-            helperText={AYUDA_CODIGO}
-            value={cabecera.codigo}
-            onChange={(e) => cambiarCabecera({ codigo: e.target.value })}
+          <CampoDelCodigo
+            texto={cabecera.codigo}
+            alCambiar={(codigo) => cambiarCabecera({ codigo })}
+            alElegirDelCatalogo={(p) =>
+              cambiarCabecera({
+                descripcion: cabecera.descripcion.trim() === "" ? p.descripcion : cabecera.descripcion,
+                unidad: cabecera.unidad.trim() === "" ? p.unidad : cabecera.unidad,
+              })
+            }
+            alExpirar={expirar}
           />
           <CampoTexto
             id="componer-descripcion"
@@ -477,6 +483,7 @@ export function ComponerPartida({ codigoInicial, nivelDelTitulo, alGuardar }: Pr
         error={errorGuardado}
         alGuardar={(j) => void guardarComposicion(j)}
         sinLista={Boolean(carpeta?.aviso)}
+        codigoInvalido={cabecera.codigo.trim() !== "" && !esCodigoValido(cabecera.codigo)}
         refBoton={botonGuardar}
         nivel={nivel}
       />
