@@ -12,7 +12,7 @@ import { usePendientes } from "../../marco/usePendientes";
 import { useAplicacion } from "../../shell/contexto";
 import { paginaPorId, usable } from "../../shell/rutas";
 import "./Bandeja.scss";
-import { claveDeObra, contarUrgencias, destinoDelPendiente, indiceTrasTecla, paginaQueAbre, textoDeLaAccion } from "./logica";
+import { claveDeObra, contarUrgencias, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
 import { TEXTOS } from "./textos";
 
 interface Props {
@@ -172,7 +172,7 @@ function Detalle({
       <div>
         {puede ? (
           <Button kind="primary" size="md" onClick={() => alAbrir(destinoDelPendiente(p))}>
-            {textoDeLaAccion(p.accion)}
+            {p.accion.texto}
           </Button>
         ) : (
           <p className="cds--type-body-compact-01">{TEXTOS.sinPermiso}</p>

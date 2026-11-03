@@ -136,3 +136,27 @@ Formato: pregunta · lo que se hizo · cómo cambiarlo.
    «Aprobar una versión» con «Muy grande» queda para la próxima pasada de navegador. · —
 3. **Rojo (`0613d28b`).** · `expected [ '.silice-aprobar', '.silice-aprobar__envio, .silice-aprobar__panel',
    '.silice-aprobar__lista', '.silice-aprobar__rastro' ] to deeply equal []`. · —
+
+### Tarea 4
+
+1. **Dónde dice «Agregue la primera partida».** · Es la acción (`siguiente`) de una obra en elaboración sin ninguna versión
+   guardada: el Resumen dice «Siguiente paso: Agregue la primera partida» y su botón lleva al Presupuesto, donde está
+   «Agregar la primera partida». No se puso en `que_pasa`, que es «Te falta:» con fondo de precaución y describe un estado,
+   no un paso. Una obra con versión guardada sigue con «Abrir el presupuesto». · `_EN_BLANCO` en `aplicacion/mesa.py`
+   (o `que_pasa` con la acción «Abrir el presupuesto»).
+2. **El nombre de la constante.** · `ABRIR_LA_HOJA` pasa a `ABRIR_EL_PRESUPUESTO` (lo importa también
+   `aplicacion/hoja_partidas.py`); se suma `AGREGAR_LA_PRIMERA_PARTIDA`. · —
+3. **La corrección del cliente.** · Se fueron `TEXTOS_AL_DIA` y `textoDeLaAccion` (`paginas/pendientes/logica.ts`): el
+   Resumen y la bandeja pintan el texto del servidor tal cual. Las pruebas de lo que ve la persona (`Resumen.test.tsx`,
+   `Bandeja.test.tsx`, `pasoDeLaObra`) siguen pidiendo el botón «Abrir el presupuesto», ahora con el texto nuevo del
+   servidor en su respuesta simulada; la prueba de la función quitada se fue con ella y entra una de la obra en blanco.
+   Los escenarios inyectados de `test_pendientes_todas.py` y `test_api_obras_pendientes_todas.py` (datos de prueba, no
+   texto del servidor) también dicen «Abrir el presupuesto», y `FranjaDelPaso.test.tsx` usa el mismo texto. · —
+4. **`docs/api.json`.** · No cambia: el texto de la acción no está en el esquema. Regenerado dos veces con
+   `scripts/exportar_openapi.py`: el mismo hash que el del repositorio (`13740494…736c8`). · —
+5. **Visto y no tocado.** · `paginas/vial/Tramos.tsx` tiene un enlace «Abrir la Hoja de la obra» (el módulo vial, fuera
+   de la mesa y de este punto). · Cambiar el texto y su prueba en `Tramos.test.tsx`.
+6. **Rojo (`70b5241f`).** · Seis fallas de aserción: `texto: 'Abrir la Hoja' != 'Agregue la primera partida'` (la obra
+   en blanco) y `Siguiente(texto='Abrir la Hoja', …) != Siguiente(texto='Abrir el presupuesto', …)` en `test_mesa.py`,
+   `test_api_hoja_partidas.py` y `test_api_obras_resumen.py`. Para que el rojo fuera de aserción y no un
+   `AttributeError`, el commit del rojo trae el esbozo `ABRIR_EL_PRESUPUESTO = ABRIR_LA_HOJA`. · —
