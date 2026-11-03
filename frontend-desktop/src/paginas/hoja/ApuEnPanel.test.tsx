@@ -261,6 +261,48 @@ describe("Presupuesto: el APU de una partida en panel lateral (Tarea 7)", () => 
     expect(escrituras(/./)).toEqual([]);
   });
 
+  // Menores 1 y 7 de la Tarea 7 (cierre de F4).
+  const conServidor = (cambio: (camino: string, metodo: string) => Response | null) => {
+    const previa = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (ruta, init) => {
+      const camino = decodeURIComponent(new URL(String(ruta), "http://silice.local").pathname);
+      return cambio(camino, init?.method ?? "GET") ?? previa(ruta, init);
+    });
+  };
+
+  test("si el servidor devuelve el APU de otra partida (E-02 al pedir E-01), el panel lo dice y no edita la otra", async () => {
+    conServidor((camino) => (camino.endsWith("/vistas/apu") ? json(apu("E-02")) : null));
+    const panel = await abrirPanel();
+    expect(await within(panel).findByText("E-01 no tiene análisis de precio en este presupuesto.")).toBeInTheDocument();
+    expect(within(panel).queryAllByRole("textbox")).toEqual([]);
+    expect(within(panel).queryByText("Relleno compactado con pisón")).toBeNull();
+    expect(lecturasDeApu().map((u) => u.searchParams.get("partida"))).toEqual(["E-01"]);
+  });
+
+  test("con un borrador de solo lectura, quien edita ve el APU en el panel sin nada que escriba", async () => {
+    conServidor((camino, metodo) =>
+      camino === "/v1/hoja/borradores" && metodo === "POST" ? json({ ...BORRADOR, base: { ...BORRADOR.base, solo_lectura: true } }, 201) : null,
+    );
+    const panel = await abrirPanel();
+    expect(await within(panel).findByText("Cierre de partida")).toBeInTheDocument();
+    expect(within(panel).queryAllByRole("textbox")).toEqual([]);
+    expect(within(panel).queryByRole("button", { name: "Agregar línea" })).toBeNull();
+    expect(within(panel).queryByRole("button", { name: /^Quitar|Cambiar/ })).toBeNull();
+    expect(escrituras(/./)).toEqual([]);
+  });
+
+  test("tras editar en el panel y volver a leer la tabla, Esc devuelve el foco al botón de la fila", async () => {
+    const panel = await abrirPanel();
+    fireEvent.change(await within(panel).findByRole("textbox", { name: "Cantidad, Materiales fila 1" }), { target: { value: "2,5" } });
+    await waitFor(() =>
+      expect(screen.getByText("Total del presupuesto").closest("p")).toHaveTextContent("Total del presupuesto 2.800,50 USD"),
+    );
+    within(panel).getByRole("heading", { level: 2 }).focus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("complementary", { name: /^APU de E-01/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Abrir el APU de E-01" })).toHaveFocus();
+  });
+
   test("el mismo diálogo de líneas sirve en el panel: «Cambiar» manda el insumo de esa partida y el foco vuelve a su botón", async () => {
     const panel = await abrirPanel();
     const nombre = "Cambiar el insumo de Llave de bola PVC 1/2, Materiales fila 1";

@@ -36,6 +36,12 @@ import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 import { usePuedeEditarLaHoja } from "./puedeEditar";
 
+// La pestaña «Partidas» del Presupuesto. Pasa de 250 líneas (≈470) porque junta tres capas que comparten el motor de
+// edición y el foco: la tabla editable de cantidades (`EditorDePresupuesto`, con `useEdicionDeSeccion`), el contenido con
+// los diálogos de agregar y quitar partida (`ContenidoPresupuesto`, que devuelve el foco a «Agregar partida» o a la fila) y
+// el panel lateral del APU (`PestanaPresupuesto`, Tarea 7). Partirla pasaría el motor, la espera y el foco por props entre
+// tres archivos sin quitar líneas (menores 3 de la Tarea 7 y 5 de la Tarea 5, cierre de F4).
+
 interface Props {
   id: string;
   // El `rev` del borrador según la página.
@@ -73,6 +79,8 @@ interface PropsEditor extends PropsContenido {
 }
 
 const PENDIENTE = "Pendiente";
+// Sin partidas no se pinta el IVA ni su ayuda (Tarea 5b): una sola regla para la sección y para «¿Qué es esto?».
+const llevaIva = (vista: VistaPresupuesto) => vista.filas.length > 0;
 const ID_AGREGAR = "hoja-agregar-partida-boton";
 
 const idDeCantidad = (n: number | string) => `hoja-cantidades-${n}`;
@@ -322,7 +330,7 @@ function EditorDePresupuesto({
       <p className="silice-hoja__total cds--type-heading-03">
         Total del presupuesto <Cifra monto={vista.total} unidad={vista.moneda} />
       </p>
-      {vista.filas.length > 0 && <IvaDelPresupuesto impuestos={vista.impuestos} moneda={vista.moneda} />}
+      {llevaIva(vista) && <IvaDelPresupuesto impuestos={vista.impuestos} moneda={vista.moneda} />}
       {porQuitar !== null && (
         <ConfirmarQuitar
           partida={porQuitar.partida}
@@ -382,11 +390,9 @@ function ContenidoPresupuesto(props: PropsContenido) {
     alRelectura();
   }, [alRecargarBorrador, alRelectura]);
 
-  // Sin partidas no se pinta el IVA ni su ayuda (Tarea 5b).
-  const conIva = vista.filas.length > 0;
   return (
     <div className="silice-hoja__pestana">
-      <AyudaDePestana id="partidas" puedeEditar={puedeEditar} extra={conIva ? parrafosDeAyudaDelIva(vista.impuestos) : []} />
+      <AyudaDePestana id="partidas" puedeEditar={puedeEditar} extra={llevaIva(vista) ? parrafosDeAyudaDelIva(vista.impuestos) : []} />
       {puedeEditar && (
         <>
       <div className="silice-hoja__acciones">

@@ -11,8 +11,8 @@ interface Props {
   alCancelar: () => void;
 }
 
-// Por qué existe (Tarea 8 del plan F4): «Quitar» de una línea del APU. Sale de `AgregarLineaApu.tsx` cuando éste pasó a ser
-// `LineaDelApu.tsx` (agregar y cambiar insumo), para que ese archivo no mezcle una confirmación con un formulario; lo usa
+// Por qué existe (Tarea 8 del plan F4): «Quitar» de una línea del APU. Salió del antiguo formulario de agregar línea cuando éste pasó
+// a ser `LineaDelApu.tsx` (agregar y cambiar insumo), para que ese archivo no mezcle una confirmación con un formulario; lo usa
 // `EditorDeApu`, que sirve a la pestaña APU y al panel lateral. Es la confirmación de siempre de la Hoja
 // (`DialogoDeVersion`), pintada fuera de la página, que queda `inert` mientras está abierta.
 export function ConfirmarQuitarLinea({ partida, descripcion, enFrase, alQuitar, alCancelar }: Props) {
