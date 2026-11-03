@@ -60,7 +60,7 @@ export function SubirArchivo({ id, rev, anfitrion, alCerrar, alAusente, alAcepta
         <h2 id={idTitulo} className="cds--type-heading-compact-02">
           {TEXTOS.subir}
         </h2>
-        <SubidaArchivo etiqueta={etiquetaDeSubida(conComputo)} extensiones={extensionesDeSubida(conComputo)} alElegir={setArchivo} deshabilitada={ocupado} />
+        <SubidaArchivo etiqueta={etiquetaDeSubida({ plano: true, computo: conComputo })} extensiones={extensionesDeSubida({ plano: true, computo: conComputo })} alElegir={setArchivo} deshabilitada={ocupado} />
         {archivo !== null && <p className="cds--type-body-compact-01">Archivo elegido: {archivo.name}</p>}
         {flujo === "computo" && archivo !== null && cuerpoDelComputo ? (
           cuerpoDelComputo(archivo)

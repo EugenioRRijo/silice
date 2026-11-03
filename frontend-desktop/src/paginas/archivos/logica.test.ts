@@ -84,14 +84,24 @@ describe("flujoDelArchivo", () => {
 });
 
 describe("lo que acepta la subida", () => {
-  test("sin el flujo del cómputo (Tarea 12), solo planos", () => {
-    expect(extensionesDeSubida(false)).toEqual([".dxf", ".ifc"]);
-    expect(etiquetaDeSubida(false)).toBe("Suelte aquí el plano .dxf o .ifc, o haga clic para elegirlo");
+  test("sin el flujo del cómputo, solo planos", () => {
+    expect(extensionesDeSubida({ plano: true, computo: false })).toEqual([".dxf", ".ifc"]);
+    expect(etiquetaDeSubida({ plano: true, computo: false })).toBe("Suelte aquí el plano .dxf o .ifc, o haga clic para elegirlo");
   });
 
   test("con el cómputo, también .csv", () => {
-    expect(extensionesDeSubida(true)).toEqual([".dxf", ".ifc", ".csv"]);
-    expect(etiquetaDeSubida(true)).toBe("Suelte aquí el plano .dxf o .ifc, o el cómputo .csv, o haga clic para elegirlo");
+    expect(extensionesDeSubida({ plano: true, computo: true })).toEqual([".dxf", ".ifc", ".csv"]);
+    expect(etiquetaDeSubida({ plano: true, computo: true })).toBe(
+      "Suelte aquí el plano .dxf o .ifc, o el cómputo .csv, o haga clic para elegirlo",
+    );
+  });
+
+  // Tarea 12 (decisión del orquestador): con «edificación» apagada no hay planos; el cómputo sí se carga y el texto no
+  // menciona planos.
+  test("sin planos (edificación apagada), solo el cómputo, y la etiqueta no dice «plano»", () => {
+    expect(extensionesDeSubida({ plano: false, computo: true })).toEqual([".csv"]);
+    expect(etiquetaDeSubida({ plano: false, computo: true })).toBe("Suelte aquí el cómputo .csv, o haga clic para elegirlo");
+    expect(etiquetaDeSubida({ plano: false, computo: true })).not.toMatch(/plano/i);
   });
 });
 

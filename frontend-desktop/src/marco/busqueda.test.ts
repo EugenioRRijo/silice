@@ -70,14 +70,14 @@ describe("resultadosDe", () => {
   });
 
   it("ordena obras, secciones de obras, entradas de Empresa y pantallas sin sitio", () => {
-    // Con «edificación» apagada (sin «Archivos y planos», F4 Tarea 11) caben en las ocho la obra, sus cinco secciones y dos
-    // de Empresa, como antes de esa sección.
-    const sinEdificacion = ofertaDe(
+    // Con «vial» apagado (sin «Tramos») caben en las ocho la obra, sus cinco secciones y dos de Empresa. Antes se apagaba
+    // «edificación», pero desde la Tarea 12 de F4 «Archivos y planos» no es de ningún módulo y no se quita con él.
+    const sinVial = ofertaDe(
       PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion])),
       false,
-      ["edificacion"],
+      ["vial"],
     );
-    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], sinEdificacion).map((r) => r.texto);
+    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], sinVial).map((r) => r.texto);
     expect(textos[0]).toBe("Precio alto");
     expect(textos[1]).toBe("Precio alto › Presupuesto");
     const i = (t: string) => textos.indexOf(t);

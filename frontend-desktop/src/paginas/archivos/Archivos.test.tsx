@@ -354,12 +354,17 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Archivos y planos" })).toBeInTheDocument();
   });
 
-  test("con «edificación» apagada, «Archivos y planos» no se ofrece en el árbol de la obra; encendida, sí", async () => {
+  // Tarea 12 (decisión del orquestador): edificación apaga los planos y el espacio, no los cómputos. La sección se sigue
+  // ofreciendo; lo que cambia dentro lo prueba `CargarComputo.test.tsx`.
+  test("con «edificación» apagada, «Archivos y planos» sigue en el árbol de la obra y se abre", async () => {
     apagados = ["edificacion"];
-    montar("/obra/empresa/7/presupuesto");
+    const u = montar("/obra/empresa/7/presupuesto");
     const lista = await arbol();
     await within(lista).findByRole("treeitem", { name: "Presupuesto" });
-    await waitFor(() => expect(within(lista).queryByRole("treeitem", { name: "Archivos y planos" })).toBeNull());
+    await pausa();
+    await u.click(await within(lista).findByRole("treeitem", { name: "Archivos y planos" }));
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/archivos"));
+    expect(await screen.findByRole("heading", { level: 1, name: "Archivos y planos" })).toBeInTheDocument();
   });
 
   test("con «edificación» encendida, «Archivos y planos» está en el árbol de la obra", async () => {

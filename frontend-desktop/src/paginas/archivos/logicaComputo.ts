@@ -252,3 +252,8 @@ export function textoPendientesNoSeLlevan(pendientes: number): string | null {
     ? "El ítem pendiente no se lleva: no tiene partida en el catálogo."
     : `Los ${pendientes} ítems pendientes no se llevan: no tienen partida en el catálogo.`;
 }
+
+// Esbozo del rojo de la Tarea 12 de F4: todavia arma el cuerpo como Elaborar.
+export function cuerpoDeValoracion(p: { proyecto: string; moneda: string; fecha: string; items: ItemComputo[] }): CuerpoCalculo {
+  return { codigo: CODIGO_POR_DEFECTO, fecha: hoy(), moneda: MONEDA_POR_DEFECTO, items: p.items };
+}

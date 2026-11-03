@@ -50,14 +50,13 @@ describe("ofertaDe con módulos apagados (plan vial, Tarea 19)", () => {
 });
 
 describe("ofertaDe con edificación apagada (plan vial, Tarea 19, T19-5)", () => {
-  // «Espacio y metrajes» es una pestaña de la hoja, no una pantalla: la oculta la Hoja. Desde la Tarea 11 de F4, «Archivos y
-  // planos» (el plano) es una sección del módulo «edificación»: no se ofrece, y lo demás sigue igual.
-  it("no ofrece «Archivos y planos» y deja el resto como está", () => {
+  // «Espacio y metrajes» es una pestaña de la hoja, no una pantalla: la oculta la Hoja. «Archivos y planos» se sigue
+  // ofreciendo (F4, Tarea 12: edificación apaga los planos y el espacio, no los cómputos); dentro, solo se carga el cómputo.
+  it("sigue ofreciendo «Archivos y planos» y deja todo como está", () => {
     const apagada = ofertaDe(TODAS, false, ["edificacion"]);
     const siempre = ofertaDe(TODAS, false);
-    expect(apagada.secciones.map((s) => s.id)).not.toContain("archivos");
-    expect(siempre.secciones.map((s) => s.id)).toContain("archivos");
-    expect(apagada.secciones.map((s) => s.id)).toEqual(siempre.secciones.map((s) => s.id).filter((id) => id !== "archivos"));
+    expect(apagada.secciones.map((s) => s.id)).toContain("archivos");
+    expect(apagada.secciones.map((s) => s.id)).toEqual(siempre.secciones.map((s) => s.id));
     expect(apagada.entradas).toEqual(siempre.entradas);
     expect(apagada.sueltas).toEqual(siempre.sueltas);
   });

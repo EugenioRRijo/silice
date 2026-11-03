@@ -3,10 +3,12 @@ import { ErrorDeApi } from "../../api/cliente";
 import {
   aceptarPropuesta,
   calcular,
+  cuerpoDeValoracion,
   filasIguales,
   lineaPendiente,
   lineaPropuesta,
   mapeoCodigos,
+  partidasParaLlevar,
   periodoAlServidor,
   periodoAVista,
   textoDispersion,
@@ -147,5 +149,35 @@ describe("calcular", () => {
     fetchFalso.mockRejectedValue(new TypeError("red"));
     const error = await calcular(CUERPO, "tok").catch((e: unknown) => e);
     expect((error as ErrorDeApi).estado).toBe(0);
+  });
+});
+
+// F4, Tarea 12 (bajas 13 y 14): «Cargar cómputo» no pide código, moneda ni fecha. Valora con el código de la obra, la
+// moneda de la carpeta y la fecha de su lista para armar (`GET /v1/carpeta`). Oráculos escritos a mano.
+describe("cuerpoDeValoracion", () => {
+  const ITEMS = [ITEM("fila-1", "FIC-C1"), ITEM("fila-2", "FIC-C2")];
+
+  test("usa el código de la obra, la moneda de la carpeta y la fecha de su lista, nunca «P-001» ni «USD»", () => {
+    const cuerpo = cuerpoDeValoracion({ proyecto: "7", moneda: "Bs", fecha: "2026-10-26", items: ITEMS });
+    expect(cuerpo).toEqual({ codigo: "7", fecha: "2026-10-26", moneda: "Bs", items: ITEMS, proyecto: "7" });
+    expect(JSON.stringify(cuerpo)).not.toContain("P-001");
+    expect(JSON.stringify(cuerpo)).not.toContain("USD");
+  });
+
+  test("los ítems viajan tal cual salieron del cómputo, sin copiarlos ni cambiarlos", () => {
+    const cuerpo = cuerpoDeValoracion({ proyecto: "OF-001", moneda: "USD", fecha: "2026-09-30", items: ITEMS });
+    expect(cuerpo.items).toBe(ITEMS);
+    expect(cuerpo).toMatchObject({ codigo: "OF-001", proyecto: "OF-001", moneda: "USD", fecha: "2026-09-30" });
+  });
+});
+
+describe("partidasParaLlevar", () => {
+  test("lleva cada ítem con su código y su cantidad de máquina, sin los pendientes", () => {
+    const items = [ITEM("fila-1", "FIC-C1"), { ...ITEM("fila-2", "FIC-X"), cantidad: "1.125" }, ITEM("fila-3", "FIC-C3")];
+    expect(partidasParaLlevar(items, [{ origen_id: "fila-2", codigo_partida: "FIC-X" }])).toEqual([
+      { codigo: "FIC-C1", cantidad: "12.5000", calculo: "" },
+      { codigo: "FIC-C3", cantidad: "12.5000", calculo: "" },
+    ]);
+    expect(partidasParaLlevar(items, [])).toHaveLength(3);
   });
 });

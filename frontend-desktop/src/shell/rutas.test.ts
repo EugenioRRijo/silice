@@ -12,7 +12,6 @@ const REGISTRO: [string, string, string | null][] = [
   ["obras", "Trabajo", null],
   ["hoja", "Trabajo", "leer_proyecto"], // F4 2b: quien revisa la ve en solo lectura
   ["archivos", "Trabajo", "leer_proyecto"], // F4 Tarea 11: quien revisa ve el registro; subir exige editar_hoja
-  ["elaborar", "Trabajo", "editar_hoja"],
   ["tablero", "Trabajo", "leer_proyecto"],
   ["entregar", "Trabajo", "entregar_paquete"],
   ["componer", "Trabajo", "editar_hoja"],
@@ -49,12 +48,18 @@ const REGISTRO: [string, string, string | null][] = [
 const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
 
 describe("registro de paginas", () => {
-  test("tiene las 33 pantallas en su orden, con su seccion y su accion", () => {
+  test("tiene las 32 pantallas en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(REGISTRO);
   });
 
   test("ya no existe la pantalla «inicio»: la direccion /inicio solo redirige", () => {
     expect(paginaPorId("inicio")).toBeUndefined();
+  });
+
+  // F4, Tarea 12 (baja 19): «Elaborar un presupuesto» es ahora «Cargar cómputo», dentro de Archivos y planos.
+  test("ya no existe la pantalla «elaborar»", () => {
+    expect(paginaPorId("elaborar")).toBeUndefined();
+    expect(PAGINAS.some((p) => p.titulo === "Elaborar un presupuesto")).toBe(false);
   });
 
   test("los ids son unicos y las secciones de permisos son cuatro", () => {
@@ -98,13 +103,13 @@ describe("quien puede usar que", () => {
     expect(PAGINAS.filter((p) => usable(p, [], false)).map((p) => p.id)).toEqual(["auditoria", "obras", "acerca"]);
   });
 
-  test("con todas las acciones se usan las 33", () => {
-    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(33);
+  test("con todas las acciones se usan las 32", () => {
+    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(32);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (30)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (29)", () => {
     const vistas = PAGINAS.filter((p) => usable(p, todas, true));
-    expect(vistas).toHaveLength(30);
+    expect(vistas).toHaveLength(29);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 
@@ -149,8 +154,6 @@ describe("módulos apagados (plan vial, Tarea 19)", () => {
     ["costo_tonelada", "produccion"],
     ["tramos", "vial"],
     ["riesgo", "riesgo"],
-    // F4, Tarea 11: Archivos y planos es el plano, de edificación.
-    ["archivos", "edificacion"],
   ];
   const TODAS_LAS_ACCIONES = PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion]));
 
@@ -169,5 +172,12 @@ describe("módulos apagados (plan vial, Tarea 19)", () => {
   test("apagar un módulo no toca las pantallas de los otros ni las de ninguno", () => {
     expect(usable(paginaPorId("tramos")!, TODAS_LAS_ACCIONES, false, ["produccion", "riesgo"])).toBe(true);
     expect(usable(paginaPorId("hoja")!, TODAS_LAS_ACCIONES, false, ["produccion", "vial", "riesgo", "edificacion"])).toBe(true);
+  });
+
+  // F4, Tarea 12 (decisión del orquestador, regla de la T19 del plan vial): «edificación» apaga los planos y el espacio,
+  // no los cómputos. Archivos y planos no es de ningún módulo: con edificación apagada se sigue usando para el cómputo.
+  test("«Archivos y planos» no es de ningún módulo y se usa con «edificación» apagada", () => {
+    expect(paginaPorId("archivos")?.modulo).toBeUndefined();
+    expect(usable(paginaPorId("archivos")!, TODAS_LAS_ACCIONES, false, ["edificacion"])).toBe(true);
   });
 });

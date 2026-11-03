@@ -75,11 +75,12 @@ export function flujoDelArchivo(nombre: string): FlujoDeArchivo | null {
 }
 
 // Mientras no hay flujo del cómputo (llega con la Tarea 12) la subida no acepta .csv: no hay pantallas «pronto».
-export function extensionesDeSubida(conComputo: boolean): string[] {
+// Esbozo del rojo de la Tarea 12: todavía no mira `plano`.
+export function extensionesDeSubida({ computo: conComputo }: { plano: boolean; computo: boolean }): string[] {
   return conComputo ? [...EXTENSIONES_DE_PLANO, ".csv"] : [...EXTENSIONES_DE_PLANO];
 }
 
-export function etiquetaDeSubida(conComputo: boolean): string {
+export function etiquetaDeSubida({ computo: conComputo }: { plano: boolean; computo: boolean }): string {
   return conComputo
     ? "Suelte aquí el plano .dxf o .ifc, o el cómputo .csv, o haga clic para elegirlo"
     : "Suelte aquí el plano .dxf o .ifc, o haga clic para elegirlo";
