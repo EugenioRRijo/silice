@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -60,6 +60,7 @@ function precios(): PreciosRespuesta {
 const OBRA = { carpeta: null, obraId: 3, ficha: { estado: "sin_dato" }, recargarFicha: vi.fn() } as ObraAbierta;
 
 const fetchFalso = vi.fn<typeof fetch>();
+const alExpirar = vi.fn();
 let versiones: VersionesRespuesta;
 let alOperacion: (ruta: string) => Response;
 // Los borradores que el servidor conserva de esta ficha (`GET /v1/hoja/borradores`): los cambios sin guardar del Presupuesto.
@@ -71,7 +72,7 @@ const posts = (termina: string) =>
     .map(([, i]) => JSON.parse(String(i?.body)) as Record<string, unknown>);
 
 function montar(s: SesionRespuesta = EDITA, proyecto: string | null = "OF-001") {
-  const valor: Aplicacion = { sesion: s, proyecto, caso: { nombre: "obra", ruta_relativa: "data/obra.db" }, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
+  const valor: Aplicacion = { sesion: s, proyecto, caso: { nombre: "obra", ruta_relativa: "data/obra.db" }, recargarProyectos: vi.fn(), alExpirar };
   render(
     <ContextoAplicacion.Provider value={valor}>
       <ContextoDeLaObra.Provider value={OBRA}>
@@ -95,6 +96,7 @@ describe("Mercado › Cotizaciones de la obra", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
+    alExpirar.mockReset();
     fijarCsrf("tok");
     versiones = VERSIONES;
     borradores = [];
@@ -272,6 +274,88 @@ describe("Mercado › Cotizaciones de la obra", () => {
     fireEvent.click(within(dialogo).getByRole("button", { name: "Cotizar" }));
     expect(await within(dialogo).findByText(detalle)).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBe(dialogo);
+  });
+
+  // Ronda 3 de la Tarea 13: las pruebas de errores, sesión y petición en vuelo que tenía Precios (Hoja › Versiones) pasan aquí.
+  async function llenarCotizacion(dialogo: HTMLElement, extra: Record<string, string> = {}) {
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Precio cotizado" }), { target: { value: "10" } });
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
+    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Número de la cotización" }), { target: { value: "COT-18" } });
+    for (const [nombre, valor] of Object.entries(extra)) fireEvent.change(within(dialogo).getByRole("textbox", { name: new RegExp(nombre) }), { target: { value: valor } });
+  }
+
+  test.each([
+    [404, "El proyecto «OF-001» no existe en este caso."],
+    [503, "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro programa."],
+  ])("un %i muestra el texto del servidor tal cual y no cierra el diálogo", async (estado, detalle) => {
+    alOperacion = () => json({ detalle }, estado);
+    montar();
+    await abrirPestana();
+    const dialogo = await abrirDialogo("Registrar una cotización…");
+    await llenarCotizacion(dialogo);
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cotizar" }));
+    expect(await within(dialogo).findByText(detalle)).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBe(dialogo);
+  });
+
+  test("un 401 al cotizar avisa al marco para que pida la sesión de nuevo", async () => {
+    alOperacion = () => json({ detalle: "Sesión vencida." }, 401);
+    montar();
+    await abrirPestana();
+    const dialogo = await abrirDialogo("Registrar una cotización…");
+    await llenarCotizacion(dialogo);
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cotizar" }));
+    await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+  });
+
+  test("una sola petición en vuelo: todo queda deshabilitado, Esc no cierra y el error no se pierde", async () => {
+    let contestar: (r: Response) => void = () => undefined;
+    alOperacion = () =>
+      new Promise<Response>((resolver) => {
+        contestar = resolver;
+      });
+    montar();
+    await abrirPestana();
+    const dialogo = await abrirDialogo("Registrar una cotización…");
+    await llenarCotizacion(dialogo);
+    const cotizar = within(dialogo).getByRole("button", { name: "Cotizar" });
+    fireEvent.click(cotizar);
+    await waitFor(() => expect(posts("/cotizar")).toHaveLength(1));
+    expect(cotizar).toBeDisabled();
+    expect(within(dialogo).getByRole("button", { name: "Cancelar" })).toBeDisabled();
+    fireEvent.click(cotizar);
+    await userEvent.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(within(dialogo).getByText("Guardando la versión…").closest("[aria-live='polite']")).not.toBeNull();
+    await act(async () => contestar(json({ detalle: "precio: '' no es un numero decimal valido" }, 422)));
+    expect(await within(screen.getByRole("dialog")).findByText("precio: '' no es un numero decimal valido")).toBeInTheDocument();
+    expect(posts("/cotizar")).toHaveLength(1);
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  test("con evidencia, la manda tal cual en el cuerpo", async () => {
+    montar();
+    await abrirPestana();
+    const dialogo = await abrirDialogo("Registrar una cotización…");
+    await llenarCotizacion(dialogo, { Evidencia: "correo del 18" });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Cotizar" }));
+    await waitFor(() => expect(posts("/cotizar")).toHaveLength(1));
+    expect(posts("/cotizar")[0]!["evidencia"]).toBe("correo del 18");
+  });
+
+  test("Tab no sale del diálogo y Mayús+Tab hace lo inverso", async () => {
+    montar();
+    await abrirPestana();
+    const dialogo = await abrirDialogo("Registrar una cotización…");
+    await llenarCotizacion(dialogo);
+    const u = userEvent.setup({ delay: null });
+    const cotizar = within(dialogo).getByRole("button", { name: "Cotizar" });
+    cotizar.focus();
+    await u.tab();
+    expect(within(dialogo).getByRole("combobox", { name: "Insumo" })).toHaveFocus();
+    await u.tab({ shift: true });
+    expect(cotizar).toHaveFocus();
   });
 
   test("los archivos de la tarea no calculan (sin Number, parseFloat, toFixed ni + unario)", () => {
