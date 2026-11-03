@@ -442,6 +442,30 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     expect(llamadas("POST", "/v1/hoja/borradores")).toHaveLength(1);
   });
 
+  // Menor 1 de la Tarea 12: `POST /v1/hoja/llevar` lleva al borrador vivo MÁS RECIENTE de la ficha y la obra. Si es otro
+  // (abierto en otra ventana), lo llevado no se ve en este Presupuesto: se dice.
+  test("si la API lo llevó a otro borrador de la obra (otra ventana), lo dice junto al aviso de lo llevado", async () => {
+    llevar = () => json({ borrador_id: "b-otra-ventana" });
+    const u = montar();
+    const dialogo = await elegirElComputo(u);
+    await extraerTelecom(u, dialogo);
+    await u.click(botonLlevar(dialogo));
+    const aviso = await within(dialogo).findByRole("status");
+    expect(aviso).toHaveTextContent("Se llevaron 18 partidas al presupuesto.");
+    expect(aviso).toHaveTextContent(
+      "Ojo: fueron a otro borrador de esta obra, el más reciente (quizá abierto en otra ventana), no al que tiene abierto aquí, así que no se ven en este Presupuesto.",
+    );
+  });
+
+  test("si la API lo llevó al borrador abierto, no hay aviso de otro borrador", async () => {
+    const u = montar();
+    const dialogo = await elegirElComputo(u);
+    await extraerTelecom(u, dialogo);
+    await u.click(botonLlevar(dialogo));
+    expect(await within(dialogo).findByText("Se llevaron 18 partidas al presupuesto.")).toBeInTheDocument();
+    expect(within(dialogo).queryByText(/otro borrador de esta obra/)).toBeNull();
+  });
+
   test("si la API no lo lleva, dice su detalle, no refresca nada y deja volver a intentarlo", async () => {
     llevar = () => json({ detalle: "No hay tasa del BCV de los últimos 7 días: cárguela en Índices y vuelva a intentar." }, 409);
     const u = montar();
