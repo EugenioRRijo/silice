@@ -125,3 +125,14 @@ Formato: pregunta · lo que se hizo · cómo cambiarlo.
 5. **Rojo (`d9f3f862`).** · Tres fallas de aserción: `expected <div role="dialog" …> to be null` (el segundo Esc borraba
    el texto de «Partida» y el diálogo seguía) y dos `expected null not to be null` (el primer Esc en un campo con cambios
    cerraba el panel). Pasaba ya «en un campo sin cambios, un solo Esc cierra el panel», que fija lo que no cambia. · —
+
+### Tarea 3
+
+1. **Qué rejillas.** · Las cinco de la página, no solo `section.silice-aprobar__envio` (la sospecha del cierre de F4): la
+   de la página es la que toma el ancho de la tabla de partidas, y las de dentro lo heredarían. La prueba recorre toda regla
+   con `display: grid` del CSS compilado, así que una rejilla nueva sin columna la hace caer. La tabla ya se desplazaba en
+   su caja (`.silice-tabla`, `overflow-x: auto`). · Quitar `grid-template-columns` de `aprobar.scss`.
+2. **Sin medida de navegador.** · El arreglo es el de H4, que la re-medida de F4 confirmó en Mercado; la medida de
+   «Aprobar una versión» con «Muy grande» queda para la próxima pasada de navegador. · —
+3. **Rojo (`0613d28b`).** · `expected [ '.silice-aprobar', '.silice-aprobar__envio, .silice-aprobar__panel',
+   '.silice-aprobar__lista', '.silice-aprobar__rastro' ] to deeply equal []`. · —

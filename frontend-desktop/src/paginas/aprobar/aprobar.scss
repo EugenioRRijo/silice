@@ -1,7 +1,12 @@
 // Aprobar una versión. Sin tarjetas con sombra ni animaciones (DESIGN.md): secciones en columna.
+//
+// Cada rejilla es una sola columna que cede (pulido F5, H10 de la pasada del cierre de F4, como H4 en Mercado): sin ella la
+// rejilla tomaba el ancho de la tabla de partidas y, con letra «Muy grande», la página medía 1576 px a 1056 y a 1366. Así
+// la tabla se desplaza en su propia caja y la página nunca.
 
 .silice-aprobar {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
   padding: 1.5rem 1rem 2rem;
   align-content: start;
@@ -10,6 +15,7 @@
 .silice-aprobar__envio,
 .silice-aprobar__panel {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
   max-inline-size: 65rem;
 }
@@ -37,6 +43,7 @@
 
 .silice-aprobar__lista {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
   margin: 0;
   padding: 0;
@@ -63,6 +70,7 @@
 // línea; el color solo acompaña.
 .silice-aprobar__rastro {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
   max-inline-size: 65rem;
   min-inline-size: 0;
