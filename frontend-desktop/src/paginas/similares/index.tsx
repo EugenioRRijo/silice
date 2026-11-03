@@ -24,8 +24,8 @@ import {
   rendimientoEnTexto,
   resultadosDe,
   tituloDePropuesta,
-} from "./logica";
-import type { Composicion, Propuesta, SimilaresRespuesta } from "./logica";
+} from "../hoja/logicaParecidas";
+import type { Composicion, Propuesta, SimilaresRespuesta } from "../hoja/logicaParecidas";
 import "./similares.scss";
 import { CampoTexto } from "../../comun/CampoTexto";
 

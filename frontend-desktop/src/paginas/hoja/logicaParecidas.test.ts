@@ -9,8 +9,8 @@ import {
   resultadosDe,
   rendimientoEnTexto,
   tituloDePropuesta,
-} from "./logica";
-import type { Composicion, Propuesta } from "./logica";
+} from "./logicaParecidas";
+import type { Composicion, Propuesta } from "./logicaParecidas";
 
 const COMPOSICION: Composicion = {
   unidad: "m3",

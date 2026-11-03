@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaSimilares from "./index";
-import type { Propuesta, SimilaresRespuesta } from "./logica";
+import type { Propuesta, SimilaresRespuesta } from "../hoja/logicaParecidas";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
