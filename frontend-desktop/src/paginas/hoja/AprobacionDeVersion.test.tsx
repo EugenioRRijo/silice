@@ -249,8 +249,9 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       expect(llamadas("GET", RUTA_ESTADOS)).toEqual([]);
     });
 
-    test("si el servidor no puede leer el estado, lo dice sin tumbar la Hoja", async () => {
-      alLeerEstados = () => json({ detalle: "No se pudo leer o guardar la aprobación en la carpeta de trabajo." }, 503);
+    // Decisión 8 de la Tarea 5: 403 y 404 se dicen igual que 503 (menor 2 del árbitro, cierre de F4).
+    test.each([403, 404, 503])("si el servidor no puede leer el estado (%i), lo dice sin tumbar la Hoja", async (estado) => {
+      alLeerEstados = () => json({ detalle: "No se pudo leer o guardar la aprobación en la carpeta de trabajo." }, estado);
       montar();
       expect(await region()).toHaveTextContent("No se pudo leer el estado de aprobación de esta versión.");
       expect(screen.queryByRole("button", { name: "Enviar a aprobación…" })).toBeNull();

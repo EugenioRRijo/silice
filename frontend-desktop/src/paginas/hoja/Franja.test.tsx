@@ -268,8 +268,9 @@ describe("Presupuesto: la franja del paso (Tarea 5)", () => {
     expect(screen.queryByRole("region", { name: "Siguiente paso" })).toBeNull();
   });
 
-  test("si no se pudo leer la aprobación, la franja no ofrece enviar", async () => {
-    alLeerAprobaciones = () => json({ detalle: "No se pudo leer la carpeta de trabajo." }, 503);
+  // Decisión 8 de la Tarea 5: 403 y 404 también son «fallo» (antes no decían nada); menor 2 del árbitro (cierre de F4).
+  test.each([403, 404, 503])("si no se pudo leer la aprobación (%i), la franja no ofrece enviar", async (estado) => {
+    alLeerAprobaciones = () => json({ detalle: "No se pudo leer la carpeta de trabajo." }, estado);
     montar();
     await listo();
     await screen.findByText("No se pudo leer el estado de aprobación de esta versión.");
