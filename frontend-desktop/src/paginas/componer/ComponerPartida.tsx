@@ -63,6 +63,8 @@ export interface PartidaCompuesta {
 
 interface Props {
   codigoInicial: string;
+  // Esbozo del rojo (pulido F5, Tarea 1): la descripción con que se pidió componer.
+  descripcionInicial?: string;
   // El nivel del titulo que la encabeza (el h1 de la pantalla o el h2 del panel): sus bloques van un nivel por debajo.
   nivelDelTitulo: 1 | 2;
   alGuardar: (partida: PartidaCompuesta) => void;

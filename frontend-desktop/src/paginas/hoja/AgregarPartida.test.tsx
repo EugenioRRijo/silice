@@ -683,6 +683,19 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     expect(panel).toHaveClass("silice-panel-lateral--superpuesto");
   });
 
+  // Pulido F5, Tarea 1 (decisión 6 de la Tarea 9 de F4): una descripción escrita en «Partida» no se ofrece como código.
+  test("una descripción escrita en «Partida» no se toma como código: Componer abre con ella en «Descripción» y el «Código» vacío", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    await userEvent.type(within(dialogo).getByRole("combobox", { name: "Partida" }), "excavación de zanja");
+    const opcion = await screen.findByRole("option", { name: "Componer una partida nueva con la descripción «excavación de zanja»" });
+    expect(screen.queryByRole("option", { name: /con el código/ })).toBeNull();
+    await userEvent.click(opcion);
+    const panel = await screen.findByRole("complementary", { name: "Componer una partida" });
+    expect(within(panel).getByLabelText("Descripción")).toHaveValue("excavación de zanja");
+    expect(within(panel).getByRole("combobox", { name: "Código" })).toHaveValue("");
+  });
+
   test("al guardar la composición el panel se cierra, el foco vuelve al diálogo y la partida nueva queda elegida", async () => {
     montar();
     const dialogo = await abrirDialogo();
