@@ -629,6 +629,18 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     await waitFor(() => expect(escrituras(RUTA_AGREGAR)).toEqual([{ rev: 0, codigo: "FIC-01", cantidad: "12", calculo: "", nota: "" }]));
   });
 
+  // Menor 5 del árbitro de la Tarea 9 (cierre de F4): tras elegir del catálogo el campo dice «código · descripción»; lo que se
+  // busca por parecido es la descripción, no el código pegado delante.
+  test("tras elegir del catálogo, «Buscar parecidas» manda solo la descripción de la partida", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    await elegirPared(dialogo);
+    expect(within(dialogo).getByRole("combobox", { name: "Partida" })).toHaveValue("OBRA-04 · Pared de bloques de arcilla de 15 cm");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Buscar parecidas" }));
+    await within(dialogo).findByRole("button", { name: "Usar esta partida: FIC-01" });
+    expect(pedidosDeParecidas()).toEqual([{ descripcion: "Pared de bloques de arcilla de 15 cm" }]);
+  });
+
   test("«Componer una partida nueva con el código «Z-99»» abre el panel sin cambiar la ruta, con el aviso del catálogo", async () => {
     montar();
     const dialogo = await abrirDialogo();
