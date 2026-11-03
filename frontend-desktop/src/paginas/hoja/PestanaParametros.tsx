@@ -6,7 +6,7 @@ import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { AyudaDePestana } from "./AyudaDePestana";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { ConvertirMoneda } from "./ConvertirMoneda";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
+import type { AlCrearVersion } from "./logicaVersiones";
 import { VistaCarga } from "./VistaCarga";
 import { rutaDeVista } from "./logica";
 import type { BaseAbierta, Resumen, VistaParametros } from "./logica";

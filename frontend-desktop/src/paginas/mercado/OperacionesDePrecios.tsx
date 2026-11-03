@@ -5,9 +5,9 @@ import type { JSX } from "react";
 import { useState } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { useAplicacion } from "../../shell/contexto";
-import { DialogoDeOperacion } from "./DialogoDeOperacion";
-import type { CeldaPrecio } from "./logica";
-import { usuarioDeSesion } from "./logicaGuardar";
+import { DialogoDeOperacion } from "../hoja/DialogoDeOperacion";
+import type { CeldaPrecio } from "../hoja/logica";
+import { usuarioDeSesion } from "../hoja/logicaGuardar";
 import {
   RUTA_DE_COTIZAR,
   RUTA_DE_RETIRAR,
@@ -22,15 +22,13 @@ import {
   rotuloDeCotizada,
   rotuloDeInsumo,
   textoDeVersionCreada,
-} from "./logicaVersiones";
-import type { InsumoDePrecios, VersionCreada } from "./logicaVersiones";
-import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
-import { useOperacion } from "./useOperacion";
+} from "../hoja/logicaVersiones";
+import type { AlCrearVersion, InsumoDePrecios, VersionCreada } from "../hoja/logicaVersiones";
+import { useDialogoDeOperacion } from "../hoja/useDialogoDeOperacion";
+import { useOperacion } from "../hoja/useOperacion";
 
 // Los topes del contrato de S3 y S4 (proveedor y número son el ancho de las columnas; la evidencia, lo que cabe en la fuente).
 const LARGO = { precio: 500, proveedor: 120, numero: 60, evidencia: 90, motivo: 300 };
-
-export type AlCrearVersion = (codigo: string, texto: string) => Promise<void>;
 
 interface PropsDeFormulario {
   proyecto: string;

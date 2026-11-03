@@ -7,7 +7,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
-import { aPorcentaje, fechaValida, rangoInvertido } from "./porcentaje";
+import { aPorcentaje, fechaValida, rangoInvertido } from "../../comun/porcentaje";
 import { CampoTexto } from "../../comun/CampoTexto";
 
 interface Cambio {

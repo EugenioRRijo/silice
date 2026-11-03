@@ -20,7 +20,7 @@ import type { BorradorAbierto, PestanaId, Resumen } from "./logica";
 import { CAUSA_SOLO_LECTURA } from "./logicaGuardar";
 import { BotonExcel } from "./BotonExcel";
 import { ContextoAuditoria } from "./ContextoAuditoria";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
+import type { AlCrearVersion } from "./logicaVersiones";
 import type { FiltroDeAuditoria } from "./ContextoAuditoria";
 import { PestanaApu } from "./PestanaApu";
 import { PestanaAuditoria } from "./PestanaAuditoria";

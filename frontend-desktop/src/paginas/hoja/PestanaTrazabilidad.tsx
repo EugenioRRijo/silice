@@ -1,7 +1,7 @@
 import { EstadoDeLaCadena } from "./EstadoDeLaCadena";
 import { RastroDeAprobaciones } from "./RastroDeAprobaciones";
 import { RestaurarVersion } from "./RestaurarVersion";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
+import type { AlCrearVersion } from "./logicaVersiones";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
 import { fechaCorta, rotuloDeOrigen, rutaDeTrazabilidad } from "./logica";

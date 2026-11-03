@@ -160,7 +160,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     enUnaLinea: "Vea cómo cambió el precio de un insumo",
     seccion: "Trabajo",
     accion: "leer_proyecto",
-    cargar: () => import("../paginas/historico"),
+    cargar: () => import("../paginas/mercado/HistoricoDePrecios"),
   },
   {
     id: "indices",

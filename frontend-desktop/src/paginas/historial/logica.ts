@@ -1,4 +1,4 @@
-import { fechaValida, rangoInvertido } from "../historico/porcentaje";
+import { fechaValida, rangoInvertido } from "../../comun/porcentaje";
 import type { AuditoriaGuardadaRespuesta } from "../inicio/UltimasAuditorias";
 
 // Lo que la API del historial ofrece es una lista de las ultimas auditorias (sin filtros) y el detalle de una. Los

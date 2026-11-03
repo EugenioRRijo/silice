@@ -671,7 +671,6 @@ describe("Hoja de la obra: restaurar, cotizar, retirar, convertir y la cadena (3
       "./index.tsx",
       "./logicaVersiones.ts",
       "./DialogoDeOperacion.tsx",
-      "./OperacionesDePrecios.tsx",
       "./ConvertirMoneda.tsx",
       "./RestaurarVersion.tsx",
       "./EstadoDeLaCadena.tsx",

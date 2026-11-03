@@ -6,7 +6,7 @@ import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import PaginaHistorico from "./index";
+import PaginaHistorico from "./HistoricoDePrecios";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
