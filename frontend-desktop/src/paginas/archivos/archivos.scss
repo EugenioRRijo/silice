@@ -18,6 +18,8 @@
 .silice-hoja__dialogo.silice-archivos__dialogo {
   inline-size: 100%;
   max-inline-size: min(64rem, 100%);
+  // No es de peligro: borde de acción, como «Guardar versión» y las operaciones (hoja.scss).
+  border-inline-start-color: var(--silice-interactivo, #0f62fe);
 }
 
 // El informe guardado de una importación, en el panel lateral: rótulo arriba y valor debajo.

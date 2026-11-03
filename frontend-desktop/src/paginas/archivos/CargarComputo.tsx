@@ -41,6 +41,8 @@ interface Props {
   alOcuparse: (ocupado: boolean) => void;
   // Lo llevado ya está en el borrador: la sección vuelve a leer su registro de importaciones.
   alLlevar: () => void;
+  // Con «edificación» apagada el diálogo ya se titula «Cargar cómputo» (h2): el flujo no repite ese título en un h3.
+  conTitulo?: boolean;
 }
 
 // Lo que sigue tras pulsar «Llevar al presupuesto»: nada todavía, rendimientos o pendientes que resolver, o ya llevado.
@@ -60,7 +62,7 @@ type Ocupacion = "extrayendo" | "llevando" | "registrando" | null;
 // Sin ellos lleva los ítems al MISMO borrador que el Presupuesto (`POST /v1/hoja/llevar` con el nombre del archivo, que
 // queda en el registro, Tarea 10) y lo vuelve a leer (`refrescar`). No muestra el presupuesto elaborado: va directo a
 // Partidas. Solo lo monta `paginas/archivos/index.tsx`, y solo para quien puede editar la Hoja.
-export function CargarComputo({ archivo, alOcuparse, alLlevar }: Props) {
+export function CargarComputo({ archivo, alOcuparse, alLlevar, conTitulo = true }: Props) {
   const { sesion, alExpirar } = useAplicacion();
   const hoja = useHojaDeLaObra();
   const obra = useContext(ContextoDeLaObra);
@@ -172,10 +174,12 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar }: Props) {
   };
 
   return (
-    <section aria-labelledby={idTitulo} className="silice-computo">
-      <h3 id={idTitulo} className="cds--type-heading-compact-01">
-        Cargar cómputo
-      </h3>
+    <section aria-labelledby={conTitulo ? idTitulo : undefined} aria-label={conTitulo ? undefined : "Cómputo"} className="silice-computo">
+      {conTitulo && (
+        <h3 id={idTitulo} className="cds--type-heading-compact-01">
+          Cargar cómputo
+        </h3>
+      )}
       {sinLista && <FranjaDelPaso tipo="falta" texto={FALTA_LA_LISTA} />}
       {carpeta.estado !== "listo" && carpeta.estado !== "cargando" && <AvisoError error={carpeta.error} titulo="No se pudo leer la carpeta" />}
       <Select id="computo-dominio" labelText="Tipo de obra del archivo" size="sm" value={dominio} onChange={(e) => cambiarDominio(e.target.value as Dominio)}>

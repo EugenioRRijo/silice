@@ -667,6 +667,13 @@ describe("Archivos y planos con «edificación» apagada", () => {
     expect(screen.queryByRole("link", { name: "Describir el espacio a mano" })).toBeNull();
   });
 
+  // Menor del árbitro de la Tarea 12 (cierre de F4): el diálogo ya se titula «Cargar cómputo» (h2); el flujo no lo repite.
+  test("con el .csv elegido, «Cargar cómputo» es un solo título (el h2 del diálogo), sin un h3 que lo repita", async () => {
+    const u = montar();
+    const dialogo = await elegirElComputo(u, "computo.csv", await abrirElDialogo(u, "Cargar cómputo"));
+    expect(within(dialogo).getAllByRole("heading", { name: "Cargar cómputo" }).map((h) => h.tagName)).toEqual(["H2"]);
+  });
+
   test("el diálogo acepta solo el .csv, su texto no menciona planos y rechaza un .dxf", async () => {
     const u = montar();
     const dialogo = await abrirElDialogo(u, "Cargar cómputo");

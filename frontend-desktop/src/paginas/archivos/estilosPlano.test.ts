@@ -8,6 +8,7 @@ const nodo = (
 ).process;
 const plano = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/paginas/archivos/plano.scss`, "utf-8");
 const hoja = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/paginas/hoja/hoja.scss`, "utf-8");
+const archivos = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/paginas/archivos/archivos.scss`, "utf-8");
 const comun = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/comun/comun.scss`, "utf-8");
 
 // jsdom no calcula el diseño: aquí solo se comprueba que las reglas estén escritas; el efecto se MIDE en navegador (3e-F5).
@@ -30,5 +31,13 @@ describe("estilos del flujo Importar plano (3e-2)", () => {
 
   test("la zona de soltar archivo mide 96 px (6 rem), regla común", () => {
     expect(comun).toMatch(/block-size:\s*6rem/);
+  });
+
+  // Menor 1 del árbitro de la Tarea 11 (cierre de F4): el diálogo «Subir plano o cómputo» no es de peligro. Sin esto hereda
+  // el borde rojo de `.silice-hoja__dialogo` (hoja.scss), como «Guardar versión» y las operaciones, que lo cambian.
+  test("el diálogo de subir lleva el borde de acción, no el rojo de peligro", () => {
+    const bloque = /\.silice-hoja__dialogo\.silice-archivos__dialogo\s*\{([^}]*)\}/.exec(archivos);
+    expect(bloque).not.toBeNull();
+    expect(bloque![1]).toMatch(/border-inline-start-color:\s*var\(--silice-interactivo/);
   });
 });

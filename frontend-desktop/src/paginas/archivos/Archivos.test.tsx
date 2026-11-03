@@ -71,6 +71,8 @@ const PLANO_FUSIONADO: ImportacionDeObra = {
 // Lo que el servidor simulado tiene de la obra; cada prueba lo cambia antes de montar.
 let conVersiones = true;
 let espacioVacio = true;
+// El borrador que abre el servidor es de solo lectura (menor 7 de la Tarea 11).
+let soloLectura = false;
 let registro: ImportacionDeObra[] = [];
 let apagados: string[] = [];
 let fusionado = false;
@@ -90,7 +92,7 @@ function versiones(proyecto: string): VersionesRespuesta {
 function borrador(id: string, proyecto: string, version: string | null): BorradorAbierto {
   return {
     id,
-    base: { proyecto, version, vigente: version, lista: "Lista", espacio_de: version, solo_lectura: false, moneda: "Bs" },
+    base: { proyecto, version, vigente: version, lista: "Lista", espacio_de: version, solo_lectura: soloLectura, moneda: "Bs" },
     resumen: resumen({ espacio_vacio: espacioVacio }),
     instantanea: { creadas: 0, mensaje: null },
   };
@@ -101,6 +103,7 @@ const RESUMEN_FUSIONADO = resumen({ rev: 1, cambios: 3, total: m("3000.50"), esp
 beforeEach(() => {
   conVersiones = true;
   espacioVacio = true;
+  soloLectura = false;
   registro = [COMPUTO_SIN_GUARDAR, PLANO_GUARDADO];
   apagados = [];
   fusionado = false;
@@ -311,6 +314,20 @@ describe("Archivos y planos (Tarea 11 de F4)", () => {
     expect(screen.queryByRole("button", { name: "Subir plano o cómputo" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Describir el espacio a mano" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Siguiente paso" })).toBeNull();
+    expect(principales()).toEqual([]);
+  });
+
+  test("quien arma con un borrador de solo lectura ve el registro y el informe, sin subir ni describir el espacio (Foco 3)", async () => {
+    soloLectura = true;
+    const u = montar();
+    const tabla = await tablaDelRegistro();
+    await waitFor(() => expect(filas(tabla)).toHaveLength(2));
+    await u.click(within(tabla).getByRole("button", { name: "Ver el informe de movimiento.csv" }));
+    expect(screen.getByRole("complementary", { name: "Informe de la importación de movimiento.csv" })).toBeInTheDocument();
+    await pausa();
+    expect(screen.queryByRole("button", { name: "Subir plano o cómputo" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Describir el espacio a mano" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Te falta" })).toBeNull();
     expect(principales()).toEqual([]);
   });
 

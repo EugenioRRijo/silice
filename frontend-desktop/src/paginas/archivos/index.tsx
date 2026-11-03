@@ -129,7 +129,7 @@ function Cuerpo({ proyecto }: { proyecto: string }) {
           }}
           alExpirar={alExpirar}
           conPlano={conPlano}
-          cuerpoDelComputo={(archivo, alOcuparse) => <CargarComputo archivo={archivo} alOcuparse={alOcuparse} alLlevar={registro.recargar} />}
+          cuerpoDelComputo={(archivo, alOcuparse) => <CargarComputo archivo={archivo} alOcuparse={alOcuparse} alLlevar={registro.recargar} conTitulo={conPlano} />}
         />
       )}
     </>
