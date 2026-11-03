@@ -324,7 +324,8 @@ try {
     Paso '10. Desinstalación: el programa se va y los datos quedan'
     $desinstalador = Join-Path $Programa 'unins000.exe'
     Start-Process -FilePath $desinstalador -Wait `
-        -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
+        -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+        "/LOG=`"$(Join-Path $Salida 'desinstalar.log')`""
     $limite = (Get-Date).AddSeconds(60)
     $inicioBaja = Get-Date
     while ((Test-Path $Programa) -and (Get-Date) -lt $limite) { Start-Sleep -Seconds 2 }
@@ -339,6 +340,9 @@ try {
             ($_.ExecutablePath -and $_.ExecutablePath.StartsWith($Programa)) -or
             ($_.Name -like '_iu*') -or ($_.Name -like 'unins*')
         } | ForEach-Object { Write-Host "    proceso vivo: $($_.ProcessId) $($_.Name) $($_.ExecutablePath)" }
+        Get-Content (Join-Path $Salida 'desinstalar.log') -ErrorAction SilentlyContinue |
+            Where-Object { $_ -match 'codigo\\?\s*$|codigo"|Failed|failed|error|Error|Deleting directory' } |
+            Select-Object -Last 40 | ForEach-Object { Write-Host "    registro: $_" }
     }
     Afirmar (-not (Test-Path $Programa)) '{app} ya no existe'
     $quedan = (Test-Path (Join-Path $Datos 'instalacion.db')) -and (Test-Path $casos) -and

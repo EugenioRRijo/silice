@@ -174,8 +174,8 @@ son las respuestas, marcadas como decisión del orquestador (Eugenio puede cambi
   siempre que sea reproducible con la semilla y quede documentado con su fuente.
 - Los rangos por defecto de las reglas viales, cada uno con su fuente o marcado para cotejar antes de usarse en la
   medición.
-- El orden de las tareas, con una condición: **el registro de costos del período va primero**, porque los datos reales
-  solo existen desde que la empresa empiece a registrarlos.
+- El orden de las tareas, con una condición: **el registro de costos del período va primero**, porque no hay datos reales
+  hasta que la empresa empiece a registrarlos.
 
 ## 7. Riesgos
 

@@ -766,7 +766,7 @@ Cada rebanada entrega con su informe del manual §5 y **un commit por tarea** (C
 | R-6 | `RutaSinCache` + `RutaSinEco` en el orden equivocado (spec de la hoja §1.3 #7). | Prueba de 422 con `no-store` y sin eco en el mismo caso (§8.1); no lo probé. |
 | R-7 | Tamaño de letra Muy grande: la lista de dos líneas por opción crece y tapa el campo de abajo. | Altura máxima `min(20rem, 60vh)` con desplazamiento interno; P-14 la mide. |
 | R-8 | Un nombre de proveedor largo o con caracteres raros rompe la lista o inyecta HTML. | Texto de React siempre; `max-length` del dato; prueba P-7. |
-| R-9 | Datos reales colados: un proveedor, una empresa o un libro reales en un ejemplo, una prueba o una captura. | Ejemplos solo de la lista ficticia (§6.1); el árbitro revisa (BLOQUEANTE si ve uno); las capturas de pantalla de la auditoría visual usan un caso de prueba. |
+| R-9 | Datos reales colados en lugar de ficticios: un proveedor, una empresa o un libro reales en un ejemplo, una prueba o una captura. | Ejemplos solo de la lista ficticia (§6.1); el árbitro revisa (BLOQUEANTE si ve uno); las capturas de pantalla de la auditoría visual usan un caso de prueba. |
 | R-10 | Mantener dos buscadores (`/referencia` y `/v1/buscar/insumos`) viola DRY. | Comparten el lector de CSV y las funciones `fila_*_desde_referencia` (§5.2-5); `buscar_referencia` queda intacta por sus otros usuarios (`simular_corpus`, reexportación) y `/referencia` se retira en un cambio aparte (D-8). |
 | R-11 | La sugerencia de código se confunde con una regla («tengo que usar LB-06»). | Se rotula «Código sugerido (puede cambiarlo)» y el campo sigue siendo libre (§5.4, D-5). |
 
