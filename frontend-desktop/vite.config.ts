@@ -24,7 +24,7 @@ export default defineConfig({
       output: {
         // react-router en un trozo con nombre fijo: scripts/verificar_dist.mjs permite sus textos de error y de aviso
         // (reactrouter.com, localhost, github.com) solo en el bundle principal o en este trozo (RNF-22, RS2B-2).
-        manualChunks(id: string) {
+        manualChunks(id) {
           return /[\\/]node_modules[\\/]react-router/.test(id) ? "enrutador" : undefined;
         },
       },
