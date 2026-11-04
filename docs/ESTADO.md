@@ -74,4 +74,8 @@ falso positivo o ya resuelto en una rama). Lista abierta:
 
 En la otra dirección, el orquestador le encarga trabajo a Antigravity con el subagente
 `silice-antigravity` (`.claude/agents/silice-antigravity.md`), que llama a
-`agy -p "…" --sandbox </dev/null`, siempre en modo de solo lectura.
+`agy -p "…" --sandbox </dev/null`, siempre en modo de solo lectura, o directamente con el servidor MCP
+`antigravity` (`scripts/mcp_antigravity.py`, registrado en `.mcp.json`: herramientas
+`encargar_a_antigravity` y `arbitrar_rama`). Los permisos de `agy` viven fuera del repositorio, en
+`~/.gemini/antigravity-cli/settings.json`: `proceed-in-sandbox`, comandos de lectura permitidos y
+lectura de `docs/auditoria` y `data/confidencial` negada (comprobado con un archivo ficticio).
