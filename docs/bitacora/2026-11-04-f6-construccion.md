@@ -25,10 +25,10 @@ puede escribir ni hacer commits (sus permisos siguen en solo lectura), devuelve 
 | Plan | Claude | — | — | [Ronda 1: DEVUELTO (4 mayores, 2 menores)](arbitrajes/f6-plan-r1.md) · [Ronda 2: APROBADO](arbitrajes/f6-plan-r2.md) | Los 6 hallazgos verificados contra el código y aplicados | ✔ |
 | T0 Expediente | Claude (contrato y enmienda) + Antigravity (diseño visual y adenda) | — | — | [APROBADO con 3 menores](arbitrajes/f6-T0.md) | Las 3 verificadas y aplicadas en T5, T6 y T7 | ✔ **Aprobado por Eugenio** |
 | T1 Ruta canónica | subagente `silice-frontend` | `177c9279` (falla: el recorrido no marca «Paso 1 de 3» en `/empresa/auditoria`; 7 archivos con rutas escritas a mano) | `545b3f36` (vitest 2.860/2.860 en marco, shell, paginas y comun; lint 0) | [Ronda 1: APROBADO, sin hallazgos](arbitrajes/f6-T1-r1.md) (revisión estática: en el worktree no pudo usar git ni vitest) | De acuerdo; las pruebas las corrió Claude. Desvíos aceptados: 4 enlaces pasan a su ruta canónica (mismo destino, sin redirección) y 2 enlaces más que el plan no listaba | ✔ |
-| T2 Tabla de espacios | subagente `silice-frontend` | — | — | — | — | en curso |
+| T2 Tabla de espacios | subagente `silice-frontend` | `aa0a71a0` (6 fallan: `ESPACIOS` no existe, `sueltas` traía 18) | `48d65a34` (541/541 en marco y shell; lint 0) | [Ronda 1 (Argon): APROBADO, sin hallazgos](arbitrajes/f6-T2-r1.md) | De acuerdo. Claude corrió 66/66 pruebas clave. Carpetas: la exigencia de `cambiar_caso` queda para T6 (contrato §3) | ✔ |
 | T3 BarraDeEspacio | — | — | — | — | — | pendiente |
 | T4 Producción, Auditoría, Precios | — | — | — | — | — | pendiente |
-| T7 Cartera por moneda (servidor) | **Antigravity con Claude Opus 5.5 High** (a pedido de Eugenio); Claude aplica y verifica. Lo arbitra Argon | — | — | — | — | en curso (pruebas) |
+| T7 Cartera por moneda (servidor) | **Antigravity con Claude Opus 5.5 High** (a pedido de Eugenio); Claude aplica y verifica. Lo arbitra Argon | `ffee9b5f` en `feature/f6-t7-cartera` (12 pruebas escritas por Antigravity; las 12 fallan con 404) | — | — | — | en curso (implementación) |
 | T5 Obra y barra lateral (cierre A) | — | — | — | — | — | pendiente |
 | T6 Cuenta | — | — | — | — | — | pendiente |
 | T8 Vista general | — | — | — | — | — | pendiente |
