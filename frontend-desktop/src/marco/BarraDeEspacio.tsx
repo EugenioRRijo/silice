@@ -2,8 +2,15 @@
 // conmutador compacto de las vistas de una sección de la obra (plan F6, T3; diseño visual §1 y adenda A.3). Cada pestaña
 // navega a su propia URL: es un enlace, no un panel local, así que la barra es un `nav` con `aria-current` y nunca un
 // `tablist`. No pone encabezado: el único h1 de la pantalla lo pone la pantalla.
+//
+// Los enlaces de la barra están dentro del lienzo, que el marco no intercepta (Marco.alClicAntes): con cambios sin guardar
+// preguntan ellos mismos, como cualquier enlace de una pantalla (useNavegarSeguro). Sin nada que perder, el enlace
+// navega por sí solo (clic con Ctrl o Mayús, el botón del medio y el foco quedan como en cualquier enlace).
+import type { MouseEvent } from "react";
 import { Link } from "react-router";
+import { useNavegarSeguro } from "../shell/navegarSeguro";
 import { paginaPorId, usable } from "../shell/rutas";
+import { formulariosSucios } from "../shell/sucio";
 import type { HerramientaDef } from "./espacios";
 import "./BarraDeEspacio.scss";
 
@@ -21,6 +28,13 @@ interface Propiedades {
 }
 
 export function BarraDeEspacio({ etiqueta, pestanas, activa, nivel }: Propiedades) {
+  const navegarSeguro = useNavegarSeguro();
+  function alPulsar(e: MouseEvent<HTMLAnchorElement>, ruta: string) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (formulariosSucios(ruta).length === 0) return;
+    e.preventDefault();
+    void navegarSeguro(ruta);
+  }
   // Una sola vista (o ninguna) no se ofrece como elección: el conmutador de subvistas no se pinta (adenda A.1).
   if (nivel === "subvista" && pestanas.length <= 1) return null;
   const clase = nivel === "subvista" ? "silice-barra-espacio silice-barra-espacio--subvista" : "silice-barra-espacio";
@@ -30,6 +44,7 @@ export function BarraDeEspacio({ etiqueta, pestanas, activa, nivel }: Propiedade
         <Link
           key={p.id}
           to={p.ruta}
+          onClick={(e) => alPulsar(e, p.ruta)}
           aria-current={p.id === activa ? "page" : undefined}
           className="silice-barra-espacio__pestana"
         >

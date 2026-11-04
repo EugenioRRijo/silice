@@ -1,5 +1,12 @@
 // Hoja del proyecto. Sin tarjetas con sombra ni animaciones (DESIGN.md): bloques separados por un divisor.
 
+// El conmutador de subvistas (BarraDeEspacio, nivel «subvista») va a la cabeza del lienzo, antes de la página: ella baja su
+// margen superior de 1,5 rem a 0,5 rem y absorbe así el alto del conmutador, que no le quita alto a la Hoja (diseño visual,
+// adenda A.2).
+.silice-barra-espacio--subvista + .silice-pagina {
+  padding-block-start: 0.5rem;
+}
+
 .silice-hoja {
   display: grid;
   gap: 1.5rem;

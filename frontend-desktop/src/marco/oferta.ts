@@ -21,10 +21,10 @@ export interface Oferta {
   entradas: readonly EntradaDef[];
   // Los espacios de la empresa con al menos una herramienta usable, en el orden de la barra lateral (F6, T4).
   espacios: readonly EspacioOfrecido[];
-  // Desde F6 (contrato de rutas) toda pantalla tiene sitio: queda vacío. Se conserva hasta que T5 retire a quien lo lee.
+  // Desde F6 (contrato de rutas) toda pantalla tiene sitio: queda vacío. Se conserva hasta que se retire a quien lo lee (busqueda.ts).
   sueltas: readonly PaginaDef[];
   // Las pantallas usables de los espacios de la empresa y de las subvistas de la obra que no son sección ni entrada del
-  // árbol (libros, historial, simulador, tablero, reajuste…): el buscador las ofrece mientras T5 no trae las barras de la obra.
+  // árbol (libros, historial, simulador, tablero, reajuste…): el buscador las ofrece por su ruta canónica.
   herramientas: readonly PaginaDef[];
 }
 
@@ -35,8 +35,13 @@ function usableLa(pagina: string | null, acciones: readonly string[], modoEntreg
 
 // `apagados` son los módulos que la instalación apagó (plan vial, Tarea 19): sus secciones, entradas y pantallas no se ofrecen.
 export function ofertaDe(acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[] = []): Oferta {
-  // Una sección con `pagina: null` aún no tiene pantalla: no se ofrece.
-  const secciones = SECCIONES_DE_OBRA.filter((s) => usableLa(s.pagina, acciones, modoEntrega, apagados));
+  // Una sección con `pagina: null` aún no tiene pantalla: no se ofrece. Una cuya pantalla principal no es usable pero que
+  // tiene una subvista usable sí se ofrece y abre en ella (contrato 2.1: Aprobaciones para quien solo revisa paquetes).
+  const secciones = SECCIONES_DE_OBRA.filter(
+    (s) =>
+      usableLa(s.pagina, acciones, modoEntrega, apagados) ||
+      (SUBVISTAS[s.id] ?? []).some((v) => usableLa(v.pagina, acciones, modoEntrega, apagados)),
+  );
   const entradas = ENTRADAS_DE_EMPRESA.filter((e) => usableLa(e.pagina, acciones, modoEntrega, apagados));
   const deLasSecciones = new Set<string | null>([
     ...SECCIONES_DE_OBRA.map((s) => s.pagina),

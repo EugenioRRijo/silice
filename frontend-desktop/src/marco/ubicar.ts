@@ -1,5 +1,5 @@
 import { paginaPorId, type PaginaDef } from "../shell/rutas";
-import { ESPACIOS, esEspacio } from "./espacios";
+import { ESPACIOS, SUBVISTAS, esEspacio } from "./espacios";
 import type { Miga } from "./Migas";
 import {
   ENTRADAS_DE_EMPRESA,
@@ -16,11 +16,12 @@ export interface Ubicada {
   titulo: string | null;
 }
 
-const OBRA = /^\/obra\/([^/]+)\/([1-9]\d*)\/([^/]+)$/;
+// `#/obra/<carpeta>/<obra>/<sección>` y, con subvista, `…/<sección>/<subvista>` (F6, T5).
+const OBRA = /^\/obra\/([^/]+)\/([1-9]\d*)\/([^/]+)(?:\/([^/]+))?$/;
 const EMPRESA = /^\/empresa\/([^/]+)$/;
 const ESPACIO = /^\/([^/]+)\/([^/]+)$/;
 
-// La carpeta de una ruta `#/obra/<carpeta>/<obra>/<sección>` (null = la de la empresa), o undefined si la ruta no es de
+// La carpeta de una ruta `#/obra/<carpeta>/<obra>/<sección>[/<subvista>]` (null = la de la empresa), o undefined si la ruta no es de
 // una obra. La consulta (`?…`) no cuenta.
 export function carpetaDelDestino(destino: string): string | null | undefined {
   const m = OBRA.exec(destino.split("?")[0]);
@@ -32,8 +33,8 @@ export function carpetaDelDestino(destino: string): string | null | undefined {
   }
 }
 
-// Dónde está la persona, dicho en migas («Mis obras / Clínica / Presupuesto», «Empresa / Ayuda», «Pendientes») y en el
-// título de la pestaña. Las obras dan el nombre de la de la ruta; mientras llegan, «Obra».
+// Dónde está la persona, dicho en migas («Mis obras / Clínica / Presupuesto», «Mis obras / Clínica / Control de obra /
+// Reajuste», «Empresa / Ayuda», «Pendientes») y en el título de la pestaña. Las obras dan el nombre de la de la ruta; mientras llegan, «Obra».
 export function ubicar(pathname: string, obras: readonly ObraDeCarpeta[], paginas: readonly PaginaDef[]): Ubicada {
   if (pathname === RUTA_DE_PENDIENTES) return { migas: [{ texto: "Pendientes" }], titulo: "Pendientes" };
   const deObra = OBRA.exec(pathname);
@@ -46,6 +47,12 @@ export function ubicar(pathname: string, obras: readonly ObraDeCarpeta[], pagina
       { texto: "Mis obras", ruta: RUTA_DE_PENDIENTES },
       { texto: nombre, ruta: rutaDeObra(carpeta, obraId, "resumen") },
     ];
+    // Una subvista que no existe se ubica como su sección (la ruta la lleva a la pantalla principal).
+    const subvista = seccion && deObra[4] !== undefined ? SUBVISTAS[seccion.id]?.find((v) => v.id !== "" && v.id === deObra[4]) : undefined;
+    if (seccion && subvista) {
+      migas.push({ texto: seccion.titulo, ruta: rutaDeObra(carpeta, obraId, seccion.id) }, { texto: subvista.titulo });
+      return { migas, titulo: `${subvista.titulo} · ${seccion.titulo} · ${nombre}` };
+    }
     if (seccion) migas.push({ texto: seccion.titulo });
     return { migas, titulo: seccion ? `${seccion.titulo} · ${nombre}` : nombre };
   }

@@ -3,7 +3,7 @@
 // `shell/rutas.ts` (patrón estrangulador): `pagina` es ese id. Una sección con `pagina: null` aún no tiene pantalla
 // propia (llega en F4): no se pinta en el árbol ni se abre por enlace, y no hay pantallas «próximamente».
 //
-// Rutas (HashRouter): `#/pendientes`, `#/obra/<carpeta>/<obra>/<sección>` y `#/empresa/<entrada>`. La carpeta viaja
+// Rutas (HashRouter): `#/pendientes`, `#/obra/<carpeta>/<obra>/<sección>[/<subvista>]` y `#/empresa/<entrada>`. La carpeta viaja
 // con su .db, que es el nombre que acepta `POST /v1/casos/actual`; la de la empresa se escribe `empresa` (ningún
 // nombre de carpeta puede serlo, porque todos terminan en .db).
 
@@ -54,20 +54,28 @@ export function seccionPorId(id: string): SeccionDef | undefined {
 // así que pasar de una a otra de la misma obra no lo cierra ni pregunta por sus cambios.
 export const SECCIONES_CON_HOJA: readonly SeccionId[] = ["presupuesto", "archivos", "versiones"];
 
-// Si `destino` (una ruta, con o sin consulta) es una sección con Hoja de esa misma obra.
+// Si `destino` (una ruta, con o sin consulta) es una sección con Hoja de esa misma obra. Compara el segmento de la sección
+// y no la ruta entera: una subvista de esa sección (Componer, en `/presupuesto/componer`) comparte el borrador igual
+// (nota H-F6-1 de Antigravity).
 export function quedaEnLaHoja(destino: string, carpeta: string | null, obraId: number): boolean {
   const camino = destino.split(/[?#]/)[0];
-  return SECCIONES_CON_HOJA.some((s) => camino === rutaDeObra(carpeta, obraId, s));
+  return SECCIONES_CON_HOJA.some((s) => {
+    const seccion = rutaDeObra(carpeta, obraId, s);
+    return camino === seccion || camino.startsWith(`${seccion}/`);
+  });
 }
 
 export const RUTA_DE_PENDIENTES = "/pendientes";
-export const PATRON_DE_OBRA = "/obra/:carpeta/:obraId/:seccion";
+// El cuarto segmento (`:subvista`) es opcional: sin él, la ruta es la de la pantalla principal de la sección.
+export const PATRON_DE_OBRA = "/obra/:carpeta/:obraId/:seccion/:subvista?";
 export const PATRON_DE_EMPRESA = "/empresa/:entrada";
 const SEGMENTO_DE_LA_EMPRESA = "empresa";
 
-export function rutaDeObra(carpeta: string | null, obraId: number, seccion: SeccionId): string {
+// `subvista` es el `id` de una subvista de la sección (`SUBVISTAS`); vacío o ausente, la pantalla principal.
+export function rutaDeObra(carpeta: string | null, obraId: number, seccion: SeccionId, subvista?: string): string {
   const segmento = carpeta === null ? SEGMENTO_DE_LA_EMPRESA : encodeURIComponent(carpeta);
-  return `/obra/${segmento}/${obraId}/${seccion}`;
+  const base = `/obra/${segmento}/${obraId}/${seccion}`;
+  return subvista ? `${base}/${subvista}` : base;
 }
 
 // La carpeta de un segmento ya decodificado (el que da `useParams`): `empresa` es la de la empresa (null).

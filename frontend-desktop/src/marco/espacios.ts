@@ -3,15 +3,16 @@
 // se cambia este lugar y quien llama no se entera. Los tres espacios de la empresa ya viven en /<espacio>/<segmento> (T4).
 import { PAGINAS, paginaPorId, rutaDe, usable } from "../shell/rutas";
 import { ENTRADAS_DE_EMPRESA, RUTA_DE_PENDIENTES, SECCIONES_DE_OBRA, rutaDeEmpresa, rutaDeObra } from "./secciones";
-import type { SeccionId } from "./secciones";
+import type { SeccionDef, SeccionId } from "./secciones";
 
 export interface ObraDeLaRuta {
   carpeta: string | null;
   obraId: number;
 }
 
-// `paginaId` es el id de la pantalla en `shell/rutas.ts`. Una sección de obra va a la ruta de la obra dada; sin obra, a su
-// dirección corta (`/<id>`), que redirige a la obra de la sesión. Una herramienta de Producción, Auditoría o Precios va a
+// `paginaId` es el id de la pantalla en `shell/rutas.ts`. Una sección de obra va a la ruta de la obra dada; una subvista, a
+// `/obra/<c>/<o>/<sección>/<subvista>` (contrato 2.1); sin obra, ambas van a su dirección corta (`/<id>`), que redirige a la
+// obra de la sesión. Una herramienta de Producción, Auditoría o Precios va a
 // `/<espacio>/<segmento>` (contrato 2.2), con o sin obra. Una entrada de Empresa va a `/empresa/<entrada>`. Las demás, a
 // `/<id>`. Un id que no es pantalla da null.
 export function rutaCanonica(paginaId: string, obra?: ObraDeLaRuta): string | null {
@@ -20,6 +21,10 @@ export function rutaCanonica(paginaId: string, obra?: ObraDeLaRuta): string | nu
   const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === paginaId);
   if (seccion !== undefined && obra !== undefined) return rutaDeObra(obra.carpeta, obra.obraId, seccion.id);
   if (seccion !== undefined) return rutaDe(pagina);
+  const deSubvista = subvistaDeLaPagina(paginaId);
+  if (deSubvista !== undefined) {
+    return obra === undefined ? rutaDe(pagina) : rutaDeObra(obra.carpeta, obra.obraId, deSubvista.seccion, deSubvista.subvista.id);
+  }
   const delEspacio = espacioDeLaPagina(paginaId);
   if (delEspacio !== undefined) return rutaDeHerramienta(delEspacio.espacio, delEspacio.herramienta.id);
   const entrada = ENTRADAS_DE_EMPRESA.find((e) => e.pagina === paginaId);
@@ -126,6 +131,37 @@ export const SUBVISTAS: Partial<Record<SeccionId, readonly HerramientaDef[]>> = 
     { id: "escenarios", titulo: "Escenarios", pagina: "escenarios" },
   ],
 };
+
+// La sección y la subvista donde vive una pantalla que es subvista (no la raíz de una sección), o undefined.
+export function subvistaDeLaPagina(paginaId: string): { seccion: SeccionId; subvista: HerramientaDef } | undefined {
+  for (const seccion of Object.keys(SUBVISTAS) as SeccionId[]) {
+    const subvista = SUBVISTAS[seccion]?.find((v) => v.id !== "" && v.pagina === paginaId);
+    if (subvista !== undefined) return { seccion, subvista };
+  }
+  return undefined;
+}
+
+// Qué pantalla abre una sección de la obra según el cuarto segmento de la ruta (contrato 2.1 y 1), y a qué subvista hay que
+// llevar la dirección con replace (`redirigeA`; `""` es la pantalla principal; null si ya es la buena):
+// - una subvista conocida abre su pantalla, aunque la cuenta no pueda usarla (la ruta dirá «Sin permiso» o «Apagada»);
+// - sin segmento, la pantalla principal si la cuenta puede usarla y, si no, la primera subvista que sí (Aprobaciones para
+//   quien solo revisa paquetes abre «Revisar un paquete»); sin ninguna usable, la principal, que da el aviso;
+// - un segmento desconocido lleva a la primera usable de la sección y, sin ninguna, a la principal;
+// - una sección sin subvistas lleva a su pantalla principal con cualquier cuarto segmento.
+export function vistaDeLaSeccion(
+  seccion: SeccionDef,
+  segmento: string | undefined,
+  acciones: readonly string[],
+  modoEntrega: boolean,
+  apagados: readonly string[],
+): { pagina: string | null; redirigeA: string | null } {
+  const vistas = SUBVISTAS[seccion.id];
+  if (vistas === undefined) return { pagina: seccion.pagina, redirigeA: segmento === undefined ? null : "" };
+  const conocida = segmento === undefined || segmento === "" ? undefined : vistas.find((v) => v.id === segmento);
+  if (conocida !== undefined) return { pagina: conocida.pagina, redirigeA: null };
+  const destino = primeraUsable(vistas, acciones, modoEntrega, apagados) ?? vistas[0]!;
+  return { pagina: destino.pagina, redirigeA: segmento === undefined && destino.id === "" ? null : destino.id };
+}
 
 export type CuentaId = "preferencias" | "cuentas" | "empresa" | "carpetas" | "sistema" | "ayuda";
 

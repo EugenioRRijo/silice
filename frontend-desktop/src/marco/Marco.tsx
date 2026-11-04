@@ -31,7 +31,7 @@ import { BarraSuperior } from "./BarraSuperior";
 import { Buscador } from "./Buscador";
 import { EspacioDeHerramientas, RaizDelEspacio } from "./EspacioDeHerramientas";
 import { EspacioDeObra } from "./EspacioDeObra";
-import { ESPACIOS, esEspacio, espacioDeLaPagina, rutaDeHerramienta } from "./espacios";
+import { ESPACIOS, esEspacio, espacioDeLaPagina, rutaDeHerramienta, subvistaDeLaPagina } from "./espacios";
 import type { EspacioId } from "./espacios";
 import { enfocarElTitulo } from "./focoAlTitulo";
 import "./marco.scss";
@@ -46,7 +46,6 @@ import {
   SECCIONES_DE_OBRA,
   rutaDeEmpresa,
   rutaDeObra,
-  seccionPorId,
 } from "./secciones";
 import { useModulos } from "./useModulos";
 import { useObras } from "./useObras";
@@ -341,7 +340,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
             }
           />
           <div className="silice-marco__cuerpo">
-            <BarraLateral obraAbierta={obraDeLaRuta(ubicacion.pathname)} seccion={seccionDeLaRuta(ubicacion.pathname)} />
+            <BarraLateral obraAbierta={obraDeLaRuta(ubicacion.pathname)} />
             <main id="contenido" ref={contenido} className="silice-contenido" tabIndex={-1}>
               {(error !== null || aviso) && (
                 <div className="silice-avisos">
@@ -469,10 +468,10 @@ function EntradaDeEmpresa({ paginas, pantalla }: { paginas: readonly PaginaDef[]
 }
 
 // Las direcciones de antes (`#/<pantalla>`): la de una herramienta de Producción, Auditoría o Precios va a
-// `#/<espacio>/<segmento>`; la de una entrada de Empresa va a `#/empresa/<entrada>`; la de una sección
-// de la obra, a esa sección de la obra elegida en la sesión (o a Pendientes si no hay ninguna, salvo que traiga una
-// consulta, como `#/aprobar?envio=12`: entonces se abre donde estaba, para no perder lo que pide). Las demás pantallas
-// (subvistas de la obra) siguen en su dirección y se alcanzan por el buscador hasta T5.
+// `#/<espacio>/<segmento>`; la de una entrada de Empresa va a `#/empresa/<entrada>`; la de una sección o de una subvista
+// de la obra (`/tablero`, `/componer`, `/reajuste`…, contrato 2.4), a esa sección o subvista de la obra elegida en la sesión
+// (o a Pendientes si no hay ninguna, salvo que traiga una consulta, como `#/aprobar?envio=12`: entonces se abre donde
+// estaba, para no perder lo que pide). La consulta se conserva siempre que se redirige.
 function RutaVieja({ pagina, obraDeLaSesion, pantalla }: { pagina: PaginaDef; obraDeLaSesion: ObraDeLaSesion; pantalla: (p: PaginaDef | undefined) => ReactNode }) {
   const { search } = useLocation();
   const deEspacio = espacioDeLaPagina(pagina.id);
@@ -480,9 +479,13 @@ function RutaVieja({ pagina, obraDeLaSesion, pantalla }: { pagina: PaginaDef; ob
   const entrada = ENTRADAS_DE_EMPRESA.find((e) => e.pagina === pagina.id);
   if (entrada) return <Navigate to={`${rutaDeEmpresa(entrada.id)}${search}`} replace />;
   const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === pagina.id);
-  if (!seccion) return pantalla(pagina);
+  const deSubvista = subvistaDeLaPagina(pagina.id);
+  const destino = seccion ? { id: seccion.id, subvista: undefined } : deSubvista ? { id: deSubvista.seccion, subvista: deSubvista.subvista.id } : undefined;
+  if (!destino) return pantalla(pagina);
   if (obraDeLaSesion === "cargando") return <EsqueletoPagina />;
-  if (obraDeLaSesion) return <Navigate to={`${rutaDeObra(obraDeLaSesion.carpeta, obraDeLaSesion.obraId, seccion.id)}${search}`} replace />;
+  if (obraDeLaSesion) {
+    return <Navigate to={`${rutaDeObra(obraDeLaSesion.carpeta, obraDeLaSesion.obraId, destino.id, destino.subvista)}${search}`} replace />;
+  }
   return search ? pantalla(pagina) : <Navigate to={RUTA_DE_PENDIENTES} replace />;
 }
 
@@ -497,15 +500,11 @@ function claveDelContenido(pathname: string): string {
   return obra === null ? pathname : `obra|${obra.carpeta ?? ""}|${obra.obraId}`;
 }
 
-// La obra y la sección de la ruta, para marcarlas en la barra lateral.
+// La obra de la ruta, para marcarla en la barra lateral.
 function obraDeLaRuta(pathname: string): { carpeta: string | null; obraId: number } | null {
   const carpeta = carpetaDelDestino(pathname);
   if (carpeta === undefined) return null;
   return { carpeta, obraId: Number(pathname.split("/")[3]) };
-}
-
-function seccionDeLaRuta(pathname: string) {
-  return carpetaDelDestino(pathname) === undefined ? null : (seccionPorId(pathname.split("/")[4] ?? "")?.id ?? null);
 }
 
 // Al cambiar de pantalla, si el foco se perdió (lo tenía un control de la anterior), pasa al h1 de la nueva: el lector

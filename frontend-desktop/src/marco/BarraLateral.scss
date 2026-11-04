@@ -30,7 +30,7 @@
   @include type.type-style("label-01");
 }
 
-// La zona de obras ocupa lo que sobra: su cabecera y «Nueva obra» quedan fijas y solo el arbol se desplaza.
+// La zona de obras ocupa lo que sobra: su cabecera y «Nueva obra» quedan fijas y solo la lista de obras se desplaza.
 .silice-marco-lateral__obras {
   display: flex;
   flex: 1 1 auto;
@@ -69,7 +69,7 @@
   @include type.type-style("label-01");
 }
 
-// Una fila del arbol, de Pendientes o de Empresa. La raya del activo ocupa su sitio siempre (transparente) para que el
+// Una fila de Pendientes, de una obra o de Empresa. La raya del activo ocupa su sitio siempre (transparente) para que el
 // texto no se mueva al activarse.
 .silice-marco-lateral__fila {
   display: flex;
@@ -106,20 +106,6 @@
 
 .silice-marco-lateral__pendientes {
   margin-block-start: 0.5rem;
-}
-
-.silice-marco-lateral__obra {
-  padding-inline-start: 0.5rem;
-}
-
-// Las secciones de la obra abierta, unidas por una linea guia a la izquierda.
-.silice-marco-lateral__secciones {
-  margin-inline-start: 1.25rem;
-  border-inline-start: 1px solid var(--cds-border-strong-01);
-}
-
-.silice-marco-lateral__seccion {
-  padding-inline-start: 0.75rem;
 }
 
 .silice-marco-lateral__aviso {
