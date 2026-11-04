@@ -1,7 +1,7 @@
-import { rutaDe } from "../shell/rutas";
+import { rutaOPendientes } from "./espacios";
 import { seccionesDeLaObra } from "./oferta";
 import type { Oferta } from "./oferta";
-import { rutaDeEmpresa, rutaDeObra } from "./secciones";
+import { rutaDeObra } from "./secciones";
 import type { ObraDeCarpeta } from "./useObras";
 
 export interface Resultado {
@@ -49,8 +49,8 @@ export function resultadosDe(
         ruta: rutaDeObra(o.carpeta, o.obra_id, s.id),
       })),
     ),
-    ...oferta.entradas.map((e) => ({ texto: e.titulo, detalle: e.ayuda, ruta: rutaDeEmpresa(e.id) })),
-    ...oferta.sueltas.map((p) => ({ texto: p.titulo, detalle: p.enUnaLinea, ruta: rutaDe(p) })),
+    ...oferta.entradas.map((e) => ({ texto: e.titulo, detalle: e.ayuda, ruta: rutaOPendientes(e.pagina) })),
+    ...oferta.sueltas.map((p) => ({ texto: p.titulo, detalle: p.enUnaLinea, ruta: rutaOPendientes(p.id) })),
   ];
   const rutasVistas = new Set<string>();
   return todos

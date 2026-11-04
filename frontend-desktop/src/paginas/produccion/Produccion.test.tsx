@@ -77,7 +77,7 @@ describe("Inicio de producción", () => {
         <MemoryRouter initialEntries={["/produccion"]}>
           <Routes>
             <Route path="/produccion" element={<PaginaProduccion />} />
-            <Route path="/existencias" element={<h1>Pantalla de existencias</h1>} />
+            <Route path="/empresa/produccion" element={<h1>Pantalla de existencias</h1>} />
           </Routes>
         </MemoryRouter>
       </ContextoAplicacion.Provider>,

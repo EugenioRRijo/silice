@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { EnlacesDeCostos } from "../../comun/EnlacesDeCostos";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import { SIN_PERMISO } from "./fallos";
 import type { Reacciones } from "./fallos";
@@ -70,11 +71,11 @@ export default function PaginaExistencias() {
     <div className="existencias silice-pagina">
       <h1 className="cds--type-heading-04">Existencias de la arenera</h1>
       <p className="cds--type-body-compact-01">
-        <Link className="cds--link" to="/receta_planta">
+        <Link className="cds--link" to={rutaOPendientes("receta_planta")}>
           Receta de la planta
         </Link>{" "}
         ·{" "}
-        <Link className="cds--link" to="/producir_mezcla">
+        <Link className="cds--link" to={rutaOPendientes("producir_mezcla")}>
           Producir mezcla
         </Link>
       </p>

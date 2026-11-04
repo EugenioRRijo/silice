@@ -1,7 +1,8 @@
 // La lógica pura de la bandeja de Pendientes (rediseño F3, Tarea 2): adónde lleva cada pendiente, cuántos tiene cada
 // obra y cómo se mueve la elección con el teclado. Sin React, probada aparte (logica.test.ts).
 import type { PendienteDeObra } from "../../api/tipos";
-import { ENTRADAS_DE_EMPRESA, SECCIONES_DE_OBRA, rutaDeEmpresa, rutaDeObra, seccionPorId } from "../../marco/secciones";
+import { rutaOPendientes } from "../../marco/espacios";
+import { ENTRADAS_DE_EMPRESA, SECCIONES_DE_OBRA, seccionPorId } from "../../marco/secciones";
 import type { SeccionDef } from "../../marco/secciones";
 
 // D-F3-2: las dos pantallas que todavía no son sección van a la que las absorberá (especificación, §6.2).
@@ -19,11 +20,13 @@ interface Destino {
 // La sección de la obra que monta la pantalla de la acción, o la que la absorberá; si no, la entrada de Empresa que la
 // monta; y una pantalla desconocida, el Resumen de la obra (nunca un enlace muerto).
 function destino(carpeta: string | null, obraId: number, id: string): Destino {
+  const obra = { carpeta, obraId };
   const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === id) ?? seccionPorId(ABSORBIDAS.get(id) ?? "");
   const entrada = seccion ? undefined : ENTRADAS_DE_EMPRESA.find((e) => e.pagina === id);
-  if (entrada) return { ruta: rutaDeEmpresa(entrada.id), pagina: entrada.pagina };
+  if (entrada) return { ruta: rutaOPendientes(entrada.pagina), pagina: entrada.pagina };
   const llegada = seccion ?? seccionPorId("resumen");
-  return { ruta: rutaDeObra(carpeta, obraId, llegada?.id ?? "resumen"), pagina: llegada?.pagina ?? id };
+  const pagina = llegada?.pagina ?? id;
+  return { ruta: rutaOPendientes(pagina, obra), pagina };
 }
 
 // Adónde lleva una acción (`accion.pagina`) de una obra: lo usan la bandeja, por cada pendiente, y el Resumen, por la

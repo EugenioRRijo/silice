@@ -4,6 +4,7 @@ import { TableHeader } from "../../comun/carbonEs";
 import { Link } from "react-router";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { rutaOPendientes } from "../../marco/espacios";
 import type { Carga } from "./useCarga";
 
 // Una fila del tablero de la arenera (GET /v1/produccion/existencias). Las cantidades son texto decimal y se
@@ -29,7 +30,7 @@ export function requierenAtencion(filas: ExistenciaRespuesta[]): ExistenciaRespu
 
 function EnlaceExistencias() {
   return (
-    <Link className="cds--link" to="/existencias">
+    <Link className="cds--link" to={rutaOPendientes("existencias")}>
       Ver todas las existencias
     </Link>
   );
@@ -54,7 +55,7 @@ function Cuerpo({ carga }: { carga: Carga<ExistenciaRespuesta[]> }) {
         titulo="Aún no hay materiales"
         descripcion="Registre los materiales de la arenera para ver aquí cuánto queda de cada uno."
       >
-        <Link className="cds--link" to="/existencias">
+        <Link className="cds--link" to={rutaOPendientes("existencias")}>
           Registrar materiales en Producción
         </Link>
       </EstadoVacio>

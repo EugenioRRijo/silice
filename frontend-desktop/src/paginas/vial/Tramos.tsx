@@ -8,6 +8,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
+import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
@@ -148,7 +149,7 @@ export default function Tramos() {
                 </div>
               )}
               <AvisoConFoco aviso={llevados} alCerrar={() => setLlevados(null)}>
-                <Link className="cds--link" to="/hoja">
+                <Link className="cds--link" to={rutaOPendientes("hoja")}>
                   Abrir el presupuesto
                 </Link>
               </AvisoConFoco>

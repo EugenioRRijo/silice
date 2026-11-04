@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { rutaCanonica } from "./espacios";
+import { rutaCanonica, rutaOPendientes } from "./espacios";
 
 // Plan F6, T1: una sola función dice a qué ruta lleva cada pantalla; quien enlaza (recorridos, buscador, pendientes,
 // botones de las pantallas) la usa y no escribe rutas a mano. Oráculos escritos a mano, no derivados de PAGINAS.
@@ -44,3 +44,12 @@ describe("rutaCanonica", () => {
     expect(rutaCanonica("toString")).toBeNull();
   });
 });
+
+describe("rutaOPendientes", () => {
+  test("da la ruta canónica y, si el id no es pantalla, nunca un enlace muerto: lleva a Pendientes", () => {
+    expect(rutaOPendientes("existencias")).toBe("/empresa/produccion");
+    expect(rutaOPendientes("hoja", { carpeta: "demo.db", obraId: 1 })).toBe("/obra/demo.db/1/presupuesto");
+    expect(rutaOPendientes("inexistente")).toBe("/pendientes");
+  });
+});
+
