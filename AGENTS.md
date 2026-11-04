@@ -53,6 +53,20 @@ cd frontend-desktop; npm run lint; npx vitest run --maxWorkers=3
 Un hallazgo vale cuando cita `archivo:línea` del árbol actual (no de un worktree) y, si es una prueba
 que falla, la salida literal.
 
+## Si eres Antigravity
+
+Tu papel es **auditor independiente y segunda opinión**; Claude Code orquesta y Eugenio decide.
+Antes de cualquier encargo activa estas skills:
+
+- [metodologia-silice](.agents/skills/metodologia-silice/SKILL.md): verificar antes de afirmar, TDD,
+  depuración por causa raíz.
+- [arbitro-independiente](.agents/skills/arbitro-independiente/SKILL.md): cómo juzgar y el formato
+  del veredicto.
+- [colaboracion-con-claude](.agents/skills/colaboracion-con-claude/SKILL.md): qué puedes hacer, qué
+  no y por dónde se responde.
+
+Por defecto trabajas en **solo lectura**: sin editar, sin commits y sin cambiar de rama.
+
 ## Si trabajas en paralelo con otro agente
 
 Anota cada hallazgo en `docs/bitacora/auditoria-agy-AAAA-MM-DD.md` con el formato de
