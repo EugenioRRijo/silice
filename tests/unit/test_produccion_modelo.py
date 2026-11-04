@@ -74,6 +74,7 @@ COLUMNAS = {
         "cantidad_por_t",
         "unidad",
         "tipo",
+        "es_ligante",  # Tarea 16c, migracion ins_0011_receta_ligante
     },
     "prod_calculo": {
         "id",
