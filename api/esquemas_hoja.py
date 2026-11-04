@@ -15,6 +15,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
+from api.esquemas import ImpuestosRespuesta, impuestos_a_respuesta
 from aplicacion.entrega import EstadoDeLaCadena
 from aplicacion.hoja import CambioEditado, FilaInsumo, FilaVersion
 from aplicacion.hoja_borradores import BorradorVivo
@@ -35,6 +36,8 @@ from aplicacion.hoja_vista import (
     VistaTrazabilidad,
     monto,
 )
+from aplicacion.importaciones import ImportacionDeObra
+from aplicacion.impuestos import con_iva
 
 #: Cada texto de celda o de código llega acotado (diseño §4.1): ≤ 500 caracteres.
 Texto500 = Annotated[str, Field(max_length=500)]
@@ -101,6 +104,40 @@ class VersionesHojaRespuesta(BaseModel):
     moneda: str
     por_omision: str | None
     versiones: list[VersionHojaRespuesta]
+
+
+class ImportacionDeObraRespuesta(BaseModel):
+    """Una fila del registro de importaciones de la obra (F4, Tarea 10). `version: null` y
+    `guardada: false` son lo importado que sigue en un borrador sin guardar."""
+
+    tipo: Literal["plano", "computo"]
+    archivo: str
+    fecha_hora: str
+    usuario: str
+    resumen: str
+    version: str | None
+    guardada: bool
+
+
+class ImportacionesRespuesta(BaseModel):
+    importaciones: list[ImportacionDeObraRespuesta]
+
+
+def importaciones_a_respuesta(filas: list[ImportacionDeObra]) -> ImportacionesRespuesta:
+    return ImportacionesRespuesta(
+        importaciones=[
+            ImportacionDeObraRespuesta(
+                tipo=f.tipo,
+                archivo=f.archivo,
+                fecha_hora=f.fecha_hora.isoformat(timespec="seconds"),
+                usuario=f.usuario,
+                resumen=f.resumen,
+                version=f.version,
+                guardada=f.guardada,
+            )
+            for f in filas
+        ]
+    )
 
 
 class BorradorNuevo(BaseModel):
@@ -232,10 +269,22 @@ class VistaPresupuestoRespuesta(BaseModel):
     total: MontoHojaRespuesta
     moneda: str
     vacio_mensaje: str | None
+    #: Tarea 5b de F4: el IVA sobre el total (plan vial, Tarea 18). `total` sigue siendo el costo
+    #: sin IVA.
+    impuestos: ImpuestosRespuesta
 
 
 def vista_presupuesto_a_respuesta(vista: VistaPresupuesto) -> VistaPresupuestoRespuesta:
-    return VistaPresupuestoRespuesta.model_validate(vista, from_attributes=True)
+    """La vista de `aplicacion.hoja_vista` más el IVA. Se calcula aquí, en la capa de la API, y no
+    en `aplicacion/hoja.py` (congelado por el experimento): sobre el total EXACTO, no su texto."""
+    filas = [FilaPresupuestoRespuesta.model_validate(f, from_attributes=True) for f in vista.filas]
+    return VistaPresupuestoRespuesta(
+        filas=filas,
+        total=monto_a_respuesta(vista.total),
+        moneda=vista.moneda,
+        vacio_mensaje=vista.vacio_mensaje,
+        impuestos=impuestos_a_respuesta(con_iva(Decimal(vista.total.exacto))),
+    )
 
 
 class PartidaListaRespuesta(BaseModel):
@@ -931,11 +980,17 @@ class CadenaHojaRespuesta(BaseModel):
     integra: bool
     mensaje: str
     declaracion: str | None
+    rota_en: str | None = Field(
+        description="El código de la versión donde se rompió la cadena; null si está íntegra"
+    )
 
 
 def cadena_a_respuesta(estado: EstadoDeLaCadena) -> CadenaHojaRespuesta:
     return CadenaHojaRespuesta(
-        integra=estado.integra, mensaje=estado.mensaje, declaracion=estado.declaracion
+        integra=estado.integra,
+        mensaje=estado.mensaje,
+        declaracion=estado.declaracion,
+        rota_en=estado.rota_en,
     )
 
 

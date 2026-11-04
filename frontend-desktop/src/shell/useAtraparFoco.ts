@@ -6,7 +6,7 @@ const ENFOCABLES =
 
 // Lo enfocable que de verdad se ve: una parte puede estar oculta por CSS (p. ej. las areas del sidebar cuando la barra
 // si cabe) y el navegador no la enfocaria.
-function enfocables(caja: HTMLElement): HTMLElement[] {
+export function enfocables(caja: HTMLElement): HTMLElement[] {
   return Array.from(caja.querySelectorAll<HTMLElement>(ENFOCABLES)).filter((el) => {
     for (let nodo: HTMLElement | null = el; nodo && nodo !== caja; nodo = nodo.parentElement) {
       if (getComputedStyle(nodo).display === "none") return false;

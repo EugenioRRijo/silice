@@ -173,7 +173,6 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
         <MemoryRouter initialEntries={[ruta]}>
           <Routes>
             <Route path="/componer" element={<PaginaComponer />} />
-            <Route path="/hoja" element={<p>Pantalla ficticia de la Hoja</p>} />
           </Routes>
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
@@ -400,7 +399,9 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
 
   // --- desde la Hoja ---------------------------------------------------------------------------------
 
-  test("con ?codigo=OBRA-07&volver=hoja llega con el código y, guardada, ofrece «Volver a la Hoja»", async () => {
+  // F4, Tarea 9, baja 21: Componer se abre en panel desde «Agregar partida», sin salir de la obra; la pantalla sola ya no
+  // ofrece volver a la Hoja, ni aunque la dirección traiga `volver=hoja`.
+  test("con ?codigo=OBRA-07&volver=hoja llega con el código y, guardada, no ofrece «Volver a la Hoja»", async () => {
     const u = userEvent.setup();
     montar("/componer?codigo=OBRA-07&volver=hoja");
     expect(screen.getByLabelText("Código")).toHaveValue("OBRA-07");
@@ -412,9 +413,7 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     await u.click(screen.getByRole("button", { name: "Guardar composición" }));
     await screen.findByText(GUARDADO.mensaje, {}, ESPERA);
     expect(de("/v1/composicion/guardar")[0].cuerpo).toMatchObject({ codigo: "OBRA-07" });
-    // Guardada, no hay nada que perder: «Volver a la Hoja» lleva a la Hoja sin preguntar.
-    await u.click(screen.getByRole("button", { name: "Volver a la Hoja" }));
-    expect(await screen.findByText("Pantalla ficticia de la Hoja", {}, ESPERA)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Volver a la Hoja" })).not.toBeInTheDocument();
   });
 
   test("sin volver=hoja, guardada, no ofrece volver a la Hoja", async () => {
@@ -424,7 +423,6 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     await u.click(screen.getByRole("button", { name: "Guardar composición" }));
     await screen.findByText(GUARDADO.mensaje, {}, ESPERA);
     expect(screen.queryByRole("button", { name: "Volver a la Hoja" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Elaborar un presupuesto" })).toBeInTheDocument();
   });
 
   // --- contrato real de T2 ---------------------------------------------------------------------------

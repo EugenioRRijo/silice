@@ -35,7 +35,9 @@ export const ANFITRIONES_DE_UNIVER = new Set([
   "sharejs.org",
   "localhost",
 ]);
-// Solo en el bundle principal (index-*.js), donde queda react-router (ruling RS2B-2). Son textos que el enrutador
+// Solo en el bundle principal (index-*.js) o en el trozo propio del enrutador (enrutador-*.js, que vite.config.ts
+// separa cuando una pagina cargada bajo demanda tambien usa react-router), donde queda react-router (ruling RS2B-2).
+// Son textos que el enrutador
 // lleva dentro y que nunca se piden a la red:
 //  - reactrouter.com: enlace dentro de un mensaje de error («must be used within a data router. See ...»).
 //  - localhost: base falsa de `new URL(ruta, "http://localhost")`, para interpretar rutas relativas.
@@ -49,7 +51,7 @@ const ARCHIVO_DE_GRAFICOS = /(^|[\\/])GraficoCarbon-[^\\/]*\.js$/;
 // local. Es la direccion de este mismo equipo, escrita en un mensaje, no una peticion.
 export const ANFITRIONES_DE_ADMINISTRACION = new Set(["127.0.0.1"]);
 const ARCHIVO_DE_ADMINISTRACION = /(^|[\\/])administracion-[^\\/]*\.js$/;
-const ARCHIVO_PRINCIPAL = /(^|[\\/])index-[^\\/]*\.js$/;
+const ARCHIVO_PRINCIPAL = /(^|[\\/])(index|enrutador)-[^\\/]*\.js$/;
 
 // "reactjs.org" es un enlace de un mensaje de advertencia de React (como react.dev); "${...}" es un fragmento
 // de plantilla de texto (`https://${direccion}`), no un anfitrion.

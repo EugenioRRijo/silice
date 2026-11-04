@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../api/tipos";
 import { ContextoAplicacion } from "./contexto";
 import type { Aplicacion } from "./contexto";
+import { ContextoDeLaObra } from "../marco/obraAbierta";
+import { ContextoPendientes } from "../marco/usePendientes";
 import { PAGINAS } from "./rutas";
 
 // Importar cada página en frío (Carbon, Univer) tarda más de 20 s en una máquina cargada: solo este archivo espera 60 s.
@@ -48,9 +50,14 @@ describe("Títulos de las páginas migradas", () => {
       };
       const { container } = render(
         <ContextoAplicacion.Provider value={valor}>
-          <MemoryRouter>
-            <Pagina />
-          </MemoryRouter>
+          <ContextoPendientes.Provider value={{ estado: "cargando", recargar: vi.fn() }}>
+            {/* El Resumen (`obras`) vive dentro de una obra abierta: se le da una, aún cargando. */}
+            <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 1, ficha: { estado: "cargando" }, recargarFicha: vi.fn() }}>
+              <MemoryRouter>
+                <Pagina />
+              </MemoryRouter>
+            </ContextoDeLaObra.Provider>
+          </ContextoPendientes.Provider>
         </ContextoAplicacion.Provider>,
       );
       const h1 = container.querySelectorAll("h1");

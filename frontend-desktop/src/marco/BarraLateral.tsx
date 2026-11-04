@@ -15,12 +15,12 @@ import { obrasAlcanzables, seccionesDeLaObra, useOferta } from "./oferta";
 import {
   PATRON_DE_EMPRESA,
   RUTA_DE_PENDIENTES,
-  rutaDeEmpresa,
   rutaDeObra,
   type SeccionId,
 } from "./secciones";
 import { useObras, type ObraDeCarpeta } from "./useObras";
 import { usePendientes } from "./usePendientes";
+import { ZonaEmpresa } from "./ZonaEmpresa";
 
 interface Props {
   obraAbierta: { carpeta: string | null; obraId: number } | null;
@@ -31,7 +31,7 @@ interface Props {
 // un `tree` de WAI-ARIA: una sola parada de Tab, flechas para recorrer, derecha despliega e izquierda pliega. Sin
 // títulos de grupo por carpeta (D-F3-3): las obras van por nombre y solo las de nombre repetido dicen su carpeta. Las
 // píldoras de Pendientes y de cada obra salen de los pendientes que el marco ya cargó (`usePendientes`).
-// Pasa de 250 líneas porque el árbol, su teclado y la ventana de Nueva obra comparten un mismo estado (qué está desplegado,
+// Empresa vive en ZonaEmpresa. Pasa de 250 líneas (276) porque el árbol, su teclado y la ventana de Nueva obra comparten un mismo estado (qué está desplegado,
 // qué fila tiene el foco); separarlos obligaría a subir ese estado sin quitar complejidad.
 export function BarraLateral({ obraAbierta, seccion }: Props) {
   const { acciones, puedeCambiarDeCarpeta, oferta } = useOferta();
@@ -51,7 +51,6 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const [manual, setManual] = useState<Record<string, boolean>>({});
   const [foco, setFoco] = useState<string | null>(null);
   const arbol = useRef<HTMLUListElement>(null);
-
   const { entradas } = oferta;
   const puedeCrear = acciones.includes("editar_hoja");
 
@@ -253,22 +252,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         </div>
       )}
 
-      <nav aria-label="Empresa" className="silice-marco-lateral__empresa">
-        <h2 className="silice-marco-lateral__titulo">Empresa</h2>
-        <ul>
-          {entradas.map((e) => (
-            <li key={e.id}>
-              <Link
-                to={rutaDeEmpresa(e.id)}
-                aria-current={entradaActiva === e.id ? "page" : undefined}
-                className="silice-marco-lateral__fila"
-              >
-                {e.titulo}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <ZonaEmpresa entradas={entradas} entradaActiva={entradaActiva} idBase={base} />
 
       <DialogoNuevaObra
         abierto={nuevaAbierta}

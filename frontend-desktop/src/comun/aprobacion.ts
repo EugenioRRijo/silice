@@ -1,5 +1,5 @@
 // El ciclo de aprobacion de una version (Tarea 17/18; diseno de montar un presupuesto §5.4), como lo leen las pantallas
-// de Entregar, Control, Trazabilidad y Aprobar. La API dice el estado con su clave; aqui se dice con palabras.
+// de Entregar, Control, Versiones y Aprobar. La API dice el estado con su clave; aqui se dice con palabras.
 
 export const NOMBRES_DE_ESTADO: Record<string, string> = {
   guardada: "Guardada",

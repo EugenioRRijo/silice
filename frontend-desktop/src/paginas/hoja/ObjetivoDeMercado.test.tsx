@@ -119,7 +119,8 @@ const OBJETIVOS = {
 };
 
 function vista(filas: FilaPresupuesto[]): VistaPresupuesto {
-  return { filas, total: { texto: "0.00", exacto: "0" }, moneda: "Bs", vacio_mensaje: filas.length === 0 ? "El presupuesto no tiene renglones todavía." : null };
+  const impuestos = { subtotal: "0.00", iva: "0.00", total: "0.00", alicuota: "0.16", fuente_alicuota: "Fuente ficticia" };
+  return { filas, total: { texto: "0.00", exacto: "0" }, moneda: "Bs", vacio_mensaje: filas.length === 0 ? "El presupuesto no tiene renglones todavía." : null, impuestos };
 }
 
 describe("Hoja: objetivo de mercado junto al precio unitario (Tarea 16)", () => {

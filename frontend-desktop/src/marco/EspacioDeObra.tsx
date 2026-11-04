@@ -1,13 +1,20 @@
 import { Button } from "@carbon/react";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { Suspense, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import type { CasosRespuesta } from "../api/tipos";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
+import { ProveedorDeLaHoja } from "../paginas/hoja/ProveedorDeLaHoja";
 import { ContextoAplicacion } from "../shell/contexto";
-import { ListaDeLaCarpeta } from "../shell/ListaDeLaCarpeta";
+import { LimiteDeError } from "../shell/LimiteDeError";
+import { CabeceraDeObra } from "./CabeceraDeObra";
 import { enfocarElTitulo } from "./focoAlTitulo";
-import { RUTA_DE_PENDIENTES } from "./secciones";
+import { ContextoDeLaObra } from "./obraAbierta";
+import type { ObraAbierta } from "./obraAbierta";
+import { RUTA_DE_PENDIENTES, SECCIONES_CON_HOJA } from "./secciones";
+import type { SeccionId } from "./secciones";
+import { useFichaDeLaObra } from "./useFichaDeLaObra";
+import type { FichaDeLaObra } from "./useFichaDeLaObra";
 import { useObraDeLaRuta } from "./useObraDeLaRuta";
 import type { VigilanteDeObra } from "./otraPestana";
 import type { ObraDeCarpeta } from "./useObras";
@@ -98,30 +105,49 @@ export function EspacioDeObra({ obras, casos, alEntrar, pantalla, vigilante }: P
       );
     case "lista":
       return (
-        <ObraAbierta
+        <ObraDeLaRuta
           carpeta={estado.carpeta}
           obraId={estado.obraId}
           obra={obras.find((o) => o.carpeta === estado.carpeta && o.obra_id === estado.obraId)}
           casos={casos}
+          seccion={estado.seccion.id}
         >
           {estado.seccion.pagina !== null && pantalla(estado.seccion.pagina)}
-        </ObraAbierta>
+        </ObraDeLaRuta>
       );
   }
 }
 
-interface ObraAbiertaProps {
+interface ObraDeLaRutaProps {
   carpeta: string | null;
   obraId: number;
   obra: ObraDeCarpeta | undefined;
   casos: CasosRespuesta | null;
+  seccion: SeccionId;
   children: ReactNode;
 }
 
-// La cabecera de la obra (nombre, versión y, de su carpeta, la moneda y la lista para armar) y la sección. La sección lee la obra y la carpeta de la ruta desde
-// el primer dibujo (no las del marco, que se ponen al día un momento después).
-function ObraAbierta({ carpeta, obraId, obra, casos, children }: ObraAbiertaProps) {
+// La obra lista: lee su ficha una vez, la comparte con las secciones (ContextoDeLaObra) y pinta la cabecera encima de la
+// sección. La sección lee la obra y la carpeta de la ruta desde el primer dibujo (no las del marco, que se ponen al día
+// un momento después).
+//
+// Tarea 3 del plan F4: en Presupuesto, Archivos y planos y Versiones (SECCIONES_CON_HOJA) la cabecera y la sección van
+// dentro de `ProveedorDeLaHoja`, siempre en esta posición y con la clave de la obra: pasar entre esas tres no lo
+// desmonta (el borrador sigue abierto) y cambiar de obra o de carpeta sí (se descarta, o se conserva para retomarlo si
+// tiene cambios, como al salir de la Hoja). En las demás no se abre ningún borrador. Sin `leer_proyecto` (la acción de
+// la Hoja y de sus lecturas, Tarea 2b) tampoco: la sección dice «Sin permiso» y el proveedor solo daría 403. El límite
+// de error y la espera de la pantalla perezosa son de la sección: el marco ya no los reinicia al cambiar de sección.
+function ObraDeLaRuta({ carpeta, obraId, obra, casos, seccion, children }: ObraDeLaRutaProps) {
   const base = useContext(ContextoAplicacion);
+  const { recargar, ...ficha } = useFichaDeLaObra(obraId, carpeta);
+  // Ronda 2 de la Tarea 3 (decisión del orquestador): volver al Resumen desde otra sección vuelve a leer la ficha, para
+  // que diga lo que cambió en Presupuesto, Aprobaciones o Control. Mientras llega se ve la anterior (Tarea 1, decisión 3).
+  // Ajuste durante el render (react.dev, «You might not need an effect»): `recargar` es estado de esta misma pieza.
+  const [seccionVista, setSeccionVista] = useState(seccion);
+  if (seccionVista !== seccion) {
+    setSeccionVista(seccion);
+    if (seccion === "resumen") recargar();
+  }
   const valor = useMemo(() => {
     if (!base) return null;
     const caso =
@@ -130,17 +156,34 @@ function ObraAbierta({ carpeta, obraId, obra, casos, children }: ObraAbiertaProp
         : (casos?.casos.find((c) => c.nombre === carpeta) ?? { nombre: carpeta, ruta_relativa: "" });
     return { ...base, proyecto: String(obraId), nombreProyecto: obra?.obra ?? null, caso };
   }, [base, carpeta, obraId, obra, casos]);
+  // Sin useMemo: el valor cambia solo cuando cambia la ficha o la obra, que es cuando esta pieza vuelve a pintarse.
+  const abierta: ObraAbierta = { carpeta, obraId, ficha: ficha as FichaDeLaObra, recargarFicha: recargar };
+
+  const conHoja = SECCIONES_CON_HOJA.includes(seccion) && base?.sesion.acciones.includes("leer_proyecto") === true;
+  const cabecera = (
+    <CabeceraDeObra carpeta={carpeta} obraId={obraId} nombre={obra?.obra} version={obra?.version_codigo} ficha={abierta.ficha} />
+  );
+  const pantalla = (
+    <LimiteDeError key={seccion}>
+      <Suspense fallback={<EsqueletoPagina />}>{children}</Suspense>
+    </LimiteDeError>
+  );
 
   return (
-    <>
-      <section aria-label="Obra abierta" className="silice-obra-abierta">
-        <p className="silice-obra-abierta__nombre">{obra?.obra ?? `Obra ${obraId}`}</p>
-        <ul className="silice-obra-abierta__datos">
-          <li>{`Versión: ${obra?.version_codigo ?? "sin versión guardada"}`}</li>
-        </ul>
-        {base && <ListaDeLaCarpeta key={carpeta ?? ""} alExpirar={base.alExpirar} />}
-      </section>
-      <ContextoAplicacion.Provider value={valor}>{children}</ContextoAplicacion.Provider>
-    </>
+    <ContextoDeLaObra.Provider value={abierta}>
+      <ContextoAplicacion.Provider value={valor}>
+        {conHoja ? (
+          <ProveedorDeLaHoja key={JSON.stringify([carpeta, obraId])}>
+            {cabecera}
+            {pantalla}
+          </ProveedorDeLaHoja>
+        ) : (
+          <>
+            {cabecera}
+            {pantalla}
+          </>
+        )}
+      </ContextoAplicacion.Provider>
+    </ContextoDeLaObra.Provider>
   );
 }

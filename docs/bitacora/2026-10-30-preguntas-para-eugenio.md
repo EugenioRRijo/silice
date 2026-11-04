@@ -143,3 +143,89 @@ la sección Presupuesto del rediseño F4.
 | # | Pregunta | Lo que se hará | Cómo cambiarlo |
 |---|---|---|---|
 | 8 | ¿Aprueba el inventario de F4 y sus 25 bajas (4 dudosas)? | Pendiente: al terminar el plan vial se escribe el plan de F4 con las recomendaciones del inventario; ninguna baja borra código sin dejarlo reversible y anotado aquí | **Respondida (2026-10-30): aprobado con las recomendaciones del inventario.** Las bajas quedan reversibles. |
+| 9 | F4, Tarea 9 (decisión 5): cerrar el panel de Componer (Esc o «Cerrar») pierde lo compuesto sin preguntar. ¿Pedimos confirmación? | Se cierra sin preguntar, como cerrar un diálogo pierde lo escrito en él; lo escrito en «Agregar partida» (cantidad, cálculo, nota) sigue y el foco vuelve a «Partida». El árbitro recomienda preguntar | Pedir confirmación en `cerrarComponer` (`paginas/hoja/AgregarPartida.tsx`) si `formulariosSucios()` incluye `componer` |
+
+### Bajas de F4 aplicadas (Tarea 2, 2026-10-31)
+
+Inventario aprobado por Eugenio (fila 8). Formato: baja · qué se quitó · commit · dónde vive hoy · cómo volver. Las seis se deshacen en grupo (`git revert 023c4416`; la página con `git checkout b62d3679^ -- frontend-desktop/src/paginas/obras/index.tsx`).
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| 1 | Botón «Nueva obra» de la cabecera del Resumen (ya no estaba en `index.tsx` desde el commit `b62d3679`, que reescribió la página) | `023c4416` (los archivos) y `b62d3679` (la página) | «Nueva obra» de la barra lateral | `git revert 023c4416` y `git checkout b62d3679^ -- frontend-desktop/src/paginas/obras/index.tsx` |
+| 2 | `TablaObras.tsx`: tabla «Obras» de toda la carpeta | `023c4416` | Árbol de obras; cifras de la obra abierta en el Resumen | `git revert 023c4416` |
+| 3 | `CifrasMesa.tsx`, notas de conversión y «fuera de la suma» (y `textoConversion`, `textoFueraDeSuma`, tipos de cifras) | `023c4416` | **Pendiente de F5:** vuelven en Empresa | `git revert 023c4416` |
+| 4 | `ColumnaPendientes.tsx`, `columnaDeLaMesa`, `gruposDeLaMesa` y los tipos de «Aprobar» | `023c4416` | Bandeja de F3; el Resumen muestra los pendientes de la obra | `git revert 023c4416` |
+| 5 | `LoQuePuedeHacer.tsx` y su hoja | `023c4416` | Ctrl+K | `git revert 023c4416` |
+| 6 | «Cree su primera obra» y «Probar con datos de demostración» (`PrimerosPasos`) | `b62d3679` (salió con la página) | Barra lateral; Empresa › Carpetas de trabajo; «Empieza aquí» (F6) | `git checkout b62d3679^ -- frontend-desktop/src/paginas/obras/index.tsx` |
+
+### Bajas de F4 aplicadas (Tarea 4, 2026-10-31)
+
+Las siete del Presupuesto. Cinco van en su propio commit y se deshacen con `git revert`; la 23 y la 25 no dejan código muerto (son estructura: fusionar una pestaña y mover los textos a un catálogo) y salieron dentro del commit del `feat`, que es el único que las deshace. `knip` y `jscpd` no están instalados: se midió con `grep` de importaciones y `npm run lint` (eslint y tsc) en 0.
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| 7 | Título «Hoja de la obra» (h1, `rutas.ts`, diálogo de salida) | `bc11a3c3` | Título «Presupuesto» | `git revert bc11a3c3` |
+| 8 | Aviso «Use el selector de obra de la cabecera para abrir su hoja» (sin obra ahora solo dice «Elija una obra») | `da1b03b3` | Dentro de la obra siempre hay obra | `git revert da1b03b3` |
+| 10 | Bloque «Factores de la versión» de la pestaña APU, `FactoresDeLaVersion` y la variante `compacto` de los ajustes | `963f6485` | Pestaña «Ajustes de costo» | `git revert 963f6485` |
+| 11 | Botón «Crear plan secuencial» y su llamada (`crearPlan`, `rutaDePlanSecuencial`); la ruta del servidor no se toca | `04569ebb` | «Plan desde los rendimientos» | `git revert 04569ebb` |
+| 12 | «Total del presupuesto» de Espacio y de Parámetros, la línea «Moneda del proyecto» y la propiedad `moneda` de `PestanaParametros` | `b41c38b9` | Total bajo la tabla de «Partidas» | `git revert b41c38b9` |
+| 23 | Pestaña «Punto de equilibrio» separada (ahora es el bloque de debajo del plan) | `b0f976d6` (con el feat) | Pestaña «Plan y equilibrio» | `git revert b0f976d6` (deshace el feat entero) |
+| 25 | Texto largo de ayuda encima de cada pestaña | `b0f976d6` (con el feat) | `paginas/hoja/textos.ts`, tras «¿Qué es esto?» (`comun/QueEsEsto.tsx`) | igual que la 23 |
+
+
+### Bajas de F4 aplicadas (Tarea 6, 2026-11-02)
+
+Las dos del Presupuesto que absorbe la sección Versiones, cada una en su commit, más el traslado del rastro de aprobaciones a Aprobaciones (no cuenta como baja). Orden: rojo (`2ea4050a`), bajas (`fbc4a812`, `e699e27b`), traslado con `git mv` sin cambios (`26cbce77`) y la sección (`a98d98b9`). `knip` y `jscpd` no están en este `node_modules`: se midió con `grep` de importaciones y `npm run lint` (eslint y tsc) en 0. `paginas/hoja/`: antes 69 archivos de código y 24.241 líneas (con pruebas y estilos); después 66 y 23.524. Tras la baja 24, `PestanaTrazabilidad` quedó sin ninguna importación y `EstadoDeLaCadena`, `RestaurarVersion` y `RastroDeAprobaciones` solo con la suya: no se borraron, se movieron. Tras la baja 9, `rotuloDeVersion` quedó sin uso y salió.
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| 24 | Pestaña «Trazabilidad» del Presupuesto (su id en `PESTANAS` y `PestanaId`, su caso en el reparto de `index.tsx`) | `fbc4a812` | Versiones: la tabla de versiones, la cadena de sellos encima, el registro de cambios de cada versión en el panel lateral y «Restaurar…» en cada fila | Antes de `26cbce77`, `git revert fbc4a812`. Después (los archivos se movieron): `git checkout fbc4a812^ -- frontend-desktop/src/paginas/hoja/` con las rutas de `index.tsx`, `logica.ts`, `AyudaDePestana.tsx`, `textos.ts`, `PestanaTrazabilidad.tsx`, `EstadoDeLaCadena.tsx`, `RestaurarVersion.tsx` y `RastroDeAprobaciones.tsx` (trae también el selector de la baja 9, que vive en el mismo `index.tsx`) |
+| 9 | Selector «Versión» del Presupuesto (`Select id="hoja-version"`) y `rotuloDeVersion` | `e699e27b` | Versiones › «Abrir» (lleva al Presupuesto con `?version=`); la versión abierta la dicen el estado del borrador y la cabecera | `git revert e699e27b` y volver a añadir `export const ID_DEL_TITULO = "hoja-titulo";` en `paginas/hoja/useGuardadoDeLaPagina.ts` (la pantalla Versiones lo importa desde `a98d98b9`) |
+| — | Traslado: el rastro de aprobaciones de la obra sale de la pestaña «Trazabilidad» y pasa a Aprobaciones con el h2 «Rastro de la obra» | retiro en `fbc4a812` (salió con la pestaña); `git mv` en `26cbce77`; montado en `a98d98b9` | `paginas/aprobar/RastroDeAprobaciones.tsx`, dentro de la obra y para toda cuenta con `leer_proyecto` | El de la baja 24; para quitarlo de Aprobaciones, la línea de `RastroDeAprobaciones` en `paginas/aprobar/index.tsx` |
+
+### Bajas de F4 aplicadas (Tarea 8, 2026-11-02)
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| (fusión del inventario) | Bloque plegado «Cambiar el insumo de una línea (en la copia de esta versión)» (`CambioDeInsumo.tsx`, con su tipo, línea, búsqueda y «Usar este insumo») | `4ca6b4d0` (con el `refactor`) | «Cambiar» en cada línea del APU, que abre el diálogo «Cambiar el insumo de <línea>» (`LineaDelApu.tsx`) | `git revert 4ca6b4d0` |
+
+### Bajas de F4 aplicadas (Tarea 9, 2026-11-02)
+
+Las dos de «Agregar partida», cada una en su commit. Orden: rojo (`ea8bb0e6`), traslado con `git mv` de la lógica de «Partidas similares» a `paginas/hoja/logicaParecidas.ts` (`f1ddce51`, solo mueve y corrige importaciones), bajas (`91a15420`, `80e7e754`) y la puerta única (`436a339b`). `knip` y `jscpd` no están en este `node_modules`: se midió con `grep` de importaciones y `npm run lint` (eslint y tsc) en 0. `paginas/similares/`: antes 5 archivos y 616 líneas (con pruebas y estilos); tras el traslado, 3 y 471; tras la baja, ninguno. Lo único que importaba la pantalla era su entrada en `shell/rutas.ts`.
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| 20 | Pantalla «Partidas similares» (`paginas/similares/index.tsx`, su prueba y `similares.scss`) y su entrada en `PAGINAS` (32 pantallas) | `91a15420` | «Agregar partida» › «Buscar parecidas» (`paginas/hoja/Parecidas.tsx`, la misma `POST /v1/similares`; su lógica en `paginas/hoja/logicaParecidas.ts`) | `git revert 91a15420` (la pantalla vuelve importando `../hoja/logicaParecidas`; si la constante `AVISO_SIN_DESCRIPCION` hace falta, sale de `f1ddce51`: la quitó `436a339b`) |
+| 21 | Botón «Volver a la Hoja» de Componer (`alVolverAHoja` de `Guardar.tsx`) y el parámetro `volver` de la pantalla | `80e7e754` | «Componer una partida nueva» se abre en el panel de «Agregar partida», sin salir de la obra (`paginas/hoja/ComponerEnPanel.tsx`) | Antes de `436a339b`, `git revert 80e7e754`. Después (el cuerpo de la pantalla pasó a `ComponerPartida.tsx`): `git checkout 80e7e754^ -- frontend-desktop/src/paginas/componer/index.tsx frontend-desktop/src/paginas/componer/Guardar.tsx frontend-desktop/src/paginas/hoja/AgregarPartida.tsx` (vuelven también la navegación a `/componer?…&volver=hoja` y la pantalla sin `ComponerPartida`) |
+
+### Traslado y baja de F4 (Tarea 11, 2026-11-02)
+
+`knip` y `jscpd` no están instalados en este `node_modules`: se midió con `grep` (nada nombra ya `ocupadoPorEdicion`, `ROTULO_IMPORTAR`, `ETIQUETA_DE_SUBIDA` ni `silice-hoja__bloqueable`) y `npm run lint` (eslint y tsc) en 0.
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| (traslado del inventario) | Bloque «Importar plano (DXF o IFC)» de la pestaña «Espacio y metrajes» (en su lugar, el enlace «Importar un plano en Archivos y planos»), el bloqueo de las tablas del espacio mientras se fusionaba y `ocupadoPorEdicion` | `d8ca1a07` (mueve los archivos a `paginas/archivos/`, sin cambios) y `bcb0cae1` (el retiro, con el `feat`) | Archivos y planos › «Subir plano o cómputo» (`paginas/archivos/SubirArchivo.tsx` e `ImportarPlano.tsx`) | `git revert bcb0cae1` (deshace la sección entera; el bloque vuelve a Espacio) |
+| 22 | «Libro de la empresa» como parte de la obra | sin commit (no cambia código) | Empresa › Auditar un presupuesto; Archivos y planos no ofrece el libro ni las carpetas | — |
+
+### Bajas de F4 aplicadas (Tarea 12, 2026-11-02)
+
+Las siete salen en un commit (`969ad67f`, más `7cf1358f` con tres aserciones de Componer): son piezas de la pantalla Elaborar, que se va entera. `knip` y `jscpd` no están instalados: se midió con `grep` (nada nombra ya `paginas/elaborar`, `CODIGO_POR_DEFECTO`, `PlanDeTrabajo`, `LlevarALaHoja` ni `silice-elaborar`) y `npm run lint` en 0. Decisión aparte, para Eugenio: «Archivos y planos» ya no es del módulo «edificación» (plan F4, «Decisiones de la Tarea 12», punto 1).
+
+| Baja | Qué se quitó | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|---|
+| 13 | Campo «Código del presupuesto» de Elaborar y `CODIGO_POR_DEFECTO` | `969ad67f` | El código de la obra | `git revert 7cf1358f 969ad67f` |
+| 14 | Campos «Moneda» y «Fecha» propios de Elaborar, `MONEDA_POR_DEFECTO` y `hoy()` | `969ad67f` | La moneda de la carpeta y la fecha de su lista (`GET /v1/carpeta`) | igual que la 13 |
+| 15 | «Exportar a Excel» de Elaborar | `969ad67f` | «Descargar Excel» del Presupuesto | igual que la 13 |
+| 16 | «Plan de trabajo» de Elaborar (`PlanDeTrabajo.tsx`) | `969ad67f` | Pestaña «Plan y equilibrio» | igual que la 13 |
+| 17 | «Informe de auditoría» de Elaborar | `969ad67f` | Pestaña «Revisión» | igual que la 13 |
+| 18 | Bloque «Presupuesto elaborado» (con «Llevar a la Hoja de la obra») | `969ad67f` | El resultado va directo a «Partidas» | igual que la 13 |
+| 19 | Pantalla «Elaborar un presupuesto» (`paginas/elaborar/`, su entrada del registro, el enlace de Componer y la fila del recorrido funcional) | `969ad67f` y `7cf1358f` | Archivos y planos › «Subir plano o cómputo» › «Cargar cómputo» (`paginas/archivos/CargarComputo.tsx`) | igual que la 13 |
+
+### Traslados de F4 (Tarea 13, 2026-11-02)
+
+Ninguna baja: dos traslados. Sin `knip` ni `jscpd` (no están instalados); se midió con `grep` y `npm run lint` en 0.
+
+| Qué se movió | Commit | Dónde vive hoy | Cómo volver |
+|---|---|---|---|
+| Pantalla «Histórico de cambios de precio» (`historico`) | `feat(mercado)` de la Tarea 13 (movida antes con `83f73c50`) | Mercado › «Histórico de precios» | `git revert <feat>` devuelve la pantalla y su entrada en `shell/rutas.ts` y en `recorrido_funcional.toml` |
+| «Registrar / Retirar una cotización…» de Presupuesto › Precios | igual | Mercado › «Cotizaciones de la obra» | igual |

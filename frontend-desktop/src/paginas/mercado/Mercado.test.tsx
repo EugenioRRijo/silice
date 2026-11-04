@@ -213,11 +213,34 @@ describe("Estudio de mercado", () => {
     vi.unstubAllGlobals();
   });
 
-  test("un solo h1, las dos pestañas y, sin elegir nada, qué hacer", () => {
+  test("un solo h1, las cuatro pestañas y, sin elegir nada, qué hacer", () => {
     montar();
     expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual(["Estudio de mercado"]);
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Lo que compramos", "Lo que cobramos"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+      "Lo que compramos",
+      "Lo que cobramos",
+      "Histórico de precios",
+      "Cotizaciones de la obra",
+    ]);
     expect(screen.getByText("Elija un insumo para ver sus precios en el mercado")).toBeInTheDocument();
+  });
+
+  test("«Histórico de precios»: elegir el insumo de la lista y filtrar pide el histórico con su descripción y pinta la variación en es-VE", async () => {
+    responder("GET", /^\/cambios-precio/, () =>
+      json([{ insumo: INSUMOS[0]!.descripcion, precio_anterior: "16.0000", precio_nuevo: "18.0000", variacion: "0.1250", fecha: "2026-02-01" }]),
+    );
+    const u = userEvent.setup();
+    montar();
+    await u.click(screen.getByRole("tab", { name: "Histórico de precios" }));
+    expect(screen.getByRole("heading", { level: 2, name: "Histórico de cambios de precio" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    await u.type(screen.getByRole("combobox", { name: "Insumo" }), "cemento gris");
+    await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
+    await u.click(screen.getByRole("button", { name: "Filtrar" }));
+    const tabla = await screen.findByRole("table", { name: "Cambios de precio" });
+    expect(within(tabla).getByText("12,50 %")).toBeInTheDocument();
+    const pedidos = llamadas("GET", /^\/cambios-precio/).map((l) => l.url);
+    expect(pedidos.at(-1)).toBe("/cambios-precio?insumo=Cemento+gris+ficticio%2C+saco+de+42%2C5+kg");
   });
 
   test("las seis cifras del mercado en es-VE, cada monto con las observaciones de las que sale", async () => {

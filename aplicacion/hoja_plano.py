@@ -47,8 +47,13 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from adapters.espacio.planos import EstadoImportacion, ItemInforme, ResultadoImportacion
-from aplicacion import hoja, hoja_borradores, hoja_edicion
+from adapters.espacio.planos import (
+    EstadoImportacion,
+    ItemInforme,
+    ResultadoImportacion,
+    TipoItem,
+)
+from aplicacion import hoja, hoja_borradores, hoja_edicion, importaciones
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorInexistente, BorradorVivo, RevDesactualizado
 from aplicacion.subidas import Subida
@@ -463,12 +468,14 @@ def declarar_circuitos(
         return resultado
 
 
-def fusionar(sesion: Session, vivo: BorradorVivo, rev: int) -> Fusion:
+def fusionar(sesion: Session, vivo: BorradorVivo, rev: int, *, usuario: str = "") -> Fusion:
     """P5: funde la importacion con el espacio del borrador (`_fusionar_importacion`,
     P:1353-1374) por el nucleo comun de la edicion: ya guardado (`BorradorYaGuardado`), `rev`,
     `SinImportacion`, una importacion detenida o rechazada (`ImportacionNoFusionable` con el texto
     de la clasica) o un espacio que no vale (`HojaInvalida`/`ValueError`); y, si cambia,
-    `completar_composiciones` y `reemplazar` (sube `rev`). Luego descarta la importacion."""
+    `completar_composiciones` y `reemplazar` (sube `rev`). Luego anota la importacion en el
+    registro de la obra (`aplicacion.importaciones`, sin guardar, a nombre de `usuario`) y la
+    descarta."""
     hechas: dict[str, object] = {}
 
     def construir(actual: BorradorVivo) -> hoja.Borrador:
@@ -479,15 +486,36 @@ def fusionar(sesion: Session, vivo: BorradorVivo, rev: int) -> Fusion:
             if importacion.resultado.estado is not EstadoImportacion.IMPORTADA:
                 raise ImportacionNoFusionable(str(error)) from None
             raise
-        hechas.update(resultado=importacion.resultado, informe=informe)
+        hechas.update(
+            resultado=importacion.resultado, informe=informe, archivo=importacion.ruta.name
+        )
         return nuevo
 
     with vivo.cerrojo:
         fundido = hoja_edicion.cambiar_borrador(sesion, vivo.huella, vivo.id, rev, construir)
         IMPORTACIONES.quitar(vivo.id)
-    resultado: ResultadoImportacion = hechas["resultado"]  # type: ignore[assignment]
-    informe: tuple[ItemInforme, ...] = hechas["informe"]  # type: ignore[assignment]
-    return Fusion(fundido, resultado, informe, hoja.resumen_de_la_fusion(resultado, informe))
+        resultado: ResultadoImportacion = hechas["resultado"]  # type: ignore[assignment]
+        informe: tuple[ItemInforme, ...] = hechas["informe"]  # type: ignore[assignment]
+        resumen = hoja.resumen_de_la_fusion(resultado, informe)
+        _anotar_en_el_registro(fundido, str(hechas["archivo"]), usuario, resumen)
+    return Fusion(fundido, resultado, informe, resumen)
+
+
+def _anotar_en_el_registro(
+    vivo: BorradorVivo, archivo: str, usuario: str, resumen: hoja.ResumenDeFusion
+) -> None:
+    """Deja el plano fusionado en el registro de la obra: «33 filas en el espacio; 2 sin
+    reconocer», con los conteos de la fusion (lo importado y lo no reconocido)."""
+    cuentas = dict(resumen.por_tipo)
+    texto = importaciones.resumen_de_plano(
+        filas=cuentas.get(hoja.ROTULOS_DEL_INFORME[TipoItem.IMPORTADO], 0),
+        sin_reconocer=cuentas.get(hoja.ROTULOS_DEL_INFORME[TipoItem.NO_RECONOCIDO], 0),
+    )
+    try:
+        imp = importaciones.nueva("plano", archivo, usuario, texto)
+    except ValueError:  # el nombre guardado no es presentable: el registro no frena la fusion
+        imp = importaciones.nueva("plano", "plano", usuario, texto)
+    importaciones.anotar(vivo, imp)
 
 
 def descartar(vivo: BorradorVivo) -> None:

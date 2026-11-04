@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { formulariosSucios, olvidarFormularios } from "../../shell/sucio";
@@ -120,7 +121,7 @@ function Ubicacion() {
   return <p data-testid="ubicacion">{`${pathname}${search}`}</p>;
 }
 
-function montar(ruta = "/aprobar?envio=12", parcial: Partial<Aplicacion> = {}) {
+function montar(ruta = "/aprobar?envio=12", parcial: Partial<Aplicacion> = {}, recargarFicha?: () => void) {
   const aplicacion: Aplicacion = {
     sesion: SESION,
     proyecto: null,
@@ -129,21 +130,30 @@ function montar(ruta = "/aprobar?envio=12", parcial: Partial<Aplicacion> = {}) {
     alExpirar,
     ...parcial,
   };
+  const pagina = (
+    <MemoryRouter initialEntries={[ruta]}>
+      <Routes>
+        <Route
+          path="/aprobar"
+          element={
+            <>
+              <PaginaAprobar />
+              <Ubicacion />
+            </>
+          }
+        />
+      </Routes>
+    </MemoryRouter>
+  );
   return render(
     <ContextoAplicacion.Provider value={aplicacion}>
-      <MemoryRouter initialEntries={[ruta]}>
-        <Routes>
-          <Route
-            path="/aprobar"
-            element={
-              <>
-                <PaginaAprobar />
-                <Ubicacion />
-              </>
-            }
-          />
-        </Routes>
-      </MemoryRouter>
+      {recargarFicha ? (
+        <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 3, ficha: { estado: "cargando" }, recargarFicha }}>
+          {pagina}
+        </ContextoDeLaObra.Provider>
+      ) : (
+        pagina
+      )}
     </ContextoAplicacion.Provider>,
   );
 }
@@ -259,6 +269,36 @@ describe("el dictamen", () => {
     const despues = await panel();
     expect(await within(despues).findByText("Este envío ya tiene dictamen: Devuelta.")).toBeInTheDocument();
     expect(within(despues).queryByRole("button", { name: "Registrar el dictamen…" })).toBeNull();
+  });
+
+  // F4, Tarea 3 (menor 1 del árbitro): la obra ya no se vuelve a montar al cambiar de sección; tras un dictamen, la línea
+  // «Estado:» de la cabecera se actualiza si se vuelve a leer la ficha. Sin obra abierta (la pantalla sola) no hay ficha.
+  test("dentro de una obra, registrar el dictamen vuelve a leer la ficha de la obra", async () => {
+    const u = userEvent.setup();
+    const recargarFicha = vi.fn();
+    montar("/aprobar?envio=12", {}, recargarFicha);
+    const caja = await panel();
+    await u.click(within(caja).getByRole("radio", { name: "Aprobada" }));
+    await u.click(within(caja).getByRole("button", { name: "Registrar el dictamen…" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Registrar el dictamen" });
+    expect(recargarFicha).not.toHaveBeenCalled();
+    await u.click(within(dialogo).getByRole("button", { name: "Registrar el dictamen" }));
+    await waitFor(() => expect(recargarFicha).toHaveBeenCalledTimes(1));
+  });
+
+  test("un dictamen que el servidor rechaza no vuelve a leer la ficha", async () => {
+    const u = userEvent.setup();
+    const recargarFicha = vi.fn();
+    alDictaminar = () => json({ detalle: "Ya tiene dictamen." }, 409);
+    montar("/aprobar?envio=12", {}, recargarFicha);
+    const caja = await panel();
+    await u.click(within(caja).getByRole("radio", { name: "Aprobada" }));
+    await u.click(within(caja).getByRole("button", { name: "Registrar el dictamen…" }));
+    const dialogo = await screen.findByRole("dialog", { name: "Registrar el dictamen" });
+    await u.click(within(dialogo).getByRole("button", { name: "Registrar el dictamen" }));
+    await waitFor(() => expect(dictamenes()).toHaveLength(1));
+    await screen.findByText("Ya tiene dictamen.");
+    expect(recargarFicha).not.toHaveBeenCalled();
   });
 
   test("aprobar sin notas se permite", async () => {
@@ -427,5 +467,45 @@ describe("cómo se llega", () => {
   test("sin envíos en ninguna carpeta lo dice", async () => {
     montar("/aprobar");
     expect(await screen.findByText("No hay versiones esperando dictamen.")).toBeInTheDocument();
+  });
+});
+
+// Tarea 6 del plan F4: el rastro de aprobaciones de la obra se muda de la pestaña «Trazabilidad» de la Hoja a esta
+// sección. Lo ve toda cuenta con `leer_proyecto` (desde la Tarea 2b `GET /v1/aprobaciones?proyecto=` lo exige), dentro
+// de la obra abierta. Datos ficticios.
+describe("Rastro de la obra (Tarea 6 del plan F4)", () => {
+  const RASTRO = {
+    rastro: { integro: true, mensaje: "Rastro de aprobaciones íntegro." },
+    fases: "GS-001 en aprobación",
+    versiones: { "GS-001": { estado: "en_aprobacion", por: null, el: null, notas: "", armo: false } },
+    eventos: [{ id: 12, tipo: "envio", version: "GS-001", resultado: null, notas: "", por: "Ana Pérez <ana>", el: "2026-10-20T09:15:00", armo: false, cierre_de: null }],
+    ultima_aprobada: null,
+  };
+  const conRastro = () => {
+    const anterior = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) =>
+      String(entrada) === "/v1/aprobaciones?proyecto=3" ? json(RASTRO) : anterior(entrada, init),
+    );
+  };
+
+  test("con la sesión de «revisa», dentro de la obra, se ve el h2 «Rastro de la obra» con las fases y los movimientos", async () => {
+    conRastro();
+    montar("/aprobar?envio=12", { proyecto: "3" }, vi.fn());
+    const titulo = await screen.findByRole("heading", { level: 2, name: "Rastro de la obra" });
+    expect(titulo).toHaveClass("cds--type-heading-compact-02");
+    const region = screen.getByRole("region", { name: "Rastro de la obra" });
+    expect(await within(region).findByText("GS-001 en aprobación")).toBeInTheDocument();
+    expect(within(region).getByText("Rastro de aprobaciones íntegro.")).toBeInTheDocument();
+    expect(within(region).getByRole("table", { name: "Movimientos de aprobación" })).toBeInTheDocument();
+    expect(region.querySelector("svg")).not.toBeNull(); // el color nunca va solo
+  });
+
+  test("sin `leer_proyecto` no se ve ni se pide", async () => {
+    conRastro();
+    montar("/aprobar?envio=12", { proyecto: "3", sesion: { ...SESION, acciones: ["aprobar_version"] } }, vi.fn());
+    await screen.findByRole("region", { name: "Galpón Sur · GS-001" });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("heading", { name: "Rastro de la obra" })).toBeNull();
+    expect(fetchFalso.mock.calls.map(([e]) => String(e))).not.toContain("/v1/aprobaciones?proyecto=3");
   });
 });

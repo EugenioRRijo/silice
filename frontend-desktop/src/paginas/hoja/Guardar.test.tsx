@@ -6,6 +6,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaEspacio, vistaParametros } from "./datosDePrueba";
 import PaginaHoja from "./index";
+import { versionAbierta } from "../../test/rutaDeLaHoja";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 
 // Rebanada 3d-1 (front): el modal «Guardar versión», la primera versión y la reacción a cada resultado de S1
@@ -199,7 +200,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(dialogo.contains(document.activeElement)).toBe(true);
     expect(campoFuente(dialogo)).toHaveFocus();
     expect(dialogo.closest("[inert]")).toBeNull();
-    expect(screen.getByRole("combobox", { name: "Versión", hidden: true }).closest("[inert]")).not.toBeNull();
+    expect(screen.getByRole("region", { name: "Estado del borrador", hidden: true }).closest("[inert]")).not.toBeNull();
     // Resumen de lo que se guarda: cambios, de qué versión sale y el total (con el exacto accesible).
     expect(within(dialogo).getByText(/Se registrarán 2 cambios en una versión nueva \(sale de la 002\)/)).toBeInTheDocument();
     expect(within(dialogo).getByTitle("2.703,860232344044033333333333")).toHaveTextContent("2.703,86 USD");
@@ -311,7 +312,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
   test("3d-F2: guardar manda rev y fuente (sin responsable), dice «Se guardó la versión 003 con 2 cambios registrados.» y abre la 003", async () => {
     montar();
     // El contexto no se pierde: la pestaña elegida sigue siendo la misma.
-    await userEvent.click(await screen.findByRole("tab", { name: "Parámetros" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Ajustes de costo" }));
     const dialogo = await abrirModal();
     await escribirFuente(dialogo);
     versiones = VERSIONES_CON_003;
@@ -321,12 +322,12 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(guardados()).toEqual([{ rev: 3, fuente: FUENTE }]);
     // Abre la versión nueva (R2) y limpia el estado de cambios.
     await esperar(() => expect(aperturas().map((a) => a.version)).toEqual(["002", "003"]));
-    await esperar(() => expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("003"));
+    await esperar(() => expect(versionAbierta()).toBe("003"));
     const region = await screen.findByRole("region", { name: "Estado del borrador" });
     await within(region).findByText(/Versión 003 · Sin cambios sin guardar/);
     expect(screen.queryByRole("button", { name: "Guardar versión…" })).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("tab", { name: "Parámetros" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Ajustes de costo" })).toHaveAttribute("aria-selected", "true");
     // El borrador guardado ya no sirve: se descarta una sola vez, y la lista de versiones se volvió a pedir.
     await esperar(() => expect(borrados()).toHaveLength(1));
     expect(fetchFalso.mock.calls.filter(([r]) => String(r).startsWith("/v1/hoja/versiones")).length).toBeGreaterThanOrEqual(2);
@@ -395,14 +396,14 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  test("el foco queda en el selector de versión tras guardar (el botón ya no existe)", async () => {
+  test("el foco queda en el título tras guardar (el botón ya no existe; el selector salió con la baja 9)", async () => {
     montar();
     const dialogo = await abrirModal();
     await escribirFuente(dialogo);
     versiones = VERSIONES_CON_003;
     fireEvent.click(confirmar(dialogo));
     await screen.findByText("Se guardó la versión 003 con 2 cambios registrados.");
-    await esperar(() => expect(screen.getByRole("combobox", { name: "Versión" })).toHaveFocus());
+    await esperar(() => expect(screen.getByRole("heading", { level: 1, name: "Presupuesto" })).toHaveFocus());
   });
 
   // --- 3d-F3: primera versión --------------------------------------------------------------------------------------------
@@ -440,7 +441,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
       ).toBeInTheDocument();
       expect(guardados()).toEqual([{ rev: 2, fuente: "Plano A-01 rev. B" }]);
       await esperar(() => expect(aperturas().map((a) => a.version)).toEqual([null, "001"]));
-      await esperar(() => expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("001"));
+      await esperar(() => expect(versionAbierta()).toBe("001"));
     });
 
     test("con la hoja vacía el servidor dice por qué (422) y el diálogo sigue abierto con la fuente", async () => {
@@ -564,7 +565,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(await within(dialogo).findByText(detalle)).toBeInTheDocument();
     expect(campoFuente(dialogo)).toHaveValue(FUENTE);
     expect(confirmar(dialogo)).toBeEnabled(); // se puede volver a intentar
-    expect(screen.getByRole("combobox", { name: "Versión", hidden: true })).toHaveValue("002");
+    expect(versionAbierta()).toBe("002");
     expect(aperturas()).toHaveLength(1);
   });
 
@@ -610,7 +611,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     versiones = VERSIONES_CON_003;
     fireEvent.click(confirmar(dialogo));
     await screen.findByText("Se guardó la versión 003 con 2 cambios registrados.");
-    await esperar(() => expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("003"));
+    await esperar(() => expect(versionAbierta()).toBe("003"));
     expect(screen.queryByRole("button", { name: /Retomar borrador/ })).toBeNull();
   });
 

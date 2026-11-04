@@ -14,7 +14,7 @@ import {
   textoDeVersionCreada,
 } from "./logicaVersiones";
 import type { LadoDeLaTasa, VersionCreada } from "./logicaVersiones";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
+import type { AlCrearVersion } from "./logicaVersiones";
 import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useOperacion } from "./useOperacion";
 
@@ -94,7 +94,6 @@ interface Props {
 
 // «Convertir la moneda» (S5) de la pestaña Parámetros. Crea una versión convertida desde la guardada (RF-64).
 export function ConvertirMoneda({ proyecto, version, monedaActual, puedeConvertir, cambios, alCrearVersion }: Props) {
-  const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
   if (!puedeConvertir || version === null) return null;
   if (cambios > 0) {
     return (
@@ -108,6 +107,19 @@ export function ConvertirMoneda({ proyecto, version, monedaActual, puedeConverti
       />
     );
   }
+  return <BotonDeConvertir proyecto={proyecto} version={version} monedaActual={monedaActual} alCrearVersion={alCrearVersion} />;
+}
+
+// El botón y su diálogo, aparte: si el botón deja de ofrecerse con el diálogo abierto (otra ventana dejó cambios sin guardar
+// y el `rev` nuevo los trae), este componente se desmonta, el diálogo se va con él y `useDialogoDeOperacion` descuenta su
+// diálogo; con el gancho en `ConvertirMoneda` el contador quedaba en 1 y la página, `inert` sin diálogo (3e-3, cierre de F4).
+function BotonDeConvertir({
+  proyecto,
+  version,
+  monedaActual,
+  alCrearVersion,
+}: Pick<Props, "proyecto" | "monedaActual" | "alCrearVersion"> & { version: string }) {
+  const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
   return (
     <section className="silice-hoja__seccion" aria-label="Moneda del proyecto">
       <div className="silice-hoja__acciones">

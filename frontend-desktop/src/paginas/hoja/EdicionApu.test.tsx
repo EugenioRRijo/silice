@@ -196,7 +196,7 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
   async function irAApu() {
     montar();
     await screen.findByRole("region", { name: "Estado del borrador" });
-    await userEvent.click(screen.getByRole("tab", { name: "APU" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Análisis de precio (APU)" }));
     await screen.findByRole("textbox", { name: "Cantidad, Materiales fila 1" });
   }
 
@@ -430,24 +430,6 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
     expect(campo("Cantidad, Equipos fila 1")).toHaveValue("2");
   });
 
-  // --- Factores de la versión (los cuatro parámetros, también aquí) -------------------------------------------------------
-
-  test("los cuatro factores se editan en la pestaña (PUT …/parametros) y el cierre de la partida se vuelve a leer", async () => {
-    await irAApu();
-    relojFalso();
-    expect(await esperar(() => campo(/^Administración/))).toHaveValue("0,15");
-    expect(campo(/^FCAS/)).toHaveValue("6,00");
-    const lecturas = lecturasDeApu();
-    fireEvent.change(campo(/^Administración/), { target: { value: "0,20" } });
-    await pausa(400);
-    await esperar(() =>
-      expect(
-        fetchFalso.mock.calls.filter(([r, i]) => i?.method === "PUT" && String(r).endsWith("/parametros")).map(([, i]) => JSON.parse(String(i?.body))),
-      ).toEqual([{ rev: 0, fcas: "6,00", bono_alimentacion: "5,8100", administracion: "0,20", utilidad: "0,10" }]),
-    );
-    await esperar(() => expect(lecturasDeApu()).toBeGreaterThan(lecturas));
-  });
-
   // --- Estado de la partida --------------------------------------------------------------------------------------------
 
   test("el Estado de la partida muestra solo el texto del estado, sin el código crudo de la fila", async () => {
@@ -463,145 +445,120 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
     expect(screen.queryByText(/esp_fuentes:F1: ERROR/)).toBeNull();
   });
 
-  // --- Cambio de insumo (E7, E8) ---------------------------------------------------------------------------------------
+  // --- Cambio de insumo (E7, E8): desde la Tarea 8 es el modo «cambiar» del diálogo único de las líneas ---------------------
 
-  const abrirInsumo = async () => {
-    await userEvent.click(screen.getByRole("button", { name: "Cambiar el insumo de una línea (en la copia de esta versión)" }));
+  const CAMBIAR_MATERIAL = "Cambiar el insumo de Llave de bola PVC 1/2, Materiales fila 1";
+  const dialogoDeCambio = () => screen.getByRole("dialog", { name: /^Cambiar el insumo de / });
+  const abrirInsumo = async (nombre = CAMBIAR_MATERIAL) => {
+    await userEvent.click(screen.getByRole("button", { name: nombre }));
+    return dialogoDeCambio();
   };
+  // Escribe en el buscador del insumo y elige la opción de la lista que aparece tras la pausa.
+  const elegirInsumo = async (texto: string, nombre: string | RegExp) => {
+    const u = userEvent.setup({ delay: null });
+    await u.type(within(dialogoDeCambio()).getByRole("combobox", { name: "Insumo" }), texto);
+    await u.click(await screen.findByRole("option", { name: nombre }));
+  };
+  const usarInsumo = () => userEvent.click(within(dialogoDeCambio()).getByRole("button", { name: "Usar este insumo" }));
 
-  test("el cambio de insumo empieza plegado y no pide candidatos hasta abrirlo; «Usar este insumo» empieza deshabilitado", async () => {
+  test("el cambio de insumo no pide candidatos hasta escribir en su diálogo", async () => {
     await irAApu();
-    const boton = screen.getByRole("button", { name: "Cambiar el insumo de una línea (en la copia de esta versión)" });
-    expect(boton).toHaveAttribute("aria-expanded", "false");
     expect(urlsDeInsumos()).toHaveLength(0);
-    await userEvent.click(boton);
-    expect(boton).toHaveAttribute("aria-expanded", "true");
+    await abrirInsumo();
+    expect(urlsDeInsumos()).toHaveLength(0);
+    await userEvent.type(within(dialogoDeCambio()).getByRole("combobox", { name: "Insumo" }), "llave");
     await screen.findByRole("option", { name: /MAT-010/ });
-    expect(urlsDeInsumos()).toEqual([`/v1/hoja/borradores/${ID}/insumos?tipo=material&limite=301`]);
-    expect(screen.getByRole("button", { name: "Usar este insumo" })).toBeDisabled();
+    expect(urlsDeInsumos()).toHaveLength(1);
+    expect(urlsDeInsumos()[0]).toMatch(/^\/v1\/hoja\/borradores\/[^/]+\/insumos\?tipo=material&texto=llave&limite=\d+$/);
   });
 
-  test("3c-F11 (E7): elegir tipo, línea e insumo y pulsar «Usar este insumo» manda rev, tipo, índice desde 0 y código; se relee y se avisa", async () => {
+  test("3c-F11 (E7): elegir el insumo y pulsar «Usar este insumo» manda rev, tipo, índice desde 0 y código; se relee y se avisa", async () => {
     await irAApu();
     await abrirInsumo();
-    await screen.findByRole("option", { name: /MAT-010/ });
-    // Los candidatos muestran código, descripción, unidad y precio.
-    expect(screen.getByRole("option", { name: "MAT-010 · Llave de bola PVC 3/4 · pieza · 8,10" })).toBeInTheDocument();
-    const u = userEvent.setup({ delay: null });
-    await u.selectOptions(screen.getByRole("combobox", { name: "Insumo" }), "MAT-010");
-    expect(screen.getByRole("button", { name: "Usar este insumo" })).toBeEnabled();
+    await elegirInsumo("llave", /MAT-010/);
+    // La opción muestra código, descripción, unidad y precio; elegida, el diálogo repite el precio de la lista.
+    expect(within(dialogoDeCambio()).getByText("Precio de la lista de la versión: 8,10 USD por pieza")).toBeInTheDocument();
     const lecturas = lecturasDeApu();
-    await u.click(screen.getByRole("button", { name: "Usar este insumo" }));
+    await usarInsumo();
     await esperar(() => expect(escriturasDeInsumo()).toEqual([{ rev: 0, tipo: "material", indice: 0, insumo: "MAT-010" }]));
     expect(llamadasA("POST", /\/apu\/AF-LLAVE\/insumo$/)).toHaveLength(1);
     await esperar(() => expect(lecturasDeApu()).toBeGreaterThan(lecturas));
     expect(await screen.findByText("Insumo de la línea 1 cambiado: Llave de bola PVC 3/4.")).toBeInTheDocument();
     await esperar(() => within(regionDeEstado()).getByText(/· 1 cambio sin guardar/));
-    // La elección se limpia: hay que elegir otro insumo para volver a cambiar.
-    expect(screen.getByRole("button", { name: "Usar este insumo" })).toBeDisabled();
+    // El diálogo se cierra y el foco vuelve al «Cambiar» de la línea.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await esperar(() => expect(screen.getByRole("button", { name: CAMBIAR_MATERIAL })).toHaveFocus());
   });
 
-  test("al cambiar el tipo de línea se piden los candidatos de ese tipo y la línea se elige entre las de ese rubro", async () => {
-    await irAApu();
-    await abrirInsumo();
-    await screen.findByRole("option", { name: /MAT-010/ });
+  test("el cambio de una línea de mano de obra pide los candidatos de ese tipo y manda el índice de la línea", async () => {
     candidatos = (url) =>
       url.searchParams.get("tipo") === "mano_obra"
         ? { insumos: [insumo("MO-007", "Plomero de 2da N4", "jornal", "1.95")], hay_mas: false }
         : MATERIALES;
-    const u = userEvent.setup({ delay: null });
-    await u.selectOptions(screen.getByRole("combobox", { name: "Tipo de línea" }), "mano_obra");
-    await screen.findByRole("option", { name: /MO-007/ });
-    expect(urlsDeInsumos().at(-1)).toBe(`/v1/hoja/borradores/${ID}/insumos?tipo=mano_obra&limite=301`);
-    const lineas = within(screen.getByRole("combobox", { name: "Línea" })).getAllByRole("option");
-    expect(lineas.map((o) => o.textContent)).toEqual(["1. Plomero de 1ra N5", "2. Ayudante N2"]);
-    await u.selectOptions(screen.getByRole("combobox", { name: "Línea" }), "1");
-    await u.selectOptions(screen.getByRole("combobox", { name: "Insumo" }), "MO-007");
-    await u.click(screen.getByRole("button", { name: "Usar este insumo" }));
+    await irAApu();
+    await abrirInsumo("Cambiar el insumo de Ayudante N2, Mano de obra fila 2");
+    await elegirInsumo("plom", /MO-007/);
+    expect(urlsDeInsumos().at(-1)).toMatch(/tipo=mano_obra&texto=plom/);
+    await usarInsumo();
     await esperar(() => expect(escriturasDeInsumo()).toEqual([{ rev: 0, tipo: "mano_obra", indice: 1, insumo: "MO-007" }]));
   });
 
-  test("un rubro sin líneas lo dice y no ofrece candidatos", async () => {
+  test("un rubro sin líneas no tiene «Cambiar»", async () => {
     apu = vistaApu({ detalle: detalleDeCodo(), seleccionada: "AF-CODO-1/2" });
     await irAApu();
-    await abrirInsumo();
-    const u = userEvent.setup({ delay: null });
-    await u.selectOptions(screen.getByRole("combobox", { name: "Tipo de línea" }), "equipo");
-    expect(await screen.findByText("Este APU no tiene líneas de ese tipo.")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Insumo" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^Cambiar el insumo de / })).toHaveLength(2); // el material y el plomero
+    expect(screen.queryByRole("button", { name: /^Cambiar el insumo de .*Equipos/ })).toBeNull();
   });
 
-  test("buscar por descripción acota los candidatos (pausa de 300 ms) y sin coincidencias lo dice", async () => {
+  test("buscar por descripción acota los candidatos y sin coincidencias lo dice", async () => {
+    candidatos = () => ({ insumos: [], hay_mas: false });
     await irAApu();
     await abrirInsumo();
-    await screen.findByRole("option", { name: /MAT-010/ });
-    relojFalso();
-    candidatos = () => ({ insumos: [], hay_mas: false });
-    fireEvent.change(screen.getByRole("textbox", { name: "Buscar insumo (por descripción)" }), { target: { value: " zzz " } });
-    await pausa(299);
-    expect(urlsDeInsumos()).toHaveLength(1);
-    await pausa(1);
-    await esperar(() => expect(urlsDeInsumos().at(-1)).toBe(`/v1/hoja/borradores/${ID}/insumos?tipo=material&texto=zzz&limite=301`));
-    expect(await esperar(() => screen.getByText("Ningún insumo de la lista coincide: pruebe con otra palabra."))).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Insumo" })).toBeNull();
+    await userEvent.type(within(dialogoDeCambio()).getByRole("combobox", { name: "Insumo" }), " zzz ");
+    await screen.findByText("No encontramos «zzz».");
+    expect(urlsDeInsumos().at(-1)).toMatch(/tipo=material&texto=zzz&limite=\d+$/);
+    expect(screen.getByText(/el insumo nuevo debe estar en la lista de precios de la versión/)).toBeInTheDocument();
   });
 
   test("la etiqueta de la búsqueda promete solo lo que E8 hace: filtrar por descripción, no por código", async () => {
     await irAApu();
     await abrirInsumo();
-    await screen.findByRole("option", { name: /MAT-010/ });
-    expect(screen.getByRole("textbox", { name: "Buscar insumo (por descripción)" })).toBeInTheDocument();
+    expect(within(dialogoDeCambio()).getByText(/por una palabra de la descripción/)).toBeInTheDocument();
     expect(screen.queryByText(/código o descripción/i)).toBeNull();
   });
 
-  test("con más de 300 candidatos se muestran 300 y se pide acotar por descripción (como la clásica)", async () => {
-    candidatos = () => ({
-      insumos: Array.from({ length: 301 }, (_, i) => insumo(`MAT-${1000 + i}`, `Insumo ${1000 + i}`, "u", "1.00")),
-      hay_mas: true,
-    });
-    await irAApu();
-    await abrirInsumo();
-    await screen.findByText("Hay más de 300 insumos: escriba parte de la descripción para acotar.");
-    expect(within(screen.getByRole("combobox", { name: "Insumo" })).getAllByRole("option")).toHaveLength(301); // 300 y el marcador
-  });
-
-  test("sin versión abierta los insumos no se eligen: se dice por qué y no se piden candidatos", async () => {
+  test("sin versión abierta los insumos no se eligen: no hay «Cambiar» ni se piden candidatos", async () => {
     abierto = borrador({}, false);
     apu = vistaApu({ detalle: { ...vistaApu().detalle!, solo_lectura_insumos: true } });
     await irAApu();
-    await abrirInsumo();
-    expect(screen.getByText("Abra una versión guardada: los insumos se eligen de su lista de precios.")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Insumo" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Cambiar el insumo de / })).toBeNull();
     expect(screen.queryByRole("button", { name: "Usar este insumo" })).toBeNull();
     expect(urlsDeInsumos()).toHaveLength(0);
   });
 
-  test("un 422 del cambio de insumo (fuera de la lista) se muestra verbatim, sin la frase del APU, y la elección se conserva", async () => {
+  test("un 422 del cambio de insumo (fuera de la lista) se muestra verbatim en el diálogo, sin la frase del APU, y la elección se conserva", async () => {
     await irAApu();
     await abrirInsumo();
-    await screen.findByRole("option", { name: /MAT-010/ });
     const DETALLE = "El insumo MAT-010 no está en la lista de precios de la versión.";
     alCambiarInsumo = () => json({ detalle: DETALLE }, 422);
-    const u = userEvent.setup({ delay: null });
-    await u.selectOptions(screen.getByRole("combobox", { name: "Insumo" }), "MAT-010");
-    await u.click(screen.getByRole("button", { name: "Usar este insumo" }));
+    await elegirInsumo("llave", /MAT-010/);
+    await usarInsumo();
     const alerta = await esperar(() => aviso());
     expect(alerta).toHaveTextContent(DETALLE);
     expect(alerta.textContent).not.toContain("La hoja sigue con");
-    expect(screen.getByRole("combobox", { name: "Insumo" })).toHaveValue("MAT-010");
+    expect(within(dialogoDeCambio()).getByRole("combobox", { name: "Insumo" })).toHaveValue("Llave de bola PVC 3/4");
   });
 
   test("un 409 de «versión no abierta» al cambiar el insumo se muestra tal cual, sin bloquear la edición", async () => {
     await irAApu();
     await abrirInsumo();
-    await screen.findByRole("option", { name: /MAT-010/ });
     const DETALLE = "Abra una version guardada: los insumos se eligen de su lista de precios.";
     alCambiarInsumo = () => json({ detalle: DETALLE }, 409);
-    const u = userEvent.setup({ delay: null });
-    await u.selectOptions(screen.getByRole("combobox", { name: "Insumo" }), "MAT-010");
-    await u.click(screen.getByRole("button", { name: "Usar este insumo" }));
+    await elegirInsumo("llave", /MAT-010/);
+    await usarInsumo();
     expect(await esperar(() => aviso())).toHaveTextContent(DETALLE);
     expect(screen.queryByRole("button", { name: "Recargar el borrador" })).toBeNull();
+    await userEvent.click(within(dialogoDeCambio()).getByRole("button", { name: "Cancelar" }));
     relojFalso();
     fireEvent.change(campo("Cantidad, Equipos fila 1"), { target: { value: "2" } });
     await pausa(400);
@@ -610,13 +567,10 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
 
   test("«Usar este insumo» con una cantidad en la pausa: primero sale la edición y el cambio de insumo lleva el rev que contestó", async () => {
     await irAApu();
-    await abrirInsumo();
-    await screen.findByRole("option", { name: /MAT-010/ });
-    const u = userEvent.setup({ delay: null });
-    await u.selectOptions(screen.getByRole("combobox", { name: "Insumo" }), "MAT-010");
-    relojFalso();
     fireEvent.change(campo("Cantidad, Materiales fila 1"), { target: { value: "2" } });
-    fireEvent.click(screen.getByRole("button", { name: "Usar este insumo" }));
+    await abrirInsumo();
+    await elegirInsumo("llave", /MAT-010/);
+    await usarInsumo();
     await esperar(() => expect(escriturasDeInsumo()).toHaveLength(1));
     expect(escriturasDeApu()).toHaveLength(1);
     expect(escriturasDeApu()[0]!.rev).toBe(0);
@@ -627,13 +581,12 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
 
   test("el cambio de insumo conserva lo escrito en las cantidades del editor", async () => {
     await irAApu();
-    await abrirInsumo();
-    await screen.findByRole("option", { name: /MAT-010/ });
     const u = userEvent.setup({ delay: null });
-    await u.selectOptions(screen.getByRole("combobox", { name: "Insumo" }), "MAT-010");
     await u.type(campo("Cantidad, Equipos fila 1"), "5");
     expect(campo("Cantidad, Equipos fila 1")).toHaveValue("15");
-    await u.click(screen.getByRole("button", { name: "Usar este insumo" }));
+    await abrirInsumo();
+    await elegirInsumo("llave", /MAT-010/);
+    await usarInsumo();
     await esperar(() => expect(escriturasDeInsumo()).toHaveLength(1));
     await screen.findByText("Insumo de la línea 1 cambiado: Llave de bola PVC 3/4.");
     expect(campo("Cantidad, Equipos fila 1")).toHaveValue("15");
@@ -652,7 +605,7 @@ describe("Hoja de la obra: APU editable y cambio de insumo (3c-3)", () => {
 
   test("3c-F13: los archivos del APU están bajo la prueba estática (sin Number, parseFloat, toFixed ni + unario)", () => {
     const fuentes = import.meta.glob("./*.{ts,tsx}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
-    for (const ruta of ["./logicaApu.ts", "./logicaRetomar.ts", "./PestanaApu.tsx", "./CambioDeInsumo.tsx"]) {
+    for (const ruta of ["./logicaApu.ts", "./logicaRetomar.ts", "./PestanaApu.tsx", "./LineaDelApu.tsx"]) {
       expect(Object.keys(fuentes), ruta).toContain(ruta);
       expect(fuentes[ruta], ruta).not.toMatch(
         /\bNumber\s*\(|\bparseFloat\s*\(|\bparseInt\s*\(|\.toFixed\s*\(|(?:[=(,:?]|\breturn)\s*\+\s*[A-Za-z_$(]/,

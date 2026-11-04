@@ -199,3 +199,28 @@ export interface InformeAuditoriaRespuesta {
   // El texto que declara que se verifico y no hubo nada (UC-05 5a); null si hay hallazgos.
   sin_hallazgos: string | null;
 }
+
+// `GET /v1/obras/resumen` (una fila por obra de la carpeta abierta): la cabecera de la obra y el Resumen leen la suya
+// (plan F4, Tarea 1). Montos y porcentajes llegan como texto con punto decimal y solo se formatean.
+export interface SiguienteRespuesta {
+  texto: string;
+  // El id de la pantalla (rutas.ts) a la que lleva.
+  pagina: string;
+}
+
+export type Etapa = "en_elaboracion" | "en_aprobacion" | "aprobada" | "en_ejecucion" | "atrasada";
+
+export interface ObraFilaRespuesta {
+  codigo: string;
+  nombre: string;
+  cliente: string;
+  etapa: Etapa;
+  etapa_texto: string;
+  version: string | null;
+  total: string | null;
+  moneda: string;
+  avance_real: string | null;
+  avance_plan: string | null;
+  que_pasa: string | null;
+  siguiente: SiguienteRespuesta | null;
+}

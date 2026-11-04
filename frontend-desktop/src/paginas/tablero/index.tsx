@@ -101,7 +101,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
     return (
       <EstadoVacio
         titulo="Este proyecto aún no tiene presupuesto guardado"
-        descripcion="Elabore un presupuesto y guárdelo para ver aquí su resumen, su curva y su Pareto."
+        descripcion="Guarde una versión del presupuesto de la obra para ver aquí su resumen, su curva y su Pareto."
       />
     );
   }

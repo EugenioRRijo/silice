@@ -32,7 +32,7 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from aplicacion import hoja, hoja_borradores, hoja_edicion
+from aplicacion import hoja, hoja_borradores, hoja_edicion, importaciones
 from aplicacion.cifras import CifraInvalida, texto_de_cifra
 from aplicacion.composicion import (
     ComposicionInvalida,
@@ -467,6 +467,7 @@ def llevar_a_la_hoja(
     *,
     responsable: str,
     hoy: date,
+    archivo: str | None = None,
 ) -> str:
     """Agrega `partidas` al borrador de la Hoja de la obra `proyecto` y devuelve su id. No guarda
     version: los renglones quedan como altas del borrador, que se guardan desde la Hoja.
@@ -482,7 +483,11 @@ def llevar_a_la_hoja(
 
     Ronda 2: las partidas se validan (`_validar`) y la lista de la obra en blanco se comprueba
     ANTES de abrir el borrador, porque registrar uno nuevo puede expulsar el menos usado de la
-    ficha: un llevar que falla por algo previsible no quita ningun otro borrador."""
+    ficha: un llevar que falla por algo previsible no quita ningun otro borrador.
+
+    F4, Tarea 10: con `archivo` (el nombre del cómputo, sin ruta) el llevar queda anotado en el
+    registro de importaciones de la obra (`aplicacion.importaciones`), «sin guardar» hasta que se
+    guarde la versión; sin él no se registra nada. Solo se anota si todas las partidas entraron."""
     _validar(sesion, partidas)
     vivo, nuevo = borrador_de_la_obra(
         sesion, huella, caso, proyecto, responsable=responsable, hoy=hoy
@@ -504,6 +509,11 @@ def llevar_a_la_hoja(
                     )
                 except HojaInvalida as error:  # varias partidas: se dice cual
                     raise HojaInvalida(f"{partida.codigo}: {error}") from None
+            if archivo is not None:
+                texto = importaciones.resumen_de_computo(len(partidas))
+                importaciones.anotar(
+                    vivo, importaciones.nueva("computo", archivo, responsable, texto)
+                )
         except BaseException:
             if nuevo:
                 hoja_borradores.descartar(huella, vivo.id)

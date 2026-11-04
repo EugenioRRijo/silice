@@ -1,9 +1,10 @@
 import { Button, RadioButton, RadioButtonGroup } from "@carbon/react";
-import { useId, useState } from "react";
+import { useContext, useId, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { nombreDeEstado } from "../../comun/aprobacion";
 import { AreaTexto } from "../../comun/AreaTexto";
 import { AvisoError } from "../../comun/AvisoError";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { MarcoDeDialogo } from "../../shell/carpetas/MarcoDeDialogo";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
@@ -23,6 +24,9 @@ interface Props {
 // poder cambiarse. No hay campos para editar la version: lo que se aprueba es solo lectura.
 export function PanelDictamen({ detalle, alRegistrar }: Props) {
   const { alExpirar } = useAplicacion();
+  // Tras el dictamen la etapa de la obra cambió y la cabecera ya no se monta de nuevo al cambiar de sección (Tarea 3 del
+  // plan F4): se vuelve a leer su ficha. Sin obra abierta (la pantalla sola) no hay ficha.
+  const recargarFicha = useContext(ContextoDeLaObra)?.recargarFicha;
   const titulo = useId();
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [notas, setNotas] = useState("");
@@ -67,6 +71,7 @@ export function PanelDictamen({ detalle, alRegistrar }: Props) {
       setConfirmando(false);
       setEnviando(false);
       setNotas("");
+      recargarFicha?.();
       alRegistrar(elegido);
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();

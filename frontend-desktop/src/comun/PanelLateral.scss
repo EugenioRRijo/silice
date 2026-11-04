@@ -1,0 +1,63 @@
+// Panel acoplado a la derecha del contenido (plan F4, Tareas 6 y 7). Sin sombra ni animación (DESIGN.md): un borde lo
+// separa del contenido. El contenido de la izquierda se encoge (`minmax(0, 1fr)`) y sus tablas se desplazan en su caja.
+
+.silice-con-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+  min-inline-size: 0;
+}
+
+.silice-panel-lateral {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  inline-size: 24rem;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  padding: 0 0 1rem 1rem;
+  border-inline-start: 1px solid var(--cds-border-subtle);
+}
+
+.silice-panel-lateral--ancho {
+  inline-size: 40rem;
+}
+
+.silice-panel-lateral__cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+// El h2 recibe el foco al abrirse: se ve con el contorno de foco de las demás filas.
+.silice-panel-lateral__titulo:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+
+// Por encima del contenido (pasada de navegador del cierre de F4, H1 a H3): cuando el contenedor no tiene ancho para el
+// panel y 32 rem de contenido (lo mide `PanelLateral.tsx` con el ancho real, con cualquier letra) o dentro de la capa de un
+// diálogo (Componer). Fijo bajo la barra superior (8000), por encima de las columnas fijas de las tablas, a lo más del ancho
+// de la ventana, opaco y con su propio desplazamiento: la página no se desplaza a lo ancho. Lo tapado queda inerte.
+.silice-con-panel:has(> .silice-panel-lateral--superpuesto) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.silice-panel-lateral--superpuesto {
+  position: fixed;
+  inset-block: 3rem 0;
+  inset-inline-end: 0;
+  z-index: 6000;
+  inline-size: min(24rem, 100%);
+  max-inline-size: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+}
+
+.silice-panel-lateral--ancho.silice-panel-lateral--superpuesto {
+  inline-size: min(40rem, 100%);
+}

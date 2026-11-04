@@ -113,12 +113,12 @@ cálculo interno redondea**: el redondeo es solo de presentación.
 | Trabajo | **Inicio** | UC‑12 | Abrir el caso, cargar el de demostración si está vacío y elegir un recorrido guiado (sección 3.0) |
 | Trabajo | **Catalogo de partidas e insumos** | consulta | Partidas e insumos con su precio vigente |
 | Trabajo | **Componer una partida** | UC‑10 / UC‑11 | Armar a mano una partida nueva o editar una existente, presupuestarla y exportarla (sección 3.7) |
-| Trabajo | **Elaborar un presupuesto** | UC‑01 | Extraer cantidades de una fuente por dominio y presupuestarlas (sección 3.1) |
+| Trabajo | **Archivos y planos › Cargar cómputo** (antes «Elaborar un presupuesto») | UC‑01 | Extraer las cantidades de un cómputo `.csv` por tipo de obra, valorarlas y llevarlas al presupuesto de la obra (sección 3.1) |
 | Trabajo | **Hoja del proyecto** | UC‑13 a UC‑16 | Describir el espacio en tablas o importar un plano, editar APU, precios y parámetros, ver el punto de equilibrio, guardar versiones con fuente, cotizar y exportar el Excel (sección 3.8) |
 | Trabajo | **Actualizar precios** | UC‑02 | Cargar una lista de precios nueva (CSV/XLSX) y revalorar un presupuesto guardado |
-| Trabajo | **Historico de cambios de precio** | UC‑02 | Cambios de precio registrados, con filtros |
+| Trabajo | **Mercado › Histórico de precios** (antes una pantalla suelta) | UC‑02 | Cambios de precio registrados, con filtros |
 | Investigacion | **Escenarios de sensibilidad** | UC‑08 | Recalcular un presupuesto bajo supuestos («¿y si…?») sin alterarlo |
-| Investigacion | **Partidas similares** | UC‑03 | Buscar en texto libre partidas parecidas para reutilizar su desglose |
+| Trabajo | **Presupuesto › Agregar partida › Buscar parecidas** (antes «Partidas similares») | UC‑03 | Buscar partidas parecidas a lo escrito para reutilizar su desglose, sin salir de la obra |
 | Investigacion | **Simulador de listas** | apoyo | Generar listas de precios de prueba, deterministas |
 
 Con `SILICE_CASO=<ruta>` la aplicación fija ese caso sin tener que abrirlo en el Inicio (la
@@ -136,9 +136,9 @@ de la barra superior (RF‑63, sección 3.0 bis); las dos rechazan el nombre vac
 Los rendimientos medidos de UC‑06 se registran por la API (sección 3.4), y las métricas y el
 contraste completo de UC‑07 se generan con un script (sección 3.5); de los dos, la pantalla
 **Componer una partida** ofrece una parte como ayudas: propone el rendimiento del histórico,
-advierte si se aparta y contrasta el precio con la estimación por reglas (sección 3.7); **Elaborar
-un presupuesto** propone también el rendimiento del histórico cuando a una partida le falta
-(sección 3.1, paso 6). En UC‑01, el `.ifc` civil entra por la API (sección 3.1).
+advierte si se aparta y contrasta el precio con la estimación por reglas (sección 3.7); **Cargar
+cómputo** (antes «Elaborar un presupuesto») propone también el rendimiento del histórico cuando a una
+partida le falta (sección 3.1, paso 6). En UC‑01, el `.ifc` civil entra por la API (sección 3.1).
 
 ### 3.0 Inicio: el caso abierto y los recorridos guiados (UC‑12)
 
@@ -190,6 +190,14 @@ primera versión** (sección 3.8, «Guardar la primera versión»).
 proyecto** lo muestra abierto en su versión vigente.
 
 ### 3.1 Elaborar un presupuesto (UC‑01)
+
+> **Enmienda del 2026‑11‑03 (cierre del rediseño F4).** La pantalla «Elaborar un presupuesto» ya no existe: su
+> flujo vive en **Archivos y planos › Subir plano o cómputo**, que con un `.csv` abre **Cargar cómputo**. Se elige el
+> tipo de obra del archivo (civil por omisión) y, en civil, los cuatro códigos de partida; **Extraer cómputo** muestra la
+> tabla y **Llevar al presupuesto** valora con la moneda y la lista de la carpeta y, si no quedan rendimientos por
+> declarar ni pendientes, lleva las partidas al borrador de la obra (se ven en **Presupuesto › Partidas**). Ya no se
+> escriben a mano el código, la moneda ni la fecha, ni se ve el plan de trabajo, el informe o el Excel de lo elaborado:
+> eso se hace en el Presupuesto de la obra. Los pasos de abajo describen la pantalla anterior.
 
 1. Elegir el **dominio** (civil, telecom, industrial o sistemas) y el **archivo fuente**. Hay
    muestras listas en `data/samples/` (sección 6).

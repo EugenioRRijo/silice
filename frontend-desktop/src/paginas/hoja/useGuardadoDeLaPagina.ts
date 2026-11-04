@@ -20,9 +20,16 @@ interface Opciones {
   pedirVersion: (codigo: string) => void;
   // Hay una confirmación de cambio de versión a la vista: el foco no se devuelve hasta que se cierre.
   hayConfirmacion: boolean;
+  // Se creó una versión (guardar, restaurar, cotizar, retirar, convertir): lo que vive fuera de la Hoja y la nombra (la
+  // ficha de la obra y la lista de obras) se vuelve a leer (Tarea 3 del plan F4, ronda 2).
+  alCrearseVersion?: () => void;
 }
 
 export type DestinoDelFoco = "version" | "guardar";
+
+// El h1 de la sección que comparte el borrador (Presupuesto; Versiones desde la Tarea 6). Tras abrir otra versión, o si el
+// botón de guardar ya no está, el foco vuelve allí: el selector «Versión» al que volvía salió con la baja 9.
+export const ID_DEL_TITULO = "hoja-titulo";
 
 // Lo que la página hace alrededor de guardar una versión: el estado del modal, el aviso de éxito, abrir la versión recién creada
 // (la que guardó el modal o la que crearon restaurar, cotizar, retirar o convertir) y devolver el foco a su sitio cuando un
@@ -38,6 +45,7 @@ export function useGuardadoDeLaPagina({
   elegirVersion,
   pedirVersion,
   hayConfirmacion,
+  alCrearseVersion,
 }: Opciones) {
   const [exito, setExito] = useState<{ proyecto: string; texto: string } | null>(null);
   // El foco vuelve a su sitio cuando el diálogo ya se cerró y el `inert` se quitó (en un navegador real no se puede enfocar
@@ -63,9 +71,10 @@ export function useGuardadoDeLaPagina({
   const alCrearVersion = useCallback(
     async (nueva: string, texto: string) => {
       setExito({ proyecto, texto });
+      alCrearseVersion?.();
       await abrirGuardada(nueva);
     },
-    [proyecto, abrirGuardada],
+    [proyecto, abrirGuardada, alCrearseVersion],
   );
   const alGuardada = useCallback(
     async (r: GuardadoRespuesta) => {
@@ -84,7 +93,7 @@ export function useGuardadoDeLaPagina({
     const destino = devolverFoco.current;
     devolverFoco.current = null;
     const boton = destino === "guardar" ? document.getElementById("hoja-guardar-version") : null;
-    (boton ?? document.getElementById("hoja-version"))?.focus();
+    (boton ?? document.getElementById(ID_DEL_TITULO))?.focus();
   });
 
   // Un fallo del guardado que pide ir a otra versión. Con «versión más nueva» la persona aún tiene cambios: pasa por la misma

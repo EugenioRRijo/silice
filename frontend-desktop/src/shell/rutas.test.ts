@@ -11,16 +11,15 @@ const REGISTRO: [string, string, string | null][] = [
   ["historial", "Revisión", "leer_proyecto"],
   ["obras", "Trabajo", null],
   ["hoja", "Trabajo", "leer_proyecto"], // F4 2b: quien revisa la ve en solo lectura
-  ["elaborar", "Trabajo", "editar_hoja"],
+  ["versiones", "Trabajo", "leer_proyecto"], // F4, Tarea 6: la sección Versiones de la obra
+  ["archivos", "Trabajo", "leer_proyecto"], // F4 Tarea 11: quien revisa ve el registro; subir exige editar_hoja
   ["tablero", "Trabajo", "leer_proyecto"],
   ["entregar", "Trabajo", "entregar_paquete"],
   ["componer", "Trabajo", "editar_hoja"],
   ["catalogo", "Trabajo", "leer_proyecto"],
-  ["similares", "Investigación", "editar_hoja"],
-  ["mercado", "Trabajo", "editar_hoja"],
+  ["mercado", "Trabajo", "leer_proyecto"], // F4, Tarea 13, ronda 2: quien revisa lee el histórico y las cotizaciones
   ["precios_empresa", "Trabajo", "administrar_precios"],
   ["actualizacion", "Trabajo", "editar_hoja"],
-  ["historico", "Trabajo", "leer_proyecto"],
   ["indices", "Trabajo", "administrar_precios"],
   ["simulador", "Investigación", "editar_hoja"],
   ["aprobar", "Revisión", "aprobar_version"],
@@ -48,12 +47,30 @@ const REGISTRO: [string, string, string | null][] = [
 const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
 
 describe("registro de paginas", () => {
-  test("tiene las 32 pantallas en su orden, con su seccion y su accion", () => {
+  test("tiene las 31 pantallas en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(REGISTRO);
   });
 
   test("ya no existe la pantalla «inicio»: la direccion /inicio solo redirige", () => {
     expect(paginaPorId("inicio")).toBeUndefined();
+  });
+
+  // F4, Tarea 9, baja 20: «Partidas similares» pasa a «Parecidas a esta descripción», dentro de «Agregar partida».
+  test("ya no existe la pantalla «Partidas similares»", () => {
+    expect(paginaPorId("similares")).toBeUndefined();
+    expect(PAGINAS.some((p) => p.titulo === "Partidas similares")).toBe(false);
+  });
+
+  // F4, Tarea 12 (baja 19): «Elaborar un presupuesto» es ahora «Cargar cómputo», dentro de Archivos y planos.
+  test("ya no existe la pantalla «elaborar»", () => {
+    expect(paginaPorId("elaborar")).toBeUndefined();
+    expect(PAGINAS.some((p) => p.titulo === "Elaborar un presupuesto")).toBe(false);
+  });
+
+  // F4, Tarea 13: el histórico de cambios de precio es ahora una pestaña de Mercado.
+  test("ya no existe la pantalla «historico»", () => {
+    expect(paginaPorId("historico")).toBeUndefined();
+    expect(PAGINAS.some((p) => p.titulo === "Histórico de cambios de precio")).toBe(false);
   });
 
   test("los ids son unicos y las secciones de permisos son cuatro", () => {
@@ -64,10 +81,11 @@ describe("registro de paginas", () => {
   test("toda pagina del registro carga su pantalla", () => {
     expect(PAGINAS.every((p) => typeof p.cargar === "function")).toBe(true);
     expect(paginaPorId("libros")?.titulo).toBe("Libro de la empresa");
-    expect(paginaPorId("hoja")).toMatchObject({ titulo: "Hoja de la obra", seccion: "Trabajo", accion: "leer_proyecto" });
+    expect(paginaPorId("hoja")).toMatchObject({ titulo: "Presupuesto", seccion: "Trabajo", accion: "leer_proyecto" });
     expect(paginaPorId("mercado")).toMatchObject({
       titulo: "Estudio de mercado",
-      enUnaLinea: "Compare precios del mercado y elija los suyos",
+      // Cierre de F4 (menor de la Tarea 13): la línea vale también para quien revisa, que no elige precios.
+      enUnaLinea: "Compare precios del mercado, su histórico y las cotizaciones",
     });
     expect(paginaPorId("aprobar")).toMatchObject({
       titulo: "Aprobar una versión",
@@ -97,8 +115,8 @@ describe("quien puede usar que", () => {
     expect(PAGINAS.filter((p) => usable(p, [], false)).map((p) => p.id)).toEqual(["auditoria", "obras", "acerca"]);
   });
 
-  test("con todas las acciones se usan las 32", () => {
-    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(32);
+  test("con todas las acciones se usan las 31", () => {
+    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(31);
   });
 
   test("el modo entrega esconde Investigacion y nada mas (29)", () => {
@@ -152,10 +170,11 @@ describe("módulos apagados (plan vial, Tarea 19)", () => {
   const TODAS_LAS_ACCIONES = PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion]));
 
   test.each(DEL_MODULO)("«%s» pertenece al módulo %s", (id, modulo) => {
-    expect(paginaPorId(id)!.modulo).toBe(modulo);
+    expect(paginaPorId(id)?.modulo).toBe(modulo);
   });
 
   test.each(DEL_MODULO)("«%s» deja de ser usable cuando su módulo está apagado, y vuelve al encender", (id, modulo) => {
+    expect(paginaPorId(id), id).toBeDefined();
     const pagina = paginaPorId(id)!;
     expect(usable(pagina, TODAS_LAS_ACCIONES, false, [modulo])).toBe(false);
     expect(usable(pagina, TODAS_LAS_ACCIONES, false, [])).toBe(true);
@@ -165,5 +184,12 @@ describe("módulos apagados (plan vial, Tarea 19)", () => {
   test("apagar un módulo no toca las pantallas de los otros ni las de ninguno", () => {
     expect(usable(paginaPorId("tramos")!, TODAS_LAS_ACCIONES, false, ["produccion", "riesgo"])).toBe(true);
     expect(usable(paginaPorId("hoja")!, TODAS_LAS_ACCIONES, false, ["produccion", "vial", "riesgo", "edificacion"])).toBe(true);
+  });
+
+  // F4, Tarea 12 (decisión del orquestador, regla de la T19 del plan vial): «edificación» apaga los planos y el espacio,
+  // no los cómputos. Archivos y planos no es de ningún módulo: con edificación apagada se sigue usando para el cómputo.
+  test("«Archivos y planos» no es de ningún módulo y se usa con «edificación» apagada", () => {
+    expect(paginaPorId("archivos")?.modulo).toBeUndefined();
+    expect(usable(paginaPorId("archivos")!, TODAS_LAS_ACCIONES, false, ["edificacion"])).toBe(true);
   });
 });

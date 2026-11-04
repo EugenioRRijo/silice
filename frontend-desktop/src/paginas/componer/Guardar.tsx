@@ -3,7 +3,6 @@ import { InlineNotification } from "../../comun/carbonEs";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { useState } from "react";
 import type { RefObject } from "react";
-import { Link } from "react-router";
 import { AvisoError } from "../../comun/AvisoError";
 import type { Guardado } from "./cliente";
 
@@ -18,11 +17,10 @@ export interface Props {
   alGuardar: (justificacion: string | null) => void;
   // La carpeta no tiene lista para armar (D-MP1): guardar responderia 409, asi que el boton espera a que se cree.
   sinLista?: boolean;
-  // Se llego desde la Hoja (`?volver=hoja`): guardada la partida, el siguiente paso es volver a ella con este
-  // manejador (la pagina navega con `useNavegarSeguro`). Sin el, el siguiente paso es Elaborar.
-  alVolverAHoja?: () => void;
   // El boton de guardar, para devolverle el foco al cerrarse el dialogo de las variantes.
   refBoton?: RefObject<HTMLButtonElement | null>;
+  // El nivel de su titulo: h2 en la pantalla, h3 en el panel de «Agregar partida» (plan F4, Tarea 9).
+  nivel?: 2 | 3;
 }
 
 export function Guardar({
@@ -33,17 +31,18 @@ export function Guardar({
   error,
   alGuardar,
   sinLista = false,
-  alVolverAHoja,
   refBoton,
+  nivel = 2,
 }: Props) {
+  const Titulo = `h${nivel}` as const;
   const [justificacion, setJustificacion] = useState("");
   const guardar = () => alGuardar(requiereJustificacion ? justificacion.trim() || null : null);
 
   return (
     <section className="silice-componer__bloque" aria-labelledby="componer-guardar">
-      <h2 id="componer-guardar" className="cds--type-heading-compact-02">
+      <Titulo id="componer-guardar" className="cds--type-heading-compact-02">
         Guardar
-      </h2>
+      </Titulo>
       {requiereJustificacion && (
         <CampoTexto
           id="componer-justificacion"
@@ -83,17 +82,6 @@ export function Guardar({
           {resultado.avisos.map((a, i) => (
             <InlineNotification key={i} kind="info" lowContrast hideCloseButton role="status" title="Aviso" subtitle={a} />
           ))}
-          {alVolverAHoja ? (
-            <div>
-              <Button kind="secondary" size="md" onClick={alVolverAHoja}>
-                Volver a la Hoja
-              </Button>
-            </div>
-          ) : (
-            <p className="cds--type-body-compact-01">
-              Siguiente paso: <Link to="/elaborar">Elaborar un presupuesto</Link>
-            </p>
-          )}
         </>
       )}
     </section>

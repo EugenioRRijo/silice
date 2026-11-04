@@ -2,10 +2,12 @@ import { act, configure, fireEvent, render, screen, within } from "@testing-libr
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
 import PaginaHoja from "./index";
+import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "../../test/rutaDeLaHoja";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 
 // Tarea 19 del plan de montar un presupuesto (con los cambios por el diseño de módulos): en la Hoja, junto a la versión, la
@@ -170,9 +172,7 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
   }
   function montar() {
     return render(
-      <ContextoAplicacion.Provider value={valor()}>
-        <PaginaHoja />
-      </ContextoAplicacion.Provider>,
+      <ContextoAplicacion.Provider value={valor()}>{conEnrutador(<PaginaHoja />)}</ContextoAplicacion.Provider>,
     );
   }
   async function esperar<T>(comprobar: () => T): Promise<T> {
@@ -249,8 +249,9 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       expect(llamadas("GET", RUTA_ESTADOS)).toEqual([]);
     });
 
-    test("si el servidor no puede leer el estado, lo dice sin tumbar la Hoja", async () => {
-      alLeerEstados = () => json({ detalle: "No se pudo leer o guardar la aprobación en la carpeta de trabajo." }, 503);
+    // Decisión 8 de la Tarea 5: 403 y 404 se dicen igual que 503 (menor 2 del árbitro, cierre de F4).
+    test.each([403, 404, 503])("si el servidor no puede leer el estado (%i), lo dice sin tumbar la Hoja", async (estado) => {
+      alLeerEstados = () => json({ detalle: "No se pudo leer o guardar la aprobación en la carpeta de trabajo." }, estado);
       montar();
       expect(await region()).toHaveTextContent("No se pudo leer el estado de aprobación de esta versión.");
       expect(screen.queryByRole("button", { name: "Enviar a aprobación…" })).toBeNull();
@@ -282,7 +283,7 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       const nota = within(dialogo).getByRole("textbox", { name: "Nota para quien revisa (opcional)" });
       expect(nota).toHaveFocus();
       expect(nota).toHaveAttribute("maxlength", "2000");
-      expect(screen.getByRole("combobox", { name: "Versión", hidden: true }).closest("[inert]")).not.toBeNull();
+      expect(screen.getByRole("region", { name: "Estado del borrador", hidden: true }).closest("[inert]")).not.toBeNull();
       expect(dialogo).toHaveTextContent("Quien revisa verá la versión VIV-001 tal como se guardó y dará su dictamen.");
       await u.type(nota, "Lista para revisar.");
       await u.click(within(dialogo).getByRole("button", { name: "Enviar a aprobación" }));
@@ -304,6 +305,26 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       const dialogo = await screen.findByRole("dialog", { name: "Enviar a aprobación" });
       await u.click(within(dialogo).getByRole("button", { name: "Enviar a aprobación" }));
       await esperar(() => expect(envios()).toEqual([{ proyecto: "OF-001", version: "VIV-001", nota: "" }]));
+    });
+
+    // F4, Tarea 3, ronda 2 (mayor del árbitro): la obra ya no se vuelve a montar al cambiar de sección, así que tras
+    // enviar se pide otra vez su ficha (la cabecera dice la etapa nueva). Montada sola, sin obra, no pide nada.
+    test("dentro de una obra, enviar vuelve a leer la ficha de la obra", async () => {
+      const u = userEvent.setup();
+      const recargarFicha = vi.fn();
+      render(
+        <ContextoAplicacion.Provider value={valor()}>
+          <ContextoDeLaObra.Provider value={{ carpeta: null, obraId: 1, ficha: { estado: "cargando" }, recargarFicha }}>
+            <PaginaHoja />
+          </ContextoDeLaObra.Provider>
+        </ContextoAplicacion.Provider>,
+      );
+      await u.click(await screen.findByRole("button", { name: "Enviar a aprobación…" }));
+      const dialogo = await screen.findByRole("dialog", { name: "Enviar a aprobación" });
+      expect(recargarFicha).not.toHaveBeenCalled();
+      await u.click(within(dialogo).getByRole("button", { name: "Enviar a aprobación" }));
+      await esperar(() => expect(envios()).toHaveLength(1));
+      await esperar(() => expect(recargarFicha).toHaveBeenCalledTimes(1));
     });
 
     test("con `retirada` avisa «Se retiró VIV-001 de la aprobación.»", async () => {
@@ -372,26 +393,31 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
       await esperar(() => expect(alExpirar).toHaveBeenCalled());
     });
 
-    test("con cambios sin guardar el diálogo dice que no se envían", async () => {
-      const u = userEvent.setup();
+    // Tarea 5 del plan F4 (regla 2 de la franja): con cambios sin guardar el paso es guardarlos; enviar no se ofrece hasta
+    // entonces. Antes se ofrecía y el diálogo avisaba que los cambios no viajaban.
+    test("con cambios sin guardar no se ofrece enviar: la franja pide guardar antes", async () => {
       alAbrir = (c) => borrador(c.version, { cambios: 2 });
       montar();
-      await u.click(await screen.findByRole("button", { name: "Enviar a aprobación…" }));
-      const dialogo = await screen.findByRole("dialog", { name: "Enviar a aprobación" });
-      expect(dialogo).toHaveTextContent("Los 2 cambios sin guardar no se envían: guárdelos antes si deben revisarse.");
+      const franja = await screen.findByRole("region", { name: "Siguiente paso" });
+      expect(franja).toHaveTextContent("Siguiente paso: Hay 2 cambios sin guardar");
+      expect(within(franja).getByRole("button", { name: "Guardar versión…" })).toBeInTheDocument();
+      await textoDeEtiqueta();
+      expect(screen.queryByRole("button", { name: "Enviar a aprobación…" })).toBeNull();
     });
   });
 
   describe("devuelta: las notas y una versión nueva", () => {
-    test("se leen las notas y «Hacer una versión nueva a partir de esta» lleva a «Presupuesto» con el aviso", async () => {
+    // Tarea 5 del plan F4: el botón está en la franja del paso y se llama «Hacer una versión nueva».
+    test("se leen las notas y «Hacer una versión nueva» (de la franja) lleva a «Partidas» con el aviso", async () => {
       const u = userEvent.setup();
       aprobaciones = { "VIV-001": DEVUELTA };
       montar();
       const zona = await region();
       expect(zona).toHaveTextContent("Notas de Rita: Falta el acero de la losa.");
-      expect(screen.getByRole("tab", { name: "Presupuesto" })).toHaveAttribute("aria-selected", "false");
-      await u.click(within(zona).getByRole("button", { name: "Hacer una versión nueva a partir de esta" }));
-      await esperar(() => expect(screen.getByRole("tab", { name: "Presupuesto" })).toHaveAttribute("aria-selected", "true"));
+      expect(screen.getByRole("tab", { name: "Partidas" })).toHaveAttribute("aria-selected", "false");
+      const franja = screen.getByRole("region", { name: "Siguiente paso" });
+      await u.click(within(franja).getByRole("button", { name: "Hacer una versión nueva" }));
+      await esperar(() => expect(screen.getByRole("tab", { name: "Partidas" })).toHaveAttribute("aria-selected", "true"));
       expect(within(zona).getByRole("status")).toHaveTextContent("Corrija y guarde: será una versión nueva.");
       // No reabre ni envía nada: el borrador de esa versión ya está abierto.
       expect(envios()).toEqual([]);
@@ -424,13 +450,13 @@ describe("Tarea 19: la aprobación de la versión en la Hoja", () => {
     aprobaciones = { "VIV-001": EN_APROBACION, "VIV-002": GUARDADA };
     alAbrir = (c) => borrador(c.version, { cambios: 0, rev: 0 });
     fireEvent.click(within(dialogo).getByRole("button", { name: "Guardar versión" }));
-    await esperar(() => expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("VIV-002"));
+    await esperar(() => expect(versionAbierta()).toBe("VIV-002"));
     await esperar(() => expect(document.querySelector(".silice-hoja__aprobacion-etiqueta")).toHaveTextContent("Guardada"));
     expect(screen.getByRole("button", { name: "Enviar a aprobación…" })).toBeInTheDocument();
     // Guardar no toca la aprobación.
     expect(envios()).toEqual([]);
     // VIV-001 sigue «En aprobación».
-    fireEvent.change(screen.getByRole("combobox", { name: "Versión" }), { target: { value: "VIV-001" } });
+    pedirVersionPorLaRuta("VIV-001");
     await esperar(() => expect(document.querySelector(".silice-hoja__aprobacion-etiqueta")).toHaveTextContent("En aprobación"));
   });
 

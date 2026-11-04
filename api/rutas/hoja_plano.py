@@ -242,7 +242,7 @@ def fusionar_plano(
     409; un espacio que no vale, 422 y el borrador intacto."""
     vivo = _vivo(request, activa, id)
     with _traducir(), vivo.cerrojo:  # el resumen es el del `rev` que produjo ESTA fusion
-        fusion = hoja_plano.fusionar(sesion, vivo, datos.rev)
+        fusion = hoja_plano.fusionar(sesion, vivo, datos.rev, usuario=activa.usuario)
         editado = fusion.vivo
         mas_nueva = _mas_nueva(editado, hoja.codigo_vigente(sesion, editado.proyecto))
         resumen = hoja_vista.resumen(editado, mas_nueva)

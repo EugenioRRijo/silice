@@ -293,6 +293,7 @@ TABLA = {
     # F4 2b: solo lectura para revisa. Las lecturas de la Hoja (y GET /v1/aprobaciones) son
     # LEER; todo lo que cambia el borrador o la base sigue en EDITAR.
     ("GET", "/v1/hoja/versiones"): LEER,  # T10 3b-1: Hoja del proyecto; clave o sesion
+    ("GET", "/v1/hoja/importaciones"): LEER,  # F4 T10: registro de importaciones; clave o sesion
     ("POST", "/v1/hoja/borradores"): LEER,  # ademas, solo con sesion (403 con clave)
     ("GET", "/v1/hoja/borradores/{id}"): LEER,  # ademas, solo con sesion
     ("DELETE", "/v1/hoja/borradores/{id}"): LEER,  # ademas, solo con sesion

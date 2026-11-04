@@ -36,6 +36,8 @@ interface Props {
   filas: FilaDensa[];
   cargando?: boolean;
   vacio?: { titulo: string; descripcion?: string };
+  // La clase de un renglón, con la fila original (Tarea 5 del plan F4: `silice-fila--afectada` en el Presupuesto).
+  claseDeFila?: (fila: FilaDensa) => string | undefined;
 }
 
 const DECIMAL = /^([+-]?)(\d*)(?:\.(\d*))?$/;
@@ -89,7 +91,7 @@ function dibujar(
 }
 
 // Tabla de datos de alta densidad (DESIGN.md, Densidad): Carbon DataTable tamano `sm` (32 px).
-export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio }: Props) {
+export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio, claseDeFila }: Props) {
   if (cargando) {
     return (
       <div role="status" aria-busy="true" aria-label={`Cargando ${etiqueta}`}>
@@ -161,11 +163,13 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
             <TableBody>
               {rows.map((fila) => {
                 const { key, ...propiedades } = getRowProps({ row: fila });
+                const original = filaPorId.get(fila.id);
+                const clase = claseDeFila && original ? claseDeFila(original) : undefined;
                 return (
-                  <TableRow key={key} {...propiedades}>
+                  <TableRow key={key} {...propiedades} className={clase}>
                     {fila.cells.map((celda) => (
                       <TableCell key={celda.id} className={numericas.has(celda.info.header) ? "silice-cifra" : undefined}>
-                        {pintar(celda.info.header, celda.value, filaPorId.get(fila.id))}
+                        {pintar(celda.info.header, celda.value, original)}
                       </TableCell>
                     ))}
                   </TableRow>

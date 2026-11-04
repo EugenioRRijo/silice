@@ -4,13 +4,13 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { informeAuditoria, vistaEspacio, vistaParametros, vistaPlan, vistaPresupuesto } from "./datosDePrueba";
+import { informeAuditoria, vistaEquilibrio, vistaEspacio, vistaParametros, vistaPlan, vistaPresupuesto } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaParametros, VistaPlan, VistaPresupuesto } from "./logica";
 
 // Rebanada 3c-2: cantidades, parámetros y plan se editan. El servidor se simula con respuestas ficticias con la forma del
 // contrato (docs/bitacora/2026-10-19-hoja-3c2-contrato-rutas.md, diseño §4.4): E2 `PUT …/cantidades`, E3 `PUT …/parametros`,
-// E4 `PUT …/plan`, E5 `POST …/plan/secuencial`, todas con `{rev}` y respuesta `{rev, resumen, <vista>}`; 422 con el
+// E4 `PUT …/plan`, todas con `{rev}` y respuesta `{rev, resumen, <vista>}`; 422 con el
 // `detalle` de la clásica; 409 por `rev` viejo. Caso ficticio OF-001; los literales son de su memoria y del diseño.
 configure({ asyncUtilTimeout: 5000 });
 
@@ -69,7 +69,7 @@ function borrador(extra: Partial<Resumen> = {}): BorradorAbierto {
   };
 }
 
-type Seccion = "cantidades" | "parametros" | "plan" | "secuencial";
+type Seccion = "cantidades" | "parametros" | "plan";
 type Cuerpo = Record<string, unknown> & { rev: number };
 
 describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () => {
@@ -95,7 +95,6 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     cantidades: `/v1/hoja/borradores/${ID}/cantidades`,
     parametros: `/v1/hoja/borradores/${ID}/parametros`,
     plan: `/v1/hoja/borradores/${ID}/plan`,
-    secuencial: `/v1/hoja/borradores/${ID}/plan/secuencial`,
   };
 
   beforeEach(() => {
@@ -108,7 +107,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     presupuesto = vistaPresupuesto();
     parametros = vistaParametros();
     plan = vistaPlan();
-    alPoner = { cantidades: acepta, parametros: acepta, plan: acepta, secuencial: acepta };
+    alPoner = { cantidades: acepta, parametros: acepta, plan: acepta };
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = String(ruta);
       const metodo = init?.method ?? "GET";
@@ -126,6 +125,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       if (url.endsWith("/vistas/presupuesto")) return json(presupuesto);
       if (url.endsWith("/vistas/parametros")) return json(parametros);
       if (url.endsWith("/vistas/plan")) return json(plan);
+      if (url.endsWith("/vistas/equilibrio")) return json(vistaEquilibrio()); // el bloque de debajo del plan (baja 23)
       if (url.endsWith("/vistas/auditoria")) return json(informeAuditoria());
       return new Response(null, { status: 204 });
     });
@@ -227,7 +227,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       seccion: "parametros",
       frase: "La hoja sigue con los últimos parámetros válidos.",
       abrir: async () => {
-        await irA("Parámetros");
+        await irA("Ajustes de costo");
         await screen.findByRole("textbox", { name: /^Administración/ });
       },
       campo: () => campo(/^Administración/),
@@ -245,7 +245,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       seccion: "cantidades",
       frase: "La hoja sigue con las últimas cantidades válidas.",
       abrir: async () => {
-        await irA("Presupuesto");
+        await irA("Partidas");
         await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
       },
       campo: () => campo("Cantidad, Presupuesto fila 1"),
@@ -256,12 +256,12 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       },
     },
     {
-      nombre: "Plan y curva",
-      pestana: "Plan y curva",
+      nombre: "Plan y equilibrio",
+      pestana: "Plan y equilibrio",
       seccion: "plan",
       frase: "La hoja sigue con el último plan válido.",
       abrir: async () => {
-        await irA("Plan y curva");
+        await irA("Plan y equilibrio");
         await screen.findByRole("textbox", { name: "Día 1, Plan de trabajo fila 1" });
       },
       campo: () => campo("Día 1, Plan de trabajo fila 1"),
@@ -344,7 +344,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       await abrirConRelojFalso();
       fireEvent.change(e.campo(), { target: { value: "8" } });
       await act(async () => {
-        fireEvent.click(screen.getByRole("tab", { name: "Auditoría" }));
+        fireEvent.click(screen.getByRole("tab", { name: "Revisión" }));
       });
       expect(escrituras(e.seccion)).toHaveLength(1);
       expect(e.enCuerpo(escrituras(e.seccion)[0]!)).toBe("8");
@@ -484,22 +484,22 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
 
   describe("Parámetros (E3)", () => {
     test("cuatro campos con etiqueta visible y el valor como texto; ayuda de decimales; ya no dice que solo se leen", async () => {
-      await irA("Parámetros");
+      await irA("Ajustes de costo");
       expect(await screen.findByRole("textbox", { name: /^FCAS/ })).toHaveValue("6,00");
       expect(campo(/^Bono de alimentación/)).toHaveValue("5,8100");
       expect(campo(/^Administración/)).toHaveValue("0,15");
       expect(campo(/^Utilidad/)).toHaveValue("0,10");
       expect(screen.getAllByRole("textbox")).toHaveLength(4);
+      await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
       expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
       expect(screen.getByText(/Cambiarlos recalcula/)).toBeInTheDocument();
       expect(screen.queryByText(/solo se leen/)).toBeNull();
-      expect(screen.getByText("Moneda del proyecto: USD")).toBeInTheDocument();
       // La etiqueta se ve (no está oculta): es el rótulo de la clásica.
       expect(screen.getByText(/^Administración \(fracción del costo directo\)/)).toBeVisible();
     });
 
-    test("3c-B1 (P13): administración 0.20 manda los cuatro textos y el total pasa a 2.821,42 en la pestaña y en el estado", async () => {
-      await irA("Parámetros");
+    test("3c-B1 (P13): administración 0.20 manda los cuatro textos y el total pasa a 2.821,42 en el estado (la pestaña ya no lo repite, baja 12)", async () => {
+      await irA("Ajustes de costo");
       await screen.findByRole("textbox", { name: /^Administración/ });
       relojFalso();
       const nuevo = { texto: "2821.42", exacto: "2821.4208" };
@@ -514,15 +514,15 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(escrituras("parametros")).toEqual([
         { rev: 0, fcas: "6,00", bono_alimentacion: "5,8100", administracion: "0,20", utilidad: "0,10" },
       ]);
-      await esperar(() => expect(screen.getAllByTitle("2.821,4208")).toHaveLength(2)); // el estado y el total de la pestaña
-      expect(screen.getAllByTitle("2.821,4208")[0]).toHaveTextContent("2.821,42 USD");
+      await esperar(() => expect(screen.getAllByTitle("2.821,4208")).toHaveLength(1)); // solo el estado del borrador
+      expect(screen.getByTitle("2.821,4208")).toHaveTextContent("2.821,42 USD");
       expect(lecturas("parametros")).toBe(antes + 1);
       expect(within(regionDeEstado()).getByText(/· 1 cambio sin guardar/)).toBeInTheDocument();
       expect(campo(/^Administración/)).toHaveValue("0,20");
     });
 
     test("3c-B2 (P14): «mucho» en utilidad se rechaza con el mensaje de la clásica; solo ese campo queda inválido, con su texto", async () => {
-      await irA("Parámetros");
+      await irA("Ajustes de costo");
       await screen.findByRole("textbox", { name: /^Utilidad/ });
       relojFalso();
       const DETALLE = "parametros: utilidad: 'mucho' no es un numero decimal valido";
@@ -542,7 +542,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
 
     test("D-8 resuelta (Eugenio, 2026-10-25): el decimal con punto se manda tal cual y lo rechaza el servidor con la regla", async () => {
-      await irA("Parámetros");
+      await irA("Ajustes de costo");
       await screen.findByRole("textbox", { name: /^Administración/ });
       relojFalso();
       alPoner.parametros = () =>
@@ -555,7 +555,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
 
     test("un 422 de forma (sin campo) se muestra sin dejar ningún campo inválido", async () => {
-      await irA("Parámetros");
+      await irA("Ajustes de costo");
       await screen.findByRole("textbox", { name: /^FCAS/ });
       relojFalso();
       alPoner.parametros = () =>
@@ -571,7 +571,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
 
   describe("Presupuesto: cantidades (E2)", () => {
     test("3c-F8: solo la columna Cantidad es editable; la escrita a mano dice cuál era la calculada y ofrece volver a ella", async () => {
-      await irA("Presupuesto");
+      await irA("Partidas");
       const tabla = await screen.findByRole("table", { name: "Presupuesto" });
       expect(within(tabla).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
         "Partida",
@@ -599,11 +599,12 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(within(filas[1]!).getByText("13,20")).toBeInTheDocument();
       expect(within(filas[2]!).getAllByText("Pendiente")).toHaveLength(2);
       expect(within(filas[2]!).getByText("Error")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
       expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
     });
 
     test("3c-B3 (P15): escribir 5 en AF-LLAVE manda solo esa fila; la vista nueva la marca como escrita y sube el total", async () => {
-      await irA("Presupuesto");
+      await irA("Partidas");
       await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
       relojFalso();
       // Cuando el servidor acepte, la vista trae la fila escrita y el total nuevo (oráculo de mano: 2.703,86 + 26,40 = 2.730,26).
@@ -623,7 +624,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
 
     test("las filas tocadas se acumulan, en el orden de la tabla, y las que no se tocaron no viajan", async () => {
-      await irA("Presupuesto");
+      await irA("Partidas");
       await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
       relojFalso();
       fireEvent.change(campo("Cantidad, Presupuesto fila 2"), { target: { value: "6" } });
@@ -644,7 +645,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
 
     test("3c-B4: «Volver a la calculada» pone la cantidad calculada en el campo y la manda (el servidor deja de verla como escrita)", async () => {
-      await irA("Presupuesto");
+      await irA("Partidas");
       await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 2" });
       relojFalso();
       fireEvent.click(screen.getByRole("button", { name: /^Volver a la calculada/ }));
@@ -654,7 +655,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
 
     test("3c-B5 (P16): una cantidad negativa se rechaza con el mensaje de la clásica; solo esa fila queda inválida", async () => {
-      await irA("Presupuesto");
+      await irA("Partidas");
       await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
       relojFalso();
       const DETALLE =
@@ -671,7 +672,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
 
     test("el decimal con punto se manda tal cual y lo rechaza el servidor con la regla de la coma decimal", async () => {
-      await irA("Presupuesto");
+      await irA("Partidas");
       await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 2" });
       relojFalso();
       alPoner.cantidades = () =>
@@ -683,14 +684,14 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(campo("Cantidad, Presupuesto fila 2")).toHaveAttribute("aria-invalid", "true");
     });
 
-    test("el Estado de cada renglón sigue con «Ver en Auditoría» al lado del campo (3b-F6b)", async () => {
-      await irA("Presupuesto");
+    test("el Estado de cada renglón sigue con «Ver en Revisión» al lado del campo (3b-F6b)", async () => {
+      await irA("Partidas");
       const tabla = await screen.findByRole("table", { name: "Presupuesto" });
-      expect(within(tabla).getByRole("button", { name: "Ver en Auditoría: AF-SALIDA, Punto P2" })).toBeInTheDocument();
+      expect(within(tabla).getByRole("button", { name: "Ver en Revisión: AF-SALIDA, Punto P2" })).toBeInTheDocument();
     });
 
     test("flechas arriba y abajo y Enter mueven entre renglones de la columna Cantidad", async () => {
-      await irA("Presupuesto");
+      await irA("Partidas");
       await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
       const u = userEvent.setup({ delay: null });
       campo("Cantidad, Presupuesto fila 1").focus();
@@ -705,20 +706,20 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     test("sin renglones sigue el mensaje del servidor y no hay campos", async () => {
       const mensaje = "El presupuesto no tiene renglones todavía.";
       presupuesto = vistaPresupuesto({ filas: [], vacio_mensaje: mensaje });
-      await irA("Presupuesto");
+      await irA("Partidas");
       expect(await screen.findByText(mensaje)).toBeInTheDocument();
       expect(screen.queryAllByRole("textbox")).toEqual([]);
     });
   });
 
-  // --- Plan y curva (E4, E5) ----------------------------------------------------------------------------------------------
+  // --- Plan y equilibrio (E4, E5) ----------------------------------------------------------------------------------------------
 
-  describe("Plan y curva (E4 y E5)", () => {
+  describe("Plan y equilibrio (E4 y E5)", () => {
     const SIN_PLAN = "Esta versión no tiene plan de trabajo, así que no hay curva de inversión.";
     const sinPlan = () => vistaPlan({ hay_plan: false, etiquetas: [], filas: [], curva: [], mensaje: SIN_PLAN });
 
     test("3b-F8 con edición: la matriz tiene un campo por partida y período con nombre accesible, y la curva sigue debajo", async () => {
-      await irA("Plan y curva");
+      await irA("Plan y equilibrio");
       const matriz = await screen.findByRole("table", { name: "Plan de trabajo" });
       expect(within(matriz).getAllByRole("columnheader").map((c) => c.textContent)).toEqual(["Partida", "Día 1", "Día 2"]);
       expect(within(matriz).getAllByRole("textbox")).toHaveLength(4);
@@ -727,6 +728,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(campo("Día 1, Plan de trabajo fila 2")).toHaveValue("0");
       expect(campo("Día 2, Plan de trabajo fila 2")).toHaveValue("1");
       expect(within(within(matriz).getAllByRole("row")[1]!).getAllByRole("cell")[0]).toHaveTextContent("AF-CODO-1/2");
+      await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
       expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
       expect(screen.getByRole("heading", { level: 2, name: "Curva de inversión" })).toBeInTheDocument();
       expect(screen.getByRole("table", { name: "Curva de inversión: montos" })).toBeInTheDocument();
@@ -734,7 +736,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
 
     test("3c-F12: la matriz completa viaja como texto y la curva se vuelve a leer y se muestra recalculada", async () => {
-      await irA("Plan y curva");
+      await irA("Plan y equilibrio");
       await screen.findByRole("textbox", { name: "Día 1, Plan de trabajo fila 1" });
       relojFalso();
       // Cuando el servidor acepte, la curva trae los montos nuevos (cifras de mano para esta prueba).
@@ -769,7 +771,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
 
     test("3c-B12 (P19): fracciones que no suman 1 se rechazan con el mensaje de la clásica; la fila queda inválida y se ofrece ir a ella", async () => {
-      await irA("Plan y curva");
+      await irA("Plan y equilibrio");
       await screen.findByRole("textbox", { name: "Día 1, Plan de trabajo fila 2" });
       relojFalso();
       const DETALLE =
@@ -794,7 +796,7 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
     });
 
     test("una fracción negativa o con punto decimal se manda tal cual; el servidor decide", async () => {
-      await irA("Plan y curva");
+      await irA("Plan y equilibrio");
       await screen.findByRole("textbox", { name: "Día 1, Plan de trabajo fila 1" });
       relojFalso();
       alPoner.plan = () => json({ detalle: "plan, partida AF-CODO-1/2: Dia 1: «0.5» no se entiende como número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56." }, 422);
@@ -807,74 +809,15 @@ describe("Hoja de la obra: cantidades, parámetros y plan editables (3c-2)", () 
       expect(campo("Día 1, Plan de trabajo fila 2")).not.toHaveAttribute("aria-invalid", "true");
     });
 
-    test("3c-F12 (P20): sin plan se ofrece «Crear plan secuencial»; al crearlo aparece la matriz y el botón desaparece", async () => {
+    // F4, baja 11: ya no hay «Crear plan secuencial»; sin plan se dice por qué y se ofrece «Plan desde los rendimientos».
+    test("3c-F12 (P20): sin plan se dice por qué, no hay matriz ni «Crear plan secuencial», y sí «Plan desde los rendimientos»", async () => {
       plan = sinPlan();
-      await irA("Plan y curva");
+      await irA("Plan y equilibrio");
       expect(await screen.findByText(SIN_PLAN)).toBeInTheDocument();
       expect(screen.queryByRole("table", { name: "Plan de trabajo" })).toBeNull();
-      const boton = screen.getByRole("button", { name: "Crear plan secuencial (una partida por período)" });
-      alPoner.secuencial = (c) => {
-        plan = vistaPlan();
-        return acepta(c, { hay_plan: true });
-      };
-      fireEvent.click(boton);
-      expect(await screen.findByRole("table", { name: "Plan de trabajo" })).toBeInTheDocument();
-      expect(escrituras("secuencial")).toEqual([{ rev: 0 }]);
       expect(screen.queryByRole("button", { name: /Crear plan secuencial/ })).toBeNull();
-      expect(campo("Día 1, Plan de trabajo fila 1")).toHaveValue("1");
-      expect(await screen.findByTestId("grafico")).toHaveAttribute("data-filas", "2");
-      expect(within(regionDeEstado()).getByText(/· 1 cambio sin guardar/)).toBeInTheDocument();
-      // Ya con matriz, la siguiente edición lleva el rev que contestó el servidor.
-      relojFalso();
-      fireEvent.change(campo("Día 1, Plan de trabajo fila 1"), { target: { value: "0.5" } });
-      await pausa(400);
-      expect(escrituras("plan")[0]!.rev).toBe(1);
-    });
-
-    test("crear el plan con el rev viejo (409): avisa y ofrece recargar; recargar trae el plan que ya existe", async () => {
-      plan = sinPlan();
-      await irA("Plan y curva");
-      await screen.findByRole("button", { name: /Crear plan secuencial/ });
-      alPoner.secuencial = () => json({ detalle: REV_VIEJO }, 409);
-      fireEvent.click(screen.getByRole("button", { name: /Crear plan secuencial/ }));
-      expect(await screen.findByText(REV_VIEJO)).toBeInTheDocument();
-      abierto = borrador({ rev: 3, cambios: 1 });
-      plan = vistaPlan();
-      fireEvent.click(screen.getByRole("button", { name: "Recargar el borrador" }));
-      expect(await screen.findByRole("table", { name: "Plan de trabajo" })).toBeInTheDocument();
-      expect(avisos()).toHaveLength(0);
-    });
-
-    test("«ya tiene plan» (409 de E5) se muestra con su detalle, sin pedir recargar ni abrir de nuevo, y se vuelve a leer el plan", async () => {
-      plan = sinPlan();
-      await irA("Plan y curva");
-      await screen.findByRole("button", { name: /Crear plan secuencial/ });
-      const YA_TIENE = "Esta versión ya tiene plan de trabajo: edítelo en la matriz del plan.";
-      alPoner.secuencial = () => json({ detalle: YA_TIENE }, 409);
-      plan = vistaPlan(); // otra ventana lo creó
-      fireEvent.click(screen.getByRole("button", { name: /Crear plan secuencial/ }));
-      expect(await screen.findByRole("table", { name: "Plan de trabajo" })).toBeInTheDocument();
-      expect(aviso()).toHaveTextContent(YA_TIENE);
-      expect(screen.queryByRole("button", { name: "Recargar el borrador" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Abrir de nuevo" })).toBeNull();
-    });
-
-    test("mientras se crea el plan el botón no se puede pulsar otra vez: una sola petición", async () => {
-      plan = sinPlan();
-      await irA("Plan y curva");
-      const boton = await screen.findByRole("button", { name: /Crear plan secuencial/ });
-      let terminar: (r: Response) => void = () => undefined;
-      alPoner.secuencial = () =>
-        new Promise<Response>((resolver) => {
-          terminar = resolver;
-        });
-      fireEvent.click(boton);
-      await esperar(() => expect(screen.getByRole("button", { name: /Crear plan secuencial/ })).toBeDisabled());
-      fireEvent.click(screen.getByRole("button", { name: /Crear plan secuencial/ }));
-      expect(escrituras("secuencial")).toHaveLength(1);
-      plan = vistaPlan();
-      await act(async () => terminar(acepta({ rev: 0 }, { hay_plan: true })));
-      expect(await screen.findByRole("table", { name: "Plan de trabajo" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Plan desde los rendimientos" })).toBeInTheDocument();
+      expect(escrituras("plan")).toHaveLength(0);
     });
   });
 
