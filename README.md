@@ -17,9 +17,11 @@ de cada rama que incorpora un dominio—, la vigila `tests/unit/test_arquitectur
 
 | Documento | Para qué |
 |---|---|
+| [docs/ESTADO.md](docs/ESTADO.md) | **Estado actual**: qué está en `main`, qué vive en ramas y qué espera decisión. Fuente única; manda sobre los planes |
+| [AGENTS.md](AGENTS.md) | Entrada para agentes de IA: qué leer, qué es vigente y qué es historia |
 | [NORMAS.md](NORMAS.md) | Constitución del proyecto: principios, cálculo, contratos, estructura, reglas, compuertas |
-| [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) | Las 20 sesiones de trabajo, con prompt, criterio de cierre y commit (completo) |
-| [PLAN_CIERRE.md](PLAN_CIERRE.md) | El final de la tesis: fases de corrección C0–C4, mediciones con personas (Med) y redacción, con sus compuertas |
+| [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) | Histórico: las 20 sesiones de trabajo, con prompt, criterio de cierre y commit (completo) |
+| [PLAN_CIERRE.md](PLAN_CIERRE.md) | Histórico (plan de septiembre): fases de corrección C0–C4, mediciones con personas (Med) y redacción; lo vigente está en [docs/ESTADO.md](docs/ESTADO.md) |
 | [docs/metodologia.md](docs/metodologia.md) | Metodología Scrum‑Cascada y principio DRY aplicados al proyecto |
 | [docs/README.md](docs/README.md) | Índice de toda la documentación, con los planes de cada sprint |
 

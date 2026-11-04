@@ -8,6 +8,7 @@ palabra; las cifras y los estados de los requisitos no se repiten: viven en su f
 
 | Documento | Estado | Sesión que lo completa |
 |---|---|---|
+| [ESTADO.md](ESTADO.md) — **estado actual**: `main`, ramas vivas, pendientes y decisiones de Eugenio | vigente; fuente única del estado | se actualiza al cerrar cada fase |
 | [../NORMAS.md](../NORMAS.md) — constitución del proyecto | completo | — |
 | [metodologia.md](metodologia.md) — Scrum‑Cascada, DRY, fuentes únicas e indicadores | completo | se actualiza por fase |
 | [linea_base.md](linea_base.md) — el caso didáctico auditado y sus siete inconsistencias | completo | — |
