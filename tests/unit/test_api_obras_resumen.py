@@ -287,7 +287,7 @@ def test_pendientes_de_ana() -> None:
                 "obra": precios[0]["obra"],
                 "obra_nombre": "OB-S2",
                 "texto": "3 cantidades escritas a mano sin cálculo en OB-001",
-                "accion": {"texto": "Abrir la Hoja", "pagina": "hoja"},
+                "accion": {"texto": "Abrir el presupuesto", "pagina": "hoja"},
             }
         ],
     }

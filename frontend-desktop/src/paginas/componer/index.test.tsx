@@ -335,14 +335,16 @@ describe("Componer una partida", () => {
     expect(await screen.findAllByText("29,70 Bs", { selector: "td" }, ESPERA)).not.toHaveLength(0);
 
     evaluacion = () => json({ ...VACIA, estado: "incompleto", aviso: AVISO });
-    await usuario.type(screen.getByLabelText("Código"), "X");
+    // Pulido F5, Tarea 1: el «Código» es un campo con búsqueda y, con sus sugerencias abiertas, su lista también se llama
+    // «Código»: se nombra el campo por su papel. Cambia el selector, no lo que se comprueba.
+    await usuario.type(screen.getByRole("combobox", { name: "Código" }), "X");
     expect(await screen.findByText(AVISO, {}, ESPERA)).toBeInTheDocument();
     expect(screen.getAllByText("29,70 Bs", { selector: "td" }).length).toBeGreaterThan(0);
     expect(screen.getByText(/último desglose calculado/i)).toBeInTheDocument();
 
     // Con el formulario vacío otra vez no queda nada viejo a la vista.
     evaluacion = () => json(VACIA);
-    await usuario.clear(screen.getByLabelText("Código"));
+    await usuario.clear(screen.getByRole("combobox", { name: "Código" }));
     expect(await screen.findByText(/Comience por la cabecera/, {}, ESPERA)).toBeInTheDocument();
     expect(screen.queryByText("29,70 Bs", { selector: "td" })).not.toBeInTheDocument();
   });

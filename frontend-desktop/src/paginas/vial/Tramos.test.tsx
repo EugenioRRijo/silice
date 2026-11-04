@@ -168,13 +168,13 @@ describe("Tramos de la vía", () => {
     expect(screen.getByRole("table", { name: "Cantidades del tramo T1" })).toBeInTheDocument();
   });
 
-  test("llevar muestra cuántos renglones, de qué versión, y enlaza a la Hoja", async () => {
+  test("llevar muestra cuántos renglones, de qué versión, y enlaza al Presupuesto", async () => {
     montar();
     await screen.findByRole("table", { name: "Cantidades del tramo T1" });
     await usuario.click(screen.getByRole("button", { name: "Llevar al presupuesto" }));
-    const aviso = await screen.findByText("Se llevaron 18 renglones de VIA-002 a la Hoja de la obra.");
+    const aviso = await screen.findByText("Se llevaron 18 renglones de VIA-002 al Presupuesto de la obra.");
     await waitFor(() => expect(document.activeElement).toBe(aviso.closest("[tabindex]")));
-    expect(screen.getByRole("link", { name: "Abrir la Hoja de la obra" })).toHaveAttribute("href", "/hoja");
+    expect(screen.getByRole("link", { name: "Abrir el presupuesto" })).toHaveAttribute("href", "/hoja");
     const llamada = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/vial/tramos/llevar");
     expect(llamada?.[1]?.method).toBe("POST");
     expect(JSON.parse(String(llamada?.[1]?.body))).toEqual({ proyecto: "Vía Demo", version: "VIA-002" });
@@ -187,14 +187,14 @@ describe("Tramos de la vía", () => {
     await usuario.selectOptions(screen.getByLabelText("Versión"), "VIA-001");
     await screen.findByRole("table", { name: "Cantidades del tramo T1" });
     await usuario.click(screen.getByRole("button", { name: "Llevar al presupuesto" }));
-    expect(await screen.findByText("Se llevaron 18 renglones de VIA-001 a la Hoja de la obra.")).toBeInTheDocument();
+    expect(await screen.findByText("Se llevaron 18 renglones de VIA-001 al Presupuesto de la obra.")).toBeInTheDocument();
     const llamada = fetchFalso.mock.calls.find((c) => String(c[0]) === "/v1/vial/tramos/llevar");
     expect(JSON.parse(String(llamada?.[1]?.body))).toEqual({ proyecto: "Vía Demo", version: "VIA-001" });
   });
 
   test("el 409 de un borrador de otra versión se muestra tal cual, con foco", async () => {
     const detalle =
-      "La Hoja de la obra tiene abierto un borrador de VIA-001; está viendo los tramos de VIA-002. Guarde o descarte ese borrador en la Hoja, o elija VIA-001 aquí, y vuelva a llevar.";
+      "El Presupuesto de la obra tiene abierto un borrador de VIA-001; está viendo los tramos de VIA-002. Guarde o descarte ese borrador en el Presupuesto, o elija VIA-001 aquí, y vuelva a llevar.";
     llevar = () => json({ detalle }, 409);
     montar();
     await screen.findByRole("table", { name: "Cantidades del tramo T1" });
@@ -202,7 +202,7 @@ describe("Tramos de la vía", () => {
     const alerta = await screen.findByRole("alert");
     expect(alerta).toHaveTextContent(detalle);
     await waitFor(() => expect(alerta.closest("[tabindex]")).toBe(document.activeElement));
-    expect(screen.queryByRole("link", { name: "Abrir la Hoja de la obra" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Abrir el presupuesto" })).toBeNull();
   });
 
   test("llevar un solo renglón lo dice en singular", async () => {
@@ -210,7 +210,7 @@ describe("Tramos de la vía", () => {
     montar();
     await screen.findByRole("table", { name: "Cantidades del tramo T1" });
     await usuario.click(screen.getByRole("button", { name: "Llevar al presupuesto" }));
-    expect(await screen.findByText("Se llevó 1 renglón de VIA-002 a la Hoja de la obra.")).toBeInTheDocument();
+    expect(await screen.findByText("Se llevó 1 renglón de VIA-002 al Presupuesto de la obra.")).toBeInTheDocument();
   });
 
   test("el 404 nombra las partidas sin APU", async () => {
@@ -223,7 +223,7 @@ describe("Tramos de la vía", () => {
     expect(alerta).toHaveTextContent(detalle);
     expect(alerta).toHaveTextContent("No se llevó nada al presupuesto");
     await waitFor(() => expect(alerta.closest("[tabindex]")).toBe(document.activeElement));
-    expect(screen.queryByRole("link", { name: "Abrir la Hoja de la obra" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Abrir el presupuesto" })).toBeNull();
   });
 
   test("sin tramos no ofrece llevarlos", async () => {

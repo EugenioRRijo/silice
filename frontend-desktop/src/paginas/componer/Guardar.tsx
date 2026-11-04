@@ -17,6 +17,8 @@ export interface Props {
   alGuardar: (justificacion: string | null) => void;
   // La carpeta no tiene lista para armar (D-MP1): guardar responderia 409, asi que el boton espera a que se cree.
   sinLista?: boolean;
+  // El código no tiene forma de código (pulido F5, Tarea 1): el campo lo dice y el botón espera a que se corrija.
+  codigoInvalido?: boolean;
   // El boton de guardar, para devolverle el foco al cerrarse el dialogo de las variantes.
   refBoton?: RefObject<HTMLButtonElement | null>;
   // El nivel de su titulo: h2 en la pantalla, h3 en el panel de «Agregar partida» (plan F4, Tarea 9).
@@ -31,6 +33,7 @@ export function Guardar({
   error,
   alGuardar,
   sinLista = false,
+  codigoInvalido = false,
   refBoton,
   nivel = 2,
 }: Props) {
@@ -63,8 +66,19 @@ export function Guardar({
           Para guardar hace falta la lista de precios para armar de la carpeta de trabajo: créela con el aviso de arriba.
         </p>
       )}
+      {codigoInvalido && (
+        <p className="silice-componer__nota cds--type-body-compact-01">
+          Para guardar, corrija el código de la cabecera: el campo «Código» dice cómo se escribe.
+        </p>
+      )}
       <div>
-        <Button ref={refBoton} kind="primary" size="md" disabled={sinCondiciones || guardando || sinLista} onClick={guardar}>
+        <Button
+          ref={refBoton}
+          kind="primary"
+          size="md"
+          disabled={sinCondiciones || guardando || sinLista || codigoInvalido}
+          onClick={guardar}
+        >
           Guardar composición
         </Button>
       </div>

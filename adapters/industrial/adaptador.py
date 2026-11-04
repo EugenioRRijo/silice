@@ -92,6 +92,9 @@ class AdaptadorIndustrial(AdaptadorDominio):
     """
 
     dominio = Dominio.INDUSTRIAL
+    #: Las columnas con cifras: con un CSV separado por `;`, `POST /computos/{dominio}` las pasa
+    #: de coma decimal a punto antes de leerlo (`aplicacion/computo_csv.py`).
+    columnas_numericas = _COLUMNAS_NUMERICAS
 
     def extraer(self, fuente: Path | str) -> list[ItemComputo]:
         items: list[ItemComputo] = []

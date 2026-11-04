@@ -43,13 +43,13 @@ OBRAS = {
     SUR: ["Vialidad"],
 }
 VER_EL_ENVIO = Siguiente("Ver el envío", "aprobar")
-ABRIR_LA_HOJA = Siguiente("Abrir la Hoja", "hoja")
+ABRIR_EL_PRESUPUESTO = Siguiente("Abrir el presupuesto", "hoja")
 ACTUALIZAR = Siguiente("Actualizar precios", "actualizacion")
 ESCENARIO: dict[tuple[str, str], tuple[str, Siguiente]] = {
     ("aprobar", "Vialidad"): ("V1 espera dictamen", VER_EL_ENVIO),
-    ("aprobar", "Galpón"): ("V2 devuelta: falta acero", ABRIR_LA_HOJA),
+    ("aprobar", "Galpón"): ("V2 devuelta: falta acero", ABRIR_EL_PRESUPUESTO),
     ("precios", "Clínica"): ("Precios viejos", ACTUALIZAR),
-    ("calidad", "Edificio Central"): ("Hallazgo grave", ABRIR_LA_HOJA),
+    ("calidad", "Edificio Central"): ("Hallazgo grave", ABRIR_EL_PRESUPUESTO),
 }
 
 
@@ -133,7 +133,7 @@ def test_forma_de_la_respuesta() -> None:
         "grupo": "aprobar",
         "urgencia": "bloquea",
         "texto": "V2 devuelta: falta acero",
-        "accion": {"texto": "Abrir la Hoja", "pagina": "hoja"},
+        "accion": {"texto": "Abrir el presupuesto", "pagina": "hoja"},
     }
     assert respuesta.headers["cache-control"] == "no-store"
 

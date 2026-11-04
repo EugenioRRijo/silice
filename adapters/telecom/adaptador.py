@@ -115,6 +115,9 @@ class AdaptadorTelecom(AdaptadorDominio):
     """
 
     dominio = Dominio.TELECOM
+    #: Las columnas con cifras: con un CSV separado por `;`, `POST /computos/{dominio}` las pasa
+    #: de coma decimal a punto antes de leerlo (`aplicacion/computo_csv.py`).
+    columnas_numericas = ("cantidad", "longitud_m", "reserva")
 
     def extraer(self, fuente: Path | str) -> list[ItemComputo]:
         items: list[ItemComputo] = []

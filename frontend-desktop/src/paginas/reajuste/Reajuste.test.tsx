@@ -162,7 +162,8 @@ describe("Reajuste de precios", () => {
 
   test("sin proyecto abierto dice qué hacer", async () => {
     montar(null);
-    expect(await screen.findByText(/Abra un proyecto en la barra superior/)).toBeInTheDocument();
+    // Tanda 2 del pulido F5 (Tarea 7): la barra superior ya no tiene «Proyecto»; la obra se elige en el árbol o con Ctrl+K.
+    expect(await screen.findByText("Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para reajustar sus precios.")).toBeInTheDocument();
   });
 
   test("un proyecto sin versiones pide guardar la del contrato", async () => {

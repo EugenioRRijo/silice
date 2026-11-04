@@ -98,7 +98,7 @@ export default function PaginaReajuste() {
       <h1 className="cds--type-heading-04">Reajuste de precios</h1>
       {codigo === null && (
         <EstadoVacio
-          titulo="Abra un proyecto en la barra superior (Proyecto) para reajustar sus precios."
+          titulo="Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para reajustar sus precios."
           descripcion="El estudio de reajuste se hace sobre una versión guardada del contrato."
         />
       )}

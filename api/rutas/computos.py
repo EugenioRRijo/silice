@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -13,6 +14,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from api.acceso import EDITAR
 from api.archivos import guardar_subida
 from api.esquemas import ItemComputoRespuesta
+from aplicacion.computo_csv import a_la_forma_de_siempre
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 
 router = APIRouter(tags=["computos"])
@@ -73,12 +75,18 @@ def computar(
 
     `codigos` es un JSON de texto (form field) con el mapeo que exige el adaptador civil; el resto
     de los dominios no lo necesita. El archivo se guarda en un directorio temporal con su nombre
-    original, porque los adaptadores leen por extensión.
+    original, porque los adaptadores leen por extensión. Un CSV separado por punto y coma (Excel en
+    español) lleva coma decimal y punto de miles: antes de leerlo, las columnas con cifras del
+    adaptador (`columnas_numericas`) pasan a punto decimal (`aplicacion/computo_csv.py`); uno
+    separado por coma se lee como siempre.
     """
     mapeo_codigos = json.loads(codigos) if codigos is not None else None
     adaptador = _adaptador(dominio, mapeo_codigos, archivo.filename)
+    numericas: tuple[str, ...] | None = getattr(adaptador, "columnas_numericas", None)
     with tempfile.TemporaryDirectory() as carpeta:
         ruta = guardar_subida(carpeta, archivo)
+        if numericas is not None:
+            ruta = a_la_forma_de_siempre(ruta, numericas, Path(tempfile.mkdtemp(dir=carpeta)))
         items = adaptador.extraer(ruta)
     return [_a_respuesta(item) for item in items]
 

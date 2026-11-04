@@ -117,7 +117,10 @@ class Siguiente:
     pagina: str
 
 
-ABRIR_LA_HOJA = Siguiente("Abrir la Hoja", "hoja")
+# La sección de la obra se llama «Presupuesto» desde el rediseño F4 (pasada de su cierre, H9); una
+# obra en blanco (sin ninguna versión guardada) dice qué le falta hacer allí (pulido F5, Tarea 4).
+ABRIR_EL_PRESUPUESTO = Siguiente("Abrir el presupuesto", "hoja")
+AGREGAR_LA_PRIMERA_PARTIDA = Siguiente("Agregue la primera partida", "hoja")
 REGISTRAR_EL_AVANCE = Siguiente("Registrar el avance", "control")
 VER_LAS_ALERTAS = Siguiente("Ver las alertas", "control")
 ACTUALIZAR_PRECIOS = Siguiente("Actualizar precios", "actualizacion")
@@ -276,7 +279,8 @@ class _Estado:
     retraso_dias: int | None = None
 
 
-_EN_ELABORACION = _Estado(EN_ELABORACION, ABRIR_LA_HOJA)
+_EN_ELABORACION = _Estado(EN_ELABORACION, ABRIR_EL_PRESUPUESTO)
+_EN_BLANCO = _Estado(EN_ELABORACION, AGREGAR_LA_PRIMERA_PARTIDA)
 _EN_APROBACION = _Estado(EN_APROBACION, VER_EL_ENVIO)
 _APROBADA = _Estado(APROBADA, DECLARAR_LA_LINEA_BASE)
 
@@ -338,7 +342,9 @@ def obras_de_la_mesa(sesion: Session, catalogo: Catalogo, hoy: date) -> list[Obr
     """Las obras de la carpeta en orden alfabético, cada una con su etapa:
 
     - sin línea base de control declarada: `en_aprobacion` si alguna versión está en
-      aprobación, `aprobada` si tiene una versión aprobada y, si no, `en_elaboracion`;
+      aprobación, `aprobada` si tiene una versión aprobada y, si no, `en_elaboracion` (cuyo paso es
+      «Agregue la primera partida» si aún no tiene ninguna versión guardada, y si no «Abrir el
+      presupuesto»);
     - `en_ejecucion` con línea base, y `atrasada` si su SPI es menor que el umbral de SPI de su
       control (`parametros_actuales(...).spi_error`, 0,90 por omisión).
 
@@ -353,6 +359,8 @@ def obras_de_la_mesa(sesion: Session, catalogo: Catalogo, hoy: date) -> list[Obr
         version = None if version_id is None else sesion.get(models.Presupuesto, version_id)
         if base is None:
             estado = _sin_linea_base(sesion, str(fila.id))
+            if estado == _EN_ELABORACION and version is None:
+                estado = _EN_BLANCO
         else:
             estado = _en_curso(sesion, catalogo, fila.nombre, hoy)
         obras.append(
@@ -547,7 +555,7 @@ def hallazgos_graves(sesion: Session, hoy: date) -> list[Pendiente]:
             hallazgos = plural(
                 cuantos, "hallazgo de error o crítico", "hallazgos de error o críticos"
             )
-            salida.append(pendiente(fila, f"{hallazgos} en {version.codigo}", ABRIR_LA_HOJA))
+            salida.append(pendiente(fila, f"{hallazgos} en {version.codigo}", ABRIR_EL_PRESUPUESTO))
     return salida
 
 

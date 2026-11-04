@@ -20,21 +20,21 @@ import { useTramos } from "./useTramos";
 import "./vial.scss";
 
 const SIN_OBRA = "Abra una obra para ver o importar sus tramos.";
-const SIN_VERSIONES = "Esta obra aún no tiene versiones guardadas. Guarde una en la Hoja para cargar sus tramos.";
+const SIN_VERSIONES = "Esta obra aún no tiene versiones guardadas. Guarde una en el Presupuesto para cargar sus tramos.";
 const SIN_TRAMOS = "Esta versión aún no tiene tramos. Importe el archivo de la vía.";
 
 // El aviso de llevar los tramos al presupuesto: el número de renglones en es-VE (punto de miles) y la versión.
 function textoLlevados(renglones: number, version: string): string {
   const n = formatoEsVe(String(renglones));
   return renglones === 1
-    ? `Se llevó ${n} renglón de ${version} a la Hoja de la obra.`
-    : `Se llevaron ${n} renglones de ${version} a la Hoja de la obra.`;
+    ? `Se llevó ${n} renglón de ${version} al Presupuesto de la obra.`
+    : `Se llevaron ${n} renglones de ${version} al Presupuesto de la obra.`;
 }
 
 // «Tramos de la vía»: los tramos de una versión con sus cantidades de obra (m2, m3, l, t, t·km y m) y la importación del
 // archivo CSV de la vía. La importación es todo o nada: si una fila está mal, el servidor dice cuál y no se guarda nada.
 // La pantalla no calcula: lee lo que manda el servidor con coma decimal y punto de miles. «Llevar al presupuesto» mete
-// las cantidades en el borrador de la Hoja de la obra (Tarea 8b); el aviso, bueno o malo, recibe el foco.
+// las cantidades en el borrador del Presupuesto de la obra (Tarea 8b); el aviso, bueno o malo, recibe el foco.
 export default function Tramos() {
   const { nombreProyecto, alExpirar } = useAplicacion();
   const nombre = nombreProyecto ?? null;
@@ -149,7 +149,7 @@ export default function Tramos() {
               )}
               <AvisoConFoco aviso={llevados} alCerrar={() => setLlevados(null)}>
                 <Link className="cds--link" to="/hoja">
-                  Abrir la Hoja de la obra
+                  Abrir el presupuesto
                 </Link>
               </AvisoConFoco>
               {errorAlLlevar !== null && (

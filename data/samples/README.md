@@ -3,6 +3,12 @@
 Cada subcarpeta tiene su propio `README.md` con las columnas, la procedencia de cada dato y los
 supuestos declarados. Este índice solo dice qué hay y qué adaptador lo consume.
 
+**Separador y cifras de los cómputos** (civil, telecom, industrial y sistemas, por «Cargar cómputo» o
+`POST /computos/{dominio}`): las muestras separan las columnas con coma y escriben las cifras con
+punto decimal, y así se siguen leyendo. Un CSV separado por punto y coma, como lo guarda Excel en
+español, lleva coma decimal y punto de miles («1.234,56»; `aplicacion/computo_csv.py`). El de tramos
+viales tiene su propia regla (`vial/README.md`).
+
 | Ruta | Dominio | Adaptador | Contenido | Sesión |
 |---|---|---|---|---|
 | `civil/tanquillas_y_zanja.csv` | civil | `adapters/civil/tabular.py` (`AdaptadorCivilTabular`) | dos filas (4 tanquillas de 0,80 × 0,80 × 0,80 m, pared 0,10 m; zanja de 24 m × 0,40 × 0,80 con PVC 4") que reproducen la geometría de la línea base; emite 6 `ItemComputo` con regla y parámetros, incluido el relleno con su balance `{LB-01-EXC} - {LB-04-CON} - {LB-02-TUB} * f` | I3.2, 4b |

@@ -328,9 +328,9 @@ def test_un_borrador_abierto_de_otra_version_da_409_y_no_cambia(ana) -> None:
     assert respuesta.status_code == 409
     assert respuesta.headers["cache-control"] == "no-store"
     assert respuesta.json() == {
-        "detalle": "La Hoja de la obra tiene abierto un borrador de VIV-001; está viendo los "
-        "tramos de VIV-002. Guarde o descarte ese borrador en la Hoja, o elija VIV-001 aquí, y "
-        "vuelva a llevar."
+        "detalle": "El Presupuesto de la obra tiene abierto un borrador de VIV-001; está viendo "
+        "los tramos de VIV-002. Guarde o descarte ese borrador en el Presupuesto, o elija VIV-001 "
+        "aquí, y vuelva a llevar."
     }
     # mismo borrador, mismo rev y ningún cambio (`tocado` se renueva con solo leerlo)
     assert [{**b, "tocado": None} for b in _borradores(navegador)] == [

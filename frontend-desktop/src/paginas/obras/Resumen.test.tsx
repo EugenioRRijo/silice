@@ -39,7 +39,7 @@ const FILA: ObraFilaRespuesta = {
   avance_real: "30.0",
   avance_plan: "37.5",
   que_pasa: "Faltan 2 precios",
-  siguiente: { texto: "Abrir la Hoja", pagina: "hoja" },
+  siguiente: { texto: "Abrir el presupuesto", pagina: "hoja" },
 };
 const OTRAS: ObraFilaRespuesta[] = [
   { ...FILA, codigo: "4", nombre: "Puente Sur", etapa: "atrasada", etapa_texto: "Atrasada" },

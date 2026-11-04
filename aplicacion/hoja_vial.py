@@ -145,19 +145,20 @@ def _otra_version(abierto: bool, del_borrador: str | None, vista: str) -> Borrad
     borrador."""
     if abierto and del_borrador is None:
         return BorradorDeOtraVersion(
-            f"La Hoja de la obra tiene abierto un borrador en blanco; está viendo los tramos de "
-            f"{vista}. Guarde o descarte ese borrador en la Hoja y vuelva a llevar."
+            "El Presupuesto de la obra tiene abierto un borrador en blanco; está viendo los "
+            f"tramos de {vista}. Guarde o descarte ese borrador en el Presupuesto y vuelva a "
+            "llevar."
         )
     if abierto:
         return BorradorDeOtraVersion(
-            f"La Hoja de la obra tiene abierto un borrador de {del_borrador}; está viendo los "
-            f"tramos de {vista}. Guarde o descarte ese borrador en la Hoja, o elija "
+            f"El Presupuesto de la obra tiene abierto un borrador de {del_borrador}; está viendo "
+            f"los tramos de {vista}. Guarde o descarte ese borrador en el Presupuesto, o elija "
             f"{del_borrador} aquí, y vuelva a llevar."
         )
     return BorradorDeOtraVersion(
-        f"La Hoja de la obra se abrirá sobre la versión vigente, {del_borrador}; está viendo los "
-        f"tramos de {vista}. Elija {del_borrador} aquí, o abra {vista} en la Hoja, y vuelva a "
-        "llevar."
+        f"El Presupuesto de la obra se abrirá sobre la versión vigente, {del_borrador}; está "
+        f"viendo los tramos de {vista}. Elija {del_borrador} aquí, o abra {vista} en el "
+        "Presupuesto, y vuelva a llevar."
     )
 
 
@@ -272,8 +273,9 @@ def _mensaje_sin_valorar(
     sin_precio = [f for f in faltas if f.sin_precio]
     como = ", sin precio," if sin_precio else ""
     partes = [
-        f"No se llevó nada: {cuantas} en la Hoja{como} porque la Hoja arma cada APU con la lista "
-        f"«{lista.nombre}» de la versión {version}, al {dia}, y con ella no se pueden valorar."
+        f"No se llevó nada: {cuantas} en el Presupuesto{como} porque el Presupuesto arma cada APU "
+        f"con la lista «{lista.nombre}» de la versión {version}, al {dia}, y con ella no se pueden "
+        "valorar."
     ]
     if sin_precio:
         detalle = "; ".join(f"«{f.codigo}» ({_insumos(f.sin_precio)})" for f in sin_precio)
