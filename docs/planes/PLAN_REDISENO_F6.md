@@ -18,7 +18,7 @@ Library; Playwright para la pasada en navegador.
 
 **Especificación:** [2026-11-04-rediseno-f6-espacios-design.md](../especificaciones/2026-11-04-rediseno-f6-espacios-design.md)
 y su [maqueta](../especificaciones/2026-11-04-rediseno-f6-maqueta.html), ambas propuestas por Antigravity y aprobadas
-por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (ver «Decisiones»). Ronda 1 de Antigravity: DEVUELTO con 4 mayores y 2 menores, todos verificados y aplicados (ver `docs/bitacora/auditoria-agy-2026-11-04.md`).
+por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (ver «Decisiones»). Ronda 1 de Antigravity: DEVUELTO con 4 mayores y 2 menores, todos verificados y aplicados. Ronda 2: **APROBADO**, con dos notas menores ya anotadas en sus tareas.
 
 **Rama:** `feature/f6-espacios`, desde `main` después de fusionar #103, #104 y #102.
 
@@ -163,6 +163,9 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
 - [ ] **Paso 2:** correr `npx vitest run src/marco`. Esperado: FALLA.
 - [ ] **Paso 3:** implementar. Las rutas de una sola pieza (`/<paginaId>`) que sean herramienta redirigen con
   `espacioDeLaPagina`. Las secciones de obra siguen con su redirección de hoy (`Marco.tsx:437-442`).
+- Nota m2 de la ronda 2: `paginas/pendientes/logica.test.ts` usa `tablero` como pantalla sin sección; al volverse sección
+  (Tarea 1) se cambia ese ejemplo por `escenarios`. `ABSORBIDAS` se queda igual: un pendiente de «actualizar precios»
+  es de una obra y sigue abriendo su Mercado; la herramienta `actualizar` de Precios es para entrar directo.
 - [ ] **Paso 4:** correr `npx vitest run src/marco src/shell src/paginas/pendientes src/paginas/sinJergaInterna.test.ts`.
   Esperado: PASA. La guardia de jerga revisa todo `src/marco/**`: ni «módulo», ni «área», ni «página» en textos a la
   vista.
@@ -185,7 +188,8 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
   Al pulsar una obra se va a su misma sección si existe; si no, a `resumen`.
 
 - [ ] **Paso 1: pruebas rojas.**
-  - `la barra de la obra va justo debajo de su cabecera, con Tablero y Riesgo solo si su módulo está encendido`.
+  - `la barra de la obra va justo debajo de su cabecera`; `Riesgo` desaparece con el módulo `riesgo` apagado y `Tramos`
+    con `vial`; `Tablero` no tiene módulo: depende solo de `leer_proyecto` (nota m1 de la ronda 2).
   - `la barra lateral no tiene sub-árbol de secciones`.
   - `pulsar otra obra estando en Versiones abre Versiones de esa obra`.
   - `cambiar de obra con cambios sin guardar pregunta antes` (la misma confirmación de hoy).
