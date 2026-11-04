@@ -84,11 +84,9 @@ describe("SECCIONES_DE_OBRA", () => {
 });
 
 describe("ENTRADAS_DE_EMPRESA", () => {
-  it("son cinco, en este orden, cada una con su pantalla de hoy", () => {
+  // F6, T4: Precios, Auditoría y Producción son espacios con su propia ruta (ESPACIOS); quedan Personas y Ayuda (T6).
+  it("son dos, en este orden, cada una con su pantalla de hoy", () => {
     expect(ENTRADAS_DE_EMPRESA.map((e) => [e.titulo, e.pagina])).toEqual([
-      ["Precios y catálogo", "catalogo"],
-      ["Auditar un presupuesto", "auditoria"],
-      ["Producción", "existencias"],
       ["Empresa y personas", "administracion"],
       ["Ayuda", "acerca"],
     ]);
@@ -120,7 +118,7 @@ describe("rutas del marco", () => {
 
   it("pendientes y las entradas de la empresa", () => {
     expect(RUTA_DE_PENDIENTES).toBe("/pendientes");
-    expect(rutaDeEmpresa("precios")).toBe("/empresa/precios");
+    expect(rutaDeEmpresa("personas")).toBe("/empresa/personas");
     expect(PATRON_DE_OBRA).toBe("/obra/:carpeta/:obraId/:seccion");
     expect(PATRON_DE_EMPRESA).toBe("/empresa/:entrada");
   });

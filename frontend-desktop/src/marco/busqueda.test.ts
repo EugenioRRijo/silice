@@ -53,9 +53,23 @@ describe("resultadosDe", () => {
     expect(resultadosDe("galpon", OBRAS, COMPLETA)[0]?.texto).toBe("Galpón Sur");
   });
 
-  it("«precios» encuentra la entrada de Empresa", () => {
+  // F6, T4: «Precios y catálogo» es un espacio con cuatro herramientas; el nombre del espacio encuentra cada una, en su ruta.
+  it("«precios» encuentra las herramientas del espacio Precios y catálogo, en sus rutas", () => {
     const r = resultadosDe("precios", [], COMPLETA);
-    expect(r[0]).toMatchObject({ texto: "Precios y catálogo", ruta: "/empresa/precios" });
+    expect(r.map((x) => x.ruta)).toEqual(expect.arrayContaining(["/precios/catalogo", "/precios/listas", "/precios/indices", "/precios/simulador"]));
+    expect(r[0]).toMatchObject({ texto: "Catálogo de partidas e insumos", ruta: "/precios/catalogo" });
+  });
+
+  it("quien arma (sin administrar precios) encuentra «precios» en el Catálogo, no en los precios de la empresa", () => {
+    const arma = ofertaDe(["leer_proyecto", "editar_hoja"], false);
+    const rutas = resultadosDe("precios", [], arma).map((x) => x.ruta);
+    expect(rutas).toContain("/precios/catalogo");
+    expect(rutas).not.toContain("/precios/listas");
+  });
+
+  it("«auditar» y «arenera» llevan a los espacios Auditoría y Producción", () => {
+    expect(resultadosDe("auditar", [], COMPLETA).map((x) => x.ruta)).toEqual(["/auditoria/subir", "/auditoria/libros", "/auditoria/historial"]);
+    expect(resultadosDe("existencias", [], COMPLETA)[0]).toMatchObject({ texto: "Existencias de la arenera", ruta: "/produccion/existencias" });
   });
 
   it("sin texto da las 5 primeras obras de la lista, y nada más", () => {
@@ -85,8 +99,8 @@ describe("resultadosDe", () => {
     expect(textos[1]).toBe("Precio alto › Presupuesto");
     const i = (t: string) => textos.indexOf(t);
     expect(i("Precio alto › Control de obra")).toBeGreaterThan(i("Precio alto › Presupuesto"));
-    expect(i("Precios y catálogo")).toBeGreaterThan(i("Precio alto › Control de obra"));
-    expect(i("Precios de la empresa")).toBeGreaterThan(i("Precios y catálogo"));
+    expect(i("Catálogo de partidas e insumos")).toBeGreaterThan(i("Precio alto › Control de obra"));
+    expect(i("Precios de la empresa")).toBeGreaterThan(i("Catálogo de partidas e insumos"));
   });
 
   it("si sale la obra no repite su sección «Resumen», que lleva a la misma ruta", () => {
@@ -99,7 +113,7 @@ describe("resultadosDe", () => {
   });
 
   it("alcanza las pantallas que no tienen sitio en el árbol", () => {
-    expect(resultadosDe("simulador", [], COMPLETA)[0]).toMatchObject({ texto: "Simulador de listas", ruta: "/simulador" });
+    expect(resultadosDe("simulador", [], COMPLETA)[0]).toMatchObject({ texto: "Simulador de listas", ruta: "/precios/simulador" });
     expect(resultadosDe("historico", [], COMPLETA)).toEqual([]);
   });
 

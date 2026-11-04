@@ -25,22 +25,35 @@ describe("rutaCanonica", () => {
     expect(rutaCanonica("mercado")).toBe("/mercado");
   });
 
-  test("una entrada de empresa va a /empresa/<entrada>, con o sin obra", () => {
-    expect(rutaCanonica("catalogo")).toBe("/empresa/precios");
-    expect(rutaCanonica("auditoria")).toBe("/empresa/auditoria");
-    expect(rutaCanonica("existencias")).toBe("/empresa/produccion");
+  test("Personas y Ayuda siguen en /empresa/<entrada> (las mueve T6), con o sin obra", () => {
     expect(rutaCanonica("administracion")).toBe("/empresa/personas");
     expect(rutaCanonica("acerca")).toBe("/empresa/ayuda");
-    expect(rutaCanonica("auditoria", { carpeta: "demo.db", obraId: 1 })).toBe("/empresa/auditoria");
+    expect(rutaCanonica("administracion", { carpeta: "demo.db", obraId: 1 })).toBe("/empresa/personas");
   });
 
-  test("las demás pantallas conservan su dirección /<id>", () => {
-    expect(rutaCanonica("costos")).toBe("/costos");
-    expect(rutaCanonica("libros")).toBe("/libros");
-    expect(rutaCanonica("historial")).toBe("/historial");
-    expect(rutaCanonica("receta_planta")).toBe("/receta_planta");
-    expect(rutaCanonica("produccion")).toBe("/produccion");
-    expect(rutaCanonica("costos", { carpeta: "demo.db", obraId: 1 })).toBe("/costos");
+  // Contrato §2.2: las pantallas de los tres espacios viven en /<espacio>/<segmento>, con o sin obra.
+  test("las pantallas de Precios van a /precios/<segmento>", () => {
+    expect(rutaCanonica("precios_empresa")).toBe("/precios/listas");
+    expect(rutaCanonica("catalogo")).toBe("/precios/catalogo");
+    expect(rutaCanonica("indices")).toBe("/precios/indices");
+    expect(rutaCanonica("simulador")).toBe("/precios/simulador");
+  });
+
+  test("las pantallas de Auditoría van a /auditoria/<segmento>", () => {
+    expect(rutaCanonica("auditoria")).toBe("/auditoria/subir");
+    expect(rutaCanonica("libros")).toBe("/auditoria/libros");
+    expect(rutaCanonica("historial")).toBe("/auditoria/historial");
+    expect(rutaCanonica("auditoria", { carpeta: "demo.db", obraId: 1 })).toBe("/auditoria/subir");
+  });
+
+  test("las pantallas de Producción van a /produccion/<segmento>", () => {
+    expect(rutaCanonica("produccion")).toBe("/produccion/resumen");
+    expect(rutaCanonica("existencias")).toBe("/produccion/existencias");
+    expect(rutaCanonica("costos")).toBe("/produccion/costos");
+    expect(rutaCanonica("costo_tonelada")).toBe("/produccion/costo-tonelada");
+    expect(rutaCanonica("receta_planta")).toBe("/produccion/receta");
+    expect(rutaCanonica("producir_mezcla")).toBe("/produccion/mezcla");
+    expect(rutaCanonica("costos", { carpeta: "demo.db", obraId: 1 })).toBe("/produccion/costos");
   });
 
   test("un id desconocido da null (también los que son propiedades de Object)", () => {
@@ -52,7 +65,7 @@ describe("rutaCanonica", () => {
 
 describe("rutaOPendientes", () => {
   test("da la ruta canónica y, si el id no es pantalla, nunca un enlace muerto: lleva a Pendientes", () => {
-    expect(rutaOPendientes("existencias")).toBe("/empresa/produccion");
+    expect(rutaOPendientes("existencias")).toBe("/produccion/existencias");
     expect(rutaOPendientes("hoja", { carpeta: "demo.db", obraId: 1 })).toBe("/obra/demo.db/1/presupuesto");
     expect(rutaOPendientes("inexistente")).toBe("/pendientes");
   });

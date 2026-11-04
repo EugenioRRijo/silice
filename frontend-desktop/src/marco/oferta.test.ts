@@ -40,11 +40,11 @@ describe("ofertaDe con módulos apagados (plan vial, Tarea 19)", () => {
     expect(seccionesDeLaObra(oferta).map((s) => s.id)).not.toContain("tramos");
   });
 
-  it("con producción apagada desaparece la entrada «Producción» de la empresa y sus pantallas del buscador", () => {
+  it("con producción apagada desaparece el espacio «Costos de producción» y sus pantallas del buscador", () => {
     const oferta = ofertaDe(TODAS, false, ["produccion"]);
-    expect(oferta.entradas.map((e) => e.id)).not.toContain("produccion");
-    const ids = oferta.sueltas.map((p) => p.id);
-    for (const id of ["produccion", "costos", "receta_planta", "producir_mezcla", "costo_tonelada"]) {
+    expect(oferta.espacios.map((e) => e.id)).not.toContain("produccion");
+    const ids = oferta.herramientas.map((p) => p.id);
+    for (const id of ["produccion", "existencias", "costos", "receta_planta", "producir_mezcla", "costo_tonelada"]) {
       expect(ids, id).not.toContain(id);
     }
   });
@@ -55,7 +55,7 @@ describe("ofertaDe con módulos apagados (plan vial, Tarea 19)", () => {
 
   it("sin nada apagado la oferta es la de siempre", () => {
     expect(ofertaDe(TODAS, false, [])).toEqual(ofertaDe(TODAS, false));
-    expect(ofertaDe(TODAS, false).entradas.map((e) => e.id)).toContain("produccion");
+    expect(ofertaDe(TODAS, false).espacios.map((e) => e.id)).toContain("produccion");
   });
 });
 
@@ -68,6 +68,7 @@ describe("ofertaDe con edificación apagada (plan vial, Tarea 19, T19-5)", () =>
     expect(apagada.secciones.map((s) => s.id)).toContain("archivos");
     expect(apagada.secciones.map((s) => s.id)).toEqual(siempre.secciones.map((s) => s.id));
     expect(apagada.entradas).toEqual(siempre.entradas);
+    expect(apagada.espacios).toEqual(siempre.espacios);
     expect(apagada.sueltas).toEqual(siempre.sueltas);
   });
 });
@@ -80,7 +81,7 @@ describe("ofertaDe (F6, T2): el contrato no deja ninguna pantalla suelta", () =>
     expect(ofertaDe([], false).sueltas).toEqual([]);
   });
 
-  it("las pantallas de los espacios y las subvistas (las 17 que no son sección ni entrada) salen en «herramientas»", () => {
+  it("las pantallas de los espacios y las subvistas (las 20 que no son sección ni entrada) salen en «herramientas»", () => {
     expect(
       ofertaDe(TODAS, false)
         .herramientas.map((p) => p.id)
@@ -88,9 +89,9 @@ describe("ofertaDe (F6, T2): el contrato no deja ninguna pantalla suelta", () =>
     ).toEqual(
       [
         "tablero", "componer", "revisar", "entregar", "actualizacion", "reajuste", "escenarios",
-        "produccion", "costos", "costo_tonelada", "receta_planta", "producir_mezcla",
-        "libros", "historial",
-        "precios_empresa", "indices", "simulador",
+        "produccion", "existencias", "costos", "costo_tonelada", "receta_planta", "producir_mezcla",
+        "auditoria", "libros", "historial",
+        "precios_empresa", "catalogo", "indices", "simulador",
       ].sort(),
     );
   });
@@ -103,5 +104,36 @@ describe("ofertaDe (F6, T2): el contrato no deja ninguna pantalla suelta", () =>
     expect(ids(TODAS, false, ["produccion"])).not.toContain("costos");
     expect(ids(["leer_proyecto"])).toEqual(expect.arrayContaining(["libros", "historial", "tablero"]));
     expect(ids(["leer_proyecto"])).not.toContain("indices");
+  });
+});
+
+// F6, T4: los tres espacios de la empresa son la oferta de la barra lateral y del buscador. Oráculos escritos a mano.
+describe("ofertaDe (F6, T4): los espacios de la empresa", () => {
+  const espacios = (acciones: string[], entrega = false, apagados: string[] = []) =>
+    ofertaDe(acciones, entrega, apagados).espacios.map((e) => [e.titulo, e.ruta]);
+
+  it("salen en el orden de la barra lateral, cada uno con la ruta de su primera herramienta usable", () => {
+    expect(espacios(TODAS)).toEqual([
+      ["Auditar un presupuesto", "/auditoria/subir"],
+      ["Precios y catálogo", "/precios/listas"],
+      ["Costos de producción", "/produccion/resumen"],
+    ]);
+  });
+
+  it("quien arma entra a Precios por el Catálogo y quien solo registra costos, a Producción por los costos", () => {
+    expect(espacios(["leer_proyecto", "editar_hoja", "operar_arenera"])).toEqual([
+      ["Auditar un presupuesto", "/auditoria/subir"],
+      ["Precios y catálogo", "/precios/catalogo"],
+      ["Costos de producción", "/produccion/resumen"],
+    ]);
+    expect(espacios(["registrar_costos_produccion"])).toEqual([
+      ["Auditar un presupuesto", "/auditoria/subir"],
+      ["Costos de producción", "/produccion/costos"],
+    ]);
+  });
+
+  it("un espacio sin ninguna herramienta usable no se ofrece (permiso o especialidad apagada)", () => {
+    expect(espacios([])).toEqual([["Auditar un presupuesto", "/auditoria/subir"]]);
+    expect(espacios(TODAS, false, ["produccion"]).map(([titulo]) => titulo)).toEqual(["Auditar un presupuesto", "Precios y catálogo"]);
   });
 });

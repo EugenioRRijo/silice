@@ -141,21 +141,19 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
     expect(ruta()).toBe("/aprobar?envio=12");
   });
 
+  // T6 mueve estas dos a la Cuenta; hasta entonces siguen en /empresa/<entrada>.
   test.each([
-    ["/catalogo", "/empresa/precios"],
     ["/administracion", "/empresa/personas"],
     ["/acerca", "/empresa/ayuda"],
-    ["/existencias", "/empresa/produccion"],
-    ["/auditoria", "/empresa/auditoria"],
   ])("%s acaba en %s", async (de, a) => {
     montar({ en: de });
     await waitFor(() => expect(ruta()).toBe(a));
   });
 
-  test("#/simulador sigue en #/simulador, dentro del marco nuevo", async () => {
+  test("#/simulador acaba en #/precios/simulador, dentro del marco nuevo", async () => {
     montar({ en: "/simulador" });
     expect(await titulo("Simulador de listas")).toBeInTheDocument();
-    expect(ruta()).toBe("/simulador");
+    expect(ruta()).toBe("/precios/simulador");
     const barra = screen.getByRole("banner");
     expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "Barra lateral" })).toBeInTheDocument();
@@ -165,6 +163,162 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
   test("una entrada de Empresa que la cuenta no puede usar dice que no tiene permiso", async () => {
     montar({ en: "/empresa/personas" });
     expect(await screen.findByText("Su cuenta no tiene permiso para esta pantalla o acción.")).toBeInTheDocument();
+  });
+});
+
+// F6, T4: Producción, Auditoría y Precios son espacios con su barra de herramientas (/<espacio>/<herramienta>). La tabla
+// del contrato de rutas §2.4 (las filas que tocan a esos espacios) escrita a mano; destino final y consulta conservada.
+describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", () => {
+  const TABLA_2_4: readonly (readonly [string, string])[] = [
+    ["/produccion", "/produccion/resumen"],
+    ["/existencias", "/produccion/existencias"],
+    ["/costos", "/produccion/costos"],
+    ["/costo_tonelada", "/produccion/costo-tonelada"],
+    ["/receta_planta", "/produccion/receta"],
+    ["/producir_mezcla", "/produccion/mezcla"],
+    ["/auditoria", "/auditoria/subir"],
+    ["/libros", "/auditoria/libros"],
+    ["/historial", "/auditoria/historial"],
+    ["/precios_empresa", "/precios/listas"],
+    ["/catalogo", "/precios/catalogo"],
+    ["/indices", "/precios/indices"],
+    ["/simulador", "/precios/simulador"],
+    ["/empresa/precios", "/precios/catalogo"],
+    ["/empresa/auditoria", "/auditoria/subir"],
+    ["/empresa/produccion", "/produccion/existencias"],
+  ];
+
+  test.each(TABLA_2_4)("%s acaba en %s", async (de, a) => {
+    montar({ en: de });
+    await waitFor(() => expect(ruta()).toBe(a));
+  });
+
+  test.each(TABLA_2_4)("%s?proyecto=OF-001 acaba en %s?proyecto=OF-001 (conserva la consulta)", async (de, a) => {
+    montar({ en: `${de}?proyecto=OF-001` });
+    await waitFor(() => expect(ruta()).toBe(`${a}?proyecto=OF-001`));
+  });
+
+  test("#/aprobar?envio=12 sigue abriéndose donde estaba, como antes", async () => {
+    montar({ en: "/aprobar?envio=12" });
+    expect(await titulo("Aprobar una versión")).toBeInTheDocument();
+    expect(ruta()).toBe("/aprobar?envio=12");
+  });
+
+  test("quien arma entra a #/precios por el Catálogo y el administrador, por los precios de la empresa", async () => {
+    const arma = montar({ sesion: sesionDe("ana"), en: "/precios" });
+    expect(await titulo("Catálogo de partidas e insumos")).toBeInTheDocument();
+    expect(ruta()).toBe("/precios/catalogo");
+    arma.unmount();
+    montar({ sesion: sesionDe("admin"), en: "/precios" });
+    expect(await titulo("Precios de la empresa")).toBeInTheDocument();
+    expect(ruta()).toBe("/precios/listas");
+  });
+
+  test("una herramienta que no existe lleva a la primera usable, con replace y conservando la consulta", async () => {
+    montar({ sesion: sesionDe("ana"), en: "/precios/xyz?proyecto=OF-001" });
+    expect(await titulo("Catálogo de partidas e insumos")).toBeInTheDocument();
+    expect(ruta()).toBe("/precios/catalogo?proyecto=OF-001");
+  });
+
+  test("#/auditoria/xyz y #/produccion/xyz también", async () => {
+    const a = montar({ en: "/auditoria/xyz" });
+    await waitFor(() => expect(ruta()).toBe("/auditoria/subir"));
+    a.unmount();
+    montar({ en: "/produccion/xyz" });
+    await waitFor(() => expect(ruta()).toBe("/produccion/resumen"));
+  });
+
+  test("la pantalla tiene un solo h1 y las cabeceras y barras del espacio no lo suman", async () => {
+    montar({ en: "/produccion/existencias" });
+    expect(await titulo("Existencias de la arenera")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    const cabecera = screen.getByRole("region", { name: "Costos de producción" });
+    expect(within(cabecera).queryByRole("heading")).toBeNull();
+    expect(within(cabecera).getByText("Costos de producción")).toBeInTheDocument();
+    const barra = screen.getByRole("navigation", { name: "Costos de producción" });
+    expect(within(barra).queryByRole("heading")).toBeNull();
+    // La cabecera va arriba de la barra y la barra, arriba de la pantalla.
+    expect(cabecera.compareDocumentPosition(barra) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(barra.compareDocumentPosition(screen.getByRole("heading", { level: 1 })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test("la barra ofrece las herramientas que la cuenta puede usar, en el orden de la tabla, con la actual marcada", async () => {
+    montar({ sesion: sesionDe("ana"), en: "/precios/catalogo" });
+    await titulo("Catálogo de partidas e insumos");
+    const barra = screen.getByRole("navigation", { name: "Precios y catálogo" });
+    // Ana no administra precios: ni los precios de la empresa ni los índices; sí edita la hoja (el simulador).
+    expect(within(barra).getAllByRole("link").map((e) => [e.textContent, e.getAttribute("href")])).toEqual([
+      ["Catálogo de partidas e insumos", "/precios/catalogo"],
+      ["Simulador de listas", "/precios/simulador"],
+    ]);
+    expect(within(barra).getByRole("link", { name: "Catálogo de partidas e insumos" })).toHaveAttribute("aria-current", "page");
+  });
+
+  test("«Sin permiso»: una herramienta que la cuenta no puede usar, escrita a mano, lo dice y la barra sigue", async () => {
+    const sinCostos = sesionDe("ana", { acciones: ACCIONES.ana.filter((a) => a !== "registrar_costos_produccion") });
+    montar({ sesion: sinCostos, en: "/produccion/costos" });
+    expect(await screen.findByText("Sin permiso")).toBeInTheDocument();
+    expect(screen.getByText("Su cuenta no tiene permiso para esta pantalla o acción.")).toBeInTheDocument();
+    expect(ruta()).toBe("/produccion/costos");
+    const barra = screen.getByRole("navigation", { name: "Costos de producción" });
+    expect(within(barra).queryByRole("link", { name: "Costos del período" })).toBeNull();
+    expect(within(barra).getByRole("link", { name: "Existencias" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Costos del período" })).toBeNull();
+  });
+
+  test("sin ninguna herramienta usable el espacio abre la primera definida con el aviso, sin bucle y sin barra vacía", async () => {
+    montar({ sesion: sesionDe("rita"), en: "/produccion" });
+    expect(await screen.findByText("Sin permiso")).toBeInTheDocument();
+    expect(ruta()).toBe("/produccion/resumen");
+    expect(screen.queryByRole("navigation", { name: "Costos de producción" })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+  });
+
+  test("cambiar de herramienta desde la barra deja el foco en el enlace pulsado (la barra no se vuelve a montar)", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/produccion/existencias" });
+    await titulo("Existencias de la arenera");
+    const barra = screen.getByRole("navigation", { name: "Costos de producción" });
+    const enlace = within(barra).getByRole("link", { name: "Costos del período" });
+    await u.click(enlace);
+    expect(await titulo("Costos del período")).toBeInTheDocument();
+    expect(ruta()).toBe("/produccion/costos");
+    const despues = within(screen.getByRole("navigation", { name: "Costos de producción" })).getByRole("link", { name: "Costos del período" });
+    expect(despues).toBe(enlace);
+    expect(despues).toHaveFocus();
+    expect(despues).toHaveAttribute("aria-current", "page");
+  });
+
+  test("document.title dice la herramienta y el espacio", async () => {
+    montar({ en: "/produccion/costos" });
+    await titulo("Costos del período");
+    expect(document.title).toBe("Costos del período · Costos de producción · Sílice");
+  });
+
+  test("las migas dicen el espacio y la herramienta", async () => {
+    montar({ en: "/auditoria/libros" });
+    await titulo("Libro de la empresa");
+    const migas = within(screen.getByRole("navigation", { name: "Ruta" }));
+    expect(migas.getByText("Auditar un presupuesto")).toBeInTheDocument();
+    expect(migas.getByText("Libro de la empresa")).toHaveAttribute("aria-current", "page");
+  });
+
+  test("la barra lateral marca el espacio abierto", async () => {
+    montar({ en: "/auditoria/historial" });
+    await titulo("Historial de auditorías");
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    expect(within(lateral).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAttribute("aria-current", "page");
+    expect(within(lateral).getByRole("link", { name: "Costos de producción" })).not.toHaveAttribute("aria-current");
+  });
+
+  test("Ctrl+K lleva a las rutas nuevas", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/pendientes" });
+    await titulo("Pendientes");
+    await u.keyboard("{Control>}k{/Control}");
+    await u.type(screen.getByRole("combobox", { name: "Buscar una obra, sección o pantalla" }), "existencias");
+    await u.keyboard("{Enter}");
+    await waitFor(() => expect(ruta()).toBe("/produccion/existencias"));
   });
 });
 
@@ -274,7 +428,7 @@ describe("Marco: la obra como espacio de trabajo", () => {
     await waitFor(() => expect(ruta()).toBe("/pendientes"));
     expect(await titulo("Pendientes")).toBeInTheDocument();
     await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Precios y catálogo" }));
-    await waitFor(() => expect(ruta()).toBe("/empresa/precios"));
+    await waitFor(() => expect(ruta()).toBe("/precios/catalogo"));
     expect(await screen.findByText("obra elegida: 7")).toBeInTheDocument();
   });
 });
@@ -427,7 +581,7 @@ describe("Marco: lo que se monta con él", () => {
 
   test("con un recorrido en curso su columna acompaña al contenido", async () => {
     iniciarRecorrido(RECORRIDO_AUDITAR);
-    montar({ en: "/libros" });
+    montar({ en: "/auditoria/libros" });
     await titulo("Libro de la empresa");
     expect(screen.getByRole("complementary", { name: "Recorrido" })).toBeInTheDocument();
   });
@@ -551,7 +705,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     return (
       <>
         <h1>Inicio de presupuestos y obras</h1>
-        <button type="button" onClick={() => void ir("/simulador")}>
+        <button type="button" onClick={() => void ir("/precios/simulador")}>
           Ir al simulador
         </button>
         <button type="button" onClick={() => void ir("/obra/empresa/7/presupuesto")}>
@@ -576,7 +730,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
 
   test("un enlace de la barra lateral conserva el foco: solo se mueve si se perdió", async () => {
     const u = userEvent.setup();
-    montar({ en: "/simulador" });
+    montar({ en: "/precios/simulador" });
     await titulo("Simulador de listas");
     const enlace = within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Pendientes" });
     await u.click(enlace);
@@ -772,10 +926,24 @@ describe("Marco: especialidades apagadas", () => {
     expect(screen.queryByText(MENSAJE_APAGADO)).toBeNull();
   });
 
-  test("con producción apagada, la entrada de Empresa dice que está apagada", async () => {
+  test("con producción apagada, abrir una herramienta de Producción por enlace directo dice que está apagada", async () => {
     apagar("produccion");
-    montar({ sesion: sesionDe("admin"), en: "/empresa/produccion" });
+    montar({ sesion: sesionDe("admin"), en: "/produccion/existencias" });
     expect(await screen.findByText(MENSAJE_APAGADO)).toBeInTheDocument();
+    expect(await screen.findByText("Apagada")).toBeInTheDocument();
+    expect(ruta()).toBe("/produccion/existencias");
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+  });
+
+  test("con producción apagada, #/produccion no da vueltas: queda en la primera herramienta y dice que está apagada", async () => {
+    apagar("produccion");
+    montar({ sesion: sesionDe("admin"), en: "/produccion" });
+    expect(await screen.findByText(MENSAJE_APAGADO)).toBeInTheDocument();
+    expect(ruta()).toBe("/produccion/resumen");
+    // La barra del espacio no ofrece pestañas que la cuenta no puede usar, y sin ninguna no se pinta vacía.
+    expect(screen.queryByRole("navigation", { name: "Costos de producción" })).toBeNull();
+    // La barra lateral tampoco la ofrece.
+    expect(within(screen.getByRole("complementary", { name: "Barra lateral" })).queryByRole("link", { name: "Costos de producción" })).toBeNull();
   });
 
   test("si no se puede leer el estado, nada se oculta (la API sigue cortando)", async () => {

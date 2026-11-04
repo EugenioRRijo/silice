@@ -87,7 +87,7 @@ describe("MarcaDemostracion en el armazón", () => {
 
   const marca = () => within(screen.getByRole("banner")).findByRole("button", { name: /^Demostración/ });
 
-  test.each(["/libros", "/hoja", "/existencias"])("con es_demostracion la barra dice «Demostración» en %s", async (ruta) => {
+  test.each(["/auditoria/libros", "/hoja", "/produccion/existencias"])("con es_demostracion la barra dice «Demostración» en %s", async (ruta) => {
     montarMarco(sesionDe("ana"), ruta);
     expect(await marca()).toHaveTextContent("Demostración");
   });
@@ -103,7 +103,7 @@ describe("MarcaDemostracion en el armazón", () => {
 
   test("«Volver a la carpeta de la empresa» llama DELETE /v1/casos/actual, avisa y la marca se va", async () => {
     const u = userEvent.setup();
-    montarMarco(sesionDe("ana"), "/libros");
+    montarMarco(sesionDe("ana"), "/auditoria/libros");
     await u.click(await marca());
     await u.click(screen.getByRole("button", { name: "Volver a la carpeta de la empresa" }));
     await waitFor(() => expect(servidor.de("DELETE", "/v1/casos/actual")).toHaveLength(1));
@@ -132,7 +132,7 @@ describe("MarcaDemostracion en el armazón", () => {
 
   test("rita en la demostración ve la marca sin el botón de volver", async () => {
     const u = userEvent.setup();
-    montarMarco(sesionDe("rita"), "/libros");
+    montarMarco(sesionDe("rita"), "/auditoria/libros");
     await u.click(await marca());
     expect(screen.getByText("Está viendo datos inventados.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Volver a la carpeta de la empresa" })).not.toBeInTheDocument();

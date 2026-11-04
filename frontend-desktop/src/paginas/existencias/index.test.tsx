@@ -90,7 +90,7 @@ describe("Existencias de la arenera", () => {
     test("con la acción de registrar costos hay un enlace a la pantalla", async () => {
       montar({ ...SESION, acciones: [...SESION.acciones, "registrar_costos_produccion"] });
       await screen.findByText("Arena lavada");
-      expect(screen.getByRole("link", { name: "Costos del período" })).toHaveAttribute("href", "/costos");
+      expect(screen.getByRole("link", { name: "Costos del período" })).toHaveAttribute("href", "/produccion/costos");
     });
 
     test("sin ella no hay enlace", async () => {
@@ -103,14 +103,14 @@ describe("Existencias de la arenera", () => {
     test("la receta se ofrece a quien opera la arenera y el costo por tonelada a quien registra costos", async () => {
       montar({ ...SESION, acciones: [...SESION.acciones, "registrar_costos_produccion"] });
       await screen.findByText("Arena lavada");
-      expect(screen.getByRole("link", { name: "Receta de la planta" })).toHaveAttribute("href", "/receta_planta");
-      expect(screen.getByRole("link", { name: "Costo por tonelada" })).toHaveAttribute("href", "/costo_tonelada");
+      expect(screen.getByRole("link", { name: "Receta de la planta" })).toHaveAttribute("href", "/produccion/receta");
+      expect(screen.getByRole("link", { name: "Costo por tonelada" })).toHaveAttribute("href", "/produccion/costo-tonelada");
     });
 
     test("sin registrar costos no hay enlace al costo por tonelada, pero sí a la receta", async () => {
       await conExistencias();
       expect(screen.getByRole("link", { name: "Receta de la planta" })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Producir mezcla" })).toHaveAttribute("href", "/producir_mezcla");
+      expect(screen.getByRole("link", { name: "Producir mezcla" })).toHaveAttribute("href", "/produccion/mezcla");
       expect(screen.queryByRole("link", { name: "Costo por tonelada" })).not.toBeInTheDocument();
     });
   });

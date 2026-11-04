@@ -73,7 +73,7 @@ describe("Inicio de auditoría", () => {
         <MemoryRouter initialEntries={["/auditoria"]}>
           <Routes>
             <Route path="/auditoria" element={<PaginaAuditoria />} />
-            <Route path="/libros" element={<h1>Pantalla del libro</h1>} />
+            <Route path="/auditoria/libros" element={<h1>Pantalla del libro</h1>} />
           </Routes>
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
@@ -186,7 +186,7 @@ describe("Inicio de auditoría", () => {
       expect(within(seccion).getByText(/Recorrido en curso: Auditar un libro de la empresa/)).toBeInTheDocument();
       expect(
         within(seccion).getByRole("link", { name: "Seguir con el paso 2: Lea el resumen y los hallazgos" }),
-      ).toHaveAttribute("href", "/libros");
+      ).toHaveAttribute("href", "/auditoria/libros");
     });
 
     test("no enlaza al paso siguiente si la cuenta no puede abrir esa pantalla", async () => {

@@ -162,7 +162,7 @@ describe("Historial de auditorías", () => {
     lista = () => json([]);
     dibujar();
     expect(await screen.findByText("Todavía no hay auditorías guardadas")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ir a Libro de la empresa" })).toHaveAttribute("href", "/libros");
+    expect(screen.getByRole("link", { name: "Ir a Libro de la empresa" })).toHaveAttribute("href", "/auditoria/libros");
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 

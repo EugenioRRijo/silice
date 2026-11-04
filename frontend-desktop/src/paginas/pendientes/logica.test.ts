@@ -30,8 +30,8 @@ describe("destinoDelPendiente (D-F3-2)", () => {
     expect(destinoDelPendiente(pendiente(pagina))).toBe(ruta);
   });
 
-  test("«catalogo» abre Empresa › Precios y catálogo", () => {
-    expect(destinoDelPendiente(pendiente("catalogo"))).toBe("/empresa/precios");
+  test("«catalogo» abre Precios y catálogo › Catálogo", () => {
+    expect(destinoDelPendiente(pendiente("catalogo"))).toBe("/precios/catalogo");
   });
 
   test("«actualizacion», que aún no tiene sección, va a Mercado", () => {
@@ -128,7 +128,7 @@ describe("destinoDeLaAccion", () => {
   test.each([
     ["hoja", "/obra/Carpeta%20Sur.db/3/presupuesto"],
     ["desconocida", "/obra/Carpeta%20Sur.db/3/resumen"],
-    ["catalogo", "/empresa/precios"],
+    ["catalogo", "/precios/catalogo"],
   ])("«%s» lleva a %s", (pagina, ruta) => {
     expect(destinoDeLaAccion("Carpeta Sur.db", 3, pagina)).toBe(ruta);
   });
