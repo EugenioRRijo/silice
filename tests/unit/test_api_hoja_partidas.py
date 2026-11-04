@@ -712,7 +712,7 @@ def test_la_mesa_cuenta_la_cantidad_sin_calculo_de_viv_001(_entorno: Path) -> No
             _id_de(_entorno, VIVIENDA),
             VIVIENDA,
             "1 cantidad escrita a mano sin cálculo en VIV-001",
-            Siguiente("Abrir la Hoja", "hoja"),
+            Siguiente("Abrir el presupuesto", "hoja"),
         )
     ]
 

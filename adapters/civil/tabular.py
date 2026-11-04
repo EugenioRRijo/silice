@@ -124,6 +124,9 @@ class AdaptadorCivilTabular(AdaptadorDominio):
     """
 
     dominio = Dominio.CIVIL
+    #: Las columnas con cifras: con un CSV separado por `;`, `POST /computos/{dominio}` las pasa
+    #: de coma decimal a punto antes de leerlo (`aplicacion/computo_csv.py`).
+    columnas_numericas = _COLUMNAS[2:]
 
     def __init__(self, codigos: Mapping[str, str]) -> None:
         self._codigos = dict(codigos)

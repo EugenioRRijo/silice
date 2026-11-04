@@ -33,7 +33,7 @@ const CEMENTO: PendienteDeObra = {
   grupo: "compras",
   urgencia: "bloquea",
   texto: "Falta pedir el cemento",
-  accion: { texto: "Abrir la Hoja", pagina: "hoja" },
+  accion: { texto: "Abrir el presupuesto", pagina: "hoja" },
 };
 const PRECIOS: PendienteDeObra = {
   carpeta: null,

@@ -26,6 +26,7 @@ export interface FilaDeComponente {
   cantidad: string; // lo que escribe la persona, con coma
   unidad: string;
   tipo: string;
+  esLigante?: boolean; // marca del ligante; solo la ve quien puede registrar recetas
 }
 
 // «0.94» -> (94n, 2): el entero y sus decimales.
@@ -94,6 +95,7 @@ export interface ComponenteEnviado {
   cantidad_por_t: string;
   unidad: string;
   tipo: string;
+  es_ligante?: boolean; // solo viaja cuando está marcado
 }
 
 export type LecturaDeComponentes = { componentes: ComponenteEnviado[] } | { error: string };
@@ -115,13 +117,17 @@ export function armarComponentes(filas: readonly FilaDeComponente[]): LecturaDeC
     if (fila.tipo === "propio" && fila.unidad !== "t") {
       return { error: `${n}: un componente propio sale del inventario y va en t.` };
     }
-    componentes.push({ codigo, cantidad_por_t: lectura.valor, unidad: fila.unidad, tipo: fila.tipo });
+    if (fila.esLigante === true && fila.unidad !== "t") return { error: `${n}: el ligante va en toneladas.` };
+    const enviado: ComponenteEnviado = { codigo, cantidad_por_t: lectura.valor, unidad: fila.unidad, tipo: fila.tipo };
+    componentes.push(fila.esLigante === true ? { ...enviado, es_ligante: true } : enviado);
   }
   const vistos = new Set<string>();
   for (const c of componentes) {
     if (vistos.has(c.codigo)) return { error: `El código ${c.codigo} está repetido.` };
     vistos.add(c.codigo);
   }
+  const ligantes = componentes.filter((c) => c.es_ligante === true).map((c) => c.codigo);
+  if (ligantes.length > 1) return { error: `Solo un componente puede ser el ligante (marcados: ${ligantes.join(", ")}).` };
   return { componentes };
 }
 

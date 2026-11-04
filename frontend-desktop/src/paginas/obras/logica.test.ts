@@ -1,6 +1,5 @@
 import { describe, expect, test } from "vitest";
 import type { ObraFilaRespuesta } from "../../api/tipos";
-import { textoDeLaAccion } from "../pendientes/logica";
 import { etiquetaAvance, pasoDeLaObra } from "./logica";
 
 // Lógica pura del Resumen de la obra.
@@ -33,23 +32,14 @@ const OBRA: ObraFilaRespuesta = {
   que_pasa: null,
   siguiente: null,
 };
-const IR_A_LA_HOJA = { texto: "Abrir la Hoja", pagina: "hoja" };
-
-// Pasada de navegador del cierre de F4 (H9): la sección se llama «Presupuesto» (DESIGN.md retira «Hoja de la obra»), pero
-// el servidor (`aplicacion/mesa.py`, fuera del alcance del front) sigue diciendo «Abrir la Hoja»: el botón lo dice al día.
+// Pasada de navegador del cierre de F4 (H9): la sección se llama «Presupuesto». Desde el pulido F5 (Tarea 4) el servidor
+// (`aplicacion/mesa.py`) ya lo dice así y el front lo pinta tal cual (se fue `textoDeLaAccion`, que lo corregía).
 const AL_PRESUPUESTO = { texto: "Abrir el presupuesto", pagina: "hoja" };
-
-describe("textoDeLaAccion", () => {
-  test("«Abrir la Hoja» se dice «Abrir el presupuesto»; las demás, tal cual", () => {
-    expect(textoDeLaAccion(IR_A_LA_HOJA)).toBe("Abrir el presupuesto");
-    expect(textoDeLaAccion({ texto: "Registrar el avance", pagina: "control" })).toBe("Registrar el avance");
-    expect(textoDeLaAccion({ texto: "Ver el envío", pagina: "hoja" })).toBe("Ver el envío");
-  });
-});
+const PRIMERA_PARTIDA = { texto: "Agregue la primera partida", pagina: "hoja" };
 
 describe("pasoDeLaObra", () => {
   test("con «qué pasa» y siguiente paso, lo que falta, con la acción", () => {
-    expect(pasoDeLaObra({ ...OBRA, que_pasa: "Faltan 2 precios", siguiente: IR_A_LA_HOJA })).toEqual({
+    expect(pasoDeLaObra({ ...OBRA, que_pasa: "Faltan 2 precios", siguiente: AL_PRESUPUESTO })).toEqual({
       tipo: "falta",
       texto: "Faltan 2 precios",
       accion: AL_PRESUPUESTO,
@@ -61,7 +51,15 @@ describe("pasoDeLaObra", () => {
   });
 
   test("solo con siguiente paso, el siguiente paso con el texto de la acción", () => {
-    expect(pasoDeLaObra({ ...OBRA, siguiente: IR_A_LA_HOJA })).toEqual({ tipo: "siguiente", texto: "Abrir el presupuesto", accion: AL_PRESUPUESTO });
+    expect(pasoDeLaObra({ ...OBRA, siguiente: AL_PRESUPUESTO })).toEqual({ tipo: "siguiente", texto: "Abrir el presupuesto", accion: AL_PRESUPUESTO });
+  });
+
+  test("una obra en blanco: el paso y su botón dicen «Agregue la primera partida», como lo manda el servidor", () => {
+    expect(pasoDeLaObra({ ...OBRA, siguiente: PRIMERA_PARTIDA })).toEqual({
+      tipo: "siguiente",
+      texto: "Agregue la primera partida",
+      accion: PRIMERA_PARTIDA,
+    });
   });
 
   test("sin ninguno de los dos, no hay franja", () => {

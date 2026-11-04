@@ -5,7 +5,7 @@ import { AvisoDeLlevar } from "./AvisoDeLlevar";
 // Segunda pasada de navegador (31-10): el 409 de «Llevar al presupuesto» salía como unas 20 líneas seguidas, con los códigos
 // partidos al borde. El texto es del servidor (tiene pruebas) y no cambia: solo se presenta.
 const DETALLE =
-  "No se llevó nada: 3 partidas quedarían pendientes en la Hoja, sin precio, porque la Hoja arma cada APU con la lista «Lista X» de la versión V-1, al 20/09/2026, y con ella no se pueden valorar. " +
+  "No se llevó nada: 3 partidas quedarían pendientes en el Presupuesto, sin precio, porque el Presupuesto arma cada APU con la lista «Lista X» de la versión V-1, al 20/09/2026, y con ella no se pueden valorar. " +
   "Insumos sin precio en «Lista X»: «C-000.000.001» («Fresado (ficticio)»); «C-000.000.002» («Costo propio (ficticio)»); «C-000.000.003» («Granzón (ficticio)»). " +
   "Esos precios están en «Lista X» al 31/10/2026. Sin rendimiento registrado al 20/09/2026 o antes: «C-000.000.001», «C-000.000.002», «C-000.000.003». " +
   "Qué hacer: en Componer, guarde esas partidas con fecha 20/09/2026. Luego vuelva a llevar.";
@@ -43,7 +43,7 @@ describe("el aviso del 409 de Llevar", () => {
   });
 
   test("un aviso corto, sin «Qué hacer» ni lista, queda como un solo párrafo con el texto tal cual", () => {
-    const corto = "La Hoja de la obra tiene abierto un borrador de VIA-001. Guarde o descarte ese borrador y vuelva a llevar.";
+    const corto = "El Presupuesto de la obra tiene abierto un borrador de VIA-001. Guarde o descarte ese borrador y vuelva a llevar.";
     const alerta = dibujar(corto);
     expect(alerta).toHaveTextContent(corto);
     expect(alerta.querySelector("ul")).toBeNull();

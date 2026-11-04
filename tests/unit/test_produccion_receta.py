@@ -316,3 +316,38 @@ def test_una_sola_regla_t_a_unidad_de_venta() -> None:
     assert str(de_toneladas(m2, D("0.0003"))) == "0.0002"
     t = Material(codigo="T", nombre="T", unidad_venta="t", existencia_minima=D(0), activo=True)
     assert de_toneladas(t, D("94.12345")) == D("94.12345")
+
+
+# --- Tarea 16c: el ligante marcado en la receta -----------------------------------------------
+
+
+def test_el_ligante_marcado_se_guarda_y_se_lee(sesion) -> None:
+    _planta(sesion)
+    componentes = [
+        _c("AGR-12", "0.80"),
+        Componente("ARE-1", D("0.15"), "t", "comprado"),
+        Componente("CA-30", D("0.05"), "t", "comprado", es_ligante=True),
+    ]
+    _registrar(sesion, componentes)
+    receta = receta_vigente(sesion, "MZ-1", OCTUBRE)
+    assert receta is not None
+    assert [(c.codigo, c.es_ligante) for c in receta.componentes] == [
+        ("AGR-12", False),
+        ("ARE-1", False),
+        ("CA-30", True),
+    ]
+
+
+def test_sin_marca_el_componente_no_es_ligante() -> None:
+    assert _c("AGR-12", "0.94").es_ligante is False
+
+
+def test_solo_un_ligante_y_en_toneladas(sesion) -> None:
+    with pytest.raises(ValueError, match="ligante.*toneladas"):
+        Componente("GO", D("8"), "l", "comprado", es_ligante=True)
+    dos = [
+        Componente("ARE-1", D("0.5"), "t", "comprado", es_ligante=True),
+        Componente("CA-30", D("0.5"), "t", "comprado", es_ligante=True),
+    ]
+    with pytest.raises(ErrorDeReceta, match="un solo ligante.*ARE-1, CA-30"):
+        _registrar(sesion, dos)

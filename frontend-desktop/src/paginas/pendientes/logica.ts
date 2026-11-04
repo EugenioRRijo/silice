@@ -36,15 +36,6 @@ export function destinoDelPendiente(p: PendienteDeObra): string {
   return destinoDeLaAccion(p.carpeta, p.obra_id, p.accion.pagina);
 }
 
-// El texto de un botón que trae el servidor (`aplicacion/mesa.py`). La sección se llama «Presupuesto» desde F4 (DESIGN.md
-// retira «Hoja de la obra») y el servidor aún dice «Abrir la Hoja»: el botón lo dice al día (pasada del cierre de F4, H9).
-// Lo usan la franja y los pendientes del Resumen y la bandeja de Pendientes.
-const TEXTOS_AL_DIA: Readonly<Record<string, string>> = { "Abrir la Hoja": "Abrir el presupuesto" };
-
-export function textoDeLaAccion(accion: { texto: string; pagina: string }): string {
-  return TEXTOS_AL_DIA[accion.texto] ?? accion.texto;
-}
-
 export function paginaQueAbre(p: PendienteDeObra): string {
   return destino(p.carpeta, p.obra_id, p.accion.pagina).pagina;
 }

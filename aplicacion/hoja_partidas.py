@@ -353,9 +353,9 @@ def calculo_tecleable(regla: str | None) -> str | None:
 def pendientes_sin_calculo(sesion: Session, hoy: date) -> list[Pendiente]:
     """Fuente «calidad» de la mesa: por obra, cuántos hallazgos de R1 de cantidad manual sin
     regla tiene su versión vigente (los guardados con la versión) → «{n} cantidad(es) escritas a
-    mano sin cálculo en {versión}», acción «Abrir la Hoja». No escribe."""
+    mano sin cálculo en {versión}», acción «Abrir el presupuesto». No escribe."""
     # `aplicacion.mesa` registra esta fuente en `FUENTES`: importarla arriba sería circular.
-    from aplicacion.mesa import ABRIR_LA_HOJA, pendiente, plural, versiones_vigentes
+    from aplicacion.mesa import ABRIR_EL_PRESUPUESTO, pendiente, plural, versiones_vigentes
 
     del hoy  # la regla no depende del día
     salida = []
@@ -370,5 +370,5 @@ def pendientes_sin_calculo(sesion: Session, hoy: date) -> list[Pendiente]:
         if cuantas:
             cantidades = plural(cuantas, "cantidad escrita", "cantidades escritas")
             texto = f"{cantidades} a mano sin cálculo en {version.codigo}"
-            salida.append(pendiente(fila, texto, ABRIR_LA_HOJA))
+            salida.append(pendiente(fila, texto, ABRIR_EL_PRESUPUESTO))
     return salida

@@ -30,7 +30,7 @@ export const RECORRIDO_AUDITAR: Recorrido = {
       pagina: "libros",
       titulo: "Lea el resumen y los hallazgos",
       queHacer:
-        "Compare el total del libro con el que recalculó Sílice y revise los hallazgos por severidad, de errores a avisos. Descargue el libro devuelto si lo necesita.",
+        "Compare el total del libro con el que recalculó Sílice y revise los hallazgos por severidad, de errores a avisos. Elija un hallazgo de la lista para ver su celda marcada en el libro.",
       sabraQueTermino: "Sabrá que terminó cuando haya revisado cada hallazgo con error o advertencia.",
     },
     {

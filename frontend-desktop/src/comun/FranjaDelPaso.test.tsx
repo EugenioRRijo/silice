@@ -14,8 +14,8 @@ describe("FranjaDelPaso", () => {
   });
 
   it("«siguiente» dice «Siguiente paso:» y el texto, sin ícono de advertencia", () => {
-    render(<FranjaDelPaso tipo="siguiente" texto="Abrir la Hoja" />);
-    expect(region()).toHaveTextContent("Siguiente paso: Abrir la Hoja");
+    render(<FranjaDelPaso tipo="siguiente" texto="Abrir el presupuesto" />);
+    expect(region()).toHaveTextContent("Siguiente paso: Abrir el presupuesto");
     expect(region().querySelector("svg")).toBeNull();
   });
 
@@ -26,11 +26,11 @@ describe("FranjaDelPaso", () => {
 
   it("con acción hay un solo botón principal y al pulsarlo se llama alPulsar", async () => {
     const alPulsar = vi.fn();
-    render(<FranjaDelPaso tipo="falta" texto="Faltan 2 precios" accion={{ texto: "Abrir la Hoja", alPulsar }} />);
+    render(<FranjaDelPaso tipo="falta" texto="Faltan 2 precios" accion={{ texto: "Abrir el presupuesto", alPulsar }} />);
     const botones = region().querySelectorAll("button");
     expect(botones).toHaveLength(1);
     expect(botones[0]).toHaveClass("cds--btn--primary");
-    await userEvent.click(screen.getByRole("button", { name: "Abrir la Hoja" }));
+    await userEvent.click(screen.getByRole("button", { name: "Abrir el presupuesto" }));
     expect(alPulsar).toHaveBeenCalledTimes(1);
   });
 
@@ -40,7 +40,7 @@ describe("FranjaDelPaso", () => {
   });
 
   it("deshabilitada deshabilita el botón", () => {
-    render(<FranjaDelPaso tipo="falta" texto="x" accion={{ texto: "Abrir la Hoja", alPulsar: vi.fn(), deshabilitada: true }} />);
-    expect(screen.getByRole("button", { name: "Abrir la Hoja" })).toBeDisabled();
+    render(<FranjaDelPaso tipo="falta" texto="x" accion={{ texto: "Abrir el presupuesto", alPulsar: vi.fn(), deshabilitada: true }} />);
+    expect(screen.getByRole("button", { name: "Abrir el presupuesto" })).toBeDisabled();
   });
 });

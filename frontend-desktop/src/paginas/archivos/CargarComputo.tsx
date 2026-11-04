@@ -16,6 +16,7 @@ import { useCarga } from "../inicio/useCarga";
 import { CodigosCiviles, Pendientes, Rendimientos, SIN_CODIGOS, codigosCompletos, seleccionCivil } from "./BloquesDelComputo";
 import type { CodigosElegidos } from "./BloquesDelComputo";
 import {
+  AYUDA_DEL_CSV,
   DOMINIOS,
   ERROR_COMPUTO_CAMBIO,
   FALTA_LA_LISTA,
@@ -189,6 +190,7 @@ export function CargarComputo({ archivo, alOcuparse, alLlevar, conTitulo = true 
           <SelectItem key={d} value={d} text={NOMBRE_DEL_DOMINIO[d]} />
         ))}
       </Select>
+      <p className="cds--type-helper-text-01">{AYUDA_DEL_CSV}</p>
       {esCivil && <CodigosCiviles carga={catalogo} partidas={partidas} elegidos={elegidos} alCambiar={setElegidos} />}
       <div className="silice-computo__acciones">
         <Button kind={hayItems ? "secondary" : "primary"} size="md" disabled={!puedeExtraer} onClick={() => void extraer()}>

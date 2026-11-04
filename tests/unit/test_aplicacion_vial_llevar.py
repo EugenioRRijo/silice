@@ -358,9 +358,9 @@ def test_insumo_sin_precio_en_la_lista_de_la_version_da_409_y_no_lleva_nada(
         with pytest.raises(hoja_vial.PartidasSinValorar) as error:
             _llevar(sesion)
         assert str(error.value) == (
-            "No se llevó nada: 1 partida quedaría pendiente en la Hoja, sin precio, porque la "
-            "Hoja arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, al "
-            "01/10/2026, y con ella no se pueden valorar. Insumos sin precio en «Lista Bs de "
+            "No se llevó nada: 1 partida quedaría pendiente en el Presupuesto, sin precio, porque "
+            "el Presupuesto arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, "
+            "al 01/10/2026, y con ella no se pueden valorar. Insumos sin precio en «Lista Bs de "
             "prueba»: «C-000.000.012» («Pintura de la otra lista»). Esos precios están en «Lista "
             "vieja de prueba». Qué hacer: en Componer, guarde esas partidas con fecha 01/10/2026: "
             "sus precios quedan en «Lista Bs de prueba» y su rendimiento a esa fecha "
@@ -386,9 +386,9 @@ def test_sin_rendimiento_a_la_fecha_de_la_version_da_409_y_no_toca_el_borrador(
         with pytest.raises(hoja_vial.PartidasSinValorar) as error:
             _llevar(sesion)
         assert str(error.value) == (
-            "No se llevó nada: 1 partida quedaría pendiente en la Hoja porque la Hoja arma cada "
-            "APU con la lista «Lista Bs de prueba» de la versión VIV-001, al 01/10/2026, y con "
-            "ella no se pueden valorar. Sin rendimiento registrado al "
+            "No se llevó nada: 1 partida quedaría pendiente en el Presupuesto porque el "
+            "Presupuesto arma cada APU con la lista «Lista Bs de prueba» de la versión VIV-001, "
+            "al 01/10/2026, y con ella no se pueden valorar. Sin rendimiento registrado al "
             "01/10/2026 o antes: «C-000.000.013». Qué hacer: en Componer, guarde esas partidas "
             "con fecha 01/10/2026: sus precios quedan en «Lista Bs de prueba» y su rendimiento a "
             f"esa fecha ({DE_NUEVO}). Luego vuelva a llevar."
@@ -509,9 +509,9 @@ def test_un_borrador_de_otra_version_da_409_y_no_cambia_nada(sesion: Session) ->
         _llevar(sesion, "VIV-002")
 
     assert str(error.value) == (
-        "La Hoja de la obra tiene abierto un borrador de VIV-001; está viendo los tramos de "
-        "VIV-002. Guarde o descarte ese borrador en la Hoja, o elija VIV-001 aquí, y vuelva a "
-        "llevar."
+        "El Presupuesto de la obra tiene abierto un borrador de VIV-001; está viendo los tramos "
+        "de VIV-002. Guarde o descarte ese borrador en el Presupuesto, o elija VIV-001 aquí, y "
+        "vuelva a llevar."
     )
     assert (vivo.borrador, vivo.rev) == antes
     assert not _de_tramo(vivo)
@@ -524,10 +524,19 @@ def test_sin_borrador_y_otra_version_que_la_vigente_da_409_y_no_abre_nada(sesion
         _llevar(sesion, "VIV-001")
 
     assert str(error.value) == (
-        "La Hoja de la obra se abrirá sobre la versión vigente, VIV-002; está viendo los tramos "
-        "de VIV-001. Elija VIV-002 aquí, o abra VIV-001 en la Hoja, y vuelva a llevar."
+        "El Presupuesto de la obra se abrirá sobre la versión vigente, VIV-002; está viendo los "
+        "tramos de VIV-001. Elija VIV-002 aquí, o abra VIV-001 en el Presupuesto, y vuelva a "
+        "llevar."
     )
     assert hoja_edicion.borradores_para_retomar(HUELLA, CASO) == []
+
+
+def test_un_borrador_en_blanco_abierto_dice_que_lo_guarde_en_el_presupuesto() -> None:
+    """Tanda 2 del pulido F5 (Tarea 7): el aviso nombra la sección «Presupuesto», no la Hoja."""
+    assert str(hoja_vial._otra_version(True, None, "VIV-002")) == (
+        "El Presupuesto de la obra tiene abierto un borrador en blanco; está viendo los tramos de "
+        "VIV-002. Guarde o descarte ese borrador en el Presupuesto y vuelva a llevar."
+    )
 
 
 def test_con_la_version_del_borrador_se_lleva(sesion: Session) -> None:

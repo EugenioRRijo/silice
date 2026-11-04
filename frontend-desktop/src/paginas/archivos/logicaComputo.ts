@@ -26,6 +26,12 @@ export const NOMBRE_DEL_DOMINIO: Record<Dominio, string> = {
   industrial: "Industrial",
   sistemas: "Sistemas",
 };
+// Cómo lee el servidor las cifras del .csv (aplicacion/computo_csv.py; tanda 2 del pulido F5, Tarea 5): con punto y coma
+// entre columnas, la regla de Eugenio (coma decimal y punto de miles, como lo guarda Excel en español); con coma, el punto
+// decimal de siempre.
+export const AYUDA_DEL_CSV =
+  "Si el archivo separa las columnas con punto y coma, como lo guarda Excel en español, escriba las cifras con coma " +
+  "decimal y punto de miles: 1.234,56. Si las separa con coma, use el punto decimal: 1234.56.";
 export const AVISO_SIN_PARTIDAS_CIVILES =
   "El catálogo no tiene partidas del dominio civil todavía (o la base de datos no se pudo leer; revise el mensaje " +
   "de error de arriba, si lo hay): cargue primero un presupuesto civil (por ejemplo, sembrando la línea base en la " +

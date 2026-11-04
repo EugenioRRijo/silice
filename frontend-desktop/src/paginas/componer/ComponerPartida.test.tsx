@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -53,6 +53,32 @@ const CON_LISTA = {
 
 const ESPERA = { timeout: 3000 };
 
+// Pulido F5, Tarea 1: el «Código» busca en el catálogo (`GET /v1/buscar/partidas`) y en las partidas viales de Sílice
+// (`GET /v1/consulta/partidas_viales`). Datos ficticios con la forma de `api/rutas/busqueda.py` y `api/rutas/consulta.py`.
+const DEL_CATALOGO = {
+  rotulo: "Partidas del catálogo",
+  resultados: [
+    {
+      clave: "partida:FIC-02",
+      codigo: "FIC-02",
+      descripcion: "Relleno compactado ficticio",
+      unidad: "m3",
+      dominio: "civil",
+      tiene_composicion: true,
+    },
+  ],
+  hay_mas: false,
+};
+const VIALES = {
+  tabla: "partidas_viales",
+  resultados: [{ valor: "C-000.000.002", etiqueta: "Base granular compactada (C-000.000.002, m3)", fuente: "Partidas viales de Sílice" }],
+  hay_mas: false,
+};
+const CODIGO_MAL_FORMADO =
+  "Un código lleva letras sin tilde, cifras, punto, guion o guion bajo, sin espacios y hasta 64 caracteres, por ejemplo «E-411». Si escribió una descripción, póngala en «Descripción» y busque aquí el código por sus palabras.";
+const AYUDA_DEL_CODIGO =
+  "Escriba una palabra de la descripción o el código y elija de la lista, por ejemplo «zanja» o «E-411»; también puede escribir uno propio. Con este código la partida queda en el catálogo de la empresa; si ya existe, se cargan sus tablas.";
+
 describe("ComponerPartida (Tarea 9)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let rutas: string[];
@@ -74,6 +100,8 @@ describe("ComponerPartida (Tarea 9)", () => {
       if (ruta === "/v1/composicion/prever") return json(SIN_VARIANTES);
       if (ruta === "/v1/composicion/guardar") return json(GUARDADO);
       if (ruta === "/v1/carpeta") return json(CON_LISTA);
+      if (ruta.startsWith("/v1/buscar/partidas?")) return json(DEL_CATALOGO);
+      if (ruta.startsWith("/v1/consulta/partidas_viales?")) return json(VIALES);
       return json({ detalle: "No encontrado." }, 404);
     });
   });
@@ -125,11 +153,75 @@ describe("ComponerPartida (Tarea 9)", () => {
     expect(formulariosSucios()).toEqual([]);
   });
 
-  test("el campo «Código» explica qué es y qué pasa si ya existe", () => {
+  // Pulido F5, Tarea 1: la ayuda dice además cómo se busca (antes solo decía qué es y qué pasa si ya existe).
+  test("el campo «Código» explica cómo se busca, qué es y qué pasa si ya existe", () => {
     montar(1);
-    expect(screen.getByLabelText("Código")).toHaveAccessibleDescription(
-      "Con este código la partida queda en el catálogo de la empresa, por ejemplo «E-411» o uno propio. Si ya existe, se cargan sus tablas.",
+    expect(screen.getByLabelText("Código")).toHaveAccessibleDescription(AYUDA_DEL_CODIGO);
+  });
+
+  test("el «Código» se busca por la descripción en el catálogo y en las partidas viales; elegir del catálogo llena lo vacío", async () => {
+    const u = userEvent.setup();
+    montar(2);
+    const codigo = screen.getByRole("combobox", { name: "Código" });
+    await u.type(codigo, "compact");
+    const lista = await screen.findByRole("listbox", { name: "Código" }, ESPERA);
+    expect(within(lista).getByRole("group", { name: "Partidas del catálogo" })).toBeInTheDocument();
+    expect(within(lista).getByRole("group", { name: "Partidas viales" })).toBeInTheDocument();
+    expect(rutas.some((r) => r.startsWith("/v1/buscar/partidas?"))).toBe(true);
+    expect(rutas.some((r) => r.startsWith("/v1/consulta/partidas_viales?"))).toBe(true);
+    await u.click(within(lista).getByRole("option", { name: /FIC-02/ }));
+    expect(codigo).toHaveValue("FIC-02");
+    expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+    expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
+  });
+
+  test("elegir una partida vial deja su código y no pisa la descripción escrita", async () => {
+    const u = userEvent.setup();
+    montar(2);
+    await u.type(screen.getByLabelText("Descripción"), "Base ficticia");
+    const codigo = screen.getByRole("combobox", { name: "Código" });
+    await u.type(codigo, "granular");
+    await u.click(await screen.findByRole("option", { name: /C-000\.000\.002/ }, ESPERA));
+    expect(codigo).toHaveValue("C-000.000.002");
+    expect(screen.getByLabelText("Descripción")).toHaveValue("Base ficticia");
+    expect(screen.getByLabelText("Unidad")).toHaveValue("");
+  });
+
+  test("un código mal formado se dice al salir del campo, no se ofrece tal cual y no deja guardar; uno bien formado sí", async () => {
+    const u = userEvent.setup();
+    montar(2);
+    await u.type(screen.getByLabelText("Condiciones del rendimiento"), "Condiciones ficticias");
+    const codigo = screen.getByRole("combobox", { name: "Código" });
+    await u.type(codigo, "excavación de zanja");
+    await screen.findByRole("listbox", { name: "Código" }, ESPERA);
+    expect(screen.queryByRole("option", { name: /como código/ })).toBeNull();
+    // Mientras se escribe es una búsqueda: el error sale al dejar el campo.
+    expect(screen.queryByText(CODIGO_MAL_FORMADO)).toBeNull();
+    await u.click(screen.getByLabelText("Unidad"));
+    expect(await screen.findByText(CODIGO_MAL_FORMADO)).toBeInTheDocument();
+    expect(codigo).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("button", { name: "Guardar composición" })).toBeDisabled();
+
+    await u.clear(codigo);
+    await u.type(codigo, "Z-100");
+    await u.click(await screen.findByRole("option", { name: "Usar «Z-100» como código" }, ESPERA));
+    expect(codigo).toHaveValue("Z-100");
+    expect(screen.queryByText(CODIGO_MAL_FORMADO)).toBeNull();
+    expect(screen.getByRole("button", { name: "Guardar composición" })).toBeEnabled();
+  });
+
+  test("llega con la descripción inicial (componer desde «Agregar partida») y el código vacío, sin contar como cambio", async () => {
+    const valor: Aplicacion = { sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
+    render(
+      <ContextoAplicacion.Provider value={valor}>
+        <MemoryRouter>
+          <ComponerPartida codigoInicial="" descripcionInicial="excavación de zanja" nivelDelTitulo={2} alGuardar={vi.fn()} />
+        </MemoryRouter>
+      </ContextoAplicacion.Provider>,
     );
+    expect(screen.getByLabelText("Descripción")).toHaveValue("excavación de zanja");
+    expect(screen.getByLabelText("Código")).toHaveValue("");
+    expect(formulariosSucios()).toEqual([]);
   });
 
   test("al guardar avisa con el código, la descripción y la unidad guardados, y no ofrece volver a la Hoja", async () => {

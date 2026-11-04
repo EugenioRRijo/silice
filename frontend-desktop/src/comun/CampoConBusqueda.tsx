@@ -44,6 +44,9 @@ export interface CampoConBusquedaProps<T> {
   valorPropio?: {
     rotulo: (texto: string) => string; // "Crear una partida nueva con el código «LB-06»"
     alUsar: (texto: string) => void;
+    // false: usarlo abre otra cosa (componer una partida) y no elige nada, así que Esc con la lista cerrada no borra lo
+    // escrito, que sigue siendo una búsqueda (pulido F5, Tarea 2). true por omisión: usarlo deja el texto elegido.
+    esEleccion?: boolean;
   };
   vacio: { titulo: string; pasos: string }; // "¿No la encuentra?" + que hacer (§3.5)
   minimoDeLetras?: number; // 2 por omision
@@ -277,7 +280,7 @@ export function CampoConBusqueda<T>({
       return;
     }
     cancelar();
-    elegido.current = true;
+    elegido.current = entrada.tipo === "opcion" || valorPropio?.esEleccion !== false;
     cerrar();
     if (entrada.tipo === "opcion") alElegir(entrada.opcion);
     else valorPropio?.alUsar(recortado);

@@ -288,7 +288,7 @@
           "computos"
         ],
         "summary": "Computar",
-        "description": "Extrae las cantidades de obra de la fuente subida con el adaptador del dominio pedido.\n\n`codigos` es un JSON de texto (form field) con el mapeo que exige el adaptador civil; el resto\nde los dominios no lo necesita. El archivo se guarda en un directorio temporal con su nombre\noriginal, porque los adaptadores leen por extensión.",
+        "description": "Extrae las cantidades de obra de la fuente subida con el adaptador del dominio pedido.\n\n`codigos` es un JSON de texto (form field) con el mapeo que exige el adaptador civil; el resto\nde los dominios no lo necesita. El archivo se guarda en un directorio temporal con su nombre\noriginal, porque los adaptadores leen por extensión. Un CSV separado por punto y coma (Excel en\nespañol) lleva coma decimal y punto de miles: antes de leerlo, las columnas con cifras del\nadaptador (`columnas_numericas`) pasan a punto decimal (`aplicacion/computo_csv.py`); uno\nseparado por coma se lee como siempre.",
         "operationId": "computar_computos__dominio__post",
         "parameters": [
           {
@@ -15559,6 +15559,11 @@
           "tipo": {
             "type": "string",
             "title": "Tipo"
+          },
+          "es_ligante": {
+            "type": "boolean",
+            "title": "Es Ligante",
+            "default": false
           }
         },
         "type": "object",
