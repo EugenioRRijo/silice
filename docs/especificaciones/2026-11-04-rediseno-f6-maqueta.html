@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mockup Interactivo F6 — Dashboard SaaS con Gráficos Carbon/Fiori/IBCS</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      border-radius: 0 !important;
+      font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .pildora { border-radius: 9999px !important; }
+    .avatar-circulo { border-radius: 9999px !important; }
+    .tabular { font-variant-numeric: tabular-nums; font-family: "IBM Plex Mono", monospace; }
+    .escala-normal { font-size: 12px; }
+    .escala-grande { font-size: 13.5px; }
+    .escala-muy-grande { font-size: 15px; }
+  </style>
+</head>
+<body class="bg-transparent m-0 p-0 select-none">
+  <div id="app-root" class="escala-normal w-full border border-[#c6c6c6] bg-[#f4f4f4] text-[#161616] flex flex-col" style="height: 495px; overflow: hidden;">
+
+    <!-- Barra superior de simulación de rutas -->
+    <div class="bg-[#161616] text-[#f4f4f4] px-3 py-1 flex items-center justify-between border-b border-[#525252] text-xs shrink-0">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="px-1.5 py-0.5 bg-[#f1c21b] text-[#161616] font-semibold text-xs shrink-0">RUTA</span>
+        <code id="url-bar" class="tabular text-[#f1c21b] bg-[#262626] px-2 py-0.5 border border-[#525252] truncate">
+          #/inicio/general
+        </code>
+      </div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button onclick="irAInicio('general')" id="demo-btn-inicio" class="px-2 py-0.5 bg-[#f1c21b] text-[#161616] font-semibold text-xs cursor-pointer">1. Dashboard SaaS</button>
+        <button onclick="irAObra(4, seccionObra)" id="demo-btn-obra" class="px-2 py-0.5 bg-[#262626] hover:bg-[#393939] text-[#c6c6c6] border border-[#525252] text-xs cursor-pointer">2. Obra</button>
+        <button onclick="irAProduccion(vistaProd)" id="demo-btn-prod" class="px-2 py-0.5 bg-[#262626] hover:bg-[#393939] text-[#c6c6c6] border border-[#525252] text-xs cursor-pointer">3. Costos de producción</button>
+        <button onclick="irACuenta(vistaCuenta)" id="demo-btn-cuenta" class="px-2 py-0.5 bg-[#262626] hover:bg-[#393939] text-[#c6c6c6] border border-[#525252] text-xs cursor-pointer">4. Ajustes («Ana»)</button>
+      </div>
+    </div>
+
+    <!-- 1. BARRA SUPERIOR GLOBAL (BarraSuperior.tsx — 38px) -->
+    <header class="bg-[#262626] text-[#f4f4f4] px-3 flex items-center justify-between shrink-0" style="height: 38px; border-bottom: 3px solid #f1c21b;">
+      <div class="flex items-center gap-3">
+        <button onclick="irAInicio('general')" class="font-semibold tracking-tight text-sm text-white cursor-pointer hover:text-[#f1c21b]">
+          Sílice
+        </button>
+        <span class="text-[#6f6f6f]">|</span>
+        <span id="header-contexto" class="text-xs text-[#c6c6c6]">Carpeta activa: demo</span>
+      </div>
+
+      <!-- Buscador Ctrl+K -->
+      <div class="flex items-center bg-[#393939] border border-[#6f6f6f] px-2.5 py-1 text-xs text-[#c6c6c6] w-80 justify-between cursor-pointer hover:border-[#f4f4f4]">
+        <span class="flex items-center gap-2 truncate">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M15,14.3L10.7,10c1.9-2.3,1.6-5.8-0.7-7.7S4.2,0.7,2.3,3S0.7,8.8,3,10.7c2,1.7,5,1.7,7,0l4.3,4.3L15,14.3z M2,6.5C2,4,4,2,6.5,2S11,4,11,6.5S9,11,6.5,11S2,9,2,6.5z"/></svg>
+          Buscar una obra, sección o herramienta… (Ctrl+K)
+        </span>
+      </div>
+
+      <!-- Enlace de ruta a Ajustes de la persona (#/cuenta/preferencias) -->
+      <div class="flex items-center">
+        <button id="header-btn-ana" onclick="irACuenta(vistaCuenta)" class="flex items-center gap-2 px-2.5 py-1 hover:bg-[#393939] text-xs text-white cursor-pointer border-b-2 border-transparent">
+          <span class="avatar-circulo w-5 h-5 bg-[#f1c21b] text-[#161616] font-bold flex items-center justify-center text-xs">A</span>
+          <span>Ana</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- CUERPO PRINCIPAL -->
+    <div class="flex flex-1 min-h-0 overflow-hidden">
+
+      <!-- 2. BARRA LATERAL (BarraLateral.tsx) -->
+      <aside class="w-48 bg-[#f4f4f4] border-r border-[#e0e0e0] flex flex-col justify-between shrink-0 overflow-y-auto">
+        <div>
+          <!-- Vista general / Dashboard -->
+          <div id="side-inicio-general" onclick="irAInicio('general')" class="px-3 py-2 flex items-center justify-between border-b border-[#e0e0e0] bg-[#e0e0e0] font-semibold border-l-4 border-[#262626] cursor-pointer text-xs">
+            <span>Vista general</span>
+            <span class="pildora px-1.5 border border-[#262626] text-[#161616] text-xs font-medium">18</span>
+          </div>
+
+          <!-- OBRAS -->
+          <div class="pt-2 pb-1">
+            <div class="px-3 pb-1 text-xs font-semibold text-[#525252] uppercase tracking-wider">Obras</div>
+            <div class="px-0 mb-1">
+              <button class="w-full bg-[#262626] hover:bg-[#393939] text-white px-3 py-1.5 text-xs flex items-center gap-2 font-medium cursor-pointer">
+                <span>+</span>
+                <span>Nueva obra</span>
+              </button>
+            </div>
+
+            <ul class="m-0 p-0 list-none">
+              <li onclick="irAObra(0, seccionObra)" id="obra-item-0" class="px-3 py-1.5 hover:bg-[#e8e8e8] cursor-pointer flex items-center justify-between text-xs border-l-4 border-transparent">
+                <span class="truncate">Contrato S1 (reajuste)</span>
+                <span class="pildora px-1.5 border border-[#262626] text-xs">2</span>
+              </li>
+              <li onclick="irAObra(1, seccionObra)" id="obra-item-1" class="px-3 py-1.5 hover:bg-[#e8e8e8] cursor-pointer flex items-center justify-between text-xs border-l-4 border-transparent">
+                <div>
+                  <div class="truncate">Drenaje de la clínica</div>
+                  <div class="text-xs text-[#525252]">demo</div>
+                </div>
+                <span class="pildora px-1.5 border border-[#262626] text-xs">1</span>
+              </li>
+              <li onclick="irAObra(2, seccionObra)" id="obra-item-2" class="px-3 py-1.5 hover:bg-[#e8e8e8] cursor-pointer flex items-center justify-between text-xs border-l-4 border-transparent">
+                <div>
+                  <div class="truncate">Drenaje de la clínica</div>
+                  <div class="text-xs text-[#525252]">s1</div>
+                </div>
+                <span class="pildora px-1.5 border border-[#262626] text-xs">3</span>
+              </li>
+              <li onclick="irAObra(3, seccionObra)" id="obra-item-3" class="px-3 py-1.5 hover:bg-[#e8e8e8] cursor-pointer flex items-center justify-between text-xs border-l-4 border-transparent">
+                <div>
+                  <div class="leading-tight">Muro perimetral</div>
+                  <div class="text-xs text-[#525252]">Carpeta de la empresa</div>
+                </div>
+              </li>
+              <li onclick="irAObra(4, seccionObra)" id="obra-item-4" class="px-3 py-1.5 hover:bg-[#e8e8e8] cursor-pointer flex items-center justify-between text-xs border-l-4 border-transparent">
+                <div>
+                  <div class="leading-tight">Muro perimetral</div>
+                  <div class="text-xs text-[#525252]">demo</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- COSTOS Y PRODUCCIÓN -->
+        <div class="border-t border-[#e0e0e0] pt-2 pb-2 bg-[#f4f4f4]">
+          <div class="px-3 pb-1 text-xs font-semibold text-[#525252] uppercase tracking-wider">Costos y producción</div>
+          <ul class="m-0 p-0 list-none text-xs">
+            <li id="side-auditoria" onclick="irAAuditoria('subir')" class="px-3 py-1.5 hover:bg-[#e8e8e8] cursor-pointer border-l-4 border-transparent">
+              Auditar un presupuesto
+            </li>
+            <li id="side-precios" onclick="irAPrecios('listas')" class="px-3 py-1.5 hover:bg-[#e8e8e8] cursor-pointer border-l-4 border-transparent">
+              Precios y catálogo
+            </li>
+            <li id="side-produccion" onclick="irAProduccion(vistaProd)" class="px-3 py-1.5 hover:bg-[#e8e8e8] cursor-pointer border-l-4 border-transparent">
+              Costos de producción
+            </li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- ========================================================================================== -->
+      <!-- 3. VENTANA PRINCIPAL ENRUTADA (<main class="silice-contenido">)                            -->
+      <!-- ========================================================================================== -->
+      <main class="flex-1 bg-white flex flex-col min-w-0 overflow-y-auto">
+
+        <!-- ======================================================================================== -->
+        <!-- ESPACIO 1: BIENVENIDA — DASHBOARD EMPRESARIAL SAAS (SAP Fiori OVP + Procore + InEight)  -->
+        <!-- ======================================================================================== -->
+        <div id="espacio-inicio" class="flex flex-col flex-1">
+          <!-- Cabecera + Top Bar del Espacio de Inicio -->
+          <section class="bg-[#f4f4f4] px-4 pt-2 pb-1.5 border-b border-[#e0e0e0] flex items-baseline justify-between shrink-0">
+            <div>
+              <span class="font-semibold text-sm text-[#161616]">Panorama ejecutivo de la empresa</span>
+              <span class="text-xs text-[#525252] ml-2">Caso: demo · Moneda: USD · IBCS: Negro = Real/Vigente, Contorno = Plan/Meta</span>
+            </div>
+            <span class="text-xs text-[#525252] tabular">Corte: 04/11/2026</span>
+          </section>
+
+          <nav aria-label="Vistas de inicio" class="bg-[#f4f4f4] px-4 border-b border-[#c6c6c6] flex items-center gap-1 shrink-0">
+            <button onclick="irAInicio('general')" data-isec="general" class="tab-inicio px-3 py-1.5 text-xs font-semibold text-[#161616] border-b-[3px] border-[#262626] bg-white cursor-pointer">
+              Dashboard empresarial
+            </button>
+            <button onclick="irAInicio('pendientes')" data-isec="pendientes" class="tab-inicio px-3 py-1.5 text-xs text-[#525252] hover:text-[#161616] hover:bg-[#e8e8e8] border-b-[3px] border-transparent cursor-pointer flex items-center gap-1.5">
+              <span>Bandeja de pendientes</span>
+              <span class="pildora px-1.5 border border-[#262626] text-[#161616] text-xs">18</span>
+            </button>
+          </nav>
+
+          <!-- CONTENIDO DEL DASHBOARD EMPRESARIAL CON GRÁFICOS CARBON / FIORI / IBCS -->
+          <div id="inicio-vista-general" class="p-3 flex-1 bg-[#f4f4f4]/50 overflow-y-auto space-y-2.5">
+
+            <!-- FILA 1: 4 TARJETAS KPI FIORI CON META Y VARIACIÓN IBCS (Sin sombras, divisores de 1 px) -->
+            <div class="grid grid-cols-4 gap-2.5">
+              <div class="bg-white border border-[#c6c6c6] border-t-2 border-t-[#161616] p-2">
+                <div class="flex justify-between text-xs text-[#525252]"><span>Cartera vigente (5 obras)</span><span>Meta: 340k</span></div>
+                <div class="tabular text-sm font-semibold text-[#161616] mt-0.5">334.570,50 USD</div>
+                <div class="text-xs text-[#198038] mt-0.5 font-medium">▼ −1,60 % (−5.429,50) favorable</div>
+              </div>
+
+              <div onclick="irAInicio('pendientes')" class="bg-white border border-[#c6c6c6] border-t-2 border-t-[#da1e28] p-2 cursor-pointer hover:bg-[#f4f4f4]">
+                <div class="flex justify-between text-xs text-[#525252]"><span>Pendientes en obras</span><span>Urgencia</span></div>
+                <div class="tabular text-sm font-semibold text-[#da1e28] mt-0.5">18 por resolver</div>
+                <div class="text-xs text-[#161616] mt-0.5"><span class="text-[#da1e28] font-semibold">▲ 6 bloquean</span> · 12 advertencias</div>
+              </div>
+
+              <div onclick="irAAuditoria('subir')" class="bg-white border border-[#c6c6c6] border-t-2 border-t-[#007d79] p-2 cursor-pointer hover:bg-[#f4f4f4]">
+                <div class="flex justify-between text-xs text-[#525252]"><span>Auditoría forense (L1–L11)</span><span>4 libros</span></div>
+                <div class="tabular text-sm font-semibold text-[#161616] mt-0.5">+14.820,00 USD Δ</div>
+                <div class="text-xs text-[#da1e28] mt-0.5 font-medium">▲ +4,85 % sobrecosto detectado</div>
+              </div>
+
+              <div onclick="irAProduccion('resumen')" class="bg-white border border-[#c6c6c6] border-t-2 border-t-[#8a3ffc] p-2 cursor-pointer hover:bg-[#f4f4f4]">
+                <div class="flex justify-between text-xs text-[#525252]"><span>Planta, áridos y catálogo</span><span>MaPreX / ML</span></div>
+                <div class="tabular text-sm font-semibold text-[#161616] mt-0.5">18,45 USD/t prom.</div>
+                <div class="text-xs text-[#8a3ffc] mt-0.5 font-medium">◆ 3 insumos atípicos · 1 alerta stock</div>
+              </div>
+            </div>
+
+            <!-- FILA 2: 3 GRÁFICOS ANALÍTICOS SAAS (Procore Budget Bars + InEight S-Curve + Carbon Donut) -->
+            <div class="grid grid-cols-12 gap-2.5">
+
+              <!-- GRÁFICO 1 (5 cols): Barras Comparativas IBCS por Obra (Procore Portfolio Financials / SAP Fiori) -->
+              <div class="col-span-5 bg-white border border-[#c6c6c6] p-2.5">
+                <div class="flex items-center justify-between mb-1.5">
+                  <h2 class="text-xs font-semibold text-[#161616] m-0">Presupuesto Plan vs. Vigente por Obra (USD)</h2>
+                  <span class="text-xs text-[#525252]">IBCS</span>
+                </div>
+                <div class="space-y-2 text-xs">
+                  <!-- Obra 1 -->
+                  <div onclick="irAObra(0, 'resumen')" class="cursor-pointer hover:bg-[#f4f4f4] p-0.5">
+                    <div class="flex justify-between mb-0.5">
+                      <span class="truncate font-medium">Contrato S1 (reajuste)</span>
+                      <span class="tabular">148.250,00 <span class="text-[#da1e28] font-semibold">(+4,2% desf.)</span></span>
+                    </div>
+                    <div class="w-full h-3 bg-[#f4f4f4] border border-[#8d8d8d] relative">
+                      <div class="h-full bg-[#161616]" style="width: 88%;"></div>
+                      <div class="h-full bg-[#da1e28] absolute top-0 right-0" style="width: 12%;" title="Sobrecosto por reajuste"></div>
+                    </div>
+                  </div>
+                  <!-- Obra 2 -->
+                  <div onclick="irAObra(2, 'resumen')" class="cursor-pointer hover:bg-[#f4f4f4] p-0.5">
+                    <div class="flex justify-between mb-0.5">
+                      <span class="truncate font-medium">Drenaje clínica (s1)</span>
+                      <span class="tabular">89.400,00 <span class="text-[#198038] font-semibold">(−2,1% fav.)</span></span>
+                    </div>
+                    <div class="w-full h-3 bg-[#f4f4f4] border border-[#8d8d8d] relative">
+                      <div class="h-full bg-[#161616]" style="width: 62%;"></div>
+                    </div>
+                  </div>
+                  <!-- Obra 3 -->
+                  <div onclick="irAObra(1, 'resumen')" class="cursor-pointer hover:bg-[#f4f4f4] p-0.5">
+                    <div class="flex justify-between mb-0.5">
+                      <span class="truncate font-medium">Drenaje clínica (demo)</span>
+                      <span class="tabular">64.120,50 <span class="text-[#525252]">(0,0% en meta)</span></span>
+                    </div>
+                    <div class="w-full h-3 bg-[#f4f4f4] border border-[#8d8d8d] relative">
+                      <div class="h-full bg-[#007d79]" style="width: 45%;"></div>
+                    </div>
+                  </div>
+                  <!-- Obra 4 -->
+                  <div onclick="irAObra(3, 'resumen')" class="cursor-pointer hover:bg-[#f4f4f4] p-0.5">
+                    <div class="flex justify-between mb-0.5">
+                      <span class="truncate font-medium">Muro perimetral (emp.)</span>
+                      <span class="tabular">32.800,00 <span class="text-[#198038] font-semibold">(−1,5% fav.)</span></span>
+                    </div>
+                    <div class="w-full h-3 bg-[#f4f4f4] border border-[#8d8d8d] relative">
+                      <div class="h-full bg-[#161616]" style="width: 24%;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- GRÁFICO 2 (4 cols): Curva S Plan / Real / Pronóstico (CurvaPlanAvance.tsx — estilo InEight / Primavera) -->
+              <div class="col-span-4 bg-white border border-[#c6c6c6] p-2.5 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-1">
+                  <h2 class="text-xs font-semibold text-[#161616] m-0">Curva S — Plan vs. Real vs. Pronóstico</h2>
+                </div>
+                <!-- SVG de CurvaPlanAvance con los trazos exactos de Sílice: Plan fino #8d8d8d, Real grueso #161616, Pronóstico discontinuo #525252 -->
+                <svg viewBox="0 0 220 96" class="w-full h-24 border-b border-l border-[#8d8d8d] bg-[#f4f4f4]/40">
+                  <!-- Líneas de rejilla -->
+                  <line x1="0" y1="24" x2="220" y2="24" stroke="#e0e0e0" stroke-width="1" />
+                  <line x1="0" y1="48" x2="220" y2="48" stroke="#e0e0e0" stroke-width="1" />
+                  <line x1="0" y1="72" x2="220" y2="72" stroke="#e0e0e0" stroke-width="1" />
+                  <!-- Serie Plan (fino 1.5px #8d8d8d) -->
+                  <path d="M 8 90 C 55 85, 110 45, 210 14" fill="none" stroke="#8d8d8d" stroke-width="1.5" />
+                  <!-- Serie Real (grueso 3px #161616 hasta M3) -->
+                  <path d="M 8 90 C 45 86, 85 58, 130 40" fill="none" stroke="#161616" stroke-width="3" />
+                  <!-- Serie Pronóstico (discontinuo 6,4 #007d79 desde M3 a M5) -->
+                  <path d="M 130 40 C 160 26, 185 18, 210 10" fill="none" stroke="#007d79" stroke-width="2" stroke-dasharray="5 3" />
+                  <circle cx="130" cy="40" r="3" fill="#161616" />
+                </svg>
+                <div class="flex items-center justify-between text-xs text-[#525252] mt-1">
+                  <span>── Plan (#8d8d8d)</span>
+                  <span class="text-[#161616] font-semibold">━━ Real (#161616)</span>
+                  <span class="text-[#007d79]">╌╌ Pronóstico</span>
+                </div>
+              </div>
+
+              <!-- GRÁFICO 3 (3 cols): Anillo Donut de Estructura de Costos (GraficoCarbon tipo="anillo" + PALETA_GRAFICOS) -->
+              <div class="col-span-3 bg-white border border-[#c6c6c6] p-2.5 flex flex-col justify-between">
+                <h2 class="text-xs font-semibold text-[#161616] m-0">Desglose APU Cartera</h2>
+                <div class="flex items-center gap-2 my-1">
+                  <svg viewBox="0 0 80 80" class="w-16 h-16 shrink-0">
+                    <!-- Materiales 52% (#161616) -->
+                    <circle cx="40" cy="40" r="28" fill="none" stroke="#161616" stroke-width="12" stroke-dasharray="91 176" stroke-dashoffset="0" />
+                    <!-- Equipos 26% (#007d79) -->
+                    <circle cx="40" cy="40" r="28" fill="none" stroke="#007d79" stroke-width="12" stroke-dasharray="46 176" stroke-dashoffset="-91" />
+                    <!-- Mano de obra 22% (#8d8d8d) -->
+                    <circle cx="40" cy="40" r="28" fill="none" stroke="#8d8d8d" stroke-width="12" stroke-dasharray="39 176" stroke-dashoffset="-137" />
+                    <text x="40" y="43" text-anchor="middle" font-size="10" font-weight="bold" fill="#161616">100%</text>
+                  </svg>
+                  <div class="text-xs space-y-1">
+                    <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-[#161616] inline-block"></span><span>Materiales: <strong class="tabular">52%</strong></span></div>
+                    <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-[#007d79] inline-block"></span><span>Equipos: <strong class="tabular">26%</strong></span></div>
+                    <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-[#8d8d8d] inline-block"></span><span>Mano obra: <strong class="tabular">22%</strong></span></div>
+                  </div>
+                </div>
+                <div class="text-xs text-[#525252] border-t border-[#e0e0e0] pt-1">FCAS medio: <strong class="tabular text-[#161616]">68,50 %</strong></div>
+              </div>
+            </div>
+
+            <!-- FILA 3: ESTADO FORENSE L1-L11 Y EXISTENCIAS DE PLANTA/CANTERA (2 bloques accionables) -->
+            <div class="grid grid-cols-12 gap-2.5">
+              <!-- Bloque Forense Excel -->
+              <div class="col-span-6 bg-white border border-[#c6c6c6] p-2.5">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-semibold text-[#161616]">Últimas auditorías forenses de libros Excel (L1–L11)</span>
+                  <button onclick="irAAuditoria('subir')" class="text-xs underline text-[#161616] font-medium cursor-pointer">Ir a Auditoría →</button>
+                </div>
+                <div class="divide-y divide-[#e0e0e0] text-xs">
+                  <div class="py-1 flex items-center justify-between">
+                    <span>presupuesto_vial_tramo2.xlsx</span>
+                    <span class="tabular"><span class="text-[#da1e28] font-semibold">2 Críticos (L2, L4)</span> · 3 Advertencias</span>
+                  </div>
+                  <div class="py-1 flex items-center justify-between">
+                    <span>edificacion_clinica_oferta.xlsx</span>
+                    <span class="tabular"><span class="text-[#eb6200] font-semibold">1 Error (L7 celda quemada)</span> · <span class="text-[#8a3ffc] font-semibold">2 Atípicos</span></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bloque Cantera y Producción de Áridos -->
+              <div class="col-span-6 bg-white border border-[#c6c6c6] p-2.5">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-semibold text-[#161616]">Existencias y costos de cantera / arenera</span>
+                  <button onclick="irAProduccion('resumen')" class="text-xs underline text-[#161616] font-medium cursor-pointer">Ir a Producción →</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-xs pt-0.5">
+                  <div class="border border-[#e0e0e0] bg-[#f4f4f4] p-1.5">
+                    <div class="text-[#525252]">Arena lavada</div>
+                    <div class="tabular font-semibold text-[#198038]">420,00 t · 14,20 $/t</div>
+                  </div>
+                  <div class="border border-[#e0e0e0] bg-[#f4f4f4] p-1.5">
+                    <div class="text-[#525252]">Piedra picada ¾"</div>
+                    <div class="tabular font-semibold text-[#161616]">285,50 t · 21,80 $/t</div>
+                  </div>
+                  <div class="border border-[#da1e28] bg-[#fff1f1] p-1.5">
+                    <div class="text-[#da1e28] font-semibold">Arrocillo (Alerta)</div>
+                    <div class="tabular font-semibold text-[#da1e28]">−12,00 t (reponer)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Vista 1B: Bandeja de Pendientes (#/inicio/pendientes) -->
+          <div id="inicio-vista-pendientes" class="hidden p-4 flex-1 bg-[#f4f4f4]/40">
+            <h1 class="text-lg font-normal text-[#161616] m-0 mb-2">Pendientes de todas las obras (18)</h1>
+            <div class="bg-white border border-[#c6c6c6] divide-y divide-[#e0e0e0] text-xs">
+              <div class="p-2.5 flex items-center justify-between">
+                <div>
+                  <div class="font-semibold">Aprobar o devolver la versión V2 enviada a revisión</div>
+                  <div class="text-[#525252]">Drenaje de la clínica · s1 · <span class="text-[#da1e28] font-semibold">Bloquea</span></div>
+                </div>
+                <button onclick="irAObra(2, 'aprobaciones')" class="px-3 py-1.5 bg-[#262626] text-white text-xs cursor-pointer">Ir a Aprobaciones</button>
+              </div>
+              <div class="p-2.5 flex items-center justify-between">
+                <div>
+                  <div class="font-semibold">Actualizar precios vencidos respecto a la lista de referencia</div>
+                  <div class="text-[#525252]">Contrato S1 (reajuste) · <span class="text-[#eb6200] font-semibold">Advertencia</span></div>
+                </div>
+                <button onclick="irAObra(0, 'mercado')" class="px-3 py-1.5 bg-[#262626] text-white text-xs cursor-pointer">Ir a Mercado</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ======================================================================================== -->
+        <!-- ESPACIO 2: OBRA CON SU TOP BAR JUSTO DEBAJO (#/obra/:carpeta/:obraId/:seccion)           -->
+        <!-- ======================================================================================== -->
+        <div id="espacio-obra" class="hidden flex-col flex-1">
+          <section class="bg-[#f4f4f4] px-4 pt-2.5 pb-2 border-b border-[#e0e0e0] shrink-0">
+            <div class="flex flex-wrap items-baseline gap-x-5 gap-y-1">
+              <span id="obra-titulo" class="font-semibold text-sm text-[#161616]">Muro perimetral (prueba en vivo)</span>
+              <span class="text-xs text-[#525252]">Estado: <span id="obra-estado" class="text-[#161616]">✎ En elaboración</span></span>
+              <span class="text-xs text-[#525252]">Versión: <span id="obra-version" class="text-[#161616]">sin versión guardada</span></span>
+            </div>
+            <div class="text-xs text-[#525252] mt-0.5">
+              Moneda: USD · Lista para armar: Lista de referencia del caso de demostración de Sílice, al 20/09/2026
+            </div>
+          </section>
+
+          <nav aria-label="Secciones de la obra" class="bg-[#f4f4f4] px-4 border-b border-[#c6c6c6] flex items-center gap-1 flex-wrap shrink-0">
+            <button onclick="irAObra(obraIdx, 'resumen')" data-sec="resumen" class="tab-obra px-3 py-2 text-xs font-semibold text-[#161616] border-b-[3px] border-[#262626] bg-white cursor-pointer">Resumen</button>
+            <button onclick="irAObra(obraIdx, 'presupuesto')" data-sec="presupuesto" class="tab-obra px-3 py-2 text-xs text-[#525252] hover:text-[#161616] hover:bg-[#e8e8e8] border-b-[3px] border-transparent cursor-pointer">Presupuesto</button>
+            <button onclick="irAObra(obraIdx, 'tramos')" data-sec="tramos" class="tab-obra px-3 py-2 text-xs text-[#525252] hover:text-[#161616] hover:bg-[#e8e8e8] border-b-[3px] border-transparent cursor-pointer">Tramos</button>
+            <button onclick="irAObra(obraIdx, 'archivos')" data-sec="archivos" class="tab-obra px-3 py-2 text-xs text-[#525252] hover:text-[#161616] hover:bg-[#e8e8e8] border-b-[3px] border-transparent cursor-pointer">Archivos y planos</button>
+            <button onclick="irAObra(obraIdx, 'versiones')" data-sec="versiones" class="tab-obra px-3 py-2 text-xs text-[#525252] hover:text-[#161616] hover:bg-[#e8e8e8] border-b-[3px] border-transparent cursor-pointer">Versiones</button>
+            <button onclick="irAObra(obraIdx, 'aprobaciones')" data-sec="aprobaciones" class="tab-obra px-3 py-2 text-xs text-[#525252] hover:text-[#161616] hover:bg-[#e8e8e8] border-b-[3px] border-transparent cursor-pointer">Aprobaciones</button>
+            <button onclick="irAObra(obraIdx, 'mercado')" data-sec="mercado" class="tab-obra px-3 py-2 text-xs text-[#525252] hover:text-[#161616] hover:bg-[#e8e8e8] border-b-[3px] border-transparent cursor-pointer">Mercado</button>
+            <button onclick="irAObra(obraIdx, 'control')" data-sec="control" class="tab-obra px-3 py-2 text-xs text-[#525252] hover:text-[#161616] hover:bg-[#e8e8e8] border-b-[3px] border-transparent cursor-pointer">Control de obra</button>
+          </nav>
+
+          <div class="p-4 flex-1 bg-[#f4f4f4]/40">
+            <h1 id="obra-seccion-h1" class="text-xl font-normal text-[#161616] m-0 mb-3">Resumen</h1>
+            <div class="py-2.5 border-t border-b border-[#e0e0e0] flex items-center justify-between mb-4">
+              <span class="text-xs"><strong class="font-semibold">Siguiente paso:</strong> Abrir el presupuesto</span>
+              <button onclick="irAObra(obraIdx, 'presupuesto')" class="bg-[#262626] hover:bg-[#393939] text-white px-4 py-2 text-xs font-medium cursor-pointer">Abrir el presupuesto</button>
+            </div>
+            <div class="grid grid-cols-4 gap-4 pb-4 border-b border-[#e0e0e0]">
+              <div class="border-t border-[#c6c6c6] pt-2"><div class="text-xs text-[#525252]">Total</div><div id="kpi-total" class="text-sm text-[#525252] mt-0.5">Sin presupuesto</div></div>
+              <div class="border-t border-[#c6c6c6] pt-2"><div class="text-xs text-[#525252]">Avance real contra plan</div><div class="text-sm text-[#161616] mt-0.5">Sin avance</div></div>
+              <div class="border-t border-[#c6c6c6] pt-2"><div class="text-xs text-[#525252]">Versión vigente</div><div id="kpi-version" class="text-sm text-[#525252] mt-0.5">Sin versión todavía</div></div>
+              <div class="border-t border-[#c6c6c6] pt-2"><div class="text-xs text-[#525252]">Etapa</div><div id="kpi-etapa" class="text-sm text-[#161616] mt-0.5">✎ En elaboración</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ======================================================================================== -->
+        <!-- ESPACIO 3: COSTOS DE PRODUCCIÓN CON SUS HERRAMIENTAS PROPIAS (#/produccion/:herramienta) -->
+        <!-- ======================================================================================== -->
+        <div id="espacio-produccion" class="hidden flex-col flex-1">
+          <section class="bg-[#f4f4f4] px-4 pt-2.5 pb-2 border-b border-[#e0e0e0] shrink-0">
+            <span class="font-semibold text-sm text-[#161616]">Costos de producción — Cantera, Planta y Áridos</span>
+          </section>
+          <nav class="bg-[#f4f4f4] px-4 border-b border-[#c6c6c6] flex items-center gap-1 flex-wrap shrink-0">
+            <button onclick="irAProduccion('resumen')" data-psec="resumen" class="tab-prod px-2.5 py-2 text-xs font-semibold text-[#161616] border-b-[3px] border-[#262626] bg-white cursor-pointer">Resumen de arenera</button>
+            <button onclick="irAProduccion('existencias')" data-psec="existencias" class="tab-prod px-2.5 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Existencias</button>
+            <button onclick="irAProduccion('costos-periodo')" data-psec="costos-periodo" class="tab-prod px-2.5 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Costos del período</button>
+            <button onclick="irAProduccion('costo-tonelada')" data-psec="costo-tonelada" class="tab-prod px-2.5 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Costo por tonelada</button>
+            <button onclick="irAProduccion('receta')" data-psec="receta" class="tab-prod px-2.5 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Receta de la planta</button>
+            <button onclick="irAProduccion('mezcla')" data-psec="mezcla" class="tab-prod px-2.5 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Producir mezcla</button>
+          </nav>
+          <div class="p-4 flex-1 bg-[#f4f4f4]/40">
+            <h1 id="prod-h1" class="text-xl font-normal text-[#161616] m-0 mb-1">Resumen de arenera</h1>
+            <p class="text-xs text-[#525252] m-0 mb-3">Ruta activa: <code id="prod-code" class="tabular font-semibold">#/produccion/resumen</code></p>
+          </div>
+        </div>
+
+        <div id="espacio-auditoria" class="hidden flex-col flex-1">
+          <section class="bg-[#f4f4f4] px-4 pt-2.5 pb-2 border-b border-[#e0e0e0] shrink-0">
+            <span class="font-semibold text-sm text-[#161616]">Auditar un presupuesto — Motor Forense de Libros Excel (Reglas L1–L11)</span>
+          </section>
+          <nav class="bg-[#f4f4f4] px-4 border-b border-[#c6c6c6] flex items-center gap-1 flex-wrap shrink-0">
+            <button onclick="irAAuditoria('subir')" data-aud="subir" class="tab-aud px-3 py-2 text-xs font-semibold text-[#161616] border-b-[3px] border-[#262626] bg-white cursor-pointer">Subir y auditar Excel</button>
+            <button onclick="irAAuditoria('libros')" data-aud="libros" class="tab-aud px-3 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Visor del libro de la empresa</button>
+            <button onclick="irAAuditoria('revisar')" data-aud="revisar" class="tab-aud px-3 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Revisar un paquete</button>
+            <button onclick="irAAuditoria('historial')" data-aud="historial" class="tab-aud px-3 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Historial de auditorías</button>
+          </nav>
+          <div class="p-4 flex-1 bg-[#f4f4f4]/40">
+            <h1 id="aud-h1" class="text-xl font-normal text-[#161616] m-0 mb-1">Subir y auditar Excel</h1>
+            <p class="text-xs text-[#525252]">Ruta <code id="aud-code" class="tabular font-semibold">#/auditoria/subir</code></p>
+          </div>
+        </div>
+
+        <div id="espacio-precios" class="hidden flex-col flex-1">
+          <section class="bg-[#f4f4f4] px-4 pt-2.5 pb-2 border-b border-[#e0e0e0] shrink-0">
+            <span class="font-semibold text-sm text-[#161616]">Precios y catálogo — Listas MaPreX, Catálogo Maestro, BCV y Simulación</span>
+          </section>
+          <nav class="bg-[#f4f4f4] px-4 border-b border-[#c6c6c6] flex items-center gap-1 flex-wrap shrink-0">
+            <button onclick="irAPrecios('listas')" data-prec="listas" class="tab-prec px-3 py-2 text-xs font-semibold text-[#161616] border-b-[3px] border-[#262626] bg-white cursor-pointer">Precios de la empresa</button>
+            <button onclick="irAPrecios('catalogo')" data-prec="catalogo" class="tab-prec px-3 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Catálogo de partidas e insumos</button>
+            <button onclick="irAPrecios('indices')" data-prec="indices" class="tab-prec px-3 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Índices del BCV</button>
+            <button onclick="irAPrecios('simulador')" data-prec="simulador" class="tab-prec px-3 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Simulador de listas</button>
+            <button onclick="irAPrecios('reajuste')" data-prec="reajuste" class="tab-prec px-3 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Reajuste por índices</button>
+          </nav>
+          <div class="p-4 flex-1 bg-[#f4f4f4]/40">
+            <h1 id="prec-h1" class="text-xl font-normal text-[#161616] m-0 mb-1">Precios de la empresa</h1>
+            <p class="text-xs text-[#525252]">Ruta <code id="prec-code" class="tabular font-semibold">#/precios/listas</code></p>
+          </div>
+        </div>
+
+        <!-- ======================================================================================== -->
+        <!-- ESPACIO 4: AJUSTES DE LA PERSONA (#/cuenta/:seccion)                                     -->
+        <!-- ======================================================================================== -->
+        <div id="espacio-cuenta" class="hidden flex-col flex-1">
+          <section class="bg-[#f4f4f4] px-4 pt-2.5 pb-2 border-b border-[#e0e0e0] flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3">
+              <span class="avatar-circulo w-6 h-6 bg-[#f1c21b] text-[#161616] font-bold flex items-center justify-center text-xs">A</span>
+              <div>
+                <span class="font-semibold text-sm text-[#161616]">Ajustes y configuración — Ana</span>
+                <span class="text-xs text-[#525252] ml-3">Preferencias del usuario, administración de la empresa y soporte</span>
+              </div>
+            </div>
+            <button class="px-3 py-1 border border-[#da1e28] text-[#da1e28] hover:bg-[#fff1f1] text-xs font-semibold cursor-pointer">Salir de la sesión</button>
+          </section>
+
+          <nav class="bg-[#f4f4f4] px-4 border-b border-[#c6c6c6] flex items-center gap-1 flex-wrap shrink-0">
+            <button onclick="irACuenta('preferencias')" data-asec="preferencias" class="tab-cuenta px-2.5 py-2 text-xs font-semibold text-[#161616] border-b-[3px] border-[#262626] bg-white cursor-pointer">Pantalla y tamaño de letra</button>
+            <button onclick="irACuenta('cuentas')" data-asec="cuentas" class="tab-cuenta px-2.5 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Cuentas y permisos</button>
+            <button onclick="irACuenta('empresa')" data-asec="empresa" class="tab-cuenta px-2.5 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Empresa y tema</button>
+            <button onclick="irACuenta('carpetas')" data-asec="carpetas" class="tab-cuenta px-2.5 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Carpetas de trabajo</button>
+            <button onclick="irACuenta('especialidades')" data-asec="especialidades" class="tab-cuenta px-2.5 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Especialidades e IA</button>
+            <button onclick="irACuenta('ayuda')" data-asec="ayuda" class="tab-cuenta px-2.5 py-2 text-xs text-[#525252] hover:text-[#161616] border-b-[3px] border-transparent cursor-pointer">Ayuda y acerca de Sílice</button>
+          </nav>
+
+          <div class="p-4 flex-1 bg-[#f4f4f4]/40 overflow-y-auto">
+            <h1 id="cuenta-h1" class="text-xl font-normal text-[#161616] m-0 mb-1">Pantalla y tamaño de letra</h1>
+            <p class="text-xs text-[#525252] m-0 mb-3">Ruta activa: <code id="cuenta-code" class="tabular font-semibold">#/cuenta/preferencias</code></p>
+            <div id="cuenta-panel-preferencias">
+              <div class="grid grid-cols-3 gap-3 mb-3">
+                <button id="escala-card-normal" onclick="cambiarEscala('normal')" class="p-2.5 text-left border-2 border-[#262626] bg-white cursor-pointer">
+                  <div class="flex items-baseline justify-between"><span class="text-xs font-semibold">Normal (100 %)</span><span class="text-sm font-bold">A</span></div>
+                  <div class="text-xs text-[#525252] mt-1">16 px base · Máxima densidad</div>
+                </button>
+                <button id="escala-card-grande" onclick="cambiarEscala('grande')" class="p-2.5 text-left border border-[#c6c6c6] bg-white hover:bg-[#f4f4f4] cursor-pointer">
+                  <div class="flex items-baseline justify-between"><span class="text-xs font-semibold">Grande (125 %)</span><span class="text-base font-bold">A</span></div>
+                  <div class="text-xs text-[#525252] mt-1">20 px base · Lectura cómoda</div>
+                </button>
+                <button id="escala-card-muy-grande" onclick="cambiarEscala('muy-grande')" class="p-2.5 text-left border border-[#c6c6c6] bg-white hover:bg-[#f4f4f4] cursor-pointer">
+                  <div class="flex items-baseline justify-between"><span class="text-xs font-semibold">Muy grande (150 %)</span><span class="text-lg font-bold">A</span></div>
+                  <div class="text-xs text-[#525252] mt-1">24 px base · Alta visibilidad</div>
+                </button>
+              </div>
+              <div class="border border-[#c6c6c6] bg-white p-2.5 text-xs flex justify-between">
+                <span>Muestra en vivo: E-311 · Concreto f'c 210 kgf/cm² en muro perimetral</span>
+                <span class="tabular font-semibold">1.586,61 USD/m³</span>
+              </div>
+            </div>
+            <div id="cuenta-panel-otro" class="hidden bg-white border border-[#c6c6c6] p-3 text-xs">
+              Vista encajada de la ruta seleccionada.
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const OBRAS = [
+      { id: 1, nombre: "Contrato S1 (reajuste)", carpeta: "s1", estado: "✓ Aprobada", version: "V3 (vigente)", total: "148.250,00 USD" },
+      { id: 2, nombre: "Drenaje de la clínica", carpeta: "demo", estado: "✎ En elaboración", version: "V1", total: "64.120,50 USD" },
+      { id: 3, nombre: "Drenaje de la clínica", carpeta: "s1", estado: "◷ En aprobación", version: "V2", total: "89.400,00 USD" },
+      { id: 4, nombre: "Muro perimetral (prueba en vivo)", carpeta: "empresa", estado: "✎ En elaboración", version: "V1", total: "32.800,00 USD" },
+      { id: 5, nombre: "Muro perimetral (prueba en vivo)", carpeta: "demo", estado: "✎ En elaboración", version: "sin versión guardada", total: "Sin presupuesto" }
+    ];
+
+    let obraIdx = 4;
+    let seccionObra = "resumen";
+    let vistaProd = "resumen";
+    let vistaCuenta = "preferencias";
+
+    function activarEspacio(cual, demoBtnId) {
+      ["inicio", "obra", "produccion", "auditoria", "precios", "cuenta"].forEach((id) => {
+        const el = document.getElementById("espacio-" + id);
+        if (id === cual) { el.classList.remove("hidden"); el.classList.add("flex"); }
+        else { el.classList.add("hidden"); el.classList.remove("flex"); }
+      });
+      ["demo-btn-inicio", "demo-btn-obra", "demo-btn-prod", "demo-btn-cuenta"].forEach((id) => {
+        document.getElementById(id).className = id === demoBtnId
+          ? "px-2 py-0.5 bg-[#f1c21b] text-[#161616] font-semibold text-xs cursor-pointer"
+          : "px-2 py-0.5 bg-[#262626] hover:bg-[#393939] text-[#c6c6c6] border border-[#525252] text-xs cursor-pointer";
+      });
+      document.getElementById("header-btn-ana").className = cual === "cuenta"
+        ? "flex items-center gap-2 px-2.5 py-1 bg-[#393939] text-xs text-white cursor-pointer border-b-2 border-[#f1c21b]"
+        : "flex items-center gap-2 px-2.5 py-1 hover:bg-[#393939] text-xs text-white cursor-pointer border-b-2 border-transparent";
+    }
+
+    function limpiarLateral() {
+      document.getElementById("side-inicio-general").className =
+        "px-3 py-2 flex items-center justify-between border-b border-[#e0e0e0] hover:bg-[#e8e8e8] cursor-pointer text-xs border-l-4 border-transparent";
+      for (let i = 0; i < OBRAS.length; i++) {
+        document.getElementById("obra-item-" + i).className =
+          "px-3 py-1.5 hover:bg-[#e8e8e8] cursor-pointer flex items-center justify-between text-xs border-l-4 border-transparent";
+      }
+      ["side-auditoria", "side-precios", "side-produccion"].forEach((id) => {
+        document.getElementById(id).className = "px-3 py-1.5 hover:bg-[#e8e8e8] cursor-pointer border-l-4 border-transparent";
+      });
+    }
+
+    function irAInicio(sub) {
+      activarEspacio("inicio", "demo-btn-inicio");
+      limpiarLateral();
+      document.getElementById("side-inicio-general").className =
+        "px-3 py-2 flex items-center justify-between border-b border-[#e0e0e0] bg-[#e0e0e0] font-semibold border-l-4 border-[#262626] cursor-pointer text-xs";
+      document.getElementById("url-bar").textContent = `#/inicio/${sub}`;
+      document.getElementById("inicio-vista-general").classList.toggle("hidden", sub !== "general");
+      document.getElementById("inicio-vista-pendientes").classList.toggle("hidden", sub !== "pendientes");
+      marcarTabs(".tab-inicio", "isec", sub);
+    }
+
+    function irAObra(idx, sec) {
+      obraIdx = idx;
+      seccionObra = sec || "resumen";
+      activarEspacio("obra", "demo-btn-obra");
+      limpiarLateral();
+      const o = OBRAS[idx];
+      document.getElementById("obra-item-" + idx).className =
+        "px-3 py-1.5 bg-[#e0e0e0] font-semibold cursor-pointer flex items-center justify-between text-xs border-l-4 border-[#262626]";
+      document.getElementById("obra-titulo").textContent = o.nombre;
+      document.getElementById("obra-estado").textContent = o.estado;
+      document.getElementById("obra-version").textContent = o.version;
+      document.getElementById("kpi-total").textContent = o.total;
+      document.getElementById("kpi-version").textContent = o.version;
+      document.getElementById("kpi-etapa").textContent = o.estado;
+      document.getElementById("obra-seccion-h1").textContent = bTitulo(".tab-obra", "sec", seccionObra);
+      document.getElementById("url-bar").textContent = `#/obra/${o.carpeta}/${o.id}/${seccionObra}`;
+      marcarTabs(".tab-obra", "sec", seccionObra);
+    }
+
+    function irAProduccion(sub) {
+      vistaProd = sub || "resumen";
+      activarEspacio("produccion", "demo-btn-prod");
+      limpiarLateral();
+      document.getElementById("side-produccion").className =
+        "px-3 py-1.5 bg-[#e0e0e0] font-semibold cursor-pointer border-l-4 border-[#262626]";
+      document.getElementById("prod-h1").textContent = bTitulo(".tab-prod", "psec", vistaProd);
+      document.getElementById("prod-code").textContent = `#/produccion/${vistaProd}`;
+      document.getElementById("url-bar").textContent = `#/produccion/${vistaProd}`;
+      marcarTabs(".tab-prod", "psec", vistaProd);
+    }
+
+    function irAAuditoria(sub) {
+      activarEspacio("auditoria", "demo-btn-prod");
+      limpiarLateral();
+      document.getElementById("side-auditoria").className =
+        "px-3 py-1.5 bg-[#e0e0e0] font-semibold cursor-pointer border-l-4 border-[#262626]";
+      document.getElementById("aud-h1").textContent = bTitulo(".tab-aud", "aud", sub);
+      document.getElementById("aud-code").textContent = `#/auditoria/${sub}`;
+      document.getElementById("url-bar").textContent = `#/auditoria/${sub}`;
+      marcarTabs(".tab-aud", "aud", sub);
+    }
+
+    function irAPrecios(sub) {
+      activarEspacio("precios", "demo-btn-prod");
+      limpiarLateral();
+      document.getElementById("side-precios").className =
+        "px-3 py-1.5 bg-[#e0e0e0] font-semibold cursor-pointer border-l-4 border-[#262626]";
+      document.getElementById("prec-h1").textContent = bTitulo(".tab-prec", "prec", sub);
+      document.getElementById("prec-code").textContent = `#/precios/${sub}`;
+      document.getElementById("url-bar").textContent = `#/precios/${sub}`;
+      marcarTabs(".tab-prec", "prec", sub);
+    }
+
+    function irACuenta(sub) {
+      vistaCuenta = sub || "preferencias";
+      activarEspacio("cuenta", "demo-btn-cuenta");
+      limpiarLateral();
+      document.getElementById("cuenta-h1").textContent = bTitulo(".tab-cuenta", "asec", vistaCuenta);
+      document.getElementById("cuenta-code").textContent = `#/cuenta/${vistaCuenta}`;
+      document.getElementById("url-bar").textContent = `#/cuenta/${vistaCuenta}`;
+      document.getElementById("cuenta-panel-preferencias").classList.toggle("hidden", vistaCuenta !== "preferencias");
+      document.getElementById("cuenta-panel-otro").classList.toggle("hidden", vistaCuenta === "preferencias");
+      marcarTabs(".tab-cuenta", "asec", vistaCuenta);
+    }
+
+    function bTitulo(sel, attr, val) {
+      const el = document.querySelector(`${sel}[data-${attr}="${val}"]`);
+      return el ? el.textContent.trim() : val;
+    }
+
+    function marcarTabs(sel, attr, val) {
+      document.querySelectorAll(sel).forEach((b) => {
+        b.className = b.dataset[attr] === val
+          ? `${sel.slice(1)} px-2.5 py-1.5 text-xs font-semibold text-[#161616] border-b-[3px] border-[#262626] bg-white cursor-pointer flex items-center gap-1.5`
+          : `${sel.slice(1)} px-2.5 py-1.5 text-xs text-[#525252] hover:text-[#161616] hover:bg-[#e8e8e8] border-b-[3px] border-transparent cursor-pointer flex items-center gap-1.5`;
+      });
+    }
+
+    function cambiarEscala(escala) {
+      const root = document.getElementById("app-root");
+      root.classList.remove("escala-normal", "escala-grande", "escala-muy-grande");
+      root.classList.add("escala-" + escala);
+      ["normal", "grande", "muy-grande"].forEach((id) => {
+        const c = document.getElementById("escala-card-" + id);
+        c.className = id === escala
+          ? "p-2.5 text-left border-2 border-[#262626] bg-white cursor-pointer"
+          : "p-2.5 text-left border border-[#c6c6c6] bg-white hover:bg-[#f4f4f4] cursor-pointer";
+      });
+    }
+  </script>
+</body>
+</html>
