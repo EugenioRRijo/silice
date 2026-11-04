@@ -1,4 +1,5 @@
 import { paginaPorId, type PaginaDef } from "../shell/rutas";
+import { ESPACIOS, esEspacio } from "./espacios";
 import type { Miga } from "./Migas";
 import {
   ENTRADAS_DE_EMPRESA,
@@ -17,6 +18,7 @@ export interface Ubicada {
 
 const OBRA = /^\/obra\/([^/]+)\/([1-9]\d*)\/([^/]+)$/;
 const EMPRESA = /^\/empresa\/([^/]+)$/;
+const ESPACIO = /^\/([^/]+)\/([^/]+)$/;
 
 // La carpeta de una ruta `#/obra/<carpeta>/<obra>/<sección>` (null = la de la empresa), o undefined si la ruta no es de
 // una obra. La consulta (`?…`) no cuenta.
@@ -46,6 +48,18 @@ export function ubicar(pathname: string, obras: readonly ObraDeCarpeta[], pagina
     ];
     if (seccion) migas.push({ texto: seccion.titulo });
     return { migas, titulo: seccion ? `${seccion.titulo} · ${nombre}` : nombre };
+  }
+  // Producción, Auditoría y Precios (F6, T4): «Existencias · Costos de producción».
+  const deEspacio = ESPACIO.exec(pathname);
+  if (deEspacio && esEspacio(deEspacio[1])) {
+    const espacio = ESPACIOS[deEspacio[1]];
+    const herramienta = espacio.herramientas.find((h) => h.id === deEspacio[2]);
+    if (herramienta) {
+      return {
+        migas: [{ texto: espacio.titulo }, { texto: herramienta.titulo }],
+        titulo: `${herramienta.titulo} · ${espacio.titulo}`,
+      };
+    }
   }
   const deEmpresa = EMPRESA.exec(pathname);
   const entrada = deEmpresa ? ENTRADAS_DE_EMPRESA.find((e) => e.id === deEmpresa[1]) : undefined;

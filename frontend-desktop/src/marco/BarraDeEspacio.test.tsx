@@ -144,7 +144,7 @@ describe("pestanasUsables", () => {
 
   it("devuelve id, título y la ruta que da rutaDe, en el orden de la tabla", () => {
     expect(pestanasUsables(ESPACIOS.precios.herramientas, rutaDe, ["leer_proyecto"], false, [])).toEqual([
-      { id: "catalogo", titulo: "Catálogo de partidas e insumos", ruta: "/empresa/precios" },
+      { id: "catalogo", titulo: "Catálogo de partidas e insumos", ruta: "/precios/catalogo" },
     ]);
   });
 

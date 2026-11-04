@@ -1,9 +1,17 @@
 import { useContext } from "react";
 import { ContextoAplicacion } from "../shell/contexto";
 import { PAGINAS, paginaPorId, usable, type PaginaDef } from "../shell/rutas";
-import { ESPACIOS, SECCIONES_DE_CUENTA, SUBVISTAS } from "./espacios";
+import { ESPACIOS, ESPACIOS_EN_LA_BARRA, SECCIONES_DE_CUENTA, SUBVISTAS, primeraUsable, rutaDeHerramienta } from "./espacios";
+import type { EspacioId } from "./espacios";
 import { ENTRADAS_DE_EMPRESA, SECCIONES_DE_OBRA, type EntradaDef, type SeccionDef } from "./secciones";
 import type { ObraDeCarpeta } from "./useObras";
+
+// Un espacio de la empresa que la cuenta puede usar: lleva a su primera herramienta usable.
+export interface EspacioOfrecido {
+  id: EspacioId;
+  titulo: string;
+  ruta: string;
+}
 
 // Lo que una cuenta puede ofrecerse en el marco: la barra lateral y el buscador comparten estas reglas para que ninguna
 // de las dos muestre algo que la cuenta no puede usar (la API vuelve a exigirlo, pero aquí no se ofrece).
@@ -11,10 +19,12 @@ export interface Oferta {
   // Las de toda obra (incluida «Tramos» mientras el módulo vial esté encendido).
   secciones: readonly SeccionDef[];
   entradas: readonly EntradaDef[];
-  // Desde F6 (contrato de rutas) toda pantalla tiene sitio: queda vacío. Se conserva hasta que T4 y T5 retiren a quien lo lee.
+  // Los espacios de la empresa con al menos una herramienta usable, en el orden de la barra lateral (F6, T4).
+  espacios: readonly EspacioOfrecido[];
+  // Desde F6 (contrato de rutas) toda pantalla tiene sitio: queda vacío. Se conserva hasta que T5 retire a quien lo lee.
   sueltas: readonly PaginaDef[];
   // Las pantallas usables de los espacios de la empresa y de las subvistas de la obra que no son sección ni entrada del
-  // árbol (libros, historial, simulador, tablero, reajuste…): el buscador las ofrece mientras T4 y T5 no traen sus barras.
+  // árbol (libros, historial, simulador, tablero, reajuste…): el buscador las ofrece mientras T5 no trae las barras de la obra.
   herramientas: readonly PaginaDef[];
 }
 
@@ -42,7 +52,11 @@ export function ofertaDe(acciones: readonly string[], modoEntrega: boolean, apag
   const herramientas = PAGINAS.filter(
     (p) => deLasHerramientas.has(p.id) && !deLasSecciones.has(p.id) && usable(p, acciones, modoEntrega, apagados),
   );
-  return { secciones, entradas, sueltas, herramientas };
+  const espacios = ESPACIOS_EN_LA_BARRA.flatMap((id): EspacioOfrecido[] => {
+    const primera = primeraUsable(ESPACIOS[id].herramientas, acciones, modoEntrega, apagados);
+    return primera === null ? [] : [{ id, titulo: ESPACIOS[id].titulo, ruta: rutaDeHerramienta(id, primera.id) }];
+  });
+  return { secciones, entradas, espacios, sueltas, herramientas };
 }
 
 // Las secciones de una obra, en el orden del marco.

@@ -145,6 +145,14 @@
   }
 }
 
+// El grupo «Costos y producción» dentro de Empresa (F6, T4): su nombre, en letra de etiqueta, sobre sus filas.
+.silice-marco-lateral__subtitulo {
+  margin: 0;
+  padding: 0.25rem 1rem;
+  color: var(--cds-text-secondary);
+  @include type.type-style("label-01");
+}
+
 .silice-marco-lateral__empresa {
   flex: none;
   padding-block-end: 0.5rem;

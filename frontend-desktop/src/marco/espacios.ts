@@ -1,6 +1,6 @@
 // La ruta a la que lleva cada pantalla (plan F6, Tarea 1). Quien enlaza a una pantalla (recorridos guiados, buscador,
-// pendientes, botones de las pantallas) pide aquí su ruta y no la escribe: cuando las pantallas cambien de sitio (T4 y T5)
-// se cambia este lugar y quien llama no se entera. Hoy devuelve la ruta que ya abre cada pantalla.
+// pendientes, botones de las pantallas) pide aquí su ruta y no la escribe: cuando las pantallas cambien de sitio (T5)
+// se cambia este lugar y quien llama no se entera. Los tres espacios de la empresa ya viven en /<espacio>/<segmento> (T4).
 import { PAGINAS, paginaPorId, rutaDe, usable } from "../shell/rutas";
 import { ENTRADAS_DE_EMPRESA, RUTA_DE_PENDIENTES, SECCIONES_DE_OBRA, rutaDeEmpresa, rutaDeObra } from "./secciones";
 import type { SeccionId } from "./secciones";
@@ -11,14 +11,17 @@ export interface ObraDeLaRuta {
 }
 
 // `paginaId` es el id de la pantalla en `shell/rutas.ts`. Una sección de obra va a la ruta de la obra dada; sin obra, a su
-// dirección corta (`/<id>`), que redirige a la obra de la sesión. Una entrada de Empresa va a `/empresa/<entrada>`. Las
-// demás, a `/<id>`. Un id que no es pantalla da null.
+// dirección corta (`/<id>`), que redirige a la obra de la sesión. Una herramienta de Producción, Auditoría o Precios va a
+// `/<espacio>/<segmento>` (contrato 2.2), con o sin obra. Una entrada de Empresa va a `/empresa/<entrada>`. Las demás, a
+// `/<id>`. Un id que no es pantalla da null.
 export function rutaCanonica(paginaId: string, obra?: ObraDeLaRuta): string | null {
   const pagina = paginaPorId(paginaId, PAGINAS);
   if (pagina === undefined) return null;
   const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === paginaId);
   if (seccion !== undefined && obra !== undefined) return rutaDeObra(obra.carpeta, obra.obraId, seccion.id);
   if (seccion !== undefined) return rutaDe(pagina);
+  const delEspacio = espacioDeLaPagina(paginaId);
+  if (delEspacio !== undefined) return rutaDeHerramienta(delEspacio.espacio, delEspacio.herramienta.id);
   const entrada = ENTRADAS_DE_EMPRESA.find((e) => e.pagina === paginaId);
   if (entrada !== undefined) return rutaDeEmpresa(entrada.id);
   return rutaDe(pagina);
@@ -45,6 +48,26 @@ export interface HerramientaDef {
 }
 
 export type EspacioId = "produccion" | "auditoria" | "precios";
+
+// El orden de los espacios en la barra lateral, grupo «Costos y producción» (diseño visual 3.1); ESPACIOS sigue el de la tabla.
+export const ESPACIOS_EN_LA_BARRA: readonly EspacioId[] = ["auditoria", "precios", "produccion"];
+
+export function esEspacio(segmento: string): segmento is EspacioId {
+  return Object.hasOwn(ESPACIOS, segmento);
+}
+
+export function rutaDeHerramienta(espacio: EspacioId, herramienta: string): string {
+  return `/${espacio}/${herramienta}`;
+}
+
+// El espacio y la herramienta donde vive una pantalla, o undefined si no es de ningún espacio.
+export function espacioDeLaPagina(paginaId: string): { espacio: EspacioId; herramienta: HerramientaDef } | undefined {
+  for (const espacio of Object.keys(ESPACIOS) as EspacioId[]) {
+    const herramienta = ESPACIOS[espacio].herramientas.find((h) => h.pagina === paginaId);
+    if (herramienta !== undefined) return { espacio, herramienta };
+  }
+  return undefined;
+}
 
 export const ESPACIOS: Record<EspacioId, { titulo: string; herramientas: readonly HerramientaDef[] }> = {
   produccion: {

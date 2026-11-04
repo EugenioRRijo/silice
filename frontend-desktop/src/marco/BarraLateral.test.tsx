@@ -296,7 +296,7 @@ describe("BarraLateral: zonas Pendientes y Empresa", () => {
   });
 
   it("quien solo registra costos entra a Producción por «Costos del período»", async () => {
-    pintar({ sesion: sesionDe("ana", { acciones: ["registrar_costos_produccion"] }) });
+    pintar({ sesion: sesionDe("ana", { acciones: ["leer_proyecto", "registrar_costos_produccion"] }) });
     await arbol();
     const zona = screen.getByRole("navigation", { name: "Empresa" });
     expect(within(zona).getByRole("link", { name: "Costos de producción" })).toHaveAttribute("href", "/produccion/costos");

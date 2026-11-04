@@ -207,6 +207,21 @@
   }
 }
 
+// La cabecera de Producción, Auditoría y Precios (F6, T4; diseño visual 2.1): solo el nombre del espacio, con las medidas de
+// la cabecera de la obra. No es un encabezado: el h1 es el de la pantalla de la herramienta.
+.silice-espacio-cabecera {
+  padding: 0.75rem 1rem;
+  border-block-end: 1px solid var(--cds-border-subtle);
+  background-color: var(--cds-layer-01);
+
+  &__titulo {
+    margin: 0;
+    font-weight: 600;
+    color: var(--cds-text-primary);
+    @include type.type-style("body-compact-02");
+  }
+}
+
 // Avisos de la obra (ya no existe, abierta en otra pestaña): el texto y la acción, como cualquier pantalla.
 .silice-obra-aviso {
   display: grid;

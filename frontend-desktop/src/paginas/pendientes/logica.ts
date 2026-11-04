@@ -1,7 +1,7 @@
 // La lógica pura de la bandeja de Pendientes (rediseño F3, Tarea 2): adónde lleva cada pendiente, cuántos tiene cada
 // obra y cómo se mueve la elección con el teclado. Sin React, probada aparte (logica.test.ts).
 import type { PendienteDeObra } from "../../api/tipos";
-import { rutaOPendientes } from "../../marco/espacios";
+import { espacioDeLaPagina, rutaOPendientes } from "../../marco/espacios";
 import { ENTRADAS_DE_EMPRESA, SECCIONES_DE_OBRA, seccionPorId } from "../../marco/secciones";
 import type { SeccionDef } from "../../marco/secciones";
 
@@ -17,13 +17,13 @@ interface Destino {
   pagina: string;
 }
 
-// La sección de la obra que monta la pantalla de la acción, o la que la absorberá; si no, la entrada de Empresa que la
-// monta; y una pantalla desconocida, el Resumen de la obra (nunca un enlace muerto).
+// La sección de la obra que monta la pantalla de la acción, o la que la absorberá; si no, la herramienta de un espacio
+// (Precios, Auditoría, Producción) o la entrada de Empresa que la monta; y una pantalla desconocida, el Resumen de la obra (nunca un enlace muerto).
 function destino(carpeta: string | null, obraId: number, id: string): Destino {
   const obra = { carpeta, obraId };
   const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === id) ?? seccionPorId(ABSORBIDAS.get(id) ?? "");
-  const entrada = seccion ? undefined : ENTRADAS_DE_EMPRESA.find((e) => e.pagina === id);
-  if (entrada) return { ruta: rutaOPendientes(entrada.pagina), pagina: entrada.pagina };
+  const fueraDeLaObra = seccion === undefined && (espacioDeLaPagina(id) !== undefined || ENTRADAS_DE_EMPRESA.some((e) => e.pagina === id));
+  if (fueraDeLaObra) return { ruta: rutaOPendientes(id), pagina: id };
   const llegada = seccion ?? seccionPorId("resumen");
   const pagina = llegada?.pagina ?? id;
   return { ruta: rutaOPendientes(pagina, obra), pagina };

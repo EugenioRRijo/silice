@@ -1,7 +1,7 @@
 import { Add, ChevronDown, ChevronRight } from "@carbon/icons-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { Link, useMatch, useNavigate } from "react-router";
+import { Link, useLocation, useMatch, useNavigate } from "react-router";
 import { Pildora } from "../comun/Pildora";
 import { claveDeObra, contarPorObra } from "../paginas/pendientes/logica";
 import { TEXTOS as TEXTOS_PENDIENTES } from "../paginas/pendientes/textos";
@@ -44,6 +44,9 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const total = carga.estado === "listo" ? carga.pendientes.length : 0;
   const enPendientes = useMatch(RUTA_DE_PENDIENTES) !== null;
   const entradaActiva = useMatch(PATRON_DE_EMPRESA)?.params["entrada"] ?? null;
+  // El espacio de la ruta (`/produccion/…`, `/auditoria/…`, `/precios/…`): el primer segmento.
+  const primerSegmento = useLocation().pathname.split("/")[1] ?? "";
+  const espacioActivo = oferta.espacios.find((e) => e.id === primerSegmento)?.id ?? null;
   // El diálogo lo puede pedir también la mesa (marco/nuevaObra); al irse la barra (salir de la sesión) se cierra.
   const nuevaAbierta = useNuevaObraAbierta();
   useEffect(() => cerrarNuevaObra, []);
@@ -51,7 +54,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const [manual, setManual] = useState<Record<string, boolean>>({});
   const [foco, setFoco] = useState<string | null>(null);
   const arbol = useRef<HTMLUListElement>(null);
-  const { entradas } = oferta;
+  const { entradas, espacios } = oferta;
   const puedeCrear = acciones.includes("editar_hoja");
 
   // Por nombre (sin tildes ni mayúsculas) y, si se repite, por carpeta: la API las trae por carpeta (D-F3-3).
@@ -252,7 +255,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         </div>
       )}
 
-      <ZonaEmpresa entradas={entradas} entradaActiva={entradaActiva} idBase={base} />
+      <ZonaEmpresa entradas={entradas} entradaActiva={entradaActiva} espacios={espacios} espacioActivo={espacioActivo} idBase={base} />
 
       <DialogoNuevaObra
         abierto={nuevaAbierta}

@@ -29,7 +29,10 @@ import type { CrearHojaVisor } from "../visor/hojaVisor";
 import { BarraLateral } from "./BarraLateral";
 import { BarraSuperior } from "./BarraSuperior";
 import { Buscador } from "./Buscador";
+import { EspacioDeHerramientas, RaizDelEspacio } from "./EspacioDeHerramientas";
 import { EspacioDeObra } from "./EspacioDeObra";
+import { ESPACIOS, esEspacio, espacioDeLaPagina, rutaDeHerramienta } from "./espacios";
+import type { EspacioId } from "./espacios";
 import { enfocarElTitulo } from "./focoAlTitulo";
 import "./marco.scss";
 import { carpetaDelDestino, ubicar } from "./ubicar";
@@ -375,13 +378,37 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                       }
                     />
                     <Route path={PATRON_DE_EMPRESA} element={<EntradaDeEmpresa paginas={paginas} pantalla={pantalla} />} />
-                    {paginas.map((p) => (
+                    {/* Producción, Auditoría y Precios (F6, T4): `/<espacio>` abre su primera herramienta usable. Van antes de
+                        las direcciones viejas porque `/auditoria` y `/produccion` también eran el id de una pantalla. */}
+                    {ESPACIOS_DEL_MARCO.flatMap((espacio) => [
                       <Route
-                        key={p.id}
-                        path={rutaDe(p)}
-                        element={<RutaVieja pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
-                      />
-                    ))}
+                        key={`${espacio}-raiz`}
+                        path={`/${espacio}`}
+                        element={<RaizDelEspacio espacio={espacio} acciones={acciones} modoEntrega={modoEntrega} apagados={modulosApagados} />}
+                      />,
+                      <Route
+                        key={espacio}
+                        path={`/${espacio}/:herramienta`}
+                        element={
+                          <EspacioDeHerramientas
+                            espacio={espacio}
+                            pantalla={(id) => pantalla(paginaPorId(id, paginas))}
+                            acciones={acciones}
+                            modoEntrega={modoEntrega}
+                            apagados={modulosApagados}
+                          />
+                        }
+                      />,
+                    ])}
+                    {paginas
+                      .filter((p) => !esEspacio(p.id))
+                      .map((p) => (
+                        <Route
+                          key={p.id}
+                          path={rutaDe(p)}
+                          element={<RutaVieja pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
+                        />
+                      ))}
                     <Route path="*" element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />
                   </Routes>
                 </Suspense>
@@ -419,20 +446,37 @@ function PantallaDeRuta({ pagina, acciones, modoEntrega, apagados }: { pagina: P
   return elementoDe(pagina);
 }
 
+const ESPACIOS_DEL_MARCO = Object.keys(ESPACIOS) as EspacioId[];
+
+// Las entradas de Empresa que F6 (T4) convirtió en espacios: `#/empresa/precios` abría el Catálogo, `#/empresa/auditoria`
+// la subida del Excel y `#/empresa/produccion` las existencias (contrato de rutas 2.4).
+const ENTRADAS_CONVERTIDAS: Readonly<Record<string, string>> = {
+  precios: rutaDeHerramienta("precios", "catalogo"),
+  auditoria: rutaDeHerramienta("auditoria", "subir"),
+  produccion: rutaDeHerramienta("produccion", "existencias"),
+};
+
 // `#/empresa/<entrada>`: la pantalla de la entrada; una entrada que no existe lleva a Pendientes.
 function EntradaDeEmpresa({ paginas, pantalla }: { paginas: readonly PaginaDef[]; pantalla: (p: PaginaDef | undefined) => ReactNode }) {
   const { entrada: id } = useParams();
+  const { search } = useLocation();
+  if (id !== undefined && Object.hasOwn(ENTRADAS_CONVERTIDAS, id)) {
+    return <Navigate to={`${ENTRADAS_CONVERTIDAS[id]}${search}`} replace />;
+  }
   const entrada = ENTRADAS_DE_EMPRESA.find((e) => e.id === id);
   if (!entrada) return <Navigate to={RUTA_DE_PENDIENTES} replace />;
   return pantalla(paginaPorId(entrada.pagina, paginas));
 }
 
-// Las direcciones de antes (`#/<pantalla>`): la de una entrada de Empresa va a `#/empresa/<entrada>`; la de una sección
+// Las direcciones de antes (`#/<pantalla>`): la de una herramienta de Producción, Auditoría o Precios va a
+// `#/<espacio>/<segmento>`; la de una entrada de Empresa va a `#/empresa/<entrada>`; la de una sección
 // de la obra, a esa sección de la obra elegida en la sesión (o a Pendientes si no hay ninguna, salvo que traiga una
 // consulta, como `#/aprobar?envio=12`: entonces se abre donde estaba, para no perder lo que pide). Las demás pantallas
-// (histórico, índices, simulador…) siguen en su dirección y se alcanzan por el buscador.
+// (subvistas de la obra) siguen en su dirección y se alcanzan por el buscador hasta T5.
 function RutaVieja({ pagina, obraDeLaSesion, pantalla }: { pagina: PaginaDef; obraDeLaSesion: ObraDeLaSesion; pantalla: (p: PaginaDef | undefined) => ReactNode }) {
   const { search } = useLocation();
+  const deEspacio = espacioDeLaPagina(pagina.id);
+  if (deEspacio) return <Navigate to={`${rutaDeHerramienta(deEspacio.espacio, deEspacio.herramienta.id)}${search}`} replace />;
   const entrada = ENTRADAS_DE_EMPRESA.find((e) => e.pagina === pagina.id);
   if (entrada) return <Navigate to={`${rutaDeEmpresa(entrada.id)}${search}`} replace />;
   const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === pagina.id);
@@ -446,6 +490,9 @@ function RutaVieja({ pagina, obraDeLaSesion, pantalla }: { pagina: PaginaDef; ob
 // espacio de la obra (su ficha, la obra fijada en la sesión y el borrador de la Hoja, Tarea 3 del plan F4). Dentro de la
 // obra, EspacioDeObra reinicia su propio límite de error con cada sección.
 function claveDelContenido(pathname: string): string {
+  // Lo mismo en un espacio de herramientas: la cabecera y la barra no se vuelven a montar al cambiar de herramienta.
+  const [, primero, segundo, ...resto] = pathname.split("/");
+  if (primero !== undefined && esEspacio(primero) && segundo !== undefined && resto.length === 0) return `espacio|${primero}`;
   const obra = obraDeLaRuta(pathname);
   return obra === null ? pathname : `obra|${obra.carpeta ?? ""}|${obra.obraId}`;
 }

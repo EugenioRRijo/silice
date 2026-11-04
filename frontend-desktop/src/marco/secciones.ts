@@ -29,7 +29,7 @@ export const SECCIONES_DE_OBRA: readonly SeccionDef[] = [
   { id: "riesgo", titulo: "Riesgo", pagina: "riesgo", ayuda: "Cuánto puede subir el presupuesto de la obra si cambian los precios." },
 ];
 
-export type EntradaId = "precios" | "auditoria" | "produccion" | "personas" | "ayuda";
+export type EntradaId = "personas" | "ayuda";
 
 export interface EntradaDef {
   id: EntradaId;
@@ -38,11 +38,9 @@ export interface EntradaDef {
   ayuda: string;
 }
 
-// En este orden. Ayuda monta «Acerca de Sílice» hasta que F6 traiga las guías.
+// En este orden. Ayuda monta «Acerca de Sílice» hasta que F6 traiga las guías. Precios, Auditoría y Producción dejaron de
+// ser entradas (F6, T4): son espacios con su propia ruta (`espacios.ts`).
 export const ENTRADAS_DE_EMPRESA: readonly EntradaDef[] = [
-  { id: "precios", titulo: "Precios y catálogo", pagina: "catalogo", ayuda: "Las partidas, insumos y precios que la empresa usa en todas sus obras." },
-  { id: "auditoria", titulo: "Auditar un presupuesto", pagina: "auditoria", ayuda: "Suelte un Excel, propio o de terceros, y vea lo que no cuadra." },
-  { id: "produccion", titulo: "Producción", pagina: "existencias", ayuda: "Cuánto hay y cuánto queda de cada material de la arenera." },
   { id: "personas", titulo: "Empresa y personas", pagina: "administracion", ayuda: "Los datos de la empresa, las cuentas de las personas y sus permisos." },
   { id: "ayuda", titulo: "Ayuda", pagina: "acerca", ayuda: "Cómo hacer cada tarea en Sílice, y la versión y licencia del programa." },
 ];
