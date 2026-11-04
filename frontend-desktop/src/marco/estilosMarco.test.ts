@@ -69,3 +69,13 @@ describe("la barra superior cabe en 1366 px con letra Normal", () => {
     expect(barra()).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
   });
 });
+
+// Plan F6, T3: la barra de espacio parte en renglones con cualquier cantidad de pestañas y cualquier letra, así que no
+// puede declarar un ancho fijo (ni en px ni en rem) en ella ni en sus pestañas.
+describe("la barra de espacio no declara anchos fijos", () => {
+  test("ni width ni inline-size (ni sus mínimos y máximos) con un valor fijo", () => {
+    const fuente = leer("marco/BarraDeEspacio.scss");
+    expect(fuente.match(/(?:^|[\s;{])(?:min-|max-)?(?:width|inline-size)\s*:\s*[\d.]+(?:px|rem|em)\b/g)).toBeNull();
+    expect(fuente).toMatch(/flex-wrap:\s*wrap/);
+  });
+});
