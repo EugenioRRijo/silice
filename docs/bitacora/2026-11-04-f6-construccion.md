@@ -2,7 +2,8 @@
 
 **Para Eugenio:** aquí se ve quién hace qué y en qué va cada tarea. Lo actualiza Claude (el orquestador) en cada paso.
 Antigravity no trabaja solo: se activa cuando Claude lo llama (`agy -p`, solo lectura) o cuando Eugenio le habla en el
-IDE. Sus veredictos se guardan **palabra por palabra** en [arbitrajes/](arbitrajes/).
+IDE. Para construir usa el modelo Claude Opus 5.5 High y para arbitrar, Gemini 4 Argon High (`agy -p --model …`). Como no
+puede escribir ni hacer commits (sus permisos siguen en solo lectura), devuelve el código y Claude lo aplica. Sus veredictos se guardan **palabra por palabra** en [arbitrajes/](arbitrajes/).
 
 **Plan:** [PLAN_REDISENO_F6.md](../planes/PLAN_REDISENO_F6.md) · **Rama:** `feature/f6-espacios` (worktree
 `.worktrees/s2m3`) · **Contrato de rutas:** [aquí](../especificaciones/2026-11-04-f6a-contrato-de-rutas.md) ·
@@ -14,7 +15,8 @@ IDE. Sus veredictos se guardan **palabra por palabra** en [arbitrajes/](arbitraj
 |---|---|---|
 | Subagente constructor | **T2: tabla de espacios y `primeraUsable`**, con TDD | 2026-11-04 |
 | Claude | Espera a T2 para verificarla; vigila la CI del #102 | 2026-11-04 |
-| Antigravity | En espera; arbitra T2 cuando Claude se la pase | — |
+| **Antigravity (Claude Opus 5.5 High)** | **Construye T7** (cartera por moneda, servidor): escribe las pruebas y luego el código en su respuesta; Claude los aplica, corre las pruebas y hace los commits en `feature/f6-t7-cartera` (worktree `.worktrees/s2m5`) | 2026-11-04 |
+| Antigravity (Gemini 4 Argon High) | Arbitra T2 y T7 cuando Claude se las pase | — |
 
 ## Tareas
 
@@ -26,7 +28,7 @@ IDE. Sus veredictos se guardan **palabra por palabra** en [arbitrajes/](arbitraj
 | T2 Tabla de espacios | subagente `silice-frontend` | — | — | — | — | en curso |
 | T3 BarraDeEspacio | — | — | — | — | — | pendiente |
 | T4 Producción, Auditoría, Precios | — | — | — | — | — | pendiente |
-| T7 Cartera por moneda (servidor) | — | — | — | — | — | pendiente |
+| T7 Cartera por moneda (servidor) | **Antigravity con Claude Opus 5.5 High** (a pedido de Eugenio); Claude aplica y verifica. Lo arbitra Argon | — | — | — | — | en curso (pruebas) |
 | T5 Obra y barra lateral (cierre A) | — | — | — | — | — | pendiente |
 | T6 Cuenta | — | — | — | — | — | pendiente |
 | T8 Vista general | — | — | — | — | — | pendiente |
