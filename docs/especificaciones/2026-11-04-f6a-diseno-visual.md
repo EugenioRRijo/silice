@@ -305,3 +305,166 @@ Todos los textos visibles en `src/marco/**` cumplen estrictamente las tres guard
 | `carpetas` | `Carpetas` *(libre de `/carpeta de trabajo/i` en `src/marco/`)* | Solo con acción `cambiar_caso` |
 | `sistema` | `Especialidades, IA e instalación` | Solo con acción `administrar_cuentas` (o `activar_modulos`) |
 | `ayuda` | `Ayuda y acerca de Sílice` | Toda cuenta con sesión activa |
+
+---
+
+> Esta adenda **manda** sobre las tablas anteriores donde difieren (§D). Revisada por Claude contra el código: los `h1`
+> citados existen y las medidas salen de DESIGN.md.
+
+## Adenda T0 (Antigravity, 2026-11-04): subvistas, Vista general y letra en la Cuenta
+
+> **Documento que amplía y concilia:** [`2026-11-04-f6a-diseno-visual.md`](../../docs/especificaciones/2026-11-04-f6a-diseno-visual.md)
+> **Contrato de referencia:** [`2026-11-04-f6a-contrato-de-rutas.md`](../../docs/especificaciones/2026-11-04-f6a-contrato-de-rutas.md) · **Enmienda:** [`2026-11-04-f6-enmienda.md`](../../docs/especificaciones/2026-11-04-f6-enmienda.md)
+
+---
+
+## A. Barra de Subvistas dentro de una Sección de Obra (`BarraDeEspacio` con `nivel="subvista"`)
+
+### A.1. Mapa de secciones con subvistas y textos exactos (Contrato §2.1)
+
+Cuando una sección de obra tiene subvistas definidas en `SUBVISTAS[seccion]`, `BarraDeEspacio` recibe `nivel="subvista"` y `etiqueta="Vistas de {tituloSeccion}"`:
+
+| Sección (`SeccionId`) | `aria-label` de la barra (`nivel="subvista"`) | Subvistas (`id` → **Texto de la pestaña** → `pagina` en [`rutas.ts`](../../frontend-desktop/src/shell/rutas.ts)) | Texto exacto del único `<h1>` montado en el lienzo |
+|---|---|---|---|
+| `resumen` | `Vistas de Resumen` | 1. *(raíz)* → **`Resumen`** → `obras`<br>2. `tablero` → **`Tablero`** → `tablero` | `Resumen` ([`obras/index.tsx:25`](../../frontend-desktop/src/paginas/obras/index.tsx#L25)) \| `Tablero del proyecto` ([`tablero/index.tsx:248`](../../frontend-desktop/src/paginas/tablero/index.tsx#L248)) |
+| `presupuesto` | `Vistas de Presupuesto` | 1. *(raíz)* → **`Partidas`** → `hoja`<br>2. `componer` → **`Componer`** → `componer` | `Presupuesto` ([`hoja/index.tsx:384`](../../frontend-desktop/src/paginas/hoja/index.tsx#L384)) \| `Componer una partida` ([`componer/index.tsx:14`](../../frontend-desktop/src/paginas/componer/index.tsx#L14)) |
+| `aprobaciones` | `Vistas de Aprobaciones` | 1. *(raíz)* → **`Aprobar`** → `aprobar`<br>2. `revisar` → **`Revisar un paquete`** → `revisar`<br>3. `entregar` → **`Entregar`** → `entregar` | `Aprobar una versión` \| `Revisar un paquete` \| `Entregar paquete` |
+| `mercado` | `Vistas de Mercado` | 1. *(raíz)* → **`Estudio`** → `mercado`<br>2. `actualizar` → **`Actualizar precios`** → `actualizacion` | `Estudio de mercado` \| `Actualizar precios` |
+| `control` | `Vistas de Control de obra` | 1. *(raíz)* → **`Control`** → `control`<br>2. `reajuste` → **`Reajuste`** → `reajuste`<br>3. `escenarios` → **`Escenarios`** → `escenarios` | `Control de obra` \| `Reajuste de precios` \| `Escenarios de sensibilidad` |
+
+- **Regla de omisión automática cuando hay $\le 1$ subvista usable:** Si tras filtrar con [`usable(pagina, acciones, modoEntrega, apagados)`](../../frontend-desktop/src/shell/rutas.ts#L309-L313) queda **una sola subvista usable** (por ejemplo, una cuenta con `leer_proyecto` pero sin `editar_hoja` en `Presupuesto` solo puede ver `Partidas`, nunca `Componer`), `BarraDeEspacio` con `nivel="subvista"` **devuelve `null` y no se pinta**.
+- **Regla de sección cuya raíz no es usable pero una subvista sí lo es (Contrato §2.1):** En `Aprobaciones`, una cuenta con `revisar_paquete` pero sin `aprobar_version` entra directamente a `/obra/:c/:o/aprobaciones/revisar`; si solo `revisar` es usable, ve únicamente la pantalla `Revisar un paquete` bajo la pestaña activa `Aprobaciones` de la obra.
+
+### A.2. Dónde va y cómo evita apilar tres barras sobre la Hoja (Univer) a `1366×768`
+
+En [`PaginaHoja`](../../frontend-desktop/src/paginas/hoja/index.tsx#L334-L368) (`Presupuesto`) y en `Estudio de mercado` ya existe una barra de `<Tabs>` Carbon (`role="tablist"`, con 6 o 7 pestañas en Presupuesto y 4 en Mercado). Si la barra de subvistas se colocara como una segunda franja de ancho completo debajo de la barra de la obra, quedarían **tres barras horizontales apiladas** (`Barra de la obra` + `Barra de subvistas` + `TabList de Carbon`), restando `~40–56 px` adicionales de alto útil a la tabla/lienzo de la Hoja.
+
+**Solución arquitectónica y visual (coste vertical = `0 px` adicionales en `1366×768`):**
+1. La barra de la obra (`nivel="espacio"`, `etiqueta="Secciones de la obra"`) es la **única** barra de ancho completo bajo [`CabeceraDeObra`](../../frontend-desktop/src/marco/CabeceraDeObra.tsx) sobre `var(--cds-layer-01)`.
+2. La barra de subvistas (`<BarraDeEspacio nivel="subvista" ... />`, clase `.silice-barra-espacio--subvista`) se monta **dentro de la franja superior del lienzo de la sección**, alineada en la misma fila horizontal (o inmediatamente al costado derecho) del encabezado de la sección mediante una envoltura `.silice-obra-cuerpo` en [`EspacioDeObra.tsx`](../../frontend-desktop/src/marco/EspacioDeObra.tsx):
+   - En lugar de empujar todo el documento hacia abajo con una barra de `100%` de ancho y fondo gris, `.silice-barra-espacio--subvista` es un **conmutador segmentado compacto de navegación** (`inline-flex`, `align-self: flex-start`) situado en la cabecera del lienzo (`padding: 0.75rem 1rem 0; background-color: var(--cds-background);`).
+   - En `Presupuesto` ([`hoja.scss:3-8`](../../frontend-desktop/src/paginas/hoja/hoja.scss#L3-L8)), cuando `.silice-barra-espacio--subvista` precede a `.silice-pagina`, la regla `.silice-barra-espacio--subvista + .silice-pagina` reduce su `padding-block-start` de `1.5rem` a `0.5rem`, absorbiendo la altura del conmutador dentro del propio margen superior que ya tenía la página (`1.5rem` = `28 px` en Normal, `42 px` en Muy grande). **El alto neto robado a la Hoja (Univer) respecto a una sección sin subvistas es exactamente `0rem` (`0 px`) cuando la barra cabe en 1 línea.**
+
+### A.3. Diferenciación visual y semántica entre los 3 niveles de navegación
+
+| Atributo | 1. Barra de la Obra (`BarraDeEspacio` `nivel="espacio"`) | 2. Barra de Subvistas (`BarraDeEspacio` `nivel="subvista"`) | 3. Pestañas Internas Carbon (`<Tabs><TabList>` en Presupuesto / Mercado) |
+|---|---|---|---|
+| **Semántica DOM** | `<nav aria-label="Secciones de la obra">` con `<Link aria-current="page">` | `<nav aria-label="Vistas de {seccion}">` con `<Link aria-current="page">` | `<div role="tablist" aria-label="Secciones del presupuesto">` con `<button role="tab" aria-selected>` |
+| **Ubicación** | De borde a borde bajo `.silice-obra-abierta` | Cabecera del lienzo (`margin: 0.75rem 1rem 0; width: fit-content; max-inline-size: calc(100% - 2rem)`) | Cuerpo inferior de la página (debajo de `FranjaDelPresupuesto` y `EstadoDelBorrador`) |
+| **Superficie de fondo** | Banda continua `var(--cds-layer-01)` (`#f4f4f4`) con divisor inferior `1px solid var(--cds-border-subtle)` | Conmutador enmarcado `border: 1px solid var(--cds-border-subtle)` sobre el lienzo blanco `var(--cds-background)` (`#ffffff`) | Línea Carbon `TabList` sobre `var(--cds-background)` |
+| **Altura por ítem** | `min-block-size: 2.5rem` (`2rem` en `@include u.con-letra-grande`) | `min-block-size: 1.75rem` (`1.625rem` en `@include u.con-letra-grande`) | `2.5rem` nativo de `@carbon/react` |
+| **Tipografía** | `body-compact-01` (`0.875rem`), `padding: 0.5rem 0.75rem` | `label-01` (`0.75rem`), `padding: 0.25rem 0.625rem`, `white-space: nowrap` | `body-compact-01` nativo de Carbon |
+| **Separación entre ítems** | Sin borde vertical entre pestañas | Divisor vertical `border-inline-end: 1px solid var(--cds-border-subtle)` (`.silice-barra-espacio__pestana:last-child { border-inline-end: 0; }`) | `gap` / divisor de `cds--tabs` |
+| **Estado inactivo** | `background: transparent; color: var(--cds-text-secondary); border-block-end: 3px solid transparent;` | `background-color: var(--cds-layer-01); color: var(--cds-text-secondary); border-block-start: 2px solid transparent;` | `color: var(--cds-text-secondary); border-block-end: 2px solid var(--cds-border-subtle);` |
+| **Estado activo** | `background-color: var(--cds-background); color: var(--cds-text-primary); font-weight: 600; border-block-end: 3px solid var(--silice-complementario);` | `background-color: var(--cds-layer-selected-01); color: var(--cds-text-primary); font-weight: 600; border-block-start: 2px solid var(--silice-complementario);` | `color: var(--cds-text-primary); font-weight: 600; border-block-end: 2px solid var(--cds-border-interactive);` |
+
+### A.4. Comportamiento a `1056 px` con letra `Muy grande` y presupuesto vertical a `1366×768`
+
+1. **A `1056 px` con letra `Muy grande` (`1 rem = 28 px`, `<main>` = `643 px` libres):**
+   - El caso más largo de subvistas es `Aprobaciones` (`Aprobar` · `Revisar un paquete` · `Entregar`, suma `~460 px` en `label-01` a `21 px` de fuente efectiva): **cabe en 1 sola fila** dentro de los `643 px` de `<main>`.
+   - Si en un contenedor aún más estrecho o con zoom del navegador las opciones superan el ancho, `.silice-barra-espacio--subvista` tiene `display: inline-flex; flex-wrap: wrap;` y parte limpiamente a una segunda fila manteniendo su `border-block-start: 2px solid var(--silice-complementario)` en la activa, con **0 px de desbordamiento horizontal**.
+2. **Presupuesto de alto en `1366×768` para la Hoja (`Presupuesto` → `Partidas`):**
+   - **En letra `Normal` (`1 rem = 18.67 px`):**
+     - `BarraSuperior`: `3rem` (`56 px`).
+     - `CabeceraDeObra` compacta + `BarraDeEspacio` (`nivel="espacio"`, 9 secciones en 1 fila a `1366 px` porque `<main>` tiene `1366 - 275 = 1091 px`): `~62 px` + `47 px` = `109 px`.
+     - `.silice-barra-espacio--subvista` (`Partidas | Componer`, `1.75rem` = `33 px`) + `.silice-pagina` con `padding-block-start: 0.5rem` (`9 px`): `42 px` (solo `14 px` más que el `padding-top: 1.5rem` = `28 px` que ya tenía `.silice-hoja`).
+     - Quedan **`561 px` verticales libres** bajo la cabecera de navegación para el título, el estado del borrador y las partidas de la Hoja.
+   - **En letra `Muy grande` (`1 rem = 28 px`, `<main>` = `953 px` libres a `1366×768`):**
+     - Gracias a `@include u.con-letra-grande`, la barra de la obra usa `min-block-size: 2rem` (`56 px`) y la de subvistas `min-block-size: 1.625rem` (`45.5 px`), absorbiendo `1rem` (`28 px`) del `padding-block-start` de `.silice-hoja`. El contenedor general `.silice-contenido` desplaza verticalmente el documento completo sin recortar nunca la tabla de la Hoja.
+
+---
+
+## B. Vista General (`#/inicio/general`) y Bandeja (`#/inicio/pendientes`)
+
+### B.1. Cabecera y barra del espacio Inicio (`EspacioDeInicio.tsx`)
+- **Cabecera del espacio (`.silice-espacio-cabecera`):** `<section aria-label="Vista general" className="silice-espacio-cabecera"><p className="silice-espacio-cabecera__titulo">Vista general</p></section>` (sin `<h1>`, `body-compact-02`, `font-weight: 600`, `background-color: var(--cds-layer-01)`).
+- **Barra del espacio (`BarraDeEspacio` con `nivel="espacio"` y `etiqueta="Inicio"`):**
+  1. **`Vista general`** → `/inicio/general` (monta `Panorama` de `paginas/inicio/index.tsx`, cuyo único `<h1>` es `<h1 className="cds--type-heading-04" tabIndex={-1}>Vista general</h1>`).
+  2. **`Pendientes`** → `/inicio/pendientes` (monta [`Bandeja`](../../frontend-desktop/src/paginas/pendientes/Bandeja.tsx), cuyo único `<h1>` es `<h1 className="cds--type-heading-04">Pendientes</h1>`).
+
+### B.2. Orden obligatorio de los 4 bloques en `#/inicio/general`
+
+Contenedor principal: `<div className="silice-pagina silice-inicio">`, con bloques `<section className="silice-inicio__bloque">` separados por `border-block-end: 1px solid var(--silice-divisor)` ([`inicio.scss:9-18`](../../frontend-desktop/src/paginas/inicio/inicio.scss#L9-L18)). Cada bloque maneja su propio estado de carga/error sin tumbar a los demás.
+
+#### Bloque 1 (Arriba de todo): Lo que bloquea (`aria-labelledby="inicio-bloquea"`)
+- **Título:** `<h2 id="inicio-bloquea" className="cds--type-heading-compact-02">Lo que requiere atención</h2>`.
+- **Fuente de datos:** `usePendientes()` (que ya viene ordenado por la API con `urgencia === "bloquea"` primero, [`obras.py:352-355`](../../api/rutas/obras.py#L352-L355)).
+- **Si hay pendientes (`pendientes.length > 0`):**
+  - Pinta el resumen de urgencias (`TEXTOS.resumen(bloquea, aviso)` de [`pendientes/textos.ts:12-18`](../../frontend-desktop/src/paginas/pendientes/textos.ts#L12-L18), p. ej. `«2 bloquean · 1 aviso»`) en `label-01`.
+  - Lista compacta (`.silice-inicio__urgentes`, máximo los primeros 5 ítems priorizando `urgencia === "bloquea"`): cada fila muestra el ícono y etiqueta de urgencia (`WarningFilled` en `--silice-sev-error` para `Bloquea`; `WarningAltFilled` en `--silice-sev-advertencia` para `Aviso`, nunca solo color), el nombre de la obra (con carpeta si es homónima), el texto del pendiente y a la derecha el enlace `<Link className="cds--link" to={rutaCanonica(p.accion.pagina, { carpeta: p.carpeta, obraId: p.obra_id })}>{p.accion.texto}</Link>` (si `usable` lo permite para la cuenta).
+  - Pie del bloque: `<Link className="cds--link" to="/inicio/pendientes">Ir a la bandeja de pendientes ({formatoEsVe(String(total))})</Link>`.
+- **Si `pendientes.length === 0`:**
+  - Pinta una sola línea tranquila: `<p className="silice-inicio__nota cds--type-body-compact-01">No tiene pendientes por hacer.</p>`.
+
+#### Bloque 2: Cartera de obras por moneda (`aria-labelledby="inicio-cartera"`)
+- **Título:** `<h2 id="inicio-cartera" className="cds--type-heading-compact-02">Cartera por moneda</h2>`.
+- **Fuente de datos:** `GET /v1/obras/resumen/todas` (Tarea T7).
+- **Aviso de carpetas ilegibles:** Si `carpetas_omitidas.length > 0`, muestra `<InlineNotification kind="warning" lowContrast hideCloseButton title={TEXTOS.omitidas(carpetas_omitidas.length)} />`.
+- **Regla inquebrantable de separación monetaria:** **Jamás se suman ni promedian `Bs` con `USD`.** Cada entrada de `por_moneda` (`moneda: "Bs" | "USD"`) se presenta en su propio bloque `.silice-cartera-moneda`.
+- **Estructura visual de cada bloque `.silice-cartera-moneda` (reutilizando las clases de [`indicadores.scss`](../../frontend-desktop/src/indicadores/indicadores.scss#L19-L66)):**
+  - Contenedor de rejilla `.silice-cartera-rejilla`: `display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem;`.
+  - Cada moneda es un `<section className="silice-cartera-moneda" aria-label={`Cartera en ${fila.moneda}`}>` con `background: var(--cds-layer-01); border: 1px solid var(--silice-divisor);`:
+    - **Cabecera de moneda (`.silice-cartera-moneda__titulo`):** `padding: 0.5rem 0.75rem; border-block-end: 1px solid var(--silice-divisor); font-weight: 600;` (`body-compact-01`): **`Obras en Bs`** o **`Obras en USD`**.
+    - **Franja interna de 3 celdas tipo Fiori (`.franja-indicadores__lista`):**
+      1. **Total presupuestado:** etiqueta `Total vigente` (`label-01`, `--silice-texto-secundario`) y cifra `<span className="fiori-kpi__actual cds--type-heading-03 silice-cifra">{formatoEsVe(fila.total)} {fila.moneda}</span>` (`tabular-nums`, sin redondear ni recalcular en el cliente).
+      2. **Obras:** etiqueta `Obras` (`label-01`) y cifra `<span className="fiori-kpi__actual cds--type-heading-03 silice-cifra">{formatoEsVe(String(fila.obras))}</span>`.
+      3. **En ejecución:** etiqueta `En ejecución` (`label-01`) y cifra `<span className="fiori-kpi__actual cds--type-heading-03 silice-cifra">{formatoEsVe(String(fila.en_ejecucion))}</span>`.
+- **Los 3 casos de cardinalidad de monedas:**
+  1. **Dos monedas (`por_moneda` trae `Bs` y `USD`):** se pintan las dos tarjetas `.silice-cartera-moneda` lado a lado en `.silice-cartera-rejilla` (a `1056 px` con letra `Muy grande`, `minmax(20rem, 1fr)` las apila automáticamente en 1 columna sin scroll horizontal).
+  2. **Una sola moneda (`por_moneda` trae solo `Bs` o solo `USD`):** se pinta **únicamente** la tarjeta de esa moneda. No se muestra ninguna tarjeta vacía ni en `0,00` para la otra moneda.
+  3. **Sin obras (`obras.length === 0` y `por_moneda.length === 0`):** los bloques 2 y 3 se unifican en un único `<EstadoVacio>`:
+     - Si la cuenta puede crear obras (`acciones.includes("editar_hoja")`): `titulo="Aún no hay obras"`, `descripcion="Cree la primera obra para armar su presupuesto y seguir su avance."` con `<Button kind="tertiary" size="sm" onClick={abrirNuevaObra}>Nueva obra</Button>` (terciario si en el Bloque 1 hubiera un botón primario, o primario si no hay otro botón primario en pantalla).
+     - Si la cuenta solo revisa (`!acciones.includes("editar_hoja")`): `titulo="No hay obras en esta carpeta"`, `descripcion="Cuando haya una obra registrada en las carpetas a las que tiene acceso, aparecerá aquí."`.
+
+#### Bloque 3: Avance de las obras frente al plan (`aria-labelledby="inicio-obras"`)
+- **Título:** `<h2 id="inicio-obras" className="cds--type-heading-compact-02">Obras y avance contra el plan</h2>`.
+- **Tabla Carbon `size="sm"`** dentro de `<div className="silice-tabla">`:
+  - Columnas: **`Obra`** | **`Estado`** | **`Total`** (`.silice-cifra`) | **`Avance ejecutado vs. plan`**.
+  - **Celda `Obra`:** `<Link className="cds--link" to={rutaCanonica("obras", { carpeta: o.carpeta, obraId: o.obra_id })}>{o.nombre}</Link>` (más `· {carpeta}` si es homónima).
+  - **Celda `Estado`:** `<EtapaDeObra etapa={o.etapa} texto={ETAPA_TEXTO[o.etapa]} />` ([`DESIGN.md:166-173`](../../frontend-desktop/DESIGN.md#L166-L173)).
+  - **Celda `Total`:** `{o.total !== null ? `${formatoEsVe(o.total)} ${o.moneda}` : "Sin versión"}` (`tabular-nums`).
+  - **Celda `Avance ejecutado vs. plan` (IBCS):**
+    - Si `o.avance_real === null` o `o.avance_plan === null`: muestra `<span className="cds--type-body-compact-01" style={{ color: "var(--silice-texto-secundario)" }}>Sin avance</span>` ([`PLAN_REDISENO_F6.md:242`](../../docs/planes/PLAN_REDISENO_F6.md#L242)).
+    - Si existen ambos: muestra `Real {formatoEsVe(o.avance_real)} % · Plan {formatoEsVe(o.avance_plan)} %` acompañado de la micro-barra IBCS reutilizada de [`.fiori-kpi__barra`](../../frontend-desktop/src/indicadores/indicadores.scss#L180-L204) (`block-size: 6px`, barra superior `.fiori-kpi__barra-real` con relleno sólido `var(--silice-texto)` y barra inferior `.fiori-kpi__barra-meta` con contorno `1px solid var(--silice-texto)` y fondo transparente).
+
+#### Bloque 4: Últimas auditorías y Arenera
+- `<section className="silice-inicio__bloque" aria-labelledby="inicio-auditorias">` con `<h2 id="inicio-auditorias" className="cds--type-heading-compact-02">Últimas auditorías</h2>`, [`<UltimasAuditorias carga={...} />`](../../frontend-desktop/src/paginas/inicio/UltimasAuditorias.tsx#L28) y enlace `<Link className="cds--link" to={rutaCanonica("auditoria")}>Ir a Auditoría</Link>`.
+- Si `acciones.includes("operar_arenera") && !modulosApagados.includes("produccion")`: monta [`<PanelArenera carga={...} />`](../../frontend-desktop/src/paginas/inicio/PanelArenera.tsx#L111), cuyos enlaces internos usan `rutaCanonica("existencias")` (`/produccion/existencias`).
+
+---
+
+## C. Tamaño de Letra Solo en `Cuenta › Pantalla y tamaño de letra` (`#/cuenta/preferencias`)
+
+1. **Retiro de `BarraSuperior.tsx`:**
+   - Se elimina `<TamanoLetra />` de [`BarraSuperior.tsx`](../../frontend-desktop/src/marco/BarraSuperior.tsx) y sus reglas asociadas en `BarraSuperior.scss`.
+   - En las pantallas **sin marco** previas a iniciar sesión (`CabeceraSinMarco` en `App.tsx`: Bienvenida, Entrar, Recuperar acceso), `<TamanoLetra />` **se mantiene** exactamente como hoy, usando `var(--silice-complementario)` para la raya activa sobre fondo claro ([`DESIGN.md:93-96`](../../frontend-desktop/DESIGN.md#L93-L96), [`2026-11-04-f6-enmienda.md:14`](../../docs/especificaciones/2026-11-04-f6-enmienda.md#L14)).
+2. **Diseño de `#/cuenta/preferencias` en `EspacioDeCuenta.tsx`:**
+   - **Acceso en 1 clic:** El botón de la persona en la esquina derecha de `BarraSuperior` es un `<Link to="/cuenta/preferencias">`.
+   - **Único `<h1>` de la pantalla:** `<h1 className="cds--type-heading-04" tabIndex={-1}>Pantalla y tamaño de letra</h1>`.
+   - **Contenido dentro de `<Layer>` (`.silice-cuenta-preferencias`):**
+     - **Sub-bloque 1 — Tamaño de letra (`<section aria-labelledby="pref-letra-titulo">`):**
+       - `<h2 id="pref-letra-titulo" className="cds--type-heading-compact-02">Tamaño de letra</h2>`
+       - `<p className="cds--type-body-compact-01">Ajusta el tamaño de todos los textos, tablas y hojas en este navegador (Normal 100 %, Grande 125 %, Muy grande 150 %).</p>`
+       - Reutiliza el componente existente [`<TamanoLetra />`](../../frontend-desktop/src/comun/TamanoLetra.tsx#L8-L34) (`role="group" aria-label="Tamaño de letra"`, tres botones con `aria-pressed`, estilos de [`.silice-letra` en `comun.scss:140-188`](../../frontend-desktop/src/comun/comun.scss#L140-L188) con `border: 1px solid var(--silice-divisor)` sobre `var(--cds-layer-01)` y raya inferior activa `2px solid var(--silice-complementario)`).
+       - **Muestra de lectura en vivo (`.silice-cuenta-preferencias__muestra`):** caja con `padding: 0.75rem 1rem; background: var(--cds-layer-01); border-inline-start: 3px solid var(--silice-divisor);` que muestra una línea en `body-compact-01` y una cifra en `IBM Plex Mono` (`tabular-nums`): `Partida C-001 · Vaciado de concreto f'c 210 kgf/cm² — 242,64 USD/m³`, para comprobar al instante la legibilidad por presbicia sin salir de la pantalla.
+     - **Sub-bloque 2 — Datos de la sesión activa (`<section aria-labelledby="pref-sesion-titulo">`):**
+       - `<h2 id="pref-sesion-titulo" className="cds--type-heading-compact-02">Datos de la cuenta</h2>`
+       - Lista `<dl>` con `Nombre` (`sesion.nombre`), `Usuario` (`sesion.login`) y `Rol` (`rolesEnTexto(sesion.roles)`).
+
+---
+
+## D. Conciliación de Tablas de [`2026-11-04-f6a-diseno-visual.md`](../../docs/especificaciones/2026-11-04-f6a-diseno-visual.md) con el Contrato v2
+
+Se enmiendan las tablas §1.3, §2.4 y §6.1–§6.3 de [`2026-11-04-f6a-diseno-visual.md`](../../docs/especificaciones/2026-11-04-f6a-diseno-visual.md) para que coincidan exactamente con las decisiones de Eugenio y el [Contrato de Rutas v2](../../docs/especificaciones/2026-11-04-f6a-contrato-de-rutas.md):
+
+1. **En Obra (9 secciones en la barra principal + 7 subvistas):**
+   - `Tablero` sale de la barra principal de la obra y pasa a subvista de `Resumen` (`/obra/:c/:o/resumen/tablero`). La barra de la obra queda con **9 secciones** (`Resumen`, `Presupuesto`, `Tramos`, `Archivos y planos`, `Versiones`, `Aprobaciones`, `Mercado`, `Control de obra`, `Riesgo`).
+2. **En Auditoría (3 herramientas en lugar de 4):**
+   - `revisar` (`Revisar un paquete`) sale de `ESPACIOS.auditoria` y pasa a subvista de `Aprobaciones` en la obra (`/obra/:c/:o/aprobaciones/revisar`). `ESPACIOS.auditoria` queda con: `subir` (`Subir y auditar Excel`), `libros` (`Libro de la empresa`) e `historial` (`Historial de auditorías`).
+3. **En Precios y catálogo (4 herramientas en lugar de 7):**
+   - `componer`, `actualizar` y `reajuste` salen de `ESPACIOS.precios` y pasan a subvistas de `Presupuesto`, `Mercado` y `Control de obra` respectivamente. `ESPACIOS.precios` queda con: `listas` (`Precios de la empresa`), `catalogo` (`Catálogo de partidas e insumos`), `indices` (`Índices del BCV`) y `simulador` (`Simulador de listas`).
+4. **En Cuenta (§5.1 y §6.3):**
+   - `carpetas` (`Carpetas`) exige `administrar_cuentas` **y** `cambiar_caso`.
+   - `sistema` (`Especialidades, IA e instalación`) exige `administrar_cuentas` (y dentro de ella, `<Especialidades />` exige además `activar_modulos`).
+
+---

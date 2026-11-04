@@ -21,6 +21,8 @@ Library, pytest; Playwright para la pasada en navegador.
   permisos**.
 - [Diseño visual](../especificaciones/2026-11-04-f6a-diseno-visual.md) (Antigravity): **manda en el aspecto**.
 
+**Arbitraje:** Antigravity lo aprobó el 2026-11-04 con 3 observaciones menores, ya incorporadas en T5, T6 y T7.
+
 **Origen:** une el plan de esta rama con el plan T0–T9 que otra sesión de Claude armó con Antigravity
 (`~/.claude/plans/soy-antigravity-auditor-y-effervescent-spark.md`). Eugenio decidió el 2026-11-04 que orquesta esta
 sesión.
@@ -179,7 +181,9 @@ pierde `precios`, `auditoria` y `produccion`) y `rutaCanonica` (las rutas del co
   - una sección sin pantalla principal usable abre su subvista usable;
   - las 62 pruebas del árbol de `BarraLateral.test.tsx` se **reemplazan** una a una por las de lista plana: píldoras,
     homónimas, «Nueva obra», sin permiso, carga y error;
-  - pasar de Presupuesto a Versiones no remonta `ProveedorDeLaHoja`;
+  - pasar de Presupuesto a Versiones no remonta `ProveedorDeLaHoja`, y pasar de Partidas a Componer
+    (`/presupuesto/componer`) tampoco pregunta por cambios sin guardar: `quedaEnLaHoja` compara el segmento `:seccion` y no
+    la ruta entera (`secciones.ts:61`; nota H-F6-1 de Antigravity);
   - al cambiar de obra se conserva la sección.
 - [ ] Verde.
 - [ ] Antigravity arbitra. Se mide el alto que le queda a la Hoja (Univer) a 1366×768 con letra Muy grande.
@@ -213,7 +217,8 @@ pierde `precios`, `auditoria` y `produccion`) y `rutaCanonica` (las rutas del co
 **Interfaces:** `GET /v1/obras/resumen/todas` con `LEER_PROYECTO`. Devuelve:
 - `{ hoy: str; por_moneda: [{ moneda: "Bs" | "USD"; obras: int; total: str; en_ejecucion: int }]; obras:
   [{ carpeta: str | null; obra_id: int; nombre: str; moneda: str; etapa: str; total: str | null; avance_real: str | null;
-  avance_plan: str | null }]; carpetas_omitidas: [str] }`;
+  avance_plan: str | null; carpeta_titulo: str }]; carpetas_omitidas: int }`, como `GET /v1/obras/pendientes/todas`
+  (`obras.py:356` y `:271`; nota H-F6-3 de Antigravity);
 - montos como texto exacto (`format(x, "f")`).
 
 Quien no puede cambiar de carpeta solo ve la abierta (`_carpetas_visibles`).
@@ -263,6 +268,8 @@ y la arenera (`PanelArenera`, solo con `operar_arenera` y su módulo encendido).
 
 ## Preguntas abiertas para Eugenio
 
-1. ¿«Riesgo de la obra» queda como sección propia o pasa a subvista de Control de obra? (Contrato §5.)
-2. ¿Quien revisa debe ver las obras de todas las carpetas?
-3. ¿Se conserva la sección al pasar de una obra a otra? (El plan supone que sí.)
+Recomendación de Antigravity y de Claude entre paréntesis:
+
+1. ¿«Riesgo de la obra» queda como sección propia o pasa a subvista de Control de obra? (Sección propia.)
+2. ¿Quien revisa debe ver las obras de todas las carpetas? (No: sin `cambiar_caso` solo la abierta, como hoy.)
+3. ¿Se conserva la sección al pasar de una obra a otra? (Sí.)
