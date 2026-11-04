@@ -71,3 +71,7 @@ Cuando otro agente (por ejemplo, Antigravity) audita a la vez, sus hallazgos van
 `bitacora/auditoria-agy-AAAA-MM-DD.md` y el orquestador escribe al lado el veredicto (confirmado,
 falso positivo o ya resuelto en una rama). Lista abierta:
 [bitacora/auditoria-agy-2026-11-04.md](bitacora/auditoria-agy-2026-11-04.md).
+
+En la otra dirección, el orquestador le encarga trabajo a Antigravity con el subagente
+`silice-antigravity` (`.claude/agents/silice-antigravity.md`), que llama a
+`agy -p "…" --sandbox </dev/null`, siempre en modo de solo lectura.
