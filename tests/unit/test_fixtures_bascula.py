@@ -185,3 +185,24 @@ def test_csv_desmedido_cuenta_encabezado_mas_filas(filas: int) -> None:
 def test_csv_desmedido_rechaza_cantidad_negativa() -> None:
     with pytest.raises(ValueError):
         construir.csv_desmedido(-1)
+
+
+def test_el_xlsx_no_depende_del_reloj(monkeypatch: pytest.MonkeyPatch) -> None:
+    """openpyxl pisa `modified` con la hora de guardar: dos llamadas en segundos distintos daban bytes
+    distintos y la prueba de determinismo fallaba a veces en la CI lenta (Windows, 2026-11-04)."""
+    import datetime as dt
+    import itertools
+
+    from openpyxl.writer import excel
+
+    segundos = itertools.count(0, 7)
+
+    class _Reloj(dt.datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN001, ANN206
+            return (dt.datetime(2030, 1, 1) + dt.timedelta(seconds=next(segundos))).replace(
+                tzinfo=tz
+            )
+
+    monkeypatch.setattr(excel.datetime, "datetime", _Reloj)
+    assert construir.xlsx_sin_unidad() == construir.xlsx_sin_unidad()
