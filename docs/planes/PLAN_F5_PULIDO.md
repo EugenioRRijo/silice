@@ -225,3 +225,100 @@ Hoy solo se abre desde Administración › «Carpetas de trabajo» y solo si la 
 
 - **Qué se mira.** El código (`CarpetasDeTrabajo.tsx`, `POST /v1/casos/demostracion`) y la bitácora: si pedir `editar_hoja`
   es intencional, se deja y se explica; si es un descuido, basta ser administrador, con su prueba.
+
+### Decisiones de la tanda 2
+
+Formato: pregunta · lo que se hizo · cómo cambiarlo.
+
+#### Tarea 5
+
+1. **Dónde está el lector.** · Fuera del núcleo: cada adaptador tabular (`adapters/civil/tabular.py`,
+   `adapters/telecom/adaptador.py`, `adapters/industrial/adaptador.py`, `adapters/sistemas/adaptador.py`) lee su CSV con
+   `csv.DictReader` y `Decimal(celda)`. `core/` no se tocó. · —
+2. **Dónde va la regla.** · En la capa de aplicación (`aplicacion/computo_csv.py`), que `POST /computos/{dominio}` llama
+   antes del adaptador, y no copiada en cada adaptador: un adaptador solo importa `core.contracts` (NORMAS.md §2,
+   `test_arquitectura.py`), así que no puede usar `aplicacion.cifras.cifra_escrita`, y el lector de tramos
+   (`adapters/vial/tabular.numero`) no se puede importar desde otro adaptador. Así el intérprete de la regla sigue
+   siendo uno (`cifra_escrita`, con su oráculo `tests/fixtures/cifras_escritas.json`). Cada adaptador solo declara sus
+   `columnas_numericas` (las que lee como cifra); las demás celdas (código, descripción, especificaciones) pasan tal
+   cual. · Copiar la regla en cada adaptador, como `numero` en vial, con una prueba contra el oráculo por copia.
+3. **Qué regla con punto y coma.** · La estricta de Eugenio (`cifra_escrita`): «1.234» es mil doscientos treinta y
+   cuatro y «2.5» se rechaza con el archivo, la fila, la columna y la regla. El CSV de tramos, en cambio, acepta el
+   punto decimal («7.30») también con `;` y rechaza «1.234» por ambiguo; aquí el separador ya dice cuál es la regla.
+   · Tolerar el punto decimal con `;` como en tramos (`numero`), a costa de que «1.234» siga siendo ambiguo.
+4. **Con coma, nada cambia.** · Un CSV separado por coma no se toca (ni se copia): las muestras y los archivos que ya
+   existen se leen igual, con punto decimal. · —
+5. **Lo demás del archivo con `;`.** · Se admite la marca UTF-8 que pone Excel (`utf-8-sig`); un archivo que no es
+   UTF-8 (el «CSV» de Excel en ANSI) se rechaza con su nombre, como antes; una fila con más celdas que la cabecera, con
+   su número de fila. La copia se escribe en una carpeta propia del directorio temporal (`tempfile.mkdtemp`), con el
+   nombre del archivo, que los adaptadores usan en sus mensajes. · —
+6. **La ayuda.** · «Cargar cómputo» dice, bajo «Tipo de obra del archivo», cómo van las cifras con cada separador
+   (`AYUDA_DEL_CSV` en `paginas/archivos/logicaComputo.ts`). No hay plantilla descargable del cómputo; el formato está
+   en `data/samples/README.md` (párrafo nuevo) y en el README de cada muestra, que siguen con coma. · Agregar una
+   plantilla descargable con `;` (hoy no la hay para ningún dominio).
+7. **`docs/api.json`.** · Cambia una línea: la descripción de `POST /computos/{dominio}` (el docstring de la ruta).
+   Regenerado dos veces con `scripts/exportar_openapi.py`, el mismo hash (`6b874bd3…19d52`). · —
+8. **Rojo (`b72a2f62`, `472619d8`).** · pytest: 19 fallas de aserción (`assert WindowsPath('…/subida/computo.csv') ==
+   …/leida/computo.csv`, `assert [{'id;a;h;lon…': …}] == [{'id': 'Z-01', …}]`, `Failed: DID NOT RAISE ValueError` y,
+   por la API, `AssertionError` con «faltan las columnas […]» para las cuatro muestras con `;`). vitest: `Unable to
+   find an element with the text: Si el archivo separa las columnas con punto y coma…`. Para que fuera de aserción y no
+   un `ImportError`, el rojo trae el esbozo `a_la_forma_de_siempre`, que devuelve la ruta tal cual. · —
+
+#### Tarea 6
+
+1. **Adónde lleva el pendiente.** · Sigue llevando a Aprobaciones de su obra (`ABSORBIDAS` de
+   `paginas/pendientes/logica.ts`, D-F3-2, sin cambios): la ruta de la obra es la que cambia de carpeta y fija la obra
+   en la sesión, y la pantalla `entregar` no está bajo la obra (llevar directo a `#/entregar` abriría la entrega en la
+   carpeta que estuviera abierta, no en la del pendiente). Aprobaciones, dentro de la obra, ofrece ahora «Entregar al
+   cliente» con el enlace «Entregar paquete» (`paginas/aprobar/EntregaDeLaObra.tsx`), que abre con esa obra elegida
+   (la toma de la sesión). · Hacer de `entregar` una sección de la obra (otra entrada del árbol).
+2. **A quién.** · A la cuenta que puede usar la pantalla `entregar` (`usable`, la regla del árbol y del buscador:
+   `entregar_paquete`); a las demás no se les pinta. La bandeja y el Resumen ya ofrecían el botón «Entregar» solo si la
+   cuenta puede usar la pantalla de la acción, así que quien revisa no ve ni el botón del pendiente ni el enlace. · —
+3. **Rojo (`6e0cb317`).** · `Unable to find role="link" and name "Entregar paquete"` (ana, del pendiente a
+   Aprobaciones). Pasaban ya, como guardias, la de los permisos (`usable`) y la de quien revisa sin el enlace. · —
+
+#### Tarea 7
+
+1. **El nombre vigente.** · «Presupuesto» (`frontend-desktop/DESIGN.md`: «Presupuesto (`paginas/hoja/`, h1
+   «Presupuesto»; antes «Hoja de la obra»)»). En Tramos: «Se llevaron N renglones de V al Presupuesto de la obra.»,
+   el enlace «Abrir el presupuesto» (el texto de la acción de la mesa, H9) y «Guarde una en el Presupuesto para cargar
+   sus tramos.». El enlace sigue apuntando a `/hoja`, que el marco lleva al Presupuesto de la obra abierta. · —
+2. **Los avisos del servidor.** · `aplicacion/hoja_vial.py` (el 409 de un borrador de otra versión, sus tres casos, y
+   el de las partidas que no se pueden valorar) dice «el Presupuesto de la obra» y «en el Presupuesto»; sus oráculos en
+   `test_aplicacion_vial_llevar.py` y `test_api_vial_llevar.py` cambian con él, y entra una prueba del caso del borrador
+   en blanco, que no tenía. El texto simulado de `vial/AvisoDeLlevar.test.tsx` sigue al del servidor. `docs/api.json`
+   no cambia. · —
+3. **Reajuste.** · «Elija una obra en «Obras» de la barra lateral, o búsquela con Ctrl+K, para reajustar sus precios.»
+   · —
+4. **La guardia.** · `PANTALLA_RETIRADA` de `sinJergaInterna.test.ts` caza también «Hoja de la obra» y «barra superior
+   (Proyecto)» fuera de un comentario en `src/paginas`. «la Hoja» suelta no se caza: sigue en comentarios y en nombres
+   internos (`ProveedorDeLaHoja`). · Ampliarla a «la Hoja» si se quiere retirar del todo del texto visible.
+5. **Rojo (`20508f1a`).** · vitest, cinco: `expected [ 'reajuste/index.tsx', …(1) ] to deeply equal []` (la guardia:
+   Reajuste y Tramos), tres `Unable to find an element with the text: Se llevaron 18 renglones de VIA-002 al
+   Presupuesto de la obra.` (y sus variantes) y `Unable to find … Elija una obra en «Obras»…`. pytest, seis:
+   `AssertionError: assert 'La Hoja de l...lva a llevar.' == 'El Presupues...lva a llevar.'` y las dos de «No se llevó
+   nada…». · —
+
+#### Tarea 8
+
+1. **Qué hace el visor.** · «Libro de la empresa» no descarga nada: muestra el libro con los hallazgos, y elegir uno de
+   la lista lleva a su celda marcada. El paso 2 dice ahora «Elija un hallazgo de la lista para ver su celda marcada en
+   el libro.» en lugar de «Descargue el libro devuelto si lo necesita.». · Agregar al visor la descarga del libro con
+   sus marcas, si se quiere ofrecer.
+2. **Rojo (`a5c64572`).** · `AssertionError: expected 'Compare el total del libro con el que…' not to match
+   /descarg/i`. · —
+
+#### Tarea 9
+
+1. **¿Es intencional?** · Pedir `editar_hoja` para estrenar la demostración, sí: es la decisión D-3 de Eugenio en
+   `docs/especificaciones/2026-10-21-bienvenida-casos-proyectos-design.md` («demostración = `EDITAR_HOJA` (solo arma,
+   como la clásica). Consecuencia: el administrador sin rol «arma» […] **no** puede estrenar la demostración»), con
+   `POST /v1/casos/demostracion` en `EDITAR_HOJA` y la prueba B16 («`admin` 403»). Que además haga falta ser
+   administrador, no: quedó así al juntarse dos cambios. MOD-3b mudó «Carpetas de trabajo» a Administración (que pide
+   `administrar_cuentas`), y la baja 6 de F4 quitó «Probar con datos de demostración» del Resumen, la entrada que
+   tenía quien arma, y la dio por cubierta con «Empresa › Carpetas de trabajo» y con «Empieza aquí» de F6, que todavía
+   no existe (`docs/planes/PLAN_REDISENO_F4.md`, «Bajas aprobadas», fila 6). · No se cambió nada: «que baste ser
+   administrador» desharía D-3, que es de Eugenio. Pregunta para él: ¿la demostración vuelve ya para quien arma (una
+   entrada fuera de Administración, o la que traiga «Empieza aquí» en F6), o se le da también al administrador
+   (`CAMBIAR_CASO`, la alternativa que D-3 deja escrita)?
