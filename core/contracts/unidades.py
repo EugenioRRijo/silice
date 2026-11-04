@@ -15,6 +15,11 @@ _ALIAS: dict[str, str] = {
     "mt3": "m3",
     "metro cubico": "m3",
     "metros cubicos": "m3",
+    "l": "l",
+    "lt": "l",
+    "lts": "l",
+    "litro": "l",
+    "litros": "l",
     # superficie
     "m2": "m2",
     "m²": "m2",
@@ -51,6 +56,11 @@ _ALIAS: dict[str, str] = {
     "kgs": "kg",
     "kilogramo": "kg",
     "kilogramos": "kg",
+    "t": "t",
+    "tn": "t",
+    "ton": "t",
+    "tonelada": "t",
+    "toneladas": "t",
     # tiempo
     "dia": "dia",
     "día": "dia",

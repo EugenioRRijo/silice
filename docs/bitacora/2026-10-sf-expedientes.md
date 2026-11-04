@@ -368,3 +368,24 @@ expediente debe agregarlo aquí en el mismo commit. Nada lo exige mecánicamente
 - **Costo si es erróneo:** un código con otro prefijo del esperado; el usuario lo puede cambiar. Ruling: con
   mezcla de prefijos manda la última versión guardada.
 - **Estado:** espera visto bueno del tutor.
+
+## NUC‑E1: la tonelada y el litro en la tabla de alias de unidades (decisión de Eugenio, 2026‑10‑30, pregunta 17)
+
+- **Regla que lo motiva:** `core/contracts/unidades.py` es la única tabla de alias (NORMAS.md §2) y no conocía la
+  tonelada ni el litro. Una lista de precios con el cemento asfáltico por «ton» o el gasoil por «lt»/«litro» no casaba
+  con una receta en «t»/«l» y el costo propio se negaba. Eugenio decidió que el alias va en el núcleo, con el tutor.
+- **Por qué es genérico:** cualquier presupuesto de cualquier especialidad compra o computa por tonelada o por litro
+  (agregados, asfalto, combustible, pintura); no interviene ninguna especialidad ni el plan vial.
+- **Cambio:** `t` ← `ton`, `tn`, `tonelada`, `toneladas`; `l` ← `lt`, `lts`, `litro`, `litros`. Solo grafías de la MISMA
+  unidad. No se toca ninguna entrada existente: `ml` sigue siendo metro lineal (`m`). No hay otra tabla de dimensiones:
+  R3 (`core/verification/reglas.py`) compara con `unidades_equivalentes`, que usa esta misma tabla.
+- **Prueba que lo demuestra** (`tests/unit/test_unidades_tonelada_litro.py`, oráculos a mano): las cinco grafías de
+  tonelada dan `t` y las cinco de litro dan `l` (con mayúsculas y espacios); `t`≠`kg`, `l`≠`m3`, `t`≠`l`; `ml`→`m`.
+- **Impacto:** quienes llaman a `normalizar_unidad` (`ItemComputo`, `Apu`, `catalog.precios`, `catalog.repositorio`,
+  regla R3) pasan a ver `t`/`l` donde antes veían `ton`, `litro`, etc. Bases existentes: las unidades ya guardadas no
+  se reescriben; al releerlas, un `ItemComputo`/`Apu` con «ton» o «litro» se normaliza a `t`/`l` en memoria. Una
+  partida «ton» frente a un APU en «t» deja de dar R3 falsa (antes error). Las líneas base no usan estas unidades.
+- **Costo si es erróneo:** una unidad guardada como «lt» o «ton» aparece como `l`/`t` y la clave de casamiento de
+  precios cambia para esas filas (una lista antigua con «ton» casa ahora con «t», no se pierde). Si se revierte,
+  vuelve a negarse el costo propio con listas en «ton»/«lt».
+- **Estado:** espera visto bueno del tutor.
