@@ -22,6 +22,15 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
 
 **Rama:** `feature/f6-espacios`, desde `main` después de fusionar #103, #104 y #102.
 
+**Entregas:** F6a = Tareas 1 a 5 (rutas y barras; mientras tanto `/inicio/general` monta la Bandeja) y F6b = Tarea 6
+(panorama). La Tarea 7 cierra cada una. **Contrato de rutas** (oráculo de las Tareas 1, 3, 5 y 6):
+[2026-11-04-f6a-contrato-de-rutas.md](../especificaciones/2026-11-04-f6a-contrato-de-rutas.md).
+
+**Reparto (acordado entre Claude y Antigravity, 2026-11-04):** Antigravity hace el diseño visual de cada entrega y arbitra
+cada tarea y la pasada visual del cierre. Claude hace el diseño técnico (contrato de rutas e interfaces), construye con
+subagentes, verifica los hallazgos e integra. Eugenio aprueba los diseños y las decisiones, y fusiona. Nadie construye
+lo que arbitra; si los dos discrepan, decide Eugenio.
+
 ## Restricciones globales
 
 - IBM Carbon g10, esquinas rectas, densidad `sm`; **sin Tailwind**; morado (`#8a3ffc`) solo para atípicos de ML
@@ -224,7 +233,7 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
   - `preferencias`: `TamanoLetra` y datos de la cuenta;
   - `cuentas`: Cuentas y Accesos;
   - `empresa`: Empresa y clave de firma, y Empresas registradas;
-  - `carpetas`: Carpetas de trabajo, solo con `cambiar_caso`;
+  - `carpetas`: Carpetas de trabajo, con `administrar_cuentas` **y** `cambiar_caso`, como hoy (contrato de rutas §3);
   - `sistema`: Especialidades, Asistente de IA, Claves de API e Instalación;
   - `ayuda`: Acerca de Sílice y el inicio de los recorridos guiados (`shell/recorrido.ts`).
 
