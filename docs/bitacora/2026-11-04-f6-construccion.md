@@ -12,9 +12,9 @@ IDE. Sus veredictos se guardan **palabra por palabra** en [arbitrajes/](arbitraj
 
 | Quién | Qué hace | Desde |
 |---|---|---|
-| Antigravity | **Arbitrando T1** (`git diff 38f49965..545b3f36`), en solo lectura | 2026-11-04 |
-| Claude | Verificó T1 (rojo solo con pruebas, `core/` y `api/` intactos, 36/36 pruebas clave); espera el arbitraje; vigila la CI del #102 | 2026-11-04 |
-| Subagente constructor | Terminó T1; en espera de la ronda 2 si Antigravity devuelve | — |
+| Subagente constructor | **T2: tabla de espacios y `primeraUsable`**, con TDD | 2026-11-04 |
+| Claude | Espera a T2 para verificarla; vigila la CI del #102 | 2026-11-04 |
+| Antigravity | En espera; arbitra T2 cuando Claude se la pase | — |
 
 ## Tareas
 
@@ -22,8 +22,8 @@ IDE. Sus veredictos se guardan **palabra por palabra** en [arbitrajes/](arbitraj
 |---|---|---|---|---|---|---|
 | Plan | Claude | — | — | [Ronda 1: DEVUELTO (4 mayores, 2 menores)](arbitrajes/f6-plan-r1.md) · [Ronda 2: APROBADO](arbitrajes/f6-plan-r2.md) | Los 6 hallazgos verificados contra el código y aplicados | ✔ |
 | T0 Expediente | Claude (contrato y enmienda) + Antigravity (diseño visual y adenda) | — | — | [APROBADO con 3 menores](arbitrajes/f6-T0.md) | Las 3 verificadas y aplicadas en T5, T6 y T7 | ✔ **Aprobado por Eugenio** |
-| T1 Ruta canónica | subagente `silice-frontend` | `177c9279` (falla: el recorrido no marca «Paso 1 de 3» en `/empresa/auditoria`; 7 archivos con rutas escritas a mano) | `545b3f36` (vitest 2.860/2.860 en marco, shell, paginas y comun; lint 0) | en curso | Desvíos aceptados: 4 enlaces pasan a su ruta canónica (mismo destino, sin redirección) y 2 enlaces más que el plan no listaba | arbitraje |
-| T2 Tabla de espacios | — | — | — | — | — | pendiente |
+| T1 Ruta canónica | subagente `silice-frontend` | `177c9279` (falla: el recorrido no marca «Paso 1 de 3» en `/empresa/auditoria`; 7 archivos con rutas escritas a mano) | `545b3f36` (vitest 2.860/2.860 en marco, shell, paginas y comun; lint 0) | [Ronda 1: APROBADO, sin hallazgos](arbitrajes/f6-T1-r1.md) (revisión estática: en el worktree no pudo usar git ni vitest) | De acuerdo; las pruebas las corrió Claude. Desvíos aceptados: 4 enlaces pasan a su ruta canónica (mismo destino, sin redirección) y 2 enlaces más que el plan no listaba | ✔ |
+| T2 Tabla de espacios | subagente `silice-frontend` | — | — | — | — | en curso |
 | T3 BarraDeEspacio | — | — | — | — | — | pendiente |
 | T4 Producción, Auditoría, Precios | — | — | — | — | — | pendiente |
 | T7 Cartera por moneda (servidor) | — | — | — | — | — | pendiente |
