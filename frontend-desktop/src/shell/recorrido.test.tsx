@@ -49,7 +49,7 @@ describe("recorrido «Auditar un libro de la empresa»", () => {
   });
 
   test("el paso se deduce de la ruta: cada pantalla del recorrido es su paso y las demas ninguno", () => {
-    expect(pasoDeRuta(RECORRIDO_AUDITAR, "/auditoria")).toBe(0);
+    expect(pasoDeRuta(RECORRIDO_AUDITAR, "/empresa/auditoria")).toBe(0);
     expect(pasoDeRuta(RECORRIDO_AUDITAR, "/inicio")).toBeNull();
     expect(pasoDeRuta(RECORRIDO_AUDITAR, "/libros")).toBe(1);
     expect(pasoDeRuta(RECORRIDO_AUDITAR, "/historial")).toBe(2);

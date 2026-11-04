@@ -26,13 +26,13 @@ describe("PanelRecorrido", () => {
   afterEach(() => terminarRecorrido());
 
   test("sin recorrido en curso no pinta nada", () => {
-    const { container } = montar("/auditoria");
+    const { container } = montar("/empresa/auditoria");
     expect(container).toBeEmptyDOMElement();
   });
 
   test("en el paso 1 muestra el titulo, «Paso 1 de 3», que hacer y cuando se sabe que termino", () => {
     iniciarRecorrido(RECORRIDO_AUDITAR);
-    montar("/auditoria");
+    montar("/empresa/auditoria");
     const region = screen.getByRole("region", { name: "Recorrido en curso" });
     expect(within(region).getByText("Auditar un libro de la empresa")).toBeInTheDocument();
     expect(within(region).getByText("Paso 1 de 3")).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe("PanelRecorrido", () => {
     const region = screen.getByRole("region", { name: "Recorrido en curso" });
     expect(within(region).getByText("Paso 2 de 3")).toBeInTheDocument();
     expect(within(region).getByText("Lea el resumen y los hallazgos").closest("li")).toHaveAttribute("aria-current", "step");
-    expect(within(region).getByRole("link", { name: "Suba el libro" })).toHaveAttribute("href", "/auditoria");
+    expect(within(region).getByRole("link", { name: "Suba el libro" })).toHaveAttribute("href", "/empresa/auditoria");
     expect(within(region).getByRole("link", { name: "Compruebe que quedó guardada" })).toHaveAttribute("href", "/historial");
   });
 
@@ -79,7 +79,7 @@ describe("PanelRecorrido", () => {
   });
 
   test("aparece cuando se inicia con el panel ya montado", () => {
-    montar("/auditoria");
+    montar("/empresa/auditoria");
     expect(screen.queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
     act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
     expect(screen.getByRole("region", { name: "Recorrido en curso" })).toBeInTheDocument();

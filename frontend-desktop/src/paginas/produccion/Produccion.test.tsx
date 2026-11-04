@@ -120,7 +120,7 @@ describe("Inicio de producción", () => {
     expect(filas[1]).toHaveTextContent("Queda poco");
     expect(within(seccion).queryByText("Material ARENA")).not.toBeInTheDocument();
     expect(filas[0].querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-    expect(within(seccion).getByRole("link", { name: "Ver todas las existencias" })).toHaveAttribute("href", "/existencias");
+    expect(within(seccion).getByRole("link", { name: "Ver todas las existencias" })).toHaveAttribute("href", "/empresa/produccion");
   });
 
   test("muestra el mínimo junto a la existencia, con las cifras tal como vienen", async () => {
