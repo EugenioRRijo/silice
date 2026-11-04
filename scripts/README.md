@@ -131,3 +131,9 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `sembrar_errores_planos.py` | siembra errores conocidos en el DXF de OF-001 y en el IFC de oficina (catálogo de S3) | S3-5 · RF-89 |
 | `medir_deteccion_planos.py` | mide la tasa de detección y las falsas alarmas de la auditoría de planos sobre esos errores | S3-5 · RF-89 |
 | `restablecer_administrador.py` | emite un código de instalación nuevo (20 caracteres, 100 bits, un solo uso) y cierra las sesiones de los administradores; exige el equipo | S3-3 · RF-80 |
+
+## Agentes externos (2026-11-04)
+
+| Script | Qué hace | Sesión o dominio |
+|---|---|---|
+| `mcp_antigravity.py` | servidor MCP que le da a Claude Code dos herramientas para encargarle trabajo de **solo lectura** a Antigravity (`encargar_a_antigravity`, `arbitrar_rama`) sobre `agy -p --sandbox` con stdin cerrado; lo arranca `.mcp.json` con `uv run --no-project --with "mcp>=1.2,<2"` (el paquete `mcp` no es dependencia del producto) | contexto de agentes · F6 |
