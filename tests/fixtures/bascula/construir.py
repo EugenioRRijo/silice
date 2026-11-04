@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 import zipfile
 from collections.abc import Sequence
 from datetime import datetime
@@ -127,8 +128,19 @@ def _xlsx(encabezados: Sequence[str], filas: Sequence[Sequence[object]]) -> byte
     crudo = io.BytesIO()
     libro.save(crudo)
     with zipfile.ZipFile(io.BytesIO(crudo.getvalue())) as zf:
-        piezas = [(i.filename, zf.read(i.filename)) for i in zf.infolist()]
+        piezas = [
+            (i.filename, _sin_hora_de_guardado(i.filename, zf.read(i.filename)))
+            for i in zf.infolist()
+        ]
     return _zip_determinista(piezas)
+
+
+def _sin_hora_de_guardado(nombre: str, contenido: bytes) -> bytes:
+    """openpyxl escribe en `dcterms:modified` la hora de guardar (no la dada): se fija aquí."""
+    if nombre != "docProps/core.xml":
+        return contenido
+    fija = _FECHA_FIJA_LIBRO.strftime("%Y-%m-%dT%H:%M:%SZ").encode()
+    return re.sub(rb"(<dcterms:modified[^>]*>)[^<]*", rb"\g<1>" + fija, contenido)
 
 
 def csv_basico() -> bytes:

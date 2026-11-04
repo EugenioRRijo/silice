@@ -188,8 +188,8 @@ def test_csv_desmedido_rechaza_cantidad_negativa() -> None:
 
 
 def test_el_xlsx_no_depende_del_reloj(monkeypatch: pytest.MonkeyPatch) -> None:
-    """openpyxl pisa `modified` con la hora de guardar: dos llamadas en segundos distintos daban bytes
-    distintos y la prueba de determinismo fallaba a veces en la CI lenta (Windows, 2026-11-04)."""
+    """openpyxl pisa `modified` con la hora de guardar: dos llamadas en segundos distintos daban
+    bytes distintos y el determinismo fallaba a veces en la CI lenta (Windows, 2026-11-04)."""
     import datetime as dt
     import itertools
 
