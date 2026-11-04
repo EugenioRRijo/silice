@@ -8,6 +8,22 @@ Hay otra lista, de la sesión que escribió el diseño vial, **solo en local** p
 `Escritorio/Preguntas para Eugenio (2026-10-30).md` (temas: FCAS por defecto, aporte de pensiones, tipo de riesgo del
 IVSS, orden de trabajo, norma de carreteras).
 
+## Ratificación en bloque (Eugenio, 2026-11-04)
+
+Eugenio ratificó en bloque **todas las decisiones abiertas de esta lista** (las filas sin «Respondida») y las
+«Preguntas para Eugenio» del cierre de F4 (`2026-11-03-cierre-f4.md`): queda lo que se hizo, tal como dice cada fila.
+Se exceptúan las que dependen de una fuente externa o del tutor, que siguen **a cotejar con el tutor** y conservan su
+valor por defecto mientras tanto:
+
+- Fila 5: IVSS 11 % por defecto (según el riesgo de la empresa).
+- Fila 6: densidad 1,0 kg/l y fracción residual 0,60 del ligante (ficha del producto).
+- Fila 7: índice de asfalto de EE. UU. (FRED `WPU05810212`) como proxy internacional.
+- Fila 12: tolerancia de ±0,02 t por tonelada de mezcla (dosificación de la empresa).
+- Fila 36: fracción pintada de la línea discontinua 0,375 (manual de señalización).
+- Fila 40: `t·km` fuera de la tabla de alias del núcleo (cambio en `core/`, va con el PR #100 y su expediente).
+- Fila 107: 36,5 l de pintura por km de línea de 10 cm (ficha del producto).
+- F4, T5b: alícuota del IVA 16 % «a cotejar con la Gaceta vigente».
+
 ## Plan vial y de agregados (`docs/planes/PLAN_VIAL_AGREGADOS.md`)
 
 | # | Tarea | Pregunta | Lo que se hizo | Cómo cambiarlo |
