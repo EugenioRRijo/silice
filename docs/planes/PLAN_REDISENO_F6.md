@@ -184,7 +184,7 @@ pierde `precios`, `auditoria` y `produccion`) y `rutaCanonica` (las rutas del co
   - pasar de Presupuesto a Versiones no remonta `ProveedorDeLaHoja`, y pasar de Partidas a Componer
     (`/presupuesto/componer`) tampoco pregunta por cambios sin guardar: `quedaEnLaHoja` compara el segmento `:seccion` y no
     la ruta entera (`secciones.ts:61`; nota H-F6-1 de Antigravity);
-  - al cambiar de obra se conserva la sección.
+  - al cambiar de obra se abre su **Resumen**, como hoy (decisión de Eugenio, 2026-11-04).
 - [ ] Verde.
 - [ ] Antigravity arbitra. Se mide el alto que le queda a la Hoja (Univer) a 1366×768 con letra Muy grande.
 - [ ] Revisores internos `silice-rev-diseno` y `silice-rev-pruebas`.
@@ -266,10 +266,8 @@ y la arenera (`PanelArenera`, solo con `operar_arenera` y su módulo encendido).
 
 **Dependencias:** T0 → T1 → T2 → T3 → (T4 ∥ T7) → T5 → T6 → T8 (necesita T7) → T9.
 
-## Preguntas abiertas para Eugenio
+## Respuestas de Eugenio (2026-11-04)
 
-Recomendación de Antigravity y de Claude entre paréntesis:
-
-1. ¿«Riesgo de la obra» queda como sección propia o pasa a subvista de Control de obra? (Sección propia.)
-2. ¿Quien revisa debe ver las obras de todas las carpetas? (No: sin `cambiar_caso` solo la abierta, como hoy.)
-3. ¿Se conserva la sección al pasar de una obra a otra? (Sí.)
+T0 **aprobado**. «Riesgo de la obra» queda como sección propia. Quien revisa sigue viendo solo la carpeta abierta (sin
+cambio de permisos). Al cambiar de obra se abre su Resumen, como hoy: el diseño visual §3.1 («conserva la sección»)
+queda corregido por esta respuesta.
