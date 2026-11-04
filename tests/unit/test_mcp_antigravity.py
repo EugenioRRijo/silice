@@ -1,6 +1,6 @@
 """El puente MCP hacia Antigravity arma `agy -p` en solo lectura y no se cuelga.
 
-Lo que importa probar es lo que se aprendió a mano el 2026-11-04: sin `stdin` cerrado `agy -p` espera
+Se prueba lo que se aprendió a mano el 2026-11-04: sin `stdin` cerrado `agy -p` espera
 para siempre; sin `--sandbox` podría editar; el encargo debe empezar por las reglas del repositorio.
 El servidor MCP en sí (paquete `mcp`) no es dependencia del producto y no se importa aquí.
 """
@@ -68,3 +68,13 @@ def test_ejecutar_explica_el_tiempo_agotado_y_el_error():
     assert "tiempo" in puente.ejecutar(["agy"], minutos=1, correr=agotado).lower()
     texto = puente.ejecutar(["agy"], minutos=1, correr=falla)
     assert "2" in texto and "sin sesion de Google" in texto
+
+
+def test_ejecutar_lee_tildes_en_utf8_y_en_cp1252():
+    """Por una tuberia `agy` escribe en la pagina de codigos de Windows (cp1252), no en UTF-8."""
+    for codificacion in ("utf-8", "cp1252"):
+
+        def correr(comando, codificacion=codificacion, **kwargs):
+            return subprocess.CompletedProcess(comando, 0, stdout="Árbol".encode(codificacion))
+
+        assert puente.ejecutar(["agy"], minutos=1, correr=correr) == "Árbol"
