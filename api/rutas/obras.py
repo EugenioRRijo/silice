@@ -14,6 +14,9 @@ Rutas finas sobre `aplicacion.mesa` (diseño de módulos §6 y §12.6):
   que `/pendientes` en cada carpeta que `GET /v1/obras/todas` lista, en una sola lista con su
   urgencia (aprobar y compras bloquean; precios y calidad avisan). `EDITAR_HOJA` ve todo; quien
   solo puede dictaminar, lo que espera su dictamen; sin ninguno de los dos, la lista va vacía.
+- `GET /v1/obras/resumen/todas` (`LEER_PROYECTO`) → `{hoy, por_moneda, obras, carpetas_omitidas}`:
+  la cartera de las carpetas que `GET /v1/obras/todas` lista, con una fila por moneda presente
+  (obras, suma de totales y obras en ejecución). Nunca suma Bs con USD ni convierte por tasa.
 
 Montos, índices y porcentajes viajan como **texto** con punto decimal (nunca como número JSON);
 la interfaz los formatea en es-VE sin recalcular. `hoy` es el día del reloj del servidor. Una obra
@@ -55,6 +58,7 @@ from aplicacion.mesa import (
 )
 from aplicacion.pendientes_todas import Alcance, pendientes_de_las_carpetas
 from aplicacion.proyectos import obras_de_las_carpetas
+from aplicacion.resumen_todas import cartera_de_las_carpetas
 from core.catalog import Catalogo
 from core.catalog.indices import TasaNoDisponible, tasa_aplicable
 from operacion.base_datos import listar_casos
@@ -395,4 +399,79 @@ def pendientes_de_todas_las_carpetas(
             for i in resultado.items
         ],
         carpetas_omitidas=resultado.carpetas_omitidas,
+    )
+
+
+class MonedaDeLaCarteraRespuesta(BaseModel):
+    moneda: str = Field(description="`Bs` o `USD`")
+    obras: int = Field(description="Las obras en esa moneda, con total o sin él")
+    total: str = Field(description="La suma de sus totales a 0,01, solo de esa moneda")
+    en_ejecucion: int = Field(description="Las que están en ejecución o atrasadas")
+
+
+class ObraDeLaCarteraRespuesta(BaseModel):
+    carpeta: str | None = Field(
+        description="El nombre que acepta `POST /v1/casos/actual`; `null`: la carpeta de la empresa"
+    )
+    carpeta_titulo: str = Field(
+        description="«Carpeta de la empresa» para `null`; si no, el nombre sin extensión"
+    )
+    obra_id: int
+    nombre: str
+    moneda: str
+    etapa: str
+    total: str | None = Field(description="El total de la versión vigente, a 0,01")
+    avance_real: str | None = Field(description="EV ÷ BAC × 100, a 0,1")
+    avance_plan: str | None = Field(description="PV ÷ BAC × 100, a 0,1")
+
+
+class ResumenTodasRespuesta(BaseModel):
+    hoy: str
+    por_moneda: list[MonedaDeLaCarteraRespuesta] = Field(
+        description="Una fila por moneda presente (Bs antes que USD); nunca se suman entre sí"
+    )
+    obras: list[ObraDeLaCarteraRespuesta] = Field(
+        description="La carpeta de la empresa primero, las demás por nombre y las obras por nombre"
+    )
+    carpetas_omitidas: int = Field(
+        description="Las carpetas que no se pudieron leer: sus obras no aparecen ni suman"
+    )
+
+
+@router.get("/resumen/todas", response_model=ResumenTodasRespuesta)
+def resumen_de_todas_las_carpetas(
+    request: Request,
+    activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.LEER_PROYECTO))],
+) -> ResumenTodasRespuesta:
+    """La cartera de las carpetas que la cuenta puede listar (las de `GET /v1/obras/todas`), cada
+    una abierta en solo lectura, separada por moneda. Una carpeta ilegible se omite y se cuenta."""
+    hoy = ahora().date()
+    _, carpetas = _carpetas_visibles(request, activa)
+    cartera = cartera_de_las_carpetas(carpetas, hoy)
+    return ResumenTodasRespuesta(
+        hoy=hoy.isoformat(),
+        por_moneda=[
+            MonedaDeLaCarteraRespuesta(
+                moneda=m.moneda,
+                obras=m.obras,
+                total=format(m.total, "f"),
+                en_ejecucion=m.en_ejecucion,
+            )
+            for m in cartera.por_moneda
+        ],
+        obras=[
+            ObraDeLaCarteraRespuesta(
+                carpeta=o.carpeta,
+                carpeta_titulo=_titulo_de_carpeta(o.carpeta),
+                obra_id=int(o.obra.codigo),
+                nombre=o.obra.nombre,
+                moneda=o.obra.moneda,
+                etapa=o.obra.etapa,
+                total=None if o.total is None else format(o.total, "f"),
+                avance_real=_porcentaje(o.obra.ev, o.obra.bac),
+                avance_plan=_porcentaje(o.obra.pv, o.obra.bac),
+            )
+            for o in cartera.obras
+        ],
+        carpetas_omitidas=cartera.carpetas_omitidas,
     )

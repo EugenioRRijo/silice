@@ -171,6 +171,7 @@ TABLA = {
     ("GET", "/v1/obras/pendientes"): EDITAR,
     ("GET", "/v1/obras/todas"): LEER,  # rediseño del marco, T3; con la clave, solo el proceso
     ("GET", "/v1/obras/pendientes/todas"): LEER,  # rediseño F3, T1; el alcance lo da el rol
+    ("GET", "/v1/obras/resumen/todas"): LEER,  # rediseño F6, T7; con la clave, solo el proceso
     ("GET", "/v1/mercado/{lado}/{codigo}"): EDITAR,  # T14: estudio de mercado
     ("POST", "/v1/mercado/observaciones"): EDITAR,
     ("POST", "/v1/mercado/observaciones/{observacion_id}/anular"): EDITAR,

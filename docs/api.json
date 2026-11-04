@@ -10406,6 +10406,28 @@
         }
       }
     },
+    "/v1/obras/resumen/todas": {
+      "get": {
+        "tags": [
+          "obras"
+        ],
+        "summary": "Resumen De Todas Las Carpetas",
+        "description": "La cartera de las carpetas que la cuenta puede listar (las de `GET /v1/obras/todas`), cada\nuna abierta en solo lectura, separada por moneda. Una carpeta ilegible se omite y se cuenta.",
+        "operationId": "resumen_de_todas_las_carpetas_v1_obras_resumen_todas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumenTodasRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/mercado/objetivos": {
       "get": {
         "tags": [
@@ -21426,6 +21448,38 @@
         ],
         "title": "ModuloRespuesta"
       },
+      "MonedaDeLaCarteraRespuesta": {
+        "properties": {
+          "moneda": {
+            "type": "string",
+            "title": "Moneda",
+            "description": "`Bs` o `USD`"
+          },
+          "obras": {
+            "type": "integer",
+            "title": "Obras",
+            "description": "Las obras en esa moneda, con total o sin él"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total",
+            "description": "La suma de sus totales a 0,01, solo de esa moneda"
+          },
+          "en_ejecucion": {
+            "type": "integer",
+            "title": "En Ejecucion",
+            "description": "Las que están en ejecución o atrasadas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "moneda",
+          "obras",
+          "total",
+          "en_ejecucion"
+        ],
+        "title": "MonedaDeLaCarteraRespuesta"
+      },
       "MonedaPeticion": {
         "properties": {
           "moneda": {
@@ -21837,6 +21891,92 @@
           "version_codigo"
         ],
         "title": "ObraDeCarpetaRespuesta"
+      },
+      "ObraDeLaCarteraRespuesta": {
+        "properties": {
+          "carpeta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carpeta",
+            "description": "El nombre que acepta `POST /v1/casos/actual`; `null`: la carpeta de la empresa"
+          },
+          "carpeta_titulo": {
+            "type": "string",
+            "title": "Carpeta Titulo",
+            "description": "«Carpeta de la empresa» para `null`; si no, el nombre sin extensión"
+          },
+          "obra_id": {
+            "type": "integer",
+            "title": "Obra Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "etapa": {
+            "type": "string",
+            "title": "Etapa"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total",
+            "description": "El total de la versión vigente, a 0,01"
+          },
+          "avance_real": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avance Real",
+            "description": "EV ÷ BAC × 100, a 0,1"
+          },
+          "avance_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avance Plan",
+            "description": "PV ÷ BAC × 100, a 0,1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "carpeta",
+          "carpeta_titulo",
+          "obra_id",
+          "nombre",
+          "moneda",
+          "etapa",
+          "total",
+          "avance_real",
+          "avance_plan"
+        ],
+        "title": "ObraDeLaCarteraRespuesta"
       },
       "ObraElegida": {
         "properties": {
@@ -25448,6 +25588,43 @@
           "espacio_vacio"
         ],
         "title": "ResumenHojaRespuesta"
+      },
+      "ResumenTodasRespuesta": {
+        "properties": {
+          "hoy": {
+            "type": "string",
+            "title": "Hoy"
+          },
+          "por_moneda": {
+            "items": {
+              "$ref": "#/components/schemas/MonedaDeLaCarteraRespuesta"
+            },
+            "type": "array",
+            "title": "Por Moneda",
+            "description": "Una fila por moneda presente (Bs antes que USD); nunca se suman entre sí"
+          },
+          "obras": {
+            "items": {
+              "$ref": "#/components/schemas/ObraDeLaCarteraRespuesta"
+            },
+            "type": "array",
+            "title": "Obras",
+            "description": "La carpeta de la empresa primero, las demás por nombre y las obras por nombre"
+          },
+          "carpetas_omitidas": {
+            "type": "integer",
+            "title": "Carpetas Omitidas",
+            "description": "Las carpetas que no se pudieron leer: sus obras no aparecen ni suman"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hoy",
+          "por_moneda",
+          "obras",
+          "carpetas_omitidas"
+        ],
+        "title": "ResumenTodasRespuesta"
       },
       "RetirarCotizacion": {
         "properties": {
