@@ -37,6 +37,17 @@ describe("recorrido «Auditar un libro de la empresa»", () => {
     }
   });
 
+  // Tanda 2 del pulido F5 (Tarea 8): el visor de «Libro de la empresa» no tiene descarga; el paso dice lo que la pantalla
+  // hace: elegir un hallazgo de la lista lleva a su celda marcada.
+  test("el paso 2 no pide descargar el libro y dice cómo se ve la celda de un hallazgo", () => {
+    const paso = RECORRIDO_AUDITAR.pasos[1];
+    expect(paso.pagina).toBe("libros");
+    expect(paso.queHacer).not.toMatch(/descarg/i);
+    expect(paso.queHacer).toBe(
+      "Compare el total del libro con el que recalculó Sílice y revise los hallazgos por severidad, de errores a avisos. Elija un hallazgo de la lista para ver su celda marcada en el libro.",
+    );
+  });
+
   test("el paso se deduce de la ruta: cada pantalla del recorrido es su paso y las demas ninguno", () => {
     expect(pasoDeRuta(RECORRIDO_AUDITAR, "/auditoria")).toBe(0);
     expect(pasoDeRuta(RECORRIDO_AUDITAR, "/inicio")).toBeNull();
