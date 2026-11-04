@@ -50,7 +50,7 @@ export function resultadosDe(
       })),
     ),
     ...oferta.entradas.map((e) => ({ texto: e.titulo, detalle: e.ayuda, ruta: rutaOPendientes(e.pagina) })),
-    ...oferta.sueltas.map((p) => ({ texto: p.titulo, detalle: p.enUnaLinea, ruta: rutaOPendientes(p.id) })),
+    ...[...oferta.sueltas, ...oferta.herramientas].map((p) => ({ texto: p.titulo, detalle: p.enUnaLinea, ruta: rutaOPendientes(p.id) })),
   ];
   const rutasVistas = new Set<string>();
   return todos

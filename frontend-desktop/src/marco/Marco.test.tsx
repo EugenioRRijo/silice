@@ -757,16 +757,17 @@ describe("Marco: especialidades apagadas", () => {
     );
   }
 
-  test("con el riesgo apagado, abrir #/riesgo por enlace directo dice que está apagado", async () => {
+  // F6, T2: «Riesgo» es una sección de la obra, así que su enlace directo es el de la obra (/riesgo sin obra redirige).
+  test("con el riesgo apagado, abrir #/obra/.../riesgo por enlace directo dice que está apagado", async () => {
     apagar("riesgo");
-    montar({ sesion: sesionDe("ana"), en: "/riesgo" });
+    montar({ sesion: sesionDe("ana"), en: "/obra/empresa/7/riesgo" });
     expect(await screen.findByText(MENSAJE_APAGADO)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1, name: "Riesgo de la obra" })).toBeNull();
   });
 
-  test("con el riesgo encendido, #/riesgo abre su pantalla", async () => {
+  test("con el riesgo encendido, #/obra/.../riesgo abre su pantalla", async () => {
     apagar();
-    montar({ sesion: sesionDe("ana"), en: "/riesgo" });
+    montar({ sesion: sesionDe("ana"), en: "/obra/empresa/7/riesgo" });
     expect(await titulo("Riesgo de la obra")).toBeInTheDocument();
     expect(screen.queryByText(MENSAJE_APAGADO)).toBeNull();
   });
@@ -778,7 +779,7 @@ describe("Marco: especialidades apagadas", () => {
   });
 
   test("si no se puede leer el estado, nada se oculta (la API sigue cortando)", async () => {
-    montar({ sesion: sesionDe("ana"), en: "/riesgo" });
+    montar({ sesion: sesionDe("ana"), en: "/obra/empresa/7/riesgo" });
     expect(await titulo("Riesgo de la obra")).toBeInTheDocument();
   });
 });

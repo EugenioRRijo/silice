@@ -70,15 +70,15 @@ describe("resultadosDe", () => {
   });
 
   it("ordena obras, secciones de obras, entradas de Empresa y pantallas sin sitio", () => {
-    // Las ocho secciones de una obra (Resumen, Presupuesto, Tramos, Archivos y planos, Versiones, Aprobaciones, Mercado y
-    // Control de obra) ya no caben con las dos pantallas de Empresa cuyo orden se mira. Con «vial» apagado se va «Tramos»
-    // y sin `aprobar_version` se va «Aprobaciones»; «Resumen» no sale porque lleva a la misma ruta que la obra. Quedan la
-    // obra, sus cinco secciones y dos de Empresa: ocho. No se apaga «edificación»: desde la Tarea 12 de F4 «Archivos y
+    // Las nueve secciones de una obra (Resumen, Presupuesto, Tramos, Archivos y planos, Versiones, Aprobaciones, Mercado,
+    // Control de obra y Riesgo) ya no caben con las dos pantallas de Empresa cuyo orden se mira. Con «vial» y «riesgo»
+    // apagados se van «Tramos» y «Riesgo», y sin `aprobar_version` se va «Aprobaciones»; «Resumen» no sale porque lleva a
+    // la misma ruta que la obra. Quedan la obra, sus cinco secciones y dos de Empresa: ocho. No se apaga «edificación»: desde la Tarea 12 de F4 «Archivos y
     // planos» no es de ningún módulo y no se quita con él.
     const sinVialNiAprobar = ofertaDe(
       PAGINAS.flatMap((p) => (p.accion === null || p.accion === "aprobar_version" ? [] : [p.accion])),
       false,
-      ["vial"],
+      ["vial", "riesgo"],
     );
     const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], sinVialNiAprobar).map((r) => r.texto);
     expect(textos[0]).toBe("Precio alto");

@@ -7,7 +7,7 @@
 // con su .db, que es el nombre que acepta `POST /v1/casos/actual`; la de la empresa se escribe `empresa` (ningún
 // nombre de carpeta puede serlo, porque todos terminan en .db).
 
-export type SeccionId = "resumen" | "presupuesto" | "tramos" | "archivos" | "versiones" | "aprobaciones" | "mercado" | "control";
+export type SeccionId = "resumen" | "presupuesto" | "tramos" | "archivos" | "versiones" | "aprobaciones" | "mercado" | "control" | "riesgo";
 
 export interface SeccionDef {
   id: SeccionId;
@@ -26,6 +26,7 @@ export const SECCIONES_DE_OBRA: readonly SeccionDef[] = [
   { id: "aprobaciones", titulo: "Aprobaciones", pagina: "aprobar", ayuda: "Las versiones que esperan dictamen y lo que se entregó al cliente." },
   { id: "mercado", titulo: "Mercado", pagina: "mercado", ayuda: "Los precios del mercado para los insumos de la obra, su histórico y las cotizaciones." },
   { id: "control", titulo: "Control de obra", pagina: "control", ayuda: "Lo avanzado en obra frente a lo planificado, con sus valuaciones." },
+  { id: "riesgo", titulo: "Riesgo", pagina: "riesgo", ayuda: "Cuánto puede subir el presupuesto de la obra si cambian los precios." },
 ];
 
 export type EntradaId = "precios" | "auditoria" | "produccion" | "personas" | "ayuda";
