@@ -56,18 +56,24 @@ ACCIONES = {
         "decidir_recuperacion",
         "entregar_paquete",
         "operar_arenera",
+        "registrar_costos_produccion",  # plan vial, Tarea 1: arma y administrador
         "leer_proyecto",
+        "ver_riesgo",  # plan vial, Tarea 15
         "aprobar_version",
         "cambiar_caso",
     ],
-    "rita": ["leer_proyecto", "revisar_paquete", "aprobar_version"],
+    "rita": ["leer_proyecto", "ver_riesgo", "revisar_paquete", "aprobar_version"],
     "admin": [
         "operar_arenera",
+        "registrar_costos_produccion",
+        "publicar_costo_propio",  # plan vial, Tarea 5: solo el administrador
+        "ver_riesgo",
         "cambiar_caso",
         "administrar_cuentas",
         "administrar_empresa",
         "administrar_precios",
         "administrar_red_y_api",
+        "activar_modulos",  # plan vial, Tarea 19: solo el administrador
         "cambiar_carpeta_de_datos",
     ],
 }

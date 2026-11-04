@@ -1,4 +1,5 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";

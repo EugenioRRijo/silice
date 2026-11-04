@@ -11,16 +11,16 @@ import "./BarraLateral.scss";
 import { obrasConMismoNombre } from "./homonimas";
 import { NombreDeObra } from "./NombreDeObra";
 import { abrirNuevaObra, cerrarNuevaObra, useNuevaObraAbierta } from "./nuevaObra";
-import { obrasAlcanzables, useOferta } from "./oferta";
+import { obrasAlcanzables, seccionesDeLaObra, useOferta } from "./oferta";
 import {
   PATRON_DE_EMPRESA,
   RUTA_DE_PENDIENTES,
-  rutaDeEmpresa,
   rutaDeObra,
   type SeccionId,
 } from "./secciones";
 import { useObras, type ObraDeCarpeta } from "./useObras";
 import { usePendientes } from "./usePendientes";
+import { ZonaEmpresa } from "./ZonaEmpresa";
 
 interface Props {
   obraAbierta: { carpeta: string | null; obraId: number } | null;
@@ -31,7 +31,7 @@ interface Props {
 // un `tree` de WAI-ARIA: una sola parada de Tab, flechas para recorrer, derecha despliega e izquierda pliega. Sin
 // títulos de grupo por carpeta (D-F3-3): las obras van por nombre y solo las de nombre repetido dicen su carpeta. Las
 // píldoras de Pendientes y de cada obra salen de los pendientes que el marco ya cargó (`usePendientes`).
-// Pasa de 250 líneas porque el árbol, su teclado y la ventana de Nueva obra comparten un mismo estado (qué está desplegado,
+// Empresa vive en ZonaEmpresa. Pasa de 250 líneas (276) porque el árbol, su teclado y la ventana de Nueva obra comparten un mismo estado (qué está desplegado,
 // qué fila tiene el foco); separarlos obligaría a subir ese estado sin quitar complejidad.
 export function BarraLateral({ obraAbierta, seccion }: Props) {
   const { acciones, puedeCambiarDeCarpeta, oferta } = useOferta();
@@ -51,8 +51,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   const [manual, setManual] = useState<Record<string, boolean>>({});
   const [foco, setFoco] = useState<string | null>(null);
   const arbol = useRef<HTMLUListElement>(null);
-
-  const { secciones, entradas } = oferta;
+  const { entradas } = oferta;
   const puedeCrear = acciones.includes("editar_hoja");
 
   // Por nombre (sin tildes ni mayúsculas) y, si se repite, por carpeta: la API las trae por carpeta (D-F3-3).
@@ -80,6 +79,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   };
 
   const claveAbierta = obraAbierta === null ? null : claveDeObra(obraAbierta.carpeta, obraAbierta.obraId);
+  const seccionesDe = () => seccionesDeLaObra(oferta);
   const desplegada = (clave: string) => manual[clave] ?? clave === claveAbierta;
   const claveActiva = claveAbierta !== null && seccion !== null ? `${claveAbierta}|${seccion}` : claveAbierta;
   const idDe = (clave: string) => `${base}-${clave.replace(/[^A-Za-z0-9]/g, "_")}`;
@@ -89,7 +89,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
   for (const o of visibles) {
     const clave = claveDeObra(o.carpeta, o.obra_id);
     clavesVisibles.push(clave);
-    if (desplegada(clave)) for (const s of secciones) clavesVisibles.push(`${clave}|${s.id}`);
+    if (desplegada(clave)) for (const s of seccionesDe()) clavesVisibles.push(`${clave}|${s.id}`);
   }
   const tabulable = [foco, claveActiva].find((c) => c !== null && clavesVisibles.includes(c)) ?? clavesVisibles[0] ?? null;
 
@@ -142,6 +142,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
     // El nombre accesible dice lo mismo que se ve: la obra, su carpeta si hay homónima y cuántos pendientes tiene.
     const nombre = [o.obra, carpeta, cuenta > 0 ? TEXTOS_PENDIENTES.porHacer(cuenta) : undefined].filter(Boolean).join(", ");
     const abierta = desplegada(clave);
+    const secciones = seccionesDe();
     const Chevron = abierta ? ChevronDown : ChevronRight;
     return (
       <li key={clave} role="none">
@@ -251,22 +252,7 @@ export function BarraLateral({ obraAbierta, seccion }: Props) {
         </div>
       )}
 
-      <nav aria-label="Empresa" className="silice-marco-lateral__empresa">
-        <h2 className="silice-marco-lateral__titulo">Empresa</h2>
-        <ul>
-          {entradas.map((e) => (
-            <li key={e.id}>
-              <Link
-                to={rutaDeEmpresa(e.id)}
-                aria-current={entradaActiva === e.id ? "page" : undefined}
-                className="silice-marco-lateral__fila"
-              >
-                {e.titulo}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <ZonaEmpresa entradas={entradas} entradaActiva={entradaActiva} idBase={base} />
 
       <DialogoNuevaObra
         abierto={nuevaAbierta}

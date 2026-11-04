@@ -1,20 +1,27 @@
 import { Button } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
-import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { pedir } from "../../api/cliente";
+import { unidadEscrita } from "../../comun/unidades";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { ConfirmarQuitar, DialogoAgregarPartida, useFocoAlCerrar } from "./AgregarPartida";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
+import { IvaDelPresupuesto, parrafosDeAyudaDelIva } from "./IvaDelPresupuesto";
 import { useObjetivosDeMercado } from "./ObjetivoDeMercado";
+import { PanelDeApu } from "./PanelDeApu";
+import type { PartidaDelPanel } from "./PanelDeApu";
+import { useHojaDeLaObra } from "./ProveedorDeLaHoja";
+import type { FilaDensa } from "../../comun/TablaDensa";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
+import { esFilaAfectada } from "./pasoDelPresupuesto";
 import { clavesDeAuditoria, comoSeMidio, enteroDeDigitos, rotuloDeOrigen, rutaDeQuitarPartida, rutaDeVista } from "./logica";
-import type { FilaPresupuesto, Resumen, VistaPresupuesto } from "./logica";
+import type { BaseAbierta, FilaPresupuesto, Resumen, VistaPresupuesto } from "./logica";
 import {
   FRASES_DE_RECHAZO,
   cambiarCantidad,
@@ -27,6 +34,13 @@ import {
 import type { EdicionDeCantidades } from "./logicaSecciones";
 import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
+
+// La pestaña «Partidas» del Presupuesto. Pasa de 250 líneas (≈470) porque junta tres capas que comparten el motor de
+// edición y el foco: la tabla editable de cantidades (`EditorDePresupuesto`, con `useEdicionDeSeccion`), el contenido con
+// los diálogos de agregar y quitar partida (`ContenidoPresupuesto`, que devuelve el foco a «Agregar partida» o a la fila) y
+// el panel lateral del APU (`PestanaPresupuesto`, Tarea 7). Partirla pasaría el motor, la espera y el foco por props entre
+// tres archivos sin quitar líneas (menores 3 de la Tarea 7 y 5 de la Tarea 5, cierre de F4).
 
 interface Props {
   id: string;
@@ -38,11 +52,19 @@ interface Props {
   alRecargarBorrador: () => Promise<void>;
   // Descarta lo que se ve y abre otro borrador de la versión (cuando recargar no sirve).
   alReabrir: () => void;
+  // La base del borrador: con `solo_lectura` (o sin permiso de edición) no se pinta nada que escriba (F4 2b).
+  base?: Pick<BaseAbierta, "solo_lectura">;
+  // La franja del Presupuesto pidió «Agregar la primera partida» (Tarea 5 del plan F4): la pestaña abre su diálogo en
+  // cuanto tiene la vista y avisa que lo atendió (así volver a la pestaña no lo abre otra vez).
+  pedirAgregar?: boolean;
+  alAtenderAgregar?: () => void;
 }
 
 interface PropsContenido extends Props {
   vista: VistaPresupuesto;
   alRelectura: () => void;
+  // Tarea 7 del plan F4: el código de una fila abre su APU en el panel lateral.
+  alAbrirApu: (p: PartidaDelPanel) => void;
 }
 
 interface PropsEditor extends PropsContenido {
@@ -52,9 +74,13 @@ interface PropsEditor extends PropsContenido {
   alQuitada: (codigo: string) => void;
   // Lleva el foco a un elemento cuando ya no queda ningún diálogo abierto.
   enfocar: (id: string) => void;
+  // F4 2b: sin permiso, la cantidad es texto y no hay «Volver a la calculada» ni «Quitar».
+  puedeEditar: boolean;
 }
 
 const PENDIENTE = "Pendiente";
+// Sin partidas no se pinta el IVA ni su ayuda (Tarea 5b): una sola regla para la sección y para «¿Qué es esto?».
+const llevaIva = (vista: VistaPresupuesto) => vista.filas.length > 0;
 const ID_AGREGAR = "hoja-agregar-partida-boton";
 
 const idDeCantidad = (n: number | string) => `hoja-cantidades-${n}`;
@@ -89,6 +115,8 @@ function EditorDePresupuesto({
   registrarEspera,
   alQuitada,
   enfocar,
+  puedeEditar,
+  alAbrirApu,
 }: PropsEditor) {
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
@@ -151,10 +179,32 @@ function EditorDePresupuesto({
       <TablaPaginada
         etiqueta="Presupuesto"
         desplazable
+        // Tarea 5 del plan F4: el renglón con un hallazgo crítico, de error o de advertencia lleva el fondo de precaución; la
+        // severidad sigue dicha en palabra en su Estado (el color nunca va solo).
+        claseDeFila={(f) => (esFilaAfectada(f.estado_severidad || null) ? "silice-fila--afectada" : undefined)}
         columnas={[
-          { clave: "partida", titulo: "Partida", ordenable: false },
+          {
+            clave: "partida",
+            titulo: "Partida",
+            ordenable: false,
+            // El código no se parte en líneas («C-000.000.001» salía en dos). Con precio, abre su APU en el panel (Tarea 7;
+            // también para quien revisa: es lectura). Sin precio no hay APU que abrir (el servidor daría el de otra partida).
+            celda: (f) =>
+              f.pu_texto === "" ? (
+                <span className="silice-hoja__codigo">{f.partida}</span>
+              ) : (
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  aria-label={`Abrir el APU de ${f.partida}`}
+                  onClick={() => alAbrirApu({ partida: f.partida!, descripcion: f.descripcion ?? "", unidad: f.unidad ?? "" })}
+                >
+                  <span className="silice-hoja__codigo">{f.partida}</span>
+                </Button>
+              ),
+          },
           { clave: "descripcion", titulo: "Descripción", ordenable: false },
-          { clave: "unidad", titulo: "Unidad", ordenable: false },
+          { clave: "unidad", titulo: "Unidad", ordenable: false, celda: (f) => unidadEscrita(f.unidad ?? "") },
           {
             clave: "cantidad",
             titulo: "Cantidad",
@@ -166,6 +216,7 @@ function EditorDePresupuesto({
               return (
                 <div className="silice-hoja__cantidad">
                   <CampoDeCelda
+                    soloLectura={!puedeEditar}
                     id={idDeCantidad(f.n!)}
                     etiqueta={`Cantidad, Presupuesto fila ${f.n}`}
                     valor={edicion.estado.textos[clave] ?? f.cantidad!}
@@ -183,6 +234,7 @@ function EditorDePresupuesto({
                   {f.escrita === "si" && (
                     <>
                       <span className="cds--type-helper-text-01">(calculada: {formatoEsVe(f.calculada!)})</span>
+                      {puedeEditar && (
                       <Button
                         kind="ghost"
                         size="sm"
@@ -191,6 +243,7 @@ function EditorDePresupuesto({
                       >
                         Volver a la calculada
                       </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -231,12 +284,12 @@ function EditorDePresupuesto({
               />
             ),
           },
-          {
+          ...(puedeEditar ? [{
             clave: "quitar",
             titulo: "Quitar",
             ordenable: false,
             // Solo los renglones de la versión; los del espacio se cambian en «Espacio y metrajes».
-            celda: (f) =>
+            celda: (f: FilaDensa) =>
               f.quitable === "si" ? (
                 <Button
                   id={idDeQuitar(f.n!)}
@@ -250,7 +303,7 @@ function EditorDePresupuesto({
               ) : (
                 ""
               ),
-          },
+          }] : []),
         ]}
         filas={vista.filas.map((f, i) => ({
           id: `renglon-${i}`,
@@ -277,6 +330,7 @@ function EditorDePresupuesto({
       <p className="silice-hoja__total cds--type-heading-03">
         Total del presupuesto <Cifra monto={vista.total} unidad={vista.moneda} />
       </p>
+      {llevaIva(vista) && <IvaDelPresupuesto impuestos={vista.impuestos} moneda={vista.moneda} />}
       {porQuitar !== null && (
         <ConfirmarQuitar
           partida={porQuitar.partida}
@@ -293,8 +347,15 @@ function EditorDePresupuesto({
 
 // La pestaña: su explicación, «Agregar partida» (también con el presupuesto vacío) y la tabla.
 function ContenidoPresupuesto(props: PropsContenido) {
-  const { id, rev, vista, alAceptar, alRelectura, alAusente, alRecargarBorrador } = props;
+  const { id, rev, vista, alAceptar, alRelectura, alAusente, alRecargarBorrador, pedirAgregar, alAtenderAgregar } = props;
+  const puedeEditar = usePuedeEditarLaHoja(props.base ?? null);
   const { abierto, anfitrion, abrir, cerrar, anclaDelBoton } = useDialogoDeOperacion();
+  // El pedido de la franja (Tarea 5) se atiende una vez: se abre el diálogo, que es el mismo de «Agregar partida».
+  useEffect(() => {
+    if (!pedirAgregar) return;
+    alAtenderAgregar?.();
+    if (puedeEditar) abrir();
+  }, [pedirAgregar, alAtenderAgregar, puedeEditar, abrir]);
   const enfocar = useFocoAlCerrar();
   const [aviso, setAviso] = useState("");
   // Con el editor montado, el `rev` sale de él (después de lo que tenga por mandar); sin renglones, de la página.
@@ -331,14 +392,9 @@ function ContenidoPresupuesto(props: PropsContenido) {
 
   return (
     <div className="silice-hoja__pestana">
-      <p className="cds--type-body-compact-01">
-        Las cantidades salen del espacio o de las partidas que agrega con «Agregar partida», y los precios de la composición de cada
-        partida. Aquí se edita la cantidad: una cantidad escrita a mano se marca en el Estado y puede volver a la calculada.
-      </p>
-      <p className="cds--type-helper-text-01">
-        {AYUDA_CIFRAS} Los cambios se aplican al borrador cuando deja de escribir; no se
-        guardan como versión hasta que lo pida.
-      </p>
+      <AyudaDePestana id="partidas" puedeEditar={puedeEditar} extra={llevaIva(vista) ? parrafosDeAyudaDelIva(vista.impuestos) : []} />
+      {puedeEditar && (
+        <>
       <div className="silice-hoja__acciones">
         <Button
           id={ID_AGREGAR}
@@ -354,13 +410,21 @@ function ContenidoPresupuesto(props: PropsContenido) {
           Agregar partida
         </Button>
       </div>
+        </>
+      )}
       <p className="cds--type-helper-text-01" role="status">
         {aviso}
       </p>
       {vista.vacio_mensaje !== null ? (
         <p className="cds--type-body-compact-01">{vista.vacio_mensaje}</p>
       ) : (
-        <EditorDePresupuesto {...props} registrarEspera={registrarEspera} alQuitada={alQuitada} enfocar={enfocar} />
+        <EditorDePresupuesto
+          {...props}
+          registrarEspera={registrarEspera}
+          alQuitada={alQuitada}
+          enfocar={enfocar}
+          puedeEditar={puedeEditar}
+        />
       )}
       {abierto && anfitrion !== null && (
         <DialogoAgregarPartida
@@ -383,9 +447,31 @@ export function PestanaPresupuesto(props: Props) {
   // Sube cada vez que hay que volver a leer la vista tras una edición: la anterior sigue a la vista mientras llega.
   const [lecturas, setLecturas] = useState(0);
   const alRelectura = useCallback(() => setLecturas((n) => n + 1), []);
+  // Tarea 7 del plan F4: el APU de una partida en el panel lateral, junto a la tabla. La partida queda elegida en el
+  // proveedor, así que la pestaña APU la muestra; una edición en el panel vuelve a leer la tabla (su total cambia).
+  const { elegirPartida } = useHojaDeLaObra();
+  const [enPanel, setEnPanel] = useState<PartidaDelPanel | null>(null);
+  const alAbrirApu = useCallback(
+    (p: PartidaDelPanel) => {
+      elegirPartida(p.partida);
+      setEnPanel(p);
+    },
+    [elegirPartida],
+  );
+  const { alAceptar } = props;
+  const alAceptarDelApu = useCallback(
+    (r: Resumen) => {
+      alAceptar(r);
+      alRelectura();
+    },
+    [alAceptar, alRelectura],
+  );
   return (
-    <VistaCarga<VistaPresupuesto> ruta={rutaDeVista(props.id, "presupuesto")} etiqueta="Presupuesto" alAusente={props.alAusente} recarga={lecturas}>
-      {(vista) => <ContenidoPresupuesto {...props} vista={vista} alRelectura={alRelectura} />}
-    </VistaCarga>
+    <div className={enPanel === null ? undefined : "silice-con-panel"}>
+      <VistaCarga<VistaPresupuesto> ruta={rutaDeVista(props.id, "presupuesto")} etiqueta="Presupuesto" alAusente={props.alAusente} recarga={lecturas}>
+        {(vista) => <ContenidoPresupuesto {...props} vista={vista} alRelectura={alRelectura} alAbrirApu={alAbrirApu} />}
+      </VistaCarga>
+      <PanelDeApu abierta={enPanel} alCerrar={() => setEnPanel(null)} alAceptar={alAceptarDelApu} />
+    </div>
   );
 }

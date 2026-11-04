@@ -1,4 +1,4 @@
-import { Pagination } from "@carbon/react";
+import { Pagination } from "../../comun/carbonEs";
 import { useState } from "react";
 import { TablaDensa } from "../../comun/TablaDensa";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
@@ -11,11 +11,13 @@ interface Props {
   vacio?: { titulo: string; descripcion?: string };
   // Las tablas anchas se desplazan dentro de su región (con teclado), no la página.
   desplazable?: boolean;
+  // La clase de un renglón (la fila afectada del Presupuesto, Tarea 5 del plan F4).
+  claseDeFila?: (fila: FilaDensa) => string | undefined;
 }
 
 // `TablaDensa` con paginación de 50 filas cuando pasa de 100 (RNF-11 mide 500 puntos) y, si se pide, en una región
 // desplazable con foco.
-export function TablaPaginada({ etiqueta, columnas, filas, vacio, desplazable = false }: Props) {
+export function TablaPaginada({ etiqueta, columnas, filas, vacio, desplazable = false, claseDeFila }: Props) {
   const [pagina, setPagina] = useState(1);
   const [tamano, setTamano] = useState(FILAS_POR_PAGINA);
   // Si cambia el número de filas (una edición, otra búsqueda) se vuelve a la primera página.
@@ -26,7 +28,7 @@ export function TablaPaginada({ etiqueta, columnas, filas, vacio, desplazable = 
   }
   const paginar = filas.length > LIMITE_SIN_PAGINAR;
   const visibles = paginar ? filas.slice((pagina - 1) * tamano, pagina * tamano) : filas;
-  const tabla = <TablaDensa etiqueta={etiqueta} columnas={columnas} filas={visibles} vacio={vacio} />;
+  const tabla = <TablaDensa etiqueta={etiqueta} columnas={columnas} filas={visibles} vacio={vacio} claseDeFila={claseDeFila} />;
   return (
     <>
       {desplazable ? (

@@ -1,4 +1,5 @@
-import { Button, Checkbox, InlineNotification, Select, SelectItem, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { Button, Checkbox, Select, SelectItem, Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { InlineNotification, TabList } from "../../comun/carbonEs";
 import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";

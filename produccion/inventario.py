@@ -10,11 +10,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from produccion.costos import validar_periodo
+from produccion.fuentes import CUANTO_T_A_M3
 from produccion.modelo import Material, Movimiento
 
 UNIDADES_VALIDAS = ("m3", "t")
@@ -109,6 +111,7 @@ def _registrar(
     cliente: str = "",
     origen: str = "manual",
     nota: str = "",
+    ahora: datetime | None = None,
 ) -> Movimiento:
     _material(sesion, material_id)
     movimiento = Movimiento(
@@ -122,7 +125,7 @@ def _registrar(
         nota=nota,
         origen=origen,
         usuario=usuario,
-        registrado=_ahora(),
+        registrado=_ahora() if ahora is None else ahora,
     )
     sesion.add(movimiento)
     sesion.flush()
@@ -137,9 +140,30 @@ def registrar_entrada(
     *,
     usuario: str,
     nota: str = "",
+    ahora: datetime | None = None,
 ) -> Movimiento:
     _exigir_positiva(cantidad, "la entrada")
-    return _registrar(sesion, material_id, fecha, "entrada", cantidad, usuario=usuario, nota=nota)
+    return _registrar(
+        sesion, material_id, fecha, "entrada", cantidad, usuario=usuario, nota=nota, ahora=ahora
+    )
+
+
+def registrar_consumo(
+    sesion: Session,
+    material_id: int,
+    fecha: date,
+    cantidad: Decimal,
+    *,
+    usuario: str,
+    ahora: datetime,
+    nota: str = "",
+) -> Movimiento:
+    """Lo que la planta gasta de un material propio al producir (plan vial, Tarea 3). Se guarda en
+    positivo, como el despacho, y resta de la existencia."""
+    _exigir_positiva(cantidad, "el consumo")
+    return _registrar(
+        sesion, material_id, fecha, "consumo", cantidad, usuario=usuario, nota=nota, ahora=ahora
+    )
 
 
 def registrar_despacho(
@@ -199,7 +223,7 @@ def registrar_ajuste_por_conteo(
 def _neto(movimiento: Movimiento) -> Decimal:
     if movimiento.tipo == "entrada":
         return movimiento.cantidad
-    if movimiento.tipo == "despacho":
+    if movimiento.tipo in ("despacho", "consumo"):
         return -movimiento.cantidad
     return movimiento.cantidad  # ajuste: ya lleva su signo
 
@@ -232,3 +256,70 @@ def tablero(sesion: Session, a_fecha: date | None = None) -> list[FilaExistencia
             )
         )
     return filas
+
+
+def a_toneladas(material: Material, cantidad: Decimal) -> Decimal:
+    """`cantidad` en la unidad de venta del material, en toneladas (m3 x densidad). Un material en
+    m3 sin densidad no se puede convertir: error que lo nombra."""
+    if material.unidad_venta == "t":
+        return cantidad
+    if material.densidad_t_m3 is None:
+        raise ErrorDeInventario(
+            f"El material {material.codigo} está en m3 y no tiene densidad (t/m3): "
+            "indíquela para pasarlo a toneladas."
+        )
+    return cantidad * material.densidad_t_m3
+
+
+def de_toneladas(material: Material, toneladas: Decimal) -> Decimal:
+    """Toneladas a la unidad de venta del material: la misma en t; en m3, t / densidad a cuatro
+    decimales con redondeo de mitad al par. Es la UNICA regla de esta conversion (la usan la
+    importacion de bascula y los consumos de la receta). Sin densidad (o no positiva): error."""
+    if material.unidad_venta == "t":
+        return toneladas
+    if material.densidad_t_m3 is None or material.densidad_t_m3 <= CERO:
+        raise ErrorDeInventario(
+            f"El material {material.codigo} está en m3 y no tiene densidad (t/m3): "
+            "indíquela para pasarlo desde toneladas."
+        )
+    return (toneladas / material.densidad_t_m3).quantize(CUANTO_T_A_M3, rounding=ROUND_HALF_EVEN)
+
+
+@dataclass(frozen=True, slots=True)
+class EntradaDelPeriodo:
+    """Una entrada (produccion) del periodo: codigo del material, su fecha y sus toneladas."""
+
+    codigo: str
+    fecha: date
+    toneladas: Decimal
+
+
+def entradas_del_periodo(sesion: Session, periodo: str) -> list[EntradaDelPeriodo]:
+    """Las entradas del periodo `AAAA-MM`, una por movimiento, en toneladas (m3 x densidad; un
+    material en m3 sin densidad es error que lo nombra). Los despachos, ajustes y consumos no
+    cuentan. Orden: codigo del material y luego orden de registro."""
+    anio, mes = validar_periodo(periodo)
+    desde = date(anio, mes, 1)
+    hasta = date(anio + (mes == 12), mes % 12 + 1, 1)
+    consulta = (
+        select(Movimiento, Material)
+        .join(Material, Material.id == Movimiento.material_id)
+        .where(Movimiento.tipo == "entrada", Movimiento.fecha >= desde, Movimiento.fecha < hasta)
+        .order_by(Material.codigo, Movimiento.id)
+    )
+    return [
+        EntradaDelPeriodo(
+            material.codigo, movimiento.fecha, a_toneladas(material, movimiento.cantidad)
+        )
+        for movimiento, material in sesion.execute(consulta)
+    ]
+
+
+def producido_en_periodo(sesion: Session, periodo: str) -> dict[str, Decimal]:
+    """Toneladas producidas en el periodo `AAAA-MM` por código de material: la suma de sus
+    entradas del mes (`entradas_del_periodo`). Ordenado por código; un material sin entradas en el
+    mes no aparece."""
+    sumas: dict[str, Decimal] = {}
+    for entrada in entradas_del_periodo(sesion, periodo):
+        sumas[entrada.codigo] = sumas.get(entrada.codigo, CERO) + entrada.toneladas
+    return sumas

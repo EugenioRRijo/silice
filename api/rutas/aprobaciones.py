@@ -5,9 +5,9 @@ Rutas finas sobre `aplicacion.aprobaciones` (la regla y el rastro, en la carpeta
 `aplicacion.indice_aprobaciones` (el reflejo de todas las carpetas en `instalacion.db`):
 
 - `POST ""` (`editar_hoja`) `{proyecto, version, nota}` → 201 `{id, estado, retirada}`.
-- `GET ""?proyecto=` (`editar_hoja`) → `{rastro: {integro, mensaje}, fases, versiones: {código:
-  {estado, por, el, notas, armo}}, eventos: [...],
-  ultima_aprobada}` de la obra en la carpeta de la sesión.
+- `GET ""?proyecto=` (`leer_proyecto`, F4 2b) → `{rastro: {integro, mensaje}, fases,
+  versiones: {código: {estado, por, el, notas, armo}}, eventos: [...], ultima_aprobada}` de la
+  obra en la carpeta de la sesión.
 - `GET /pendientes` (`aprobar_version`) → las filas del índice en aprobación, de todas las carpetas,
   lo más antiguo primero; antes vuelve a reflejar la carpeta abierta (la repone si se perdió).
 - `GET /mias` (`editar_hoja`, solo con sesión) → las 20 últimas filas que envió la cuenta.
@@ -102,6 +102,9 @@ router = APIRouter(prefix="/v1/aprobaciones", tags=["aprobaciones"], route_class
 EDITAR = Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))
 APROBAR = Depends(exigir_clave_o_sesion(Accion.APROBAR_VERSION))
 CuentaQueEdita = Annotated[SesionActiva | None, EDITAR]
+#: F4 2b: el rastro de una obra lo lee también quien revisa (Versiones en solo lectura).
+LEER = Depends(exigir_clave_o_sesion(Accion.LEER_PROYECTO))
+CuentaQueLee = Annotated[SesionActiva | None, LEER]
 CuentaQueAprueba = Annotated[SesionActiva | None, APROBAR]
 
 
@@ -382,9 +385,9 @@ def enviar(
     return AprobacionEnvioRespuesta(id=envio.id, estado="en_aprobacion", retirada=envio.retirada)
 
 
-@router.get("", response_model=AprobacionObraRespuesta, dependencies=[EDITAR])
+@router.get("", response_model=AprobacionObraRespuesta, dependencies=[LEER])
 def consultar_obra(
-    activa: CuentaQueEdita,
+    activa: CuentaQueLee,
     sesion: SesionDep,
     proyecto: Annotated[str, Query(max_length=200, description="Código o nombre de la obra")],
 ) -> AprobacionObraRespuesta:

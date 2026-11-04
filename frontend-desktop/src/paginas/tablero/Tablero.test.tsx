@@ -169,7 +169,7 @@ describe("Tablero del proyecto", () => {
     );
     montar("OB-S2");
     const tarjeta = await screen.findByText("95.066,60 USD");
-    expect(tarjeta).toHaveAttribute("title", "Valor exacto: 95066.60006250 USD");
+    expect(tarjeta).toHaveAttribute("title", "Valor exacto: 95.066,60006250 USD");
     const [anillo] = await screen.findAllByTestId("grafico-anillo");
     expect(anillo).toHaveAttribute("data-centro", "95.066,60");
   });
@@ -222,7 +222,7 @@ describe("logica del tablero", () => {
     expect(detalleDeTarjeta(pe("se alcanza en Mes 3"))).toBe("se alcanza en Mes 3");
     expect(detalleDeTarjeta(pe("se alcanza en Diario 1"))).toBe("se alcanza en Diario 1");
     // otras frases del nucleo y otras tarjetas no se tocan aunque digan «Dia 1»
-    const sinCurva = "sin curva de inversion: el punto de equilibrio no se ubica en el plan";
+    const sinCurva = "sin curva de inversión: el punto de equilibrio no se ubica en el plan";
     expect(detalleDeTarjeta(pe(sinCurva))).toBe(sinCurva);
     expect(detalleDeTarjeta(pe("Dia 1 se alcanza en Dia 1"))).toBe("Dia 1 se alcanza en Dia 1");
     expect(detalleDeTarjeta({ rotulo: "Auditoría", valor: "Cumple", detalle: "se alcanza en Dia 1" })).toBe("se alcanza en Dia 1");

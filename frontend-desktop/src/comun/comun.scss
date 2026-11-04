@@ -18,6 +18,10 @@
 .silice-tabla {
   min-inline-size: 0;
   overflow-x: auto;
+  // Si la tabla no cabe, el desplazamiento horizontal se ve: barra de ancho normal con los colores del tema (la barra
+  // superpuesta del sistema desaparecía y la tabla parecía cortada).
+  scrollbar-width: auto;
+  scrollbar-color: var(--cds-border-strong) var(--cds-layer-accent);
 
   .silice-cifra {
     text-align: end;
@@ -86,6 +90,18 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+// La caja que recibe el foco tras una acción (AvisoConFoco): mide lo que el aviso y su anillo de foco es el del tema, por
+// dentro; sin esto el navegador dibujaba un recuadro negro, a todo el ancho, alrededor de un aviso angosto.
+.silice-aviso-foco {
+  inline-size: fit-content;
+  max-inline-size: 100%;
+}
+
+.silice-aviso-foco:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
 }
 
 .silice-informe__ok {
@@ -179,4 +195,15 @@ html .cds--cc--chart-wrapper p,
 html div.cds--cc--legend div.legend-item p,
 html .cds--cc--tooltip p {
   font-size: 0.75rem !important;
+}
+
+// Un código de partida («C-000.000.001») se lee entero: no se parte en dos líneas.
+.silice-informe__codigo {
+  white-space: nowrap;
+}
+
+// La descripción de un hallazgo no se estrecha hasta una palabra por línea cuando la tabla es ancha.
+.silice-informe__descripcion {
+  display: inline-block;
+  min-inline-size: 18rem;
 }

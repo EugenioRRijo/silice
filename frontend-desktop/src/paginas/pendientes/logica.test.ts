@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { PendienteDeObra } from "../../api/tipos";
-import { claveDeObra, contarPorObra, contarUrgencias, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
+import { claveDeObra, contarPorObra, contarUrgencias, destinoDeLaAccion, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
 
 // Rediseño F3, Tarea 2 (D-F3-2): la acción de un pendiente abre la sección de su obra que monta la pantalla que la
 // fuente nombra (`accion.pagina`, el id de `shell/rutas.ts`). Oráculo escrito a mano desde la tabla de D-F3-2 y las
@@ -120,5 +120,16 @@ describe("contarUrgencias", () => {
 
   test("una lista vacía da ceros", () => {
     expect(contarUrgencias([])).toEqual({ bloquea: 0, aviso: 0 });
+  });
+});
+
+// Tarea 2 del plan F4: el destino de una acción sin necesidad de un pendiente (lo usa el Resumen de la obra abierta).
+describe("destinoDeLaAccion", () => {
+  test.each([
+    ["hoja", "/obra/Carpeta%20Sur.db/3/presupuesto"],
+    ["desconocida", "/obra/Carpeta%20Sur.db/3/resumen"],
+    ["catalogo", "/empresa/precios"],
+  ])("«%s» lleva a %s", (pagina, ruta) => {
+    expect(destinoDeLaAccion("Carpeta Sur.db", 3, pagina)).toBe(ruta);
   });
 });

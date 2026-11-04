@@ -1,13 +1,16 @@
 import { Button } from "@carbon/react";
-import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
-import { useCallback, useId, useState } from "react";
+import { useCallback, useContext, useId, useState } from "react";
+import { Link, useInRouterContext } from "react-router";
 import { pedir } from "../../api/cliente";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { TablaPaginada } from "./TablaPaginada";
 import { TablaEditable } from "./TablaEditable";
 import type { IrA } from "./TablaEditable";
 import { Cifra } from "./Cifra";
 import { VistaCarga } from "./VistaCarga";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import { rutaDeObra } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
 import {
   FRASE_DE_RECHAZO,
@@ -19,14 +22,16 @@ import {
   ubicarError,
 } from "./logica";
 import type {
+  BaseAbierta,
   FilaEditable,
   Resumen,
   TablasEditables,
   UbicacionDeError,
   VistaEspacio,
 } from "./logica";
-import { ImportarPlano } from "./ImportarPlano";
+import { ENLACE_DESDE_EL_ESPACIO } from "../archivos/textos";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
   id: string;
@@ -38,6 +43,8 @@ interface Props {
   alRecargarBorrador: () => Promise<void>;
   // Descarta lo que se ve y abre otro borrador de la versión (cuando recargar no sirve).
   alReabrir: () => void;
+  // La base del borrador: con `solo_lectura` (o sin permiso de edición) no se pinta nada que escriba (F4 2b).
+  base?: Pick<BaseAbierta, "solo_lectura">;
 }
 
 interface PropsContenido extends Props {
@@ -54,12 +61,15 @@ function ContenidoEspacio({
   alRecargarBorrador,
   alReabrir,
   alRelectura,
+  base,
 }: PropsContenido) {
   const { alExpirar } = useAplicacion();
+  const puedeEditar = usePuedeEditarLaHoja(base ?? null);
+  // Dentro de una obra (y de un enrutador), el enlace a Archivos y planos, donde se importa el plano desde la Tarea 11 de F4.
+  const obra = useContext(ContextoDeLaObra);
+  const enRuta = useInRouterContext();
   const idDelError = useId();
   const [irA, setIrA] = useState<(IrA & { tabla: string }) | null>(null);
-  // El plano se fusiona y se vuelve a leer el espacio: hasta que termina, las tablas no se editan (3e-2).
-  const [fusionando, setFusionando] = useState(false);
   const edicion = useEdicionDeSeccion<TablasEditables, UbicacionDeError>({
     borrador: id,
     inicial: sembrarTablas(vista.tablas, vista.filas, nuevaClaveDeFila),
@@ -98,24 +108,14 @@ function ContenidoEspacio({
 
   return (
     <div className="silice-hoja__pestana">
-      <p className="cds--type-body-compact-01">{vista.ayuda}</p>
-      <p className="cds--type-helper-text-01">
-        {AYUDA_CIFRAS} En «Vértices» cada punto se escribe x,y,z: ahí la coma
-        separa las coordenadas y los decimales van con punto (0,0,0; 2.5,0,0).
-        Los cambios se aplican al borrador cuando deja de escribir; no se
-        guardan como versión hasta que lo pida.
-      </p>
-      <ImportarPlano
-        id={id}
-        rev={rev}
-        ocupadoPorEdicion={edicion.envio !== "quieto"}
-        alAusente={alAusente}
-        alAceptar={alAceptar}
-        alRecargar={edicion.recargar}
-        alReabrir={alReabrir}
-        alExpirar={alExpirar}
-        alOcuparse={setFusionando}
-      />
+      <AyudaDePestana id="espacio" puedeEditar={puedeEditar} delServidor={vista.ayuda} />
+      {puedeEditar && obra !== null && enRuta && (
+        <p className="cds--type-body-compact-01">
+          <Link className="cds--link" to={rutaDeObra(obra.carpeta, obra.obraId, "archivos")}>
+            {ENLACE_DESDE_EL_ESPACIO}
+          </Link>
+        </p>
+      )}
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && (
         <AvisoDeEdicion
@@ -142,11 +142,7 @@ function ContenidoEspacio({
           )}
         </AvisoDeEdicion>
       )}
-      <fieldset
-        disabled={fusionando}
-        aria-label="Tablas del espacio"
-        className="silice-hoja__bloqueable"
-      >
+      <div className="silice-hoja__tablas-espacio">
         {vista.tablas.map((t) => (
           <TablaEditable
             key={t.clave}
@@ -164,9 +160,10 @@ function ContenidoEspacio({
             valorAceptado={(filaClave, columna) =>
               valorAceptado(t.clave, filaClave, columna)
             }
+            soloLectura={!puedeEditar}
           />
         ))}
-      </fieldset>
+      </div>
       <section className="silice-hoja__seccion">
         <h2 className="cds--type-heading-compact-02">Cantidades derivadas</h2>
         {vista.vacio_mensaje !== null ? (
@@ -204,10 +201,6 @@ function ContenidoEspacio({
           />
         )}
       </section>
-      <p className="silice-hoja__total cds--type-heading-03">
-        Total del presupuesto{" "}
-        <Cifra monto={vista.total} unidad={vista.moneda} />
-      </p>
       {vista.pendientes > 0 && (
         <p className="cds--type-body-compact-01">
           {vista.pendientes} partida(s) no tienen composición en el catálogo del

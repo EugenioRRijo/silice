@@ -1,26 +1,27 @@
-import { Button, InlineLoading, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
+import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { Link, useInRouterContext } from "react-router";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
+import { rutaDeObra } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
 import { TablaPaginada } from "./TablaPaginada";
-import { OperacionesDePrecios } from "./OperacionesDePrecios";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
 import { VistaCarga } from "./VistaCarga";
 import { fechaCorta, partirColumnasDePrecios, rutaDeAtipicos, rutaDePrecios } from "./logica";
 import type { AtipicosRespuesta, CeldaPrecio, ColumnaPrecio, PreciosRespuesta } from "./logica";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
   proyecto: string;
   // null = borrador en blanco: no hay versión guardada de la que ver los precios.
   version: string | null;
   alAusente: () => void;
-  // Los cambios sin guardar del borrador (con alguno no se cotiza ni se retira) y qué hacer al crearse una versión.
-  cambios: number;
-  alCrearVersion: AlCrearVersion;
 }
 
 const SIN_VERSION = "Abra una versión guardada para ver el origen de sus precios.";
@@ -221,24 +222,28 @@ function BuscarAtipicos({ proyecto, version }: { proyecto: string; version: stri
 }
 
 // Pestaña «Precios»: el origen del precio de cada insumo de la versión GUARDADA (no del borrador), evaluado a la fecha
-// del servidor. Registrar y retirar una cotización crean una versión nueva (3d-2).
-export function PestanaPrecios({ proyecto, version, alAusente, cambios, alCrearVersion }: Props) {
+// del servidor. Registrar y retirar una cotización viven en Mercado desde la Tarea 13 del plan F4: aquí queda el enlace.
+export function PestanaPrecios({ proyecto, version, alAusente }: Props) {
+  // Cotizar crea una versión desde la GUARDADA: su regla es solo el permiso, no la base del borrador (Eugenio, 2026-10-31).
+  const puedeEditar = usePuedeEditarLaHoja(null);
+  const obra = useContext(ContextoDeLaObra);
+  const enRuta = useInRouterContext();
   if (version === null) return <p className="cds--type-body-compact-01">{SIN_VERSION}</p>;
   return (
     <VistaCarga<PreciosRespuesta> ruta={rutaDePrecios(proyecto, version)} etiqueta="Precios" alAusente={alAusente}>
       {(vista) => (
         <div className="silice-hoja__pestana">
-          <p className="cds--type-body-compact-01">
-            Lista, referencia, fecha, moneda y tasa de cada insumo, su origen y cuánto valor perdió hasta hoy (erosión). Una
-            cotización (con su proveedor, número y fecha) vale solo para este proyecto y prevalece sobre la lista global
-            hasta que se retire.
-          </p>
+          <AyudaDePestana id="precios" puedeEditar={puedeEditar} />
           <p className="cds--type-helper-text-01">
             Se muestra la versión guardada, no los cambios sin guardar. Evaluada al {fechaCorta(vista.fecha_evaluacion)}.
           </p>
           <TablaDePrecios vista={vista} />
           <BuscarAtipicos proyecto={proyecto} version={version} />
-          <OperacionesDePrecios proyecto={proyecto} version={version} filas={vista.filas} cambios={cambios} alCrearVersion={alCrearVersion} />
+          {puedeEditar && obra !== null && enRuta && (
+            <Link className="cds--link" to={rutaDeObra(obra.carpeta, obra.obraId, "mercado")}>
+              Registrar una cotización en Mercado
+            </Link>
+          )}
         </div>
       )}
     </VistaCarga>

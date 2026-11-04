@@ -70,7 +70,7 @@ function escenario(nombre: string, total: string): EscenarioRespuesta {
 }
 
 // Carbon antepone al titulo el aviso de ordenacion: se compara el final.
-const titulo = (c: HTMLElement) => (c.textContent ?? "").replace(/^Click to sort rows by .* header in ascending order/, "");
+const titulo = (c: HTMLElement) => (c.textContent ?? "").replace(/^Pulse para ordenar las filas por .* de menor a mayor/, "");
 
 describe("Escenarios de sensibilidad", () => {
   const fetchFalso = vi.fn<typeof fetch>();
@@ -202,8 +202,8 @@ describe("Escenarios de sensibilidad", () => {
     });
     const tabla = screen.getByRole("table", { name: "Comparación contra el base" });
     const filas = within(tabla).getAllByRole("row");
-    expect(within(filas[1]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["FIC-1", "1.000,00", "0.00(sin variación)", "0.00(sin variación)"]);
-    expect(within(filas[2]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["escenario 1", "1.050,00", "50.00(desfavorable)", "5.00(desfavorable)"]);
+    expect(within(filas[1]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["FIC-1", "1.000,00", "0,00(sin variación)", "0,00(sin variación)"]);
+    expect(within(filas[2]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["escenario 1", "1.050,00", "50,00(desfavorable)", "5,00(desfavorable)"]);
 
     // el nombre por omision avanza y el segundo envio lleva los dos
     expect(screen.getByLabelText("Nombre del escenario")).toHaveValue("escenario 2");

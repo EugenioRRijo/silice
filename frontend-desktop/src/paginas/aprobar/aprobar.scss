@@ -58,3 +58,27 @@
   max-inline-size: 65ch;
   color: var(--silice-texto-secundario);
 }
+
+// «Rastro de la obra» (Tarea 6 del plan F4, venía de la pestaña «Trazabilidad» de la Hoja): ícono y texto en la misma
+// línea; el color solo acompaña.
+.silice-aprobar__rastro {
+  display: grid;
+  gap: 0.5rem;
+  max-inline-size: 65rem;
+  min-inline-size: 0;
+}
+
+.silice-aprobar__rastro-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.silice-aprobar__rastro-integro {
+  fill: var(--silice-verificado);
+}
+
+.silice-aprobar__rastro-roto {
+  fill: var(--silice-sev-critico);
+}

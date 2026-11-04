@@ -1,4 +1,5 @@
-import { Accordion, AccordionItem, Button, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { Accordion, AccordionItem, Button, Select, SelectItem } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { Add, TrashCan } from "@carbon/icons-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";

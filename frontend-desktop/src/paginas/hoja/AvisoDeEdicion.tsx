@@ -1,4 +1,5 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import type { ReactNode } from "react";
 import type { EnvioDeSeccion, ErrorDeSeccion } from "./useEdicionDeSeccion";
 

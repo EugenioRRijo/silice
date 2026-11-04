@@ -4,6 +4,9 @@
 
 // Barra superior del marco nuevo (maqueta aprobada): fondo del marco, 48 px, raya inferior de 3 px del acento. Texto
 // claro sobre el fondo oscuro. Sin hexadecimales: solo --silice-* y --cds-*. Rem, sin sombra ni animacion.
+// Cuando no cabe todo (1366 px con letra Normal en una obra, hallazgo 7 del recorrido del 01-11-2026) cede primero el
+// buscador, hasta su icono; luego las migas intermedias, que se recortan con puntos suspensivos. La seccion actual, el
+// tamano de letra y la cuenta no ceden: la cuenta, al ceder su envoltorio, sacaba el boton por el borde derecho.
 .silice-marco-barra {
   display: flex;
   align-items: center;
@@ -43,12 +46,6 @@
     @include type.type-style("body-compact-01");
   }
 
-  li {
-    min-inline-size: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
   a {
     color: var(--cds-text-inverse);
     text-decoration: underline;
@@ -60,8 +57,24 @@
   }
 }
 
-.silice-marco-barra__separador {
+// Las intermedias ceden cien veces antes que la ultima (el reparto de flex pondera por el ancho); recortadas conservan
+// unas letras. La ultima, la seccion donde se esta, solo cede si ni con las intermedias al minimo cabe.
+.silice-marco-barra__migas li {
+  flex: 0 100 auto;
+  min-inline-size: 2.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.silice-marco-barra__migas li:last-child {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+}
+
+// Mas especifica que `.silice-marco-barra__migas li`: el «/» no cede ni guarda un minimo.
+.silice-marco-barra__migas .silice-marco-barra__separador {
   flex: none;
+  min-inline-size: 0;
   opacity: 0.7;
 }
 
@@ -69,13 +82,15 @@
   font-weight: 600;
 }
 
+// Cede mil veces antes que las migas: con poco ancho queda en su icono (el texto se recorta, el nombre accesible no).
 .silice-marco-barra__buscar {
   display: flex;
-  flex: 0 1 28rem;
+  flex: 0 1000 28rem;
   align-items: center;
   gap: 0.5rem;
   box-sizing: border-box;
-  min-inline-size: 2rem;
+  min-inline-size: 2.5rem;
+  overflow: hidden;
   block-size: 2rem;
   padding-inline: 0.75rem;
   border: 1px solid var(--cds-border-strong-01);
@@ -109,7 +124,12 @@
 
 // Los controles existentes se pintaron para fondo claro: aqui heredan el texto claro de la barra.
 .silice-marco-barra .silice-letra {
+  flex: none;
   border-inline-start-color: var(--cds-border-strong-01);
+}
+
+.silice-marco-barra .silice-cuenta {
+  flex: none;
 }
 
 .silice-marco-barra .silice-letra__opcion {
@@ -148,6 +168,7 @@
     .silice-marco-barra__buscar {
       flex: none;
       inline-size: 2rem;
+      min-inline-size: 2rem;
       padding-inline: 0;
       justify-content: center;
     }

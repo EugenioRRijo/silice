@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { ObraDeCarpetaRespuesta, PendienteDeObra, SesionRespuesta } from "../api/tipos";
 import { ContextoAplicacion } from "../shell/contexto";
@@ -27,6 +27,19 @@ const nodo = (
 const fs = nodo.getBuiltinModule("node:fs");
 const leer = (ruta: string) => fs.readFileSync(`${nodo.cwd()}/src/${ruta}`, "utf-8");
 
+// Bloque `{ … }` que sigue a `apertura` en un fuente SCSS, con sus llaves anidadas.
+const bloque = (fuente: string, apertura: string) => {
+  const i = fuente.indexOf(apertura);
+  if (i < 0) return "";
+  let nivel = 0;
+  for (let j = fuente.indexOf("{", i); j < fuente.length; j++) {
+    if (fuente[j] === "{") nivel++;
+    if (fuente[j] === "}" && --nivel === 0) return fuente.slice(i, j + 1);
+  }
+  return "";
+};
+const regla = (fuente: string, selector: string) => bloque(fuente, `${selector} {`);
+
 // Carpetas y obras inventadas.
 const NORTE = "Carpeta Norte.db";
 const SUR = "Carpeta Sur.db";
@@ -37,6 +50,9 @@ function obra(carpeta: string | null, obra_id: number, nombre: string): ObraDeCa
 const CLINICA = obra(NORTE, 1, "Clínica Las Mercedes");
 const TORRE = obra(NORTE, 2, "Torre B");
 const GALPON = obra(SUR, 3, "Galpón Sur");
+
+// Las obras de la carpeta abierta que ya tienen tramos viales guardados (`GET /v1/vial/obras`).
+let vialesDelServidor: number[] = [];
 
 let respuesta:
   | { carpeta_actual: string | null; carpeta_actual_titulo: string; obras: ObraDeCarpetaRespuesta[] }
@@ -50,12 +66,14 @@ function servidor(obras: ObraDeCarpetaRespuesta[], carpetaActual: string | null 
 
 beforeEach(() => {
   servidor([CLINICA, TORRE, GALPON]);
+  vialesDelServidor = [];
   pedirFalso.mockReset();
   pedirFalso.mockImplementation(async (ruta: string) => {
     if (ruta === "/v1/obras/todas") {
       if (respuesta instanceof ErrorDeApi) throw respuesta;
       return respuesta;
     }
+    if (ruta === "/v1/vial/obras") return { obras: vialesDelServidor };
     if (ruta === "/v1/carpeta") return { moneda: "Bs", declarada: true, lista: null, aviso: null };
     throw new Error(`petición inesperada: ${ruta}`);
   });
@@ -174,11 +192,9 @@ describe("BarraLateral: obra abierta", () => {
     expect(filaClinica).toHaveAttribute("aria-expanded", "true");
     expect(within(lista).getByRole("treeitem", { name: "Torre B" })).toHaveAttribute("aria-expanded", "false");
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
-    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Aprobaciones", "Mercado", "Control de obra"]);
-    expect(secciones.map((s) => s.getAttribute("aria-current"))).toEqual([null, "page", null, null, null]);
+    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Control de obra"]);
+    expect(secciones.map((s) => s.getAttribute("aria-current"))).toEqual([null, "page", null, null, null, null, null, null]);
     expect(secciones[1]).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/presupuesto");
-    expect(screen.queryByRole("treeitem", { name: "Archivos y planos" })).toBeNull();
-    expect(screen.queryByRole("treeitem", { name: "Versiones" })).toBeNull();
   });
 
   it("sin obra abierta ninguna está desplegada", async () => {
@@ -192,8 +208,41 @@ describe("BarraLateral: obra abierta", () => {
     pintar({ sesion: sesionDe("rita"), abierta, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
     await arbol();
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
-    // «hoja» y «mercado» exigen editar_hoja y «control», control_de_obra: quien solo revisa no los ve.
-    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Aprobaciones"]);
+    // «control» exige control_de_obra: quien solo revisa no lo ve. «Presupuesto», «Archivos y planos», «Versiones» y
+    // «Mercado» sí, en solo lectura (F4 2b, Eugenio, 2026-10-31; Tareas 11 y 6; Tarea 13, ronda 2).
+    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado"]);
+  });
+});
+
+describe("BarraLateral: «Tramos» en toda obra mientras el módulo vial esté encendido", () => {
+  const nombres = (obraAbierta: string) =>
+    within(screen.getByRole("group", { name: obraAbierta })).getAllByRole("treeitem").map((s) => s.textContent);
+  const clinica = { carpeta: NORTE, obraId: 1 };
+  const rutaDeClinica = "/obra/Carpeta%20Norte.db/1/resumen";
+
+  it("una obra sin tramos guardados también ofrece «Tramos», entre Presupuesto y Aprobaciones", async () => {
+    pintar({ abierta: clinica, seccion: "resumen", ruta: rutaDeClinica });
+    await arbol();
+    expect(await screen.findByRole("treeitem", { name: "Tramos" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/tramos");
+    expect(nombres("Clínica Las Mercedes")).toEqual(["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Control de obra"]);
+  });
+
+  it("otra obra de la misma carpeta también", async () => {
+    pintar({ abierta: { carpeta: NORTE, obraId: 2 }, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/2/resumen" });
+    await arbol();
+    expect(await screen.findByRole("treeitem", { name: "Tramos" })).toBeInTheDocument();
+  });
+
+  it("la sección en la que se está se marca como la actual", async () => {
+    pintar({ abierta: clinica, seccion: "tramos", ruta: "/obra/Carpeta%20Norte.db/1/tramos" });
+    await arbol();
+    expect(await screen.findByRole("treeitem", { name: "Tramos" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("ya no pide la lista de obras con tramos: la sección no depende de ella", async () => {
+    pintar({ sesion: sesionDe("rita"), abierta: clinica, seccion: "resumen", ruta: rutaDeClinica });
+    await arbol();
+    expect(pedirFalso).not.toHaveBeenCalledWith("/v1/vial/obras");
   });
 });
 
@@ -276,10 +325,10 @@ describe("BarraLateral: teclado (patrón tree de WAI-ARIA)", () => {
     clinica.focus();
     await u.keyboard("{ArrowDown}");
     expect(within(lista).getByRole("treeitem", { name: "Resumen" })).toHaveFocus();
-    await u.keyboard("{ArrowDown}{ArrowDown}");
+    await u.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}");
     expect(within(lista).getByRole("treeitem", { name: "Aprobaciones" })).toHaveFocus();
     await u.keyboard("{ArrowUp}");
-    expect(within(lista).getByRole("treeitem", { name: "Presupuesto" })).toHaveFocus();
+    expect(within(lista).getByRole("treeitem", { name: "Versiones" })).toHaveFocus();
   });
 
   it("flecha derecha despliega una obra plegada y flecha izquierda la pliega", async () => {
@@ -480,12 +529,16 @@ describe("BarraLateral: niveles del árbol", () => {
     expect(nivel(within(lista).getByRole("treeitem", { name: "Galpón Sur" }))).toEqual(["1", "3", "2"]);
     expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "3", "3"]);
     const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
+    // Resumen, Presupuesto, Tramos, Archivos y planos, Versiones, Aprobaciones, Mercado y Control de obra.
     expect(secciones.map(nivel)).toEqual([
-      ["2", "5", "1"],
-      ["2", "5", "2"],
-      ["2", "5", "3"],
-      ["2", "5", "4"],
-      ["2", "5", "5"],
+      ["2", "8", "1"],
+      ["2", "8", "2"],
+      ["2", "8", "3"],
+      ["2", "8", "4"],
+      ["2", "8", "5"],
+      ["2", "8", "6"],
+      ["2", "8", "7"],
+      ["2", "8", "8"],
     ]);
   });
 
@@ -496,7 +549,7 @@ describe("BarraLateral: niveles del árbol", () => {
     expect(nivel(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" }))).toEqual(["1", "2", "1"]);
     expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "2", "2"]);
     const primera = within(screen.getByRole("group", { name: "Torre B" })).getAllByRole("treeitem")[0]!;
-    expect(nivel(primera)).toEqual(["2", "5", "1"]);
+    expect(nivel(primera)).toEqual(["2", "8", "1"]);
   });
 });
 
@@ -747,18 +800,6 @@ describe("BarraLateral: nombres largos de obra", () => {
 // mínimo. jsdom no calcula el diseño: la estructura se prueba en el DOM y las reglas en el fuente; la medida real
 // (cuántas obras caben a 1366×768) se hace en el navegador.
 describe("BarraLateral: la zona de obras con letra grande", () => {
-  const bloque = (fuente: string, apertura: string) => {
-    const i = fuente.indexOf(apertura);
-    if (i < 0) return "";
-    let nivel = 0;
-    for (let j = fuente.indexOf("{", i); j < fuente.length; j++) {
-      if (fuente[j] === "{") nivel++;
-      if (fuente[j] === "}" && --nivel === 0) return fuente.slice(i, j + 1);
-    }
-    return "";
-  };
-  const regla = (fuente: string, selector: string) => bloque(fuente, `${selector} {`);
-
   it("la cabecera de Obras y «Nueva obra» quedan fuera del árbol, que tiene su propio desplazamiento", async () => {
     servidor([obra(NORTE, 1, "Torre"), TORRE]);
     pintar();
@@ -792,5 +833,118 @@ describe("BarraLateral: la zona de obras con letra grande", () => {
     expect(regla(compacta, ".silice-marco-lateral__obras")).toMatch(/min-block-size:\s*10rem/);
     expect(compacta).not.toMatch(/display:\s*none/);
     expect(compacta).not.toMatch(/silice-letra/);
+  });
+});
+
+// Tarea 0 de F4: con letra Grande o Muy grande «Empresa» se pliega para darle su alto al árbol (decisión de Eugenio al
+// cierre de F3). Con letra normal sigue como antes. El tamaño se pone a mano en la raíz, como lo deja `aplicarTamanoLetra`.
+describe("BarraLateral: Empresa plegable con letra grande (F4, Tarea 0)", () => {
+  const CINCO = ["Precios y catálogo", "Auditar un presupuesto", "Producción", "Empresa y personas", "Ayuda"];
+  const todo = () => sesionDe("admin", { acciones: [...sesionDe("admin").acciones, "leer_proyecto"] });
+  const ponerLetra = (valor: string) => document.documentElement.setAttribute("data-silice-letra", valor);
+  const zona = () => screen.getByRole("navigation", { name: "Empresa" });
+  afterEach(() => document.documentElement.removeAttribute("data-silice-letra"));
+
+  it("con letra normal Empresa es un h2 sin botón y se ven sus entradas", async () => {
+    pintar({ sesion: todo() });
+    await arbol();
+    const titulo = within(zona()).getByRole("heading", { name: "Empresa" });
+    expect(within(titulo).queryByRole("button")).toBeNull();
+    expect(within(zona()).getAllByRole("link").map((e) => e.textContent)).toEqual(CINCO);
+  });
+
+  it("con letra grande Empresa arranca plegada", async () => {
+    ponerLetra("grande");
+    pintar({ sesion: todo() });
+    await arbol();
+    const boton = within(zona()).getByRole("button", { name: "Empresa" });
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    expect(boton.parentElement?.tagName).toBe("H2");
+    expect(screen.queryByRole("link", { name: "Precios y catálogo" })).toBeNull();
+  });
+
+  it("al pulsar Empresa se despliega, con clic, Enter o Espacio, y aria-controls apunta a su lista", async () => {
+    ponerLetra("muy-grande");
+    const usuario = userEvent.setup();
+    pintar({ sesion: todo() });
+    await arbol();
+    const boton = within(zona()).getByRole("button", { name: "Empresa" });
+    await usuario.click(boton);
+    expect(boton).toHaveAttribute("aria-expanded", "true");
+    expect(within(zona()).getAllByRole("link").map((e) => e.textContent)).toEqual(CINCO);
+    const lista = document.getElementById(boton.getAttribute("aria-controls") ?? "");
+    expect(lista).not.toBeNull();
+    expect(lista?.tagName).toBe("UL");
+    expect(lista).toContainElement(screen.getByRole("link", { name: "Ayuda" }));
+    await usuario.click(boton);
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    boton.focus();
+    await usuario.keyboard("{Enter}");
+    expect(boton).toHaveAttribute("aria-expanded", "true");
+    await usuario.keyboard("{Enter}");
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    await usuario.keyboard(" ");
+    expect(boton).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("con una entrada de Empresa abierta arranca desplegada", async () => {
+    ponerLetra("muy-grande");
+    pintar({ sesion: todo(), ruta: "/empresa/precios" });
+    await arbol();
+    expect(within(zona()).getByRole("button", { name: "Empresa" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("pasar de normal a muy grande en vivo la pliega, y volver a normal la muestra sin botón", async () => {
+    pintar({ sesion: todo() });
+    await arbol();
+    expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
+    act(() => ponerLetra("muy-grande"));
+    const boton = await within(zona()).findByRole("button", { name: "Empresa" });
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Ayuda" })).toBeNull();
+    act(() => ponerLetra("normal"));
+    await waitFor(() => expect(within(zona()).queryByRole("button", { name: "Empresa" })).toBeNull());
+    expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
+  });
+
+  it("el botón hereda la letra del título, tiene foco visible y con letra grande mide al menos 1,5 rem", () => {
+    const hoja = leer("marco/BarraLateral.scss");
+    const boton = regla(hoja, ".silice-marco-lateral__empresa-boton");
+    expect(boton).not.toBe("");
+    expect(boton).toMatch(/font:\s*inherit/);
+    expect(boton).toMatch(/color:\s*inherit/);
+    expect(boton).toMatch(/text-transform:\s*inherit/);
+    expect(regla(boton, "&:focus-visible")).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
+    const compacta = bloque(hoja, "@include u.con-letra-grande");
+    expect(regla(compacta, ".silice-marco-lateral__empresa-boton")).toMatch(/min-block-size:\s*1\.5rem/);
+  });
+});
+
+describe("BarraLateral con módulos apagados (plan vial, Tarea 19)", () => {
+  function pintarConApagados(apagados: string[]) {
+    return render(
+      <MemoryRouter initialEntries={["/pendientes"]}>
+        <ContextoAplicacion.Provider
+          value={{ sesion: sesionDe("admin"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), modulosApagados: apagados }}
+        >
+          <ContextoPendientes.Provider value={SIN_PENDIENTES}>
+            <BarraLateral obraAbierta={null} seccion={null} />
+          </ContextoPendientes.Provider>
+        </ContextoAplicacion.Provider>
+      </MemoryRouter>,
+    );
+  }
+
+  it("encendida, la zona Empresa ofrece «Producción»", async () => {
+    pintarConApagados([]);
+    expect(await screen.findByRole("link", { name: /Producción/ })).toBeTruthy();
+  });
+
+  it("con producción apagada, «Producción» no aparece en la barra", async () => {
+    pintarConApagados(["produccion"]);
+    const empresa = await screen.findByRole("navigation", { name: "Empresa" });
+    expect(within(empresa).getAllByRole("link").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: /Producción/ })).toBeNull();
   });
 });

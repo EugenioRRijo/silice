@@ -1,4 +1,4 @@
-import { InlineNotification } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useEffect, useState } from "react";
 import { pedir } from "../../api/cliente";
 import { leerTema } from "../../marco/tema";

@@ -18,6 +18,19 @@ const COMPLETA = ofertaDe(
   false,
 );
 
+describe("resultadosDe: «Tramos» en toda obra", () => {
+  it("la sección Tramos se encuentra en cualquier obra, tenga o no tramos guardados", () => {
+    expect(resultadosDe("clin tramos", OBRAS, COMPLETA)).toEqual([
+      { texto: "Clínica Las Mercedes › Tramos", detalle: "Los tramos de la vía con sus cantidades de obra.", ruta: "/obra/Carpeta%20Norte.db/1/tramos" },
+    ]);
+    expect(resultadosDe("torre tramos", OBRAS, COMPLETA)).toHaveLength(1);
+  });
+
+  it("sin obra no se ofrece «Tramos de la vía» (llevaría a Pendientes sin decir nada)", () => {
+    expect(resultadosDe("tramos", [], COMPLETA)).toEqual([]);
+  });
+});
+
 describe("resultadosDe", () => {
   it("«clin» encuentra primero la obra", () => {
     const r = resultadosDe("clin", OBRAS, COMPLETA);
@@ -57,7 +70,17 @@ describe("resultadosDe", () => {
   });
 
   it("ordena obras, secciones de obras, entradas de Empresa y pantallas sin sitio", () => {
-    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], COMPLETA).map((r) => r.texto);
+    // Las ocho secciones de una obra (Resumen, Presupuesto, Tramos, Archivos y planos, Versiones, Aprobaciones, Mercado y
+    // Control de obra) ya no caben con las dos pantallas de Empresa cuyo orden se mira. Con «vial» apagado se va «Tramos»
+    // y sin `aprobar_version` se va «Aprobaciones»; «Resumen» no sale porque lleva a la misma ruta que la obra. Quedan la
+    // obra, sus cinco secciones y dos de Empresa: ocho. No se apaga «edificación»: desde la Tarea 12 de F4 «Archivos y
+    // planos» no es de ningún módulo y no se quita con él.
+    const sinVialNiAprobar = ofertaDe(
+      PAGINAS.flatMap((p) => (p.accion === null || p.accion === "aprobar_version" ? [] : [p.accion])),
+      false,
+      ["vial"],
+    );
+    const textos = resultadosDe("precio", [obra(null, 1, "Precio alto")], sinVialNiAprobar).map((r) => r.texto);
     expect(textos[0]).toBe("Precio alto");
     expect(textos[1]).toBe("Precio alto › Presupuesto");
     const i = (t: string) => textos.indexOf(t);
@@ -77,12 +100,21 @@ describe("resultadosDe", () => {
 
   it("alcanza las pantallas que no tienen sitio en el árbol", () => {
     expect(resultadosDe("simulador", [], COMPLETA)[0]).toMatchObject({ texto: "Simulador de listas", ruta: "/simulador" });
-    expect(resultadosDe("historico", [], COMPLETA)[0]?.ruta).toBe("/historico");
+    expect(resultadosDe("historico", [], COMPLETA)).toEqual([]);
   });
 
-  it("no ofrece las secciones sin pantalla, ni lo que la cuenta no puede usar", () => {
-    expect(resultadosDe("archivos", OBRAS, COMPLETA)).toEqual([]);
-    expect(resultadosDe("versiones", OBRAS, COMPLETA)).toEqual([]);
+  // F4, Tarea 9, baja 20: buscar parecidas es una salida de «Agregar partida», no una pantalla.
+  it("no ofrece «Partidas similares»", () => {
+    expect(resultadosDe("similares", [], COMPLETA)).toEqual([]);
+  });
+
+  it("ofrece las secciones que ya tienen pantalla, y no lo que la cuenta no puede usar", () => {
+    // «Archivos y planos» (Tarea 11 de F4) y «Versiones» (Tarea 6) ya tienen pantalla: se ofrecen en cada obra, y no a
+    // quien no lee las obras.
+    expect(resultadosDe("clin archivos", OBRAS, COMPLETA).map((r) => r.ruta)).toEqual(["/obra/Carpeta%20Norte.db/1/archivos"]);
+    expect(resultadosDe("clin versiones", OBRAS, COMPLETA).map((r) => r.ruta)).toEqual(["/obra/Carpeta%20Norte.db/1/versiones"]);
+    expect(resultadosDe("archivos", OBRAS, ofertaDe([], false))).toEqual([]);
+    expect(resultadosDe("versiones", OBRAS, ofertaDe([], false))).toEqual([]);
     const sinPermisos = ofertaDe([], false);
     // Control positivo: la misma búsqueda con todos los permisos sí encuentra la entrada.
     expect(resultadosDe("personas", [], COMPLETA).map((r) => r.texto)).toContain("Empresa y personas");

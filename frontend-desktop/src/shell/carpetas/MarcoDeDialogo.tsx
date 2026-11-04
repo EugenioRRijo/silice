@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { JSX, KeyboardEvent, ReactNode } from "react";
 import { useAtraparFoco } from "../useAtraparFoco";
@@ -25,6 +25,14 @@ export function MarcoDeDialogo({ titulo, alCerrar, children, pie, inicial, ancho
   const base = useId();
   const caja = useRef<HTMLDivElement>(null);
   const atrapar = useAtraparFoco(caja);
+  const cuerpo = useRef<HTMLDivElement>(null);
+  // Queda contenido por ver debajo del borde del cuerpo: la zona lleva una gradiente al pie (como el `hasScrollingContent` de
+  // Carbon). Se mide al pintar, al desplazar y al cambiar el tamaño; no es estado de lo que se escribe.
+  const [masAbajo, setMasAbajo] = useState(false);
+  const medir = () => {
+    const el = cuerpo.current;
+    if (el) setMasAbajo(el.scrollHeight - el.clientHeight - el.scrollTop > 1);
+  };
 
   useEffect(() => {
     const previo = document.activeElement;
@@ -35,6 +43,16 @@ export function MarcoDeDialogo({ titulo, alCerrar, children, pie, inicial, ancho
     };
     // Solo al abrir y al cerrar: un dialogo no le quita el foco a quien escribe cuando cambia su contenido.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sin dependencias a propósito: el contenido del cuerpo cambia (errores, filas nuevas) y hay que volver a medir.
+  useEffect(medir);
+  useEffect(() => {
+    const el = cuerpo.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observador = new ResizeObserver(medir);
+    observador.observe(el);
+    return () => observador.disconnect();
   }, []);
 
   function alTeclear(e: KeyboardEvent<HTMLDivElement>) {
@@ -62,7 +80,11 @@ export function MarcoDeDialogo({ titulo, alCerrar, children, pie, inicial, ancho
         <h2 id={`${base}-titulo`} className="silice-dialogo__titulo cds--type-heading-compact-02">
           {titulo}
         </h2>
-        <div className="silice-dialogo__cuerpo">{children}</div>
+        <div className={`silice-dialogo__zona${masAbajo ? " silice-dialogo__zona--mas-abajo" : ""}`}>
+          <div ref={cuerpo} className="silice-dialogo__cuerpo" onScroll={medir}>
+            {children}
+          </div>
+        </div>
         <div className="silice-dialogo__pie">{pie}</div>
       </div>
     </div>,

@@ -1,5 +1,8 @@
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { TabList } from "../../comun/carbonEs";
 import { useCallback, useMemo, useState } from "react";
+import { Link } from "react-router";
+import { EnlacesDeCostos } from "../../comun/EnlacesDeCostos";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
 import { SIN_PERMISO } from "./fallos";
@@ -25,7 +28,8 @@ const BANDEJA = 3;
 // sospechosos. La interfaz no calcula ninguna existencia: muestra lo que manda la API, y la API vuelve a exigir el
 // permiso en cada ruta (la navegacion solo decide que se ve).
 export default function PaginaExistencias() {
-  const { alExpirar } = useAplicacion();
+  const { alExpirar, sesion } = useAplicacion();
+  const puedeRegistrarCostos = sesion.acciones.includes("registrar_costos_produccion");
   const [pestana, setPestana] = useState(EXISTENCIAS);
   const [denegado, setDenegado] = useState(false);
   const [fecha, setFecha] = useState(() => hoyISO());
@@ -65,6 +69,16 @@ export default function PaginaExistencias() {
   return (
     <div className="existencias silice-pagina">
       <h1 className="cds--type-heading-04">Existencias de la arenera</h1>
+      <p className="cds--type-body-compact-01">
+        <Link className="cds--link" to="/receta_planta">
+          Receta de la planta
+        </Link>{" "}
+        ·{" "}
+        <Link className="cds--link" to="/producir_mezcla">
+          Producir mezcla
+        </Link>
+      </p>
+      {puedeRegistrarCostos && <EnlacesDeCostos />}
       <Tabs selectedIndex={pestana} onChange={({ selectedIndex }) => setPestana(selectedIndex)}>
         <TabList aria-label="Secciones de la arenera">
           <Tab>Existencias</Tab>

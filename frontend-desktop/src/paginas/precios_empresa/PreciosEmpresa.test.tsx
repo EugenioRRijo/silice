@@ -259,13 +259,15 @@ describe("Precios de la empresa", () => {
     expect(screen.queryByText(/creada con/)).toBeNull();
   });
 
-  test("los hallazgos se piden con la fecha de evaluacion y se muestran tal cual llegan", async () => {
+  test("los hallazgos se piden con la fecha de evaluacion y el impacto se lee en es-VE", async () => {
     estado = () => json(CON_LISTA);
     montar();
     expect(await screen.findByText("ARENA LAVADA: precio vencido")).toBeInTheDocument();
     const [ruta] = llamadas("/listas/5/hallazgos?fecha=")[0];
     expect(String(ruta)).toBe(`/v1/precios-empresa/listas/5/hallazgos?fecha=${hoyIso()}`);
-    expect(screen.getByText("11328.78")).toBeInTheDocument();
+    // El servidor manda el impacto con punto ("11328.78"); se lee con coma decimal y punto de miles (D-8).
+    expect(screen.getByText("11.328,78")).toBeInTheDocument();
+    expect(screen.queryByText("11328.78")).toBeNull();
     expect(screen.getByText("Sin versión, el impacto es por unidad de insumo. Nada de esto se guarda.")).toBeInTheDocument();
     expect(screen.getByText("Advertencia")).toBeInTheDocument();
     expect(screen.getByText("Error")).toBeInTheDocument();
@@ -377,5 +379,21 @@ describe("Precios de la empresa", () => {
     await screen.findByText(CREADA.mensaje);
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);
+  });
+
+  test("la calculadora del FCAS se abre a pedido: antes no consulta nada", async () => {
+    fetchFalso.mockImplementation(async (ruta, opciones) => {
+      const url = String(ruta);
+      if (url === "/v1/fcas/componentes") return json({ dias_calendario: "365", fcas_version: "6.00", componentes: [] });
+      if (url === "/v1/precios-empresa" && (opciones?.method ?? "GET") === "GET") return json(SOLO_BASES);
+      return json({ detalle: "ruta inesperada " + url }, 404);
+    });
+    montar();
+    const usuario = userEvent.setup();
+    await screen.findByLabelText("Empresa (nombre)");
+    expect(llamadas("/v1/fcas/componentes")).toHaveLength(0);
+    await usuario.click(screen.getByRole("button", { name: "Abrir la calculadora del FCAS" }));
+    await screen.findByLabelText("Días calendario del período");
+    expect(llamadas("/v1/fcas/componentes")).toHaveLength(1);
   });
 });

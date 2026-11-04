@@ -50,6 +50,41 @@ COLUMNAS = {
         "resuelto_por",
         "resuelto_en",
     },
+    "prod_costo": {
+        "id",
+        "periodo",
+        "centro",
+        "concepto",
+        "monto",
+        "moneda",
+        "fecha",
+        "fuente",
+        "nota",
+        "usuario",
+        "registrado",
+        "anula_id",
+        "motivo",
+    },
+    "prod_receta": {"id", "producto", "fuente", "vigente_desde", "usuario", "registrado"},
+    "prod_receta_componente": {
+        "id",
+        "receta_id",
+        "orden",
+        "codigo",
+        "cantidad_por_t",
+        "unidad",
+        "tipo",
+    },
+    "prod_calculo": {
+        "id",
+        "periodo",
+        "moneda",
+        "huella",
+        "instantanea",
+        "usuario",
+        "registrado",
+    },
+    "prod_publicacion": {"id", "calculo_id", "caso", "lista_id", "usuario", "registrado"},
 }
 
 
@@ -89,7 +124,7 @@ def _mov(material, **extra):
     return Movimiento(**datos)
 
 
-def test_las_tres_tablas_existen_con_sus_columnas():
+def test_las_tablas_existen_con_sus_columnas():
     motor = create_engine("sqlite://")
     METADATA_PRODUCCION.create_all(motor)
     insp = inspect(motor)

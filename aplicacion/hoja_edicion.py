@@ -23,11 +23,12 @@ Tambien lee: los candidatos de insumo (E8), la lista de cambios (E9) y los borra
 retomar o que estorban al abrir la misma version (E10, E11).
 
 Tarea 9 (montar un presupuesto): `agregar` y `quitar` partidas a mano (`aplicacion.hoja_partidas`)
-pasan por el mismo `_cambiar`. La composicion de una partida nueva sale de la lista de la version
-abierta o, en un borrador en blanco, de la lista para armar de la carpeta, convertida en memoria con
-la tasa del BCV si la obra esta en la otra moneda (foco de revision 1). Aqui no se escribe la lista
-convertida: la escribe el guardado, a nombre de quien guarda, y toma de ella los precios de los APU;
-sin tasa de los ultimos 7 dias o sin lista para armar, `SinListaDeLaObra` y el borrador no cambia.
+pasan por el mismo `cambiar_borrador`. La composicion de una partida nueva sale de la lista de la
+version abierta o, en un borrador en blanco, de la lista para armar de la carpeta, convertida en
+memoria con la tasa del BCV si la obra esta en la otra moneda (foco de revision 1). Aqui no se
+escribe la lista convertida: la escribe el guardado, a nombre de quien guarda, y toma de ella los
+precios de los APU; sin tasa de los ultimos 7 dias o sin lista para armar, `SinListaDeLaObra` y el
+borrador no cambia.
 
 Sin FastAPI ni Streamlit (RM-1).
 """
@@ -36,6 +37,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -53,7 +55,7 @@ from aplicacion.hoja_partidas import (
     agregar_partida,
     quitar_partida,
 )
-from aplicacion.listas_para_armar import valoracion_de_la_obra
+from aplicacion.listas_para_armar import ValoracionDeLaObra, valoracion_de_la_obra
 from aplicacion.plan_rendimientos import (
     CuadrillasInvalidas,
     PlanDemasiadoLargo,
@@ -80,9 +82,11 @@ __all__ = [
     "agregar",
     "agregar_linea_apu",
     "borradores_para_retomar",
+    "cambiar_borrador",
     "cambiar_insumo_de_linea",
     "cambios_del_borrador",
     "candidatos_de_insumo",
+    "completar",
     "crear_plan_secuencial",
     "descartar_de_la_version",
     "editar_apu",
@@ -90,6 +94,7 @@ __all__ = [
     "editar_espacio",
     "editar_parametros",
     "editar_plan",
+    "lista_para_completar",
     "pendiente_de_la_version",
     "plan_desde_rendimientos",
     "quitar",
@@ -150,14 +155,25 @@ class PartidaSinApu(Exception):  # noqa: N818
 
 
 class PartidaFueraDelCatalogo(Exception):  # noqa: N818
-    """La partida que se quiere agregar no esta en el catalogo de la carpeta."""
+    """La partida que se quiere agregar no esta en el catalogo de la carpeta. Con varios codigos
+    (llevar los tramos al presupuesto, plan vial Tarea 8b) el mensaje los nombra todos."""
 
-    def __init__(self, codigo: str) -> None:
-        super().__init__(codigo)
+    def __init__(self, codigo: str, *otros: str) -> None:
+        super().__init__(codigo, *otros)
         self.codigo = codigo
+        self.codigos = (codigo, *otros)
 
     def __str__(self) -> str:
-        return f"La partida «{self.codigo}» no está en el catálogo: compóngala primero en Componer."
+        if len(self.codigos) == 1:
+            return (
+                f"La partida «{self.codigo}» no está en el catálogo: compóngala primero en "
+                "Componer."
+            )
+        primeras = ", ".join(f"«{codigo}»" for codigo in self.codigos[:-1])
+        return (
+            f"Las partidas {primeras} y «{self.codigos[-1]}» no están en el catálogo: "
+            "compóngalas primero en Componer."
+        )
 
 
 class SinListaDeLaObra(Exception):  # noqa: N818
@@ -165,25 +181,37 @@ class SinListaDeLaObra(Exception):  # noqa: N818
     del BCV de los ultimos 7 dias); el mensaje es el que ve la persona."""
 
 
-def _completar(sesion: Session, vivo: BorradorVivo, nuevo: hoja.Borrador) -> hoja.Borrador:
-    """`nuevo` con la composicion de cada partida nueva que el catalogo conoce, con la lista de la
-    version abierta o, en blanco, con la de la obra a la fecha del borrador
-    (`valoracion_de_la_obra`). En blanco no se busca lista si no hay partidas nuevas, y nada se
-    escribe: en la otra moneda, el APU de la lista para armar se convierte con la tasa del BCV
-    (`hoja.composicion_convertida`, la misma cuenta que la lista convertida); la lista convertida
-    la escribe el guardado, que vuelve a tomar los precios de ella."""
+def lista_para_completar(
+    sesion: Session, vivo: BorradorVivo, fecha: date
+) -> tuple[models.ListaPrecios, ValoracionDeLaObra | None]:
+    """La lista con que se arman las partidas nuevas del borrador `vivo` a `fecha`: la de la
+    version abierta (sin valoracion) o, en blanco, la lista para armar de la obra con su valoracion
+    (`valoracion_de_la_obra`: la tasa del BCV si la obra esta en la otra moneda). Sin lista o sin
+    tasa, `SinListaDeLaObra`. Es el UNICO sitio de esta eleccion: la usan `completar` y llevar los
+    tramos al presupuesto (`aplicacion.hoja_vial`), para que los dos valoren con la misma lista."""
     if vivo.abierta is not None:
-        lista = hoja.lista_de_version(sesion, vivo.abierta.proyecto, vivo.abierta.codigo)
-        return hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
-    nuevas = hoja.partidas_sin_composicion(nuevo)
-    if not nuevas:
-        return nuevo
+        return hoja.lista_de_version(sesion, vivo.abierta.proyecto, vivo.abierta.codigo), None
     try:
-        valoracion = valoracion_de_la_obra(sesion, vivo.proyecto, nuevo.fecha)
+        valoracion = valoracion_de_la_obra(sesion, vivo.proyecto, fecha)
     except ValueError as error:  # SinListaParaArmar (sin lista o sin tasa) u obra que no existe
         raise SinListaDeLaObra(str(error)) from None
-    completo = hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=valoracion.base)
-    if valoracion.tasa is None:
+    return valoracion.base, valoracion
+
+
+def completar(sesion: Session, vivo: BorradorVivo, nuevo: hoja.Borrador) -> hoja.Borrador:
+    """`nuevo` con la composicion de cada partida nueva que el catalogo conoce, con la lista de
+    `lista_para_completar`: la de la version abierta o, en blanco, la de la obra a la fecha del
+    borrador. En blanco no se busca lista si no hay partidas nuevas, y nada se escribe: en la otra
+    moneda, el APU de la lista para armar se convierte con la tasa del BCV
+    (`hoja.composicion_convertida`, la misma cuenta que la lista convertida); la lista convertida
+    la escribe el guardado, que vuelve a tomar los precios de ella. Publico porque llevar los
+    tramos (`aplicacion.hoja_vial`) decide con el mismo resultado que la Hoja."""
+    nuevas = hoja.partidas_sin_composicion(nuevo)
+    if vivo.abierta is None and not nuevas:
+        return nuevo
+    lista, valoracion = lista_para_completar(sesion, vivo, nuevo.fecha)
+    completo = hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
+    if valoracion is None or valoracion.tasa is None:
         return completo
     de, a, tasa = valoracion.base.moneda, valoracion.moneda, valoracion.tasa.valor
     return replace(
@@ -195,14 +223,15 @@ def _completar(sesion: Session, vivo: BorradorVivo, nuevo: hoja.Borrador) -> hoj
     )
 
 
-def _cambiar(
+def cambiar_borrador(
     sesion: Session,
     huella: str,
     id: str,
     rev: int,
     construir: Callable[[BorradorVivo], hoja.Borrador | None],
 ) -> BorradorVivo:
-    """El nucleo comun de las cinco ediciones (`_poner_borrador`, P:256-275).
+    """El nucleo comun de las ediciones (`_poner_borrador`, P:256-275); publico porque lo usan
+    tambien la importacion del plano (`hoja_plano`) y llevar los tramos (`hoja_vial`).
 
     Dentro del cerrojo del borrador: ya guardado, `rev` (ANTES que el contenido: una ventana
     rezagada debe recargar, no corregir datos), `construir` (que lanza `HojaInvalida` o el error de
@@ -218,7 +247,7 @@ def _cambiar(
         nuevo = construir(vivo)
         if nuevo is None or nuevo == vivo.borrador:
             return vivo
-        return hoja_borradores.reemplazar(huella, id, _completar(sesion, vivo, nuevo), rev)
+        return hoja_borradores.reemplazar(huella, id, completar(sesion, vivo, nuevo), rev)
 
 
 def editar_espacio(
@@ -229,7 +258,7 @@ def editar_espacio(
     Lanza `BorradorInexistente` (no existe para la ficha), `BorradorYaGuardado`,
     `RevDesactualizado` o `HojaInvalida` con el texto de la clasica (P:1213-1217).
     """
-    return _cambiar(
+    return cambiar_borrador(
         sesion,
         huella,
         id,
@@ -275,7 +304,7 @@ def editar_cantidades(
             return None
         return replace(borrador, cantidades=escritas)
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def editar_parametros(
@@ -289,7 +318,7 @@ def editar_parametros(
             return None
         return replace(vivo.borrador, parametros=parametros)
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def _canonico(plan: Sequence[PeriodoPlan]) -> tuple:
@@ -331,7 +360,7 @@ def editar_plan(
             return None
         return replace(borrador, plan=plan)
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def crear_plan_secuencial(sesion: Session, huella: str, id: str, rev: int) -> BorradorVivo:
@@ -343,7 +372,7 @@ def crear_plan_secuencial(sesion: Session, huella: str, id: str, rev: int) -> Bo
             raise YaTienePlan
         return hoja.con_plan_secuencial(vivo.borrador)
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def plan_desde_rendimientos(
@@ -387,7 +416,7 @@ def plan_desde_rendimientos(
             return None
         return replace(borrador, plan=tuple(plan))
 
-    return _cambiar(sesion, huella, id, rev, construir), avisos
+    return cambiar_borrador(sesion, huella, id, rev, construir), avisos
 
 
 # --- el APU de una partida y el cambio de insumo (3c-3) ----------------------------------------
@@ -428,7 +457,7 @@ def editar_apu(
             return None
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def _insumo_de_la_lista(
@@ -501,7 +530,7 @@ def cambiar_insumo_de_linea(
             return None
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 # --- agregar y quitar lineas del APU de la version (Tarea 26) ------------------------------------
@@ -596,7 +625,7 @@ def agregar_linea_apu(
         borrador = vivo.borrador
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 def quitar_linea_apu(
@@ -612,7 +641,7 @@ def quitar_linea_apu(
         borrador = vivo.borrador
         return replace(borrador, composiciones={**borrador.composiciones, partida: nueva})
 
-    return _cambiar(sesion, huella, id, rev, construir)
+    return cambiar_borrador(sesion, huella, id, rev, construir)
 
 
 # --- partidas agregadas y quitadas a mano (Tarea 9) ---------------------------------------------
@@ -661,13 +690,15 @@ def agregar(
         clave.append(nueva)
         return nuevo
 
-    return _cambiar(sesion, huella, id, rev, construir), clave[0]
+    return cambiar_borrador(sesion, huella, id, rev, construir), clave[0]
 
 
 def quitar(sesion: Session, huella: str, id: str, rev: int, clave: str) -> BorradorVivo:
     """Quita del borrador el renglon `clave`, con su cantidad escrita y su nota
     (`hoja_partidas.quitar_partida`): solo los de la version; uno del espacio es `HojaInvalida`."""
-    return _cambiar(sesion, huella, id, rev, lambda vivo: quitar_partida(vivo.borrador, clave))
+    return cambiar_borrador(
+        sesion, huella, id, rev, lambda vivo: quitar_partida(vivo.borrador, clave)
+    )
 
 
 # --- lo que se lee: candidatos, cambios, retomar (3c-3) ----------------------------------------

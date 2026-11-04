@@ -1,0 +1,43 @@
+// La franja «Te falta / Siguiente paso» (FranjaDelPaso.tsx). «Siguiente paso» es una línea con divisor; «Te falta» es una
+// precaución: fondo y raya izquierda de aviso, como la nota de la bienvenida y la etiqueta de advertencia de DESIGN.md.
+// Solo variables del tema (nunca un color suelto). El texto y el botón se parten en dos líneas si no caben, así que la
+// franja no ensancha la página con letra grande.
+.silice-franja {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding: 0.75rem 1rem;
+  border-block: 1px solid var(--silice-divisor);
+}
+
+.silice-franja--falta {
+  border-block: 0;
+  border-inline-start: 4px solid var(--silice-aviso-borde);
+  background: var(--silice-aviso-fondo);
+}
+
+.silice-franja__texto {
+  display: flex;
+  flex: 1 1 20rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.silice-franja__icono {
+  flex: none;
+  fill: var(--silice-aviso-borde);
+}
+
+// Contraste forzado de Windows: el fondo desaparece y el borde propio se queda.
+@media (forced-colors: active) {
+  .silice-franja--falta {
+    border: 1px solid CanvasText;
+    border-inline-start-width: 4px;
+  }
+}

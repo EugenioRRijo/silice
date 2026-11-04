@@ -1,4 +1,5 @@
-import { Button, Checkbox, InlineNotification } from "@carbon/react";
+import { Button, Checkbox } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useCallback, useEffect, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";

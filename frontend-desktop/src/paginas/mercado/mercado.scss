@@ -1,8 +1,11 @@
 // Estudio de mercado. Sin sombras, sin tarjetas ni animaciones (DESIGN.md): bloques separados por divisores de 1 px y
 // espacio; las cifras van en una franja de terminos con su valor, alineadas como cifras tabulares.
 
+// Una sola columna que cede (pasada del cierre de F4, H4): sin ella la rejilla tomaba el ancho de la tabla mas ancha y la
+// pagina se desplazaba a lo ancho; asi las tablas se desplazan en su propia caja.
 .silice-mercado {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   padding: 1.5rem 1rem 2rem;
 }

@@ -141,6 +141,15 @@ export const RUBROS: Record<string, { tipo: TipoDeLinea; enFrase: string }> = {
 
 export const grupoDelTipo = (tipo: TipoDeLinea): string => TIPOS_DE_LINEA.find((t) => t.valor === tipo)!.grupo;
 
+// Una línea del APU a la que se le pide algo (quitarla o cambiarle el insumo): su rubro, su índice desde 0, cómo se llama y
+// el id de su botón, al que vuelve el foco al cerrar el diálogo.
+export interface LineaApu {
+  grupo: string;
+  indice: number;
+  descripcion: string;
+  boton: string;
+}
+
 // Lo que viaja al agregar una línea: todo como texto tal cual. Con `insumo` (su código) los demás datos del insumo los pone
 // la lista de la versión; sin él, es uno nuevo con su descripción, su unidad y su precio.
 export interface LineaNueva {

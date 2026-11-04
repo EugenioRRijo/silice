@@ -12,7 +12,6 @@ import {
   rutaDeCantidades,
   rutaDeParametros,
   rutaDePlan,
-  rutaDePlanSecuencial,
   sembrarCantidades,
   sembrarParametros,
   sembrarPlan,
@@ -31,7 +30,6 @@ describe("edición por sección (3c-2): rutas", () => {
     expect(rutaDeCantidades("abc_123-xyz")).toBe("/v1/hoja/borradores/abc_123-xyz/cantidades");
     expect(rutaDeParametros("abc_123-xyz")).toBe("/v1/hoja/borradores/abc_123-xyz/parametros");
     expect(rutaDePlan("abc_123-xyz")).toBe("/v1/hoja/borradores/abc_123-xyz/plan");
-    expect(rutaDePlanSecuencial("abc_123-xyz")).toBe("/v1/hoja/borradores/abc_123-xyz/plan/secuencial");
   });
 });
 

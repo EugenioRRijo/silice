@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { paginaPorId } from "../shell/rutas";
+import { ofertaDe } from "./oferta";
 import {
   ENTRADAS_DE_EMPRESA,
   PATRON_DE_EMPRESA,
@@ -23,10 +24,11 @@ describe("SECCIONES_DE_OBRA", () => {
     expect("cada tarea").not.toMatch(PROHIBIDAS);
   });
 
-  it("son las siete, en este orden", () => {
+  it("son las ocho, en este orden", () => {
     expect(SECCIONES_DE_OBRA.map((s) => s.id)).toEqual([
       "resumen",
       "presupuesto",
+      "tramos",
       "archivos",
       "versiones",
       "aprobaciones",
@@ -39,8 +41,9 @@ describe("SECCIONES_DE_OBRA", () => {
     expect(Object.fromEntries(SECCIONES_DE_OBRA.map((s) => [s.id, s.pagina]))).toEqual({
       resumen: "obras",
       presupuesto: "hoja",
-      archivos: null,
-      versiones: null,
+      tramos: "tramos",
+      archivos: "archivos",
+      versiones: "versiones",
       aprobaciones: "aprobar",
       mercado: "mercado",
       control: "control",
@@ -48,6 +51,18 @@ describe("SECCIONES_DE_OBRA", () => {
     for (const s of SECCIONES_DE_OBRA) {
       if (s.pagina !== null) expect(paginaPorId(s.pagina), s.id).toBeDefined();
     }
+  });
+
+  it("«Versiones» tiene su pantalla (Tarea 6 del plan F4) y aparece en el árbol de quien lee la obra", () => {
+    expect(seccionPorId("versiones")?.pagina).toBe("versiones");
+    expect(paginaPorId("versiones")?.accion).toBe("leer_proyecto");
+    expect(ofertaDe(["leer_proyecto"], false).secciones.map((s) => s.id)).toContain("versiones");
+    expect(ofertaDe([], false).secciones.map((s) => s.id)).not.toContain("versiones");
+  });
+
+  it("«Tramos» es una sección como las demás: toda obra la tiene mientras el módulo vial esté encendido", () => {
+    expect(SECCIONES_DE_OBRA.map((s) => s.id)).toContain("tramos");
+    expect(Object.keys(SECCIONES_DE_OBRA[0]!)).not.toContain("soloVial");
   });
 
   it("hablan en el vocabulario de la persona, con una ayuda corta", () => {

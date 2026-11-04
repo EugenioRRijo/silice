@@ -1,0 +1,27 @@
+// «¿Qué es esto?» plegado (Tarea 4 del plan F4, baja 25). Tokens de Carbon g10, esquinas rectas, sin sombra ni animación.
+// El panel es del flujo de la página (no flota) y se lee con el texto secundario sobre la capa 01: 7,1:1 en g10.
+
+.silice-que-es-esto {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+}
+
+.silice-que-es-esto__panel {
+  box-sizing: border-box;
+  display: grid;
+  gap: 0.5rem;
+  max-inline-size: 48rem;
+  padding: 0.75rem 1rem;
+  background: var(--cds-layer-01);
+  border-inline-start: 4px solid var(--cds-border-strong-01);
+  color: var(--cds-text-primary);
+
+  p {
+    margin: 0;
+  }
+
+  @media (forced-colors: active) {
+    border: 1px solid CanvasText;
+  }
+}

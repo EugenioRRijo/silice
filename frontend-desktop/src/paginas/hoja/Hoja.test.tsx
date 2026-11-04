@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
@@ -6,6 +6,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { cuerpoDeVista } from "./datosDePrueba";
 import PaginaHoja from "./index";
+import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "../../test/rutaDeLaHoja";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 
 const fuentes = import.meta.glob("./*.{ts,tsx}", { query: "?raw", import: "default", eager: true }) as Record<
@@ -104,40 +105,38 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     });
   }
 
-  function montar(proyecto: string | null = "OF-001") {
+  function montar(proyecto: string | null = "OF-001", modulosApagados?: readonly string[]) {
     const valor: Aplicacion = {
       sesion: SESION,
+      modulosApagados,
       proyecto,
       caso: { nombre: "obra", ruta_relativa: "data/obra.db" },
       recargarProyectos: vi.fn(),
       alExpirar,
     };
     return render(
-      <ContextoAplicacion.Provider value={valor}>
-        <PaginaHoja />
-      </ContextoAplicacion.Provider>,
+      <ContextoAplicacion.Provider value={valor}>{conEnrutador(<PaginaHoja />)}</ContextoAplicacion.Provider>,
     );
   }
 
-  test("3b-F1: un solo h1 «Hoja de la obra» con heading-04", async () => {
+  test("3b-F1: un solo h1 «Presupuesto» con heading-04", async () => {
     servidor();
     montar();
     await screen.findByRole("region", { name: "Estado del borrador" }, { timeout: 5000 });
     const h1 = screen.getAllByRole("heading", { level: 1 });
     expect(h1).toHaveLength(1);
-    expect(h1[0]).toHaveTextContent("Hoja de la obra");
+    expect(h1[0]).toHaveTextContent("Presupuesto");
     expect(h1[0]).toHaveClass("cds--type-heading-04");
     expect(screen.getByRole("heading", { level: 2, name: "Estado del borrador" })).toHaveClass(
       "cds--type-heading-compact-02",
     );
   });
 
-  test("3b-F2: sin obra en la cabecera pide elegir una con el selector de obra y no llama a la API", () => {
+  test("3b-F2: sin obra pide elegir una y no llama a la API", () => {
     montar(null);
-    expect(screen.getByRole("heading", { level: 1, name: "Hoja de la obra" })).toBeInTheDocument();
-    // Tarea 11 (F11 de MOD-3b): «obra» y el selector de obra, no «proyecto» ni «el selector de la cabecera».
+    expect(screen.getByRole("heading", { level: 1, name: "Presupuesto" })).toBeInTheDocument();
+    // F4, baja 8: ya no se manda al «selector de obra de la cabecera» (no existe; dentro de una obra siempre hay obra).
     expect(screen.getByText("Elija una obra")).toBeInTheDocument();
-    expect(screen.getByText("Use el selector de obra de la cabecera para abrir su hoja.")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
@@ -150,21 +149,19 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     expect(JSON.parse(String(init?.body))).toEqual({ proyecto: "Nuevo", version: null });
   });
 
-  test("3b-F3: las nueve pestañas, en el orden de la clásica, con las flechas", async () => {
+  test("3b-F3: las siete pestañas del plan de F4 (Tareas 4 y 6), en su orden, con las flechas", async () => {
     servidor();
     montar();
     const lista = await screen.findByRole("tablist");
     const pestanas = within(lista).getAllByRole("tab");
     expect(pestanas.map((p) => p.textContent)).toEqual([
       "Espacio y metrajes",
-      "APU",
-      "Presupuesto",
-      "Plan y curva",
-      "Punto de equilibrio",
+      "Partidas",
+      "Análisis de precio (APU)",
+      "Plan y equilibrio",
       "Precios",
-      "Parámetros",
-      "Auditoría",
-      "Trazabilidad",
+      "Revisión",
+      "Ajustes de costo",
     ]);
     expect(screen.getAllByRole("tabpanel").length).toBeGreaterThan(0);
     pestanas[0]!.focus();
@@ -172,13 +169,39 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     expect(pestanas[1]).toHaveFocus();
   });
 
-  test("3b-F4: el selector ofrece las no descartadas, marca la vigente y preselecciona por_omision", async () => {
+  // Plan vial T19 en el modelo por id de la Tarea 4 de F4: con edificación apagada «Espacio y metrajes» no se ve aunque la
+  // obra tenga espacio (los datos de prueba no traen `espacio_vacio`: obra con espacio, que abriría en «espacio»).
+  test("plan vial T19: con edificación apagada no hay «Espacio y metrajes» y la hoja abre en Partidas", async () => {
+    servidor();
+    montar("OF-001", ["edificacion"]);
+    const lista = await screen.findByRole("tablist");
+    const nombres = within(lista).getAllByRole("tab").map((p) => p.textContent);
+    expect(nombres).toEqual([
+      "Partidas",
+      "Análisis de precio (APU)",
+      "Plan y equilibrio",
+      "Precios",
+      "Revisión",
+      "Ajustes de costo",
+    ]);
+    expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Partidas");
+  });
+
+  test("plan vial T19: con otro módulo apagado, la hoja conserva sus siete pestañas y abre en Espacio y metrajes", async () => {
+    servidor();
+    montar("OF-001", ["vial", "riesgo"]);
+    const lista = await screen.findByRole("tablist");
+    expect(within(lista).getAllByRole("tab")).toHaveLength(7);
+    expect(within(lista).getByRole("tab", { selected: true })).toHaveTextContent("Espacio y metrajes");
+  });
+
+  // Baja 9 (Tarea 6 del plan F4): sin selector, la Hoja abre `por_omision` y el estado del borrador dice cuál; las versiones
+  // que se ofrecen (las no descartadas) las lista Versiones (`paginas/versiones/logica.test.ts`).
+  test("3b-F4: abre por_omision y el estado del borrador lo dice", async () => {
     servidor();
     montar();
-    const selector = await screen.findByRole("combobox", { name: "Versión" });
-    const opciones = within(selector).getAllByRole("option").map((o) => o.textContent);
-    expect(opciones).toEqual(["001", "002 (vigente)"]);
-    expect(selector).toHaveValue("002");
+    await screen.findByRole("region", { name: "Estado del borrador" });
+    expect(versionAbierta()).toBe("002");
     await waitFor(() => expect(llamadas("POST", "/v1/hoja/borradores")).toHaveLength(1));
     expect(JSON.parse(String(llamadas("POST", "/v1/hoja/borradores")[0]![1]?.body))).toEqual({
       proyecto: "OF-001",
@@ -189,9 +212,8 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
   test("cambiar de versión abre otro borrador y descarta el anterior (sin cambios)", async () => {
     servidor();
     montar();
-    const selector = await screen.findByRole("combobox", { name: "Versión" });
     await screen.findByRole("region", { name: "Estado del borrador" });
-    await userEvent.selectOptions(selector, "001");
+    pedirVersionPorLaRuta("001");
     await waitFor(() => expect(llamadas("POST", "/v1/hoja/borradores")).toHaveLength(2));
     expect(JSON.parse(String(llamadas("POST", "/v1/hoja/borradores")[1]![1]?.body)).version).toBe("001");
     await waitFor(() => expect(llamadas("DELETE", "/v1/hoja/borradores/id-002-aaaaaaaaaa")).toHaveLength(1));
@@ -201,9 +223,9 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     servidor();
     montar();
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
-    const total = await within(estado).findByTitle("2703.856");
+    const total = await within(estado).findByTitle("2.703,856");
     expect(total).toHaveTextContent("2.703,86 USD");
-    expect(within(estado).getByText("Valor exacto 2703.856")).toBeInTheDocument();
+    expect(within(estado).getByText("Valor exacto 2.703,856")).toBeInTheDocument();
     expect(within(estado).getByText(/Sin cambios sin guardar/)).toBeInTheDocument();
   });
 
@@ -222,7 +244,7 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     });
     montar();
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
-    expect(await within(estado).findByTitle(`${largo}.1234`)).toHaveTextContent(
+    expect(await within(estado).findByTitle("123.456.789.012.345.678.901.234.567.890,1234")).toHaveTextContent(
       "123.456.789.012.345.678.901.234.567.890,12 USD",
     );
   });
@@ -344,8 +366,8 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
       return new Response(null, { status: 204 });
     });
     montar();
-    const selector = await screen.findByRole("combobox", { name: "Versión" });
-    fireEvent.change(selector, { target: { value: "001" } });
+    await waitFor(() => expect(llamadas("POST", "/v1/hoja/borradores")).toHaveLength(1));
+    pedirVersionPorLaRuta("001");
     await screen.findByRole("region", { name: "Estado del borrador" });
     await act(async () => soltar(json(borrador("id-002-tardio-aaaaaaa", "002"), 201)));
     await waitFor(() => expect(llamadas("DELETE", "/v1/hoja/borradores/id-002-tardio-aaaaaaa")).toHaveLength(1));

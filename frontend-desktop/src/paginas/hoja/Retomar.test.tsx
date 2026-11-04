@@ -6,6 +6,8 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { informeAuditoria, vistaEspacio, vistaParametros } from "./datosDePrueba";
 import PaginaHoja from "./index";
+import { conEnrutador, pedirVersionPorLaRuta, versionAbierta } from "../../test/rutaDeLaHoja";
+import { ID_DEL_TITULO } from "./useGuardadoDeLaPagina";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 
 // Rebanada 3c-3: retomar el borrador tras recargar o volver a la página (E10, E11; 3c-F16) y cambiar de versión con un
@@ -146,18 +148,14 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
   }
   function montar() {
     const r = render(
-      <ContextoAplicacion.Provider value={valor()}>
-        <PaginaHoja />
-      </ContextoAplicacion.Provider>,
+      <ContextoAplicacion.Provider value={valor()}>{conEnrutador(<PaginaHoja />)}</ContextoAplicacion.Provider>,
     );
     return {
       ...r,
       conProyecto: (proyecto: string) => {
         proyectoActual = proyecto;
         r.rerender(
-          <ContextoAplicacion.Provider value={valor()}>
-            <PaginaHoja />
-          </ContextoAplicacion.Provider>,
+          <ContextoAplicacion.Provider value={valor()}>{conEnrutador(<PaginaHoja />)}</ContextoAplicacion.Provider>,
         );
       },
     };
@@ -246,14 +244,14 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     expect(llamadas("GET", `/v1/hoja/borradores/${ID}`)).toHaveLength(1);
     expect(aperturas()).toHaveLength(0); // se retoma, no se abre otro
     expect(within(estado()).getByText(/Versión 002 · 2 cambios sin guardar/)).toBeInTheDocument();
-    expect(within(estado()).getByTitle("2800.5")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("002");
+    expect(within(estado()).getByTitle("2.800,5")).toBeInTheDocument();
+    expect(versionAbierta()).toBe("002");
     expect(saleLaPagina()).toBe(true); // hay cambios sin guardar
     expect(screen.queryByRole("button", { name: /Retomar borrador/ })).toBeNull();
     // Las tablas salen del borrador del servidor (no de la versión guardada).
     expect(await screen.findByRole("textbox", { name: "Largo (m), Ambientes fila 1" })).toHaveValue("2");
     // Y la siguiente edición lleva el rev con que quedó el borrador.
-    await userEvent.click(screen.getByRole("tab", { name: "Parámetros" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Ajustes de costo" }));
     const campo = await screen.findByRole("textbox", { name: /^Administración/ });
     const cuerpos: Array<{ rev: number }> = [];
     alPonerParametros = (c) => {
@@ -319,7 +317,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     fireEvent.click(screen.getByRole("button", { name: "Retomar borrador de OF-001, versión 001 (1 cambio)" }));
     await screen.findByRole("region", { name: "Estado del borrador" });
     expect(llamadas("GET", `/v1/hoja/borradores/${OTRO}`)).toHaveLength(1);
-    expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("001");
+    expect(versionAbierta()).toBe("001");
     expect(within(estado()).getByText(/Versión 001 · 1 cambio sin guardar/)).toBeInTheDocument();
   });
 
@@ -384,7 +382,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     montar();
     await screen.findByText(new RegExp(`· ${cambios} cambio`));
   }
-  const elegirVersion = (v: string) => fireEvent.change(screen.getByRole("combobox", { name: "Versión" }), { target: { value: v } });
+  const elegirVersion = (v: string) => pedirVersionPorLaRuta(v);
 
   test("sin cambios, elegir otra versión la abre sin preguntar", async () => {
     montar();
@@ -406,7 +404,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     expect(within(dialogo).getByRole("button", { name: "Descartar y abrir" })).toBeInTheDocument();
     expect(within(dialogo).getByRole("button", { name: "Seguir editando" })).toBeInTheDocument();
     // El resto de la página queda inerte mientras el diálogo está abierto.
-    expect(screen.getByRole("combobox", { name: "Versión", hidden: true }).closest("[inert]")).not.toBeNull();
+    expect(screen.getByRole("region", { name: "Estado del borrador", hidden: true }).closest("[inert]")).not.toBeNull();
     expect(dialogo.closest("[inert]")).toBeNull();
     expect(aperturas()).toHaveLength(1);
     expect(borrados()).toHaveLength(0);
@@ -420,13 +418,13 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     expect(within(dialogo).getByText("Tiene 1 cambio sin guardar. Si abre otra versión se pierden: guarde primero o descarte.")).toBeInTheDocument();
   });
 
-  test("«Seguir editando» cierra el diálogo, deja la versión que estaba y no borra ni abre nada; el foco vuelve al selector", async () => {
+  test("«Seguir editando» cierra el diálogo, deja la versión que estaba y no borra ni abre nada; el foco vuelve al título", async () => {
     await abrirConCambios(2);
     elegirVersion("001");
     fireEvent.click(await screen.findByRole("button", { name: "Seguir editando" }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("002");
-    expect(screen.getByRole("combobox", { name: "Versión" })).toHaveFocus();
+    expect(versionAbierta()).toBe("002");
+    expect(screen.getByRole("heading", { level: 1, name: "Presupuesto" })).toHaveFocus();
     expect(aperturas()).toHaveLength(1);
     expect(borrados()).toHaveLength(0);
     expect(within(estado()).getByText(/· 2 cambios sin guardar/)).toBeInTheDocument();
@@ -436,14 +434,14 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     ["Seguir editando", async () => fireEvent.click(await screen.findByRole("button", { name: "Seguir editando" }))],
     ["Esc", async () => userEvent.keyboard("{Escape}")],
     ["Descartar y abrir", async () => fireEvent.click(await screen.findByRole("button", { name: "Descartar y abrir" }))],
-  ])("el foco vuelve al selector DESPUÉS de quitar el inert (%s): un navegador real no enfoca dentro de un subárbol inert", async (_n, cerrar) => {
+  ])("el foco vuelve al título DESPUÉS de quitar el inert (%s): un navegador real no enfoca dentro de un subárbol inert", async (_n, cerrar) => {
     await abrirConCambios(2);
     elegirVersion("001");
     await screen.findByRole("alertdialog");
     const enfocados: Array<{ id: string; inerte: boolean }> = [];
     const original = HTMLElement.prototype.focus;
     HTMLElement.prototype.focus = function (this: HTMLElement, ...args: Parameters<HTMLElement["focus"]>) {
-      if (this.id === "hoja-version") enfocados.push({ id: this.id, inerte: this.closest("[inert]") !== null });
+      if (this.id === ID_DEL_TITULO) enfocados.push({ id: this.id, inerte: this.closest("[inert]") !== null });
       return original.apply(this, args);
     };
     try {
@@ -461,7 +459,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     await screen.findByRole("alertdialog");
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("002");
+    expect(versionAbierta()).toBe("002");
     expect(borrados()).toHaveLength(0);
   });
 
@@ -489,7 +487,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     const o = orden();
     expect(o.indexOf(`DELETE /v1/hoja/borradores/${ID}`)).toBeLessThan(o.lastIndexOf("POST /v1/hoja/borradores"));
     await esperar(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-    expect(screen.getByRole("combobox", { name: "Versión" })).toHaveValue("001");
+    expect(versionAbierta()).toBe("001");
   });
 
   test("si el servidor no puede borrar el borrador, no se abre la otra versión y se dice por qué", async () => {
@@ -507,7 +505,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     alPonerParametros = respuesta;
     const pagina = montar();
     await screen.findByText(/Sin cambios sin guardar/);
-    await userEvent.click(screen.getByRole("tab", { name: "Parámetros" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Ajustes de costo" }));
     const campo = await screen.findByRole("textbox", { name: /^Administración/ });
     relojFalso();
     fireEvent.change(campo, { target: { value: "0,20" } });
@@ -546,7 +544,7 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     });
     const pagina = montar();
     await screen.findByText(/Sin cambios sin guardar/);
-    await userEvent.click(screen.getByRole("tab", { name: "Parámetros" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Ajustes de costo" }));
     const campo = await screen.findByRole("textbox", { name: /^Administración/ });
     relojFalso();
     fetchFalso.mockImplementation(

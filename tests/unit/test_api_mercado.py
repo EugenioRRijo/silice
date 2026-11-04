@@ -658,7 +658,6 @@ def test_quien_no_arma_recibe_403(login: str) -> None:
     navegador, ficha = con_cuenta(APLICACION, login)
     for respuesta in (
         navegador.get(f"{RUTA}/compra/MAT-001"),
-        navegador.get(f"{RUTA}/objetivos"),
         navegador.post(
             f"{RUTA}/cobro/OBRA-04/usar",
             json={"precio": "1980", "observaciones": []},
@@ -667,6 +666,25 @@ def test_quien_no_arma_recibe_403(login: str) -> None:
     ):
         assert (respuesta.status_code, respuesta.json()) == (403, {"detalle": MENSAJE_PERMISO})
         _sin_cache(respuesta)
+
+
+def test_los_objetivos_los_lee_quien_revisa_y_no_el_administrador(caso: Path) -> None:
+    """F4 2b (Eugenio, 2026-10-31): quien revisa ve la columna «Objetivo de mercado» de la Hoja en
+    solo lectura; la ruta solo lee (`aplicacion.mercado.objetivos` y la tasa del día)."""
+    from aplicacion.tablas_mercado import PrecioObjetivo
+
+    _objetivo_en(caso, "OBRA-02", "31.50", "USD", 20, tasas=[(20, "36.50")])
+    antes = _en_el_caso(caso, lambda s: len(s.scalars(select(PrecioObjetivo)).all()))
+    rita, _ = con_cuenta(APLICACION, "rita")
+    consulta = {"partidas": "OBRA-02", "pu": "OBRA-02:1000.00", "moneda": "Bs"}
+    leida = rita.get(f"{RUTA}/objetivos", params=consulta)
+    assert leida.status_code == 200, leida.text
+    assert [o["codigo"] for o in leida.json()["objetivos"]] == ["OBRA-02"]
+    _sin_cache(leida)
+    assert _en_el_caso(caso, lambda s: len(s.scalars(select(PrecioObjetivo)).all())) == antes
+    admin, _ = con_cuenta(APLICACION, "admin")
+    negada = admin.get(f"{RUTA}/objetivos")
+    assert (negada.status_code, negada.json()) == (403, {"detalle": MENSAJE_PERMISO})
 
 
 def test_escribir_sin_csrf_es_403(ana) -> None:

@@ -1,5 +1,5 @@
 import { Button } from "@carbon/react";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { nombreDeEstado } from "../../comun/aprobacion";
@@ -11,8 +11,10 @@ import { InformeAuditoria } from "../../comun/InformeAuditoria";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { nombreDeResponsable } from "../../comun/responsable";
 import { centesimasEsVe, fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { PanelDictamen } from "./PanelDictamen";
+import { RastroDeAprobaciones } from "./RastroDeAprobaciones";
 import { frase, informeDe, nombreDeCarpeta } from "./logica";
 import type { DetalleDeEnvio, FilaDeEnvio, Resultado } from "./logica";
 import "./aprobar.scss";
@@ -20,7 +22,9 @@ import "./aprobar.scss";
 // Tarea 20: «Aprobar una versión» (diseño de montar un presupuesto §5.4; área Aprobaciones de Presupuestos y obras). Se llega
 // con `?envio=` (la mesa, la Hoja, un enlace). Lee el envío en solo lectura (`GET /v1/aprobaciones/{id}`) y registra el
 // dictamen (`POST .../dictamen`, en el panel). Sin `?envio=` busca el envío en aprobación de la obra elegida en esta carpeta
-// (T19, punto 5) y, si no lo halla, lista los de la carpeta para elegir.
+// (T19, punto 5) y, si no lo halla, lista los de la carpeta para elegir. Dentro de una obra, debajo va el «Rastro de la obra»
+// (Tarea 6 del plan F4: se mudó aquí desde la pestaña «Trazabilidad» de la Hoja), para toda cuenta con `leer_proyecto`.
+// Pasa de 250 líneas porque junta las dos maneras de llegar (con y sin `?envio=`), que comparten la cabecera y el dictamen.
 
 function envioDeLaUrl(valor: string | null): number | null {
   if (valor === null || !/^\d+$/.test(valor)) return null;
@@ -35,6 +39,8 @@ type Busqueda =
 
 export default function PaginaAprobar() {
   const [parametros, setParametros] = useSearchParams();
+  const { proyecto, sesion } = useAplicacion();
+  const enLaObra = useContext(ContextoDeLaObra) !== null;
   const envio = envioDeLaUrl(parametros.get("envio"));
   return (
     <div className="silice-aprobar silice-pagina">
@@ -44,6 +50,7 @@ export default function PaginaAprobar() {
       ) : (
         <Envio key={envio} id={envio} />
       )}
+      {enLaObra && proyecto !== null && sesion.acciones.includes("leer_proyecto") && <RastroDeAprobaciones proyecto={proyecto} />}
     </div>
   );
 }

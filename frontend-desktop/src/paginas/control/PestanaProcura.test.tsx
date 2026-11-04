@@ -44,6 +44,8 @@ const LINEA_BASE: LineaBase = {
 const VALUACIONES: Valuaciones = {
   tiene_linea_base: true,
   filas: [],
+  impuestos: { subtotal: "0.00", iva: "0.00", total: "0.00", alicuota: "0.16", fuente_alicuota: "Decreto 3.584, G.O. 6.395 Ext., 17-08-2018 (16 %) — a cotejar con la Gaceta vigente" },
+  perspectiva: "costo",
   aviso: "",
   anulables: [],
   corte_por_defecto: null,

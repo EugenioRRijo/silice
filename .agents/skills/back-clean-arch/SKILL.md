@@ -2,8 +2,8 @@
 name: back-clean-arch
 description: >-
   Arquitectura de Backend FastAPI y Bounded Contexts en Sílice: principios SOLID, DRY,
-  un solo backend de API, transporte en bucle local con clave, acceso del navegador por cuenta y
-  cookie de sesión, y preservación estricta de la inviolabilidad de core/.
+  sidecar local desacoplado, IPC seguro sobre Named Pipes y preservación estricta de la
+  inviolabilidad de core/.
 ---
 
 # Skill: Backend Clean Architecture & Bounded Contexts
@@ -47,14 +47,17 @@ Esta guía establece las directrices para el desarrollo del backend en Python de
 ```
 
 1. **Single Responsibility (SRP):** Un servicio de producción solo calcula m³ y costos de cantera; no audita partidas. El auditor solo evalúa discrepancias normativas; no sabe cómo funciona una chancadora.
-2. **Open/Closed (OCP):** El core **no se toca** (ni `core.contracts`, NORMAS §5). Los contextos nuevos definen sus DTOs en su propio paquete (`InsumoCanteraDTO` vive en `produccion/`) y llegan al motor por los caminos que ya existen: el costo de un árido entra como precio de la **lista de precios de la empresa**, escrito por `api/` o por un módulo de integración con permiso explícito de importar `core.catalog` (ruta RT-7).
+2. **Open/Closed (OCP):** El core emite eventos y recibe DTOs (`InsumoCanteraDTO`). Nuevos tipos de insumos se agregan implementando el contrato sin modificar el motor de resolución de APUs.
 3. **Dependency Inversion (DIP):** Las rutas de API dependen de abstracciones de servicios, no de implementaciones concretas de SQLite.
 
 ---
 
-## 3. Transporte Local Seguro (ruta, RT-5)
+## 3. Transporte IPC Seguro (Windows Named Pipes & Localhost)
 
 Para cumplir con **RNF-08** (aislamiento total y cero exposición indebida de red):
-* **Un solo backend:** el FastAPI de `api/` (RT-1), con su protección vigente (`api/proteccion.py`: clave por ruta, `TrustedHost`, filtro de red, tope de 20 MiB).
-* **Transporte primario:** bucle local `127.0.0.1` con **puerto efímero** y **clave por sesión**; la interfaz nueva se sirve desde el mismo FastAPI en `/app` (RT-2). En la sesión 5, Tauri v2 envuelve esa interfaz y arranca el Python que ya instala Inno Setup (RT-3).
-* **Named Pipes de Windows** (`\\.\pipe\silice-ipc-local`) quedan como **endurecimiento posterior**: uvicorn no sirve por Named Pipes sin un transporte propio. Solo se construyen si una prueba real muestra un antivirus bloqueando el bucle local.
+* El backend se levanta como proceso sidecar local administrado por Tauri.
+* Para evitar falsos positivos de antivirus que bloquean puertos TCP `localhost`, la comunicación primaria utiliza **Named Pipes de Windows**:
+  ```text
+  \\.\pipe\silice-ipc-local
+  ```
+* En modo desarrollo o fallback, se habilita Uvicorn en `127.0.0.1:8000` con bandera `--no-access-log` y vinculado exclusivamente al loopback local.

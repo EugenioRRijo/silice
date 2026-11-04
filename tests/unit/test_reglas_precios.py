@@ -1,5 +1,6 @@
 """Fronteras de R11/R12 sin base (PRU-H11) y el día sin tasa (Foco 2)."""
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
@@ -82,3 +83,17 @@ def test_dia_sin_tasa_no_revienta():
     assert r11[0].severidad.name == "INFO" and "sin tasa" in r11[0].descripcion
     r12 = _r(_inst(sin, tasa_evaluacion=None), "R12")
     assert r12[0].impacto is None and "sin tasa" in r12[0].descripcion
+
+
+def test_los_textos_de_r12_llevan_tildes():
+    """Recorrido en video del 2026-11-01 (R12): el usuario lee «días», «evaluación» y «erosión»."""
+    vencido = _r(_inst(_p(Decimal("4530"), fecha=date(2026, 8, 31))), "R12")
+    assert vencido[0].descripcion == (
+        "CODO: precio del 31/08/2026 con 31 días al 01/10/2026 (plazo 30)"
+    )
+    sin = _p(Decimal("4530"), fecha=date(2026, 8, 1), tasa=None, tasa_a_su_fecha=None, erosion=None)
+    sin_tasa = _r(_inst(sin, tasa_evaluacion=None), "R12")
+    assert sin_tasa[0].descripcion.endswith("; sin tasa a la fecha del precio o de evaluación")
+    sin_fuente = replace(_p(Decimal("4530")), fuente_tasa="", moneda_original="USD")
+    r12 = _r(_inst(sin_fuente), "R12")
+    assert r12[0].descripcion.endswith("(precio original en USD: erosión 0 declarada)")

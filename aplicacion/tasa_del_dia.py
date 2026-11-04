@@ -6,21 +6,39 @@ La búsqueda es la general, `tasa_aplicable` (la más reciente hasta esa fecha);
 no es de esa fecha, no sirve. Las conversiones de versiones y de listas no pasan por aquí: siguen
 con la regla S1-R2 (hasta 7 días antes). Es el único sitio de esta regla.
 
+**Tasa del cierre del mes** (respuesta de Eugenio a la pregunta 14, plan vial, Tarea 4b): para
+llevar a la moneda del costo de producción de un mes el precio de una lista o lo que pasa de un mes
+al siguiente, la tasa es la **última del BCV con fecha valor dentro de ese mes** (la más reciente
+hasta su último día, y solo si es de ese mes), **aunque esté a más de 7 días del cierre**: la
+búsqueda general del núcleo rechaza esas (S1-R2), así que se retrocede por ventanas de 7 días hasta
+el día 1 sin tocar `core/`. Vive aquí también, para que la regla de las tasas siga en un solo sitio.
+
 Sin Streamlit ni FastAPI; solo lee.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
 from core.catalog.indices import TasaNoDisponible, tasa_aplicable
 from core.catalog.moneda import TasaDeclarada, convertir
+from produccion.costos import ultimo_dia_del_mes
 
-__all__ = ["Equivalencia", "SinTasaDelDia", "equivalencia_del_dia", "tasa_del_dia"]
+__all__ = [
+    "Equivalencia",
+    "SinTasaDelDia",
+    "equivalencia_del_cierre",
+    "equivalencia_del_dia",
+    "tasa_del_cierre",
+    "tasa_del_dia",
+]
+
+#: La ventana de `tasa_aplicable` (S1-R2, del núcleo): de ella sale el paso al retroceder.
+VENTANA_DEL_NUCLEO = timedelta(days=7)
 
 
 class SinTasaDelDia(ValueError):  # noqa: N818 (identificadores en español, NORMAS.md §3)
@@ -39,6 +57,36 @@ def tasa_del_dia(sesion: Session, fecha: date, moneda_destino: str) -> TasaDecla
         raise SinTasaDelDia(
             f"No hay tasa del BCV del {fecha:%d/%m/%Y} (hace falta la del mismo día) para "
             f"convertir este precio a {moneda_destino}. Cárguela en Índices y vuelva a intentarlo."
+        )
+    return tasa
+
+
+def _ultima_del_mes(sesion: Session, cierre: date) -> TasaDeclarada | None:
+    """La tasa de fecha valor más reciente dentro del mes de `cierre` (su último día), o `None`.
+    `tasa_aplicable` solo mira 7 días hacia atrás desde la fecha que recibe: se le pregunta desde
+    el cierre y, si no encuentra, desde 7 días antes, y así hasta cubrir el día 1. La primera que
+    encuentra es la más reciente; si es de un mes anterior, en este no hay ninguna."""
+    primero = cierre.replace(day=1)
+    desde = cierre
+    while desde >= primero:
+        try:
+            tasa = TasaDeclarada.de_importacion(tasa_aplicable(sesion, desde))
+        except TasaNoDisponible:
+            desde -= VENTANA_DEL_NUCLEO
+            continue
+        return tasa if tasa.fecha >= primero else None
+    return None
+
+
+def tasa_del_cierre(sesion: Session, periodo: str, moneda_destino: str) -> TasaDeclarada:
+    """La tasa del BCV (Bs por USD) del cierre del mes `periodo`: la de fecha valor más reciente
+    dentro del mes, aunque esté lejos de su último día. `SinTasaDelDia` si no hay ninguna publicada
+    en el mes; `moneda_destino` solo entra en el mensaje. Período inválido: `ValueError`."""
+    tasa = _ultima_del_mes(sesion, ultimo_dia_del_mes(periodo))
+    if tasa is None:
+        raise SinTasaDelDia(
+            f"No hay tasa del BCV publicada en {periodo} para convertir a {moneda_destino}. "
+            "Cárguela en Índices y vuelva a intentarlo."
         )
     return tasa
 
@@ -75,7 +123,10 @@ def equivalencia_del_dia(
 ) -> Equivalencia:
     """`precio` de la moneda `de` a `a` con la tasa del BCV de `fecha` (`SinTasaDelDia` si no hay
     tasa de ese día). Es la única aritmética de estas conversiones: la del núcleo."""
-    tasa = tasa_del_dia(sesion, fecha, a)
+    return _equivalencia(precio, de, a, tasa_del_dia(sesion, fecha, a))
+
+
+def _equivalencia(precio: Decimal, de: str, a: str, tasa: TasaDeclarada) -> Equivalencia:
     return Equivalencia(
         precio_original=precio,
         moneda_original=de,
@@ -85,3 +136,11 @@ def equivalencia_del_dia(
         convertido=convertir(precio, de, a, tasa.valor),
         moneda=a,
     )
+
+
+def equivalencia_del_cierre(
+    sesion: Session, precio: Decimal, de: str, a: str, periodo: str
+) -> Equivalencia:
+    """`precio` de la moneda `de` a `a` con la tasa del cierre del mes `periodo`
+    (`tasa_del_cierre`; `SinTasaDelDia` si no hay ninguna publicada en el mes)."""
+    return _equivalencia(precio, de, a, tasa_del_cierre(sesion, periodo, a))

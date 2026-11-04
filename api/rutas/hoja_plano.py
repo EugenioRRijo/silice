@@ -30,6 +30,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Resp
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
+from api.acceso_modulos import ModuloEdificacion
 from api.dependencias import SesionDep
 from api.esquemas_hoja import resumen_a_respuesta
 from api.esquemas_hoja_plano import (
@@ -168,6 +169,7 @@ def leer_plano(
     id: IdDeBorrador,
     request: Request,
     activa: CuentaDeLaHoja,
+    _edificacion: ModuloEdificacion,
     _uno: Annotated[None, Depends(_un_solo_archivo)],
     archivo: Annotated[UploadFile, File()],
     rev: Annotated[int, Form(ge=0)],
@@ -183,7 +185,11 @@ def leer_plano(
 @router.post("/borradores/{id}/plano/unidad", response_model=ImportacionRespuesta)
 @sin_eco(FORMA_UNIDAD)
 def reanudar_con_unidad(
-    id: IdDeBorrador, datos: UnidadDelPlano, request: Request, activa: CuentaDeLaHoja
+    id: IdDeBorrador,
+    datos: UnidadDelPlano,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    _edificacion: ModuloEdificacion,
 ) -> ImportacionRespuesta:
     """P2: vuelve a leer el plano detenido con la unidad del dibujo (m, cm, mm, dm, in o ft)."""
     vivo = _vivo(request, activa, id)
@@ -194,7 +200,11 @@ def reanudar_con_unidad(
 @router.post("/borradores/{id}/plano/alturas", response_model=ImportacionRespuesta)
 @sin_eco(FORMA_ALTURAS)
 def cargar_alturas(
-    id: IdDeBorrador, datos: AlturasDelPlano, request: Request, activa: CuentaDeLaHoja
+    id: IdDeBorrador,
+    datos: AlturasDelPlano,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    _edificacion: ModuloEdificacion,
 ) -> ImportacionRespuesta:
     """P3: carga las alturas de los ambientes pendientes, todo o nada (en blanco, pendiente)."""
     vivo = _vivo(request, activa, id)
@@ -205,7 +215,11 @@ def cargar_alturas(
 @router.post("/borradores/{id}/plano/circuitos", response_model=ImportacionRespuesta)
 @sin_eco(FORMA_CIRCUITOS)
 def declarar_circuitos(
-    id: IdDeBorrador, datos: CircuitosDelPlano, request: Request, activa: CuentaDeLaHoja
+    id: IdDeBorrador,
+    datos: CircuitosDelPlano,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    _edificacion: ModuloEdificacion,
 ) -> ImportacionRespuesta:
     """P4: declara los circuitos supuestos (fase, neutro, tierra, puntos maximos), todo o nada."""
     vivo = _vivo(request, activa, id)
@@ -220,6 +234,7 @@ def fusionar_plano(
     datos: FusionDelPlano,
     request: Request,
     activa: CuentaDeLaHoja,
+    _edificacion: ModuloEdificacion,
     sesion: SesionDep,
 ) -> FusionRespuesta:
     """P5: funde la importacion con el espacio del borrador (completa las composiciones como la
@@ -227,7 +242,7 @@ def fusionar_plano(
     409; un espacio que no vale, 422 y el borrador intacto."""
     vivo = _vivo(request, activa, id)
     with _traducir(), vivo.cerrojo:  # el resumen es el del `rev` que produjo ESTA fusion
-        fusion = hoja_plano.fusionar(sesion, vivo, datos.rev)
+        fusion = hoja_plano.fusionar(sesion, vivo, datos.rev, usuario=activa.usuario)
         editado = fusion.vivo
         mas_nueva = _mas_nueva(editado, hoja.codigo_vigente(sesion, editado.proyecto))
         resumen = hoja_vista.resumen(editado, mas_nueva)
@@ -239,7 +254,9 @@ def fusionar_plano(
 
 
 @router.delete("/borradores/{id}/plano", status_code=204, response_class=Response)
-def descartar_plano(id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja) -> Response:
+def descartar_plano(
+    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja, _edificacion: ModuloEdificacion
+) -> Response:
     """P6: descarta la importacion y su carpeta temporal. Idempotente; no cambia el borrador."""
     hoja_plano.descartar(_vivo(request, activa, id))
     return Response(status_code=204)

@@ -1,9 +1,11 @@
 import { WarningAltFilled } from "@carbon/icons-react";
 import { Button } from "@carbon/react";
-import { useCallback, useContext, useEffect, useId, useRef, useState } from "react";
+import { useContext, useEffect, useId, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { ESTADOS_APROBADOS, nombreDeEstado } from "../../comun/aprobacion";
+import type { EstadoDeAprobacion } from "../../comun/aprobacion";
 import { AreaTexto } from "../../comun/AreaTexto";
 import { AvisoError } from "../../comun/AvisoError";
 import { nombreDeResponsable } from "../../comun/responsable";
@@ -11,130 +13,54 @@ import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
-import { useFocoAlCerrar } from "./AgregarPartida";
 import { ContextoDeDialogos } from "./ContextoDeDialogos";
+import type { LecturaDeAprobacion } from "./useAprobacionDeVersion";
 import "./AprobacionDeVersion.scss";
-
-// El estado de una versión en el ciclo de aprobación, como lo da `GET /v1/aprobaciones?proyecto=` (api/rutas/aprobaciones.py,
-// Tarea 18): el último movimiento manda; `por` es el responsable «Nombre <login>» y `el`, la fecha y hora ISO.
-interface EstadoDeVersion {
-  estado: string;
-  por: string | null;
-  el: string | null;
-  notas: string;
-  armo: boolean;
-}
 
 const RUTA = "/v1/aprobaciones";
 const LARGO_DE_NOTA = 2000;
 const ID_NOTA = "hoja-aprobacion-nota";
 
-const NOMBRES: Record<string, string> = {
-  guardada: "Guardada",
-  en_aprobacion: "En aprobación",
-  retirada: "Retirada",
-  aprobada: "Aprobada",
-  aprobada_con_observaciones: "Aprobada con observaciones",
-  devuelta: "Devuelta",
-};
-const APROBADAS = new Set(["aprobada", "aprobada_con_observaciones"]);
-// Se puede enviar una versión guardada o retirada; la en aprobación, la aprobada y la devuelta no (Tarea 17).
-const SE_ENVIAN = new Set(["guardada", "retirada"]);
-
 // «Aprobada · Rita · 25/10/2026» (diseño de montar un presupuesto §5.4); «Guardada» y «En aprobación» sin más. Si quien dictaminó
 // es quien la armó, se dice (la decisión de Eugenio: se permite y queda visible).
-function textoDeEtiqueta(e: EstadoDeVersion): string {
-  const nombre = NOMBRES[e.estado] ?? e.estado;
+function textoDeEtiqueta(e: EstadoDeAprobacion): string {
+  const nombre = nombreDeEstado(e.estado);
   if (e.estado === "guardada" || e.estado === "en_aprobacion" || e.por === null || e.el === null) return nombre;
   const partes = [nombre, nombreDeResponsable(e.por), fechaEsVe(e.el.slice(0, 10))];
-  if (e.armo && APROBADAS.has(e.estado)) partes.push("aprobada por quien la armó");
+  if (e.armo && ESTADOS_APROBADOS.has(e.estado)) partes.push("aprobada por quien la armó");
   if (e.armo && e.estado === "devuelta") partes.push("devuelta por quien la armó");
   return partes.join(" · ");
 }
 
-// La respuesta trae `versiones` como objeto: si no (un servidor sin la ruta), no hay nada que decir.
-function estadoDe(respuesta: unknown, version: string): EstadoDeVersion | null {
-  const versiones = (respuesta as { versiones?: unknown } | null | undefined)?.versiones;
-  if (typeof versiones !== "object" || versiones === null) return null;
-  const estado = (versiones as Record<string, EstadoDeVersion | undefined>)[version];
-  return estado && typeof estado.estado === "string" ? estado : null;
-}
-
-function textoDeEnvio(version: string, retirada: string | null): string {
-  const enviado = `Se envió ${version} a aprobación.`;
-  return retirada ? `${enviado} Se retiró ${retirada} de la aprobación.` : enviado;
-}
-
-type Lectura = { estado: "leyendo" } | { estado: "listo"; datos: EstadoDeVersion | null } | { estado: "fallo" };
-
 interface Props {
+  // El id de la región: a ella vuelve el foco tras enviar.
+  id: string;
   // La obra (su código en la sesión) y la versión guardada que tiene abierta la Hoja.
   proyecto: string;
   version: string;
   // Cambios sin guardar del borrador: no viajan con el envío y el diálogo lo dice.
   cambios: number;
-  // «Hacer una versión nueva a partir de esta»: la Hoja va a «Presupuesto» con el borrador de esta versión (ya abierto).
-  alHacerVersionNueva: () => void;
+  // La lectura de `useAprobacionDeVersion`, que es de quien monta esto (la franja también la usa).
+  lectura: LecturaDeAprobacion;
+  // Lo último que pasó («Se envió…», «Corrija y guarde…»): se lee en un `status`.
+  aviso: string;
+  // El diálogo de enviar está abierto (lo abre «Enviar a aprobación…» de la franja).
+  enviando: boolean;
+  alEnviado: (retirada: string | null) => void;
+  alCancelarEnvio: () => void;
 }
 
-// Junto a la versión de la Hoja (Tarea 19; diseño §5.4): la etiqueta de su aprobación, «Enviar a aprobación…» y, si la
-// devolvieron, sus notas y «Hacer una versión nueva a partir de esta». El estado se lee de la API al abrir la versión (también
-// tras salir, entrar o reiniciar la API: lo guarda la carpeta) y otra vez tras enviar. Quien la monta le da una `key` por obra
-// y versión: cambiar de versión empieza de cero. Si la lectura falla por el servidor se dice; un 403 o un 404 no dicen nada
-// (la Hoja no depende de esto).
-export function AprobacionDeVersion({ proyecto, version, cambios, alHacerVersionNueva }: Props) {
-  const { alExpirar } = useAplicacion();
-  const [intento, setIntento] = useState(0);
-  const [lectura, setLectura] = useState<Lectura>({ estado: "leyendo" });
-  const [aviso, setAviso] = useState("");
-  const [enviando, setEnviando] = useState(false);
-  const idZona = useId();
-  const idBoton = `${idZona}-enviar`;
-  const enfocarAlCerrar = useFocoAlCerrar();
-
-  useEffect(() => {
-    let vigente = true;
-    pedir<unknown>(`${RUTA}?${new URLSearchParams({ proyecto }).toString()}`).then(
-      (r) => {
-        if (vigente) setLectura({ estado: "listo", datos: estadoDe(r, version) });
-      },
-      (error: unknown) => {
-        if (!vigente) return;
-        if (error instanceof ErrorDeApi && error.estado === 401) alExpirar();
-        const delServidor = error instanceof ErrorDeApi && (error.estado === 0 || error.estado >= 500);
-        setLectura(delServidor ? { estado: "fallo" } : { estado: "listo", datos: null });
-      },
-    );
-    return () => {
-      vigente = false;
-    };
-  }, [proyecto, version, intento, alExpirar]);
-
-  const cerrar = useCallback(() => {
-    setEnviando(false);
-    enfocarAlCerrar(idBoton);
-  }, [enfocarAlCerrar, idBoton]);
-
-  const enviado = useCallback(
-    (retirada: string | null) => {
-      setEnviando(false);
-      setAviso(textoDeEnvio(version, retirada));
-      setIntento((n) => n + 1);
-      enfocarAlCerrar(idZona);
-    },
-    [version, enfocarAlCerrar, idZona],
-  );
-
-  const hacerVersionNueva = () => {
-    setAviso("Corrija y guarde: será una versión nueva.");
-    alHacerVersionNueva();
-  };
-
+// Junto a la versión de la Hoja (Tarea 19; diseño §5.4): la etiqueta de su aprobación, sus notas si las hay y el diálogo de
+// enviar. Desde la Tarea 5 del plan F4 los botones («Enviar a aprobación…», «Hacer una versión nueva») son de la franja del
+// paso, que es el único botón principal de la pantalla, y la lectura del estado vive en `useAprobacionDeVersion`. Si la
+// lectura falla se dice; mientras se lee, o sin nada que decir, no se pinta nada (la Hoja no depende de esto).
+export function AprobacionDeVersion({ id, proyecto, version, cambios, lectura, aviso, enviando, alEnviado, alCancelarEnvio }: Props) {
   const datos = lectura.estado === "listo" ? lectura.datos : null;
-  if (lectura.estado === "leyendo" || (lectura.estado === "listo" && datos === null && aviso === "")) return null;
+  // Sin registro de la versión la franja ofrece enviar igual (regla 8): el diálogo tiene que poder abrirse.
+  if (lectura.estado === "leyendo" || (lectura.estado === "listo" && datos === null && aviso === "" && !enviando)) return null;
 
   return (
-    <section id={idZona} tabIndex={-1} className="silice-hoja__aprobacion" aria-label="Aprobación de la versión">
+    <section id={id} tabIndex={-1} className="silice-hoja__aprobacion" aria-label="Aprobación de la versión">
       {lectura.estado === "fallo" && (
         <p className="cds--type-helper-text-01">No se pudo leer el estado de aprobación de esta versión.</p>
       )}
@@ -157,25 +83,13 @@ export function AprobacionDeVersion({ proyecto, version, cambios, alHacerVersion
           {datos.estado === "en_aprobacion" && (
             <p className="cds--type-helper-text-01">La versión enviada no se edita: si guarda cambios, será una versión nueva.</p>
           )}
-          <div className="silice-hoja__acciones">
-            {SE_ENVIAN.has(datos.estado) && (
-              <Button id={idBoton} kind="tertiary" size="sm" onClick={() => setEnviando(true)}>
-                Enviar a aprobación…
-              </Button>
-            )}
-            {datos.estado === "devuelta" && (
-              <Button kind="tertiary" size="sm" onClick={hacerVersionNueva}>
-                Hacer una versión nueva a partir de esta
-              </Button>
-            )}
-          </div>
         </>
       )}
       <p className="silice-hoja__aprobacion-aviso cds--type-body-compact-01" role="status">
         {aviso}
       </p>
       {enviando && (
-        <DialogoEnviar proyecto={proyecto} version={version} cambios={cambios} alEnviado={enviado} alCancelar={cerrar} />
+        <DialogoEnviar proyecto={proyecto} version={version} cambios={cambios} alEnviado={alEnviado} alCancelar={alCancelarEnvio} />
       )}
     </section>
   );

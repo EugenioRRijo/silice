@@ -122,12 +122,13 @@ pendientes, no por herramientas: nada de módulos ni áreas.
   personas, Ayuda). Activo: fondo `--silice-lateral-activo` y raya de 3 px `--silice-marco`. Lo que la cuenta no puede
   usar no aparece. La cabecera de Obras y «Nueva obra» quedan fijas y el árbol tiene su propio
   desplazamiento. **Letra Grande o Muy grande:** filas y títulos se compactan (mixin `con-letra-grande` de `_umbrales.scss`: filas de 1,5 rem, títulos con menos
-  relleno), la zona de obras conserva 10 rem como mínimo y, si aun así no cabe todo, se desplaza la barra entera. Nada se
-  esconde (los tres botones de tamaño de letra siguen).
+  relleno), Empresa se pliega (véase «Empresa plegada con letra grande»), la zona de obras conserva 10 rem como mínimo y,
+  si aun así no cabe todo, se desplaza la barra entera. Nada desaparece: lo plegado se abre con un clic y los tres botones
+  de tamaño de letra siguen.
 - **La obra** (`EspacioDeObra.tsx`, ruta `#/obra/<carpeta>/<obra>/<sección>`): antes de montar la sección se fija la obra
-  en la sesión; encima va la cabecera de la obra (nombre, moneda, versión y la lista para armar de su carpeta), que no es
-  un encabezado: el único h1 es el de la sección. «Esa obra ya no existe» (con «Volver a Pendientes») y «Esta obra se
-  abrió en otra pestaña» (con «Retomar») son pantallas con su h1.
+  en la sesión; encima va la cabecera de la obra (véase «Cabecera de la obra»), que no es un encabezado: el único h1 es el
+  de la sección. «Esa obra ya no existe» (con «Volver a Pendientes») y «Esta obra se abrió en otra pestaña» (con
+  «Retomar») son pantallas con su h1. Sus secciones se describen en «Secciones de la obra».
 - **Buscador** (`Buscador.tsx`): diálogo propio con combobox y lista (obras, sus secciones, Empresa y las pantallas sin
   sitio en el árbol). Ctrl+K o el botón lo abren; Esc lo cierra y el foco vuelve al botón.
 - **Salir sin perder trabajo:** elegir otra obra, sección o entrada en el marco con cambios sin guardar pregunta
@@ -142,6 +143,114 @@ pendientes, no por herramientas: nada de módulos ni áreas.
 - 1366×768 y 1056 px sin desplazamiento horizontal con las tres letras. Los textos del marco dicen obra, sección,
   pendiente y empresa; nunca «módulo», «área», «página» ni «carpeta de trabajo» (salvo Empresa › Carpetas de trabajo,
   para quien administra). Lo vigila `src/paginas/sinJergaInterna.test.ts`.
+
+### Empresa plegada con letra grande
+
+Rediseño F4, Tarea 0 (`marco/ZonaEmpresa.tsx`, `comun/useTamanoDeLetra.ts`). En el cierre de F3, con letra Muy grande
+cabían 7 obras a 1366×768 y 4 a 1366×657, y Empresa ocupaba casi lo mismo que el árbol; Eugenio eligió plegarla.
+
+- Con letra **Normal**, Empresa es un h2 con su lista, sin botón.
+- Con **Grande** o **Muy grande**, el h2 lleva un botón desplegable (WAI-ARIA: `aria-expanded` y `aria-controls`, chevron
+  a la derecha plegada y hacia abajo desplegada) que arranca **plegado**, salvo que la ruta sea una entrada de Empresa:
+  entonces arranca abierto. Su alto pasa al árbol de obras.
+- La decisión de plegar o desplegar vale para el tamaño de letra con que se tomó y no se recuerda entre sesiones
+  (pregunta 13 del plan F4). Cambiar la letra en vivo la vuelve a evaluar (`useTamanoDeLetra` observa el atributo de la
+  raíz).
+
+### Cabecera de la obra
+
+Rediseño F4, Tarea 1 (`marco/CabeceraDeObra.tsx`, `marco/EtapaDeObra.tsx`). Una región «Obra abierta» encima de la
+sección, sin encabezado propio (el h1 es el de la sección):
+
+- el nombre de la obra;
+- **Estado:** la palabra que da el servidor (`etapa_texto`) con su ícono de Carbon delante, decorativo (`aria-hidden`):
+  en elaboración `Edit`, en aprobación `Time`, aprobada `CheckmarkOutline`, en ejecución `InProgress` y atrasada
+  `WarningFilled`. Solo la atrasada lleva color, y nunca va sin la palabra. Sin la ficha (cargando, sin permiso) no se
+  dice nada;
+- la versión: «Versión: V» (la vigente) o, si el borrador abierto sale de otra, «Versión abierta: V (la vigente es W)»;
+- debajo, la moneda y la lista para armar de la carpeta.
+
+La misma pieza `EtapaDeObra` pinta el estado en las cifras del Resumen y en la tabla de obras: no pueden divergir.
+
+## Secciones de la obra
+
+El árbol ofrece, por obra y según lo que la cuenta puede usar: Resumen, Presupuesto, Tramos (módulo vial), Archivos y
+planos, Versiones, Aprobaciones, Mercado y Control de obra (`marco/secciones.ts`). Presupuesto, Archivos y planos y
+Versiones comparten el borrador de la obra (`ProveedorDeLaHoja`): pasar de una a otra no lo cierra ni pregunta. Quien
+solo revisa ve cada sección en solo lectura: lo que escribe no se pinta (no se deshabilita).
+
+- **Resumen** (`paginas/obras/`): las cifras de la obra, su versión vigente y lo pendiente, con la franja del paso.
+- **Presupuesto** (`paginas/hoja/`, h1 «Presupuesto»; antes «Hoja de la obra»): la franja del paso arriba, el estado del
+  borrador y las pestañas «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y «Ajustes de
+  costo»; «Espacio y metrajes» va delante en una obra con espacio. Son seis en una obra civil y siete con espacio (antes,
+  nueve). Cada pestaña tiene un solo «¿Qué es esto?» plegado con su ayuda; quien edita ve además, a la vista, cómo se
+  escriben las cifras. El código de cada renglón con precio abre su APU en el panel lateral; «Agregar partida» busca en
+  el catálogo, por parecido («Buscar parecidas», antes la pantalla Partidas similares) o compone una nueva en el panel,
+  sin salir de la obra.
+- **Archivos y planos** (`paginas/archivos/`): «Subir plano o cómputo» abre un diálogo modal con una sola zona de soltar
+  que elige el flujo por la extensión: `.dxf` o `.ifc`, el plano; `.csv`, «Cargar cómputo», que absorbió la pantalla
+  Elaborar y lleva las partidas al mismo borrador. Debajo, la tabla «Registro de importaciones» (fecha y hora, quién, qué
+  produjo y la versión, o «sin guardar»); cada fila abre su informe en el panel lateral. Con la especialidad «edificación»
+  apagada la sección sigue: la puerta se llama «Cargar cómputo» y solo acepta `.csv`.
+- **Versiones** (`paginas/versiones/`): la región «Cadena de sellos» (íntegra, o rota en la versión V, con su ícono)
+  encima de la tabla «Versiones de la obra» (versión, fecha, motivo, de cuál sale, cambios, estado de aprobación, vigente y
+  acciones). La abierta dice «abierta» y la descartada «descartada», en palabra. «Abrir» lleva al Presupuesto con esa
+  versión; «Ver cambios» abre el registro de cambios en el panel lateral ancho; «Restaurar…» abre su diálogo con la versión
+  de la fila elegida. Antes era la pestaña «Trazabilidad» y el selector «Versión» de la Hoja.
+- **Mercado** (`paginas/mercado/`, h1 «Estudio de mercado») con cuatro pestañas de Carbon: «Lo que compramos» y «Lo que
+  cobramos» (anotar observaciones y usar precios; solo con `editar_hoja`), «Histórico de precios» (h2, filtros por insumo
+  y fechas, «Filtrar» secundario; antes, una pantalla suelta) y «Cotizaciones de la obra» (la tabla con el rastro de la
+  conversión; «Registrar una cotización…» y «Retirar una cotización…» crean una versión desde la vigente y se avisa con el
+  enlace para abrirla en el Presupuesto). Las dos últimas se montan al elegirlas. Quien revisa ve solo esas dos, sin
+  controles que escriban.
+
+En cada sección: un solo h1, un solo botón principal a la vista (con un diálogo abierto, el del diálogo; el de detrás pasa
+a secundario) y nada de desplazamiento horizontal a 1056, 1366 y 1910 px con las tres letras.
+
+### Franja del paso
+
+`comun/FranjaDelPaso.tsx` (Tareas 2 y 5 de F4). Es el molde de toda sección: dice **un solo** paso, arriba, antes de lo
+demás, y su botón es **el único principal** de la pantalla mientras está a la vista. Sin acción posible para la cuenta,
+la franja solo informa.
+
+- **«Te falta:»** es una precaución: fondo `--silice-aviso-fondo`, raya izquierda de 4 px `--silice-aviso-borde` e ícono
+  `WarningAltFilled`; la palabra dice lo que es y el color no va solo. Con contraste forzado el fondo se va y queda un
+  borde propio.
+- **«Siguiente paso:»** solo orienta: una línea entre divisores de 1 px, sin ícono ni fondo.
+- El botón es el principal de Carbon (complementario con texto blanco, véase «Papeles del color»); con un diálogo de la
+  pantalla abierto pasa a secundario (`enSegundoPlano`). Texto y botón bajan de línea si no caben: la franja no ensancha
+  la página con letra grande.
+- La región se llama «Siguiente paso» para la lectora en los dos tipos.
+
+### Panel lateral
+
+`comun/PanelLateral.tsx` (Tareas 6 y 7 de F4). Un `aside` acoplado a la derecha del contenido, nombrado por su h2: el APU
+de una partida, el registro de cambios de una versión, Componer y el informe de una importación.
+
+- **No es un diálogo**: no atrapa el foco; se queda junto al contenido, como la columna del
+  recorrido. Quien lo usa lo pone en `silice-con-panel` (contenido `minmax(0, 1fr)` a la izquierda y el panel a la
+  derecha): las tablas del contenido se desplazan en su caja.
+- Dos anchos: **24 rem** (normal: el informe de una importación) y **40 rem** (ancho: el APU, el registro de cambios y
+  Componer).
+- Separado por un borde de 1 px `--cds-border-subtle`, sin sombra ni animación.
+- Al abrirse el foco va a su h2, con el contorno de foco visible; **Esc** (nacido dentro del panel y no usado ya por un
+  campo) o **«Cerrar»** lo cierran y el foco vuelve al control que lo abrió (el último, si otra fila lo volvió a abrir).
+- **Cuando no cabe junto al contenido** pasa por encima (clase `silice-panel-lateral--superpuesto`): lo decide el ancho
+  real del contenedor, con cualquier letra, si no hay sitio para el panel, 1 rem de espacio y **32 rem** de contenido (a
+  1366 px con letra Normal el panel ancho dejaba la tabla en 251 px). Va fijo bajo la barra superior, por encima de las
+  columnas fijas de las tablas, opaco, a lo más del ancho de la ventana y con su propio desplazamiento: la página nunca se
+  desplaza a lo ancho. Mientras tapa, **lo tapado queda `inert`** (Tab no llega a lo que no se ve) y se suelta al
+  cerrarlo o al volver a caber; junto al contenido no se toca nada.
+- **Componer en panel** va siempre por encima (modo `en-capa`, en la capa del diálogo «Agregar partida», por encima de su
+  velo) y es la excepción del foco: atrapa Tab dentro del panel, porque el diálogo del que sale queda oculto debajo.
+
+### Filas afectadas
+
+Tarea 5 de F4 (`claseDeFila` de `TablaDensa` y `TablaPaginada`; `esFilaAfectada` en `paginas/hoja/pasoDelPresupuesto.ts`).
+En «Partidas», el renglón con un hallazgo CRITICO, ERROR o ADVERTENCIA lleva la clase `silice-fila--afectada`: fondo de
+precaución `--silice-aviso-fondo` en todas sus celdas, también en la celda fija de la izquierda. INFO no afecta. Nunca es
+el acento ni un color de severidad suelto: la severidad se sigue diciendo **en palabra** en la columna «Estado», con su
+ícono. Con contraste forzado el fondo se va y la palabra queda.
 
 ## Movimiento
 

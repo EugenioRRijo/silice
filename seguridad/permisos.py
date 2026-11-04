@@ -26,8 +26,11 @@ class Accion(StrEnum):
     DECIDIR_RECUPERACION = "decidir_recuperacion"  # (S2)
     ENTREGAR_PAQUETE = "entregar_paquete"
     OPERAR_ARENERA = "operar_arenera"  # existencias, movimientos e importar la báscula (UC-28/29)
+    REGISTRAR_COSTOS_PRODUCCION = "registrar_costos_produccion"  # costos del periodo (plan vial)
+    PUBLICAR_COSTO_PROPIO = "publicar_costo_propio"  # costo propio al catálogo (plan vial, T5)
     # Lectura
     LEER_PROYECTO = "leer_proyecto"
+    VER_RIESGO = "ver_riesgo"  # riesgo de la obra e informe de mejora (plan vial, Tarea 15)
     # Revisión (rol revisa)
     REVISAR_PAQUETE = "revisar_paquete"  # abrir paquetes, reauditar, dictamen
     APROBAR_VERSION = "aprobar_version"  # por aprobar, abrir un envío y dictaminar (MP-4)
@@ -38,6 +41,7 @@ class Accion(StrEnum):
     ADMINISTRAR_EMPRESA = "administrar_empresa"  # empresa, clave de firma, empresas registradas
     ADMINISTRAR_PRECIOS = "administrar_precios"  # lista de la empresa e importar el BCV (S1)
     ADMINISTRAR_RED_Y_API = "administrar_red_y_api"  # red local, API y claves de API
+    ACTIVAR_MODULOS = "activar_modulos"  # especialidades y módulos (plan vial, T19)
     CAMBIAR_CARPETA_DE_DATOS = "cambiar_carpeta_de_datos"  # (S5)
 
 
@@ -62,7 +66,10 @@ PERMISOS: dict[Accion, frozenset[Rol]] = {
     Accion.DECIDIR_RECUPERACION: frozenset({_ARMA}),
     Accion.ENTREGAR_PAQUETE: frozenset({_ARMA}),
     Accion.OPERAR_ARENERA: frozenset({_ARMA, _ADMIN}),
+    Accion.REGISTRAR_COSTOS_PRODUCCION: frozenset({_ARMA, _ADMIN}),
+    Accion.PUBLICAR_COSTO_PROPIO: frozenset({_ADMIN}),
     Accion.LEER_PROYECTO: frozenset({_ARMA, _REVISA}),
+    Accion.VER_RIESGO: frozenset({_ARMA, _REVISA, _ADMIN}),
     Accion.REVISAR_PAQUETE: frozenset({_REVISA}),
     Accion.APROBAR_VERSION: frozenset({_ARMA, _REVISA}),
     Accion.CAMBIAR_CASO: frozenset({_ARMA, _ADMIN}),
@@ -70,6 +77,7 @@ PERMISOS: dict[Accion, frozenset[Rol]] = {
     Accion.ADMINISTRAR_EMPRESA: frozenset({_ADMIN}),
     Accion.ADMINISTRAR_PRECIOS: frozenset({_ADMIN}),
     Accion.ADMINISTRAR_RED_Y_API: frozenset({_ADMIN}),
+    Accion.ACTIVAR_MODULOS: frozenset({_ADMIN}),
     Accion.CAMBIAR_CARPETA_DE_DATOS: frozenset({_ADMIN}),
 }
 

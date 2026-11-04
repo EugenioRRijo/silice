@@ -1,4 +1,5 @@
-import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { useState } from "react";
 import { pedir } from "../../api/cliente";
 import { ESTADOS_APROBADOS, versionConEstado } from "../../comun/aprobacion";

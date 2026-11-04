@@ -3,6 +3,7 @@ import { Accordion, AccordionItem } from "@carbon/react";
 import type { InformeAuditoriaRespuesta } from "../api/tipos";
 import type { ColumnaDensa } from "./TablaDensa";
 import { TablaDensa } from "./TablaDensa";
+import { formatoEsVe } from "../indicadores/formatoEsVe";
 
 interface Props {
   informe: InformeAuditoriaRespuesta;
@@ -19,11 +20,11 @@ export function InformeAuditoria({ informe }: Props) {
     { clave: "numero", titulo: "#", numerica: true },
     { clave: "regla", titulo: "Regla" },
     { clave: "severidad", titulo: "Severidad", celda: "severidad" },
-    { clave: "partida", titulo: "Partida" },
-    { clave: "descripcion", titulo: "Descripción" },
-    ...(hay("impacto") ? [{ clave: "impacto", titulo: "Impacto", numerica: true }] : []),
-    ...(hay("observado") ? [{ clave: "observado", titulo: "Observado", numerica: true }] : []),
-    ...(hay("esperado") ? [{ clave: "esperado", titulo: "Esperado", numerica: true }] : []),
+    { clave: "partida", titulo: "Partida", celda: (f) => <span className="silice-informe__codigo">{f["partida"]}</span> },
+    { clave: "descripcion", titulo: "Descripción", celda: (f) => <span className="silice-informe__descripcion">{f["descripcion"]}</span> },
+    ...(hay("impacto") ? [{ clave: "impacto", titulo: "Impacto", numerica: true, presentar: formatoEsVe }] : []),
+    ...(hay("observado") ? [{ clave: "observado", titulo: "Observado", numerica: true, presentar: formatoEsVe }] : []),
+    ...(hay("esperado") ? [{ clave: "esperado", titulo: "Esperado", numerica: true, presentar: formatoEsVe }] : []),
     { clave: "origen", titulo: "Origen" },
   ];
   const Icono = informe.cumple ? CheckmarkFilled : ErrorFilled;

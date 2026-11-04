@@ -422,8 +422,8 @@ def test_b12_la_clave_de_api_no_exporta_ni_confirma_el_id(app: FastAPI) -> None:
         assert respuesta.headers["cache-control"] == "no-store"
 
 
-@pytest.mark.parametrize("login", ["rita", "tomas"])
-def test_b12_rita_que_revisa_y_tomas_con_clave_temporal_no_exportan(
+@pytest.mark.parametrize("login", ["admin", "tomas"])
+def test_b12_el_administrador_y_tomas_con_clave_temporal_no_exportan(
     app: FastAPI, login: str
 ) -> None:
     navegador, ficha = _ana(app)
@@ -432,8 +432,19 @@ def test_b12_rita_que_revisa_y_tomas_con_clave_temporal_no_exportan(
     respuesta = _excel(otro, id_)
     assert respuesta.status_code == 403
     assert respuesta.headers["cache-control"] == "no-store"
-    if login == "rita":
+    if login == "admin":
         assert respuesta.json() == {"detalle": MENSAJE_PERMISO}
+
+
+def test_b12_rita_que_revisa_exporta_su_borrador_y_no_el_de_ana(app: FastAPI) -> None:
+    """F4 2b (Eugenio, 2026-10-31): quien revisa ve la Hoja en solo lectura y descarga el Excel
+    de SU borrador; el de otra ficha no existe para ella (404)."""
+    navegador, ficha = _ana(app)
+    id_ana = _abrir(navegador, ficha)
+    rita, ficha_rita = con_cuenta(app, "rita")
+    assert _excel(rita, id_ana).status_code == 404
+    propio = _excel(rita, _abrir(rita, ficha_rita))
+    assert propio.status_code == 200 and propio.headers["content-type"] == XLSX
 
 
 def test_b12_el_borrador_de_otra_ficha_no_existe_es_404(app: FastAPI) -> None:
@@ -692,7 +703,7 @@ def test_los_precios_se_evaluan_a_la_fecha_de_hoy_de_la_ruta(
     assert estados["pasada"] == sin_fuente
     assert estados["lejana"] == (
         f"{sin_fuente}; R12 ADVERTENCIA: Herramientas menores [ALB213]: precio del 05/10/2026 "
-        "con 3010 dias al 01/01/2035 (plazo 30)"
+        "con 3010 días al 01/01/2035 (plazo 30)"
     )
 
 

@@ -12,12 +12,17 @@ Reglas de la frontera:
   la diferencia con la existencia teórica a esa fecha.
 - **La API no usa el reloj** para decidir validez: `fecha_referencia` (para detectar fechas futuras
   en la báscula) es obligatoria y la manda el cliente; `ahora` al resolver o descartar también.
+  Excepción, los costos del periodo (`/costos`), las recetas (`/recetas`) y las producciones
+  (`/producciones`), que viven en `api.rutas.produccion_planta` con el mismo prefijo y la misma
+  puerta: su `registrado` es la hora del servidor (`_ahora`) y el cuerpo no lleva `ahora` (si lo
+  trae, se ignora).
 - **Cada petición es una transacción** (`SesionInstalacionDep`): lo que registra queda confirmado al
   terminar bien y un error, de cualquier tipo, no deja nada a medias.
 - **Dos entradas** (RT-9): la clave de API (`X-Silice-Clave`, integraciones) o la sesión web
   (cookie más `X-Silice-CSRF` y `Origin` en lo que escribe; solo arma y administrador,
   `Accion.OPERAR_ARENERA`). Una sola dependencia, `OPERAR_ARENERA`, protege el router y entrega la
-  sesión a las rutas que escriben, sin validarla dos veces.
+  sesión a las rutas que escriben, sin validarla dos veces. Las de `/costos` suman la puerta
+  `REGISTRAR_COSTOS` (ver `api.rutas.produccion_planta`).
 - **Usuario de lo que se escribe**: con clave, `USUARIO_API` (RT-S4-4), pues la clave no entrega su
   identidad a la ruta; con sesión web, el responsable de la cuenta (`Nombre <login>`, RF-82).
 
@@ -48,6 +53,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from api.acceso_modulos import requiere_modulo
 from api.dependencias import USUARIO_API, SesionInstalacionDep
 from api.proteccion import LIMITE_CUERPO
 from api.sesion_web import exigir_clave_o_sesion
@@ -75,7 +81,7 @@ OPERAR_ARENERA = exigir_clave_o_sesion(Accion.OPERAR_ARENERA)
 router = APIRouter(
     prefix="/v1/produccion",
     tags=["produccion"],
-    dependencies=[Depends(OPERAR_ARENERA)],
+    dependencies=[Depends(OPERAR_ARENERA), Depends(requiere_modulo("produccion"))],
     route_class=RutaSinCache,  # existencias y pesajes no se guardan en el navegador
 )
 
@@ -586,3 +592,13 @@ def descartar_sospechoso(
     _sospechoso_pendiente(sesion, id_sospechoso)
     descartar(sesion, id_sospechoso, usuario=usuario, ahora=ahora)
     return Response(status_code=204)
+
+
+# --- Hora del servidor ---------------------------------------------------------------------------
+
+
+def _ahora() -> datetime:
+    """La hora del servidor: `registrado` de un costo, una receta, una producción o un cálculo no
+    la decide el cliente. Las rutas de `api.rutas.produccion_planta` la buscan aquí en cada
+    llamada."""
+    return datetime.now().replace(microsecond=0)

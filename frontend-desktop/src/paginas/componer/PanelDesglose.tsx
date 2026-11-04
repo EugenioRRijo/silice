@@ -1,4 +1,5 @@
-import { InlineNotification, Table, TableBody, TableCell, TableRow } from "@carbon/react";
+import { Table, TableBody, TableCell, TableRow } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { AvisoError } from "../../comun/AvisoError";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import type { Advertencia, Contraste, Desglose, Evaluacion } from "./cliente";
@@ -12,6 +13,8 @@ interface Props {
   anterior?: Desglose | null;
   // La moneda de trabajo de la carpeta (D-MP1): cada monto la dice. Sin ella (la API no la dio) no se inventa.
   moneda?: string | null;
+  // El nivel de su titulo: h2 en la pantalla, h3 en el panel de «Agregar partida» (plan F4, Tarea 9).
+  nivel?: 2 | 3;
 }
 
 // «2.074,44 Bs»: el texto de la API en es-VE (una sola conversion) y la moneda, si se sabe.
@@ -56,10 +59,11 @@ function TablaDeMontos({ desglose, moneda }: { desglose: Desglose; moneda: strin
   );
 }
 
-function BloqueContraste({ contraste, moneda }: { contraste: Contraste; moneda: string | null }) {
+function BloqueContraste({ contraste, moneda, nivel }: { contraste: Contraste; moneda: string | null; nivel: 3 | 4 }) {
+  const Titulo = `h${nivel}` as const;
   return (
     <div className="silice-componer__contraste">
-      <h3 className="cds--type-heading-compact-02">Contraste con la estimación por reglas (AACE)</h3>
+      <Titulo className="cds--type-heading-compact-02">Contraste con la estimación por reglas (AACE)</Titulo>
       <p className="cds--type-body-compact-01">
         Técnica de estimación que corresponde a este dominio: {contraste.tecnica} ({contraste.registros} registro(s)).
         Precio unitario estimado por reglas: {conMoneda(contraste.pu_estimado, moneda)}.
@@ -75,13 +79,14 @@ function BloqueContraste({ contraste, moneda }: { contraste: Contraste; moneda: 
 }
 
 // Desglose en vivo (RF-27): lo calcula la API; aqui solo se pinta. Las advertencias informan, nunca bloquean.
-export function PanelDesglose({ evaluacion, cargando, error, anterior = null, moneda = null }: Props) {
+export function PanelDesglose({ evaluacion, cargando, error, anterior = null, moneda = null, nivel = 2 }: Props) {
+  const Titulo = `h${nivel}` as const;
   const conservado = evaluacion && !evaluacion.desglose && evaluacion.estado === "incompleto" ? anterior : null;
   return (
     <section className="silice-componer__bloque" aria-labelledby="componer-desglose">
-      <h2 id="componer-desglose" className="cds--type-heading-compact-02">
+      <Titulo id="componer-desglose" className="cds--type-heading-compact-02">
         Desglose en vivo
-      </h2>
+      </Titulo>
       <p role="status" className="silice-componer__nota cds--type-label-01">
         {cargando ? "Recalculando…" : ""}
       </p>
@@ -123,7 +128,7 @@ export function PanelDesglose({ evaluacion, cargando, error, anterior = null, mo
               subtitle={a.texto}
             />
           ))}
-          {evaluacion.contraste && <BloqueContraste contraste={evaluacion.contraste} moneda={moneda} />}
+          {evaluacion.contraste && <BloqueContraste contraste={evaluacion.contraste} moneda={moneda} nivel={nivel === 2 ? 3 : 4} />}
         </>
       )}
     </section>

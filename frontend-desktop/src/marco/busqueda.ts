@@ -1,4 +1,5 @@
 import { rutaDe } from "../shell/rutas";
+import { seccionesDeLaObra } from "./oferta";
 import type { Oferta } from "./oferta";
 import { rutaDeEmpresa, rutaDeObra } from "./secciones";
 import type { ObraDeCarpeta } from "./useObras";
@@ -26,7 +27,11 @@ function coincide(palabras: readonly string[], texto: string): boolean {
 // pantallas sin sitio en el árbol. Sin texto, las primeras obras de la lista. Nunca más de `MAXIMO_DE_RESULTADOS`. La
 // oferta es obligatoria: sin ella no habría con qué decidir qué puede usar la cuenta. Una ruta no sale dos veces (la
 // sección «Resumen» de una obra lleva a la misma que la obra).
-export function resultadosDe(texto: string, obras: readonly ObraDeCarpeta[], oferta: Oferta): Resultado[] {
+export function resultadosDe(
+  texto: string,
+  obras: readonly ObraDeCarpeta[],
+  oferta: Oferta,
+): Resultado[] {
   const palabras = normalizar(texto).split(/\s+/).filter(Boolean);
   const deLaObra = (o: ObraDeCarpeta): Resultado => ({
     texto: o.obra,
@@ -38,7 +43,7 @@ export function resultadosDe(texto: string, obras: readonly ObraDeCarpeta[], ofe
   const todos: Resultado[] = [
     ...obras.map(deLaObra),
     ...obras.flatMap((o) =>
-      oferta.secciones.map((s) => ({
+      seccionesDeLaObra(oferta).map((s) => ({
         texto: `${o.obra} › ${s.titulo}`,
         detalle: s.ayuda,
         ruta: rutaDeObra(o.carpeta, o.obra_id, s.id),

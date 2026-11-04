@@ -1,14 +1,5 @@
-import {
-  Button,
-  Select,
-  SelectItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@carbon/react";
+import { Button, Select, SelectItem, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
+import { TableHeader } from "../../comun/carbonEs";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { COLUMNAS, TITULOS } from "./tablas";
 import type { Fila, TipoTabla } from "./tablas";
@@ -21,16 +12,19 @@ interface Props {
   alCambiar: (indice: number, clave: string, valor: string) => void;
   alAgregar: () => void;
   alBorrar: (indice: number) => void;
+  // El nivel de su titulo: h3 en la pantalla, h4 en el panel de «Agregar partida» (plan F4, Tarea 9).
+  nivel?: 3 | 4;
 }
 
 // Una tabla de insumos editable (UC-10, pasos 2 a 4). Carbon `sm`: celdas de texto; los montos se teclean y se
 // muestran como texto, alineados a la derecha, y nunca se convierten en el navegador.
-export function TablaInsumos({ tipo, filas, modalidades, alCambiar, alAgregar, alBorrar }: Props) {
+export function TablaInsumos({ tipo, filas, modalidades, alCambiar, alAgregar, alBorrar, nivel = 3 }: Props) {
+  const Titulo = `h${nivel}` as const;
   const titulo = TITULOS[tipo];
   const columnas = COLUMNAS[tipo];
   return (
     <section className="silice-componer__tabla" aria-label={titulo}>
-      <h3 className="cds--type-heading-compact-02">{titulo}</h3>
+      <Titulo className="cds--type-heading-compact-02">{titulo}</Titulo>
       <div className="silice-tabla">
         <Table size="sm" aria-label={`Insumos: ${titulo}`}>
           <TableHead>

@@ -57,7 +57,7 @@ describe("Guardar", () => {
     expect(screen.getByRole("button", { name: "Guardar composición" })).toBeDisabled();
   });
 
-  test("tras guardar muestra el mensaje, los avisos y el enlace a Elaborar un presupuesto", () => {
+  test("tras guardar muestra el mensaje y los avisos", () => {
     montar({
       resultado: {
         precio_unitario: "29.70",
@@ -68,12 +68,10 @@ describe("Guardar", () => {
     });
     expect(screen.getByText(/Composición guardada para la partida FIC-1/)).toBeInTheDocument();
     expect(screen.getByText("El rendimiento se guardó sin justificación.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Elaborar un presupuesto" })).toHaveAttribute("href", "/elaborar");
   });
 
-  test("un error de guardado se muestra con su detalle y no hay enlace", () => {
+  test("un error de guardado se muestra con su detalle", () => {
     montar({ error: "Las condiciones del rendimiento son obligatorias." });
     expect(screen.getByRole("alert")).toHaveTextContent("Las condiciones del rendimiento son obligatorias.");
-    expect(screen.queryByRole("link", { name: "Elaborar un presupuesto" })).not.toBeInTheDocument();
   });
 });

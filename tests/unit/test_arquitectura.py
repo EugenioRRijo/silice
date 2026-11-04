@@ -46,6 +46,7 @@ TERCEROS_POR_ADAPTADOR: dict[str, frozenset[str]] = {
     "industrial": frozenset(),
     "sistemas": frozenset(),
     "telecom": frozenset(),
+    "vial": frozenset(),  # plan vial, Tarea 7: solo biblioteca estandar y core.contracts
 }
 _BIBLIOTECA_ESTANDAR = frozenset(sys.stdlib_module_names) | {"__future__"}
 

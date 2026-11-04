@@ -1,4 +1,5 @@
-import { Button, Form, PasswordInput } from "@carbon/react";
+import { Button, Form } from "@carbon/react";
+import { PasswordInput } from "../comun/carbonEs";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { AvisoError } from "../comun/AvisoError";

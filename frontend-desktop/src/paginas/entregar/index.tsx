@@ -1,11 +1,5 @@
-import {
-  Button,
-  Form,
-  InlineNotification,
-  PasswordInput,
-  Select,
-  SelectItem,
-} from "@carbon/react";
+import { Button, Form, Select, SelectItem } from "@carbon/react";
+import { InlineNotification, PasswordInput } from "../../comun/carbonEs";
 import { Download } from "@carbon/icons-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -80,7 +74,7 @@ export default function PaginaEntregar() {
       {proyectos.estado === "listo" && proyectos.datos.length === 0 && (
         <EstadoVacio
           titulo="Esta carpeta todavía no tiene obras."
-          descripcion="Elabore un presupuesto para tener algo que entregar."
+          descripcion="Cree una obra y guarde una versión de su presupuesto para tener algo que entregar."
         />
       )}
       {proyectos.estado === "listo" && proyectos.datos.length > 0 && (

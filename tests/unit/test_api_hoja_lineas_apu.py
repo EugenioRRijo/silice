@@ -546,16 +546,18 @@ def test_sin_linea_base_lo_dice_y_no_compara() -> None:
     }
 
 
-def test_antes_y_despues_lee_con_clave_y_no_con_quien_revisa() -> None:
+def test_antes_y_despues_lee_con_clave_y_con_quien_revisa() -> None:
     con_clave = cliente(app).get(
         "/v1/hoja/antes-y-despues",
         params={"proyecto": OBRA},
         headers={CABECERA: crear_clave_de_prueba()},
     )
     assert con_clave.status_code == 200
-    rita, _ = con_cuenta(app, "rita")
-    revisa = rita.get("/v1/hoja/antes-y-despues", params={"proyecto": OBRA})
-    assert revisa.status_code == 403 and revisa.json() == {"detalle": MENSAJE_PERMISO}
+    rita, _ = con_cuenta(app, "rita")  # F4 2b: quien revisa lee (Eugenio, 2026-10-31)
+    assert rita.get("/v1/hoja/antes-y-despues", params={"proyecto": OBRA}).status_code == 200
+    admin, _ = con_cuenta(app, "admin")
+    negada = admin.get("/v1/hoja/antes-y-despues", params={"proyecto": OBRA})
+    assert negada.status_code == 403 and negada.json() == {"detalle": MENSAJE_PERMISO}
 
 
 def test_antes_y_despues_de_una_obra_o_version_que_no_existe_es_404_y_la_forma_mala_422() -> None:

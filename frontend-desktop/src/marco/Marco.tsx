@@ -1,4 +1,4 @@
-import { InlineNotification } from "@carbon/react";
+import { InlineNotification } from "../comun/carbonEs";
 import { Suspense, createElement, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent, ReactElement, ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate, useNavigationType, useParams } from "react-router";
@@ -9,7 +9,7 @@ import { AvisoError } from "../comun/AvisoError";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { EstadoVacio } from "../comun/EstadoVacio";
 import { useTituloDelDocumento } from "../comun/tituloDelDocumento";
-import { olvidarImportaciones } from "../paginas/hoja/useImportacion";
+import { olvidarImportaciones } from "../paginas/archivos/useImportacion";
 import { Bandeja } from "../paginas/pendientes/Bandeja";
 import { hojasConCambios } from "../shell/carpetas/hojasConCambios";
 import { useCarpetaDeTrabajo } from "../shell/carpetas/useCarpetaDeTrabajo";
@@ -45,10 +45,12 @@ import {
   rutaDeObra,
   seccionPorId,
 } from "./secciones";
+import { useModulos } from "./useModulos";
 import { useObras } from "./useObras";
 import { ContextoPendientes, useCargaDePendientes } from "./usePendientes";
 
 export const MENSAJE_SIN_PERMISO = "Su cuenta no tiene permiso para esta pantalla o acción.";
+export const MENSAJE_APAGADA = "Esta función está apagada en esta instalación. Quien administra puede encenderla en Administración.";
 const CARPETA_CAMBIADA = "Carpeta cambiada";
 
 export interface PropsDelMarco {
@@ -107,6 +109,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
   const obras = useObras(acciones);
   const { recargar: recargarObras } = obras;
+  // Lo que la instalación apagó (plan vial, Tarea 19): no se ofrece ni se abre.
+  const { apagados: modulosApagados, recargar: recargarModulos } = useModulos();
 
   // Un recorrido en curso, la pregunta de salida abierta, los formularios sucios y el diálogo «Nueva obra» no
   // sobreviven a la sesión.
@@ -246,7 +250,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       const cambiaDeCarpeta = carpeta !== undefined && carpeta !== carpetaActual;
       try {
         const borradores = cambiaDeCarpeta && puedeEditarHoja ? await hojasConCambios(obrasDeLaCarpeta) : [];
-        if (await confirmarSalida(cambiaDeCarpeta ? "carpeta" : "salir", borradores)) navegar(destino);
+        if (await confirmarSalida(cambiaDeCarpeta ? "carpeta" : "salir", borradores, null, destino)) navegar(destino);
       } catch (e) {
         fallo(e);
       }
@@ -266,7 +270,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     const destino = href.startsWith("#") ? href.slice(1) : href;
     if (!destino.startsWith("/") || destino === `${ubicacion.pathname}${ubicacion.search}`) return;
     const carpeta = carpetaDelDestino(destino);
-    if (formulariosSucios().length === 0 && (carpeta === undefined || carpeta === carpetaActual)) return;
+    if (formulariosSucios(destino).length === 0 && (carpeta === undefined || carpeta === carpetaActual)) return;
     e.preventDefault();
     void irSeguro(destino);
   };
@@ -282,6 +286,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       proyecto,
       nombreProyecto,
       caso: casos?.actual ?? null,
+      modulosApagados,
+      recargarModulos,
       recargarProyectos: recargarObras,
       elegirObra,
       abrirNuevaObra,
@@ -293,7 +299,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
       almacenDelLibro: almacen,
       crearHojaVisor: crearHoja,
     }),
-    [sesion, proyecto, nombreProyecto, casos, recargarObras, elegirObra, abrirCarpeta, monedaPendiente, declararMoneda, declarandoMoneda, alExpirar, almacen, crearHoja],
+    [sesion, proyecto, nombreProyecto, casos, modulosApagados, recargarModulos, recargarObras, elegirObra, abrirCarpeta, monedaPendiente, declararMoneda, declarandoMoneda, alExpirar, almacen, crearHoja],
   );
 
   let obraDeLaSesion: ObraDeLaSesion = null;
@@ -304,7 +310,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   }
 
   const pantalla = (pagina: PaginaDef | undefined): ReactNode => (
-    <PantallaDeRuta pagina={pagina} acciones={acciones} modoEntrega={modoEntrega} />
+    <PantallaDeRuta pagina={pagina} acciones={acciones} modoEntrega={modoEntrega} apagados={modulosApagados} />
   );
   // Con la columna del recorrido a la vista, el contenido le cede su ancho (ColumnaRecorrido.scss).
   const recorrido = useRecorrido();
@@ -351,7 +357,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                   )}
                 </div>
               )}
-              <LimiteDeError key={`${ubicacion.pathname}|${generacion}`}>
+              <LimiteDeError key={`${claveDelContenido(ubicacion.pathname)}|${generacion}`} reinicio={ubicacion.pathname}>
                 <Suspense fallback={<EsqueletoPagina />}>
                   <Routes>
                     <Route index element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />
@@ -393,8 +399,16 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
 }
 
 // La pantalla con su permiso: la que la cuenta no puede usar dice por qué (la API también la rechazaría).
-function PantallaDeRuta({ pagina, acciones, modoEntrega }: { pagina: PaginaDef | undefined; acciones: readonly string[]; modoEntrega: boolean }) {
+function PantallaDeRuta({ pagina, acciones, modoEntrega, apagados }: { pagina: PaginaDef | undefined; acciones: readonly string[]; modoEntrega: boolean; apagados: readonly string[] }) {
   if (!pagina) return <Navigate to={RUTA_DE_PENDIENTES} replace />;
+  // Una pantalla de una especialidad apagada lo dice (a quien sí podría usarla); las demás, «Sin permiso».
+  if (!usable(pagina, acciones, modoEntrega, apagados) && usable(pagina, acciones, modoEntrega)) {
+    return (
+      <div className="silice-pagina-aviso">
+        <EstadoVacio titulo="Apagada" descripcion={MENSAJE_APAGADA} />
+      </div>
+    );
+  }
   if (!usable(pagina, acciones, modoEntrega)) {
     return (
       <div className="silice-pagina-aviso">
@@ -426,6 +440,14 @@ function RutaVieja({ pagina, obraDeLaSesion, pantalla }: { pagina: PaginaDef; ob
   if (obraDeLaSesion === "cargando") return <EsqueletoPagina />;
   if (obraDeLaSesion) return <Navigate to={`${rutaDeObra(obraDeLaSesion.carpeta, obraDeLaSesion.obraId, seccion.id)}${search}`} replace />;
   return search ? pantalla(pagina) : <Navigate to={RUTA_DE_PENDIENTES} replace />;
+}
+
+// Lo que vuelve a montar el contenido al navegar: cada pantalla, salvo las secciones de una misma obra, que comparten el
+// espacio de la obra (su ficha, la obra fijada en la sesión y el borrador de la Hoja, Tarea 3 del plan F4). Dentro de la
+// obra, EspacioDeObra reinicia su propio límite de error con cada sección.
+function claveDelContenido(pathname: string): string {
+  const obra = obraDeLaRuta(pathname);
+  return obra === null ? pathname : `obra|${obra.carpeta ?? ""}|${obra.obraId}`;
 }
 
 // La obra y la sección de la ruta, para marcarlas en la barra lateral.

@@ -18,6 +18,17 @@
   font-variant-numeric: tabular-nums;
 }
 
+// El IVA debajo del total (Tarea 5b): tres líneas de cifras alineadas y la ayuda plegada.
+.silice-hoja__iva {
+  display: grid;
+  gap: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-hoja__iva-linea {
+  margin: 0;
+}
+
 .silice-hoja__ausente {
   display: grid;
   gap: 0.75rem;
@@ -69,6 +80,14 @@
   }
 }
 
+// Tarea 5 del plan F4: el renglón con un hallazgo crítico, de error o de advertencia lleva el fondo de precaución (nunca
+// el acento), también en la celda fija de la izquierda. La severidad se sigue diciendo en palabra en su Estado: con
+// contraste forzado el fondo se va y la palabra queda.
+.silice-hoja tr.silice-fila--afectada td,
+.silice-hoja tr.silice-fila--afectada td:first-child {
+  background: var(--silice-aviso-fondo);
+}
+
 .silice-hoja__estado-fila {
   display: inline-flex;
   align-items: center;
@@ -77,9 +96,16 @@
 }
 
 .silice-hoja__estado-texto {
-  // El texto completo se ve y se lee con el teclado: envuelve, no se recorta.
+  // Un aviso largo (cientos de caracteres) no puede estirar la fila: ancho minimo para que no quede una letra por
+  // linea, y a lo mas 3 lineas; el texto completo va en el title de la fila.
+  min-inline-size: 14rem;
   max-inline-size: 28rem;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 
 // APU: lista · tabla · cierre. Bajo ~1200 px se apilan en vez de comprimirse.
@@ -105,6 +131,13 @@
 .silice-hoja__apu-cierre {
   display: grid;
   gap: 1rem;
+  min-inline-size: 0;
+}
+
+// El APU en el panel lateral de «Partidas» (Tarea 7 de F4): sin lista, el editor y el cierre uno bajo el otro.
+.silice-hoja__apu-en-panel {
+  display: grid;
+  gap: 1.5rem;
   min-inline-size: 0;
 }
 
@@ -166,6 +199,14 @@
   }
 }
 
+// Las tablas editables del espacio, una bajo otra con el mismo espacio entre ellas (antes en un `fieldset` que se bloqueaba
+// mientras se fusionaba un plano; desde la Tarea 11 de F4 el plano se importa en Archivos y planos).
+.silice-hoja__tablas-espacio {
+  display: grid;
+  gap: 1.5rem;
+  min-inline-size: 0;
+}
+
 .silice-hoja__sin-evaluar {
   opacity: 0.6;
 }
@@ -195,6 +236,19 @@
   gap: 1rem;
 }
 
+// F4 2b: la nota «Está viendo este presupuesto en solo lectura.» encima de las pestañas (texto neutro, sin color propio).
+.silice-hoja__solo-lectura {
+  margin-block: 1rem 0.5rem;
+  color: var(--cds-text-secondary);
+}
+
+// F4 2b: un campo con su etiqueta, en solo lectura (quien revisa): la etiqueta arriba y el valor como texto.
+.silice-hoja__campo-lectura {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 // La cantidad editable de un renglón del Presupuesto: el campo y, debajo, la calculada y el atajo para volver a ella.
 .silice-hoja__cantidad {
   display: flex;
@@ -211,17 +265,6 @@
   min-inline-size: 8rem;
   max-inline-size: 16rem;
   overflow-wrap: anywhere;
-}
-
-// APU editable (3c-3): el cambio de insumo se pliega; sus campos se apilan.
-.silice-hoja__insumo-cuerpo {
-  display: grid;
-  gap: 0.75rem;
-  max-inline-size: 32rem;
-
-  &[hidden] {
-    display: none;
-  }
 }
 
 .silice-hoja__acciones {
@@ -322,23 +365,58 @@
   gap: 1rem;
 }
 
-// Estado de la cadena de sellos: ícono y texto en la misma línea; el color solo acompaña.
-.silice-hoja__cadena {
+// «Agregar partida», puerta única (plan F4, Tarea 9). Mientras se compone una partida nueva el diálogo espera oculto: su
+// `display: grid` le ganaría al `[hidden]` del navegador.
+.silice-hoja__dialogo[hidden] {
+  display: none;
+}
+
+// Con el panel «Componer una partida» el fondo del diálogo baja de 9000 a 8400 para que «Precios distintos a los de la
+// lista» (`MarcoDeDialogo`, 8500), que se abre desde el panel, quede encima; «Cambios sin guardar» (9000) y las listas de
+// los buscadores (9100) siguen por encima. El panel mismo (fijo bajo la barra, opaco, con su desplazamiento) es la clase
+// `--superpuesto` de `comun/PanelLateral.scss`, con cualquier letra (H1 de la pasada de navegador del cierre de F4).
+.silice-hoja__dialogo-fondo--con-panel {
+  z-index: 8400;
+}
+
+.silice-hoja__aviso-catalogo {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 3px solid var(--silice-aviso-borde);
+  background: var(--silice-aviso-fondo);
+}
+
+// «Parecidas a esta descripción»: la búsqueda y sus propuestas, dentro del diálogo.
+.silice-parecidas,
+.silice-parecidas__resultado,
+.silice-parecidas__detalle,
+.silice-parecidas__desglose {
+  display: grid;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-parecidas__lista {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.silice-parecidas__propuesta {
   display: grid;
   gap: 0.25rem;
+  min-inline-size: 0;
+  padding-block-end: 0.75rem;
+  border-block-end: 1px solid var(--silice-divisor);
 }
 
-.silice-hoja__cadena-estado {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
+.silice-parecidas__nota {
+  color: var(--silice-texto-secundario);
 }
 
-.silice-hoja__cadena-integra {
-  fill: var(--silice-verificado);
-}
-
-.silice-hoja__cadena-rota {
-  fill: var(--silice-sev-critico, #da1e28);
+// El código de una partida no se parte en líneas.
+.silice-hoja__codigo {
+  white-space: nowrap;
 }

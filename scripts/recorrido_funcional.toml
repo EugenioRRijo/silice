@@ -1,4 +1,4 @@
-# Recorrido funcional (BS-F): la acción principal de cada una de las 26 pantallas de
+# Recorrido funcional (BS-F): la acción principal de cada una de las pantallas de
 # `frontend-desktop/src/shell/rutas.ts` y el resultado visible que prueba que funcionó.
 #
 # Lo ejecuta `scripts/recorrido_ux_playwright.py --funcional`, en el orden de este archivo. Cada fila
@@ -174,22 +174,11 @@ pasos = [
   { accion = "llenar", rotulo = "Consumo por unidad, fila 1", valor = "0,5" },
   { accion = "llenar", rotulo = "Precio, fila 1", valor = "18" },
   { accion = "pulsar", nombre = "Guardar composición" },
-  { accion = "esperar", texto = "Siguiente paso" },
+  { accion = "esperar", texto = "Guardado" },
   { accion = "ir", ruta = "catalogo" },
   { accion = "llenar", rotulo = "Buscar en el catálogo", valor = "FUN-001" },
 ]
 espera = { textos = ["FUN-001", "Partida ficticia del recorrido funcional"] }
-
-[[pantalla]]
-ruta = "similares"
-cuenta = "ana"
-carpeta = "demo.db"
-accion = "buscar partidas parecidas a una descripción -> lista de similares del catálogo"
-pasos = [
-  { accion = "llenar", rotulo = "Descripción de la partida", valor = "instalacion de tuberia PVC" },
-  { accion = "pulsar", nombre = "Buscar" },
-]
-espera = { textos = ["3 propuestas, de mayor a menor similitud", "DEMO-01-INST"], ms = 240000 }
 
 [[pantalla]]
 ruta = "simulador"
@@ -233,12 +222,12 @@ ruta = "hoja"
 cuenta = "ana"
 carpeta = "demo.db"
 proyecto = "Sílice: caso de demostracion"
-accion = "cambiar la utilidad en Parámetros y guardar una versión con su fuente -> versión nueva vigente"
+accion = "cambiar la utilidad en «Ajustes de costo» y guardar una versión con su fuente -> versión nueva vigente"
 # Primero se espera a que la Hoja termine de cargar: un clic en la pestaña recién pintada no la cambia (bitácora de
 # módulos, §6).
 pasos = [
   { accion = "esperar", texto = "Sin cambios sin guardar" },
-  { accion = "pulsar", rol = "tab", nombre = "Parámetros" },
+  { accion = "pulsar", rol = "tab", nombre = "Ajustes de costo" },
   { accion = "llenar", rotulo = "Utilidad (fracción, en cascada sobre la administración)", valor = "0,12" },
   { accion = "tecla", nombre = "Tab" },
   { accion = "pulsar", nombre = "Guardar versión…" },
@@ -246,6 +235,25 @@ pasos = [
   { accion = "pulsar", nombre = "Guardar versión", fuera = true },
 ]
 espera = { textos = ["Se guardó la versión FUN-002 con 1 cambio registrado.", "Versión FUN-002 · Sin cambios sin guardar"] }
+
+# F4 (Tareas 6 y 11): dos secciones de la obra nuevas. Las parecidas de «Partidas similares» (baja 20) viven ahora
+# dentro de «Agregar partida» de la Hoja y no tienen fila propia. Escritas sin navegador: se comprueban en el recorrido.
+[[pantalla]]
+ruta = "versiones"
+cuenta = "ana"
+carpeta = "demo.db"
+proyecto = "Sílice: caso de demostracion"
+requiere = ["hoja"]
+accion = "(solo lectura) abrir «Versiones» de la obra tras guardar en la Hoja -> la versión FUN-002 en la tabla"
+espera = { textos = ["Versiones", "FUN-002"] }
+
+[[pantalla]]
+ruta = "archivos"
+cuenta = "ana"
+carpeta = "demo.db"
+proyecto = "Sílice: caso de demostracion"
+accion = "(solo lectura) abrir «Archivos y planos» de la obra -> el registro de importaciones"
+espera = { textos = ["Archivos y planos", "Registro de importaciones"] }
 
 [[pantalla]]
 ruta = "entregar"
@@ -276,34 +284,6 @@ pasos = [
   { accion = "pulsar", nombre = "Revalorar presupuesto" },
 ]
 espera = { textos = ["Comparativo por partida", "Informe de auditoría de la versión nueva"] }
-
-[[pantalla]]
-ruta = "historico"
-cuenta = "ana"
-carpeta = "demo.db"
-requiere = ["actualizacion"]
-accion = "filtrar los cambios de precio desde hoy -> quedan los de hoy y desaparecen los del 01/10/2026 (siembra)"
-pasos = [
-  { accion = "esperar", texto = "01/10/2026" },
-  { accion = "llenar", rotulo = "Desde", valor = "{hoy}" },
-  { accion = "pulsar", nombre = "Filtrar" },
-]
-espera = { textos = ["Cemento Portland", "Arena lavada"], ausentes = ["01/10/2026"] }
-
-[[pantalla]]
-ruta = "elaborar"
-cuenta = "ana"
-carpeta = "ti001.db"
-accion = "extraer el cómputo de la topología ficticia TI-001 y elaborar el presupuesto -> métricas e informe de auditoría"
-pasos = [
-  { accion = "elegir", rotulo = "Dominio", opcion = "telecom" },
-  { accion = "llenar", rotulo = "Código del presupuesto", valor = "FUN-TI" },
-  { accion = "subir", zona = "Suelte aquí el archivo de muestra", archivo = "topologia_ti001" },
-  { accion = "pulsar", nombre = "Extraer cómputo" },
-  { accion = "esperar", texto = "Cómputo extraído" },
-  { accion = "pulsar", nombre = "Elaborar presupuesto" },
-]
-espera = { textos = ["Presupuesto elaborado", "Informe de auditoría"] }
 
 [[pantalla]]
 ruta = "reajuste"
@@ -388,6 +368,50 @@ carpeta = "demo.db"
 requiere = ["existencias"]
 accion = "(solo lectura) ver «Lo que requiere atención» de la arenera con el material de la fila anterior"
 espera = { textos = ["Arenera: lo que requiere atención", "Todo sobre el mínimo"] }
+
+# Plan vial, Tareas 2-6: filas de solo lectura; la Tarea 22 (la pasada de navegador) les pone
+# pasos con datos ficticios.
+[[pantalla]]
+ruta = "costos"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Costos del período» del mes en curso"
+espera = { texto = "Costos del período" }
+
+[[pantalla]]
+ruta = "receta_planta"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Receta de la planta»"
+espera = { texto = "Receta de la planta" }
+
+[[pantalla]]
+ruta = "producir_mezcla"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Producir mezcla»"
+espera = { texto = "Producir mezcla" }
+
+[[pantalla]]
+ruta = "costo_tonelada"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Costo por tonelada» del mes anterior"
+espera = { texto = "Costo por tonelada" }
+
+[[pantalla]]
+ruta = "tramos"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Tramos de la vía» de la obra elegida"
+espera = { texto = "Tramos de la vía" }
+
+[[pantalla]]
+ruta = "riesgo"
+cuenta = "ana"
+carpeta = "demo.db"
+accion = "(solo lectura) abrir «Riesgo de la obra» de la obra elegida (ver_riesgo)"
+espera = { texto = "Riesgo de la obra" }
 
 [[pantalla]]
 ruta = "mercado"

@@ -20,6 +20,12 @@ def test_el_registro_trae_las_constantes_del_plan_con_su_estado():
         "MAX_COLUMNAS": "60",
         "FILAS_DE_ENCABEZADO": "30",
         "TOLERANCIA_NETO_T": "0",
+        "TOLERANCIA_MASA": "0.02",
+        "CIFRAS_DEL_CALCULO": "28",
+        "DECIMALES_AL_PRESENTAR": "2",
+        "MAX_PESOS": "50",
+        "MAX_COMPONENTES": "50",
+        "CUANTO_T_A_M3": "0.0001",
     }
     assert {n: por_nombre[n].valor for n in esperadas} == esperadas
     assert all(por_nombre[n].estado is EstadoDato.CONSTRUIDO for n in esperadas)
@@ -44,9 +50,23 @@ def test_las_constantes_numericas_son_las_del_registro():
     assert fuentes.TOLERANCIA_NETO_T == Decimal("0") and isinstance(
         fuentes.TOLERANCIA_NETO_T, Decimal
     )
+    assert fuentes.TOLERANCIA_MASA == Decimal("0.02") and isinstance(
+        fuentes.TOLERANCIA_MASA, Decimal
+    )
+    enteros = {"CIFRAS_DEL_CALCULO": 28, "DECIMALES_AL_PRESENTAR": 2, "MAX_PESOS": 50}
+    assert fuentes.MAX_COMPONENTES == 50 and isinstance(fuentes.MAX_COMPONENTES, int)
+    assert fuentes.CUANTO_T_A_M3 == Decimal("0.0001") and isinstance(fuentes.CUANTO_T_A_M3, Decimal)
+    for nombre, valor in enteros.items():
+        assert getattr(fuentes, nombre) == valor and isinstance(getattr(fuentes, nombre), int)
     assert por_nombre == {
         "MAX_FILAS": "100000",
         "MAX_COLUMNAS": "60",
         "FILAS_DE_ENCABEZADO": "30",
         "TOLERANCIA_NETO_T": "0",
+        "TOLERANCIA_MASA": "0.02",
+        "CIFRAS_DEL_CALCULO": "28",
+        "DECIMALES_AL_PRESENTAR": "2",
+        "MAX_PESOS": "50",
+        "MAX_COMPONENTES": "50",
+        "CUANTO_T_A_M3": "0.0001",
     }

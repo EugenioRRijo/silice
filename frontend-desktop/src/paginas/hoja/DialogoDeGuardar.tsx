@@ -1,13 +1,5 @@
-import {
-  Button,
-  InlineNotification,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@carbon/react";
+import { Button, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
+import { InlineNotification, TableHeader } from "../../comun/carbonEs";
 import { useCallback, useId, useRef } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
@@ -146,10 +138,10 @@ export function DialogoDeGuardar(p: Props) {
         </p>
         <p className="cds--type-body-compact-01">
           Total{" "}
-          <span title={p.total.exacto}>
+          <span title={formatoEsVe(p.total.exacto)}>
             {formatoEsVe(p.total.texto)} {p.moneda}
           </span>
-          <span className="cds--visually-hidden"> Valor exacto {p.total.exacto}</span>
+          <span className="cds--visually-hidden"> Valor exacto {formatoEsVe(p.total.exacto)}</span>
         </p>
         <CampoTexto
           id={idFuente}

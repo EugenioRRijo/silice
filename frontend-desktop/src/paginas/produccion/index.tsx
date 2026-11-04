@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+import { EnlacesDeCostos } from "../../comun/EnlacesDeCostos";
 import { useAplicacion } from "../../shell/contexto";
 import { PanelArenera } from "../inicio/PanelArenera";
 import type { ExistenciaRespuesta } from "../inicio/PanelArenera";
@@ -10,6 +12,7 @@ export default function PaginaProduccion() {
   const { alExpirar, sesion } = useAplicacion();
   // Solo quien opera la arenera la pide (la API contestaria 403, VB-9); sin la accion el modulo ni siquiera se ve.
   const puedeVerArenera = sesion.acciones.includes("operar_arenera");
+  const puedeRegistrarCostos = sesion.acciones.includes("registrar_costos_produccion");
   const arenera = useCarga<ExistenciaRespuesta[]>(puedeVerArenera ? RUTA_ARENERA : null, alExpirar);
 
   return (
@@ -22,6 +25,18 @@ export default function PaginaProduccion() {
           Su cuenta no opera la arenera. Pídale a quien administra Sílice que revise su rol.
         </p>
       )}
+      {puedeVerArenera && (
+        <p className="cds--type-body-compact-01">
+          <Link className="cds--link" to="/receta_planta">
+            Receta de la planta
+          </Link>{" "}
+          ·{" "}
+          <Link className="cds--link" to="/producir_mezcla">
+            Producir mezcla
+          </Link>
+        </p>
+      )}
+      {puedeRegistrarCostos && <EnlacesDeCostos />}
     </div>
   );
 }

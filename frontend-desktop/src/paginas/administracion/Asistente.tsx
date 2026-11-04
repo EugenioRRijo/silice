@@ -1,4 +1,5 @@
-import { Button, Checkbox, InlineNotification, PasswordInput, Select, SelectItem } from "@carbon/react";
+import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
+import { InlineNotification, PasswordInput } from "../../comun/carbonEs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";

@@ -1,4 +1,5 @@
-import { Button, InlineNotification, SkeletonText } from "@carbon/react";
+import { Button, SkeletonText } from "@carbon/react";
+import { InlineNotification } from "../../comun/carbonEs";
 import { WarningAltFilled, WarningFilled } from "@carbon/icons-react";
 import { useId, useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
@@ -11,7 +12,7 @@ import { usePendientes } from "../../marco/usePendientes";
 import { useAplicacion } from "../../shell/contexto";
 import { paginaPorId, usable } from "../../shell/rutas";
 import "./Bandeja.scss";
-import { claveDeObra, contarUrgencias, destinoDelPendiente, indiceTrasTecla, paginaQueAbre } from "./logica";
+import { claveDeObra, contarUrgencias, destinoDelPendiente, indiceTrasTecla, paginaQueAbre, textoDeLaAccion } from "./logica";
 import { TEXTOS } from "./textos";
 
 interface Props {
@@ -148,9 +149,13 @@ function Detalle({
   alAbrir: Props["alAbrir"];
   carpetaDe: CarpetaDe;
 }) {
-  const { sesion } = useAplicacion();
+  const { sesion, modulosApagados } = useAplicacion();
   const pagina = paginaPorId(paginaQueAbre(p));
-  const puede = pagina !== undefined && usable(pagina, sesion.acciones, sesion.modo_entrega);
+  // La pantalla de la acción también: «Actualizar precios» lleva a Mercado, que quien revisa abre en lectura (Tarea 13,
+  // ronda 2), pero actualizar exige `editar_hoja`. Es la misma regla de la franja del Resumen (`pantallaVisible`).
+  const propia = paginaPorId(p.accion.pagina);
+  const permite = (def: typeof pagina) => def !== undefined && usable(def, sesion.acciones, sesion.modo_entrega, modulosApagados);
+  const puede = permite(pagina) && (propia === undefined || permite(propia));
   return (
     <section className="silice-bandeja__detalle" aria-label={TEXTOS.detalle}>
       <h2 className="cds--type-heading-compact-02">{p.texto}</h2>
@@ -167,7 +172,7 @@ function Detalle({
       <div>
         {puede ? (
           <Button kind="primary" size="md" onClick={() => alAbrir(destinoDelPendiente(p))}>
-            {p.accion.texto}
+            {textoDeLaAccion(p.accion)}
           </Button>
         ) : (
           <p className="cds--type-body-compact-01">{TEXTOS.sinPermiso}</p>

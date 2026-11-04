@@ -576,8 +576,19 @@ def test_sin_sesion_ni_clave_es_401(metodo: str, ruta: str, acepta_clave: bool) 
 
 
 @pytest.mark.parametrize(("metodo", "ruta", "acepta_clave"), _RUTAS)
-def test_rita_que_revisa_no_puede_usar_la_hoja(metodo: str, ruta: str, acepta_clave: bool) -> None:
+def test_rita_que_revisa_lee_la_hoja(metodo: str, ruta: str, acepta_clave: bool) -> None:
+    """F4 2b (Eugenio, 2026-10-31): quien revisa ve la Hoja en solo lectura. Estas rutas solo
+    leen (o abren y cierran el borrador propio, en memoria): pasa el acceso y llega a la ruta, que
+    responde por la obra «P» o el borrador inventado que no existen (404) o cierra (204)."""
     navegador, ficha = con_cuenta(app, "rita")
+    respuesta = _pedir(navegador, metodo, ruta, ficha)
+    assert respuesta.status_code == (204 if metodo == "DELETE" else 404), respuesta.text
+    assert respuesta.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize(("metodo", "ruta", "acepta_clave"), _RUTAS)
+def test_el_administrador_puro_no_lee_la_hoja(metodo: str, ruta: str, acepta_clave: bool) -> None:
+    navegador, ficha = con_cuenta(app, "admin")
     respuesta = _pedir(navegador, metodo, ruta, ficha)
     assert respuesta.status_code == 403
     assert respuesta.json() == {"detalle": MENSAJE_PERMISO}
@@ -763,6 +774,7 @@ def test_docs_api_json_esta_al_dia() -> None:
     rutas = {r for r in guardado["paths"] if r.startswith("/v1/hoja")}
     assert rutas == {
         "/v1/hoja/versiones",
+        "/v1/hoja/importaciones",
         "/v1/hoja/llevar",
         "/v1/hoja/antes-y-despues",
         "/v1/hoja/borradores",
@@ -1657,9 +1669,13 @@ def test_r10_de_ti001_trae_los_parametros_y_el_total_de_rf58(_casos) -> None:
         pytest.param("ti001", NOMBRE_TI001, caso_ti001.CODIGO, 39, id="TI-001"),  # 28 + 7 + 4
     ],
 )
-def test_r11_los_hallazgos_son_los_de_la_memoria(_casos, clave, proyecto, version, insumos) -> None:
+def test_r11_los_hallazgos_son_los_de_la_memoria(
+    _casos, _hoy_fijo, clave, proyecto, version, insumos
+) -> None:
     """OF-001: R8 advierte los 33 elementos del espacio (6 + 6 + 21) y R11 informa de los
-    insumos sin referencia MaPreX; TI-001 no tiene espacio: solo el R11 informativo."""
+    insumos sin referencia MaPreX; TI-001 no tiene espacio: solo el R11 informativo. La fecha de
+    evaluación es la fija (`_hoy_fijo`, 06/10/2026): con el reloj del equipo, los precios de
+    MaPreX de julio de 2026 de TI-001 vencen y R12 aparece según el día en que se corra."""
     navegador, id_ = _abrir_caso(_casos, clave, proyecto, version)
     cuerpo = _vista(navegador, id_, "auditoria").json()
     por_regla: dict[str, list] = {}

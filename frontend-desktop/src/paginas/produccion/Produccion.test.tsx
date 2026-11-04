@@ -166,4 +166,28 @@ describe("Inicio de producción", () => {
     montar();
     expect(await screen.findByRole("alert")).toHaveTextContent("La base de la instalación no responde.");
   });
+
+  test("quien registra costos ve el paso a «Costos del período»; quien no, no", async () => {
+    const conCostos = { ...ANA, acciones: [...ANA.acciones, "registrar_costos_produccion"] };
+    const { unmount } = montar({ sesion: conCostos });
+    expect(await screen.findByRole("link", { name: "Costos del período" })).toHaveAttribute("href", "/costos");
+    unmount();
+    montar({ sesion: ANA });
+    await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
+    expect(screen.queryByRole("link", { name: "Costos del período" })).not.toBeInTheDocument();
+  });
+
+  test("la receta y el costo por tonelada se ofrecen según la acción de cada uno", async () => {
+    const conCostos = { ...ANA, acciones: [...ANA.acciones, "registrar_costos_produccion"] };
+    const { unmount } = montar({ sesion: conCostos });
+    expect(await screen.findByRole("link", { name: "Receta de la planta" })).toHaveAttribute("href", "/receta_planta");
+    expect(screen.getByRole("link", { name: "Costo por tonelada" })).toHaveAttribute("href", "/costo_tonelada");
+    unmount();
+    montar({ sesion: ANA });
+    await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
+    expect(screen.getByRole("link", { name: "Receta de la planta" })).toBeInTheDocument();
+    // Producir mezcla lo ofrece la misma acción que la receta (operar_arenera), no la de costos.
+    expect(screen.getByRole("link", { name: "Producir mezcla" })).toHaveAttribute("href", "/producir_mezcla");
+    expect(screen.queryByRole("link", { name: "Costo por tonelada" })).not.toBeInTheDocument();
+  });
 });

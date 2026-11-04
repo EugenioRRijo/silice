@@ -210,12 +210,13 @@ def _terminar(procesos: Iterable[Any]) -> None:
 def _abrir_con_el_sistema(ruta: Path) -> None:
     """Abre `ruta` con el programa de Windows para su tipo (el Bloc de notas para un `.txt`).
     Solo existe `os.startfile` en Windows; en otro sistema, o si falla, no hace nada: el código
-    sigue en la consola y en el archivo."""
+    sigue en la consola y en el archivo. El programa abierto trabaja en la carpeta del archivo: si
+    heredara la del lanzador (`{app}/codigo`), abierto impediría borrarla al desinstalar."""
     abrir = getattr(os, "startfile", None)
     if abrir is None:
         return
     try:
-        abrir(str(ruta))
+        abrir(str(ruta), cwd=str(ruta.parent))
     except OSError:
         pass
 

@@ -1,0 +1,5 @@
+producto,codigo,cantidad_por_t,unidad,tipo
+MZ-C,PC-19,0.55,t,propio
+MZ-C,AR-01,0.40,t,propio
+MZ-C,CA-30,0.05,t,comprado
+MZ-C,GO,8,l,comprado

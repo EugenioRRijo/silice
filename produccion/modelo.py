@@ -20,6 +20,7 @@ from sqlalchemy import (
     Integer,
     MetaData,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -74,7 +75,8 @@ class Movimiento(Base):
     __table_args__ = (
         UniqueConstraint("ticket", name="uq_prod_movimiento_ticket"),
         CheckConstraint(
-            "tipo IN ('entrada', 'despacho', 'ajuste')", name="ck_prod_movimiento_tipo"
+            "tipo IN ('entrada', 'despacho', 'ajuste', 'consumo')",
+            name="ck_prod_movimiento_tipo",
         ),
         CheckConstraint("origen IN ('manual', 'bascula')", name="ck_prod_movimiento_origen"),
         CheckConstraint("length(cantidad) > 0", name="ck_prod_movimiento_cantidad"),
@@ -117,3 +119,103 @@ class PesajeSospechoso(Base):
     estado: Mapped[str] = mapped_column(String(10), default="pendiente")
     resuelto_por: Mapped[str | None] = mapped_column(String(120), nullable=True)
     resuelto_en: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Costo(Base):
+    """Un costo del periodo (Tarea 1 del plan vial). Solo se inserta: anular es una fila nueva con
+    `anula_id` apuntando al original, que no cambia."""
+
+    __tablename__ = "prod_costo"
+    __table_args__ = (
+        CheckConstraint("centro IN ('cantera', 'planta')", name="ck_prod_costo_centro"),
+        CheckConstraint(
+            "concepto IN ('gasoil', 'equipo', 'nomina', 'mantenimiento', 'explosivos', "
+            "'energia', 'otro')",
+            name="ck_prod_costo_concepto",
+        ),
+        CheckConstraint("moneda IN ('Bs', 'USD')", name="ck_prod_costo_moneda"),
+        CheckConstraint("length(monto) > 0", name="ck_prod_costo_monto"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    periodo: Mapped[str] = mapped_column(String(7), index=True)
+    centro: Mapped[str] = mapped_column(String(10))
+    concepto: Mapped[str] = mapped_column(String(20))
+    monto: Mapped[Decimal] = mapped_column(Cantidad)
+    moneda: Mapped[str] = mapped_column(String(3))
+    fecha: Mapped[date] = mapped_column(Date)
+    fuente: Mapped[str] = mapped_column(String(200))
+    nota: Mapped[str] = mapped_column(String(300), default="")
+    usuario: Mapped[str] = mapped_column(String(120))
+    registrado: Mapped[datetime] = mapped_column(DateTime)
+    anula_id: Mapped[int | None] = mapped_column(
+        ForeignKey("prod_costo.id"), nullable=True, index=True, unique=True
+    )
+    motivo: Mapped[str] = mapped_column(String(300), default="")
+
+
+class RecetaRegistrada(Base):
+    """Una receta de la planta (Tarea 3 del plan vial): lo que lleva una tonelada de un producto.
+    Solo se inserta; una receta nueva es otra fila y rige desde su `vigente_desde`."""
+
+    __tablename__ = "prod_receta"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    producto: Mapped[str] = mapped_column(String(40), index=True)
+    fuente: Mapped[str] = mapped_column(String(200))
+    vigente_desde: Mapped[date] = mapped_column(Date)
+    usuario: Mapped[str] = mapped_column(String(120))
+    registrado: Mapped[datetime] = mapped_column(DateTime)
+
+
+class RecetaComponente(Base):
+    __tablename__ = "prod_receta_componente"
+    __table_args__ = (
+        CheckConstraint("unidad IN ('t', 'l')", name="ck_prod_receta_componente_unidad"),
+        CheckConstraint("tipo IN ('propio', 'comprado')", name="ck_prod_receta_componente_tipo"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    receta_id: Mapped[int] = mapped_column(ForeignKey("prod_receta.id"), index=True)
+    orden: Mapped[int] = mapped_column(Integer)
+    codigo: Mapped[str] = mapped_column(String(40))
+    cantidad_por_t: Mapped[Decimal] = mapped_column(Cantidad)
+    unidad: Mapped[str] = mapped_column(String(1))
+    tipo: Mapped[str] = mapped_column(String(8))
+
+
+class Calculo(Base):
+    """Un calculo del costo por tonelada de un periodo (Tarea 4 del plan vial), con sus entradas y
+    su resultado en `instantanea` (JSON canonico: claves ordenadas, decimales como texto) y la
+    huella SHA-256 de ese texto. Solo se inserta: recalcular es otra fila, aunque la huella se
+    repita."""
+
+    __tablename__ = "prod_calculo"
+    __table_args__ = (
+        CheckConstraint("moneda IN ('Bs', 'USD')", name="ck_prod_calculo_moneda"),
+        CheckConstraint("length(huella) = 64", name="ck_prod_calculo_huella"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    periodo: Mapped[str] = mapped_column(String(7), index=True)
+    moneda: Mapped[str] = mapped_column(String(3))
+    huella: Mapped[str] = mapped_column(String(64), index=True)
+    instantanea: Mapped[str] = mapped_column(Text)
+    usuario: Mapped[str] = mapped_column(String(120))
+    registrado: Mapped[datetime] = mapped_column(DateTime)
+
+
+class PublicacionRegistrada(Base):
+    """La publicacion de un calculo al catalogo (Tarea 4b del plan vial, pregunta 22): cada calculo
+    se publica una sola vez (`calculo_id` unico). `caso` es el nombre de la carpeta de trabajo y
+    `lista_id` la lista de empresa creada en ella. Solo se inserta, en la misma operacion que crea
+    la lista; la instalacion se confirma despues de la carpeta."""
+
+    __tablename__ = "prod_publicacion"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    calculo_id: Mapped[int] = mapped_column(ForeignKey("prod_calculo.id"), unique=True)
+    caso: Mapped[str] = mapped_column(String(255))
+    lista_id: Mapped[int] = mapped_column(Integer)
+    usuario: Mapped[str] = mapped_column(String(120))
+    registrado: Mapped[datetime] = mapped_column(DateTime)

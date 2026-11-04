@@ -35,6 +35,12 @@ MAX_FILAS = 100000
 MAX_COLUMNAS = 60
 FILAS_DE_ENCABEZADO = 30
 TOLERANCIA_NETO_T = Decimal("0")
+TOLERANCIA_MASA = Decimal("0.02")
+CIFRAS_DEL_CALCULO = 28
+DECIMALES_AL_PRESENTAR = 2
+MAX_PESOS = 50
+MAX_COMPONENTES = 50
+CUANTO_T_A_M3 = Decimal("0.0001")
 
 CONSTANTES: tuple[Constante, ...] = (
     Constante(
@@ -63,6 +69,52 @@ CONSTANTES: tuple[Constante, ...] = (
         str(TOLERANCIA_NETO_T),
         EstadoDato.CONSTRUIDO,
         "la bascula entrega enteros en kg: el neto debe ser exactamente bruto - tara",
+        True,
+    ),
+    Constante(
+        "TOLERANCIA_MASA",
+        str(TOLERANCIA_MASA),
+        EstadoDato.CONSTRUIDO,
+        "supuesto declarado: las toneladas de componentes por tonelada de mezcla suman 1 +- 0,02 "
+        "(merma y humedad); la empresa lo confirma con su dosificacion",
+        True,
+    ),
+    Constante(
+        "CIFRAS_DEL_CALCULO",
+        str(CIFRAS_DEL_CALCULO),
+        EstadoDato.CONSTRUIDO,
+        "cifras significativas del costo por tonelada (division con redondeo de mitad al par); "
+        "las mismas 28 de core.catalog.moneda.convertir. Asi se guarda; no es un redondeo de "
+        "presentacion",
+        True,
+    ),
+    Constante(
+        "DECIMALES_AL_PRESENTAR",
+        str(DECIMALES_AL_PRESENTAR),
+        EstadoDato.CONSTRUIDO,
+        "plan vial, Tarea 4: el costo por tonelada se presenta con dos decimales y redondeo de "
+        "mitad hacia arriba; se guarda exacto",
+        False,
+    ),
+    Constante(
+        "MAX_PESOS",
+        str(MAX_PESOS),
+        EstadoDato.CONSTRUIDO,
+        "tope de productos con peso en el reparto por pesos de la cantera (cuerpo de la API)",
+        False,
+    ),
+    Constante(
+        "MAX_COMPONENTES",
+        str(MAX_COMPONENTES),
+        EstadoDato.CONSTRUIDO,
+        "supuesto declarado: tope de componentes de una receta (cuerpo de la API)",
+        False,
+    ),
+    Constante(
+        "CUANTO_T_A_M3",
+        str(CUANTO_T_A_M3),
+        EstadoDato.CONSTRUIDO,
+        "tecnica: t a m3 a cuatro decimales con mitad al par (importacion y receta)",
         True,
     ),
 )

@@ -150,6 +150,36 @@
   padding-block-end: 0.5rem;
 }
 
+// «Empresa» con letra grande: el titulo pasa a ser un boton que pliega las entradas (F4, Tarea 0). Toma la letra, el color y
+// las mayusculas del titulo para no parecer un control distinto; el foco usa el mismo contorno que las filas.
+.silice-marco-lateral__empresa-boton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  inline-size: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  cursor: pointer;
+
+  svg {
+    flex: none;
+    fill: currentcolor;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+  }
+}
+
 // «Nueva obra»: boton vistoso de ancho completo, 40 px, siempre visible bajo la cabecera de Obras.
 .silice-marco-boton-principal {
   display: flex;
@@ -208,5 +238,10 @@
 
   .silice-marco-lateral__obras {
     min-block-size: 10rem;
+  }
+
+  // El boton de Empresa es un blanco de puntero: no baja de 1,5 rem aunque el titulo se compacte.
+  .silice-marco-lateral__empresa-boton {
+    min-block-size: 1.5rem;
   }
 }

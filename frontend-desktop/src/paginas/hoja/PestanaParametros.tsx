@@ -1,34 +1,36 @@
 import { useCallback, useId, useState } from "react";
-import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
+import { cifrasEnTextoEsVe } from "../../indicadores/formatoEsVe";
 import { pedir } from "../../api/cliente";
 import { useAplicacion } from "../../shell/contexto";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { CampoDeCelda } from "./CampoDeCelda";
-import { Cifra } from "./Cifra";
 import { ConvertirMoneda } from "./ConvertirMoneda";
-import type { AlCrearVersion } from "./OperacionesDePrecios";
+import type { AlCrearVersion } from "./logicaVersiones";
 import { VistaCarga } from "./VistaCarga";
 import { rutaDeVista } from "./logica";
-import type { Resumen, VistaParametros } from "./logica";
+import type { BaseAbierta, Resumen, VistaParametros } from "./logica";
 import { FRASES_DE_RECHAZO, cuerpoDeParametros, rutaDeParametros, sembrarParametros, ubicarErrorDeParametro } from "./logicaSecciones";
 import type { UbicacionDeParametro, ValoresDeParametros } from "./logicaSecciones";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
+import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
   id: string;
   // El `rev` del borrador según la página.
   rev: number;
-  moneda: string;
   alAusente: () => void;
   // El servidor aceptó una edición: su resumen pasa a la barra de estado de la página.
   alAceptar: (resumen: Resumen) => void;
   alRecargarBorrador: () => Promise<void>;
   // Descarta lo que se ve y abre otro borrador de la versión (cuando recargar no sirve).
   alReabrir: () => void;
+  // La base del borrador: con `solo_lectura` (o sin permiso de edición) no se pinta nada que escriba (F4 2b).
+  base?: Pick<BaseAbierta, "solo_lectura">;
 }
 
 // Lo que hace falta para convertir la moneda (S5): la versión guardada abierta, los cambios sin guardar y qué hacer al crearse
-// una versión. Solo la pestaña «Parámetros» lo ofrece; los factores del APU no.
+// una versión.
 export interface Conversion {
   proyecto: string;
   version: string | null;
@@ -40,12 +42,11 @@ interface PropsContenido extends Props {
   conversion?: Conversion;
   vista: VistaParametros;
   alRelectura: () => void;
-  // En el APU solo van los campos: sin explicación larga, sin moneda del proyecto y sin total.
-  compacto?: boolean;
 }
 
-function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, conversion, compacto = false }: PropsContenido) {
-  const { alExpirar } = useAplicacion();
+function ContenidoParametros({ id, rev, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, conversion, base }: PropsContenido) {
+  const { alExpirar, sesion } = useAplicacion();
+  const puedeEditar = usePuedeEditarLaHoja(base ?? null);
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<ValoresDeParametros, UbicacionDeParametro>({
     borrador: id,
@@ -66,20 +67,16 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
 
   return (
     <div className="silice-hoja__pestana">
-      {!compacto && (
-      <p className="cds--type-body-compact-01">
-        Los parámetros de costo del borrador. {AYUDA_CIFRAS} Cambiarlos recalcula todos los
-        APU y el total; los cambios se aplican al borrador cuando deja de escribir y no se guardan como versión hasta que lo pida.
-      </p>
-      )}
+      <AyudaDePestana id="ajustes" puedeEditar={puedeEditar} />
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir} />}
       <div className="silice-hoja__campos">
         {vista.campos.map((c) => (
           <CampoDeCelda
+            soloLectura={!puedeEditar}
             key={c.clave}
             id={`hoja-parametro-${c.clave}`}
-            etiqueta={c.rotulo}
+            etiqueta={cifrasEnTextoEsVe(c.rotulo)}
             etiquetaVisible
             valor={edicion.estado[c.clave] ?? ""}
             invalido={ubicacion !== null && ubicacion.campo === c.clave}
@@ -90,10 +87,9 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
           />
         ))}
       </div>
-      {!compacto && vista.moneda_proyecto !== null && (
-        <p className="cds--type-body-compact-01">Moneda del proyecto: {vista.moneda_proyecto}</p>
-      )}
-      {!compacto && conversion !== undefined && (
+      {/* Convertir crea una versión desde la GUARDADA: su regla es solo el permiso (`convertir_y_reajustar`, y el
+          `puede_convertir` que da la API), no la base del borrador (Eugenio, 2026-10-31). */}
+      {conversion !== undefined && sesion.acciones.includes("convertir_y_reajustar") && (
         <ConvertirMoneda
           proyecto={conversion.proyecto}
           version={conversion.version}
@@ -102,11 +98,6 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
           cambios={conversion.cambios}
           alCrearVersion={conversion.alCrearVersion}
         />
-      )}
-      {!compacto && (
-        <p className="silice-hoja__total cds--type-heading-03">
-          Total del presupuesto <Cifra monto={vista.total} unidad={moneda} />
-        </p>
       )}
     </div>
   );
@@ -121,26 +112,6 @@ export function PestanaParametros(props: Props & { conversion: Conversion }) {
   return (
     <VistaCarga<VistaParametros> ruta={rutaDeVista(props.id, "parametros")} etiqueta="Parámetros" alAusente={props.alAusente} recarga={lecturas}>
       {(vista) => <ContenidoParametros {...props} vista={vista} alRelectura={alRelectura} />}
-    </VistaCarga>
-  );
-}
-
-interface PropsFactores extends Props {
-  // Se pide volver a leer lo que depende de los factores (el cierre de la partida) tras aceptar un cambio.
-  alCambiar: () => void;
-}
-
-// Los cuatro factores de la versión dentro de la pestaña APU (ui/paginas/hoja.py:1680): se editan igual que en «Parámetros»,
-// para que los subtotales y el cierre de la partida salgan con los factores vigentes.
-export function FactoresDeLaVersion({ alCambiar, ...props }: PropsFactores) {
-  const [lecturas, setLecturas] = useState(0);
-  const alRelectura = useCallback(() => {
-    setLecturas((n) => n + 1);
-    alCambiar();
-  }, [alCambiar]);
-  return (
-    <VistaCarga<VistaParametros> ruta={rutaDeVista(props.id, "parametros")} etiqueta="Factores de la versión" alAusente={props.alAusente} recarga={lecturas}>
-      {(vista) => <ContenidoParametros {...props} vista={vista} alRelectura={alRelectura} compacto />}
     </VistaCarga>
   );
 }

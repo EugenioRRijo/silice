@@ -32,6 +32,15 @@ describe("estudio de mercado sin desplazamiento horizontal (letra Grande y Muy g
     expect(fijos).toEqual([]);
   });
 
+  // Pasada de navegador del cierre de F4 (H4): sin columna declarada, la rejilla de la página tomaba el ancho mínimo de lo
+  // más ancho (la tabla de cotizaciones con el rastro de la conversión, 1386 px con «Muy grande») y la página se desplazaba
+  // a lo ancho: 1375 px el «Histórico de precios» y 1883 las «Cotizaciones de la obra». Con una sola columna que cede, las
+  // tablas se desplazan en su propia caja, como las del Presupuesto.
+  test("la página es una columna que cede al ancho de la ventana: minmax(0, 1fr)", () => {
+    const pagina = /^\.silice-mercado\s*\{([^}]*)\}/m.exec(scss)?.[1] ?? "";
+    expect(pagina).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
+  });
+
   test("en los formularios «Su precio» y «Anotar una observación» los campos (fecha incluida) se encogen con su columna", () => {
     const formularios = bloque(".silice-mercado__usar,");
     expect(formularios).toMatch(/\.cds--form-item[^{]*\{[^}]*min-inline-size:\s*0/);

@@ -7,28 +7,6 @@
 
 ---
 
-## 0. Enmiendas del 2026-10-18 (prevalecen sobre el resto del documento)
-
-El orden de construcción, los subagentes y el modelo/esfuerzo de cada tarea viven en
-[**RUTA_SESIONES.md**](./RUTA_SESIONES.md) (fuente única). Las cifras y fórmulas de cantera se rigen por
-[**PLAN_FUENTES_DATOS_CANTERA.md**](./PLAN_FUENTES_DATOS_CANTERA.md). Lo que cambia aquí:
-
-| # | Enmienda | Afecta a |
-|---|---|---|
-| E-1 | **Orden:** asistente de IA → cambio visual (visor de solo lectura) → auditoría en el visor (Delta) → arenera → Tauri → auditoría y release (ruta §5, decisión RS-4 de Eugenio). | §9 (el checklist de fases queda reemplazado por la ruta) |
-| E-2 | **La interfaz nueva la sirve primero el FastAPI existente en `/app`**; Tauri v2 la envuelve en la sesión 5 sobre el Python que ya instala Inno Setup (RT-2, RT-3). | §1 decisión 1; SA4 |
-| E-3 | **Transporte:** bucle local con puerto efímero y clave por sesión; Named Pipes solo como endurecimiento posterior (RT-5). | §2, §7 |
-| E-4 | **Sin `adapters/excel_visual/`:** la réplica extiende `adapters/hoja_empresa/` (`visual.py` para el aspecto); la lectura dual y las reglas ya existen en `lector.py` y `reglas.py` (RT-6). `HallazgoVisualDTO` se construye a partir de las filas de hallazgo existentes (`FilaHallazgo`: código, severidad, celda `HOJA!CELDA`, impacto). | SA2, §6.2, §8 |
-| E-5 | **Arenera = primero existencias** (cuánto hay, cuánto queda); el costo horario espera fuentes verificadas (RT-7). | §3, SA1, SA5 |
-| E-6 | **Subagentes:** ocho constructores (uno por skill), seis revisores y un escriba, con modelo y esfuerzo fijados (ruta §3); reemplazan a SA1–SA5. El orquestador es Claude (Opus), no Antigravity. | §5, §8 |
-| E-7 | **Pruebas obligatorias** en todas las tareas (RS-2). | todo |
-| E-8 | **Cifras:** las de §3–§6 son **ejemplos construidos** o están **a cotejar** según PLAN_FUENTES; ninguna entra en un cálculo sin estado VERIFICADO o DATO DE LA EMPRESA. Corregidos: el ejemplo del ticket (C-6) y la densidad por defecto del DTO (C-5). | §3, §4.1, §6 |
-| E-9 | **Diseño:** halos = severidad (con ícono), rojo/verde IBCS = variación; plan con contorno y pronóstico achurado (skill `front-carbon-fiori-ibcs` §1.3 y §3.2). | §4.1 |
-| E-10 | **DTOs de §6.2:** montos e impactos en `Decimal` (viajan como texto, como en la API vigente), no `float`; la severidad reutiliza `core.contracts.verificacion.Severidad` (INFO, ADVERTENCIA, ERROR, CRITICO) en vez de un `NivelSeveridad` propio. `InsumoCanteraDTO` vive en `produccion/` (ruta RT-7). | §6 |
-| E-11 | **Acceso del navegador** por cuenta y cookie de sesión, no por la clave de API (ruta RT-9). | §2, SA3, SA4 |
-
----
-
 ## 1. Visión Ejecutiva y Objetivos Estratégicos
 
 El plan expande la plataforma Sílice integrando la cadena de valor completa: desde la extracción física y procesamiento de áridos en canteras (arena, piedra picada, gravas, sub-bases) hasta la fiscalización forense visual de presupuestos de obra.
@@ -97,7 +75,7 @@ graph TD
     subgraph Bounded_Core["Bounded Context: Sílice Core (Inviolable)"]
         D1["Motor APU (Mano de Obra, Equipos, Materiales)"]
         D2["Auditoría Numérica y Reglas Normativas"]
-        D3["Anomalías ML: ml/anomaly (fuera de core/, se inyecta)"]
+        D3["Detección de Anomalías ML (Isolation Forest)"]
     end
 
     subgraph Persistencia["Almacenamiento Local (SQLite)"]
@@ -157,8 +135,8 @@ $$C_H = \underbrace{\frac{V_a - V_r}{V_u} + \frac{V_a \cdot (i + s + t)}{H_a}}_{
      - 🟡 **Amarillo:** Alerta de rendimiento fuera de rango o precio atípico.
      - 🔴 **Rojo:** Error de fórmula, sobreprecio crítico o partida no trazable.
 5. **Popover Contextual y Capa Delta:**
-   - Clic en una celda roja: *"La partida declara arena a \$42/m³. El costo de producción en Cantera Las Mercedes es \$18/m³ + \$9/m³ flete. Sobreprecio detectado: +55,6 %."* (ejemplo construido, PLAN_FUENTES C-2)
-   - Botón: `[Adoptar Costo de Cantera]` $\rightarrow$ Registra el cambio en la Capa Delta (el archivo original permanece intacto) y recalcula el presupuesto al instante.
+   - Clic en una celda roja: *"La partida declara arena a \$42/m³. El costo de producción en Cantera Las Mercedes es \$18/m³ + \$9/m³ flete. Sobreprecio detectado: +55.5%."*
+   - Botón: `[Adoptar Costo de Cantera]` $\rightarrow$ Registra el cambio en la Capa Delta (el archivo original permanece intacto) y recalcula el presupuesto en tiempo real.
 
 ---
 
@@ -288,7 +266,7 @@ class InsumoCanteraDTO(BaseModel):
     costo_operacion_combustible: Decimal = Field(..., ge=0, example=6.80)
     costo_desgaste_plantas: Decimal = Field(..., ge=0, example=1.30)
     costo_total_en_patio: Decimal = Field(..., ge=0, example=30.80)
-    densidad_ton_m3: Decimal = Field(..., gt=0, example=1.65)  # dato de la empresa por ensayo; sin valor por defecto (PLAN_FUENTES C-5)
+    densidad_ton_m3: Decimal = Field(default=Decimal("1.65"), example=1.65)
     fecha_vigencia: date
     cantera_origen_id: str = Field(..., example="CANTERA-LOMAS-01")
 ```
@@ -362,7 +340,7 @@ class TicketBasculaDTO(BaseModel):
     peso_bruto_ton: Decimal = Field(..., gt=0, example=42.50)
     tara_camion_ton: Decimal = Field(..., gt=0, example=14.20)
     peso_neto_ton: Decimal = Field(..., gt=0, example=28.30)
-    volumen_estimado_m3: Decimal = Field(..., gt=0, example=17.15)  # 28,30 t / 1,65 t/m³ (ejemplo construido, PLAN_FUENTES C-6)
+    volumen_estimado_m3: Decimal = Field(..., gt=0, example=17.68)
 ```
 
 ---
@@ -421,8 +399,6 @@ gitGraph
 ---
 
 ## 9. Checklist Operativo Paso a Paso (Hoja de Ruta Ejecutable)
-
-> **Reemplazado** por [RUTA_SESIONES.md](./RUTA_SESIONES.md) (enmienda E-1). Se conserva como antecedente.
 
 ### Fase 0: Saneamiento de Base y Creación de Entornos (Agente Orquestador)
 - [ ] 1. Asegurar que `origin/main` esté sincronizado y el fix de alias `ARENIA_*` en [`ui/entorno.py`](file:///C:/Users/euger/OneDrive/Escritorio/TESIS/.worktrees/auditoria/ui/entorno.py) esté aplicado para tener la suite base en 6.120 / 6.120 verde.

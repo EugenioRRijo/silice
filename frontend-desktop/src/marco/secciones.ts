@@ -7,7 +7,7 @@
 // con su .db, que es el nombre que acepta `POST /v1/casos/actual`; la de la empresa se escribe `empresa` (ningún
 // nombre de carpeta puede serlo, porque todos terminan en .db).
 
-export type SeccionId = "resumen" | "presupuesto" | "archivos" | "versiones" | "aprobaciones" | "mercado" | "control";
+export type SeccionId = "resumen" | "presupuesto" | "tramos" | "archivos" | "versiones" | "aprobaciones" | "mercado" | "control";
 
 export interface SeccionDef {
   id: SeccionId;
@@ -20,10 +20,11 @@ export interface SeccionDef {
 export const SECCIONES_DE_OBRA: readonly SeccionDef[] = [
   { id: "resumen", titulo: "Resumen", pagina: "obras", ayuda: "La obra de un vistazo: sus cifras, su versión vigente y lo pendiente." },
   { id: "presupuesto", titulo: "Presupuesto", pagina: "hoja", ayuda: "Las partidas de la obra con sus cantidades, precios y APU." },
-  { id: "archivos", titulo: "Archivos y planos", pagina: null, ayuda: "Los planos y documentos de la obra." },
-  { id: "versiones", titulo: "Versiones", pagina: null, ayuda: "Las versiones guardadas del presupuesto y qué cambió entre ellas." },
+  { id: "tramos", titulo: "Tramos", pagina: "tramos", ayuda: "Los tramos de la vía con sus cantidades de obra." },
+  { id: "archivos", titulo: "Archivos y planos", pagina: "archivos", ayuda: "Los planos y documentos de la obra." },
+  { id: "versiones", titulo: "Versiones", pagina: "versiones", ayuda: "Las versiones guardadas del presupuesto y lo que cambió en cada una." },
   { id: "aprobaciones", titulo: "Aprobaciones", pagina: "aprobar", ayuda: "Las versiones que esperan dictamen y lo que se entregó al cliente." },
-  { id: "mercado", titulo: "Mercado", pagina: "mercado", ayuda: "Los precios del mercado para los insumos de la obra; elija los suyos." },
+  { id: "mercado", titulo: "Mercado", pagina: "mercado", ayuda: "Los precios del mercado para los insumos de la obra, su histórico y las cotizaciones." },
   { id: "control", titulo: "Control de obra", pagina: "control", ayuda: "Lo avanzado en obra frente a lo planificado, con sus valuaciones." },
 ];
 
@@ -48,6 +49,16 @@ export const ENTRADAS_DE_EMPRESA: readonly EntradaDef[] = [
 // Busca solo entre las propias (un `id` como «toString» no es sección).
 export function seccionPorId(id: string): SeccionDef | undefined {
   return SECCIONES_DE_OBRA.find((s) => s.id === id);
+}
+
+// Las secciones que trabajan sobre el borrador de la Hoja (Tarea 3 del plan F4): lo comparten por `ProveedorDeLaHoja`,
+// así que pasar de una a otra de la misma obra no lo cierra ni pregunta por sus cambios.
+export const SECCIONES_CON_HOJA: readonly SeccionId[] = ["presupuesto", "archivos", "versiones"];
+
+// Si `destino` (una ruta, con o sin consulta) es una sección con Hoja de esa misma obra.
+export function quedaEnLaHoja(destino: string, carpeta: string | null, obraId: number): boolean {
+  const camino = destino.split(/[?#]/)[0];
+  return SECCIONES_CON_HOJA.some((s) => camino === rutaDeObra(carpeta, obraId, s));
 }
 
 export const RUTA_DE_PENDIENTES = "/pendientes";
