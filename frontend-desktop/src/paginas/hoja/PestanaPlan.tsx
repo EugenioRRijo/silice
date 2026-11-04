@@ -1,6 +1,5 @@
 import { Button, Checkbox, RadioButton, RadioButtonGroup } from "@carbon/react";
 import { InlineNotification } from "../../comun/carbonEs";
-import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import { useCallback, useId, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -8,6 +7,7 @@ import { CurvaPlanAvance, periodoLegible } from "../../comun/CurvaPlanAvance";
 import { mensajeDeError } from "../../comun/errores";
 import { useAplicacion } from "../../shell/contexto";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
+import { AyudaDePestana } from "./AyudaDePestana";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
 import { TablaPaginada } from "./TablaPaginada";
@@ -20,13 +20,12 @@ import {
   claseDeConflicto,
   cuerpoDelPlan,
   rutaDePlan,
-  rutaDePlanSecuencial,
   sembrarPlan,
   ubicarErrorDePlan,
 } from "./logicaSecciones";
 import type { EdicionDelPlan } from "./logicaSecciones";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
-import type { ErrorDeSeccion, Peticion } from "./useEdicionDeSeccion";
+import type { ErrorDeSeccion } from "./useEdicionDeSeccion";
 import { usePuedeEditarLaHoja } from "./puedeEditar";
 
 interface Props {
@@ -348,18 +347,6 @@ function EditorDelPlan({ id, rev, vista, semilla, alAusente, alAceptar, alRecarg
 
   return (
     <div className="silice-hoja__pestana">
-      {puedeEditar && (
-        <>
-      <p className="cds--type-body-compact-01">
-        Reparta cada partida entre los períodos: cada fila debe sumar exactamente 1. Los montos, los acumulados y los porcentajes de la
-        curva se calculan.
-      </p>
-      <p className="cds--type-helper-text-01">
-        {AYUDA_CIFRAS} Los cambios se aplican al borrador cuando deja de escribir; no se
-        guardan como versión hasta que lo pida.
-      </p>
-        </>
-      )}
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && (
         <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir}>
@@ -419,13 +406,9 @@ function EditorDelPlan({ id, rev, vista, semilla, alAusente, alAceptar, alRecarg
   );
 }
 
-const crearPlan = (rev: number, id: string): Peticion => ({ ruta: rutaDePlanSecuencial(id), metodo: "POST", cuerpo: { rev } });
-
 function ContenidoPlan(props: PropsContenido) {
   const { id, rev, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura } = props;
-  const { alExpirar } = useAplicacion();
   const puedeEditar = usePuedeEditarLaHoja(props.base ?? null);
-  const idDelError = useId();
   // Cada plan rehecho desde los rendimientos vuelve a montar la matriz con el plan que contestó el servidor (la matriz solo
   // se siembra al montar).
   const [rehecho, setRehecho] = useState<{ n: number; plan: VistaPlan } | null>(null);
@@ -447,45 +430,14 @@ function ContenidoPlan(props: PropsContenido) {
       }}
     />
   );
-  // «Crear plan secuencial» (E5) no espera la pausa. Su motor vive aquí para que su aviso siga a la vista cuando el plan
-  // aparece (por ejemplo, «ya tiene plan» porque otra ventana lo creó).
-  const creacion = useEdicionDeSeccion<null, never>({
-    borrador: id,
-    inicial: null,
-    rev,
-    peticion: (r) => crearPlan(r, id),
-    ubicar: () => null,
-    frase: FRASES_DE_RECHAZO.plan,
-    leerFresca: async () => null,
-    alAceptar,
-    alRelectura,
-    alRecargarBorrador,
-    alAusente,
-    alExpirar,
-  });
   // Cada pieza ocupa siempre el mismo lugar: «Plan desde los rendimientos» no se vuelve a montar cuando el plan aparece, y
   // sus avisos siguen a la vista.
   return (
     <div className="silice-hoja__pestana">
-      {creacion.error !== null && (
-        <AvisoDeEdicion error={creacion.error} id={idDelError} alRecargar={() => void creacion.recargar()} alReabrir={alReabrir} />
-      )}
+      <AyudaDePestana id="plan" puedeEditar={puedeEditar} />
       {!vista.hay_plan && (
         <div className="silice-hoja__seccion">
           <p className="cds--type-body-compact-01">{vista.mensaje}</p>
-          <AvisoDeEnvio envio={creacion.envio} />
-          {puedeEditar && (
-          <div>
-            <Button
-              kind="tertiary"
-              size="sm"
-              disabled={creacion.envio === "enviando"}
-              onClick={() => void creacion.accionar((r) => crearPlan(r, id))}
-            >
-              Crear plan secuencial (una partida por período)
-            </Button>
-          </div>
-          )}
         </div>
       )}
       {puedeEditar && rendimientos}
@@ -496,14 +448,14 @@ function ContenidoPlan(props: PropsContenido) {
   );
 }
 
-// Pestaña «Plan y curva»: la matriz de fracciones se edita como texto y la curva se recalcula (rebanada 3c-2); el plan se
+// Pestaña «Plan y equilibrio» (antes «Plan y curva», Tarea 4): la matriz de fracciones se edita como texto y la curva se recalcula (rebanada 3c-2); el plan se
 // puede rehacer desde los rendimientos (Tarea 21).
 export function PestanaPlan(props: Props) {
   // Sube cada vez que hay que volver a leer la vista tras una edición: la anterior sigue a la vista mientras llega.
   const [lecturas, setLecturas] = useState(0);
   const alRelectura = useCallback(() => setLecturas((n) => n + 1), []);
   return (
-    <VistaCarga<VistaPlan> ruta={rutaDeVista(props.id, "plan")} etiqueta="Plan y curva" alAusente={props.alAusente} recarga={lecturas}>
+    <VistaCarga<VistaPlan> ruta={rutaDeVista(props.id, "plan")} etiqueta="el plan de trabajo" alAusente={props.alAusente} recarga={lecturas}>
       {(vista) => <ContenidoPlan {...props} vista={vista} alRelectura={alRelectura} />}
     </VistaCarga>
   );

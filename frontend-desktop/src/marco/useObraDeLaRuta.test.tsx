@@ -183,7 +183,7 @@ describe("useObraDeLaRuta", () => {
 
   it("una seccion desconocida o sin pantalla, o un numero de obra roto, da no_existe sin pedir nada", async () => {
     servidor(SUR);
-    for (const ruta of ["/obra/Carpeta%20Sur.db/3/tablero", "/obra/Carpeta%20Sur.db/3/archivos", "/obra/Carpeta%20Sur.db/x/resumen", "/obra/Carpeta%20Sur.db/0/resumen"]) {
+    for (const ruta of ["/obra/Carpeta%20Sur.db/3/tablero", "/obra/Carpeta%20Sur.db/3/elaborar", "/obra/Carpeta%20Sur.db/x/resumen", "/obra/Carpeta%20Sur.db/0/resumen"]) {
       const { result, unmount } = montar(ruta);
       expect(result.current.estado.tipo, ruta).toBe("no_existe");
       unmount();

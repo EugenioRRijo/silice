@@ -5,7 +5,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
-import { fechaValida } from "../historico/porcentaje";
+import { fechaValida } from "../../comun/porcentaje";
 import type { AuditoriaGuardadaRespuesta } from "../inicio/UltimasAuditorias";
 import { resultadoEnUnaLinea } from "../inicio/UltimasAuditorias";
 import { useCarga } from "../inicio/useCarga";

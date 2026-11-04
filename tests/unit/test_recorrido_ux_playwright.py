@@ -114,10 +114,11 @@ def test_cada_ruta_se_lee_del_registro_sin_modulos() -> None:
 
     rutas = {r["id"]: r for r in rutas_de_la_interfaz()}
     # + costos, receta_planta, costo_tonelada y producir_mezcla (plan vial, T2-T6b), tramos (T8) y
-    # riesgo (T16)
-    assert len(rutas) == 32
+    # riesgo (T16); F4: + archivos (T11), - elaborar (T12, baja 19) y - historico (T13)
+    assert len(rutas) == 31
     assert "inicio" not in rutas
-    assert rutas["hoja"]["titulo"] == "Hoja de la obra"
+    # F4, Tarea 4 (baja 7): la pantalla de la Hoja se titula «Presupuesto».
+    assert rutas["hoja"]["titulo"] == "Presupuesto"
     # F4 2b (Eugenio, 2026-10-31): quien revisa ve la Hoja en solo lectura; la pantalla pide
     # leer_proyecto y lo que escribe lo decide puedeEditarLaHoja (y la API, editar_hoja).
     assert rutas["hoja"]["accion"] == "leer_proyecto"

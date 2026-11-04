@@ -67,11 +67,27 @@ def test_navegador_main_escribe_el_json_y_sale_con_1_si_hay_externos(
     salida = tmp_path / "peticiones.json"
     codigo = navegador.main(["--url", "http://127.0.0.1:8501/", "--salida", str(salida)])
     assert codigo == 1
-    assert pedidas == [("http://127.0.0.1:8501", ["", "#/similares", "#/simulador"])]
+    assert pedidas == [("http://127.0.0.1:8501", ["", "#/catalogo", "#/simulador"])]
     datos = json.loads(salida.read_text(encoding="utf-8"))
     assert datos == {"peticiones": 2, "externos": ["cdnjs.cloudflare.com"], "urls": vistas}
     monkeypatch.setattr(navegador, "recorrer", lambda url, paginas: vistas[:1])
     assert navegador.main(["--url", "http://127.0.0.1:8501", "--salida", str(salida)]) == 0
+
+
+def test_las_paginas_del_humo_existen_en_el_registro_de_rutas(tmp_path: Path, monkeypatch) -> None:
+    """Una pantalla dada de baja redirige a Pendientes y el humo cargaría una pantalla menos sin
+    decirlo (F4: `similares`, `elaborar` e `historico` salieron del registro)."""
+    pedidas: list[list[str]] = []
+    monkeypatch.setattr(navegador, "recorrer", lambda url, paginas: pedidas.append(paginas) or [])
+    navegador.main(["--url", "http://127.0.0.1:8501", "--salida", str(tmp_path / "p.json")])
+    registro = (RAIZ / "frontend-desktop" / "src" / "shell" / "rutas.ts").read_text(
+        encoding="utf-8"
+    )
+    ids = set(re.findall(r'^\s+id: "([a-z_]+)",$', registro, flags=re.MULTILINE))
+    assert "obras" in ids
+    paginas = [p.removeprefix("#/") for p in pedidas[0] if p]
+    assert paginas == ["catalogo", "simulador"]
+    assert set(paginas) <= ids
 
 
 @pytest.fixture

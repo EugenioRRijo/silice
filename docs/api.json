@@ -6054,6 +6054,51 @@
         }
       }
     },
+    "/v1/hoja/importaciones": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Listar Importaciones",
+        "description": "F4 T10: el registro de importaciones de la obra (código de `/v1/proyectos` o nombre), de la\nmás nueva a la más vieja. Las guardadas salen de la base del caso, con su versión; las que\nsiguen en un borrador sin guardar, de los borradores vivos de MI ficha para esa obra\n(`version: null`, `guardada: false`). Con la clave de API no hay ficha, así que solo las\nguardadas. Solo lee: no escribe ni crea la tabla.",
+        "operationId": "listar_importaciones_v1_hoja_importaciones_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacionesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores": {
       "get": {
         "tags": [
@@ -14081,13 +14126,26 @@
               }
             ],
             "title": "Declaracion"
+          },
+          "rota_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rota En",
+            "description": "El código de la versión donde se rompió la cadena; null si está íntegra"
           }
         },
         "type": "object",
         "required": [
           "integra",
           "mensaje",
-          "declaracion"
+          "declaracion",
+          "rota_en"
         ],
         "title": "CadenaHojaRespuesta"
       },
@@ -19788,6 +19846,77 @@
         "title": "HojaVisualRespuesta",
         "description": "Espejo de `visual.HojaVisual`. En `anchos` y `altos` la columna o la fila (base 1) va como\ntexto: las claves de un objeto JSON son texto."
       },
+      "ImportacionDeObraRespuesta": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "plano",
+              "computo"
+            ],
+            "title": "Tipo"
+          },
+          "archivo": {
+            "type": "string",
+            "title": "Archivo"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "title": "Fecha Hora"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "resumen": {
+            "type": "string",
+            "title": "Resumen"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "guardada": {
+            "type": "boolean",
+            "title": "Guardada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "archivo",
+          "fecha_hora",
+          "usuario",
+          "resumen",
+          "version",
+          "guardada"
+        ],
+        "title": "ImportacionDeObraRespuesta",
+        "description": "Una fila del registro de importaciones de la obra (F4, Tarea 10). `version: null` y\n`guardada: false` son lo importado que sigue en un borrador sin guardar."
+      },
+      "ImportacionesRespuesta": {
+        "properties": {
+          "importaciones": {
+            "items": {
+              "$ref": "#/components/schemas/ImportacionDeObraRespuesta"
+            },
+            "type": "array",
+            "title": "Importaciones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "importaciones"
+        ],
+        "title": "ImportacionesRespuesta"
+      },
       "ImportadasRespuesta": {
         "properties": {
           "importadas": {
@@ -20998,6 +21127,19 @@
             "maxItems": 2000,
             "minItems": 1,
             "title": "Partidas"
+          },
+          "archivo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivo"
           }
         },
         "additionalProperties": false,
@@ -27782,6 +27924,9 @@
               }
             ],
             "title": "Vacio Mensaje"
+          },
+          "impuestos": {
+            "$ref": "#/components/schemas/ImpuestosRespuesta"
           }
         },
         "type": "object",
@@ -27789,7 +27934,8 @@
           "filas",
           "total",
           "moneda",
-          "vacio_mensaje"
+          "vacio_mensaje",
+          "impuestos"
         ],
         "title": "VistaPresupuestoRespuesta"
       },

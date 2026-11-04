@@ -7,7 +7,7 @@ import type { EstadoFila } from "./logica";
 
 interface Props {
   estado: EstadoFila;
-  // Con ellos, y si la fila tiene algún hallazgo, se ofrece «Ver en Auditoría» (los orígenes con que se buscan y el
+  // Con ellos, y si la fila tiene algún hallazgo, se ofrece «Ver en Revisión» (los orígenes con que se buscan y el
   // nombre de la fila).
   claves?: string[];
   rotulo?: string;
@@ -15,7 +15,7 @@ interface Props {
 
 // El Estado de una fila: ícono y nombre de la severidad (el color nunca va solo) y el texto completo, que envuelve.
 export function EstadoDeFila({ estado, claves, rotulo }: Props) {
-  const verEnAuditoria = useContext(ContextoAuditoria);
+  const verEnRevision = useContext(ContextoAuditoria);
   if (estado.severidad === null) {
     return (
       <span className="silice-hoja__estado-fila" title={estado.texto}>
@@ -30,14 +30,14 @@ export function EstadoDeFila({ estado, claves, rotulo }: Props) {
     <span className="silice-hoja__estado-fila" title={estado.texto}>
       <Severidad valor={estado.severidad} />
       <span className="silice-hoja__estado-texto">{estado.texto}</span>
-      {verEnAuditoria !== null && claves !== undefined && rotulo !== undefined && (
+      {verEnRevision !== null && claves !== undefined && rotulo !== undefined && (
         <Button
           kind="ghost"
           size="sm"
-          aria-label={`Ver en Auditoría: ${rotulo}`}
-          onClick={() => verEnAuditoria({ claves, rotulo })}
+          aria-label={`Ver en Revisión: ${rotulo}`}
+          onClick={() => verEnRevision({ claves, rotulo })}
         >
-          Ver en Auditoría
+          Ver en Revisión
         </Button>
       )}
     </span>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTamanoDeLetra } from "../comun/useTamanoDeLetra";
 import type { HojaVisor } from "./hojaVisor";
 import {
   ZOOM_INICIAL,
@@ -14,17 +15,13 @@ import {
 
 // Zoom de la hoja: el propio (50 a 300 %) por el factor del tamaño de letra de la interfaz. Aquí vive el estado; el
 // lienzo lo recibe como una razón ya multiplicada (`HojaVisor.fijarZoom`), sin recargarse, así que ni la selección ni
-// el desplazamiento se pierden. El factor se vigila en el atributo que deja `aplicarTamanoLetra` en la raíz.
+// el desplazamiento se pierden. El factor sigue al tamaño de letra de la interfaz.
 export function useZoomHoja(visor: HojaVisor | null) {
   const [zoom, setZoom] = useState<number>(leerZoomHoja);
-  const [factor, setFactor] = useState<number>(factorDeLetra);
-
-  useEffect(() => {
-    const raiz = document.documentElement;
-    const observador = new MutationObserver(() => setFactor(factorDeLetra()));
-    observador.observe(raiz, { attributes: true, attributeFilter: ["data-silice-letra"] });
-    return () => observador.disconnect();
-  }, []);
+  // El factor sale del tamaño de letra de la raíz, que `useTamanoDeLetra` vigila.
+  // Suscribirse al tamaño hace que este hook se vuelva a pintar cuando cambia; el factor se lee de la misma raíz.
+  useTamanoDeLetra();
+  const factor = factorDeLetra();
 
   const razon = razonEfectiva(zoom, factor);
   const limitado = Math.round((zoom / 100) * factor * 1000) / 1000 > razon;

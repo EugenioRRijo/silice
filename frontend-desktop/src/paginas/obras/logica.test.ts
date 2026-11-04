@@ -1,58 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { bloquesPedidos, etiquetaAvance, gruposConItems } from "./logica";
-import type { GrupoRespuesta } from "./logica";
+import type { ObraFilaRespuesta } from "../../api/tipos";
+import { textoDeLaAccion } from "../pendientes/logica";
+import { etiquetaAvance, pasoDeLaObra } from "./logica";
 
-// Plan de modulos, MOD-4b: la logica pura de la mesa de control. Acciones por rol copiadas a mano de
-// seguridad/permisos.py (las mismas de `src/shell/obras/datosDePrueba.tsx`).
-const ANA = [
-  "editar_hoja",
-  "convertir_y_reajustar",
-  "control_de_obra",
-  "decidir_recuperacion",
-  "entregar_paquete",
-  "operar_arenera",
-  "leer_proyecto",
-  "aprobar_version",
-  "cambiar_caso",
-];
-const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
-const ADMIN = [
-  "operar_arenera",
-  "cambiar_caso",
-  "administrar_cuentas",
-  "administrar_empresa",
-  "administrar_precios",
-  "administrar_red_y_api",
-  "activar_modulos",
-  "cambiar_carpeta_de_datos",
-];
-
-describe("bloquesPedidos", () => {
-  // T19: con `aprobar_version` se pide ademas lo de aprobar (la cifra «Por aprobar» y los envios de todas las carpetas).
-  test("quien arma pide cifras, obras, pendientes y lo de aprobar (no los accesos)", () => {
-    expect(bloquesPedidos(ANA)).toEqual(["cifras", "obras", "pendientes", "por_aprobar"]);
-  });
-
-  test("quien revisa pide cifras, obras y lo de aprobar; los pendientes de las obras exigen editar la hoja", () => {
-    expect(bloquesPedidos(RITA)).toEqual(["cifras", "obras", "por_aprobar"]);
-  });
-
-  test("el administrador no lee obras: solo los accesos de su módulo", () => {
-    expect(bloquesPedidos(ADMIN)).toEqual(["accesos"]);
-  });
-
-  test("solo editar la hoja: pendientes, sin cifras ni obras ni accesos", () => {
-    expect(bloquesPedidos(["editar_hoja"])).toEqual(["pendientes"]);
-  });
-
-  test("solo aprobar versiones: lo de aprobar, sin accesos", () => {
-    expect(bloquesPedidos(["aprobar_version"])).toEqual(["por_aprobar"]);
-  });
-
-  test("sin acciones: accesos", () => {
-    expect(bloquesPedidos([])).toEqual(["accesos"]);
-  });
-});
+// Lógica pura del Resumen de la obra.
 
 describe("etiquetaAvance", () => {
   test("real de plan, en es-VE", () => {
@@ -67,18 +18,53 @@ describe("etiquetaAvance", () => {
   });
 });
 
-describe("gruposConItems", () => {
-  const item = { obra: "7", obra_nombre: "Casa Demo", texto: "1 precio sin referencia en CD-001", accion: { texto: "Ver el catálogo", pagina: "catalogo" } };
-  test("quita los grupos vacíos y conserva el orden de la API", () => {
-    const grupos: GrupoRespuesta[] = [
-      { clave: "aprobar", titulo: "Aprobar", items: [] },
-      { clave: "precios", titulo: "Precios", items: [item] },
-      { clave: "calidad", titulo: "Calidad", items: [] },
-    ];
-    expect(gruposConItems(grupos).map((g) => g.clave)).toEqual(["precios"]);
+// Tarea 2 del plan F4: qué dice la franja del Resumen. Obra ficticia; los textos son los que daría el servidor.
+const OBRA: ObraFilaRespuesta = {
+  codigo: "3",
+  nombre: "Galpón Norte",
+  cliente: "",
+  etapa: "en_elaboracion",
+  etapa_texto: "En elaboración",
+  version: "001",
+  total: "100.00",
+  moneda: "Bs",
+  avance_real: null,
+  avance_plan: null,
+  que_pasa: null,
+  siguiente: null,
+};
+const IR_A_LA_HOJA = { texto: "Abrir la Hoja", pagina: "hoja" };
+
+// Pasada de navegador del cierre de F4 (H9): la sección se llama «Presupuesto» (DESIGN.md retira «Hoja de la obra»), pero
+// el servidor (`aplicacion/mesa.py`, fuera del alcance del front) sigue diciendo «Abrir la Hoja»: el botón lo dice al día.
+const AL_PRESUPUESTO = { texto: "Abrir el presupuesto", pagina: "hoja" };
+
+describe("textoDeLaAccion", () => {
+  test("«Abrir la Hoja» se dice «Abrir el presupuesto»; las demás, tal cual", () => {
+    expect(textoDeLaAccion(IR_A_LA_HOJA)).toBe("Abrir el presupuesto");
+    expect(textoDeLaAccion({ texto: "Registrar el avance", pagina: "control" })).toBe("Registrar el avance");
+    expect(textoDeLaAccion({ texto: "Ver el envío", pagina: "hoja" })).toBe("Ver el envío");
+  });
+});
+
+describe("pasoDeLaObra", () => {
+  test("con «qué pasa» y siguiente paso, lo que falta, con la acción", () => {
+    expect(pasoDeLaObra({ ...OBRA, que_pasa: "Faltan 2 precios", siguiente: IR_A_LA_HOJA })).toEqual({
+      tipo: "falta",
+      texto: "Faltan 2 precios",
+      accion: AL_PRESUPUESTO,
+    });
   });
 
-  test("todos vacíos: ninguno", () => {
-    expect(gruposConItems([{ clave: "precios", titulo: "Precios", items: [] }])).toEqual([]);
+  test("con «qué pasa» y sin siguiente paso, lo que falta, sin acción", () => {
+    expect(pasoDeLaObra({ ...OBRA, que_pasa: "Faltan 2 precios" })).toEqual({ tipo: "falta", texto: "Faltan 2 precios", accion: null });
+  });
+
+  test("solo con siguiente paso, el siguiente paso con el texto de la acción", () => {
+    expect(pasoDeLaObra({ ...OBRA, siguiente: IR_A_LA_HOJA })).toEqual({ tipo: "siguiente", texto: "Abrir el presupuesto", accion: AL_PRESUPUESTO });
+  });
+
+  test("sin ninguno de los dos, no hay franja", () => {
+    expect(pasoDeLaObra(OBRA)).toBeNull();
   });
 });

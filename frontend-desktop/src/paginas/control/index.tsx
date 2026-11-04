@@ -1,9 +1,10 @@
 import { Tab, TabPanel, TabPanels, Tabs } from "@carbon/react";
 import { TabList } from "../../comun/carbonEs";
-import { useCallback, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { PestanaLineaBase } from "./PestanaLineaBase";
 import { PestanaProcura } from "./PestanaProcura";
@@ -72,7 +73,14 @@ export default function PaginaControl() {
   const { proyecto } = useAplicacion();
   const [pestana, setPestana] = useState(0);
   const [clave, setClave] = useState(0);
-  const cambiar = useCallback(() => setClave((n) => n + 1), []);
+  // Toda escritura de Control pasa por `cambiar`: además de repetir las lecturas de la pestaña, vuelve a leer la ficha de la
+  // obra para que su «Estado:» en la cabecera no quede viejo (la obra ya no se monta de nuevo por sección, Tarea 3 del plan
+  // F4). Sin obra abierta (la pantalla sola) no hay ficha.
+  const recargarFicha = useContext(ContextoDeLaObra)?.recargarFicha;
+  const cambiar = useCallback(() => {
+    setClave((n) => n + 1);
+    recargarFicha?.();
+  }, [recargarFicha]);
 
   return (
     <div className="silice-control silice-pagina">

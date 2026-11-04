@@ -18,21 +18,35 @@ interface Destino {
 
 // La sección de la obra que monta la pantalla de la acción, o la que la absorberá; si no, la entrada de Empresa que la
 // monta; y una pantalla desconocida, el Resumen de la obra (nunca un enlace muerto).
-function destino(p: PendienteDeObra): Destino {
-  const id = p.accion.pagina;
+function destino(carpeta: string | null, obraId: number, id: string): Destino {
   const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === id) ?? seccionPorId(ABSORBIDAS.get(id) ?? "");
   const entrada = seccion ? undefined : ENTRADAS_DE_EMPRESA.find((e) => e.pagina === id);
   if (entrada) return { ruta: rutaDeEmpresa(entrada.id), pagina: entrada.pagina };
   const llegada = seccion ?? seccionPorId("resumen");
-  return { ruta: rutaDeObra(p.carpeta, p.obra_id, llegada?.id ?? "resumen"), pagina: llegada?.pagina ?? id };
+  return { ruta: rutaDeObra(carpeta, obraId, llegada?.id ?? "resumen"), pagina: llegada?.pagina ?? id };
+}
+
+// Adónde lleva una acción (`accion.pagina`) de una obra: lo usan la bandeja, por cada pendiente, y el Resumen, por la
+// acción de su franja (Tarea 2 del plan F4).
+export function destinoDeLaAccion(carpeta: string | null, obraId: number, pagina: string): string {
+  return destino(carpeta, obraId, pagina).ruta;
 }
 
 export function destinoDelPendiente(p: PendienteDeObra): string {
-  return destino(p).ruta;
+  return destinoDeLaAccion(p.carpeta, p.obra_id, p.accion.pagina);
+}
+
+// El texto de un botón que trae el servidor (`aplicacion/mesa.py`). La sección se llama «Presupuesto» desde F4 (DESIGN.md
+// retira «Hoja de la obra») y el servidor aún dice «Abrir la Hoja»: el botón lo dice al día (pasada del cierre de F4, H9).
+// Lo usan la franja y los pendientes del Resumen y la bandeja de Pendientes.
+const TEXTOS_AL_DIA: Readonly<Record<string, string>> = { "Abrir la Hoja": "Abrir el presupuesto" };
+
+export function textoDeLaAccion(accion: { texto: string; pagina: string }): string {
+  return TEXTOS_AL_DIA[accion.texto] ?? accion.texto;
 }
 
 export function paginaQueAbre(p: PendienteDeObra): string {
-  return destino(p).pagina;
+  return destino(p.carpeta, p.obra_id, p.accion.pagina).pagina;
 }
 
 // La misma clave que usa el marco para una obra: la carpeta (vacía la de la empresa) y su número.

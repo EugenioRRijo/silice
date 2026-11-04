@@ -80,6 +80,21 @@ describe("verificarDist", () => {
     expect(problemas[0]).toContain("github.com");
   });
 
+  test("los textos del enrutador pasan tambien en su trozo propio (enrutador-*.js), y en ningun otro", () => {
+    const texto =
+      'throw Error("See https://reactrouter.com/en/main/routers/picking-a-router."); new URL(p, `http://localhost`); ' +
+      'warning(false, "load a polyfill such as https://github.com/ungap/url-search-params.");';
+    writeFileSync(join(dir, "enrutador-AbC123.js"), texto);
+    expect(verificarDist(dir).problemas).toEqual([]);
+    writeFileSync(join(dir, "chunk-OB3PAWPO-AbC123.js"), texto);
+    expect(verificarDist(dir).problemas).toHaveLength(3);
+  });
+
+  test("el trozo del enrutador tampoco puede hablar con otro anfitrion", () => {
+    writeFileSync(join(dir, "enrutador-AbC123.js"), 'fetch("https://telemetria.example.net/e")');
+    expect(verificarDist(dir).problemas).toHaveLength(1);
+  });
+
   test("el bundle principal tampoco puede hablar con otro anfitrion", () => {
     writeFileSync(join(dir, "index-AbC123.js"), 'fetch("https://telemetria.example.net/e")');
     expect(verificarDist(dir).problemas).toHaveLength(1);

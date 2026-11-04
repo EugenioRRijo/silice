@@ -3,10 +3,15 @@ montar un presupuesto, `docs/planes/PLAN_MONTAR_PRESUPUESTO.md`; diseño §5.3: 
 del proyecto», que mete sus ítems en el borrador como renglones agregados, sin guardar por su
 cuenta).
 
-Cuerpo `{proyecto, partidas: [{codigo, cantidad, calculo}]}` → 200 `{borrador_id}`. Usa el borrador
-vivo de esa ficha y obra o abre uno sobre la versión vigente (o en blanco) y agrega cada partida con
-`hoja_edicion.agregar` (Tarea 9), todo o nada (`aplicacion.elaboracion.llevar_a_la_hoja`); no guarda
-versión. `proyecto` es el código de `GET /v1/proyectos` o el nombre de la obra.
+Cuerpo `{proyecto, partidas: [{codigo, cantidad, calculo}], archivo?}` → 200 `{borrador_id}`.
+Usa el borrador vivo de esa ficha y obra o abre uno sobre la versión vigente (o en blanco) y agrega
+cada partida con `hoja_edicion.agregar` (Tarea 9), todo o nada
+(`aplicacion.elaboracion.llevar_a_la_hoja`); no guarda versión. `proyecto` es el código de
+`GET /v1/proyectos` o el nombre de la obra.
+
+`archivo` (opcional, de F4 Tarea 10) es el nombre del cómputo, solo el nombre y de hasta 255
+caracteres: si llega, el llevar queda en el registro de importaciones de la obra, «sin guardar»
+hasta que se guarde la versión (`GET /v1/hoja/importaciones`).
 
 La cantidad es texto de máquina: la que da el cómputo de Elaborar, con punto decimal y sin miles,
 como en `POST /presupuestos/calcular` (bitácora de la coma decimal: las rutas cuyo contrato ya es un
@@ -27,7 +32,7 @@ from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import SesionDep, url_de_la_peticion
@@ -39,6 +44,7 @@ from aplicacion import elaboracion, hoja_edicion
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorInexistente, RevDesactualizado
+from aplicacion.importaciones import MAX_NOMBRE, nombre_de_archivo
 from aplicacion.proyectos import resolver_proyecto
 
 FORMA_LLEVAR = (
@@ -74,6 +80,16 @@ class LlevarALaHoja(BaseModel):
 
     proyecto: Annotated[str, Field(strict=True, min_length=1, max_length=500)]
     partidas: Annotated[list[PartidaLlevada], Field(min_length=1, max_length=MAX_ITEMS)]
+    #: F4, Tarea 10: el nombre del cómputo para el registro de importaciones. Solo el nombre, nunca
+    #: una ruta (un 422 sin eco si trae barras o «:»); sin él el llevar no se registra.
+    archivo: (
+        Annotated[
+            str,
+            Field(strict=True, min_length=1, max_length=MAX_NOMBRE),
+            AfterValidator(nombre_de_archivo),
+        ]
+        | None
+    ) = None
 
 
 class LlevadoRespuesta(BaseModel):
@@ -113,6 +129,7 @@ def llevar_a_la_hoja(
             partidas,
             responsable=activa.usuario,
             hoy=_hoy(),
+            archivo=datos.archivo,
         )
     except hoja_edicion.PartidaFueraDelCatalogo as error:
         raise HTTPException(status_code=404, detail=str(error)) from None

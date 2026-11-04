@@ -1,0 +1,70 @@
+// «Cargar cómputo» (Tarea 12 de F4), dentro del diálogo «Subir plano o cómputo». Sin tarjetas con sombra ni animaciones
+// (DESIGN.md); solo tokens del tema.
+
+.silice-computo,
+.silice-computo__bloque,
+.silice-computo__pendiente {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+  min-inline-size: 0;
+}
+
+.silice-computo__bloque {
+  inline-size: 100%;
+}
+
+.silice-computo__bloque > * {
+  max-inline-size: 100%;
+}
+
+.silice-computo__pendiente {
+  padding-block: 0.5rem;
+  border-block-end: 1px solid var(--cds-border-subtle);
+}
+
+.silice-computo__selectores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  align-items: end;
+  inline-size: 100%;
+}
+
+.silice-computo__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.silice-computo__acciones .cds--select {
+  min-inline-size: 14rem;
+}
+
+.silice-computo__aviso {
+  max-inline-size: 65ch;
+  padding: 0.75rem 1rem;
+  border-inline-start: 3px solid var(--silice-sev-advertencia);
+  background: var(--cds-layer-01);
+}
+
+.silice-computo__exito {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  padding: 0.75rem 1rem;
+  border-inline-start: 3px solid var(--silice-verificado);
+  background: var(--cds-layer-01);
+}
+
+.silice-computo__nota {
+  color: var(--silice-texto-secundario);
+  max-inline-size: 65ch;
+}
+
+.silice-computo__propuestas {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  list-style: disc;
+}

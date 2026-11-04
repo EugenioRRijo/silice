@@ -215,6 +215,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
       "Estado",
       "Acciones",
     ]);
+    await userEvent.click(screen.getByRole("button", { name: "¿Qué es esto?" })); // baja 25: la ayuda va plegada
     expect(screen.getByText(/Escriba los decimales con coma: 2,5; el punto separa los miles: 1\.234,56/)).toBeInTheDocument();
     expect(screen.queryByText(/la coma no se acepta/)).toBeNull();
   });
@@ -320,7 +321,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     await abrirConRelojFalso();
     fireEvent.change(celda("Nombre, Ambientes fila 2"), { target: { value: "Cocina" } });
     await act(async () => {
-      fireEvent.click(screen.getByRole("tab", { name: "Presupuesto" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Partidas" }));
     });
     expect(puestas()).toHaveLength(1);
     expect(puestas()[0]!.cuerpo.tablas.ambientes![1]!.nombre).toBe("Cocina");
@@ -609,7 +610,8 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     expect(screen.queryByRole("button", { name: "Descartar cambios" })).toBeNull();
   });
 
-  test("Presupuesto: el código no se parte en líneas y m2 y m3 se leen m² y m³ (segunda pasada de navegador)", async () => {
+  // La pestaña «Presupuesto» se llama «Partidas» desde la Tarea 4 de F4.
+  test("Partidas: el código no se parte en líneas y m2 y m3 se leen m² y m³ (segunda pasada de navegador)", async () => {
     const base = vistaPresupuesto();
     presupuesto = {
       ...base,
@@ -619,7 +621,7 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
       ],
     };
     await abrir();
-    fireEvent.click(screen.getByRole("tab", { name: "Presupuesto" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Partidas" }));
     const codigo = await screen.findByText("C-000.000.001");
     expect(codigo).toHaveClass("silice-hoja__codigo");
     expect(screen.getByText("m²")).toBeInTheDocument();

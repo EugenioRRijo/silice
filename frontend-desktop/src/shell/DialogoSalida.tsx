@@ -11,6 +11,10 @@ interface Props {
   paginas?: readonly PaginaDef[];
 }
 
+// Lo que se dice cuando lo unico sucio es el borrador de la Hoja, que el servidor conserva (Tarea 3 del plan F4): salir
+// no lo pierde, asi que el boton tampoco habla de descartar.
+const CONSECUENCIA_RETOMABLE = "Sus cambios quedan guardados para retomarlos al volver.";
+
 // «Cambios sin guardar» (diseno de modulos §4 y §12.5). Dialogo propio, sin el Modal de Carbon (como el de carpetas,
 // BCP-5 §4.7): modal, foco inicial en «Quedarme» (la opcion que no pierde nada), Tab atrapado y Esc = «Quedarme».
 export function DialogoSalida({ paginas = PAGINAS }: Props): JSX.Element | null {
@@ -38,7 +42,12 @@ function Caja({ pendiente, paginas }: { pendiente: SalidaPendiente; paginas: rea
   ];
   const carpeta = pendiente.motivo === "carpeta";
   const consecuencia =
-    pendiente.consecuencia ?? (carpeta ? "Si cambia de carpeta, se perderán." : "Si sale de esta pantalla, se perderán.");
+    pendiente.consecuencia ??
+    (pendiente.retomable
+      ? CONSECUENCIA_RETOMABLE
+      : carpeta
+        ? "Si cambia de carpeta, se perderán."
+        : "Si sale de esta pantalla, se perderán.");
 
   function quedarse() {
     const anterior = previo.current;
@@ -82,7 +91,7 @@ function Caja({ pendiente, paginas }: { pendiente: SalidaPendiente; paginas: rea
             Quedarme
           </Button>
           <Button kind="danger" onClick={() => responderSalida(true)}>
-            {pendiente.motivo === "salir" ? "Salir y descartar" : "Cambiar y descartar"}
+            {pendiente.retomable ? "Salir" : pendiente.motivo === "salir" ? "Salir y descartar" : "Cambiar y descartar"}
           </Button>
         </div>
       </div>

@@ -44,9 +44,12 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from aplicacion.hoja import Borrador, VersionAbierta
+
+if TYPE_CHECKING:
+    from aplicacion.importaciones import ImportacionDeObra
 
 POR_FICHA = 4
 GLOBALES = 64
@@ -95,7 +98,9 @@ class BorradorVivo:
     `caso` es la ruta del caso con que se abrio (la ruta opaca que la API compara con el caso de la
     ficha: un borrador jamas guarda en un caso ajeno). `abierta` es la `VersionAbierta` (o `None`:
     proyecto sin versiones, borrador en blanco); `calculo` es la cache `(rev, ResultadoHoja,
-    cambios)` de la vista, que `reemplazar` invalida. `guardado_como` se llena al guardar (3d).
+    cambios)` de la vista, que `reemplazar` invalida.
+    `importaciones` son las que anota `aplicacion.importaciones` (F4, Tarea 10).
+    `guardado_como` se llena al guardar (3d).
     `vigente_al_abrir` es el codigo de la version vigente del proyecto al abrir (D-5): guardar
     pide confirmar solo si la vigente de AHORA es otra que esa, o sea, si alguien guardo despues
     de abrir (abrir a proposito una version vieja no cuenta).
@@ -115,6 +120,9 @@ class BorradorVivo:
     guardado_como: str | None = None
     vigente_al_abrir: str | None = None
     calculo: tuple[int, Any, list] | None = None
+    #: Lo importado a este borrador (plano fusionado, cómputo llevado) y aún sin guardar: sale en
+    #: el registro de la obra como «sin guardar» y se escribe con la versión (F4, Tarea 10).
+    importaciones: tuple[ImportacionDeObra, ...] = ()
     cerrojo: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
 

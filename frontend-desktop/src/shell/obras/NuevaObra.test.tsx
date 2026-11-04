@@ -192,8 +192,8 @@ describe("F11: obra sin versión guardada", () => {
     );
     expect(
       await screen.findByText(
-        // Tarea 11: una obra civil empieza por «Presupuesto»; el espacio queda para las de instalaciones.
-        "Agregue las partidas en «Presupuesto» (o, en una obra de instalaciones, describa el espacio o importe un plano) y guarde la primera versión con «Guardar primera versión…».",
+        // Tarea 11: una obra civil empieza por la pestaña «Partidas»; el espacio queda para las de instalaciones (cierre de F4).
+        "Agregue las partidas en la pestaña «Partidas» (o, en una obra de instalaciones, describa el espacio o importe un plano en «Archivos y planos») y guarde la primera versión con «Guardar primera versión…».",
       ),
     ).toBeInTheDocument();
   });

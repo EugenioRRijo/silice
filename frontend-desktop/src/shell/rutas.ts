@@ -65,15 +65,15 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   {
     id: "obras",
-    titulo: "Inicio de presupuestos y obras",
-    enUnaLinea: "Cifras, obras y pendientes de un vistazo",
+    titulo: "Resumen de la obra",
+    enUnaLinea: "La obra abierta de un vistazo: cifras y pendientes",
     seccion: "Trabajo",
     accion: null,
     cargar: () => import("../paginas/obras"),
   },
   {
     id: "hoja",
-    titulo: "Hoja de la obra",
+    titulo: "Presupuesto",
     enUnaLinea: "El presupuesto completo, como en Excel",
     seccion: "Trabajo",
     // F4 2b (Eugenio, 2026-10-31): quien revisa la ve en solo lectura; lo que escribe lo decide `puedeEditarLaHoja`.
@@ -81,12 +81,23 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/hoja"),
   },
   {
-    id: "elaborar",
-    titulo: "Elaborar un presupuesto",
-    enUnaLinea: "Junte partidas y cantidades",
+    id: "versiones",
+    titulo: "Versiones",
+    enUnaLinea: "Las versiones guardadas y lo que cambió en cada una",
     seccion: "Trabajo",
-    accion: "editar_hoja",
-    cargar: () => import("../paginas/elaborar"),
+    // F4, Tarea 6: lee lo mismo que la Hoja (Tarea 2b); restaurar y guardar los decide `puedeEditarLaHoja`.
+    accion: "leer_proyecto",
+    cargar: () => import("../paginas/versiones"),
+  },
+  {
+    id: "archivos",
+    titulo: "Archivos y planos",
+    enUnaLinea: "Suba un plano o un cómputo y vea lo que se importó",
+    seccion: "Trabajo",
+    // F4, Tarea 11: quien revisa ve el registro; subir lo decide `puedeEditarLaHoja` (la API exige `editar_hoja`). F4,
+    // Tarea 12: no es de ningún módulo. Con «edificación» apagada no hay planos, pero el cómputo se sigue cargando aquí.
+    accion: "leer_proyecto",
+    cargar: () => import("../paginas/archivos"),
   },
   {
     id: "tablero",
@@ -121,19 +132,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/catalogo"),
   },
   {
-    id: "similares",
-    titulo: "Partidas similares",
-    enUnaLinea: "Encuentre partidas parecidas a la que busca",
-    seccion: "Investigación",
-    accion: "editar_hoja",
-    cargar: () => import("../paginas/similares"),
-  },
-  {
     id: "mercado",
     titulo: "Estudio de mercado",
-    enUnaLinea: "Compare precios del mercado y elija los suyos",
+    enUnaLinea: "Compare precios del mercado, su histórico y las cotizaciones",
     seccion: "Trabajo",
-    accion: "editar_hoja",
+    // F4, Tarea 13 (ronda 2): quien revisa entra a leer el histórico y las cotizaciones de la obra; las pestañas que
+    // anotan y usan precios, y las operaciones de cotizar, solo se pintan con `editar_hoja` (la API lo vuelve a exigir).
+    accion: "leer_proyecto",
     cargar: () => import("../paginas/mercado"),
   },
   {
@@ -151,14 +156,6 @@ export const PAGINAS: readonly PaginaDef[] = [
     seccion: "Trabajo",
     accion: "editar_hoja",
     cargar: () => import("../paginas/actualizacion"),
-  },
-  {
-    id: "historico",
-    titulo: "Histórico de cambios de precio",
-    enUnaLinea: "Vea cómo cambió el precio de un insumo",
-    seccion: "Trabajo",
-    accion: "leer_proyecto",
-    cargar: () => import("../paginas/historico"),
   },
   {
     id: "indices",

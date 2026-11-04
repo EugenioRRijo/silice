@@ -36,6 +36,12 @@ tasa de los ultimos 7 dias o sin lista, `SinListaDeLaObra` y nada se guarda. Su 
 elegir («VIV-001»); las siguientes siguen la numeracion. Las notas de medicion se guardan con la
 version (`hoja.guardar_version` y `hoja.crear_primera_version`).
 
+Tarea 10 de F4 (registro de importaciones): las importaciones anotadas en el borrador (plano
+fusionado, cómputo llevado) se escriben con la versión, en esta misma transaccion
+(`importaciones.con_la_version` las engancha al `commit` de `guardar_version` y de
+`crear_primera_version`, sin tocar `aplicacion/hoja.py`): si algo falla no queda ni la version ni
+el registro.
+
 Sin FastAPI ni Streamlit (RM-1).
 """
 
@@ -45,7 +51,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from aplicacion import hoja, hoja_borradores, hoja_vista
+from aplicacion import hoja, hoja_borradores, hoja_vista, importaciones
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
@@ -183,9 +189,10 @@ def _version(
             )
             if mas_nueva is not None:
                 raise VersionMasNueva(mas_nueva, abierta.codigo)
-        guardada = hoja.guardar_version(
-            sesion, Catalogo(sesion), abierta, borrador, fuente=fuente, responsable=responsable
-        )
+        with importaciones.con_la_version(sesion, vivo):  # F4 T10: el registro viaja con la version
+            guardada = hoja.guardar_version(
+                sesion, Catalogo(sesion), abierta, borrador, fuente=fuente, responsable=responsable
+            )
     except BaseException:
         sesion.rollback()  # guardar_version ya deshizo lo suyo; esto cubre lo de antes
         raise
@@ -227,16 +234,17 @@ def _primera(
             borrador = hoja.con_precios_de_la_lista(Catalogo(sesion), borrador, lista)
         except hoja.ApuSinPreciosDeLaLista as error:
             raise SinListaDeLaObra(str(error)) from None
-        guardada = hoja.crear_primera_version(
-            sesion,
-            Catalogo(sesion),
-            vivo.proyecto,
-            borrador,
-            codigo=codigo,
-            fuente=fuente,
-            responsable=responsable,
-            lista=lista,
-        )
+        with importaciones.con_la_version(sesion, vivo):  # F4 T10: el registro viaja con la version
+            guardada = hoja.crear_primera_version(
+                sesion,
+                Catalogo(sesion),
+                vivo.proyecto,
+                borrador,
+                codigo=codigo,
+                fuente=fuente,
+                responsable=responsable,
+                lista=lista,
+            )
     except BaseException:
         sesion.rollback()
         raise

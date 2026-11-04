@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { formulariosSucios, olvidarFormularios } from "./sucio";
+import { formulariosSucios, olvidarFormularios, soloTrabajoEnElServidor } from "./sucio";
 
 // Confirmacion al salir con trabajo sin guardar (diseno de modulos §4 y §12.5). Un solo punto para todas las
 // navegaciones que inician los controles de Silice; atras/adelante del navegador no se interceptan (sin migrar de
@@ -18,6 +18,9 @@ export interface SalidaPendiente {
   extras: readonly string[];
   // La consecuencia dicha por quien pregunta («Si elige otro insumo o partida, se perderán.»); null = la del motivo.
   consecuencia: string | null;
+  // Todo lo sucio vive en el servidor y se retoma al volver (el borrador de la Hoja, Tarea 3 del plan F4): solo al salir
+  // («salir»), sin extras; cambiar de carpeta si lo pierde.
+  retomable: boolean;
 }
 
 let pendiente: (SalidaPendiente & { resolver: (salir: boolean) => void }) | null = null;
@@ -44,18 +47,21 @@ export function useSalidaPendiente(): SalidaPendiente | null {
 }
 
 // Resuelve true sin preguntar si no hay nada que perder; si lo hay, abre el dialogo y resuelve con la respuesta. Una
-// pregunta nueva deja sin efecto la anterior (que resuelve false: nadie navega por ella).
+// pregunta nueva deja sin efecto la anterior (que resuelve false: nadie navega por ella). Con `destino` (la ruta a la que
+// se va) no cuenta lo que sobrevive al ir alli (el borrador de la Hoja entre las secciones de su obra, sucio.ts).
 export function confirmarSalida(
   motivo: MotivoSalida,
   extras: readonly string[] = [],
   consecuencia: string | null = null,
+  destino: string | null = null,
 ): Promise<boolean> {
-  const pantallas = formulariosSucios();
+  const pantallas = formulariosSucios(destino);
   if (pantallas.length === 0 && extras.length === 0) return Promise.resolve(true);
   return new Promise<boolean>((resolver) => {
     const anterior = pendiente;
     numero += 1;
-    pendiente = { numero, motivo, pantallas, extras: [...extras], consecuencia, resolver };
+    const retomable = motivo === "salir" && extras.length === 0 && soloTrabajoEnElServidor(destino);
+    pendiente = { numero, motivo, pantallas, extras: [...extras], consecuencia, retomable, resolver };
     anterior?.resolver(false);
     avisar();
   });

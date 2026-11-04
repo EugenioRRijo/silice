@@ -1,0 +1,50 @@
+// Versiones (Tarea 6 del plan F4). Sin tarjetas con sombra ni animaciones (DESIGN.md): bloques en columna. La tabla se
+// desplaza en su caja (`.silice-tabla`) y el panel del registro de cambios se acopla a la derecha (`.silice-con-panel`).
+
+.silice-versiones__contenido {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  min-inline-size: 0;
+}
+
+// El aviso de la cadena de sellos, encima de la tabla: ícono y texto en la misma línea; el color solo acompaña.
+.silice-versiones__cadena {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.silice-versiones__cadena-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.silice-versiones__cadena-integra {
+  fill: var(--silice-verificado);
+}
+
+.silice-versiones__cadena-rota {
+  fill: var(--silice-sev-critico);
+}
+
+// La versión abierta: la palabra «abierta» la dice (Foco 5); el peso solo acompaña, sin color propio.
+.silice-versiones__codigo {
+  white-space: nowrap;
+}
+
+.silice-versiones__abierta {
+  font-weight: 600;
+}
+
+// La descartada: la palabra «descartada» lo dice (sigue en el historial, RF-54); el gris solo acompaña.
+.silice-versiones__descartada {
+  color: var(--cds-text-secondary);
+}
+
+.silice-versiones__acciones {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+}

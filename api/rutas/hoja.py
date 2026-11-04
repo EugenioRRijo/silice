@@ -87,6 +87,7 @@ from api.esquemas_hoja import (
     EdicionSecuencial,
     GuardadoRespuesta,
     GuardarVersion,
+    ImportacionesRespuesta,
     InstantaneaHojaRespuesta,
     InsumosHojaRespuesta,
     PartidaAgregadaRespuesta,
@@ -111,6 +112,7 @@ from api.esquemas_hoja import (
     cadena_a_respuesta,
     cambios_a_respuesta,
     guardado_a_respuesta,
+    importaciones_a_respuesta,
     insumos_a_respuesta,
     precios_a_respuesta,
     resumen_a_respuesta,
@@ -138,6 +140,7 @@ from aplicacion import (
     hoja_lineas_apu,
     hoja_versiones,
     hoja_vista,
+    importaciones,
 )
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
@@ -359,6 +362,35 @@ def listar_versiones(
         por_omision=hoja_vista.version_por_omision(filas),
         versiones=[version_a_respuesta(f) for f in filas],
     )
+
+
+@router.get("/importaciones", response_model=ImportacionesRespuesta)
+def listar_importaciones(
+    request: Request,
+    activa: Annotated[SesionActiva | None, VER],
+    sesion: SesionDep,
+    proyecto: Annotated[str, Query(min_length=1, max_length=500)],
+) -> ImportacionesRespuesta:
+    """F4 T10: el registro de importaciones de la obra (código de `/v1/proyectos` o nombre), de la
+    más nueva a la más vieja. Las guardadas salen de la base del caso, con su versión; las que
+    siguen en un borrador sin guardar, de los borradores vivos de MI ficha para esa obra
+    (`version: null`, `guardada: false`). Con la clave de API no hay ficha, así que solo las
+    guardadas. Solo lee: no escribe ni crea la tabla."""
+    try:
+        encontrado = _proyecto(sesion, proyecto)
+        vivos = (
+            [
+                v
+                for v in hoja_borradores.listar(activa.huella_ficha)
+                if v.caso == url_de_la_peticion(request)
+            ]
+            if activa is not None
+            else []
+        )
+        filas = importaciones.importaciones_de_la_obra(sesion, encontrado.nombre, vivos)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    return importaciones_a_respuesta(filas)
 
 
 def _pendiente_sin_guardar(vivo: BorradorVivo, cambios: int) -> JSONResponse:
