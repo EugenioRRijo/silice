@@ -8,6 +8,8 @@ description: >-
 
 # Skill: Backend Clean Architecture & Bounded Contexts
 
+> **Vigente al 2026-11-04 (manda sobre lo que sigue):** Ni Tauri ni Named Pipes están construidos: un solo proceso Uvicorn (`api.main:app`) sirve la API y la interfaz. La ventana de escritorio está solo diseñada (pywebview, rama `feature/disenos-f5`). Estado del proyecto: [docs/ESTADO.md](../../../docs/ESTADO.md).
+
 Esta guía establece las directrices para el desarrollo del backend en Python dentro de la plataforma Sílice.
 
 ---
@@ -52,12 +54,9 @@ Esta guía establece las directrices para el desarrollo del backend en Python de
 
 ---
 
-## 3. Transporte IPC Seguro (Windows Named Pipes & Localhost)
+## 3. Transporte Local Seguro (ruta, RT-5)
 
 Para cumplir con **RNF-08** (aislamiento total y cero exposición indebida de red):
-* El backend se levanta como proceso sidecar local administrado por Tauri.
-* Para evitar falsos positivos de antivirus que bloquean puertos TCP `localhost`, la comunicación primaria utiliza **Named Pipes de Windows**:
-  ```text
-  \\.\pipe\silice-ipc-local
-  ```
-* En modo desarrollo o fallback, se habilita Uvicorn en `127.0.0.1:8000` con bandera `--no-access-log` y vinculado exclusivamente al loopback local.
+* **Un solo backend:** el FastAPI de `api/` (RT-1), con su protección vigente (`api/proteccion.py`: clave por ruta, `TrustedHost`, filtro de red, tope de 20 MiB).
+* **Transporte primario:** bucle local `127.0.0.1` con **puerto efímero** y **clave por sesión**; la interfaz nueva se sirve desde el mismo FastAPI en `/app` (RT-2). En la sesión 5, Tauri v2 envuelve esa interfaz y arranca el Python que ya instala Inno Setup (RT-3).
+* **Named Pipes de Windows** (`\\.\pipe\silice-ipc-local`) quedan como **endurecimiento posterior**: uvicorn no sirve por Named Pipes sin un transporte propio. Solo se construyen si una prueba real muestra un antivirus bloqueando el bucle local.

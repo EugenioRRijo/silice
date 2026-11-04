@@ -102,3 +102,6 @@ docs/Carta de aceptacion*.docx
 docs/Informe - *.docx
 docs/tesis/anteproyecto/
 MANUAL de la USM*.pdf
+
+# Salida de perfiles de rendimiento (cProfile); se versiono por error (auditoria final 2026-10-13)
+prof.out

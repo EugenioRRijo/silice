@@ -7,6 +7,8 @@ description: >-
 
 # Skill: Persistencia SQLite y Migraciones con Alembic
 
+> **Vigente al 2026-11-04 (manda sobre lo que sigue):** No existe `produccion.db`: las tablas de producción (`prod_*`) viven en `instalacion.db`, con las migraciones `ins_0002` a `ins_0010` de `migraciones/instalacion/versions/` (decisión S4: la producción es de la empresa, no de un caso). Donde abajo diga `produccion.db`, léase `instalacion.db`. Estado del proyecto: [docs/ESTADO.md](../../../docs/ESTADO.md).
+
 Esta guía detalla el modelo de bases de datos de Sílice y cómo añadir migraciones seguras sin riesgo de pérdida de datos.
 
 ---

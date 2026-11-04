@@ -179,3 +179,32 @@ def test_no_se_vigilan_los_registros_fechados_ni_los_capitulos():
         "scripts/meta_datos.py",
     ):
         assert not meta.es_vigilado(relativo), relativo
+
+
+def test_worktrees_y_node_modules_anidados_no_se_vigilan():
+    """Los worktrees son copias de otras ramas y `node_modules` es de terceros, a cualquier
+    profundidad (auditoria agy del 2026-11-04: la meta recorria 49 worktrees y tardaba minutos)."""
+    for relativo in (
+        ".worktrees/s2m3/docs/README.md",
+        "frontend-desktop/node_modules/algun-paquete/README.md",
+        "graphify-out/converted/un-documento-local.md",
+    ):
+        assert not meta.es_vigilado(relativo), relativo
+
+
+def test_documentos_no_entra_en_worktrees_ni_node_modules(tmp_path):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "guia.md").write_text("ok", encoding="utf-8")
+    for carpeta in (".worktrees/s1/docs", "frontend-desktop/node_modules/x"):
+        (tmp_path / carpeta).mkdir(parents=True)
+        (tmp_path / carpeta / "README.md").write_text("los datos son reales", encoding="utf-8")
+    assert list(meta._documentos(tmp_path)) == ["docs/guia.md"]
+
+
+def test_imprimir_no_se_cae_en_una_consola_cp1252():
+    import io
+
+    flujo = io.TextIOWrapper(io.BytesIO(), encoding="cp1252", newline="\n")
+    meta._imprimir("D1 → OK", flujo)
+    flujo.flush()
+    assert flujo.buffer.getvalue().decode("utf-8") == "D1 → OK\n"

@@ -16,7 +16,20 @@ from instalador import manifiesto
 from tests.fixtures.arquitectura import RAIZ, ruta
 
 #: Carpetas que no se vigilan: `ui/` y `tests/` pueden importar `ui`; las otras no son codigo.
-EXCLUIDAS = {"ui", "tests", "frontend-desktop", "data", "node_modules", "__pycache__"}
+#: Ademas de lo que no es producto, las salidas de construccion ignoradas por git: traen un Python
+#: embebido con site-packages de terceros (uno en cp1252 rompia la lectura en local; 2026-11-04).
+EXCLUIDAS = {
+    "ui",
+    "tests",
+    "frontend-desktop",
+    "data",
+    "node_modules",
+    "__pycache__",
+    "demo_dist",
+    "dist_portable",
+    "build",
+    "publicacion",
+}
 
 #: Archivos que todavia importan `ui` fuera de `ui/` y `tests/`: ninguno desde F7.
 PENDIENTES: set[str] = set()
@@ -149,15 +162,24 @@ def importa_paquetes_retirados(fuente: str) -> list[str]:
     return encontrados
 
 
+#: No son codigo del repo: paquetes de terceros y salidas de construccion ignoradas por git.
+SALIDAS_DE_CONSTRUCCION = {
+    "node_modules",
+    "__pycache__",
+    "demo_dist",
+    "dist_portable",
+    "build",
+    "publicacion",
+}
+
+
 def todos_los_py_del_repo() -> list[Path]:
     """Todo `.py` versionable del repo, `tests/` y `ui/` incluidos (sin venv, `.worktrees`,
     `node_modules` ni carpetas ocultas)."""
     salida = []
     for carpeta, subcarpetas, nombres in os.walk(RAIZ):
         subcarpetas[:] = [
-            d
-            for d in subcarpetas
-            if not d.startswith(".") and d not in {"node_modules", "__pycache__"}
+            d for d in subcarpetas if not d.startswith(".") and d not in SALIDAS_DE_CONSTRUCCION
         ]
         salida += [Path(carpeta) / n for n in nombres if n.endswith(".py")]
     return sorted(salida)

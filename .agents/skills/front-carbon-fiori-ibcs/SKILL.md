@@ -8,6 +8,8 @@ description: >-
 
 # Skill: Frontend Desktop Sílice (Carbon + Fiori + IBCS)
 
+> **Vigente al 2026-11-04 (manda sobre lo que sigue):** Sin Tailwind (RT-8): los estilos son `@carbon/styles` y SCSS propio. No hay Tauri: la interfaz se sirve desde FastAPI en `/app`; la ventana de escritorio está solo diseñada (recomendación pywebview en la rama `feature/disenos-f5`). Estado del proyecto: [docs/ESTADO.md](../../../docs/ESTADO.md).
+
 Esta guía define las especificaciones obligatorias para la interfaz de usuario de escritorio en Sílice (Tauri v2 + React 19 + TypeScript + Vite).
 
 ---
@@ -27,7 +29,11 @@ Las aplicaciones de presupuestos y obras manejan cientos de filas y columnas. Se
 * 🔴 **Error Crítico / Falla:** `Red-60` (`#da1e28`) — Fórmula alterada, omisión de celdas intermedias o violación de normativa.
 * 🔵 **Informativo / Metadato:** `Blue-60` (`#0f62fe`) — Celdas con fórmulas externas no resueltas o notas de usuario.
 * 🟣 **Precios y Rendimientos Atípicos (ML Outliers):** **`Purple-60` (`#8a3ffc`)**
-  * **Regla estricta:** Todo insumo, precio unitario o rendimiento detectado como valor atípico por el modelo *Isolation Forest* de `ml/anomaly/` se resalta con **borde o halo morado Carbon** (`#8a3ffc`), acompañado del tooltip: *"[ML] Precio atípico detectado: puntuación de anomalía > 0.65"*.
+  * **Regla estricta:** Todo insumo, precio unitario o rendimiento detectado como valor atípico por el modelo *Isolation Forest* de `ml/anomaly/` se resalta con **borde o halo morado Carbon** (`#8a3ffc`), acompañado del tooltip: *"[ML] Variación atípica: puntaje {puntaje} (corte −0,05; más negativo = más atípico)"*. La convención es la de `ml/anomaly/detector.py` (`UMBRAL_ATIPICO = -0.05`, `decision_function` sin reinterpretar); el detector **se abstiene** con menos de 8 observaciones y entonces no hay halo.
+
+### 1.3. Dos semánticas que no se mezclan
+* **Halos de la hoja = severidad** (verde, amarillo, rojo, azul, morado), siempre con **ícono** y texto accesible: el color nunca va solo (WCAG 2.1 AA).
+* **Rojo/verde IBCS = variación favorable/desfavorable**, solo en cifras de variación (tarjetas Fiori y gráficos). Una celda con fórmula rota (severidad) y un precio caro (variación) no se pintan con el mismo significado.
 
 ---
 
@@ -42,31 +48,41 @@ Para las cabeceras de presupuesto, resúmenes de auditoría y tableros de contro
    $$\Delta = \text{Valor Actual} - \text{Valor Meta}, \quad \Delta\% = \frac{\Delta}{\text{Valor Meta}} \times 100$$
 
 ```tsx
-// Ejemplo de Tarjeta Fiori en React + Tailwind
-export function IndicadorFiori({ titulo, actual, meta, unidad, esCosto }) {
-  const delta = actual - meta;
-  const deltaPct = (delta / meta) * 100;
-  // IBCS: Si es costo, un incremento (+delta) es DESFAVORABLE (Rojo)
-  const esFavorable = esCosto ? delta <= 0 : delta >= 0;
+// Ejemplo de Tarjeta Fiori: colores solo por tokens Carbon (variables CSS del proyecto).
+// Los montos llegan de la API ya calculados (Decimal como texto): la interfaz no recalcula dinero.
+type Props = {
+  titulo: string;
+  actual: string;    // "1586.61"
+  meta: string;      // "1500.00"
+  delta: string;     // calculado por la API
+  deltaPct: string | null; // null si la meta es 0
+  unidad: string;
+  sentido: "costo" | "rendimiento"; // costo: subir es desfavorable; rendimiento: subir es favorable
+};
+
+export function IndicadorFiori({ titulo, actual, meta, delta, deltaPct, unidad, sentido }: Props) {
+  const sube = !delta.startsWith("-") && Number(delta) !== 0;
+  const baja = delta.startsWith("-");
+  const favorable = sentido === "costo" ? baja : sube;
+  const desfavorable = sentido === "costo" ? sube : baja;
+  const clase = favorable ? "ibcs-favorable" : desfavorable ? "ibcs-desfavorable" : "ibcs-neutro";
+  const icono = favorable ? "▲ favorable" : desfavorable ? "▼ desfavorable" : "sin variación";
 
   return (
-    <div className="p-4 border rounded-md bg-card shadow-sm">
-      <span className="text-xs uppercase tracking-wider text-muted-foreground">{titulo}</span>
-      <div className="flex items-baseline justify-between mt-1">
-        <span className="text-2xl font-bold font-mono">{actual.toFixed(2)} {unidad}</span>
-        <span className={`text-sm font-semibold font-mono px-2 py-0.5 rounded ${
-          esFavorable ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-        }`}>
-          {delta >= 0 ? '+' : ''}{deltaPct.toFixed(1)}%
-        </span>
-      </div>
-      <div className="mt-2 text-xs text-muted-foreground flex justify-between">
-        <span>Meta: {meta.toFixed(2)} {unidad}</span>
-        <span>Dif: {delta >= 0 ? '+' : ''}{delta.toFixed(2)} {unidad}</span>
-      </div>
-    </div>
+    <section className="fiori-kpi" aria-label={titulo}>
+      <h3 className="fiori-kpi__titulo">{titulo}</h3>
+      <p className="fiori-kpi__actual">{actual} {unidad}</p>
+      <p className="fiori-kpi__meta">Meta: {meta} {unidad}</p>
+      <p className={`fiori-kpi__delta ${clase}`}>
+        <span aria-hidden="true">{favorable ? "▲" : desfavorable ? "▼" : "•"}</span>
+        <span className="visually-hidden">{icono}</span>
+        Δ {delta} {unidad}{deltaPct !== null ? ` (${deltaPct} %)` : ""}
+      </p>
+    </section>
   );
 }
+// .ibcs-favorable { color: var(--silice-green-50); }   /* #24a148 */
+// .ibcs-desfavorable { color: var(--silice-red-60); }  /* #da1e28 */
 ```
 
 ---
@@ -89,5 +105,6 @@ En Sílice se aplica rigurosamente la regla semántica de color de **IBCS** para
 | **Producción de Arena en Zaranda** | Menor volumen al esperado | $-$ Negativo | **Desfavorable** (Pérdida en planta) | 🔴 **Rojo** (`#da1e28`) |
 
 ### 3.2. Representación Visual de Datos
-* **Valores Reales / Actuales:** Barras o números con relleno **sólido** (`fill-current` oscuro).
-* **Valores Presupuestados / Metas:** Barras o cajas con **contorno o achurado** (outline), diferenciando inmediatamente lo que ocurrió de lo que se planificó.
+* **Valores Reales / Actuales (AC):** Barras o números con relleno **sólido**.
+* **Valores Presupuestados / Plan (PL):** Barras o cajas con **contorno** (outline).
+* **Pronósticos / Reproyecciones (FC):** relleno **achurado** (por ejemplo, la reproyección del valor ganado). Plan y pronóstico no comparten notación.
