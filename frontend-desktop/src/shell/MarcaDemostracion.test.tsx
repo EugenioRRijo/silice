@@ -117,7 +117,8 @@ describe("MarcaDemostracion en el armazón", () => {
       useFormularioSucio("componer", true);
       return <h1>Componer una partida</h1>;
     }
-    montarMarco(sesionDe("ana"), "/componer", ligeras({ componer: ComponerSucio }));
+    // F6, T5: Componer es una subvista de Presupuesto; `/componer` sin obra ya no se abre en su sitio.
+    montarMarco(sesionDe("ana"), "/obra/demostracion.db/7/presupuesto/componer", ligeras({ componer: ComponerSucio }));
     await screen.findByRole("heading", { level: 1, name: "Componer una partida" });
     await u.click(await marca());
     await u.click(screen.getByRole("button", { name: "Volver a la carpeta de la empresa" }));

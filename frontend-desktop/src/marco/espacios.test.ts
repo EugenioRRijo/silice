@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { PAGINAS } from "../shell/rutas";
-import { ESPACIOS, SECCIONES_DE_CUENTA, SUBVISTAS, primeraUsable, rutaCanonica, rutaOPendientes } from "./espacios";
+import { ESPACIOS, SECCIONES_DE_CUENTA, SUBVISTAS, primeraUsable, rutaCanonica, rutaOPendientes, vistaDeLaSeccion } from "./espacios";
 import { SECCIONES_DE_OBRA, seccionPorId } from "./secciones";
 
 // Las palabras que el marco no dice (sinJergaInterna.test.ts): palabras enteras, con y sin tilde.
@@ -23,6 +23,32 @@ describe("rutaCanonica", () => {
   test("una sección de obra sin obra va a su dirección corta, que redirige a la obra de la sesión", () => {
     expect(rutaCanonica("hoja")).toBe("/hoja");
     expect(rutaCanonica("mercado")).toBe("/mercado");
+  });
+
+  // F6, T5. Contrato 2.1: las siete pantallas que son subvistas viven en /obra/<c>/<o>/<seccion>/<subvista>. Tabla a mano.
+  const SUBVISTAS_DEL_CONTRATO: readonly (readonly [string, string])[] = [
+    ["tablero", "resumen/tablero"],
+    ["componer", "presupuesto/componer"],
+    ["revisar", "aprobaciones/revisar"],
+    ["entregar", "aprobaciones/entregar"],
+    ["actualizacion", "mercado/actualizar"],
+    ["reajuste", "control/reajuste"],
+    ["escenarios", "control/escenarios"],
+  ];
+
+  test.each(SUBVISTAS_DEL_CONTRATO)("%s, con la obra, va a /obra/<c>/<o>/%s", (pagina, ruta) => {
+    expect(rutaCanonica(pagina, { carpeta: "demo.db", obraId: 2 })).toBe(`/obra/demo.db/2/${ruta}`);
+    expect(rutaCanonica(pagina, { carpeta: "Carpeta Norte.db", obraId: 7 })).toBe(`/obra/Carpeta%20Norte.db/7/${ruta}`);
+    expect(rutaCanonica(pagina, { carpeta: null, obraId: 1 })).toBe(`/obra/empresa/1/${ruta}`);
+  });
+
+  test.each(SUBVISTAS_DEL_CONTRATO)("%s, sin obra, va a su dirección corta /%s, que redirige a la obra de la sesión", (pagina) => {
+    expect(rutaCanonica(pagina)).toBe(`/${pagina}`);
+  });
+
+  test("rutaOPendientes sigue la misma regla para las subvistas", () => {
+    expect(rutaOPendientes("reajuste", { carpeta: "demo.db", obraId: 2 })).toBe("/obra/demo.db/2/control/reajuste");
+    expect(rutaOPendientes("reajuste")).toBe("/reajuste");
   });
 
   test("Personas y Ayuda siguen en /empresa/<entrada> (las mueve T6), con o sin obra", () => {
@@ -311,5 +337,53 @@ describe("primeraUsable (F6, T2)", () => {
   test("quien solo opera la arenera (sin registrar costos) abre Producción en el resumen y salta los costos", () => {
     expect(primeraUsable(produccion, ["operar_arenera"], false, [])?.pagina).toBe("produccion");
     expect(primeraUsable(produccion.filter((h) => h.id === "costos"), ["operar_arenera"], false, [])).toBeNull();
+  });
+});
+
+// F6, T5: qué pantalla abre una sección de la obra según el cuarto segmento de la ruta (contrato 2.1 y 1). `redirigeA` es
+// la subvista (`""` = la raíz) a la que hay que llevar la dirección con replace, o null si ya es la buena. Oráculos a mano.
+describe("vistaDeLaSeccion (F6, T5)", () => {
+  const seccion = (id: string) => seccionPorId(id)!;
+  const TODO = ["leer_proyecto", "editar_hoja", "aprobar_version", "revisar_paquete", "entregar_paquete", "control_de_obra", "convertir_y_reajustar"];
+
+  test("sin cuarto segmento abre la pantalla principal de la sección", () => {
+    expect(vistaDeLaSeccion(seccion("control"), undefined, TODO, false, [])).toEqual({ pagina: "control", redirigeA: null });
+    expect(vistaDeLaSeccion(seccion("presupuesto"), undefined, TODO, false, [])).toEqual({ pagina: "hoja", redirigeA: null });
+    expect(vistaDeLaSeccion(seccion("tramos"), undefined, TODO, false, [])).toEqual({ pagina: "tramos", redirigeA: null });
+  });
+
+  test("una subvista conocida abre su pantalla, aunque la cuenta no pueda usarla (la ruta dirá «Sin permiso»)", () => {
+    expect(vistaDeLaSeccion(seccion("control"), "reajuste", TODO, false, [])).toEqual({ pagina: "reajuste", redirigeA: null });
+    expect(vistaDeLaSeccion(seccion("control"), "escenarios", TODO, false, [])).toEqual({ pagina: "escenarios", redirigeA: null });
+    expect(vistaDeLaSeccion(seccion("resumen"), "tablero", [], false, [])).toEqual({ pagina: "tablero", redirigeA: null });
+    expect(vistaDeLaSeccion(seccion("aprobaciones"), "entregar", ["leer_proyecto"], false, [])).toEqual({ pagina: "entregar", redirigeA: null });
+  });
+
+  test("una subvista desconocida lleva a la primera usable de la sección, que casi siempre es la raíz", () => {
+    expect(vistaDeLaSeccion(seccion("control"), "xyz", TODO, false, [])).toEqual({ pagina: "control", redirigeA: "" });
+    expect(vistaDeLaSeccion(seccion("mercado"), "tablero", TODO, false, [])).toEqual({ pagina: "mercado", redirigeA: "" });
+  });
+
+  test("si la raíz no es usable abre la primera subvista usable; sin ninguna usable, la raíz con su aviso", () => {
+    // Quien solo revisa paquetes: Aprobaciones abre «Revisar un paquete».
+    expect(vistaDeLaSeccion(seccion("aprobaciones"), undefined, ["revisar_paquete"], false, [])).toEqual({ pagina: "revisar", redirigeA: "revisar" });
+    expect(vistaDeLaSeccion(seccion("aprobaciones"), "xyz", ["revisar_paquete"], false, [])).toEqual({ pagina: "revisar", redirigeA: "revisar" });
+    // Quien edita la hoja pero no controla la obra: Control abre «Escenarios» (reajustar exige otra acción).
+    expect(vistaDeLaSeccion(seccion("control"), undefined, ["editar_hoja"], false, [])).toEqual({ pagina: "escenarios", redirigeA: "escenarios" });
+    expect(vistaDeLaSeccion(seccion("control"), undefined, [], false, [])).toEqual({ pagina: "control", redirigeA: null });
+    expect(vistaDeLaSeccion(seccion("control"), "xyz", [], false, [])).toEqual({ pagina: "control", redirigeA: "" });
+  });
+
+  test("con modo entrega las pantallas de Investigación no cuentan como usables", () => {
+    expect(vistaDeLaSeccion(seccion("control"), undefined, ["editar_hoja"], true, [])).toEqual({ pagina: "control", redirigeA: null });
+  });
+
+  test("una sección sin subvistas: cualquier cuarto segmento lleva a su raíz", () => {
+    expect(vistaDeLaSeccion(seccion("versiones"), "xyz", TODO, false, [])).toEqual({ pagina: "versiones", redirigeA: "" });
+    expect(vistaDeLaSeccion(seccion("riesgo"), "componer", TODO, false, [])).toEqual({ pagina: "riesgo", redirigeA: "" });
+  });
+
+  test("nombres como «toString» no son subvistas", () => {
+    expect(vistaDeLaSeccion(seccion("control"), "toString", TODO, false, [])).toEqual({ pagina: "control", redirigeA: "" });
   });
 });

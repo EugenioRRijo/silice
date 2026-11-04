@@ -7,7 +7,6 @@ import type { ObraDeCarpetaRespuesta, PendienteDeObra, SesionRespuesta } from ".
 import { ContextoAplicacion } from "../shell/contexto";
 import { sesionDe } from "../shell/obras/datosDePrueba";
 import { BarraLateral } from "./BarraLateral";
-import type { SeccionId } from "./secciones";
 import { ContextoPendientes } from "./usePendientes";
 import type { PendientesDelMarco } from "./usePendientes";
 
@@ -82,7 +81,6 @@ beforeEach(() => {
 interface Opciones {
   sesion?: SesionRespuesta;
   abierta?: { carpeta: string | null; obraId: number } | null;
-  seccion?: SeccionId | null;
   ruta?: string;
   // Lo que el marco ya cargó de los pendientes; por omisión, ninguno.
   pendientes?: PendientesDelMarco;
@@ -97,7 +95,6 @@ function Ubicacion() {
 function pintar({
   sesion = sesionDe("ana"),
   abierta = null,
-  seccion = null,
   ruta = "/pendientes",
   pendientes = SIN_PENDIENTES,
 }: Opciones = {}) {
@@ -107,7 +104,7 @@ function pintar({
         value={{ sesion, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() }}
       >
         <ContextoPendientes.Provider value={pendientes}>
-          <BarraLateral obraAbierta={abierta} seccion={seccion} />
+          <BarraLateral obraAbierta={abierta} />
         </ContextoPendientes.Provider>
         <Ubicacion />
       </ContextoAplicacion.Provider>
@@ -115,13 +112,13 @@ function pintar({
   );
 }
 
-const arbol = () => screen.findByRole("tree", { name: "Obras" });
+const listaDeObras = () => screen.findByRole("list", { name: "Obras" });
 
-describe("BarraLateral: árbol sin carpetas (D-F3-3)", () => {
+describe("BarraLateral: lista sin carpetas (D-F3-3)", () => {
   it("con obras de dos carpetas no hay grupos por carpeta: las obras salen por nombre, seguidas", async () => {
     pintar();
-    const lista = await arbol();
-    expect(within(lista).getAllByRole("treeitem").map((e) => e.textContent)).toEqual([
+    const lista = await listaDeObras();
+    expect(within(lista).getAllByRole("link").map((e) => e.textContent)).toEqual([
       "Clínica Las Mercedes",
       "Galpón Sur",
       "Torre B",
@@ -135,8 +132,8 @@ describe("BarraLateral: árbol sin carpetas (D-F3-3)", () => {
   it("con una sola carpeta no hay grupos ni se nombra la carpeta", async () => {
     servidor([CLINICA, TORRE]);
     pintar();
-    const lista = await arbol();
-    expect(within(lista).getAllByRole("treeitem")).toHaveLength(2);
+    const lista = await listaDeObras();
+    expect(within(lista).getAllByRole("link")).toHaveLength(2);
     expect(screen.queryByRole("group", { name: "Carpeta Norte" })).toBeNull();
     expect(document.body.textContent).not.toContain("Carpeta Norte");
   });
@@ -144,8 +141,8 @@ describe("BarraLateral: árbol sin carpetas (D-F3-3)", () => {
   it("las obras van por nombre aunque la API las traiga por carpeta: una de la carpeta Sur que empieza por A queda primera", async () => {
     servidor([CLINICA, TORRE, obra(SUR, 4, "Almacén Sur"), GALPON]);
     pintar();
-    const lista = await arbol();
-    expect(within(lista).getAllByRole("treeitem").map((e) => e.textContent)).toEqual([
+    const lista = await listaDeObras();
+    expect(within(lista).getAllByRole("link").map((e) => e.textContent)).toEqual([
       "Almacén Sur",
       "Clínica Las Mercedes",
       "Galpón Sur",
@@ -156,8 +153,8 @@ describe("BarraLateral: árbol sin carpetas (D-F3-3)", () => {
   it("el orden ignora tildes y mayúsculas, y con el mismo nombre desempata por el título de la carpeta", async () => {
     servidor([obra(SUR, 3, "galpón"), obra(NORTE, 1, "Galpón"), obra(NORTE, 2, "Álamo")]);
     pintar();
-    const lista = await arbol();
-    expect(within(lista).getAllByRole("treeitem").map((e) => e.textContent)).toEqual([
+    const lista = await listaDeObras();
+    expect(within(lista).getAllByRole("link").map((e) => e.textContent)).toEqual([
       "Álamo",
       "GalpónCarpeta Norte",
       "galpónCarpeta Sur",
@@ -169,80 +166,73 @@ describe("BarraLateral: árbol sin carpetas (D-F3-3)", () => {
       acciones: sesionDe("ana").acciones.filter((a) => a !== "cambiar_caso"),
     });
     pintar({ sesion: sinCambiar });
-    const lista = await arbol();
-    expect(within(lista).getAllByRole("treeitem").map((e) => e.textContent)).toEqual(["Clínica Las Mercedes", "Torre B"]);
+    const lista = await listaDeObras();
+    expect(within(lista).getAllByRole("link").map((e) => e.textContent)).toEqual(["Clínica Las Mercedes", "Torre B"]);
     expect(screen.queryByText("Galpón Sur")).toBeNull();
   });
 
   it("una cuenta sin CAMBIAR_CASO en la carpeta de la empresa solo ve las de la empresa", async () => {
     servidor([obra(null, 5, "Obra propia"), CLINICA], null);
     pintar({ sesion: sesionDe("rita") });
-    const lista = await arbol();
-    expect(within(lista).getAllByRole("treeitem").map((e) => e.textContent)).toEqual(["Obra propia"]);
+    const lista = await listaDeObras();
+    expect(within(lista).getAllByRole("link").map((e) => e.textContent)).toEqual(["Obra propia"]);
   });
 });
 
-describe("BarraLateral: obra abierta", () => {
+describe("BarraLateral: lista plana, la obra abierta y su Resumen (F6, T5)", () => {
   const abierta = { carpeta: NORTE, obraId: 1 };
+  const RUTA_DE_CLINICA = "/obra/Carpeta%20Norte.db/1/presupuesto/componer";
 
-  it("despliega solo la obra abierta con las secciones que tienen pantalla; la activa lleva aria-current", async () => {
-    pintar({ abierta, seccion: "presupuesto", ruta: "/obra/Carpeta%20Norte.db/1/presupuesto" });
-    const lista = await arbol();
-    const filaClinica = within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" });
-    expect(filaClinica).toHaveAttribute("aria-expanded", "true");
-    expect(within(lista).getByRole("treeitem", { name: "Torre B" })).toHaveAttribute("aria-expanded", "false");
-    const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
-    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Control de obra", "Riesgo"]);
-    expect(secciones.map((s) => s.getAttribute("aria-current"))).toEqual([null, "page", null, null, null, null, null, null, null]);
-    expect(secciones[1]).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/presupuesto");
+  it("las obras son una lista plana: un elemento por obra, sin sub-listas, sin chevrons y sin roles de árbol", async () => {
+    pintar({ abierta, ruta: RUTA_DE_CLINICA });
+    const lista = await listaDeObras();
+    expect(within(lista).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(lista).queryByRole("list")).toBeNull();
+    expect(lista.querySelector("ul")).toBeNull();
+    expect(lista.querySelector("svg")).toBeNull();
+    expect(document.querySelector('[role="tree"], [role="treeitem"], [role="group"], [aria-expanded], [aria-level]')).toBeNull();
+    // Las secciones de la obra ya no cuelgan de la barra lateral: están en la barra de la obra.
+    for (const seccion of ["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Control de obra", "Riesgo"]) {
+      expect(screen.queryByRole("link", { name: seccion })).toBeNull();
+    }
   });
 
-  it("sin obra abierta ninguna está desplegada", async () => {
+  it("cada obra enlaza a su Resumen, aunque la persona esté en otra sección o subvista de otra obra (no se conserva la sección)", async () => {
+    pintar({ abierta, ruta: RUTA_DE_CLINICA });
+    const lista = await listaDeObras();
+    expect(within(lista).getByRole("link", { name: "Clínica Las Mercedes" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/resumen");
+    expect(within(lista).getByRole("link", { name: "Torre B" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/2/resumen");
+    expect(within(lista).getByRole("link", { name: "Galpón Sur" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/resumen");
+  });
+
+  it("la obra de la ruta lleva aria-current=page en cualquier sección o subvista; las demás no", async () => {
+    pintar({ abierta, ruta: RUTA_DE_CLINICA });
+    const lista = await listaDeObras();
+    expect(within(lista).getAllByRole("link").map((e) => [e.textContent, e.getAttribute("aria-current")])).toEqual([
+      ["Clínica Las Mercedes", "page"],
+      ["Galpón Sur", null],
+      ["Torre B", null],
+    ]);
+    expect(lista.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+  });
+
+  it("sin obra abierta ninguna lleva aria-current", async () => {
     pintar();
-    const lista = await arbol();
-    for (const fila of within(lista).getAllByRole("treeitem")) expect(fila).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("treeitem", { name: "Presupuesto" })).toBeNull();
+    const lista = await listaDeObras();
+    expect(lista.querySelectorAll("[aria-current]")).toHaveLength(0);
   });
 
-  it("una sección cuya pantalla la cuenta no puede usar no se muestra", async () => {
-    pintar({ sesion: sesionDe("rita"), abierta, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
-    await arbol();
-    const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
-    // «control» exige control_de_obra: quien solo revisa no lo ve. «Presupuesto», «Archivos y planos», «Versiones» y
-    // «Mercado» sí, en solo lectura (F4 2b, Eugenio, 2026-10-31; Tareas 11 y 6; Tarea 13, ronda 2). «Riesgo» exige
-    // ver_riesgo, que también tiene quien revisa (F6, T2: sección propia de la obra).
-    expect(secciones.map((s) => s.textContent)).toEqual(["Resumen", "Presupuesto", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Riesgo"]);
-  });
-});
-
-describe("BarraLateral: «Tramos» en toda obra mientras el módulo vial esté encendido", () => {
-  const nombres = (obraAbierta: string) =>
-    within(screen.getByRole("group", { name: obraAbierta })).getAllByRole("treeitem").map((s) => s.textContent);
-  const clinica = { carpeta: NORTE, obraId: 1 };
-  const rutaDeClinica = "/obra/Carpeta%20Norte.db/1/resumen";
-
-  it("una obra sin tramos guardados también ofrece «Tramos», entre Presupuesto y Aprobaciones", async () => {
-    pintar({ abierta: clinica, seccion: "resumen", ruta: rutaDeClinica });
-    await arbol();
-    expect(await screen.findByRole("treeitem", { name: "Tramos" })).toHaveAttribute("href", "/obra/Carpeta%20Norte.db/1/tramos");
-    expect(nombres("Clínica Las Mercedes")).toEqual(["Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Control de obra", "Riesgo"]);
-  });
-
-  it("otra obra de la misma carpeta también", async () => {
-    pintar({ abierta: { carpeta: NORTE, obraId: 2 }, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/2/resumen" });
-    await arbol();
-    expect(await screen.findByRole("treeitem", { name: "Tramos" })).toBeInTheDocument();
-  });
-
-  it("la sección en la que se está se marca como la actual", async () => {
-    pintar({ abierta: clinica, seccion: "tramos", ruta: "/obra/Carpeta%20Norte.db/1/tramos" });
-    await arbol();
-    expect(await screen.findByRole("treeitem", { name: "Tramos" })).toHaveAttribute("aria-current", "page");
+  it("con el mismo número de obra en otra carpeta, solo la de la carpeta de la ruta está marcada (la clave es carpeta más número)", async () => {
+    servidor([obra(NORTE, 1, "Clínica"), obra(SUR, 1, "Galpón")]);
+    pintar({ abierta: { carpeta: SUR, obraId: 1 }, ruta: "/obra/Carpeta%20Sur.db/1/resumen" });
+    const lista = await listaDeObras();
+    expect(within(lista).getByRole("link", { name: "Galpón" })).toHaveAttribute("aria-current", "page");
+    expect(within(lista).getByRole("link", { name: "Clínica" })).not.toHaveAttribute("aria-current");
   });
 
   it("ya no pide la lista de obras con tramos: la sección no depende de ella", async () => {
-    pintar({ sesion: sesionDe("rita"), abierta: clinica, seccion: "resumen", ruta: rutaDeClinica });
-    await arbol();
+    pintar({ sesion: sesionDe("rita"), abierta, ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
+    await listaDeObras();
     expect(pedirFalso).not.toHaveBeenCalledWith("/v1/vial/obras");
   });
 });
@@ -250,7 +240,7 @@ describe("BarraLateral: «Tramos» en toda obra mientras el módulo vial esté e
 describe("BarraLateral: zonas Pendientes y Empresa", () => {
   it("Pendientes es un enlace a #/pendientes y está activo en esa ruta", async () => {
     pintar({ ruta: "/pendientes" });
-    await arbol();
+    await listaDeObras();
     const enlace = screen.getByRole("link", { name: "Pendientes" });
     expect(enlace).toHaveAttribute("href", "/pendientes");
     expect(enlace).toHaveAttribute("aria-current", "page");
@@ -262,7 +252,7 @@ describe("BarraLateral: zonas Pendientes y Empresa", () => {
     // Quien ve todo: lo de la administración y, además, `leer_proyecto` (el catálogo y el libro).
     const todo = sesionDe("admin", { acciones: [...sesionDe("admin").acciones, "leer_proyecto"] });
     pintar({ sesion: todo, ruta: "/empresa/personas" });
-    await arbol();
+    await listaDeObras();
     const zona = screen.getByRole("navigation", { name: "Empresa" });
     const enlaces = within(zona).getAllByRole("link");
     expect(enlaces.map((e) => e.textContent)).toEqual([
@@ -288,7 +278,7 @@ describe("BarraLateral: zonas Pendientes y Empresa", () => {
 
   it("quien arma entra a Precios por el Catálogo; el grupo lleva a la primera herramienta usable de cada espacio", async () => {
     pintar({ sesion: sesionDe("ana") });
-    await arbol();
+    await listaDeObras();
     const zona = screen.getByRole("navigation", { name: "Empresa" });
     expect(within(zona).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAttribute("href", "/auditoria/subir");
     expect(within(zona).getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("href", "/precios/catalogo");
@@ -297,14 +287,14 @@ describe("BarraLateral: zonas Pendientes y Empresa", () => {
 
   it("quien solo registra costos entra a Producción por «Costos del período»", async () => {
     pintar({ sesion: sesionDe("ana", { acciones: ["leer_proyecto", "registrar_costos_produccion"] }) });
-    await arbol();
+    await listaDeObras();
     const zona = screen.getByRole("navigation", { name: "Empresa" });
     expect(within(zona).getByRole("link", { name: "Costos de producción" })).toHaveAttribute("href", "/produccion/costos");
   });
 
   it("un espacio sin herramienta que la cuenta pueda usar no se muestra", async () => {
     pintar({ sesion: sesionDe("rita") });
-    await arbol();
+    await listaDeObras();
     const zona = screen.getByRole("navigation", { name: "Empresa" });
     // Rita no opera la arenera ni registra costos; «administracion» exige administrar_cuentas.
     expect(within(zona).getAllByRole("link").map((e) => [e.textContent, e.getAttribute("href")])).toEqual([
@@ -320,7 +310,7 @@ describe("BarraLateral: zonas Pendientes y Empresa", () => {
     ["/produccion/costos", "Costos de producción"],
   ])("en %s solo «%s» está activa: coincide el primer segmento de la ruta", async (ruta, activa) => {
     pintar({ sesion: sesionDe("admin", { acciones: [...sesionDe("admin").acciones, "leer_proyecto"] }), ruta });
-    await arbol();
+    await listaDeObras();
     const zona = screen.getByRole("navigation", { name: "Empresa" });
     const marcadas = within(zona).getAllByRole("link").filter((e) => e.getAttribute("aria-current") === "page");
     expect(marcadas.map((e) => e.textContent)).toEqual([activa]);
@@ -334,7 +324,7 @@ describe("BarraLateral: carga", () => {
     expect(await screen.findByText("No se pudieron cargar las obras")).toBeInTheDocument();
     servidor([CLINICA]);
     await userEvent.click(screen.getByRole("button", { name: "Reintentar" }));
-    expect(await screen.findByRole("treeitem", { name: "Clínica Las Mercedes" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Clínica Las Mercedes" })).toBeInTheDocument();
     expect(screen.queryByText("No se pudieron cargar las obras")).toBeNull();
   });
 
@@ -346,60 +336,51 @@ describe("BarraLateral: carga", () => {
   });
 });
 
-describe("BarraLateral: teclado (patrón tree de WAI-ARIA)", () => {
+// La lista plana es de enlaces: el teclado es el de siempre (Tab y Mayús+Tab, Enter), sin la parada única, las flechas ni
+// el despliegue del árbol de WAI-ARIA que tenía antes.
+describe("BarraLateral: teclado de la lista plana (F6, T5)", () => {
   const abierta = { carpeta: NORTE, obraId: 1 };
 
-  it("solo un elemento del árbol entra en el orden de tabulación", async () => {
-    pintar({ abierta, seccion: "resumen" });
-    const lista = await arbol();
-    const tabulables = within(lista)
-      .getAllByRole("treeitem")
-      .filter((e) => e.getAttribute("tabindex") === "0");
-    expect(tabulables).toHaveLength(1);
+  it("cada obra es un enlace que entra en el orden de tabulación, en el orden de la lista (sin parada única)", async () => {
+    pintar({ abierta, ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
+    const lista = await listaDeObras();
+    const enlaces = within(lista).getAllByRole("link");
+    expect(enlaces).toHaveLength(3);
+    for (const enlace of enlaces) expect(enlace).not.toHaveAttribute("tabindex", "-1");
+    expect(lista.querySelectorAll('[tabindex="-1"]')).toHaveLength(0);
   });
 
-  it("flecha abajo y arriba recorren las filas visibles", async () => {
+  it("Tab recorre Pendientes, Nueva obra y las obras en orden; Enter abre la obra enfocada", async () => {
     const u = userEvent.setup();
-    pintar({ abierta, seccion: "resumen" });
-    const lista = await arbol();
-    const clinica = within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" });
+    pintar({ ruta: "/pendientes" });
+    await listaDeObras();
+    await u.tab();
+    expect(screen.getByRole("link", { name: "Pendientes" })).toHaveFocus();
+    await u.tab();
+    expect(screen.getByRole("button", { name: "Nueva obra" })).toHaveFocus();
+    await u.tab();
+    expect(screen.getByRole("link", { name: "Clínica Las Mercedes" })).toHaveFocus();
+    await u.tab();
+    expect(screen.getByRole("link", { name: "Galpón Sur" })).toHaveFocus();
+    await u.keyboard("{Enter}");
+    expect(screen.getByTestId("ubicacion")).toHaveTextContent("/obra/Carpeta%20Sur.db/3/resumen");
+  });
+
+  it("las flechas no mueven el foco entre obras: no hay patrón de árbol", async () => {
+    const u = userEvent.setup();
+    pintar({ ruta: "/pendientes" });
+    const lista = await listaDeObras();
+    const clinica = within(lista).getByRole("link", { name: "Clínica Las Mercedes" });
     clinica.focus();
-    await u.keyboard("{ArrowDown}");
-    expect(within(lista).getByRole("treeitem", { name: "Resumen" })).toHaveFocus();
-    await u.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}");
-    expect(within(lista).getByRole("treeitem", { name: "Aprobaciones" })).toHaveFocus();
-    await u.keyboard("{ArrowUp}");
-    expect(within(lista).getByRole("treeitem", { name: "Versiones" })).toHaveFocus();
-  });
-
-  it("flecha derecha despliega una obra plegada y flecha izquierda la pliega", async () => {
-    const u = userEvent.setup();
-    pintar({ abierta, seccion: "resumen" });
-    const lista = await arbol();
-    const torre = within(lista).getByRole("treeitem", { name: "Torre B" });
-    torre.focus();
-    await u.keyboard("{ArrowRight}");
-    expect(torre).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("group", { name: "Torre B" })).toBeInTheDocument();
-    await u.keyboard("{ArrowLeft}");
-    expect(torre).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("group", { name: "Torre B" })).toBeNull();
-  });
-
-  it("flecha izquierda en una sección vuelve a su obra", async () => {
-    const u = userEvent.setup();
-    pintar({ abierta, seccion: "resumen" });
-    const lista = await arbol();
-    within(lista).getByRole("treeitem", { name: "Mercado" }).focus();
-    await u.keyboard("{ArrowLeft}");
-    expect(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" })).toHaveFocus();
+    await u.keyboard("{ArrowDown}{ArrowRight}");
+    expect(clinica).toHaveFocus();
   });
 });
 
 describe("BarraLateral: Nueva obra", () => {
-  it("es un botón con la clase del botón principal, antes del árbol en el orden del documento", async () => {
+  it("es un botón con la clase del botón principal, antes de la lista en el orden del documento", async () => {
     pintar();
-    const lista = await arbol();
+    const lista = await listaDeObras();
     const boton = screen.getByRole("button", { name: "Nueva obra" });
     expect(boton).toHaveClass("silice-marco-boton-principal");
     expect(boton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
@@ -408,13 +389,13 @@ describe("BarraLateral: Nueva obra", () => {
 
   it("no aparece si la cuenta no puede crear obras", async () => {
     pintar({ sesion: sesionDe("rita") });
-    await arbol();
+    await listaDeObras();
     expect(screen.queryByRole("button", { name: "Nueva obra" })).toBeNull();
   });
 
   it("al pulsarlo abre el diálogo para crear una obra", async () => {
     pintar();
-    await arbol();
+    await listaDeObras();
     await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
     expect(await screen.findByRole("dialog", { name: "Nueva obra" })).toBeInTheDocument();
     await waitFor(() => expect(pedirFalso).toHaveBeenCalledWith("/v1/carpeta"));
@@ -442,8 +423,8 @@ describe("BarraLateral: Nueva obra", () => {
 
   it("con una obra abierta en otra carpeta dice dónde se creará, sin selector, y manda esa carpeta sin cambiar la de la sesión", async () => {
     conCreacion();
-    pintar({ abierta: { carpeta: SUR, obraId: 3 }, seccion: "resumen", ruta: "/obra/Carpeta%20Sur.db/3/resumen" });
-    await arbol();
+    pintar({ abierta: { carpeta: SUR, obraId: 3 }, ruta: "/obra/Carpeta%20Sur.db/3/resumen" });
+    await listaDeObras();
     await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
     const caja = await screen.findByRole("dialog", { name: "Nueva obra" });
     expect(within(caja).getByText("Se creará en Carpeta Sur")).toBeInTheDocument();
@@ -456,8 +437,8 @@ describe("BarraLateral: Nueva obra", () => {
 
   it("en otra carpeta que la de la sesión no se propone la moneda de la sesión y es obligatoria", async () => {
     conCreacion(); // la sesión está en la carpeta Norte y /v1/carpeta responde Bs
-    pintar({ abierta: { carpeta: SUR, obraId: 3 }, seccion: "resumen" });
-    await arbol();
+    pintar({ abierta: { carpeta: SUR, obraId: 3 } });
+    await listaDeObras();
     await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
     const caja = await screen.findByRole("dialog", { name: "Nueva obra" });
     await waitFor(() => expect(pedirFalso).toHaveBeenCalledWith("/v1/carpeta"));
@@ -473,7 +454,7 @@ describe("BarraLateral: Nueva obra", () => {
     servidor([CLINICA, GALPON], null);
     conCreacion();
     pintar();
-    await arbol();
+    await listaDeObras();
     await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
     const caja = await screen.findByRole("dialog", { name: "Nueva obra" });
     expect(within(caja).getByText("Se creará en Carpeta de la empresa")).toBeInTheDocument();
@@ -486,8 +467,8 @@ describe("BarraLateral: Nueva obra", () => {
 
   it("al crear cierra el diálogo y lleva a la obra nueva en la carpeta donde se creó", async () => {
     conCreacion();
-    pintar({ abierta: { carpeta: SUR, obraId: 3 }, seccion: "resumen" });
-    await arbol();
+    pintar({ abierta: { carpeta: SUR, obraId: 3 } });
+    await listaDeObras();
     await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
     await screen.findByRole("dialog", { name: "Nueva obra" });
     await escribirYCrear("USD");
@@ -560,64 +541,51 @@ describe("BarraLateral: dónde se crea la obra", () => {
   });
 });
 
-describe("BarraLateral: niveles del árbol", () => {
-  const nivel = (e: HTMLElement) => [e.getAttribute("aria-level"), e.getAttribute("aria-setsize"), e.getAttribute("aria-posinset")];
-
-  it("con obras de dos carpetas, todas son de nivel 1 y sus secciones de nivel 2, con su tamaño y su posición", async () => {
-    pintar({ abierta: { carpeta: NORTE, obraId: 1 }, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
-    const lista = await arbol();
-    expect(nivel(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" }))).toEqual(["1", "3", "1"]);
-    expect(nivel(within(lista).getByRole("treeitem", { name: "Galpón Sur" }))).toEqual(["1", "3", "2"]);
-    expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "3", "3"]);
-    const secciones = within(screen.getByRole("group", { name: "Clínica Las Mercedes" })).getAllByRole("treeitem");
-    // Resumen, Presupuesto, Tramos, Archivos y planos, Versiones, Aprobaciones, Mercado, Control de obra y Riesgo.
-    expect(secciones.map(nivel)).toEqual([
-      ["2", "9", "1"],
-      ["2", "9", "2"],
-      ["2", "9", "3"],
-      ["2", "9", "4"],
-      ["2", "9", "5"],
-      ["2", "9", "6"],
-      ["2", "9", "7"],
-      ["2", "9", "8"],
-      ["2", "9", "9"],
-    ]);
+describe("BarraLateral: un solo nivel (antes, niveles del árbol)", () => {
+  it("con obras de dos carpetas hay un elemento de lista por obra, en un solo nivel, sin atributos de nivel ni de posición", async () => {
+    pintar({ abierta: { carpeta: NORTE, obraId: 1 }, ruta: "/obra/Carpeta%20Norte.db/1/resumen" });
+    const lista = await listaDeObras();
+    const items = within(lista).getAllByRole("listitem");
+    expect(items.map((i) => i.textContent)).toEqual(["Clínica Las Mercedes", "Galpón Sur", "Torre B"]);
+    for (const item of items) {
+      expect(item.parentElement).toBe(lista);
+      expect(item.querySelector("[aria-level], [aria-setsize], [aria-posinset]")).toBeNull();
+    }
   });
 
-  it("sin carpetas, las obras son de nivel 1 y sus secciones de nivel 2", async () => {
+  it("sin carpetas, también: un solo nivel, sea cual sea la obra abierta", async () => {
     servidor([CLINICA, TORRE]);
-    pintar({ abierta: { carpeta: NORTE, obraId: 2 }, seccion: "resumen", ruta: "/obra/Carpeta%20Norte.db/2/resumen" });
-    const lista = await arbol();
-    expect(nivel(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" }))).toEqual(["1", "2", "1"]);
-    expect(nivel(within(lista).getByRole("treeitem", { name: "Torre B" }))).toEqual(["1", "2", "2"]);
-    const primera = within(screen.getByRole("group", { name: "Torre B" })).getAllByRole("treeitem")[0]!;
-    expect(nivel(primera)).toEqual(["2", "9", "1"]);
+    pintar({ abierta: { carpeta: NORTE, obraId: 2 }, ruta: "/obra/Carpeta%20Norte.db/2/resumen" });
+    const lista = await listaDeObras();
+    expect(within(lista).getAllByRole("listitem")).toHaveLength(2);
+    expect(lista.querySelectorAll("ul")).toHaveLength(0);
+    expect(within(lista).getByRole("link", { name: "Torre B" })).toHaveAttribute("aria-current", "page");
   });
 });
 
 describe("BarraLateral: carga de las obras", () => {
-  it("mientras llegan las obras dice «Cargando obras…» y no pinta un árbol vacío", async () => {
+  it("mientras llegan las obras dice «Cargando obras…» y no pinta una lista vacía", async () => {
     pedirFalso.mockImplementation(() => new Promise(() => {}));
     pintar();
     expect(await screen.findByText("Cargando obras…")).toBeInTheDocument();
-    expect(screen.queryByRole("tree")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Obras" })).toBeNull();
     expect(screen.queryByText("Todavía no hay obras")).toBeNull();
   });
 
-  it("al reintentar tras un error vuelve a decir «Cargando obras…» en vez de mostrar un árbol vacío", async () => {
+  it("al reintentar tras un error vuelve a decir «Cargando obras…» en vez de mostrar una lista vacía", async () => {
     respuesta = new ErrorDeApi(500, "falló");
     pintar();
     await screen.findByText("No se pudieron cargar las obras");
     pedirFalso.mockImplementation(() => new Promise(() => {}));
     await userEvent.click(screen.getByRole("button", { name: "Reintentar" }));
     expect(await screen.findByText("Cargando obras…")).toBeInTheDocument();
-    expect(screen.queryByRole("tree")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Obras" })).toBeNull();
   });
 
-  it("mientras recarga conserva el árbol que ya tenía", async () => {
+  it("mientras recarga conserva la lista que ya tenía", async () => {
     conCreacionDeCodigo("9");
     pintar();
-    await arbol();
+    await listaDeObras();
     await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
     await screen.findByRole("dialog", { name: "Nueva obra" });
     pedirFalso.mockImplementation(async (ruta: string, op?: { metodo?: string }) => {
@@ -631,7 +599,7 @@ describe("BarraLateral: carga de las obras", () => {
     await userEvent.click(screen.getByRole("button", { name: "Crear obra" }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Nueva obra" })).toBeNull();
-      expect(screen.getByRole("tree", { name: "Obras" })).toBeInTheDocument();
+      expect(screen.getByRole("list", { name: "Obras" })).toBeInTheDocument();
       expect(screen.queryByText("Cargando obras…")).toBeNull();
     });
   });
@@ -650,7 +618,7 @@ describe("BarraLateral: la obra recién creada", () => {
   async function crearConCodigo(codigo: string) {
     conCreacionDeCodigo(codigo);
     pintar();
-    await arbol();
+    await listaDeObras();
     await userEvent.click(screen.getByRole("button", { name: "Nueva obra" }));
     await screen.findByRole("dialog", { name: "Nueva obra" });
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moneda" }), "USD");
@@ -704,7 +672,7 @@ describe("BarraLateral: contadores (rediseño F3)", () => {
 
   it("Pendientes lleva una píldora con el total y su nombre accesible dice «Pendientes, 4 por hacer»", async () => {
     pintar({ pendientes: conPendientes(CUATRO) });
-    await arbol();
+    await listaDeObras();
     const enlace = enlacePendientes("Pendientes, 4 por hacer");
     expect(enlace).toHaveAttribute("href", "/pendientes");
     expect(within(enlace).getByText("4")).toHaveClass("silice-pildora");
@@ -712,7 +680,7 @@ describe("BarraLateral: contadores (rediseño F3)", () => {
 
   it("con un solo pendiente dice «Pendientes, 1 por hacer»", async () => {
     pintar({ pendientes: conPendientes([CUATRO[0]!]) });
-    await arbol();
+    await listaDeObras();
     expect(enlacePendientes("Pendientes, 1 por hacer")).toBeInTheDocument();
   });
 
@@ -722,7 +690,7 @@ describe("BarraLateral: contadores (rediseño F3)", () => {
     ["con error", { estado: "error", mensaje: "falló", recargar: vi.fn() } as PendientesDelMarco],
   ])("%s no hay píldora ni número, y el enlace se llama solo «Pendientes»", async (_caso, pendientes) => {
     pintar({ pendientes });
-    await arbol();
+    await listaDeObras();
     const enlace = enlacePendientes("Pendientes");
     expect(enlace.querySelector(".silice-pildora")).toBeNull();
     expect(enlace.textContent).toBe("Pendientes");
@@ -730,26 +698,26 @@ describe("BarraLateral: contadores (rediseño F3)", () => {
 
   it("cada obra con pendientes lleva la suya (carpeta y número); la de 0 no lleva ninguna", async () => {
     pintar({ pendientes: conPendientes(CUATRO) });
-    const lista = await arbol();
-    const pildoraDe = (nombre: string) => within(lista).getByRole("treeitem", { name: new RegExp(`^${nombre}`) }).querySelector(".silice-pildora");
+    const lista = await listaDeObras();
+    const pildoraDe = (nombre: string) => within(lista).getByRole("link", { name: new RegExp(`^${nombre}`) }).querySelector(".silice-pildora");
     expect(pildoraDe("Clínica Las Mercedes")?.textContent).toBe("2");
     expect(pildoraDe("Torre B")?.textContent).toBe("1");
     expect(pildoraDe("Galpón Sur")?.textContent).toBe("1");
-    expect(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes, 2 por hacer" })).toBeInTheDocument();
+    expect(within(lista).getByRole("link", { name: "Clínica Las Mercedes, 2 por hacer" })).toBeInTheDocument();
   });
 
   it("la clave es carpeta más número: el mismo número en otra carpeta no cuenta", async () => {
     servidor([obra(NORTE, 1, "Clínica"), obra(SUR, 1, "Galpón")]);
     pintar({ pendientes: conPendientes([pendiente(SUR, 1, "x"), pendiente(SUR, 1, "y"), pendiente(SUR, 1, "z")]) });
-    const lista = await arbol();
-    expect(within(lista).getByRole("treeitem", { name: "Clínica" }).querySelector(".silice-pildora")).toBeNull();
-    expect(within(lista).getByRole("treeitem", { name: "Galpón, 3 por hacer" })).toBeInTheDocument();
+    const lista = await listaDeObras();
+    expect(within(lista).getByRole("link", { name: "Clínica" }).querySelector(".silice-pildora")).toBeNull();
+    expect(within(lista).getByRole("link", { name: "Galpón, 3 por hacer" })).toBeInTheDocument();
   });
 
   it("una obra sin pendientes conserva su nombre accesible de siempre", async () => {
     pintar({ pendientes: conPendientes([pendiente(NORTE, 2, "c")]) });
-    const lista = await arbol();
-    expect(within(lista).getByRole("treeitem", { name: "Clínica Las Mercedes" })).toBeInTheDocument();
+    const lista = await listaDeObras();
+    expect(within(lista).getByRole("link", { name: "Clínica Las Mercedes" })).toBeInTheDocument();
   });
 });
 
@@ -757,8 +725,8 @@ describe("BarraLateral: obras con el mismo nombre (D-F3-3)", () => {
   it("dos obras llamadas igual en carpetas distintas muestran debajo su carpeta; las demás no", async () => {
     servidor([obra(NORTE, 1, "Galpón"), obra(SUR, 3, "Galpón"), obra(NORTE, 2, "Torre B")]);
     pintar();
-    const lista = await arbol();
-    const filas = within(lista).getAllByRole("treeitem");
+    const lista = await listaDeObras();
+    const filas = within(lista).getAllByRole("link");
     expect(filas.map((f) => f.textContent)).toEqual(["GalpónCarpeta Norte", "GalpónCarpeta Sur", "Torre B"]);
     expect(within(filas[0]!).getByText("Carpeta Norte")).toHaveClass("silice-marco-lateral__de-carpeta");
     expect(within(filas[2]!).queryByText(/Carpeta/)).toBeNull();
@@ -767,9 +735,9 @@ describe("BarraLateral: obras con el mismo nombre (D-F3-3)", () => {
   it("el nombre accesible de la homónima incluye su carpeta, y con píldora también el contador", async () => {
     servidor([obra(NORTE, 1, "Galpón"), obra(SUR, 3, "Galpón")]);
     pintar({ pendientes: conPendientes([pendiente(SUR, 3, "x")]) });
-    const lista = await arbol();
-    expect(within(lista).getByRole("treeitem", { name: "Galpón, Carpeta Norte" })).toBeInTheDocument();
-    expect(within(lista).getByRole("treeitem", { name: "Galpón, Carpeta Sur, 1 por hacer" })).toBeInTheDocument();
+    const lista = await listaDeObras();
+    expect(within(lista).getByRole("link", { name: "Galpón, Carpeta Norte" })).toBeInTheDocument();
+    expect(within(lista).getByRole("link", { name: "Galpón, Carpeta Sur, 1 por hacer" })).toBeInTheDocument();
   });
 });
 
@@ -787,14 +755,14 @@ describe("BarraLateral: nombres largos de obra", () => {
   async function nombreLargo() {
     servidor([obra(NORTE, 7, LARGO), TORRE]);
     pintar();
-    const lista = await arbol();
-    const fila = within(lista).getByRole("treeitem", { name: LARGO });
+    const lista = await listaDeObras();
+    const fila = within(lista).getByRole("link", { name: LARGO });
     const nombre = within(fila).getByText(LARGO);
     expect(nombre).toHaveClass("silice-marco-lateral__obra-nombre");
     return nombre;
   }
 
-  it("el treeitem conserva el nombre completo como nombre accesible y sin pasar el ratón no hay title", async () => {
+  it("el enlace de la obra conserva el nombre completo como nombre accesible y sin pasar el ratón no hay title", async () => {
     const nombre = await nombreLargo();
     expect(nombre).not.toHaveAttribute("title");
   });
@@ -842,10 +810,10 @@ describe("BarraLateral: nombres largos de obra", () => {
 // mínimo. jsdom no calcula el diseño: la estructura se prueba en el DOM y las reglas en el fuente; la medida real
 // (cuántas obras caben a 1366×768) se hace en el navegador.
 describe("BarraLateral: la zona de obras con letra grande", () => {
-  it("la cabecera de Obras y «Nueva obra» quedan fuera del árbol, que tiene su propio desplazamiento", async () => {
+  it("la cabecera de Obras y «Nueva obra» quedan fuera de la lista, que tiene su propio desplazamiento", async () => {
     servidor([obra(NORTE, 1, "Torre"), TORRE]);
     pintar();
-    const lista = await arbol();
+    const lista = await listaDeObras();
     const zona = lista.closest(".silice-marco-lateral__obras");
     expect(zona).not.toBeNull();
     expect(lista.parentElement).toBe(zona);
@@ -889,7 +857,7 @@ describe("BarraLateral: Empresa plegable con letra grande (F4, Tarea 0)", () => 
 
   it("con letra normal Empresa es un h2 sin botón y se ven sus entradas", async () => {
     pintar({ sesion: todo() });
-    await arbol();
+    await listaDeObras();
     const titulo = within(zona()).getByRole("heading", { name: "Empresa" });
     expect(within(titulo).queryByRole("button")).toBeNull();
     expect(within(zona()).getAllByRole("link").map((e) => e.textContent)).toEqual(CINCO);
@@ -898,7 +866,7 @@ describe("BarraLateral: Empresa plegable con letra grande (F4, Tarea 0)", () => 
   it("con letra grande Empresa arranca plegada", async () => {
     ponerLetra("grande");
     pintar({ sesion: todo() });
-    await arbol();
+    await listaDeObras();
     const boton = within(zona()).getByRole("button", { name: "Empresa" });
     expect(boton).toHaveAttribute("aria-expanded", "false");
     expect(boton.parentElement?.tagName).toBe("H2");
@@ -909,7 +877,7 @@ describe("BarraLateral: Empresa plegable con letra grande (F4, Tarea 0)", () => 
     ponerLetra("muy-grande");
     const usuario = userEvent.setup();
     pintar({ sesion: todo() });
-    await arbol();
+    await listaDeObras();
     const boton = within(zona()).getByRole("button", { name: "Empresa" });
     await usuario.click(boton);
     expect(boton).toHaveAttribute("aria-expanded", "true");
@@ -932,14 +900,14 @@ describe("BarraLateral: Empresa plegable con letra grande (F4, Tarea 0)", () => 
   it("con una entrada de Empresa o un espacio abierto arranca desplegada", async () => {
     ponerLetra("muy-grande");
     pintar({ sesion: todo(), ruta: "/precios/catalogo" });
-    await arbol();
+    await listaDeObras();
     expect(within(zona()).getByRole("button", { name: "Empresa" })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("aria-current", "page");
   });
 
   it("pasar de normal a muy grande en vivo la pliega, y volver a normal la muestra sin botón", async () => {
     pintar({ sesion: todo() });
-    await arbol();
+    await listaDeObras();
     expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
     act(() => ponerLetra("muy-grande"));
     const boton = await within(zona()).findByRole("button", { name: "Empresa" });
@@ -971,7 +939,7 @@ describe("BarraLateral con módulos apagados (plan vial, Tarea 19)", () => {
           value={{ sesion: sesionDe("admin"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), modulosApagados: apagados }}
         >
           <ContextoPendientes.Provider value={SIN_PENDIENTES}>
-            <BarraLateral obraAbierta={null} seccion={null} />
+            <BarraLateral obraAbierta={null} />
           </ContextoPendientes.Provider>
         </ContextoAplicacion.Provider>
       </MemoryRouter>,

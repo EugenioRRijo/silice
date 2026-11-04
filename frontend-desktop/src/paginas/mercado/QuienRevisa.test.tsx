@@ -73,10 +73,10 @@ describe("Mercado para quien revisa (ronda 2 de la Tarea 13)", () => {
     expect(resultadosDe("casa mercado", [obra], oferta).map((r) => r.texto)).toContain("Casa Demo › Mercado");
   });
 
-  test("quien revisa abre Mercado desde el árbol de la obra y solo ve las pestañas que leen", async () => {
+  test("quien revisa abre Mercado desde la barra de la obra y solo ve las pestañas que leen", async () => {
     montar("rita");
-    const arbol = await screen.findByRole("tree", { name: "Obras" });
-    expect(await within(arbol).findByRole("treeitem", { name: "Mercado" })).toBeInTheDocument();
+    const barra = await screen.findByRole("navigation", { name: "Secciones de la obra" });
+    expect(await within(barra).findByRole("link", { name: "Mercado" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { level: 1, name: "Estudio de mercado" })).toBeInTheDocument();
     expect(pestanas()).toEqual(["Histórico de precios", "Cotizaciones de la obra"]);
     // «Lo que compramos» y «Lo que cobramos» anotan y usan precios (y su estudio exige `editar_hoja`): no se pintan.

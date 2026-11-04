@@ -275,3 +275,25 @@ describe("BarraDeEspacio: estilos", () => {
     expect(hoja()).not.toMatch(/box-shadow|transition|animation|border-radius:\s*[1-9]/);
   });
 });
+
+// F6, T5 (adenda A.2): el conmutador de subvistas cuesta 0 px de alto a la Hoja. Cuando precede a la página, la página
+// baja su margen superior de 1,5 rem a 0,5 rem y absorbe así el alto del conmutador. jsdom no calcula CSS: se lee el fuente.
+describe("el conmutador de subvistas no le quita alto a la Hoja (adenda A.2)", () => {
+  const fuente = () => leer("paginas/hoja/hoja.scss");
+  const regla = () => {
+    const i = fuente().indexOf(".silice-barra-espacio--subvista + .silice-pagina {");
+    return i < 0 ? "" : fuente().slice(i, fuente().indexOf("}", i));
+  };
+
+  it("hoja.scss tiene la regla `.silice-barra-espacio--subvista + .silice-pagina`", () => {
+    expect(regla()).not.toBe("");
+  });
+
+  it("baja el margen superior de la página a 0,5 rem", () => {
+    expect(regla()).toMatch(/padding-block-start:\s*0\.5rem/);
+  });
+
+  it("no pone colores ni anchos fijos", () => {
+    expect(regla()).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|\bpx\b/);
+  });
+});

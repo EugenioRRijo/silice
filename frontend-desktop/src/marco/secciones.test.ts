@@ -8,6 +8,7 @@ import {
   RUTA_DE_PENDIENTES,
   SECCIONES_DE_OBRA,
   carpetaDeLaRuta,
+  quedaEnLaHoja,
   rutaDeEmpresa,
   rutaDeObra,
   seccionPorId,
@@ -110,6 +111,14 @@ describe("rutas del marco", () => {
     expect(rutaDeObra("50% & más.db", 7, "control")).toBe("/obra/50%25%20%26%20m%C3%A1s.db/7/control");
   });
 
+  // F6, T5: la subvista es un cuarto segmento (contrato de rutas 2.1); sin ella, la ruta de siempre.
+  it("una subvista agrega su segmento a la ruta de la sección, con la carpeta codificada", () => {
+    expect(rutaDeObra("Carpeta Sur.db", 3, "control", "reajuste")).toBe("/obra/Carpeta%20Sur.db/3/control/reajuste");
+    expect(rutaDeObra(null, 1, "presupuesto", "componer")).toBe("/obra/empresa/1/presupuesto/componer");
+    expect(rutaDeObra(null, 1, "presupuesto", "")).toBe("/obra/empresa/1/presupuesto");
+    expect(rutaDeObra(null, 1, "presupuesto", undefined)).toBe("/obra/empresa/1/presupuesto");
+  });
+
   it("la carpeta de la empresa se escribe «empresa»", () => {
     expect(rutaDeObra(null, 1, "resumen")).toBe("/obra/empresa/1/resumen");
     expect(carpetaDeLaRuta("empresa")).toBeNull();
@@ -119,7 +128,49 @@ describe("rutas del marco", () => {
   it("pendientes y las entradas de la empresa", () => {
     expect(RUTA_DE_PENDIENTES).toBe("/pendientes");
     expect(rutaDeEmpresa("personas")).toBe("/empresa/personas");
-    expect(PATRON_DE_OBRA).toBe("/obra/:carpeta/:obraId/:seccion");
+    expect(PATRON_DE_OBRA).toBe("/obra/:carpeta/:obraId/:seccion/:subvista?");
     expect(PATRON_DE_EMPRESA).toBe("/empresa/:entrada");
+  });
+});
+
+// Nota H-F6-1 de Antigravity: `quedaEnLaHoja` compara el segmento de la sección y no la ruta entera, para que pasar de
+// Partidas a Componer (`/presupuesto` a `/presupuesto/componer`) no pregunte por cambios sin guardar. Oráculos a mano.
+describe("quedaEnLaHoja (F6, T5)", () => {
+  const OBRA = "/obra/Carpeta%20Sur.db/3";
+
+  it.each(["presupuesto", "archivos", "versiones"])("%s, de la misma obra, queda en la Hoja", (seccion) => {
+    expect(quedaEnLaHoja(`${OBRA}/${seccion}`, "Carpeta Sur.db", 3)).toBe(true);
+  });
+
+  it("una subvista de una sección con Hoja (Componer) también queda en la Hoja", () => {
+    expect(quedaEnLaHoja(`${OBRA}/presupuesto/componer`, "Carpeta Sur.db", 3)).toBe(true);
+  });
+
+  it("la consulta y el ancla no cuentan", () => {
+    expect(quedaEnLaHoja(`${OBRA}/presupuesto?version=001`, "Carpeta Sur.db", 3)).toBe(true);
+    expect(quedaEnLaHoja(`${OBRA}/presupuesto/componer?codigo=X#fila`, "Carpeta Sur.db", 3)).toBe(true);
+  });
+
+  it("las secciones sin Hoja, y sus subvistas, no quedan en ella", () => {
+    for (const destino of ["resumen", "resumen/tablero", "control/reajuste", "mercado/actualizar", "aprobaciones/revisar", "tramos", "riesgo"]) {
+      expect(quedaEnLaHoja(`${OBRA}/${destino}`, "Carpeta Sur.db", 3), destino).toBe(false);
+    }
+  });
+
+  it("otra obra o otra carpeta no queda en la Hoja de esta", () => {
+    expect(quedaEnLaHoja("/obra/Carpeta%20Sur.db/4/presupuesto", "Carpeta Sur.db", 3)).toBe(false);
+    expect(quedaEnLaHoja("/obra/Carpeta%20Norte.db/3/presupuesto/componer", "Carpeta Sur.db", 3)).toBe(false);
+    expect(quedaEnLaHoja("/obra/empresa/3/presupuesto", "Carpeta Sur.db", 3)).toBe(false);
+    expect(quedaEnLaHoja("/obra/empresa/3/presupuesto/componer", null, 3)).toBe(true);
+  });
+
+  it("un segmento que solo empieza igual no cuenta (presupuestos no es presupuesto)", () => {
+    expect(quedaEnLaHoja(`${OBRA}/presupuestos`, "Carpeta Sur.db", 3)).toBe(false);
+    expect(quedaEnLaHoja(`${OBRA}/versiones2/componer`, "Carpeta Sur.db", 3)).toBe(false);
+  });
+
+  it("fuera de una obra no queda en la Hoja", () => {
+    expect(quedaEnLaHoja("/pendientes", "Carpeta Sur.db", 3)).toBe(false);
+    expect(quedaEnLaHoja("/precios/catalogo", "Carpeta Sur.db", 3)).toBe(false);
   });
 });

@@ -144,8 +144,10 @@ function ConLaHoja() {
 }
 
 function PorSeccion() {
-  const { seccion } = useParams();
-  if (seccion === "presupuesto") return <PaginaHoja />;
+  const { seccion, subvista } = useParams();
+  // F6, T5: Componer es una subvista de Presupuesto (/presupuesto/componer); sin subvista, la Hoja.
+  if (seccion === "presupuesto" && subvista === undefined) return <PaginaHoja />;
+  if (seccion === "presupuesto") return <Relleno titulo="Componer una partida" />;
   return <Relleno titulo={seccion === "versiones" ? "Versiones" : "Archivos y planos"} />;
 }
 
@@ -161,7 +163,7 @@ function montar(en: string) {
         sesion={sesionDe("ana")}
         alSalir={vi.fn()}
         alExpirar={vi.fn()}
-        paginas={ligeras({ hoja: PorSeccion, versiones: PorSeccion, archivos: PorSeccion })}
+        paginas={ligeras({ hoja: PorSeccion, componer: PorSeccion, versiones: PorSeccion, archivos: PorSeccion })}
       />
       <Ubicacion />
     </MemoryRouter>,
@@ -174,9 +176,10 @@ const textoDelBorrador = () => screen.queryByTestId("borrador")?.textContent ?? 
 const fichas = () => servidor.de("GET", "/v1/obras/resumen").length;
 const aperturas = () => servidor.de("POST", "/v1/hoja/borradores").map((l) => l.cuerpo as { proyecto: string; version: string | null });
 const descartes = () => servidor.llamadas.filter((l) => l.metodo === "DELETE" && l.ruta.startsWith("/v1/hoja/borradores/")).map((l) => l.ruta);
-const arbol = () => screen.findByRole("tree", { name: "Obras" });
+// F6, T5: las secciones de la obra están en su barra, bajo la cabecera (ya no cuelgan de la barra lateral).
+const barraDeLaObra = () => screen.findByRole("navigation", { name: "Secciones de la obra" });
 const irA = async (u: ReturnType<typeof userEvent.setup>, seccion: string) =>
-  u.click(await within(await arbol()).findByRole("treeitem", { name: seccion }));
+  u.click(await within(await barraDeLaObra()).findByRole("link", { name: seccion }));
 const pausa = () =>
   act(async () => {
     await new Promise((r) => setTimeout(r, 30));
@@ -272,6 +275,40 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
     await waitFor(() => expect(aperturas().at(-1)).toEqual({ proyecto: "7", version: "001" }));
     expect(descartes()).toEqual(["/v1/hoja/borradores/b-1"]);
     expect(ruta()).toBe("/obra/empresa/7/presupuesto");
+  });
+
+  // Nota H-F6-1 (Antigravity): `quedaEnLaHoja` compara el segmento de la sección. Partidas y Componer son la misma sección
+  // (Presupuesto): comparten el borrador y pasar de una a otra ni pregunta ni remonta `ProveedorDeLaHoja`.
+  test("pasar de Partidas a Componer y volver no pregunta por cambios sin guardar ni vuelve a abrir el borrador", async () => {
+    const u = montar("/obra/empresa/7/presupuesto");
+    await borradorListoEnLaHoja();
+    fireEvent.change(await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" }), { target: { value: "5" } });
+    const conmutador = await screen.findByRole("navigation", { name: "Vistas de Presupuesto" });
+    await u.click(within(conmutador).getByRole("link", { name: "Componer" }));
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto/componer"));
+    expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
+    await borradorListoEnElRelleno();
+    await waitFor(() => expect(servidor.de("PUT", "/v1/hoja/borradores/b-1/cantidades")).toHaveLength(1));
+    await u.click(within(screen.getByRole("navigation", { name: "Vistas de Presupuesto" })).getByRole("link", { name: "Partidas" }));
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto"));
+    await borradorListoEnLaHoja();
+    await pausa();
+    expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
+    expect(aperturas()).toEqual([{ proyecto: "7", version: "002" }]);
+    expect(descartes()).toEqual([]);
+    // La ficha de la obra tampoco se lee otra vez: el espacio de la obra y su borrador siguen montados.
+    expect(fichas()).toBe(1);
+  });
+
+  test("con cambios sin guardar, pasar de Componer a otra sección sin Hoja sí pregunta (y no descarta el borrador)", async () => {
+    const u = montar("/obra/empresa/7/presupuesto/componer");
+    await borradorListoEnElRelleno();
+    await u.click(screen.getByRole("button", { name: "Simular dos cambios" }));
+    await irA(u, "Resumen");
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
+    expect(ruta()).toBe("/obra/empresa/7/presupuesto/componer");
+    expect(descartes()).toEqual([]);
   });
 
   test("la cabecera dice la versión abierta cuando no es la vigente (foco 5)", async () => {

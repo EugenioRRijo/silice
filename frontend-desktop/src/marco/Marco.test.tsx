@@ -115,6 +115,25 @@ const enSur = (estado: EstadoDelServidor) => {
   estado.actual = caso(SUR);
 };
 
+// Lo que la instalación apagó (`GET /v1/modulos`): las claves dadas quedan apagadas y el resto encendido.
+const MENSAJE_APAGADO = "Esta función está apagada en esta instalación. Quien administra puede encenderla en Administración.";
+function apagar(...claves: string[]) {
+  instalar();
+  const base = servidor.fetchFalso;
+  const nombres: Record<string, string> = { produccion: "producción", vial: "vial", edificacion: "edificación", riesgo: "riesgo" };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+      if (String(entrada) === "/v1/modulos" && (init?.method ?? "GET") === "GET") {
+        return json({
+          modulos: Object.keys(nombres).map((clave) => ({ clave, nombre: nombres[clave], activo: !claves.includes(clave), cambiado_por: null, cambiado_el: null })),
+        });
+      }
+      return base(entrada, init);
+    }),
+  );
+}
+
 describe("Marco: las rutas viejas llevan al marco nuevo", () => {
   test.each(["/", "/inicio", "/no-existe"])("%s acaba en #/pendientes, que muestra la bandeja", async (de) => {
     montar({ en: de });
@@ -363,15 +382,15 @@ describe("Marco: la obra como espacio de trabajo", () => {
     expect(await titulo("Resumen de la obra")).toBeInTheDocument();
     await waitFor(() => expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(1));
     expect(servidor.de("PUT", "/v1/sesion/proyecto")).toHaveLength(1);
-    const arbol = await screen.findByRole("tree", { name: "Obras" });
-    await u.click(await within(arbol).findByRole("treeitem", { name: "Mercado" }));
+    const barra = await screen.findByRole("navigation", { name: "Secciones de la obra" });
+    await u.click(await within(barra).findByRole("link", { name: "Mercado" }));
     expect(await titulo("Estudio de mercado")).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 30));
     expect({
       fijadas: servidor.de("PUT", "/v1/sesion/proyecto").length,
       fichas: servidor.de("GET", "/v1/obras/resumen").length,
     }).toEqual({ fijadas: 1, fichas: 1 });
-    await u.click(within(arbol).getByRole("treeitem", { name: "Resumen" }));
+    await u.click(within(screen.getByRole("navigation", { name: "Secciones de la obra" })).getByRole("link", { name: "Resumen" }));
     expect(await titulo("Resumen de la obra")).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 30));
     expect({
@@ -433,24 +452,337 @@ describe("Marco: la obra como espacio de trabajo", () => {
   });
 });
 
+// F6, T5: la obra con su barra de secciones bajo la cabecera, las subvistas dentro de su sección y la barra lateral plana.
+// Contrato de rutas 2.1 y 2.4 y diseño visual (2.2 y adenda A): oráculos escritos a mano.
+describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
+  const barraDeLaObra = () => screen.getByRole("navigation", { name: "Secciones de la obra" });
+  const textos = (nav: HTMLElement) => within(nav).getAllByRole("link").map((e) => e.textContent);
+  const SEGUIDO = Node.DOCUMENT_POSITION_FOLLOWING;
+
+  test("la barra de la obra va justo debajo de la cabecera, con las nueve secciones en orden y la actual marcada", async () => {
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("Presupuesto");
+    const cabecera = screen.getByRole("region", { name: "Obra abierta" });
+    const barra = barraDeLaObra();
+    expect(cabecera.nextElementSibling).toBe(barra);
+    expect(barra.compareDocumentPosition(screen.getByRole("heading", { level: 1 })) & SEGUIDO).toBeTruthy();
+    expect(barra.closest("main")).not.toBeNull();
+    expect(textos(barra)).toEqual([
+      "Resumen", "Presupuesto", "Tramos", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Control de obra", "Riesgo",
+    ]);
+    expect(within(barra).getAllByRole("link").map((e) => e.getAttribute("href"))).toEqual(
+      ["resumen", "presupuesto", "tramos", "archivos", "versiones", "aprobaciones", "mercado", "control", "riesgo"].map((s) => `/obra/empresa/7/${s}`),
+    );
+    expect(within(barra).getAllByRole("link").filter((e) => e.getAttribute("aria-current") === "page").map((e) => e.textContent)).toEqual(["Presupuesto"]);
+    expect(within(barra).queryByRole("heading")).toBeNull();
+  });
+
+  test("sin la obra lista (una que no existe) no hay cabecera ni barra de la obra", async () => {
+    montar({ en: "/obra/empresa/99/resumen" });
+    await titulo("Esa obra ya no existe");
+    expect(screen.queryByRole("navigation", { name: "Secciones de la obra" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Obra abierta" })).toBeNull();
+  });
+
+  test("quien solo revisa ve las secciones que puede usar, en el mismo orden (sin Tramos ni Control de obra)", async () => {
+    montar({ sesion: sesionDe("rita"), en: "/obra/empresa/7/resumen" });
+    await titulo("Resumen de la obra");
+    expect(textos(barraDeLaObra())).toEqual(["Resumen", "Presupuesto", "Archivos y planos", "Versiones", "Aprobaciones", "Mercado", "Riesgo"]);
+  });
+
+  test("Riesgo solo se ofrece con su especialidad encendida", async () => {
+    const encendida = montar({ en: "/obra/empresa/7/resumen" });
+    await titulo("Resumen de la obra");
+    expect(textos(barraDeLaObra())).toContain("Riesgo");
+    encendida.unmount();
+    apagar("riesgo");
+    montar({ en: "/obra/empresa/7/resumen" });
+    await titulo("Resumen de la obra");
+    await waitFor(() => expect(textos(barraDeLaObra())).not.toContain("Riesgo"));
+    expect(textos(barraDeLaObra())).toHaveLength(8);
+  });
+
+  test("Tramos sigue la especialidad vial: apagada, la sección no se ofrece", async () => {
+    apagar("vial");
+    montar({ en: "/obra/empresa/7/resumen" });
+    await titulo("Resumen de la obra");
+    await waitFor(() => expect(textos(barraDeLaObra())).not.toContain("Tramos"));
+  });
+
+  test("las secciones de la obra ya no cuelgan de la barra lateral", async () => {
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("Presupuesto");
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    for (const seccion of ["Presupuesto", "Versiones", "Control de obra", "Archivos y planos"]) {
+      expect(within(lateral).queryByRole("link", { name: seccion })).toBeNull();
+    }
+    expect(lateral.querySelector('[role="tree"], [role="treeitem"], [aria-expanded="true"][aria-level]')).toBeNull();
+  });
+
+  test("/obra/empresa/7/control/reajuste monta Reajuste: «Control de obra» activa en la barra de la obra y «Reajuste» en el conmutador", async () => {
+    montar({ en: "/obra/empresa/7/control/reajuste" });
+    expect(await titulo("Reajuste de precios")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/7/control/reajuste");
+    expect(within(barraDeLaObra()).getByRole("link", { name: "Control de obra" })).toHaveAttribute("aria-current", "page");
+    expect(within(barraDeLaObra()).getAllByRole("link").filter((e) => e.getAttribute("aria-current") === "page")).toHaveLength(1);
+    const conmutador = screen.getByRole("navigation", { name: "Vistas de Control de obra" });
+    expect(conmutador).toHaveClass("silice-barra-espacio--subvista");
+    expect(within(conmutador).getAllByRole("link").map((e) => [e.textContent, e.getAttribute("href"), e.getAttribute("aria-current")])).toEqual([
+      ["Control", "/obra/empresa/7/control", null],
+      ["Reajuste", "/obra/empresa/7/control/reajuste", "page"],
+      ["Escenarios", "/obra/empresa/7/control/escenarios", null],
+    ]);
+    // El conmutador va en el lienzo, debajo de la barra de la obra y encima de la pantalla; ninguna de las dos pone h1.
+    expect(conmutador.closest("main")).not.toBeNull();
+    expect(barraDeLaObra().compareDocumentPosition(conmutador) & SEGUIDO).toBeTruthy();
+    expect(conmutador.compareDocumentPosition(screen.getByRole("heading", { level: 1 })) & SEGUIDO).toBeTruthy();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(within(conmutador).queryByRole("heading")).toBeNull();
+  });
+
+  test("en la pantalla principal de la sección el conmutador marca su raíz (Resumen y Tablero)", async () => {
+    montar({ en: "/obra/empresa/7/resumen" });
+    await titulo("Resumen de la obra");
+    const conmutador = screen.getByRole("navigation", { name: "Vistas de Resumen" });
+    expect(within(conmutador).getAllByRole("link").map((e) => [e.textContent, e.getAttribute("aria-current")])).toEqual([
+      ["Resumen", "page"],
+      ["Tablero", null],
+    ]);
+  });
+
+  test.each([
+    ["Vistas de Presupuesto", ["Partidas", "Componer"], "/obra/empresa/7/presupuesto"],
+    ["Vistas de Aprobaciones", ["Aprobar", "Revisar un paquete", "Entregar"], "/obra/empresa/7/aprobaciones"],
+    ["Vistas de Mercado", ["Estudio", "Actualizar precios"], "/obra/empresa/7/mercado"],
+  ])("%s ofrece %j para quien puede usarlas todas", async (nombre, esperadas, en) => {
+    const todo = sesionDe("ana", { acciones: [...ACCIONES.ana, "revisar_paquete"] });
+    montar({ sesion: todo, en });
+    await screen.findByRole("heading", { level: 1 });
+    expect(textos(screen.getByRole("navigation", { name: nombre }))).toEqual(esperadas);
+  });
+
+  test("con una sola vista usable no se pinta el conmutador (rita no edita la hoja: Presupuesto queda con Partidas)", async () => {
+    montar({ sesion: sesionDe("rita"), en: "/obra/empresa/7/presupuesto" });
+    await titulo("Presupuesto");
+    expect(screen.queryByRole("navigation", { name: "Vistas de Presupuesto" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Componer" })).toBeNull();
+  });
+
+  test("las secciones sin subvistas no tienen conmutador", async () => {
+    montar({ en: "/obra/empresa/7/versiones" });
+    await titulo("Versiones");
+    expect(screen.queryByRole("navigation", { name: /^Vistas de/ })).toBeNull();
+  });
+
+  test("una sección cuya pantalla principal no es usable abre su primera subvista usable, conservando la consulta", async () => {
+    const quienRevisa = sesionDe("rita", { acciones: ["leer_proyecto", "revisar_paquete"] });
+    montar({ sesion: quienRevisa, en: "/obra/empresa/7/aprobaciones?x=1" });
+    expect(await titulo("Revisar un paquete")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/7/aprobaciones/revisar?x=1");
+    // Bajo la pestaña «Aprobaciones» de la obra; con una sola vista usable no hay conmutador.
+    expect(within(barraDeLaObra()).getByRole("link", { name: "Aprobaciones" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("navigation", { name: "Vistas de Aprobaciones" })).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  test("una subvista desconocida lleva a la pantalla principal de la sección, con replace y la consulta", async () => {
+    montar({ en: "/obra/empresa/7/control/xyz?a=1" });
+    expect(await titulo("Control de obra")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/7/control?a=1");
+  });
+
+  test.each([
+    ["/obra/empresa/7/versiones/xyz", "/obra/empresa/7/versiones", "Versiones"],
+    ["/obra/empresa/7/resumen/reajuste", "/obra/empresa/7/resumen", "Resumen de la obra"],
+    ["/obra/empresa/7/riesgo/componer", "/obra/empresa/7/riesgo", "Riesgo de la obra"],
+  ])("%s acaba en %s", async (de, a, h1) => {
+    montar({ en: de });
+    expect(await titulo(h1)).toBeInTheDocument();
+    expect(ruta()).toBe(a);
+  });
+
+  test("una subvista que la cuenta no puede usar, escrita a mano, dice «Sin permiso» y la barra sigue", async () => {
+    montar({ sesion: sesionDe("rita"), en: "/obra/empresa/7/control/reajuste" });
+    expect(await screen.findByText("Sin permiso")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/7/control/reajuste");
+    expect(screen.queryByRole("heading", { level: 1, name: "Reajuste de precios" })).toBeNull();
+    expect(within(barraDeLaObra()).getByRole("link", { name: "Presupuesto" })).toBeInTheDocument();
+  });
+
+  test("las migas y el título del documento dicen la subvista", async () => {
+    montar({ en: "/obra/empresa/7/control/reajuste" });
+    await titulo("Reajuste de precios");
+    expect(document.title).toBe("Reajuste · Control de obra · Casa Demo · Sílice");
+    const migas = within(screen.getByRole("navigation", { name: "Ruta" }));
+    expect(migas.getByRole("link", { name: "Control de obra" })).toHaveAttribute("href", "/obra/empresa/7/control");
+    expect(migas.getByText("Reajuste")).toHaveAttribute("aria-current", "page");
+  });
+
+  test("cambiar de subvista con el conmutador deja el foco en el enlace pulsado (no se vuelve a montar)", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/control/reajuste" });
+    await titulo("Reajuste de precios");
+    const enlace = within(screen.getByRole("navigation", { name: "Vistas de Control de obra" })).getByRole("link", { name: "Escenarios" });
+    await u.click(enlace);
+    expect(await titulo("Escenarios de sensibilidad")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/7/control/escenarios");
+    const despues = within(screen.getByRole("navigation", { name: "Vistas de Control de obra" })).getByRole("link", { name: "Escenarios" });
+    expect(despues).toBe(enlace);
+    expect(despues).toHaveFocus();
+    expect(despues).toHaveAttribute("aria-current", "page");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  test("pasar de una subvista a otra de la misma obra no vuelve a fijarla ni a leer su ficha", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/control/reajuste" });
+    await titulo("Reajuste de precios");
+    await waitFor(() => expect(servidor.de("GET", "/v1/obras/resumen")).toHaveLength(1));
+    await u.click(within(screen.getByRole("navigation", { name: "Vistas de Control de obra" })).getByRole("link", { name: "Escenarios" }));
+    await titulo("Escenarios de sensibilidad");
+    await new Promise((r) => setTimeout(r, 30));
+    expect({ fijadas: servidor.de("PUT", "/v1/sesion/proyecto").length, fichas: servidor.de("GET", "/v1/obras/resumen").length }).toEqual({ fijadas: 1, fichas: 1 });
+  });
+});
+
+// Foco 3 de la revisión: los enlaces de las barras están dentro del lienzo, que el marco no intercepta; por eso la barra
+// pregunta ella misma (como useNavegarSeguro). Pasar entre Partidas y Componer no pregunta: ProveedorDeLaHoja.test.tsx.
+describe("Marco: salir de una sección o subvista con cambios sin guardar (F6, T5)", () => {
+  function HojaSucia() {
+    useFormularioSucio("hoja", true);
+    return <h1>Presupuesto</h1>;
+  }
+  function ComponerSucio() {
+    useFormularioSucio("componer", true);
+    return <h1>Componer una partida</h1>;
+  }
+
+  test("con la Hoja a medio llenar, pasar a otra sección desde la barra de la obra pregunta; «Quedarme» deja la ruta igual", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/presupuesto", paginas: ligeras({ hoja: HojaSucia }) });
+    await titulo("Presupuesto");
+    const barra = screen.getByRole("navigation", { name: "Secciones de la obra" });
+    await u.click(within(barra).getByRole("link", { name: "Mercado" }));
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
+    expect(ruta()).toBe("/obra/empresa/7/presupuesto");
+    await u.click(within(barra).getByRole("link", { name: "Mercado" }));
+    await u.click(within(await screen.findByRole("dialog", { name: "Cambios sin guardar" })).getByRole("button", { name: "Salir y descartar" }));
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/mercado"));
+  });
+
+  test("con Componer a medio llenar, volver a Partidas desde el conmutador pregunta", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/presupuesto/componer", paginas: ligeras({ componer: ComponerSucio }) });
+    await titulo("Componer una partida");
+    await u.click(within(screen.getByRole("navigation", { name: "Vistas de Presupuesto" })).getByRole("link", { name: "Partidas" }));
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
+    expect(ruta()).toBe("/obra/empresa/7/presupuesto/componer");
+  });
+
+  test("sin nada que perder, la barra navega sin preguntar", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("Presupuesto");
+    await u.click(within(screen.getByRole("navigation", { name: "Secciones de la obra" })).getByRole("link", { name: "Versiones" }));
+    expect(await titulo("Versiones")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
+  });
+});
+
+// Contrato de rutas 2.4: las direcciones viejas de las pantallas que ahora son subvistas de la obra redirigen con replace,
+// conservando la consulta, a la subvista de la obra de la sesión; sin obra, a Pendientes.
+describe("Marco: las direcciones viejas de las subvistas de la obra (F6, T5)", () => {
+  const TABLA_2_4_OBRA: readonly (readonly [string, string])[] = [
+    ["/tablero", "resumen/tablero"],
+    ["/componer", "presupuesto/componer"],
+    ["/revisar", "aprobaciones/revisar"],
+    ["/entregar", "aprobaciones/entregar"],
+    ["/actualizacion", "mercado/actualizar"],
+    ["/reajuste", "control/reajuste"],
+    ["/escenarios", "control/escenarios"],
+  ];
+
+  test.each(TABLA_2_4_OBRA)("%s, con la obra 3 de «Carpeta Sur.db» en la sesión, acaba en /obra/Carpeta%20Sur.db/3/%s", async (de, a) => {
+    instalar(enSur);
+    montar({ sesion: sesionConObra("3"), en: de });
+    await waitFor(() => expect(ruta()).toBe(`/obra/Carpeta%20Sur.db/3/${a}`));
+  });
+
+  test.each(TABLA_2_4_OBRA)("%s?codigo=OBRA-07&volver=hoja conserva la consulta al llegar a %s", async (de, a) => {
+    instalar(enSur);
+    montar({ sesion: sesionConObra("3"), en: `${de}?codigo=OBRA-07&volver=hoja` });
+    await waitFor(() => expect(ruta()).toBe(`/obra/Carpeta%20Sur.db/3/${a}?codigo=OBRA-07&volver=hoja`));
+  });
+
+  test.each(TABLA_2_4_OBRA)("%s, sin obra en la sesión, acaba en #/pendientes", async (de) => {
+    montar({ en: de });
+    expect(await titulo("Pendientes")).toBeInTheDocument();
+    expect(ruta()).toBe("/pendientes");
+  });
+
+  test("mientras llegan las obras de la sesión no redirige a Pendientes: espera", async () => {
+    instalar(enSur);
+    montar({ sesion: sesionConObra("3"), en: "/reajuste" });
+    expect(screen.queryByRole("heading", { level: 1, name: "Pendientes" })).toBeNull();
+    await waitFor(() => expect(ruta()).toBe("/obra/Carpeta%20Sur.db/3/control/reajuste"));
+  });
+
+  test("el buscador lleva a una subvista por su dirección corta, que redirige a la obra de la sesión", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/presupuesto" });
+    await titulo("Presupuesto");
+    await u.keyboard("{Control>}k{/Control}");
+    await u.type(screen.getByRole("combobox", { name: "Buscar una obra, sección o pantalla" }), "reajuste");
+    await u.keyboard("{Enter}");
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/control/reajuste"));
+  });
+});
+
+// Decisión de Eugenio (2026-11-04): al elegir una obra en la barra lateral se abre su Resumen; no se conserva la sección.
+describe("Marco: elegir una obra en la barra lateral abre su Resumen (F6, T5)", () => {
+  test("desde una subvista de una obra, elegir otra abre el Resumen de la otra", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/control/reajuste" });
+    await titulo("Reajuste de precios");
+    const lista = await screen.findByRole("list", { name: "Obras" });
+    expect(within(lista).getByRole("link", { name: "Casa Demo" })).toHaveAttribute("aria-current", "page");
+    expect(within(lista).getByRole("link", { name: "Torre B" })).not.toHaveAttribute("aria-current");
+    await u.click(within(lista).getByRole("link", { name: "Torre B" }));
+    expect(await titulo("Resumen de la obra")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/8/resumen");
+    expect(within(screen.getByRole("list", { name: "Obras" })).getByRole("link", { name: "Torre B" })).toHaveAttribute("aria-current", "page");
+  });
+
+  test("elegir la obra que ya está abierta, desde otra sección, lleva a su Resumen", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/7/versiones" });
+    await titulo("Versiones");
+    await u.click(within(await screen.findByRole("list", { name: "Obras" })).getByRole("link", { name: "Casa Demo" }));
+    expect(await titulo("Resumen de la obra")).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/7/resumen");
+  });
+});
+
 describe("Marco: cambiar de obra con cambios sin guardar (foco 5)", () => {
   function HojaSucia() {
     useFormularioSucio("hoja", true);
     return <h1>Presupuesto</h1>;
   }
 
-  test("con la Hoja a medio llenar, elegir otra obra en el árbol pregunta; «Quedarme» deja la ruta igual", async () => {
+  test("con la Hoja a medio llenar, elegir otra obra en la barra lateral pregunta; «Quedarme» deja la ruta igual", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto", paginas: ligeras({ hoja: HojaSucia }) });
     expect(await titulo("Presupuesto")).toBeInTheDocument();
-    const arbol = await screen.findByRole("tree", { name: "Obras" });
-    await u.click(await within(arbol).findByRole("treeitem", { name: "Torre B" }));
+    const lista = await screen.findByRole("list", { name: "Obras" });
+    await u.click(await within(lista).findByRole("link", { name: "Torre B" }));
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     expect(pregunta).toHaveAccessibleDescription("Tiene cambios sin guardar en Presupuesto. Si sale de esta pantalla, se perderán.");
     await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
     expect(ruta()).toBe("/obra/empresa/7/presupuesto");
-    await u.click(within(arbol).getByRole("treeitem", { name: "Torre B" }));
+    await u.click(within(lista).getByRole("link", { name: "Torre B" }));
     await u.click(within(await screen.findByRole("dialog", { name: "Cambios sin guardar" })).getByRole("button", { name: "Salir y descartar" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/8/resumen"));
   });
@@ -462,7 +794,7 @@ describe("Marco: cambiar de obra con cambios sin guardar (foco 5)", () => {
     });
     montar({ en: "/obra/empresa/7/presupuesto" });
     expect(await titulo("Presupuesto")).toBeInTheDocument();
-    await u.click(await within(await screen.findByRole("tree", { name: "Obras" })).findByRole("treeitem", { name: "Galpón Sur" }));
+    await u.click(await within(await screen.findByRole("list", { name: "Obras" })).findByRole("link", { name: "Galpón Sur" }));
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     expect(pregunta).toHaveAccessibleDescription("Tiene cambios sin guardar en Hoja de Casa Demo. Si cambia de carpeta, se perderán.");
     await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
@@ -475,7 +807,7 @@ describe("Marco: cambiar de obra con cambios sin guardar (foco 5)", () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto" });
     expect(await titulo("Presupuesto")).toBeInTheDocument();
-    await u.click(await within(await screen.findByRole("tree", { name: "Obras" })).findByRole("treeitem", { name: "Galpón Sur" }));
+    await u.click(await within(await screen.findByRole("list", { name: "Obras" })).findByRole("link", { name: "Galpón Sur" }));
     await waitFor(() => expect(ruta()).toBe("/obra/Carpeta%20Sur.db/3/resumen"));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
     await waitFor(() => expect(servidor.de("POST", "/v1/casos/actual").map((l) => l.cuerpo)).toEqual([{ nombre: SUR }]));
@@ -504,14 +836,14 @@ describe("Marco: lo que se monta con él", () => {
       useFormularioSucio("componer", true);
       return <h1>Componer una partida</h1>;
     }
-    montar({ en: "/componer", paginas: ligeras({ componer: ComponerSucio }) });
+    montar({ en: "/obra/empresa/7/presupuesto/componer", paginas: ligeras({ componer: ComponerSucio }) });
     await titulo("Componer una partida");
     await u.keyboard("{Control>}k{/Control}");
     await u.type(screen.getByRole("combobox", { name: "Buscar una obra, sección o pantalla" }), "torre");
     await u.keyboard("{Enter}");
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
-    expect(ruta()).toBe("/componer");
+    expect(ruta()).toBe("/obra/empresa/7/presupuesto/componer");
   });
 
   test("«Cambios sin guardar» está montado: una pregunta de una página se contesta", async () => {
@@ -528,7 +860,7 @@ describe("Marco: lo que se monta con él", () => {
         </>
       );
     }
-    montar({ en: "/componer", paginas: ligeras({ componer: Pregunta }) });
+    montar({ en: "/obra/empresa/7/presupuesto/componer", paginas: ligeras({ componer: Pregunta }) });
     await u.click(await screen.findByRole("button", { name: "Preguntar" }));
     await u.click(within(await screen.findByRole("dialog", { name: "Cambios sin guardar" })).getByRole("button", { name: "Quedarme" }));
     expect(await screen.findByText("respuesta: false")).toBeInTheDocument();
@@ -893,24 +1225,6 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
 
 // Plan vial, Tarea 19: lo que la instalación apagó no se ofrece ni se abre por enlace directo.
 describe("Marco: especialidades apagadas", () => {
-  const MENSAJE_APAGADO = "Esta función está apagada en esta instalación. Quien administra puede encenderla en Administración.";
-  function apagar(...claves: string[]) {
-    instalar();
-    const base = servidor.fetchFalso;
-    const nombres: Record<string, string> = { produccion: "producción", vial: "vial", edificacion: "edificación", riesgo: "riesgo" };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
-        if (String(entrada) === "/v1/modulos" && (init?.method ?? "GET") === "GET") {
-          return json({
-            modulos: Object.keys(nombres).map((clave) => ({ clave, nombre: nombres[clave], activo: !claves.includes(clave), cambiado_por: null, cambiado_el: null })),
-          });
-        }
-        return base(entrada, init);
-      }),
-    );
-  }
-
   // F6, T2: «Riesgo» es una sección de la obra, así que su enlace directo es el de la obra (/riesgo sin obra redirige).
   test("con el riesgo apagado, abrir #/obra/.../riesgo por enlace directo dice que está apagado", async () => {
     apagar("riesgo");

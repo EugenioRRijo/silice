@@ -137,3 +137,42 @@ describe("ofertaDe (F6, T4): los espacios de la empresa", () => {
     expect(espacios(TODAS, false, ["produccion"]).map(([titulo]) => titulo)).toEqual(["Auditar un presupuesto", "Precios y catálogo"]);
   });
 });
+
+// F6, T5 (contrato 2.1): una sección cuya pantalla principal no es usable pero que tiene una subvista usable se ofrece y
+// abre en esa subvista; una sin ninguna pantalla usable no se ofrece.
+describe("ofertaDe (F6, T5): secciones con una subvista usable", () => {
+  const ids = (acciones: string[]) => ofertaDe(acciones, false).secciones.map((s) => s.id);
+
+  it("quien solo revisa paquetes ve Aprobaciones (abre «Revisar un paquete») y no Control", () => {
+    expect(ids(["leer_proyecto", "revisar_paquete"])).toContain("aprobaciones");
+    expect(ids(["leer_proyecto", "revisar_paquete"])).not.toContain("control");
+  });
+
+  it("quien solo entrega paquetes también ve Aprobaciones", () => {
+    expect(ids(["leer_proyecto", "entregar_paquete"])).toContain("aprobaciones");
+  });
+
+  it("quien edita la hoja sin controlar la obra ve Control (abre «Escenarios»)", () => {
+    expect(ids(["leer_proyecto", "editar_hoja"])).toContain("control");
+  });
+
+  it("sin ninguna pantalla usable de la sección, no se ofrece", () => {
+    expect(ids(["leer_proyecto"])).not.toContain("aprobaciones");
+    expect(ids(["leer_proyecto"])).not.toContain("control");
+    // En modo entrega «Escenarios» (Investigación) no cuenta.
+    expect(ofertaDe(["leer_proyecto", "editar_hoja"], true).secciones.map((s) => s.id)).not.toContain("control");
+  });
+
+  it("el orden de las secciones no cambia", () => {
+    expect(seccionesDeLaObra(ofertaDe(["leer_proyecto", "revisar_paquete", "editar_hoja"], false)).map((s) => s.id)).toEqual([
+      "resumen",
+      "presupuesto",
+      "tramos",
+      "archivos",
+      "versiones",
+      "aprobaciones",
+      "mercado",
+      "control",
+    ]);
+  });
+});
