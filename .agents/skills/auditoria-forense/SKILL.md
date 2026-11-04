@@ -18,7 +18,7 @@ Esta guía especifica las reglas de auditoría y el mecanismo de parches no dest
 
 ### El Mecanismo de Capa Delta (Delta Patch):
 * El archivo original se almacena con su huella `SHA256` inmutable.
-* Cada corrección efectuada en la UI (ej. *"Adoptar costo real de cantera \$18.50/m³"*) se almacena como una entrada de parche:
+* Cada corrección efectuada en la UI (ej. *"Adoptar costo real de cantera \$18.50/m³"*) se almacena como una entrada de parche (las cifras y la cantera de este ejemplo son un **ejemplo construido**, PLAN_FUENTES C-1/C-2; el **valor nuevo lo calcula el sistema**, nunca la IA ni un texto libre):
   ```json
   {
     "id": "patch-550e8400",
