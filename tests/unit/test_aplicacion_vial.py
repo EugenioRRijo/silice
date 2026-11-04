@@ -288,3 +288,30 @@ def test_reglas_viales_de_una_version_con_tramos_heredados(sesion: Session) -> N
     (sin_receta,) = vial.reglas_viales(sesion, v2)
     assert sin_receta.formula_asfalto_pct is None
     assert v1 != v2
+
+
+# --- Tarea 16c: el ligante marcado manda sobre la regla del único comprado en t -------------------
+
+
+def _con_arena() -> Receta:
+    return Receta(
+        2,
+        "MZP-002",
+        (
+            Componente("AGP-001", D("0.80"), "t", "propio"),
+            Componente("ARE-001", D("0.15"), "t", "comprado"),
+            Componente("LIG-001", D("0.05"), "t", "comprado", es_ligante=True),
+        ),
+        "fórmula ficticia con arena comprada",
+        datetime(2026, 10, 1).date(),
+    )
+
+
+def test_el_ligante_marcado_da_la_formula_aunque_haya_otro_comprado_en_t() -> None:
+    # oráculo a mano: 0,05 t de asfalto por t de mezcla son 5 puntos, no los 15 de la arena
+    assert vial.formula_asfalto_de_receta(_con_arena(), None) == D("5")
+    assert vial.formula_asfalto_de_receta(_con_arena(), "LIG-001") == D("5")
+
+
+def test_la_marca_manda_sobre_el_codigo_dado() -> None:
+    assert vial.formula_asfalto_de_receta(_con_arena(), "ARE-001") == D("5")

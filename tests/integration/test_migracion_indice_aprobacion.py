@@ -76,7 +76,7 @@ def _instantanea_de_la_tabla(ruta: Path) -> dict:
 
 
 def test_la_revision_cuelga_de_la_eleccion_y_la_sigue_el_costo_de_produccion() -> None:
-    assert revision_head(Destino.INSTALACION) == "ins_0010_modulo"
+    assert revision_head(Destino.INSTALACION) == "ins_0011_receta_ligante"
 
 
 def test_subir_crea_la_tabla_con_las_columnas_del_plan(tmp_path: Path) -> None:
@@ -139,7 +139,7 @@ def test_una_base_que_ya_trae_la_tabla_se_adopta_sin_recrearla(tmp_path: Path) -
 
     aplicar_revisiones(ruta, Destino.INSTALACION)
 
-    assert leer_estado(ruta).revision == "ins_0010_modulo"
+    assert leer_estado(ruta).revision == "ins_0011_receta_ligante"
     with closing(sqlite3.connect(ruta)) as conexion:
         assert conexion.execute(f"SELECT caso, version FROM {TABLA}").fetchall() == [
             ("obra.db", "VIV-001")

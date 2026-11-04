@@ -62,6 +62,9 @@ class Componente:
     cantidad_por_t: Decimal
     unidad: str
     tipo: str
+    #: Marca opcional: este componente es el ligante (asfalto) de la mezcla. VR2 compara su
+    #: cantidad por t con el porcentaje de asfalto de los tramos (Tarea 16c).
+    es_ligante: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.codigo, str) or not self.codigo.strip():
@@ -82,6 +85,10 @@ class Componente:
         if self.tipo == "propio" and self.unidad != "t":
             raise ErrorDeReceta(
                 f"El componente propio {self.codigo} sale del inventario y va en t, no en l."
+            )
+        if self.es_ligante and self.unidad != "t":
+            raise ErrorDeReceta(
+                f"El ligante {self.codigo} va en toneladas por tonelada de mezcla, no en l."
             )
 
 
@@ -125,6 +132,11 @@ def registrar_receta(
     repetidos = sorted(c for c, veces in Counter(codigos).items() if veces > 1)
     if repetidos:
         raise ErrorDeReceta(f"Componente repetido en la receta: {', '.join(repetidos)}.")
+    ligantes = [c.codigo for c in componentes if c.es_ligante]
+    if len(ligantes) > 1:
+        raise ErrorDeReceta(
+            f"Marque un solo ligante en la receta; están marcados: {', '.join(ligantes)}."
+        )
     masa = sum((c.cantidad_por_t for c in componentes if c.unidad == "t"), CERO)
     if abs(masa - UNO) > TOLERANCIA_MASA:
         raise ErrorDeReceta(
@@ -149,6 +161,7 @@ def registrar_receta(
                 cantidad_por_t=c.cantidad_por_t,
                 unidad=c.unidad,
                 tipo=c.tipo,
+                es_ligante=c.es_ligante,
             )
         )
     sesion.flush()
@@ -176,7 +189,8 @@ def receta_vigente(sesion: Session, producto: str, fecha: date) -> Receta | None
         id=fila.id,
         producto=fila.producto,
         componentes=tuple(
-            Componente(c.codigo, c.cantidad_por_t, c.unidad, c.tipo) for c in componentes
+            Componente(c.codigo, c.cantidad_por_t, c.unidad, c.tipo, c.es_ligante)
+            for c in componentes
         ),
         fuente=fila.fuente,
         vigente_desde=fila.vigente_desde,

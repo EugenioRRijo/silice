@@ -1,965 +1,1304 @@
-# Manual de usuario — Sesión F.3
+# Manual de usuario de Sílice
 
-Guía de operación del sistema de generación y auditoría de Análisis de Precios Unitarios (APU)
-para el proyectista. No hace falta saber programar: todo se opera desde la interfaz web local.
-Qué es el sistema y por qué calcula como calcula está en [NORMAS.md](../NORMAS.md) y en la
-[ERS](ERS.md); este manual solo explica **cómo usarlo**.
+Este manual es para quien usa Sílice en la empresa: quien arma presupuestos, quien los revisa y quien
+administra el programa. No hace falta saber de computación. Va en el orden en que se hacen las cosas.
 
-> **Enmienda del 2026‑10‑21.** La interfaz ya no es la de Streamlit: es la interfaz de React que sirve la propia aplicación en `/app/` (un solo proceso, un solo puerto). Los nombres de pantallas, botones y pasos de este manual se escribieron para la interfaz anterior; donde difieran de lo que ve en pantalla, manda la pantalla y debe corregirse el manual (pendiente de repaso con la interfaz final). El Visor 3D del modelo se retiró de forma definitiva.
+Cómo leerlo:
 
-## 1. Instalación
+- Lo que está entre comillas angulares, como «Guardar versión…», es el texto exacto de un botón, una
+  pestaña o un mensaje en pantalla. Búsquelo tal cual.
+- Las cifras van con **coma decimal y punto de miles**: 2,5 o 1.234,56. Sílice las pide así.
+- **Ctrl+K** significa: mantenga apretada la tecla Ctrl y pulse la K.
+- Los ejemplos son inventados («Obra ficticia», «Vía Ficticia El Ensayo», la versión «VIV-001»). Ninguno
+  sale de una empresa ni de una obra de verdad.
 
-La forma normal de instalar Sílice es el instalador de Windows (`Silice-<versión>.exe`, o
-`Silice-<versión>-completo.exe` con la similitud de partidas): no necesita permisos de
-administrador ni internet. Compruebe su huella y su firma antes de ejecutarlo; todos los pasos, la
-red local, los respaldos y los problemas frecuentes están en el
-[manual de instalación](manual_instalacion.md).
+Contenido:
 
-Después de instalar, el acceso «Sílice» del menú Inicio abre la aplicación en el navegador. Para
-detenerla, cierre la ventana minimizada «Sílice» o use «Detener Sílice».
+1. Qué es Sílice y quién hace qué
+2. Entrar por primera vez
+3. Moverse por Sílice
+4. Crear una obra y armar su presupuesto
+5. La franja del paso: «Te falta» y «Siguiente paso»
+6. Versiones y aprobación
+7. Archivos y planos
+8. Mercado
+9. Precios de la empresa, índices del BCV y reajuste
+10. Obras viales y producción
+11. Control de obra
+12. Auditar un presupuesto
+13. El asistente de IA
+14. Problemas frecuentes
+15. Lo que cambió respecto del manual anterior
 
-> La instalación para desarrollo pasó al [manual
-  técnico](manual_tecnico.md#2-entorno-de-desarrollo).
+## 1. Qué es Sílice y quién hace qué
 
-> **Pendiente (primer ingreso):** en una instalación nueva, sin cuentas, la pantalla de acceso aún no permite crear el primer administrador con el código de instalación; el flujo de «primera vez» está pendiente. Véase [Primer arranque](manual_instalacion.md#primer-arranque) en el manual de instalación.
+Sílice calcula cuánto cuesta una obra, partida por partida, con el análisis de precio unitario (APU) de
+cada una. También revisa presupuestos hechos en Excel y dice lo que no cuadra. Todo se guarda en el
+equipo donde está instalado; nada sale de ahí sin que usted lo envíe.
 
-## 2. Puesta en marcha
+### 1.1 Instalar y abrir Sílice
 
-Con el instalador no hace falta sembrar nada a mano; Inicio ofrece el caso de demostración.
+Sílice se instala con el instalador de Windows `Silice-<versión>.exe` (o `Silice-<versión>-completo.exe`,
+que trae además la búsqueda de partidas parecidas). Los pasos de la instalación, la red local, los
+respaldos y la desinstalación están en el [manual de instalación](manual_instalacion.md). Este manual no
+los repite.
 
-1. **Sembrar la base de datos** (una sola vez; crea `data/apu.db` con los cinco APU del caso de
-   estudio):
+Para abrir Sílice:
 
-   ```
-   uv run python scripts/seed.py
-   ```
+1. En el menú Inicio de Windows, haga clic en «Sílice».
+2. Se abre una ventana minimizada: es el servidor de Sílice. No la cierre mientras trabaja.
+3. El navegador se abre solo con la pantalla de Sílice.
 
-   Los otros tres dominios tienen su propio catálogo, con precios publicados y fechados, cada uno en
-   su base (opcional; cada comando imprime el presupuesto del dominio y su informe de auditoría):
+Para cerrar Sílice, cierre esa ventana minimizada o use «Detener Sílice» del menú Inicio.
 
-   ```
-   uv run python scripts/seed_telecom.py      # data/apu_telecom.db    presupuestos ARENAZA
-   uv run python scripts/seed_industrial.py   # data/apu_industrial.db mantenimiento (precios MaPreX)
-   uv run python scripts/seed_sistemas.py     # data/apu_sistemas.db   puntos de función (tabulador CIV)
-   ```
+### 1.2 Los tres papeles: arma, revisa y administra
 
-   Para trabajar con uno de esos catálogos en la interfaz, el caso se abre una vez en **Inicio**
-   (lista *Casos de la carpeta de datos* y botón *Abrir este caso*; la base se copia antes a
-   `data/casos/` con `uv run python -m operacion adoptar <ruta> --nombre <caso>`); la barra lateral lo muestra bajo
-   **Caso abierto** y todas las pantallas trabajan sobre él (por defecto, `data/casos/silice.db`). También se
-   puede arrancar la interfaz con la variable `SILICE_CASO=<ruta>`. En la API, arrancar con la
-   variable de entorno `APU_BASE` apuntando a esa base (por ejemplo
-   `sqlite:///data/apu_telecom.db`). De dónde sale cada precio y con qué fecha: [manual técnico,
-   sección 8.1](manual_tecnico.md#81-catálogos-por-dominio).
+Cada cuenta tiene uno o más papeles (en pantalla, «roles»). En Administración se ven así:
 
-> **Nombres de las variables.** Desde la 0.6.0 se llaman `SILICE_CASO` y `SILICE_MODO_ENTREGA`.
-> Los nombres anteriores, `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, se aceptaron como alias hasta la
-> 0.6.0 y ya no se aceptan desde la 0.7.0 (`aplicacion/entorno.py`).
-
-   **Dejar lista la aplicación para componer partidas.** Una sola orden siembra
-   la línea base de la clínica, tres partidas de demostración (`DEMO-01-INST`, `DEMO-02-VALV`,
-   `DEMO-03-PRUEBA`) y el presupuesto de ejemplo `DEMO-001` con su informe de auditoría:
-
-   ```
-   uv run python scripts/seed_demo.py                                   # data/apu.db
-   uv run python scripts/seed_demo.py --db data/prueba_arenia.db --reiniciar
-   ```
-
-   Es idempotente: repetirla no duplica nada. **`--reiniciar` borra la base antes de sembrarla**:
-   úselo solo sobre una base de prueba, nunca sobre una con trabajo propio. Todo lo que siembra es
-   un **caso didáctico** (ejercicio académico, no obra ejecutada ni precios cotizados; ver
-   [NORMAS.md §1](../NORMAS.md)). Al terminar, la terminal muestra el total del presupuesto de
-   ejemplo y la línea `Auditoria: 3 hallazgo(s), CUMPLE`.
-
-2. **Abrir la interfaz** (se abre en el navegador, en el equipo local):
-
-   ```
-   uv run uvicorn api.main:app --host 127.0.0.1 --port 8501
-   ```
-
-   **Modo entrega.** Para mostrar solo la sección **Trabajo** (Inicio y las cinco pantallas que
-   usa quien presupuesta: catálogo, componer, elaborar, actualizar precios e histórico) y omitir la
-   sección **Investigacion** (escenarios, partidas similares y simulador), se arranca con
-   la variable `SILICE_MODO_ENTREGA` en `1` (exactamente `1`; cualquier otro valor la deja apagada):
-
-   ```
-   SILICE_MODO_ENTREGA=1 uv run uvicorn api.main:app --host 127.0.0.1 --port 8501                  # bash
-   $env:SILICE_MODO_ENTREGA = "1"; uv run uvicorn api.main:app --host 127.0.0.1 --port 8501        # PowerShell
-   ```
-
-3. **API HTTP** (opcional, para integrar con otro software):
-
-   ```
-   uv run uvicorn api.main:app
-   ```
-
-   La documentación interactiva queda en `http://127.0.0.1:8000/docs`. Todos los montos viajan
-   como **texto** (`"1586.61"`), nunca como número JSON: así no se pierde precisión decimal.
-
-## 3. Las pantallas
-
-La interfaz tiene once pantallas en dos secciones del **menú superior** (desde el sprint final
-el menú va arriba, no a la izquierda), **Trabajo** e **Investigacion** (en modo entrega, solo
-Trabajo; sección 2). Bajo el menú, en todas las pantallas, está la **barra de herramientas**
-(sección 3.0 bis). Se abre en **Inicio**. Cada pantalla
-muestra su título; las cinco que implementan un caso de uso de la ERS (componer, elaborar,
-actualizar precios, escenarios y similares) muestran además su código como subtítulo. El Inicio y
-el histórico, aunque la tabla los asocie a UC‑12 y UC‑02, no lo muestran. La barra lateral
-muestra el caso abierto y su estado. Todas presentan los montos con dos decimales, pero **ningún
-cálculo interno redondea**: el redondeo es solo de presentación.
-
-| Sección | Pantalla | Caso de uso | Qué hace |
+| Papel | Cómo aparece en Administración | Para quién | Ejemplo en este manual |
 |---|---|---|---|
-| Trabajo | **Inicio** | UC‑12 | Abrir el caso, cargar el de demostración si está vacío y elegir un recorrido guiado (sección 3.0) |
-| Trabajo | **Catalogo de partidas e insumos** | consulta | Partidas e insumos con su precio vigente |
-| Trabajo | **Componer una partida** | UC‑10 / UC‑11 | Armar a mano una partida nueva o editar una existente, presupuestarla y exportarla (sección 3.7) |
-| Trabajo | **Archivos y planos › Cargar cómputo** (antes «Elaborar un presupuesto») | UC‑01 | Extraer las cantidades de un cómputo `.csv` por tipo de obra, valorarlas y llevarlas al presupuesto de la obra (sección 3.1) |
-| Trabajo | **Hoja del proyecto** | UC‑13 a UC‑16 | Describir el espacio en tablas o importar un plano, editar APU, precios y parámetros, ver el punto de equilibrio, guardar versiones con fuente, cotizar y exportar el Excel (sección 3.8) |
-| Trabajo | **Actualizar precios** | UC‑02 | Cargar una lista de precios nueva (CSV/XLSX) y revalorar un presupuesto guardado |
-| Trabajo | **Mercado › Histórico de precios** (antes una pantalla suelta) | UC‑02 | Cambios de precio registrados, con filtros |
-| Investigacion | **Escenarios de sensibilidad** | UC‑08 | Recalcular un presupuesto bajo supuestos («¿y si…?») sin alterarlo |
-| Trabajo | **Presupuesto › Agregar partida › Buscar parecidas** (antes «Partidas similares») | UC‑03 | Buscar partidas parecidas a lo escrito para reutilizar su desglose, sin salir de la obra |
-| Investigacion | **Simulador de listas** | apoyo | Generar listas de precios de prueba, deterministas |
+| Arma | «arma presupuestos (arma)» | Quien arma los presupuestos de las obras | Ana |
+| Revisa | «revisa paquetes (revisa)» | Quien revisa los presupuestos y da su dictamen | Rita |
+| Administra | «administra la instalación (administrador)» | Quien crea las cuentas y cuida el programa | admin |
 
-Con `SILICE_CASO=<ruta>` la aplicación fija ese caso sin tener que abrirlo en el Inicio (la
-aplicación sigue arrancando en el Inicio).
+Una cuenta puede tener varios papeles. Si alguien trabaja solo, puede ser a la vez administrador y arma.
 
-**Casos de uso sin pantalla propia.** La tabla cubre los casos de uso que tienen pantalla; los
-demás se operan por otra capa (la correspondencia completa entre caso de uso y capa está en la
-[ERS §3.1](ERS.md)). UC‑04, recalcular las cantidades ante un cambio de dimensiones, existe en el
-adaptador civil (`adapters/civil/recalculo.py`) y no tiene pantalla ni ruta de la API. UC‑05 se ve
-en el informe de auditoría que acompaña a todo presupuesto elaborado (sección 4). El presupuesto
-de un tercero se importa solo por la API, sin pantalla (RF‑24, desde la fase C6; sección 3.4 bis).
-UC‑01 también tiene un paso previo: crear el proyecto sobre el que luego se elabora o se importa.
-Se hace con `POST /proyectos` en la API y, desde el sprint final, con la herramienta **Proyecto**
-de la barra superior (RF‑63, sección 3.0 bis); las dos rechazan el nombre vacío o repetido.
-Los rendimientos medidos de UC‑06 se registran por la API (sección 3.4), y las métricas y el
-contraste completo de UC‑07 se generan con un script (sección 3.5); de los dos, la pantalla
-**Componer una partida** ofrece una parte como ayudas: propone el rendimiento del histórico,
-advierte si se aparta y contrasta el precio con la estimación por reglas (sección 3.7); **Cargar
-cómputo** (antes «Elaborar un presupuesto») propone también el rendimiento del histórico cuando a una
-partida le falta (sección 3.1, paso 6). En UC‑01, el `.ifc` civil entra por la API (sección 3.1).
+### 1.3 Qué ve cada papel
 
-### 3.0 Inicio: el caso abierto y los recorridos guiados (UC‑12)
+**En la barra lateral, dentro de cada obra:**
 
-1. **El caso.** La lista *Casos de la carpeta de datos* y el botón *Abrir este caso* fijan la base con que trabajan
-   todas las pantallas durante la sesión. Los casos viven en la carpeta de datos (`data/casos/` en desarrollo): se
-   elige uno de la lista, se crea con un nombre (*Crear o subir un caso*) o se sube un `.db`. No hay campo con la
-   ruta: una ruta de red, absoluta o con `..` se rechaza sin crear nada. Si el caso es de una versión anterior,
-   Sílice lo respalda y lo actualiza al abrirlo.
-2. **El estado vacío.** Si el caso no existe todavía o no tiene partidas, el Inicio lo dice y
-   ofrece **Cargar el caso de demostracion** (la línea base de la clínica, la demostración
-   didáctica y su presupuesto auditado). La comprobación es solo sobre las **partidas**: una base
-   que tenga insumos o listas de precios pero ninguna partida cuenta como vacía y también se le
-   ofrece la carga. La carga **no borra nada**: nunca usa el reinicio de `scripts/seed_demo.py`, y
-   repetirla no duplica lo sembrado; lo que ya hubiera en la base se conserva junto a lo
-   sembrado. Si el caso ya tiene partidas, no se ofrece.
-3. **Los recorridos.** Bajo *Que quiere hacer?* hay tres: *Ver la demostracion auditada*, *Armar
-   un presupuesto* y *Actualizar precios*. Al elegir uno, el Inicio lista sus pasos; en cada
-   pantalla del recorrido la barra lateral dice en qué paso está, qué hacer y cómo saber que
-   terminó, y al pie aparece el botón **Siguiente: <paso>**, salvo en el último paso.
+| Sección de la obra | Arma | Revisa | Administra |
+|---|---|---|---|
+| «Resumen» | Sí | Sí | No |
+| «Presupuesto» | Sí, y lo edita | Sí, en solo lectura | No |
+| «Tramos» (solo con el módulo vial encendido) | Sí | No | No |
+| «Archivos y planos» | Sí, y sube archivos | Sí, en solo lectura | No |
+| «Versiones» | Sí, y restaura | Sí, en solo lectura | No |
+| «Aprobaciones» | Sí | Sí | No |
+| «Mercado» | Sí, las cuatro pestañas | Sí, solo «Histórico de precios» y «Cotizaciones de la obra» | No |
+| «Control de obra» | Sí | No | No |
 
-### 3.0 bis La barra de herramientas y los proyectos (RF‑60, RF‑63)
+Quien solo administra no ve la zona «Obras»: su trabajo está en la zona «Empresa».
 
-Debajo del menú superior, y en el mismo lugar de todas las pantallas, hay una fila de herramientas.
-La barra lateral queda para lo que ya mostraba: el caso abierto y el paso del recorrido activo.
+**En la zona «Empresa» de la barra lateral:**
 
-| Herramienta | Qué hace |
+| Entrada | Arma | Revisa | Administra |
+|---|---|---|---|
+| «Precios y catálogo» | Sí | Sí | No |
+| «Auditar un presupuesto» | Sí | Sí | Entra, pero no puede auditar |
+| «Producción» (solo con el módulo de producción encendido) | Sí | No | Sí |
+| «Empresa y personas» | No | No | Sí |
+| «Ayuda» | Sí | Sí | Sí |
+
+**Solo lectura.** Quien revisa ve el Presupuesto, Archivos y planos, Versiones y Mercado sin los botones
+que cambian algo. Esos botones no aparecen en gris: simplemente no están. En el Presupuesto se lee
+«Está viendo este presupuesto en solo lectura.».
+
+**Pantallas que se abren con el buscador.** Algunas pantallas no están en la barra lateral. Se abren con
+Ctrl+K escribiendo su nombre (sección 3.3):
+
+| Papel | Pantallas que encuentra con Ctrl+K |
 |---|---|
-| **Proyecto** | Muestra el caso abierto, el proyecto abierto y su versión vigente. Permite **crear** un proyecto nuevo y **abrir** uno del caso. |
-| **Importar plano** | Lleva a la pestaña *Espacio y metrajes* de la hoja del proyecto con el bloque **Importar plano (DXF o IFC)** abierto (sección 3.8, «Importar un plano», UC‑14). La herramienta solo falta si la copia del programa está incompleta (no trae el paquete de importación de planos). Lo que falta de los componentes opcionales para leer el archivo se avisa al pulsar **Leer plano**, con el comando para instalarlo. |
-| **Precios** | Lleva a la pestaña *Precios* de la hoja del proyecto: el origen de cada precio y las cotizaciones. |
-| **Auditar** | Resume el informe de auditoría de la versión vigente del proyecto abierto: cuántos hallazgos y de qué severidad. El sistema audita siempre; el botón solo lo muestra. |
-| **Guardar version** | Lleva a la hoja del proyecto con el panel **Guardar version y exportar a Excel** abierto: ahí se escriben la fuente y el responsable y se guarda (sección 3.8). |
-| **Exportar Excel** | Lleva a la hoja del proyecto y prepara el libro de Excel de la hoja (no el de *Elaborar un presupuesto*); se descarga con **Descargar Excel** en el mismo panel. Archivo: `hoja_<código de la versión>.xlsx`. |
-| **Recorrido guiado** | Sin recorrido elegido, lleva al Inicio para elegir uno. Con uno elegido dice **Retomar: <recorrido>** y lleva a su paso siguiente (o a su primer paso si usted está en otra pantalla). |
+| Arma | «Libro de la empresa», «Historial de auditorías», «Tablero del proyecto», «Entregar paquete», «Componer una partida», «Actualizar precios», «Reajuste de precios», «Simulador de listas», «Escenarios de sensibilidad», «Inicio de producción», «Costos del período», «Receta de la planta», «Producir mezcla», «Costo por tonelada» y «Riesgo de la obra» |
+| Revisa | «Libro de la empresa», «Revisar un paquete», «Historial de auditorías», «Tablero del proyecto» y «Riesgo de la obra» |
+| Administra | «Precios de la empresa», «Índices del BCV», las cinco de producción y «Riesgo de la obra» |
 
-**Crear un proyecto.** Abra el desplegable **Proyecto**, escriba el nombre en *Nombre del proyecto
-nuevo* y pulse **Crear proyecto**. El nombre debe ser **único en el caso** y **no vacío**: un nombre
-en blanco se rechaza con «Escriba un nombre para el proyecto: no puede quedar vacio», y uno que ya
-existe (aunque cambien las mayúsculas o los espacios sobrantes) con «Ya existe un proyecto llamado
-…». Si el caso no existe todavía, el mensaje lo dice y no crea el archivo: ábralo o siémbrelo antes
-en el Inicio. Al crearlo, el proyecto queda abierto; un proyecto nuevo aún no tiene versión
-vigente («sin version guardada»), y la hoja del proyecto lo trata como un proyecto sin versiones:
-se describe el espacio o se importa un plano y se guarda la **primera versión** con **Guardar
-primera versión** (sección 3.8, «Guardar la primera versión»).
+Las de producción necesitan el módulo de producción encendido y «Riesgo de la obra», el módulo de
+riesgo. «Simulador de listas» y «Escenarios de sensibilidad» desaparecen si la instalación está en modo
+entrega (sección 14.3).
 
-**Abrir un proyecto.** En el mismo desplegable, elija uno en *Abrir un proyecto del caso* y pulse
-**Abrir**. La **versión vigente** es la última versión guardada del proyecto que no se descartó
-(la que marca *vigente* el historial de la hoja). Al abrir un proyecto en la barra, la **Hoja del
-proyecto** lo muestra abierto en su versión vigente.
+### 1.4 Los módulos que se encienden y se apagan
 
-### 3.1 Elaborar un presupuesto (UC‑01)
+Hay cuatro partes del programa que el administrador puede apagar si la empresa no las usa: «Producción»,
+«Vial», «Edificación» y «Riesgo». Vienen encendidas. Apagar una no borra nada: deja de ofrecerse y, al
+encenderla otra vez, todo vuelve como estaba.
 
-> **Enmienda del 2026‑11‑03 (cierre del rediseño F4).** La pantalla «Elaborar un presupuesto» ya no existe: su
-> flujo vive en **Archivos y planos › Subir plano o cómputo**, que con un `.csv` abre **Cargar cómputo**. Se elige el
-> tipo de obra del archivo (civil por omisión) y, en civil, los cuatro códigos de partida; **Extraer cómputo** muestra la
-> tabla y **Llevar al presupuesto** valora con la moneda y la lista de la carpeta y, si no quedan rendimientos por
-> declarar ni pendientes, lleva las partidas al borrador de la obra (se ven en **Presupuesto › Partidas**). Ya no se
-> escriben a mano el código, la moneda ni la fecha, ni se ve el plan de trabajo, el informe o el Excel de lo elaborado:
-> eso se hace en el Presupuesto de la obra. Los pasos de abajo describen la pantalla anterior.
+Si abre una pantalla de un módulo apagado verá «Apagada» y «Esta función está apagada en esta
+instalación. Quien administra puede encenderla en Administración.». Cómo se encienden: sección 2.7.
 
-1. Elegir el **dominio** (civil, telecom, industrial o sistemas) y el **archivo fuente**. Hay
-   muestras listas en `data/samples/` (sección 6).
-2. El adaptador del dominio extrae el **cómputo**: una tabla de cantidades donde cada fila
-   declara de dónde salió (`origen_id`) y, si vino de una regla paramétrica, la expresión que la
-   produjo. En esta pantalla todos los dominios se cargan en **CSV**; en el civil, el CSV pide
-   asociar cada tipo de elemento a una partida del catálogo. El `.ifc`, que trae sus códigos de
-   partida en el propio modelo, no entra por esta pantalla: entra por la API
-   (`POST /computos/civil`); el **Visor 3D del modelo** se retiró (2026-10-19; definitivo desde el 2026-10-21).
+## 2. Entrar por primera vez
 
-   **Si el archivo no se puede leer, no se presupuesta nada** y el mensaje nombra el archivo (sin
-   la carpeta) y, si el problema es de una fila, la fila y la columna. Los mensajes son de esta
-   forma:
-   - *el archivo 'x.csv' es ilegible: no es un CSV de texto en UTF-8* (un binario, o un texto con
-     otra codificación);
-   - *el archivo 'x.csv' no es una fuente del dominio civil: faltan las columnas [...]* (la muestra
-     de otro dominio, o un CSV al que le faltan columnas de su formato);
-   - *el archivo 'x.csv', fila 'T-01': la columna 'a' esta vacia o no es numerica: ''* (una celda
-     mal escrita; en telecom el mensaje dice además la línea del archivo);
-   - para un `.ifc` (por la API o en el visor): *el archivo 'x.ifc' es ilegible: no es un modelo
-     IFC (...)*, o *es ilegible como modelo IFC:* seguido del motivo (su cabecera STEP no se pudo
-     interpretar, o declara un esquema IFC que `ifcopenshell` no soporta).
+### 2.1 Crear el primer administrador con el código de instalación
 
-   **Límite de los `.ifc`.** Un `.ifc` con la cabecera correcta pero **truncado o con basura** en
-   el cuerpo no se rechaza: `ifcopenshell` lo abre sin error y el cómputo sale vacío (o solo con
-   los elementos que alcanzó a leer). Si un modelo que debería traer elementos da un cómputo vacío,
-   revise el archivo.
-3. Al presupuestar (**Elaborar presupuesto**), el sistema calcula cada precio unitario con la
-   estructura venezolana (prestaciones, bono, administración y utilidad en cascada), arma el total
-   y la curva de inversión **y audita el resultado siempre**: el informe aparece sin pedirlo, con
-   el total del presupuesto, el **resumen por severidad** (cuántos hallazgos de cada severidad, o
-   «Sin hallazgos»), las **reglas evaluadas** con su cuenta (sección 4) y el botón **Exportar a
-   Excel**.
-4. **Ítems sin partida (UC‑01 3a).** Si un ítem del cómputo tiene un código que el catálogo no
-   tiene, el presupuesto **se elabora igual** con los demás y ese ítem queda **pendiente**: el
-   informe lo declara con un hallazgo `PENDIENTE` y la pantalla lo lista en el bloque
-   **Pendientes** (origen, código y descripción). **Después** de elaborar, la pantalla propone para
-   cada pendiente las partidas del catálogo más parecidas a su descripción, con su puntaje de
-   similitud. Si se elige una en el selector *Propuesta para <origen>* y se pulsa **Aplicar y
-   volver a elaborar**, el ítem pasa a esa partida y el presupuesto se elabora de nuevo, ya sin ese
-   pendiente. Si no se acepta ninguna, el ítem sigue pendiente y el informe lo sigue declarando.
-   Si no se pudieron calcular las propuestas, el pendiente se lista igual, sin selector, y debajo
-   aparece una leyenda con el tipo y el mensaje de la falla: `ImportError: …` cuando falta el extra
-   `ml`; `OSError: …` cuando el modelo de lenguaje no se pudo descargar o leer (por ejemplo, la
-   primera vez y sin red).
-5. **Plan de trabajo (UC‑01, paso 6).** Debajo del informe está la tabla **Plan de trabajo**, con
-   tres columnas: `periodo` (la etiqueta del período, por ejemplo «Semana 1»), `codigo_partida` y
-   `fraccion` (la parte de la partida que se ejecuta en ese período, con punto decimal: `0.5`, no
-   `0,5`). Cada fila dice qué fracción de una partida va en un período, y **las fracciones de cada
-   partida suman 1**. La primera elaboración usa el plan por defecto, una partida por día, y la
-   tabla viene precargada con él. Para repartir de otro modo, se edita la tabla (se pueden añadir
-   y quitar filas) y se pulsa **Aplicar plan y volver a elaborar**: el presupuesto se elabora con
-   ese plan, la curva de inversión sale de él (hoja *Curva* del Excel) y las reglas R2 y R7 lo
-   auditan. Si alguna partida no suma exactamente 1, si el plan nombra una partida que el
-   presupuesto no tiene, o si una fila está a medias o su fracción no es un número, la pantalla lo
-   dice (con el número de fila cuando es de una fila) y deja a la vista el presupuesto anterior.
-   Ojo: **al volver a elaborar sin el plan** (el botón **Elaborar presupuesto**, aceptar una
-   propuesta del paso 4 o registrar un rendimiento del paso 6), el plan vuelve a una partida por
-   día; si con eso se descartó un plan editado, la tabla lo avisa y hay que volver a aplicarlo.
-6. **Rendimientos por declarar (UC‑01, flujo 3b).** Si una partida no tiene un rendimiento
-   **estimado** vigente a la fecha del presupuesto (uno registrado con esa fecha o antes), el
-   presupuesto no se elabora y aparece el bloque **Rendimientos por declarar**: para cada partida,
-   el rendimiento que propone el histórico (el medido más reciente o, si no hay, el último
-   estimado), con su tipo y su fecha, y la dispersión del histórico (observaciones, cuántas
-   medidas y cuántas estimadas, media y rango). El selector *Tipo declarado del rendimiento de
-   <partida>* **no trae ninguna opción marcada**: hay que declarar si es estimado o medido y pulsar
-   **Registrar y volver a elaborar**.
-   - Declarado **estimado**, el propuesto se registra en el catálogo con la fecha del presupuesto
-     (sus condiciones dicen de dónde salió) y el presupuesto se elabora; si quedan otras partidas
-     por declarar, el bloque pasa a la siguiente.
-   - Declarado **medido**, no se registra nada: la elaboración solo usa rendimientos estimados, y
-     la pantalla lo explica. Para usar ese valor, declárelo estimado.
-   - Si la partida no tiene ningún rendimiento en el histórico, no hay propuesta: la pantalla remite
-     a **Componer una partida** para declararlo con sus condiciones.
-   - La propuesta sale de todo el histórico de la partida, sin mirar la fecha del presupuesto: con
-     un presupuesto de fecha pasada, puede proponer un rendimiento posterior a esa fecha.
-   - Si lo que falta es la **lista de precios** vigente a esa fecha (o un precio), el bloque no
-     aparece: la pantalla muestra ese error.
+La primera vez que se abre Sílice no hay ninguna cuenta. Sílice muestra la pantalla «Bienvenida a
+Sílice» y pide un código de un solo uso.
 
-### 3.2 Actualizar precios masivamente (UC‑02)
+**Paso 1: busque el código de instalación.** Está en dos sitios:
 
-1. Preparar la lista nueva como CSV o XLSX con columnas `tipo,insumo,unidad,precio`
-   (`tipo` ∈ material, equipo, mano_obra; ejemplo en `data/samples/precios/`).
-2. Cargarla en la página: el sistema valida el archivo (si falta una columna o un precio no es
-   un número, lo dice con archivo y fila), detecta qué insumos cambiaron y recalcula **todos**
-   los APU afectados sin editar ninguna composición.
+- En el Bloc de notas que Sílice abrió solo la primera vez, y en la ventana del servidor (la ventana
+  minimizada; búsquela en la barra de tareas y busque la línea «Código de instalación»).
+- En el archivo `%LOCALAPPDATA%\Silice\datos\codigo_instalacion.txt`.
 
-   **Dar de alta insumos desconocidos (UC‑02, flujo 2a).** Si el archivo trae insumos que el
-   catálogo no conoce con ninguna unidad, al subirlo la pantalla avisa cuántos son y los nombra, y
-   el campo **Dar de alta** los ofrece, **con ninguno elegido**. Elija antes de revalorar los que
-   quiera crear: cada uno recibe un código nuevo (`MAT-NNN`, `EQU-NNN` o `MO-NNN`) y su precio entra
-   **solo en la lista nueva**. Los demás se ignoran y no intervienen en el recálculo. Las filas
-   cuyo insumo ya está con otra unidad no se ofrecen (flujo 2b: se rechazan). Límites: si elige
-   dos filas del mismo insumo con precios distintos, el sistema lo rechaza y no escribe nada; y
-   dos materiales con la misma descripción y unidades distintas se ofrecen los dos y, si se eligen
-   ambos, quedan dos insumos homónimos con distinta unidad. Si el archivo o el caso no se pueden
-   leer, el campo no aparece y el motivo sale al pulsar **Revalorar presupuesto**. Excepción conocida: un archivo `.xlsx` que no es un libro de Excel (corrupto o de otro formato con esa extensión) todavía no se captura y la página muestra el error de Python; conviene comprobar que el libro abre en Excel antes de subirlo.
-3. Revisar el **comparativo** (precio unitario antes/después por partida, incidencia en el
-   total) y el informe de auditoría de la versión nueva. Si algún insumo cambió de precio, la
-   versión nueva ya quedó guardada con el código de la barra lateral; si ninguno cambió, no se
-   guarda nada (UC‑02, flujo 3a; en ese caso **tampoco se guardan las altas elegidas**, porque un
-   alta no es un cambio de precio: la página lo dice y las nombra). Debajo salen **tres avisos
-   separados**: los insumos *dados de alta*, los *ignorados* (flujo 2a) y los *rechazados*
-   (flujo 2b, otra unidad). El informe de la versión nueva puede traer hallazgos `ATIPICO`
-   (ADVERTENCIA): precios de la lista nueva que se apartan del histórico de variaciones y que usa
-   alguna partida del presupuesto. Solo aparecen si está instalado el extra `ml` y el histórico
-   tiene al menos 8 variaciones; en otro caso no se marca ninguno y la pantalla no avisa de que no
-   se evaluaron. Cada cambio queda en el histórico con precio anterior, nuevo,
-   variación y fecha. Los ítems pendientes del presupuesto base (UC‑01 3a) pasan a la versión
-   nueva como pendientes, aunque la lista nueva traiga su partida, y el informe los vuelve a
-   declarar: valorarlos es UC‑01 (sección 3.1), no UC‑02.
-4. **Descartar la versión (UC‑02, flujo 7a).** Debajo del informe aparece el botón **Descartar
-   version**, solo si la última revaloración de esta sesión guardó una versión nueva: no aparece
-   tras el flujo 3a ni para versiones guardadas antes. El botón **marca** la versión
-   como descartada; no la borra: sigue guardada y se puede cargar como documento, y su historial
-   de cambios de precio se conserva. La marca vale para la base del caso donde se guardó la
-   versión, aunque después se abra otro caso. Tras pulsarlo, la página dice que la versión quedó
-   descartada y el botón desaparece.
+El código tiene 20 caracteres en grupos de cuatro, como `XXXX-XXXX-XXXX-XXXX-XXXX`: letras de la A a la
+Z y cifras del 2 al 7. Cópielo y péguelo tal cual.
 
-   Límites: la marca **no se deshace** desde la interfaz, y las demás páginas (histórico,
-   escenarios) no la muestran. Solo se descarta la última versión guardada del proyecto, nunca
-   el primer presupuesto, y una sola vez; en otro caso la página muestra el motivo. El sistema no
-   guarda de qué presupuesto salió una versión, así que no distingue una versión revalorada de un
-   segundo presupuesto elaborado aparte en el mismo proyecto: por eso el botón solo se ofrece para
-   la versión que acaba de guardar esta página.
+Si no encuentra el archivo: cierre Sílice y ábralo otra vez; se crea un código nuevo al arrancar.
 
-La decisión de guardar se toma con el número de **insumos afectados**, no con la variación del
-total: una lista puede cambiar insumos que este presupuesto no usa (variación 0) y el cambio
-sigue siendo real.
+**Paso 2: cree la cuenta del administrador.** Llene, en este orden:
 
-### 3.3 Reutilizar partidas (UC‑03)
+1. «Código de instalación»: pegue el código.
+2. «Su nombre»: así aparecerá en lo que usted guarde.
+3. «Usuario»: de 3 a 40 letras minúsculas, números, punto o guion. Por ejemplo `admin`.
+4. «Contraseña» y «Repita la contraseña». Reglas, tal como las muestra el recuadro «Cómo debe ser la
+   contraseña»:
+   - De 10 a 128 caracteres. Una frase larga es mejor que una palabra con símbolos.
+   - No puede ser igual a su usuario ni una contraseña muy conocida.
+   - No hace falta mezclar mayúsculas, números o símbolos.
+   - Sílice no puede recuperarla: si la olvida, un administrador tiene que restablecerla.
+5. La casilla «Usaré esta cuenta también para armar presupuestos». Márquela si usted trabaja solo. Si
+   no, deje la casilla vacía y después cree otra cuenta con el papel «arma».
+6. Pulse «Crear la cuenta y entrar».
 
-Escribir la descripción en texto libre («excavación de zanja a mano», por ejemplo). El sistema
-propone hasta **tres** partidas del catálogo con su puntaje de similitud (0 a 1; por debajo de
-0,5 no propone). Al desplegar una propuesta se ven su desglose completo, su rendimiento y la
-referencia a la partida de origen con el puntaje que la propuso. Si el desglose usa un insumo sin
-precio en la lista vigente, la propuesta lo avisa («Desglose incompleto en la lista vigente…»,
-con el insumo y la partida) y no muestra sus tablas (UC‑03, flujo 4a).
+El código se borra al usarse y no sirve otra vez. Sílice entra con la cuenta nueva.
 
-### 3.4 Rendimientos reales de obra (UC‑06)
+### 2.2 Las cuentas que crea el administrador
 
-Se registran por la API (`POST /ejecuciones` y las rutas de rendimientos): un rendimiento
-**medido** exige la referencia a la ejecución de obra de la que salió — sin referencia, se
-rechaza. Al consultar una partida, el sistema devuelve su histórico con dispersión (número de
-observaciones, media, mínimo, máximo) y propone el valor más defendible. Si el valor introducido
-se aparta del comportamiento observado, el sistema **advierte pero no impide** el registro.
-`POST /partidas/{codigo}/rendimientos` acepta además el campo opcional `justificacion` (UC‑06,
-flujo 4a): con advertencia, se registra ligada al rendimiento de esa misma petición y la respuesta
-la devuelve; sin advertencia se ignora y la respuesta trae `justificacion: null`; con advertencia y
-en blanco, responde 422 y no registra nada. Ninguna ruta ni pantalla la consulta después.
+El administrador crea una cuenta para cada persona:
 
-### 3.4 bis Importar el presupuesto de un tercero (UC‑05, RF‑24)
+1. En la barra lateral, zona «Empresa», haga clic en «Empresa y personas». Se abre «Administración» en la
+   pestaña «Cuentas».
+2. En «Crear una cuenta» escriba:
+   - «Usuario»: minúsculas, sin espacios, de 3 a 40 caracteres (por ejemplo `ana`).
+   - «Nombre de la persona».
+   - En «Qué puede hacer», marque los papeles: «arma presupuestos (arma)», «revisa paquetes (revisa)» o
+     «administra la instalación (administrador)».
+   - «Contraseña temporal»: de 10 a 128 caracteres. Anótela y entréguela en persona.
+3. Pulse «Crear la cuenta». Verá «Cuenta creada. La persona deberá cambiar la contraseña al entrar.».
 
-Solo por la API, sin pantalla: primero crear el proyecto (`POST /proyectos`, con `nombre`,
-`descripcion` y `dominio` opcionales) y luego `POST /presupuestos/importar` con el libro XLSX y el
-nombre del proyecto. El libro lleva las hojas `Datos`, `Presupuesto`, `APU`, `Insumos` y, opcional,
-`Curva` (formato en el [manual técnico §9](manual_tecnico.md)). El sistema lo **valora con su motor**
-sobre los APU del archivo (no lee los precios unitarios del autor), audita siempre las siete
-reglas conservando las unidades que escribió el autor y guarda el presupuesto con su informe; el
-informe y el libro salen por `GET /presupuestos/{codigo}/informe` y `…/excel`. Si algo falla no
-queda nada escrito. Efecto que conviene saber: los APU del tercero quedan en el catálogo y la lista
-«Importada: <archivo>» pasa a ser la lista vigente desde la fecha del presupuesto.
+Si marca «arma» y «revisa» en la misma cuenta, Sílice avisa: «Esta cuenta podrá revisar paquetes que ella
+misma armó; la vista de revisión lo indicará.».
 
-### 3.5 Contraste con el mercado (UC‑07)
+En «Cambiar una cuenta» el administrador elige la cuenta en «Cuenta que va a cambiar» y puede:
 
-`uv run python scripts/generar_resultados_ml.py` regenera [resultados_ml.md](resultados_ml.md):
-la técnica de estimación que corresponde a los datos disponibles (hoy: sistema de reglas,
-declarado como limitación), sus métricas (MAPE, RMSE, R²) y el contraste de cada precio
-construido contra el estimado en el rango de la clase 3 de AACE.
+- «Guardar roles»: cambia los papeles. Las sesiones de esa persona se cierran.
+- «Desactivar» (o «Reactivar»): la persona deja de entrar; sus registros se conservan.
+- «Desbloquear»: deja entrar de nuevo a una cuenta bloqueada por intentos fallidos.
+- «Restablecer la contraseña»: escribe una «Contraseña temporal nueva» y la persona tendrá que cambiarla.
 
-### 3.6 Escenarios de sensibilidad (UC‑08)
+Siempre debe quedar un administrador activo. Si no, Sílice dice «Debe quedar al menos un administrador
+activo.».
 
-En la página **Escenarios de sensibilidad** (UC‑08): elegir el presupuesto base, darle nombre al
-escenario y declarar los supuestos — los cuatro parámetros de costo (precargados con los del base)
-y/o una tabla de precios de ensayo por insumo (lo no mencionado conserva su precio vigente). Cada
-escenario generado se suma a la tabla comparativa: el base en la primera fila y una fila por
-escenario con su total y su variación absoluta y porcentual, descargable en CSV con los valores
-exactos. El detalle por partida de cada escenario se despliega debajo, con el número de hallazgos
-de la auditoría del escenario (que se genera siempre) y los insumos variados.
+### 2.3 Entrar cada día
 
-Límites: si el presupuesto base tiene ítems pendientes (UC‑01 3a), la página los lista en un aviso
-al abrirlo. Los escenarios solo recalculan los renglones valorados: esos ítems no suman al total
-del base ni al de ningún escenario, y la leyenda «Hallazgos de la auditoria del escenario: N» no
-los cuenta, porque la auditoría del escenario no declara `PENDIENTE`. Es una limitación declarada:
-que ese informe los declarase exigiría cambiar el núcleo, y la fase C4 del cierre no lo autoriza
-(ruling C4‑3 de la [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
+1. Abra Sílice. Verá la pantalla «Entrar».
+2. Escriba su «Usuario» y su «Contraseña».
+3. Pulse «Entrar».
 
-El presupuesto base **nunca** se altera y ningún escenario se guarda: al cambiar de presupuesto
-la comparación se descarta. Para convertir un escenario en presupuesto vigente se usa la
-actualización de precios (UC‑02) con la lista correspondiente. Por software, la misma operación
-está en `POST /presupuestos/{codigo}/escenarios` (API) y en `core.budget.generar_escenario`
-(Python). La respuesta de la API lista los ítems pendientes del base en `pendientes_base`, cada uno
-con `codigo_partida`, `descripcion`, `unidad`, `cantidad` (texto decimal exacto) y `origen_id`, sin
-propuestas; la lista queda vacía si el base no tiene pendientes.
+Si se equivoca, verá «Usuario o contraseña incorrectos.». Tras cinco intentos fallidos la cuenta se
+bloquea 15 minutos (sección 14).
 
-### 3.7 Componer o editar una partida a mano (UC‑10 y UC‑11)
+Si la sesión vence mientras trabaja, Sílice vuelve a «Entrar» con el aviso «Su sesión venció. Entre de
+nuevo para seguir.».
 
-La página **Componer una partida** (UC‑10 / UC‑11) es el recorrido completo de quien presupuesta:
-arma el análisis de precio de una partida, lo guarda en el catálogo, le asigna cantidades de obra y
-sale con el presupuesto auditado y su Excel, sin cambiar de pantalla. Los casos de uso están en la
-[ERS](ERS.md) (UC‑10 componer, UC‑11 editar; RF‑33 a RF‑35) y el diseño en la spec del
-prototipo. Para practicarlo paso
-a paso con resultados esperados está el [guion de prueba manual](guion_prueba_arenia.md).
+### 2.4 La primera entrada con una contraseña temporal
 
-1. **Cabecera.** Código, descripción y unidad de la partida, su dominio (civil por defecto) y la
-   fecha, que decide qué lista de precios está vigente. Si el código ya existe en el catálogo, lo
-   que se guarde **edita** esa partida (UC‑11); si no existe, la **crea** (UC‑10).
-2. **Las tres tablas de insumos: materiales, equipos y mano de obra.** Se añaden filas al pie de
-   cada tabla y se escribe en las celdas:
-   - *Materiales:* descripción, unidad, **consumo por unidad** de partida (incluye el desperdicio:
-     1,05 si se pierde el 5 %) y precio.
-   - *Equipos:* descripción, cantidad, precio y **depreciación** (la fracción del precio imputable
-     a un día de uso, entre 0 y 1).
-   - *Mano de obra:* descripción, cantidad de obreros, sueldo y **modalidad**: `jornal` (sueldo
-     diario; recibe prestaciones y bono de alimentación y se reparte entre el rendimiento) o
-     `destajo` (pago por unidad de obra, art. 114 de la LOTTT: en esta modalidad el «sueldo» es el
-     precio por unidad de partida y entra completo al precio unitario, sin prestaciones ni bono).
-     Vacía equivale a jornal. Una misma partida puede mezclar las dos.
+Si el administrador le dio una contraseña temporal, al entrar verá «Cambie su contraseña»:
 
-   Junto a cada tabla hay un **buscador de la referencia MaPreX** (julio 2026): se escribe parte del
-   nombre del insumo, se elige un resultado y se pulsa **Usar esta fila**. La fila se **añade al
-   final** de la tabla ya rellena (con la referencia MaPreX que respalda el precio, y en equipos
-   con su factor de depreciación).
-   El precio sugerido **se puede editar** (RF‑35): MaPreX es una referencia de mercado, no la
-   verdad. En equipos, el precio de MaPreX es el **valor del activo**, no una tarifa diaria: lo que
-   lo lleva a costo diario es la depreciación.
-3. **Rendimiento, con sus condiciones.** El campo *Rendimiento — unidades por día* es la producción
-   diaria de la cuadrilla (no confundir con el consumo de material, que va en la tabla). Si la
-   partida ya tiene historial, el campo viene precargado con el rendimiento propuesto (el medido
-   más reciente o, si no hay ninguno, el último registrado). Las
-   **Condiciones del rendimiento** son **obligatorias** (RF‑33): un rendimiento sin decir en qué
-   condiciones se obtuvo (tipo de suelo, cuadrilla, equipo…) no es verificable, y el botón de
-   guardar permanece deshabilitado hasta que se escriban.
+1. «Contraseña actual»: la temporal.
+2. «Contraseña nueva» y «Confirme la contraseña nueva»: la suya, con las reglas de la sección 2.1.
+3. Pulse «Cambiar contraseña».
 
-   **Justificación de la advertencia (UC‑06, flujo 4a).** Cuando el rendimiento escrito se sale del
-   rango observado y aparece la advertencia, se pinta debajo el campo **Justificacion de la
-   advertencia (UC-06, flujo 4a)**, opcional. Si se escribe, se registra al guardar **ligada al
-   rendimiento que registra ese guardado** y el aviso de éxito lo dice; si se deja en blanco, el
-   rendimiento se guarda igual y se informa (la advertencia no impide). Si el guardado no registra
-   un rendimiento nuevo (mismo valor y condiciones que el último estimado), la justificación no se
-   registra y se avisa. El campo no aparece con el aviso del bosque de aislamiento (ayuda 3) solo.
-4. **Desglose en vivo.** Mientras se escribe, la página recalcula materiales, equipos, mano de
-   obra, costo directo, costo con administración y **precio unitario**, con la misma fórmula del
-   resto del sistema. Si una fila está incompleta o mal escrita, un aviso dice en qué tabla, qué
-   fila y qué campo.
-5. **Las cuatro ayudas.** Todas **sugieren y ninguna bloquea**: el guardado nunca depende de ellas.
-   1. *Partidas similares del catálogo:* propuestas de solo lectura a partir de la descripción;
-      lo útil se copia a mano.
-   2. *Precio atípico:* avisa si un precio se aparta del histórico de cambios de ese insumo; sin
-      histórico, se abstiene.
-   3. *Rendimiento atípico:* avisa si el rendimiento escrito se sale del rango observado para la
-      partida (hacen falta al menos dos observaciones) y, con historial suficiente, añade la
-      lectura del bosque de aislamiento.
-   4. *Contraste con la estimación por reglas (AACE):* solo para partidas que ya existen; compara
-      el precio construido con el estimado y dice si cae en el rango de la clase 3 de AACE. Para
-      una partida nueva, la sección aparece con un aviso: la estimación por reglas parte del
-      precio unitario anterior de la partida, que no existe, así que el contraste no es posible
-      (UC‑07, flujo 3a).
-6. **Guardar y editar.** **Guardar composicion** crea o reemplaza el desglose de la partida. Al
-   editar, el rendimiento anterior **no se pisa**: si el valor o las condiciones cambiaron, se
-   registra uno nuevo y el anterior queda en el histórico; si no cambió nada, no se añade ruido.
-   Si no hay ninguna lista de precios vigente a la fecha de la cabecera, la página lo dice y no
-   guarda.
-7. **Cantidades de obra, con su origen.** En la tabla *Cantidades de obra* se elige una partida
-   ya guardada, su cantidad y su **origen** (de qué plano, cómputo o medición sale). El origen es
-   obligatorio: una cantidad sin origen no es trazable.
-8. **Elaborar.** Con al menos una cantidad válida aparece **Elaborar y auditar** (código, fecha y
-   moneda del presupuesto). El sistema arma el presupuesto, su curva de inversión con un plan de
-   una partida por día y el informe de auditoría. Repartir el plan de trabajo y declarar un
-   rendimiento que falta (flujo 3b) se hacen en **Elaborar un presupuesto** (sección 3.1, pasos 5
-   y 6), no en esta página: aquí, si a una partida le falta el rendimiento, se muestra el mensaje
-   del catálogo.
-9. **El informe de auditoría** se muestra siempre, tenga hallazgos o no (sección 4), con el total
-   del presupuesto y el recuento por severidad.
-10. **Descarga en Excel.** El botón **Exportar a Excel** entrega el libro del presupuesto; su hoja
-    de APU muestra la columna *Modalidad* de cada línea de mano de obra, para que un destajo no se
-    lea como sueldo diario.
+Hasta que la cambie, Sílice no deja hacer nada más. Hoy no hay un botón para cambiar la contraseña por
+gusto: si quiere otra, pídale al administrador que la restablezca.
 
-### 3.8 Hoja del proyecto (UC‑13 a UC‑16)
+### 2.5 Si el administrador perdió el acceso
 
-La **Hoja del proyecto** es el borrador de un presupuesto de obra: se describe el espacio, el sistema
-deriva las cantidades (agua, datos y electricidad), las valora con los APU del caso, las audita y las
-guarda como **versiones** con su fuente y su responsable. Arriba, el selector **Proyecto** elige
-**(borrador nuevo, sin guardar)** o un proyecto del caso, y **Version** elige cuál abrir (la vigente
-viene marcada). Nueve pestañas; solo se ejecuta la que está abierta:
+En la pantalla «Entrar», pulse «Perdí el acceso de administrador».
 
-| Pestaña | Qué hace |
-|---|---|
-| **Espacio y metrajes** | Tablas editables de orígenes de medida, ambientes, fuentes, puntos y vértices de recorridos; el bloque **Importar plano (DXF o IFC)**; las **cantidades derivadas**; la columna **Estado** de cada fila (el peor hallazgo que la toca); el total y el informe de auditoría |
-| **APU** | Elegir una partida y editar la **cantidad** de cada línea y el **rendimiento**, o cambiar el insumo de una línea. Se edita la **copia de esta versión**: el catálogo no cambia |
-| **Presupuesto** | Un renglón por partida con su cantidad, precio unitario, total y Estado |
-| **Plan y curva** | El reparto de las partidas por periodo y la curva de inversión |
-| **Punto de equilibrio** | Ventas, costo variable, costo fijo, utilidad, el punto de equilibrio, su porcentaje de las ventas y el periodo en que se alcanza. Se **deriva** de los costos, los parámetros y el plan: se mueve al editarlos, no se escribe |
-| **Precios** | De dónde sale el precio de cada insumo (lista, referencia, fecha, moneda, tasa) y las **cotizaciones**: registrar una (proveedor, número, fecha, responsable) crea una versión nueva; retirarla, otra |
-| **Parámetros** | Factor de prestaciones (FCAS), bono de alimentación, administración y utilidad |
-| **Auditoría** | El informe de auditoría del borrador (sección 4), con las reglas del espacio |
-| **Trazabilidad** | El historial de versiones (cuál es la vigente, de cuál sale cada una), el registro de cada celda cambiada con su fuente, responsable y hora, y **Restaurar** una versión anterior (crea una versión nueva, copia de la elegida; nada se borra) |
+1. Pida el código nuevo: en el equipo donde está instalado Sílice, abra el acceso «Sílice: recuperar
+   acceso de administrador» del menú Inicio. En su ventana aparece un código de restablecimiento. Sirve
+   una sola vez y vence a las 24 horas.
+2. Escriba el «Código de restablecimiento», «Su nombre», el «Usuario del administrador» y la «Contraseña
+   nueva» dos veces.
+3. Pulse «Restablecer y entrar».
 
-**De dónde salen los precios.** Los precios de referencia del sistema salen de los listados
-**MaPreX de julio de 2026** (materiales, equipos y mano de obra); un insumo que no viene de una lista aparece con el estado «Sin referencia». Los listados están en bolívares y el
-sistema los convierte a dólares con la tasa **633,3644 Bs/USD del 01/07/2026**. En la pestaña
-**Precios** cada insumo muestra la **lista** de la que sale, su **referencia** (*Ref*, el renglón del
-listado), la **fecha** del precio, la **moneda** y la **tasa** usada. Si usted tiene una cotización
-distinta, la registra con su fuente (proveedor, número y fecha): vale **solo para ese proyecto**, no
-cambia la lista ni los demás proyectos, y se puede retirar para volver al precio de la lista. La
-pestaña **Precios** solo se llena cuando hay una versión guardada: sin versión dice «Abra una version
-guardada para ver el origen de sus precios». Son **referencias de julio de 2026**, no una lista vigente:
-antes de usar un presupuesto para contratar, valide los precios con una ronda actual.
+Si el usuario ya existe, recupera su acceso; si no existe, se crea. Para volver sin hacer nada, pulse
+«Volver a Entrar».
 
-Una fila inválida muestra un mensaje que dice fila y campo, y la hoja sigue con el último borrador
-válido. Mientras haya cambios sin guardar la hoja lo avisa, y cambiar de versión o de proyecto pide
-confirmar que se descartan.
+### 2.6 Para quien olvidó su contraseña (cuentas que no administran)
 
-**Importar un plano (UC‑14).** Pulse **Importar plano** en la barra, o abra el bloque **Importar plano
-(DXF o IFC)** en *Espacio y metrajes*.
+Sílice no recupera contraseñas. Pídale al administrador que use «Restablecer la contraseña» (sección
+2.2). Entrará con la temporal y la cambiará (sección 2.4).
 
-1. Elija el archivo en el cuadro *Plano* (solo `.dxf` o `.ifc`) y pulse **Leer plano**. Si el dibujo no
-   declara su unidad, el sistema lo dice y pide **Unidad del dibujo**: elíjala y pulse **Continuar con
-   esta unidad**. Un archivo que no se puede leer se explica y no cambia nada.
-2. Lea el **informe de la importación**: cuatro contadores (**Importado**, **No reconocido**,
-   **Aproximado**, **Pendiente**) y una tabla con cada línea («En el plano», «Fila de la hoja», «Qué
-   pasó»). Lo no reconocido no se adivina: queda en el informe.
-3. En **Alturas pendientes** escriba en metros (por ejemplo `2,50`) la altura de cada ambiente que el
-   plano no trae y pulse **Cargar alturas**; los que deje en blanco siguen pendientes y entran con
-   2,5 m provisionales. En **Circuitos por declarar** confirme o corrija los conductores y los puntos
-   máximos de los circuitos que el plano no trae (se supusieron) y pulse **Declarar circuitos**.
-4. Pulse **Fusionar con el espacio del borrador**: las filas entran al **borrador**, nunca a una
-   versión, y la auditoría las evalúa como a las demás. Reimportar el mismo plano actualiza las filas y
-   marca las que ya no están. Para descartar sin fusionar, **Descartar la importación**.
+### 2.7 Lo que el administrador deja listo
 
-Las filas importadas citan el plano como origen de medida: la auditoría deja de marcarlas como
-supuestos. Nada queda guardado hasta que usted guarde una versión.
+Todo está en «Empresa y personas» (pantalla «Administración»), cada cosa en su pestaña:
 
-**Guardar una versión (UC‑15).** Con una versión abierta y cambios, el panel **Guardar version y
-exportar a Excel** pide la **Fuente del cambio** (por qué y con qué respaldo) y el **Responsable**; sin
-ellos el botón **Guardar version** está deshabilitado y su ayuda dice qué falta. Al guardar, cada celda
-cambiada queda en el registro de la versión nueva. Sin cambios no hay nada que guardar, y una versión en
-solo lectura (alguna partida ya no tiene APU vigente) no se puede guardar.
+- **«Empresa y clave de firma».** Escriba «Nombre de la empresa», «RIF» y «Ciudad» y pulse «Guardar la
+  empresa». Después, en «Generar la clave de firma», escriba una contraseña de 12 a 128 caracteres dos
+  veces y pulse «Generar la clave». Guarde esa contraseña: sin ella no se pueden firmar los paquetes que
+  se entregan al cliente (sección 6.10).
+- **«Especialidades».** Un interruptor por módulo («Producción», «Vial», «Edificación» y «Riesgo»), con
+  «Apagada» o «Encendida».
+- **«Carpetas de trabajo».** Una carpeta de trabajo guarda su catálogo, sus precios y sus obras en un
+  solo archivo. Aquí se crea una («Crear», con su «Nombre de la carpeta» y su «Moneda de trabajo», que
+  después no se cambia), se sube una copiada de otro equipo («Subir un archivo») o se abre la de
+  demostración («Demostración»). La pestaña de demostración solo aparece si la cuenta también arma
+  presupuestos.
+- **«Instalación».** «Crear respaldo ahora» guarda una copia de todo; se descarga con su botón
+  «Descargar … (.zip)». Restaurar un respaldo se explica en el manual de instalación.
+- **«Asistente de IA».** Ver la sección 13.
+- **«Claves de API»**, **«Empresas registradas»** y **«Accesos»**: para conectar otros programas, registrar
+  la clave de otra empresa que le envía paquetes y ver el registro de entradas. Se usan poco.
 
-**Guardar la primera versión de un proyecto nuevo.** Un proyecto recién creado en la barra no tiene
-versiones: la hoja lo dice con el aviso **Este proyecto aún no tiene versiones**. Describa el espacio
-(o importe un plano) —lo que ya había escrito se conserva al elegir el proyecto—, abra el panel
-**Guardar version y exportar a Excel**, escriba la **Fuente de la medida** (de dónde salen los datos:
-un plano, un acta) y el **Responsable**, y pulse **Guardar primera versión**. La hoja guarda la `001`
-y la abre. Decisiones que conviene conocer: los **precios** son los de la lista vigente a la fecha
-del borrador (si el catálogo no tiene ninguna, el mensaje lo dice y no se guarda nada: cárguela
-en *Actualizar precios*); los **parámetros** son los que muestra la pestaña *Parámetros* (los de la
-aplicación mientras no los cambie; los puede editar después y guardar una versión nueva); si no
-hay plan de trabajo se usa el **plan secuencial** (una partida por periodo), que puede editar en
-*Plan y curva*; y la versión deja **un registro de creación** (pestaña *Trazabilidad*) con su fuente y
-su responsable. Desde la segunda versión se usa **Guardar version**, como siempre.
+El logo y los colores de la empresa no se cambian desde la pantalla: son archivos (`tema.json` y
+`logo.png`) en la carpeta `tema` dentro de la carpeta de datos de Sílice.
 
-**Exportar el Excel (UC‑16).** **Exportar Excel** de la barra, o **Preparar Excel** en el panel, genera el
-libro de la hoja y **Descargar Excel** lo entrega (`hoja_<código>.xlsx`): las hojas de la hoja del
-proyecto con sus fórmulas vivas, más una hoja por tabla del espacio. El libro se genera solo al pedirlo.
+## 3. Moverse por Sílice
 
-**Limitaciones del prototipo.** (1) Cerrar la pestaña del navegador con
-cambios sin guardar los pierde en las pantallas que no lo avisan (la Hoja sí avisa al cerrar la pestaña). (2) Los datos de ejemplo (OF‑001) son un caso
-construido, no una obra ejecutada.
+La pantalla tiene tres partes: la barra de arriba, la barra lateral a la izquierda y el contenido.
 
-### 3.9 Moneda, precios de la empresa, índices del BCV y reajuste (UC‑17 y UC‑18)
+### 3.1 La barra de arriba
 
-Desde la versión 0.6.0 cada proyecto tiene **su moneda** (Bs o USD), cada precio dice de dónde sale y
-cuánto valor perdió, una empresa puede tener **su lista de precios**, el sistema lee los archivos del
-**BCV** que usted descarga y calcula el **reajuste** de la obra ejecutada de dos maneras, lado a lado.
-Nada de esto usa internet: el sistema lee lo que usted bajó.
+De izquierda a derecha:
 
-**La moneda del proyecto.** Al crear un proyecto en la barra (**Proyecto**), elija la **Moneda del
-proyecto**: Bs o USD. No tiene valor por defecto; sin elegirla, el proyecto no se crea. Una versión se
-valora solo con una lista de su moneda: guardar o revalorar con una lista de otra moneda se rechaza y el
-mensaje lo dice. En la pestaña **Parámetros** de la hoja verá la moneda del proyecto y el bloque
-**Cambiar la moneda**: elija la moneda destino y la tasa del BCV (venta, por defecto, o compra), escriba
-por qué se cambia y quién lo hace, y pulse **Convertir la version**. Se crea una **versión nueva**
-convertida con la tasa del BCV de hoy (la de fecha valor más reciente que no pase de hoy); la versión
-anterior no cambia. Si la última tasa importada tiene más de 7 días, no se convierte nada y el mensaje
-lo dice: importe antes la tasa en **Indices del BCV**.
+1. **El logo de la empresa**, o la palabra «Sílice».
+2. **Las migas**: dicen dónde está. Por ejemplo «Mis obras / Vía Ficticia El Ensayo / Presupuesto». Haga
+   clic en «Mis obras» para volver a Pendientes.
+3. **El buscador**: el botón «Buscar una obra, sección o pantalla… (Ctrl+K)».
+4. **El tamaño de letra**: tres botones con una «A» de tres tamaños, que se llaman «Normal», «Grande» y
+   «Muy grande». Sílice recuerda su elección en ese navegador.
+5. **Su cuenta**: un círculo con sus iniciales y su nombre. Al pulsarlo aparece «Salir».
 
-**De dónde sale cada precio.** La pestaña **Precios** de la hoja muestra, por insumo, la moneda y el
-precio originales, la fecha del precio, la tasa con su fecha y su fuente, la fuente del precio, si es
-**propio** o **heredado** de la lista base (en una lista de empresa) y la **erosión** a hoy: cuánto
-valor perdió el precio, en USD, en Bs y en porcentaje. El porcentaje es la fracción del valor que se
-perdió (1 − tasa del precio ÷ tasa de hoy), no la erosión en Bs dividida entre el precio. Ejemplo: un
-precio de 1 000 Bs del 01/07/2026 (tasa 633,3644) evaluado al 01/10/2026 (tasa 860,18) perdió 0,42 USD,
-que son 358,11 Bs, un **26,37 %** (no 35,81 %). Un precio en USD tiene erosión 0: el sistema no tiene un
-índice de inflación en dólares y lo declara. Si hay una serie de índices cargada, la **erosión por
-índice** va en su propia columna y no se suma a la otra. La columna **Estado** agrega los hallazgos de
-R11 y R12 de hoy.
+Si está viendo la carpeta de demostración aparece también el botón «Demostración», que avisa «Está viendo
+datos inventados.» y ofrece «Volver a la carpeta de la empresa».
 
-**Índices del BCV (UC‑17, pasos 1 a 3).** En la pantalla **Indices del BCV**:
+### 3.2 La barra lateral
 
-1. Elija qué archivo es: la **tasa de referencia** (el `.xls` trimestral), el **INPC** (`.xls` mensual)
-   o **una serie en CSV canónico**. Súbalo, escriba la dirección de la página del BCV de donde lo bajó
-   (tiene que ser de `bcv.org.ve`) y la fecha de descarga, y pulse **Leer**.
-2. Lea el **informe previo**: las series, cuántas filas se leyeron, cuántas se rechazaron y por qué
-   (fecha repetida, fuera del trimestre, posterior a la descarga, valor no numérico…) y cuántas son
-   provisionales. Todavía no se guardó nada.
-3. Escriba el **responsable** y pulse **Confirmar la importacion**. El mismo archivo dos veces no
-   escribe nada. Un INPC revisado por el BCV entra como una importación nueva: los estudios de reajuste
-   ya guardados siguen usando la que citaron.
+Tiene tres zonas:
 
-El **CSV canónico** sirve para el índice de insumos de la construcción (mientras su formato no esté
-documentado) o para cualquier serie si el BCV cambia su formato: columnas
-`serie,fecha,valor,provisional,fuente`, fechas `AAAA-MM-DD`, punto decimal, `si`/`no` en
-`provisional` y la **fuente en cada fila**. Al confirmar, declare el nombre, el organismo, la unidad y la
-periodicidad de cada serie.
+- **«Pendientes»**, con un número: cuántas cosas esperan algo de usted.
+- **«Obras»**: el botón «Nueva obra» y la lista de obras. Al hacer clic en una obra se despliegan sus
+  secciones: «Resumen», «Presupuesto», «Tramos», «Archivos y planos», «Versiones», «Aprobaciones»,
+  «Mercado» y «Control de obra» (solo las que su papel puede usar; sección 1.3). Cada obra con pendientes
+  lleva su número.
+- **«Empresa»**: «Precios y catálogo», «Auditar un presupuesto», «Producción», «Empresa y personas» y
+  «Ayuda».
 
-**Precios de la empresa (UC‑17, pasos 4 y 5).** En la pantalla **Precios de la empresa**:
+Con el teclado: las flechas arriba y abajo recorren la lista, la flecha derecha despliega una obra y la
+izquierda la pliega.
 
-1. Pulse **Cargar la referencia MaPreX en Bs** (una vez por caso): los 111 precios de julio de 2026 en
-   bolívares, con su Ref, contra los que se comparan los de la empresa.
-2. Cree la lista: nombre y RIF de la empresa, **lista base** (la que completa los insumos que la empresa
-   no cotiza), **moneda** (sin valor por defecto), fecha, fuente y el archivo (CSV o XLSX con las
-   columnas `tipo`, `insumo`, `unidad`, `precio` y, opcionales, `fecha`, `fuente`, `referencia`,
-   `moneda`, `tasa`, `fecha_tasa`, `fuente_tasa`). **Use punto decimal**: `13288.00`, nunca
-   `13.288,00`; una cifra con coma se rechaza con su fila. Los insumos que el catálogo no conoce se
-   listan y no entran. La lista de una empresa no es la lista vigente de nadie: solo la usa la versión
-   que la elige, y no cambia la valoración de ningún otro proyecto.
-3. Revise los **precios vencidos o fuera de rango** a la fecha de evaluación (hoy, por defecto). Sin
-   versión, el impacto es por unidad de insumo; en la hoja de una versión es el dinero en su total.
+Con letra «Grande» o «Muy grande», la zona «Empresa» se pliega para dejarle sitio a las obras. Haga clic
+en «Empresa» para desplegarla. Nada desaparece.
 
-| Regla | Qué marca | Severidad |
+### 3.3 El buscador (Ctrl+K)
+
+1. Pulse Ctrl+K o haga clic en «Buscar una obra, sección o pantalla… (Ctrl+K)».
+2. Escriba parte de lo que busca: el nombre de una obra, de una sección («Mercado») o de una pantalla
+   («Reajuste de precios»). No importan las tildes ni las mayúsculas.
+3. Elija con las flechas y pulse Enter, o haga clic.
+4. Esc cierra el buscador.
+
+Muestra hasta 8 resultados. Si no hay ninguno, dice «Sin resultados».
+
+Varias pantallas trabajan sobre la obra que tiene abierta. Abra primero la obra en la barra lateral y
+después busque la pantalla.
+
+### 3.4 Pendientes
+
+Es la primera pantalla al entrar. A la izquierda, «Pendientes por hacer», con un resumen como «2
+bloquean · 3 avisos». Cada pendiente dice su obra y su urgencia: «Bloquea» (hay que resolverlo para
+seguir) o «Aviso». Al elegir uno, a la derecha aparece el «Detalle del pendiente» con un botón que lleva
+a donde se resuelve.
+
+Ejemplos de pendientes: «VIV-002 espera dictamen», «VIV-001 devuelta: …», «Precios de hace 45 días (…)»,
+«3 hallazgos de error o críticos en VIV-002».
+
+Si no hay nada, verá «No tiene pendientes.» y «Cuando una obra necesite algo de usted, aparecerá aquí.».
+Quien solo administra siempre ve esa frase.
+
+### 3.5 La cabecera de la obra
+
+Al abrir una obra, encima de cada sección aparece una franja con:
+
+- el nombre de la obra;
+- «Estado:» con una de estas palabras: «En elaboración», «En aprobación», «Aprobada», «En ejecución» o
+  «Atrasada» (la única en color);
+- «Versión: V-004», o «Versión abierta: V-003 (la vigente es V-004)» si abrió una versión anterior;
+- debajo, la moneda y la lista de precios de la carpeta, por ejemplo «Moneda: USD · Lista para armar:
+  Lista USD de la carpeta (ficticia) al 01/10/2026».
+
+### 3.6 El Resumen de la obra
+
+La sección «Resumen» muestra la obra de un vistazo:
+
+- arriba, la franja del paso (sección 5);
+- las cifras «Total», «Avance real contra plan», «Versión vigente» y «Etapa»;
+- «Pendientes de esta obra», cada uno con su botón.
+
+### 3.7 Salir sin perder trabajo
+
+Si tiene cambios sin guardar y elige otra obra o una entrada de Empresa, Sílice pregunta «Cambios sin
+guardar». Pulse «Quedarme» para volver, o «Salir» si está seguro. El texto le dice qué pasa con los
+cambios.
+
+Entre «Presupuesto», «Archivos y planos» y «Versiones» de la misma obra puede moverse sin miedo: las tres
+comparten el mismo borrador y no preguntan.
+
+Si abre otra obra en otra pestaña del navegador, la primera pestaña muestra «Esta obra se abrió en otra
+pestaña». Pulse «Retomar» para seguir allí.
+
+### 3.8 La Ayuda
+
+«Ayuda», en la zona Empresa, muestra «Acerca de Sílice»: la versión del programa, el estado de la base
+de datos y qué módulos están instalados. Las guías de cada tarea todavía no están ahí: están en este
+manual.
+
+## 4. Crear una obra y armar su presupuesto
+
+Esta sección es para quien arma. Sigue el camino completo: crear la obra, agregar partidas, ajustar
+cantidades, revisar el APU, guardar la versión y ver el IVA.
+
+### 4.1 Crear la obra
+
+1. En la barra lateral, pulse «Nueva obra».
+2. Llene el diálogo «Nueva obra»:
+   - «Nombre de la obra» (hasta 120 caracteres; no puede repetirse en la carpeta).
+   - Debajo se lee «Se creará en …» con el nombre de la carpeta de trabajo.
+   - «Cliente (opcional)» y «Ubicación (opcional)».
+   - «Tipo de obra»: «Sin especificar», «Obra civil», «Telecomunicaciones», «Industrial» o «Sistemas».
+   - «Moneda»: «Bolívares (Bs)» o «Dólares estadounidenses (USD)». Si la carpeta ya tiene moneda, viene
+     elegida. Si elige la otra, la ayuda dice que la obra se valorará convirtiendo los precios con la tasa
+     del BCV del día.
+3. Pulse «Crear obra».
+
+Sílice abre el «Resumen» de la obra nueva. La franja dice «Te falta: Agregue la primera partida».
+
+### 4.2 La pantalla «Presupuesto», de arriba abajo
+
+Haga clic en «Presupuesto» dentro de la obra. Verá, en este orden:
+
+1. **La franja del paso** («Te falta:» o «Siguiente paso:»), con el único botón principal de la pantalla.
+2. **«Aprobación:»** con el estado de la versión, si ya se envió.
+3. **«Estado del borrador»**: «Versión V-004 · 2 cambios sin guardar», o «Borrador en blanco · …», y el
+   «Total» en la moneda de la obra. Si tiene cambios, aparece «Descartar cambios».
+4. **«Descargar Excel»**: baja el presupuesto en un libro de Excel.
+5. **Las pestañas**: «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y
+   «Ajustes de costo». En una obra de edificación con espacio aparece además, delante, «Espacio y
+   metrajes».
+
+Cada pestaña tiene un botón «¿Qué es esto?» que despliega su explicación. Quien edita ve además, siempre
+a la vista: «Escriba los decimales con coma: 2,5; el punto separa los miles: 1.234,56.».
+
+**Borrador.** Lo que usted cambia se aplica al borrador de la obra cuando deja de escribir. El borrador
+no es una versión: para que quede guardado hay que pulsar «Guardar versión…» (sección 4.8). Si cierra
+Sílice con cambios, al volver verá «Retomar borrador» con dos botones: «Retomar borrador de … (n
+cambios)» para seguir, o «Descartar y abrir de nuevo».
+
+### 4.3 Agregar partidas: una sola puerta, tres caminos
+
+Pulse «Agregar partida» en la pestaña «Partidas» (o «Agregar la primera partida» en la franja). Se abre
+el diálogo «Agregar partida». Ahí hay tres maneras de elegir la partida.
+
+**Camino 1: buscarla en el catálogo.**
+
+1. En «Partida», escriba al menos 2 letras del código o de la descripción. Por ejemplo «bloque».
+2. Aparece la lista «Partidas del catálogo». Cada opción muestra la descripción y, debajo, el código, la
+   unidad, el tipo de obra y si tiene composición.
+3. Elija con las flechas y Enter, o con un clic. Si hay muchas, pulse «Ver más resultados» o escriba más
+   letras.
+
+Si no la encuentra, Sílice dice «No encontramos «…».» y le sugiere los otros dos caminos.
+
+**Camino 2: «Buscar parecidas».**
+
+Úselo cuando sabe cómo se describe la partida, pero no su código.
+
+1. Escriba en «Partida» cómo se describe. Por ejemplo «pared de bloques de arcilla de 15 cm».
+2. Pulse «Buscar parecidas».
+3. Sílice muestra las propuestas «de mayor a menor similitud». Cada una trae su puntaje, su código y su
+   descripción. Con «Ver el análisis de …» ve sus materiales, equipos y mano de obra.
+4. Pulse «Usar esta partida» en la que le sirva.
+
+Si ninguna se parece lo suficiente, verá «Ninguna partida del catalogo supera el umbral de similitud: la
+partida se crearia desde cero.». Entonces use el camino 3. Esta búsqueda necesita el instalador completo;
+si falta, Sílice lo dice (sección 14).
+
+**Camino 3: «Componer una partida».**
+
+Úselo cuando la partida no existe en el catálogo. Al final de la lista de sugerencias está la opción
+«Componer una partida nueva con el código «…»». Se abre el panel «Componer una partida».
+
+Antes de empezar, lea el aviso: «Esto cambia el catálogo de la empresa: la partida queda para todas las
+obras.».
+
+1. **«Cabecera de la partida»**: «Código», «Descripción», «Unidad», «Dominio» y «Fecha». Si el código ya
+   existe, sus tablas se cargan solas.
+2. **«Partidas similares del catálogo»**: aparecen al escribir la descripción. Son solo sugerencias: copie
+   a mano lo que le sirva.
+3. **«Rendimiento»**: las unidades por día y, obligatorio, «Condiciones del rendimiento» (en qué
+   condiciones se obtuvo).
+4. **«Insumos»**: tres tablas, materiales, equipos y mano de obra. Para cada una puede buscar en la
+   referencia MaPreX y pulsar «Usar esta fila», o pulsar «Agregar fila» y escribir a mano.
+   - Materiales: «Descripción», «Unidad», «Consumo por unidad», «Precio».
+   - Equipos: «Descripción», «Cantidad», «Precio», «Depreciación».
+   - Mano de obra: «Descripción», «Cantidad», «Sueldo», «Modalidad».
+5. **«Desglose en vivo»**: Sílice calcula mientras escribe «Materiales», «Equipos», «Mano de obra»,
+   «Costo directo», «Con administración» y «Precio unitario». Si algo se aparta de lo normal, aparece
+   una advertencia (por ejemplo «Rendimiento atípico» o «Precio atípico»).
+6. Pulse «Guardar composición». Si un precio difiere del de la lista, Sílice pregunta en «Precios
+   distintos a los de la lista»; pulse «Guardar así» o «Volver».
+
+Al guardar, el panel se cierra y el diálogo «Agregar partida» vuelve con la partida nueva elegida.
+
+Para guardar hace falta que la carpeta tenga su lista de precios para armar. Si no la tiene, el panel lo
+avisa en «Sin lista de precios para armar» y ofrece «Crear la lista a partir de MaPreX».
+
+Cuidado: si cierra el panel sin guardar, lo compuesto se pierde sin preguntar.
+
+**Después de elegir la partida, por cualquiera de los tres caminos:**
+
+1. «Cantidad (…)»: la cantidad, con coma decimal. Por ejemplo 210 o 12,5.
+2. «Cálculo (opcional)»: cómo sale la cantidad, por ejemplo `6*3-2` o `2,5*4`. Admite números, `+`, `-`,
+   `*`, `×`, `/` y paréntesis. Si escribe el cálculo y deja la cantidad vacía, Sílice la toma del cálculo.
+   Si escribe los dos y no coinciden, le pide corregir uno.
+3. «Nota de medición (opcional)»: por ejemplo «6 m × 35 m de muro, menos vanos».
+4. Pulse «Agregar al presupuesto».
+
+En la pestaña se lee «Se agregó … al presupuesto.».
+
+### 4.4 Cambiar o quitar una partida
+
+La tabla de «Partidas» tiene las columnas «Partida», «Descripción», «Unidad», «Cantidad», «Cómo se
+midió», «Precio unitario», «Objetivo de mercado», «Total», «Estado» y «Quitar».
+
+- **Cambiar la cantidad:** escriba en la celda «Cantidad». Enter o la flecha abajo pasan a la fila
+  siguiente; Esc devuelve el último valor aceptado.
+- **Cantidad escrita a mano:** si la partida tenía una cantidad calculada, la celda dice «(calculada: …)» y
+  ofrece «Volver a la calculada».
+- **Cantidad sin cálculo:** Sílice lo advierte en la columna «Estado». Escriba cómo se obtuvo si quiere que
+  la pueda verificar.
+- **Quitar:** pulse «Quitar» en la fila y confirme. Mientras no guarde la versión, puede descartar el
+  cambio.
+- **Filas en amarillo:** una fila con un hallazgo crítico, de error o de advertencia lleva fondo amarillo
+  claro. La columna «Estado» dice cuál es; «Ver en Revisión» lleva al detalle.
+- **«Pendiente»** en «Precio unitario» o «Total»: la partida no tiene APU en el catálogo y no suma.
+
+Debajo de la tabla se lee «Total del presupuesto …» y el IVA (sección 4.9).
+
+### 4.5 El APU en el panel lateral
+
+En «Partidas», el código de cada fila con precio es un botón. Al pulsarlo se abre a la derecha el panel
+«APU de MOV-01 · Movilización y desmovilización de equipos (ficticia) · unidad» (con el código y la
+descripción de su partida). La tabla sigue a la vista.
+
+En el panel:
+
+- un bloque por rubro («Materiales · 1 línea(s)», «Equipos», «Mano de obra») con su subtotal;
+- «Rendimiento (unidades por día)»;
+- «Cierre de partida»: costo directo, administración, utilidad y precio unitario.
+
+Quien edita puede:
+
+- cambiar la cantidad de cada línea y el rendimiento;
+- «Agregar línea»: elija «Tipo de línea» (material, equipo o mano de obra), busque el «Insumo» en la
+  lista de la versión o escriba uno nuevo, ponga la «Cantidad» y pulse «Agregar al APU»;
+- «Cambiar»: cambia el insumo de una línea y conserva su cantidad;
+- «Quitar»: quita una línea.
+
+Estos cambios se hacen en la copia de esta versión: el catálogo de la empresa no cambia. Agregar,
+cambiar y quitar líneas solo se puede en una versión guardada.
+
+Cierre el panel con «Cerrar» o con Esc. Si la pantalla es estrecha, el panel se pone encima de la tabla.
+
+La pestaña «Análisis de precio (APU)» muestra lo mismo, con una lista de partidas a la izquierda y el
+buscador «Buscar partida».
+
+### 4.6 Las demás pestañas del Presupuesto
+
+- **«Plan y equilibrio».** Reparte cada partida entre los períodos del plan; cada fila debe sumar
+  exactamente 1. Con «Plan desde los rendimientos», Sílice arma el plan con la cantidad y el rendimiento
+  de cada partida (elija «Cuadrillas», «En paralelo con la anterior» y los «Períodos del plan»). Debajo,
+  la «Curva de inversión» y el «Punto de equilibrio», que no se editan.
+- **«Precios».** De dónde sale cada precio: lista, fecha, moneda, referencia y cotización. «Detalle»
+  muestra el resto. «Buscar variaciones atípicas de precio» señala los insumos que cambiaron demasiado.
+  Muestra la versión guardada, no los cambios sin guardar. El enlace «Registrar una cotización en
+  Mercado» lleva a la sección 8.4.
+- **«Revisión».** El informe de auditoría del borrador, con todas las reglas: «Presupuesto … · Hallazgos:
+  … · Resultado: …» y la tabla «Hallazgos» con regla, severidad, partida y descripción. Si llegó desde
+  «Ver en Revisión», solo se ven los de esa fila; «Quitar filtro» muestra todos.
+- **«Ajustes de costo».** Cuatro parámetros: FCAS, bono de alimentación, administración y utilidad.
+  Cambiarlos recalcula todos los APU y el total. Aquí está también «Convertir la moneda…» (sección 9.6).
+- **«Espacio y metrajes»** (obras de edificación). Se describe el espacio en tablas («Orígenes de medida»,
+  «Ambientes», «Fuentes», «Puntos», «Vértices de recorridos») y Sílice deriva las cantidades. Ojo: en
+  «Vértices» la coma separa las coordenadas y el decimal va con punto, por ejemplo `0,0,0; 2.5,0,0`. Lo
+  más cómodo es importar un plano (sección 7).
+
+### 4.7 Cargar el cómputo desde un archivo CSV
+
+Si ya tiene el cómputo en un archivo, no hace falta agregar partida por partida.
+
+1. Vaya a «Archivos y planos» de la obra.
+2. Pulse «Subir plano o cómputo» (o «Cargar cómputo» si la edificación está apagada).
+3. Suelte el archivo `.csv` en la zona, o haga clic para elegirlo. Se abre «Cargar cómputo».
+4. Elija «Tipo de obra del archivo»: «Civil» (viene elegido), «Telecomunicaciones», «Industrial» o
+   «Sistemas».
+5. En civil, elija en «Códigos de partida (civil)» las partidas de «Concreto», «Encofrado», «Excavación» y
+   «Tubería». Marque «Incluir relleno (balance R5)» si lo necesita y elija el «Relleno».
+6. Pulse «Extraer cómputo». Aparece la tabla «Cómputo extraído».
+7. Pulse «Llevar al presupuesto». Sílice valora primero cada partida:
+   - Si a una partida le falta el rendimiento, aparece «Rendimientos por declarar». Elija «estimado» o
+     «medido», pulse «Registrar el rendimiento» y vuelva a pulsar «Llevar al presupuesto».
+   - Si un ítem no tiene partida en el catálogo, aparece «Pendientes» con propuestas. Pulse «Aplicar la
+     propuesta» y vuelva a llevar, o pulse «Llevar sin los pendientes».
+8. Verá «Se llevaron 18 partidas al presupuesto.» (o el número que corresponda) y el enlace «Ver en
+   Partidas».
+
+Las partidas quedan en el borrador. Falta guardar la versión (sección 4.8).
+
+**Atención con el formato del archivo de cómputo.** A diferencia de la pantalla, este archivo usa la
+**coma para separar columnas** y el **punto para los decimales** (`0.80`, no `0,80`). La primera fila
+lleva los nombres de las columnas y el texto va en UTF-8. Para obra civil:
+
+```
+id,tipo,a,h,e,n,sobreancho,espesor_fondo,longitud,ancho,profundidad,diametro,desperdicio,especificaciones
+T-01,tanquilla,0.80,0.80,0.10,4,0.10,0.10,,,,,,material=concreto
+Z-01,zanja,,,,,,,24.00,0.40,0.80,0.1016,0.05,diametro=4 pulg;material=PVC
+```
+
+`tipo` es `tanquilla` o `zanja`. Una tanquilla llena `a`, `h`, `e`, `n`, `sobreancho` y `espesor_fondo`; una
+zanja, `longitud`, `ancho`, `profundidad`, `diametro` y `desperdicio`. La última columna es opcional.
+
+Las columnas mínimas de los otros tipos:
+
+- Telecomunicaciones: `tipo,id,descripcion,codigo_partida,unidad` (`tipo` es `nodo` o `enlace`).
+- Industrial: `id_activo,descripcion,codigo_partida,unidad,frecuencia_anual,horizonte_anios`.
+- Sistemas: `id,modulo,caso_de_uso,codigo_partida,entradas,salidas,consultas,archivos,interfaces`.
+
+### 4.8 Guardar la versión
+
+Cuando el borrador tiene cambios, la franja dice «Siguiente paso: Hay 3 cambios sin guardar» con el botón
+«Guardar versión…» (o «Guardar primera versión…» si la obra no tiene ninguna).
+
+1. Pulse el botón. Se abre «Guardar versión».
+2. Lea el resumen: cuántos cambios, de qué versión sale y el total. Abajo está la lista «Cambios» con lo
+   que había antes y lo que queda después.
+3. Escriba el motivo, hasta 300 caracteres:
+   - en la primera versión, «Fuente de la medida (de dónde salen los datos)», por ejemplo «Planos de
+     planta, revisión B»;
+   - en las siguientes, «Fuente del cambio (por qué y con qué respaldo)».
+4. El «Responsable» es usted; no se cambia.
+5. Pulse «Guardar versión».
+
+Verá «Versión guardada» y, por ejemplo, «Se guardó la versión V-005 con 3 cambios registrados.».
+
+Si alguien guardó otra versión mientras usted trabajaba, Sílice avisa «Hay una versión más nueva» y le deja
+elegir entre «Guardar de todos modos» y «Abrir la versión …».
+
+### 4.9 El IVA
+
+Debajo de «Total del presupuesto», en la pestaña «Partidas», se leen tres líneas:
+
+- «Subtotal»
+- «IVA (16 %)»
+- «Total con IVA»
+
+El IVA no se escribe: Sílice usa la alícuota general del 16 %, con su fuente legal en «¿Qué es esto?». Se
+calcula sobre el total del presupuesto, nunca dentro del APU: el precio unitario y el total del
+presupuesto van sin IVA.
+
+### 4.10 Si quiere empezar de nuevo
+
+- **«Descartar cambios»** (en «Estado del borrador»): borra lo que no guardó. Sílice pregunta antes; los
+  cambios descartados no se recuperan.
+- **Abrir otra versión**: desde «Versiones» (sección 6.1).
+
+## 5. La franja del paso: «Te falta» y «Siguiente paso»
+
+Arriba de cada sección, Sílice dice **un solo** paso a la vez. Hay dos tipos:
+
+- **«Te falta:»**, con fondo amarillo claro y un ícono de aviso: falta algo antes de seguir.
+- **«Siguiente paso:»**, entre dos rayas finas: solo orienta.
+
+Su botón es el principal de la pantalla. Si su papel no puede dar ese paso, la franja solo informa, sin
+botón.
+
+### 5.1 En el Presupuesto
+
+Sílice revisa en este orden y muestra la primera que se cumple:
+
+| Mensaje | Qué significa | Qué hacer |
 |---|---|---|
-| **R11** Precio fuera de rango | el precio frente a su referencia MaPreX, los dos llevados a USD con la tasa de cada uno, fuera de −20 % / +30 %; exactamente −20 % o +30 % pasa | ADVERTENCIA por insumo, y **un** INFO que cuenta los insumos sin referencia o sin tasa a su fecha |
-| **R12** Precio vencido o sin trazabilidad de tasa | un precio con más de 30 días a la fecha de evaluación (30 pasa), o convertido con una tasa sin fuente | ADVERTENCIA |
-| **R12** | un precio convertido con una tasa **sin fecha**: no se puede reproducir | ERROR |
+| «Te falta: Agregue la primera partida» | La obra no tiene partidas | Pulse «Agregar la primera partida» (sección 4.3) |
+| «Siguiente paso: Hay 3 cambios sin guardar» | Cambió algo y no lo guardó | Pulse «Guardar versión…» o «Guardar primera versión…» (sección 4.8) |
+| «Te falta: Hay 2 hallazgos graves: revíselos antes de enviar» | La auditoría encontró errores o hallazgos críticos | Pulse «Ir a Revisión», corrija y guarde |
+| «Te falta: La versión V-004 fue devuelta: corrija lo observado» | Quien revisa la devolvió | Pulse «Hacer una versión nueva», corrija y guarde (sección 6.7) |
+| «Siguiente paso: La versión V-004 espera dictamen» | Ya la envió | Nada: espere el dictamen |
+| «Siguiente paso: Envíe la versión V-004 a aprobación» | Todo listo | Pulse «Enviar a aprobación…» (sección 6.5) |
 
-R11 y R12 no son parte de las siete reglas del informe de cada presupuesto (sección 4): se evalúan a una
-fecha que usted ve, y volver a evaluar a otra fecha cambia lo que se muestra, nunca lo guardado.
+Si la versión ya está aprobada, o si abrió una versión que no es la vigente, no hay franja.
 
-**Reajuste de precios (UC‑18).** Abra el proyecto en la barra y vaya a **Reajuste de precios**:
+### 5.2 En el Resumen
 
-1. Elija la **versión del contrato**.
-2. Declare la **cláusula**: inicio y duración del contrato, desde cuándo corre el primer año,
-   periodicidad, mecanismo (escalatoria, comprobación o ambos; con ambos, cuál es el **pagadero** y su
-   fuente), estructura (**por partida**: los pesos salen del APU de cada partida; **declarada**: un peso
-   por componente, que sumen exactamente 1), el **mes base** de los índices, **R** con su fuente (si el
-   contrato no la trae, escriba 0 y dígalo), la fuente de la cláusula y el responsable. En la tabla de
-   componentes escriba la serie importada de materiales, equipos y mano de obra.
-3. Escriba los **períodos** (desde, hasta, la versión revalorada que sirve de comprobación y, si la hay,
-   la excepción declarada) y lo **ejecutado** por período y partida, con su fuente (número y fecha del
-   acta o de la valuación).
-4. Pulse **Calcular**: ve por período y en total la **escalatoria**, la **comprobación directa**, su
-   diferencia y el monto **reconocido**, en la moneda del proyecto y en la otra (con la tasa del cierre
-   de cada período; la diferencia se convierte una sola vez). Nada se guarda todavía.
-5. Escriba la fuente y el responsable y pulse **Guardar estudio**. Si el último período es un mes que
-   aún no cierra, el estudio queda **«parcial al corte»**; al cerrar el mes, calcule otra vez y guárdelo
-   eligiendo el parcial que **reemplaza** (una sola vez; el parcial no se borra).
-6. **Preparar Excel** y **Descargar Excel**: el libro de la versión del contrato con las hojas
-   **Reajuste** y **Ejecutado**.
+El Resumen dice el paso según la etapa de la obra:
 
-Lo que el sistema decide solo, y le dice: un período anterior al aniversario de un contrato de más de un
-año tiene reajuste 0 con la nota «precios fijos el primer año (art. 134, a cotejar)»; un período que
-cruza el aniversario se rechaza (pártalo); si falta el índice de un mes, ese período no se calcula; un
-índice provisional se marca; lo ejecutado por encima de lo presupuestado se guarda con aviso y se
-reajusta solo hasta lo presupuestado; sin versión revalorada, la comprobación queda «no disponible»; un
-proyecto en USD con índices en Bs lleva una ADVERTENCIA; si los reajustes superan el 10 % del monto
-original sale una nota marcada INDICIO. Un estudio guardado no cambia aunque después se importe una
-revisión de los índices: cita las importaciones que usó.
-
-**Supuestos declarados, todos a cotejar con la Gaceta o con un experto.** El reajuste sigue una
-transcripción de la ley, no la Gaceta Oficial; la fórmula `Vo · (Km − 1) · (1 − R)` es un INDICIO. Lo
-que el sistema supone, para que usted lo vea y lo pueda discutir:
-
-| # | Supuesto |
+| Etapa | Botón |
 |---|---|
-| S1‑R1 | La tasa para convertir es la de **venta** del BCV; se puede elegir compra |
-| S1‑R2 | Tasa aplicable: la de fecha valor más reciente que no pase de la fecha; con más de 7 días sin tasa no se convierte |
-| S1‑R3 | Cambiar la moneda crea una versión nueva convertida; nada se reescribe |
-| S1‑R4 | La lista de una empresa no es la vigente de nadie: la usa la versión que la elige |
-| S1‑R5 | R11: rango −20 % / +30 % por analogía con la clase 3 de AACE (no es una fuente de rango por insumo) |
-| S1‑R6 | R12: un precio vence a los 30 días (supuesto sin fuente) |
-| S1‑R7 | R11 y R12 no entran en las siete reglas del informe |
-| S1‑R8 | La fórmula escalatoria `Vo · (Km − 1) · (1 − R)` es un INDICIO, a verificar |
-| S1‑R9 | Primer año: solo en contratos de más de 12 meses; el período que cruza el aniversario se rechaza; la excepción por equilibrio económico se declara |
-| S1‑R10 | El índice de un período es el del mes en que cierra; el mes base se declara |
-| S1‑R11 | El reajuste se calcula en la moneda del contrato; USD con índice en Bs da ADVERTENCIA |
-| S1‑R12 | Los `.xls` se leen con `xlrd` (extra `bcv`, incluido en la instalación básica) |
-| S1‑R13 | Los archivos del BCV de prueba no vienen con el programa: cada empresa descarga los suyos |
-| S1‑R14 | R no se aplica a la comprobación directa salvo que la cláusula lo diga |
-| S1‑R15 | Las monedas se escriben `Bs` y `USD` |
-| S1‑R16 | El desvío de R11 se calcula con una sola división y sin redondear antes de comparar |
-| S1‑R17 | Lo ejecutado por encima de lo presupuestado se guarda con aviso y se reajusta hasta lo presupuestado |
-| S1‑R18 | Desde la 0.7.0, cada valuación entra entera en el período que contiene su fecha *hasta* |
-| S1‑R19 | El porcentaje de erosión es 1 − tasa del precio ÷ tasa de evaluación |
-| S1‑R20 | Con «ambos», se reconoce el mecanismo pagadero de la cláusula; sin él, la escalatoria |
-| S1‑R21 | El estudio de un mes en curso se guarda «parcial al corte» y se reemplaza una vez al cerrar el mes |
+| En elaboración | «Abrir el presupuesto» |
+| En aprobación | «Ver el envío» |
+| Aprobada | «Declarar la línea base» |
+| En ejecución | «Registrar el avance» |
+| Atrasada | «Ver las alertas» |
 
-**Recorrido guiado.** En **Inicio**, «Moneda, precios de empresa y reajuste» lo lleva paso a paso por
-**Indices del BCV**, **Precios de la empresa**, la **Hoja del proyecto** y **Reajuste de precios**.
+Si falta algo, dice «Te falta:» y la razón, por ejemplo «Sin avance registrado» o «Atrasada 5 días
+hábiles (SPI 0,92)».
 
-### 3.10 Tablero del proyecto
+### 5.3 En otras secciones
 
-Muestra de un vistazo la versión vigente del proyecto abierto. Las cuatro tarjetas son el total
-del contrato, el costo directo, el punto de equilibrio y el resultado de la auditoría. Si el
-proyecto tiene línea base y valuaciones, se agregan los anillos de avance físico, SPI y CPI, el
-costo final estimado y la curva PV, EV y AC; si no, el tablero dice que falta. Debajo están el
-desglose del costo por rubro, las partidas de mayor peso (las primeras que conviene cotizar) y el
-comparativo de versiones. Solo lee: para cambiar algo, use la Hoja del proyecto.
+- **Archivos y planos:** «Te falta: subir el plano o describir el espacio», con el botón «Subir plano o
+  cómputo». Aparece si pidió describir el espacio y todavía está vacío.
+- **Cargar cómputo:** «Te falta: la carpeta no tiene lista de precios para armar». No tiene botón: hay que
+  crear la lista (sección 4.3, camino 3, o sección 9.2).
+- **Versiones:** repite «Hay 3 cambios sin guardar» o «La versión V-004 espera dictamen».
 
-### 3.11 APU en tres paneles
+## 6. Versiones y aprobación
 
-En la pestaña APU de la hoja, la columna izquierda lista las partidas valoradas y tiene un
-buscador por código o descripción. La del centro muestra el APU de la partida elegida por rubro
-(materiales, equipos y mano de obra), cada uno con su subtotal; se editan la cantidad de cada
-línea y el rendimiento, y el insumo de una línea se cambia con un selector que busca al escribir.
-La de la derecha tiene los factores de la versión (FCAS, bono, administración y utilidad) y el
-cierre de la partida, del costo directo al precio unitario. Cada cambio recalcula al momento y la
-barra superior indica cuántos cambios faltan por guardar.
+Cada vez que guarda, nace una versión nueva. Las anteriores no se borran nunca.
 
-### 3.12 Libro de presupuesto de la empresa (UC‑25, Sílice 1.5)
+### 6.1 La sección «Versiones»
 
-En **Revisión → Libro de la empresa**:
+Arriba está la «Cadena de sellos» (sección 6.9). Debajo, la tabla «Versiones de la obra» con:
+«Versión», «Fecha», «Motivo», «Sale de», «Cambios», «Estado de aprobación», «Vigente» y «Acciones».
 
-1. **Suba** el Excel de su presupuesto. Si quiere, suba también el PDF que entregó al cliente o una versión
-   anterior del libro. También puede subir **solo un PDF** de presupuesto simple; en ese caso Sílice revisa el PDF y
-   no devuelve libro.
-2. **Revise las fechas.** La fecha del libro sale de la PORTADA y se puede cambiar. La fecha de devolución es hoy.
-   Si quiere, ajuste el umbral de alerta (5 % por defecto) y pulse **Auditar**.
-3. **Lea el resumen**: el total del libro, el total según Sílice y la diferencia.
-4. **Revise los hallazgos.** Cada uno trae su código, la celda y la acción:
-   - *corregido*: la devolución lo arregla;
-   - *a confirmar*: un valor escrito a mano que puede ser intencional, como una utilidad distinta;
-   - *informado*: solo se avisa.
+- La versión **vigente** dice «Sí» en «Vigente»: es la última guardada que no se descartó.
+- La que tiene abierta dice «(abierta)» junto a su código.
+- Una **descartada** dice «(descartada)». Se descarta desde «Actualizar precios» (sección 9.3). Sigue
+  guardada, con su historia, pero deja de ser la vigente.
 
-   La vista de la hoja marca en rojo las celdas citadas.
-5. **Revise las alertas de precio** en USD y Bs. Sin las tasas del BCV de esas fechas, las alertas dicen «no
-   contrastable».
-6. **Descargue el libro devuelto.** Tiene el mismo aspecto que el suyo, con los APU ordenados por dentro, los
-   valores de Sílice y tres hojas más: AUDITORÍA, TRAZABILIDAD y ALERTAS USD‑Bs.
-   Al preparar el libro, debajo del botón de descarga aparece su **vista previa**: elija la hoja (incluidas las
-   tres nuevas) y vea cómo quedó antes de descargarlo. No lleva celdas marcadas: los hallazgos están en AUDITORÍA.
+Botones de cada fila:
 
-No se copian hipervínculos, protección de hoja ni algunos formatos condicionales; todo cambio queda anotado. Sus
-libros no se guardan en Sílice: se procesan en memoria.
+- **«Abrir»**: lleva al Presupuesto con esa versión. No aparece en una descartada.
+- **«Ver cambios»**: abre a la derecha el «Registro de cambios de la versión …», con fecha, responsable,
+  qué cambió, antes, después y fuente.
+- **«Restaurar…»**: ver la sección 6.3.
 
-### 3.13 El asistente de IA (UC‑09)
+### 6.2 Abrir una versión anterior
 
-El asistente le ayuda a **empezar** la hoja del proyecto: usted le cuenta con sus palabras qué
-necesita armar (por ejemplo, «un baño de 2,4 por 1,5 metros con un lavamanos») y él **propone**
-ambientes, fuentes, puntos, recorridos o partidas. **La IA propone y usted decide.** Nada de lo que
-propone entra en la hoja hasta que usted lo acepte, y los números que importan (las cantidades
-derivadas, los precios, el total y los hallazgos del auditor) **los calcula siempre el sistema**,
-nunca la IA: el asistente no tiene ninguna herramienta para escribir un precio ni un total.
+Pulse «Abrir» en su fila. La cabecera dirá «Versión abierta: V-002 (la vigente es V-004)». Puede mirarla
+y, si la edita y guarda, nace una versión nueva que sale de ella.
 
-**Viene apagado de fábrica.** Mientras el administrador de la instalación no lo active (sección
-siguiente), el panel solo dice que el asistente está apagado y no se envía nada a ninguna parte.
+### 6.3 Restaurar una versión
 
-**Cómo pedir.** En **Hoja del proyecto**, abra el panel **Asistente de IA: propone, usted decide**
-(en una versión de solo lectura no se abre y el panel dice por qué).
+Restaurar crea una versión nueva, copia de la elegida. Nada se borra. Sirve también para volver a una
+versión descartada.
 
-1. En **Proveedor** elija con quién trabajar. Si solo hay uno disponible, es ese; los que no lo
-   están aparecen con el motivo (por ejemplo, que falta la clave de IA).
-2. En **Que necesita armar (en sus palabras)** escriba el pedido. No escriba datos personales ni
-   claves: el pedido viaja tal como usted lo escribe.
-3. Antes de enviar, el panel le dice el **destino** («Anthropic, en internet», «este equipo» o, si
-   Ollama está en otra dirección, esa dirección «fuera de este equipo») y
-   la **estimación de costo** de la tarea en dólares. Abra **Lo que se enviara** para ver, palabra
-   por palabra, el mensaje que recibirá el modelo. Es la vista previa: lo que ahí no está, no sale.
-4. Pulse **Proponer**. La hoja no cambia: aparecen las propuestas en una lista.
+1. Guarde o descarte antes los cambios pendientes. Si hay cambios, el botón no aparece y Sílice dice
+   «Guarde o descarte los cambios pendientes antes de restaurar otra versión.».
+2. Pulse «Restaurar…» en la fila de la versión.
+3. En el diálogo «Restaurar una versión», revise «Versión a restaurar» (viene la de la fila; puede elegir
+   cualquiera, descartadas incluidas).
+4. Escriba la «Fuente (por qué se restaura)».
+5. Pulse «Restaurar».
 
-**Qué se envía y qué no.** Se envían el pedido, un resumen del borrador (nombres de ambientes,
-medidas, puntos), códigos, descripciones y unidades de partidas, y los hallazgos del auditor sin
-sus montos. **Nunca** se envían precios, montos, totales, análisis de precios unitarios, curvas,
-cotizaciones, ni los nombres del proyecto, de su empresa o de los usuarios, ni archivos. De las
-partidas de MaPreX, en la nube solo viajan el código y la unidad.
+Verá «La versión V-002 se restauró como la versión V-005 (la vigente).».
 
-**Aceptar, editar o rechazar.** Cada propuesta trae su descripción, su estado y, si la IA tuvo que
-suponer algo, la línea **Supuestos de la IA** (revíselos: son lo que no estaba en su pedido).
+### 6.4 Quién aprueba
 
-| Botón | Qué hace |
-|---|---|
-| **Aceptar** | La propuesta entra en el borrador de la hoja. |
-| **Aceptar y editar** | Igual, marcada como editada: usted la ajusta después en las tablas. |
-| **Rechazar** | No toca el borrador. Si rechaza todo, el borrador queda idéntico al de antes. |
+Quien revisa da el dictamen. Quien arma también puede hacerlo; en ese caso el dictamen queda rotulado
+«aprobada por quien la armó» o «devuelta por quien la armó», para que se sepa.
 
-Si usted editó la hoja a mano después de la última decisión, aceptar otra propuesta aplica **solo
-esa propuesta** sobre la hoja tal como usted la dejó: sus ediciones se conservan. Si la propuesta ya
-no cabe en la hoja (por ejemplo, usa un punto que usted quitó), el panel lo avisa, no decide nada y
-usted puede corregir la hoja o rechazarla. Debajo de la lista, el panel dice qué calcularía el **sistema** si usted
-aceptara todo («un total de … y N hallazgos del auditor»). **Descartar lo pendiente** cierra la
-sesión: lo ya aceptado se queda en el borrador y lo pendiente no entra; al guardar, esa sesión entra
-igual en el anexo `ia.json` (también la de una sesión anterior si pidió otra con **Proponer**).
+Solo puede haber un envío pendiente por obra. Si envía otra versión, la anterior se retira de la
+aprobación.
 
-Si el modelo necesita un dato que no está en su pedido, **pregunta**. La pregunta aparece rotulada
-«Pregunta generada por la IA»: respóndala en **Su respuesta** y pulse **Responder**, o pulse
-**Cancelar la sesion**. No escriba contraseñas, claves ni precios en la respuesta. Si mientras
-tanto el proveedor dejó de estar disponible (se olvidó la clave, se apagó el asistente o cambió el
-modelo), al responder la sesión se cancela y el panel dice por qué; lo aceptado sigue en la hoja.
+### 6.5 Enviar a aprobación (quien arma)
 
-**Guardar.** Se guarda como siempre (sección 3.8): el panel prellena la fuente del cambio con
-«propuesta de IA, sesión N» y el proveedor y el modelo; el **responsable** es siempre una persona.
-En la columna **Estado** de las **partidas** que propuso la IA se lee «… | Propuesta de IA (sesion
-N)». Cuando entregue el paquete (pantalla **Entregar paquete**), la versión trae el anexo
-`anexos/ia.json` con el pedido, las llamadas del asistente con su validación, las citas y quién
-decidió cada propuesta. El anexo no trae uso de fichas, costo ni claves.
+1. Guarde la versión y corrija los hallazgos graves. La franja dirá «Siguiente paso: Envíe la versión
+   V-004 a aprobación».
+2. Pulse «Enviar a aprobación…».
+3. Si quiere, escriba una «Nota para quien revisa (opcional)», hasta 2.000 caracteres.
+4. Pulse «Enviar a aprobación».
 
-**Costo y tope.** La estimación que ve antes de enviar es una cota por tarea. Cada sesión tiene un
-**tope de costo** que fija el administrador (2 USD de fábrica) y que el panel muestra junto a la
-estimación. El turno que alcanza el tope se completa, así que una sesión **puede excederlo por un
-turno**; después se detiene y se conservan las propuestas válidas hasta ese punto. El modo local no
-tiene costo en dinero.
+Verá «Se envió V-004 a aprobación.». La línea «Aprobación:» dice «En aprobación» y la franja, «La versión
+V-004 espera dictamen». La versión enviada no se edita: si guarda cambios, sale una versión nueva.
 
-**Modo local.** Si el administrador configuró **Ollama**, el pedido se procesa en este mismo equipo
-y no sale nada. Es una opción **para pruebas**: la calidad de su respuesta en español todavía no
-se ha comprobado. Si la dirección de Ollama no es de este equipo, el panel la trata como un
-servicio en la nube y lo avisa antes de enviar.
+### 6.6 Dar el dictamen (quien revisa)
 
-**Si no hay conexión.** El panel muestra que el proveedor no respondió, la hoja queda como estaba.
-Puede seguir trabajando a mano en las tablas, reintentar con **Proponer** cuando vuelva la
-conexión, o elegir otro proveedor si hay uno disponible. Si el mensaje habla de la clave, avise
-al administrador: la clave de IA se corrige en **Administración**.
+1. Entre a «Aprobaciones» de la obra, o use el botón «Ver el envío» de su pendiente.
+2. Sílice abre el envío: «Carpeta», «Total», «Estado», «Enviada por» y la nota. Debajo, la tabla
+   «Partidas de V-004» y el informe de auditoría.
+3. En el panel «Dictamen», elija en «Su dictamen»:
+   - «Aprobada»;
+   - «Aprobada con observaciones»;
+   - «Devuelta».
+4. Escriba las «Notas». Son obligatorias para devolver o aprobar con observaciones.
+5. Pulse «Registrar el dictamen…» y confirme con «Registrar el dictamen». El dictamen no se cambia después.
 
-**Quién lo configura: pestaña «Asistente de IA» de Administración.** Es una pestaña solo del
-administrador de la instalación.
+Si la obra no tiene envíos, verá la lista «Versiones que esperan dictamen en esta carpeta» con «Abrir el
+envío», o «No hay versiones esperando dictamen.».
 
-- **Activar el asistente de IA (viene apagado)**, **Proveedor por defecto** (Claude, en la nube, o
-  Ollama, local), **Modelo de Claude**, **Modelo local (Ollama)**, **Dirección de Ollama** y
-  **Tope de costo por sesión (USD)** (mayor que cero; acepta coma o punto). Se guardan con **Guardar
-  la configuración**. El proveedor por defecto es el que el panel de la hoja ofrece primero si está
-  disponible. El modelo local es el nombre exacto de un modelo ya instalado en Ollama; vacío, el
-  modo local no se ofrece. Al **desactivar** el asistente, la clave de IA sale de la memoria del
-  programa (sigue guardada y se carga al activarlo de nuevo). La pestaña advierte que, con la nube
-  activa, el pedido y el resumen del borrador viajan al proveedor, sin precios, montos ni nombres.
-- **Clave de IA de la empresa.** Se registra con **Registrar la clave** y **solo desde el propio
-  equipo donde está instalado Sílice**: desde otro equipo de la red el formulario aparece
-  deshabilitado y lo dice, porque por la red local la clave viajaría sin cifrar. Se guarda en el
-  Administrador de credenciales de **este usuario de Windows**; la pantalla solo muestra sus
-  últimos cuatro caracteres, y **no viaja en los respaldos**. **Olvidar la clave** la borra del
-  equipo. Si el almacén de credenciales no está disponible, puede indicar una contraseña para un
-  respaldo cifrado. **Advertencia:** hoy no hay pantalla para reactivar la clave desde ese respaldo
-  (tras reiniciar sin almacén, la hoja se queda sin Claude hasta que se decida dónde pedir la
-  contraseña; véase el manual técnico, sección 17).
-- Hace falta el componente opcional del asistente: si la pestaña dice que falta, ejecute
-  `uv sync --extra ia` y vuelva a abrir Sílice.
+### 6.7 Si la versión vuelve devuelta (quien arma)
 
-**Qué hace el proveedor con lo que se le envía (retención y uso de datos).** Este punto **no está
-verificado**. Al 2026‑10‑12 (fecha de la verificación de datos externos del asistente,
-[asistente_verificacion.md](fuentes/asistente_verificacion.md)) la política vigente de retención y
-de uso de datos del proveedor de la nube **no se comprobó (pendiente)**, y este manual no la
-inventa. Antes de activar el modo en la nube, el administrador debe leer la política vigente del
-proveedor en su sitio oficial y decidir si el pedido y el resumen del borrador pueden salir del
-equipo. Si no pueden, deje el asistente apagado o use solo el modo local. Cuando se verifique, se
-anotará aquí con su fecha.
+1. La franja del Presupuesto dice «Te falta: La versión V-004 fue devuelta: corrija lo observado».
+2. Lea las notas debajo de «Aprobación:» («Notas de …: …»).
+3. Pulse «Hacer una versión nueva». Sílice lo lleva a «Partidas» y dice «Corrija y guarde: será una
+   versión nueva.».
+4. Corrija, guarde la versión (sección 4.8) y envíe **la nueva**. La devuelta no se vuelve a enviar.
 
-## 4. El informe de auditoría
+### 6.8 El rastro de aprobaciones
 
-Se genera **siempre** — no existe forma de obtener un presupuesto sin él. Ejecuta las siete
-reglas R1–R7 (trazabilidad de cantidades, cierre exacto de la curva, coherencia de unidades,
-correspondencia de especificaciones, balance volumétrico, criterio único de depreciación y
-conciliación con el plan; detalle en [NORMAS.md §7](../NORMAS.md)). Cada hallazgo trae:
+Debajo del envío, «Rastro de la obra» resume la historia, por ejemplo «VIV-001 devuelta → VIV-002
+aprobada», y la tabla «Movimientos de aprobación» dice cada envío, dictamen y retiro, con quién, cuándo y
+sus notas.
 
-- **severidad** (el informe se ordena de mayor a menor);
-- **descripción e impacto cuantificado** (cuánto dinero o cuánta cantidad está en juego);
-- **los `origen_id` involucrados**, para ir directo a la fila del cómputo o del plan que lo causó.
+### 6.9 La cadena de sellos
 
-Una regla que no pueda evaluarse (por ejemplo, R2 sin curva) aparece como hallazgo informativo y
-no interrumpe a las demás. Sobre el caso de estudio, el sistema detecta las **7 de 7**
-inconsistencias del presupuesto original.
+Cada versión guardada queda sellada con una huella. La «Cadena de sellos», arriba de «Versiones», dice si
+alguien cambió la base de datos por fuera de Sílice:
 
-**Cómo se lee en pantalla.** El informe tiene cuatro partes, en este orden:
+- **«Integridad verificada»** y «Cadena íntegra: 5 versiones»: todo bien.
+- **«Se rompió en la versión V-003»**, con el motivo: alguien cambió la base fuera del sistema.
 
-1. La cabecera: «Hallazgos: N · Resultado: CUMPLE» o «NO CUMPLE».
-2. **Resumen por severidad:** cuántos hallazgos hay de cada severidad.
-3. **Reglas evaluadas:** una fila por cada regla que corrió (R1 a R7), con su nombre y cuántos
-   hallazgos dio. Una regla con 0 **se verificó y no encontró nada**; así el informe dice qué
-   comprobó aunque no haya hallazgos.
-4. **Hallazgos:** la tabla, con la regla, la severidad, la **partida**, la descripción, el impacto y
-   los valores observado y esperado.
+Con la cadena rota no se puede enviar a aprobación ni aprobar; solo devolver. Qué hacer: avise al
+administrador. Él puede restaurar la base desde un respaldo (manual de instalación, «Restaurar»).
 
-Con **cero hallazgos**, el informe se emite igual: el resumen y la tabla dicen «Sin hallazgos.» y la
-sección de reglas evaluadas lista las siete con 0.
+### 6.10 Entregar el paquete al cliente (quien arma)
 
-Tres detalles de la tabla de reglas evaluadas:
+1. Busque «Entregar paquete» con Ctrl+K.
+2. Elija «Obra» y «Versión». Viene elegida la última aprobada.
+3. Revise los datos: «Total», «Hallazgos», «Cadena».
+4. Escriba «Para quién es (opcional)» y la «Contraseña de la clave de firma» (la del administrador,
+   sección 2.7).
+5. Pulse «Generar paquete» y después «Descargar el paquete».
 
-- **«No aplicable» cuenta 1.** Si el presupuesto no tiene plan de trabajo, R2 y R7 no se pueden
-  aplicar y cada una lo declara con un hallazgo informativo: por eso muestran 1 aunque no haya
-  ningún defecto.
-- **Los `PENDIENTE` no se enumeran.** El hallazgo `PENDIENTE` de un ítem sin partida (sección 3.1,
-  paso 4) no es una de las siete reglas: lo declara la elaboración. Con pendientes, la suma de la
-  tabla de reglas es menor que el «Hallazgos: N» de la cabecera, y la diferencia son exactamente
-  los `PENDIENTE`, que sí están en la tabla de hallazgos.
-- **Los `ATIPICO` tampoco se enumeran, y no cambian el veredicto.** El informe de una versión
-  revalorada (sección 3.2) puede traer hallazgos `ATIPICO`, de severidad ADVERTENCIA: precios de la
-  lista nueva atípicos frente al histórico. Como los `PENDIENTE`, no son una de las siete reglas: no
-  cuentan en «Reglas evaluadas», sí en el «Hallazgos: N» de la cabecera y en la tabla de hallazgos.
-- Las cuentas incluyen los hallazgos informativos, no solo los errores.
+Si la versión no está aprobada, el paquete sale rotulado «Versión NO aprobada», con la fecha. Si no hay
+clave de firma, sale sin firma y quien lo reciba lo verá como «no verificado».
 
-**La columna Partida.** La partida de cada hallazgo la declara la regla que lo emitió; no se
-adivina. Es un **ancla** para ubicar el hallazgo, y la descripción da el detalle:
+### 6.11 Revisar un paquete recibido (quien revisa)
 
-- una conciliación de R7 que abarca varias partidas se ancla en **la primera** de ellas en el orden
-  del presupuesto, y R6 en **su primer código** (la partida del factor minoritario); en los dos
-  casos la descripción nombra todas las partidas;
-- la columna dice «-» cuando no hay una sola partida que nombrar: lo que es del presupuesto entero
-  (el cierre de la curva de R2, las declaraciones «no aplicable», un período del plan que no nombra
-  ninguna partida) o un hallazgo cuyo origen comparten varias partidas sin que ninguna regla lo haya
-  declarado.
+1. Busque «Revisar un paquete» con Ctrl+K.
+2. En la pestaña «Paquete .silice», suelte el archivo `.silice` que recibió.
+3. Lea el aviso:
+   - «Verificado: emitido por … No se alteró desde que se firmó.»: el paquete es confiable.
+   - «No verificado: …»: no se pudo comprobar quién lo emitió; se audita igual.
+   - «Alterado: … No confíe en este paquete; pida uno nuevo.»
+4. Revise el «Total recalculado», las diferencias de precio y los hallazgos.
+5. Elija el dictamen («conforme», «con observaciones» o «rechazado»), escriba las «Notas» y pulse
+   «Guardar dictamen».
 
-**Reglas de precios (R11 y R12, desde la 0.6.0).** No son parte de las siete: se evalúan sobre la lista
-de precios a una fecha de evaluación que se declara (en la hoja, hoy) y su impacto es dinero en el total
-de la versión. Están en la sección 3.9.
+La pestaña «Presupuesto en Excel» revisa un presupuesto en Excel de otra empresa: descargue la plantilla
+con «Descargar la plantilla del formato» y suelte el `.xlsx`.
 
-## 5. Exportar
+## 7. Archivos y planos
 
-- **Excel:** presupuesto y curva en un libro XLSX (desde la página de actualización, desde
-  **Elaborar un presupuesto** o de **Componer una partida** tras elaborar, secciones 3.1 y 3.7, o
-  `GET /presupuestos/{codigo}/excel` en la API). Las celdas presentan dos decimales; los totales del
-  libro cuadran con los del sistema porque el redondeo es solo de celda. La hoja **Auditoria** es el
-  informe: una fila por hallazgo en las columnas A a E (regla, severidad, descripción, impacto y
-  orígenes) y, separadas por la columna F vacía, las **reglas evaluadas** en las columnas G a I
-  (regla, nombre y número de hallazgos), con los mismos criterios de la sección 4. Sin hallazgos,
-  la columna A trae solo el encabezado y G a I, las siete reglas con 0. La hoja no tiene columna de
-  partida: esa está en el informe en pantalla.
-- **Informe:** `GET /presupuestos/{codigo}/informe`.
-- **Tabla de escenarios:** botón de descarga CSV en la página de escenarios (valores exactos,
-  sin redondeo de presentación).
+La sección «Archivos y planos» de la obra tiene el botón «Subir plano o cómputo» y la tabla «Registro de
+importaciones».
 
-## 6. Archivos de muestra
+### 7.1 Subir un plano DXF o IFC
 
-| Archivo | Dominio | Para probar |
+Necesita el módulo de edificación encendido.
+
+1. Pulse «Subir plano o cómputo».
+2. Suelte el plano `.dxf` o `.ifc` en la zona, o haga clic para elegirlo. Máximo: 8 MiB un DXF y 20 MiB
+   un IFC.
+3. Pulse «Leer plano».
+4. Si el plano no dice su unidad, verá «Falta la unidad del dibujo». Elija la «Unidad del dibujo» (m, cm,
+   mm, dm, in o ft) y pulse «Continuar con esta unidad».
+5. Lea el «Informe de la importación de …»: qué importó, qué no reconoció, qué aproximó y qué queda
+   pendiente.
+6. **«Alturas pendientes»**: si el plano no trae la altura de algún ambiente, escríbala en metros (por
+   ejemplo 2,50) y pulse «Cargar alturas».
+7. **«Circuitos por declarar»**: confirme o corrija los conductores y los puntos de cada circuito y pulse
+   «Declarar circuitos».
+8. Pulse «Fusionar con el espacio del borrador». Si no quiere usar el plano, pulse «Descartar la
+   importación».
+
+Si fusiona sin cargar las alturas, esos ambientes entran con 2,5 m provisionales, y los circuitos
+supuestos quedan marcados en la auditoría. Puede corregirlos después en «Espacio y metrajes».
+
+Las filas entran al borrador para que las revise: falta guardar la versión.
+
+Si no tiene plano, el enlace «Describir el espacio a mano» lleva a «Espacio y metrajes».
+
+### 7.2 Cargar el cómputo
+
+Un archivo `.csv` en la misma zona abre «Cargar cómputo». Los pasos y el formato están en la sección 4.7.
+
+### 7.3 El registro de importaciones
+
+La tabla «Registro de importaciones» guarda cada archivo importado en la obra, con «Nombre», «Tipo»
+(«Plano .dxf», «Plano .ifc» o «Cómputo .csv»), «Fecha y hora», «Quién», «Qué produjo» (por ejemplo «34
+filas en el espacio; 2 sin reconocer» o «18 partidas llevadas») y «Versión» (el código, o «sin guardar»).
+
+Haga clic en el nombre del archivo para ver su informe en el panel lateral.
+
+Quien revisa ve el registro, pero no sube archivos.
+
+### 7.4 Con la edificación apagada
+
+La sección sigue. El botón se llama «Cargar cómputo» y solo acepta `.csv`. No hay planos ni «Espacio y
+metrajes».
+
+## 8. Mercado
+
+La sección «Mercado» de la obra abre «Estudio de mercado». Tiene cuatro pestañas. Quien revisa ve solo
+las dos últimas.
+
+### 8.1 «Lo que compramos» (los insumos)
+
+1. En «Insumo», escriba parte del nombre o el código, por ejemplo «cemento», y elíjalo.
+2. Si quiere, cambie «Días hacia atrás» (de 1 a 3.650; normalmente 90) y pulse «Ver estos días».
+3. Lea las cifras: «Observaciones», «Mínimo», «Primer cuartil», «Mediana», «Promedio» y «Máximo».
+4. En «Su precio», Sílice propone uno («Propuesta de Sílice: …») y explica por qué. Usted decide.
+5. Escriba «Su precio». Si quiere, elija la «Observación que respalda el precio».
+6. Si la obra está en ejecución y quiere que Control de obra use ese precio, marque «Declararlo precio del
+   corte de la obra …».
+7. Pulse «Usar este precio», lea lo que va a cambiar y pulse «Confirmar».
+
+El precio entra en la lista para armar de la carpeta con la fecha de hoy. Las versiones ya guardadas no
+cambian.
+
+**Anotar lo que ve en el mercado.** En «Anotar una observación», llene «De dónde sale» («Proveedor»,
+«Competidor», «Cotización», «MaPreX» o «Compra hecha»), «Fuente», «Fecha» (no puede ser futura), «Precio»
+y, si quiere, «Nota». Pulse «Anotar observación». La observación toma la moneda de la carpeta. Para
+quitar una, pulse «Anular» en su fila: sale de las cifras y queda constancia.
+
+### 8.2 «Lo que cobramos» (las partidas)
+
+Igual que la anterior, pero con partidas («Partida», por ejemplo «friso»). Las cifras añaden «Su costo
+(piso)» y «Precio con utilidad». Al pulsar «Usar este precio» queda guardado como **objetivo de mercado**:
+el Presupuesto lo muestra junto al precio del APU, en la columna «Objetivo de mercado».
+
+### 8.3 «Histórico de precios»
+
+Cada fila es un insumo que cambió de precio en una actualización de la lista. Filtre por «Insumo»,
+«Desde» y «Hasta» y pulse «Filtrar». Las columnas son «Fecha», «Insumo», «Precio anterior», «Precio
+nuevo» y «Variación».
+
+### 8.4 «Cotizaciones de la obra»
+
+Una cotización vale solo para esta obra. Se lee de la versión vigente.
+
+**Registrar una cotización** (quien arma):
+
+1. Guarde o descarte antes los cambios del Presupuesto. Si hay cambios, verá «Hay cambios sin guardar».
+2. Pulse «Registrar una cotización…».
+3. Elija el «Insumo» y escriba el «Precio cotizado», el «Proveedor», el «Número de la cotización», la
+   «Fecha de la cotización» y, si quiere, la «Evidencia».
+4. Pulse «Cotizar».
+
+Sílice crea una versión nueva desde la vigente y avisa «Se creó la versión V-006 con la cotización.» con
+el enlace «Abrirla en el Presupuesto». El precio cotizado debe ser distinto del de la lista.
+
+**Retirar una cotización:** pulse «Retirar una cotización…», elija el «Insumo cotizado», escriba «Por qué
+se retira» y pulse «Retirar cotización». También crea una versión nueva, que vuelve al precio de la lista.
+
+**El rastro de la moneda.** La tabla muestra, por insumo: «Código», «Insumo», «Cotización», «Moneda
+original», «Precio original», «Tasa», «Fecha de la tasa» y «Fuente de la tasa». Si el precio de la lista
+se convirtió de otra moneda, esas columnas dicen de qué precio salió, con qué tasa, de qué día y de qué
+publicación del BCV. El diálogo de cotizar no pide moneda: la cotización va en la moneda de la obra.
+
+### 8.5 La conversión de moneda con la tasa del BCV del día exacto
+
+En Mercado, cuando un precio está en otra moneda que la obra:
+
+- **Una observación** se convierte con la tasa del BCV **del mismo día de la observación**. En la tabla de
+  observaciones, la columna «En las cifras» dice «Sí, convertida: …», o «No: sin tasa del BCV del
+  dd/mm/aaaa» si falta la tasa de ese día.
+- **El precio del corte** se convierte con la tasa del BCV del mismo día. Si falta, no se guarda nada y
+  Sílice dice: «No hay tasa del BCV del dd/mm/aaaa (hace falta la del mismo día) para convertir este precio
+  a … Cárguela en Índices y vuelva a intentarlo.».
+
+Cada conversión deja su rastro en una línea, por ejemplo:
+
+«31,50 USD × 36,50 Bs/USD (BCV, publicación del 20/10/2026) = 1.149,75 Bs»
+
+Es decir: el precio original, la tasa, la fecha y la fuente, y el resultado. Al pasar el ratón se ve el
+resultado exacto. Las tasas las carga el administrador en «Índices del BCV» (sección 9.4).
+
+## 9. Precios de la empresa, índices del BCV y reajuste
+
+### 9.1 El catálogo
+
+«Precios y catálogo», en la zona Empresa, abre «Catálogo de partidas e insumos». Es de solo lectura.
+Escriba en «Buscar en el catálogo» y cambie entre las pestañas «Partidas» e «Insumos». Los insumos traen
+su «Precio vigente».
+
+### 9.2 Precios de la empresa (quien administra)
+
+Busque «Precios de la empresa» con Ctrl+K. Es la lista de precios propia de la empresa: una copia de la
+lista base con sus precios encima, cada uno con su fecha y su fuente.
+
+1. **«1. La referencia MaPreX en bolívares»**: pulse «Cargar la referencia MaPreX en Bs».
+2. **«2. La lista de la empresa»**: llene «Empresa (nombre)», «RIF», «Lista base», «Moneda de la lista»,
+   «Fecha de la lista» y «Fuente de la lista». Suelte el archivo de precios (CSV o XLSX) y pulse «Crear la
+   lista de la empresa».
+3. **«3. Precios vencidos o fuera de rango (R11 y R12)»**: pulse «Buscar variaciones atípicas de precio».
+4. **«FCAS por componentes»**: «Abrir la calculadora del FCAS».
+
+El archivo de precios lleva las columnas `tipo`, `insumo`, `unidad` y `precio` (y, si quiere, `fecha`,
+`fuente`, `referencia`, `moneda`, `tasa`, `fecha_tasa` y `fuente_tasa`). En este archivo el decimal va con
+**punto**.
+
+### 9.3 Actualizar precios de un presupuesto (quien arma)
+
+Busque «Actualizar precios» con Ctrl+K. Sirve para revalorar un presupuesto guardado con una lista de
+precios nueva.
+
+1. Elija el «Presupuesto base».
+2. Escriba el «Código de la versión nueva», la «Fecha de vigencia», la «Moneda» y el «Nombre de la lista».
+3. Suelte la lista de precios (`.csv` o `.xlsx`, con las columnas `tipo`, `insumo`, `unidad` y `precio`).
+4. Pulse «Revalorar presupuesto».
+5. Revise el «Comparativo por partida». Puede «Exportar a Excel» y ver el informe de auditoría de la
+   versión nueva.
+
+Si no le sirve la versión nueva, pulse «Descartar versión» y confirme. La versión sigue guardada, con su
+historia, pero deja de ser la vigente. Para recuperarla, restáurela (sección 6.3).
+
+### 9.4 Índices del BCV (quien administra)
+
+Busque «Índices del BCV» con Ctrl+K. Aquí se cargan la tasa del dólar y el INPC.
+
+1. En «Qué archivo es», elija: «Tasa de referencia del USD (.xls trimestral)», «INPC (.xls mensual)» o «Una
+   serie en CSV canonico (serie, fecha, valor, provisional, fuente)».
+2. Escriba la «Dirección de la página del BCV de donde lo bajó» y la «Fecha de descarga».
+3. Suelte el archivo (`.xls`, `.xlsx` o `.csv`).
+4. Pulse «Leer». Sílice muestra el «Informe previo (todavía no se guardó nada)»: filas leídas, rechazadas y
+   provisionales.
+5. Si está bien, pulse «Confirmar la importación».
+
+Cargar el mismo archivo dos veces no duplica nada.
+
+### 9.5 Reajuste de precios (quien arma)
+
+Abra la obra y busque «Reajuste de precios» con Ctrl+K. Calcula el reajuste del contrato con una fórmula
+de tres componentes (materiales, equipos y mano de obra) y los índices. El resultado es un indicio que se
+debe cotejar con la Gaceta.
+
+1. Elija la «Versión del contrato».
+2. Pestaña «1. La cláusula»: «Inicio del contrato», «Duración (meses)», «Periodicidad», «Mecanismo»
+   («Escalatoria», «Comprobación directa» o ambos), «Estructura», «R (fracción no reajustable)» con su
+   fuente, y la serie y el peso de cada componente.
+3. Pestaña «2. Períodos y lo ejecutado»: los períodos y lo ejecutado, o la casilla para tomarlo de las
+   valuaciones registradas.
+4. Pulse «Calcular». Puede «Guardar estudio» y «Descargar Excel».
+
+### 9.6 Convertir la moneda de una versión (quien arma)
+
+En el Presupuesto, pestaña «Ajustes de costo», pulse «Convertir la moneda…». Elija la «Moneda destino», la
+«Tasa del BCV» («Venta» o «Compra») y escriba «Por qué se cambia la moneda (fuente)». Pulse «Convertir la
+versión». Se crea una versión convertida; la actual no cambia. Antes, guarde o descarte los cambios.
+
+### 9.7 Simulador de listas y escenarios de sensibilidad
+
+Son herramientas de investigación (Ctrl+K). «Simulador de listas» genera listas de prueba: no son una
+fuente de mercado. «Escenarios de sensibilidad» recalcula un presupuesto guardado cambiando FCAS, bono,
+administración, utilidad o precios, sin alterar el original y sin guardar nada. No aparecen en el modo
+entrega.
+
+## 10. Obras viales y producción
+
+Esta sección necesita el módulo «Vial» encendido; la planta, el módulo «Producción»; el riesgo, el módulo
+«Riesgo».
+
+### 10.1 Tramos de la vía (quien arma)
+
+Haga clic en «Tramos» dentro de la obra. La pantalla se llama «Tramos de la vía». Los tramos se cargan
+desde un archivo CSV, uno por versión.
+
+1. Guarde antes una versión del presupuesto. Sin versión, Sílice dice «Esta obra aún
+   no tiene versiones guardadas. Guarde una en la Hoja para cargar sus tramos.».
+2. Elija la «Versión». Solo se editan los tramos de la versión más reciente que no esté enviada ni
+   aprobada.
+3. Suelte el archivo `.csv` de la vía en la zona. Verá «Tramos importados: 2 tramos de via.csv.».
+4. Revise cada bloque «Tramo T1»: «De 0 a 1,2 km · ancho 7,3 m · planta a 15 km» y la tabla «Partida»,
+   «Unidad», «Cantidad». Sílice calcula las cantidades.
+5. Pulse «Llevar al presupuesto». Verá «Se llevaron 12 renglones de V-001 a la Hoja de la obra.» y el
+   enlace «Abrir la Hoja de la obra», que lleva al Presupuesto.
+6. En el Presupuesto, guarde la versión.
+
+Llevar otra vez actualiza los renglones que vinieron de los tramos.
+
+**El archivo de la vía.** Texto UTF-8, columnas separadas por punto y coma. Aquí **sí** se usa coma
+decimal (`1,2`); también se acepta punto sin miles (`1234.5`). Máximo 2 MiB. Si una fila está mal, no se
+importa nada y Sílice dice cuál.
+
+Columnas obligatorias: `tramo`, `progresiva_ini_km`, `progresiva_fin_km`, `ancho_m`, `distancia_planta_km`,
+`elemento`, `tipo`, `espesor_m`, `densidad_t_m3`, `dosis_l_m2` y `lineas`. Opcional: `asfalto_pct`. Una fila
+por capa o por línea de demarcación; los datos del tramo van en su primera fila. Ejemplo ficticio:
+
+```
+tramo;progresiva_ini_km;progresiva_fin_km;ancho_m;distancia_planta_km;elemento;tipo;espesor_m;densidad_t_m3;dosis_l_m2;lineas
+T1;0;1,2;7,30;15;capa;fresado;0,05;;;
+T1;;;;;capa;riego_adherencia;;;0,40;
+T1;;;;;capa;carpeta;0,05;2,35;;
+T1;;;;;demarcacion;continua;;;;2
+T1;;;;;demarcacion;discontinua;;;;1
+T2;1,2;2,0;6,50;18;capa;subbase_granular;0,25;;;
+```
+
+`elemento` es `capa` o `demarcacion`. Las capas pueden ser `fresado`, `base_granular`, `subbase_granular`,
+`imprimacion`, `riego_adherencia`, `carpeta` o `bacheo`; la demarcación, `continua` o `discontinua`.
+
+**Qué calcula Sílice:** volumen de fresado, base y sub-base; área y litros de ligante de imprimación y
+riego; área y toneladas de mezcla de la carpeta; toneladas por kilómetro de transporte hasta la planta;
+metros de demarcación y litros de pintura.
+
+### 10.2 Las reglas viales VR
+
+Cuando la versión tiene tramos, la pestaña «Revisión» del Presupuesto añade las reglas viales. Cada
+hallazgo dice su severidad: «Crítico», «Error», «Advertencia» o «Información».
+
+| Regla | Qué revisa | Severidad |
 |---|---|---|
-| `data/samples/tanquilla.ifc` | civil (IFC) | UC‑01; cantidades exactas al cálculo manual |
-| `data/samples/civil/tanquillas_y_zanja.csv` | civil (tabular) | UC‑01 con mapeo de códigos |
-| `data/samples/telecom/topologia_arenaza.csv` | telecom | nodos y enlaces con reserva de cable |
-| `data/samples/industrial/activos_planta.csv` | industrial | activos con frecuencia de intervención |
-| `data/samples/sistemas/alcance_funcional.csv` | sistemas | módulos y puntos de función |
-| `data/samples/precios/lista_2026-06-01.csv` | — | UC‑02 (sube cemento y arena) |
+| VR1 | Las toneladas de carpeta del presupuesto contra área × espesor × densidad (tolerancia 0,5 %) | Error |
+| VR2 | El porcentaje de asfalto del tramo contra la fórmula de trabajo de la receta de la planta (±0,5 puntos) | Advertencia; Información si no hay con qué comparar |
+| VR3 | El ligante residual de imprimación o riego dentro de su rango | Advertencia |
+| VR4 | Las toneladas por kilómetro del transporte contra toneladas × distancia (tolerancia 0,5 %) | Error |
+| VR5 | Los litros de pintura por kilómetro de línea, entre 29 y 44 | Advertencia |
+| VR6 | Solapes entre tramos (error) y huecos entre progresivas (advertencia) | Error o Advertencia |
+| VR7 | Que cada partida sea la que produce esa capa o línea, y en su unidad | Error |
 
-Cada carpeta trae su `README.md` con el formato exacto de columnas.
+Para VR2, Sílice busca la receta vigente de la mezcla y su ligante (sección 10.4). Si dice «no se sabe
+cuál es el ligante», marque «Es el ligante» en la receta.
 
-## 7. Problemas frecuentes
+### 10.3 Reportes de la vía
 
-| Síntoma | Causa y solución |
+En «Tramos», bajo «Reportes en Excel», hay tres descargas: «Cómputos por tramo», «APU con origen y
+conciliación» y «Resumen con IVA». Cada libro empieza con una portada que dice de dónde sale cada cifra.
+
+### 10.4 Producción: la arenera y la planta
+
+«Producción», en la zona Empresa, abre «Existencias de la arenera». Arriba están los enlaces «Receta de la
+planta», «Producir mezcla», «Costos del período» y «Costo por tonelada».
+
+**Existencias.** Cuatro pestañas:
+
+- «Existencias»: cuánto hay de cada material, con su «Estado» («Normal», «Queda poco» o «Existencia
+  negativa: falta registrar producción o conteo»).
+- «Registrar»: «Entrada», «Despacho», «Conteo físico» y «Material nuevo».
+- «Importar báscula»: suelte el archivo de pesajes (`.csv` o `.xlsx`) y pulse «Importar».
+- «Pesajes sospechosos»: los pesajes que no cuadran; «Revisar» cada uno y resolverlo o descartarlo.
+
+**Receta de la planta.** Dice qué lleva una tonelada de cada mezcla.
+
+1. Para ver una: escriba el «Producto (código)» y la «Fecha» y pulse «Ver la receta vigente». La tabla
+   trae «Código», «Cantidad por t», «Unidad», «Tipo» y «Ligante».
+2. Para registrar una nueva, pulse «Registrar una receta nueva»:
+   - «Producto (código)», «Vigente desde» y «Fuente (dosificación)».
+   - Un bloque por componente: «Código», «Cantidad por t», «Unidad» («Toneladas (t)» o «Litros (l)») y
+     «Tipo» («Propio (sale del inventario)» o «Comprado (precio de la lista)»).
+   - **«Es el ligante»**: marque esta casilla en el asfalto de la mezcla. Con él compara la auditoría de
+     los tramos la fórmula de trabajo (regla VR2). Solo un componente puede ser el ligante, y debe ir en
+     toneladas. La marca no cambia el costo de la mezcla ni lo que sale del inventario.
+   - «Agregar un componente» para el siguiente.
+   - La línea «Suma de masa» debe dar entre 0,98 y 1,02 t por t de mezcla (los litros no cuentan). Si no,
+     «Registrar receta» no se activa.
+3. Pulse «Registrar receta».
+
+Una receta nueva no cambia las anteriores: rige desde la fecha que indique. Una receta ya registrada no
+se edita: para marcar el ligante en una vieja, registre otra con la misma dosificación.
+
+Ejemplo ficticio: la mezcla MZ-C lleva 0,55 t de PC-19 (propio), 0,40 t de AR-01 (propio), 0,05 t de
+CA-30 (comprado, **es el ligante**) y 8 l de GO (comprado). La fórmula de trabajo es 5 %.
+
+**Producir mezcla.** Elija la «Fecha de la producción», la «Mezcla a producir» y las «Toneladas
+producidas». Sílice muestra lo que «Consumirá del inventario». Pulse «Registrar producción».
+
+**Costos del período.** Elija el «Mes» y pulse «Registrar un costo»: «Centro» (Cantera o Planta),
+«Concepto», «Monto», «Moneda», «Fecha» y «Fuente (factura o recibo)». Un costo mal anotado se anula con
+«Anular» y su motivo.
+
+### 10.5 El costo por tonelada
+
+1. Busque «Costo por tonelada» (o su enlace en Existencias).
+2. Elija el «Mes» (viene el anterior) y la «Moneda del cálculo» (no tiene valor por defecto).
+3. Si quiere, marque «Repartir la cantera por pesos» y ponga el porcentaje de cada agregado (deben sumar
+   100 %).
+4. Pulse «Calcular costo por tonelada».
+
+El resultado, «Cálculo n.º 3», trae el costo por tonelada de cada agregado y de cada mezcla, el total de
+la cantera y de la planta, y lo que pasa al mes siguiente. Cada cálculo se guarda; si vuelve a calcular,
+se crea otro.
+
+El administrador puede pulsar «Publicar como precio propio»: el cálculo pasa a una lista «Costo propio
+AAAA-MM, cálculo n.º N» que los APU pueden usar. «Descargar el reporte de costo de producción (Excel)»
+baja el informe del mes.
+
+### 10.6 Riesgo de la obra
+
+Abra la obra y busque «Riesgo de la obra» con Ctrl+K. Dice cuánto puede subir el presupuesto si los
+precios se mueven como en los meses pasados.
+
+1. Elija la «Versión».
+2. En «Plazo y simulación», revise «Fecha de inicio», «Meses del plazo» (6), «Trayectorias» (2.000),
+   «Semilla» (1) y «Meses de historia» (36).
+3. En «Serie que mueve cada insumo», elija la serie de los insumos que la necesiten.
+4. Pulse «Proyectar». Verá «Total base», «P50», «P80» y «Reserva para cubrir el P80», y los tres insumos
+   que más empujan. «Descargar el informe de riesgo» lo baja en Excel.
+5. «Comprobar hacia atrás» mide cuántas veces acertó esa cuenta en el pasado (tarda cerca de medio
+   minuto). La cobertura es un indicador, no una probabilidad.
+
+Al pie, «Mejora de la estimación» compara, al terminar la obra, el costo final con el presupuesto
+original y con la estimación de Sílice. Pulse «Calcular la mejora» y, si quiere, «Descargar el informe
+de mejora (Excel)».
+
+## 11. Control de obra
+
+«Control de obra», dentro de la obra, es para quien arma. Compara lo avanzado con lo planificado. Tiene
+seis pestañas, en este orden de uso:
+
+1. **«Línea base».** Abra «Declarar una línea base» y llene «Versión del contrato» (propone la última
+   aprobada), «Vigente desde», «Perspectiva», «Inicio de obra», «Días hábiles por período», «Feriados»
+   (fechas como 25/12/2026, separadas por comas) y «Fuente de la línea base». Pulse «Declarar línea
+   base».
+2. **«Valuaciones».** En «Registrar una valuación» escriba «Número», «Período desde», «Período hasta»,
+   «Fecha de la valuación» e «Inspector», y una línea por partida medida («Partida», «Cantidad», «Fecha
+   de medición», «Observación» y, si hubo, «Causa del retraso»). Pulse «Registrar y controlar». También
+   puede «Importar valuaciones de un XLSX», «Anular una valuación» o «Anotar un costo incurrido». La tabla
+   muestra el subtotal, el IVA al 16 % y el total con IVA de cada valuación.
+3. **«Procura».** «Alertas de compra» y «Materiales de la obra»: cuánto se necesita, cuándo y a más
+   tardar cuándo pedirlo. Pulse «Pedida hoy» al hacer el pedido y «Recibida…» al recibirlo (con fecha,
+   cantidad, precio y, si quiere, «Declararlo precio del corte»). «Cambiar» ajusta el plazo de entrega.
+4. **«Valor ganado».** Elija la «Fecha de corte» y los «Precios del corte» y pulse «Calcular al corte».
+   Verá los indicadores y la curva «PV, EV y AC al cierre de cada período».
+5. **«Alertas y reproyección».** Las alertas, el atraso por partida, el término, el costo final y el plan
+   reproyectado.
+6. **«Recuperación».** Si la obra va atrasada, escriba el «Día hábil objetivo» y pulse «Calcular
+   opciones». Elija una en «Opción a aplicar» y pulse «Elegir y crear la versión».
+
+Sin línea base, las demás pestañas piden «Declare primero la línea base de control».
+
+## 12. Auditar un presupuesto
+
+«Auditar un presupuesto», en la zona Empresa, abre «Inicio de auditoría». Sirve para revisar un
+presupuesto en Excel, propio o de terceros. El archivo no se guarda: solo quedan el resumen y los
+hallazgos.
+
+### 12.1 Auditar un libro
+
+1. Suelte el `.xlsx` en «Suelte aquí el libro .xlsx del presupuesto, o haga clic para elegirlo».
+2. Pulse «Auditar por mi cuenta», o «Auditar con recorrido guiado» si es la primera vez (sección 12.4).
+3. Se abre «Libro de la empresa». Mientras trabaja dice «Leyendo el libro y auditándolo…».
+
+### 12.2 Leer el resultado
+
+- **Arriba, tres indicadores:** «Subtotal sin IVA», «IVA» y «Total general». Cada uno trae la cifra del
+  libro, «Según Sílice …» y la diferencia con la palabra «favorable» o «desfavorable».
+- **Libro contra Sílice.** Si el libro dice **menos** que Sílice, sale «favorable» en verde, pero con la
+  nota «Libro menor»: un libro que olvidó partidas o costos también sale menor. Lea la nota completa en
+  «Total general» y revise antes de aceptar.
+- **A la izquierda, la hoja del libro**, tal como está, con las celdas marcadas. Hay botones para acercar
+  y alejar.
+- **A la derecha, «Hallazgos (n)»**, con filtros «Crítico», «Error», «Advertencia» e «Información». Haga
+  clic en un hallazgo para ir a su celda. Los que caen en filas ocultas o fuera del libro van en grupos
+  aparte.
+
+Si no hay nada que objetar, verá «La auditoría terminó y el libro no tiene hallazgos.».
+
+### 12.3 El historial
+
+Busque «Historial de auditorías» con Ctrl+K. Filtre por fechas, tipo y resultado. «Ver el detalle»
+muestra quién la hizo, los totales, los hallazgos y la huella del archivo.
+
+Las últimas auditorías también aparecen en «Inicio de auditoría», bajo «Últimas auditorías guardadas».
+
+### 12.4 El recorrido guiado
+
+Con «Auditar con recorrido guiado» aparece a la derecha la columna «Recorrido», con tres pasos: «Suba el
+libro», «Lea el resumen y los hallazgos» y «Compruebe que quedó guardada». Cada paso dice qué hacer y
+cuándo terminó. «Ocultar» la pliega y «Terminar recorrido» la quita.
+
+Quien solo administra entra a esta pantalla pero no puede auditar: Sílice le pide que lo haga alguien que
+arma o revisa.
+
+## 13. El asistente de IA
+
+Hoy la interfaz de Sílice **no tiene** una ventana para conversar con el asistente de IA. No hay botón ni
+panel del asistente en el Presupuesto ni en otra sección.
+
+Lo único que existe es su configuración, para quien administra, en «Empresa y personas», pestaña
+«Asistente de IA»:
+
+- **«Configuración del asistente»**: la casilla «Activar el asistente de IA (viene apagado)», el «Proveedor
+  por defecto» («Claude (en la nube, con la clave de la empresa)» u «Ollama (local, en este equipo)»), los
+  modelos, la «Dirección de Ollama» y el «Tope de costo por sesión (USD)». Botón «Guardar la
+  configuración».
+- **«Clave de IA de la empresa»**: «Registrar la clave», «Reactivar la clave» u «Olvidar la clave». La
+  clave se registra solo desde el equipo donde está instalado Sílice, se guarda en el almacén de
+  credenciales de Windows y no viaja en los respaldos.
+
+El aviso «Asistente en la nube» explica qué saldría del equipo si se usa la nube: el pedido y un resumen
+del borrador, sin precios, montos ni nombres de obra, empresa o personas.
+
+Dejar esto configurado no agrega todavía ninguna pantalla. Cuando el asistente llegue a la interfaz, este
+manual lo explicará.
+
+## 14. Problemas frecuentes
+
+### 14.1 Al entrar
+
+| Mensaje | Qué pasa | Qué hacer |
+|---|---|---|
+| «El código de instalación no es válido o ya se usó.» | El código está mal copiado, ya se usó o no existe | Cópielo otra vez del archivo `codigo_instalacion.txt`. Si ya se usó, entre con la cuenta creada |
+| «Usuario o contraseña incorrectos.» | Uno de los dos está mal | Revise mayúsculas y el teclado. Si la olvidó, pida al administrador que la restablezca |
+| «Demasiados intentos fallidos. Espere 15 minutos o pida al administrador que desbloquee la cuenta.» | La cuenta se bloqueó | Espere, o que el administrador pulse «Desbloquear» |
+| «Demasiados intentos fallidos en este equipo. Espere unos segundos y vuelva a probar.» | Muchos intentos seguidos | Espere los segundos que indica el botón |
+| «Esa contraseña es demasiado común; elija otra.» | La contraseña es muy conocida | Use una frase larga |
+| «Su contraseña es temporal: elija una propia antes de seguir.» | Entró con la contraseña temporal | Cámbiela (sección 2.4) |
+| «Su sesión venció. Entre de nuevo para seguir.» | Pasó mucho tiempo sin actividad | Entre otra vez |
+| «No se pudo hablar con el programa de Sílice. Compruebe que esté encendido.» | La ventana del servidor está cerrada | Abra «Sílice» desde el menú Inicio |
+
+### 14.2 Mientras trabaja
+
+| Mensaje | Qué pasa | Qué hacer |
+|---|---|---|
+| «Sin permiso» / «Su cuenta no tiene permiso para esta pantalla o acción.» | Su papel no incluye esa pantalla | Pídale al administrador el papel que corresponda |
+| «Apagada» / «Esta función está apagada en esta instalación…» | El módulo está apagado | El administrador lo enciende en «Especialidades» |
+| «Esa obra ya no existe» | La obra se borró o su carpeta no está | Pulse «Volver a Pendientes» |
+| «Ya existe una obra llamada «…»: elija otro nombre o abra esa.» | El nombre está repetido en la carpeta | Use otro nombre |
+| «Escriba un número. Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56.» | La cifra se escribió con punto decimal (2.5) o con otro formato | Escriba 2,5 o 1.234,56 |
+| «Elija la partida de la lista de sugerencias.» | Escribió en «Partida» pero no eligió | Elija una opción de la lista |
+| «La partida «…» no está en el catálogo: compóngala primero en Componer.» | La partida no existe | Use «Componer una partida» (sección 4.3) |
+| «El cálculo da … y la cantidad es …: corrija uno de los dos.» | El cálculo y la cantidad no coinciden | Corrija uno de los dos |
+| «El borrador cambió en otra ventana: vuelva a cargarlo.» | Tiene la obra abierta en dos pestañas | Pulse «Recargar el borrador» y trabaje en una sola pestaña |
+| «Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó)…» | Sílice se reinició con cambios sin guardar | Pulse «Abrir de nuevo»; lo no guardado se perdió |
+| «Otra persona guardó la versión … después de que usted abrió la …» | Alguien guardó antes que usted | Lea el aviso y elija «Guardar de todos modos» o «Abrir la versión …» |
+| «Escriba la fuente del cambio: por qué se cambia y con qué respaldo.» | Falta el motivo al guardar | Escríbalo en el diálogo de guardar |
+| «No hay cambios para guardar: edite alguna celda primero.» | No hay nada nuevo que guardar | Nada que hacer |
+| «La versión V-004 fue devuelta: corríjala en una versión nueva y envíe esa.» | Intentó reenviar una devuelta | Haga una versión nueva (sección 6.7) |
+| «Escriba las notas: son obligatorias para devolver o aprobar con observaciones.» | Faltan las notas del dictamen | Escríbalas |
+| «No se puede enviar …: la cadena de versiones de esta obra está rota en la versión …» | La base se cambió por fuera de Sílice | Avise al administrador (sección 6.9) |
+| «No hay tasa del BCV del dd/mm/aaaa (hace falta la del mismo día)…» | Falta la tasa de ese día | El administrador la carga en «Índices del BCV» (sección 9.4) |
+| «Esta carpeta de trabajo aún no tiene moneda: declárela o cree su lista para armar antes de estudiar el mercado.» | La carpeta no tiene moneda ni lista | Cree la lista para armar (sección 4.3, camino 3) |
+| «Las propuestas no están disponibles» | Falta el módulo de partidas parecidas | Instale con `Silice-<versión>-completo.exe`; sus datos se conservan |
+| «Solo se aceptan archivos .dxf o .ifc o .csv.» | El archivo tiene otra extensión | Use un plano DXF o IFC, o un cómputo CSV |
+| «el archivo '…' es ilegible: no es un CSV de texto en UTF-8» | El CSV se guardó en otra codificación | En Excel use «Guardar como» y elija «CSV UTF-8» |
+| «el archivo '…', fila '…': la columna '…' esta vacia o no es numerica» | En el cómputo, una cifra lleva coma decimal o está vacía | En el cómputo use punto decimal (sección 4.7) |
+| «El plano … pesa más de … MiB…» | El plano es muy grande | Purgue capas y bloques que no use, o divídalo por plantas |
+| «Esta versión no se puede guardar: alguna partida ya no tiene composición vigente en el catálogo.» | Una partida perdió su composición | Revise el catálogo; quien arma la compone de nuevo |
+| «La pantalla no cargó. Vuelva a cargar Sílice (F5)…» | Falló una pantalla | Pulse F5; si sigue, avise al administrador |
+
+### 14.3 Para quien administra el equipo
+
+- **La carpeta de la empresa.** Al arrancar, el lanzador de Sílice fija la carpeta de trabajo de la
+  empresa con la variable `SILICE_CASO`, y el modo entrega con `SILICE_MODO_ENTREGA=1` (que oculta el
+  Simulador de listas y los Escenarios de sensibilidad). Los nombres anteriores, `ARENIA_CASO` y
+  `ARENIA_MODO_ENTREGA`, ya no se aceptan desde la 0.7.0. Los detalles están en el [manual
+  técnico](manual_tecnico.md).
+- **La instalación nueva no muestra «Bienvenida a Sílice».** Ya hay una cuenta creada: use «Entrar», o
+  «Perdí el acceso de administrador» (sección 2.5).
+- **Una persona no ve sus obras.** Revise sus papeles en «Cuentas»: para ver obras necesita «arma» o
+  «revisa».
+
+## 15. Lo que cambió respecto del manual anterior
+
+El manual anterior describía la interfaz de Streamlit y la primera interfaz nueva. Estas pantallas ya no
+existen; su función está ahora en otro lugar:
+
+| Antes | Ahora |
 |---|---|
-| «instala el extra civil» al cargar un `.ifc` | Falta `ifcopenshell`: `uv sync --extra civil` |
-| Error 409 «catálogo incompleto» | Falta la lista de precios vigente o un precio para una partida: revisar la lista de precios cargada o volver a sembrar (`scripts/seed.py`) |
-| Error 409 con `rendimientos_por_declarar` en `POST /presupuestos` | Una partida no tiene rendimiento estimado vigente (UC‑01 3b): la respuesta trae, por partida, el rendimiento que propone el histórico con su dispersión. Registrarlo como estimado con `POST /partidas/{codigo}/rendimientos` (fecha no posterior a la del presupuesto) y volver a enviar el presupuesto; en la pantalla, el bloque **Rendimientos por declarar** (sección 3.1, paso 6) |
-| «las fracciones del plan de trabajo deben sumar exactamente 1 por partida» | El plan de la tabla **Plan de trabajo** (o el campo `plan` de la API, que responde 422) no reparte entera alguna partida: corregir sus fracciones |
-| Un `.ifc` da un cómputo vacío sin error | El archivo tiene la cabecera correcta pero el cuerpo truncado o dañado, o ningún elemento con `Pset_APU`: `ifcopenshell` no lo rechaza (límite declarado, sección 3.1) |
-| La UI no encuentra datos | El caso abierto no tiene partidas: en **Inicio**, **Cargar el caso de demostracion**, o sembrar como en el paso 1 de la sección 2 |
-| «Partidas similares» tarda la primera vez | Descarga única del modelo de lenguaje; después queda en caché |
-| Un rendimiento medido se rechaza | Falta la referencia a la ejecución: es una invariante, no un error |
-| Error «… precios distintos» al dar de alta en **Actualizar precios** (o 422 en `POST /listas-precios`) | Dos filas elegidas son el mismo insumo con precios distintos: dejar una sola o corregir el archivo. Nada se escribió |
-| «Dar de alta» no aparece al subir la lista | El caso aún no existe, el archivo o la base no se pueden leer, o no hay insumos desconocidos; el motivo, si lo hay, sale al pulsar **Revalorar presupuesto** |
-| 422 «justificacion … no puede estar vacia» en `POST /partidas/{codigo}/rendimientos` | Con advertencia, la justificación vino en blanco: enviar texto o no enviar el campo. El rendimiento no se registró |
-| 404 en `POST /presupuestos/importar` | El proyecto no existe: crearlo con `POST /proyectos` |
-| 422 en `POST /presupuestos/importar` | El archivo no es un libro XLSX legible o le faltan hojas, columnas o claves (el mensaje nombra archivo, hoja y fila); un código de partida ya está en el catálogo; el código de presupuesto ya existe en el proyecto; o la moneda no es exactamente la de la lista vigente. No quedó nada escrito |
-| 422 en `POST /proyectos` | Nombre vacío o repetido, o un dominio distinto de civil, telecom, industrial o sistemas |
-| 500 en `POST /presupuestos/{codigo}/actualizacion` con una lista que carga bien | Dos listas con el mismo nombre (por ejemplo, al cargar dos veces el archivo para ver los desconocidos): el nombre debe ser único |
-| «Guardar composicion» no se puede pulsar | Faltan las condiciones del rendimiento (RF‑33): escribirlas |
-| «no hay ninguna lista de precios vigente» al guardar | La base está vacía o la fecha es anterior a toda lista: sembrar con `scripts/seed_demo.py` o cambiar la fecha |
-| «Escriba un nombre para el proyecto» o «Ya existe un proyecto llamado …» al crear un proyecto | El nombre quedó en blanco o ya lo usa otro proyecto del caso: escribir otro, o abrir el existente con **Abrir** |
-| **Guardar version** (o **Guardar primera versión**) de la hoja está deshabilitado | La ayuda del botón dice por qué: el borrador no pertenece a ningún proyecto (elija o cree uno), no hay cambios, falta la fuente o el responsable, o la versión está en solo lectura |
-| **Guardar version** o **Exportar Excel** de la barra aparecen deshabilitados con «Todavía no está disponible…» | La hoja del proyecto no está instalada en esta copia: actualizar el repositorio |
-| **Importar plano** no aparece en la barra | La copia del programa está incompleta: falta el paquete de importación de planos. Actualice o vuelva a descargar el repositorio. (No depende de los extras `planos` o `civil`: si faltan, la herramienta aparece y el aviso sale al pulsar **Leer plano**) |
-| «Falta instalar el componente para leer planos DXF» (o IFC) al pulsar **Leer plano** | Falta el extra `planos` (DXF) o `civil` (IFC): ejecute `uv sync --extra planos` (DXF) o `uv sync --extra civil` (IFC) y vuelva a pulsar **Leer plano** |
-| Un archivo subido se guarda con otro nombre (por ejemplo `_CON.csv`) | El nombre original era reservado en Windows (`CON`, `NUL`, `COM1`…) o traía caracteres no permitidos: se limpia para guardarlo, y el contenido no cambia |
-| La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (lista de casos y *Abrir este caso*) o arrancar con `SILICE_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `SILICE_CASO` o, sin ella, a `data/casos/silice.db` |
-| «… con mas de 7 dias naturales sin tasa no se convierte (S1-R2)» al convertir | No hay tasa del BCV importada en los 7 días anteriores: importe el archivo trimestral en **Indices del BCV** y vuelva a convertir |
-| «… lleva coma; use punto como separador decimal» al cargar una lista o un CSV | El archivo usa coma decimal: escriba `13288.00`, no `13.288,00` ni `13288,00`. Nada se escribió |
-| «… no es una direccion de bcv.org.ve» al leer un archivo del BCV | La dirección declarada no es del BCV: copie la de la página de donde bajó el archivo |
-| «Elija la moneda del proyecto (Bs o USD)» al crear un proyecto | La moneda no tiene valor por defecto: elíjala en la barra y vuelva a pulsar **Crear proyecto** |
-| «… una version solo se valora con una lista de su moneda (RF-65)» | La lista elegida (o la vigente) está en otra moneda que la versión: cree o elija una lista en la moneda del proyecto, o convierta la versión en **Parámetros** |
-| «un parcial se reemplaza una sola vez (S1-R21)» | Ese estudio parcial ya tiene su estudio de cierre: no hace falta otro |
-| Un período del reajuste dice «índice faltante: período no calculado» | Falta el índice del mes base o del mes de cierre de alguna serie: impórtelo en **Indices del BCV** y vuelva a calcular |
+| «Inicio» con la lista de casos y los recorridos | «Pendientes» al entrar; las carpetas de trabajo en «Empresa y personas» › «Carpetas de trabajo»; el recorrido guiado en «Auditar un presupuesto» |
+| La barra de herramientas («Proyecto», «Guardar version», «Exportar Excel»…) | La barra lateral con las obras y sus secciones; «Nueva obra»; guardar en la franja del paso; «Descargar Excel» en el Presupuesto |
+| «Elaborar un presupuesto» | «Archivos y planos» › «Subir plano o cómputo» › «Cargar cómputo» |
+| «Partidas similares» | «Agregar partida» › «Buscar parecidas», dentro del Presupuesto |
+| «Histórico de precios» como pantalla suelta | La pestaña «Histórico de precios» de «Mercado» |
+| «Hoja del proyecto» u «Hoja de la obra», con nueve pestañas | «Presupuesto», con seis pestañas (siete con «Espacio y metrajes») |
+| La pestaña «Parámetros» | La pestaña «Ajustes de costo» |
+| La pestaña «Trazabilidad» y el selector «Versión» de la hoja | La sección «Versiones» de la obra |
+| El APU en tres paneles | El APU en el panel lateral, al pulsar el código de la partida |
+| Componer solo en su pantalla | También en el panel «Componer una partida», sin salir de la obra |
+| La herramienta «Importar plano» | «Archivos y planos» › «Subir plano o cómputo» |
+| El panel de chat del asistente de IA | No existe en la interfaz actual; solo su configuración (sección 13) |
+| El Visor 3D del modelo | Retirado |
+| La creación del primer administrador, pendiente | La pantalla «Bienvenida a Sílice» con el código de instalación |
+| Un presupuesto se podía valorar y auditar fuera de una obra | Todo presupuesto vive en una obra; para revisar un Excel suelto use «Auditar un presupuesto» |

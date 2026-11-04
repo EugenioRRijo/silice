@@ -31,6 +31,7 @@ COLUMNAS = {
         "cantidad_por_t",
         "unidad",
         "tipo",
+        "es_ligante",  # Tarea 16c, ins_0011: la ultima, tras subir a la cabeza
     ],
 }
 
@@ -64,7 +65,7 @@ def _con_material(conexion: sqlite3.Connection) -> None:
 def test_le_sigue_la_de_los_calculos() -> None:
     """Plan vial, Tareas 4 y 4b: encima de esta van `ins_0008_prod_calculo` y
     `ins_0010_modulo` y `ins_0010_modulo`, la cabeza."""
-    assert revision_head(Destino.INSTALACION) == "ins_0010_modulo"
+    assert revision_head(Destino.INSTALACION) == "ins_0011_receta_ligante"
 
 
 def test_crea_las_dos_tablas_con_sus_columnas(tmp_path: Path) -> None:
