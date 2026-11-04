@@ -13,10 +13,10 @@ puede escribir ni hacer commits (sus permisos siguen en solo lectura), devuelve 
 
 | Quién | Qué hace | Desde |
 |---|---|---|
-| Subagente constructor | **T2: tabla de espacios y `primeraUsable`**, con TDD | 2026-11-04 |
-| Claude | Espera a T2 para verificarla; vigila la CI del #102 | 2026-11-04 |
-| **Antigravity (Claude Opus 5.5 High)** | **Construye T7** (cartera por moneda, servidor): escribe las pruebas y luego el código en su respuesta; Claude los aplica, corre las pruebas y hace los commits en `feature/f6-t7-cartera` (worktree `.worktrees/s2m5`) | 2026-11-04 |
-| Antigravity (Gemini 4 Argon High) | Arbitra T2 y T7 cuando Claude se las pase | — |
+| Antigravity (Gemini 4 Argon High) | **Arbitrando T3** (`6a5ddfec..0ef1d32f`), con foco en contraste WCAG | 2026-11-04 |
+| Subagente `silice-backend` | T7: implementación de la cartera por moneda contra las 12 pruebas que escribió Antigravity (no las toca) | 2026-11-04 |
+| Antigravity (Claude Opus/Sonnet) | **Sin cuota** hasta ~4 h 25 min después de las 16:20 del 2026-11-04 (`Individual quota reached`). Por eso T7 la termina el subagente (decisión de Eugenio) | — |
+| Claude | Verifica cada entrega y vigila la CI del #102 | 2026-11-04 |
 
 ## Tareas
 
@@ -26,9 +26,9 @@ puede escribir ni hacer commits (sus permisos siguen en solo lectura), devuelve 
 | T0 Expediente | Claude (contrato y enmienda) + Antigravity (diseño visual y adenda) | — | — | [APROBADO con 3 menores](arbitrajes/f6-T0.md) | Las 3 verificadas y aplicadas en T5, T6 y T7 | ✔ **Aprobado por Eugenio** |
 | T1 Ruta canónica | subagente `silice-frontend` | `177c9279` (falla: el recorrido no marca «Paso 1 de 3» en `/empresa/auditoria`; 7 archivos con rutas escritas a mano) | `545b3f36` (vitest 2.860/2.860 en marco, shell, paginas y comun; lint 0) | [Ronda 1: APROBADO, sin hallazgos](arbitrajes/f6-T1-r1.md) (revisión estática: en el worktree no pudo usar git ni vitest) | De acuerdo; las pruebas las corrió Claude. Desvíos aceptados: 4 enlaces pasan a su ruta canónica (mismo destino, sin redirección) y 2 enlaces más que el plan no listaba | ✔ |
 | T2 Tabla de espacios | subagente `silice-frontend` | `aa0a71a0` (6 fallan: `ESPACIOS` no existe, `sueltas` traía 18) | `48d65a34` (541/541 en marco y shell; lint 0) | [Ronda 1 (Argon): APROBADO, sin hallazgos](arbitrajes/f6-T2-r1.md) | De acuerdo. Claude corrió 66/66 pruebas clave. Carpetas: la exigencia de `cambiar_caso` queda para T6 (contrato §3) | ✔ |
-| T3 BarraDeEspacio | — | — | — | — | — | pendiente |
+| T3 BarraDeEspacio | subagente `silice-frontend` | `67eb8819` (no existía el módulo ni el SCSS) | `0ef1d32f` (339/339 en marco; lint 0) | en curso | Nota: el verde cambió 2 líneas de una prueba de estilos (mismo control, adaptado al SCSS anidado). Pendiente para T5: la regla `.silice-barra-espacio--subvista + .silice-pagina` de `hoja.scss` (diseño §A.4) | arbitraje |
 | T4 Producción, Auditoría, Precios | — | — | — | — | — | pendiente |
-| T7 Cartera por moneda (servidor) | **Antigravity con Claude Opus 5.5 High** (a pedido de Eugenio); Claude aplica y verifica. Lo arbitra Argon | `ffee9b5f` en `feature/f6-t7-cartera` (12 pruebas escritas por Antigravity; las 12 fallan con 404) | — | — | — | en curso (implementación) |
+| T7 Cartera por moneda (servidor) | Pruebas: **Antigravity (Claude Opus 5.5 High)**. Implementación: subagente `silice-backend` (Antigravity quedó sin cuota). Lo arbitra Argon | `ffee9b5f` en `feature/f6-t7-cartera` (12 pruebas escritas por Antigravity; las 12 fallan con 404) | — | — | — | en curso (implementación por el subagente) |
 | T5 Obra y barra lateral (cierre A) | — | — | — | — | — | pendiente |
 | T6 Cuenta | — | — | — | — | — | pendiente |
 | T8 Vista general | — | — | — | — | — | pendiente |
