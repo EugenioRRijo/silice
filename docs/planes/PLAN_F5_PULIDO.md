@@ -160,3 +160,68 @@ Formato: pregunta · lo que se hizo · cómo cambiarlo.
    en blanco) y `Siguiente(texto='Abrir la Hoja', …) != Siguiente(texto='Abrir el presupuesto', …)` en `test_mesa.py`,
    `test_api_hoja_partidas.py` y `test_api_obras_resumen.py`. Para que el rojo fuera de aserción y no un
    `AttributeError`, el commit del rojo trae el esbozo `ABRIR_EL_PRESUPUESTO = ABRIR_LA_HOJA`. · —
+
+## Tanda 2
+
+Cinco defectos que encontró quien escribió el manual nuevo al describir el programa. Mismo método: una tarea por
+punto, el rojo por aserción en un commit y el arreglo en otro, con los mismos límites de la tanda 1. Las decisiones van
+al final, en «Decisiones de la tanda 2».
+
+### Tarea 5. El CSV del cómputo con coma decimal
+
+«Cargar cómputo» (`POST /computos/{dominio}`) pide punto decimal y columnas separadas por coma, al revés de la regla de
+Eugenio (coma decimal y punto de miles en toda cifra); el CSV de tramos ya acepta la coma. Los lectores están en
+`adapters/{civil,telecom,industrial,sistemas}/`, fuera del núcleo.
+
+- **Regla (la de Excel en español).** Si la cabecera separa con punto y coma, las cifras van con coma decimal y punto de
+  miles («1.234,56»), leídas con `aplicacion.cifras.cifra_escrita`, el único intérprete de la regla; si separa con coma,
+  todo sigue como hoy (punto decimal), para no romper los archivos que ya existen.
+- **Archivos.** `aplicacion/computo_csv.py` (nuevo: pasa un CSV con `;` a la forma de siempre, solo en las columnas
+  numéricas del adaptador), `api/rutas/computos.py` (lo llama antes del adaptador), cada adaptador declara
+  `COLUMNAS_NUMERICAS`, `paginas/archivos/CargarComputo.tsx` y `logicaComputo.ts` (la ayuda del formato) y los README
+  de `data/samples/`.
+- **Pruebas.** `tests/unit/test_computo_csv.py` (oráculos a mano: «1.234,56» → 1234.56; un archivo con `;` y otro con
+  `,`; «2.5» con `;` se rechaza con el archivo, la fila y la columna), `tests/integration/test_api_computo_coma_decimal.py`
+  (las cuatro muestras reescritas con `;` y coma decimal dan los mismos ítems que las de siempre) y
+  `archivos/CargarComputo.test.tsx` (la ayuda se ve).
+- **Criterios.** Rojo por aserción; `core/` y las muestras con coma sin cambios.
+
+### Tarea 6. El pendiente «Entregar» lleva a donde se entrega
+
+«Entregar» (una versión aprobada y sin entregar) lleva a Aprobaciones, que no tiene cómo entregar; «Entregar paquete»
+solo se abre con Ctrl+K.
+
+- **Archivos.** `paginas/aprobar/index.tsx` (y una pieza nueva para el bloque de la entrega).
+- **Regla.** Dentro de la obra, Aprobaciones ofrece «Entregar paquete» (lleva a la pantalla `entregar`, con la obra ya
+  elegida) a la cuenta que puede usar esa pantalla (`entregar_paquete`); a las demás no. El pendiente sigue llevando a
+  Aprobaciones de su obra: la ruta de la obra es la que cambia de carpeta y fija la obra.
+- **Pruebas.** `paginas/aprobar/EntregarDesdeAprobaciones.test.tsx` con el marco entero y el permiso real (`ACCIONES`
+  de `datosDePrueba`, como `mercado/QuienRevisa.test.tsx`): quien arma va del pendiente a Aprobaciones y de ahí a
+  «Entregar paquete»; quien revisa no ve el enlace.
+- **Criterios.** Rojo por aserción.
+
+### Tarea 7. Textos viejos: «Hoja de la obra» y «barra superior (Proyecto)»
+
+- **Archivos.** `paginas/vial/Tramos.tsx` («Abrir la Hoja de la obra», «a la Hoja de la obra», «Guarde una en la
+  Hoja»), `aplicacion/hoja_vial.py` (los avisos del servidor al llevar los tramos), `paginas/reajuste/index.tsx` (cómo se
+  elige hoy una obra) y la guardia `paginas/sinJergaInterna.test.ts`.
+- **Pruebas.** `sinJergaInterna.test.ts` caza «Hoja de la obra» y «barra superior (Proyecto)»; `vial/Tramos.test.tsx`,
+  `vial/AvisoDeLlevar.test.tsx` y `reajuste/Reajuste.test.tsx` con el texto nuevo; en pytest, los avisos de
+  `aplicacion/hoja_vial.py` dicen «Presupuesto».
+- **Criterios.** Rojo por aserción en vitest y en pytest.
+
+### Tarea 8. El recorrido de la auditoría dice lo que hace la pantalla
+
+El paso 2 («Lea el resumen y los hallazgos», pantalla «Libro de la empresa») dice «Descargue el libro devuelto si lo
+necesita», y el visor no tiene esa descarga.
+
+- **Archivos.** `shell/recorrido.ts`.
+- **Pruebas.** `shell/recorrido.test.tsx`: el paso 2 no pide descargar y dice cómo se ve la celda de un hallazgo.
+- **Criterios.** Rojo por aserción.
+
+### Tarea 9. Quién abre la demostración
+
+Hoy solo se abre desde Administración › «Carpetas de trabajo» y solo si la cuenta, además de administrador, arma.
+
+- **Qué se mira.** El código (`CarpetasDeTrabajo.tsx`, `POST /v1/casos/demostracion`) y la bitácora: si pedir `editar_hoja`
+  es intencional, se deja y se explica; si es un descuido, basta ser administrador, con su prueba.
