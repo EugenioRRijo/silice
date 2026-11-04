@@ -1,0 +1,107 @@
+@use "umbrales" as u;
+@use "@carbon/styles/scss/type";
+
+// Barra de espacio (plan F6, T3; diseño visual 2026-11-04 §1.2 y adenda A.3). Dos niveles: la banda de borde a borde
+// bajo la cabecera del espacio, y el conmutador compacto de subvistas (`--subvista`). Parte en renglones (sin anchos
+// fijos, sin desplazamiento ni pestañas ocultas) y se distingue de las Tabs de Carbon: enlaces con raya de acento.
+// Solo --silice-* y --cds-*; rem, sin sombra ni animación.
+.silice-barra-espacio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0;
+  box-sizing: border-box;
+  padding-inline: 1rem;
+  background-color: var(--cds-layer-01);
+  border-block-end: 1px solid var(--cds-border-subtle);
+}
+
+// La raya de 3 px ocupa su sitio siempre (transparente) para que el texto no se mueva al activarse la pestaña.
+.silice-barra-espacio__pestana {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-block-size: 2.5rem;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  background-color: transparent;
+  border-block-end: 3px solid transparent;
+  color: var(--cds-text-secondary);
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+  @include type.type-style("body-compact-01");
+
+  &:hover {
+    background-color: var(--cds-layer-hover-01);
+    color: var(--cds-text-primary);
+  }
+
+  &[aria-current="page"] {
+    background-color: var(--cds-background);
+    border-block-end: 3px solid var(--silice-complementario);
+    color: var(--cds-text-primary);
+    font-weight: 600;
+  }
+
+  // Hacia adentro: los bordes contiguos no recortan el anillo.
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+// Conmutador segmentado de las vistas de una sección: en la cabecera del lienzo, del ancho de su contenido, enmarcado
+// y con divisores verticales; la activa lleva la raya de 2 px arriba (la de espacio la lleva abajo).
+.silice-barra-espacio--subvista {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-self: flex-start;
+  inline-size: fit-content;
+  max-inline-size: calc(100% - 2rem);
+  margin: 0.75rem 1rem 0;
+  padding-inline: 0;
+  background-color: var(--cds-background);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.silice-barra-espacio--subvista .silice-barra-espacio__pestana {
+  min-block-size: 1.75rem;
+  padding-block: 0.25rem;
+  padding-inline: 0.625rem;
+  background-color: var(--cds-layer-01);
+  border-block-start: 2px solid transparent;
+  border-block-end: 0;
+  border-inline-end: 1px solid var(--cds-border-subtle);
+  @include type.type-style("label-01");
+
+  &:last-child {
+    border-inline-end: 0;
+  }
+
+  &:hover {
+    background-color: var(--cds-layer-hover-01);
+    color: var(--cds-text-primary);
+  }
+
+  &[aria-current="page"] {
+    background-color: var(--cds-layer-selected-01);
+    border-block-start: 2px solid var(--silice-complementario);
+    color: var(--cds-text-primary);
+    font-weight: 600;
+  }
+}
+
+// Letra Grande o Muy grande: el rem mayor vuelve desproporcionada la barra; se compacta (Muy grande a 1366x768 no pierde
+// alto de la Hoja, adenda A.4).
+@include u.con-letra-grande {
+  .silice-barra-espacio__pestana {
+    min-block-size: 2rem;
+    padding-block: 0.375rem;
+    padding-inline: 0.625rem;
+  }
+
+  .silice-barra-espacio--subvista .silice-barra-espacio__pestana {
+    min-block-size: 1.625rem;
+  }
+}

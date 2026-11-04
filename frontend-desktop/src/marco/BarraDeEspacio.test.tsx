@@ -258,8 +258,8 @@ describe("BarraDeEspacio: estilos", () => {
     expect(pestana).toMatch(/border-block-start:\s*2px solid transparent/);
     expect(pestana).toMatch(/border-block-end:\s*0/);
     expect(pestana).toMatch(/border-inline-end:\s*1px solid var\(--cds-border-subtle\)/);
-    expect(hoja()).toMatch(/\.silice-barra-espacio--subvista \.silice-barra-espacio__pestana:last-child\s*\{[^}]*border-inline-end:\s*0/);
-    const activa = bloque('.silice-barra-espacio--subvista .silice-barra-espacio__pestana[aria-current="page"] {');
+    expect(pestana).toMatch(/&:last-child\s*\{[^}]*border-inline-end:\s*0/);
+    const activa = pestana.slice(pestana.indexOf('&[aria-current="page"]'));
     expect(activa).toMatch(/background-color:\s*var\(--cds-layer-selected-01\)/);
     expect(activa).toMatch(/border-block-start:\s*2px solid var\(--silice-complementario\)/);
     expect(activa).toMatch(/font-weight:\s*600/);
