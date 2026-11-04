@@ -528,13 +528,14 @@ describe("Marco: vocabulario y alcance", () => {
       ...oferta.secciones.map((s) => s.pagina),
       ...oferta.entradas.map((e) => e.pagina),
       ...oferta.sueltas.map((p) => p.id),
+      ...oferta.herramientas.map((p) => p.id),
     ]);
     const usables = PAGINAS.filter((p) => usable(p, acciones, false)).map((p) => p.id);
     expect(usables.filter((id) => !alcanzables.has(id))).toEqual([]);
   });
 
   test("solo quien opera la arenera ve «Inicio de producción» en el buscador", () => {
-    const deLaPagina = (acciones: readonly string[]) => ofertaDe(acciones, false).sueltas.map((p) => p.id);
+    const deLaPagina = (acciones: readonly string[]) => ofertaDe(acciones, false).herramientas.map((p) => p.id);
     expect(deLaPagina(ACCIONES.rita)).not.toContain("produccion");
     expect(deLaPagina(ACCIONES.ana)).toContain("produccion");
   });

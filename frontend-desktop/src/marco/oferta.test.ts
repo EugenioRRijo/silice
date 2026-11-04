@@ -17,6 +17,7 @@ describe("ofertaDe: «Tramos» (plan vial)", () => {
       "aprobaciones",
       "mercado",
       "control",
+      "riesgo",
     ]);
   });
 
@@ -68,5 +69,39 @@ describe("ofertaDe con edificación apagada (plan vial, Tarea 19, T19-5)", () =>
     expect(apagada.secciones.map((s) => s.id)).toEqual(siempre.secciones.map((s) => s.id));
     expect(apagada.entradas).toEqual(siempre.entradas);
     expect(apagada.sueltas).toEqual(siempre.sueltas);
+  });
+});
+
+describe("ofertaDe (F6, T2): el contrato no deja ninguna pantalla suelta", () => {
+  it("con todas las acciones no sobra ninguna pantalla sin sitio: «sueltas» queda vacío", () => {
+    expect(ofertaDe(TODAS, false).sueltas).toEqual([]);
+    expect(ofertaDe(TODAS, true).sueltas).toEqual([]);
+    expect(ofertaDe(TODAS, false, ["vial", "produccion", "riesgo", "edificacion"]).sueltas).toEqual([]);
+    expect(ofertaDe([], false).sueltas).toEqual([]);
+  });
+
+  it("las pantallas de los espacios y las subvistas (las 17 que no son sección ni entrada) salen en «herramientas»", () => {
+    expect(
+      ofertaDe(TODAS, false)
+        .herramientas.map((p) => p.id)
+        .sort(),
+    ).toEqual(
+      [
+        "tablero", "componer", "revisar", "entregar", "actualizacion", "reajuste", "escenarios",
+        "produccion", "costos", "costo_tonelada", "receta_planta", "producir_mezcla",
+        "libros", "historial",
+        "precios_empresa", "indices", "simulador",
+      ].sort(),
+    );
+  });
+
+  it("«herramientas» respeta permisos, modo entrega y módulos apagados", () => {
+    const ids = (acciones: string[], entrega = false, apagados: string[] = []) =>
+      ofertaDe(acciones, entrega, apagados).herramientas.map((p) => p.id);
+    expect(ids(TODAS, true)).not.toContain("simulador");
+    expect(ids(TODAS, true)).not.toContain("escenarios");
+    expect(ids(TODAS, false, ["produccion"])).not.toContain("costos");
+    expect(ids(["leer_proyecto"])).toEqual(expect.arrayContaining(["libros", "historial", "tablero"]));
+    expect(ids(["leer_proyecto"])).not.toContain("indices");
   });
 });

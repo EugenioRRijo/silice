@@ -24,7 +24,7 @@ describe("SECCIONES_DE_OBRA", () => {
     expect("cada tarea").not.toMatch(PROHIBIDAS);
   });
 
-  it("son las ocho, en este orden", () => {
+  it("son las nueve (con «Riesgo»), en este orden", () => {
     expect(SECCIONES_DE_OBRA.map((s) => s.id)).toEqual([
       "resumen",
       "presupuesto",
@@ -34,6 +34,7 @@ describe("SECCIONES_DE_OBRA", () => {
       "aprobaciones",
       "mercado",
       "control",
+      "riesgo",
     ]);
   });
 
@@ -47,6 +48,7 @@ describe("SECCIONES_DE_OBRA", () => {
       aprobaciones: "aprobar",
       mercado: "mercado",
       control: "control",
+      riesgo: "riesgo",
     });
     for (const s of SECCIONES_DE_OBRA) {
       if (s.pagina !== null) expect(paginaPorId(s.pagina), s.id).toBeDefined();
