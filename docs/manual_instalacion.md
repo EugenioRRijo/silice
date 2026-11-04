@@ -50,27 +50,39 @@ alguien usa otra carpeta de datos por una razón especial, la variable es `SILIC
 ## Primer arranque
 
 Haga doble clic en «Sílice». Se abre una ventana minimizada (es el servidor: **ciérrela para
-detener Sílice**) y el navegador entra a `http://127.0.0.1:8501`.
+detener Sílice**) y el navegador entra a `http://127.0.0.1:8501/app/`.
 
-Como todavía no hay usuarios, Sílice deja un **código de instalación de un solo uso** en la
-ventana del servidor y en `%LOCALAPPDATA%\Silice\datos\codigo_instalacion.txt`. Úselo en la pantalla
-de acceso para crear el primer administrador. El código nunca se guarda en el registro.
+Como todavía no hay cuentas, Sílice crea al arrancar un **código de instalación de un solo uso**:
+20 caracteres en grupos de cuatro (letras de la A a la Z y cifras del 2 al 7). Lo deja en tres
+sitios: en el Bloc de notas, que se abre solo esa primera vez; en la ventana del servidor (busque
+«Código de instalación»); y en el archivo `%LOCALAPPDATA%\Silice\datos\codigo_instalacion.txt`. El
+código nunca se guarda en el registro.
 
-> **Estado provisional (2026-10-21) — deuda bloqueante del instalador:** el paso de arriba lo daba la
-> pantalla de acceso de Streamlit (`ui/acceso.py`), que se retiró. La interfaz nueva (React) **no
-> tiene** ese flujo: ninguna ruta de la API ni pantalla llama a `cuentas.preparar_primera_vez` (que
-> emite el código) ni a `cuentas.reclamar_instalacion` (que crea el primer administrador con él).
-> Hoy el arranque solo muestra un código si el archivo `codigo_instalacion.txt` ya existe. Una
-> instalación nueva, sin cuentas, **no puede entrar**. `scripts/restablecer_administrador.py` emite un
-> código de restablecimiento, pero tampoco hay pantalla donde usarlo: no es una salida. El flujo de
-> bienvenida y la pantalla de «primera vez» están pendientes de Eugenio (se diseñan y construyen
-> aparte, con árbitro). No se debe empaquetar ni entregar el instalador hasta tenerlos.
+El navegador muestra la pantalla **Bienvenida a Sílice**. Pegue el código tal cual, escriba su
+nombre, el usuario y la contraseña (dos veces) y pulse «Crear la cuenta y entrar». Si esa misma
+cuenta va a armar presupuestos, marque «Usaré esta cuenta también para armar presupuestos». Es la
+cuenta del administrador: con ella se crean las demás cuentas en Administración. El código se borra
+al usarse y no sirve otra vez.
+
+- La bienvenida solo funciona en el propio equipo donde está instalado Sílice, no desde otro
+  equipo de la red local.
+- Si la bienvenida dice que no encuentra el archivo, use «Detener Sílice» y abra «Sílice» otra vez:
+  al arrancar sin cuentas se crea un código nuevo si falta el archivo o si el que tiene ya no vale.
+- Si ya hay cuentas y se perdió el acceso de administrador, use el acceso «Sílice: recuperar
+  acceso de administrador» del menú Inicio de Windows. Su ventana muestra un **código de
+  restablecimiento** (sirve una sola vez y vence a las 24 horas). En la pantalla de acceso pulse
+  «Perdí el acceso de administrador» y úselo allí.
 
 ## Casos
 
-Los casos viven en `%LOCALAPPDATA%\Silice\datos\casos\`. En **Inicio** se elige uno de la lista, se
-crea uno nuevo o se sube un archivo `.db`. No se pueden abrir archivos de otras carpetas ni de
-carpetas de red: se copian primero. El caso de demostración trae datos construidos para aprender.
+Lo que este manual llama caso, la interfaz lo llama **carpeta de trabajo**: un archivo `.db` con su
+catálogo, sus precios y sus obras. Viven en `%LOCALAPPDATA%\Silice\datos\casos\`. El administrador
+las maneja en **Administración › Carpetas de trabajo**: ve la lista y abre una, crea una nueva (con
+su moneda de trabajo), sube el `.db` de una carpeta copiada de otro equipo (hasta 20 MiB; nunca
+reemplaza una que ya exista y, si es de una versión anterior, se migra con respaldo) y, si su
+cuenta también arma, estrena la demostración, que trae datos construidos para aprender. Quien
+arma cambia de carpeta al abrir una obra de otra carpeta desde la barra lateral o el buscador. No
+se pueden abrir archivos de otras carpetas ni de carpetas de red: se suben primero.
 
 ## Red local
 
@@ -143,4 +155,4 @@ de comprobar la huella y la firma como se explicó arriba.
 - **Esta base es de una versión más nueva:** instale esa versión o restaure el respaldo previo.
 - **La IP de la red local ya no existe:** Sílice arrancó solo en este equipo. Vuelva a activar la
   red local y elija la IP nueva.
-- **No abre el navegador:** abra `http://127.0.0.1:8501` a mano.
+- **No abre el navegador:** abra `http://127.0.0.1:8501/app/` a mano.
