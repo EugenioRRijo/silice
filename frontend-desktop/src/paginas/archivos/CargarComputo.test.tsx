@@ -322,6 +322,18 @@ describe("Cargar cómputo (Tarea 12 de F4)", () => {
     expect(within(dialogo).queryByRole("button", { name: "Leer plano" })).toBeNull();
   });
 
+  // Tanda 2 del pulido F5 (Tarea 5): el servidor lee un .csv separado por punto y coma con coma decimal (la regla de
+  // Eugenio, como lo guarda Excel en español) y uno separado por coma con punto decimal. La pantalla lo dice.
+  test("dice cómo van las cifras del .csv: con punto y coma, coma decimal; con coma, punto decimal", async () => {
+    const u = montar();
+    const dialogo = await elegirElComputo(u);
+    expect(
+      within(dialogo).getByText(
+        "Si el archivo separa las columnas con punto y coma, como lo guarda Excel en español, escriba las cifras con coma decimal y punto de miles: 1.234,56. Si las separa con coma, use el punto decimal: 1234.56.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   test("con civil, «Extraer cómputo» espera los cuatro códigos y llama a /computos/civil con el archivo y el mapeo", async () => {
     const u = montar();
     const dialogo = await elegirElComputo(u);
