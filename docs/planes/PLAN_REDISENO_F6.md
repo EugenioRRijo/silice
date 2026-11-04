@@ -18,7 +18,7 @@ Library; Playwright para la pasada en navegador.
 
 **Especificación:** [2026-11-04-rediseno-f6-espacios-design.md](../especificaciones/2026-11-04-rediseno-f6-espacios-design.md)
 y su [maqueta](../especificaciones/2026-11-04-rediseno-f6-maqueta.html), ambas propuestas por Antigravity y aprobadas
-por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (ver «Decisiones»).
+por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (ver «Decisiones»). Ronda 1 de Antigravity: DEVUELTO con 4 mayores y 2 menores, todos verificados y aplicados (ver `docs/bitacora/auditoria-agy-2026-11-04.md`).
 
 **Rama:** `feature/f6-espacios`, desde `main` después de fusionar #103, #104 y #102.
 
@@ -56,6 +56,8 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
    ya se vio en vivo el 2026-11-04 (Tarea 5).
 5. **Quien revisa** (solo la carpeta de la empresa): ni el panorama ni la barra lateral le ofrecen obras que no puede
    abrir (Tarea 6).
+6. **Botones que viven fuera del marco** (pendientes, Resumen de la obra, recorridos guiados): cada uno lleva a la ruta
+   nueva de su pantalla, no al Resumen de la obra por descarte (Tarea 3; ronda 1 de Antigravity).
 
 ---
 
@@ -89,7 +91,12 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
   `expect(rutaDeHerramienta("precios", "catalogo")).toBe("/precios/catalogo")`.
 - [ ] **Paso 2:** correr `npx vitest run src/marco/espacios.test.ts`. Esperado: FALLA (el módulo no existe).
 - [ ] **Paso 3:** implementar `espacios.ts` con el reparto de D1. Los títulos de las pestañas son los de la
-  especificación §2 («Resumen de arenera», «Subir y auditar Excel», «Precios de la empresa», …).
+  especificación §2. Segmento de ruta → pantalla, en este orden (la primera es la que abre el espacio):
+  - Producción: `resumen`→`produccion`, `existencias`→`existencias`, `costos`→`costos`,
+    `costo-tonelada`→`costo_tonelada`, `receta`→`receta_planta`, `mezcla`→`producir_mezcla`.
+  - Auditoría: `subir`→`auditoria`, `libros`→`libros`, `revisar`→`revisar`, `historial`→`historial`.
+  - Precios: `listas`→`precios_empresa`, `catalogo`→`catalogo`, `componer`→`componer`,
+    `actualizar`→`actualizacion`, `indices`→`indices`, `simulador`→`simulador`, `reajuste`→`reajuste`.
 - [ ] **Paso 4:** correr `npx vitest run src/marco`. Esperado: PASA, y también `sinJergaInterna.test.ts`.
 - [ ] **Paso 5:** commits `test(marco): cada pantalla tiene un solo lugar (rojo)` y
   `feat(marco): registro de espacios y herramientas`.
@@ -125,8 +132,11 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
 **Archivos:**
 - Crear: `frontend-desktop/src/marco/EspacioDeHerramientas.tsx`, `EspacioDeHerramientas.test.tsx`
 - Modificar: `frontend-desktop/src/marco/Marco.tsx` (rutas `/:espacio/:herramienta` y redirecciones),
-  `marco/secciones.ts` (`ENTRADAS_DE_EMPRESA` deja de tener `precios`, `auditoria` y `produccion`) y
-  `marco/busqueda.ts` (las herramientas se buscan con su ruta nueva)
+  `marco/secciones.ts` (`ENTRADAS_DE_EMPRESA` deja de tener `precios`, `auditoria` y `produccion`),
+  `marco/busqueda.ts` (las herramientas se buscan con su ruta nueva), `marco/oferta.ts` (`conSitio` suma `ESPACIOS`,
+  `SECCIONES_DE_CUENTA` y `SOLO_BUSCADOR`), `paginas/pendientes/logica.ts` (`destino` resuelve una pantalla de un espacio
+  con `espacioDeLaPagina`), `shell/recorrido.ts` y `shell/PanelRecorrido.tsx` (`pasoDeRuta` y sus enlaces usan la
+  ruta del espacio), y `marco/ubicar.ts` (título del documento para `/:espacio/:herramienta`)
 
 **Interfaces:**
 - Consume: `ESPACIOS`, `rutaDeHerramienta` y `espacioDeLaPagina` (Tarea 1), y `BarraDeEspacio` con `pestanasUsables`
@@ -143,13 +153,19 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
   - Una tabla escrita a mano de redirecciones, que conserva `?…`:
     - `#/catalogo` → `#/precios/catalogo`;
     - `#/costos` → `#/produccion/costos`;
-    - `#/empresa/precios` → `#/precios/catalogo`;
+    - `#/empresa/precios` → `#/precios/catalogo` (un enlace viejo abre lo mismo que abría en F4);
     - `#/empresa/auditoria` → `#/auditoria/subir`;
     - `#/empresa/produccion` → `#/produccion/existencias`.
+  - `un pendiente que lleva al catálogo abre #/precios/catalogo, no el Resumen de la obra` (`destino` de
+    `paginas/pendientes/logica.ts` con `id: "catalogo"`).
+  - `el recorrido guiado de la auditoría reconoce su paso en #/auditoria/libros` (`pasoDeRuta`).
+  - `el título del documento de #/produccion/costos es «Costos del período»` (`ubicar`).
 - [ ] **Paso 2:** correr `npx vitest run src/marco`. Esperado: FALLA.
 - [ ] **Paso 3:** implementar. Las rutas de una sola pieza (`/<paginaId>`) que sean herramienta redirigen con
   `espacioDeLaPagina`. Las secciones de obra siguen con su redirección de hoy (`Marco.tsx:437-442`).
-- [ ] **Paso 4:** correr `npx vitest run src/marco src/shell src/paginas/sinJergaInterna.test.ts`. Esperado: PASA.
+- [ ] **Paso 4:** correr `npx vitest run src/marco src/shell src/paginas/pendientes src/paginas/sinJergaInterna.test.ts`.
+  Esperado: PASA. La guardia de jerga revisa todo `src/marco/**`: ni «módulo», ni «área», ni «página» en textos a la
+  vista.
 - [ ] **Paso 5:** commits rojo y verde.
 
 ### Tarea 4: La obra con su barra debajo de la cabecera y la barra lateral plana
@@ -188,6 +204,13 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
   - `paginas/administracion/index.tsx`: exportar `CONTENIDOS` por id de pestaña, para montarlos por sección.
   - `paginas/hoja/useBorrador.ts`.
   - `sesion/useSesion.ts`.
+  - `marco/Marco.tsx`: nuevas props de `BarraSuperior`, ruta `/cuenta/:seccion` y redirecciones (`#/empresa/personas`
+    y `#/administracion` → `#/cuenta/cuentas`; `#/empresa/ayuda` y `#/acerca` → `#/cuenta/ayuda`).
+  - `marco/ubicar.ts`: título del documento para `/cuenta/:seccion`.
+  - `marco/secciones.ts`: `ENTRADAS_DE_EMPRESA` queda vacía y se retira junto con `ZonaEmpresa.tsx` si nadie más la
+    usa.
+  - En `BarraSuperior.tsx`, además: la marca «Sílice» enlaza a `/inicio/general` y la barra muestra la carpeta activa
+    (especificación §1).
 
 **Interfaces:**
 - Consume: `SECCIONES_DE_CUENTA` y `rutaDeCuenta` (Tarea 1), `BarraDeEspacio` (Tarea 2), `TamanoLetra`, las pestañas
@@ -199,19 +222,22 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
   - `empresa`: Empresa y clave de firma, y Empresas registradas;
   - `carpetas`: Carpetas de trabajo, solo con `cambiar_caso`;
   - `sistema`: Especialidades, Asistente de IA, Claves de API e Instalación;
-  - `ayuda`: Acerca de Sílice.
+  - `ayuda`: Acerca de Sílice y el inicio de los recorridos guiados (`shell/recorrido.ts`).
 
 - [ ] **Paso 1: pruebas rojas.**
   - `sin administrar_cuentas la Cuenta solo ofrece Pantalla y tamaño de letra y Ayuda`.
-  - `la barra de arriba no tiene migas ni tamaño de letra`.
+  - `la barra de arriba no tiene migas ni tamaño de letra, y «Sílice» lleva al Inicio`.
+  - `#/acerca y #/empresa/personas llevan a la Cuenta`.
+  - `tras cambiar de carpeta se vuelve a #/cuenta/carpetas con el foco en la pestaña` (hoy lo hace
+    `tomarVueltaACarpetas` en `paginas/administracion/index.tsx:61-65`).
   - `Salir con un borrador abierto no pide DELETE del borrador después de cerrar la sesión`: un mock de `fetch` que
     registra el orden. Esperado: ningún `DELETE /v1/hoja/borradores/…` después de `DELETE /v1/sesion`.
 - [ ] **Paso 2:** correr `npx vitest run src/marco src/sesion src/paginas/hoja src/paginas/administracion`. Esperado:
   FALLA.
 - [ ] **Paso 3:** implementar. Para el 401, el desmontaje de `useBorrador` no descarta si la sesión ya está cerrándose
-  (bandera en `useSesion` antes del `DELETE`). `api/rutas/sesion.py` **no** descarta los borradores al cerrar la
-  sesión (comprobado el 2026-11-04): el constructor averigua qué pasa con el borrador de una ficha cerrada (¿caduca?)
-  y lo informa. Si queda vivo para siempre, es un hallazgo para el orquestador, no algo que se arregla en esta tarea.
+  (bandera en `useSesion.salir` antes del `DELETE /v1/sesion`). No hace falta pedir nada más al servidor:
+  `DELETE /v1/sesion` ya descarta los borradores de la ficha (`api/rutas/sesion.py:420` → `caso_web.olvidar` →
+  `hoja_borradores.olvidar`, `api/caso_web.py:43-46`; corregido por Antigravity en la ronda 1).
 - [ ] **Paso 4:** correr el mismo comando. Esperado: PASA.
 - [ ] **Paso 5:** commits rojo y verde.
 
@@ -220,7 +246,9 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
 **Archivos:**
 - Crear: `frontend-desktop/src/paginas/inicio/Panorama.tsx`, `Panorama.test.tsx`, `marco/EspacioDeInicio.tsx`
 - Modificar: `marco/Marco.tsx` (la ruta índice va a `/inicio/general` y `/pendientes` redirige a
-  `/inicio/pendientes`), `marco/secciones.ts` (`RUTA_DE_INICIO`)
+  `/inicio/pendientes`), `marco/secciones.ts` (`RUTA_DE_INICIO`), `marco/usePendientes.ts` (recarga al volver a
+  `/inicio/general` o `/inicio/pendientes`, no solo en `/pendientes`), `marco/EspacioDeObra.tsx:81` (su enlace a
+  Pendientes) y `marco/ubicar.ts` (título para `/inicio/:vista`)
 
 **Interfaces:**
 - Consume:
@@ -242,6 +270,7 @@ por Eugenio el 2026-11-04. Este plan corrige tres puntos de la especificación (
   - `una obra sin avance no dibuja barra y lo dice` («Sin avance»).
   - `quien revisa sin obras ve el estado vacío, no un error`.
   - `#/pendientes lleva a #/inicio/pendientes`.
+  - `volver al Inicio desde una obra recarga los pendientes` (lo resuelto en la obra no queda viejo).
   - `un bloque que falla no tumba los demás` (el patrón de `useCarga` de `paginas/inicio`).
 - [ ] **Paso 2:** correr `npx vitest run src/paginas/inicio src/marco`. Esperado: FALLA.
 - [ ] **Paso 3:** implementar con D2 y D3. Ningún número se calcula en el cliente salvo contar elementos.
