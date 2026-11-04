@@ -42,6 +42,7 @@ import sys
 import unicodedata
 from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
+from typing import TextIO
 
 RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
@@ -109,10 +110,19 @@ CARPETAS_EXCLUIDAS: tuple[str, ...] = (
     ".git/",
     ".superpowers/",
     ".venv/",
+    ".worktrees/",
     "docs/bitacora/",
     "docs/superpowers/",
     "docs/tesis/",
     "node_modules/",
+)
+
+#: Carpetas que no se recorren a ninguna profundidad: copias de otras ramas (`.worktrees/`, una por
+#: worktree vivo), paquetes de terceros y el grafo local de graphify (`graphify-out/`, excluido en
+#: `.git/info/exclude`: convierte documentos de trabajo locales que nunca se versionan). Sin esta
+#: poda la meta tardaba minutos (auditoria agy, 2026-11-04).
+CARPETAS_PODADAS: frozenset[str] = frozenset(
+    {".git", ".venv", ".worktrees", "node_modules", ".claude", ".superpowers", "graphify-out"}
 )
 
 _DATOS = r"(presupuestos?|apus?|casos?|datos|lineas? base)"
@@ -259,6 +269,8 @@ def es_vigilado(relativo: str) -> bool:
     ruta = relativo.replace("\\", "/")
     if not ruta.endswith(".md"):
         return False
+    if any(parte in CARPETAS_PODADAS for parte in ruta.split("/")[:-1]):
+        return False
     return not any(ruta.startswith(carpeta) for carpeta in CARPETAS_EXCLUIDAS)
 
 
@@ -268,12 +280,26 @@ def es_vigilado(relativo: str) -> bool:
 
 
 def _documentos(raiz: Path) -> dict[str, str]:
+    import os
+
     documentos: dict[str, str] = {}
-    for ruta in sorted(raiz.rglob("*.md")):
-        relativo = ruta.relative_to(raiz).as_posix()
-        if es_vigilado(relativo):
-            documentos[relativo] = ruta.read_text(encoding="utf-8")
-    return documentos
+    for actual, carpetas, archivos in os.walk(raiz):
+        carpetas[:] = sorted(c for c in carpetas if c not in CARPETAS_PODADAS)
+        for nombre in sorted(archivos):
+            ruta = Path(actual) / nombre
+            relativo = ruta.relative_to(raiz).as_posix()
+            if es_vigilado(relativo):
+                documentos[relativo] = ruta.read_text(encoding="utf-8")
+    return dict(sorted(documentos.items()))
+
+
+def _imprimir(texto: str, flujo: TextIO | None = None) -> None:
+    """Escribe en UTF-8 aunque la consola sea cp1252 (PowerShell): la tabla lleva «→»."""
+    flujo = sys.stdout if flujo is None else flujo
+    reconfigurar = getattr(flujo, "reconfigure", None)
+    if callable(reconfigurar):
+        reconfigurar(encoding="utf-8")
+    print(texto, file=flujo)
 
 
 def _leer(ruta: Path) -> str | None:
@@ -306,7 +332,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", help="imprime JSON en vez de la tabla")
     args = parser.parse_args(argv)
     filas = _evaluar_metas()
-    print(_filas_a_json(filas) if args.json else render_tabla(filas))
+    _imprimir(_filas_a_json(filas) if args.json else render_tabla(filas))
     return 0 if all(fila.estado is Estado.OK for fila in filas) else 1
 
 
