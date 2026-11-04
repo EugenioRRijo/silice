@@ -24,8 +24,9 @@ Reglas comunes:
 - **Herramienta desconocida** (`/precios/xyz`) → la primera usable del espacio, con `replace`.
 - **Herramienta sin permiso o con su módulo apagado, escrita a mano:** el aviso de siempre de esa pantalla. Ni pantalla
   en blanco ni redirección silenciosa.
-- **Espacio sin ninguna herramienta usable** (por ejemplo, Producción con el módulo apagado): el aviso «Su cuenta no
-  tiene herramientas en este espacio» con un enlace al Inicio.
+- **Espacio sin ninguna herramienta usable** (por ejemplo, Producción con el módulo apagado): se abre la primera
+  herramienta definida y muestra el aviso existente (`MENSAJE_SIN_PERMISO` o `MENSAJE_APAGADA`, `Marco.tsx:52-53`), sin
+  texto nuevo ni bucle de redirección (diseño visual §5.3).
 - Toda redirección **conserva la consulta** (`?proyecto=…`, `?envio=…`) y usa `replace`, para que «Atrás» no rebote.
 - `document.title` sale de `ubicar`: «<herramienta o sección> · Sílice».
 
@@ -75,7 +76,7 @@ buscador 2 = **31**.
 | `preferencias` | Pantalla y tamaño de letra | `TamanoLetra` y los datos de la cuenta | Toda cuenta |
 | `cuentas` | Cuentas y permisos | Pestañas «Cuentas» y «Accesos» de `paginas/administracion` | `administrar_cuentas` |
 | `empresa` | Empresa y tema | «Empresa y clave de firma» y «Empresas registradas» | `administrar_cuentas` |
-| `carpetas` | Carpetas de trabajo | `CarpetasDeTrabajo` | `administrar_cuentas` **y** `cambiar_caso` (como hoy: vive dentro de Administración; el plan decía solo `cambiar_caso`, lo que habría dado acceso a quien arma, y se corrige aquí) |
+| `carpetas` | Carpetas (la guardia de jerga prohíbe «carpeta de trabajo» en `src/marco/`; diseño visual §6) | `CarpetasDeTrabajo` | `administrar_cuentas` **y** `cambiar_caso` (como hoy: vive dentro de Administración; el plan decía solo `cambiar_caso`, lo que habría dado acceso a quien arma, y se corrige aquí) |
 | `sistema` | Especialidades, IA e instalación | «Especialidades» (`activar_modulos`), «Asistente de IA», «Claves de API» e «Instalación» | `administrar_cuentas` (Especialidades, además, `activar_modulos`) |
 | `ayuda` | Ayuda y acerca de Sílice | `paginas/acerca` y el inicio de los recorridos guiados | Toda cuenta |
 
