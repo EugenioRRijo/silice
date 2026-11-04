@@ -68,6 +68,8 @@
 
 // «Rastro de la obra» (Tarea 6 del plan F4, venía de la pestaña «Trazabilidad» de la Hoja): ícono y texto en la misma
 // línea; el color solo acompaña.
+// «Entregar al cliente» (tanda 2 del pulido F5, Tarea 6): el título, una línea y el enlace, en columna como el rastro.
+.silice-aprobar__entrega,
 .silice-aprobar__rastro {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
