@@ -23,8 +23,8 @@ const VIGENTE = {
   producto: "MZP-01",
   componentes: [
     { codigo: "AGR-12", cantidad_por_t: "0.94", unidad: "t", tipo: "propio" },
-    { codigo: "CA-30", cantidad_por_t: "0.05", unidad: "t", tipo: "comprado" },
-    { codigo: "GO", cantidad_por_t: "8", unidad: "l", tipo: "comprado" },
+    { codigo: "CA-30", cantidad_por_t: "0.05", unidad: "t", tipo: "comprado", es_ligante: true },
+    { codigo: "GO", cantidad_por_t: "8", unidad: "l", tipo: "comprado", es_ligante: false },
   ],
   fuente: "dosificación ficticia 12",
   vigente_desde: "2026-11-01",
@@ -58,9 +58,9 @@ describe("Receta de la planta", () => {
   let usuario: ReturnType<typeof userEvent.setup>;
   const alExpirar = vi.fn();
 
-  function montar() {
+  function montar(sesion: SesionRespuesta = SESION) {
     render(
-      <ContextoAplicacion.Provider value={{ sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar }}>
+      <ContextoAplicacion.Provider value={{ sesion, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar }}>
         <MemoryRouter>
           <RecetaPlanta />
         </MemoryRouter>
@@ -207,6 +207,43 @@ describe("Receta de la planta", () => {
     expect(await within(dialogo).findByText("Indique desde qué fecha rige la receta.")).toBeInTheDocument();
     expect(await within(dialogo).findByText("Indique la fuente de la receta (la dosificación de donde sale).")).toBeInTheDocument();
     expect(posts()).toHaveLength(0);
+  });
+
+  test("la receta vigente dice cuál componente es el ligante", async () => {
+    montar();
+    await usuario.type(screen.getByLabelText("Producto (código)"), "MZP-01");
+    await usuario.click(screen.getByRole("button", { name: "Ver la receta vigente" }));
+    const region = await screen.findByRole("region", { name: "Receta vigente" });
+    expect(within(region).getByRole("row", { name: /CA-30/ })).toHaveTextContent("Sí");
+    expect(within(region).getByRole("row", { name: /AGR-12/ })).not.toHaveTextContent("Sí");
+  });
+
+  test("marcar el ligante lo envía y sin marca no se envía nada", async () => {
+    montar();
+    const dialogo = await abrir();
+    await llenarCabecera(dialogo);
+    await llenarComponente(dialogo, 1, "AGR-12", "0,90");
+    await usuario.click(within(dialogo).getByRole("button", { name: "Agregar un componente" }));
+    await llenarComponente(dialogo, 2, "ARE-1", "0,05", "t", "comprado");
+    await usuario.click(within(dialogo).getByRole("button", { name: "Agregar un componente" }));
+    await llenarComponente(dialogo, 3, "CA-30", "0,05", "t", "comprado");
+    const fila = within(dialogo).getByRole("group", { name: "Componente 3" });
+    const casilla = within(fila).getByRole("checkbox", { name: "Es el ligante" });
+    expect(casilla).not.toBeChecked();
+    await usuario.click(casilla);
+    await usuario.click(within(dialogo).getByRole("button", { name: "Registrar receta" }));
+    await waitFor(() => expect(posts()).toHaveLength(1));
+    expect(posts()[0]!.cuerpo.componentes).toEqual([
+      { codigo: "AGR-12", cantidad_por_t: "0.90", unidad: "t", tipo: "propio" },
+      { codigo: "ARE-1", cantidad_por_t: "0.05", unidad: "t", tipo: "comprado" },
+      { codigo: "CA-30", cantidad_por_t: "0.05", unidad: "t", tipo: "comprado", es_ligante: true },
+    ]);
+  });
+
+  test("sin permiso para operar la arenera no aparece la casilla del ligante", async () => {
+    montar({ ...SESION, acciones: ["registrar_costos_produccion"] });
+    const dialogo = await abrir();
+    expect(within(dialogo).queryByRole("checkbox", { name: "Es el ligante" })).not.toBeInTheDocument();
   });
 
   test("un componente propio en litros se rechaza antes de enviar", async () => {

@@ -7,6 +7,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { CampoDeConsulta } from "../../comun/CampoDeConsulta";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { MarcoDeDialogo } from "../../shell/carpetas/MarcoDeDialogo";
+import { useAplicacion } from "../../shell/contexto";
 import { FilaDeComponente } from "./FilaDeComponente";
 import { armarComponentes, mensajeDePlanta, rangoDeMasa, sumaDeMasa } from "./logicaPlanta";
 import type { FilaDeComponente as Fila } from "./logicaPlanta";
@@ -29,13 +30,15 @@ interface FilaConId extends Fila {
 }
 
 const ID_FORMULARIO = "silice-receta-nueva";
-const VACIA = { codigo: "", cantidad: "", unidad: "", tipo: "" };
+const VACIA = { codigo: "", cantidad: "", unidad: "", tipo: "", esLigante: false };
 
 // «Registrar una receta nueva»: lo que lleva una tonelada de mezcla. Una receta nueva no cambia las anteriores. La suma
 // de masa se muestra mientras se escribe y Guardar se bloquea fuera de la tolerancia; es un aviso previo: el servidor
 // vuelve a comprobarla y es quien decide. Ni la fecha desde la que rige ni la unidad ni el tipo traen valor por defecto.
 export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props): JSX.Element {
   const base = useId();
+  const { sesion } = useAplicacion();
+  const puedeMarcarLigante = sesion.acciones.includes("operar_arenera");
   const siguiente = useRef(2);
   const botonAgregar = useRef<HTMLButtonElement>(null);
   const [producto, setProducto] = useState("");
@@ -57,7 +60,10 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
   }, [nueva, base]);
 
   function cambiar(id: number, cambio: Partial<Fila>) {
-    setFilas((actuales) => actuales.map((f) => (f.id === id ? { ...f, ...cambio } : f)));
+    // Un solo ligante por receta: marcar uno desmarca el otro.
+    setFilas((actuales) =>
+      actuales.map((f) => (f.id === id ? { ...f, ...cambio } : cambio.esLigante === true ? { ...f, esLigante: false } : f)),
+    );
   }
 
   function agregar() {
@@ -158,6 +164,7 @@ export function FormularioDeReceta({ alCerrar, alRegistrar, alExpirar }: Props):
             base={`${base}-${f.id}`}
             fila={f}
             sePuedeQuitar={filas.length > 1}
+            puedeMarcarLigante={puedeMarcarLigante}
             alCambiar={(cambio) => cambiar(f.id, cambio)}
             alQuitar={() => quitar(f.id)}
             alExpirar={alExpirar}

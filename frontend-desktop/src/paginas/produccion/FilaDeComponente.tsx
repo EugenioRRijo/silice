@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem } from "@carbon/react";
+import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
 import type { JSX } from "react";
 import { CampoDeConsulta } from "../../comun/CampoDeConsulta";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -13,6 +13,8 @@ interface Props {
   fila: Fila;
   // Con una sola fila no hay nada que quitar.
   sePuedeQuitar: boolean;
+  // Solo quien puede registrar recetas ve la marca del ligante.
+  puedeMarcarLigante: boolean;
   alCambiar: (cambio: Partial<Fila>) => void;
   alQuitar: () => void;
   alExpirar: () => void;
@@ -20,7 +22,7 @@ interface Props {
 
 // Un componente de la receta. La unidad y el tipo no tienen valor por defecto: de ellos depende si el consumo sale del
 // inventario o se compra a precio de lista, y de ahí el costo de la mezcla.
-export function FilaDeComponente({ numero, base, fila, sePuedeQuitar, alCambiar, alQuitar, alExpirar }: Props): JSX.Element {
+export function FilaDeComponente({ numero, base, fila, sePuedeQuitar, puedeMarcarLigante, alCambiar, alQuitar, alExpirar }: Props): JSX.Element {
   const nombre = `Componente ${numero}`;
   return (
     <fieldset className="receta-componente">
@@ -55,6 +57,15 @@ export function FilaDeComponente({ numero, base, fila, sePuedeQuitar, alCambiar,
           <SelectItem key={t.valor} value={t.valor} text={t.texto} />
         ))}
       </Select>
+      {puedeMarcarLigante && (
+        <Checkbox
+          id={`${base}-ligante`}
+          labelText="Es el ligante"
+          helperText="El asfalto de la mezcla: con él compara la fórmula de trabajo la auditoría de los tramos."
+          checked={fila.esLigante === true}
+          onChange={(_, { checked }) => alCambiar({ esLigante: checked })}
+        />
+      )}
       <Button
         className="receta-componente__quitar"
         kind="ghost"

@@ -10,6 +10,7 @@ export interface ComponenteDeReceta {
   cantidad_por_t: string; // decimal con punto, por tonelada de mezcla
   unidad: string; // "t" o "l"
   tipo: string; // "propio" o "comprado"
+  es_ligante?: boolean; // marca opcional: este componente es el ligante (VR2 compara con él)
 }
 
 export interface RecetaNueva {

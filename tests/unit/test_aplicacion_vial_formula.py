@@ -265,3 +265,34 @@ def test_si_la_instalacion_no_se_puede_leer_vr2_lo_declara_y_la_hoja_abre(
         "tramo:T1:capa:1: asfalto de 6,5 % sin comparar con la fórmula de trabajo: no se pudo "
         "leer la base de la instalación para buscar la receta de MZ-1"
     )
+
+
+def test_el_ligante_marcado_resuelve_una_receta_con_otro_comprado_en_t(sesion) -> None:
+    with cp.instalacion_en_memoria() as ins:
+        cp.materiales(ins)
+        cp.receta(
+            ins,
+            (
+                Componente("AGR-12", D("0.90"), "t", "propio"),
+                Componente("CAL", D("0.05"), "t", "comprado"),
+                Componente("CA-30", D("0.05"), "t", "comprado", es_ligante=True),
+            ),
+        )
+        regla = _regla(sesion, ins, date(2026, 10, 31))
+    assert (regla.formulas, regla.sin_formula) == ({MEZCLA: D("5")}, {})
+
+
+def test_sin_marca_y_con_dos_comprados_en_t_se_mantiene_el_motivo(sesion) -> None:
+    # la regla vieja no cambia: sin marca no se adivina (véase el caso de arriba, sin es_ligante)
+    with cp.instalacion_en_memoria() as ins:
+        cp.materiales(ins)
+        cp.receta(
+            ins,
+            (
+                Componente("AGR-12", D("0.90"), "t", "propio"),
+                Componente("CAL", D("0.05"), "t", "comprado"),
+                Componente("CA-30", D("0.05"), "t", "comprado"),
+            ),
+        )
+        regla = _regla(sesion, ins, date(2026, 10, 31))
+    assert regla.formulas == {} and "no se sabe cuál es el ligante" in regla.sin_formula[MEZCLA]

@@ -82,7 +82,7 @@ describe("suma de masa", () => {
 });
 
 describe("armar los componentes", () => {
-  const fila = (parcial: Record<string, string> = {}) => ({ codigo: "AGR-12", cantidad: "0,94", unidad: "t", tipo: "propio", ...parcial });
+  const fila = (parcial: Record<string, string | boolean> = {}) => ({ codigo: "AGR-12", cantidad: "0,94", unidad: "t", tipo: "propio", ...parcial });
 
   test("devuelve el decimal con punto y el código recortado", () => {
     expect(armarComponentes([fila({ codigo: " AGR-12 " })])).toEqual({
@@ -98,6 +98,24 @@ describe("armar los componentes", () => {
     expect(armarComponentes([fila({ cantidad: "0.94" })])).toMatchObject({ error: expect.stringMatching(/^Componente 1: la cantidad está mal escrita/) });
     expect(armarComponentes([fila({ unidad: "l" })])).toEqual({ error: "Componente 1: un componente propio sale del inventario y va en t." });
     expect(armarComponentes([fila(), fila()])).toEqual({ error: "El código AGR-12 está repetido." });
+  });
+
+  test("el ligante marcado viaja con su marca y los demás no la llevan", () => {
+    const filas = [fila(), fila({ codigo: "CA-30", cantidad: "0,06", tipo: "comprado", esLigante: true })];
+    expect(armarComponentes(filas)).toEqual({
+      componentes: [
+        { codigo: "AGR-12", cantidad_por_t: "0.94", unidad: "t", tipo: "propio" },
+        { codigo: "CA-30", cantidad_por_t: "0.06", unidad: "t", tipo: "comprado", es_ligante: true },
+      ],
+    });
+  });
+
+  test("el ligante va en toneladas y es uno solo", () => {
+    expect(armarComponentes([fila({ codigo: "GO", cantidad: "8", unidad: "l", tipo: "comprado", esLigante: true })])).toEqual({
+      error: "Componente 1: el ligante va en toneladas.",
+    });
+    const dos = [fila({ esLigante: true }), fila({ codigo: "CA-30", tipo: "comprado", esLigante: true })];
+    expect(armarComponentes(dos)).toEqual({ error: "Solo un componente puede ser el ligante (marcados: AGR-12, CA-30)." });
   });
 
   test("sin elegir tipo o unidad no se adivina", () => {
