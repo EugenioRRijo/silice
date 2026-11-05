@@ -2,7 +2,8 @@
 
 <!--
 THESIS: el libro es la evidencia y la pantalla es una lente forense sobre él. Se rechaza el tablero de tarjetas
-con KPI en grande y la hoja escondida detrás de un clic.
+con KPI en grande como sustituto de la evidencia, y la hoja escondida detrás de un clic. La app abre en la Vista general,
+que pone primero lo que bloquea; la cartera va por moneda, sin sumar Bs con USD. La navegación va por espacios.
 OWN-WORLD: IBM Carbon g10 nativo (paquete oficial @carbon/react), IBM Plex Sans y Mono, esquinas rectas,
 divisores de 1 px, severidad con ícono, morado solo para atípicos, verde/rojo IBCS solo en cifras de variación.
 STORY: el auditor suelta el libro, lo ve como en Excel con las celdas marcadas, toca un hallazgo, cae en su
@@ -102,35 +103,46 @@ ajustan aquí cuando la construcción los fije.
 
 ## Marco
 
-Una **barra superior** y, debajo, una **barra lateral en árbol** a la izquierda y el contenido (especificación
-`docs/especificaciones/2026-10-26-rediseno-marco-obras-design.md`; código en `src/marco/`). La navegación va por obras y
-pendientes, no por herramientas: nada de módulos ni áreas.
+Una **barra superior** y, debajo, una **barra lateral plana** a la izquierda y el contenido (especificación
+`docs/especificaciones/2026-10-26-rediseno-marco-obras-design.md`, enmendada por
+`docs/especificaciones/2026-11-04-f6-enmienda.md`; código en `src/marco/`). La navegación va por **espacios** (véase
+«Espacios»): la Vista general, cada obra y, para lo que es de toda la empresa, Producción, Auditoría y Precios; y la Cuenta.
+En los textos no se dice «módulo» ni «área».
 
-- **Barra superior** (`BarraSuperior.tsx`): 3 rem de alto (sigue la escala de letra), fondo `--silice-marco` con texto
-  inverso y raya inferior de 3 px `--silice-acento`; queda fija al desplazar. A la izquierda el logo de la empresa (o
-  «Sílice»); luego las **migas** (`Mis obras / <obra> / <sección>`, `Empresa / <entrada>`, `Pendientes` o el título de la
-  pantalla; la última con `aria-current`); a la derecha el botón **«Buscar… (Ctrl+K)»**, la marca de la demostración y
-  «Recorrido» cuando tocan, el tamaño de letra y la cuenta (un círculo con las iniciales —primera y última palabra—, el
-  nombre y un menú con «Salir»; con letra Grande o Muy grande, solo el círculo, con el mismo nombre accesible; sin letras en
-  el nombre, el ícono de persona).
-- **Barra lateral** (`BarraLateral.tsx`): 14,75 rem, fondo `--silice-lateral`, fija al desplazar el contenido y con su
-  propio desplazamiento. Tres zonas: **Pendientes**; **Obras**, con «Nueva obra» como botón principal fijo bajo su
-  cabecera (relleno `--silice-complementario`, texto blanco) y el árbol de obras (patrón `tree` de WAI-ARIA: flechas,
-  derecha despliega, izquierda pliega; la obra abierta desplegada en sus secciones con una línea guía; el nombre de una obra
-  se recorta a 2 líneas con puntos suspensivos y su `title` con el nombre completo aparece solo si de verdad está recortado,
-  medido al pasar el ratón); y **Empresa** (Precios y catálogo, Auditar un presupuesto, Producción, Empresa y
-  personas, Ayuda). Activo: fondo `--silice-lateral-activo` y raya de 3 px `--silice-marco`. Lo que la cuenta no puede
-  usar no aparece. La cabecera de Obras y «Nueva obra» quedan fijas y el árbol tiene su propio
-  desplazamiento. **Letra Grande o Muy grande:** filas y títulos se compactan (mixin `con-letra-grande` de `_umbrales.scss`: filas de 1,5 rem, títulos con menos
-  relleno), Empresa se pliega (véase «Empresa plegada con letra grande»), la zona de obras conserva 10 rem como mínimo y,
-  si aun así no cabe todo, se desplaza la barra entera. Nada desaparece: lo plegado se abre con un clic y los tres botones
-  de tamaño de letra siguen.
+- **Barra superior** (`BarraSuperior.tsx`): 3 rem de alto, fondo `--silice-marco` con texto inverso y raya inferior de 3 px
+  `--silice-acento`. Es fija al desplazar (`marco.scss`). A la izquierda, la marca «Sílice» (o el logo de la empresa), que
+  lleva a la ruta índice `/` y de allí a la Vista general; al lado, «Carpeta activa: <carpeta>». **Sin migas**: la ubicación
+  la dicen la barra lateral, la barra de cada espacio y el título de la pestaña del navegador (`ubicar.ts`). A la derecha, el
+  botón **«Buscar una obra, sección o pantalla… (Ctrl+K)»**, un hueco para lo que pone `Marco` (la marca de la demostración y
+  «Recorrido» cuando tocan) y el botón de la persona: un enlace a `#/cuenta/preferencias`, con el círculo de iniciales y el
+  nombre; con letra Grande o Muy grande, solo el círculo, con el mismo nombre accesible; sin letras en el nombre, el ícono de
+  persona. Salir de la sesión está en la Cuenta, no aquí.
+- **Tamaño de letra:** dentro del marco vive **solo en la Cuenta**, «Pantalla y tamaño de letra» (`#/cuenta/preferencias`,
+  `EspacioDeCuenta.tsx`), a un clic del botón de la persona (decisión de Eugenio, 2026-11-04). Antes de entrar en la sesión,
+  la cabecera sin marco de `App.tsx` todavía muestra el control: es la única excepción.
+- **Barra lateral** (`BarraLateral.tsx`): 14,75 rem, fondo `--silice-lateral`. Es fija bajo la barra superior, con su propio
+  desplazamiento. Tres zonas, en este orden:
+  1. **Vista general**, la primera entrada, con la píldora de pendientes si hay alguno. Es la entrada de la app (véase
+     «Vista general»).
+  2. **Obras**: lista plana, sin árbol. Cada obra es un enlace a su Resumen y lleva su píldora de pendientes; las obras de
+     nombre repetido dicen su carpeta. «Nueva obra» va en la cabecera de la zona. Las secciones de la obra abierta no
+     van aquí: van en la barra de la obra, bajo su cabecera (véase «Espacios»).
+  3. **Costos y producción** (`ZonaDeCostos.tsx`): Auditar un presupuesto, Precios y catálogo y Costos de producción. Cada
+     uno es un enlace a su espacio.
+
+  Lo que la cuenta no puede usar no aparece. La Cuenta no tiene entrada en la barra lateral. Activo: fondo
+  `--silice-lateral-activo` y raya de 3 px `--silice-marco`. **Letra Grande o Muy grande:** filas de 1,5 rem y títulos con
+  menos relleno (mixin `con-letra-grande` de `_umbrales.scss`); Costos y producción se pliega (véase «Costos y producción
+  plegado con letra grande»); si aun así no cabe todo, se desplaza la barra entera. Nada desaparece: lo plegado se abre con
+  un clic.
+
 - **La obra** (`EspacioDeObra.tsx`, ruta `#/obra/<carpeta>/<obra>/<sección>`): antes de montar la sección se fija la obra
   en la sesión; encima va la cabecera de la obra (véase «Cabecera de la obra»), que no es un encabezado: el único h1 es el
   de la sección. «Esa obra ya no existe» (con «Volver a Pendientes») y «Esta obra se abrió en otra pestaña» (con
   «Retomar») son pantallas con su h1. Sus secciones se describen en «Secciones de la obra».
-- **Buscador** (`Buscador.tsx`): diálogo propio con combobox y lista (obras, sus secciones, Empresa y las pantallas sin
-  sitio en el árbol). Ctrl+K o el botón lo abren; Esc lo cierra y el foco vuelve al botón.
+- **Buscador** (`Buscador.tsx`, `busqueda.ts`): diálogo propio con combobox y lista. Busca, en este orden, obras, sus secciones,
+  las secciones de la Cuenta (también por su ayuda, así «personas» lleva a «Cuentas y permisos») y las herramientas de
+  Producción, Auditoría y Precios (por su título o el nombre del espacio). Ocho resultados como máximo, sin rutas repetidas. Ctrl+K o el botón lo abren; Esc lo cierra y el foco vuelve al botón.
 - **Salir sin perder trabajo:** elegir otra obra, sección o entrada en el marco con cambios sin guardar pregunta
   («Cambios sin guardar»); si la obra está en otra carpeta, también nombra los borradores de la Hoja que se perderían.
   Atrás y adelante del navegador no se interceptan.
@@ -141,21 +153,16 @@ pendientes, no por herramientas: nada de módulos ni áreas.
   barra) y el contenido le cede ese ancho; no es una capa. «Ocultar» la pliega (queda el botón «Recorrido» en la barra) y
   «Terminar recorrido» la quita. Por debajo del umbral de la letra pasa a franja plegable bajo la barra.
 - 1366×768 y 1056 px sin desplazamiento horizontal con las tres letras. Los textos del marco dicen obra, sección,
-  pendiente y empresa; nunca «módulo», «área», «página» ni «carpeta de trabajo» (salvo Empresa › Carpetas de trabajo,
+  pendiente y empresa; nunca «módulo», «área», «página» ni «carpeta de trabajo» (salvo Cuenta › Carpetas,
   para quien administra). Lo vigila `src/paginas/sinJergaInterna.test.ts`.
 
-### Empresa plegada con letra grande
+### Costos y producción plegado con letra grande
 
-Rediseño F4, Tarea 0 (`marco/ZonaEmpresa.tsx`, `comun/useTamanoDeLetra.ts`). En el cierre de F3, con letra Muy grande
-cabían 7 obras a 1366×768 y 4 a 1366×657, y Empresa ocupaba casi lo mismo que el árbol; Eugenio eligió plegarla.
-
-- Con letra **Normal**, Empresa es un h2 con su lista, sin botón.
-- Con **Grande** o **Muy grande**, el h2 lleva un botón desplegable (WAI-ARIA: `aria-expanded` y `aria-controls`, chevron
-  a la derecha plegada y hacia abajo desplegada) que arranca **plegado**, salvo que la ruta sea una entrada de Empresa:
-  entonces arranca abierto. Su alto pasa al árbol de obras.
-- La decisión de plegar o desplegar vale para el tamaño de letra con que se tomó y no se recuerda entre sesiones
-  (pregunta 13 del plan F4). Cambiar la letra en vivo la vuelve a evaluar (`useTamanoDeLetra` observa el atributo de la
-  raíz).
+Rediseño F4, Tarea 0, y F6, Tarea 6 (`marco/ZonaDeCostos.tsx`). Antes era la zona Empresa; F6 la sustituyó por esta, con solo
+sus tres espacios de la empresa. Con letra **Normal**, la zona es un encabezado con su lista, sin botón. Con **Grande** o
+**Muy grande**, el encabezado lleva un botón desplegable (WAI-ARIA: `aria-expanded` y `aria-controls`) que arranca plegado,
+salvo que la ruta sea de uno de sus tres espacios. Su alto pasa a la lista de obras. La decisión de plegar o desplegar vale
+para el tamaño de letra con que se tomó y no se recuerda entre sesiones.
 
 ### Cabecera de la obra
 
@@ -172,10 +179,84 @@ sección, sin encabezado propio (el h1 es el de la sección):
 
 La misma pieza `EtapaDeObra` pinta el estado en las cifras del Resumen y en la tabla de obras: no pueden divergir.
 
+## Espacios
+
+Rediseño F6 (`marco/espacios.ts`, `marco/BarraDeEspacio.tsx`, `marco/Marco.tsx`). Cada espacio tiene su familia de rutas y
+una sola ruta canónica por pantalla (`rutaCanonica`); ningún enlace escribe una ruta a mano.
+
+| Espacio | Ruta | Qué contiene |
+|---|---|---|
+| Inicio | `#/inicio/:vista` | la Vista general (`general`) y la bandeja de Pendientes (`pendientes`) |
+| La obra | `#/obra/:carpeta/:obraId/:seccion/:subvista?` | las nueve secciones de la obra y sus subvistas |
+| Producción | `#/produccion/:herramienta` | Resumen de arenera, Existencias, Costos del período, Costo por tonelada, Receta de la planta y Producir mezcla |
+| Auditoría | `#/auditoria/:herramienta` | Subir y auditar Excel, Libro de la empresa e Historial de auditorías |
+| Precios | `#/precios/:herramienta` | Precios de la empresa, Catálogo de partidas e insumos, Índices del BCV y Simulador de listas |
+| Cuenta | `#/cuenta/:seccion` | las seis secciones de la Cuenta (abajo) |
+
+**Barra de espacio.** Debajo de la cabecera de cada espacio va la barra de espacio (`BarraDeEspacio.tsx`): un `nav` con
+`aria-label`, fondo `--cds-layer-01` y divisor inferior de 1 px `--cds-border-subtle`. Cada pestaña es un enlace a su ruta,
+con `aria-current="page"` en la activa; no es un `tablist`. La pestaña activa lleva una raya inferior de 3 px en
+`--silice-complementario`, que se distingue de las pestañas de Carbon. Cada pestaña mide 2,5 rem como mínimo (2 rem con letra
+Grande o Muy grande). Tab las recorre en orden. Solo aparecen las herramientas que la cuenta puede usar; una herramienta
+inaccesible no aparece. Al entrar en un espacio sin herramienta, se abre la primera que la cuenta sí puede usar.
+
+**Subvistas de la obra.** Las secciones con pantallas dependientes muestran sus subvistas en un conmutador compacto
+(`BarraDeEspacio` con `nivel="subvista"`, bajo la barra de secciones; `EspacioDeObra.tsx`). La primera de cada fila es la
+pantalla principal de la sección:
+
+| Sección | Subvistas |
+|---|---|
+| Resumen | «Resumen», «Tablero» |
+| Presupuesto | «Presupuesto», «Componer» |
+| Aprobaciones | «Aprobar», «Revisar un paquete», «Entregar» |
+| Mercado | «Estudio», «Actualizar precios» |
+| Control de obra | «Control», «Reajuste», «Escenarios» |
+
+El conmutador de Presupuesto dice «Presupuesto | Componer», no «Partidas» (decisión de Eugenio, 2026-11-04).
+
+**La Cuenta** (`EspacioDeCuenta.tsx`) tiene su barra con seis secciones: «Pantalla y tamaño de letra», «Cuentas y permisos»,
+«Empresa y tema», «Carpetas», «Especialidades, IA e instalación» y «Ayuda y acerca de Sílice». Lo que la cuenta no puede
+usar no aparece; «Carpetas» pide además `cambiar_caso`.
+
+**Direcciones que no existen.** Una dirección sin pantalla (el comodín de `Marco.tsx`, línea 423) lleva a la Vista general.
+Las direcciones viejas se redirigen a su nuevo sitio (contrato de rutas, §2.4).
+
+## Vista general
+
+Rediseño F6, Tarea 8 (`paginas/inicio/index.tsx`, `paginas/inicio/CarteraYAvance.tsx`, `marco/EspacioDeInicio.tsx`). Es la
+**entrada de la app**: la ruta índice lleva a `#/inicio/general` (`Marco.tsx`, línea 361), y la marca «Sílice» también
+(por `/`). Así lo fijó Eugenio el 2026-11-04 y deja sin efecto lo que decía la especificación de 2026-10-26: la entrada ya no
+es la bandeja de Pendientes (`docs/especificaciones/2026-11-04-f6-enmienda.md`). La bandeja sigue en `#/inicio/pendientes`, a
+un clic en la barra del espacio, al lado de «Vista general». Toda cuenta ve las dos.
+
+La cabecera del espacio dice «Vista general»; el único `h1` es el de la pantalla. Los bloques, en este orden:
+
+1. **Lo que requiere atención.** Los primeros cinco pendientes de la bandeja, del más urgente al menos urgente. Lo que
+   bloquea lleva el ícono de error y su palabra; el aviso, el ícono de advertencia y su palabra. Un enlace lleva a la bandeja
+   con el total. Sin pendientes, una sola línea: «No tiene pendientes por hacer.» (`LoQueBloquea.tsx`).
+2. **Cartera por moneda.** Una tarjeta por moneda presente (Bs y USD), cada una con la franja `FranjaDeCifras`: total vigente,
+   obras y en ejecución. Bs y USD **nunca se suman ni se promedian**: el servidor agrupa por moneda
+   (`aplicacion/resumen_todas.py`, `_por_moneda`) y la pantalla pinta cada fila tal cual (`CarteraYAvance.tsx`, `Cartera`).
+   Se usa `FranjaDeCifras` y no `IndicadorFiori`, porque estas cifras no tienen meta ni variación; reusa las clases de
+   `FranjaIndicadores`.
+3. **Obras y avance contra el plan.** Una tabla con una fila por obra: el nombre (enlace a su Resumen, con la carpeta si es
+   homónima), la etapa, el total y el avance. El avance dice «Real X % · Plan Y %» y lleva una barra: el real en relleno
+   sólido y el plan en contorno, con las cifras al lado para que el color no vaya solo. Sin avance, «Sin avance»; sin versión,
+   «Sin versión».
+4. **Últimas auditorías.** Las cinco últimas auditorías guardadas, con su resultado en palabras («Sin errores ni
+   advertencias», o cuántos errores y advertencias) y un enlace a Auditoría. Solo con `leer_proyecto`.
+5. **Arenera.** Solo con `operar_arenera` y con la especialidad de producción encendida (`paginas/inicio/index.tsx`, línea 30).
+
+La pantalla no calcula nada: cada cifra es la del servidor, solo formateada en es-VE (coma decimal, punto de miles). Cada
+bloque pide sus datos por su cuenta; si uno falla, dice su error sin tumbar a los demás. Sin `leer_proyecto`, la cartera y el
+avance no se pintan. Sin obras, el estado vacío: quien puede crear ve «Nueva obra»; quien solo revisa ve que no hay obras en
+su carpeta.
+
 ## Secciones de la obra
 
-El árbol ofrece, por obra y según lo que la cuenta puede usar: Resumen, Presupuesto, Tramos (módulo vial), Archivos y
-planos, Versiones, Aprobaciones, Mercado y Control de obra (`marco/secciones.ts`). Presupuesto, Archivos y planos y
+Las nueve secciones de la obra van en su barra, bajo la cabecera (véase «Espacios»), en el orden de `marco/secciones.ts`
+(líneas 21-31): Resumen, Presupuesto, Tramos, Archivos y planos, Versiones, Aprobaciones, Mercado, Control de obra y Riesgo.
+Las que tienen subvistas las muestran en su conmutador. Cada cuenta ve solo las que puede usar. Presupuesto, Archivos y planos y
 Versiones comparten el borrador de la obra (`ProveedorDeLaHoja`): pasar de una a otra no lo cierra ni pregunta. Quien
 solo revisa ve cada sección en solo lectura: lo que escribe no se pinta (no se deshabilita).
 

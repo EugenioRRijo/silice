@@ -94,12 +94,12 @@ rutas, el diseño visual y `docs/ESTADO.md`.
   - se modifica la especificación `2026-10-26-rediseno-marco-obras-design.md` (§2.2 Pendientes de entrada, §4
     antiobjetivo del menú de herramientas, §5 reparto y §7 fases);
   - se renumeran las fases: **F6 Espacios, F7 Ayuda, F8 Cierre** (la de Ayuda se llamaba F6).
-- [ ] Antigravity actualiza el diseño visual con:
+- [x] Antigravity actualiza el diseño visual con:
   - la barra de **subvistas** dentro de una sección, distinta de la barra de la obra y de las pestañas Carbon;
   - la Vista general con lo que bloquea arriba y la cartera por moneda;
   - el tamaño de letra solo en la Cuenta.
-- [ ] Antigravity arbitra el expediente.
-- [ ] Eugenio aprueba.
+- [x] Antigravity arbitra el expediente.
+- [x] Eugenio aprueba.
 
 ## T1: Una ruta canónica por pantalla (sin cambio visible)
 
@@ -118,11 +118,11 @@ rutas, el diseño visual y `docs/ESTADO.md`.
 En T1 devuelve la ruta de **hoy**: las de obra con `rutaDeObra` y las de empresa con `/empresa/<entrada>` o
 `/<id>`. T4 y T5 la cambian a la del contrato sin tocar a quien la llama.
 
-- [ ] Rojo: `PanelRecorrido en /empresa/auditoria marca «Paso 1 de 3»` (hoy falla; riesgo R5 de la revisión) y
+- [x] Rojo: `PanelRecorrido en /empresa/auditoria marca «Paso 1 de 3»` (hoy falla; riesgo R5 de la revisión) y
   `ningún enlace interno escribe una ruta a mano` (un `grep` en la prueba: cero `to="/` y cero `navegar("/` fuera de
   `marco/`).
-- [ ] Verde: implementar. Correr `npx vitest run src/shell src/marco src/paginas`. Esperado: PASA.
-- [ ] Antigravity arbitra.
+- [x] Verde: implementar. Correr `npx vitest run src/shell src/marco src/paginas`. Esperado: PASA.
+- [x] Antigravity arbitra.
 
 ## T2: Tabla de espacios y `primeraUsable`
 
@@ -134,10 +134,10 @@ En T1 devuelve la ruta de **hoy**: las de obra con `rutaDeObra` y las de empresa
 - `primeraUsable(nivel, acciones, modoEntrega, apagados)`, que devuelve `string | null`.
 - `ofertaDe` deja de producir `sueltas` (el contrato no deja ninguna).
 
-- [ ] Rojo: la tabla del contrato §2 escrita a mano (31 ids, con `accion` y `modulo`) contra `PAGINAS`, con
+- [x] Rojo: la tabla del contrato §2 escrita a mano (31 ids, con `accion` y `modulo`) contra `PAGINAS`, con
   **conjuntos exactos**. Además, `primeraUsable` por rol: quien arma entra al Catálogo y no a Precios de la empresa, y
   con modo entrega no aparece el Simulador. Y la guardia de jerga sobre los títulos.
-- [ ] Verde. Antigravity arbitra.
+- [x] Verde. Antigravity arbitra.
 
 ## T3: `BarraDeEspacio`
 
@@ -149,9 +149,9 @@ En T1 devuelve la ruta de **hoy**: las de obra con `rutaDeObra` y las de empresa
 
 Medidas y estados: diseño visual §1.
 
-- [ ] Rojo: `nav` con `aria-label`, `aria-current="page"`, que no use `role="tablist"`, sin ancho fijo
+- [x] Rojo: `nav` con `aria-label`, `aria-current="page"`, que no use `role="tablist"`, sin ancho fijo
   (`estilosMarco.test`), lo no usable no aparece y Tab recorre en orden.
-- [ ] Verde. Antigravity arbitra el contraste WCAG 2.1 AA y que se distinga de las pestañas Carbon.
+- [x] Verde. Antigravity arbitra el contraste WCAG 2.1 AA y que se distinga de las pestañas Carbon.
 
 ## T4: Espacios Producción, Auditoría y Precios
 
@@ -159,7 +159,7 @@ Medidas y estados: diseño visual §1.
 `marco/ubicar.ts`, `marco/BarraLateral.tsx` (zona «Costos y producción»), `marco/secciones.ts` (`ENTRADAS_DE_EMPRESA`
 pierde `precios`, `auditoria` y `produccion`) y `rutaCanonica` (las rutas del contrato §2.2).
 
-- [ ] Rojo:
+- [x] Rojo:
   - la tabla de redirecciones del contrato §2.4 (empresa), reescrita en `Marco.test.tsx`;
   - un solo `h1`;
   - «Sin permiso» y «Apagada» escritas a mano;
@@ -174,7 +174,7 @@ pierde `precios`, `auditoria` y `produccion`) y `rutaCanonica` (las rutas del co
 **Archivos:** `marco/CabeceraDeObra.tsx`, `marco/EspacioDeObra.tsx`, `marco/Marco.tsx` (patrón con `:subvista`),
 `marco/BarraLateral.tsx` y su SCSS, `marco/ZonaEmpresa.tsx` (se retira) y `rutaCanonica` (contrato §2.1).
 
-- [ ] Rojo:
+- [x] Rojo:
   - la barra de la obra va bajo su cabecera;
   - las subvistas abren dentro de su sección (por ejemplo, `/obra/demo.db/1/control/reajuste` monta Reajuste con la
     barra de la obra en «Control de obra»);
@@ -185,10 +185,10 @@ pierde `precios`, `auditoria` y `produccion`) y `rutaCanonica` (las rutas del co
     (`/presupuesto/componer`) tampoco pregunta por cambios sin guardar: `quedaEnLaHoja` compara el segmento `:seccion` y no
     la ruta entera (`secciones.ts:61`; nota H-F6-1 de Antigravity);
   - al cambiar de obra se abre su **Resumen**, como hoy (decisión de Eugenio, 2026-11-04).
-- [ ] Verde.
+- [x] Verde.
 - [ ] Antigravity arbitra. Se mide el alto que le queda a la Hoja (Univer) a 1366×768 con letra Muy grande.
 - [ ] Revisores internos `silice-rev-diseno` y `silice-rev-pruebas`.
-- [ ] Suite completa.
+- [x] Suite completa.
 
 ## T6: Cuenta `/cuenta/:seccion`
 
@@ -200,14 +200,14 @@ pierde `precios`, `auditoria` y `produccion`) y `rutaCanonica` (las rutas del co
 - `shell/MenuCuenta.tsx` (solo antes de entrar);
 - `marco/ubicar.ts`, `sesion/useSesion.ts` y `paginas/hoja/useBorrador.ts`.
 
-- [ ] Rojo:
+- [x] Rojo:
   - permisos por sección (contrato §3), en particular que Carpetas exige `administrar_cuentas` y `cambiar_caso`;
   - redirecciones de `/administracion`, `/empresa/personas`, `/acerca` y `/empresa/ayuda`;
   - el tamaño de letra está en `preferencias` para toda cuenta y ya no en la barra de arriba;
   - tras cambiar de carpeta se vuelve a `/cuenta/carpetas`;
   - salir con un borrador abierto no pide `DELETE` del borrador después de `DELETE /v1/sesion` (el servidor ya los
     descarta: `api/caso_web.py:43-46`).
-- [ ] Verde. Antigravity arbitra: un administrador no pierde nada y quien no administra no ve nada que no deba.
+- [x] Verde. Antigravity arbitra: un administrador no pierde nada y quien no administra no ve nada que no deba.
 
 ## T7: Servidor, cartera por moneda (puede ir en paralelo con T3 a T5)
 
@@ -223,13 +223,13 @@ pierde `precios`, `auditoria` y `produccion`) y `rutaCanonica` (las rutas del co
 
 Quien no puede cambiar de carpeta solo ve la abierta (`_carpetas_visibles`).
 
-- [ ] Rojo (pytest, casos construidos):
+- [x] Rojo (pytest, casos construidos):
   - dos carpetas, una en Bs y otra en USD: `por_moneda` trae dos filas y nunca una suma mezclada;
   - una carpeta ilegible va a `carpetas_omitidas`;
   - sin permiso, 403;
   - quien revisa solo ve la carpeta de la empresa.
 - [ ] Verde. `scripts/guardia_nucleo.py` limpio y `docs/api.json` regenerado.
-- [ ] Antigravity arbitra.
+- [x] Antigravity arbitra.
 
 ## T8: Vista general `/inicio/:vista`
 
@@ -241,7 +241,7 @@ Contenido: **primero lo que bloquea** (de la Bandeja), después la cartera por m
 `FranjaIndicadores`, el avance ejecutado contra el plan por obra (barras IBCS), las últimas auditorías (`UltimasAuditorias`)
 y la arenera (`PanelArenera`, solo con `operar_arenera` y su módulo encendido).
 
-- [ ] Rojo:
+- [x] Rojo:
   - cada cifra sale del `fetch` simulado de T7 sin recalcular (`"334570.5"` se ve como `334.570,50`);
   - no aparece ninguna suma de Bs con USD;
   - sin avance, «Sin avance»;
@@ -265,6 +265,15 @@ y la arenera (`PanelArenera`, solo con `operar_arenera` y su módulo encendido).
 - [ ] PR a `main`. Eugenio prueba y fusiona.
 
 **Dependencias:** T0 → T1 → T2 → T3 → (T4 ∥ T7) → T5 → T6 → T8 (necesita T7) → T9.
+
+## Desvíos aprobados
+
+Lo que la construcción cambió respecto del plan, con su razón. T9 no los reabre.
+
+- **(a) `FranjaDeCifras` en lugar de `IndicadorFiori` y `FranjaIndicadores`.** La cartera por moneda (T8) trae total, obras y en ejecución, sin meta ni variación; `IndicadorFiori` las exige. `FranjaDeCifras` (`indicadores/FranjaDeCifras.tsx`) reusa las clases de `FranjaIndicadores`. Lo acordó el arbitraje de T8 (`docs/bitacora/arbitrajes/f6-T8-flash.md`).
+- **(b) «inicio» es la pantalla 32 del registro.** El contrato cuenta 31 pantallas en §2 sin «inicio», que es la Vista general (§4). La enmienda del 2026-11-05 está en el contrato de rutas.
+- **(c) Una dirección desconocida lleva a la Vista general**, no a Pendientes: el comodín de `Marco.tsx` (línea 423) va a `/inicio/general`.
+- **(d) «Presupuesto» en el conmutador de la obra.** Dice «Presupuesto | Componer», no «Partidas» (decisión de Eugenio, 2026-11-04). Se aplicó en T5 y se ajustó en los menores de T5 y T6.
 
 ## Respuestas de Eugenio (2026-11-04)
 

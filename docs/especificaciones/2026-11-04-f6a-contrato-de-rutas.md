@@ -32,6 +32,8 @@ Reglas comunes:
 
 ## 2. Las 31 pantallas
 
+**Enmienda 2026-11-05:** el registro tiene 32 pantallas. «inicio» (la Vista general, `/inicio/general`) es la 32.ª y vive fuera de las tablas de obra, Producción, Auditoría, Precios y Cuenta: se describe en §4. Las 31 de este apartado no cambian.
+
 ### 2.1. Obra: 9 secciones y 7 subvistas
 
 | Pantalla (`id`) | Título | Ruta F6 | Acción | Módulo |
@@ -71,6 +73,8 @@ Aprobaciones para quien solo puede revisar paquetes) se ofrece y abre en esa sub
 
 **Cuenta de control:** obra 16 (9 secciones + 7 subvistas) + Producción 6 + Auditoría 3 + Precios 4 + Cuenta 2 = **31**.
 Ninguna pantalla queda solo en el buscador.
+
+**Enmienda 2026-11-05:** «inicio» no entra en esta cuenta: es la 32.ª pantalla del registro (`shell/rutas.ts`) y vive en §4, fuera de las tablas de obra, Producción, Auditoría, Precios y Cuenta. Con ella, el registro suma 32.
 
 ### 2.4. Redirecciones desde rutas viejas (conservan la consulta)
 
