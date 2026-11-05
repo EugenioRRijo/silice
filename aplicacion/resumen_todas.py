@@ -27,10 +27,9 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 from aplicacion import mesa
-from aplicacion.mesa import ATRASADA, EN_EJECUCION, ObraEnMesa
-from aplicacion.proyectos import carpetas_con_archivo
-from core.catalog import Catalogo, abrir_sesion
-from operacion.base_datos import motor_solo_lectura
+from aplicacion.mesa import EN_CURSO, ObraEnMesa
+from aplicacion.proyectos import leer_cada_carpeta
+from core.catalog import Catalogo
 
 __all__ = [
     "CarteraDeTodas",
@@ -42,7 +41,6 @@ __all__ = [
 _registro = logging.getLogger(__name__)
 
 _CENTESIMA = Decimal("0.01")
-_EN_CURSO = frozenset({EN_EJECUCION, ATRASADA})
 _ORDEN_DE_MONEDA = {"Bs": 0, "USD": 1}
 
 
@@ -85,7 +83,7 @@ def _por_moneda(obras: list[ObraDeLaCartera]) -> tuple[MonedaDeLaCartera, ...]:
                 moneda=moneda,
                 obras=len(de_la_moneda),
                 total=sum((o.total for o in de_la_moneda if o.total is not None), Decimal("0.00")),
-                en_ejecucion=sum(1 for o in de_la_moneda if o.obra.etapa in _EN_CURSO),
+                en_ejecucion=sum(1 for o in de_la_moneda if o.obra.etapa in EN_CURSO),
             )
         )
     return tuple(filas)
@@ -94,29 +92,16 @@ def _por_moneda(obras: list[ObraDeLaCartera]) -> tuple[MonedaDeLaCartera, ...]:
 def cartera_de_las_carpetas(carpetas: list[tuple[str | None, Path]], hoy: date) -> CarteraDeTodas:
     """Las obras de cada carpeta (`(nombre, ruta)`) y su resumen por moneda, en el orden descrito
     arriba."""
-    obras: list[ObraDeLaCartera] = []
-    omitidas = 0
-    for nombre, ruta in sorted(
-        carpetas_con_archivo(carpetas), key=lambda c: (c[0] is not None, (c[0] or "").casefold())
-    ):
-        motor = motor_solo_lectura(ruta)
-        try:
-            with abrir_sesion(motor) as sesion:
-                # Por el módulo, no por el nombre importado: así se puede reemplazar en pruebas.
-                de_la_carpeta = mesa.obras_de_la_mesa(sesion, Catalogo(sesion), hoy)
-        except Exception as error:  # noqa: BLE001 - una carpeta con datos raros no tumba las demás
-            omitidas += 1
-            # Solo el nombre y el tipo: el texto de una excepción puede traer SQL o datos.
-            _registro.warning(
-                "Se omiten las obras de la carpeta «%s»: %s.", ruta.name, type(error).__name__
-            )
-            # La traza completa, solo en el registro local y a nivel debug: nunca en el cuerpo.
-            _registro.debug("Traza de la carpeta «%s» omitida.", ruta.name, exc_info=True)
-            continue
-        finally:
-            motor.dispose()
-        obras.extend(
-            ObraDeLaCartera(carpeta=nombre, obra=o, total=_a_centesimas(o.total))
-            for o in de_la_carpeta
-        )
+    leidas, omitidas = leer_cada_carpeta(
+        carpetas,
+        # Por el módulo, no por el nombre importado: así se puede reemplazar en pruebas.
+        lambda sesion: mesa.obras_de_la_mesa(sesion, Catalogo(sesion), hoy),
+        registro=_registro,
+        que="las obras",
+    )
+    obras = [
+        ObraDeLaCartera(carpeta=nombre, obra=o, total=_a_centesimas(o.total))
+        for nombre, de_la_carpeta in leidas
+        for o in de_la_carpeta
+    ]
     return CarteraDeTodas(_por_moneda(obras), tuple(obras), omitidas)

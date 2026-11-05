@@ -26,9 +26,7 @@ from typing import Literal
 
 from aplicacion import mesa
 from aplicacion.mesa import Siguiente
-from aplicacion.proyectos import carpetas_con_archivo
-from core.catalog import abrir_sesion
-from operacion.base_datos import motor_solo_lectura
+from aplicacion.proyectos import leer_cada_carpeta
 
 __all__ = [
     "URGENCIA_DEL_GRUPO",
@@ -83,25 +81,13 @@ def pendientes_de_las_carpetas(
     """Los pendientes de cada carpeta (`(nombre, ruta)`) en el orden descrito arriba. Con
     `alcance="por_aprobar"` quedan solo los de `accion.pagina == "aprobar"`."""
     items: list[PendienteDeObra] = []
-    omitidas = 0
-    for nombre, ruta in sorted(
-        carpetas_con_archivo(carpetas), key=lambda c: (c[0] is not None, (c[0] or "").casefold())
-    ):
-        motor = motor_solo_lectura(ruta)
-        try:
-            with abrir_sesion(motor) as sesion:
-                grupos = mesa.pendientes(sesion, hoy)
-        except Exception as error:  # noqa: BLE001 - una carpeta con datos raros no tumba las demás
-            omitidas += 1
-            # Solo el nombre y el tipo: el texto de una excepción puede traer SQL o datos.
-            _registro.warning(
-                "Se omiten los pendientes de la carpeta «%s»: %s.", ruta.name, type(error).__name__
-            )
-            # La traza completa, solo en el registro local y a nivel debug: nunca en el cuerpo.
-            _registro.debug("Traza de la carpeta «%s» omitida.", ruta.name, exc_info=True)
-            continue
-        finally:
-            motor.dispose()
+    leidas, omitidas = leer_cada_carpeta(
+        carpetas,
+        lambda sesion: mesa.pendientes(sesion, hoy),
+        registro=_registro,
+        que="los pendientes",
+    )
+    for nombre, grupos in leidas:
         for grupo in grupos:
             urgencia = URGENCIA_DEL_GRUPO.get(grupo.clave, "aviso")
             items.extend(

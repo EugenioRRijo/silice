@@ -1732,7 +1732,7 @@ def medir_umbrales(
         en_menu = ids_del_menu(contexto, base)
         acciones = api_del_contexto(contexto, base, "GET", "/v1/sesion")["datos"]["acciones"]
         carpetas: list[tuple[str, str | None, str | None]] = [("empresa", None, None)]
-        if "cambiar_caso" in acciones:
+        if "abrir_carpeta" in acciones:  # abrir otra carpeta; cambiar_caso es crearlas y subirlas
             obra_larga = escenario["obra_larga"] if "leer_proyecto" in acciones else None
             carpetas = [("obra_larga", escenario["carpeta_obra_larga"], obra_larga)]
             if demo.get("nombre"):
