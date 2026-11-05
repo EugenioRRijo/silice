@@ -161,9 +161,16 @@ describe("BarraLateral: lista sin carpetas (D-F3-3)", () => {
     ]);
   });
 
-  it("una cuenta sin CAMBIAR_CASO no ve obras de otra carpeta que la abierta, aunque la respuesta las traiga", async () => {
+  it("quien revisa (con ABRIR_CARPETA, decisión de Eugenio 2026-11-05) ve las obras de todas las carpetas", async () => {
+    servidor([CLINICA, TORRE, GALPON]);
+    pintar({ sesion: sesionDe("rita") });
+    const lista = await listaDeObras();
+    expect(within(lista).getAllByRole("link").map((e) => e.textContent)).toEqual(["Clínica Las Mercedes", "Galpón Sur", "Torre B"]);
+  });
+
+  it("una cuenta sin ABRIR_CARPETA no ve obras de otra carpeta que la abierta, aunque la respuesta las traiga", async () => {
     const sinCambiar = sesionDe("ana", {
-      acciones: sesionDe("ana").acciones.filter((a) => a !== "cambiar_caso"),
+      acciones: sesionDe("ana").acciones.filter((a) => a !== "abrir_carpeta"),
     });
     pintar({ sesion: sinCambiar });
     const lista = await listaDeObras();

@@ -329,7 +329,7 @@ describe("ESPACIOS (contrato 2.2) y SECCIONES_DE_CUENTA (contrato 3)", () => {
 });
 
 describe("primeraUsable (F6, T2)", () => {
-  const ARMA = ["leer_proyecto", "editar_hoja", "aprobar_version", "entregar_paquete", "control_de_obra", "convertir_y_reajustar", "operar_arenera", "registrar_costos_produccion", "cambiar_caso", "ver_riesgo"];
+  const ARMA = ["leer_proyecto", "editar_hoja", "aprobar_version", "entregar_paquete", "control_de_obra", "convertir_y_reajustar", "operar_arenera", "registrar_costos_produccion", "abrir_carpeta", "cambiar_caso", "ver_riesgo"];
   const ARMA_Y_PRECIOS = [...ARMA, "administrar_precios"];
   const precios = ESPACIOS.precios.herramientas;
   const produccion = ESPACIOS.produccion.herramientas;

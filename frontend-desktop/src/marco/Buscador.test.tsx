@@ -168,8 +168,8 @@ describe("Buscador", () => {
     expect(boton).toHaveFocus();
   });
 
-  it("una cuenta sin cambiar_caso solo encuentra obras de su carpeta abierta", async () => {
-    const sin = sesionDe("ana", { acciones: sesionDe("ana").acciones.filter((a) => a !== "cambiar_caso") });
+  it("una cuenta sin abrir_carpeta solo encuentra obras de su carpeta abierta", async () => {
+    const sin = sesionDe("ana", { acciones: sesionDe("ana").acciones.filter((a) => a !== "abrir_carpeta") });
     pintar(sin);
     await campo();
     await waitFor(() => expect(opciones()).toHaveLength(2));
