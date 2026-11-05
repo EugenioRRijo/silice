@@ -237,7 +237,7 @@ describe("BarraLateral: lista plana, la obra abierta y su Resumen (F6, T5)", () 
   });
 });
 
-describe("BarraLateral: zonas Pendientes y Empresa", () => {
+describe("BarraLateral: Pendientes y «Costos y producción»", () => {
   it("Pendientes es un enlace a #/pendientes y está activo en esa ruta", async () => {
     pintar({ ruta: "/pendientes" });
     await listaDeObras();
@@ -246,40 +246,39 @@ describe("BarraLateral: zonas Pendientes y Empresa", () => {
     expect(enlace).toHaveAttribute("aria-current", "page");
   });
 
-  // F6, T4: la zona Empresa trae el grupo «Costos y producción» (Auditar, Precios, Costos de producción, en ese orden);
-  // «Empresa y personas» y «Ayuda» quedan como estaban hasta T6.
-  it("Empresa lista el grupo «Costos y producción» y sus entradas usables, con la activa marcada", async () => {
+  // F6, T6: «Empresa y personas» y «Ayuda» pasaron a la Cuenta; la zona de abajo es «Costos y producción» (Auditar,
+  // Precios, Costos de producción, en ese orden), sin el grupo anidado de antes.
+  it("«Costos y producción» lista sus tres espacios usables, en ese orden, con el abierto marcado", async () => {
     // Quien ve todo: lo de la administración y, además, `leer_proyecto` (el catálogo y el libro).
     const todo = sesionDe("admin", { acciones: [...sesionDe("admin").acciones, "leer_proyecto"] });
-    pintar({ sesion: todo, ruta: "/empresa/personas" });
+    pintar({ sesion: todo, ruta: "/precios/catalogo" });
     await listaDeObras();
-    const zona = screen.getByRole("navigation", { name: "Empresa" });
+    const zona = screen.getByRole("navigation", { name: "Costos y producción" });
     const enlaces = within(zona).getAllByRole("link");
-    expect(enlaces.map((e) => e.textContent)).toEqual([
-      "Auditar un presupuesto",
-      "Precios y catálogo",
-      "Costos de producción",
-      "Empresa y personas",
-      "Ayuda",
-    ]);
-    expect(enlaces.map((e) => e.getAttribute("href"))).toEqual([
-      "/auditoria/subir",
-      "/precios/listas",
-      "/produccion/resumen",
-      "/empresa/personas",
-      "/empresa/ayuda",
-    ]);
-    expect(enlaces[3]).toHaveAttribute("aria-current", "page");
+    expect(enlaces.map((e) => e.textContent)).toEqual(["Auditar un presupuesto", "Precios y catálogo", "Costos de producción"]);
+    expect(enlaces.map((e) => e.getAttribute("href"))).toEqual(["/auditoria/subir", "/precios/listas", "/produccion/resumen"]);
+    expect(enlaces[1]).toHaveAttribute("aria-current", "page");
     expect(zona.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
-    const grupo = within(zona).getByRole("heading", { level: 3, name: "Costos y producción" });
-    expect(within(zona).getByRole("list", { name: "Costos y producción" })).toContainElement(enlaces[0]);
-    expect(grupo.compareDocumentPosition(enlaces[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(zona).getByRole("heading", { level: 2, name: "Costos y producción" })).toBeInTheDocument();
+    expect(within(zona).queryByRole("heading", { level: 3 })).toBeNull();
+  });
+
+  it("ya no ofrece «Empresa y personas» ni «Ayuda» (viven en la Cuenta) ni una zona llamada «Empresa»", async () => {
+    const todo = sesionDe("admin", { acciones: [...sesionDe("admin").acciones, "leer_proyecto"] });
+    pintar({ sesion: todo, ruta: "/pendientes" });
+    await listaDeObras();
+    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
+    expect(within(lateral).queryByRole("link", { name: "Empresa y personas" })).toBeNull();
+    expect(within(lateral).queryByRole("link", { name: "Ayuda" })).toBeNull();
+    expect(within(lateral).queryByRole("navigation", { name: "Empresa" })).toBeNull();
+    expect(within(lateral).queryByRole("heading", { name: "Empresa" })).toBeNull();
+    expect(lateral.querySelectorAll("a[href^='/empresa'], a[href^='/cuenta']")).toHaveLength(0);
   });
 
   it("quien arma entra a Precios por el Catálogo; el grupo lleva a la primera herramienta usable de cada espacio", async () => {
     pintar({ sesion: sesionDe("ana") });
     await listaDeObras();
-    const zona = screen.getByRole("navigation", { name: "Empresa" });
+    const zona = screen.getByRole("navigation", { name: "Costos y producción" });
     expect(within(zona).getByRole("link", { name: "Auditar un presupuesto" })).toHaveAttribute("href", "/auditoria/subir");
     expect(within(zona).getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("href", "/precios/catalogo");
     expect(within(zona).getByRole("link", { name: "Costos de producción" })).toHaveAttribute("href", "/produccion/resumen");
@@ -288,19 +287,18 @@ describe("BarraLateral: zonas Pendientes y Empresa", () => {
   it("quien solo registra costos entra a Producción por «Costos del período»", async () => {
     pintar({ sesion: sesionDe("ana", { acciones: ["leer_proyecto", "registrar_costos_produccion"] }) });
     await listaDeObras();
-    const zona = screen.getByRole("navigation", { name: "Empresa" });
+    const zona = screen.getByRole("navigation", { name: "Costos y producción" });
     expect(within(zona).getByRole("link", { name: "Costos de producción" })).toHaveAttribute("href", "/produccion/costos");
   });
 
   it("un espacio sin herramienta que la cuenta pueda usar no se muestra", async () => {
     pintar({ sesion: sesionDe("rita") });
     await listaDeObras();
-    const zona = screen.getByRole("navigation", { name: "Empresa" });
-    // Rita no opera la arenera ni registra costos; «administracion» exige administrar_cuentas.
+    const zona = screen.getByRole("navigation", { name: "Costos y producción" });
+    // Rita no opera la arenera ni registra costos.
     expect(within(zona).getAllByRole("link").map((e) => [e.textContent, e.getAttribute("href")])).toEqual([
       ["Auditar un presupuesto", "/auditoria/subir"],
       ["Precios y catálogo", "/precios/catalogo"],
-      ["Ayuda", "/empresa/ayuda"],
     ]);
   });
 
@@ -311,7 +309,7 @@ describe("BarraLateral: zonas Pendientes y Empresa", () => {
   ])("en %s solo «%s» está activa: coincide el primer segmento de la ruta", async (ruta, activa) => {
     pintar({ sesion: sesionDe("admin", { acciones: [...sesionDe("admin").acciones, "leer_proyecto"] }), ruta });
     await listaDeObras();
-    const zona = screen.getByRole("navigation", { name: "Empresa" });
+    const zona = screen.getByRole("navigation", { name: "Costos y producción" });
     const marcadas = within(zona).getAllByRole("link").filter((e) => e.getAttribute("aria-current") === "page");
     expect(marcadas.map((e) => e.textContent)).toEqual([activa]);
   });
@@ -805,7 +803,7 @@ describe("BarraLateral: nombres largos de obra", () => {
 });
 
 // Cierre de F3 (menor 6): con letra «Muy grande» (1,5) a 1366×768 el rem pasa de 28 px y Pendientes, los títulos y las cinco
-// entradas de Empresa se comían el alto: la zona de obras quedaba en casi nada. La zona de obras se queda con el alto que
+// entradas de Empresa (hoy tres, las de «Costos y producción») se comían el alto: la zona de obras quedaba en casi nada. La zona de obras se queda con el alto que
 // sobra y es la única que se desplaza; con letra Grande o Muy grande se compactan filas y títulos y la zona conserva un
 // mínimo. jsdom no calcula el diseño: la estructura se prueba en el DOM y las reglas en el fuente; la medida real
 // (cuántas obras caben a 1366×768) se hace en el navegador.
@@ -822,7 +820,7 @@ describe("BarraLateral: la zona de obras con letra grande", () => {
     const hojas = leer("marco/BarraLateral.scss");
     expect(regla(hojas, ".silice-marco-lateral__obras")).toMatch(/flex:\s*1 1 auto/);
     expect(regla(hojas, ".silice-marco-lateral__arbol")).toMatch(/overflow-y:\s*auto/);
-    expect(regla(hojas, ".silice-marco-lateral__empresa")).toMatch(/flex:\s*none/);
+    expect(regla(hojas, ".silice-marco-lateral__costos")).toMatch(/flex:\s*none/);
   });
 
   it("_umbrales.scss ofrece un mixin para letra Grande y Muy grande, sin consultas de ancho propias", () => {
@@ -846,46 +844,47 @@ describe("BarraLateral: la zona de obras con letra grande", () => {
   });
 });
 
-// Tarea 0 de F4: con letra Grande o Muy grande «Empresa» se pliega para darle su alto al árbol (decisión de Eugenio al
-// cierre de F3). Con letra normal sigue como antes. El tamaño se pone a mano en la raíz, como lo deja `aplicarTamanoLetra`.
-describe("BarraLateral: Empresa plegable con letra grande (F4, Tarea 0)", () => {
-  const CINCO = ["Auditar un presupuesto", "Precios y catálogo", "Costos de producción", "Empresa y personas", "Ayuda"];
+// Tarea 0 de F4: con letra Grande o Muy grande la zona se pliega para darle su alto al árbol (decisión de Eugenio al cierre
+// de F3); desde F6, T6 la zona se llama «Costos y producción» y trae solo los tres espacios. Con letra normal sigue como
+// antes. El tamaño se pone a mano en la raíz, como lo deja `aplicarTamanoLetra`.
+describe("BarraLateral: «Costos y producción» plegable con letra grande (F4, Tarea 0; F6, T6)", () => {
+  const TRES = ["Auditar un presupuesto", "Precios y catálogo", "Costos de producción"];
   const todo = () => sesionDe("admin", { acciones: [...sesionDe("admin").acciones, "leer_proyecto"] });
   const ponerLetra = (valor: string) => document.documentElement.setAttribute("data-silice-letra", valor);
-  const zona = () => screen.getByRole("navigation", { name: "Empresa" });
+  const zona = () => screen.getByRole("navigation", { name: "Costos y producción" });
   afterEach(() => document.documentElement.removeAttribute("data-silice-letra"));
 
-  it("con letra normal Empresa es un h2 sin botón y se ven sus entradas", async () => {
+  it("con letra normal el título es un h2 sin botón y se ven los tres espacios", async () => {
     pintar({ sesion: todo() });
     await listaDeObras();
-    const titulo = within(zona()).getByRole("heading", { name: "Empresa" });
+    const titulo = within(zona()).getByRole("heading", { name: "Costos y producción" });
     expect(within(titulo).queryByRole("button")).toBeNull();
-    expect(within(zona()).getAllByRole("link").map((e) => e.textContent)).toEqual(CINCO);
+    expect(within(zona()).getAllByRole("link").map((e) => e.textContent)).toEqual(TRES);
   });
 
-  it("con letra grande Empresa arranca plegada", async () => {
+  it("con letra grande la zona arranca plegada", async () => {
     ponerLetra("grande");
     pintar({ sesion: todo() });
     await listaDeObras();
-    const boton = within(zona()).getByRole("button", { name: "Empresa" });
+    const boton = within(zona()).getByRole("button", { name: "Costos y producción" });
     expect(boton).toHaveAttribute("aria-expanded", "false");
     expect(boton.parentElement?.tagName).toBe("H2");
     expect(screen.queryByRole("link", { name: "Precios y catálogo" })).toBeNull();
   });
 
-  it("al pulsar Empresa se despliega, con clic, Enter o Espacio, y aria-controls apunta a su lista", async () => {
+  it("al pulsar el título se despliega, con clic, Enter o Espacio, y aria-controls apunta a su lista", async () => {
     ponerLetra("muy-grande");
     const usuario = userEvent.setup();
     pintar({ sesion: todo() });
     await listaDeObras();
-    const boton = within(zona()).getByRole("button", { name: "Empresa" });
+    const boton = within(zona()).getByRole("button", { name: "Costos y producción" });
     await usuario.click(boton);
     expect(boton).toHaveAttribute("aria-expanded", "true");
-    expect(within(zona()).getAllByRole("link").map((e) => e.textContent)).toEqual(CINCO);
+    expect(within(zona()).getAllByRole("link").map((e) => e.textContent)).toEqual(TRES);
     const lista = document.getElementById(boton.getAttribute("aria-controls") ?? "");
     expect(lista).not.toBeNull();
     expect(lista?.tagName).toBe("UL");
-    expect(lista).toContainElement(screen.getByRole("link", { name: "Ayuda" }));
+    expect(lista).toContainElement(screen.getByRole("link", { name: "Costos de producción" }));
     await usuario.click(boton);
     expect(boton).toHaveAttribute("aria-expanded", "false");
     boton.focus();
@@ -897,37 +896,49 @@ describe("BarraLateral: Empresa plegable con letra grande (F4, Tarea 0)", () => 
     expect(boton).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("con una entrada de Empresa o un espacio abierto arranca desplegada", async () => {
+  it("con un espacio abierto arranca desplegada", async () => {
     ponerLetra("muy-grande");
     pintar({ sesion: todo(), ruta: "/precios/catalogo" });
     await listaDeObras();
-    expect(within(zona()).getByRole("button", { name: "Empresa" })).toHaveAttribute("aria-expanded", "true");
+    expect(within(zona()).getByRole("button", { name: "Costos y producción" })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("link", { name: "Precios y catálogo" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("con la Cuenta abierta arranca plegada: la Cuenta ya no es de esta zona", async () => {
+    ponerLetra("muy-grande");
+    pintar({ sesion: todo(), ruta: "/cuenta/ayuda" });
+    await listaDeObras();
+    expect(within(zona()).getByRole("button", { name: "Costos y producción" })).toHaveAttribute("aria-expanded", "false");
   });
 
   it("pasar de normal a muy grande en vivo la pliega, y volver a normal la muestra sin botón", async () => {
     pintar({ sesion: todo() });
     await listaDeObras();
-    expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Costos de producción" })).toBeInTheDocument();
     act(() => ponerLetra("muy-grande"));
-    const boton = await within(zona()).findByRole("button", { name: "Empresa" });
+    const boton = await within(zona()).findByRole("button", { name: "Costos y producción" });
     expect(boton).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("link", { name: "Ayuda" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Costos de producción" })).toBeNull();
     act(() => ponerLetra("normal"));
-    await waitFor(() => expect(within(zona()).queryByRole("button", { name: "Empresa" })).toBeNull());
-    expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
+    await waitFor(() => expect(within(zona()).queryByRole("button", { name: "Costos y producción" })).toBeNull());
+    expect(screen.getByRole("link", { name: "Costos de producción" })).toBeInTheDocument();
   });
 
   it("el botón hereda la letra del título, tiene foco visible y con letra grande mide al menos 1,5 rem", () => {
     const hoja = leer("marco/BarraLateral.scss");
-    const boton = regla(hoja, ".silice-marco-lateral__empresa-boton");
+    const boton = regla(hoja, ".silice-marco-lateral__costos-boton");
     expect(boton).not.toBe("");
     expect(boton).toMatch(/font:\s*inherit/);
     expect(boton).toMatch(/color:\s*inherit/);
     expect(boton).toMatch(/text-transform:\s*inherit/);
     expect(regla(boton, "&:focus-visible")).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
     const compacta = bloque(hoja, "@include u.con-letra-grande");
-    expect(regla(compacta, ".silice-marco-lateral__empresa-boton")).toMatch(/min-block-size:\s*1\.5rem/);
+    expect(regla(compacta, ".silice-marco-lateral__costos-boton")).toMatch(/min-block-size:\s*1\.5rem/);
+  });
+
+  it("no quedan reglas de la zona «Empresa» ni de su subtítulo en la hoja de estilos", () => {
+    const hoja = leer("marco/BarraLateral.scss");
+    expect(hoja).not.toMatch(/__empresa|__subtitulo/);
   });
 });
 
@@ -946,20 +957,15 @@ describe("BarraLateral con módulos apagados (plan vial, Tarea 19)", () => {
     );
   }
 
-  it("encendida, la zona Empresa ofrece «Costos de producción»", async () => {
+  it("encendida, la zona «Costos y producción» ofrece «Costos de producción»", async () => {
     pintarConApagados([]);
     expect(await screen.findByRole("link", { name: "Costos de producción" })).toHaveAttribute("href", "/produccion/resumen");
   });
 
   it("con producción apagada, «Costos de producción» no aparece en la barra y los otros espacios sí", async () => {
     pintarConApagados(["produccion"]);
-    const empresa = await screen.findByRole("navigation", { name: "Empresa" });
-    expect(within(empresa).getAllByRole("link").map((e) => e.textContent)).toEqual([
-      "Auditar un presupuesto",
-      "Precios y catálogo",
-      "Empresa y personas",
-      "Ayuda",
-    ]);
+    const zona = await screen.findByRole("navigation", { name: "Costos y producción" });
+    expect(within(zona).getAllByRole("link").map((e) => e.textContent)).toEqual(["Auditar un presupuesto", "Precios y catálogo"]);
     expect(screen.queryByRole("link", { name: "Costos de producción" })).toBeNull();
   });
 });

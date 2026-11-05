@@ -11,14 +11,30 @@ const OBRAS: ObraDeCarpeta[] = [
 ];
 
 describe("ubicar: la sección de una obra (como antes)", () => {
-  test("título y migas de una sección", () => {
-    const u = ubicar("/obra/Carpeta%20Sur.db/3/presupuesto", OBRAS, PAGINAS);
-    expect(u.titulo).toBe("Presupuesto · Galpón Sur");
-    expect(u.migas).toEqual([
-      { texto: "Mis obras", ruta: "/pendientes" },
-      { texto: "Galpón Sur", ruta: "/obra/Carpeta%20Sur.db/3/resumen" },
-      { texto: "Presupuesto" },
-    ]);
+  test("el título dice la sección y la obra", () => {
+    expect(ubicar("/obra/Carpeta%20Sur.db/3/presupuesto", OBRAS, PAGINAS).titulo).toBe("Presupuesto · Galpón Sur");
+  });
+
+  test("ya no devuelve migas: la barra de arriba no las tiene (F6, T6)", () => {
+    expect(Object.keys(ubicar("/obra/Carpeta%20Sur.db/3/presupuesto", OBRAS, PAGINAS))).toEqual(["titulo"]);
+  });
+});
+
+describe("ubicar: la Cuenta (F6, T6)", () => {
+  test.each([
+    ["/cuenta/preferencias", "Pantalla y tamaño de letra"],
+    ["/cuenta/cuentas", "Cuentas y permisos"],
+    ["/cuenta/empresa", "Empresa y tema"],
+    ["/cuenta/carpetas", "Carpetas"],
+    ["/cuenta/sistema", "Especialidades, IA e instalación"],
+    ["/cuenta/ayuda", "Ayuda y acerca de Sílice"],
+  ])("%s se titula «%s»", (ruta, titulo) => {
+    expect(ubicar(ruta, OBRAS, PAGINAS).titulo).toBe(titulo);
+  });
+
+  test("una sección de la Cuenta que no existe no tiene título", () => {
+    expect(ubicar("/cuenta/xyz", OBRAS, PAGINAS).titulo).toBeNull();
+    expect(ubicar("/cuenta", OBRAS, PAGINAS).titulo).toBeNull();
   });
 });
 
@@ -30,19 +46,9 @@ describe("ubicar: la subvista de una sección (F6, T5)", () => {
     expect(ubicar("/obra/empresa/7/mercado/actualizar", OBRAS, PAGINAS).titulo).toBe("Actualizar precios · Mercado · Casa Demo");
   });
 
-  test("las migas suman la subvista; la sección pasa a ser un enlace a su pantalla principal", () => {
-    expect(ubicar("/obra/Carpeta%20Sur.db/3/control/escenarios", OBRAS, PAGINAS).migas).toEqual([
-      { texto: "Mis obras", ruta: "/pendientes" },
-      { texto: "Galpón Sur", ruta: "/obra/Carpeta%20Sur.db/3/resumen" },
-      { texto: "Control de obra", ruta: "/obra/Carpeta%20Sur.db/3/control" },
-      { texto: "Escenarios" },
-    ]);
-  });
-
   test("una subvista que no existe se ubica como su sección", () => {
     const u = ubicar("/obra/empresa/7/control/xyz", OBRAS, PAGINAS);
     expect(u.titulo).toBe("Control de obra · Casa Demo");
-    expect(u.migas.map((m) => m.texto)).toEqual(["Mis obras", "Casa Demo", "Control de obra"]);
     expect(ubicar("/obra/empresa/7/versiones/xyz", OBRAS, PAGINAS).titulo).toBe("Versiones · Casa Demo");
   });
 
@@ -55,7 +61,7 @@ describe("ubicar: la subvista de una sección (F6, T5)", () => {
   });
 
   test("más de cuatro segmentos no es una ruta de obra", () => {
-    expect(ubicar("/obra/empresa/7/control/reajuste/mas", OBRAS, PAGINAS).migas).toEqual([]);
+    expect(ubicar("/obra/empresa/7/control/reajuste/mas", OBRAS, PAGINAS).titulo).toBeNull();
   });
 });
 

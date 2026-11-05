@@ -103,14 +103,12 @@ describe("App", () => {
     const usuario = userEvent.setup();
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
-    await usuario.click(screen.getByRole("button", { name: "Cuenta de Ana Pérez" }));
-    expect(screen.getByRole("button", { name: "Salir" })).toBeInTheDocument();
     // El marco nuevo: buscador en la barra superior y la barra lateral con Pendientes, Obras y Empresa.
     const barra = screen.getByRole("banner");
     expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
     expect(within(lateral).getByRole("link", { name: "Pendientes" })).toHaveAttribute("href", "#/pendientes");
-    expect(within(lateral).getByRole("navigation", { name: "Empresa" })).toBeInTheDocument();
+    expect(within(lateral).getByRole("navigation", { name: "Costos y producción" })).toBeInTheDocument();
     // Con la suite entera en marcha el marco tarda mas que el plazo por omision.
     expect(
       await screen.findByRole("heading", { level: 1, name: "Pendientes" }, { timeout: 5000 }),
@@ -120,6 +118,11 @@ describe("App", () => {
     expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();
     expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/sesion/preferencias")).toBe(false);
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
+    // La persona es un enlace a la Cuenta, donde está «Salir de la sesión».
+    const persona = screen.getByRole("link", { name: "Cuenta de Ana Pérez" });
+    expect(persona).toHaveAttribute("href", "#/cuenta/preferencias");
+    await usuario.click(persona);
+    expect(await screen.findByRole("button", { name: "Salir de la sesión" })).toBeInTheDocument();
   });
 
   // Cierre de F3 (H4): el color de la empresa vale en TODA la aplicacion, tambien antes de entrar. GET /v1/tema es
@@ -203,8 +206,8 @@ describe("App", () => {
   test("Salir cierra la sesion con DELETE y vuelve al formulario", async () => {
     const usuario = userEvent.setup();
     render(<App />);
-    await usuario.click(await screen.findByRole("button", { name: "Cuenta de Ana Pérez" }));
-    await usuario.click(screen.getByRole("button", { name: "Salir" }));
+    await usuario.click(await screen.findByRole("link", { name: "Cuenta de Ana Pérez" }));
+    await usuario.click(await screen.findByRole("button", { name: "Salir de la sesión" }));
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
     const borrado = fetchFalso.mock.calls.find((c) => c[1]?.method === "DELETE");
     expect(new Headers(borrado?.[1]?.headers).get("X-Silice-CSRF")).toBe("tok");
@@ -430,8 +433,8 @@ describe("App", () => {
       render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
       await screen.findByText("Ana Pérez");
       await subirLibro(usuario);
-      await usuario.click(screen.getByRole("button", { name: "Cuenta de Ana Pérez" }));
-      await usuario.click(screen.getByRole("button", { name: "Salir" }));
+      await usuario.click(screen.getByRole("link", { name: "Cuenta de Ana Pérez" }));
+      await usuario.click(await screen.findByRole("button", { name: "Salir de la sesión" }));
       await screen.findByRole("heading", { name: "Entrar" });
       await volverAEntrar(usuario);
       await screen.findByText("Ana Pérez");

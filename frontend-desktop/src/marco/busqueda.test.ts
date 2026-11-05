@@ -83,7 +83,7 @@ describe("resultadosDe", () => {
     expect(resultadosDe("obra", muchas, COMPLETA)).toHaveLength(8);
   });
 
-  it("ordena obras, secciones de obras, entradas de Empresa y pantallas sin sitio", () => {
+  it("ordena obras, secciones de obras, secciones de la Cuenta y pantallas sin sitio", () => {
     // Las nueve secciones de una obra (Resumen, Presupuesto, Tramos, Archivos y planos, Versiones, Aprobaciones, Mercado,
     // Control de obra y Riesgo) ya no caben con las dos pantallas de Empresa cuyo orden se mira. Con «vial» y «riesgo»
     // apagados se van «Tramos» y «Riesgo», y sin `aprobar_version`, `revisar_paquete` ni `entregar_paquete` (F6, T5: una sección
@@ -132,12 +132,34 @@ describe("resultadosDe", () => {
     expect(resultadosDe("versiones", OBRAS, ofertaDe([], false))).toEqual([]);
     const sinPermisos = ofertaDe([], false);
     // Control positivo: la misma búsqueda con todos los permisos sí encuentra la entrada.
-    expect(resultadosDe("personas", [], COMPLETA).map((r) => r.texto)).toContain("Empresa y personas");
+    expect(resultadosDe("personas", [], COMPLETA).map((r) => [r.texto, r.ruta])).toContainEqual(["Cuentas y permisos", "/cuenta/cuentas"]);
     expect(resultadosDe("personas", [], sinPermisos)).toEqual([]);
     expect(resultadosDe("mercado", OBRAS, sinPermisos).map((r) => r.texto)).not.toContain("Clínica Las Mercedes › Mercado");
   });
 
   it("sin coincidencias devuelve una lista vacía", () => {
     expect(resultadosDe("zzzz", OBRAS, COMPLETA)).toEqual([]);
+  });
+});
+
+// F6, T6: «Empresa y personas» y «Ayuda» pasaron a la Cuenta; el buscador ofrece sus secciones por su ruta canónica y solo
+// las que la cuenta puede usar.
+describe("resultadosDe: las secciones de la Cuenta (F6, T6)", () => {
+  const rutas = (texto: string, oferta = COMPLETA) => resultadosDe(texto, [], oferta).map((r) => [r.texto, r.ruta]);
+
+  it("encuentra cada sección por su título", () => {
+    expect(rutas("tamano de letra")).toContainEqual(["Pantalla y tamaño de letra", "/cuenta/preferencias"]);
+    expect(rutas("acerca")).toContainEqual(["Ayuda y acerca de Sílice", "/cuenta/ayuda"]);
+    expect(rutas("empresa y tema")).toContainEqual(["Empresa y tema", "/cuenta/empresa"]);
+    expect(rutas("carpetas")).toContainEqual(["Carpetas", "/cuenta/carpetas"]);
+    expect(rutas("instalacion")).toContainEqual(["Especialidades, IA e instalación", "/cuenta/sistema"]);
+  });
+
+  it("a quien no administra solo le ofrece preferencias y ayuda", () => {
+    const rita = ofertaDe(["leer_proyecto", "revisar_paquete"], false);
+    expect(rutas("cuentas", rita)).toEqual([]);
+    expect(rutas("carpetas", rita)).toEqual([]);
+    expect(rutas("letra", rita)).toEqual([["Pantalla y tamaño de letra", "/cuenta/preferencias"]]);
+    expect(rutas("ayuda", rita)).toEqual([["Ayuda y acerca de Sílice", "/cuenta/ayuda"]]);
   });
 });

@@ -297,7 +297,7 @@ describe("Costo por tonelada", () => {
     await usuario.click(within(dialogo).getByRole("button", { name: "Publicar" }));
     const alerta = await within(dialogo).findByRole("alert");
     expect(alerta).toHaveTextContent("Configure la empresa en Administración antes de publicar.");
-    expect(within(dialogo).getByRole("link", { name: "Ir a Administración" })).toHaveAttribute("href", "/empresa/personas");
+    expect(within(dialogo).getByRole("link", { name: "Ir a Administración" })).toHaveAttribute("href", "/cuenta/empresa");
   });
 
   test("un código de insumo de más de 20 caracteres se niega con el mensaje del servidor", async () => {
@@ -323,7 +323,7 @@ describe("Costo por tonelada", () => {
     montar(ADMIN);
     const resultado = await calcular();
     expect(await within(resultado).findByText(/Todavía no se configuró la empresa/)).toBeInTheDocument();
-    expect(within(resultado).getByRole("link", { name: "Ir a Administración" })).toHaveAttribute("href", "/empresa/personas");
+    expect(within(resultado).getByRole("link", { name: "Ir a Administración" })).toHaveAttribute("href", "/cuenta/empresa");
   });
 
   test("un 409 al calcular no se rotula «No se pudo publicar el costo»", async () => {

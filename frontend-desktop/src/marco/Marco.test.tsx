@@ -160,13 +160,21 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
     expect(ruta()).toBe("/aprobar?envio=12");
   });
 
-  // T6 mueve estas dos a la Cuenta; hasta entonces siguen en /empresa/<entrada>.
-  test.each([
-    ["/administracion", "/empresa/personas"],
-    ["/acerca", "/empresa/ayuda"],
-  ])("%s acaba en %s", async (de, a) => {
-    montar({ en: de });
+  // F6, T6 (contrato 2.4): Administración y Acerca de viven en la Cuenta; las direcciones viejas de Empresa también llevan allí.
+  const A_LA_CUENTA: readonly (readonly [string, string])[] = [
+    ["/administracion", "/cuenta/cuentas"],
+    ["/empresa/personas", "/cuenta/cuentas"],
+    ["/acerca", "/cuenta/ayuda"],
+    ["/empresa/ayuda", "/cuenta/ayuda"],
+  ];
+  test.each(A_LA_CUENTA)("%s acaba en %s", async (de, a) => {
+    montar({ sesion: sesionDe("admin"), en: de });
     await waitFor(() => expect(ruta()).toBe(a));
+  });
+
+  test.each(A_LA_CUENTA)("%s?proyecto=OF-001 acaba en %s?proyecto=OF-001 (conserva la consulta)", async (de, a) => {
+    montar({ sesion: sesionDe("admin"), en: `${de}?proyecto=OF-001` });
+    await waitFor(() => expect(ruta()).toBe(`${a}?proyecto=OF-001`));
   });
 
   test("#/simulador acaba en #/precios/simulador, dentro del marco nuevo", async () => {
@@ -176,12 +184,20 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
     const barra = screen.getByRole("banner");
     expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "Barra lateral" })).toBeInTheDocument();
-    expect(within(barra).getByRole("navigation", { name: "Ruta" })).toHaveTextContent("Simulador de listas");
+    expect(within(barra).queryByRole("navigation", { name: "Ruta" })).toBeNull();
+    expect(within(screen.getByRole("navigation", { name: "Precios y catálogo" })).getByRole("link", { name: "Simulador de listas" })).toHaveAttribute("aria-current", "page");
   });
 
-  test("una entrada de Empresa que la cuenta no puede usar dice que no tiene permiso", async () => {
+  test("la dirección vieja de las cuentas, para quien no administra, acaba en la Cuenta diciendo que no tiene permiso", async () => {
     montar({ en: "/empresa/personas" });
     expect(await screen.findByText("Su cuenta no tiene permiso para esta pantalla o acción.")).toBeInTheDocument();
+    expect(ruta()).toBe("/cuenta/cuentas");
+  });
+
+  test("una entrada vieja de Empresa que no existe lleva a Pendientes", async () => {
+    montar({ en: "/empresa/xyz" });
+    expect(await titulo("Pendientes")).toBeInTheDocument();
+    expect(ruta()).toBe("/pendientes");
   });
 });
 
@@ -314,12 +330,12 @@ describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", ()
     expect(document.title).toBe("Costos del período · Costos de producción · Sílice");
   });
 
-  test("las migas dicen el espacio y la herramienta", async () => {
+  test("la barra de arriba no tiene migas: el espacio y la herramienta los dicen su cabecera y su barra", async () => {
     montar({ en: "/auditoria/libros" });
     await titulo("Libro de la empresa");
-    const migas = within(screen.getByRole("navigation", { name: "Ruta" }));
-    expect(migas.getByText("Auditar un presupuesto")).toBeInTheDocument();
-    expect(migas.getByText("Libro de la empresa")).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("navigation", { name: "Ruta" })).toBeNull();
+    const barra = screen.getByRole("navigation", { name: "Auditar un presupuesto" });
+    expect(within(barra).getByRole("link", { name: "Libro de la empresa" })).toHaveAttribute("aria-current", "page");
   });
 
   test("la barra lateral marca el espacio abierto", async () => {
@@ -352,7 +368,7 @@ describe("Marco: la obra como espacio de trabajo", () => {
     );
   }
 
-  test("dentro de una sección se ve la cabecera de la obra (nombre, moneda, versión), las migas y la página", async () => {
+  test("dentro de una sección se ve la cabecera de la obra (nombre, moneda, versión), la carpeta activa y la página", async () => {
     instalar((estado) => {
       enSur(estado);
       estado.moneda = "USD";
@@ -367,10 +383,8 @@ describe("Marco: la obra como espacio de trabajo", () => {
     expect(cabecera.textContent?.match(/moneda/gi)).toHaveLength(1);
     expect(cabecera).not.toHaveTextContent("de trabajo");
     expect(cabecera).toHaveTextContent("Versión: 002");
-    const migas = within(screen.getByRole("navigation", { name: "Ruta" }));
-    expect(migas.getByRole("link", { name: "Mis obras" })).toHaveAttribute("href", "/pendientes");
-    expect(migas.getByRole("link", { name: "Galpón Sur" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/resumen");
-    expect(migas.getByText("Presupuesto")).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("navigation", { name: "Ruta" })).toBeNull();
+    expect(await screen.findByText("Carpeta activa: Carpeta Sur")).toBeInTheDocument();
     expect(document.title).toBe("Presupuesto · Galpón Sur · Sílice");
   });
 
@@ -609,13 +623,13 @@ describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
     expect(within(barraDeLaObra()).getByRole("link", { name: "Presupuesto" })).toBeInTheDocument();
   });
 
-  test("las migas y el título del documento dicen la subvista", async () => {
+  test("el título del documento y la barra de vistas dicen la subvista", async () => {
     montar({ en: "/obra/empresa/7/control/reajuste" });
     await titulo("Reajuste de precios");
     expect(document.title).toBe("Reajuste · Control de obra · Casa Demo · Sílice");
-    const migas = within(screen.getByRole("navigation", { name: "Ruta" }));
-    expect(migas.getByRole("link", { name: "Control de obra" })).toHaveAttribute("href", "/obra/empresa/7/control");
-    expect(migas.getByText("Reajuste")).toHaveAttribute("aria-current", "page");
+    const vistas = within(screen.getByRole("navigation", { name: "Vistas de Control de obra" }));
+    expect(vistas.getByRole("link", { name: "Reajuste" })).toHaveAttribute("aria-current", "page");
+    expect(vistas.getByRole("link", { name: "Control" })).toHaveAttribute("href", "/obra/empresa/7/control");
   });
 
   test("cambiar de subvista con el conmutador deja el foco en el enlace pulsado (no se vuelve a montar)", async () => {
@@ -918,13 +932,13 @@ describe("Marco: lo que se monta con él", () => {
     expect(screen.getByRole("complementary", { name: "Recorrido" })).toBeInTheDocument();
   });
 
-  test("Salir en el menú de la cuenta cierra el recorrido en curso y llama a alSalir", async () => {
+  test("«Salir de la sesión», en la cabecera de la Cuenta, cierra el recorrido en curso y llama a alSalir", async () => {
     const u = userEvent.setup();
     iniciarRecorrido(RECORRIDO_AUDITAR);
     const { alSalir } = montar();
     await titulo("Pendientes");
-    await u.click(screen.getByRole("button", { name: "Cuenta de Ana Pérez" }));
-    await u.click(screen.getByRole("button", { name: "Salir" }));
+    await u.click(screen.getByRole("link", { name: "Cuenta de Ana Pérez" }));
+    await u.click(await screen.findByRole("button", { name: "Salir de la sesión" }));
     expect(alSalir).toHaveBeenCalledTimes(1);
     expect(recorridoEnCurso()).toBeNull();
   });
@@ -954,13 +968,13 @@ describe("Marco: lo que se monta con él", () => {
     expect(screen.getByRole("main")).not.toHaveTextContent(/página/i);
   });
 
-  test("abrir otra carpeta desde una pantalla (Administración) avisa con su nombre, sin «carpeta de trabajo»", async () => {
+  test("abrir otra carpeta desde una pantalla (la Cuenta) avisa con su nombre, sin «carpeta de trabajo»", async () => {
     const u = userEvent.setup();
     function AbrirS2() {
       const { abrirCarpeta } = useAplicacion();
       return (
         <>
-          <h1>Administración</h1>
+          <p>Administración</p>
           <button type="button" onClick={() => void abrirCarpeta?.("s2.db")}>
             Abrir s2
           </button>
@@ -968,7 +982,7 @@ describe("Marco: lo que se monta con él", () => {
       );
     }
     const admin = sesionDe("ana", { acciones: [...ACCIONES.ana, "administrar_cuentas"] });
-    montar({ sesion: admin, en: "/empresa/personas", paginas: ligeras({ administracion: AbrirS2 }) });
+    montar({ sesion: admin, en: "/cuenta/cuentas", paginas: ligeras({ administracion: AbrirS2 }) });
     await u.click(await screen.findByRole("button", { name: "Abrir s2" }));
     expect(await screen.findByText("Ahora trabaja con la carpeta «s2».")).toBeInTheDocument();
     expect(servidor.de("POST", "/v1/casos/actual").map((l) => l.cuerpo)).toEqual([{ nombre: "s2.db" }]);
@@ -981,7 +995,7 @@ describe("Marco: cuentas sin obras que leer", () => {
   // zona de obras no se pinta: lo que la cuenta no puede usar no aparece.
   test("sin leer_proyecto no pide las obras ni muestra la zona de obras con un error", async () => {
     const admin = sesionDe("admin");
-    montar({ sesion: admin, en: "/empresa/ayuda" });
+    montar({ sesion: admin, en: "/cuenta/ayuda" });
     await titulo("Acerca de Sílice");
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
     expect(within(lateral).getByRole("link", { name: "Pendientes" })).toBeInTheDocument();
@@ -1012,7 +1026,7 @@ describe("Marco: vocabulario y alcance", () => {
     const alcanzables = new Set<string | null>([
       "obras",
       ...oferta.secciones.map((s) => s.pagina),
-      ...oferta.entradas.map((e) => e.pagina),
+      ...oferta.cuenta.map((c) => c.pagina),
       ...oferta.sueltas.map((p) => p.id),
       ...oferta.herramientas.map((p) => p.id),
     ]);
@@ -1029,7 +1043,7 @@ describe("Marco: vocabulario y alcance", () => {
 
 // Ronda 2 del árbitro (Tarea 8): el bloque «el foco no se pierde cuando la acción quita el control» de las pruebas del
 // armazón anterior, llevado al marco. Al cambiar de pantalla, si el foco se perdió (lo tenía un control que ya no está),
-// pasa al único h1 de la nueva; si lo tiene un control que sigue (un enlace de la barra lateral o de las migas), no se
+// pasa al único h1 de la nueva; si lo tiene un control que sigue (un enlace de la barra lateral, de la barra de la obra o de la persona), no se
 // toca; la carga inicial y sus redirecciones (`replace`) no lo roban; y el h1 de un esqueleto no lo retiene.
 describe("Marco: el foco no se pierde cuando la acción quita el control", () => {
   function MesaQueVa() {
@@ -1071,11 +1085,11 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     expect(enlace).toHaveFocus();
   });
 
-  test("un enlace de las migas que sigue tras navegar conserva el foco", async () => {
+  test("un enlace de la barra de la obra que sigue tras navegar conserva el foco", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto" });
     await titulo("Presupuesto");
-    const enlace = await within(screen.getByRole("navigation", { name: "Ruta" })).findByRole("link", { name: "Casa Demo" });
+    const enlace = await within(screen.getByRole("navigation", { name: "Secciones de la obra" })).findByRole("link", { name: "Resumen" });
     await u.click(enlace);
     await titulo("Resumen de la obra");
     expect(ruta()).toBe("/obra/empresa/7/resumen");
@@ -1083,14 +1097,27 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     expect(enlace).toHaveFocus();
   });
 
-  test("un enlace de las migas que desaparece al navegar («Mis obras») deja el foco en el h1 de la nueva", async () => {
+  test("el enlace de la persona, en la barra de arriba, conserva el foco al llevar a la Cuenta", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto" });
     await titulo("Presupuesto");
-    await u.click(within(screen.getByRole("navigation", { name: "Ruta" })).getByRole("link", { name: "Mis obras" }));
+    const enlace = within(screen.getByRole("banner")).getByRole("link", { name: "Cuenta de Ana Pérez" });
+    await u.click(enlace);
+    await titulo("Pantalla y tamaño de letra");
+    expect(ruta()).toBe("/cuenta/preferencias");
+    await new Promise((r) => setTimeout(r, 80));
+    expect(enlace).toHaveFocus();
+    expect(enlace).toHaveAttribute("aria-current", "page");
+  });
+
+  test("un enlace que desaparece al navegar (el de un aviso) deja el foco en el h1 de la nueva", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/obra/empresa/99/resumen" });
+    await titulo("Esa obra ya no existe");
+    await u.click(screen.getByRole("link", { name: "Volver a Pendientes" }));
     const nuevo = await titulo("Pendientes");
     expect(ruta()).toBe("/pendientes");
-    expect(within(screen.getByRole("navigation", { name: "Ruta" })).queryByRole("link", { name: "Mis obras" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Volver a Pendientes" })).toBeNull();
     await waitFor(() => expect(nuevo).toHaveFocus());
   });
 

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { PAGINAS } from "../shell/rutas";
-import { ESPACIOS, SECCIONES_DE_CUENTA, SUBVISTAS, primeraUsable, rutaCanonica, rutaOPendientes, vistaDeLaSeccion } from "./espacios";
+import { ESPACIOS, SECCIONES_DE_CUENTA, SUBVISTAS, esCuenta, primeraUsable, rutaCanonica, rutaDeCuenta, rutaOPendientes, vistaDeLaSeccion } from "./espacios";
+import type { CuentaId } from "./espacios";
 import { SECCIONES_DE_OBRA, seccionPorId } from "./secciones";
 
 // Las palabras que el marco no dice (sinJergaInterna.test.ts): palabras enteras, con y sin tilde.
@@ -51,10 +52,26 @@ describe("rutaCanonica", () => {
     expect(rutaOPendientes("reajuste")).toBe("/reajuste");
   });
 
-  test("Personas y Ayuda siguen en /empresa/<entrada> (las mueve T6), con o sin obra", () => {
-    expect(rutaCanonica("administracion")).toBe("/empresa/personas");
-    expect(rutaCanonica("acerca")).toBe("/empresa/ayuda");
-    expect(rutaCanonica("administracion", { carpeta: "demo.db", obraId: 1 })).toBe("/empresa/personas");
+  // F6, T6 (contrato 2.3 y 3): Administración vive en la Cuenta, y su primera sección es «Cuentas y permisos»; Acerca de es la Ayuda.
+  test("Administración y Acerca de van a la Cuenta, con o sin obra", () => {
+    expect(rutaCanonica("administracion")).toBe("/cuenta/cuentas");
+    expect(rutaCanonica("acerca")).toBe("/cuenta/ayuda");
+    expect(rutaCanonica("administracion", { carpeta: "demo.db", obraId: 1 })).toBe("/cuenta/cuentas");
+    expect(rutaCanonica("acerca", { carpeta: null, obraId: 1 })).toBe("/cuenta/ayuda");
+    expect(rutaOPendientes("administracion")).toBe("/cuenta/cuentas");
+  });
+
+  test("rutaDeCuenta y esCuenta dicen las seis secciones de la Cuenta y nada más", () => {
+    expect(["preferencias", "cuentas", "empresa", "carpetas", "sistema", "ayuda"].map((id) => rutaDeCuenta(id as CuentaId))).toEqual([
+      "/cuenta/preferencias",
+      "/cuenta/cuentas",
+      "/cuenta/empresa",
+      "/cuenta/carpetas",
+      "/cuenta/sistema",
+      "/cuenta/ayuda",
+    ]);
+    expect(["preferencias", "cuentas", "empresa", "carpetas", "sistema", "ayuda"].every(esCuenta)).toBe(true);
+    expect(["xyz", "", "toString", "personas"].some(esCuenta)).toBe(false);
   });
 
   // Contrato §2.2: las pantallas de los tres espacios viven en /<espacio>/<segmento>, con o sin obra.

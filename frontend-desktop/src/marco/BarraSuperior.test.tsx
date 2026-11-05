@@ -1,29 +1,22 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BarraSuperior } from "./BarraSuperior";
-import type { Miga } from "./Migas";
 
 const tema = vi.hoisted(() => ({ logo: null as string | null }));
 vi.mock("./useTema", () => ({ useTema: () => tema }));
 
 const TEXTO_BUSCAR = "Buscar una obra, sección o pantalla… (Ctrl+K)";
-const MIGAS: Miga[] = [
-  { texto: "Mis obras", ruta: "/pendientes" },
-  { texto: "Clínica Las Mercedes", ruta: "/obra/a.db/1/resumen" },
-  { texto: "Presupuesto" },
-];
 
-function pintar(migas: Miga[] = MIGAS, alAbrirBuscador = vi.fn()) {
-  const alSalir = vi.fn();
+function pintar({ alAbrirBuscador = vi.fn(), carpeta = null as string | null, en = "/pendientes" } = {}) {
   const vista = render(
-    <MemoryRouter>
-      <BarraSuperior migas={migas} alAbrirBuscador={alAbrirBuscador} nombre="Ana" alSalir={alSalir} />
+    <MemoryRouter initialEntries={[en]}>
+      <BarraSuperior alAbrirBuscador={alAbrirBuscador} nombre="Ana" carpeta={carpeta} />
       <textarea aria-label="notas" />
     </MemoryRouter>,
   );
-  return { alAbrirBuscador, alSalir, ...vista };
+  return { alAbrirBuscador, ...vista };
 }
 
 beforeEach(() => {
@@ -31,37 +24,36 @@ beforeEach(() => {
 });
 
 describe("BarraSuperior: marca", () => {
-  it("con logo muestra la imagen con su texto alternativo", () => {
+  it("con logo muestra la imagen dentro de un enlace a la ruta índice", () => {
     tema.logo = "/v1/tema/logo";
     pintar();
-    const img = screen.getByRole("img", { name: "Logo de la empresa" });
-    expect(img).toHaveAttribute("src", "/v1/tema/logo");
+    const enlace = screen.getByRole("link", { name: "Sílice — Ir al inicio" });
+    expect(enlace).toHaveAttribute("href", "/");
+    expect(screen.getByRole("img", { name: "Sílice — Ir al inicio" })).toHaveAttribute("src", "/v1/tema/logo");
   });
 
-  it("sin logo muestra el nombre Sílice", () => {
+  it("sin logo, el nombre Sílice es un enlace a la ruta índice", () => {
     pintar();
-    expect(screen.queryByRole("img", { name: "Logo de la empresa" })).toBeNull();
-    expect(screen.getByText("Sílice")).toBeInTheDocument();
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(screen.getByRole("link", { name: "Sílice" })).toHaveAttribute("href", "/");
   });
 });
 
-describe("BarraSuperior: migas", () => {
-  it("las anteriores son enlaces y la última es la página actual", () => {
-    pintar();
-    const migas = screen.getByRole("navigation", { name: "Ruta" });
-    const enlaces = within(migas).getAllByRole("link");
-    expect(enlaces.map((e) => e.textContent)).toEqual(["Mis obras", "Clínica Las Mercedes"]);
-    expect(enlaces[1]).toHaveAttribute("href", "/obra/a.db/1/resumen");
-    const actual = within(migas).getByText("Presupuesto");
-    expect(actual).toHaveAttribute("aria-current", "page");
-    expect(within(migas).queryByRole("link", { name: "Presupuesto" })).toBeNull();
+describe("BarraSuperior: sin migas y con la carpeta activa", () => {
+  it("no trae migas: ni la ruta ni enlaces de camino", () => {
+    pintar({ en: "/obra/a.db/1/presupuesto" });
+    expect(screen.queryByRole("navigation", { name: "Ruta" })).toBeNull();
+    expect(screen.getByRole("banner").querySelector(".silice-marco-barra__migas")).toBeNull();
   });
 
-  it("los separadores son decorativos", () => {
-    pintar();
-    const separadores = screen.getByRole("navigation", { name: "Ruta" }).querySelectorAll('[aria-hidden="true"]');
-    expect(separadores).toHaveLength(2);
-    expect([...separadores].every((s) => s.textContent === "/")).toBe(true);
+  it("dice la carpeta activa", () => {
+    pintar({ carpeta: "Carpeta de la empresa" });
+    expect(screen.getByText("Carpeta activa: Carpeta de la empresa")).toHaveClass("silice-marco-barra__carpeta");
+  });
+
+  it("sin carpeta que decir no pinta el rótulo vacío", () => {
+    pintar({ carpeta: null });
+    expect(screen.queryByText(/Carpeta activa/)).toBeNull();
   });
 });
 
@@ -144,15 +136,34 @@ describe("BarraSuperior: buscador", () => {
   });
 });
 
-describe("BarraSuperior: controles y vocabulario", () => {
-  it("incluye el tamaño de letra y la cuenta", () => {
+describe("BarraSuperior: la persona y el tamaño de letra", () => {
+  it("el botón de la persona es un enlace a /cuenta/preferencias, con las iniciales", () => {
     pintar();
-    expect(screen.getByRole("group", { name: "Tamaño de letra" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cuenta de Ana" })).toBeInTheDocument();
+    const enlace = screen.getByRole("link", { name: "Cuenta de Ana" });
+    expect(enlace).toHaveAttribute("href", "/cuenta/preferencias");
+    expect(enlace).toHaveAttribute("title", "Ana");
+    expect(enlace).not.toHaveAttribute("aria-current");
+    expect(enlace.querySelector(".silice-cuenta__iniciales")).toHaveTextContent("A");
+    expect(screen.queryByRole("button", { name: "Cuenta de Ana" })).toBeNull();
+  });
+
+  it.each(["/cuenta/preferencias", "/cuenta/cuentas", "/cuenta/ayuda"])("en %s el enlace de la persona es la página actual", (en) => {
+    pintar({ en });
+    expect(screen.getByRole("link", { name: "Cuenta de Ana" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("fuera de la Cuenta, y en una ruta que solo se le parece, no lo es", () => {
+    pintar({ en: "/cuentas-por-cobrar" });
+    expect(screen.getByRole("link", { name: "Cuenta de Ana" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("el tamaño de letra ya no está en la barra de arriba: vive en la Cuenta", () => {
+    pintar();
+    expect(screen.queryByRole("group", { name: "Tamaño de letra" })).toBeNull();
   });
 
   it("ningún texto visible usa módulo, área ni Streamlit", () => {
-    pintar();
+    pintar({ carpeta: "Carpeta Norte" });
     expect(document.body.textContent).not.toMatch(/m[oó]dulo|[aá]rea|streamlit/i);
   });
 });

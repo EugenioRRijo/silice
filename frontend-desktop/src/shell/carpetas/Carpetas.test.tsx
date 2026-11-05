@@ -35,14 +35,15 @@ const anaAdministra = () =>
   sesionDe("ana", { acciones: [...sesionDe("ana").acciones, "administrar_cuentas"], roles: ["arma", "administrador"] });
 const conAdministracion = (propias: Record<string, ComponentType> = {}) =>
   ligeras({ administracion: PaginaAdministracion, ...propias });
-const montarEnCarpetas = (paginas = conAdministracion()) => montarMarco(anaAdministra(), "/empresa/personas", paginas);
+// F6, T6: las carpetas son una sección de la Cuenta (/cuenta/carpetas), ya no una pestaña de Administración: el contenido es
+// el de la propia pantalla (`main`) y no hay que elegir ninguna pestaña para llegar a él.
+const montarEnCarpetas = (paginas = conAdministracion()) => montarMarco(anaAdministra(), "/cuenta/carpetas", paginas);
 
-const dialogo = () => screen.getByRole("tabpanel", { name: "Carpetas de trabajo" });
+const dialogo = () => screen.getByRole("main");
 
-async function abrirCarpetas(u: ReturnType<typeof userEvent.setup>) {
-  await screen.findByRole("heading", { level: 1, name: "Administración" }, { timeout: 3000 });
-  await u.click(screen.getByRole("tab", { name: "Carpetas de trabajo" }));
-  return screen.findByRole("tabpanel", { name: "Carpetas de trabajo" });
+async function abrirCarpetas(_u: ReturnType<typeof userEvent.setup>) {
+  await screen.findByRole("heading", { level: 1, name: "Carpetas" }, { timeout: 3000 });
+  return dialogo();
 }
 
 // Los nombres de la lista de carpetas del dialogo, tal como se leen.
@@ -340,8 +341,7 @@ describe("menores tras la ronda 2", () => {
     );
 
   async function crearEnAdministracion(u: ReturnType<typeof userEvent.setup>) {
-    await screen.findByRole("heading", { level: 1, name: "Administración" });
-    await u.click(screen.getByRole("tab", { name: "Carpetas de trabajo" }));
+    await screen.findByRole("heading", { level: 1, name: "Carpetas" });
     await u.type(await screen.findByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
     await u.selectOptions(screen.getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
     await u.click(screen.getByRole("button", { name: "Crear y abrir" }));
@@ -373,7 +373,7 @@ describe("menores tras la ronda 2", () => {
     estado.borradores = [{ id: "b-1", proyecto: "7", version: "001", cambios: 2, rev: 3, tocado: "2026-10-25T10:00:00" }];
     servidor = servidorFalso(estado);
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
-    montarMarco(anaAdministra(), "/administracion", conAdministracion());
+    montarMarco(anaAdministra(), "/cuenta/carpetas", conAdministracion());
     await crearEnAdministracion(u);
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     expect(pregunta).toHaveAccessibleDescription(
@@ -395,15 +395,16 @@ describe("menores tras la ronda 2", () => {
       return undefined;
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
-    montarMarco(anaAdministra(), "/administracion", conAdministracion());
+    montarMarco(anaAdministra(), "/cuenta/carpetas", conAdministracion());
     await crearEnAdministracion(u);
     expect(
       await screen.findByText(
         "La carpeta «Nueva» se creó y ya trabaja con ella, pero no se pudo declarar su moneda: La carpeta de trabajo está ocupada: repita en unos segundos.",
       ),
     ).toBeInTheDocument();
-    // La pagina se volvio a montar (abrir la carpeta) y sigue en la pestaña de las carpetas.
-    expect(screen.getByRole("tab", { name: "Carpetas de trabajo" })).toHaveAttribute("aria-selected", "true");
+    // La pantalla se volvió a montar (abrir la carpeta) y sigue en /cuenta/carpetas, ya sin ninguna pestaña que recordar.
+    expect(screen.getByRole("heading", { level: 1, name: "Carpetas" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Nombre de la carpeta" })).toBeInTheDocument();
     const antes = escrituras().length;
     await u.click(screen.getByRole("button", { name: "Declarar la moneda" }));
     await waitFor(() => expect(screen.queryByRole("button", { name: "Declarar la moneda" })).toBeNull());

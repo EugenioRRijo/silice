@@ -1,15 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { paginaPorId } from "../shell/rutas";
 import { ofertaDe } from "./oferta";
+import * as todo from "./secciones";
 import {
-  ENTRADAS_DE_EMPRESA,
-  PATRON_DE_EMPRESA,
   PATRON_DE_OBRA,
   RUTA_DE_PENDIENTES,
   SECCIONES_DE_OBRA,
   carpetaDeLaRuta,
   quedaEnLaHoja,
-  rutaDeEmpresa,
   rutaDeObra,
   seccionPorId,
 } from "./secciones";
@@ -84,23 +82,11 @@ describe("SECCIONES_DE_OBRA", () => {
   });
 });
 
-describe("ENTRADAS_DE_EMPRESA", () => {
-  // F6, T4: Precios, Auditoría y Producción son espacios con su propia ruta (ESPACIOS); quedan Personas y Ayuda (T6).
-  it("son dos, en este orden, cada una con su pantalla de hoy", () => {
-    expect(ENTRADAS_DE_EMPRESA.map((e) => [e.titulo, e.pagina])).toEqual([
-      ["Empresa y personas", "administracion"],
-      ["Ayuda", "acerca"],
-    ]);
-    for (const e of ENTRADAS_DE_EMPRESA) expect(paginaPorId(e.pagina), e.id).toBeDefined();
-    expect(new Set(ENTRADAS_DE_EMPRESA.map((e) => e.id)).size).toBe(ENTRADAS_DE_EMPRESA.length);
-  });
-
-  it("hablan en el vocabulario de la persona, con una ayuda corta", () => {
-    for (const e of ENTRADAS_DE_EMPRESA) {
-      expect(e.titulo, e.id).not.toMatch(PROHIBIDAS);
-      expect(e.ayuda, e.id).not.toMatch(PROHIBIDAS);
-      expect(e.ayuda.length, e.id).toBeGreaterThan(0);
-      expect(e.ayuda.length, e.id).toBeLessThanOrEqual(90);
+// F6, T6: «Empresa y personas» y «Ayuda» pasaron a la Cuenta (`espacios.ts`, SECCIONES_DE_CUENTA): ya no hay entradas de Empresa.
+describe("la zona Empresa ya no existe", () => {
+  it("secciones.ts no exporta entradas de Empresa ni sus rutas", () => {
+    for (const nombre of ["ENTRADAS_DE_EMPRESA", "PATRON_DE_EMPRESA", "rutaDeEmpresa"]) {
+      expect(nombre in todo, nombre).toBe(false);
     }
   });
 });
@@ -125,11 +111,9 @@ describe("rutas del marco", () => {
     expect(carpetaDeLaRuta("Carpeta Sur.db")).toBe("Carpeta Sur.db");
   });
 
-  it("pendientes y las entradas de la empresa", () => {
+  it("pendientes y el patrón de la obra", () => {
     expect(RUTA_DE_PENDIENTES).toBe("/pendientes");
-    expect(rutaDeEmpresa("personas")).toBe("/empresa/personas");
     expect(PATRON_DE_OBRA).toBe("/obra/:carpeta/:obraId/:seccion/:subvista?");
-    expect(PATRON_DE_EMPRESA).toBe("/empresa/:entrada");
   });
 });
 

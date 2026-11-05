@@ -67,7 +67,7 @@ describe("ofertaDe con edificación apagada (plan vial, Tarea 19, T19-5)", () =>
     const siempre = ofertaDe(TODAS, false);
     expect(apagada.secciones.map((s) => s.id)).toContain("archivos");
     expect(apagada.secciones.map((s) => s.id)).toEqual(siempre.secciones.map((s) => s.id));
-    expect(apagada.entradas).toEqual(siempre.entradas);
+    expect(apagada.cuenta).toEqual(siempre.cuenta);
     expect(apagada.espacios).toEqual(siempre.espacios);
     expect(apagada.sueltas).toEqual(siempre.sueltas);
   });
@@ -174,5 +174,39 @@ describe("ofertaDe (F6, T5): secciones con una subvista usable", () => {
       "mercado",
       "control",
     ]);
+  });
+});
+
+// F6, T6 (contrato de rutas §3): las secciones de la Cuenta que ofrece la barra, el buscador y quien enlaza. Tabla escrita
+// a mano: «Carpetas» pide `administrar_cuentas` Y `cambiar_caso`; las demás de administración, solo `administrar_cuentas`;
+// «Pantalla y tamaño de letra» y «Ayuda» son de toda cuenta (también en modo entrega).
+describe("ofertaDe: las secciones de la Cuenta (F6, T6)", () => {
+  const cuenta = (acciones: string[], entrega = false) => ofertaDe(acciones, entrega).cuenta.map((c) => c.id);
+
+  it("toda cuenta tiene preferencias y ayuda, aun sin ninguna acción y en modo entrega", () => {
+    expect(cuenta([])).toEqual(["preferencias", "ayuda"]);
+    expect(cuenta([], true)).toEqual(["preferencias", "ayuda"]);
+  });
+
+  it("administrar_cuentas abre cuentas, empresa y sistema, pero no carpetas", () => {
+    expect(cuenta(["administrar_cuentas"])).toEqual(["preferencias", "cuentas", "empresa", "sistema", "ayuda"]);
+  });
+
+  it("carpetas pide las dos acciones: ninguna de las dos sola alcanza", () => {
+    expect(cuenta(["cambiar_caso"])).not.toContain("carpetas");
+    expect(cuenta(["administrar_cuentas"])).not.toContain("carpetas");
+    expect(cuenta(["administrar_cuentas", "cambiar_caso"])).toEqual(["preferencias", "cuentas", "empresa", "carpetas", "sistema", "ayuda"]);
+  });
+
+  it("activar_modulos no abre nada por sí sola", () => {
+    expect(cuenta(["activar_modulos"])).toEqual(["preferencias", "ayuda"]);
+  });
+
+  it("cada sección trae una ayuda corta, sin la jerga del marco", () => {
+    for (const c of ofertaDe(TODAS, false).cuenta) {
+      expect(c.ayuda.length, c.id).toBeGreaterThan(0);
+      expect(c.ayuda.length, c.id).toBeLessThanOrEqual(90);
+      expect(`${c.titulo} ${c.ayuda}`, c.id).not.toMatch(/m[oó]dulo|[aá]rea|p[aá]gina|carpeta de trabajo|streamlit/i);
+    }
   });
 });
