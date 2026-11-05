@@ -264,6 +264,55 @@ def versiones_revaloradas(sesion: Session, proyecto: str) -> list[str]:
     )
 
 
+#: Tope de partidas que se ofrecen en un campo con autocompletado (diseño de autocompletado §5.4).
+MAXIMO_DE_PARTIDAS_DEL_CONTRATO = 2000
+
+
+@dataclass(frozen=True, slots=True)
+class PartidaDelContrato:
+    """Una partida de una versión del contrato tal como el contrato la nombra (AC2)."""
+
+    codigo: str
+    descripcion: str
+    unidad: str
+
+
+def partidas_de_la_version(sesion: Session, presupuesto_id: int) -> list[PartidaDelContrato]:
+    """Las partidas de una versión guardada, por código y una sola vez cada una (si el contrato
+    repite una partida en dos renglones, vale la primera). Una consulta ligera sobre los renglones:
+    no carga el presupuesto ni calcula nada. A lo sumo `MAXIMO_DE_PARTIDAS_DEL_CONTRATO`."""
+    filas = sesion.execute(
+        select(
+            models.ItemComputo.codigo_partida,
+            models.ItemComputo.descripcion,
+            models.ItemComputo.unidad,
+        )
+        .join(
+            models.PartidaPresupuestada,
+            models.PartidaPresupuestada.item_computo_id == models.ItemComputo.id,
+        )
+        .where(models.PartidaPresupuestada.presupuesto_id == presupuesto_id)
+        .order_by(models.ItemComputo.codigo_partida, models.PartidaPresupuestada.orden)
+    )
+    vistas: dict[str, PartidaDelContrato] = {}
+    for codigo, descripcion, unidad in filas:
+        vistas.setdefault(codigo, PartidaDelContrato(codigo, descripcion, unidad))
+    return list(vistas.values())[:MAXIMO_DE_PARTIDAS_DEL_CONTRATO]
+
+
+def partidas_de_la_linea_base(
+    sesion: Session, proyecto: str
+) -> tuple[str, list[PartidaDelContrato]] | None:
+    """`(código de la versión, sus partidas)` de la línea base de control vigente, o `None` si el
+    proyecto no tiene línea base. No lee valuaciones ni revalora (`instantanea_control` falla justo
+    en el uso principal: registrar la primera valuación)."""
+    fila = linea_base_vigente(sesion, proyecto, date.max)
+    if fila is None:
+        return None
+    version = sesion.get(models.Presupuesto, fila.presupuesto_id)
+    return version.codigo, partidas_de_la_version(sesion, version.id)
+
+
 def declarar_linea_base(
     sesion: Session,
     proyecto: str,

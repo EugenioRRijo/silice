@@ -44,6 +44,7 @@ from api.archivos import guardar_subida
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.esquemas import ImpuestosRespuesta, impuestos_a_respuesta
 from api.esquemas_corte import EquivalenciaRespuesta, equivalencia_a_respuesta
+from api.esquemas_partidas import PartidasDelContratoRespuesta, partidas_a_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
@@ -186,6 +187,21 @@ def linea_base(sesion: SesionDep, proyecto: str) -> LineaBaseRespuesta:
         hay_valuaciones=logica.hay_valuaciones(sesion, proyecto),
         parametros=_parametros(sesion, proyecto),
     )
+
+
+SIN_LINEA_BASE = "Este proyecto todavía no tiene línea base."
+
+
+@router.get("/partidas", response_model=PartidasDelContratoRespuesta)
+def partidas(sesion: SesionDep, proyecto: str) -> PartidasDelContratoRespuesta:
+    """AC2: las partidas de la versión de la línea base (las únicas que una valuación puede medir),
+    para el campo «Partida» con autocompletado. Sin línea base responde vacío con su aviso (no es un
+    error: es lo que ve quien aún no la declaró)."""
+    proyecto = _existe(sesion, proyecto)
+    hallada = logica.partidas_de_la_linea_base(sesion, proyecto)
+    if hallada is None:
+        return partidas_a_respuesta("", [], SIN_LINEA_BASE)
+    return partidas_a_respuesta(*hallada)
 
 
 class DeclararLineaBase(BaseModel):

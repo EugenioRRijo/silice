@@ -430,10 +430,14 @@ def test_las_partidas_de_la_version_son_las_del_contrato() -> None:
 
 def test_las_partidas_de_una_version_o_un_proyecto_inexistentes_son_404() -> None:
     navegador, _ = _ana()
-    sin_version = navegador.get("/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "009"})
+    sin_version = navegador.get(
+        "/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "009"}
+    )
     assert sin_version.status_code == 404
     assert sin_version.json()["detalle"] == SIN_VERSION
-    sin_proyecto = navegador.get("/v1/reajuste/partidas", params={"proyecto": "NO", "version": "001"})
+    sin_proyecto = navegador.get(
+        "/v1/reajuste/partidas", params={"proyecto": "NO", "version": "001"}
+    )
     assert sin_proyecto.status_code == 404
     assert navegador.get("/v1/reajuste/partidas", params={"proyecto": NOMBRE}).status_code == 422
 
@@ -445,10 +449,34 @@ def test_las_series_son_las_importadas_con_clave_nombre_organismo_y_unidad() -> 
     assert r.status_code == 200
     assert r.headers.get("cache-control") == "no-store"
     assert r.json() == [
-        {"clave": "BCV-USD-VENTA", "nombre": "Tasa de referencia USD (venta)", "organismo": "BCV", "unidad": "Bs/USD", "periodicidad": "diaria"},
-        {"clave": "FIC-EQU", "nombre": "FIC-EQU", "organismo": "ficticio", "unidad": "indice_bs", "periodicidad": "mensual"},
-        {"clave": "FIC-MAT", "nombre": "FIC-MAT", "organismo": "ficticio", "unidad": "indice_bs", "periodicidad": "mensual"},
-        {"clave": "FIC-MO", "nombre": "FIC-MO", "organismo": "ficticio", "unidad": "indice_bs", "periodicidad": "mensual"},
+        {
+            "clave": "BCV-USD-VENTA",
+            "nombre": "Tasa de referencia USD (venta)",
+            "organismo": "BCV",
+            "unidad": "Bs/USD",
+            "periodicidad": "diaria",
+        },
+        {
+            "clave": "FIC-EQU",
+            "nombre": "FIC-EQU",
+            "organismo": "ficticio",
+            "unidad": "indice_bs",
+            "periodicidad": "mensual",
+        },
+        {
+            "clave": "FIC-MAT",
+            "nombre": "FIC-MAT",
+            "organismo": "ficticio",
+            "unidad": "indice_bs",
+            "periodicidad": "mensual",
+        },
+        {
+            "clave": "FIC-MO",
+            "nombre": "FIC-MO",
+            "organismo": "ficticio",
+            "unidad": "indice_bs",
+            "periodicidad": "mensual",
+        },
     ]
 
 

@@ -3793,6 +3793,49 @@
         }
       }
     },
+    "/v1/control/partidas": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Partidas",
+        "description": "AC2: las partidas de la versión de la línea base (las únicas que una valuación puede medir),\npara el campo «Partida» con autocompletado. Sin línea base responde vacío con su aviso (no es un\nerror: es lo que ve quien aún no la declaró).",
+        "operationId": "partidas_v1_control_partidas_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartidasDelContratoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/control/parametros": {
       "post": {
         "tags": [
@@ -4531,6 +4574,86 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/partidas": {
+      "get": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Partidas",
+        "description": "AC2: las partidas de la versión del contrato elegida, para el campo «Partida» de lo\nejecutado. El cálculo rechaza una partida que no está en ella; aquí solo se ofrecen.",
+        "operationId": "partidas_v1_reajuste_partidas_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 40,
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartidasDelContratoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/series": {
+      "get": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Series",
+        "description": "AC2: las series de índices guardadas (UC-17), para el campo «Serie» de los componentes.\nSolo su definición: ningún valor del índice sale por esta ruta.",
+        "operationId": "series_v1_reajuste_series_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/api__rutas__reajuste__SerieRespuesta"
+                  },
+                  "type": "array",
+                  "title": "Response Series V1 Reajuste Series Get"
                 }
               }
             }
@@ -22435,6 +22558,29 @@
         "title": "PartidaAntesYDespuesRespuesta",
         "description": "Montos como `{texto, exacto}`; cantidad y duraciones (dias habiles) como decimal con punto;\nel termino en dias. `null`: no se pudo calcular."
       },
+      "PartidaDelContratoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "unidad"
+        ],
+        "title": "PartidaDelContratoRespuesta"
+      },
       "PartidaDiferente": {
         "properties": {
           "codigo_partida": {
@@ -22659,6 +22805,35 @@
         ],
         "title": "PartidaRespuesta",
         "description": "Cabecera de una partida del catalogo."
+      },
+      "PartidasDelContratoRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "El código de la versión del contrato; vacío si no hay"
+          },
+          "aviso": {
+            "type": "string",
+            "title": "Aviso",
+            "description": "Texto fijo que explica una lista vacía",
+            "default": ""
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaDelContratoRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas",
+            "description": "Por código, una sola vez"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "partidas"
+        ],
+        "title": "PartidasDelContratoRespuesta"
       },
       "PartidasHalladasRespuesta": {
         "properties": {
@@ -29167,6 +29342,40 @@
           "estado"
         ],
         "title": "GuardadoRespuesta"
+      },
+      "api__rutas__reajuste__SerieRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave",
+            "description": "El código de la serie, como se cita en un componente"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "organismo": {
+            "type": "string",
+            "title": "Organismo"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "periodicidad": {
+            "type": "string",
+            "title": "Periodicidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "nombre",
+          "organismo",
+          "unidad",
+          "periodicidad"
+        ],
+        "title": "SerieRespuesta"
       },
       "api__rutas__reajuste__VersionRespuesta": {
         "properties": {

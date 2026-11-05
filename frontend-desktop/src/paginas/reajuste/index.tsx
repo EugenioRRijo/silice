@@ -13,6 +13,12 @@ import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
 import { FilasEditables } from "./FilasEditables";
 import type { ColumnaEditable } from "./FilasEditables";
+import { CampoDePartida } from "../control/CampoDePartida";
+import { partidasOfrecidas } from "../control/partidasDelContrato";
+import type { PartidaDelContrato, PartidasDelContrato } from "../control/partidasDelContrato";
+import { CampoDeSerie } from "./CampoDeSerie";
+import { seriesOfrecidas } from "./series";
+import type { SerieDeIndice } from "./series";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import {
   ROTULO_R,
@@ -63,23 +69,50 @@ interface Calculo {
   parciales: Parcial[];
 }
 
-const COLUMNAS_COMPONENTE: ColumnaEditable[] = [
-  { clave: "componente", titulo: "Componente", fija: true, presentar: rotuloDeOpcion },
-  { clave: "serie", titulo: "Serie" },
-  { clave: "peso", titulo: "Peso", cifra: true },
-];
+// AC2: «Serie» y «Partida» son campos con busqueda cuando la API dio la lista (series importadas; partidas de la version
+// del contrato elegida); sin lista siguen siendo texto libre y el calculo dice lo que falte.
+function columnasDeComponente(series: SerieDeIndice[] | null, alExpirar: () => void): ColumnaEditable[] {
+  return [
+    { clave: "componente", titulo: "Componente", fija: true, presentar: rotuloDeOpcion },
+    {
+      clave: "serie",
+      titulo: "Serie",
+      campo: (c) => (
+        <CampoDeSerie id={c.id} etiqueta={c.etiqueta} series={series} texto={c.valor} alCambiarTexto={c.alCambiar} alExpirar={alExpirar} />
+      ),
+    },
+    { clave: "peso", titulo: "Peso", cifra: true },
+  ];
+}
 const COLUMNAS_PERIODO: ColumnaEditable[] = [
   { clave: "desde", titulo: "Desde", tipo: "fecha" },
   { clave: "hasta", titulo: "Hasta", tipo: "fecha" },
   { clave: "version_comprobacion", titulo: "Versión de comprobación" },
   { clave: "excepcion", titulo: "Excepción" },
 ];
-const COLUMNAS_EJECUTADO: ColumnaEditable[] = [
-  { clave: "periodo", titulo: "Período" },
-  { clave: "partida", titulo: "Partida" },
-  { clave: "cantidad", titulo: "Cantidad", cifra: true },
-  { clave: "fuente", titulo: "Fuente" },
-];
+function columnasDeEjecutado(partidas: PartidaDelContrato[] | null, alExpirar: () => void): ColumnaEditable[] {
+  return [
+    { clave: "periodo", titulo: "Período" },
+    {
+      clave: "partida",
+      titulo: "Partida",
+      campo: (c) => (
+        <CampoDePartida
+          id={c.id}
+          etiqueta={c.etiqueta}
+          partidas={partidas}
+          soloDelContrato
+          texto={c.valor}
+          alCambiarTexto={c.alCambiar}
+          alExpirar={alExpirar}
+          enCelda
+        />
+      ),
+    },
+    { clave: "cantidad", titulo: "Cantidad", cifra: true },
+    { clave: "fuente", titulo: "Fuente" },
+  ];
+}
 const PASOS = ["1. La cláusula", "2. Períodos y lo ejecutado"];
 const ETIQUETA_RESULTADO = "Escalatoria y comprobación, lado a lado";
 
@@ -155,6 +188,14 @@ function Formulario({
   // Cuenta las ediciones: una respuesta que llega despues de editar corresponde a datos viejos y se descarta.
   const edicion = useRef(0);
   const [paso, setPaso] = useState(0);
+  // AC2: las series importadas (una vez) y las partidas de la version elegida (de nuevo al cambiar de version).
+  const series = useCarga<SerieDeIndice[]>("/v1/reajuste/series", alExpirar);
+  const delContrato = useCarga<PartidasDelContrato>(
+    `/v1/reajuste/partidas?${new URLSearchParams({ proyecto, version: form.version }).toString()}`,
+    alExpirar,
+  );
+  const columnasComponente = columnasDeComponente(seriesOfrecidas(series), alExpirar);
+  const columnasEjecutado = columnasDeEjecutado(partidasOfrecidas(delContrato), alExpirar);
   // VB-13: tras «Calcular», el foco va al título del resultado o al aviso de error (si no, se queda en el botón y el
   // aviso aparece bajo el pliegue sin que nadie lo anuncie).
   // Cada pedido de foco es un objeto nuevo: siempre provoca el render tras el cual el efecto lo cumple.
@@ -319,7 +360,7 @@ function Formulario({
                 </p>
                 <FilasEditables
                   etiqueta="Componentes"
-                  columnas={COLUMNAS_COMPONENTE}
+                  columnas={columnasComponente}
                   filas={form.componentes}
                   fijas
                   revisar={revisar}
@@ -364,7 +405,7 @@ function Formulario({
                   <>
                     <FilasEditables
                       etiqueta="Ejecutado"
-                      columnas={COLUMNAS_EJECUTADO}
+                      columnas={columnasEjecutado}
                       filas={form.ejecutado}
                       revisar={revisar}
                       alCambiar={(filas) => editar((f) => ({ ...f, ejecutado: filas }))}

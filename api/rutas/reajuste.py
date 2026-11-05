@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from api.dependencias import SesionDep
+from api.esquemas_partidas import PartidasDelContratoRespuesta, partidas_a_respuesta
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco
 from aplicacion import reajuste as logica
@@ -213,6 +214,49 @@ def parciales(
     response.headers.update(SIN_CACHE)
     _proyecto_existente(sesion, proyecto)
     return _parciales(sesion, proyecto, version)
+
+
+@router.get("/partidas", response_model=PartidasDelContratoRespuesta)
+def partidas(
+    sesion: SesionDep,
+    response: Response,
+    proyecto: Annotated[str, Query(max_length=200)],
+    version: Annotated[str, Query(max_length=40)],
+) -> PartidasDelContratoRespuesta:
+    """AC2: las partidas de la versión del contrato elegida, para el campo «Partida» de lo
+    ejecutado. El cálculo rechaza una partida que no está en ella; aquí solo se ofrecen."""
+    response.headers.update(SIN_CACHE)
+    _proyecto_existente(sesion, proyecto)
+    try:
+        halladas = logica.partidas_de_la_version(sesion, proyecto, version)
+    except HojaInvalida as error:
+        raise HTTPException(404, str(error)) from None
+    return partidas_a_respuesta(version, halladas)
+
+
+class SerieRespuesta(BaseModel):
+    clave: str = Field(description="El código de la serie, como se cita en un componente")
+    nombre: str
+    organismo: str
+    unidad: str
+    periodicidad: str
+
+
+@router.get("/series", response_model=list[SerieRespuesta])
+def series(sesion: SesionDep, response: Response) -> list[SerieRespuesta]:
+    """AC2: las series de índices guardadas (UC-17), para el campo «Serie» de los componentes.
+    Solo su definición: ningún valor del índice sale por esta ruta."""
+    response.headers.update(SIN_CACHE)
+    return [
+        SerieRespuesta(
+            clave=s.codigo,
+            nombre=s.nombre,
+            organismo=s.organismo,
+            unidad=s.unidad,
+            periodicidad=s.periodicidad,
+        )
+        for s in logica.series_de_indices(sesion)
+    ]
 
 
 @router.post("/calcular", response_model=CalculoRespuesta)

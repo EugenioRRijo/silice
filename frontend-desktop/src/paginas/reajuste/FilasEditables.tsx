@@ -1,5 +1,6 @@
 import { Button } from "@carbon/react";
 import { Add, TrashCan } from "@carbon/icons-react";
+import type { ReactNode } from "react";
 import { errorDeCifra, filasVacias } from "./logica";
 import type { Fila } from "./logica";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -17,6 +18,16 @@ export interface ColumnaEditable {
   presentar?: (valor: string) => string;
   // Una cifra decimal: se escribe con coma y, con `revisar`, se marca si no sigue la regla.
   cifra?: boolean;
+  // El campo de la celda, si no es un cuadro de texto (p. ej. un campo con busqueda, AC2). Recibe el nombre accesible
+  // de la celda y el valor; la tabla sigue siendo duena de las filas.
+  campo?: (celda: CeldaDeCampo) => ReactNode;
+}
+
+export interface CeldaDeCampo {
+  id: string;
+  etiqueta: string;
+  valor: string;
+  alCambiar: (valor: string) => void;
 }
 
 interface Props {
@@ -59,6 +70,15 @@ export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = f
             <tr key={i}>
               {columnas.map((c) => {
                 const error = revisar && c.cifra ? errorDeCifra(fila[c.clave] ?? "") : null;
+                const id = `${etiqueta}-${c.clave}-${i}`;
+                const nombre = `${c.titulo}, ${etiqueta} fila ${i + 1}`;
+                if (c.campo) {
+                  return (
+                    <td key={c.clave}>
+                      {c.campo({ id, etiqueta: nombre, valor: fila[c.clave] ?? "", alCambiar: (v) => cambiar(i, c.clave, v) })}
+                    </td>
+                  );
+                }
                 return (
                   <td key={c.clave}>
                     <CampoTexto
