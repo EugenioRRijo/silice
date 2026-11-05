@@ -36,7 +36,7 @@ describe("la barra de avance crece con la letra (H4)", () => {
   });
 
   test("el real y el plan caben dentro de la barra: el alto de la barra no es menor que lo que apilan", () => {
-    const rem = (texto: string, propiedad: string) => Number(new RegExp(`${propiedad}:\s*([\d.]+)rem`).exec(texto)?.[1] ?? NaN);
+    const rem = (texto: string, propiedad: string) => Number(new RegExp(`(?:^|[\\s;])${propiedad}:\\s*([\\d.]+)rem`).exec(texto)?.[1] ?? NaN);
     const barra = rem(regla(".fiori-kpi__barra"), "block-size");
     const real = rem(regla(".fiori-kpi__barra-real"), "block-size");
     const meta = rem(regla(".fiori-kpi__barra-meta"), "block-size");

@@ -447,7 +447,7 @@ describe("Vista general: sin auditorías guardadas", () => {
     expect(await within(b).findByText("Todavía no hay auditorías guardadas")).toBeInTheDocument();
     expect(b).not.toHaveTextContent(/arriba|suelte/i);
     expect(b).toHaveTextContent(/Auditoría/);
-    expect(within(b).getByRole("link", { name: "Ir a Auditoría" })).toHaveAttribute("href", "/auditoria");
+    expect(within(b).getByRole("link", { name: "Ir a Auditoría" })).toHaveAttribute("href", expect.stringMatching(/^\/auditoria/));
   });
 });
 

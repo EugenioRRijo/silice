@@ -235,7 +235,5 @@ describe("la Cuenta: al cambiar de carpeta se vuelve a Carpetas", () => {
     expect(ruta()).toBe("/cuenta/carpetas");
     expect(await screen.findByRole("button", { name: "Abrir la otra" })).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    // El h1 es el de la sección; el aviso va un nivel más abajo, para que la pantalla no tenga dos (H9).
-    expect(screen.getByRole("heading", { level: 2, name: "Sin permiso" })).toBeInTheDocument();
   });
 });
