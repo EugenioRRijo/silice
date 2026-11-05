@@ -41,7 +41,7 @@ const montarEnCarpetas = (paginas = conAdministracion()) => montarMarco(anaAdmin
 
 const dialogo = () => screen.getByRole("main");
 
-async function abrirCarpetas(_u: ReturnType<typeof userEvent.setup>) {
+async function abrirCarpetas() {
   await screen.findByRole("heading", { level: 1, name: "Carpetas" }, { timeout: 3000 });
   return dialogo();
 }
@@ -58,7 +58,7 @@ describe("abrir otra carpeta desde Carpetas de trabajo", () => {
   test("sin nada que perder cambia directo y avisa con su nombre, sin la frase del reinicio", async () => {
     const u = userEvent.setup();
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.click(await within(dialogo()).findByRole("button", { name: "Abrir s2" }));
     await waitFor(() => expect(servidor.de("POST", "/v1/casos/actual").map((l) => l.cuerpo)).toEqual([{ nombre: "s2.db" }]));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
@@ -73,7 +73,7 @@ describe("abrir otra carpeta desde Carpetas de trabajo", () => {
     );
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.click(await within(dialogo()).findByRole("button", { name: "Abrir s2" }));
     expect(await within(dialogo()).findByText("La carpeta de trabajo no se pudo preparar.")).toBeInTheDocument();
     expect(screen.queryByText(/Ahora trabaja con la carpeta/)).toBeNull();
@@ -86,7 +86,7 @@ describe("abrir otra carpeta desde Carpetas de trabajo", () => {
     );
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     const { alExpirar } = montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.click(await within(dialogo()).findByRole("button", { name: "Abrir s2" }));
     await waitFor(() => expect(alExpirar).toHaveBeenCalled());
   });
@@ -96,7 +96,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F5: las pestañas se recorren con el teclado", async () => {
     const u = userEvent.setup();
     montarEnCarpetas();
-    const caja = await abrirCarpetas(u);
+    const caja = await abrirCarpetas();
     const pestanas = within(caja).getAllByRole("tab");
     expect(pestanas.map((p) => p.textContent)).toEqual(["Crear", "Subir un archivo", "Demostración"]);
     pestanas[0]!.focus();
@@ -109,7 +109,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F5: crear sin moneda pide elegirla y no llama a la API", async () => {
     const u = userEvent.setup();
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     expect(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" })).toHaveValue("");
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Obra nueva");
     await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
@@ -120,7 +120,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F5: crear con Bs llama POST /v1/casos, POST /v1/casos/actual y PUT /v1/carpeta/moneda, en ese orden, con el nombre final", async () => {
     const u = userEvent.setup();
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Obra*1");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
     await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
@@ -140,7 +140,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F5: «ya existe» (409) se muestra en línea, tal cual lo dice la API", async () => {
     const u = userEvent.setup();
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "s1");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "USD");
     await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
@@ -156,7 +156,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
     montarEnCarpetas();
     await waitFor(() => expect(servidor.de("GET", "/v1/casos").length).toBeGreaterThan(0));
     const antes = servidor.de("GET", "/v1/casos").length;
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await waitFor(() => expect(servidor.de("GET", "/v1/casos").length).toBeGreaterThan(antes));
     expect(await carpetasDeLaLista()).toEqual(["silice", "s1", "s2"]);
     const alAbrirlo = servidor.de("GET", "/v1/casos").length;
@@ -168,9 +168,8 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   });
 
   test("la lista marca la carpeta abierta y la de la empresa; la abierta no se ofrece para abrir", async () => {
-    const u = userEvent.setup();
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     const lista = await within(dialogo()).findByRole("list", { name: "Carpetas de trabajo de la instalación" });
     const silice = within(lista).getAllByRole("listitem")[0]!;
     expect(silice).toHaveAttribute("aria-current", "true");
@@ -197,7 +196,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
     const campo = () => dialogo().querySelector<HTMLInputElement>('input[type="file"]')!;
     await u.upload(campo(), new File(["x"], "libro.xlsx"));
@@ -235,7 +234,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
     await u.upload(dialogo().querySelector<HTMLInputElement>('input[type="file"]')!, new File(["x"], "copia.db"));
     await u.click(within(dialogo()).getByRole("button", { name: "Subir" }));
@@ -247,7 +246,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("F7: la demostración dice que los datos son inventados; 201 la abre", async () => {
     const u = userEvent.setup();
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.click(within(dialogo()).getByRole("tab", { name: "Demostración" }));
     expect(within(dialogo()).getByText("Datos de ejemplo inventados para aprender; no son una obra real.")).toBeInTheDocument();
     await u.click(within(dialogo()).getByRole("button", { name: "Abrir la demostración" }));
@@ -264,7 +263,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
     servidor = servidorFalso(estado);
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.click(within(dialogo()).getByRole("tab", { name: "Demostración" }));
     await u.click(within(dialogo()).getByRole("button", { name: "Abrir la demostración" }));
     await waitFor(() =>
@@ -275,7 +274,7 @@ describe("diálogo «Carpetas de trabajo» (F5 a F9)", () => {
   test("ninguna cadena visible del diálogo dice «caso» ni «proyecto»", async () => {
     const u = userEvent.setup();
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await carpetasDeLaLista();
     for (const pestana of ["Crear", "Subir un archivo", "Demostración"]) {
       await u.click(within(dialogo()).getByRole("tab", { name: pestana }));
@@ -309,7 +308,7 @@ describe("crear una carpeta: primero se pregunta, la moneda se reintenta sola", 
     });
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
     await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
@@ -354,7 +353,7 @@ describe("menores tras la ronda 2", () => {
     );
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
     await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
@@ -424,7 +423,7 @@ describe("menores de la ronda 3", () => {
   const puts = () => servidor.de("PUT", "/v1/carpeta/moneda");
 
   async function crearNueva(u: ReturnType<typeof userEvent.setup>) {
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "Nueva");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
     await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
@@ -434,7 +433,7 @@ describe("menores de la ronda 3", () => {
   test("crear con el nombre vacío lo dice en el campo y no llama a la API", async () => {
     const u = userEvent.setup();
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.type(within(dialogo()).getByRole("textbox", { name: "Nombre de la carpeta" }), "   ");
     await u.selectOptions(within(dialogo()).getByRole("combobox", { name: "Moneda de trabajo" }), "Bs");
     await u.click(within(dialogo()).getByRole("button", { name: "Crear y abrir" }));
@@ -452,7 +451,7 @@ describe("menores de la ronda 3", () => {
     await crearNueva(u);
     await u.click(within(dialogo()).getByRole("button", { name: "Abrir s2" }));
     expect(await screen.findByText("Ahora trabaja con la carpeta «s2».")).toBeInTheDocument();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     expect(within(dialogo()).queryByText(PENDIENTE)).toBeNull();
     expect(within(dialogo()).queryByRole("button", { name: "Declarar la moneda" })).toBeNull();
     expect(puts()).toHaveLength(1);
@@ -519,7 +518,7 @@ describe("menores de la ronda 3", () => {
     expect(await screen.findByText("Ahora trabaja con la carpeta «s2».")).toBeInTheDocument();
     soltar();
     await new Promise((r) => setTimeout(r, 30));
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     expect(within(dialogo()).queryByText(PENDIENTE)).toBeNull();
     expect(within(dialogo()).queryByRole("button", { name: "Declarar la moneda" })).toBeNull();
     expect(puts()).toHaveLength(2);
@@ -530,7 +529,7 @@ describe("subir: lo que se rechaza en el navegador no queda elegido", () => {
   test("un archivo que no es .db vacía el que estaba elegido y «Subir» queda deshabilitado", async () => {
     const u = userEvent.setup({ applyAccept: false });
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
     const campo = () => dialogo().querySelector<HTMLInputElement>('input[type="file"]')!;
     await u.upload(campo(), new File(["x"], "s1.db"));
@@ -544,7 +543,7 @@ describe("subir: lo que se rechaza en el navegador no queda elegido", () => {
   test("un .db de más de 20 MiB se rechaza en el navegador con el texto de la API y no se sube", async () => {
     const u = userEvent.setup();
     montarEnCarpetas();
-    await abrirCarpetas(u);
+    await abrirCarpetas();
     await u.click(within(dialogo()).getByRole("tab", { name: "Subir un archivo" }));
     const grande = new File(["x"], "grande.db");
     Object.defineProperty(grande, "size", { value: 20 * 1024 * 1024 + 1 });

@@ -131,22 +131,15 @@
   }
 }
 
-// El grupo «Costos y producción» dentro de Empresa (F6, T4): su nombre, en letra de etiqueta, sobre sus filas.
-.silice-marco-lateral__subtitulo {
-  margin: 0;
-  padding: 0.25rem 1rem;
-  color: var(--cds-text-secondary);
-  @include type.type-style("label-01");
-}
-
-.silice-marco-lateral__empresa {
+// La zona «Costos y producción» (antes Empresa, F6, T6): no cede alto a la lista de obras.
+.silice-marco-lateral__costos {
   flex: none;
   padding-block-end: 0.5rem;
 }
 
-// «Empresa» con letra grande: el titulo pasa a ser un boton que pliega las entradas (F4, Tarea 0). Toma la letra, el color y
+// «Costos y producción» con letra grande: el titulo pasa a ser un boton que pliega los espacios (F4, Tarea 0; F6, T6). Toma la letra, el color y
 // las mayusculas del titulo para no parecer un control distinto; el foco usa el mismo contorno que las filas.
-.silice-marco-lateral__empresa-boton {
+.silice-marco-lateral__costos-boton {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -234,8 +227,8 @@
     min-block-size: 10rem;
   }
 
-  // El boton de Empresa es un blanco de puntero: no baja de 1,5 rem aunque el titulo se compacte.
-  .silice-marco-lateral__empresa-boton {
+  // El boton de la zona es un blanco de puntero: no baja de 1,5 rem aunque el titulo se compacte.
+  .silice-marco-lateral__costos-boton {
     min-block-size: 1.5rem;
   }
 }

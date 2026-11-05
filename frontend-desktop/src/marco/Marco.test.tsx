@@ -457,7 +457,7 @@ describe("Marco: la obra como espacio de trabajo", () => {
     }
     montar({ en: "/obra/empresa/7/resumen", paginas: ligeras({ obras: ConLaObra, catalogo: ConLaObra }) });
     expect(await screen.findByText("obra elegida: 7")).toBeInTheDocument();
-    await u.click(within(screen.getByRole("banner")).getByRole("link", { name: "Mis obras" }));
+    await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Pendientes" }));
     await waitFor(() => expect(ruta()).toBe("/pendientes"));
     expect(await titulo("Pendientes")).toBeInTheDocument();
     await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Precios y catálogo" }));
@@ -1087,12 +1087,13 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
 
   test("un enlace de la barra de la obra que sigue tras navegar conserva el foco", async () => {
     const u = userEvent.setup();
-    montar({ en: "/obra/empresa/7/presupuesto" });
-    await titulo("Presupuesto");
-    const enlace = await within(screen.getByRole("navigation", { name: "Secciones de la obra" })).findByRole("link", { name: "Resumen" });
+    // Entre secciones sin Hoja: pasar de o a una con Hoja monta otra vez la cabecera y la barra (otro árbol), y el foco pasa al h1.
+    montar({ en: "/obra/empresa/7/mercado" });
+    await titulo("Estudio de mercado");
+    const enlace = await within(screen.getByRole("navigation", { name: "Secciones de la obra" })).findByRole("link", { name: "Control de obra" });
     await u.click(enlace);
-    await titulo("Resumen de la obra");
-    expect(ruta()).toBe("/obra/empresa/7/resumen");
+    await titulo("Control de obra");
+    expect(ruta()).toBe("/obra/empresa/7/control");
     await new Promise((r) => setTimeout(r, 80));
     expect(enlace).toHaveFocus();
   });

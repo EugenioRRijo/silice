@@ -11,20 +11,21 @@ import { obrasConMismoNombre } from "./homonimas";
 import { NombreDeObra } from "./NombreDeObra";
 import { abrirNuevaObra, cerrarNuevaObra, useNuevaObraAbierta } from "./nuevaObra";
 import { obrasAlcanzables, useOferta } from "./oferta";
-import { PATRON_DE_EMPRESA, RUTA_DE_PENDIENTES, rutaDeObra } from "./secciones";
+import { RUTA_DE_PENDIENTES, rutaDeObra } from "./secciones";
 import { useObras, type ObraDeCarpeta } from "./useObras";
 import { usePendientes } from "./usePendientes";
-import { ZonaEmpresa } from "./ZonaEmpresa";
+import { ZonaDeCostos } from "./ZonaDeCostos";
 
 interface Props {
   obraAbierta: { carpeta: string | null; obraId: number } | null;
 }
 
-// Barra lateral del marco nuevo: Pendientes, la lista plana de Obras y Empresa. Cada obra es un enlace a su Resumen (F6, T5;
+// Barra lateral del marco nuevo: Pendientes, la lista plana de Obras y «Costos y producción». Cada obra es un enlace a su Resumen (F6, T5;
 // decisión de Eugenio, 2026-11-04: elegir otra obra no conserva la sección); las secciones de la obra abierta están en su
 // barra, bajo la cabecera (EspacioDeObra). Sin títulos de grupo por carpeta (D-F3-3): las obras van por nombre y solo las de
 // nombre repetido dicen su carpeta. Las píldoras de Pendientes y de cada obra salen de los pendientes que el marco ya
-// cargó (`usePendientes`). Empresa vive en ZonaEmpresa.
+// cargó (`usePendientes`). «Costos y producción» vive en ZonaDeCostos; la Cuenta, a la que ya no lleva ninguna entrada de
+// esta barra, se abre desde el botón de la persona (F6, T6).
 export function BarraLateral({ obraAbierta }: Props) {
   const { acciones, puedeCambiarDeCarpeta, oferta } = useOferta();
   const navegar = useNavigate();
@@ -35,14 +36,13 @@ export function BarraLateral({ obraAbierta }: Props) {
   const porObra = useMemo(() => contarPorObra(carga.estado === "listo" ? carga.pendientes : []), [carga]);
   const total = carga.estado === "listo" ? carga.pendientes.length : 0;
   const enPendientes = useMatch(RUTA_DE_PENDIENTES) !== null;
-  const entradaActiva = useMatch(PATRON_DE_EMPRESA)?.params["entrada"] ?? null;
   // El espacio de la ruta (`/produccion/…`, `/auditoria/…`, `/precios/…`): el primer segmento.
   const primerSegmento = useLocation().pathname.split("/")[1] ?? "";
   const espacioActivo = oferta.espacios.find((e) => e.id === primerSegmento)?.id ?? null;
   // El diálogo lo puede pedir también la mesa (marco/nuevaObra); al irse la barra (salir de la sesión) se cierra.
   const nuevaAbierta = useNuevaObraAbierta();
   useEffect(() => cerrarNuevaObra, []);
-  const { entradas, espacios } = oferta;
+  const { espacios } = oferta;
   const puedeCrear = acciones.includes("editar_hoja");
 
   // Por nombre (sin tildes ni mayúsculas) y, si se repite, por carpeta: la API las trae por carpeta (D-F3-3).
@@ -150,7 +150,7 @@ export function BarraLateral({ obraAbierta }: Props) {
         </div>
       )}
 
-      <ZonaEmpresa entradas={entradas} entradaActiva={entradaActiva} espacios={espacios} espacioActivo={espacioActivo} idBase={base} />
+      <ZonaDeCostos espacios={espacios} espacioActivo={espacioActivo} idBase={base} />
 
       <DialogoNuevaObra
         abierto={nuevaAbierta}

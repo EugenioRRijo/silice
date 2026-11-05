@@ -544,7 +544,9 @@ describe("Administracion: Cuentas y Accesos", () => {
       const tabla = await screen.findByRole("table", { name: "Eventos de acceso" }, PIDE);
       expect(within(tabla).getByText("10 nov 2026, 09:00")).toBeInTheDocument();
       expect(within(tabla).getByText("10.0.0.7")).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /Crear|Guardar|Desactivar|Reactivar|Desbloquear|Restablecer/ })).toBeNull();
+      // Accesos solo se lee: sus botones no son de escritura (los de arriba, de Cuentas, sí lo son y no cuentan aquí).
+      const seccion = screen.getByRole("region", { name: "Accesos" });
+      expect(within(seccion).queryByRole("button", { name: /Crear|Guardar|Desactivar|Reactivar|Desbloquear|Restablecer/ })).toBeNull();
       expect(posts()).toHaveLength(0);
     });
   });

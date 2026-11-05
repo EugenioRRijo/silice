@@ -1,9 +1,9 @@
 import { useContext } from "react";
 import { ContextoAplicacion } from "../shell/contexto";
 import { PAGINAS, paginaPorId, usable, type PaginaDef } from "../shell/rutas";
-import { ESPACIOS, ESPACIOS_EN_LA_BARRA, SECCIONES_DE_CUENTA, SUBVISTAS, primeraUsable, rutaDeHerramienta } from "./espacios";
-import type { EspacioId } from "./espacios";
-import { ENTRADAS_DE_EMPRESA, SECCIONES_DE_OBRA, type EntradaDef, type SeccionDef } from "./secciones";
+import { ESPACIOS, ESPACIOS_EN_LA_BARRA, SECCIONES_DE_CUENTA, SUBVISTAS, cuentaUsable, primeraUsable, rutaDeHerramienta } from "./espacios";
+import type { CuentaDef, EspacioId } from "./espacios";
+import { SECCIONES_DE_OBRA, type SeccionDef } from "./secciones";
 import type { ObraDeCarpeta } from "./useObras";
 
 // Un espacio de la empresa que la cuenta puede usar: lleva a su primera herramienta usable.
@@ -18,7 +18,8 @@ export interface EspacioOfrecido {
 export interface Oferta {
   // Las de toda obra (incluida «Tramos» mientras el módulo vial esté encendido).
   secciones: readonly SeccionDef[];
-  entradas: readonly EntradaDef[];
+  // Las secciones de la Cuenta que la cuenta puede usar (F6, T6; contrato 3), en el orden de su barra.
+  cuenta: readonly CuentaDef[];
   // Los espacios de la empresa con al menos una herramienta usable, en el orden de la barra lateral (F6, T4).
   espacios: readonly EspacioOfrecido[];
   // Desde F6 (contrato de rutas) toda pantalla tiene sitio: queda vacío. Se conserva hasta que se retire a quien lo lee (busqueda.ts).
@@ -42,11 +43,8 @@ export function ofertaDe(acciones: readonly string[], modoEntrega: boolean, apag
       usableLa(s.pagina, acciones, modoEntrega, apagados) ||
       (SUBVISTAS[s.id] ?? []).some((v) => usableLa(v.pagina, acciones, modoEntrega, apagados)),
   );
-  const entradas = ENTRADAS_DE_EMPRESA.filter((e) => usableLa(e.pagina, acciones, modoEntrega, apagados));
-  const deLasSecciones = new Set<string | null>([
-    ...SECCIONES_DE_OBRA.map((s) => s.pagina),
-    ...ENTRADAS_DE_EMPRESA.map((e) => e.pagina),
-  ]);
+  const cuenta = SECCIONES_DE_CUENTA.filter((c) => cuentaUsable(c, acciones, modoEntrega, apagados));
+  const deLasSecciones = new Set<string | null>(SECCIONES_DE_OBRA.map((s) => s.pagina));
   const deLasHerramientas = new Set<string | null>([
     ...Object.values(ESPACIOS).flatMap((e) => e.herramientas.map((h) => h.pagina)),
     ...Object.values(SUBVISTAS).flatMap((vs) => (vs ?? []).map((v) => v.pagina)),
@@ -61,7 +59,7 @@ export function ofertaDe(acciones: readonly string[], modoEntrega: boolean, apag
     const primera = primeraUsable(ESPACIOS[id].herramientas, acciones, modoEntrega, apagados);
     return primera === null ? [] : [{ id, titulo: ESPACIOS[id].titulo, ruta: rutaDeHerramienta(id, primera.id) }];
   });
-  return { secciones, entradas, espacios, sueltas, herramientas };
+  return { secciones, cuenta, espacios, sueltas, herramientas };
 }
 
 // Las secciones de una obra, en el orden del marco.

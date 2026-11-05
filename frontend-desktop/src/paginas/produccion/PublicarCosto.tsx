@@ -6,7 +6,7 @@ import { ErrorDeApi } from "../../api/cliente";
 import { empresaDeAdministracion, publicarCalculo } from "../../api/produccionPlanta";
 import type { CalculoDeCosto, EmpresaDeAdministracion } from "../../api/produccionPlanta";
 import { AvisoError } from "../../comun/AvisoError";
-import { rutaOPendientes } from "../../marco/espacios";
+import { rutaDeCuenta } from "../../marco/espacios";
 import { MarcoDeDialogo } from "../../shell/carpetas/MarcoDeDialogo";
 import { fuenteDelPrecio, mensajeAlPublicar, nombreDeLista, pideConfigurarEmpresa } from "./logicaPlanta";
 
@@ -21,7 +21,8 @@ interface Props {
 
 type Empresa = { estado: "cargando" } | { estado: "listo"; datos: EmpresaDeAdministracion } | { estado: "error" };
 
-const ADMINISTRACION = rutaOPendientes("administracion");
+// Los datos de la empresa viven en la Cuenta, sección «Empresa y tema» (F6, T6).
+const ADMINISTRACION = rutaDeCuenta("empresa");
 
 // Publicar un cálculo como precio propio de la empresa. Solo se monta con la acción `publicar_costo_propio`; la ruta no
 // lleva cuerpo (el servidor publica el cálculo tal como lo guardó). La empresa es la de Administración y se lee, no se

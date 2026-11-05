@@ -1,24 +1,15 @@
 import { paginaPorId, type PaginaDef } from "../shell/rutas";
-import { ESPACIOS, SUBVISTAS, esEspacio } from "./espacios";
-import type { Miga } from "./Migas";
-import {
-  ENTRADAS_DE_EMPRESA,
-  RUTA_DE_PENDIENTES,
-  carpetaDeLaRuta,
-  rutaDeObra,
-  seccionPorId,
-} from "./secciones";
+import { ESPACIOS, SECCIONES_DE_CUENTA, SUBVISTAS, esEspacio } from "./espacios";
+import { RUTA_DE_PENDIENTES, carpetaDeLaRuta, seccionPorId } from "./secciones";
 import type { ObraDeCarpeta } from "./useObras";
 
 export interface Ubicada {
-  migas: Miga[];
   // El título de la pestaña del navegador (sin «Sílice», lo agrega useTituloDelDocumento); null sin pantalla.
   titulo: string | null;
 }
 
 // `#/obra/<carpeta>/<obra>/<sección>` y, con subvista, `…/<sección>/<subvista>` (F6, T5).
 const OBRA = /^\/obra\/([^/]+)\/([1-9]\d*)\/([^/]+)(?:\/([^/]+))?$/;
-const EMPRESA = /^\/empresa\/([^/]+)$/;
 const ESPACIO = /^\/([^/]+)\/([^/]+)$/;
 
 // La carpeta de una ruta `#/obra/<carpeta>/<obra>/<sección>[/<subvista>]` (null = la de la empresa), o undefined si la ruta no es de
@@ -33,44 +24,34 @@ export function carpetaDelDestino(destino: string): string | null | undefined {
   }
 }
 
-// Dónde está la persona, dicho en migas («Mis obras / Clínica / Presupuesto», «Mis obras / Clínica / Control de obra /
-// Reajuste», «Empresa / Ayuda», «Pendientes») y en el título de la pestaña. Las obras dan el nombre de la de la ruta; mientras llegan, «Obra».
+// Dónde está la persona, dicho en el título de la pestaña («Presupuesto · Clínica», «Reajuste · Control de obra · Clínica»,
+// «Existencias · Costos de producción», «Cuentas y permisos», «Pendientes»). Las obras dan el nombre de la de la ruta;
+// mientras llegan, «Obra». Desde F6, T6 la barra de arriba no lleva migas: el título del documento es lo único que queda
+// de ellas, y la cabecera y la barra de cada espacio dicen dónde se está.
 export function ubicar(pathname: string, obras: readonly ObraDeCarpeta[], paginas: readonly PaginaDef[]): Ubicada {
-  if (pathname === RUTA_DE_PENDIENTES) return { migas: [{ texto: "Pendientes" }], titulo: "Pendientes" };
+  if (pathname === RUTA_DE_PENDIENTES) return { titulo: "Pendientes" };
   const deObra = OBRA.exec(pathname);
   if (deObra) {
     const carpeta = carpetaDelDestino(pathname) ?? null;
     const obraId = Number(deObra[2]);
     const nombre = obras.find((o) => o.carpeta === carpeta && o.obra_id === obraId)?.obra ?? "Obra";
     const seccion = seccionPorId(deObra[3]);
-    const migas: Miga[] = [
-      { texto: "Mis obras", ruta: RUTA_DE_PENDIENTES },
-      { texto: nombre, ruta: rutaDeObra(carpeta, obraId, "resumen") },
-    ];
     // Una subvista que no existe se ubica como su sección (la ruta la lleva a la pantalla principal).
     const subvista = seccion && deObra[4] !== undefined ? SUBVISTAS[seccion.id]?.find((v) => v.id !== "" && v.id === deObra[4]) : undefined;
-    if (seccion && subvista) {
-      migas.push({ texto: seccion.titulo, ruta: rutaDeObra(carpeta, obraId, seccion.id) }, { texto: subvista.titulo });
-      return { migas, titulo: `${subvista.titulo} · ${seccion.titulo} · ${nombre}` };
-    }
-    if (seccion) migas.push({ texto: seccion.titulo });
-    return { migas, titulo: seccion ? `${seccion.titulo} · ${nombre}` : nombre };
+    if (seccion && subvista) return { titulo: `${subvista.titulo} · ${seccion.titulo} · ${nombre}` };
+    return { titulo: seccion ? `${seccion.titulo} · ${nombre}` : nombre };
   }
-  // Producción, Auditoría y Precios (F6, T4): «Existencias · Costos de producción».
+  // Producción, Auditoría y Precios (F6, T4): «Existencias · Costos de producción»; la Cuenta (F6, T6): el de la sección.
   const deEspacio = ESPACIO.exec(pathname);
   if (deEspacio && esEspacio(deEspacio[1])) {
     const espacio = ESPACIOS[deEspacio[1]];
     const herramienta = espacio.herramientas.find((h) => h.id === deEspacio[2]);
-    if (herramienta) {
-      return {
-        migas: [{ texto: espacio.titulo }, { texto: herramienta.titulo }],
-        titulo: `${herramienta.titulo} · ${espacio.titulo}`,
-      };
-    }
+    if (herramienta) return { titulo: `${herramienta.titulo} · ${espacio.titulo}` };
   }
-  const deEmpresa = EMPRESA.exec(pathname);
-  const entrada = deEmpresa ? ENTRADAS_DE_EMPRESA.find((e) => e.id === deEmpresa[1]) : undefined;
-  if (entrada) return { migas: [{ texto: "Empresa" }, { texto: entrada.titulo }], titulo: entrada.titulo };
+  if (deEspacio && deEspacio[1] === "cuenta") {
+    const cuenta = SECCIONES_DE_CUENTA.find((c) => c.id === deEspacio[2]);
+    if (cuenta) return { titulo: cuenta.titulo };
+  }
   const pagina = paginaPorId(pathname.slice(1), paginas);
-  return pagina ? { migas: [{ texto: pagina.titulo }], titulo: pagina.titulo } : { migas: [], titulo: null };
+  return { titulo: pagina ? pagina.titulo : null };
 }

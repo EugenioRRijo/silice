@@ -2,7 +2,7 @@
 // pendientes, botones de las pantallas) pide aquí su ruta y no la escribe: cuando las pantallas cambien de sitio (T5)
 // se cambia este lugar y quien llama no se entera. Los tres espacios de la empresa ya viven en /<espacio>/<segmento> (T4).
 import { PAGINAS, paginaPorId, rutaDe, usable } from "../shell/rutas";
-import { ENTRADAS_DE_EMPRESA, RUTA_DE_PENDIENTES, SECCIONES_DE_OBRA, rutaDeEmpresa, rutaDeObra } from "./secciones";
+import { RUTA_DE_PENDIENTES, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
 import type { SeccionDef, SeccionId } from "./secciones";
 
 export interface ObraDeLaRuta {
@@ -13,8 +13,9 @@ export interface ObraDeLaRuta {
 // `paginaId` es el id de la pantalla en `shell/rutas.ts`. Una sección de obra va a la ruta de la obra dada; una subvista, a
 // `/obra/<c>/<o>/<sección>/<subvista>` (contrato 2.1); sin obra, ambas van a su dirección corta (`/<id>`), que redirige a la
 // obra de la sesión. Una herramienta de Producción, Auditoría o Precios va a
-// `/<espacio>/<segmento>` (contrato 2.2), con o sin obra. Una entrada de Empresa va a `/empresa/<entrada>`. Las demás, a
-// `/<id>`. Un id que no es pantalla da null.
+// `/<espacio>/<segmento>` (contrato 2.2), con o sin obra. Administración y Acerca de van a la Cuenta (contrato 2.3 y 3):
+// Administración está repartida en cuatro secciones y su ruta canónica es la primera, «Cuentas y permisos»; Acerca de es la
+// Ayuda. Las demás, a `/<id>`. Un id que no es pantalla da null.
 export function rutaCanonica(paginaId: string, obra?: ObraDeLaRuta): string | null {
   const pagina = paginaPorId(paginaId, PAGINAS);
   if (pagina === undefined) return null;
@@ -27,8 +28,8 @@ export function rutaCanonica(paginaId: string, obra?: ObraDeLaRuta): string | nu
   }
   const delEspacio = espacioDeLaPagina(paginaId);
   if (delEspacio !== undefined) return rutaDeHerramienta(delEspacio.espacio, delEspacio.herramienta.id);
-  const entrada = ENTRADAS_DE_EMPRESA.find((e) => e.pagina === paginaId);
-  if (entrada !== undefined) return rutaDeEmpresa(entrada.id);
+  const deCuenta = SECCIONES_DE_CUENTA.find((c) => c.pagina === paginaId);
+  if (deCuenta !== undefined) return rutaDeCuenta(deCuenta.id);
   return rutaDe(pagina);
 }
 
@@ -167,22 +168,42 @@ export type CuentaId = "preferencias" | "cuentas" | "empresa" | "carpetas" | "si
 
 // `pagina` es la pantalla que monta la sección (null: la sección no tiene pantalla en `PAGINAS`, como el tamaño de
 // letra). «Administración» se reparte en cuatro secciones: las cuatro nombran su pantalla para que `usable` aplique
-// `administrar_cuentas`; la de carpetas, además, pide `cambiar_caso` (contrato 3), lo que decide quien la ofrezca.
+// `administrar_cuentas`; `ademas` es la acción que una sección pide además de la de su pantalla: «Carpetas» pide también
+// `cambiar_caso` (contrato 3). `ayuda` es la línea corta que lee el buscador.
 export interface CuentaDef {
   id: CuentaId;
   titulo: string;
   pagina: string | null;
+  ademas?: string;
+  ayuda: string;
 }
 
 // «Carpetas» y no «Carpetas de trabajo»: la guardia de jerga prohíbe esa frase en `src/marco/`.
 export const SECCIONES_DE_CUENTA: readonly CuentaDef[] = [
-  { id: "preferencias", titulo: "Pantalla y tamaño de letra", pagina: null },
-  { id: "cuentas", titulo: "Cuentas y permisos", pagina: "administracion" },
-  { id: "empresa", titulo: "Empresa y tema", pagina: "administracion" },
-  { id: "carpetas", titulo: "Carpetas", pagina: "administracion" },
-  { id: "sistema", titulo: "Especialidades, IA e instalación", pagina: "administracion" },
-  { id: "ayuda", titulo: "Ayuda y acerca de Sílice", pagina: "acerca" },
+  { id: "preferencias", titulo: "Pantalla y tamaño de letra", pagina: null, ayuda: "El tamaño de la letra de la pantalla y los datos de su cuenta." },
+  { id: "cuentas", titulo: "Cuentas y permisos", pagina: "administracion", ayuda: "Las cuentas de las personas, sus permisos y los accesos." },
+  { id: "empresa", titulo: "Empresa y tema", pagina: "administracion", ayuda: "Los datos de la empresa, su clave de firma y los colores del programa." },
+  { id: "carpetas", titulo: "Carpetas", pagina: "administracion", ademas: "cambiar_caso", ayuda: "Las carpetas de la instalación: abrir, crear, subir y la demostración." },
+  { id: "sistema", titulo: "Especialidades, IA e instalación", pagina: "administracion", ayuda: "Especialidades, asistente de IA, claves de API y respaldos." },
+  { id: "ayuda", titulo: "Ayuda y acerca de Sílice", pagina: "acerca", ayuda: "La versión y la licencia del programa, y los recorridos guiados." },
 ];
+
+export function esCuenta(segmento: string): segmento is CuentaId {
+  return SECCIONES_DE_CUENTA.some((c) => c.id === segmento);
+}
+
+export function rutaDeCuenta(id: CuentaId): string {
+  return `/cuenta/${id}`;
+}
+
+// Si la cuenta puede usar la sección: la regla de su pantalla (`usable`: permiso, modo entrega y módulos apagados) y, si
+// la sección la pide, la acción de más. Una sección sin pantalla (el tamaño de letra) es de toda cuenta.
+export function cuentaUsable(def: CuentaDef, acciones: readonly string[], modoEntrega: boolean, apagados: readonly string[]): boolean {
+  if (def.ademas !== undefined && !acciones.includes(def.ademas)) return false;
+  if (def.pagina === null) return true;
+  const pagina = paginaPorId(def.pagina);
+  return pagina !== undefined && usable(pagina, acciones, modoEntrega, apagados);
+}
 
 // La primera opción que la cuenta puede usar, o null si no puede ninguna (el espacio entonces no se ofrece, o se abre en
 // la primera definida para mostrar su aviso: lo decide quien enruta). Quien arma entra a Precios por el Catálogo; con

@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../api/tipos";
 import { ContextoAplicacion } from "./contexto";
@@ -38,7 +38,8 @@ describe("Títulos de las páginas migradas", () => {
     vi.unstubAllGlobals();
   });
 
-  for (const pagina of PAGINAS.filter((p) => p.cargar)) {
+  // F6, T6: el h1 de «Administración» lo pone el marco en cada sección de la Cuenta (marco/EspacioDeCuenta), no la pantalla.
+  for (const pagina of PAGINAS.filter((p) => p.id !== "administracion")) {
     test(`${pagina.id}: un solo h1 en heading-04`, async () => {
       const Pagina = (await pagina.cargar!()).default;
       const valor: Aplicacion = {
@@ -67,6 +68,22 @@ describe("Títulos de las páginas migradas", () => {
       if (pagina.id !== "libros") expect(container.querySelector(".silice-pagina")).not.toBeNull();
     });
   }
+
+  test("administracion: la pantalla no pone h1 (lo pone el marco)", async () => {
+    const Pagina = (await PAGINAS.find((p) => p.id === "administracion")!.cargar()).default;
+    const valor: Aplicacion = { sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
+    const { container } = render(
+      <ContextoAplicacion.Provider value={valor}>
+        <MemoryRouter initialEntries={["/cuenta/cuentas"]}>
+          <Routes>
+            <Route path="/cuenta/:seccion" element={<Pagina />} />
+          </Routes>
+        </MemoryRouter>
+      </ContextoAplicacion.Provider>,
+    );
+    expect(container.querySelectorAll("h1")).toHaveLength(0);
+    expect(container.querySelector(".silice-adm")).not.toBeNull();
+  });
 
   test("los h2 de las páginas usan heading-compact-02", () => {
     const malos: string[] = [];

@@ -145,7 +145,9 @@ describe("resultadosDe", () => {
 // F6, T6: «Empresa y personas» y «Ayuda» pasaron a la Cuenta; el buscador ofrece sus secciones por su ruta canónica y solo
 // las que la cuenta puede usar.
 describe("resultadosDe: las secciones de la Cuenta (F6, T6)", () => {
-  const rutas = (texto: string, oferta = COMPLETA) => resultadosDe(texto, [], oferta).map((r) => [r.texto, r.ruta]);
+  // «Carpetas» pide además `cambiar_caso`, que ninguna pantalla exige por sí sola: la cuenta completa la suma.
+  const CON_CARPETAS = ofertaDe([...PAGINAS.flatMap((p) => (p.accion === null ? [] : [p.accion])), "cambiar_caso"], false);
+  const rutas = (texto: string, oferta = CON_CARPETAS) => resultadosDe(texto, [], oferta).map((r) => [r.texto, r.ruta]);
 
   it("encuentra cada sección por su título", () => {
     expect(rutas("tamano de letra")).toContainEqual(["Pantalla y tamaño de letra", "/cuenta/preferencias"]);
@@ -153,6 +155,11 @@ describe("resultadosDe: las secciones de la Cuenta (F6, T6)", () => {
     expect(rutas("empresa y tema")).toContainEqual(["Empresa y tema", "/cuenta/empresa"]);
     expect(rutas("carpetas")).toContainEqual(["Carpetas", "/cuenta/carpetas"]);
     expect(rutas("instalacion")).toContainEqual(["Especialidades, IA e instalación", "/cuenta/sistema"]);
+  });
+
+  it("«Carpetas» no se ofrece a quien administra pero no cambia de carpeta", () => {
+    expect(rutas("carpetas", COMPLETA)).toEqual([]);
+    expect(rutas("carpetas")).toEqual([["Carpetas", "/cuenta/carpetas"]]);
   });
 
   it("a quien no administra solo le ofrece preferencias y ayuda", () => {

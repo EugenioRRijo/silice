@@ -1,4 +1,4 @@
-import { ESPACIOS, espacioDeLaPagina, rutaOPendientes } from "./espacios";
+import { ESPACIOS, espacioDeLaPagina, rutaDeCuenta, rutaOPendientes } from "./espacios";
 import { seccionesDeLaObra } from "./oferta";
 import type { Oferta } from "./oferta";
 import { rutaDeObra } from "./secciones";
@@ -29,7 +29,7 @@ function coincide(palabras: readonly string[], texto: string): boolean {
   return palabras.every((p) => limpio.includes(p));
 }
 
-// Qué se encuentra con el texto escrito: obras, luego sus secciones, luego las entradas de Empresa y por último las
+// Qué se encuentra con el texto escrito: obras, luego sus secciones, luego las secciones de la Cuenta y por último las
 // pantallas de los espacios y las subvistas. Sin texto, las primeras obras de la lista. Nunca más de `MAXIMO_DE_RESULTADOS`. La
 // oferta es obligatoria: sin ella no habría con qué decidir qué puede usar la cuenta. Una ruta no sale dos veces (la
 // sección «Resumen» de una obra lleva a la misma que la obra).
@@ -55,7 +55,8 @@ export function resultadosDe(
         ruta: rutaDeObra(o.carpeta, o.obra_id, s.id),
       })),
     ),
-    ...oferta.entradas.map((e) => ({ texto: e.titulo, detalle: e.ayuda, ruta: rutaOPendientes(e.pagina) })),
+    // La ayuda también las encuentra: «personas» lleva a «Cuentas y permisos».
+    ...oferta.cuenta.map((c) => ({ texto: c.titulo, detalle: c.ayuda, ruta: rutaDeCuenta(c.id), buscable: `${c.titulo} ${c.ayuda}` })),
     ...[...oferta.sueltas, ...oferta.herramientas].map((p) => ({
       texto: p.titulo,
       detalle: p.enUnaLinea,

@@ -222,6 +222,99 @@
   }
 }
 
+// La Cuenta (F6, T6; diseño visual 2.3 y adenda C): su cabecera con la persona y «Salir de la sesión», la pantalla de
+// preferencias y los recorridos guiados de la Ayuda. Solo --silice-* y --cds-*, rem, esquinas rectas (el círculo de las
+// iniciales viene de shell/MenuCuenta.scss).
+.silice-cuenta-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding: 0.75rem 1rem;
+  border-block-end: 1px solid var(--cds-border-subtle);
+  background-color: var(--cds-layer-01);
+
+  &__persona {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-inline-size: 0;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  &__detalle {
+    color: var(--cds-text-secondary);
+  }
+}
+
+.silice-cuenta-seccion {
+  min-inline-size: 0;
+}
+
+.silice-cuenta-preferencias {
+  display: grid;
+  gap: 1.5rem;
+
+  &__bloque {
+    display: grid;
+    gap: 0.75rem;
+    justify-items: start;
+
+    h2,
+    p {
+      margin: 0;
+    }
+  }
+
+  // La muestra de lectura: se ve al instante cómo queda la letra, con la cifra en la fuente de números.
+  &__muestra {
+    padding: 0.75rem 1rem;
+    border-inline-start: 3px solid var(--silice-divisor);
+    background-color: var(--cds-layer-01);
+  }
+
+  &__cifra {
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__datos {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.25rem 1rem;
+    margin: 0;
+
+    dt {
+      color: var(--cds-text-secondary);
+    }
+
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+}
+
+.silice-cuenta-recorridos {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  &__lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
 // Avisos de la obra (ya no existe, abierta en otra pestaña): el texto y la acción, como cualquier pantalla.
 .silice-obra-aviso {
   display: grid;

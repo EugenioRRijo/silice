@@ -1,9 +1,10 @@
-// Las secciones de una obra y las entradas de la zona Empresa del marco nuevo, con sus rutas (plan del rediseño del
-// marco, Tarea 4; especificación 2026-10-26, §8 ter). Cada una monta, por ahora, una pantalla existente por su `id` de
+// Las secciones de una obra del marco nuevo, con sus rutas (plan del rediseño del marco, Tarea 4; especificación
+// 2026-10-26, §8 ter). Cada una monta, por ahora, una pantalla existente por su `id` de
 // `shell/rutas.ts` (patrón estrangulador): `pagina` es ese id. Una sección con `pagina: null` aún no tiene pantalla
 // propia (llega en F4): no se pinta en el árbol ni se abre por enlace, y no hay pantallas «próximamente».
 //
-// Rutas (HashRouter): `#/pendientes`, `#/obra/<carpeta>/<obra>/<sección>[/<subvista>]` y `#/empresa/<entrada>`. La carpeta viaja
+// Rutas (HashRouter): `#/pendientes` y `#/obra/<carpeta>/<obra>/<sección>[/<subvista>]`. Los espacios de la empresa y la
+// Cuenta viven en `espacios.ts`; `#/empresa/<entrada>` quedó solo como dirección vieja que redirige (F6, T6). La carpeta viaja
 // con su .db, que es el nombre que acepta `POST /v1/casos/actual`; la de la empresa se escribe `empresa` (ningún
 // nombre de carpeta puede serlo, porque todos terminan en .db).
 
@@ -29,22 +30,6 @@ export const SECCIONES_DE_OBRA: readonly SeccionDef[] = [
   { id: "riesgo", titulo: "Riesgo", pagina: "riesgo", ayuda: "Cuánto puede subir el presupuesto de la obra si cambian los precios." },
 ];
 
-export type EntradaId = "personas" | "ayuda";
-
-export interface EntradaDef {
-  id: EntradaId;
-  titulo: string;
-  pagina: string;
-  ayuda: string;
-}
-
-// En este orden. Ayuda monta «Acerca de Sílice» hasta que F6 traiga las guías. Precios, Auditoría y Producción dejaron de
-// ser entradas (F6, T4): son espacios con su propia ruta (`espacios.ts`).
-export const ENTRADAS_DE_EMPRESA: readonly EntradaDef[] = [
-  { id: "personas", titulo: "Empresa y personas", pagina: "administracion", ayuda: "Los datos de la empresa, las cuentas de las personas y sus permisos." },
-  { id: "ayuda", titulo: "Ayuda", pagina: "acerca", ayuda: "Cómo hacer cada tarea en Sílice, y la versión y licencia del programa." },
-];
-
 // Busca solo entre las propias (un `id` como «toString» no es sección).
 export function seccionPorId(id: string): SeccionDef | undefined {
   return SECCIONES_DE_OBRA.find((s) => s.id === id);
@@ -66,9 +51,10 @@ export function quedaEnLaHoja(destino: string, carpeta: string | null, obraId: n
 }
 
 export const RUTA_DE_PENDIENTES = "/pendientes";
+// La ruta índice: la marca «Sílice» de la barra de arriba lleva allí, y de allí se va a la primera pantalla (hoy Pendientes).
+export const RUTA_DE_INICIO = "/";
 // El cuarto segmento (`:subvista`) es opcional: sin él, la ruta es la de la pantalla principal de la sección.
 export const PATRON_DE_OBRA = "/obra/:carpeta/:obraId/:seccion/:subvista?";
-export const PATRON_DE_EMPRESA = "/empresa/:entrada";
 const SEGMENTO_DE_LA_EMPRESA = "empresa";
 
 // `subvista` es el `id` de una subvista de la sección (`SUBVISTAS`); vacío o ausente, la pantalla principal.
@@ -81,8 +67,4 @@ export function rutaDeObra(carpeta: string | null, obraId: number, seccion: Secc
 // La carpeta de un segmento ya decodificado (el que da `useParams`): `empresa` es la de la empresa (null).
 export function carpetaDeLaRuta(segmento: string): string | null {
   return segmento === SEGMENTO_DE_LA_EMPRESA ? null : segmento;
-}
-
-export function rutaDeEmpresa(entrada: EntradaId): string {
-  return `/empresa/${entrada}`;
 }

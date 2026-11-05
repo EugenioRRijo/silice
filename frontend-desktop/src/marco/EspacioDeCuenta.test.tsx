@@ -97,13 +97,13 @@ describe("la Cuenta: qué secciones ve cada cuenta (contrato §3)", () => {
   });
 
   test.each([
-    ["quien solo revisa", ACCIONES.rita, "/cuenta/cuentas"],
-    ["quien solo revisa", ACCIONES.rita, "/cuenta/empresa"],
-    ["quien solo revisa", ACCIONES.rita, "/cuenta/sistema"],
-    ["quien solo revisa", ACCIONES.rita, "/cuenta/carpetas"],
-    ["quien arma y cambia de carpeta", ACCIONES.ana, "/cuenta/carpetas"],
-    ["quien administra sin cambiar de carpeta", sinCambiarDeCarpeta, "/cuenta/carpetas"],
-  ])("%s, con %s escrita a mano, ve «Sin permiso» y no la pantalla", async (_, acciones, direccion) => {
+    ["quien solo revisa", ACCIONES.rita, "/cuenta/cuentas", TITULOS.cuentas],
+    ["quien solo revisa", ACCIONES.rita, "/cuenta/empresa", TITULOS.empresa],
+    ["quien solo revisa", ACCIONES.rita, "/cuenta/sistema", TITULOS.sistema],
+    ["quien solo revisa", ACCIONES.rita, "/cuenta/carpetas", TITULOS.carpetas],
+    ["quien arma y cambia de carpeta", ACCIONES.ana, "/cuenta/carpetas", TITULOS.carpetas],
+    ["quien administra sin cambiar de carpeta", sinCambiarDeCarpeta, "/cuenta/carpetas", TITULOS.carpetas],
+  ])("%s, con %s escrita a mano, ve «Sin permiso» y no la pantalla", async (_, acciones, direccion, noOfrecida) => {
     montar({ sesion: conAcciones(acciones), en: direccion });
     expect(await screen.findByText("Sin permiso")).toBeInTheDocument();
     expect(screen.getByText(MENSAJE_SIN_PERMISO)).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe("la Cuenta: qué secciones ve cada cuenta (contrato §3)", () => {
     expect(ruta()).toBe(direccion);
     // La barra sigue arriba con lo que sí puede usar, y la pantalla tiene su único h1.
     const enlaces = within(await barra()).getAllByRole("link");
-    expect(enlaces.map((e) => e.textContent)).not.toContain("Cuentas y permisos");
+    expect(enlaces.map((e) => e.textContent)).not.toContain(noOfrecida);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
@@ -154,7 +154,8 @@ describe("la Cuenta: dirección, cabecera y un solo h1", () => {
     montar({ en: `/cuenta/${id}` });
     const h1 = await screen.findByRole("heading", { level: 1, name: textoDelH1 }, { timeout: 3000 });
     expect(screen.getAllByRole("heading", { level: 1 })).toEqual([h1]);
-    expect(document.title).toBe(`${titulo} · Sílice`);
+    // El título del documento no repite el nombre del producto cuando el título ya lo trae (comun/tituloDelDocumento).
+    expect(document.title).toBe(titulo.includes("Sílice") ? titulo : `${titulo} · Sílice`);
   });
 
   test("ninguna sección dice «módulo», «área», «página», «carpeta de trabajo» ni «Streamlit»", async () => {

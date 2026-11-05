@@ -437,7 +437,8 @@ describe("App", () => {
       await usuario.click(await screen.findByRole("button", { name: "Salir de la sesión" }));
       await screen.findByRole("heading", { name: "Entrar" });
       await volverAEntrar(usuario);
-      await screen.findByText("Ana Pérez");
+      // Se vuelve a la Cuenta (la ruta no cambia al salir): el nombre sale en varios sitios, el enlace de la barra es uno.
+      await screen.findByRole("link", { name: "Cuenta de Ana Pérez" });
       expect(screen.queryByText("El total no coincide")).not.toBeInTheDocument();
     });
 
