@@ -471,9 +471,9 @@ describe("Marco: la obra como espacio de trabajo", () => {
     }
     montar({ en: "/obra/empresa/7/resumen", paginas: ligeras({ obras: ConLaObra, catalogo: ConLaObra }) });
     expect(await screen.findByText("obra elegida: 7")).toBeInTheDocument();
-    await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Pendientes" }));
-    await waitFor(() => expect(ruta()).toBe("/inicio/pendientes"));
-    expect(await titulo("Pendientes")).toBeInTheDocument();
+    await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Vista general" }));
+    await waitFor(() => expect(ruta()).toBe("/inicio/general"));
+    expect(await titulo("Vista general")).toBeInTheDocument();
     await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Precios y catálogo" }));
     await waitFor(() => expect(ruta()).toBe("/precios/catalogo"));
     expect(await screen.findByText("obra elegida: 7")).toBeInTheDocument();
@@ -1012,7 +1012,7 @@ describe("Marco: cuentas sin obras que leer", () => {
     montar({ sesion: admin, en: "/cuenta/ayuda" });
     await titulo("Acerca de Sílice");
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    expect(within(lateral).getByRole("link", { name: "Pendientes" })).toBeInTheDocument();
+    expect(within(lateral).getByRole("link", { name: "Vista general" })).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 30));
     expect(servidor.de("GET", "/v1/obras/todas")).toEqual([]);
     expect(within(lateral).queryByText("No se pudieron cargar las obras")).toBeNull();
@@ -1093,9 +1093,9 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     const u = userEvent.setup();
     montar({ en: "/precios/simulador" });
     await titulo("Simulador de listas");
-    const enlace = within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Pendientes" });
+    const enlace = within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Vista general" });
     await u.click(enlace);
-    await titulo("Pendientes");
+    await titulo("Vista general");
     await new Promise((r) => setTimeout(r, 80));
     expect(enlace).toHaveFocus();
   });

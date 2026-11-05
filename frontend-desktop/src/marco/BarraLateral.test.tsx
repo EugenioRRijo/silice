@@ -237,13 +237,22 @@ describe("BarraLateral: lista plana, la obra abierta y su Resumen (F6, T5)", () 
   });
 });
 
-describe("BarraLateral: Pendientes y «Costos y producción»", () => {
-  it("Pendientes es un enlace a #/inicio/pendientes y está activo en esa ruta", async () => {
-    pintar({ ruta: "/inicio/pendientes" });
+describe("BarraLateral: Vista general y «Costos y producción»", () => {
+  // F6, T8 (diseño visual 3.1, punto 1): la primera entrada es «Vista general», que lleva a Inicio; las dos vistas de Inicio
+  // (Vista general y Pendientes) son del mismo espacio, así que la entrada está activa en cualquiera de ellas.
+  it.each(["/inicio/general", "/inicio/pendientes"])("«Vista general» es un enlace a #/inicio/general y está activo en %s", async (ruta) => {
+    pintar({ ruta });
     await listaDeObras();
-    const enlace = screen.getByRole("link", { name: "Pendientes" });
-    expect(enlace).toHaveAttribute("href", "/inicio/pendientes");
+    const enlace = screen.getByRole("link", { name: "Vista general" });
+    expect(enlace).toHaveAttribute("href", "/inicio/general");
     expect(enlace).toHaveAttribute("aria-current", "page");
+  });
+
+  it("«Vista general» no está activa fuera de Inicio, y ya no hay un enlace llamado «Pendientes» en la barra", async () => {
+    pintar({ ruta: "/obra/empresa/7/resumen" });
+    await listaDeObras();
+    expect(screen.getByRole("link", { name: "Vista general" })).not.toHaveAttribute("aria-current");
+    expect(screen.queryByRole("link", { name: "Pendientes" })).toBeNull();
   });
 
   // F6, T6: «Empresa y personas» y «Ayuda» pasaron a la Cuenta; la zona de abajo es «Costos y producción» (Auditar,
@@ -348,12 +357,12 @@ describe("BarraLateral: teclado de la lista plana (F6, T5)", () => {
     expect(lista.querySelectorAll('[tabindex="-1"]')).toHaveLength(0);
   });
 
-  it("Tab recorre Pendientes, Nueva obra y las obras en orden; Enter abre la obra enfocada", async () => {
+  it("Tab recorre Vista general, Nueva obra y las obras en orden; Enter abre la obra enfocada", async () => {
     const u = userEvent.setup();
     pintar({ ruta: "/inicio/pendientes" });
     await listaDeObras();
     await u.tab();
-    expect(screen.getByRole("link", { name: "Pendientes" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Vista general" })).toHaveFocus();
     await u.tab();
     expect(screen.getByRole("button", { name: "Nueva obra" })).toHaveFocus();
     await u.tab();
@@ -668,30 +677,30 @@ describe("BarraLateral: contadores (rediseño F3)", () => {
     pendiente(SUR, 3, "d"),
   ];
 
-  it("Pendientes lleva una píldora con el total y su nombre accesible dice «Pendientes, 4 por hacer»", async () => {
+  it("Vista general lleva una píldora con el total y su nombre accesible dice «Vista general, 4 por hacer»", async () => {
     pintar({ pendientes: conPendientes(CUATRO) });
     await listaDeObras();
-    const enlace = enlacePendientes("Pendientes, 4 por hacer");
-    expect(enlace).toHaveAttribute("href", "/inicio/pendientes");
+    const enlace = enlacePendientes("Vista general, 4 por hacer");
+    expect(enlace).toHaveAttribute("href", "/inicio/general");
     expect(within(enlace).getByText("4")).toHaveClass("silice-pildora");
   });
 
-  it("con un solo pendiente dice «Pendientes, 1 por hacer»", async () => {
+  it("con un solo pendiente dice «Vista general, 1 por hacer»", async () => {
     pintar({ pendientes: conPendientes([CUATRO[0]!]) });
     await listaDeObras();
-    expect(enlacePendientes("Pendientes, 1 por hacer")).toBeInTheDocument();
+    expect(enlacePendientes("Vista general, 1 por hacer")).toBeInTheDocument();
   });
 
   it.each([
     ["sin ninguno", conPendientes([])],
     ["mientras carga", { estado: "cargando", recargar: vi.fn() } as PendientesDelMarco],
     ["con error", { estado: "error", mensaje: "falló", recargar: vi.fn() } as PendientesDelMarco],
-  ])("%s no hay píldora ni número, y el enlace se llama solo «Pendientes»", async (_caso, pendientes) => {
+  ])("%s no hay píldora ni número, y el enlace se llama solo «Vista general»", async (_caso, pendientes) => {
     pintar({ pendientes });
     await listaDeObras();
-    const enlace = enlacePendientes("Pendientes");
+    const enlace = enlacePendientes("Vista general");
     expect(enlace.querySelector(".silice-pildora")).toBeNull();
-    expect(enlace.textContent).toBe("Pendientes");
+    expect(enlace.textContent).toBe("Vista general");
   });
 
   it("cada obra con pendientes lleva la suya (carpeta y número); la de 0 no lleva ninguna", async () => {

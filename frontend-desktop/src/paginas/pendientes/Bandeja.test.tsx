@@ -132,13 +132,15 @@ function montar({
   sesion = sesionDe("ana"),
   sucio = false,
   inicial = "/inicio/pendientes",
-  ir,
-}: { sesion?: SesionRespuesta; sucio?: boolean; inicial?: string; ir?: string } = {}) {
+  ir = [],
+}: { sesion?: SesionRespuesta; sucio?: boolean; inicial?: string; ir?: string | string[] } = {}) {
   return render(
     <MemoryRouter initialEntries={[inicial]}>
       <Marco sesion={sesion} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras()} />
       <Ubicacion />
-      {ir && <IrA destino={ir} />}
+      {[ir].flat().map((destino) => (
+        <IrA key={destino} destino={destino} />
+      ))}
       {sucio && <FormularioSucio />}
     </MemoryRouter>,
   );
@@ -464,15 +466,15 @@ describe("Pendientes: foco 4, volver después de resolver algo", () => {
     const u = userEvent.setup();
     let pendientes = CUATRO;
     bandeja = () => json({ pendientes, carpetas_omitidas: 0 });
-    montar();
+    montar({ ir: "/inicio/pendientes" });
     await u.click((await opciones())[1]);
     expect(pedidas()).toBe(1);
     await u.click(within(detalle()).getByRole("button", { name: "Abrir el presupuesto" }));
     await screen.findByRole("heading", { level: 1, name: "Presupuesto" }, { timeout: 3000 });
     // En la Hoja se resolvió lo del cemento.
     pendientes = [DEVUELTA, PRECIOS, SIN_APU];
-    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    await u.click(within(lateral).getByRole("link", { name: /^Pendientes/ }));
+    // El enlace de la barra lateral lleva ahora a la Vista general: la bandeja se abre por su dirección.
+    await u.click(screen.getByRole("button", { name: "Ir a /inicio/pendientes" }));
     expect(await screen.findByText("1 bloquea · 2 avisos")).toBeInTheDocument();
     expect(pedidas()).toBe(2);
     expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
@@ -489,10 +491,9 @@ describe("Pendientes: la lectura de la carga inicial no deja datos viejos", () =
       if (veces === 1) return new Promise<Response>((resolver) => (soltarLaPrimera = resolver));
       return json({ pendientes: [PRECIOS], carpetas_omitidas: 0 });
     };
-    montar({ inicial: "/obras" });
+    montar({ inicial: "/obras", ir: "/inicio/pendientes" });
     await waitFor(() => expect(pedidas()).toBe(1));
-    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    await u.click(within(lateral).getByRole("link", { name: /^Pendientes/ }));
+    await u.click(screen.getByRole("button", { name: "Ir a /inicio/pendientes" }));
     // La lectura de antes de entrar se descarta: entrar en Pendientes pide siempre una nueva.
     await waitFor(() => expect(pedidas()).toBe(2));
     // La vieja llega tarde, con datos que ya no valen.
@@ -513,12 +514,11 @@ describe("Pendientes: cuándo no se repite la lectura", () => {
       if (veces === 1) return new Promise<Response>((resolver) => (soltarLaPrimera = resolver));
       return json({ pendientes: [PRECIOS], carpetas_omitidas: 0 });
     };
-    montar({ ir: "/obra/empresa/7/presupuesto" });
+    montar({ ir: ["/obra/empresa/7/presupuesto", "/inicio/pendientes"] });
     await waitFor(() => expect(pedidas()).toBe(1));
     await u.click(screen.getByRole("button", { name: "Ir a /obra/empresa/7/presupuesto" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto"));
-    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    await u.click(within(lateral).getByRole("link", { name: /^Pendientes/ }));
+    await u.click(screen.getByRole("button", { name: "Ir a /inicio/pendientes" }));
     await waitFor(() => expect(pedidas()).toBe(2));
     soltarLaPrimera(json({ pendientes: [CEMENTO], carpetas_omitidas: 0 }));
     expect(within(await lista()).getByText("3 precios con más de 90 días")).toBeInTheDocument();
