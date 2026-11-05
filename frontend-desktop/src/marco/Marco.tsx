@@ -259,13 +259,17 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     // falta excluirlos: `closest` recorre el DOM, donde el portal cuelga del cuerpo del documento y no de este marco, y
     // ningún diálogo lleva enlaces `a[href]`; sus botones no son enlaces. Si alguno los lleva, hay que excluir `.silice-dialogo`.
     const enlace = (e.target as Element).closest("a[href]");
-    // Las pantallas preguntan por su cuenta (useNavegarSeguro, confirmarSalida).
-    if (!enlace || contenido.current?.contains(enlace)) return;
+    if (!enlace) return;
     const href = enlace.getAttribute("href") ?? "";
     const destino = href.startsWith("#") ? href.slice(1) : href;
     if (!destino.startsWith("/") || destino === `${ubicacion.pathname}${ubicacion.search}`) return;
     const carpeta = carpetaDelDestino(destino);
-    if (formulariosSucios(destino).length === 0 && (carpeta === undefined || carpeta === carpetaActual)) return;
+    const cambiaDeCarpeta = carpeta !== undefined && carpeta !== carpetaActual;
+    // Los enlaces del contenido: las pantallas preguntan por su cuenta por lo suyo (useNavegarSeguro, confirmarSalida), pero
+    // nadie pregunta por los borradores de la Hoja cuando el enlace abre una obra de otra carpeta (la Vista general): ese
+    // cambio los olvida en el servidor. Se intercepta solo entonces, y `irSeguro` pregunta una sola vez por todo.
+    const deLaPantalla = contenido.current?.contains(enlace) === true;
+    if (deLaPantalla ? !cambiaDeCarpeta : formulariosSucios(destino).length === 0 && !cambiaDeCarpeta) return;
     e.preventDefault();
     void irSeguro(destino);
   };
@@ -358,8 +362,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                 <Suspense fallback={<EsqueletoPagina />}>
                   <Routes>
                     {/* Inicio (F6, T8): la app abre en la Vista general; `/pendientes` es el nombre de antes de F6. */}
-                    <Route index element={<Navigate to={RUTA_DE_VISTA_GENERAL} replace />} />
-                    <Route path={RUTA_VIEJA_DE_PENDIENTES} element={<PendientesViejos />} />
+                    <Route index element={<ALaVistaGeneral />} />
+                    <Route path={RUTA_VIEJA_DE_PENDIENTES} element={<APendientes />} />
                     <Route path="/inicio" element={<RaizDeInicio />} />
                     <Route
                       path="/inicio/:vista"
@@ -420,7 +424,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                           element={<RutaVieja pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
                         />
                       ))}
-                    <Route path="*" element={<Navigate to={RUTA_DE_VISTA_GENERAL} replace />} />
+                    <Route path="*" element={<ALaVistaGeneral />} />
                   </Routes>
                 </Suspense>
               </LimiteDeError>
@@ -438,7 +442,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
 
 // La pantalla con su permiso: la que la cuenta no puede usar dice por qué (la API también la rechazaría).
 function PantallaDeRuta({ pagina, acciones, modoEntrega, apagados }: { pagina: PaginaDef | undefined; acciones: readonly string[]; modoEntrega: boolean; apagados: readonly string[] }) {
-  if (!pagina) return <Navigate to={RUTA_DE_PENDIENTES} replace />;
+  if (!pagina) return <APendientes />;
   // Una pantalla de una especialidad apagada lo dice (a quien sí podría usarla); las demás, «Sin permiso».
   if (!usable(pagina, acciones, modoEntrega, apagados) && usable(pagina, acciones, modoEntrega)) return <AvisoApagada />;
   if (!usable(pagina, acciones, modoEntrega)) return <AvisoSinPermiso />;
@@ -464,11 +468,17 @@ function EntradaDeEmpresa() {
   const { entrada: id } = useParams();
   const { search } = useLocation();
   const destino = id !== undefined && Object.hasOwn(ENTRADAS_MOVIDAS, id) ? ENTRADAS_MOVIDAS[id] : undefined;
-  return <Navigate to={destino === undefined ? RUTA_DE_PENDIENTES : `${destino}${search}`} replace />;
+  return <Navigate to={`${destino ?? RUTA_DE_PENDIENTES}${search}`} replace />;
 }
 
-// `#/pendientes` (la dirección de antes de F6) va a la bandeja en Inicio, con replace y conservando la consulta.
-function PendientesViejos() {
+// Las redirecciones al inicio conservan la consulta (contrato de rutas §1), como las demás de este archivo.
+function ALaVistaGeneral() {
+  const { search } = useLocation();
+  return <Navigate to={`${RUTA_DE_VISTA_GENERAL}${search}`} replace />;
+}
+
+// Lleva a la bandeja en Inicio. También es `#/pendientes`, la dirección de antes de F6.
+function APendientes() {
   const { search } = useLocation();
   return <Navigate to={`${RUTA_DE_PENDIENTES}${search}`} replace />;
 }

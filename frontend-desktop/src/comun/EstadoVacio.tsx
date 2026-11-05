@@ -12,9 +12,11 @@ interface Props {
 
 export function EstadoVacio({ titulo, nivel, descripcion, children }: Props) {
   const Titulo = nivel === undefined ? "p" : (`h${nivel}` as const);
+  // El aviso que sustituye a la pantalla (nivel 1) es su h1 y lleva el tamaño de todos los h1 de pantalla.
+  const tamano = nivel === 1 ? "cds--type-heading-04" : "cds--type-heading-compact-01";
   return (
     <div className="silice-vacio">
-      <Titulo className="silice-vacio__titulo cds--type-heading-compact-01">{titulo}</Titulo>
+      <Titulo className={`silice-vacio__titulo ${tamano}`}>{titulo}</Titulo>
       {descripcion && <p className="silice-vacio__texto cds--type-body-compact-01">{descripcion}</p>}
       {children}
     </div>

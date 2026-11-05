@@ -891,7 +891,7 @@ describe("Marco: cambiar de obra con cambios sin guardar (foco 5)", () => {
     montar({ en: "/inicio/general", paginas: ligeras({ inicio: VistaConEnlaces }) });
     await u.click(await screen.findByRole("link", { name: "Galpón Sur desde la vista" }));
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
-    await u.click(within(pregunta).getByRole("button", { name: "Salir y descartar" }));
+    await u.click(within(pregunta).getByRole("button", { name: "Cambiar y descartar" }));
     await waitFor(() => expect(ruta()).toBe("/obra/Carpeta%20Sur.db/3/resumen"));
     await waitFor(() => expect(servidor.de("POST", "/v1/casos/actual").map((l) => l.cuerpo)).toEqual([{ nombre: SUR }]));
   });
