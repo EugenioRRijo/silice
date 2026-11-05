@@ -253,6 +253,61 @@ def test_insumos_vacios_son_todos(motor, insumos) -> None:
     assert [f["insumo"] for f in r.json()["filas"]] == ORDEN
 
 
+def _con_tubo(motor) -> None:
+    """Un cuarto insumo cuya descripción lleva una coma (dato ficticio)."""
+    with abrir_sesion(motor) as sesion:
+        lista = sesion.scalars(select(models.ListaPrecios)).one()
+        tubo = models.Insumo(
+            codigo="MAT-903", tipo="material", descripcion="Tubo ficticio, 4 pulgadas", unidad="m"
+        )
+        sesion.add(tubo)
+        sesion.flush()
+        sesion.add(models.PrecioInsumo(lista_id=lista.id, insumo_id=tubo.id, precio=Decimal("7")))
+        sesion.commit()
+
+
+@pytest.mark.parametrize("ruta", [RUTA, RUTA_CSV])
+def test_los_insumos_tambien_viajan_como_lista_y_admiten_la_coma(motor, ruta) -> None:
+    """Una lista nombra cada descripción entera: «Tubo ficticio, 4 pulgadas» entra aunque lleve
+    coma. Oráculo a mano, con variación 0: 30,005 -> 30.00 y 7 -> 7.00, en orden alfabético."""
+    _con_tubo(motor)
+    _usar(motor)
+    cuerpo = _cuerpo(variacion_max="0", insumos=["Tubo ficticio, 4 pulgadas", " Arena lavada "])
+    r = _con_clave().post(ruta, json=cuerpo)
+    assert r.status_code == 200, r.text
+    filas = [
+        {"tipo": "material", "insumo": "Arena lavada", "unidad": "m3", "precio": "30.00"},
+        {
+            "tipo": "material",
+            "insumo": "Tubo ficticio, 4 pulgadas",
+            "unidad": "m",
+            "precio": "7.00",
+        },
+    ]
+    if ruta == RUTA:
+        assert r.json() == {"filas": filas}
+    else:
+        assert r.text.splitlines()[1:] == [
+            "material,Arena lavada,m3,30.00",
+            'material,"Tubo ficticio, 4 pulgadas",m,7.00',
+        ]
+
+
+def test_el_texto_separado_por_comas_sigue_partiendo_por_la_coma(motor) -> None:
+    """Sin romper lo de antes: en el texto, la coma separa; ese tubo no se puede nombrar así."""
+    _con_tubo(motor)
+    _usar(motor)
+    r = _con_clave().post(RUTA, json=_cuerpo(insumos="Tubo ficticio, 4 pulgadas"))
+    assert (r.status_code, r.json()) == (200, {"filas": []})
+
+
+@pytest.mark.parametrize("insumos", [[], ["", "  "]])
+def test_una_lista_vacia_son_todos(motor, insumos) -> None:
+    _usar(motor)
+    r = _con_clave().post(RUTA, json=_cuerpo(insumos=insumos))
+    assert [f["insumo"] for f in r.json()["filas"]] == ORDEN
+
+
 def test_filtro_que_no_coincide_con_nada_da_filas_vacias_con_200(motor) -> None:
     _usar(motor)
     r = _con_clave().post(RUTA, json=_cuerpo(insumos="Insumo inexistente"))
@@ -350,7 +405,8 @@ def test_variacion_vacia_no_es_decimal(motor) -> None:
 
 
 @pytest.mark.parametrize(
-    "campo", [{"variacion_max": 5}, {"variacion_max": 5.5}, {"insumos": 7}, {"insumos": ["Arena"]}]
+    "campo",
+    [{"variacion_max": 5}, {"variacion_max": 5.5}, {"insumos": 7}, {"insumos": [7]}],
 )
 def test_tipos_erroneos_dan_422(motor, campo) -> None:
     _usar(motor)

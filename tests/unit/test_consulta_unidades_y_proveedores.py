@@ -62,8 +62,16 @@ def _insumo(codigo: str, unidad: str | None, tipo: str = "material") -> models.I
 
 def _sembrar(s: Session) -> None:
     """Unidades: m3 ×3 (tres grafías), saco ×2, kg ×1, h ×1 (de «hora»), glb ×1 (desconocida, sin
-    traducir); un insumo sin unidad y otro con la unidad en blanco no cuentan. Proveedores: la
-    ferretería dos veces (con y sin acentos), la bloquera una."""
+    traducir); un insumo sin unidad y otro con la unidad en blanco no cuentan.
+
+    Proveedores (diseño §13: solo las cotizaciones **activas**, las de la lista de la versión
+    vigente de cada obra, la de mayor id no descartada, como `core.budget.version_vigente`):
+
+    - Obra A: la 001 con la lista de julio (la ferretería y la cantera) y la 002 con la de agosto
+      (la ferretería dos veces, con y sin acentos). La 002 retiró la cantera: no se ofrece.
+    - Obra B: la 001 con la lista de setiembre (la bloquera) y la 002, descartada, con la de una
+      «Distribuidora Descartada»: no se ofrece.
+    - Una lista sin ninguna versión, con un «Proveedor Suelto»: no se ofrece."""
     s.add_all(
         [
             _partida("P-1", "m3"),
@@ -79,15 +87,45 @@ def _sembrar(s: Session) -> None:
         ]
     )
     s.flush()
-    julio = models.ListaPrecios(
-        nombre="Lista ficticia de julio", moneda="Bs", fecha_vigencia=date(2026, 7, 1)
-    )
-    agosto = models.ListaPrecios(
-        nombre="Lista ficticia de agosto", moneda="Bs", fecha_vigencia=date(2026, 8, 1)
-    )
-    s.add_all([julio, agosto])
+
+    def lista(nombre: str, vigencia: date) -> models.ListaPrecios:
+        return models.ListaPrecios(nombre=nombre, moneda="Bs", fecha_vigencia=vigencia)
+
+    julio = lista("Lista ficticia de julio", date(2026, 7, 1))
+    agosto = lista("Lista ficticia de agosto", date(2026, 8, 1))
+    setiembre = lista("Lista ficticia de setiembre", date(2026, 9, 1))
+    descartada = lista("Lista ficticia descartada", date(2026, 9, 15))
+    suelta = lista("Lista ficticia sin versión", date(2026, 9, 20))
+    obra_a = models.Proyecto(nombre="Obra ficticia A")
+    obra_b = models.Proyecto(nombre="Obra ficticia B")
+    s.add_all([julio, agosto, setiembre, descartada, suelta, obra_a, obra_b])
     s.flush()
     insumos = {i.codigo: i.id for i in s.query(models.Insumo)}
+
+    def version(obra: models.Proyecto, codigo: str, de: models.ListaPrecios) -> models.Presupuesto:
+        return models.Presupuesto(
+            codigo=codigo,
+            proyecto_id=obra.id,
+            fecha=de.fecha_vigencia,
+            moneda="Bs",
+            lista_precios_id=de.id,
+            fcas=Decimal("6"),
+            bono_alimentacion=Decimal("1"),
+            administracion=Decimal("0.15"),
+            utilidad=Decimal("0.10"),
+        )
+
+    descartada_b = version(obra_b, "002", descartada)
+    s.add_all(
+        [
+            version(obra_a, "001", julio),
+            version(obra_a, "002", agosto),
+            version(obra_b, "001", setiembre),
+            descartada_b,
+        ]
+    )
+    s.flush()
+    s.add(models.DescarteVersion(presupuesto_id=descartada_b.id, fecha=date(2026, 9, 16)))
 
     def cotizacion(
         lista: models.ListaPrecios, insumo: str, proveedor: str, fecha: date
@@ -104,8 +142,12 @@ def _sembrar(s: Session) -> None:
     s.add_all(
         [
             cotizacion(julio, "MAT-1", "Ferretería Demo, C.A.", date(2026, 7, 10)),
-            cotizacion(julio, "MAT-2", "Bloquera Ficticia", date(2026, 8, 20)),
+            cotizacion(julio, "MAT-2", "Cantera Retirada", date(2026, 9, 25)),
+            cotizacion(agosto, "MAT-2", "Ferretería Demo, C.A.", date(2026, 7, 10)),
             cotizacion(agosto, "MAT-1", "  ferreteria demo, c.a. ", date(2026, 9, 5)),
+            cotizacion(setiembre, "MAT-1", "Bloquera Ficticia", date(2026, 8, 20)),
+            cotizacion(descartada, "MAT-1", "Distribuidora Descartada", date(2026, 9, 30)),
+            cotizacion(suelta, "MAT-1", "Proveedor Suelto", date(2026, 10, 1)),
         ]
     )
     s.commit()
@@ -152,6 +194,16 @@ def test_unidades_agrupadas_con_la_tabla_de_alias_y_contadas(base: Session) -> N
 def test_proveedores_sin_repetir_con_su_ultimo_uso(base: Session) -> None:
     _sembrar(base)
     assert proveedores_usados(base) == PROVEEDORES
+
+
+def test_solo_se_ofrecen_los_proveedores_de_cotizaciones_activas(base: Session) -> None:
+    """Diseño §13: una cotización retirada (su obra ya va por otra versión sin ella), la de una
+    versión descartada o la de una lista que ninguna versión usa no sugieren su proveedor, aunque
+    sean más recientes que las activas."""
+    _sembrar(base)
+    nombres = {p.proveedor for p in proveedores_usados(base)}
+    assert nombres == {"ferreteria demo, c.a.", "Bloquera Ficticia"}
+    assert not {"Cantera Retirada", "Distribuidora Descartada", "Proveedor Suelto"} & nombres
 
 
 # --- API ----------------------------------------------------------------------------------------

@@ -29,10 +29,12 @@ from pathlib import Path
 import openpyxl
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import reajuste as ruta_reajuste
+from aplicacion import control as logica_control
 from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
@@ -424,21 +426,28 @@ def test_las_partidas_de_la_version_son_las_del_contrato() -> None:
         "version": "001",
         "aviso": "",
         "partidas": [{"codigo": "S1-R01", "descripcion": "Partida ficticia", "unidad": "m3"}],
+        "truncada": False,
     }
     assert r.headers.get("cache-control") == "no-store"
 
 
-def test_las_partidas_de_una_version_o_un_proyecto_inexistentes_son_404() -> None:
+def test_las_partidas_de_una_version_o_un_proyecto_inexistentes_son_404_fijos() -> None:
+    """H-17 del diseño: el 404 de las rutas nuevas es un texto fijo que no repite lo pedido."""
     navegador, _ = _ana()
     sin_version = navegador.get(
-        "/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "009"}
+        "/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "V<b>009"}
     )
     assert sin_version.status_code == 404
-    assert sin_version.json()["detalle"] == SIN_VERSION
+    assert sin_version.json()["detalle"] == "El proyecto no tiene esa versión."
+    assert "009" not in sin_version.text
+    assert sin_version.headers.get("cache-control") == "no-store"
     sin_proyecto = navegador.get(
-        "/v1/reajuste/partidas", params={"proyecto": "NO", "version": "001"}
+        "/v1/reajuste/partidas", params={"proyecto": "Obra<b>inventada", "version": "001"}
     )
     assert sin_proyecto.status_code == 404
+    assert sin_proyecto.json()["detalle"] == "El proyecto no existe en este caso."
+    assert "inventada" not in sin_proyecto.text
+    assert sin_proyecto.headers.get("cache-control") == "no-store"
     assert navegador.get("/v1/reajuste/partidas", params={"proyecto": NOMBRE}).status_code == 422
 
 
@@ -494,3 +503,45 @@ def test_sin_series_importadas_la_lista_esta_vacia_y_no_es_error(_entorno: Path)
     navegador, _ = _ana()
     r = navegador.get("/v1/reajuste/series")
     assert (r.status_code, r.json()) == (200, [])
+
+
+@pytest.mark.parametrize(
+    ("ruta", "params", "funcion", "mensaje"),
+    [
+        (
+            "/v1/reajuste/partidas",
+            {"proyecto": NOMBRE, "version": "001"},
+            "partidas_de_la_version",
+            "No se pudieron leer las partidas del contrato de la carpeta de trabajo.",
+        ),
+        (
+            "/v1/reajuste/series",
+            {},
+            "series_de_indices",
+            "No se pudieron leer las series de índices de la carpeta de trabajo.",
+        ),
+    ],
+)
+def test_un_fallo_de_la_base_en_las_ayudas_es_503_fijo(
+    monkeypatch: pytest.MonkeyPatch, ruta: str, params: dict, funcion: str, mensaje: str
+) -> None:
+    def falla(*_args, **_kwargs):
+        raise OperationalError("SELECT secreto FROM serie_indice", {}, Exception("disco"))
+
+    monkeypatch.setattr(ruta_reajuste.logica, funcion, falla)
+    navegador, _ = _ana()
+    r = navegador.get(ruta, params=params)
+    assert r.status_code == 503
+    assert r.json()["detalle"] == mensaje
+    assert "SELECT" not in r.text and "secreto" not in r.text
+    assert r.headers.get("cache-control") == "no-store"
+
+
+def test_la_lista_de_partidas_recortada_lo_dice(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Con el tope en 0 no cabe ni la única partida de la 001: `truncada` lo dice."""
+    monkeypatch.setattr(logica_control, "MAXIMO_DE_PARTIDAS_DEL_CONTRATO", 0)
+    navegador, _ = _ana()
+    cuerpo = navegador.get(
+        "/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "001"}
+    ).json()
+    assert (cuerpo["partidas"], cuerpo["truncada"]) == ([], True)

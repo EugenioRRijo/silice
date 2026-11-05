@@ -21,6 +21,7 @@ from api import caso_web, dependencias
 from api.main import manejar_http_exception
 from api.proteccion import proteger
 from api.rutas import consulta, sesion
+from aplicacion.consulta import Sugerencia
 from aplicacion.listas_para_armar import declarar_moneda_de_la_carpeta
 from core import models
 from core.catalog import abrir_sesion, crear_motor
@@ -243,3 +244,32 @@ def test_el_administrador_sigue_sin_acceso_con_la_fecha() -> None:
     admin = con_cuenta(APLICACION, "admin")[0]
     r = admin.get("/v1/consulta/insumos", params={"q": "cemento", "para_armar_al": "2026-08-15"})
     assert r.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("guardado", "viaja"), [("1E+2", "100"), ("0E+2", "0"), ("18.00", "18.00")]
+)
+def test_el_precio_viaja_en_decimal_con_punto_nunca_en_notacion_cientifica(
+    ana: TestClient, monkeypatch: pytest.MonkeyPatch, guardado: str, viaja: str
+) -> None:
+    """`Decimal` puede llegar con exponente desde la base (`Decimal("1E+2")`): `str` lo dejaría en
+    «1E+2», que el navegador no lee como cifra. Oráculo a mano: 1E+2 = 100 y 0E+2 = 0."""
+
+    def una(*_args, **_kwargs) -> list[Sugerencia]:
+        return [
+            Sugerencia(
+                valor="MAT-1",
+                etiqueta="Cemento gris ficticio (MAT-1, saco)",
+                fuente="Catálogo de la carpeta de trabajo: material",
+                descripcion="Cemento gris ficticio",
+                unidad="saco",
+                precio=Decimal(guardado),
+                moneda="Bs",
+                fecha_precio=date(2026, 7, 1),
+            )
+        ]
+
+    monkeypatch.setattr(consulta, "buscar", una)
+    r = ana.get("/v1/consulta/insumos", params={"q": "cemento", "para_armar_al": "2026-08-15"})
+    assert r.status_code == 200
+    assert r.json()["resultados"][0]["precio"] == viaja
