@@ -13,10 +13,10 @@ puede escribir ni hacer commits (sus permisos siguen en solo lectura), devuelve 
 
 | Quién | Qué hace | Desde |
 |---|---|---|
-| Claude | Lanzar T8 (Vista general) | 2026-11-05 |
+| Claude | T9: cierre de F6 | 2026-11-05 |
 | Antigravity (Gemini 4 Argon) | **Sin cuota por ~6,6 días** desde el 2026-11-04 | — |
 | Antigravity (Gemini 3.8 Flash) | Disponible: arbitra tareas chicas con encargo acotado y redacta textos | — |
-| Antigravity (Claude Opus/Sonnet) | **Sin cuota** hasta ~4 h 25 min después de las 16:20 del 2026-11-04 (`Individual quota reached`). Por eso T7 la termina el subagente (decisión de Eugenio) | — |
+| Antigravity (Claude Opus/Sonnet) | **Sin cuota** otra vez desde el 2026-11-05 (~141 h, hasta ~2026-11-11). T8 la revisó en su lugar `silice-rev-diseno` | — |
 | Claude | Verifica cada entrega y vigila la CI del #102 | 2026-11-04 |
 
 ## Tareas
@@ -33,7 +33,7 @@ puede escribir ni hacer commits (sus permisos siguen en solo lectura), devuelve 
 | T5 Obra y barra lateral (cierre A) | subagente `silice-frontend` | `c0edbfff` (156 fallan: sin lista de obras, sin barra de la obra, sin subvistas) | `5fa8f3fa` (suite completa del front 3.871/3.871; lint y build limpios) | [Flash: APROBADO, sin hallazgos](arbitrajes/f6-T5-flash.md) · [Opus: APROBADO, 4 menores](arbitrajes/f6-T5-opus.md) | En vivo (Chromium, 1366×768, ana): 9 secciones, conmutador «Partidas \| Componer», 1 h1, sin desplazamiento horizontal. Las partidas empiezan a 1.003 px (Normal) y 1.663 px (Muy grande): la causa principal es la cabecera de la página Presupuesto, que ya venía de F4; F6 suma ~50 px. Hallazgo de diseño: dos «Partidas» (conmutador y pestaña de abajo): Eugenio decidió que el conmutador diga «Presupuesto». Los 4 menores de Opus van al ajuste tras T6 | ✔ |
 | T6 Cuenta | subagente `silice-frontend` | `e5779b9b` (la Cuenta, la barra superior sin migas y salir sin 401) | `dbff51ac` (suite completa del front 3.941/3.941 en 255 archivos, corrida el 2026-11-05; lint 0) | [Flash: APROBADO, sin hallazgos](arbitrajes/f6-T6-flash.md) | De acuerdo. Claude revisó las dos pruebas cambiadas en el verde (`estilosLetra.test.ts` sustituye la raya que T6 quita por la de la persona activa; `busqueda.test.ts` suma un caso de Carpetas sin `cambiar_caso`): ninguna se debilita | ✔ |
 | Ajuste de menores T5/T6 | subagente `silice-frontend` (front) y Claude (texto del 422 en `api/`) | `1314ec18` (28 de 361 fallan por falta de la funcionalidad) y `9ef7b79c` | `f72e833e`, `694dccbf`, `d3bcc967` (una prueba de la Hoja que aún buscaba «Partidas»). Suite completa del front 3.955/3.957 y lint 0: las 2 caídas eran esa prueba y `Retomar.test.tsx` por carga (32/32 suelta); `paginas/hoja` 727/727 tras el arreglo. Pytest completo: 2 caídas por el reloj (abajo), arregladas en `a0ecedec` | [Flash: APROBADO, sin hallazgos](arbitrajes/f6-menores-T5-T6-flash.md) | De acuerdo. «Presupuesto» en el conmutador (decisión de Eugenio), pendientes que abren su subvista, `esClicSimple` único, textos que mandan a la Cuenta, §2.4 y adenda A.1 enmendados | ✔ |
-| T8 Vista general | — | — | — | — | — | pendiente |
+| T8 Vista general | subagente `silice-frontend` (Vista general y barra lateral); Claude (`etapa_texto` en la cartera) | `878e17a7` (75 fallan: falta la pantalla «inicio» y las rutas `/inicio/*`), `8677d365` (13 fallan: la barra lateral aún decía «Pendientes») y `9df873ad` | `ce42995e`, `534040e0` y `23730433`. Suite completa del front 4.000/4.000 en 256 archivos, lint 0, build y `verificar_dist` (14,4 MB de 15) limpios | [Flash: APROBADO, sin hallazgos](arbitrajes/f6-T8-flash.md) · [Revisor de diseño de Claude: APROBADO, 3 menores](arbitrajes/f6-T8-rev-diseno.md) (sustituye a Opus en Antigravity, sin cuota ~141 h; menos independiente) | De acuerdo. Menor 1 (tabla de etapas repetida en el cliente) arreglado en `23730433`. Menores 2 (contraste del ícono «Aviso», token de DESIGN) y 3 (barras de 3 px con letra Muy grande) se miden en la pasada de navegador de T9. Para T9: anotar en el plan y el contrato `FranjaDeCifras` y la pantalla 32.ª «inicio» | ✔ |
 | T9 Cierre (cierre B) | — | — | — | — | — | pendiente |
 
 
