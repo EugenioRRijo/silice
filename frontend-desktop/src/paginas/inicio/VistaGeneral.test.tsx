@@ -76,6 +76,7 @@ const DOS_MONEDAS = {
       nombre: "Casa Demo",
       moneda: "Bs",
       etapa: "en_ejecucion",
+      etapa_texto: "En ejecución",
       total: "334570.5",
       avance_real: "62.5",
       avance_plan: "70.0",
@@ -87,6 +88,7 @@ const DOS_MONEDAS = {
       nombre: "Torre B",
       moneda: "Bs",
       etapa: "en_elaboracion",
+      etapa_texto: "En elaboración",
       total: null,
       avance_real: null,
       avance_plan: null,
@@ -98,6 +100,7 @@ const DOS_MONEDAS = {
       nombre: "Galpón Sur",
       moneda: "USD",
       etapa: "atrasada",
+      etapa_texto: "Atrasada",
       total: "95066.6",
       avance_real: "10.0",
       avance_plan: "25.5",
@@ -321,6 +324,15 @@ describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
     expect(galpon).toHaveTextContent("Atrasada");
     expect(galpon).toHaveTextContent("95.066,60 USD");
     expect(galpon).toHaveTextContent("Real 10,0 % · Plan 25,5 %");
+  });
+
+  test("el texto de la etapa sale del servidor (etapa_texto), no de una tabla de la interfaz", async () => {
+    const obras = DOS_MONEDAS.obras.map((o) => (o.obra_id === 7 ? { ...o, etapa_texto: "En ejecución desde octubre" } : o));
+    cartera = () => json({ ...DOS_MONEDAS, obras });
+    montar();
+    const t = await tabla();
+    const casa = (await t.findByRole("link", { name: "Casa Demo" })).closest("tr")!;
+    expect(casa).toHaveTextContent("En ejecución desde octubre");
   });
 
   test("la obra sin avance dice «Sin avance» y la sin versión, «Sin versión»", async () => {

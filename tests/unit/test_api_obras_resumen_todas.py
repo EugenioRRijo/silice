@@ -177,6 +177,17 @@ def _sin_cache(respuesta) -> None:
     assert respuesta.headers.get("cache-control") == "no-store", respuesta.headers
 
 
+#: El texto de cada etapa, escrito a mano (el mismo que da el Resumen de la obra): la cartera lo manda
+#: para que la interfaz no repita la tabla (F6, T8, menor 1 del revisor de diseño).
+TEXTO_DE_ETAPA = {
+    "en_elaboracion": "En elaboración",
+    "en_aprobacion": "En aprobación",
+    "aprobada": "Aprobada",
+    "en_ejecucion": "En ejecución",
+    "atrasada": "Atrasada",
+}
+
+
 def _obra(carpeta, titulo, obra_id, nombre, moneda, etapa, total, real, plan) -> dict:
     return {
         "carpeta": carpeta,
@@ -185,6 +196,7 @@ def _obra(carpeta, titulo, obra_id, nombre, moneda, etapa, total, real, plan) ->
         "nombre": nombre,
         "moneda": moneda,
         "etapa": etapa,
+        "etapa_texto": TEXTO_DE_ETAPA[etapa],
         "total": total,
         "avance_real": real,
         "avance_plan": plan,
