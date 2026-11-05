@@ -2,38 +2,59 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { olvidarInsumosDelCatalogo } from "./cliente";
 import { TablaInsumos } from "./TablaInsumos";
 import { agregarFila, borrarFila, completarFila, editarCelda, tablasVacias } from "./tablas";
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 
-// AC1 (pedido de Eugenio, 2026-10-21): la descripción de cada fila es un campo con sugerencias del catálogo. Montos y
-// textos ficticios; la API es un `fetch` falso que responde como `GET /v1/consulta/{tabla}` y `GET /insumos`.
+// AC1 (pedido de Eugenio, 2026-10-21): la descripción de cada fila es un campo con sugerencias del catálogo. AC1b: el precio
+// que se llena es el de la lista para armar a la fecha de la composición, con su moneda, y llega en la misma respuesta de
+// `GET /v1/consulta/{tabla}`; nunca el de la lista vigente de `GET /insumos`. Montos y textos ficticios; la API es un
+// `fetch` falso con la forma de `api/rutas/consulta.py`.
 
 const MODALIDADES = ["JORNAL", "DESTAJO"];
 const AVISO = "Descripción propia: no viene del catálogo.";
+const FECHA = "2026-08-15";
 
+// `precio` es el de la lista para armar a FECHA; `vigente`, el de la lista vigente hoy (lo que da `GET /insumos`): son
+// distintos a propósito para que la prueba sepa de dónde salió el precio.
 const CATALOGO = [
-  { codigo: "MAT-1", descripcion: "Cemento gris ficticio", tipo: "material", unidad: "saco", precio_vigente: "18.00" },
-  { codigo: "MAT-2", descripcion: "Cemento blanco ficticio", tipo: "material", unidad: null, precio_vigente: null },
-  { codigo: "EQ-1", descripcion: "Mezcladora ficticia", tipo: "equipo", unidad: "h", precio_vigente: "2000" },
-  { codigo: "MO-1", descripcion: "Albañil ficticio", tipo: "mano_obra", unidad: null, precio_vigente: "12.3400" },
+  { codigo: "MAT-1", descripcion: "Cemento gris ficticio", tipo: "material", unidad: "saco", precio: "18.00", vigente: "25.50" },
+  { codigo: "MAT-2", descripcion: "Cemento blanco ficticio", tipo: "material", unidad: null, precio: null, vigente: null },
+  { codigo: "EQ-1", descripcion: "Mezcladora ficticia", tipo: "equipo", unidad: "h", precio: "2000", vigente: "2500" },
+  { codigo: "MO-1", descripcion: "Albañil ficticio", tipo: "mano_obra", unidad: null, precio: "12.3400", vigente: "15" },
 ];
 const TIPOS_DE: Record<string, string[]> = { insumos: ["material", "equipo"], salarios_cct: ["mano_obra"] };
 
 let llamadas: string[];
-let catalogoFalla: boolean;
 let estadoDeConsulta: number;
+// La moneda de la lista para armar (la carpeta trabaja en Bs): en USD el servidor no manda el precio y sí el aviso.
+let monedaDeLaLista: "Bs" | "USD";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
 }
 
+function sugerencia(i: (typeof CATALOGO)[number], params: URLSearchParams) {
+  const base = {
+    valor: i.codigo,
+    etiqueta: `${i.descripcion} (${i.codigo}${i.unidad ? `, ${i.unidad}` : ""})`,
+    fuente: `Catálogo de la carpeta de trabajo: ${i.tipo.replace("_", " ")}`,
+  };
+  const fecha = params.get("para_armar_al");
+  if (params.get("detalle") !== "true" && fecha === null) return base;
+  const detalle = { ...base, descripcion: i.descripcion, ...(i.unidad ? { unidad: i.unidad } : {}) };
+  if (fecha === null || i.precio === null) return detalle;
+  if (monedaDeLaLista === "USD") {
+    const columna = i.tipo === "mano_obra" ? "sueldo" : "precio";
+    return { ...detalle, moneda: "USD", fecha_precio: "2026-07-01", aviso_precio: `El catálogo lo tiene en USD; escriba el ${columna} en Bs.` };
+  }
+  return { ...detalle, precio: i.precio, moneda: "Bs", fecha_precio: "2026-07-01" };
+}
+
 beforeEach(() => {
   llamadas = [];
-  catalogoFalla = false;
   estadoDeConsulta = 200;
-  olvidarInsumosDelCatalogo();
+  monedaDeLaLista = "Bs";
   vi.stubGlobal(
     "fetch",
     vi.fn((ruta: string) => {
@@ -41,23 +62,18 @@ beforeEach(() => {
       const consulta = /^\/v1\/consulta\/(\w+)\?(.*)$/.exec(ruta);
       if (consulta) {
         if (estadoDeConsulta !== 200) return Promise.resolve(json({ detalle: "Sin sesión." }, estadoDeConsulta));
-        const q = (new URLSearchParams(consulta[2]).get("q") ?? "").toLowerCase();
+        const params = new URLSearchParams(consulta[2]);
+        const q = (params.get("q") ?? "").toLowerCase();
         const halladas = CATALOGO.filter(
           (i) => TIPOS_DE[consulta[1]]?.includes(i.tipo) && i.descripcion.toLowerCase().includes(q),
         );
+        return Promise.resolve(json({ tabla: consulta[1], hay_mas: false, resultados: halladas.map((i) => sugerencia(i, params)) }));
+      }
+      if (ruta === "/insumos") {
         return Promise.resolve(
-          json({
-            tabla: consulta[1],
-            hay_mas: false,
-            resultados: halladas.map((i) => ({
-              valor: i.codigo,
-              etiqueta: `${i.descripcion} (${i.codigo}${i.unidad ? `, ${i.unidad}` : ""})`,
-              fuente: `Catálogo de la carpeta de trabajo: ${i.tipo.replace("_", " ")}`,
-            })),
-          }),
+          json(CATALOGO.map((i) => ({ codigo: i.codigo, descripcion: i.descripcion, tipo: i.tipo, unidad: i.unidad, precio_vigente: i.vigente }))),
         );
       }
-      if (ruta === "/insumos") return Promise.resolve(catalogoFalla ? json({ detalle: "Caído." }, 503) : json(CATALOGO));
       return Promise.resolve(json({ detalle: "No hay." }, 404));
     }),
   );
@@ -67,11 +83,13 @@ afterEach(() => vi.unstubAllGlobals());
 interface PropsArnes {
   tipo: TipoTabla;
   filas: Fila[];
+  paraArmarAl?: string;
+  moneda?: string | null;
   alEscape?: () => void;
   alExpirar?: () => void;
 }
 
-function Arnes({ tipo, filas, alEscape, alExpirar = () => {} }: PropsArnes) {
+function Arnes({ tipo, filas, paraArmarAl = FECHA, moneda = "Bs", alEscape, alExpirar = () => {} }: PropsArnes) {
   const [tablas, setTablas] = useState<Tablas>({ ...tablasVacias(), [tipo]: filas });
   return (
     <div onKeyDown={(e) => e.key === "Escape" && alEscape?.()}>
@@ -79,6 +97,8 @@ function Arnes({ tipo, filas, alEscape, alExpirar = () => {} }: PropsArnes) {
         tipo={tipo}
         filas={tablas[tipo]}
         modalidades={MODALIDADES}
+        paraArmarAl={paraArmarAl}
+        moneda={moneda}
         alCambiar={(i, clave, valor) => setTablas((t) => editarCelda(t, tipo, i, clave, valor))}
         alCompletar={(i, valores) => setTablas((t) => completarFila(t, tipo, i, valores))}
         alAgregar={() => setTablas((t) => agregarFila(t, tipo))}
@@ -149,14 +169,83 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("7,5");
   });
 
-  test("si el catálogo completo no carga, elegir igual deja la descripción y nada más", async () => {
-    catalogoFalla = true;
+  test("el precio es el de la lista para armar a la fecha de la composición, en la misma respuesta: no se pide GET /insumos", async () => {
+    const u = userEvent.setup();
+    render(<Arnes tipo="materiales" filas={[MATERIAL]} />);
+    await u.type(descripcion(), "cemento g");
+    await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("18,00"));
+    expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).not.toHaveValue("25,50");
+    const pedida = llamadas.filter((l) => l.startsWith("/v1/consulta/insumos?")).at(-1)!;
+    const params = new URLSearchParams(pedida.split("?")[1]);
+    expect(params.get("para_armar_al")).toBe(FECHA);
+    expect(params.get("detalle")).toBe("true");
+    expect(llamadas).not.toContain("/insumos");
+  });
+
+  test("otra moneda: no se copia el precio, la celda lo dice en texto llano y la descripción y la unidad sí se copian", async () => {
+    monedaDeLaLista = "USD";
     const u = userEvent.setup();
     render(<Arnes tipo="materiales" filas={[MATERIAL]} />);
     await u.type(descripcion(), "cemento g");
     await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
+    const precio = screen.getByRole("textbox", { name: "Precio, fila 1" });
+    expect(precio).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Unidad, fila 1" })).toHaveValue("saco");
+    expect(screen.getByText("El catálogo lo tiene en USD; escriba el precio en Bs.")).toBeInTheDocument();
+    expect(precio).toHaveAccessibleDescription("El catálogo lo tiene en USD; escriba el precio en Bs.");
+  });
+
+  test("otra moneda en la mano de obra: el sueldo queda vacío y su celda lo avisa", async () => {
+    monedaDeLaLista = "USD";
+    const u = userEvent.setup();
+    render(<Arnes tipo="mano_obra" filas={[OBRERO]} />);
+    await u.type(descripcion(), "alba");
+    await u.click(await screen.findByRole("option", { name: /Albañil ficticio/ }));
+    await waitFor(() => expect(descripcion()).toHaveValue("Albañil ficticio"));
+    expect(screen.getByRole("textbox", { name: "Sueldo, fila 1" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Sueldo, fila 1" })).toHaveAccessibleDescription(
+      "El catálogo lo tiene en USD; escriba el sueldo en Bs.",
+    );
+  });
+
+  test("un precio que llega en otra moneda que la de la carpeta no se copia aunque el servidor lo mande", async () => {
+    const u = userEvent.setup();
+    render(<Arnes tipo="materiales" filas={[MATERIAL]} moneda="USD" />);
+    await u.type(descripcion(), "cemento g");
+    await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
+    await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
     expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("");
+    expect(screen.getByText("El catálogo lo tiene en Bs; escriba el precio en USD.")).toBeInTheDocument();
+  });
+
+  test("elegir otro insumo quita el aviso de moneda de la fila", async () => {
+    const u = userEvent.setup();
+    monedaDeLaLista = "USD";
+    render(<Arnes tipo="materiales" filas={[MATERIAL]} />);
+    await u.type(descripcion(), "cemento g");
+    await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
+    await screen.findByText("El catálogo lo tiene en USD; escriba el precio en Bs.");
+    monedaDeLaLista = "Bs";
+    await u.clear(descripcion());
+    await u.type(descripcion(), "cemento b");
+    await u.click(await screen.findByRole("option", { name: /Cemento blanco ficticio/ }));
+    await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
+    expect(screen.queryByText("El catálogo lo tiene en USD; escriba el precio en Bs.")).not.toBeInTheDocument();
+  });
+
+  test("sin fecha de composición no hay lista con que armar: se copian descripción y unidad, nunca el precio", async () => {
+    const u = userEvent.setup();
+    render(<Arnes tipo="materiales" filas={[MATERIAL]} paraArmarAl="" />);
+    await u.type(descripcion(), "cemento g");
+    await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Unidad, fila 1" })).toHaveValue("saco"));
+    expect(descripcion()).toHaveValue("Cemento gris ficticio");
+    expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("");
+    const pedida = llamadas.filter((l) => l.startsWith("/v1/consulta/insumos?")).at(-1)!;
+    expect(new URLSearchParams(pedida.split("?")[1]).has("para_armar_al")).toBe(false);
+    expect(llamadas).not.toContain("/insumos");
   });
 
   test("se puede usar una descripción propia: la lista lo ofrece con su aviso y queda dicho que no viene del catálogo", async () => {

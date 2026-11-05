@@ -17,6 +17,20 @@ describe("rutaDeConsulta", () => {
   test("codifica la tabla y el texto", () => {
     expect(rutaDeConsulta("insumos", "ce ment", 8)).toBe("/v1/consulta/insumos?q=ce+ment&limite=8");
   });
+
+  // AC1b: Componer pide el detalle (descripción y unidad) y, si tiene fecha, el precio de la lista para armar a esa fecha.
+  test("con detalle y fecha de armado los agrega; sin ellos la ruta es la de siempre", () => {
+    expect(rutaDeConsulta("insumos", "cemento", 8, { detalle: true, paraArmarAl: "2026-08-15" })).toBe(
+      "/v1/consulta/insumos?q=cemento&limite=8&detalle=true&para_armar_al=2026-08-15",
+    );
+    expect(rutaDeConsulta("salarios_cct", "alba", 8, { detalle: true })).toBe(
+      "/v1/consulta/salarios_cct?q=alba&limite=8&detalle=true",
+    );
+    expect(rutaDeConsulta("insumos", "cemento", 8, { detalle: true, paraArmarAl: "" })).toBe(
+      "/v1/consulta/insumos?q=cemento&limite=8&detalle=true",
+    );
+    expect(rutaDeConsulta("insumos", "cemento", 8, {})).toBe("/v1/consulta/insumos?q=cemento&limite=8");
+  });
 });
 
 describe("gruposDeConsulta", () => {
@@ -49,6 +63,18 @@ describe("buscadorDeConsulta pide la ruta con la señal de aborto", () => {
     expect(fetchFalso.mock.calls[0][0]).toBe("/v1/consulta/insumos?q=cemento&limite=8");
     expect(fetchFalso.mock.calls[0][1]?.signal).toBe(controlador.signal);
     expect(grupos[0].opciones).toHaveLength(2);
+  });
+
+  test("con opciones las manda en la ruta y entrega la sugerencia con su precio tal cual llega", async () => {
+    const conPrecio = {
+      tabla: "insumos",
+      hay_mas: false,
+      resultados: [{ ...RESPUESTA.resultados[0], descripcion: "Cemento gris ficticio", unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" }],
+    };
+    fetchFalso.mockImplementation(async () => new Response(JSON.stringify(conPrecio), { status: 200 }));
+    const grupos = await buscadorDeConsulta("insumos", { detalle: true, paraArmarAl: "2026-08-15" })("cemento", new AbortController().signal, 8);
+    expect(fetchFalso.mock.calls[0][0]).toBe("/v1/consulta/insumos?q=cemento&limite=8&detalle=true&para_armar_al=2026-08-15");
+    expect(grupos[0].opciones[0].valor).toMatchObject({ precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" });
   });
 });
 

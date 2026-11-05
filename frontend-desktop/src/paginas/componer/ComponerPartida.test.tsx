@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -234,5 +234,42 @@ describe("ComponerPartida (Tarea 9)", () => {
     await waitFor(() => expect(alGuardar).toHaveBeenCalledTimes(1), ESPERA);
     expect(alGuardar).toHaveBeenCalledWith({ codigo: "Z-99", descripcion: "Zanja ficticia", unidad: "m3" });
     expect(screen.queryByRole("button", { name: "Volver a la Hoja" })).toBeNull();
+  });
+
+  // AC1b: el autocompletado de los insumos pide el precio de la lista para armar a la «Fecha» de la composición y solo lo
+  // copia si llega en la moneda de la carpeta (`GET /v1/carpeta`, aquí Bs).
+  test("los insumos se buscan con la fecha de la composición; un precio que llega en otra moneda no se copia", async () => {
+    const delServidor = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const ruta = String(entrada);
+      if (ruta.startsWith("/v1/consulta/insumos?")) {
+        rutas.push(ruta);
+        const enDolares = {
+          valor: "MAT-1",
+          etiqueta: "Cemento gris ficticio (MAT-1, saco)",
+          fuente: "Catálogo de la carpeta de trabajo: material",
+          descripcion: "Cemento gris ficticio",
+          unidad: "saco",
+          precio: "0.45",
+          moneda: "USD",
+          fecha_precio: "2026-07-01",
+        };
+        return json({ tabla: "insumos", hay_mas: false, resultados: [enDolares] });
+      }
+      return delServidor(entrada, init);
+    });
+    const u = userEvent.setup();
+    montar(2);
+    await waitFor(() => expect(rutas).toContain("/v1/carpeta"), ESPERA);
+    fireEvent.change(screen.getByLabelText("Fecha"), { target: { value: "2026-08-15" } });
+    const materiales = screen.getByRole("region", { name: "Materiales" });
+    await u.click(within(materiales).getByRole("button", { name: "Agregar fila a Materiales" }));
+    await u.type(within(materiales).getByRole("combobox", { name: "Descripción, fila 1" }), "cemento");
+    await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }, ESPERA));
+    await waitFor(() => expect(within(materiales).getByRole("textbox", { name: "Unidad, fila 1" })).toHaveValue("saco"));
+    const pedida = rutas.filter((r) => r.startsWith("/v1/consulta/insumos?")).at(-1)!;
+    expect(new URLSearchParams(pedida.split("?")[1]).get("para_armar_al")).toBe("2026-08-15");
+    expect(within(materiales).getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("");
+    expect(within(materiales).getByText("El catálogo lo tiene en USD; escriba el precio en Bs.")).toBeInTheDocument();
   });
 });
