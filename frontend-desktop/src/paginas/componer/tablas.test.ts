@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   agregarFila,
   borrarFila,
+  completarFila,
   COLUMNAS,
   editarCelda,
   filaVacia,
@@ -50,5 +51,32 @@ describe("tablas de insumos", () => {
     expect(
       normalizarFila("materiales", { descripcion: "Arena", unidad: "m3", cantidad: 2, precio: null, otra: "x" }),
     ).toEqual({ descripcion: "Arena", unidad: "m3", cantidad: "2", precio: "" });
+  });
+});
+
+describe("completarFila (al elegir un insumo del catálogo)", () => {
+  const base = {
+    materiales: [
+      { descripcion: "cem", unidad: "", cantidad: "2", precio: "" },
+      { descripcion: "otra", unidad: "kg", cantidad: "", precio: "5" },
+    ],
+    equipos: [],
+    mano_obra: [],
+  };
+
+  test("llena solo las columnas dadas de esa fila y deja el resto y las otras filas", () => {
+    const t = completarFila(base, "materiales", 0, { descripcion: "Cemento gris ficticio", unidad: "saco", precio: "18,00" });
+    expect(t.materiales[0]).toEqual({ descripcion: "Cemento gris ficticio", unidad: "saco", cantidad: "2", precio: "18,00" });
+    expect(t.materiales[1]).toEqual(base.materiales[1]);
+    expect(base.materiales[0].precio).toBe(""); // no muta
+  });
+
+  test("ignora una clave que la tabla no tiene (no inventa columnas)", () => {
+    const t = completarFila(base, "materiales", 0, { descripcion: "X", sueldo: "9" });
+    expect(t.materiales[0]).toEqual({ descripcion: "X", unidad: "", cantidad: "2", precio: "" });
+  });
+
+  test("una fila que no existe no cambia nada", () => {
+    expect(completarFila(base, "materiales", 7, { descripcion: "X" })).toEqual(base);
   });
 });
