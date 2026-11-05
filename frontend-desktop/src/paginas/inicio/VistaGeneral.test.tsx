@@ -362,7 +362,7 @@ describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
     montar();
     const t = await tabla();
     const casa = (await t.findByRole("link", { name: "Casa Demo" })).closest("tr")!;
-    expect(casa.querySelector(".silice-cifra")?.textContent).toBe("Real 62,5\u00a0% · Plan 70,0\u00a0%");
+    expect(casa.querySelector(".silice-inicio__avance .silice-cifra")?.textContent).toBe("Real 62,5\u00a0% · Plan 70,0\u00a0%");
     expect(casa).toHaveTextContent("Real 62,5 % · Plan 70,0 %");
   });
 
@@ -390,7 +390,9 @@ describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
   });
 
   describe("la hoja de estilos de la tabla de obras", () => {
-    const css = sass.compile(fileURLToPath(new URL("./inicio.scss", import.meta.url))).css;
+    // La ruta va en una variable: con el literal, Vite reescribe el `new URL` como recurso (como en `ApuEnPanel.test.tsx`).
+    const ESTILOS = "./inicio.scss";
+    const css = sass.compile(fileURLToPath(new URL(ESTILOS, import.meta.url))).css;
     // El texto de un bloque `{ ... }` que empieza en `inicio` (con las llaves anidadas).
     const bloqueDesde = (inicio: number): string => {
       const abre = css.indexOf("{", inicio);

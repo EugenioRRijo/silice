@@ -42,10 +42,10 @@ describe("contraste del ícono de advertencia (H1)", () => {
     expect(contraste(yellow30, white)).toBeLessThan(3);
   });
 
-  test("el ámbar 50 del ícono llega a 3:1 sobre el gris 10 del tema (3,03:1) y sobre el blanco (3,34:1)", () => {
+  test("el ámbar 50 del ícono llega a 3:1 sobre el gris 10 del tema (3,03:1) y sobre el blanco (3,33:1)", () => {
     expect(contraste(yellow50, gray10)).toBeCloseTo(3.03, 2);
     expect(contraste(yellow50, gray10)).toBeGreaterThanOrEqual(3);
-    expect(contraste(yellow50, white)).toBeCloseTo(3.34, 2);
+    expect(contraste(yellow50, white)).toBeCloseTo(3.33, 2);
     expect(contraste(yellow50, white)).toBeGreaterThanOrEqual(3);
   });
 
