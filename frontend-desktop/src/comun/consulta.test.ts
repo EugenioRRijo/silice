@@ -46,6 +46,77 @@ describe("gruposDeConsulta", () => {
   });
 });
 
+// Dictamen de Claude (xhigh), hallazgo MAYOR: cada sugerencia de Componer dice el precio, la moneda y la fecha de la lista.
+// Solo con `mostrarPrecio` (Componer, con fecha de armado); los demas adaptadores (Produccion) siguen con [valor, fuente].
+describe("gruposDeConsulta con el precio a la vista", () => {
+  const completa = (extra: Record<string, unknown>) => ({
+    tabla: "insumos",
+    hay_mas: false,
+    resultados: [{ valor: "MAT-1", etiqueta: "Cemento gris ficticio (MAT-1, saco)", fuente: "Catálogo de la carpeta de trabajo: material", ...extra }],
+  });
+  const linea = (extra: Record<string, unknown>) => gruposDeConsulta(completa(extra), { mostrarPrecio: true })[0].opciones[0].secundaria;
+
+  test("código, unidad, precio con coma y moneda, y la fecha de la lista como dd/mm/aaaa", () => {
+    expect(linea({ unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" })).toEqual([
+      "MAT-1",
+      "saco",
+      "18,00 Bs",
+      "lista del 01/07/2026",
+    ]);
+    expect(linea({ unidad: "saco", precio: "1234.5", moneda: "USD", fecha_precio: "2026-10-01" })).toEqual([
+      "MAT-1",
+      "saco",
+      "1.234,5 USD",
+      "lista del 01/10/2026",
+    ]);
+  });
+
+  test("sin unidad no deja un hueco, y sin precio dice que no hay en la lista para armar", () => {
+    expect(linea({})).toEqual(["MAT-1", "sin precio en la lista para armar"]);
+    expect(linea({ unidad: "saco" })).toEqual(["MAT-1", "saco", "sin precio en la lista para armar"]);
+  });
+
+  test("en otra moneda que la de la carpeta el servidor no manda el precio y sí su aviso: es lo que se lee", () => {
+    const aviso = "El catálogo lo tiene en USD; escriba el precio en Bs.";
+    expect(linea({ unidad: "saco", moneda: "USD", fecha_precio: "2026-07-01", aviso_precio: aviso })).toEqual(["MAT-1", "saco", aviso]);
+  });
+
+  test("sin `mostrarPrecio` la línea es la de siempre (Producción no cambia)", () => {
+    const con = { unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" };
+    expect(gruposDeConsulta(completa(con))[0].opciones[0].secundaria).toEqual([
+      "MAT-1",
+      "Catálogo de la carpeta de trabajo: material",
+    ]);
+    expect(gruposDeConsulta(completa(con), { mostrarPrecio: false })[0].opciones[0].secundaria).toEqual([
+      "MAT-1",
+      "Catálogo de la carpeta de trabajo: material",
+    ]);
+  });
+
+  test("`mostrarPrecio` no cambia la ruta que se pide", () => {
+    expect(rutaDeConsulta("insumos", "cemento", 8, { detalle: true, paraArmarAl: "2026-08-15", mostrarPrecio: true })).toBe(
+      "/v1/consulta/insumos?q=cemento&limite=8&detalle=true&para_armar_al=2026-08-15",
+    );
+  });
+
+  test("el buscador de consulta con `mostrarPrecio` entrega la línea con el precio", async () => {
+    const fetchFalso = vi.fn<typeof fetch>(
+      async () => new Response(JSON.stringify(completa({ unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" })), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchFalso);
+    try {
+      const grupos = await buscadorDeConsulta("insumos", { detalle: true, paraArmarAl: "2026-08-15", mostrarPrecio: true })(
+        "cemento",
+        new AbortController().signal,
+        8,
+      );
+      expect(grupos[0].opciones[0].secundaria).toEqual(["MAT-1", "saco", "18,00 Bs", "lista del 01/07/2026"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 describe("buscadorDeConsulta pide la ruta con la señal de aborto", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   beforeEach(() => {
