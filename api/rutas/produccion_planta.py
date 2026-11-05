@@ -583,7 +583,9 @@ def publicar_costo_propio(
         raise HTTPException(409, str(error)) from None
     propia = empresas.empresa_propia(sesion)
     if propia is None:
-        raise HTTPException(422, "Configure la empresa en Administración antes de publicar.")
+        raise HTTPException(
+            422, "Configure la empresa en la Cuenta («Empresa y tema») antes de publicar."
+        )
     ruta = ruta_de_url(url_de_la_peticion(request))
     try:
         lista = publicar_calculo(
