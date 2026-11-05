@@ -8,7 +8,7 @@
 // navega por sí solo (clic con Ctrl o Mayús, el botón del medio y el foco quedan como en cualquier enlace).
 import type { MouseEvent } from "react";
 import { Link } from "react-router";
-import { useNavegarSeguro } from "../shell/navegarSeguro";
+import { esClicSimple, useNavegarSeguro } from "../shell/navegarSeguro";
 import { paginaPorId, usable } from "../shell/rutas";
 import { formulariosSucios } from "../shell/sucio";
 import type { HerramientaDef } from "./espacios";
@@ -30,7 +30,7 @@ interface Propiedades {
 export function BarraDeEspacio({ etiqueta, pestanas, activa, nivel }: Propiedades) {
   const navegarSeguro = useNavegarSeguro();
   function alPulsar(e: MouseEvent<HTMLAnchorElement>, ruta: string) {
-    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (!esClicSimple(e)) return;
     if (formulariosSucios(ruta).length === 0) return;
     e.preventDefault();
     void navegarSeguro(ruta);

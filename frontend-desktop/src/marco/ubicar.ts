@@ -36,7 +36,7 @@ export function ubicar(pathname: string, obras: readonly ObraDeCarpeta[], pagina
     const obraId = Number(deObra[2]);
     const nombre = obras.find((o) => o.carpeta === carpeta && o.obra_id === obraId)?.obra ?? "Obra";
     const seccion = seccionPorId(deObra[3]);
-    // Una subvista que no existe se ubica como su sección (la ruta la lleva a la pantalla principal).
+    // Una subvista que no existe se ubica como su sección (la ruta la lleva a la primera subvista usable de la sección, según `vistaDeLaSeccion`).
     const subvista = seccion && deObra[4] !== undefined ? SUBVISTAS[seccion.id]?.find((v) => v.id !== "" && v.id === deObra[4]) : undefined;
     if (seccion && subvista) return { titulo: `${subvista.titulo} · ${seccion.titulo} · ${nombre}` };
     return { titulo: seccion ? `${seccion.titulo} · ${nombre}` : nombre };

@@ -138,10 +138,11 @@ interface ObraDeLaRutaProps {
 // 2 o más vistas usables, el conmutador de subvistas va a la cabeza del lienzo (adenda A.2). La sección lee la obra y la
 // carpeta de la ruta desde el primer dibujo (no las del marco, que se ponen al día un momento después).
 //
-// F6, T5: la pantalla que se monta sale de `vistaDeLaSeccion` (sección + subvista de la ruta + permisos). Una subvista
-// desconocida lleva a la pantalla principal y una sección cuya pantalla principal no es usable abre su primera subvista usable
-// (ambas con replace y conservando la consulta). Pasar de Partidas a Componer sigue en la misma sección: ni se vuelve a
-// montar `ProveedorDeLaHoja` ni se pregunta por cambios sin guardar (`quedaEnLaHoja`).
+// F6, T5: la pantalla que se monta sale de `vistaDeLaSeccion` (sección + subvista de la ruta + permisos). Una ruta sin
+// subvista o con una desconocida lleva a la primera subvista que la cuenta puede usar (la pantalla principal, si puede
+// usarla; si no, la siguiente: Aprobaciones para quien solo revisa abre «Revisar un paquete»), con replace y conservando la
+// consulta. Pasar de Presupuesto a Componer sigue en la misma sección: ni se vuelve a montar `ProveedorDeLaHoja` ni se
+// pregunta por cambios sin guardar (`quedaEnLaHoja`).
 //
 // Tarea 3 del plan F4: en Presupuesto, Archivos y planos y Versiones (SECCIONES_CON_HOJA) la cabecera y la sección van
 // dentro de `ProveedorDeLaHoja`, siempre en esta posición y con la clave de la obra: pasar entre esas tres no lo

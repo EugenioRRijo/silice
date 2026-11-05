@@ -21,6 +21,7 @@ import { MarcaDemostracion } from "../shell/MarcaDemostracion";
 import { terminarRecorrido, useColumnaOculta, useRecorrido } from "../shell/recorrido";
 import { PAGINAS, paginaPorId, rutaDe, usable } from "../shell/rutas";
 import type { PaginaDef } from "../shell/rutas";
+import { esClicSimple } from "../shell/navegarSeguro";
 import { cancelarSalida, confirmarSalida } from "../shell/salida";
 import { formulariosSucios, olvidarFormularios } from "../shell/sucio";
 import type { AlmacenDelVisor } from "../visor/almacen";
@@ -252,7 +253,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   );
   const contenido = useRef<HTMLElement>(null);
   const alClicAntes = (e: MouseEvent<HTMLDivElement>) => {
-    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (!esClicSimple(e)) return;
     // Los diálogos (MarcoDeDialogo) se pintan en un portal, pero sus clics suben por el árbol de React hasta aquí. No hace
     // falta excluirlos: `closest` recorre el DOM, donde el portal cuelga del cuerpo del documento y no de este marco, y
     // ningún diálogo lleva enlaces `a[href]`; sus botones no son enlaces. Si alguno los lleva, hay que excluir `.silice-dialogo`.

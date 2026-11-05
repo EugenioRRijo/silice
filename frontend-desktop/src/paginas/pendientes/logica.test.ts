@@ -40,6 +40,10 @@ describe("destinoDelPendiente (D-F3-2)", () => {
     expect(destinoDelPendiente(pendiente("actualizacion"))).toBe("/obra/Carpeta%20Norte.db/2/mercado/actualizar");
   });
 
+  test("«tablero» abre Resumen › Tablero (es subvista, no una pantalla desconocida)", () => {
+    expect(destinoDelPendiente(pendiente("tablero"))).toBe("/obra/Carpeta%20Norte.db/2/resumen/tablero");
+  });
+
   test("«entregar» abre Aprobaciones › Entregar", () => {
     expect(destinoDelPendiente(pendiente("entregar"))).toBe("/obra/Carpeta%20Norte.db/2/aprobaciones/entregar");
   });
@@ -48,7 +52,7 @@ describe("destinoDelPendiente (D-F3-2)", () => {
     expect(destinoDelPendiente(pendiente("entregar", null, 7))).toBe("/obra/empresa/7/aprobaciones/entregar");
   });
 
-  test.each(["tablero", "", "toString", "constructor"])("una pantalla desconocida («%s») va al Resumen de la obra", (pagina) => {
+  test.each(["", "toString", "constructor", "no_existe"])("una pantalla desconocida («%s») va al Resumen de la obra", (pagina) => {
     expect(destinoDelPendiente(pendiente(pagina))).toBe("/obra/Carpeta%20Norte.db/2/resumen");
   });
 
@@ -65,7 +69,8 @@ describe("paginaQueAbre", () => {
     ["catalogo", "catalogo"],
     ["actualizacion", "actualizacion"],
     ["entregar", "entregar"],
-    ["tablero", "obras"],
+    ["tablero", "tablero"],
+    ["no_existe", "obras"],
   ])("«%s» monta «%s»", (pagina, montada) => {
     expect(paginaQueAbre(pendiente(pagina))).toBe(montada);
   });

@@ -114,7 +114,7 @@ export const SUBVISTAS: Partial<Record<SeccionId, readonly HerramientaDef[]>> = 
     { id: "tablero", titulo: "Tablero", pagina: "tablero" },
   ],
   presupuesto: [
-    { id: "", titulo: "Partidas", pagina: "hoja" },
+    { id: "", titulo: "Presupuesto", pagina: "hoja" },
     { id: "componer", titulo: "Componer", pagina: "componer" },
   ],
   aprobaciones: [
