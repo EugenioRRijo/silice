@@ -107,13 +107,14 @@ describe("App", () => {
     const barra = screen.getByRole("banner");
     expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    expect(within(lateral).getByRole("link", { name: "Pendientes" })).toHaveAttribute("href", "#/pendientes");
+    expect(within(lateral).getByRole("link", { name: "Pendientes" })).toHaveAttribute("href", "#/inicio/pendientes");
     expect(within(lateral).getByRole("navigation", { name: "Costos y producción" })).toBeInTheDocument();
     // Con la suite entera en marcha el marco tarda mas que el plazo por omision.
+    // F6, T8: la app abre en la Vista general (ruta índice → #/inicio/general).
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Pendientes" }, { timeout: 5000 }),
+      await screen.findByRole("heading", { level: 1, name: "Vista general" }, { timeout: 5000 }),
     ).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/pendientes");
+    expect(window.location.hash).toBe("#/inicio/general");
     // Ya no hay módulos ni nada que recordar de ellos.
     expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();
     expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/sesion/preferencias")).toBe(false);
@@ -173,11 +174,11 @@ describe("App", () => {
     sesionActual = () => json({ login: "ana", nombre: "Ana Pérez", roles: ["revisa"], csrf: "tok" });
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
-    // Sin acciones aterriza en Pendientes, que toda cuenta ve.
+    // Sin acciones aterriza en la Vista general, que toda cuenta ve.
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Pendientes" }, { timeout: 5000 }),
+      await screen.findByRole("heading", { level: 1, name: "Vista general" }, { timeout: 5000 }),
     ).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/pendientes");
+    expect(window.location.hash).toBe("#/inicio/general");
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
   });
 

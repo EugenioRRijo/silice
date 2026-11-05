@@ -110,7 +110,15 @@ describe("rutaOPendientes", () => {
   test("da la ruta canónica y, si el id no es pantalla, nunca un enlace muerto: lleva a Pendientes", () => {
     expect(rutaOPendientes("existencias")).toBe("/produccion/existencias");
     expect(rutaOPendientes("hoja", { carpeta: "demo.db", obraId: 1 })).toBe("/obra/demo.db/1/presupuesto");
-    expect(rutaOPendientes("inexistente")).toBe("/pendientes");
+    expect(rutaOPendientes("inexistente")).toBe("/inicio/pendientes");
+  });
+});
+
+// F6, T8 (contrato 1 y 4): la Vista general es la pantalla «inicio» y su ruta canónica es `/inicio/general`, con o sin obra.
+describe("rutaCanonica de la Vista general", () => {
+  test("«inicio» va a /inicio/general", () => {
+    expect(rutaCanonica("inicio")).toBe("/inicio/general");
+    expect(rutaCanonica("inicio", { carpeta: "demo.db", obraId: 1 })).toBe("/inicio/general");
   });
 });
 
@@ -183,7 +191,8 @@ describe("la tabla del contrato (F6, T2): 31 pantallas, cada una en su lugar", (
     const ids = TABLA_DEL_CONTRATO.map((f) => f[0]);
     expect(ids).toHaveLength(31);
     expect(new Set(ids).size).toBe(31);
-    expect([...ids].sort()).toEqual(PAGINAS.map((p) => p.id).sort());
+    // F6, T8: la Vista general («inicio», contrato 4) es la entrada de la app, aparte de las 31 del contrato.
+    expect([...ids].sort()).toEqual(PAGINAS.map((p) => p.id).filter((id) => id !== "inicio").sort());
   });
 
   test("el lugar de cada pantalla es exactamente el del contrato: ni falta ninguna, ni sobra, ni se repite", () => {
@@ -199,7 +208,7 @@ describe("la tabla del contrato (F6, T2): 31 pantallas, cada una en su lugar", (
   });
 
   test("la acción y el módulo de cada pantalla siguen siendo los del contrato (F6 no cambia permisos)", () => {
-    const real = Object.fromEntries(PAGINAS.map((p) => [p.id, [p.accion, p.modulo]]));
+    const real = Object.fromEntries(PAGINAS.filter((p) => p.id !== "inicio").map((p) => [p.id, [p.accion, p.modulo]]));
     const esperado = Object.fromEntries(TABLA_DEL_CONTRATO.map((f) => [f[0], [f[1], f[2]]]));
     expect(real).toEqual(esperado);
   });

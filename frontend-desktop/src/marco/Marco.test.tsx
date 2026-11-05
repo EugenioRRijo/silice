@@ -135,10 +135,17 @@ function apagar(...claves: string[]) {
 }
 
 describe("Marco: las rutas viejas llevan al marco nuevo", () => {
-  test.each(["/", "/inicio", "/no-existe"])("%s acaba en #/pendientes, que muestra la bandeja", async (de) => {
+  // F6, T8 (contrato 1): la ruta índice y lo que no existe llevan a la Vista general; `#/pendientes` es solo el nombre viejo.
+  test.each(["/", "/inicio", "/no-existe"])("%s acaba en #/inicio/general, la Vista general", async (de) => {
     montar({ en: de });
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general");
+  });
+
+  test("#/pendientes acaba en #/inicio/pendientes, que muestra la bandeja", async () => {
+    montar({ en: "/pendientes" });
     expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
   });
 
   test("#/hoja con la obra 3 abierta en «Carpeta Sur.db» acaba en su Presupuesto", async () => {
@@ -148,10 +155,10 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
     expect(ruta()).toBe("/obra/Carpeta%20Sur.db/3/presupuesto");
   });
 
-  test("#/hoja sin obra en la sesión acaba en #/pendientes", async () => {
+  test("#/hoja sin obra en la sesión acaba en #/inicio/pendientes", async () => {
     montar({ en: "/hoja" });
     expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
   });
 
   test("una sección vieja con consulta y sin obra en la sesión se abre donde estaba (no pierde el envío)", async () => {
@@ -204,7 +211,7 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
   test("una entrada vieja de Empresa que no existe lleva a Pendientes", async () => {
     montar({ en: "/empresa/xyz" });
     expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
   });
 });
 
@@ -446,7 +453,7 @@ describe("Marco: la obra como espacio de trabajo", () => {
     expect(await titulo("Esa obra ya no existe")).toBeInTheDocument();
     await u.click(screen.getByRole("link", { name: "Volver a Pendientes" }));
     expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
   });
 
   // Rediseño F3, Tarea 2: Pendientes ya no monta la mesa (es la bandeja, que no muestra la obra elegida); se sigue por
@@ -465,7 +472,7 @@ describe("Marco: la obra como espacio de trabajo", () => {
     montar({ en: "/obra/empresa/7/resumen", paginas: ligeras({ obras: ConLaObra, catalogo: ConLaObra }) });
     expect(await screen.findByText("obra elegida: 7")).toBeInTheDocument();
     await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Pendientes" }));
-    await waitFor(() => expect(ruta()).toBe("/pendientes"));
+    await waitFor(() => expect(ruta()).toBe("/inicio/pendientes"));
     expect(await titulo("Pendientes")).toBeInTheDocument();
     await u.click(within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("link", { name: "Precios y catálogo" }));
     await waitFor(() => expect(ruta()).toBe("/precios/catalogo"));
@@ -737,10 +744,10 @@ describe("Marco: las direcciones viejas de las subvistas de la obra (F6, T5)", (
     await waitFor(() => expect(ruta()).toBe(`/obra/Carpeta%20Sur.db/3/${a}?codigo=OBRA-07&volver=hoja`));
   });
 
-  test.each(TABLA_2_4_OBRA)("%s, sin obra en la sesión, acaba en #/pendientes", async (de) => {
+  test.each(TABLA_2_4_OBRA)("%s, sin obra en la sesión, acaba en #/inicio/pendientes", async (de) => {
     montar({ en: de });
     expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
   });
 
   test("mientras llegan las obras de la sesión no redirige a Pendientes: espera", async () => {
@@ -1032,6 +1039,7 @@ describe("Marco: vocabulario y alcance", () => {
     const oferta = ofertaDe(acciones, false);
     const alcanzables = new Set<string | null>([
       "obras",
+      "inicio", // F6, T8: la Vista general es la entrada de la app (ruta índice)
       ...oferta.secciones.map((s) => s.pagina),
       ...oferta.cuenta.map((c) => c.pagina),
       ...oferta.sueltas.map((p) => p.id),
@@ -1124,7 +1132,7 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     await titulo("Esa obra ya no existe");
     await u.click(screen.getByRole("link", { name: "Volver a Pendientes" }));
     const nuevo = await titulo("Pendientes");
-    expect(ruta()).toBe("/pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
     expect(screen.queryByRole("link", { name: "Volver a Pendientes" })).toBeNull();
     await waitFor(() => expect(nuevo).toHaveFocus());
   });
@@ -1226,13 +1234,19 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  // La entrada real es `#/pendientes`, o `#/`, `#/inicio` o una ruta que no existe, que REDIRIGEN con `replace` a
-  // Pendientes: eso es la carga inicial, no un cambio de pantalla. El foco sigue en <body> y el primer Tab es «Saltar».
-  test.each(["/pendientes", "/", "/inicio", "/no-existe"])("al cargar en %s no roba el foco: el primer Tab va a «Saltar al contenido»", async (entrada) => {
+  // La entrada real es `#/`, `#/inicio`, `#/pendientes` o una ruta que no existe, que REDIRIGEN con `replace` a la Vista general
+  // (o a Pendientes, la dirección vieja): eso es la carga inicial, no un cambio de pantalla. El foco sigue en <body> y el
+  // primer Tab es «Saltar».
+  test.each([
+    ["/pendientes", "Pendientes", "/inicio/pendientes"],
+    ["/", "Vista general", "/inicio/general"],
+    ["/inicio", "Vista general", "/inicio/general"],
+    ["/no-existe", "Vista general", "/inicio/general"],
+  ])("al cargar en %s no roba el foco: el primer Tab va a «Saltar al contenido»", async (entrada, h1, destino) => {
     const u = userEvent.setup();
     montar({ en: entrada });
-    await titulo("Pendientes");
-    expect(ruta()).toBe("/pendientes");
+    await titulo(h1);
+    expect(ruta()).toBe(destino);
     await new Promise((r) => setTimeout(r, 120));
     expect(document.body).toHaveFocus();
     await u.tab();

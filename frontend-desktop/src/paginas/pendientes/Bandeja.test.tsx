@@ -10,7 +10,7 @@ import type { EstadoDelServidor, Respondedor } from "../../shell/obras/datosDePr
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios, useFormularioSucio } from "../../shell/sucio";
 
-// Rediseño F3, Tarea 2: la bandeja de Pendientes en `#/pendientes`, dentro del marco de verdad (barra lateral, «Cambios
+// Rediseño F3, Tarea 2: la bandeja de Pendientes en `#/inicio/pendientes` (F6, T8; antes `#/pendientes`), dentro del marco de verdad (barra lateral, «Cambios
 // sin guardar», cambio de carpeta) con la API de mentira. La respuesta tiene la forma de `GET /v1/obras/pendientes/todas`
 // (Tarea 1, `docs/api.json`) y ya viene ordenada. Los textos fijos son los del plan; obras y carpetas, ficticias.
 
@@ -131,7 +131,7 @@ function FormularioSucio() {
 function montar({
   sesion = sesionDe("ana"),
   sucio = false,
-  inicial = "/pendientes",
+  inicial = "/inicio/pendientes",
   ir,
 }: { sesion?: SesionRespuesta; sucio?: boolean; inicial?: string; ir?: string } = {}) {
   return render(
@@ -434,7 +434,7 @@ describe("Pendientes: foco 3, salir sin perder trabajo", () => {
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
-    expect(ruta()).toBe("/pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
   });
 
   test("con la Hoja con cambios, un pendiente de otra carpeta pregunta por ella; «Quedarme» no cambia de carpeta", async () => {
@@ -450,7 +450,7 @@ describe("Pendientes: foco 3, salir sin perder trabajo", () => {
     await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
     await new Promise((r) => setTimeout(r, 30));
     expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
-    expect(ruta()).toBe("/pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
 
     await u.click(within(detalle()).getByRole("button", { name: "Hacer una versión nueva" }));
     await u.click(within(await screen.findByRole("dialog", { name: "Cambios sin guardar" })).getByRole("button", { name: "Cambiar y descartar" }));
@@ -525,10 +525,10 @@ describe("Pendientes: cuándo no se repite la lectura", () => {
     expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
   });
 
-  test("al arrancar desde «/» (que redirige a Pendientes) se piden una sola vez", async () => {
-    montar({ inicial: "/" });
+  test("al arrancar desde «/pendientes» (que redirige a /inicio/pendientes) se piden una sola vez", async () => {
+    montar({ inicial: "/pendientes" });
     expect(await opciones()).toHaveLength(4);
-    await waitFor(() => expect(ruta()).toBe("/pendientes"));
+    await waitFor(() => expect(ruta()).toBe("/inicio/pendientes"));
     expect(pedidas()).toBe(1);
   });
 });

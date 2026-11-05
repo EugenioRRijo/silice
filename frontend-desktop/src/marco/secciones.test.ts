@@ -112,7 +112,8 @@ describe("rutas del marco", () => {
   });
 
   it("pendientes y el patrón de la obra", () => {
-    expect(RUTA_DE_PENDIENTES).toBe("/pendientes");
+    // F6, T8 (contrato 2.4): Pendientes vive en el espacio Inicio; `/pendientes` quedó como dirección vieja que redirige.
+    expect(RUTA_DE_PENDIENTES).toBe("/inicio/pendientes");
     expect(PATRON_DE_OBRA).toBe("/obra/:carpeta/:obraId/:seccion/:subvista?");
   });
 });

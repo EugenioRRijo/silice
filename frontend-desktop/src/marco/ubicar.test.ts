@@ -78,3 +78,17 @@ describe("carpetaDelDestino con subvista", () => {
     expect(carpetaDelDestino("/obra/empresa/7/control/reajuste/mas")).toBeUndefined();
   });
 });
+
+// F6, T8: el título de la pestaña del navegador en Inicio (contrato 1 y 4). Oráculos a mano.
+describe("ubicar: Inicio (F6, T8)", () => {
+  test.each([
+    ["/inicio/general", "Vista general"],
+    ["/inicio/pendientes", "Pendientes"],
+  ])("%s se titula «%s»", (ruta, titulo) => {
+    expect(ubicar(ruta, OBRAS, PAGINAS).titulo).toBe(titulo);
+  });
+
+  test("una vista de Inicio que no existe no tiene título", () => {
+    expect(ubicar("/inicio/xyz", OBRAS, PAGINAS).titulo).toBeNull();
+  });
+});

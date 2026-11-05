@@ -95,7 +95,7 @@ function Ubicacion() {
 function pintar({
   sesion = sesionDe("ana"),
   abierta = null,
-  ruta = "/pendientes",
+  ruta = "/inicio/pendientes",
   pendientes = SIN_PENDIENTES,
 }: Opciones = {}) {
   return render(
@@ -238,11 +238,11 @@ describe("BarraLateral: lista plana, la obra abierta y su Resumen (F6, T5)", () 
 });
 
 describe("BarraLateral: Pendientes y «Costos y producción»", () => {
-  it("Pendientes es un enlace a #/pendientes y está activo en esa ruta", async () => {
-    pintar({ ruta: "/pendientes" });
+  it("Pendientes es un enlace a #/inicio/pendientes y está activo en esa ruta", async () => {
+    pintar({ ruta: "/inicio/pendientes" });
     await listaDeObras();
     const enlace = screen.getByRole("link", { name: "Pendientes" });
-    expect(enlace).toHaveAttribute("href", "/pendientes");
+    expect(enlace).toHaveAttribute("href", "/inicio/pendientes");
     expect(enlace).toHaveAttribute("aria-current", "page");
   });
 
@@ -265,7 +265,7 @@ describe("BarraLateral: Pendientes y «Costos y producción»", () => {
 
   it("ya no ofrece «Empresa y personas» ni «Ayuda» (viven en la Cuenta) ni una zona llamada «Empresa»", async () => {
     const todo = sesionDe("admin", { acciones: [...sesionDe("admin").acciones, "leer_proyecto"] });
-    pintar({ sesion: todo, ruta: "/pendientes" });
+    pintar({ sesion: todo, ruta: "/inicio/pendientes" });
     await listaDeObras();
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
     expect(within(lateral).queryByRole("link", { name: "Empresa y personas" })).toBeNull();
@@ -350,7 +350,7 @@ describe("BarraLateral: teclado de la lista plana (F6, T5)", () => {
 
   it("Tab recorre Pendientes, Nueva obra y las obras en orden; Enter abre la obra enfocada", async () => {
     const u = userEvent.setup();
-    pintar({ ruta: "/pendientes" });
+    pintar({ ruta: "/inicio/pendientes" });
     await listaDeObras();
     await u.tab();
     expect(screen.getByRole("link", { name: "Pendientes" })).toHaveFocus();
@@ -366,7 +366,7 @@ describe("BarraLateral: teclado de la lista plana (F6, T5)", () => {
 
   it("las flechas no mueven el foco entre obras: no hay patrón de árbol", async () => {
     const u = userEvent.setup();
-    pintar({ ruta: "/pendientes" });
+    pintar({ ruta: "/inicio/pendientes" });
     const lista = await listaDeObras();
     const clinica = within(lista).getByRole("link", { name: "Clínica Las Mercedes" });
     clinica.focus();
@@ -633,7 +633,7 @@ describe("BarraLateral: la obra recién creada", () => {
   it("con un código que no es un entero no navega a una ruta con NaN y deja la lista recargada", async () => {
     await crearConCodigo("abc");
     await waitFor(() => {
-      expect(screen.getByTestId("ubicacion")).toHaveTextContent("/pendientes");
+      expect(screen.getByTestId("ubicacion")).toHaveTextContent("/inicio/pendientes");
       expect(screen.getByTestId("ubicacion").textContent).not.toContain("NaN");
       expect(pedirFalso.mock.calls.filter(([r]) => r === "/v1/obras/todas").length).toBeGreaterThan(1);
     });
@@ -672,7 +672,7 @@ describe("BarraLateral: contadores (rediseño F3)", () => {
     pintar({ pendientes: conPendientes(CUATRO) });
     await listaDeObras();
     const enlace = enlacePendientes("Pendientes, 4 por hacer");
-    expect(enlace).toHaveAttribute("href", "/pendientes");
+    expect(enlace).toHaveAttribute("href", "/inicio/pendientes");
     expect(within(enlace).getByText("4")).toHaveClass("silice-pildora");
   });
 
@@ -945,7 +945,7 @@ describe("BarraLateral: «Costos y producción» plegable con letra grande (F4, 
 describe("BarraLateral con módulos apagados (plan vial, Tarea 19)", () => {
   function pintarConApagados(apagados: string[]) {
     return render(
-      <MemoryRouter initialEntries={["/pendientes"]}>
+      <MemoryRouter initialEntries={["/inicio/pendientes"]}>
         <ContextoAplicacion.Provider
           value={{ sesion: sesionDe("admin"), proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn(), modulosApagados: apagados }}
         >
