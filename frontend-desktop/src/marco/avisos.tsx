@@ -5,18 +5,24 @@ import { EstadoVacio } from "../comun/EstadoVacio";
 export const MENSAJE_SIN_PERMISO = "Su cuenta no tiene permiso para esta pantalla o acción.";
 export const MENSAJE_APAGADA = "Esta función está apagada en esta instalación. Quien administra puede encenderla en la Cuenta, sección «Especialidades, IA e instalación».";
 
-export function AvisoSinPermiso() {
+// El aviso es el título de la pantalla que sustituye: el único h1 de la página (pasada en el navegador de F6, H9). Donde la página
+// ya trae el suyo (la Cuenta, con el h1 de la sección), `nivel` lo baja.
+interface Props {
+  nivel?: 1 | 2 | 3;
+}
+
+export function AvisoSinPermiso({ nivel = 1 }: Props) {
   return (
     <div className="silice-pagina-aviso">
-      <EstadoVacio titulo="Sin permiso" descripcion={MENSAJE_SIN_PERMISO} />
+      <EstadoVacio nivel={nivel} titulo="Sin permiso" descripcion={MENSAJE_SIN_PERMISO} />
     </div>
   );
 }
 
-export function AvisoApagada() {
+export function AvisoApagada({ nivel = 1 }: Props) {
   return (
     <div className="silice-pagina-aviso">
-      <EstadoVacio titulo="Apagada" descripcion={MENSAJE_APAGADA} />
+      <EstadoVacio nivel={nivel} titulo="Apagada" descripcion={MENSAJE_APAGADA} />
     </div>
   );
 }

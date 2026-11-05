@@ -51,7 +51,7 @@ export default function Panorama() {
           <h2 id="inicio-auditorias" className="cds--type-heading-compact-02">
             {TEXTOS.auditorias.titulo}
           </h2>
-          <UltimasAuditorias carga={auditorias} />
+          <UltimasAuditorias carga={auditorias} desde="vista-general" />
           <Link className="cds--link" to={rutaOPendientes("auditoria")}>
             {TEXTOS.auditorias.ir}
           </Link>

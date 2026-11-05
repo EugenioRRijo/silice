@@ -297,7 +297,7 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   {
     id: "acerca",
-    titulo: "Acerca de Sílice",
+    titulo: "Ayuda y acerca de Sílice",
     enUnaLinea: "Versión, licencia y datos del programa",
     seccion: "Trabajo",
     accion: null,

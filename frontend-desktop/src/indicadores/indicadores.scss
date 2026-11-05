@@ -177,18 +177,19 @@
   }
 }
 
-// Barras IBCS: real con relleno sólido, meta con contorno.
+// Barras IBCS: real con relleno sólido, meta con contorno. Los altos van en rem y crecen con la letra (con Muy grande la cifra
+// de encima pasa de 21 a 63 px y la barra de 6 px se perdía): real y plan de 0,3125 rem, con 0,125 rem de aire entre los dos.
 .fiori-kpi__barra {
   position: relative;
   display: block;
-  block-size: 6px;
+  block-size: 0.75rem;
 }
 
 .fiori-kpi__barra-real,
 .fiori-kpi__barra-meta {
   position: absolute;
   inset-inline-start: 0;
-  block-size: 3px;
+  block-size: 0.3125rem;
   box-sizing: border-box;
 }
 
@@ -198,8 +199,8 @@
 }
 
 .fiori-kpi__barra-meta {
-  inset-block-start: 3px;
-  border: 1px solid var(--silice-texto);
+  inset-block-start: 0.4375rem;
+  border: 0.0625rem solid var(--silice-texto);
   background: transparent;
 }
 
@@ -245,7 +246,7 @@
 }
 
 .silice-sev--advertencia .silice-sev__icono {
-  color: var(--silice-sev-advertencia);
+  color: var(--silice-sev-advertencia-icono);
 }
 
 .silice-sev--info .silice-sev__icono {

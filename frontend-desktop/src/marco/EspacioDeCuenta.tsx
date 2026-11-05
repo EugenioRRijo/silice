@@ -106,7 +106,8 @@ function Contenido({ def, sesion, pantalla }: { def: CuentaDef; sesion: SesionRe
 // La Cuenta como espacio (`#/cuenta/:seccion`; plan F6, T6; contrato de rutas §3): su cabecera con la persona, la barra de
 // secciones que la cuenta puede usar y, en el lienzo, la sección. Una sección que no existe lleva a «Pantalla y tamaño de
 // letra»; una que existe pero la cuenta no puede usar, escrita a mano, dice «Sin permiso» con la barra de lo que sí puede.
-// «Ayuda y acerca de Sílice» no pone h1 propio: lo trae «Acerca de Sílice». Las demás lo ponen aquí, una sola vez.
+// «Ayuda y acerca de Sílice» no pone h1 propio: lo trae su pantalla, con el mismo nombre que la pestaña (como en las demás
+// secciones, el h1 y la pestaña dicen lo mismo). Las demás lo ponen aquí, una sola vez.
 export function EspacioDeCuenta({ sesion, pantalla, alSalir }: Props) {
   const { seccion } = useParams();
   const { search } = useLocation();
@@ -129,7 +130,7 @@ export function EspacioDeCuenta({ sesion, pantalla, alSalir }: Props) {
           ) : (
             <div className="silice-pagina silice-cuenta-seccion">
               <h1 className="cds--type-heading-04">{def.titulo}</h1>
-              <AvisoSinPermiso />
+              <AvisoSinPermiso nivel={2} />
             </div>
           )}
         </Suspense>

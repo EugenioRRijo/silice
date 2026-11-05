@@ -60,11 +60,13 @@ function FilaDeObra({ obra, carpeta }: { obra: ObraDeLaCartera; carpeta: string 
         </Link>
         {carpeta !== undefined && <span className="silice-inicio__carpeta"> · {carpeta}</span>}
       </TableCell>
-      <TableCell>{esEtapa(obra.etapa) ? <EtapaDeObra etapa={obra.etapa} texto={obra.etapa_texto} /> : obra.etapa_texto}</TableCell>
-      <TableCell className="silice-cifra silice-inicio__sinquiebre">
+      <TableCell data-etiqueta={TEXTOS.avance.estado}>
+        {esEtapa(obra.etapa) ? <EtapaDeObra etapa={obra.etapa} texto={obra.etapa_texto} /> : obra.etapa_texto}
+      </TableCell>
+      <TableCell className="silice-cifra silice-inicio__sinquiebre" data-etiqueta={TEXTOS.avance.total}>
         {obra.total === null ? TEXTOS.avance.sinVersion : `${centesimasEsVe(obra.total)} ${obra.moneda}`}
       </TableCell>
-      <TableCell>
+      <TableCell data-etiqueta={TEXTOS.avance.avance}>
         <Avance real={obra.avance_real} plan={obra.avance_plan} />
       </TableCell>
     </TableRow>
@@ -155,7 +157,9 @@ export function CarteraYAvance({ carga, carpetas, puedeCrear, alCrear }: Props) 
           <h2 id="inicio-obras" className="cds--type-heading-compact-02">
             {TEXTOS.avance.titulo}
           </h2>
-          <div className="silice-tabla">
+          {/* La caja es la región que se desplaza si algo no cupiera: enfocable por teclado y con nombre. Con letra grande las
+              filas se apilan antes (inicio.scss), así que la columna de avance no queda fuera de la vista. */}
+          <div role="region" aria-label={TEXTOS.avance.desplazar} tabIndex={0} className="silice-tabla silice-inicio__obras">
             <Table size="sm" aria-label={TEXTOS.avance.tabla}>
               <TableHead>
                 <TableRow>

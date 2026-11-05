@@ -417,7 +417,7 @@ puede usar:
 - **«Cuentas y permisos»**, **«Empresa y tema»**, **«Carpetas»** y **«Especialidades, IA e
   instalación»**, solo para quien administra (sección 2.7). «Carpetas» pide además poder cambiar de
   carpeta.
-- **«Ayuda y acerca de Sílice»**, para todas las cuentas. Muestra «Acerca de Sílice»: la versión del
+- **«Ayuda y acerca de Sílice»**, para todas las cuentas. Su título es el mismo, «Ayuda y acerca de Sílice»: muestra la versión del
   programa, el estado de las bases de datos y qué módulos están instalados. Debajo, «Recorridos
   guiados» ofrece «Empezar el recorrido «Auditar un libro de la empresa»» (sección 12.4). Las guías de
   cada tarea están en este manual.

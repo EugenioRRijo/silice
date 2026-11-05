@@ -358,11 +358,11 @@ describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
 
   // Pasada en el navegador (H5): con letra Muy grande el «%» caía solo en la línea siguiente. Entre la cifra y el «%» va un
   // espacio duro (U+00A0, como en `ObjetivoDeMercado`): se lee igual, «62,5 %», pero no se parte.
-  test("el «%» no se separa de su cifra: espacio duro entre la cifra y el signo", async () => {
+  test("el «%» no se separa de su cifra: solo se parte en el «·»: espacios duros dentro de «Real 62,5 %» y de «Plan 70,0 %»", async () => {
     montar();
     const t = await tabla();
     const casa = (await t.findByRole("link", { name: "Casa Demo" })).closest("tr")!;
-    expect(casa.querySelector(".silice-inicio__avance .silice-cifra")?.textContent).toBe("Real 62,5\u00a0% · Plan 70,0\u00a0%");
+    expect(casa.querySelector(".silice-inicio__avance .silice-cifra")?.textContent).toBe("Real\u00a062,5\u00a0% · Plan\u00a070,0\u00a0%");
     expect(casa).toHaveTextContent("Real 62,5 % · Plan 70,0 %");
   });
 

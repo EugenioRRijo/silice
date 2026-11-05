@@ -40,7 +40,7 @@
 }
 
 .silice-inicio__icono--advertencia {
-  fill: var(--silice-sev-advertencia);
+  fill: var(--silice-sev-advertencia-icono);
 }
 
 .silice-inicio__sinquiebre {
@@ -105,7 +105,81 @@
 .silice-inicio__avance {
   display: grid;
   gap: 0.25rem;
-  min-inline-size: 10rem;
+  min-inline-size: 8rem;
+}
+
+// La tabla de obras con letra grande (pasada en el navegador de F6, H2). Con Muy grande sus cuatro columnas pedían 1104 px y a
+// 1056 px solo había 587: la tabla se desplazaba por dentro y escondía la columna de avance. La caja es un contenedor de ancho
+// y, cuando mide menos de 42 rem (en rem y no en px: el umbral crece con la letra), cada obra se apila en un bloque, con el
+// nombre arriba y «Estado», «Total» y «Avance» con su etiqueta. La caja es la región que se desplaza si algo no cupiera
+// (tabindex=0 en el TSX): ni Carbon ni esta tabla desplazan por su cuenta, o las flechas no moverían nada.
+.silice-inicio__obras {
+  container-type: inline-size;
+
+  .cds--data-table-content {
+    overflow-x: visible;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+@container (max-inline-size: 42rem) {
+  // La clase de Carbon va repetida a propósito: sus reglas de tamaño (`.cds--data-table--sm tbody tr`, alto de 2 rem) tienen
+  // más peso que una sola y las filas apiladas se encimaban.
+  .silice-inicio__obras .cds--data-table.cds--data-table {
+    &,
+    tbody,
+    tr,
+    td {
+      display: block;
+      inline-size: 100%;
+    }
+
+    // La cabecera sigue ahí para los lectores de pantalla; solo se saca de la vista.
+    thead {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    tr {
+      block-size: auto;
+      min-block-size: 0;
+      padding-block: 0.5rem;
+      border-block-end: 1px solid var(--silice-divisor);
+    }
+
+    td {
+      block-size: auto;
+      padding-block: 0.125rem;
+      border: 0;
+    }
+
+    // La etiqueta es solo para la vista: quien lee con lector de pantalla ya oye la columna por la cabecera (texto alternativo vacío).
+    td[data-etiqueta]::before {
+      content: attr(data-etiqueta) / "";
+      display: block;
+      color: var(--silice-texto-secundario);
+      font-weight: 400;
+    }
+
+    // La cifra del total, que en la tabla va a la derecha, apilada va a la izquierda con las demás.
+    td.silice-cifra {
+      text-align: start;
+    }
+  }
+
+  // La barra de avance no se estira a todo el ancho de la caja: una barra de 600 px se lee como otra cosa.
+  .silice-inicio__obras .silice-inicio__avance {
+    min-inline-size: 0;
+    max-inline-size: 24rem;
+  }
 }
 
 .silice-inicio__sin-avance {

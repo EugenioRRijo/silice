@@ -48,6 +48,15 @@ ajustan aquí cuando la construcción los fije.
 - Cada severidad lleva su ícono de Carbon (`ErrorFilled`, `WarningFilled`, `WarningAltFilled`,
   `InformationFilled`) y su nombre en texto accesible; el amarillo no alcanza 3:1 sobre blanco, así que su
   identificación la da el ícono con glifo oscuro, nunca el borde solo.
+- **Ícono de advertencia = `--silice-sev-advertencia-icono` (`yellow-50`, #b28600), no el token de los halos.** El triángulo
+  amarillo `yellow-30` medía 1,53:1 sobre el gris 10 del tema (rgb 244,244,244) y 1,69:1 sobre blanco: no llega al 3:1 que
+  WCAG 1.4.11 pide a un gráfico (pasada en el navegador de F6, H1). El `yellow-50` da 3,03:1 sobre el gris 10 y 3,33:1 sobre
+  blanco, sigue siendo ámbar (el mismo significado) y es el de la franja de la etiqueta del libro menor. Lo usan el ícono
+  `.silice-sev--advertencia .silice-sev__icono` (Bandeja de Pendientes, «Lo que requiere atención», lista de hallazgos), el de
+  la arenera y el de «queda poco» de existencias. **Los halos de la hoja siguen con `--silice-sev-advertencia` (`yellow-30`)**:
+  llevan su segundo contorno oscuro (`visor.scss`). El atípico en morado cambia las dos variables a la vez
+  (`MORADO_ATIPICO`). La palabra «Aviso» o «Advertencia» va siempre junto al ícono. Lo vigila
+  `indicadores/contrasteAviso.test.ts`, que calcula las razones.
 - Libro contra Sílice (decisión de Eugenio, V-16): el libro menor que Sílice es favorable (verde, flecha abajo) y el mayor,
   desfavorable (rojo, flecha arriba); la palabra «favorable» o «desfavorable» se ve siempre, el color no va solo.
 - **Etiqueta de advertencia pegada** (V-16, Eugenio 2026-10-21): el verde del libro contra Sílice significa «el libro declara menos»,
@@ -138,7 +147,9 @@ En los textos no se dice «módulo» ni «área».
 
 - **La obra** (`EspacioDeObra.tsx`, ruta `#/obra/<carpeta>/<obra>/<sección>`): antes de montar la sección se fija la obra
   en la sesión; encima va la cabecera de la obra (véase «Cabecera de la obra»), que no es un encabezado: el único h1 es el
-  de la sección. «Esa obra ya no existe» (con «Volver a Pendientes») y «Esta obra se abrió en otra pestaña» (con
+  de la sección. Una pantalla que la cuenta no puede usar (o de una especialidad apagada) la sustituye el aviso «Sin permiso»
+  (o «Apagada»), que es el único h1 de la página (`marco/avisos.tsx`; `EstadoVacio` admite `nivel`); en la Cuenta, donde la
+  página ya trae el h1 de la sección, baja a h2. «Esa obra ya no existe» (con «Volver a Pendientes») y «Esta obra se abrió en otra pestaña» (con
   «Retomar») son pantallas con su h1. Sus secciones se describen en «Secciones de la obra».
 - **Buscador** (`Buscador.tsx`, `busqueda.ts`): diálogo propio con combobox y lista. Busca, en este orden, obras, sus secciones,
   las secciones de la Cuenta (también por su ayuda, así «personas» lleva a «Cuentas y permisos») y las herramientas de
@@ -216,7 +227,9 @@ El conmutador de Presupuesto dice «Presupuesto | Componer», no «Partidas» (d
 
 **La Cuenta** (`EspacioDeCuenta.tsx`) tiene su barra con seis secciones: «Pantalla y tamaño de letra», «Cuentas y permisos»,
 «Empresa y tema», «Carpetas», «Especialidades, IA e instalación» y «Ayuda y acerca de Sílice». Lo que la cuenta no puede
-usar no aparece; «Carpetas» pide además `cambiar_caso`.
+usar no aparece; «Carpetas» pide además `cambiar_caso`. **El h1 de cada sección dice lo mismo que su pestaña** (también la
+Ayuda: «Ayuda y acerca de Sílice»; antes decía «Acerca de Sílice»). Una sección escrita a mano que la cuenta no puede usar
+lleva su h1 y, debajo, el aviso «Sin permiso» en un h2.
 
 **Direcciones que no existen.** Una dirección sin pantalla (el comodín de `Marco.tsx`, línea 423) lleva a la Vista general.
 Las direcciones viejas se redirigen a su nuevo sitio (contrato de rutas, §2.4).
@@ -242,15 +255,24 @@ La cabecera del espacio dice «Vista general»; el único `h1` es el de la panta
 3. **Obras y avance contra el plan.** Una tabla con una fila por obra: el nombre (enlace a su Resumen, con la carpeta si es
    homónima), la etapa, el total y el avance. El avance dice «Real X % · Plan Y %» y lleva una barra: el real en relleno
    sólido y el plan en contorno, con las cifras al lado para que el color no vaya solo. Sin avance, «Sin avance»; sin versión,
-   «Sin versión».
+   «Sin versión». Dentro de «Real 67,0 %» y de «Plan 76,7 %» van espacios duros (U+00A0): se lee igual, el «%» no cae solo en otra línea y el texto solo se parte en el «·».
+   La barra da su alto en rem (`.fiori-kpi__barra`, 0,75 rem), así que crece con la letra; el contorno del plan es de 0,0625 rem.
+   **Con letra grande, filas apiladas.** La caja de la tabla es un contenedor (`container-type: inline-size`, `silice-inicio__obras`):
+   cuando mide menos de 42 rem (en rem, no en px: el umbral crece con la letra) cada obra se apila en un bloque con el nombre
+   arriba y «Estado», «Total» y «Avance» con su etiqueta (`data-etiqueta`, la cabecera sigue ahí para los lectores de pantalla), y la
+   columna de avance nunca queda fuera de la vista (a 1056 px con letra Muy grande la tabla de cuatro columnas pedía 1104 px
+   y solo había 587). Si aun así algo se desplazara, la caja es la región que se desplaza: `role="region"`, `tabindex="0"`,
+   nombre «…: desplazar horizontalmente» y el anillo de foco de Carbon, como las tablas de la hoja.
 4. **Últimas auditorías.** Las cinco últimas auditorías guardadas, con su resultado en palabras («Sin errores ni
-   advertencias», o cuántos errores y advertencias) y un enlace a Auditoría. Solo con `leer_proyecto`.
+   advertencias», o cuántos errores y advertencias) y un enlace a Auditoría. Solo con `leer_proyecto`. Sin ninguna guardada, el
+   vacío manda a Auditoría («Para auditar un presupuesto, vaya a Auditoría…») y no habla de soltar un Excel «arriba»: eso solo
+   vale dentro de Auditoría (`UltimasAuditorias`, prop `desde`).
 5. **Arenera.** Solo con `operar_arenera` y con la especialidad de producción encendida (`paginas/inicio/index.tsx`, línea 30).
 
 La pantalla no calcula nada: cada cifra es la del servidor, solo formateada en es-VE (coma decimal, punto de miles). Cada
 bloque pide sus datos por su cuenta; si uno falla, dice su error sin tumbar a los demás. Sin `leer_proyecto`, la cartera y el
-avance no se pintan. Sin obras, el estado vacío: quien puede crear ve «Nueva obra»; quien solo revisa ve que no hay obras en
-su carpeta.
+avance no se pintan. Sin obras, el estado vacío: quien puede crear ve «Nueva obra»; quien solo revisa lee «No hay obras que su cuenta pueda ver»
+(la Vista general reúne todas las carpetas que la cuenta puede abrir, no una).
 
 ## Secciones de la obra
 
