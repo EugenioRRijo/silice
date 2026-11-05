@@ -63,7 +63,7 @@ describe("CampoDeUnidad", () => {
     render(<Campo />);
     const campo = screen.getByRole("combobox", { name: "Unidad" });
     await u.type(campo, "pulg");
-    await u.click(await screen.findByRole("option", { name: "Usar «pulg» tal cual (no está en el catálogo)" }));
+    await u.click(await screen.findByRole("option", { name: "Usar «pulg» tal cual" }));
     expect(campo).toHaveValue("pulg");
   });
 

@@ -248,7 +248,7 @@ describe("ComponerPartida (Tarea 9)", () => {
     expect(unidad).toHaveValue("m3");
     await u.clear(unidad);
     await u.type(unidad, "pza");
-    await u.click(await screen.findByRole("option", { name: "Usar «pza» tal cual (no está en el catálogo)" }, ESPERA));
+    await u.click(await screen.findByRole("option", { name: "Usar «pza» tal cual" }, ESPERA));
     expect(unidad).toHaveValue("pza");
     expect(rutas.filter((r) => r === "/v1/consulta/unidades")).toHaveLength(1);
   });

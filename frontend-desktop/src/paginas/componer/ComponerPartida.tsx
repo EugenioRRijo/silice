@@ -10,6 +10,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { BuscadorReferencia } from "./BuscadorReferencia";
 import { CampoDelCodigo } from "./CampoDelCodigo";
+import { CampoDeUnidad } from "./CampoDeUnidad";
 import { esCodigoValido } from "./codigo";
 import { AvisoSinLista } from "./AvisoSinLista";
 import type { Desde } from "./AvisoSinLista";
@@ -371,12 +372,12 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               if (!e.target.value.trim()) setParecidas([]);
             }}
           />
-          <CampoTexto
+          <CampoDeUnidad
             id="componer-unidad"
-            size="sm"
-            labelText="Unidad"
-            value={cabecera.unidad}
-            onChange={(e) => cambiarCabecera({ unidad: e.target.value })}
+            etiqueta="Unidad"
+            texto={cabecera.unidad}
+            alCambiar={(unidad) => cambiarCabecera({ unidad })}
+            alExpirar={expirar}
           />
           <Select
             id="componer-dominio"

@@ -8,6 +8,7 @@ import type { SugerenciaDeConsulta } from "../../comun/consulta";
 import { LARGO_MAXIMO } from "../../comun/logicaBusqueda";
 import type { OpcionDeBusqueda } from "../../comun/logicaBusqueda";
 import { COLUMNA_DEL_PRECIO, TABLA_DE_CONSULTA, valoresAlElegir } from "./autocompletado";
+import { CampoDeUnidad } from "./CampoDeUnidad";
 import { COLUMNAS, TITULOS } from "./tablas";
 import type { Fila, TipoTabla } from "./tablas";
 
@@ -51,7 +52,7 @@ interface Marca {
 // piden «insumos» y la mano de obra «salarios_cct». Al elegir se llenan tambien la unidad y el precio, que vienen en la
 // misma respuesta: el precio es el de la lista para armar a la fecha de la composicion y solo se copia en la moneda de la
 // carpeta; si no, la celda del precio dice por que quedo vacia (AC1b). Escribir una descripcion propia sigue siendo
-// posible y queda avisado.
+// posible y queda avisado. La unidad de un material sugiere las que ya usa el catalogo y admite una propia (AC4).
 export function TablaInsumos({
   tipo,
   filas,
@@ -161,6 +162,16 @@ export function TablaInsumos({
                           largoMaximo={null}
                           conBorrar={false}
                           tamano="sm"
+                        />
+                      ) : c.clave === "unidad" ? (
+                        <CampoDeUnidad
+                          id={`${tipo}-${i}-${c.clave}`}
+                          etiqueta={nombre}
+                          etiquetaOculta
+                          texto={fila.unidad ?? ""}
+                          alCambiar={(texto) => alCambiar(i, c.clave, texto)}
+                          alExpirar={alExpirar}
+                          enCelda
                         />
                       ) : (
                         <CampoTexto

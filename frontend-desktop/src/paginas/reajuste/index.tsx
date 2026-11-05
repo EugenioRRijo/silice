@@ -84,12 +84,31 @@ function columnasDeComponente(series: SerieDeIndice[] | null, alExpirar: () => v
     { clave: "peso", titulo: "Peso", cifra: true },
   ];
 }
-const COLUMNAS_PERIODO: ColumnaEditable[] = [
-  { clave: "desde", titulo: "Desde", tipo: "fecha" },
-  { clave: "hasta", titulo: "Hasta", tipo: "fecha" },
-  { clave: "version_comprobacion", titulo: "Versión de comprobación" },
-  { clave: "excepcion", titulo: "Excepción" },
-];
+// AC4: la versión de comprobación se elige entre las revaloradas del proyecto (`versiones[].revalorada` del contexto);
+// vacía es «Ninguna» (la comprobación de ese período queda no disponible). La lista es corta: un desplegable. Un valor
+// que ya no está entre las revaloradas se conserva como opción para no cambiar lo escrito sin avisar.
+function columnasDePeriodo(revaloradas: string[]): ColumnaEditable[] {
+  return [
+    { clave: "desde", titulo: "Desde", tipo: "fecha" },
+    { clave: "hasta", titulo: "Hasta", tipo: "fecha" },
+    {
+      clave: "version_comprobacion",
+      titulo: "Versión de comprobación",
+      campo: (c) => {
+        const opciones = c.valor === "" || revaloradas.includes(c.valor) ? revaloradas : [...revaloradas, c.valor];
+        return (
+          <Select id={c.id} labelText={c.etiqueta} hideLabel size="sm" value={c.valor} onChange={(e) => c.alCambiar(e.target.value)}>
+            <SelectItem value="" text="Ninguna" />
+            {opciones.map((v) => (
+              <SelectItem key={v} value={v} text={v} />
+            ))}
+          </Select>
+        );
+      },
+    },
+    { clave: "excepcion", titulo: "Excepción" },
+  ];
+}
 function columnasDeEjecutado(partidas: PartidaDelContrato[] | null, alExpirar: () => void): ColumnaEditable[] {
   return [
     { clave: "periodo", titulo: "Período" },
@@ -387,7 +406,7 @@ function Formulario({
                 </p>
                 <FilasEditables
                   etiqueta="Períodos"
-                  columnas={COLUMNAS_PERIODO}
+                  columnas={columnasDePeriodo(revaloradas)}
                   filas={form.periodos}
                   alCambiar={(filas) => editar((f) => ({ ...f, periodos: filas }))}
                 />
