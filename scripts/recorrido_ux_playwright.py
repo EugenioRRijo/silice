@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import functools
 import json
 import os
 import re
@@ -59,6 +60,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -68,6 +70,10 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 RUTAS_TS = RAIZ / "frontend-desktop" / "src" / "shell" / "rutas.ts"
+# Dónde vive cada pantalla desde F6 (contrato de rutas 2026-11-04): los espacios, las subvistas y la
+# Cuenta en `espacios.ts`; las secciones de la obra y la Vista general en `secciones.ts`.
+ESPACIOS_TS = RAIZ / "frontend-desktop" / "src" / "marco" / "espacios.ts"
+SECCIONES_TS = RAIZ / "frontend-desktop" / "src" / "marco" / "secciones.ts"
 AXE_URL = "https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js"
 ALTO = 768
 ROLES = {"admin": "administra", "ana": "arma", "rita": "revisa"}
@@ -79,6 +85,8 @@ CLAVE_LETRA = "silice.tamano-letra"
 # Violaciones axe de la corrida de referencia (bitácora 2026-10-25-recorrido-ux-playwright.md,
 # H-10): cualquier otra (ruta, regla) es nueva. El Inicio de entonces ya no existe: su bloque
 # «Últimas auditorías» (la región desplazable de rita a 1056 px) vive hoy en el inicio de Auditoría.
+# Desde F6 (T8) el id «inicio» es la Vista general, que vuelve a mostrar «Últimas auditorías»; su
+# fila de la referencia no se volvió a medir con ella.
 AXE_DE_REFERENCIA = {
     ("administracion", "color-contrast"),
     ("inicio", "scrollable-region-focusable"),
@@ -164,6 +172,145 @@ def camino_por_menu(id_: str) -> dict[str, Any]:
         "pantalla": pagina["titulo"],
         "inicio": pagina["area"] == "inicio",
     }
+
+
+# --------------------------- rutas canónicas (F6) -----------------------------------------------
+#
+# El espejo de `rutaCanonica` (`marco/espacios.ts`): la ruta de cada pantalla se lee de las tablas
+# del marco como texto (como `PAGINAS`) y no se escribe a mano en el recorrido.
+
+# Una entrada `{ id: "…", titulo: "…", pagina: "…" | null` de las tablas de `espacios.ts` y de
+# `secciones.ts`.
+_ENTRADA_DEL_MARCO = r'\{\s*id:\s*"([^"]*)",\s*titulo:\s*"[^"]*",\s*pagina:\s*(?:"([^"]*)"|null)'
+# La pantalla de la Vista general (`rutaCanonica`: `paginaId === "inicio"`).
+PAGINA_DE_LA_VISTA_GENERAL = "inicio"
+# Así se escribe la carpeta de la empresa en `/obra/<carpeta>/…` (`secciones.ts`).
+SEGMENTO_DE_LA_EMPRESA = "empresa"
+
+
+def _bloque_ts(texto: str, desde: str, hasta: str, archivo: Path) -> str:
+    if desde not in texto or hasta not in texto.split(desde, 1)[1]:
+        raise ValueError(f"{archivo.name}: no se encuentra «{desde}» … «{hasta}»")
+    return texto.split(desde, 1)[1].split(hasta, 1)[0]
+
+
+@functools.cache
+def mapa_del_marco() -> dict[str, Any]:
+    """Dónde vive cada pantalla: `obra` (pantalla → sección), `subvista` (pantalla → sección y
+    segmento), `espacio` (pantalla → espacio y segmento), `cuenta` (pantalla → su primera sección
+    de la Cuenta) y la ruta de la Vista general."""
+    espacios = ESPACIOS_TS.read_text(encoding="utf-8")
+    secciones = SECCIONES_TS.read_text(encoding="utf-8")
+    vista = re.search(r'RUTA_DE_VISTA_GENERAL\s*=\s*"([^"]+)"', secciones)
+    if vista is None:
+        raise ValueError(f"{SECCIONES_TS.name}: no se encuentra RUTA_DE_VISTA_GENERAL")
+    de_obra = _bloque_ts(
+        secciones, "export const SECCIONES_DE_OBRA", "export function seccionPorId", SECCIONES_TS
+    )
+    obra = {pagina: id_ for id_, pagina in re.findall(_ENTRADA_DEL_MARCO, de_obra) if pagina}
+    subvista: dict[str, tuple[str, str]] = {}
+    bloque = _bloque_ts(
+        espacios, "export const SUBVISTAS", "export function subvistaDeLaPagina", ESPACIOS_TS
+    )
+    for seccion, vistas in re.findall(r"(\w+):\s*\[(.*?)\]", bloque, flags=re.DOTALL):
+        for id_, pagina in re.findall(_ENTRADA_DEL_MARCO, vistas):
+            if id_ and pagina:
+                subvista[pagina] = (seccion, id_)
+    espacio: dict[str, tuple[str, str]] = {}
+    bloque = _bloque_ts(espacios, "export const ESPACIOS:", "export const SUBVISTAS", ESPACIOS_TS)
+    patron = r'(\w+):\s*\{\s*titulo:\s*"[^"]*",\s*herramientas:\s*\[(.*?)\]'
+    for nombre, herramientas in re.findall(patron, bloque, flags=re.DOTALL):
+        for id_, pagina in re.findall(_ENTRADA_DEL_MARCO, herramientas):
+            espacio[pagina] = (nombre, id_)
+    bloque = _bloque_ts(
+        espacios, "export const SECCIONES_DE_CUENTA", "export function esCuenta", ESPACIOS_TS
+    )
+    secciones_de_cuenta = re.findall(_ENTRADA_DEL_MARCO, bloque)
+    cuenta: dict[str, str] = {}
+    for id_, pagina in secciones_de_cuenta:
+        if pagina:
+            cuenta.setdefault(pagina, id_)
+    return {
+        "vista_general": vista[1],
+        "obra": obra,
+        "subvista": subvista,
+        "espacio": espacio,
+        "cuenta": cuenta,
+        "secciones_de_cuenta": dict(secciones_de_cuenta),
+    }
+
+
+def ruta_canonica(id_: str, obra: tuple[str | None, int] | None = None) -> str:
+    """La ruta de la pantalla (sin «#»), como `rutaCanonica(id, obra)`: una sección o subvista de la
+    obra va a `/obra/<carpeta>/<obra>/<sección>[/<subvista>]` y, sin obra, a su dirección corta
+    (`/<id>`), que el marco lleva a la obra de la sesión; una herramienta de Producción, Auditoría
+    o Precios, a `/<espacio>/<segmento>`; Administración y Acerca de, a la Cuenta; la Vista general,
+    a `/inicio/general`. `obra` es (carpeta, id); carpeta `None` es la de la empresa."""
+    if id_ not in {r["id"] for r in rutas_de_la_interfaz()}:
+        raise ValueError(f"no hay pantalla «{id_}» en rutas.ts")
+    mapa = mapa_del_marco()
+    if id_ == PAGINA_DE_LA_VISTA_GENERAL:
+        return mapa["vista_general"]
+    seccion, subvista = mapa["obra"].get(id_), None
+    if seccion is None and id_ in mapa["subvista"]:
+        seccion, subvista = mapa["subvista"][id_]
+    if seccion is not None:
+        if obra is None:
+            return f"/{id_}"
+        carpeta, obra_id = obra
+        segmento = (
+            SEGMENTO_DE_LA_EMPRESA
+            if carpeta is None
+            else urllib.parse.quote(carpeta, safe="!~*'()")  # como encodeURIComponent
+        )
+        base = f"/obra/{segmento}/{obra_id}/{seccion}"
+        return f"{base}/{subvista}" if subvista else base
+    if id_ in mapa["espacio"]:
+        nombre, herramienta = mapa["espacio"][id_]
+        return f"/{nombre}/{herramienta}"
+    if id_ in mapa["cuenta"]:
+        return f"/cuenta/{mapa['cuenta'][id_]}"
+    return f"/{id_}"
+
+
+def hash_de(id_: str) -> str:
+    """El `location.hash` con que se abre la pantalla (sin obra: la de la sesión)."""
+    return "#" + ruta_canonica(id_)
+
+
+def patron_de_hash(id_: str) -> str:
+    """La expresión (vale para `re` y para `RegExp`) del `location.hash` en que queda la pantalla
+    abierta, con o sin consulta: la de la obra, con cualquier carpeta y obra (su dirección corta
+    redirige a la obra de la sesión)."""
+    consulta = r"(?:\?.*)?$"
+    mapa = mapa_del_marco()
+    if id_ in mapa["obra"] or id_ in mapa["subvista"]:
+        cola = ruta_canonica(id_, ("x", 0)).split("/", 4)[4]
+        return r"^#/obra/[^/?#]+/\d+/" + re.escape(cola) + consulta
+    return "^" + re.escape(hash_de(id_)) + consulta
+
+
+def pagina_de_la_ruta(enlace: str) -> str | None:
+    """La pantalla a la que lleva un enlace (`href` o `location.hash`), o `None` si no lleva a una
+    pantalla del registro (Pendientes, «Pantalla y tamaño de letra», un segmento desconocido)."""
+    ruta = enlace.split("#", 1)[1] if "#" in enlace else enlace
+    partes = [p for p in ruta.split("?", 1)[0].split("/") if p]
+    mapa = mapa_del_marco()
+    ids = {r["id"] for r in rutas_de_la_interfaz()}
+    if "/" + "/".join(partes) == mapa["vista_general"]:
+        return PAGINA_DE_LA_VISTA_GENERAL
+    if len(partes) in (4, 5) and partes[0] == "obra":
+        seccion = partes[3]
+        if len(partes) == 4:
+            return next((p for p, s in mapa["obra"].items() if s == seccion), None)
+        return next((p for p, sv in mapa["subvista"].items() if sv == (seccion, partes[4])), None)
+    if len(partes) == 2 and partes[0] == "cuenta":
+        return mapa["secciones_de_cuenta"].get(partes[1]) or None
+    if len(partes) == 2:
+        return next((p for p, e in mapa["espacio"].items() if e == tuple(partes)), None)
+    if len(partes) == 1 and partes[0] in ids and partes[0] != PAGINA_DE_LA_VISTA_GENERAL:
+        return partes[0]
+    return None
 
 
 def umbral_medido(caben: dict[int, bool]) -> float | None:
@@ -363,7 +510,9 @@ def _hrefs(pagina: Any, selector: str) -> list[str]:
     hrefs = pagina.eval_on_selector_all(
         selector, "els => els.map(a => a.getAttribute('href') || '')"
     )
-    return [h.split("#/")[-1].strip("/") for h in hrefs if h]
+    # Desde F6 un enlace lleva a `#/<espacio>/<segmento>`, a la Cuenta o a la obra: se traduce a la
+    # pantalla del registro (los que no llevan a una, como Pendientes, se descartan).
+    return [p for h in hrefs if h and (p := pagina_de_la_ruta(h)) is not None]
 
 
 def ids_del_menu(contexto: Any, base: str) -> set[str]:
@@ -372,7 +521,7 @@ def ids_del_menu(contexto: Any, base: str) -> set[str]:
     …» del sidebar lista las mismas pantallas que la barra)."""
     pagina = contexto.new_page()
     pagina.set_viewport_size({"width": 1366, "height": ALTO})
-    pagina.goto(f"{base}/app/#/", wait_until="domcontentloaded")
+    pagina.goto(f"{base}/app/{hash_de(PAGINA_DE_LA_VISTA_GENERAL)}", wait_until="domcontentloaded")
     pagina.wait_for_selector("main h1", timeout=LIMITE_CARGA_MS)
     abrir_sidebar(pagina)
     inicios = _hrefs(pagina, f"#{ID_SIDEBAR} a.silice-sidebar__modulo")
@@ -694,7 +843,7 @@ def medir_pantalla(
     }
     try:
         inicio = time.monotonic()
-        pagina.goto(f"{base}/app/#/{ruta['id']}", wait_until="domcontentloaded")
+        pagina.goto(f"{base}/app/{hash_de(ruta['id'])}", wait_until="domcontentloaded")
         try:
             # Una ruta que el menú del rol no ofrece se espera poco: no es un error de carga.
             espera = LIMITE_CARGA_MS if fila["en_menu"] else 3000
@@ -760,12 +909,13 @@ def medir_con_recorrido(
         "en_menu": True,
     }
     try:
-        pagina.goto(f"{base}/app/#/auditoria", wait_until="domcontentloaded")
+        pagina.goto(f"{base}/app/{hash_de('auditoria')}", wait_until="domcontentloaded")
         pagina.wait_for_selector("main h1", timeout=LIMITE_CARGA_MS)
         pagina.locator("main input[type=file]").first.set_input_files(str(libro))
         pagina.get_by_role("button", name="Auditar con recorrido guiado").click()
         pagina.wait_for_function(
-            "() => location.hash === '#/libros' && document.querySelector('main h1') !== null",
+            "p => new RegExp(p).test(location.hash) && document.querySelector('main h1') !== null",
+            arg=patron_de_hash("libros"),
             timeout=LIMITE_CARGA_MS,
         )
         for _ in range(80):
@@ -889,7 +1039,8 @@ def _foco_en(pagina: Any, id_: str) -> bool:
 
 
 def _ir_y_esperar(pagina: Any, base: str, ruta: str) -> None:
-    pagina.goto(f"{base}/app/#/{ruta}", wait_until="domcontentloaded")
+    """`ruta` es el id de la pantalla; se abre su ruta canónica."""
+    pagina.goto(f"{base}/app/{hash_de(ruta)}", wait_until="domcontentloaded")
     pagina.wait_for_selector("main h1:not([data-esqueleto])", timeout=LIMITE_CARGA_MS)
     with contextlib.suppress(Exception):
         pagina.wait_for_load_state("networkidle", timeout=4000)
@@ -1746,12 +1897,12 @@ def flujo_libros(
         ),
     )
     inicio = time.monotonic()
-    pagina.goto(f"{base}/app/#/auditoria", wait_until="domcontentloaded")
+    pagina.goto(f"{base}/app/{hash_de('auditoria')}", wait_until="domcontentloaded")
     pagina.wait_for_selector("h1", timeout=LIMITE_CARGA_MS)
     c.anotar("pantalla", "Inicio de auditoría", pantalla="auditoria")
     c.anotar("decision", "soltar el Excel aquí o ir al área «Auditar» de la barra")
     if desde == "libros":
-        enlace = pagina.locator("a[href*='#/libros']").first
+        enlace = pagina.locator(f"a[href$='{hash_de('libros')}']").first
         enlace.click()
         c.anotar("clic", "ir a «Libro de la empresa»", pantalla="libros")
         pagina.wait_for_selector("h1:has-text('Libro de la empresa')", timeout=LIMITE_CARGA_MS)
@@ -1808,7 +1959,7 @@ def flujo_revisar_excel(
     pagina = contexto.new_page()
     pagina.set_viewport_size({"width": 1366, "height": ALTO})
     inicio = time.monotonic()
-    pagina.goto(f"{base}/app/#/revisar", wait_until="domcontentloaded")
+    pagina.goto(f"{base}/app/{hash_de('revisar')}", wait_until="domcontentloaded")
     pagina.wait_for_selector("h1", timeout=LIMITE_CARGA_MS)
     c.anotar("pantalla", "Revisar un paquete", pantalla="revisar")
     c.anotar("decision", "entre «Paquete .silice» y «Presupuesto en Excel»")
@@ -1993,10 +2144,12 @@ def elegir_opcion(campo: Any, opcion: str) -> str:
 
 
 def ir_por_hash(pagina: Any, ruta: str) -> None:
-    pagina.evaluate("r => { location.hash = '#/' + r; }", ruta)
+    """A la pantalla `ruta` (su id) por su ruta canónica, sin recargar; espera a que la dirección
+    sea la suya (la de la obra, si redirige) y a su h1."""
+    pagina.evaluate("h => { location.hash = h; }", hash_de(ruta))
     pagina.wait_for_function(
-        "r => location.hash === '#/' + r && document.querySelector('main h1') !== null",
-        arg=ruta,
+        "p => new RegExp(p).test(location.hash) && document.querySelector('main h1') !== null",
+        arg=patron_de_hash(ruta),
         timeout=LIMITE_CARGA_MS,
     )
     with contextlib.suppress(Exception):
@@ -2006,9 +2159,9 @@ def ir_por_hash(pagina: Any, ruta: str) -> None:
 def esperar_ruta(pagina: Any, ruta: str) -> None:
     """Hasta que la dirección es la de la pantalla y su h1 (no el del esqueleto) está a la vista."""
     pagina.wait_for_function(
-        "r => location.hash === '#/' + r"
+        "p => new RegExp(p).test(location.hash)"
         " && document.querySelector('main h1:not([data-esqueleto])') !== null",
-        arg=ruta,
+        arg=patron_de_hash(ruta),
         timeout=LIMITE_CARGA_MS,
     )
     with contextlib.suppress(Exception):

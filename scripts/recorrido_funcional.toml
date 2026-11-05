@@ -1,6 +1,10 @@
 # Recorrido funcional (BS-F): la acción principal de cada una de las pantallas de
 # `frontend-desktop/src/shell/rutas.ts` y el resultado visible que prueba que funcionó.
 #
+# `ruta` es el id de la pantalla en `rutas.ts`, no su dirección: la dirección (F6: `/<espacio>/<herramienta>`,
+# `/obra/<carpeta>/<obra>/<sección>[/<subvista>]`, `/cuenta/<sección>`, `/inicio/general`) la dice
+# `ruta_canonica` del script, que la lee de `frontend-desktop/src/marco/espacios.ts`.
+#
 # Lo ejecuta `scripts/recorrido_ux_playwright.py --funcional`, en el orden de este archivo. Cada fila
 # entra como una persona (plan de módulos, MOD-5): «Sílice» abre el sidebar, se elige el módulo y,
 # en la barra, el área y la pantalla (o la pantalla en el sidebar, si la barra cedió sus áreas); nunca
@@ -30,12 +34,15 @@
 # ---------------------------------------------------------------------------------------------
 # Siembra adicional: la empresa ficticia y su clave de firma (la usa «Entregar paquete»).
 # La genera el administrador ficticio desde el propio equipo (servidor en 127.0.0.1).
+# F6: Administración ya no tiene pestañas; sus bloques se apilan en las secciones de la Cuenta. La
+# ruta de `administracion` es «Cuentas y permisos» (`/cuenta/cuentas`); la empresa y su clave viven
+# en «Empresa y tema» (`/cuenta/empresa`), que se elige en la barra «Secciones de la cuenta».
 [[siembra]]
 ruta = "administracion"
 cuenta = "admin"
 accion = "empresa ficticia y clave de firma de prueba"
 pasos = [
-  { accion = "pulsar", rol = "tab", nombre = "Empresa y clave de firma" },
+  { accion = "pulsar", rol = "link", nombre = "Empresa y tema" },
   { accion = "llenar", rotulo = "Nombre de la empresa", valor = "Contratista Demo, C.A." },
   { accion = "llenar", rotulo = "RIF", valor = "J-00000000-0" },
   { accion = "llenar", rotulo = "Ciudad", valor = "Ciudad Ficticia" },
@@ -73,8 +80,8 @@ espera = { textos = ["Comparativo por partida", "Informe de auditoría de la ver
 ruta = "administracion"
 cuenta = "admin"
 accion = "crear una cuenta ficticia -> aparece en la lista de cuentas"
+# F6: «Cuentas» es un bloque de «Cuentas y permisos» (`/cuenta/cuentas`, la ruta de la pantalla), no una pestaña.
 pasos = [
-  { accion = "pulsar", rol = "tab", nombre = "Cuentas" },
   { accion = "llenar", rotulo = "Usuario", valor = "func01" },
   { accion = "llenar", rotulo = "Nombre de la persona", valor = "Persona Ficticia Uno" },
   { accion = "marcar", rotulo = "arma presupuestos (arma)" },
@@ -115,6 +122,13 @@ espera = { texto = "Lista creada" }
 
 # ---------------------------------------------------------------------------------------------
 # Trabajo (ana)
+
+# F6, T8: la Vista general (`/inicio/general`), la entrada de la app. Escrita sin navegador: se comprueba en el recorrido.
+[[pantalla]]
+ruta = "inicio"
+cuenta = "ana"
+accion = "(solo lectura) abrir la Vista general -> lo que requiere atención, la cartera y las últimas auditorías"
+espera = { textos = ["Vista general", "Lo que requiere atención", "Cartera por moneda", "Últimas auditorías"] }
 
 [[pantalla]]
 ruta = "acerca"
