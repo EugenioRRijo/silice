@@ -298,9 +298,9 @@ def carpetas_con_archivo(
     aún no se creó) no tiene obras ni pendientes: no es un fallo y no se avisa. Una corrupta sí
     existe y la tratan los lectores.
 
-    Cuando la lista la arma `_carpetas_visibles` con `CAMBIAR_CASO`, las demás carpetas ya vienen
+    Cuando la lista la arma `_carpetas_visibles` con `ABRIR_CARPETA`, las demás carpetas ya vienen
     filtradas de `listar_casos` (que solo devuelve archivos `.db` existentes) y este filtro solo
-    puede quitar la de la empresa (`None`). Sin `CAMBIAR_CASO` la carpeta abierta no sale de
+    puede quitar la de la empresa (`None`). Sin `ABRIR_CARPETA` la carpeta abierta no sale de
     `listar_casos`; por eso se aplica a toda la lista, sin depender de quién la armó."""
     return [(nombre, ruta) for nombre, ruta in carpetas if Path(ruta).is_file()]
 

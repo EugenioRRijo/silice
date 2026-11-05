@@ -8,7 +8,7 @@ import "./MarcaDemostracion.scss";
 interface Props {
   // La carpeta de esta sesion es la de demostracion (`es_demostracion` de `GET /v1/casos`).
   activa: boolean;
-  // La cuenta puede cambiar de carpeta (`cambiar_caso`).
+  // La cuenta puede abrir otra carpeta (`abrir_carpeta`).
   puedeVolver: boolean;
   alVolver: () => void;
 }

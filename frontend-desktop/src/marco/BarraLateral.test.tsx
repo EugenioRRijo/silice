@@ -178,9 +178,9 @@ describe("BarraLateral: lista sin carpetas (D-F3-3)", () => {
     expect(screen.queryByText("Galpón Sur")).toBeNull();
   });
 
-  it("una cuenta sin CAMBIAR_CASO en la carpeta de la empresa solo ve las de la empresa", async () => {
+  it("una cuenta sin ABRIR_CARPETA en la carpeta de la empresa solo ve las de la empresa", async () => {
     servidor([obra(null, 5, "Obra propia"), CLINICA], null);
-    pintar({ sesion: sesionDe("rita") });
+    pintar({ sesion: sesionDe("rita", { acciones: sesionDe("rita").acciones.filter((a) => a !== "abrir_carpeta") }) });
     const lista = await listaDeObras();
     expect(within(lista).getAllByRole("link").map((e) => e.textContent)).toEqual(["Obra propia"]);
   });

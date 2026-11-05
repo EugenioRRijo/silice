@@ -131,9 +131,17 @@ describe("MarcaDemostracion en el armazón", () => {
     expect(servidor.de("DELETE", "/v1/casos/actual")).toEqual([]);
   });
 
-  test("rita en la demostración ve la marca sin el botón de volver", async () => {
+  test("rita (revisa, con abrir_carpeta desde el 2026-11-05) en la demostración puede volver a la carpeta de la empresa", async () => {
     const u = userEvent.setup();
     montarMarco(sesionDe("rita"), "/auditoria/libros");
+    await u.click(await marca());
+    expect(screen.getByText("Está viendo datos inventados.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Volver a la carpeta de la empresa" })).toBeInTheDocument();
+  });
+
+  test("una cuenta sin abrir_carpeta en la demostración ve la marca sin el botón de volver", async () => {
+    const u = userEvent.setup();
+    montarMarco(sesionDe("rita", { acciones: sesionDe("rita").acciones.filter((a) => a !== "abrir_carpeta") }), "/auditoria/libros");
     await u.click(await marca());
     expect(screen.getByText("Está viendo datos inventados.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Volver a la carpeta de la empresa" })).not.toBeInTheDocument();

@@ -49,7 +49,7 @@ export interface CasosRespuesta {
 }
 
 // `GET /v1/obras/todas` (rediseño del marco, Tarea 3): las obras de todas las carpetas que la cuenta puede abrir (solo
-// la abierta sin `cambiar_caso`). `carpeta` es el nombre con su .db que acepta `POST /v1/casos/actual`; null = la
+// la abierta sin `abrir_carpeta`). `carpeta` es el nombre con su .db que acepta `POST /v1/casos/actual`; null = la
 // carpeta de la empresa, la primera de la lista.
 export interface ObraDeCarpetaRespuesta {
   carpeta: string | null;

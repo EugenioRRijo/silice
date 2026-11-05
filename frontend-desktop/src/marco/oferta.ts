@@ -84,7 +84,7 @@ export function useOferta() {
   const acciones = sesion?.acciones ?? [];
   return {
     acciones,
-    puedeCambiarDeCarpeta: acciones.includes("cambiar_caso"),
+    puedeCambiarDeCarpeta: acciones.includes("abrir_carpeta"),
     oferta: ofertaDe(acciones, sesion?.modo_entrega ?? false, aplicacion?.modulosApagados),
   };
 }

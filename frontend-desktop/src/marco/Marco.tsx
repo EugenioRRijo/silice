@@ -329,7 +329,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
             carpeta={carpetaActiva}
             extra={
               <>
-                <MarcaDemostracion activa={casos?.es_demostracion === true} puedeVolver={acciones.includes("cambiar_caso")} alVolver={volver} />
+                <MarcaDemostracion activa={casos?.es_demostracion === true} puedeVolver={acciones.includes("abrir_carpeta")} alVolver={volver} />
                 <BotonRecorrido />
               </>
             }
