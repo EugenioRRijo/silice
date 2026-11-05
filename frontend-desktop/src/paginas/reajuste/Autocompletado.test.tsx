@@ -114,6 +114,7 @@ describe("Reajuste: autocompletado de la serie y de la partida (AC2)", () => {
     expect(screen.queryByRole("option", { name: /equipos/ })).toBeNull();
     await u.keyboard("{ArrowDown}{Enter}");
     expect(campo).toHaveValue("FIC-MAT");
+    expect(screen.queryByRole("button", { name: "Borrar" })).toBeNull();
     await u.click(screen.getByRole("tab", { name: "2. Períodos y lo ejecutado" }));
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
@@ -148,6 +149,7 @@ describe("Reajuste: autocompletado de la serie y de la partida (AC2)", () => {
     expect(screen.queryByRole("option", { name: /Partida ficticia/ })).toBeNull();
     await u.click(opcion);
     expect(campo).toHaveValue("S1-R02");
+    expect(screen.queryByRole("button", { name: "Borrar" })).toBeNull();
     await u.type(screen.getByLabelText("Cantidad, Ejecutado fila 1"), "10");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
@@ -184,7 +186,9 @@ describe("Reajuste: autocompletado de la serie y de la partida (AC2)", () => {
   test("los componentes siguen siendo tres filas fijas y el nombre de cada campo no cambia", async () => {
     await montar();
     expect(screen.getByLabelText("Componente, Componentes fila 1")).toHaveAttribute("readonly");
-    expect(screen.getByLabelText("Serie, Componentes fila 2")).toBeInTheDocument();
+    const serie = screen.getByLabelText("Serie, Componentes fila 2");
+    expect(serie).toBeInTheDocument();
+    expect(document.querySelector(`label[for="${serie.id}"]`)).toHaveClass("cds--visually-hidden");
     expect(screen.getByLabelText("Peso, Componentes fila 3")).toBeInTheDocument();
   });
 });
