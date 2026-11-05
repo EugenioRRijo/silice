@@ -290,14 +290,14 @@ describe("Costo por tonelada", () => {
   });
 
   test("sin empresa configurada, el 422 se muestra con el camino a «Empresa y tema» de la Cuenta", async () => {
-    publicacion = () => json({ detalle: "Configure la empresa en Administración antes de publicar." }, 422);
+    publicacion = () => json({ detalle: "Configure la empresa en la Cuenta («Empresa y tema») antes de publicar." }, 422);
     montar(ADMIN);
     const resultado = await calcular();
     await usuario.click(within(resultado).getByRole("button", { name: "Publicar como precio propio" }));
     const dialogo = screen.getByRole("dialog", { name: "Publicar el costo propio" });
     await usuario.click(within(dialogo).getByRole("button", { name: "Publicar" }));
     const alerta = await within(dialogo).findByRole("alert");
-    expect(alerta).toHaveTextContent("Configure la empresa en Administración antes de publicar.");
+    expect(alerta).toHaveTextContent("Configure la empresa en la Cuenta («Empresa y tema») antes de publicar.");
     expect(within(dialogo).getByRole("link", { name: "Ir a «Empresa y tema»" })).toHaveAttribute("href", "/cuenta/empresa");
   });
 
