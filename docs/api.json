@@ -10373,6 +10373,50 @@
         }
       }
     },
+    "/v1/consulta/unidades": {
+      "get": {
+        "tags": [
+          "consulta"
+        ],
+        "summary": "Unidades",
+        "description": "Las unidades que ya usa el catálogo (partidas e insumos), sin repetir: «m3», «m³» y «M3»\nson `m3`. Para sugerir la unidad al componer; se puede escribir otra.",
+        "operationId": "unidades_v1_consulta_unidades_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnidadesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consulta/proveedores": {
+      "get": {
+        "tags": [
+          "consulta"
+        ],
+        "summary": "Proveedores",
+        "description": "Los proveedores de las cotizaciones de la carpeta, sin repetir, con la fecha de su última\ncotización. Para sugerir el proveedor al cotizar; se puede escribir uno nuevo.",
+        "operationId": "proveedores_v1_consulta_proveedores_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProveedoresRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/consulta/{tabla}": {
       "get": {
         "tags": [
@@ -24118,6 +24162,44 @@
         ],
         "title": "Proveedor"
       },
+      "ProveedorUsadoRespuesta": {
+        "properties": {
+          "proveedor": {
+            "type": "string",
+            "title": "Proveedor",
+            "description": "Como en su cotización más reciente"
+          },
+          "ultimo_uso": {
+            "type": "string",
+            "format": "date",
+            "title": "Ultimo Uso",
+            "description": "La fecha de esa cotización"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proveedor",
+          "ultimo_uso"
+        ],
+        "title": "ProveedorUsadoRespuesta"
+      },
+      "ProveedoresRespuesta": {
+        "properties": {
+          "proveedores": {
+            "items": {
+              "$ref": "#/components/schemas/ProveedorUsadoRespuesta"
+            },
+            "type": "array",
+            "title": "Proveedores",
+            "description": "El último usado primero"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proveedores"
+        ],
+        "title": "ProveedoresRespuesta"
+      },
       "ProyeccionEntrada": {
         "properties": {
           "proyecto": {
@@ -27417,6 +27499,52 @@
         ],
         "title": "UnidadDelPlano",
         "description": "P2: la unidad del dibujo con que se vuelve a leer el plano detenido."
+      },
+      "UnidadUsadaRespuesta": {
+        "properties": {
+          "unidad": {
+            "type": "string",
+            "title": "Unidad",
+            "description": "La forma canónica (tabla de alias del núcleo): lo que se guarda"
+          },
+          "usos": {
+            "type": "integer",
+            "title": "Usos",
+            "description": "Cuántas partidas e insumos del catálogo la usan"
+          },
+          "grafias": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Grafias",
+            "description": "Cómo está escrita en el catálogo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unidad",
+          "usos",
+          "grafias"
+        ],
+        "title": "UnidadUsadaRespuesta"
+      },
+      "UnidadesRespuesta": {
+        "properties": {
+          "unidades": {
+            "items": {
+              "$ref": "#/components/schemas/UnidadUsadaRespuesta"
+            },
+            "type": "array",
+            "title": "Unidades",
+            "description": "Las más usadas primero"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unidades"
+        ],
+        "title": "UnidadesRespuesta"
       },
       "UsarCobro": {
         "properties": {

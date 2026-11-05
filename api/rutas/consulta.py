@@ -11,6 +11,12 @@
   en otra moneda que la de la carpeta (`aplicacion.consulta`). Los campos que no vienen no se
   escriben (`response_model_exclude_none`): sin esos parámetros la respuesta es la de siempre. El
   precio viaja como texto decimal con punto. Una fecha mal escrita es el 422 fijo.
+- AC4: `GET /v1/consulta/unidades` (las unidades del catálogo con la tabla de alias del núcleo y
+  cuántas veces se usan) y `GET /v1/consulta/proveedores` (los de las cotizaciones de la carpeta,
+  con su último uso), de `aplicacion.consulta`. Mismo acceso `LEER_PROYECTO` y la misma cabecera:
+  solo leen, y el proveedor ya lo ve quien lee en la columna «Cotización» de los precios de una
+  versión (`GET /v1/hoja/precios`). Se declaran antes de `/{tabla}`, que si no las tomaría por
+  una tabla desconocida. Sin parámetros: son listas cortas que la interfaz filtra.
 """
 
 from __future__ import annotations
@@ -27,7 +33,7 @@ from api.dependencias import SesionDep
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
 from aplicacion.busqueda import LARGO_MAXIMO
-from aplicacion.consulta import TABLAS, buscar
+from aplicacion.consulta import TABLAS, buscar, proveedores_usados, unidades_usadas
 
 LIMITE_POR_OMISION = 10
 LIMITE_MAXIMO = 50
@@ -71,6 +77,58 @@ class ConsultaRespuesta(BaseModel):
     tabla: str
     resultados: list[SugerenciaDeConsultaRespuesta]
     hay_mas: bool = Field(description="Quedaron coincidencias fuera de `limite`")
+
+
+class UnidadUsadaRespuesta(BaseModel):
+    unidad: str = Field(
+        description="La forma canónica (tabla de alias del núcleo): lo que se guarda"
+    )
+    usos: int = Field(description="Cuántas partidas e insumos del catálogo la usan")
+    grafias: list[str] = Field(description="Cómo está escrita en el catálogo")
+
+
+class UnidadesRespuesta(BaseModel):
+    unidades: list[UnidadUsadaRespuesta] = Field(description="Las más usadas primero")
+
+
+class ProveedorUsadoRespuesta(BaseModel):
+    proveedor: str = Field(description="Como en su cotización más reciente")
+    ultimo_uso: date = Field(description="La fecha de esa cotización")
+
+
+class ProveedoresRespuesta(BaseModel):
+    proveedores: list[ProveedorUsadoRespuesta] = Field(description="El último usado primero")
+
+
+@router.get("/unidades", response_model=UnidadesRespuesta, dependencies=LEER)
+def unidades(sesion: SesionDep) -> UnidadesRespuesta:
+    """Las unidades que ya usa el catálogo (partidas e insumos), sin repetir: «m3», «m³» y «M3»
+    son `m3`. Para sugerir la unidad al componer; se puede escribir otra."""
+    try:
+        usadas = unidades_usadas(sesion)
+    except SQLAlchemyError:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, MENSAJE_BASE) from None
+    return UnidadesRespuesta(
+        unidades=[
+            UnidadUsadaRespuesta(unidad=u.unidad, usos=u.usos, grafias=list(u.grafias))
+            for u in usadas
+        ]
+    )
+
+
+@router.get("/proveedores", response_model=ProveedoresRespuesta, dependencies=LEER)
+def proveedores(sesion: SesionDep) -> ProveedoresRespuesta:
+    """Los proveedores de las cotizaciones de la carpeta, sin repetir, con la fecha de su última
+    cotización. Para sugerir el proveedor al cotizar; se puede escribir uno nuevo."""
+    try:
+        usados = proveedores_usados(sesion)
+    except SQLAlchemyError:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, MENSAJE_BASE) from None
+    return ProveedoresRespuesta(
+        proveedores=[
+            ProveedorUsadoRespuesta(proveedor=p.proveedor, ultimo_uso=p.ultimo_uso) for p in usados
+        ]
+    )
 
 
 @router.get(

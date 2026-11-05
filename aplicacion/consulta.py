@@ -27,6 +27,18 @@ en otra moneda que la de la carpeta no viaja ningún precio: solo su moneda, su 
 `aviso_precio` («El catálogo lo tiene en USD; escriba el precio en Bs.»). Sin lista no hay precio.
 Sin `detalle` ni `para_armar_al` la sugerencia es la de siempre; las otras dos tablas no cambian.
 
+Lo ya usado en la carpeta (AC4, pedido de Eugenio del 2026-10-21), para guiar dos campos de texto
+que siguen admitiendo un valor propio. Son listas cortas que la interfaz pide una vez y filtra:
+
+- `unidades_usadas`: las unidades de las partidas y los insumos del catálogo, agrupadas con la única
+  tabla de alias del sistema (`core.contracts.unidades.normalizar_unidad`; no hay otra lista de
+  unidades en el núcleo): «m3», «m³» y «M3» son una sola, `m3`, con sus grafías y cuántas filas la
+  usan. Las más usadas primero; a igual uso, por orden alfabético. Una unidad desconocida queda en
+  minúsculas y sin traducir, como la deja el núcleo.
+- `proveedores_usados`: los proveedores de las cotizaciones de la carpeta, sin repetir (sin
+  distinguir mayúsculas, acentos ni espacios), escritos como en su cotización más reciente y con la
+  fecha de esa cotización; el último usado primero.
+
 Sin Streamlit ni FastAPI; solo lee.
 """
 
@@ -49,9 +61,18 @@ from aplicacion.listas_para_armar import (
 from core import models
 from core.catalog import Catalogo, CatalogoIncompleto
 from core.catalog.indices import SERIE_USD_VENTA, UNIDAD_TASA
+from core.contracts.unidades import normalizar_unidad
 from core.verification.texto import normalizar_texto
 
-__all__ = ["TABLAS", "Sugerencia", "buscar"]
+__all__ = [
+    "TABLAS",
+    "ProveedorUsado",
+    "Sugerencia",
+    "UnidadUsada",
+    "buscar",
+    "proveedores_usados",
+    "unidades_usadas",
+]
 
 TABLAS = ("partidas_viales", "insumos", "tasa_bcv", "salarios_cct")
 
@@ -251,3 +272,62 @@ def buscar(
         tipos = TIPOS_DE_INSUMO if tabla == "insumos" else (TIPO_MANO_DE_OBRA,)
         return _insumos(sesion, tipos, texto, limite, detalle=detalle, para_armar_al=para_armar_al)
     return _tasas(sesion, texto, limite)
+
+
+# --- Lo ya usado en la carpeta (AC4) -----------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class UnidadUsada:
+    """Una unidad del catálogo en su forma canónica, cuántas filas la usan y cómo está escrita."""
+
+    unidad: str
+    usos: int
+    grafias: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ProveedorUsado:
+    """Un proveedor de las cotizaciones, como en la más reciente, y la fecha de esa cotización."""
+
+    proveedor: str
+    ultimo_uso: date
+
+
+def unidades_usadas(sesion: Session) -> list[UnidadUsada]:
+    """Las unidades de las partidas y los insumos, agrupadas con `normalizar_unidad` (ver la
+    cabecera). Una fila sin unidad o con la unidad en blanco no cuenta."""
+    usos: dict[str, int] = {}
+    grafias: dict[str, set[str]] = {}
+    escritas = [
+        *sesion.scalars(select(models.Partida.unidad)),
+        *sesion.scalars(select(models.Insumo.unidad)),
+    ]
+    for escrita in escritas:
+        recortada = (escrita or "").strip()
+        if not recortada:
+            continue
+        unidad = normalizar_unidad(recortada)
+        usos[unidad] = usos.get(unidad, 0) + 1
+        grafias.setdefault(unidad, set()).add(recortada)
+    return [
+        UnidadUsada(unidad, usos[unidad], tuple(sorted(grafias[unidad])))
+        for unidad in sorted(usos, key=lambda u: (-usos[u], u))
+    ]
+
+
+def proveedores_usados(sesion: Session) -> list[ProveedorUsado]:
+    """Los proveedores de las cotizaciones de la carpeta, sin repetir (ver la cabecera). A igual
+    fecha manda la cotización registrada después."""
+    recientes: dict[str, ProveedorUsado] = {}
+    consulta = select(models.Cotizacion.proveedor, models.Cotizacion.fecha).order_by(
+        models.Cotizacion.fecha, models.Cotizacion.id
+    )
+    for proveedor, fecha in sesion.execute(consulta):
+        escrito = " ".join(proveedor.split())
+        if escrito:
+            recientes[normalizar_texto(escrito)] = ProveedorUsado(escrito, fecha)
+    return sorted(
+        recientes.values(),
+        key=lambda p: (-p.ultimo_uso.toordinal(), normalizar_texto(p.proveedor)),
+    )
