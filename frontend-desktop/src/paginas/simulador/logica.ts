@@ -57,6 +57,20 @@ export function cuerpoDe(formulario: Formulario): CuerpoSimulacion {
   };
 }
 
+// Los insumos se eligen de la lista uno a uno, pero a la API viajan como siempre: UN texto con las descripciones exactas
+// separadas por coma (`insumos_de_texto` de la API parte por la coma y recorta). Vacio = todos (`cuerpoDe` lo vuelve null).
+export function insumosEnviados(elegidos: string[]): string {
+  return elegidos.join(", ");
+}
+
+// Esa lista parte por la coma: una descripcion que ya lleva una no se puede nombrar (la API la veria como dos nombres que
+// no existen y la ignoraria en silencio). null si puede entrar; si no, el motivo que se muestra junto al campo.
+export function motivoDeRechazo(descripcion: string): string | null {
+  return descripcion.includes(",")
+    ? `«${descripcion}» lleva una coma y la lista separada por comas la partiría en dos: no se puede elegir aquí.`
+    : null;
+}
+
 export function filasDeTabla(filas: FilaSimulada[]): FilaDensa[] {
   return filas.map((f, i) => ({ id: String(i), tipo: f.tipo, insumo: f.insumo, unidad: f.unidad, precio: f.precio }));
 }

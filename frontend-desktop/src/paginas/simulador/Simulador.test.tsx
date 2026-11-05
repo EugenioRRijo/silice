@@ -9,7 +9,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaSimulador from "./index";
-import { MENSAJE_SEMILLA, MENSAJE_SIN_FILAS, MENSAJE_VARIACION } from "./logica";
+import { MENSAJE_SEMILLA, MENSAJE_SIN_FILAS, MENSAJE_VARIACION, motivoDeRechazo } from "./logica";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -154,6 +154,8 @@ describe("Simulador de listas", () => {
       });
     });
 
+    const MOTIVO_CON_COMA = motivoDeRechazo("Tubo PVC, 4 pulgadas") ?? "";
+
     const consultas = () =>
       fetchFalso.mock.calls.map(([ruta]) => String(ruta)).filter((ruta) => ruta.startsWith("/v1/consulta/"));
     const posts = () => fetchFalso.mock.calls.filter(([, init]) => init?.method === "POST");
@@ -226,7 +228,7 @@ describe("Simulador de listas", () => {
       await usuario.type(screen.getByRole("combobox", { name: "Insumos" }), "tub");
       await usuario.click(await screen.findByRole("option", { name: /Tubo PVC/ }, { timeout: 3000 }));
       expect(screen.queryByRole("list", { name: "Elegidos: Insumos" })).not.toBeInTheDocument();
-      expect(await screen.findByText(/«Tubo PVC, 4 pulgadas» lleva una coma/, {}, { timeout: 3000 })).toBeInTheDocument();
+      expect(screen.getByText(MOTIVO_CON_COMA)).toBeInTheDocument();
     });
 
     test("un 401 de la busqueda cierra la sesion", async () => {

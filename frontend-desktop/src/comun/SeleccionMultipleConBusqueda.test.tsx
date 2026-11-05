@@ -212,7 +212,10 @@ describe("SeleccionMultipleConBusqueda", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(500);
     });
-    expect(textosDeLasRegiones()).toContain("«Tubo ficticio, 4 pulgadas» lleva una coma.");
+    // el motivo se ve bajo el campo (marcado como invalido) y ademas se anuncia
+    expect(screen.getByText("«Tubo ficticio, 4 pulgadas» lleva una coma.")).toBeInTheDocument();
+    expect(campo()).toHaveAttribute("aria-invalid", "true");
+    expect(textosDeLasRegiones()).toContain("No se agregó: «Tubo ficticio, 4 pulgadas» lleva una coma.");
   });
 
   test("ninguna region viva queda vacia", async () => {

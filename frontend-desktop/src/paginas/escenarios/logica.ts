@@ -18,7 +18,7 @@ export const AYUDA =
 export const SIN_PRESUPUESTOS = "No hay presupuestos guardados todavía: elabore uno primero.";
 export const NOTA_PARAMETROS = "Parámetros de costo del escenario (por defecto, los del presupuesto base).";
 export const NOTA_PRECIOS =
-  "Precios de ensayo (opcional): descripción exacta del insumo y precio nuevo. Lo no mencionado conserva su precio vigente.";
+  "Precios de ensayo (opcional): busque el insumo, elíjalo de la lista y escriba el precio nuevo. Lo no mencionado conserva su precio vigente.";
 export const EJEMPLO_PRECIOS = "p. ej. Cemento Portland → 18,50";
 export const SIN_ESCENARIOS = "Defina un escenario para compararlo contra el presupuesto base.";
 export const TITULO_COMPARACION = "Comparación contra el base";
@@ -46,6 +46,18 @@ export interface FilaPrecio {
   id: number;
   insumo: string;
   precio: string;
+  // La descripcion que se eligio de la lista del catalogo (AC3); lo que difiera de ella es texto escrito a mano.
+  elegido?: string;
+}
+
+// El calculo empareja la descripcion por igualdad exacta y descarta en silencio la que no existe (core/budget/escenarios.py:
+// `precios.get(descripcion, precio)`; la API solo cuenta `insumos_variados`). Por eso no se ofrece «usar tal cual»: se
+// permite escribirla, pero queda avisado.
+export const AVISO_ESCRITO_A_MANO =
+  "Escrito a mano: si no es exactamente un insumo de la lista, no cambia ningún precio.";
+
+export function esEscritoAMano(fila: FilaPrecio): boolean {
+  return fila.insumo.trim() !== "" && fila.elegido !== fila.insumo;
 }
 
 export function etiquetaDePresupuesto(p: PresupuestoResumen): string {
