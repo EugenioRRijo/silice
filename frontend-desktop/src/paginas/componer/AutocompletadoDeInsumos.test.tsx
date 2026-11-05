@@ -250,4 +250,18 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     expect(descripcion(1)).toHaveValue("Arena ficticia");
     expect(screen.queryByText(AVISO)).not.toBeInTheDocument();
   });
+
+  test("una descripción de más de 80 letras se puede escribir (el catálogo las tiene) y la búsqueda manda solo las primeras 80", async () => {
+    const u = userEvent.setup();
+    const larga = "Tubería de concreto reforzado ficticia para drenaje de aguas de lluvia, ".repeat(2).trim();
+    expect(larga.length).toBeGreaterThan(80);
+    render(<Arnes tipo="materiales" filas={[MATERIAL]} />);
+    await u.click(descripcion());
+    await u.paste(larga);
+    expect(descripcion()).toHaveValue(larga);
+    await waitFor(() => expect(llamadas.some((l) => l.startsWith("/v1/consulta/insumos?"))).toBe(true));
+    const q = new URLSearchParams(llamadas.find((l) => l.startsWith("/v1/consulta/insumos?"))!.split("?")[1]).get("q")!;
+    expect(q.length).toBeLessThanOrEqual(80);
+    expect(larga.startsWith(q)).toBe(true);
+  });
 });
