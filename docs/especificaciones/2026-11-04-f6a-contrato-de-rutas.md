@@ -113,6 +113,15 @@ Un pendiente de «actualizar precios» es de una obra: abre `/obra/:c/:o/mercado
 `/cuenta` → `/cuenta/preferencias`. Tras cambiar de carpeta se vuelve a `/cuenta/carpetas` (sustituye a
 `tomarVueltaACarpetas`).
 
+> **Enmienda 2026-11-05: quien revisa ve todas las carpetas (decisión de Eugenio).** Sustituye la decisión F6 del
+> 2026-11-04 («quien revisa ve solo la carpeta abierta»). `cambiar_caso` se parte en dos acciones de
+> `seguridad/permisos.py`: **`abrir_carpeta`** (arma, revisa y administrador) abre y cambia la carpeta de la sesión
+> (`POST` y `DELETE /v1/casos/actual`), restaura la recordada al entrar y lista las obras de todas las carpetas;
+> **`cambiar_caso`** (arma y administrador, como antes) queda para gestionar: crear (`POST /v1/casos`) y subir
+> (`POST /v1/casos/subida`). La sección «Carpetas» de la Cuenta sigue pidiendo `administrar_cuentas` **y**
+> `cambiar_caso`. La carpeta abierta es de cada sesión (`api/caso_web.py`, por huella de la ficha): que quien revisa
+> cambie de carpeta no cambia la de otra persona.
+
 ## 4. Inicio (`/inicio/:vista`)
 
 - `/inicio/general`, la **Vista general**. Primero lo que bloquea; después los indicadores de la cartera **separados por
@@ -120,8 +129,13 @@ Un pendiente de «actualizar precios» es de una obra: abre `/obra/:c/:o/mercado
   T7). Al final, las últimas auditorías y la arenera.
 - `/inicio/pendientes`: la `Bandeja`.
 - `usePendientes` recarga al entrar a cualquiera de las dos.
+- **Enmienda 2026-11-05: quien revisa ve todas las carpetas (decisión de Eugenio).** `GET /v1/obras/todas`,
+  `/v1/obras/resumen/todas` y `/v1/obras/pendientes/todas` listan todas las carpetas a quien tiene `abrir_carpeta`
+  (arma, revisa y administrador; §3); sin él, solo la abierta. Quien revisa sigue viendo en pendientes solo lo que
+  espera su dictamen. Se mantiene la regla: nunca se ofrece una obra que al abrirla diera 403.
 
 ## 5. Preguntas abiertas para Eugenio
 
 1. ¿«Riesgo de la obra» queda como sección propia de la obra o pasa a subvista de Control de obra?
-2. ¿Quien revisa debe ver las obras de todas las carpetas? (Hoy solo ve la de la empresa.)
+2. ¿Quien revisa debe ver las obras de todas las carpetas? (Hoy solo ve la de la empresa.) **Respondida el
+   2026-11-05: sí** (enmienda en §3 y §4).

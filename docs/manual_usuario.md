@@ -85,6 +85,11 @@ pantalla:
 Quien solo administra no ve la zona «Obras» de la barra lateral: su trabajo está en «Costos y
 producción» y en su Cuenta.
 
+**Obras de todas las carpetas.** Quien arma y quien revisa ven en la zona «Obras», en el buscador y en
+el Inicio las obras de todas las carpetas, no solo las de la carpeta activa. Al abrir una obra de otra
+carpeta, Sílice cambia a esa carpeta solo en su sesión: la carpeta de las demás personas no cambia.
+Quien revisa la ve en solo lectura y no puede crear ni subir carpetas.
+
 **En el grupo «Costos y producción» de la barra lateral.** Cada entrada abre un espacio con sus propias
 pestañas; cada quien ve solo las pestañas que puede usar:
 
@@ -415,8 +420,8 @@ puede usar:
   instante cómo queda. Sílice recuerda su elección en ese navegador. Debajo, «Datos de la cuenta»:
   «Nombre», «Usuario» y «Rol».
 - **«Cuentas y permisos»**, **«Empresa y tema»**, **«Carpetas»** y **«Especialidades, IA e
-  instalación»**, solo para quien administra (sección 2.7). «Carpetas» pide además poder cambiar de
-  carpeta.
+  instalación»**, solo para quien administra (sección 2.7). «Carpetas» pide además poder crear y subir
+  carpetas.
 - **«Ayuda y acerca de Sílice»**, para todas las cuentas. Su título es el mismo, «Ayuda y acerca de Sílice»: muestra la versión del
   programa, el estado de las bases de datos y qué módulos están instalados. Debajo, «Recorridos
   guiados» ofrece «Empezar el recorrido «Auditar un libro de la empresa»» (sección 12.4). Las guías de
