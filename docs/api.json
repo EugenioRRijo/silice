@@ -21927,6 +21927,11 @@
             "type": "string",
             "title": "Etapa"
           },
+          "etapa_texto": {
+            "type": "string",
+            "title": "Etapa Texto",
+            "description": "La etapa en palabras, como en el Resumen de la obra"
+          },
           "total": {
             "anyOf": [
               {
@@ -21972,6 +21977,7 @@
           "nombre",
           "moneda",
           "etapa",
+          "etapa_texto",
           "total",
           "avance_real",
           "avance_plan"
