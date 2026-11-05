@@ -90,3 +90,14 @@ export function editarCelda(tablas: Tablas, tipo: TipoTabla, indice: number, cla
     [tipo]: tablas[tipo].map((f, i) => (i === indice ? { ...f, [clave]: valor } : f)),
   };
 }
+
+// Llena varias celdas de una fila a la vez (al elegir un insumo del catalogo). Solo toca las columnas que la tabla tiene:
+// una clave ajena no inventa una columna, y una fila que no existe no cambia nada.
+export function completarFila(tablas: Tablas, tipo: TipoTabla, indice: number, valores: Record<string, string>): Tablas {
+  const claves = new Set(COLUMNAS[tipo].map((c) => c.clave));
+  const propios = Object.fromEntries(Object.entries(valores).filter(([clave]) => claves.has(clave)));
+  return {
+    ...tablas,
+    [tipo]: tablas[tipo].map((f, i) => (i === indice ? { ...f, ...propios } : f)),
+  };
+}

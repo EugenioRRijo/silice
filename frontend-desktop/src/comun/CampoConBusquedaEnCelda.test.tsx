@@ -26,7 +26,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function EnTabla({ escLimpia }: { escLimpia?: boolean }) {
+function EnTabla({ escLimpia, conBorrar }: { escLimpia?: boolean; conBorrar?: boolean }) {
   const [texto, setTexto] = useState("");
   return (
     <CampoConBusqueda<string>
@@ -38,6 +38,7 @@ function EnTabla({ escLimpia }: { escLimpia?: boolean }) {
       buscar={() => Promise.resolve(GRUPOS)}
       alElegir={(o) => setTexto(o.valor)}
       escLimpia={escLimpia}
+      conBorrar={conBorrar}
       vacio={VACIO}
       alExpirar={() => {}}
     />
@@ -76,5 +77,19 @@ describe("CampoConBusqueda: en una celda", () => {
     expect(entrada).toHaveValue("MAT-1");
     await u.keyboard("{Escape}");
     expect(entrada).toHaveValue("");
+  });
+
+  test("con conBorrar en falso no hay botón «Borrar» dentro del campo: Tab pasa de largo a la columna siguiente", async () => {
+    render(<EnTabla conBorrar={false} />);
+    const { entrada } = await elegirLaOpcion();
+    expect(entrada).toHaveValue("MAT-1");
+    expect(screen.queryByRole("button", { name: "Borrar" })).not.toBeInTheDocument();
+  });
+
+  test("por omisión el botón «Borrar» está", async () => {
+    render(<EnTabla />);
+    const { entrada } = await elegirLaOpcion();
+    expect(entrada).toHaveValue("MAT-1");
+    expect(screen.getByRole("button", { name: "Borrar" })).toBeInTheDocument();
   });
 });

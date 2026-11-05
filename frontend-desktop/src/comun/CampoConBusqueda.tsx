@@ -36,6 +36,7 @@ export type { GrupoDeResultados, OpcionDeBusqueda } from "./logicaBusqueda";
 export interface CampoConBusquedaProps<T> {
   id: string;
   etiqueta: string; // visible siempre, en lenguaje llano
+  etiquetaOculta?: boolean; // en una celda de tabla la etiqueta es solo el nombre accesible: la columna ya la rotula
   ayuda?: string; // helperText bajo el campo, con ejemplo
   texto: string; // el texto del campo: lo controla la pagina
   alCambiarTexto: (texto: string) => void;
@@ -54,6 +55,14 @@ export interface CampoConBusquedaProps<T> {
   pausaMs?: number; // 300
   limiteInicial?: number; // 8 por grupo; «Ver más resultados» pide 20
   enCelda?: boolean; // la lista va en un portal con position: fixed (una celda recorta un menu absoluto)
+  // false: Esc con la lista cerrada no borra lo elegido. En una celda de tabla lo elegido llena otras columnas y borrar
+  // solo la descripcion las dejaria huerfanas (AC1). true por omision.
+  escLimpia?: boolean;
+  // Tope de letras del campo: 80 por omision (el de la busqueda del servidor). null: sin tope, para un texto libre que
+  // ademas se busca (la descripcion de un insumo); quien lo pone recorta lo que manda a `buscar`.
+  largoMaximo?: number | null;
+  // false: sin el boton «Borrar» dentro del campo. En una tabla seria una parada de Tab de mas en cada fila (AC1).
+  conBorrar?: boolean;
   alExpirar: () => void; // 401
   invalido?: boolean;
   textoInvalido?: string;
@@ -67,6 +76,7 @@ const SIN_RESULTADO_AUN = "Las sugerencias aparecen bajo el campo al dejar de es
 export function CampoConBusqueda<T>({
   id,
   etiqueta,
+  etiquetaOculta = false,
   ayuda,
   texto,
   alCambiarTexto,
@@ -79,6 +89,9 @@ export function CampoConBusqueda<T>({
   pausaMs = PAUSA_MS,
   limiteInicial = LIMITE_INICIAL,
   enCelda = false,
+  escLimpia = true,
+  largoMaximo = LARGO_MAXIMO,
+  conBorrar = true,
   alExpirar,
   invalido = false,
   textoInvalido,
@@ -326,7 +339,7 @@ export function CampoConBusqueda<T>({
           cerrar();
           return;
         }
-        if (elegido.current && texto !== "") {
+        if (escLimpia && elegido.current && texto !== "") {
           e.preventDefault();
           e.stopPropagation();
           limpiar();
@@ -453,10 +466,11 @@ export function CampoConBusqueda<T>({
         <CampoTexto
           id={id}
           labelText={etiqueta}
+          hideLabel={etiquetaOculta}
           helperText={ayuda}
           value={texto}
           size={tamano}
-          maxLength={LARGO_MAXIMO}
+          maxLength={largoMaximo ?? undefined}
           autoComplete="off"
           invalid={invalido}
           invalidText={textoInvalido}
@@ -481,7 +495,7 @@ export function CampoConBusqueda<T>({
             alSalir?.();
           }}
         />
-        {texto !== "" && !deshabilitado && !soloLectura && (
+        {conBorrar && texto !== "" && !deshabilitado && !soloLectura && (
           <button
             type="button"
             className="silice-busqueda__borrar cds--btn cds--btn--ghost cds--btn--sm cds--btn--icon-only"

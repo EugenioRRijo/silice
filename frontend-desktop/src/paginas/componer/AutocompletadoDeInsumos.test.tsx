@@ -201,10 +201,11 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     expect(descripcion()).toHaveValue("cemento b");
 
     await u.click(descripcion());
-    await u.keyboard("{Enter}"); // sin opción activa: no elige nada
+    await u.keyboard("{Enter}"); // con la lista cerrada y sin opción activa: no elige nada
     expect(descripcion()).toHaveValue("cemento b");
+    await u.keyboard("{ArrowDown}"); // abre la lista y deja activa la primera
     await screen.findByRole("option", { name: /Cemento blanco ficticio/ });
-    await u.keyboard("{ArrowDown}{Enter}");
+    await u.keyboard("{Enter}");
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
   });
 

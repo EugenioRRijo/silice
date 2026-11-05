@@ -30,7 +30,7 @@ import { Guardar } from "./Guardar";
 import { PanelDesglose } from "./PanelDesglose";
 import { Similares } from "./Similares";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
-import { agregarFila, borrarFila, editarCelda, hayFilas, normalizarTablas, TIPOS, tablasVacias } from "./tablas";
+import { agregarFila, borrarFila, completarFila, editarCelda, hayFilas, normalizarTablas, TIPOS, tablasVacias } from "./tablas";
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 import { TablaInsumos } from "./TablaInsumos";
 
@@ -460,6 +460,8 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               alCambiar={(i, clave, valor) => cambiarTablas((t) => editarCelda(t, tipo, i, clave, valor))}
               alAgregar={() => cambiarTablas((t) => agregarFila(t, tipo))}
               alBorrar={(i) => cambiarTablas((t) => borrarFila(t, tipo, i))}
+              alCompletar={(i, valores) => cambiarTablas((t) => completarFila(t, tipo, i, valores))}
+              alExpirar={expirar}
               nivel={nivel === 2 ? 3 : 4}
             />
           </div>
