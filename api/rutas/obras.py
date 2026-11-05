@@ -17,6 +17,10 @@ Rutas finas sobre `aplicacion.mesa` (diseño de módulos §6 y §12.6):
 - `GET /v1/obras/resumen/todas` (`LEER_PROYECTO`) → `{hoy, por_moneda, obras, carpetas_omitidas}`:
   la cartera de las carpetas que `GET /v1/obras/todas` lista, con una fila por moneda presente
   (obras, suma de totales y obras en ejecución). Nunca suma Bs con USD ni convierte por tasa.
+  El total de cada obra es el de su línea base o, sin ella, el de su versión vigente.
+
+Las tres rutas `/todas` nunca mezclan la demostración (`demostracion.db`) con las carpetas de la
+empresa: con ella abierta solo listan ella; con cualquier otra, la dejan fuera.
 
 Montos, índices y porcentajes viajan como **texto** con punto decimal (nunca como número JSON);
 la interfaz los formatea en es-VE sin recalcular. `hoy` es el día del reloj del servidor. Una obra
@@ -44,6 +48,7 @@ from api.dependencias import SesionDep, ruta_de_url, url_de_la_peticion, url_del
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
+from aplicacion.casos import es_demostracion
 from aplicacion.listas_para_armar import moneda_de_la_carpeta
 from aplicacion.mesa import (
     ETAPA_TEXTO,
@@ -300,15 +305,26 @@ def _carpetas_visibles(
     """La carpeta abierta (`None` si es la de la empresa) y las que esta cuenta puede listar: todas
     con `ABRIR_CARPETA` (también quien revisa: enmienda 2026-11-05); si no, solo la abierta (la
     clave de API ve el caso del proceso y no elige otra). Nunca ofrece una obra que al abrirla
-    diera 403."""
+    diera 403.
+
+    La demostración (`es_demostracion`) nunca se mezcla con las carpetas de la empresa, como en
+    todo sistema con modo de prueba: con ella abierta solo se lista ella; con otra, nunca entra en
+    la lista. Así lo cumplen a la vez `/todas`, `/pendientes/todas` y `/resumen/todas`."""
     empresa = ruta_de_url(url_del_proceso())
     abierta = ruta_de_url(url_de_la_peticion(request))
     es_empresa = abierta is None or abierta == empresa
     actual = None if es_empresa else abierta.name  # type: ignore[union-attr]
+    en_uso = abierta if abierta is not None else empresa
+    if en_uso is not None and es_demostracion(en_uso.name):
+        return actual, [(actual, en_uso)]
     if activa is not None and permitido(activa.roles, Accion.ABRIR_CARPETA):
         propias = None if empresa is None else empresa.resolve()
         todas: list[tuple[str | None, Path]] = [(None, empresa)] if empresa is not None else []
-        todas.extend((r.name, r) for r in listar_casos() if r.resolve() != propias)
+        todas.extend(
+            (r.name, r)
+            for r in listar_casos()
+            if r.resolve() != propias and not es_demostracion(r.name)
+        )
         return actual, todas
     if es_empresa:
         return actual, [] if empresa is None else [(None, empresa)]
@@ -422,7 +438,10 @@ class ObraDeLaCarteraRespuesta(BaseModel):
     moneda: str
     etapa: str
     etapa_texto: str = Field(description="La etapa en palabras, como en el Resumen de la obra")
-    total: str | None = Field(description="El total de la versión vigente, a 0,01")
+    total: str | None = Field(
+        description="El total del presupuesto a 0,01: el de la línea base; sin ella, el de la "
+        "versión vigente"
+    )
     avance_real: str | None = Field(description="EV ÷ BAC × 100, a 0,1")
     avance_plan: str | None = Field(description="PV ÷ BAC × 100, a 0,1")
 

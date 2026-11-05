@@ -21,7 +21,8 @@ export const TEXTOS = {
     moneda: (moneda: string) => `Cartera en ${moneda}`,
     tituloDeMoneda: (moneda: string) => `Obras en ${moneda}`,
     cifras: (moneda: string) => `Cifras de la cartera en ${moneda}`,
-    total: "Total vigente",
+    // Como en el Resumen de la obra: el de la línea base; sin ella, el de la versión vigente (no siempre el de la vigente).
+    total: "Total",
     obras: "Obras",
     enEjecucion: "En ejecución",
     omitidas: (n: number) =>

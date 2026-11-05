@@ -21942,7 +21942,7 @@
               }
             ],
             "title": "Total",
-            "description": "El total de la versión vigente, a 0,01"
+            "description": "El total del presupuesto a 0,01: el de la línea base; sin ella, el de la versión vigente"
           },
           "avance_real": {
             "anyOf": [
