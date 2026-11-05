@@ -4,13 +4,11 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { OfertaDeRetomar as OfertaDeRetomarVista } from "./OfertaDeRetomar";
-import { SIN_VERSIONES, TITULO, esBorradorAusente, textoDeCambios, versionesOfrecidas } from "./logica";
+import { SIN_VERSIONES, TITULO, esBorradorAusente, versionesOfrecidas } from "./logica";
 import type { BorradorAbierto, PestanaId, Resumen } from "./logica";
 import { CAUSA_SOLO_LECTURA } from "./logicaGuardar";
-import { BotonExcel } from "./BotonExcel";
 import { FranjaDelPresupuesto } from "./FranjaDelPresupuesto";
 import { ContextoAuditoria } from "./ContextoAuditoria";
 import type { AlCrearVersion } from "./logicaVersiones";
@@ -27,65 +25,12 @@ import { ContextoDeLaHoja, ProveedorDeLaHoja, useHojaDeLaObra } from "./Proveedo
 import { ID_DEL_TITULO } from "./useGuardadoDeLaPagina";
 import "./hoja.scss";
 
-// La Hoja de la obra (pantalla `hoja`, la sección Presupuesto): el estado del borrador, el reparto de las pestañas y el
-// cuerpo que los junta. Desde la Tarea 3 del plan F4 el borrador es de `ProveedorDeLaHoja`, y desde la 4 también la pestaña
+// La Hoja de la obra (pantalla `hoja`, la sección Presupuesto): la cabecera (`FranjaDelPresupuesto`), el reparto de las
+// pestañas y el cuerpo que los junta. Desde la Tarea 3 del plan F4 el borrador es de `ProveedorDeLaHoja`, y desde la 4 también la pestaña
 // abierta. Desde la 5, la franja del paso (`FranjaDelPresupuesto`) va encima de todo y su botón es el único principal.
-// Pasa de 250 líneas porque junta tres piezas que solo se entienden juntas: el estado del borrador, el cuerpo con sus
+// Pasa de 250 líneas porque junta tres piezas que solo se entienden juntas: la cabecera, el cuerpo con sus
 // avisos y el reparto de las pestañas (`ContenidoDePestana`); la Tarea 6 (Versiones) y la 11 (Archivos y planos) le
 // quitan lo que se va a sus secciones.
-
-// El total y «Descartar cambios» (fantasma). «Guardar versión…» pasó a la franja del paso en la Tarea 5: es la acción
-// principal mientras haya cambios.
-function EstadoDelBorrador({
-  borrador,
-  alDescartar,
-  puedeEditar,
-}: {
-  borrador: BorradorAbierto;
-  alDescartar: () => void;
-  // F4 2b: sin permiso de edición (o con un borrador de solo lectura) no se ofrece descartar.
-  puedeEditar: boolean;
-}) {
-  const { base, resumen } = borrador;
-  const [confirmando, setConfirmando] = useState(false);
-  return (
-    <section className="silice-hoja__estado" role="region" aria-label="Estado del borrador">
-      <h2 className="cds--type-heading-compact-02">Estado del borrador</h2>
-      <p className="cds--type-body-compact-01">
-        {base.version === null ? "Borrador en blanco" : `Versión ${base.version}`} · {textoDeCambios(resumen.cambios)}
-      </p>
-      <p className="silice-hoja__total cds--type-heading-03" aria-live="polite" title={formatoEsVe(resumen.total.exacto)}>
-        Total {formatoEsVe(resumen.total.texto)} {resumen.moneda}
-        <span className="cds--visually-hidden"> Valor exacto {formatoEsVe(resumen.total.exacto)}</span>
-      </p>
-      {resumen.version_mas_nueva !== null && (
-        <p className="cds--type-helper-text-01">La versión vigente ahora es la {resumen.version_mas_nueva}.</p>
-      )}
-      {puedeEditar && resumen.cambios > 0 && !confirmando && (
-        <div className="silice-hoja__acciones">
-          <Button kind="ghost" size="sm" onClick={() => setConfirmando(true)}>
-            Descartar cambios
-          </Button>
-        </div>
-      )}
-      {resumen.cambios > 0 && confirmando && (
-        <div className="silice-hoja__confirmar" role="group" aria-label="Descartar cambios">
-          <p className="cds--type-body-compact-01">
-            {resumen.cambios === 1
-              ? "¿Descartar el cambio sin guardar? No se puede recuperar."
-              : `¿Descartar los ${resumen.cambios} cambios sin guardar? No se pueden recuperar.`}
-          </p>
-          <Button kind="danger--tertiary" size="sm" onClick={alDescartar}>
-            Descartar y abrir de nuevo
-          </Button>
-          <Button kind="secondary" size="sm" onClick={() => setConfirmando(false)}>
-            Seguir editando
-          </Button>
-        </div>
-      )}
-    </section>
-  );
-}
 
 // Solo se monta la pestaña activa y solo cuando el borrador está abierto: así solo se pide su vista. Las que se editan no se
 // vuelven a montar con cada `rev` (perdería lo escrito; llevan `key` del borrador) y cada una vuelve a leer su vista; las de
@@ -173,7 +118,7 @@ function ContenidoDePestana({
 
 const NOTA_SOLO_LECTURA = "Está viendo este presupuesto en solo lectura.";
 
-// El cuerpo de la Hoja: lo que se ve de la obra abierta (la oferta de retomar, el estado del borrador y las pestañas). La
+// El cuerpo de la Hoja: lo que se ve de la obra abierta (la oferta de retomar, la cabecera y las pestañas). La
 // versión se abre desde Versiones («Abrir», baja 9 de la Tarea 6) y el estado del borrador dice cuál es. El borrador, las
 // versiones y los diálogos de guardar y de cambiar de versión son de `ProveedorDeLaHoja` (Tarea 3 del plan F4), que comparte
 // la obra con Archivos y planos y Versiones.
@@ -297,7 +242,8 @@ function CuerpoDeLaHoja() {
               subtitle={estado.borrador.instantanea.mensaje}
             />
           )}
-          {/* Tarea 5: la franja del paso, con el único botón principal, y la aprobación de la versión abierta (Tarea 19). */}
+          {/* Cabecera compacta: la línea de estado (con la aprobación de la versión abierta, Tarea 19) y la franja de acciones
+              (el paso, con el único botón principal, y «Descargar Excel»). */}
           <FranjaDelPresupuesto
             key={`${proyecto}|${estado.borrador.base.version ?? ""}`}
             proyecto={proyecto}
@@ -317,9 +263,8 @@ function CuerpoDeLaHoja() {
               focoEnPartidas.current = true;
               setPedidoDeFoco((n) => n + 1);
             }}
+            alDescartar={() => void descartarCambios()}
           />
-          <EstadoDelBorrador borrador={estado.borrador} alDescartar={() => void descartarCambios()} puedeEditar={puedeEditar} />
-          <BotonExcel id={estado.borrador.id} />
         </>
       )}
 

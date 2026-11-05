@@ -290,6 +290,11 @@ solo revisa ve cada sección en solo lectura: lo que escribe no se pinta (no se 
   escriben las cifras. El código de cada renglón con precio abre su APU en el panel lateral; «Agregar partida» busca en
   el catálogo, por parecido («Buscar parecidas», antes la pantalla Partidas similares) o compone una nueva en el panel,
   sin salir de la obra.
+  Cabecera compacta (decisión de Eugenio, 2026-11-05; la primera partida pasó de 1.069 a 622 px a 1366×768 con letra Normal):
+  una línea de estado (región «Estado del borrador», sin título propio: versión y cambios, «Aprobación» y total), una fila
+  de acciones (el paso con su único botón principal y «Descargar Excel», terciario) y, en «Partidas», una barra de
+  herramientas sobre la tabla («Agregar partida», cómo se escriben las cifras y «¿Qué es esto?», que abre su ayuda bajo la
+  fila). Las regiones vivas vacías (`.silice-hoja__region-viva`) salen del flujo: cada una abría un hueco de la rejilla.
 - **Archivos y planos** (`paginas/archivos/`): «Subir plano o cómputo» abre un diálogo modal con una sola zona de soltar
   que elige el flujo por la extensión: `.dxf` o `.ifc`, el plano; `.csv`, «Cargar cómputo», que absorbió la pantalla
   Elaborar y lleva las partidas al mismo borrador. Debajo, la tabla «Registro de importaciones» (fecha y hora, quién, qué

@@ -161,12 +161,14 @@ describe("Presupuesto: cabecera compacta", () => {
   });
 
   describe("la franja de acciones", () => {
-    test("«Siguiente paso» y «Descargar Excel» van en la misma franja, el principal primero", async () => {
+    test("«Siguiente paso» y «Descargar Excel» van en la misma fila de acciones, el principal primero", async () => {
       montar();
       await listo();
       const franja = await screen.findByRole("region", { name: "Siguiente paso" });
       const enviar = await within(franja).findByRole("button", { name: "Enviar a aprobación…" });
-      const excel = within(franja).getByRole("button", { name: /Descargar Excel/ });
+      const excel = screen.getByRole("button", { name: /Descargar Excel/ });
+      // Una sola fila: el mismo contenedor, el botón del paso antes que el de Excel.
+      expect(franja.parentElement).toContainElement(excel);
       expect(antes(enviar, excel)).toBe(true);
       expect(enviar).toHaveClass("cds--btn--primary");
       expect(excel).not.toHaveClass("cds--btn--primary");
@@ -177,6 +179,14 @@ describe("Presupuesto: cabecera compacta", () => {
       await listo();
       await screen.findByRole("button", { name: "Enviar a aprobación…" });
       expect(document.querySelectorAll(".cds--btn--primary")).toHaveLength(1);
+    });
+
+    test("«Descargar Excel» no se vuelve a montar al aparecer el paso (el botón que se tenía sigue vivo)", async () => {
+      montar();
+      await listo();
+      const excel = screen.getByRole("button", { name: /Descargar Excel/ });
+      await screen.findByRole("button", { name: "Enviar a aprobación…" });
+      expect(excel).toBeInTheDocument();
     });
 
     test("sin paso que dar (aprobada) «Descargar Excel» sigue a la vista, antes de las pestañas", async () => {

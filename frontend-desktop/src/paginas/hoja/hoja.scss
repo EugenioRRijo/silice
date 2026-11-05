@@ -9,20 +9,94 @@
 
 .silice-hoja {
   display: grid;
-  gap: 1.5rem;
+  gap: 0.75rem;
   align-content: start;
   padding: 1.5rem 1rem 2rem;
 }
 
+// La línea de estado del Presupuesto (cabecera compacta, 2026-11-05): versión y cambios, aprobación y total en una fila que
+// envuelve con letra grande; lo que solo aparece a veces (confirmar un descarte, «La versión vigente ahora es…») baja a su
+// propia fila.
 .silice-hoja__estado {
-  display: grid;
-  gap: 0.5rem;
-  padding-block-end: 1rem;
-  border-block-end: 1px solid var(--silice-divisor);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.5rem;
+
+  p {
+    margin: 0;
+  }
+}
+
+// La franja de acciones (cabecera compacta): el paso con su botón principal y «Descargar Excel» en la misma fila. La línea
+// divisoria pasa de la franja a la fila entera; «Te falta» conserva su fondo de precaución y su raya, sin divisor.
+.silice-hoja__acciones-del-paso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  border-block: 1px solid var(--silice-divisor);
+
+  > .silice-franja {
+    flex: 1 1 30rem;
+    min-inline-size: 0;
+  }
+
+  > .silice-franja:not(.silice-franja--falta) {
+    border-block: 0;
+  }
+
+  &:has(> .silice-franja--falta) {
+    border-block: 0;
+  }
+}
+
+.silice-hoja__estado-aparte {
+  flex-basis: 100%;
 }
 
 .silice-hoja__total {
   font-variant-numeric: tabular-nums;
+}
+
+// Una región viva (`role="status"`, `aria-live`) está siempre en el DOM para que el lector de pantalla anuncie lo que llegue,
+// pero vacía no debe ocupar lugar: en una rejilla o una fila con `gap`, cada hijo vacío suma su hueco aunque mida 0 de alto
+// (eran ~80 px entre «Agregar partida» y la tabla). Vacía sale del flujo y sigue en el árbol de accesibilidad.
+.silice-hoja__region-viva:empty {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+// La barra de herramientas sobre una tabla (`AyudaDePestana` con `herramientas`): los botones, el aviso de las cifras y
+// «¿Qué es esto?» en una fila. El contenedor del botón de ayuda deja de ser una caja (`display: contents`) para que su
+// panel, al abrirse, sea un hijo más de la barra y baje a su propia fila bajo los botones en vez de apilarse a su lado.
+.silice-hoja__herramientas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  min-inline-size: 0;
+
+  .silice-que-es-esto {
+    display: contents;
+  }
+
+  .silice-que-es-esto__panel {
+    flex: 1 1 100%;
+    order: 1;
+  }
+}
+
+.silice-hoja__herramientas-aviso {
+  flex: 0 1 auto;
+  margin: 0;
 }
 
 // El IVA debajo del total (Tarea 5b): tres líneas de cifras alineadas y la ayuda plegada.
@@ -44,8 +118,14 @@
 
 .silice-hoja__pestana {
   display: grid;
-  gap: 1.5rem;
+  gap: 1rem;
   min-inline-size: 0;
+}
+
+// El panel de cada pestaña (Carbon lo trae con 1 rem por los cuatro lados): sin sangría lateral, para que la barra de
+// herramientas y la tabla queden al ras de la franja de arriba, y con poco aire sobre su contenido (cabecera compacta).
+.silice-hoja .cds--tab-content {
+  padding: 0.5rem 0 0;
 }
 
 .silice-hoja__seccion {
@@ -351,7 +431,7 @@
 
 .silice-hoja__contenido {
   display: grid;
-  gap: 1.5rem;
+  gap: 0.75rem;
   align-content: start;
   min-inline-size: 0;
 }

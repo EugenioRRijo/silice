@@ -345,7 +345,7 @@ function EditorDePresupuesto({
   );
 }
 
-// La pestaña: su explicación, «Agregar partida» (también con el presupuesto vacío) y la tabla.
+// La pestaña: la barra de herramientas (su explicación y «Agregar partida», también con el presupuesto vacío) y la tabla.
 function ContenidoPresupuesto(props: PropsContenido) {
   const { id, rev, vista, alAceptar, alRelectura, alAusente, alRecargarBorrador, pedirAgregar, alAtenderAgregar } = props;
   const puedeEditar = usePuedeEditarLaHoja(props.base ?? null);
@@ -392,27 +392,30 @@ function ContenidoPresupuesto(props: PropsContenido) {
 
   return (
     <div className="silice-hoja__pestana">
-      <AyudaDePestana id="partidas" puedeEditar={puedeEditar} extra={llevaIva(vista) ? parrafosDeAyudaDelIva(vista.impuestos) : []} />
-      {puedeEditar && (
-        <>
-      <div className="silice-hoja__acciones">
-        <Button
-          id={ID_AGREGAR}
-          ref={anclaDelBoton}
-          kind="tertiary"
-          size="sm"
-          renderIcon={Add}
-          onClick={() => {
-            setAviso("");
-            abrir();
-          }}
-        >
-          Agregar partida
-        </Button>
-      </div>
-        </>
-      )}
-      <p className="cds--type-helper-text-01" role="status">
+      {/* Barra de herramientas sobre la tabla (cabecera compacta): agregar, cómo se escriben las cifras y «¿Qué es esto?». */}
+      <AyudaDePestana
+        id="partidas"
+        puedeEditar={puedeEditar}
+        extra={llevaIva(vista) ? parrafosDeAyudaDelIva(vista.impuestos) : []}
+        herramientas={
+          puedeEditar ? (
+            <Button
+              id={ID_AGREGAR}
+              ref={anclaDelBoton}
+              kind="tertiary"
+              size="sm"
+              renderIcon={Add}
+              onClick={() => {
+                setAviso("");
+                abrir();
+              }}
+            >
+              Agregar partida
+            </Button>
+          ) : null
+        }
+      />
+      <p className="silice-hoja__region-viva cds--type-helper-text-01" role="status">
         {aviso}
       </p>
       {vista.vacio_mensaje !== null ? (

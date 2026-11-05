@@ -127,9 +127,9 @@ describe("Hoja de la obra (marco, 3b-1)", () => {
     expect(h1).toHaveLength(1);
     expect(h1[0]).toHaveTextContent("Presupuesto");
     expect(h1[0]).toHaveClass("cds--type-heading-04");
-    expect(screen.getByRole("heading", { level: 2, name: "Estado del borrador" })).toHaveClass(
-      "cds--type-heading-compact-02",
-    );
+    // Cabecera compacta (2026-11-05): la línea de estado ya no lleva título propio; la región conserva su nombre.
+    expect(screen.queryByRole("heading", { name: "Estado del borrador" })).toBeNull();
+    expect(screen.getByRole("region", { name: "Estado del borrador" })).toBeInTheDocument();
   });
 
   test("3b-F2: sin obra pide elegir una y no llama a la API", () => {
