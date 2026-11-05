@@ -21,22 +21,22 @@ describe("ofertaDe: «Tramos» (plan vial)", () => {
     ]);
   });
 
-  it("sin obra no hay pantalla suelta «Tramos de la vía»: el buscador la ofrece dentro de cada obra", () => {
-    expect(ofertaDe(TODAS, false).sueltas.map((p) => p.id)).not.toContain("tramos");
+  it("sin obra no hay pantalla «Tramos de la vía» entre las herramientas: el buscador la ofrece dentro de cada obra", () => {
+    expect(ofertaDe(TODAS, false).herramientas.map((p) => p.id)).not.toContain("tramos");
   });
 
   it("quien no edita la hoja no la ve de ningún modo", () => {
     const oferta = ofertaDe(["leer_proyecto", "aprobar_version"], false);
     expect(oferta.secciones.map((s) => s.id)).not.toContain("tramos");
-    expect(oferta.sueltas.map((p) => p.id)).not.toContain("tramos");
+    expect(oferta.herramientas.map((p) => p.id)).not.toContain("tramos");
   });
 });
 
 describe("ofertaDe con módulos apagados (plan vial, Tarea 19)", () => {
-  it("con vial apagado no hay sección Tramos ni la pantalla entre las sueltas (buscador)", () => {
+  it("con vial apagado no hay sección Tramos ni la pantalla entre las herramientas (buscador)", () => {
     const oferta = ofertaDe(TODAS, false, ["vial"]);
     expect(oferta.secciones.map((s) => s.id)).not.toContain("tramos");
-    expect(oferta.sueltas.map((p) => p.id)).not.toContain("tramos");
+    expect(oferta.herramientas.map((p) => p.id)).not.toContain("tramos");
     expect(seccionesDeLaObra(oferta).map((s) => s.id)).not.toContain("tramos");
   });
 
@@ -50,7 +50,7 @@ describe("ofertaDe con módulos apagados (plan vial, Tarea 19)", () => {
   });
 
   it("con riesgo apagado la pantalla de riesgo no se ofrece", () => {
-    expect(ofertaDe(TODAS, false, ["riesgo"]).sueltas.map((p) => p.id)).not.toContain("riesgo");
+    expect(ofertaDe(TODAS, false, ["riesgo"]).herramientas.map((p) => p.id)).not.toContain("riesgo");
   });
 
   it("sin nada apagado la oferta es la de siempre", () => {
@@ -69,18 +69,11 @@ describe("ofertaDe con edificación apagada (plan vial, Tarea 19, T19-5)", () =>
     expect(apagada.secciones.map((s) => s.id)).toEqual(siempre.secciones.map((s) => s.id));
     expect(apagada.cuenta).toEqual(siempre.cuenta);
     expect(apagada.espacios).toEqual(siempre.espacios);
-    expect(apagada.sueltas).toEqual(siempre.sueltas);
+    expect(apagada.herramientas).toEqual(siempre.herramientas);
   });
 });
 
-describe("ofertaDe (F6, T2): el contrato no deja ninguna pantalla suelta", () => {
-  it("con todas las acciones no sobra ninguna pantalla sin sitio: «sueltas» queda vacío", () => {
-    expect(ofertaDe(TODAS, false).sueltas).toEqual([]);
-    expect(ofertaDe(TODAS, true).sueltas).toEqual([]);
-    expect(ofertaDe(TODAS, false, ["vial", "produccion", "riesgo", "edificacion"]).sueltas).toEqual([]);
-    expect(ofertaDe([], false).sueltas).toEqual([]);
-  });
-
+describe("ofertaDe (F6, T2): las pantallas de los espacios y las subvistas", () => {
   it("las pantallas de los espacios y las subvistas (las 20 que no son sección ni entrada) salen en «herramientas»", () => {
     expect(
       ofertaDe(TODAS, false)

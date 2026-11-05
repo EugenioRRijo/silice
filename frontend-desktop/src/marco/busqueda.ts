@@ -57,7 +57,7 @@ export function resultadosDe(
     ),
     // La ayuda también las encuentra: «personas» lleva a «Cuentas y permisos».
     ...oferta.cuenta.map((c) => ({ texto: c.titulo, detalle: c.ayuda, ruta: rutaDeCuenta(c.id), buscable: `${c.titulo} ${c.ayuda}` })),
-    ...[...oferta.sueltas, ...oferta.herramientas].map((p) => ({
+    ...oferta.herramientas.map((p) => ({
       texto: p.titulo,
       detalle: p.enUnaLinea,
       ruta: rutaOPendientes(p.id),

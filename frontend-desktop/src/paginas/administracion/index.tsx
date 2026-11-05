@@ -41,7 +41,7 @@ const CONTENIDOS: Record<IdDePestana, ComponentType> = {
 };
 
 // Lo que no es de las siete pestañas. Plan de modulos, MOD-3b (diseno de modulos §7): las carpetas se administran aqui, para
-// quien puede cambiar de carpeta (`cambiar_caso`). Plan vial, Tarea 19: las especialidades de la instalacion se encienden
+// quien las gestiona (`cambiar_caso`: crear y subir). Plan vial, Tarea 19: las especialidades de la instalacion se encienden
 // y apagan aqui, para quien tiene `activar_modulos`.
 interface Bloque {
   id: string;

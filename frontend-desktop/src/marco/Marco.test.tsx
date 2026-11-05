@@ -1139,7 +1139,6 @@ describe("Marco: vocabulario y alcance", () => {
       "inicio", // F6, T8: la Vista general es la entrada de la app (ruta índice)
       ...oferta.secciones.map((s) => s.pagina),
       ...oferta.cuenta.map((c) => c.pagina),
-      ...oferta.sueltas.map((p) => p.id),
       ...oferta.herramientas.map((p) => p.id),
     ]);
     const usables = PAGINAS.filter((p) => usable(p, acciones, false)).map((p) => p.id);

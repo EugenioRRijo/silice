@@ -22,8 +22,6 @@ export interface Oferta {
   cuenta: readonly CuentaDef[];
   // Los espacios de la empresa con al menos una herramienta usable, en el orden de la barra lateral (F6, T4).
   espacios: readonly EspacioOfrecido[];
-  // Desde F6 (contrato de rutas) toda pantalla tiene sitio: queda vacío. Se conserva hasta que se retire a quien lo lee (busqueda.ts).
-  sueltas: readonly PaginaDef[];
   // Las pantallas usables de los espacios de la empresa y de las subvistas de la obra que no son sección ni entrada del
   // árbol (libros, historial, simulador, tablero, reajuste…): el buscador las ofrece por su ruta canónica.
   herramientas: readonly PaginaDef[];
@@ -49,10 +47,8 @@ export function ofertaDe(acciones: readonly string[], modoEntrega: boolean, apag
     ...Object.values(ESPACIOS).flatMap((e) => e.herramientas.map((h) => h.pagina)),
     ...Object.values(SUBVISTAS).flatMap((vs) => (vs ?? []).map((v) => v.pagina)),
   ]);
-  // Contrato de rutas §2.3: la Cuenta (Administración repartida y Acerca) completa las 31 pantallas.
-  // La Vista general («inicio», F6 T8) es la entrada de la app: tiene sitio en Inicio y no es una pantalla suelta.
-  const conSitio = new Set<string | null>([...deLasSecciones, ...deLasHerramientas, ...SECCIONES_DE_CUENTA.map((c) => c.pagina), "inicio"]);
-  const sueltas = PAGINAS.filter((p) => !conSitio.has(p.id) && usable(p, acciones, modoEntrega, apagados));
+  // Contrato de rutas §2.3: la Cuenta (Administración repartida y Acerca) completa las 31 pantallas, y toda pantalla tiene
+  // sitio (la prueba «ninguna pantalla usable queda inalcanzable» de Marco.test lo vigila).
   const herramientas = PAGINAS.filter(
     (p) => deLasHerramientas.has(p.id) && !deLasSecciones.has(p.id) && usable(p, acciones, modoEntrega, apagados),
   );
@@ -60,7 +56,7 @@ export function ofertaDe(acciones: readonly string[], modoEntrega: boolean, apag
     const primera = primeraUsable(ESPACIOS[id].herramientas, acciones, modoEntrega, apagados);
     return primera === null ? [] : [{ id, titulo: ESPACIOS[id].titulo, ruta: rutaDeHerramienta(id, primera.id) }];
   });
-  return { secciones, cuenta, espacios, sueltas, herramientas };
+  return { secciones, cuenta, espacios, herramientas };
 }
 
 // Las secciones de una obra, en el orden del marco.
