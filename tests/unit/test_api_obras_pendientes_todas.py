@@ -7,6 +7,8 @@ escrito a mano). Oráculos a mano: la forma del cuerpo, el orden (bloquea primer
 rol: «arma» (`EDITAR_HOJA`) ve todo; «revisa» (solo `APROBAR_VERSION`) ve únicamente lo que espera
 su dictamen, nunca «devuelta», precios ni calidad (foco de revisión 1); sin ninguno de los dos
 permisos, la lista va vacía. Con la clave de API, la carpeta del proceso con alcance «todo».
+Las carpetas son las de `GET /v1/obras/todas`: con `ABRIR_CARPETA` (arma, revisa y administrador;
+enmienda 2026-11-05, decisión de Eugenio) todas; sin él, solo la abierta.
 """
 
 from __future__ import annotations
@@ -139,19 +141,33 @@ def test_forma_de_la_respuesta() -> None:
 
 
 @pytest.mark.usefixtures("_fuentes_falsas")
-def test_con_cambiar_caso_ve_todas_las_carpetas() -> None:
-    navegador, _ = con_cuenta(app, "ana")  # arma: EDITAR_HOJA y CAMBIAR_CASO
+def test_con_abrir_carpeta_ve_todas_las_carpetas() -> None:
+    navegador, _ = con_cuenta(app, "ana")  # arma: EDITAR_HOJA y ABRIR_CARPETA
     cuerpo = navegador.get("/v1/obras/pendientes/todas").json()
     # bloquea: Norte antes que Sur; luego avisos: la empresa antes que Norte
     assert _filas(cuerpo) == [GALPON, VIALIDAD, CENTRAL, CLINICA]
 
 
 @pytest.mark.usefixtures("_fuentes_falsas")
-def test_sin_cambiar_caso_solo_la_carpeta_abierta_y_solo_lo_que_espera_dictamen() -> None:
-    navegador, ficha = con_cuenta(app, "rita")  # revisa: LEER y APROBAR_VERSION, sin CAMBIAR_CASO
-    _abrir(ficha, SUR)
+def test_quien_revisa_ve_lo_que_espera_dictamen_en_todas_las_carpetas() -> None:
+    """Enmienda 2026-11-05 (decisión de Eugenio): con Norte abierta, el envío de Sur también."""
+    navegador, ficha = con_cuenta(app, "rita")  # revisa: LEER, APROBAR_VERSION y ABRIR_CARPETA
+    _abrir(ficha, NORTE)
     cuerpo = navegador.get("/v1/obras/pendientes/todas").json()
     assert _filas(cuerpo) == [VIALIDAD]
+    otro, _ = con_cuenta(app, "rita")  # sin carpeta abierta: la de la empresa, y las demás
+    assert _filas(otro.get("/v1/obras/pendientes/todas").json()) == [VIALIDAD]
+
+
+@pytest.mark.usefixtures("_fuentes_falsas")
+def test_sin_abrir_carpeta_solo_la_carpeta_abierta(monkeypatch: pytest.MonkeyPatch) -> None:
+    quitado = frozenset({permisos.Rol.ARMA, permisos.Rol.ADMINISTRADOR})
+    monkeypatch.setitem(permisos.PERMISOS, "abrir_carpeta", quitado)
+    navegador, ficha = con_cuenta(app, "rita")
+    _abrir(ficha, NORTE)  # Norte no tiene nada que espere dictamen
+    assert navegador.get("/v1/obras/pendientes/todas").json()["pendientes"] == []
+    _abrir(ficha, SUR)
+    assert _filas(navegador.get("/v1/obras/pendientes/todas").json()) == [VIALIDAD]
 
 
 @pytest.mark.usefixtures("_fuentes_falsas")
@@ -169,9 +185,10 @@ def test_revisa_no_ve_devueltas_precios_ni_calidad(monkeypatch: pytest.MonkeyPat
     navegador, ficha = con_cuenta(app, "rita")
     _abrir(ficha, NORTE)  # Norte tiene una devuelta (Galpón) y precios (Clínica)
     cuerpo = navegador.get("/v1/obras/pendientes/todas").json()
-    assert cuerpo == {"pendientes": [], "carpetas_omitidas": 0}
-    otro, _ = con_cuenta(app, "rita")  # sin carpeta abierta: la de la empresa, que tiene calidad
-    assert otro.get("/v1/obras/pendientes/todas").json()["pendientes"] == []
+    # de todas las carpetas, solo el envío de Sur espera dictamen: ni la devuelta, ni los precios,
+    # ni la calidad de la empresa, ni «Entregar» ni compras
+    assert _filas(cuerpo) == [VIALIDAD]
+    assert cuerpo["carpetas_omitidas"] == 0
 
 
 @pytest.mark.usefixtures("_fuentes_falsas")

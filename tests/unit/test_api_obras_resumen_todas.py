@@ -16,9 +16,10 @@ Oráculos a mano (nunca se suman Bs con USD; restricciones globales del plan F6)
   1 000 000,10 = 30,0 y 40,0; Clínica 900 000,09 y 1 200 000,12 sobre 2 000 000,20 = 45,0 y 60,0;
   Vialidad 1 000 y 1 500 sobre 3 000 = 33,3 (33,333…) y 50,0.
 
-Alcance por rol como en `/pendientes/todas`: «arma» (`CAMBIAR_CASO`) ve todas las carpetas;
-«revisa», solo la abierta (sin abrir ninguna, la de la empresa); la clave de API, la carpeta del
-proceso. Una prueba sin mesa falsa usa OB-S2 (`tests/fixtures/memorias/control_ob_s2.md`): total
+Alcance por rol como en `/pendientes/todas`: «arma» y «revisa» (`ABRIR_CARPETA`; enmienda
+2026-11-05, decisión de Eugenio) ven todas las carpetas; una cuenta sin él, solo la abierta (sin
+abrir ninguna, la de la empresa); la clave de API, la carpeta del proceso. Una prueba sin mesa
+falsa usa OB-S2 (`tests/fixtures/memorias/control_ob_s2.md`): total
 5 060,00, avance real 30,0 y plan 37,5, atrasada. Hoy: miércoles 2026-11-04.
 """
 
@@ -233,7 +234,7 @@ MEZCLA_DE_TODAS = "3004500.35"  # Bs + USD: nunca debe aparecer
 
 @pytest.mark.usefixtures("_mesa_falsa_puesta")
 def test_forma_de_la_respuesta() -> None:
-    navegador, _ = con_cuenta(app, "ana")  # arma: LEER_PROYECTO y CAMBIAR_CASO
+    navegador, _ = con_cuenta(app, "ana")  # arma: LEER_PROYECTO y ABRIR_CARPETA
     respuesta = navegador.get(RUTA)
     assert respuesta.status_code == 200, respuesta.text
     _sin_cache(respuesta)
@@ -294,8 +295,35 @@ def test_carpeta_ilegible_da_200_y_se_cuenta(_entorno: Path) -> None:
 
 
 @pytest.mark.usefixtures("_mesa_falsa_puesta")
-def test_sin_cambiar_caso_solo_la_carpeta_abierta() -> None:
-    navegador, ficha = con_cuenta(app, "rita")  # revisa: LEER_PROYECTO, sin CAMBIAR_CASO
+def test_quien_revisa_ve_la_cartera_de_todas_las_carpetas() -> None:
+    """Enmienda 2026-11-05 (decisión de Eugenio): con Norte abierta ve también la empresa y Sur."""
+    navegador, ficha = con_cuenta(app, "rita")  # revisa: LEER_PROYECTO y ABRIR_CARPETA
+    _abrir(ficha, NORTE)
+    respuesta = navegador.get(RUTA)
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert cuerpo["obras"] == TODAS
+    assert cuerpo["por_moneda"] == [BS_TODAS, USD_TODAS]
+    assert cuerpo["carpetas_omitidas"] == 0
+
+
+@pytest.mark.usefixtures("_mesa_falsa_puesta")
+def test_quien_revisa_sin_carpeta_abierta_tambien_ve_todas() -> None:
+    navegador, _ = con_cuenta(app, "rita")
+    cuerpo = navegador.get(RUTA).json()
+    assert cuerpo["obras"] == TODAS
+    assert cuerpo["por_moneda"] == [BS_TODAS, USD_TODAS]
+
+
+def _sin_abrir_carpeta_para_revisa(monkeypatch: pytest.MonkeyPatch) -> None:
+    quitado = frozenset({permisos.Rol.ARMA, permisos.Rol.ADMINISTRADOR})
+    monkeypatch.setitem(permisos.PERMISOS, "abrir_carpeta", quitado)
+
+
+@pytest.mark.usefixtures("_mesa_falsa_puesta")
+def test_sin_abrir_carpeta_solo_la_carpeta_abierta(monkeypatch: pytest.MonkeyPatch) -> None:
+    _sin_abrir_carpeta_para_revisa(monkeypatch)
+    navegador, ficha = con_cuenta(app, "rita")
     _abrir(ficha, NORTE)
     respuesta = navegador.get(RUTA)
     assert respuesta.status_code == 200, respuesta.text
@@ -306,7 +334,10 @@ def test_sin_cambiar_caso_solo_la_carpeta_abierta() -> None:
 
 
 @pytest.mark.usefixtures("_mesa_falsa_puesta")
-def test_quien_revisa_sin_carpeta_abierta_solo_ve_la_de_la_empresa() -> None:
+def test_sin_abrir_carpeta_ni_carpeta_abierta_solo_la_de_la_empresa(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _sin_abrir_carpeta_para_revisa(monkeypatch)
     navegador, _ = con_cuenta(app, "rita")
     cuerpo = navegador.get(RUTA).json()
     assert cuerpo["obras"] == [CENTRAL]
