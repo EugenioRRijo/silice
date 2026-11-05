@@ -69,7 +69,10 @@ describe("entregar desde Aprobaciones (tanda 2 del pulido F5, Tarea 6)", () => {
     const u = montar("ana", "/obra/empresa/7/aprobaciones");
     expect(await screen.findByRole("heading", { level: 1, name: "Aprobar una versión" })).toBeInTheDocument();
 
-    await u.click(await screen.findByRole("link", { name: "Entregar paquete" }));
+    // MENOR 7 del árbitro final: el enlace es la ruta de la obra abierta, no la dirección corta (`/entregar`).
+    const enlace = await screen.findByRole("link", { name: "Entregar paquete" });
+    expect(enlace).toHaveAttribute("href", "/obra/empresa/7/aprobaciones/entregar");
+    await u.click(enlace);
 
     expect(await screen.findByRole("heading", { level: 1, name: "Entregar paquete" })).toBeInTheDocument();
   });

@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect, useState } from "react";
-import { MemoryRouter, useLocation, useNavigate } from "react-router";
+import { Link, MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../api/cliente";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
@@ -140,6 +140,28 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
     montar({ en: de });
     expect(await titulo("Vista general")).toBeInTheDocument();
     expect(ruta()).toBe("/inicio/general");
+  });
+
+  // Contrato §1: toda redirección conserva la consulta.
+  test.each([
+    ["/?x=1", "la ruta índice"],
+    ["/no-existe?x=1", "una ruta que no existe"],
+  ])("%s (%s) acaba en la Vista general conservando la consulta", async (de) => {
+    montar({ en: de });
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general?x=1");
+  });
+
+  test("una pantalla sin definición en el registro lleva a la bandeja conservando la consulta", async () => {
+    montar({ en: "/inicio/general?x=1", paginas: ligeras().filter((p) => p.id !== "inicio") });
+    expect(await titulo("Pendientes")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/pendientes?x=1");
+  });
+
+  test("una entrada de Empresa que no existe lleva a la bandeja conservando la consulta", async () => {
+    montar({ en: "/empresa/nada?x=1" });
+    expect(await titulo("Pendientes")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/pendientes?x=1");
   });
 
   test("#/pendientes acaba en #/inicio/pendientes, que muestra la bandeja", async () => {
@@ -832,6 +854,78 @@ describe("Marco: cambiar de obra con cambios sin guardar (foco 5)", () => {
     await new Promise((r) => setTimeout(r, 30));
     expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
     expect(ruta()).toBe("/obra/empresa/7/presupuesto");
+  });
+
+  // Hallazgo MAYOR 1 del árbitro final: los enlaces de la Vista general están dentro de #contenido, que el marco no
+  // interceptaba, y abrir una obra de otra carpeta olvida en el servidor los borradores de la Hoja.
+  function VistaConEnlaces() {
+    return (
+      <>
+        <h1>Vista general</h1>
+        <Link to="/obra/Carpeta%20Sur.db/3/resumen">Galpón Sur desde la vista</Link>
+        <Link to="/obra/empresa/8/resumen">Torre B desde la vista</Link>
+      </>
+    );
+  }
+  const conBorrador = (estado: EstadoDelServidor) => {
+    estado.borradores = [{ id: "b-1", proyecto: "7", version: "001", cambios: 2, rev: 3, tocado: "2026-10-27T10:00:00" }];
+  };
+
+  test("un enlace del contenido (Vista general) a una obra de otra carpeta, con un borrador con cambios, pregunta; «Quedarme» no cambia de carpeta", async () => {
+    const u = userEvent.setup();
+    instalar(conBorrador);
+    montar({ en: "/inicio/general", paginas: ligeras({ inicio: VistaConEnlaces }) });
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    await u.click(await screen.findByRole("link", { name: "Galpón Sur desde la vista" }));
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    expect(pregunta).toHaveAccessibleDescription("Tiene cambios sin guardar en Hoja de Casa Demo. Si cambia de carpeta, se perderán.");
+    await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+    expect(ruta()).toBe("/inicio/general");
+  });
+
+  test("confirmar la pregunta del enlace del contenido sí cambia de carpeta", async () => {
+    const u = userEvent.setup();
+    instalar(conBorrador);
+    montar({ en: "/inicio/general", paginas: ligeras({ inicio: VistaConEnlaces }) });
+    await u.click(await screen.findByRole("link", { name: "Galpón Sur desde la vista" }));
+    const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
+    await u.click(within(pregunta).getByRole("button", { name: "Salir y descartar" }));
+    await waitFor(() => expect(ruta()).toBe("/obra/Carpeta%20Sur.db/3/resumen"));
+    await waitFor(() => expect(servidor.de("POST", "/v1/casos/actual").map((l) => l.cuerpo)).toEqual([{ nombre: SUR }]));
+  });
+
+  test("un enlace del contenido a otra carpeta, sin nada que perder, se abre sin preguntar", async () => {
+    const u = userEvent.setup();
+    montar({ en: "/inicio/general", paginas: ligeras({ inicio: VistaConEnlaces }) });
+    await u.click(await screen.findByRole("link", { name: "Galpón Sur desde la vista" }));
+    await waitFor(() => expect(ruta()).toBe("/obra/Carpeta%20Sur.db/3/resumen"));
+    expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
+  });
+
+  test("un enlace del contenido a una obra de la misma carpeta, con un borrador, no pregunta (el borrador se conserva)", async () => {
+    const u = userEvent.setup();
+    instalar(conBorrador);
+    montar({ en: "/inicio/general", paginas: ligeras({ inicio: VistaConEnlaces }) });
+    await u.click(await screen.findByRole("link", { name: "Torre B desde la vista" }));
+    await waitFor(() => expect(ruta()).toBe("/obra/empresa/8/resumen"));
+    expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
+  });
+
+  test("con un formulario sucio y un enlace del contenido a otra carpeta, la pregunta es una sola", async () => {
+    const u = userEvent.setup();
+    function VistaSucia() {
+      useFormularioSucio("inicio", true);
+      return <VistaConEnlaces />;
+    }
+    montar({ en: "/inicio/general", paginas: ligeras({ inicio: VistaSucia }) });
+    await u.click(await screen.findByRole("link", { name: "Galpón Sur desde la vista" }));
+    expect(await screen.findAllByRole("dialog", { name: "Cambios sin guardar" })).toHaveLength(1);
+    await u.click(within(screen.getByRole("dialog", { name: "Cambios sin guardar" })).getByRole("button", { name: "Quedarme" }));
+    expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
+    expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
   });
 
   test("sin nada que perder, una obra de otra carpeta se abre sin preguntar", async () => {

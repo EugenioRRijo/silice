@@ -26,14 +26,21 @@ describe("EstadoVacio: el nivel del título", () => {
     expect(screen.queryByRole("heading")).toBeNull();
   });
 
-  test("con `nivel` el título es un encabezado de ese nivel y conserva su aspecto", () => {
+  // MENOR 10 del árbitro final: un aviso que sustituye a la pantalla lleva el h1 como los demás h1 de pantalla.
+  test("con `nivel` 1 el título es el h1 de pantalla (heading-04, como los demás h1)", () => {
     render(<EstadoVacio titulo="Sin permiso" nivel={1} />);
     const h1 = screen.getByRole("heading", { level: 1, name: "Sin permiso" });
-    expect(h1).toHaveClass("silice-vacio__titulo", "cds--type-heading-compact-01");
+    expect(h1).toHaveClass("silice-vacio__titulo", "cds--type-heading-04");
+    expect(h1).not.toHaveClass("cds--type-heading-compact-01");
   });
 
-  test("nivel 2 es un h2", () => {
-    render(<EstadoVacio titulo="Sin permiso" nivel={2} />);
-    expect(screen.getByRole("heading", { level: 2, name: "Sin permiso" })).toBeInTheDocument();
+  test.each([2, 3] as const)("nivel %i conserva el aspecto compacto", (nivel) => {
+    render(<EstadoVacio titulo="Sin permiso" nivel={nivel} />);
+    expect(screen.getByRole("heading", { level: nivel, name: "Sin permiso" })).toHaveClass("silice-vacio__titulo", "cds--type-heading-compact-01");
+  });
+
+  test("por omisión el párrafo del título conserva el aspecto compacto", () => {
+    render(<EstadoVacio titulo="Sin resultados" />);
+    expect(screen.getByText("Sin resultados")).toHaveClass("cds--type-heading-compact-01");
   });
 });
