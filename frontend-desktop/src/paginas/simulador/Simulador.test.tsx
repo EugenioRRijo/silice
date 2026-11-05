@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -76,7 +76,7 @@ describe("Simulador de listas", () => {
     expect(screen.getByLabelText(/^Insumos/)).toHaveValue("");
     expect(screen.getByText("Mismo número, misma lista: sirve para repetir un resultado.")).toBeInTheDocument();
     expect(screen.getByText(`Cada precio sube o baja, como máximo, este porcentaje. ${AYUDA_CIFRAS}`)).toBeInTheDocument();
-    expect(screen.getByText("Separados por coma; vacío = todos.")).toBeInTheDocument();
+    expect(screen.getByText("Escriba una palabra y elija de la lista; si no elige ninguno, se simulan todos.")).toBeInTheDocument();
   });
 
   test("antes de generar dice que aun no hay lista, sin tabla", () => {
@@ -109,13 +109,132 @@ describe("Simulador de listas", () => {
     await usuario.type(screen.getByLabelText("Semilla"), "7");
     await usuario.clear(screen.getByLabelText("Variación máxima (%)"));
     await usuario.type(screen.getByLabelText("Variación máxima (%)"), "2,5");
-    await usuario.type(screen.getByLabelText(/^Insumos/), "Arena lavada, Peon ficticio");
     await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
     await screen.findByRole("table");
-    expect(cuerpoEnviado(0)).toEqual({
-      semilla: 7,
-      variacion_max: "2.5",
-      insumos: "Arena lavada, Peon ficticio",
+    expect(cuerpoEnviado(0)).toEqual({ semilla: 7, variacion_max: "2.5", insumos: null });
+  });
+
+  // AC3: «Insumos» es una seleccion multiple guiada. Lo que viaja es lo de siempre: UN texto con las descripciones
+  // exactas separadas por coma (la API parte por la coma).
+  describe("insumos elegidos de la lista", () => {
+    const CATALOGO = {
+      insumos: [
+        {
+          valor: "MAT-2",
+          etiqueta: "Arena lavada (MAT-2, m3)",
+          fuente: "Catálogo de la carpeta de trabajo: material",
+          descripcion: "Arena lavada",
+          unidad: "m3",
+        },
+        {
+          valor: "MAT-3",
+          etiqueta: "Tubo PVC, 4 pulgadas (MAT-3, m)",
+          fuente: "Catálogo de la carpeta de trabajo: material",
+          descripcion: "Tubo PVC, 4 pulgadas",
+          unidad: "m",
+        },
+      ],
+      salarios_cct: [
+        {
+          valor: "MO-1",
+          etiqueta: "Peon ficticio (MO-1, jornal)",
+          fuente: "Catálogo de la carpeta de trabajo: mano obra",
+          descripcion: "Peon ficticio",
+          unidad: "jornal",
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      fetchFalso.mockImplementation(async (entrada) => {
+        const url = String(entrada);
+        const tabla = /^\/v1\/consulta\/(\w+)\?/.exec(url)?.[1] as keyof typeof CATALOGO | undefined;
+        if (tabla) return json({ tabla, resultados: CATALOGO[tabla], hay_mas: false });
+        return json({ filas: FILAS });
+      });
+    });
+
+    const consultas = () =>
+      fetchFalso.mock.calls.map(([ruta]) => String(ruta)).filter((ruta) => ruta.startsWith("/v1/consulta/"));
+    const posts = () => fetchFalso.mock.calls.filter(([, init]) => init?.method === "POST");
+    const cuerpoDelPost = (n: number) => JSON.parse(String((posts()[n][1] as RequestInit).body));
+
+    async function elegir(usuario: ReturnType<typeof userEvent.setup>, escrito: string, nombre: RegExp) {
+      await usuario.type(screen.getByRole("combobox", { name: "Insumos" }), escrito);
+      await usuario.click(await screen.findByRole("option", { name: nombre }, { timeout: 3000 }));
+    }
+
+    test("«Insumos» es un campo con busqueda en insumos y oficios, con el detalle que trae la descripcion exacta", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await usuario.type(screen.getByRole("combobox", { name: "Insumos" }), "are");
+      await screen.findByRole("option", { name: /Arena lavada/ }, { timeout: 3000 });
+      expect(consultas().sort()).toEqual([
+        "/v1/consulta/insumos?q=are&limite=8&detalle=true",
+        "/v1/consulta/salarios_cct?q=are&limite=8&detalle=true",
+      ]);
+    });
+
+    test("elegidos de la lista viajan como el texto de siempre: descripciones exactas separadas por coma", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await elegir(usuario, "are", /Arena lavada/);
+      await elegir(usuario, "peo", /Peon ficticio/);
+      const lista = screen.getByRole("list", { name: "Elegidos: Insumos" });
+      expect(within(lista).getByRole("button", { name: "Quitar Arena lavada" })).toBeInTheDocument();
+      expect(within(lista).getByRole("button", { name: "Quitar Peon ficticio" })).toBeInTheDocument();
+      await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+      await screen.findByRole("table");
+      expect(cuerpoDelPost(0)).toEqual({ semilla: 42, variacion_max: "5", insumos: "Arena lavada, Peon ficticio" });
+    });
+
+    test("quitar una etiqueta la saca del envio y, tras generar, avisa que el resultado quedo viejo", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await elegir(usuario, "are", /Arena lavada/);
+      await elegir(usuario, "peo", /Peon ficticio/);
+      await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+      await screen.findByRole("table");
+      await usuario.click(screen.getByRole("button", { name: "Quitar Arena lavada" }));
+      expect(screen.getByText(/Cambió el formulario: pulse Generar lista simulada para actualizar/)).toBeInTheDocument();
+      await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+      await waitFor(() => expect(posts()).toHaveLength(2));
+      expect(cuerpoDelPost(1).insumos).toBe("Peon ficticio");
+    });
+
+    test("lo escrito sin elegir no se envia y el campo lo avisa", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await usuario.type(screen.getByRole("combobox", { name: "Insumos" }), "arena sin elegir");
+      expect(screen.getByText("Falta elegir «arena sin elegir» de la lista: así no se agrega.")).toBeInTheDocument();
+      await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+      await screen.findByRole("table");
+      expect(cuerpoDelPost(0).insumos).toBeNull();
+    });
+
+    test("no ofrece «usar tal cual»: la API ignora en silencio lo que no existe en la lista", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await usuario.type(screen.getByRole("combobox", { name: "Insumos" }), "are");
+      await screen.findByRole("option", { name: /Arena lavada/ }, { timeout: 3000 });
+      expect(screen.queryByRole("option", { name: /tal cual/ })).not.toBeInTheDocument();
+    });
+
+    test("una descripcion con coma no se agrega: la API la partiria en dos y no la encontraria", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await usuario.type(screen.getByRole("combobox", { name: "Insumos" }), "tub");
+      await usuario.click(await screen.findByRole("option", { name: /Tubo PVC/ }, { timeout: 3000 }));
+      expect(screen.queryByRole("list", { name: "Elegidos: Insumos" })).not.toBeInTheDocument();
+      expect(await screen.findByText(/«Tubo PVC, 4 pulgadas» lleva una coma/, {}, { timeout: 3000 })).toBeInTheDocument();
+    });
+
+    test("un 401 de la busqueda cierra la sesion", async () => {
+      const usuario = userEvent.setup();
+      fetchFalso.mockImplementation(async () => json({ detalle: "Sesión ausente o vencida: entre de nuevo con su cuenta." }, 401));
+      montar();
+      await usuario.type(screen.getByRole("combobox", { name: "Insumos" }), "are");
+      await waitFor(() => expect(alExpirar).toHaveBeenCalled(), { timeout: 3000 });
     });
   });
 

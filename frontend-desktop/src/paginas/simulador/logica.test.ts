@@ -6,8 +6,10 @@ import {
   errorDeSemilla,
   errorDeVariacion,
   filasDeTabla,
+  insumosEnviados,
   MENSAJE_SEMILLA,
   MENSAJE_VARIACION,
+  motivoDeRechazo,
   resumenDeEnvio,
 } from "./logica";
 
@@ -68,5 +70,22 @@ describe("logica del simulador", () => {
     expect(resumenDeEnvio({ semilla: 7, variacion_max: "2.5", insumos: "Arena" })).toBe(
       "semilla 7, variación 2,5 %, insumos: Arena",
     );
+  });
+});
+
+// AC3: los insumos se eligen de la lista uno a uno, pero a la API siguen viajando como UN texto separado por coma, igual
+// que cuando se escribian a mano (`insumos_de_texto` de la API parte por la coma y recorta).
+describe("insumos elegidos del simulador", () => {
+  test("viajan separados por coma y espacio, en el orden elegido; ninguno es null", () => {
+    expect(insumosEnviados(["Arena lavada", "Peon ficticio"])).toBe("Arena lavada, Peon ficticio");
+    expect(insumosEnviados(["Arena lavada"])).toBe("Arena lavada");
+    expect(insumosEnviados([])).toBe("");
+    expect(cuerpoDe({ semilla: "1", variacion: "5", insumos: insumosEnviados([]) }).insumos).toBeNull();
+    expect(cuerpoDe({ semilla: "1", variacion: "5", insumos: insumosEnviados(["A", "B"]) }).insumos).toBe("A, B");
+  });
+
+  test("una descripcion con coma no se puede nombrar en esa lista (la API la partiria en dos) y se dice por que", () => {
+    expect(motivoDeRechazo("Arena lavada")).toBeNull();
+    expect(motivoDeRechazo("Tubo PVC, 4 pulgadas")).toMatch(/«Tubo PVC, 4 pulgadas» lleva una coma/);
   });
 });
