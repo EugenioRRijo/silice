@@ -379,6 +379,52 @@ describe("Pendientes: foco 1, quien revisa", () => {
   });
 });
 
+// Contrato de rutas 2.4: el pendiente de «entregar» o de «actualizar precios» abre su subvista, y el botón se ofrece según
+// el permiso de ESA pantalla (no el de la sección que antes las absorbía).
+describe("Pendientes: las subvistas que abren los pendientes (F6, T5)", () => {
+  const ENTREGAR: PendienteDeObra = {
+    carpeta: null,
+    obra_id: 7,
+    obra: "Casa Demo",
+    grupo: "aprobar",
+    urgencia: "bloquea",
+    texto: "CASA-002 aprobada y sin entregar",
+    accion: { texto: "Entregar", pagina: "entregar" },
+  };
+  const sinAprobar = (): SesionRespuesta => {
+    const ana = sesionDe("ana");
+    return { ...ana, acciones: ana.acciones.filter((a) => a !== "aprobar_version") };
+  };
+
+  test("quien entrega paquetes sin poder aprobar versiones ve el botón y llega a Aprobaciones › Entregar", async () => {
+    const u = userEvent.setup();
+    bandeja = responder([ENTREGAR]);
+    montar({ sesion: sinAprobar() });
+    await lista();
+    await u.click(within(detalle()).getByRole("button", { name: "Entregar" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Entregar paquete" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/7/aprobaciones/entregar");
+  });
+
+  test("quien no puede entregar (ni aprobar la versión que lo pide) no ve el botón y se le dice por qué", async () => {
+    bandeja = responder([ENTREGAR]);
+    montar({ sesion: sesionDe("rita") });
+    await lista();
+    expect(within(detalle()).queryByRole("button")).toBeNull();
+    expect(detalle()).toHaveTextContent("Su cuenta no puede dar este paso.");
+  });
+
+  test("quien puede editar la hoja abre «Actualizar precios» en su subvista", async () => {
+    const u = userEvent.setup();
+    bandeja = responder([PRECIOS]);
+    montar();
+    await lista();
+    await u.click(within(detalle()).getByRole("button", { name: "Actualizar precios" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Actualizar precios" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/8/mercado/actualizar");
+  });
+});
+
 describe("Pendientes: foco 3, salir sin perder trabajo", () => {
   test("con un formulario a medio llenar, el botón pregunta y «Quedarme» no navega", async () => {
     const u = userEvent.setup();

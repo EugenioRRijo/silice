@@ -233,10 +233,11 @@ describe("Costo por tonelada", () => {
     expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/admin/empresa")).toBe(false);
   });
 
-  test("Publicar muestra la fuente con que quedará el precio y la empresa de Administración", async () => {
+  test("Publicar muestra la fuente con que quedará el precio y la empresa de la Cuenta", async () => {
     montar(ADMIN);
     const resultado = await calcular();
     const seccion = within(resultado).getByRole("group", { name: "Publicar como precio propio" });
+    expect(await within(seccion).findByText(/Empresa que publica \(de la Cuenta, «Empresa y tema»\)/)).toBeInTheDocument();
     expect(await within(seccion).findByText("Constructora Ficticia, C.A. (J-00000000-0)")).toBeInTheDocument();
     expect(within(seccion).getByText("Producción, período 2026-11, cálculo n.º 7")).toBeInTheDocument();
     expect(within(seccion).getByRole("button", { name: "Publicar como precio propio" })).toBeEnabled();
@@ -288,7 +289,7 @@ describe("Costo por tonelada", () => {
     expect(posts().filter((p) => p.ruta.endsWith("/publicar"))).toHaveLength(0);
   });
 
-  test("sin empresa configurada, el 422 se muestra con el camino a Administración", async () => {
+  test("sin empresa configurada, el 422 se muestra con el camino a «Empresa y tema» de la Cuenta", async () => {
     publicacion = () => json({ detalle: "Configure la empresa en Administración antes de publicar." }, 422);
     montar(ADMIN);
     const resultado = await calcular();
@@ -297,7 +298,7 @@ describe("Costo por tonelada", () => {
     await usuario.click(within(dialogo).getByRole("button", { name: "Publicar" }));
     const alerta = await within(dialogo).findByRole("alert");
     expect(alerta).toHaveTextContent("Configure la empresa en Administración antes de publicar.");
-    expect(within(dialogo).getByRole("link", { name: "Ir a Administración" })).toHaveAttribute("href", "/cuenta/empresa");
+    expect(within(dialogo).getByRole("link", { name: "Ir a «Empresa y tema»" })).toHaveAttribute("href", "/cuenta/empresa");
   });
 
   test("un código de insumo de más de 20 caracteres se niega con el mensaje del servidor", async () => {
@@ -310,20 +311,20 @@ describe("Costo por tonelada", () => {
     expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent("pasa de 20 caracteres");
   });
 
-  test("si no puede leer la empresa de Administración no la muestra y lo dice", async () => {
+  test("si no puede leer la empresa de la Cuenta no la muestra y lo dice", async () => {
     empresa = () => json({ detalle: "Prohibido" }, 403);
     montar(ADMIN);
     const resultado = await calcular();
-    expect(await within(resultado).findByText(/No se pudo leer la empresa de Administración/)).toBeInTheDocument();
+    expect(await within(resultado).findByText(/No se pudo leer la empresa de la Cuenta/)).toBeInTheDocument();
     expect(within(resultado).queryByText(/Constructora/)).not.toBeInTheDocument();
   });
 
-  test("sin empresa en Administración avisa antes de publicar, con el camino", async () => {
+  test("sin empresa en la Cuenta avisa antes de publicar, con el camino", async () => {
     empresa = () => json({ empresa: null, clave: null, sensible: {} });
     montar(ADMIN);
     const resultado = await calcular();
-    expect(await within(resultado).findByText(/Todavía no se configuró la empresa/)).toBeInTheDocument();
-    expect(within(resultado).getByRole("link", { name: "Ir a Administración" })).toHaveAttribute("href", "/cuenta/empresa");
+    expect(await within(resultado).findByText(/Todavía no se configuró la empresa en la Cuenta \(«Empresa y tema»\)/)).toBeInTheDocument();
+    expect(within(resultado).getByRole("link", { name: "Ir a «Empresa y tema»" })).toHaveAttribute("href", "/cuenta/empresa");
   });
 
   test("un 409 al calcular no se rotula «No se pudo publicar el costo»", async () => {

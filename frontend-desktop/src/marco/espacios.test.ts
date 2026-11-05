@@ -232,7 +232,7 @@ describe("SECCIONES_DE_OBRA y SUBVISTAS (contrato 2.1 y adenda A.1)", () => {
         { id: "tablero", titulo: "Tablero", pagina: "tablero" },
       ],
       presupuesto: [
-        { id: "", titulo: "Partidas", pagina: "hoja" },
+        { id: "", titulo: "Presupuesto", pagina: "hoja" },
         { id: "componer", titulo: "Componer", pagina: "componer" },
       ],
       aprobaciones: [

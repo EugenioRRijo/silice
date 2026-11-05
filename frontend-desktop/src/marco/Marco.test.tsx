@@ -116,7 +116,7 @@ const enSur = (estado: EstadoDelServidor) => {
 };
 
 // Lo que la instalación apagó (`GET /v1/modulos`): las claves dadas quedan apagadas y el resto encendido.
-const MENSAJE_APAGADO = "Esta función está apagada en esta instalación. Quien administra puede encenderla en Administración.";
+const MENSAJE_APAGADO = "Esta función está apagada en esta instalación. Quien administra puede encenderla en la Cuenta, sección «Especialidades, IA e instalación».";
 function apagar(...claves: string[]) {
   instalar();
   const base = servidor.fetchFalso;
@@ -158,6 +158,13 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
     montar({ en: "/aprobar?envio=12" });
     expect(await titulo("Aprobar una versión")).toBeInTheDocument();
     expect(ruta()).toBe("/aprobar?envio=12");
+  });
+
+  // Contrato 2.4 (enmienda 2026-11-05): la excepción de la consulta vale para secciones y para subvistas de la obra.
+  test("una subvista vieja con consulta y sin obra en la sesión se abre donde estaba (/reajuste?x=1)", async () => {
+    montar({ en: "/reajuste?x=1" });
+    expect(await titulo("Reajuste de precios")).toBeInTheDocument();
+    expect(ruta()).toBe("/reajuste?x=1");
   });
 
   // F6, T6 (contrato 2.4): Administración y Acerca de viven en la Cuenta; las direcciones viejas de Empresa también llevan allí.
@@ -565,7 +572,7 @@ describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
   });
 
   test.each([
-    ["Vistas de Presupuesto", ["Partidas", "Componer"], "/obra/empresa/7/presupuesto"],
+    ["Vistas de Presupuesto", ["Presupuesto", "Componer"], "/obra/empresa/7/presupuesto"],
     ["Vistas de Aprobaciones", ["Aprobar", "Revisar un paquete", "Entregar"], "/obra/empresa/7/aprobaciones"],
     ["Vistas de Mercado", ["Estudio", "Actualizar precios"], "/obra/empresa/7/mercado"],
   ])("%s ofrece %j para quien puede usarlas todas", async (nombre, esperadas, en) => {
@@ -575,7 +582,7 @@ describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
     expect(textos(screen.getByRole("navigation", { name: nombre }))).toEqual(esperadas);
   });
 
-  test("con una sola vista usable no se pinta el conmutador (rita no edita la hoja: Presupuesto queda con Partidas)", async () => {
+  test("con una sola vista usable no se pinta el conmutador (rita no edita la hoja: Presupuesto queda con su vista principal)", async () => {
     montar({ sesion: sesionDe("rita"), en: "/obra/empresa/7/presupuesto" });
     await titulo("Presupuesto");
     expect(screen.queryByRole("navigation", { name: "Vistas de Presupuesto" })).toBeNull();
@@ -685,11 +692,11 @@ describe("Marco: salir de una sección o subvista con cambios sin guardar (F6, T
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/mercado"));
   });
 
-  test("con Componer a medio llenar, volver a Partidas desde el conmutador pregunta", async () => {
+  test("con Componer a medio llenar, volver a Presupuesto desde el conmutador pregunta", async () => {
     const u = userEvent.setup();
     montar({ en: "/obra/empresa/7/presupuesto/componer", paginas: ligeras({ componer: ComponerSucio }) });
     await titulo("Componer una partida");
-    await u.click(within(screen.getByRole("navigation", { name: "Vistas de Presupuesto" })).getByRole("link", { name: "Partidas" }));
+    await u.click(within(screen.getByRole("navigation", { name: "Vistas de Presupuesto" })).getByRole("link", { name: "Presupuesto" }));
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
     expect(ruta()).toBe("/obra/empresa/7/presupuesto/componer");

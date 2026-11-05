@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, describe, expect, test } from "vitest";
 import { DialogoSalida } from "./DialogoSalida";
-import { useNavegarSeguro } from "./navegarSeguro";
+import { esClicSimple, useNavegarSeguro } from "./navegarSeguro";
 import { cancelarSalida } from "./salida";
 import { olvidarFormularios, useFormularioSucio } from "./sucio";
 
@@ -52,5 +52,28 @@ describe("useNavegarSeguro", () => {
     await userEvent.click(screen.getByRole("button", { name: "Quedarme" }));
     await expect(promesa).resolves.toBe(false);
     expect(ruta()).toBe("/hoja");
+  });
+});
+
+// La guarda de los enlaces del marco y de las barras de espacio: solo el clic principal sin teclas modificadoras ni
+// `preventDefault` previo se intercepta; Ctrl/Cmd/Mayús/Alt y el botón del medio los resuelve el navegador (abrir en otra
+// pestaña o ventana).
+describe("esClicSimple", () => {
+  const base = { defaultPrevented: false, button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false };
+
+  test("el clic principal sin modificadores es simple", () => {
+    expect(esClicSimple(base)).toBe(true);
+  });
+
+  test.each([
+    ["ya cancelado (defaultPrevented)", { defaultPrevented: true }],
+    ["botón del medio", { button: 1 }],
+    ["botón secundario", { button: 2 }],
+    ["con Cmd", { metaKey: true }],
+    ["con Ctrl", { ctrlKey: true }],
+    ["con Mayús", { shiftKey: true }],
+    ["con Alt", { altKey: true }],
+  ])("no es simple: %s", (_nombre, cambio) => {
+    expect(esClicSimple({ ...base, ...cambio })).toBe(false);
   });
 });

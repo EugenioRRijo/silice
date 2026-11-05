@@ -77,7 +77,7 @@ Ninguna pantalla queda solo en el buscador.
 | Ruta vieja | Destino |
 |---|---|
 | `/pendientes` | `/inicio/pendientes` |
-| `/<seccion>?…` de una pantalla de obra (`/hoja`, `/tablero`, `/reajuste`, `/revisar`…) | su ruta de obra con la obra de la sesión, como hoy hace `Marco.tsx:437-442`; sin obra, a Pendientes |
+| `/<seccion>?…` de una pantalla de obra (`/hoja`, `/tablero`, `/reajuste`, `/revisar`…) | su ruta de obra con la obra de la sesión, como hoy hace `Marco.tsx:437-442`; sin obra, a Pendientes (con una excepción, abajo) |
 | `/produccion`, `/existencias`, `/costos`, `/costo_tonelada`, `/receta_planta`, `/producir_mezcla` | `/produccion/<segmento>` |
 | `/auditoria`, `/libros`, `/historial` | `/auditoria/<segmento>` |
 | `/precios_empresa`, `/catalogo`, `/indices`, `/simulador` | `/precios/<segmento>` |
@@ -86,6 +86,11 @@ Ninguna pantalla queda solo en el buscador.
 | `/empresa/produccion` | `/produccion/existencias` |
 | `/administracion`, `/empresa/personas` | `/cuenta/cuentas` |
 | `/acerca`, `/empresa/ayuda` | `/cuenta/ayuda` |
+
+**Excepción (enmienda 2026-11-05, tal como la aplica `Marco.tsx`, `RutaVieja`):** una ruta vieja de una sección **o de una
+subvista** de la obra (`/aprobar`, `/hoja`, `/reajuste`, `/entregar`…) que trae consulta (`?…`) y no encuentra obra en la
+sesión **no** va a Pendientes: se abre donde estaba, con su consulta, para no perder lo que pide (por ejemplo
+`/aprobar?envio=12` o `/reajuste?x=1`). Sin consulta y sin obra, sigue yendo a Pendientes.
 
 Un pendiente de «actualizar precios» es de una obra: abre `/obra/:c/:o/mercado/actualizar`, lo que reemplaza a
 `ABSORBIDAS` de `paginas/pendientes/logica.ts`.

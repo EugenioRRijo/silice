@@ -34,12 +34,18 @@ describe("destinoDelPendiente (D-F3-2)", () => {
     expect(destinoDelPendiente(pendiente("catalogo"))).toBe("/precios/catalogo");
   });
 
-  test("«actualizacion», que aún no tiene sección, va a Mercado", () => {
-    expect(destinoDelPendiente(pendiente("actualizacion"))).toBe("/obra/Carpeta%20Norte.db/2/mercado");
+  // Contrato de rutas 2.4: «actualizar precios» y «entregar» son subvistas de su sección (F6, T5) y el pendiente abre la
+  // subvista, no la sección que las absorbía (`ABSORBIDAS`).
+  test("«actualizacion» abre Mercado › Actualizar precios", () => {
+    expect(destinoDelPendiente(pendiente("actualizacion"))).toBe("/obra/Carpeta%20Norte.db/2/mercado/actualizar");
   });
 
-  test("«entregar», que aún no tiene sección, va a Aprobaciones", () => {
-    expect(destinoDelPendiente(pendiente("entregar"))).toBe("/obra/Carpeta%20Norte.db/2/aprobaciones");
+  test("«entregar» abre Aprobaciones › Entregar", () => {
+    expect(destinoDelPendiente(pendiente("entregar"))).toBe("/obra/Carpeta%20Norte.db/2/aprobaciones/entregar");
+  });
+
+  test("las subvistas de una obra de la empresa llevan por `empresa`", () => {
+    expect(destinoDelPendiente(pendiente("entregar", null, 7))).toBe("/obra/empresa/7/aprobaciones/entregar");
   });
 
   test.each(["tablero", "", "toString", "constructor"])("una pantalla desconocida («%s») va al Resumen de la obra", (pagina) => {
@@ -57,8 +63,8 @@ describe("paginaQueAbre", () => {
     ["hoja", "hoja"],
     ["aprobar", "aprobar"],
     ["catalogo", "catalogo"],
-    ["actualizacion", "mercado"],
-    ["entregar", "aprobar"],
+    ["actualizacion", "actualizacion"],
+    ["entregar", "entregar"],
     ["tablero", "obras"],
   ])("«%s» monta «%s»", (pagina, montada) => {
     expect(paginaQueAbre(pendiente(pagina))).toBe(montada);
