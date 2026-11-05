@@ -118,7 +118,7 @@ describe("rutas del marco", () => {
 });
 
 // Nota H-F6-1 de Antigravity: `quedaEnLaHoja` compara el segmento de la sección y no la ruta entera, para que pasar de
-// Partidas a Componer (`/presupuesto` a `/presupuesto/componer`) no pregunte por cambios sin guardar. Oráculos a mano.
+// Presupuesto a Componer (`/presupuesto` a `/presupuesto/componer`) no pregunte por cambios sin guardar. Oráculos a mano.
 describe("quedaEnLaHoja (F6, T5)", () => {
   const OBRA = "/obra/Carpeta%20Sur.db/3";
 

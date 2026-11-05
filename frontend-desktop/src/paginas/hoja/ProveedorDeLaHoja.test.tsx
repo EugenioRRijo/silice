@@ -277,9 +277,9 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
     expect(ruta()).toBe("/obra/empresa/7/presupuesto");
   });
 
-  // Nota H-F6-1 (Antigravity): `quedaEnLaHoja` compara el segmento de la sección. Partidas y Componer son la misma sección
+  // Nota H-F6-1 (Antigravity): `quedaEnLaHoja` compara el segmento de la sección. Presupuesto y Componer son la misma sección
   // (Presupuesto): comparten el borrador y pasar de una a otra ni pregunta ni remonta `ProveedorDeLaHoja`.
-  test("pasar de Partidas a Componer y volver no pregunta por cambios sin guardar ni vuelve a abrir el borrador", async () => {
+  test("pasar de Presupuesto a Componer y volver no pregunta por cambios sin guardar ni vuelve a abrir el borrador", async () => {
     const u = montar("/obra/empresa/7/presupuesto");
     await borradorListoEnLaHoja();
     fireEvent.change(await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" }), { target: { value: "5" } });
@@ -289,7 +289,7 @@ describe("ProveedorDeLaHoja: el borrador vive en la obra", () => {
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
     await borradorListoEnElRelleno();
     await waitFor(() => expect(servidor.de("PUT", "/v1/hoja/borradores/b-1/cantidades")).toHaveLength(1));
-    await u.click(within(screen.getByRole("navigation", { name: "Vistas de Presupuesto" })).getByRole("link", { name: "Partidas" }));
+    await u.click(within(screen.getByRole("navigation", { name: "Vistas de Presupuesto" })).getByRole("link", { name: "Presupuesto" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto"));
     await borradorListoEnLaHoja();
     await pausa();
