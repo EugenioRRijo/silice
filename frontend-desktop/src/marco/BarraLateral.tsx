@@ -1,6 +1,6 @@
 import { Add } from "@carbon/icons-react";
 import { useEffect, useId, useMemo } from "react";
-import { Link, useLocation, useMatch, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Pildora } from "../comun/Pildora";
 import { claveDeObra, contarPorObra } from "../paginas/pendientes/logica";
 import { TEXTOS as TEXTOS_PENDIENTES } from "../paginas/pendientes/textos";
@@ -11,7 +11,7 @@ import { obrasConMismoNombre } from "./homonimas";
 import { NombreDeObra } from "./NombreDeObra";
 import { abrirNuevaObra, cerrarNuevaObra, useNuevaObraAbierta } from "./nuevaObra";
 import { obrasAlcanzables, useOferta } from "./oferta";
-import { RUTA_DE_PENDIENTES, rutaDeObra } from "./secciones";
+import { RUTA_DE_VISTA_GENERAL, esRutaDeInicio, rutaDeObra } from "./secciones";
 import { useObras, type ObraDeCarpeta } from "./useObras";
 import { usePendientes } from "./usePendientes";
 import { ZonaDeCostos } from "./ZonaDeCostos";
@@ -20,7 +20,7 @@ interface Props {
   obraAbierta: { carpeta: string | null; obraId: number } | null;
 }
 
-// Barra lateral del marco nuevo: Pendientes, la lista plana de Obras y «Costos y producción». Cada obra es un enlace a su Resumen (F6, T5;
+// Barra lateral del marco nuevo: Vista general (con los pendientes por hacer), la lista plana de Obras y «Costos y producción». Cada obra es un enlace a su Resumen (F6, T5;
 // decisión de Eugenio, 2026-11-04: elegir otra obra no conserva la sección); las secciones de la obra abierta están en su
 // barra, bajo la cabecera (EspacioDeObra). Sin títulos de grupo por carpeta (D-F3-3): las obras van por nombre y solo las de
 // nombre repetido dicen su carpeta. Las píldoras de Pendientes y de cada obra salen de los pendientes que el marco ya
@@ -35,9 +35,11 @@ export function BarraLateral({ obraAbierta }: Props) {
   const carga = usePendientes();
   const porObra = useMemo(() => contarPorObra(carga.estado === "listo" ? carga.pendientes : []), [carga]);
   const total = carga.estado === "listo" ? carga.pendientes.length : 0;
-  const enPendientes = useMatch(RUTA_DE_PENDIENTES) !== null;
+  // Las dos vistas de Inicio (Vista general y Pendientes) son del mismo espacio: la entrada está activa en cualquiera.
+  const { pathname } = useLocation();
+  const enInicio = esRutaDeInicio(pathname);
   // El espacio de la ruta (`/produccion/…`, `/auditoria/…`, `/precios/…`): el primer segmento.
-  const primerSegmento = useLocation().pathname.split("/")[1] ?? "";
+  const primerSegmento = pathname.split("/")[1] ?? "";
   const espacioActivo = oferta.espacios.find((e) => e.id === primerSegmento)?.id ?? null;
   // El diálogo lo puede pedir también la mesa (marco/nuevaObra); al irse la barra (salir de la sesión) se cierra.
   const nuevaAbierta = useNuevaObraAbierta();
@@ -127,12 +129,12 @@ export function BarraLateral({ obraAbierta }: Props) {
   return (
     <aside className="silice-marco-lateral" aria-label="Barra lateral">
       <Link
-        to={RUTA_DE_PENDIENTES}
-        aria-current={enPendientes ? "page" : undefined}
-        aria-label={total > 0 ? `Pendientes, ${TEXTOS_PENDIENTES.porHacer(total)}` : undefined}
+        to={RUTA_DE_VISTA_GENERAL}
+        aria-current={enInicio ? "page" : undefined}
+        aria-label={total > 0 ? `Vista general, ${TEXTOS_PENDIENTES.porHacer(total)}` : undefined}
         className="silice-marco-lateral__fila silice-marco-lateral__pendientes"
       >
-        Pendientes
+        Vista general
         {total > 0 && <Pildora valor={total} />}
       </Link>
 
