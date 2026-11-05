@@ -245,6 +245,8 @@ describe("Inicio de auditoría", () => {
     test("sin auditorías guardadas, lo dice y enseña cómo empezar", async () => {
       montar();
       expect(await screen.findByText("Todavía no hay auditorías guardadas")).toBeInTheDocument();
+      // En Auditoría sí hay una zona arriba donde soltar el Excel (en la Vista general no: allí el texto manda a Auditoría).
+      expect(screen.getByText("Suelte arriba el Excel de un presupuesto: el resumen y los hallazgos quedarán aquí.")).toBeInTheDocument();
     });
 
     test("si el historial aún no existe en la API, avisa sin romper la página", async () => {

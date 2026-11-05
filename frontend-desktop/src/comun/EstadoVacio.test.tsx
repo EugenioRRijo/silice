@@ -19,3 +19,21 @@ describe("EstadoVacio", () => {
     expect(screen.getByText("Sin resultados")).toBeInTheDocument();
   });
 });
+
+describe("EstadoVacio: el nivel del título", () => {
+  test("por omisión el título es un párrafo, no un encabezado", () => {
+    render(<EstadoVacio titulo="Sin resultados" />);
+    expect(screen.queryByRole("heading")).toBeNull();
+  });
+
+  test("con `nivel` el título es un encabezado de ese nivel y conserva su aspecto", () => {
+    render(<EstadoVacio titulo="Sin permiso" nivel={1} />);
+    const h1 = screen.getByRole("heading", { level: 1, name: "Sin permiso" });
+    expect(h1).toHaveClass("silice-vacio__titulo", "cds--type-heading-compact-01");
+  });
+
+  test("nivel 2 es un h2", () => {
+    render(<EstadoVacio titulo="Sin permiso" nivel={2} />);
+    expect(screen.getByRole("heading", { level: 2, name: "Sin permiso" })).toBeInTheDocument();
+  });
+});

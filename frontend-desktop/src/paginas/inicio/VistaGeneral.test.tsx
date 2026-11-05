@@ -1,6 +1,8 @@
+import { fileURLToPath } from "node:url";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation, useNavigate } from "react-router";
+import * as sass from "sass";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
@@ -354,11 +356,96 @@ describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
     expect(torre.querySelector(".fiori-kpi__barra")).toBeNull();
   });
 
+  // Pasada en el navegador (H5): con letra Muy grande el «%» caía solo en la línea siguiente. Entre la cifra y el «%» va un
+  // espacio duro (U+00A0, como en `ObjetivoDeMercado`): se lee igual, «62,5 %», pero no se parte.
+  test("el «%» no se separa de su cifra: espacio duro entre la cifra y el signo", async () => {
+    montar();
+    const t = await tabla();
+    const casa = (await t.findByRole("link", { name: "Casa Demo" })).closest("tr")!;
+    expect(casa.querySelector(".silice-cifra")?.textContent).toBe("Real 62,5\u00a0% · Plan 70,0\u00a0%");
+    expect(casa).toHaveTextContent("Real 62,5 % · Plan 70,0 %");
+  });
+
+  // Pasada en el navegador (H2): con letra Grande o Muy grande la tabla se desplazaba por dentro y escondía la columna de
+  // avance, en una región que el teclado no podía enfocar. jsdom no dibuja: aquí se fija lo que sí se ve (la región
+  // nombrada y enfocable, la etiqueta de cada celda) y, sobre el SCSS real compilado, la regla que apila las filas cuando
+  // la caja no cabe, medida en rem (crece con la letra). Que la columna de avance quede a la vista solo se ve en el navegador.
+  test("la tabla va en una región enfocable y con nombre, por si aun así hay que desplazarla", async () => {
+    montar();
+    const t = await tabla();
+    const tablaDeObras = await t.findByRole("table", { name: "Obras de la cartera y su avance contra el plan" });
+    const region = tablaDeObras.closest<HTMLElement>('[role="region"]');
+    expect(region, "la tabla va dentro de una región").not.toBeNull();
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region).toHaveAccessibleName("Obras de la cartera y su avance contra el plan: desplazar horizontalmente");
+    expect(region).toHaveClass("silice-tabla", "silice-inicio__obras");
+  });
+
+  test("cada celda lleva la etiqueta de su columna, para leerse apilada sin la cabecera", async () => {
+    montar();
+    const t = await tabla();
+    const casa = (await t.findByRole("link", { name: "Casa Demo" })).closest("tr")!;
+    const celdas = Array.from(casa.querySelectorAll("td")).map((c) => c.getAttribute("data-etiqueta"));
+    expect(celdas).toEqual([null, "Estado", "Total", "Avance ejecutado vs. plan"]);
+  });
+
+  describe("la hoja de estilos de la tabla de obras", () => {
+    const css = sass.compile(fileURLToPath(new URL("./inicio.scss", import.meta.url))).css;
+    // El texto de un bloque `{ ... }` que empieza en `inicio` (con las llaves anidadas).
+    const bloqueDesde = (inicio: number): string => {
+      const abre = css.indexOf("{", inicio);
+      let nivel = 0;
+      for (let i = abre; i < css.length; i++) {
+        if (css[i] === "{") nivel++;
+        if (css[i] === "}" && --nivel === 0) return css.slice(abre + 1, i);
+      }
+      return "";
+    };
+
+    test("la caja es un contenedor de ancho y no deja que Carbon desplace por su cuenta", () => {
+      expect(css).toMatch(/\.silice-inicio__obras\s*\{[^}]*container-type:\s*inline-size/);
+      expect(css).toMatch(/\.silice-inicio__obras\s+\.cds--data-table-content\s*\{[^}]*overflow-x:\s*visible/);
+    });
+
+    test("cuando la caja mide menos de unos rem, las filas se apilan; el umbral es en rem y no en px", () => {
+      const i = css.search(/@container\s*\(max-inline-size:\s*[\d.]+rem\)/);
+      expect(i, "falta un @container con max-inline-size en rem").toBeGreaterThanOrEqual(0);
+      const apilada = bloqueDesde(i);
+      expect(apilada).toMatch(/\.silice-inicio__obras[^{]*\btd\b[^{]*\{[^}]*display:\s*block/);
+      expect(apilada).toMatch(/\.silice-inicio__obras[^{]*\btr\b/);
+      expect(apilada).toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*content:\s*attr\(data-etiqueta\)/);
+      // La cabecera sigue para los lectores de pantalla: solo se saca de la vista.
+      expect(apilada).toMatch(/thead\s*\{[^}]*clip-path:\s*inset\(50%\)/);
+      expect(css).not.toMatch(/@container\s*\(max-(inline-size|width):\s*[\d.]+px/);
+    });
+
+    test("el ancho mínimo del avance baja de 10 rem y, apilado, es cero", () => {
+      expect(css).toMatch(/\.silice-inicio__avance\s*\{[^}]*min-inline-size:\s*(?:[1-8](?:\.\d+)?|0\.\d+)rem/);
+      const apilada = bloqueDesde(css.search(/@container\s*\(max-inline-size/));
+      expect(apilada).toMatch(/\.silice-inicio__avance\s*\{[^}]*min-inline-size:\s*0/);
+    });
+  });
+
   test("el nombre de la obra lleva a su Resumen, en la carpeta de la obra", async () => {
     montar();
     const t = await tabla();
     expect(await t.findByRole("link", { name: "Galpón Sur" })).toHaveAttribute("href", "/obra/Carpeta%20Sur.db/3/resumen");
     expect(t.getByRole("link", { name: "Casa Demo" })).toHaveAttribute("href", "/obra/empresa/7/resumen");
+  });
+});
+
+describe("Vista general: sin auditorías guardadas", () => {
+  // Pasada en el navegador (H7): decía «Suelte arriba el Excel…» y en la Vista general no hay nada arriba. Aquí remite a
+  // Auditoría, con el enlace «Ir a Auditoría» que ya está debajo. En la propia Auditoría el texto de siempre no cambia
+  // (`paginas/auditoria/Auditoria.test.tsx`).
+  test("el vacío manda a Auditoría y no habla de soltar un Excel arriba", async () => {
+    auditorias = () => json([]);
+    montar();
+    const b = await bloque("Últimas auditorías");
+    expect(await within(b).findByText("Todavía no hay auditorías guardadas")).toBeInTheDocument();
+    expect(b).not.toHaveTextContent(/arriba|suelte/i);
+    expect(b).toHaveTextContent(/Auditoría/);
+    expect(within(b).getByRole("link", { name: "Ir a Auditoría" })).toHaveAttribute("href", "/auditoria");
   });
 });
 
@@ -368,7 +455,9 @@ describe("Vista general: sin obras", () => {
     pendientes = lista();
     montar({ sesion: sesionDe("rita") });
     const b = await bloque("Cartera por moneda");
-    expect(await within(b).findByText("No hay obras en esta carpeta")).toBeInTheDocument();
+    expect(await within(b).findByText("No hay obras que su cuenta pueda ver")).toBeInTheDocument();
+    // La Vista general reúne todas las carpetas que la cuenta puede ver: no habla de «esta carpeta».
+    expect(b).not.toHaveTextContent("en esta carpeta");
     expect(within(b).getByText("Cuando haya una obra registrada en las carpetas a las que tiene acceso, aparecerá aquí.")).toBeInTheDocument();
     expect(within(b).queryByRole("button", { name: "Nueva obra" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Obras y avance contra el plan" })).toBeNull();

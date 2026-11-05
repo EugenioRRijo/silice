@@ -320,7 +320,8 @@ describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", ()
     expect(await screen.findByText("Sin permiso")).toBeInTheDocument();
     expect(ruta()).toBe("/produccion/resumen");
     expect(screen.queryByRole("navigation", { name: "Costos de producción" })).toBeNull();
-    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    // El aviso es el único h1 de la pantalla (pasada en el navegador, H9): sin él la página quedaba sin título.
+    expect(screen.getAllByRole("heading", { level: 1 })).toEqual([screen.getByRole("heading", { level: 1, name: "Sin permiso" })]);
   });
 
   test("cambiar de herramienta desde la barra deja el foco en el enlace pulsado (la barra no se vuelve a montar)", async () => {
@@ -634,6 +635,8 @@ describe("Marco: la barra de la obra y las subvistas (F6, T5)", () => {
     expect(await screen.findByText("Sin permiso")).toBeInTheDocument();
     expect(ruta()).toBe("/obra/empresa/7/control/reajuste");
     expect(screen.queryByRole("heading", { level: 1, name: "Reajuste de precios" })).toBeNull();
+    // Dentro de la obra, con su cabecera encima, el aviso sigue siendo el único h1 (H9).
+    expect(screen.getAllByRole("heading", { level: 1 })).toEqual([screen.getByRole("heading", { level: 1, name: "Sin permiso" })]);
     expect(within(barraDeLaObra()).getByRole("link", { name: "Presupuesto" })).toBeInTheDocument();
   });
 
@@ -1010,7 +1013,7 @@ describe("Marco: cuentas sin obras que leer", () => {
   test("sin leer_proyecto no pide las obras ni muestra la zona de obras con un error", async () => {
     const admin = sesionDe("admin");
     montar({ sesion: admin, en: "/cuenta/ayuda" });
-    await titulo("Acerca de Sílice");
+    await titulo("Ayuda y acerca de Sílice");
     const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
     expect(within(lateral).getByRole("link", { name: "Vista general" })).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 30));
@@ -1295,7 +1298,8 @@ describe("Marco: especialidades apagadas", () => {
     expect(await screen.findByText(MENSAJE_APAGADO)).toBeInTheDocument();
     expect(await screen.findByText("Apagada")).toBeInTheDocument();
     expect(ruta()).toBe("/produccion/existencias");
-    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    // El aviso es el único h1 de la pantalla (pasada en el navegador, H9): sin él la página quedaba sin título.
+    expect(screen.getAllByRole("heading", { level: 1 })).toEqual([screen.getByRole("heading", { level: 1, name: "Apagada" })]);
   });
 
   test("con producción apagada, #/produccion no da vueltas: queda en la primera herramienta y dice que está apagada", async () => {

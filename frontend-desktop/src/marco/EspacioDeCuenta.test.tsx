@@ -113,6 +113,8 @@ describe("la Cuenta: qué secciones ve cada cuenta (contrato §3)", () => {
     const enlaces = within(await barra()).getAllByRole("link");
     expect(enlaces.map((e) => e.textContent)).not.toContain(noOfrecida);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    // El h1 es el de la sección; el aviso va un nivel más abajo, para que la pantalla no tenga dos (H9).
+    expect(screen.getByRole("heading", { level: 2, name: "Sin permiso" })).toBeInTheDocument();
   });
 
   test("quien administra y cambia de carpeta abre las cuatro secciones de administración", async () => {
@@ -150,9 +152,8 @@ describe("la Cuenta: dirección, cabecera y un solo h1", () => {
   });
 
   test.each(Object.entries(TITULOS))("%s tiene un único h1, «%s», y el título del documento lo dice", async (id, titulo) => {
-    const textoDelH1 = id === "ayuda" ? "Acerca de Sílice" : titulo;
     montar({ en: `/cuenta/${id}` });
-    const h1 = await screen.findByRole("heading", { level: 1, name: textoDelH1 }, { timeout: 3000 });
+    const h1 = await screen.findByRole("heading", { level: 1, name: titulo }, { timeout: 3000 });
     expect(screen.getAllByRole("heading", { level: 1 })).toEqual([h1]);
     // El título del documento no repite el nombre del producto cuando el título ya lo trae (comun/tituloDelDocumento).
     expect(document.title).toBe(titulo.includes("Sílice") ? titulo : `${titulo} · Sílice`);
@@ -234,5 +235,7 @@ describe("la Cuenta: al cambiar de carpeta se vuelve a Carpetas", () => {
     expect(ruta()).toBe("/cuenta/carpetas");
     expect(await screen.findByRole("button", { name: "Abrir la otra" })).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    // El h1 es el de la sección; el aviso va un nivel más abajo, para que la pantalla no tenga dos (H9).
+    expect(screen.getByRole("heading", { level: 2, name: "Sin permiso" })).toBeInTheDocument();
   });
 });
