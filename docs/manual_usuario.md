@@ -454,17 +454,19 @@ Sílice abre el «Resumen» de la obra nueva. La franja dice «Te falta: Agregue
 
 Haga clic en «Presupuesto» en la barra de la obra. Verá, en este orden:
 
-1. **La franja del paso** («Te falta:» o «Siguiente paso:»), con el único botón principal de la pantalla.
-2. **«Aprobación:»** con el estado de la versión, si ya se envió.
-3. **«Estado del borrador»**: «Versión V-004 · 2 cambios sin guardar», o «Borrador en blanco · …», y el
-   «Total» en la moneda de la obra. Si tiene cambios, aparece «Descartar cambios».
-4. **«Descargar Excel»**: baja el presupuesto en un libro de Excel.
-5. **Las pestañas**: «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y
+1. **Una línea de estado** bajo el título: «Versión V-004 · 2 cambios sin guardar» (o «Borrador en blanco ·
+   …»), «Aprobación:» con el estado de la versión y el «Total» en la moneda de la obra. Si tiene cambios,
+   aparece «Descartar cambios».
+2. **La franja del paso** («Te falta:» o «Siguiente paso:»), con el único botón principal de la pantalla, y a
+   su lado **«Descargar Excel»**, que baja el presupuesto en un libro de Excel.
+3. **Las pestañas**: «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y
    «Ajustes de costo». En una obra de edificación con espacio aparece además, delante, «Espacio y
    metrajes».
 
 Cada pestaña tiene un botón «¿Qué es esto?» que despliega su explicación. Quien edita ve además, siempre
-a la vista: «Escriba los decimales con coma: 2,5; el punto separa los miles: 1.234,56.».
+a la vista: «Escriba los decimales con coma: 2,5; el punto separa los miles: 1.234,56.». En «Partidas»,
+«Agregar partida», ese aviso y «¿Qué es esto?» van en una sola fila sobre la tabla, para que las partidas
+se vean sin bajar la pantalla.
 
 **Borrador.** Lo que usted cambia se aplica al borrador de la obra cuando deja de escribir. El borrador
 no es una versión: para que quede guardado hay que pulsar «Guardar versión…» (sección 4.8). Si cierra

@@ -278,5 +278,6 @@ Lo que la construcción cambió respecto del plan, con su razón. T9 no los reab
 ## Respuestas de Eugenio (2026-11-04)
 
 T0 **aprobado**. «Riesgo de la obra» queda como sección propia. Quien revisa sigue viendo solo la carpeta abierta (sin
-cambio de permisos). Al cambiar de obra se abre su Resumen, como hoy: el diseño visual §3.1 («conserva la sección»)
+cambio de permisos). **Enmienda 2026-11-05 (Eugenio):** quien revisa ve y abre las obras de todas las carpetas; la
+acción nueva `abrir_carpeta` (abrir y listar) se separa de `cambiar_caso` (crear y subir carpetas), que sigue sin revisa. Al cambiar de obra se abre su Resumen, como hoy: el diseño visual §3.1 («conserva la sección»)
 queda corregido por esta respuesta.

@@ -283,8 +283,8 @@ Versiones comparten el borrador de la obra (`ProveedorDeLaHoja`): pasar de una a
 solo revisa ve cada sección en solo lectura: lo que escribe no se pinta (no se deshabilita).
 
 - **Resumen** (`paginas/obras/`): las cifras de la obra, su versión vigente y lo pendiente, con la franja del paso.
-- **Presupuesto** (`paginas/hoja/`, h1 «Presupuesto»; antes «Hoja de la obra»): la franja del paso arriba, el estado del
-  borrador y las pestañas «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y «Ajustes de
+- **Presupuesto** (`paginas/hoja/`, h1 «Presupuesto»; antes «Hoja de la obra»): una línea de estado bajo el h1 (versión,
+  cambios, aprobación y total; `EstadoDelBorrador.tsx`), la franja del paso con «Descargar Excel» al lado y las pestañas «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y «Ajustes de
   costo»; «Espacio y metrajes» va delante en una obra con espacio. Son seis en una obra civil y siete con espacio (antes,
   nueve). Cada pestaña tiene un solo «¿Qué es esto?» plegado con su ayuda; quien edita ve además, a la vista, cómo se
   escriben las cifras. El código de cada renglón con precio abre su APU en el panel lateral; «Agregar partida» busca en
