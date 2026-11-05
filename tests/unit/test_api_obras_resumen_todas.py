@@ -21,6 +21,17 @@ Alcance por rol como en `/pendientes/todas`: «arma» y «revisa» (`ABRIR_CARPE
 abrir ninguna, la de la empresa); la clave de API, la carpeta del proceso. Una prueba sin mesa
 falsa usa OB-S2 (`tests/fixtures/memorias/control_ob_s2.md`): total
 5 060,00, avance real 30,0 y plan 37,5, atrasada. Hoy: miércoles 2026-11-04.
+
+Más oráculos a mano (árbitro final de F6):
+
+- La demostración (`demostracion.db`, con «Obra inventada» en Bs por 7 777 777,77) nunca se
+  mezcla con la cartera de la empresa (MAYOR 2): fuera de ella ni sale ni suma; con ella abierta,
+  la cartera es solo ella (Bs: 1 obra, 7 777 777,77, 1 en ejecución).
+- El total de una obra con línea base es el de la línea base (MENOR 3): OB-S2 con la línea base
+  en OB-001 (5 060,00) y la variación OB-002 vigente, con OB-B de 200 a 210 m: costo directo
+  4 000,00 + 10 × 5,00 = 4 050,00, por 1,265 = 5 123,25. La cartera da 5 060,00.
+- Cada total se redondea a 0,01 (ROUND_HALF_UP) antes de sumar (MENOR 6): 1,005 → 1,01, y
+  1,01 + 1,01 = 2,02; sumar sin redondear daría 2,010 (o 2,01 al redondear la suma).
 """
 
 from __future__ import annotations
@@ -28,6 +39,7 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
+from dataclasses import replace
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -41,6 +53,8 @@ from api.rutas import obras
 from aplicacion import mesa
 from aplicacion.mesa import ObraEnMesa
 from core import models
+from core.budget import elaborar, guardar_edicion
+from core.budget.edicion import CambioEditado
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
 from operacion.base_datos import preparar_base
@@ -61,6 +75,9 @@ D = Decimal
 
 NORTE, SUR, EMPRESA = "Carpeta Norte.db", "Carpeta Sur.db", "silice.db"
 ESTE, OESTE = "Carpeta Este.db", "Carpeta Oeste.db"  # OB-S2 de verdad, solo en su prueba
+VARIADA = "Carpeta Variada.db"  # OB-S2 con línea base en OB-001 y OB-002 vigente
+DEMO = "demostracion.db"  # solo en las pruebas de la demostración
+OBRAS_DE_LA_DEMO = {DEMO: ["Obra inventada"]}
 OBRAS = {
     EMPRESA: ["Edificio Central"],
     NORTE: ["Galpón", "Clínica", "Depósito"],  # ids 1, 2 y 3
@@ -79,6 +96,9 @@ ESCENARIO: dict[str, _Datos] = {
     ),
     "Depósito": ("Bs", "en_elaboracion", None, None, None, None),
     "Vialidad": ("USD", "en_ejecucion", D("4000.05"), D("1000.00"), D("1500.00"), D("3000.00")),
+    "Obra inventada": (
+        "Bs", "en_ejecucion", D("7777777.77"), D("1.00"), D("2.00"), D("7777777.77"),
+    ),
 }  # fmt: skip
 
 
@@ -134,11 +154,34 @@ def _ob_s2(ruta: Path, moneda: str, *, en_ejecucion: bool) -> Path:
     return ruta
 
 
+def _ob_s2_con_variacion(ruta: Path) -> Path:
+    """OB-S2 en USD con su línea base en OB-001 y, después, la variación OB-002 (OB-B de 200 a
+    210 m), que pasa a ser la versión vigente sin cambiar la línea base."""
+    _ob_s2(ruta, "USD", en_ejecucion=True)
+    mayor = [replace(i, cantidad=D(210)) if i.codigo_partida == "OB-B" else i for i in ob.items()]
+    variacion = elaborar(
+        mayor, ob.composiciones(), ob.PARAMETROS, codigo="OB-002", fecha=ob.FECHA,
+        moneda="USD", plan=ob.PLAN,
+    )  # fmt: skip
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            guardar_edicion(
+                sesion, ob.NOMBRE, ob.CODIGO, variacion, ob.PARAMETROS,
+                [CambioEditado("cantidad", "OB-B", "cantidad", "200", "210")],
+                fuente="acta de variación ficticia", responsable=ob.RESPONSABLE, plan=ob.PLAN,
+            )  # fmt: skip
+            sesion.commit()
+    finally:
+        motor.dispose()
+    return ruta
+
+
 @pytest.fixture(scope="module")
 def _plantillas(tmp_path_factory) -> dict[str, Path]:
     carpeta = tmp_path_factory.mktemp("plantillas_resumen_todas")
     plantillas = {"instalacion": plantilla_con_cuentas(carpeta)}
-    for nombre, nombres_de_obras in OBRAS.items():
+    for nombre, nombres_de_obras in {**OBRAS, **OBRAS_DE_LA_DEMO}.items():
         ruta = carpeta / nombre
         preparar_base(ruta)
         with closing(sqlite3.connect(ruta)) as conexion:
@@ -152,6 +195,7 @@ def _plantillas(tmp_path_factory) -> dict[str, Path]:
         plantillas[nombre] = ruta
     plantillas[ESTE] = _ob_s2(carpeta / ESTE, "USD", en_ejecucion=True)
     plantillas[OESTE] = _ob_s2(carpeta / OESTE, "Bs", en_ejecucion=False)
+    plantillas[VARIADA] = _ob_s2_con_variacion(carpeta / VARIADA)
     return plantillas
 
 
@@ -419,3 +463,88 @@ def test_no_escribe(_entorno: Path) -> None:
     assert navegador.get(RUTA).status_code == 200
     assert arbol(_entorno) == antes
     assert {p.name: p.stat().st_mtime_ns for p in _entorno.glob("*.db")} == fechas
+
+
+def _con_la_demostracion(carpeta: Path, plantillas: dict[str, Path]) -> None:
+    (carpeta / DEMO).write_bytes(plantillas[DEMO].read_bytes())
+
+
+INVENTADA = _obra(
+    DEMO, "demostracion", 1, "Obra inventada", "Bs", "en_ejecucion", "7777777.77", "0.0", "0.0"
+)
+SUMA_CON_LA_DEMO = "10777778.07"  # 3 000 000,30 + 7 777 777,77: nunca debe aparecer
+
+
+@pytest.mark.usefixtures("_mesa_falsa_puesta")
+@pytest.mark.parametrize("login", ["ana", "rita"])
+def test_fuera_de_la_demostracion_la_cartera_no_trae_ni_suma_sus_obras(
+    _entorno: Path, _plantillas: dict[str, Path], login: str
+) -> None:
+    """Datos de demostración nunca mezclados con los reales (MAYOR 2 del árbitro final de F6)."""
+    _con_la_demostracion(_entorno, _plantillas)
+    navegador, ficha = con_cuenta(app, login)  # arma y revisa: ambos con ABRIR_CARPETA
+    for abierta in (None, NORTE):
+        if abierta is not None:
+            _abrir(ficha, abierta)
+        respuesta = navegador.get(RUTA)
+        assert respuesta.status_code == 200, respuesta.text
+        cuerpo = respuesta.json()
+        assert cuerpo["obras"] == TODAS
+        assert cuerpo["por_moneda"] == [BS_TODAS, USD_TODAS]
+        assert cuerpo["carpetas_omitidas"] == 0
+        assert "7777777.77" not in respuesta.text
+        assert SUMA_CON_LA_DEMO not in respuesta.text
+
+
+@pytest.mark.usefixtures("_mesa_falsa_puesta")
+@pytest.mark.parametrize("login", ["ana", "rita"])
+def test_dentro_de_la_demostracion_la_cartera_es_solo_ella(
+    _entorno: Path, _plantillas: dict[str, Path], login: str
+) -> None:
+    _con_la_demostracion(_entorno, _plantillas)
+    navegador, ficha = con_cuenta(app, login)
+    _abrir(ficha, DEMO)
+    cuerpo = navegador.get(RUTA).json()
+    # avance: 1,00 y 2,00 sobre 7 777 777,77 = 0,0000129 % y 0,0000257 %, a 0,1: 0,0 y 0,0
+    assert cuerpo["obras"] == [INVENTADA]
+    assert cuerpo["por_moneda"] == [_moneda("Bs", 1, "7777777.77", 1)]
+    assert cuerpo["carpetas_omitidas"] == 0
+
+
+@pytest.mark.usefixtures("_mesa_falsa_puesta")
+def test_cada_total_se_redondea_a_centesimas_antes_de_sumar(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """1,005 → 1,01 (ROUND_HALF_UP) en cada obra; la fila suma 1,01 + 1,01 = 2,02. Sin redondear
+    cada una saldría 2,010; redondeando solo la suma, 2,01."""
+    for obra in ("Galpón", "Clínica"):
+        monkeypatch.setitem(ESCENARIO, obra, ("Bs", "aprobada", D("1.005"), None, None, None))
+    navegador, _ = con_cuenta(app, "ana")
+    cuerpo = navegador.get(RUTA).json()
+    assert cuerpo["por_moneda"][0] == _moneda("Bs", 3, "2.02", 0)
+    de_norte = {o["nombre"]: o["total"] for o in cuerpo["obras"] if o["carpeta"] == NORTE}
+    assert de_norte == {"Galpón": "1.01", "Clínica": "1.01", "Depósito": None}
+
+
+def test_el_total_de_una_obra_con_linea_base_es_el_de_la_linea_base(
+    _plantillas: dict[str, Path], _entorno: Path
+) -> None:
+    """OB-S2 con la línea base en OB-001 (5 060,00) y OB-002 vigente (5 123,25): la cartera da
+    5 060,00 en la obra y en su moneda; 5 123,25 no sale."""
+    for nombre in (NORTE, SUR):
+        (_entorno / nombre).unlink()
+    (_entorno / VARIADA).write_bytes(_plantillas[VARIADA].read_bytes())
+    navegador, _ = con_cuenta(app, "ana")
+    # el escenario es el que se quiere: la versión vigente es la variación, no la línea base
+    vigentes = {
+        o["obra"]: o["version_codigo"] for o in navegador.get("/v1/obras/todas").json()["obras"]
+    }
+    assert vigentes["OB-S2"] == "OB-002"
+    respuesta = navegador.get(RUTA)
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    variada = next(o for o in cuerpo["obras"] if o["carpeta"] == VARIADA)
+    assert variada["total"] == "5060.00"
+    # la empresa con «Edificio Central» en blanco (USD por omisión, sin total) y OB-S2
+    assert cuerpo["por_moneda"] == [_moneda("USD", 2, "5060.00", 1)]
+    assert "5123.25" not in respuesta.text

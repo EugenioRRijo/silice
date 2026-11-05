@@ -10,6 +10,9 @@ proceso (no elige carpeta: `POST /v1/casos/actual` le da 409), así que lista so
 empresa. Quien tiene `ABRIR_CARPETA` (arma, revisa y administrador; enmienda 2026-11-05, decisión
 de Eugenio: quien revisa ve todas las carpetas) lista todas; sin él, solo la carpeta abierta en la
 sesión: nunca una obra que al abrirla diera 403 (foco de revisión 1).
+
+La demostración (`demostracion.db`, con «Obra inventada») nunca se mezcla con las carpetas de la
+empresa (MAYOR 2 del árbitro final de F6): fuera de ella no se lista; con ella abierta, solo ella.
 """
 
 from __future__ import annotations
@@ -46,6 +49,8 @@ OBRAS = {
     SUR: ["Vialidad"],
 }
 TITULO_EMPRESA = "Carpeta de la empresa"
+DEMO = "demostracion.db"  # solo en las pruebas de la demostración
+OBRAS_DE_LA_DEMO = {DEMO: ["Obra inventada"]}
 
 
 def _obra(carpeta: str | None, titulo: str, obra: str) -> dict:
@@ -56,13 +61,14 @@ EMPRESA_1 = _obra(None, TITULO_EMPRESA, "Edificio Central")
 CLINICA = _obra(NORTE, "Carpeta Norte", "Clínica")
 GALPON = _obra(NORTE, "Carpeta Norte", "Galpón")
 VIALIDAD = _obra(SUR, "Carpeta Sur", "Vialidad")
+INVENTADA = _obra(DEMO, "demostracion", "Obra inventada")
 
 
 @pytest.fixture(scope="module")
 def _plantillas(tmp_path_factory) -> dict[str, Path]:
     carpeta = tmp_path_factory.mktemp("plantillas_obras_todas")
     plantillas = {"instalacion": plantilla_con_cuentas(carpeta)}
-    for nombre, obras in OBRAS.items():
+    for nombre, obras in {**OBRAS, **OBRAS_DE_LA_DEMO}.items():
         ruta = carpeta / nombre
         preparar_base(ruta)
         with closing(sqlite3.connect(ruta)) as conexion:
@@ -241,3 +247,42 @@ def test_carpeta_mas_nueva_con_columna_extra_se_lista(_entorno: Path) -> None:
         GALPON,
         VIALIDAD,
     ]
+
+
+def _con_la_demostracion(carpeta: Path, plantillas: dict[str, Path]) -> None:
+    (carpeta / DEMO).write_bytes(plantillas[DEMO].read_bytes())
+
+
+@pytest.mark.parametrize("login", ["ana", "rita"])
+def test_fuera_de_la_demostracion_no_se_listan_sus_obras(
+    _entorno: Path, _plantillas: dict[str, Path], login: str
+) -> None:
+    """Datos de demostración nunca mezclados con los reales: ni sin carpeta abierta ni con otra."""
+    _con_la_demostracion(_entorno, _plantillas)
+    navegador, ficha = con_cuenta(app, login)  # arma y revisa: ambos con ABRIR_CARPETA
+    assert _filas(navegador.get("/v1/obras/todas").json()) == [EMPRESA_1, CLINICA, GALPON, VIALIDAD]
+    _abrir(ficha, NORTE)
+    assert _filas(navegador.get("/v1/obras/todas").json()) == [EMPRESA_1, CLINICA, GALPON, VIALIDAD]
+
+
+@pytest.mark.parametrize("login", ["ana", "rita"])
+def test_dentro_de_la_demostracion_solo_sus_obras(
+    _entorno: Path, _plantillas: dict[str, Path], login: str
+) -> None:
+    _con_la_demostracion(_entorno, _plantillas)
+    navegador, ficha = con_cuenta(app, login)
+    _abrir(ficha, DEMO)
+    cuerpo = navegador.get("/v1/obras/todas").json()
+    assert _filas(cuerpo) == [INVENTADA]
+    assert cuerpo["carpeta_actual"] == DEMO
+
+
+def test_la_marca_de_la_demostracion_sigue_en_los_casos(
+    _entorno: Path, _plantillas: dict[str, Path]
+) -> None:
+    """La interfaz dice «Está viendo datos inventados» por `es_demostracion` de `GET /v1/casos`."""
+    _con_la_demostracion(_entorno, _plantillas)
+    navegador, ficha = con_cuenta(app, "ana")
+    assert navegador.get("/v1/casos").json()["es_demostracion"] is False
+    _abrir(ficha, DEMO)
+    assert navegador.get("/v1/casos").json()["es_demostracion"] is True
