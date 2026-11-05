@@ -13,7 +13,7 @@ puede escribir ni hacer commits (sus permisos siguen en solo lectura), devuelve 
 
 | Quién | Qué hace | Desde |
 |---|---|---|
-| Claude | Ajuste de menores de T5 y T6 («Presupuesto» en el conmutador, los 4 de Opus, `ABSORBIDAS`, textos de Entregar) | 2026-11-05 |
+| Claude | Lanzar T8 (Vista general) | 2026-11-05 |
 | Antigravity (Gemini 4 Argon) | **Sin cuota por ~6,6 días** desde el 2026-11-04 | — |
 | Antigravity (Gemini 3.8 Flash) | Disponible: arbitra tareas chicas con encargo acotado y redacta textos | — |
 | Antigravity (Claude Opus/Sonnet) | **Sin cuota** hasta ~4 h 25 min después de las 16:20 del 2026-11-04 (`Individual quota reached`). Por eso T7 la termina el subagente (decisión de Eugenio) | — |
@@ -32,6 +32,7 @@ puede escribir ni hacer commits (sus permisos siguen en solo lectura), devuelve 
 | T7 Cartera por moneda (servidor) | Pruebas: **Antigravity (Claude Opus 5.5 High)**. Implementación: subagente `silice-backend` (Antigravity quedó sin cuota). Lo arbitra Argon | `ffee9b5f` en `feature/f6-t7-cartera` (12 pruebas escritas por Antigravity; las 12 fallan con 404) | `818d6dd0` (12/12; suite de API 2.654/2.654; `core/` intacto; pruebas de Antigravity sin tocar) | [Ronda 1 (Flash): APROBADO, sin hallazgos](arbitrajes/f6-T7-r1.md) — arbitraje ligero, sin Argon | De acuerdo con reservas; la suma por moneda se vuelve a mirar en T8 con datos de la Vista general | ✔ (unida a `feature/f6-espacios` en `d30af3d2`) |
 | T5 Obra y barra lateral (cierre A) | subagente `silice-frontend` | `c0edbfff` (156 fallan: sin lista de obras, sin barra de la obra, sin subvistas) | `5fa8f3fa` (suite completa del front 3.871/3.871; lint y build limpios) | [Flash: APROBADO, sin hallazgos](arbitrajes/f6-T5-flash.md) · [Opus: APROBADO, 4 menores](arbitrajes/f6-T5-opus.md) | En vivo (Chromium, 1366×768, ana): 9 secciones, conmutador «Partidas \| Componer», 1 h1, sin desplazamiento horizontal. Las partidas empiezan a 1.003 px (Normal) y 1.663 px (Muy grande): la causa principal es la cabecera de la página Presupuesto, que ya venía de F4; F6 suma ~50 px. Hallazgo de diseño: dos «Partidas» (conmutador y pestaña de abajo): Eugenio decidió que el conmutador diga «Presupuesto». Los 4 menores de Opus van al ajuste tras T6 | ✔ |
 | T6 Cuenta | subagente `silice-frontend` | `e5779b9b` (la Cuenta, la barra superior sin migas y salir sin 401) | `dbff51ac` (suite completa del front 3.941/3.941 en 255 archivos, corrida el 2026-11-05; lint 0) | [Flash: APROBADO, sin hallazgos](arbitrajes/f6-T6-flash.md) | De acuerdo. Claude revisó las dos pruebas cambiadas en el verde (`estilosLetra.test.ts` sustituye la raya que T6 quita por la de la persona activa; `busqueda.test.ts` suma un caso de Carpetas sin `cambiar_caso`): ninguna se debilita | ✔ |
+| Ajuste de menores T5/T6 | subagente `silice-frontend` (front) y Claude (texto del 422 en `api/`) | `1314ec18` (28 de 361 fallan por falta de la funcionalidad) y `9ef7b79c` | `f72e833e`, `694dccbf`, `d3bcc967` (una prueba de la Hoja que aún buscaba «Partidas»). Suite completa del front 3.955/3.957 y lint 0: las 2 caídas eran esa prueba y `Retomar.test.tsx` por carga (32/32 suelta); `paginas/hoja` 727/727 tras el arreglo. Pytest completo: 2 caídas por el reloj (abajo), arregladas en `a0ecedec` | [Flash: APROBADO, sin hallazgos](arbitrajes/f6-menores-T5-T6-flash.md) | De acuerdo. «Presupuesto» en el conmutador (decisión de Eugenio), pendientes que abren su subvista, `esClicSimple` único, textos que mandan a la Cuenta, §2.4 y adenda A.1 enmendados | ✔ |
 | T8 Vista general | — | — | — | — | — | pendiente |
 | T9 Cierre (cierre B) | — | — | — | — | — | pendiente |
 
@@ -50,3 +51,10 @@ Argon no tiene cuota hasta ~6,6 días después del 2026-11-04. Mientras tanto:
 Cartera por moneda; subvistas de obra; español llano; tamaño de letra solo en la Cuenta; entrada por la Vista general;
 Riesgo como sección propia; quien revisa ve solo la carpeta abierta; al cambiar de obra se abre su Resumen; rama desde
 `main`. Detalle en el plan.
+
+## Bomba de tiempo en las pruebas de la Hoja (2026-11-05)
+
+`test_r6_of001_lista_los_30_renglones…` y `test_r7_con_partida_da_la_cascada…` (`tests/unit/test_api_hoja.py`) evaluaban con
+el reloj del equipo: el precio cotizado el 05/10/2026 venció el 05/11/2026 (plazo de 30 días) y aparecieron las
+advertencias. No lo causó F6: también falla en `main` desde hoy. Arreglo en `a0ecedec` (piden `_hoy_fijo`, como hizo
+`c6cc004b`). Hasta que F6 se fusione, la CI de cualquier PR contra `main` puede caer por esto.
