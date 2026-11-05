@@ -140,6 +140,7 @@ TABLA = {
     ("POST", "/v1/control/linea-base"): CONTROLAR,
     ("POST", "/v1/control/parametros"): CONTROLAR,
     ("GET", "/v1/control/valuaciones"): CONTROLAR,
+    ("GET", "/v1/control/partidas"): CONTROLAR,  # autocompletado AC2
     ("POST", "/v1/control/valuaciones"): CONTROLAR,
     ("POST", "/v1/control/valuaciones/{valuacion_id}/anular"): CONTROLAR,
     ("POST", "/v1/control/costos"): CONTROLAR,
@@ -230,6 +231,8 @@ TABLA = {
     ("POST", "/v1/admin/instalacion/eventos/{nombre}/revisar"): RED_Y_API,
     ("GET", "/v1/reajuste/contexto"): REAJUSTAR,
     ("GET", "/v1/reajuste/parciales"): REAJUSTAR,
+    ("GET", "/v1/reajuste/partidas"): REAJUSTAR,  # autocompletado AC2
+    ("GET", "/v1/reajuste/series"): REAJUSTAR,
     ("POST", "/v1/reajuste/calcular"): REAJUSTAR,
     ("POST", "/v1/reajuste/guardar"): REAJUSTAR,
     ("POST", "/v1/reajuste/excel"): REAJUSTAR,

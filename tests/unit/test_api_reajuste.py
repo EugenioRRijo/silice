@@ -410,3 +410,59 @@ def test_el_nombre_del_excel_solo_lleva_caracteres_seguros() -> None:
     assert ruta_reajuste.nombre_excel("001") == "reajuste_001.xlsx"
     peligroso = 'a"b\r\n\u0416/..'
     assert ruta_reajuste.nombre_excel(peligroso) == "reajuste_a_b____...xlsx"
+
+
+# --- ayudas de los campos «Partida» y «Serie» (autocompletado AC2) --------------------------
+
+
+def test_las_partidas_de_la_version_son_las_del_contrato() -> None:
+    """Oráculo a mano (`reajuste_s1.py`): la versión 001 trae solo S1-R01 (1000 m3)."""
+    navegador, _ = _ana()
+    r = navegador.get("/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "001"})
+    assert r.status_code == 200
+    assert r.json() == {
+        "version": "001",
+        "aviso": "",
+        "partidas": [{"codigo": "S1-R01", "descripcion": "Partida ficticia", "unidad": "m3"}],
+    }
+    assert r.headers.get("cache-control") == "no-store"
+
+
+def test_las_partidas_de_una_version_o_un_proyecto_inexistentes_son_404() -> None:
+    navegador, _ = _ana()
+    sin_version = navegador.get("/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "009"})
+    assert sin_version.status_code == 404
+    assert sin_version.json()["detalle"] == SIN_VERSION
+    sin_proyecto = navegador.get("/v1/reajuste/partidas", params={"proyecto": "NO", "version": "001"})
+    assert sin_proyecto.status_code == 404
+    assert navegador.get("/v1/reajuste/partidas", params={"proyecto": NOMBRE}).status_code == 422
+
+
+def test_las_series_son_las_importadas_con_clave_nombre_organismo_y_unidad() -> None:
+    """Oráculo a mano (`reajuste_s1.sembrar`): tres índices ficticios y la tasa USD de venta."""
+    navegador, _ = _ana()
+    r = navegador.get("/v1/reajuste/series")
+    assert r.status_code == 200
+    assert r.headers.get("cache-control") == "no-store"
+    assert r.json() == [
+        {"clave": "BCV-USD-VENTA", "nombre": "Tasa de referencia USD (venta)", "organismo": "BCV", "unidad": "Bs/USD", "periodicidad": "diaria"},
+        {"clave": "FIC-EQU", "nombre": "FIC-EQU", "organismo": "ficticio", "unidad": "indice_bs", "periodicidad": "mensual"},
+        {"clave": "FIC-MAT", "nombre": "FIC-MAT", "organismo": "ficticio", "unidad": "indice_bs", "periodicidad": "mensual"},
+        {"clave": "FIC-MO", "nombre": "FIC-MO", "organismo": "ficticio", "unidad": "indice_bs", "periodicidad": "mensual"},
+    ]
+
+
+def test_sin_series_importadas_la_lista_esta_vacia_y_no_es_error(_entorno: Path) -> None:
+    motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            for tabla in (models.ValorIndice, models.ImportacionIndice, models.SerieIndice):
+                sesion.query(tabla).delete()
+            sesion.commit()
+    finally:
+        motor.dispose()
+    caso_web.olvidar_todo()
+    dependencias.cerrar_motores()
+    navegador, _ = _ana()
+    r = navegador.get("/v1/reajuste/series")
+    assert (r.status_code, r.json()) == (200, [])

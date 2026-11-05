@@ -770,3 +770,52 @@ def test_las_columnas_de_iva_del_front_existen_en_la_respuesta() -> None:
 def test_las_valuaciones_dicen_la_perspectiva_de_la_linea_base() -> None:
     # OB-S2 declara su línea base en costo: el IVA de lo medido no es facturable (T18-3).
     assert _con_clave().get("/v1/control/valuaciones", params=P).json()["perspectiva"] == "costo"
+
+
+# --- las partidas del contrato (autocompletado AC2) ------------------------------------------
+
+
+def test_las_partidas_del_contrato_son_las_de_la_version_de_la_linea_base() -> None:
+    """Oráculo a mano (`control_ob_s2.py`): la línea base presupuesta A, B y C. OB-D está valuada
+    en la memoria pero no presupuestada, así que NO se ofrece: en una valuación solo se mide lo
+    contratado."""
+    r = _con_clave().get("/v1/control/partidas", params=P)
+    assert r.status_code == 200
+    assert r.json() == {
+        "version": "OB-001",
+        "aviso": "",
+        "partidas": [
+            {"codigo": "OB-A", "descripcion": "Excavacion de zanja", "unidad": "m3"},
+            {"codigo": "OB-B", "descripcion": "Tuberia de drenaje", "unidad": "m"},
+            {"codigo": "OB-C", "descripcion": "Relleno compactado", "unidad": "m3"},
+        ],
+    }
+
+
+def test_las_partidas_del_contrato_se_ofrecen_antes_de_la_primera_valuacion(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    r = _con_clave().get("/v1/control/partidas", params=P)
+    assert [p["codigo"] for p in r.json()["partidas"]] == ["OB-A", "OB-B", "OB-C"]
+
+
+def test_sin_linea_base_las_partidas_vienen_vacias_con_su_aviso_y_no_es_error(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _usar(_plantillas, "vacia", tmp_path, monkeypatch)
+    r = _con_clave().get("/v1/control/partidas", params=P)
+    assert r.status_code == 200
+    assert r.json() == {
+        "version": "",
+        "aviso": "Este proyecto todavía no tiene línea base.",
+        "partidas": [],
+    }
+
+
+def test_las_partidas_del_contrato_exigen_proyecto_existente_y_van_sin_cache() -> None:
+    navegador = _con_clave()
+    assert navegador.get("/v1/control/partidas", params={"proyecto": "NO"}).status_code == 404
+    assert navegador.get("/v1/control/partidas").status_code == 422
+    respuesta = navegador.get("/v1/control/partidas", params=P)
+    assert respuesta.headers.get("cache-control") == "no-store"
