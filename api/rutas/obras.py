@@ -298,13 +298,14 @@ def _carpetas_visibles(
     request: Request, activa: SesionActiva | None
 ) -> tuple[str | None, list[tuple[str | None, Path]]]:
     """La carpeta abierta (`None` si es la de la empresa) y las que esta cuenta puede listar: todas
-    con `CAMBIAR_CASO`; si no, solo la abierta (la clave de API ve el caso del proceso y no elige
-    otra). Nunca ofrece una obra que al abrirla diera 403."""
+    con `ABRIR_CARPETA` (también quien revisa: enmienda 2026-11-05); si no, solo la abierta (la
+    clave de API ve el caso del proceso y no elige otra). Nunca ofrece una obra que al abrirla
+    diera 403."""
     empresa = ruta_de_url(url_del_proceso())
     abierta = ruta_de_url(url_de_la_peticion(request))
     es_empresa = abierta is None or abierta == empresa
     actual = None if es_empresa else abierta.name  # type: ignore[union-attr]
-    if activa is not None and permitido(activa.roles, Accion.CAMBIAR_CASO):
+    if activa is not None and permitido(activa.roles, Accion.ABRIR_CARPETA):
         propias = None if empresa is None else empresa.resolve()
         todas: list[tuple[str | None, Path]] = [(None, empresa)] if empresa is not None else []
         todas.extend((r.name, r) for r in listar_casos() if r.resolve() != propias)
@@ -319,7 +320,7 @@ def obras_de_todas_las_carpetas(
     request: Request,
     activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.LEER_PROYECTO))],
 ) -> ObrasTodasRespuesta:
-    """Las obras de todas las carpetas (con `CAMBIAR_CASO`) o solo las de la carpeta abierta. Abre
+    """Las obras de todas las carpetas (con `ABRIR_CARPETA`) o solo las de la carpeta abierta. Abre
     cada base en solo lectura; una carpeta ilegible se omite."""
     actual, carpetas = _carpetas_visibles(request, activa)
     return ObrasTodasRespuesta(

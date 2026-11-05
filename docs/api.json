@@ -1918,7 +1918,7 @@
           "sesion"
         ],
         "summary": "Recordar Obra",
-        "description": "Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta. Sin\n`CAMBIAR_CASO` la ficha trabaja en la carpeta por omisión: la obra se recuerda con ella\n(`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso. La obra debe\nexistir en la carpeta de la petición (la de la ficha o la por omisión): si no, 404 con un\nmensaje fijo y no se guarda nada; si la carpeta no se puede comprobar, 503 con un texto fijo y\ntampoco se guarda. Una obra no nula exige `LEER_PROYECTO` (403): el administrador puro, que sí\npuede cambiar de carpeta, no debe poder sondear qué códigos existen.",
+        "description": "Recuerda la obra elegida (`null` = ninguna) para la carpeta recordada de la cuenta. Sin\n`ABRIR_CARPETA` la ficha trabaja en la carpeta por omisión: la obra se recuerda con ella\n(`caso` nulo), para que no vuelva pegada a otra carpeta si recupera el permiso. La obra debe\nexistir en la carpeta de la petición (la de la ficha o la por omisión): si no, 404 con un\nmensaje fijo y no se guarda nada; si la carpeta no se puede comprobar, 503 con un texto fijo y\ntampoco se guarda. Una obra no nula exige `LEER_PROYECTO` (403): el administrador puro, que sí\npuede cambiar de carpeta, no debe poder sondear qué códigos existen.",
         "operationId": "recordar_obra_v1_sesion_proyecto_put",
         "requestBody": {
           "content": {
@@ -2498,7 +2498,7 @@
             }
           },
           "403": {
-            "description": "Sin `CAMBIAR_CASO`, o sin CSRF u origen propio.",
+            "description": "Sin `ABRIR_CARPETA`, o sin CSRF u origen propio.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2568,7 +2568,7 @@
             }
           },
           "403": {
-            "description": "Sin `CAMBIAR_CASO`, o sin CSRF u origen propio.",
+            "description": "Sin `ABRIR_CARPETA`, o sin CSRF u origen propio.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2798,7 +2798,7 @@
             }
           },
           "403": {
-            "description": "Sin `EDITAR_HOJA`, o sin `CAMBIAR_CASO` para crear en otra carpeta, o sin CSRF u origen propio.",
+            "description": "Sin `EDITAR_HOJA`, o sin `ABRIR_CARPETA` para crear en otra carpeta, o sin CSRF u origen propio.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10368,7 +10368,7 @@
           "obras"
         ],
         "summary": "Obras De Todas Las Carpetas",
-        "description": "Las obras de todas las carpetas (con `CAMBIAR_CASO`) o solo las de la carpeta abierta. Abre\ncada base en solo lectura; una carpeta ilegible se omite.",
+        "description": "Las obras de todas las carpetas (con `ABRIR_CARPETA`) o solo las de la carpeta abierta. Abre\ncada base en solo lectura; una carpeta ilegible se omite.",
         "operationId": "obras_de_todas_las_carpetas_v1_obras_todas_get",
         "responses": {
           "200": {

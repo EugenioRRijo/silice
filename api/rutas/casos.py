@@ -6,17 +6,18 @@
   el caso del proceso). **Ninguna ruta absoluta**: `ruta_relativa` es relativa a la carpeta de
   datos (`casos/obra.db`); un caso del proceso fuera de ella (un `APU_BASE` de otra carpeta) solo
   muestra su nombre.
-- `POST /v1/casos/actual` `{nombre}` (CSRF y `Origin`; `CAMBIAR_CASO`, como «Cambiar de caso» del
-  Inicio, `ui.caso.abrir_caso`): el nombre pasa por `resolver_caso` (sin `..`, rutas, unidades ni
-  nombres reservados: 422) y debe estar en `listar_casos` (404). El caso se prepara con
-  `preparar_base` al abrir su motor (503 si no se puede, y no queda elegido) y se guarda para la
-  ficha (`api.caso_web`). Con la clave de API, 409: las integraciones trabajan en el caso del
-  proceso (`APU_BASE`), que fija quien arranca la API. MOD-0: además se recuerda para la cuenta
-  (`aplicacion.eleccion.recordar_caso`, en la transacción de la petición sobre la instalación), lo
-  que olvida la obra recordada; `GET /v1/sesion` la restaura al volver a entrar.
+- `POST /v1/casos/actual` `{nombre}` (CSRF y `Origin`; `ABRIR_CARPETA`, que desde la enmienda
+  2026-11-05 tiene también quien revisa; antes `CAMBIAR_CASO`, «Cambiar de caso» del Inicio): el
+  nombre pasa por `resolver_caso` (sin `..`, rutas, unidades ni nombres reservados: 422) y debe
+  estar en `listar_casos` (404). El caso se prepara con `preparar_base` al abrir su motor (503 si
+  no se puede, y no queda elegido) y se guarda para la ficha (`api.caso_web`). Con la clave de
+  API, 409: las integraciones trabajan en el caso del proceso (`APU_BASE`), que fija quien arranca
+  la API. MOD-0: además se recuerda para la cuenta (`aplicacion.eleccion.recordar_caso`, en la
+  transacción de la petición sobre la instalación), lo que olvida la obra recordada;
+  `GET /v1/sesion` la restaura al volver a entrar.
 - MOD-3a: `GET /v1/casos` agrega `empresa` (`{nombre, ruta_relativa}` de la carpeta del proceso, la
   de omisión de la instalación; `null` si el proceso no usa un archivo) y `es_demostracion` (la
-  carpeta de esta petición es la de demostración). `DELETE /v1/casos/actual` (`CAMBIAR_CASO`,
+  carpeta de esta petición es la de demostración). `DELETE /v1/casos/actual` (`ABRIR_CARPETA`,
   sesión, CSRF y `Origin`) es «Volver a la carpeta de la empresa»: la ficha olvida su carpeta y
   la cuenta recuerda `caso` nulo (que olvida la obra); 200 con la carpeta de la empresa, 409 con
   la clave de API, 503 si el proceso no usa un archivo o no se puede preparar.
@@ -147,7 +148,7 @@ def consultar_casos(request: Request) -> CasosRespuesta:
     "/actual",
     response_model=CasoRespuesta,
     responses={
-        403: {"model": Detalle, "description": "Sin `CAMBIAR_CASO`, o sin CSRF u origen propio."},
+        403: {"model": Detalle, "description": "Sin `ABRIR_CARPETA`, o sin CSRF u origen propio."},
         404: {"model": Detalle, "description": "El caso no está en la carpeta de casos."},
         409: {"model": Detalle, "description": "Con la clave de API no se elige caso."},
         422: {"model": Detalle, "description": "El nombre lleva rutas, `..` o no es válido."},
@@ -156,7 +157,7 @@ def consultar_casos(request: Request) -> CasosRespuesta:
 )
 def elegir_caso(
     datos: EleccionCaso,
-    activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.CAMBIAR_CASO))],
+    activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.ABRIR_CARPETA))],
     instalacion: SesionInstalacionDep,
 ) -> CasoRespuesta:
     """Fija el caso de esta ficha de sesión (lo olvida al salir o expirar) y lo recuerda para la
@@ -179,7 +180,7 @@ def elegir_caso(
 
 
 def volver_a_la_empresa(
-    activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.CAMBIAR_CASO))],
+    activa: Annotated[SesionActiva | None, Depends(exigir_clave_o_sesion(Accion.ABRIR_CARPETA))],
     instalacion: SesionInstalacionDep,
 ) -> CasoRespuesta:
     """«Volver a la carpeta de la empresa»: la ficha deja de tener carpeta propia (trabaja en la
@@ -389,7 +390,7 @@ router.add_api_route(
     methods=["DELETE"],
     response_model=CasoRespuesta,
     responses={
-        403: {"model": Detalle, "description": "Sin `CAMBIAR_CASO`, o sin CSRF u origen propio."},
+        403: {"model": Detalle, "description": "Sin `ABRIR_CARPETA`, o sin CSRF u origen propio."},
         409: {"model": Detalle, "description": "Con la clave de API no se elige caso."},
         503: {"model": Detalle, "description": "El proceso no usa un archivo o no se prepara."},
     },
