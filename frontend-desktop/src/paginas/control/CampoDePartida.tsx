@@ -19,6 +19,8 @@ interface Props {
   textoInvalido?: string;
   // La lista va en un portal con position: fixed (la celda de una tabla recorta un menu absoluto).
   enCelda?: boolean;
+  etiquetaOculta?: boolean;
+  conBorrar?: boolean;
   tamano?: "sm" | "md";
 }
 
@@ -38,6 +40,8 @@ export function CampoDePartida({
   invalido,
   textoInvalido,
   enCelda = false,
+  etiquetaOculta = enCelda,
+  conBorrar = !enCelda,
   tamano,
 }: Props) {
   const buscar = useMemo(() => buscadorDePartidasDelContrato(partidas ?? []), [partidas]);
@@ -48,6 +52,8 @@ export function CampoDePartida({
     <CampoConBusqueda
       id={id}
       etiqueta={etiqueta}
+      etiquetaOculta={etiquetaOculta}
+      conBorrar={conBorrar}
       ayuda={ayudaViva}
       texto={texto}
       alCambiarTexto={alCambiarTexto}

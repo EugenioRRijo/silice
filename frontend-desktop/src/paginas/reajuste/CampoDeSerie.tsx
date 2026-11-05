@@ -21,6 +21,8 @@ export function CampoDeSerie({ id, etiqueta, series, texto, alCambiarTexto, alEx
     <CampoConBusqueda
       id={id}
       etiqueta={etiqueta}
+      etiquetaOculta
+      conBorrar={false}
       texto={texto}
       alCambiarTexto={alCambiarTexto}
       buscar={buscar}

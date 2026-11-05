@@ -99,17 +99,3 @@
   outline: 2px solid var(--cds-focus);
   outline-offset: 2px;
 }
-
-// AC2: el campo con busqueda de una celda (Serie, Partida) tiene la etiqueta como nombre accesible y la columna ya la
-// rotula: se oculta a la vista como hace `hideLabel` de Carbon, sin quitarla del lector de pantalla.
-.silice-filas__tabla .silice-busqueda .cds--label {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
