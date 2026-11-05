@@ -167,6 +167,8 @@ TABLA = {
     ("POST", "/v1/carpeta/lista-para-armar"): EDITAR,
     ("GET", "/v1/buscar/partidas"): LEER,  # T10: buscador de partidas del catálogo (C-1)
     ("GET", "/v1/consulta/{tabla}"): LEER,  # vial T20: autocompletado con tablas venezolanas
+    ("GET", "/v1/consulta/unidades"): LEER,  # AC4: las unidades ya usadas en el catálogo
+    ("GET", "/v1/consulta/proveedores"): LEER,  # AC4: los proveedores de las cotizaciones
     # MOD-4a: la mesa de control (inicio de Presupuestos y obras)
     ("GET", "/v1/obras/resumen"): LEER,
     ("GET", "/v1/obras/pendientes"): EDITAR,

@@ -222,6 +222,36 @@ describe("Reajuste de precios", () => {
     expect(await screen.findByText(/ninguna \(la comprobación quedará «no disponible»\)/)).toBeInTheDocument();
   });
 
+  test("AC4: la versión de comprobación se elige entre las revaloradas y viaja la elegida", async () => {
+    contexto = () =>
+      json({
+        ...CONTEXTO,
+        versiones: [...CONTEXTO.versiones, { codigo: "003", motivo: "revaloracion", revalorada: true }],
+      });
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await llenar(u);
+    const campo = screen.getByRole("combobox", { name: "Versión de comprobación, Períodos fila 1" });
+    expect(within(campo).getAllByRole("option").map((o) => o.textContent)).toEqual(["Ninguna", "002", "003"]);
+    expect(campo).toHaveValue("");
+    await u.selectOptions(campo, "003");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    const cuerpo = post("/v1/reajuste/calcular") as { periodos: Record<string, string>[] };
+    expect(cuerpo.periodos[0].version_comprobacion).toBe("003");
+  });
+
+  test("AC4: sin revaloradas la versión de comprobación solo ofrece «Ninguna»", async () => {
+    contexto = () => json({ ...CONTEXTO, versiones: [{ codigo: "001", motivo: "", revalorada: false }] });
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    const campo = screen.getByRole("combobox", { name: "Versión de comprobación, Períodos fila 1" });
+    expect(within(campo).getAllByRole("option").map((o) => o.textContent)).toEqual(["Ninguna"]);
+  });
+
   test("calcular manda lo escrito y pinta la tabla lado a lado con el texto de la API", async () => {
     const u = userEvent.setup();
     montar();

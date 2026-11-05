@@ -115,12 +115,14 @@ const OBRERO = { descripcion: "", cantidad: "2", sueldo: "", modalidad: "JORNAL"
 const descripcion = (n = 1) => screen.getByRole("combobox", { name: `Descripción, fila ${n}` });
 
 describe("TablaInsumos: autocompletado de la descripción", () => {
-  test("cada descripción es un combobox con su nombre «Descripción, fila N»; las demás columnas siguen siendo texto", () => {
+  test("cada descripción y cada unidad (AC4) son un combobox con su nombre «…, fila N»; las cifras siguen siendo texto", () => {
     render(<Arnes tipo="materiales" filas={[MATERIAL, { ...MATERIAL }]} />);
     expect(descripcion(1)).toBeInTheDocument();
     expect(descripcion(2)).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Unidad, fila 1" })).toBeInTheDocument();
-    expect(screen.getAllByRole("combobox")).toHaveLength(2);
+    expect(screen.getByRole("combobox", { name: "Unidad, fila 1" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Unidad, fila 2" })).toBeInTheDocument();
+    expect(screen.getAllByRole("combobox")).toHaveLength(4);
+    expect(screen.getByRole("textbox", { name: "Consumo por unidad, fila 1" })).toBeInTheDocument();
   });
 
   test("materiales: pide «insumos»; al elegir llena descripción, unidad y precio (con coma) y respeta el consumo", async () => {
@@ -130,7 +132,7 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     const opcion = await screen.findByRole("option", { name: /Cemento gris ficticio/ });
     expect(llamadas.some((l) => l.startsWith("/v1/consulta/insumos?q=cemento+g"))).toBe(true);
     await u.click(opcion);
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "Unidad, fila 1" })).toHaveValue("saco"));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("saco"));
     expect(descripcion()).toHaveValue("Cemento gris ficticio");
     expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("18,00");
     expect(screen.getByRole("textbox", { name: "Consumo por unidad, fila 1" })).toHaveValue("3");
@@ -165,7 +167,7 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     await u.type(descripcion(), "cemento b");
     await u.click(await screen.findByRole("option", { name: /Cemento blanco ficticio/ }));
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
-    expect(screen.getByRole("textbox", { name: "Unidad, fila 1" })).toHaveValue("kg");
+    expect(screen.getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("kg");
     expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("7,5");
   });
 
@@ -192,7 +194,7 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
     const precio = screen.getByRole("textbox", { name: "Precio, fila 1" });
     expect(precio).toHaveValue("");
-    expect(screen.getByRole("textbox", { name: "Unidad, fila 1" })).toHaveValue("saco");
+    expect(screen.getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("saco");
     expect(screen.getByText("El catálogo lo tiene en USD; escriba el precio en Bs.")).toBeInTheDocument();
     expect(precio).toHaveAccessibleDescription("El catálogo lo tiene en USD; escriba el precio en Bs.");
   });
@@ -240,7 +242,7 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     render(<Arnes tipo="materiales" filas={[MATERIAL]} paraArmarAl="" />);
     await u.type(descripcion(), "cemento g");
     await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "Unidad, fila 1" })).toHaveValue("saco"));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("saco"));
     expect(descripcion()).toHaveValue("Cemento gris ficticio");
     expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("");
     const pedida = llamadas.filter((l) => l.startsWith("/v1/consulta/insumos?")).at(-1)!;
@@ -286,7 +288,7 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     await screen.findByRole("option", { name: /Cemento blanco ficticio/ });
     await u.tab();
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Unidad, fila 1" })).toHaveFocus();
+    expect(screen.getByRole("combobox", { name: "Unidad, fila 1" })).toHaveFocus();
     expect(descripcion()).toHaveValue("cemento b");
 
     await u.click(descripcion());
@@ -318,7 +320,7 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
     await u.keyboard("{Escape}");
     expect(descripcion()).toHaveValue("Cemento gris ficticio");
-    expect(screen.getByRole("textbox", { name: "Unidad, fila 1" })).toHaveValue("saco");
+    expect(screen.getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("saco");
   });
 
   test("una sesión vencida durante la búsqueda avisa con alExpirar", async () => {
