@@ -247,7 +247,7 @@ de una partida, el registro de cambios de una versión, Componer y el informe de
   de texto que cambió desde que recibió el foco, el primer Esc lo devuelve a ese valor (como las celdas de la Hoja) y el
   segundo cierra; con una lista de sugerencias abierta, Esc la cierra primero. De vuelta en «Partida», lo que se usó para
   componer no cuenta como elegido: el Esc siguiente cierra el diálogo.
-- **Descripción de los insumos en Componer** (AC1): cada celda «Descripción, fila N» es un `CampoConBusqueda` en celda (sin etiqueta a la vista ni botón «Borrar»; Esc con la lista cerrada no borra lo elegido) con las sugerencias de «insumos» (materiales y equipos) o «salarios_cct» (mano de obra); al elegir llena unidad y precio (con coma) y lo escrito aparte queda avisado con «Descripción propia: no viene del catálogo.».
+- **Descripción de los insumos en Componer** (AC1): cada celda «Descripción, fila N» es un `CampoConBusqueda` en celda (sin etiqueta a la vista ni botón «Borrar»; Esc con la lista cerrada no borra lo elegido) con las sugerencias de «insumos» (materiales y equipos) o «salarios_cct» (mano de obra); al elegir llena unidad y precio (con coma) y lo escrito aparte queda avisado con «Descripción propia: no viene del catálogo.». El precio es el de la lista para armar a la «Fecha» de la composición y llega en la misma respuesta (`detalle`, `para_armar_al`; AC1b); en otra moneda que la de la carpeta no se copia y la celda del precio o del sueldo lo dice como texto de ayuda («El catálogo lo tiene en USD; escriba el precio en Bs.»).
 
 ### Filas afectadas
 

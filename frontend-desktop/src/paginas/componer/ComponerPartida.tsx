@@ -457,6 +457,8 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               tipo={tipo}
               filas={tablas[tipo]}
               modalidades={ops?.modalidades ?? []}
+              paraArmarAl={fecha}
+              moneda={carpeta?.moneda ?? null}
               alCambiar={(i, clave, valor) => cambiarTablas((t) => editarCelda(t, tipo, i, clave, valor))}
               alAgregar={() => cambiarTablas((t) => agregarFila(t, tipo))}
               alBorrar={(i) => cambiarTablas((t) => borrarFila(t, tipo, i))}

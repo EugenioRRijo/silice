@@ -1,6 +1,5 @@
 import { Button, Select, SelectItem, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ErrorDeApi } from "../../api/cliente";
+import { useMemo, useState } from "react";
 import { TableHeader } from "../../comun/carbonEs";
 import { CampoConBusqueda } from "../../comun/CampoConBusqueda";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -8,9 +7,7 @@ import { buscadorDeConsulta } from "../../comun/consulta";
 import type { SugerenciaDeConsulta } from "../../comun/consulta";
 import { LARGO_MAXIMO } from "../../comun/logicaBusqueda";
 import type { OpcionDeBusqueda } from "../../comun/logicaBusqueda";
-import { TABLA_DE_CONSULTA, valoresAlElegir } from "./autocompletado";
-import { insumosDelCatalogo } from "./cliente";
-import type { InsumoCatalogo } from "./cliente";
+import { COLUMNA_DEL_PRECIO, TABLA_DE_CONSULTA, valoresAlElegir } from "./autocompletado";
 import { COLUMNAS, TITULOS } from "./tablas";
 import type { Fila, TipoTabla } from "./tablas";
 
@@ -19,6 +16,11 @@ interface Props {
   filas: Fila[];
   // Opciones de modalidad que manda la API (solo mano de obra).
   modalidades: string[];
+  // La fecha de la composicion (ISO): el precio que se llena es el de la lista para armar a esa fecha (AC1b). Vacia, no se
+  // pide ningun precio y solo se llenan la descripcion y la unidad.
+  paraArmarAl?: string;
+  // La moneda de trabajo de la carpeta (`GET /v1/carpeta`): un precio en otra moneda no se copia.
+  moneda?: string | null;
   alCambiar: (indice: number, clave: string, valor: string) => void;
   alAgregar: () => void;
   alBorrar: (indice: number) => void;
@@ -38,30 +40,44 @@ const AVISO_PROPIA = "Descripción propia: no viene del catálogo.";
 interface Marca {
   catalogo?: string;
   escrita?: string;
+  // Por que no se lleno el precio de lo elegido (otra moneda): lo dice la celda del precio o del sueldo.
+  avisoPrecio?: string;
 }
 
 // Una tabla de insumos editable (UC-10, pasos 2 a 4). Carbon `sm`: celdas de texto; los montos se teclean y se
 // muestran como texto, alineados a la derecha, y nunca se convierten en el navegador.
 //
 // La descripcion es un campo con sugerencias del catalogo (AC1, pedido de Eugenio del 2026-10-21): materiales y equipos
-// piden «insumos» y la mano de obra «salarios_cct». Al elegir se llenan tambien la unidad y el precio que el catalogo
-// trae; escribir una descripcion propia sigue siendo posible y queda avisado.
-export function TablaInsumos({ tipo, filas, modalidades, alCambiar, alAgregar, alBorrar, alCompletar, alExpirar, nivel = 3 }: Props) {
+// piden «insumos» y la mano de obra «salarios_cct». Al elegir se llenan tambien la unidad y el precio, que vienen en la
+// misma respuesta: el precio es el de la lista para armar a la fecha de la composicion y solo se copia en la moneda de la
+// carpeta; si no, la celda del precio dice por que quedo vacia (AC1b). Escribir una descripcion propia sigue siendo
+// posible y queda avisado.
+export function TablaInsumos({
+  tipo,
+  filas,
+  modalidades,
+  paraArmarAl = "",
+  moneda = null,
+  alCambiar,
+  alAgregar,
+  alBorrar,
+  alCompletar,
+  alExpirar,
+  nivel = 3,
+}: Props) {
   const Titulo = `h${nivel}` as const;
   const titulo = TITULOS[tipo];
   const columnas = COLUMNAS[tipo];
-  const buscador = useMemo(() => buscadorDeConsulta(TABLA_DE_CONSULTA[tipo]), [tipo]);
+  const buscador = useMemo(
+    () => buscadorDeConsulta(TABLA_DE_CONSULTA[tipo], { detalle: true, paraArmarAl }),
+    [tipo, paraArmarAl],
+  );
   const [marcas, setMarcas] = useState<Record<number, Marca>>({});
-  // Las filas de ahora, para que una eleccion que tarda en volver (la lista del catalogo) no pise lo que se escribio despues.
-  const filasAhora = useRef(filas);
-  useEffect(() => {
-    filasAhora.current = filas;
-  });
 
   const marcar = (indice: number, cambio: Marca) => setMarcas((m) => ({ ...m, [indice]: { ...m[indice], ...cambio } }));
 
   const escribir = (indice: number, texto: string) => {
-    marcar(indice, { escrita: texto });
+    marcar(indice, { escrita: texto, avisoPrecio: undefined });
     alCambiar(indice, "descripcion", texto);
   };
 
@@ -76,24 +92,12 @@ export function TablaInsumos({ tipo, filas, modalidades, alCambiar, alAgregar, a
     alBorrar(indice);
   };
 
-  const elegir = async (indice: number, opcion: OpcionDeBusqueda<SugerenciaDeConsulta>) => {
-    const alElegir = filasAhora.current[indice]?.descripcion;
-    const codigo = opcion.valor.valor;
-    let insumo: InsumoCatalogo | null = null;
-    try {
-      insumo = (await insumosDelCatalogo()).find((i) => i.codigo === codigo) ?? null;
-    } catch (e) {
-      if (e instanceof ErrorDeApi && e.estado === 401) {
-        alExpirar();
-        return;
-      }
-      // Sin la lista completa se elige igual: queda la descripcion y la persona escribe el resto.
-    }
-    if (filasAhora.current[indice]?.descripcion !== alElegir) return; // siguio escribiendo o borro la fila
-    const valores = valoresAlElegir(tipo, insumo, opcion.principal, codigo);
-    marcar(indice, { catalogo: valores.descripcion, escrita: undefined });
+  const elegir = (indice: number, opcion: OpcionDeBusqueda<SugerenciaDeConsulta>) => {
+    const { valores, aviso } = valoresAlElegir(tipo, opcion.valor, moneda);
+    marcar(indice, { catalogo: valores.descripcion, escrita: undefined, avisoPrecio: aviso ?? undefined });
     alCompletar(indice, valores);
   };
+  const columnaDelPrecio = COLUMNA_DEL_PRECIO[tipo];
 
   const esPropia = (indice: number, descripcion: string) =>
     descripcion.trim() !== "" && marcas[indice]?.escrita === descripcion && marcas[indice]?.catalogo !== descripcion;
@@ -142,7 +146,7 @@ export function TablaInsumos({ tipo, filas, modalidades, alCambiar, alAgregar, a
                           texto={fila.descripcion ?? ""}
                           alCambiarTexto={(texto) => escribir(i, texto)}
                           buscar={(q, senal, limite) => buscador(q.slice(0, LARGO_MAXIMO).trim(), senal, limite)}
-                          alElegir={(opcion) => void elegir(i, opcion)}
+                          alElegir={(opcion) => elegir(i, opcion)}
                           valorPropio={{
                             rotulo: (t) => `Usar «${t.trim()}» tal cual (no viene del catálogo)`,
                             alUsar: (t) => escribir(i, t.trim()),
@@ -164,6 +168,7 @@ export function TablaInsumos({ tipo, filas, modalidades, alCambiar, alAgregar, a
                           size="sm"
                           labelText={nombre}
                           hideLabel
+                          helperText={c.clave === columnaDelPrecio ? marcas[i]?.avisoPrecio : undefined}
                           value={fila[c.clave] ?? ""}
                           onChange={(e) => alCambiar(i, c.clave, e.target.value)}
                         />

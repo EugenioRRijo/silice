@@ -10415,6 +10415,37 @@
               "default": 10,
               "title": "Limite"
             }
+          },
+          {
+            "name": "detalle",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Insumos y salarios: agrega la descripción y la unidad",
+              "default": false,
+              "title": "Detalle"
+            },
+            "description": "Insumos y salarios: agrega la descripción y la unidad"
+          },
+          {
+            "name": "para_armar_al",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Insumos y salarios: agrega el precio de la lista para armar a esa fecha (ISO), con su moneda y su fecha, o el aviso si está en otra moneda",
+              "title": "Para Armar Al"
+            },
+            "description": "Insumos y salarios: agrega el precio de la lista para armar a esa fecha (ISO), con su moneda y su fecha, o el aviso si está en otra moneda"
           }
         ],
         "responses": {
@@ -26418,6 +26449,79 @@
             "type": "string",
             "title": "Fuente",
             "description": "De dónde sale el dato"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion",
+            "description": "Con `detalle`: la descripción del insumo"
+          },
+          "unidad": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unidad",
+            "description": "Con `detalle`: la unidad del insumo, si la tiene"
+          },
+          "precio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio",
+            "description": "Con `para_armar_al`: el precio en la lista para armar a esa fecha, decimal con punto; nunca en otra moneda que la de la carpeta"
+          },
+          "moneda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda",
+            "description": "La moneda de la lista de la que sale el precio"
+          },
+          "fecha_precio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Precio",
+            "description": "Desde cuándo rige esa lista"
+          },
+          "aviso_precio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Precio",
+            "description": "Si esa lista está en otra moneda: por qué no viene el precio"
           }
         },
         "type": "object",

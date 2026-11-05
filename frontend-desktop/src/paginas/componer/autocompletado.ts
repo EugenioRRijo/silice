@@ -1,9 +1,8 @@
-// Autocompletado de la descripcion de los insumos al componer un APU (AC1, pedido de Eugenio del 2026-10-21): de que
-// tabla de consulta sale cada tabla de insumos y que columnas se llenan al elegir una sugerencia. Aqui no se calcula
+// Autocompletado de la descripcion de los insumos al componer un APU (AC1, pedido de Eugenio del 2026-10-21; AC1b): de
+// que tabla de consulta sale cada tabla de insumos y que columnas se llenan al elegir una sugerencia. Aqui no se calcula
 // nada: los montos llegan de la API como decimal con punto y solo se reescriben con la coma de la pagina.
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
-import type { TablaDeConsulta } from "../../comun/consulta";
-import type { InsumoCatalogo } from "./cliente";
+import type { SugerenciaDeConsulta, TablaDeConsulta } from "../../comun/consulta";
 import type { TipoTabla } from "./tablas";
 
 // `GET /v1/consulta/insumos` junta materiales y equipos del catalogo (aplicacion/consulta.py, TIPOS_DE_INSUMO): no hay una
@@ -15,37 +14,39 @@ export const TABLA_DE_CONSULTA: Record<TipoTabla, TablaDeConsulta> = {
   mano_obra: "salarios_cct",
 };
 
-// La columna de la tabla que recibe el precio del catalogo: el precio de un material o un equipo, el jornal (sueldo) de la
-// mano de obra. Un material ademas recibe la unidad; las otras dos tablas no tienen esa columna.
-const COLUMNA_DEL_PRECIO: Record<TipoTabla, string> = {
+// La columna de la tabla que recibe el precio: el precio de un material o un equipo, el jornal (sueldo) de la mano de
+// obra. Un material ademas recibe la unidad; las otras dos tablas no tienen esa columna.
+export const COLUMNA_DEL_PRECIO: Record<TipoTabla, "precio" | "sueldo"> = {
   materiales: "precio",
   equipos: "precio",
   mano_obra: "sueldo",
 };
 
-// La etiqueta de una sugerencia es «Descripcion (CODIGO, unidad)»: si el catalogo completo no se pudo leer, la descripcion
-// se saca de ahi quitando solo ese cierre, el del codigo del insumo. Cualquier otra cosa queda tal cual.
-export function descripcionDeEtiqueta(etiqueta: string, codigo: string): string {
-  const cierre = ` (${codigo}`;
-  const inicio = etiqueta.lastIndexOf(cierre);
-  const resto = inicio > 0 ? etiqueta.slice(inicio + cierre.length) : "";
-  if (inicio > 0 && (resto === ")" || (resto.startsWith(", ") && resto.endsWith(")")))) {
-    return etiqueta.slice(0, inicio);
-  }
-  return etiqueta;
+export interface AlElegir {
+  // Las celdas que se llenan.
+  valores: Record<string, string>;
+  // Por que el precio no se lleno aunque la lista lo tiene (otra moneda), en texto llano; null si no hay nada que decir.
+  aviso: string | null;
 }
 
-// Las celdas que se llenan al elegir una sugerencia: la descripcion y, si el catalogo las trae, la unidad y el precio.
-// Lo que no viene no se llena (no se inventa ni se borra lo que la persona ya puso).
+// Las celdas que se llenan al elegir una sugerencia: siempre la descripcion (y la unidad, si es un material y la trae) y el
+// precio solo si viene de la lista para armar en la moneda de la carpeta. El servidor ya no lo manda en otra moneda
+// (aplicacion/consulta.py); si aun asi llegara en otra, o sin moneda, no se copia. Sin la moneda de la carpeta (la API
+// no la dio) manda la comparacion del servidor. Lo que no viene no se llena (no se inventa ni se borra lo que hay).
 export function valoresAlElegir(
   tipo: TipoTabla,
-  insumo: InsumoCatalogo | null,
-  etiqueta: string,
-  codigo: string,
-): Record<string, string> {
-  if (insumo === null) return { descripcion: descripcionDeEtiqueta(etiqueta, codigo) };
-  const valores: Record<string, string> = { descripcion: insumo.descripcion };
-  if (tipo === "materiales" && insumo.unidad) valores.unidad = insumo.unidad;
-  if (insumo.precio_vigente) valores[COLUMNA_DEL_PRECIO[tipo]] = formatoEsVe(insumo.precio_vigente);
-  return valores;
+  sugerencia: SugerenciaDeConsulta,
+  monedaDeTrabajo: string | null,
+): AlElegir {
+  const columna = COLUMNA_DEL_PRECIO[tipo];
+  const valores: Record<string, string> = { descripcion: sugerencia.descripcion || sugerencia.etiqueta };
+  if (tipo === "materiales" && sugerencia.unidad) valores.unidad = sugerencia.unidad;
+  const { precio, moneda } = sugerencia;
+  if (!precio) return { valores, aviso: sugerencia.aviso_precio || null };
+  if (!moneda) return { valores, aviso: null };
+  if (monedaDeTrabajo !== null && moneda !== monedaDeTrabajo) {
+    return { valores, aviso: `El catálogo lo tiene en ${moneda}; escriba el ${columna} en ${monedaDeTrabajo}.` };
+  }
+  valores[columna] = formatoEsVe(precio);
+  return { valores, aviso: null };
 }

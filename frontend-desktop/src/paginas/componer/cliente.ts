@@ -150,33 +150,3 @@ export function guardar(cabecera: Cabecera, tablas: Tablas, datos: DatosDeGuarda
 export function prever(cabecera: Cabecera, tablas: Tablas, datos: DatosDeGuardado): Promise<Prevision> {
   return pedir<Prevision>(`${BASE}/prever`, { metodo: "POST", cuerpo: { ...cabecera, ...tablas, ...datos } });
 }
-
-// Un insumo del catalogo de la carpeta (`GET /insumos`): lo unico que trae unidad y precio vigente por separado. El
-// precio llega como decimal con punto; la pagina lo muestra con coma (`autocompletado.ts`) y nunca lo opera.
-export interface InsumoCatalogo {
-  codigo: string;
-  descripcion: string;
-  tipo: string;
-  unidad: string | null;
-  precio_vigente: string | null;
-}
-
-// La lista se pide una vez y se reusa un rato: elegir varios insumos seguidos no repite la peticion, pero un insumo
-// que se acaba de dar de alta (al guardar una composicion) aparece en menos de un minuto. Si falla, se pide de nuevo.
-const VIGENCIA_DEL_CATALOGO_MS = 60_000;
-let catalogo: { pedida: Promise<InsumoCatalogo[]>; en: number } | null = null;
-
-export function olvidarInsumosDelCatalogo(): void {
-  catalogo = null;
-}
-
-export function insumosDelCatalogo(): Promise<InsumoCatalogo[]> {
-  if (catalogo !== null && Date.now() - catalogo.en < VIGENCIA_DEL_CATALOGO_MS) return catalogo.pedida;
-  const pedida = pedir<InsumoCatalogo[]>("/insumos");
-  const mia = { pedida, en: Date.now() };
-  catalogo = mia;
-  pedida.catch(() => {
-    if (catalogo === mia) catalogo = null;
-  });
-  return pedida;
-}
