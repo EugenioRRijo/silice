@@ -32,6 +32,7 @@ import { BarraSuperior } from "./BarraSuperior";
 import { Buscador } from "./Buscador";
 import { EspacioDeCuenta } from "./EspacioDeCuenta";
 import { EspacioDeHerramientas, RaizDelEspacio } from "./EspacioDeHerramientas";
+import { EspacioDeInicio, RaizDeInicio } from "./EspacioDeInicio";
 import { EspacioDeObra } from "./EspacioDeObra";
 import { ESPACIOS, SECCIONES_DE_CUENTA, esEspacio, espacioDeLaPagina, rutaDeCuenta, rutaDeHerramienta, subvistaDeLaPagina } from "./espacios";
 import type { EspacioId } from "./espacios";
@@ -40,7 +41,7 @@ import "./marco.scss";
 import { carpetaDelDestino, ubicar } from "./ubicar";
 import { abrirNuevaObra, cerrarNuevaObra } from "./nuevaObra";
 import type { VigilanteDeObra } from "./otraPestana";
-import { PATRON_DE_OBRA, RUTA_DE_PENDIENTES, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
+import { PATRON_DE_OBRA, RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, RUTA_VIEJA_DE_PENDIENTES, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
 import { useModulos } from "./useModulos";
 import { useObras } from "./useObras";
 import { ContextoPendientes, useCargaDePendientes } from "./usePendientes";
@@ -356,8 +357,19 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
               <LimiteDeError key={`${claveDelContenido(ubicacion.pathname)}|${generacion}`} reinicio={ubicacion.pathname}>
                 <Suspense fallback={<EsqueletoPagina />}>
                   <Routes>
-                    <Route index element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />
-                    <Route path={RUTA_DE_PENDIENTES} element={<Bandeja alAbrir={(ruta) => void irSeguro(ruta)} obras={obras.obras} />} />
+                    {/* Inicio (F6, T8): la app abre en la Vista general; `/pendientes` es el nombre de antes de F6. */}
+                    <Route index element={<Navigate to={RUTA_DE_VISTA_GENERAL} replace />} />
+                    <Route path={RUTA_VIEJA_DE_PENDIENTES} element={<PendientesViejos />} />
+                    <Route path="/inicio" element={<RaizDeInicio />} />
+                    <Route
+                      path="/inicio/:vista"
+                      element={
+                        <EspacioDeInicio
+                          general={pantalla(paginaPorId("inicio", paginas))}
+                          pendientes={<Bandeja alAbrir={(ruta) => void irSeguro(ruta)} obras={obras.obras} />}
+                        />
+                      }
+                    />
                     <Route
                       path={PATRON_DE_OBRA}
                       element={
@@ -400,7 +412,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                       />,
                     ])}
                     {paginas
-                      .filter((p) => !esEspacio(p.id))
+                      .filter((p) => !esEspacio(p.id) && p.id !== "inicio")
                       .map((p) => (
                         <Route
                           key={p.id}
@@ -408,7 +420,7 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                           element={<RutaVieja pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
                         />
                       ))}
-                    <Route path="*" element={<Navigate to={RUTA_DE_PENDIENTES} replace />} />
+                    <Route path="*" element={<Navigate to={RUTA_DE_VISTA_GENERAL} replace />} />
                   </Routes>
                 </Suspense>
               </LimiteDeError>
@@ -455,6 +467,12 @@ function EntradaDeEmpresa() {
   return <Navigate to={destino === undefined ? RUTA_DE_PENDIENTES : `${destino}${search}`} replace />;
 }
 
+// `#/pendientes` (la dirección de antes de F6) va a la bandeja en Inicio, con replace y conservando la consulta.
+function PendientesViejos() {
+  const { search } = useLocation();
+  return <Navigate to={`${RUTA_DE_PENDIENTES}${search}`} replace />;
+}
+
 // `#/cuenta` abre la primera sección, «Pantalla y tamaño de letra», que es de toda cuenta; la consulta se conserva.
 function RaizDeLaCuenta() {
   const { search } = useLocation();
@@ -492,6 +510,8 @@ function claveDelContenido(pathname: string): string {
   const [, primero, segundo, ...resto] = pathname.split("/");
   if (primero !== undefined && esEspacio(primero) && segundo !== undefined && resto.length === 0) return `espacio|${primero}`;
   if (primero === "cuenta" && segundo !== undefined && resto.length === 0) return "cuenta";
+  // Inicio (F6, T8): lo mismo entre la Vista general y Pendientes.
+  if (primero === "inicio" && segundo !== undefined && resto.length === 0) return "espacio|inicio";
   const obra = obraDeLaRuta(pathname);
   return obra === null ? pathname : `obra|${obra.carpeta ?? ""}|${obra.obraId}`;
 }

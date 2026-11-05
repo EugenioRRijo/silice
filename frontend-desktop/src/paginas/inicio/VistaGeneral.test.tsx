@@ -393,7 +393,8 @@ describe("Vista general: un bloque que falla no tumba a los demás", () => {
     const b = await bloque("Lo que requiere atención");
     expect(await within(b).findByRole("alert")).toHaveTextContent("Sílice no respondió a tiempo. Intente de nuevo.");
     expect(await bloque("Cartera en Bs")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Casa Demo" })).toBeInTheDocument();
+    // (la barra lateral también lista la obra: se mira la tabla de avance)
+    expect(within(await bloque("Obras y avance contra el plan")).getByRole("link", { name: "Casa Demo" })).toBeInTheDocument();
   });
 
   test("las auditorías con un 500 dicen su error y la cartera y lo que bloquea se ven", async () => {

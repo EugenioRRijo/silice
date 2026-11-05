@@ -46,3 +46,100 @@
 .silice-inicio__sinquiebre {
   white-space: nowrap;
 }
+
+// La Vista general (F6, T8). Lo que bloquea: una lista compacta de a una fila por pendiente, con la urgencia dicha con
+// palabras e ícono (el color nunca va solo; los colores son los tokens de severidad de `--silice-sev-*`).
+.silice-inicio__resumen {
+  margin: 0;
+  color: var(--silice-texto-secundario);
+  font-weight: 600;
+}
+
+.silice-inicio__urgentes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
+// Cuatro columnas que bajan de fila cuando no caben (letra Muy grande, 1056 px): nunca desplazamiento horizontal.
+.silice-inicio__urgente {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+  padding: 0.5rem 0;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.silice-inicio__urgencia {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-inline-size: 6rem;
+  font-weight: 600;
+}
+
+.silice-inicio__obra {
+  flex: none;
+  font-weight: 600;
+}
+
+.silice-inicio__carpeta {
+  font-weight: 400;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-inicio__texto {
+  flex: 1 1 14rem;
+  min-inline-size: 0;
+}
+
+.silice-inicio__paso {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+// El avance de cada obra: la cifra y, debajo, la barra IBCS (real con relleno sólido, plan en contorno), que es la de los
+// indicadores. Sin avance, el texto va en la tinta secundaria.
+.silice-inicio__avance {
+  display: grid;
+  gap: 0.25rem;
+  min-inline-size: 10rem;
+}
+
+.silice-inicio__sin-avance {
+  color: var(--silice-texto-secundario);
+}
+
+// La cartera por moneda: una tarjeta por moneda, lado a lado y apiladas cuando no caben. Bs y USD nunca comparten tarjeta.
+.silice-cartera-rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1rem;
+}
+
+.silice-cartera-moneda {
+  min-inline-size: 0;
+  background: var(--cds-layer-01);
+  border: 1px solid var(--silice-divisor);
+}
+
+.silice-cartera-moneda__titulo {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-block-end: 1px solid var(--silice-divisor);
+  font-weight: 600;
+}
+
+// Una cifra de dinero nunca se recorta con elipsis (se leería otra cantidad): baja de línea y las celdas bajan de fila.
+.silice-cartera-moneda .franja-indicadores__lista {
+  flex-wrap: wrap;
+}
+
+.silice-cartera-moneda .fiori-kpi__actual {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

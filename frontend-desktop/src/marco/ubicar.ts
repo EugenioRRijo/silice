@@ -1,6 +1,6 @@
 import { paginaPorId, type PaginaDef } from "../shell/rutas";
 import { ESPACIOS, SECCIONES_DE_CUENTA, SUBVISTAS, esEspacio } from "./espacios";
-import { RUTA_DE_PENDIENTES, carpetaDeLaRuta, seccionPorId } from "./secciones";
+import { RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, carpetaDeLaRuta, seccionPorId } from "./secciones";
 import type { ObraDeCarpeta } from "./useObras";
 
 export interface Ubicada {
@@ -30,6 +30,7 @@ export function carpetaDelDestino(destino: string): string | null | undefined {
 // de ellas, y la cabecera y la barra de cada espacio dicen dónde se está.
 export function ubicar(pathname: string, obras: readonly ObraDeCarpeta[], paginas: readonly PaginaDef[]): Ubicada {
   if (pathname === RUTA_DE_PENDIENTES) return { titulo: "Pendientes" };
+  if (pathname === RUTA_DE_VISTA_GENERAL) return { titulo: "Vista general" };
   const deObra = OBRA.exec(pathname);
   if (deObra) {
     const carpeta = carpetaDelDestino(pathname) ?? null;

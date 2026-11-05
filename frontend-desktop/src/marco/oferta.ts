@@ -50,7 +50,8 @@ export function ofertaDe(acciones: readonly string[], modoEntrega: boolean, apag
     ...Object.values(SUBVISTAS).flatMap((vs) => (vs ?? []).map((v) => v.pagina)),
   ]);
   // Contrato de rutas §2.3: la Cuenta (Administración repartida y Acerca) completa las 31 pantallas.
-  const conSitio = new Set<string | null>([...deLasSecciones, ...deLasHerramientas, ...SECCIONES_DE_CUENTA.map((c) => c.pagina)]);
+  // La Vista general («inicio», F6 T8) es la entrada de la app: tiene sitio en Inicio y no es una pantalla suelta.
+  const conSitio = new Set<string | null>([...deLasSecciones, ...deLasHerramientas, ...SECCIONES_DE_CUENTA.map((c) => c.pagina), "inicio"]);
   const sueltas = PAGINAS.filter((p) => !conSitio.has(p.id) && usable(p, acciones, modoEntrega, apagados));
   const herramientas = PAGINAS.filter(
     (p) => deLasHerramientas.has(p.id) && !deLasSecciones.has(p.id) && usable(p, acciones, modoEntrega, apagados),

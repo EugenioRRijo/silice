@@ -85,6 +85,36 @@ export interface PendientesTodasRespuesta {
   carpetas_omitidas: number;
 }
 
+// `GET /v1/obras/resumen/todas` (F6, T7): la cartera de las carpetas que la cuenta puede abrir, una fila por moneda (nunca
+// sumadas entre sí) y una por obra. Los montos y los porcentajes llegan como texto decimal («334570.50», «62.5») y la
+// interfaz solo los formatea. `carpeta` como en `ObraDeCarpetaRespuesta`; `etapa` es una de `Etapa`; `total` es null sin
+// versión vigente y los avances son null sin línea base. `carpetas_omitidas`: las que no se pudieron leer.
+export interface MonedaDeLaCartera {
+  moneda: string;
+  obras: number;
+  total: string;
+  en_ejecucion: number;
+}
+
+export interface ObraDeLaCartera {
+  carpeta: string | null;
+  carpeta_titulo: string;
+  obra_id: number;
+  nombre: string;
+  moneda: string;
+  etapa: string;
+  total: string | null;
+  avance_real: string | null;
+  avance_plan: string | null;
+}
+
+export interface ResumenTodasRespuesta {
+  hoy: string;
+  por_moneda: MonedaDeLaCartera[];
+  obras: ObraDeLaCartera[];
+  carpetas_omitidas: number;
+}
+
 // `GET /v1/carpeta` y `PUT /v1/carpeta/moneda` (MP T2): la moneda de trabajo de la carpeta abierta.
 export interface CarpetaRespuesta {
   moneda: string | null;

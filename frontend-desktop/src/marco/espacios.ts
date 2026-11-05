@@ -2,7 +2,7 @@
 // pendientes, botones de las pantallas) pide aquí su ruta y no la escribe: cuando las pantallas cambien de sitio (T5)
 // se cambia este lugar y quien llama no se entera. Los tres espacios de la empresa ya viven en /<espacio>/<segmento> (T4).
 import { PAGINAS, paginaPorId, rutaDe, usable } from "../shell/rutas";
-import { RUTA_DE_PENDIENTES, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
+import { RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
 import type { SeccionDef, SeccionId } from "./secciones";
 
 export interface ObraDeLaRuta {
@@ -19,6 +19,8 @@ export interface ObraDeLaRuta {
 export function rutaCanonica(paginaId: string, obra?: ObraDeLaRuta): string | null {
   const pagina = paginaPorId(paginaId, PAGINAS);
   if (pagina === undefined) return null;
+  // La Vista general (F6, T8; contrato 4): la pantalla de Inicio, con o sin obra.
+  if (paginaId === "inicio") return RUTA_DE_VISTA_GENERAL;
   const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === paginaId);
   if (seccion !== undefined && obra !== undefined) return rutaDeObra(obra.carpeta, obra.obraId, seccion.id);
   if (seccion !== undefined) return rutaDe(pagina);
@@ -37,6 +39,22 @@ export function rutaCanonica(paginaId: string, obra?: ObraDeLaRuta): string | nu
 // Pendientes (la prueba de `rutaCanonica` y la de cada enlace vigilan que no pase).
 export function rutaOPendientes(paginaId: string, obra?: ObraDeLaRuta): string {
   return rutaCanonica(paginaId, obra) ?? RUTA_DE_PENDIENTES;
+}
+
+// Las dos vistas de Inicio (contrato de rutas 1 y 4), en el orden de su barra. `general` monta la pantalla «inicio» (la Vista
+// general); `pendientes`, la bandeja, que el marco monta aparte porque necesita abrir sus pasos por la salida segura.
+export type VistaDeInicio = "general" | "pendientes";
+export const VISTAS_DE_INICIO: readonly { id: VistaDeInicio; titulo: string }[] = [
+  { id: "general", titulo: "Vista general" },
+  { id: "pendientes", titulo: "Pendientes" },
+];
+
+export function esVistaDeInicio(segmento: string): segmento is VistaDeInicio {
+  return VISTAS_DE_INICIO.some((v) => v.id === segmento);
+}
+
+export function rutaDeInicio(vista: VistaDeInicio): string {
+  return vista === "general" ? RUTA_DE_VISTA_GENERAL : RUTA_DE_PENDIENTES;
 }
 
 // --- La tabla declarativa del contrato (plan F6, T2) -------------------------------------------------------------------

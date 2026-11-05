@@ -3,7 +3,7 @@
 // `shell/rutas.ts` (patrón estrangulador): `pagina` es ese id. Una sección con `pagina: null` aún no tiene pantalla
 // propia (llega en F4): no se pinta en el árbol ni se abre por enlace, y no hay pantallas «próximamente».
 //
-// Rutas (HashRouter): `#/pendientes` y `#/obra/<carpeta>/<obra>/<sección>[/<subvista>]`. Los espacios de la empresa y la
+// Rutas (HashRouter): `#/inicio/<vista>` y `#/obra/<carpeta>/<obra>/<sección>[/<subvista>]`. Los espacios de la empresa y la
 // Cuenta viven en `espacios.ts`; `#/empresa/<entrada>` quedó solo como dirección vieja que redirige (F6, T6). La carpeta viaja
 // con su .db, que es el nombre que acepta `POST /v1/casos/actual`; la de la empresa se escribe `empresa` (ningún
 // nombre de carpeta puede serlo, porque todos terminan en .db).
@@ -50,9 +50,18 @@ export function quedaEnLaHoja(destino: string, carpeta: string | null, obraId: n
   });
 }
 
-export const RUTA_DE_PENDIENTES = "/pendientes";
-// La ruta índice: la marca «Sílice» de la barra de arriba lleva allí, y de allí se va a la primera pantalla (hoy Pendientes).
+// Inicio (F6, T8; contrato de rutas 1 y 4): `/inicio/:vista` con dos vistas, la Vista general y la bandeja de Pendientes.
+export const RUTA_DE_VISTA_GENERAL = "/inicio/general";
+export const RUTA_DE_PENDIENTES = "/inicio/pendientes";
+// El nombre de antes de F6: hoy solo redirige a `RUTA_DE_PENDIENTES`, conservando la consulta.
+export const RUTA_VIEJA_DE_PENDIENTES = "/pendientes";
+// La ruta índice: la marca «Sílice» de la barra de arriba lleva allí, y de allí se va a la Vista general.
 export const RUTA_DE_INICIO = "/";
+
+// Si la ruta es de Inicio (`/inicio/general`, `/inicio/pendientes`): ahí se vuelven a pedir los pendientes al entrar.
+export function esRutaDeInicio(pathname: string): boolean {
+  return pathname === RUTA_DE_VISTA_GENERAL || pathname === RUTA_DE_PENDIENTES || pathname.startsWith("/inicio/");
+}
 // El cuarto segmento (`:subvista`) es opcional: sin él, la ruta es la de la pantalla principal de la sección.
 export const PATRON_DE_OBRA = "/obra/:carpeta/:obraId/:seccion/:subvista?";
 const SEGMENTO_DE_LA_EMPRESA = "empresa";
