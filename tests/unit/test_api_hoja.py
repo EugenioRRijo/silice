@@ -922,7 +922,7 @@ def test_las_vistas_no_escriben_nada_en_la_base(_entorno: Path) -> None:
     assert _volcado(_entorno) == antes
 
 
-def test_r6_of001_lista_los_30_renglones_con_cantidad_texto_y_montos_exactos() -> None:
+def test_r6_of001_lista_los_30_renglones_con_cantidad_texto_y_montos_exactos(_hoy_fijo) -> None:
     navegador, ficha = _ana()
     respuesta = _vista(navegador, _abierta(navegador, ficha), "presupuesto")
     assert respuesta.status_code == 200, respuesta.text
@@ -958,7 +958,7 @@ def test_r7_sin_parametros_selecciona_la_primera_partida_y_trae_su_cierre() -> N
     assert [c["concepto"] for c in cuerpo["detalle"]["cierre"]][-1] == "= Precio unitario"
 
 
-def test_r7_con_partida_da_la_cascada_a_mano_de_af_llave() -> None:
+def test_r7_con_partida_da_la_cascada_a_mano_de_af_llave(_hoy_fijo) -> None:
     navegador, ficha = _ana()
     cuerpo = _vista(navegador, _abierta(navegador, ficha), "apu", partida="AF-LLAVE").json()
     detalle = cuerpo["detalle"]
