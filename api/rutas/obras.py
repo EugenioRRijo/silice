@@ -420,6 +420,7 @@ class ObraDeLaCarteraRespuesta(BaseModel):
     nombre: str
     moneda: str
     etapa: str
+    etapa_texto: str = Field(description="La etapa en palabras, como en el Resumen de la obra")
     total: str | None = Field(description="El total de la versión vigente, a 0,01")
     avance_real: str | None = Field(description="EV ÷ BAC × 100, a 0,1")
     avance_plan: str | None = Field(description="PV ÷ BAC × 100, a 0,1")
@@ -467,6 +468,7 @@ def resumen_de_todas_las_carpetas(
                 nombre=o.obra.nombre,
                 moneda=o.obra.moneda,
                 etapa=o.obra.etapa,
+                etapa_texto=ETAPA_TEXTO[o.obra.etapa],
                 total=None if o.total is None else format(o.total, "f"),
                 avance_real=_porcentaje(o.obra.ev, o.obra.bac),
                 avance_plan=_porcentaje(o.obra.pv, o.obra.bac),

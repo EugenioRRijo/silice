@@ -12,16 +12,10 @@ import { claveDeObra } from "../pendientes/logica";
 import type { Carga } from "./useCarga";
 import { TEXTOS } from "./textos";
 
-// Las palabras de cada etapa, las mismas que da el servidor en el Resumen de la obra (`etapa_texto`); la cartera solo manda
-// la clave. Una etapa que esta pantalla no conoce se escribe tal cual, sin ícono.
-const ETAPA_TEXTO: Record<Etapa, string> = {
-  en_elaboracion: "En elaboración",
-  en_aprobacion: "En aprobación",
-  aprobada: "Aprobada",
-  en_ejecucion: "En ejecución",
-  atrasada: "Atrasada",
-};
-const esEtapa = (etapa: string): etapa is Etapa => Object.hasOwn(ETAPA_TEXTO, etapa);
+// Las palabras de la etapa las da el servidor (`etapa_texto`, la misma tabla del Resumen de la obra); aquí solo se decide
+// el ícono. Una etapa que esta pantalla no conoce se escribe sin ícono.
+const ETAPAS: readonly Etapa[] = ["en_elaboracion", "en_aprobacion", "aprobada", "en_ejecucion", "atrasada"];
+const esEtapa = (etapa: string): etapa is Etapa => (ETAPAS as readonly string[]).includes(etapa);
 
 interface Props {
   carga: Carga<ResumenTodasRespuesta>;
@@ -66,7 +60,7 @@ function FilaDeObra({ obra, carpeta }: { obra: ObraDeLaCartera; carpeta: string 
         </Link>
         {carpeta !== undefined && <span className="silice-inicio__carpeta"> · {carpeta}</span>}
       </TableCell>
-      <TableCell>{esEtapa(obra.etapa) ? <EtapaDeObra etapa={obra.etapa} texto={ETAPA_TEXTO[obra.etapa]} /> : obra.etapa}</TableCell>
+      <TableCell>{esEtapa(obra.etapa) ? <EtapaDeObra etapa={obra.etapa} texto={obra.etapa_texto} /> : obra.etapa_texto}</TableCell>
       <TableCell className="silice-cifra silice-inicio__sinquiebre">
         {obra.total === null ? TEXTOS.avance.sinVersion : `${centesimasEsVe(obra.total)} ${obra.moneda}`}
       </TableCell>

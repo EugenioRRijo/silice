@@ -103,6 +103,7 @@ export interface ObraDeLaCartera {
   nombre: string;
   moneda: string;
   etapa: string;
+  etapa_texto: string;
   total: string | null;
   avance_real: string | null;
   avance_plan: string | null;

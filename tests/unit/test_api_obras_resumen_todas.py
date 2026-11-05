@@ -177,8 +177,8 @@ def _sin_cache(respuesta) -> None:
     assert respuesta.headers.get("cache-control") == "no-store", respuesta.headers
 
 
-#: El texto de cada etapa, escrito a mano (el mismo que da el Resumen de la obra): la cartera lo manda
-#: para que la interfaz no repita la tabla (F6, T8, menor 1 del revisor de diseño).
+#: El texto de cada etapa, escrito a mano (el mismo que da el Resumen de la obra): la cartera
+#: lo manda para que la interfaz no repita la tabla (F6, T8, menor 1 del revisor de diseño).
 TEXTO_DE_ETAPA = {
     "en_elaboracion": "En elaboración",
     "en_aprobacion": "En aprobación",
