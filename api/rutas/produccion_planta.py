@@ -83,6 +83,7 @@ from produccion.receta import (
     producido_en_periodo,
     producir_con_receta,
     receta_vigente,
+    recetas_vigentes,
     registrar_receta,
 )
 from seguridad import empresas
@@ -417,6 +418,18 @@ def ver_receta_vigente(
             404, f"No hay receta vigente de {producto.strip()[:40]} el {dia:%d/%m/%Y}."
         )
     return _receta_respuesta(receta)
+
+
+@router.get("/recetas/vigentes", response_model=list[RecetaRespuesta])
+def ver_recetas_vigentes(
+    sesion: SesionInstalacionDep,
+    fecha: Annotated[str, Query(description="Fecha ISO, AAAA-MM-DD")],
+) -> list[RecetaRespuesta]:
+    """La receta que rige en esa fecha para cada producto que tenga alguna. Sin ninguna, una lista
+    vacía (no es un error): así la pantalla sabe qué productos son mezclas sin preguntar por cada
+    agregado y sin provocar un 404 por cada uno que no tiene receta."""
+    dia = _fecha(fecha, "fecha")
+    return [_receta_respuesta(r) for r in recetas_vigentes(sesion, dia)]
 
 
 @router.post("/producciones", response_model=ProduccionCreada, status_code=201)

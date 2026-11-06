@@ -9129,6 +9129,55 @@
         }
       }
     },
+    "/v1/produccion/recetas/vigentes": {
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Ver Recetas Vigentes",
+        "description": "La receta que rige en esa fecha para cada producto que tenga alguna. Sin ninguna, una lista\nvacía (no es un error): así la pantalla sabe qué productos son mezclas sin preguntar por cada\nagregado y sin provocar un 404 por cada uno que no tiene receta.",
+        "operationId": "ver_recetas_vigentes_v1_produccion_recetas_vigentes_get",
+        "parameters": [
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Fecha ISO, AAAA-MM-DD",
+              "title": "Fecha"
+            },
+            "description": "Fecha ISO, AAAA-MM-DD"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecetaRespuesta"
+                  },
+                  "title": "Response Ver Recetas Vigentes V1 Produccion Recetas Vigentes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/producciones": {
       "post": {
         "tags": [

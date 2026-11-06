@@ -197,6 +197,19 @@ def receta_vigente(sesion: Session, producto: str, fecha: date) -> Receta | None
     )
 
 
+def recetas_vigentes(sesion: Session, fecha: date) -> list[Receta]:
+    """La receta que rige en `fecha` para cada producto que tenga alguna, por código de producto.
+    Sin ninguna, la lista vacía: «ningún producto tiene receta» no es un error."""
+    productos = sesion.scalars(
+        select(RecetaRegistrada.producto)
+        .where(RecetaRegistrada.vigente_desde <= fecha)
+        .distinct()
+        .order_by(RecetaRegistrada.producto)
+    ).all()
+    recetas = (receta_vigente(sesion, producto, fecha) for producto in productos)
+    return [r for r in recetas if r is not None]
+
+
 def _material(sesion: Session, codigo: str) -> Material:
     material = sesion.scalar(select(Material).where(Material.codigo == codigo))
     if material is None:
