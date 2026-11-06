@@ -394,7 +394,7 @@ No confunda el conmutador «Presupuesto | Componer» con las pestañas de dentro
 La sección «Resumen» muestra la obra de un vistazo:
 
 - arriba, la franja del paso (sección 5);
-- las cifras «Total», «Avance real contra plan», «Versión vigente» y «Etapa»;
+- las cifras «Total», «Avance real contra plan», «Versión (línea base o, sin ella, la vigente)» y «Etapa»;
 - «Pendientes de esta obra», cada uno con su botón.
 
 ### 3.8 Salir sin perder trabajo

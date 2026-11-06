@@ -282,7 +282,7 @@ Las que tienen subvistas las muestran en su conmutador. Cada cuenta ve solo las 
 Versiones comparten el borrador de la obra (`ProveedorDeLaHoja`): pasar de una a otra no lo cierra ni pregunta. Quien
 solo revisa ve cada sección en solo lectura: lo que escribe no se pinta (no se deshabilita).
 
-- **Resumen** (`paginas/obras/`): las cifras de la obra, su versión vigente y lo pendiente, con la franja del paso.
+- **Resumen** (`paginas/obras/`): las cifras de la obra, su versión y lo pendiente, con la franja del paso.
 - **Presupuesto** (`paginas/hoja/`, h1 «Presupuesto»; antes «Hoja de la obra»): una línea de estado bajo el h1 (versión,
   cambios, aprobación y total; `EstadoDelBorrador.tsx`), la franja del paso con «Descargar Excel» al lado y las pestañas «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y «Ajustes de
   costo»; «Espacio y metrajes» va delante en una obra con espacio. Son seis en una obra civil y siete con espacio (antes,

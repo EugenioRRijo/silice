@@ -19,7 +19,7 @@ export interface SeccionDef {
 }
 
 export const SECCIONES_DE_OBRA: readonly SeccionDef[] = [
-  { id: "resumen", titulo: "Resumen", pagina: "obras", ayuda: "La obra de un vistazo: sus cifras, su versión vigente y lo pendiente." },
+  { id: "resumen", titulo: "Resumen", pagina: "obras", ayuda: "La obra de un vistazo: sus cifras, su versión y lo pendiente." },
   { id: "presupuesto", titulo: "Presupuesto", pagina: "hoja", ayuda: "Las partidas de la obra con sus cantidades, precios y APU." },
   { id: "tramos", titulo: "Tramos", pagina: "tramos", ayuda: "Los tramos de la vía con sus cantidades de obra." },
   { id: "archivos", titulo: "Archivos y planos", pagina: "archivos", ayuda: "Los planos y documentos de la obra." },
