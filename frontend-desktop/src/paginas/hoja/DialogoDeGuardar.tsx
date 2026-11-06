@@ -80,8 +80,8 @@ function ListaDeCambios({ cambios, primera }: { cambios: CambiosDelModal; primer
                 <TableCell>{rotuloDeObjeto(c.objeto)}</TableCell>
                 <TableCell title={c.clave}>{presentarClave(c.objeto, c.clave)}</TableCell>
                 <TableCell>{rotuloDeCampo(c.campo)}</TableCell>
-                <TableCell>{presentarValor(c.campo, c.antes)}</TableCell>
-                <TableCell>{presentarValor(c.campo, c.despues)}</TableCell>
+                <TableCell>{presentarValor(c.campo, c.antes, c.clave)}</TableCell>
+                <TableCell>{presentarValor(c.campo, c.despues, c.clave)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

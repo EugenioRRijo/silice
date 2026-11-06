@@ -20,7 +20,8 @@ import type { FilaDensa } from "../../comun/TablaDensa";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
 import { esFilaAfectada } from "./pasoDelPresupuesto";
-import { clavesDeAuditoria, comoSeMidio, enteroDeDigitos, rotuloDeOrigen, rutaDeQuitarPartida, rutaDeVista } from "./logica";
+import { clavesDeAuditoria, comoSeMidio, enteroDeDigitos, rutaDeQuitarPartida, rutaDeVista } from "./logica";
+import { rotuloDeOrigen } from "../../comun/rotuloDeOrigen";
 import type { BaseAbierta, FilaPresupuesto, Resumen, VistaPresupuesto } from "./logica";
 import {
   FRASES_DE_RECHAZO,

@@ -55,8 +55,8 @@ export const COLUMNAS_CAMBIOS: ColumnaDensa[] = [
   // Clave, antes y después dependen del objeto y del campo de la misma fila: se pintan con la fila y el valor crudo va en el `title`.
   { clave: "clave", titulo: "Clave", celda: (f) => <span title={f.clave}>{presentarClave(f.objeto ?? "", f.clave ?? "")}</span> },
   { clave: "campo", titulo: "Campo", presentar: rotuloDeCampoDeCambio },
-  { clave: "antes", titulo: "Antes", celda: (f) => <span title={f.antes}>{presentarValor(f.campo ?? "", f.antes ?? "")}</span> },
-  { clave: "despues", titulo: "Después", celda: (f) => <span title={f.despues}>{presentarValor(f.campo ?? "", f.despues ?? "")}</span> },
+  { clave: "antes", titulo: "Antes", celda: (f) => <span title={f.antes}>{presentarValor(f.campo ?? "", f.antes ?? "", f.clave ?? "")}</span> },
+  { clave: "despues", titulo: "Después", celda: (f) => <span title={f.despues}>{presentarValor(f.campo ?? "", f.despues ?? "", f.clave ?? "")}</span> },
   { clave: "fuente", titulo: "Fuente" },
   { clave: "responsable", titulo: "Responsable" },
   { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },

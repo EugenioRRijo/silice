@@ -49,8 +49,8 @@ function Registros({ vista, titulo }: { vista: TrazabilidadRespuesta; titulo: st
         // El `title` lleva la clave del servidor; la celda la presenta (y para «parametro» elige su rótulo).
         clave: r.clave,
         campo: rotuloDeCampo(r.campo),
-        antes: presentarValor(r.campo, r.antes),
-        despues: presentarValor(r.campo, r.despues),
+        antes: presentarValor(r.campo, r.antes, r.clave),
+        despues: presentarValor(r.campo, r.despues, r.clave),
         fuente: r.fuente,
         responsable: r.responsable,
         fecha_hora: r.fecha_hora,

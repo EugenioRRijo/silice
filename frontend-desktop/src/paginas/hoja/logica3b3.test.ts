@@ -7,12 +7,12 @@ import {
   fechaCorta,
   hallazgosDeOrigen,
   partirColumnasDePrecios,
-  rotuloDeOrigen,
   rutaDeAtipicos,
   rutaDePrecios,
   rutaDeTrazabilidad,
   rutaDeVista,
 } from "./logica";
+import { rotuloDeOrigen } from "../../comun/rotuloDeOrigen";
 import { informeAuditoria, preciosRespuesta } from "./datosDePrueba";
 
 // Lógica pura de la rebanada 3b-3: Punto de equilibrio, Parámetros, Auditoría, Precios y Trazabilidad.
