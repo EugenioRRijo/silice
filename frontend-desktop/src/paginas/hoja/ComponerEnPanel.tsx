@@ -57,8 +57,9 @@ function restaurar(campo: CampoDeTexto, valor: string) {
 // Esc (pulido F5, Tarea 2; H6 de la pasada): el contenedor lo atiende antes que nadie. Con una lista de sugerencias abierta
 // la deja cerrarse; en un campo de texto que cambió desde que recibió el foco, lo devuelve a ese valor (como las celdas de
 // la Hoja) y el panel sigue; en cualquier otro caso cierra el panel de una vez (un campo con lo elegido ya no lo borra
-// antes). Excepción: la descripción de un insumo (`data-llena-otras-celdas`) llena también la unidad y el precio, así que
-// no se restaura (quedaría la fila a medias): ese Esc no cambia nada y el siguiente cierra el panel. Solo lo que nace dentro
+// antes). Excepción: la descripción de un insumo (`data-llena-otras-celdas`) llena también la unidad y el precio, y el «Código»
+// tras elegir una partida llena la descripción, la unidad y las tablas (D16), así que no se restauran (quedaría la fila o la
+// partida a medias): ese Esc no cambia nada y el siguiente cierra el panel. Solo lo que nace dentro
 // del panel en el DOM: el Esc de «Precios distintos…» es de su diálogo.
 export function ComponerEnPanel({ partida, alCerrar, alGuardar }: Props): JSX.Element | null {
   const contenedor = useRef<HTMLDivElement>(null);

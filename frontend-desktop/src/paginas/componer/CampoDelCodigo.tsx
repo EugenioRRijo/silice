@@ -59,6 +59,10 @@ interface Props {
 export function CampoDelCodigo({ texto, alCambiar, alElegirDelCatalogo, alExpirar }: Props): JSX.Element {
   const [buscar] = useState(buscadorDeCodigos);
   const [revisado, setRevisado] = useState(false);
+  // Se eligió una opción de la lista: la descripción, la unidad y las tablas de esa partida ya se llenaron o se van a llenar. Se
+  // marca el campo (`data-llena-otras-celdas`) para que el Esc del panel no devuelva solo el código y deje la partida mezclada.
+  // Lo que se escriba después vuelve a ser texto libre.
+  const [eligio, setEligio] = useState(false);
   const bienFormado = esCodigoValido(texto);
   const malFormado = revisado && texto.trim() !== "" && !bienFormado;
   return (
@@ -69,10 +73,13 @@ export function CampoDelCodigo({ texto, alCambiar, alElegirDelCatalogo, alExpira
       texto={texto}
       alCambiarTexto={(t) => {
         setRevisado(false);
+        setEligio(false);
         alCambiar(t);
       }}
       buscar={buscar}
+      llenaOtrasCeldas={eligio}
       alElegir={(opcion) => {
+        setEligio(true);
         alCambiar(opcion.valor.codigo);
         if (opcion.valor.partida !== null) alElegirDelCatalogo(opcion.valor.partida);
       }}
