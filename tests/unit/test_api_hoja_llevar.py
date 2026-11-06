@@ -60,7 +60,7 @@ CENTINELA = "VALOR-CENTINELA"
 FUERA_DEL_CATALOGO = "La partida «OBRA-99» no está en el catálogo: compóngala primero en Componer."
 SIN_TASA = "No hay tasa del BCV de los últimos 7 días: cárguela en Índices y vuelva a intentar."
 NO_COINCIDE = "El cálculo da 16 y la cantidad es 15: corrija uno de los dos."
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 SIN_OBRA = "Esa obra no está en esta carpeta de trabajo: elíjala de nuevo en el selector de obra."
 FORMA_LLEVAR = (
     "Lo que se lleva a la Hoja no tiene la forma esperada: envíe la obra y de 1 a 2000 partidas, "

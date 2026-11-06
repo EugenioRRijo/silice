@@ -61,7 +61,7 @@ ID_AJENO = "a" * 22
 REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
 UNA_LINEA = "Un APU necesita al menos una línea."
 REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo."
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 PARTIDA_FALTA = "Esa partida no tiene APU en este borrador: vuelva a cargar la lista de partidas."
 SIN_VERSION = (
     "Las líneas del APU se agregan y se quitan en una versión guardada: guarde primero la versión."
@@ -77,7 +77,7 @@ FORMA_QUITAR_LINEA = (
     "mano_obra) e indice (entero)."
 )
 FORMA_ANTES = (
-    "Indique el proyecto (código o nombre) y, si quiere, la versión; cada uno de hasta 500 "
+    "Indique la obra (código o nombre) y, si quiere, la versión; cada uno de hasta 500 "
     "caracteres."
 )
 SIN_LINEA_BASE = (

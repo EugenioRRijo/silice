@@ -71,7 +71,7 @@ from tests.fixtures.sesion_web import (
 
 D = Decimal
 APP = app_con(ruta_hoja.router, ruta_plano.router)
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "
     "Lo que no guardó se perdió: abra la versión otra vez."

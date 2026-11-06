@@ -75,7 +75,7 @@ from tests.fixtures.sesion_web import (
 
 D = Decimal
 REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 BASE = (
     "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro "
     "programa."
@@ -380,11 +380,11 @@ def test_proyecto_o_version_inexistente_es_404_y_se_juzga_antes_que_el_dato(_ent
     antes = volcado(_entorno)
     sin_proyecto = _restaurar(navegador, ficha, proyecto="Z")
     assert sin_proyecto.status_code == 404
-    assert sin_proyecto.json() == {"detalle": "El proyecto «Z» no existe en este caso."}
+    assert sin_proyecto.json() == {"detalle": "La obra «Z» no existe en este caso."}
     sin_version = _restaurar(navegador, ficha, version="009")
     assert sin_version.status_code == 404
     assert sin_version.json() == {
-        "detalle": f"El proyecto {NOMBRE_OF001!r} no tiene una version '009': "
+        "detalle": f"La obra {NOMBRE_OF001!r} no tiene una version '009': "
         "elija una de la lista."
     }
     # el 404 va antes que el 422 del dato (la fuente en blanco)
@@ -596,7 +596,7 @@ def test_cotizar_proyecto_o_version_inexistente_es_404_antes_que_el_precio(_ento
     antes = volcado(_entorno)
     sin_proyecto = _cotizar(navegador, ficha, proyecto="Z", precio="abc")
     assert sin_proyecto.status_code == 404
-    assert sin_proyecto.json() == {"detalle": "El proyecto «Z» no existe en este caso."}
+    assert sin_proyecto.json() == {"detalle": "La obra «Z» no existe en este caso."}
     sin_version = _cotizar(navegador, ficha, version="009", precio="abc")
     assert (
         sin_version.status_code == 404
@@ -887,7 +887,7 @@ def test_si_el_proyecto_no_esta_en_el_caso_nuevo_es_404_y_ninguna_base_cambia(_c
     antes_viejo, antes_nuevo = volcado(viejo), volcado(nuevo)
     respuesta = _restaurar(navegador, ficha)  # el proyecto es el de OF-001
     assert respuesta.status_code == 404
-    assert respuesta.json() == {"detalle": f"El proyecto «{NOMBRE_OF001}» no existe en este caso."}
+    assert respuesta.json() == {"detalle": f"La obra «{NOMBRE_OF001}» no existe en este caso."}
     assert volcado(viejo) == antes_viejo and volcado(nuevo) == antes_nuevo
 
 

@@ -34,7 +34,7 @@ CASOS = [
     ),
     (
         "la version de comprobacion '009' no existe en el proyecto (UC-18 4)",
-        "la versión de comprobación '009' no existe en el proyecto (UC-18 4)",
+        "la versión de comprobación '009' no existe en la obra (UC-18 4)",
     ),
     (
         "la version 002 no valora S1-R01, S1-R02: no sirve de comprobacion para ese periodo",
@@ -129,7 +129,7 @@ def test_cada_mensaje_del_nucleo_sale_con_tilde(emitido: str, esperado: str) -> 
         ),
         (
             "la version de comprobacion '2026-11-10' no existe en el proyecto (UC-18 4)",
-            "la versión de comprobación '2026-11-10' no existe en el proyecto (UC-18 4)",
+            "la versión de comprobación '2026-11-10' no existe en la obra (UC-18 4)",
         ),
         (
             "las series serie 2026-11-10 no estan importadas (UC-17)",

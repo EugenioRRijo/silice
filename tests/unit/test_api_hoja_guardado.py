@@ -59,7 +59,7 @@ from tests.fixtures.sesion_web import (
 )
 
 D = Decimal
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "
     "Lo que no guardó se perdió: abra la versión otra vez."
@@ -971,7 +971,7 @@ def test_la_primera_version_de_un_proyecto_nuevo_es_la_001_con_la_memoria(_entor
     assert _cerca(cuerpo["total"]["exacto"], TOTAL_MEMORIA)  # 2 703,86 (memoria de OF-001)
     assert cuerpo["total"]["exacto"] == previo["total"]["exacto"]  # 3d-B17: el de la vista previa
     assert cuerpo["mensaje"] == (
-        f"Se guardó la primera versión 001 del proyecto {NUEVO} "
+        f"Se guardó la primera versión 001 de la obra {NUEVO} "
         f"(total {cuerpo['total']['texto']}). "
         "Quedó registrada su creación, con su fuente y su responsable."
     )
@@ -1031,7 +1031,7 @@ def test_la_primera_version_que_otra_persona_ya_creo_es_422_ya_tiene_versiones(_
     respuesta = _guardar(otro, ficha_otro, b, 2)
     assert respuesta.status_code == 422
     assert respuesta.json() == {
-        "detalle": f"El proyecto {NUEVO!r} ya tiene versiones: abra una y use Guardar version."
+        "detalle": f"La obra {NUEVO!r} ya tiene versiones: abra una y use Guardar version."
     }
     assert _volcado(_entorno) == despues and _codigos(uno, NUEVO) == ["001"]
 
