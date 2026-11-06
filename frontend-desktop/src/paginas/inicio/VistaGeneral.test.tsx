@@ -310,6 +310,26 @@ describe("Vista general: la cartera por moneda, sin recalcular y sin mezclar", (
     await bloque("Cartera en Bs");
     expect(screen.queryByText(/No se pudo(ieron)? leer/)).toBeNull();
   });
+
+  test("con cartera con datos hay un botón «¿Qué es esto?» que abre la explicación del total", async () => {
+    const u = userEvent.setup();
+    montar();
+    const seccion = await bloque("Cartera por moneda");
+    const boton = within(seccion).getByRole("button", { name: "¿Qué es esto?" });
+    expect(boton).toBeInTheDocument();
+    await u.click(boton);
+    const region = within(seccion).getByRole("region", { name: "Cómo se calcula el total" });
+    expect(region).toHaveTextContent(
+      "El total de cada obra es el de su línea base o, sin ella, el de su versión vigente. Cada moneda se suma por separado: Bs y USD nunca se mezclan.",
+    );
+  });
+
+  test("sin obras ni monedas (estado vacío) no hay botón «¿Qué es esto?» en la cartera", async () => {
+    cartera = () => json(SIN_OBRAS);
+    montar();
+    const seccion = await bloque("Cartera por moneda");
+    expect(within(seccion).queryByRole("button", { name: "¿Qué es esto?" })).toBeNull();
+  });
 });
 
 describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
