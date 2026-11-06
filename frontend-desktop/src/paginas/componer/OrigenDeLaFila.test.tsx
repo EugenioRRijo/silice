@@ -83,7 +83,7 @@ describe("Componer: el origen de cada dato de la fila", () => {
       if (url.pathname === "/v1/consulta/insumos") {
         const q = (url.searchParams.get("q") ?? "").toLowerCase();
         const fecha = url.searchParams.get("para_armar_al");
-        const resultados = CATALOGO.filter((i) => i.descripcion.toLowerCase().includes(q)).map((i) => {
+        const resultados = CATALOGO.filter((i) => i.descripcion.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)).map((i) => {
           const base = {
             valor: i.codigo,
             etiqueta: `${i.descripcion} (${i.codigo})`,
@@ -197,6 +197,31 @@ describe("Componer: el origen de cada dato de la fila", () => {
       await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
       expect(precio()).toHaveValue("");
       expect(unidad()).toHaveValue("");
+      expect(precio()).toHaveAccessibleDescription(expect.stringContaining("Se quitó el precio 5,00: este insumo no tiene precio en la lista."));
+    });
+  });
+
+  // Ronda 3, MENOR 2: lo tecleado se recuerda por indice de fila; una precarga que reemplaza las tablas trae filas nuevas y
+  // nada de lo tecleado antes es suyo, aunque coincida el indice y el texto («m3»).
+  describe("una precarga que reemplaza las tablas", () => {
+    test("la unidad «m3» tecleada antes en esa fila no hace «de la persona» la «m3» que trae la precarga", async () => {
+      const u = userEvent.setup();
+      montar();
+      await screen.findByText("Precios en Bs", {}, ESPERA);
+      fijarFecha(FECHA_VIEJA);
+      await u.click(screen.getByRole("button", { name: "Agregar fila a Materiales" }));
+      await u.type(unidad(1), "m3");
+      expect(unidad(1)).toHaveValue("m3");
+
+      await u.type(screen.getByRole("combobox", { name: "Código" }), "FIC-01");
+      await waitFor(() => expect(descripcion(1)).toHaveValue("Arena ficticia"), ESPERA);
+      expect(unidad(1)).toHaveValue("m3");
+
+      await elegir(u, "cemento b", /Cemento blanco ficticio/);
+      await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
+      expect(unidad()).toHaveValue("");
+      expect(precio()).toHaveValue("");
+      expect(unidad()).toHaveAccessibleDescription(expect.stringContaining("Se quitó la unidad m3: este insumo no tiene unidad en el catálogo."));
       expect(precio()).toHaveAccessibleDescription(expect.stringContaining("Se quitó el precio 5,00: este insumo no tiene precio en la lista."));
     });
   });

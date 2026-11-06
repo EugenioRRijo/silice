@@ -15,6 +15,9 @@ import type { Fila, Tablas } from "./tablas";
 //   7. Solo es «de la persona» lo que se tecleo en esa celda: una fila precargada o de MaPreX se reemplaza (o se vacia) al
 //      elegir otro insumo y se dice (MAYOR 1).
 //   8. El aviso de fecha solo sale si la lista que rige para la «Fecha» nueva es otra (MENOR 2).
+// Ronda 3 (2026-11-05):
+//   9. Si la consulta del aviso de lista falla, el fallo no se guarda para siempre: se vuelve a preguntar (MENOR 3); y se
+//      pregunta por el codigo del insumo, que el rango de la API pone primero, no por su descripcion con tope de 20.
 // Montos y textos ficticios; la API es un `fetch` falso con la forma de `api/rutas/consulta.py`.
 
 const FECHA_VIEJA = "2026-08-15";
@@ -66,7 +69,7 @@ beforeEach(() => {
       if (consultaCaida) return Promise.resolve(json({ detalle: "No se pudo consultar." }, 503));
       const params = new URLSearchParams(consulta[2]);
       const q = (params.get("q") ?? "").toLowerCase();
-      const halladas = CATALOGO.filter((i) => i.descripcion.toLowerCase().includes(q));
+      const halladas = CATALOGO.filter((i) => i.descripcion.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q));
       const fecha = params.get("para_armar_al");
       return Promise.resolve(json({ tabla: consulta[1], hay_mas: false, resultados: halladas.map((i) => sugerencia(i, fecha)) }));
     }),
@@ -511,5 +514,52 @@ describe("8. el aviso de fecha solo sale si la lista que rige para la «Fecha» 
     } finally {
       CATALOGO[0]!.despues = "25.50";
     }
+  });
+});
+
+describe("9. la consulta del aviso de lista no guarda su fallo para siempre", () => {
+  async function conGris(u: ReturnType<typeof userEvent.setup>) {
+    render(<Arnes filas={[{ ...MATERIAL }]} />);
+    await elegir(u, "cemento g", /Cemento gris ficticio/); // con la «Fecha» del 15/08: lista del 01/07
+    await waitFor(() => expect(precio()).toHaveValue("18,00"));
+  }
+  const DICHO_NOSE = "Precio de la lista del 01/07/2026; con la fecha 20/10/2026 puede regir otra lista; revise.";
+  const DICHO_OTRA = "Precio de la lista del 01/07/2026; con la fecha 20/10/2026 rige la del 01/10/2026; revise.";
+  const pedidasAl = (fecha: string) =>
+    llamadas.filter((l) => new URLSearchParams(l.split("?")[1]).get("para_armar_al") === fecha);
+
+  test("la API falla con la «Fecha» del 20/10 y, al volver a pedir esa fecha con la API arriba, el aviso pasa a lo correcto", async () => {
+    const u = userEvent.setup();
+    await conGris(u);
+    consultaCaida = true;
+    fijarFecha(FECHA_NUEVA);
+    expect(await screen.findByText(DICHO_NOSE)).toBeInTheDocument();
+
+    consultaCaida = false;
+    await u.click(screen.getByRole("button", { name: "Volver a la fecha" }));
+    await waitFor(() => expect(screen.queryByText(DICHO_NOSE)).not.toBeInTheDocument());
+    await u.click(screen.getByRole("button", { name: "Cambiar fecha" }));
+    expect(await screen.findByText(DICHO_OTRA)).toBeInTheDocument();
+    expect(screen.queryByText(DICHO_NOSE)).not.toBeInTheDocument();
+  });
+
+  test("mientras la API sigue caída no se insiste en cada tecla: una sola pregunta por fecha", async () => {
+    const u = userEvent.setup();
+    await conGris(u);
+    consultaCaida = true;
+    fijarFecha(FECHA_NUEVA);
+    expect(await screen.findByText(DICHO_NOSE)).toBeInTheDocument();
+    const antes = pedidasAl(FECHA_NUEVA).length;
+    await u.type(precio(), "1");
+    await new Promise((r) => setTimeout(r, 100));
+    expect(pedidasAl(FECHA_NUEVA).length).toBe(antes);
+  });
+
+  test("la comprobación pregunta por el código del insumo y no por su descripción", async () => {
+    const u = userEvent.setup();
+    await conGris(u);
+    fijarFecha("2026-09-30");
+    await waitFor(() => expect(pedidasAl("2026-09-30").length).toBeGreaterThan(0));
+    expect(pedidasAl("2026-09-30").map((l) => new URLSearchParams(l.split("?")[1]).get("q"))).toEqual(["MAT-1"]);
   });
 });
