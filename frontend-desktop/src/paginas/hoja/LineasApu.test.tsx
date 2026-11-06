@@ -93,6 +93,9 @@ const MORTERO = insumo("MAT-020", "Mortero premezclado", "m2", "4.00");
 
 type Cuerpo = Record<string, unknown> & { rev: number };
 
+// AC4: las unidades que ya usa el catalogo de la carpeta (`GET /v1/consulta/unidades`).
+const UNIDADES = { unidades: [{ unidad: "m3", usos: 4, grafias: ["m3"] }, { unidad: "saco", usos: 2, grafias: ["saco"] }] };
+
 describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tarea 26)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
@@ -138,6 +141,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
         const r = candidatos(url);
         return r instanceof Response ? r : json(r);
       }
+      if (camino === "/v1/consulta/unidades") return json(UNIDADES);
       if (camino.endsWith("/vistas/apu")) return json(apu);
       if (camino.endsWith("/vistas/espacio")) return json(vistaEspacio());
       if (camino.endsWith("/vistas/parametros")) return json(parametros);
@@ -243,7 +247,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     await abrirDialogo();
     await elegirEnElBuscador("Concreto premezclado", "Insumo nuevo «Concreto premezclado»");
     const caja = dialogo();
-    await userEvent.type(within(caja).getByRole("textbox", { name: "Unidad" }), "m3");
+    await userEvent.type(within(caja).getByRole("combobox", { name: "Unidad" }), "m3");
     await userEvent.type(within(caja).getByRole("textbox", { name: "Precio (USD)" }), "95,00");
     await userEvent.type(within(caja).getByRole("textbox", { name: /^Cantidad/ }), "1,05");
     await userEvent.click(within(caja).getByRole("button", { name: "Agregar al APU" }));
@@ -261,13 +265,30 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     });
   });
 
+  test("AC4: la unidad de un material nuevo sugiere las del catálogo; la elegida es la que viaja", async () => {
+    candidatos = () => ({ insumos: [], hay_mas: false });
+    await irAApu();
+    await abrirDialogo();
+    await elegirEnElBuscador("Arena", "Insumo nuevo «Arena»");
+    const u = userEvent.setup();
+    const unidad = within(dialogo()).getByRole("combobox", { name: "Unidad" });
+    await u.type(unidad, "s");
+    await u.click(await screen.findByRole("option", { name: /^saco/ }));
+    expect(unidad).toHaveValue("saco");
+    await u.type(within(dialogo()).getByRole("textbox", { name: "Precio (USD)" }), "3");
+    await u.type(within(dialogo()).getByRole("textbox", { name: /^Cantidad/ }), "1");
+    await u.click(within(dialogo()).getByRole("button", { name: "Agregar al APU" }));
+    await vi.waitFor(() => expect(altas()).toHaveLength(1));
+    expect(altas()[0]).toMatchObject({ descripcion: "Arena", unidad: "saco" });
+  });
+
   test("un equipo nuevo pide la depreciación; la mano de obra, la modalidad y el jornal", async () => {
     candidatos = () => ({ insumos: [], hay_mas: false });
     await irAApu();
     await abrirDialogo();
     await userEvent.selectOptions(within(dialogo()).getByRole("combobox", { name: "Tipo de línea" }), "equipo");
     await elegirEnElBuscador("Vibrador", "Insumo nuevo «Vibrador»");
-    expect(within(dialogo()).queryByRole("textbox", { name: "Unidad" })).toBeNull();
+    expect(within(dialogo()).queryByRole("combobox", { name: "Unidad" })).toBeNull();
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: "Precio (USD)" }), "30");
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Depreciación/ }), "0,5");
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Cantidad/ }), "1");
@@ -337,10 +358,10 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
   });
 
   test.each([
-    [`La cantidad no se entiende como número. ${REGLA}`, /^Cantidad/],
-    [`El precio no se entiende como número. ${REGLA}`, "Precio (USD)"],
-    ["Escriba la unidad del material, por ejemplo m3.", "Unidad"],
-  ])("un 422 «%s» va a su campo, el diálogo sigue abierto y el foco va al campo", async (detalle, nombre) => {
+    [`La cantidad no se entiende como número. ${REGLA}`, /^Cantidad/, "textbox"],
+    [`El precio no se entiende como número. ${REGLA}`, "Precio (USD)", "textbox"],
+    ["Escriba la unidad del material, por ejemplo m3.", "Unidad", "combobox"],
+  ] as const)("un 422 «%s» va a su campo, el diálogo sigue abierto y el foco va al campo", async (detalle, nombre, rol) => {
     candidatos = () => ({ insumos: [], hay_mas: false });
     alAgregarLinea = () => json({ detalle }, 422);
     await irAApu();
@@ -348,7 +369,7 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     await elegirEnElBuscador("Concreto", "Insumo nuevo «Concreto»");
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Cantidad/ }), "1.05");
     await userEvent.click(within(dialogo()).getByRole("button", { name: "Agregar al APU" }));
-    const destino = within(dialogo()).getByRole("textbox", { name: nombre });
+    const destino = within(dialogo()).getByRole(rol, { name: nombre });
     await vi.waitFor(() => expect(destino).toHaveAttribute("aria-invalid", "true"));
     expect(within(dialogo()).getByText(detalle)).toBeInTheDocument();
     await vi.waitFor(() => expect(destino).toHaveFocus());

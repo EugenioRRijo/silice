@@ -15,6 +15,7 @@ import {
   AVISO_PENDIENTES,
   AYUDA,
   CAMPOS_PARAMETROS,
+  AVISO_ESCRITO_A_MANO,
   EJEMPLO_PRECIOS,
   COLUMNAS_COMPARACION,
   COLUMNAS_PARTIDAS,
@@ -30,12 +31,14 @@ import {
   erroresDeCifras,
   hayErrores,
   parametrosParaEditar,
+  esEscritoAMano,
   etiquetaDePresupuesto,
   filasComparacion,
   filasPartidas,
   lineaPendiente,
   nombrePorOmision,
   notaHallazgos,
+  avisoPreciosSinEfecto,
   rutaEscenarios,
 } from "./logica";
 import type { ErroresDeCifras, FilaPrecio } from "./logica";
@@ -49,6 +52,13 @@ import type {
 } from "./tipos";
 import "./escenarios.scss";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { CampoConBusqueda } from "../../comun/CampoConBusqueda";
+import { buscadorDeInsumosYOficios, descripcionDeInsumo } from "../../comun/buscadorDeInsumos";
+import type { SugerenciaDeConsulta } from "../../comun/consulta";
+import { LARGO_MAXIMO } from "../../comun/logicaBusqueda";
+
+// El buscador no guarda estado: uno solo para toda la pagina.
+const buscarInsumos = buscadorDeInsumosYOficios();
 
 type Parametros = Record<CampoParametro, string>;
 
@@ -296,13 +306,26 @@ export default function PaginaEscenarios() {
               )}
               {filas.map((fila, i) => (
                 <div key={fila.id} className="silice-escenarios__fila-precio">
-                  <CampoTexto
+                  <CampoConBusqueda<SugerenciaDeConsulta>
                     id={`escenarios-insumo-${fila.id}`}
-                    size="sm"
-                    labelText={`Insumo ${i + 1}`}
-                    hideLabel
-                    value={fila.insumo}
-                    onChange={(e) => cambiarFila(fila.id, { insumo: e.target.value })}
+                    etiqueta={`Insumo ${i + 1}`}
+                    etiquetaOculta
+                    ayuda={esEscritoAMano(fila) ? AVISO_ESCRITO_A_MANO : undefined}
+                    texto={fila.insumo}
+                    alCambiarTexto={(texto) => cambiarFila(fila.id, { insumo: texto })}
+                    buscar={(q, senal, limite) => buscarInsumos(q.slice(0, LARGO_MAXIMO).trim(), senal, limite)}
+                    alElegir={(opcion) => {
+                      const descripcion = descripcionDeInsumo(opcion);
+                      if (descripcion !== null) cambiarFila(fila.id, { insumo: descripcion, elegido: descripcion });
+                    }}
+                    vacio={{
+                      titulo: "¿No lo encuentra?",
+                      pasos: "Pruebe con otra palabra o con el código. Solo cambia el precio de un insumo que esté en el presupuesto base.",
+                    }}
+                    alExpirar={alExpirar}
+                    enCelda
+                    largoMaximo={null}
+                    conBorrar={false}
                   />
                   <CampoTexto
                     id={`escenarios-precio-${fila.id}`}
@@ -363,6 +386,19 @@ export default function PaginaEscenarios() {
                   {TITULO_COMPARACION}
                 </h2>
                 <TablaDensa etiqueta={TITULO_COMPARACION} columnas={COLUMNAS_COMPARACION} filas={filasComparacion(resultado)} />
+                {resultado.escenarios.map((e, i) => {
+                  const aviso = avisoPreciosSinEfecto(e);
+                  return aviso === null ? null : (
+                    <InlineNotification
+                      key={`sin-efecto-${e.nombre}-${i}`}
+                      kind="warning"
+                      lowContrast
+                      hideCloseButton
+                      title="Precios de ensayo sin efecto"
+                      subtitle={aviso}
+                    />
+                  );
+                })}
                 <div className="silice-escenarios__acciones">
                   <DescargaArchivo
                     ruta={rutaEscenarios(base.codigo, base.proyecto, "/csv")}

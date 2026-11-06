@@ -11,6 +11,7 @@ from __future__ import annotations
 import csv
 import io
 import random
+from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.orm import Session
@@ -94,12 +95,27 @@ def variacion_de_texto(texto: str) -> Decimal:
     return valor
 
 
-def insumos_de_texto(texto: str | None) -> set[str] | None:
-    """Los insumos separados por coma; vacio (o solo espacios) = todos (`None`)."""
-    limpio = (texto or "").strip()
-    if not limpio:
+def insumos_de_texto(insumos: str | Sequence[str] | None) -> set[str] | None:
+    """Los insumos a simular: `None` = todos; un conjunto, los nombrados (vacio = ninguno).
+
+    - `None` (u omitido en la API) y el texto vacio o de solo espacios: todos (`None`).
+    - Un texto se parte por la coma (la forma de siempre, la del CLI y la de Streamlit). Si solo
+      tiene comas y espacios (`","`, `" , "`) no nombra ninguno: conjunto vacio, 0 filas, como
+      antes del autocompletado.
+    - Una lista nombra cada descripcion entera, asi que admite una que lleva coma («Tubo, 4
+      pulgadas»), que el texto partiria en dos nombres que no existen. Una lista sin nombres
+      validos (`[]`, `["", " "]`) es ninguno: quien manda una lista elige; «todos» es `null`.
+
+    En todos los casos se recorta cada nombre."""
+    if insumos is None:
         return None
-    return {i.strip() for i in limpio.split(",") if i.strip()}
+    if isinstance(insumos, str):
+        if not insumos.strip():
+            return None
+        partes = insumos.split(",")
+    else:
+        partes = list(insumos)
+    return {i.strip() for i in partes if i.strip()}
 
 
 def precios_vigentes(catalogo: Catalogo) -> dict[str, tuple[str, str, Decimal]]:
@@ -112,7 +128,7 @@ def precios_vigentes(catalogo: Catalogo) -> dict[str, tuple[str, str, Decimal]]:
 
 
 def simular_desde_catalogo(
-    sesion: Session, variacion_max: str, semilla: int, insumos: str | None
+    sesion: Session, variacion_max: str, semilla: int, insumos: str | Sequence[str] | None
 ) -> list[FilaSimulada]:
     """Lee la lista vigente y la simula. Solo lee: no escribe en la base.
 

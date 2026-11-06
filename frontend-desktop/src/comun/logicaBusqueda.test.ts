@@ -155,6 +155,14 @@ describe("tramosResaltados: la parte que coincide, sin HTML (§3.4)", () => {
       { texto: " src=x onerror=alert(1)>", resaltado: false },
     ]);
   });
+
+  test("resalta signos que no son marcas combinadas como ^ (no se eliminan como diacríticos)", () => {
+    expect(tramosResaltados("Viga x^2", "^")).toEqual([
+      { texto: "Viga x", resaltado: false },
+      { texto: "^", resaltado: true },
+      { texto: "2", resaltado: false },
+    ]);
+  });
 });
 
 describe("partidas del catálogo (§5.4)", () => {

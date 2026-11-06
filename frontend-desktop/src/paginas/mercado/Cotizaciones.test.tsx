@@ -92,6 +92,14 @@ const abrirDialogo = async (nombre: string) => {
   return screen.findByRole("dialog");
 };
 
+// AC4: los proveedores de las cotizaciones anteriores de la carpeta, con la forma de `GET /v1/consulta/proveedores`.
+const PROVEEDORES = {
+  proveedores: [
+    { proveedor: "Ferretería Demo, C.A.", ultimo_uso: "2026-10-05" },
+    { proveedor: "Bloquera Ficticia", ultimo_uso: "2026-09-12" },
+  ],
+};
+
 describe("Mercado › Cotizaciones de la obra", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -106,6 +114,7 @@ describe("Mercado › Cotizaciones de la obra", () => {
       if (url.pathname === "/v1/hoja/versiones" && (init?.method ?? "GET") === "GET") return json(versiones);
       if (url.pathname.startsWith("/v1/hoja/versiones/") && init?.method === "POST") return alOperacion(url.pathname);
       if (url.pathname === "/v1/hoja/precios") return json(precios());
+      if (url.pathname === "/v1/consulta/proveedores") return json(PROVEEDORES);
       if (url.pathname === "/v1/hoja/borradores" && (init?.method ?? "GET") === "GET") return json({ borradores });
       return json({ detail: `Ruta no simulada: ${String(ruta)}` }, 404);
     });
@@ -190,7 +199,7 @@ describe("Mercado › Cotizaciones de la obra", () => {
     expect(dialogo).toHaveAccessibleName("Registrar una cotización");
     fireEvent.change(within(dialogo).getByRole("combobox", { name: "Insumo" }), { target: { value: "MAT-001" } });
     fireEvent.change(within(dialogo).getByRole("textbox", { name: "Precio cotizado" }), { target: { value: "1.003,50" } });
-    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
+    fireEvent.change(within(dialogo).getByRole("combobox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
     fireEvent.change(within(dialogo).getByRole("textbox", { name: "Número de la cotización" }), { target: { value: "COT-18" } });
     fireEvent.change(within(dialogo).getByLabelText("Fecha de la cotización"), { target: { value: "2026-10-18" } });
     versiones = { ...VERSIONES, por_omision: "003", versiones: [fila("003", true), fila("002", false), fila("001", false)] };
@@ -203,6 +212,25 @@ describe("Mercado › Cotizaciones de la obra", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     // La lista de versiones se volvió a leer: la vigente ya es la 003.
     await waitFor(() => expect(fetchFalso.mock.calls.map(([r]) => String(r))).toContain("/v1/hoja/precios?proyecto=OF-001&version=003"));
+  });
+
+  test("AC4: «Proveedor» sugiere los de cotizaciones anteriores con su último uso, y admite uno nuevo", async () => {
+    const u = userEvent.setup();
+    montar();
+    await abrirPestana();
+    const dialogo = await abrirDialogo("Registrar una cotización…");
+    const proveedor = within(dialogo).getByRole("combobox", { name: "Proveedor" });
+    await u.type(proveedor, "ferre");
+    const opcion = await screen.findByRole("option", { name: /^Ferretería Demo, C\.A\./ });
+    expect(opcion).toHaveTextContent("Última cotización: 05/10/2026");
+    expect(screen.queryByRole("option", { name: /^Bloquera Ficticia/ })).toBeNull();
+    await u.click(opcion);
+    expect(proveedor).toHaveValue("Ferretería Demo, C.A.");
+    await u.clear(proveedor);
+    await u.type(proveedor, "Cantera Nueva");
+    await u.click(await screen.findByRole("option", { name: "Usar «Cantera Nueva» como proveedor nuevo" }));
+    expect(proveedor).toHaveValue("Cantera Nueva");
+    expect(fetchFalso.mock.calls.filter(([r]) => String(r) === "/v1/consulta/proveedores")).toHaveLength(1);
   });
 
   test("«Retirar una cotización…» ofrece los insumos cotizados, manda el motivo y avisa sin la cotización", async () => {
@@ -223,7 +251,7 @@ describe("Mercado › Cotizaciones de la obra", () => {
     await abrirPestana();
     const dialogo = await abrirDialogo("Registrar una cotización…");
     fireEvent.change(within(dialogo).getByRole("textbox", { name: "Precio cotizado" }), { target: { value: "tres" } });
-    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
+    fireEvent.change(within(dialogo).getByRole("combobox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
     fireEvent.change(within(dialogo).getByRole("textbox", { name: "Número de la cotización" }), { target: { value: "COT-18" } });
     fireEvent.click(within(dialogo).getByRole("button", { name: "Cotizar" }));
     expect(await within(dialogo).findByText("precio: 'tres' no es un numero decimal valido")).toBeInTheDocument();
@@ -253,7 +281,7 @@ describe("Mercado › Cotizaciones de la obra", () => {
     expect(within(dialogo).getByText("Escriba el precio cotizado.")).toBeInTheDocument();
     fireEvent.change(within(dialogo).getByRole("textbox", { name: "Precio cotizado" }), { target: { value: "1.003,50" } });
     expect(within(dialogo).getByText("Escriba el proveedor de la cotización.")).toBeInTheDocument();
-    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
+    fireEvent.change(within(dialogo).getByRole("combobox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
     expect(within(dialogo).getByText("Escriba el número de la cotización.")).toBeInTheDocument();
     fireEvent.change(within(dialogo).getByRole("textbox", { name: "Número de la cotización" }), { target: { value: "COT-18" } });
     expect(cotizar).toBeEnabled();
@@ -269,7 +297,7 @@ describe("Mercado › Cotizaciones de la obra", () => {
     await abrirPestana();
     const dialogo = await abrirDialogo("Registrar una cotización…");
     fireEvent.change(within(dialogo).getByRole("textbox", { name: "Precio cotizado" }), { target: { value: "10" } });
-    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
+    fireEvent.change(within(dialogo).getByRole("combobox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
     fireEvent.change(within(dialogo).getByRole("textbox", { name: "Número de la cotización" }), { target: { value: "COT-18" } });
     fireEvent.click(within(dialogo).getByRole("button", { name: "Cotizar" }));
     expect(await within(dialogo).findByText(detalle)).toBeInTheDocument();
@@ -279,7 +307,7 @@ describe("Mercado › Cotizaciones de la obra", () => {
   // Ronda 3 de la Tarea 13: las pruebas de errores, sesión y petición en vuelo que tenía Precios (Hoja › Versiones) pasan aquí.
   async function llenarCotizacion(dialogo: HTMLElement, extra: Record<string, string> = {}) {
     fireEvent.change(within(dialogo).getByRole("textbox", { name: "Precio cotizado" }), { target: { value: "10" } });
-    fireEvent.change(within(dialogo).getByRole("textbox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
+    fireEvent.change(within(dialogo).getByRole("combobox", { name: "Proveedor" }), { target: { value: "Ferretería Demo, C.A." } });
     fireEvent.change(within(dialogo).getByRole("textbox", { name: "Número de la cotización" }), { target: { value: "COT-18" } });
     for (const [nombre, valor] of Object.entries(extra)) fireEvent.change(within(dialogo).getByRole("textbox", { name: new RegExp(nombre) }), { target: { value: valor } });
   }

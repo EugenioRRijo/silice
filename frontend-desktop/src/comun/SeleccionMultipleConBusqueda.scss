@@ -1,0 +1,62 @@
+// Seleccion multiple con busqueda (AC3). Las etiquetas elegidas van bajo el campo: Carbon g10, esquinas rectas, borde de
+// 1 px, sin sombra ni transicion, colores solo por tokens y todo en rem (sigue la escala de la letra). La etiqueta no es
+// un estado: no lleva color de severidad; el texto de la descripcion va entero y baja de linea, nunca con puntos suspensivos.
+
+.silice-seleccion {
+  min-inline-size: 0;
+}
+
+.silice-seleccion__lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.silice-seleccion__etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  padding-block: 0;
+  padding-inline: 0.5rem 0;
+  border: 1px solid var(--cds-border-strong);
+  background: var(--cds-layer-accent);
+  color: var(--cds-text-primary);
+}
+
+.silice-seleccion__texto {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.silice-seleccion__quitar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cds-text-primary);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--cds-layer-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
+  &:disabled {
+    color: var(--cds-text-disabled);
+    cursor: not-allowed;
+  }
+}

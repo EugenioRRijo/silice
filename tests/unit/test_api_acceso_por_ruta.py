@@ -140,6 +140,7 @@ TABLA = {
     ("POST", "/v1/control/linea-base"): CONTROLAR,
     ("POST", "/v1/control/parametros"): CONTROLAR,
     ("GET", "/v1/control/valuaciones"): CONTROLAR,
+    ("GET", "/v1/control/partidas"): CONTROLAR,  # autocompletado AC2
     ("POST", "/v1/control/valuaciones"): CONTROLAR,
     ("POST", "/v1/control/valuaciones/{valuacion_id}/anular"): CONTROLAR,
     ("POST", "/v1/control/costos"): CONTROLAR,
@@ -166,6 +167,8 @@ TABLA = {
     ("POST", "/v1/carpeta/lista-para-armar"): EDITAR,
     ("GET", "/v1/buscar/partidas"): LEER,  # T10: buscador de partidas del catálogo (C-1)
     ("GET", "/v1/consulta/{tabla}"): LEER,  # vial T20: autocompletado con tablas venezolanas
+    ("GET", "/v1/consulta/unidades"): LEER,  # AC4: las unidades ya usadas en el catálogo
+    ("GET", "/v1/consulta/proveedores"): LEER,  # AC4: los proveedores de las cotizaciones
     # MOD-4a: la mesa de control (inicio de Presupuestos y obras)
     ("GET", "/v1/obras/resumen"): LEER,
     ("GET", "/v1/obras/pendientes"): EDITAR,
@@ -230,6 +233,8 @@ TABLA = {
     ("POST", "/v1/admin/instalacion/eventos/{nombre}/revisar"): RED_Y_API,
     ("GET", "/v1/reajuste/contexto"): REAJUSTAR,
     ("GET", "/v1/reajuste/parciales"): REAJUSTAR,
+    ("GET", "/v1/reajuste/partidas"): REAJUSTAR,  # autocompletado AC2
+    ("GET", "/v1/reajuste/series"): REAJUSTAR,
     ("POST", "/v1/reajuste/calcular"): REAJUSTAR,
     ("POST", "/v1/reajuste/guardar"): REAJUSTAR,
     ("POST", "/v1/reajuste/excel"): REAJUSTAR,

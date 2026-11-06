@@ -17,6 +17,20 @@ describe("rutaDeConsulta", () => {
   test("codifica la tabla y el texto", () => {
     expect(rutaDeConsulta("insumos", "ce ment", 8)).toBe("/v1/consulta/insumos?q=ce+ment&limite=8");
   });
+
+  // AC1b: Componer pide el detalle (descripción y unidad) y, si tiene fecha, el precio de la lista para armar a esa fecha.
+  test("con detalle y fecha de armado los agrega; sin ellos la ruta es la de siempre", () => {
+    expect(rutaDeConsulta("insumos", "cemento", 8, { detalle: true, paraArmarAl: "2026-08-15" })).toBe(
+      "/v1/consulta/insumos?q=cemento&limite=8&detalle=true&para_armar_al=2026-08-15",
+    );
+    expect(rutaDeConsulta("salarios_cct", "alba", 8, { detalle: true })).toBe(
+      "/v1/consulta/salarios_cct?q=alba&limite=8&detalle=true",
+    );
+    expect(rutaDeConsulta("insumos", "cemento", 8, { detalle: true, paraArmarAl: "" })).toBe(
+      "/v1/consulta/insumos?q=cemento&limite=8&detalle=true",
+    );
+    expect(rutaDeConsulta("insumos", "cemento", 8, {})).toBe("/v1/consulta/insumos?q=cemento&limite=8");
+  });
 });
 
 describe("gruposDeConsulta", () => {
@@ -29,6 +43,88 @@ describe("gruposDeConsulta", () => {
     expect(grupo.opciones[0].principal).toBe("Cemento gris ficticio (MAT-1, saco)");
     expect(grupo.opciones[0].secundaria).toEqual(["MAT-1", "Catálogo de la carpeta de trabajo: material"]);
     expect(grupo.opciones[0].valor.valor).toBe("MAT-1");
+  });
+});
+
+// Dictamen de Claude (xhigh), hallazgo MAYOR: cada sugerencia de Componer dice el precio, la moneda y la fecha de la lista.
+// Solo con `mostrarPrecio` (Componer, con fecha de armado); los demas adaptadores (Produccion) siguen con [valor, fuente].
+describe("gruposDeConsulta con el precio a la vista", () => {
+  const completa = (extra: Record<string, unknown>) => ({
+    tabla: "insumos",
+    hay_mas: false,
+    resultados: [{ valor: "MAT-1", etiqueta: "Cemento gris ficticio (MAT-1, saco)", fuente: "Catálogo de la carpeta de trabajo: material", ...extra }],
+  });
+  const linea = (extra: Record<string, unknown>) => gruposDeConsulta(completa(extra), { mostrarPrecio: true })[0].opciones[0].secundaria;
+
+  test("código, unidad, precio con coma y moneda, y la fecha de la lista como dd/mm/aaaa", () => {
+    expect(linea({ unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" })).toEqual([
+      "MAT-1",
+      "saco",
+      "18,00 Bs",
+      "lista del 01/07/2026",
+    ]);
+    expect(linea({ unidad: "saco", precio: "1234.5", moneda: "USD", fecha_precio: "2026-10-01" })).toEqual([
+      "MAT-1",
+      "saco",
+      "1.234,5 USD",
+      "lista del 01/10/2026",
+    ]);
+  });
+
+  test("sin unidad no deja un hueco, y sin precio dice que no hay en la lista para armar", () => {
+    expect(linea({})).toEqual(["MAT-1", "sin precio en la lista para armar"]);
+    expect(linea({ unidad: "saco" })).toEqual(["MAT-1", "saco", "sin precio en la lista para armar"]);
+  });
+
+  test("en otra moneda que la de la carpeta el servidor no manda el precio y sí su aviso: es lo que se lee", () => {
+    const aviso = "El catálogo lo tiene en USD; escriba el precio en Bs.";
+    expect(linea({ unidad: "saco", moneda: "USD", fecha_precio: "2026-07-01", aviso_precio: aviso })).toEqual(["MAT-1", "saco", aviso]);
+  });
+
+  test("sin `mostrarPrecio` la línea es la de siempre (Producción no cambia)", () => {
+    const con = { unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" };
+    expect(gruposDeConsulta(completa(con))[0].opciones[0].secundaria).toEqual([
+      "MAT-1",
+      "Catálogo de la carpeta de trabajo: material",
+    ]);
+    expect(gruposDeConsulta(completa(con), { mostrarPrecio: false })[0].opciones[0].secundaria).toEqual([
+      "MAT-1",
+      "Catálogo de la carpeta de trabajo: material",
+    ]);
+  });
+
+  test("`mostrarPrecio` no cambia la ruta que se pide", () => {
+    expect(rutaDeConsulta("insumos", "cemento", 8, { detalle: true, paraArmarAl: "2026-08-15", mostrarPrecio: true })).toBe(
+      "/v1/consulta/insumos?q=cemento&limite=8&detalle=true&para_armar_al=2026-08-15",
+    );
+  });
+
+  test("con `tipo` (material, equipo, mano de obra) la línea lo dice al final: en Equipos el catálogo los mezcla", () => {
+    expect(linea({ unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01", tipo: "equipo" })).toEqual([
+      "MAT-1",
+      "saco",
+      "18,00 Bs",
+      "lista del 01/07/2026",
+      "equipo",
+    ]);
+    expect(linea({ unidad: "saco", tipo: "material" })).toEqual(["MAT-1", "saco", "sin precio en la lista para armar", "material"]);
+  });
+
+  test("el buscador de consulta con `mostrarPrecio` entrega la línea con el precio", async () => {
+    const fetchFalso = vi.fn<typeof fetch>(
+      async () => new Response(JSON.stringify(completa({ unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" })), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchFalso);
+    try {
+      const grupos = await buscadorDeConsulta("insumos", { detalle: true, paraArmarAl: "2026-08-15", mostrarPrecio: true })(
+        "cemento",
+        new AbortController().signal,
+        8,
+      );
+      expect(grupos[0].opciones[0].secundaria).toEqual(["MAT-1", "saco", "18,00 Bs", "lista del 01/07/2026"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -49,6 +145,18 @@ describe("buscadorDeConsulta pide la ruta con la señal de aborto", () => {
     expect(fetchFalso.mock.calls[0][0]).toBe("/v1/consulta/insumos?q=cemento&limite=8");
     expect(fetchFalso.mock.calls[0][1]?.signal).toBe(controlador.signal);
     expect(grupos[0].opciones).toHaveLength(2);
+  });
+
+  test("con opciones las manda en la ruta y entrega la sugerencia con su precio tal cual llega", async () => {
+    const conPrecio = {
+      tabla: "insumos",
+      hay_mas: false,
+      resultados: [{ ...RESPUESTA.resultados[0], descripcion: "Cemento gris ficticio", unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" }],
+    };
+    fetchFalso.mockImplementation(async () => new Response(JSON.stringify(conPrecio), { status: 200 }));
+    const grupos = await buscadorDeConsulta("insumos", { detalle: true, paraArmarAl: "2026-08-15" })("cemento", new AbortController().signal, 8);
+    expect(fetchFalso.mock.calls[0][0]).toBe("/v1/consulta/insumos?q=cemento&limite=8&detalle=true&para_armar_al=2026-08-15");
+    expect(grupos[0].opciones[0].valor).toMatchObject({ precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" });
   });
 });
 

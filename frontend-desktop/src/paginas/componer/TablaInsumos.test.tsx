@@ -7,7 +7,7 @@ const MODALIDADES = ["JORNAL", "DESTAJO"];
 
 describe("TablaInsumos", () => {
   test("sin filas muestra el título y el botón de agregar", () => {
-    render(<TablaInsumos tipo="materiales" filas={[]} modalidades={MODALIDADES} alCambiar={vi.fn()} alAgregar={vi.fn()} alBorrar={vi.fn()} />);
+    render(<TablaInsumos tipo="materiales" filas={[]} modalidades={MODALIDADES} alCambiar={vi.fn()} alAgregar={vi.fn()} alBorrar={vi.fn()} alExpirar={vi.fn()} alCompletar={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Materiales" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Consumo por unidad" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Agregar fila a Materiales" })).toBeInTheDocument();
@@ -23,7 +23,7 @@ describe("TablaInsumos", () => {
         modalidades={MODALIDADES}
         alCambiar={alCambiar}
         alAgregar={vi.fn()}
-        alBorrar={vi.fn()}
+        alBorrar={vi.fn()} alExpirar={vi.fn()} alCompletar={vi.fn()}
       />,
     );
     await usuario.type(screen.getByLabelText("Cantidad, fila 1"), "7");
@@ -38,7 +38,7 @@ describe("TablaInsumos", () => {
         modalidades={MODALIDADES}
         alCambiar={vi.fn()}
         alAgregar={vi.fn()}
-        alBorrar={vi.fn()}
+        alBorrar={vi.fn()} alExpirar={vi.fn()} alCompletar={vi.fn()}
       />,
     );
     const celda = screen.getByLabelText("Precio, fila 1").closest("td")!;
@@ -56,7 +56,7 @@ describe("TablaInsumos", () => {
         modalidades={MODALIDADES}
         alCambiar={alCambiar}
         alAgregar={vi.fn()}
-        alBorrar={vi.fn()}
+        alBorrar={vi.fn()} alExpirar={vi.fn()} alCompletar={vi.fn()}
       />,
     );
     const selector = screen.getByLabelText("Modalidad, fila 1");
@@ -80,7 +80,7 @@ describe("TablaInsumos", () => {
         modalidades={MODALIDADES}
         alCambiar={vi.fn()}
         alAgregar={alAgregar}
-        alBorrar={alBorrar}
+        alBorrar={alBorrar} alExpirar={vi.fn()} alCompletar={vi.fn()}
       />,
     );
     await usuario.click(screen.getByRole("button", { name: "Agregar fila a Materiales" }));

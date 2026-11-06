@@ -253,6 +253,145 @@ def test_insumos_vacios_son_todos(motor, insumos) -> None:
     assert [f["insumo"] for f in r.json()["filas"]] == ORDEN
 
 
+def _con_tubo(motor) -> None:
+    """Un cuarto insumo cuya descripción lleva una coma (dato ficticio)."""
+    with abrir_sesion(motor) as sesion:
+        lista = sesion.scalars(select(models.ListaPrecios)).one()
+        tubo = models.Insumo(
+            codigo="MAT-903", tipo="material", descripcion="Tubo ficticio, 4 pulgadas", unidad="m"
+        )
+        sesion.add(tubo)
+        sesion.flush()
+        sesion.add(models.PrecioInsumo(lista_id=lista.id, insumo_id=tubo.id, precio=Decimal("7")))
+        sesion.commit()
+
+
+@pytest.mark.parametrize("ruta", [RUTA, RUTA_CSV])
+def test_los_insumos_tambien_viajan_como_lista_y_admiten_la_coma(motor, ruta) -> None:
+    """Una lista nombra cada descripción entera: «Tubo ficticio, 4 pulgadas» entra aunque lleve
+    coma. Oráculo a mano, con variación 0: 30,005 -> 30.00 y 7 -> 7.00, en orden alfabético."""
+    _con_tubo(motor)
+    _usar(motor)
+    cuerpo = _cuerpo(variacion_max="0", insumos=["Tubo ficticio, 4 pulgadas", " Arena lavada "])
+    r = _con_clave().post(ruta, json=cuerpo)
+    assert r.status_code == 200, r.text
+    filas = [
+        {"tipo": "material", "insumo": "Arena lavada", "unidad": "m3", "precio": "30.00"},
+        {
+            "tipo": "material",
+            "insumo": "Tubo ficticio, 4 pulgadas",
+            "unidad": "m",
+            "precio": "7.00",
+        },
+    ]
+    if ruta == RUTA:
+        assert r.json() == {"filas": filas}
+    else:
+        assert r.text.splitlines()[1:] == [
+            "material,Arena lavada,m3,30.00",
+            'material,"Tubo ficticio, 4 pulgadas",m,7.00',
+        ]
+
+
+def test_el_texto_separado_por_comas_sigue_partiendo_por_la_coma(motor) -> None:
+    """Sin romper lo de antes: en el texto, la coma separa; ese tubo no se puede nombrar así."""
+    _con_tubo(motor)
+    _usar(motor)
+    r = _con_clave().post(RUTA, json=_cuerpo(insumos="Tubo ficticio, 4 pulgadas"))
+    assert (r.status_code, r.json()) == (200, {"filas": []})
+
+
+def test_sin_el_campo_insumos_son_todos(motor) -> None:
+    _usar(motor)
+    r = _con_clave().post(RUTA, json={"semilla": 42, "variacion_max": "5"})
+    assert [f["insumo"] for f in r.json()["filas"]] == ORDEN
+
+
+@pytest.mark.parametrize("insumos", [",", " , ", " , ,", [], ["", "  "]])
+def test_un_filtro_sin_nombres_validos_es_ninguno(motor, insumos) -> None:
+    """Solo `null` (u omitido) y el texto vacío son «todos»: un texto con solo comas y espacios
+    (como antes del autocompletado) o una lista sin nombres no nombra ningún insumo: 0 filas."""
+    _usar(motor)
+    r = _con_clave().post(RUTA, json=_cuerpo(insumos=insumos))
+    assert (r.status_code, r.json()) == (200, {"filas": []})
+    r = _con_clave().post(RUTA_CSV, json=_cuerpo(insumos=insumos))
+    assert (r.status_code, r.json()) == (422, {"detalle": MENSAJE_SIN_FILAS})
+
+
+@pytest.mark.parametrize(
+    ("insumos", "esperado"),
+    [
+        (None, None),
+        ("", None),
+        ("   ", None),
+        (",", set()),
+        (" , ", set()),
+        ([], set()),
+        (["", " "], set()),
+        (" Peon ficticio , ,Arena lavada,", {"Peon ficticio", "Arena lavada"}),
+        (["Tubo, 4 pulgadas", " Arena "], {"Tubo, 4 pulgadas", "Arena"}),
+    ],
+)
+def test_reglas_de_insumos_de_texto(insumos, esperado) -> None:
+    assert aplicacion_simulador.insumos_de_texto(insumos) == esperado
+
+
+# --- Tope de la lista de insumos ------------------------------------------------------------
+
+TOPE_ELEMENTOS = 200
+TOPE_CARACTERES = 20000
+
+
+def _marcados(cantidad: int, largo: int = 12) -> list[str]:
+    """Nombres únicos y reconocibles, para ver si el 422 los repite."""
+    return [f"ZQX{i:05d}".ljust(largo, "q") for i in range(cantidad)]
+
+
+@pytest.mark.parametrize("ruta", [RUTA, RUTA_CSV])
+@pytest.mark.parametrize(
+    "insumos",
+    [
+        _marcados(TOPE_ELEMENTOS + 1),  # un elemento de más
+        _marcados(TOPE_CARACTERES // 500, 500) + ["ZQXextra"],  # 20.008 caracteres en 41
+        "ZQX" + "q" * TOPE_CARACTERES,  # el texto de siempre, un caracter de más
+    ],
+    ids=["201-elementos", "20008-caracteres", "texto-20001"],
+)
+def test_insumos_por_encima_del_tope_dan_422_sin_eco(motor, ruta, insumos) -> None:
+    _usar(motor)
+    r = _con_clave().post(ruta, json=_cuerpo(insumos=insumos))
+    assert r.status_code == 422, r.text[:300]
+    assert "ZQX" not in r.text, r.text[:300]
+    assert "detail" in r.json()  # el 422 de FastAPI de siempre, solo que sin `input`
+
+
+@pytest.mark.parametrize(
+    "insumos",
+    [
+        _marcados(TOPE_ELEMENTOS),
+        _marcados(TOPE_CARACTERES // 500, 500),  # 40 x 500 = 20.000 justos
+        "q" * TOPE_CARACTERES,
+    ],
+    ids=["200-elementos", "20000-caracteres", "texto-20000"],
+)
+def test_insumos_en_el_tope_entran(motor, insumos) -> None:
+    _usar(motor)
+    r = _con_clave().post(RUTA, json=_cuerpo(insumos=insumos))
+    assert (r.status_code, r.json()) == (200, {"filas": []})
+
+
+def test_el_esquema_dice_el_tope_en_cada_rama() -> None:
+    propiedad = app.openapi()["components"]["schemas"]["SimulacionPeticion"]["properties"][
+        "insumos"
+    ]
+    ramas = {rama.get("type"): rama for rama in propiedad["anyOf"]}
+    assert ramas["array"]["maxItems"] == TOPE_ELEMENTOS
+    assert ramas["array"]["items"]["maxLength"] == 500
+    assert ramas["string"]["maxLength"] == TOPE_CARACTERES
+    assert "null" in ramas
+    assert "maxLength" not in propiedad
+
+
 def test_filtro_que_no_coincide_con_nada_da_filas_vacias_con_200(motor) -> None:
     _usar(motor)
     r = _con_clave().post(RUTA, json=_cuerpo(insumos="Insumo inexistente"))
@@ -350,7 +489,8 @@ def test_variacion_vacia_no_es_decimal(motor) -> None:
 
 
 @pytest.mark.parametrize(
-    "campo", [{"variacion_max": 5}, {"variacion_max": 5.5}, {"insumos": 7}, {"insumos": ["Arena"]}]
+    "campo",
+    [{"variacion_max": 5}, {"variacion_max": 5.5}, {"insumos": 7}, {"insumos": [7]}],
 )
 def test_tipos_erroneos_dan_422(motor, campo) -> None:
     _usar(motor)

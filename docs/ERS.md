@@ -1335,6 +1335,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑08 | RF‑30, RF‑31 | cierre UC‑08 (2026‑08‑31) | 2 (apoyo) |
 | UC‑10 | RF‑33, RF‑34, RF‑35 | P0.1 (declarado), P1–P4 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑11 | RF‑33, RF‑34 | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
+| UC‑10, UC‑11, UC‑17 (autocompletado guiado) | RF‑167, RF‑168 (y RNF‑29) | AC1–AC4 ([PLAN_AUTOCOMPLETADO.md](planes/PLAN_AUTOCOMPLETADO.md), 2026‑11‑05) | usabilidad del prototipo, fuera de los cinco indicadores |
 | UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
 | UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | SF0 (declarado), SF1–SF2 ([PLAN_SF.md](../PLAN_SF.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); la ausencia de cambios en `core/` al agregar datos y electricidad es evidencia del indicador 4 |
 | UC‑14 | RF‑50, RF‑51 | SF0 (declarado), SF5 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
@@ -1643,6 +1644,22 @@ RF‑97, RF‑98, RF‑100 y los criterios que de ellas dependen describen la in
 (véase el plan de la migración, [PLAN_SESION_2B_MIGRACION.md](planes/PLAN_SESION_2B_MIGRACION.md)). Su criterio de aceptación con `AppTest` ya no existe; el homólogo en React de los recorridos
 guiados y de algunas funciones de `ui.libros` **no está comprobado** (ver `docs/bitacora/2026-10-21-retiro-f3-triaje.md` §7b y
 `docs/bitacora/2026-10-21-retiro-streamlit-cierre.md`). El asistente de IA de la Hoja queda sin interfaz (deuda registrada).
+
+## Enmienda (2026-11-05): autocompletado guiado de campos
+
+Pedido de Eugenio del 2026-10-21; diseño [2026-10-21-autocompletado-de-campos-design.md](especificaciones/2026-10-21-autocompletado-de-campos-design.md)
+§12.4 y plan [PLAN_AUTOCOMPLETADO.md](planes/PLAN_AUTOCOMPLETADO.md). Los números provisionales del diseño (RF-A, RF-B,
+RNF-A) siguen el ruling del orquestador que recoge el diseño de bienvenida (§12): asistente RF-156 a RF-159, bienvenida
+RF-160 a RF-166 y RNF-30, autocompletado RNF-29; los RF del autocompletado van a continuación.
+
+| ID | Requisito | Prioridad | Caso de uso | Criterio de aceptación |
+|---|---|---|---|---|
+| RF-167 | Los campos que piden un dato que la persona no tiene por qué saber de memoria (código de partida, insumo, unidad, moneda, proveedor, serie de índices, versión) ofrecen una búsqueda con autocompletado sobre el catálogo de la carpeta, la referencia MaPreX o la lista de la versión, con la fuente, la fecha y la moneda de cada resultado a la vista; el precio sugerido queda editable, sale de la lista con que arma la carpeta a la fecha de la composición, no se copia en otra moneda y nunca pisa lo que la persona tecleó | Esencial | UC-10, UC-11, UC-17 | pruebas de `paginas/componer/EleccionDeInsumos.test.tsx`, `AutocompletadoDeInsumos.test.tsx`, `tests/unit/test_aplicacion_consulta_precios.py` y `test_consulta_unidades_y_proveedores.py` |
+| RF-168 | Al elegir una partida existente en Componer, su cabecera se rellena y no se edita; un código escrito sin elegir ni confirmar no se guarda; en una valuación de Control solo se admiten partidas del contrato | Esencial | UC-10, UC-17 | pruebas de `paginas/componer` y `paginas/control/partidasDelContrato.test.ts`, `tests/unit/test_api_control.py` |
+| RNF-29 | La búsqueda con autocompletado es operable solo con el teclado y por lector de pantalla (combobox ARIA 1.2, región viva), con tres tamaños de letra y sin desplazamiento horizontal a 1366×768 y 1056 px | Esencial | — | pruebas de `comun/CampoConBusqueda*.test.tsx` y `SeleccionMultipleConBusqueda`; medición en navegador pendiente con una persona (diseño §4.3) |
+
+Enmienda a UC-10 paso 1 y flujos 2b, 3b y 4b: el buscador va integrado en la celda de cada insumo. La matriz de
+trazabilidad (§4) tiene su fila «autocompletado guiado».
 
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).

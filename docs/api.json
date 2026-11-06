@@ -3793,6 +3793,68 @@
         }
       }
     },
+    "/v1/control/partidas": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Partidas",
+        "description": "AC2: las partidas de la versión de la línea base (las únicas que una valuación puede medir),\npara el campo «Partida» con autocompletado. Con `corte`, la de la línea base vigente a esa\nfecha, la misma contra la que R13 juzga la valuación; sin él, la más reciente. Sin línea base\n(o ninguna a esa fecha) responde vacío con su aviso: no es un error, es lo que ve quien aún no\nla declaró. `truncada` dice si la lista se recortó al tope.\n\nUn proyecto que no existe es un 404 fijo que no repite lo pedido (diseño de autocompletado,\nH-17); un fallo de la base, el 503 fijo, sin SQL ni rutas, como `/v1/consulta`.",
+        "operationId": "partidas_v1_control_partidas_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "corte",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "El *hasta* de la valuación (ISO): la línea base vigente a esa fecha",
+              "title": "Corte"
+            },
+            "description": "El *hasta* de la valuación (ISO): la línea base vigente a esa fecha"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartidasDelContratoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/control/parametros": {
       "post": {
         "tags": [
@@ -4531,6 +4593,86 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/partidas": {
+      "get": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Partidas",
+        "description": "AC2: las partidas de la versión del contrato elegida, para el campo «Partida» de lo\nejecutado. El cálculo rechaza una partida que no está en ella; aquí solo se ofrecen.\n`truncada` dice si la lista se recortó al tope.\n\nErrores fijos, como `/v1/consulta` (diseño de autocompletado, H-17): el 404 no repite el\nproyecto ni la versión pedidos y un fallo de la base es el 503 sin SQL ni rutas; los dos van\ntambién con `Cache-Control: no-store`.",
+        "operationId": "partidas_v1_reajuste_partidas_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 40,
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartidasDelContratoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/series": {
+      "get": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Series",
+        "description": "AC2: las series de índices guardadas (UC-17), para el campo «Serie» de los componentes.\nSolo su definición: ningún valor del índice sale por esta ruta. Un fallo de la base es el 503\nfijo, sin SQL ni rutas.",
+        "operationId": "series_v1_reajuste_series_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/api__rutas__reajuste__SerieRespuesta"
+                  },
+                  "type": "array",
+                  "title": "Response Series V1 Reajuste Series Get"
                 }
               }
             }
@@ -10250,6 +10392,50 @@
         }
       }
     },
+    "/v1/consulta/unidades": {
+      "get": {
+        "tags": [
+          "consulta"
+        ],
+        "summary": "Unidades",
+        "description": "Las unidades que ya usa el catálogo (partidas e insumos), sin repetir: «m3», «m³» y «M3»\nson `m3`. Para sugerir la unidad al componer; se puede escribir otra.",
+        "operationId": "unidades_v1_consulta_unidades_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnidadesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consulta/proveedores": {
+      "get": {
+        "tags": [
+          "consulta"
+        ],
+        "summary": "Proveedores",
+        "description": "Los proveedores de las cotizaciones activas de la carpeta (las de la versión vigente de cada\nobra; una retirada o de una versión descartada no), sin repetir, con la fecha de su última\ncotización. Para sugerir el proveedor al cotizar; se puede escribir uno nuevo.\n\nPermiso `LEER_PROYECTO` y no el `EDITAR_HOJA` del diseño (§12.2): el nombre del proveedor no es\nun dato nuevo para quien solo revisa, que ya lo lee en la columna «Cotización» de\n`GET /v1/hoja/precios` con ese mismo permiso. Pedir más aquí no protegería nada y obligaría a\notra regla de acceso para una lista de solo lectura (enmienda del diseño, 2026-11-05).",
+        "operationId": "proveedores_v1_consulta_proveedores_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProveedoresRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/consulta/{tabla}": {
       "get": {
         "tags": [
@@ -10292,6 +10478,37 @@
               "default": 10,
               "title": "Limite"
             }
+          },
+          {
+            "name": "detalle",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Insumos y salarios: agrega la descripción y la unidad",
+              "default": false,
+              "title": "Detalle"
+            },
+            "description": "Insumos y salarios: agrega la descripción y la unidad"
+          },
+          {
+            "name": "para_armar_al",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Insumos y salarios: agrega el precio de la lista para armar a esa fecha (ISO), con su moneda y su fecha, o el aviso si está en otra moneda",
+              "title": "Para Armar Al"
+            },
+            "description": "Insumos y salarios: agrega el precio de la lista para armar a esa fecha (ISO), con su moneda y su fecha, o el aviso si está en otra moneda"
           }
         ],
         "responses": {
@@ -17945,6 +18162,22 @@
             "type": "integer",
             "title": "Insumos Variados"
           },
+          "precios_sin_insumo": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Precios Sin Insumo",
+            "description": "Precios de ensayo que no cambiaron nada porque su descripción no es la de ningún insumo del presupuesto base (se empareja por igualdad exacta)"
+          },
+          "precios_sin_cambio": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Precios Sin Cambio",
+            "description": "Precios de ensayo iguales al vigente en todos los renglones del base"
+          },
           "partidas": {
             "items": {
               "$ref": "#/components/schemas/FilaComparativoRespuesta"
@@ -22435,6 +22668,29 @@
         "title": "PartidaAntesYDespuesRespuesta",
         "description": "Montos como `{texto, exacto}`; cantidad y duraciones (dias habiles) como decimal con punto;\nel termino en dias. `null`: no se pudo calcular."
       },
+      "PartidaDelContratoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "unidad"
+        ],
+        "title": "PartidaDelContratoRespuesta"
+      },
       "PartidaDiferente": {
         "properties": {
           "codigo_partida": {
@@ -22659,6 +22915,41 @@
         ],
         "title": "PartidaRespuesta",
         "description": "Cabecera de una partida del catalogo."
+      },
+      "PartidasDelContratoRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "El código de la versión del contrato; vacío si no hay"
+          },
+          "aviso": {
+            "type": "string",
+            "title": "Aviso",
+            "description": "Texto fijo que explica una lista vacía",
+            "default": ""
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaDelContratoRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas",
+            "description": "Por código, una sola vez"
+          },
+          "truncada": {
+            "type": "boolean",
+            "title": "Truncada",
+            "description": "La lista se recortó al tope: que una partida no esté en ella no dice que no esté en el contrato (la interfaz no la rechaza y deja que decida el servidor)",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "partidas"
+        ],
+        "title": "PartidasDelContratoRespuesta"
       },
       "PartidasHalladasRespuesta": {
         "properties": {
@@ -23911,6 +24202,44 @@
           "etiqueta"
         ],
         "title": "Proveedor"
+      },
+      "ProveedorUsadoRespuesta": {
+        "properties": {
+          "proveedor": {
+            "type": "string",
+            "title": "Proveedor",
+            "description": "Como en su cotización más reciente"
+          },
+          "ultimo_uso": {
+            "type": "string",
+            "format": "date",
+            "title": "Ultimo Uso",
+            "description": "La fecha de esa cotización"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proveedor",
+          "ultimo_uso"
+        ],
+        "title": "ProveedorUsadoRespuesta"
+      },
+      "ProveedoresRespuesta": {
+        "properties": {
+          "proveedores": {
+            "items": {
+              "$ref": "#/components/schemas/ProveedorUsadoRespuesta"
+            },
+            "type": "array",
+            "title": "Proveedores",
+            "description": "El último usado primero"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proveedores"
+        ],
+        "title": "ProveedoresRespuesta"
       },
       "ProyeccionEntrada": {
         "properties": {
@@ -26120,11 +26449,19 @@
                 "maxLength": 20000
               },
               {
+                "items": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "type": "array",
+                "maxItems": 200
+              },
+              {
                 "type": "null"
               }
             ],
             "title": "Insumos",
-            "description": "Separados por coma; vacio o null = todos"
+            "description": "Separados por coma, o una lista de descripciones exactas (admite la coma). null, omitido o texto vacio = todos; texto de solo comas o lista sin nombres ([] incluida) = ninguno. La lista: hasta 200 descripciones y 20000 caracteres en total"
           }
         },
         "type": "object",
@@ -26243,6 +26580,91 @@
             "type": "string",
             "title": "Fuente",
             "description": "De dónde sale el dato"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion",
+            "description": "Con `detalle`: la descripción del insumo"
+          },
+          "unidad": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unidad",
+            "description": "Con `detalle`: la unidad del insumo, si la tiene"
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo",
+            "description": "Con `detalle`: el tipo del insumo en palabras («material», «equipo» o «mano de obra»), para no sacarlo del texto de `fuente`"
+          },
+          "precio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio",
+            "description": "Con `para_armar_al`: el precio en la lista para armar a esa fecha, decimal con punto; nunca en otra moneda que la de la carpeta"
+          },
+          "moneda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda",
+            "description": "La moneda de la lista de la que sale el precio"
+          },
+          "fecha_precio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Precio",
+            "description": "Desde cuándo rige esa lista"
+          },
+          "aviso_precio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Precio",
+            "description": "Si esa lista está en otra moneda: por qué no viene el precio"
           }
         },
         "type": "object",
@@ -27138,6 +27560,52 @@
         ],
         "title": "UnidadDelPlano",
         "description": "P2: la unidad del dibujo con que se vuelve a leer el plano detenido."
+      },
+      "UnidadUsadaRespuesta": {
+        "properties": {
+          "unidad": {
+            "type": "string",
+            "title": "Unidad",
+            "description": "La forma canónica (tabla de alias del núcleo): lo que se guarda"
+          },
+          "usos": {
+            "type": "integer",
+            "title": "Usos",
+            "description": "Cuántas partidas e insumos del catálogo la usan"
+          },
+          "grafias": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Grafias",
+            "description": "Cómo está escrita en el catálogo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unidad",
+          "usos",
+          "grafias"
+        ],
+        "title": "UnidadUsadaRespuesta"
+      },
+      "UnidadesRespuesta": {
+        "properties": {
+          "unidades": {
+            "items": {
+              "$ref": "#/components/schemas/UnidadUsadaRespuesta"
+            },
+            "type": "array",
+            "title": "Unidades",
+            "description": "Las más usadas primero"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unidades"
+        ],
+        "title": "UnidadesRespuesta"
       },
       "UsarCobro": {
         "properties": {
@@ -29167,6 +29635,40 @@
           "estado"
         ],
         "title": "GuardadoRespuesta"
+      },
+      "api__rutas__reajuste__SerieRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave",
+            "description": "El código de la serie, como se cita en un componente"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "organismo": {
+            "type": "string",
+            "title": "Organismo"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "periodicidad": {
+            "type": "string",
+            "title": "Periodicidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "nombre",
+          "organismo",
+          "unidad",
+          "periodicidad"
+        ],
+        "title": "SerieRespuesta"
       },
       "api__rutas__reajuste__VersionRespuesta": {
         "properties": {

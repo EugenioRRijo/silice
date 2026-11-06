@@ -5,6 +5,7 @@
 import { pedir } from "../../api/cliente";
 import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import type { GrupoDeResultados } from "../../comun/logicaBusqueda";
+import { plano } from "../../comun/normalizar";
 
 export type Lado = "compra" | "cobro";
 
@@ -158,10 +159,6 @@ const TIPO_DE_INSUMO: Record<string, string> = {
   equipo: "equipo",
   mano_obra: "mano de obra",
 };
-
-function plano(texto: string): string {
-  return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
-}
 
 function abortado(): Error {
   const error = new Error("Búsqueda cancelada");
