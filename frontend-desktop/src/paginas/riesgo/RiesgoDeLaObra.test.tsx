@@ -202,6 +202,33 @@ describe("Riesgo de la obra", () => {
     expect(within(proyectar).getByRole("button", { name: "Proyectar" })).toBeInTheDocument();
   });
 
+  test("«Fecha de inicio» y «Trayectorias» están en «Proyectar», y los parámetros comunes fuera de ambos grupos", async () => {
+    montar();
+    const inicio = await screen.findByLabelText("Fecha de inicio");
+    const trayectorias = screen.getByLabelText("Trayectorias");
+    const porCorte = screen.getByLabelText("Trayectorias por corte");
+    const meses = screen.getByLabelText("Meses del plazo");
+    const semilla = screen.getByLabelText("Semilla");
+    const historia = screen.getByLabelText("Meses de historia");
+    const proyectar = screen.getByRole("group", { name: "Proyectar" });
+    const comprobar = screen.getByRole("group", { name: "Comprobar hacia atrás" });
+
+    expect(proyectar).toContainElement(inicio);
+    expect(proyectar).toContainElement(trayectorias);
+    expect(comprobar).not.toContainElement(inicio);
+    expect(comprobar).not.toContainElement(trayectorias);
+
+    expect(comprobar).toContainElement(porCorte);
+    expect(proyectar).not.toContainElement(porCorte);
+
+    expect(proyectar).not.toContainElement(meses);
+    expect(proyectar).not.toContainElement(semilla);
+    expect(proyectar).not.toContainElement(historia);
+    expect(comprobar).not.toContainElement(meses);
+    expect(comprobar).not.toContainElement(semilla);
+    expect(comprobar).not.toContainElement(historia);
+  });
+
   test("una cifra mal escrita no se envía y se dice junto al campo", async () => {
     montar();
     const trayectorias = await screen.findByLabelText("Trayectorias");
