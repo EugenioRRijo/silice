@@ -233,8 +233,8 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
   // vez por codigo (lo editado despues no se pisa); teclear otro codigo vuelve a precargar.
   const precargado = useRef("");
   // Cuantas veces una precarga reemplazo las tres tablas. Las tablas de insumos recuerdan por indice de fila lo que se tecleo y
-  // lo que puso el catalogo; una precarga trae filas nuevas y nada de eso es suyo, asi que se vuelven a montar (dictamen de la
-  // ronda 3, MENOR 2: ni un «m3» tecleado antes en el mismo indice cuenta como escrito por la persona).
+  // lo que puso el catalogo; una precarga trae filas nuevas y nada de eso es suyo, asi que reciben la vuelta como prop para
+  // reiniciar ese estado sin volver a montarse (dictamen de la ronda 3, MENOR 2 y WCAG 2.4.3).
   const [vueltaDePrecarga, setVueltaDePrecarga] = useState(0);
   const turnoPartida = useRef(0);
   useEffect(() => {
@@ -489,10 +489,10 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
           <div key={tipo} className="silice-componer__insumo">
             <BuscadorReferencia tipo={tipo} alUsar={usarFila(tipo)} alExpirar={expirar} />
             <TablaInsumos
-              key={vueltaDePrecarga}
               tipo={tipo}
               filas={tablas[tipo]}
               modalidades={ops?.modalidades ?? []}
+              vuelta={vueltaDePrecarga}
               paraArmarAl={fecha}
               moneda={carpeta?.moneda ?? null}
               alCambiar={(i, clave, valor) => cambiarTablas((t) => editarCelda(t, tipo, i, clave, valor))}

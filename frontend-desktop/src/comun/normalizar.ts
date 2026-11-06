@@ -2,8 +2,7 @@
 // partidas del contrato, las series de indices, los proveedores ya usados y los insumos de Mercado. Una sola regla de
 // normalizacion para todas. Solo texto: aqui no se calcula ningun monto.
 //
-// Pendiente (no se toca en este cambio): `comun/logicaBusqueda.ts` (`plano`, el resaltado) y
-// `paginas/componer/unidades.ts` tienen todavia su propia copia de esta normalizacion.
+// Pendiente (no se toca en este cambio): `paginas/componer/unidades.ts` tiene todavia su propia copia de esta normalizacion.
 import type { GrupoDeResultados, OpcionDeBusqueda } from "./logicaBusqueda";
 
 // Sin tildes ni mayusculas: «Tubería» y «TUBERIA» dan «tuberia». Se quitan las marcas combinadas que deja la descomposicion

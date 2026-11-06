@@ -20,6 +20,9 @@ interface Props {
   filas: Fila[];
   // Opciones de modalidad que manda la API (solo mano de obra).
   modalidades: string[];
+  // Cuantas veces una precarga reemplazo las tres tablas: al cambiar, se reinicia el estado interno de origen de
+  // datos (marcas, tecleadas, deFuera) sin volver a montar la tabla, para preservar el foco (WCAG 2.4.3).
+  vuelta?: number;
   // La fecha de la composicion (ISO): el precio que se llena es el de la lista para armar a esa fecha (AC1b). Vacia, no se
   // pide ningun precio y solo se llenan la descripcion y la unidad.
   paraArmarAl?: string;
@@ -83,6 +86,7 @@ export function TablaInsumos({
   tipo,
   filas,
   modalidades,
+  vuelta = 0,
   paraArmarAl = "",
   moneda = null,
   alCambiar,
@@ -115,6 +119,14 @@ export function TablaInsumos({
   if (fechaVista !== paraArmarAl) {
     setFechaVista(paraArmarAl);
     setSinSaber({});
+  }
+  // Con otra vuelta de precarga se reinicia el origen de cada fila (se ajusta el estado al renderizar, como pide React).
+  const [vueltaVista, setVueltaVista] = useState(vuelta);
+  if (vueltaVista !== vuelta) {
+    setVueltaVista(vuelta);
+    setMarcas({});
+    setTecleadas({});
+    setDeFuera({});
   }
   const pedidas = useRef(new Set<string>());
   const vivo = useRef(true);
