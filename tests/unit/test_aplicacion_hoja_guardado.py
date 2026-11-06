@@ -362,10 +362,10 @@ def test_los_mensajes_de_error_de_la_primera_version_son_los_escritos_a_mano(
     ]
     assert caso.volcado() == antes
     assert mensajes[0] == (
-        "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+        "Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."
     )
-    assert mensajes[1] == "Escriba el responsable: quien crea esta primera version."
-    assert mensajes[2].startswith("La hoja esta vacia")
+    assert mensajes[1] == "Escriba el responsable: quién crea esta primera versión."
+    assert mensajes[2].startswith("La hoja está vacía")
     assert mensajes[3] == (
         "La obra 'Proyecto que no existe' no existe: créela desde la barra lateral (Nueva obra)."
     )
@@ -379,12 +379,12 @@ def test_el_motivo_para_no_crear_la_primera_dice_lo_primero_que_falta() -> None:
     vacio = hoja.Borrador(fecha=caso_of001.FECHA)
     lleno = _en_blanco()
     assert hoja.motivo_para_no_crear_primera(vacio, "x", "y") == (
-        "La hoja esta vacia: describa o importe el espacio antes de guardar la primera version."
+        "La hoja está vacía: describa o importe el espacio antes de guardar la primera versión."
     )
     assert hoja.motivo_para_no_crear_primera(lleno, "", "y") == (
-        "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+        "Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."
     )
     assert hoja.motivo_para_no_crear_primera(lleno, "x", "") == (
-        "Escriba el responsable: quien crea esta primera version."
+        "Escriba el responsable: quién crea esta primera versión."
     )
     assert hoja.motivo_para_no_crear_primera(lleno, "x", "y") is None

@@ -76,10 +76,10 @@ FORMA = (
     "300 caracteres."
 )
 SIN_FUENTE = "Escriba la fuente del cambio: por que se cambia y con que respaldo."
-SIN_FUENTE_MEDIDA = "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+SIN_FUENTE_MEDIDA = "Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."
 SIN_CAMBIOS = "No hay cambios para guardar: edite alguna celda primero."
 HOJA_VACIA = (
-    "La hoja esta vacia: describa o importe el espacio antes de guardar la primera version."
+    "La hoja está vacía: describa o importe el espacio antes de guardar la primera versión."
 )
 SOLO_LECTURA = (
     "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion vigente "

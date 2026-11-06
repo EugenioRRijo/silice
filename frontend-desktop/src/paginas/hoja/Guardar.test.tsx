@@ -471,7 +471,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     });
 
     test("con la hoja vacía el servidor dice por qué (422) y el diálogo sigue abierto con la fuente", async () => {
-      const vacia = "La hoja esta vacia: describa o importe el espacio antes de guardar la primera version.";
+      const vacia = "La hoja está vacía: describa o importe el espacio antes de guardar la primera versión.";
       alGuardar = () => json({ detalle: vacia }, 422);
       montar();
       const dialogo = await abrirModal("Guardar primera versión…");

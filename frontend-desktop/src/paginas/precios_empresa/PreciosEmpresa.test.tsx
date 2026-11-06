@@ -140,7 +140,7 @@ describe("Precios de la empresa", () => {
     await screen.findByLabelText("Empresa (nombre)");
     await usuario.type(screen.getByLabelText("Empresa (nombre)"), "Contratista Demo, C.A.");
     await usuario.type(screen.getByLabelText("RIF"), "J-00000000-0");
-    await usuario.type(screen.getByLabelText("Fuente de la lista (de donde salen estos precios)"), "lista interna 2026-09");
+    await usuario.type(screen.getByLabelText("Fuente de la lista (de dónde salen estos precios)"), "lista interna 2026-09");
     if (moneda) await usuario.selectOptions(screen.getByLabelText("Moneda de la lista"), moneda);
     if (conArchivo) await usuario.upload(campoArchivo(), new File(["tipo,insumo"], "precios.csv"));
     await usuario.click(screen.getByRole("button", { name: "Crear la lista de la empresa" }));
