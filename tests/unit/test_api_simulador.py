@@ -301,11 +301,95 @@ def test_el_texto_separado_por_comas_sigue_partiendo_por_la_coma(motor) -> None:
     assert (r.status_code, r.json()) == (200, {"filas": []})
 
 
-@pytest.mark.parametrize("insumos", [[], ["", "  "]])
-def test_una_lista_vacia_son_todos(motor, insumos) -> None:
+def test_sin_el_campo_insumos_son_todos(motor) -> None:
+    _usar(motor)
+    r = _con_clave().post(RUTA, json={"semilla": 42, "variacion_max": "5"})
+    assert [f["insumo"] for f in r.json()["filas"]] == ORDEN
+
+
+@pytest.mark.parametrize("insumos", [",", " , ", " , ,", [], ["", "  "]])
+def test_un_filtro_sin_nombres_validos_es_ninguno(motor, insumos) -> None:
+    """Solo `null` (u omitido) y el texto vacío son «todos»: un texto con solo comas y espacios
+    (como antes del autocompletado) o una lista sin nombres no nombra ningún insumo: 0 filas."""
     _usar(motor)
     r = _con_clave().post(RUTA, json=_cuerpo(insumos=insumos))
-    assert [f["insumo"] for f in r.json()["filas"]] == ORDEN
+    assert (r.status_code, r.json()) == (200, {"filas": []})
+    r = _con_clave().post(RUTA_CSV, json=_cuerpo(insumos=insumos))
+    assert (r.status_code, r.json()) == (422, {"detalle": MENSAJE_SIN_FILAS})
+
+
+@pytest.mark.parametrize(
+    ("insumos", "esperado"),
+    [
+        (None, None),
+        ("", None),
+        ("   ", None),
+        (",", set()),
+        (" , ", set()),
+        ([], set()),
+        (["", " "], set()),
+        (" Peon ficticio , ,Arena lavada,", {"Peon ficticio", "Arena lavada"}),
+        (["Tubo, 4 pulgadas", " Arena "], {"Tubo, 4 pulgadas", "Arena"}),
+    ],
+)
+def test_reglas_de_insumos_de_texto(insumos, esperado) -> None:
+    assert aplicacion_simulador.insumos_de_texto(insumos) == esperado
+
+
+# --- Tope de la lista de insumos ------------------------------------------------------------
+
+TOPE_ELEMENTOS = 200
+TOPE_CARACTERES = 20000
+
+
+def _marcados(cantidad: int, largo: int = 12) -> list[str]:
+    """Nombres únicos y reconocibles, para ver si el 422 los repite."""
+    return [f"ZQX{i:05d}".ljust(largo, "q") for i in range(cantidad)]
+
+
+@pytest.mark.parametrize("ruta", [RUTA, RUTA_CSV])
+@pytest.mark.parametrize(
+    "insumos",
+    [
+        _marcados(TOPE_ELEMENTOS + 1),  # un elemento de más
+        _marcados(TOPE_CARACTERES // 500, 500) + ["ZQXextra"],  # 20.008 caracteres en 41
+        "ZQX" + "q" * TOPE_CARACTERES,  # el texto de siempre, un caracter de más
+    ],
+    ids=["201-elementos", "20008-caracteres", "texto-20001"],
+)
+def test_insumos_por_encima_del_tope_dan_422_sin_eco(motor, ruta, insumos) -> None:
+    _usar(motor)
+    r = _con_clave().post(ruta, json=_cuerpo(insumos=insumos))
+    assert r.status_code == 422, r.text[:300]
+    assert "ZQX" not in r.text, r.text[:300]
+    assert "detail" in r.json()  # el 422 de FastAPI de siempre, solo que sin `input`
+
+
+@pytest.mark.parametrize(
+    "insumos",
+    [
+        _marcados(TOPE_ELEMENTOS),
+        _marcados(TOPE_CARACTERES // 500, 500),  # 40 x 500 = 20.000 justos
+        "q" * TOPE_CARACTERES,
+    ],
+    ids=["200-elementos", "20000-caracteres", "texto-20000"],
+)
+def test_insumos_en_el_tope_entran(motor, insumos) -> None:
+    _usar(motor)
+    r = _con_clave().post(RUTA, json=_cuerpo(insumos=insumos))
+    assert (r.status_code, r.json()) == (200, {"filas": []})
+
+
+def test_el_esquema_dice_el_tope_en_cada_rama() -> None:
+    propiedad = app.openapi()["components"]["schemas"]["SimulacionPeticion"]["properties"][
+        "insumos"
+    ]
+    ramas = {rama.get("type"): rama for rama in propiedad["anyOf"]}
+    assert ramas["array"]["maxItems"] == TOPE_ELEMENTOS
+    assert ramas["array"]["items"]["maxLength"] == 500
+    assert ramas["string"]["maxLength"] == TOPE_CARACTERES
+    assert "null" in ramas
+    assert "maxLength" not in propiedad
 
 
 def test_filtro_que_no_coincide_con_nada_da_filas_vacias_con_200(motor) -> None:
