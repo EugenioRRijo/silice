@@ -17,6 +17,12 @@ export const AVISO_HERRAMIENTA =
 export const TOPE_VARIACION = 1000;
 export const MENSAJE_VARIACION = `La variación máxima debe ser un número entre 0 y 1.000. ${MENSAJE_CIFRA}`;
 
+// Mismos topes que la API (`TOPE_DE_INSUMOS` y `TOPE_DE_CARACTERES` de api/rutas/simulador.py).
+export const TOPE_DE_INSUMOS = 200;
+export const TOPE_DE_CARACTERES = 20000;
+export const MENSAJE_TOPE_INSUMOS = "Puede elegir hasta 200 insumos.";
+export const MENSAJE_TOPE_CARACTERES = "La lista es demasiado larga: quite algún insumo.";
+
 export interface Formulario {
   semilla: string;
   variacion: string;
@@ -78,4 +84,14 @@ export function resumenDeEnvio(cuerpo: CuerpoSimulacion): string {
   // Entre comillas angulares: una descripcion puede llevar coma.
   const insumos = cuerpo.insumos === null ? "todos" : cuerpo.insumos.map((i) => `«${i}»`).join(", ");
   return `semilla ${cuerpo.semilla}, variación ${formatoEsVe(cuerpo.variacion_max)} %, insumos: ${insumos}`;
+}
+
+// Comprueba si un nuevo insumo cabe en la lista elegida según los topes de la API.
+// Si no cabe, devuelve el motivo del rechazo; si cabe (o ya estaba en la lista), null.
+export function rechazoDeInsumo(elegidos: string[], nuevo: string): string | null {
+  if (elegidos.includes(nuevo)) return null;
+  if (elegidos.length >= TOPE_DE_INSUMOS) return MENSAJE_TOPE_INSUMOS;
+  const totalCaracteres = elegidos.reduce((total, insumo) => total + insumo.length, 0) + nuevo.length;
+  if (totalCaracteres > TOPE_DE_CARACTERES) return MENSAJE_TOPE_CARACTERES;
+  return null;
 }

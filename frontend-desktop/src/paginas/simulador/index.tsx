@@ -21,6 +21,7 @@ import {
   errorDeSemilla,
   errorDeVariacion,
   filasDeTabla,
+  rechazoDeInsumo,
   resumenDeEnvio,
 } from "./logica";
 import type { CuerpoSimulacion, FilaSimulada } from "./logica";
@@ -128,6 +129,7 @@ export default function PaginaSimulador() {
             ayuda="Escriba una palabra y elija de la lista; si no elige ninguno, se simulan todos."
             elegidos={elegidos}
             alCambiar={setElegidos}
+            rechazar={(insumo) => rechazoDeInsumo(elegidos, insumo)}
             buscar={buscarInsumos}
             textoDe={descripcionDeInsumo}
             vacio={{

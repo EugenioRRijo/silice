@@ -154,13 +154,15 @@ function Registrar({
         <fieldset className="silice-control__lineas">
           <legend className="cds--type-label-01">Líneas medidas</legend>
           <p className="silice-control__nota cds--type-helper-text-01">{AYUDA_CIFRAS}</p>
-          {guia.fallo && (
-            <p className="silice-control__nota cds--type-helper-text-01">
-              No se pudieron cargar las partidas del contrato: escriba el código de cada partida.
-            </p>
-          )}
-          {guia.truncada && <p className="silice-control__nota cds--type-helper-text-01">{AVISO_LISTA_RECORTADA}</p>}
-          {guia.aviso !== "" && <p className="silice-control__nota cds--type-helper-text-01">{guia.aviso}</p>}
+          <div role="status" aria-live="polite">
+            {guia.fallo && (
+              <p className="silice-control__nota cds--type-helper-text-01">
+                No se pudieron cargar las partidas del contrato: escriba el código de cada partida.
+              </p>
+            )}
+            {guia.truncada && <p className="silice-control__nota cds--type-helper-text-01">{AVISO_LISTA_RECORTADA}</p>}
+            {guia.aviso !== "" && <p className="silice-control__nota cds--type-helper-text-01">{guia.aviso}</p>}
+          </div>
           {lineas.map((l, i) => (
             <div key={i} className="silice-control__linea">
               <CampoDePartida
@@ -363,7 +365,9 @@ function Costo({ proyecto, partidas, alCambiar }: { proyecto: string; partidas: 
           alCambiarTexto={(t) => setV({ ...v, partida: t })}
           alExpirar={alExpirar}
         />
-        {partidas.aviso !== "" && <p className="silice-control__nota cds--type-helper-text-01">{partidas.aviso}</p>}
+        <div role="status" aria-live="polite">
+          {partidas.aviso !== "" && <p className="silice-control__nota cds--type-helper-text-01">{partidas.aviso}</p>}
+        </div>
         <CampoTexto id="cos-fuente" labelText="Fuente del costo" value={v.fuente} onChange={campo("fuente")} />
         <div>
           <Button kind="primary" size="md" disabled={estado.enviando} onClick={anotar}>
