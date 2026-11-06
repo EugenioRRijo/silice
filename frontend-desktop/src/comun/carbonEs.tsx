@@ -45,11 +45,14 @@ export function TabList({ leftOverflowButtonProps, rightOverflowButtonProps, ...
   return (
     <CarbonTabList
       {...props}
-      leftOverflowButtonProps={{
-        ...leftOverflowButtonProps,
-        ref: ancla,
-        "aria-label": leftOverflowButtonProps?.["aria-label"] ?? DESPLAZAR_IZQUIERDA,
-      }}
+      // El tipo de Carbon no declara `ref`, pero lo reparte en el <button>; en React 19 `ref` es una propiedad más.
+      leftOverflowButtonProps={
+        {
+          ...leftOverflowButtonProps,
+          ref: ancla,
+          "aria-label": leftOverflowButtonProps?.["aria-label"] ?? DESPLAZAR_IZQUIERDA,
+        } as ComponentProps<typeof CarbonTabList>["leftOverflowButtonProps"]
+      }
       rightOverflowButtonProps={{
         ...rightOverflowButtonProps,
         "aria-label": rightOverflowButtonProps?.["aria-label"] ?? DESPLAZAR_DERECHA,
