@@ -304,6 +304,23 @@ describe("Versiones: el registro de cambios en el panel", () => {
     expect(texto(filas[1]!).slice(0, 5)).toEqual(["04/11/2026 16:21", "Ana Pérez <ana>", "Precio", "INS-1", "Cotización"]);
   });
 
+  test("D4 (ronda 1): control y metraje salen con rótulos en español y un valor que no es cifra queda intacto", async () => {
+    const base = { fuente: "Reunión", responsable: "Ana Pérez <ana>", fecha_hora: "2026-11-04T16:20:31.482913" };
+    const control = { ...base, objeto: "parametro", clave: "control|spi_error", campo: "spi_error", antes: "0.90", despues: "0.85" };
+    const metraje = { ...base, objeto: "metraje", clave: "fuentes|F1", campo: "ambiente_id", antes: "A1.2", despues: "Eje B2.5" };
+    const catalogo = { ...base, objeto: "apu", clave: "MIN-001", campo: "instantanea", antes: "catalogo", despues: "instantanea" };
+    trazabilidad = () => json(trazabilidadRespuesta({ registros: [control, metraje, catalogo] }));
+    const u = montar();
+    await listo();
+    await u.click(within(await renglon("VIV-002")).getByRole("button", { name: "Ver cambios de VIV-002" }));
+    const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
+    expect(texto(filas[0]!).slice(2)).toEqual(["Parámetro", "Control de obra: Umbral de SPI para error", "Umbral de SPI para error", "0,90", "0,85", "Reunión"]);
+    expect(texto(filas[1]!).slice(4)).toEqual(["Ambiente", "A1.2", "Eje B2.5", "Reunión"]);
+    expect(texto(filas[2]!).slice(4)).toEqual(["Instantánea", "Catálogo", "Instantánea", "Reunión"]);
+  });
+
   test("una versión que no nació de una edición dice por qué no hay registros, sin tabla vacía", async () => {
     const mensaje = "Esta versión no nació de una edición: no tiene registros de cambio.";
     trazabilidad = () => json(trazabilidadRespuesta({ registros: [], vacio_mensaje: mensaje }));

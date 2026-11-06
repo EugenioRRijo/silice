@@ -267,6 +267,8 @@ describe("Revisar un paquete", () => {
     expect(screen.getByText("Esta instalación no recibió una entrega anterior de esta obra.")).toBeInTheDocument();
     const cambios = screen.getByRole("table", { name: "Quién cambió qué" });
     expect(within(cambios).getByText("MIN-001|Arena")).toBeInTheDocument();
+    const celdasDelCambio = within(within(cambios).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent);
+    expect(celdasDelCambio.slice(0, 9)).toEqual(["005", "APU", "MIN-001|Arena", "Cantidad", "1,00", "1,50", "memoria", "Ana <ana>", "02/11/2026 08:00"]);
     expect(screen.getByText(REVISION.nota_excel)).toBeInTheDocument();
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);

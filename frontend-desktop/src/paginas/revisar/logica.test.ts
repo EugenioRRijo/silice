@@ -69,4 +69,15 @@ describe("logica de Revisar un paquete", () => {
     const [fila] = filasDeCambios([{ version: "005", objeto: "apu" }]);
     expect(fila).toMatchObject({ id: "0", version: "005", objeto: "apu", marca: "" });
   });
+
+  test("D4 (ronda 1): «Quién cambió qué» presenta objeto, campo, cifra y fecha en español sin tocar los valores de la fila", () => {
+    const presentar = (clave: string, valor: string) => COLUMNAS_CAMBIOS.find((c) => c.clave === clave)!.presentar!(valor);
+    expect(presentar("objeto", "apu")).toBe("APU");
+    expect(presentar("campo", "cantidad")).toBe("Cantidad");
+    expect(presentar("campo", "penalizacion_diaria")).toBe("Penalización diaria por retraso");
+    expect(presentar("antes", "1.00")).toBe("1,00");
+    expect(presentar("despues", "1234.5")).toBe("1.234,5");
+    expect(presentar("despues", "Eje B2.5")).toBe("Eje B2.5");
+    expect(presentar("fecha", "2026-11-02T08:00:00.123456")).toBe("02/11/2026 08:00");
+  });
 });

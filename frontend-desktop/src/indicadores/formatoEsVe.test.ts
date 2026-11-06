@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { centesimasEsVe, cifrasEnTextoEsVe, fechaEsVe, formatoEsVe, formatoMontoEsVe } from "./formatoEsVe";
+import { centesimasEsVe, cifraSiLoEs, cifrasEnTextoEsVe, fechaEsVe, formatoEsVe, formatoMontoEsVe } from "./formatoEsVe";
 
 describe("formatoEsVe", () => {
   test("miles con punto y decimales con coma", () => {
@@ -115,5 +115,19 @@ describe("cifrasEnTextoEsVe", () => {
     expect(cifrasEnTextoEsVe("partida P-01.03 del tramo")).toBe("partida P-01.03 del tramo");
     expect(cifrasEnTextoEsVe("FCAS de la fracción 6.00.")).toBe("FCAS de la fracción 6,00.");
     expect(cifrasEnTextoEsVe("baja -5.81 en el mes")).toBe("baja -5,81 en el mes");
+  });
+});
+
+describe("cifraSiLoEs", () => {
+  test("convierte solo un valor que es, entero, una cifra", () => {
+    expect(cifraSiLoEs("24.5")).toBe("24,5");
+    expect(cifraSiLoEs("1234.5")).toBe("1.234,5");
+    expect(cifraSiLoEs("-5.81")).toBe("-5,81");
+    expect(cifraSiLoEs("3")).toBe("3");
+  });
+  test("un código, un nombre o un texto vacío quedan como están", () => {
+    expect(cifraSiLoEs("A1.2")).toBe("A1.2");
+    expect(cifraSiLoEs("Eje B2.5")).toBe("Eje B2.5");
+    expect(cifraSiLoEs("")).toBe("");
   });
 });
