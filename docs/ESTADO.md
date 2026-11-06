@@ -79,6 +79,9 @@ Decisiones de Eugenio del 2026-11-05 dentro de F6:
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 
+Plan detallado, con el protocolo de trabajo con Gemini Flash por `agy` (Flash construye el parche, Claude lo aplica con
+TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA_DETALLES.md](planes/PLAN_TANDA_DETALLES.md).
+
 1. **Tanda de detalles** (chicos, en paralelo):
    - vistos el 2026-11-04: la cantidad con punto en «Guardar versión», «del proyecto» por «de la obra», «1 versiones»,
      la hora con microsegundos, «Carpeta sin moneda declarada», «m3» y «m³»;
