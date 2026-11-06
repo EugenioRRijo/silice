@@ -171,10 +171,15 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   `MONEDAS`, `useCarga`, `CampoDeUnidad` y `CampoDePartida` pasan a `comun/`, con una prueba de arquitectura que impide
   importar nuevas dependencias entre páginas. Además: las tres tablas de cambios (Guardar versión, Versiones y Revisar)
   comparten un presentador (`comun/presentarCambio.ts`): rótulos en español, coma decimal solo en lo que es cifra («A1.2»
-  queda igual) y también dentro de los resúmenes «clave=valor»; «m³» en todas las unidades que se muestran; la
+  queda igual) y también dentro de los resúmenes «clave=valor» del alta o baja de una fila, que se parten por las columnas
+  de su tabla y se rotulan como en la Hoja (`comun/rotulosDeColumna.ts`, con prueba de contrato contra `aplicacion/hoja.py`); «m³» en todas las unidades que se muestran; la
   existencia de la arenera con coma decimal; «1 partida», «1 cambio registrado»; el Resumen dice «Versión de la línea
   base» o «Versión vigente» según el servidor (`version_de_linea_base`); y en Componer, elegir una partida y luego otra
-  ya no deja la descripción y la unidad de la primera (D17): lo tecleado se conserva y se avisa.
+  ya no deja la descripción y la unidad de la primera (D17): una partida del catálogo trae siempre las suyas y se avisa si
+  se reemplazó algo escrito («Se cambió la descripción «X» por la del catálogo, «Y».»), y al cambiar el código a mano se
+  vacían las que puso el catálogo. `comun/` ya no importa de ninguna página (trinquete en `comun/arquitectura.test.ts`).
+  `aplicacion/hoja.py` cambió solo en mensajes y el experimento de la tesis se re-congeló con acta
+  (`docs/bitacora/2026-11-06-recongelado-experimento.md`).
 - Desinstalar ya no deja `{app}\codigo`: al primer arranque el lanzador abría el archivo del código de instalación (Bloc de notas) heredando esa carpeta como directorio de trabajo, y con la ventana abierta Windows no la borraba (error 32 en el humo del instalador). Ahora se abre con la carpeta del archivo como directorio de trabajo.
 - Hoja en solo lectura (M5 del árbitro del recorrido en video): la celda de una tabla ya no pierde su etiqueta accesible; «Cantidad, Presupuesto fila N» queda como texto oculto a la vista (`CampoDeCelda`), porque la cabecera da la columna pero no la fila.
 - Pruebas de la CI: el tope de la variación del simulador se cronometra sobre `variacion_de_texto` y la ruta comprueba el mensaje del tope (la petición entera pasó de 3 s en un runner cargado); el humo del instalador dice qué queda en `{app}` si la desinstalación no termina.
