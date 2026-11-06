@@ -7,7 +7,10 @@ import {
   errorDeVariacion,
   filasDeTabla,
   MENSAJE_SEMILLA,
+  MENSAJE_TOPE_CARACTERES,
+  MENSAJE_TOPE_INSUMOS,
   MENSAJE_VARIACION,
+  rechazoDeInsumo,
   resumenDeEnvio,
 } from "./logica";
 
@@ -80,5 +83,22 @@ describe("insumos elegidos del simulador", () => {
       "Arena lavada",
     ]);
     expect(cuerpoDe({ semilla: "1", variacion: "5", insumos: [] }).insumos).toBeNull();
+  });
+
+  test("rechaza al superar el tope de 200 insumos", () => {
+    const alLimite = Array.from({ length: 200 }, (_, i) => `Insumo ${i}`);
+    expect(rechazoDeInsumo(alLimite, "Insumo 201")).toBe(MENSAJE_TOPE_INSUMOS);
+    expect(rechazoDeInsumo(alLimite.slice(0, 199), "Insumo 200")).toBeNull();
+  });
+
+  test("rechaza al superar el tope de 20.000 caracteres en total", () => {
+    const largo = "a".repeat(19990);
+    expect(rechazoDeInsumo([largo], "b".repeat(11))).toBe(MENSAJE_TOPE_CARACTERES);
+    expect(rechazoDeInsumo([largo], "b".repeat(10))).toBeNull();
+  });
+
+  test("si el insumo ya está en la lista no lo rechaza por tope (lo atiende la selección)", () => {
+    const alLimite = Array.from({ length: 200 }, (_, i) => `Insumo ${i}`);
+    expect(rechazoDeInsumo(alLimite, "Insumo 0")).toBeNull();
   });
 });

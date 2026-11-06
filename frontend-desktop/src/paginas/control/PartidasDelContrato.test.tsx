@@ -211,7 +211,9 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     const u = await montarEnValuaciones();
     expect(screen.queryByText(AVISO_AL_CORTE)).toBeNull();
     await u.type(screen.getByLabelText("Período hasta"), "2026-01-05");
-    expect(await screen.findByText(AVISO_AL_CORTE)).toBeInTheDocument();
+    const aviso = await screen.findByText(AVISO_AL_CORTE);
+    expect(aviso).toBeInTheDocument();
+    expect(aviso.closest("[role='status'][aria-live='polite']")).not.toBeNull();
   });
 
   test("sin línea base, el aviso de la API se dice y no se confunde con un fallo de lectura", async () => {
