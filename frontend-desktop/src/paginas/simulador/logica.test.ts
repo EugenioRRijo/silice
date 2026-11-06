@@ -38,9 +38,9 @@ describe("logica del simulador", () => {
     });
   });
 
-  test("la tabla conserva el precio como texto, sin tocarlo (la columna lo presenta en es-VE)", () => {
+  test("la tabla conserva el precio como texto, sin tocarlo (la columna lo presenta en es-VE), y la unidad se escribe «m³»", () => {
     const filas = filasDeTabla([{ tipo: "material", insumo: "Arena", unidad: "m3", precio: "30.00" }]);
-    expect(filas).toEqual([{ id: "0", tipo: "material", insumo: "Arena", unidad: "m3", precio: "30.00" }]);
+    expect(filas).toEqual([{ id: "0", tipo: "material", insumo: "Arena", unidad: "m³", precio: "30.00" }]);
   });
 
   test("la variacion acepta la coma decimal y el punto de miles entre 0 y 1000", () => {
