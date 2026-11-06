@@ -426,6 +426,14 @@ describe("Vista general: el avance ejecutado contra el plan, por obra", () => {
       const apilada = bloqueDesde(css.search(/@container\s*\(max-inline-size/));
       expect(apilada).toMatch(/\.silice-inicio__avance\s*\{[^}]*min-inline-size:\s*0/);
     });
+
+    test("las celdas con etiqueta alinean rótulo y dato en una sola línea (display: flex)", () => {
+      const apilada = bloqueDesde(css.search(/@container\s*\(max-inline-size/));
+      expect(apilada).toMatch(/td\[data-etiqueta\]\s*\{[^}]*display:\s*flex/);
+      expect(apilada).not.toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*display:\s*block/);
+      expect(apilada).toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*color:\s*var\(--silice-texto-secundario\)/);
+      expect(apilada).toMatch(/td\[data-etiqueta\]::before\s*\{[^}]*content:\s*attr\(data-etiqueta\)\s*":"/);
+    });
   });
 
   test("el nombre de la obra lleva a su Resumen, en la carpeta de la obra", async () => {
