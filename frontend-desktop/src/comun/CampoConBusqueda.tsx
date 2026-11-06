@@ -64,6 +64,9 @@ export interface CampoConBusquedaProps<T> {
   // restaura campos desde fuera (el panel «Componer una partida») no lo deje a medias: devolver solo este texto dejaria la
   // unidad y el precio de un insumo que ya no esta (dictamen del autocompletado, MAYOR). false por omision.
   llenaOtrasCeldas?: boolean;
+  // El ultimo valor confirmado (lo elegido de la lista): se marca en el campo (`data-valor-confirmado`) y a el vuelve un Esc que
+  // restaura campos desde fuera (el panel «Componer una partida»), en vez de al valor que tenia al recibir el foco.
+  valorConfirmado?: string;
   // Tope de letras del campo: 80 por omision (el de la busqueda del servidor). null: sin tope, para un texto libre que
   // ademas se busca (la descripcion de un insumo); quien lo pone recorta lo que manda a `buscar`.
   largoMaximo?: number | null;
@@ -97,6 +100,7 @@ export function CampoConBusqueda<T>({
   enCelda = false,
   escLimpia = true,
   llenaOtrasCeldas = false,
+  valorConfirmado,
   largoMaximo = LARGO_MAXIMO,
   conBorrar = true,
   alExpirar,
@@ -492,6 +496,7 @@ export function CampoConBusqueda<T>({
           readOnly={soloLectura}
           role="combobox"
           data-llena-otras-celdas={llenaOtrasCeldas ? "true" : undefined}
+          data-valor-confirmado={valorConfirmado}
           aria-autocomplete="list"
           aria-expanded={listaVisible}
           aria-controls={listaVisible ? idLista : undefined}

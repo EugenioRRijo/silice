@@ -59,10 +59,10 @@ interface Props {
 export function CampoDelCodigo({ texto, alCambiar, alElegirDelCatalogo, alExpirar }: Props): JSX.Element {
   const [buscar] = useState(buscadorDeCodigos);
   const [revisado, setRevisado] = useState(false);
-  // Se eligió una opción de la lista: la descripción, la unidad y las tablas de esa partida ya se llenaron o se van a llenar. Se
-  // marca el campo (`data-llena-otras-celdas`) para que el Esc del panel no devuelva solo el código y deje la partida mezclada.
-  // Lo que se escriba después vuelve a ser texto libre.
-  const [eligio, setEligio] = useState(false);
+  // El último código confirmado (D16): elegir una opción de la lista llena la descripción, la unidad y las tablas de esa partida,
+  // así que es la base del Esc del panel (`data-valor-confirmado`): lo tecleado después vuelve al código elegido y la partida
+  // no queda mezclada. Al dejar el campo se olvida: la próxima vez la base es el valor con que recibe el foco.
+  const [confirmado, setConfirmado] = useState<string | undefined>(undefined);
   const bienFormado = esCodigoValido(texto);
   const malFormado = revisado && texto.trim() !== "" && !bienFormado;
   return (
@@ -73,22 +73,24 @@ export function CampoDelCodigo({ texto, alCambiar, alElegirDelCatalogo, alExpira
       texto={texto}
       alCambiarTexto={(t) => {
         setRevisado(false);
-        setEligio(false);
         alCambiar(t);
       }}
       buscar={buscar}
-      llenaOtrasCeldas={eligio}
+      valorConfirmado={confirmado}
       alElegir={(opcion) => {
-        setEligio(true);
+        setConfirmado(opcion.valor.codigo);
         alCambiar(opcion.valor.codigo);
         if (opcion.valor.partida !== null) alElegirDelCatalogo(opcion.valor.partida);
       }}
-      valorPropio={bienFormado ? { rotulo: (t) => `Usar «${t}» como código`, alUsar: (t) => alCambiar(t) } : undefined}
+      valorPropio={bienFormado ? { rotulo: (t) => `Usar «${t}» como código`, alUsar: (t) => { setConfirmado(t); alCambiar(t); } } : undefined}
       vacio={{
         titulo: "¿No lo encuentra?",
         pasos: "Pruebe con otra palabra de la descripción o escriba un código propio, por ejemplo «E-411».",
       }}
-      alSalir={() => setRevisado(true)}
+      alSalir={() => {
+        setRevisado(true);
+        setConfirmado(undefined);
+      }}
       alExpirar={alExpirar}
       invalido={malFormado}
       textoInvalido={CODIGO_MAL_FORMADO}
