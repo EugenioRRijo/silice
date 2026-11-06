@@ -20,13 +20,13 @@ export const MENSAJE_VARIACION = `La variación máxima debe ser un número entr
 export interface Formulario {
   semilla: string;
   variacion: string;
-  insumos: string;
+  insumos: string[]; // las descripciones exactas elegidas de la lista, en el orden elegido
 }
 
 export interface CuerpoSimulacion {
   semilla: number;
   variacion_max: string;
-  insumos: string | null;
+  insumos: string[] | null;
 }
 
 export interface FilaSimulada {
@@ -45,30 +45,17 @@ export function errorDeSemilla(texto: string): string | null {
   return null;
 }
 
-// El cuerpo de POST /v1/simulador: la variacion viaja como texto decimal con punto (la API la interpreta); insumos
-// vacios = todos. Lo mal escrito no se envia (`errorDeVariacion` bloquea el boton): aqui viaja tal cual.
+// El cuerpo de POST /v1/simulador: la variacion viaja como texto decimal con punto (la API la interpreta). Los insumos
+// viajan como LISTA de descripciones exactas (la API la acepta junto al texto separado por comas de siempre): una
+// descripcion con coma entra entera. Ninguno elegido = todos (null). Lo mal escrito no se envia (`errorDeVariacion`
+// bloquea el boton): aqui viaja tal cual.
 export function cuerpoDe(formulario: Formulario): CuerpoSimulacion {
-  const insumos = formulario.insumos.trim();
   const lectura = leerCifra(formulario.variacion);
   return {
     semilla: Number(formulario.semilla.trim()),
     variacion_max: "valor" in lectura ? lectura.valor : formulario.variacion,
-    insumos: insumos === "" ? null : insumos,
+    insumos: formulario.insumos.length === 0 ? null : [...formulario.insumos],
   };
-}
-
-// Los insumos se eligen de la lista uno a uno, pero a la API viajan como siempre: UN texto con las descripciones exactas
-// separadas por coma (`insumos_de_texto` de la API parte por la coma y recorta). Vacio = todos (`cuerpoDe` lo vuelve null).
-export function insumosEnviados(elegidos: string[]): string {
-  return elegidos.join(", ");
-}
-
-// Esa lista parte por la coma: una descripcion que ya lleva una no se puede nombrar (la API la veria como dos nombres que
-// no existen y la ignoraria en silencio). null si puede entrar; si no, el motivo que se muestra junto al campo.
-export function motivoDeRechazo(descripcion: string): string | null {
-  return descripcion.includes(",")
-    ? `«${descripcion}» lleva una coma y la lista separada por comas la partiría en dos: no se puede elegir aquí.`
-    : null;
 }
 
 export function filasDeTabla(filas: FilaSimulada[]): FilaDensa[] {
@@ -88,5 +75,7 @@ export function errorDeVariacion(texto: string): string | null {
 
 // Los valores con que se pidio el resultado que esta en pantalla.
 export function resumenDeEnvio(cuerpo: CuerpoSimulacion): string {
-  return `semilla ${cuerpo.semilla}, variación ${formatoEsVe(cuerpo.variacion_max)} %, insumos: ${cuerpo.insumos ?? "todos"}`;
+  // Entre comillas angulares: una descripcion puede llevar coma.
+  const insumos = cuerpo.insumos === null ? "todos" : cuerpo.insumos.map((i) => `«${i}»`).join(", ");
+  return `semilla ${cuerpo.semilla}, variación ${formatoEsVe(cuerpo.variacion_max)} %, insumos: ${insumos}`;
 }

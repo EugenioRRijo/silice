@@ -38,6 +38,7 @@ import {
   lineaPendiente,
   nombrePorOmision,
   notaHallazgos,
+  avisoPreciosSinEfecto,
   rutaEscenarios,
 } from "./logica";
 import type { ErroresDeCifras, FilaPrecio } from "./logica";
@@ -385,6 +386,19 @@ export default function PaginaEscenarios() {
                   {TITULO_COMPARACION}
                 </h2>
                 <TablaDensa etiqueta={TITULO_COMPARACION} columnas={COLUMNAS_COMPARACION} filas={filasComparacion(resultado)} />
+                {resultado.escenarios.map((e, i) => {
+                  const aviso = avisoPreciosSinEfecto(e);
+                  return aviso === null ? null : (
+                    <InlineNotification
+                      key={`sin-efecto-${e.nombre}-${i}`}
+                      kind="warning"
+                      lowContrast
+                      hideCloseButton
+                      title="Precios de ensayo sin efecto"
+                      subtitle={aviso}
+                    />
+                  );
+                })}
                 <div className="silice-escenarios__acciones">
                   <DescargaArchivo
                     ruta={rutaEscenarios(base.codigo, base.proyecto, "/csv")}

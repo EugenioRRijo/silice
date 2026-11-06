@@ -15,6 +15,16 @@ export interface PartidasDelContrato {
   version: string;
   aviso: string;
   partidas: PartidaDelContrato[];
+  // La API recorto la lista a su tope: que una partida no este en ella no dice que no este en el contrato.
+  truncada?: boolean;
+}
+
+export const AVISO_LISTA_RECORTADA =
+  "La lista muestra solo parte de las partidas del contrato: si la suya no aparece, escriba su código.";
+
+// true si la lista que llego esta recortada (entonces no se juzga con ella: decide el servidor).
+export function listaRecortada(carga: Carga<PartidasDelContrato>): boolean {
+  return carga.estado === "listo" && carga.datos.truncada === true;
 }
 
 export const ROTULO_DEL_CONTRATO = "Partidas del contrato";

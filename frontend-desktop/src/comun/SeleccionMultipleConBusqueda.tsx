@@ -12,9 +12,10 @@ import "./SeleccionMultipleConBusqueda.scss";
 // texto propio que no controla la pagina y las elecciones como un contador, no como etiquetas que se quitan una a una.
 //
 // Lo propio de aqui: la lista de etiquetas, Retroceso (con el campo vacio quita la ultima), que Enter con algo escrito y
-// ninguna opcion activa no envie el formulario de la pagina, el aviso de lo escrito sin elegir y los anuncios.
+// ninguna opcion activa no envie el formulario de la pagina, el aviso de lo escrito sin elegir y los anuncios (en una
+// region que existe mientras el foco esta dentro, con el conteo, para que se lea el primer anuncio).
 // NO hay «usar tal cual»: solo entra lo que viene de la lista. Lo elegido es un texto por opcion (`textoDe`); la pagina
-// decide como se manda (`elegidos.join(", ")`). Los montos no pasan por aqui.
+// decide como se manda (el simulador, como lista). Los montos no pasan por aqui.
 type PropsDelCampo<T> = Pick<
   CampoConBusquedaProps<T>,
   "id" | "etiqueta" | "buscar" | "vacio" | "alExpirar" | "minimoDeLetras" | "pausaMs" | "deshabilitado" | "tamano"
@@ -31,6 +32,14 @@ export interface SeleccionMultipleConBusquedaProps<T> extends PropsDelCampo<T> {
 
 const cuantos = (n: number) => (n === 0 ? "Ninguno elegido." : `${n} ${n === 1 ? "elegido" : "elegidos"}.`);
 
+// Un espacio duro al final, que no se ve ni se lee: alternarlo hace que un mensaje igual al anterior cambie el texto de
+// la region y el lector lo vuelva a leer («X ya estaba en la lista.» dos veces seguidas).
+const RELLENO = "\u00A0";
+function siguienteAnuncio(anterior: string, texto: string): string {
+  if (anterior.replace(/\u00A0$/, "") !== texto) return texto;
+  return anterior.endsWith(RELLENO) ? texto : texto + RELLENO;
+}
+
 export function SeleccionMultipleConBusqueda<T>({
   ayuda,
   elegidos,
@@ -44,7 +53,11 @@ export function SeleccionMultipleConBusqueda<T>({
   const [texto, setTexto] = useState("");
   const [anuncio, setAnuncio] = useState("");
   const [motivo, setMotivo] = useState<string | null>(null);
+  // La region viva se monta mientras el foco esta dentro (el campo o un boton «Quitar»), con el conteo, y luego solo
+  // cambia su texto: una region que aparece ya con su primer mensaje suele no leerse (como en CampoConBusqueda).
+  const [conFoco, setConFoco] = useState(false);
   const escrito = texto.trim();
+  const anunciar = (mensaje: string) => setAnuncio((anterior) => siguienteAnuncio(anterior, mensaje));
 
   function alElegir(opcion: OpcionDeBusqueda<T>) {
     setTexto("");
@@ -53,15 +66,15 @@ export function SeleccionMultipleConBusqueda<T>({
     const razon = rechazar?.(elegido) ?? null;
     setMotivo(razon);
     if (razon !== null) {
-      setAnuncio(`No se agregó: ${razon}`);
+      anunciar(`No se agregó: ${razon}`);
       return;
     }
     if (elegidos.includes(elegido)) {
-      setAnuncio(`${elegido} ya estaba en la lista.`);
+      anunciar(`${elegido} ya estaba en la lista.`);
       return;
     }
     alCambiar([...elegidos, elegido]);
-    setAnuncio(`Agregado: ${elegido}. ${cuantos(elegidos.length + 1)}`);
+    anunciar(`Agregado: ${elegido}. ${cuantos(elegidos.length + 1)}`);
   }
 
   function quitar(indice: number) {
@@ -69,7 +82,7 @@ export function SeleccionMultipleConBusqueda<T>({
     if (quitado === undefined) return;
     alCambiar(elegidos.filter((_, i) => i !== indice));
     setMotivo(null);
-    setAnuncio(`Quitado: ${quitado}. ${cuantos(elegidos.length - 1)}`);
+    anunciar(`Quitado: ${quitado}. ${cuantos(elegidos.length - 1)}`);
   }
 
   // Los teclazos del campo suben hasta aqui despues de que `CampoConBusqueda` atendio los suyos.
@@ -85,7 +98,16 @@ export function SeleccionMultipleConBusqueda<T>({
 
   return (
     // El gestor de teclado va en la envoltura y solo atiende lo que nace en el campo (comprobado arriba).
-    <div className="silice-seleccion" onKeyDown={alTeclear}>
+    <div
+      className="silice-seleccion"
+      onKeyDown={alTeclear}
+      onFocus={() => setConFoco(true)}
+      onBlur={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setConFoco(false);
+        setAnuncio("");
+      }}
+    >
       <CampoConBusqueda<T>
         {...campo}
         ayuda={escrito !== "" ? `Falta elegir «${escrito}» de la lista: así no se agrega.` : ayuda}
@@ -121,9 +143,9 @@ export function SeleccionMultipleConBusqueda<T>({
           ))}
         </ul>
       )}
-      {anuncio !== "" && (
+      {conFoco && (
         <div role="status" aria-live="polite" aria-atomic="true" className="cds--visually-hidden">
-          {anuncio}
+          {anuncio || cuantos(elegidos.length)}
         </div>
       )}
     </div>

@@ -21,8 +21,6 @@ import {
   errorDeSemilla,
   errorDeVariacion,
   filasDeTabla,
-  insumosEnviados,
-  motivoDeRechazo,
   resumenDeEnvio,
 } from "./logica";
 import type { CuerpoSimulacion, FilaSimulada } from "./logica";
@@ -72,7 +70,7 @@ export default function PaginaSimulador() {
   async function generar(evento: FormEvent) {
     evento.preventDefault();
     if (hayError) return;
-    const cuerpo = cuerpoDe({ semilla, variacion, insumos: insumosEnviados(elegidos) });
+    const cuerpo = cuerpoDe({ semilla, variacion, insumos: elegidos });
     const numero = ++peticion.current;
     setEstado({ fase: "cargando" });
     try {
@@ -87,7 +85,7 @@ export default function PaginaSimulador() {
   // El resultado en pantalla es el del ultimo envio: si el formulario cambio despues, se avisa.
   const cambiado =
     estado.fase === "listo" &&
-    (errorSemilla !== null || JSON.stringify(cuerpoDe({ semilla, variacion, insumos: insumosEnviados(elegidos) })) !== JSON.stringify(estado.cuerpo));
+    (errorSemilla !== null || JSON.stringify(cuerpoDe({ semilla, variacion, insumos: elegidos })) !== JSON.stringify(estado.cuerpo));
 
   let resumen = "";
   if (cargando) resumen = "Simulando…";
@@ -132,7 +130,6 @@ export default function PaginaSimulador() {
             alCambiar={setElegidos}
             buscar={buscarInsumos}
             textoDe={descripcionDeInsumo}
-            rechazar={motivoDeRechazo}
             vacio={{
               titulo: "¿No lo encuentra?",
               pasos: "Pruebe con otra palabra o con el código. Solo se simulan los insumos de la lista de precios vigente.",

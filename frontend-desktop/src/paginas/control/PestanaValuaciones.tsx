@@ -31,8 +31,9 @@ import type { CausaDeRetraso, LineaEditable, Valuaciones } from "./logica";
 import { fechaDeRanura, periodoCompacto } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { useCarga } from "../inicio/useCarga";
+import type { Carga } from "../inicio/useCarga";
 import { CampoDePartida } from "./CampoDePartida";
-import { partidaDelContrato, partidasOfrecidas } from "./partidasDelContrato";
+import { AVISO_LISTA_RECORTADA, listaRecortada, partidaDelContrato, partidasOfrecidas } from "./partidasDelContrato";
 import type { PartidaDelContrato, PartidasDelContrato } from "./partidasDelContrato";
 import { AYUDA_CAUSA_SUGERIDA, causaDeLinea, sugeridasPorPartida } from "./procura";
 import type { Procura } from "./procura";
@@ -57,6 +58,17 @@ interface PartidasDeLaObra {
   lista: PartidaDelContrato[] | null;
   version: string;
   fallo: boolean;
+  // La lista está recortada: guía, pero no se rechaza una partida que no está en ella (decide el servidor).
+  truncada: boolean;
+}
+
+function partidasDeLaObra(carga: Carga<PartidasDelContrato>): PartidasDeLaObra {
+  return {
+    lista: partidasOfrecidas(carga),
+    version: carga.estado === "listo" ? carga.datos.version : "",
+    fallo: carga.estado !== "cargando" && carga.estado !== "listo",
+    truncada: listaRecortada(carga),
+  };
 }
 
 function Registrar({
@@ -85,8 +97,11 @@ function Registrar({
   const causaDe = (l: LineaEditable, i: number) => causaDeLinea(l, i in elegidas, sugeridas);
   // El error de la cantidad de cada linea (por posicion), si no sigue la regla de la coma decimal.
   const [errores, setErrores] = useState<Record<number, string>>({});
-  // AC2: una valuación solo mide lo contratado. Una partida que no es de la versión de la línea base no se envía (la
-  // revisión R13 la marcaría Error); si la lista no se pudo leer no hay con qué juzgar y el servidor decide.
+  // AC2: una valuación solo mide lo contratado. Una partida que no es de la versión de la línea base vigente a su corte
+  // (el «hasta»: contra esa la juzga R13) no se envía; sin «hasta» guía la más reciente, que llega de la pestaña. Si la
+  // lista no se pudo leer, aún carga o vino recortada, no hay con qué juzgar y el servidor decide.
+  const alCorte = useCarga<PartidasDelContrato>(v.hasta ? rutaDe("/v1/control/partidas", proyecto, { corte: v.hasta }) : null, alExpirar);
+  const guia = v.hasta ? partidasDeLaObra(alCorte) : partidas;
   const [erroresDePartida, setErroresDePartida] = useState<Record<number, string>>({});
   const campo = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
   const cambiarLinea = (i: number, k: keyof LineaEditable, valor: string) => {
@@ -99,8 +114,8 @@ function Registrar({
     lineas.forEach((l, i) => {
       const error = errorDeCifra(l.cantidad);
       if (error) nuevos[i] = error;
-      if (partidas.lista && l.partida.trim() !== "" && !partidaDelContrato(partidas.lista, l.partida)) {
-        fuera[i] = `La partida «${l.partida.trim()}» no está en el contrato (versión ${partidas.version}): elíjala de la lista.`;
+      if (guia.lista && !guia.truncada && l.partida.trim() !== "" && !partidaDelContrato(guia.lista, l.partida)) {
+        fuera[i] = `La partida «${l.partida.trim()}» no está en el contrato (versión ${guia.version}): elíjala de la lista.`;
       }
     });
     setErrores(nuevos);
@@ -115,7 +130,7 @@ function Registrar({
           lineas: sinLineasVacias(
             lineas.map((l, i) => ({
               ...l,
-              partida: partidas.lista ? (partidaDelContrato(partidas.lista, l.partida)?.codigo ?? l.partida) : l.partida,
+              partida: guia.lista ? (partidaDelContrato(guia.lista, l.partida)?.codigo ?? l.partida) : l.partida,
               causa: causaDe(l, i),
             })),
           ).map(lineaParaApi),
@@ -136,19 +151,20 @@ function Registrar({
         <fieldset className="silice-control__lineas">
           <legend className="cds--type-label-01">Líneas medidas</legend>
           <p className="silice-control__nota cds--type-helper-text-01">{AYUDA_CIFRAS}</p>
-          {partidas.fallo && (
+          {guia.fallo && (
             <p className="silice-control__nota cds--type-helper-text-01">
               No se pudieron cargar las partidas del contrato: escriba el código de cada partida.
             </p>
           )}
+          {guia.truncada && <p className="silice-control__nota cds--type-helper-text-01">{AVISO_LISTA_RECORTADA}</p>}
           {lineas.map((l, i) => (
             <div key={i} className="silice-control__linea">
               <CampoDePartida
                 id={`val-p-${i}`}
                 etiqueta={`Partida ${i + 1}`}
                 ayuda="Las del contrato (línea base): escriba el código o parte de su descripción."
-                partidas={partidas.lista}
-                soloDelContrato
+                partidas={guia.lista}
+                soloDelContrato={!guia.truncada}
                 texto={l.partida}
                 alCambiarTexto={(t) => cambiarLinea(i, "partida", t)}
                 alExpirar={alExpirar}
@@ -374,11 +390,7 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
   const carga = useCargaSuave<Valuaciones>(rutaDe("/v1/control/valuaciones", proyecto, { n: String(clave) }), alExpirar);
   // AC2: las partidas de la versión de la línea base, una vez por obra, para los campos «Partida» de Registrar y Costo.
   const delContrato = useCarga<PartidasDelContrato>(rutaDe("/v1/control/partidas", proyecto), alExpirar);
-  const partidas: PartidasDeLaObra = {
-    lista: partidasOfrecidas(delContrato),
-    version: delContrato.estado === "listo" ? delContrato.datos.version : "",
-    fallo: delContrato.estado !== "cargando" && delContrato.estado !== "listo",
-  };
+  const partidas = partidasDeLaObra(delContrato);
   if (carga.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las valuaciones" />;
   if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudieron cargar las valuaciones" />;
   const datos = carga.datos;

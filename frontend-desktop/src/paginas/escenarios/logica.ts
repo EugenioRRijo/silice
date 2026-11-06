@@ -51,7 +51,7 @@ export interface FilaPrecio {
 }
 
 // El calculo empareja la descripcion por igualdad exacta y descarta en silencio la que no existe (core/budget/escenarios.py:
-// `precios.get(descripcion, precio)`; la API solo cuenta `insumos_variados`). Por eso no se ofrece «usar tal cual»: se
+// `precios.get(descripcion, precio)`; la API la nombra en `precios_sin_insumo` y `avisoPreciosSinEfecto` lo dice). Por eso no se ofrece «usar tal cual»: se
 // permite escribirla, pero queda avisado.
 export const AVISO_ESCRITO_A_MANO =
   "Escrito a mano: si no es exactamente un insumo de la lista, no cambia ningún precio.";
@@ -199,6 +199,30 @@ export function notaHallazgos(e: EscenarioRespuesta): string {
     `Hallazgos de la auditoría del escenario: ${e.hallazgos} (el informe se genera siempre). ` +
     `Insumos variados: ${e.insumos_variados}.`
   );
+}
+
+// «A», «B» y «C»
+function enumerar(nombres: string[]): string {
+  const citados = nombres.map((n) => `«${n}»`);
+  return citados.length <= 1 ? (citados[0] ?? "") : `${citados.slice(0, -1).join(", ")} y ${citados[citados.length - 1]}`;
+}
+
+// En espanol llano, los precios de ensayo de un escenario que no cambiaron nada y por que; null si todos cambiaron algo.
+export function avisoPreciosSinEfecto(e: EscenarioRespuesta): string | null {
+  const sinInsumo = e.precios_sin_insumo ?? [];
+  const sinCambio = e.precios_sin_cambio ?? [];
+  const total = sinInsumo.length + sinCambio.length;
+  if (total === 0) return null;
+  const partes: string[] = [];
+  if (sinInsumo.length > 0) {
+    partes.push(
+      `${enumerar(sinInsumo)} no ${sinInsumo.length === 1 ? "es un insumo" : "son insumos"} del presupuesto base ` +
+        "(el nombre tiene que ser exactamente el de la lista)",
+    );
+  }
+  if (sinCambio.length > 0) partes.push(`${enumerar(sinCambio)} ya ${sinCambio.length === 1 ? "tenía" : "tenían"} ese precio`);
+  const cuantos = total === 1 ? "1 precio de ensayo no cambió nada" : `${total} precios de ensayo no cambiaron nada`;
+  return `En «${e.nombre}», ${cuantos}: ${partes.join("; ")}.`;
 }
 
 export function rutaEscenarios(codigo: string, proyecto: string, sufijo = ""): string {

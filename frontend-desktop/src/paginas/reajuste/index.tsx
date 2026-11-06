@@ -14,7 +14,7 @@ import type { Carga } from "../inicio/useCarga";
 import { FilasEditables } from "./FilasEditables";
 import type { ColumnaEditable } from "./FilasEditables";
 import { CampoDePartida } from "../control/CampoDePartida";
-import { partidasOfrecidas } from "../control/partidasDelContrato";
+import { listaRecortada, partidasOfrecidas } from "../control/partidasDelContrato";
 import type { PartidaDelContrato, PartidasDelContrato } from "../control/partidasDelContrato";
 import { CampoDeSerie } from "./CampoDeSerie";
 import { seriesOfrecidas } from "./series";
@@ -109,7 +109,9 @@ function columnasDePeriodo(revaloradas: string[]): ColumnaEditable[] {
     { clave: "excepcion", titulo: "Excepción" },
   ];
 }
-function columnasDeEjecutado(partidas: PartidaDelContrato[] | null, alExpirar: () => void): ColumnaEditable[] {
+// Con la lista recortada (`recortada`) una partida que no se ve se puede usar «tal cual»: el calculo dice si no es del
+// contrato.
+function columnasDeEjecutado(partidas: PartidaDelContrato[] | null, recortada: boolean, alExpirar: () => void): ColumnaEditable[] {
   return [
     { clave: "periodo", titulo: "Período" },
     {
@@ -120,7 +122,7 @@ function columnasDeEjecutado(partidas: PartidaDelContrato[] | null, alExpirar: (
           id={c.id}
           etiqueta={c.etiqueta}
           partidas={partidas}
-          soloDelContrato
+          soloDelContrato={!recortada}
           texto={c.valor}
           alCambiarTexto={c.alCambiar}
           alExpirar={alExpirar}
@@ -214,7 +216,7 @@ function Formulario({
     alExpirar,
   );
   const columnasComponente = columnasDeComponente(seriesOfrecidas(series), alExpirar);
-  const columnasEjecutado = columnasDeEjecutado(partidasOfrecidas(delContrato), alExpirar);
+  const columnasEjecutado = columnasDeEjecutado(partidasOfrecidas(delContrato), listaRecortada(delContrato), alExpirar);
   // VB-13: tras «Calcular», el foco va al título del resultado o al aviso de error (si no, se queda en el botón y el
   // aviso aparece bajo el pliegue sin que nadie lo anuncie).
   // Cada pedido de foco es un objeto nuevo: siempre provoca el render tras el cual el efecto lo cumple.
