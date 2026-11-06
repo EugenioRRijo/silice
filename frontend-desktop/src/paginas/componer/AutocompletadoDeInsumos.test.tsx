@@ -161,9 +161,12 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     expect(llamadas.some((l) => l.startsWith("/v1/consulta/salarios_cct?"))).toBe(true);
   });
 
-  test("un insumo sin unidad ni precio en el catálogo no borra ni inventa lo que ya hay", async () => {
+  // Solo lo que la persona tecleó es suyo (ronda 2, MAYOR 1): una unidad o un precio que traía la fila de fuera se quita.
+  test("un insumo sin unidad ni precio en el catálogo no borra ni inventa lo que la persona tecleó", async () => {
     const u = userEvent.setup();
-    render(<Arnes tipo="materiales" filas={[{ ...MATERIAL, unidad: "kg", precio: "7,5" }]} />);
+    render(<Arnes tipo="materiales" filas={[{ ...MATERIAL }]} />);
+    await u.type(screen.getByRole("combobox", { name: "Unidad, fila 1" }), "kg");
+    await u.type(screen.getByRole("textbox", { name: "Precio, fila 1" }), "7,5");
     await u.type(descripcion(), "cemento b");
     await u.click(await screen.findByRole("option", { name: /Cemento blanco ficticio/ }));
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
