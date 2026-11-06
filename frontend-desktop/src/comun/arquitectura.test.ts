@@ -88,6 +88,17 @@ describe("arquitectura del front", () => {
     expect(CONOCIDAS.filter((c) => !halladas.includes(c))).toEqual([]);
   });
 
+  test("ningún módulo de comun/ importa de paginas/ (lo común no depende de lo que lo usa)", () => {
+    const COMUN = join(SRC, "comun");
+    const hacia = archivos(COMUN).filter((ruta) =>
+      [...readFileSync(ruta, "utf8").matchAll(/from\s+"(\.[^"]+)"/g)].some((m) => {
+        const destino = relative(SRC, resolve(dirname(ruta), m[1]!)).split(sep);
+        return destino[0] === "paginas";
+      }),
+    );
+    expect(hacia.map((ruta) => relative(SRC, ruta).split(sep).join("/"))).toEqual([]);
+  });
+
   test("MONEDAS se define una sola vez, en comun/monedas.ts", () => {
     const definiciones = archivos(SRC)
       .filter((ruta) => /\b(const|let|var)\s+MONEDAS\b/.test(readFileSync(ruta, "utf8")))
