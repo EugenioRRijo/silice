@@ -8,6 +8,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { mensajeDeError } from "../../comun/errores";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
+import { MONEDAS, rotuloDeMoneda } from "../../comun/monedas";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { ContextoAplicacion } from "../contexto";
 import type { MonedaPendiente } from "../contexto";
@@ -377,8 +378,9 @@ function Crear({
           }}
         >
           <SelectItem value="" text="Elija…" />
-          <SelectItem value="Bs" text="Bolívares (Bs)" />
-          <SelectItem value="USD" text="Dólares estadounidenses (USD)" />
+          {MONEDAS.map((m) => (
+            <SelectItem key={m} value={m} text={rotuloDeMoneda(m, true)} />
+          ))}
         </Select>
       ) : (
         <p className="silice-carpetas__ayuda cds--type-helper-text-01">

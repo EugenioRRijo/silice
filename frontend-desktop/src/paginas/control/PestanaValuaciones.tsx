@@ -30,6 +30,7 @@ import {
 import type { CausaDeRetraso, LineaEditable, Valuaciones } from "./logica";
 import { fechaDeRanura, periodoCompacto } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { MONEDAS } from "../../comun/monedas";
 import { useCarga } from "../../comun/useCarga";
 import type { Carga } from "../../comun/useCarga";
 import { CampoDePartida } from "../../comun/CampoDePartida";
@@ -351,8 +352,9 @@ function Costo({ proyecto, partidas, alCambiar }: { proyecto: string; partidas: 
           onChange={campo("monto")}
         />
         <Select id="cos-moneda" labelText="Moneda" value={v.moneda} onChange={campo("moneda")}>
-          <SelectItem value="USD" text="USD" />
-          <SelectItem value="Bs" text="Bs" />
+          {[...MONEDAS].reverse().map((m) => (
+            <SelectItem key={m} value={m} text={m} />
+          ))}
         </Select>
         <CampoTexto id="cos-fecha" type="date" labelText="Fecha" value={v.fecha} onChange={campo("fecha")} />
         <CampoDePartida
