@@ -78,9 +78,8 @@ describe("Producir mezcla", () => {
       const url = new URL(String(entrada), "http://prueba");
       const metodo = init?.method ?? "GET";
       if (url.pathname === "/v1/produccion/materiales" && metodo === "GET") return json(MATERIALES);
-      if (url.pathname === "/v1/produccion/recetas/vigente" && metodo === "GET") {
-        return url.searchParams.get("producto") === "MZP-01" ? json(RECETA) : json({ detalle: "No hay receta vigente." }, 404);
-      }
+      // Una sola respuesta con las recetas que rigen ese día: lo que no tiene receta no aparece (y no hay 404 en la consola).
+      if (url.pathname === "/v1/produccion/recetas/vigentes" && metodo === "GET") return json([RECETA]);
       if (url.pathname === "/v1/produccion/producciones" && metodo === "POST") return produccion();
       return json({ detalle: "No encontrado." }, 404);
     });
@@ -149,6 +148,14 @@ describe("Producir mezcla", () => {
     const aviso = await screen.findByText("Producción registrada: 2,5 t de MZP-01.");
     await waitFor(() => expect(document.activeElement).toBe(aviso.closest("[tabindex]")));
     expect(screen.getByLabelText("Toneladas producidas")).toHaveValue("");
+  });
+
+  test("no pregunta por la receta de cada material: un insumo sin receta no dispara una petición que acaba en 404", async () => {
+    montar();
+    await elegir();
+    const rutas = fetchFalso.mock.calls.map((c) => new URL(String(c[0]), "http://prueba").pathname);
+    expect(rutas).not.toContain("/v1/produccion/recetas/vigente");
+    expect(rutas.filter((r) => r === "/v1/produccion/recetas/vigentes")).toHaveLength(1);
   });
 
   test("cambiar la fecha vuelve a buscar la receta que rige ese día", async () => {
