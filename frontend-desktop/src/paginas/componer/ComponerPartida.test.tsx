@@ -74,6 +74,14 @@ const DEL_CATALOGO = {
       dominio: "civil",
       tiene_composicion: true,
     },
+    {
+      clave: "partida:FIC-04",
+      codigo: "FIC-04",
+      descripcion: "Tubería ficticia sin composición",
+      unidad: "m",
+      dominio: "civil",
+      tiene_composicion: false,
+    },
   ],
   hay_mas: false,
 };
@@ -314,6 +322,27 @@ describe("ComponerPartida (Tarea 9)", () => {
       expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
     });
 
+    // N5 (ronda 4): lo que puso el catálogo antes se reemplaza sin aviso también por el camino del teclado (Flecha abajo y Enter
+    // en la lista, sin teclear en «Código»): el aviso queda vacío y la cabecera es la de la segunda partida.
+    test("N5: FIC-02 y luego FIC-03 con Flecha abajo y Enter, sin teclear: se reemplaza sin aviso", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+      const codigo = screen.getByRole("combobox", { name: "Código" });
+      await u.click(codigo);
+      await u.keyboard("{ArrowDown}"); // abre la lista
+      const segunda = await screen.findByRole("option", { name: /FIC-03/ }, ESPERA);
+      // Con las flechas hasta dejar activa FIC-03 (cuántas hacen falta depende de si la lista ya traía resultados al abrirse).
+      for (let i = 0; i < 4 && segunda.getAttribute("aria-selected") !== "true"; i++) await u.keyboard("{ArrowDown}");
+      expect(segunda).toHaveAttribute("aria-selected", "true");
+      await u.keyboard("{Enter}");
+      await waitFor(() => expect(codigo).toHaveValue("FIC-03"), ESPERA);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Piedra picada ficticia");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("kg");
+      expect(aviso().textContent).toBe("");
+    });
+
     // D: el aviso hablaba de una elección anterior y se quedaba al teclear en «Código».
     test("teclear en «Código» limpia el aviso; elegir otra partida de la lista deja el suyo", async () => {
       const u = userEvent.setup();
@@ -332,6 +361,77 @@ describe("ComponerPartida (Tarea 9)", () => {
       await u.type(descripcion, "Otra vez a mano");
       await elegirPartida(u, "compact", /FIC-02/);
       expect(aviso().textContent).toBe("Se cambió la descripción «Otra vez a mano» por la del catálogo, «Relleno compactado ficticio».");
+    });
+  });
+
+  // N6 (ronda 4, anterior a la tanda): al pasar a otra partida del catálogo sin composición, las tablas y el rendimiento que todavía
+  // son los de la precarga anterior se vacían; si la persona los había editado, se conservan y se avisa.
+  describe("pasar de una partida con composición a otra sin composición", () => {
+    const AVISO_SIN_COMPOSICION = "La partida «FIC-04» no tiene composición en el catálogo; se conservan las líneas que escribió.";
+
+    beforeEach(() => {
+      const delServidor = fetchFalso.getMockImplementation()!;
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        const ruta = String(entrada);
+        if (ruta === "/v1/composicion/partidas/FIC-02") {
+          rutas.push(ruta);
+          return json({
+            existe: true,
+            tablas: {
+              materiales: [{ descripcion: "Arena ficticia", unidad: "m3", cantidad: "2", precio: "10" }],
+              equipos: [],
+              mano_obra: [],
+            },
+            rendimiento_propuesto: "5",
+            hay_historial: true,
+          });
+        }
+        if (ruta === "/v1/composicion/partidas/FIC-04") {
+          rutas.push(ruta);
+          return json({ existe: true, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
+        }
+        return delServidor(entrada, init);
+      });
+    });
+
+    async function elegir(u: ReturnType<typeof userEvent.setup>, buscado: string, nombre: RegExp) {
+      const codigo = screen.getByRole("combobox", { name: "Código" });
+      await u.clear(codigo);
+      await u.type(codigo, buscado);
+      const lista = await screen.findByRole("listbox", { name: "Código" }, ESPERA);
+      await u.click(within(lista).getByRole("option", { name: nombre }));
+    }
+    const aviso = () => document.getElementById("componer-cabecera-aviso") as HTMLElement;
+
+    test("sin editar nada: las tablas y el rendimiento de FIC-02 se vacían", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegir(u, "compact", /FIC-02/);
+      const materiales = screen.getByRole("region", { name: "Materiales" });
+      expect(await within(materiales).findByRole("combobox", { name: "Descripción, fila 1" }, ESPERA)).toHaveValue("Arena ficticia");
+      expect(screen.getByLabelText("Rendimiento: unidades por día")).toHaveValue("5");
+
+      await elegir(u, "tuber", /FIC-04/);
+      await waitFor(() => expect(rutas).toContain("/v1/composicion/partidas/FIC-04"), ESPERA);
+      await waitFor(() => expect(within(materiales).queryByRole("combobox", { name: "Descripción, fila 1" })).toBeNull(), ESPERA);
+      expect(screen.getByLabelText("Rendimiento: unidades por día")).toHaveValue("");
+      expect(aviso().textContent).toBe("");
+    });
+
+    test("con una línea editada: se conserva y se avisa en la región viva de la cabecera", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegir(u, "compact", /FIC-02/);
+      const materiales = screen.getByRole("region", { name: "Materiales" });
+      await within(materiales).findByRole("combobox", { name: "Descripción, fila 1" }, ESPERA);
+      const precio = within(materiales).getByRole("textbox", { name: "Precio, fila 1" });
+      await u.clear(precio);
+      await u.type(precio, "12");
+
+      await elegir(u, "tuber", /FIC-04/);
+      await waitFor(() => expect(aviso().textContent).toBe(AVISO_SIN_COMPOSICION), ESPERA);
+      expect(within(materiales).getByRole("combobox", { name: "Descripción, fila 1" })).toHaveValue("Arena ficticia");
+      expect(within(materiales).getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("12");
     });
   });
 

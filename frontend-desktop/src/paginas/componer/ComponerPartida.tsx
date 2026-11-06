@@ -283,6 +283,14 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
   // reiniciar ese estado sin volver a montarse (dictamen de la ronda 3, MENOR 2 y WCAG 2.4.3).
   const [vueltaDePrecarga, setVueltaDePrecarga] = useState(0);
   const turnoPartida = useRef(0);
+  // N6 (ronda 4): lo que puso la ultima precarga (las tablas y el rendimiento) y lo que hay ahora en pantalla. Al pasar a otra
+  // partida que existe pero no trae composicion, lo que todavia es la precarga anterior se vacia; lo que la persona edito se
+  // conserva y se avisa. Es el mismo criterio de origen de las tablas de insumos: lo que no es de la persona se reemplaza.
+  const dePrecarga = useRef<{ tablas: Tablas | null; rendimiento: string | null }>({ tablas: null, rendimiento: null });
+  const vivo = useRef({ tablas, rendimiento: cabecera.rendimiento });
+  useEffect(() => {
+    vivo.current = { tablas, rendimiento: cabecera.rendimiento };
+  });
   useEffect(() => {
     const codigo = cabecera.codigo.trim();
     if (!codigo || codigo === precargado.current) return;
@@ -295,12 +303,29 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
           setErrorPrecarga(null);
           setSinHistorial(!r.hay_historial);
           const precarga = normalizarTablas(r.tablas);
-          if (r.existe && hayFilas(precarga)) {
-            setTablas(precarga);
-            setVueltaDePrecarga((n) => n + 1);
-          }
-          if (r.existe && r.rendimiento_propuesto !== null) {
-            setCabecera((c) => ({ ...c, rendimiento: r.rendimiento_propuesto as string }));
+          if (r.existe) {
+            const previa = dePrecarga.current;
+            if (hayFilas(precarga)) {
+              setTablas(precarga);
+              setVueltaDePrecarga((n) => n + 1);
+              dePrecarga.current.tablas = precarga;
+            } else if (previa.tablas !== null) {
+              if (JSON.stringify(vivo.current.tablas) === JSON.stringify(previa.tablas)) {
+                setTablas(tablasVacias());
+                setVueltaDePrecarga((n) => n + 1);
+              } else {
+                const dicho = `La partida «${codigo}» no tiene composición en el catálogo; se conservan las líneas que escribió.`;
+                setAvisoDeCabecera((a) => (a === "" ? dicho : `${a} ${dicho}`));
+              }
+              dePrecarga.current.tablas = null;
+            }
+            if (r.rendimiento_propuesto !== null) {
+              setCabecera((c) => ({ ...c, rendimiento: r.rendimiento_propuesto as string }));
+              dePrecarga.current.rendimiento = r.rendimiento_propuesto;
+            } else if (previa.rendimiento !== null) {
+              if (vivo.current.rendimiento === previa.rendimiento) setCabecera((c) => ({ ...c, rendimiento: "" }));
+              dePrecarga.current.rendimiento = null;
+            }
           }
         })
         .catch((e: unknown) => {

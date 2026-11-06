@@ -71,5 +71,6 @@ export function presentarValor(campo: string, valor: string, clave = ""): string
     const compuesto = resumenCompuesto(valor, clave);
     if (compuesto !== null) return compuesto;
   }
+  if (campo === "vertices") return verticesLegibles(valor);
   return valorDeCambio(campo, valor);
 }
