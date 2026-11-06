@@ -171,3 +171,91 @@ describe("Componer en el panel: Esc no vuelve «tecleado» lo que puso el catál
     expect(precio()).toHaveAccessibleDescription(expect.stringContaining("El catálogo tiene 9,00 Bs; se conserva el precio que escribió."));
   });
 });
+
+// D16 de la tanda de detalles: elegir en «Código» una partida existente llena la descripción y la unidad y, al rato, precarga
+// sus tablas. Un Esc que solo devolviera el código dejaría la partida mezclada (el código de antes con lo de la elegida). Se
+// sigue la excepción de la descripción de un insumo: ese Esc no cambia nada (ni cierra el panel) y el siguiente cierra. Datos
+// ficticios con la forma de `api/rutas/busqueda.py`.
+describe("Componer en el panel: Esc en «Código» tras elegir una partida existente", () => {
+  const fetchFalso = vi.fn<typeof fetch>();
+  const DEL_CATALOGO = {
+    rotulo: "Partidas del catálogo",
+    resultados: [
+      { clave: "partida:FIC-02", codigo: "FIC-02", descripcion: "Relleno compactado ficticio", unidad: "m3", dominio: "civil", tiene_composicion: true },
+    ],
+    hay_mas: false,
+  };
+  const ARENA = { descripcion: "Arena ficticia", unidad: "m3", cantidad: "1", precio: "5,00" };
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchFalso);
+    fetchFalso.mockReset();
+    fijarCsrf("tok");
+    fetchFalso.mockImplementation(async (entrada) => {
+      const ruta = String(entrada);
+      const url = new URL(ruta, "http://x");
+      if (ruta === "/v1/composicion/opciones") return json({ dominios: ["civil"], modalidades: ["jornal"] });
+      if (ruta === "/v1/composicion/evaluar") return json(VACIA);
+      if (ruta === "/v1/composicion/partidas/FIC-02") {
+        return json({ existe: true, tablas: { materiales: [ARENA], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
+      }
+      if (ruta.startsWith("/v1/composicion/partidas/")) {
+        return json({ existe: false, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
+      }
+      if (url.pathname === "/v1/composicion/referencia" || url.pathname === "/v1/composicion/similares") return json([]);
+      if (ruta === "/v1/carpeta") return json(CON_LISTA);
+      if (ruta === "/v1/consulta/unidades") return json({ unidades: [] });
+      if (ruta.startsWith("/v1/buscar/partidas?")) return json(DEL_CATALOGO);
+      if (ruta.startsWith("/v1/consulta/partidas_viales?")) return json({ tabla: "partidas_viales", resultados: [], hay_mas: false });
+      return json({ detalle: "No encontrado." }, 404);
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    fijarCsrf(null);
+    olvidarFormularios();
+  });
+
+  async function conLaPartidaElegida() {
+    const alCerrar = vi.fn();
+    const valor: Aplicacion = { sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
+    render(
+      <ContextoAplicacion.Provider value={valor}>
+        <MemoryRouter>
+          <ComponerEnPanel partida={{ codigo: "", descripcion: "" }} alCerrar={alCerrar} alGuardar={vi.fn()} />
+        </MemoryRouter>
+      </ContextoAplicacion.Provider>,
+    );
+    const panel = await screen.findByRole("complementary", { name: "Componer una partida" });
+    await within(panel).findByText("Precios en Bs", {}, { timeout: 3000 });
+    const codigo = within(panel).getByRole("combobox", { name: "Código" });
+    await userEvent.type(codigo, "relleno");
+    await userEvent.click(await screen.findByRole("option", { name: /FIC-02/ }, { timeout: 3000 }));
+    await waitFor(() => expect(codigo).toHaveValue("FIC-02"));
+    expect(within(panel).getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Descripción, fila 1" })).toHaveValue("Arena ficticia"), { timeout: 3000 });
+    return { panel, codigo, alCerrar };
+  }
+
+  test("el primer Esc no toca el código ni nada de lo precargado y el panel sigue; el segundo lo cierra", async () => {
+    const { panel, codigo, alCerrar } = await conLaPartidaElegida();
+    codigo.focus();
+    await userEvent.keyboard("{Escape}");
+    expect(codigo).toHaveValue("FIC-02");
+    expect(within(panel).getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+    expect(within(panel).getByLabelText("Unidad")).toHaveValue("m3");
+    expect(screen.getByRole("combobox", { name: "Descripción, fila 1" })).toHaveValue("Arena ficticia");
+    expect(alCerrar).not.toHaveBeenCalled();
+    await userEvent.keyboard("{Escape}");
+    expect(alCerrar).toHaveBeenCalledTimes(1);
+  });
+
+  test("lo escrito a mano después sí se devuelve con Esc: la excepción es solo de lo que llenó otras celdas", async () => {
+    const { codigo, alCerrar } = await conLaPartidaElegida();
+    await userEvent.type(codigo, "9");
+    expect(codigo).toHaveValue("FIC-029");
+    await userEvent.keyboard("{Escape}");
+    expect(alCerrar).not.toHaveBeenCalled();
+    expect(codigo).not.toHaveValue("FIC-029");
+  });
+});
