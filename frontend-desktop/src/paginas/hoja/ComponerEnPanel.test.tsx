@@ -174,7 +174,7 @@ describe("Componer en el panel: Esc no vuelve «tecleado» lo que puso el catál
 
 // D16 de la tanda de detalles: elegir en «Código» una partida existente llena la descripción y la unidad y, al rato, precarga
 // sus tablas. Un Esc que solo devolviera el código dejaría la partida mezclada (el código de antes con lo de la elegida). Se
-// sigue la excepción de la descripción de un insumo: ese Esc no cambia nada (ni cierra el panel) y el siguiente cierra. Datos
+// confirma el valor: la base del Esc de «Código» es la partida elegida (patrón de Fiori). Datos
 // ficticios con la forma de `api/rutas/busqueda.py`.
 describe("Componer en el panel: Esc en «Código» tras elegir una partida existente", () => {
   const fetchFalso = vi.fn<typeof fetch>();
@@ -216,19 +216,20 @@ describe("Componer en el panel: Esc en «Código» tras elegir una partida exist
     olvidarFormularios();
   });
 
-  async function conLaPartidaElegida() {
+  async function conLaPartidaElegida(codigoInicial = "") {
     const alCerrar = vi.fn();
     const valor: Aplicacion = { sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
     render(
       <ContextoAplicacion.Provider value={valor}>
         <MemoryRouter>
-          <ComponerEnPanel partida={{ codigo: "", descripcion: "" }} alCerrar={alCerrar} alGuardar={vi.fn()} />
+          <ComponerEnPanel partida={{ codigo: codigoInicial, descripcion: "" }} alCerrar={alCerrar} alGuardar={vi.fn()} />
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
     );
     const panel = await screen.findByRole("complementary", { name: "Componer una partida" });
     await within(panel).findByText("Precios en Bs", {}, { timeout: 3000 });
     const codigo = within(panel).getByRole("combobox", { name: "Código" });
+    await userEvent.clear(codigo);
     await userEvent.type(codigo, "relleno");
     await userEvent.click(await screen.findByRole("option", { name: /FIC-02/ }, { timeout: 3000 }));
     await waitFor(() => expect(codigo).toHaveValue("FIC-02"));
@@ -237,25 +238,30 @@ describe("Componer en el panel: Esc en «Código» tras elegir una partida exist
     return { panel, codigo, alCerrar };
   }
 
-  test("el primer Esc no toca el código ni nada de lo precargado y el panel sigue; el segundo lo cierra", async () => {
-    const { panel, codigo, alCerrar } = await conLaPartidaElegida();
-    codigo.focus();
-    await userEvent.keyboard("{Escape}");
+  function esDeLaPartidaElegida(panel: HTMLElement, codigo: HTMLElement) {
     expect(codigo).toHaveValue("FIC-02");
     expect(within(panel).getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
     expect(within(panel).getByLabelText("Unidad")).toHaveValue("m3");
     expect(screen.getByRole("combobox", { name: "Descripción, fila 1" })).toHaveValue("Arena ficticia");
-    expect(alCerrar).not.toHaveBeenCalled();
-    await userEvent.keyboard("{Escape}");
-    expect(alCerrar).toHaveBeenCalledTimes(1);
-  });
+  }
 
-  test("lo escrito a mano después sí se devuelve con Esc: la excepción es solo de lo que llenó otras celdas", async () => {
-    const { codigo, alCerrar } = await conLaPartidaElegida();
+  test.each([
+    ["con el código inicial vacío", ""],
+    ["con el código inicial «OBRA-04»", "OBRA-04"],
+  ])("lo tecleado después de elegir se devuelve con Esc al código elegido, sin partida mezclada (%s)", async (_caso, inicial) => {
+    const { panel, codigo, alCerrar } = await conLaPartidaElegida(inicial);
     await userEvent.type(codigo, "9");
     expect(codigo).toHaveValue("FIC-029");
     await userEvent.keyboard("{Escape}");
-    expect(alCerrar).not.toHaveBeenCalled();
-    expect(codigo).not.toHaveValue("FIC-029");
+    esDeLaPartidaElegida(panel, codigo);
+    expect(alCerrar).toHaveBeenCalledTimes(0);
+  });
+
+  test("elegir y pulsar Esc sin teclear no cambia nada y cierra el panel de una vez", async () => {
+    const { panel, codigo, alCerrar } = await conLaPartidaElegida();
+    codigo.focus();
+    await userEvent.keyboard("{Escape}");
+    esDeLaPartidaElegida(panel, codigo);
+    expect(alCerrar).toHaveBeenCalledTimes(1);
   });
 });
