@@ -2,8 +2,9 @@ import { Button, Table, TableBody, TableCell, TableHead, TableRow } from "@carbo
 import { InlineNotification, TableHeader } from "../../comun/carbonEs";
 import { useCallback, useId, useRef } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { cifraSiLoEs, formatoEsVe } from "../../indicadores/formatoEsVe";
-import { rotuloDeOrigen } from "./logica";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { presentarClave, presentarValor } from "../../comun/presentarCambio";
+import { rotuloDeCampo, rotuloDeObjeto } from "../../comun/rotulos";
 import type { Monto } from "./logica";
 import { FUENTE_DEL_CAMBIO, FUENTE_DE_LA_MEDIDA, motivoParaNoGuardar, textoDeCambiosAGuardar } from "./logicaGuardar";
 import type { ErrorDeGuardado } from "./logicaGuardar";
@@ -76,11 +77,11 @@ function ListaDeCambios({ cambios, primera }: { cambios: CambiosDelModal; primer
           <TableBody>
             {visibles.map((c, i) => (
               <TableRow key={i}>
-                <TableCell>{c.objeto}</TableCell>
-                <TableCell title={c.clave}>{rotuloDeOrigen(c.clave)}</TableCell>
-                <TableCell>{c.campo}</TableCell>
-                <TableCell>{cifraSiLoEs(c.antes)}</TableCell>
-                <TableCell>{cifraSiLoEs(c.despues)}</TableCell>
+                <TableCell>{rotuloDeObjeto(c.objeto)}</TableCell>
+                <TableCell title={c.clave}>{presentarClave(c.objeto, c.clave)}</TableCell>
+                <TableCell>{rotuloDeCampo(c.campo)}</TableCell>
+                <TableCell>{presentarValor(c.campo, c.antes)}</TableCell>
+                <TableCell>{presentarValor(c.campo, c.despues)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -1,8 +1,9 @@
 // «Revisar un paquete»: logica pura de la pagina. La interfaz no calcula montos: recibe de la API el exacto y el
 // texto como lo escribe la pantalla clasica, y solo les da formato es-VE.
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
+import { presentarClave, presentarValor } from "../../comun/presentarCambio";
 import { rotuloDeCampo as rotuloDeCampoDeCambio, rotuloDeObjeto } from "../../comun/rotulos";
-import { cifraSiLoEs, fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
+import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 
 // ui/paginas/revisar.py lo dice con Markdown («Elija el archivo `.silice` que recibió.»); aqui va sin marcas.
 export const SIN_ARCHIVO = "Elija el archivo .silice que recibió.";
@@ -51,10 +52,11 @@ export function formularioExcel(archivo: File, tipo: "presupuesto" | "revision")
 export const COLUMNAS_CAMBIOS: ColumnaDensa[] = [
   { clave: "version", titulo: "Versión" },
   { clave: "objeto", titulo: "Objeto", presentar: rotuloDeObjeto },
-  { clave: "clave", titulo: "Clave" },
+  // Clave, antes y después dependen del objeto y del campo de la misma fila: se pintan con la fila y el valor crudo va en el `title`.
+  { clave: "clave", titulo: "Clave", celda: (f) => <span title={f.clave}>{presentarClave(f.objeto ?? "", f.clave ?? "")}</span> },
   { clave: "campo", titulo: "Campo", presentar: rotuloDeCampoDeCambio },
-  { clave: "antes", titulo: "Antes", presentar: cifraSiLoEs },
-  { clave: "despues", titulo: "Después", presentar: cifraSiLoEs },
+  { clave: "antes", titulo: "Antes", celda: (f) => <span title={f.antes}>{presentarValor(f.campo ?? "", f.antes ?? "")}</span> },
+  { clave: "despues", titulo: "Después", celda: (f) => <span title={f.despues}>{presentarValor(f.campo ?? "", f.despues ?? "")}</span> },
   { clave: "fuente", titulo: "Fuente" },
   { clave: "responsable", titulo: "Responsable" },
   { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },
