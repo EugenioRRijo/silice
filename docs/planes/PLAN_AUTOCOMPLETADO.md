@@ -26,7 +26,7 @@ con su sección «Enmiendas 2026-11-05».
 | AC1b | El precio que se llena | Sale de la lista con que arma la carpeta a la «Fecha» de la composición; en otra moneda no se copia y se avisa; sin fecha o sin lista, solo descripción y unidad | ✔ |
 | AC2 | Partida del contrato y serie de índices | Control y Reajuste sugieren solo las partidas de la versión del contrato; la valuación no admite una fuera de él (salvo lista recortada); las series salen de una ruta de solo lectura | ✔ |
 | AC2c | Campos en celda | Sin etiqueta a la vista ni botón «Borrar» en celda; fuera de celda, sin cambios | ✔ |
-| AC3 | Escenarios y Simulador | Insumo con la descripción exacta; selección múltiple con etiquetas quitables y anuncios; Escenarios dice qué precios no cambiaron nada y el Simulador envía una lista (el texto con comas se sigue aceptando) | ✔ |
+| AC3 | Escenarios y Simulador | Insumo con la descripción exacta; selección múltiple con etiquetas quitables y anuncios; Escenarios dice qué precios no cambiaron nada y el Simulador envía una lista (el texto con comas se sigue aceptando; `null` son todos, una lista vacía o un texto de solo comas, ninguno; hasta 200 nombres y 20.000 caracteres) | ✔ |
 | AC4 | Unidad, moneda, versión y proveedor | Unidades del catálogo agrupadas con el normalizador del núcleo; moneda y versión como `Select`; proveedores de cotizaciones activas, admitiendo uno nuevo | ✔ |
 
 Reglas comunes: TDD (rojo en un commit aparte), `core/` intacto, toda ruta nueva de solo lectura con su fila en
