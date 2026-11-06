@@ -33,7 +33,7 @@ from tests.fixtures.sesion_web import copiar_instalacion, plantilla_con_cuentas
 CALCULOS = "/v1/produccion/calculos"
 HORA_DEL_SERVIDOR = datetime(2026, 12, 1, 7, 30, 0)
 EMPRESA = ("Constructora Ejemplo, C.A.", "J-00000000-0")
-SIN_EMPRESA = "Configure la empresa en Administración antes de publicar."
+SIN_EMPRESA = "Configure la empresa en la Cuenta («Empresa y tema») antes de publicar."
 
 
 @pytest.fixture(scope="module")

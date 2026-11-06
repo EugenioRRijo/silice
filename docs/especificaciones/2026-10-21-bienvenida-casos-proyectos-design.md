@@ -327,7 +327,7 @@ Ver D-1. En este documento el término de interfaz es **«carpeta de trabajo»**
 | Acción | Quién (acción de `permisos.py`) | Base |
 |---|---|---|
 | Ver la lista y el resumen de la actual | cualquier cuenta con sesión | `GET /v1/casos` |
-| Abrir otra carpeta | `CAMBIAR_CASO` (arma, administrador) | ya existe |
+| Abrir otra carpeta | `CAMBIAR_CASO` (arma, administrador); **enmienda 2026-11-05** (decisión de Eugenio): `ABRIR_CARPETA` (arma, revisa, administrador) | ya existe |
 | **Crear** una carpeta | `CAMBIAR_CASO` | la clásica la ofrecía dentro del bloque cerrado por `puede_cambiar_de_caso` (`I:97, 110`) |
 | **Subir** un `.db` | `CAMBIAR_CASO` | idem (`I:114`) |
 | **Estrenar la demostración** | `EDITAR_HOJA` (solo arma) | `I:131` (D-3) |

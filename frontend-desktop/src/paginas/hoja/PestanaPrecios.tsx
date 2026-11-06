@@ -31,7 +31,7 @@ const ESTADO_CORRECTO = "OK";
 
 // DESIGN.md: el atípico (RF-100) va en morado. La severidad sigue diciendo «Advertencia» con su ícono; solo su color
 // toma el token de los atípicos, nunca el color solo.
-const MORADO_ATIPICO = { "--silice-sev-advertencia": "var(--silice-atipico)" } as CSSProperties;
+const MORADO_ATIPICO = { "--silice-sev-advertencia": "var(--silice-atipico)", "--silice-sev-advertencia-icono": "var(--silice-atipico)" } as CSSProperties;
 
 // Una celda tal como la manda la API: texto, `{texto, exacto}` (un monto) o null. La tasa se lee con su exacto (puede
 // tener más de dos decimales) y las fechas ISO como día/mes/año. La interfaz no calcula ni redondea.

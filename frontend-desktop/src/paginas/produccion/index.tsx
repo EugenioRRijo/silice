@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { EnlacesDeCostos } from "../../comun/EnlacesDeCostos";
+import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import { PanelArenera } from "../inicio/PanelArenera";
 import type { ExistenciaRespuesta } from "../inicio/PanelArenera";
@@ -27,11 +28,11 @@ export default function PaginaProduccion() {
       )}
       {puedeVerArenera && (
         <p className="cds--type-body-compact-01">
-          <Link className="cds--link" to="/receta_planta">
+          <Link className="cds--link" to={rutaOPendientes("receta_planta")}>
             Receta de la planta
           </Link>{" "}
           ·{" "}
-          <Link className="cds--link" to="/producir_mezcla">
+          <Link className="cds--link" to={rutaOPendientes("producir_mezcla")}>
             Producir mezcla
           </Link>
         </p>

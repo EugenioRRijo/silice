@@ -30,7 +30,7 @@
   @include type.type-style("label-01");
 }
 
-// La zona de obras ocupa lo que sobra: su cabecera y «Nueva obra» quedan fijas y solo el arbol se desplaza.
+// La zona de obras ocupa lo que sobra: su cabecera y «Nueva obra» quedan fijas y solo la lista de obras se desplaza.
 .silice-marco-lateral__obras {
   display: flex;
   flex: 1 1 auto;
@@ -69,7 +69,7 @@
   @include type.type-style("label-01");
 }
 
-// Una fila del arbol, de Pendientes o de Empresa. La raya del activo ocupa su sitio siempre (transparente) para que el
+// Una fila de Pendientes, de una obra o de Empresa. La raya del activo ocupa su sitio siempre (transparente) para que el
 // texto no se mueva al activarse.
 .silice-marco-lateral__fila {
   display: flex;
@@ -108,20 +108,6 @@
   margin-block-start: 0.5rem;
 }
 
-.silice-marco-lateral__obra {
-  padding-inline-start: 0.5rem;
-}
-
-// Las secciones de la obra abierta, unidas por una linea guia a la izquierda.
-.silice-marco-lateral__secciones {
-  margin-inline-start: 1.25rem;
-  border-inline-start: 1px solid var(--cds-border-strong-01);
-}
-
-.silice-marco-lateral__seccion {
-  padding-inline-start: 0.75rem;
-}
-
 .silice-marco-lateral__aviso {
   margin: 0;
   padding: 0.5rem 1rem;
@@ -145,14 +131,15 @@
   }
 }
 
-.silice-marco-lateral__empresa {
+// La zona «Costos y producción» (antes Empresa, F6, T6): no cede alto a la lista de obras.
+.silice-marco-lateral__costos {
   flex: none;
   padding-block-end: 0.5rem;
 }
 
-// «Empresa» con letra grande: el titulo pasa a ser un boton que pliega las entradas (F4, Tarea 0). Toma la letra, el color y
+// «Costos y producción» con letra grande: el titulo pasa a ser un boton que pliega los espacios (F4, Tarea 0; F6, T6). Toma la letra, el color y
 // las mayusculas del titulo para no parecer un control distinto; el foco usa el mismo contorno que las filas.
-.silice-marco-lateral__empresa-boton {
+.silice-marco-lateral__costos-boton {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -240,8 +227,8 @@
     min-block-size: 10rem;
   }
 
-  // El boton de Empresa es un blanco de puntero: no baja de 1,5 rem aunque el titulo se compacte.
-  .silice-marco-lateral__empresa-boton {
+  // El boton de la zona es un blanco de puntero: no baja de 1,5 rem aunque el titulo se compacte.
+  .silice-marco-lateral__costos-boton {
     min-block-size: 1.5rem;
   }
 }

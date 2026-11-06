@@ -26,6 +26,9 @@ MATRIZ = (
     (Accion.LEER_PROYECTO, True, True, False),
     (Accion.REVISAR_PAQUETE, False, True, False),
     (Accion.APROBAR_VERSION, True, True, False),
+    # Enmienda 2026-11-05 (decisión de Eugenio): quien revisa abre y lista todas las carpetas;
+    # crear y subir carpetas sigue en `CAMBIAR_CASO`, con sus roles de antes.
+    (Accion.ABRIR_CARPETA, True, True, True),
     (Accion.CAMBIAR_CASO, True, False, True),
     (Accion.ADMINISTRAR_CUENTAS, False, False, True),
     (Accion.ADMINISTRAR_EMPRESA, False, False, True),

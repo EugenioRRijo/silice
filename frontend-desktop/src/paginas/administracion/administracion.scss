@@ -6,6 +6,26 @@
   padding: 1.5rem 1rem 2rem;
 }
 
+// La capa de nivel dos que envuelve los bloques de una seccion de la Cuenta (F6, T6): se apilan con el mismo espacio.
+.silice-adm__capa {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.silice-adm__bloque {
+  display: grid;
+  gap: 1rem;
+}
+
+// Dentro de la Cuenta el marco pone el h1 y el relleno de la pantalla (`silice-cuenta-seccion`): el contenido no suma otro.
+.silice-cuenta-seccion .silice-adm {
+  padding: 0;
+}
+
+.silice-cuenta-seccion .silice-adm__secciones {
+  padding-block-start: 0;
+}
+
 .silice-adm__secciones {
   display: grid;
   gap: 1.5rem;

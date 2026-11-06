@@ -88,6 +88,7 @@ ACCIONES_ADMINISTRADOR = [
     "registrar_costos_produccion",  # plan vial, Tarea 1
     "publicar_costo_propio",  # plan vial, Tarea 5: solo el administrador
     "ver_riesgo",  # plan vial, Tarea 15
+    "abrir_carpeta",  # enmienda 2026-11-05
     "cambiar_caso",
     "administrar_cuentas",
     "administrar_empresa",
@@ -108,6 +109,7 @@ ACCIONES_ADMINISTRADOR_Y_ARMA = [
     "leer_proyecto",
     "ver_riesgo",
     "aprobar_version",
+    "abrir_carpeta",
     "cambiar_caso",
     "administrar_cuentas",
     "administrar_empresa",

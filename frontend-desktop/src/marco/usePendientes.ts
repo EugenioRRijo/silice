@@ -3,7 +3,7 @@ import { useLocation } from "react-router";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { PendienteDeObra, PendientesTodasRespuesta } from "../api/tipos";
 import { mensajeDeError } from "../comun/errores";
-import { RUTA_DE_PENDIENTES } from "./secciones";
+import { RUTA_DE_INICIO, RUTA_VIEJA_DE_PENDIENTES, esRutaDeInicio } from "./secciones";
 
 export type EstadoPendientes =
   | { estado: "cargando" }
@@ -11,6 +11,9 @@ export type EstadoPendientes =
   | { estado: "listo"; pendientes: PendienteDeObra[]; carpetasOmitidas: number };
 
 export type PendientesDelMarco = EstadoPendientes & { recargar: () => void };
+
+// Las rutas que redirigen a Inicio: la lectura que empieza en ellas ya es la de Inicio.
+const esEntradaDeInicio = (pathname: string) => pathname === RUTA_DE_INICIO || pathname === "/inicio" || pathname === RUTA_VIEJA_DE_PENDIENTES;
 
 const RUTA = "/v1/obras/pendientes/todas";
 const CARGANDO: EstadoPendientes = { estado: "cargando" };
@@ -20,10 +23,10 @@ const NINGUNO: EstadoPendientes = { estado: "listo", pendientes: [], carpetasOmi
 // reparte por `ContextoPendientes` a la bandeja y a la barra lateral, que no vuelven a pedirlos.
 // - Sin `leer_proyecto` (el administrador) la API contestaría 403: no se piden y no hay ninguno (sin error). Un 403 que
 //   llegue igual se lee del mismo modo.
-// - Cada vez que se entra en `#/pendientes` se vuelven a pedir (foco 4: lo resuelto en la obra no se queda). Una lectura
-//   que empezó antes de entrar (en otra ruta, o antes de la redirección de `#/`) se descarta y se vuelve a pedir, para
-//   que nunca queden datos de antes de entrar; solo no se repite la que ya empezó estando en Pendientes (la navegación
-//   puede cambiar la `key` dos veces seguidas).
+// - Cada vez que se entra en Inicio (`#/inicio/general` o `#/inicio/pendientes`, F6 T8) se vuelven a pedir (foco 4: lo
+//   resuelto en la obra no se queda). Una lectura que empezó antes de entrar (en otra ruta, o antes de la redirección de
+//   `#/` o de `#/pendientes`) se descarta y se vuelve a pedir, para que nunca queden datos de antes de entrar; solo no se
+//   repite la que ya empezó estando en Inicio (la navegación puede cambiar la `key` dos veces seguidas).
 // - Un 401 da la sesión por vencida.
 export function useCargaDePendientes(acciones: readonly string[], alExpirar: () => void): PendientesDelMarco {
   const puedeLeer = acciones.includes("leer_proyecto");
@@ -31,18 +34,18 @@ export function useCargaDePendientes(acciones: readonly string[], alExpirar: () 
   const [intento, setIntento] = useState(0);
   const [estado, setEstado] = useState<EstadoPendientes>(CARGANDO);
   const [entrada, setEntrada] = useState(key);
-  // La lectura en curso empezó estando en Pendientes (entonces no hace falta repetirla al entrar). Una que empieza en
-  // «/» cuenta como tal: esa ruta redirige a Pendientes y repetirla pediría dos veces una lectura cara.
-  const [leyendoEnPendientes, setLeyendoEnPendientes] = useState(pathname === RUTA_DE_PENDIENTES || pathname === "/");
+  // La lectura en curso empezó estando en Inicio (entonces no hace falta repetirla al entrar). Una que empieza en `/` o en
+  // la dirección vieja `/pendientes` cuenta como tal: esas rutas redirigen a Inicio y repetirla pediría dos veces una lectura cara.
+  const [leyendoEnInicio, setLeyendoEnInicio] = useState(esRutaDeInicio(pathname) || esEntradaDeInicio(pathname));
   // Al salir a otra ruta esa lectura ya no cuenta: al volver se pide de nuevo (lo resuelto fuera no se queda).
-  if (leyendoEnPendientes && pathname !== RUTA_DE_PENDIENTES && pathname !== "/") setLeyendoEnPendientes(false);
+  if (leyendoEnInicio && !esRutaDeInicio(pathname) && !esEntradaDeInicio(pathname)) setLeyendoEnInicio(false);
   // Se ajusta durante el dibujo (sin efecto), como el aviso del marco.
-  if (pathname === RUTA_DE_PENDIENTES && key !== entrada) {
+  if (esRutaDeInicio(pathname) && key !== entrada) {
     setEntrada(key);
-    if (estado.estado !== "cargando" || !leyendoEnPendientes) {
+    if (estado.estado !== "cargando" || !leyendoEnInicio) {
       setEstado(CARGANDO);
       setIntento((n) => n + 1);
-      setLeyendoEnPendientes(true);
+      setLeyendoEnInicio(true);
     }
   }
 

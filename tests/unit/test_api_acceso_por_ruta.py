@@ -9,7 +9,9 @@ también (`seguridad.permisos.PERMISOS` es lo que se prueba, no la fuente):
 - escritura de la hoja (`EDITAR_HOJA`, arma): Elaborar, Actualizar precios (que es quien carga una
   lista con `crear_lista_desde_archivo`, `ui/paginas/actualizacion.py:121`), Escenarios, Componer;
 - `POST /v1/auditorias` reaudita un paquete como «Revisar un paquete» (`REVISAR_PAQUETE`, revisa);
-- `POST /v1/casos/actual`, `CAMBIAR_CASO` (arma y administrador); `GET /v1/casos`, cualquier rol.
+- `POST`/`DELETE /v1/casos/actual`, `ABRIR_CARPETA` (arma, revisa y administrador; enmienda
+  2026-11-05); crear y subir carpetas, `CAMBIAR_CASO` (arma y administrador); `GET /v1/casos`,
+  cualquier rol.
 
 Tres pruebas: (1) la tabla cubre exactamente las rutas de la aplicación; (2) por rol, cada ruta deja
 pasar o rechaza con 403 según la tabla; (3) ninguna ruta queda abierta salvo `/salud`, la entrada
@@ -67,6 +69,7 @@ LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CUENTAS_ADM, CONTROLAR, DECIDIR
     "decidir_recuperacion",
 )
 ENTREGAR = "entregar_paquete"
+ABRIR = "abrir_carpeta"  # enmienda 2026-11-05: abrir y listar otras carpetas
 REAJUSTAR = "convertir_y_reajustar"
 OPERAR = "operar_arenera"
 COSTOS = "registrar_costos_produccion"
@@ -95,6 +98,7 @@ ROLES = {
     PUBLICAR: {"administrador"},
     VER_RIESGO: {"arma", "revisa", "administrador"},
     MODULOS: {"administrador"},
+    ABRIR: {"arma", "revisa", "administrador"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CONTROLAR: {"arma"},
     DECIDIR: {"arma"},
@@ -149,8 +153,8 @@ TABLA = {
     ("POST", "/v1/control/recuperacion/opciones"): CONTROLAR,
     ("POST", "/v1/control/recuperacion/elegir"): DECIDIR,
     ("GET", "/v1/casos"): CUALQUIERA,
-    ("POST", "/v1/casos/actual"): CAMBIAR_CASO,
-    ("DELETE", "/v1/casos/actual"): CAMBIAR_CASO,  # MOD-3a: volver a la carpeta de la empresa
+    ("POST", "/v1/casos/actual"): ABRIR,
+    ("DELETE", "/v1/casos/actual"): ABRIR,  # MOD-3a: volver a la carpeta de la empresa
     # BCP-2: carpetas de trabajo (C0 a C3)
     ("GET", "/v1/casos/actual"): CUALQUIERA,
     ("POST", "/v1/casos"): CAMBIAR_CASO,
@@ -171,6 +175,7 @@ TABLA = {
     ("GET", "/v1/obras/pendientes"): EDITAR,
     ("GET", "/v1/obras/todas"): LEER,  # rediseño del marco, T3; con la clave, solo el proceso
     ("GET", "/v1/obras/pendientes/todas"): LEER,  # rediseño F3, T1; el alcance lo da el rol
+    ("GET", "/v1/obras/resumen/todas"): LEER,  # rediseño F6, T7; con la clave, solo el proceso
     ("GET", "/v1/mercado/{lado}/{codigo}"): EDITAR,  # T14: estudio de mercado
     ("POST", "/v1/mercado/observaciones"): EDITAR,
     ("POST", "/v1/mercado/observaciones/{observacion_id}/anular"): EDITAR,

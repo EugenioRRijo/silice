@@ -1,14 +1,8 @@
 // La lógica pura de la bandeja de Pendientes (rediseño F3, Tarea 2): adónde lleva cada pendiente, cuántos tiene cada
 // obra y cómo se mueve la elección con el teclado. Sin React, probada aparte (logica.test.ts).
 import type { PendienteDeObra } from "../../api/tipos";
-import { ENTRADAS_DE_EMPRESA, SECCIONES_DE_OBRA, rutaDeEmpresa, rutaDeObra, seccionPorId } from "../../marco/secciones";
-import type { SeccionDef } from "../../marco/secciones";
-
-// D-F3-2: las dos pantallas que todavía no son sección van a la que las absorberá (especificación, §6.2).
-const ABSORBIDAS = new Map<string, SeccionDef["id"]>([
-  ["actualizacion", "mercado"],
-  ["entregar", "aprobaciones"],
-]);
+import { SECCIONES_DE_CUENTA, espacioDeLaPagina, rutaOPendientes, subvistaDeLaPagina } from "../../marco/espacios";
+import { SECCIONES_DE_OBRA, seccionPorId } from "../../marco/secciones";
 
 interface Destino {
   ruta: string;
@@ -16,14 +10,17 @@ interface Destino {
   pagina: string;
 }
 
-// La sección de la obra que monta la pantalla de la acción, o la que la absorberá; si no, la entrada de Empresa que la
-// monta; y una pantalla desconocida, el Resumen de la obra (nunca un enlace muerto).
+// La sección de la obra que monta la pantalla de la acción o, si es una subvista («actualizar precios», «entregar»…), la
+// propia subvista (contrato de rutas 2.4, tabla `SUBVISTAS`); si no, la herramienta de un espacio (Precios, Auditoría,
+// Producción) o la sección de la Cuenta que la monta; y una pantalla desconocida, el Resumen de la obra (nunca un enlace muerto).
+// `pagina` es siempre la pantalla que se monta al llegar: con ella la bandeja sabe si la cuenta puede usarla.
 function destino(carpeta: string | null, obraId: number, id: string): Destino {
-  const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === id) ?? seccionPorId(ABSORBIDAS.get(id) ?? "");
-  const entrada = seccion ? undefined : ENTRADAS_DE_EMPRESA.find((e) => e.pagina === id);
-  if (entrada) return { ruta: rutaDeEmpresa(entrada.id), pagina: entrada.pagina };
-  const llegada = seccion ?? seccionPorId("resumen");
-  return { ruta: rutaDeObra(carpeta, obraId, llegada?.id ?? "resumen"), pagina: llegada?.pagina ?? id };
+  const obra = { carpeta, obraId };
+  const deLaObra = SECCIONES_DE_OBRA.some((s) => s.pagina === id) || subvistaDeLaPagina(id) !== undefined;
+  const fueraDeLaObra = !deLaObra && (espacioDeLaPagina(id) !== undefined || SECCIONES_DE_CUENTA.some((c) => c.pagina === id));
+  if (fueraDeLaObra) return { ruta: rutaOPendientes(id), pagina: id };
+  const pagina = deLaObra ? id : (seccionPorId("resumen")?.pagina ?? id);
+  return { ruta: rutaOPendientes(pagina, obra), pagina };
 }
 
 // Adónde lleva una acción (`accion.pagina`) de una obra: lo usan la bandeja, por cada pendiente, y el Resumen, por la

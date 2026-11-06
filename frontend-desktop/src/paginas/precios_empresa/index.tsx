@@ -62,7 +62,7 @@ type Creacion =
 
 // DESIGN.md: el atipico (RF-100) va en morado. La severidad sigue diciendo «Advertencia» con su icono; solo su color
 // toma el token de los atipicos (como los halos del visor), nunca el color solo.
-const MORADO_ATIPICO = { "--silice-sev-advertencia": "var(--silice-atipico)" } as CSSProperties;
+const MORADO_ATIPICO = { "--silice-sev-advertencia": "var(--silice-atipico)", "--silice-sev-advertencia-icono": "var(--silice-atipico)" } as CSSProperties;
 
 type Busqueda =
   | { tipo: "ninguna" }

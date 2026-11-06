@@ -3,6 +3,8 @@ import { FranjaDelPaso } from "../../comun/FranjaDelPaso";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useFocoAlCerrar } from "./AgregarPartida";
 import { AprobacionDeVersion } from "./AprobacionDeVersion";
+import { BotonExcel } from "./BotonExcel";
+import { EstadoDelBorrador } from "./EstadoDelBorrador";
 import type { BorradorAbierto } from "./logica";
 import { gravesDe, necesitaLaAprobacion, pasoDelPresupuesto } from "./pasoDelPresupuesto";
 import type { AccionDelPresupuesto, EntradaDelPaso } from "./pasoDelPresupuesto";
@@ -15,6 +17,10 @@ import { useAprobacionDeVersion } from "./useAprobacionDeVersion";
 // juntan: la regla del paso (`pasoDelPresupuesto`), su botón (el único principal de la pantalla) y lo que se ve de la
 // aprobación (`AprobacionDeVersion`). Lo monta solo el cuerpo de la Hoja, con una `key` por obra y versión: cambiar de
 // versión empieza de cero, como antes.
+//
+// Cabecera compacta (2026-11-05): es toda la cabecera del Presupuesto, en este orden de lectura y de tabulación: la línea de
+// estado (`EstadoDelBorrador`, con la etiqueta de aprobación dentro) y la franja de acciones (el paso con su botón principal
+// y, en la misma fila, «Descargar Excel»). Sin paso que dar, «Descargar Excel» va solo en su fila.
 
 // A estos ids vuelve el foco al cerrar el diálogo que abre el botón. El de guardar lo usa `useGuardadoDeLaPagina`.
 const ID_GUARDAR = "hoja-guardar-version";
@@ -37,6 +43,8 @@ interface Props {
   alGuardar: () => void;
   alVerRevision: () => void;
   alHacerVersionNueva: () => void;
+  // «Descartar cambios» de la línea de estado.
+  alDescartar: () => void;
 }
 
 export function FranjaDelPresupuesto({
@@ -47,6 +55,7 @@ export function FranjaDelPresupuesto({
   alGuardar,
   alVerRevision,
   alHacerVersionNueva,
+  alDescartar,
 }: Props) {
   const { base, resumen } = borrador;
   const version = base.version;
@@ -98,30 +107,41 @@ export function FranjaDelPresupuesto({
 
   return (
     <>
-      {paso !== null && (
-        <FranjaDelPaso
-          tipo={paso.tipo}
-          texto={paso.texto}
-          accion={
-            paso.accion === null
-              ? undefined
-              : { texto: textoDelBoton(paso.accion, version === null), alPulsar: acciones[paso.accion], id: IDS[paso.accion] }
-          }
-        />
-      )}
-      {version !== null && (
-        <AprobacionDeVersion
-          id={idZona}
-          proyecto={proyecto}
-          version={version}
-          cambios={resumen.cambios}
-          lectura={lectura}
-          aviso={aviso}
-          enviando={enviando}
-          alEnviado={enviado}
-          alCancelarEnvio={cancelarEnvio}
-        />
-      )}
+      <EstadoDelBorrador
+        borrador={borrador}
+        alDescartar={alDescartar}
+        puedeEditar={puedeEditar}
+        aprobacion={
+          version !== null && (
+            <AprobacionDeVersion
+              id={idZona}
+              proyecto={proyecto}
+              version={version}
+              cambios={resumen.cambios}
+              lectura={lectura}
+              aviso={aviso}
+              enviando={enviando}
+              alEnviado={enviado}
+              alCancelarEnvio={cancelarEnvio}
+            />
+          )
+        }
+      />
+      {/* El botón de Excel no se vuelve a montar cuando el paso aparece o desaparece (cambia la lectura de la aprobación). */}
+      <div className="silice-hoja__acciones-del-paso">
+        {paso !== null && (
+          <FranjaDelPaso
+            tipo={paso.tipo}
+            texto={paso.texto}
+            accion={
+              paso.accion === null
+                ? undefined
+                : { texto: textoDelBoton(paso.accion, version === null), alPulsar: acciones[paso.accion], id: IDS[paso.accion] }
+            }
+          />
+        )}
+        <BotonExcel id={borrador.id} />
+      </div>
     </>
   );
 }

@@ -187,7 +187,7 @@ export function useObjetivosDeMercado(
           {AYUDA_OBJETIVO}
         </p>
       )}
-      <p role="status" className="cds--type-helper-text-01">
+      <p role="status" className="silice-hoja__region-viva cds--type-helper-text-01">
         {error ?? ""}
       </p>
     </>

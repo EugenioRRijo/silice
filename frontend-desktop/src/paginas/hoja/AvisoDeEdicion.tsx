@@ -3,10 +3,11 @@ import { InlineNotification } from "../../comun/carbonEs";
 import type { ReactNode } from "react";
 import type { EnvioDeSeccion, ErrorDeSeccion } from "./useEdicionDeSeccion";
 
-// Lo que se dice mientras el borrador del servidor recibe lo escrito (región viva: se anuncia sin mover el foco).
+// Lo que se dice mientras el borrador del servidor recibe lo escrito (región viva: se anuncia sin mover el foco). Vacía, sale
+// del flujo (`.silice-hoja__region-viva:empty`): en la rejilla de la pestaña cada hijo vacío sumaba un hueco de 1,5 rem.
 export function AvisoDeEnvio({ envio }: { envio: EnvioDeSeccion }) {
   return (
-    <p className="cds--type-helper-text-01" aria-live="polite">
+    <p className="silice-hoja__region-viva cds--type-helper-text-01" aria-live="polite">
       {envio === "quieto" ? "" : "Aplicando los cambios al borrador…"}
     </p>
   );

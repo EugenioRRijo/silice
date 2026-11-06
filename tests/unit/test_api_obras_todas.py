@@ -7,8 +7,12 @@ mayúsculas) y el nombre que acepta `POST /v1/casos/actual` (`Carpeta Norte.db`)
 
 Clave de API: como en las demás rutas de `obras` y en `GET /v1/casos`, la clave ve el caso del
 proceso (no elige carpeta: `POST /v1/casos/actual` le da 409), así que lista solo la carpeta de la
-empresa. Sin `CAMBIAR_CASO` (revisa) solo se ve la carpeta abierta en la sesión: nunca una obra
-que al abrirla diera 403 (foco de revisión 1).
+empresa. Quien tiene `ABRIR_CARPETA` (arma, revisa y administrador; enmienda 2026-11-05, decisión
+de Eugenio: quien revisa ve todas las carpetas) lista todas; sin él, solo la carpeta abierta en la
+sesión: nunca una obra que al abrirla diera 403 (foco de revisión 1).
+
+La demostración (`demostracion.db`, con «Obra inventada») nunca se mezcla con las carpetas de la
+empresa (MAYOR 2 del árbitro final de F6): fuera de ella no se lista; con ella abierta, solo ella.
 """
 
 from __future__ import annotations
@@ -19,12 +23,16 @@ from contextlib import closing
 from pathlib import Path
 
 import pytest
+from starlette.requests import Request
 
 from api import caso_web, dependencias
 from api.main import app
+from api.rutas import obras as rutas_obras
 from operacion import config
 from operacion.base_datos import preparar_base
 from seguridad import sesiones
+from seguridad.permisos import PERMISOS, Rol
+from seguridad.sesiones import SesionActiva
 from tests.fixtures.carpetas_trabajo import arbol
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
@@ -41,6 +49,8 @@ OBRAS = {
     SUR: ["Vialidad"],
 }
 TITULO_EMPRESA = "Carpeta de la empresa"
+DEMO = "demostracion.db"  # solo en las pruebas de la demostración
+OBRAS_DE_LA_DEMO = {DEMO: ["Obra inventada"]}
 
 
 def _obra(carpeta: str | None, titulo: str, obra: str) -> dict:
@@ -51,13 +61,14 @@ EMPRESA_1 = _obra(None, TITULO_EMPRESA, "Edificio Central")
 CLINICA = _obra(NORTE, "Carpeta Norte", "Clínica")
 GALPON = _obra(NORTE, "Carpeta Norte", "Galpón")
 VIALIDAD = _obra(SUR, "Carpeta Sur", "Vialidad")
+INVENTADA = _obra(DEMO, "demostracion", "Obra inventada")
 
 
 @pytest.fixture(scope="module")
 def _plantillas(tmp_path_factory) -> dict[str, Path]:
     carpeta = tmp_path_factory.mktemp("plantillas_obras_todas")
     plantillas = {"instalacion": plantilla_con_cuentas(carpeta)}
-    for nombre, obras in OBRAS.items():
+    for nombre, obras in {**OBRAS, **OBRAS_DE_LA_DEMO}.items():
         ruta = carpeta / nombre
         preparar_base(ruta)
         with closing(sqlite3.connect(ruta)) as conexion:
@@ -87,7 +98,7 @@ def _entorno(_plantillas: dict[str, Path], monkeypatch: pytest.MonkeyPatch) -> I
 
 
 def _abrir(ficha: str, nombre: str) -> None:
-    """Deja la carpeta abierta en la ficha sin pasar por la ruta (que exige `CAMBIAR_CASO`)."""
+    """Deja la carpeta abierta en la ficha sin pasar por la ruta (que exige `ABRIR_CARPETA`)."""
     caso_web.fijar(sesiones.huella_de(ficha), config.carpeta_casos() / nombre)
 
 
@@ -96,7 +107,7 @@ def _filas(cuerpo: dict) -> list[dict]:
 
 
 def test_lista_obras_de_todas_las_carpetas() -> None:
-    navegador, _ = con_cuenta(app, "ana")  # arma: tiene CAMBIAR_CASO
+    navegador, _ = con_cuenta(app, "ana")  # arma: tiene ABRIR_CARPETA
     respuesta = navegador.get("/v1/obras/todas")
     assert respuesta.status_code == 200, respuesta.text
     cuerpo = respuesta.json()
@@ -124,17 +135,63 @@ def test_la_carpeta_actual_es_la_abierta_en_la_sesion() -> None:
     assert cuerpo["carpeta_actual_titulo"] == "Carpeta Sur"
 
 
-def test_sin_cambiar_caso_solo_la_carpeta_abierta() -> None:
-    navegador, ficha = con_cuenta(app, "rita")  # revisa: LEER sí, CAMBIAR_CASO no
+def test_quien_revisa_ve_las_obras_de_todas_las_carpetas() -> None:
+    """Enmienda 2026-11-05: revisa tiene `ABRIR_CARPETA`; con Sur abierta ve también las demás."""
+    navegador, ficha = con_cuenta(app, "rita")  # revisa: LEER y ABRIR_CARPETA
+    _abrir(ficha, SUR)
+    cuerpo = navegador.get("/v1/obras/todas").json()
+    assert _filas(cuerpo) == [EMPRESA_1, CLINICA, GALPON, VIALIDAD]
+    assert cuerpo["carpeta_actual"] == SUR
+
+
+def test_quien_revisa_sin_carpeta_abierta_tambien_ve_todas() -> None:
+    navegador, _ = con_cuenta(app, "rita")
+    cuerpo = navegador.get("/v1/obras/todas").json()
+    assert _filas(cuerpo) == [EMPRESA_1, CLINICA, GALPON, VIALIDAD]
+    assert cuerpo["carpeta_actual"] is None
+
+
+def _sin_abrir_carpeta_para_revisa(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Un rol sin `ABRIR_CARPETA` (hoy ninguno lo pierde): la regla sigue escrita y probada."""
+    monkeypatch.setitem(PERMISOS, "abrir_carpeta", frozenset({Rol.ARMA, Rol.ADMINISTRADOR}))
+
+
+def test_sin_abrir_carpeta_solo_la_carpeta_abierta(monkeypatch: pytest.MonkeyPatch) -> None:
+    _sin_abrir_carpeta_para_revisa(monkeypatch)
+    navegador, ficha = con_cuenta(app, "rita")
     _abrir(ficha, SUR)
     cuerpo = navegador.get("/v1/obras/todas").json()
     assert _filas(cuerpo) == [VIALIDAD]
     assert cuerpo["carpeta_actual"] == SUR
 
 
-def test_sin_cambiar_caso_y_sin_carpeta_abierta_solo_la_de_la_empresa() -> None:
+def test_sin_abrir_carpeta_y_sin_carpeta_abierta_solo_la_de_la_empresa(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _sin_abrir_carpeta_para_revisa(monkeypatch)
     navegador, _ = con_cuenta(app, "rita")
     assert _filas(navegador.get("/v1/obras/todas").json()) == [EMPRESA_1]
+
+
+def _sesion_de(*roles: Rol) -> SesionActiva:
+    return SesionActiva(
+        huella_ficha="huella-de-prueba",
+        usuario_id=1,
+        login="rita",
+        nombre="Rita",
+        roles=frozenset(roles),
+        debe_cambiar_clave=False,
+        restablecida_por_admin=False,
+    )
+
+
+def test_carpetas_visibles_de_quien_revisa_son_todas() -> None:
+    """`_carpetas_visibles` directa: sin cookie ni clave, la petición está en la de la empresa."""
+    peticion = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+    actual, carpetas = rutas_obras._carpetas_visibles(peticion, _sesion_de(Rol.REVISA))
+    assert actual is None
+    assert [nombre for nombre, _ in carpetas] == [None, NORTE, SUR]
+    assert [ruta.name for _, ruta in carpetas] == [EMPRESA, NORTE, SUR]
 
 
 def test_con_la_clave_solo_la_carpeta_del_proceso() -> None:
@@ -190,3 +247,42 @@ def test_carpeta_mas_nueva_con_columna_extra_se_lista(_entorno: Path) -> None:
         GALPON,
         VIALIDAD,
     ]
+
+
+def _con_la_demostracion(carpeta: Path, plantillas: dict[str, Path]) -> None:
+    (carpeta / DEMO).write_bytes(plantillas[DEMO].read_bytes())
+
+
+@pytest.mark.parametrize("login", ["ana", "rita"])
+def test_fuera_de_la_demostracion_no_se_listan_sus_obras(
+    _entorno: Path, _plantillas: dict[str, Path], login: str
+) -> None:
+    """Datos de demostración nunca mezclados con los reales: ni sin carpeta abierta ni con otra."""
+    _con_la_demostracion(_entorno, _plantillas)
+    navegador, ficha = con_cuenta(app, login)  # arma y revisa: ambos con ABRIR_CARPETA
+    assert _filas(navegador.get("/v1/obras/todas").json()) == [EMPRESA_1, CLINICA, GALPON, VIALIDAD]
+    _abrir(ficha, NORTE)
+    assert _filas(navegador.get("/v1/obras/todas").json()) == [EMPRESA_1, CLINICA, GALPON, VIALIDAD]
+
+
+@pytest.mark.parametrize("login", ["ana", "rita"])
+def test_dentro_de_la_demostracion_solo_sus_obras(
+    _entorno: Path, _plantillas: dict[str, Path], login: str
+) -> None:
+    _con_la_demostracion(_entorno, _plantillas)
+    navegador, ficha = con_cuenta(app, login)
+    _abrir(ficha, DEMO)
+    cuerpo = navegador.get("/v1/obras/todas").json()
+    assert _filas(cuerpo) == [INVENTADA]
+    assert cuerpo["carpeta_actual"] == DEMO
+
+
+def test_la_marca_de_la_demostracion_sigue_en_los_casos(
+    _entorno: Path, _plantillas: dict[str, Path]
+) -> None:
+    """La interfaz dice «Está viendo datos inventados» por `es_demostracion` de `GET /v1/casos`."""
+    _con_la_demostracion(_entorno, _plantillas)
+    navegador, ficha = con_cuenta(app, "ana")
+    assert navegador.get("/v1/casos").json()["es_demostracion"] is False
+    _abrir(ficha, DEMO)
+    assert navegador.get("/v1/casos").json()["es_demostracion"] is True

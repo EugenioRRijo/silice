@@ -92,9 +92,13 @@ describe("raya de la opción activa del tamaño de letra sobre fondo claro", () 
     expect(pulsada).not.toMatch(/silice-interactivo/);
   });
 
-  test("la barra superior sigue poniendo la raya en el acento", () => {
+  // F6, T6: el tamaño de letra salió de la barra superior (vive en la Cuenta); sobre el marco oscuro queda la raya de
+  // «la persona» en la Cuenta, que sigue en el acento.
+  test("la barra superior ya no trae el tamaño de letra y la persona activa pone la raya en el acento", () => {
     const barra = leer(`${raiz}/marco/BarraSuperior.scss`);
-    const i = barra.indexOf(".silice-marco-barra .silice-letra__opcion");
-    expect(barra.slice(i, i + 600)).toMatch(/border-block-end-color:\s*var\(--silice-acento\)/);
+    expect(barra).not.toContain("silice-letra");
+    const i = barra.indexOf('.silice-cuenta__boton[aria-current="page"]');
+    expect(i).toBeGreaterThan(-1);
+    expect(barra.slice(i, i + 300)).toMatch(/border-block-end:\s*2px solid var\(--silice-acento\)/);
   });
 });

@@ -23,6 +23,10 @@
   --silice-sev-critico: #{colors.$red-60};
   --silice-sev-error: #{colors.$orange-50};
   --silice-sev-advertencia: #{colors.$yellow-30};
+  // El ícono de advertencia sobre fondo claro: el amarillo 30 de los halos da 1,53:1 sobre el gris 10 (WCAG 1.4.11 pide 3:1 a un
+  // gráfico). El ámbar 50 da 3,03:1 sobre el gris 10 y 3,33:1 sobre blanco, y es el mismo significado. Los halos de la hoja no
+  // lo usan: llevan su segundo contorno oscuro (visor.scss).
+  --silice-sev-advertencia-icono: #{colors.$yellow-50};
   --silice-sev-info: #{colors.$blue-60};
   --silice-atipico: #{colors.$purple-60};
   --silice-verificado: #{colors.$green-50};

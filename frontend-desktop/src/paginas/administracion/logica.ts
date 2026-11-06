@@ -54,6 +54,16 @@ export const PESTANAS = [
   { id: "instalacion", titulo: "Instalación", migrada: true },
 ] as const;
 
+// F6, T6: las siete pestañas se reparten en las secciones de la Cuenta (contrato de rutas §3), en el orden en que se apilan.
+// «carpetas» no es de las siete (viene de `shell/carpetas`), y «Especialidades», que se suma a «sistema» con `activar_modulos`,
+// tampoco.
+export const SECCIONES_DE_ADMINISTRACION = {
+  cuentas: ["cuentas", "accesos"],
+  empresa: ["empresa", "registradas"],
+  carpetas: [],
+  sistema: ["asistente", "api", "instalacion"],
+} as const satisfies Record<string, readonly (typeof PESTANAS)[number]["id"][]>;
+
 // El tope sale de la API (`maximo`); antes de que llegue se usa el texto sin cifra.
 export function notaAccesos(maximo: number | null): string {
   const cuantos = maximo === null ? "Los últimos" : `Los ${maximo} últimos`;
@@ -101,6 +111,11 @@ export function etiquetaDeRol(rol: string): string {
 
 export function rolesEnTexto(roles: readonly string[]): string {
   return roles.join(", ");
+}
+
+// Los roles como los lee la persona («arma presupuestos (arma), revisa paquetes (revisa)»): la cabecera de la Cuenta.
+export function rolesConEtiqueta(roles: readonly string[]): string {
+  return roles.map(etiquetaDeRol).join(", ");
 }
 
 // El aviso de Streamlit al elegir arma y revisa a la vez: el texto lo manda la API (una sola fuente).

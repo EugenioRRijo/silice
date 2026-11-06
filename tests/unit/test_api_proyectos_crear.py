@@ -26,7 +26,7 @@ from api.sesion_web import MENSAJE_CAMBIAR_CLAVE
 from aplicacion import obras
 from operacion import config
 from operacion.base_datos import preparar_base
-from seguridad.permisos import PERMISOS, Accion, Rol
+from seguridad.permisos import PERMISOS, Rol
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.sesion_web import (
     MENSAJE_PERMISO,
@@ -377,8 +377,8 @@ def test_la_carpeta_de_la_empresa_se_nombra_empresa() -> None:
 def test_la_misma_carpeta_de_la_sesion_o_ninguna_es_lo_de_siempre(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # sin CAMBIAR_CASO tampoco hace falta: no cambia de carpeta
-    monkeypatch.setitem(PERMISOS, Accion.CAMBIAR_CASO, frozenset({Rol.ADMINISTRADOR}))
+    # sin ABRIR_CARPETA tampoco hace falta: no cambia de carpeta
+    monkeypatch.setitem(PERMISOS, "abrir_carpeta", frozenset({Rol.ADMINISTRADOR}))
     ana, ficha = con_cuenta(app, "ana")
     assert _crear(ana, ficha, _con_carpeta("silice.db", "Uno")).status_code == 201
     assert _crear(ana, ficha, _con_carpeta("empresa", "Dos")).status_code == 201
@@ -386,8 +386,9 @@ def test_la_misma_carpeta_de_la_sesion_o_ninguna_es_lo_de_siempre(
     assert _nombres("silice.db") == ["Dos", "Tres", "Uno"]
 
 
-def test_otra_carpeta_sin_cambiar_caso_da_403_y_no_crea(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(PERMISOS, Accion.CAMBIAR_CASO, frozenset({Rol.ADMINISTRADOR}))
+def test_otra_carpeta_sin_abrir_carpeta_da_403_y_no_crea(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Crear en otra carpeta es trabajar en ella: pide `ABRIR_CARPETA`, como abrirla y crear."""
+    monkeypatch.setitem(PERMISOS, "abrir_carpeta", frozenset({Rol.ADMINISTRADOR}))
     ana, ficha = con_cuenta(app, "ana")
     respuesta = _crear(ana, ficha, _con_carpeta("Obra Norte.db"))
     assert respuesta.status_code == 403
@@ -480,8 +481,8 @@ def test_si_guardar_la_ficha_falla_no_queda_la_obra_en_la_carpeta_de_destino(
 
 def test_el_esquema_declara_los_errores_de_crear_una_obra() -> None:
     declaradas = app.openapi()["paths"][RUTA]["post"]["responses"]
-    # 403 sin CAMBIAR_CASO (o sin CSRF), 409 con la clave de API o nombre repetido, 503 sin carpeta
-    # de la empresa
+    # 403 sin EDITAR_HOJA, sin ABRIR_CARPETA para crear en otra carpeta o sin CSRF; 409 con la clave
+    # de API o nombre repetido; 503 sin carpeta de la empresa
     assert {"201", "403", "409", "503"} <= set(declaradas)
     for codigo in ("403", "409", "503"):
         esquema = declaradas[codigo]["content"]["application/json"]["schema"]

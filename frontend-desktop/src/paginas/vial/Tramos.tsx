@@ -1,6 +1,6 @@
 import { Button, Select, SelectItem } from "@carbon/react";
 import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ErrorDeApi } from "../../api/cliente";
 import { importarTramos, llevarTramos } from "../../api/vial";
@@ -8,6 +8,8 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
+import { rutaOPendientes } from "../../marco/espacios";
+import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
@@ -37,6 +39,8 @@ function textoLlevados(renglones: number, version: string): string {
 // las cantidades en el borrador del Presupuesto de la obra (Tarea 8b); el aviso, bueno o malo, recibe el foco.
 export default function Tramos() {
   const { nombreProyecto, alExpirar } = useAplicacion();
+  // La ruta del Presupuesto de la obra abierta, no la dirección corta (`/hoja`), que redirige y vuelve a montar la obra.
+  const obraAbierta = useContext(ContextoDeLaObra);
   const nombre = nombreProyecto ?? null;
   const versiones = useCarga<VersionesRespuesta>(nombre === null ? null : rutaDeVersiones(nombre), alExpirar);
   const ofrecidas = versiones.estado === "listo" ? versionesOfrecidas(versiones.datos.versiones) : [];
@@ -148,7 +152,7 @@ export default function Tramos() {
                 </div>
               )}
               <AvisoConFoco aviso={llevados} alCerrar={() => setLlevados(null)}>
-                <Link className="cds--link" to="/hoja">
+                <Link className="cds--link" to={rutaOPendientes("hoja", obraAbierta ?? undefined)}>
                   Abrir el presupuesto
                 </Link>
               </AvisoConFoco>

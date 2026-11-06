@@ -15,7 +15,9 @@ import {
   filasDeCuentas,
   filasDeRegistradas,
   puedeRevocarRegistrada,
+  rolesConEtiqueta,
   rolesEnTexto,
+  SECCIONES_DE_ADMINISTRACION,
   textoDeLaClaveDeIA,
   topeParaEditar,
 } from "./logica";
@@ -49,6 +51,8 @@ describe("logica de Administracion", () => {
     expect(etiquetaDeRol("administrador")).toBe("administra la instalación (administrador)");
     expect(etiquetaDeRol("otro")).toBe("otro");
     expect(rolesEnTexto(["arma", "revisa"])).toBe("arma, revisa");
+    expect(rolesConEtiqueta(["arma", "revisa"])).toBe("arma presupuestos (arma), revisa paquetes (revisa)");
+    expect(rolesConEtiqueta([])).toBe("");
   });
 
   test("el aviso solo sale con arma y revisa a la vez", () => {
@@ -177,5 +181,19 @@ describe("logica de Administracion", () => {
       expect(topeParaEditar("0.0000001")).toBe("0,0000001");
       expect(topeParaEditar("1234.5")).toBe("1.234,5");
     });
+  });
+});
+
+// F6, T6: las siete pestañas de antes se reparten en las secciones de la Cuenta (contrato de rutas §3).
+describe("SECCIONES_DE_ADMINISTRACION", () => {
+  test("reparte las siete pestañas, cada una en una sola sección y en el orden del contrato", () => {
+    expect(SECCIONES_DE_ADMINISTRACION).toEqual({
+      cuentas: ["cuentas", "accesos"],
+      empresa: ["empresa", "registradas"],
+      carpetas: [],
+      sistema: ["asistente", "api", "instalacion"],
+    });
+    const repartidas = Object.values(SECCIONES_DE_ADMINISTRACION).flat();
+    expect([...repartidas].sort()).toEqual(PESTANAS.map((p) => p.id).sort());
   });
 });

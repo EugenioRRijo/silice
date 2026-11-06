@@ -10,7 +10,7 @@ import type { EstadoDelServidor, Respondedor } from "../../shell/obras/datosDePr
 import { cancelarSalida } from "../../shell/salida";
 import { olvidarFormularios, useFormularioSucio } from "../../shell/sucio";
 
-// Rediseño F3, Tarea 2: la bandeja de Pendientes en `#/pendientes`, dentro del marco de verdad (barra lateral, «Cambios
+// Rediseño F3, Tarea 2: la bandeja de Pendientes en `#/inicio/pendientes` (F6, T8; antes `#/pendientes`), dentro del marco de verdad (barra lateral, «Cambios
 // sin guardar», cambio de carpeta) con la API de mentira. La respuesta tiene la forma de `GET /v1/obras/pendientes/todas`
 // (Tarea 1, `docs/api.json`) y ya viene ordenada. Los textos fijos son los del plan; obras y carpetas, ficticias.
 
@@ -131,14 +131,16 @@ function FormularioSucio() {
 function montar({
   sesion = sesionDe("ana"),
   sucio = false,
-  inicial = "/pendientes",
-  ir,
-}: { sesion?: SesionRespuesta; sucio?: boolean; inicial?: string; ir?: string } = {}) {
+  inicial = "/inicio/pendientes",
+  ir = [],
+}: { sesion?: SesionRespuesta; sucio?: boolean; inicial?: string; ir?: string | string[] } = {}) {
   return render(
     <MemoryRouter initialEntries={[inicial]}>
       <Marco sesion={sesion} alSalir={vi.fn()} alExpirar={vi.fn()} paginas={ligeras()} />
       <Ubicacion />
-      {ir && <IrA destino={ir} />}
+      {[ir].flat().map((destino) => (
+        <IrA key={destino} destino={destino} />
+      ))}
       {sucio && <FormularioSucio />}
     </MemoryRouter>,
   );
@@ -379,6 +381,52 @@ describe("Pendientes: foco 1, quien revisa", () => {
   });
 });
 
+// Contrato de rutas 2.4: el pendiente de «entregar» o de «actualizar precios» abre su subvista, y el botón se ofrece según
+// el permiso de ESA pantalla (no el de la sección que antes las absorbía).
+describe("Pendientes: las subvistas que abren los pendientes (F6, T5)", () => {
+  const ENTREGAR: PendienteDeObra = {
+    carpeta: null,
+    obra_id: 7,
+    obra: "Casa Demo",
+    grupo: "aprobar",
+    urgencia: "bloquea",
+    texto: "CASA-002 aprobada y sin entregar",
+    accion: { texto: "Entregar", pagina: "entregar" },
+  };
+  const sinAprobar = (): SesionRespuesta => {
+    const ana = sesionDe("ana");
+    return { ...ana, acciones: ana.acciones.filter((a) => a !== "aprobar_version") };
+  };
+
+  test("quien entrega paquetes sin poder aprobar versiones ve el botón y llega a Aprobaciones › Entregar", async () => {
+    const u = userEvent.setup();
+    bandeja = responder([ENTREGAR]);
+    montar({ sesion: sinAprobar() });
+    await lista();
+    await u.click(within(detalle()).getByRole("button", { name: "Entregar" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Entregar paquete" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/7/aprobaciones/entregar");
+  });
+
+  test("quien no puede entregar (ni aprobar la versión que lo pide) no ve el botón y se le dice por qué", async () => {
+    bandeja = responder([ENTREGAR]);
+    montar({ sesion: sesionDe("rita") });
+    await lista();
+    expect(within(detalle()).queryByRole("button")).toBeNull();
+    expect(detalle()).toHaveTextContent("Su cuenta no puede dar este paso.");
+  });
+
+  test("quien puede editar la hoja abre «Actualizar precios» en su subvista", async () => {
+    const u = userEvent.setup();
+    bandeja = responder([PRECIOS]);
+    montar();
+    await lista();
+    await u.click(within(detalle()).getByRole("button", { name: "Actualizar precios" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Actualizar precios" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(ruta()).toBe("/obra/empresa/8/mercado/actualizar");
+  });
+});
+
 describe("Pendientes: foco 3, salir sin perder trabajo", () => {
   test("con un formulario a medio llenar, el botón pregunta y «Quedarme» no navega", async () => {
     const u = userEvent.setup();
@@ -388,7 +436,7 @@ describe("Pendientes: foco 3, salir sin perder trabajo", () => {
     const pregunta = await screen.findByRole("dialog", { name: "Cambios sin guardar" });
     await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
     expect(screen.queryByRole("dialog", { name: "Cambios sin guardar" })).toBeNull();
-    expect(ruta()).toBe("/pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
   });
 
   test("con la Hoja con cambios, un pendiente de otra carpeta pregunta por ella; «Quedarme» no cambia de carpeta", async () => {
@@ -404,7 +452,7 @@ describe("Pendientes: foco 3, salir sin perder trabajo", () => {
     await u.click(within(pregunta).getByRole("button", { name: "Quedarme" }));
     await new Promise((r) => setTimeout(r, 30));
     expect(servidor.de("POST", "/v1/casos/actual")).toEqual([]);
-    expect(ruta()).toBe("/pendientes");
+    expect(ruta()).toBe("/inicio/pendientes");
 
     await u.click(within(detalle()).getByRole("button", { name: "Hacer una versión nueva" }));
     await u.click(within(await screen.findByRole("dialog", { name: "Cambios sin guardar" })).getByRole("button", { name: "Cambiar y descartar" }));
@@ -418,15 +466,15 @@ describe("Pendientes: foco 4, volver después de resolver algo", () => {
     const u = userEvent.setup();
     let pendientes = CUATRO;
     bandeja = () => json({ pendientes, carpetas_omitidas: 0 });
-    montar();
+    montar({ ir: "/inicio/pendientes" });
     await u.click((await opciones())[1]);
     expect(pedidas()).toBe(1);
     await u.click(within(detalle()).getByRole("button", { name: "Abrir el presupuesto" }));
     await screen.findByRole("heading", { level: 1, name: "Presupuesto" }, { timeout: 3000 });
     // En la Hoja se resolvió lo del cemento.
     pendientes = [DEVUELTA, PRECIOS, SIN_APU];
-    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    await u.click(within(lateral).getByRole("link", { name: /^Pendientes/ }));
+    // El enlace de la barra lateral lleva ahora a la Vista general: la bandeja se abre por su dirección.
+    await u.click(screen.getByRole("button", { name: "Ir a /inicio/pendientes" }));
     expect(await screen.findByText("1 bloquea · 2 avisos")).toBeInTheDocument();
     expect(pedidas()).toBe(2);
     expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
@@ -443,10 +491,9 @@ describe("Pendientes: la lectura de la carga inicial no deja datos viejos", () =
       if (veces === 1) return new Promise<Response>((resolver) => (soltarLaPrimera = resolver));
       return json({ pendientes: [PRECIOS], carpetas_omitidas: 0 });
     };
-    montar({ inicial: "/obras" });
+    montar({ inicial: "/obras", ir: "/inicio/pendientes" });
     await waitFor(() => expect(pedidas()).toBe(1));
-    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    await u.click(within(lateral).getByRole("link", { name: /^Pendientes/ }));
+    await u.click(screen.getByRole("button", { name: "Ir a /inicio/pendientes" }));
     // La lectura de antes de entrar se descarta: entrar en Pendientes pide siempre una nueva.
     await waitFor(() => expect(pedidas()).toBe(2));
     // La vieja llega tarde, con datos que ya no valen.
@@ -467,22 +514,21 @@ describe("Pendientes: cuándo no se repite la lectura", () => {
       if (veces === 1) return new Promise<Response>((resolver) => (soltarLaPrimera = resolver));
       return json({ pendientes: [PRECIOS], carpetas_omitidas: 0 });
     };
-    montar({ ir: "/obra/empresa/7/presupuesto" });
+    montar({ ir: ["/obra/empresa/7/presupuesto", "/inicio/pendientes"] });
     await waitFor(() => expect(pedidas()).toBe(1));
     await u.click(screen.getByRole("button", { name: "Ir a /obra/empresa/7/presupuesto" }));
     await waitFor(() => expect(ruta()).toBe("/obra/empresa/7/presupuesto"));
-    const lateral = screen.getByRole("complementary", { name: "Barra lateral" });
-    await u.click(within(lateral).getByRole("link", { name: /^Pendientes/ }));
+    await u.click(screen.getByRole("button", { name: "Ir a /inicio/pendientes" }));
     await waitFor(() => expect(pedidas()).toBe(2));
     soltarLaPrimera(json({ pendientes: [CEMENTO], carpetas_omitidas: 0 }));
     expect(within(await lista()).getByText("3 precios con más de 90 días")).toBeInTheDocument();
     expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
   });
 
-  test("al arrancar desde «/» (que redirige a Pendientes) se piden una sola vez", async () => {
-    montar({ inicial: "/" });
+  test("al arrancar desde «/pendientes» (que redirige a /inicio/pendientes) se piden una sola vez", async () => {
+    montar({ inicial: "/pendientes" });
     expect(await opciones()).toHaveLength(4);
-    await waitFor(() => expect(ruta()).toBe("/pendientes"));
+    await waitFor(() => expect(ruta()).toBe("/inicio/pendientes"));
     expect(pedidas()).toBe(1);
   });
 });

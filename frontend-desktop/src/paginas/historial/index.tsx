@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { rutaOPendientes } from "../../marco/espacios";
 import { useAplicacion } from "../../shell/contexto";
 import { fechaValida } from "../../comun/porcentaje";
 import type { AuditoriaGuardadaRespuesta } from "../inicio/UltimasAuditorias";
@@ -57,7 +58,7 @@ export default function PaginaHistorial() {
           titulo="Todavía no hay auditorías guardadas"
           descripcion="Audite un libro de la empresa o revise un PDF: el resumen y los hallazgos quedarán aquí."
         >
-          <Link to="/libros">Ir a Libro de la empresa</Link>
+          <Link to={rutaOPendientes("libros")}>Ir a Libro de la empresa</Link>
         </EstadoVacio>
       )}
       {carga.estado === "listo" && carga.datos.length > 0 && (

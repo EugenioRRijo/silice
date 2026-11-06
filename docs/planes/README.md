@@ -13,6 +13,7 @@ Este directorio centraliza los planes estratégicos, especificaciones de arquite
 | [**PLAN_GESTOR_PRODUCCION_Y_AUDITORIA_VISUAL.md**](./PLAN_GESTOR_PRODUCCION_Y_AUDITORIA_VISUAL.md) | Plan arquitectónico y técnico detallado para integrar el **Gestor de Producción de Áridos y Canteras** (costos horarios Caterpillar/USBR, balance de masa en trituración, básculas camioneras) y la **Auditoría Visual Interactiva** (Univer Canvas Grid, parser dual de Excel y parches Delta inmutables) sobre **Tauri v2**. | ✅ **Vigente / En ejecución** |
 | [**PLAN_IMPLEMENTACION_CIERRE_1.0.0.md**](./PLAN_IMPLEMENTACION_CIERRE_1.0.0.md) | Plan de cierre y certificación de la versión 1.0.0 de Sílice bajo metodologías Scrum, Cascada, SOLID y DRY. Detalla las tareas para completar la meta única, pruebas pendientes de la 0.7.0 a 1.5 y corrección del flujo CI. | 🏁 **Completado** |
 | [**INFORME_AUDITORIA_ENTREGA_1.0.0.md**](./INFORME_AUDITORIA_ENTREGA_1.0.0.md) | Dictamen formal de auditoría y balance de entrega del release 1.0.0: verificación de metas S0 a S5, inventario de artefactos, cumplimiento normativo y trazabilidad pericial. | 🏁 **Entregado** |
+| [**PLAN_TANDA_DETALLES.md**](./PLAN_TANDA_DETALLES.md) | Lo que sigue en el front tras F6 y el autocompletado: tanda de detalles (D1–D16), F7 Ayuda y F8 Cierre, construido con Gemini Flash por `agy` y auditado por Claude. | 🟡 **Siguiente** |
 
 ---
 

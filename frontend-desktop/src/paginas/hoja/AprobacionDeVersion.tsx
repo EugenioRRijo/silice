@@ -51,7 +51,8 @@ interface Props {
 }
 
 // Junto a la versión de la Hoja (Tarea 19; diseño §5.4): la etiqueta de su aprobación, sus notas si las hay y el diálogo de
-// enviar. Desde la Tarea 5 del plan F4 los botones («Enviar a aprobación…», «Hacer una versión nueva») son de la franja del
+// enviar. Desde la cabecera compacta (2026-11-05) va dentro de la línea de estado y su fila corre en línea con la versión y
+// el total; las notas y el aviso bajan a una fila propia solo cuando hay algo que decir. Desde la Tarea 5 del plan F4 los botones («Enviar a aprobación…», «Hacer una versión nueva») son de la franja del
 // paso, que es el único botón principal de la pantalla, y la lectura del estado vive en `useAprobacionDeVersion`. Si la
 // lectura falla se dice; mientras se lee, o sin nada que decir, no se pinta nada (la Hoja no depende de esto).
 export function AprobacionDeVersion({ id, proyecto, version, cambios, lectura, aviso, enviando, alEnviado, alCancelarEnvio }: Props) {
@@ -85,7 +86,7 @@ export function AprobacionDeVersion({ id, proyecto, version, cambios, lectura, a
           )}
         </>
       )}
-      <p className="silice-hoja__aprobacion-aviso cds--type-body-compact-01" role="status">
+      <p className="silice-hoja__aprobacion-aviso silice-hoja__region-viva cds--type-body-compact-01" role="status">
         {aviso}
       </p>
       {enviando && (

@@ -35,7 +35,10 @@ class Accion(StrEnum):
     REVISAR_PAQUETE = "revisar_paquete"  # abrir paquetes, reauditar, dictamen
     APROBAR_VERSION = "aprobar_version"  # por aprobar, abrir un envío y dictaminar (MP-4)
     # Compartida
-    CAMBIAR_CASO = "cambiar_caso"
+    # Enmienda 2026-11-05 (decisión de Eugenio): abrir otra carpeta y ver las obras de todas se
+    # separa de gestionarlas, para que quien revisa vea todas sin poder crear ni subir.
+    ABRIR_CARPETA = "abrir_carpeta"  # abrir o cambiar la carpeta de la sesión y listar todas
+    CAMBIAR_CASO = "cambiar_caso"  # gestionar carpetas: crear y subir
     # Administración
     ADMINISTRAR_CUENTAS = "administrar_cuentas"  # cuentas, desbloqueo, sesiones, accesos
     ADMINISTRAR_EMPRESA = "administrar_empresa"  # empresa, clave de firma, empresas registradas
@@ -72,6 +75,7 @@ PERMISOS: dict[Accion, frozenset[Rol]] = {
     Accion.VER_RIESGO: frozenset({_ARMA, _REVISA, _ADMIN}),
     Accion.REVISAR_PAQUETE: frozenset({_REVISA}),
     Accion.APROBAR_VERSION: frozenset({_ARMA, _REVISA}),
+    Accion.ABRIR_CARPETA: frozenset({_ARMA, _REVISA, _ADMIN}),
     Accion.CAMBIAR_CASO: frozenset({_ARMA, _ADMIN}),
     Accion.ADMINISTRAR_CUENTAS: frozenset({_ADMIN}),
     Accion.ADMINISTRAR_EMPRESA: frozenset({_ADMIN}),

@@ -23,7 +23,7 @@ function Ir() {
   );
 }
 
-function montar(ruta = "/libros") {
+function montar(ruta = "/auditoria/libros") {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
       <BotonRecorrido />

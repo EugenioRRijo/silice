@@ -8,6 +8,17 @@ export type EstadoDeSesion =
   | { tipo: "sin_sesion"; expirada: boolean }
   | { tipo: "activa"; sesion: SesionRespuesta };
 
+// La sesion termino en este navegador (la persona salio o el servidor la dio por vencida): ya no hay con que pedirle nada. Lo
+// que las pantallas pedirian al irse (descartar el borrador de la Hoja, `DELETE /v1/hoja/borradores/{id}`) volveria con un
+// 401 que no dice nada, y no hace falta: al cerrar la sesion el servidor ya descarta los borradores sin cambios
+// (api/caso_web.py). La bandera vive fuera del estado de React porque la lee el desmontaje de las pantallas, que ocurre
+// despues de que el estado cambia; se baja al abrir una sesion. Solo en memoria (RT-9).
+let terminada = false;
+
+export function sesionTerminada(): boolean {
+  return terminada;
+}
+
 // Una API anterior a la ola 0a no trae estos campos: sin ellos, nadie debe cambiar clave, no hay acciones (el
 // menu queda vacio) y no hay modo entrega. Sin los de MOD-0, no hay eleccion recordada y las preferencias son las
 // de omision (ningun modulo, sidebar oculto).
@@ -34,6 +45,7 @@ export function useSesion() {
         if (!vigente) return;
         const sesion = normalizar(bruta);
         fijarCsrf(sesion.csrf);
+        terminada = false;
         setEstado({ tipo: "activa", sesion });
       })
       .catch(() => {
@@ -47,6 +59,7 @@ export function useSesion() {
   const entrar = useCallback(async (login: string, contrasena: string) => {
     const sesion = normalizar(await pedir<SesionRespuesta>("/v1/sesion", { metodo: "POST", cuerpo: { login, contrasena } }));
     fijarCsrf(sesion.csrf);
+    terminada = false;
     setEstado({ tipo: "activa", sesion });
   }, []);
 
@@ -57,6 +70,7 @@ export function useSesion() {
       await pedir<SesionRespuesta>("/v1/primer-arranque/reclamo", { metodo: "POST", cuerpo }),
     );
     fijarCsrf(sesion.csrf);
+    terminada = false;
     setEstado({ tipo: "activa", sesion });
   }, []);
 
@@ -66,6 +80,7 @@ export function useSesion() {
     await pedir("/v1/sesion/contrasena", { metodo: "POST", cuerpo: { actual, nueva } });
     const sesion = normalizar(await pedir<SesionRespuesta>("/v1/sesion"));
     fijarCsrf(sesion.csrf);
+    terminada = false;
     setEstado({ tipo: "activa", sesion });
   }, []);
 
@@ -77,12 +92,15 @@ export function useSesion() {
       if (!(error instanceof ErrorDeApi) || (error.estado !== 401 && error.estado !== 403)) throw error;
     }
     fijarCsrf(null);
+    // Antes de cambiar el estado: el desmontaje de las pantallas que sigue ya lo lee.
+    terminada = true;
     setEstado({ tipo: "sin_sesion", expirada: false });
   }, []);
 
   // El servidor dijo 401 en medio del trabajo: la sesion vencio por inactividad.
   const expirar = useCallback(() => {
     fijarCsrf(null);
+    terminada = true;
     setEstado({ tipo: "sin_sesion", expirada: true });
   }, []);
 

@@ -5,6 +5,8 @@ import { PAGINAS, SECCIONES, paginaPorId, rutaDe, usable } from "./rutas";
 // Oraculo escrito a mano: la seccion y la accion de cada pantalla de ui/app.py y de seguridad/permisos.py, en su orden.
 // Dónde se ve cada una ya no lo dice el registro sino el marco (marco/secciones.ts y el buscador).
 const REGISTRO: [string, string, string | null][] = [
+  // F6, T8: la Vista general (`/inicio/general`) es la entrada de la app y la ve toda cuenta; no es de las 31 del contrato.
+  ["inicio", "Trabajo", null],
   ["auditoria", "Revisión", null],
   ["libros", "Revisión", "leer_proyecto"],
   ["revisar", "Revisión", "revisar_paquete"],
@@ -47,12 +49,18 @@ const REGISTRO: [string, string, string | null][] = [
 const RITA = ["leer_proyecto", "revisar_paquete", "aprobar_version"];
 
 describe("registro de paginas", () => {
-  test("tiene las 31 pantallas en su orden, con su seccion y su accion", () => {
+  test("tiene las 31 pantallas del contrato y la Vista general, en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(REGISTRO);
   });
 
-  test("ya no existe la pantalla «inicio»: la direccion /inicio solo redirige", () => {
-    expect(paginaPorId("inicio")).toBeUndefined();
+  // F6, T8: «inicio» deja de no existir: es la Vista general, que monta `/inicio/general` y la ve toda cuenta.
+  test("existe la pantalla «inicio»: la Vista general, que ve toda cuenta", () => {
+    const inicio = paginaPorId("inicio");
+    expect(inicio?.titulo).toBe("Vista general");
+    expect(inicio?.accion).toBeNull();
+    expect(inicio?.modulo).toBeUndefined();
+    expect(usable(inicio!, [], false)).toBe(true);
+    expect(usable(inicio!, [], true)).toBe(true);
   });
 
   // F4, Tarea 9, baja 20: «Partidas similares» pasa a «Parecidas a esta descripción», dentro de «Agregar partida».
@@ -111,17 +119,17 @@ describe("registro de paginas", () => {
 describe("quien puede usar que", () => {
   const todas = [...new Set(PAGINAS.flatMap((p) => (p.accion ? [p.accion] : [])))];
 
-  test("sin ninguna accion: el inicio de auditoría, la mesa y Acerca (las que no exigen ninguna)", () => {
-    expect(PAGINAS.filter((p) => usable(p, [], false)).map((p) => p.id)).toEqual(["auditoria", "obras", "acerca"]);
+  test("sin ninguna accion: la Vista general, el inicio de auditoría, la mesa y Acerca (las que no exigen ninguna)", () => {
+    expect(PAGINAS.filter((p) => usable(p, [], false)).map((p) => p.id)).toEqual(["inicio", "auditoria", "obras", "acerca"]);
   });
 
-  test("con todas las acciones se usan las 31", () => {
-    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(31);
+  test("con todas las acciones se usan las 32 (las 31 del contrato y la Vista general)", () => {
+    expect(PAGINAS.filter((p) => usable(p, todas, false))).toHaveLength(32);
   });
 
-  test("el modo entrega esconde Investigacion y nada mas (29)", () => {
+  test("el modo entrega esconde Investigacion y nada mas (30)", () => {
     const vistas = PAGINAS.filter((p) => usable(p, todas, true));
-    expect(vistas).toHaveLength(29);
+    expect(vistas).toHaveLength(30);
     expect(vistas.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 
