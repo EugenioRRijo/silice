@@ -481,7 +481,7 @@ def test_e6_exactamente_los_topes_de_forma_se_aceptan() -> None:
     id_ = _abrir(navegador, ficha)
     respuesta = _apu(navegador, ficha, id_, 0, materiales=["1" * 500] * 500)
     assert respuesta.status_code == 422
-    assert respuesta.json()["detalle"].startswith("materiales: la tabla tiene 500 lineas")
+    assert respuesta.json()["detalle"].startswith("materiales: la tabla tiene 500 líneas")
 
 
 @pytest.mark.parametrize(

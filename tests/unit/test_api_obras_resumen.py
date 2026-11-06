@@ -168,6 +168,7 @@ def test_resumen_de_ob_s2_en_una_carpeta_en_usd() -> None:
         "etapa": "atrasada",
         "etapa_texto": "Atrasada",
         "version": "OB-001",
+        "version_de_linea_base": True,
         "total": "5060.00",
         "moneda": "USD",
         "avance_real": "30.0",

@@ -34,6 +34,7 @@ const FILA: ObraFilaRespuesta = {
   etapa: "en_aprobacion",
   etapa_texto: "En aprobación",
   version: "002",
+  version_de_linea_base: true,
   total: "1234567.89",
   moneda: "Bs",
   avance_real: "30.0",
@@ -113,14 +114,22 @@ describe("Resumen de la obra abierta", () => {
     expect(screen.queryByRole("heading", { name: "Obras" })).toBeNull();
   });
 
-  it("la cifra de versión se rotula exactamente «Versión (línea base o, sin ella, la vigente)» y no «Versión vigente»", async () => {
+  it("con línea base la cifra de versión se rotula «Versión de la línea base»", async () => {
     montar();
     await screen.findByRole("heading", { level: 1, name: "Resumen" });
     const cifras = screen.getByRole("group", { name: "Cifras de la obra" });
-    const rotulo = within(cifras).getByText("Versión (línea base o, sin ella, la vigente)", { selector: "dt" });
-    expect(rotulo).toBeInTheDocument();
+    const rotulo = within(cifras).getByText("Versión de la línea base", { selector: "dt" });
     expect(rotulo.nextElementSibling).toHaveTextContent("002");
-    expect(within(cifras).queryByText("Versión vigente")).toBeNull();
+    expect(within(cifras).getAllByText(/^Versión/, { selector: "dt" })).toHaveLength(1);
+  });
+
+  it("sin línea base la cifra de versión se rotula «Versión vigente»", async () => {
+    montar({ ficha: { estado: "lista", obra: { ...FILA, version_de_linea_base: false } } });
+    await screen.findByRole("heading", { level: 1, name: "Resumen" });
+    const cifras = screen.getByRole("group", { name: "Cifras de la obra" });
+    const rotulo = within(cifras).getByText("Versión vigente", { selector: "dt" });
+    expect(rotulo.nextElementSibling).toHaveTextContent("002");
+    expect(within(cifras).getAllByText(/^Versión/, { selector: "dt" })).toHaveLength(1);
   });
 
   it("lo que falta va en la franja y su único botón lleva a la sección", async () => {

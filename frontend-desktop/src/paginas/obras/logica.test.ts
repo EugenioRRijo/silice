@@ -25,6 +25,7 @@ const OBRA: ObraFilaRespuesta = {
   etapa: "en_elaboracion",
   etapa_texto: "En elaboración",
   version: "001",
+  version_de_linea_base: false,
   total: "100.00",
   moneda: "Bs",
   avance_real: null,
