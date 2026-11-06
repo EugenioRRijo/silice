@@ -114,7 +114,7 @@ describe("Inicio de producción", () => {
     const filas = within(seccion).getAllByRole("row").slice(1); // sin el encabezado
     expect(filas).toHaveLength(2);
     expect(filas[0]).toHaveTextContent("Material GRAVA");
-    expect(filas[0]).toHaveTextContent("-4.5 m³");
+    expect(filas[0]).toHaveTextContent("-4,5 m³");
     expect(filas[0]).toHaveTextContent("Existencia negativa: falta registrar producción o conteo");
     expect(filas[1]).toHaveTextContent("Material PIEDRA");
     expect(filas[1]).toHaveTextContent("Queda poco");
@@ -127,8 +127,8 @@ describe("Inicio de producción", () => {
     existencias = () => json([existencia("PIEDRA", { existencia: "30.00", minima: "50.000", queda_poco: true })]);
     montar();
     const seccion = await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
-    expect(within(seccion).getByText("30.00 m³")).toBeInTheDocument();
-    expect(within(seccion).getByText("50.000 m³")).toBeInTheDocument();
+    expect(within(seccion).getByText("30,00 m³")).toBeInTheDocument();
+    expect(within(seccion).getByText("50,000 m³")).toBeInTheDocument();
   });
 
   test("sin materiales, enseña a registrarlos y enlaza a Existencias", async () => {

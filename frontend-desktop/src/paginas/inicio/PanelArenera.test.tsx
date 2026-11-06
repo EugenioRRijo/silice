@@ -8,7 +8,7 @@ const GRANZON: ExistenciaRespuesta = {
   codigo: "GRA-01",
   nombre: "Granzón",
   unidad_venta: "m3",
-  existencia: "-4,25",
+  existencia: "-4.25", // como lo manda el servidor (texto decimal con punto)
   minima: "10",
   queda_poco: true,
   negativa: true,
