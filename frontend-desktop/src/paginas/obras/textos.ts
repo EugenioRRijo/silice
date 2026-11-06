@@ -7,7 +7,7 @@ export const TEXTOS = {
   total: "Total",
   sinTotal: "Sin presupuesto",
   avance: "Avance real contra plan",
-  version: "Versión vigente",
+  version: "Versión (línea base o, sin ella, la vigente)",
   sinVersion: "Sin versión todavía",
   etapa: "Etapa",
   pendientes: "Pendientes de esta obra",
