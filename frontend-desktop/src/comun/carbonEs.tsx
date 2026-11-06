@@ -12,7 +12,7 @@ import {
   TableHeader as CarbonTableHeader,
   TabList as CarbonTabList,
 } from "@carbon/react";
-import { forwardRef } from "react";
+import { forwardRef, useEffect, useRef } from "react";
 import type { ComponentProps, ComponentPropsWithoutRef, ElementRef, ReactNode } from "react";
 
 // --- Pestañas ------------------------------------------------------------------------------------------------------
@@ -20,12 +20,34 @@ import type { ComponentProps, ComponentPropsWithoutRef, ElementRef, ReactNode } 
 export const DESPLAZAR_IZQUIERDA = "Desplazar las pestañas a la izquierda";
 export const DESPLAZAR_DERECHA = "Desplazar las pestañas a la derecha";
 
+export const QUITAR_PESTANA = "Quitar la pestaña";
+
+// Carbon pone en cada pestaña un botón oculto (aria-hidden, fuera del orden de Tab) que solo trae un `title` en inglés
+// («Remove  tab») y ningún nombre: una revisión automática lo cuenta como botón sin nombre. Carbon no ofrece una
+// propiedad para cambiarlo, así que se le da nombre en español sobre el DOM ya dibujado, en cada dibujo de la lista.
+function nombrarBotonesDePestana(lista: HTMLElement) {
+  // Cada botón oculto vive en un contenedor hermano de su pestaña, justo después de ella.
+  for (const boton of lista.querySelectorAll<HTMLElement>('[class*="tabs__nav-item--close"] > button')) {
+    const pestana = boton.parentElement?.previousElementSibling;
+    const etiqueta = pestana?.querySelector(".cds--tabs__nav-item-label");
+    const nombre = (etiqueta?.firstChild?.textContent ?? etiqueta?.textContent ?? "").trim();
+    boton.setAttribute("aria-label", nombre ? `${QUITAR_PESTANA} ${nombre}` : QUITAR_PESTANA);
+    boton.removeAttribute("title");
+  }
+}
+
 export function TabList({ leftOverflowButtonProps, rightOverflowButtonProps, ...props }: ComponentProps<typeof CarbonTabList>) {
+  // Carbon no entrega una referencia a su lista; la flecha izquierda, que cuelga de su raíz, sirve de ancla.
+  const ancla = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (ancla.current?.parentElement) nombrarBotonesDePestana(ancla.current.parentElement);
+  });
   return (
     <CarbonTabList
       {...props}
       leftOverflowButtonProps={{
         ...leftOverflowButtonProps,
+        ref: ancla,
         "aria-label": leftOverflowButtonProps?.["aria-label"] ?? DESPLAZAR_IZQUIERDA,
       }}
       rightOverflowButtonProps={{
