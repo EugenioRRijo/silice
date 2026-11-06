@@ -47,7 +47,7 @@ function buscadorDeCodigos() {
 interface Props {
   texto: string;
   alCambiar: (codigo: string) => void;
-  // Se eligió una partida del catálogo: quien compone llena con ella la descripción y la unidad que estén vacías.
+  // Se eligió una partida del catálogo: quien compone pone su código, su descripción y su unidad (avisando de lo que reemplaza).
   alElegirDelCatalogo: (partida: PartidaHallada) => void;
   alExpirar: () => void;
 }
@@ -79,8 +79,9 @@ export function CampoDelCodigo({ texto, alCambiar, alElegirDelCatalogo, alExpira
       valorConfirmado={confirmado}
       alElegir={(opcion) => {
         setConfirmado(opcion.valor.codigo);
-        alCambiar(opcion.valor.codigo);
+        // Del catálogo: quien compone pone el código junto con la descripción y la unidad; si no, es un cambio de código más.
         if (opcion.valor.partida !== null) alElegirDelCatalogo(opcion.valor.partida);
+        else alCambiar(opcion.valor.codigo);
       }}
       valorPropio={bienFormado ? { rotulo: (t) => `Usar «${t}» como código`, alUsar: (t) => { setConfirmado(t); alCambiar(t); } } : undefined}
       vacio={{
