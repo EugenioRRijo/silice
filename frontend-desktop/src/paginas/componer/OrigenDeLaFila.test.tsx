@@ -204,6 +204,23 @@ describe("Componer: el origen de cada dato de la fila", () => {
   // Ronda 3, MENOR 2: lo tecleado se recuerda por indice de fila; una precarga que reemplaza las tablas trae filas nuevas y
   // nada de lo tecleado antes es suyo, aunque coincida el indice y el texto («m3»).
   describe("una precarga que reemplaza las tablas", () => {
+    test("con el foco en una celda de la tabla, una precarga conserva el foco en ella (WCAG 2.4.3)", async () => {
+      const u = userEvent.setup();
+      montar();
+      await screen.findByText("Precios en Bs", {}, ESPERA);
+      fijarFecha(FECHA_VIEJA);
+      await u.click(screen.getByRole("button", { name: "Agregar fila a Materiales" }));
+      const celda = precio(1);
+      await u.click(celda);
+      expect(celda).toHaveFocus();
+
+      fireEvent.change(screen.getByRole("combobox", { name: "Código" }), { target: { value: "FIC-01" } });
+      await waitFor(() => expect(descripcion(1)).toHaveValue("Arena ficticia"), ESPERA);
+
+      expect(precio(1)).toBe(celda);
+      expect(celda).toHaveFocus();
+    });
+
     test("la unidad «m3» tecleada antes en esa fila no hace «de la persona» la «m3» que trae la precarga", async () => {
       const u = userEvent.setup();
       montar();
