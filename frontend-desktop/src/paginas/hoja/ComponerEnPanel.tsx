@@ -57,9 +57,10 @@ function restaurar(campo: CampoDeTexto, valor: string) {
 // Esc (pulido F5, Tarea 2; H6 de la pasada): el contenedor lo atiende antes que nadie. Con una lista de sugerencias abierta
 // la deja cerrarse; en un campo de texto que cambió desde que recibió el foco, lo devuelve a ese valor (como las celdas de
 // la Hoja) y el panel sigue; en cualquier otro caso cierra el panel de una vez (un campo con lo elegido ya no lo borra
-// antes). Excepción: la descripción de un insumo (`data-llena-otras-celdas`) llena también la unidad y el precio, y el «Código»
-// tras elegir una partida llena la descripción, la unidad y las tablas (D16), así que no se restauran (quedaría la fila o la
-// partida a medias): ese Esc no cambia nada y el siguiente cierra el panel. Solo lo que nace dentro
+// antes). Excepción 1: la descripción de un insumo (`data-llena-otras-celdas`) llena también la unidad y el precio, así que no
+// se restaura (quedaría la fila a medias): ese Esc no cambia nada y el siguiente cierra el panel. Excepción 2 (D16, patrón de
+// Fiori): elegir una partida en «Código» confirma el valor (`data-valor-confirmado`), y ese es el valor al que vuelve el Esc,
+// no el de antes de buscar (quedaría la partida mezclada); con el código igual al elegido, Esc cierra el panel. Solo lo que nace dentro
 // del panel en el DOM: el Esc de «Precios distintos…» es de su diálogo.
 export function ComponerEnPanel({ partida, alCerrar, alGuardar }: Props): JSX.Element | null {
   const contenedor = useRef<HTMLDivElement>(null);
@@ -80,7 +81,7 @@ export function ComponerEnPanel({ partida, alCerrar, alGuardar }: Props): JSX.El
     e.preventDefault();
     e.stopPropagation();
     const campo = campoDeTexto(objetivo);
-    const previo = campo === null ? undefined : alEntrar.current.get(campo);
+    const previo = campo === null ? undefined : (campo.dataset.valorConfirmado ?? alEntrar.current.get(campo));
     if (campo !== null && previo !== undefined && campo.value !== previo) {
       // Un campo cuya eleccion llena otras celdas (la descripcion de un insumo: unidad y precio) no se restaura: devolver solo
       // su texto dejaria la fila a medias, con la unidad y el precio de un insumo que ya no esta. Esc con la lista cerrada no
