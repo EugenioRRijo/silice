@@ -103,6 +103,28 @@ describe("La lista de la carpeta de trabajo", () => {
     expect(await screen.findByText("Carpeta sin moneda declarada")).toBeInTheDocument();
   });
 
+  test("con carpeta sin moneda pero la obra en USD dice la moneda de la obra y el aviso", async () => {
+    con({ moneda: null, declarada: false, lista: null, aviso: SIN_LISTA });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra="USD" />);
+    expect(await screen.findByText(`Moneda: USD · ${SIN_LISTA}`)).toBeInTheDocument();
+    expect(screen.queryByText("Carpeta sin moneda declarada")).not.toBeInTheDocument();
+  });
+
+  test("con carpeta sin moneda y moneda de la obra en null sigue «Carpeta sin moneda declarada»", async () => {
+    con({ moneda: null, declarada: false, lista: null, aviso: SIN_LISTA });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={null} />);
+    expect(await screen.findByText("Carpeta sin moneda declarada")).toBeInTheDocument();
+  });
+
+  test("con carpeta sin moneda y moneda de la obra en undefined explícito dice que la está leyendo", async () => {
+    con({ moneda: null, declarada: false, lista: null, aviso: SIN_LISTA });
+    render(<ListaDeLaCarpeta alExpirar={vi.fn()} monedaDeLaObra={undefined} />);
+    expect(await screen.findByText("Leyendo la moneda de la carpeta…")).toBeInTheDocument();
+    await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Leyendo la moneda de la carpeta…")).toBeInTheDocument();
+    expect(screen.queryByText("Carpeta sin moneda declarada")).not.toBeInTheDocument();
+  });
+
   test("con moneda y sin lista para armar dice el aviso de la carpeta", async () => {
     con({ moneda: "USD", declarada: true, lista: null, aviso: SIN_LISTA });
     render(<ListaDeLaCarpeta alExpirar={vi.fn()} />);
