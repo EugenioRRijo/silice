@@ -15,7 +15,10 @@ export function nombreConFecha(lista: { nombre: string; fecha: string }): string
 // «La carpeta dice lo que tiene» (diseno de montar §5.1, O-1; D-MP1): en la cabecera de la obra abierta (marco nuevo,
 // Tarea 8; la especificacion pide alli la lista de precios), la moneda de su carpeta (la de la obra) y su lista para armar
 // (`GET /v1/carpeta`, T2), o por que no la tiene. Se lee al montarse: cada vez que se entra en una obra.
-export function ListaDeLaCarpeta({ alExpirar }: { alExpirar: () => void }): JSX.Element {
+export function ListaDeLaCarpeta(props: { alExpirar: () => void; monedaDeLaObra?: string | null }): JSX.Element {
+  const { alExpirar } = props;
+  // Sin la prop: null (no hay dato de la obra). Con `undefined` explícito: la ficha de la obra aún se está leyendo.
+  const monedaDeLaObra = "monedaDeLaObra" in props ? props.monedaDeLaObra : null;
   const [carpeta, setCarpeta] = useState<CarpetaRespuesta | null>(null);
   const [fallo, setFallo] = useState(false);
 
@@ -38,8 +41,12 @@ export function ListaDeLaCarpeta({ alExpirar }: { alExpirar: () => void }): JSX.
   let texto: string;
   if (fallo) texto = "No se pudo leer la moneda de la carpeta.";
   else if (carpeta === null) texto = "Leyendo la moneda de la carpeta…";
-  else if (carpeta.moneda === null) texto = "Carpeta sin moneda declarada";
-  else if (carpeta.aviso !== null || carpeta.lista === null)
+  else if (carpeta.moneda === null) {
+    // La carpeta no declaró moneda ni tiene lista: la moneda es la de la obra abierta, y solo sin ella se dice que falta.
+    if (monedaDeLaObra === undefined) texto = "Leyendo la moneda de la carpeta…";
+    else if (monedaDeLaObra !== null) texto = `Moneda: ${monedaDeLaObra} · ${carpeta.aviso ?? "Sin lista para armar"}`;
+    else texto = "Carpeta sin moneda declarada";
+  } else if (carpeta.aviso !== null || carpeta.lista === null)
     texto = `Moneda: ${carpeta.moneda} · ${carpeta.aviso ?? "Sin lista para armar"}`;
   else
     texto = `Moneda: ${carpeta.moneda} · Lista para armar: ${nombreConFecha(carpeta.lista)}`;
