@@ -227,7 +227,7 @@ function Resultado({
       <TablaDensa etiqueta="Desglose del FCAS" columnas={COLUMNAS} filas={filas} />
       <p className="cds--type-body-compact-01">
         Esto no cambia ninguna versión. Para aplicarlo, escriba <strong>{textoParaEscribir(r.fcas)}</strong> en el
-        FCAS de la pestaña Parámetros de la Hoja del proyecto; es una fracción: 0,50 equivale a 50 % y a
+        FCAS de la pestaña Parámetros del presupuesto de la obra; es una fracción: 0,50 equivale a 50 % y a
         multiplicar el sueldo por 1,50.
       </p>
     </div>

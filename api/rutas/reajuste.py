@@ -44,8 +44,8 @@ MENSAJE_CUERPO_INVALIDO = (
     "Los datos del estudio no tienen la forma esperada: escriba cada campo como texto."
 )
 MENSAJE_NUMERO_ENORME = "Un número del estudio es demasiado grande o no es válido."
-PROYECTO_INEXISTENTE = "El proyecto no existe en este caso."
-VERSION_INEXISTENTE = "El proyecto no tiene esa versión."
+PROYECTO_INEXISTENTE = "La obra no existe en este caso."
+VERSION_INEXISTENTE = "La obra no tiene esa versión."
 MENSAJE_BASE_PARTIDAS = "No se pudieron leer las partidas del contrato de la carpeta de trabajo."
 MENSAJE_BASE_SERIES = "No se pudieron leer las series de índices de la carpeta de trabajo."
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -151,7 +151,7 @@ def _hay_proyecto(sesion, nombre: str) -> bool:
 
 def _proyecto_existente(sesion, nombre: str) -> None:
     if not _hay_proyecto(sesion, nombre):
-        raise HTTPException(404, f"El proyecto «{nombre}» no existe en este caso.")
+        raise HTTPException(404, f"La obra «{nombre}» no existe en este caso.")
 
 
 def _quien(activa: SesionActiva | None) -> str:

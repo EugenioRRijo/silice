@@ -217,7 +217,7 @@ describe("Control: autocompletado de la partida (AC2)", () => {
   });
 
   test("sin línea base, el aviso de la API se dice y no se confunde con un fallo de lectura", async () => {
-    const AVISO = "Este proyecto todavía no tiene línea base.";
+    const AVISO = "Esta obra todavía no tiene línea base.";
     partidas = () => json({ version: "", aviso: AVISO, truncada: false, partidas: [] });
     await montarEnValuaciones();
     expect((await screen.findAllByText(AVISO)).length).toBeGreaterThan(0);

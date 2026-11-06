@@ -55,7 +55,7 @@ from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
 MENSAJE_CUERPO_INVALIDO = (
-    "Indique el proyecto y la versión como texto; el destinatario y la contraseña de la clave de "
+    "Indique la obra y la versión como texto; el destinatario y la contraseña de la clave de "
     "firma, si los usa, también."
 )
 MENSAJE_CLAVE_INCORRECTA = "La contraseña de la clave no es correcta."
@@ -122,7 +122,7 @@ def _proyecto(sesion: Session, nombre: str) -> models.Proyecto:
         select(models.Proyecto).where(models.Proyecto.nombre == nombre)
     ).first()
     if proyecto is None:
-        raise HTTPException(404, f"El proyecto «{nombre}» no existe en este caso.")
+        raise HTTPException(404, f"La obra «{nombre}» no existe en este caso.")
     return proyecto
 
 
@@ -130,7 +130,7 @@ def _version(sesion: Session, proyecto: str, codigo: str) -> models.Presupuesto:
     for version in _proyecto(sesion, proyecto).presupuestos:
         if version.codigo == codigo:
             return version
-    raise HTTPException(404, f"El proyecto «{proyecto}» no tiene la versión {codigo}.")
+    raise HTTPException(404, f"La obra «{proyecto}» no tiene la versión {codigo}.")
 
 
 @router.get("/versiones", response_model=list[VersionEntregable], dependencies=[ENTREGAR])

@@ -63,7 +63,7 @@ function FormularioDeCotizar({ proyecto, version, insumos, anfitrion, alCancelar
     <DialogoDeOperacion
       operacion="cotizar"
       titulo="Registrar una cotización"
-      descripcion="Crea una versión nueva desde la guardada; la cotización vale solo para este proyecto."
+      descripcion="Crea una versión nueva desde la guardada; la cotización vale solo para esta obra."
       anfitrion={anfitrion}
       usuario={usuarioDeSesion(sesion)}
       motivo={motivo}

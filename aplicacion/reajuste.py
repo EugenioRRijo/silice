@@ -133,7 +133,7 @@ PLANTILLAS_DE_REAJUSTE: tuple[tuple[str, str], ...] = (
     ),
     (
         "la version de comprobacion {codigo} no existe en el proyecto (UC-18 4)",
-        "la versión de comprobación {codigo} no existe en el proyecto (UC-18 4)",
+        "la versión de comprobación {codigo} no existe en la obra (UC-18 4)",
     ),
     (
         "la version {version} no valora {partidas}: no sirve de comprobacion para ese periodo",
@@ -357,7 +357,7 @@ def _version(sesion, proyecto: str, codigo: str) -> models.Presupuesto:
         .where(models.Proyecto.nombre == proyecto, models.Presupuesto.codigo == codigo)
     ).one_or_none()
     if version is None:
-        raise HojaInvalida(f"El proyecto {proyecto!r} no tiene una versión {codigo!r}.")
+        raise HojaInvalida(f"La obra {proyecto!r} no tiene una versión {codigo!r}.")
     return version
 
 

@@ -63,7 +63,7 @@ from tests.fixtures.sesion_web import (
 
 D = Decimal
 REGLA = "Use la coma para los decimales: por ejemplo 2,5. El punto separa los miles: 1.234,56."
-SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+SOLO_CUENTA = "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "
     "Lo que no guardó se perdió: abra la versión otra vez."

@@ -156,7 +156,7 @@ export default function PaginaReajuste() {
           descripcion="El estudio de reajuste se hace sobre una versión guardada del contrato."
         />
       )}
-      {codigo !== null && proyectos.estado === "cargando" && <EsqueletoPagina etiqueta="Cargando el proyecto" />}
+      {codigo !== null && proyectos.estado === "cargando" && <EsqueletoPagina etiqueta="Cargando la obra" />}
       {codigo !== null && nombre !== undefined && <Estudio key={nombre} proyecto={nombre} alExpirar={alExpirar} />}
       <MensajeDeCarga carga={proyectos} />
     </div>
@@ -178,7 +178,7 @@ function Estudio({ proyecto, alExpirar }: { proyecto: string; alExpirar: () => v
   if (contexto.estado !== "listo") return <MensajeDeCarga carga={contexto} />;
   if (contexto.datos.versiones.length === 0) {
     return (
-      <EstadoVacio titulo="El proyecto no tiene versiones guardadas: guarde la del contrato primero." />
+      <EstadoVacio titulo="La obra no tiene versiones guardadas: guarde la del contrato primero." />
     );
   }
   return <Formulario proyecto={proyecto} contexto={contexto.datos} alExpirar={alExpirar} />;

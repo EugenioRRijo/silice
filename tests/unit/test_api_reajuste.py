@@ -57,7 +57,7 @@ CIERRE = datetime(2027, 3, 5, 10, 0)  # después del último día de febrero: el
 A_MITAD = datetime(2027, 2, 10, 10, 0)  # a mitad del periodo: «parcial al corte»
 FALTA_INICIO = "Escriba «Inicio del contrato»: es obligatorio."
 PERIODO_FANTASMA = "Período 7: no hay un período con ese número en la tabla."
-SIN_VERSION = f"El proyecto {NOMBRE!r} no tiene una versión '009'."
+SIN_VERSION = f"La obra {NOMBRE!r} no tiene una versión '009'."
 PRIVADO = "texto-que-no-debe-volver-en-un-422"
 
 
@@ -438,14 +438,14 @@ def test_las_partidas_de_una_version_o_un_proyecto_inexistentes_son_404_fijos() 
         "/v1/reajuste/partidas", params={"proyecto": NOMBRE, "version": "V<b>009"}
     )
     assert sin_version.status_code == 404
-    assert sin_version.json()["detalle"] == "El proyecto no tiene esa versión."
+    assert sin_version.json()["detalle"] == "La obra no tiene esa versión."
     assert "009" not in sin_version.text
     assert sin_version.headers.get("cache-control") == "no-store"
     sin_proyecto = navegador.get(
         "/v1/reajuste/partidas", params={"proyecto": "Obra<b>inventada", "version": "001"}
     )
     assert sin_proyecto.status_code == 404
-    assert sin_proyecto.json()["detalle"] == "El proyecto no existe en este caso."
+    assert sin_proyecto.json()["detalle"] == "La obra no existe en este caso."
     assert "inventada" not in sin_proyecto.text
     assert sin_proyecto.headers.get("cache-control") == "no-store"
     assert navegador.get("/v1/reajuste/partidas", params={"proyecto": NOMBRE}).status_code == 422

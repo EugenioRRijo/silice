@@ -154,7 +154,7 @@ from seguridad.sesiones import SesionActiva
 
 MENSAJE_FORMA = "Los datos de la hoja no tienen la forma esperada: escriba cada celda como texto."
 MENSAJE_SOLO_CUENTA = (
-    "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
+    "La hoja de la obra se edita y se guarda con una cuenta; la clave de API no sirve."
 )
 MENSAJE_FALTA = (
     "Ese borrador ya no está en el servidor (se reinició Sílice, venció o se descartó). "
@@ -171,7 +171,7 @@ MENSAJE_SIN_PREPARAR = (
     "Esta versión todavía no se puede ver en solo lectura: quien arma el presupuesto tiene que "
     "abrirla una vez para prepararla."
 )
-MENSAJE_CON_VERSIONES = "Este proyecto ya tiene versiones: elija una de la lista."
+MENSAJE_CON_VERSIONES = "Esta obra ya tiene versiones: elija una de la lista."
 MENSAJE_REV = "El borrador cambió en otra ventana: vuelva a cargarlo."
 MENSAJE_FORMA_ESPACIO = (
     "Los datos del espacio no tienen la forma esperada: escriba cada celda como texto de hasta "
@@ -228,7 +228,7 @@ FORMA_CONVERTIR = (
     "La conversión no tiene la forma esperada: envíe proyecto, version, moneda, lado (venta o "
     "compra) y la fuente como texto de hasta 300 caracteres."
 )
-FORMA_CADENA = "Indique el proyecto (código o nombre) de hasta 500 caracteres."
+FORMA_CADENA = "Indique la obra (código o nombre) de hasta 500 caracteres."
 MENSAJE_PARTIDA = "Esa partida no tiene APU en este borrador: vuelva a cargar la lista de partidas."
 MENSAJE_SIN_VERSION = "Abra una version guardada: los insumos se eligen de su lista de precios."
 MENSAJE_SIN_PLAN = "Esta versión no tiene plan de trabajo: cree primero el plan secuencial."
@@ -249,8 +249,7 @@ FORMA_QUITAR_LINEA = (
     "mano_obra) e indice (entero)."
 )
 FORMA_ANTES = (
-    "Indique el proyecto (código o nombre) y, si quiere, la versión; cada uno de hasta 500 "
-    "caracteres."
+    "Indique la obra (código o nombre) y, si quiere, la versión; cada uno de hasta 500 caracteres."
 )
 SIN_LINEA_BASE = (
     "Esta obra no tiene línea base: declárela en Control de obra para comparar el antes y el "
@@ -288,7 +287,7 @@ def _proyecto(sesion, referencia: str):
     encontrado = resolver_proyecto(sesion, referencia)
     if encontrado is None:
         raise HTTPException(
-            status_code=404, detail=f"El proyecto «{referencia}» no existe en este caso."
+            status_code=404, detail=f"La obra «{referencia}» no existe en este caso."
         )
     return encontrado
 

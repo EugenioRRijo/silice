@@ -461,7 +461,7 @@ def revalorar_presupuesto(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
                     "No se pudo guardar la version nueva: ya existe una version con ese codigo en "
-                    "el proyecto o una lista de precios con ese nombre."
+                    "la obra o una lista de precios con ese nombre."
                     if isinstance(error, IntegrityError)
                     else "No se pudo guardar la version nueva por un conflicto en la base de datos."
                 ),
@@ -913,7 +913,7 @@ def _proyecto(sesion: Session, nombre: str) -> models.Proyecto:
         select(models.Proyecto).where(models.Proyecto.nombre == nombre)
     ).one_or_none()
     if proyecto is None:
-        raise LookupError(f"no hay ningún proyecto {nombre!r} en el catálogo")
+        raise LookupError(f"no hay ninguna obra {nombre!r} en el catálogo")
     return proyecto
 
 
@@ -1089,7 +1089,7 @@ def _buscar_modelo(sesion: Session, codigo: str, proyecto: str | None = None) ->
     if not encontrados:
         detalle = f"no hay ningún presupuesto con código {codigo!r}"
         if proyecto is not None:
-            detalle += f" en el proyecto {proyecto!r}"
+            detalle += f" en la obra {proyecto!r}"
         raise LookupError(detalle)
 
     if len(encontrados) > 1:
@@ -1097,7 +1097,7 @@ def _buscar_modelo(sesion: Session, codigo: str, proyecto: str | None = None) ->
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                f"el código {codigo!r} existe en más de un proyecto ({nombres}): "
+                f"el código {codigo!r} existe en más de una obra ({nombres}): "
                 "indique 'proyecto' en la consulta para desambiguar"
             ),
         )

@@ -97,7 +97,7 @@ def _existe(sesion: Session, proyecto: str) -> str:
     `GET /v1/proyectos` o el nombre; el resto de la ruta trabaja con el nombre."""
     encontrado = resolver_proyecto(sesion, proyecto)
     if encontrado is None:
-        raise HTTPException(404, f"El proyecto «{proyecto}» no existe en este caso.")
+        raise HTTPException(404, f"La obra «{proyecto}» no existe en este caso.")
     return encontrado.nombre
 
 
@@ -190,9 +190,9 @@ def linea_base(sesion: SesionDep, proyecto: str) -> LineaBaseRespuesta:
     )
 
 
-SIN_LINEA_BASE = "Este proyecto todavía no tiene línea base."
+SIN_LINEA_BASE = "Esta obra todavía no tiene línea base."
 SIN_LINEA_BASE_AL_CORTE = "No hay una línea base vigente a esa fecha de corte."
-PROYECTO_INEXISTENTE = "El proyecto no existe en este caso."
+PROYECTO_INEXISTENTE = "La obra no existe en este caso."
 MENSAJE_BASE_PARTIDAS = "No se pudieron leer las partidas del contrato de la carpeta de trabajo."
 
 

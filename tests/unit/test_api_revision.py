@@ -82,8 +82,8 @@ NO_VERIFICADO_SIN_FIRMA = (
 RECHAZADO_ZIP = (
     "Rechazado: El archivo no es un paquete de Silice válido (el ZIP está dañado). Pida uno nuevo."
 )
-PRIMERA = "Versión 005 del 10/11/2026; es la primera que recibe de este proyecto."
-SIN_ANTERIOR = "Esta instalación no recibió una entrega anterior de este proyecto."
+PRIMERA = "Versión 005 del 10/11/2026; es la primera que recibe de esta obra."
+SIN_ANTERIOR = "Esta instalación no recibió una entrega anterior de esta obra."
 PRECIOS_OK = "Los precios y totales que declara el paquete coinciden con los recalculados."
 REGLAS = "Reglas corridas a la fecha de emisión (10/11/2026): R1-R7, R11-R12."
 NOTAS_FALTAN = "Un dictamen con observaciones o de rechazo necesita notas."

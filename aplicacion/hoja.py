@@ -1771,7 +1771,7 @@ def _modelo(sesion: Session, proyecto: str, codigo: str) -> models.Presupuesto:
     ).one_or_none()
     if modelo is None:
         raise HojaInvalida(
-            f"El proyecto {proyecto!r} no tiene una version {codigo!r}: elija una de la lista."
+            f"La obra {proyecto!r} no tiene una version {codigo!r}: elija una de la lista."
         )
     return modelo
 
@@ -1925,7 +1925,7 @@ def abrir_version(
     except (ValueError, CatalogoIncompleto, KeyError) as error:
         sesion.rollback()
         raise HojaInvalida(
-            f"No se pudo abrir la version {codigo!r} del proyecto {proyecto!r}: {error}"
+            f"No se pudo abrir la version {codigo!r} de la obra {proyecto!r}: {error}"
         ) from error
     plan = plan_de_version(sesion, modelo)
     borrador = Borrador(
@@ -2233,7 +2233,7 @@ def crear_primera_version(
     ).one_or_none()
     if modelo_proyecto is None:
         raise HojaInvalida(
-            f"El proyecto {proyecto!r} no existe: creelo desde la barra superior (Proyectos)."
+            f"La obra {proyecto!r} no existe: creela desde la barra superior (Nueva obra)."
         )
     if sesion.scalar(
         select(func.count())
@@ -2241,7 +2241,7 @@ def crear_primera_version(
         .where(models.Presupuesto.proyecto_id == modelo_proyecto.id)
     ):
         raise HojaInvalida(
-            f"El proyecto {proyecto!r} ya tiene versiones: abra una y use Guardar version."
+            f"La obra {proyecto!r} ya tiene versiones: abra una y use Guardar version."
         )
     fecha = fecha or borrador.fecha
     moneda = moneda_del_proyecto(sesion, modelo_proyecto)
@@ -2255,9 +2255,9 @@ def crear_primera_version(
             ) from error
     if lista.moneda != moneda:
         raise HojaInvalida(
-            f"El proyecto {proyecto!r} esta en {moneda} y la lista {lista.nombre!r} en "
+            f"La obra {proyecto!r} esta en {moneda} y la lista {lista.nombre!r} en "
             f"{lista.moneda}: una version solo se valora con una lista de su moneda (RF-65). "
-            "Elija una lista en la moneda del proyecto (Precios de la empresa) y vuelva a "
+            "Elija una lista en la moneda de la obra (Precios de la empresa) y vuelva a "
             "guardar."
         )
     borrador = completar_composiciones(

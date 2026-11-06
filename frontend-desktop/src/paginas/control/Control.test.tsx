@@ -308,7 +308,7 @@ describe("Control de obra", () => {
 
   test("sin proyecto invita a elegirlo y no pide nada", () => {
     montar(null);
-    expect(screen.getByText("Elija un proyecto")).toBeInTheDocument();
+    expect(screen.getByText("Elija una obra")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 

@@ -87,7 +87,7 @@ export function BarraDeCorte({
       </Select>
       {precios.metodo === "comprobacion" && (
         <Select id="corte-version" labelText="Versión revalorada" value={precios.version} onChange={(e) => cambiarPrecios({ version: e.target.value })}>
-          <SelectItem value="" text={versiones.length ? "Elija una" : "El proyecto no tiene versiones revaloradas"} />
+          <SelectItem value="" text={versiones.length ? "Elija una" : "La obra no tiene versiones revaloradas"} />
           {versiones.map((v) => (
             <SelectItem key={v} value={v} text={v} />
           ))}

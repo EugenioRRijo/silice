@@ -83,7 +83,7 @@ export function textoDeCambiosAGuardar(n: number): string {
 export function textoDeExito(r: GuardadoRespuesta, proyecto: string): string {
   if (r.primera) {
     return (
-      `Se guardó la primera versión ${r.codigo} del proyecto ${proyecto} (total ${formatoEsVe(r.total.texto)}). ` +
+      `Se guardó la primera versión ${r.codigo} de la obra ${proyecto} (total ${formatoEsVe(r.total.texto)}). ` +
       "Quedó registrada su creación, con su fuente y su responsable."
     );
   }

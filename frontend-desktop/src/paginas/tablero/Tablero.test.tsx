@@ -70,7 +70,7 @@ const TABLERO: TableroRespuesta = {
   ],
 };
 
-describe("Tablero del proyecto", () => {
+describe("Tablero de la obra", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -95,7 +95,7 @@ describe("Tablero del proyecto", () => {
 
   test("sin proyecto invita a elegirlo y no pide nada a la API", () => {
     montar(null);
-    expect(screen.getByText("Elija un proyecto")).toBeInTheDocument();
+    expect(screen.getByText("Elija una obra")).toBeInTheDocument();
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
@@ -198,7 +198,7 @@ describe("Tablero del proyecto", () => {
       json({ ...TABLERO, version: null, fecha: null, moneda: null, tarjetas: [], control: null, curvas: null, desglose: [], pareto: [], versiones: [] }),
     );
     montar("OB-S2");
-    expect(await screen.findByText("Este proyecto aún no tiene presupuesto guardado")).toBeInTheDocument();
+    expect(await screen.findByText("Esta obra aún no tiene presupuesto guardado")).toBeInTheDocument();
   });
 
   test("403 y 404 se dicen con palabras, no como error", async () => {
@@ -210,7 +210,7 @@ describe("Tablero del proyecto", () => {
   test("404 dice que el proyecto no existe en el caso", async () => {
     fetchFalso.mockImplementation(async () => json({ detalle: "no existe" }, 404));
     montar("X");
-    expect(await screen.findByText("Ese proyecto no existe en este caso")).toBeInTheDocument();
+    expect(await screen.findByText("Esa obra no existe en este caso")).toBeInTheDocument();
   });
 });
 

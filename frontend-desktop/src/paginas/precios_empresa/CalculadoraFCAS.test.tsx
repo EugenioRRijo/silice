@@ -126,7 +126,7 @@ describe("Calculadora del FCAS por componentes", () => {
     await escribir(usuario, "Días trabajados", "217,28");
     await usuario.click(screen.getByRole("button", { name: "Calcular el FCAS" }));
     await screen.findByRole("region", { name: "FCAS calculado" });
-    expect(screen.getByText(/pestaña Parámetros de la Hoja del proyecto/)).toBeInTheDocument();
+    expect(screen.getByText(/pestaña Parámetros del presupuesto de la obra/)).toBeInTheDocument();
     expect(screen.getByText(/0,7863/, { selector: "strong" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /aplicar/i })).not.toBeInTheDocument();
     expect(fetchFalso.mock.calls.every(([r]) => String(r).startsWith("/v1/fcas/"))).toBe(true);
