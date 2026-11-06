@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from aplicacion.hoja_borradores import BorradorVivo
     from core import models
     from core.budget import GeneradorPlan, PeriodoPlan
+    from core.contracts.apu import ComposicionAPU
     from core.contracts.presupuesto import Presupuesto
     from core.models import Partida
     from ml.normalization import PartidaSimilar
@@ -521,3 +522,38 @@ def llevar_a_la_hoja(
                 vivo.borrador, vivo.rev, vivo.calculo, vivo.tamano = antes
             raise
     return vivo.id
+
+
+@dataclass(frozen=True)
+class PreciosSinEfecto:
+    """Los precios de ensayo de un escenario de UC-08 que no cambian nada, por su descripción y en
+    el orden en que se enviaron.
+
+    El cálculo (`core.budget.escenarios`) empareja la descripción del insumo por igualdad exacta y
+    deja el precio vigente a lo que no nombra: un precio de un insumo que el presupuesto base no
+    tiene se descarta en silencio, y uno igual al vigente no varía nada. `insumos_variados` solo
+    los cuenta; aquí se nombran, para que la pantalla lo diga.
+
+    - `sin_insumo`: ningún renglón del base usa esa descripción (p. ej. otra mayúscula).
+    - `sin_cambio`: está en el base, pero en todos sus renglones ya vale ese precio."""
+
+    sin_insumo: tuple[str, ...] = ()
+    sin_cambio: tuple[str, ...] = ()
+
+
+def precios_sin_efecto(
+    composiciones: Mapping[str, ComposicionAPU], precios: Mapping[str, Decimal]
+) -> PreciosSinEfecto:
+    """Compara los precios de ensayo con los de las composiciones del base, con el mismo criterio
+    que `insumos_variados` (descripción exacta; materiales y equipos por precio, mano de obra por
+    sueldo). No calcula ningún monto."""
+    vigentes: dict[str, set[Decimal]] = {}
+    for composicion in composiciones.values():
+        for linea in (*composicion.materiales, *composicion.equipos):
+            vigentes.setdefault(linea.descripcion, set()).add(linea.precio)
+        for obrero in composicion.mano_obra:
+            vigentes.setdefault(obrero.descripcion, set()).add(obrero.sueldo)
+    return PreciosSinEfecto(
+        sin_insumo=tuple(d for d in precios if d not in vigentes),
+        sin_cambio=tuple(d for d, p in precios.items() if vigentes.get(d) == {p}),
+    )

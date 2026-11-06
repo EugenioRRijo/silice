@@ -21,7 +21,7 @@ from pathlib import Path
 from sqlalchemy import select
 
 from aplicacion.composicion import ComposicionInvalida, decimal_desde_texto, texto_de_celda
-from aplicacion.control import Hueco, PartidaDelContrato, catalogo_de_frases
+from aplicacion.control import Hueco, PartidasDeUnaVersion, catalogo_de_frases
 from aplicacion.control import partidas_de_la_version as partidas_del_presupuesto
 from aplicacion.errores import HojaInvalida
 from core import models
@@ -514,11 +514,11 @@ def parciales_por_reemplazar(sesion, proyecto: str, codigo: str) -> list[tuple[i
     ]
 
 
-def partidas_de_la_version(sesion, proyecto: str, codigo: str) -> list[PartidaDelContrato]:
+def partidas_de_la_version(sesion, proyecto: str, codigo: str) -> PartidasDeUnaVersion:
     """Las partidas de la versión del contrato de `proyecto` (AC2): lo ejecutado solo puede citar
     una de ellas (`la partida X no está en la versión del contrato`). `HojaInvalida` si la versión
     no existe."""
-    return partidas_del_presupuesto(sesion, _version(sesion, proyecto, codigo).id)
+    return partidas_del_presupuesto(sesion, _version(sesion, proyecto, codigo))
 
 
 def series_de_indices(sesion) -> list[models.SerieIndice]:

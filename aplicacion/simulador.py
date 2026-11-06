@@ -11,6 +11,7 @@ from __future__ import annotations
 import csv
 import io
 import random
+from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.orm import Session
@@ -94,12 +95,18 @@ def variacion_de_texto(texto: str) -> Decimal:
     return valor
 
 
-def insumos_de_texto(texto: str | None) -> set[str] | None:
-    """Los insumos separados por coma; vacio (o solo espacios) = todos (`None`)."""
-    limpio = (texto or "").strip()
-    if not limpio:
-        return None
-    return {i.strip() for i in limpio.split(",") if i.strip()}
+def insumos_de_texto(insumos: str | Sequence[str] | None) -> set[str] | None:
+    """Los insumos a simular; vacio (o solo espacios) = todos (`None`).
+
+    Un texto se parte por la coma (la forma de siempre, la del CLI y la de Streamlit). Una lista
+    nombra cada descripcion entera, asi que admite una que lleva coma («Tubo, 4 pulgadas»), que el
+    texto partiria en dos nombres que no existen. En los dos casos se recorta cada nombre."""
+    if isinstance(insumos, str) or insumos is None:
+        partes = (insumos or "").split(",")
+    else:
+        partes = list(insumos)
+    nombres = {i.strip() for i in partes if i.strip()}
+    return nombres or None
 
 
 def precios_vigentes(catalogo: Catalogo) -> dict[str, tuple[str, str, Decimal]]:
@@ -112,7 +119,7 @@ def precios_vigentes(catalogo: Catalogo) -> dict[str, tuple[str, str, Decimal]]:
 
 
 def simular_desde_catalogo(
-    sesion: Session, variacion_max: str, semilla: int, insumos: str | None
+    sesion: Session, variacion_max: str, semilla: int, insumos: str | Sequence[str] | None
 ) -> list[FilaSimulada]:
     """Lee la lista vigente y la simula. Solo lee: no escribe en la base.
 

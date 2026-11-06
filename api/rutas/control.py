@@ -35,9 +35,10 @@ from datetime import date
 from typing import Annotated
 from zipfile import BadZipFile
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from openpyxl.utils.exceptions import InvalidFileException
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from api.archivos import guardar_subida
@@ -190,18 +191,40 @@ def linea_base(sesion: SesionDep, proyecto: str) -> LineaBaseRespuesta:
 
 
 SIN_LINEA_BASE = "Este proyecto todavía no tiene línea base."
+SIN_LINEA_BASE_AL_CORTE = "No hay una línea base vigente a esa fecha de corte."
+PROYECTO_INEXISTENTE = "El proyecto no existe en este caso."
+MENSAJE_BASE_PARTIDAS = "No se pudieron leer las partidas del contrato de la carpeta de trabajo."
 
 
 @router.get("/partidas", response_model=PartidasDelContratoRespuesta)
-def partidas(sesion: SesionDep, proyecto: str) -> PartidasDelContratoRespuesta:
+def partidas(
+    sesion: SesionDep,
+    proyecto: str,
+    corte: Annotated[
+        date | None,
+        Query(description="El *hasta* de la valuación (ISO): la línea base vigente a esa fecha"),
+    ] = None,
+) -> PartidasDelContratoRespuesta:
     """AC2: las partidas de la versión de la línea base (las únicas que una valuación puede medir),
-    para el campo «Partida» con autocompletado. Sin línea base responde vacío con su aviso (no es un
-    error: es lo que ve quien aún no la declaró)."""
-    proyecto = _existe(sesion, proyecto)
-    hallada = logica.partidas_de_la_linea_base(sesion, proyecto)
-    if hallada is None:
-        return partidas_a_respuesta("", [], SIN_LINEA_BASE)
-    return partidas_a_respuesta(*hallada)
+    para el campo «Partida» con autocompletado. Con `corte`, la de la línea base vigente a esa
+    fecha, la misma contra la que R13 juzga la valuación; sin él, la más reciente. Sin línea base
+    (o ninguna a esa fecha) responde vacío con su aviso: no es un error, es lo que ve quien aún no
+    la declaró. `truncada` dice si la lista se recortó al tope.
+
+    Un proyecto que no existe es un 404 fijo que no repite lo pedido (diseño de autocompletado,
+    H-17); un fallo de la base, el 503 fijo, sin SQL ni rutas, como `/v1/consulta`."""
+    try:
+        encontrado = resolver_proyecto(sesion, proyecto)
+        if encontrado is None:
+            raise HTTPException(404, PROYECTO_INEXISTENTE)
+        halladas = logica.partidas_de_la_linea_base(sesion, encontrado.nombre, corte)
+        if halladas is not None:
+            return partidas_a_respuesta(halladas)
+        if corte is not None and logica.tiene_linea_base(sesion, encontrado.nombre):
+            return partidas_a_respuesta(None, SIN_LINEA_BASE_AL_CORTE)
+        return partidas_a_respuesta(None, SIN_LINEA_BASE)
+    except SQLAlchemyError:
+        raise HTTPException(503, MENSAJE_BASE_PARTIDAS) from None
 
 
 class DeclararLineaBase(BaseModel):

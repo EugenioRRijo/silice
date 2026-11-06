@@ -11,7 +11,8 @@ Dos POST con el mismo cuerpo, que **no escriben** en la base (solo leen la lista
   pagina Streamlit.
 
 `semilla` es un entero >= 0; `variacion_max` es un decimal en porcentaje escrito como texto;
-`insumos` son descripciones separadas por coma (vacio o `null` = todos). Errores como en
+`insumos` son descripciones separadas por coma o, desde el autocompletado, una lista de
+descripciones exactas, que admite una con coma (vacio, `[]` o `null` = todos). Errores como en
 Streamlit, en `{"detalle": ...}`: variacion no decimal o valores invalidos, 422; sin lista
 vigente, 409. El acceso lo exige cada ruta con `api.acceso.EDITAR` (clave o sesion con
 `EDITAR_HOJA`, RM-3). El caso es el de la sesion web (RM-2): lo resuelve
@@ -19,6 +20,8 @@ vigente, 409. El acceso lo exige cada ruta con `api.acceso.EDITAR` (clave o sesi
 """
 
 from __future__ import annotations
+
+from typing import Annotated
 
 from fastapi import APIRouter
 from fastapi.responses import Response
@@ -42,8 +45,13 @@ SEMILLA_MAXIMA = 2**63 - 1
 class SimulacionPeticion(BaseModel):
     semilla: int = Field(42, ge=0, le=SEMILLA_MAXIMA, strict=True)
     variacion_max: str = Field("5", max_length=40, description="Porcentaje, decimal como texto")
-    insumos: str | None = Field(
-        None, max_length=20000, description="Separados por coma; vacio o null = todos"
+    insumos: str | list[Annotated[str, Field(max_length=500)]] | None = Field(
+        None,
+        max_length=20000,
+        description=(
+            "Separados por coma, o una lista de descripciones exactas (admite la coma); "
+            "vacio, [] o null = todos"
+        ),
     )
 
 

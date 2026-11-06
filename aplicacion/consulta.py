@@ -35,9 +35,13 @@ que siguen admitiendo un valor propio. Son listas cortas que la interfaz pide un
   unidades en el núcleo): «m3», «m³» y «M3» son una sola, `m3`, con sus grafías y cuántas filas la
   usan. Las más usadas primero; a igual uso, por orden alfabético. Una unidad desconocida queda en
   minúsculas y sin traducir, como la deja el núcleo.
-- `proveedores_usados`: los proveedores de las cotizaciones de la carpeta, sin repetir (sin
-  distinguir mayúsculas, acentos ni espacios), escritos como en su cotización más reciente y con la
-  fecha de esa cotización; el último usado primero.
+- `proveedores_usados`: los proveedores de las cotizaciones **activas** de la carpeta (diseño §13),
+  sin repetir (sin distinguir mayúsculas, acentos ni espacios), escritos como en su cotización más
+  reciente y con la fecha de esa cotización; el último usado primero. Activa es la que está en la
+  lista de precios de la versión vigente de alguna obra (la de mayor id no descartada, el mismo
+  criterio que `core.budget.edicion.version_vigente`): retirar una cotización crea una versión
+  nueva sobre una lista sin ella, así que la retirada queda solo en listas de versiones viejas; la
+  de una versión descartada o la de una lista que ninguna versión usa tampoco cuentan.
 
 Sin Streamlit ni FastAPI; solo lee.
 """
@@ -48,7 +52,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from adapters.vial.constantes import PARTIDAS_VIALES
@@ -316,12 +320,25 @@ def unidades_usadas(sesion: Session) -> list[UnidadUsada]:
     ]
 
 
+def _listas_de_las_versiones_vigentes():
+    """Las listas de precios de la versión vigente de cada obra (la de mayor id no descartada)."""
+    descartada = exists().where(models.DescarteVersion.presupuesto_id == models.Presupuesto.id)
+    vigentes = (
+        select(func.max(models.Presupuesto.id))
+        .where(~descartada)
+        .group_by(models.Presupuesto.proyecto_id)
+    )
+    return select(models.Presupuesto.lista_precios_id).where(models.Presupuesto.id.in_(vigentes))
+
+
 def proveedores_usados(sesion: Session) -> list[ProveedorUsado]:
-    """Los proveedores de las cotizaciones de la carpeta, sin repetir (ver la cabecera). A igual
-    fecha manda la cotización registrada después."""
+    """Los proveedores de las cotizaciones activas de la carpeta, sin repetir (ver la cabecera). A
+    igual fecha manda la cotización registrada después."""
     recientes: dict[str, ProveedorUsado] = {}
-    consulta = select(models.Cotizacion.proveedor, models.Cotizacion.fecha).order_by(
-        models.Cotizacion.fecha, models.Cotizacion.id
+    consulta = (
+        select(models.Cotizacion.proveedor, models.Cotizacion.fecha)
+        .where(models.Cotizacion.lista_id.in_(_listas_de_las_versiones_vigentes()))
+        .order_by(models.Cotizacion.fecha, models.Cotizacion.id)
     )
     for proveedor, fecha in sesion.execute(consulta):
         escrito = " ".join(proveedor.split())

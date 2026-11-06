@@ -12,11 +12,13 @@
   escriben (`response_model_exclude_none`): sin esos parámetros la respuesta es la de siempre. El
   precio viaja como texto decimal con punto. Una fecha mal escrita es el 422 fijo.
 - AC4: `GET /v1/consulta/unidades` (las unidades del catálogo con la tabla de alias del núcleo y
-  cuántas veces se usan) y `GET /v1/consulta/proveedores` (los de las cotizaciones de la carpeta,
-  con su último uso), de `aplicacion.consulta`. Mismo acceso `LEER_PROYECTO` y la misma cabecera:
-  solo leen, y el proveedor ya lo ve quien lee en la columna «Cotización» de los precios de una
-  versión (`GET /v1/hoja/precios`). Se declaran antes de `/{tabla}`, que si no las tomaría por
-  una tabla desconocida. Sin parámetros: son listas cortas que la interfaz filtra.
+  cuántas veces se usan) y `GET /v1/consulta/proveedores` (los de las cotizaciones activas de la
+  carpeta, con su último uso), de `aplicacion.consulta`. Mismo acceso `LEER_PROYECTO` y la misma
+  cabecera: solo leen, y el proveedor ya lo ve quien lee en la columna «Cotización» de los precios
+  de una versión (`GET /v1/hoja/precios`). Esto se aparta del diseño de autocompletado (§12.2, que
+  pedía `EDITAR_HOJA` para los proveedores): ver su enmienda del 2026-11-05. Se declaran antes
+  de `/{tabla}`, que si no las tomaría por una tabla desconocida. Sin parámetros: son listas
+  cortas que la interfaz filtra.
 """
 
 from __future__ import annotations
@@ -118,8 +120,14 @@ def unidades(sesion: SesionDep) -> UnidadesRespuesta:
 
 @router.get("/proveedores", response_model=ProveedoresRespuesta, dependencies=LEER)
 def proveedores(sesion: SesionDep) -> ProveedoresRespuesta:
-    """Los proveedores de las cotizaciones de la carpeta, sin repetir, con la fecha de su última
-    cotización. Para sugerir el proveedor al cotizar; se puede escribir uno nuevo."""
+    """Los proveedores de las cotizaciones activas de la carpeta (las de la versión vigente de cada
+    obra; una retirada o de una versión descartada no), sin repetir, con la fecha de su última
+    cotización. Para sugerir el proveedor al cotizar; se puede escribir uno nuevo.
+
+    Permiso `LEER_PROYECTO` y no el `EDITAR_HOJA` del diseño (§12.2): el nombre del proveedor no es
+    un dato nuevo para quien solo revisa, que ya lo lee en la columna «Cotización» de
+    `GET /v1/hoja/precios` con ese mismo permiso. Pedir más aquí no protegería nada y obligaría a
+    otra regla de acceso para una lista de solo lectura (enmienda del diseño, 2026-11-05)."""
     try:
         usados = proveedores_usados(sesion)
     except SQLAlchemyError:
@@ -176,7 +184,7 @@ def consultar(
                 fuente=s.fuente,
                 descripcion=s.descripcion,
                 unidad=s.unidad,
-                precio=None if s.precio is None else str(s.precio),
+                precio=None if s.precio is None else format(s.precio, "f"),
                 moneda=s.moneda,
                 fecha_precio=s.fecha_precio,
                 aviso_precio=s.aviso_precio,
