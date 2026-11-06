@@ -36,6 +36,12 @@ export function centesimasEsVe(exacto: string): string {
   return formatoEsVe(signo === "-" && /[1-9]/.test(total) ? `-${texto}` : texto);
 }
 
+// Un valor que puede ser una cifra («24.5», «-5.81») o no («A1.2», «Eje B2.5»): solo si el texto ENTERO es un decimal se
+// pasa a es-VE; un código o un nombre con un punto se devuelve tal cual (los antes/después de un cambio mezclan ambos).
+export function cifraSiLoEs(valor: string): string {
+  return DECIMAL.test(valor.trim()) ? formatoEsVe(valor) : valor;
+}
+
 // Un texto libre de la API con decimales de punto dentro («FCAS (fracción: 6.00 = …)», «FCAS 6 y bono 5.81», «15.0 % del
 // costo directo») a es-VE: solo se tocan los decimales con punto sueltos, no los enteros (un año, «600 %») ni los
 // códigos con varios puntos («C-000.000.006») o con guion delante («P-01.03») ni lo que ya está en es-VE («1.234,56»);

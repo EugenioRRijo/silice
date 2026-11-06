@@ -232,6 +232,19 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     expect(celdas.slice(3)).toEqual(["24,5", "1.234,5"]);
   });
 
+  test("D1: un valor que no es cifra («A1.2», «Eje B2.5») se muestra tal cual en la lista de cambios", async () => {
+    alCambios = () =>
+      json({
+        rev: 3,
+        cambios: [{ objeto: "metraje", clave: "fuentes|F1", campo: "ambiente_id", antes: "A1.2", despues: "Eje B2.5" }],
+      });
+    montar();
+    const dialogo = await abrirModal();
+    const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
+    const celdas = within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent);
+    expect(celdas.slice(3)).toEqual(["A1.2", "Eje B2.5"]);
+  });
+
   test("3d-F1: sin fuente el botón «Guardar versión» queda deshabilitado y dice por qué; con fuente se habilita", async () => {
     montar();
     const dialogo = await abrirModal();

@@ -1,7 +1,8 @@
 // «Revisar un paquete»: logica pura de la pagina. La interfaz no calcula montos: recibe de la API el exacto y el
 // texto como lo escribe la pantalla clasica, y solo les da formato es-VE.
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { rotuloDeCampo as rotuloDeCampoDeCambio, rotuloDeObjeto } from "../../comun/rotulos";
+import { cifraSiLoEs, fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 
 // ui/paginas/revisar.py lo dice con Markdown («Elija el archivo `.silice` que recibió.»); aqui va sin marcas.
 export const SIN_ARCHIVO = "Elija el archivo .silice que recibió.";
@@ -49,14 +50,14 @@ export function formularioExcel(archivo: File, tipo: "presupuesto" | "revision")
 // Las columnas de «Quién cambió qué»: las de la hoja «Cambios» del Excel de la revision.
 export const COLUMNAS_CAMBIOS: ColumnaDensa[] = [
   { clave: "version", titulo: "Versión" },
-  { clave: "objeto", titulo: "Objeto" },
+  { clave: "objeto", titulo: "Objeto", presentar: rotuloDeObjeto },
   { clave: "clave", titulo: "Clave" },
-  { clave: "campo", titulo: "Campo" },
-  { clave: "antes", titulo: "Antes" },
-  { clave: "despues", titulo: "Después" },
+  { clave: "campo", titulo: "Campo", presentar: rotuloDeCampoDeCambio },
+  { clave: "antes", titulo: "Antes", presentar: cifraSiLoEs },
+  { clave: "despues", titulo: "Después", presentar: cifraSiLoEs },
   { clave: "fuente", titulo: "Fuente" },
   { clave: "responsable", titulo: "Responsable" },
-  { clave: "fecha", titulo: "Fecha" },
+  { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },
   { clave: "marca", titulo: "Marca" },
 ];
 
