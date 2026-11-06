@@ -69,6 +69,7 @@ afirmación contra `archivo:línea`) antes de aplicarlos.
 | C2 | Rehacer `scripts/recorrido_ux_playwright.py`, que aún navega por el menú de módulos retirado (modos de pantallas, `--funcional` y `--umbrales`); si se le añade un detector de botones sin nombre, que salte lo `aria-hidden`, como axe (D10) |
 | C3 | Pasada única en navegador a 1056, 1366 y 1920 px, con las tres letras |
 | C4 | Comparación de líneas contra la línea base del rediseño y tamaño del front (14,4 MB de 15): partir el paquete si hace falta |
+| C5 | Restos del árbitro de la tanda (rondas 3 y 4): el presentador de cambios elige la primera coincidencia de columna (N1: un nombre «Toma; x=3» engaña); el aviso de Componer compara sin `trim()` ni grafías equivalentes de unidad (N4); 14 mensajes del servidor dicen «no existe en este caso»; «Esta version esta en solo lectura…» (`aplicacion/hoja.py:2134`, `hoja_guardado.py:77`) y `motivo_para_no_reemplazar` (`aplicacion/composicion.py:460-469`) sin tildes. `hoja.py` y `composicion.py` están congelados por el experimento: tocarlos exige re-congelar con acta y aval de Eugenio |
 
 ## Después · Diseños de F5
 
