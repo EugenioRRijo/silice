@@ -1,7 +1,9 @@
 import { TablaPaginada } from "../hoja/TablaPaginada";
 import { VistaCarga } from "../hoja/VistaCarga";
-import { fechaCorta, rotuloDeOrigen, rutaDeTrazabilidad } from "../hoja/logica";
+import { cifrasEnTextoEsVe, fechaEsVe } from "../../indicadores/formatoEsVe";
+import { rotuloDeOrigen, rutaDeTrazabilidad } from "../hoja/logica";
 import type { TrazabilidadRespuesta } from "../hoja/logica";
+import { rotuloDeCampo, rotuloDeObjeto, rotuloDeParametro } from "./rotulos";
 import { TEXTOS_DE_VERSIONES as T } from "./textos";
 
 // El registro de cambios de una versión guardada (`GET /v1/hoja/trazabilidad`): qué cambió, de qué a qué, con su fuente, su
@@ -25,14 +27,16 @@ function Registros({ vista, titulo }: { vista: TrazabilidadRespuesta; titulo: st
       // Cuándo y quién primero, como en un registro de auditoría: al final quedaban fuera de la caja del panel (pasada de
       // navegador del cierre de F4, H5).
       columnas={[
-        { clave: "fecha_hora", titulo: "Fecha y hora", ordenable: false, presentar: fechaCorta },
+        { clave: "fecha_hora", titulo: "Fecha y hora", ordenable: false, presentar: fechaEsVe },
         { clave: "responsable", titulo: "Responsable", ordenable: false },
         { clave: "objeto", titulo: "Objeto", ordenable: false },
         {
           clave: "clave",
           titulo: "Clave",
           ordenable: false,
-          celda: (f) => <span title={f.clave}>{rotuloDeOrigen(f.clave!)}</span>,
+          celda: (f) => (
+            <span title={f.clave}>{f.objeto_tecnico === "parametro" ? rotuloDeParametro(f.clave!) : rotuloDeOrigen(f.clave!)}</span>
+          ),
         },
         { clave: "campo", titulo: "Campo", ordenable: false },
         { clave: "antes", titulo: "Antes", ordenable: false },
@@ -41,11 +45,13 @@ function Registros({ vista, titulo }: { vista: TrazabilidadRespuesta; titulo: st
       ]}
       filas={vista.registros.map((r, i) => ({
         id: `registro-${i}`,
-        objeto: r.objeto,
+        objeto: rotuloDeObjeto(r.objeto),
+        objeto_tecnico: r.objeto,
+        // El `title` lleva la clave del servidor; la celda la presenta (y para «parametro» elige su rótulo).
         clave: r.clave,
-        campo: r.campo,
-        antes: r.antes,
-        despues: r.despues,
+        campo: rotuloDeCampo(r.campo),
+        antes: cifrasEnTextoEsVe(r.antes),
+        despues: cifrasEnTextoEsVe(r.despues),
         fuente: r.fuente,
         responsable: r.responsable,
         fecha_hora: r.fecha_hora,
