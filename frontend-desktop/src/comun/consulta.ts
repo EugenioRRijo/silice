@@ -21,6 +21,8 @@ export interface SugerenciaDeConsulta {
   moneda?: string | null;
   fecha_precio?: string | null;
   aviso_precio?: string | null;
+  // «material», «equipo» o «mano de obra» (con `detalle`): en la lista de Equipos el catálogo mezcla los dos tipos.
+  tipo?: string | null;
 }
 
 // Lo que se le pide de mas a la consulta (AC1b): la descripcion y la unidad de cada insumo y, con una fecha ISO, el precio
@@ -68,6 +70,7 @@ function lineaConPrecio(s: SugerenciaDeConsulta): string[] {
   } else {
     partes.push(s.aviso_precio || SIN_PRECIO_EN_LA_LISTA);
   }
+  if (s.tipo) partes.push(s.tipo);
   return partes;
 }
 
