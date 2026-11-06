@@ -2,7 +2,7 @@ import { StructuredListBody, StructuredListCell, StructuredListRow, StructuredLi
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { useAplicacion } from "../../shell/contexto";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 
 interface Acerca {
   version: string;

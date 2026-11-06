@@ -9,7 +9,7 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { leerFeriados } from "./fechas";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import {

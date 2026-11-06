@@ -10,7 +10,7 @@ import { FranjaDeCifras } from "../../indicadores/FranjaDeCifras";
 import { EtapaDeObra } from "../../marco/EtapaDeObra";
 import { rutaOPendientes } from "../../marco/espacios";
 import { claveDeObra } from "../pendientes/logica";
-import type { Carga } from "./useCarga";
+import type { Carga } from "../../comun/useCarga";
 import { TEXTOS } from "./textos";
 
 // Las palabras de la etapa las da el servidor (`etapa_texto`, la misma tabla del Resumen de la obra); aquí solo se decide

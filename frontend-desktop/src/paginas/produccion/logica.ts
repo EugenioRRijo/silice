@@ -3,6 +3,7 @@
 // pasan por Number.
 import { ErrorDeApi } from "../../api/cliente";
 import { mensajeDeError } from "../../comun/errores";
+import { MONEDAS, rotuloDeMoneda } from "../../comun/monedas";
 import { MENSAJE_CIFRA, leerCifra } from "../../indicadores/cifraEscrita";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
@@ -20,10 +21,8 @@ export const CONCEPTOS: readonly { valor: string; texto: string }[] = [
   { valor: "energia", texto: "Energía" },
   { valor: "otro", texto: "Otro" },
 ];
-export const MONEDAS: readonly { valor: string; texto: string }[] = [
-  { valor: "Bs", texto: "Bolívares (Bs)" },
-  { valor: "USD", texto: "Dólares (USD)" },
-];
+// Las monedas de comun/monedas con su rotulo, para los selectores.
+export const OPCIONES_DE_MONEDA: readonly { valor: string; texto: string }[] = MONEDAS.map((m) => ({ valor: m, texto: rotuloDeMoneda(m) }));
 
 export function rotulo(lista: readonly { valor: string; texto: string }[], valor: string): string {
   return lista.find((e) => e.valor === valor)?.texto ?? valor;

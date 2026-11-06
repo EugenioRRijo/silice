@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { RUTA_DE_UNIDADES, buscadorDeUnidades, filtrarUnidades, gruposDeUnidades } from "./unidades";
-import type { UnidadUsada } from "./unidades";
+import { RUTA_DE_UNIDADES, buscadorDeUnidades, filtrarUnidades, gruposDeUnidades } from "./unidadesDelCatalogo";
+import type { UnidadUsada } from "./unidadesDelCatalogo";
 
 // AC4 (pedido de Eugenio del 2026-10-21): la unidad se elige de las que ya usa el catálogo de la carpeta
 // (`GET /v1/consulta/unidades`, agrupadas con la tabla de alias del núcleo y en orden de uso). La lista es corta: se pide

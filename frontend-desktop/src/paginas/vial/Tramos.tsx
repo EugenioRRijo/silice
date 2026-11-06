@@ -13,7 +13,7 @@ import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { useAplicacion } from "../../shell/contexto";
 import { rutaDeVersiones, versionesOfrecidas } from "../hoja/logica";
 import type { VersionesRespuesta } from "../hoja/logica";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { AvisoDeLlevar } from "./AvisoDeLlevar";
 import { AvisoConFoco } from "../produccion/AvisoConFoco";
 import { ReportesDeLaVia } from "./ReportesDeLaVia";

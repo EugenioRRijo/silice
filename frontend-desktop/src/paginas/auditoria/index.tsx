@@ -10,7 +10,7 @@ import { fijarArchivoPendiente } from "../inicio/archivoPendiente";
 import type { ModoDeAuditoria } from "../inicio/archivoPendiente";
 import { UltimasAuditorias } from "../inicio/UltimasAuditorias";
 import type { AuditoriaGuardadaRespuesta } from "../inicio/UltimasAuditorias";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 
 const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";
 

@@ -7,7 +7,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { unidadEscrita } from "../../comun/unidades";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { coincide } from "./filtro";
 
 interface Partida {

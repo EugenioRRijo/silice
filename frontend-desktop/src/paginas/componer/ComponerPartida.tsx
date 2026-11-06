@@ -10,7 +10,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { BuscadorReferencia } from "./BuscadorReferencia";
 import { CampoDelCodigo } from "./CampoDelCodigo";
-import { CampoDeUnidad } from "./CampoDeUnidad";
+import { CampoDeUnidad } from "../../comun/CampoDeUnidad";
 import { esCodigoValido } from "./codigo";
 import { AvisoSinLista } from "./AvisoSinLista";
 import type { Desde } from "./AvisoSinLista";

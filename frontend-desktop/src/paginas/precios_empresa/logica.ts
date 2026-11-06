@@ -14,7 +14,6 @@ export const TITULO_HALLAZGOS = "3. Precios vencidos o fuera de rango (R11 y R12
 export const SIN_LISTAS = "Todavía no hay listas de empresa en este caso.";
 export const MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto.";
 export const EXTENSIONES = [".csv", ".xlsx"];
-export const MONEDAS = ["Bs", "USD"];
 
 export interface Base {
   id: number;

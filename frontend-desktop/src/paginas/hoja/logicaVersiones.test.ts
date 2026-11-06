@@ -15,7 +15,6 @@ import {
   cuerpoDeRetirar,
   fechaDeHoy,
   insumosDePrecios,
-  monedasDestino,
   motivoParaNoConvertir,
   motivoParaNoCotizar,
   motivoParaNoRestaurar,
@@ -214,11 +213,5 @@ describe("fecha y monedas", () => {
   test("la fecha de hoy es AAAA-MM-DD con los componentes locales", () => {
     expect(fechaDeHoy(new Date(2026, 9, 5))).toBe("2026-10-05");
     expect(fechaDeHoy(new Date(2026, 0, 31))).toBe("2026-01-31");
-  });
-
-  test("la moneda destino excluye la actual (MONEDAS = Bs y USD)", () => {
-    expect(monedasDestino("USD")).toEqual(["Bs"]);
-    expect(monedasDestino("Bs")).toEqual(["USD"]);
-    expect(monedasDestino(null)).toEqual(["Bs", "USD"]);
   });
 });

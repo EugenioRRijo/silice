@@ -2,9 +2,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { CampoDeUnidad } from "./CampoDeUnidad";
+import { CampoDeUnidad } from "../../comun/CampoDeUnidad";
 import { TablaInsumos } from "./TablaInsumos";
-import { RUTA_DE_UNIDADES } from "./unidades";
+import { RUTA_DE_UNIDADES } from "../../comun/unidadesDelCatalogo";
 
 // AC4 (pedido de Eugenio del 2026-10-21): «Unidad» sugiere las unidades que ya usa el catálogo de la carpeta
 // (`GET /v1/consulta/unidades`) y sigue admitiendo una propia. Datos ficticios con la forma de `api/rutas/consulta.py`.

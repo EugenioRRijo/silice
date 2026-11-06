@@ -2,8 +2,9 @@
 // propia. `GET /v1/consulta/unidades` las da agrupadas con la tabla de alias del nucleo (`m3`, `m³` y `M3` son `m3`), con
 // sus grafias y en orden de uso. Es una lista corta: se pide una vez por campo y se filtra en el navegador, asi que basta
 // una letra («m») para ver sugerencias. Lo usan Componer (cabecera y materiales) y la Hoja (insumo nuevo).
-import { pedir } from "../../api/cliente";
-import type { GrupoDeResultados } from "../../comun/logicaBusqueda";
+import { pedir } from "../api/cliente";
+import type { GrupoDeResultados } from "./logicaBusqueda";
+import { plano } from "./normalizar";
 
 export const RUTA_DE_UNIDADES = "/v1/consulta/unidades";
 const ROTULO = "Unidades del catálogo";
@@ -18,12 +19,8 @@ interface UnidadesRespuesta {
   unidades: UnidadUsada[];
 }
 
-const comparable = (texto: string) =>
-  texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
+// La misma normalizacion que el resto de las busquedas (sin tildes ni mayusculas, `comun/normalizar`), sin espacios en los bordes.
+const comparable = (texto: string) => plano(texto).trim();
 
 // 0: igual a lo escrito; 1: empieza asi; 2: lo contiene; null: no coincide. Cuenta la unidad y cualquiera de sus grafias.
 function cercania(u: UnidadUsada, q: string): number | null {

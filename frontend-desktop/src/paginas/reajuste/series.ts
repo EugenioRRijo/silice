@@ -1,6 +1,6 @@
 // Las series de indices para el campo «Serie» de los componentes (AC2). La lista llega entera de GET /v1/reajuste/series
 // (solo la definicion de cada serie, ningun valor) y se filtra aqui, sin una peticion por tecla. La pagina no calcula nada.
-import type { Carga } from "../inicio/useCarga";
+import type { Carga } from "../../comun/useCarga";
 import { buscadorLocal } from "../../comun/normalizar";
 
 export interface SerieDeIndice {

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { CampoConBusqueda } from "../../comun/CampoConBusqueda";
-import { buscadorDeUnidades } from "./unidades";
-import type { UnidadUsada } from "./unidades";
+import { CampoConBusqueda } from "./CampoConBusqueda";
+import { buscadorDeUnidades } from "./unidadesDelCatalogo";
+import type { UnidadUsada } from "./unidadesDelCatalogo";
 
 interface Props {
   id: string;

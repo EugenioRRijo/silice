@@ -6,7 +6,7 @@ import { ContextoDeLaObra } from "../../marco/obraAbierta";
 import { quedaEnLaHoja } from "../../marco/secciones";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { ContextoDeDialogos } from "./ContextoDeDialogos";
 import { DialogoDeGuardar } from "./DialogoDeGuardar";
 import { DialogoDeVersion } from "./DialogoDeVersion";

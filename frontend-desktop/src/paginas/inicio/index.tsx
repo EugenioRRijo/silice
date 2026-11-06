@@ -12,7 +12,7 @@ import type { ExistenciaRespuesta } from "./PanelArenera";
 import { TEXTOS } from "./textos";
 import { UltimasAuditorias } from "./UltimasAuditorias";
 import type { AuditoriaGuardadaRespuesta } from "./UltimasAuditorias";
-import { useCarga } from "./useCarga";
+import { useCarga } from "../../comun/useCarga";
 
 const RUTA_CARTERA = "/v1/obras/resumen/todas";
 const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";

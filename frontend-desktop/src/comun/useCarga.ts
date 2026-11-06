@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ErrorDeApi, pedir } from "../../api/cliente";
+import { ErrorDeApi, pedir } from "../api/cliente";
 
 // Estado de un GET de solo lectura. `sin_permiso` (403) y `no_disponible` (404) no son errores de la persona:
 // el bloque que los recibe decide como decirlo.

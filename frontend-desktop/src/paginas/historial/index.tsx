@@ -9,7 +9,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { fechaValida } from "../../comun/porcentaje";
 import type { AuditoriaGuardadaRespuesta } from "../inicio/UltimasAuditorias";
 import { resultadoEnUnaLinea } from "../inicio/UltimasAuditorias";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { Detalle } from "./Detalle";
 import "./historial.scss";
 import {

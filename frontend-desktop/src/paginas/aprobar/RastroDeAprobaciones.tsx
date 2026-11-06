@@ -7,7 +7,7 @@ import { nombreDeResponsable } from "../../comun/responsable";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 
 // Lo que pasó en cada movimiento: un envío queda «En aprobación»; un dictamen, con su desenlace (y, si lo dio quien armó la
 // versión, se dice).
