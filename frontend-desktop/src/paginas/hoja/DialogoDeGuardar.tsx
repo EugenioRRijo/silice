@@ -2,7 +2,7 @@ import { Button, Table, TableBody, TableCell, TableHead, TableRow } from "@carbo
 import { InlineNotification, TableHeader } from "../../comun/carbonEs";
 import { useCallback, useId, useRef } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { cifrasEnTextoEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { rotuloDeOrigen } from "./logica";
 import type { Monto } from "./logica";
 import { FUENTE_DEL_CAMBIO, FUENTE_DE_LA_MEDIDA, motivoParaNoGuardar, textoDeCambiosAGuardar } from "./logicaGuardar";
@@ -79,8 +79,8 @@ function ListaDeCambios({ cambios, primera }: { cambios: CambiosDelModal; primer
                 <TableCell>{c.objeto}</TableCell>
                 <TableCell title={c.clave}>{rotuloDeOrigen(c.clave)}</TableCell>
                 <TableCell>{c.campo}</TableCell>
-                <TableCell>{c.antes}</TableCell>
-                <TableCell>{c.despues}</TableCell>
+                <TableCell>{cifrasEnTextoEsVe(c.antes)}</TableCell>
+                <TableCell>{cifrasEnTextoEsVe(c.despues)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
