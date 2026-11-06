@@ -6,6 +6,7 @@ import type { JSX } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import type { CarpetaRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
+import type { PartidaHallada } from "../../comun/logicaBusqueda";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { BuscadorReferencia } from "./BuscadorReferencia";
@@ -166,6 +167,30 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     setResultado(null);
     setErrorGuardado(null);
   };
+  // D17: lo que puso la ultima partida elegida del catalogo en la descripcion y la unidad. Es la unica procedencia que se
+  // recuerda: lo vacio y lo que puso el catalogo se reemplaza al elegir otra partida; todo lo demas (lo que la persona tecleo, o
+  // la descripcion con que llega la pantalla) se conserva y se dice, como en las tablas de insumos (autocompletado.ts).
+  const delCatalogo = useRef<{ descripcion?: string; unidad?: string }>({});
+  const [avisoDeCabecera, setAvisoDeCabecera] = useState("");
+  const elegirDelCatalogo = (p: PartidaHallada) => {
+    const parcial: Partial<Cabecera> = {};
+    const avisos: string[] = [];
+    for (const [campo, nuevo, rotulo] of [
+      ["descripcion", p.descripcion, "la descripción"],
+      ["unidad", p.unidad, "la unidad"],
+    ] as const) {
+      const actual = cabecera[campo];
+      if (actual.trim() === "" || actual === delCatalogo.current[campo]) {
+        parcial[campo] = nuevo;
+        delCatalogo.current[campo] = nuevo;
+      } else if (actual !== nuevo) {
+        avisos.push(`El catálogo tiene ${rotulo} «${nuevo}»; se conserva la que escribió.`);
+      }
+    }
+    cambiarCabecera(parcial);
+    setAvisoDeCabecera(avisos.join(" "));
+  };
+
   const cambiarCabecera = (parcial: Partial<Cabecera>) => {
     setCabecera((c) => ({ ...c, ...parcial }));
     setTocado(true);
@@ -383,12 +408,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
           <CampoDelCodigo
             texto={cabecera.codigo}
             alCambiar={(codigo) => cambiarCabecera({ codigo })}
-            alElegirDelCatalogo={(p) =>
-              cambiarCabecera({
-                descripcion: cabecera.descripcion.trim() === "" ? p.descripcion : cabecera.descripcion,
-                unidad: cabecera.unidad.trim() === "" ? p.unidad : cabecera.unidad,
-              })
-            }
+            alElegirDelCatalogo={elegirDelCatalogo}
             alExpirar={expirar}
           />
           <CampoTexto
@@ -398,6 +418,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
             value={cabecera.descripcion}
             onChange={(e) => {
               cambiarCabecera({ descripcion: e.target.value });
+              setAvisoDeCabecera("");
               if (!e.target.value.trim()) setParecidas([]);
             }}
           />
@@ -405,7 +426,10 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
             id="componer-unidad"
             etiqueta="Unidad"
             texto={cabecera.unidad}
-            alCambiar={(unidad) => cambiarCabecera({ unidad })}
+            alCambiar={(unidad) => {
+              cambiarCabecera({ unidad });
+              setAvisoDeCabecera("");
+            }}
             alExpirar={expirar}
           />
           <Select
@@ -436,6 +460,9 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
             </p>
           </div>
         </div>
+        <p id="componer-cabecera-aviso" role="status" aria-live="polite" className="cds--form__helper-text">
+          {avisoDeCabecera}
+        </p>
       </section>
 
       <AvisoError error={errorParecidas} titulo="No se pudieron pedir las partidas similares" />

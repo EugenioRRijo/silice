@@ -66,6 +66,14 @@ const DEL_CATALOGO = {
       dominio: "civil",
       tiene_composicion: true,
     },
+    {
+      clave: "partida:FIC-03",
+      codigo: "FIC-03",
+      descripcion: "Piedra picada ficticia",
+      unidad: "kg",
+      dominio: "civil",
+      tiene_composicion: true,
+    },
   ],
   hay_mas: false,
 };
@@ -176,6 +184,64 @@ describe("ComponerPartida (Tarea 9)", () => {
     expect(codigo).toHaveValue("FIC-02");
     expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
     expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
+  });
+
+  // D17 (hallazgo fuera de alcance del arbitraje de la tanda, ronda 2): elegir otra partida del catálogo reemplaza lo que puso la
+  // elección anterior y respeta lo que la persona tecleó, con el mismo modelo de origen que las tablas de insumos.
+  describe("elegir otra partida del catálogo en el Código", () => {
+    async function elegirPartida(u: ReturnType<typeof userEvent.setup>, buscado: string, nombre: RegExp) {
+      const codigo = screen.getByRole("combobox", { name: "Código" });
+      await u.clear(codigo);
+      await u.type(codigo, buscado);
+      const lista = await screen.findByRole("listbox", { name: "Código" }, ESPERA);
+      await u.click(within(lista).getByRole("option", { name: nombre }));
+    }
+
+    test("FIC-02 y luego FIC-03: la descripción y la unidad son las de FIC-03", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
+
+      await elegirPartida(u, "piedra", /FIC-03/);
+      expect(screen.getByRole("combobox", { name: "Código" })).toHaveValue("FIC-03");
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Piedra picada ficticia");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("kg");
+    });
+
+    test("FIC-02, la descripción tecleada a mano y luego FIC-03: se conserva lo tecleado, se cambia la unidad y se avisa", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const descripcion = screen.getByLabelText("Descripción");
+      await u.clear(descripcion);
+      await u.type(descripcion, "Relleno de la esquina norte");
+
+      await elegirPartida(u, "piedra", /FIC-03/);
+      expect(descripcion).toHaveValue("Relleno de la esquina norte");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("kg");
+      expect(document.getElementById("componer-cabecera-aviso")).toHaveTextContent(
+        "El catálogo tiene la descripción «Piedra picada ficticia»; se conserva la que escribió.",
+      );
+      expect(document.getElementById("componer-cabecera-aviso")).toHaveAttribute("role", "status");
+    });
+
+    test("FIC-02, la unidad tecleada a mano y luego FIC-03: se conserva la unidad, se cambia la descripción y se avisa", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const unidad = screen.getByLabelText("Unidad");
+      await u.clear(unidad);
+      await u.type(unidad, "ml");
+
+      await elegirPartida(u, "piedra", /FIC-03/);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Piedra picada ficticia");
+      expect(unidad).toHaveValue("ml");
+      expect(document.getElementById("componer-cabecera-aviso")).toHaveTextContent(
+        "El catálogo tiene la unidad «kg»; se conserva la que escribió.",
+      );
+    });
   });
 
   test("elegir una partida vial deja su código y no pisa la descripción escrita", async () => {
