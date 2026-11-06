@@ -214,8 +214,8 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     }
     const filas = within(tabla).getAllByRole("row").slice(1);
     expect(filas).toHaveLength(2);
-    expect(within(filas[0]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["cantidad", "AF-LLAVE, Punto P1", "cantidad", "3", "5"]);
-    expect(within(filas[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["parametro", "administracion", "valor", "0,15", "0,20"]);
+    expect(within(filas[0]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Cantidad", "AF-LLAVE, Punto P1", "Cantidad", "3", "5"]);
+    expect(within(filas[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Parámetro", "Administración", "Valor", "0,15", "0,20"]);
     expect(llamadas("GET", `/v1/hoja/borradores/${ID}/cambios`)).toHaveLength(1);
   });
 
@@ -230,6 +230,24 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
     const celdas = within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent);
     expect(celdas.slice(3)).toEqual(["24,5", "1.234,5"]);
+  });
+
+  test("N1 y N2: control y alta de una fila de metraje salen con rótulos y cifras con coma en la lista de cambios", async () => {
+    alCambios = () =>
+      json({
+        rev: 3,
+        cambios: [
+          { objeto: "parametro", clave: "control|spi_error", campo: "spi_error", antes: "0.90", despues: "0.85" },
+          { objeto: "metraje", clave: "esp_tramos:R1#2", campo: "fila", antes: "", despues: "largo=4.5; ancho=3.2" },
+        ],
+      });
+    montar();
+    const dialogo = await abrirModal();
+    const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
+    expect(texto(filas[0]!)).toEqual(["Parámetro", "Control de obra: Umbral de SPI para error", "Umbral de SPI para error", "0,90", "0,85"]);
+    expect(texto(filas[1]!)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "", "Largo (m)=4,5; Ancho (m)=3,2"]);
   });
 
   test("D1: un valor que no es cifra («A1.2», «Eje B2.5») se muestra tal cual en la lista de cambios", async () => {

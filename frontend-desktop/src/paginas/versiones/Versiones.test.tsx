@@ -321,6 +321,21 @@ describe("Versiones: el registro de cambios en el panel", () => {
     expect(texto(filas[2]!).slice(4)).toEqual(["Instantánea", "Catálogo", "Instantánea", "Reunión"]);
   });
 
+  test("N1: el alta y la baja de una fila de metraje salen con rótulos y cifras con coma", async () => {
+    const base = { fuente: "Reunión", responsable: "Ana Pérez <ana>", fecha_hora: "2026-11-04T16:20:31.482913", objeto: "metraje", clave: "esp_tramos:R1#2", campo: "fila" };
+    const alta = { ...base, antes: "", despues: "largo=4.5; ancho=3.2" };
+    const baja = { ...base, antes: "largo=1234.5; ambiente_id=A1.2", despues: "" };
+    trazabilidad = () => json(trazabilidadRespuesta({ registros: [alta, baja] }));
+    const u = montar();
+    await listo();
+    await u.click(within(await renglon("VIV-002")).getByRole("button", { name: "Ver cambios de VIV-002" }));
+    const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
+    const filas = within(tabla).getAllByRole("row").slice(1);
+    const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
+    expect(texto(filas[0]!).slice(2)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "", "Largo (m)=4,5; Ancho (m)=3,2", "Reunión"]);
+    expect(texto(filas[1]!).slice(2)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "Largo (m)=1.234,5; Ambiente=A1.2", "", "Reunión"]);
+  });
+
   test("una versión que no nació de una edición dice por qué no hay registros, sin tabla vacía", async () => {
     const mensaje = "Esta versión no nació de una edición: no tiene registros de cambio.";
     trazabilidad = () => json(trazabilidadRespuesta({ registros: [], vacio_mensaje: mensaje }));
