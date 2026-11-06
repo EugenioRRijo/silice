@@ -87,7 +87,7 @@ const idDeCantidad = (n: number | string) => `hoja-cantidades-${n}`;
 const idDeQuitar = (n: number | string) => `hoja-quitar-${n}`;
 
 // «Cómo se midió»: el cálculo (en Plex Mono, como se escribió) y la nota; sin ninguno, de dónde sale la cantidad.
-function Medicion({ fila }: { fila: Pick<FilaPresupuesto, "quitable" | "calculo" | "nota"> }) {
+function Medicion({ fila }: { fila: Pick<FilaPresupuesto, "quitable" | "calculo" | "nota" | "de_tramo"> }) {
   const { calculo, nota, texto } = comoSeMidio(fila);
   return (
     <div className="silice-hoja__medicion">
@@ -254,7 +254,7 @@ function EditorDePresupuesto({
             clave: "medicion",
             titulo: "Cómo se midió",
             ordenable: false,
-            celda: (f) => <Medicion fila={{ quitable: f.quitable === "si", calculo: f.calculo || null, nota: f.nota || null }} />,
+            celda: (f) => <Medicion fila={{ quitable: f.quitable === "si", calculo: f.calculo || null, nota: f.nota || null, de_tramo: f.de_tramo === "si" }} />,
           },
           {
             clave: "pu",
@@ -322,6 +322,7 @@ function EditorDePresupuesto({
           estado_severidad: f.estado.severidad ?? "",
           estado_texto: f.estado.texto,
           quitable: f.quitable ? "si" : "no",
+          de_tramo: f.de_tramo === true ? "si" : "no",
           calculo: f.calculo ?? "",
           nota: f.nota ?? "",
         }))}

@@ -262,6 +262,8 @@ class FilaPresupuestoRespuesta(BaseModel):
     quitable: bool
     nota: str | None
     calculo: str | None
+    #: D8: el renglón viene de un tramo vial (su cantidad sale de la regla del tramo).
+    de_tramo: bool = False
 
 
 class VistaPresupuestoRespuesta(BaseModel):

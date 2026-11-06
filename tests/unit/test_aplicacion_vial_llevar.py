@@ -184,7 +184,7 @@ def test_llevar_no_guarda_version(sesion: Session) -> None:
     assert sesion.scalars(select(models.Presupuesto.codigo)).all() == versiones
 
 
-def test_la_vista_del_presupuesto_dice_cuales_renglones_salen_de_los_tramos(sesion: Session) -> None:
+def test_la_vista_marca_los_renglones_que_salen_de_los_tramos(sesion: Session) -> None:
     """Video 2026-11-01 (D8): «Sin cálculo» en un renglón de tramo contradecía a Pendientes. La
     vista marca `de_tramo` (el renglón viene de un tramo, con su regla) y no lo confunde con el
     agregado a mano ni con el que sale del espacio."""

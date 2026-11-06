@@ -205,6 +205,8 @@ export interface FilaPresupuesto {
   quitable: boolean;
   nota: string | null;
   calculo: string | null;
+  // D8: el renglón viene de un tramo vial; su cantidad sale de la regla del tramo (no es «sin cálculo»).
+  de_tramo?: boolean;
 }
 
 export interface VistaPresupuesto {
@@ -686,9 +688,10 @@ export interface ComoSeMidio {
 }
 
 // Lo que dice la columna «Cómo se midió» de un renglón.
-export function comoSeMidio(fila: Pick<FilaPresupuesto, "quitable" | "calculo" | "nota">): ComoSeMidio {
+export function comoSeMidio(fila: Pick<FilaPresupuesto, "quitable" | "calculo" | "nota" | "de_tramo">): ComoSeMidio {
   const calculo = fila.calculo ?? null;
   const nota = fila.nota ?? null;
   if (calculo !== null || nota !== null) return { calculo, nota, texto: null };
+  if (fila.de_tramo === true) return { calculo: null, nota: null, texto: "Sale de los tramos" };
   return { calculo: null, nota: null, texto: fila.quitable ? "Sin cálculo" : "Sale del espacio" };
 }

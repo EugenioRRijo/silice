@@ -35,6 +35,7 @@ from aplicacion import hoja
 from aplicacion.cifras import texto_de_cifra
 from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_partidas import PREFIJO_A_MANO, calculo_tecleable, texto_llano
+from aplicacion.hoja_vial import PREFIJO_TRAMO
 from core.budget.equilibrio import PuntoEquilibrio
 from core.contracts import Severidad
 from core.verification import TrazabilidadGeometrica
@@ -351,7 +352,9 @@ class FilaDePresupuesto:
 
     `quitable`: el renglon es de la version y no del espacio (se quita con «Quitar»); `nota`, su
     nota de medicion; `calculo`, el calculo con que se agrego a mano, con coma decimal (`None` si no
-    lo tiene o si su cantidad se escribio despues a mano)."""
+    lo tiene o si su cantidad se escribio despues a mano); `de_tramo`, el renglon viene de un tramo
+    vial (su `origen_id` empieza por «tramo:»): su cantidad sale de la regla del tramo, no de un
+    calculo escrito, y la columna «Como se midio» lo dice en vez de «Sin calculo»."""
 
     clave: str
     partida: str
@@ -366,6 +369,7 @@ class FilaDePresupuesto:
     quitable: bool
     nota: str | None
     calculo: str | None
+    de_tramo: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -418,6 +422,7 @@ def vista_presupuesto(vivo: BorradorVivo) -> VistaPresupuesto:
                 quitable=clave in propias,
                 nota=vivo.borrador.notas.get(clave),
                 calculo=calculo_tecleable(item.regla) if a_mano and not escrita else None,
+                de_tramo=item.origen_id.startswith(PREFIJO_TRAMO),
             )
         )
     return VistaPresupuesto(
