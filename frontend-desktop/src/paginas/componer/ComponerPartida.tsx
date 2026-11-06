@@ -232,6 +232,10 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
   // UC-11, paso 1: al teclear un codigo que existe se precargan las tres tablas y el rendimiento propuesto, una sola
   // vez por codigo (lo editado despues no se pisa); teclear otro codigo vuelve a precargar.
   const precargado = useRef("");
+  // Cuantas veces una precarga reemplazo las tres tablas. Las tablas de insumos recuerdan por indice de fila lo que se tecleo y
+  // lo que puso el catalogo; una precarga trae filas nuevas y nada de eso es suyo, asi que se vuelven a montar (dictamen de la
+  // ronda 3, MENOR 2: ni un «m3» tecleado antes en el mismo indice cuenta como escrito por la persona).
+  const [vueltaDePrecarga, setVueltaDePrecarga] = useState(0);
   const turnoPartida = useRef(0);
   useEffect(() => {
     const codigo = cabecera.codigo.trim();
@@ -245,7 +249,10 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
           setErrorPrecarga(null);
           setSinHistorial(!r.hay_historial);
           const precarga = normalizarTablas(r.tablas);
-          if (r.existe && hayFilas(precarga)) setTablas(precarga);
+          if (r.existe && hayFilas(precarga)) {
+            setTablas(precarga);
+            setVueltaDePrecarga((n) => n + 1);
+          }
           if (r.existe && r.rendimiento_propuesto !== null) {
             setCabecera((c) => ({ ...c, rendimiento: r.rendimiento_propuesto as string }));
           }
@@ -482,6 +489,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
           <div key={tipo} className="silice-componer__insumo">
             <BuscadorReferencia tipo={tipo} alUsar={usarFila(tipo)} alExpirar={expirar} />
             <TablaInsumos
+              key={vueltaDePrecarga}
               tipo={tipo}
               filas={tablas[tipo]}
               modalidades={ops?.modalidades ?? []}

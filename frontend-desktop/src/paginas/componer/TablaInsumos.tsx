@@ -68,8 +68,8 @@ interface Marca {
 type EstadoDeLista = { tipo: "misma" } | { tipo: "pendiente" } | { tipo: "nose" } | { tipo: "otra"; motivo: string };
 
 // Lo que se aprendio de la API sobre la lista de un insumo a una fecha: la fecha de su lista, o null si no tiene precio a esa
-// fecha. Clave: «codigo@fecha».
-type ListasPorFecha = Record<string, { fechaPrecio: string | null } | "fallo">;
+// fecha. Clave: «codigo@fecha». Un fallo de la consulta no se guarda aqui sino en `sinSaber`.
+type ListasPorFecha = Record<string, { fechaPrecio: string | null }>;
 
 // Una tabla de insumos editable (UC-10, pasos 2 a 4). Carbon `sm`: celdas de texto; los montos se teclean y se
 // muestran como texto, alineados a la derecha, y nunca se convierten en el navegador.
@@ -103,7 +103,19 @@ export function TablaInsumos({
   const [marcas, setMarcas] = useState<Record<number, Marca>>({});
   // Lo que la persona tecleo en la unidad y el precio (o sueldo) de cada fila: solo eso es suyo; lo demas vino de fuera.
   const [tecleadas, setTecleadas] = useState<Record<number, Llenado>>({});
+  // Lo que habia en la celda la primera vez que la persona la toco y no era ni suyo ni del catalogo: lo que vino de fuera (la
+  // precarga de una partida, «Usar esta fila» de MaPreX). Si la persona vuelve a escribir ese mismo valor, no es un tecleo.
+  const [deFuera, setDeFuera] = useState<Record<number, Llenado>>({});
   const [listas, setListas] = useState<ListasPorFecha>({});
+  // Las consultas de lista que fallaron: se dice con prudencia, pero el fallo no se guarda para siempre. Se olvida al cambiar la
+  // «Fecha» y entonces se vuelve a preguntar (dictamen de la ronda 3, MENOR 3).
+  const [sinSaber, setSinSaber] = useState<Record<string, true>>({});
+  // Con otra «Fecha» se olvida lo que no se supo (se ajusta el estado al renderizar, como pide React): se vuelve a preguntar.
+  const [fechaVista, setFechaVista] = useState(paraArmarAl);
+  if (fechaVista !== paraArmarAl) {
+    setFechaVista(paraArmarAl);
+    setSinSaber({});
+  }
   const pedidas = useRef(new Set<string>());
   const vivo = useRef(true);
   useEffect(() => {
@@ -132,23 +144,36 @@ export function TablaInsumos({
 
   // Lo que la persona escribe en la unidad o en el precio es suyo desde ese momento (y solo eso): el catalogo no lo vuelve a
   // pisar. Lo que vino de fuera (precarga, MaPreX) no se teclea y por eso se reemplaza.
+  //
+  // El origen de una celda se decide por su VALOR, no por el evento (dictamen de la ronda 3, MAYOR 1): Esc en el panel devuelve
+  // un campo a su valor con un evento `input` que llega aqui como cualquier cambio. Si el valor nuevo es el que puso el catalogo
+  // (la marca lo recuerda hasta la siguiente eleccion) o el que vino de fuera, la celda vuelve a ser de quien lo puso y deja de
+  // contar como tecleada.
   const editar = (indice: number, clave: string, valor: string) => {
     if (delCatalogo.includes(clave)) {
+      const previo = filas[indice]?.[clave] ?? "";
+      const delCatalogoAhora = marcaDe(indice, filas[indice])?.llenado?.[clave];
+      const tecleadoAntes = tecleadas[indice]?.[clave];
+      const fueraAntes = deFuera[indice]?.[clave];
+      // Lo que habia antes de tocarla y no era ni del catalogo ni tecleado vino de fuera: se recuerda la primera vez.
+      const fuera = fueraAntes ?? (previo !== delCatalogoAhora && previo !== tecleadoAntes ? previo : undefined);
       setMarcas((m) => {
         const marca = m[indice];
         if (marca === undefined) return m;
-        const llenado = { ...marca.llenado };
         const conflictos = { ...marca.conflictos };
         const cambios = { ...marca.cambios };
-        delete llenado[clave];
         delete conflictos[clave];
         delete cambios[clave];
-        return { ...m, [indice]: { ...marca, llenado, conflictos, cambios } };
+        return { ...m, [indice]: { ...marca, conflictos, cambios } };
       });
+      if (fueraAntes === undefined && fuera !== undefined) {
+        setDeFuera((f) => ({ ...f, [indice]: { ...f[indice], [clave]: fuera } }));
+      }
+      const esDeLaPersona = valor.trim() !== "" && valor !== delCatalogoAhora && valor !== fuera;
       setTecleadas((t) => {
         const propias = { ...t[indice] };
-        if (valor.trim() === "") delete propias[clave];
-        else propias[clave] = valor;
+        if (esDeLaPersona) propias[clave] = valor;
+        else delete propias[clave];
         return { ...t, [indice]: propias };
       });
     }
@@ -165,6 +190,7 @@ export function TablaInsumos({
   const borrar = (indice: number) => {
     setMarcas((m) => sinLaFila(m, indice));
     setTecleadas((t) => sinLaFila(t, indice));
+    setDeFuera((f) => sinLaFila(f, indice));
     alBorrar(indice);
   };
 
@@ -189,6 +215,8 @@ export function TablaInsumos({
         fechaPrecio: opcion.valor.fecha_precio ?? undefined,
       },
     }));
+    // Lo que vino de fuera en esas celdas ya se reemplazo o se quito.
+    setDeFuera((f) => ({ ...f, [indice]: {} }));
     alCompletar(indice, eleccion.valores);
     const dicho = [
       ...Object.values(eleccion.cambios).map((c) => c.aviso),
@@ -211,9 +239,10 @@ export function TablaInsumos({
     if (inicio !== undefined && paraArmarAl >= inicio && paraArmarAl <= marca.fecha) return { tipo: "misma" };
     if (inicio !== undefined && paraArmarAl < inicio) return { tipo: "otra", motivo: "esa lista todavía no regía" };
     if (marca.codigo === undefined) return { tipo: "nose" };
-    const sabido = listas[`${marca.codigo}@${paraArmarAl}`];
-    if (sabido === undefined) return { tipo: "pendiente" };
-    if (sabido === "fallo" || inicio === undefined) return { tipo: "nose" };
+    const clave = `${marca.codigo}@${paraArmarAl}`;
+    const sabido = listas[clave];
+    if (sabido === undefined) return sinSaber[clave] ? { tipo: "nose" } : { tipo: "pendiente" };
+    if (inicio === undefined) return { tipo: "nose" };
     if (sabido.fechaPrecio === null) return { tipo: "otra", motivo: "este insumo no tiene precio en la lista" };
     return sabido.fechaPrecio === inicio
       ? { tipo: "misma" }
@@ -243,21 +272,27 @@ export function TablaInsumos({
       if (pedidas.current.has(clave)) return;
       pedidas.current.add(clave);
       const codigo = marca.codigo;
-      const guardar = (valor: ListasPorFecha[string]) => {
-        if (vivo.current) setListas((l) => ({ ...l, [clave]: valor }));
+      // Un fallo (la API no respondio o no hallo el insumo) se dice con prudencia, pero no se guarda: `pedidas` lo suelta y
+      // `sinSaber` solo vive hasta que la «Fecha» cambie.
+      const noSupe = () => {
+        pedidas.current.delete(clave);
+        if (vivo.current) setSinSaber((s) => ({ ...s, [clave]: true }));
       };
-      buscador(marca.catalogo.slice(0, LARGO_MAXIMO).trim(), new AbortController().signal, 20)
+      // El codigo exacto es lo primero que ordena la API (`aplicacion/busqueda.py`, rango 0): no depende del tope de 20 ni de
+      // cuantas descripciones se parezcan.
+      buscador(codigo.slice(0, LARGO_MAXIMO).trim(), new AbortController().signal, 20)
         .then((grupos) => {
           const hallada = grupos.flatMap((g) => g.opciones).find((o) => o.valor.valor === codigo);
-          guardar(hallada === undefined ? "fallo" : { fechaPrecio: hallada.valor.fecha_precio ?? null });
+          if (hallada === undefined) noSupe();
+          else if (vivo.current) setListas((l) => ({ ...l, [clave]: { fechaPrecio: hallada.valor.fecha_precio ?? null } }));
         })
         .catch((e: unknown) => {
           if (e instanceof ErrorDeApi && e.estado === 401 && vivo.current) alExpirar();
-          guardar("fallo");
+          noSupe();
         });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filas, marcas, listas, paraArmarAl, buscador]);
+  }, [filas, marcas, listas, sinSaber, paraArmarAl, buscador]);
 
   // Lo que dice la celda del precio (o del sueldo): por que quedo vacia, lo que el catalogo tiene y no se escribio, o que el
   // precio es de la lista de otra fecha de composicion. Cada aviso vale mientras su motivo siga vigente en la celda.
