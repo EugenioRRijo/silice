@@ -112,12 +112,12 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     await u.type(campo, "zanja");
     const opcion = await screen.findByRole("option", { name: /Excavacion de zanja/ });
     expect(opcion).toHaveTextContent("OB-A");
-    expect(opcion).toHaveTextContent("m3");
+    expect(opcion).toHaveTextContent("m³");
     expect(screen.queryByRole("option", { name: /Tuberia/ })).toBeNull();
     await u.keyboard("{ArrowDown}{Enter}");
     expect(campo).toHaveValue("OB-A");
     // La descripción y la unidad de lo elegido quedan junto al campo para medir en la unidad correcta.
-    expect(await screen.findByText(/Excavacion de zanja · m3/)).toBeInTheDocument();
+    expect(await screen.findByText(/Excavacion de zanja · m³/)).toBeInTheDocument();
   });
 
   test("lo elegido se registra con su código", async () => {

@@ -34,7 +34,7 @@ describe("logica de Partidas similares", () => {
     expect(origenDePropuesta(PROPUESTA)).toBe("Partida de origen: LB-04-CON | puntaje de similitud: 0,9137");
     expect(encabezadoDeLista(2)).toBe("2 propuestas, de mayor a menor similitud");
     expect(encabezadoDeLista(1)).toBe("1 propuesta");
-    expect(rendimientoEnTexto(COMPOSICION)).toEqual({ unidad: "m3", rendimiento: "8,00 m3/día" });
+    expect(rendimientoEnTexto(COMPOSICION)).toEqual({ unidad: "m³", rendimiento: "8,00 m³/día" });
     expect(resultadosDe("  zanja ")).toBe("Resultados de: “zanja”");
   });
 

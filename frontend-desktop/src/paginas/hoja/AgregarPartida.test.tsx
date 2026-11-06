@@ -660,7 +660,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     await userEvent.click(usar);
 
     expect(within(dialogo).getByRole("combobox", { name: "Partida" })).toHaveValue("FIC-01 · Excavación de zanja ficticia a mano");
-    const cantidad = within(dialogo).getByRole("textbox", { name: "Cantidad (m3)" });
+    const cantidad = within(dialogo).getByRole("textbox", { name: "Cantidad (m³)" });
     await waitFor(() => expect(cantidad).toHaveFocus());
     await userEvent.type(cantidad, "12");
     await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar al presupuesto" }));
@@ -730,7 +730,7 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     const partida = within(otra).getByRole("combobox", { name: "Partida" });
     expect(partida).toHaveValue("Z-99 · Zanja ficticia");
     await waitFor(() => expect(partida).toHaveFocus());
-    await userEvent.type(within(otra).getByRole("textbox", { name: "Cantidad (m3)" }), "5");
+    await userEvent.type(within(otra).getByRole("textbox", { name: "Cantidad (m³)" }), "5");
     await userEvent.click(within(otra).getByRole("button", { name: "Agregar al presupuesto" }));
     await waitFor(() => expect(escrituras(RUTA_AGREGAR)).toEqual([{ rev: 0, codigo: "Z-99", cantidad: "5", calculo: "", nota: "" }]));
     expect(screen.getByTestId("ubicacion")).toHaveTextContent(/^\/hoja$/);
