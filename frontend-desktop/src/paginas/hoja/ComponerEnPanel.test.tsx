@@ -216,13 +216,13 @@ describe("Componer en el panel: Esc en «Código» tras elegir una partida exist
     olvidarFormularios();
   });
 
-  async function conLaPartidaElegida(codigoInicial = "") {
+  async function conLaPartidaElegida(codigoInicial = "", descripcionInicial = "") {
     const alCerrar = vi.fn();
     const valor: Aplicacion = { sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
     render(
       <ContextoAplicacion.Provider value={valor}>
         <MemoryRouter>
-          <ComponerEnPanel partida={{ codigo: codigoInicial, descripcion: "" }} alCerrar={alCerrar} alGuardar={vi.fn()} />
+          <ComponerEnPanel partida={{ codigo: codigoInicial, descripcion: descripcionInicial }} alCerrar={alCerrar} alGuardar={vi.fn()} />
         </MemoryRouter>
       </ContextoAplicacion.Provider>,
     );
@@ -255,6 +255,15 @@ describe("Componer en el panel: Esc en «Código» tras elegir una partida exist
     await userEvent.keyboard("{Escape}");
     esDeLaPartidaElegida(panel, codigo);
     expect(alCerrar).toHaveBeenCalledTimes(0);
+  });
+
+  // B: la descripción con que llega el panel no es del catálogo; el servidor no deja guardar una partida existente con otra descripción.
+  test("la descripción con que llega el panel se cambia por la de la partida elegida y se avisa", async () => {
+    const { panel } = await conLaPartidaElegida("", "Relleno viejo de la obra");
+    expect(within(panel).getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+    expect(document.getElementById("componer-cabecera-aviso")?.textContent).toBe(
+      "Se cambió la descripción «Relleno viejo de la obra» por la del catálogo, «Relleno compactado ficticio».",
+    );
   });
 
   test("elegir y pulsar Esc sin teclear no cambia nada y cierra el panel de una vez", async () => {

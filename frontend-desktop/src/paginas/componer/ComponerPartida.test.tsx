@@ -210,24 +210,25 @@ describe("ComponerPartida (Tarea 9)", () => {
       expect(screen.getByLabelText("Unidad")).toHaveValue("kg");
     });
 
-    test("FIC-02, la descripción tecleada a mano y luego FIC-03: se conserva lo tecleado, se cambia la unidad y se avisa", async () => {
+    const aviso = () => document.getElementById("componer-cabecera-aviso") as HTMLElement;
+
+    test("FIC-02, la descripción tecleada a mano y luego FIC-03: se cambia por la del catálogo y se avisa", async () => {
       const u = userEvent.setup();
       montar(2);
       await elegirPartida(u, "compact", /FIC-02/);
+      expect(aviso().textContent).toBe("");
       const descripcion = screen.getByLabelText("Descripción");
       await u.clear(descripcion);
       await u.type(descripcion, "Relleno de la esquina norte");
 
       await elegirPartida(u, "piedra", /FIC-03/);
-      expect(descripcion).toHaveValue("Relleno de la esquina norte");
+      expect(descripcion).toHaveValue("Piedra picada ficticia");
       expect(screen.getByLabelText("Unidad")).toHaveValue("kg");
-      expect(document.getElementById("componer-cabecera-aviso")).toHaveTextContent(
-        "El catálogo tiene la descripción «Piedra picada ficticia»; se conserva la que escribió.",
-      );
-      expect(document.getElementById("componer-cabecera-aviso")).toHaveAttribute("role", "status");
+      expect(aviso().textContent).toBe("Se cambió la descripción «Relleno de la esquina norte» por la del catálogo, «Piedra picada ficticia».");
+      expect(aviso()).toHaveAttribute("role", "status");
     });
 
-    test("FIC-02, la unidad tecleada a mano y luego FIC-03: se conserva la unidad, se cambia la descripción y se avisa", async () => {
+    test("FIC-02, la unidad tecleada a mano y luego FIC-03: se cambia por la del catálogo y se avisa", async () => {
       const u = userEvent.setup();
       montar(2);
       await elegirPartida(u, "compact", /FIC-02/);
@@ -237,10 +238,100 @@ describe("ComponerPartida (Tarea 9)", () => {
 
       await elegirPartida(u, "piedra", /FIC-03/);
       expect(screen.getByLabelText("Descripción")).toHaveValue("Piedra picada ficticia");
-      expect(unidad).toHaveValue("ml");
-      expect(document.getElementById("componer-cabecera-aviso")).toHaveTextContent(
-        "El catálogo tiene la unidad «kg»; se conserva la que escribió.",
+      expect(unidad).toHaveValue("kg");
+      expect(aviso().textContent).toBe("Se cambió la unidad «ml» por la del catálogo, «kg».");
+    });
+
+    test("descripción y unidad tecleadas a mano: se cambian las dos y el aviso dice ambas, unidas por un espacio", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await u.type(screen.getByLabelText("Descripción"), "Mi relleno");
+      await u.type(screen.getByLabelText("Unidad"), "ml");
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
+      expect(aviso().textContent).toBe(
+        "Se cambió la descripción «Mi relleno» por la del catálogo, «Relleno compactado ficticio». Se cambió la unidad «ml» por la del catálogo, «m3».",
       );
+    });
+
+    test("lo tecleado que ya coincide con el catálogo no se avisa", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await u.type(screen.getByLabelText("Descripción"), "Relleno compactado ficticio");
+      await u.type(screen.getByLabelText("Unidad"), "m3");
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+      expect(aviso().textContent).toBe("");
+    });
+
+    // C: cambiar el código por otro que no se eligió de la lista deja la cabecera de la partida anterior con las tablas de la nueva.
+    test("FIC-02 y luego otro código tecleado: se vacían la descripción y la unidad que puso el catálogo", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      await u.type(screen.getByRole("combobox", { name: "Código" }), "9");
+      expect(screen.getByRole("combobox", { name: "Código" })).toHaveValue("FIC-029");
+      expect(screen.getByLabelText("Descripción")).toHaveValue("");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("");
+    });
+
+    test("FIC-02 y luego «Usar FIC-03 como código»: la cabecera no se queda con la de FIC-02", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const codigo = screen.getByRole("combobox", { name: "Código" });
+      await u.clear(codigo);
+      await u.type(codigo, "FIC-03");
+      const lista = await screen.findByRole("listbox", { name: "Código" }, ESPERA);
+      await u.click(within(lista).getByRole("option", { name: "Usar «FIC-03» como código" }));
+      expect(codigo).toHaveValue("FIC-03");
+      expect(screen.getByLabelText("Descripción")).toHaveValue("");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("");
+    });
+
+    test("lo que la persona tecleó en la descripción se queda al cambiar el código", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const descripcion = screen.getByLabelText("Descripción");
+      await u.clear(descripcion);
+      await u.type(descripcion, "Relleno de la esquina norte");
+      await u.type(screen.getByRole("combobox", { name: "Código" }), "9");
+      expect(descripcion).toHaveValue("Relleno de la esquina norte");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("");
+    });
+
+    test("teclear y volver al código elegido devuelve la descripción y la unidad del catálogo", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const codigo = screen.getByRole("combobox", { name: "Código" });
+      await u.type(codigo, "9");
+      await u.type(codigo, "{Backspace}");
+      expect(codigo).toHaveValue("FIC-02");
+      expect(screen.getByLabelText("Descripción")).toHaveValue("Relleno compactado ficticio");
+      expect(screen.getByLabelText("Unidad")).toHaveValue("m3");
+    });
+
+    // D: el aviso hablaba de una elección anterior y se quedaba al teclear en «Código».
+    test("teclear en «Código» limpia el aviso; elegir otra partida de la lista deja el suyo", async () => {
+      const u = userEvent.setup();
+      montar(2);
+      await elegirPartida(u, "compact", /FIC-02/);
+      const descripcion = screen.getByLabelText("Descripción");
+      await u.clear(descripcion);
+      await u.type(descripcion, "Relleno de la esquina norte");
+      await elegirPartida(u, "piedra", /FIC-03/);
+      expect(aviso().textContent).toBe("Se cambió la descripción «Relleno de la esquina norte» por la del catálogo, «Piedra picada ficticia».");
+
+      await u.type(screen.getByRole("combobox", { name: "Código" }), "9");
+      expect(aviso().textContent).toBe("");
+
+      await u.clear(descripcion);
+      await u.type(descripcion, "Otra vez a mano");
+      await elegirPartida(u, "compact", /FIC-02/);
+      expect(aviso().textContent).toBe("Se cambió la descripción «Otra vez a mano» por la del catálogo, «Relleno compactado ficticio».");
     });
   });
 
