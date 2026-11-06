@@ -94,4 +94,17 @@ describe("arquitectura del front", () => {
       .map((ruta) => relative(SRC, ruta).split(sep).join("/"));
     expect(definiciones).toEqual(["comun/monedas.ts"]);
   });
+
+  test("las monedas no se escriben a mano en SelectItem ni en arreglos fuera de comun/monedas.ts", () => {
+    const patronLiteral =
+      /<SelectItem\b[^>]*\bvalue=["'](Bs|USD)["']|\[\s*["']Bs["']\s*,\s*["']USD["']\s*\]|\[\s*["']USD["']\s*,\s*["']Bs["']\s*\]/;
+    const literales = archivos(SRC)
+      .filter((ruta) => {
+        const rel = relative(SRC, ruta).split(sep).join("/");
+        return rel !== "comun/monedas.ts" && !/(^|\/)datosDePrueba\./.test(rel);
+      })
+      .filter((ruta) => patronLiteral.test(readFileSync(ruta, "utf8")))
+      .map((ruta) => relative(SRC, ruta).split(sep).join("/"));
+    expect(literales).toEqual([]);
+  });
 });
