@@ -186,6 +186,9 @@ describe("lo que se aprueba, en solo lectura", () => {
     const filas = within(tabla).getAllByRole("row");
     const concreto = filas.find((f) => f.textContent?.includes("E.411.000.111"))!;
     expect(within(concreto).getByText("12,5")).toBeInTheDocument();
+    // D6: la unidad se lee «m³», como en la Hoja; el servidor sigue mandando «m3».
+    expect(within(concreto).getByText("m³")).toBeInTheDocument();
+    expect(within(concreto).queryByText("m3")).toBeNull();
     expect(within(concreto).getByText("1.234,57")).toBeInTheDocument();
     expect(within(concreto).getByText("15.432,10")).toBeInTheDocument();
     const pendiente = filas.find((f) => f.textContent?.includes("PEND-1"))!;
