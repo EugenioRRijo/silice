@@ -176,27 +176,33 @@ export default function RiesgoDeLaObra() {
                 mapa={mapa}
                 alElegirSerie={elegirSerie}
               />
-              <div className="riesgo-acciones">
-                <Button kind="primary" size="md" disabled={ocupado} onClick={proyectar}>
-                  Proyectar
-                </Button>
-                {proyeccion.estado === "cargando" && <InlineLoading description="Proyectando..." />}
-              </div>
-              <div className="riesgo-acciones">
-                <CampoTexto
-                  id="riesgo-porCorte"
-                  labelText={ROTULOS.porCorte}
-                  inputMode="numeric"
-                  value={campos.porCorte}
-                  invalid={errores.porCorte !== undefined}
-                  invalidText={errores.porCorte}
-                  onChange={(e) => cambiar("porCorte", e.target.value)}
-                />
-                <Button kind="secondary" size="md" disabled={ocupado} onClick={comprobar}>
-                  Comprobar hacia atrás
-                </Button>
-                {comprobacion.estado === "cargando" && <InlineLoading description={ESPERA} />}
-              </div>
+              <fieldset className="riesgo-seccion">
+                <legend className="cds--type-heading-compact-01">Proyectar</legend>
+                <div className="riesgo-acciones">
+                  <Button kind="primary" size="md" disabled={ocupado} onClick={proyectar}>
+                    Proyectar
+                  </Button>
+                  {proyeccion.estado === "cargando" && <InlineLoading description="Proyectando..." />}
+                </div>
+              </fieldset>
+              <fieldset className="riesgo-seccion">
+                <legend className="cds--type-heading-compact-01">Comprobar hacia atrás</legend>
+                <div className="riesgo-acciones">
+                  <CampoTexto
+                    id="riesgo-porCorte"
+                    labelText={ROTULOS.porCorte}
+                    inputMode="numeric"
+                    value={campos.porCorte}
+                    invalid={errores.porCorte !== undefined}
+                    invalidText={errores.porCorte}
+                    onChange={(e) => cambiar("porCorte", e.target.value)}
+                  />
+                  <Button kind="secondary" size="md" disabled={ocupado} onClick={comprobar}>
+                    Comprobar hacia atrás
+                  </Button>
+                  {comprobacion.estado === "cargando" && <InlineLoading description={ESPERA} />}
+                </div>
+              </fieldset>
             </>
           )}
           {errorVisible !== null && (

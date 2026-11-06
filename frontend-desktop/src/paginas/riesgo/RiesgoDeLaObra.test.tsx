@@ -191,6 +191,17 @@ describe("Riesgo de la obra", () => {
     vi.restoreAllMocks();
   });
 
+  test("«Trayectorias por corte» está en la sección «Comprobar hacia atrás» y no en la de «Proyectar»", async () => {
+    montar();
+    const porCorte = await screen.findByLabelText("Trayectorias por corte");
+    const comprobar = screen.getByRole("group", { name: "Comprobar hacia atrás" });
+    const proyectar = screen.getByRole("group", { name: "Proyectar" });
+    expect(comprobar).toContainElement(porCorte);
+    expect(proyectar).not.toContainElement(porCorte);
+    expect(within(comprobar).getByRole("button", { name: "Comprobar hacia atrás" })).toBeInTheDocument();
+    expect(within(proyectar).getByRole("button", { name: "Proyectar" })).toBeInTheDocument();
+  });
+
   test("una cifra mal escrita no se envía y se dice junto al campo", async () => {
     montar();
     const trayectorias = await screen.findByLabelText("Trayectorias");

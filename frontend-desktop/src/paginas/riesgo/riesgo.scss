@@ -31,6 +31,16 @@
   grid-column: 1 / -1;
 }
 
+.riesgo-seccion {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.riesgo-seccion legend {
+  margin-block-end: 0.5rem;
+}
+
 .riesgo-acciones {
   display: flex;
   align-items: flex-end;
