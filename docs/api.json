@@ -19559,6 +19559,11 @@
               }
             ],
             "title": "Calculo"
+          },
+          "de_tramo": {
+            "type": "boolean",
+            "title": "De Tramo",
+            "default": false
           }
         },
         "type": "object",

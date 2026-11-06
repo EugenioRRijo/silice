@@ -184,6 +184,23 @@ def test_llevar_no_guarda_version(sesion: Session) -> None:
     assert sesion.scalars(select(models.Presupuesto.codigo)).all() == versiones
 
 
+def test_la_vista_marca_los_renglones_que_salen_de_los_tramos(sesion: Session) -> None:
+    """Video 2026-11-01 (D8): «Sin cálculo» en un renglón de tramo contradecía a Pendientes. La
+    vista marca `de_tramo` (el renglón viene de un tramo, con su regla) y no lo confunde con el
+    agregado a mano ni con el que sale del espacio."""
+    id_, _ = _llevar(sesion)
+    vivo = hoja_borradores.obtener(HUELLA, id_)
+    vivo, a_mano = hoja_edicion.agregar(
+        sesion, HUELLA, id_, vivo.rev, codigo="OBRA-04", cantidad="12", calculo="", nota=""
+    )
+    filas = hoja_vista.vista_presupuesto(vivo).filas
+    de_tramo = {f.clave for f in filas if f.de_tramo}
+    assert de_tramo == {clave for clave in hoja.claves_de_items(_de_tramo(vivo))}
+    assert len(de_tramo) == 20
+    assert a_mano not in de_tramo
+    assert [f for f in filas if f.clave == a_mano][0].quitable is True
+
+
 # --- regla 2: llevar otra vez sincroniza --------------------------------------------------------
 
 
