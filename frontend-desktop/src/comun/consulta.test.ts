@@ -99,6 +99,17 @@ describe("gruposDeConsulta con el precio a la vista", () => {
     );
   });
 
+  test("con `tipo` (material, equipo, mano de obra) la línea lo dice al final: en Equipos el catálogo los mezcla", () => {
+    expect(linea({ unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01", tipo: "equipo" })).toEqual([
+      "MAT-1",
+      "saco",
+      "18,00 Bs",
+      "lista del 01/07/2026",
+      "equipo",
+    ]);
+    expect(linea({ unidad: "saco", tipo: "material" })).toEqual(["MAT-1", "saco", "sin precio en la lista para armar", "material"]);
+  });
+
   test("el buscador de consulta con `mostrarPrecio` entrega la línea con el precio", async () => {
     const fetchFalso = vi.fn<typeof fetch>(
       async () => new Response(JSON.stringify(completa({ unidad: "saco", precio: "18.00", moneda: "Bs", fecha_precio: "2026-07-01" })), { status: 200 }),
