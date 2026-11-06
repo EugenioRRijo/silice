@@ -384,7 +384,7 @@ def test_proyecto_o_version_inexistente_es_404_y_se_juzga_antes_que_el_dato(_ent
     sin_version = _restaurar(navegador, ficha, version="009")
     assert sin_version.status_code == 404
     assert sin_version.json() == {
-        "detalle": f"La obra {NOMBRE_OF001!r} no tiene una version '009': elija una de la lista."
+        "detalle": f"La obra {NOMBRE_OF001!r} no tiene una versión '009': elija una de la lista."
     }
     # el 404 va antes que el 422 del dato (la fuente en blanco)
     assert _restaurar(navegador, ficha, proyecto="Z", fuente="").status_code == 404
@@ -599,7 +599,7 @@ def test_cotizar_proyecto_o_version_inexistente_es_404_antes_que_el_precio(_ento
     sin_version = _cotizar(navegador, ficha, version="009", precio="abc")
     assert (
         sin_version.status_code == 404
-        and "no tiene una version '009'" in sin_version.json()["detalle"]
+        and "no tiene una versión '009'" in sin_version.json()["detalle"]
     )
     assert volcado(_entorno) == antes
 

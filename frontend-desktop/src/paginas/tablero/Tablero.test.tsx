@@ -210,8 +210,8 @@ describe("Tablero de la obra", () => {
   test("404 dice que el proyecto no existe en el caso", async () => {
     fetchFalso.mockImplementation(async () => json({ detalle: "no existe" }, 404));
     montar("X");
-    expect(await screen.findByText("Esa obra no existe en este caso")).toBeInTheDocument();
-    expect(screen.getByText("Elija otra obra en la cabecera.")).toBeInTheDocument();
+    expect(await screen.findByText("Esa obra no está en esta carpeta")).toBeInTheDocument();
+    expect(screen.getByText("Elija otra obra en la lista «Obras» de la barra lateral.")).toBeInTheDocument();
   });
 });
 
