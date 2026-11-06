@@ -27,7 +27,7 @@ instalador con huella SHA-256 firmada.
 | #105 `fix/reloj-pruebas-hoja` | Dos pruebas de la Hoja (R6, R7) que desde el 2026-11-05 caían por el reloj del equipo | CI en verde: Eugenio lo fusiona; sin él, la CI de cualquier PR contra `main` cae |
 | #106 `feature/f6-espacios` | Rediseño F6 completo (§3) | Arbitrado y corregido; espera la prueba de Eugenio en el navegador y la fusión |
 | #107 `feature/autocompletado` | Autocompletado guiado AC1–AC4 (§3) | Árbitro xhigh: aprobado en la ronda 4; espera #105 (r6/r7) y la prueba de Eugenio |
-| `feature/tanda-detalles` | Tanda de detalles D1–D16 (§3), sobre F6 y el autocompletado unidos | En arbitraje; sin PR hasta que se fusionen #106 y #107 |
+| `feature/tanda-detalles` | Tanda de detalles D1–D17 (§3), sobre F6 y el autocompletado unidos | Aprobada (rondas 2 y 3 del árbitro); sin PR hasta que se fusionen #106 y #107 |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor. Ya tiene `main` unido y el experimento recongelado con acta (`docs/bitacora/2026-11-04-recongelado-experimento.md` en su rama) |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -47,15 +47,15 @@ demostración nunca se mezcla con las carpetas de la empresa (fuera de ella no s
 lista con que arma la carpeta, Control, Reajuste, Escenarios, Simulador, unidades, moneda, proveedor y versión de
 comprobación); RF-167, RF-168 y RNF-29 en el ERS.
 
-**Tanda de detalles D1–D16** ([plan](planes/PLAN_TANDA_DETALLES.md),
+**Tanda de detalles D1–D17** ([plan](planes/PLAN_TANDA_DETALLES.md),
 [arbitraje](bitacora/arbitrajes/tanda-detalles-claude-xhigh.md)). Construida el 2026-11-06 en cinco líneas en paralelo.
 La ronda 1 del árbitro xhigh la devolvió con 2 MAYOR (D10 rompía la flecha izquierda de las pestañas; D16 seguía
 mezclando la partida con Esc) y 13 MENOR; los dos MAYOR y los MENOR están corregidos con prueba en rojo primero (el 12 es
-historia de commits y no se reescribe). La ronda 2 la **aprobó**; sus MENOR (un presentador común para las tres tablas de
-cambios, textos) y un defecto anterior a la tanda que encontró en Componer (D17) están corregidos. Gemini Flash construyó solo parte de los parches: con la máquina cargada
-agotó su tiempo varias veces y esas tareas las hicieron subagentes de Claude con TDD. Notas: la frase «Cadena íntegra: N
-versiones» de `core/` sigue igual y la concordancia se corrige en `aplicacion/texto_cadena.py` hasta que el tutor avale
-tocar el núcleo.
+historia de commits y no se reescribe). La ronda 2 la **aprobó**, y la ronda 3, breve, sobre sus correcciones, también; sus MENOR (un presentador común y
+robusto para las tres tablas de cambios, la cabecera de Componer al elegir otra partida, textos) y un defecto anterior a
+la tanda (D17) están corregidos. `aplicacion/hoja.py`, archivo congelado del experimento de la tesis, cambió solo en
+mensajes: el experimento se re-congeló con acta y autorización de Eugenio
+([2026-11-06-recongelado-experimento.md](bitacora/2026-11-06-recongelado-experimento.md)).
 
 ## 4. Lo que espera a Eugenio
 
@@ -82,7 +82,7 @@ tocar el núcleo.
 Plan detallado, con el protocolo de trabajo con Gemini Flash por `agy` (Flash construye el parche, Claude lo aplica con
 TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA_DETALLES.md](planes/PLAN_TANDA_DETALLES.md).
 
-1. **Tanda de detalles**: aprobada (§3); falta la prueba de Eugenio en el navegador. Queda para después: 16 mensajes del
+1. **Tanda de detalles**: aprobada (§3); falta la prueba de Eugenio en el navegador. Queda para después: 14 mensajes del
    servidor dicen «no existe en este caso» (palabra interna «caso»; mejor «en esta carpeta»).
 2. **Autocompletado**: completo (PR #107).
 3. **F7 Ayuda**: «¿Qué es esto?» en cada sección, guías por tarea, glosario y «Empieza aquí» (con la primera entrada y el
