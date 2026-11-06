@@ -26608,6 +26608,18 @@
             "title": "Unidad",
             "description": "Con `detalle`: la unidad del insumo, si la tiene"
           },
+          "tipo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo",
+            "description": "Con `detalle`: el tipo del insumo en palabras («material», «equipo» o «mano de obra»), para no sacarlo del texto de `fuente`"
+          },
           "precio": {
             "anyOf": [
               {

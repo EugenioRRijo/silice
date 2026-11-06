@@ -6,11 +6,11 @@
 - Tabla desconocida: 404 con un mensaje fijo que no repite lo pedido; `q` de más de 80 caracteres o
   un `limite` fuera de 1..50: 422 fijo; un fallo de la base: 503 sin SQL ni rutas.
 - Pide una sugerencia de más para saber si `hay_mas`, y la recorta.
-- AC1b (Componer): `detalle` agrega la descripción y la unidad de cada insumo; `para_armar_al`
-  agrega el precio de la lista para armar a esa fecha con su moneda y su fecha, o el aviso si está
-  en otra moneda que la de la carpeta (`aplicacion.consulta`). Los campos que no vienen no se
-  escriben (`response_model_exclude_none`): sin esos parámetros la respuesta es la de siempre. El
-  precio viaja como texto decimal con punto. Una fecha mal escrita es el 422 fijo.
+- AC1b (Componer): `detalle` agrega la descripción, la unidad y el tipo de cada insumo;
+  `para_armar_al` agrega el precio de la lista para armar a esa fecha con su moneda y su fecha, o
+  el aviso si está en otra moneda que la de la carpeta (`aplicacion.consulta`). Los campos que no
+  vienen no se escriben (`response_model_exclude_none`): sin esos parámetros la respuesta es la de
+  siempre. El precio viaja como texto decimal con punto. Una fecha mal escrita es el 422 fijo.
 - AC4: `GET /v1/consulta/unidades` (las unidades del catálogo con la tabla de alias del núcleo y
   cuántas veces se usan) y `GET /v1/consulta/proveedores` (los de las cotizaciones activas de la
   carpeta, con su último uso), de `aplicacion.consulta`. Mismo acceso `LEER_PROYECTO` y la misma
@@ -61,6 +61,13 @@ class SugerenciaDeConsultaRespuesta(BaseModel):
     fuente: str = Field(description="De dónde sale el dato")
     descripcion: str | None = Field(None, description="Con `detalle`: la descripción del insumo")
     unidad: str | None = Field(None, description="Con `detalle`: la unidad del insumo, si la tiene")
+    tipo: str | None = Field(
+        None,
+        description=(
+            "Con `detalle`: el tipo del insumo en palabras («material», «equipo» o «mano de "
+            "obra»), para no sacarlo del texto de `fuente`"
+        ),
+    )
     precio: str | None = Field(
         None,
         description=(
@@ -184,6 +191,7 @@ def consultar(
                 fuente=s.fuente,
                 descripcion=s.descripcion,
                 unidad=s.unidad,
+                tipo=s.tipo,
                 precio=None if s.precio is None else format(s.precio, "f"),
                 moneda=s.moneda,
                 fecha_precio=s.fecha_precio,

@@ -19,8 +19,9 @@ Tablas:
   `valor` es la fecha en ISO; se busca por esa fecha, por `dd/mm/aaaa` o por el monto.
 
 Detalle y precio para armar (AC1b, Componer): en `insumos` y `salarios_cct`, con `detalle` cada
-sugerencia trae además la `descripcion` y la `unidad` del insumo; con `para_armar_al` (que implica
-el detalle), el `precio` de la lista con que se arma a esa fecha, con su `moneda` y la
+sugerencia trae además la `descripcion`, la `unidad` y el `tipo` del insumo en palabras
+(«material», «equipo» o «mano de obra»; el de la `fuente` sigue igual); con `para_armar_al`
+(que implica el detalle), el `precio` de la lista con que se arma a esa fecha, con su `moneda` y la
 `fecha_precio` desde la que rige. Esa lista es la de `listas_para_armar.lista_para_armar`, la misma
 con que Componer guarda, y no la vigente de hoy en cualquier moneda. Si la vigente a esa fecha está
 en otra moneda que la de la carpeta no viaja ningún precio: solo su moneda, su fecha y el
@@ -99,6 +100,7 @@ class Sugerencia:
     fuente: str
     descripcion: str | None = None
     unidad: str | None = None
+    tipo: str | None = None
     precio: Decimal | None = None
     moneda: str | None = None
     fecha_precio: date | None = None
@@ -169,13 +171,27 @@ def _precios_para_armar(sesion: Session, fecha: date) -> _PreciosParaArmar | Non
     return _PreciosParaArmar(lista, precios, moneda)
 
 
+#: El tipo del catálogo como se lee; un tipo que no está aquí no viaja (no hay un nombre limpio).
+TIPO_EN_PALABRAS = {"material": "material", "equipo": "equipo", TIPO_MANO_DE_OBRA: "mano de obra"}
+
+
+def _tipo_en_palabras(insumo: models.Insumo) -> str | None:
+    return TIPO_EN_PALABRAS.get(insumo.tipo)
+
+
 def _con_detalle(
     sugerencia: Sugerencia,
     insumo: models.Insumo,
     para_armar: _PreciosParaArmar | None,
 ) -> Sugerencia:
-    """La sugerencia con su descripción y su unidad y, si la lista lo tiene, su precio o aviso."""
-    con_detalle = replace(sugerencia, descripcion=insumo.descripcion, unidad=insumo.unidad or None)
+    """La sugerencia con su descripción, su unidad y su tipo y, si la lista lo tiene, su precio o
+    aviso."""
+    con_detalle = replace(
+        sugerencia,
+        descripcion=insumo.descripcion,
+        unidad=insumo.unidad or None,
+        tipo=_tipo_en_palabras(insumo),
+    )
     precio = None if para_armar is None else para_armar.precios.get(insumo.id)
     if para_armar is None or precio is None:
         return con_detalle
