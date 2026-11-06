@@ -235,7 +235,7 @@ function Cargado({ proyecto }: { proyecto: string }) {
   if (carga.estado === "listo") return <Contenido datos={carga.datos} />;
   if (carga.estado === "sin_permiso") return <EstadoVacio titulo="Su cuenta no puede ver el tablero" />;
   if (carga.estado === "no_disponible") {
-    return <EstadoVacio titulo="Esa obra no existe en este caso" descripcion="Elija otra obra en la cabecera." />;
+    return <EstadoVacio titulo="Esa obra no está en esta carpeta" descripcion="Elija otra obra en la lista «Obras» de la barra lateral." />;
   }
   return <AvisoError error={carga.error} titulo="No se pudo cargar el tablero" />;
 }

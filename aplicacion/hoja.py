@@ -1774,7 +1774,7 @@ def _modelo(sesion: Session, proyecto: str, codigo: str) -> models.Presupuesto:
     ).one_or_none()
     if modelo is None:
         raise HojaInvalida(
-            f"La obra {proyecto!r} no tiene una version {codigo!r}: elija una de la lista."
+            f"La obra {proyecto!r} no tiene una versión {codigo!r}: elija una de la lista."
         )
     return modelo
 
@@ -1928,7 +1928,7 @@ def abrir_version(
     except (ValueError, CatalogoIncompleto, KeyError) as error:
         sesion.rollback()
         raise HojaInvalida(
-            f"No se pudo abrir la version {codigo!r} de la obra {proyecto!r}: {error}"
+            f"No se pudo abrir la versión {codigo!r} de la obra {proyecto!r}: {error}"
         ) from error
     plan = plan_de_version(sesion, modelo)
     borrador = Borrador(
