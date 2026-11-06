@@ -42,6 +42,8 @@ describe("logica de Partidas similares", () => {
     expect(filasMateriales(COMPOSICION)).toEqual([
       { id: "0", descripcion: "Cemento", unidad: "saco", cantidad: "7.50", precio: "15.00" },
     ]);
+    const conCubicos: Composicion = { ...COMPOSICION, materiales: [{ descripcion: "Arena", unidad: "m3", cantidad: "1.00", precio: "9.00" }] };
+    expect(filasMateriales(conCubicos)).toEqual([{ id: "0", descripcion: "Arena", unidad: "m³", cantidad: "1.00", precio: "9.00" }]);
     expect(filasEquipos(COMPOSICION)[0]).toMatchObject({ id: "0", depreciacion: "0.03" });
     expect(filasManoObra(COMPOSICION)[0]).toMatchObject({ id: "0", sueldo: "3.00" });
   });
