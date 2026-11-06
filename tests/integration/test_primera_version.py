@@ -320,7 +320,7 @@ def test_una_hoja_vacia_no_se_guarda(base):
     sesion, _ = base
     antes = _cuenta(sesion)
 
-    with pytest.raises(hoja.HojaInvalida, match="vacia"):
+    with pytest.raises(hoja.HojaInvalida, match="vacía"):
         _crear(base, hoja.Borrador(fecha=caso_of001.FECHA, moneda=caso_of001.MONEDA))
 
     assert _cuenta(sesion) == antes
@@ -360,7 +360,7 @@ def test_sin_lista_de_precios_vigente_el_error_lo_dice_y_no_inventa_precios(base
 
 def test_el_motivo_para_no_crear_la_primera_dice_que_falta_en_orden():
     vacio = hoja.Borrador(fecha=caso_of001.FECHA)
-    assert "vacia" in hoja.motivo_para_no_crear_primera(vacio, FUENTE, RESPONSABLE)
+    assert "vacía" in hoja.motivo_para_no_crear_primera(vacio, FUENTE, RESPONSABLE)
     assert "fuente" in hoja.motivo_para_no_crear_primera(_borrador(), " ", RESPONSABLE)
     assert "responsable" in hoja.motivo_para_no_crear_primera(_borrador(), FUENTE, "")
     assert hoja.motivo_para_no_crear_primera(_borrador(), FUENTE, RESPONSABLE) is None

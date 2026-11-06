@@ -230,7 +230,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
             <CampoTexto id="precios-empresa-fecha" type="date" labelText="Fecha de la lista" size="sm" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             <CampoTexto
               id="precios-empresa-fuente"
-              labelText="Fuente de la lista (de donde salen estos precios)"
+              labelText="Fuente de la lista (de dónde salen estos precios)"
               size="sm"
               value={fuente}
               onChange={(e) => setFuente(e.target.value)}

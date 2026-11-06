@@ -2179,12 +2179,12 @@ def motivo_para_no_crear_primera(borrador: Borrador, fuente: str, responsable: s
     items ni cantidades escritas no hay nada que guardar."""
     if borrador.espacio == Espacio() and not borrador.items_base and not borrador.cantidades:
         return (
-            "La hoja esta vacia: describa o importe el espacio antes de guardar la primera version."
+            "La hoja está vacía: describa o importe el espacio antes de guardar la primera versión."
         )
     if not fuente.strip():
-        return "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+        return "Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."
     if not responsable.strip():
-        return "Escriba el responsable: quien crea esta primera version."
+        return "Escriba el responsable: quién crea esta primera versión."
     return None
 
 
@@ -2227,10 +2227,10 @@ def crear_primera_version(
     fuente, responsable = fuente.strip(), responsable.strip()
     if not fuente:
         raise HojaInvalida(
-            "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+            "Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."
         )
     if not responsable:
-        raise HojaInvalida("Escriba el responsable: quien crea esta primera version.")
+        raise HojaInvalida("Escriba el responsable: quién crea esta primera versión.")
     modelo_proyecto = sesion.scalars(
         select(models.Proyecto).where(models.Proyecto.nombre == proyecto)
     ).one_or_none()
@@ -2274,8 +2274,8 @@ def crear_primera_version(
         elaboracion = resultado.elaboracion
         if not elaboracion.presupuesto.partidas and not elaboracion.pendientes:
             raise HojaInvalida(
-                "La hoja esta vacia: dibuje o importe el espacio (o escriba cantidades) antes de "
-                "guardar la primera version."
+                "La hoja está vacía: dibuje o importe el espacio (o escriba cantidades) antes de "
+                "guardar la primera versión."
             )
         if borrador.espacio != Espacio():
             crear_esquema_espacio(sesion.connection())
