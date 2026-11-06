@@ -182,7 +182,7 @@ describe("CabeceraDeObra: el estado de la obra", () => {
 describe("CabeceraDeObra: la moneda de la obra llega a la lista de la carpeta", () => {
   afterEach(() => pedirFalso.mockReset());
   const aplicacion = { alExpirar: vi.fn() } as unknown as Aplicacion;
-  const FILA = { ...RESUMEN.obras[0]!, cliente: "Cliente Demo", version: "002", total: null, moneda: "USD", avance_real: null, avance_plan: null, que_pasa: null, siguiente: null };
+  const FILA = { ...RESUMEN.obras[0]!, cliente: "Cliente Demo", version: "002", total: null, moneda: "USD", avance_real: null, avance_plan: null, que_pasa: null, siguiente: null, version_de_linea_base: false };
 
   function montarCabecera(ficha: FichaDeLaObra) {
     pedirFalso.mockImplementation(async (ruta: string) => {
