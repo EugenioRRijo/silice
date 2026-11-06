@@ -421,7 +421,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
       const dialogo = await abrirModal("Guardar primera versión…");
       expect(within(dialogo).getByRole("heading", { name: "Guardar primera versión" })).toBeInTheDocument();
       expect(within(dialogo).getByRole("textbox", { name: "Fuente de la medida (de dónde salen los datos)" })).toBeInTheDocument();
-      expect(within(dialogo).getByText(/Es la primera versión del proyecto NU-001/)).toBeInTheDocument();
+      expect(within(dialogo).getByText(/Es la primera versión de la obra NU-001/)).toBeInTheDocument();
       expect(confirmar(dialogo, "Guardar primera versión")).toBeDisabled();
       expect(
         within(dialogo).getByText("Escriba la fuente de la medida: de dónde salen los datos (un plano, un acta)."),
@@ -436,7 +436,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
       fireEvent.click(confirmar(dialogo, "Guardar primera versión"));
       expect(
         await screen.findByText(
-          "Se guardó la primera versión 001 del proyecto NU-001 (total 2.703,86). Quedó registrada su creación, con su fuente y su responsable.",
+          "Se guardó la primera versión 001 de la obra NU-001 (total 2.703,86). Quedó registrada su creación, con su fuente y su responsable.",
         ),
       ).toBeInTheDocument();
       expect(guardados()).toEqual([{ rev: 2, fuente: "Plano A-01 rev. B" }]);

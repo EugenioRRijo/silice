@@ -23,7 +23,7 @@ export function OfertaDeRetomar({ proyecto, ofertas, alRetomar, alDescartar, ocu
         Retomar borrador
       </h2>
       <p className="cds--type-body-compact-01">
-        {varias ? "Quedaron borradores" : "Quedó un borrador"} de este proyecto con cambios sin guardar. Puede seguir donde lo dejó o
+        {varias ? "Quedaron borradores" : "Quedó un borrador"} de esta obra con cambios sin guardar. Puede seguir donde lo dejó o
         descartarlo y abrir la versión de nuevo.
       </p>
       <div className="silice-hoja__acciones">

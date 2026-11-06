@@ -116,7 +116,7 @@ class Guardado:
 def _mensaje(codigo: str, cambios: int, total: hoja_vista.Monto, proyecto: str, primera: bool):
     if primera:
         return (
-            f"Se guardó la primera versión {codigo} del proyecto {proyecto} (total {total.texto}). "
+            f"Se guardó la primera versión {codigo} de la obra {proyecto} (total {total.texto}). "
             "Quedó registrada su creación, con su fuente y su responsable."
         )
     return f"Se guardó la versión {codigo} con {cambios} cambios registrados."

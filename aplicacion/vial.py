@@ -156,7 +156,7 @@ def version_de(sesion: Session, proyecto: str, codigo: str) -> int:
     nombre). `VersionInexistente` con el texto que se le dice a la persona si no existe."""
     obra = resolver_proyecto(sesion, proyecto)
     if obra is None:
-        raise VersionInexistente(f"El proyecto «{proyecto}» no existe en este caso.")
+        raise VersionInexistente(f"La obra «{proyecto}» no existe en este caso.")
     id_ = sesion.scalars(
         select(models.Presupuesto.id).where(
             models.Presupuesto.proyecto_id == obra.id, models.Presupuesto.codigo == codigo

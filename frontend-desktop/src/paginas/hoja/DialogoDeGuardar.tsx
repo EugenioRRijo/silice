@@ -133,7 +133,7 @@ export function DialogoDeGuardar(p: Props) {
         </h2>
         <p id={idResumen} className="cds--type-body-compact-01">
           {primera
-            ? `Es la primera versión del proyecto ${p.proyecto}: registra su creación con la fuente y el responsable.`
+            ? `Es la primera versión de la obra ${p.proyecto}: registra su creación con la fuente y el responsable.`
             : `Se registrarán ${textoDeCambiosAGuardar(p.cambiosSinGuardar)} en una versión nueva (sale de la ${p.version}).`}
         </p>
         <p className="cds--type-body-compact-01">

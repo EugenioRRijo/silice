@@ -51,7 +51,7 @@ class ProyectoInexistente(Exception):  # noqa: N818
     """El proyecto (codigo o nombre) no existe en este caso."""
 
     def __init__(self, referencia: str) -> None:
-        super().__init__(f"El proyecto «{referencia}» no existe en este caso.")
+        super().__init__(f"La obra «{referencia}» no existe en este caso.")
 
 
 class VersionInexistente(Exception):  # noqa: N818

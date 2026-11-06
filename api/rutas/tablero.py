@@ -247,14 +247,14 @@ def leer_tablero(
     encontrado = resolver_proyecto(sesion, proyecto)  # codigo de /v1/proyectos o nombre (V-11)
     if encontrado is None:
         raise HTTPException(
-            status_code=404, detail=f"El proyecto «{proyecto}» no existe en este caso."
+            status_code=404, detail=f"La obra «{proyecto}» no existe en este caso."
         )
     proyecto = encontrado.nombre
     try:
         datos = tablero.leer_tablero(sesion, Catalogo(sesion), proyecto)
     except (SQLAlchemyError, ValueError, LookupError) as error:
         raise HTTPException(
-            status_code=409, detail=f"No se pudo leer el proyecto: {error}"
+            status_code=409, detail=f"No se pudo leer la obra: {error}"
         ) from error
     if datos is None:
         return TableroRespuesta(proyecto=proyecto)

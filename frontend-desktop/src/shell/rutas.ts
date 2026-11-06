@@ -111,8 +111,8 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   {
     id: "tablero",
-    titulo: "Tablero del proyecto",
-    enUnaLinea: "Cómo va el proyecto de un vistazo",
+    titulo: "Tablero de la obra",
+    enUnaLinea: "Cómo va la obra de un vistazo",
     seccion: "Trabajo",
     accion: "leer_proyecto",
     cargar: () => import("../paginas/tablero"),
