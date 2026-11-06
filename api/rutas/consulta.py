@@ -6,10 +6,24 @@
 - Tabla desconocida: 404 con un mensaje fijo que no repite lo pedido; `q` de más de 80 caracteres o
   un `limite` fuera de 1..50: 422 fijo; un fallo de la base: 503 sin SQL ni rutas.
 - Pide una sugerencia de más para saber si `hay_mas`, y la recorta.
+- AC1b (Componer): `detalle` agrega la descripción, la unidad y el tipo de cada insumo;
+  `para_armar_al` agrega el precio de la lista para armar a esa fecha con su moneda y su fecha, o
+  el aviso si está en otra moneda que la de la carpeta (`aplicacion.consulta`). Los campos que no
+  vienen no se escriben (`response_model_exclude_none`): sin esos parámetros la respuesta es la de
+  siempre. El precio viaja como texto decimal con punto. Una fecha mal escrita es el 422 fijo.
+- AC4: `GET /v1/consulta/unidades` (las unidades del catálogo con la tabla de alias del núcleo y
+  cuántas veces se usan) y `GET /v1/consulta/proveedores` (los de las cotizaciones activas de la
+  carpeta, con su último uso), de `aplicacion.consulta`. Mismo acceso `LEER_PROYECTO` y la misma
+  cabecera: solo leen, y el proveedor ya lo ve quien lee en la columna «Cotización» de los precios
+  de una versión (`GET /v1/hoja/precios`). Esto se aparta del diseño de autocompletado (§12.2, que
+  pedía `EDITAR_HOJA` para los proveedores): ver su enmienda del 2026-11-05. Se declaran antes
+  de `/{tabla}`, que si no las tomaría por una tabla desconocida. Sin parámetros: son listas
+  cortas que la interfaz filtra.
 """
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -21,7 +35,7 @@ from api.dependencias import SesionDep
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
 from aplicacion.busqueda import LARGO_MAXIMO
-from aplicacion.consulta import TABLAS, buscar
+from aplicacion.consulta import TABLAS, buscar, proveedores_usados, unidades_usadas
 
 LIMITE_POR_OMISION = 10
 LIMITE_MAXIMO = 50
@@ -45,6 +59,27 @@ class SugerenciaDeConsultaRespuesta(BaseModel):
     valor: str = Field(description="Lo que se guarda al elegir")
     etiqueta: str = Field(description="Lo que se lee en la lista")
     fuente: str = Field(description="De dónde sale el dato")
+    descripcion: str | None = Field(None, description="Con `detalle`: la descripción del insumo")
+    unidad: str | None = Field(None, description="Con `detalle`: la unidad del insumo, si la tiene")
+    tipo: str | None = Field(
+        None,
+        description=(
+            "Con `detalle`: el tipo del insumo en palabras («material», «equipo» o «mano de "
+            "obra»), para no sacarlo del texto de `fuente`"
+        ),
+    )
+    precio: str | None = Field(
+        None,
+        description=(
+            "Con `para_armar_al`: el precio en la lista para armar a esa fecha, decimal con punto; "
+            "nunca en otra moneda que la de la carpeta"
+        ),
+    )
+    moneda: str | None = Field(None, description="La moneda de la lista de la que sale el precio")
+    fecha_precio: date | None = Field(None, description="Desde cuándo rige esa lista")
+    aviso_precio: str | None = Field(
+        None, description="Si esa lista está en otra moneda: por qué no viene el precio"
+    )
 
 
 class ConsultaRespuesta(BaseModel):
@@ -53,12 +88,87 @@ class ConsultaRespuesta(BaseModel):
     hay_mas: bool = Field(description="Quedaron coincidencias fuera de `limite`")
 
 
-@router.get("/{tabla}", response_model=ConsultaRespuesta, dependencies=LEER)
+class UnidadUsadaRespuesta(BaseModel):
+    unidad: str = Field(
+        description="La forma canónica (tabla de alias del núcleo): lo que se guarda"
+    )
+    usos: int = Field(description="Cuántas partidas e insumos del catálogo la usan")
+    grafias: list[str] = Field(description="Cómo está escrita en el catálogo")
+
+
+class UnidadesRespuesta(BaseModel):
+    unidades: list[UnidadUsadaRespuesta] = Field(description="Las más usadas primero")
+
+
+class ProveedorUsadoRespuesta(BaseModel):
+    proveedor: str = Field(description="Como en su cotización más reciente")
+    ultimo_uso: date = Field(description="La fecha de esa cotización")
+
+
+class ProveedoresRespuesta(BaseModel):
+    proveedores: list[ProveedorUsadoRespuesta] = Field(description="El último usado primero")
+
+
+@router.get("/unidades", response_model=UnidadesRespuesta, dependencies=LEER)
+def unidades(sesion: SesionDep) -> UnidadesRespuesta:
+    """Las unidades que ya usa el catálogo (partidas e insumos), sin repetir: «m3», «m³» y «M3»
+    son `m3`. Para sugerir la unidad al componer; se puede escribir otra."""
+    try:
+        usadas = unidades_usadas(sesion)
+    except SQLAlchemyError:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, MENSAJE_BASE) from None
+    return UnidadesRespuesta(
+        unidades=[
+            UnidadUsadaRespuesta(unidad=u.unidad, usos=u.usos, grafias=list(u.grafias))
+            for u in usadas
+        ]
+    )
+
+
+@router.get("/proveedores", response_model=ProveedoresRespuesta, dependencies=LEER)
+def proveedores(sesion: SesionDep) -> ProveedoresRespuesta:
+    """Los proveedores de las cotizaciones activas de la carpeta (las de la versión vigente de cada
+    obra; una retirada o de una versión descartada no), sin repetir, con la fecha de su última
+    cotización. Para sugerir el proveedor al cotizar; se puede escribir uno nuevo.
+
+    Permiso `LEER_PROYECTO` y no el `EDITAR_HOJA` del diseño (§12.2): el nombre del proveedor no es
+    un dato nuevo para quien solo revisa, que ya lo lee en la columna «Cotización» de
+    `GET /v1/hoja/precios` con ese mismo permiso. Pedir más aquí no protegería nada y obligaría a
+    otra regla de acceso para una lista de solo lectura (enmienda del diseño, 2026-11-05)."""
+    try:
+        usados = proveedores_usados(sesion)
+    except SQLAlchemyError:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, MENSAJE_BASE) from None
+    return ProveedoresRespuesta(
+        proveedores=[
+            ProveedorUsadoRespuesta(proveedor=p.proveedor, ultimo_uso=p.ultimo_uso) for p in usados
+        ]
+    )
+
+
+@router.get(
+    "/{tabla}",
+    response_model=ConsultaRespuesta,
+    response_model_exclude_none=True,
+    dependencies=LEER,
+)
 def consultar(
     tabla: str,
     sesion: SesionDep,
     q: Annotated[str, Query(max_length=LARGO_MAXIMO, description="Código o palabras")] = "",
     limite: Annotated[int, Query(ge=1, le=LIMITE_MAXIMO)] = LIMITE_POR_OMISION,
+    detalle: Annotated[
+        bool, Query(description="Insumos y salarios: agrega la descripción y la unidad")
+    ] = False,
+    para_armar_al: Annotated[
+        date | None,
+        Query(
+            description=(
+                "Insumos y salarios: agrega el precio de la lista para armar a esa fecha (ISO), "
+                "con su moneda y su fecha, o el aviso si está en otra moneda"
+            )
+        ),
+    ] = None,
 ) -> ConsultaRespuesta:
     """Sugerencias de una tabla (partidas_viales, insumos, tasa_bcv o salarios_cct), por
     relevancia, sin distinguir mayúsculas ni acentos. Con menos de 2 letras responde vacío (no
@@ -66,14 +176,27 @@ def consultar(
     if tabla not in TABLAS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, MENSAJE_TABLA)
     try:
-        halladas = buscar(sesion, tabla, q, limite=limite + 1)
+        halladas = buscar(
+            sesion, tabla, q, limite=limite + 1, detalle=detalle, para_armar_al=para_armar_al
+        )
     except SQLAlchemyError:
         # El texto de un error de base lleva el SQL y sus parámetros: no sale por la API.
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, MENSAJE_BASE) from None
     return ConsultaRespuesta(
         tabla=tabla,
         resultados=[
-            SugerenciaDeConsultaRespuesta(valor=s.valor, etiqueta=s.etiqueta, fuente=s.fuente)
+            SugerenciaDeConsultaRespuesta(
+                valor=s.valor,
+                etiqueta=s.etiqueta,
+                fuente=s.fuente,
+                descripcion=s.descripcion,
+                unidad=s.unidad,
+                tipo=s.tipo,
+                precio=None if s.precio is None else format(s.precio, "f"),
+                moneda=s.moneda,
+                fecha_precio=s.fecha_precio,
+                aviso_precio=s.aviso_precio,
+            )
             for s in halladas[:limite]
         ],
         hay_mas=len(halladas) > limite,

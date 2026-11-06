@@ -2,7 +2,8 @@ import { Button, Select, SelectItem } from "@carbon/react";
 import { InlineNotification } from "../../comun/carbonEs";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import type { JSX } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { CampoConBusqueda } from "../../comun/CampoConBusqueda";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { useAplicacion } from "../../shell/contexto";
 import { DialogoDeOperacion } from "../hoja/DialogoDeOperacion";
@@ -26,6 +27,8 @@ import type { AlCrearVersion, InsumoDePrecios, VersionCreada } from "../hoja/log
 import { useDialogoDeOperacion } from "../hoja/useDialogoDeOperacion";
 import { useOperacion } from "../hoja/useOperacion";
 import "../hoja/hoja.scss";
+import { buscadorDeProveedores } from "./proveedores";
+import type { ProveedorUsado } from "./proveedores";
 
 // Los topes del contrato de S3 y S4 (proveedor y número son el ancho de las columnas; la evidencia, lo que cabe en la fuente).
 const LARGO = { precio: 500, proveedor: 120, numero: 60, evidencia: 90, motivo: 300 };
@@ -44,6 +47,8 @@ function FormularioDeCotizar({ proyecto, version, insumos, anfitrion, alCancelar
   const [insumo, setInsumo] = useState(insumos[0]?.codigo ?? "");
   const [precio, setPrecio] = useState("");
   const [proveedor, setProveedor] = useState("");
+  // AC4: los proveedores de las cotizaciones anteriores de la carpeta, pedidos una vez por diálogo.
+  const buscarProveedor = useMemo(() => buscadorDeProveedores(), []);
   const [numero, setNumero] = useState("");
   const [fecha, setFecha] = useState(fechaDeHoy());
   const [evidencia, setEvidencia] = useState("");
@@ -84,12 +89,25 @@ function FormularioDeCotizar({ proyecto, version, insumos, anfitrion, alCancelar
         maxLength={LARGO.precio}
         onChange={(e) => setPrecio(e.target.value)}
       />
-      <CampoTexto
+      <CampoConBusqueda<ProveedorUsado>
         id="hoja-cotizar-proveedor"
-        labelText="Proveedor"
-        value={proveedor}
-        maxLength={LARGO.proveedor}
-        onChange={(e) => setProveedor(e.target.value)}
+        etiqueta="Proveedor"
+        texto={proveedor}
+        alCambiarTexto={setProveedor}
+        buscar={buscarProveedor}
+        alElegir={(opcion) => setProveedor(opcion.valor.proveedor)}
+        valorPropio={{
+          rotulo: (t) => `Usar «${t.trim()}» como proveedor nuevo`,
+          alUsar: (t) => setProveedor(t.trim()),
+        }}
+        vacio={{
+          titulo: "¿No lo encuentra?",
+          pasos: "Pruebe con otra palabra del nombre. Si es la primera vez que le cotiza, escríbalo tal cual.",
+        }}
+        minimoDeLetras={1}
+        largoMaximo={LARGO.proveedor}
+        alExpirar={alExpirar}
+        tamano="md"
       />
       <CampoTexto
         id="hoja-cotizar-numero"

@@ -140,7 +140,7 @@ describe("Un solo diálogo para las líneas del APU (Tarea 8)", () => {
     expect(within(caja).queryByRole("combobox", { name: "Tipo de línea" })).toBeNull();
     expect(within(caja).queryByRole("combobox", { name: "Línea" })).toBeNull();
     expect(within(caja).queryByRole("textbox", { name: /^Cantidad/ })).toBeNull();
-    expect(within(caja).queryByRole("textbox", { name: "Unidad" })).toBeNull();
+    expect(within(caja).queryByRole("combobox", { name: "Unidad" })).toBeNull();
     expect(within(caja).getByRole("button", { name: "Usar este insumo" })).toBeInTheDocument();
     expect(within(caja).queryByRole("button", { name: "Agregar al APU" })).toBeNull();
   });

@@ -30,4 +30,11 @@ describe("estilos de las tablas de insumos de Componer", () => {
     expect(regla(".silice-componer__tabla th:first-child")).toMatch(/inline-size:\s*\d+%/);
     expect(regla(".silice-componer__tabla th:last-child")).toMatch(/inline-size:\s*1%/);
   });
+
+  // AC1: la descripcion es un campo con sugerencias; sin su boton «Borrar» no hace falta el hueco de la derecha, y el aviso de
+  // descripcion propia (texto de ayuda de la celda) entra con el mismo relleno de 1 rem que el texto del campo.
+  test("la descripción con sugerencias no deja hueco para un botón que no tiene y su aviso alinea con el texto", () => {
+    expect(regla(".silice-componer__tabla .silice-busqueda__campo .cds--text-input")).toMatch(/padding-inline-end:\s*1rem/);
+    expect(regla(".silice-componer__tabla .cds--form__helper-text")).toMatch(/padding-inline:\s*1rem/);
+  });
 });

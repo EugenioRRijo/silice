@@ -20,6 +20,12 @@
   border-block-end: 1px solid var(--silice-divisor);
 }
 
+// Las etiquetas de los insumos elegidos pueden ser largas y varias: el campo ocupa todo el ancho del formulario.
+.silice-simulador__insumos {
+  grid-column: 1 / -1;
+  max-inline-size: 40rem;
+}
+
 .silice-simulador__accion {
   grid-column: 1 / -1;
 }

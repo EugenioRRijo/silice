@@ -2,6 +2,7 @@
 // el movimiento con el teclado, los textos de la region de estado, los errores, el resaltado y el adaptador de la
 // busqueda de partidas del catalogo. Sin React y sin estado: cada funcion se prueba sola (logicaBusqueda.test.ts).
 import { ErrorDeApi, pedir } from "../api/cliente";
+import { plano } from "./normalizar";
 
 export interface OpcionDeBusqueda<T> {
   clave: string; // estable y unica en toda la lista: "partida:LB-02-TUB"
@@ -109,10 +110,6 @@ export function mensajeDeError(error: unknown): string | null {
 export interface Tramo {
   texto: string;
   resaltado: boolean;
-}
-
-function plano(texto: string): string {
-  return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 }
 
 // Parte `texto` en tramos y marca los que coinciden con alguna palabra de `busqueda`, sin tildes ni mayusculas. Las

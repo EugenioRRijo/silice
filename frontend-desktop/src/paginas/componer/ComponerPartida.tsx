@@ -10,6 +10,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { BuscadorReferencia } from "./BuscadorReferencia";
 import { CampoDelCodigo } from "./CampoDelCodigo";
+import { CampoDeUnidad } from "./CampoDeUnidad";
 import { esCodigoValido } from "./codigo";
 import { AvisoSinLista } from "./AvisoSinLista";
 import type { Desde } from "./AvisoSinLista";
@@ -30,9 +31,21 @@ import { Guardar } from "./Guardar";
 import { PanelDesglose } from "./PanelDesglose";
 import { Similares } from "./Similares";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
-import { agregarFila, borrarFila, editarCelda, hayFilas, normalizarTablas, TIPOS, tablasVacias } from "./tablas";
+import { agregarFila, borrarFila, completarFila, editarCelda, hayFilas, normalizarTablas, TIPOS, tablasVacias } from "./tablas";
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 import { TablaInsumos } from "./TablaInsumos";
+
+// Lo que se anuncia junto a «Fecha»: cuantos precios del catalogo son de otra lista y cuantos no se pudieron comprobar. Nada
+// si no hay ninguno.
+function avisoDeListas(listas: Record<TipoTabla, { otras: number; quiza: number }>): string {
+  const otras = TIPOS.reduce((n, t) => n + listas[t].otras, 0);
+  const quiza = TIPOS.reduce((n, t) => n + listas[t].quiza, 0);
+  const partes = [
+    otras === 0 ? "" : otras === 1 ? "1 precio es de otra lista; revíselo." : `${otras} precios son de otra lista; revíselos.`,
+    quiza === 0 ? "" : quiza === 1 ? "1 precio puede ser de otra lista; revíselo." : `${quiza} precios pueden ser de otra lista; revíselos.`,
+  ];
+  return partes.filter(Boolean).join(" ");
+}
 
 // Retardo entre la ultima edicion y la peticion a la API (plan de la ola 3 B, RB-2).
 const RETARDO_MS = 300;
@@ -108,6 +121,16 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     descripcion: descripcionInicial.trim(),
   }));
   const [fecha, setFecha] = useState(hoy);
+  // Cuantos precios llenados desde el catalogo tienen otra lista que la de la «Fecha» (o no se pudo comprobar), por tabla: se
+  // anuncia una vez, junto al campo «Fecha», en una region viva (dictamen de la ronda 2, MENOR 2; WCAG 4.1.3).
+  const [listas, setListas] = useState<Record<TipoTabla, { otras: number; quiza: number }>>({
+    materiales: { otras: 0, quiza: 0 },
+    equipos: { otras: 0, quiza: 0 },
+    mano_obra: { otras: 0, quiza: 0 },
+  });
+  const medirListas = useCallback((tipo: TipoTabla, otras: number, quiza: number) => {
+    setListas((l) => (l[tipo].otras === otras && l[tipo].quiza === quiza ? l : { ...l, [tipo]: { otras, quiza } }));
+  }, []);
   const [condiciones, setCondiciones] = useState("");
   const [tablas, setTablas] = useState<Tablas>(tablasVacias);
   const [ops, setOps] = useState<Opciones | null>(null);
@@ -209,6 +232,10 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
   // UC-11, paso 1: al teclear un codigo que existe se precargan las tres tablas y el rendimiento propuesto, una sola
   // vez por codigo (lo editado despues no se pisa); teclear otro codigo vuelve a precargar.
   const precargado = useRef("");
+  // Cuantas veces una precarga reemplazo las tres tablas. Las tablas de insumos recuerdan por indice de fila lo que se tecleo y
+  // lo que puso el catalogo; una precarga trae filas nuevas y nada de eso es suyo, asi que reciben la vuelta como prop para
+  // reiniciar ese estado sin volver a montarse (dictamen de la ronda 3, MENOR 2 y WCAG 2.4.3).
+  const [vueltaDePrecarga, setVueltaDePrecarga] = useState(0);
   const turnoPartida = useRef(0);
   useEffect(() => {
     const codigo = cabecera.codigo.trim();
@@ -222,7 +249,10 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
           setErrorPrecarga(null);
           setSinHistorial(!r.hay_historial);
           const precarga = normalizarTablas(r.tablas);
-          if (r.existe && hayFilas(precarga)) setTablas(precarga);
+          if (r.existe && hayFilas(precarga)) {
+            setTablas(precarga);
+            setVueltaDePrecarga((n) => n + 1);
+          }
           if (r.existe && r.rendimiento_propuesto !== null) {
             setCabecera((c) => ({ ...c, rendimiento: r.rendimiento_propuesto as string }));
           }
@@ -371,12 +401,12 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               if (!e.target.value.trim()) setParecidas([]);
             }}
           />
-          <CampoTexto
+          <CampoDeUnidad
             id="componer-unidad"
-            size="sm"
-            labelText="Unidad"
-            value={cabecera.unidad}
-            onChange={(e) => cambiarCabecera({ unidad: e.target.value })}
+            etiqueta="Unidad"
+            texto={cabecera.unidad}
+            alCambiar={(unidad) => cambiarCabecera({ unidad })}
+            alExpirar={expirar}
           />
           <Select
             id="componer-dominio"
@@ -389,17 +419,22 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               <SelectItem key={d} value={d} text={d} />
             ))}
           </Select>
-          <CampoTexto
-            id="componer-fecha"
-            size="sm"
-            type="date"
-            labelText="Fecha"
-            value={fecha}
-            onChange={(e) => {
-              setFecha(e.target.value);
-              limpiarGuardado();
-            }}
-          />
+          <div>
+            <CampoTexto
+              id="componer-fecha"
+              size="sm"
+              type="date"
+              labelText="Fecha"
+              value={fecha}
+              onChange={(e) => {
+                setFecha(e.target.value);
+                limpiarGuardado();
+              }}
+            />
+            <p id="componer-fecha-estado" role="status" aria-live="polite" className="cds--form__helper-text">
+              {avisoDeListas(listas)}
+            </p>
+          </div>
         </div>
       </section>
 
@@ -457,9 +492,15 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               tipo={tipo}
               filas={tablas[tipo]}
               modalidades={ops?.modalidades ?? []}
+              vuelta={vueltaDePrecarga}
+              paraArmarAl={fecha}
+              moneda={carpeta?.moneda ?? null}
               alCambiar={(i, clave, valor) => cambiarTablas((t) => editarCelda(t, tipo, i, clave, valor))}
               alAgregar={() => cambiarTablas((t) => agregarFila(t, tipo))}
               alBorrar={(i) => cambiarTablas((t) => borrarFila(t, tipo, i))}
+              alCompletar={(i, valores) => cambiarTablas((t) => completarFila(t, tipo, i, valores))}
+              alExpirar={expirar}
+              alMedirListas={medirListas}
               nivel={nivel === 2 ? 3 : 4}
             />
           </div>

@@ -42,6 +42,9 @@ export interface EscenarioRespuesta {
   variacion_pct: string;
   hallazgos: number;
   insumos_variados: number;
+  // Precios de ensayo que no cambiaron nada: su descripcion no es la de ningun insumo del base, o ya valia ese precio.
+  precios_sin_insumo?: string[];
+  precios_sin_cambio?: string[];
   partidas: FilaComparativo[];
 }
 

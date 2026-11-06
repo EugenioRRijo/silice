@@ -238,6 +238,24 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
       if (url.startsWith("/v1/composicion/partidas/")) {
         return json({ existe: false, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
       }
+      if (url.startsWith("/v1/consulta/insumos")) {
+        return json({
+          tabla: "insumos",
+          hay_mas: false,
+          resultados: [
+            {
+              valor: "MAT-1",
+              etiqueta: "Cemento gris ficticio (MAT-1, saco)",
+              fuente: "Catálogo de la carpeta de trabajo: material",
+              descripcion: "Cemento gris ficticio",
+              unidad: "saco",
+              precio: "18.00",
+              moneda: "Bs",
+              fecha_precio: "2026-07-01",
+            },
+          ],
+        });
+      }
       if (url.startsWith("/v1/composicion/referencia") || url.startsWith("/v1/composicion/similares")) return json([]);
       if (url === "/v1/composicion/prever") {
         return json({ lista: { nombre: "Lista ficticia de Bs", moneda: "Bs", fecha: "2026-10-26" }, lista_nueva: false, variantes: [] });
@@ -804,6 +822,46 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
 
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(panelDeComponer()).toBeNull());
+  });
+
+  // Dictamen de Claude (xhigh), MAYOR: la descripcion de un insumo llena tambien la unidad y el precio. El Esc del panel
+  // restauraba solo la descripcion y dejaba la fila a medias (unidad y precio de un insumo que ya no estaba). Esc con la lista
+  // cerrada no borra lo elegido (DESIGN.md, AC1): el panel no restaura ese campo; el primero no hace nada y el siguiente cierra.
+  test("en la descripción de un insumo elegido del catálogo, Esc no deja la fila a medias: conserva descripción, unidad y precio", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    await userEvent.click(within(panel).getByRole("button", { name: "Agregar fila a Materiales" }));
+    const descripcion = within(panel).getByRole("combobox", { name: "Descripción, fila 1" });
+    await userEvent.click(descripcion);
+    await userEvent.type(descripcion, "cemento g");
+    await userEvent.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
+    await waitFor(() => expect(within(panel).getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("18,00"));
+    expect(within(panel).getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("saco");
+
+    await userEvent.keyboard("{Escape}");
+    expect(panelDeComponer()).not.toBeNull();
+    expect(descripcion).toHaveValue("Cemento gris ficticio");
+    expect(within(panel).getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("saco");
+    expect(within(panel).getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("18,00");
+
+    await userEvent.keyboard("{Escape}"); // el segundo Esc cierra el panel, como en cualquier campo sin cambios
+    await waitFor(() => expect(panelDeComponer()).toBeNull());
+  });
+
+  test("en la descripción de un insumo, con la lista abierta, Esc solo la cierra; escribir sin elegir sigue siendo texto del campo", async () => {
+    montar();
+    const dialogo = await abrirDialogo();
+    const panel = await abrirComponer(dialogo, "Z-99");
+    await userEvent.click(within(panel).getByRole("button", { name: "Agregar fila a Materiales" }));
+    const descripcion = within(panel).getByRole("combobox", { name: "Descripción, fila 1" });
+    await userEvent.click(descripcion);
+    await userEvent.type(descripcion, "cemento g");
+    await screen.findByRole("listbox");
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(panelDeComponer()).not.toBeNull();
+    expect(descripcion).toHaveValue("cemento g");
   });
 
   test("con el panel abierto el foco circula solo dentro del panel (Tab y Mayús+Tab dan la vuelta)", async () => {

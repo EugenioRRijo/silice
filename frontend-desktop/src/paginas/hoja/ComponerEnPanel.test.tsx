@@ -1,0 +1,173 @@
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { fijarCsrf } from "../../api/cliente";
+import type { SesionRespuesta } from "../../api/tipos";
+import { ContextoAplicacion } from "../../shell/contexto";
+import type { Aplicacion } from "../../shell/contexto";
+import { olvidarFormularios } from "../../shell/sucio";
+import { ComponerEnPanel } from "./ComponerEnPanel";
+
+// Ronda 3 del dictamen del autocompletado (2026-11-05), MAYOR 1, por el panel de verdad: el Esc del panel devuelve un campo a su
+// valor con un evento `input`, y ese evento no es un tecleo. El origen de una celda se decide por su valor: si vuelve a lo que
+// puso el catalogo, sigue siendo del catalogo y el siguiente insumo la reemplaza sin «se conserva el precio que escribio».
+// Montos y textos ficticios.
+
+function json(cuerpo: unknown, estado = 200): Response {
+  return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
+}
+
+const SESION: SesionRespuesta = {
+  login: "ana",
+  nombre: "Ana Pérez",
+  roles: ["arma"],
+  csrf: "tok",
+  debe_cambiar_clave: false,
+  acciones: ["editar_hoja", "leer_proyecto"],
+  modo_entrega: false,
+};
+
+const VACIA = {
+  estado: "vacio",
+  aviso: "Comience por la cabecera (código y descripción) y declare al menos un insumo.",
+  desglose: null,
+  advertencias: [],
+  requiere_justificacion: false,
+  contraste: null,
+};
+const CON_LISTA = {
+  moneda: "Bs",
+  declarada: true,
+  lista: { nombre: "Lista ficticia de Bs", moneda: "Bs", fecha: "2026-10-25", origen: "prueba" },
+  aviso: null,
+};
+const CATALOGO = [
+  { codigo: "MAT-1", descripcion: "Cemento gris ficticio", unidad: "saco", precio: "18.00" },
+  { codigo: "MAT-2", descripcion: "Cemento blanco ficticio", unidad: null, precio: null },
+  { codigo: "MAT-3", descripcion: "Cemento rojo ficticio", unidad: "kg", precio: "9.00" },
+];
+const FECHA = "2026-08-15";
+
+describe("Componer en el panel: Esc no vuelve «tecleado» lo que puso el catálogo", () => {
+  const fetchFalso = vi.fn<typeof fetch>();
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchFalso);
+    fetchFalso.mockReset();
+    fijarCsrf("tok");
+    fetchFalso.mockImplementation(async (entrada) => {
+      const ruta = String(entrada);
+      const url = new URL(ruta, "http://x");
+      if (ruta === "/v1/composicion/opciones") return json({ dominios: ["civil"], modalidades: ["jornal"] });
+      if (ruta === "/v1/composicion/evaluar") return json(VACIA);
+      if (ruta.startsWith("/v1/composicion/partidas/")) {
+        return json({ existe: false, tablas: { materiales: [], equipos: [], mano_obra: [] }, rendimiento_propuesto: null, hay_historial: false });
+      }
+      if (url.pathname === "/v1/composicion/referencia" || url.pathname === "/v1/composicion/similares") return json([]);
+      if (ruta === "/v1/carpeta") return json(CON_LISTA);
+      if (ruta === "/v1/consulta/unidades") return json({ unidades: [] });
+      if (url.pathname === "/v1/consulta/insumos") {
+        const q = (url.searchParams.get("q") ?? "").toLowerCase();
+        const resultados = CATALOGO.filter((i) => i.descripcion.toLowerCase().includes(q)).map((i) => ({
+          valor: i.codigo,
+          etiqueta: `${i.descripcion} (${i.codigo})`,
+          fuente: "Catálogo de la carpeta de trabajo: material",
+          descripcion: i.descripcion,
+          ...(i.unidad ? { unidad: i.unidad } : {}),
+          ...(i.precio === null ? {} : { precio: i.precio, moneda: "Bs", fecha_precio: "2026-07-01" }),
+        }));
+        return json({ tabla: "insumos", hay_mas: false, resultados });
+      }
+      return json({ detalle: "No encontrado." }, 404);
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    fijarCsrf(null);
+    olvidarFormularios();
+  });
+
+  async function abrirPanel() {
+    const valor: Aplicacion = { sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
+    render(
+      <ContextoAplicacion.Provider value={valor}>
+        <MemoryRouter>
+          <ComponerEnPanel partida={{ codigo: "", descripcion: "" }} alCerrar={vi.fn()} alGuardar={vi.fn()} />
+        </MemoryRouter>
+      </ContextoAplicacion.Provider>,
+    );
+    const panel = await screen.findByRole("complementary", { name: "Componer una partida" });
+    await within(panel).findByText("Precios en Bs", {}, { timeout: 3000 });
+    fireEvent.change(within(panel).getByLabelText("Fecha"), { target: { value: FECHA } });
+    await userEvent.click(within(panel).getByRole("button", { name: "Agregar fila a Materiales" }));
+    return panel;
+  }
+
+  const descripcion = () => screen.getByRole("combobox", { name: "Descripción, fila 1" });
+  const unidad = () => screen.getByRole("combobox", { name: "Unidad, fila 1" });
+  const precio = () => screen.getByRole("textbox", { name: "Precio, fila 1" });
+
+  async function elegir(buscado: string, nombre: RegExp) {
+    await userEvent.clear(descripcion());
+    await userEvent.type(descripcion(), buscado);
+    await userEvent.click(await screen.findByRole("option", { name: nombre }));
+    await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument());
+  }
+
+  // Elige el cemento gris (18,00), teclea un 5 al final del precio y pulsa Esc: el panel lo devuelve a «18,00».
+  async function conElPrecioTecleadoYDevueltoPorEsc() {
+    await abrirPanel();
+    await elegir("cemento g", /Cemento gris ficticio/);
+    await waitFor(() => expect(precio()).toHaveValue("18,00"));
+    await userEvent.type(precio(), "5");
+    expect(precio()).toHaveValue("18,005");
+    await userEvent.keyboard("{Escape}");
+    expect(precio()).toHaveValue("18,00");
+    expect(screen.getByRole("complementary", { name: "Componer una partida" })).toBeInTheDocument();
+  }
+
+  test("tecleo, Esc y un insumo sin precio ni unidad: la celda del precio y la de la unidad se vacían", async () => {
+    await conElPrecioTecleadoYDevueltoPorEsc();
+    await elegir("cemento b", /Cemento blanco ficticio/);
+    await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
+    expect(precio()).toHaveValue("");
+    expect(unidad()).toHaveValue("");
+    expect(precio()).not.toHaveAccessibleDescription(expect.stringContaining("se conserva"));
+  });
+
+  test("tecleo, Esc y un insumo con precio: se reemplaza sin «se conserva el precio que escribió»", async () => {
+    await conElPrecioTecleadoYDevueltoPorEsc();
+    await elegir("cemento r", /Cemento rojo ficticio/);
+    await waitFor(() => expect(precio()).toHaveValue("9,00"));
+    expect(unidad()).toHaveValue("kg");
+    expect(precio()).not.toHaveAccessibleDescription(expect.stringContaining("se conserva"));
+    expect(precio()).not.toHaveAccessibleDescription(expect.stringContaining("El catálogo tiene"));
+  });
+
+  test("teclear, borrar lo tecleado y volver al mismo valor del catálogo: sigue siendo del catálogo", async () => {
+    await abrirPanel();
+    await elegir("cemento g", /Cemento gris ficticio/);
+    await waitFor(() => expect(precio()).toHaveValue("18,00"));
+    await userEvent.type(precio(), "5");
+    await userEvent.clear(precio());
+    await userEvent.type(precio(), "18,00");
+    expect(precio()).toHaveValue("18,00");
+
+    await elegir("cemento b", /Cemento blanco ficticio/);
+    await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
+    expect(precio()).toHaveValue("");
+    expect(precio()).not.toHaveAccessibleDescription(expect.stringContaining("se conserva"));
+  });
+
+  test("lo que la persona escribió de verdad sigue siendo suyo: con otro valor que el del catálogo se conserva y se dice", async () => {
+    await abrirPanel();
+    await elegir("cemento g", /Cemento gris ficticio/);
+    await waitFor(() => expect(precio()).toHaveValue("18,00"));
+    await userEvent.type(precio(), "5"); // 18,005: ya no es el del catalogo
+    await elegir("cemento r", /Cemento rojo ficticio/);
+    await waitFor(() => expect(descripcion()).toHaveValue("Cemento rojo ficticio"));
+    expect(precio()).toHaveValue("18,005");
+    expect(precio()).toHaveAccessibleDescription(expect.stringContaining("El catálogo tiene 9,00 Bs; se conserva el precio que escribió."));
+  });
+});

@@ -13,6 +13,7 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
+import { CampoDeUnidad } from "../componer/CampoDeUnidad";
 import { esBorradorAusente } from "./logica";
 import type { Resumen } from "./logica";
 import {
@@ -353,7 +354,23 @@ export function LineaDelApu({ modo, id, partida, moneda, anfitrion, revActual, a
               {elegido.unidad !== "" ? ` por ${elegido.unidad}` : ""}
             </p>
           )}
-          {nuevo !== null && tipo === "material" && campoTexto("unidad", "Unidad", unidad, setUnidad, "Por ejemplo m3, kg o saco.")}
+          {nuevo !== null && tipo === "material" && (
+            <CampoDeUnidad
+              id={ID_DE_CAMPO.unidad}
+              etiqueta="Unidad"
+              ayuda="Elija una del catálogo o escriba la suya, por ejemplo m3, kg o saco."
+              texto={unidad}
+              alCambiar={(t) => {
+                setUnidad(t);
+                limpiar("unidad");
+              }}
+              alExpirar={alExpirar}
+              invalido={errores.unidad !== null}
+              textoInvalido={errores.unidad ?? undefined}
+              deshabilitado={enviando}
+              tamano="md"
+            />
+          )}
           {nuevo !== null && campoTexto("precio", rotuloDelPrecio(tipo, modalidad, moneda), precio, setPrecio, AYUDA_CIFRAS)}
           {!cambiando && tipo === "mano_obra" && (
             <Select

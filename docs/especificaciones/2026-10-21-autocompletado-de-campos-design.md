@@ -819,3 +819,35 @@ Cada rebanada entrega con su informe del manual §5 y **un commit por tarea** (C
 - Si el sistema valida de algún modo el formato del código de una partida: no encontré validación en lo que leí, pero no leí `composicion_desde_tablas` (líneas 219-267) entero.
 - La glosa correcta de `lt`, `env`, `rll` y `sco`: es mi lectura de las abreviaturas (D-11).
 - Cuántas partidas e insumos tiene un caso real: no hay un caso real en el repositorio (y no debe haberlo); el diseño supone catálogos de cientos, no de decenas de miles, y por eso el límite de 20 y el filtrado en el servidor.
+
+---
+
+## Enmiendas 2026-11-05
+
+Tras el arbitraje de la rama `feature/autocompletado` (`docs/bitacora/arbitrajes/autocompletado-claude-xhigh.md`).
+Lo construido usa `/v1/consulta/*` y rutas de Control y Reajuste, no el `/v1/buscar/*` de §5; estas notas dicen dónde
+se aparta del diseño y por qué.
+
+1. **Permiso de los proveedores (desvío de §12.2).** `GET /v1/consulta/proveedores` exige `LEER_PROYECTO` (arma y
+   revisa) y no `EDITAR_HOJA`. Razón: el nombre del proveedor no es un dato nuevo para quien solo revisa, que ya lo lee
+   en la columna «Cotización» de `GET /v1/hoja/precios` con ese mismo permiso; pedir más aquí no protegería nada. El
+   administrador sigue con 403. Consta en el docstring de la ruta (`api/rutas/consulta.py`).
+2. **Solo cotizaciones activas (§5.6 y §13).** Activa es la que está en la lista de precios de la versión vigente de
+   alguna obra de la carpeta: la de mayor id no descartada, el mismo criterio que `core.budget.edicion.version_vigente`.
+   Retirar una cotización crea una versión nueva sobre una lista sin ella, así que la retirada solo queda en listas de
+   versiones viejas y ya no sugiere su proveedor; tampoco la de una versión descartada ni la de una lista que ninguna
+   versión usa. Sigue abierto D-12: la lista es de toda la carpeta (el caso), no solo del proyecto de la persona.
+3. **Partidas de Control al corte (§5.4).** `GET /v1/control/partidas` acepta `corte` (el *hasta* de la valuación) y
+   devuelve las partidas de la línea base vigente a esa fecha, la misma contra la que R13 juzga la valuación; sin
+   `corte`, la más reciente. Antes de la primera línea base responde vacío con «No hay una línea base vigente a esa fecha
+   de corte.». Las dos rutas de partidas (Control y Reajuste) dicen `truncada` cuando la lista se recortó al tope de
+   2000; con la lista recortada la interfaz no rechaza una partida que no ve y deja que decida el servidor.
+4. **Errores fijos (H-17).** `GET /v1/control/partidas`, `GET /v1/reajuste/partidas` y `GET /v1/reajuste/series`
+   responden un 404 de texto fijo («El proyecto no existe en este caso.», «El proyecto no tiene esa versión.») que no
+   repite lo pedido, y un fallo de la base es un 503 fijo sin SQL ni rutas, todo con `Cache-Control: no-store`.
+5. **Escenarios (ES-1).** Cada escenario de `POST /presupuestos/{codigo}/escenarios` trae `precios_sin_insumo` (precios
+   de ensayo cuya descripción no es la de ningún insumo del base: el cálculo empareja por igualdad exacta y los descarta
+   en silencio) y `precios_sin_cambio` (iguales al vigente). La pantalla los nombra en español llano. `core/` no cambia.
+6. **Simulador (D-9 y SI-1).** `POST /v1/simulador` y `/csv` aceptan `insumos` también como lista de descripciones
+   exactas, que admite una con coma; el texto separado por comas de siempre sigue igual. La pantalla manda la lista y ya
+   no rechaza una descripción con coma.
