@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { CampoConBusqueda } from "./CampoConBusqueda";
 import { buscadorDePartidasDelContrato, partidaDelContrato } from "./partidasDelContrato";
 import type { PartidaDelContrato } from "./partidasDelContrato";
+import { unidadEscrita } from "../comun/unidades";
 
 interface Props {
   id: string;
@@ -47,7 +48,7 @@ export function CampoDePartida({
   const buscar = useMemo(() => buscadorDePartidasDelContrato(partidas ?? []), [partidas]);
   const cerrada = soloDelContrato && partidas !== null;
   const elegida = partidas ? partidaDelContrato(partidas, texto) : null;
-  const ayudaViva = !enCelda && elegida ? `${elegida.descripcion} · ${elegida.unidad}` : enCelda ? undefined : ayuda;
+  const ayudaViva = !enCelda && elegida ? `${elegida.descripcion} · ${unidadEscrita(elegida.unidad)}` : enCelda ? undefined : ayuda;
   return (
     <CampoConBusqueda
       id={id}

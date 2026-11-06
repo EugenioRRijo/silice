@@ -17,7 +17,7 @@ describe("buscador local de las partidas del contrato", () => {
     expect(grupos[0]?.rotulo).toBe("Partidas del contrato");
     expect(grupos[0]?.hayMas).toBe(false);
     expect(grupos[0]?.opciones).toEqual([
-      { clave: "partida:OB-A", principal: "Excavacion de zanja", secundaria: ["OB-A", "m3"], valor: PARTIDAS[0] },
+      { clave: "partida:OB-A", principal: "Excavacion de zanja", secundaria: ["OB-A", "m³"], valor: PARTIDAS[0] },
     ]);
   });
 

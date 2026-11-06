@@ -30,6 +30,7 @@ import {
   severidadDeCompra,
 } from "./procura";
 import type { CampoDeRecepcion, NecesidadDeMaterial, Procura } from "./procura";
+import { unidadEscrita } from "../../comun/unidades";
 
 interface Props {
   proyecto: string;
@@ -167,7 +168,7 @@ function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAcci
   const id = (campo: CampoDeRecepcion) => `${base}-${campo}`;
   const { descripcion, unidad } = necesidad;
   // Con la casilla marcada el precio es obligatorio: ya no se llama «opcional».
-  const detallesDelPrecio = [unidad ? `por ${unidad}` : null, declarar ? null : "opcional"].filter((d) => d !== null);
+  const detallesDelPrecio = [unidad ? `por ${unidadEscrita(unidad)}` : null, declarar ? null : "opcional"].filter((d) => d !== null);
   const etiquetaDelPrecio = detallesDelPrecio.length > 0 ? `Precio unitario (${detallesDelPrecio.join(", ")})` : "Precio unitario";
 
   useFormularioSucio(PANTALLA, fecha !== hoy || cantidad.trim() !== "" || precio.trim() !== "" || declarar);
@@ -248,7 +249,7 @@ function DialogoRecibida({ proyecto, necesidad, alCancelar, alHecho }: PropsAcci
       <CampoTexto
         {...campo("cantidad")}
         inputMode="decimal"
-        labelText={`Cantidad recibida (${unidad ? `${unidad}, ` : ""}opcional)`}
+        labelText={`Cantidad recibida (${unidad ? `${unidadEscrita(unidad)}, ` : ""}opcional)`}
         value={cantidad}
         onChange={(e) => {
           setCantidad(e.target.value);
@@ -438,7 +439,7 @@ export function PestanaProcura({ proyecto, clave, alCambiar }: Props) {
     // La cantidad exacta en es-VE, una sola vez y sin `title` (el texto ya es el exacto).
     Cantidad: (fila) => {
       const n = deFila(fila);
-      return n.unidad ? `${formatoEsVe(n.cantidad)} ${n.unidad}` : formatoEsVe(n.cantidad);
+      return n.unidad ? `${formatoEsVe(n.cantidad)} ${unidadEscrita(n.unidad)}` : formatoEsVe(n.cantidad);
     },
     "Se necesita": (fila) => fechaOSin(deFila(fila).se_necesita),
     "Pedir a más tardar": (fila) => fechaOSin(deFila(fila).pedir_a_mas_tardar),

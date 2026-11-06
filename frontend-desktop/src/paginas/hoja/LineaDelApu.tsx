@@ -29,6 +29,7 @@ import {
 } from "./logicaApu";
 import type { CampoDeLinea, InsumoCandidato, InsumosRespuesta, LineaApu, LineaNueva, TipoDeLinea } from "./logicaApu";
 import { claseDeConflicto } from "./logicaSecciones";
+import { unidadEscrita } from "../../comun/unidades";
 
 const ID = "hoja-apu-linea";
 const ID_INSUMO = `${ID}-insumo`;
@@ -72,7 +73,7 @@ function buscadorDeInsumos(id: string, tipo: TipoDeLinea, moneda: string) {
         opciones: r.insumos.map((i) => ({
           clave: `insumo:${i.codigo}`,
           principal: i.descripcion,
-          secundaria: [i.codigo, i.unidad, `${formatoEsVe(i.precio.texto)} ${moneda}`].filter((s) => s !== ""),
+          secundaria: [i.codigo, unidadEscrita(i.unidad), `${formatoEsVe(i.precio.texto)} ${moneda}`].filter((s) => s !== ""),
           valor: i,
         })),
       },
@@ -261,7 +262,7 @@ export function LineaDelApu({ modo, id, partida, moneda, anfitrion, revActual, a
     />
   );
 
-  const unidadDeLaCantidad = elegido !== null && elegido.unidad !== "" ? ` (${elegido.unidad})` : "";
+  const unidadDeLaCantidad = elegido !== null && elegido.unidad !== "" ? ` (${unidadEscrita(elegido.unidad)})` : "";
 
   return createPortal(
     <div className="silice-hoja__dialogo-fondo">
@@ -351,7 +352,7 @@ export function LineaDelApu({ modo, id, partida, moneda, anfitrion, revActual, a
           {elegido !== null && (
             <p className="cds--type-helper-text-01">
               Precio de la lista de la versión: {formatoEsVe(elegido.precio.texto)} {moneda}
-              {elegido.unidad !== "" ? ` por ${elegido.unidad}` : ""}
+              {elegido.unidad !== "" ? ` por ${unidadEscrita(elegido.unidad)}` : ""}
             </p>
           )}
           {nuevo !== null && tipo === "material" && (

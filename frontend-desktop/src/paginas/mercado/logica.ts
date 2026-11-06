@@ -6,6 +6,7 @@ import { pedir } from "../../api/cliente";
 import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import type { GrupoDeResultados } from "../../comun/logicaBusqueda";
 import { plano } from "../../comun/normalizar";
+import { unidadEscrita } from "../../comun/unidades";
 
 export type Lado = "compra" | "cobro";
 
@@ -183,7 +184,7 @@ export function gruposDeInsumos(
       opciones: hallados.slice(0, limite).map((i) => ({
         clave: `insumo:${i.codigo}`,
         principal: i.descripcion,
-        secundaria: [i.codigo, ...(i.unidad ? [i.unidad] : []), TIPO_DE_INSUMO[i.tipo] ?? i.tipo],
+        secundaria: [i.codigo, ...(i.unidad ? [unidadEscrita(i.unidad)] : []), TIPO_DE_INSUMO[i.tipo] ?? i.tipo],
         valor: i,
       })),
     },

@@ -37,6 +37,7 @@ import type { Calculo, Filtros, MetodoDePrecios, OpcionDeRecuperacion, PrecioCon
 import { fechaDeRanura } from "./fechas";
 import { AntesYDespues } from "./AntesYDespues";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { unidadEscrita } from "../../comun/unidades";
 
 // --- el corte y los precios del corte, comunes a las tres pestañas ---------------------------
 
@@ -182,7 +183,7 @@ function PreciosConvertidos({ precios }: { precios: PrecioConvertido[] }) {
       <ul className="cds--type-body-compact-01">
         {precios.map((p) => (
           <li key={`${p.descripcion}|${p.unidad}`}>
-            <div>{`${p.descripcion}${p.unidad ? ` (por ${p.unidad})` : ""}, desde el ${fechaDeRanura(p.fecha)}:`}</div>
+            <div>{`${p.descripcion}${p.unidad ? ` (por ${unidadEscrita(p.unidad)})` : ""}, desde el ${fechaDeRanura(p.fecha)}:`}</div>
             <div>
               <LineaDeEquivalencia equivalencia={p.equivalencia} />
             </div>
