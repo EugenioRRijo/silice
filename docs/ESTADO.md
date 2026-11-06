@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-05 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-06 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
@@ -24,45 +24,44 @@ instalador con huella SHA-256 firmada.
 
 | PR o rama | Qué trae | Estado |
 |---|---|---|
-| #105 `fix/reloj-pruebas-hoja` | Dos pruebas de la Hoja (R6, R7) que desde el 2026-11-05 caían por el reloj del equipo | Listo: Eugenio lo fusiona en GitHub; sin él, la CI de cualquier PR contra `main` cae |
-| `feature/f6-espacios` | Rediseño F6 completo (§3) | Construido, arbitrado y con los hallazgos corregidos; PR a `main` para que Eugenio lo pruebe y lo fusione |
-| `feature/autocompletado` | Autocompletado guiado (§3) | En curso: AC1, AC1b, AC2 y AC2c hechos; faltan AC3 y AC4 |
+| #105 `fix/reloj-pruebas-hoja` | Dos pruebas de la Hoja (R6, R7) que desde el 2026-11-05 caían por el reloj del equipo | CI en verde: Eugenio lo fusiona; sin él, la CI de cualquier PR contra `main` cae |
+| #106 `feature/f6-espacios` | Rediseño F6 completo (§3) | Arbitrado y corregido; espera la prueba de Eugenio en el navegador y la fusión |
+| #107 `feature/autocompletado` | Autocompletado guiado AC1–AC4 (§3) | Árbitro xhigh: aprobado en la ronda 4; espera #105 (r6/r7) y la prueba de Eugenio |
+| `feature/tanda-detalles` | Tanda de detalles D1–D16 (§3), sobre F6 y el autocompletado unidos | En arbitraje; sin PR hasta que se fusionen #106 y #107 |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor. Ya tiene `main` unido y el experimento recongelado con acta (`docs/bitacora/2026-11-04-recongelado-experimento.md` en su rama) |
 
-Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. El 2026-11-04 se quitaron 20 ya
-fusionados; quedan 28 (ver §4). La rama de F6 vive en `.worktrees/s2m3`; la del autocompletado, en el checkout
-principal.
+Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
+autocompletado en el checkout principal y la tanda en `.worktrees/tanda`; cada tarea de la tanda tuvo su árbol
+`.worktrees/td-*` (autorización de Eugenio del 2026-11-06), que se quita al cerrar la fase.
 
 ## 3. Trabajo en curso
 
-**Rediseño F6, espacios enrutados** ([plan](planes/PLAN_REDISENO_F6.md),
-[seguimiento](bitacora/2026-11-04-f6-construccion.md)). T0–T9 hechas. La app abre en la **Vista general** (lo que
-bloquea primero, la cartera separada por moneda, el avance contra el plan, las últimas auditorías y la arenera); la barra
-lateral es plana; cada obra tiene su barra de secciones con subvistas; la Cuenta reúne preferencias (el tamaño de letra),
-cuentas, empresa, carpetas, sistema y ayuda. Arbitrajes en [bitacora/arbitrajes/](bitacora/arbitrajes/): Antigravity
-(Argon y Flash) en T1–T8 y, sin cuota de Argon ni de Opus en Antigravity, el **árbitro final fue un revisor de Claude con
-esfuerzo xhigh** (decisión de Eugenio, 2026-11-05): aprobado con condiciones; sus dos mayores (los enlaces del contenido
-a otra carpeta perdían el borrador sin preguntar; la cartera sumaba la demostración) y siete menores están corregidos con
-su prueba en rojo primero.
+**Rediseño F6, espacios enrutados** (PR #106; [plan](planes/PLAN_REDISENO_F6.md),
+[seguimiento](bitacora/2026-11-04-f6-construccion.md)). La app abre en la **Vista general**; barra lateral plana; cada
+obra con su barra de secciones; la Cuenta reúne preferencias, cuentas, empresa, carpetas, sistema y ayuda. Árbitro final
+de Claude xhigh: aprobado con condiciones, ya corregidas. Decisiones de Eugenio del 2026-11-05: «Presupuesto | Componer»,
+cabecera compacta del Presupuesto, quien revisa ve y abre las obras de todas las carpetas (`abrir_carpeta`), y la
+demostración nunca se mezcla con las carpetas de la empresa (fuera de ella no se lista).
 
-Decisiones de Eugenio del 2026-11-05 dentro de F6:
-- el conmutador de Presupuesto dice «Presupuesto | Componer»;
-- **cabecera compacta del Presupuesto**: a 1366×768 con letra Normal la primera partida pasa de 1.069 px a 622 px;
-- **quien revisa ve y abre las obras de todas las carpetas**: la acción nueva `abrir_carpeta` (abrir y listar) se separa
-  de `cambiar_caso` (crear y subir carpetas, sin revisa); la carpeta abierta sigue siendo de cada sesión;
-- los datos de la **demostración nunca se mezclan** con los reales: fuera de ella no se listan; dentro, solo los suyos.
+**Autocompletado guiado** (PR #107; [plan](planes/PLAN_AUTOCOMPLETADO.md)): AC1–AC4 hechos (Componer con el precio de la
+lista con que arma la carpeta, Control, Reajuste, Escenarios, Simulador, unidades, moneda, proveedor y versión de
+comprobación); RF-167, RF-168 y RNF-29 en el ERS.
 
-**Autocompletado guiado** (pedido de Eugenio del 2026-10-21, auditoría del 2026-11-05). Reutiliza `CampoConBusqueda`.
-- Hecho: descripción del insumo en Componer (insumos y oficios de mano de obra), con el precio de la lista con que arma
-  la carpeta a la fecha de la composición, que no se copia si la moneda no coincide (AC1, AC1b); partida del contrato en
-  Control y Reajuste y serie de índices en Reajuste, con rutas nuevas de solo lectura (AC2, AC2c).
-- Falta: insumo en Escenarios y en el Simulador, que pide selección múltiple (AC3); unidades, moneda, proveedor y versión
-  de comprobación (AC4).
+**Tanda de detalles D1–D16** ([plan](planes/PLAN_TANDA_DETALLES.md),
+[arbitraje](bitacora/arbitrajes/tanda-detalles-claude-xhigh.md)). Construida el 2026-11-06 en cinco líneas en paralelo.
+La ronda 1 del árbitro xhigh la devolvió con 2 MAYOR (D10 rompía la flecha izquierda de las pestañas; D16 seguía
+mezclando la partida con Esc) y 13 MENOR; los dos MAYOR y los MENOR 1–11 están corregidos con prueba en rojo primero (el
+12 es historia de commits y no se reescribe). Gemini Flash construyó solo parte de los parches: con la máquina cargada
+agotó su tiempo varias veces y esas tareas las hicieron subagentes de Claude con TDD. Notas: la frase «Cadena íntegra: N
+versiones» de `core/` sigue igual y la concordancia se corrige en `aplicacion/texto_cadena.py` hasta que el tutor avale
+tocar el núcleo.
 
 ## 4. Lo que espera a Eugenio
 
-1. Fusionar el PR #105 en GitHub cuando su CI esté en verde.
-2. Probar F6 en el navegador y fusionar su PR (merge commit).
+1. Fusionar en GitHub, en este orden y con merge commit: #105 (CI verde), #106 (F6) y #107 (autocompletado), cada
+   uno después de probarlo en el navegador. Claude no puede fusionar: el control de permisos de Claude Code lo bloquea.
+2. Probar la tanda de detalles en el navegador, en especial la columna «Estado» del Presupuesto a 1366 px (D13) y la
+   tabla apilada de la Vista general (D14), que jsdom no mide.
 3. Decisiones ratificadas en bloque el 2026-11-04
    ([bitacora/2026-10-30-preguntas-para-eugenio.md](bitacora/2026-10-30-preguntas-para-eugenio.md)); quedan **a cotejar
    con el tutor** las que dependen de una fuente externa (IVSS, ligante, proxy de asfalto, tolerancia de receta,
@@ -82,16 +81,8 @@ Decisiones de Eugenio del 2026-11-05 dentro de F6:
 Plan detallado, con el protocolo de trabajo con Gemini Flash por `agy` (Flash construye el parche, Claude lo aplica con
 TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA_DETALLES.md](planes/PLAN_TANDA_DETALLES.md).
 
-1. **Tanda de detalles** (chicos, en paralelo):
-   - vistos el 2026-11-04: la cantidad con punto en «Guardar versión», «del proyecto» por «de la obra», «1 versiones»,
-     la hora con microsegundos, «Carpeta sin moneda declarada», «m3» y «m³»;
-   - del video del 2026-11-01: 404 al abrir «Producir mezcla» (`useMezclas.ts`), «Sin cálculo» en las filas de tramos
-     (`aplicacion/hoja_vista.py`), «Trayectorias por corte» bajo «Proyectar» (`RiesgoDeLaObra.tsx`) y botones sin nombre
-     accesible en el Visor (3) y en Administración (2);
-   - del árbitro final de F6: «Versión vigente» del Resumen también es la de la línea base cuando existe; la ayuda del
-     «Total» de la cartera solo vive en la API; la columna «Estado» del Presupuesto queda cortada a 1366 px; la tabla
-     apilada de la Vista general puede ir con rótulo y dato en una línea.
-2. **Autocompletado** AC3 y AC4 (§3).
+1. **Tanda de detalles**: construida (§3); falta cerrar su arbitraje.
+2. **Autocompletado**: completo (PR #107).
 3. **F7 Ayuda**: «¿Qué es esto?» en cada sección, guías por tarea, glosario y «Empieza aquí» (con la primera entrada y el
    primer administrador desde la interfaz).
 4. **F8 Cierre del rediseño**: retirar las redirecciones viejas; poner al día `scripts/recorrido_ux_playwright.py`, que
