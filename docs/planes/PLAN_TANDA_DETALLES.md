@@ -71,6 +71,6 @@ afirmación contra `archivo:línea`) antes de aplicarlos.
 
 ## Después · Diseños de F5
 
-Presupuesto vial real y ventana de escritorio: esperan las respuestas de Eugenio (§10 de
-[2026-11-03-presupuesto-vial-real-design.md](../especificaciones/2026-11-03-presupuesto-vial-real-design.md) y la
-especificación de la ventana). La ventana exige enmendar RT-3 y RT-5, que todavía dicen Tauri.
+Lecciones del presupuesto vial revisado en local y ventana de escritorio: esperan las respuestas de Eugenio. Diseño del
+vial revisado en local: §10 de [su especificación](../especificaciones/2026-11-03-presupuesto-vial-real-design.md);
+la ventana, en su propia especificación. La ventana exige enmendar RT-3 y RT-5, que todavía dicen Tauri.
