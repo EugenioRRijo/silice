@@ -2,8 +2,8 @@
 // 2026-10-21). La lista llega entera de la API (GET /v1/control/partidas o /v1/reajuste/partidas: son las de UNA version,
 // no el catalogo) y se filtra aqui, en el navegador, sin una peticion por tecla (modo local del diseno §5.4). La pagina
 // no calcula nada: solo busca texto.
-import type { Carga } from "../inicio/useCarga";
-import { buscadorLocal } from "../../comun/normalizar";
+import type { Carga } from "./useCarga";
+import { buscadorLocal } from "./normalizar";
 
 export interface PartidaDelContrato {
   codigo: string;

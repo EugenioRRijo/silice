@@ -11,7 +11,7 @@ import type { OpcionDeBusqueda } from "../../comun/logicaBusqueda";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import { COLUMNA_DEL_PRECIO, TABLA_DE_CONSULTA, aplicarEleccion, columnasDelCatalogo } from "./autocompletado";
 import type { Conflicto, Llenado } from "./autocompletado";
-import { CampoDeUnidad } from "./CampoDeUnidad";
+import { CampoDeUnidad } from "../../comun/CampoDeUnidad";
 import { COLUMNAS, TITULOS } from "./tablas";
 import type { Fila, TipoTabla } from "./tablas";
 

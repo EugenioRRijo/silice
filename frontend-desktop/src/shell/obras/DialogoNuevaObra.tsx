@@ -6,6 +6,7 @@ import type { CarpetaRespuesta, ProyectoRespuesta } from "../../api/tipos";
 import { AvisoError } from "../../comun/AvisoError";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { TIPO_DE_OBRA } from "../../comun/logicaBusqueda";
+import { MONEDAS, rotuloDeMoneda } from "../../comun/monedas";
 import { MarcoDeDialogo } from "../carpetas/MarcoDeDialogo";
 import { ContextoAplicacion } from "../contexto";
 import "./DialogoNuevaObra.scss";
@@ -28,10 +29,7 @@ export interface DestinoDeNuevaObra {
   enOtraCarpeta?: boolean;
 }
 
-const MONEDAS = [
-  { valor: "Bs", texto: "Bolívares (Bs)" },
-  { valor: "USD", texto: "Dólares estadounidenses (USD)" },
-];
+const OPCIONES_DE_MONEDA = MONEDAS.map((m) => ({ valor: m, texto: rotuloDeMoneda(m, true) }));
 const CONVERSION = "Esta obra se valorará convirtiendo los precios de la carpeta con la tasa del BCV del día.";
 const ID_FORMULARIO = "silice-nueva-obra";
 // Como llama `POST /v1/proyectos` a la carpeta de la empresa (ningun nombre de carpeta real lo es: todos terminan en .db).
@@ -69,7 +67,7 @@ function Formulario({ alCerrar, alCrear, destino }: Omit<Props, "abierto">) {
     pedir<CarpetaRespuesta>("/v1/carpeta")
       .then((r) => {
         if (!vigente) return;
-        const propia = typeof r?.moneda === "string" && MONEDAS.some((m) => m.valor === r.moneda) ? r.moneda : null;
+        const propia = typeof r?.moneda === "string" && MONEDAS.some((m) => m === r.moneda) ? r.moneda : null;
         setDeLaCarpeta(propia);
         // Se propone solo si la persona aun no eligio otra.
         if (propia && !enOtraCarpeta) setMoneda((elegida) => elegida || propia);
@@ -173,7 +171,7 @@ function Formulario({ alCerrar, alCrear, destino }: Omit<Props, "abierto">) {
           }}
         >
           {!monedaDeCarpeta && <SelectItem value="" text="Elija…" />}
-          {MONEDAS.map((m) => (
+          {OPCIONES_DE_MONEDA.map((m) => (
             <SelectItem key={m.valor} value={m.valor} text={m.texto} />
           ))}
         </Select>

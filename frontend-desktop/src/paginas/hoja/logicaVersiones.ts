@@ -179,10 +179,3 @@ function dos(n: number): string {
 export function fechaDeHoy(ahora: Date = new Date()): string {
   return `${ahora.getFullYear()}-${dos(ahora.getMonth() + 1)}-${dos(ahora.getDate())}`;
 }
-
-// MONEDAS de la clásica; la moneda destino no puede ser la actual.
-export const MONEDAS = ["Bs", "USD"] as const;
-
-export function monedasDestino(actual: string | null): string[] {
-  return MONEDAS.filter((m) => m !== actual);
-}

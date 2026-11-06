@@ -13,7 +13,7 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
 import { useAtraparFoco } from "../../shell/useAtraparFoco";
-import { CampoDeUnidad } from "../componer/CampoDeUnidad";
+import { CampoDeUnidad } from "../../comun/CampoDeUnidad";
 import { esBorradorAusente } from "./logica";
 import type { Resumen } from "./logica";
 import {

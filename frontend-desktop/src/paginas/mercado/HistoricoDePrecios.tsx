@@ -6,7 +6,7 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { buscadorDeInsumos } from "./logica";
 import type { InsumoDelCatalogo } from "./logica";
 import { aPorcentaje, fechaValida, rangoInvertido } from "../../comun/porcentaje";

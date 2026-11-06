@@ -15,7 +15,7 @@ import { rutaDePrecios, rutaDeVersiones } from "../hoja/logica";
 import type { CeldaPrecio, PreciosRespuesta, VersionesRespuesta } from "../hoja/logica";
 import { cotizadasDePrecios } from "../hoja/logicaVersiones";
 import { useOfertas } from "../hoja/useOfertas";
-import { useCarga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
 import { OperacionesDePrecios } from "./OperacionesDePrecios";
 
 // Por qué existe (Tarea 13 del plan F4; preguntas 4 y 8 del inventario): «Registrar / Retirar una cotización…» salieron de

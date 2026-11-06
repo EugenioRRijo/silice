@@ -8,6 +8,7 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { MONEDAS } from "../../comun/monedas";
 import { useAplicacion } from "../../shell/contexto";
 import {
   AYUDA,
@@ -15,7 +16,6 @@ import {
   ETIQUETA_ATIPICOS,
   EXTENSIONES,
   MENSAJE_FALTA,
-  MONEDAS,
   NOTA_ATIPICOS,
   ROTULO_ATIPICOS,
   ROTULO_REFERENCIA,

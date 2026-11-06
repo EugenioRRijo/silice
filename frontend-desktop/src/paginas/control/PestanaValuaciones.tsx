@@ -30,11 +30,11 @@ import {
 import type { CausaDeRetraso, LineaEditable, Valuaciones } from "./logica";
 import { fechaDeRanura, periodoCompacto } from "./fechas";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { useCarga } from "../inicio/useCarga";
-import type { Carga } from "../inicio/useCarga";
-import { CampoDePartida } from "./CampoDePartida";
-import { AVISO_LISTA_RECORTADA, listaRecortada, partidaDelContrato, partidasOfrecidas } from "./partidasDelContrato";
-import type { PartidaDelContrato, PartidasDelContrato } from "./partidasDelContrato";
+import { useCarga } from "../../comun/useCarga";
+import type { Carga } from "../../comun/useCarga";
+import { CampoDePartida } from "../../comun/CampoDePartida";
+import { AVISO_LISTA_RECORTADA, listaRecortada, partidaDelContrato, partidasOfrecidas } from "../../comun/partidasDelContrato";
+import type { PartidaDelContrato, PartidasDelContrato } from "../../comun/partidasDelContrato";
 import { AYUDA_CAUSA_SUGERIDA, causaDeLinea, sugeridasPorPartida } from "./procura";
 import type { Procura } from "./procura";
 

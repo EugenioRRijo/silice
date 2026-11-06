@@ -6,8 +6,8 @@ import type { Equivalencia } from "../../comun/LineaDeEquivalencia";
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { leerCifra, textoParaEscribir } from "../../indicadores/cifraEscrita";
 import { formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
-import { useCarga } from "../inicio/useCarga";
-import type { Carga } from "../inicio/useCarga";
+import { useCarga } from "../../comun/useCarga";
+import type { Carga } from "../../comun/useCarga";
 
 export type Fila = Record<string, string>;
 

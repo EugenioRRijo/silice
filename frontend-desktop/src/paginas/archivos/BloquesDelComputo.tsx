@@ -1,7 +1,7 @@
 import { Button, Checkbox, RadioButton, RadioButtonGroup, Select, SelectItem } from "@carbon/react";
 import { useId, useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
-import type { Carga } from "../inicio/useCarga";
+import type { Carga } from "../../comun/useCarga";
 import {
   AVISO_SIN_PARTIDAS_CIVILES,
   TEXTO_PENDIENTES,

@@ -14,7 +14,7 @@ import { Variacion } from "../../comun/Variacion";
 import { cifrasEnTextoEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 // AC4: las monedas de la Hoja (Bs y USD); se elige una, no se escribe (pedido de Eugenio del 2026-10-21).
-import { MONEDAS } from "../hoja/logicaVersiones";
+import { MONEDAS } from "../../comun/monedas";
 import {
   AYUDA,
   CODIGO_NUEVO_POR_DEFECTO,

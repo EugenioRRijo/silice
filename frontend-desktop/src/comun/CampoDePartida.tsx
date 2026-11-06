@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { CampoConBusqueda } from "../../comun/CampoConBusqueda";
+import { CampoConBusqueda } from "./CampoConBusqueda";
 import { buscadorDePartidasDelContrato, partidaDelContrato } from "./partidasDelContrato";
 import type { PartidaDelContrato } from "./partidasDelContrato";
 
