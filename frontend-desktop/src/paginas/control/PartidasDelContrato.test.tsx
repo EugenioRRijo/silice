@@ -196,6 +196,32 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     expect(envio("/v1/control/valuaciones")).toBeUndefined();
   });
 
+  // Ronda 2 del dictamen (MENOR 4): el aviso que manda GET /v1/control/partidas cuando no hay lista («No hay una línea base
+  // vigente a esa fecha de corte.») se perdia y el campo solo decia que la lista no estaba disponible.
+  test("con un «Período hasta» sin línea base vigente, la pantalla dice el aviso de la API tal cual", async () => {
+    const AVISO_AL_CORTE = "No hay una línea base vigente a esa fecha de corte.";
+    const original = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://x");
+      if (url.pathname === "/v1/control/partidas" && url.searchParams.get("corte") === "2026-01-05") {
+        return json({ version: "", aviso: AVISO_AL_CORTE, truncada: false, partidas: [] });
+      }
+      return original(entrada, init);
+    });
+    const u = await montarEnValuaciones();
+    expect(screen.queryByText(AVISO_AL_CORTE)).toBeNull();
+    await u.type(screen.getByLabelText("Período hasta"), "2026-01-05");
+    expect(await screen.findByText(AVISO_AL_CORTE)).toBeInTheDocument();
+  });
+
+  test("sin línea base, el aviso de la API se dice y no se confunde con un fallo de lectura", async () => {
+    const AVISO = "Este proyecto todavía no tiene línea base.";
+    partidas = () => json({ version: "", aviso: AVISO, truncada: false, partidas: [] });
+    await montarEnValuaciones();
+    expect((await screen.findAllByText(AVISO)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/No se pudieron cargar las partidas del contrato/)).toBeNull();
+  });
+
   test("con la lista recortada, una partida que no se ve no se rechaza: decide el servidor", async () => {
     partidas = () => json({ ...PARTIDAS, truncada: true });
     const u = await montarEnValuaciones();

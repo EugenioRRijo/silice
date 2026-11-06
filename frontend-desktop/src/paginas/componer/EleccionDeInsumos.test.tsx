@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -11,6 +11,10 @@ import type { Fila, Tablas } from "./tablas";
 //   2. Elegir un segundo insumo mezclaba la fila (el precio del primero se quedaba) y pisaba lo escrito por la persona.
 //   5. El aviso de moneda y el de «el catalogo tiene X» tambien se dicen en la region viva del campo (WCAG 4.1.3).
 //   6. Las marcas por indice no seguian a la fila cuando las filas cambian desde fuera (precarga).
+// Ronda 2 (2026-11-05):
+//   7. Solo es «de la persona» lo que se tecleo en esa celda: una fila precargada o de MaPreX se reemplaza (o se vacia) al
+//      elegir otro insumo y se dice (MAYOR 1).
+//   8. El aviso de fecha solo sale si la lista que rige para la «Fecha» nueva es otra (MENOR 2).
 // Montos y textos ficticios; la API es un `fetch` falso con la forma de `api/rutas/consulta.py`.
 
 const FECHA_VIEJA = "2026-08-15";
@@ -28,6 +32,7 @@ const CATALOGO = [
 
 let llamadas: string[];
 let monedaDeLaLista: "Bs" | "USD";
+let consultaCaida: boolean;
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -51,12 +56,14 @@ function sugerencia(i: (typeof CATALOGO)[number], fecha: string | null) {
 beforeEach(() => {
   llamadas = [];
   monedaDeLaLista = "Bs";
+  consultaCaida = false;
   vi.stubGlobal(
     "fetch",
     vi.fn((ruta: string) => {
       llamadas.push(ruta);
       const consulta = /^\/v1\/consulta\/(\w+)\?(.*)$/.exec(ruta);
       if (!consulta) return Promise.resolve(json({ detalle: "No hay." }, 404));
+      if (consultaCaida) return Promise.resolve(json({ detalle: "No se pudo consultar." }, 503));
       const params = new URLSearchParams(consulta[2]);
       const q = (params.get("q") ?? "").toLowerCase();
       const halladas = CATALOGO.filter((i) => i.descripcion.toLowerCase().includes(q));
@@ -81,6 +88,7 @@ function Arnes({ filas, moneda = "Bs" }: { filas: Fila[]; moneda?: string }) {
       <button type="button" onClick={() => setFecha(FECHA_VIEJA)}>
         Volver a la fecha
       </button>
+      <input type="date" aria-label="Fecha de prueba" value={fecha} onChange={(e) => setFecha(e.target.value)} />
       <button type="button" onClick={() => setTablas({ ...tablasVacias(), materiales: [{ ...OTRA_FILA }, { ...OTRA_FILA }] })}>
         Precargar
       </button>
@@ -103,6 +111,9 @@ function Arnes({ filas, moneda = "Bs" }: { filas: Fila[]; moneda?: string }) {
 const descripcion = (n = 1) => screen.getByRole("combobox", { name: `Descripción, fila ${n}` });
 const unidad = (n = 1) => screen.getByRole("combobox", { name: `Unidad, fila ${n}` });
 const precio = (n = 1) => screen.getByRole("textbox", { name: `Precio, fila ${n}` });
+
+const fijarFecha = (valor: string) => fireEvent.change(screen.getByLabelText("Fecha de prueba"), { target: { value: valor } });
+const regionDeLaDescripcion = (n = 0) => document.getElementById(`materiales-${n}-descripcion-estado`);
 
 async function elegir(u: ReturnType<typeof userEvent.setup>, buscado: string, nombre: RegExp, fila = 1) {
   await u.clear(descripcion(fila));
@@ -140,8 +151,8 @@ describe("1. el precio sale de la lista de la fecha vigente de la composición",
 
     await u.click(screen.getByRole("button", { name: "Cambiar fecha" }));
     expect(precio()).toHaveValue("18,00");
-    const aviso = "Precio de la lista del 01/07/2026, tomado con la fecha de composición 15/08/2026; revise.";
-    expect(screen.getByText(aviso)).toBeInTheDocument();
+    const aviso = "Precio de la lista del 01/07/2026; con la fecha 20/10/2026 rige la del 01/10/2026; revise.";
+    expect(await screen.findByText(aviso)).toBeInTheDocument();
     expect(precio()).toHaveAccessibleDescription(aviso);
   });
 
@@ -151,14 +162,15 @@ describe("1. el precio sale de la lista de la fecha vigente de la composición",
     await elegir(u, "cemento g", /Cemento gris ficticio/);
     await waitFor(() => expect(precio()).toHaveValue("18,00"));
     await u.click(screen.getByRole("button", { name: "Cambiar fecha" }));
-    expect(screen.getByText(/tomado con la fecha de composición/)).toBeInTheDocument();
+    expect(await screen.findByText(/con la fecha 20\/10\/2026 rige la del 01\/10\/2026/)).toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: "Volver a la fecha" }));
-    expect(screen.queryByText(/tomado con la fecha de composición/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/; revise\./)).not.toBeInTheDocument();
 
     await u.click(screen.getByRole("button", { name: "Cambiar fecha" }));
+    expect(await screen.findByText(/; revise\./)).toBeInTheDocument();
     await u.clear(precio());
     await u.type(precio(), "20");
-    expect(screen.queryByText(/tomado con la fecha de composición/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/; revise\./)).not.toBeInTheDocument();
     expect(precio()).toHaveValue("20");
   });
 
@@ -198,7 +210,8 @@ describe("2. una fila nunca mezcla el catálogo de un insumo con el de otro", ()
 
   test("un precio escrito antes de elegir se conserva y la celda dice lo que el catálogo tiene", async () => {
     const u = userEvent.setup();
-    render(<Arnes filas={[{ ...MATERIAL, precio: "7,5" }]} />);
+    render(<Arnes filas={[{ ...MATERIAL }]} />);
+    await u.type(precio(), "7,5");
     await elegir(u, "cemento g", /Cemento gris ficticio/);
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
     expect(precio()).toHaveValue("7,5");
@@ -208,7 +221,8 @@ describe("2. una fila nunca mezcla el catálogo de un insumo con el de otro", ()
 
   test("lo mismo con la unidad: una unidad escrita se conserva y se dice la del catálogo", async () => {
     const u = userEvent.setup();
-    render(<Arnes filas={[{ ...MATERIAL, unidad: "bolsa" }]} />);
+    render(<Arnes filas={[{ ...MATERIAL }]} />);
+    await u.type(unidad(), "bolsa");
     await elegir(u, "cemento g", /Cemento gris ficticio/);
     await waitFor(() => expect(precio()).toHaveValue("18,00"));
     expect(unidad()).toHaveValue("bolsa");
@@ -263,8 +277,6 @@ describe("4. cada sugerencia dice su precio, su moneda y la fecha de su lista", 
 });
 
 describe("5. los avisos de la elección también se dicen en la región viva del campo", () => {
-  const regionDeLaDescripcion = () => document.getElementById("materiales-0-descripcion-estado");
-
   test("el aviso de moneda se anuncia en la región viva del campo de la descripción", async () => {
     monedaDeLaLista = "USD";
     const u = userEvent.setup();
@@ -276,7 +288,8 @@ describe("5. los avisos de la elección también se dicen en la región viva del
 
   test("«el catálogo tiene X» (lo que no se pisó) también se anuncia", async () => {
     const u = userEvent.setup();
-    render(<Arnes filas={[{ ...MATERIAL, precio: "7,5" }]} />);
+    render(<Arnes filas={[{ ...MATERIAL }]} />);
+    await u.type(precio(), "7,5");
     await elegir(u, "cemento g", /Cemento gris ficticio/);
     await waitFor(() => expect(regionDeLaDescripcion()).toHaveTextContent(/El catálogo tiene 18,00 Bs/));
   });
@@ -319,9 +332,184 @@ describe("6. las marcas siguen a la fila, no al índice", () => {
     await elegir(u, "cemento g", /Cemento gris ficticio/);
     await waitFor(() => expect(precio(1)).toHaveValue("18,00"));
     await u.click(screen.getByRole("button", { name: "Borrar fila 1 de Materiales" }));
-    // La fila que quedó es la de «Arena»: su 18,00 es de la persona, así que elegir un insumo sin precio no lo vacía.
+    // La fila que quedó es la de «Arena» y su 18,00 no lo tecleó nadie (vino de fuera, como una precarga): no es del catálogo
+    // de la fila 1 (no se vacía en silencio) ni de la persona (no se conserva): se quita y se dice.
     await elegir(u, "cemento b", /Cemento blanco ficticio/);
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
+    expect(precio()).toHaveValue("");
+    expect(precio()).toHaveAccessibleDescription(expect.stringContaining("Se quitó el precio 18,00: este insumo no tiene precio en la lista."));
+  });
+});
+
+describe("7. solo es de la persona lo que se tecleó en esa celda (una fila precargada o de MaPreX no lo es)", () => {
+  const cambioPrecio = "Se cambió el precio 5,00 por el del catálogo, 18,00 Bs.";
+  const cambioUnidad = "Se cambió la unidad m3 por la del catálogo, saco.";
+  const quitaPrecio = "Se quitó el precio 5,00: este insumo no tiene precio en la lista.";
+  const quitaUnidad = "Se quitó la unidad m3: este insumo no tiene unidad en el catálogo.";
+
+  async function precargar(u: ReturnType<typeof userEvent.setup>) {
+    render(<Arnes filas={[{ ...MATERIAL }]} />);
+    await u.click(screen.getByRole("button", { name: "Precargar" }));
+    expect(descripcion(1)).toHaveValue("Arena ficticia");
+  }
+
+  test("fila precargada y un insumo con precio: la fila queda toda del insumo nuevo y se dice lo que se cambió", async () => {
+    const u = userEvent.setup();
+    await precargar(u);
+    await elegir(u, "cemento g", /Cemento gris ficticio/);
+    await waitFor(() => expect(precio()).toHaveValue("18,00"));
+    expect(unidad()).toHaveValue("saco");
+    expect(precio()).toHaveAccessibleDescription(expect.stringContaining(cambioPrecio));
+    expect(precio()).not.toHaveAccessibleDescription(expect.stringContaining("se conserva"));
+    expect(unidad()).toHaveAccessibleDescription(expect.stringContaining(cambioUnidad));
+    await waitFor(() => expect(regionDeLaDescripcion()).toHaveTextContent(cambioPrecio));
+    expect(regionDeLaDescripcion()).toHaveTextContent(cambioUnidad);
+    // La otra fila precargada no se toca.
+    expect(descripcion(2)).toHaveValue("Arena ficticia");
+    expect(precio(2)).toHaveValue("5,00");
+  });
+
+  test("fila precargada y un insumo sin precio ni unidad: se quitan los de antes y se dice (nunca queda mezclada)", async () => {
+    const u = userEvent.setup();
+    await precargar(u);
+    await elegir(u, "cemento b", /Cemento blanco ficticio/);
+    await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
+    expect(precio()).toHaveValue("");
+    expect(unidad()).toHaveValue("");
+    expect(precio()).toHaveAccessibleDescription(expect.stringContaining(quitaPrecio));
+    expect(unidad()).toHaveAccessibleDescription(expect.stringContaining(quitaUnidad));
+    await waitFor(() => expect(regionDeLaDescripcion()).toHaveTextContent(quitaPrecio));
+    expect(regionDeLaDescripcion()).toHaveTextContent(quitaUnidad);
+  });
+
+  test("en otra moneda se quita el precio de antes y se dicen los dos: lo quitado y por qué no se llenó", async () => {
+    monedaDeLaLista = "USD";
+    const u = userEvent.setup();
+    await precargar(u);
+    await elegir(u, "cemento g", /Cemento gris ficticio/);
+    await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
+    expect(precio()).toHaveValue("");
+    expect(precio()).toHaveAccessibleDescription(expect.stringContaining("Se quitó el precio 5,00."));
+    expect(precio()).toHaveAccessibleDescription(expect.stringContaining(AVISO_USD));
+  });
+
+  test("lo tecleado sobre la fila precargada sí es de la persona: se conserva y se dice lo que tiene el catálogo", async () => {
+    const u = userEvent.setup();
+    await precargar(u);
+    await u.clear(precio());
+    await u.type(precio(), "6");
+    await elegir(u, "cemento g", /Cemento gris ficticio/);
+    await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
+    expect(precio()).toHaveValue("6");
+    expect(precio()).toHaveAccessibleDescription(expect.stringContaining("El catálogo tiene 18,00 Bs; se conserva el precio que escribió."));
+    // La unidad no se tecleó: se reemplaza y se dice.
+    expect(unidad()).toHaveValue("saco");
+    expect(unidad()).toHaveAccessibleDescription(expect.stringContaining(cambioUnidad));
+  });
+
+  test("si lo de fuera ya es igual a lo del catálogo no hay nada que decir", async () => {
+    const u = userEvent.setup();
+    render(<Arnes filas={[{ ...MATERIAL, descripcion: "Arena ficticia", unidad: "saco", precio: "18,00" }]} />);
+    await elegir(u, "cemento g", /Cemento gris ficticio/);
+    await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
     expect(precio()).toHaveValue("18,00");
+    expect(precio()).toHaveAccessibleDescription("");
+    expect(unidad()).toHaveAccessibleDescription("");
+  });
+
+  test("lo que puso el catálogo y se reemplaza por otro del catálogo no se anuncia como cambio (es el comportamiento de siempre)", async () => {
+    const u = userEvent.setup();
+    render(<Arnes filas={[{ ...MATERIAL }]} />);
+    await elegir(u, "cemento g", /Cemento gris ficticio/);
+    await waitFor(() => expect(precio()).toHaveValue("18,00"));
+    await elegir(u, "cemento r", /Cemento rojo ficticio/);
+    await waitFor(() => expect(precio()).toHaveValue("9,00"));
+    expect(precio()).toHaveAccessibleDescription("");
+    expect(unidad()).toHaveAccessibleDescription("");
+  });
+
+  test("lo escrito en la unidad de una fila precargada también es de la persona", async () => {
+    const u = userEvent.setup();
+    await precargar(u);
+    await u.clear(unidad());
+    await u.type(unidad(), "bolsa");
+    await elegir(u, "cemento g", /Cemento gris ficticio/);
+    await waitFor(() => expect(precio()).toHaveValue("18,00"));
+    expect(unidad()).toHaveValue("bolsa");
+    expect(unidad()).toHaveAccessibleDescription(expect.stringContaining("El catálogo tiene la unidad «saco»; se conserva la que escribió."));
+    expect(precio()).toHaveAccessibleDescription(expect.stringContaining(cambioPrecio));
+  });
+});
+
+describe("8. el aviso de fecha solo sale si la lista que rige para la «Fecha» nueva es otra", () => {
+  const AVISO_OTRA = /; revise\./;
+
+  async function conGris(u: ReturnType<typeof userEvent.setup>) {
+    render(<Arnes filas={[{ ...MATERIAL }]} />);
+    await elegir(u, "cemento g", /Cemento gris ficticio/); // con la «Fecha» del 15/08: lista del 01/07
+    await waitFor(() => expect(precio()).toHaveValue("18,00"));
+  }
+
+  test("una fecha anterior dentro de la misma lista (20/07) no avisa", async () => {
+    const u = userEvent.setup();
+    await conGris(u);
+    fijarFecha("2026-07-20");
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.queryByText(AVISO_OTRA)).not.toBeInTheDocument();
+    expect(precio()).toHaveAccessibleDescription("");
+  });
+
+  test("una fecha posterior que sigue en la misma lista (30/09) se comprueba con la API y no avisa", async () => {
+    const u = userEvent.setup();
+    await conGris(u);
+    fijarFecha("2026-09-30");
+    await waitFor(() =>
+      expect(llamadas.some((l) => new URLSearchParams(l.split("?")[1]).get("para_armar_al") === "2026-09-30")).toBe(true),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.queryByText(AVISO_OTRA)).not.toBeInTheDocument();
+    expect(precio()).toHaveValue("18,00");
+  });
+
+  test("una fecha cuya lista es otra (20/10) avisa con las dos fechas de lista", async () => {
+    const u = userEvent.setup();
+    await conGris(u);
+    fijarFecha(FECHA_NUEVA);
+    expect(
+      await screen.findByText("Precio de la lista del 01/07/2026; con la fecha 20/10/2026 rige la del 01/10/2026; revise."),
+    ).toBeInTheDocument();
+  });
+
+  test("con la «Fecha» vacía no avisa", async () => {
+    const u = userEvent.setup();
+    await conGris(u);
+    fijarFecha("");
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.queryByText(AVISO_OTRA)).not.toBeInTheDocument();
+    expect(precio()).toHaveValue("18,00");
+  });
+
+  test("si no se puede comprobar la lista de la fecha nueva, lo dice con prudencia en vez de callar", async () => {
+    const u = userEvent.setup();
+    await conGris(u);
+    consultaCaida = true;
+    fijarFecha(FECHA_NUEVA);
+    expect(
+      await screen.findByText("Precio de la lista del 01/07/2026; con la fecha 20/10/2026 puede regir otra lista; revise."),
+    ).toBeInTheDocument();
+  });
+
+  test("el insumo que no tiene precio en la lista de la fecha nueva también avisa", async () => {
+    const u = userEvent.setup();
+    await conGris(u);
+    CATALOGO[0]!.despues = null;
+    try {
+      fijarFecha(FECHA_NUEVA);
+      expect(
+        await screen.findByText("Precio de la lista del 01/07/2026; con la fecha 20/10/2026 este insumo no tiene precio en la lista; revise."),
+      ).toBeInTheDocument();
+    } finally {
+      CATALOGO[0]!.despues = "25.50";
+    }
   });
 });
