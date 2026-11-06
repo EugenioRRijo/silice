@@ -58,11 +58,11 @@ from aplicacion.entrega import anexos_de_cadena
 from aplicacion.proyectos import resolver_proyecto
 from aplicacion.revision import login_de
 from aplicacion.tablas_aprobacion import FilaEventoAprobacion
+from aplicacion.texto_cadena import mensaje_legible
 from core import models
 from core.budget.cadena import (
     GENESIS,
     ResultadoCadena,
-    mensaje_de_cadena,
     verificar_cadena,
 )
 from core.budget.canonico import huella as sha256_hex
@@ -563,7 +563,7 @@ def detalle_de_envio(sesion: Session, envio_id: int, usuario: str) -> DetalleDeE
         partidas=partidas + pendientes,
         hallazgos=hallazgos,
         rastro=verificar_rastro(sesion, str(obra.id)),
-        cadena=CadenaDeVersiones(cadena.integra, mensaje_de_cadena(cadena)),
+        cadena=CadenaDeVersiones(cadena.integra, mensaje_legible(cadena)),
         armo=misma_cuenta(usuario, _quien_guardo(sesion, presupuesto)),
     )
 

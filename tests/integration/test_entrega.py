@@ -562,7 +562,7 @@ def test_el_resumen_dice_total_hallazgos_cadena_empresa_firma_y_anexos(emisor) -
     assert r.total == Decimal(TOTAL_MEMORIA)
     assert dict(r.hallazgos_por_severidad) == {}  # el informe a mano no tiene hallazgos
     assert r.anexos == ("anexos/espacio.json",)
-    assert r.mensaje_de_cadena == "Cadena íntegra: 1 versiones"
+    assert r.mensaje_de_cadena == "Cadena íntegra: 1 versión"
     empresas.generar_clave(bd, CLAVE, "ana", AHORA)
     assert entrega.resumen_de_entrega(caso, bd, version).firma_disponible is True
 
@@ -579,7 +579,7 @@ def test_el_resumen_de_una_cadena_rota_lo_dice_sin_lanzar(emisor) -> None:
 def test_el_estado_de_la_cadena_de_un_proyecto(emisor) -> None:
     caso, *_ = emisor
     estado = entrega.estado_de_la_cadena(caso, "MIN-001")
-    assert estado == entrega.EstadoDeLaCadena(True, "Cadena íntegra: 1 versiones", None)
+    assert estado == entrega.EstadoDeLaCadena(True, "Cadena íntegra: 1 versión", None)
     assert entrega.estado_de_la_cadena(caso, "NO-EXISTE") is None
 
 

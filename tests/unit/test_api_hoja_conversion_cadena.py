@@ -327,7 +327,7 @@ def test_la_cadena_sana_esta_integra_y_lo_dice(_entorno) -> None:
     assert respuesta.headers["cache-control"] == "no-store"
     assert respuesta.json() == {
         "integra": True,
-        "mensaje": "Cadena íntegra: 1 versiones",
+        "mensaje": "Cadena íntegra: 1 versión",
         "declaracion": None,
         "rota_en": None,
     }
