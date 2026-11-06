@@ -136,6 +136,18 @@ const REVISION: Revision = {
       fecha: "2026-11-02T08:00:00",
       marca: "",
     },
+    {
+      version: "005",
+      objeto: "parametro",
+      clave: "control|spi_error",
+      campo: "instantanea",
+      antes: "catalogo",
+      despues: "instantanea",
+      fuente: "memoria",
+      responsable: "Ana <ana>",
+      fecha: "2026-11-02T08:00:00",
+      marca: "",
+    },
   ],
   dictamenes: [],
   resultados: ["conforme", "con observaciones", "rechazado"],
@@ -266,9 +278,12 @@ describe("Revisar un paquete", () => {
     expect(within(nuevos).getByText("Información")).toBeInTheDocument(); // la severidad con su nombre, no solo color
     expect(screen.getByText("Esta instalación no recibió una entrega anterior de esta obra.")).toBeInTheDocument();
     const cambios = screen.getByRole("table", { name: "Quién cambió qué" });
-    expect(within(cambios).getByText("MIN-001|Arena")).toBeInTheDocument();
+    // La clave «partida|insumo» se lee «código, insumo»; el valor crudo queda en el title.
+    expect(within(cambios).getByText("MIN-001, Arena")).toHaveAttribute("title", "MIN-001|Arena");
     const celdasDelCambio = within(within(cambios).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent);
-    expect(celdasDelCambio.slice(0, 9)).toEqual(["005", "APU", "MIN-001|Arena", "Cantidad", "1,00", "1,50", "memoria", "Ana <ana>", "02/11/2026 08:00"]);
+    expect(celdasDelCambio.slice(0, 9)).toEqual(["005", "APU", "MIN-001, Arena", "Cantidad", "1,00", "1,50", "memoria", "Ana <ana>", "02/11/2026 08:00"]);
+    const filaDeControl = within(within(cambios).getAllByRole("row")[2]!).getAllByRole("cell").map((c) => c.textContent);
+    expect(filaDeControl.slice(0, 6)).toEqual(["005", "Parámetro", "Control de obra: Umbral de SPI para error", "Instantánea", "Catálogo", "Instantánea"]);
     expect(screen.getByText(REVISION.nota_excel)).toBeInTheDocument();
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);

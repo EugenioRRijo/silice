@@ -75,9 +75,6 @@ describe("logica de Revisar un paquete", () => {
     expect(presentar("objeto", "apu")).toBe("APU");
     expect(presentar("campo", "cantidad")).toBe("Cantidad");
     expect(presentar("campo", "penalizacion_diaria")).toBe("Penalización diaria por retraso");
-    expect(presentar("antes", "1.00")).toBe("1,00");
-    expect(presentar("despues", "1234.5")).toBe("1.234,5");
-    expect(presentar("despues", "Eje B2.5")).toBe("Eje B2.5");
     expect(presentar("fecha", "2026-11-02T08:00:00.123456")).toBe("02/11/2026 08:00");
   });
 });

@@ -1,9 +1,10 @@
 import { TablaPaginada } from "../hoja/TablaPaginada";
 import { VistaCarga } from "../hoja/VistaCarga";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
-import { rotuloDeOrigen, rutaDeTrazabilidad } from "../hoja/logica";
+import { rutaDeTrazabilidad } from "../hoja/logica";
 import type { TrazabilidadRespuesta } from "../hoja/logica";
-import { rotuloDeCampo, rotuloDeObjeto, rotuloDeParametro, valorDeCambio } from "../../comun/rotulos";
+import { presentarClave, presentarValor } from "../../comun/presentarCambio";
+import { rotuloDeCampo, rotuloDeObjeto } from "../../comun/rotulos";
 import { TEXTOS_DE_VERSIONES as T } from "./textos";
 
 // El registro de cambios de una versión guardada (`GET /v1/hoja/trazabilidad`): qué cambió, de qué a qué, con su fuente, su
@@ -34,9 +35,7 @@ function Registros({ vista, titulo }: { vista: TrazabilidadRespuesta; titulo: st
           clave: "clave",
           titulo: "Clave",
           ordenable: false,
-          celda: (f) => (
-            <span title={f.clave}>{f.objeto_tecnico === "parametro" ? rotuloDeParametro(f.clave!) : rotuloDeOrigen(f.clave!)}</span>
-          ),
+          celda: (f) => <span title={f.clave}>{presentarClave(f.objeto_tecnico!, f.clave!)}</span>,
         },
         { clave: "campo", titulo: "Campo", ordenable: false },
         { clave: "antes", titulo: "Antes", ordenable: false },
@@ -50,8 +49,8 @@ function Registros({ vista, titulo }: { vista: TrazabilidadRespuesta; titulo: st
         // El `title` lleva la clave del servidor; la celda la presenta (y para «parametro» elige su rótulo).
         clave: r.clave,
         campo: rotuloDeCampo(r.campo),
-        antes: valorDeCambio(r.campo, r.antes),
-        despues: valorDeCambio(r.campo, r.despues),
+        antes: presentarValor(r.campo, r.antes),
+        despues: presentarValor(r.campo, r.despues),
         fuente: r.fuente,
         responsable: r.responsable,
         fecha_hora: r.fecha_hora,
