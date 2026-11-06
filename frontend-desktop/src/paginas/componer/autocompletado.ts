@@ -67,55 +67,90 @@ export interface Conflicto {
   aviso: string;
 }
 
+// Que se sabe del origen de las celdas de una fila (dictamen de la ronda 2, MAYOR 1: seguir la procedencia de cada dato).
+//   - `llenado`: lo que puso el catalogo y sigue en la celda.
+//   - `tecleado`: lo que la persona tecleo en esa celda y sigue en la celda.
+// Todo lo demas vino de fuera sin que nadie lo tecleara (la precarga de una partida guardada, «Usar esta fila» de MaPreX) y
+// no es de la persona: al elegir otro insumo se reemplaza o se quita, y se dice.
+export interface Origen {
+  llenado: Llenado;
+  tecleado: Llenado;
+}
+
 export interface Eleccion {
-  // Las celdas a escribir; un texto vacio vacia la celda (era del catalogo y el insumo nuevo no trae ese dato).
+  // Las celdas a escribir; un texto vacio vacia la celda (el insumo nuevo no trae ese dato).
   valores: Record<string, string>;
   // Lo que el catalogo es dueno ahora en la fila (para la proxima eleccion).
   llenado: Llenado;
-  // Por columna: lo que el catalogo tiene y NO se escribio porque la persona ya habia puesto otra cosa en esa celda.
+  // Por columna: lo que el catalogo tiene y NO se escribio porque la persona ya habia tecleado otra cosa en esa celda.
   conflictos: Record<string, Conflicto>;
+  // Por columna: lo que vino de fuera y se reemplazo o se quito; `valor` es lo que quedo en la celda (vacio si se quito).
+  cambios: Record<string, Conflicto>;
   // Por que el precio quedo vacio (otra moneda), solo si la celda del precio quedo vacia.
   aviso: string | null;
 }
 
-// Elegir un insumo en una fila que ya tiene cosas (dictamen del autocompletado, BLOQUEANTE). Por cada celda que el catalogo
-// llena: si esta vacia o todavia tiene lo que puso el catalogo, se reemplaza con lo del insumo nuevo, o se vacia si el nuevo
-// no trae ese dato (nunca queda el 18,00 del insumo anterior); si la persona escribio otra cosa, no se pisa y se dice lo que
-// el catalogo tiene. La interfaz no calcula: solo compara textos y reescribe el decimal que mando la API.
+function articulo(columna: string): { el: string; nombre: string } {
+  if (columna === "unidad") return { el: "la", nombre: "unidad" };
+  return { el: "el", nombre: columna === "sueldo" ? "sueldo" : "precio" };
+}
+
+// Elegir un insumo en una fila que ya tiene cosas. Por cada celda que el catalogo llena: si la persona la tecleo, no se pisa y
+// se dice lo que el catalogo tiene; si no (esta vacia, la lleno el catalogo o vino de fuera) se reemplaza con lo del insumo
+// nuevo, o se vacia si el nuevo no trae ese dato: la fila nunca queda mezclada (diseno del 2026-10-21, §1.6, punto 6). Lo que
+// vino de fuera y se cambia o se quita se dice; lo que puso el catalogo anterior se reemplaza sin ruido, como siempre. La
+// interfaz no calcula: solo compara textos y reescribe el decimal que mando la API.
 export function aplicarEleccion(
   tipo: TipoTabla,
   sugerencia: SugerenciaDeConsulta,
   monedaDeTrabajo: string | null,
   fila: Fila,
-  llenadoPrevio: Llenado,
+  origen: Origen,
 ): Eleccion {
   const trae = valoresAlElegir(tipo, sugerencia, monedaDeTrabajo);
   const valores: Record<string, string> = { descripcion: trae.valores.descripcion };
   const llenado: Llenado = {};
   const conflictos: Record<string, Conflicto> = {};
+  const cambios: Record<string, Conflicto> = {};
   const columnaDelPrecio = COLUMNA_DEL_PRECIO[tipo];
   for (const columna of columnasDelCatalogo(tipo)) {
     const actual = fila[columna] ?? "";
-    const previo = llenadoPrevio[columna];
-    const esDelCatalogo = previo !== undefined && actual === previo;
-    const conserva = actual.trim() === "" || esDelCatalogo;
+    const hay = actual.trim() !== "";
+    const delCatalogo = origen.llenado[columna] !== undefined && actual === origen.llenado[columna];
+    const dePersona = !delCatalogo && hay && origen.tecleado[columna] !== undefined && actual === origen.tecleado[columna];
     const nuevo = trae.valores[columna];
-    if (nuevo !== undefined) {
-      if (conserva) {
-        valores[columna] = nuevo;
-        llenado[columna] = nuevo;
-      } else if (actual !== nuevo) {
+    const { el, nombre } = articulo(columna);
+    if (dePersona) {
+      if (nuevo !== undefined && actual !== nuevo) {
         // El valor del precio solo llega con su moneda (`valoresAlElegir`).
         const frase =
           columna === "unidad"
             ? `El catálogo tiene la unidad «${nuevo}»; se conserva la que escribió.`
-            : `El catálogo tiene ${nuevo} ${sugerencia.moneda}; se conserva ${columna === "sueldo" ? "el sueldo" : "el precio"} que escribió.`;
+            : `El catálogo tiene ${nuevo} ${sugerencia.moneda}; se conserva ${el} ${nombre} que escribió.`;
         conflictos[columna] = { valor: nuevo, aviso: frase };
       }
-    } else if (esDelCatalogo) {
-      valores[columna] = ""; // el insumo anterior ya no esta y el nuevo no trae ese dato
+    } else if (nuevo !== undefined) {
+      valores[columna] = nuevo;
+      llenado[columna] = nuevo;
+      if (!delCatalogo && hay && actual !== nuevo) {
+        const del = columna === "unidad" ? "la del" : "el del";
+        const con = columna === "unidad" ? "" : ` ${sugerencia.moneda}`;
+        cambios[columna] = { valor: nuevo, aviso: `Se cambió ${el} ${nombre} ${actual} por ${del} catálogo, ${nuevo}${con}.` };
+      }
+    } else if (hay) {
+      valores[columna] = ""; // el insumo nuevo no trae ese dato y lo de antes no es de la persona
+      if (!delCatalogo) {
+        // Si el precio no vino por otra moneda, el aviso de moneda ya dice por que; si no, se dice que la lista no lo tiene.
+        const porque =
+          columna === "unidad"
+            ? ": este insumo no tiene unidad en el catálogo"
+            : columna === columnaDelPrecio && trae.aviso !== null
+              ? ""
+              : `: este insumo no tiene ${nombre} en la lista`;
+        cambios[columna] = { valor: "", aviso: `Se quitó ${el} ${nombre} ${actual}${porque}.` };
+      }
     }
   }
   const precioFinal = valores[columnaDelPrecio] ?? fila[columnaDelPrecio] ?? "";
-  return { valores, llenado, conflictos, aviso: precioFinal.trim() === "" ? trae.aviso : null };
+  return { valores, llenado, conflictos, cambios, aviso: precioFinal.trim() === "" ? trae.aviso : null };
 }

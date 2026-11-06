@@ -6,9 +6,12 @@
 // `paginas/componer/unidades.ts` tienen todavia su propia copia de esta normalizacion.
 import type { GrupoDeResultados, OpcionDeBusqueda } from "./logicaBusqueda";
 
-// Sin tildes ni mayusculas: «Tubería» y «TUBERIA» dan «tuberia».
+// Sin tildes ni mayusculas: «Tubería» y «TUBERIA» dan «tuberia». Se quitan las marcas combinadas que deja la descomposicion
+// (`\p{M}`: tilde, dieresis, virgulilla), no `\p{Diacritic}`, que tambien se llevaria los signos sueltos ^ ` ´ ¨ · y haria que
+// buscar «x^2» diera «x2». La ñ pierde su virgulilla a proposito («caneria» encuentra «Cañería»): una busqueda no calla lo que
+// la persona no pudo teclear, y la misma regla siguen los otros normalizadores de la interfaz y aplicacion/casos.py.
 export function plano(texto: string): string {
-  return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  return texto.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 }
 
 // Los elementos cuyo texto tiene todas las palabras de `q`, en cualquier orden. Con `codigoDe`, los de codigo que empieza

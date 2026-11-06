@@ -60,6 +60,8 @@ interface PartidasDeLaObra {
   fallo: boolean;
   // La lista está recortada: guía, pero no se rechaza una partida que no está en ella (decide el servidor).
   truncada: boolean;
+  // Lo que dice la API cuando no hay lista («No hay una línea base vigente a esa fecha de corte.»): se muestra tal cual.
+  aviso: string;
 }
 
 function partidasDeLaObra(carga: Carga<PartidasDelContrato>): PartidasDeLaObra {
@@ -68,6 +70,7 @@ function partidasDeLaObra(carga: Carga<PartidasDelContrato>): PartidasDeLaObra {
     version: carga.estado === "listo" ? carga.datos.version : "",
     fallo: carga.estado !== "cargando" && carga.estado !== "listo",
     truncada: listaRecortada(carga),
+    aviso: carga.estado === "listo" && partidasOfrecidas(carga) === null ? (carga.datos.aviso ?? "") : "",
   };
 }
 
@@ -157,6 +160,7 @@ function Registrar({
             </p>
           )}
           {guia.truncada && <p className="silice-control__nota cds--type-helper-text-01">{AVISO_LISTA_RECORTADA}</p>}
+          {guia.aviso !== "" && <p className="silice-control__nota cds--type-helper-text-01">{guia.aviso}</p>}
           {lineas.map((l, i) => (
             <div key={i} className="silice-control__linea">
               <CampoDePartida
@@ -359,6 +363,7 @@ function Costo({ proyecto, partidas, alCambiar }: { proyecto: string; partidas: 
           alCambiarTexto={(t) => setV({ ...v, partida: t })}
           alExpirar={alExpirar}
         />
+        {partidas.aviso !== "" && <p className="silice-control__nota cds--type-helper-text-01">{partidas.aviso}</p>}
         <CampoTexto id="cos-fuente" labelText="Fuente del costo" value={v.fuente} onChange={campo("fuente")} />
         <div>
           <Button kind="primary" size="md" disabled={estado.enviando} onClick={anotar}>

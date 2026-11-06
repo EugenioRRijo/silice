@@ -35,6 +35,18 @@ import { agregarFila, borrarFila, completarFila, editarCelda, hayFilas, normaliz
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 import { TablaInsumos } from "./TablaInsumos";
 
+// Lo que se anuncia junto a «Fecha»: cuantos precios del catalogo son de otra lista y cuantos no se pudieron comprobar. Nada
+// si no hay ninguno.
+function avisoDeListas(listas: Record<TipoTabla, { otras: number; quiza: number }>): string {
+  const otras = TIPOS.reduce((n, t) => n + listas[t].otras, 0);
+  const quiza = TIPOS.reduce((n, t) => n + listas[t].quiza, 0);
+  const partes = [
+    otras === 0 ? "" : otras === 1 ? "1 precio es de otra lista; revíselo." : `${otras} precios son de otra lista; revíselos.`,
+    quiza === 0 ? "" : quiza === 1 ? "1 precio puede ser de otra lista; revíselo." : `${quiza} precios pueden ser de otra lista; revíselos.`,
+  ];
+  return partes.filter(Boolean).join(" ");
+}
+
 // Retardo entre la ultima edicion y la peticion a la API (plan de la ola 3 B, RB-2).
 const RETARDO_MS = 300;
 
@@ -109,6 +121,16 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     descripcion: descripcionInicial.trim(),
   }));
   const [fecha, setFecha] = useState(hoy);
+  // Cuantos precios llenados desde el catalogo tienen otra lista que la de la «Fecha» (o no se pudo comprobar), por tabla: se
+  // anuncia una vez, junto al campo «Fecha», en una region viva (dictamen de la ronda 2, MENOR 2; WCAG 4.1.3).
+  const [listas, setListas] = useState<Record<TipoTabla, { otras: number; quiza: number }>>({
+    materiales: { otras: 0, quiza: 0 },
+    equipos: { otras: 0, quiza: 0 },
+    mano_obra: { otras: 0, quiza: 0 },
+  });
+  const medirListas = useCallback((tipo: TipoTabla, otras: number, quiza: number) => {
+    setListas((l) => (l[tipo].otras === otras && l[tipo].quiza === quiza ? l : { ...l, [tipo]: { otras, quiza } }));
+  }, []);
   const [condiciones, setCondiciones] = useState("");
   const [tablas, setTablas] = useState<Tablas>(tablasVacias);
   const [ops, setOps] = useState<Opciones | null>(null);
@@ -390,17 +412,22 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               <SelectItem key={d} value={d} text={d} />
             ))}
           </Select>
-          <CampoTexto
-            id="componer-fecha"
-            size="sm"
-            type="date"
-            labelText="Fecha"
-            value={fecha}
-            onChange={(e) => {
-              setFecha(e.target.value);
-              limpiarGuardado();
-            }}
-          />
+          <div>
+            <CampoTexto
+              id="componer-fecha"
+              size="sm"
+              type="date"
+              labelText="Fecha"
+              value={fecha}
+              onChange={(e) => {
+                setFecha(e.target.value);
+                limpiarGuardado();
+              }}
+            />
+            <p id="componer-fecha-estado" role="status" aria-live="polite" className="cds--form__helper-text">
+              {avisoDeListas(listas)}
+            </p>
+          </div>
         </div>
       </section>
 
@@ -465,6 +492,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
               alBorrar={(i) => cambiarTablas((t) => borrarFila(t, tipo, i))}
               alCompletar={(i, valores) => cambiarTablas((t) => completarFila(t, tipo, i, valores))}
               alExpirar={expirar}
+              alMedirListas={medirListas}
               nivel={nivel === 2 ? 3 : 4}
             />
           </div>

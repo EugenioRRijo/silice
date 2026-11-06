@@ -1,11 +1,12 @@
 import { Button, Select, SelectItem, Table, TableBody, TableCell, TableHead, TableRow } from "@carbon/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TableHeader } from "../../comun/carbonEs";
 import { CampoConBusqueda } from "../../comun/CampoConBusqueda";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { buscadorDeConsulta } from "../../comun/consulta";
 import type { SugerenciaDeConsulta } from "../../comun/consulta";
 import { LARGO_MAXIMO } from "../../comun/logicaBusqueda";
+import { ErrorDeApi } from "../../api/cliente";
 import type { OpcionDeBusqueda } from "../../comun/logicaBusqueda";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import { COLUMNA_DEL_PRECIO, TABLA_DE_CONSULTA, aplicarEleccion, columnasDelCatalogo } from "./autocompletado";
@@ -31,6 +32,9 @@ interface Props {
   alCompletar: (indice: number, valores: Record<string, string>) => void;
   // La sesion vencio mientras se buscaba (401).
   alExpirar: () => void;
+  // Cuantos precios llenados desde el catalogo quedaron con otra lista que la de la «Fecha» actual (`otras`) o no se pudo
+  // comprobar (`quiza`): la pantalla lo anuncia una vez junto al campo «Fecha». Se avisa solo cuando cambia.
+  alMedirListas?: (tipo: TipoTabla, otras: number, quiza: number) => void;
   // El nivel de su titulo: h3 en la pantalla, h4 en el panel de «Agregar partida» (plan F4, Tarea 9).
   nivel?: 3 | 4;
 }
@@ -50,11 +54,22 @@ interface Marca {
   llenado?: Llenado;
   // Lo que el catalogo tiene y no se escribio porque la persona ya habia puesto otra cosa en esa celda.
   conflictos?: Record<string, Conflicto>;
-  // La fecha de la composicion con que se pidio el precio y la de su lista: si la «Fecha» cambia y el precio sigue siendo el
-  // del catalogo, la celda lo dice (el precio no se vuelve a pedir ni se toca).
+  // El codigo del insumo elegido, la fecha de la composicion con que se pidio el precio y la de su lista: si la «Fecha» cambia y
+  // el precio sigue siendo el del catalogo, se comprueba si rige otra lista y, solo entonces, la celda lo dice (el precio no se
+  // toca).
+  codigo?: string;
   fecha?: string;
   fechaPrecio?: string;
+  // Lo que vino de fuera y se reemplazo o se quito al elegir (con lo que quedo en la celda): la celda lo dice mientras siga asi.
+  cambios?: Record<string, Conflicto>;
 }
+
+// Que lista rige para la «Fecha» actual respecto de la del precio llenado.
+type EstadoDeLista = { tipo: "misma" } | { tipo: "pendiente" } | { tipo: "nose" } | { tipo: "otra"; motivo: string };
+
+// Lo que se aprendio de la API sobre la lista de un insumo a una fecha: la fecha de su lista, o null si no tiene precio a esa
+// fecha. Clave: «codigo@fecha».
+type ListasPorFecha = Record<string, { fechaPrecio: string | null } | "fallo">;
 
 // Una tabla de insumos editable (UC-10, pasos 2 a 4). Carbon `sm`: celdas de texto; los montos se teclean y se
 // muestran como texto, alineados a la derecha, y nunca se convierten en el navegador.
@@ -75,6 +90,7 @@ export function TablaInsumos({
   alBorrar,
   alCompletar,
   alExpirar,
+  alMedirListas,
   nivel = 3,
 }: Props) {
   const Titulo = `h${nivel}` as const;
@@ -85,6 +101,17 @@ export function TablaInsumos({
     [tipo, paraArmarAl],
   );
   const [marcas, setMarcas] = useState<Record<number, Marca>>({});
+  // Lo que la persona tecleo en la unidad y el precio (o sueldo) de cada fila: solo eso es suyo; lo demas vino de fuera.
+  const [tecleadas, setTecleadas] = useState<Record<number, Llenado>>({});
+  const [listas, setListas] = useState<ListasPorFecha>({});
+  const pedidas = useRef(new Set<string>());
+  const vivo = useRef(true);
+  useEffect(() => {
+    vivo.current = true;
+    return () => {
+      vivo.current = false;
+    };
+  }, []);
   const columnaDelPrecio = COLUMNA_DEL_PRECIO[tipo];
   const delCatalogo = columnasDelCatalogo(tipo);
 
@@ -99,11 +126,12 @@ export function TablaInsumos({
   const marcar = (indice: number, cambio: Marca) => setMarcas((m) => ({ ...m, [indice]: { ...m[indice], ...cambio } }));
 
   const escribir = (indice: number, texto: string) => {
-    marcar(indice, { escrita: texto, avisoPrecio: undefined, conflictos: undefined });
+    marcar(indice, { escrita: texto, avisoPrecio: undefined, conflictos: undefined, cambios: undefined });
     alCambiar(indice, "descripcion", texto);
   };
 
-  // Lo que la persona escribe en la unidad o en el precio es suyo desde ese momento: el catalogo no lo vuelve a pisar.
+  // Lo que la persona escribe en la unidad o en el precio es suyo desde ese momento (y solo eso): el catalogo no lo vuelve a
+  // pisar. Lo que vino de fuera (precarga, MaPreX) no se teclea y por eso se reemplaza.
   const editar = (indice: number, clave: string, valor: string) => {
     if (delCatalogo.includes(clave)) {
       setMarcas((m) => {
@@ -111,22 +139,32 @@ export function TablaInsumos({
         if (marca === undefined) return m;
         const llenado = { ...marca.llenado };
         const conflictos = { ...marca.conflictos };
+        const cambios = { ...marca.cambios };
         delete llenado[clave];
         delete conflictos[clave];
-        return { ...m, [indice]: { ...marca, llenado, conflictos } };
+        delete cambios[clave];
+        return { ...m, [indice]: { ...marca, llenado, conflictos, cambios } };
+      });
+      setTecleadas((t) => {
+        const propias = { ...t[indice] };
+        if (valor.trim() === "") delete propias[clave];
+        else propias[clave] = valor;
+        return { ...t, [indice]: propias };
       });
     }
     alCambiar(indice, clave, valor);
   };
 
-  const borrar = (indice: number) => {
-    setMarcas((m) =>
-      Object.fromEntries(
-        Object.entries(m)
-          .filter(([clave]) => Number(clave) !== indice)
-          .map(([clave, marca]) => [Number(clave) > indice ? Number(clave) - 1 : Number(clave), marca]),
-      ),
+  const sinLaFila = <T,>(previo: Record<number, T>, indice: number): Record<number, T> =>
+    Object.fromEntries(
+      Object.entries(previo)
+        .filter(([clave]) => Number(clave) !== indice)
+        .map(([clave, valor]) => [Number(clave) > indice ? Number(clave) - 1 : Number(clave), valor]),
     );
+
+  const borrar = (indice: number) => {
+    setMarcas((m) => sinLaFila(m, indice));
+    setTecleadas((t) => sinLaFila(t, indice));
     alBorrar(indice);
   };
 
@@ -134,7 +172,10 @@ export function TablaInsumos({
   // anuncia sola.
   const elegir = (indice: number, opcion: OpcionDeBusqueda<SugerenciaDeConsulta>): string | undefined => {
     const fila = filas[indice] ?? {};
-    const eleccion = aplicarEleccion(tipo, opcion.valor, moneda, fila, marcaDe(indice, fila)?.llenado ?? {});
+    const eleccion = aplicarEleccion(tipo, opcion.valor, moneda, fila, {
+      llenado: marcaDe(indice, fila)?.llenado ?? {},
+      tecleado: tecleadas[indice] ?? {},
+    });
     setMarcas((m) => ({
       ...m,
       [indice]: {
@@ -142,14 +183,81 @@ export function TablaInsumos({
         avisoPrecio: eleccion.aviso ?? undefined,
         llenado: eleccion.llenado,
         conflictos: eleccion.conflictos,
+        cambios: eleccion.cambios,
+        codigo: opcion.valor.valor,
         fecha: paraArmarAl,
         fechaPrecio: opcion.valor.fecha_precio ?? undefined,
       },
     }));
     alCompletar(indice, eleccion.valores);
-    const dicho = [eleccion.aviso, ...Object.values(eleccion.conflictos).map((c) => c.aviso)].filter(Boolean).join(" ");
+    const dicho = [
+      ...Object.values(eleccion.cambios).map((c) => c.aviso),
+      eleccion.aviso,
+      ...Object.values(eleccion.conflictos).map((c) => c.aviso),
+    ]
+      .filter(Boolean)
+      .join(" ");
     return dicho === "" ? undefined : dicho;
   };
+
+  // Que lista rige para la «Fecha» de ahora respecto de la del precio llenado (dictamen de la ronda 2, MENOR 2). Sin pedir
+  // nada se sabe en dos casos: la lista que rige a una fecha es la ultima que empezo antes, asi que si la fecha nueva esta entre
+  // el inicio de la lista del precio y la fecha con que se pidio, es la misma lista; y si es anterior al inicio, esa lista aun
+  // no regia. Una fecha posterior puede tener una lista nueva: se le pregunta a la API por el mismo insumo (una vez por insumo
+  // y fecha) y se compara la fecha de su lista; mientras responde no se dice nada, y si no responde se avisa con prudencia.
+  const estadoDeLista = (marca: Marca): EstadoDeLista => {
+    if (paraArmarAl === "" || marca.fecha === undefined || marca.fecha === paraArmarAl) return { tipo: "misma" };
+    const inicio = marca.fechaPrecio;
+    if (inicio !== undefined && paraArmarAl >= inicio && paraArmarAl <= marca.fecha) return { tipo: "misma" };
+    if (inicio !== undefined && paraArmarAl < inicio) return { tipo: "otra", motivo: "esa lista todavía no regía" };
+    if (marca.codigo === undefined) return { tipo: "nose" };
+    const sabido = listas[`${marca.codigo}@${paraArmarAl}`];
+    if (sabido === undefined) return { tipo: "pendiente" };
+    if (sabido === "fallo" || inicio === undefined) return { tipo: "nose" };
+    if (sabido.fechaPrecio === null) return { tipo: "otra", motivo: "este insumo no tiene precio en la lista" };
+    return sabido.fechaPrecio === inicio
+      ? { tipo: "misma" }
+      : { tipo: "otra", motivo: `rige la del ${fechaEsVe(sabido.fechaPrecio)}` };
+  };
+
+  // El estado de la lista de una fila cuyo precio sigue siendo el que puso el catalogo (si no, no hay nada que decir).
+  const listaDe = (indice: number, fila: Fila): EstadoDeLista => {
+    const marca = marcaDe(indice, fila);
+    const llenado = marca?.llenado?.[columnaDelPrecio];
+    if (marca === undefined || llenado === undefined || (fila[columnaDelPrecio] ?? "") !== llenado) return { tipo: "misma" };
+    return estadoDeLista(marca);
+  };
+  const estados = filas.map((fila, i) => listaDe(i, fila));
+  const otras = estados.filter((e) => e.tipo === "otra").length;
+  const quiza = estados.filter((e) => e.tipo === "nose").length;
+  useEffect(() => {
+    alMedirListas?.(tipo, otras, quiza);
+  }, [alMedirListas, tipo, otras, quiza]);
+
+  // Pregunta a la API la lista de la fecha nueva de cada insumo que lo necesita (el mismo buscador de la descripcion).
+  useEffect(() => {
+    filas.forEach((fila, i) => {
+      const marca = marcaDe(i, fila);
+      if (marca?.codigo === undefined || marca.catalogo === undefined || listaDe(i, fila).tipo !== "pendiente") return;
+      const clave = `${marca.codigo}@${paraArmarAl}`;
+      if (pedidas.current.has(clave)) return;
+      pedidas.current.add(clave);
+      const codigo = marca.codigo;
+      const guardar = (valor: ListasPorFecha[string]) => {
+        if (vivo.current) setListas((l) => ({ ...l, [clave]: valor }));
+      };
+      buscador(marca.catalogo.slice(0, LARGO_MAXIMO).trim(), new AbortController().signal, 20)
+        .then((grupos) => {
+          const hallada = grupos.flatMap((g) => g.opciones).find((o) => o.valor.valor === codigo);
+          guardar(hallada === undefined ? "fallo" : { fechaPrecio: hallada.valor.fecha_precio ?? null });
+        })
+        .catch((e: unknown) => {
+          if (e instanceof ErrorDeApi && e.estado === 401 && vivo.current) alExpirar();
+          guardar("fallo");
+        });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filas, marcas, listas, paraArmarAl, buscador]);
 
   // Lo que dice la celda del precio (o del sueldo): por que quedo vacia, lo que el catalogo tiene y no se escribio, o que el
   // precio es de la lista de otra fecha de composicion. Cada aviso vale mientras su motivo siga vigente en la celda.
@@ -158,22 +266,39 @@ export function TablaInsumos({
     if (marca === undefined) return undefined;
     const valor = fila[columnaDelPrecio] ?? "";
     const conflicto = marca.conflictos?.[columnaDelPrecio];
-    const llenado = marca.llenado?.[columnaDelPrecio];
-    const deOtraFecha = llenado !== undefined && valor === llenado && marca.fecha !== undefined && marca.fecha !== paraArmarAl;
-    const lista = marca.fechaPrecio ? `de la lista del ${fechaEsVe(marca.fechaPrecio)}, tomado` : "tomado";
+    const cambio = marca.cambios?.[columnaDelPrecio];
+    const lista = listaDe(indice, fila);
+    const origen = marca.fechaPrecio
+      ? `de la lista del ${fechaEsVe(marca.fechaPrecio)}`
+      : `tomado con la fecha ${marca.fecha ? fechaEsVe(marca.fecha) : "vacía"}`;
+    const dichoDeLaLista =
+      lista.tipo === "otra"
+        ? `Precio ${origen}; con la fecha ${fechaEsVe(paraArmarAl)} ${lista.motivo}; revise.`
+        : lista.tipo === "nose"
+          ? `Precio ${origen}; con la fecha ${fechaEsVe(paraArmarAl)} puede regir otra lista; revise.`
+          : undefined;
     const partes = [
+      cambio !== undefined && valor === cambio.valor ? cambio.aviso : undefined,
       valor.trim() === "" ? marca.avisoPrecio : undefined,
       conflicto !== undefined && valor.trim() !== "" && valor !== conflicto.valor ? conflicto.aviso : undefined,
-      deOtraFecha ? `Precio ${lista} con la fecha de composición ${marca.fecha ? fechaEsVe(marca.fecha) : "vacía"}; revise.` : undefined,
+      dichoDeLaLista,
     ];
     const texto = partes.filter(Boolean).join(" ");
     return texto === "" ? undefined : texto;
   };
 
   const avisoDeLaUnidad = (indice: number, fila: Fila): string | undefined => {
-    const conflicto = marcaDe(indice, fila)?.conflictos?.unidad;
+    const marca = marcaDe(indice, fila);
+    const conflicto = marca?.conflictos?.unidad;
+    const cambio = marca?.cambios?.unidad;
     const valor = fila.unidad ?? "";
-    return conflicto !== undefined && valor.trim() !== "" && valor !== conflicto.valor ? conflicto.aviso : undefined;
+    const texto = [
+      cambio !== undefined && valor === cambio.valor ? cambio.aviso : undefined,
+      conflicto !== undefined && valor.trim() !== "" && valor !== conflicto.valor ? conflicto.aviso : undefined,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    return texto === "" ? undefined : texto;
   };
 
   const esPropia = (indice: number, fila: Fila) => {
