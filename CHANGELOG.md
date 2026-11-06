@@ -165,11 +165,16 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   carpeta no la declara; el rótulo de la versión del Resumen dice que es la de la línea base si existe; la Vista general
   explica cómo se calcula el total y su tabla apilada pone rótulo y dato en una línea; «Producir mezcla» pide las recetas
   vigentes en una sola consulta (`GET /v1/produccion/recetas/vigentes`) y ya no deja 404 en la consola; los renglones que
-  salen de los tramos dicen «Sale de los tramos» y no «Sin cálculo» (`de_tramo` en la fila del presupuesto); «Trayectorias
-  por corte» va en «Comprobar hacia atrás»; los botones ocultos de las pestañas tienen nombre en español; la columna
+  salen de los tramos dicen «Sale de los tramos» y no «Sin cálculo» (`de_tramo` en la fila del presupuesto); en Riesgo, «Fecha de inicio» y «Trayectorias» van en
+  «Proyectar» y «Trayectorias por corte» en «Comprobar hacia atrás»; la columna
   «Estado» del Presupuesto se ajusta a 1366 px; Esc en «Código» tras elegir una partida no la deja mezclada;
   `MONEDAS`, `useCarga`, `CampoDeUnidad` y `CampoDePartida` pasan a `comun/`, con una prueba de arquitectura que impide
-  importar nuevas dependencias entre páginas.
+  importar nuevas dependencias entre páginas. Además: las tres tablas de cambios (Guardar versión, Versiones y Revisar)
+  comparten un presentador (`comun/presentarCambio.ts`): rótulos en español, coma decimal solo en lo que es cifra («A1.2»
+  queda igual) y también dentro de los resúmenes «clave=valor»; «m³» en todas las unidades que se muestran; la
+  existencia de la arenera con coma decimal; «1 partida», «1 cambio registrado»; el Resumen dice «Versión de la línea
+  base» o «Versión vigente» según el servidor (`version_de_linea_base`); y en Componer, elegir una partida y luego otra
+  ya no deja la descripción y la unidad de la primera (D17): lo tecleado se conserva y se avisa.
 - Desinstalar ya no deja `{app}\codigo`: al primer arranque el lanzador abría el archivo del código de instalación (Bloc de notas) heredando esa carpeta como directorio de trabajo, y con la ventana abierta Windows no la borraba (error 32 en el humo del instalador). Ahora se abre con la carpeta del archivo como directorio de trabajo.
 - Hoja en solo lectura (M5 del árbitro del recorrido en video): la celda de una tabla ya no pierde su etiqueta accesible; «Cantidad, Presupuesto fila N» queda como texto oculto a la vista (`CampoDeCelda`), porque la cabecera da la columna pero no la fila.
 - Pruebas de la CI: el tope de la variación del simulador se cronometra sobre `variacion_de_texto` y la ruta comprueba el mensaje del tope (la petición entera pasó de 3 s en un runner cargado); el humo del instalador dice qué queda en `{app}` si la desinstalación no termina.

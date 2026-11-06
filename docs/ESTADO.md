@@ -50,8 +50,9 @@ comprobación); RF-167, RF-168 y RNF-29 en el ERS.
 **Tanda de detalles D1–D16** ([plan](planes/PLAN_TANDA_DETALLES.md),
 [arbitraje](bitacora/arbitrajes/tanda-detalles-claude-xhigh.md)). Construida el 2026-11-06 en cinco líneas en paralelo.
 La ronda 1 del árbitro xhigh la devolvió con 2 MAYOR (D10 rompía la flecha izquierda de las pestañas; D16 seguía
-mezclando la partida con Esc) y 13 MENOR; los dos MAYOR y los MENOR 1–11 están corregidos con prueba en rojo primero (el
-12 es historia de commits y no se reescribe). Gemini Flash construyó solo parte de los parches: con la máquina cargada
+mezclando la partida con Esc) y 13 MENOR; los dos MAYOR y los MENOR están corregidos con prueba en rojo primero (el 12 es
+historia de commits y no se reescribe). La ronda 2 la **aprobó**; sus MENOR (un presentador común para las tres tablas de
+cambios, textos) y un defecto anterior a la tanda que encontró en Componer (D17) están corregidos. Gemini Flash construyó solo parte de los parches: con la máquina cargada
 agotó su tiempo varias veces y esas tareas las hicieron subagentes de Claude con TDD. Notas: la frase «Cadena íntegra: N
 versiones» de `core/` sigue igual y la concordancia se corrige en `aplicacion/texto_cadena.py` hasta que el tutor avale
 tocar el núcleo.
@@ -81,7 +82,8 @@ tocar el núcleo.
 Plan detallado, con el protocolo de trabajo con Gemini Flash por `agy` (Flash construye el parche, Claude lo aplica con
 TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA_DETALLES.md](planes/PLAN_TANDA_DETALLES.md).
 
-1. **Tanda de detalles**: construida (§3); falta cerrar su arbitraje.
+1. **Tanda de detalles**: aprobada (§3); falta la prueba de Eugenio en el navegador. Queda para después: 16 mensajes del
+   servidor dicen «no existe en este caso» (palabra interna «caso»; mejor «en esta carpeta»).
 2. **Autocompletado**: completo (PR #107).
 3. **F7 Ayuda**: «¿Qué es esto?» en cada sección, guías por tarea, glosario y «Empieza aquí» (con la primera entrada y el
    primer administrador desde la interfaz).
