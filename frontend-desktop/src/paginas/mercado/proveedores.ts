@@ -3,6 +3,7 @@
 // fecha, el ultimo usado primero. Es una lista corta: se pide una vez por dialogo y se filtra en el navegador.
 import { pedir } from "../../api/cliente";
 import type { GrupoDeResultados } from "../../comun/logicaBusqueda";
+import { filtrarPorPalabras } from "../../comun/normalizar";
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
 
 export const RUTA_DE_PROVEEDORES = "/v1/consulta/proveedores";
@@ -17,22 +18,10 @@ interface ProveedoresRespuesta {
   proveedores: ProveedorUsado[];
 }
 
-const palabrasDe = (texto: string) =>
-  texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
-
 // Los que tienen todas las palabras escritas, en cualquier orden y sin distinguir mayusculas ni tildes; en el orden del
 // servidor (el ultimo usado primero).
 export function filtrarProveedores(proveedores: readonly ProveedorUsado[], q: string): ProveedorUsado[] {
-  const buscadas = palabrasDe(q);
-  return proveedores.filter((p) => {
-    const nombre = palabrasDe(p.proveedor).join(" ");
-    return buscadas.every((b) => nombre.includes(b));
-  });
+  return filtrarPorPalabras(proveedores, q, (p) => p.proveedor);
 }
 
 export function gruposDeProveedores(halladas: readonly ProveedorUsado[], limite: number): GrupoDeResultados<ProveedorUsado>[] {
