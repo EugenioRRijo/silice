@@ -195,7 +195,8 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     const precio = screen.getByRole("textbox", { name: "Precio, fila 1" });
     expect(precio).toHaveValue("");
     expect(screen.getByRole("combobox", { name: "Unidad, fila 1" })).toHaveValue("saco");
-    expect(screen.getByText("El catálogo lo tiene en USD; escriba el precio en Bs.")).toBeInTheDocument();
+    // El aviso se ve en la celda del precio y se dice en la región viva del campo (WCAG 4.1.3).
+    expect(screen.getAllByText("El catálogo lo tiene en USD; escriba el precio en Bs.")).toHaveLength(2);
     expect(precio).toHaveAccessibleDescription("El catálogo lo tiene en USD; escriba el precio en Bs.");
   });
 
@@ -219,7 +220,7 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
     expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("");
-    expect(screen.getByText("El catálogo lo tiene en Bs; escriba el precio en USD.")).toBeInTheDocument();
+    expect(screen.getAllByText("El catálogo lo tiene en Bs; escriba el precio en USD.")).toHaveLength(2);
   });
 
   test("elegir otro insumo quita el aviso de moneda de la fila", async () => {
@@ -228,13 +229,15 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     render(<Arnes tipo="materiales" filas={[MATERIAL]} />);
     await u.type(descripcion(), "cemento g");
     await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
-    await screen.findByText("El catálogo lo tiene en USD; escriba el precio en Bs.");
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).toHaveAccessibleDescription("El catálogo lo tiene en USD; escriba el precio en Bs."),
+    );
     monedaDeLaLista = "Bs";
     await u.clear(descripcion());
     await u.type(descripcion(), "cemento b");
     await u.click(await screen.findByRole("option", { name: /Cemento blanco ficticio/ }));
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento blanco ficticio"));
-    expect(screen.queryByText("El catálogo lo tiene en USD; escriba el precio en Bs.")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Precio, fila 1" })).toHaveAccessibleDescription("");
   });
 
   test("sin fecha de composición no hay lista con que armar: se copian descripción y unidad, nunca el precio", async () => {

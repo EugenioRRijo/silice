@@ -2,6 +2,7 @@
 // venezolanas (partidas viales, insumos del catalogo, tasa del BCV, salarios del CCT). No hay un componente nuevo: el
 // campo con busqueda (combobox ARIA, flechas, Enter, Esc y region viva) ya existe y es el que se reutiliza.
 import { pedir } from "../api/cliente";
+import { fechaEsVe, formatoEsVe } from "../indicadores/formatoEsVe";
 import { materialesDeArenera } from "../api/produccionPlanta";
 import type { GrupoDeResultados } from "./logicaBusqueda";
 
@@ -27,6 +28,10 @@ export interface SugerenciaDeConsulta {
 export interface OpcionesDeConsulta {
   detalle?: boolean;
   paraArmarAl?: string;
+  // Solo de presentacion (no viaja en la ruta): la linea de cada resultado dice el precio, la moneda y la fecha de su lista, o
+  // que no hay precio en la lista para armar (dictamen del autocompletado, MAYOR). Se pone con `paraArmarAl`; sin ella la
+  // linea es la de siempre, [valor, fuente].
+  mostrarPrecio?: boolean;
 }
 
 export interface SugerenciasHalladas {
@@ -49,8 +54,29 @@ export function rutaDeConsulta(tabla: TablaDeConsulta, q: string, limite: number
   return `/v1/consulta/${tabla}?${params.toString()}`;
 }
 
-// Un grupo con una opcion por sugerencia: la etiqueta arriba; abajo el valor (el codigo, en Plex Mono) y la fuente.
-export function gruposDeConsulta(respuesta: SugerenciasHalladas): GrupoDeResultados<SugerenciaDeConsulta>[] {
+const SIN_PRECIO_EN_LA_LISTA = "sin precio en la lista para armar";
+
+// Lo que se lee debajo de un insumo cuando se ofrece con su precio: la unidad (si la trae), el precio con su moneda y la fecha
+// de su lista. El precio llega como decimal con punto y solo se reescribe con la coma; en otra moneda que la de la carpeta el
+// servidor no lo manda y si su aviso, que es lo que se lee. Sin nada de eso, «sin precio en la lista para armar».
+function lineaConPrecio(s: SugerenciaDeConsulta): string[] {
+  const partes = [s.valor];
+  if (s.unidad) partes.push(s.unidad);
+  if (s.precio && s.moneda) {
+    partes.push(`${formatoEsVe(s.precio)} ${s.moneda}`);
+    if (s.fecha_precio) partes.push(`lista del ${fechaEsVe(s.fecha_precio)}`);
+  } else {
+    partes.push(s.aviso_precio || SIN_PRECIO_EN_LA_LISTA);
+  }
+  return partes;
+}
+
+// Un grupo con una opcion por sugerencia: la etiqueta arriba; abajo el valor (el codigo, en Plex Mono) y la fuente (o, con
+// `mostrarPrecio`, la unidad y el precio con su fecha).
+export function gruposDeConsulta(
+  respuesta: SugerenciasHalladas,
+  opciones: Pick<OpcionesDeConsulta, "mostrarPrecio"> = {},
+): GrupoDeResultados<SugerenciaDeConsulta>[] {
   const tabla = respuesta.tabla as TablaDeConsulta;
   return [
     {
@@ -59,7 +85,7 @@ export function gruposDeConsulta(respuesta: SugerenciasHalladas): GrupoDeResulta
       opciones: respuesta.resultados.map((s) => ({
         clave: `${respuesta.tabla}:${s.valor}`,
         principal: s.etiqueta,
-        secundaria: [s.valor, s.fuente],
+        secundaria: opciones.mostrarPrecio ? lineaConPrecio(s) : [s.valor, s.fuente],
         valor: s,
       })),
     },
@@ -69,7 +95,7 @@ export function gruposDeConsulta(respuesta: SugerenciasHalladas): GrupoDeResulta
 // La funcion `buscar` de CampoConBusqueda para una tabla de consulta.
 export function buscadorDeConsulta(tabla: TablaDeConsulta, opciones: OpcionesDeConsulta = {}) {
   return (q: string, senal: AbortSignal, limite: number): Promise<GrupoDeResultados<SugerenciaDeConsulta>[]> =>
-    pedir<SugerenciasHalladas>(rutaDeConsulta(tabla, q, limite, opciones), { senal }).then(gruposDeConsulta);
+    pedir<SugerenciasHalladas>(rutaDeConsulta(tabla, q, limite, opciones), { senal }).then((r) => gruposDeConsulta(r, opciones));
 }
 
 // Tablas que no son del servidor de consulta: los materiales de producción de la arenera (mezclas y agregados), que

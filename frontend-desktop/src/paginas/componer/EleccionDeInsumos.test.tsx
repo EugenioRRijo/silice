@@ -203,7 +203,6 @@ describe("2. una fila nunca mezcla el catálogo de un insumo con el de otro", ()
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
     expect(precio()).toHaveValue("7,5");
     expect(unidad()).toHaveValue("saco"); // la unidad estaba vacía: sí se llena
-    expect(screen.getByText(/El catálogo tiene 18,00 Bs/)).toBeInTheDocument();
     expect(precio()).toHaveAccessibleDescription(expect.stringContaining("El catálogo tiene 18,00 Bs"));
   });
 
@@ -297,10 +296,9 @@ describe("6. las marcas siguen a la fila, no al índice", () => {
     const u = userEvent.setup();
     render(<Arnes filas={[{ ...MATERIAL }]} />);
     await elegir(u, "cemento g", /Cemento gris ficticio/);
-    await screen.findByText(AVISO_USD);
+    await waitFor(() => expect(precio(1)).toHaveAccessibleDescription(AVISO_USD));
     await u.click(screen.getByRole("button", { name: "Precargar" }));
     expect(descripcion(1)).toHaveValue("Arena ficticia");
-    expect(screen.queryByText(AVISO_USD)).not.toBeInTheDocument();
     expect(precio(1)).toHaveAccessibleDescription("");
   });
 
@@ -309,10 +307,10 @@ describe("6. las marcas siguen a la fila, no al índice", () => {
     const u = userEvent.setup();
     render(<Arnes filas={[{ ...MATERIAL }]} />);
     await elegir(u, "cemento g", /Cemento gris ficticio/);
-    await screen.findByText(AVISO_USD);
+    await waitFor(() => expect(precio()).toHaveAccessibleDescription(AVISO_USD));
     await u.type(precio(), "4");
-    expect(screen.queryByText(AVISO_USD)).not.toBeInTheDocument();
     expect(precio()).toHaveValue("4");
+    expect(precio()).toHaveAccessibleDescription("");
   });
 
   test("lo que la fila 1 llenó del catálogo no se atribuye a la fila 2 al quitar la fila 1", async () => {

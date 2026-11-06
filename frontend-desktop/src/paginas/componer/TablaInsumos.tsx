@@ -7,7 +7,9 @@ import { buscadorDeConsulta } from "../../comun/consulta";
 import type { SugerenciaDeConsulta } from "../../comun/consulta";
 import { LARGO_MAXIMO } from "../../comun/logicaBusqueda";
 import type { OpcionDeBusqueda } from "../../comun/logicaBusqueda";
-import { COLUMNA_DEL_PRECIO, TABLA_DE_CONSULTA, valoresAlElegir } from "./autocompletado";
+import { fechaEsVe } from "../../indicadores/formatoEsVe";
+import { COLUMNA_DEL_PRECIO, TABLA_DE_CONSULTA, aplicarEleccion, columnasDelCatalogo } from "./autocompletado";
+import type { Conflicto, Llenado } from "./autocompletado";
 import { CampoDeUnidad } from "./CampoDeUnidad";
 import { COLUMNAS, TITULOS } from "./tablas";
 import type { Fila, TipoTabla } from "./tablas";
@@ -35,14 +37,23 @@ interface Props {
 
 const AVISO_PROPIA = "Descripción propia: no viene del catálogo.";
 
-// Que se sabe del origen de la descripcion de una fila: lo ultimo que se tecleo y la ultima que se eligio del catalogo.
-// La descripcion es «propia» (se avisa) si es lo tecleado y no coincide con lo elegido; una fila precargada o llenada
-// desde la referencia no tiene marca y no se avisa nada.
+// Que se sabe del origen de una fila: lo ultimo que se tecleo en la descripcion, la ultima que se eligio del catalogo y que
+// celdas lleno el catalogo y con que valor. La descripcion es «propia» (se avisa) si es lo tecleado y no coincide con lo
+// elegido; una fila precargada o llenada desde la referencia no tiene marca y no se avisa nada.
 interface Marca {
   catalogo?: string;
   escrita?: string;
-  // Por que no se lleno el precio de lo elegido (otra moneda): lo dice la celda del precio o del sueldo.
+  // Por que no se lleno el precio de lo elegido (otra moneda): lo dice la celda del precio o del sueldo mientras siga vacia.
   avisoPrecio?: string;
+  // Las celdas (unidad, precio o sueldo) que puso el catalogo y todavia son suyas: al elegir otro insumo se reemplazan o se
+  // vacian; las que la persona escribio no estan aqui y no se pisan (dictamen del autocompletado, BLOQUEANTE).
+  llenado?: Llenado;
+  // Lo que el catalogo tiene y no se escribio porque la persona ya habia puesto otra cosa en esa celda.
+  conflictos?: Record<string, Conflicto>;
+  // La fecha de la composicion con que se pidio el precio y la de su lista: si la «Fecha» cambia y el precio sigue siendo el
+  // del catalogo, la celda lo dice (el precio no se vuelve a pedir ni se toca).
+  fecha?: string;
+  fechaPrecio?: string;
 }
 
 // Una tabla de insumos editable (UC-10, pasos 2 a 4). Carbon `sm`: celdas de texto; los montos se teclean y se
@@ -70,16 +81,42 @@ export function TablaInsumos({
   const titulo = TITULOS[tipo];
   const columnas = COLUMNAS[tipo];
   const buscador = useMemo(
-    () => buscadorDeConsulta(TABLA_DE_CONSULTA[tipo], { detalle: true, paraArmarAl }),
+    () => buscadorDeConsulta(TABLA_DE_CONSULTA[tipo], { detalle: true, paraArmarAl, mostrarPrecio: paraArmarAl !== "" }),
     [tipo, paraArmarAl],
   );
   const [marcas, setMarcas] = useState<Record<number, Marca>>({});
+  const columnaDelPrecio = COLUMNA_DEL_PRECIO[tipo];
+  const delCatalogo = columnasDelCatalogo(tipo);
+
+  // Las marcas van por indice, pero las filas tambien cambian desde fuera (la precarga de una partida, la referencia): una
+  // marca solo vale mientras la descripcion de la fila siga siendo la que ella recuerda (dictamen, sospecha de TablaInsumos).
+  const marcaDe = (indice: number, fila: Fila | undefined): Marca | undefined => {
+    const marca = marcas[indice];
+    const descripcion = fila?.descripcion ?? "";
+    return marca !== undefined && (descripcion === marca.catalogo || descripcion === marca.escrita) ? marca : undefined;
+  };
 
   const marcar = (indice: number, cambio: Marca) => setMarcas((m) => ({ ...m, [indice]: { ...m[indice], ...cambio } }));
 
   const escribir = (indice: number, texto: string) => {
-    marcar(indice, { escrita: texto, avisoPrecio: undefined });
+    marcar(indice, { escrita: texto, avisoPrecio: undefined, conflictos: undefined });
     alCambiar(indice, "descripcion", texto);
+  };
+
+  // Lo que la persona escribe en la unidad o en el precio es suyo desde ese momento: el catalogo no lo vuelve a pisar.
+  const editar = (indice: number, clave: string, valor: string) => {
+    if (delCatalogo.includes(clave)) {
+      setMarcas((m) => {
+        const marca = m[indice];
+        if (marca === undefined) return m;
+        const llenado = { ...marca.llenado };
+        const conflictos = { ...marca.conflictos };
+        delete llenado[clave];
+        delete conflictos[clave];
+        return { ...m, [indice]: { ...marca, llenado, conflictos } };
+      });
+    }
+    alCambiar(indice, clave, valor);
   };
 
   const borrar = (indice: number) => {
@@ -93,15 +130,57 @@ export function TablaInsumos({
     alBorrar(indice);
   };
 
-  const elegir = (indice: number, opcion: OpcionDeBusqueda<SugerenciaDeConsulta>) => {
-    const { valores, aviso } = valoresAlElegir(tipo, opcion.valor, moneda);
-    marcar(indice, { catalogo: valores.descripcion, escrita: undefined, avisoPrecio: aviso ?? undefined });
-    alCompletar(indice, valores);
+  // Devuelve lo que hay que decir en voz alta (region viva del campo): la ayuda de la celda del precio o de la unidad no se
+  // anuncia sola.
+  const elegir = (indice: number, opcion: OpcionDeBusqueda<SugerenciaDeConsulta>): string | undefined => {
+    const fila = filas[indice] ?? {};
+    const eleccion = aplicarEleccion(tipo, opcion.valor, moneda, fila, marcaDe(indice, fila)?.llenado ?? {});
+    setMarcas((m) => ({
+      ...m,
+      [indice]: {
+        catalogo: eleccion.valores.descripcion,
+        avisoPrecio: eleccion.aviso ?? undefined,
+        llenado: eleccion.llenado,
+        conflictos: eleccion.conflictos,
+        fecha: paraArmarAl,
+        fechaPrecio: opcion.valor.fecha_precio ?? undefined,
+      },
+    }));
+    alCompletar(indice, eleccion.valores);
+    const dicho = [eleccion.aviso, ...Object.values(eleccion.conflictos).map((c) => c.aviso)].filter(Boolean).join(" ");
+    return dicho === "" ? undefined : dicho;
   };
-  const columnaDelPrecio = COLUMNA_DEL_PRECIO[tipo];
 
-  const esPropia = (indice: number, descripcion: string) =>
-    descripcion.trim() !== "" && marcas[indice]?.escrita === descripcion && marcas[indice]?.catalogo !== descripcion;
+  // Lo que dice la celda del precio (o del sueldo): por que quedo vacia, lo que el catalogo tiene y no se escribio, o que el
+  // precio es de la lista de otra fecha de composicion. Cada aviso vale mientras su motivo siga vigente en la celda.
+  const avisoDelPrecio = (indice: number, fila: Fila): string | undefined => {
+    const marca = marcaDe(indice, fila);
+    if (marca === undefined) return undefined;
+    const valor = fila[columnaDelPrecio] ?? "";
+    const conflicto = marca.conflictos?.[columnaDelPrecio];
+    const llenado = marca.llenado?.[columnaDelPrecio];
+    const deOtraFecha = llenado !== undefined && valor === llenado && marca.fecha !== undefined && marca.fecha !== paraArmarAl;
+    const lista = marca.fechaPrecio ? `de la lista del ${fechaEsVe(marca.fechaPrecio)}, tomado` : "tomado";
+    const partes = [
+      valor.trim() === "" ? marca.avisoPrecio : undefined,
+      conflicto !== undefined && valor.trim() !== "" && valor !== conflicto.valor ? conflicto.aviso : undefined,
+      deOtraFecha ? `Precio ${lista} con la fecha de composición ${marca.fecha ? fechaEsVe(marca.fecha) : "vacía"}; revise.` : undefined,
+    ];
+    const texto = partes.filter(Boolean).join(" ");
+    return texto === "" ? undefined : texto;
+  };
+
+  const avisoDeLaUnidad = (indice: number, fila: Fila): string | undefined => {
+    const conflicto = marcaDe(indice, fila)?.conflictos?.unidad;
+    const valor = fila.unidad ?? "";
+    return conflicto !== undefined && valor.trim() !== "" && valor !== conflicto.valor ? conflicto.aviso : undefined;
+  };
+
+  const esPropia = (indice: number, fila: Fila) => {
+    const descripcion = fila.descripcion ?? "";
+    const marca = marcaDe(indice, fila);
+    return descripcion.trim() !== "" && marca?.escrita === descripcion && marca.catalogo !== descripcion;
+  };
   return (
     <section className="silice-componer__tabla" aria-label={titulo}>
       <Titulo className="cds--type-heading-compact-02">{titulo}</Titulo>
@@ -140,10 +219,13 @@ export function TablaInsumos({
                         </Select>
                       ) : c.clave === "descripcion" ? (
                         <CampoConBusqueda<SugerenciaDeConsulta>
+                          // Con otra «Fecha» el campo se vuelve a montar: lo que habia buscado y guardado era de otra lista de
+                          // precios y no se puede elegir (dictamen, BLOQUEANTE). Montar de nuevo tambien aborta lo que iba en vuelo.
+                          key={paraArmarAl}
                           id={`${tipo}-${i}-${c.clave}`}
                           etiqueta={nombre}
                           etiquetaOculta
-                          ayuda={esPropia(i, fila.descripcion ?? "") ? AVISO_PROPIA : undefined}
+                          ayuda={esPropia(i, fila) ? AVISO_PROPIA : undefined}
                           texto={fila.descripcion ?? ""}
                           alCambiarTexto={(texto) => escribir(i, texto)}
                           buscar={(q, senal, limite) => buscador(q.slice(0, LARGO_MAXIMO).trim(), senal, limite)}
@@ -159,6 +241,7 @@ export function TablaInsumos({
                           alExpirar={alExpirar}
                           enCelda
                           escLimpia={false}
+                          llenaOtrasCeldas
                           largoMaximo={null}
                           conBorrar={false}
                           tamano="sm"
@@ -169,7 +252,8 @@ export function TablaInsumos({
                           etiqueta={nombre}
                           etiquetaOculta
                           texto={fila.unidad ?? ""}
-                          alCambiar={(texto) => alCambiar(i, c.clave, texto)}
+                          ayuda={avisoDeLaUnidad(i, fila)}
+                          alCambiar={(texto) => editar(i, c.clave, texto)}
                           alExpirar={alExpirar}
                           enCelda
                         />
@@ -179,9 +263,9 @@ export function TablaInsumos({
                           size="sm"
                           labelText={nombre}
                           hideLabel
-                          helperText={c.clave === columnaDelPrecio ? marcas[i]?.avisoPrecio : undefined}
+                          helperText={c.clave === columnaDelPrecio ? avisoDelPrecio(i, fila) : undefined}
                           value={fila[c.clave] ?? ""}
-                          onChange={(e) => alCambiar(i, c.clave, e.target.value)}
+                          onChange={(e) => editar(i, c.clave, e.target.value)}
                         />
                       )}
                     </TableCell>

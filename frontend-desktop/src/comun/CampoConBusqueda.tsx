@@ -41,7 +41,9 @@ export interface CampoConBusquedaProps<T> {
   texto: string; // el texto del campo: lo controla la pagina
   alCambiarTexto: (texto: string) => void;
   buscar: (q: string, senal: AbortSignal, limitePorGrupo: number) => Promise<GrupoDeResultados<T>[]>;
-  alElegir: (opcion: OpcionDeBusqueda<T>) => void;
+  // Si devuelve un texto, se dice en la region viva del campo (WCAG 4.1.3): lo que paso al elegir y no se ve en el campo, como
+  // el aviso de que un precio no se copio (dictamen del autocompletado, MENOR). Sin texto no se anuncia nada.
+  alElegir: (opcion: OpcionDeBusqueda<T>) => void | string;
   valorPropio?: {
     rotulo: (texto: string) => string; // "Crear una partida nueva con el código «LB-06»"
     alUsar: (texto: string) => void;
@@ -58,6 +60,10 @@ export interface CampoConBusquedaProps<T> {
   // false: Esc con la lista cerrada no borra lo elegido. En una celda de tabla lo elegido llena otras columnas y borrar
   // solo la descripcion las dejaria huerfanas (AC1). true por omision.
   escLimpia?: boolean;
+  // true: elegir llena tambien otras celdas de la fila. Se marca en el campo (`data-llena-otras-celdas`) para que un Esc que
+  // restaura campos desde fuera (el panel «Componer una partida») no lo deje a medias: devolver solo este texto dejaria la
+  // unidad y el precio de un insumo que ya no esta (dictamen del autocompletado, MAYOR). false por omision.
+  llenaOtrasCeldas?: boolean;
   // Tope de letras del campo: 80 por omision (el de la busqueda del servidor). null: sin tope, para un texto libre que
   // ademas se busca (la descripcion de un insumo); quien lo pone recorta lo que manda a `buscar`.
   largoMaximo?: number | null;
@@ -90,6 +96,7 @@ export function CampoConBusqueda<T>({
   limiteInicial = LIMITE_INICIAL,
   enCelda = false,
   escLimpia = true,
+  llenaOtrasCeldas = false,
   largoMaximo = LARGO_MAXIMO,
   conBorrar = true,
   alExpirar,
@@ -295,8 +302,15 @@ export function CampoConBusqueda<T>({
     cancelar();
     elegido.current = entrada.tipo === "opcion" || valorPropio?.esEleccion !== false;
     cerrar();
-    if (entrada.tipo === "opcion") alElegir(entrada.opcion);
-    else valorPropio?.alUsar(recortado);
+    if (entrada.tipo !== "opcion") {
+      valorPropio?.alUsar(recortado);
+      return;
+    }
+    const dicho = alElegir(entrada.opcion);
+    if (typeof dicho === "string" && dicho !== "") {
+      clearTimeout(esperaDelAnuncio.current); // un anuncio de resultados pendiente no debe taparlo
+      setAnuncio(dicho);
+    }
   }
 
   function alTeclear(e: KeyboardEvent<HTMLInputElement>) {
@@ -477,6 +491,7 @@ export function CampoConBusqueda<T>({
           disabled={deshabilitado}
           readOnly={soloLectura}
           role="combobox"
+          data-llena-otras-celdas={llenaOtrasCeldas ? "true" : undefined}
           aria-autocomplete="list"
           aria-expanded={listaVisible}
           aria-controls={listaVisible ? idLista : undefined}

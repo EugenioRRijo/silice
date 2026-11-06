@@ -287,6 +287,8 @@ describe("ComponerPartida (Tarea 9)", () => {
     const pedida = rutas.filter((r) => r.startsWith("/v1/consulta/insumos?")).at(-1)!;
     expect(new URLSearchParams(pedida.split("?")[1]).get("para_armar_al")).toBe("2026-08-15");
     expect(within(materiales).getByRole("textbox", { name: "Precio, fila 1" })).toHaveValue("");
-    expect(within(materiales).getByText("El catálogo lo tiene en USD; escriba el precio en Bs.")).toBeInTheDocument();
+    expect(within(materiales).getByRole("textbox", { name: "Precio, fila 1" })).toHaveAccessibleDescription(
+      "El catálogo lo tiene en USD; escriba el precio en Bs.",
+    );
   });
 });
