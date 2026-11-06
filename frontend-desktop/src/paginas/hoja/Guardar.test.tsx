@@ -215,8 +215,21 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     const filas = within(tabla).getAllByRole("row").slice(1);
     expect(filas).toHaveLength(2);
     expect(within(filas[0]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["cantidad", "AF-LLAVE, Punto P1", "cantidad", "3", "5"]);
-    expect(within(filas[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["parametro", "administracion", "valor", "0.15", "0.20"]);
+    expect(within(filas[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["parametro", "administracion", "valor", "0,15", "0,20"]);
     expect(llamadas("GET", `/v1/hoja/borradores/${ID}/cambios`)).toHaveLength(1);
+  });
+
+  test("D1: la cantidad de la lista de cambios sale con coma decimal y punto de miles («24,5», «1.234,5»)", async () => {
+    alCambios = () =>
+      json({
+        rev: 3,
+        cambios: [{ objeto: "cantidad", clave: "AF-LLAVE|esp_puntos:P1", campo: "cantidad", antes: "24.5", despues: "1234.5" }],
+      });
+    montar();
+    const dialogo = await abrirModal();
+    const tabla = await within(dialogo).findByRole("table", { name: "Cambios que se guardan" });
+    const celdas = within(within(tabla).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent);
+    expect(celdas.slice(3)).toEqual(["24,5", "1.234,5"]);
   });
 
   test("3d-F1: sin fuente el botón «Guardar versión» queda deshabilitado y dice por qué; con fuente se habilita", async () => {
