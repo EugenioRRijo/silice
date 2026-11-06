@@ -323,8 +323,8 @@ describe("Versiones: el registro de cambios en el panel", () => {
 
   test("N1: el alta y la baja de una fila de metraje salen con rótulos y cifras con coma", async () => {
     const base = { fuente: "Reunión", responsable: "Ana Pérez <ana>", fecha_hora: "2026-11-04T16:20:31.482913", objeto: "metraje", clave: "esp_tramos:R1#2", campo: "fila" };
-    const alta = { ...base, antes: "", despues: "largo=4.5; ancho=3.2" };
-    const baja = { ...base, antes: "largo=1234.5; ambiente_id=A1.2", despues: "" };
+    const alta = { ...base, antes: "", despues: "recorrido_id=R1; orden=2; pendiente=0.02; vertices=1.5,0,2.5; 1.5,0,0.6" };
+    const baja = { ...base, antes: "recorrido_id=R1; orden=2; pendiente=1234.5", despues: "" };
     trazabilidad = () => json(trazabilidadRespuesta({ registros: [alta, baja] }));
     const u = montar();
     await listo();
@@ -332,8 +332,8 @@ describe("Versiones: el registro de cambios en el panel", () => {
     const tabla = await screen.findByRole("table", { name: "Registro de cambios de la versión VIV-002" });
     const filas = within(tabla).getAllByRole("row").slice(1);
     const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
-    expect(texto(filas[0]!).slice(2)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "", "Largo (m)=4,5; Ancho (m)=3,2", "Reunión"]);
-    expect(texto(filas[1]!).slice(2)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "Largo (m)=1.234,5; Ambiente=A1.2", "", "Reunión"]);
+    expect(texto(filas[0]!).slice(2)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "", "Recorrido=R1; Orden del vértice=2; Pendiente=0,02; Vértices=(1,5; 0; 2,5), (1,5; 0; 0,6)", "Reunión"]);
+    expect(texto(filas[1]!).slice(2)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "Recorrido=R1; Orden del vértice=2; Pendiente=1.234,5", "", "Reunión"]);
   });
 
   test("una versión que no nació de una edición dice por qué no hay registros, sin tabla vacía", async () => {

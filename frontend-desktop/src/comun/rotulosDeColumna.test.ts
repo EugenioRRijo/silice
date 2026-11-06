@@ -18,7 +18,7 @@ function rotulosDelServidor(): Record<string, [string, string][]> {
   const tablas: Record<string, [string, string][]> = {};
   let actual = "";
   for (const linea of bloque.split(/\r?\n/)) {
-    const abre = /^    "(\w+)": \{(.*)$/.exec(linea);
+    const abre = /^ {4}"(\w+)": \{(.*)$/.exec(linea);
     if (abre) {
       actual = abre[1]!;
       tablas[actual] = [];

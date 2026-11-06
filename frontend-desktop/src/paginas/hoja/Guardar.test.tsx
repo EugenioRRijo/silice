@@ -238,7 +238,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
         rev: 3,
         cambios: [
           { objeto: "parametro", clave: "control|spi_error", campo: "spi_error", antes: "0.90", despues: "0.85" },
-          { objeto: "metraje", clave: "esp_tramos:R1#2", campo: "fila", antes: "", despues: "largo=4.5; ancho=3.2" },
+          { objeto: "metraje", clave: "esp_tramos:R1#2", campo: "fila", antes: "", despues: "recorrido_id=R1; orden=2; pendiente=0.02; vertices=1.5,0,2.5; 1.5,0,0.6" },
         ],
       });
     montar();
@@ -247,7 +247,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     const filas = within(tabla).getAllByRole("row").slice(1);
     const texto = (f: HTMLElement) => within(f).getAllByRole("cell").map((c) => c.textContent);
     expect(texto(filas[0]!)).toEqual(["Parámetro", "Control de obra: Umbral de SPI para error", "Umbral de SPI para error", "0,90", "0,85"]);
-    expect(texto(filas[1]!)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "", "Largo (m)=4,5; Ancho (m)=3,2"]);
+    expect(texto(filas[1]!)).toEqual(["Metraje", "Tramo R1 (2)", "Fila", "", "Recorrido=R1; Orden del vértice=2; Pendiente=0,02; Vértices=(1,5; 0; 2,5), (1,5; 0; 0,6)"]);
   });
 
   test("D1: un valor que no es cifra («A1.2», «Eje B2.5») se muestra tal cual en la lista de cambios", async () => {

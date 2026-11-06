@@ -13,11 +13,11 @@ import {
   filaEnBlanco,
   nuevaClaveDeFila,
   puedeAgregarFila,
-  rotuloDeOrigen,
   textoDeFilas,
 } from "./logica";
 import type { EstadoFila, FilaEditable, TablaEspacio } from "./logica";
 import { CampoTexto } from "../../comun/CampoTexto";
+import { rotuloDeOrigen } from "../../comun/rotuloDeOrigen";
 
 // A qué celda ir desde fuera (por ejemplo desde «Ir a la fila 2»); `vez` sube para repetir el mismo destino.
 export interface IrA {
