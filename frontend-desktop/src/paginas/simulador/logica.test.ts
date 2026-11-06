@@ -6,10 +6,8 @@ import {
   errorDeSemilla,
   errorDeVariacion,
   filasDeTabla,
-  insumosEnviados,
   MENSAJE_SEMILLA,
   MENSAJE_VARIACION,
-  motivoDeRechazo,
   resumenDeEnvio,
 } from "./logica";
 
@@ -25,15 +23,15 @@ describe("logica del simulador", () => {
   });
 
   test("el cuerpo manda la variacion leida con coma decimal, con punto, y los insumos vacios como null", () => {
-    expect(cuerpoDe({ semilla: " 42 ", variacion: "5", insumos: "  " })).toEqual({
+    expect(cuerpoDe({ semilla: " 42 ", variacion: "5", insumos: [] })).toEqual({
       semilla: 42,
       variacion_max: "5",
       insumos: null,
     });
-    expect(cuerpoDe({ semilla: "0", variacion: "2,50", insumos: " Arena , Cemento " })).toEqual({
+    expect(cuerpoDe({ semilla: "0", variacion: "2,50", insumos: ["Arena", "Cemento"] })).toEqual({
       semilla: 0,
       variacion_max: "2.50",
-      insumos: "Arena , Cemento",
+      insumos: ["Arena", "Cemento"],
     });
   });
 
@@ -67,25 +65,20 @@ describe("logica del simulador", () => {
     expect(resumenDeEnvio({ semilla: 42, variacion_max: "5", insumos: null })).toBe(
       "semilla 42, variación 5 %, insumos: todos",
     );
-    expect(resumenDeEnvio({ semilla: 7, variacion_max: "2.5", insumos: "Arena" })).toBe(
-      "semilla 7, variación 2,5 %, insumos: Arena",
+    expect(resumenDeEnvio({ semilla: 7, variacion_max: "2.5", insumos: ["Arena", "Tubo, 4 pulgadas"] })).toBe(
+      "semilla 7, variación 2,5 %, insumos: «Arena», «Tubo, 4 pulgadas»",
     );
   });
 });
 
-// AC3: los insumos se eligen de la lista uno a uno, pero a la API siguen viajando como UN texto separado por coma, igual
-// que cuando se escribian a mano (`insumos_de_texto` de la API parte por la coma y recorta).
+// AC3: los insumos se eligen de la lista uno a uno y viajan como LISTA de descripciones exactas: una con coma entra
+// entera (la API ya no la parte) y ninguna se rechaza por llevarla.
 describe("insumos elegidos del simulador", () => {
-  test("viajan separados por coma y espacio, en el orden elegido; ninguno es null", () => {
-    expect(insumosEnviados(["Arena lavada", "Peon ficticio"])).toBe("Arena lavada, Peon ficticio");
-    expect(insumosEnviados(["Arena lavada"])).toBe("Arena lavada");
-    expect(insumosEnviados([])).toBe("");
-    expect(cuerpoDe({ semilla: "1", variacion: "5", insumos: insumosEnviados([]) }).insumos).toBeNull();
-    expect(cuerpoDe({ semilla: "1", variacion: "5", insumos: insumosEnviados(["A", "B"]) }).insumos).toBe("A, B");
-  });
-
-  test("una descripcion con coma no se puede nombrar en esa lista (la API la partiria en dos) y se dice por que", () => {
-    expect(motivoDeRechazo("Arena lavada")).toBeNull();
-    expect(motivoDeRechazo("Tubo PVC, 4 pulgadas")).toMatch(/«Tubo PVC, 4 pulgadas» lleva una coma/);
+  test("viajan como lista en el orden elegido; sin ninguno, null (= todos)", () => {
+    expect(cuerpoDe({ semilla: "1", variacion: "5", insumos: ["Tubo PVC, 4 pulgadas", "Arena lavada"] }).insumos).toEqual([
+      "Tubo PVC, 4 pulgadas",
+      "Arena lavada",
+    ]);
+    expect(cuerpoDe({ semilla: "1", variacion: "5", insumos: [] }).insumos).toBeNull();
   });
 });

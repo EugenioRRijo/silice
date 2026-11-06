@@ -9,7 +9,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaSimulador from "./index";
-import { MENSAJE_SEMILLA, MENSAJE_SIN_FILAS, MENSAJE_VARIACION, motivoDeRechazo } from "./logica";
+import { MENSAJE_SEMILLA, MENSAJE_SIN_FILAS, MENSAJE_VARIACION } from "./logica";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -114,8 +114,8 @@ describe("Simulador de listas", () => {
     expect(cuerpoEnviado(0)).toEqual({ semilla: 7, variacion_max: "2.5", insumos: null });
   });
 
-  // AC3: «Insumos» es una seleccion multiple guiada. Lo que viaja es lo de siempre: UN texto con las descripciones
-  // exactas separadas por coma (la API parte por la coma).
+  // AC3: «Insumos» es una seleccion multiple guiada. Viaja como LISTA de descripciones exactas (la API la acepta desde
+  // el 2026-11-05 junto al texto separado por comas de siempre), asi que una descripcion con coma ya no se parte.
   describe("insumos elegidos de la lista", () => {
     const CATALOGO = {
       insumos: [
@@ -154,8 +154,6 @@ describe("Simulador de listas", () => {
       });
     });
 
-    const MOTIVO_CON_COMA = motivoDeRechazo("Tubo PVC, 4 pulgadas") ?? "";
-
     const consultas = () =>
       fetchFalso.mock.calls.map(([ruta]) => String(ruta)).filter((ruta) => ruta.startsWith("/v1/consulta/"));
     const posts = () => fetchFalso.mock.calls.filter(([, init]) => init?.method === "POST");
@@ -177,7 +175,7 @@ describe("Simulador de listas", () => {
       ]);
     });
 
-    test("elegidos de la lista viajan como el texto de siempre: descripciones exactas separadas por coma", async () => {
+    test("elegidos de la lista viajan como una lista de descripciones exactas, en el orden elegido", async () => {
       const usuario = userEvent.setup();
       montar();
       await elegir(usuario, "are", /Arena lavada/);
@@ -187,7 +185,7 @@ describe("Simulador de listas", () => {
       expect(within(lista).getByRole("button", { name: "Quitar Peon ficticio" })).toBeInTheDocument();
       await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
       await screen.findByRole("table");
-      expect(cuerpoDelPost(0)).toEqual({ semilla: 42, variacion_max: "5", insumos: "Arena lavada, Peon ficticio" });
+      expect(cuerpoDelPost(0)).toEqual({ semilla: 42, variacion_max: "5", insumos: ["Arena lavada", "Peon ficticio"] });
     });
 
     test("quitar una etiqueta la saca del envio y, tras generar, avisa que el resultado quedo viejo", async () => {
@@ -201,7 +199,7 @@ describe("Simulador de listas", () => {
       expect(screen.getByText(/Cambió el formulario: pulse Generar lista simulada para actualizar/)).toBeInTheDocument();
       await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
       await waitFor(() => expect(posts()).toHaveLength(2));
-      expect(cuerpoDelPost(1).insumos).toBe("Peon ficticio");
+      expect(cuerpoDelPost(1).insumos).toEqual(["Peon ficticio"]);
     });
 
     test("lo escrito sin elegir no se envia y el campo lo avisa", async () => {
@@ -222,13 +220,22 @@ describe("Simulador de listas", () => {
       expect(screen.queryByRole("option", { name: /tal cual/ })).not.toBeInTheDocument();
     });
 
-    test("una descripcion con coma no se agrega: la API la partiria en dos y no la encontraria", async () => {
+    test("una descripcion con coma se agrega y viaja entera, sin partirse", async () => {
       const usuario = userEvent.setup();
       montar();
-      await usuario.type(screen.getByRole("combobox", { name: "Insumos" }), "tub");
-      await usuario.click(await screen.findByRole("option", { name: /Tubo PVC/ }, { timeout: 3000 }));
-      expect(screen.queryByRole("list", { name: "Elegidos: Insumos" })).not.toBeInTheDocument();
-      expect(screen.getByText(MOTIVO_CON_COMA)).toBeInTheDocument();
+      await elegir(usuario, "tub", /Tubo PVC/);
+      const lista = screen.getByRole("list", { name: "Elegidos: Insumos" });
+      expect(within(lista).getByRole("button", { name: "Quitar Tubo PVC, 4 pulgadas" })).toBeInTheDocument();
+      expect(screen.queryByText(/lleva una coma/)).not.toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Insumos" })).not.toHaveAttribute("aria-invalid", "true");
+      await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+      await screen.findByRole("table");
+      expect(cuerpoDelPost(0).insumos).toEqual(["Tubo PVC, 4 pulgadas"]);
+      expect(
+        screen.getByText("Resultado con los valores enviados: semilla 42, variación 5 %, insumos: «Tubo PVC, 4 pulgadas».", {
+          exact: false,
+        }),
+      ).toBeInTheDocument();
     });
 
     test("un 401 de la busqueda cierra la sesion", async () => {

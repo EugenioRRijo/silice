@@ -171,6 +171,46 @@ describe("Control: autocompletado de la partida (AC2)", () => {
     expect((envio("/v1/control/valuaciones")?.lineas as { partida: string }[])[0]?.partida).toBe("OB-Z");
   });
 
+  // R13 juzga una valuacion contra la linea base vigente a su corte (su «hasta»): la lista que guia «Partida» se pide
+  // para esa fecha. Oraculo a mano: desde el 20/11 rige una linea base sobre OB-002, que solo presupuesta A y B.
+  test("con el «Período hasta» escrito, las partidas son las de la línea base vigente a ese corte y se juzga con ellas", async () => {
+    partidas = () => json(PARTIDAS);
+    const original = fetchFalso.getMockImplementation()!;
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = new URL(String(entrada), "http://x");
+      if (url.pathname === "/v1/control/partidas" && url.searchParams.get("corte") === "2026-11-20") {
+        return json({ version: "OB-002", aviso: "", truncada: false, partidas: PARTIDAS.partidas.slice(0, 2) });
+      }
+      return original(entrada, init);
+    });
+    const u = await montarEnValuaciones();
+    await u.type(screen.getByLabelText("Período hasta"), "2026-11-20");
+    await waitFor(() =>
+      expect(fetchFalso.mock.calls.map(([u]) => String(u))).toContain("/v1/control/partidas?proyecto=OB-S2&corte=2026-11-20"),
+    );
+    await u.type(screen.getByLabelText("Partida 1"), "OB-C");
+    await u.type(screen.getByLabelText("Cantidad 1"), "5");
+    await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    expect(await screen.findByText("La partida «OB-C» no está en el contrato (versión OB-002): elíjala de la lista.")).toBeInTheDocument();
+    expect(envio("/v1/control/valuaciones")).toBeUndefined();
+  });
+
+  test("con la lista recortada, una partida que no se ve no se rechaza: decide el servidor", async () => {
+    partidas = () => json({ ...PARTIDAS, truncada: true });
+    const u = await montarEnValuaciones();
+    expect(
+      await screen.findByText("La lista muestra solo parte de las partidas del contrato: si la suya no aparece, escriba su código."),
+    ).toBeInTheDocument();
+    await u.type(screen.getByLabelText("Partida 1"), "OB-D");
+    await u.type(screen.getByLabelText("Cantidad 1"), "5");
+    await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
+    await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
+    await screen.findByText(/Valuación registrada/);
+    expect((envio("/v1/control/valuaciones")?.lineas as { partida: string }[])[0]?.partida).toBe("OB-D");
+    expect(screen.getByLabelText("Partida 1")).not.toHaveAttribute("aria-invalid", "true");
+  });
+
   test("«Partida (opcional)» del costo ofrece las del contrato y también deja un gasto general o una partida ajena", async () => {
     const u = await montarEnValuaciones();
     const campo = screen.getByLabelText("Partida (opcional)");

@@ -169,6 +169,16 @@ describe("Reajuste: autocompletado de la serie y de la partida (AC2)", () => {
     expect(await screen.findByRole("option", { name: /Solo de la segunda/ })).toBeInTheDocument();
   });
 
+  test("con la lista recortada, una partida que no se ve se puede usar «tal cual»: decide el cálculo", async () => {
+    partidas = () => json({ ...PARTIDAS_001, truncada: true });
+    const u = await montar();
+    await u.click(screen.getByRole("tab", { name: "2. Períodos y lo ejecutado" }));
+    const campo = await screen.findByLabelText("Partida, Ejecutado fila 1");
+    await u.type(campo, "S1-R77");
+    await u.click(await screen.findByRole("option", { name: /Usar «S1-R77» tal cual/ }));
+    expect(campo).toHaveValue("S1-R77");
+  });
+
   test("si la lista no se pudo leer, la serie y la partida siguen siendo de texto libre", async () => {
     series = () => json({ detalle: "No se pudo leer." }, 503);
     partidas = () => json({ detalle: "No se pudo leer." }, 503);

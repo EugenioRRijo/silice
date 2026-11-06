@@ -365,6 +365,66 @@ describe("Escenarios de sensibilidad", () => {
     ).toBeInTheDocument();
   });
 
+  // El calculo empareja la descripcion por igualdad exacta y descarta en silencio un precio de un insumo que el base no
+  // tiene: la API ahora los nombra y la pantalla lo dice en espanol llano, fuera del acordeon. Textos escritos a mano.
+  test("dice qué precios de ensayo no cambiaron nada y por qué", async () => {
+    alPostear = (cuerpo) =>
+      json({
+        codigo_base: "FIC-1",
+        total_base: "1000.00",
+        pendientes_base: [],
+        escenarios: cuerpo.escenarios.map((e) => ({
+          ...escenario(e.nombre, "1050.00"),
+          precios_sin_insumo: ["Cemento portland", "Grava inventada"],
+          precios_sin_cambio: ["Arena lavada"],
+        })),
+      });
+    montar();
+    await listo();
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
+    expect(
+      await screen.findByText(
+        "En «escenario 1», 3 precios de ensayo no cambiaron nada: «Cemento portland» y «Grava inventada» no son " +
+          "insumos del presupuesto base (el nombre tiene que ser exactamente el de la lista); «Arena lavada» ya tenía " +
+          "ese precio.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("con un solo precio sin insumo lo dice en singular", async () => {
+    alPostear = (cuerpo) =>
+      json({
+        codigo_base: "FIC-1",
+        total_base: "1000.00",
+        pendientes_base: [],
+        escenarios: cuerpo.escenarios.map((e) => ({
+          ...escenario(e.nombre, "1050.00"),
+          precios_sin_insumo: ["Grava inventada"],
+          precios_sin_cambio: [],
+        })),
+      });
+    montar();
+    await listo();
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
+    expect(
+      await screen.findByText(
+        "En «escenario 1», 1 precio de ensayo no cambió nada: «Grava inventada» no es un insumo del presupuesto base " +
+          "(el nombre tiene que ser exactamente el de la lista).",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("si todos los precios de ensayo cambiaron algo no hay aviso", async () => {
+    montar();
+    await listo();
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
+    await screen.findByRole("button", { name: "Detalle por partida: escenario 1" });
+    expect(screen.queryByText(/no cambi(ó|aron) nada/)).not.toBeInTheDocument();
+  });
+
   test("un 401 al listar avisa a la aplicacion", async () => {
     fetchFalso.mockImplementation(async () => json({ detalle: "Sesión vencida" }, 401));
     const alExpirar = montar();

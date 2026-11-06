@@ -228,6 +228,49 @@ describe("SeleccionMultipleConBusqueda", () => {
     for (const region of regiones()) expect((region.textContent ?? "").trim()).not.toBe("");
   });
 
+  // Un lector de pantalla suele no leer una region viva que aparece ya con su primer mensaje: se monta con el foco, con el
+  // conteo, y luego solo cambia su texto (como hace CampoConBusqueda).
+  test("al enfocar el campo la región viva ya está, con el conteo, y el primer «Agregado» cambia su texto", async () => {
+    render(<Prueba />);
+    const u = usuario();
+    await u.click(campo());
+    const region = screen.getByText("Ninguno elegido.");
+    expect(region).toHaveAttribute("role", "status");
+    expect(region).toHaveAttribute("aria-live", "polite");
+    await buscarYElegir(u, "cem");
+    expect(region).toBeInTheDocument();
+    expect(region.textContent).toBe("Agregado: Cemento ficticio. 1 elegido.");
+  });
+
+  test("con elegidos, al enfocar la región dice cuántos hay", async () => {
+    render(<Prueba inicial={["Cemento ficticio", "Arena ficticia"]} />);
+    const u = usuario();
+    await u.click(campo());
+    expect(screen.getByText("2 elegidos.")).toHaveAttribute("role", "status");
+  });
+
+  test("un mensaje repetido cambia el texto de la región para que se vuelva a leer", async () => {
+    render(<Prueba inicial={["Cemento ficticio"]} />);
+    const u = usuario();
+    await buscarYElegir(u, "cem");
+    const region = screen.getByText("Cemento ficticio ya estaba en la lista.");
+    const primero = region.textContent;
+    await buscarYElegir(u, "cem");
+    expect(region.textContent).not.toBe(primero);
+    expect(region.textContent?.trim()).toBe("Cemento ficticio ya estaba en la lista.");
+    await buscarYElegir(u, "cem");
+    expect(region.textContent).toBe(primero);
+  });
+
+  test("al salir del campo la región se desmonta", async () => {
+    render(<Prueba />);
+    const u = usuario();
+    await u.click(campo());
+    expect(screen.getByText("Ninguno elegido.")).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Enviar" }));
+    expect(screen.queryByText("Ninguno elegido.")).not.toBeInTheDocument();
+  });
+
   test("la etiqueta del campo es su nombre accesible y la ayuda lo describe", () => {
     render(<Prueba />);
     expect(campo()).toHaveAccessibleDescription(/Escriba y elija de la lista\./);
