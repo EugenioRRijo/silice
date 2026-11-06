@@ -983,6 +983,16 @@ describe("Hoja: agregar y quitar partidas (Tarea 11)", () => {
     expect(within(aMano).getByText("Sin cálculo")).toBeInTheDocument();
   });
 
+  test("un renglón que sale de un tramo vial dice «Sale de los tramos» y no «Sin cálculo»", async () => {
+    filas = [{ ...PARED, clave: "C-000.000.006|tramo:T1:capa:1", partida: "C-000.000.006", de_tramo: true }];
+    abierto = borradorEnBlanco({ espacio_vacio: true });
+    montar();
+    const tabla = await screen.findByRole("table", { name: "Presupuesto" });
+    const fila = within(tabla).getAllByRole("row")[1]!;
+    expect(within(fila).getByText("Sale de los tramos")).toBeInTheDocument();
+    expect(within(fila).queryByText("Sin cálculo")).toBeNull();
+  });
+
   test("el total de una obra en bolívares dice «Bs» en el estado y en el presupuesto", async () => {
     filas = [PARED];
     abierto = borradorEnBlanco({ total: { texto: "17913.00", exacto: "17913" } });
