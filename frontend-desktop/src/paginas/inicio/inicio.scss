@@ -161,10 +161,18 @@
       border: 0;
     }
 
+    td[data-etiqueta] {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      column-gap: 0.5rem;
+    }
+
     // La etiqueta es solo para la vista: quien lee con lector de pantalla ya oye la columna por la cabecera (texto alternativo vacío).
     td[data-etiqueta]::before {
-      content: attr(data-etiqueta) / "";
-      display: block;
+      content: attr(data-etiqueta) ":" / "";
+      display: inline;
+      flex: none;
       color: var(--silice-texto-secundario);
       font-weight: 400;
     }
