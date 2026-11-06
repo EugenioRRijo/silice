@@ -39,5 +39,8 @@ en el cliente.
 **DEVUELTO** por dos bloqueantes de dinero en Componer (precio de la lista de otra fecha; filas con el precio de otro
 insumo) y dos mayores (Esc en el panel; la sugerencia no mostraba precio, moneda ni fecha). Corregidos con su prueba en
 rojo primero, junto con los menores. [Ronda 2](../bitacora/arbitrajes/autocompletado-claude-xhigh-r2.md): DEVUELTO por
-un MAYOR nuevo (una fila precargada o de MaPreX se mezclaba al elegir del catálogo); en corrección. ERS: RF-163, RF-164
-y RNF-30.
+un MAYOR nuevo (una fila precargada o de MaPreX se mezclaba al elegir del catálogo); en corrección. ERS: RF-167, RF-168
+y RNF-29 (ruling de numeración del diseño de bienvenida).
+
+[Ronda 3](../bitacora/arbitrajes/autocompletado-claude-xhigh-r3.md): DEVUELTO por un MAYOR (Esc en el panel volvía
+«tecleado» el precio del catálogo); el origen pasa a juzgarse por valor. En corrección.

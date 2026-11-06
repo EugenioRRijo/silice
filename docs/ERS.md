@@ -1648,14 +1648,14 @@ guiados y de algunas funciones de `ui.libros` **no está comprobado** (ver `docs
 
 Pedido de Eugenio del 2026-10-21; diseño [2026-10-21-autocompletado-de-campos-design.md](especificaciones/2026-10-21-autocompletado-de-campos-design.md)
 §12.4 y plan [PLAN_AUTOCOMPLETADO.md](planes/PLAN_AUTOCOMPLETADO.md). Los números provisionales del diseño (RF-A, RF-B,
-RNF-A) se asignan aquí después de los que ya reservan los diseños de bienvenida (RF-156 a RF-162, RNF-29) y del
-asistente, para no chocar.
+RNF-A) siguen el ruling del orquestador que recoge el diseño de bienvenida (§12): asistente RF-156 a RF-159, bienvenida
+RF-160 a RF-166 y RNF-30, autocompletado RNF-29; los RF del autocompletado van a continuación.
 
 | ID | Requisito | Prioridad | Caso de uso | Criterio de aceptación |
 |---|---|---|---|---|
-| RF-163 | Los campos que piden un dato que la persona no tiene por qué saber de memoria (código de partida, insumo, unidad, moneda, proveedor, serie de índices, versión) ofrecen una búsqueda con autocompletado sobre el catálogo de la carpeta, la referencia MaPreX o la lista de la versión, con la fuente, la fecha y la moneda de cada resultado a la vista; el precio sugerido queda editable, sale de la lista con que arma la carpeta a la fecha de la composición, no se copia en otra moneda y nunca pisa lo que la persona tecleó | Esencial | UC-10, UC-11, UC-17 | pruebas de `paginas/componer/EleccionDeInsumos.test.tsx`, `AutocompletadoDeInsumos.test.tsx`, `tests/unit/test_aplicacion_consulta_precios.py` y `test_consulta_unidades_y_proveedores.py` |
-| RF-164 | Al elegir una partida existente en Componer, su cabecera se rellena y no se edita; un código escrito sin elegir ni confirmar no se guarda; en una valuación de Control solo se admiten partidas del contrato | Esencial | UC-10, UC-17 | pruebas de `paginas/componer` y `paginas/control/partidasDelContrato.test.ts`, `tests/unit/test_api_control.py` |
-| RNF-30 | La búsqueda con autocompletado es operable solo con el teclado y por lector de pantalla (combobox ARIA 1.2, región viva), con tres tamaños de letra y sin desplazamiento horizontal a 1366×768 y 1056 px | Esencial | — | pruebas de `comun/CampoConBusqueda*.test.tsx` y `SeleccionMultipleConBusqueda`; medición en navegador pendiente con una persona (diseño §4.3) |
+| RF-167 | Los campos que piden un dato que la persona no tiene por qué saber de memoria (código de partida, insumo, unidad, moneda, proveedor, serie de índices, versión) ofrecen una búsqueda con autocompletado sobre el catálogo de la carpeta, la referencia MaPreX o la lista de la versión, con la fuente, la fecha y la moneda de cada resultado a la vista; el precio sugerido queda editable, sale de la lista con que arma la carpeta a la fecha de la composición, no se copia en otra moneda y nunca pisa lo que la persona tecleó | Esencial | UC-10, UC-11, UC-17 | pruebas de `paginas/componer/EleccionDeInsumos.test.tsx`, `AutocompletadoDeInsumos.test.tsx`, `tests/unit/test_aplicacion_consulta_precios.py` y `test_consulta_unidades_y_proveedores.py` |
+| RF-168 | Al elegir una partida existente en Componer, su cabecera se rellena y no se edita; un código escrito sin elegir ni confirmar no se guarda; en una valuación de Control solo se admiten partidas del contrato | Esencial | UC-10, UC-17 | pruebas de `paginas/componer` y `paginas/control/partidasDelContrato.test.ts`, `tests/unit/test_api_control.py` |
+| RNF-29 | La búsqueda con autocompletado es operable solo con el teclado y por lector de pantalla (combobox ARIA 1.2, región viva), con tres tamaños de letra y sin desplazamiento horizontal a 1366×768 y 1056 px | Esencial | — | pruebas de `comun/CampoConBusqueda*.test.tsx` y `SeleccionMultipleConBusqueda`; medición en navegador pendiente con una persona (diseño §4.3) |
 
 Enmienda a UC-10 paso 1 y flujos 2b, 3b y 4b: el buscador va integrado en la celda de cada insumo. La matriz de
 trazabilidad (§4) suma estas tres filas.
