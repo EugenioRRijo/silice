@@ -81,7 +81,7 @@ export function resultadosDe(buscado: string): string {
 
 // Las filas llevan un id estable (la posicion) porque una descripcion puede repetirse.
 export function filasMateriales(c: Composicion): FilaDensa[] {
-  return c.materiales.map((l, i) => ({ id: String(i), ...l }));
+  return c.materiales.map((l, i) => ({ id: String(i), ...l, unidad: unidadEscrita(l.unidad) }));
 }
 export function filasEquipos(c: Composicion): FilaDensa[] {
   return c.equipos.map((l, i) => ({ id: String(i), ...l }));

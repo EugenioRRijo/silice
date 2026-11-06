@@ -3,6 +3,7 @@
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { MENSAJE_CIFRA, leerCifra } from "../../indicadores/cifraEscrita";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { unidadEscrita } from "../../comun/unidades";
 
 export const SEMILLA_INICIAL = "42";
 export const VARIACION_INICIAL = "5";
@@ -65,7 +66,7 @@ export function cuerpoDe(formulario: Formulario): CuerpoSimulacion {
 }
 
 export function filasDeTabla(filas: FilaSimulada[]): FilaDensa[] {
-  return filas.map((f, i) => ({ id: String(i), tipo: f.tipo, insumo: f.insumo, unidad: f.unidad, precio: f.precio }));
+  return filas.map((f, i) => ({ id: String(i), tipo: f.tipo, insumo: f.insumo, unidad: unidadEscrita(f.unidad), precio: f.precio }));
 }
 
 // null si la variacion sirve; si no, el texto junto al campo. Es la misma regla que la API (decimal finito, de 0 a

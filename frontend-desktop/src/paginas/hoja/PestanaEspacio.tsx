@@ -32,6 +32,7 @@ import type {
 import { ENLACE_DESDE_EL_ESPACIO } from "../archivos/textos";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 import { usePuedeEditarLaHoja } from "./puedeEditar";
+import { unidadEscrita } from "../../comun/unidades";
 
 interface Props {
   id: string;
@@ -193,7 +194,7 @@ function ContenidoEspacio({
               id: `derivada-${i}`,
               partida: d.partida,
               descripcion: d.descripcion,
-              unidad: d.unidad,
+              unidad: unidadEscrita(d.unidad),
               cantidad: d.cantidad.texto,
               cantidad_exacto: d.cantidad.exacto,
               origen: d.origen,
