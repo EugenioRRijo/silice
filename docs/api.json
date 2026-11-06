@@ -26445,26 +26445,23 @@
           "insumos": {
             "anyOf": [
               {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "items": {
-                      "type": "string",
-                      "maxLength": 500
-                    },
-                    "type": "array"
-                  }
-                ],
+                "type": "string",
                 "maxLength": 20000
+              },
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "type": "array",
+                "maxItems": 200
               },
               {
                 "type": "null"
               }
             ],
             "title": "Insumos",
-            "description": "Separados por coma, o una lista de descripciones exactas (admite la coma); vacio, [] o null = todos"
+            "description": "Separados por coma, o una lista de descripciones exactas (admite la coma). null, omitido o texto vacio = todos; texto de solo comas o lista sin nombres ([] incluida) = ninguno. La lista: hasta 200 descripciones y 20000 caracteres en total"
           }
         },
         "type": "object",

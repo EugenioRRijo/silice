@@ -96,17 +96,26 @@ def variacion_de_texto(texto: str) -> Decimal:
 
 
 def insumos_de_texto(insumos: str | Sequence[str] | None) -> set[str] | None:
-    """Los insumos a simular; vacio (o solo espacios) = todos (`None`).
+    """Los insumos a simular: `None` = todos; un conjunto, los nombrados (vacio = ninguno).
 
-    Un texto se parte por la coma (la forma de siempre, la del CLI y la de Streamlit). Una lista
-    nombra cada descripcion entera, asi que admite una que lleva coma («Tubo, 4 pulgadas»), que el
-    texto partiria en dos nombres que no existen. En los dos casos se recorta cada nombre."""
-    if isinstance(insumos, str) or insumos is None:
-        partes = (insumos or "").split(",")
+    - `None` (u omitido en la API) y el texto vacio o de solo espacios: todos (`None`).
+    - Un texto se parte por la coma (la forma de siempre, la del CLI y la de Streamlit). Si solo
+      tiene comas y espacios (`","`, `" , "`) no nombra ninguno: conjunto vacio, 0 filas, como
+      antes del autocompletado.
+    - Una lista nombra cada descripcion entera, asi que admite una que lleva coma («Tubo, 4
+      pulgadas»), que el texto partiria en dos nombres que no existen. Una lista sin nombres
+      validos (`[]`, `["", " "]`) es ninguno: quien manda una lista elige; «todos» es `null`.
+
+    En todos los casos se recorta cada nombre."""
+    if insumos is None:
+        return None
+    if isinstance(insumos, str):
+        if not insumos.strip():
+            return None
+        partes = insumos.split(",")
     else:
         partes = list(insumos)
-    nombres = {i.strip() for i in partes if i.strip()}
-    return nombres or None
+    return {i.strip() for i in partes if i.strip()}
 
 
 def precios_vigentes(catalogo: Catalogo) -> dict[str, tuple[str, str, Decimal]]:
