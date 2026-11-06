@@ -117,6 +117,9 @@ class ObraRespuesta(BaseModel):
     etapa: str
     etapa_texto: str
     version: str | None
+    version_de_linea_base: bool = Field(
+        description="True si `version` es la de la línea base de control; False si es la vigente"
+    )
     total: str | None
     moneda: str
     avance_real: str | None = Field(description="EV ÷ BAC × 100, a 0,1")
@@ -186,6 +189,7 @@ def _obra(obra: ObraEnMesa) -> ObraRespuesta:
         etapa=obra.etapa,
         etapa_texto=ETAPA_TEXTO[obra.etapa],
         version=obra.version,
+        version_de_linea_base=obra.version_de_linea_base,
         total=None
         if obra.total is None
         else str(obra.total.quantize(_CENTESIMA, rounding=ROUND_HALF_UP)),

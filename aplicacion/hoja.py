@@ -102,6 +102,7 @@ from aplicacion.errores import HojaInvalida
 from aplicacion.estilo import porcentaje
 from aplicacion.parametros_de_costo import parametros_de_version
 from aplicacion.plan_rendimientos import plan_del_borrador
+from aplicacion.plural import plural
 from aplicacion.subidas import Subida, guardar_subida
 from aplicacion.tablas_medicion import guardar_notas, notas_de_version
 from aplicacion.vial import reglas_viales
@@ -1042,8 +1043,9 @@ def _cantidades_de_tabla(
 ) -> list[Decimal]:
     if len(filas) != esperadas:
         raise HojaInvalida(
-            f"{grupo}: la tabla tiene {len(filas)} lineas y el APU {esperadas}; en la hoja solo "
-            "se edita la cantidad de cada linea (para agregar o quitar una, use Componer)"
+            f"{grupo}: la tabla tiene {plural(len(filas), 'línea', 'líneas')} y el APU "
+            f"{esperadas}; en la hoja solo se edita la cantidad de cada línea (para agregar o "
+            "quitar una, use Componer)"
         )
     cantidades = []
     for numero, fila in enumerate(filas, start=1):
@@ -1144,7 +1146,8 @@ def cambiar_insumo(
     }[tipo]
     if not 0 <= indice < len(grupo):
         raise HojaInvalida(
-            f"la linea {indice + 1} no existe: el grupo {tipo} tiene {len(grupo)} lineas"
+            f"la línea {indice + 1} no existe: el grupo {tipo} tiene "
+            f"{plural(len(grupo), 'línea', 'líneas')}"
         )
     linea = grupo[indice]
     if tipo == "material":
@@ -2233,7 +2236,7 @@ def crear_primera_version(
     ).one_or_none()
     if modelo_proyecto is None:
         raise HojaInvalida(
-            f"La obra {proyecto!r} no existe: creela desde la barra superior (Nueva obra)."
+            f"La obra {proyecto!r} no existe: créela desde la barra lateral (Nueva obra)."
         )
     if sesion.scalar(
         select(func.count())
@@ -2241,7 +2244,7 @@ def crear_primera_version(
         .where(models.Presupuesto.proyecto_id == modelo_proyecto.id)
     ):
         raise HojaInvalida(
-            f"La obra {proyecto!r} ya tiene versiones: abra una y use Guardar version."
+            f"La obra {proyecto!r} ya tiene versiones: abra una y use Guardar versión."
         )
     fecha = fecha or borrador.fecha
     moneda = moneda_del_proyecto(sesion, modelo_proyecto)
@@ -2255,8 +2258,8 @@ def crear_primera_version(
             ) from error
     if lista.moneda != moneda:
         raise HojaInvalida(
-            f"La obra {proyecto!r} esta en {moneda} y la lista {lista.nombre!r} en "
-            f"{lista.moneda}: una version solo se valora con una lista de su moneda (RF-65). "
+            f"La obra {proyecto!r} está en {moneda} y la lista {lista.nombre!r} en "
+            f"{lista.moneda}: una versión solo se valora con una lista de su moneda (RF-65). "
             "Elija una lista en la moneda de la obra (Precios de la empresa) y vuelva a "
             "guardar."
         )

@@ -19,6 +19,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
+from aplicacion.plural import plural
 from core import models
 from core.catalog import leer_lista_precios
 from core.catalog.empresa import (
@@ -82,7 +83,10 @@ def cargar_referencia_maprex(sesion) -> str:
             sesion, RUTA_REFERENCIA_MAPREX, nombre=NOMBRE_REFERENCIA, moneda="Bs", tasa=tasa
         ),
     )
-    return f"Referencia «{lista.nombre}» cargada con {len(lista.precios)} precios."
+    return (
+        f"Referencia «{lista.nombre}» cargada con "
+        f"{plural(len(lista.precios), 'precio', 'precios')}."
+    )
 
 
 def crear_lista(

@@ -249,6 +249,8 @@ export interface ObraFilaRespuesta {
   etapa: Etapa;
   etapa_texto: string;
   version: string | null;
+  // true si `version` es la de la línea base de control; false si es la vigente (el servidor lo decide).
+  version_de_linea_base: boolean;
   total: string | null;
   moneda: string;
   avance_real: string | null;
