@@ -225,6 +225,21 @@ def test_con_detalle_y_sin_fecha_hay_descripcion_y_unidad_pero_no_precio(en_bs: 
     assert (cemento.precio, cemento.moneda, cemento.fecha_precio) == (None, None, None)
 
 
+# --- el tipo del insumo, con el detalle -----------------------------------------------------
+
+
+def test_con_detalle_cada_insumo_dice_su_tipo_en_palabras(en_bs: Session) -> None:
+    """El mismo tipo que ya va en la `fuente`, aparte, para que la interfaz no lo saque del texto.
+    Oráculos a mano: el cemento es material, la mezcladora equipo y el albañil mano de obra."""
+    assert _una(en_bs, "insumos", "cemento gris", detalle=True).tipo == "material"
+    assert _una(en_bs, "insumos", "mezcladora", para_armar_al=AGOSTO).tipo == "equipo"
+    assert _una(en_bs, "salarios_cct", "albañil", detalle=True).tipo == "mano de obra"
+
+
+def test_sin_detalle_ni_fecha_no_hay_tipo(en_bs: Session) -> None:
+    assert _una(en_bs, "insumos", "cemento gris").tipo is None
+
+
 # --- quien ya usa la consulta no cambia ------------------------------------------------------
 
 

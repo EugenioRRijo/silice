@@ -193,6 +193,7 @@ def test_la_misma_moneda_trae_el_precio_de_la_lista_para_armar_con_su_moneda_y_f
         "fuente": "Catálogo de la carpeta de trabajo: material",
         "descripcion": "Cemento gris ficticio",
         "unidad": "saco",
+        "tipo": "material",
         "precio": "18.00",
         "moneda": "Bs",
         "fecha_precio": "2026-07-01",
@@ -218,6 +219,7 @@ def test_sin_lista_de_precios_trae_descripcion_y_unidad_y_ningun_precio(ana: Tes
 def test_con_detalle_y_sin_fecha_no_hay_precio(ana: TestClient) -> None:
     _sembrar_listas()
     sugerencia = _cemento(ana, detalle="true")
+    assert sugerencia["tipo"] == "material"
     assert (sugerencia["descripcion"], sugerencia["unidad"]) == ("Cemento gris ficticio", "saco")
     assert not {"precio", "moneda", "fecha_precio", "aviso_precio"} & sugerencia.keys()
 
