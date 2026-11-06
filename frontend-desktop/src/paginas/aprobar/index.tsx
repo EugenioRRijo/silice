@@ -9,6 +9,7 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { InformeAuditoria } from "../../comun/InformeAuditoria";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { unidadEscrita } from "../../comun/unidades";
 import { nombreDeResponsable } from "../../comun/responsable";
 import { centesimasEsVe, fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { ContextoDeLaObra } from "../../marco/obraAbierta";
@@ -252,7 +253,7 @@ function Partidas({ datos }: { datos: DetalleDeEnvio }) {
           id: p.codigo,
           codigo: p.codigo,
           descripcion: p.descripcion,
-          unidad: p.unidad,
+          unidad: unidadEscrita(p.unidad),
           cantidad: formatoEsVe(p.cantidad),
           precio: p.pendiente || p.precio_unitario === null ? "Sin precio" : centesimasEsVe(p.precio_unitario),
           total: p.total === null ? "" : centesimasEsVe(p.total),
