@@ -220,8 +220,9 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     await abrirDialogo();
     await elegirEnElBuscador("mort", /Mortero premezclado/);
     expect(urlsDeInsumos().some((u) => /tipo=material/.test(u) && /texto=mort/.test(u))).toBe(true);
-    expect(within(dialogo()).getByText("Precio de la lista de la versión: 4,00 USD por m2")).toBeInTheDocument();
+    expect(within(dialogo()).getByText("Precio de la lista de la versión: 4,00 USD por m²")).toBeInTheDocument();
     expect(within(dialogo()).queryByRole("textbox", { name: /Precio/ })).toBeNull(); // el precio no se teclea
+    expect(within(dialogo()).getByRole("textbox", { name: "Cantidad (m²)" })).toBeInTheDocument();
     await userEvent.type(within(dialogo()).getByRole("textbox", { name: /^Cantidad/ }), "2");
     await userEvent.click(within(dialogo()).getByRole("button", { name: "Agregar al APU" }));
     await vi.waitFor(() => expect(altas()).toHaveLength(1));

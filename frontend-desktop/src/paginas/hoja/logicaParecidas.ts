@@ -2,6 +2,7 @@
 // redondea nada: los montos y puntajes llegan de la API con punto y solo se escriben en es-VE.
 import type { FilaDensa } from "../../comun/TablaDensa";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { unidadEscrita } from "../../comun/unidades";
 
 export interface LineaMaterial {
   descripcion: string;
@@ -70,7 +71,8 @@ export const AYUDA =
 
 // Unidad y rendimiento de la API; la interfaz solo escribe el rendimiento en es-VE y le agrega la unidad de tiempo.
 export function rendimientoEnTexto(c: Composicion): { unidad: string; rendimiento: string } {
-  return { unidad: c.unidad, rendimiento: `${formatoEsVe(c.rendimiento)} ${c.unidad}/día` };
+  const unidad = unidadEscrita(c.unidad);
+  return { unidad, rendimiento: `${formatoEsVe(c.rendimiento)} ${unidad}/día` };
 }
 
 export function resultadosDe(buscado: string): string {

@@ -210,7 +210,7 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
       "03/11/2026",
     ]);
     const agua = within(filaDe(tabla, "Agua")).getAllByRole("cell");
-    expect(agua.slice(1, 2).map((c) => c.textContent)).toEqual(["3,3 m3"]);
+    expect(agua.slice(1, 2).map((c) => c.textContent)).toEqual(["3,3 m³"]);
     expect(agua[6]!.textContent).toBe("28/10/2026");
     expect(agua[7]!.textContent).toBe("09/11/2026");
     // Lo pedido o recibido ya no ofrece «Pedida hoy» ni «Recibida…».
@@ -254,6 +254,20 @@ describe("Control de obra: pestaña Procura (Tarea 24)", () => {
         pedidasAntes,
       ),
     );
+  });
+
+  test("las unidades se leen «m³» en los rótulos del diálogo y el servidor recibe «m3» tal cual", async () => {
+    const AGUA_SIN_RECIBIR = { ...PROCURA.necesidades[1]!, pedida: null, recibida: null };
+    procura = () => json({ ...PROCURA, necesidades: [AGUA_SIN_RECIBIR] });
+    const u = montar();
+    const tabla = await abrirProcura(u);
+    await u.click(within(tabla).getByRole("button", { name: "Recibida…: Agua (m³)" }));
+    const dialogo = screen.getByRole("dialog", { name: "Recepción de Agua" });
+    expect(within(dialogo).getByLabelText("Cantidad recibida (m³, opcional)")).toBeInTheDocument();
+    expect(within(dialogo).getByLabelText("Precio unitario (por m³, opcional)")).toBeInTheDocument();
+    await u.click(within(dialogo).getByRole("button", { name: "Anotar recepción" }));
+    await screen.findByText(/Recepción de Agua anotada/);
+    expect(cuerpoDe("/v1/procura/compras", "POST")).toMatchObject({ descripcion: "Agua", unidad: "m3", evento: "recibida" });
   });
 
   test("«Recibida…» abre un diálogo con fecha, cantidad y precio unitario que viajan tal como se escriben", async () => {

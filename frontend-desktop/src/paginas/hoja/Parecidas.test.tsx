@@ -126,7 +126,7 @@ describe("Parecidas a esta descripción (Tarea 9)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Buscar parecidas" }));
     await userEvent.click(await screen.findByRole("button", { name: "Ver el análisis de FIC-01" }));
     expect(screen.getByText("Partida de origen: FIC-01 | puntaje de similitud: 0,9137")).toBeInTheDocument();
-    expect(screen.getByText("8,00 m3/día", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("8,00 m³/día", { exact: false })).toHaveTextContent("Unidad: m³ | Rendimiento: 8,00 m³/día");
     const materiales = screen.getByRole("table", { name: "Materiales" });
     expect(within(materiales).getByText("1.500,00")).toBeInTheDocument();
     expect(within(materiales).queryByText("1500.00")).toBeNull();

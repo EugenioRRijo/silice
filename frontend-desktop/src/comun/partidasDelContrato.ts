@@ -4,6 +4,7 @@
 // no calcula nada: solo busca texto.
 import type { Carga } from "./useCarga";
 import { buscadorLocal } from "./normalizar";
+import { unidadEscrita } from "../comun/unidades";
 
 export interface PartidaDelContrato {
   codigo: string;
@@ -42,7 +43,7 @@ export function buscadorDePartidasDelContrato(partidas: PartidaDelContrato[]) {
     rotulo: ROTULO_DEL_CONTRATO,
     textoDe: (p) => `${p.codigo} ${p.descripcion}`,
     codigoDe: (p) => p.codigo,
-    opcionDe: (p) => ({ clave: `partida:${p.codigo}`, principal: p.descripcion, secundaria: [p.codigo, p.unidad], valor: p }),
+    opcionDe: (p) => ({ clave: `partida:${p.codigo}`, principal: p.descripcion, secundaria: [p.codigo, unidadEscrita(p.unidad)], valor: p }),
   });
 }
 

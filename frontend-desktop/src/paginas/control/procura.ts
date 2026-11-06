@@ -1,3 +1,5 @@
+import { unidadEscrita } from "../../comun/unidades";
+
 // MP-7, Tarea 24: el contrato de `/v1/procura` (Tarea 23) y las funciones puras de la pestaña «Procura».
 // Las cantidades llegan exactas con punto y se leen con `formatoEsVe` una sola vez; las fechas, aaaa-mm-dd, con
 // `fechaDeRanura`. Lo que la persona teclea (cantidad, precio, plazo) viaja tal cual: lo interpreta el servidor con la
@@ -60,7 +62,7 @@ export function diasHabiles(dias: string): string {
 
 // El material en el nombre accesible de un boton de una fila: «Pedida hoy: Cemento gris (saco)» (empieza por lo visible).
 export function delMaterial(n: Pick<NecesidadDeMaterial, "descripcion" | "unidad">): string {
-  return n.unidad ? `${n.descripcion} (${n.unidad})` : n.descripcion;
+  return n.unidad ? `${n.descripcion} (${unidadEscrita(n.unidad)})` : n.descripcion;
 }
 
 // Los campos del dialogo «Recibida…».

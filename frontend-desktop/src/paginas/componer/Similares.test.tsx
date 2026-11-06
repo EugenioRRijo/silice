@@ -35,7 +35,7 @@ describe("Similares", () => {
     const usuario = userEvent.setup();
     render(<Similares similares={[UNA]} />);
     await usuario.click(screen.getByRole("button", { name: /FIC-001/ }));
-    expect(screen.getByText("Rendimiento: 12,00 m2/día")).toBeInTheDocument();
+    expect(screen.getByText("Rendimiento: 12,00 m²/día")).toBeInTheDocument();
     expect(screen.getByText("12,5")).toBeInTheDocument();
     // Las celdas llegan en es-VE («1.500,5»): `compararDecimales` las ordenaria mal, asi que no se ofrece ordenar
     // (arbitro, ronda 1, menor 4).

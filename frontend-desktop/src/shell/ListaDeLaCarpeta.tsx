@@ -15,10 +15,8 @@ export function nombreConFecha(lista: { nombre: string; fecha: string }): string
 // «La carpeta dice lo que tiene» (diseno de montar §5.1, O-1; D-MP1): en la cabecera de la obra abierta (marco nuevo,
 // Tarea 8; la especificacion pide alli la lista de precios), la moneda de su carpeta (la de la obra) y su lista para armar
 // (`GET /v1/carpeta`, T2), o por que no la tiene. Se lee al montarse: cada vez que se entra en una obra.
-export function ListaDeLaCarpeta(props: { alExpirar: () => void; monedaDeLaObra?: string | null }): JSX.Element {
-  const { alExpirar } = props;
-  // Sin la prop: null (no hay dato de la obra). Con `undefined` explícito: la ficha de la obra aún se está leyendo.
-  const monedaDeLaObra = "monedaDeLaObra" in props ? props.monedaDeLaObra : null;
+export function ListaDeLaCarpeta(props: { alExpirar: () => void; monedaDeLaObra: string | null | undefined }): JSX.Element {
+  const { alExpirar, monedaDeLaObra } = props;
   const [carpeta, setCarpeta] = useState<CarpetaRespuesta | null>(null);
   const [fallo, setFallo] = useState(false);
 

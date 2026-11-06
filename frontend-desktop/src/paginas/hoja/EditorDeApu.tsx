@@ -36,6 +36,7 @@ import { useHojaDeLaObra } from "./ProveedorDeLaHoja";
 import { useDialogoDeOperacion } from "./useDialogoDeOperacion";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 import { usePuedeEditarLaHoja } from "./puedeEditar";
+import { unidadEscrita } from "../../comun/unidades";
 
 // Por qué existe (Tarea 7 del plan F4): el mismo editor del APU sirve en la pestaña «Análisis de precio (APU)» y en el panel
 // lateral que se abre desde el código de una fila de «Partidas». Es el cuerpo de la pestaña sin su lista de búsqueda: el
@@ -185,7 +186,7 @@ export function EditorDelDetalle({
       <div className="silice-hoja__apu-centro">
         {conTitulo && (
           <h2 className="cds--type-heading-compact-02">
-            {detalle.codigo} · {detalle.descripcion} · {detalle.unidad}
+            {detalle.codigo} · {detalle.descripcion} · {unidadEscrita(detalle.unidad)}
           </h2>
         )}
         <AvisoDeEnvio envio={edicion.envio} />
