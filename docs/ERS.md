@@ -1335,6 +1335,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑08 | RF‑30, RF‑31 | cierre UC‑08 (2026‑08‑31) | 2 (apoyo) |
 | UC‑10 | RF‑33, RF‑34, RF‑35 | P0.1 (declarado), P1–P4 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑11 | RF‑33, RF‑34 | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
+| UC‑10, UC‑11, UC‑17 (autocompletado guiado) | RF‑167, RF‑168 (y RNF‑29) | AC1–AC4 ([PLAN_AUTOCOMPLETADO.md](planes/PLAN_AUTOCOMPLETADO.md), 2026‑11‑05) | usabilidad del prototipo, fuera de los cinco indicadores |
 | UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
 | UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | SF0 (declarado), SF1–SF2 ([PLAN_SF.md](../PLAN_SF.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); la ausencia de cambios en `core/` al agregar datos y electricidad es evidencia del indicador 4 |
 | UC‑14 | RF‑50, RF‑51 | SF0 (declarado), SF5 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
@@ -1658,7 +1659,7 @@ RF-160 a RF-166 y RNF-30, autocompletado RNF-29; los RF del autocompletado van a
 | RNF-29 | La búsqueda con autocompletado es operable solo con el teclado y por lector de pantalla (combobox ARIA 1.2, región viva), con tres tamaños de letra y sin desplazamiento horizontal a 1366×768 y 1056 px | Esencial | — | pruebas de `comun/CampoConBusqueda*.test.tsx` y `SeleccionMultipleConBusqueda`; medición en navegador pendiente con una persona (diseño §4.3) |
 
 Enmienda a UC-10 paso 1 y flujos 2b, 3b y 4b: el buscador va integrado en la celda de cada insumo. La matriz de
-trazabilidad (§4) suma estas tres filas.
+trazabilidad (§4) tiene su fila «autocompletado guiado».
 
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).

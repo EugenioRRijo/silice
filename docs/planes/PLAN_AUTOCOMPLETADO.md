@@ -44,3 +44,6 @@ y RNF-29 (ruling de numeración del diseño de bienvenida).
 
 [Ronda 3](../bitacora/arbitrajes/autocompletado-claude-xhigh-r3.md): DEVUELTO por un MAYOR (Esc en el panel volvía
 «tecleado» el precio del catálogo); el origen pasa a juzgarse por valor. En corrección.
+
+[Ronda 4](../bitacora/arbitrajes/autocompletado-claude-xhigh-r4.md) (2026-11-06): **APROBADO**, sin bloqueantes ni mayores;
+en el mismo PR se corrigen el foco al precargar y la frase de DESIGN.md.
