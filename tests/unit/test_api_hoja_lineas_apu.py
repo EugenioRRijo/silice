@@ -77,8 +77,7 @@ FORMA_QUITAR_LINEA = (
     "mano_obra) e indice (entero)."
 )
 FORMA_ANTES = (
-    "Indique la obra (código o nombre) y, si quiere, la versión; cada uno de hasta 500 "
-    "caracteres."
+    "Indique la obra (código o nombre) y, si quiere, la versión; cada uno de hasta 500 caracteres."
 )
 SIN_LINEA_BASE = (
     "Esta obra no tiene línea base: declárela en Control de obra para comparar el antes y el "

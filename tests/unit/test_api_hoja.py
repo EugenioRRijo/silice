@@ -490,14 +490,10 @@ def test_r2_proyecto_o_version_inexistente_es_404_con_los_textos_escritos() -> N
     sin_version = _abrir(navegador, ficha, NOMBRE_OF001, "999")
     assert sin_version.status_code == 404
     assert sin_version.json() == {
-        "detalle": (
-            f"La obra {NOMBRE_OF001!r} no tiene una version '999': elija una de la lista."
-        )
+        "detalle": (f"La obra {NOMBRE_OF001!r} no tiene una version '999': elija una de la lista.")
     }
     assert _versiones(navegador, "Z").status_code == 404
-    assert _versiones(navegador, "Z").json() == {
-        "detalle": "La obra «Z» no existe en este caso."
-    }
+    assert _versiones(navegador, "Z").json() == {"detalle": "La obra «Z» no existe en este caso."}
 
 
 # --- R3 y R4 -------------------------------------------------------------------------------
@@ -1308,8 +1304,7 @@ def test_r14_proyecto_o_version_inexistente_es_404_con_los_textos_escritos() -> 
     falta = _traza(navegador, version="009")
     assert falta.status_code == 404
     assert falta.json() == {
-        "detalle": f"La obra {NOMBRE_OF001!r} no tiene una version '009': "
-        "elija una de la lista."
+        "detalle": f"La obra {NOMBRE_OF001!r} no tiene una version '009': elija una de la lista."
     }
 
 
@@ -1429,8 +1424,7 @@ def test_r12_proyecto_o_version_inexistente_es_404_con_los_textos_escritos() -> 
     falta = _precios(navegador, version="009")
     assert falta.status_code == 404
     assert falta.json() == {
-        "detalle": f"La obra {NOMBRE_OF001!r} no tiene una version '009': "
-        "elija una de la lista."
+        "detalle": f"La obra {NOMBRE_OF001!r} no tiene una version '009': elija una de la lista."
     }
 
 
