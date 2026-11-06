@@ -26,7 +26,7 @@ con su sección «Enmiendas 2026-11-05».
 | AC1b | El precio que se llena | Sale de la lista con que arma la carpeta a la «Fecha» de la composición; en otra moneda no se copia y se avisa; sin fecha o sin lista, solo descripción y unidad | ✔ |
 | AC2 | Partida del contrato y serie de índices | Control y Reajuste sugieren solo las partidas de la versión del contrato; la valuación no admite una fuera de él (salvo lista recortada); las series salen de una ruta de solo lectura | ✔ |
 | AC2c | Campos en celda | Sin etiqueta a la vista ni botón «Borrar» en celda; fuera de celda, sin cambios | ✔ |
-| AC3 | Escenarios y Simulador | Insumo con la descripción exacta; selección múltiple con etiquetas quitables y anuncios; lo que se envía no cambia de forma | ✔ |
+| AC3 | Escenarios y Simulador | Insumo con la descripción exacta; selección múltiple con etiquetas quitables y anuncios; Escenarios dice qué precios no cambiaron nada y el Simulador envía una lista (el texto con comas se sigue aceptando) | ✔ |
 | AC4 | Unidad, moneda, versión y proveedor | Unidades del catálogo agrupadas con el normalizador del núcleo; moneda y versión como `Select`; proveedores de cotizaciones activas, admitiendo uno nuevo | ✔ |
 
 Reglas comunes: TDD (rojo en un commit aparte), `core/` intacto, toda ruta nueva de solo lectura con su fila en
@@ -38,4 +38,6 @@ en el cliente.
 [Árbitro final de Claude, esfuerzo xhigh](../bitacora/arbitrajes/autocompletado-claude-xhigh.md) (2026-11-05):
 **DEVUELTO** por dos bloqueantes de dinero en Componer (precio de la lista de otra fecha; filas con el precio de otro
 insumo) y dos mayores (Esc en el panel; la sugerencia no mostraba precio, moneda ni fecha). Corregidos con su prueba en
-rojo primero, junto con los menores. Pendiente: la segunda ronda del árbitro antes del PR.
+rojo primero, junto con los menores. [Ronda 2](../bitacora/arbitrajes/autocompletado-claude-xhigh-r2.md): DEVUELTO por
+un MAYOR nuevo (una fila precargada o de MaPreX se mezclaba al elegir del catálogo); en corrección. ERS: RF-163, RF-164
+y RNF-30.
