@@ -315,7 +315,7 @@ describe("Vista general: la cartera por moneda, sin recalcular y sin mezclar", (
     const u = userEvent.setup();
     montar();
     const seccion = await bloque("Cartera por moneda");
-    const boton = within(seccion).getByRole("button", { name: "¿Qué es esto?" });
+    const boton = await within(seccion).findByRole("button", { name: "¿Qué es esto?" });
     expect(boton).toBeInTheDocument();
     await u.click(boton);
     const region = within(seccion).getByRole("region", { name: "Cómo se calcula el total" });
