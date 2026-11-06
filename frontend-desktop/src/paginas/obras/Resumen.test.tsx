@@ -113,6 +113,16 @@ describe("Resumen de la obra abierta", () => {
     expect(screen.queryByRole("heading", { name: "Obras" })).toBeNull();
   });
 
+  it("la cifra de versión se rotula exactamente «Versión (línea base o, sin ella, la vigente)» y no «Versión vigente»", async () => {
+    montar();
+    await screen.findByRole("heading", { level: 1, name: "Resumen" });
+    const cifras = screen.getByRole("group", { name: "Cifras de la obra" });
+    const rotulo = within(cifras).getByText("Versión (línea base o, sin ella, la vigente)", { selector: "dt" });
+    expect(rotulo).toBeInTheDocument();
+    expect(rotulo.nextElementSibling).toHaveTextContent("002");
+    expect(within(cifras).queryByText("Versión vigente")).toBeNull();
+  });
+
   it("lo que falta va en la franja y su único botón lleva a la sección", async () => {
     const u = userEvent.setup();
     montar();
