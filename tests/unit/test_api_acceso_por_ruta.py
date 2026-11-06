@@ -284,6 +284,7 @@ TABLA = {
     ("POST", "/v1/produccion/costos/{costo_id}/anular"): COSTOS,
     ("POST", "/v1/produccion/recetas"): OPERAR,  # plan vial T3: receta y consumos
     ("GET", "/v1/produccion/recetas/vigente"): OPERAR,
+    ("GET", "/v1/produccion/recetas/vigentes"): OPERAR,
     ("POST", "/v1/produccion/producciones"): OPERAR,
     ("GET", "/v1/produccion/producido"): OPERAR,
     ("POST", "/v1/produccion/calculos"): COSTOS,  # plan vial T4: costo por tonelada
