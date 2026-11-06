@@ -22326,6 +22326,11 @@
             ],
             "title": "Version"
           },
+          "version_de_linea_base": {
+            "type": "boolean",
+            "title": "Version De Linea Base",
+            "description": "True si `version` es la de la línea base de control; False si es la vigente"
+          },
           "total": {
             "anyOf": [
               {
@@ -22395,6 +22400,7 @@
           "etapa",
           "etapa_texto",
           "version",
+          "version_de_linea_base",
           "total",
           "moneda",
           "avance_real",

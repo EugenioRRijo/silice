@@ -386,11 +386,13 @@ def test_una_obra_sin_linea_base_esta_en_elaboracion(sesion) -> None:
         "",
     )
     assert (casa.ev, casa.pv, casa.spi, casa.que_pasa) == (None, None, None, None)
+    assert casa.version_de_linea_base is False
     # en blanco (sin ninguna versión guardada): su paso es agregar la primera partida
     assert casa.siguiente == PRIMERA_PARTIDA
     # OB-S2 con su versión guardada y sin línea base: el total es el de la versión vigente
     ob_s2 = obras["OB-S2"]
     assert (ob_s2.etapa, ob_s2.version) == ("en_elaboracion", "OB-001")
+    assert ob_s2.version_de_linea_base is False
     assert ob_s2.total == _total_a_mano(sesion, "OB-001")
     assert ob_s2.siguiente == HOJA
 
@@ -405,6 +407,7 @@ def test_con_linea_base_y_sin_valuaciones_esta_en_ejecucion_sin_avance(sesion) -
     (obra,) = obras_de_la_mesa(sesion, Catalogo(sesion), HOY)
 
     assert obra.etapa == "en_ejecucion"
+    assert obra.version_de_linea_base is True
     assert obra.corte == HOY
     assert (obra.ev, obra.pv, obra.spi) == (D("0"), D("0"), None)
     assert obra.que_pasa == "Sin avance registrado"

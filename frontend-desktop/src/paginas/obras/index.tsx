@@ -65,7 +65,7 @@ function Cuerpo({ ficha, carpeta, obraId }: Pick<ObraAbierta, "ficha" | "carpeta
         <dl className="silice-resumen__cifras">
           <Cifra nombre={TEXTOS.total}>{total ?? <span className="silice-resumen__sin-dato">{TEXTOS.sinTotal}</span>}</Cifra>
           <Cifra nombre={TEXTOS.avance}>{etiquetaAvance(obra.avance_real, obra.avance_plan)}</Cifra>
-          <Cifra nombre={TEXTOS.version}>
+          <Cifra nombre={obra.version_de_linea_base ? TEXTOS.versionDeLaLineaBase : TEXTOS.versionVigente}>
             {obra.version ?? <span className="silice-resumen__sin-dato">{TEXTOS.sinVersion}</span>}
           </Cifra>
           <Cifra nombre={TEXTOS.etapa}>

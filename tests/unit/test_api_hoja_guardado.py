@@ -353,7 +353,7 @@ def test_guardar_con_fuente_crea_la_002_con_su_registro_exacto_y_los_literales_d
         1,
         False,
     )
-    assert cuerpo["mensaje"] == "Se guardó la versión 002 con 1 cambios registrados."
+    assert cuerpo["mensaje"] == "Se guardó la versión 002 con 1 cambio registrado."
     assert _cerca(cuerpo["total"]["exacto"], TOTAL_V002)  # 2 821,42 (P13)
     assert cuerpo["total"]["texto"] == "2821.42"
     # el registro por celda: objeto, clave, campo, antes, despues, fuente y responsable de la sesion
@@ -1031,7 +1031,7 @@ def test_la_primera_version_que_otra_persona_ya_creo_es_422_ya_tiene_versiones(_
     respuesta = _guardar(otro, ficha_otro, b, 2)
     assert respuesta.status_code == 422
     assert respuesta.json() == {
-        "detalle": f"La obra {NUEVO!r} ya tiene versiones: abra una y use Guardar version."
+        "detalle": f"La obra {NUEVO!r} ya tiene versiones: abra una y use Guardar versión."
     }
     assert _volcado(_entorno) == despues and _codigos(uno, NUEVO) == ["001"]
 

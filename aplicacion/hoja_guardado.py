@@ -57,6 +57,7 @@ from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
 from aplicacion.hoja_edicion import BorradorYaGuardado, SinListaDeLaObra
 from aplicacion.listas_para_armar import SinListaParaArmar, lista_para_el_proyecto
+from aplicacion.plural import plural
 from core.catalog import Catalogo
 
 __all__ = [
@@ -119,7 +120,8 @@ def _mensaje(codigo: str, cambios: int, total: hoja_vista.Monto, proyecto: str, 
             f"Se guardó la primera versión {codigo} de la obra {proyecto} (total {total.texto}). "
             "Quedó registrada su creación, con su fuente y su responsable."
         )
-    return f"Se guardó la versión {codigo} con {cambios} cambios registrados."
+    registrados = plural(cambios, "cambio registrado", "cambios registrados")
+    return f"Se guardó la versión {codigo} con {registrados}."
 
 
 def guardar(

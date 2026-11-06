@@ -41,6 +41,7 @@ from aplicacion.hoja_partidas import pendientes_sin_calculo
 from aplicacion.listas_para_armar import describir
 from aplicacion.mercado import pendientes_de_mercado
 from aplicacion.obras import SIN_FICHA, fichas
+from aplicacion.plural import plural
 from aplicacion.procura import pendientes_de_compras
 from aplicacion.proyectos import ProyectoDelCaso, proyectos_del_caso
 from core import models
@@ -136,7 +137,8 @@ class ObraEnMesa:
     """Una obra de la carpeta en la mesa. `version` y `total` son los de la versión de la línea
     base o, sin ella, los de la vigente. `corte`, `ev`, `pv`, `bac` y `spi` son los del control al
     último corte (`None` si no se calculó); `retraso_dias`, los días hábiles que el término
-    reproyectado pasa del plan (`None` si no pasa)."""
+    reproyectado pasa del plan (`None` si no pasa). `version_de_linea_base` dice cuál de las dos es
+    `version`: `True` la de la línea base, `False` la vigente."""
 
     codigo: str
     nombre: str
@@ -153,6 +155,7 @@ class ObraEnMesa:
     retraso_dias: int | None
     que_pasa: str | None
     siguiente: Siguiente | None
+    version_de_linea_base: bool = False
 
 
 @dataclass(frozen=True)
@@ -238,11 +241,6 @@ def dias_habiles_entre(desde: date, hasta: date) -> int:
 def _entero(n: int) -> str:
     """Un entero como lo lee la persona: con punto de miles («1.200»)."""
     return texto_de_cifra(Decimal(n))
-
-
-def plural(n: int, singular: str, en_plural: str) -> str:
-    """`n` con punto de miles y la palabra que le toca («1 obra atrasada», «1.200 días»)."""
-    return f"{_entero(n)} {singular if n == 1 else en_plural}"
 
 
 def _dias_habiles(n: int) -> str:
@@ -382,6 +380,7 @@ def obras_de_la_mesa(sesion: Session, catalogo: Catalogo, hoy: date) -> list[Obr
                 retraso_dias=estado.retraso_dias,
                 que_pasa=estado.que_pasa,
                 siguiente=estado.siguiente,
+                version_de_linea_base=base is not None,
             )
         )
     return obras

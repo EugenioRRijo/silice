@@ -88,6 +88,10 @@ def test_sin_vigente_entre_las_no_descartadas_se_toma_la_ultima_no_descartada():
 
 def test_mensaje_de_la_instantanea_solo_si_se_creo_alguna():
     assert hoja_vista.mensaje_instantanea(0) is None
+    assert hoja_vista.mensaje_instantanea(1) == (
+        "Se creó y registró la instantánea de las composiciones de esta versión (1 partida): "
+        "sus APU ya no cambian si cambia el catálogo."
+    )
     assert hoja_vista.mensaje_instantanea(3) == (
         "Se creó y registró la instantánea de las composiciones de esta versión (3 partidas): "
         "sus APU ya no cambian si cambia el catálogo."

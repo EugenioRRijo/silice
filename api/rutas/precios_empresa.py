@@ -44,6 +44,7 @@ from api.sesion_web import exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import atipicos as busqueda_atipica
 from aplicacion import precios_empresa as logica
+from aplicacion.plural import plural
 from seguridad.permisos import Accion
 
 MENSAJE_INVALIDO = "Los datos enviados no son válidos."
@@ -209,7 +210,10 @@ def crear_lista(
         nombre=resumen.nombre,
         propios=resumen.propios,
         desconocidos=list(resumen.desconocidos),
-        mensaje=f"Lista «{resumen.nombre}» creada con {resumen.propios} precios propios.",
+        mensaje=(
+            f"Lista «{resumen.nombre}» creada con "
+            f"{plural(resumen.propios, 'precio propio', 'precios propios')}."
+        ),
         aviso=AVISO_DESCONOCIDOS if resumen.desconocidos else None,
     )
 

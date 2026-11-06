@@ -211,6 +211,7 @@ describe("Tablero de la obra", () => {
     fetchFalso.mockImplementation(async () => json({ detalle: "no existe" }, 404));
     montar("X");
     expect(await screen.findByText("Esa obra no existe en este caso")).toBeInTheDocument();
+    expect(screen.getByText("Elija otra obra en la cabecera.")).toBeInTheDocument();
   });
 });
 

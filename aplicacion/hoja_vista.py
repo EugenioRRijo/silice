@@ -36,6 +36,7 @@ from aplicacion.cifras import texto_de_cifra
 from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_partidas import PREFIJO_A_MANO, calculo_tecleable, texto_llano
 from aplicacion.hoja_vial import PREFIJO_TRAMO
+from aplicacion.plural import plural
 from core.budget.equilibrio import PuntoEquilibrio
 from core.contracts import Severidad
 from core.verification import TrazabilidadGeometrica
@@ -111,7 +112,7 @@ def mensaje_instantanea(creadas: int) -> str | None:
         return None
     return (
         "Se creó y registró la instantánea de las composiciones de esta versión "
-        f"({creadas} partidas): sus APU ya no cambian si cambia el catálogo."
+        f"({plural(creadas, 'partida', 'partidas')}): sus APU ya no cambian si cambia el catálogo."
     )
 
 

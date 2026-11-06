@@ -158,14 +158,14 @@ def test_rendimiento_10_da_cd_13_11927(_of001) -> None:
         (
             (("1", "1"), ("1",), ("1", "1")),
             "20",
-            "materiales: la tabla tiene 2 lineas y el APU 1; en la hoja solo se edita la cantidad "
-            "de cada linea (para agregar o quitar una, use Componer)",
+            "materiales: la tabla tiene 2 líneas y el APU 1; en la hoja solo se edita la cantidad "
+            "de cada línea (para agregar o quitar una, use Componer)",
         ),
         (
             (("1",), ("1",), ("1",)),
             "20",
-            "mano de obra: la tabla tiene 1 lineas y el APU 2; en la hoja solo se edita la "
-            "cantidad de cada linea (para agregar o quitar una, use Componer)",
+            "mano de obra: la tabla tiene 1 línea y el APU 2; en la hoja solo se edita la "
+            "cantidad de cada línea (para agregar o quitar una, use Componer)",
         ),
     ],
 )
@@ -309,9 +309,9 @@ def test_cambiar_el_equipo_conserva_la_depreciacion(_of001, _plantillas) -> None
             0,
             "tipo de linea 'xx' desconocido; se espera uno de ('material', 'equipo', 'mano_obra')",
         ),
-        ("material", 1, "la linea 2 no existe: el grupo material tiene 1 lineas"),
-        ("mano_obra", 2, "la linea 3 no existe: el grupo mano_obra tiene 2 lineas"),
-        ("material", -1, "la linea 0 no existe: el grupo material tiene 1 lineas"),
+        ("material", 1, "la línea 2 no existe: el grupo material tiene 1 línea"),
+        ("mano_obra", 2, "la línea 3 no existe: el grupo mano_obra tiene 2 líneas"),
+        ("material", -1, "la línea 0 no existe: el grupo material tiene 1 línea"),
     ],
 )
 def test_los_errores_de_cambiar_insumo_dicen_el_tipo_y_la_linea(
