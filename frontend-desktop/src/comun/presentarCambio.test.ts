@@ -45,6 +45,10 @@ describe("presentador común de las filas del registro de cambios", () => {
     );
   });
 
+  test("N2: el campo suelto «vertices» (un cambio de un vértice) sale con coma decimal y entre paréntesis", () => {
+    expect(presentarValor("vertices", "1.5,0,2.5; 1.5,0,0.6")).toBe("(1,5; 0; 2,5), (1,5; 0; 0,6)");
+  });
+
   test("N1: un campo «fila» que no es un resumen de su tabla queda como cualquier valor", () => {
     expect(presentarValor("fila", "", "esp_ambientes:A1")).toBe("");
     expect(presentarValor("fila", "12.5", "esp_ambientes:A1")).toBe("12,5");
