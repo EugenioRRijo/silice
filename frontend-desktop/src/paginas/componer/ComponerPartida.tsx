@@ -167,28 +167,49 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
     setResultado(null);
     setErrorGuardado(null);
   };
-  // D17: lo que puso la ultima partida elegida del catalogo en la descripcion y la unidad. Es la unica procedencia que se
-  // recuerda: lo vacio y lo que puso el catalogo se reemplaza al elegir otra partida; todo lo demas (lo que la persona tecleo, o
-  // la descripcion con que llega la pantalla) se conserva y se dice, como en las tablas de insumos (autocompletado.ts).
-  const delCatalogo = useRef<{ descripcion?: string; unidad?: string }>({});
+  // D17 y ronda 3 (B, C): lo que puso la ultima partida elegida del catalogo en la descripcion y la unidad, y su codigo. Al elegir
+  // una partida del catalogo siempre se ponen su descripcion y su unidad (el servidor no deja guardar una partida existente con
+  // otra, `motivo_para_no_reemplazar`); si se reemplaza algo que no era del catalogo (lo tecleado, o la descripcion con que llega
+  // la pantalla) se dice. Al cambiar el codigo por otro, lo que puso el catalogo se vacia (se guarda en `retirado` para devolverlo
+  // si el codigo vuelve al elegido, p. ej. con Esc en el panel); lo tecleado se queda.
+  const delCatalogo = useRef<{ codigo?: string; descripcion?: string; unidad?: string }>({});
+  const retirado = useRef<{ descripcion?: string; unidad?: string }>({});
   const [avisoDeCabecera, setAvisoDeCabecera] = useState("");
   const elegirDelCatalogo = (p: PartidaHallada) => {
-    const parcial: Partial<Cabecera> = {};
+    const parcial: Partial<Cabecera> = { codigo: p.codigo };
     const avisos: string[] = [];
     for (const [campo, nuevo, rotulo] of [
       ["descripcion", p.descripcion, "la descripción"],
       ["unidad", p.unidad, "la unidad"],
     ] as const) {
       const actual = cabecera[campo];
-      if (actual.trim() === "" || actual === delCatalogo.current[campo]) {
-        parcial[campo] = nuevo;
-        delCatalogo.current[campo] = nuevo;
-      } else if (actual !== nuevo) {
-        avisos.push(`El catálogo tiene ${rotulo} «${nuevo}»; se conserva la que escribió.`);
+      if (actual.trim() !== "" && actual !== nuevo && actual !== delCatalogo.current[campo]) {
+        avisos.push(`Se cambió ${rotulo} «${actual}» por la del catálogo, «${nuevo}».`);
       }
+      parcial[campo] = nuevo;
+      delCatalogo.current[campo] = nuevo;
     }
+    delCatalogo.current.codigo = p.codigo;
+    retirado.current = {};
     cambiarCabecera(parcial);
     setAvisoDeCabecera(avisos.join(" "));
+  };
+  // Cualquier cambio del codigo que no sea elegir una partida del catalogo (teclear, «Usar … como codigo», una partida vial).
+  const cambiarCodigo = (codigo: string) => {
+    const parcial: Partial<Cabecera> = { codigo };
+    for (const campo of ["descripcion", "unidad"] as const) {
+      if (codigo === delCatalogo.current.codigo) {
+        const devuelto = retirado.current[campo];
+        if (devuelto !== undefined && cabecera[campo] === "") parcial[campo] = devuelto;
+        delete retirado.current[campo];
+      } else if (delCatalogo.current[campo] !== undefined && cabecera[campo] === delCatalogo.current[campo]) {
+        retirado.current[campo] = cabecera[campo];
+        parcial[campo] = "";
+      }
+    }
+    if (parcial.descripcion === "") setParecidas([]);
+    cambiarCabecera(parcial);
+    setAvisoDeCabecera("");
   };
 
   const cambiarCabecera = (parcial: Partial<Cabecera>) => {
@@ -407,7 +428,7 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
         <div className="silice-componer__rejilla">
           <CampoDelCodigo
             texto={cabecera.codigo}
-            alCambiar={(codigo) => cambiarCabecera({ codigo })}
+            alCambiar={cambiarCodigo}
             alElegirDelCatalogo={elegirDelCatalogo}
             alExpirar={expirar}
           />
