@@ -21,7 +21,7 @@ import { useCarga } from "../../comun/useCarga";
 import { CAMPOS_INICIALES, ROTULOS, SIN_INICIO, leerCampos, pideLaFechaDeInicio, rutaDelInformeDeRiesgo } from "./logica";
 import type { Campos } from "./logica";
 import { MejoraDeLaEstimacion } from "./MejoraDeLaEstimacion";
-import { ParametrosDelRiesgo } from "./ParametrosDelRiesgo";
+import { CamposDeProyectar, ParametrosDelRiesgo } from "./ParametrosDelRiesgo";
 import { ResultadoDeLaComprobacion, ResultadoDeLaProyeccion } from "./ResultadoDelRiesgo";
 import "./riesgo.scss";
 
@@ -179,6 +179,12 @@ export default function RiesgoDeLaObra() {
               <fieldset className="riesgo-seccion">
                 <legend className="cds--type-heading-compact-01">Proyectar</legend>
                 <div className="riesgo-acciones">
+                  <CamposDeProyectar
+                    campos={campos}
+                    errores={errores}
+                    alCambiar={cambiar}
+                    insumos={insumos.datos}
+                  />
                   <Button kind="primary" size="md" disabled={ocupado} onClick={proyectar}>
                     Proyectar
                   </Button>

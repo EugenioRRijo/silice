@@ -17,6 +17,45 @@ interface Props {
 
 const SIN_SERIE = "";
 
+export interface PropsDeProyectar {
+  campos: Campos;
+  errores: Partial<Record<keyof Campos, string>>;
+  alCambiar: (clave: keyof Campos, valor: string) => void;
+  insumos: InsumosDeLaObra;
+}
+
+// Los campos propios de la proyección (fecha de inicio y trayectorias) que van dentro de la sección «Proyectar».
+export function CamposDeProyectar({ campos, errores, alCambiar, insumos }: PropsDeProyectar): JSX.Element {
+  // Sin línea base de control no hay de dónde tomar el inicio: el campo es obligatorio y se dice en el rótulo.
+  const obligatoria = insumos.inicio_linea_base === null;
+  return (
+    <>
+      <CampoTexto
+        id="riesgo-inicio"
+        type="date"
+        labelText={obligatoria ? "Fecha de inicio (obligatoria)" : "Fecha de inicio"}
+        required={obligatoria}
+        helperText={ayudaDelInicio(insumos.inicio_linea_base)}
+        value={campos.inicio}
+        invalid={errores.inicio !== undefined}
+        invalidText={errores.inicio}
+        // Carbon no enlaza su texto de error al campo: se enlaza aquí para que la lectora lo diga con el foco.
+        aria-describedby={errores.inicio !== undefined ? "riesgo-inicio-error-msg" : undefined}
+        onChange={(e) => alCambiar("inicio", e.target.value)}
+      />
+      <CampoTexto
+        id="riesgo-trayectorias"
+        labelText={ROTULOS.trayectorias}
+        inputMode="numeric"
+        value={campos.trayectorias}
+        invalid={errores.trayectorias !== undefined}
+        invalidText={errores.trayectorias}
+        onChange={(e) => alCambiar("trayectorias", e.target.value)}
+      />
+    </>
+  );
+}
+
 // Los parámetros de la proyección (D-V-3) y la serie que mueve cada insumo. Un insumo sin serie sigue a la tasa del BCV
 // en un presupuesto en Bs y queda fijo en uno en USD (lo dice el servidor en los supuestos). Las cifras se escriben con
 // punto de miles: «2.000».
@@ -33,27 +72,11 @@ export function ParametrosDelRiesgo({ campos, errores, alCambiar, insumos, mapa,
     />
   );
   const conSerie = [...insumos.insumos, ...insumos.componentes];
-  // Sin línea base de control no hay de dónde tomar el inicio: el campo es obligatorio y se dice en el rótulo.
-  const obligatoria = insumos.inicio_linea_base === null;
   return (
     <>
       <fieldset className="riesgo-campos">
-        <legend className="cds--type-heading-compact-01">Plazo y simulación</legend>
-        <CampoTexto
-          id="riesgo-inicio"
-          type="date"
-          labelText={obligatoria ? "Fecha de inicio (obligatoria)" : "Fecha de inicio"}
-          required={obligatoria}
-          helperText={ayudaDelInicio(insumos.inicio_linea_base)}
-          value={campos.inicio}
-          invalid={errores.inicio !== undefined}
-          invalidText={errores.inicio}
-          // Carbon no enlaza su texto de error al campo: se enlaza aquí para que la lectora lo diga con el foco.
-          aria-describedby={errores.inicio !== undefined ? "riesgo-inicio-error-msg" : undefined}
-          onChange={(e) => alCambiar("inicio", e.target.value)}
-        />
+        <legend className="cds--type-heading-compact-01">Parámetros comunes</legend>
         {numero("meses")}
-        {numero("trayectorias")}
         {numero("semilla")}
         {numero("ventana")}
         <p className="riesgo-nota cds--type-helper-text-01">{AYUDA_CIFRAS}</p>
