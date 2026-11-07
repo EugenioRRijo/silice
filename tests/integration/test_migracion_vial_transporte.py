@@ -26,10 +26,13 @@ def _columnas(ruta: Path) -> list[tuple[str, str, bool]]:
     return [(f[1], f[2], not f[3]) for f in filas]
 
 
-def test_la_cabeza_del_caso_es_esta_revision() -> None:
+def test_la_revision_esta_en_la_unica_linea_del_caso() -> None:
+    """Fue la cabeza hasta `caso_0022_apu_desperdicio` (F5 vial, tarea 3), que cuelga de ella."""
     from operacion.base_datos import _guion
 
-    assert _guion(Destino.CASO).get_heads() == [REVISION]
+    guion = _guion(Destino.CASO)
+    assert len(guion.get_heads()) == 1
+    assert guion.get_revision(REVISION).down_revision == ANTERIOR
 
 
 def test_subir_agrega_la_columna_y_lo_guardado_antes_queda_en_t_km(tmp_path: Path) -> None:
