@@ -256,7 +256,7 @@ def arrancar(
     abrir_archivo: Callable[[Path], Any] = _abrir_con_el_sistema,
     sin_ventana: bool = False,
     motivo_sin_ventana: Callable[[], str | None] = ventana.motivo_sin_ventana,
-    abrir_ventana: Callable[[str, Callable[[], bool]], Any] = ventana.abrir,
+    abrir_ventana: Callable[..., Any] = ventana.abrir,
     traer_al_frente: Callable[[int], bool] = ventana.traer_al_frente,
 ) -> int:
     estado = leer_estado(entorno)
@@ -372,7 +372,9 @@ def arrancar(
             if motivo is None:
                 salida("Para detener Sílice, cierre la ventana de Sílice (o esta consola).")
                 try:
-                    abrir_ventana(url + RUTA_INTERFAZ, vivo)  # bloquea hasta que se cierra
+                    abrir_ventana(  # bloquea hasta que se cierra
+                        url + RUTA_INTERFAZ, vivo, perfil=config.carpeta_perfil_ventana(entorno)
+                    )
                     en_ventana = True
                 except ventana.VentanaNoDisponible as error:
                     motivo = str(error)

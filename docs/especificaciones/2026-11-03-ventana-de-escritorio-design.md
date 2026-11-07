@@ -3,7 +3,7 @@
 **Fecha:** 2026-11-03 · **Rama:** `feature/disenos-f5` (árbol `.worktrees/s2m5`) · **Estado:** PROPUESTO (por aprobar por
 Eugenio). **2026-11-06:** construido V0 a V3 en `feature/f5-ventana` con las decisiones **provisionales** de §10
 (recomendaciones del orquestador, pendientes de ratificar por Eugenio); §6.1 (punto 6) y §7.3 quedan enmendados por la
-decisión 3.
+decisión 3. **2026-11-07:** Eugenio ratificó la decisión 7 de §10 (perfil de WebView2 en la carpeta de datos).
 **Origen:** Eugenio aprobó el 2026-10-25 que, después de la auditoría, Sílice tuviera una ventana de escritorio propia en vez
 de abrirse en el navegador. Diseños y planes que esto toca: `2026-10-11-silice-s5-producto-instalador-design.md` (instalador,
 arranque, prueba de humo), `docs/planes/RUTA_SESIONES.md` (rulings RT-2, RT-3 y RT-5; sesión 5),
@@ -263,6 +263,12 @@ Recomendaciones del orquestador a las preguntas de §9, con las que se construy�
 | 4 | Dónde se cambia `interfaz` | Solo en `silice.toml` (`[interfaz] abrir_en`), no en Administración por ahora | `operacion/config.py`, RF-182 |
 | 5 | Ícono de Sílice | Sí: SVG propio, sobrio, con los colores del marco de Carbon; favicon de la interfaz, ícono de la ventana, de los accesos y del instalador | `frontend-desktop/public/silice.svg`, `operacion/silice.ico` (lo genera `instalador/icono.py`), `instalador/silice.iss` |
 | 6 | V0 en un equipo de la empresa con Windows 10 | Queda para Eugenio (V5): este equipo es Windows 11 | `docs/bitacora/2026-11-06-ventana-v0.md` §1.5 |
+| 7 | Perfil de WebView2 (lo levantó el árbitro único del 2026-11-07, V1: el modo privado borraba `localStorage` y el tamaño de letra y el zoom de la Hoja volvían a «Normal» en cada arranque) | **Ratificada por Eugenio el 2026-11-07, «Guardar perfil en datos»:** `private_mode=False` con `storage_path` en `<datos>\perfil_ventana` (en el producto, `%LOCALAPPDATA%\Silice\datos\perfil_ventana`). La cookie `silice_sesion` sigue sin `Max-Age` ni `Expires`: WebView2 no la escribe en el perfil y la sesión termina al cerrar la ventana (RNF-22). En el perfil quedan `localStorage` (solo esas dos preferencias: el resto de la interfaz no usa almacenamiento, RT-9) y la caché del navegador, en la misma carpeta y con los mismos permisos que las bases. Desinstalar no lo borra, como el resto de los datos | `operacion/config.py` (`carpeta_perfil_ventana`), `operacion/ventana.py`, `operacion/lanzador.py`, RF-180 y RF-184; `tests/unit/test_ventana.py`, `test_lanzador.py`, `test_operacion_config.py` |
+
+Las decisiones 1 a 6 siguen **provisionales**; la 7 está ratificada. Además, el 2026-11-07 (MENOR del árbitro) `js_api`
+pasó de `None` a `ventana.PuenteCerrado`, un objeto sin atributos: pywebview busca lo que pide la página con `getattr`
+encadenado sobre `js_api`, y con `None` la cadena seguía por los atributos de `None` («__class__» llegaba a llamarse).
+El riesgo que queda (los mensajes internos de pywebview) está escrito en RF-184.
 
 Resultado de V0 (bitácora): pywebview 6.2.1 y pythonnet 3.2.1 funcionan con el Python 3.13.13 del instalador; la capa
 suma unos 0,6 MB con LZMA; WebView2 está en este equipo. §8 no hizo falta.
