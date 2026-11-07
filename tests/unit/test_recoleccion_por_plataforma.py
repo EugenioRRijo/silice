@@ -2,12 +2,13 @@
 
 `pyproject.toml` declara `pywebview==6.2.1; sys_platform == 'win32'`. En Linux no existe el
 paquete y la CI falla ante cualquier prueba omitida (`scripts/verificar_omitidas.py`), así que esas
-pruebas no se omiten: no se recolectan (`collect_ignore` de `tests/unit/conftest.py`).
+pruebas no se omiten: no se recolectan (`collect_ignore` de `tests/unit/conftest.py`;
+la regla vive en `tests/fixtures/plataforma.py`).
 """
 
 from __future__ import annotations
 
-from tests.unit.conftest import archivos_a_ignorar
+from tests.fixtures.plataforma import archivos_a_ignorar
 
 ARCHIVO = "test_ventana_pywebview_real.py"
 
