@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { ACCIONES } from "../../shell/obras/datosDePrueba";
-import { PASOS_DE_EMPIEZA_AQUI, pasosDeEmpiezaAqui } from "./empiezaAqui";
+import { PASOS_DE_EMPIEZA_AQUI, PRIMERA_VEZ, pasosDeEmpiezaAqui } from "./empiezaAqui";
 
 // F7, tarea A4: «Empieza aquí» se deriva de los datos (no guarda nada en el navegador, RT-9). Las acciones de cada papel son
 // las de la prueba del marco (ana arma, rita revisa, admin administra), que copian `seguridad/permisos.py`. Oráculos a mano.
@@ -64,5 +64,13 @@ describe("los pasos", () => {
       expect(paso.texto, id).toMatch(/\.$/);
       if (paso.enlace !== undefined) expect(paso.enlace.ruta, id).toMatch(/^\/(cuenta\/(cuentas|empresa)|cuenta\/ayuda\?tema=[a-z0-9-]+|auditoria\/subir)$/);
     }
+  });
+});
+
+describe("textos de «Empieza aquí» tras la ventana de escritorio (F5)", () => {
+  test("el código de instalación se busca en la consola de Sílice, no en «la ventana del servidor»", () => {
+    const todo = JSON.stringify({ PASOS_DE_EMPIEZA_AQUI, PRIMERA_VEZ });
+    expect(todo).toContain("en la consola de Sílice");
+    expect(todo).not.toContain("ventana del servidor");
   });
 });

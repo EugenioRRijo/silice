@@ -117,6 +117,9 @@ describe("Bienvenida: página y texto (F2)", () => {
   test("en el producto instalado dice dónde está el archivo y que la ventana queda minimizada", () => {
     render(<Bienvenida info={info} onReclamar={vi.fn()} />);
     expect(screen.getByText(/minimizada/)).toBeInTheDocument();
+    // Desde F5 ventana, Sílice abre en su propia ventana y el servidor es la consola minimizada que la acompaña.
+    expect(screen.getByText(/en la consola de Sílice, que el acceso directo deja minimizada junto a la ventana de Sílice/)).toBeInTheDocument();
+    expect(screen.queryByText(/ventana del servidor/)).not.toBeInTheDocument();
     expect(screen.getByText("codigo_instalacion.txt", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("%LOCALAPPDATA%\\Silice\\datos\\codigo_instalacion.txt")).toBeInTheDocument();
     expect(screen.queryByText("data\\codigo_instalacion.txt", { exact: false })).not.toBeInTheDocument();
