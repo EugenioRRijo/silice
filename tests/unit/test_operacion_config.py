@@ -27,6 +27,17 @@ def test_silice_datos_mueve_todo_y_no_crea_nada(tmp_path: Path) -> None:
     assert not datos.exists()
 
 
+def test_los_perfiles_de_libros_viven_en_la_carpeta_de_datos_y_no_se_crean(tmp_path: Path) -> None:
+    """Arbitraje F5/F7/F8 r2, N5: `<datos>/perfiles_libros` lo decide la instalación y la API se lo
+    pasa a `fusion`, que ya no importa `operacion.config` (cerraba un ciclo de paquetes)."""
+    datos = tmp_path / "Tésis ñ" / "datos"
+    entorno = {config.VARIABLE_DATOS: str(datos)}
+    assert config.carpeta_perfiles_libros(entorno) == datos.resolve() / "perfiles_libros"
+    raiz = Path(config.__file__).resolve().parents[1]
+    assert config.carpeta_perfiles_libros({}) == raiz / "data" / "perfiles_libros"
+    assert not datos.exists()
+
+
 def test_el_perfil_de_la_ventana_vive_en_la_carpeta_de_datos_y_no_se_crea(tmp_path: Path) -> None:
     """Decisión de Eugenio del 2026-11-07: el perfil de WebView2 (tamaño de letra y zoom de la Hoja
     en `localStorage`) se guarda junto a los datos de esta instalación, en `perfil_ventana`."""

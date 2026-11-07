@@ -232,8 +232,13 @@ def test_auditar_con_otro_perfil_dice_cual_uso(tmp_path: Path, monkeypatch: pyte
 
 # Arbitraje F5 vial, P2 (MAYOR): nadie fija `SILICE_PERFILES_LIBROS` y la pantalla no manda el
 # perfil. Por omisión, los perfiles locales viven en `<carpeta de datos>/perfiles_libros/` (la que
-# fija el lanzador con `SILICE_DATOS`; aquí, la temporal de la prueba) y un `apu_por_hoja.json`
-# allí gana al del paquete. La variable sigue valiendo y, si está, manda ella.
+# fija el lanzador con `SILICE_DATOS`) y un `apu_por_hoja.json` allí gana al del paquete. La
+# variable sigue valiendo y, si está, manda ella.
+#
+# Arbitraje F5/F7/F8 r2, N5: `fusion` no importa la configuración de la instalación (cerraba un
+# ciclo de paquetes). La carpeta por omisión se la pasa quien llama (`carpeta_perfiles`; la API, con
+# `operacion.config.carpeta_perfiles_libros()`: lo prueba `test_api_libros_replica.py`); sin ella,
+# solo cuentan la variable y el paquete.
 
 
 def _perfil_local(carpeta: Path, **cambios) -> None:
@@ -242,36 +247,49 @@ def _perfil_local(carpeta: Path, **cambios) -> None:
     (carpeta / "apu_por_hoja.json").write_text(json.dumps({**crudo, **cambios}), encoding="utf-8")
 
 
-def test_sin_la_variable_el_perfil_local_vive_en_la_carpeta_de_datos(
+def test_sin_la_variable_el_perfil_local_vive_en_la_carpeta_que_le_pasan(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     monkeypatch.delenv(VARIABLE_PERFILES, raising=False)
-    monkeypatch.setenv("SILICE_DATOS", str(tmp_path))
     _perfil_local(tmp_path / "perfiles_libros", unidades={})
-    resultado = auditar_apu_por_hoja(libro_apu(), "f.xlsx")
+    resultado = auditar_apu_por_hoja(
+        libro_apu(), "f.xlsx", carpeta_perfiles=tmp_path / "perfiles_libros"
+    )
     assert (resultado.perfil, resultado.origen_perfil) == ("apu_por_hoja", "local")
     assert "AH8" not in {h.codigo for h in resultado.hallazgos}  # el local no traduce unidades
 
 
-def test_sin_perfil_local_en_la_carpeta_de_datos_vale_el_del_paquete(
+def test_sin_perfil_local_en_la_carpeta_que_le_pasan_vale_el_del_paquete(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     monkeypatch.delenv(VARIABLE_PERFILES, raising=False)
-    monkeypatch.setenv("SILICE_DATOS", str(tmp_path))
-    assert auditar_apu_por_hoja(libro_apu(), "f.xlsx").origen_perfil == "paquete"
+    resultado = auditar_apu_por_hoja(libro_apu(), "f.xlsx", carpeta_perfiles=tmp_path)
+    assert resultado.origen_perfil == "paquete"
 
 
-def test_la_variable_manda_sobre_la_carpeta_de_datos(
+def test_la_variable_manda_sobre_la_carpeta_que_le_pasan(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     from adapters.hoja_empresa.guardia import ArchivoRechazado
 
-    monkeypatch.setenv("SILICE_DATOS", str(tmp_path / "datos"))
     _perfil_local(tmp_path / "datos" / "perfiles_libros", unidades={})
     _perfil_local(tmp_path / "elegida", prefijo_hoja="FICHA")
     monkeypatch.setenv(VARIABLE_PERFILES, str(tmp_path / "elegida"))
     with pytest.raises(ArchivoRechazado, match="«FICHA»"):
-        auditar_apu_por_hoja(libro_apu(), "f.xlsx")
+        auditar_apu_por_hoja(
+            libro_apu(), "f.xlsx", carpeta_perfiles=tmp_path / "datos" / "perfiles_libros"
+        )
+
+
+def test_fusion_no_busca_la_carpeta_de_datos_por_su_cuenta(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Con un perfil local en `<SILICE_DATOS>/perfiles_libros/` y sin `carpeta_perfiles`, fusion
+    usa el del paquete: dónde viven los datos lo decide la instalación, no fusion (N5)."""
+    monkeypatch.delenv(VARIABLE_PERFILES, raising=False)
+    monkeypatch.setenv("SILICE_DATOS", str(tmp_path))
+    _perfil_local(tmp_path / "perfiles_libros", unidades={})
+    assert auditar_apu_por_hoja(libro_apu(), "f.xlsx").origen_perfil == "paquete"
 
 
 # --- un libro hostil: hojas huecas que declaran una dimensión enorme (arbitraje F5 vial, P1) -----
