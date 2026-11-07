@@ -1423,6 +1423,12 @@ ejemplo «APU 9!F9: el precio
 de «Cemento» es -1 y no puede ser negativo: Sílice no recalcula la hoja «APU 9».». Corrija esa celda en
 el libro y vuelva a auditar.
 
+Por seguridad, Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la CV), y del libro
+entero hasta 4.000.000 de celdas. Cuentan también las celdas que solo tienen formato (un color, un borde, un
+alto de fila), aunque estén vacías: si el aviso dice que una fila tiene «celdas con datos o con formato»
+más allá de la CV y usted no ve nada escrito, seleccione esas columnas o filas sobrantes, bórrelas (no solo
+su contenido) y guarde el libro de nuevo.
+
 Nada se guarda: ni los libros ni el informe, y esta auditoría no entra en «Historial de auditorías».
 
 ## 13. El asistente de IA

@@ -42,6 +42,7 @@ __all__ = [
     "EXTENSION",
     "MAX_AREA_HOJA",
     "MAX_BYTES",
+    "MAX_CELDAS_LIBRO",
     "MAX_COLUMNAS_HOJA",
     "MAX_COMBINADAS",
     "MAX_DESCOMPRIMIDO",
@@ -75,6 +76,11 @@ MAX_COMBINADAS = 200_000
 MAX_FILAS_HOJA = 20_000
 MAX_COLUMNAS_HOJA = 100
 MAX_AREA_HOJA = MAX_FILAS_HOJA * MAX_COLUMNAS_HOJA
+#: SUPUESTO_DECLARADO (revisión final del árbitro de F5/F7/F8, MENOR 1): celdas que el lector de un
+#: APU por hoja materializa en el libro entero, contadas antes de recortar. El tope por hoja no
+#: basta: 64 hojas en su tope pasan la guardia y suman 128 millones de celdas. Dos hojas en su tope
+#: caben; la hoja real más grande declara 2 548 celdas.
+MAX_CELDAS_LIBRO = 2 * MAX_AREA_HOJA
 
 #: Bloque de lectura del barrido y solape entre bloques. El solape es mayor que la etiqueta más
 #: larga que el patrón admite (prefijo, hasta 256 bytes de atributos y 64 de referencia), así que

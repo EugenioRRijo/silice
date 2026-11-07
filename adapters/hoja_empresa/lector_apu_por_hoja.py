@@ -42,6 +42,7 @@ from decimal import Decimal
 from typing import Any
 
 from adapters.hoja_empresa.guardia import (
+    MAX_CELDAS_LIBRO,
     MAX_COLUMNAS_HOJA,
     MAX_FILAS_HOJA,
     ArchivoRechazado,
@@ -140,7 +141,7 @@ def _fuera_del_tope(nombre: str, hoja: str, donde: str) -> ArchivoRechazado:
     )
 
 
-def _filas(hoja: Any, nombre: str) -> Filas:
+def _filas(hoja: Any, nombre: str, cuenta: list[int] | None = None) -> Filas:
     """Las filas de valores de una hoja de solo lectura, cada una solo hasta su último valor.
 
     `reset_dimensions()`, como en `lector._celdas_reales`: sin él, openpyxl rellena cada fila y
@@ -158,15 +159,24 @@ def _filas(hoja: Any, nombre: str) -> Filas:
             raise _fuera_del_tope(
                 nombre,
                 hoja.title,
-                f"tiene filas escritas más allá de la {_cifra(Decimal(MAX_FILAS_HOJA))}",
+                "tiene filas con datos o con formato más allá de la "
+                f"{_cifra(Decimal(MAX_FILAS_HOJA))}",
             )
         if len(fila) > MAX_COLUMNAS_HOJA:
             raise _fuera_del_tope(
                 nombre,
                 hoja.title,
-                f"la fila {len(filas) + 1} tiene celdas escritas hasta la columna "
+                f"la fila {len(filas) + 1} tiene celdas con datos o con formato hasta la columna "
                 f"{letra(len(fila) - 1)}, más allá de la {letra(MAX_COLUMNAS_HOJA - 1)}",
             )
+        if cuenta is not None:
+            cuenta[0] += len(fila)
+            if cuenta[0] > MAX_CELDAS_LIBRO:
+                raise ArchivoRechazado(
+                    f"El libro «{nombre}» tiene más de {_cifra(Decimal(MAX_CELDAS_LIBRO))} "
+                    "celdas con datos o con formato entre sus hojas. Se rechaza por seguridad: "
+                    "quite las hojas o las filas que sobran y guárdelo de nuevo."
+                )
         fin = len(fila)
         while fin and fila[fin - 1] is None:
             fin -= 1
@@ -182,9 +192,12 @@ def leer_hojas(
     con la lista vacía: se sabe que existen, pero sus celdas no se materializan."""
     verificar_archivo(datos, nombre)
     libro = _abrir(datos, nombre, data_only=True)
+    cuenta = [0]  # celdas materializadas en el libro entero (`MAX_CELDAS_LIBRO`)
     try:
         return {
-            hoja.title: _filas(hoja, nombre) if incluir is None or incluir(hoja.title) else []
+            hoja.title: (
+                _filas(hoja, nombre, cuenta) if incluir is None or incluir(hoja.title) else []
+            )
             for hoja in libro.worksheets
         }
     except ArchivoRechazado:
