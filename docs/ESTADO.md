@@ -71,8 +71,9 @@ carpeta de datos la decidió Eugenio el 2026-11-07.
 **Árbitro único** ([veredicto](bitacora/arbitrajes/fases-f5-f7-f8-claude-xhigh.md),
 [revisión](bitacora/arbitrajes/fases-f5-f7-f8-claude-xhigh-r2.md)): devolvió con 4 MAYOR (un xlsx hostil agotaba la
 memoria, perfiles locales inalcanzables, la ventana borraba la letra y el zoom, manuales de la ventana falsos) y, en la
-revisión, con 2 (el xlsx hostil por celdas reales lejanas y pruebas omitidas en la CI de Linux). Todo corregido con prueba
-en rojo primero; la pasada en navegador de la rama integrada (864 mediciones) no dejó defectos abiertos. El aviso de solo
+revisión, con 2 (el xlsx hostil por celdas reales lejanas y pruebas omitidas en la CI de Linux). La revisión final
+([r3](bitacora/arbitrajes/fases-f5-f7-f8-claude-xhigh-r3.md)) aprobó todo salvo un MAYOR de minutos (una prueba nueva
+violaba INV-052), corregido después junto con sus cuatro MENOR; todo con prueba en rojo primero; la pasada en navegador de la rama integrada (864 mediciones) no dejó defectos abiertos. El aviso de solo
 lectura sale con tildes por `aplicacion/hoja_guardado.py`, la ruta del producto; el texto sin tildes de `hoja.py`
 (congelado) no lo alcanza ningún llamador. Pruebas intermitentes con la máquina cargada (pasan solas):
 `Retomar.test.tsx` y `AutocompletadoDeInsumos.test.tsx`.
@@ -105,10 +106,14 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
 1. **Tanda de detalles**: aprobada (§3); falta la prueba de Eugenio en el navegador. Los mensajes «no existe en este
    caso» ya dicen «esta carpeta» (F8 C5; guardia `tests/unit/test_mensajes_sin_caso.py`).
 2. **Autocompletado**: completo (PR #107).
-3. **F7, F8 y F5**: construidas y corregidas tras el árbitro único (§3); faltan la prueba de Eugenio, ratificar las
+3. **Expediente aparte** (preexistente, desde 1.5): `adapters/hoja_empresa/lector.py` (`_celdas_reales`, el lector del
+   libro conocido) tarda del orden de minutos con un libro hostil por filas o columnas lejanas; ponerle los topes de
+   `lector_apu_por_hoja._filas`, con prueba roja.
+4. **F7, F8 y F5**: construidas y corregidas tras el árbitro único (§3); faltan la prueba de Eugenio, ratificar las
    decisiones provisionales de F5, mostrar el desperdicio en la Hoja y poner tildes a dos avisos de `aplicacion/hoja.py` y
    `composicion.py` (los dos exigen re-congelar el experimento con acta), V4 (humo de la ventana en la CI de Windows) y V5,
-   y que Eugenio confirme el texto de la licencia del SDK de WebView2 copiado de NuGet (`docs/licencias_webview2/`).
+   y que Eugenio confirme el texto de la licencia del SDK de WebView2 copiado de NuGet (`docs/licencias_webview2/`), y que pruebe una vez, en local, el libro vial real con el perfil de un APU por hoja (una celda
+   con solo formato fuera de 20.000 × 100 rechaza el libro).
 
 ## 6. Auditorías en paralelo
 
