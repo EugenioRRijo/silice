@@ -204,6 +204,11 @@ def _linea(
         desperdicio=numero_de(_celda_de(fila, columnas.get("desperdicio"))) or _CERO,
         bono=numero_de(_celda_de(fila, columnas.get("bono"))) or _CERO,
         depreciacion=numero_de(_celda_de(fila, columnas.get("depreciacion"))),
+        celdas={
+            campo: Celda(hoja, f"{letra(columnas[campo])}{i + 1}")
+            for campo in ("unidad", "desperdicio", "bono")
+            if campo in columnas
+        },
     )
 
 

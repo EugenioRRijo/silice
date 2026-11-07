@@ -175,6 +175,8 @@ class LineaApu:
     desperdicio: Decimal = Decimal(0)
     bono: Decimal = Decimal(0)
     depreciacion: Decimal | None = None
+    #: La celda de cada dato opcional que trae la línea («unidad», «desperdicio», «bono»).
+    celdas: Mapping[str, Celda] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
