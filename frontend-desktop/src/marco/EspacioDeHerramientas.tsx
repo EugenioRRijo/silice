@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 import { Navigate, useLocation, useParams } from "react-router";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
+import { AyudaDeLaPantalla } from "../paginas/ayuda/AyudaDeLaPantalla";
 import { LimiteDeError } from "../shell/LimiteDeError";
+import { paginaPorId, usable } from "../shell/rutas";
 import { BarraDeEspacio, pestanasUsables } from "./BarraDeEspacio";
 import { ESPACIOS, primeraUsable, rutaDeHerramienta } from "./espacios";
 import type { EspacioId } from "./espacios";
@@ -37,6 +39,9 @@ export function EspacioDeHerramientas({ espacio, pantalla, acciones, modoEntrega
     return <RaizDelEspacio espacio={espacio} acciones={acciones} modoEntrega={modoEntrega} apagados={apagados} />;
   }
   const pestanas = pestanasUsables(herramientas, (h) => rutaDeHerramienta(espacio, h.id), acciones, modoEntrega, apagados);
+  // F7, A1: el «¿Qué es esto?» de la herramienta, solo si la cuenta puede usarla (si no, la pantalla dice por qué).
+  const pagina = paginaPorId(herramienta.pagina);
+  const conAyuda = pagina !== undefined && usable(pagina, acciones, modoEntrega, apagados);
   return (
     <>
       <section aria-label={titulo} className="silice-espacio-cabecera">
@@ -44,6 +49,7 @@ export function EspacioDeHerramientas({ espacio, pantalla, acciones, modoEntrega
       </section>
       {/* Sin ninguna herramienta usable no hay barra que ofrecer: la pantalla dice por qué (sin permiso o apagada). */}
       {pestanas.length > 0 && <BarraDeEspacio etiqueta={titulo} pestanas={pestanas} activa={herramienta.id} nivel="espacio" />}
+      {conAyuda && <AyudaDeLaPantalla pagina={herramienta.pagina} />}
       <LimiteDeError key={herramienta.id}>
         <Suspense fallback={<EsqueletoPagina />}>{pantalla(herramienta.pagina)}</Suspense>
       </LimiteDeError>

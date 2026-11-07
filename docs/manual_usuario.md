@@ -137,7 +137,7 @@ instalación».». Cómo se encienden: sección 2.7.
 La primera vez que se abre Sílice no hay ninguna cuenta. Sílice muestra la pantalla «Bienvenida a
 Sílice» y pide un código de un solo uso.
 
-**Paso 1: busque el código de instalación.** Está en dos sitios:
+**Paso 1: busque su código de instalación.** Está en dos sitios:
 
 - En el Bloc de notas que Sílice abrió solo la primera vez, y en la ventana del servidor (la ventana
   minimizada; búsquela en la barra de tareas y busque la línea «Código de instalación»).
@@ -422,13 +422,37 @@ puede usar:
 - **«Cuentas y permisos»**, **«Empresa y tema»**, **«Carpetas»** y **«Especialidades, IA e
   instalación»**, solo para quien administra (sección 2.7). «Carpetas» pide además poder crear y subir
   carpetas.
-- **«Ayuda y acerca de Sílice»**, para todas las cuentas. Su título es el mismo, «Ayuda y acerca de Sílice»: muestra la versión del
-  programa, el estado de las bases de datos y qué módulos están instalados. Debajo, «Recorridos
-  guiados» ofrece «Empezar el recorrido «Auditar un libro de la empresa»» (sección 12.4). Las guías de
-  cada tarea están en este manual.
+- **«Ayuda y acerca de Sílice»**, para todas las cuentas. Su título es el mismo, «Ayuda y acerca de Sílice».
+  Primero va la ayuda: «Empieza aquí», «Guías por tarea» y «Glosario» (sección 3.10). Después, la versión del
+  programa, el estado de las bases de datos y qué módulos están instalados. Al final, «Recorridos guiados»
+  ofrece «Empezar el recorrido «Auditar un libro de la empresa»» (sección 12.4).
 
 La Cuenta abre siempre en «Pantalla y tamaño de letra». Lo que antes era la pantalla «Administración»
 está repartido en las cuatro secciones de quien administra.
+
+### 3.10 La ayuda dentro de Sílice
+
+Sílice trae su propia ayuda, en tres sitios:
+
+- **«¿Qué es esto?» encima de cada pantalla.** En cada sección de la obra y en cada herramienta de
+  «Auditar un presupuesto», «Precios y catálogo» y «Costos de producción», y en «Pendientes», un botón
+  «¿Qué es esto?» va justo encima del título. Al pulsarlo se abre, debajo, para qué sirve la pantalla y
+  cuándo usarla, con un enlace a su guía y a las palabras del glosario que usa; al pulsarlo otra vez, o con
+  Esc, se pliega. En el «Presupuesto» no hay uno para toda la pantalla: cada pestaña tiene el suyo
+  (sección 4.2). Si su cuenta no puede usar la pantalla, no aparece.
+- **«Empieza aquí» en la Vista general**, solo la primera vez. Quien administra lo ve mientras su cuenta
+  sea la única activa: le dice cómo crear las cuentas de las personas y poner los datos de la empresa.
+  Quien arma lo ve mientras no tenga ninguna obra: crear la obra, armar el presupuesto y enviarlo a
+  aprobación. Quien solo revisa, también sin obras: auditar un libro y dar su dictamen. Cuando ya no hace
+  falta, desaparece solo; Sílice no guarda nada en el navegador para saberlo.
+- **La Cuenta › «Ayuda y acerca de Sílice»**: arriba, «En esta ayuda» lleva a cada parte. «Empieza aquí»
+  cuenta la primera vez (el código de instalación y la cuenta del administrador, sección 2.1) y lo primero
+  de cada papel. «Guías por tarea» trae cuatro guías paso a paso: «Montar un presupuesto», «Enviarlo a
+  aprobación», «Actualizar precios» y «Auditar un libro». «Glosario» explica las palabras del oficio que
+  Sílice usa (APU, FCAS, línea base, lista para armar, valor ganado, reajuste, entre otras).
+
+Los enlaces de «¿Qué es esto?» y de «Empieza aquí» abren la Ayuda justo en la guía o la palabra
+elegida. Si tiene cambios sin guardar, Sílice pregunta antes de salir, como con cualquier enlace.
 
 ## 4. Crear una obra y armar su presupuesto
 
@@ -448,7 +472,8 @@ cantidades, revisar el APU, guardar la versión y ver el IVA.
      del BCV del día.
 3. Pulse «Crear obra».
 
-Sílice abre el «Resumen» de la obra nueva. La franja dice «Te falta: Agregue la primera partida».
+Sílice abre el «Resumen» de la obra nueva. La franja dice «Siguiente paso: Agregue la primera partida»,
+con el botón «Agregue la primera partida», que lleva al Presupuesto.
 
 ### 4.2 La pantalla «Presupuesto», de arriba abajo
 
@@ -662,7 +687,7 @@ Cuando el borrador tiene cambios, la franja dice «Siguiente paso: Hay 3 cambios
 «Guardar versión…» (o «Guardar primera versión…» si la obra no tiene ninguna).
 
 1. Pulse el botón. Se abre «Guardar versión».
-2. Lea el resumen: cuántos cambios, de qué versión sale y el total. Abajo está la lista «Cambios» con lo
+2. Lea el resumen: cuántos cambios, de qué versión sale y el total. Abajo está la lista «Cambios (n)» con lo
    que había antes y lo que queda después.
 3. Escriba el motivo, hasta 300 caracteres:
    - en la primera versión, «Fuente de la medida (de dónde salen los datos)», por ejemplo «Planos de
@@ -1014,9 +1039,10 @@ lista base con sus precios encima, cada uno con su fecha y su fuente.
 
 1. **«1. La referencia MaPreX en bolívares»**: pulse «Cargar la referencia MaPreX en Bs».
 2. **«2. La lista de la empresa»**: llene «Empresa (nombre)», «RIF», «Lista base», «Moneda de la lista»,
-   «Fecha de la lista» y «Fuente de la lista». Suelte el archivo de precios (CSV o XLSX) y pulse «Crear la
-   lista de la empresa».
-3. **«3. Precios vencidos o fuera de rango (R11 y R12)»**: pulse «Buscar variaciones atípicas de precio».
+   «Fecha de la lista» y «Fuente de la lista (de dónde salen estos precios)»; si quiere, «Nombre de la lista
+   (opcional)». Suelte el archivo de precios (CSV o XLSX) y pulse «Crear la lista de la empresa».
+3. **«3. Precios vencidos o fuera de rango (R11 y R12)»**: elija la «Lista» y la «Fecha de evaluación». Con
+   una lista elegida aparece «Buscar variaciones atípicas de precio».
 4. **«FCAS por componentes»**: «Abrir la calculadora del FCAS».
 
 El archivo de precios lleva las columnas `tipo`, `insumo`, `unidad` y `precio` (y, si quiere, `fecha`,
@@ -1419,4 +1445,5 @@ existen; su función está ahora en otro lugar:
 | El panel de chat del asistente de IA | No existe en la interfaz actual; solo su configuración (sección 13) |
 | El Visor 3D del modelo | Retirado |
 | La creación del primer administrador, pendiente | La pantalla «Bienvenida a Sílice» con el código de instalación |
+| Las guías de cada tarea solo en este manual | También dentro de Sílice: «¿Qué es esto?» en cada pantalla, «Empieza aquí» en la Vista general la primera vez, y guías y glosario en la Cuenta › «Ayuda y acerca de Sílice» (sección 3.10) |
 | Un presupuesto se podía valorar y auditar fuera de una obra | Todo presupuesto vive en una obra; para revisar un Excel suelto use «Auditar un presupuesto» |

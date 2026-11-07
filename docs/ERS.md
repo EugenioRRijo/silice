@@ -1336,6 +1336,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑10 | RF‑33, RF‑34, RF‑35 | P0.1 (declarado), P1–P4 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑11 | RF‑33, RF‑34 | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑10, UC‑11, UC‑17 (autocompletado guiado) | RF‑167, RF‑168 (y RNF‑29) | AC1–AC4 ([PLAN_AUTOCOMPLETADO.md](planes/PLAN_AUTOCOMPLETADO.md), 2026‑11‑05) | usabilidad del prototipo, fuera de los cinco indicadores |
+| UC‑12, UC‑21 (ayuda y primera vez) | RF‑160, RF‑185 a RF‑189 (y RNF‑30) | F7 A1–A4 ([PLAN_TANDA_DETALLES.md](planes/PLAN_TANDA_DETALLES.md), Fase 2, 2026‑11‑06) | usabilidad del prototipo, fuera de los cinco indicadores |
 | UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
 | UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | SF0 (declarado), SF1–SF2 ([PLAN_SF.md](../PLAN_SF.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); la ausencia de cambios en `core/` al agregar datos y electricidad es evidencia del indicador 4 |
 | UC‑14 | RF‑50, RF‑51 | SF0 (declarado), SF5 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
@@ -1682,6 +1683,29 @@ Enmienda a RF-97: el acceso directo «Sílice» abre la ventana propia (RF-180) 
 los cinco accesos llevan el ícono de Sílice, no el de Python. Enmienda a los rulings RT-3 y RT-5 de la ruta
 (`docs/planes/RUTA_SESIONES.md` §2, misma fecha y mismo carácter provisional): pywebview en vez de Tauri v2; puerto fijo
 y sin clave por IPC (la cubre RT-9).
+
+## Enmienda (2026-11-06): F7, la ayuda dentro de Sílice y la primera vez
+
+Fase 2 del [plan de la tanda de detalles](planes/PLAN_TANDA_DETALLES.md) y §2.6 de la
+[especificación del rediseño del marco](especificaciones/2026-10-26-rediseno-marco-obras-design.md). Numeración del ruling del
+orquestador para las fases en paralelo: F7 usa RF-185 a RF-189. **RF-160 y RNF-30** los reservó el diseño de la bienvenida
+([2026-10-21-bienvenida-casos-proyectos-design.md](especificaciones/2026-10-21-bienvenida-casos-proyectos-design.md) §14), pero
+nunca se escribieron aquí aunque la bienvenida ya está construida; se registran ahora con el texto de ese diseño. RF-161 a RF-166
+siguen reservados por ese diseño y sin escribir: no son de F7. Los textos de la ayuda viven en un solo catálogo,
+`frontend-desktop/src/paginas/ayuda/textos.ts` y `empiezaAqui.ts`.
+
+| ID | Requisito | Prioridad | Caso de uso | Criterio de aceptación |
+|---|---|---|---|---|
+| RF-160 | Una instalación sin cuentas emite al arrancar un código de instalación de un solo uso, y la interfaz permite canjearlo, solo desde el propio equipo, para crear el primer administrador, con el mismo freno y el mismo bloqueo que el acceso; el código no se registra ni se devuelve | Esencial | UC-21 | cinco intentos errados bloquean quince minutos y dos canjes simultáneos crean una sola cuenta: `tests/unit/test_api_primer_arranque.py` (`test_cinco_codigos_errados_bloquean_quince_minutos_incluso_al_correcto`, `test_dos_reclamos_simultaneos_por_la_api_dejan_una_sola_cuenta`), `test_cuentas_carrera_reclamo.py`, `test_aplicacion_primer_arranque.py` y `test_api_lifespan_primer_arranque.py`; la pantalla, `bienvenida/Bienvenida.test.tsx` y `App.bienvenida.test.tsx` |
+| RF-185 | Cada pantalla de las secciones de la obra, de las herramientas de Producción, Auditoría y Precios y de Pendientes lleva un «¿Qué es esto?» plegado (el mismo componente de las pestañas del Presupuesto) que dice para qué sirve y enlaza su guía y los términos del glosario que usa; el Presupuesto lo lleva por pestaña y una pantalla que la cuenta no puede usar no lo ofrece | Esencial | UC-12 | `paginas/ayuda/catalogo.test.ts` (cobertura de las 16 pantallas de la obra y las 13 de los espacios) y `AyudaDeLaPantalla.test.tsx` |
+| RF-186 | La Ayuda de la Cuenta trae cuatro guías por tarea en español llano (montar un presupuesto, enviarlo a aprobación, actualizar precios, auditar un libro), con quién las hace y pasos que nombran cada control con su texto exacto | Esencial | UC-12 | `catalogo.test.ts`: todo texto entre comillas angulares de la ayuda existe tal cual en el código del front o de `aplicacion/`; `paginas/acerca/Acerca.test.tsx` |
+| RF-187 | La Ayuda trae un glosario en orden alfabético de los términos que la interfaz usa sin explicar (al menos APU, FCAS, valor ganado, reajuste, línea base y lista para armar), con definiciones fieles a cómo los usa Sílice y sin normas ni cifras que el programa no aplique | Esencial | UC-12 | `catalogo.test.ts` (términos, orden y la guardia del FCAS) |
+| RF-188 | La Vista general muestra «Empieza aquí» la primera vez, según el papel y derivado de los datos, sin guardar nada en el navegador: a quien administra mientras su cuenta sea la única activa, a quien arma o solo revisa mientras no vea ninguna obra; un dato que no se pudo leer no lo abre | Esencial | UC-12, UC-21 | `paginas/ayuda/empiezaAqui.test.ts` y el bloque «Empieza aquí» de `paginas/inicio/VistaGeneral.test.tsx` |
+| RF-189 | Cada parte de la Ayuda (cada guía, cada término, «Empieza aquí») se puede enlazar con `?tema=`, y el enlace lleva el foco a esa parte; los enlaces de la ayuda preguntan antes de salir con cambios sin guardar, y la ayuda se lee aunque falle la lectura de la versión del programa | Deseable | UC-12 | `Acerca.test.tsx` |
+| RNF-30 | La ayuda se entiende sin formación previa | Deseable | — | se mide con RNF-10 (caso con persona de la fase Med); pendiente |
+
+Enmienda a UC-12: además del recorrido guiado, la ayuda de cada pantalla, las guías, el glosario y «Empieza aquí» orientan a
+quien empieza. La matriz de trazabilidad (§4) tiene su fila «ayuda y primera vez».
 
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).

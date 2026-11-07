@@ -1,0 +1,82 @@
+// La ayuda de Sílice (F7). Tokens de Carbon g10 y de Sílice, esquinas rectas, sin sombra ni animación (DESIGN.md).
+
+// El «¿Qué es esto?» de cada pantalla, que el marco pone entre la barra de vistas y la pantalla. La pantalla baja su margen
+// superior como lo baja tras el conmutador de subvistas (`hoja.scss`): la ayuda no le añade más hueco que el de su botón.
+.silice-ayuda-de-pantalla {
+  padding: 0.5rem 1rem 0;
+}
+
+.silice-ayuda-de-pantalla + .silice-pagina {
+  padding-block-start: 0.5rem;
+}
+
+.silice-ayuda-de-pantalla__enlaces {
+  color: var(--cds-text-secondary);
+}
+
+// La Ayuda de la Cuenta: un índice de enlaces y tres partes separadas por un divisor de 1 px.
+.silice-ayuda {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.silice-ayuda__indice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+
+.silice-ayuda__parte {
+  display: grid;
+  gap: 0.75rem;
+  padding-block-end: 1.5rem;
+  border-block-end: 1px solid var(--cds-border-subtle);
+}
+
+.silice-ayuda__guia {
+  display: grid;
+  gap: 0.5rem;
+  max-inline-size: 70ch;
+}
+
+.silice-ayuda__quien {
+  color: var(--cds-text-secondary);
+}
+
+.silice-ayuda__parte-de-guia {
+  margin: 0;
+  font-weight: 600;
+}
+
+.silice-ayuda__pasos,
+.silice-empieza-aqui__pasos {
+  display: grid;
+  gap: 0.5rem;
+  max-inline-size: 70ch;
+  margin: 0;
+  padding-inline-start: 1.5rem;
+  list-style: decimal;
+}
+
+.silice-ayuda__glosario {
+  display: grid;
+  gap: 0.25rem;
+  max-inline-size: 70ch;
+  margin: 0;
+
+  dt {
+    margin-block-start: 0.75rem;
+    font-weight: 600;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+// El foco que llega por `?tema=` (h2, h3 o un término) se ve con el anillo de Carbon.
+.silice-ayuda [tabindex="-1"]:focus-visible,
+.silice-ayuda [tabindex="-1"]:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}

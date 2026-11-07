@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 import { Navigate, useLocation, useParams } from "react-router";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
+import { AyudaDeLaPantalla } from "../paginas/ayuda/AyudaDeLaPantalla";
 import { LimiteDeError } from "../shell/LimiteDeError";
 import { BarraDeEspacio } from "./BarraDeEspacio";
 import type { PestanaDeEspacio } from "./BarraDeEspacio";
@@ -35,6 +36,8 @@ export function EspacioDeInicio({ general, pendientes }: Props) {
         <p className="silice-espacio-cabecera__titulo">Vista general</p>
       </section>
       <BarraDeEspacio etiqueta="Inicio" pestanas={pestanas} activa={vista} nivel="espacio" />
+      {/* F7, A1: la bandeja lleva su «¿Qué es esto?»; la Vista general trae el suyo en la cartera y «Empieza aquí». */}
+      {vista === "pendientes" && <AyudaDeLaPantalla pagina="pendientes" />}
       <LimiteDeError key={vista}>
         <Suspense fallback={<EsqueletoPagina />}>{vista === "general" ? general : pendientes}</Suspense>
       </LimiteDeError>
