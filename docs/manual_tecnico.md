@@ -917,7 +917,9 @@ que faltan o sobran, listas vacías y un patrón que no compila se rechazan.
 **Entrada hostil.** De cada libro se leen solo las hojas cuyo nombre empieza por `prefijo_hoja` y,
 del libro de presupuesto, solo la hoja `presupuesto.hoja`; cada fila llega solo hasta su última
 celda real (`reset_dimensions()`, como `lector.py`): una hoja que declara una dimensión enorme no
-se materializa (arbitraje F5 vial, P1).
+se materializa (arbitraje F5 vial, P1). Un rendimiento que no es mayor que cero, una cantidad, un
+precio, un desperdicio o un porcentaje negativos y un coeficiente de depreciación fuera de (0; 1]
+hacen la hoja no interpretable (`LibroNoInterpretable`, 422) con su `HOJA!CELDA` (P3).
 
 **Pruebas.** `tests/unit/test_fusion_apu_por_hoja.py` (las carpetas, la variable y el libro hostil)
 y `tests/unit/test_api_libros_replica.py` (la ruta sin `perfil` con un perfil local).

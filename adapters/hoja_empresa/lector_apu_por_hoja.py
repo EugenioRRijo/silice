@@ -16,6 +16,9 @@ financiamiento, impuesto): una guardia, un modelo y las mismas celdas citables (
   administración, la utilidad, el rendimiento o el precio unitario hace la hoja no interpretable
   (`LibroNoInterpretable`, con la hoja y el rótulo); las prestaciones, el financiamiento y el
   impuesto que falten valen 0.
+- Un valor que el núcleo no admite (arbitraje F5 vial, P3) también la hace no interpretable, con
+  su `HOJA!CELDA`: un rendimiento que no es mayor que cero; una cantidad, un precio, un
+  desperdicio o un porcentaje negativos; un coeficiente de depreciación fuera de (0; 1].
 - Las unidades se leen tal como las escribe el libro: la traducción del perfil la aplica quien
   audita (`fusion`), y cada traducción usada queda dicha en el informe.
 - `Decimal(str(v))` siempre (NORMAS §2.3). Solo valores: no hay fórmulas que leer.
@@ -82,6 +85,19 @@ def numero_de(valor: Any) -> Decimal | None:
         return None
     numero = Decimal(str(valor))
     return numero if numero.is_finite() else None
+
+
+def _cifra(valor: Decimal) -> str:
+    """Coma decimal y punto de miles, sin ceros de más: para los mensajes."""
+    texto = format(valor.normalize(), ",f")
+    return texto.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
+def _invalido(hoja: str, celda: str, que: str) -> LibroNoInterpretable:
+    """Un valor que el núcleo no admite: la hoja no se recalcula y el mensaje dice la celda."""
+    return LibroNoInterpretable(
+        f"{clave(hoja, celda)}: {que}: Sílice no recalcula la hoja «{hoja}»."
+    )
 
 
 def _texto(valor: Any) -> str:
@@ -208,6 +224,31 @@ def _linea(
     if not descripcion or cantidad is None:
         return None
     precio = numero_de(_celda_de(fila, columnas["precio"])) or _CERO
+    desperdicio = numero_de(_celda_de(fila, columnas.get("desperdicio"))) or _CERO
+    depreciacion = numero_de(_celda_de(fila, columnas.get("depreciacion")))
+
+    def celda(campo: str) -> str:
+        return f"{letra(columnas[campo])}{i + 1}"
+
+    for campo, valor, nombre in (
+        ("cantidad", cantidad, "la cantidad"),
+        ("precio", precio, "el precio"),
+        ("desperdicio", desperdicio, "el desperdicio"),
+    ):
+        if valor < 0:
+            negativa = "negativa" if nombre.startswith("la ") else "negativo"
+            raise _invalido(
+                hoja,
+                celda(campo),
+                f"{nombre} de «{descripcion}» es {_cifra(valor)} y no puede ser {negativa}",
+            )
+    if depreciacion is not None and not _CERO < depreciacion <= 1:
+        raise _invalido(
+            hoja,
+            celda("depreciacion"),
+            f"el coeficiente de depreciación de «{descripcion}» es {_cifra(depreciacion)} y debe "
+            "ser mayor que 0 y no pasar de 1",
+        )
     numero = _celda_de(fila, columnas.get("numero"))
     col_codigo = columnas.get("numero", columnas["descripcion"])
     return LineaApu(
@@ -219,9 +260,9 @@ def _linea(
         precio=precio,
         celda_codigo=Celda(hoja, f"{letra(col_codigo)}{i + 1}"),
         celda_cantidad=Celda(hoja, f"{letra(columnas['cantidad'])}{i + 1}"),
-        desperdicio=numero_de(_celda_de(fila, columnas.get("desperdicio"))) or _CERO,
+        desperdicio=desperdicio,
         bono=numero_de(_celda_de(fila, columnas.get("bono"))) or _CERO,
-        depreciacion=numero_de(_celda_de(fila, columnas.get("depreciacion"))),
+        depreciacion=depreciacion,
         celdas={
             campo: Celda(hoja, f"{letra(columnas[campo])}{i + 1}")
             for campo in ("unidad", "desperdicio", "bono")
@@ -256,6 +297,12 @@ def _leer_apu(hoja: str, filas: Filas, perfil: PerfilApuPorHoja) -> ApuLeido:
     descripcion = _texto(exigir("descripcion", "la descripción", perfil.cabecera["descripcion"]))
     unidad = _texto(exigir("unidad", "la unidad", perfil.cabecera["unidad"]))
     rendimiento = exigir("rendimiento", "el rendimiento", perfil.cabecera["rendimiento"])
+    if rendimiento <= 0:
+        raise _invalido(
+            hoja,
+            celdas["rendimiento"].ref,
+            f"el rendimiento es {_cifra(rendimiento)} y debe ser mayor que cero",
+        )
     porcentajes: dict[str, Decimal] = {}
     for campo, variantes in perfil.porcentajes.items():
         donde = _rotulo(filas, variantes)
@@ -269,8 +316,14 @@ def _leer_apu(hoja: str, filas: Filas, perfil: PerfilApuPorHoja) -> ApuLeido:
             porcentajes[campo] = _CERO
             continue
         assert donde is not None
-        porcentajes[campo] = valor[1] / _CIEN
         celdas[campo] = Celda(hoja, f"{letra(valor[0])}{donde[0] + 1}")
+        if valor[1] < 0:
+            raise _invalido(
+                hoja,
+                celdas[campo].ref,
+                f"el porcentaje de {variantes[0]} es {_cifra(valor[1])} y no puede ser negativo",
+            )
+        porcentajes[campo] = valor[1] / _CIEN
     donde = _rotulo(filas, perfil.precio_unitario)
     pu = None if donde is None else _a_la_derecha(filas[donde[0]], donde[1], True)
     if pu is None or donde is None:
