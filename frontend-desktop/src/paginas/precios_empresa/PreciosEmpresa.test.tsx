@@ -165,14 +165,15 @@ describe("Precios de la empresa", () => {
   test("sin listas de precios en el caso no ofrece el formulario", async () => {
     estado = () => json({ bases: [], listas: [] });
     montar();
-    expect(await screen.findByText("El caso no tiene listas de precios: cargue una en Actualizar precios.")).toBeInTheDocument();
+    expect(await screen.findByText("La carpeta no tiene listas de precios: cargue una en Actualizar precios.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Crear la lista de la empresa" })).toBeNull();
     expect(screen.getByRole("button", { name: "Cargar la referencia MaPreX en Bs" })).toBeInTheDocument();
   });
 
-  test("un fallo al leer el caso se muestra con su detalle", async () => {
+  test("un fallo al leer la carpeta se muestra con su detalle", async () => {
     estado = () => json({ detalle: "No se pudo leer o escribir el caso abierto." }, 503);
     montar();
+    expect(await screen.findByText("No se pudo leer la carpeta")).toBeInTheDocument();
     expect(await screen.findByText("No se pudo leer o escribir el caso abierto.")).toBeInTheDocument();
   });
 
