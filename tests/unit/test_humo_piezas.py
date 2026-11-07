@@ -67,7 +67,7 @@ def test_navegador_main_escribe_el_json_y_sale_con_1_si_hay_externos(
     salida = tmp_path / "peticiones.json"
     codigo = navegador.main(["--url", "http://127.0.0.1:8501/", "--salida", str(salida)])
     assert codigo == 1
-    assert pedidas == [("http://127.0.0.1:8501", ["", "#/catalogo", "#/simulador"])]
+    assert pedidas == [("http://127.0.0.1:8501", ["", "#/precios/catalogo", "#/precios/simulador"])]
     datos = json.loads(salida.read_text(encoding="utf-8"))
     assert datos == {"peticiones": 2, "externos": ["cdnjs.cloudflare.com"], "urls": vistas}
     monkeypatch.setattr(navegador, "recorrer", lambda url, paginas: vistas[:1])
