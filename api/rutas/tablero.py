@@ -240,7 +240,7 @@ def leer_tablero(
     sesion: SesionDep,
     proyecto: str = Query(
         min_length=1,
-        description="Nombre del proyecto en el caso abierto.",
+        description="Nombre de la obra en la carpeta abierta.",
     ),
 ) -> TableroRespuesta:
     """El tablero de la version vigente del proyecto (`LEER_PROYECTO`)."""

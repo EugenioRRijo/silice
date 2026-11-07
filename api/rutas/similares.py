@@ -18,7 +18,7 @@ from aplicacion.similares import ResultadoSimilares, proponer_similares
 
 router = APIRouter(tags=["similares"])
 
-MENSAJE_CATALOGO = "No se pudo leer el catálogo del caso abierto."
+MENSAJE_CATALOGO = "No se pudo leer el catálogo de la carpeta abierta."
 MENSAJE_DESGLOSE = "No se pudo armar el desglose de una partida: un dato numérico no es válido."
 
 

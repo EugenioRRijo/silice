@@ -3722,10 +3722,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "Nombre del proyecto en el caso abierto.",
+              "description": "Nombre de la obra en la carpeta abierta.",
               "title": "Proyecto"
             },
-            "description": "Nombre del proyecto en el caso abierto."
+            "description": "Nombre de la obra en la carpeta abierta."
           }
         ],
         "responses": {

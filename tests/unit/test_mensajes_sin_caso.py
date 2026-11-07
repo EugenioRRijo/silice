@@ -64,8 +64,9 @@ def _docstrings(ruta: Path) -> set[int]:
     for nodo in ast.walk(arbol):
         if isinstance(nodo, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
             cuerpo = nodo.body
-            if cuerpo and isinstance(cuerpo[0], ast.Expr) and isinstance(cuerpo[0].value, ast.Constant):
-                lineas.add(cuerpo[0].value.lineno)
+            primero = cuerpo[0] if cuerpo else None
+            if isinstance(primero, ast.Expr) and isinstance(primero.value, ast.Constant):
+                lineas.add(primero.value.lineno)
     return lineas
 
 

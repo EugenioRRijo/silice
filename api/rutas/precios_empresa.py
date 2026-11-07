@@ -48,7 +48,7 @@ from aplicacion.plural import plural
 from seguridad.permisos import Accion
 
 MENSAJE_INVALIDO = "Los datos enviados no son válidos."
-MENSAJE_CASO = "No se pudo leer o escribir el caso abierto."
+MENSAJE_CASO = "No se pudo leer o escribir la carpeta abierta."
 MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto."
 MENSAJE_FORMATO = "No se creó la lista: el archivo debe ser CSV o XLSX."
 MENSAJE_TAMANO = "No se creó la lista: el archivo pesa más del máximo permitido (20 MiB)."

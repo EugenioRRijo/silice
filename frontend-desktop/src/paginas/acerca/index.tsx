@@ -86,7 +86,7 @@ function LaVersion({ carga }: { carga: Carga<Acerca> }) {
       <StructuredListWrapper isCondensed aria-label="Bases y carpeta de datos">
         <StructuredListBody>
           <Fila rotulo="Base de la instalación" valor={estadoDeLaBase(d.revision_instalacion, d.head_instalacion)} />
-          <Fila rotulo="Base del caso abierto" valor={estadoDeLaBase(d.revision_caso, d.head_caso)} />
+          <Fila rotulo="Base de la carpeta abierta" valor={estadoDeLaBase(d.revision_caso, d.head_caso)} />
           {d.carpeta_datos !== null && <Fila rotulo="Carpeta de datos" valor={d.carpeta_datos} />}
         </StructuredListBody>
       </StructuredListWrapper>
