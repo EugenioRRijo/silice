@@ -19,6 +19,13 @@ describe("pasosDeEmpiezaAqui", () => {
     expect(pasosDeEmpiezaAqui({ acciones: admin, obras: null, cuentasActivas: null })).toEqual([]);
   });
 
+  test("quien administra con su cuenta como única activa deja de ver los pasos en cuanto la instalación ya tiene obras", () => {
+    expect(pasosDeEmpiezaAqui({ acciones: admin, obras: 2, cuentasActivas: 1 })).toEqual([]);
+    expect(pasosDeEmpiezaAqui({ acciones: admin, obras: 0, cuentasActivas: 1 })).toEqual(["cuentas", "empresa"]);
+    const ambos = [...new Set([...admin, ...ana])];
+    expect(pasosDeEmpiezaAqui({ acciones: ambos, obras: 1, cuentasActivas: 1 })).toEqual([]);
+  });
+
   test("quien arma, sin ninguna obra: crear la obra, armar el presupuesto y enviarlo a aprobación", () => {
     expect(pasosDeEmpiezaAqui({ acciones: ana, obras: 0, cuentasActivas: null })).toEqual(["obra", "presupuesto", "aprobacion"]);
   });
@@ -45,6 +52,12 @@ describe("pasosDeEmpiezaAqui", () => {
 });
 
 describe("los pasos", () => {
+  test("el paso de las cuentas no afirma que quien administra nunca arma: la casilla de la bienvenida le da ese papel", () => {
+    const { texto } = PASOS_DE_EMPIEZA_AQUI.cuentas;
+    expect(texto).not.toContain("Quien administra no arma presupuestos");
+    expect(texto).toContain("«Usaré esta cuenta también para armar presupuestos»");
+  });
+
   test("cada paso dice para qué sirve y, si enlaza, lleva a la Cuenta, a la Ayuda o a Auditoría", () => {
     for (const [id, paso] of Object.entries(PASOS_DE_EMPIEZA_AQUI)) {
       expect(paso.titulo.length, id).toBeGreaterThan(0);

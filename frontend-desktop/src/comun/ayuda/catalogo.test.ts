@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { ESPACIOS, SUBVISTAS } from "../../marco/espacios";
 import { SECCIONES_DE_OBRA } from "../../marco/secciones";
 import { PASOS_DE_EMPIEZA_AQUI, PRIMERA_VEZ } from "./empiezaAqui";
+import { sinComentarios } from "./sinComentarios";
 import { AYUDA_DE_PANTALLAS, GLOSARIO, GUIAS } from "./textos";
 
 // F7 (Ayuda), tareas A1 a A3: el catálogo único de los textos de ayuda. Estas pruebas no leen la interfaz pintada: vigilan
@@ -21,18 +22,19 @@ const aplicacion = `${nodo.cwd()}/../aplicacion`;
 
 // El código donde viven los textos de la interfaz: el front (sin pruebas ni la propia ayuda, que no puede citarse a sí misma)
 // y la capa `aplicacion/`, que manda los textos de la franja del paso y de los pendientes. Los espacios se juntan: una
-// etiqueta de JSX puede partirse en dos líneas.
+// etiqueta de JSX puede partirse en dos líneas. Se quitan los comentarios y los docstrings: un rótulo que solo vive en uno no
+// existe para quien usa la interfaz (revisión del árbitro de F7, A2).
 function fuentes(): string {
   const front = fs
     .readdirSync(raiz, { recursive: true })
     .map((r) => r.replaceAll("\\", "/"))
     .filter((r) => /\.tsx?$/.test(r) && !/\.test\.tsx?$/.test(r) && !r.startsWith("comun/ayuda/"))
-    .map((r) => fs.readFileSync(`${raiz}/${r}`, "utf-8"));
+    .map((r) => sinComentarios(fs.readFileSync(`${raiz}/${r}`, "utf-8"), "ts"));
   const servidor = fs
     .readdirSync(aplicacion, { recursive: true })
     .map((r) => r.replaceAll("\\", "/"))
     .filter((r) => r.endsWith(".py"))
-    .map((r) => fs.readFileSync(`${aplicacion}/${r}`, "utf-8"));
+    .map((r) => sinComentarios(fs.readFileSync(`${aplicacion}/${r}`, "utf-8"), "py"));
   return [...front, ...servidor].join("\n").replace(/\s+/g, " ");
 }
 
