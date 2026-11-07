@@ -136,6 +136,17 @@ describe("Tablero de la obra", () => {
     }
   });
 
+  test("los gráficos van sin la barra de herramientas de Carbon Charts: su botón dentro de role=button rompe axe (nested-interactive) y trae rótulos en inglés", async () => {
+    fetchFalso.mockImplementation(async () => json(TABLERO));
+    montar("OB-S2");
+    const graficos = await screen.findAllByTestId(/grafico-(anillo|barras)/);
+    expect(graficos.length).toBeGreaterThan(0);
+    for (const g of graficos) {
+      const opciones = JSON.parse(g.getAttribute("data-opciones")!) as { toolbar?: { enabled?: boolean } };
+      expect(opciones.toolbar?.enabled).toBe(false);
+    }
+  });
+
   test("cifras y ejes en es-VE, con el exacto en el title (V-19)", async () => {
     fetchFalso.mockImplementation(async () =>
       json({ ...TABLERO, tarjetas: [{ rotulo: "Total del contrato", valor: "95066.60 USD", detalle: "" }] }),
