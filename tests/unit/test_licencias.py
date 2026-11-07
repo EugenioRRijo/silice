@@ -171,3 +171,53 @@ def test_ifcopenshell_sin_texto_en_dist_info_no_falla(tmp_path: Path) -> None:
     assert resultado.returncode == 0, resultado.stderr
     indice = (salida / "INDICE.md").read_text(encoding="utf-8")
     assert "| ifcopenshell | 0.8.5 | LGPL-3.0-or-later |" in indice
+
+
+# --- SDK de WebView2 dentro de pywebview (F5 ventana, pendiente de V0) ---------------------------
+# pywebview 6.2.1 trae los ensamblados del SDK 1.0.3856.49 de Microsoft en `webview/lib/` pero su
+# rueda no lleva el texto de esa licencia. El texto se copió literal del paquete NuGet oficial
+# `Microsoft.Web.WebView2` 1.0.3856.49 (LICENSE.txt y NOTICE.txt) y vive en `docs/licencias_webview2/`.
+# Los SHA-256 salen del archivo bajado de nuget.org (el .nupkg: bc0f76eb...a099f1a1a); fijan que
+# nadie reescriba el texto de memoria.
+WEBVIEW2 = RAIZ / "docs" / "licencias_webview2"
+SHA256_WEBVIEW2 = {
+    "LICENSE.txt": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
+    "NOTICE.txt": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90",
+}
+
+
+def test_el_texto_del_sdk_de_webview2_es_el_literal_del_paquete_nuget() -> None:
+    import hashlib
+
+    for nombre, huella in SHA256_WEBVIEW2.items():
+        archivo = WEBVIEW2 / nombre
+        assert archivo.is_file(), f"falta {archivo}"
+        assert hashlib.sha256(archivo.read_bytes()).hexdigest() == huella, nombre
+
+
+def test_pywebview_lleva_la_licencia_del_sdk_de_webview2(tmp_path: Path) -> None:
+    sitio, salida = tmp_path / "sitio", tmp_path / "LICENCIAS"
+    sitio.mkdir()
+    _dist(
+        sitio,
+        "pywebview",
+        "6.2.1",
+        "BSD-3-Clause",
+        {"licenses/LICENSE": "BSD de pywebview"},
+    )
+    resultado = _correr(sitio, salida, _psf(tmp_path))
+    assert resultado.returncode == 0, resultado.stderr
+    carpeta = salida / "pywebview-6.2.1"
+    assert (carpeta / "LICENSE").read_text(encoding="utf-8") == "BSD de pywebview"
+    sdk = carpeta / "Microsoft.Web.WebView2-1.0.3856.49-LICENSE.txt"
+    assert sdk.read_bytes() == (WEBVIEW2 / "LICENSE.txt").read_bytes()
+    aviso = carpeta / "Microsoft.Web.WebView2-1.0.3856.49-NOTICE.txt"
+    assert aviso.read_bytes() == (WEBVIEW2 / "NOTICE.txt").read_bytes()
+
+
+def test_otro_paquete_no_recibe_la_licencia_del_sdk(tmp_path: Path) -> None:
+    sitio, salida = tmp_path / "sitio", tmp_path / "LICENCIAS"
+    sitio.mkdir()
+    _dist(sitio, "bottle", "0.13.4", "MIT", {"licenses/LICENSE": "MIT"})
+    assert _correr(sitio, salida, _psf(tmp_path)).returncode == 0
+    assert sorted(p.name for p in (salida / "bottle-0.13.4").iterdir()) == ["LICENSE"]
