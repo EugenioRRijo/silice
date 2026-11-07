@@ -352,6 +352,7 @@ solo-core, nunca mezclado con estas tareas.
 | 4. Variantes de medición | Sí: fresado en m² (con espesor) y colocación de la carpeta en t, cada una con su código (`fresado_area` C-000.000.022, `carpeta_colocacion_masa` C-000.000.023) | `adapters/vial/modelo.py` (`MEDICIONES`), `derivacion.py` (`_VARIANTES`) |
 | 5. Perfiles de libros reales | Fuera del repositorio, en la carpeta de datos de la instalación: `<carpeta de datos>/perfiles_libros/` por omisión, o la carpeta de `SILICE_PERFILES_LIBROS` si está (arbitraje F5 vial, P2, 2026-11-07); el del repositorio se escribe contra un libro ficticio (`tests/fixtures/libro_apu_por_hoja.py`). Ver `docs/manual_tecnico.md`, «Perfiles de libros locales» | `adapters/hoja_empresa/perfil_apu_por_hoja.py` (`carpetas_locales`), `fusion/apu_por_hoja.py` (`carpeta_perfiles_locales`) |
 | 6. Céntimos por redondeo por renglón | INFO que los explica | `fusion/apu_por_hoja.py`, AH1 |
+| Tutor 4. `kgf` en los APU de acero | Se traduce a `kg` en el perfil del importador, declarado (opción C de §8.2, no un alias del núcleo): cada hoja que lo usa lo dice con un AH8 (INFO). Anotado el 2026-11-07 (arbitraje F5 vial, P5): ya estaba construido sin figurar aquí. Si el tutor pide tratarlo como unidad propia, se quita de la tabla y la cantidad queda en `kgf` | `adapters/hoja_empresa/perfiles/apu_por_hoja.json` (`unidades`), o el perfil local de la instalación |
 
 **Decisiones de construcción** (tomadas al construir, prudentes y reversibles):
 
