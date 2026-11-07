@@ -1350,6 +1350,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑21 | RF‑80, RF‑81, RF‑82, RF‑84 | S3‑0 (declarado), S3‑1, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
 | UC‑22 | RF‑83, RF‑84, RF‑85 | S3‑0 (declarado), S3‑2, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
 | UC‑23 | RF‑86, RF‑87, RF‑88, RF‑89, RF‑100, RF‑141 | S3‑0 (declarado), S3‑4, S3‑5, S3‑6, ruta S1 (1.1.0) | indicador del administrador (horizonte §6.1) |
+| UC‑24 (ventana de escritorio, provisional) | RF‑180, RF‑181, RF‑182, RF‑183, RF‑184 | F5 ventana V0–V3 (`feature/f5-ventana`, 2026‑11‑06) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑26 | RF‑111, RF‑112, RF‑113, RF‑114, RF‑115, RF‑116, RF‑117, RF‑118 | ruta S2 (Sílice 1.2.0) | 1 (errores detectados, ahora ubicados sobre la hoja) |
 | UC‑28 | RF‑127, RF‑128, RF‑129, RF‑135, RF‑136 | Sesión 4 de la ruta (Sílice 1.4.0) | fuera de los cinco indicadores (gestor de producción) |
 | UC‑29 | RF‑130, RF‑131, RF‑132, RF‑133, RF‑134, RNF‑25 | Sesión 4 de la ruta (Sílice 1.4.0) | fuera de los cinco indicadores (gestor de producción) |
@@ -1660,6 +1661,27 @@ RF-160 a RF-166 y RNF-30, autocompletado RNF-29; los RF del autocompletado van a
 
 Enmienda a UC-10 paso 1 y flujos 2b, 3b y 4b: el buscador va integrado en la celda de cada insumo. La matriz de
 trazabilidad (§4) tiene su fila «autocompletado guiado».
+
+## Enmienda (2026-11-06): ventana de escritorio propia (F5 ventana)
+
+**PROVISIONAL:** las decisiones que la sostienen son recomendaciones del orquestador del 2026-11-06, pendientes de
+ratificar por Eugenio (diseño [2026-11-03-ventana-de-escritorio-design.md](especificaciones/2026-11-03-ventana-de-escritorio-design.md)
+§10). Verificación previa: `docs/bitacora/2026-11-06-ventana-v0.md`. Numeración del ruling del orquestador para las
+fases en paralelo del 2026-11-06 (F5 ventana: RF-180 a RF-184); los números que la ruta reservó a la sesión 5
+(RF-137 a RF-140, RNF-26 y RNF-27) **no se usan** y quedan libres.
+
+| ID | Requisito | Prioridad | Caso de uso | Criterio de aceptación |
+|---|---|---|---|---|
+| RF-180 | El acceso directo «Sílice» abre la interfaz de `/app/` en una ventana propia de Windows, con el título «Sílice», el ícono de Sílice y su propio botón en la barra de tareas (identificador de aplicación `EugenioRijo.Silice`, el mismo en la ventana y en el acceso); la ventana usa WebView2, abre maximizada, no baja de 1056 px de ancho y deja seleccionar texto y ampliar con Ctrl + rueda | Deseable | UC-24 | `tests/unit/test_ventana.py`, `tests/unit/test_lanzador.py` (ventana con WebView2), `tests/unit/test_icono_silice.py`; prueba de Eugenio en su equipo (V5) |
+| RF-181 | Cerrar la ventana detiene Sílice: termina Uvicorn y borra `estado\servidor.json`, sin procesos huérfanos; si Uvicorn termina con la ventana abierta, la ventana muestra «Sílice se detuvo» y cómo seguir, y no queda colgada; la consola minimizada sigue mostrando el código de instalación y cerrarla también detiene Sílice | Deseable | UC-24 | `tests/unit/test_lanzador.py` y `tests/unit/test_ventana.py`; en la CI, la humo con la ventana (V4, pendiente); en V5, el Administrador de tareas sin `python.exe` tras cerrar |
+| RF-182 | Si el equipo no puede mostrar la ventana (no es Windows, WebView2 no está según la clave `pv` del runtime, falta pywebview, el motor no es WebView2, pywebview falla o la interfaz no carga en 30 s) o si `silice.toml` pide `[interfaz] abrir_en = "navegador"`, Sílice abre el navegador como antes y deja un AVISO en la consola y en el registro con el motivo; `arrancar --sin-ventana` fuerza el navegador sin aviso y `--sin-navegador` no presenta nada | Esencial | UC-24 | `tests/unit/test_ventana.py` (WebView2 por registro, motor, plazo), `tests/unit/test_lanzador.py` (respaldo y avisos), `tests/unit/test_ajustes.py` (`abrir_en`) |
+| RF-183 | Una segunda ejecución con Sílice en marcha no lanza otra instancia ni otra ventana: trae al frente la ventana del lanzador vivo; si la instancia viva no tiene ventana, abre el navegador como antes | Deseable | UC-24 | `tests/unit/test_lanzador.py` (segunda ejecución) y `tests/unit/test_ventana.py` (`traer_al_frente`); V5 |
+| RF-184 | La ventana no amplía la superficie de ataque: misma página, mismo origen, misma CSP y misma cookie que en el navegador; ninguna función de Python expuesta a la página (`js_api` vacío), sin herramientas de desarrollo ni puerto de depuración, sin acceso a archivos locales desde la página y con el perfil de WebView2 en modo privado; el entorno de Uvicorn no hereda ninguna variable `WEBVIEW2_*` y, si el lanzador ve pedido el puerto de depuración, lo avisa; la capa `escritorio` cabe en el tope de RNF-19 | Esencial | UC-24 | `tests/unit/test_ventana.py` (ajustes de pywebview), `tests/unit/test_lanzador.py` (entorno y aviso), `tests/unit/test_manifiesto.py` (versiones fijas); tamaño contra RNF-19 en la CI; la humo por CDP (V4, pendiente) |
+
+Enmienda a RF-97: el acceso directo «Sílice» abre la ventana propia (RF-180) y el navegador queda de respaldo (RF-182);
+los cinco accesos llevan el ícono de Sílice, no el de Python. Enmienda a los rulings RT-3 y RT-5 de la ruta
+(`docs/planes/RUTA_SESIONES.md` §2, misma fecha y mismo carácter provisional): pywebview en vez de Tauri v2; puerto fijo
+y sin clave por IPC (la cubre RT-9).
 
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).

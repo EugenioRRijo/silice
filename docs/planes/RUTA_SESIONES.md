@@ -41,6 +41,17 @@ El plan del gestor dice *qué* se construye; esta ruta dice *en qué orden y con
 | RT-8 | Versiones: cada sesión que entrega código cierra con una versión SemVer menor (**1.1.0, 1.2.0…**) que **toma al fusionar** (la siguiente libre en `main`, por orden de llegada, no por número de sesión); no se reabre la 1.0.0. | La 1.0.0 está etiquetada; «Sílice 1.5» ya nombra el spec de la fusión con los libros (no es una versión). | Bajo. |
 | RT-9 | **Acceso de la interfaz nueva:** `/app` es estático y público, **sin secretos**; la persona entra con su cuenta de la instalación (`seguridad/sesiones.py`, roles de S3) y recibe una cookie de sesión `HttpOnly` + `SameSite=Strict` con token anti-CSRF; las rutas que usa la interfaz se mapean a la matriz de roles. La clave de API `X-Silice-Clave` sigue siendo para integraciones, no para el navegador. La API viene apagada por defecto (`operacion/config.py`): la interfaz nueva la necesita encendida en el bucle local. | Una navegación no envía cabeceras y meter la clave en el HTML la expone a toda la red local; la API hoy no conoce usuarios ni roles. | Medio: es trabajo de seguridad propio de la sesión 2 (tarea 2.3). |
 
+> **Enmienda de RT-3 y RT-5 (2026-11-06, PROVISIONAL: recomendación del orquestador pendiente de ratificar por
+> Eugenio).** Diseño [2026-11-03-ventana-de-escritorio-design.md](../especificaciones/2026-11-03-ventana-de-escritorio-design.md)
+> §3, §6 y §10; verificación V0 en `docs/bitacora/2026-11-06-ventana-v0.md`.
+> - **RT-3** pasa de «Tauri v2» a **pywebview (WebView2) con el navegador como respaldo**: el problema de WebView2 en
+>   Windows 10 22H2 es el mismo con los dos, y el respaldo hace innecesario empaquetar su instalador o enmendar RNF-19.
+>   Sin Rust ni un segundo lenguaje; la capa suma unos 0,6 MB con LZMA. La sesión 5 deja de depender del bloqueo B-5
+>   (Rust) y sus tareas 5.1 y 5.2 se leen como V2 y V3 del diseño.
+> - **RT-5** deja el **puerto fijo** de `operacion/config.py` (8501) también en el escritorio y **retira la clave por
+>   IPC**: desde RT-9 la interfaz entra con la cookie `HttpOnly` + `SameSite=Strict` y la comprobación de `Origin`, que
+>   V0 comprobó dentro de la ventana; el puerto efímero rompería «abra `http://127.0.0.1:8501/app/`» del manual.
+
 ## 3. Subagentes, modelo y esfuerzo
 
 Ocho constructores (uno por skill), seis revisores y un escriba. Cada ficha vive en `.claude/agents/<nombre>.md` y
@@ -188,6 +199,9 @@ Revisores: todos.
 Revisores: arquitectura, requisitos, pruebas, diseño, hechos.
 
 ### Sesión 5 — Escritorio con Tauri v2 · **1.5.0**
+
+> 2026-11-06 (provisional, ver la enmienda de RT-3 y RT-5 en §2): el escritorio se hace con pywebview, no con Tauri;
+> el plan vigente es el del diseño de la ventana (§7.1, V0 a V5), construido en la rama `feature/f5-ventana`.
 
 | Tarea | Quién | Modelo | Esfuerzo |
 |---|---|---|---|

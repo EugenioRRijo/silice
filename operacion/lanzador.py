@@ -2,9 +2,12 @@
 
 `python -m operacion arrancar` prepara las bases, elige la dirección (siempre el bucle local salvo
 la IP explícita de la red local), lanza **un solo proceso** hijo (Uvicorn, `api.main:app`, que sirve
-la API y la interfaz de React en `/app/`, todo en un solo puerto), espera `GET /salud` y abre el
-navegador en `/app/`. Cerrar la ventana detiene todo; `parar` lo hace desde otro proceso. Nunca
-importa FastAPI: solo lo lanza.
+la API y la interfaz de React en `/app/`, todo en un solo puerto), espera `GET /salud` y presenta
+`/app/`: en la ventana propia de Sílice (`operacion.ventana`, WebView2) o, si el equipo no puede,
+si `silice.toml` lo pide o con `--sin-ventana`, en el navegador. Cerrar la ventana de Sílice o la
+consola detiene todo; `parar` lo hace desde otro proceso. Una segunda ejecución con Sílice en marcha
+trae al frente la ventana que ya está (F5, decisión provisional 3 del 2026-11-06). Nunca importa
+FastAPI: solo lo lanza.
 """
 
 from __future__ import annotations
@@ -27,7 +30,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from operacion import base_datos, config, primer_arranque, red, registro
+from operacion import base_datos, config, primer_arranque, red, registro, ventana
 
 LOOPBACK = "127.0.0.1"
 BANDERAS_PYTHON = ("-E", "-s", "-B", "-X", "utf8")
@@ -83,12 +86,13 @@ def entorno_hijos(
     base: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """El entorno de Uvicorn: ninguna escritura cae en la carpeta del programa y nada del entorno
-    del usuario (`PYTHON*`, `VIRTUAL_ENV`) cambia su comportamiento."""
+    del usuario (`PYTHON*`, `VIRTUAL_ENV`) cambia su comportamiento. Tampoco hereda `WEBVIEW2_*`:
+    el puerto de depuración de WebView2 es solo de la ventana en la prueba de humo (diseño §7.2)."""
     origen = os.environ if base is None else base
     env = {
         k: v
         for k, v in origen.items()
-        if not k.upper().startswith("PYTHON") and k.upper() != "VIRTUAL_ENV"
+        if not k.upper().startswith(("PYTHON", "WEBVIEW2_")) and k.upper() != "VIRTUAL_ENV"
     }
     caso = config.ruta_caso_por_defecto(entorno)
     env.update(
@@ -221,6 +225,18 @@ def _abrir_con_el_sistema(ruta: Path) -> None:
         pass
 
 
+def _motivo_del_navegador(
+    ajustes: config.Ajustes, sin_ventana: bool, motivo_sin_ventana: Callable[[], str | None]
+) -> str | None:
+    """`None`: se abre la ventana. Si no, por qué se abre el navegador; `""` (lo pidió la orden
+    con `--sin-ventana`) no lleva aviso. El ajuste y la orden mandan sin mirar el equipo."""
+    if sin_ventana:
+        return ""
+    if ajustes.abrir_en == "navegador":
+        return "silice.toml pide el navegador ([interfaz] abrir_en)"
+    return motivo_sin_ventana()
+
+
 def arrancar(
     entorno: Mapping[str, str] | None = None,
     *,
@@ -238,6 +254,10 @@ def arrancar(
         primer_arranque.asegurar_codigo_de_la_instalacion
     ),
     abrir_archivo: Callable[[Path], Any] = _abrir_con_el_sistema,
+    sin_ventana: bool = False,
+    motivo_sin_ventana: Callable[[], str | None] = ventana.motivo_sin_ventana,
+    abrir_ventana: Callable[[str, Callable[[], bool]], Any] = ventana.abrir,
+    traer_al_frente: Callable[[int], bool] = ventana.traer_al_frente,
 ) -> int:
     estado = leer_estado(entorno)
     if estado is not None:
@@ -245,7 +265,11 @@ def arrancar(
         if sonda(url):
             salida(f"Sílice ya está en marcha: {url}{RUTA_INTERFAZ}")
             if not sin_navegador:
-                abrir(url + RUTA_INTERFAZ)
+                # El primer PID es el lanzador vivo, dueño de su ventana (si la abrió).
+                if not sin_ventana and estado.pids and traer_al_frente(estado.pids[0]):
+                    salida("Se trajo al frente la ventana de Sílice que ya estaba abierta.")
+                else:
+                    abrir(url + RUTA_INTERFAZ)
             return 0
         borrar_estado(entorno)  # un registro viejo de una instancia que ya no existe
     ruta_ajustes = config.ruta_ajustes(entorno)
@@ -286,6 +310,15 @@ def arrancar(
             abrir_archivo(codigo)  # el acceso directo del instalador deja esta ventana minimizada
     direccion, de_direccion = elegir_direccion(ajustes, ips())
     avisos.extend(de_direccion)
+    argumentos_webview2 = (os.environ if entorno is None else entorno).get(
+        ventana.VARIABLE_ARGUMENTOS_WEBVIEW2, ""
+    )
+    if "remote-debugging" in argumentos_webview2.lower():
+        avisos.append(
+            f"{ventana.VARIABLE_ARGUMENTOS_WEBVIEW2} pide un puerto de depuración: la ventana de "
+            "Sílice lo abrirá y cualquier programa de este equipo podría manejarla. Solo la prueba "
+            "de humo debe ponerla; si no es esa prueba, quítela."
+        )
     for aviso in avisos:
         logger.warning("%s", aviso)
         salida(f"AVISO: {aviso}")
@@ -329,10 +362,36 @@ def arrancar(
                 return 1
             dormir(0.5)
         salida(f"Sílice está en marcha: {url}{RUTA_INTERFAZ}")
-        salida("Para detener Sílice, cierre esta ventana.")
+
+        def vivo() -> bool:
+            return all(p.poll() is None for p in procesos)
+
+        en_ventana = False
         if not sin_navegador:
-            abrir(url + RUTA_INTERFAZ)
-        while all(p.poll() is None for p in procesos):
+            motivo = _motivo_del_navegador(ajustes, sin_ventana, motivo_sin_ventana)
+            if motivo is None:
+                salida("Para detener Sílice, cierre la ventana de Sílice (o esta consola).")
+                try:
+                    abrir_ventana(url + RUTA_INTERFAZ, vivo)  # bloquea hasta que se cierra
+                    en_ventana = True
+                except ventana.VentanaNoDisponible as error:
+                    motivo = str(error)
+            if not en_ventana:
+                if motivo:
+                    aviso = (
+                        f"La ventana de Sílice no se abre: {motivo}. "
+                        "Sílice se abre en el navegador."
+                    )
+                    logger.warning("%s", aviso)
+                    salida(f"AVISO: {aviso}")
+                salida("Para detener Sílice, cierre esta ventana.")
+                abrir(url + RUTA_INTERFAZ)
+        else:
+            salida("Para detener Sílice, cierre esta ventana.")
+        if en_ventana and vivo():
+            salida("Se cerró la ventana de Sílice: Sílice se detuvo.")
+            return 0
+        while vivo():
             dormir(1)
         logger.error("un proceso de Sílice terminó solo")
         salida("Un proceso de Sílice terminó. Mire el registro y vuelva a abrir Sílice.")

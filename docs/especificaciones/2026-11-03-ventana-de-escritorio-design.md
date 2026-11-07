@@ -1,7 +1,9 @@
 # Ventana de escritorio propia para Sílice: diseño
 
 **Fecha:** 2026-11-03 · **Rama:** `feature/disenos-f5` (árbol `.worktrees/s2m5`) · **Estado:** PROPUESTO (por aprobar por
-Eugenio).
+Eugenio). **2026-11-06:** construido V0 a V3 en `feature/f5-ventana` con las decisiones **provisionales** de §10
+(recomendaciones del orquestador, pendientes de ratificar por Eugenio); §6.1 (punto 6) y §7.3 quedan enmendados por la
+decisión 3.
 **Origen:** Eugenio aprobó el 2026-10-25 que, después de la auditoría, Sílice tuviera una ventana de escritorio propia en vez
 de abrirse en el navegador. Diseños y planes que esto toca: `2026-10-11-silice-s5-producto-instalador-design.md` (instalador,
 arranque, prueba de humo), `docs/planes/RUTA_SESIONES.md` (rulings RT-2, RT-3 y RT-5; sesión 5),
@@ -126,7 +128,8 @@ que Sílice abre en cualquier equipo.
 1. El acceso directo sigue ejecutando `python -m operacion arrancar`. El lanzador prepara las bases, emite el código de
    instalación si hace falta, levanta Uvicorn y espera la salud, **como hoy**.
 2. Después decide cómo presentar la interfaz: si el ajuste `interfaz` de `silice.toml` es `ventana` (por defecto) y el
-   equipo tiene WebView2, abre la ventana; si no, abre el navegador como hoy y deja un AVISO en la consola y en el registro
+   equipo tiene WebView2, abre la ventana (enmienda 2026-11-06: el ajuste vive en la tabla `[interfaz]` que ya existía,
+   con la clave `abrir_en = "ventana" | "navegador"`); si no, abre el navegador como hoy y deja un AVISO en la consola y en el registro
    que dice por qué.
 3. La ventana: título «Sílice», ícono propio, abierta maximizada, tamaño mínimo de 1056 px de ancho (el más chico que la
    interfaz soporta), sin `js_api`, sin herramientas de desarrollo, con las descargas permitidas (las necesita
@@ -134,8 +137,11 @@ que Sílice abre en cualquier equipo.
 4. pywebview exige el hilo principal: la vigilancia de Uvicorn, que hoy es el bucle principal, pasa a un hilo. Si Uvicorn
    muere, la ventana muestra un mensaje fijo («Sílice se detuvo; ciérrela y vuelva a abrir Sílice») y no queda colgada.
 5. Al cerrar la ventana, `webview.start()` regresa y el `finally` de hoy termina los procesos y borra el estado.
-6. Una segunda ejecución con Sílice en marcha abre una ventana más sobre el mismo servidor; esa ventana no es dueña del
-   servidor y cerrarla no lo detiene (o abre el navegador si no hay WebView2).
+6. ~~Una segunda ejecución con Sílice en marcha abre una ventana más sobre el mismo servidor; esa ventana no es dueña del
+   servidor y cerrarla no lo detiene (o abre el navegador si no hay WebView2).~~ **Enmienda 2026-11-06 (decisión 3,
+   provisional):** una segunda ejecución con Sílice en marcha **trae al frente la ventana que ya está** (la del lanzador
+   vivo, primer PID de `servidor.json`, buscada por su título «Sílice») y sale sin lanzar nada; si la instancia viva no
+   tiene ventana (abrió el navegador), abre el navegador como hoy. La «ventana no dueña» no existe.
 7. `--sin-ventana` fuerza el navegador; `--sin-navegador` (el de la humo) sigue sin presentar nada.
 
 **Puerto:** se queda fijo (8501, `operacion/config.py`). El puerto efímero de RT-5 rompería «abra
@@ -207,7 +213,9 @@ el respaldo hace innecesario enmendarlo.
   el AVISO con el motivo.
 - La ventana falla al abrir: navegador y AVISO; Sílice sigue en marcha.
 - Cerrar la ventana termina Uvicorn y borra `servidor.json`; Uvicorn muere con la ventana abierta: mensaje y salida limpia.
-- Segunda ejecución: ventana no dueña; cerrarla no termina el servidor.
+- ~~Segunda ejecución: ventana no dueña; cerrarla no termina el servidor.~~ Enmienda 2026-11-06: segunda ejecución con
+  la instancia viva: trae al frente su ventana y no lanza ni abre nada más; sin ventana viva, el navegador; con
+  `--sin-navegador`, nada.
 - El entorno de los hijos y de la ventana no contiene la variable del puerto de depuración.
 
 ### 7.4 Prueba manual (V5)
@@ -241,3 +249,20 @@ del runner no trae WebView2, el trabajo lo instala antes del paso (la CI tiene i
 5. ¿Quiere un ícono de Sílice dibujado para esto? Hoy no hay ninguno: los accesos usan el de Python y la interfaz no
    tiene favicon (`frontend-desktop/index.html` lo deja vacío).
 6. ¿Puede probar V0 en un equipo de la empresa con Windows 10, para saber si allí WebView2 está?
+
+## 10. Decisiones provisionales (2026-11-06)
+
+Recomendaciones del orquestador a las preguntas de §9, con las que se construyó V0 a V3 en `feature/f5-ventana`.
+**Pendientes de ratificar por Eugenio**; cada una es reversible sin tocar el núcleo.
+
+| # | Pregunta de §9 | Decisión provisional | Dónde quedó |
+|---|---|---|---|
+| 1 | pywebview y enmendar RT-3 y RT-5 | pywebview con el navegador como respaldo; RT-3 y RT-5 enmendados con fecha | `docs/planes/RUTA_SESIONES.md` §2, `docs/ERS.md` (enmienda 2026-11-06) |
+| 2 | La consola minimizada | Se queda en esta versión: muestra el código de instalación y cerrarla también detiene Sílice | `operacion/lanzador.py` (mensajes de la consola), RF-181 |
+| 3 | Segunda ejecución | Trae al frente la ventana que ya está (estándar de las aplicaciones de escritorio), no abre otra | §6.1 punto 6 y §7.3 enmendados; `operacion/ventana.py` (`traer_al_frente`), RF-183 |
+| 4 | Dónde se cambia `interfaz` | Solo en `silice.toml` (`[interfaz] abrir_en`), no en Administración por ahora | `operacion/config.py`, RF-182 |
+| 5 | Ícono de Sílice | Sí: SVG propio, sobrio, con los colores del marco de Carbon; favicon de la interfaz, ícono de la ventana, de los accesos y del instalador | `frontend-desktop/public/silice.svg`, `operacion/silice.ico` (lo genera `instalador/icono.py`), `instalador/silice.iss` |
+| 6 | V0 en un equipo de la empresa con Windows 10 | Queda para Eugenio (V5): este equipo es Windows 11 | `docs/bitacora/2026-11-06-ventana-v0.md` §1.5 |
+
+Resultado de V0 (bitácora): pywebview 6.2.1 y pythonnet 3.2.1 funcionan con el Python 3.13.13 del instalador; la capa
+suma unos 0,6 MB con LZMA; WebView2 está en este equipo. §8 no hizo falta.

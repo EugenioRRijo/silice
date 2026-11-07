@@ -26,6 +26,12 @@
 #define OpRec "-E -s -B -X utf8 -m operacion restablecer-administrador --esperar"
 #define OpD "-E -s -B -X utf8 -m operacion demostracion"
 #define Ej "Filename: {app}\python\python.exe; WorkingDir: {app}\codigo;"
+; Ícono de Sílice (F5 ventana, V3): viaja con operacion/ y lo genera instalador/icono.py del SVG.
+#define Ic "IconFilename: {app}\codigo\operacion\silice.ico;"
+; El mismo identificador que fija la ventana (operacion/ventana.py): la barra de tareas agrupa la
+; ventana con este acceso, como «Sílice» y no como Python.
+#define Aum "AppUserModelID: EugenioRijo.Silice"
+#define Esc "Flags: runminimized; Tasks: escritorio;"
 #define Rec "recursesubdirs createallsubdirs ignoreversion"
 #define Mod "{app}\modulos\similitud"
 #define Sp "{app}\python\Lib\site-packages"
@@ -49,7 +55,8 @@ WizardStyle=modern
 LicenseFile={#Raiz}\LICENSE
 OutputDir={#Salida}
 OutputBaseFilename=Silice-{#Version}{#Sufijo}
-UninstallDisplayIcon={app}\python\python.exe
+SetupIconFile={#Raiz}\operacion\silice.ico
+UninstallDisplayIcon={app}\codigo\operacion\silice.ico
 SetupLogging=yes
 UsePreviousAppDir=yes
 
@@ -88,11 +95,11 @@ Type: filesandordirs; Name: "{app}\codigo"
 Type: filesandordirs; Name: "{app}\LICENCIAS"
 
 [Icons]
-Name: "{autoprograms}\Sílice"; {#Ej} Parameters: "{#OpA}"; Flags: runminimized
-Name: "{autoprograms}\Detener Sílice"; {#Ej} Parameters: "{#OpP}"; Flags: runminimized
-Name: "{autoprograms}\Sílice: red local (administrador)"; {#Ej} Parameters: "{#OpR}"
-Name: "{autoprograms}\Sílice: recuperar acceso de administrador"; {#Ej} Parameters: "{#OpRec}"
-Name: "{autodesktop}\Sílice"; {#Ej} Parameters: "{#OpA}"; Flags: runminimized; Tasks: escritorio
+Name: "{autoprograms}\Sílice"; {#Ej} {#Ic} Parameters: "{#OpA}"; Flags: runminimized; {#Aum}
+Name: "{autoprograms}\Detener Sílice"; {#Ej} {#Ic} Parameters: "{#OpP}"; Flags: runminimized
+Name: "{autoprograms}\Sílice: red local (administrador)"; {#Ej} {#Ic} Parameters: "{#OpR}"
+Name: "{autoprograms}\Sílice: recuperar acceso de administrador"; {#Ej} {#Ic} Parameters: "{#OpRec}"
+Name: "{autodesktop}\Sílice"; {#Ej} {#Ic} Parameters: "{#OpA}"; {#Esc} {#Aum}
 
 [Run]
 {#Ej} Parameters: "{#OpD}"; Components: demostracion; Flags: runhidden
