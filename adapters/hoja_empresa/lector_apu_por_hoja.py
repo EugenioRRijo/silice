@@ -18,7 +18,10 @@ financiamiento, impuesto): una guardia, un modelo y las mismas celdas citables (
   impuesto que falten valen 0.
 - Un valor que el núcleo no admite (arbitraje F5 vial, P3) también la hace no interpretable, con
   su `HOJA!CELDA`: un rendimiento que no es mayor que cero; una cantidad, un precio, un
-  desperdicio o un porcentaje negativos; un coeficiente de depreciación fuera de (0; 1].
+  desperdicio o un porcentaje negativos; un coeficiente de depreciación fuera de (0; 1]; y
+  (revisión de correcciones, N3) una cantidad, un precio, un desperdicio, un bono, un porcentaje,
+  un rendimiento o un precio impreso que pasa de `TOPE_CIFRA` (antes daba un 500 al presentar el
+  precio: `Decimal.quantize` pasaba de la precisión).
 - Las unidades se leen tal como las escribe el libro: la traducción del perfil la aplica quien
   audita (`fusion`), y cada traducción usada queda dicha en el informe.
 - `Decimal(str(v))` siempre (NORMAS §2.3). Solo valores: no hay fórmulas que leer.
@@ -65,7 +68,7 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import (
     cargar_perfil_apu_por_hoja,
 )
 
-__all__ = ["leer_hojas", "leer_libro_apu_por_hoja", "letra", "numero_de"]
+__all__ = ["TOPE_CIFRA", "leer_hojas", "leer_libro_apu_por_hoja", "letra", "numero_de"]
 
 _CERO = Decimal(0)
 _CIEN = Decimal(100)
@@ -75,6 +78,12 @@ _TIPOS = {
     "mano_obra": TipoInsumo.MANO_OBRA,
 }
 Filas = list[list[Any]]
+#: SUPUESTO_DECLARADO (revisión de correcciones de F5/F7/F8, N3): lo más que puede valer una cifra
+#: del libro, un billón. Ninguna cantidad, precio, porcentaje ni rendimiento de un APU se le acerca,
+#: y por debajo de él cada renglón cabe holgado en los 28 dígitos del `Decimal` de Python con dos
+#: decimales. Lo que el tope no ataja (muchos renglones grandes, porcentajes enormes) lo ataja quien
+#: recalcula (`fusion.apu_por_hoja`) diciendo la hoja.
+TOPE_CIFRA = Decimal(10) ** 12
 
 
 def letra(columna: int) -> str:
@@ -106,6 +115,12 @@ def _invalido(hoja: str, celda: str, que: str) -> LibroNoInterpretable:
     return LibroNoInterpretable(
         f"{clave(hoja, celda)}: {que}: Sílice no recalcula la hoja «{hoja}»."
     )
+
+
+def _acotar(hoja: str, celda: str, que: str, valor: Decimal) -> None:
+    """`LibroNoInterpretable` con la celda si `valor` pasa de `TOPE_CIFRA`."""
+    if abs(valor) > TOPE_CIFRA:
+        raise _invalido(hoja, celda, f"{que} pasa del tope de {_cifra(TOPE_CIFRA)}")
 
 
 def _texto(valor: Any) -> str:
@@ -269,15 +284,20 @@ def _linea(
     precio = numero_de(_celda_de(fila, columnas["precio"])) or _CERO
     desperdicio = numero_de(_celda_de(fila, columnas.get("desperdicio"))) or _CERO
     depreciacion = numero_de(_celda_de(fila, columnas.get("depreciacion")))
+    bono = numero_de(_celda_de(fila, columnas.get("bono"))) or _CERO
 
     def celda(campo: str) -> str:
         return f"{letra(columnas[campo])}{i + 1}"
 
-    for campo, valor, nombre in (
+    montos = (
         ("cantidad", cantidad, "la cantidad"),
         ("precio", precio, "el precio"),
         ("desperdicio", desperdicio, "el desperdicio"),
-    ):
+    )
+    for campo, valor, nombre in (*montos, ("bono", bono, "el bono")):
+        if campo in columnas:
+            _acotar(hoja, celda(campo), f"{nombre} de «{descripcion}»", valor)
+    for campo, valor, nombre in montos:
         if valor < 0:
             negativa = "negativa" if nombre.startswith("la ") else "negativo"
             raise _invalido(
@@ -304,7 +324,7 @@ def _linea(
         celda_codigo=Celda(hoja, f"{letra(col_codigo)}{i + 1}"),
         celda_cantidad=Celda(hoja, f"{letra(columnas['cantidad'])}{i + 1}"),
         desperdicio=desperdicio,
-        bono=numero_de(_celda_de(fila, columnas.get("bono"))) or _CERO,
+        bono=bono,
         depreciacion=depreciacion,
         celdas={
             campo: Celda(hoja, f"{letra(columnas[campo])}{i + 1}")
@@ -340,6 +360,9 @@ def _leer_apu(hoja: str, filas: Filas, perfil: PerfilApuPorHoja) -> ApuLeido:
     descripcion = _texto(exigir("descripcion", "la descripción", perfil.cabecera["descripcion"]))
     unidad = _texto(exigir("unidad", "la unidad", perfil.cabecera["unidad"]))
     rendimiento = exigir("rendimiento", "el rendimiento", perfil.cabecera["rendimiento"])
+    _acotar(hoja, celdas["rendimiento"].ref, "el rendimiento", rendimiento)
+    if "cantidad" in cabecera:
+        _acotar(hoja, celdas["cantidad"].ref, "la cantidad de la partida", cabecera["cantidad"])
     if rendimiento <= 0:
         raise _invalido(
             hoja,
@@ -360,6 +383,7 @@ def _leer_apu(hoja: str, filas: Filas, perfil: PerfilApuPorHoja) -> ApuLeido:
             continue
         assert donde is not None
         celdas[campo] = Celda(hoja, f"{letra(valor[0])}{donde[0] + 1}")
+        _acotar(hoja, celdas[campo].ref, f"el porcentaje de {variantes[0]}", valor[1])
         if valor[1] < 0:
             raise _invalido(
                 hoja,
@@ -374,6 +398,7 @@ def _leer_apu(hoja: str, filas: Filas, perfil: PerfilApuPorHoja) -> ApuLeido:
             f"La hoja «{hoja}» no tiene el {perfil.precio_unitario[0]} impreso: sin él no hay con "
             "qué comparar el recálculo."
         )
+    _acotar(hoja, f"{letra(pu[0])}{donde[0] + 1}", "el precio unitario impreso", pu[1])
     numero = cabecera.get("numero")
     return ApuLeido(
         hoja=hoja,

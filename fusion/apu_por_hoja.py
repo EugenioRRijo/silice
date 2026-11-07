@@ -33,6 +33,12 @@ El enlace presupuesto ↔ APU es el número de renglón (la cabecera «Partida N
 libro de solo valores no trae fórmulas: las reglas L del libro conocido no aplican y la evidencia es
 el recálculo.
 
+Cifras enormes (revisión de correcciones de F5/F7/F8, N3): el lector ataja cada cifra que pasa de
+`TOPE_CIFRA` con su celda, y aquí se atajan con la suya el P.U. y la cantidad del presupuesto. Si
+cada cifra cabe pero el recálculo de una hoja no cabe en la precisión del `Decimal` (muchos
+renglones grandes, porcentajes enormes), la hoja no se recalcula (`LibroNoInterpretable` con la
+hoja): antes era un 500.
+
 El perfil se busca primero en la carpeta de perfiles locales, `<carpeta de datos>/perfiles_libros/`
 (`carpeta_perfiles_locales`; o la de `SILICE_PERFILES_LIBROS`, si está), y después en el paquete.
 """
@@ -42,12 +48,13 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation, Overflow
 from pathlib import Path
 from typing import Any
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado
 from adapters.hoja_empresa.lector_apu_por_hoja import (
+    TOPE_CIFRA,
     leer_hojas,
     leer_libro_apu_por_hoja,
     letra,
@@ -58,6 +65,7 @@ from adapters.hoja_empresa.modelo import (
     Celda,
     FilaHallazgo,
     LibroLeido,
+    LibroNoInterpretable,
     Rotulo,
     TipoInsumo,
 )
@@ -278,6 +286,10 @@ def _evaluar(
             )
         )
     silice = calcular_apu(composicion, parametros).precio_unitario if evaluable else None
+    if silice is not None:
+        _r(
+            silice
+        )  # se presenta a dos decimales: si no cabe en la precisión, la hoja no se recalcula
     if silice is not None and not apu.impuesto:
         diferencia = impreso - silice
         tolerancia = Decimal(TOLERANCIA_PRECIO.valor)
@@ -378,13 +390,24 @@ def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str
         if numero is None or numero != numero.to_integral_value():
             continue
         codigo = celda(fila, "codigo")
+        cantidad = numero_de(celda(fila, "cantidad"))
+        precio = numero_de(celda(fila, "precio_unitario"))
+        for campo, valor, que in (
+            ("cantidad", cantidad, "la cantidad"),
+            ("precio_unitario", precio, "el precio unitario"),
+        ):
+            if valor is not None and abs(valor) > TOPE_CIFRA:
+                raise LibroNoInterpretable(
+                    f"{titulo}!{letra(columnas[campo])}{k}: {que} del renglón {int(numero)} pasa "
+                    f"del tope de {_es(TOPE_CIFRA)}: Sílice no enlaza el presupuesto con sus APU."
+                )
         renglones.append(
             _Renglon(
                 k,
                 int(numero),
                 "" if codigo is None else str(codigo).strip(),
-                numero_de(celda(fila, "cantidad")),
-                numero_de(celda(fila, "precio_unitario")),
+                cantidad,
+                precio,
                 columnas,
             )
         )
@@ -495,7 +518,13 @@ def auditar_apu_por_hoja(
     libro = leer_libro_apu_por_hoja(datos, nombre, elegido)
     apus, hallazgos, trazas = [], [], []
     for apu in libro.apus:
-        recalculado, propios, suyas = _evaluar(apu, elegido)
+        try:
+            recalculado, propios, suyas = _evaluar(apu, elegido)
+        except (InvalidOperation, Overflow) as exc:  # el recálculo no cabe en la precisión
+            raise LibroNoInterpretable(
+                f"La hoja «{apu.hoja}» da un precio unitario demasiado grande para recalcularlo "
+                "con exactitud: revise sus cantidades, sus precios y sus porcentajes."
+            ) from exc
         apus.append(recalculado)
         hallazgos.extend(propios)
         trazas.extend(suyas)
