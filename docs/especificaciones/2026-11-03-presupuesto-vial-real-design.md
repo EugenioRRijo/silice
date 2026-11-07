@@ -1,7 +1,8 @@
 # Lecciones de un presupuesto vial real revisado en local: diseño
 
 **Fecha:** 2026-11-03 · **Rama:** `feature/disenos-f5` (árbol `.worktrees/s2m5`) · **Estado:** PROPUESTO (por aprobar por
-Eugenio; lo que toca `core/`, además, por el tutor).
+Eugenio; lo que toca `core/`, además, por el tutor). **2026-11-06:** tareas 1 a 6 de §11 construidas en `feature/f5-vial`
+con las decisiones provisionales de §13, a la espera de que Eugenio las ratifique; la tarea 0 (PR #100) sigue con el tutor.
 **Origen:** un presupuesto vial de repavimentación con sus APU, entregado a Eugenio y revisado **solo en local** (el análisis
 vive fuera del repositorio). Diseños de los que depende: `2026-10-30-vial-agregados-design.md` (especialidad vial) y
 `2026-10-25-auditar-un-presupuesto-design.md` (auditar cualquier archivo). Plan vigente de lo vial:
@@ -337,3 +338,43 @@ solo-core, nunca mezclado con estas tareas.
   es el recálculo de Sílice, y el informe lo dice.
 - **Datos reales cerca del código.** El libro ficticio de prueba se escribe a mano desde la forma, nunca a partir de una
   copia del real; antes de cada commit se busca en lo añadido cualquier nombre, código o cifra del material.
+
+## 13. Decisiones provisionales y lo construido (2026-11-06)
+
+**Decisiones provisionales** (recomendaciones del orquestador a las preguntas para Eugenio de §10, del 2026-11-06,
+**pendientes de que Eugenio las ratifique**). Se construyó así, de modo que cambiar cada una sea local:
+
+| Pregunta (§10) | Decisión provisional | Dónde se cambia si Eugenio dice otra cosa |
+|---|---|---|
+| 1. Desperdicio | Dentro de la cantidad, con su traza (punto 1, B), sin esperar al tutor | `fusion/desperdicio.py` (la fórmula), `aplicacion/desperdicio.py` (la traza) |
+| 2. Distancia fuera de la banda | ADVERTENCIA, no ERROR | `adapters/vial/reglas.py`, `_vr4_banda` |
+| 3. Esponjamiento y ojos de gato | Esponjamiento: dato obligatorio de la capa para derivar el transporte del fresado, sin valor por defecto (factor ≥ 1). Ojos de gato: basta el número declarado por la línea | `adapters/vial/modelo.py` (`Capa`, `Demarcacion`) |
+| 4. Variantes de medición | Sí: fresado en m² (con espesor) y colocación de la carpeta en t, cada una con su código (`fresado_area` C-000.000.022, `carpeta_colocacion_masa` C-000.000.023) | `adapters/vial/modelo.py` (`MEDICIONES`), `derivacion.py` (`_VARIANTES`) |
+| 5. Perfiles de libros reales | Fuera del repositorio, en la carpeta de datos de la instalación (`SILICE_PERFILES_LIBROS`); el del repositorio se escribe contra un libro ficticio (`tests/fixtures/libro_apu_por_hoja.py`) | `adapters/hoja_empresa/perfil_apu_por_hoja.py`, `carpetas_locales` |
+| 6. Céntimos por redondeo por renglón | INFO que los explica | `fusion/apu_por_hoja.py`, AH1 |
+
+**Decisiones de construcción** (tomadas al construir, prudentes y reversibles):
+
+- La limpieza de la superficie se deriva solo si la capa de riego la declara (columna `limpieza` = `sí`): derivarla siempre
+  habría cambiado las cantidades de las obras de hoy («un CSV de hoy sigue leyéndose igual», §6.3).
+- La convención del transporte es del tramo (columna `transporte` del CSV, vacía = t·km, la de siempre; `banda`), guardada
+  en una columna nueva y nullable de `vial_tramo` (migración aditiva `caso_0021_vial_transporte`). Con banda, la partida en
+  t se deriva aunque el tramo no declare la distancia; VR4 la usa para comparar la banda.
+- La banda de una partida se lee de la directiva `_tramo_km` («mínimo-máximo», coma o punto decimal) y se entiende como «más
+  del mínimo y hasta el máximo», que es como la escribe la descripción.
+- La demarcación de superficie es un tipo de demarcación (`superficie`: `lineas` es el número de elementos y `area_m2` el
+  área de cada uno); no deriva pintura (VR5 mide líneas).
+- La traza del desperdicio va en dos tablas aditivas del caso (`caso_0022_apu_desperdicio`), solo inserción, por partida.
+  Solo se muestra en la línea cuya cantidad guardada sigue siendo la que resultó (riesgo de §12).
+- El libro con un APU por hoja se audita por su propia ruta (`POST /v1/libros/apu-por-hoja`) y su propio bloque de la
+  pantalla de auditar; no pasa por el visor ni por el historial de UC-30 (que son del libro de la plantilla conocida).
+- Hallazgos del libro con un APU por hoja: AH1 precio impreso frente al recalculado; AH2 bono por renglón y AH3
+  financiamiento (no evaluable); AH4 impuesto dentro del APU (ADVERTENCIA, y esa hoja no se compara); AH5 precio y AH6
+  cantidad del presupuesto frente a su APU; AH7 renglón u hoja sin pareja; AH8 unidad traducida por el perfil; AH9 banda
+  leída de la descripción (`fusion/apu_por_hoja.py`).
+
+**Lo que falta:** la Hoja todavía no muestra ni edita la neta y el porcentaje del desperdicio (punto 1, «la Hoja edita neta
+y porcentaje, nunca el producto»): Componer sí, y la traza no se muestra si la cantidad cambió por otro camino. Mostrarla en
+la pestaña APU de la Hoja es la tarea siguiente; editarla allí puede exigir tocar `aplicacion/hoja.py`, congelado por el
+experimento de la tesis (re-congelar exige acta y aval de Eugenio).
+
