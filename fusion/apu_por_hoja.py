@@ -24,7 +24,8 @@ Hallazgos (`FilaHallazgo`, con su `HOJA!CELDA`; la acción es siempre «informad
 - **AH8** una unidad del libro traducida por el perfil («lt» → «l», «t-km» → «t»), una vez por
   hoja y por unidad (INFO): la traducción queda dicha, nunca escondida.
 - **AH9** la banda de distancia del transporte leída de la descripción con el patrón del perfil
-  (INFO); si la descripción no sigue el patrón, no se adivina.
+  (INFO), con la coma decimal y el punto de miles de `aplicacion.cifras`; si la descripción no
+  sigue el patrón, no hay hallazgo, y si una cifra no sigue la regla, el AH9 dice que no se adivina.
 - **AH10** dos hojas con el mismo número de renglón (ADVERTENCIA, en la celda del número de la
   segunda): el presupuesto se enlaza con la primera y la otra no se compara con ningún renglón.
 
@@ -67,6 +68,7 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import (
     carpetas_locales,
 )
 from adapters.vial.constantes import TOLERANCIA_PRECIO
+from aplicacion.cifras import CifraInvalida, cifra_escrita
 from core.costing.motor import calcular_apu
 from fusion.desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 from fusion.mapeo import composicion_de_apu_por_hoja
@@ -189,13 +191,37 @@ def _unidades(apu: ApuLeido, perfil: PerfilApuPorHoja) -> list[FilaHallazgo]:
     ]
 
 
+def _es_cifra(texto: str) -> bool:
+    try:
+        cifra_escrita(texto)
+    except CifraInvalida:
+        return False
+    return True
+
+
 def _banda(apu: ApuLeido, perfil: PerfilApuPorHoja) -> list[FilaHallazgo]:
+    """AH9: la banda leída de la descripción con el patrón del perfil. Sus cifras se leen con la
+    regla del proyecto (`aplicacion.cifras`: coma decimal, punto de miles; arbitraje F5 vial, P9):
+    «1.000» es mil, y una cifra que no sigue la regla («1.5») no se adivina."""
     if perfil.patron_banda is None or "descripcion" not in apu.celdas:
         return []
     hallado = re.search(perfil.patron_banda, apu.titulo, flags=re.IGNORECASE)
     if hallado is None:
         return []
-    minimo, maximo = (Decimal(hallado[g].replace(",", ".")) for g in ("minimo", "maximo"))
+    try:
+        minimo, maximo = (cifra_escrita(hallado[g]) for g in ("minimo", "maximo"))
+    except CifraInvalida:
+        mal = next(hallado[g] for g in ("minimo", "maximo") if not _es_cifra(hallado[g]))
+        return [
+            _hallazgo(
+                "AH9",
+                "INFO",
+                apu.celdas["descripcion"],
+                f"{apu.hoja}: la descripción sigue el patrón de la banda de distancia, pero "
+                f"«{mal}» no es una cifra con coma decimal y punto de miles: Sílice no adivina la "
+                "banda.",
+            )
+        ]
     en_t = perfil.unidades.get(apu.unidad, apu.unidad) == "t"
     return [
         _hallazgo(

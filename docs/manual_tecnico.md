@@ -911,7 +911,9 @@ esta instalación) · …» o «(del paquete)».
 
 **Escribir uno.** Copie el del paquete en la carpeta local y cambie solo los rótulos, la tabla
 `unidades` (lo que escribe el libro → la unidad de Sílice; cada traducción usada sale como AH8) y
-`patron_banda` (expresión regular con los grupos `minimo` y `maximo`; el AH9). Se valida entero al cargar: claves
+`patron_banda` (expresión regular con los grupos `minimo` y `maximo`, cuyas cifras se leen con la
+coma decimal y el punto de miles de `aplicacion.cifras`: «1.000» es mil; una que no sigue la regla
+no se adivina y el AH9 lo dice). Se valida entero al cargar: claves
 que faltan o sobran, listas vacías y un patrón que no compila se rechazan.
 
 **Entrada hostil.** De cada libro se leen solo las hojas cuyo nombre empieza por `prefijo_hoja` y,
