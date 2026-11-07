@@ -9,7 +9,7 @@ requires-python = ">=3.12"
 dependencies = [
     "sqlalchemy>=2.0",
     "pandas>=2.2",
-    "pydantic>=2.0",
+    "pydantic>=2.12",     # exclude_if por campo (api/esquemas_vial.py), desde la 2.12.0 (su changelog)
     "openpyxl>=3.1",
     "alembic>=1.20",      # S5-1 (0.6.0): migraciones del caso y de la instalacion (RV-3)
     "argon2-cffi>=25.1",  # S3 (0.8.0): contrasenas y secretos de seguridad/ (maestro 4.4)
