@@ -13,6 +13,9 @@ export interface ColumnaInsumo {
   clave: string;
   titulo: string;
   numerica?: boolean;
+  // Una columna opcional no está en la fila vacía y solo viaja si se escribe (el desperdicio, F5 vial): así lo que
+  // manda una fila de siempre no cambia.
+  opcional?: boolean;
 }
 
 export const TIPOS: readonly TipoTabla[] = ["materiales", "equipos", "mano_obra"];
@@ -30,6 +33,9 @@ export const COLUMNAS: Record<TipoTabla, readonly ColumnaInsumo[]> = {
     { clave: "descripcion", titulo: "Descripción" },
     { clave: "unidad", titulo: "Unidad" },
     { clave: "cantidad", titulo: "Consumo por unidad", numerica: true },
+    // F5 vial, tarea 3: el porcentaje de desperdicio («4» es 4 %), con la cantidad neta en «Consumo por unidad». El
+    // servidor calcula la cantidad con desperdicio y la dice en el desglose.
+    { clave: "desperdicio", titulo: "Desperdicio (%)", numerica: true, opcional: true },
     { clave: "precio", titulo: "Precio", numerica: true },
   ],
   equipos: [
@@ -51,7 +57,7 @@ export function tablasVacias(): Tablas {
 }
 
 export function filaVacia(tipo: TipoTabla): Fila {
-  return Object.fromEntries(COLUMNAS[tipo].map((c) => [c.clave, ""]));
+  return Object.fromEntries(COLUMNAS[tipo].filter((c) => !c.opcional).map((c) => [c.clave, ""]));
 }
 
 export function hayFilas(tablas: Tablas): boolean {
@@ -64,6 +70,10 @@ export function normalizarFila(tipo: TipoTabla, origen: Record<string, unknown>)
   for (const clave of Object.keys(fila)) {
     const valor = origen[clave];
     fila[clave] = valor === null || valor === undefined ? "" : String(valor);
+  }
+  for (const c of COLUMNAS[tipo]) {
+    const valor = origen[c.clave];
+    if (c.opcional && valor !== null && valor !== undefined && String(valor) !== "") fila[c.clave] = String(valor);
   }
   return fila;
 }

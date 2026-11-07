@@ -37,6 +37,13 @@ export interface Contraste {
   dentro_de_rango: boolean;
 }
 
+// La cantidad con desperdicio de una fila de materiales, dicha por el servidor: «0,52 (0,50 + 4 %)» (F5 vial).
+export interface DesperdicioDeFila {
+  fila: number;
+  descripcion: string;
+  leyenda: string;
+}
+
 export interface Evaluacion {
   estado: "vacio" | "incompleto" | "valido";
   aviso: string | null;
@@ -44,6 +51,7 @@ export interface Evaluacion {
   advertencias: Advertencia[];
   requiere_justificacion: boolean;
   contraste: Contraste | null;
+  desperdicios?: DesperdicioDeFila[];
 }
 
 export interface PartidaExistente {

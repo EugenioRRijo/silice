@@ -36,6 +36,19 @@ Columnas, todas obligatorias en la cabecera:
   la carpeta o del bacheo (mayor que 0 y menor que 100; «6,5» es 6,5 %). Va en la partida de la mezcla y la
   regla VR2 lo compara con la fórmula de trabajo de la receta vigente de la planta. Un archivo sin esa columna
   se lee igual; en otra capa o en una demarcación se rechaza.
+- Columnas **opcionales** de F5 vial (diseño `docs/especificaciones/2026-11-03-presupuesto-vial-real-design.md` §6;
+  un archivo sin ellas se lee igual y deriva lo mismo que antes):
+  - `esponjamiento` (solo fresado): volumen suelto ÷ volumen en sitio, mayor o igual a 1 («1,25»). Sin valor por
+    defecto: sin él no se deriva el transporte del fresado (m³ = volumen fresado × esponjamiento).
+  - `limpieza` (solo imprimación y riego de adherencia): `sí` o `no`. Con `sí` se deriva la limpieza de la superficie
+    (m², el área regada).
+  - `medicion`: la otra unidad de la partida principal: `m2` en el fresado (fresado medido en área) y `t` en la
+    carpeta (colocación medida en masa). Vacía, la de siempre (m³ y m²).
+  - `area_m2` (solo demarcación `superficie`, obligatoria allí): el área de cada elemento (paso peatonal, línea de
+    pare); `lineas` es el número de elementos iguales y la cantidad, área × número, en m².
+  - `captafaros` (solo líneas continua o discontinua): el número de ojos de gato que declara la línea (entero ≥ 1).
+  Las partidas sin geometría (movilización de equipos, en viajes, y señalización y control de tránsito, en días)
+  están en el catálogo vial pero se ponen a mano en el presupuesto.
 - Los errores nombran el archivo y la **fila** tal como la ve una hoja de cálculo (la cabecera es la fila 1).
 
 ## Memoria de cálculo (a mano, escrita antes del código)

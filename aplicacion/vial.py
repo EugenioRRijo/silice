@@ -212,6 +212,10 @@ def _capas_a_texto(capas: Sequence[Capa]) -> str:
                 "dosis_l_m2": None if c.dosis_l_m2 is None else str(c.dosis_l_m2),
                 # Tarea 16b: solo si la capa lo declara, así lo guardado antes no cambia
                 **({} if c.asfalto_pct is None else {"asfalto_pct": str(c.asfalto_pct)}),
+                # F5 vial, tarea 1: igual, solo lo declarado
+                **({} if c.esponjamiento is None else {"esponjamiento": str(c.esponjamiento)}),
+                **({"limpieza": True} if c.limpieza else {}),
+                **({} if c.medicion is None else {"medicion": c.medicion}),
             }
             for c in capas
         ],
@@ -230,17 +234,39 @@ def _capas_de_texto(texto: str) -> tuple[Capa, ...]:
             cifra(c["densidad_t_m3"]),
             cifra(c["dosis_l_m2"]),
             cifra(c.get("asfalto_pct")),
+            esponjamiento=cifra(c.get("esponjamiento")),
+            limpieza=bool(c.get("limpieza", False)),
+            medicion=c.get("medicion"),
         )
         for c in json.loads(texto)
     )
 
 
 def _demarcacion_a_texto(demarcacion: Sequence[Demarcacion]) -> str:
-    return json.dumps([{"tipo": d.tipo, "lineas": d.lineas} for d in demarcacion])
+    return json.dumps(
+        [
+            {
+                "tipo": d.tipo,
+                "lineas": d.lineas,
+                # F5 vial, tarea 1: solo si la línea lo declara, así lo guardado antes no cambia
+                **({} if d.area_m2 is None else {"area_m2": str(d.area_m2)}),
+                **({} if d.captafaros is None else {"captafaros": d.captafaros}),
+            }
+            for d in demarcacion
+        ]
+    )
 
 
 def _demarcacion_de_texto(texto: str) -> tuple[Demarcacion, ...]:
-    return tuple(Demarcacion(d["tipo"], d["lineas"]) for d in json.loads(texto))
+    return tuple(
+        Demarcacion(
+            d["tipo"],
+            d["lineas"],
+            area_m2=None if d.get("area_m2") is None else Decimal(d["area_m2"]),
+            captafaros=d.get("captafaros"),
+        )
+        for d in json.loads(texto)
+    )
 
 
 def guardar_tramos(
@@ -280,6 +306,7 @@ def guardar_tramos(
                     distancia_planta_km=tramo.distancia_planta_km,
                     capas=_capas_a_texto(tramo.capas),
                     demarcacion=_demarcacion_a_texto(tramo.demarcacion),
+                    transporte=tramo.transporte,
                 )
             )
         sesion.commit()
@@ -373,6 +400,7 @@ def tramos_de_version(sesion: Session, version_id: int) -> list[Tramo]:
             _capas_de_texto(f.capas),
             _demarcacion_de_texto(f.demarcacion),
             f.distancia_planta_km,
+            f.transporte,
         )
         for f in filas
     ]

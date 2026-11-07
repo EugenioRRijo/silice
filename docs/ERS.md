@@ -1337,6 +1337,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑11 | RF‑33, RF‑34 | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑10, UC‑11, UC‑17 (autocompletado guiado) | RF‑167, RF‑168 (y RNF‑29) | AC1–AC4 ([PLAN_AUTOCOMPLETADO.md](planes/PLAN_AUTOCOMPLETADO.md), 2026‑11‑05) | usabilidad del prototipo, fuera de los cinco indicadores |
 | UC‑12, UC‑21 (ayuda y primera vez) | RF‑160, RF‑185 a RF‑189 (y RNF‑30) | F7 A1–A4 ([PLAN_TANDA_DETALLES.md](planes/PLAN_TANDA_DETALLES.md), Fase 2, 2026‑11‑06) | usabilidad del prototipo, fuera de los cinco indicadores |
+| UC‑10, UC‑25 y los tramos viales (presupuesto vial revisado en local) | RF‑170 a RF‑178 | F5 vial, tareas 1 a 6 ([diseño 2026‑11‑03](especificaciones/2026-11-03-presupuesto-vial-real-design.md), 2026‑11‑06) | fuera de los cinco indicadores; `core/` sin cambios (evidencia del indicador 4) |
 | UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
 | UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | SF0 (declarado), SF1–SF2 ([PLAN_SF.md](../PLAN_SF.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); la ausencia de cambios en `core/` al agregar datos y electricidad es evidencia del indicador 4 |
 | UC‑14 | RF‑50, RF‑51 | SF0 (declarado), SF5 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
@@ -1706,6 +1707,27 @@ siguen reservados por ese diseño y sin escribir: no son de F7. Los textos de la
 
 Enmienda a UC-12: además del recorrido guiado, la ayuda de cada pantalla, las guías, el glosario y «Empieza aquí» orientan a
 quien empieza. La matriz de trazabilidad (§4) tiene su fila «ayuda y primera vez».
+
+## Enmienda F5 vial (2026-11-06): lecciones del presupuesto vial revisado en local
+
+Diseño [2026-11-03-presupuesto-vial-real-design.md](especificaciones/2026-11-03-presupuesto-vial-real-design.md), construido
+con las **decisiones provisionales del 2026-11-06** (recomendaciones del orquestador a las preguntas de su §10, pendientes de
+que Eugenio las ratifique; están anotadas en el diseño). Nada de esto toca `core/`: el alias de tonelada y litro en el núcleo
+(punto 5A) sigue en el PR #100, a la espera del tutor. Numeración reservada para esta enmienda: RF-170 a RF-179.
+
+| ID | Requisito | Prioridad | Caso de uso | Criterio de aceptación |
+|---|---|---|---|---|
+| RF-170 | El catálogo vial tiene las partidas de movilización de equipos (viaje), limpieza de la superficie (m²), transporte del fresado medido suelto (m³), señalización y control de tránsito (día), captafaros (unidad) y demarcación de superficie (m²), con código provisional correlativo; las geométricas se derivan del tramo solo si el tramo declara su dato (limpieza de un riego, esponjamiento del fresado sin valor por defecto, área y número de cada elemento, captafaros declarados), y un tramo de antes deriva lo mismo que antes | Esencial | tramos viales | `tests/unit/test_vial_partidas_f5.py` |
+| RF-171 | El fresado puede medirse en m² (con su espesor) y la colocación de la carpeta en t, cada variante con su código; VR1 mide también la colocación en t y VR7 la casa por su código | Deseable | tramos viales | `tests/unit/test_vial_partidas_f5.py` |
+| RF-172 | Un tramo declara si su obra mide el transporte de la mezcla en t·km o en t por banda de distancia; por banda, deriva la partida en t y VR4 compara toneladas (ERROR), la distancia del tramo frente a la banda «mínimo-máximo» de la partida (ADVERTENCIA si cae fuera) y declara INFO si la partida no dice su banda o el tramo no dice su distancia | Esencial | tramos viales | `tests/unit/test_vial_banda_f5.py`, `tests/integration/test_migracion_vial_transporte.py` |
+| RF-173 | El desperdicio de un material va dentro de la cantidad (neta × (1 + porcentaje)), exacto y sin tocar el contrato del núcleo; la cantidad neta y el porcentaje quedan en una traza del caso que solo se muestra mientras la cantidad guardada siga siendo la que resultó | Esencial | UC-10, UC-11 | `tests/unit/test_aplicacion_desperdicio.py`, `tests/integration/test_migracion_apu_desperdicio.py` |
+| RF-174 | Componer acepta un porcentaje de desperdicio por material; el servidor calcula la cantidad, la evalúa, la guarda y dice «0,52 (0,50 + 4 %)»; la precarga devuelve la neta y el porcentaje, y una fila sin desperdicio viaja igual que antes | Esencial | UC-10, UC-11 | `tests/unit/test_api_composicion.py` (desperdicio), `paginas/componer/Desperdicio.test.tsx` |
+| RF-175 | Un libro con un APU por hoja y solo valores se lee con un perfil hermano (`apu_por_hoja`), la misma guardia y el mismo modelo, por rótulos y sin perder renglones sin número; su composición pasa al núcleo con el desperdicio dentro de la cantidad | Esencial | UC-25 | `tests/unit/test_hoja_empresa_apu_por_hoja.py` |
+| RF-176 | Cada hoja de ese libro se recalcula y se compara con su precio impreso (hasta un centavo no hay hallazgo; si la diferencia se explica por el redondeo por renglón, INFO que lo dice; si no, ERROR); el financiamiento o el bono por renglón distintos de cero la hacen no evaluable y un impuesto dentro del APU es ADVERTENCIA | Esencial | UC-25 | `tests/unit/test_fusion_apu_por_hoja.py` |
+| RF-177 | Con el libro de presupuesto, cada renglón se enlaza con su hoja de APU por el número; las diferencias de precio unitario y de cantidad y los renglones u hojas sin pareja son hallazgos con su `HOJA!CELDA`; las unidades que el perfil traduce y la banda de distancia leída de la descripción quedan dichas (INFO); el perfil de un libro real vive en la carpeta de datos de la instalación y gana al del paquete | Esencial | UC-25 | `tests/unit/test_fusion_apu_por_hoja.py`, `tests/unit/test_api_libros_replica.py` (apu por hoja) |
+| RF-178 | La pantalla de auditar recibe el libro de APU y, opcional, el de presupuesto, y muestra el precio de cada hoja (impreso y de Sílice, presentados por el servidor), los hallazgos con su celda, el perfil usado y el desperdicio; nada se guarda | Esencial | UC-25 | `paginas/auditoria/AuditarApuPorHoja.test.tsx`, `tests/unit/test_api_libros_replica.py` (apu por hoja) |
+
+La matriz de trazabilidad (§4) tiene su fila «presupuesto vial revisado en local». RF-179 queda libre.
 
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).

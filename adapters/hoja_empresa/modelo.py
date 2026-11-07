@@ -169,6 +169,14 @@ class LineaApu:
     precio: Decimal
     celda_codigo: Celda
     celda_cantidad: Celda
+    #: Perfil `apu_por_hoja` (F5 vial, tarea 4), todos opcionales: el desperdicio del material en
+    #: puntos (4 es 4 %), el bono del renglón de mano de obra y el coeficiente de depreciación o de
+    #: uso del equipo. La plantilla conocida no los trae y quedan en su valor neutro.
+    desperdicio: Decimal = Decimal(0)
+    bono: Decimal = Decimal(0)
+    depreciacion: Decimal | None = None
+    #: La celda de cada dato opcional que trae la línea («unidad», «desperdicio», «bono»).
+    celdas: Mapping[str, Celda] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -197,6 +205,17 @@ class ApuLeido:
     herramientas: Decimal
     rotulos: Mapping[Rotulo, Celda] = field(default_factory=dict)
     guardados: Mapping[Rotulo, Decimal] = field(default_factory=dict)
+    #: Perfil `apu_por_hoja` (F5 vial, tarea 4), todos opcionales: el número de renglón que enlaza
+    #: la hoja con el presupuesto, la cantidad de la cabecera, las prestaciones como fracción (2,5
+    #: es 250 %: lo que recibe el núcleo como FCAS), el financiamiento y el impuesto del pie (como
+    #: fracción) y la celda de cada dato con nombre (`celdas`: «cantidad», «rendimiento»,
+    #: «prestaciones», «administracion», «utilidad», «financiamiento», «impuesto»).
+    numero: int | None = None
+    cantidad: Decimal | None = None
+    prestaciones: Decimal | None = None
+    financiamiento: Decimal = Decimal(0)
+    impuesto: Decimal = Decimal(0)
+    celdas: Mapping[str, Celda] = field(default_factory=dict)
 
     @property
     def ident(self) -> str:
