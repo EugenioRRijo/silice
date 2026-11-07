@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
-import { TramoConCantidades } from "./TramoConCantidades";
+import { TramoConCantidades, resumenDelTramo } from "./TramoConCantidades";
 
 // F5 vial, tarea 1: las partidas nuevas del catálogo vial llegan con sus unidades canónicas del servidor («dia»,
 // «unidad», «m2») y la pantalla las escribe como se leen («día», «m²»). Datos ficticios; la pantalla no calcula.
@@ -29,5 +29,12 @@ describe("Un tramo con las partidas nuevas", () => {
       ["Demarcación de superficies, tramo P1", "m²", "18"],
       ["Señalización y control de tránsito, tramo P1", "día", "1.250,5"],
     ]);
+  });
+
+  test("el resumen dice cuándo la obra mide el transporte por banda de distancia (tarea 2)", () => {
+    expect(resumenDelTramo({ ...TRAMO, distancia_planta_km: "9", transporte: "banda" })).toBe(
+      "De 0 a 0,5 km · ancho 7 m · planta a 9 km · transporte en t por banda de distancia",
+    );
+    expect(resumenDelTramo({ ...TRAMO, distancia_planta_km: "9", transporte: null })).toBe("De 0 a 0,5 km · ancho 7 m · planta a 9 km");
   });
 });
