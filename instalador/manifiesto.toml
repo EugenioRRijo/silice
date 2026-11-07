@@ -8,7 +8,10 @@ version = "3.13.13"
 # Extras de pyproject.toml de la capa básica. `xgboost` y `ml` nunca (ningún código los importa).
 # `pdf` (1.5: PDF simples e impresos de la empresa): pdfplumber y pdfminer.six (MIT) y pypdfium2
 # (Apache-2.0 o BSD-3-Clause), todas permisivas.
-basica = ["api", "planos", "informes", "bcv", "civil", "anomalias", "ia", "pdf"]
+# `escritorio` (F5, 2026-11-06): la ventana de Sílice. pywebview (BSD-3-Clause, con el SDK de WebView2
+# de Microsoft, licencia de tipo BSD), pythonnet, clr-loader, bottle y proxy-tools (MIT): unos 0,6 MB
+# con LZMA (docs/bitacora/2026-11-06-ventana-v0.md §1.3). Solo Windows.
+basica = ["api", "planos", "informes", "bcv", "civil", "anomalias", "ia", "pdf", "escritorio"]
 # `ifctester` (extra `ifc`) arrastra `bcf-client`, GPLv3, incompatible con la licencia propietaria
 # (RP10-4). Pasa a true solo con un ruling que cite la resolución de S3-0.
 ifc = false
