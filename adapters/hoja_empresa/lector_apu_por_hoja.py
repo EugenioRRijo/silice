@@ -22,10 +22,13 @@ financiamiento, impuesto): una guardia, un modelo y las mismas celdas citables (
 - Las unidades se leen tal como las escribe el libro: la traducción del perfil la aplica quien
   audita (`fusion`), y cada traducción usada queda dicha en el informe.
 - `Decimal(str(v))` siempre (NORMAS §2.3). Solo valores: no hay fórmulas que leer.
-- **Entrada hostil** (arbitraje F5 vial, P1): solo se leen las hojas del prefijo del perfil (y, en
-  el libro de presupuesto, la hoja del presupuesto), cada fila solo hasta su última celda real
-  (`reset_dimensions()`). `LibroLeido.hojas` nombra todas las hojas del libro; `valores` cubre solo
-  las celdas de las hojas leídas.
+- **Entrada hostil** (arbitraje F5 vial, P1, y su revisión): solo se leen las hojas del prefijo del
+  perfil (y, en el libro de presupuesto, la hoja del presupuesto); de cada una, a lo sumo
+  `guardia.MAX_FILAS_HOJA` filas y `guardia.MAX_COLUMNAS_HOJA` columnas (las que justifica
+  `MAX_AREA_HOJA`), y una fila o una celda escrita más allá (aunque solo tenga formato) rechaza el
+  libro con `ArchivoRechazado`: la `<dimension>` que mira la guardia puede mentir. Cada fila se
+  guarda solo hasta su último valor. `LibroLeido.hojas` nombra todas las hojas del libro; `valores`
+  cubre solo las celdas de las hojas leídas.
 """
 
 from __future__ import annotations
@@ -35,7 +38,12 @@ from collections.abc import Callable, Sequence
 from decimal import Decimal
 from typing import Any
 
-from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from adapters.hoja_empresa.guardia import (
+    MAX_COLUMNAS_HOJA,
+    MAX_FILAS_HOJA,
+    ArchivoRechazado,
+    verificar_archivo,
+)
 from adapters.hoja_empresa.lector import _abrir
 from adapters.hoja_empresa.modelo import (
     ApuLeido,
@@ -108,14 +116,47 @@ def _texto(valor: Any) -> str:
     return str(valor).strip()
 
 
-def _filas(hoja: Any) -> Filas:
-    """Las filas de valores de una hoja de solo lectura, cada una solo hasta su última celda real.
+def _fuera_del_tope(nombre: str, hoja: str, donde: str) -> ArchivoRechazado:
+    return ArchivoRechazado(
+        f"El libro «{nombre}», hoja «{hoja}»: {donde}. Sílice lee de cada hoja hasta "
+        f"{_cifra(Decimal(MAX_FILAS_HOJA))} filas y {MAX_COLUMNAS_HOJA} columnas (de la A a la "
+        f"{letra(MAX_COLUMNAS_HOJA - 1)}). Se rechaza por seguridad: borre lo que sobra al final "
+        "de la hoja y guárdelo de nuevo."
+    )
+
+
+def _filas(hoja: Any, nombre: str) -> Filas:
+    """Las filas de valores de una hoja de solo lectura, cada una solo hasta su último valor.
 
     `reset_dimensions()`, como en `lector._celdas_reales`: sin él, openpyxl rellena cada fila y
-    cada fila que falta hasta la `<dimension>` que declara el XML, y esa dimensión puede mentir
-    (una hoja con A1 y CV20000 pesa unos bytes y se volvería dos millones de celdas)."""
+    cada fila que falta hasta la `<dimension>` que declara el XML, y esa dimensión puede mentir.
+    Sin ella, openpyxl entrega cada fila hasta su última celda escrita y una fila por cada fila
+    hasta la última escrita: tampoco basta (A1048576 son un millón de filas; una celda en XFD,
+    16.384 valores). Por eso se piden a lo sumo `MAX_FILAS_HOJA` filas y una más, la que delata que
+    la hoja sigue (openpyxl rellena hasta `max_row` si hay una fila escrita después), y una fila
+    más ancha que `MAX_COLUMNAS_HOJA` rechaza el libro en cuanto llega: lo materializado nunca pasa
+    de `MAX_AREA_HOJA` celdas y una fila."""
     hoja.reset_dimensions()
-    return [list(fila) for fila in hoja.iter_rows(values_only=True)]
+    filas: Filas = []
+    for fila in hoja.iter_rows(max_row=MAX_FILAS_HOJA + 1, values_only=True):
+        if len(filas) == MAX_FILAS_HOJA:
+            raise _fuera_del_tope(
+                nombre,
+                hoja.title,
+                f"tiene filas escritas más allá de la {_cifra(Decimal(MAX_FILAS_HOJA))}",
+            )
+        if len(fila) > MAX_COLUMNAS_HOJA:
+            raise _fuera_del_tope(
+                nombre,
+                hoja.title,
+                f"la fila {len(filas) + 1} tiene celdas escritas hasta la columna "
+                f"{letra(len(fila) - 1)}, más allá de la {letra(MAX_COLUMNAS_HOJA - 1)}",
+            )
+        fin = len(fila)
+        while fin and fila[fin - 1] is None:
+            fin -= 1
+        filas.append(list(fila[:fin]))
+    return filas
 
 
 def leer_hojas(
@@ -128,9 +169,11 @@ def leer_hojas(
     libro = _abrir(datos, nombre, data_only=True)
     try:
         return {
-            hoja.title: _filas(hoja) if incluir is None or incluir(hoja.title) else []
+            hoja.title: _filas(hoja, nombre) if incluir is None or incluir(hoja.title) else []
             for hoja in libro.worksheets
         }
+    except ArchivoRechazado:
+        raise
     except Exception as exc:  # un XML dañado aparece al recorrer la hoja en solo lectura
         raise ArchivoRechazado(
             f"No se pudo leer el libro «{nombre}»: alguna hoja está dañada."
