@@ -194,6 +194,5 @@ de comprobar la huella y la firma como se explicó arriba.
   (falta WebView2, un antivirus bloquea el componente de la ventana, la ventana no cargó en 30
   segundos o el ajuste anterior). Para WebView2, vea «Si falta WebView2».
 - **«Sílice se detuvo» en la ventana:** el servidor terminó con la ventana abierta. Cierre la ventana
-  y abra «Sílice» otra vez; si se repite, mire el registro en `%LOCALAPPDATA%\Silice
-egistros`.
+  y abra «Sílice» otra vez; si se repite, mire el registro en `%LOCALAPPDATA%\Silice\registros`.
 - **No abre la ventana ni el navegador:** abra `http://127.0.0.1:8501/app/` a mano.
