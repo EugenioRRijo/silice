@@ -479,7 +479,9 @@ def test_una_celda_lejana_rechaza_el_libro_sin_recorrerla(
     donde = (
         "tiene filas con datos o con formato más allá de la 20.000"
         if variante == "C"
-        else "la fila 2 tiene celdas con datos o con formato hasta la columna XFD, más allá de la CV"
+        else (
+            "la fila 2 tiene celdas con datos o con formato hasta la columna XFD, más allá de la CV"
+        )
     )
     assert str(error.value) == f"El libro «hostil.xlsx», hoja «{hoja}»: {donde}. {SIGUE_LEYENDO}"
 

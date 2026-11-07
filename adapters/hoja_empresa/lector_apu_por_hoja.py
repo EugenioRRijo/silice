@@ -43,12 +43,10 @@ from typing import Any
 
 from adapters.hoja_empresa.guardia import (
     MAX_CELDAS_LIBRO,
-    MAX_COLUMNAS_HOJA,
-    MAX_FILAS_HOJA,
     ArchivoRechazado,
     verificar_archivo,
 )
-from adapters.hoja_empresa.lector import _abrir
+from adapters.hoja_empresa.lector import _abrir, filas_acotadas
 from adapters.hoja_empresa.modelo import (
     ApuLeido,
     Celda,
@@ -132,51 +130,12 @@ def _texto(valor: Any) -> str:
     return str(valor).strip()
 
 
-def _fuera_del_tope(nombre: str, hoja: str, donde: str) -> ArchivoRechazado:
-    return ArchivoRechazado(
-        f"El libro «{nombre}», hoja «{hoja}»: {donde}. Sílice lee de cada hoja hasta "
-        f"{_cifra(Decimal(MAX_FILAS_HOJA))} filas y {MAX_COLUMNAS_HOJA} columnas (de la A a la "
-        f"{letra(MAX_COLUMNAS_HOJA - 1)}). Se rechaza por seguridad: borre lo que sobra al final "
-        "de la hoja y guárdelo de nuevo."
-    )
-
-
-def _filas(hoja: Any, nombre: str, cuenta: list[int] | None = None) -> Filas:
-    """Las filas de valores de una hoja de solo lectura, cada una solo hasta su último valor.
-
-    `reset_dimensions()`, como en `lector._celdas_reales`: sin él, openpyxl rellena cada fila y
-    cada fila que falta hasta la `<dimension>` que declara el XML, y esa dimensión puede mentir.
-    Sin ella, openpyxl entrega cada fila hasta su última celda escrita y una fila por cada fila
-    hasta la última escrita: tampoco basta (A1048576 son un millón de filas; una celda en XFD,
-    16.384 valores). Por eso se piden a lo sumo `MAX_FILAS_HOJA` filas y una más, la que delata que
-    la hoja sigue (openpyxl rellena hasta `max_row` si hay una fila escrita después), y una fila
-    más ancha que `MAX_COLUMNAS_HOJA` rechaza el libro en cuanto llega: lo materializado nunca pasa
-    de `MAX_AREA_HOJA` celdas y una fila."""
-    hoja.reset_dimensions()
+def _filas(hoja: Any, nombre: str, cuenta: list[int]) -> Filas:
+    """Las filas de valores de una hoja de solo lectura, cada una solo hasta su último valor,
+    dentro de los topes de la guardia (`lector.filas_acotadas`, la misma regla del lector del
+    libro conocido): lo materializado nunca pasa de `MAX_AREA_HOJA` celdas y una fila."""
     filas: Filas = []
-    for fila in hoja.iter_rows(max_row=MAX_FILAS_HOJA + 1, values_only=True):
-        if len(filas) == MAX_FILAS_HOJA:
-            raise _fuera_del_tope(
-                nombre,
-                hoja.title,
-                "tiene filas con datos o con formato más allá de la "
-                f"{_cifra(Decimal(MAX_FILAS_HOJA))}",
-            )
-        if len(fila) > MAX_COLUMNAS_HOJA:
-            raise _fuera_del_tope(
-                nombre,
-                hoja.title,
-                f"la fila {len(filas) + 1} tiene celdas con datos o con formato hasta la columna "
-                f"{letra(len(fila) - 1)}, más allá de la {letra(MAX_COLUMNAS_HOJA - 1)}",
-            )
-        if cuenta is not None:
-            cuenta[0] += len(fila)
-            if cuenta[0] > MAX_CELDAS_LIBRO:
-                raise ArchivoRechazado(
-                    f"El libro «{nombre}» tiene más de {_cifra(Decimal(MAX_CELDAS_LIBRO))} "
-                    "celdas con datos o con formato entre sus hojas. Se rechaza por seguridad: "
-                    "quite las hojas o las filas que sobran y guárdelo de nuevo."
-                )
+    for fila in filas_acotadas(hoja, nombre, cuenta, MAX_CELDAS_LIBRO, values_only=True):
         fin = len(fila)
         while fin and fila[fin - 1] is None:
             fin -= 1

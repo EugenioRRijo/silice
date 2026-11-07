@@ -373,16 +373,23 @@ def _combinadas(ws: Any) -> tuple[str, ...]:
     return tuple(r.coord for r in rangos)
 
 
-def _valores_guardados(wv: Any, titulo: str) -> dict[tuple[int, int], object]:
-    return {(c.row, c.column): c.value for c in _celdas_reales(wv[titulo])}
+def _valores_guardados(
+    wv: Any, titulo: str, nombre: str, cuenta: list[int]
+) -> dict[tuple[int, int], object]:
+    """Los valores guardados de una hoja, con los topes del lector (`lector.filas_acotadas`):
+    esta pasada es de solo lectura y una celda lejana la haría recorrer un millón de filas."""
+    return {(c.row, c.column): c.value for c in _celdas_reales(wv[titulo], nombre, cuenta)}
 
 
-def _hoja(ws: Any, wv: Any, estilos: _Estilos, usadas: int) -> tuple[HojaVisual, int]:
-    """Réplica de una hoja; `usadas` son las celdas ya aceptadas en las hojas anteriores."""
+def _hoja(
+    ws: Any, wv: Any, estilos: _Estilos, usadas: int, nombre: str, cuenta: list[int]
+) -> tuple[HojaVisual, int]:
+    """Réplica de una hoja; `usadas` son las celdas ya aceptadas en las hojas anteriores y
+    `cuenta`, las que entregó la pasada de valores guardados en el libro entero."""
     celdas_ws = ws._cells  # noqa: SLF001 - solo las celdas que existen; iter_rows las inventaría
     items = sorted(celdas_ws.items())
     con_formula = any(_texto_formula(c) is not None for _, c in items)
-    guardados = _valores_guardados(wv, ws.title) if con_formula else {}
+    guardados = _valores_guardados(wv, ws.title, nombre, cuenta) if con_formula else {}
     celdas: list[CeldaVisual] = []
     for (fila, col), c in items:
         formula = _texto_formula(c)
@@ -452,8 +459,9 @@ def replicar_libro(datos: bytes, nombre: str) -> LibroVisual:
             estilos = _Estilos(tema, defecto)
             hojas: list[HojaVisual] = []
             usadas = 0
+            cuenta = [0]  # celdas de la pasada de valores guardados (`MAX_CELDAS_LIBRO`)
             for ws in hojas_ws:
-                h, usadas = _hoja(ws, wv, estilos, usadas)
+                h, usadas = _hoja(ws, wv, estilos, usadas, nombre, cuenta)
                 hojas.append(h)
         except ArchivoRechazado:
             raise

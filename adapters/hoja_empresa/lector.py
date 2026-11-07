@@ -12,8 +12,9 @@ Principios:
 - **`Decimal` siempre** (NORMAS §2.3): los números del libro se convierten con `Decimal(str(v))`.
 - **El lector no juzga.** Una celda rara (texto donde va un número, `#REF!`, vacía) no hace fallar
   la lectura: el dato se omite o vale lo que Excel usaría con `N()` (0), y las reglas lo informan.
-  Solo se lanza `ArchivoRechazado`: por la guardia (F-D10), si openpyxl no puede abrir el libro o si
-  falta la hoja PRESUPUESTO.
+  Solo se lanza `ArchivoRechazado`: por la guardia (F-D10), si openpyxl no puede abrir el libro, si
+  una hoja tiene algo escrito más allá de los topes de la guardia (`filas_acotadas`) o si falta la
+  hoja PRESUPUESTO.
 
 Límites declarados:
 
@@ -43,7 +44,13 @@ from typing import Any
 from openpyxl.utils.cell import column_index_from_string as _col
 from openpyxl.utils.cell import get_column_letter as _letra
 
-from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from adapters.hoja_empresa.guardia import (
+    MAX_CELDAS_LIBRO,
+    MAX_COLUMNAS_HOJA,
+    MAX_FILAS_HOJA,
+    ArchivoRechazado,
+    verificar_archivo,
+)
 from adapters.hoja_empresa.modelo import (
     VINCULO_ILEGIBLE,
     ApuLeido,
@@ -63,7 +70,7 @@ from adapters.hoja_empresa.modelo import (
 from adapters.hoja_empresa.perfil import Perfil, cargar_perfil, coincide, normalizar
 from adapters.hoja_empresa.umbrales import MEDIO_CENTAVO
 
-__all__ = ["leer_libro"]
+__all__ = ["filas_acotadas", "leer_libro"]
 
 _CERO = Decimal(0)
 _UNO = Decimal(1)
@@ -204,33 +211,88 @@ def _abrir(datos: bytes, nombre: str, data_only: bool) -> Any:
         ) from exc
 
 
-def _celdas_reales(ws: Any) -> Iterator[Any]:
-    """Las celdas no vacías de una hoja de solo lectura, por filas.
+def _miles(n: int) -> str:
+    """Un entero con punto de miles, para los mensajes: 20000 → «20.000»."""
+    return f"{n:,}".replace(",", ".")
 
-    `reset_dimensions` hace que openpyxl no rellene hasta la dimensión declarada en el XML (que
-    puede mentir y decir XFD1048576): cada fila llega solo hasta su última celda real.
+
+def _fuera_del_tope(nombre: str, hoja: str, donde: str) -> ArchivoRechazado:
+    return ArchivoRechazado(
+        f"El libro «{nombre}», hoja «{hoja}»: {donde}. Sílice lee de cada hoja hasta "
+        f"{_miles(MAX_FILAS_HOJA)} filas y {MAX_COLUMNAS_HOJA} columnas (de la A a la "
+        f"{_letra(MAX_COLUMNAS_HOJA)}). Se rechaza por seguridad: borre lo que sobra al final "
+        "de la hoja y guárdelo de nuevo."
+    )
+
+
+def filas_acotadas(
+    ws: Any, nombre: str, cuenta: list[int], tope_libro: int, *, values_only: bool
+) -> Iterator[tuple[Any, ...]]:
+    """Las filas de una hoja de solo lectura, sin pasar nunca de los topes de la guardia.
+
+    `reset_dimensions()`: sin él, openpyxl rellena cada fila y cada fila que falta hasta la
+    `<dimension>` que declara el XML, y esa dimensión puede mentir. Sin ella, openpyxl entrega cada
+    fila hasta su última celda escrita y una fila por cada fila hasta la última escrita: tampoco
+    basta (A1048576 son un millón de filas; una celda en XFD, 16.384 valores). Por eso se piden a
+    lo sumo `MAX_FILAS_HOJA` filas y una más, la que delata que la hoja sigue, y una fila más ancha
+    que `MAX_COLUMNAS_HOJA` rechaza el libro en cuanto llega. `cuenta[0]` suma las celdas
+    entregadas en el libro entero (antes de recortar) y pasar de `tope_libro` también lo rechaza:
+    64 hojas en su tope pasan la guardia. Lo usan los dos lectores (este y el de un APU por hoja).
     """
     ws.reset_dimensions()
-    for fila in ws.iter_rows():
+    leidas = 0
+    for fila in ws.iter_rows(max_row=MAX_FILAS_HOJA + 1, values_only=values_only):
+        if leidas == MAX_FILAS_HOJA:
+            raise _fuera_del_tope(
+                nombre,
+                ws.title,
+                f"tiene filas con datos o con formato más allá de la {_miles(MAX_FILAS_HOJA)}",
+            )
+        if len(fila) > MAX_COLUMNAS_HOJA:
+            raise _fuera_del_tope(
+                nombre,
+                ws.title,
+                f"la fila {leidas + 1} tiene celdas con datos o con formato hasta la columna "
+                f"{_letra(len(fila))}, más allá de la {_letra(MAX_COLUMNAS_HOJA)}",
+            )
+        cuenta[0] += len(fila)
+        if cuenta[0] > tope_libro:
+            raise ArchivoRechazado(
+                f"El libro «{nombre}» tiene más de {_miles(tope_libro)} celdas con datos o con "
+                "formato entre sus hojas. Se rechaza por seguridad: quite las hojas o las filas "
+                "que sobran y guárdelo de nuevo."
+            )
+        leidas += 1
+        yield fila
+
+
+def _celdas_reales(ws: Any, nombre: str, cuenta: list[int]) -> Iterator[Any]:
+    """Las celdas no vacías de una hoja de solo lectura, por filas, dentro de los topes
+    (`filas_acotadas`)."""
+    for fila in filas_acotadas(ws, nombre, cuenta, MAX_CELDAS_LIBRO, values_only=False):
         for celda in fila:
             if celda.value is not None:
                 yield celda
 
 
-def _cargar_hojas(wf: Any, wv: Any) -> tuple[dict[str, _Hoja], dict[str, str], dict[str, object]]:
+def _cargar_hojas(
+    wf: Any, wv: Any, nombre: str
+) -> tuple[dict[str, _Hoja], dict[str, str], dict[str, object]]:
     """Lee todas las celdas no vacías de las dos pasadas: fórmulas (`wf`) y valores guardados
-    (`wv`). Una celda con fórmula sin valor guardado (libro nunca calculado) queda con `None`."""
+    (`wv`). Una celda con fórmula sin valor guardado (libro nunca calculado) queda con `None`.
+    Cada pasada lleva su cuenta de celdas del libro entero (`MAX_CELDAS_LIBRO`)."""
     hojas: dict[str, _Hoja] = {}
     formulas: dict[str, str] = {}
     valores: dict[str, object] = {}
     nombres_v = set(wv.sheetnames)
+    cuenta_f, cuenta_v = [0], [0]
     for ws in wf.worksheets:
         guardados_v: dict[tuple[int, int], object] = {}
         if ws.title in nombres_v:
-            for cv in _celdas_reales(wv[ws.title]):
+            for cv in _celdas_reales(wv[ws.title], nombre, cuenta_v):
                 guardados_v[(cv.row, cv.column)] = cv.value
         h = _Hoja(ws.title)
-        for celda in _celdas_reales(ws):
+        for celda in _celdas_reales(ws, nombre, cuenta_f):
             f, c = celda.row, celda.column
             tf = _texto_formula(celda)
             if tf is not None:
@@ -716,7 +778,9 @@ def leer_libro(datos: bytes, nombre: str, perfil: Perfil | None = None) -> Libro
         try:
             # En solo lectura el XML de cada hoja se analiza al recorrerla: un XML dañado aparece
             # aquí y no al abrir.
-            hojas, formulas, valores = _cargar_hojas(wf, wv)
+            hojas, formulas, valores = _cargar_hojas(wf, wv, nombre)
+        except ArchivoRechazado:
+            raise
         except Exception as exc:
             raise ArchivoRechazado(
                 f"No se pudo leer el libro «{nombre}»: alguna hoja está dañada."

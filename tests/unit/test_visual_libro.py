@@ -790,7 +790,8 @@ def test_el_resultado_es_inmutable_y_con_slots():
         ({"A1048576": "fin ficticio"}, "tiene filas con datos o con formato más allá de la 20.000"),
         (
             {f"XFD{fila}": "y" for fila in range(2, 2002)},
-            "la fila 2 tiene celdas con datos o con formato hasta la columna XFD, más allá de la CV",
+            "la fila 2 tiene celdas con datos o con formato hasta la columna XFD, "
+            "más allá de la CV",
         ),
     ],
     ids=["A1048576", "XFD"],
@@ -818,7 +819,7 @@ def test_una_celda_lejana_en_una_hoja_con_formulas_rechaza_la_replica(
         replicar_libro(datos, NOMBRE)
     assert filas[0] <= 20_001 + 1_000, f"openpyxl entregó {filas[0]:,} filas"
     assert str(error.value) == (
-        f"El libro «{NOMBRE}», hoja «APU-01»: {donde}. Sílice lee de cada hoja hasta 20.000 filas y "
-        "100 columnas (de la A a la CV). Se rechaza por seguridad: borre lo que sobra al final de "
-        "la hoja y guárdelo de nuevo."
+        f"El libro «{NOMBRE}», hoja «APU-01»: {donde}. Sílice lee de cada hoja hasta 20.000 "
+        "filas y 100 columnas (de la A a la CV). Se rechaza por seguridad: borre lo que sobra al "
+        "final de la hoja y guárdelo de nuevo."
     )
