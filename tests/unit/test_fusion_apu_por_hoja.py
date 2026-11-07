@@ -336,3 +336,55 @@ def test_las_hojas_huecas_declaradas_grandes_no_se_materializan(monkeypatch: pyt
     # Las hojas «Notas» no se leen; la celda lejana suma solo su fila real (A a CV): 100 celdas.
     assert hostil == [normal[0] + COLUMNAS_HASTA_CV, normal[1] + COLUMNAS_HASTA_CV]
     assert _resumen(resultado) == _resumen(de_siempre)
+
+
+# --- la banda con punto de miles (arbitraje F5 vial, P9) ------------------------------------------
+#
+# Un perfil local cuyo patrón acepta puntos («[0-9.]+») y una descripción «mayor de 1.000 km y
+# hasta 1.200,5 km»: antes `Decimal("1.200.5")` daba un 500 (y «1.000» se leía como uno). Ahora
+# las cifras se leen con la regla del proyecto (`aplicacion.cifras`: coma decimal, punto de miles);
+# una que no la sigue («1.5») no se adivina y el AH9 lo dice.
+
+PATRON_CON_MILES = (
+    "mayor de (?P<minimo>[0-9.]+(?:,[0-9]+)?) km y hasta (?P<maximo>[0-9.]+(?:,[0-9]+)?) km"
+)
+
+
+def _banda(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, descripcion: str):
+    from dataclasses import replace
+
+    from tests.fixtures.libro_apu_por_hoja import APUS
+
+    crudo = json.loads(PAQUETE.read_text(encoding="utf-8"))
+    (tmp_path / "banda_miles.json").write_text(
+        json.dumps({**crudo, "nombre": "banda_miles", "patron_banda": PATRON_CON_MILES}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(VARIABLE_PERFILES, str(tmp_path))
+    transporte = replace(APUS[1], descripcion=descripcion)
+    resultado = auditar_apu_por_hoja(libro_apu((transporte,)), "f.xlsx", perfil="banda_miles")
+    return [h for h in resultado.hallazgos if h.codigo == "AH9"]
+
+
+def test_la_banda_con_punto_de_miles_se_lee_con_la_regla_del_proyecto(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    (ah9,) = _banda(
+        tmp_path, monkeypatch, "Transporte ficticio, mayor de 1.000 km y hasta 1.200,5 km"
+    )
+    assert (ah9.severidad, ah9.celda) == ("INFO", "APU 2!B4")
+    assert ah9.descripcion == (
+        "APU 2: transporte por banda de distancia, de más de 1.000 km y hasta 1.200,5 km (leída "
+        "de la descripción con el patrón del perfil); la cantidad va en toneladas."
+    )
+
+
+def test_una_banda_con_una_cifra_mal_escrita_no_se_adivina(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    (ah9,) = _banda(tmp_path, monkeypatch, "Transporte ficticio, mayor de 1.5 km y hasta 10 km")
+    assert (ah9.severidad, ah9.celda) == ("INFO", "APU 2!B4")
+    assert ah9.descripcion == (
+        "APU 2: la descripción sigue el patrón de la banda de distancia, pero «1.5» no es una "
+        "cifra con coma decimal y punto de miles: Sílice no adivina la banda."
+    )
