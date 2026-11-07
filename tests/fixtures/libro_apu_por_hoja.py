@@ -282,6 +282,53 @@ def libro_apu(apus: tuple[ApuFicticio, ...] = APUS) -> bytes:
     return salida.getvalue()
 
 
+def con_celdas(
+    datos: bytes,
+    hoja: str,
+    celdas: dict[str, object],
+    *,
+    solo_formato: tuple[str, ...] = (),
+    dimension_de_antes: bool = True,
+) -> bytes:
+    """El libro `datos` con `celdas` escritas en la hoja `hoja` (y, en `solo_formato`, celdas sin
+    valor y con formato: openpyxl las escribe como `<c r="…" s="…"/>`).
+
+    Con `dimension_de_antes`, la `<dimension>` de esa hoja se deja como estaba antes de escribir:
+    así se arma un libro hostil que declara un área pequeña y escribe celdas lejanas (la guardia
+    solo mira la `<dimension>`; arbitraje F5/F7/F8, revisión de correcciones, P1)."""
+    import re
+    import zipfile
+
+    import openpyxl
+    from openpyxl.styles import Font
+
+    libro = openpyxl.load_workbook(io.BytesIO(datos))
+    h = libro[hoja]
+    antes = h.calculate_dimension()
+    for ref, valor in celdas.items():
+        h[ref] = valor
+    for ref in solo_formato:
+        h[ref].font = Font(bold=True)
+    salida = io.BytesIO()
+    libro.save(salida)
+    if not dimension_de_antes:
+        return salida.getvalue()
+    pieza = f"xl/worksheets/sheet{libro.sheetnames.index(hoja) + 1}.xml"
+    falseado = io.BytesIO()
+    with (
+        zipfile.ZipFile(io.BytesIO(salida.getvalue())) as origen,
+        zipfile.ZipFile(falseado, "w", zipfile.ZIP_DEFLATED) as destino,
+    ):
+        for entrada in origen.infolist():
+            contenido = origen.read(entrada)
+            if entrada.filename == pieza:
+                contenido = re.sub(
+                    rb'<dimension ref="[^"]*"', f'<dimension ref="{antes}"'.encode(), contenido
+                )
+            destino.writestr(entrada, contenido)
+    return falseado.getvalue()
+
+
 def libro_presupuesto(renglones=RENGLONES) -> bytes:
     """El libro de presupuesto (P.U. tecleado; el número de renglón enlaza con la hoja del APU)."""
     import openpyxl

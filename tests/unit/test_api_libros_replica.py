@@ -45,6 +45,7 @@ from tests.fixtures.instalacion import AHORA, CONTRASENA, administrador, persona
 from tests.fixtures.libro_apu_por_hoja import (
     ApuFicticio,
     Material,
+    con_celdas,
     libro_apu,
     libro_presupuesto,
 )
@@ -552,6 +553,43 @@ def test_un_precio_negativo_es_422_con_la_celda():
         "APU 9!F9: el precio de «Cemento ficticio» es -1 y no puede ser negativo: Sílice no "
         "recalcula la hoja «APU 9»."
     )
+
+
+# Arbitraje F5/F7/F8 r2, P1: un libro que declara una <dimension> pequeña y escribe lejos
+# (A1048576 en el de APU, variante C; XFD en 2.000 filas del de presupuesto, variante E) se rechaza
+# por la ruta con 422 y el mensaje de la guardia, sin materializar el millón de filas.
+SIGUE_APU = (
+    "Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la CV). Se rechaza por "
+    "seguridad: borre lo que sobra al final de la hoja y guárdelo de nuevo."
+)
+
+
+@pytest.mark.parametrize("hostil", ["libro", "presupuesto"])
+def test_una_celda_lejana_que_la_dimension_no_declara_es_422(hostil: str):
+    libro, presupuesto = libro_apu(), libro_presupuesto()
+    if hostil == "libro":
+        libro = con_celdas(libro, "APU 1", {"A1048576": "fin ficticio"})
+        esperado = (
+            "El libro «frente_ficticio.xlsx», hoja «APU 1»: tiene filas escritas más allá de la "
+            f"20.000. {SIGUE_APU}"
+        )
+    else:
+        presupuesto = con_celdas(
+            presupuesto, "PRESUPUESTO", {f"XFD{fila}": "y" for fila in range(2, 2002)}
+        )
+        esperado = (
+            "El libro «presupuesto_ficticio.xlsx», hoja «PRESUPUESTO»: la fila 2 tiene celdas "
+            f"escritas hasta la columna XFD, más allá de la CV. {SIGUE_APU}"
+        )
+    r = _con_clave().post(
+        RUTA_APU,
+        files={
+            "libro": ("frente_ficticio.xlsx", libro),
+            "presupuesto": ("presupuesto_ficticio.xlsx", presupuesto),
+        },
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == esperado
 
 
 def test_otra_extension_es_415():
