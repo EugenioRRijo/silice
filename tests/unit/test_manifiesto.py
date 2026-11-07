@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+import tomllib
 from dataclasses import replace
 from pathlib import Path
 
@@ -49,6 +50,7 @@ def test_el_manifiesto_declara_lo_que_decide_el_spec() -> None:
         "anomalias",
         "ia",
         "pdf",  # 1.5
+        "escritorio",  # F5 ventana (2026-11-06): pywebview, la ventana propia de Sílice
     }
     assert m.ifc is False  # RP10-4: bcf-client es GPLv3 hasta que S3-0 resuelva
     assert m.extras_similitud == ("similitud",)
@@ -157,6 +159,22 @@ def test_nunca_viajan_fixtures_bcv_bases_ni_db(arbol: Path) -> None:
     assert {"pyproject.toml", "LICENSE", "data/ids/silice_instalaciones.ids"} <= viajan
     assert [p for p in viajan if p.startswith("data/precios/maprex_2026-07/")]
     assert all(p.endswith(".csv") for p in viajan if p.startswith("data/precios/maprex_2026-07/"))
+
+
+def test_la_capa_escritorio_fija_pywebview_y_pythonnet_solo_en_windows() -> None:
+    """V1 de la ventana (diseño 2026-11-03 §6.2; bitácora 2026-11-06-ventana-v0 §1.1): las dos
+    versiones que V0 comprobó con el Python 3.13.13 del instalador, fijas y solo para Windows (en
+    Linux la CI no las instala y la ventana cae al navegador)."""
+    datos = tomllib.loads((RAIZ / "pyproject.toml").read_text(encoding="utf-8"))
+    requisitos = datos["project"]["optional-dependencies"]["escritorio"]
+    assert sorted(r.replace(" ", "") for r in requisitos) == [
+        "pythonnet==3.2.1;sys_platform=='win32'",
+        "pywebview==6.2.1;sys_platform=='win32'",
+    ]
+    candado = tomllib.loads((RAIZ / "uv.lock").read_text(encoding="utf-8"))
+    versiones = {p["name"]: p["version"] for p in candado["package"]}
+    assert versiones["pywebview"] == "6.2.1" and versiones["pythonnet"] == "3.2.1"
+    assert versiones["clr-loader"] == "0.3.1"
 
 
 def test_el_producto_no_lleva_nada_de_streamlit(arbol: Path) -> None:
