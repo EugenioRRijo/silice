@@ -46,6 +46,8 @@ data/paquetes/
 data/casos/
 data/respaldos/
 data/eventos_perdidos_*.json
+# Perfil de WebView2 de la ventana (operacion.config.carpeta_perfil_ventana)
+data/perfil_ventana/
 # Copias de trabajo de una migracion interrumpida (operacion.base_datos)
 *.migrando
 

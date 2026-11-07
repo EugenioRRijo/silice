@@ -5,12 +5,18 @@ página, mismo origen, misma CSP, misma cookie de sesión. Es **el único módul
 pywebview**, y lo importa tarde (dentro de las funciones): en Linux, en las pruebas y en un equipo
 sin la capa `escritorio` nada se rompe, el lanzador abre el navegador.
 
-Seguridad (diseño §2 y §7.2): sin `js_api` (ninguna función de Python a la vista de la página), sin
-herramientas de desarrollo, sin puerto de depuración (`REMOTE_DEBUGGING_PORT` siempre `None`), sin
-`--allow-file-access-from-files` (pywebview lo añade si no se apaga), sin servidor HTTP propio de
-pywebview y en modo privado (el perfil de WebView2 va a una carpeta temporal que se borra al
-cerrar). Las descargas se encienden porque `DescargaArchivo` las necesita; pywebview pregunta dónde
-guardar con el diálogo de Windows.
+Seguridad (diseño §2 y §7.2): `js_api` es un `PuenteCerrado` (ninguna función de Python a la vista
+de la página, ni siquiera los atributos de `None`), sin herramientas de desarrollo, sin puerto de
+depuración (`REMOTE_DEBUGGING_PORT` siempre `None`), sin `--allow-file-access-from-files`
+(pywebview lo añade si no se apaga) y sin servidor HTTP propio de pywebview. Las descargas se
+encienden porque `DescargaArchivo` las necesita; pywebview pregunta dónde guardar con el diálogo
+de Windows.
+
+Perfil (decisión de Eugenio del 2026-11-07, «guardar perfil en datos»; diseño §10): sin modo
+privado y con el perfil de WebView2 en `<datos>/perfil_ventana` (`config.carpeta_perfil_ventana`),
+para que el tamaño de letra y el zoom de la Hoja, que viven en `localStorage`, sigan ahí al volver
+a abrir Sílice. La sesión no queda en ese perfil: `silice_sesion` es una cookie de sesión, sin
+`Max-Age` ni `Expires` (`api.sesion_web.poner_cookie`), y se pierde al cerrar la ventana (RNF-22).
 """
 
 from __future__ import annotations
@@ -24,6 +30,8 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+from operacion import config
 
 logger = logging.getLogger("silice.ventana")
 
@@ -51,6 +59,24 @@ CLAVES_WEBVIEW2 = (
     ("HKEY_CURRENT_USER", rf"Software\Microsoft\EdgeUpdate\Clients\{CLIENTE_WEBVIEW2}"),
 )
 _SIN_VERSION = frozenset({"", "0.0.0.0"})
+
+
+class PuenteCerrado:
+    """El `js_api` de la ventana: no tiene ningún atributo.
+
+    pywebview resuelve lo que la página pide por `window.pywebview.api` con `getattr` encadenado
+    sobre `js_api` (`webview/util.py`, `js_bridge_call`) y llama lo que encuentra. Con `None`, la
+    cadena sigue por los atributos de `None` («__class__» es `NoneType`, que se puede llamar).
+    Aquí todo nombre da `AttributeError`, `dir()` sale vacío y pywebview no expone ni llama nada.
+    Quedan los mensajes internos de pywebview (mover la ventana, su estado, eventos del DOM), que
+    no llegan a Sílice; solo los puede mandar un guion de la página, y la CSP `script-src 'self'`
+    deja correr solo el de Sílice (RF-184).
+    """
+
+    __slots__ = ()
+
+    def __getattribute__(self, nombre: str) -> Any:
+        raise AttributeError(nombre)
 
 
 class VentanaNoDisponible(Exception):  # noqa: N818 - es un motivo, no un error del programa
@@ -143,6 +169,7 @@ def abrir(
     vivo: Callable[[], bool],
     *,
     motor: Any = None,
+    perfil: Path | None = None,
     icono: Path = ICONO,
     plazo: float = PLAZO_CARGA_S,
     fijar_identificador: Callable[[str], Any] = _fijar_identificador,
@@ -154,7 +181,11 @@ def abrir(
     `vivo()` deja de ser cierto (Uvicorn terminó), muestra `pagina_detenida()` y deja que la persona
     la cierre. Lanza `VentanaNoDisponible` si la ventana no llegó a servir (pywebview no arranca,
     el motor no es WebView2 o la interfaz no cargó): el lanzador abre entonces el navegador.
+
+    `perfil` es la carpeta del perfil de WebView2; por omisión, `config.carpeta_perfil_ventana()`.
+    No se crea aquí: pywebview la crea, y si no puede escribir en ella falla y se abre el navegador.
     """
+    perfil = perfil if perfil is not None else config.carpeta_perfil_ventana()
     motor = motor if motor is not None else importlib.import_module("webview")
     _configurar(motor)
     fijar_identificador(IDENTIFICADOR_APLICACION)
@@ -162,6 +193,7 @@ def abrir(
     ventana = motor.create_window(
         TITULO,
         url,
+        js_api=PuenteCerrado(),
         maximized=True,
         min_size=TAMANO_MINIMO,
         text_select=True,
@@ -196,7 +228,8 @@ def abrir(
             gui="edgechromium",
             debug=False,
             http_server=False,
-            private_mode=True,
+            private_mode=False,
+            storage_path=str(perfil),
             icon=str(icono) if icono.is_file() else None,
         )
     except Exception as error:  # noqa: BLE001 - cualquier fallo de pywebview o de .NET

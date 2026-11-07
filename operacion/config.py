@@ -118,6 +118,16 @@ def ruta_codigo_instalacion(entorno: Mapping[str, str] | None = None) -> Path:
     return carpeta_datos(entorno) / "codigo_instalacion.txt"
 
 
+#: El perfil de WebView2 de la ventana (decisión de Eugenio del 2026-11-07, «guardar perfil en
+#: datos»): ahí viven el tamaño de letra y el zoom de la Hoja (`localStorage`) entre arranques.
+CARPETA_PERFIL_VENTANA = "perfil_ventana"
+
+
+def carpeta_perfil_ventana(entorno: Mapping[str, str] | None = None) -> Path:
+    """`<datos>/perfil_ventana`. No la crea: la crea pywebview al abrir la ventana."""
+    return carpeta_datos(entorno) / CARPETA_PERFIL_VENTANA
+
+
 @dataclass(frozen=True, slots=True)
 class Ajustes:
     """El contenido de `silice.toml` ya validado (spec S5 §8.1). Todo lo dudoso cae al valor
