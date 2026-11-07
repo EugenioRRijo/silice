@@ -141,9 +141,11 @@ def test_el_codigo_y_el_limite_se_pueden_cambiar() -> None:
 
 def test_las_cifras_medidas_de_la_bitacora_no_piden_recorte() -> None:
     """S5-0.3: Python 15,4 + código 7,0 + base 19,9 + básica 45,8 + bcv 0,1 + civil 15,1 +
-    anomalías 26,0 + ia 0,9 = 130,2 MB (la bitácora: «Recorte: ninguno»), más la capa escritorio de F5,
-    que V0 midió en 622.644 bytes comprimidos (~0,6 MB, `docs/bitacora/2026-11-06-ventana-v0.md` §1.3) = 130,8 MB.
-    El pdf de la 1.5 no se midió: cabe mientras pese menos que el margen de 19,2 MB."""
+    anomalías 26,0 + ia 0,9 = 130,2 MB (la bitácora: «Recorte: ninguno»), más la capa
+    escritorio de F5: V0 midió 622.644 bytes comprimidos (~0,6 MB,
+    `docs/bitacora/2026-11-06-ventana-v0.md`
+    §1.3), así que 130,8 MB. El pdf de la 1.5 no se midió: cabe mientras pese menos que el margen
+    de 19,2 MB."""
     capas = {
         "basica": 19.9 + 45.8,
         "bcv": 0.1,
