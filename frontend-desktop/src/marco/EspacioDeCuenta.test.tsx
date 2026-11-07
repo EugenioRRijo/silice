@@ -211,6 +211,12 @@ describe("la Cuenta: Ayuda y recorridos guiados", () => {
     await waitFor(() => expect(ruta()).toBe("/auditoria/subir"));
     expect(recorridoEnCurso()).toBe(RECORRIDO_AUDITAR);
   });
+
+  test("con ?tema=recorridos el foco llega al título de los recorridos guiados", async () => {
+    montar({ sesion: sesionDe("rita"), en: "/cuenta/ayuda?tema=recorridos" });
+    const titulo = await screen.findByRole("heading", { level: 2, name: "Recorridos guiados" });
+    await waitFor(() => expect(titulo).toHaveFocus());
+  });
 });
 
 describe("la Cuenta: al cambiar de carpeta se vuelve a Carpetas", () => {
