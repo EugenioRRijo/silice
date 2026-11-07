@@ -28,6 +28,7 @@ from pathlib import Path
 
 import pytest
 
+from adapters.hoja_empresa.lector_apu_por_hoja import leer_hojas as leer_hojas_de_verdad
 from adapters.hoja_empresa.perfil_apu_por_hoja import (
     VARIABLE_PERFILES,
     cargar_perfil_apu_por_hoja,
@@ -181,3 +182,67 @@ def test_auditar_con_otro_perfil_dice_cual_uso(tmp_path: Path, monkeypatch: pyte
     resultado = auditar_apu_por_hoja(libro_apu(), "f.xlsx", perfil="frente_local")
     assert (resultado.perfil, resultado.origen_perfil) == ("frente_local", "local")
     assert "AH8" not in {h.codigo for h in resultado.hallazgos}  # sin tabla, nada se traduce
+
+
+# --- un libro hostil: hojas huecas que declaran una dimensión enorme (arbitraje F5 vial, P1) -----
+#
+# Una hoja con A1 y una celda lejana (CV2000: columna 100, fila 2.000) declara la dimensión
+# A1:CV2000. Sin `reset_dimensions()`, openpyxl en solo lectura rellena cada fila hasta la columna
+# 100 y cada fila que falta: 200.000 celdas por hoja de unos pocos bytes. Con mil hojas así, un
+# archivo de 1 MB pediría gigabytes. Sílice lee solo las hojas que usa (las del prefijo del perfil y
+# la del presupuesto) y cada fila solo hasta su última celda real.
+
+LEJOS = "CV2000"
+COLUMNAS_HASTA_CV = 100
+
+
+def _con_hojas_huecas(datos: bytes, n: int, hoja_con_celda_lejana: str) -> bytes:
+    """El libro `datos` con `n` hojas huecas declaradas grandes y una celda lejana en una hoja que
+    Sílice sí lee (así se ve también que cada fila llega solo hasta su última celda real)."""
+    import io
+
+    import openpyxl
+
+    libro = openpyxl.load_workbook(io.BytesIO(datos))
+    for k in range(1, n + 1):
+        hoja = libro.create_sheet(f"Notas {k}")
+        hoja["A1"] = "nota ficticia"
+        hoja[LEJOS] = "fin"
+    libro[hoja_con_celda_lejana][LEJOS] = "nota lejana"
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
+def _celdas_leidas(monkeypatch: pytest.MonkeyPatch, apus: bytes, presupuesto: bytes):
+    """Audita los dos libros contando las celdas que materializa `leer_hojas` en cada lectura."""
+    import adapters.hoja_empresa.lector_apu_por_hoja as lector
+    import fusion.apu_por_hoja as auditoria
+
+    original = leer_hojas_de_verdad  # el de verdad, aunque otra llamada ya haya puesto su espía
+    medidas: list[int] = []
+
+    def espia(*args, **kwargs):
+        hojas = original(*args, **kwargs)
+        medidas.append(sum(len(fila) for filas in hojas.values() for fila in filas))
+        return hojas
+
+    monkeypatch.setattr(lector, "leer_hojas", espia)
+    monkeypatch.setattr(auditoria, "leer_hojas", espia)
+    resultado = auditar_apu_por_hoja(
+        apus, "f.xlsx", presupuesto=presupuesto, presupuesto_nombre="p.xlsx"
+    )
+    return medidas, resultado
+
+
+def test_las_hojas_huecas_declaradas_grandes_no_se_materializan(monkeypatch: pytest.MonkeyPatch):
+    normal, de_siempre = _celdas_leidas(monkeypatch, libro_apu(), libro_presupuesto())
+    hostil, resultado = _celdas_leidas(
+        monkeypatch,
+        _con_hojas_huecas(libro_apu(), 3, "APU 1"),
+        _con_hojas_huecas(libro_presupuesto(), 3, "PRESUPUESTO"),
+    )
+    assert len(normal) == 2  # una lectura por libro: el de APU y el del presupuesto
+    # Las hojas «Notas» no se leen; la celda lejana suma solo su fila real (A a CV): 100 celdas.
+    assert hostil == [normal[0] + COLUMNAS_HASTA_CV, normal[1] + COLUMNAS_HASTA_CV]
+    assert _resumen(resultado) == _resumen(de_siempre)
