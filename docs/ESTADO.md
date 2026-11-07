@@ -65,7 +65,17 @@ front de 14,45 MB a 10,02 MB y «esta carpeta» en los mensajes. F5 vial: tareas
 salvo mostrar el desperdicio en la Hoja (`aplicacion/hoja.py` está congelado). F5 ventana: V0 a V3 (RF-180 a RF-184;
 [V0](bitacora/2026-11-06-ventana-v0.md)); V4 (humo en la CI) y V5 (prueba en el equipo de Eugenio y en el de la empresa)
 quedan pendientes. **Las decisiones de F5 son provisionales**: recomendaciones del orquestador a las preguntas de sus
-diseños, anotadas en cada especificación, que Eugenio debe ratificar.
+diseños, anotadas en cada especificación, que Eugenio debe ratificar; la de guardar el perfil de la ventana en la
+carpeta de datos la decidió Eugenio el 2026-11-07.
+
+**Árbitro único** ([veredicto](bitacora/arbitrajes/fases-f5-f7-f8-claude-xhigh.md),
+[revisión](bitacora/arbitrajes/fases-f5-f7-f8-claude-xhigh-r2.md)): devolvió con 4 MAYOR (un xlsx hostil agotaba la
+memoria, perfiles locales inalcanzables, la ventana borraba la letra y el zoom, manuales de la ventana falsos) y, en la
+revisión, con 2 (el xlsx hostil por celdas reales lejanas y pruebas omitidas en la CI de Linux). Todo corregido con prueba
+en rojo primero; la pasada en navegador de la rama integrada (864 mediciones) no dejó defectos abiertos. El aviso de solo
+lectura sale con tildes por `aplicacion/hoja_guardado.py`, la ruta del producto; el texto sin tildes de `hoja.py`
+(congelado) no lo alcanza ningún llamador. Pruebas intermitentes con la máquina cargada (pasan solas):
+`Retomar.test.tsx` y `AutocompletadoDeInsumos.test.tsx`.
 
 ## 4. Lo que espera a Eugenio
 
@@ -92,12 +102,13 @@ diseños, anotadas en cada especificación, que Eugenio debe ratificar.
 Plan detallado, con el protocolo de trabajo con Gemini Flash por `agy` (Flash construye el parche, Claude lo aplica con
 TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA_DETALLES.md](planes/PLAN_TANDA_DETALLES.md).
 
-1. **Tanda de detalles**: aprobada (§3); falta la prueba de Eugenio en el navegador. Queda para después: 14 mensajes del
-   servidor dicen «no existe en este caso» (palabra interna «caso»; mejor «en esta carpeta»).
+1. **Tanda de detalles**: aprobada (§3); falta la prueba de Eugenio en el navegador. Los mensajes «no existe en este
+   caso» ya dicen «esta carpeta» (F8 C5; guardia `tests/unit/test_mensajes_sin_caso.py`).
 2. **Autocompletado**: completo (PR #107).
-3. **F7, F8 y F5**: construidas (§3); faltan el árbitro único, la prueba de Eugenio, ratificar las decisiones de F5,
-   mostrar el desperdicio en la Hoja (re-congelado con acta), V4 y V5 de la ventana, y la licencia del SDK de WebView2 en
-   `LICENCIAS\`.
+3. **F7, F8 y F5**: construidas y corregidas tras el árbitro único (§3); faltan la prueba de Eugenio, ratificar las
+   decisiones provisionales de F5, mostrar el desperdicio en la Hoja y poner tildes a dos avisos de `aplicacion/hoja.py` y
+   `composicion.py` (los dos exigen re-congelar el experimento con acta), V4 (humo de la ventana en la CI de Windows) y V5,
+   y que Eugenio confirme el texto de la licencia del SDK de WebView2 copiado de NuGet (`docs/licencias_webview2/`).
 
 ## 6. Auditorías en paralelo
 

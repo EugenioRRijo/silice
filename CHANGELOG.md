@@ -182,6 +182,15 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- Correcciones del árbitro único de F5, F7 y F8 (`docs/bitacora/arbitrajes/fases-f5-f7-f8-claude-xhigh*.md`): el libro con
+  un APU por hoja se lee acotado a 20.000 filas por 100 columnas y solo en las hojas que importan (un xlsx hostil de 33 KB
+  ya no ocupa 750 MiB) y rechaza con su celda los valores inválidos o desmesurados; los perfiles de libros locales viven
+  en `<datos>/perfiles_libros`; AH10 avisa de números de partida repetidos; la ventana guarda su perfil en
+  `<datos>/perfil_ventana` (decisión de Eugenio: se conservan la letra y el zoom; la sesión sigue terminando al cerrar) y
+  su puente de pywebview queda cerrado; los manuales describen la ventana, WebView2, `abrir_en` y `--sin-ventana`; la
+  licencia del SDK de WebView2 viaja en `LICENCIAS\` (copiada de NuGet); las pruebas que necesitan pywebview solo se
+  recolectan en Windows; la ayuda pasó a `comun/ayuda/`; el ciclo `aplicacion ↔ fusion` se cortó y lo vigila
+  `test_arquitectura.py`.
 - Tanda de detalles del front (D1–D16, `docs/planes/PLAN_TANDA_DETALLES.md`): la tabla de cambios de «Guardar versión»
   y el registro de versiones usan coma decimal, hora sin segundos y nombres en español; «Cadena íntegra: 1 versión» en
   singular (la frase de `core/` sigue igual y se corrige en `aplicacion/texto_cadena.py`); «m³» también en
