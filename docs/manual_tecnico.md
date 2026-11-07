@@ -919,7 +919,7 @@ carpeta de perfiles locales y después en el paquete:
 
 | Caso | Carpeta de perfiles locales |
 |---|---|
-| Por omisión | `<carpeta de datos>/perfiles_libros/` (`carpeta_perfiles_locales()`, con `operacion.config.carpeta_datos()`): `%LOCALAPPDATA%\Silice\datos\perfiles_libros\` en el producto (el lanzador fija `SILICE_DATOS`) y `data/perfiles_libros/` en desarrollo, que está en `.gitignore` |
+| Por omisión | `<carpeta de datos>/perfiles_libros/` (`operacion.config.carpeta_perfiles_libros()`, que la API pasa a `fusion.apu_por_hoja`): `%LOCALAPPDATA%\Silice\datos\perfiles_libros\` en el producto (el lanzador fija `SILICE_DATOS`) y `data/perfiles_libros/` en desarrollo, que está en `.gitignore` |
 | Con `SILICE_PERFILES_LIBROS` | La carpeta que diga la variable, en lugar de la anterior. Es una opción: nadie la fija |
 
 Si la carpeta no existe, solo valen los perfiles del paquete. Ninguna función la crea: la crea quien

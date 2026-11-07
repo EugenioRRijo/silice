@@ -74,6 +74,17 @@ def ruta_caso_por_defecto(entorno: Mapping[str, str] | None = None) -> Path:
     return carpeta_casos(entorno) / CASO_POR_DEFECTO
 
 
+#: Los perfiles de libros locales (F5 vial, decisión provisional 5): fuera del repositorio, junto a
+#: los datos de esta instalación. La API se la pasa a `fusion.apu_por_hoja`, que no importa esta
+#: configuración (revisión de correcciones de F5/F7/F8, N5).
+CARPETA_PERFILES_LIBROS = "perfiles_libros"
+
+
+def carpeta_perfiles_libros(entorno: Mapping[str, str] | None = None) -> Path:
+    """`<datos>/perfiles_libros`. No la crea: la crea quien instala un perfil local."""
+    return carpeta_datos(entorno) / CARPETA_PERFILES_LIBROS
+
+
 VARIABLE_USUARIO = "SILICE_USUARIO"
 NIVELES_DE_REGISTRO = ("DEBUG", "INFO", "WARNING", "ERROR")
 #: El puerto único: Uvicorn sirve la API y la interfaz (`/app/`). Sigue siendo el 8501 para que los

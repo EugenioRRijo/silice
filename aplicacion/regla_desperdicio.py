@@ -4,6 +4,11 @@ Diseño `docs/especificaciones/2026-11-03-presupuesto-vial-real-design.md` §4 (
 `LineaMaterial` del núcleo lleva `neta × (1 + porcentaje / 100)` y la neta y el porcentaje quedan
 en una traza aparte. La usan el lector de libros con un APU por hoja (`fusion.mapeo`) y Componer
 (`aplicacion.desperdicio`, que la reexporta y guarda la traza): una sola fórmula (NORMAS §2.1).
+
+Vivía en `fusion/desperdicio.py`; pasó aquí en la revisión de correcciones de F5/F7/F8 (N5) para
+cortar el ciclo `fusion` ↔ `aplicacion`: es una regla pura (solo la biblioteca estándar), la única
+clase de módulo de `aplicacion` que `fusion` puede importar, y `aplicacion` ya no importa `fusion`
+(lo vigila `tests/unit/test_arquitectura.py`).
 """
 
 from __future__ import annotations
