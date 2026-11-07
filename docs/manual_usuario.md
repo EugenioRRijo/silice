@@ -46,10 +46,15 @@ los repite.
 Para abrir Sílice:
 
 1. En el menú Inicio de Windows, haga clic en «Sílice».
-2. Se abre una ventana minimizada: es el servidor de Sílice. No la cierre mientras trabaja.
-3. El navegador se abre solo con la pantalla de Sílice.
+2. Se abre la ventana de Sílice, con su ícono en la barra de tareas. Junto a ella queda una consola minimizada: es el
+   servidor de Sílice y muestra el código de instalación la primera vez. No la cierre mientras trabaja.
+3. Si Sílice ya estaba abierto, el acceso no abre otro: trae al frente la ventana que ya está.
 
-Para cerrar Sílice, cierre esa ventana minimizada o use «Detener Sílice» del menú Inicio.
+Para cerrar Sílice, cierre la ventana de Sílice (o la consola minimizada, o use «Detener Sílice» del menú Inicio).
+
+Si en vez de la ventana se abre el navegador, este equipo no puede mostrar la ventana (por ejemplo, porque le falta
+WebView2 de Microsoft); la consola dice el motivo en una línea que empieza con «AVISO». Sílice funciona igual en el
+navegador.
 
 ### 1.2 Los tres papeles: arma, revisa y administra
 
@@ -139,8 +144,8 @@ Sílice» y pide un código de un solo uso.
 
 **Paso 1: busque su código de instalación.** Está en dos sitios:
 
-- En el Bloc de notas que Sílice abrió solo la primera vez, y en la ventana del servidor (la ventana
-  minimizada; búsquela en la barra de tareas y busque la línea «Código de instalación»).
+- En el Bloc de notas que Sílice abrió solo la primera vez, y en la consola de Sílice (la ventana minimizada que
+  acompaña a la ventana de Sílice; búsquela en la barra de tareas y busque la línea «Código de instalación»).
 - En el archivo `%LOCALAPPDATA%\Silice\datos\codigo_instalacion.txt`.
 
 El código tiene 20 caracteres en grupos de cuatro, como `XXXX-XXXX-XXXX-XXXX-XXXX`: letras de la A a la
@@ -1455,7 +1460,8 @@ manual lo explicará.
 | «Esa contraseña es demasiado común; elija otra.» | La contraseña es muy conocida | Use una frase larga |
 | «Su contraseña es temporal: elija una propia antes de seguir.» | Entró con la contraseña temporal | Cámbiela (sección 2.4) |
 | «Su sesión venció. Entre de nuevo para seguir.» | Pasó mucho tiempo sin actividad | Entre otra vez |
-| «No se pudo hablar con el programa de Sílice. Compruebe que esté encendido.» | La ventana del servidor está cerrada | Abra «Sílice» desde el menú Inicio |
+| «No se pudo hablar con el programa de Sílice. Compruebe que esté encendido.» | La consola de Sílice está cerrada | Cierre la ventana de Sílice y abra «Sílice» desde el menú Inicio |
+| «Sílice se detuvo» (en la ventana) | El servidor de Sílice terminó con la ventana abierta | Cierre la ventana y abra «Sílice» otra vez; si se repite, envíe el archivo de la carpeta `%LOCALAPPDATA%\Silice\registros` |
 
 ### 14.2 Mientras trabaja
 

@@ -92,7 +92,7 @@ export function pasosDeEmpiezaAqui({ acciones, obras, cuentasActivas }: DatosDeE
 export const PRIMERA_VEZ = {
   titulo: "La primera vez",
   parrafos: [
-    "Una instalación nueva no tiene cuentas: en lugar de «Entrar», Sílice abre «Bienvenida a Sílice». Busque el código de instalación (20 caracteres en grupos de cuatro) en el archivo codigo_instalacion.txt de la carpeta de datos de Sílice o en la ventana del servidor.",
+    "Una instalación nueva no tiene cuentas: en lugar de «Entrar», Sílice abre «Bienvenida a Sílice». Busque el código de instalación (20 caracteres en grupos de cuatro) en el archivo codigo_instalacion.txt de la carpeta de datos de Sílice o en la consola de Sílice, la ventana minimizada que acompaña a Sílice.",
     "Escriba el «Código de instalación», «Su nombre», el «Usuario» y la «Contraseña» dos veces, y pulse «Crear la cuenta y entrar». Esa es la cuenta del administrador, y el código se borra al usarse. Si esa cuenta también va a armar presupuestos, marque «Usaré esta cuenta también para armar presupuestos».",
     "Si más adelante se pierde el acceso del administrador, en «Entrar» pulse «Perdí el acceso de administrador» y siga los pasos con un código de restablecimiento.",
   ],
