@@ -306,6 +306,7 @@ def guardar_tramos(
                     distancia_planta_km=tramo.distancia_planta_km,
                     capas=_capas_a_texto(tramo.capas),
                     demarcacion=_demarcacion_a_texto(tramo.demarcacion),
+                    transporte=tramo.transporte,
                 )
             )
         sesion.commit()
@@ -399,6 +400,7 @@ def tramos_de_version(sesion: Session, version_id: int) -> list[Tramo]:
             _capas_de_texto(f.capas),
             _demarcacion_de_texto(f.demarcacion),
             f.distancia_planta_km,
+            f.transporte,
         )
         for f in filas
     ]

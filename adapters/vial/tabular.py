@@ -34,6 +34,10 @@ LIMPIEZA = "limpieza"
 MEDICION = "medicion"
 AREA = "area_m2"
 CAPTAFAROS = "captafaros"
+#: Columna opcional del tramo (F5 vial, tarea 2): «banda» si la obra mide el transporte de la mezcla
+#: en t por banda de distancia; vacía, en t·km. Se llena en la primera fila del tramo, como la
+#: distancia; si se repite en otra fila, debe coincidir.
+TRANSPORTE = "transporte"
 _SOLO_CAPA = (*_COLUMNAS_CAPA, ASFALTO, ESPONJAMIENTO, LIMPIEZA, MEDICION)
 _SOLO_DEMARCACION = ("lineas", AREA, CAPTAFAROS)
 
@@ -111,6 +115,7 @@ class _Borrador:
     fin: Decimal
     ancho: Decimal
     datos: dict[str, Decimal | None]
+    transporte: str | None = None
     capas: list[Capa] = field(default_factory=list)
     demarcacion: list[Demarcacion] = field(default_factory=list)
 
@@ -119,6 +124,7 @@ def _borrador(fila: dict[str, str | None], numero_fila: int, previo: _Borrador |
     """El borrador del tramo de `fila`: uno nuevo en su primera fila; si no, el previo, con la
     comprobación de que las columnas del tramo que la fila llene coincidan con las de la primera."""
     datos = {columna: _decimal(fila, columna) for columna in _COLUMNAS_TRAMO}
+    transporte = _celda(fila, TRANSPORTE) or None
     if previo is not None:
         for columna, valor in datos.items():
             if valor is not None and valor != previo.datos[columna]:
@@ -126,12 +132,17 @@ def _borrador(fila: dict[str, str | None], numero_fila: int, previo: _Borrador |
                     f"la columna {columna!r} ({valor}) no coincide con la de la fila "
                     f"{previo.fila} del mismo tramo ({previo.datos[columna]})"
                 )
+        if transporte is not None and transporte != previo.transporte:
+            raise ValueError(
+                f"la columna {TRANSPORTE!r} ({transporte}) no coincide con la de la fila "
+                f"{previo.fila} del mismo tramo ({previo.transporte or 'vacía'})"
+            )
         return previo
     ini, fin, ancho = (datos[columna] for columna in _COLUMNAS_TRAMO[:3])
     if ini is None or fin is None or ancho is None:
         faltan = [c for c in _COLUMNAS_TRAMO[:3] if datos[c] is None]
         raise ValueError(f"la primera fila del tramo debe llenar {', '.join(faltan)}")
-    return _Borrador(numero_fila, ini, fin, ancho, datos)
+    return _Borrador(numero_fila, ini, fin, ancho, datos, transporte)
 
 
 def _entero(fila: dict[str, str | None], columna: str) -> int | None:
@@ -249,6 +260,7 @@ def leer_tramos(ruta: Path) -> list[Tramo]:
                     tuple(b.capas),
                     tuple(b.demarcacion),
                     b.datos["distancia_planta_km"],
+                    b.transporte,
                 )
             )
         except ValueError as error:

@@ -24,6 +24,11 @@ TIPOS_DEMARCACION = ("continua", "discontinua", "superficie")
 #: Variantes de medición de una capa (F5 vial, decisión provisional 4 del 2026-11-06): por tipo, la
 #: unidad de siempre y la otra que se admite. La de siempre se guarda como `None`.
 MEDICIONES: dict[str, tuple[str, str]] = {"fresado": ("m3", "m2"), "carpeta": ("m2", "t")}
+#: Convenciones del transporte de la mezcla (F5 vial, tarea 2): la de siempre, t·km (se guarda
+#: `None`), o «banda»: la partida en t con la distancia como banda en su descripción.
+TRANSPORTE_T_KM = "t·km"
+TRANSPORTE_BANDA = "banda"
+
 #: Capas que se riegan: solo ellas admiten la limpieza de la superficie (F5 vial, tarea 1).
 CAPAS_DE_RIEGO = ("imprimacion", "riego_adherencia")
 
@@ -185,7 +190,12 @@ class Tramo:
     """Un tramo entre dos progresivas (en km), de ancho constante, con sus capas y su demarcación.
 
     `distancia_planta_km` es la distancia de transporte de la mezcla desde la planta; sin ella no
-    se deriva el transporte.
+    se deriva el transporte en t·km.
+
+    `transporte` es la convención con que la obra mide el transporte de la mezcla (F5 vial, tarea
+    2): `None` es t·km, la de siempre; «banda» es en toneladas, con la distancia como banda en la
+    descripción de la partida («más de 8 km y hasta 10 km»). Con banda, el tramo deriva la partida
+    en t aunque no declare la distancia; VR4 usa la distancia para ver si cae en la banda.
     """
 
     id: str
@@ -195,8 +205,16 @@ class Tramo:
     capas: tuple[Capa, ...]
     demarcacion: tuple[Demarcacion, ...] = ()
     distancia_planta_km: Decimal | None = None
+    transporte: str | None = None
 
     def __post_init__(self) -> None:
+        if self.transporte == TRANSPORTE_T_KM:
+            object.__setattr__(self, "transporte", None)
+        elif self.transporte not in (None, TRANSPORTE_BANDA):
+            raise ValueError(
+                f"tramo {self.id}: el transporte se mide en {TRANSPORTE_T_KM} (vacío) o por "
+                f"{TRANSPORTE_BANDA}, no {self.transporte!r}"
+            )
         if not self.id.strip():
             raise ValueError("el tramo necesita un id")
         if len(self.id) > LARGO_MAXIMO_ID:

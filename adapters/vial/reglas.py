@@ -18,7 +18,11 @@ conciliación, Tarea 10).
 - **VR3** ligante residual de imprimación y riego de adherencia fuera de su mínimo (y del máximo de
   la imprimación). El residual sale de la dosis en l/m² con la densidad del producto y la fracción
   residual de la emulsión (supuestos declarados).
-- **VR4** t·km de transporte ≠ toneladas × distancia declarada.
+- **VR4** t·km de transporte ≠ toneladas × distancia declarada. Si el tramo mide el transporte
+  por banda (F5 vial, tarea 2; `Tramo.transporte`), compara toneladas (ERROR si no cuadran) y la
+  banda que declara la partida (directiva `_tramo_km`, «mínimo-máximo» en km: más del mínimo y
+  hasta el máximo): ADVERTENCIA si la distancia del tramo cae fuera (decisión provisional 2 del
+  2026-11-06), INFO si la partida no dice su banda o el tramo no dice su distancia.
 - **VR5** litros de pintura (partida en `l` con origen de una línea) por km de línea de 10 cm fuera
   de su rango; el ancho sale de `especificaciones["_ancho_linea_cm"]` o, sin él, del supuesto. Los
   km pintados son los de la partida de la línea en m; la pintura que `derivar_tramos` pone a cada
@@ -35,6 +39,7 @@ ADVERTENCIA. Los mensajes llevan coma decimal y punto de miles.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
@@ -62,6 +67,7 @@ from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
 __all__ = [
     "CODIGO_VR",
     "ESPEC_ANCHO_LINEA_CM",
+    "ESPEC_BANDA_KM",
     "ESPEC_PORCENTAJE_ASFALTO",
     "ReglasViales",
     "auditar_vial",
@@ -71,6 +77,9 @@ CODIGO_VR = "VR"
 #: Directivas (DA-SF-3: empiezan con «_»): R4 no las contrasta con el texto del APU.
 ESPEC_PORCENTAJE_ASFALTO = "_porcentaje_asfalto"
 ESPEC_ANCHO_LINEA_CM = "_ancho_linea_cm"
+#: La banda de distancia de una partida de transporte por banda, «mínimo-máximo» en km (F5 vial).
+ESPEC_BANDA_KM = "_tramo_km"
+_KM = re.compile(r"[0-9]+(?:[.,][0-9]+)?")
 
 _CERO = Decimal(0)
 _MIL = Decimal(1000)
@@ -272,6 +281,87 @@ def _vr3(tramos: Sequence[Tramo]) -> list[Hallazgo]:
     return hallazgos
 
 
+def _banda(texto: str) -> tuple[Decimal, Decimal] | None:
+    """La banda «mínimo-máximo» (coma o punto decimal); `None` si no tiene esa forma o el mínimo
+    no es menor que el máximo."""
+    partes = texto.split("-")
+    if len(partes) != 2:
+        return None
+    limpias = [p.strip() for p in partes]
+    if not all(_KM.fullmatch(p) for p in limpias):
+        return None
+    minimo, maximo = (Decimal(p.replace(",", ".")) for p in limpias)
+    return (minimo, maximo) if minimo < maximo else None
+
+
+def _vr4_banda(
+    tramos: Sequence[Tramo],
+    derivados: Sequence[ItemComputo],
+    indice: dict[str, list[ItemComputo]],
+) -> list[Hallazgo]:
+    """La banda de cada partida de transporte por banda frente a la distancia de su tramo."""
+    codigo = _codigo("transporte_mezcla_banda")
+    distancias = {t.id: t.distancia_planta_km for t in tramos}
+    hallazgos = []
+    for derivado in derivados:
+        if derivado.codigo_partida != codigo:
+            continue
+        origen = derivado.origen_id
+        distancia = distancias.get(origen.split(":")[1])
+        for item in indice.get(origen, ()):
+            if item.codigo_partida != codigo:
+                continue
+            texto = item.especificaciones.get(ESPEC_BANDA_KM)
+            if texto is None:
+                hallazgos.append(
+                    _hallazgo(
+                        "VR4",
+                        Severidad.INFO,
+                        origen,
+                        f"{origen}: transporte por banda no evaluable: la descripción de la "
+                        f"partida {codigo} no dice la banda de distancia",
+                    )
+                )
+                continue
+            banda = _banda(texto)
+            if banda is None:
+                hallazgos.append(
+                    _hallazgo(
+                        "VR4",
+                        Severidad.ADVERTENCIA,
+                        origen,
+                        f"{origen}: la banda de distancia {texto!r} de la partida {codigo} no se "
+                        "entiende: escríbala «mínimo-máximo» en km, con el mínimo menor que el "
+                        "máximo",
+                    )
+                )
+                continue
+            minimo, maximo = banda
+            rango = f"la banda de más de {_n(minimo)} km y hasta {_n(maximo)} km"
+            if distancia is None:
+                hallazgos.append(
+                    _hallazgo(
+                        "VR4",
+                        Severidad.INFO,
+                        origen,
+                        f"{origen}: {rango} no se compara: el tramo no declara la distancia a la "
+                        "planta",
+                    )
+                )
+            elif not minimo < distancia <= maximo:
+                hallazgos.append(
+                    _hallazgo(
+                        "VR4",
+                        Severidad.ADVERTENCIA,
+                        origen,
+                        f"{origen}: el tramo está a {_n(distancia)} km de la planta y la partida "
+                        f"{codigo} cobra {rango}",
+                        distancia,
+                    )
+                )
+    return hallazgos
+
+
 def _vr5(derivados: Sequence[ItemComputo], indice: dict[str, list[ItemComputo]]) -> list[Hallazgo]:
     minimo, maximo = Decimal(PINTURA_MIN_L_KM.valor), Decimal(PINTURA_MAX_L_KM.valor)
     referencia = Decimal(ANCHO_LINEA_REFERENCIA_CM.valor)
@@ -427,6 +517,15 @@ def auditar_vial(
             Decimal(TOLERANCIA_TRANSPORTE.valor),
             "transporte",
         ),
+        *_contra_derivado(
+            "VR4",
+            "transporte_mezcla_banda",
+            derivados,
+            indice,
+            Decimal(TOLERANCIA_TRANSPORTE.valor),
+            "transporte por banda",
+        ),
+        *_vr4_banda(tramos, derivados, indice),
         *_vr5(derivados, indice),
         *_vr6(tramos),
         *_vr7(derivados, indice),

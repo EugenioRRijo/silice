@@ -27612,6 +27612,18 @@
             ],
             "title": "Distancia Planta Km"
           },
+          "transporte": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transporte"
+          },
           "capas": {
             "items": {
               "$ref": "#/components/schemas/CapaEntrada"
@@ -27669,6 +27681,17 @@
               }
             ],
             "title": "Distancia Planta Km"
+          },
+          "transporte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transporte"
           },
           "capas": {
             "items": {

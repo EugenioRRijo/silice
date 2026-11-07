@@ -1,4 +1,4 @@
-"""F5 vial, tarea 2: la migración `caso_0021_vial_transporte` (columna `transporte` de `vial_tramo`).
+"""F5 vial, tarea 2: la migración `caso_0021_vial_transporte` (columna `transporte` del tramo).
 
 Oráculos a mano: la columna es aditiva y nullable (texto de 10), un tramo guardado antes de migrar
 se lee con la convención de siempre (nula, t·km), bajar la quita sin tocar lo demás y una base que

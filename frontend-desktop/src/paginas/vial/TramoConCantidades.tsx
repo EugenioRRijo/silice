@@ -12,10 +12,12 @@ const COLUMNAS: ColumnaDensa[] = [
   { clave: "cantidad", titulo: "Cantidad", numerica: true, ordenable: false, presentar: formatoEsVe },
 ];
 
-// «De 0 a 1,2 km · ancho 7,3 m · planta a 15 km»: lo que se declaró del tramo, con coma decimal.
+// «De 0 a 1,2 km · ancho 7,3 m · planta a 15 km»: lo que se declaró del tramo, con coma decimal. Si la obra mide el
+// transporte por banda de distancia (F5 vial), lo dice: sus cantidades de transporte van en t, no en t·km.
 export function resumenDelTramo(t: TramoGuardado): string {
   const partes = [`De ${formatoEsVe(t.progresiva_ini_km)} a ${formatoEsVe(t.progresiva_fin_km)} km`, `ancho ${formatoEsVe(t.ancho_m)} m`];
   if (t.distancia_planta_km !== null) partes.push(`planta a ${formatoEsVe(t.distancia_planta_km)} km`);
+  if (t.transporte === "banda") partes.push("transporte en t por banda de distancia");
   return partes.join(" · ");
 }
 

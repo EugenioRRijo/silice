@@ -96,6 +96,13 @@ PARTIDAS_VIALES: dict[str, tuple[str, str, str]] = {
         "Colocación de carpeta de concreto asfáltico, medida en masa",
         "t",
     ),
+    # F5 vial, tarea 2 (diseño 2026-11-03 §5.3): el transporte medido en t, con la distancia como
+    # banda en la descripción. Lo deriva un tramo que declara `transporte = "banda"`.
+    "transporte_mezcla_banda": (
+        "C-000.000.024",
+        "Transporte de mezcla asfáltica desde la planta, por banda de distancia",
+        "t",
+    ),
 }
 
 

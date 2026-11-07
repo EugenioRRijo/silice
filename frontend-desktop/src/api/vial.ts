@@ -31,6 +31,8 @@ export interface TramoGuardado {
   progresiva_fin_km: string;
   ancho_m: string;
   distancia_planta_km: string | null;
+  // F5 vial: «banda» si la obra mide el transporte de la mezcla en t por banda de distancia; null, en t·km.
+  transporte?: string | null;
   capas: CapaDeTramo[];
   demarcacion: DemarcacionDeTramo[];
 }

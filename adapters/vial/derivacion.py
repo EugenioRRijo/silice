@@ -26,6 +26,10 @@ de superficie da área de cada elemento × número (sin pintura: VR5 mide línea
 fresado se mide en m² (`fresado_area`) y la colocación de la carpeta en t
 (`carpeta_colocacion_masa`, antes de la mezcla), cada variante con su código propio.
 
+**Transporte por banda** (F5 vial, tarea 2; diseño §5.3): si el tramo declara `transporte =
+"banda"`, la mezcla de cada capa da `transporte_mezcla_banda` en t (las mismas toneladas de la
+mezcla, con o sin distancia) en vez de la de t·km.
+
 La especialidad y el tipo de capa o de línea van como directivas (`_especialidad`, `_capa`,
 `_demarcacion`; convención DA-SF-3, `core/verification/directivas.es_directiva`): clasifican la
 cantidad y R4 no las contrasta con el texto del APU.
@@ -43,7 +47,7 @@ from adapters.vial.constantes import (
     PARTIDAS_VIALES,
     PINTURA_POR_DEFECTO_L_KM,
 )
-from adapters.vial.modelo import Capa, Tramo
+from adapters.vial.modelo import TRANSPORTE_BANDA, Capa, Tramo
 from core.contracts import Dominio, ItemComputo, OrigenTipo
 
 AREA = "longitud*ancho"
@@ -145,7 +149,11 @@ def _items_de_capa(tramo: Tramo, n: int, capa: Capa) -> list[ItemComputo]:
             continue  # bacheo sin densidad: solo su volumen
         espec = de_la_mezcla if regla == MASA else especificaciones
         items.append(_item(clave, regla, valores, tramo, origen_id, espec))
-        if regla == MASA and "distancia" in valores:
+        if regla == MASA and tramo.transporte == TRANSPORTE_BANDA:
+            items.append(
+                _item("transporte_mezcla_banda", MASA, valores, tramo, origen_id, especificaciones)
+            )
+        elif regla == MASA and "distancia" in valores:
             items.append(
                 _item("transporte_mezcla", TRANSPORTE, valores, tramo, origen_id, especificaciones)
             )

@@ -10,6 +10,8 @@ empresa y se quedan en su carpeta de trabajo. `MetaData` propia, sin clave forá
   último. Nada se sobrescribe y el rastro de lo anterior queda.
 - `vial_tramo`: los tramos de ese guardado, en orden. Las capas y la demarcación van como texto
   JSON con las cifras en texto (una lista corta por tramo que nunca se consulta por dentro).
+  `transporte` (revisión `caso_0021_vial_transporte`, F5 vial) es la convención del transporte
+  de la mezcla: nula es t·km, la de siempre; «banda», en t por banda de distancia.
 
 Una base que todavía no tiene las tablas (creada con `crear_esquema`, sin migrar) se lee como sin
 tramos y las tablas se crean al guardar los primeros. La escribe y la lee solo `aplicacion/vial.py`.
@@ -79,6 +81,7 @@ class TramoGuardado(Base):
     distancia_planta_km: Mapped[Decimal | None] = mapped_column(DecimalExacto, nullable=True)
     capas: Mapped[str] = mapped_column(Text, nullable=False)
     demarcacion: Mapped[str] = mapped_column(Text, nullable=False)
+    transporte: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
 
 def crear_esquema_vial(destino: Engine | Connection) -> None:

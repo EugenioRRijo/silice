@@ -66,6 +66,8 @@ class TramoEntrada(_Estricto):
     progresiva_fin_km: Cifra
     ancho_m: Cifra
     distancia_planta_km: Cifra | None = None
+    #: F5 vial, tarea 2: «banda» si la obra mide el transporte en t por banda; vacío, en t·km.
+    transporte: Annotated[str, Field(max_length=10)] | None = None
     capas: Annotated[list[CapaEntrada], Field(max_length=MAX_CAPAS)]
     demarcacion: Annotated[
         list[DemarcacionEntrada], Field(max_length=MAX_LINEAS_DE_DEMARCACION)
@@ -130,9 +132,15 @@ def a_tramos(entrada: Sequence[TramoEntrada]) -> list[Tramo]:
                     for d in t.demarcacion
                 ),
                 _cifra(t.id, "distancia_planta_km", t.distancia_planta_km),
+                t.transporte,
             )
         )
     return tramos
+
+
+def _nulo(valor: object) -> bool:
+    """Un dato opcional de F5 que el tramo no declara (`None` o `False`): no viaja."""
+    return valor is None or valor is False
 
 
 class CapaRespuesta(BaseModel):
@@ -141,16 +149,17 @@ class CapaRespuesta(BaseModel):
     densidad_t_m3: str | None
     dosis_l_m2: str | None
     asfalto_pct: str | None = None
-    esponjamiento: str | None = None
-    limpieza: bool = False
-    medicion: str | None = None
+    # F5 vial: solo viajan si la capa los declara, así la respuesta de un tramo de antes no cambia
+    esponjamiento: str | None = Field(default=None, exclude_if=_nulo)
+    limpieza: bool = Field(default=False, exclude_if=_nulo)
+    medicion: str | None = Field(default=None, exclude_if=_nulo)
 
 
 class DemarcacionRespuesta(BaseModel):
     tipo: str
     lineas: int
-    area_m2: str | None = None
-    captafaros: int | None = None
+    area_m2: str | None = Field(default=None, exclude_if=_nulo)
+    captafaros: int | None = Field(default=None, exclude_if=_nulo)
 
 
 class TramoRespuesta(BaseModel):
@@ -159,6 +168,7 @@ class TramoRespuesta(BaseModel):
     progresiva_fin_km: str
     ancho_m: str
     distancia_planta_km: str | None
+    transporte: str | None = Field(default=None, exclude_if=_nulo)
     capas: list[CapaRespuesta]
     demarcacion: list[DemarcacionRespuesta]
 
@@ -222,6 +232,7 @@ def tramo_a_respuesta(t: Tramo) -> TramoRespuesta:
         progresiva_fin_km=format(t.progresiva_fin_km, "f"),
         ancho_m=format(t.ancho_m, "f"),
         distancia_planta_km=_texto(t.distancia_planta_km),
+        transporte=t.transporte,
         capas=[
             CapaRespuesta(
                 tipo=c.tipo,
