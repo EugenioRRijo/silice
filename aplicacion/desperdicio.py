@@ -26,7 +26,6 @@ Sin FastAPI ni Streamlit; `Decimal` siempre.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
@@ -41,6 +40,7 @@ from aplicacion.tablas_desperdicio import (
     crear_esquema_desperdicio,
     hay_tablas_de_desperdicio,
 )
+from fusion.desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 
 __all__ = [
     "CLAVE",
@@ -57,22 +57,6 @@ __all__ = [
 #: La clave del porcentaje en una fila de materiales de Componer.
 CLAVE = "desperdicio"
 _CIEN = Decimal(100)
-
-
-@dataclass(frozen=True, slots=True)
-class TrazaDesperdicio:
-    """Un material con desperdicio: lo tecleado (neta y porcentaje) y la cantidad que resultó."""
-
-    descripcion: str
-    unidad: str
-    cantidad_neta: Decimal
-    desperdicio_pct: Decimal
-    cantidad: Decimal
-
-
-def cantidad_con_desperdicio(neta: Decimal, porcentaje: Decimal) -> Decimal:
-    """`neta × (1 + porcentaje / 100)`, exacta: «4» es 4 %."""
-    return neta * (1 + porcentaje / _CIEN)
 
 
 def leyenda(traza: TrazaDesperdicio) -> str:

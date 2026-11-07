@@ -52,13 +52,21 @@ declarado y se deja un `Aviso` que `fusion.proceso` lleva a TRAZABILIDAD. Lo que
 
 El perfil de plantilla es el del libro (`cargar_perfil(libro.perfil)`), salvo que quien llama pase
 otro.
+
+**Libro con un APU por hoja** (F5 vial, tarea 4; perfil hermano `apu_por_hoja`,
+`composicion_de_apu_por_hoja`). Los precios salen de la línea misma (no hay hoja de insumos); el
+desperdicio va dentro de la cantidad (`fusion.desperdicio`, diseño 2026-11-03 §4, opción B) y la
+traza vuelve aparte; las prestaciones como porcentaje son el FCAS del núcleo (250 % → 2,5, sin
+restar 1: el núcleo suma `1 + fcas`); el bono va en 0 (un bono por renglón distinto de cero hace el
+APU no evaluable, y lo decide quien audita); el coeficiente del equipo es su depreciación (1 si la
+columna no lo trae). Cada unidad pasa por la traducción del perfil (`unidades`).
 """
 
 from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -96,6 +104,7 @@ from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
 from core.costing.motor import calcular_apu
 from core.verification.texto import formatear_decimal
+from fusion.desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 
 __all__ = [
     "DESCRIPCION_HERRAMIENTAS",
@@ -105,6 +114,7 @@ __all__ = [
     "CalculoPartida",
     "calcular_partida",
     "codigos_de_partida",
+    "composicion_de_apu_por_hoja",
     "fcas_nucleo",
     "hoja_presupuesto",
     "moneda_del_libro",
@@ -465,3 +475,60 @@ def presupuesto_nucleo(
         moneda=moneda_del_libro(libro),
         partidas=tuple(partidas),
     )
+
+
+# --- Libro con un APU por hoja (F5 vial, tarea 4) ------------------------------------------------
+
+
+def composicion_de_apu_por_hoja(
+    apu: ApuLeido, unidades: Mapping[str, str] | None = None
+) -> tuple[ComposicionAPU, ParametrosCosto, list[TrazaDesperdicio]]:
+    """La composición del núcleo, sus parámetros y la traza del desperdicio de una hoja de APU del
+    perfil `apu_por_hoja` (ver la cabecera del módulo). `unidades` traduce lo que escribe el
+    libro a la unidad de Sílice (la tabla del perfil); lo que no está, se queda como viene."""
+    tabla = unidades or {}
+
+    def unidad(texto: str) -> str:
+        return tabla.get(texto, texto) or UNIDAD_POR_DEFECTO
+
+    materiales, equipos, mano_obra, trazas = [], [], [], []
+    for linea in apu.lineas:
+        if linea.tipo is TipoInsumo.MATERIAL:
+            cantidad = linea.cantidad
+            if linea.desperdicio:
+                cantidad = cantidad_con_desperdicio(linea.cantidad, linea.desperdicio)
+                trazas.append(
+                    TrazaDesperdicio(
+                        linea.descripcion,
+                        unidad(linea.unidad),
+                        linea.cantidad,
+                        linea.desperdicio,
+                        cantidad,
+                    )
+                )
+            materiales.append(
+                LineaMaterial(linea.descripcion, unidad(linea.unidad), cantidad, linea.precio)
+            )
+        elif linea.tipo is TipoInsumo.EQUIPO:
+            depreciacion = _UNO if linea.depreciacion is None else linea.depreciacion
+            equipos.append(
+                LineaEquipo(linea.descripcion, linea.cantidad, linea.precio, depreciacion)
+            )
+        else:
+            mano_obra.append(LineaManoObra(linea.descripcion, linea.cantidad, linea.precio))
+    composicion = ComposicionAPU(
+        codigo_partida=apu.codigo_partida or apu.hoja,
+        descripcion=apu.titulo,
+        unidad=unidad(apu.unidad),
+        rendimiento=apu.rendimiento,
+        materiales=tuple(materiales),
+        equipos=tuple(equipos),
+        mano_obra=tuple(mano_obra),
+    )
+    parametros = ParametrosCosto(
+        fcas=apu.prestaciones or _CERO,
+        bono_alimentacion=_CERO,
+        administracion=apu.administracion,
+        utilidad=apu.utilidad,
+    )
+    return composicion, parametros, trazas
