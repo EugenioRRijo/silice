@@ -16,7 +16,9 @@ from seguridad import cuentas
 
 
 def _arrancar(argumentos: argparse.Namespace) -> int:
-    return lanzador.arrancar(sin_navegador=argumentos.sin_navegador)
+    return lanzador.arrancar(
+        sin_navegador=argumentos.sin_navegador, sin_ventana=argumentos.sin_ventana
+    )
 
 
 def _parar(_argumentos: argparse.Namespace) -> int:
@@ -255,6 +257,9 @@ def registrar(
     """Agrega los parsers y los manejadores de la 1.0.0 a `python -m operacion`."""
     arrancar = ordenes.add_parser("arrancar", help="prepara las bases y abre Sílice")
     arrancar.add_argument("--sin-navegador", action="store_true")
+    arrancar.add_argument(
+        "--sin-ventana", action="store_true", help="abre el navegador en vez de la ventana"
+    )
     ordenes.add_parser("parar", help="detiene la instancia en marcha")
     ordenes.add_parser(
         "demostracion", help="crea el caso de demostración (datos construidos)"

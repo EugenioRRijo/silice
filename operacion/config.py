@@ -79,6 +79,9 @@ NIVELES_DE_REGISTRO = ("DEBUG", "INFO", "WARNING", "ERROR")
 #: El puerto único: Uvicorn sirve la API y la interfaz (`/app/`). Sigue siendo el 8501 para que los
 #: `silice.toml` y las reglas del cortafuegos ya escritos sigan valiendo.
 PUERTO_POR_DEFECTO = 8501
+#: Dónde se presenta la interfaz (F5, 2026-11-06): la ventana propia de Sílice (WebView2) o el
+#: navegador predeterminado. `[interfaz] abrir_en` en `silice.toml`; sin WebView2, el navegador.
+ABRIR_EN = ("ventana", "navegador")
 
 
 def es_producto(raiz: Path | None = None) -> bool:
@@ -128,6 +131,7 @@ class Ajustes:
     direccion: str = ""
     mostrar_investigacion: bool = False
     nivel_registro: str = "INFO"
+    abrir_en: str = "ventana"
     avisos: tuple[str, ...] = ()
 
 
@@ -164,6 +168,15 @@ def _booleano(valor: object, nombre: str, avisos: list[str]) -> bool:
 def _tabla(datos: dict, nombre: str) -> dict:
     tabla = datos.get(nombre, {})
     return tabla if isinstance(tabla, dict) else {}
+
+
+def _abrir_en(valor: object, avisos: list[str]) -> str:
+    if valor is None:
+        return ABRIR_EN[0]
+    if isinstance(valor, str) and valor.strip().lower() in ABRIR_EN:
+        return valor.strip().lower()
+    avisos.append(f'«abrir_en» debe ser "ventana" o "navegador" ({valor!r}); se usa "ventana".')
+    return ABRIR_EN[0]
 
 
 def cargar_ajustes(ruta: Path) -> Ajustes:
@@ -211,6 +224,7 @@ def cargar_ajustes(ruta: Path) -> Ajustes:
             interfaz.get("mostrar_investigacion"), "mostrar_investigacion", avisos
         ),
         nivel_registro=nivel,
+        abrir_en=_abrir_en(interfaz.get("abrir_en"), avisos),
         avisos=tuple(avisos),
     )
 
@@ -225,6 +239,7 @@ def guardar_ajustes(ruta: Path, ajustes: Ajustes) -> None:
         "[interfaz]\n"
         f"mostrar_investigacion = {str(ajustes.mostrar_investigacion).lower()}"
         "   # false = modo entrega (RS5-9)\n"
+        f'abrir_en = "{ajustes.abrir_en}"   # "ventana" (la de Sílice) o "navegador"\n'
         "[registro]\n"
         f'nivel = "{ajustes.nivel_registro}"\n'
     )
