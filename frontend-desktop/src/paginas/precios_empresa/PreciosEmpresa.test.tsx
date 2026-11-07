@@ -159,7 +159,7 @@ describe("Precios de la empresa", () => {
     expect(screen.getByRole("heading", { name: "3. Precios vencidos o fuera de rango (R11 y R12)" })).toBeInTheDocument();
     expect(screen.getByLabelText("Fecha de la lista")).toHaveValue(hoyIso());
     expect(screen.getByLabelText("Moneda de la lista")).toHaveValue("");
-    expect(screen.getByText("Todavía no hay listas de empresa en este caso.")).toBeInTheDocument();
+    expect(screen.getByText("Todavía no hay listas de empresa en esta carpeta.")).toBeInTheDocument();
   });
 
   test("sin listas de precios en el caso no ofrece el formulario", async () => {
@@ -297,7 +297,7 @@ describe("Precios de la empresa", () => {
 
   test("sin listas de empresa no hay boton de atipicos", async () => {
     montar();
-    await screen.findByText("Todavía no hay listas de empresa en este caso.");
+    await screen.findByText("Todavía no hay listas de empresa en esta carpeta.");
     expect(screen.queryByRole("button", { name: BOTON_ATIPICOS })).toBeNull();
   });
 

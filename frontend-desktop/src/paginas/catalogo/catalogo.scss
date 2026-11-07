@@ -1,0 +1,6 @@
+// Catálogo. La pista implícita de la rejilla de la página (`auto`) crecía hasta el ancho mínimo de su contenido (807 px en
+// una sección de 643 px a 1056 px con letra muy grande) y el título, la ayuda y el buscador se iban más allá de la ventana.
+// Con `minmax(0, 1fr)` la pista mide lo que la página y cada pieza se ajusta a ese ancho.
+.silice-catalogo {
+  grid-template-columns: minmax(0, 1fr);
+}

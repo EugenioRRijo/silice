@@ -17,7 +17,7 @@ import { crearAlmacen } from "./visor/almacen";
 import type { AlmacenDelVisor } from "./visor/almacen";
 import type { CrearHojaVisor } from "./visor/hojaVisor";
 
-// El enrutador es de hash (`/app/#/libros`): el servidor de /app es estatico y no devuelve index.html para
+// El enrutador es de hash (`/app/#/inicio/general`): el servidor de /app es estatico y no devuelve index.html para
 // /app/libros al recargar, y asi tampoco hace falta tocarlo cuando la interfaz vaya dentro de Tauri.
 // Cabecera de las pantallas sin el marco (entrar, bienvenida, recuperar, cambio de contrasena obligatorio): «Sílice» y el
 // tamano de letra, que la persona necesita para leer la pantalla de entrada; con una sesion provisional, tambien su cuenta

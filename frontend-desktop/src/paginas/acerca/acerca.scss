@@ -1,0 +1,6 @@
+// Ayuda y acerca de Sílice. La ruta de la carpeta de datos no tiene espacios y no se partía: empujaba la página. El valor de
+// cada fila se parte donde haga falta (sin esconder nada: se lee entero, en dos líneas).
+.silice-acerca__valor {
+  overflow-wrap: anywhere;
+  min-inline-size: 0;
+}

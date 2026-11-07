@@ -69,6 +69,9 @@ function Grafico({
           title: titulo,
           height: "300px",
           resizable: true,
+          // Sin barra de herramientas: su button va dentro de un div role="button" (axe: nested-interactive), sus rotulos estan
+          // en ingles y cada grafico ya tiene su tabla con los montos exactos. Como en CurvaPlanAvance.
+          toolbar: { enabled: false },
           ...(etiqueta ? { pie: { labels: { formatter: etiqueta } } } : {}),
           donut: {
             center: { label: "Total", numberFormatter: centro ? () => centro : formatoNumeroEsVe },
@@ -80,6 +83,9 @@ function Grafico({
           title: titulo,
           height: "300px",
           resizable: true,
+          // Sin barra de herramientas: su button va dentro de un div role="button" (axe: nested-interactive), sus rotulos estan
+          // en ingles y cada grafico ya tiene su tabla con los montos exactos. Como en CurvaPlanAvance.
+          toolbar: { enabled: false },
           axes: {
             left: { mapsTo: "group", scaleType: "labels", title: eje?.izquierda },
             bottom: { mapsTo: "value", title: eje?.abajo, ticks: { formatter: formatoNumeroEsVe } },
