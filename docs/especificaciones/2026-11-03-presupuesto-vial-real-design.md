@@ -371,7 +371,8 @@ solo-core, nunca mezclado con estas tareas.
 - Hallazgos del libro con un APU por hoja: AH1 precio impreso frente al recalculado; AH2 bono por renglón y AH3
   financiamiento (no evaluable); AH4 impuesto dentro del APU (ADVERTENCIA, y esa hoja no se compara); AH5 precio y AH6
   cantidad del presupuesto frente a su APU; AH7 renglón u hoja sin pareja; AH8 unidad traducida por el perfil; AH9 banda
-  leída de la descripción (`fusion/apu_por_hoja.py`).
+  leída de la descripción; AH10 dos hojas con el mismo número de renglón (ADVERTENCIA; el presupuesto se enlaza con la
+  primera; arbitraje F5 vial, P4, 2026-11-07) (`fusion/apu_por_hoja.py`).
 
 **Lo que falta:** la Hoja todavía no muestra ni edita la neta y el porcentaje del desperdicio (punto 1, «la Hoja edita neta
 y porcentaje, nunca el producto»): Componer sí, y la traza no se muestra si la cantidad cambió por otro camino. Mostrarla en

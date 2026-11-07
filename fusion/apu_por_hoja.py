@@ -25,6 +25,8 @@ Hallazgos (`FilaHallazgo`, con su `HOJA!CELDA`; la acción es siempre «informad
   hoja y por unidad (INFO): la traducción queda dicha, nunca escondida.
 - **AH9** la banda de distancia del transporte leída de la descripción con el patrón del perfil
   (INFO); si la descripción no sigue el patrón, no se adivina.
+- **AH10** dos hojas con el mismo número de renglón (ADVERTENCIA, en la celda del número de la
+  segunda): el presupuesto se enlaza con la primera y la otra no se compara con ningún renglón.
 
 El enlace presupuesto ↔ APU es el número de renglón (la cabecera «Partida N°» de la hoja). Un
 libro de solo valores no trae fórmulas: las reglas L del libro conocido no aplican y la evidencia es
@@ -363,10 +365,35 @@ def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str
     return titulo, renglones
 
 
+def _primeras(apus: Sequence[ApuLeido]) -> dict[int, ApuLeido]:
+    """La primera hoja de cada número de renglón (la que enlaza con el presupuesto)."""
+    primeras: dict[int, ApuLeido] = {}
+    for apu in apus:
+        if apu.numero is not None:
+            primeras.setdefault(apu.numero, apu)
+    return primeras
+
+
+def _repetidos(apus: Sequence[ApuLeido]) -> list[FilaHallazgo]:
+    primeras = _primeras(apus)
+    return [
+        _hallazgo(
+            "AH10",
+            "ADVERTENCIA",
+            apu.celdas.get("numero", apu.rotulos[Rotulo.PU]),
+            f"{_ident(apu)}: el número de renglón {apu.numero} ya es el de la hoja "
+            f"{primeras[apu.numero].hoja}; el presupuesto se enlaza con la primera y esta hoja no "
+            "se compara con ningún renglón.",
+        )
+        for apu in apus
+        if apu.numero is not None and primeras[apu.numero] is not apu
+    ]
+
+
 def _enlace(
     titulo: str, renglones: Sequence[_Renglon], apus: Sequence[ApuLeido]
 ) -> list[FilaHallazgo]:
-    por_numero = {a.numero: a for a in apus if a.numero is not None}
+    por_numero = _primeras(apus)
     tolerancia = Decimal(TOLERANCIA_PRECIO.valor)
     hallazgos = []
     vistos: set[int] = set()
@@ -446,6 +473,7 @@ def auditar_apu_por_hoja(
         apus.append(recalculado)
         hallazgos.extend(propios)
         trazas.extend(suyas)
+    hallazgos.extend(_repetidos(libro.apus))
     if presupuesto is not None:
         titulo, renglones = _renglones(presupuesto, presupuesto_nombre or "presupuesto", elegido)
         hallazgos.extend(_enlace(titulo, renglones, libro.apus))
