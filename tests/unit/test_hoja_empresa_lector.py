@@ -515,3 +515,50 @@ def test_el_libro_conocido_tiene_un_tope_de_celdas(monkeypatch: pytest.MonkeyPat
     assert str(error.value).startswith(
         "El libro «grande.xlsx» tiene más de 10 celdas con datos o con formato entre sus hojas."
     )
+
+
+def test_el_tope_del_libro_conocido_es_por_pasada_y_su_frontera_se_lee(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Árbitro, MENOR 2: el tope del libro vale por pasada (fórmulas y valores ven las mismas
+    celdas). N sale de contar lo que openpyxl entrega, no del código bajo prueba: con tope N el
+    libro se lee y con N - 1 se rechaza. Un solo contador para las dos pasadas pediría 2N."""
+    from adapters.hoja_empresa import lector
+
+    datos = construir_libro().datos
+    medida = _contar_filas(monkeypatch)
+    leer_libro(datos, NOMBRE)
+    total = medida[1]
+    assert total % 2 == 0
+    por_pasada = total // 2
+    monkeypatch.setattr(lector, "MAX_CELDAS_LIBRO", por_pasada)
+    assert leer_libro(datos, NOMBRE).hojas == construir_libro_hojas(datos)
+    monkeypatch.setattr(lector, "MAX_CELDAS_LIBRO", por_pasada - 1)
+    with pytest.raises(ArchivoRechazado, match=f"más de {por_pasada - 1:,}".replace(",", ".")):
+        leer_libro(datos, NOMBRE)
+
+
+def construir_libro_hojas(datos: bytes) -> tuple[str, ...]:
+    """Oráculo: los títulos de las hojas con openpyxl en modo normal."""
+    import openpyxl
+
+    return tuple(openpyxl.load_workbook(io.BytesIO(datos)).sheetnames)
+
+
+def test_una_fila_mas_ancha_que_la_columna_xfd_dice_su_columna():
+    """Árbitro, NOTA 4: una fila sin el atributo `r` puede traer más celdas que XFD (16.384);
+    el mensaje dice su columna (18.279 → AAAA, a mano) en vez de «alguna hoja está dañada»."""
+    from adapters.hoja_empresa.lector import filas_acotadas
+
+    class HojaFicticia:
+        title = "APU-01"
+
+        def reset_dimensions(self) -> None:
+            pass
+
+        def iter_rows(self, **_):
+            yield (None,) * 18_279
+
+    with pytest.raises(ArchivoRechazado) as error:
+        list(filas_acotadas(HojaFicticia(), "ancho.xlsx", [0], 10**9, values_only=True))
+    assert "hasta la columna AAAA, más allá de la CV" in str(error.value)
