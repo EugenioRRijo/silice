@@ -22,7 +22,7 @@ export const PASOS_DE_EMPIEZA_AQUI: Readonly<Record<PasoId, PasoDeEmpiezaAqui>> 
     papel: "administra",
     titulo: "Cree las cuentas de las personas",
     texto:
-      "En «Crear una cuenta», escriba el «Usuario», el «Nombre de la persona», lo que puede hacer y una «Contraseña temporal», y pulse «Crear la cuenta». La persona la cambia al entrar. Quien administra no arma presupuestos: créele la cuenta a quien arma.",
+      "En «Crear una cuenta», escriba el «Usuario», el «Nombre de la persona», lo que puede hacer y una «Contraseña temporal», y pulse «Crear la cuenta». La persona la cambia al entrar. La cuenta del administrador solo arma presupuestos si al crearla marcó «Usaré esta cuenta también para armar presupuestos»; si no, créele la cuenta a quien arma.",
     enlace: { texto: "Ir a Cuentas y permisos", ruta: rutaDeCuenta("cuentas"), accion: "administrar_cuentas" },
   },
   empresa: {
@@ -74,12 +74,13 @@ export interface DatosDeEmpiezaAqui {
   cuentasActivas: number | null;
 }
 
-// Quien administra estrena la instalación mientras su cuenta sea la única activa; quien arma o revisa estrena mientras no
+// Quien administra estrena la instalación mientras su cuenta sea la única activa y no haya ninguna obra (con obras, la
+// instalación ya se usa y el bloque sobra aunque nadie más tenga cuenta); quien arma o revisa estrena mientras no
 // vea ninguna obra. Lo que no se sabe (null) no abre ningún paso: no se inventa una primera vez. Quien arma y revisa a la
 // vez ve los pasos de quien arma (los de quien revisa son para quien no arma).
 export function pasosDeEmpiezaAqui({ acciones, obras, cuentasActivas }: DatosDeEmpiezaAqui): PasoId[] {
   const papeles = new Set<Papel>();
-  if (acciones.includes("administrar_cuentas") && cuentasActivas === 1) papeles.add("administra");
+  if (acciones.includes("administrar_cuentas") && cuentasActivas === 1 && !(obras !== null && obras > 0)) papeles.add("administra");
   const arma = acciones.includes("editar_hoja");
   if (arma && obras === 0) papeles.add("arma");
   if (!arma && acciones.includes("leer_proyecto") && obras === 0) papeles.add("revisa");
