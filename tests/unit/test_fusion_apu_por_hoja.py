@@ -149,6 +149,52 @@ def test_con_el_presupuesto_enlaza_por_renglon(con_presupuesto):
     )
 
 
+def _con_numero_repetido() -> bytes:
+    """El libro de APU con la hoja «APU 4» diciendo «Partida N°: 3», como «APU 3» (celda B3)."""
+    import io
+
+    import openpyxl
+
+    libro = openpyxl.load_workbook(io.BytesIO(libro_apu()))
+    libro["APU 4"]["B3"] = 3
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
+def test_dos_hojas_con_el_mismo_numero_de_renglon_se_avisan():
+    """Arbitraje F5 vial, P4: antes la segunda pisaba a la primera sin aviso. Ahora AH10 lo dice
+    en la celda del número de la segunda; el presupuesto se enlaza con la primera (APU 3: el
+    renglón 3 sigue con su AH6) y el renglón 4 se queda sin hoja (AH7)."""
+    resultado = auditar_apu_por_hoja(
+        _con_numero_repetido(),
+        "frente_ficticio.xlsx",
+        presupuesto=libro_presupuesto(),
+        presupuesto_nombre="presupuesto_ficticio.xlsx",
+    )
+    assert _resumen(resultado) == [
+        *HALLAZGOS_APU,
+        ("AH10", "ADVERTENCIA", "APU 4!B3"),
+        ("AH6", "ADVERTENCIA", "PRESUPUESTO!E6"),
+        ("AH7", "ADVERTENCIA", "PRESUPUESTO!A7"),
+        ("AH5", "ERROR", "PRESUPUESTO!F8"),
+        ("AH7", "ADVERTENCIA", "PRESUPUESTO!A9"),
+    ]
+    por_celda = {h.celda: h for h in resultado.hallazgos}
+    assert por_celda["APU 4!B3"].descripcion == (
+        "APU 4 (VF-004): el número de renglón 3 ya es el de la hoja APU 3; el presupuesto se "
+        "enlaza con la primera y esta hoja no se compara con ningún renglón."
+    )
+    assert por_celda["PRESUPUESTO!E6"].descripcion == (
+        "Renglón 3 (VF-003): el presupuesto dice una cantidad de 450 y su APU (APU 3!D5) dice 500."
+    )
+
+
+def test_el_numero_repetido_se_avisa_tambien_sin_presupuesto():
+    resultado = auditar_apu_por_hoja(_con_numero_repetido(), "frente_ficticio.xlsx")
+    assert _resumen(resultado) == [*HALLAZGOS_APU, ("AH10", "ADVERTENCIA", "APU 4!B3")]
+
+
 def test_un_presupuesto_sin_su_hoja_se_rechaza():
     from adapters.hoja_empresa.guardia import ArchivoRechazado
 
