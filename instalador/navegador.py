@@ -51,7 +51,9 @@ def recorrer(url: str, paginas: list[str]) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analizador.add_argument("--url", required=True)
-    analizador.add_argument("--paginas", nargs="+", default=["", "#/precios/catalogo", "#/precios/simulador"])
+    analizador.add_argument(
+        "--paginas", nargs="+", default=["", "#/precios/catalogo", "#/precios/simulador"]
+    )
     analizador.add_argument("--salida", type=Path, required=True)
     argumentos = analizador.parse_args(argv)
     vistas = recorrer(argumentos.url.rstrip("/"), argumentos.paginas)

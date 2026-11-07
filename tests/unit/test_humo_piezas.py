@@ -86,8 +86,8 @@ def test_las_paginas_del_humo_existen_en_el_registro_de_rutas(tmp_path: Path, mo
     ids = set(re.findall(r'^\s+id: "([a-z_]+)",$', registro, flags=re.MULTILINE))
     assert "obras" in ids
     paginas = [p.removeprefix("#/") for p in pedidas[0] if p]
-    assert paginas == ["catalogo", "simulador"]
-    assert set(paginas) <= ids
+    assert paginas == ["precios/catalogo", "precios/simulador"]
+    assert {p.rsplit("/", 1)[-1] for p in paginas} <= ids
 
 
 @pytest.fixture
