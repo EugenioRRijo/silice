@@ -878,3 +878,46 @@ desarrollo (nunca una de evaluación), toma la clave del almacén (jamás de un 
 fichas, costo, modelo que respondió y propuestas, y agrega una entrada a la bitácora
 `docs/bitacora/2026-10-silice-090.md`. `--grabar` guarda los turnos para reproducirlos con
 `asistente.proveedores.guionado.guion_desde_archivo`.
+
+## 18. Perfiles de libros locales
+
+El libro con un APU por hoja (F5 vial; `POST /v1/libros/apu-por-hoja` y el bloque «Libro con un APU
+por hoja» de «Inicio de auditoría») se lee con un **perfil**: un JSON que dice por qué rótulos se
+buscan la cabecera, los tres bloques, los porcentajes, el precio unitario y la hoja del presupuesto
+(`adapters/hoja_empresa/perfil_apu_por_hoja.py`; diseño
+[2026-11-03](especificaciones/2026-11-03-presupuesto-vial-real-design.md) §7 y su decisión
+provisional 5). El del repositorio, `adapters/hoja_empresa/perfiles/apu_por_hoja.json`, está escrito
+contra el libro **ficticio** de `tests/fixtures/libro_apu_por_hoja.py`. El perfil de un libro real
+nunca entra al repositorio (NORMAS §1): vive en la instalación.
+
+**Dónde se buscan.** `fusion.apu_por_hoja.auditar_apu_por_hoja` busca `<nombre>.json` primero en la
+carpeta de perfiles locales y después en el paquete:
+
+| Caso | Carpeta de perfiles locales |
+|---|---|
+| Por omisión | `<carpeta de datos>/perfiles_libros/` (`carpeta_perfiles_locales()`, con `operacion.config.carpeta_datos()`): `%LOCALAPPDATA%\Silice\datos\perfiles_libros\` en el producto (el lanzador fija `SILICE_DATOS`) y `data/perfiles_libros/` en desarrollo, que está en `.gitignore` |
+| Con `SILICE_PERFILES_LIBROS` | La carpeta que diga la variable, en lugar de la anterior. Es una opción: nadie la fija |
+
+Si la carpeta no existe, solo valen los perfiles del paquete. Ninguna función la crea: la crea quien
+pone el primer perfil.
+
+**Cómo se elige.** La pantalla no manda el campo `perfil`, así que usa `apu_por_hoja`: un
+`apu_por_hoja.json` en la carpeta local **reemplaza** al del paquete para toda la instalación. Un
+perfil con otro nombre solo se alcanza por la API, con el campo de formulario `perfil`. El nombre
+es `[a-z0-9_]+` y debe coincidir con el campo `nombre` del JSON. Un perfil que no existe o que está
+mal escrito (`PerfilInvalido`) responde 422 con el motivo; el informe dice cuál se usó y de dónde
+(`perfil`, `origen_perfil`: `local` o `paquete`), y la pantalla lo escribe: «Perfil apu_por_hoja (de
+esta instalación) · …» o «(del paquete)».
+
+**Escribir uno.** Copie el del paquete en la carpeta local y cambie solo los rótulos, la tabla
+`unidades` (lo que escribe el libro → la unidad de Sílice; cada traducción usada sale como AH8) y
+`patron_banda` (expresión regular con los grupos `minimo` y `maximo`; el AH9). Se valida entero al cargar: claves
+que faltan o sobran, listas vacías y un patrón que no compila se rechazan.
+
+**Entrada hostil.** De cada libro se leen solo las hojas cuyo nombre empieza por `prefijo_hoja` y,
+del libro de presupuesto, solo la hoja `presupuesto.hoja`; cada fila llega solo hasta su última
+celda real (`reset_dimensions()`, como `lector.py`): una hoja que declara una dimensión enorme no
+se materializa (arbitraje F5 vial, P1).
+
+**Pruebas.** `tests/unit/test_fusion_apu_por_hoja.py` (las carpetas, la variable y el libro hostil)
+y `tests/unit/test_api_libros_replica.py` (la ruta sin `perfil` con un perfil local).

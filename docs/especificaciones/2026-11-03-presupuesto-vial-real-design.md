@@ -350,7 +350,7 @@ solo-core, nunca mezclado con estas tareas.
 | 2. Distancia fuera de la banda | ADVERTENCIA, no ERROR | `adapters/vial/reglas.py`, `_vr4_banda` |
 | 3. Esponjamiento y ojos de gato | Esponjamiento: dato obligatorio de la capa para derivar el transporte del fresado, sin valor por defecto (factor ≥ 1). Ojos de gato: basta el número declarado por la línea | `adapters/vial/modelo.py` (`Capa`, `Demarcacion`) |
 | 4. Variantes de medición | Sí: fresado en m² (con espesor) y colocación de la carpeta en t, cada una con su código (`fresado_area` C-000.000.022, `carpeta_colocacion_masa` C-000.000.023) | `adapters/vial/modelo.py` (`MEDICIONES`), `derivacion.py` (`_VARIANTES`) |
-| 5. Perfiles de libros reales | Fuera del repositorio, en la carpeta de datos de la instalación (`SILICE_PERFILES_LIBROS`); el del repositorio se escribe contra un libro ficticio (`tests/fixtures/libro_apu_por_hoja.py`) | `adapters/hoja_empresa/perfil_apu_por_hoja.py`, `carpetas_locales` |
+| 5. Perfiles de libros reales | Fuera del repositorio, en la carpeta de datos de la instalación: `<carpeta de datos>/perfiles_libros/` por omisión, o la carpeta de `SILICE_PERFILES_LIBROS` si está (arbitraje F5 vial, P2, 2026-11-07); el del repositorio se escribe contra un libro ficticio (`tests/fixtures/libro_apu_por_hoja.py`). Ver `docs/manual_tecnico.md`, «Perfiles de libros locales» | `adapters/hoja_empresa/perfil_apu_por_hoja.py` (`carpetas_locales`), `fusion/apu_por_hoja.py` (`carpeta_perfiles_locales`) |
 | 6. Céntimos por redondeo por renglón | INFO que los explica | `fusion/apu_por_hoja.py`, AH1 |
 
 **Decisiones de construcción** (tomadas al construir, prudentes y reversibles):
