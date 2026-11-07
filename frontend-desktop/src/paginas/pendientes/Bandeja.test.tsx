@@ -525,10 +525,13 @@ describe("Pendientes: cuándo no se repite la lectura", () => {
     expect(screen.queryByText("Falta pedir el cemento")).toBeNull();
   });
 
-  test("al arrancar desde «/pendientes» (que redirige a /inicio/pendientes) se piden una sola vez", async () => {
+  // F8, C1: «/pendientes» se retiró y ahora lleva a la Vista general; sigue siendo una entrada a Inicio y no repite la lectura.
+  test("al arrancar desde «/pendientes» (retirada: lleva a /inicio/general) se piden una sola vez", async () => {
     montar({ inicial: "/pendientes" });
-    expect(await opciones()).toHaveLength(4);
-    await waitFor(() => expect(ruta()).toBe("/inicio/pendientes"));
+    expect(await screen.findByRole("heading", { level: 1, name: "Vista general" })).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general");
+    await waitFor(() => expect(pedidas()).toBe(1));
+    await new Promise((r) => setTimeout(r, 100));
     expect(pedidas()).toBe(1);
   });
 });

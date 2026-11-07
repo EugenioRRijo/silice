@@ -162,8 +162,8 @@ describe("App", () => {
     });
   });
 
-  test("una direccion con #/libros abre esa pagina", async () => {
-    window.location.hash = "#/libros";
+  test("una direccion con #/auditoria/libros abre esa pagina", async () => {
+    window.location.hash = "#/auditoria/libros";
     render(<App />);
     expect(
       await screen.findByRole("button", { name: /Suelte aquí el libro \.xlsx de la empresa/ }, { timeout: 5000 }),
@@ -312,7 +312,7 @@ describe("App", () => {
       sesionDeLibro = sesion;
       vencida = false;
       llamadasReplica = 0;
-      window.location.hash = "#/libros";
+      window.location.hash = "#/auditoria/libros";
       fetchFalso.mockImplementation(async (entrada, init) => {
         const ruta = String(entrada);
         const metodo = init?.method ?? "GET";
@@ -386,9 +386,10 @@ describe("App", () => {
 
     test("fuera de Libro de la empresa la cabecera no lleva los controles del libro", async () => {
       prepararApi();
-      window.location.hash = "#/acerca";
+      window.location.hash = "#/cuenta/ayuda";
       render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
-      await screen.findByText("Ana Pérez");
+      // En la Cuenta el nombre sale dos veces: en la barra de arriba y en la cabecera de la Cuenta.
+      expect((await screen.findAllByText("Ana Pérez")).length).toBeGreaterThan(0);
       expect(screen.queryByLabelText("Fecha de devolución")).toBeNull();
     });
 

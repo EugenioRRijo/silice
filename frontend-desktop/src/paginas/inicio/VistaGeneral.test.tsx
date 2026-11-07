@@ -612,16 +612,18 @@ describe("Inicio: las rutas", () => {
     expect(ruta()).toBe("/inicio/general");
   });
 
-  test("#/pendientes redirige a #/inicio/pendientes y muestra la bandeja", async () => {
+  // F8, C1 (contrato 2.4, enmienda 2026-11-06): `#/pendientes`, el nombre de antes de F6, se retiró. Ya no lleva a la
+  // bandeja: como toda dirección que no existe, acaba en la Vista general.
+  test("#/pendientes ya no redirige a la bandeja: acaba en #/inicio/general", async () => {
     montar({ en: "/pendientes" });
-    expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/pendientes");
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general");
   });
 
-  test("#/pendientes?proyecto=OF-001 conserva la consulta", async () => {
+  test("#/pendientes?proyecto=OF-001 acaba en la Vista general y conserva la consulta", async () => {
     montar({ en: "/pendientes?proyecto=OF-001" });
-    expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/pendientes?proyecto=OF-001");
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general?proyecto=OF-001");
   });
 
   test("#/inicio/general?x=1 y #/inicio?x=1 conservan la consulta", async () => {

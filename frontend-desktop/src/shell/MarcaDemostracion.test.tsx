@@ -95,7 +95,7 @@ describe("MarcaDemostracion en el armazón", () => {
   test("fuera de la demostración la barra no la muestra", async () => {
     servidor = servidorFalso();
     vi.stubGlobal("fetch", vi.fn(servidor.fetchFalso));
-    montarMarco(sesionDe("ana"), "/pendientes");
+    montarMarco(sesionDe("ana"), "/inicio/pendientes");
     await screen.findByRole("heading", { level: 1, name: "Pendientes" });
     await waitFor(() => expect(servidor.de("GET", "/v1/casos").length).toBeGreaterThan(0));
     expect(within(screen.getByRole("banner")).queryByRole("button", { name: /^Demostración/ })).toBeNull();
