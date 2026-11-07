@@ -45,6 +45,27 @@ describe("presentador común de las filas del registro de cambios", () => {
     );
   });
 
+  // Resto N1 del árbitro de la tanda (F8, C5): un nombre libre puede llevar «; <columna>=». Antes ganaba la primera
+  // coincidencia de cada columna y el nombre se cortaba; ahora gana la lectura que reconoce más columnas y, si dos
+  // reconocen las mismas, la que deja el texto libre entero (la coincidencia de la columna que va más tarde).
+  test("N1 (F8): un nombre «Toma; z=3» no se come la posición: gana la lectura con más columnas", () => {
+    const resumen = "id=P1; nombre=Toma; z=3; x=1.5; y=0; z=0.3";
+    expect(presentarValor("fila", resumen, "esp_puntos:P1")).toBe(
+      "Código=P1; Nombre=Toma; z=3; Posición X (m)=1,5; Posición Y (m)=0; Altura (m)=0,3",
+    );
+  });
+
+  test("N1 (F8): un nombre «Toma; x=3» con la misma cantidad de columnas queda entero", () => {
+    const resumen = "id=P1; nombre=Toma; x=3; x=1.5; y=0; z=0.3";
+    expect(presentarValor("fila", resumen, "esp_puntos:P1")).toBe(
+      "Código=P1; Nombre=Toma; x=3; Posición X (m)=1,5; Posición Y (m)=0; Altura (m)=0,3",
+    );
+    const ambiente = "id=A1; nombre=Sala; x0=3; x0=1; y0=2; largo=4.5";
+    expect(presentarValor("fila", ambiente, "esp_ambientes:A1")).toBe(
+      "Código=A1; Nombre=Sala; x0=3; Esquina X (m)=1; Esquina Y (m)=2; Largo (m)=4,5",
+    );
+  });
+
   test("N2: el campo suelto «vertices» (un cambio de un vértice) sale con coma decimal y entre paréntesis", () => {
     expect(presentarValor("vertices", "1.5,0,2.5; 1.5,0,0.6")).toBe("(1,5; 0; 2,5), (1,5; 0; 0,6)");
   });

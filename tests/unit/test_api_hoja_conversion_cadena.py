@@ -70,7 +70,7 @@ BASE = (
     "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro "
     "programa."
 )
-FALTA_PROYECTO = "La obra «Z» no existe en este caso."
+FALTA_PROYECTO = "La obra «Z» no existe en esta carpeta."
 FORMA_CADENA = "Indique la obra (código o nombre) de hasta 500 caracteres."
 ROTA_REGISTRO = (
     "Cadena rota en la versión 002: su registro de cambios no coincide con su huella; alguien "

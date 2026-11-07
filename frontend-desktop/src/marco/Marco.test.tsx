@@ -96,7 +96,7 @@ interface Montaje {
   canal?: CanalDeObra;
 }
 
-function montar({ sesion = sesionDe("ana"), en = "/pendientes", paginas = ligeras(), canal }: Montaje = {}) {
+function montar({ sesion = sesionDe("ana"), en = "/inicio/pendientes", paginas = ligeras(), canal }: Montaje = {}) {
   const alSalir = vi.fn();
   const alExpirar = vi.fn();
   const vigilante = canal ? crearVigilante(canal) : undefined;
@@ -134,8 +134,8 @@ function apagar(...claves: string[]) {
   );
 }
 
-describe("Marco: las rutas viejas llevan al marco nuevo", () => {
-  // F6, T8 (contrato 1): la ruta índice y lo que no existe llevan a la Vista general; `#/pendientes` es solo el nombre viejo.
+describe("Marco: la ruta índice, lo que no existe y las direcciones cortas de la obra", () => {
+  // F6, T8 (contrato 1): la ruta índice y lo que no existe llevan a la Vista general.
   test.each(["/", "/inicio", "/no-existe"])("%s acaba en #/inicio/general, la Vista general", async (de) => {
     montar({ en: de });
     expect(await titulo("Vista general")).toBeInTheDocument();
@@ -158,18 +158,8 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
     expect(ruta()).toBe("/inicio/pendientes?x=1");
   });
 
-  test("una entrada de Empresa que no existe lleva a la bandeja conservando la consulta", async () => {
-    montar({ en: "/empresa/nada?x=1" });
-    expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/pendientes?x=1");
-  });
-
-  test("#/pendientes acaba en #/inicio/pendientes, que muestra la bandeja", async () => {
-    montar({ en: "/pendientes" });
-    expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/pendientes");
-  });
-
+  // Las direcciones cortas de la obra (`/hoja`, `/reajuste`…) se quedan: son la ruta canónica sin obra (`rutaCanonica`,
+  // espacios.ts) que usan el buscador y los recorridos guiados, y llevan a la obra de la sesión (contrato 2.4).
   test("#/hoja con la obra 3 abierta en «Carpeta Sur.db» acaba en su Presupuesto", async () => {
     instalar(enSur);
     montar({ sesion: sesionConObra("3"), en: "/hoja" });
@@ -183,71 +173,32 @@ describe("Marco: las rutas viejas llevan al marco nuevo", () => {
     expect(ruta()).toBe("/inicio/pendientes");
   });
 
-  test("una sección vieja con consulta y sin obra en la sesión se abre donde estaba (no pierde el envío)", async () => {
+  test("una sección corta con consulta y sin obra en la sesión se abre donde estaba (no pierde el envío)", async () => {
     montar({ en: "/aprobar?envio=12" });
     expect(await titulo("Aprobar una versión")).toBeInTheDocument();
     expect(ruta()).toBe("/aprobar?envio=12");
   });
 
   // Contrato 2.4 (enmienda 2026-11-05): la excepción de la consulta vale para secciones y para subvistas de la obra.
-  test("una subvista vieja con consulta y sin obra en la sesión se abre donde estaba (/reajuste?x=1)", async () => {
+  test("una subvista corta con consulta y sin obra en la sesión se abre donde estaba (/reajuste?x=1)", async () => {
     montar({ en: "/reajuste?x=1" });
     expect(await titulo("Reajuste de precios")).toBeInTheDocument();
     expect(ruta()).toBe("/reajuste?x=1");
   });
-
-  // F6, T6 (contrato 2.4): Administración y Acerca de viven en la Cuenta; las direcciones viejas de Empresa también llevan allí.
-  const A_LA_CUENTA: readonly (readonly [string, string])[] = [
-    ["/administracion", "/cuenta/cuentas"],
-    ["/empresa/personas", "/cuenta/cuentas"],
-    ["/acerca", "/cuenta/ayuda"],
-    ["/empresa/ayuda", "/cuenta/ayuda"],
-  ];
-  test.each(A_LA_CUENTA)("%s acaba en %s", async (de, a) => {
-    montar({ sesion: sesionDe("admin"), en: de });
-    await waitFor(() => expect(ruta()).toBe(a));
-  });
-
-  test.each(A_LA_CUENTA)("%s?proyecto=OF-001 acaba en %s?proyecto=OF-001 (conserva la consulta)", async (de, a) => {
-    montar({ sesion: sesionDe("admin"), en: `${de}?proyecto=OF-001` });
-    await waitFor(() => expect(ruta()).toBe(`${a}?proyecto=OF-001`));
-  });
-
-  test("#/simulador acaba en #/precios/simulador, dentro del marco nuevo", async () => {
-    montar({ en: "/simulador" });
-    expect(await titulo("Simulador de listas")).toBeInTheDocument();
-    expect(ruta()).toBe("/precios/simulador");
-    const barra = screen.getByRole("banner");
-    expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
-    expect(screen.getByRole("complementary", { name: "Barra lateral" })).toBeInTheDocument();
-    expect(within(barra).queryByRole("navigation", { name: "Ruta" })).toBeNull();
-    expect(within(screen.getByRole("navigation", { name: "Precios y catálogo" })).getByRole("link", { name: "Simulador de listas" })).toHaveAttribute("aria-current", "page");
-  });
-
-  test("la dirección vieja de las cuentas, para quien no administra, acaba en la Cuenta diciendo que no tiene permiso", async () => {
-    montar({ en: "/empresa/personas" });
-    expect(await screen.findByText("Su cuenta no tiene permiso para esta pantalla o acción.")).toBeInTheDocument();
-    expect(ruta()).toBe("/cuenta/cuentas");
-  });
-
-  test("una entrada vieja de Empresa que no existe lleva a Pendientes", async () => {
-    montar({ en: "/empresa/xyz" });
-    expect(await titulo("Pendientes")).toBeInTheDocument();
-    expect(ruta()).toBe("/inicio/pendientes");
-  });
 });
 
-// F6, T4: Producción, Auditoría y Precios son espacios con su barra de herramientas (/<espacio>/<herramienta>). La tabla
-// del contrato de rutas §2.4 (las filas que tocan a esos espacios) escrita a mano; destino final y consulta conservada.
-describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", () => {
-  const TABLA_2_4: readonly (readonly [string, string])[] = [
-    ["/produccion", "/produccion/resumen"],
+// F8, C1 (contrato 2.4, enmienda 2026-11-06): las direcciones de antes de F6 que llevaban a Pendientes, a un espacio de la
+// empresa o a la Cuenta se retiraron. Ya no redirigen a donde vive hoy la pantalla: son direcciones que no existen y, como
+// toda dirección inexistente, llevan a la Vista general conservando la consulta. Tabla escrita a mano desde el contrato:
+// la dirección vieja y adónde llevaba antes.
+describe("Marco: las direcciones viejas se retiraron (F8, C1)", () => {
+  const RETIRADAS: readonly (readonly [string, string])[] = [
+    ["/pendientes", "/inicio/pendientes"],
     ["/existencias", "/produccion/existencias"],
     ["/costos", "/produccion/costos"],
     ["/costo_tonelada", "/produccion/costo-tonelada"],
     ["/receta_planta", "/produccion/receta"],
     ["/producir_mezcla", "/produccion/mezcla"],
-    ["/auditoria", "/auditoria/subir"],
     ["/libros", "/auditoria/libros"],
     ["/historial", "/auditoria/historial"],
     ["/precios_empresa", "/precios/listas"],
@@ -257,22 +208,58 @@ describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", ()
     ["/empresa/precios", "/precios/catalogo"],
     ["/empresa/auditoria", "/auditoria/subir"],
     ["/empresa/produccion", "/produccion/existencias"],
+    ["/empresa/personas", "/cuenta/cuentas"],
+    ["/empresa/ayuda", "/cuenta/ayuda"],
+    ["/administracion", "/cuenta/cuentas"],
+    ["/acerca", "/cuenta/ayuda"],
   ];
 
-  test.each(TABLA_2_4)("%s acaba en %s", async (de, a) => {
+  test.each(RETIRADAS)("%s ya no lleva a %s: acaba en la Vista general", async (de) => {
+    montar({ sesion: sesionDe("admin"), en: de });
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general");
+  });
+
+  test.each(RETIRADAS)("%s?proyecto=OF-001 acaba en la Vista general con su consulta", async (de) => {
+    montar({ en: `${de}?proyecto=OF-001` });
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general?proyecto=OF-001");
+  });
+
+  test("una entrada de Empresa que nunca existió también acaba en la Vista general", async () => {
+    montar({ en: "/empresa/xyz" });
+    expect(await titulo("Vista general")).toBeInTheDocument();
+    expect(ruta()).toBe("/inicio/general");
+  });
+
+  // Contrato 1 («espacio sin herramienta»): `/produccion` y `/auditoria` no son direcciones viejas, sino la raíz de su espacio.
+  test.each([
+    ["/produccion", "/produccion/resumen"],
+    ["/auditoria", "/auditoria/subir"],
+    ["/auditoria?x=1", "/auditoria/subir?x=1"],
+  ])("%s sigue abriendo su espacio: %s", async (de, a) => {
     montar({ en: de });
     await waitFor(() => expect(ruta()).toBe(a));
   });
+});
 
-  test.each(TABLA_2_4)("%s?proyecto=OF-001 acaba en %s?proyecto=OF-001 (conserva la consulta)", async (de, a) => {
-    montar({ en: `${de}?proyecto=OF-001` });
-    await waitFor(() => expect(ruta()).toBe(`${a}?proyecto=OF-001`));
+// F6, T4: Producción, Auditoría y Precios son espacios con su barra de herramientas (/<espacio>/<herramienta>).
+describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", () => {
+  test("#/precios/simulador se abre dentro del marco nuevo", async () => {
+    montar({ en: "/precios/simulador" });
+    expect(await titulo("Simulador de listas")).toBeInTheDocument();
+    expect(ruta()).toBe("/precios/simulador");
+    const barra = screen.getByRole("banner");
+    expect(within(barra).getByRole("button", { name: "Buscar una obra, sección o pantalla… (Ctrl+K)" })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Barra lateral" })).toBeInTheDocument();
+    expect(within(barra).queryByRole("navigation", { name: "Ruta" })).toBeNull();
+    expect(within(screen.getByRole("navigation", { name: "Precios y catálogo" })).getByRole("link", { name: "Simulador de listas" })).toHaveAttribute("aria-current", "page");
   });
 
-  test("#/aprobar?envio=12 sigue abriéndose donde estaba, como antes", async () => {
-    montar({ en: "/aprobar?envio=12" });
-    expect(await titulo("Aprobar una versión")).toBeInTheDocument();
-    expect(ruta()).toBe("/aprobar?envio=12");
+  test("las cuentas, para quien no administra, dicen en la Cuenta que no tiene permiso", async () => {
+    montar({ en: "/cuenta/cuentas" });
+    expect(await screen.findByText("Su cuenta no tiene permiso para esta pantalla o acción.")).toBeInTheDocument();
+    expect(ruta()).toBe("/cuenta/cuentas");
   });
 
   test("quien arma entra a #/precios por el Catálogo y el administrador, por los precios de la empresa", async () => {
@@ -385,7 +372,7 @@ describe("Marco: los espacios de Producción, Auditoría y Precios (F6, T4)", ()
 
   test("Ctrl+K lleva a las rutas nuevas", async () => {
     const u = userEvent.setup();
-    montar({ en: "/pendientes" });
+    montar({ en: "/inicio/pendientes" });
     await titulo("Pendientes");
     await u.keyboard("{Control>}k{/Control}");
     await u.type(screen.getByRole("combobox", { name: "Buscar una obra, sección o pantalla" }), "existencias");
@@ -1074,7 +1061,7 @@ describe("Marco: lo que se monta con él", () => {
 
   test("si la pantalla no carga lo dice, sin «página»", async () => {
     const rota: PaginaDef[] = ligeras().map((p) => (p.id === "simulador" ? { ...p, cargar: () => Promise.reject(new Error("sin red")) } : p));
-    montar({ en: "/simulador", paginas: rota });
+    montar({ en: "/precios/simulador", paginas: rota });
     expect(await screen.findByText("No se pudo abrir la pantalla")).toBeInTheDocument();
     expect(screen.getByRole("main")).not.toHaveTextContent(/página/i);
   });
@@ -1330,11 +1317,11 @@ describe("Marco: el foco no se pierde cuando la acción quita el control", () =>
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  // La entrada real es `#/`, `#/inicio`, `#/pendientes` o una ruta que no existe, que REDIRIGEN con `replace` a la Vista general
-  // (o a Pendientes, la dirección vieja): eso es la carga inicial, no un cambio de pantalla. El foco sigue en <body> y el
-  // primer Tab es «Saltar».
+  // La entrada real es `#/`, `#/inicio` o una ruta que no existe (también `#/pendientes`, retirada en F8), que REDIRIGEN con
+  // `replace` a la Vista general: eso es la carga inicial, no un cambio de pantalla. El foco sigue en <body> y el primer Tab
+  // es «Saltar».
   test.each([
-    ["/pendientes", "Pendientes", "/inicio/pendientes"],
+    ["/pendientes", "Vista general", "/inicio/general"],
     ["/", "Vista general", "/inicio/general"],
     ["/inicio", "Vista general", "/inicio/general"],
     ["/no-existe", "Vista general", "/inicio/general"],

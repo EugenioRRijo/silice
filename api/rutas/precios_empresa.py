@@ -123,7 +123,7 @@ def _motivo(error: Exception) -> str:
 def _exigir_lista_de_empresa(sesion, lista_id: int) -> None:
     """La pagina clasica solo ofrece las listas de empresa: otra lista es un 404."""
     if lista_id not in {i for i, _ in logica.listas_de_empresa(sesion)}:
-        raise HTTPException(404, f"la lista {lista_id} no es una lista de empresa de este caso")
+        raise HTTPException(404, f"la lista {lista_id} no es una lista de empresa de esta carpeta")
 
 
 @router.get("", response_model=EstadoRespuesta)

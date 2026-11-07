@@ -110,7 +110,7 @@ def crear_lista(
     def accion() -> ResumenEmpresa:
         base = sesion.get(models.ListaPrecios, base_id)
         if base is None:
-            raise ValueError(f"la lista base {base_id} no existe en este caso")
+            raise ValueError(f"la lista base {base_id} no existe en esta carpeta")
         propios, desconocidos = precios_propios_desde(sesion, leidos)
         tasa_base = None
         if base.moneda != moneda:
@@ -140,7 +140,7 @@ def hallazgos_de_lista(sesion, lista_id: int, fecha_evaluacion: date) -> list[di
     no hay cantidades, asi que el impacto es por unidad de insumo."""
     lista = sesion.get(models.ListaPrecios, lista_id)
     if lista is None:
-        raise ValueError(f"la lista {lista_id} no existe en este caso")
+        raise ValueError(f"la lista {lista_id} no existe en esta carpeta")
     instantanea = instantanea_de_lista(sesion, lista, lista_de_referencia(sesion), fecha_evaluacion)
     return [
         dict(

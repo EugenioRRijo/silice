@@ -287,7 +287,7 @@ def _proyecto(sesion, referencia: str):
     encontrado = resolver_proyecto(sesion, referencia)
     if encontrado is None:
         raise HTTPException(
-            status_code=404, detail=f"La obra «{referencia}» no existe en este caso."
+            status_code=404, detail=f"La obra «{referencia}» no existe en esta carpeta."
         )
     return encontrado
 

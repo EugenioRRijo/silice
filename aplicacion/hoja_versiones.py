@@ -48,10 +48,10 @@ __all__ = [
 
 
 class ProyectoInexistente(Exception):  # noqa: N818
-    """El proyecto (codigo o nombre) no existe en este caso."""
+    """El proyecto (codigo o nombre) no existe en esta carpeta."""
 
     def __init__(self, referencia: str) -> None:
-        super().__init__(f"La obra «{referencia}» no existe en este caso.")
+        super().__init__(f"La obra «{referencia}» no existe en esta carpeta.")
 
 
 class VersionInexistente(Exception):  # noqa: N818

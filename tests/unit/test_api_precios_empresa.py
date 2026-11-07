@@ -306,7 +306,7 @@ def test_sin_moneda_o_sin_archivo_no_hay_valor_por_defecto(_entorno, campo) -> N
         ({"moneda": "EUR"}, "No se creó la lista: "),
         ({"empresa": "  "}, "No se creó la lista: la empresa (nombre y RIF)"),
         ({"fuente": ""}, "No se creó la lista: la empresa (nombre y RIF)"),
-        ({"base_id": 9999}, "No se creó la lista: la lista base 9999 no existe en este caso"),
+        ({"base_id": 9999}, "No se creó la lista: la lista base 9999 no existe en esta carpeta"),
     ],
 )
 def test_los_errores_del_nucleo_llegan_con_el_prefijo_de_la_pagina(
@@ -428,7 +428,8 @@ def test_solo_las_listas_de_empresa_tienen_hallazgos(_entorno) -> None:
     for lista in (base, 9999):
         r = navegador.get(f"{URL}/listas/{lista}/hallazgos", params={"fecha": EVALUACION})
         assert r.status_code == 404, r.text
-        assert r.json() == {"detalle": f"la lista {lista} no es una lista de empresa de este caso"}
+        ajena = f"la lista {lista} no es una lista de empresa de esta carpeta"
+        assert r.json() == {"detalle": ajena}
 
 
 # --- el acceso --------------------------------------------------------------------------------
@@ -771,7 +772,8 @@ def test_solo_las_listas_de_empresa_se_revisan_y_el_404_no_trae_pistas(_entorno)
     for lista in (base, 987654):
         r = navegador.get(f"{URL}/listas/{lista}/atipicos")
         assert r.status_code == 404, r.text
-        assert r.json() == {"detalle": f"la lista {lista} no es una lista de empresa de este caso"}
+        ajena = f"la lista {lista} no es una lista de empresa de esta carpeta"
+        assert r.json() == {"detalle": ajena}
         _sin_pistas(r)
 
 

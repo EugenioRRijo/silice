@@ -113,7 +113,7 @@ def test_los_textos_fijos_son_los_de_la_pantalla_clasica() -> None:
     assert revision.SIN_ENTREGA_ANTERIOR == (
         "Esta instalación no recibió una entrega anterior de esta obra."
     )
-    assert revision.SIN_LISTAS == "Este caso no tiene listas de precios para contrastar."
+    assert revision.SIN_LISTAS == "Esta carpeta no tiene listas de precios para contrastar."
     assert revision.TITULO_CONTRA_MI_LISTA == "El paquete con los precios de mi lista"
     assert revision.DICTAMEN_GUARDADO == "Dictamen guardado, atado al SHA-256 de este archivo."
     assert revision.NOTA_EXCEL == (

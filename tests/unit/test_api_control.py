@@ -655,7 +655,7 @@ def test_control_acepta_el_codigo_de_v1_proyectos_en_consulta() -> None:
 def test_control_con_un_codigo_inexistente_da_404_con_el_mensaje_de_siempre() -> None:
     respuesta = _con_clave().get("/v1/control/linea-base", params={"proyecto": "987654"})
     assert respuesta.status_code == 404
-    assert respuesta.json()["detalle"] == "La obra «987654» no existe en este caso."
+    assert respuesta.json()["detalle"] == "La obra «987654» no existe en esta carpeta."
 
 
 def test_las_opciones_de_la_api_salen_con_tildes_en_titulo_motivo_y_requisitos() -> None:
@@ -920,7 +920,7 @@ def test_la_lista_recortada_lo_dice(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_el_404_de_las_partidas_es_fijo_y_no_repite_lo_pedido() -> None:
     r = _con_clave().get("/v1/control/partidas", params={"proyecto": "Obra<b>inventada"})
     assert r.status_code == 404
-    assert r.json()["detalle"] == "La obra no existe en este caso."
+    assert r.json()["detalle"] == "La obra no existe en esta carpeta."
     assert "inventada" not in r.text
     assert r.headers.get("cache-control") == "no-store"
 

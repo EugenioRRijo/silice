@@ -51,7 +51,7 @@ const dialogo = () => screen.getByRole("dialog", { name: "Nueva obra" });
 const botonNuevaObra = () => within(screen.getByRole("complementary", { name: "Barra lateral" })).getByRole("button", { name: "Nueva obra" });
 
 async function abrirNuevaObra(u: ReturnType<typeof userEvent.setup>) {
-  montarMarco(sesionDe("ana"), "/pendientes");
+  montarMarco(sesionDe("ana"), "/inicio/pendientes");
   await screen.findByRole("heading", { level: 1, name: "Pendientes" });
   await u.click(botonNuevaObra());
   return screen.findByRole("dialog", { name: "Nueva obra" });

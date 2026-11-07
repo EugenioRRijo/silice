@@ -555,4 +555,4 @@ def test_la_capa_nueva_dice_que_proyecto_o_version_falta_con_los_textos_escritos
     )
     with pytest.raises(hoja_versiones.ProyectoInexistente) as sin_proyecto:
         hoja_versiones.restaurar(caso.sesion, "Z", "001", fuente=FUENTE, responsable=RESPONSABLE)
-    assert str(sin_proyecto.value) == "La obra «Z» no existe en este caso."
+    assert str(sin_proyecto.value) == "La obra «Z» no existe en esta carpeta."

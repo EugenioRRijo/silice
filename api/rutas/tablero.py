@@ -246,7 +246,9 @@ def leer_tablero(
     """El tablero de la version vigente del proyecto (`LEER_PROYECTO`)."""
     encontrado = resolver_proyecto(sesion, proyecto)  # codigo de /v1/proyectos o nombre (V-11)
     if encontrado is None:
-        raise HTTPException(status_code=404, detail=f"La obra «{proyecto}» no existe en este caso.")
+        raise HTTPException(
+            status_code=404, detail=f"La obra «{proyecto}» no existe en esta carpeta."
+        )
     proyecto = encontrado.nombre
     try:
         datos = tablero.leer_tablero(sesion, Catalogo(sesion), proyecto)

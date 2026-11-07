@@ -122,7 +122,7 @@ def _proyecto(sesion: Session, nombre: str) -> models.Proyecto:
         select(models.Proyecto).where(models.Proyecto.nombre == nombre)
     ).first()
     if proyecto is None:
-        raise HTTPException(404, f"La obra «{nombre}» no existe en este caso.")
+        raise HTTPException(404, f"La obra «{nombre}» no existe en esta carpeta.")
     return proyecto
 
 

@@ -445,7 +445,7 @@ def test_las_partidas_de_una_version_o_un_proyecto_inexistentes_son_404_fijos() 
         "/v1/reajuste/partidas", params={"proyecto": "Obra<b>inventada", "version": "001"}
     )
     assert sin_proyecto.status_code == 404
-    assert sin_proyecto.json()["detalle"] == "La obra no existe en este caso."
+    assert sin_proyecto.json()["detalle"] == "La obra no existe en esta carpeta."
     assert "inventada" not in sin_proyecto.text
     assert sin_proyecto.headers.get("cache-control") == "no-store"
     assert navegador.get("/v1/reajuste/partidas", params={"proyecto": NOMBRE}).status_code == 422
