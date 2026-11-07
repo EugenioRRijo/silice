@@ -166,6 +166,7 @@ class Escenario:
         self.motivo: str | None = "no hay WebView2 en las pruebas"
         self.consultas_motivo = 0
         self.ventanas: list[str] = []
+        self.perfiles: list[Path] = []
         self.en_ventana: Callable[[Callable[[], bool]], None] = lambda vivo: None
         self.al_frente: list[int] = []
         self.hay_ventana_viva = False
@@ -215,9 +216,10 @@ class Escenario:
         self.consultas_motivo += 1
         return self.motivo
 
-    def abrir_ventana(self, url: str, vivo: Callable[[], bool]) -> None:
+    def abrir_ventana(self, url: str, vivo: Callable[[], bool], *, perfil: Path) -> None:
         """Bloquea como la de verdad: `en_ventana` es lo que pasa mientras está abierta."""
         self.ventanas.append(url)
+        self.perfiles.append(perfil)
         self.en_ventana(vivo)
 
     def traer_al_frente(self, pid: int) -> bool:
@@ -633,6 +635,16 @@ def test_con_webview2_se_abre_la_ventana_en_app_y_no_el_navegador(entorno) -> No
     assert escenario.ventanas == ["http://127.0.0.1:8501/app/"]
     assert escenario.abiertas == [] and _aviso_de_ventana(escenario.salida) == []
     assert any("cierre la ventana de Sílice" in linea for linea in escenario.salida)
+
+
+def test_la_ventana_guarda_su_perfil_en_la_carpeta_de_datos_de_esta_instalacion(entorno) -> None:
+    """Decisión de Eugenio del 2026-11-07 («guardar perfil en datos», V1 del árbitro): el perfil de
+    WebView2 vive en `<datos>/perfil_ventana`, la carpeta de datos del entorno que arranca."""
+    escenario = Escenario()
+    escenario.motivo = None
+    assert escenario.correr(entorno) == 0
+    datos = Path(entorno[config.VARIABLE_DATOS]).resolve()
+    assert escenario.perfiles == [datos / "perfil_ventana"]
 
 
 def test_cerrar_la_ventana_termina_uvicorn_y_borra_el_estado(entorno) -> None:

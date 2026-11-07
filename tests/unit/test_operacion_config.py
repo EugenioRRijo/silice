@@ -27,6 +27,17 @@ def test_silice_datos_mueve_todo_y_no_crea_nada(tmp_path: Path) -> None:
     assert not datos.exists()
 
 
+def test_el_perfil_de_la_ventana_vive_en_la_carpeta_de_datos_y_no_se_crea(tmp_path: Path) -> None:
+    """Decisión de Eugenio del 2026-11-07: el perfil de WebView2 (tamaño de letra y zoom de la Hoja
+    en `localStorage`) se guarda junto a los datos de esta instalación, en `perfil_ventana`."""
+    datos = tmp_path / "Tésis ñ" / "datos"
+    entorno = {config.VARIABLE_DATOS: str(datos)}
+    assert config.carpeta_perfil_ventana(entorno) == datos.resolve() / "perfil_ventana"
+    raiz = Path(config.__file__).resolve().parents[1]
+    assert config.carpeta_perfil_ventana({}) == raiz / "data" / "perfil_ventana"
+    assert not datos.exists()
+
+
 def test_silice_instalacion_y_silice_respaldos_mandan_sobre_la_carpeta(tmp_path: Path) -> None:
     entorno = {
         config.VARIABLE_DATOS: str(tmp_path / "datos"),

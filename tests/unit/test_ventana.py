@@ -211,12 +211,17 @@ def _carga_y_cierra(v: VentanaDoble) -> None:
     v.events.closed.set()
 
 
+#: El perfil de WebView2 de las pruebas (nunca se crea: el doble no escribe nada).
+PERFIL = Path(__file__).parent / "no_se_crea" / "perfil_ventana"
+
+
 def _abrir(motor: Motor, vivo: Callable[[], bool] = lambda: True, **extra) -> list[str]:
     identificadores: list[str] = []
     ventana.abrir(
         URL,
         vivo,
         motor=motor,
+        perfil=extra.pop("perfil", PERFIL),
         icono=extra.pop("icono", Path(__file__)),
         fijar_identificador=identificadores.append,
         reloj=extra.pop("reloj", iter(range(10_000)).__next__),
@@ -233,22 +238,66 @@ def test_la_ventana_carga_app_con_su_titulo_maximizada_y_sin_puente() -> None:
     _abrir(motor)
     ((titulo, url, opciones),) = motor.creadas
     assert (titulo, url) == ("Sílice", URL)
-    assert "js_api" not in opciones or opciones["js_api"] is None
+    assert isinstance(opciones["js_api"], ventana.PuenteCerrado)  # ver «El puente cerrado» abajo
     assert opciones["maximized"] is True
     assert opciones["min_size"] == (1056, 600)
     # la persona puede seleccionar y copiar texto y ampliar con Ctrl + rueda (WCAG 1.4.4)
     assert opciones["text_select"] is True and opciones["zoomable"] is True
 
 
-def test_la_ventana_arranca_sin_depuracion_ni_servidor_propio_y_en_modo_privado() -> None:
+def test_la_ventana_arranca_sin_depuracion_ni_servidor_propio_y_con_perfil_en_datos(
+    tmp_path: Path,
+) -> None:
+    """Decisión de Eugenio del 2026-11-07 («guardar perfil en datos»; V1 del árbitro): sin modo
+    privado, con el perfil de WebView2 en la carpeta que se le da, para que el tamaño de letra y el
+    zoom de la Hoja (`localStorage`) sigan ahí al volver a abrir Sílice."""
     motor = Motor()
-    _abrir(motor, icono=Path(__file__))
+    perfil = tmp_path / "datos" / "perfil_ventana"
+    _abrir(motor, icono=Path(__file__), perfil=perfil)
     (arranque,) = motor.arranques
     assert arranque["gui"] == "edgechromium"
     assert arranque["debug"] is False
     assert arranque["http_server"] is False
-    assert arranque["private_mode"] is True  # nada de la sesión queda en disco
+    assert arranque["private_mode"] is False
+    assert arranque["storage_path"] == str(perfil)
     assert arranque["icon"] == str(Path(__file__))
+    assert not perfil.exists()  # la crea pywebview; si no puede escribir, falla: abre el navegador
+
+
+def test_sin_perfil_explicito_la_ventana_usa_el_de_la_carpeta_de_datos(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from operacion import config
+
+    monkeypatch.setenv(config.VARIABLE_DATOS, str(tmp_path / "datos"))
+    motor = Motor()
+    ventana.abrir(
+        URL,
+        lambda: True,
+        motor=motor,
+        icono=Path(__file__),
+        fijar_identificador=lambda _i: None,
+        reloj=iter(range(10_000)).__next__,
+    )
+    assert motor.arranques[0]["storage_path"] == str(
+        (tmp_path / "datos").resolve() / "perfil_ventana"
+    )
+
+
+def test_la_cookie_de_sesion_no_sobrevive_al_cierre_aunque_el_perfil_quede_en_disco() -> None:
+    """Lo que hace seguro guardar el perfil (RNF-22): `silice_sesion` es una cookie de sesión, sin
+    `Max-Age` ni `Expires`; WebView2 no la escribe en el perfil y se pierde al cerrar la ventana.
+    Si alguien le pusiera vencimiento, la sesión quedaría en `perfil_ventana` y esta prueba cae."""
+    from fastapi import Response
+
+    from api.sesion_web import COOKIE, poner_cookie
+
+    respuesta = Response()
+    poner_cookie(respuesta, "ficha-de-prueba")
+    (galleta,) = respuesta.headers.getlist("set-cookie")
+    atributos = {a.strip().split("=", 1)[0].lower() for a in galleta.split(";")[1:]}
+    assert galleta.startswith(f"{COOKIE}=ficha-de-prueba;")
+    assert {"max-age", "expires"} & atributos == set()
 
 
 def test_los_ajustes_de_pywebview_cierran_lo_que_viene_abierto() -> None:
@@ -341,6 +390,73 @@ def test_un_error_despues_de_mostrarse_no_reabre_nada() -> None:
     navegador después de que la persona cerró la ventana sería volver a abrir Sílice."""
     motor = Motor(falla_despues=RuntimeError("al cerrar"))
     _abrir(motor)  # no lanza VentanaNoDisponible
+
+
+# --- El puente cerrado (RF-184, MENOR del árbitro) ----------------------------------------------
+#
+# pywebview resuelve el nombre que pide la página con `getattr` encadenado sobre `js_api`
+# (`webview/util.py`, `js_bridge_call`). Con `js_api=None` la cadena sigue por los atributos de
+# `None`: «__class__» da `NoneType`, que pywebview llama (visto con la sonda del 2026-11-07). El
+# puente cerrado responde AttributeError a todo nombre, así que no hay cadena por donde empezar.
+
+
+def test_el_puente_cerrado_no_tiene_ningun_atributo() -> None:
+    puente = ventana.PuenteCerrado()
+    assert dir(puente) == []
+    for nombre in ("__class__", "__dict__", "__init__", "abrir", "_x"):
+        assert getattr(puente, nombre, None) is None
+
+
+class _VentanaDePywebview(SimpleNamespace):
+    """Lo que `webview.util` lee de una ventana de pywebview 6.2.1 (leído en su código)."""
+
+    def __init__(self, js_api: object) -> None:
+        import threading
+
+        super().__init__(
+            _functions={},
+            _js_api=js_api,
+            _expose_lock=threading.Lock(),
+            uid="master",
+            js_api_endpoint=None,
+            text_select=True,
+            zoomable=True,
+            draggable=False,
+            easy_drag=False,
+            frameless=False,
+            state={},
+            events=SimpleNamespace(
+                before_load=threading.Event(),
+                _pywebviewready=threading.Event(),
+                loaded=threading.Event(),
+            ),
+            evaluadas=[],
+            corridas=[],
+        )
+        self.evaluate_js = self.evaluadas.append
+        self.run_js = self.corridas.append
+
+
+@pytest.mark.parametrize("nombre", ["__class__", "__class__.__base__.__subclasses__", "abrir"])
+def test_pywebview_no_llama_nada_que_la_pagina_pida_por_el_puente(nombre: str) -> None:
+    """Con el `js_bridge_call` real de pywebview: el nombre no resuelve, no se lanza ningún hilo y
+    no vuelve ninguna respuesta a la página (con `None`, «__class__» sí respondía)."""
+    util = pytest.importorskip("webview.util")
+    falsa = _VentanaDePywebview(ventana.PuenteCerrado())
+    util.js_bridge_call(falsa, nombre, [], "1")
+    assert falsa.evaluadas == []
+
+
+def test_pywebview_inyecta_su_objeto_sin_ninguna_funcion_de_silice() -> None:
+    """Con el `inject_pywebview` real: el puente cerrado no rompe la carga (`loaded` llega) y la
+    lista de funciones expuestas a la página queda vacía."""
+    util = pytest.importorskip("webview.util")
+    falsa = _VentanaDePywebview(ventana.PuenteCerrado())
+    util.inject_pywebview("edgechromium", falsa)
+    assert falsa.events.loaded.wait(10)
+    assert falsa.events._pywebviewready.is_set()
+    (final,) = falsa.corridas[1:]
+    assert "_createApi(JSON.parse('[]'))" in final  # `webview/js/finish.js` con la lista vacía
 
 
 # --- Segunda ejecución: traer al frente la ventana que ya está (decisión 3, 2026-11-06) --------
