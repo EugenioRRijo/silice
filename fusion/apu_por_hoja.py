@@ -286,6 +286,21 @@ class _Renglon:
     columnas: Mapping[str, int]
 
 
+def _encabezado(filas: Sequence[Sequence[Any]], perfil: PerfilApuPorHoja):
+    """(índice, columnas) de la primera fila con los encabezados del número, la cantidad y el
+    precio unitario; `None` si no la hay."""
+    for i, fila in enumerate(filas):
+        columnas: dict[str, int] = {}
+        for j, valor in enumerate(fila):
+            for campo, variantes in perfil.encabezado_presupuesto.items():
+                if campo not in columnas and isinstance(valor, str) and coincide(valor, variantes):
+                    columnas[campo] = j
+                    break
+        if {"numero", "cantidad", "precio_unitario"} <= set(columnas):
+            return i, columnas
+    return None
+
+
 def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str, list[_Renglon]]:
     hojas = leer_hojas(datos, nombre)
     buscada = normalizar(perfil.hoja_presupuesto)
@@ -296,20 +311,13 @@ def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str
             "de presupuesto de este perfil."
         )
     filas = hojas[titulo]
-    for i, fila in enumerate(filas):
-        columnas: dict[str, int] = {}
-        for j, valor in enumerate(fila):
-            for campo, variantes in perfil.encabezado_presupuesto.items():
-                if campo not in columnas and isinstance(valor, str) and coincide(valor, variantes):
-                    columnas[campo] = j
-                    break
-        if {"numero", "cantidad", "precio_unitario"} <= set(columnas):
-            break
-    else:
+    encabezado = _encabezado(filas, perfil)
+    if encabezado is None:
         raise ArchivoRechazado(
             f"El libro «{nombre}», hoja {titulo}: no se encontró la fila de encabezados del "
             "presupuesto (número, cantidad y precio unitario)."
         )
+    i, columnas = encabezado
 
     def celda(fila: Sequence[Any], campo: str) -> Any:
         j = columnas.get(campo)
@@ -344,8 +352,8 @@ def _enlace(
     for r in renglones:
         quien = f"Renglón {r.numero}" + (f" ({r.codigo})" if r.codigo else "")
 
-        def celda(campo: str, fila: int = r.fila) -> str:
-            return f"{titulo}!{letra(r.columnas[campo])}{fila}"
+        def celda(campo: str, fila: int = r.fila, columnas: Mapping[str, int] = r.columnas) -> str:
+            return f"{titulo}!{letra(columnas[campo])}{fila}"
 
         apu = por_numero.get(r.numero)
         if apu is None:
