@@ -177,7 +177,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   base» o «Versión vigente» según el servidor (`version_de_linea_base`); y en Componer, elegir una partida y luego otra
   ya no deja la descripción y la unidad de la primera (D17): una partida del catálogo trae siempre las suyas y se avisa si
   se reemplazó algo escrito («Se cambió la descripción «X» por la del catálogo, «Y».»), y al cambiar el código a mano se
-  vacían las que puso el catálogo. `comun/` ya no importa de ninguna página (trinquete en `comun/arquitectura.test.ts`).
+  vacían las que puso el catálogo; si la partida nueva no tiene composición, las tablas y el rendimiento que seguían siendo
+  los de la anterior se vacían y lo editado se conserva con aviso. `comun/` ya no importa de ninguna página (trinquete en `comun/arquitectura.test.ts`).
   `aplicacion/hoja.py` cambió solo en mensajes y el experimento de la tesis se re-congeló con acta
   (`docs/bitacora/2026-11-06-recongelado-experimento.md`).
 - Desinstalar ya no deja `{app}\codigo`: al primer arranque el lanzador abría el archivo del código de instalación (Bloc de notas) heredando esa carpeta como directorio de trabajo, y con la ventana abierta Windows no la borraba (error 32 en el humo del instalador). Ahora se abre con la carpeta del archivo como directorio de trabajo.
