@@ -19,12 +19,16 @@ financiamiento, impuesto): una guardia, un modelo y las mismas celdas citables (
 - Las unidades se leen tal como las escribe el libro: la traducción del perfil la aplica quien
   audita (`fusion`), y cada traducción usada queda dicha en el informe.
 - `Decimal(str(v))` siempre (NORMAS §2.3). Solo valores: no hay fórmulas que leer.
+- **Entrada hostil** (arbitraje F5 vial, P1): solo se leen las hojas del prefijo del perfil (y, en
+  el libro de presupuesto, la hoja del presupuesto), cada fila solo hasta su última celda real
+  (`reset_dimensions()`). `LibroLeido.hojas` nombra todas las hojas del libro; `valores` cubre solo
+  las celdas de las hojas leídas.
 """
 
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from decimal import Decimal
 from typing import Any
 
@@ -88,13 +92,27 @@ def _texto(valor: Any) -> str:
     return str(valor).strip()
 
 
-def leer_hojas(datos: bytes, nombre: str) -> dict[str, Filas]:
-    """Las hojas del libro, cada una como lista de filas de valores, con la guardia de siempre."""
+def _filas(hoja: Any) -> Filas:
+    """Las filas de valores de una hoja de solo lectura, cada una solo hasta su última celda real.
+
+    `reset_dimensions()`, como en `lector._celdas_reales`: sin él, openpyxl rellena cada fila y
+    cada fila que falta hasta la `<dimension>` que declara el XML, y esa dimensión puede mentir
+    (una hoja con A1 y CV20000 pesa unos bytes y se volvería dos millones de celdas)."""
+    hoja.reset_dimensions()
+    return [list(fila) for fila in hoja.iter_rows(values_only=True)]
+
+
+def leer_hojas(
+    datos: bytes, nombre: str, incluir: Callable[[str], bool] | None = None
+) -> dict[str, Filas]:
+    """Las hojas del libro, en su orden, cada una como lista de filas de valores, con la guardia de
+    siempre. Solo se leen las hojas cuyo título acepta `incluir` (todas, sin él); las demás quedan
+    con la lista vacía: se sabe que existen, pero sus celdas no se materializan."""
     verificar_archivo(datos, nombre)
     libro = _abrir(datos, nombre, data_only=True)
     try:
         return {
-            hoja.title: [list(fila) for fila in hoja.iter_rows(values_only=True)]
+            hoja.title: _filas(hoja) if incluir is None or incluir(hoja.title) else []
             for hoja in libro.worksheets
         }
     except Exception as exc:  # un XML dañado aparece al recorrer la hoja en solo lectura
@@ -293,12 +311,14 @@ def leer_libro_apu_por_hoja(
     APU; `LibroNoInterpretable` si una hoja de APU no trae lo que hace falta para recalcularla.
     """
     perfil = perfil or cargar_perfil_apu_por_hoja()
-    hojas = leer_hojas(datos, nombre)
     prefijo = normalizar(perfil.prefijo_hoja)
+
+    def es_apu(titulo: str) -> bool:
+        return normalizar(titulo).startswith(prefijo)
+
+    hojas = leer_hojas(datos, nombre, es_apu)
     apus = tuple(
-        _leer_apu(titulo, filas, perfil)
-        for titulo, filas in hojas.items()
-        if normalizar(titulo).startswith(prefijo)
+        _leer_apu(titulo, filas, perfil) for titulo, filas in hojas.items() if es_apu(titulo)
     )
     if not apus:
         raise ArchivoRechazado(

@@ -302,8 +302,8 @@ def _encabezado(filas: Sequence[Sequence[Any]], perfil: PerfilApuPorHoja):
 
 
 def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str, list[_Renglon]]:
-    hojas = leer_hojas(datos, nombre)
     buscada = normalizar(perfil.hoja_presupuesto)
+    hojas = leer_hojas(datos, nombre, lambda titulo: normalizar(titulo) == buscada)
     titulo = next((t for t in hojas if normalizar(t) == buscada), None)
     if titulo is None:
         raise ArchivoRechazado(
