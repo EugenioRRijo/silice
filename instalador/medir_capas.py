@@ -27,7 +27,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 REQUISITO = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._\-]*)==([^\s;]+)")
 MB = 1_000_000
 LIMITE_BASICO_MB = 150.0
-FIJAS = ("basica", "bcv", "civil", "anomalias", "ia", "pdf")
+FIJAS = ("basica", "bcv", "civil", "anomalias", "ia", "pdf", "escritorio")
 ORDEN_DE_RECORTE = ("civil", "anomalias")
 #: capa -> extras acumulados (el spec §7.2: «base + api + planos + informes», luego cada extra)
 CAPAS: dict[str, list[str]] = {
@@ -39,6 +39,19 @@ CAPAS: dict[str, list[str]] = {
     "ia": ["api", "planos", "informes", "bcv", "civil", "anomalias", "ia"],
     # 1.5: el extra `pdf` entra en la básica (manifiesto.toml); se mide como una capa más.
     "pdf": ["api", "planos", "informes", "bcv", "civil", "anomalias", "ia", "pdf"],
+    # F5 ventana: `escritorio` (pywebview y pythonnet, solo Windows; ~0,6 MB con LZMA segun
+    # docs/bitacora/2026-11-06-ventana-v0.md) entra en la basica y se mide como la ultima capa fija.
+    "escritorio": [
+        "api",
+        "planos",
+        "informes",
+        "bcv",
+        "civil",
+        "anomalias",
+        "ia",
+        "pdf",
+        "escritorio",
+    ],
     "similitud": [
         "api",
         "planos",
@@ -48,6 +61,7 @@ CAPAS: dict[str, list[str]] = {
         "anomalias",
         "ia",
         "pdf",
+        "escritorio",
         "similitud",
     ],
 }

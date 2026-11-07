@@ -125,6 +125,7 @@ jobs:
         run: >-
           uv sync --locked --extra api --extra planos --extra civil
           --extra informes --extra bcv --extra anomalias --extra ia
+          --extra pdf --extra escritorio
 
       - name: Versiones
         run: |

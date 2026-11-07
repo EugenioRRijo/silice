@@ -31,7 +31,7 @@ def _capas(basica: float) -> dict[str, float]:
         "anomalias": 26.0,
         "ia": 12.0,
         "pdf": 3.0,
-        "escritorio": 0.6,
+        "escritorio": 0.0,
     }
 
 

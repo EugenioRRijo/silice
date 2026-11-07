@@ -176,7 +176,8 @@ def test_ifcopenshell_sin_texto_en_dist_info_no_falla(tmp_path: Path) -> None:
 # --- SDK de WebView2 dentro de pywebview (F5 ventana, pendiente de V0) ---------------------------
 # pywebview 6.2.1 trae los ensamblados del SDK 1.0.3856.49 de Microsoft en `webview/lib/` pero su
 # rueda no lleva el texto de esa licencia. El texto se copió literal del paquete NuGet oficial
-# `Microsoft.Web.WebView2` 1.0.3856.49 (LICENSE.txt y NOTICE.txt) y vive en `docs/licencias_webview2/`.
+# `Microsoft.Web.WebView2` 1.0.3856.49 (LICENSE.txt y NOTICE.txt) y vive en
+# `docs/licencias_webview2/`.
 # Los SHA-256 salen del archivo bajado de nuget.org (el .nupkg: bc0f76eb...a099f1a1a); fijan que
 # nadie reescriba el texto de memoria.
 WEBVIEW2 = RAIZ / "docs" / "licencias_webview2"
