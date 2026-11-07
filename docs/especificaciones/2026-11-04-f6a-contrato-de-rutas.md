@@ -96,6 +96,16 @@ subvista** de la obra (`/aprobar`, `/hoja`, `/reajuste`, `/entregar`…) que tra
 sesión **no** va a Pendientes: se abre donde estaba, con su consulta, para no perder lo que pide (por ejemplo
 `/aprobar?envio=12` o `/reajuste?x=1`). Sin consulta y sin obra, sigue yendo a Pendientes.
 
+**Enmienda 2026-11-06 (F8, C1: retiro de las redirecciones viejas).** Se retiran las filas de esta tabla que llevaban a
+Pendientes, a un espacio de la empresa o a la Cuenta: `/pendientes`, `/existencias`, `/costos`, `/costo_tonelada`,
+`/receta_planta`, `/producir_mezcla`, `/libros`, `/historial`, `/precios_empresa`, `/catalogo`, `/indices`, `/simulador`,
+`/empresa/<entrada>`, `/administracion` y `/acerca`. Ya no redirigen: son direcciones que no existen y, como toda dirección
+inexistente (§1), llevan a la Vista general conservando la consulta. Se quedan, con su conducta de siempre:
+- `/produccion` y `/auditoria`, que no son direcciones viejas sino la raíz de su espacio (§1, «espacio sin herramienta»);
+- las direcciones cortas de la obra (`/hoja`, `/tablero`, `/reajuste`, `/aprobar?envio=12`…, segunda fila y su excepción),
+  porque son la ruta canónica sin obra: `rutaCanonica(paginaId)` sin obra las devuelve y las usan el buscador y los
+  recorridos guiados para abrir esa sección en la obra de la sesión. Retirarlas exige antes que esos enlaces conozcan la obra.
+
 Un pendiente de «actualizar precios» es de una obra: abre `/obra/:c/:o/mercado/actualizar`, lo que reemplaza a
 `ABSORBIDAS` de `paginas/pendientes/logica.ts`.
 

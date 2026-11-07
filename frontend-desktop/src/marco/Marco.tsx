@@ -1,7 +1,7 @@
 import { InlineNotification } from "../comun/carbonEs";
 import { Suspense, createElement, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent, ReactElement, ReactNode } from "react";
-import { Navigate, Route, Routes, useLocation, useNavigate, useNavigationType, useParams } from "react-router";
+import { Navigate, Route, Routes, useLocation, useNavigate, useNavigationType } from "react-router";
 import { recordarObra } from "../api/carpetaYObra";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { SesionRespuesta } from "../api/tipos";
@@ -34,14 +34,15 @@ import { EspacioDeCuenta } from "./EspacioDeCuenta";
 import { EspacioDeHerramientas, RaizDelEspacio } from "./EspacioDeHerramientas";
 import { EspacioDeInicio, RaizDeInicio } from "./EspacioDeInicio";
 import { EspacioDeObra } from "./EspacioDeObra";
-import { ESPACIOS, SECCIONES_DE_CUENTA, esEspacio, espacioDeLaPagina, rutaDeCuenta, rutaDeHerramienta, subvistaDeLaPagina } from "./espacios";
+import { ESPACIOS, SECCIONES_DE_CUENTA, esEspacio, espacioDeLaPagina, rutaDeCuenta, subvistaDeLaPagina } from "./espacios";
 import type { EspacioId } from "./espacios";
 import { enfocarElTitulo } from "./focoAlTitulo";
 import "./marco.scss";
 import { carpetaDelDestino, ubicar } from "./ubicar";
 import { abrirNuevaObra, cerrarNuevaObra } from "./nuevaObra";
 import type { VigilanteDeObra } from "./otraPestana";
-import { PATRON_DE_OBRA, RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, RUTA_VIEJA_DE_PENDIENTES, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
+import { PATRON_DE_OBRA, RUTA_DE_PENDIENTES, RUTA_DE_VISTA_GENERAL, SECCIONES_DE_OBRA, rutaDeObra } from "./secciones";
+import type { SeccionId } from "./secciones";
 import { useModulos } from "./useModulos";
 import { useObras } from "./useObras";
 import { ContextoPendientes, useCargaDePendientes } from "./usePendientes";
@@ -361,9 +362,8 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
               <LimiteDeError key={`${claveDelContenido(ubicacion.pathname)}|${generacion}`} reinicio={ubicacion.pathname}>
                 <Suspense fallback={<EsqueletoPagina />}>
                   <Routes>
-                    {/* Inicio (F6, T8): la app abre en la Vista general; `/pendientes` es el nombre de antes de F6. */}
+                    {/* Inicio (F6, T8): la app abre en la Vista general. `/pendientes`, el nombre de antes de F6, se retiró en F8. */}
                     <Route index element={<ALaVistaGeneral />} />
-                    <Route path={RUTA_VIEJA_DE_PENDIENTES} element={<APendientes />} />
                     <Route path="/inicio" element={<RaizDeInicio />} />
                     <Route
                       path="/inicio/:vista"
@@ -386,15 +386,13 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                         />
                       }
                     />
-                    {/* La Cuenta (F6, T6): `/cuenta` abre «Pantalla y tamaño de letra»; las direcciones viejas de Empresa llevan allí. */}
+                    {/* La Cuenta (F6, T6): `/cuenta` abre «Pantalla y tamaño de letra». */}
                     <Route path="/cuenta" element={<RaizDeLaCuenta />} />
                     <Route
                       path="/cuenta/:seccion"
                       element={<EspacioDeCuenta sesion={sesion} pantalla={(id) => pantalla(paginaPorId(id, paginas))} alSalir={alSalir} />}
                     />
-                    <Route path="/empresa/:entrada" element={<EntradaDeEmpresa />} />
-                    {/* Producción, Auditoría y Precios (F6, T4): `/<espacio>` abre su primera herramienta usable. Van antes de
-                        las direcciones viejas porque `/auditoria` y `/produccion` también eran el id de una pantalla. */}
+                    {/* Producción, Auditoría y Precios (F6, T4): `/<espacio>` abre su primera herramienta usable (contrato 1). */}
                     {ESPACIOS_DEL_MARCO.flatMap((espacio) => [
                       <Route
                         key={`${espacio}-raiz`}
@@ -415,13 +413,14 @@ export function Marco({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                         }
                       />,
                     ])}
+                    {/* Las direcciones cortas (`/hoja`, `/reajuste`…): la ruta canónica de una pantalla sin obra (`rutaCanonica`). */}
                     {paginas
-                      .filter((p) => !esEspacio(p.id) && p.id !== "inicio")
+                      .filter((p) => tieneDireccionCorta(p.id))
                       .map((p) => (
                         <Route
                           key={p.id}
                           path={rutaDe(p)}
-                          element={<RutaVieja pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
+                          element={<DireccionCorta pagina={p} obraDeLaSesion={obraDeLaSesion} pantalla={pantalla} />}
                         />
                       ))}
                     <Route path="*" element={<ALaVistaGeneral />} />
@@ -451,33 +450,13 @@ function PantallaDeRuta({ pagina, acciones, modoEntrega, apagados }: { pagina: P
 
 const ESPACIOS_DEL_MARCO = Object.keys(ESPACIOS) as EspacioId[];
 
-// Las entradas de Empresa que F6 sacó de la barra lateral y movió de sitio (contrato de rutas 2.4): `#/empresa/precios` abría el
-// Catálogo, `#/empresa/auditoria` la subida del Excel y `#/empresa/produccion` las existencias (T4); `#/empresa/personas`
-// abría Administración y `#/empresa/ayuda` «Acerca de» (T6, ahora en la Cuenta). Ya no hay pantalla en `#/empresa/...`.
-const ENTRADAS_MOVIDAS: Readonly<Record<string, string>> = {
-  precios: rutaDeHerramienta("precios", "catalogo"),
-  auditoria: rutaDeHerramienta("auditoria", "subir"),
-  produccion: rutaDeHerramienta("produccion", "existencias"),
-  personas: rutaDeCuenta("cuentas"),
-  ayuda: rutaDeCuenta("ayuda"),
-};
-
-// `#/empresa/<entrada>`: va a donde vive hoy la pantalla, con replace y conservando la consulta; una entrada que no existe
-// lleva a Pendientes.
-function EntradaDeEmpresa() {
-  const { entrada: id } = useParams();
-  const { search } = useLocation();
-  const destino = id !== undefined && Object.hasOwn(ENTRADAS_MOVIDAS, id) ? ENTRADAS_MOVIDAS[id] : undefined;
-  return <Navigate to={`${destino ?? RUTA_DE_PENDIENTES}${search}`} replace />;
-}
-
 // Las redirecciones al inicio conservan la consulta (contrato de rutas §1), como las demás de este archivo.
 function ALaVistaGeneral() {
   const { search } = useLocation();
   return <Navigate to={`${RUTA_DE_VISTA_GENERAL}${search}`} replace />;
 }
 
-// Lleva a la bandeja en Inicio. También es `#/pendientes`, la dirección de antes de F6.
+// Lleva a la bandeja en Inicio: lo que se monta cuando una pantalla no está en el registro.
 function APendientes() {
   const { search } = useLocation();
   return <Navigate to={`${RUTA_DE_PENDIENTES}${search}`} replace />;
@@ -489,20 +468,32 @@ function RaizDeLaCuenta() {
   return <Navigate to={`${rutaDeCuenta("preferencias")}${search}`} replace />;
 }
 
-// Las direcciones de antes (`#/<pantalla>`): la de una herramienta de Producción, Auditoría o Precios va a
-// `#/<espacio>/<segmento>`; Administración y Acerca de van a su sección de la Cuenta; la de una sección o de una subvista
-// de la obra (`/tablero`, `/componer`, `/reajuste`…, contrato 2.4), a esa sección o subvista de la obra elegida en la sesión
-// (o a Pendientes si no hay ninguna, salvo que traiga una consulta, como `#/aprobar?envio=12`: entonces se abre donde
-// estaba, para no perder lo que pide). La consulta se conserva siempre que se redirige.
-function RutaVieja({ pagina, obraDeLaSesion, pantalla }: { pagina: PaginaDef; obraDeLaSesion: ObraDeLaSesion; pantalla: (p: PaginaDef | undefined) => ReactNode }) {
+// La sección o la subvista de la obra donde vive una pantalla, o undefined si no es de la obra.
+function destinoEnLaObra(paginaId: string): { id: SeccionId; subvista: string | undefined } | undefined {
+  const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === paginaId);
+  if (seccion) return { id: seccion.id, subvista: undefined };
+  const deSubvista = subvistaDeLaPagina(paginaId);
+  return deSubvista ? { id: deSubvista.seccion, subvista: deSubvista.subvista.id } : undefined;
+}
+
+// Si la pantalla tiene dirección corta (`#/<id>`): la tienen las de la obra y las que no viven en ningún espacio, en la
+// Cuenta ni en Inicio, como dice `rutaCanonica` (hoy ninguna del registro; sí las de las pruebas). Las de Producción,
+// Auditoría, Precios y la Cuenta la perdieron en F8 (`/produccion` y `/auditoria` son la raíz de su espacio).
+function tieneDireccionCorta(paginaId: string): boolean {
+  if (paginaId === "inicio" || esEspacio(paginaId)) return false;
+  return espacioDeLaPagina(paginaId) === undefined && !SECCIONES_DE_CUENTA.some((c) => c.pagina === paginaId);
+}
+
+// La dirección corta de una pantalla (contrato 2.4): es su ruta canónica sin obra (`rutaCanonica`), la que usan el buscador
+// y los recorridos guiados. La de una sección o una subvista de la obra (`#/hoja`, `#/tablero`, `#/reajuste`…) lleva a esa
+// sección o subvista de la obra elegida en la sesión (o a Pendientes si no hay ninguna, salvo que traiga una consulta, como
+// `#/aprobar?envio=12`: entonces se abre donde estaba, para no perder lo que pide); la consulta se conserva siempre que se
+// redirige. La de una pantalla que no es de la obra la abre ahí mismo. Las demás direcciones de antes de F6 (Pendientes,
+// las herramientas de los espacios, Administración, Acerca de y `#/empresa/…`) se retiraron en F8 (contrato 2.4, enmienda
+// 2026-11-06): como toda dirección que no existe, llevan a la Vista general.
+function DireccionCorta({ pagina, obraDeLaSesion, pantalla }: { pagina: PaginaDef; obraDeLaSesion: ObraDeLaSesion; pantalla: (p: PaginaDef | undefined) => ReactNode }) {
   const { search } = useLocation();
-  const deEspacio = espacioDeLaPagina(pagina.id);
-  if (deEspacio) return <Navigate to={`${rutaDeHerramienta(deEspacio.espacio, deEspacio.herramienta.id)}${search}`} replace />;
-  const deCuenta = SECCIONES_DE_CUENTA.find((c) => c.pagina === pagina.id);
-  if (deCuenta) return <Navigate to={`${rutaDeCuenta(deCuenta.id)}${search}`} replace />;
-  const seccion = SECCIONES_DE_OBRA.find((s) => s.pagina === pagina.id);
-  const deSubvista = subvistaDeLaPagina(pagina.id);
-  const destino = seccion ? { id: seccion.id, subvista: undefined } : deSubvista ? { id: deSubvista.seccion, subvista: deSubvista.subvista.id } : undefined;
+  const destino = destinoEnLaObra(pagina.id);
   if (!destino) return pantalla(pagina);
   if (obraDeLaSesion === "cargando") return <EsqueletoPagina />;
   if (obraDeLaSesion) {
