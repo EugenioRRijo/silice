@@ -42,7 +42,12 @@ from seguridad.base import abrir_sesion, crear_motor
 from seguridad.modelo import Usuario
 from tests.fixtures.claves_api import ANFITRION, CABECERA, IP_LOCAL, crear_clave_de_prueba
 from tests.fixtures.instalacion import AHORA, CONTRASENA, administrador, persona
-from tests.fixtures.libro_apu_por_hoja import libro_apu, libro_presupuesto
+from tests.fixtures.libro_apu_por_hoja import (
+    ApuFicticio,
+    Material,
+    libro_apu,
+    libro_presupuesto,
+)
 from tests.fixtures.libros_empresa import MEMORIA, libro_limpio
 
 RUTA = "/v1/libros/replica"
@@ -527,6 +532,26 @@ def test_un_libro_sin_hojas_de_apu_es_422_con_el_mensaje():
     r = _con_clave().post(RUTA_APU, files={"libro": ("p.xlsx", libro_presupuesto())})
     assert r.status_code == 422
     assert "no tiene ninguna hoja de APU" in r.json()["detalle"]
+
+
+def test_un_precio_negativo_es_422_con_la_celda():
+    """Arbitraje F5 vial, P3: un valor que el núcleo no admite era un 500; ahora es 422 y dice
+    la celda (la hoja ficticia de `tests/unit/test_hoja_empresa_apu_por_hoja.py`)."""
+    invalida = ApuFicticio(
+        9,
+        "VF-009",
+        "Partida ficticia inválida",
+        "m2",
+        "1",
+        "1",
+        materiales=(Material(1, "Cemento ficticio", "kg", "1", "0", "-1"),),
+    )
+    r = _con_clave().post(RUTA_APU, files={"libro": ("f.xlsx", libro_apu((invalida,)))})
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == (
+        "APU 9!F9: el precio de «Cemento ficticio» es -1 y no puede ser negativo: Sílice no "
+        "recalcula la hoja «APU 9»."
+    )
 
 
 def test_otra_extension_es_415():

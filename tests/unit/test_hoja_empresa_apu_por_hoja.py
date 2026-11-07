@@ -25,7 +25,14 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import cargar_perfil_apu_por_hoja
 from core.contracts.apu import ParametrosCosto
 from core.costing.motor import calcular_apu
 from fusion.mapeo import composicion_de_apu_por_hoja
-from tests.fixtures.libro_apu_por_hoja import APUS, ApuFicticio, Material, libro_apu
+from tests.fixtures.libro_apu_por_hoja import (
+    APUS,
+    ApuFicticio,
+    Equipo,
+    Material,
+    Obrero,
+    libro_apu,
+)
 
 D = Decimal
 
@@ -139,6 +146,124 @@ def test_un_libro_sin_hojas_de_apu_se_rechaza():
 def test_la_misma_guardia_de_siempre():
     with pytest.raises(ArchivoRechazado):
         leer_libro_apu_por_hoja(b"esto no es un xlsx", "malo.xlsx")
+
+
+# --- valores que el núcleo no admite (arbitraje F5 vial, P3) ----------------------------------
+#
+# Un precio, una cantidad o un porcentaje negativos, un coeficiente de depreciación fuera de
+# (0; 1] o un rendimiento que no es mayor que cero no se pueden recalcular: antes daban un 500 (el
+# contrato del núcleo los rechaza con `ValueError`). Ahora la hoja no es interpretable y el mensaje
+# dice la celda. Las celdas salen de la forma del libro ficticio (`_hoja_apu`), contadas a mano:
+# con un solo material, su renglón es la fila 9 (D cantidad, E desperdicio, F precio) y el pie
+# queda en la fila 20 (prestaciones, E) y 24-25 (administración y utilidad, F); sin materiales, el
+# primer equipo es la fila 13 (D precio, E coeficiente); sin materiales ni equipos, el primer
+# obrero es la fila 18 (C cantidad, D jornal). El rendimiento es F5.
+
+_MATERIAL = (Material(1, "Cemento ficticio", "kg", "1", "0", "1"),)
+
+
+def _hoja(**cambios) -> ApuFicticio:
+    base = {"materiales": _MATERIAL, "rendimiento": "1", **cambios}
+    return ApuFicticio(9, "VF-009", "Partida ficticia inválida", "m2", "1", **base)
+
+
+INVALIDOS = [
+    (
+        _hoja(materiales=(Material(1, "Cemento ficticio", "kg", "1", "0", "-1"),)),
+        "APU 9!F9: el precio de «Cemento ficticio» es -1 y no puede ser negativo",
+    ),
+    (
+        _hoja(materiales=(Material(1, "Cemento ficticio", "kg", "-0.5", "0", "1"),)),
+        "APU 9!D9: la cantidad de «Cemento ficticio» es -0,5 y no puede ser negativa",
+    ),
+    (
+        _hoja(materiales=(Material(1, "Cemento ficticio", "kg", "1", "-5", "1"),)),
+        "APU 9!E9: el desperdicio de «Cemento ficticio» es -5 y no puede ser negativo",
+    ),
+    (
+        _hoja(materiales=(), equipos=(Equipo(1, "Mezcladora ficticia", "1", "-10", "1"),)),
+        "APU 9!D13: el precio de «Mezcladora ficticia» es -10 y no puede ser negativo",
+    ),
+    (
+        _hoja(materiales=(), equipos=(Equipo(1, "Mezcladora ficticia", "1", "10", "1.5"),)),
+        "APU 9!E13: el coeficiente de depreciación de «Mezcladora ficticia» es 1,5 y debe ser "
+        "mayor que 0 y no pasar de 1",
+    ),
+    (
+        _hoja(materiales=(), equipos=(Equipo(1, "Mezcladora ficticia", "1", "10", "0"),)),
+        "APU 9!E13: el coeficiente de depreciación de «Mezcladora ficticia» es 0 y debe ser "
+        "mayor que 0 y no pasar de 1",
+    ),
+    (
+        _hoja(materiales=(), mano_obra=(Obrero(1, "Albañil ficticio", "1", "-40"),)),
+        "APU 9!D18: el precio de «Albañil ficticio» es -40 y no puede ser negativo",
+    ),
+    (
+        _hoja(materiales=(), mano_obra=(Obrero(1, "Albañil ficticio", "-2", "40"),)),
+        "APU 9!C18: la cantidad de «Albañil ficticio» es -2 y no puede ser negativa",
+    ),
+    (
+        _hoja(rendimiento="-2"),
+        "APU 9!F5: el rendimiento es -2 y debe ser mayor que cero",
+    ),
+    (
+        _hoja(prestaciones="-500"),
+        "APU 9!E20: el porcentaje de Prestaciones sociales es -500 y no puede ser negativo",
+    ),
+    (
+        _hoja(administracion="-5"),
+        "APU 9!F24: el porcentaje de Administración es -5 y no puede ser negativo",
+    ),
+    (
+        _hoja(utilidad="-1.5"),
+        "APU 9!F25: el porcentaje de Utilidad es -1,5 y no puede ser negativo",
+    ),
+]
+
+
+CASOS_INVALIDOS = (
+    "precio_material",
+    "cantidad_material",
+    "desperdicio",
+    "precio_equipo",
+    "coeficiente_1_5",
+    "coeficiente_0",
+    "jornal",
+    "obreros",
+    "rendimiento_negativo",
+    "prestaciones",
+    "administracion",
+    "utilidad",
+)
+
+
+@pytest.mark.parametrize(("hoja", "mensaje"), INVALIDOS, ids=CASOS_INVALIDOS)
+def test_un_valor_que_el_nucleo_no_admite_hace_la_hoja_no_interpretable(hoja, mensaje):
+    with pytest.raises(LibroNoInterpretable) as error:
+        leer_libro_apu_por_hoja(libro_apu((hoja,)), "invalido.xlsx")
+    assert str(error.value) == f"{mensaje}: Sílice no recalcula la hoja «APU 9»."
+
+
+def _con_rendimiento_cero() -> bytes:
+    """El fixture divide entre el rendimiento: el cero se escribe después, en la celda F5."""
+    import io
+
+    import openpyxl
+
+    libro = openpyxl.load_workbook(io.BytesIO(libro_apu((_hoja(),))))
+    libro["APU 9"]["F5"] = 0
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
+def test_un_rendimiento_cero_hace_la_hoja_no_interpretable():
+    with pytest.raises(LibroNoInterpretable) as error:
+        leer_libro_apu_por_hoja(_con_rendimiento_cero(), "cero.xlsx")
+    assert str(error.value) == (
+        "APU 9!F5: el rendimiento es 0 y debe ser mayor que cero: Sílice no recalcula la hoja "
+        "«APU 9»."
+    )
 
 
 # --- mapeo al núcleo --------------------------------------------------------------------------
