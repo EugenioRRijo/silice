@@ -523,6 +523,8 @@ BARRAS_JS = """() => {
       rango.selectNodeContents(el);
       const texto = rango.getBoundingClientRect().width;
       const caja = el.getBoundingClientRect().width;
+      // Un texto solo para lectores de pantalla (1 px, con clip-path) no se ve: no cuenta.
+      if (caja <= 1 || (cs.clipPath && cs.clipPath !== 'none')) continue;
       const relleno = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
         + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
       if (texto <= caja - relleno + __TOL__) continue;
