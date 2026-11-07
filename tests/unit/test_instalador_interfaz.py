@@ -6,6 +6,7 @@ compila nada ni se construye el instalador: el `dist` es falso y vive en `tmp_pa
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -103,3 +104,15 @@ def test_el_flujo_compila_la_interfaz_con_node_22_antes_de_construir() -> None:
     assert pasos[build]["working-directory"] == "frontend-desktop"
     # el disparador de PR vigila la interfaz
     assert "frontend-desktop/**" in flujo[True]["pull_request"]["paths"]
+
+
+def test_el_entorno_del_flujo_trae_cada_extra_de_la_capa_basica() -> None:
+    """El paso «Entorno» del instalador (`uv sync --locked --extra ...`) debe listar todos los
+    extras que el manifiesto pone en la capa básica: la humo y el armado corren con ese entorno
+    (la ventana de V4 necesita `escritorio`, los PDF de la 1.5 necesitan `pdf`)."""
+    flujo = yaml.safe_load((RAIZ / ".github" / "workflows" / "instalador.yml").read_text("utf-8"))
+    pasos = flujo["jobs"]["construir"]["steps"]
+    sincronias = [str(p["run"]) for p in pasos if "uv sync" in str(p.get("run", ""))]
+    assert len(sincronias) == 1
+    extras = set(re.findall(r"--extra\s+(\S+)", sincronias[0]))
+    assert set(mf.cargar().extras_basica) <= extras

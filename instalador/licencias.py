@@ -65,6 +65,25 @@ def _textos_respaldo(nombre: str) -> list[Path]:
     return []
 
 
+#: Textos que viajan ademas de los que trae la rueda. pywebview 6.2.1 empaca los ensamblados del
+#: SDK de WebView2 1.0.3856.49 (webview/lib/) sin su licencia. El texto es el LICENSE.txt y el
+#: NOTICE.txt del paquete NuGet oficial Microsoft.Web.WebView2 1.0.3856.49 (nuget.org), copiados
+#: literales; sus SHA-256 los fija tests/unit/test_licencias.py. Si pywebview cambia de SDK, hay
+#: que volver a bajar el paquete de esa version.
+TEXTOS_ADICIONALES: dict[str, list[tuple[Path, str]]] = {
+    "pywebview": [
+        (
+            RAIZ / "docs" / "licencias_webview2" / "LICENSE.txt",
+            "Microsoft.Web.WebView2-1.0.3856.49-LICENSE.txt",
+        ),
+        (
+            RAIZ / "docs" / "licencias_webview2" / "NOTICE.txt",
+            "Microsoft.Web.WebView2-1.0.3856.49-NOTICE.txt",
+        ),
+    ]
+}
+
+
 def main(argv: list[str] | None = None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analizador.add_argument("--salida", required=True, type=Path)
@@ -99,6 +118,12 @@ def main(argv: list[str] | None = None) -> int:
             shutil.copyfile(
                 texto, destino if not destino.exists() else carpeta / f"{numero}-{texto.name}"
             )
+        for origen, nombre_destino in TEXTOS_ADICIONALES.get(nombre.lower(), []):
+            if not origen.is_file():
+                problemas.append(f"{nombre} {version}: falta {origen}")
+                continue
+            carpeta.mkdir(exist_ok=True)
+            shutil.copyfile(origen, carpeta / nombre_destino)
         filas.append(f"| {nombre} | {version} | {declarada or 'ver texto'} |")
     (argumentos.salida / "INDICE.md").write_text(
         "# Licencias de terceros\n\n| Paquete | Versión | Licencia |\n|---|---|---|\n"
