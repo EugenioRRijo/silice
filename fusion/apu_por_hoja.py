@@ -33,8 +33,17 @@ El enlace presupuesto ↔ APU es el número de renglón (la cabecera «Partida N
 libro de solo valores no trae fórmulas: las reglas L del libro conocido no aplican y la evidencia es
 el recálculo.
 
-El perfil se busca primero en la carpeta de perfiles locales, `<carpeta de datos>/perfiles_libros/`
-(`carpeta_perfiles_locales`; o la de `SILICE_PERFILES_LIBROS`, si está), y después en el paquete.
+Cifras enormes (revisión de correcciones de F5/F7/F8, N3): el lector ataja cada cifra que pasa de
+`TOPE_CIFRA` con su celda, y aquí se atajan con la suya el P.U. y la cantidad del presupuesto. Si
+cada cifra cabe pero el recálculo de una hoja no cabe en la precisión del `Decimal` (muchos
+renglones grandes, porcentajes enormes), la hoja no se recalcula (`LibroNoInterpretable` con la
+hoja): antes era un 500.
+
+El perfil se busca primero en la carpeta de perfiles locales que pasa quien llama
+(`carpeta_perfiles`; la API pasa `<carpeta de datos>/perfiles_libros/`,
+`operacion.config.carpeta_perfiles_libros()`), o en la de `SILICE_PERFILES_LIBROS` si está, y
+después en el paquete. Este módulo no importa `operacion.config` (revisión de correcciones de
+F5/F7/F8, N5): dónde viven los datos lo decide la instalación.
 """
 
 from __future__ import annotations
@@ -42,12 +51,13 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation, Overflow
 from pathlib import Path
 from typing import Any
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado
 from adapters.hoja_empresa.lector_apu_por_hoja import (
+    TOPE_CIFRA,
     leer_hojas,
     leer_libro_apu_por_hoja,
     letra,
@@ -58,6 +68,7 @@ from adapters.hoja_empresa.modelo import (
     Celda,
     FilaHallazgo,
     LibroLeido,
+    LibroNoInterpretable,
     Rotulo,
     TipoInsumo,
 )
@@ -69,22 +80,11 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import (
 )
 from adapters.vial.constantes import TOLERANCIA_PRECIO
 from aplicacion.cifras import CifraInvalida, cifra_escrita
+from aplicacion.regla_desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 from core.costing.motor import calcular_apu
-from fusion.desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 from fusion.mapeo import composicion_de_apu_por_hoja
-from operacion.config import carpeta_datos
 
-__all__ = [
-    "CARPETA_PERFILES",
-    "ApuRecalculado",
-    "ResultadoApuPorHoja",
-    "auditar_apu_por_hoja",
-    "carpeta_perfiles_locales",
-]
-
-#: La carpeta de los perfiles de libros locales, dentro de la carpeta de datos de la instalación
-#: (`%LOCALAPPDATA%\Silice\datos` en el producto, `data/` en desarrollo; fuera del repositorio).
-CARPETA_PERFILES = "perfiles_libros"
+__all__ = ["ApuRecalculado", "ResultadoApuPorHoja", "auditar_apu_por_hoja"]
 
 _CERO = Decimal(0)
 _CIEN = Decimal(100)
@@ -131,11 +131,6 @@ def _es(valor: Decimal, decimales: int | None = None) -> str:
 
 def _r(valor: Decimal) -> Decimal:
     return valor.quantize(_CENTAVO, rounding=ROUND_HALF_UP)
-
-
-def carpeta_perfiles_locales() -> Path:
-    """`<carpeta de datos>/perfiles_libros/`: donde se buscan, por omisión, los perfiles locales."""
-    return carpeta_datos() / CARPETA_PERFILES
 
 
 def _hallazgo(
@@ -278,6 +273,10 @@ def _evaluar(
             )
         )
     silice = calcular_apu(composicion, parametros).precio_unitario if evaluable else None
+    if silice is not None:
+        _r(
+            silice
+        )  # se presenta a dos decimales: si no cabe en la precisión, la hoja no se recalcula
     if silice is not None and not apu.impuesto:
         diferencia = impreso - silice
         tolerancia = Decimal(TOLERANCIA_PRECIO.valor)
@@ -378,13 +377,24 @@ def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str
         if numero is None or numero != numero.to_integral_value():
             continue
         codigo = celda(fila, "codigo")
+        cantidad = numero_de(celda(fila, "cantidad"))
+        precio = numero_de(celda(fila, "precio_unitario"))
+        for campo, valor, que in (
+            ("cantidad", cantidad, "la cantidad"),
+            ("precio_unitario", precio, "el precio unitario"),
+        ):
+            if valor is not None and abs(valor) > TOPE_CIFRA:
+                raise LibroNoInterpretable(
+                    f"{titulo}!{letra(columnas[campo])}{k}: {que} del renglón {int(numero)} pasa "
+                    f"del tope de {_es(TOPE_CIFRA)}: Sílice no enlaza el presupuesto con sus APU."
+                )
         renglones.append(
             _Renglon(
                 k,
                 int(numero),
                 "" if codigo is None else str(codigo).strip(),
-                numero_de(celda(fila, "cantidad")),
-                numero_de(celda(fila, "precio_unitario")),
+                cantidad,
+                precio,
                 columnas,
             )
         )
@@ -483,19 +493,26 @@ def auditar_apu_por_hoja(
     presupuesto: bytes | None = None,
     presupuesto_nombre: str = "",
     perfil: str = "apu_por_hoja",
+    carpeta_perfiles: Path | None = None,
 ) -> ResultadoApuPorHoja:
     """Lee, recalcula e informa el libro de APU `datos` y, si viene, lo enlaza con su libro de
-    presupuesto. `perfil` es el nombre del perfil (local de la instalación o del paquete; ver la
-    cabecera del módulo).
+    presupuesto. `perfil` es el nombre del perfil, local o del paquete; `carpeta_perfiles`, la
+    carpeta de los perfiles locales de la instalación (ver la cabecera del módulo).
 
     Deja pasar `ArchivoRechazado` y `LibroNoInterpretable` (el mensaje es para el usuario) y
     `PerfilInvalido` si el perfil no existe o está mal escrito.
     """
-    elegido = cargar_perfil_apu_por_hoja(perfil, carpetas_locales(carpeta_perfiles_locales()))
+    elegido = cargar_perfil_apu_por_hoja(perfil, carpetas_locales(carpeta_perfiles))
     libro = leer_libro_apu_por_hoja(datos, nombre, elegido)
     apus, hallazgos, trazas = [], [], []
     for apu in libro.apus:
-        recalculado, propios, suyas = _evaluar(apu, elegido)
+        try:
+            recalculado, propios, suyas = _evaluar(apu, elegido)
+        except (InvalidOperation, Overflow) as exc:  # el recálculo no cabe en la precisión
+            raise LibroNoInterpretable(
+                f"La hoja «{apu.hoja}» da un precio unitario demasiado grande para recalcularlo "
+                "con exactitud: revise sus cantidades, sus precios y sus porcentajes."
+            ) from exc
         apus.append(recalculado)
         hallazgos.extend(propios)
         trazas.extend(suyas)

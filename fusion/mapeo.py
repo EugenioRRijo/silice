@@ -55,11 +55,12 @@ otro.
 
 **Libro con un APU por hoja** (F5 vial, tarea 4; perfil hermano `apu_por_hoja`,
 `composicion_de_apu_por_hoja`). Los precios salen de la línea misma (no hay hoja de insumos); el
-desperdicio va dentro de la cantidad (`fusion.desperdicio`, diseño 2026-11-03 §4, opción B) y la
-traza vuelve aparte; las prestaciones como porcentaje son el FCAS del núcleo (250 % → 2,5, sin
-restar 1: el núcleo suma `1 + fcas`); el bono va en 0 (un bono por renglón distinto de cero hace el
-APU no evaluable, y lo decide quien audita); el coeficiente del equipo es su depreciación (1 si la
-columna no lo trae). Cada unidad pasa por la traducción del perfil (`unidades`).
+desperdicio va dentro de la cantidad (`aplicacion.regla_desperdicio`, diseño 2026-11-03 §4,
+opción B) y la traza vuelve aparte; las prestaciones como porcentaje son el FCAS del núcleo (250 %
+→ 2,5, sin restar 1: el núcleo suma `1 + fcas`); el bono va en 0 (un bono por renglón distinto de
+cero hace el APU no evaluable, y lo decide quien audita); el coeficiente del equipo es su
+depreciación (1 si la columna no lo trae). Cada unidad pasa por la traducción del perfil
+(`unidades`).
 """
 
 from __future__ import annotations
@@ -90,6 +91,7 @@ from adapters.hoja_empresa.plantilla import (
     texto_decimal,
     unidad_de_linea,
 )
+from aplicacion.regla_desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 from core.contracts.apu import (
     ComposicionAPU,
     LineaEquipo,
@@ -104,7 +106,6 @@ from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
 from core.costing.motor import calcular_apu
 from core.verification.texto import formatear_decimal
-from fusion.desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 
 __all__ = [
     "DESCRIPCION_HERRAMIENTAS",

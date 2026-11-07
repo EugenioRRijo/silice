@@ -19,10 +19,11 @@ contra el libro ficticio de `tests/fixtures/libro_apu_por_hoja.py`; el de un lib
 carpeta de datos de la instalación, fuera del repositorio. `cargar_perfil_apu_por_hoja` busca
 primero en `carpetas` (por omisión, `carpetas_locales()`) y después en el paquete.
 
-Este adaptador no sabe dónde está la carpeta de datos (no importa `operacion`): quien audita
-(`fusion.apu_por_hoja`) le pasa la carpeta por omisión, `<carpeta de datos>/perfiles_libros/`, a
-`carpetas_locales(por_omision=...)`. `SILICE_PERFILES_LIBROS`, si está, la reemplaza (arbitraje F5
-vial, P2; `docs/manual_tecnico.md`, «Perfiles de libros locales»).
+Este adaptador no sabe dónde está la carpeta de datos (no importa `operacion`): la API la toma de
+`operacion.config.carpeta_perfiles_libros()` (`<carpeta de datos>/perfiles_libros/`) y se la pasa
+a quien audita (`fusion.apu_por_hoja`), que la entrega a `carpetas_locales(por_omision=...)`.
+`SILICE_PERFILES_LIBROS`, si está, la reemplaza (arbitraje F5 vial, P2; `docs/manual_tecnico.md`,
+«Perfiles de libros locales»).
 """
 
 from __future__ import annotations

@@ -42,9 +42,11 @@ __all__ = [
     "EXTENSION",
     "MAX_AREA_HOJA",
     "MAX_BYTES",
+    "MAX_COLUMNAS_HOJA",
     "MAX_COMBINADAS",
     "MAX_DESCOMPRIMIDO",
     "MAX_ENTRADAS",
+    "MAX_FILAS_HOJA",
     "MAX_PIEZA",
     "MAX_RAZON",
     "verificar_archivo",
@@ -66,7 +68,13 @@ MAX_COMBINADAS = 200_000
 #: SUPUESTO_DECLARADO (revisión de seguridad 1.5): área que una hoja declara en `<dimension>`. La
 #: hoja real más grande declara 2 548 celdas; 2 000 000 (20 000 filas × 100 columnas) es más de lo
 #: que usa un presupuesto y mantiene acotado el recorrido de openpyxl en solo lectura.
-MAX_AREA_HOJA = 2_000_000
+#: Las filas y las columnas valen también por separado (arbitraje F5/F7/F8, revisión de
+#: correcciones, P1): la `<dimension>` puede mentir, y el lector de un APU por hoja no lee de cada
+#: hoja más de `MAX_FILAS_HOJA` filas ni de `MAX_COLUMNAS_HOJA` columnas (rechaza el libro si tiene
+#: algo escrito más allá).
+MAX_FILAS_HOJA = 20_000
+MAX_COLUMNAS_HOJA = 100
+MAX_AREA_HOJA = MAX_FILAS_HOJA * MAX_COLUMNAS_HOJA
 
 #: Bloque de lectura del barrido y solape entre bloques. El solape es mayor que la etiqueta más
 #: larga que el patrón admite (prefijo, hasta 256 bytes de atributos y 64 de referencia), así que

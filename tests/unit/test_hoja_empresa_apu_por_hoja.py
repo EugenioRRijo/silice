@@ -17,8 +17,13 @@ from pathlib import Path
 
 import pytest
 
+from adapters.hoja_empresa import guardia
 from adapters.hoja_empresa.guardia import ArchivoRechazado
-from adapters.hoja_empresa.lector_apu_por_hoja import leer_libro_apu_por_hoja
+from adapters.hoja_empresa.lector_apu_por_hoja import (
+    leer_hojas,
+    leer_libro_apu_por_hoja,
+    letra,
+)
 from adapters.hoja_empresa.modelo import Celda, LibroNoInterpretable, Rotulo, TipoInsumo
 from adapters.hoja_empresa.perfil import PerfilInvalido
 from adapters.hoja_empresa.perfil_apu_por_hoja import cargar_perfil_apu_por_hoja
@@ -31,7 +36,9 @@ from tests.fixtures.libro_apu_por_hoja import (
     Equipo,
     Material,
     Obrero,
+    con_celdas,
     libro_apu,
+    libro_presupuesto,
 )
 
 D = Decimal
@@ -266,6 +273,39 @@ def test_un_rendimiento_cero_hace_la_hoja_no_interpretable():
     )
 
 
+# Arbitraje F5/F7/F8 r2, N3: una magnitud enorme (1e20, 1e300, 9,99e307) daba un 500 al presentar
+# el precio (`Decimal.quantize` pasa de la precisión). El lector la ataja con su celda: ninguna
+# cantidad, precio, porcentaje ni rendimiento de un APU pasa de un billón (10^12). Las del
+# material se prueban por la ruta (`test_api_libros_replica.py`); aquí, las de la cabecera y el pie.
+TOPE = "1.000.000.000.000"
+
+
+@pytest.mark.parametrize(
+    ("celda", "que"),
+    [
+        ("F5", "el rendimiento"),
+        ("D5", "la cantidad de la partida"),
+        ("F24", "el porcentaje de Administración"),
+        ("G28", "el precio unitario impreso"),
+    ],
+    ids=["rendimiento", "cantidad_cabecera", "administracion", "precio_impreso"],
+)
+def test_una_magnitud_enorme_hace_la_hoja_no_interpretable_con_su_celda(celda: str, que: str):
+    datos = con_celdas(libro_apu((_hoja(),)), "APU 9", {celda: 1e20}, dimension_de_antes=False)
+    with pytest.raises(LibroNoInterpretable) as error:
+        leer_libro_apu_por_hoja(datos, "enorme.xlsx")
+    assert str(error.value) == (
+        f"APU 9!{celda}: {que} pasa del tope de {TOPE}: Sílice no recalcula la hoja «APU 9»."
+    )
+
+
+def test_el_tope_mismo_se_lee():
+    """«Pasa del tope» es estrictamente mayor: un billón exacto se lee."""
+    datos = con_celdas(libro_apu((_hoja(),)), "APU 9", {"F9": 1e12}, dimension_de_antes=False)
+    (linea,) = leer_libro_apu_por_hoja(datos, "tope.xlsx").apu("APU 9").lineas
+    assert linea.precio == D("1000000000000")
+
+
 # --- mapeo al núcleo --------------------------------------------------------------------------
 
 
@@ -292,3 +332,147 @@ def test_el_mapeo_de_la_demarcacion_da_el_precio_exacto(libro):
 
 def test_el_fixture_es_el_de_la_memoria():
     assert [a.numero for a in APUS] == [1, 2, 3, 4, 5]
+
+
+# --- entrada hostil: celdas lejanas que la <dimension> no declara (arbitraje F5/F7/F8 r2, P1) -----
+#
+# La guardia solo mira la `<dimension>` que declara cada hoja, y un libro hostil puede declarar un
+# área pequeña y escribir lejos: A1048576 (variante C de la sonda del árbitro: openpyxl entregaba
+# un millón de filas) o una celda en XFD en 2.000 filas (variante E: 16.384 valores por fila, 32
+# millones de celdas en unos 12 KB). Sílice lee de cada hoja a lo sumo las filas y las columnas que
+# justifica `MAX_AREA_HOJA` (20.000 × 100) y rechaza el libro si tiene algo escrito más allá; cada
+# fila llega solo hasta su último valor. Se cuentan filas Y celdas: contar solo celdas no veía el
+# millón de filas vacías.
+
+#: El libro de APU y el de presupuesto, con la hoja que Sílice lee de cada uno.
+LIBROS = {"apu": (libro_apu, "APU 1"), "presupuesto": (libro_presupuesto, "PRESUPUESTO")}
+#: Lo más que puede entregar openpyxl con el tope (a mano, de la guardia): 20.000 filas y una más
+#: (la que delata que la hoja sigue), y 20.000 × 100 celdas más una fila ancha (la que se rechaza).
+TOPE_FILAS_ENTREGADAS = 20_001
+TOPE_CELDAS_ENTREGADAS = 2_000_000 + 16_384
+SIGUE = (
+    "Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la CV). Se rechaza por "
+    "seguridad: borre lo que sobra al final de la hoja y guárdelo de nuevo."
+)
+
+
+def _variante(cual: str, datos: bytes, hoja: str) -> bytes:
+    if cual == "C":
+        return con_celdas(datos, hoja, {"A1048576": "fin ficticio"})
+    return con_celdas(datos, hoja, {f"XFD{fila}": "y" for fila in range(2, 2002)})
+
+
+def _contar(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """[filas, celdas] que openpyxl entrega a Sílice al recorrer las hojas en solo lectura."""
+    from openpyxl.worksheet._read_only import ReadOnlyWorksheet
+
+    medida = [0, 0]
+    original = ReadOnlyWorksheet.iter_rows
+
+    def contando(self, *args, **kwargs):
+        for fila in original(self, *args, **kwargs):
+            medida[0] += 1
+            medida[1] += len(fila)
+            yield fila
+
+    monkeypatch.setattr(ReadOnlyWorksheet, "iter_rows", contando)
+    return medida
+
+
+@pytest.mark.parametrize("libro_hostil", sorted(LIBROS))
+@pytest.mark.parametrize("variante", ["C", "E"])
+def test_una_celda_lejana_que_la_dimension_no_declara_rechaza_el_libro(
+    libro_hostil: str, variante: str, monkeypatch: pytest.MonkeyPatch
+):
+    construir, hoja = LIBROS[libro_hostil]
+    datos = _variante(variante, construir(), hoja)
+    medida = _contar(monkeypatch)
+    error = None
+    try:
+        hojas = leer_hojas(datos, "hostil.xlsx", lambda titulo: titulo == hoja)
+    except ArchivoRechazado as exc:
+        error, hojas = exc, {}
+    filas, celdas = medida
+    guardadas = sum(len(f) for f in hojas.values()), sum(len(r) for f in hojas.values() for r in f)
+    assert (filas <= TOPE_FILAS_ENTREGADAS, celdas <= TOPE_CELDAS_ENTREGADAS) == (True, True), (
+        f"openpyxl entregó {filas:,} filas y {celdas:,} celdas; Sílice guardó {guardadas}"
+    )
+    assert error is not None
+    donde = (
+        "tiene filas escritas más allá de la 20.000"
+        if variante == "C"
+        else "la fila 2 tiene celdas escritas hasta la columna XFD, más allá de la CV"
+    )
+    assert str(error) == f"El libro «hostil.xlsx», hoja «{hoja}»: {donde}. {SIGUE}"
+
+
+@pytest.mark.parametrize(
+    "frontera", ["ultima_fila", "fila_siguiente", "ultima_columna", "columna_siguiente"]
+)
+def test_la_frontera_del_tope_es_la_de_la_guardia(frontera: str):
+    """El tope sale de las constantes de la guardia (20.000 × 100 = `MAX_AREA_HOJA`), no de una
+    cifra escrita dos veces: la última fila y la última columna se leen; la siguiente, no."""
+    filas, columnas = guardia.MAX_FILAS_HOJA, guardia.MAX_COLUMNAS_HOJA
+    assert (filas, columnas, filas * columnas) == (20_000, 100, guardia.MAX_AREA_HOJA)
+    ref = {
+        "ultima_fila": f"A{filas}",
+        "fila_siguiente": f"A{filas + 1}",
+        "ultima_columna": f"{letra(columnas - 1)}5",
+        "columna_siguiente": f"{letra(columnas)}5",
+    }[frontera]
+    datos = con_celdas(libro_apu(), "APU 1", {ref: "fin ficticio"})
+    if frontera.endswith("siguiente"):
+        with pytest.raises(ArchivoRechazado, match="Se rechaza por seguridad"):
+            leer_hojas(datos, "frontera.xlsx")
+        return
+    hojas = leer_hojas(datos, "frontera.xlsx")
+    assert _valor_en(hojas, ref) == "fin ficticio"
+    assert leer_libro_apu_por_hoja(datos, "frontera.xlsx").apu("APU 1").titulo == (
+        "Riego de adherencia ficticio"
+    )
+
+
+def _valor_en(hojas: dict[str, list[list[object]]], ref: str) -> object:
+    """El valor de `ref` en la hoja «APU 1» de lo que devolvió `leer_hojas`."""
+    from openpyxl.utils.cell import column_index_from_string, coordinate_from_string
+
+    columna, fila = coordinate_from_string(ref)
+    return hojas["APU 1"][fila - 1][column_index_from_string(columna) - 1]
+
+
+def _sin_vacios_al_final(datos: bytes) -> dict[str, list[list[object]]]:
+    """Oráculo independiente: openpyxl en modo normal (sin `reset_dimensions` ni solo lectura),
+    cada fila sin los vacíos del final."""
+    import io
+
+    import openpyxl
+
+    libro = openpyxl.load_workbook(io.BytesIO(datos), data_only=True)
+    resultado = {}
+    for hoja in libro.worksheets:
+        filas = []
+        for fila in hoja.iter_rows(values_only=True):
+            valores = list(fila)
+            while valores and valores[-1] is None:
+                valores.pop()
+            filas.append(valores)
+        resultado[hoja.title] = filas
+    return resultado
+
+
+@pytest.mark.parametrize("cual", sorted(LIBROS))
+def test_un_libro_legitimo_se_lee_igual_que_siempre(cual: str):
+    construir, _ = LIBROS[cual]
+    datos = construir()
+    assert leer_hojas(datos, "f.xlsx") == _sin_vacios_al_final(datos)
+
+
+def test_cada_fila_llega_solo_hasta_su_ultimo_valor(monkeypatch: pytest.MonkeyPatch):
+    """Una celda con formato y sin valor al final de la fila (H3, CV7) no alarga la fila: Sílice
+    guarda las mismas filas y celdas que el oráculo."""
+    datos = con_celdas(libro_apu(), "APU 1", {}, solo_formato=("H3", "CV7"))
+    esperado = _sin_vacios_al_final(datos)
+    hojas = leer_hojas(datos, "f.xlsx")
+    medida = (len(hojas["APU 1"]), sum(len(f) for f in hojas["APU 1"]))
+    assert medida == (len(esperado["APU 1"]), sum(len(f) for f in esperado["APU 1"]))
+    assert hojas == esperado

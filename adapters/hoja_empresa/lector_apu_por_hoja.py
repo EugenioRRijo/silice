@@ -18,14 +18,20 @@ financiamiento, impuesto): una guardia, un modelo y las mismas celdas citables (
   impuesto que falten valen 0.
 - Un valor que el núcleo no admite (arbitraje F5 vial, P3) también la hace no interpretable, con
   su `HOJA!CELDA`: un rendimiento que no es mayor que cero; una cantidad, un precio, un
-  desperdicio o un porcentaje negativos; un coeficiente de depreciación fuera de (0; 1].
+  desperdicio o un porcentaje negativos; un coeficiente de depreciación fuera de (0; 1]; y
+  (revisión de correcciones, N3) una cantidad, un precio, un desperdicio, un bono, un porcentaje,
+  un rendimiento o un precio impreso que pasa de `TOPE_CIFRA` (antes daba un 500 al presentar el
+  precio: `Decimal.quantize` pasaba de la precisión).
 - Las unidades se leen tal como las escribe el libro: la traducción del perfil la aplica quien
   audita (`fusion`), y cada traducción usada queda dicha en el informe.
 - `Decimal(str(v))` siempre (NORMAS §2.3). Solo valores: no hay fórmulas que leer.
-- **Entrada hostil** (arbitraje F5 vial, P1): solo se leen las hojas del prefijo del perfil (y, en
-  el libro de presupuesto, la hoja del presupuesto), cada fila solo hasta su última celda real
-  (`reset_dimensions()`). `LibroLeido.hojas` nombra todas las hojas del libro; `valores` cubre solo
-  las celdas de las hojas leídas.
+- **Entrada hostil** (arbitraje F5 vial, P1, y su revisión): solo se leen las hojas del prefijo del
+  perfil (y, en el libro de presupuesto, la hoja del presupuesto); de cada una, a lo sumo
+  `guardia.MAX_FILAS_HOJA` filas y `guardia.MAX_COLUMNAS_HOJA` columnas (las que justifica
+  `MAX_AREA_HOJA`), y una fila o una celda escrita más allá (aunque solo tenga formato) rechaza el
+  libro con `ArchivoRechazado`: la `<dimension>` que mira la guardia puede mentir. Cada fila se
+  guarda solo hasta su último valor. `LibroLeido.hojas` nombra todas las hojas del libro; `valores`
+  cubre solo las celdas de las hojas leídas.
 """
 
 from __future__ import annotations
@@ -35,7 +41,12 @@ from collections.abc import Callable, Sequence
 from decimal import Decimal
 from typing import Any
 
-from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from adapters.hoja_empresa.guardia import (
+    MAX_COLUMNAS_HOJA,
+    MAX_FILAS_HOJA,
+    ArchivoRechazado,
+    verificar_archivo,
+)
 from adapters.hoja_empresa.lector import _abrir
 from adapters.hoja_empresa.modelo import (
     ApuLeido,
@@ -57,7 +68,7 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import (
     cargar_perfil_apu_por_hoja,
 )
 
-__all__ = ["leer_hojas", "leer_libro_apu_por_hoja", "letra", "numero_de"]
+__all__ = ["TOPE_CIFRA", "leer_hojas", "leer_libro_apu_por_hoja", "letra", "numero_de"]
 
 _CERO = Decimal(0)
 _CIEN = Decimal(100)
@@ -67,6 +78,12 @@ _TIPOS = {
     "mano_obra": TipoInsumo.MANO_OBRA,
 }
 Filas = list[list[Any]]
+#: SUPUESTO_DECLARADO (revisión de correcciones de F5/F7/F8, N3): lo más que puede valer una cifra
+#: del libro, un billón. Ninguna cantidad, precio, porcentaje ni rendimiento de un APU se le acerca,
+#: y por debajo de él cada renglón cabe holgado en los 28 dígitos del `Decimal` de Python con dos
+#: decimales. Lo que el tope no ataja (muchos renglones grandes, porcentajes enormes) lo ataja quien
+#: recalcula (`fusion.apu_por_hoja`) diciendo la hoja.
+TOPE_CIFRA = Decimal(10) ** 12
 
 
 def letra(columna: int) -> str:
@@ -100,6 +117,12 @@ def _invalido(hoja: str, celda: str, que: str) -> LibroNoInterpretable:
     )
 
 
+def _acotar(hoja: str, celda: str, que: str, valor: Decimal) -> None:
+    """`LibroNoInterpretable` con la celda si `valor` pasa de `TOPE_CIFRA`."""
+    if abs(valor) > TOPE_CIFRA:
+        raise _invalido(hoja, celda, f"{que} pasa del tope de {_cifra(TOPE_CIFRA)}")
+
+
 def _texto(valor: Any) -> str:
     if valor is None:
         return ""
@@ -108,14 +131,47 @@ def _texto(valor: Any) -> str:
     return str(valor).strip()
 
 
-def _filas(hoja: Any) -> Filas:
-    """Las filas de valores de una hoja de solo lectura, cada una solo hasta su última celda real.
+def _fuera_del_tope(nombre: str, hoja: str, donde: str) -> ArchivoRechazado:
+    return ArchivoRechazado(
+        f"El libro «{nombre}», hoja «{hoja}»: {donde}. Sílice lee de cada hoja hasta "
+        f"{_cifra(Decimal(MAX_FILAS_HOJA))} filas y {MAX_COLUMNAS_HOJA} columnas (de la A a la "
+        f"{letra(MAX_COLUMNAS_HOJA - 1)}). Se rechaza por seguridad: borre lo que sobra al final "
+        "de la hoja y guárdelo de nuevo."
+    )
+
+
+def _filas(hoja: Any, nombre: str) -> Filas:
+    """Las filas de valores de una hoja de solo lectura, cada una solo hasta su último valor.
 
     `reset_dimensions()`, como en `lector._celdas_reales`: sin él, openpyxl rellena cada fila y
-    cada fila que falta hasta la `<dimension>` que declara el XML, y esa dimensión puede mentir
-    (una hoja con A1 y CV20000 pesa unos bytes y se volvería dos millones de celdas)."""
+    cada fila que falta hasta la `<dimension>` que declara el XML, y esa dimensión puede mentir.
+    Sin ella, openpyxl entrega cada fila hasta su última celda escrita y una fila por cada fila
+    hasta la última escrita: tampoco basta (A1048576 son un millón de filas; una celda en XFD,
+    16.384 valores). Por eso se piden a lo sumo `MAX_FILAS_HOJA` filas y una más, la que delata que
+    la hoja sigue (openpyxl rellena hasta `max_row` si hay una fila escrita después), y una fila
+    más ancha que `MAX_COLUMNAS_HOJA` rechaza el libro en cuanto llega: lo materializado nunca pasa
+    de `MAX_AREA_HOJA` celdas y una fila."""
     hoja.reset_dimensions()
-    return [list(fila) for fila in hoja.iter_rows(values_only=True)]
+    filas: Filas = []
+    for fila in hoja.iter_rows(max_row=MAX_FILAS_HOJA + 1, values_only=True):
+        if len(filas) == MAX_FILAS_HOJA:
+            raise _fuera_del_tope(
+                nombre,
+                hoja.title,
+                f"tiene filas escritas más allá de la {_cifra(Decimal(MAX_FILAS_HOJA))}",
+            )
+        if len(fila) > MAX_COLUMNAS_HOJA:
+            raise _fuera_del_tope(
+                nombre,
+                hoja.title,
+                f"la fila {len(filas) + 1} tiene celdas escritas hasta la columna "
+                f"{letra(len(fila) - 1)}, más allá de la {letra(MAX_COLUMNAS_HOJA - 1)}",
+            )
+        fin = len(fila)
+        while fin and fila[fin - 1] is None:
+            fin -= 1
+        filas.append(list(fila[:fin]))
+    return filas
 
 
 def leer_hojas(
@@ -128,9 +184,11 @@ def leer_hojas(
     libro = _abrir(datos, nombre, data_only=True)
     try:
         return {
-            hoja.title: _filas(hoja) if incluir is None or incluir(hoja.title) else []
+            hoja.title: _filas(hoja, nombre) if incluir is None or incluir(hoja.title) else []
             for hoja in libro.worksheets
         }
+    except ArchivoRechazado:
+        raise
     except Exception as exc:  # un XML dañado aparece al recorrer la hoja en solo lectura
         raise ArchivoRechazado(
             f"No se pudo leer el libro «{nombre}»: alguna hoja está dañada."
@@ -226,15 +284,20 @@ def _linea(
     precio = numero_de(_celda_de(fila, columnas["precio"])) or _CERO
     desperdicio = numero_de(_celda_de(fila, columnas.get("desperdicio"))) or _CERO
     depreciacion = numero_de(_celda_de(fila, columnas.get("depreciacion")))
+    bono = numero_de(_celda_de(fila, columnas.get("bono"))) or _CERO
 
     def celda(campo: str) -> str:
         return f"{letra(columnas[campo])}{i + 1}"
 
-    for campo, valor, nombre in (
+    montos = (
         ("cantidad", cantidad, "la cantidad"),
         ("precio", precio, "el precio"),
         ("desperdicio", desperdicio, "el desperdicio"),
-    ):
+    )
+    for campo, valor, nombre in (*montos, ("bono", bono, "el bono")):
+        if campo in columnas:
+            _acotar(hoja, celda(campo), f"{nombre} de «{descripcion}»", valor)
+    for campo, valor, nombre in montos:
         if valor < 0:
             negativa = "negativa" if nombre.startswith("la ") else "negativo"
             raise _invalido(
@@ -261,7 +324,7 @@ def _linea(
         celda_codigo=Celda(hoja, f"{letra(col_codigo)}{i + 1}"),
         celda_cantidad=Celda(hoja, f"{letra(columnas['cantidad'])}{i + 1}"),
         desperdicio=desperdicio,
-        bono=numero_de(_celda_de(fila, columnas.get("bono"))) or _CERO,
+        bono=bono,
         depreciacion=depreciacion,
         celdas={
             campo: Celda(hoja, f"{letra(columnas[campo])}{i + 1}")
@@ -297,6 +360,9 @@ def _leer_apu(hoja: str, filas: Filas, perfil: PerfilApuPorHoja) -> ApuLeido:
     descripcion = _texto(exigir("descripcion", "la descripción", perfil.cabecera["descripcion"]))
     unidad = _texto(exigir("unidad", "la unidad", perfil.cabecera["unidad"]))
     rendimiento = exigir("rendimiento", "el rendimiento", perfil.cabecera["rendimiento"])
+    _acotar(hoja, celdas["rendimiento"].ref, "el rendimiento", rendimiento)
+    if "cantidad" in cabecera:
+        _acotar(hoja, celdas["cantidad"].ref, "la cantidad de la partida", cabecera["cantidad"])
     if rendimiento <= 0:
         raise _invalido(
             hoja,
@@ -317,6 +383,7 @@ def _leer_apu(hoja: str, filas: Filas, perfil: PerfilApuPorHoja) -> ApuLeido:
             continue
         assert donde is not None
         celdas[campo] = Celda(hoja, f"{letra(valor[0])}{donde[0] + 1}")
+        _acotar(hoja, celdas[campo].ref, f"el porcentaje de {variantes[0]}", valor[1])
         if valor[1] < 0:
             raise _invalido(
                 hoja,
@@ -331,6 +398,7 @@ def _leer_apu(hoja: str, filas: Filas, perfil: PerfilApuPorHoja) -> ApuLeido:
             f"La hoja «{hoja}» no tiene el {perfil.precio_unitario[0]} impreso: sin él no hay con "
             "qué comparar el recálculo."
         )
+    _acotar(hoja, f"{letra(pu[0])}{donde[0] + 1}", "el precio unitario impreso", pu[1])
     numero = cabecera.get("numero")
     return ApuLeido(
         hoja=hoja,

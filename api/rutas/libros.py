@@ -95,6 +95,7 @@ from fusion.proceso import (
     procesar_libro,
     servicios_desde_sesion,
 )
+from operacion.config import carpeta_perfiles_libros
 from operacion.instalacion import sesion_de_instalacion
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
@@ -875,6 +876,7 @@ async def auditar_apu_por_hoja_ruta(
                 presupuesto=del_presupuesto,
                 presupuesto_nombre=nombre_presupuesto,
                 perfil=elegido,
+                carpeta_perfiles=carpeta_perfiles_libros(),
             )
         )
     except PerfilInvalido as error:

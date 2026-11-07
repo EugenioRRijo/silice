@@ -34,13 +34,13 @@ from sqlalchemy.orm import Session
 
 from aplicacion.cifras import CifraInvalida, cifra_escrita, texto_de_cifra
 from aplicacion.composicion import ComposicionInvalida, texto_de_celda
+from aplicacion.regla_desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 from aplicacion.tablas_desperdicio import (
     GuardadoDeDesperdicio,
     LineaConDesperdicio,
     crear_esquema_desperdicio,
     hay_tablas_de_desperdicio,
 )
-from fusion.desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 
 __all__ = [
     "CLAVE",

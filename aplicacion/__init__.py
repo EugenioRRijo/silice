@@ -7,5 +7,6 @@ su página se migra, y `ui/<x>.py` queda como reexportación explícita. Así la
 
 `aplicacion/` no importa `streamlit`, `ui`, `api`, `scripts` ni `tests`; lo vigila
 `tests/unit/test_arquitectura.py` (por archivo y en un proceso limpio). Puede importar `core`,
-`operacion` y `seguridad`.
+`operacion` y `seguridad`. No importa `fusion` (revisión de correcciones de F5/F7/F8, N5): es
+`fusion` quien toma de aquí sus reglas puras (`cifras`, `regla_desperdicio`).
 """
