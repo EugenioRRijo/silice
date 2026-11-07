@@ -779,3 +779,46 @@ def test_el_resultado_es_inmutable_y_con_slots():
     assert not hasattr(libro.hojas[0], "__dict__")
     assert not hasattr(libro.hojas[0].celdas[0], "__dict__")
     assert not hasattr(libro.estilos[0], "__dict__")
+
+
+# --- entrada hostil: celdas lejanas que la <dimension> no declara (ESTADO §5.3) -----------------
+
+
+@pytest.mark.parametrize(
+    ("celdas", "donde"),
+    [
+        ({"A1048576": "fin ficticio"}, "tiene filas con datos o con formato más allá de la 20.000"),
+        (
+            {f"XFD{fila}": "y" for fila in range(2, 2002)},
+            "la fila 2 tiene celdas con datos o con formato hasta la columna XFD, más allá de la CV",
+        ),
+    ],
+    ids=["A1048576", "XFD"],
+)
+def test_una_celda_lejana_en_una_hoja_con_formulas_rechaza_la_replica(
+    celdas: dict[str, str], donde: str, monkeypatch: pytest.MonkeyPatch
+):
+    """La pasada de valores guardados (solo lectura) de una hoja con fórmulas tiene los topes del
+    lector: antes recorría el millón de filas. A mano: 20.000 filas y la que delata que sigue."""
+    from openpyxl.worksheet._read_only import ReadOnlyWorksheet
+
+    from tests.fixtures.libro_apu_por_hoja import con_celdas
+
+    datos = con_celdas(libro_limpio().datos, "APU-01", celdas)
+    filas = [0]
+    original = ReadOnlyWorksheet.iter_rows
+
+    def contando(self, *args, **kwargs):
+        for fila in original(self, *args, **kwargs):
+            filas[0] += 1
+            yield fila
+
+    monkeypatch.setattr(ReadOnlyWorksheet, "iter_rows", contando)
+    with pytest.raises(ArchivoRechazado) as error:
+        replicar_libro(datos, NOMBRE)
+    assert filas[0] <= 20_001 + 1_000, f"openpyxl entregó {filas[0]:,} filas"
+    assert str(error.value) == (
+        f"El libro «{NOMBRE}», hoja «APU-01»: {donde}. Sílice lee de cada hoja hasta 20.000 filas y "
+        "100 columnas (de la A a la CV). Se rechaza por seguridad: borre lo que sobra al final de "
+        "la hoja y guárdelo de nuevo."
+    )
