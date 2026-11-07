@@ -595,6 +595,19 @@ def test_el_recorrido_funcional_tiene_una_fila_por_pantalla_y_ninguna_de_mas() -
     assert {"auditoria", "obras", "produccion", "inicio"} <= set(rutas)
 
 
+def test_las_filas_obras_y_entregar_citan_los_textos_de_hoy() -> None:
+    """«Nueva obra» está en la barra lateral (`marco/BarraLateral.tsx`), fuera de <main>; el
+    selector de «Entregar paquete» se llama «Obra»
+    (`paginas/entregar/index.tsx`, `labelText="Obra"`)."""
+    from scripts.recorrido_ux_playwright import ACCIONES_TOML, cargar_filas_funcionales
+
+    filas = {f["ruta"]: f for f in cargar_filas_funcionales(ACCIONES_TOML)["pantalla"]}
+    nueva = next(p for p in filas["obras"]["pasos"] if p.get("nombre") == "Nueva obra")
+    assert nueva.get("fuera") is True
+    selectores = [p for p in filas["entregar"]["pasos"] if p["accion"] == "elegir"]
+    assert [p["rotulo"] for p in selectores] == ["Obra"]
+
+
 PESTANAS_DE_ADMINISTRACION_DE_ANTES = {
     "Cuentas",
     "Empresa y clave de firma",

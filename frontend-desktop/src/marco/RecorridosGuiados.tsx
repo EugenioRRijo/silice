@@ -31,7 +31,7 @@ export function RecorridosGuiados() {
 
   return (
     <section aria-labelledby="ayuda-recorridos" className="silice-cuenta-recorridos">
-      <h2 id="ayuda-recorridos" className="cds--type-heading-compact-02">
+      <h2 id="ayuda-recorridos" tabIndex={-1} className="cds--type-heading-compact-02">
         Recorridos guiados
       </h2>
       <p className="cds--type-body-compact-01">

@@ -365,7 +365,9 @@ export function TablaInsumos({
                   {c.titulo}
                 </TableHeader>
               ))}
-              <TableHeader aria-label="Acciones" />
+              <TableHeader>
+                <span className="cds--visually-hidden">Acciones</span>
+              </TableHeader>
             </TableRow>
           </TableHead>
           <TableBody>

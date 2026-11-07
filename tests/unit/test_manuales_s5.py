@@ -220,3 +220,15 @@ def test_el_manual_tecnico_explica_sin_ventana_y_el_perfil() -> None:
         "traer_al_frente",
     ):
         assert dato in quince, dato
+
+
+def test_los_manuales_no_tienen_retornos_de_carro_sueltos_ni_rutas_partidas() -> None:
+    """Un retorno de carro escrito dentro de una ruta de Windows partió la ruta de los registros
+    en dos líneas (árbitro, N4). Un CR que no precede a LF es un defecto; la ruta va entera."""
+    for ruta in sorted((RAIZ / "docs").glob("manual_*.md")):
+        crudo = ruta.read_bytes()
+        assert re.findall(rb"\r(?!\n)", crudo) == [], ruta.name
+        texto = crudo.decode("utf-8").replace("\r\n", "\n")
+        assert not re.search(r"%[A-Z]+%\\[A-Za-z\\]*\n[a-z]", texto), ruta.name
+    instalacion = _leer("docs/manual_instalacion.md")
+    assert "%LOCALAPPDATA%\\Silice\\registros" in instalacion

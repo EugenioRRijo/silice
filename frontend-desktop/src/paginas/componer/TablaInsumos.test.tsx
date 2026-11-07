@@ -13,6 +13,13 @@ describe("TablaInsumos", () => {
     expect(screen.getByRole("button", { name: "Agregar fila a Materiales" })).toBeInTheDocument();
   });
 
+  test("la columna de borrar tiene un encabezado con texto (axe: empty-table-header), oculto a la vista", () => {
+    render(<TablaInsumos tipo="materiales" filas={[]} modalidades={MODALIDADES} alCambiar={vi.fn()} alAgregar={vi.fn()} alBorrar={vi.fn()} alExpirar={vi.fn()} alCompletar={vi.fn()} />);
+    const acciones = screen.getByRole("columnheader", { name: "Acciones" });
+    expect(acciones).toHaveTextContent("Acciones");
+    expect(within(acciones).getByText("Acciones")).toHaveClass("cds--visually-hidden");
+  });
+
   test("teclear en una celda avisa con la fila, la columna y el texto", async () => {
     const usuario = userEvent.setup();
     const alCambiar = vi.fn();

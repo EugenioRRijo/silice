@@ -141,19 +141,22 @@ def test_el_codigo_y_el_limite_se_pueden_cambiar() -> None:
 
 def test_las_cifras_medidas_de_la_bitacora_no_piden_recorte() -> None:
     """S5-0.3: Python 15,4 + código 7,0 + base 19,9 + básica 45,8 + bcv 0,1 + civil 15,1 +
-    anomalías 26,0 + ia 0,9 = 130,2 MB (la bitácora: «Recorte: ninguno»). El pdf de la 1.5 no se
-    midió: cabe mientras pese menos que el margen de 19,8 MB."""
+    anomalías 26,0 + ia 0,9 = 130,2 MB (la bitácora: «Recorte: ninguno»), más la capa
+    escritorio de F5: V0 midió 622.644 bytes comprimidos (~0,6 MB,
+    `docs/bitacora/2026-11-06-ventana-v0.md`
+    §1.3), así que 130,8 MB. El pdf de la 1.5 no se midió: cabe mientras pese menos que el margen
+    de 19,2 MB."""
     capas = {
         "basica": 19.9 + 45.8,
         "bcv": 0.1,
         "civil": 15.1,
         "anomalias": 26.0,
         "ia": 0.9,
-        "pdf": 19.79,  # 149,99
-        "escritorio": 0.0,  # F5 ventana: ~0,6 MB segun V0; aqui 0 para conservar el margen del caso
+        "pdf": 19.19,  # 149,99
+        "escritorio": 0.6,  # V0 §1.3: 622.644 bytes comprimidos (LZMA 9 extremo)
     }
     assert mc.decidir_recorte(15.4, capas) == []
-    assert mc.decidir_recorte(15.4, {**capas, "pdf": 19.81}) == ["civil"]
+    assert mc.decidir_recorte(15.4, {**capas, "pdf": 19.21}) == ["civil"]
 
 
 def test_la_tabla_para_la_bitacora_trae_cada_capa_y_el_total() -> None:

@@ -151,9 +151,9 @@ espera = { textos = ["libro_plantilla_empresa_ficticio.xlsx", "Hallazgos (2)", "
 ruta = "obras"
 cuenta = "ana"
 carpeta = "demo.db"
-accion = "crear una obra con «Nueva obra» -> la obra aparece en la tabla de la mesa de control"
+accion = "crear una obra con «Nueva obra» (barra lateral) -> la obra aparece en la mesa de control"
 pasos = [
-  { accion = "pulsar", nombre = "Nueva obra" },
+  { accion = "pulsar", nombre = "Nueva obra", fuera = true },
   { accion = "llenar", rotulo = "Nombre de la obra", valor = "Obra ficticia del recorrido funcional", fuera = true },
   { accion = "llenar", rotulo = "Cliente (opcional)", valor = "Contratista Demo, C.A.", fuera = true },
   { accion = "elegir", rotulo = "Moneda", opcion = "Bs", fuera = true },
@@ -278,7 +278,7 @@ proyecto = "Sílice: caso de demostracion"
 requiere = ["hoja"]
 accion = "generar el paquete firmado de la versión guardada -> se descarga con su huella"
 pasos = [
-  { accion = "elegir", rotulo = "Proyecto", opcion = "Sílice: caso de demostracion" },
+  { accion = "elegir", rotulo = "Obra", opcion = "Sílice: caso de demostracion" },
   { accion = "llenar", rotulo = "Para quién es (opcional)", valor = "Revisora ficticia" },
   { accion = "llenar", rotulo = "Contraseña de la clave de firma", valor = "clave de firma de prueba 01" },
   { accion = "pulsar", nombre = "Generar paquete" },
