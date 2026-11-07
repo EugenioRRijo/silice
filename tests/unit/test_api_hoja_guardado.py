@@ -82,8 +82,8 @@ HOJA_VACIA = (
     "La hoja está vacía: describa o importe el espacio antes de guardar la primera versión."
 )
 SOLO_LECTURA = (
-    "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion vigente "
-    "en el catalogo, asi que recalcularla cambiaria sus precios."
+    "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición vigente "
+    "en el catálogo, así que recalcularla cambiaría sus precios."
 )
 CENTINELA = "VALOR-CENTINELA"
 ORIGEN = "http://127.0.0.1:8000"

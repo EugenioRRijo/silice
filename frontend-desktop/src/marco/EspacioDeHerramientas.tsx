@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { ReactNode } from "react";
 import { Navigate, useLocation, useParams } from "react-router";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
-import { AyudaDeLaPantalla } from "../paginas/ayuda/AyudaDeLaPantalla";
+import { AyudaDeLaPantalla } from "../comun/ayuda/AyudaDeLaPantalla";
 import { LimiteDeError } from "../shell/LimiteDeError";
 import { paginaPorId, usable } from "../shell/rutas";
 import { BarraDeEspacio, pestanasUsables } from "./BarraDeEspacio";

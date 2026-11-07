@@ -3,7 +3,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { useCarga } from "../../comun/useCarga";
 import type { Carga } from "../../comun/useCarga";
 import { useAplicacion } from "../../shell/contexto";
-import { AyudaDeSilice } from "../ayuda/AyudaDeSilice";
+import { AyudaDeSilice } from "../../comun/ayuda/AyudaDeSilice";
 import "./acerca.scss";
 
 interface Acerca {
@@ -49,7 +49,7 @@ function Fila({ rotulo, valor }: { rotulo: string; valor: string }) {
 }
 
 // «Ayuda y acerca de Sílice» (RF-99; su h1 es el nombre de su pestaña en la Cuenta). Primero la ayuda (F7: «Empieza aquí», las
-// guías por tarea y el glosario, `paginas/ayuda/AyudaDeSilice.tsx`), que es texto y se lee aunque falle la lectura de la
+// guías por tarea y el glosario, `comun/ayuda/AyudaDeSilice.tsx`), que es texto y se lee aunque falle la lectura de la
 // versión; después la versión, las revisiones de las dos bases, la carpeta de datos (solo quien administra) y los módulos
 // instalados. Solo lectura.
 export default function PaginaAcerca() {

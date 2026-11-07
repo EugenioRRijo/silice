@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router";
 import type { CasosRespuesta } from "../api/tipos";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
-import { AyudaDeLaPantalla } from "../paginas/ayuda/AyudaDeLaPantalla";
+import { AyudaDeLaPantalla } from "../comun/ayuda/AyudaDeLaPantalla";
 import { ProveedorDeLaHoja } from "../paginas/hoja/ProveedorDeLaHoja";
 import { ContextoAplicacion } from "../shell/contexto";
 import { LimiteDeError } from "../shell/LimiteDeError";

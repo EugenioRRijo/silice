@@ -74,20 +74,41 @@ def test_navegador_main_escribe_el_json_y_sale_con_1_si_hay_externos(
     assert navegador.main(["--url", "http://127.0.0.1:8501", "--salida", str(salida)]) == 0
 
 
+def _herramientas_por_espacio() -> dict[str, set[str]]:
+    """Lee `marco/espacios.ts` (el registro de rutas canónicas): espacio -> ids de herramienta."""
+    texto = (RAIZ / "frontend-desktop" / "src" / "marco" / "espacios.ts").read_text(
+        encoding="utf-8"
+    )
+    cuerpo = texto[texto.index("export const ESPACIOS:") : texto.index("export const SUBVISTAS")]
+    espacios: dict[str, set[str]] = {}
+    for bloque in re.finditer(r"^  ([a-z]+): \{\n(.*?)^  \},", cuerpo, flags=re.M | re.S):
+        espacios[bloque[1]] = set(re.findall(r'\{ id: "([a-z-]+)", titulo:', bloque[2]))
+    return espacios
+
+
 def test_las_paginas_del_humo_existen_en_el_registro_de_rutas(tmp_path: Path, monkeypatch) -> None:
     """Una pantalla dada de baja redirige a Pendientes y el humo cargaría una pantalla menos sin
-    decirlo (F4: `similares`, `elaborar` e `historico` salieron del registro)."""
+    decirlo (F4: `similares`, `elaborar` e `historico` salieron del registro). Se comprueba la
+    ruta canónica completa (espacio y herramienta), no solo el último segmento."""
     pedidas: list[list[str]] = []
     monkeypatch.setattr(navegador, "recorrer", lambda url, paginas: pedidas.append(paginas) or [])
     navegador.main(["--url", "http://127.0.0.1:8501", "--salida", str(tmp_path / "p.json")])
-    registro = (RAIZ / "frontend-desktop" / "src" / "shell" / "rutas.ts").read_text(
-        encoding="utf-8"
-    )
-    ids = set(re.findall(r'^\s+id: "([a-z_]+)",$', registro, flags=re.MULTILINE))
-    assert "obras" in ids
+    registro = _herramientas_por_espacio()
+    assert registro["precios"] >= {
+        "catalogo",
+        "simulador",
+        "indices",
+        "listas",
+    }  # el lector funciona
+    assert set(registro) == {"produccion", "auditoria", "precios"}
     paginas = [p.removeprefix("#/") for p in pedidas[0] if p]
     assert paginas == ["precios/catalogo", "precios/simulador"]
-    assert {p.rsplit("/", 1)[-1] for p in paginas} <= ids
+    for ruta in paginas:
+        espacio, herramienta = ruta.split("/")
+        assert herramienta in registro[espacio], ruta
+    # Una herramienta que existe en otro espacio no vale: la ruta completa es la que se comprueba.
+    assert "simulador" not in registro["auditoria"]
+    assert "catalogo" not in registro["produccion"]
 
 
 @pytest.fixture

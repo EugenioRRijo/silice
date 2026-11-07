@@ -1693,7 +1693,7 @@ orquestador para las fases en paralelo: F7 usa RF-185 a RF-189. **RF-160 y RNF-3
 ([2026-10-21-bienvenida-casos-proyectos-design.md](especificaciones/2026-10-21-bienvenida-casos-proyectos-design.md) §14), pero
 nunca se escribieron aquí aunque la bienvenida ya está construida; se registran ahora con el texto de ese diseño. RF-161 a RF-166
 siguen reservados por ese diseño y sin escribir: no son de F7. Los textos de la ayuda viven en un solo catálogo,
-`frontend-desktop/src/paginas/ayuda/textos.ts` y `empiezaAqui.ts`.
+`frontend-desktop/src/comun/ayuda/textos.ts` y `empiezaAqui.ts`.
 
 | ID | Requisito | Prioridad | Caso de uso | Criterio de aceptación |
 |---|---|---|---|---|
