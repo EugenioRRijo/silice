@@ -2,45 +2,43 @@
 
 Arranca un servidor de Sílice en 127.0.0.1 con una carpeta de datos TEMPORAL sembrada con la
 demostración ficticia (cuentas de `tests/fixtures/sesion_web.py` y los casos de `start.py`), entra
-con cuentas ficticias y recorre TODAS las rutas de `frontend-desktop/src/shell/rutas.ts` a dos
-anchos y como cada rol. Por pantalla anota: captura, número de h1, desplazamiento horizontal,
-alto total, errores de consola y de red, tiempo hasta el primer h1 y, si se puede bajar axe-core
-de un CDN, la revisión de accesibilidad. Además recorre el flujo de la empresa de hoy (subir un
-presupuesto y auditarlo) contando clics, pantallas y decisiones.
+con cuentas ficticias y mide TODAS las pantallas de `frontend-desktop/src/shell/rutas.ts` en los
+espacios del marco de F6 (contrato de rutas 2026-11-04): Inicio, la obra (secciones y subvistas),
+Producción, Auditoría, Precios y la Cuenta. Cada pantalla se abre por su ruta canónica
+(`ruta_canonica`, espejo de `rutaCanonica` de `marco/espacios.ts`) con una obra de la siembra, a
+cada ancho y con cada tamaño de letra, como cada rol. Por pantalla anota: captura, número de h1,
+desplazamiento horizontal, errores de consola y de red, tiempo hasta el primer h1, si el marco se la
+ofrece al rol (enlaces de la barra lateral y de las barras de cada espacio), las barras de pestañas
+que desbordan, que salen de la ventana o repiten un nombre, los botones y enlaces sin nombre
+accesible (sin contar lo que está dentro de un `aria-hidden="true"`, como axe) y, si se puede bajar
+axe-core de un CDN, la revisión de accesibilidad. Además repite Libro y el inicio de Auditoría con
+el recorrido guiado en curso y recorre el flujo de la empresa de hoy (subir un presupuesto y
+auditarlo) contando clics, pantallas y decisiones.
 
-    uv run --active --with playwright python scripts/recorrido_ux_playwright.py \\
-        --salida <carpeta> [--roles admin ana rita] [--anchos 1366 1056] [--sin-axe] [--sin-flujo]
-        [--letras normal,grande,muy-grande] [--sidebar oculto,abierto,fijado]
-        [--rutas auditoria libros ...] [--especiales] [--umbrales] [--url http://127.0.0.1:8501]
+    uv run --no-sync --with playwright python scripts/recorrido_ux_playwright.py \\
+        --salida <carpeta> [--roles admin ana rita] [--anchos 1056,1366,1920]
+        [--letras normal,grande,muy-grande] [--rutas hoja riesgo ...] [--sin-axe] [--sin-flujo]
+        [--sin-recorrido] [--sin-pantallas] [--visor] [--umbrales] [--url http://127.0.0.1:8501]
 
-Plan de módulos (MOD-5): cada pantalla se mide en su módulo (Auditoría, Presupuestos y obras,
-Producción) con cada tamaño de letra (`--letras`, como lo fija `TamanoLetra`) y cada estado del
-sidebar de módulos (`--sidebar oculto,abierto,fijado`: abierto = en capa tras pulsar «Sílice»;
-fijado = la preferencia de la cuenta, que solo se ve desde 1366/1708/2049 px según la letra). Las
-pantallas que el menú del rol no ofrece se miden solo con el sidebar oculto (H-8). Controles:
-`duplicados_nav` (una pantalla repetida en la barra o en el sidebar: 0), `barra_cortada` (la
-cabecera se desborda, algo suyo sale de la ventana, las áreas se montan sobre el lado derecho o un
-texto con puntos suspensivos queda más corto de lo que su propio tope permite), `panel_fuera` (un
-panel de área o el sidebar sale de la ventana, o la barra cedió sus áreas y el sidebar no las
-muestra), `sidebar_tapa` (fijado: el contenido empieza antes del borde derecho del sidebar) y que
-el sidebar sea el esperado. Libro y el inicio de Auditoría se repiten con el recorrido guiado en
-curso para quien puede auditar. La interfaz se sirve desde una copia de `frontend-desktop/dist`.
-
-Medidas aparte (`--especiales`, con `ana`): la mesa de control con datos, sin obras y con un
-bloque en error; el panel de la obra y el diálogo de carpetas sin desplazamiento horizontal; Esc en
-«Buscar obra»; el foco al cerrar los diálogos; la marca «Demostración» en los tres módulos y la
-página de mercado (tabla de observaciones y franja de cifras). Modo `--umbrales`: el menor ancho en
-que la barra de cada módulo cabe, por letra y rol, con la obra de nombre más largo de la siembra
-(su texto recortado por su propio tope), en la carpeta de la empresa y en la de demostración.
+Modo `--umbrales`: por rol y letra, el menor ancho en que caben la barra de arriba y las barras de
+pestañas de cada lugar (la obra en Control de obra, que tiene sección y subvistas; los espacios de
+Producción, Auditoría y Precios; la Cuenta), con la obra de nombre más largo de la siembra.
 
 Modo `--funcional` (BS-F, «que todas las herramientas funcionen»): en vez de medir, ejecuta la
 acción principal de cada pantalla con la cuenta que la puede usar y comprueba el resultado visible.
-Las filas viven en `scripts/recorrido_funcional.toml` (una por pantalla) y cada una entra por el
-sidebar de módulos y el área de su módulo en la barra (o en el sidebar, si la barra no cabe), no
-por dirección; la carpeta y la obra se eligen con el selector de obra de Presupuestos y obras:
+Las filas viven en `scripts/recorrido_funcional.toml` (una por pantalla) y cada una entra como una
+persona, por el marco y no por dirección: la obra en la barra lateral (que fija también su carpeta),
+la sección y la subvista en las barras de la obra; un espacio de la empresa en «Costos y
+producción» y su herramienta en su barra; la Cuenta con el botón de la persona. Una fila con
+carpeta y sin obra entra en una obra de esa carpeta para abrirla (quien no ve obras la abre en
+Cuenta › Carpetas):
 
-    uv run --active --with playwright python scripts/recorrido_ux_playwright.py --funcional \\
+    uv run --no-sync --with playwright python scripts/recorrido_ux_playwright.py --funcional \\
         --salida <carpeta> [--acciones scripts/recorrido_funcional.toml] [--solo componer,catalogo]
+
+F8 (C2) retiró lo que medía el menú de módulos de antes de F6: los estados del sidebar
+(`--sidebar`), los paneles de área de la barra y las medidas aparte del selector de obra y del
+diálogo de carpetas (`--especiales`).
 
 No usa `data/` del árbol ni datos reales; solo libros ficticios (`tests/fixtures/`). Cierra el
 servidor por su PID y el navegador que lanzó; nunca cierra Chrome/Edge por nombre.
@@ -78,6 +76,9 @@ AXE_URL = "https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js"
 ALTO = 768
 ROLES = {"admin": "administra", "ana": "arma", "rita": "revisa"}
 LIMITE_CARGA_MS = 20_000
+# Los anchos de la pasada en navegador del cierre del rediseño (plan de la tanda, F8 C3): el menor
+# para el que se diseña el marco (DESIGN.md), el portátil de la empresa y una pantalla grande.
+ANCHOS = (1056, 1366, 1920)
 # Los tamaños de letra de `frontend-desktop/src/comun/preferenciaDeLetra.ts` y su clave de
 # localStorage.
 LETRAS = ("normal", "grande", "muy-grande")
@@ -92,86 +93,30 @@ AXE_DE_REFERENCIA = {
     ("inicio", "scrollable-region-focusable"),
     ("auditoria", "scrollable-region-focusable"),
 }
-# Estados del sidebar de módulos (diseño de módulos §4 y §12.4) y desde qué ancho puede quedar
-# fijado con cada letra (`$fijado-desde` de `_umbrales.scss`: 1366 px y 1366 × 1,25 y × 1,5).
-SIDEBARS = ("oculto", "abierto", "fijado")
-FIJADO_DESDE = {"normal": 1366, "grande": 1708, "muy-grande": 2049}
-# Ids del armazón (`src/shell/sidebar.ts` y `SelectorObra.tsx`).
-ID_BOTON_SILICE = "silice-boton-modulos"
-ID_SIDEBAR = "silice-sidebar"
-ID_BOTON_OBRA = "silice-boton-obra"
 
 
 def rutas_de_la_interfaz() -> list[dict[str, str | None]]:
-    """Las páginas de `rutas.ts` (id, título, acción, módulo y área), leídas del texto: es la única
-    lista."""
+    """Las páginas de `rutas.ts` (id, título, sección de permisos, acción y módulo activable),
+    leídas del texto: es la única lista."""
     texto = RUTAS_TS.read_text(encoding="utf-8")
     bloque = texto.split("export const PAGINAS", 1)[1].split("export function paginaPorId", 1)[0]
     paginas: list[dict[str, str | None]] = []
-    # Cada entrada se lee campo a campo: el orden de los campos (y los que se agreguen, como
-    # `enUnaLinea`) no importa. `ubicacion: en("<modulo>", "<area>")` o `null`.
+    # Cada entrada se lee campo a campo: el orden de los campos no importa.
     for entrada in re.findall(r"\{([^{}]*?\bid:\s*\"[^\"]+\"[^{}]*?)\}", bloque):
         campos = dict(re.findall(r'(\w+):\s*"([^"]*)"', entrada))
         accion = re.search(r"\baccion:\s*(null|\"[^\"]*\")", entrada)
         if "id" not in campos or "titulo" not in campos or accion is None:
             continue
-        ubicacion = re.search(r'\bubicacion:\s*en\(\s*"(\w+)",\s*"(\w+)"\s*\)', entrada)
         paginas.append(
             {
                 "id": campos["id"],
                 "titulo": campos["titulo"],
                 "seccion": campos.get("seccion"),
                 "accion": None if accion[1] == "null" else accion[1].strip('"'),
-                "modulo": ubicacion[1] if ubicacion else None,
-                "area": ubicacion[2] if ubicacion else None,
+                "modulo": campos.get("modulo"),
             }
         )
     return paginas
-
-
-def modulos_de_la_interfaz() -> dict[str, dict[str, Any]]:
-    """Los módulos de `rutas.ts` en su orden, con su título y sus áreas (id → título)."""
-    texto = RUTAS_TS.read_text(encoding="utf-8")
-    bloque = texto.split("export const MODULOS", 1)[1].split("export interface PaginaDef", 1)[0]
-    modulos: dict[str, dict[str, Any]] = {}
-    patron = r'id:\s*"(\w+)",\s*titulo:\s*"([^"]+)",\s*enUnaLinea:\s*"[^"]*",\s*areas:\s*\[(.*?)\]'
-    for id_, titulo, areas in re.findall(patron, bloque, flags=re.DOTALL):
-        modulos[id_] = {
-            "titulo": titulo,
-            "areas": dict(re.findall(r'\{\s*id:\s*"(\w+)",\s*titulo:\s*"([^"]+)"\s*\}', areas)),
-        }
-    return modulos
-
-
-def fijado_posible(ancho: int, letra: str) -> bool:
-    """Si con ese ancho y esa letra el sidebar puede quedar fijado (si no, es como oculto)."""
-    return ancho >= FIJADO_DESDE[letra]
-
-
-def sidebar_esperado(estado: str, ancho: int, letra: str) -> str | None:
-    """Cómo debe verse el sidebar en cada estado medido: `capa`, `fijado` o ninguno (`None`)."""
-    if estado == "abierto":
-        return "capa"
-    if estado == "fijado" and fijado_posible(ancho, letra):
-        return "fijado"
-    return None
-
-
-def camino_por_menu(id_: str) -> dict[str, Any]:
-    """Cómo llega una persona a la pantalla: módulo en el sidebar, área en la barra y la pantalla
-    (o, fuera de los módulos, la entrada del pie del sidebar)."""
-    pagina = next((r for r in rutas_de_la_interfaz() if r["id"] == id_), None)
-    if pagina is None:
-        raise ValueError(f"no hay pantalla «{id_}» en rutas.ts")
-    if pagina["modulo"] is None:
-        return {"modulo": None, "area": None, "pantalla": pagina["titulo"], "inicio": False}
-    modulo = modulos_de_la_interfaz()[pagina["modulo"]]
-    return {
-        "modulo": modulo["titulo"],
-        "area": modulo["areas"][pagina["area"]],
-        "pantalla": pagina["titulo"],
-        "inicio": pagina["area"] == "inicio",
-    }
 
 
 # --------------------------- rutas canónicas (F6) -----------------------------------------------
@@ -181,7 +126,7 @@ def camino_por_menu(id_: str) -> dict[str, Any]:
 
 # Una entrada `{ id: "…", titulo: "…", pagina: "…" | null` de las tablas de `espacios.ts` y de
 # `secciones.ts`.
-_ENTRADA_DEL_MARCO = r'\{\s*id:\s*"([^"]*)",\s*titulo:\s*"[^"]*",\s*pagina:\s*(?:"([^"]*)"|null)'
+_ENTRADA_DEL_MARCO = r'\{\s*id:\s*"([^"]*)",\s*titulo:\s*"([^"]*)",\s*pagina:\s*(?:"([^"]*)"|null)'
 # La pantalla de la Vista general (`rutaCanonica`: `paginaId === "inicio"`).
 PAGINA_DE_LA_VISTA_GENERAL = "inicio"
 # Así se escribe la carpeta de la empresa en `/obra/<carpeta>/…` (`secciones.ts`).
@@ -198,7 +143,7 @@ def _bloque_ts(texto: str, desde: str, hasta: str, archivo: Path) -> str:
 def mapa_del_marco() -> dict[str, Any]:
     """Dónde vive cada pantalla: `obra` (pantalla → sección), `subvista` (pantalla → sección y
     segmento), `espacio` (pantalla → espacio y segmento), `cuenta` (pantalla → su primera sección
-    de la Cuenta) y la ruta de la Vista general."""
+    de la Cuenta), la ruta de la Vista general y los títulos con que se ven en las barras."""
     espacios = ESPACIOS_TS.read_text(encoding="utf-8")
     secciones = SECCIONES_TS.read_text(encoding="utf-8")
     vista = re.search(r'RUTA_DE_VISTA_GENERAL\s*=\s*"([^"]+)"', secciones)
@@ -207,27 +152,35 @@ def mapa_del_marco() -> dict[str, Any]:
     de_obra = _bloque_ts(
         secciones, "export const SECCIONES_DE_OBRA", "export function seccionPorId", SECCIONES_TS
     )
-    obra = {pagina: id_ for id_, pagina in re.findall(_ENTRADA_DEL_MARCO, de_obra) if pagina}
+    entradas_de_obra = re.findall(_ENTRADA_DEL_MARCO, de_obra)
+    obra = {pagina: id_ for id_, _, pagina in entradas_de_obra if pagina}
+    titulo_de_seccion = {id_: titulo for id_, titulo, _ in entradas_de_obra}
     subvista: dict[str, tuple[str, str]] = {}
+    titulo_de_subvista: dict[tuple[str, str], str] = {}
     bloque = _bloque_ts(
         espacios, "export const SUBVISTAS", "export function subvistaDeLaPagina", ESPACIOS_TS
     )
     for seccion, vistas in re.findall(r"(\w+):\s*\[(.*?)\]", bloque, flags=re.DOTALL):
-        for id_, pagina in re.findall(_ENTRADA_DEL_MARCO, vistas):
+        for id_, titulo, pagina in re.findall(_ENTRADA_DEL_MARCO, vistas):
+            titulo_de_subvista[(seccion, id_)] = titulo
             if id_ and pagina:
                 subvista[pagina] = (seccion, id_)
     espacio: dict[str, tuple[str, str]] = {}
+    titulo_de_espacio: dict[str, str] = {}
+    titulo_de_herramienta: dict[tuple[str, str], str] = {}
     bloque = _bloque_ts(espacios, "export const ESPACIOS:", "export const SUBVISTAS", ESPACIOS_TS)
-    patron = r'(\w+):\s*\{\s*titulo:\s*"[^"]*",\s*herramientas:\s*\[(.*?)\]'
-    for nombre, herramientas in re.findall(patron, bloque, flags=re.DOTALL):
-        for id_, pagina in re.findall(_ENTRADA_DEL_MARCO, herramientas):
+    patron = r'(\w+):\s*\{\s*titulo:\s*"([^"]*)",\s*herramientas:\s*\[(.*?)\]'
+    for nombre, titulo_espacio, herramientas in re.findall(patron, bloque, flags=re.DOTALL):
+        titulo_de_espacio[nombre] = titulo_espacio
+        for id_, titulo, pagina in re.findall(_ENTRADA_DEL_MARCO, herramientas):
             espacio[pagina] = (nombre, id_)
+            titulo_de_herramienta[(nombre, id_)] = titulo
     bloque = _bloque_ts(
         espacios, "export const SECCIONES_DE_CUENTA", "export function esCuenta", ESPACIOS_TS
     )
     secciones_de_cuenta = re.findall(_ENTRADA_DEL_MARCO, bloque)
     cuenta: dict[str, str] = {}
-    for id_, pagina in secciones_de_cuenta:
+    for id_, _, pagina in secciones_de_cuenta:
         if pagina:
             cuenta.setdefault(pagina, id_)
     return {
@@ -236,8 +189,21 @@ def mapa_del_marco() -> dict[str, Any]:
         "subvista": subvista,
         "espacio": espacio,
         "cuenta": cuenta,
-        "secciones_de_cuenta": dict(secciones_de_cuenta),
+        "secciones_de_cuenta": {id_: pagina for id_, _, pagina in secciones_de_cuenta},
+        "titulos": {
+            "seccion": titulo_de_seccion,
+            "subvista": titulo_de_subvista,
+            "espacio": titulo_de_espacio,
+            "herramienta": titulo_de_herramienta,
+            "cuenta": {id_: titulo for id_, titulo, _ in secciones_de_cuenta},
+        },
     }
+
+
+def _segmento_de_carpeta(carpeta: str | None) -> str:
+    if carpeta is None:
+        return SEGMENTO_DE_LA_EMPRESA
+    return urllib.parse.quote(carpeta, safe="!~*'()")  # como encodeURIComponent
 
 
 def ruta_canonica(id_: str, obra: tuple[str | None, int] | None = None) -> str:
@@ -258,12 +224,7 @@ def ruta_canonica(id_: str, obra: tuple[str | None, int] | None = None) -> str:
         if obra is None:
             return f"/{id_}"
         carpeta, obra_id = obra
-        segmento = (
-            SEGMENTO_DE_LA_EMPRESA
-            if carpeta is None
-            else urllib.parse.quote(carpeta, safe="!~*'()")  # como encodeURIComponent
-        )
-        base = f"/obra/{segmento}/{obra_id}/{seccion}"
+        base = f"/obra/{_segmento_de_carpeta(carpeta)}/{obra_id}/{seccion}"
         return f"{base}/{subvista}" if subvista else base
     if id_ in mapa["espacio"]:
         nombre, herramienta = mapa["espacio"][id_]
@@ -273,9 +234,14 @@ def ruta_canonica(id_: str, obra: tuple[str | None, int] | None = None) -> str:
     return f"/{id_}"
 
 
-def hash_de(id_: str) -> str:
+def es_de_la_obra(id_: str) -> bool:
+    mapa = mapa_del_marco()
+    return id_ in mapa["obra"] or id_ in mapa["subvista"]
+
+
+def hash_de(id_: str, obra: tuple[str | None, int] | None = None) -> str:
     """El `location.hash` con que se abre la pantalla (sin obra: la de la sesión)."""
-    return "#" + ruta_canonica(id_)
+    return "#" + ruta_canonica(id_, obra)
 
 
 def patron_de_hash(id_: str) -> str:
@@ -283,8 +249,7 @@ def patron_de_hash(id_: str) -> str:
     abierta, con o sin consulta: la de la obra, con cualquier carpeta y obra (su dirección corta
     redirige a la obra de la sesión)."""
     consulta = r"(?:\?.*)?$"
-    mapa = mapa_del_marco()
-    if id_ in mapa["obra"] or id_ in mapa["subvista"]:
+    if es_de_la_obra(id_):
         cola = ruta_canonica(id_, ("x", 0)).split("/", 4)[4]
         return r"^#/obra/[^/?#]+/\d+/" + re.escape(cola) + consulta
     return "^" + re.escape(hash_de(id_)) + consulta
@@ -292,11 +257,11 @@ def patron_de_hash(id_: str) -> str:
 
 def pagina_de_la_ruta(enlace: str) -> str | None:
     """La pantalla a la que lleva un enlace (`href` o `location.hash`), o `None` si no lleva a una
-    pantalla del registro (Pendientes, «Pantalla y tamaño de letra», un segmento desconocido)."""
+    pantalla del registro (Pendientes, «Pantalla y tamaño de letra», un segmento desconocido o una
+    dirección vieja que F8 retiró, como `#/catalogo`)."""
     ruta = enlace.split("#", 1)[1] if "#" in enlace else enlace
     partes = [p for p in ruta.split("?", 1)[0].split("/") if p]
     mapa = mapa_del_marco()
-    ids = {r["id"] for r in rutas_de_la_interfaz()}
     if "/" + "/".join(partes) == mapa["vista_general"]:
         return PAGINA_DE_LA_VISTA_GENERAL
     if len(partes) in (4, 5) and partes[0] == "obra":
@@ -308,9 +273,82 @@ def pagina_de_la_ruta(enlace: str) -> str | None:
         return mapa["secciones_de_cuenta"].get(partes[1]) or None
     if len(partes) == 2:
         return next((p for p, e in mapa["espacio"].items() if e == tuple(partes)), None)
-    if len(partes) == 1 and partes[0] in ids and partes[0] != PAGINA_DE_LA_VISTA_GENERAL:
+    # Solo las pantallas de la obra conservan su dirección corta (contrato 2.4, enmienda de F8).
+    if len(partes) == 1 and es_de_la_obra(partes[0]):
         return partes[0]
     return None
+
+
+def obra_de_la_direccion(enlace: str) -> tuple[str | None, int] | None:
+    """La obra (carpeta, id) de una dirección `#/obra/<carpeta>/<obra>/…`, o `None`."""
+    ruta = enlace.split("#", 1)[1] if "#" in enlace else enlace
+    partes = [p for p in ruta.split("?", 1)[0].split("/") if p]
+    if len(partes) < 3 or partes[0] != "obra" or not partes[2].isdigit():
+        return None
+    carpeta = urllib.parse.unquote(partes[1])
+    return (None if carpeta == SEGMENTO_DE_LA_EMPRESA else carpeta, int(partes[2]))
+
+
+# --------------------------- cómo llega una persona (F6) ----------------------------------------
+
+
+def camino_por_el_marco(id_: str) -> list[dict[str, str]]:
+    """Los clics con que una persona llega a la pantalla en el marco de F6. Cada paso dice dónde se
+    pulsa: `lateral` (la barra lateral: «Vista general», la obra elegida —`nombre` «obra»— o un
+    espacio de «Costos y producción»), `cuenta` (el botón de la persona en la barra de arriba) o
+    `barra` (la barra de pestañas cuyo nombre accesible es `barra`), y el texto del enlace. La obra
+    abre su Resumen y la Cuenta su primera sección; un espacio, su primera herramienta usable, y se
+    pulsa siempre su pestaña."""
+    if id_ not in {r["id"] for r in rutas_de_la_interfaz()}:
+        raise ValueError(f"no hay pantalla «{id_}» en rutas.ts")
+    mapa = mapa_del_marco()
+    titulos = mapa["titulos"]
+    if id_ == PAGINA_DE_LA_VISTA_GENERAL:
+        return [{"donde": "lateral", "nombre": "Vista general"}]
+    if es_de_la_obra(id_):
+        camino = [{"donde": "lateral", "nombre": "obra"}]
+        seccion, subvista = mapa["obra"].get(id_), None
+        if seccion is None:
+            seccion, subvista = mapa["subvista"][id_]
+        titulo = titulos["seccion"][seccion]
+        if seccion != "resumen":
+            camino.append({"donde": "barra", "barra": "Secciones de la obra", "nombre": titulo})
+        if subvista:
+            nombre = titulos["subvista"][(seccion, subvista)]
+            camino.append({"donde": "barra", "barra": f"Vistas de {titulo}", "nombre": nombre})
+        return camino
+    if id_ in mapa["espacio"]:
+        espacio, herramienta = mapa["espacio"][id_]
+        titulo = titulos["espacio"][espacio]
+        return [
+            {"donde": "lateral", "nombre": titulo},
+            {
+                "donde": "barra",
+                "barra": titulo,
+                "nombre": titulos["herramienta"][(espacio, herramienta)],
+            },
+        ]
+    seccion = mapa["cuenta"][id_]
+    return [
+        {"donde": "cuenta", "nombre": "Cuenta"},
+        {
+            "donde": "barra",
+            "barra": "Secciones de la cuenta",
+            "nombre": titulos["cuenta"][seccion],
+        },
+    ]
+
+
+def obra_para(
+    obras: list[dict[str, Any]], carpeta: str | None, nombre: str | None
+) -> dict[str, Any] | None:
+    """La obra de `GET /v1/obras/todas` con que se recorre: la de esa carpeta (None, la de la
+    empresa) cuyo nombre es `nombre` o, sin nombre, la primera de la carpeta. Un nombre que no
+    está en la carpeta da `None`: no se cambia por otra obra."""
+    de_la_carpeta = [o for o in obras if o.get("carpeta") == carpeta]
+    if nombre is None:
+        return de_la_carpeta[0] if de_la_carpeta else None
+    return next((o for o in de_la_carpeta if o.get("obra") == nombre), None)
 
 
 def umbral_medido(caben: dict[int, bool]) -> float | None:
@@ -453,11 +491,132 @@ MEDIR_JS = """() => {
     scroll_x: de.scrollWidth > de.clientWidth,
     scroll_width: de.scrollWidth, client_width: de.clientWidth,
     alto: de.scrollHeight, desbordan: fuera,
-    en_menu: [...document.querySelectorAll('nav a, aside a')]
-      .map(a => a.getAttribute('href') || ''),
+    letra_aplicada: de.dataset.siliceLetra || null,
+    hash: location.hash,
     texto: (document.body.innerText || '').slice(0, 200),
   };
 }"""
+
+
+# Las barras del marco de F6 sobre la pantalla ya cargada: la barra de arriba
+# (`header.silice-marco-barra`), la barra lateral y cada barra de pestañas de un espacio
+# (`nav.silice-barra-espacio`: secciones de la obra, vistas de una sección, herramientas de un
+# espacio, secciones de la Cuenta). Por barra: si desborda (su contenido es más ancho que ella), qué
+# pestañas salen de la ventana y qué nombres se repiten. Un texto con puntos suspensivos cuenta como
+# recortado si queda más corto que su propio tope (`max-inline-size`); recortado por su tope es a
+# propósito. Chromium guarda las medidas en unidades de 1/64 px: las dos comparaciones del recorte
+# toleran esa diferencia (un recorte real mide décimas).
+TOLERANCIA_SUBPIXEL = 0.05
+BARRAS_JS = """() => {
+  const de = document.documentElement, ancho = de.clientWidth;
+  const limpio = t => (t || '').replace(/\\s+/g, ' ').trim();
+  const visible = el => { if (!el) return false; const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
+  const caja = r => [r.left, r.top, r.right, r.bottom].map(Math.round);
+  const recortes = raiz => {
+    const salida = [];
+    for (const el of raiz.querySelectorAll('*')) {
+      if (!visible(el)) continue;
+      const cs = getComputedStyle(el);
+      if (cs.textOverflow !== 'ellipsis') continue;
+      const rango = document.createRange();
+      rango.selectNodeContents(el);
+      const texto = rango.getBoundingClientRect().width;
+      const caja = el.getBoundingClientRect().width;
+      const relleno = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+        + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+      if (texto <= caja - relleno + __TOL__) continue;
+      const tope = cs.maxWidth.endsWith('px') ? parseFloat(cs.maxWidth) : Infinity;
+      const medida = cs.boxSizing === 'border-box' ? caja : caja - relleno;
+      if (medida >= tope - __TOL__) continue;
+      salida.push('«' + limpio(el.textContent).slice(0, 30) + '» recortado a '
+        + (caja - relleno).toFixed(1) + ' de ' + texto.toFixed(1) + ' px');
+    }
+    return salida;
+  };
+  const medir = (el, nombre) => {
+    const enlaces = [...el.querySelectorAll('a, button')].filter(visible);
+    const nombres = enlaces.map(a => limpio(a.textContent)).filter(Boolean);
+    const cuenta = {};
+    for (const n of nombres) cuenta[n] = (cuenta[n] || 0) + 1;
+    return {
+      barra: nombre,
+      desborda: el.scrollWidth > el.clientWidth + 1,
+      fuera: enlaces.filter(a => { const r = a.getBoundingClientRect();
+        return r.right > ancho + 1 || r.left < -1; }).map(a => limpio(a.textContent).slice(0, 40)),
+      repetidas: Object.entries(cuenta).filter(([, k]) => k > 1).map(([n, k]) => n + ' x' + k),
+      recortes: recortes(el),
+      caja: caja(el.getBoundingClientRect()),
+    };
+  };
+  const barras = [];
+  const arriba = document.querySelector('header.silice-marco-barra');
+  if (arriba) barras.push(medir(arriba, 'Barra de arriba'));
+  const lateral = document.querySelector('aside.silice-marco-lateral');
+  if (lateral) {
+    const m = medir(lateral, 'Barra lateral');
+    // La barra lateral lista las obras: sus nombres pueden repetirse (homónimas en dos carpetas).
+    m.repetidas = [];
+    barras.push(m);
+  }
+  for (const nav of document.querySelectorAll('nav.silice-barra-espacio'))
+    if (visible(nav)) barras.push(medir(nav, nav.getAttribute('aria-label') || 'barra sin nombre'));
+  return barras;
+}""".replace("__TOL__", str(TOLERANCIA_SUBPIXEL))
+
+
+# Los controles de la pantalla (botones, enlaces y lo que hace de botón) con su nombre accesible
+# aproximado (aria-label, aria-labelledby, el texto, el `alt` de una imagen, `title` o el valor de
+# un botón de formulario), si están a la vista y si cuelgan de un `aria-hidden="true"`: axe no
+# revisa lo que el árbol de accesibilidad no expone, y este detector tampoco (`sin_nombre`).
+CONTROLES_JS = """() => {
+  const limpio = t => (t || '').replace(/\\s+/g, ' ').trim();
+  const nombre = el => {
+    const etiqueta = el.getAttribute('aria-label');
+    if (limpio(etiqueta)) return limpio(etiqueta);
+    const ids = (el.getAttribute('aria-labelledby') || '').split(/\\s+/).filter(Boolean);
+    const de = ids.map(i => {
+      const r = document.getElementById(i); return r ? r.textContent : ''; });
+    if (limpio(de.join(' '))) return limpio(de.join(' '));
+    if (limpio(el.textContent)) return limpio(el.textContent);
+    const img = el.querySelector('img[alt], [role="img"][aria-label]');
+    if (img && limpio(img.getAttribute('alt') || img.getAttribute('aria-label')))
+      return limpio(img.getAttribute('alt') || img.getAttribute('aria-label'));
+    if (limpio(el.getAttribute('title'))) return limpio(el.getAttribute('title'));
+    if (el.tagName === 'INPUT') return limpio(el.value);
+    return '';
+  };
+  const selector = 'button, a[href], [role="button"], [role="link"], input[type="button"],'
+    + ' input[type="submit"]';
+  return [...document.querySelectorAll(selector)].map(el => {
+    const r = el.getBoundingClientRect();
+    return {
+      rol: el.getAttribute('role') || (el.tagName === 'A' ? 'link' : 'button'),
+      nombre: nombre(el),
+      oculto: el.closest('[aria-hidden="true"]') !== null,
+      visible: r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden',
+      html: el.outerHTML.slice(0, 120),
+    };
+  });
+}"""
+
+
+def sin_nombre(controles: list[dict[str, Any]]) -> list[str]:
+    """Los botones y enlaces a la vista sin nombre accesible. Lo que cuelga de un
+    `aria-hidden="true"` (un portal cerrado de Carbon, un icono decorativo) se salta, como axe."""
+    return [
+        f"{c['rol']} {c['html']}"
+        for c in controles
+        if c.get("visible") and not c.get("oculto") and not str(c.get("nombre", "")).strip()
+    ]
+
+
+def _ir_y_esperar(pagina: Any, base: str, ruta: str) -> None:
+    """`ruta` es el id de la pantalla; se abre su ruta canónica."""
+    pagina.goto(f"{base}/app/{hash_de(ruta)}", wait_until="domcontentloaded")
+    pagina.wait_for_selector("main h1:not([data-esqueleto])", timeout=LIMITE_CARGA_MS)
+    with contextlib.suppress(Exception):
+        pagina.wait_for_load_state("networkidle", timeout=4000)
 
 
 API_JS = """async ([metodo, ruta, cuerpo]) => {
@@ -487,230 +646,6 @@ def api_del_contexto(contexto: Any, base: str, metodo: str, ruta: str, cuerpo: A
     finally:
         pagina.close()
 
-
-def fijar_sidebar_de_la_cuenta(contexto: Any, base: str, fijado: bool) -> None:
-    """La preferencia `sidebar_fijado` de la cuenta (la lee el armazón al cargar)."""
-    r = api_del_contexto(
-        contexto, base, "PUT", "/v1/sesion/preferencias", {"sidebar_fijado": fijado}
-    )
-    if r["estado"] != 204:
-        raise RuntimeError(f"no se pudo guardar sidebar_fijado={fijado}: {r}")
-
-
-def abrir_sidebar(pagina: Any) -> None:
-    """Pulsa «Sílice» si el sidebar no está a la vista (en capa o fijado) y espera a verlo."""
-    lado = pagina.locator(f"#{ID_SIDEBAR}")
-    if lado.count() and lado.first.is_visible():
-        return
-    pagina.locator(f"#{ID_BOTON_SILICE}").click(timeout=LIMITE_PASO_MS)
-    lado.first.wait_for(state="visible", timeout=LIMITE_PASO_MS)
-
-
-def _hrefs(pagina: Any, selector: str) -> list[str]:
-    hrefs = pagina.eval_on_selector_all(
-        selector, "els => els.map(a => a.getAttribute('href') || '')"
-    )
-    # Desde F6 un enlace lleva a `#/<espacio>/<segmento>`, a la Cuenta o a la obra: se traduce a la
-    # pantalla del registro (los que no llevan a una, como Pendientes, se descartan).
-    return [p for h in hrefs if h and (p := pagina_de_la_ruta(h)) is not None]
-
-
-def ids_del_menu(contexto: Any, base: str) -> set[str]:
-    """Las pantallas que el menú ofrece a la sesión de este contexto, leídas como las encuentra una
-    persona: los módulos y el pie del sidebar y, módulo por módulo, sus áreas (la sección «Áreas de
-    …» del sidebar lista las mismas pantallas que la barra)."""
-    pagina = contexto.new_page()
-    pagina.set_viewport_size({"width": 1366, "height": ALTO})
-    pagina.goto(f"{base}/app/{hash_de(PAGINA_DE_LA_VISTA_GENERAL)}", wait_until="domcontentloaded")
-    pagina.wait_for_selector("main h1", timeout=LIMITE_CARGA_MS)
-    abrir_sidebar(pagina)
-    inicios = _hrefs(pagina, f"#{ID_SIDEBAR} a.silice-sidebar__modulo")
-    ids = set(inicios) | set(_hrefs(pagina, f"#{ID_SIDEBAR} .silice-sidebar__pie a"))
-    for inicio in inicios:
-        ir_por_hash(pagina, inicio)
-        abrir_sidebar(pagina)
-        ids |= set(_hrefs(pagina, f"#{ID_SIDEBAR} .silice-sidebar__areas a"))
-    pagina.close()
-    return ids
-
-
-# Por qué la barra no cabe (vacío si cabe), con la navegación medida (`nav`) o sin ella (`null`, la
-# barra ya cedió sus áreas). Va dentro de `NAV_JS` y de `CABE_JS` (la medida de umbrales):
-# Playwright evalúa una sola función.
-# Chromium guarda las medidas en unidades de 1/64 px (18,6667 px queda en 18,65625; 10 rem, en
-# 186,656): las dos comparaciones del recorte, contra el hueco de la caja y contra su tope, toleran
-# esa diferencia. Un recorte real mide décimas de píxel.
-TOLERANCIA_SUBPIXEL = 0.05
-MOTIVOS_DE_CORTE_JS = """function motivosDeCorte(header, nav) {
-  const de = document.documentElement, ancho = de.clientWidth;
-  const limpio = t => (t || '').replace(/\\s+/g, ' ').trim();
-  const caja = r => [r.left, r.top, r.right, r.bottom].map(Math.round);
-  const visible = el => { if (!el) return false; const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
-  const motivos = [];
-  if (!header) motivos.push('sin cabecera');
-  else {
-    if (header.scrollWidth > header.clientWidth + 1)
-      motivos.push('scrollWidth ' + header.scrollWidth + ' > clientWidth ' + header.clientWidth);
-    for (const el of header.querySelectorAll('a, button')) {
-      if (!visible(el) || el.closest('.silice-panel-area')) continue;
-      const r = el.getBoundingClientRect();
-      if (r.right > ancho + 1 || r.left < -1)
-        motivos.push(limpio(el.getAttribute('aria-label') || el.textContent).slice(0, 40)
-          + ' fuera ' + caja(r));
-    }
-    for (const el of header.querySelectorAll('a, button')) {
-      if (!visible(el) || el.closest('.silice-panel-area')) continue;
-      // Solo el área actual tiene holgura: su raya (::after) sobresale 2 px a propósito.
-      const holgura = el.classList.contains('silice-barra__area--actual') ? 2 : 0;
-      if (getComputedStyle(el).overflowX === 'visible' && el.scrollWidth > el.clientWidth + holgura)
-        motivos.push('«' + limpio(el.textContent).slice(0, 30) + '» se sale de su botón ('
-          + el.scrollWidth + ' de ' + el.clientWidth + ' px)');
-    }
-    for (const el of header.querySelectorAll('*')) {
-      if (!visible(el) || el.closest('.silice-panel-area')) continue;
-      const cs = getComputedStyle(el);
-      if (cs.textOverflow !== 'ellipsis') continue;
-      // Sin holgura y en fracciones de píxel: el ancho del texto (un Range da su caja completa,
-      // aunque la vista lo corte) frente al hueco de contenido de su caja. Recortado por su propio
-      // tope (`max-inline-size`) es a propósito y no cuenta.
-      const rango = document.createRange();
-      rango.selectNodeContents(el);
-      const texto = rango.getBoundingClientRect().width;
-      const caja = el.getBoundingClientRect().width;
-      const relleno = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
-        + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
-      // TOLERANCIA_SUBPIXEL: Chromium guarda el relleno en unidades de 1/64 px (18,6667 px queda en
-      // 18,65625) y la resta sale hasta 0,02 px corta con el texto entero; un recorte real mide
-      // décimas.
-      if (texto <= caja - relleno + __TOL__) continue;
-      const tope = cs.maxWidth.endsWith('px') ? parseFloat(cs.maxWidth) : Infinity;
-      const medida = cs.boxSizing === 'border-box' ? caja : caja - relleno;
-      if (medida >= tope - __TOL__) continue;
-      motivos.push('«' + limpio(el.textContent).slice(0, 30) + '» recortado a '
-        + (caja - relleno).toFixed(1) + ' de ' + texto.toFixed(1) + ' px');
-    }
-    const global = header.querySelector('.cds--header__global');
-    const items = nav ? [...nav.querySelectorAll('.silice-barra__item')] : [];
-    if (global && items.length) {
-      const hijos = [...global.children].filter(visible);
-      const borde = Math.min(...hijos.map(h => h.getBoundingClientRect().left));
-      const ultimo = items[items.length - 1].getBoundingClientRect();
-      if (ultimo.right > borde + 1) motivos.push('las áreas se montan sobre el lado derecho');
-    }
-  }
-  return motivos;
-}""".replace("__TOL__", str(TOLERANCIA_SUBPIXEL))
-
-
-# Controles de la barra superior y del sidebar de módulos sobre la pantalla ya cargada. Abre cada
-# área con su botón (el mismo `onClick` de React que un clic), mide su panel y lo cierra. Si la
-# barra cedió sus áreas (umbral del módulo y la letra), abre el sidebar con «Sílice» y comprueba
-# que las muestra. Las listas de nombres (barra y sidebar) se revisan por separado: cada pantalla
-# debe salir una sola vez en cada una. Un texto con puntos suspensivos de la cabecera cuenta como
-# barra cortada si queda más corto que su propio tope (el nombre de la obra se recorta a 18 rem a
-# propósito; más corto es que la barra lo aprieta).
-NAV_JS = (
-    """async ({paneles}) => {
-"""
-    + MOTIVOS_DE_CORTE_JS
-    + """
-  const cuadros = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-  const de = document.documentElement, ancho = de.clientWidth, alto = window.innerHeight;
-  const limpio = t => (t || '').replace(/\\s+/g, ' ').trim();
-  const caja = r => [r.left, r.top, r.right, r.bottom].map(Math.round);
-  const dentro = r => r.left >= -1 && r.top >= -1 && r.right <= ancho + 1 && r.bottom <= alto + 1;
-  const visible = el => { if (!el) return false; const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
-  const repetidos = nombres => { const c = {};
-    for (const n of nombres) c[n] = (c[n] || 0) + 1;
-    return Object.entries(c).filter(([, k]) => k > 1).map(([n, k]) => n + ' x' + k); };
-  const header = document.querySelector('header.silice-barra');
-  const nav = header && header.querySelector('nav[aria-label="Menú principal"]');
-  const marco = document.querySelector('.silice-marco');
-  const modulo = header && header.querySelector('.silice-barra__modulo');
-  const s = { letra_aplicada: de.dataset.siliceLetra || null,
-    modulo: marco ? (marco.dataset.modulo || null) : null,
-    modulo_titulo: modulo ? limpio(modulo.textContent) : null,
-    modo_nav: visible(nav) ? 'barra' : 'sidebar' };
-  const motivos = motivosDeCorte(header, s.modo_nav === 'barra' ? nav : null);
-  s.barra_cortada = motivos.length > 0;
-  s.barra_motivos = motivos.slice(0, 4);
-  const nombresBarra = [], panelesMedidos = [];
-  if (s.modo_nav === 'barra') {
-    for (const a of nav.querySelectorAll('li.silice-barra__item > a'))
-      nombresBarra.push(limpio(a.textContent));
-    for (const b of nav.querySelectorAll('button.silice-barra__area')) {
-      const area = limpio(b.textContent);
-      nombresBarra.push(area);
-      if (!paneles) continue;
-      if (b.getAttribute('aria-expanded') !== 'true') b.click();
-      await cuadros();
-      const panel = document.getElementById(b.getAttribute('aria-controls') || '');
-      if (!panel) { panelesMedidos.push({ area, abierto: false, dentro: false }); continue; }
-      const r = panel.getBoundingClientRect();
-      panelesMedidos.push({ area, abierto: true, dentro: dentro(r), caja: caja(r),
-        columnas: getComputedStyle(panel.querySelector('ul')).gridTemplateColumns
-          .split(' ').length });
-      for (const t of panel.querySelectorAll('.silice-panel-area__titulo'))
-        nombresBarra.push(limpio(t.textContent));
-    }
-    const abierto = nav.querySelector('button.silice-barra__area[aria-expanded="true"]');
-    if (abierto) { abierto.click(); await cuadros(); }
-  }
-  s.paneles = panelesMedidos;
-  // Sidebar: como estaba al cargar (capa, fijado o ninguno) y, si hace falta, abierto con «Sílice».
-  const boton = document.getElementById('silice-boton-modulos');
-  let lado = document.getElementById('silice-sidebar');
-  s.sidebar_modo = lado ? (lado.getAttribute('role') === 'dialog' ? 'capa' : 'fijado') : null;
-  const main = document.querySelector('main#contenido');
-  s.sidebar_tapa = false;
-  if (s.sidebar_modo === 'fijado' && main) {
-    const rl = lado.getBoundingClientRect(), rm = main.getBoundingClientRect();
-    s.sidebar_tapa = rm.left < rl.right - 1;
-    s.sidebar_caja = caja(rl);
-    s.main_caja = caja(rm);
-  }
-  let abiertoAqui = false;
-  if (!lado && boton && visible(boton)) {
-    boton.click();
-    for (let i = 0; i < 20 && !document.getElementById('silice-sidebar'); i++) await cuadros();
-    lado = document.getElementById('silice-sidebar');
-    abiertoAqui = Boolean(lado);
-  }
-  const nombresLado = [], ladoMal = [];
-  if (!lado) ladoMal.push('sin sidebar');
-  else {
-    const r = lado.getBoundingClientRect();
-    if (!(r.left >= -1 && r.right <= ancho + 1 && r.top >= -1 && r.bottom <= alto + 1))
-      ladoMal.push('sidebar fuera ' + caja(r));
-    const salen = [...lado.querySelectorAll('a, button')].filter(visible).filter(e => {
-      const q = e.getBoundingClientRect(); return q.left < r.left - 1 || q.right > r.right + 1; });
-    if (salen.length) ladoMal.push(salen.length + ' enlaces salen del sidebar');
-    const areas = lado.querySelector('.silice-sidebar__areas');
-    s.areas_en_sidebar = visible(areas);
-    if (s.modo_nav === 'sidebar' && areas && !s.areas_en_sidebar)
-      ladoMal.push('la barra cedió sus áreas y el sidebar no las muestra');
-    for (const e of lado.querySelectorAll('.silice-sidebar__nombre, .silice-sidebar__rotulo-area,'
-        + ' .silice-sidebar__titulo, .silice-sidebar__enlace'))
-      nombresLado.push(limpio(e.textContent));
-    s.sidebar_ancho = Math.round(r.width);
-  }
-  if (abiertoAqui) {
-    boton.click();
-    for (let i = 0; i < 20 && document.getElementById('silice-sidebar'); i++) await cuadros();
-  }
-  const fueraPaneles = panelesMedidos.filter(p => !p.dentro).map(p => p.area);
-  s.panel_fuera = fueraPaneles.length > 0 || ladoMal.length > 0;
-  s.paneles_fuera = fueraPaneles.concat(ladoMal);
-  const dupBarra = repetidos(nombresBarra), dupLado = repetidos(nombresLado);
-  s.duplicados_nav = dupBarra.length + dupLado.length;
-  s.duplicados_detalle = { barra: dupBarra, sidebar: dupLado };
-  s.nombres_barra = nombresBarra.length;
-  s.nombres_sidebar = nombresLado.length;
-  return s;
-}"""
-)
 
 # La columna «Recorrido» con un recorrido guiado en curso: a la vista, dentro de la ventana y sin
 # tapar el contenido (columna fija a la derecha, o franja bajo la barra por debajo del umbral).
@@ -759,13 +694,9 @@ def _escuchar(pagina: Any, consola: list[str], red: list[str]) -> None:
     pagina.on("requestfailed", al_fallar)
 
 
-def _medir_cargada(
-    pagina: Any, fila: dict[str, Any], axe: str | None, captura: Path, paneles: bool = True
-) -> None:
-    """Medidas, axe, captura y controles de la barra y el sidebar de una pantalla ya cargada."""
-    en_menu = fila.get("en_menu")
+def _medir_cargada(pagina: Any, fila: dict[str, Any], axe: str | None, captura: Path) -> None:
+    """Medidas, axe, captura, barras y controles de una pantalla ya cargada."""
     fila.update(pagina.evaluate(MEDIR_JS))
-    fila["en_menu"] = en_menu
     if axe:
         try:
             pagina.evaluate(axe)
@@ -779,35 +710,71 @@ def _medir_cargada(
             fila["axe_error"] = str(error)[:150]
     pagina.screenshot(path=str(captura), full_page=True)
     fila["captura"] = captura.name
-    # Después de axe y de la captura, para que sean comparables con la corrida de referencia.
-    fila.update(pagina.evaluate(NAV_JS, {"paneles": paneles}))
+    fila["barras"] = pagina.evaluate(BARRAS_JS)
+    fila["controles"] = pagina.evaluate(CONTROLES_JS)
+    fila["sin_nombre"] = sin_nombre(fila["controles"])
 
 
-def capturar_paneles(pagina: Any, prefijo: str, capturas: Path) -> list[str]:
-    """Una captura con cada panel de área abierto y otra con el sidebar en capa (o fijado), con
-    clics de verdad: insumo del revisor de diseño."""
-    hechas: list[str] = []
-    botones = pagina.locator('nav[aria-label="Menú principal"] button.silice-barra__area')
-    if botones.count() and botones.first.is_visible():
-        for i in range(botones.count()):
-            boton = botones.nth(i)
-            area = re.sub(r"\W+", "_", boton.inner_text().strip().lower()) or str(i)
-            boton.click()
-            pagina.wait_for_timeout(250)
-            destino = capturas / f"{prefijo}_panel_{area}.png"
-            pagina.screenshot(path=str(destino))
-            hechas.append(destino.name)
-            pagina.keyboard.press("Escape")
-            pagina.wait_for_timeout(150)
-    if not pagina.locator(f"#{ID_SIDEBAR}").count():
-        pagina.locator(f"#{ID_BOTON_SILICE}").click()
-        pagina.wait_for_timeout(250)
-        destino = capturas / f"{prefijo}_sidebar_capa.png"
-        pagina.screenshot(path=str(destino))
-        hechas.append(destino.name)
-        pagina.keyboard.press("Escape")
-        pagina.wait_for_timeout(150)
-    return hechas
+def oferta_del_marco(contexto: Any, base: str, obra: tuple[str | None, int] | None) -> set[str]:
+    """Las pantallas que el marco ofrece a la sesión de este contexto, leídas como las encuentra
+    una persona: los enlaces de la barra lateral y de la barra de arriba; dentro de la obra, sus
+    secciones y las vistas de cada una; en cada espacio y en la Cuenta, sus pestañas."""
+    pagina = contexto.new_page()
+    pagina.set_viewport_size({"width": 1920, "height": ALTO})
+    ids: set[str] = set()
+
+    def leer(hash_: str) -> list[str]:
+        pagina.goto(f"{base}/app/{hash_}", wait_until="domcontentloaded")
+        with contextlib.suppress(Exception):
+            pagina.wait_for_selector("main h1", timeout=LIMITE_CARGA_MS)
+        hrefs = pagina.eval_on_selector_all(
+            "aside.silice-marco-lateral a[href], header.silice-marco-barra a[href],"
+            " nav.silice-barra-espacio a[href]",
+            "els => els.map(a => a.getAttribute('href') || '')",
+        )
+        return [h for h in hrefs if h]
+
+    vistos: set[str] = set()
+    pendientes = [hash_de(PAGINA_DE_LA_VISTA_GENERAL)]
+    if obra is not None:
+        pendientes.append("#" + f"/obra/{_segmento_de_carpeta(obra[0])}/{obra[1]}/resumen")
+    pendientes.append("#/cuenta/preferencias")
+    pendientes += ["#/produccion", "#/auditoria", "#/precios"]
+    try:
+        while pendientes:
+            hash_ = pendientes.pop(0)
+            if hash_ in vistos:
+                continue
+            vistos.add(hash_)
+            for href in leer(hash_):
+                id_ = pagina_de_la_ruta(href)
+                if id_ is None:
+                    continue
+                ids.add(id_)
+                # Las secciones de la obra elegida se abren para leer sus vistas.
+                destino = href if href.startswith("#") else "#" + href.split("#", 1)[-1]
+                if obra is not None and obra_de_la_direccion(destino) == obra:
+                    pendientes.append(destino.split("?", 1)[0])
+    finally:
+        pagina.close()
+    return ids
+
+
+def obras_de_la_siembra(contexto: Any, base: str) -> list[dict[str, Any]]:
+    """`GET /v1/obras/todas` con la sesión de este contexto (vacía si la cuenta no lee obras)."""
+    r = api_del_contexto(contexto, base, "GET", "/v1/obras/todas")
+    if r["estado"] != 200 or not isinstance(r["datos"], dict):
+        return []
+    return list(r["datos"].get("obras", []))
+
+
+def obra_del_recorrido(obras: list[dict[str, Any]]) -> tuple[str | None, int] | None:
+    """La obra con que se miden las pantallas de la obra: la de nombre más largo (la que más
+    aprieta la cabecera de la obra y la barra lateral)."""
+    if not obras:
+        return None
+    larga = max(obras, key=lambda o: len(str(o.get("obra", ""))))
+    return (larga.get("carpeta"), int(larga["obra_id"]))
 
 
 def medir_pantalla(
@@ -818,9 +785,9 @@ def medir_pantalla(
     rol: str,
     capturas: Path,
     axe: str | None,
-    en_menu: set[str],
-    letra: str = "normal",
-    sidebar: str = "oculto",
+    oferta: set[str],
+    letra: str,
+    obra: tuple[str | None, int] | None,
 ) -> dict[str, Any]:
     pagina = contexto.new_page()
     pagina.set_viewport_size({"width": ancho, "height": ALTO})
@@ -832,45 +799,29 @@ def medir_pantalla(
         "rol": rol,
         "ancho": ancho,
         "letra": letra,
-        "sidebar": sidebar,
-        "sidebar_esperado": sidebar_esperado(sidebar, ancho, letra),
         "id": ruta["id"],
         "titulo": ruta["titulo"],
-        "seccion": ruta["seccion"],
         "accion": ruta["accion"],
-        "modulo_de_la_ruta": ruta.get("modulo"),
-        "en_menu": ruta["id"] in en_menu,
+        "modulo": ruta.get("modulo"),
+        "ofrecida": ruta["id"] in oferta,
+        "obra": list(obra) if obra and es_de_la_obra(ruta["id"]) else None,
     }
     try:
         inicio = time.monotonic()
-        pagina.goto(f"{base}/app/{hash_de(ruta['id'])}", wait_until="domcontentloaded")
+        destino = hash_de(ruta["id"], obra if es_de_la_obra(ruta["id"]) else None)
+        pagina.goto(f"{base}/app/{destino}", wait_until="domcontentloaded")
         try:
-            # Una ruta que el menú del rol no ofrece se espera poco: no es un error de carga.
-            espera = LIMITE_CARGA_MS if fila["en_menu"] else 3000
-            pagina.wait_for_selector("h1", timeout=espera)
+            # Una pantalla que el marco no ofrece al rol se espera poco: no es un error de carga.
+            espera = LIMITE_CARGA_MS if fila["ofrecida"] else 3000
+            pagina.wait_for_selector("main h1:not([data-esqueleto])", timeout=espera)
             fila["ms_hasta_h1"] = round((time.monotonic() - inicio) * 1000)
         except Exception:
             fila["ms_hasta_h1"] = None
         with contextlib.suppress(Exception):
             pagina.wait_for_load_state("networkidle", timeout=3000)
         fila["ms_hasta_reposo"] = round((time.monotonic() - inicio) * 1000)
-        if sidebar == "abierto":
-            abrir_sidebar(pagina)
-        captura = capturas / f"{rol}_{ancho}_{letra}_{sidebar}_{ruta['id']}.png"
-        _medir_cargada(pagina, fila, axe, captura, paneles=sidebar != "abierto")
-        if sidebar == "abierto":
-            # Esc cierra la capa y el foco vuelve a «Sílice» (MOD-2).
-            pagina.keyboard.press("Escape")
-            pagina.wait_for_timeout(150)
-            fila["foco_tras_cerrar_sidebar"] = pagina.evaluate(
-                "id => !document.getElementById('silice-sidebar')"
-                " && document.activeElement && document.activeElement.id === id",
-                ID_BOTON_SILICE,
-            )
-        if ruta.get("area") == "inicio" and sidebar == "oculto":
-            fila["capturas_paneles"] = capturar_paneles(
-                pagina, f"{rol}_{ancho}_{letra}_{ruta['id']}", capturas
-            )
+        captura = capturas / f"{rol}_{ancho}_{letra}_{ruta['id']}.png"
+        _medir_cargada(pagina, fila, axe, captura)
     except Exception as error:
         fila["error"] = str(error)[:300]
     fila["consola"] = consola[:8]
@@ -899,15 +850,7 @@ def medir_con_recorrido(
     red: list[str] = []
     _escuchar(pagina, consola, red)
     filas: list[dict[str, Any]] = []
-    base_fila = {
-        "rol": rol,
-        "ancho": ancho,
-        "letra": letra,
-        "sidebar": "oculto",
-        "sidebar_esperado": None,
-        "recorrido": True,
-        "en_menu": True,
-    }
+    base_fila = {"rol": rol, "ancho": ancho, "letra": letra, "recorrido": True, "ofrecida": True}
     try:
         pagina.goto(f"{base}/app/{hash_de('auditoria')}", wait_until="domcontentloaded")
         pagina.wait_for_selector("main h1", timeout=LIMITE_CARGA_MS)
@@ -946,502 +889,215 @@ def medir_con_recorrido(
     return filas
 
 
-# --------------------------- medidas aparte (MOD-5) ----------------------------------------------
-#
-# Lo que pidieron los árbitros de MOD-3b, MOD-4b y T15: la mesa a 1056 px, el panel de la obra y el
-# diálogo de carpetas sin desplazamiento horizontal, Esc en «Buscar obra», el foco al cerrar los
-# diálogos, la marca «Demostración» y la página de mercado. El escenario (carpeta, obra, una
-# observación de mercado) se prepara por la API; lo medido se hace con clics.
+# --------------------------- umbrales de las barras ----------------------------------------------
 
-CARPETA_DEMOSTRACION = "demostracion.db"
-
-ESCENARIO_JS = """() => {
-  const de = document.documentElement;
-  return { scroll_x: de.scrollWidth > de.clientWidth, scroll_width: de.scrollWidth,
-    client_width: de.clientWidth, h1: document.querySelectorAll('h1').length };
-}"""
-
-# Rectángulo de un elemento frente a la ventana y su propio desplazamiento horizontal.
-CAJA_JS = """(sel) => {
-  const el = document.querySelector(sel);
-  if (!el) return { existe: false };
-  const r = el.getBoundingClientRect(), de = document.documentElement;
-  return { existe: true, caja: [r.left, r.top, r.right, r.bottom].map(Math.round),
-    ancho: Math.round(r.width),
-    dentro: r.left >= -1 && r.top >= -1 && r.right <= de.clientWidth + 1
-      && r.bottom <= window.innerHeight + 1,
-    desborda_dentro: el.scrollWidth > el.clientWidth + 1,
-    scroll_x: de.scrollWidth > de.clientWidth, rem: parseFloat(getComputedStyle(de).fontSize) };
-}"""
-
-MESA_JS = """() => {
-  const de = document.documentElement;
-  const rej = document.querySelector('.silice-mesa__rejilla');
-  const tabla = document.querySelector('.silice-mesa__tabla table');
-  let cont = tabla ? tabla.parentElement : null;
-  while (cont && cont !== document.body) {
-    const o = getComputedStyle(cont).overflowX;
-    if (o === 'auto' || o === 'scroll') break;
-    cont = cont.parentElement;
+# Un nombre de cuenta ficticio más largo que el tope de `.silice-cuenta__nombre`: el umbral cuenta
+# con la cuenta de nombre más largo posible, no con «Ana».
+CUENTA_LARGA_JS = """() => document.querySelectorAll('.silice-cuenta__nombre').forEach(e => {
+  e.textContent = 'Persona Ficticia de Nombre Muy Largo para Medir'; })"""
+# Por qué las barras no caben (vacío si caben): las de `BARRAS_JS`, después de dos cuadros.
+CABE_JS = (
+    """async () => {
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const barras = ("""
+    + BARRAS_JS
+    + """)();
+  const motivos = [];
+  for (const b of barras) {
+    if (b.desborda) motivos.push('barra «' + b.barra + '» desborda');
+    for (const f of b.fuera) motivos.push('barra «' + b.barra + '»: ' + f + ' fuera de la ventana');
+    for (const r of b.recortes) motivos.push(r);
   }
-  if (cont === document.body) cont = null;
-  const pend = document.querySelector('.silice-mesa__pendientes');
-  const princ = document.querySelector('.silice-mesa__principal');
-  const al_lado = Boolean(pend && princ)
-    && pend.getBoundingClientRect().left >= princ.getBoundingClientRect().right - 1;
-  const textos = sel => [...document.querySelectorAll(sel)]
-    .map(e => e.textContent.replace(/\\s+/g, ' ').trim()).filter(Boolean);
-  return {
-    columnas_mesa: rej ? getComputedStyle(rej).gridTemplateColumns.split(' ').length : 0,
-    pendientes_al_lado: al_lado,
-    scroll_x: de.scrollWidth > de.clientWidth,
-    filas_de_obras: tabla ? tabla.querySelectorAll('tbody tr').length : 0,
-    tabla_ancho: tabla ? Math.round(tabla.scrollWidth) : null,
-    contenedor_ancho: cont ? cont.clientWidth : null,
-    tabla_desplaza_dentro: Boolean(cont) && cont.scrollWidth > cont.clientWidth + 1,
-    tabla_cabe: Boolean(tabla) && (!cont || cont.scrollWidth <= cont.clientWidth + 1),
-    h2: textos('main h2'),
-    avisos: textos('main [role=alert], main .cds--inline-notification'),
-    cifras: document.querySelectorAll('.silice-mesa__cifra:not(.silice-mesa__cifra--esqueleto)')
-      .length,
-  };
+  return motivos;
 }"""
-
-MERCADO_JS = """() => {
-  const de = document.documentElement;
-  const tabla = document.querySelector('.silice-mercado table');
-  let cont = tabla ? tabla.parentElement : null;
-  while (cont && cont !== document.body) {
-    const o = getComputedStyle(cont).overflowX;
-    if (o === 'auto' || o === 'scroll') break;
-    cont = cont.parentElement;
-  }
-  if (cont === document.body) cont = null;
-  const franja = document.querySelector('.silice-mercado__cifras');
-  return {
-    columnas_tabla: tabla ? tabla.querySelectorAll('thead th').length : 0,
-    filas_tabla: tabla ? tabla.querySelectorAll('tbody tr').length : 0,
-    cifras_franja: franja ? franja.querySelectorAll('.silice-mercado__cifra').length : 0,
-    filas_de_la_franja: franja ? new Set([...franja.querySelectorAll('.silice-mercado__cifra')]
-      .map(c => Math.round(c.getBoundingClientRect().top))).size : 0,
-    scroll_x: de.scrollWidth > de.clientWidth,
-    tabla_desplaza_dentro: Boolean(cont) && cont.scrollWidth > cont.clientWidth + 1,
-  };
-}"""
+)
+# El marco se diseña desde 1056 px (DESIGN.md): por debajo no se mide ni se fija umbral.
+UMBRAL_MINIMO = 1055.98
 
 
-def _foco_en(pagina: Any, id_: str) -> bool:
-    return bool(
-        pagina.evaluate(
-            "id => Boolean(document.activeElement) && document.activeElement.id === id", id_
-        )
-    )
+def motivos_por_espacio(motivos: list[str], de_fondo: list[str]) -> list[str]:
+    """Los motivos de corte que se deben a la falta de ancho: un texto que sale recortado también
+    en la ventana más ancha no lo arregla ningún umbral (es un defecto de su componente) y no
+    cuenta para medirlo."""
+
+    def clave(motivo: str) -> str:
+        return motivo.split("»", 1)[0] if motivo.startswith("«") else motivo
+
+    fijos = {clave(m) for m in de_fondo}
+    return [m for m in motivos if clave(m) not in fijos]
 
 
-def _ir_y_esperar(pagina: Any, base: str, ruta: str) -> None:
-    """`ruta` es el id de la pantalla; se abre su ruta canónica."""
-    pagina.goto(f"{base}/app/{hash_de(ruta)}", wait_until="domcontentloaded")
-    pagina.wait_for_selector("main h1:not([data-esqueleto])", timeout=LIMITE_CARGA_MS)
-    with contextlib.suppress(Exception):
-        pagina.wait_for_load_state("networkidle", timeout=4000)
+# Anchos donde cambian las consultas de la interfaz (texto de la obra y la cuenta, navegación de
+# Carbon): se miden siempre, para que un hueco entre dos pasos del barrido no se pierda.
+BORDES_DE_CONSULTA = (1366, 1365, 1056, 1055)
 
 
-def escenario_de_obras(contexto: Any, base: str) -> dict[str, Any]:
-    """Las carpetas sembradas con sus obras: la que tiene más obras (mesa con datos), la obra de
-    nombre más largo (umbrales) y la carpeta de la empresa (sin obras)."""
-    pagina = contexto.new_page()
-    try:
-        pagina.goto(f"{base}/app/", wait_until="domcontentloaded")
-        casos = api(pagina, "GET", "/v1/casos")["datos"]
-        empresa = casos["actual"]["nombre"]
-        obras: dict[str, list[dict[str, Any]]] = {}
-        cifras: dict[str, int] = {}
-        for caso in casos["casos"]:
-            nombre = caso["nombre"]
-            if api(pagina, "POST", "/v1/casos/actual", {"nombre": nombre})["estado"] != 200:
-                continue
-            respuesta = api(pagina, "GET", "/v1/proyectos")
-            obras[nombre] = respuesta["datos"] if respuesta["estado"] == 200 else []
-            resumen = api(pagina, "GET", "/v1/obras/resumen")["datos"] or {}
-            cifras[nombre] = len(resumen.get("cifras") or [])
-        api(pagina, "DELETE", "/v1/casos/actual")
-    finally:
-        pagina.close()
-    # La mesa «con datos»: la carpeta con más cifras (obras en ejecución) y, a igualdad, más obras.
-    con_obras = max(obras, key=lambda c: (cifras.get(c, 0), len(obras[c])))
-    larga = max(
-        ((c, o) for c, lista in obras.items() for o in lista), key=lambda par: len(par[1]["nombre"])
+def barrido(cabe: Any, desde: int, hasta: int, paso: int) -> dict[int, bool]:
+    """Si la barra cabe, medido de `hasta` hacia abajo de `paso` en `paso` px hasta el primer ancho
+    en que no cabe; entre ese y el anterior se afina de 1 en 1 (el mayor que no cabe es el que
+    fija el umbral; lo de debajo no lo cambia). Se miden también `desde` y los bordes de las
+    consultas por encima del corte."""
+    caben: dict[int, bool] = {}
+    ancho = hasta
+    while True:
+        caben[ancho] = cabe(ancho)
+        if not caben[ancho]:
+            for fino in range(min(ancho + paso - 1, hasta), ancho, -1):
+                if fino not in caben:
+                    caben[fino] = cabe(fino)
+                if not caben[fino]:
+                    break
+            break
+        if ancho == desde:
+            break
+        ancho = max(ancho - paso, desde)
+    corte = max((a for a, si in caben.items() if not si), default=desde - 1)
+    for borde in BORDES_DE_CONSULTA:
+        if corte < borde <= hasta and borde >= desde and borde not in caben:
+            caben[borde] = cabe(borde)
+    # Si un borde no cabe, se afina también por encima de él, hasta el ancho medido siguiente.
+    nuevo = max((a for a, si in caben.items() if not si), default=desde - 1)
+    if nuevo > corte:
+        siguiente = min((a for a in caben if a > nuevo), default=nuevo + 1)
+        for fino in range(siguiente - 1, nuevo, -1):
+            caben[fino] = cabe(fino)
+            if not caben[fino]:
+                break
+    return caben
+
+
+def medir_umbral(pagina: Any, desde: int = 1000, hasta: int = 3000) -> dict[str, Any]:
+    """El menor ancho desde el que las barras caben en todos los anchos (`barrido` de 8 en 8 px y
+    afinado de 1 en 1). Lo que sale cortado ya en `hasta` se anota aparte y no cuenta."""
+    pagina.set_viewport_size({"width": hasta, "height": ALTO})
+    de_fondo = pagina.evaluate(CABE_JS)
+    motivos: dict[int, list[str]] = {}
+
+    def cabe(ancho: int) -> bool:
+        pagina.set_viewport_size({"width": ancho, "height": ALTO})
+        motivos[ancho] = motivos_por_espacio(pagina.evaluate(CABE_JS), de_fondo)
+        return not motivos[ancho]
+
+    umbral = umbral_medido(barrido(cabe, desde, hasta, 8))
+    cabe_desde = None if umbral is None else round(umbral + 0.02)
+    no_cabe = (
+        None if cabe_desde is None else max((a for a in motivos if a < cabe_desde), default=None)
     )
     return {
-        "empresa": empresa,
-        "obras_por_carpeta": {c: [o["nombre"] for o in lista] for c, lista in obras.items()},
-        "cifras_por_carpeta": cifras,
-        "carpeta_con_obras": con_obras,
-        "carpeta_obra_larga": larga[0],
-        "obra_larga": larga[1]["codigo"],
-        "obra_larga_nombre": larga[1]["nombre"],
+        "umbral": umbral,
+        "cabe_desde": cabe_desde,
+        "motivos_justo_debajo": motivos.get(no_cabe, []) if no_cabe else [],
+        "cortado_a_cualquier_ancho": de_fondo,
     }
 
 
-def elegir_por_api(contexto: Any, base: str, carpeta: str | None, obra: str | None) -> None:
-    """Carpeta (`None` = la de la empresa) y obra de la cuenta, para preparar una medida."""
-    pagina = contexto.new_page()
-    try:
-        pagina.goto(f"{base}/app/", wait_until="domcontentloaded")
-        r = (
-            api(pagina, "DELETE", "/v1/casos/actual")
-            if carpeta is None
-            else api(pagina, "POST", "/v1/casos/actual", {"nombre": carpeta})
-        )
-        if r["estado"] not in (200, 204):
-            raise RuntimeError(f"no se pudo abrir la carpeta {carpeta}: {r}")
-        api(pagina, "PUT", "/v1/sesion/proyecto", {"proyecto": obra})
-    finally:
-        pagina.close()
+# Dónde se mide el umbral: la obra en una subvista de Control de obra (cabecera de la obra, nueve
+# secciones y tres vistas), cada espacio de la empresa y la Cuenta (seis secciones).
+LUGARES_DE_UMBRAL = ("obra", "produccion", "auditoria", "precios", "cuenta")
 
 
-def estrenar_demostracion(contexto: Any, base: str) -> dict[str, Any]:
-    """`POST /v1/casos/demostracion` (la primera vez tarda hasta dos minutos) y sus obras."""
-    pagina = contexto.new_page()
-    try:
-        pagina.goto(f"{base}/app/", wait_until="domcontentloaded")
-        pagina.set_default_timeout(240_000)
-        r = api(pagina, "POST", "/v1/casos/demostracion")
-        if r["estado"] not in (200, 201):
-            return {"estado": r["estado"], "detalle": r["datos"]}
-        nombre = r["datos"]["nombre"]
-        api(pagina, "POST", "/v1/casos/actual", {"nombre": nombre})
-        proyectos = api(pagina, "GET", "/v1/proyectos")["datos"] or []
-        carpeta = api(pagina, "GET", "/v1/carpeta")["datos"]
-        api(pagina, "DELETE", "/v1/casos/actual")
-        return {
-            "estado": r["estado"],
-            "nombre": nombre,
-            "obras": [(o["codigo"], o["nombre"]) for o in proyectos],
-            "moneda": (carpeta or {}).get("moneda"),
-        }
-    finally:
-        pagina.close()
+def _hash_del_lugar(lugar: str, obra: tuple[str | None, int] | None) -> str | None:
+    if lugar == "obra":
+        return None if obra is None else hash_de("reajuste", obra)
+    if lugar == "cuenta":
+        return "#/cuenta/preferencias"
+    return f"#/{lugar}"
 
 
-def _nueva_pagina(contexto: Any, ancho: int, letra: str) -> tuple[Any, list[str], list[str]]:
-    pagina = contexto.new_page()
-    pagina.set_viewport_size({"width": ancho, "height": ALTO})
-    fijar_letra(pagina, letra)
-    consola: list[str] = []
-    red: list[str] = []
-    _escuchar(pagina, consola, red)
-    return pagina, consola, red
-
-
-def medir_mesa(
-    contexto: Any, base: str, capturas: Path, ancho: int, letra: str, escenario: dict[str, Any]
-) -> list[dict[str, Any]]:
-    """La mesa con datos, con el bloque de pendientes en error (500 simulado) y sin obras."""
-    filas: list[dict[str, Any]] = []
-    casos = [
-        ("mesa_con_datos", escenario["carpeta_con_obras"], False),
-        ("mesa_bloque_en_error", escenario["carpeta_con_obras"], True),
-        ("mesa_sin_obras", None, False),
-    ]
-    for nombre, carpeta, con_error in casos:
-        elegir_por_api(contexto, base, carpeta, None)
-        pagina, consola, red = _nueva_pagina(contexto, ancho, letra)
-        fila: dict[str, Any] = {
-            "medida": nombre,
-            "ancho": ancho,
-            "letra": letra,
-            "carpeta": carpeta,
-        }
-        try:
-            if con_error:
-                pagina.route(
-                    "**/v1/obras/pendientes",
-                    lambda r: r.fulfill(
-                        status=500,
-                        content_type="application/json",
-                        body=json.dumps({"detail": "Fallo simulado por el recorrido visual."}),
-                    ),
-                )
-            _ir_y_esperar(pagina, base, "obras")
-            pagina.wait_for_timeout(600)
-            fila.update(pagina.evaluate(MESA_JS))
-            fila["desbordan"] = pagina.evaluate(MEDIR_JS)["desbordan"]
-            captura = capturas / f"ana_{ancho}_{letra}_{nombre}.png"
-            pagina.screenshot(path=str(captura), full_page=True)
-            fila["captura"] = captura.name
-        except Exception as error:
-            fila["error"] = str(error)[:300]
-        fila["consola"] = consola[:6]
-        fila["red"] = red[:6]
-        pagina.close()
-        filas.append(fila)
-    return filas
-
-
-def medir_selector_y_dialogos(
-    contexto: Any, base: str, capturas: Path, ancho: int, letra: str, escenario: dict[str, Any]
+def medir_umbrales(
+    navegador: Any,
+    base: str,
+    claves: dict[str, str],
+    roles: list[str],
+    letras: list[str],
+    capturas: Path,
 ) -> dict[str, Any]:
-    """Panel de la obra (22 rem), Esc en «Buscar obra», diálogo de carpetas (44 rem) y «Nueva
-    obra», y a dónde vuelve el foco al cerrar cada uno."""
-    elegir_por_api(contexto, base, escenario["carpeta_obra_larga"], escenario["obra_larga"])
-    pagina, consola, red = _nueva_pagina(contexto, ancho, letra)
-    fila: dict[str, Any] = {"medida": "selector_y_dialogos", "ancho": ancho, "letra": letra}
-    prefijo = capturas / f"ana_{ancho}_{letra}"
-    boton = pagina.locator(f"#{ID_BOTON_OBRA}")
-    try:
-        _ir_y_esperar(pagina, base, "catalogo")
-        fila["boton_obra"] = boton.get_attribute("aria-label")
-        boton.click()
-        fila["panel_obra"] = pagina.evaluate(CAJA_JS, ".silice-obra__panel")
-        pagina.screenshot(path=f"{prefijo}_panel_obra.png")
-        busqueda = pagina.get_by_role("searchbox", name="Buscar obra")
-        busqueda.fill("zz")
-        busqueda.press("Escape")
-        pagina.wait_for_timeout(150)
-        fila["esc_buscar_cierra_panel"] = pagina.locator(".silice-obra__panel").count() == 0
-        fila["foco_tras_esc_buscar"] = _foco_en(pagina, ID_BOTON_OBRA)
-
-        boton.click()
-        pagina.get_by_role("button", name="Cambiar carpeta…").click()
-        dialogo = pagina.get_by_role("dialog", name="Carpetas de trabajo")
-        dialogo.wait_for(state="visible", timeout=LIMITE_PASO_MS)
-        pagina.locator(".silice-carpetas__lista").wait_for(timeout=LIMITE_PASO_MS)
-        fila["dialogo_carpetas"] = pagina.evaluate(CAJA_JS, ".silice-dialogo")
-        fila["dialogo_carpetas_cuerpo"] = pagina.evaluate(CAJA_JS, ".silice-dialogo__cuerpo")
-        pagina.screenshot(path=f"{prefijo}_dialogo_carpetas.png")
-        pagina.keyboard.press("Escape")
-        pagina.wait_for_timeout(150)
-        fila["esc_cierra_carpetas"] = dialogo.count() == 0
-        fila["foco_tras_carpetas_esc"] = _foco_en(pagina, ID_BOTON_OBRA)
-        boton.click()
-        pagina.get_by_role("button", name="Cambiar carpeta…").click()
-        dialogo.wait_for(state="visible", timeout=LIMITE_PASO_MS)
-        dialogo.get_by_role("button", name="Cerrar", exact=True).click()
-        pagina.wait_for_timeout(150)
-        fila["foco_tras_carpetas_cerrar"] = _foco_en(pagina, ID_BOTON_OBRA)
-
-        boton.click()
-        pagina.locator(".silice-obra__panel").get_by_role("button", name="Nueva obra").click()
-        nueva = pagina.get_by_role("dialog", name="Nueva obra")
-        nueva.wait_for(state="visible", timeout=LIMITE_PASO_MS)
-        fila["dialogo_nueva_obra"] = pagina.evaluate(CAJA_JS, ".silice-dialogo")
-        pagina.screenshot(path=f"{prefijo}_dialogo_nueva_obra.png")
-        nueva.get_by_role("button", name="Cancelar", exact=True).click()
-        pagina.wait_for_timeout(150)
-        fila["foco_tras_nueva_obra"] = _foco_en(pagina, ID_BOTON_OBRA)
-        fila.update(pagina.evaluate(ESCENARIO_JS))
-    except Exception as error:
-        fila["error"] = str(error)[:300]
-    fila["consola"] = consola[:6]
-    fila["red"] = red[:6]
-    pagina.close()
-    return fila
-
-
-def medir_marca_demostracion(
-    contexto: Any, base: str, capturas: Path, ancho: int, letra: str, demo: str
-) -> list[dict[str, Any]]:
-    """La marca «Demostración» en la barra de los tres módulos: a la vista, con su texto, dentro
-    de la ventana, sin cortar la barra; su panel dentro de la ventana y el foco al cerrarlo."""
-    elegir_por_api(contexto, base, demo, None)
-    filas: list[dict[str, Any]] = []
-    for modulo in ("auditoria", "obras", "produccion"):
-        pagina, consola, red = _nueva_pagina(contexto, ancho, letra)
-        fila: dict[str, Any] = {"medida": f"marca_{modulo}", "ancho": ancho, "letra": letra}
-        try:
-            _ir_y_esperar(pagina, base, modulo)
-            marca = pagina.locator(".silice-demo__boton")
-            fila["marca"] = pagina.evaluate(CAJA_JS, ".silice-demo__boton")
-            fila["marca_texto_visible"] = (
-                marca.count() > 0 and marca.get_by_text("Demostración", exact=True).is_visible()
-            )
-            fila.update(pagina.evaluate(NAV_JS, {"paneles": False}))
-            pagina.screenshot(path=str(capturas / f"ana_{ancho}_{letra}_marca_{modulo}.png"))
-            if marca.count():
-                marca.click()
-                fila["panel_marca"] = pagina.evaluate(CAJA_JS, ".silice-demo__panel")
-                pagina.keyboard.press("Escape")
-                pagina.wait_for_timeout(150)
-                fila["foco_tras_marca"] = pagina.evaluate(
-                    "() => Boolean(document.activeElement)"
-                    " && document.activeElement.classList.contains('silice-demo__boton')"
-                )
-        except Exception as error:
-            fila["error"] = str(error)[:300]
-        fila["consola"] = consola[:6]
-        fila["red"] = red[:6]
+    """Por rol, lugar y letra: el menor ancho en que la barra de arriba y las barras de pestañas
+    caben, con la obra de nombre más largo de la siembra y la cuenta de nombre más largo."""
+    medidas: list[dict[str, Any]] = []
+    for rol in roles:
+        contexto = navegador.new_context(viewport={"width": 1366, "height": ALTO})
+        pagina = contexto.new_page()
+        entrar(pagina, base, rol, claves[rol])
         pagina.close()
-        filas.append(fila)
-    elegir_por_api(contexto, base, None, None)
-    return filas
-
-
-def preparar_mercado(contexto: Any, base: str, carpeta: str) -> dict[str, Any]:
-    """Moneda de la carpeta (si falta) y dos observaciones ficticias del primer insumo."""
-    elegir_por_api(contexto, base, carpeta, None)
-    pagina = contexto.new_page()
-    try:
-        pagina.goto(f"{base}/app/", wait_until="domcontentloaded")
-        moneda = (api(pagina, "GET", "/v1/carpeta")["datos"] or {}).get("moneda")
-        declarada = None
-        if not moneda:
-            declarada = api(pagina, "PUT", "/v1/carpeta/moneda", {"moneda": "Bs"})["estado"]
-        insumos = api(pagina, "GET", "/insumos")["datos"] or []
-        if not insumos:
-            return {"error": "la carpeta no tiene insumos"}
-        insumo = insumos[0]
-        hoy = time.strftime("%Y-%m-%d")
-        creadas = [
-            api(
-                pagina,
-                "POST",
-                "/v1/mercado/observaciones",
-                {
-                    "lado": "compra",
-                    "codigo": insumo["codigo"],
-                    "fuente_tipo": "proveedor",
-                    "fuente": f"Proveedor ficticio {letra_}",
-                    "fecha": hoy,
-                    "precio": precio,
-                    "nota": "Observación ficticia del recorrido visual",
-                },
-            )
-            for letra_, precio in (("A", "120,50"), ("B", "131,25"))
-        ]
-        return {
-            "carpeta": carpeta,
-            "moneda": moneda,
-            "moneda_declarada": declarada,
-            "insumo": insumo["codigo"],
-            "descripcion": insumo.get("descripcion", ""),
-            "observaciones": [c["estado"] for c in creadas],
-            "rechazo": next((c["datos"] for c in creadas if c["estado"] != 201), None),
-        }
-    finally:
-        pagina.close()
-
-
-def medir_mercado(
-    contexto: Any, base: str, capturas: Path, ancho: int, letra: str, mercado: dict[str, Any]
-) -> dict[str, Any]:
-    """Estudio de mercado con un insumo elegido: tabla de observaciones y franja de cifras."""
-    elegir_por_api(contexto, base, mercado["carpeta"], None)
-    pagina, consola, red = _nueva_pagina(contexto, ancho, letra)
-    fila: dict[str, Any] = {"medida": "mercado", "ancho": ancho, "letra": letra}
-    try:
-        _ir_y_esperar(pagina, base, "mercado")
-        campo = pagina.locator("main [role=combobox]").first
-        campo.fill(mercado["insumo"])
-        opcion = pagina.get_by_role("option").first
-        opcion.wait_for(state="visible", timeout=LIMITE_PASO_MS)
-        opcion.click()
-        pagina.get_by_text("Cifras de los últimos", exact=False).first.wait_for(
-            timeout=LIMITE_PASO_MS
-        )
-        pagina.wait_for_timeout(400)
-        fila.update(pagina.evaluate(MERCADO_JS))
-        fila["desbordan"] = pagina.evaluate(MEDIR_JS)["desbordan"]
-        captura = capturas / f"ana_{ancho}_{letra}_mercado.png"
-        pagina.screenshot(path=str(captura), full_page=True)
-        fila["captura"] = captura.name
-    except Exception as error:
-        fila["error"] = str(error)[:300]
-    fila["consola"] = consola[:6]
-    fila["red"] = red[:6]
-    pagina.close()
-    return fila
-
-
-def medir_especiales(
-    contexto: Any, base: str, capturas: Path, anchos: list[int], letras: list[str]
-) -> dict[str, Any]:
-    """Todas las medidas aparte, con la cuenta `ana` (la única que ve todo lo medido)."""
-    fijar_sidebar_de_la_cuenta(contexto, base, False)
-    escenario = escenario_de_obras(contexto, base)
-    demo = estrenar_demostracion(contexto, base)
-    salida: dict[str, Any] = {"escenario": escenario, "demostracion": demo, "medidas": []}
-    carpeta_mercado = demo.get("nombre") or escenario["carpeta_con_obras"]
-    salida["mercado"] = preparar_mercado(contexto, base, carpeta_mercado)
-    for letra in letras:
-        for ancho in anchos:
-            medidas = salida["medidas"]
-            medidas += medir_mesa(contexto, base, capturas, ancho, letra, escenario)
-            medidas.append(
-                medir_selector_y_dialogos(contexto, base, capturas, ancho, letra, escenario)
-            )
-            if demo.get("nombre"):
-                medidas += medir_marca_demostracion(
-                    contexto, base, capturas, ancho, letra, demo["nombre"]
+        obra = obra_del_recorrido(obras_de_la_siembra(contexto, base))
+        for lugar in LUGARES_DE_UMBRAL:
+            hash_ = _hash_del_lugar(lugar, obra)
+            if hash_ is None:
+                continue
+            for letra in letras:
+                pagina = contexto.new_page()
+                fijar_letra(pagina, letra)
+                pagina.set_viewport_size({"width": 3000, "height": ALTO})
+                fila: dict[str, Any] = {"rol": rol, "lugar": lugar, "letra": letra, "hash": hash_}
+                try:
+                    pagina.goto(f"{base}/app/{hash_}", wait_until="domcontentloaded")
+                    pagina.wait_for_selector(
+                        "main h1:not([data-esqueleto])", timeout=LIMITE_CARGA_MS
+                    )
+                    with contextlib.suppress(Exception):
+                        pagina.wait_for_load_state("networkidle", timeout=4000)
+                    fila["tal_cual"] = medir_umbral(pagina)
+                    pagina.evaluate(CUENTA_LARGA_JS)
+                    fila["cuenta_larga"] = medir_umbral(pagina)
+                    fila["umbral"] = umbral_de_la_fila(
+                        [fila[m]["umbral"] for m in ("tal_cual", "cuenta_larga")]
+                    )
+                    fila["cabe_desde"] = (
+                        None if fila["umbral"] is None else round(fila["umbral"] + 0.02)
+                    )
+                    if fila["cabe_desde"]:
+                        pagina.set_viewport_size({"width": fila["cabe_desde"], "height": ALTO})
+                        pagina.screenshot(path=str(capturas / f"umbral_{rol}_{lugar}_{letra}.png"))
+                except Exception as error:
+                    fila["error"] = str(error)[:300]
+                pagina.close()
+                medidas.append(fila)
+                print(
+                    f"umbral {rol:5} {lugar:10} {letra:10} cabe desde {fila.get('cabe_desde')} "
+                    f"{fila.get('error', '')}"
                 )
-            if "error" not in salida["mercado"]:
-                medidas.append(
-                    medir_mercado(contexto, base, capturas, ancho, letra, salida["mercado"])
-                )
-            for m in medidas[-6:]:
-                print(f"especial {letra:10} {ancho} {m['medida']:22} {resumen_especial(m)}")
-    elegir_por_api(contexto, base, None, None)
-    salida["fallos"] = [
-        f"{m['ancho']} {m['letra']} {m['medida']}: {f}"
-        for m in salida["medidas"]
-        for f in fallos_especiales(m)
-    ]
+        contexto.close()
+    return {
+        "medidas": medidas,
+        "umbrales": umbrales_por_lugar(medidas),
+        "sin_medir": umbrales_sin_medir(medidas),
+    }
+
+
+def umbrales_por_lugar(medidas: list[dict[str, Any]]) -> dict[str, dict[str, float | None]]:
+    """Por lugar y letra, el umbral más exigente de los medidos (roles), nunca por debajo de
+    1055,98 px. Una medida sin umbral o con error deja la casilla en `None` (sin umbral): no se
+    descarta en silencio (`umbrales_sin_medir` dice cuál y por qué)."""
+    grupos: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for m in medidas:
+        grupos.setdefault((m["lugar"], m["letra"]), []).append(m)
+    salida: dict[str, dict[str, float | None]] = {}
+    for (lugar, letra), grupo in grupos.items():
+        umbral = umbral_de_la_fila([None if "error" in m else m.get("umbral") for m in grupo])
+        salida.setdefault(lugar, {})[letra] = None if umbral is None else max(umbral, UMBRAL_MINIMO)
     return salida
 
 
-def fallos_especiales(m: dict[str, Any]) -> list[str]:
-    """Lo que una medida aparte deja en rojo (lista vacía si todo está bien)."""
-    fallos: list[str] = []
-    if "error" in m:
-        fallos.append(f"error {m['error']}")
-    if m.get("scroll_x"):
-        fallos.append("desplazamiento horizontal de la página")
-    for clave in ("panel_obra", "dialogo_carpetas", "dialogo_nueva_obra", "marca", "panel_marca"):
-        caja = m.get(clave)
-        if isinstance(caja, dict) and (not caja.get("existe") or not caja.get("dentro")):
-            fallos.append(f"{clave} fuera de la ventana o ausente {caja.get('caja')}")
-        if isinstance(caja, dict) and caja.get("scroll_x"):
-            fallos.append(f"{clave}: desplazamiento horizontal de la página")
-    marca = m.get("marca")
-    if isinstance(marca, dict) and marca.get("desborda_dentro"):
-        fallos.append(f"el texto de la marca se sale de su botón de {marca.get('ancho')} px")
-    cuerpo = m.get("dialogo_carpetas_cuerpo")
-    if isinstance(cuerpo, dict) and cuerpo.get("desborda_dentro"):
-        fallos.append("el cuerpo del diálogo de carpetas se desplaza a lo ancho")
-    for clave in (
-        "esc_buscar_cierra_panel",
-        "foco_tras_esc_buscar",
-        "esc_cierra_carpetas",
-        "foco_tras_carpetas_esc",
-        "foco_tras_carpetas_cerrar",
-        "foco_tras_nueva_obra",
-        "marca_texto_visible",
-        "foco_tras_marca",
-    ):
-        if clave in m and not m[clave]:
-            fallos.append(f"{clave} = False")
-    if m.get("barra_cortada"):
-        fallos.append(f"barra cortada {m.get('barra_motivos')}")
-    if m.get("medida") == "mesa_bloque_en_error" and not m.get("avisos"):
-        fallos.append("el bloque en error no muestra su aviso")
-    if m.get("medida") == "mercado" and "error" not in m:
-        if m.get("cifras_franja") != 6:
-            fallos.append(f"franja con {m.get('cifras_franja')} cifras (se esperaban 6)")
-        if m.get("columnas_tabla") != 8:
-            fallos.append(f"tabla con {m.get('columnas_tabla')} columnas (se esperaban 8)")
-    return fallos
+def umbrales_sin_medir(medidas: list[dict[str, Any]]) -> list[str]:
+    """Las medidas que dejan su casilla sin umbral, con su causa."""
+    salida = []
+    for m in medidas:
+        cabeza = f"{m['lugar']} {m['letra']} ({m['rol']})"
+        if "error" in m:
+            salida.append(f"{cabeza}: error {m['error']}")
+        elif m.get("umbral") is None:
+            salida.append(f"{cabeza}: no cabe ni en la ventana más ancha")
+    return salida
 
 
-def resumen_especial(m: dict[str, Any]) -> str:
-    fallos = fallos_especiales(m)
-    return "ok" if not fallos else "; ".join(fallos)[:200]
+def umbral_de_la_fila(umbrales: list[float | None]) -> float | None:
+    """El más exigente de las medidas de una misma pantalla; si una no tiene umbral (no cabe ni
+    en la ventana más ancha), la fila tampoco."""
+    if not umbrales or any(u is None for u in umbrales):
+        return None
+    return max(u for u in umbrales if u is not None)
 
-
-# --------------------------- visor del libro (D-3 y D-5) ----------------------------------------
-#
-# «Libro de la empresa» con el libro ficticio abierto: axe en la primera hoja y tras elegir otra;
-# el lienzo de Univer (tamaño y sin desplazamiento de la página); y salir y volver dos veces sin
-# `pageerror` ni avisos de Univer al desecharse (si los hay, D-3 solo quedó escondido).
 
 LIENZO_JS = """() => {
   const de = document.documentElement;
@@ -1586,253 +1242,6 @@ def fallos_visor(m: dict[str, Any]) -> list[str]:
 
 # Muestra la navegación de la barra aunque el umbral actual la esconda (y Carbon por debajo de
 # 1056 px): así se mide si cabe, no si está escondida.
-FORZAR_BARRA_CSS = (
-    "html .silice-marco .silice-barra__nav, html .silice-marco .cds--header__nav "
-    "{ display: block !important; }"
-)
-# Los botones de la obra, la cuenta y la demostración declaran `inline-size: auto`, pero la regla
-# `.cds--header__action { inline-size: 3rem }` de Carbon llega después y gana: su texto queda
-# recortado a cualquier ancho (defecto anotado en la bitácora de módulos). El umbral se mide también
-# con su ancho declarado, el de cuando se corrija, y se fija el mayor de los dos.
-ANCHO_DECLARADO_CSS = (
-    ".silice-barra .cds--header__action.silice-obra__boton, "
-    ".silice-barra .cds--header__action.silice-cuenta__boton, "
-    ".silice-barra .cds--header__action.silice-demo__boton { inline-size: auto !important; }"
-)
-# Un nombre de cuenta ficticio más largo que el tope de `.silice-cuenta__nombre` (10 rem): el umbral
-# cuenta con la cuenta de nombre más largo posible, no con «Ana».
-CUENTA_LARGA_JS = """() => document.querySelectorAll('.silice-cuenta__nombre').forEach(e => {
-  e.textContent = 'Persona Ficticia de Nombre Muy Largo para Medir'; })"""
-# Las tres medidas de cada pantalla: tal cual, con la cuenta larga y, además, con el ancho que
-# declaran los botones (si D-1 está corregido, debe dar lo mismo que la anterior).
-MEDIDAS_DE_UMBRAL = ("tal_cual", "cuenta_larga", "cuenta_larga_y_ancho_declarado")
-CABE_JS = (
-    """async () => {
-"""
-    + MOTIVOS_DE_CORTE_JS
-    + """
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-  const header = document.querySelector('header.silice-barra');
-  const nav = header && header.querySelector('nav[aria-label="Menú principal"]');
-  return motivosDeCorte(header, nav);
-}"""
-)
-UMBRAL_MINIMO = 1055.98  # por debajo de 1056 px Carbon esconde `cds--header__nav` (66 rem)
-
-
-def motivos_por_espacio(motivos: list[str], de_fondo: list[str]) -> list[str]:
-    """Los motivos de corte que se deben a la falta de ancho: un texto que sale recortado también
-    en la ventana más ancha no lo arregla ningún umbral (es un defecto de su componente) y no
-    cuenta para medirlo."""
-
-    def clave(motivo: str) -> str:
-        return motivo.split("»", 1)[0] if motivo.startswith("«") else motivo
-
-    fijos = {clave(m) for m in de_fondo}
-    return [m for m in motivos if clave(m) not in fijos]
-
-
-# Anchos donde cambian las consultas de la interfaz (texto de la obra y la cuenta, navegación de
-# Carbon): se miden siempre, para que un hueco entre dos pasos del barrido no se pierda.
-BORDES_DE_CONSULTA = (1366, 1365, 1056, 1055)
-
-
-def barrido(cabe: Any, desde: int, hasta: int, paso: int) -> dict[int, bool]:
-    """Si la barra cabe, medido de `hasta` hacia abajo de `paso` en `paso` px hasta el primer ancho
-    en que no cabe; entre ese y el anterior se afina de 1 en 1 (el mayor que no cabe es el que
-    fija el umbral; lo de debajo no lo cambia). Se miden también `desde` y los bordes de las
-    consultas por encima del corte."""
-    caben: dict[int, bool] = {}
-    ancho = hasta
-    while True:
-        caben[ancho] = cabe(ancho)
-        if not caben[ancho]:
-            for fino in range(min(ancho + paso - 1, hasta), ancho, -1):
-                if fino not in caben:
-                    caben[fino] = cabe(fino)
-                if not caben[fino]:
-                    break
-            break
-        if ancho == desde:
-            break
-        ancho = max(ancho - paso, desde)
-    corte = max((a for a, si in caben.items() if not si), default=desde - 1)
-    for borde in BORDES_DE_CONSULTA:
-        if corte < borde <= hasta and borde >= desde and borde not in caben:
-            caben[borde] = cabe(borde)
-    # Si un borde no cabe, se afina también por encima de él, hasta el ancho medido siguiente.
-    nuevo = max((a for a, si in caben.items() if not si), default=desde - 1)
-    if nuevo > corte:
-        siguiente = min((a for a in caben if a > nuevo), default=nuevo + 1)
-        for fino in range(siguiente - 1, nuevo, -1):
-            caben[fino] = cabe(fino)
-            if not caben[fino]:
-                break
-    return caben
-
-
-def medir_umbral(pagina: Any, desde: int = 1000, hasta: int = 3000) -> dict[str, Any]:
-    """El menor ancho desde el que la barra cabe en todos los anchos (`barrido` de 8 en 8 px y
-    afinado de 1 en 1). Lo que sale cortado ya en `hasta` se anota aparte y no cuenta."""
-    pagina.set_viewport_size({"width": hasta, "height": ALTO})
-    de_fondo = pagina.evaluate(CABE_JS)
-    motivos: dict[int, list[str]] = {}
-
-    def cabe(ancho: int) -> bool:
-        pagina.set_viewport_size({"width": ancho, "height": ALTO})
-        motivos[ancho] = motivos_por_espacio(pagina.evaluate(CABE_JS), de_fondo)
-        return not motivos[ancho]
-
-    umbral = umbral_medido(barrido(cabe, desde, hasta, 8))
-    cabe_desde = None if umbral is None else round(umbral + 0.02)
-    no_cabe = (
-        None if cabe_desde is None else max((a for a in motivos if a < cabe_desde), default=None)
-    )
-    return {
-        "umbral": umbral,
-        "cabe_desde": cabe_desde,
-        "motivos_justo_debajo": motivos.get(no_cabe, []) if no_cabe else [],
-        "cortado_a_cualquier_ancho": de_fondo,
-    }
-
-
-def umbral_de_la_fila(umbrales: list[float | None]) -> float | None:
-    """El más exigente de las medidas de una misma pantalla; si una no tiene umbral (no cabe ni
-    en la ventana más ancha), la fila tampoco."""
-    if not umbrales or any(u is None for u in umbrales):
-        return None
-    return max(u for u in umbrales if u is not None)
-
-
-def medir_umbrales(
-    navegador: Any,
-    base: str,
-    claves: dict[str, str],
-    roles: list[str],
-    letras: list[str],
-    capturas: Path,
-) -> dict[str, Any]:
-    """Por rol, carpeta (la de la obra más larga y la de demostración), módulo y letra: el menor
-    ancho en que la barra cabe con la obra de nombre más largo elegida."""
-    medidas: list[dict[str, Any]] = []
-    contexto = navegador.new_context(viewport={"width": 1366, "height": ALTO})
-    pagina = contexto.new_page()
-    entrar(pagina, base, "ana", claves["ana"])
-    pagina.close()
-    escenario = escenario_de_obras(contexto, base)
-    demo = estrenar_demostracion(contexto, base)
-    contexto.close()
-    rutas = rutas_de_la_interfaz()
-    for rol in roles:
-        contexto = navegador.new_context(viewport={"width": 1366, "height": ALTO})
-        pagina = contexto.new_page()
-        entrar(pagina, base, rol, claves[rol])
-        pagina.close()
-        fijar_sidebar_de_la_cuenta(contexto, base, False)
-        en_menu = ids_del_menu(contexto, base)
-        acciones = api_del_contexto(contexto, base, "GET", "/v1/sesion")["datos"]["acciones"]
-        carpetas: list[tuple[str, str | None, str | None]] = [("empresa", None, None)]
-        if "abrir_carpeta" in acciones:  # abrir otra carpeta; cambiar_caso es crearlas y subirlas
-            obra_larga = escenario["obra_larga"] if "leer_proyecto" in acciones else None
-            carpetas = [("obra_larga", escenario["carpeta_obra_larga"], obra_larga)]
-            if demo.get("nombre"):
-                larga_demo = max(demo["obras"], key=lambda o: len(o[1]), default=(None, ""))[0]
-                carpetas.append(("demostracion", demo["nombre"], larga_demo))
-        for etiqueta, carpeta, obra in carpetas:
-            if carpeta is not None:
-                elegir_por_api(contexto, base, carpeta, obra)
-            for modulo in modulos_de_la_interfaz():
-                # Una pantalla del módulo que no sea su inicio: ahí la obra se nombra entera.
-                suyas = [r for r in rutas if r["modulo"] == modulo and r["id"] in en_menu]
-                if not suyas:
-                    continue
-                ruta = next((r for r in suyas if r["area"] != "inicio"), suyas[0])
-                for letra in letras:
-                    pagina = contexto.new_page()
-                    fijar_letra(pagina, letra)
-                    pagina.set_viewport_size({"width": 3000, "height": ALTO})
-                    fila: dict[str, Any] = {
-                        "rol": rol,
-                        "carpeta": etiqueta,
-                        "modulo": modulo,
-                        "letra": letra,
-                        "ruta": ruta["id"],
-                    }
-                    try:
-                        _ir_y_esperar(pagina, base, ruta["id"])
-                        pagina.add_style_tag(content=FORZAR_BARRA_CSS)
-                        fila["boton_obra"] = pagina.evaluate(
-                            "id => { const b = document.getElementById(id);"
-                            " return b ? b.getAttribute('aria-label') : null; }",
-                            ID_BOTON_OBRA,
-                        )
-                        fila["tal_cual"] = medir_umbral(pagina)
-                        # La cuenta con un nombre en su tope de 10 rem (solo en esta medida).
-                        pagina.evaluate(CUENTA_LARGA_JS)
-                        fila["cuenta_larga"] = medir_umbral(pagina)
-                        pagina.add_style_tag(content=ANCHO_DECLARADO_CSS)
-                        fila["cuenta_larga_y_ancho_declarado"] = medir_umbral(pagina)
-                        fila["umbral"] = umbral_de_la_fila(
-                            [fila[m]["umbral"] for m in MEDIDAS_DE_UMBRAL]
-                        )
-                        fila["cabe_desde"] = (
-                            None if fila["umbral"] is None else round(fila["umbral"] + 0.02)
-                        )
-                        if fila["cabe_desde"]:
-                            pagina.set_viewport_size({"width": fila["cabe_desde"], "height": ALTO})
-                            pagina.screenshot(
-                                path=str(capturas / f"umbral_{rol}_{etiqueta}_{modulo}_{letra}.png")
-                            )
-                    except Exception as error:
-                        fila["error"] = str(error)[:300]
-                    pagina.close()
-                    medidas.append(fila)
-                    print(
-                        f"umbral {rol:5} {etiqueta:12} {modulo:10} {letra:10} "
-                        + " ".join(
-                            f"{m} {fila.get(m, {}).get('cabe_desde')}" for m in MEDIDAS_DE_UMBRAL
-                        )
-                        + f" "
-                        f"{fila.get('error', '')}"
-                    )
-        contexto.close()
-    return {
-        "escenario": escenario,
-        "demostracion": demo,
-        "medidas": medidas,
-        "umbrales": umbrales_por_modulo(medidas),
-        "sin_medir": umbrales_sin_medir(medidas),
-    }
-
-
-def umbrales_por_modulo(medidas: list[dict[str, Any]]) -> dict[str, dict[str, float | None]]:
-    """Por módulo y letra, el umbral más exigente de los medidos (roles y carpetas), nunca por
-    debajo de 1055,98 px. Una medida sin umbral o con error deja la casilla en `None` (sin
-    umbral): no se descarta en silencio (`umbrales_sin_medir` dice cuál y por qué)."""
-    grupos: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for m in medidas:
-        grupos.setdefault((m["modulo"], m["letra"]), []).append(m)
-    salida: dict[str, dict[str, float | None]] = {}
-    for (modulo, letra), grupo in grupos.items():
-        umbral = umbral_de_la_fila([None if "error" in m else m.get("umbral") for m in grupo])
-        salida.setdefault(modulo, {})[letra] = (
-            None if umbral is None else max(umbral, UMBRAL_MINIMO)
-        )
-    return salida
-
-
-def umbrales_sin_medir(medidas: list[dict[str, Any]]) -> list[str]:
-    """Las medidas que dejan su casilla sin umbral, con su causa."""
-    salida = []
-    for m in medidas:
-        cabeza = f"{m['modulo']} {m['letra']} ({m['rol']}, {m['carpeta']})"
-        if "error" in m:
-            salida.append(f"{cabeza}: error {m['error']}")
-        elif m.get("umbral") is None:
-            salida.append(f"{cabeza}: no cabe ni en la ventana más ancha")
-    return salida
-
-
 # --------------------------- flujo de la empresa de hoy ----------------------------------------
 
 
@@ -2168,49 +1577,63 @@ def esperar_ruta(pagina: Any, ruta: str) -> None:
         pagina.wait_for_load_state("networkidle", timeout=3000)
 
 
-def ir_por_menu(pagina: Any, ruta: str) -> str:
-    """Como una persona: «Sílice» abre el sidebar, se elige el módulo (va a su inicio) y, en la
-    barra, el área y la pantalla de su panel; si la barra cedió sus áreas, la pantalla se elige en
-    la sección «Áreas de …» del sidebar. Fuera de los módulos, el pie del sidebar. Devuelve el
-    camino seguido."""
-    camino = camino_por_menu(ruta)
-    lado = pagina.locator(f"#{ID_SIDEBAR}")
-    abrir_sidebar(pagina)
-    if camino["modulo"] is None:
-        pie = lado.locator(".silice-sidebar__pie")
-        pie.get_by_role("link", name=camino["pantalla"], exact=True).click()
-        esperar_ruta(pagina, ruta)
-        return f"Sílice › {camino['pantalla']}"
-    lado.get_by_role("link", name=camino["modulo"], exact=True).click()
-    modulo = next(r for r in rutas_de_la_interfaz() if r["id"] == ruta)["modulo"]
-    inicio = next(
-        r["id"] for r in rutas_de_la_interfaz() if (r["modulo"], r["area"]) == (modulo, "inicio")
-    )
-    esperar_ruta(pagina, inicio)
-    pasos = [f"Sílice › {camino['modulo']}"]
-    if not camino["inicio"]:
-        nav = pagina.locator('header nav[aria-label="Menú principal"]')
-        if nav.is_visible():
-            enlace = nav.get_by_role("link", name=camino["area"], exact=True)
-            if enlace.count():
-                enlace.click()
-                pasos.append(f"barra › {camino['area']}")
-            else:
-                nav.get_by_role("button", name=camino["area"], exact=True).click()
-                panel = pagina.locator(".silice-panel-area")
-                panel.get_by_role("link", name=camino["pantalla"], exact=True).click()
-                pasos.append(f"barra › {camino['area']} › {camino['pantalla']}")
+def _abrir_costos(lateral: Any) -> None:
+    """«Costos y producción» de la barra lateral es plegable: se despliega si hace falta."""
+    grupo = lateral.locator("nav.silice-marco-lateral__costos")
+    boton = grupo.locator("button[aria-expanded]")
+    if boton.count() and boton.first.get_attribute("aria-expanded") != "true":
+        boton.first.click(timeout=LIMITE_PASO_MS)
+
+
+def _enlace_de_la_obra(pagina: Any, obra: tuple[str | None, int]) -> Any:
+    """La fila de la obra en la barra lateral (su enlace lleva a su Resumen)."""
+    destino = f"#/obra/{_segmento_de_carpeta(obra[0])}/{obra[1]}/resumen"
+    return pagina.locator(f'aside.silice-marco-lateral a[href="{destino}"]').first
+
+
+def ir_por_el_marco(pagina: Any, ruta: str, obra: tuple[str | None, int] | None = None) -> str:
+    """Como una persona, por el marco de F6 (`camino_por_el_marco`): la obra en la barra lateral
+    (la dada o, sin ella, la de la dirección actual), un espacio en «Costos y producción», la
+    Cuenta con el botón de la persona y, después, cada pestaña en su barra. Devuelve el camino."""
+    lateral = pagina.locator("aside.silice-marco-lateral")
+    pasos: list[str] = []
+    for paso in camino_por_el_marco(ruta):
+        if paso["donde"] == "lateral" and paso["nombre"] == "obra":
+            obra = obra or obra_de_la_direccion(pagina.evaluate("() => location.hash"))
+            if obra is None:
+                raise RuntimeError(f"«{ruta}» es de una obra y no hay obra elegida")
+            enlace = _enlace_de_la_obra(pagina, obra)
+            pasos.append(f"barra lateral › {enlace.inner_text(timeout=LIMITE_PASO_MS).strip()}")
+            enlace.click(timeout=LIMITE_PASO_MS)
+            pagina.wait_for_function(
+                "p => location.hash.startsWith(p)",
+                arg=f"#/obra/{_segmento_de_carpeta(obra[0])}/{obra[1]}/",
+                timeout=LIMITE_CARGA_MS,
+            )
+        elif paso["donde"] == "lateral":
+            if paso["nombre"] != "Vista general":
+                _abrir_costos(lateral)
+            lateral.get_by_role("link", name=paso["nombre"], exact=False).first.click(
+                timeout=LIMITE_PASO_MS
+            )
+            pasos.append(f"barra lateral › {paso['nombre']}")
+        elif paso["donde"] == "cuenta":
+            pagina.locator("header.silice-marco-barra a.silice-cuenta__boton").click(
+                timeout=LIMITE_PASO_MS
+            )
+            pasos.append("Cuenta")
         else:
-            abrir_sidebar(pagina)
-            areas = lado.locator(".silice-sidebar__areas")
-            areas.get_by_role("link", name=camino["pantalla"], exact=True).click()
-            pasos.append(f"Sílice › Áreas › {camino['pantalla']}")
+            barra = pagina.get_by_role("navigation", name=paso["barra"], exact=True)
+            barra.get_by_role("link", name=paso["nombre"], exact=True).click(timeout=LIMITE_PASO_MS)
+            pasos.append(f"{paso['barra']} › {paso['nombre']}")
+        with contextlib.suppress(Exception):
+            pagina.wait_for_load_state("networkidle", timeout=3000)
     esperar_ruta(pagina, ruta)
     return " / ".join(pasos)
 
 
 def caso_de_la_sesion(pagina: Any) -> str | None:
-    """La carpeta de trabajo que la API tiene para esta sesión (no la que muestra el selector)."""
+    """La carpeta que la API tiene para esta sesión (no la que muestra la barra de arriba)."""
     return pagina.evaluate(
         "async () => { const r = await fetch('/v1/casos', {credentials: 'same-origin'});"
         " if (!r.ok) return null; const d = await r.json();"
@@ -2219,58 +1642,55 @@ def caso_de_la_sesion(pagina: Any) -> str | None:
 
 
 def carpeta_mostrada_y_real(pagina: Any) -> dict[str, Any]:
-    """Control del armazón en cada fila: la carpeta que el selector de obra MUESTRA al pie de su
-    panel frente a la que la API tiene para la sesión (sin `.db`, que la interfaz no muestra).
-    Fuera de Presupuestos y obras no hay selector: no se compara."""
-    mostrada = None
-    boton = pagina.locator(f"#{ID_BOTON_OBRA}")
-    if boton.count() and boton.is_visible():
-        if boton.get_attribute("aria-expanded") != "true":
-            boton.click()
-        texto = pagina.locator(".silice-obra__carpeta span").first.inner_text(timeout=4000)
-        mostrada = texto.removeprefix("Carpeta:").strip()
-        boton.click()
-    real = caso_de_la_sesion(pagina)
-    corta = (real or "").removesuffix(".db")
+    """Control del marco en cada fila: la carpeta que la barra de arriba MUESTRA («Carpeta activa:
+    …», con el título que da el servidor) frente al título de la carpeta de la sesión
+    (`GET /v1/obras/todas`, `carpeta_actual_titulo`). Sin lectura de obras no se compara."""
+    texto = pagina.locator("header.silice-marco-barra .silice-marco-barra__carpeta").first
+    mostrada = texto.inner_text(timeout=4000).removeprefix("Carpeta activa:").strip() or None
+    real = pagina.evaluate(
+        "async () => { const r = await fetch('/v1/obras/todas', {credentials: 'same-origin'});"
+        " if (!r.ok) return null; const d = await r.json();"
+        " return d ? d.carpeta_actual_titulo : null; }"
+    )
     return {
         "carpeta_mostrada": mostrada,
         "carpeta_api": real,
-        "carpeta_coincide": None if mostrada is None else mostrada == corta,
+        "carpeta_coincide": None if mostrada is None or real is None else mostrada == real,
     }
 
 
-def elegir_contexto(pagina: Any, carpeta: str | None, proyecto: str | None) -> None:
-    """Carpeta de trabajo y obra con el selector de obra de la barra de Presupuestos y obras (el
-    único sitio donde vive): se entra al módulo por el sidebar, «Cambiar carpeta…» abre el diálogo
-    de carpetas y la obra se elige en la lista del panel. Se comprueba contra la API."""
+def elegir_contexto(
+    pagina: Any, carpeta: str | None, proyecto: str | None
+) -> tuple[str | None, int] | None:
+    """La carpeta y la obra de la fila, por el marco: se entra en la obra desde la barra lateral
+    (con `proyecto`, esa; sin él, la primera de la carpeta), lo que fija también su carpeta en la
+    sesión. Quien no lee obras (el administrador) abre la carpeta en Cuenta › Carpetas. Devuelve la
+    obra elegida (None si no hace falta ninguna). Se comprueba contra la API."""
     if not carpeta and not proyecto:
-        return
-    ir_por_menu(pagina, "obras")
-    boton = pagina.locator(f"#{ID_BOTON_OBRA}")
-    if carpeta and caso_de_la_sesion(pagina) != carpeta:
-        boton.click()
-        pagina.get_by_role("button", name="Cambiar carpeta…").click()
-        dialogo = pagina.get_by_role("dialog", name="Carpetas de trabajo")
-        nombre = carpeta.removesuffix(".db")
-        dialogo.get_by_role("button", name=f"Abrir {nombre}", exact=True).click(
+        return None
+    respuesta = api(pagina, "GET", "/v1/obras/todas")
+    obras = respuesta["datos"].get("obras", []) if respuesta["estado"] == 200 else []
+    elegida = obra_para(obras, carpeta, proyecto)
+    if elegida is not None:
+        obra = (elegida.get("carpeta"), int(elegida["obra_id"]))
+        ir_por_hash(pagina, PAGINA_DE_LA_VISTA_GENERAL)
+        _enlace_de_la_obra(pagina, obra).click(timeout=LIMITE_PASO_MS)
+        esperar_ruta(pagina, "obras")
+    elif proyecto:
+        raise RuntimeError(f"no hay obra «{proyecto}» en la carpeta «{carpeta}»")
+    else:
+        obra = None
+        pagina.goto(pagina.url.split("#", 1)[0] + "#/cuenta/carpetas")
+        nombre = (carpeta or "").removesuffix(".db")
+        pagina.get_by_role("button", name=f"Abrir {nombre}", exact=True).click(
             timeout=LIMITE_PASO_MS
         )
-        fin = time.monotonic() + LIMITE_PASO_MS / 1000
-        while caso_de_la_sesion(pagina) != carpeta:
-            if time.monotonic() > fin:
-                raise RuntimeError(f"la carpeta de trabajo no cambió a «{carpeta}»")
-            pagina.wait_for_timeout(300)
-        dialogo.wait_for(state="detached", timeout=LIMITE_PASO_MS)
-        esperar_ruta(pagina, "obras")
-    if proyecto:
-        if boton.get_attribute("aria-expanded") != "true":
-            boton.click()
-        opcion = pagina.locator(".silice-obra__panel .silice-obra__opcion").filter(
-            has_text=proyecto
-        )
-        opcion.first.click(timeout=LIMITE_PASO_MS)
-        pagina.locator(".silice-obra__panel").wait_for(state="detached", timeout=LIMITE_PASO_MS)
-        pagina.wait_for_timeout(500)
+    fin = time.monotonic() + LIMITE_PASO_MS / 1000
+    while carpeta and caso_de_la_sesion(pagina) != carpeta:
+        if time.monotonic() > fin:
+            raise RuntimeError(f"la carpeta de la sesión no cambió a «{carpeta}»")
+        pagina.wait_for_timeout(300)
+    return obra
 
 
 def _texto_principal(pagina: Any) -> str:
@@ -2311,7 +1731,7 @@ def ejecutar_paso(
     zona = _principal(pagina)
     indice = int(paso.get("indice", 0))
     if accion == "ir":
-        return "ir por el menú: " + ir_por_menu(pagina, paso["ruta"])
+        return "ir por el marco: " + ir_por_el_marco(pagina, paso["ruta"])
     if accion == "llenar":
         donde = pagina if paso.get("fuera") else zona
         valor = str(paso["valor"]).replace("{hoy}", time.strftime("%Y-%m-%d"))
@@ -2453,8 +1873,8 @@ def ejecutar_fila(
     }
     inicio = time.monotonic()
     try:
-        elegir_contexto(pagina, fila.get("carpeta"), fila.get("proyecto"))
-        resultado["camino"] = ir_por_menu(pagina, fila["ruta"])
+        obra = elegir_contexto(pagina, fila.get("carpeta"), fila.get("proyecto"))
+        resultado["camino"] = ir_por_el_marco(pagina, fila["ruta"], obra)
         for paso in fila.get("pasos", []):
             resultado["pasos"].append(ejecutar_paso(pagina, paso, archivos, salida / "descargas"))
         ok, detalle = comprobar_espera(pagina, fila["espera"], archivos)
@@ -2589,109 +2009,73 @@ def axe_nuevas(fila: dict[str, Any]) -> list[str]:
     return [v["id"] for v in fila.get("axe", []) if (fila["id"], v["id"]) not in AXE_DE_REFERENCIA]
 
 
-def resumir(filas: list[dict[str, Any]]) -> dict[str, Any]:
-    def n(pred: Any, grupo: list[dict[str, Any]] | None = None) -> int:
-        return sum(1 for f in (filas if grupo is None else grupo) if pred(f))
+def fallos_de_la_fila(fila: dict[str, Any]) -> list[str]:
+    """Lo que está mal en una medición, en el orden en que se revisa. Una pantalla que el marco no
+    ofrece al rol (escrita a mano) puede quedar sin h1 propio: no cuenta como fallo de diseño."""
+    if "error" in fila:
+        return [f"error: {fila['error']}"]
+    fallos: list[str] = []
+    if fila.get("ofrecida") and fila.get("h1") != 1:
+        fallos.append("sin un h1" if not fila.get("h1") else f"{fila['h1']} h1")
+    if fila.get("scroll_x"):
+        fallos.append("desplazamiento horizontal")
+    if fila.get("letra_aplicada") != fila.get("letra"):
+        fallos.append(f"letra no aplicada ({fila.get('letra_aplicada')} en vez de {fila['letra']})")
+    for b in fila.get("barras", []):
+        if b.get("desborda"):
+            fallos.append(f"barra «{b['barra']}» desborda")
+        if b.get("fuera"):
+            fallos.append(f"barra «{b['barra']}»: fuera de la ventana {', '.join(b['fuera'])}")
+        if b.get("repetidas"):
+            fallos.append(f"barra «{b['barra']}»: repetidas {', '.join(b['repetidas'])}")
+        for recorte in b.get("recortes", []):
+            fallos.append(f"barra «{b['barra']}»: {recorte}")
+    nombres = sin_nombre(fila.get("controles", []))
+    if nombres:
+        fallos.append("sin nombre: " + "; ".join(nombres[:4]))
+    nuevas = axe_nuevas(fila)
+    if nuevas:
+        fallos.append("axe nuevas: " + ", ".join(nuevas))
+    if fila.get("consola"):
+        fallos.append(f"consola: {len(fila['consola'])}")
+    if fila.get("red"):
+        fallos.append(f"red: {len(fila['red'])}")
+    return fallos
 
-    def controles(grupo: list[dict[str, Any]]) -> dict[str, Any]:
-        accesibles = [f for f in grupo if f.get("en_menu")]
+
+def resumir(filas: list[dict[str, Any]]) -> dict[str, Any]:
+    """Cuántas mediciones y cuántas con fallos, por letra y por ancho; las filas con el recorrido
+    guiado en curso se cuentan aparte (columna visible y sin tapar el contenido)."""
+    medidas = [f for f in filas if not f.get("recorrido")]
+    con_recorrido = [f for f in filas if f.get("recorrido")]
+
+    def cuenta(grupo: list[dict[str, Any]]) -> dict[str, int]:
         return {
             "mediciones": len(grupo),
-            "en_menu": len(accesibles),
-            "con_error_de_carga": n(lambda f: "error" in f, grupo),
-            "en_menu_sin_un_h1": n(lambda f: f.get("h1") != 1, accesibles),
-            "fuera_de_menu_sin_h1": n(lambda f: not f.get("en_menu") and f.get("h1") == 0, grupo),
-            "con_varios_h1": n(lambda f: (f.get("h1") or 0) > 1, grupo),
-            "con_scroll_horizontal": n(lambda f: f.get("scroll_x"), grupo),
-            "con_errores_de_consola": n(lambda f: f.get("consola"), grupo),
-            "con_errores_de_red": n(lambda f: f.get("red"), grupo),
-            "letra_no_aplicada": n(lambda f: f.get("letra_aplicada") != f.get("letra"), grupo),
-            "duplicados_nav": sum(f.get("duplicados_nav") or 0 for f in grupo),
-            "sin_control_nav": n(lambda f: "duplicados_nav" not in f, grupo),
-            "barra_cortada": n(lambda f: f.get("barra_cortada") is not False, grupo),
-            "panel_fuera": n(lambda f: f.get("panel_fuera") is not False, grupo),
-            "modo_nav": {
-                m: n(lambda f, m=m: f.get("modo_nav") == m, grupo) for m in ("barra", "sidebar")
-            },
-            "sidebar_tapa": n(lambda f: f.get("sidebar_tapa"), grupo),
-            "sidebar_distinto": n(sidebar_distinto, grupo),
-            "con_violaciones_axe": n(lambda f: f.get("axe"), grupo),
-            "con_violaciones_axe_nuevas": n(lambda f: axe_nuevas(f), grupo),
-            "sin_axe": n(lambda f: "axe" not in f, grupo),
+            "con_fallos": sum(1 for f in grupo if fallos_de_la_fila(f)),
         }
 
-    normales = [f for f in filas if not f.get("recorrido")]
-    con_recorrido = [f for f in filas if f.get("recorrido")]
-    letras = sorted({f.get("letra") for f in filas}, key=lambda x: LETRAS.index(x))
-    resumen = controles(normales)
-    resumen["por_letra"] = {
-        letra: controles([f for f in normales if f.get("letra") == letra]) for letra in letras
+    por_letra: dict[str, list[dict[str, Any]]] = {}
+    por_ancho: dict[str, list[dict[str, Any]]] = {}
+    for f in medidas:
+        por_letra.setdefault(f["letra"], []).append(f)
+        por_ancho.setdefault(str(f["ancho"]), []).append(f)
+    return {
+        **cuenta(medidas),
+        "no_ofrecidas": sum(1 for f in medidas if not f.get("ofrecida")),
+        "por_letra": {k: cuenta(v) for k, v in por_letra.items()},
+        "por_ancho": {k: cuenta(v) for k, v in por_ancho.items()},
+        "con_recorrido": {
+            "mediciones": len(con_recorrido),
+            "columna_no_visible": sum(1 for f in con_recorrido if not f.get("recorrido_visible")),
+            "columna_solapa": sum(1 for f in con_recorrido if f.get("recorrido_solapa")),
+        },
+        "fallos": [
+            f"{f['rol']} {f['ancho']} {f['letra']} {f['id']}: {'; '.join(fallos)}"
+            for f in medidas
+            if (fallos := fallos_de_la_fila(f))
+        ],
     }
-    estados = [e for e in SIDEBARS if any(f.get("sidebar") == e for f in normales)]
-    resumen["por_sidebar"] = {
-        e: controles([f for f in normales if f.get("sidebar") == e]) for e in estados
-    }
-    modulos: dict[str, list[dict[str, Any]]] = {}
-    for f in normales:
-        modulos.setdefault(f.get("modulo_de_la_ruta", f.get("modulo")) or "fuera", []).append(f)
-    resumen["por_modulo"] = {m: controles(grupo) for m, grupo in modulos.items()}
-    resumen["con_recorrido"] = controles(con_recorrido)
-    resumen["con_recorrido"]["columna_no_visible"] = n(
-        lambda f: not f.get("recorrido_visible"), con_recorrido
-    )
-    resumen["con_recorrido"]["columna_solapa"] = n(
-        lambda f: f.get("recorrido_solapa") is not False, con_recorrido
-    )
-    resumen["axe_nuevas"] = sorted(
-        {
-            f"{f['rol']} {f['ancho']} {f['letra']} {f.get('sidebar', '')} {f['id']}: {r}"
-            for f in filas
-            for r in axe_nuevas(f)
-        }
-    )
-    resumen["fallos_nav"] = sorted(filter(None, map(fallo_nav, filas)))
-    return resumen
-
-
-def sidebar_distinto(fila: dict[str, Any]) -> bool:
-    """El sidebar no estaba como debía en el estado medido (capa, fijado o ninguno)."""
-    return "sidebar" in fila and fila.get("sidebar_modo") != fila.get("sidebar_esperado")
-
-
-def fallo_nav(fila: dict[str, Any]) -> str | None:
-    """Una línea por medición con un control de la barra o del sidebar en rojo (o sin medir)."""
-    motivos = []
-    if "duplicados_nav" not in fila:
-        motivos.append("sin control de la barra: " + str(fila.get("error", "")))
-    if fila.get("duplicados_nav"):
-        motivos.append(f"duplicados {fila.get('duplicados_detalle')}")
-    if fila.get("barra_cortada"):
-        motivos.append(f"cortada {fila.get('barra_motivos')}")
-    if fila.get("panel_fuera"):
-        motivos.append(f"fuera {fila.get('paneles_fuera')}")
-    if fila.get("sidebar_tapa"):
-        motivos.append(f"el sidebar fijado tapa el contenido {fila.get('main_caja')}")
-    if sidebar_distinto(fila):
-        modo = fila.get("sidebar_modo") or "ninguno"
-        esperado = fila.get("sidebar_esperado") or "ninguno"
-        motivos.append(f"sidebar {modo} (se esperaba {esperado})")
-    if not motivos:
-        return None
-    marca = " (recorrido)" if fila.get("recorrido") else ""
-    estado = f" {fila['sidebar']}" if fila.get("sidebar") else ""
-    cabeza = f"{fila['rol']} {fila['ancho']} {fila['letra']}{estado} {fila['id']}{marca}: "
-    return cabeza + "; ".join(motivos)
-
-
-def sidebars_pedidos(valores: list[str]) -> list[str]:
-    """`--sidebar oculto,fijado` o `--sidebar oculto fijado`; en el orden de `SIDEBARS`."""
-    pedidos = {v.strip() for parte in valores for v in parte.split(",") if v.strip()}
-    desconocidos = pedidos - set(SIDEBARS)
-    if desconocidos or not pedidos:
-        raise SystemExit(
-            f"--sidebar: use {', '.join(SIDEBARS)} (no {', '.join(sorted(desconocidos))})"
-        )
-    return [e for e in SIDEBARS if e in pedidos]
 
 
 def letras_pedidas(valores: list[str]) -> list[str]:
@@ -2705,6 +2089,14 @@ def letras_pedidas(valores: list[str]) -> list[str]:
     return [letra for letra in LETRAS if letra in pedidas]
 
 
+def anchos_pedidos(valores: list[str]) -> list[int]:
+    """`--anchos 1056,1366` o `--anchos 1056 1366`: enteros positivos, ordenados y sin repetir."""
+    partes = [v.strip() for parte in valores for v in str(parte).split(",") if v.strip()]
+    if not partes or not all(p.isdigit() and int(p) > 0 for p in partes):
+        raise SystemExit(f"--anchos: use enteros positivos en píxeles (no {', '.join(partes)!r})")
+    return sorted({int(p) for p in partes})
+
+
 def recorrer_rol(
     contexto: Any,
     base: str,
@@ -2712,51 +2104,41 @@ def recorrer_rol(
     rutas: list[dict[str, Any]],
     args: argparse.Namespace,
     letras: list[str],
-    sidebars: list[str],
+    anchos: list[int],
     capturas: Path,
     axe: str | None,
     libros: dict[str, Path],
     resultado: dict[str, Any],
 ) -> None:
-    """Todas las medidas de un rol: por estado del sidebar, letra, ancho y pantalla."""
-    fijar_sidebar_de_la_cuenta(contexto, base, False)
-    en_menu = ids_del_menu(contexto, base)
-    resultado.setdefault("menu_por_rol", {})[rol] = sorted(en_menu)
-    for sidebar in sidebars:
-        fijar_sidebar_de_la_cuenta(contexto, base, sidebar == "fijado")
-        for letra in letras:
-            for ancho in args.anchos:
-                for ruta in rutas:
-                    # Fuera del menú del rol solo interesa el aviso «Sin permiso» (H-8).
-                    if ruta["id"] not in en_menu and sidebar != "oculto":
-                        continue
-                    fila = medir_pantalla(
-                        contexto, base, ruta, ancho, rol, capturas, axe, en_menu, letra, sidebar
-                    )
+    """Todas las medidas de un rol: por letra, ancho y pantalla, en la obra de nombre más largo."""
+    obra = obra_del_recorrido(obras_de_la_siembra(contexto, base))
+    oferta = oferta_del_marco(contexto, base, obra)
+    resultado.setdefault("oferta_por_rol", {})[rol] = sorted(oferta)
+    resultado.setdefault("obra_por_rol", {})[rol] = list(obra) if obra else None
+    for letra in letras:
+        for ancho in anchos:
+            for ruta in rutas:
+                fila = medir_pantalla(
+                    contexto, base, ruta, ancho, rol, capturas, axe, oferta, letra, obra
+                )
+                resultado["pantallas"].append(fila)
+                fallos = fallos_de_la_fila(fila)
+                print(
+                    f"{rol:5} {letra:10} {ancho} {ruta['id']:15} h1={fila.get('h1')} "
+                    f"{fila.get('ms_hasta_h1')}ms {'; '.join(fallos) or 'ok'}"
+                )
+            # El recorrido empieza al auditar desde el inicio de Auditoría: solo quien audita.
+            if not args.sin_recorrido and "libros" in oferta:
+                for fila in medir_con_recorrido(
+                    contexto, base, libros["limpio"], ancho, rol, capturas, axe, letra
+                ):
                     resultado["pantallas"].append(fila)
                     print(
-                        f"{rol:5} {sidebar:7} {letra:10} {ancho} {ruta['id']:15} "
-                        f"h1={fila.get('h1')} scrollX={fila.get('scroll_x')} "
-                        f"nav={fila.get('modo_nav')} lado={fila.get('sidebar_modo')} "
-                        f"dup={fila.get('duplicados_nav')} cortada={fila.get('barra_cortada')} "
-                        f"fuera={fila.get('panel_fuera')} tapa={fila.get('sidebar_tapa')} "
-                        f"{fila.get('ms_hasta_h1')}ms {fila.get('error', '')}"
+                        f"{rol:5} {letra:10} {ancho} recorrido/{fila['id']:9} "
+                        f"h1={fila.get('h1')} columna={fila.get('recorrido_modo')} "
+                        f"visible={fila.get('recorrido_visible')} "
+                        f"solapa={fila.get('recorrido_solapa')} {fila.get('error', '')}"
                     )
-                # El recorrido empieza al auditar desde el inicio de Auditoría: solo quien audita.
-                if sidebar == "oculto" and not args.sin_recorrido and "libros" in en_menu:
-                    for fila in medir_con_recorrido(
-                        contexto, base, libros["limpio"], ancho, rol, capturas, axe, letra
-                    ):
-                        resultado["pantallas"].append(fila)
-                        print(
-                            f"{rol:5} {letra:10} {ancho} recorrido/{fila['id']:9} "
-                            f"h1={fila.get('h1')} columna={fila.get('recorrido_modo')} "
-                            f"visible={fila.get('recorrido_visible')} "
-                            f"solapa={fila.get('recorrido_solapa')} "
-                            f"dup={fila.get('duplicados_nav')} "
-                            f"fuera={fila.get('panel_fuera')} {fila.get('error', '')}"
-                        )
-    fijar_sidebar_de_la_cuenta(contexto, base, False)
     if args.sin_flujo or rol not in ("ana", "rita"):
         return
     if rol == "ana":
@@ -2777,22 +2159,21 @@ def recorrer_rol(
             )
 
 
-def main(argv: list[str] | None = None) -> int:
+def analizador() -> argparse.ArgumentParser:
     a = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     a.add_argument("--salida", type=Path, required=True)
     a.add_argument("--roles", nargs="+", default=list(ROLES), choices=list(ROLES))
-    a.add_argument("--anchos", nargs="+", type=int, default=[1366, 1056])
+    a.add_argument(
+        "--anchos",
+        nargs="+",
+        default=[",".join(str(x) for x in ANCHOS)],
+        help="anchos de la ventana en píxeles (con comas o espacios)",
+    )
     a.add_argument(
         "--letras",
         nargs="+",
         default=[",".join(LETRAS)],
         help="tamaños de letra (con comas o espacios): normal, grande, muy-grande",
-    )
-    a.add_argument(
-        "--sidebar",
-        nargs="+",
-        default=[",".join(SIDEBARS)],
-        help="estados del sidebar de módulos (con comas o espacios): oculto, abierto, fijado",
     )
     a.add_argument("--rutas", nargs="*", help="ids de página; por omisión todas las de rutas.ts")
     a.add_argument("--sin-axe", action="store_true")
@@ -2804,10 +2185,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     a.add_argument("--sin-pantallas", action="store_true", help="solo las medidas aparte")
     a.add_argument(
-        "--especiales", action="store_true", help="mesa, selector de obra, diálogos, marca, mercado"
-    )
-    a.add_argument(
-        "--umbrales", action="store_true", help="mide el umbral de la barra de cada módulo"
+        "--umbrales", action="store_true", help="mide el umbral de las barras de cada lugar"
     )
     a.add_argument(
         "--visor", action="store_true", help="el visor del libro: axe, lienzo, salir y volver"
@@ -2823,12 +2201,16 @@ def main(argv: list[str] | None = None) -> int:
         help="modo funcional: solo estas rutas (con espacios o comas), las que requieren y la "
         "siembra; un nombre desconocido o ninguna ruta sale con 1",
     )
-    args = a.parse_args(argv)
+    return a
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = analizador().parse_args(argv)
     if args.funcional:
         return main_funcional(args.salida, args.acciones, args.solo)
 
     letras = letras_pedidas(args.letras)
-    sidebars = sidebars_pedidos(args.sidebar)
+    anchos = anchos_pedidos(args.anchos)
     salida: Path = args.salida
     capturas = salida / "capturas"
     capturas.mkdir(parents=True, exist_ok=True)
@@ -2849,8 +2231,7 @@ def main(argv: list[str] | None = None) -> int:
         **compilado,
         "rutas": len(rutas),
         "letras": letras,
-        "sidebar": sidebars,
-        "anchos": args.anchos,
+        "anchos": anchos,
         "axe": bool(axe),
         "pantallas": [],
         "flujos": [],
@@ -2881,7 +2262,7 @@ def main(argv: list[str] | None = None) -> int:
                         rutas,
                         args,
                         letras,
-                        sidebars,
+                        anchos,
                         capturas,
                         axe,
                         libros,
@@ -2896,7 +2277,7 @@ def main(argv: list[str] | None = None) -> int:
                         entrar(pagina, base, rol, claves[rol])
                         pagina.close()
                         for letra in letras:
-                            for ancho in args.anchos:
+                            for ancho in anchos:
                                 m = medir_visor(
                                     contexto,
                                     base,
@@ -2914,15 +2295,6 @@ def main(argv: list[str] | None = None) -> int:
                                     f"{'; '.join(m['fallos']) or 'ok'}"
                                 )
                         contexto.close()
-                if args.especiales:
-                    contexto = navegador.new_context(viewport={"width": 1366, "height": ALTO})
-                    pagina = contexto.new_page()
-                    entrar(pagina, base, "ana", claves["ana"])
-                    pagina.close()
-                    resultado["especiales"] = medir_especiales(
-                        contexto, base, capturas, args.anchos, letras
-                    )
-                    contexto.close()
             finally:
                 navegador.close()
     finally:
@@ -2934,8 +2306,6 @@ def main(argv: list[str] | None = None) -> int:
                 break
             time.sleep(1)
     resultado["resumen"] = resumir(resultado["pantallas"]) if resultado["pantallas"] else {}
-    if "especiales" in resultado:
-        resultado["resumen"]["especiales_fallos"] = resultado["especiales"]["fallos"]
     (salida / "recorrido.json").write_text(
         json.dumps(resultado, indent=2, ensure_ascii=False), encoding="utf-8"
     )

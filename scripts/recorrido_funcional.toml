@@ -6,17 +6,18 @@
 # `ruta_canonica` del script, que la lee de `frontend-desktop/src/marco/espacios.ts`.
 #
 # Lo ejecuta `scripts/recorrido_ux_playwright.py --funcional`, en el orden de este archivo. Cada fila
-# entra como una persona (plan de módulos, MOD-5): «Sílice» abre el sidebar, se elige el módulo y,
-# en la barra, el área y la pantalla (o la pantalla en el sidebar, si la barra cedió sus áreas); nunca
-# por dirección. La carpeta y la obra se eligen con el selector de obra de Presupuestos y obras
-# («Cambiar carpeta…» y la lista de obras). Cuentas ficticias de `tests/fixtures/sesion_web.py`:
+# entra como una persona, por el marco de F6 (F8, C2) y nunca por dirección: la obra en la barra
+# lateral, que fija también su carpeta (con `proyecto`, esa obra; sin él, la primera de la carpeta),
+# y su sección y su vista en las barras de la obra; un espacio de la empresa en «Costos y producción»
+# y su herramienta en su barra; la Cuenta con el botón de la persona y su sección en su barra. Quien
+# no ve obras abre la carpeta en Cuenta › Carpetas. Cuentas ficticias de `tests/fixtures/sesion_web.py`:
 # admin (administra), ana (arma), rita (revisa). Carpetas de trabajo: los casos de demostración que
 # siembra `start.preparar_demo` (demo.db, s1.db, ti001.db, of001.db, obra_control.db).
 #
 # Formato de cada fila:
 #   ruta, cuenta, accion (qué se prueba, en una línea), carpeta y proyecto (opcionales),
 #   pasos = [ { accion = "llenar" | "elegir" | "pulsar" | "marcar" | "subir" | "ir" | "esperar" | "tecla", ... } ]
-# - ir: ruta (otra pantalla, por el menú como la fila).
+# - ir: ruta (otra pantalla, por el marco como la fila, en la obra de la dirección actual).
 #   espera = { texto = "...", textos = [...], ausentes = [...], descarga = "<clave>", huella = true, ms = 30000 }
 #   requiere = ["<ruta>"]: filas anteriores de las que depende; `--solo` las agrega solas.
 # - ausentes: textos que NO deben verse al final (prueban que un filtro o una búsqueda quitó algo).
