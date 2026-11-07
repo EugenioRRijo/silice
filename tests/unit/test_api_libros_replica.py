@@ -592,6 +592,70 @@ def test_una_celda_lejana_que_la_dimension_no_declara_es_422(hostil: str):
     assert r.json()["detalle"] == esperado
 
 
+# Arbitraje F5/F7/F8 r2, N3 (el resto de P3): 1e20, 1e300 o 9,99e307 en la cantidad o el precio
+# daban un 500 (`decimal.InvalidOperation` al presentar el precio). Ahora son 422 con su celda; y si
+# cada cifra cabe en el tope pero el recálculo no cabe en la precisión (un billón por un billón con
+# una administración de un billón por ciento), 422 con la hoja, también cuando la hoja no se compara
+# (impuesto dentro del APU). En el presupuesto, el P.U. enorme dice su celda.
+_ENORME = ApuFicticio(
+    9,
+    "VF-009",
+    "Partida ficticia enorme",
+    "m2",
+    "1",
+    "1",
+    materiales=(Material(1, "Cemento ficticio", "kg", "1", "0", "1"),),
+)
+_TOPE = "1.000.000.000.000"
+_NO_RECALCULA = ": Sílice no recalcula la hoja «APU 9»."
+_DEMASIADO = (
+    "La hoja «APU 9» da un precio unitario demasiado grande para recalcularlo con exactitud: "
+    "revise sus cantidades, sus precios y sus porcentajes."
+)
+
+
+@pytest.mark.parametrize(
+    ("celdas", "esperado"),
+    [
+        (
+            {"D9": 1e20, "F9": 1e20},
+            f"APU 9!D9: la cantidad de «Cemento ficticio» pasa del tope de {_TOPE}{_NO_RECALCULA}",
+        ),
+        (
+            {"F9": 1e300},
+            f"APU 9!F9: el precio de «Cemento ficticio» pasa del tope de {_TOPE}{_NO_RECALCULA}",
+        ),
+        (
+            {"F9": 9.99e307, "D9": 9.99e307},
+            f"APU 9!D9: la cantidad de «Cemento ficticio» pasa del tope de {_TOPE}{_NO_RECALCULA}",
+        ),
+        ({"D9": 1e12, "F9": 1e12, "F24": 1e12}, _DEMASIADO),
+        ({"D9": 1e12, "F9": 1e12, "F24": 1e12, "F27": 16}, _DEMASIADO),
+    ],
+    ids=["1e20", "1e300", "9_99e307", "recalculo_enorme", "recalculo_enorme_con_impuesto"],
+)
+def test_una_magnitud_enorme_es_422_y_no_500(celdas: dict[str, float], esperado: str):
+    datos = con_celdas(libro_apu((_ENORME,)), "APU 9", celdas, dimension_de_antes=False)
+    r = _con_clave().post(RUTA_APU, files={"libro": ("f.xlsx", datos)})
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == esperado
+
+
+def test_un_precio_enorme_en_el_presupuesto_es_422_con_su_celda():
+    presupuesto = con_celdas(
+        libro_presupuesto(), "PRESUPUESTO", {"F4": 1e300}, dimension_de_antes=False
+    )
+    r = _con_clave().post(
+        RUTA_APU,
+        files={"libro": ("f.xlsx", libro_apu()), "presupuesto": ("p.xlsx", presupuesto)},
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == (
+        f"PRESUPUESTO!F4: el precio unitario del renglón 1 pasa del tope de {_TOPE}: Sílice no "
+        "enlaza el presupuesto con sus APU."
+    )
+
+
 def test_otra_extension_es_415():
     r = _con_clave().post(RUTA_APU, files={"libro": ("frente.csv", b"a;b")})
     assert r.status_code == 415

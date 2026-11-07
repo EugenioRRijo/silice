@@ -273,6 +273,39 @@ def test_un_rendimiento_cero_hace_la_hoja_no_interpretable():
     )
 
 
+# Arbitraje F5/F7/F8 r2, N3: una magnitud enorme (1e20, 1e300, 9,99e307) daba un 500 al presentar
+# el precio (`Decimal.quantize` pasa de la precisión). El lector la ataja con su celda: ninguna
+# cantidad, precio, porcentaje ni rendimiento de un APU pasa de un billón (10^12). Las del
+# material se prueban por la ruta (`test_api_libros_replica.py`); aquí, las de la cabecera y el pie.
+TOPE = "1.000.000.000.000"
+
+
+@pytest.mark.parametrize(
+    ("celda", "que"),
+    [
+        ("F5", "el rendimiento"),
+        ("D5", "la cantidad de la partida"),
+        ("F24", "el porcentaje de Administración"),
+        ("G28", "el precio unitario impreso"),
+    ],
+    ids=["rendimiento", "cantidad_cabecera", "administracion", "precio_impreso"],
+)
+def test_una_magnitud_enorme_hace_la_hoja_no_interpretable_con_su_celda(celda: str, que: str):
+    datos = con_celdas(libro_apu((_hoja(),)), "APU 9", {celda: 1e20}, dimension_de_antes=False)
+    with pytest.raises(LibroNoInterpretable) as error:
+        leer_libro_apu_por_hoja(datos, "enorme.xlsx")
+    assert str(error.value) == (
+        f"APU 9!{celda}: {que} pasa del tope de {TOPE}: Sílice no recalcula la hoja «APU 9»."
+    )
+
+
+def test_el_tope_mismo_se_lee():
+    """«Pasa del tope» es estrictamente mayor: un billón exacto se lee."""
+    datos = con_celdas(libro_apu((_hoja(),)), "APU 9", {"F9": 1e12}, dimension_de_antes=False)
+    (linea,) = leer_libro_apu_por_hoja(datos, "tope.xlsx").apu("APU 9").lineas
+    assert linea.precio == D("1000000000000")
+
+
 # --- mapeo al núcleo --------------------------------------------------------------------------
 
 
