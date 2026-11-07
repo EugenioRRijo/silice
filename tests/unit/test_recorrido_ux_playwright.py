@@ -546,6 +546,16 @@ def test_la_tolerancia_de_un_subpixel_vale_para_el_texto_y_para_su_tope() -> Non
     assert "silice-sidebar" not in BARRAS_JS and "Menú principal" not in BARRAS_JS
 
 
+def test_un_texto_solo_para_lectores_de_pantalla_no_cuenta_como_recortado() -> None:
+    # Pasada en navegador de F8 (C3): con letra grande el buscador de la barra de arriba esconde su
+    # texto con el patrón «solo para lectores de pantalla» (1 px y `clip-path: inset(50%)`); el
+    # detector lo daba por recortado en las 128 mediciones con letra grande o muy grande.
+    from scripts.recorrido_ux_playwright import BARRAS_JS
+
+    assert "cs.clipPath !== 'none'" in BARRAS_JS
+    assert "caja <= 1" in BARRAS_JS
+
+
 def test_el_detector_de_controles_salta_lo_aria_hidden() -> None:
     from scripts.recorrido_ux_playwright import CONTROLES_JS
 
