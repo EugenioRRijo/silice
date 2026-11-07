@@ -182,6 +182,11 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- **Libros con celdas lejanas** (ESTADO §5.3, preexistente desde 1.5; árbitro xhigh 2026-11-07): la auditoría del
+  libro de la empresa (`adapters/hoja_empresa/lector.py`) y la réplica del visor (`visual.py`, hojas con fórmulas)
+  recorrían un millón de filas si una celda en A1048576 o en XFD no salía en la `<dimension>`: tardaban minutos. Ahora los
+  tres recorridos en solo lectura pasan por `lector.filas_acotadas` (20.000 filas × 100 columnas por hoja y 4.000.000 de
+  celdas por pasada) y rechazan el libro enseguida con el aviso del lector de un APU por hoja (422 en la API).
 - Correcciones del árbitro único de F5, F7 y F8 (`docs/bitacora/arbitrajes/fases-f5-f7-f8-claude-xhigh*.md`): el libro con
   un APU por hoja se lee acotado a 20.000 filas por 100 columnas y solo en las hojas que importan (un xlsx hostil de 33 KB
   ya no ocupa 750 MiB) y rechaza con su celda los valores inválidos o desmesurados; los perfiles de libros locales viven

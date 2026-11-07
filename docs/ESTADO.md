@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-06 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-07 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
@@ -29,6 +29,7 @@ instalador con huella SHA-256 firmada.
 | #107 `feature/autocompletado` | Autocompletado guiado AC1–AC4 (§3) | Árbitro xhigh: aprobado en la ronda 4; espera #105 (r6/r7) y la prueba de Eugenio |
 | `feature/tanda-detalles` | Tanda de detalles D1–D17 (§3), sobre F6 y el autocompletado unidos | Aprobada (rondas 2 y 3 del árbitro); sin PR hasta que se fusionen #106 y #107 |
 | `feature/integracion-fases` | F7 Ayuda, F8 Cierre, F5 vial y F5 ventana, sobre la tanda (§3) | Construidas en paralelo el 2026-11-06, una por árbol; espera el árbitro único y la prueba de Eugenio |
+| `feature/lector-topes` | Topes de la guardia en el lector del libro conocido y en la réplica del visor (§5.3), sobre la integración | Árbitro xhigh: aprobado con condiciones, ya corregidas ([acta](bitacora/arbitrajes/lector-topes-claude-xhigh.md)); sin PR, como la integración |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor. Ya tiene `main` unido y el experimento recongelado con acta (`docs/bitacora/2026-11-04-recongelado-experimento.md` en su rama) |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -96,6 +97,13 @@ lectura sale con tildes por `aplicacion/hoja_guardado.py`, la ruta del producto;
    (2026-11-03).md» de su Escritorio, sección «No tocados».
 7. Negar en el IDE de Antigravity la lectura de `docs/auditoria` y `data/confidencial` (en su línea de comandos ya está).
 8. Revisar unas carpetas vacías que un agente dejó en `C:\c\Users\...`.
+10. Tres decisiones que dejó el árbitro de los topes del lector
+   ([acta](bitacora/arbitrajes/lector-topes-claude-xhigh.md)): (a) la réplica del visor acepta una celda lejana en una
+   hoja **sin fórmulas** (la interfaz no lo muestra, porque pide la auditoría a la vez y descarta las dos); se puede
+   rechazar también ahí con `max_row`/`max_column`, que no cuestan nada; (b) `core/catalog/precios.py` (`leer_tabla`,
+   listas de precios y presupuestos subidos) recorre sin tope: tocarlo exige expediente del núcleo, o se acota antes en
+   `api/rutas/listas.py` (`comprobar_libro_legible`) sin tocar `core/`; (c) pasar una vez, en local, los libros reales
+   por la auditoría para confirmar que ninguno tiene una hoja de más de 100 columnas.
 9. Tesis: aval del tutor para el PR #100, mediciones con personas (Med) y la respuesta de la Dirección de Investigación.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
@@ -106,9 +114,9 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
 1. **Tanda de detalles**: aprobada (§3); falta la prueba de Eugenio en el navegador. Los mensajes «no existe en este
    caso» ya dicen «esta carpeta» (F8 C5; guardia `tests/unit/test_mensajes_sin_caso.py`).
 2. **Autocompletado**: completo (PR #107).
-3. **Expediente aparte** (preexistente, desde 1.5): `adapters/hoja_empresa/lector.py` (`_celdas_reales`, el lector del
-   libro conocido) tarda del orden de minutos con un libro hostil por filas o columnas lejanas; ponerle los topes de
-   `lector_apu_por_hoja._filas`, con prueba roja.
+3. **Libros con celdas lejanas: hecho** (2026-11-07, rama `feature/lector-topes`). El lector del libro conocido, la
+   réplica del visor y el lector de un APU por hoja recorren cada hoja con `lector.filas_acotadas`; un libro hostil se
+   rechaza en décimas de segundo con 422. Queda lo que el árbitro dejó para decidir (§4, punto 10).
 4. **F7, F8 y F5**: construidas y corregidas tras el árbitro único (§3); faltan la prueba de Eugenio, ratificar las
    decisiones provisionales de F5, mostrar el desperdicio en la Hoja y poner tildes a dos avisos de `aplicacion/hoja.py` y
    `composicion.py` (los dos exigen re-congelar el experimento con acta), V4 (humo de la ventana en la CI de Windows) y V5,

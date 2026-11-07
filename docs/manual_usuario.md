@@ -1339,6 +1339,9 @@ hallazgos.
 2. Pulse «Auditar por mi cuenta», o «Auditar con recorrido guiado» si es la primera vez (sección 12.4).
 3. Se abre «Libro de la empresa». Mientras trabaja dice «Leyendo el libro y auditándolo…».
 
+Los topes de seguridad de la sección 12.5 (filas, columnas y celdas del libro entero) valen para todo libro
+que se audita o se abre en el visor: si el libro los pasa, Sílice lo rechaza con el mismo aviso y le dice la hoja.
+
 ### 12.2 Leer el resultado
 
 - **Arriba, tres indicadores:** «Subtotal sin IVA», «IVA» y «Total general». Cada uno trae la cifra del
