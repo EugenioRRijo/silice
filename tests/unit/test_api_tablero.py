@@ -281,4 +281,4 @@ def test_el_tablero_acepta_el_codigo_que_da_v1_proyectos_igual_que_el_nombre() -
 def test_un_codigo_que_no_existe_da_404_con_el_mensaje_de_siempre() -> None:
     respuesta = _tablero(_con_clave(), "987654")
     assert respuesta.status_code == 404
-    assert respuesta.json()["detalle"] == "La obra «987654» no existe en este caso."
+    assert respuesta.json()["detalle"] == "La obra «987654» no existe en esta carpeta."
