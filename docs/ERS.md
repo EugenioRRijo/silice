@@ -1337,7 +1337,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑11 | RF‑33, RF‑34 | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑10, UC‑11, UC‑17 (autocompletado guiado) | RF‑167, RF‑168 (y RNF‑29) | AC1–AC4 ([PLAN_AUTOCOMPLETADO.md](planes/PLAN_AUTOCOMPLETADO.md), 2026‑11‑05) | usabilidad del prototipo, fuera de los cinco indicadores |
 | UC‑12, UC‑21 (ayuda y primera vez) | RF‑160, RF‑185 a RF‑189 (y RNF‑30) | F7 A1–A4 ([PLAN_TANDA_DETALLES.md](planes/PLAN_TANDA_DETALLES.md), Fase 2, 2026‑11‑06) | usabilidad del prototipo, fuera de los cinco indicadores |
-| UC‑10, UC‑25 y los tramos viales (presupuesto vial revisado en local) | RF‑170 a RF‑178 | F5 vial, tareas 1 a 6 ([diseño 2026‑11‑03](especificaciones/2026-11-03-presupuesto-vial-real-design.md), 2026‑11‑06) | fuera de los cinco indicadores; `core/` sin cambios (evidencia del indicador 4) |
+| UC‑10, UC‑25 y los tramos viales (presupuesto vial revisado en local) | RF‑170 a RF‑179 | F5 vial, tareas 1 a 6 ([diseño 2026‑11‑03](especificaciones/2026-11-03-presupuesto-vial-real-design.md), 2026‑11‑06) | fuera de los cinco indicadores; `core/` sin cambios (evidencia del indicador 4) |
 | UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
 | UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | SF0 (declarado), SF1–SF2 ([PLAN_SF.md](../PLAN_SF.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); la ausencia de cambios en `core/` al agregar datos y electricidad es evidencia del indicador 4 |
 | UC‑14 | RF‑50, RF‑51 | SF0 (declarado), SF5 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
@@ -1727,7 +1727,14 @@ que Eugenio las ratifique; están anotadas en el diseño). Nada de esto toca `co
 | RF-177 | Con el libro de presupuesto, cada renglón se enlaza con su hoja de APU por el número; las diferencias de precio unitario y de cantidad y los renglones u hojas sin pareja son hallazgos con su `HOJA!CELDA`; las unidades que el perfil traduce y la banda de distancia leída de la descripción quedan dichas (INFO); el perfil de un libro real vive en la carpeta de datos de la instalación y gana al del paquete | Esencial | UC-25 | `tests/unit/test_fusion_apu_por_hoja.py`, `tests/unit/test_api_libros_replica.py` (apu por hoja) |
 | RF-178 | La pantalla de auditar recibe el libro de APU y, opcional, el de presupuesto, y muestra el precio de cada hoja (impreso y de Sílice, presentados por el servidor), los hallazgos con su celda, el perfil usado y el desperdicio; nada se guarda | Esencial | UC-25 | `paginas/auditoria/AuditarApuPorHoja.test.tsx`, `tests/unit/test_api_libros_replica.py` (apu por hoja) |
 
-La matriz de trazabilidad (§4) tiene su fila «presupuesto vial revisado en local». RF-179 queda libre.
+**Añadido el 2026-11-07** (correcciones del árbitro único de F5, F7 y F8, `docs/bitacora/arbitrajes/fases-f5-f7-f8-claude-xhigh.md`,
+F5 vial P1, P3, P4 y P9):
+
+| ID | Requisito | Prioridad | Caso de uso | Criterio de aceptación |
+|---|---|---|---|---|
+| RF-179 | Un libro con un APU por hoja hostil o con valores imposibles no tumba el servidor: se leen solo las hojas del prefijo del perfil y la del presupuesto, cada fila hasta su última celda real (una hoja que declara una dimensión enorme no se materializa); un rendimiento que no es mayor que cero, una cantidad, un precio, un desperdicio o un porcentaje negativos y un coeficiente de depreciación fuera de (0; 1] hacen la hoja no interpretable (422) con su `HOJA!CELDA`; dos hojas con el mismo número de renglón son una ADVERTENCIA (AH10) y el presupuesto se enlaza con la primera; las cifras de la banda de distancia se leen con coma decimal y punto de miles, y una que no sigue la regla no se adivina | Esencial | UC-25 | `tests/unit/test_fusion_apu_por_hoja.py` (hojas huecas, número repetido, banda con miles), `tests/unit/test_hoja_empresa_apu_por_hoja.py` (valores que el núcleo no admite), `tests/unit/test_api_libros_replica.py` (422 con la celda) |
+
+La matriz de trazabilidad (§4) tiene su fila «presupuesto vial revisado en local».
 
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).

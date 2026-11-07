@@ -885,8 +885,7 @@ El libro con un APU por hoja (F5 vial; `POST /v1/libros/apu-por-hoja` y el bloqu
 por hoja» de «Inicio de auditoría») se lee con un **perfil**: un JSON que dice por qué rótulos se
 buscan la cabecera, los tres bloques, los porcentajes, el precio unitario y la hoja del presupuesto
 (`adapters/hoja_empresa/perfil_apu_por_hoja.py`; diseño
-[2026-11-03](especificaciones/2026-11-03-presupuesto-vial-real-design.md) §7 y su decisión
-provisional 5). El del repositorio, `adapters/hoja_empresa/perfiles/apu_por_hoja.json`, está escrito
+`especificaciones/2026-11-03-presupuesto-vial-real-design.md`, §7 y su decisión provisional 5). El del repositorio, `adapters/hoja_empresa/perfiles/apu_por_hoja.json`, está escrito
 contra el libro **ficticio** de `tests/fixtures/libro_apu_por_hoja.py`. El perfil de un libro real
 nunca entra al repositorio (NORMAS §1): vive en la instalación.
 
