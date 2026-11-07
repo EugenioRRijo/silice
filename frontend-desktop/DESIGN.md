@@ -244,6 +244,11 @@ un clic en la barra del espacio, al lado de «Vista general». Toda cuenta ve la
 
 La cabecera del espacio dice «Vista general»; el único `h1` es el de la pantalla. Los bloques, en este orden:
 
+0. **Empieza aquí** (F7, A4; `paginas/ayuda/BloqueEmpiezaAqui.tsx`), solo la primera vez y derivado de los datos, sin guardar
+   nada en el navegador (`pasosDeEmpiezaAqui`): a quien administra mientras su cuenta sea la única activa (`GET /v1/cuentas`),
+   a quien arma o solo revisa mientras no vea ninguna obra (una cartera con carpetas omitidas no cuenta como «sin obras»). Una
+   lista numerada de pasos, cada uno con su enlace; **sin botones**: el único principal sigue siendo «Nueva obra» del estado
+   vacío de la cartera. Al pie, «Ver las guías y el glosario».
 1. **Lo que requiere atención.** Los primeros cinco pendientes de la bandeja, del más urgente al menos urgente. Lo que
    bloquea lleva el ícono de error y su palabra; el aviso, el ícono de advertencia y su palabra. Un enlace lleva a la bandeja
    con el total. Sin pendientes, una sola línea: «No tiene pendientes por hacer.» (`LoQueBloquea.tsx`).
@@ -311,6 +316,23 @@ solo revisa ve cada sección en solo lectura: lo que escribe no se pinta (no se 
   conversión; «Registrar una cotización…» y «Retirar una cotización…» crean una versión desde la vigente y se avisa con el
   enlace para abrirla en el Presupuesto). Las dos últimas se montan al elegirlas. Quien revisa ve solo esas dos, sin
   controles que escriban.
+
+### Ayuda de cada pantalla
+
+F7, A1 (`paginas/ayuda/AyudaDeLaPantalla.tsx`, textos en `paginas/ayuda/textos.ts`). Cada pantalla de la obra (secciones y
+subvistas), de Producción, Auditoría y Precios y la bandeja de Pendientes lleva **un** «¿Qué es esto?»: el mismo `QueEsEsto`
+plegado de las pestañas del Presupuesto, no otro patrón. Lo pone el marco (`EspacioDeObra`, `EspacioDeHerramientas`,
+`EspacioDeInicio`) en una fila propia entre la barra de vistas y la pantalla, así que va justo encima del h1; la pantalla baja
+su margen superior a 0,5 rem, como tras el conmutador de subvistas. La región se llama como el h1 de la pantalla, dice para qué
+sirve y cuándo usarla y, al pie, enlaza su guía («Guía «…»») y los términos del glosario que la pantalla usa sin explicar.
+Excepciones: el Presupuesto no lo lleva (cada pestaña trae el suyo) ni una pantalla que la cuenta no puede usar.
+
+**La Ayuda de la Cuenta** (`paginas/ayuda/AyudaDeSilice.tsx`, dentro de «Ayuda y acerca de Sílice»): bajo el h1, el índice
+«En esta ayuda» y tres partes con su h2, separadas por un divisor de 1 px: «Empieza aquí» (la primera vez y lo primero de cada
+papel), «Guías por tarea» (un h3 por guía, pasos numerados) y «Glosario» (una lista de definición). Después, la versión del
+programa y los recorridos guiados. Cada parte se enlaza con `#/cuenta/ayuda?tema=<parte>` y el enlace lleva el foco a ella (con
+el enrutador de hash un ancla cambiaría la ruta). Los enlaces de la ayuda viven en el lienzo y preguntan antes de salir con
+cambios sin guardar, como los de la barra de espacio.
 
 En cada sección: un solo h1, un solo botón principal a la vista (con un diálogo abierto, el del diálogo; el de detrás pasa
 a secundario) y nada de desplazamiento horizontal a 1056, 1366 y 1910 px con las tres letras.
