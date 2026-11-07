@@ -9,6 +9,7 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../../comun/useCarga";
 import { coincide } from "./filtro";
+import "./catalogo.scss";
 
 interface Partida {
   codigo: string;
@@ -37,7 +38,7 @@ export default function PaginaCatalogo() {
   const falla = [partidas, insumos].find((c) => c.estado === "error" || c.estado === "sin_permiso" || c.estado === "no_disponible");
   if (falla && "error" in falla) {
     return (
-      <section className="silice-pagina" aria-labelledby="catalogo-titulo">
+      <section className="silice-pagina silice-catalogo" aria-labelledby="catalogo-titulo">
         <h1 id="catalogo-titulo" className="cds--type-heading-04">
           Catálogo de partidas e insumos
         </h1>
@@ -63,7 +64,7 @@ export default function PaginaCatalogo() {
     }));
 
   return (
-    <section className="silice-pagina" aria-labelledby="catalogo-titulo">
+    <section className="silice-pagina silice-catalogo" aria-labelledby="catalogo-titulo">
       <h1 id="catalogo-titulo" className="cds--type-heading-04">
         Catálogo de partidas e insumos
       </h1>

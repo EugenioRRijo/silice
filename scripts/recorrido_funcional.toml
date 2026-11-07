@@ -115,7 +115,7 @@ pasos = [
   { accion = "llenar", rotulo = "RIF", valor = "J-00000000-0" },
   { accion = "elegir", rotulo = "Moneda de la lista", opcion = "Bs" },
   { accion = "llenar", rotulo = "Fecha de la lista", valor = "2026-09-20" },
-  { accion = "llenar", rotulo = "Fuente de la lista (de donde salen estos precios)", valor = "Cotizacion interna CI-001 (ficticia)" },
+  { accion = "llenar", rotulo = "Fuente de la lista (de dónde salen estos precios)", valor = "Cotizacion interna CI-001 (ficticia)" },
   { accion = "subir", zona = "Archivo de precios", archivo = "precios_empresa_s1" },
   { accion = "pulsar", nombre = "Crear la lista de la empresa" },
 ]
@@ -223,7 +223,7 @@ cuenta = "ana"
 carpeta = "demo.db"
 proyecto = "Sílice: caso de demostracion"
 accion = "(solo lectura) abrir el tablero del proyecto con presupuesto -> resumen, curva y Pareto"
-espera = { textos = ["Curva del proyecto", "Partidas que más pesan (Pareto)", "Versiones del presupuesto"] }
+espera = { textos = ["Curva de la obra", "Partidas que más pesan (Pareto)", "Versiones del presupuesto"] }
 
 [[pantalla]]
 ruta = "aprobar"
@@ -329,7 +329,7 @@ pasos = [
   { accion = "pulsar", nombre = "Agregar fila a Períodos" },
   { accion = "llenar", rotulo = "Desde, Períodos fila 1", valor = "2027-02-01" },
   { accion = "llenar", rotulo = "Hasta, Períodos fila 1", valor = "2027-02-28" },
-  { accion = "llenar", rotulo = "Versión de comprobación, Períodos fila 1", valor = "002" },
+  { accion = "elegir", rotulo = "Versión de comprobación, Períodos fila 1", opcion = "002" },
   { accion = "pulsar", nombre = "Agregar fila a Ejecutado" },
   { accion = "llenar", rotulo = "Período, Ejecutado fila 1", valor = "1" },
   { accion = "llenar", rotulo = "Partida, Ejecutado fila 1", valor = "S1-R01" },

@@ -4,6 +4,7 @@ import { useCarga } from "../../comun/useCarga";
 import type { Carga } from "../../comun/useCarga";
 import { useAplicacion } from "../../shell/contexto";
 import { AyudaDeSilice } from "../ayuda/AyudaDeSilice";
+import "./acerca.scss";
 
 interface Acerca {
   version: string;
@@ -42,7 +43,7 @@ function Fila({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <StructuredListRow>
       <StructuredListCell noWrap>{rotulo}</StructuredListCell>
-      <StructuredListCell>{valor}</StructuredListCell>
+      <StructuredListCell className="silice-acerca__valor">{valor}</StructuredListCell>
     </StructuredListRow>
   );
 }

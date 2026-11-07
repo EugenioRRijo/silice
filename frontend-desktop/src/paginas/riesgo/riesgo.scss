@@ -43,9 +43,16 @@
 
 .riesgo-acciones {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   flex-wrap: wrap;
   gap: 1rem;
+}
+
+// Los campos se alinean por su caja de entrada (patron de Carbon: por el inicio, con la ayuda debajo): el texto de ayuda de un
+// campo ya no sube a los demas. El boton y la espera bajan lo que mide el rotulo (1rem de linea y 0,5rem de margen), para
+// quedar a la altura de la caja; en rem, crecen con la letra grande.
+.riesgo-seccion .riesgo-acciones > :not(.cds--form-item) {
+  margin-block-start: 1.5rem;
 }
 
 .riesgo-resultado {

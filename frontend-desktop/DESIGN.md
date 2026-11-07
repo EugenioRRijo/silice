@@ -29,7 +29,7 @@ ajustan aquí cuando la construcción los fije.
   cabecera (Normal 100 %, Grande 125 %, Muy grande 150 %, guardado en el navegador) multiplica ese tamaño por la variable
   `--silice-escala-letra`. Con Grande y Muy grande el buscador de la barra superior queda en su ícono por debajo de 1536
   y 1920 px (véase «Marco»), y la cuenta queda en su círculo de iniciales. El texto de los gráficos de Carbon Charts
-  también sigue la escala; el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). IBM Plex es la
+  también sigue la escala (los gráficos van sin su barra de herramientas: su `button` queda dentro de un `div role="button"`, defecto de la librería que axe anota como `nested-interactive`, con rótulos en inglés; cada gráfico ya trae su tabla de montos exactos); el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). IBM Plex es la
   cara nativa de Carbon, que el brief fija: se aloja en el propio servidor, sin CDN.
 - **Forma:** esquinas rectas (radio 0, como Carbon); separación con divisores de 1 px `$border-subtle` y espacio,
   no con tarjetas con sombra. Sin gradientes, sin sombras decorativas, sin vidrio. Única excepción a las esquinas rectas:
