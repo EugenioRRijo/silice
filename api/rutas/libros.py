@@ -47,6 +47,14 @@ lo exige `api.main` con `ACCESO_LIBROS` (clave o sesión, `LEER_PROYECTO`, RS2-5
 `X-Silice-Clave`, como antes; sin ella, la cookie de sesión del navegador con CSRF y un rol que
 arma o revisa.
 
+**Libro con un APU por hoja** (F5 vial, tarea 6; `POST /v1/libros/apu-por-hoja`): `libro` (el
+.xlsx con una hoja por partida, obligatorio), `presupuesto` (el .xlsx del presupuesto, opcional) y
+`perfil` (el nombre del perfil, opcional; por omisión `apu_por_hoja`, primero el local de la
+instalación y después el del paquete). Responde el informe de `fusion.apu_por_hoja`: cada hoja con
+su precio impreso y el recalculado (presentados a dos decimales por el servidor; el exacto aparte),
+los hallazgos con su `HOJA!CELDA` y la traza del desperdicio. En memoria, sin historial (el
+historial de UC-30 es del libro de la plantilla conocida). Un perfil que no existe es 422.
+
 `indicadores_de` vive aquí y no en `fusion/`: es aritmética de **presentación** sobre los totales
 que `fusion.proceso` ya calculó (una resta y un porcentaje en centésimas; NORMAS §2.3: «se
 redondea a dos decimales únicamente al presentar»), con los títulos y el sentido IBCS que solo usa
@@ -61,7 +69,7 @@ import unicodedata
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation
+from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -72,11 +80,13 @@ from starlette.concurrency import run_in_threadpool
 
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado
 from adapters.hoja_empresa.modelo import LibroNoInterpretable
+from adapters.hoja_empresa.perfil import PerfilInvalido
 from adapters.hoja_empresa.visual import LibroVisual, replicar_libro
 from api.dependencias import USUARIO_API, SesionDep
 from api.proteccion import LIMITE_CUERPO
 from api.sesion_web import exigir_clave_o_sesion
 from fusion.alertas import ContextoPrecios
+from fusion.apu_por_hoja import auditar_apu_por_hoja
 from fusion.historial import registrar_resultado, registrar_resultado_pdf
 from fusion.proceso import (
     ResultadoFusion,
@@ -267,6 +277,41 @@ class LibroVisualRespuesta(BaseModel):
     sha256: str
     hojas: list[HojaVisualRespuesta]
     estilos: list[EstiloVisualRespuesta]
+
+
+class ApuPorHojaRespuesta(BaseModel):
+    """Una hoja de APU: el precio impreso y el de Sílice a dos decimales (el exacto aparte);
+    `precio_silice` es `null` si la hoja no es evaluable."""
+
+    hoja: str
+    numero: int | None
+    codigo: str
+    descripcion: str
+    unidad: str
+    precio_impreso: str
+    precio_silice: str | None
+    precio_silice_exacto: str | None
+    celda_precio: str
+
+
+class DesperdicioLeidoRespuesta(BaseModel):
+    descripcion: str
+    unidad: str
+    cantidad_neta: str
+    desperdicio_pct: str
+    cantidad: str
+
+
+class LibroApuPorHojaRespuesta(BaseModel):
+    libro: LibroOrigenRespuesta
+    perfil: str
+    origen_perfil: Literal["paquete", "local"]
+    presupuesto: str | None
+    cumple: bool
+    por_severidad: dict[str, int]
+    apus: list[ApuPorHojaRespuesta]
+    hallazgos: list[HallazgoLibroRespuesta]
+    desperdicios: list[DesperdicioLeidoRespuesta]
 
 
 # --- Entrada -------------------------------------------------------------------------------------
@@ -791,3 +836,94 @@ async def replicar(
         return await run_in_threadpool(lambda: _visual(replicar_libro(datos, nombre)))
     except Exception as error:  # noqa: BLE001 - frontera: nunca un 500 ni una traza al cliente
         raise _rechazo(error, MENSAJE_LIBRO, "POST /v1/libros/replica") from None
+
+
+def _dos_decimales(valor: Decimal) -> str:
+    """Un precio presentado a dos decimales, ROUND_HALF_UP: la misma regla que los mensajes de
+    `fusion.apu_por_hoja` (el exacto viaja aparte)."""
+    return format(valor.quantize(CENTESIMA, ROUND_HALF_UP), "f")
+
+
+@router.post("/apu-por-hoja", response_model=LibroApuPorHojaRespuesta)
+async def auditar_apu_por_hoja_ruta(
+    libro: Annotated[
+        UploadFile, File(description="Libro con un APU por hoja (.xlsx de solo valores)")
+    ],
+    presupuesto: Annotated[
+        UploadFile | None, File(description="Libro del presupuesto (.xlsx, opcional)")
+    ] = None,
+    perfil: Annotated[
+        str | None, Form(description="Nombre del perfil (opcional): apu_por_hoja por omisión")
+    ] = None,
+) -> LibroApuPorHojaRespuesta:
+    """Recalcula cada hoja del libro de APU, la compara con lo impreso y, si viene, la enlaza con
+    el presupuesto por número de renglón (F5 vial, tarea 6). Nada se guarda."""
+    nombre = _nombre(libro)
+    _exigir_extension(nombre, ".xlsx", "libro")
+    hay_presupuesto = _presente(presupuesto)
+    nombre_presupuesto = _nombre(presupuesto) if hay_presupuesto else ""
+    if hay_presupuesto:
+        _exigir_extension(nombre_presupuesto, ".xlsx", "presupuesto")
+    datos = await _leer(libro, "libro")
+    del_presupuesto = await _leer(presupuesto, "presupuesto") if hay_presupuesto else None
+    elegido = (perfil or "").strip() or "apu_por_hoja"
+    try:
+        r = await run_in_threadpool(
+            lambda: auditar_apu_por_hoja(
+                datos,
+                nombre,
+                presupuesto=del_presupuesto,
+                presupuesto_nombre=nombre_presupuesto,
+                perfil=elegido,
+            )
+        )
+    except PerfilInvalido as error:
+        raise HTTPException(422, str(error)) from None
+    except Exception as error:  # noqa: BLE001 - frontera: nunca un 500 ni una traza al cliente
+        raise _rechazo(error, MENSAJE_LIBRO, "POST /v1/libros/apu-por-hoja") from None
+    por_severidad: dict[str, int] = {}
+    for h in r.hallazgos:
+        por_severidad[h.severidad] = por_severidad.get(h.severidad, 0) + 1
+    return LibroApuPorHojaRespuesta(
+        libro=LibroOrigenRespuesta(nombre=r.libro.nombre, sha256=r.libro.sha256),
+        perfil=r.perfil,
+        origen_perfil=r.origen_perfil,
+        presupuesto=r.presupuesto,
+        cumple=not (por_severidad.get("CRITICO", 0) or por_severidad.get("ERROR", 0)),
+        por_severidad=por_severidad,
+        apus=[
+            ApuPorHojaRespuesta(
+                hoja=a.hoja,
+                numero=a.numero,
+                codigo=a.codigo,
+                descripcion=a.descripcion,
+                unidad=a.unidad,
+                precio_impreso=_dos_decimales(a.precio_impreso),
+                precio_silice=None if a.precio_silice is None else _dos_decimales(a.precio_silice),
+                precio_silice_exacto=_texto(a.precio_silice),
+                celda_precio=a.celda_precio,
+            )
+            for a in r.apus
+        ],
+        hallazgos=[
+            HallazgoLibroRespuesta(
+                codigo=h.codigo,
+                severidad=h.severidad,
+                descripcion=h.descripcion,
+                celda=h.celda,
+                impacto=_texto(h.impacto),
+                accion=h.accion,
+            )
+            for h in r.hallazgos
+        ],
+        desperdicios=[
+            DesperdicioLeidoRespuesta(
+                descripcion=t.descripcion,
+                unidad=t.unidad,
+                cantidad_neta=_exacto(t.cantidad_neta),
+                desperdicio_pct=_exacto(t.desperdicio_pct),
+                cantidad=_exacto(t.cantidad),
+            )
+            for t in r.trazas
+        ],
+    )

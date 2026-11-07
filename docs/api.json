@@ -1532,6 +1532,48 @@
         }
       }
     },
+    "/v1/libros/apu-por-hoja": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Auditar Apu Por Hoja Ruta",
+        "description": "Recalcula cada hoja del libro de APU, la compara con lo impreso y, si viene, la enlaza con\nel presupuesto por número de renglón (F5 vial, tarea 6). Nada se guarda.",
+        "operationId": "auditar_apu_por_hoja_ruta_v1_libros_apu_por_hoja_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_auditar_apu_por_hoja_ruta_v1_libros_apu_por_hoja_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibroApuPorHojaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/simulador": {
       "post": {
         "tags": [
@@ -12926,6 +12968,81 @@
         ],
         "title": "AprobacionRastroRespuesta"
       },
+      "ApuPorHojaRespuesta": {
+        "properties": {
+          "hoja": {
+            "type": "string",
+            "title": "Hoja"
+          },
+          "numero": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "precio_impreso": {
+            "type": "string",
+            "title": "Precio Impreso"
+          },
+          "precio_silice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Silice"
+          },
+          "precio_silice_exacto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Silice Exacto"
+          },
+          "celda_precio": {
+            "type": "string",
+            "title": "Celda Precio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hoja",
+          "numero",
+          "codigo",
+          "descripcion",
+          "unidad",
+          "precio_impreso",
+          "precio_silice",
+          "precio_silice_exacto",
+          "celda_precio"
+        ],
+        "title": "ApuPorHojaRespuesta",
+        "description": "Una hoja de APU: el precio impreso y el de Sílice a dos decimales (el exacto aparte);\n`precio_silice` es `null` si la hoja no es evaluable."
+      },
       "AsistenteEstado": {
         "properties": {
           "activo": {
@@ -13460,6 +13577,46 @@
           "moneda"
         ],
         "title": "BaseRespuesta"
+      },
+      "Body_auditar_apu_por_hoja_ruta_v1_libros_apu_por_hoja_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Libro con un APU por hoja (.xlsx de solo valores)"
+          },
+          "presupuesto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presupuesto",
+            "description": "Libro del presupuesto (.xlsx, opcional)"
+          },
+          "perfil": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Perfil",
+            "description": "Nombre del perfil (opcional): apu_por_hoja por omisión"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro"
+        ],
+        "title": "Body_auditar_apu_por_hoja_ruta_v1_libros_apu_por_hoja_post"
       },
       "Body_auditar_libro_v1_libros_auditoria_post": {
         "properties": {
@@ -17315,6 +17472,39 @@
         "title": "DesperdicioDeFila",
         "description": "La cantidad con desperdicio de una fila de materiales, dicha por el servidor (F5 vial)."
       },
+      "DesperdicioLeidoRespuesta": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad_neta": {
+            "type": "string",
+            "title": "Cantidad Neta"
+          },
+          "desperdicio_pct": {
+            "type": "string",
+            "title": "Desperdicio Pct"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion",
+          "unidad",
+          "cantidad_neta",
+          "desperdicio_pct",
+          "cantidad"
+        ],
+        "title": "DesperdicioLeidoRespuesta"
+      },
       "Detalle": {
         "properties": {
           "detalle": {
@@ -21020,6 +21210,81 @@
           "bases"
         ],
         "title": "Juego"
+      },
+      "LibroApuPorHojaRespuesta": {
+        "properties": {
+          "libro": {
+            "$ref": "#/components/schemas/LibroOrigenRespuesta"
+          },
+          "perfil": {
+            "type": "string",
+            "title": "Perfil"
+          },
+          "origen_perfil": {
+            "type": "string",
+            "enum": [
+              "paquete",
+              "local"
+            ],
+            "title": "Origen Perfil"
+          },
+          "presupuesto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presupuesto"
+          },
+          "cumple": {
+            "type": "boolean",
+            "title": "Cumple"
+          },
+          "por_severidad": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Por Severidad"
+          },
+          "apus": {
+            "items": {
+              "$ref": "#/components/schemas/ApuPorHojaRespuesta"
+            },
+            "type": "array",
+            "title": "Apus"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoLibroRespuesta"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          },
+          "desperdicios": {
+            "items": {
+              "$ref": "#/components/schemas/DesperdicioLeidoRespuesta"
+            },
+            "type": "array",
+            "title": "Desperdicios"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro",
+          "perfil",
+          "origen_perfil",
+          "presupuesto",
+          "cumple",
+          "por_severidad",
+          "apus",
+          "hallazgos",
+          "desperdicios"
+        ],
+        "title": "LibroApuPorHojaRespuesta"
       },
       "LibroAuditadoRespuesta": {
         "properties": {
