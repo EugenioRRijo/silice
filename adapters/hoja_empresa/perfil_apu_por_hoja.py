@@ -18,6 +18,11 @@ distancia del transporte (grupos `minimo` y `maximo`, coma decimal), que usa la 
 contra el libro ficticio de `tests/fixtures/libro_apu_por_hoja.py`; el de un libro real vive en la
 carpeta de datos de la instalación, fuera del repositorio. `cargar_perfil_apu_por_hoja` busca
 primero en `carpetas` (por omisión, `carpetas_locales()`) y después en el paquete.
+
+Este adaptador no sabe dónde está la carpeta de datos (no importa `operacion`): quien audita
+(`fusion.apu_por_hoja`) le pasa la carpeta por omisión, `<carpeta de datos>/perfiles_libros/`, a
+`carpetas_locales(por_omision=...)`. `SILICE_PERFILES_LIBROS`, si está, la reemplaza (arbitraje F5
+vial, P2; `docs/manual_tecnico.md`, «Perfiles de libros locales»).
 """
 
 from __future__ import annotations
@@ -44,8 +49,9 @@ __all__ = [
 
 _DIR_PERFILES = Path(__file__).parent / "perfiles"
 _NOMBRE = re.compile(r"[a-z0-9_]+")
-#: La variable de entorno con la carpeta de perfiles locales de la instalación (fuera del
-#: repositorio). La fija el arranque de la instalación; sin ella, solo los perfiles del paquete.
+#: La variable de entorno con otra carpeta de perfiles locales (fuera del repositorio). Es una
+#: opción: nadie la fija por omisión y, si está, reemplaza la carpeta por omisión que recibe
+#: `carpetas_locales` (la de la carpeta de datos de la instalación).
 VARIABLE_PERFILES = "SILICE_PERFILES_LIBROS"
 
 BLOQUES = ("materiales", "equipos", "mano_obra")
@@ -177,13 +183,12 @@ def _construir(nombre: str, crudo: Any, origen: str) -> PerfilApuPorHoja:
     )
 
 
-def carpetas_locales() -> tuple[Path, ...]:
-    """La carpeta de perfiles locales de la instalación (`SILICE_PERFILES_LIBROS`), si existe."""
+def carpetas_locales(por_omision: Path | None = None) -> tuple[Path, ...]:
+    """La carpeta de perfiles locales de la instalación, si existe: `SILICE_PERFILES_LIBROS` si
+    está; si no, `por_omision` (la de la carpeta de datos, que pasa quien audita)."""
     valor = os.environ.get(VARIABLE_PERFILES, "").strip()
-    if not valor:
-        return ()
-    carpeta = Path(valor)
-    return (carpeta,) if carpeta.is_dir() else ()
+    carpeta = Path(valor) if valor else por_omision
+    return (carpeta,) if carpeta is not None and carpeta.is_dir() else ()
 
 
 def cargar_perfil_apu_por_hoja(

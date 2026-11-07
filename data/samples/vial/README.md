@@ -47,6 +47,12 @@ Columnas, todas obligatorias en la cabecera:
   - `area_m2` (solo demarcación `superficie`, obligatoria allí): el área de cada elemento (paso peatonal, línea de
     pare); `lineas` es el número de elementos iguales y la cantidad, área × número, en m².
   - `captafaros` (solo líneas continua o discontinua): el número de ojos de gato que declara la línea (entero ≥ 1).
+  - `transporte` (del tramo: se llena en su primera fila, como `distancia_planta_km`; si se repite en otra fila,
+    debe coincidir): cómo mide la obra el transporte de la mezcla. Vacía (o `t·km`), en t·km, la de siempre;
+    `banda`, en toneladas, con la distancia como banda en la descripción de la partida («más de 8 km y hasta
+    10 km»). Con `banda` la partida en t se deriva aunque el tramo no declare la distancia, y VR4 compara las
+    toneladas y, si hay distancia, si cae dentro de la banda (fuera de ella, ADVERTENCIA). Otro valor se
+    rechaza con la fila.
   Las partidas sin geometría (movilización de equipos, en viajes, y señalización y control de tránsito, en días)
   están en el catálogo vial pero se ponen a mano en el presupuesto.
 - Los errores nombran el archivo y la **fila** tal como la ve una hoja de cálculo (la cabecera es la fila 1).

@@ -28,6 +28,7 @@ from pathlib import Path
 
 import pytest
 
+from adapters.hoja_empresa.lector_apu_por_hoja import leer_hojas as leer_hojas_de_verdad
 from adapters.hoja_empresa.perfil_apu_por_hoja import (
     VARIABLE_PERFILES,
     cargar_perfil_apu_por_hoja,
@@ -148,6 +149,52 @@ def test_con_el_presupuesto_enlaza_por_renglon(con_presupuesto):
     )
 
 
+def _con_numero_repetido() -> bytes:
+    """El libro de APU con la hoja «APU 4» diciendo «Partida N°: 3», como «APU 3» (celda B3)."""
+    import io
+
+    import openpyxl
+
+    libro = openpyxl.load_workbook(io.BytesIO(libro_apu()))
+    libro["APU 4"]["B3"] = 3
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
+def test_dos_hojas_con_el_mismo_numero_de_renglon_se_avisan():
+    """Arbitraje F5 vial, P4: antes la segunda pisaba a la primera sin aviso. Ahora AH10 lo dice
+    en la celda del número de la segunda; el presupuesto se enlaza con la primera (APU 3: el
+    renglón 3 sigue con su AH6) y el renglón 4 se queda sin hoja (AH7)."""
+    resultado = auditar_apu_por_hoja(
+        _con_numero_repetido(),
+        "frente_ficticio.xlsx",
+        presupuesto=libro_presupuesto(),
+        presupuesto_nombre="presupuesto_ficticio.xlsx",
+    )
+    assert _resumen(resultado) == [
+        *HALLAZGOS_APU,
+        ("AH10", "ADVERTENCIA", "APU 4!B3"),
+        ("AH6", "ADVERTENCIA", "PRESUPUESTO!E6"),
+        ("AH7", "ADVERTENCIA", "PRESUPUESTO!A7"),
+        ("AH5", "ERROR", "PRESUPUESTO!F8"),
+        ("AH7", "ADVERTENCIA", "PRESUPUESTO!A9"),
+    ]
+    por_celda = {h.celda: h for h in resultado.hallazgos}
+    assert por_celda["APU 4!B3"].descripcion == (
+        "APU 4 (VF-004): el número de renglón 3 ya es el de la hoja APU 3; el presupuesto se "
+        "enlaza con la primera y esta hoja no se compara con ningún renglón."
+    )
+    assert por_celda["PRESUPUESTO!E6"].descripcion == (
+        "Renglón 3 (VF-003): el presupuesto dice una cantidad de 450 y su APU (APU 3!D5) dice 500."
+    )
+
+
+def test_el_numero_repetido_se_avisa_tambien_sin_presupuesto():
+    resultado = auditar_apu_por_hoja(_con_numero_repetido(), "frente_ficticio.xlsx")
+    assert _resumen(resultado) == [*HALLAZGOS_APU, ("AH10", "ADVERTENCIA", "APU 4!B3")]
+
+
 def test_un_presupuesto_sin_su_hoja_se_rechaza():
     from adapters.hoja_empresa.guardia import ArchivoRechazado
 
@@ -181,3 +228,163 @@ def test_auditar_con_otro_perfil_dice_cual_uso(tmp_path: Path, monkeypatch: pyte
     resultado = auditar_apu_por_hoja(libro_apu(), "f.xlsx", perfil="frente_local")
     assert (resultado.perfil, resultado.origen_perfil) == ("frente_local", "local")
     assert "AH8" not in {h.codigo for h in resultado.hallazgos}  # sin tabla, nada se traduce
+
+
+# Arbitraje F5 vial, P2 (MAYOR): nadie fija `SILICE_PERFILES_LIBROS` y la pantalla no manda el
+# perfil. Por omisión, los perfiles locales viven en `<carpeta de datos>/perfiles_libros/` (la que
+# fija el lanzador con `SILICE_DATOS`; aquí, la temporal de la prueba) y un `apu_por_hoja.json`
+# allí gana al del paquete. La variable sigue valiendo y, si está, manda ella.
+
+
+def _perfil_local(carpeta: Path, **cambios) -> None:
+    crudo = json.loads(PAQUETE.read_text(encoding="utf-8"))
+    carpeta.mkdir(parents=True, exist_ok=True)
+    (carpeta / "apu_por_hoja.json").write_text(json.dumps({**crudo, **cambios}), encoding="utf-8")
+
+
+def test_sin_la_variable_el_perfil_local_vive_en_la_carpeta_de_datos(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.delenv(VARIABLE_PERFILES, raising=False)
+    monkeypatch.setenv("SILICE_DATOS", str(tmp_path))
+    _perfil_local(tmp_path / "perfiles_libros", unidades={})
+    resultado = auditar_apu_por_hoja(libro_apu(), "f.xlsx")
+    assert (resultado.perfil, resultado.origen_perfil) == ("apu_por_hoja", "local")
+    assert "AH8" not in {h.codigo for h in resultado.hallazgos}  # el local no traduce unidades
+
+
+def test_sin_perfil_local_en_la_carpeta_de_datos_vale_el_del_paquete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.delenv(VARIABLE_PERFILES, raising=False)
+    monkeypatch.setenv("SILICE_DATOS", str(tmp_path))
+    assert auditar_apu_por_hoja(libro_apu(), "f.xlsx").origen_perfil == "paquete"
+
+
+def test_la_variable_manda_sobre_la_carpeta_de_datos(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from adapters.hoja_empresa.guardia import ArchivoRechazado
+
+    monkeypatch.setenv("SILICE_DATOS", str(tmp_path / "datos"))
+    _perfil_local(tmp_path / "datos" / "perfiles_libros", unidades={})
+    _perfil_local(tmp_path / "elegida", prefijo_hoja="FICHA")
+    monkeypatch.setenv(VARIABLE_PERFILES, str(tmp_path / "elegida"))
+    with pytest.raises(ArchivoRechazado, match="«FICHA»"):
+        auditar_apu_por_hoja(libro_apu(), "f.xlsx")
+
+
+# --- un libro hostil: hojas huecas que declaran una dimensión enorme (arbitraje F5 vial, P1) -----
+#
+# Una hoja con A1 y una celda lejana (CV2000: columna 100, fila 2.000) declara la dimensión
+# A1:CV2000. Sin `reset_dimensions()`, openpyxl en solo lectura rellena cada fila hasta la columna
+# 100 y cada fila que falta: 200.000 celdas por hoja de unos pocos bytes. Con mil hojas así, un
+# archivo de 1 MB pediría gigabytes. Sílice lee solo las hojas que usa (las del prefijo del perfil y
+# la del presupuesto) y cada fila solo hasta su última celda real.
+
+LEJOS = "CV2000"
+COLUMNAS_HASTA_CV = 100
+
+
+def _con_hojas_huecas(datos: bytes, n: int, hoja_con_celda_lejana: str) -> bytes:
+    """El libro `datos` con `n` hojas huecas declaradas grandes y una celda lejana en una hoja que
+    Sílice sí lee (así se ve también que cada fila llega solo hasta su última celda real)."""
+    import io
+
+    import openpyxl
+
+    libro = openpyxl.load_workbook(io.BytesIO(datos))
+    for k in range(1, n + 1):
+        hoja = libro.create_sheet(f"Notas {k}")
+        hoja["A1"] = "nota ficticia"
+        hoja[LEJOS] = "fin"
+    libro[hoja_con_celda_lejana][LEJOS] = "nota lejana"
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
+def _celdas_leidas(monkeypatch: pytest.MonkeyPatch, apus: bytes, presupuesto: bytes):
+    """Audita los dos libros contando las celdas que materializa `leer_hojas` en cada lectura."""
+    import adapters.hoja_empresa.lector_apu_por_hoja as lector
+    import fusion.apu_por_hoja as auditoria
+
+    original = leer_hojas_de_verdad  # el de verdad, aunque otra llamada ya haya puesto su espía
+    medidas: list[int] = []
+
+    def espia(*args, **kwargs):
+        hojas = original(*args, **kwargs)
+        medidas.append(sum(len(fila) for filas in hojas.values() for fila in filas))
+        return hojas
+
+    monkeypatch.setattr(lector, "leer_hojas", espia)
+    monkeypatch.setattr(auditoria, "leer_hojas", espia)
+    resultado = auditar_apu_por_hoja(
+        apus, "f.xlsx", presupuesto=presupuesto, presupuesto_nombre="p.xlsx"
+    )
+    return medidas, resultado
+
+
+def test_las_hojas_huecas_declaradas_grandes_no_se_materializan(monkeypatch: pytest.MonkeyPatch):
+    normal, de_siempre = _celdas_leidas(monkeypatch, libro_apu(), libro_presupuesto())
+    hostil, resultado = _celdas_leidas(
+        monkeypatch,
+        _con_hojas_huecas(libro_apu(), 3, "APU 1"),
+        _con_hojas_huecas(libro_presupuesto(), 3, "PRESUPUESTO"),
+    )
+    assert len(normal) == 2  # una lectura por libro: el de APU y el del presupuesto
+    # Las hojas «Notas» no se leen; la celda lejana suma solo su fila real (A a CV): 100 celdas.
+    assert hostil == [normal[0] + COLUMNAS_HASTA_CV, normal[1] + COLUMNAS_HASTA_CV]
+    assert _resumen(resultado) == _resumen(de_siempre)
+
+
+# --- la banda con punto de miles (arbitraje F5 vial, P9) ------------------------------------------
+#
+# Un perfil local cuyo patrón acepta puntos («[0-9.]+») y una descripción «mayor de 1.000 km y
+# hasta 1.200,5 km»: antes `Decimal("1.200.5")` daba un 500 (y «1.000» se leía como uno). Ahora
+# las cifras se leen con la regla del proyecto (`aplicacion.cifras`: coma decimal, punto de miles);
+# una que no la sigue («1.5») no se adivina y el AH9 lo dice.
+
+PATRON_CON_MILES = (
+    "mayor de (?P<minimo>[0-9.]+(?:,[0-9]+)?) km y hasta (?P<maximo>[0-9.]+(?:,[0-9]+)?) km"
+)
+
+
+def _banda(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, descripcion: str):
+    from dataclasses import replace
+
+    from tests.fixtures.libro_apu_por_hoja import APUS
+
+    crudo = json.loads(PAQUETE.read_text(encoding="utf-8"))
+    (tmp_path / "banda_miles.json").write_text(
+        json.dumps({**crudo, "nombre": "banda_miles", "patron_banda": PATRON_CON_MILES}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(VARIABLE_PERFILES, str(tmp_path))
+    transporte = replace(APUS[1], descripcion=descripcion)
+    resultado = auditar_apu_por_hoja(libro_apu((transporte,)), "f.xlsx", perfil="banda_miles")
+    return [h for h in resultado.hallazgos if h.codigo == "AH9"]
+
+
+def test_la_banda_con_punto_de_miles_se_lee_con_la_regla_del_proyecto(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    (ah9,) = _banda(
+        tmp_path, monkeypatch, "Transporte ficticio, mayor de 1.000 km y hasta 1.200,5 km"
+    )
+    assert (ah9.severidad, ah9.celda) == ("INFO", "APU 2!B4")
+    assert ah9.descripcion == (
+        "APU 2: transporte por banda de distancia, de más de 1.000 km y hasta 1.200,5 km (leída "
+        "de la descripción con el patrón del perfil); la cantidad va en toneladas."
+    )
+
+
+def test_una_banda_con_una_cifra_mal_escrita_no_se_adivina(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    (ah9,) = _banda(tmp_path, monkeypatch, "Transporte ficticio, mayor de 1.5 km y hasta 10 km")
+    assert (ah9.severidad, ah9.celda) == ("INFO", "APU 2!B4")
+    assert ah9.descripcion == (
+        "APU 2: la descripción sigue el patrón de la banda de distancia, pero «1.5» no es una "
+        "cifra con coma decimal y punto de miles: Sílice no adivina la banda."
+    )

@@ -546,7 +546,8 @@ obras.».
    condiciones se obtuvo).
 4. **«Insumos»**: tres tablas, materiales, equipos y mano de obra. Para cada una puede buscar en la
    referencia MaPreX y pulsar «Usar esta fila», o pulsar «Agregar fila» y escribir a mano.
-   - Materiales: «Descripción», «Unidad», «Consumo por unidad», «Precio».
+   - Materiales: «Descripción», «Unidad», «Consumo por unidad», «Desperdicio (%)» (opcional, sección
+     4.11), «Precio».
    - Equipos: «Descripción», «Cantidad», «Precio», «Depreciación».
    - Mano de obra: «Descripción», «Cantidad», «Sueldo», «Modalidad».
 5. **«Desglose en vivo»**: Sílice calcula mientras escribe «Materiales», «Equipos», «Mano de obra»,
@@ -718,6 +719,26 @@ presupuesto van sin IVA.
 - **«Descartar cambios»** (en «Estado del borrador»): borra lo que no guardó. Sílice pregunta antes; los
   cambios descartados no se recuperan.
 - **Abrir otra versión**: desde «Versiones» (sección 6.1).
+
+### 4.11 El desperdicio de un material en Componer
+
+Algunos APU cobran el material que se pierde en obra (el asfalto que queda en el camión, el cemento que
+se riega). En Componer se declara así, sin hacer la cuenta a mano:
+
+1. En la tabla «Materiales», escriba en «Consumo por unidad» la cantidad **neta**, la que queda en la
+   obra. Por ejemplo `0,50`.
+2. En «Desperdicio (%)» escriba el porcentaje: `4` es 4 %. Debe estar entre 0 y 100. Vacío o `0`, el
+   material no lleva desperdicio.
+3. En «Desglose en vivo» aparece la lista «Materiales con desperdicio», una línea por material, por
+   ejemplo «Emulsión asfáltica (fila 1): consume 0,52 (0,50 + 4 %)». La cantidad con desperdicio la
+   calcula Sílice (neta × (1 + porcentaje ÷ 100)) y es la que entra en el precio unitario.
+4. Pulse «Guardar composición». Sílice guarda la neta y el porcentaje: al abrir de nuevo la partida en
+   Componer vuelven tal como los escribió.
+
+Si el porcentaje está mal escrito, el desglose muestra un «Aviso», por ejemplo «En Materiales, fila 1
+(«Emulsión asfáltica»), el desperdicio «150» debe estar entre 0 y 100 (es un porcentaje: 4 es 4 %).».
+Por ahora la Hoja no muestra la neta ni el porcentaje: para verlos o cambiarlos, abra la partida en
+Componer.
 
 ## 5. La franja del paso: «Te falta» y «Siguiente paso»
 
@@ -1138,8 +1159,15 @@ decimal (`1,2`); también se acepta punto sin miles (`1234.5`). Máximo 2 MiB. S
 importa nada y Sílice dice cuál.
 
 Columnas obligatorias: `tramo`, `progresiva_ini_km`, `progresiva_fin_km`, `ancho_m`, `distancia_planta_km`,
-`elemento`, `tipo`, `espesor_m`, `densidad_t_m3`, `dosis_l_m2` y `lineas`. Opcional: `asfalto_pct`. Una fila
-por capa o por línea de demarcación; los datos del tramo van en su primera fila. Ejemplo ficticio:
+`elemento`, `tipo`, `espesor_m`, `densidad_t_m3`, `dosis_l_m2` y `lineas`. Opcionales (un archivo sin ellas
+se lee igual): `asfalto_pct` (el porcentaje de asfalto de la mezcla de la carpeta o del bacheo),
+`esponjamiento` (del fresado, 1 o más: sin él no se calcula el transporte del fresado), `limpieza` (`sí` o
+`no`, en la imprimación y el riego), `medicion` (`m2` en el fresado o `t` en la carpeta: la otra unidad de la
+partida), `area_m2` (el área de cada elemento de una demarcación `superficie`), `captafaros` (los ojos de gato
+de una línea) y `transporte` (vacía, el transporte de la mezcla en t·km; `banda`, en toneladas, con la
+distancia como banda en la descripción de la partida). El detalle de cada una está en
+`data/samples/vial/README.md`. Una fila por capa o por línea de demarcación; los datos del tramo, también
+`transporte`, van en su primera fila. Ejemplo ficticio:
 
 ```
 tramo;progresiva_ini_km;progresiva_fin_km;ancho_m;distancia_planta_km;elemento;tipo;espesor_m;densidad_t_m3;dosis_l_m2;lineas
@@ -1152,11 +1180,16 @@ T2;1,2;2,0;6,50;18;capa;subbase_granular;0,25;;;
 ```
 
 `elemento` es `capa` o `demarcacion`. Las capas pueden ser `fresado`, `base_granular`, `subbase_granular`,
-`imprimacion`, `riego_adherencia`, `carpeta` o `bacheo`; la demarcación, `continua` o `discontinua`.
+`imprimacion`, `riego_adherencia`, `carpeta` o `bacheo`; la demarcación, `continua`, `discontinua` o
+`superficie` (pasos peatonales y líneas de pare: `lineas` es el número de elementos iguales y `area_m2` el
+área de cada uno).
 
 **Qué calcula Sílice:** volumen de fresado, base y sub-base; área y litros de ligante de imprimación y
-riego; área y toneladas de mezcla de la carpeta; toneladas por kilómetro de transporte hasta la planta;
-metros de demarcación y litros de pintura.
+riego; área y toneladas de mezcla de la carpeta; toneladas por kilómetro de transporte hasta la planta
+(o toneladas, si el tramo dice `banda`); metros de demarcación y litros de pintura. Si el archivo trae
+las columnas opcionales, también la limpieza de la superficie, el transporte del fresado, el fresado en
+m² y la colocación de la carpeta en toneladas, el área de la demarcación de superficie y los ojos de
+gato.
 
 ### 10.2 Las reglas viales VR
 
@@ -1168,7 +1201,7 @@ hallazgo dice su severidad: «Crítico», «Error», «Advertencia» o «Informa
 | VR1 | Las toneladas de carpeta del presupuesto contra área × espesor × densidad (tolerancia 0,5 %) | Error |
 | VR2 | El porcentaje de asfalto del tramo contra la fórmula de trabajo de la receta de la planta (±0,5 puntos) | Advertencia; Información si no hay con qué comparar |
 | VR3 | El ligante residual de imprimación o riego dentro de su rango | Advertencia |
-| VR4 | Las toneladas por kilómetro del transporte contra toneladas × distancia (tolerancia 0,5 %) | Error |
+| VR4 | Las toneladas por kilómetro del transporte contra toneladas × distancia (tolerancia 0,5 %). Si el tramo mide el transporte por `banda`: las toneladas (error si no cuadran) y si la distancia del tramo cae dentro de la banda de la partida | Error; Advertencia si la distancia cae fuera de la banda; Información si falta la banda o la distancia |
 | VR5 | Los litros de pintura por kilómetro de línea, entre 29 y 44 | Advertencia |
 | VR6 | Solapes entre tramos (error) y huecos entre progresivas (advertencia) | Error o Advertencia |
 | VR7 | Que cada partida sea la que produce esa capa o línea, y en su unidad | Error |
@@ -1336,6 +1369,56 @@ recorrido «Auditar un libro de la empresa»».
 
 Quien solo administra entra a esta pantalla pero no puede auditar: Sílice le pide que lo haga alguien que
 arma o revisa.
+
+### 12.5 Auditar un libro con un APU por hoja
+
+Algunos programas de APU exportan un libro con **una hoja por partida** (solo valores, sin fórmulas) y,
+aparte, el libro del presupuesto. Ese libro no es el de la plantilla de la sección 12.1: se audita en su
+propio bloque, «Libro con un APU por hoja», más abajo en «Inicio de auditoría».
+
+1. Suelte el `.xlsx` de los APU en «Suelte aquí el .xlsx de los APU (una hoja por partida), o haga clic
+   para elegirlo».
+2. Si tiene el del presupuesto, suéltelo en «Opcional: suelte aquí el .xlsx del presupuesto, o haga clic
+   para elegirlo». Debajo se lee lo elegido: «Libro de APU: … · Presupuesto: …».
+3. Pulse «Auditar el libro de APU». Mientras trabaja dice «Recalculando cada hoja...».
+
+**El resultado.**
+
+- Arriba, el perfil con que se leyó y los archivos: «Perfil apu_por_hoja (del paquete) · …», o «(de esta
+  instalación)» si quien administra puso un perfil propio; al final, «· con …» o «· sin libro de
+  presupuesto».
+- La tabla «Precio unitario de cada hoja»: «Hoja», «Código», «Partida», «P.U. impreso» y «P.U. de
+  Sílice». Sílice no cree el precio impreso: recalcula cada hoja con sus renglones. «No evaluable» quiere
+  decir que esa hoja trae algo que Sílice no reproduce (lo explica un hallazgo).
+- La tabla «Hallazgos del libro»: «Severidad», «Regla», «Celda» y «Qué dice». La celda es la del libro,
+  por ejemplo `APU 2!G29`. Si no hay nada, dice «Sin hallazgos: cada hoja cuadra con lo impreso.».
+- Si algún material trae desperdicio, la lista «Materiales con desperdicio» dice, por cada uno, la
+  cantidad que resulta, la neta y el porcentaje, por ejemplo «Emulsión asfáltica: 0,52 l (0,5 + 4 %)».
+
+| Regla | Qué dice | Severidad |
+|---|---|---|
+| AH1 | El precio unitario impreso no es el que recalcula Sílice. Si la diferencia sale solo de redondear cada renglón a dos decimales, lo explica | Error; Información si es solo redondeo |
+| AH2 | La mano de obra trae un bono por renglón: la hoja no se evalúa | Información |
+| AH3 | La hoja tiene financiamiento: no se evalúa | Información |
+| AH4 | La hoja suma un impuesto dentro del APU (el IVA va sobre el total): su precio no se compara | Advertencia |
+| AH5 | El precio unitario del presupuesto no es el que imprime su hoja | Error |
+| AH6 | La cantidad del presupuesto no es la de la cabecera de su hoja | Advertencia |
+| AH7 | Un renglón del presupuesto sin hoja, o una hoja sin renglón | Advertencia |
+| AH8 | Una unidad del libro leída como otra («lt» como «l»): la traducción queda dicha | Información |
+| AH9 | La banda de distancia del transporte, leída de la descripción («mayor de 8 km y hasta 10 km») | Información |
+| AH10 | Dos hojas con el mismo número de renglón: el presupuesto se enlaza con la primera | Advertencia |
+
+Cada renglón del presupuesto se enlaza con la hoja que tiene su número («Partida N°» en la cabecera de la
+hoja). Con el perfil del paquete, Sílice lee solo las hojas cuyo nombre empieza por «APU» y, del
+presupuesto, la hoja «PRESUPUESTO»; las demás no las lee.
+
+Si una hoja no trae lo que hace falta para recalcularla, sale «No se auditó el libro» con la hoja y lo
+que falta. Si trae un valor imposible (un precio negativo, un rendimiento cero), dice también la celda, por
+ejemplo «APU 9!F9: el precio
+de «Cemento» es -1 y no puede ser negativo: Sílice no recalcula la hoja «APU 9».». Corrija esa celda en
+el libro y vuelva a auditar.
+
+Nada se guarda: ni los libros ni el informe, y esta auditoría no entra en «Historial de auditorías».
 
 ## 13. El asistente de IA
 

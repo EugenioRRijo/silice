@@ -350,8 +350,9 @@ solo-core, nunca mezclado con estas tareas.
 | 2. Distancia fuera de la banda | ADVERTENCIA, no ERROR | `adapters/vial/reglas.py`, `_vr4_banda` |
 | 3. Esponjamiento y ojos de gato | Esponjamiento: dato obligatorio de la capa para derivar el transporte del fresado, sin valor por defecto (factor ≥ 1). Ojos de gato: basta el número declarado por la línea | `adapters/vial/modelo.py` (`Capa`, `Demarcacion`) |
 | 4. Variantes de medición | Sí: fresado en m² (con espesor) y colocación de la carpeta en t, cada una con su código (`fresado_area` C-000.000.022, `carpeta_colocacion_masa` C-000.000.023) | `adapters/vial/modelo.py` (`MEDICIONES`), `derivacion.py` (`_VARIANTES`) |
-| 5. Perfiles de libros reales | Fuera del repositorio, en la carpeta de datos de la instalación (`SILICE_PERFILES_LIBROS`); el del repositorio se escribe contra un libro ficticio (`tests/fixtures/libro_apu_por_hoja.py`) | `adapters/hoja_empresa/perfil_apu_por_hoja.py`, `carpetas_locales` |
+| 5. Perfiles de libros reales | Fuera del repositorio, en la carpeta de datos de la instalación: `<carpeta de datos>/perfiles_libros/` por omisión, o la carpeta de `SILICE_PERFILES_LIBROS` si está (arbitraje F5 vial, P2, 2026-11-07); el del repositorio se escribe contra un libro ficticio (`tests/fixtures/libro_apu_por_hoja.py`). Ver `docs/manual_tecnico.md`, «Perfiles de libros locales» | `adapters/hoja_empresa/perfil_apu_por_hoja.py` (`carpetas_locales`), `fusion/apu_por_hoja.py` (`carpeta_perfiles_locales`) |
 | 6. Céntimos por redondeo por renglón | INFO que los explica | `fusion/apu_por_hoja.py`, AH1 |
+| Tutor 4. `kgf` en los APU de acero | Se traduce a `kg` en el perfil del importador, declarado (opción C de §8.2, no un alias del núcleo): cada hoja que lo usa lo dice con un AH8 (INFO). Anotado el 2026-11-07 (arbitraje F5 vial, P5): ya estaba construido sin figurar aquí. Si el tutor pide tratarlo como unidad propia, se quita de la tabla y la cantidad queda en `kgf` | `adapters/hoja_empresa/perfiles/apu_por_hoja.json` (`unidades`), o el perfil local de la instalación |
 
 **Decisiones de construcción** (tomadas al construir, prudentes y reversibles):
 
@@ -371,7 +372,8 @@ solo-core, nunca mezclado con estas tareas.
 - Hallazgos del libro con un APU por hoja: AH1 precio impreso frente al recalculado; AH2 bono por renglón y AH3
   financiamiento (no evaluable); AH4 impuesto dentro del APU (ADVERTENCIA, y esa hoja no se compara); AH5 precio y AH6
   cantidad del presupuesto frente a su APU; AH7 renglón u hoja sin pareja; AH8 unidad traducida por el perfil; AH9 banda
-  leída de la descripción (`fusion/apu_por_hoja.py`).
+  leída de la descripción; AH10 dos hojas con el mismo número de renglón (ADVERTENCIA; el presupuesto se enlaza con la
+  primera; arbitraje F5 vial, P4, 2026-11-07) (`fusion/apu_por_hoja.py`).
 
 **Lo que falta:** la Hoja todavía no muestra ni edita la neta y el porcentaje del desperdicio (punto 1, «la Hoja edita neta
 y porcentaje, nunca el producto»): Componer sí, y la traza no se muestra si la cantidad cambió por otro camino. Mostrarla en

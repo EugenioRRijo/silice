@@ -24,11 +24,17 @@ Hallazgos (`FilaHallazgo`, con su `HOJA!CELDA`; la acción es siempre «informad
 - **AH8** una unidad del libro traducida por el perfil («lt» → «l», «t-km» → «t»), una vez por
   hoja y por unidad (INFO): la traducción queda dicha, nunca escondida.
 - **AH9** la banda de distancia del transporte leída de la descripción con el patrón del perfil
-  (INFO); si la descripción no sigue el patrón, no se adivina.
+  (INFO), con la coma decimal y el punto de miles de `aplicacion.cifras`; si la descripción no
+  sigue el patrón, no hay hallazgo, y si una cifra no sigue la regla, el AH9 dice que no se adivina.
+- **AH10** dos hojas con el mismo número de renglón (ADVERTENCIA, en la celda del número de la
+  segunda): el presupuesto se enlaza con la primera y la otra no se compara con ningún renglón.
 
 El enlace presupuesto ↔ APU es el número de renglón (la cabecera «Partida N°» de la hoja). Un
 libro de solo valores no trae fórmulas: las reglas L del libro conocido no aplican y la evidencia es
 el recálculo.
+
+El perfil se busca primero en la carpeta de perfiles locales, `<carpeta de datos>/perfiles_libros/`
+(`carpeta_perfiles_locales`; o la de `SILICE_PERFILES_LIBROS`, si está), y después en el paquete.
 """
 
 from __future__ import annotations
@@ -37,6 +43,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
+from pathlib import Path
 from typing import Any
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado
@@ -58,13 +65,26 @@ from adapters.hoja_empresa.perfil import coincide, normalizar
 from adapters.hoja_empresa.perfil_apu_por_hoja import (
     PerfilApuPorHoja,
     cargar_perfil_apu_por_hoja,
+    carpetas_locales,
 )
 from adapters.vial.constantes import TOLERANCIA_PRECIO
+from aplicacion.cifras import CifraInvalida, cifra_escrita
 from core.costing.motor import calcular_apu
 from fusion.desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 from fusion.mapeo import composicion_de_apu_por_hoja
+from operacion.config import carpeta_datos
 
-__all__ = ["ApuRecalculado", "ResultadoApuPorHoja", "auditar_apu_por_hoja"]
+__all__ = [
+    "CARPETA_PERFILES",
+    "ApuRecalculado",
+    "ResultadoApuPorHoja",
+    "auditar_apu_por_hoja",
+    "carpeta_perfiles_locales",
+]
+
+#: La carpeta de los perfiles de libros locales, dentro de la carpeta de datos de la instalación
+#: (`%LOCALAPPDATA%\Silice\datos` en el producto, `data/` en desarrollo; fuera del repositorio).
+CARPETA_PERFILES = "perfiles_libros"
 
 _CERO = Decimal(0)
 _CIEN = Decimal(100)
@@ -111,6 +131,11 @@ def _es(valor: Decimal, decimales: int | None = None) -> str:
 
 def _r(valor: Decimal) -> Decimal:
     return valor.quantize(_CENTAVO, rounding=ROUND_HALF_UP)
+
+
+def carpeta_perfiles_locales() -> Path:
+    """`<carpeta de datos>/perfiles_libros/`: donde se buscan, por omisión, los perfiles locales."""
+    return carpeta_datos() / CARPETA_PERFILES
 
 
 def _hallazgo(
@@ -166,13 +191,37 @@ def _unidades(apu: ApuLeido, perfil: PerfilApuPorHoja) -> list[FilaHallazgo]:
     ]
 
 
+def _es_cifra(texto: str) -> bool:
+    try:
+        cifra_escrita(texto)
+    except CifraInvalida:
+        return False
+    return True
+
+
 def _banda(apu: ApuLeido, perfil: PerfilApuPorHoja) -> list[FilaHallazgo]:
+    """AH9: la banda leída de la descripción con el patrón del perfil. Sus cifras se leen con la
+    regla del proyecto (`aplicacion.cifras`: coma decimal, punto de miles; arbitraje F5 vial, P9):
+    «1.000» es mil, y una cifra que no sigue la regla («1.5») no se adivina."""
     if perfil.patron_banda is None or "descripcion" not in apu.celdas:
         return []
     hallado = re.search(perfil.patron_banda, apu.titulo, flags=re.IGNORECASE)
     if hallado is None:
         return []
-    minimo, maximo = (Decimal(hallado[g].replace(",", ".")) for g in ("minimo", "maximo"))
+    try:
+        minimo, maximo = (cifra_escrita(hallado[g]) for g in ("minimo", "maximo"))
+    except CifraInvalida:
+        mal = next(hallado[g] for g in ("minimo", "maximo") if not _es_cifra(hallado[g]))
+        return [
+            _hallazgo(
+                "AH9",
+                "INFO",
+                apu.celdas["descripcion"],
+                f"{apu.hoja}: la descripción sigue el patrón de la banda de distancia, pero "
+                f"«{mal}» no es una cifra con coma decimal y punto de miles: Sílice no adivina la "
+                "banda.",
+            )
+        ]
     en_t = perfil.unidades.get(apu.unidad, apu.unidad) == "t"
     return [
         _hallazgo(
@@ -302,8 +351,8 @@ def _encabezado(filas: Sequence[Sequence[Any]], perfil: PerfilApuPorHoja):
 
 
 def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str, list[_Renglon]]:
-    hojas = leer_hojas(datos, nombre)
     buscada = normalizar(perfil.hoja_presupuesto)
+    hojas = leer_hojas(datos, nombre, lambda titulo: normalizar(titulo) == buscada)
     titulo = next((t for t in hojas if normalizar(t) == buscada), None)
     if titulo is None:
         raise ArchivoRechazado(
@@ -342,10 +391,35 @@ def _renglones(datos: bytes, nombre: str, perfil: PerfilApuPorHoja) -> tuple[str
     return titulo, renglones
 
 
+def _primeras(apus: Sequence[ApuLeido]) -> dict[int, ApuLeido]:
+    """La primera hoja de cada número de renglón (la que enlaza con el presupuesto)."""
+    primeras: dict[int, ApuLeido] = {}
+    for apu in apus:
+        if apu.numero is not None:
+            primeras.setdefault(apu.numero, apu)
+    return primeras
+
+
+def _repetidos(apus: Sequence[ApuLeido]) -> list[FilaHallazgo]:
+    primeras = _primeras(apus)
+    return [
+        _hallazgo(
+            "AH10",
+            "ADVERTENCIA",
+            apu.celdas.get("numero", apu.rotulos[Rotulo.PU]),
+            f"{_ident(apu)}: el número de renglón {apu.numero} ya es el de la hoja "
+            f"{primeras[apu.numero].hoja}; el presupuesto se enlaza con la primera y esta hoja no "
+            "se compara con ningún renglón.",
+        )
+        for apu in apus
+        if apu.numero is not None and primeras[apu.numero] is not apu
+    ]
+
+
 def _enlace(
     titulo: str, renglones: Sequence[_Renglon], apus: Sequence[ApuLeido]
 ) -> list[FilaHallazgo]:
-    por_numero = {a.numero: a for a in apus if a.numero is not None}
+    por_numero = _primeras(apus)
     tolerancia = Decimal(TOLERANCIA_PRECIO.valor)
     hallazgos = []
     vistos: set[int] = set()
@@ -411,12 +485,13 @@ def auditar_apu_por_hoja(
     perfil: str = "apu_por_hoja",
 ) -> ResultadoApuPorHoja:
     """Lee, recalcula e informa el libro de APU `datos` y, si viene, lo enlaza con su libro de
-    presupuesto. `perfil` es el nombre del perfil (local de la instalación o del paquete).
+    presupuesto. `perfil` es el nombre del perfil (local de la instalación o del paquete; ver la
+    cabecera del módulo).
 
     Deja pasar `ArchivoRechazado` y `LibroNoInterpretable` (el mensaje es para el usuario) y
     `PerfilInvalido` si el perfil no existe o está mal escrito.
     """
-    elegido = cargar_perfil_apu_por_hoja(perfil)
+    elegido = cargar_perfil_apu_por_hoja(perfil, carpetas_locales(carpeta_perfiles_locales()))
     libro = leer_libro_apu_por_hoja(datos, nombre, elegido)
     apus, hallazgos, trazas = [], [], []
     for apu in libro.apus:
@@ -424,6 +499,7 @@ def auditar_apu_por_hoja(
         apus.append(recalculado)
         hallazgos.extend(propios)
         trazas.extend(suyas)
+    hallazgos.extend(_repetidos(libro.apus))
     if presupuesto is not None:
         titulo, renglones = _renglones(presupuesto, presupuesto_nombre or "presupuesto", elegido)
         hallazgos.extend(_enlace(titulo, renglones, libro.apus))
