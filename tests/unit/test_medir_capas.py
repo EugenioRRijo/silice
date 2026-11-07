@@ -24,7 +24,15 @@ ANOMALIAS = CIVIL + "scikit-learn==1.7.0\nnumpy==2.3.0\n"
 
 def _capas(basica: float) -> dict[str, float]:
     """Capas de la básica con cifras redondas; solo cambia `basica` entre casos."""
-    return {"basica": basica, "bcv": 1.0, "civil": 16.0, "anomalias": 26.0, "ia": 12.0, "pdf": 3.0}
+    return {
+        "basica": basica,
+        "bcv": 1.0,
+        "civil": 16.0,
+        "anomalias": 26.0,
+        "ia": 12.0,
+        "pdf": 3.0,
+        "escritorio": 0.6,
+    }
 
 
 def test_normalizar_une_guiones_guiones_bajos_y_puntos() -> None:
@@ -56,12 +64,12 @@ def test_cada_capa_trae_solo_lo_que_las_anteriores_no_tenian() -> None:
 def test_las_capas_medidas_son_las_del_manifiesto() -> None:
     """Lo que se mide (CAPAS acumuladas) es lo que el instalador básico lleva (manifiesto.toml)."""
     m = cargar()
-    assert mc.FIJAS == ("basica", "bcv", "civil", "anomalias", "ia", "pdf")
+    assert mc.FIJAS == ("basica", "bcv", "civil", "anomalias", "ia", "pdf", "escritorio")
     assert set(mc.CAPAS[mc.FIJAS[-1]]) == set(m.extras_basica)
     assert mc.CAPAS["similitud"] == [*mc.CAPAS[mc.FIJAS[-1]], *m.extras_similitud]
     assert mc.CAPAS["base"] == []
     # cada capa acumula la anterior y agrega exactamente un extra (o los cuatro de la básica)
-    orden = ["basica", "bcv", "civil", "anomalias", "ia", "pdf", "similitud"]
+    orden = ["basica", "bcv", "civil", "anomalias", "ia", "pdf", "escritorio", "similitud"]
     for anterior, siguiente in zip(orden, orden[1:], strict=False):
         assert mc.CAPAS[siguiente][:-1] == mc.CAPAS[anterior], siguiente
     assert mc.ORDEN_DE_RECORTE == ("civil", "anomalias")  # spec S5 §7.2
@@ -142,6 +150,7 @@ def test_las_cifras_medidas_de_la_bitacora_no_piden_recorte() -> None:
         "anomalias": 26.0,
         "ia": 0.9,
         "pdf": 19.79,  # 149,99
+        "escritorio": 0.0,  # F5 ventana: ~0,6 MB segun V0; aqui 0 para conservar el margen del caso
     }
     assert mc.decidir_recorte(15.4, capas) == []
     assert mc.decidir_recorte(15.4, {**capas, "pdf": 19.81}) == ["civil"]
