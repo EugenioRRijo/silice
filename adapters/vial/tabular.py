@@ -25,6 +25,17 @@ COLUMNAS = ("tramo", *_COLUMNAS_TRAMO, "elemento", "tipo", *_COLUMNAS_CAPA, "lin
 #: Columna opcional (Tarea 16b): el porcentaje de asfalto de la mezcla de la carpeta o del bacheo.
 #: Un archivo sin ella se lee igual que antes.
 ASFALTO = "asfalto_pct"
+#: Columnas opcionales de F5 vial, tarea 1 (diseño 2026-11-03 §6.3): de la capa, el esponjamiento
+#: del fresado, la limpieza de un riego («sí» o «no») y la otra medición («m2» del fresado, «t» de
+#: la carpeta); de la demarcación, el área de cada elemento de superficie y los captafaros de una
+#: línea. Un archivo sin ellas se lee igual que antes.
+ESPONJAMIENTO = "esponjamiento"
+LIMPIEZA = "limpieza"
+MEDICION = "medicion"
+AREA = "area_m2"
+CAPTAFAROS = "captafaros"
+_SOLO_CAPA = (*_COLUMNAS_CAPA, ASFALTO, ESPONJAMIENTO, LIMPIEZA, MEDICION)
+_SOLO_DEMARCACION = ("lineas", AREA, CAPTAFAROS)
 
 _CAPA = "capa"
 _DEMARCACION = "demarcacion"
@@ -123,21 +134,56 @@ def _borrador(fila: dict[str, str | None], numero_fila: int, previo: _Borrador |
     return _Borrador(numero_fila, ini, fin, ancho, datos)
 
 
+def _entero(fila: dict[str, str | None], columna: str) -> int | None:
+    texto = _celda(fila, columna)
+    if not texto:
+        return None
+    if not (texto.isascii() and texto.isdigit()):
+        raise ValueError(f"la columna {columna!r} debe ser un entero: {texto!r}")
+    return int(texto)
+
+
+def _si_no(fila: dict[str, str | None], columna: str) -> bool:
+    texto = _celda(fila, columna).casefold()
+    if texto in ("", "no"):
+        return False
+    if texto in ("si", "sí"):
+        return True
+    raise ValueError(f"la columna {columna!r} debe ser sí o no: {_celda(fila, columna)!r}")
+
+
 def _agregar_elemento(fila: dict[str, str | None], borrador: _Borrador) -> None:
     elemento, tipo = _celda(fila, "elemento"), _celda(fila, "tipo")
     if elemento == _CAPA:
-        if _celda(fila, "lineas"):
-            raise ValueError("una capa no usa la columna 'lineas': déjela vacía")
+        llenas = [columna for columna in _SOLO_DEMARCACION if _celda(fila, columna)]
+        if llenas:
+            columnas = ", ".join(repr(c) for c in llenas)
+            raise ValueError(f"una capa no usa la columna {columnas}: déjela vacía")
         valores = (_decimal(fila, columna) for columna in (*_COLUMNAS_CAPA, ASFALTO))
-        borrador.capas.append(Capa(tipo, *valores))
+        borrador.capas.append(
+            Capa(
+                tipo,
+                *valores,
+                esponjamiento=_decimal(fila, ESPONJAMIENTO),
+                limpieza=_si_no(fila, LIMPIEZA),
+                medicion=_celda(fila, MEDICION) or None,
+            )
+        )
     elif elemento == _DEMARCACION:
-        llenas = [columna for columna in (*_COLUMNAS_CAPA, ASFALTO) if _celda(fila, columna)]
+        llenas = [columna for columna in _SOLO_CAPA if _celda(fila, columna)]
         if llenas:
             raise ValueError(f"una demarcación no usa {', '.join(llenas)}: déjelas vacías")
         lineas = _celda(fila, "lineas")
         if not (lineas.isascii() and lineas.isdigit()):
             raise ValueError(f"la columna 'lineas' debe ser un entero: {lineas!r}")
-        borrador.demarcacion.append(Demarcacion(tipo, int(lineas)))
+        borrador.demarcacion.append(
+            Demarcacion(
+                tipo,
+                int(lineas),
+                area_m2=_decimal(fila, AREA),
+                captafaros=_entero(fila, CAPTAFAROS),
+            )
+        )
     else:
         raise ValueError(
             f"elemento desconocido: {elemento!r} (se esperaba {_CAPA!r} o {_DEMARCACION!r})"

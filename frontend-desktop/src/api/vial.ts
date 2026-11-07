@@ -11,6 +11,18 @@ export interface CapaDeTramo {
   dosis_l_m2: string | null;
   // Porcentaje de asfalto de la mezcla de la carpeta o del bacheo (columna opcional del CSV); lo compara VR2.
   asfalto_pct?: string | null;
+  // F5 vial: esponjamiento del fresado, limpieza de un riego y la otra medición («m2» del fresado, «t» de la carpeta).
+  esponjamiento?: string | null;
+  limpieza?: boolean;
+  medicion?: string | null;
+}
+
+// Una línea de demarcación o, con tipo «superficie», elementos iguales de `area_m2` cada uno (F5 vial).
+export interface DemarcacionDeTramo {
+  tipo: string;
+  lineas: number;
+  area_m2?: string | null;
+  captafaros?: number | null;
 }
 
 export interface TramoGuardado {
@@ -20,7 +32,7 @@ export interface TramoGuardado {
   ancho_m: string;
   distancia_planta_km: string | null;
   capas: CapaDeTramo[];
-  demarcacion: { tipo: string; lineas: number }[];
+  demarcacion: DemarcacionDeTramo[];
 }
 
 // Una cantidad de obra derivada de un tramo; `regla` y `origen_id` dicen de dónde sale.

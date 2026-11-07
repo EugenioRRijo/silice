@@ -18,6 +18,14 @@ modelo no trae el ancho de la línea, así que es el supuesto V-14 (10 cm) y va 
 la partida de su mezcla (la de t) lleva la directiva `_porcentaje_asfalto` con ese número; es el
 que VR2 compara con la fórmula de trabajo de la planta.
 
+**Partidas nuevas** (F5 vial, tarea 1; diseño 2026-11-03 §6.3), solo si el tramo declara su dato,
+así un tramo de hoy deriva lo mismo que antes: la limpieza de la superficie (el área de un riego
+con `limpieza`) va antes del riego; el transporte del fresado (volumen × `esponjamiento`) va tras
+el fresado; cada línea con `captafaros` da ese número de unidades tras su pintura; la demarcación
+de superficie da área de cada elemento × número (sin pintura: VR5 mide líneas). Con `medicion`, el
+fresado se mide en m² (`fresado_area`) y la colocación de la carpeta en t
+(`carpeta_colocacion_masa`, antes de la mezcla), cada variante con su código propio.
+
 La especialidad y el tipo de capa o de línea van como directivas (`_especialidad`, `_capa`,
 `_demarcacion`; convención DA-SF-3, `core/verification/directivas.es_directiva`): clasifican la
 cantidad y R4 no las contrasta con el texto del APU.
@@ -43,6 +51,9 @@ VOLUMEN = "longitud*ancho*espesor"
 MASA = "longitud*ancho*espesor*densidad"
 LITROS = "longitud*ancho*dosis"
 TRANSPORTE = "longitud*ancho*espesor*densidad*distancia"
+TRANSPORTE_FRESADO = "longitud*ancho*espesor*esponjamiento"
+SUPERFICIE = "area_elemento*elementos"
+CAPTAFAROS = "captafaros"
 LINEA_CONTINUA = "longitud*lineas"
 LINEA_DISCONTINUA = "longitud*lineas*fraccion_pintada"
 PINTURA = "pintura_l_m"
@@ -58,6 +69,12 @@ _PARTIDAS_POR_CAPA: dict[str, tuple[tuple[str, str], ...]] = {
     "riego_adherencia": (("riego_adherencia", AREA), ("riego_adherencia_ligante", LITROS)),
     "carpeta": (("carpeta", AREA), ("carpeta_mezcla", MASA)),
     "bacheo": (("bacheo", VOLUMEN), ("bacheo_mezcla", MASA)),
+}
+
+#: Con otra medición (`Capa.medicion`), la partida que reemplaza a la de siempre.
+_VARIANTES: dict[tuple[str, str], tuple[str, str]] = {
+    ("fresado", "m2"): ("fresado_area", AREA),
+    ("carpeta", "t"): ("carpeta_colocacion_masa", MASA),
 }
 
 _PARTIDA_DEMARCACION = {
@@ -105,6 +122,7 @@ def _items_de_capa(tramo: Tramo, n: int, capa: Capa) -> list[ItemComputo]:
         ("densidad", capa.densidad_t_m3),
         ("dosis", capa.dosis_l_m2),
         ("distancia", tramo.distancia_planta_km),
+        ("esponjamiento", capa.esponjamiento),
     ):
         if valor is not None:
             valores[nombre] = valor
@@ -114,7 +132,15 @@ def _items_de_capa(tramo: Tramo, n: int, capa: Capa) -> list[ItemComputo]:
     if capa.asfalto_pct is not None:
         de_la_mezcla[PORCENTAJE_ASFALTO] = format(capa.asfalto_pct, "f")
     items = []
-    for clave, regla in _PARTIDAS_POR_CAPA[capa.tipo]:
+    if capa.limpieza:
+        items.append(
+            _item("limpieza_superficie", AREA, valores, tramo, origen_id, especificaciones)
+        )
+    for n_partida, (clave, regla) in enumerate(_PARTIDAS_POR_CAPA[capa.tipo]):
+        if n_partida == 0 and capa.medicion is not None:
+            clave, regla = _VARIANTES[(capa.tipo, capa.medicion)]
+            items.append(_item(clave, regla, valores, tramo, origen_id, especificaciones))
+            continue
         if regla == MASA and "densidad" not in valores:
             continue  # bacheo sin densidad: solo su volumen
         espec = de_la_mezcla if regla == MASA else especificaciones
@@ -123,6 +149,17 @@ def _items_de_capa(tramo: Tramo, n: int, capa: Capa) -> list[ItemComputo]:
             items.append(
                 _item("transporte_mezcla", TRANSPORTE, valores, tramo, origen_id, especificaciones)
             )
+    if "esponjamiento" in valores:
+        items.append(
+            _item(
+                "transporte_fresado",
+                TRANSPORTE_FRESADO,
+                valores,
+                tramo,
+                origen_id,
+                especificaciones,
+            )
+        )
     return items
 
 
@@ -146,6 +183,21 @@ def derivar_tramos(tramos: Sequence[Tramo]) -> list[ItemComputo]:
         for n, capa in enumerate(tramo.capas, start=1):
             items.extend(_items_de_capa(tramo, n, capa))
         for n, linea in enumerate(tramo.demarcacion, start=1):
+            origen = f"tramo:{tramo.id}:demarcacion:{n}"
+            especificaciones = {"_especialidad": "vial", "_demarcacion": linea.tipo}
+            if linea.tipo == "superficie" and linea.area_m2 is not None:
+                valores = {"area_elemento": linea.area_m2, "elementos": Decimal(linea.lineas)}
+                items.append(
+                    _item(
+                        "demarcacion_superficie",
+                        SUPERFICIE,
+                        valores,
+                        tramo,
+                        origen,
+                        especificaciones,
+                    )
+                )
+                continue
             clave, regla = _PARTIDA_DEMARCACION[linea.tipo]
             valores = {
                 "longitud": tramo.longitud_m,
@@ -153,8 +205,6 @@ def derivar_tramos(tramos: Sequence[Tramo]) -> list[ItemComputo]:
                 "fraccion_pintada": fraccion,
                 PINTURA: pintura_l_m,
             }
-            origen = f"tramo:{tramo.id}:demarcacion:{n}"
-            especificaciones = {"_especialidad": "vial", "_demarcacion": linea.tipo}
             nota = nota_fraccion if linea.tipo == "discontinua" else ""
             items.append(_item(clave, regla, valores, tramo, origen, especificaciones, nota))
             items.append(
@@ -168,4 +218,15 @@ def derivar_tramos(tramos: Sequence[Tramo]) -> list[ItemComputo]:
                     nota,
                 )
             )
+            if linea.captafaros is not None:
+                items.append(
+                    _item(
+                        "captafaros",
+                        CAPTAFAROS,
+                        {CAPTAFAROS: Decimal(linea.captafaros)},
+                        tramo,
+                        origen,
+                        especificaciones,
+                    )
+                )
     return items

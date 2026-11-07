@@ -19,7 +19,13 @@ TIPOS_CAPA = (
     "bacheo",
 )
 
-TIPOS_DEMARCACION = ("continua", "discontinua")
+TIPOS_DEMARCACION = ("continua", "discontinua", "superficie")
+
+#: Variantes de medición de una capa (F5 vial, decisión provisional 4 del 2026-11-06): por tipo, la
+#: unidad de siempre y la otra que se admite. La de siempre se guarda como `None`.
+MEDICIONES: dict[str, tuple[str, str]] = {"fresado": ("m3", "m2"), "carpeta": ("m2", "t")}
+#: Capas que se riegan: solo ellas admiten la limpieza de la superficie (F5 vial, tarea 1).
+CAPAS_DE_RIEGO = ("imprimacion", "riego_adherencia")
 
 _OBLIGATORIO = "obligatorio"
 _OPCIONAL = "opcional"
@@ -54,13 +60,27 @@ class Capa:
 
     `asfalto_pct` es el porcentaje de asfalto que el proyecto pide a la mezcla de la carpeta o del
     bacheo, en puntos (5,5 es 5,5 %), mayor que 0 y menor que 100. VR2 lo compara con la fórmula
-    de trabajo de la planta (Tarea 16b, filas 58 y 63)."""
+    de trabajo de la planta (Tarea 16b, filas 58 y 63).
+
+    F5 vial, tarea 1 (diseño 2026-11-03 §6.3), todos opcionales:
+
+    - `esponjamiento`: solo del fresado; el factor volumen suelto ÷ volumen en sitio (1,25), mayor
+      o igual a 1. Sin valor por defecto (decisión provisional 3): sin él no se deriva el
+      transporte del fresado.
+    - `limpieza`: solo de la imprimación y del riego de adherencia; con ella se deriva la limpieza
+      de la superficie (el área regada). Sin ella, el tramo deriva lo mismo que antes.
+    - `medicion`: la unidad de la partida principal cuando no es la de siempre (`MEDICIONES`):
+      «m2» para el fresado, «t» para la colocación de la carpeta. La de siempre se guarda `None`.
+    """
 
     tipo: str
     espesor_m: Decimal | None
     densidad_t_m3: Decimal | None
     dosis_l_m2: Decimal | None
     asfalto_pct: Decimal | None = None
+    esponjamiento: Decimal | None = None
+    limpieza: bool = False
+    medicion: str | None = None
 
     def __post_init__(self) -> None:
         if self.tipo not in _DATOS_POR_TIPO:
@@ -86,23 +106,78 @@ class Capa:
                 f"asfalto de la capa {self.tipo} debe ser un porcentaje menor que 100: "
                 f"{self.asfalto_pct}"
             )
+        self._validar_f5()
+
+    def _validar_f5(self) -> None:
+        if self.esponjamiento is not None:
+            if self.tipo != "fresado":
+                raise ValueError(f"la capa {self.tipo} no usa esponjamiento: déjelo vacío")
+            _positivo("esponjamiento del fresado", self.esponjamiento)
+            if self.esponjamiento < 1:
+                raise ValueError(
+                    "el esponjamiento del fresado es el volumen suelto ÷ el volumen en sitio "
+                    f"(por ejemplo 1,25) y debe ser mayor o igual a 1: {self.esponjamiento}"
+                )
+        if not isinstance(self.limpieza, bool):
+            raise TypeError(f"la limpieza de la capa {self.tipo} es sí o no, no {self.limpieza!r}")
+        if self.limpieza and self.tipo not in CAPAS_DE_RIEGO:
+            raise ValueError(
+                f"la capa {self.tipo} no usa limpieza: solo la imprimación y el riego de adherencia"
+            )
+        if self.medicion is None:
+            return
+        usual, otra = MEDICIONES.get(self.tipo, (None, None))
+        if usual is None:
+            raise ValueError(f"la capa {self.tipo} no admite otra medición: déjela vacía")
+        if self.medicion == usual:
+            object.__setattr__(self, "medicion", None)
+        elif self.medicion != otra:
+            raise ValueError(
+                f"medición de la capa {self.tipo}: vacía ({usual}) o {otra}, no {self.medicion!r}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
 class Demarcacion:
-    """Líneas de demarcación a lo largo de todo el tramo."""
+    """Líneas de demarcación a lo largo de todo el tramo, o elementos de superficie.
+
+    F5 vial, tarea 1 (diseño 2026-11-03 §6.3):
+
+    - `superficie` (pasos peatonales, líneas de pare): `lineas` es el número de elementos iguales
+      y `area_m2`, obligatoria, el área de cada uno. La cantidad es área × número.
+    - `captafaros`: solo en una línea continua o discontinua, el número de ojos de gato que
+      declara (decisión provisional 3: basta el número declarado; derivarlo de la separación es
+      otra extensión).
+    """
 
     tipo: str
     lineas: int
+    area_m2: Decimal | None = None
+    captafaros: int | None = None
 
     def __post_init__(self) -> None:
         if self.tipo not in TIPOS_DEMARCACION:
             raise ValueError(
                 f"demarcación desconocida: {self.tipo!r} "
-                f"(se esperaba {' o '.join(TIPOS_DEMARCACION)})"
+                f"(se esperaba {', '.join(TIPOS_DEMARCACION)})"
             )
         if isinstance(self.lineas, bool) or not isinstance(self.lineas, int) or self.lineas < 1:
             raise ValueError(f"las lineas de demarcación deben ser un entero ≥ 1: {self.lineas!r}")
+        if self.tipo == "superficie":
+            if self.area_m2 is None:
+                raise ValueError("la demarcación de superficie exige el área de cada elemento")
+            _positivo("el área de cada elemento de la demarcación", self.area_m2)
+            if self.captafaros is not None:
+                raise ValueError("la demarcación de superficie no usa captafaros: déjelos vacíos")
+            return
+        if self.area_m2 is not None:
+            raise ValueError(f"la demarcación {self.tipo} no usa área: déjela vacía")
+        if self.captafaros is not None and (
+            isinstance(self.captafaros, bool)
+            or not isinstance(self.captafaros, int)
+            or self.captafaros < 1
+        ):
+            raise ValueError(f"los captafaros deben ser un entero ≥ 1: {self.captafaros!r}")
 
 
 @dataclass(frozen=True, slots=True)

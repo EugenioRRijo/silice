@@ -7,7 +7,8 @@ lo que dicen los tramos. Una partida del presupuesto se casa con su capa o su l�
 cantidades. Una partida sin ese origen no se evalúa aquí (que falte una partida es de la
 conciliación, Tarea 10).
 
-- **VR1** toneladas de carpeta del presupuesto ≠ área × espesor × densidad (tolerancia relativa).
+- **VR1** toneladas de carpeta del presupuesto ≠ área × espesor × densidad (tolerancia relativa),
+  en la mezcla y, si la capa se mide en masa (F5 vial), también en su colocación.
 - **VR2** porcentaje de asfalto declarado en la partida de mezcla (`especificaciones
   ["_porcentaje_asfalto"]`, que pone `derivar_tramos` desde `Capa.asfalto_pct`) a más de ±0,5
   puntos de la fórmula de trabajo. Sin fórmula no se evalúa; si quien arma la regla dice por qué
@@ -407,6 +408,14 @@ def auditar_vial(
     return [
         *_contra_derivado(
             "VR1", "carpeta_mezcla", derivados, indice, Decimal(TOLERANCIA_CARPETA.valor), "carpeta"
+        ),
+        *_contra_derivado(
+            "VR1",
+            "carpeta_colocacion_masa",
+            derivados,
+            indice,
+            Decimal(TOLERANCIA_CARPETA.valor),
+            "colocación de la carpeta",
         ),
         *_vr2(derivados, indice, formula_asfalto_pct, formulas or {}, sin_formula or {}),
         *_vr3(tramos),

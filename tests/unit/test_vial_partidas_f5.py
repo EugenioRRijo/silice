@@ -35,8 +35,8 @@ from adapters.vial.tabular import leer_tramos
 from api.esquemas_vial import TramoEntrada, a_tramos, tramo_a_respuesta
 from aplicacion import vial
 from aplicacion.consulta import buscar
-from core.catalog import abrir_sesion, crear_motor
 from core import models
+from core.catalog import abrir_sesion, crear_motor
 from core.contracts import Dominio, ItemComputo, OrigenTipo
 from core.contracts.apu import ComposicionAPU, ResultadoAPU
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
@@ -79,7 +79,9 @@ def _codigo(clave: str) -> str:
 
 def _de(items: list[ItemComputo], origen: str) -> list[tuple[str, str, Decimal]]:
     claves = {codigo: clave for clave, (codigo, _, _) in PARTIDAS_VIALES.items()}
-    return [(claves[i.codigo_partida], i.unidad, i.cantidad) for i in items if i.origen_id == origen]
+    return [
+        (claves[i.codigo_partida], i.unidad, i.cantidad) for i in items if i.origen_id == origen
+    ]
 
 
 # --- catálogo ------------------------------------------------------------------------------------
@@ -119,8 +121,14 @@ def test_superficie_es_un_tipo_de_demarcacion():
 @pytest.mark.parametrize(
     ("hacer", "mensaje"),
     [
-        (lambda: Capa("carpeta", D("0.05"), D("2.4"), None, esponjamiento=D("1.2")), "esponjamiento"),
-        (lambda: Capa("fresado", D("0.05"), None, None, esponjamiento=D("0.9")), "mayor o igual a 1"),
+        (
+            lambda: Capa("carpeta", D("0.05"), D("2.4"), None, esponjamiento=D("1.2")),
+            "esponjamiento",
+        ),
+        (
+            lambda: Capa("fresado", D("0.05"), None, None, esponjamiento=D("0.9")),
+            "mayor o igual a 1",
+        ),
         (lambda: Capa("carpeta", D("0.05"), D("2.4"), None, limpieza=True), "limpieza"),
         (lambda: Capa("base_granular", D("0.2"), None, None, medicion="m2"), "medición"),
         (lambda: Capa("fresado", D("0.05"), None, None, medicion="kg"), "medición"),
@@ -137,7 +145,9 @@ def test_lo_que_no_sigue_la_convencion_se_rechaza(hacer, mensaje):
 
 
 def test_la_medicion_de_siempre_se_guarda_como_vacia():
-    assert Capa("fresado", D("0.05"), None, None, medicion="m3") == Capa("fresado", D("0.05"), None, None)
+    assert Capa("fresado", D("0.05"), None, None, medicion="m3") == Capa(
+        "fresado", D("0.05"), None, None
+    )
     assert Capa("carpeta", D("0.05"), D("2.4"), None, medicion="m2").medicion is None
 
 
@@ -198,7 +208,9 @@ def _presupuesto(*items: ItemComputo) -> Presupuesto:
     partidas = []
     for item in items:
         apu = ComposicionAPU(item.codigo_partida, item.descripcion, item.unidad, D("1"))
-        partidas.append(PartidaPresupuestada(item, apu, ResultadoAPU(cero, cero, cero, cero, cero, D("1"))))
+        partidas.append(
+            PartidaPresupuestada(item, apu, ResultadoAPU(cero, cero, cero, cero, cero, D("1")))
+        )
     return Presupuesto("VIA-TEST", date(2026, 11, 6), "Bs", tuple(partidas))
 
 
@@ -210,7 +222,7 @@ def _renglon(clave: str, origen: str, cantidad: str) -> ItemComputo:
         unidad=unidad,
         cantidad=D(cantidad),
         origen_id=origen,
-        origen_tipo=OrigenTipo.REGLA,
+        origen_tipo=OrigenTipo.MANUAL,
         dominio=Dominio.CIVIL,
     )
 
@@ -273,7 +285,7 @@ def test_el_csv_rechaza_lo_que_no_va_con_la_fila(tmp_path: Path, fila: str, mens
         leer_tramos(_csv(tmp_path, fila))
 
 
-# --- guardar y leer; la API ------------------------------------------------------------------------
+# --- guardar y leer; la API ----------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -299,7 +311,9 @@ def test_lo_guardado_se_lee_igual(sesion: Session):
     version = sesion.scalars(
         select(models.Presupuesto.id).where(models.Presupuesto.codigo == "VIV-001")
     ).one()
-    vial.guardar_tramos(sesion, version, [P1, P2], usuario="Ana <ana>", ahora=datetime(2026, 11, 6, 9))
+    vial.guardar_tramos(
+        sesion, version, [P1, P2], usuario="Ana <ana>", ahora=datetime(2026, 11, 6, 9)
+    )
     assert vial.tramos_de_version(sesion, version) == [P1, P2]
 
 

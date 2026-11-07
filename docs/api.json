@@ -15065,6 +15065,35 @@
               }
             ],
             "title": "Asfalto Pct"
+          },
+          "esponjamiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Esponjamiento"
+          },
+          "limpieza": {
+            "type": "boolean",
+            "title": "Limpieza",
+            "default": false
+          },
+          "medicion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medicion"
           }
         },
         "additionalProperties": false,
@@ -15123,6 +15152,33 @@
               }
             ],
             "title": "Asfalto Pct"
+          },
+          "esponjamiento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Esponjamiento"
+          },
+          "limpieza": {
+            "type": "boolean",
+            "title": "Limpieza",
+            "default": false
+          },
+          "medicion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medicion"
           }
         },
         "type": "object",
@@ -17067,6 +17123,29 @@
           "lineas": {
             "type": "integer",
             "title": "Lineas"
+          },
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "captafaros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captafaros"
           }
         },
         "additionalProperties": false,
@@ -17086,6 +17165,28 @@
           "lineas": {
             "type": "integer",
             "title": "Lineas"
+          },
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area M2"
+          },
+          "captafaros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captafaros"
           }
         },
         "type": "object",

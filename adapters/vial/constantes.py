@@ -74,6 +74,28 @@ PARTIDAS_VIALES: dict[str, tuple[str, str, str]] = {
     # Tarea 16b (filas 34, 51 y 63): la pintura de cada línea de demarcación, para que VR5 se
     # dispare desde la interfaz. Código provisional y correlativo, como los demás.
     "pintura_demarcacion": ("C-000.000.015", "Pintura de demarcación", "l"),
+    # F5 vial, tarea 1 (diseño 2026-11-03 §6): las seis partidas que traía el presupuesto vial
+    # revisado en local. Códigos provisionales y correlativos (V-2). Movilización y señalización
+    # no salen de la geometría (van a mano); las otras cuatro las deriva el tramo si da su dato.
+    "movilizacion_equipos": ("C-000.000.016", "Movilización y desmovilización de equipos", "viaje"),
+    "limpieza_superficie": ("C-000.000.017", "Limpieza de la superficie antes del riego", "m2"),
+    "transporte_fresado": ("C-000.000.018", "Transporte del material fresado, medido suelto", "m3"),
+    "senalizacion_transito": ("C-000.000.019", "Señalización y control de tránsito", "dia"),
+    "captafaros": ("C-000.000.020", "Captafaros (ojos de gato)", "unidad"),
+    "demarcacion_superficie": (
+        "C-000.000.021",
+        "Demarcación de superficies (pasos peatonales y líneas de pare)",
+        "m2",
+    ),
+    # Variantes de medición (decisión provisional 4 del 2026-11-06): el fresado medido en área y
+    # la colocación de la carpeta medida en masa. Código propio: CV2 suma por código sin convertir
+    # unidades, así que la misma clave en dos unidades mezclaría m² con m³.
+    "fresado_area": ("C-000.000.022", "Fresado de pavimento asfáltico, medido en área", "m2"),
+    "carpeta_colocacion_masa": (
+        "C-000.000.023",
+        "Colocación de carpeta de concreto asfáltico, medida en masa",
+        "t",
+    ),
 }
 
 
