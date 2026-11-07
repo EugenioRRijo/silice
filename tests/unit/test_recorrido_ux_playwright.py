@@ -347,6 +347,22 @@ def test_la_obra_de_una_fila_por_su_carpeta_y_su_nombre() -> None:
     assert obra_para(OBRAS, "demo.db", None) == OBRAS[1]
     # Sin carpeta: la de la empresa.
     assert obra_para(OBRAS, None, None) == OBRAS[0]
+    # Como el selector de obra de antes, vale una parte del nombre (las filas dicen «Sílice: caso de
+    # demostracion» y la obra de la siembra sigue con «(linea de agua potable, didactico)»); el
+    # nombre exacto gana a una coincidencia parcial.
+    assert obra_para(OBRAS, "demo.db", "Sílice: caso de") == OBRAS[1]
+    assert (
+        obra_para(
+            OBRAS
+            + [
+                {"carpeta": "x.db", "obra_id": 5, "obra": "Torre B (anexo)"},
+                {"carpeta": "x.db", "obra_id": 6, "obra": "Torre B"},
+            ],
+            "x.db",
+            "Torre B",
+        )["obra_id"]
+        == 6
+    )
     # Un nombre que no está en esa carpeta no se cambia por otra obra.
     assert obra_para(OBRAS, "demo.db", "OBRA-GENERADA") is None
     assert obra_para(OBRAS, "nada.db", None) is None
