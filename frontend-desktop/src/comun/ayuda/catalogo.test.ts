@@ -26,7 +26,7 @@ function fuentes(): string {
   const front = fs
     .readdirSync(raiz, { recursive: true })
     .map((r) => r.replaceAll("\\", "/"))
-    .filter((r) => /\.tsx?$/.test(r) && !/\.test\.tsx?$/.test(r) && !r.startsWith("paginas/ayuda/"))
+    .filter((r) => /\.tsx?$/.test(r) && !/\.test\.tsx?$/.test(r) && !r.startsWith("comun/ayuda/"))
     .map((r) => fs.readFileSync(`${raiz}/${r}`, "utf-8"));
   const servidor = fs
     .readdirSync(aplicacion, { recursive: true })

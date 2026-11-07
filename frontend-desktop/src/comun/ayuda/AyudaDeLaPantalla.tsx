@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { QueEsEsto } from "../../comun/QueEsEsto";
+import { QueEsEsto } from "../QueEsEsto";
 import { EnlaceDeAyuda } from "./EnlaceDeAyuda";
 import { rutaDeTema } from "./temas";
 import { AYUDA_DE_PANTALLAS, guiaPorId, terminoPorId } from "./textos";
