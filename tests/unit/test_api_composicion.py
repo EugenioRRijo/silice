@@ -180,6 +180,7 @@ def test_evaluar_el_formulario_en_blanco_es_vacio_con_la_bienvenida(api: TestCli
         "advertencias": [],
         "requiere_justificacion": False,
         "contraste": None,
+        "desperdicios": [],  # F5 vial, tarea 3: campo aditivo
     }
 
 
@@ -481,3 +482,94 @@ def test_guardar_sin_csrf_con_la_cookie_es_403(caso: Path) -> None:
         headers={"Origin": "http://127.0.0.1:8000"},
     )
     assert respuesta.status_code == 403
+
+
+# --- F5 vial, tarea 3: el desperdicio de un material --------------------------------------------
+#
+# El navegador manda la cantidad neta y el porcentaje (`desperdicio`); el servidor calcula la
+# cantidad con desperdicio, la evalúa, la guarda dentro de la cantidad (sin tocar el núcleo) y deja
+# la traza; la precarga devuelve la neta y el porcentaje. Una fila sin desperdicio viaja igual que
+# antes, sin la clave. Oráculos a mano: 0,50 l de ligante con 4 % son 0,52 l; a 2,00 son 1,04 de
+# materiales (sin dividir entre el rendimiento); costo directo 1,04; × 1,15 = 1,196; × 1,10 =
+# 1,3156: precio unitario 1,32.
+
+DESP = "VIA-DESP-01"
+LIGANTE = {
+    "descripcion": "Ligante ficticio",
+    "unidad": "l",
+    "cantidad": "0,50",
+    "precio": "2,00",
+    "desperdicio": "4",
+}
+
+
+def _cuerpo_desp(*materiales: dict[str, str], **extra) -> dict:
+    return {
+        "codigo": DESP,
+        "descripcion": "Riego ficticio con desperdicio",
+        "unidad": "m2",
+        "dominio": "civil",
+        "rendimiento": "100",
+        "materiales": list(materiales),
+        "equipos": [],
+        "mano_obra": [],
+        **extra,
+    }
+
+
+def _guardar_desp(api: TestClient, *materiales: dict[str, str]):
+    return api.post(
+        "/v1/composicion/guardar",
+        json=_cuerpo_desp(
+            *materiales,
+            fecha="2026-05-01",
+            condiciones="condiciones ficticias de la prueba del desperdicio",
+        ),
+    )
+
+
+def test_evaluar_usa_la_cantidad_con_desperdicio_y_dice_la_leyenda(api: TestClient) -> None:
+    cuerpo = api.post("/v1/composicion/evaluar", json=_cuerpo_desp(LIGANTE)).json()
+    assert cuerpo["estado"] == "valido"
+    assert cuerpo["desglose"]["materiales"] == "1.04"
+    assert cuerpo["desglose"]["precio_unitario"] == "1.32"
+    assert cuerpo["desperdicios"] == [
+        {"fila": 1, "descripcion": "Ligante ficticio", "leyenda": "0,52 (0,50 + 4 %)"}
+    ]
+
+
+def test_evaluar_sin_desperdicio_no_trae_leyendas(api: TestClient) -> None:
+    sin = {k: v for k, v in LIGANTE.items() if k != "desperdicio"}
+    cuerpo = api.post("/v1/composicion/evaluar", json=_cuerpo_desp(sin)).json()
+    assert cuerpo["desglose"]["materiales"] == "1.00"
+    assert cuerpo["desperdicios"] == []
+
+
+def test_evaluar_un_desperdicio_mal_escrito_es_incompleto(api: TestClient) -> None:
+    cuerpo = api.post(
+        "/v1/composicion/evaluar", json=_cuerpo_desp({**LIGANTE, "desperdicio": "-1"})
+    ).json()
+    assert cuerpo["estado"] == "incompleto"
+    assert "el desperdicio «-1» debe estar entre 0 y 100" in cuerpo["aviso"]
+
+
+def test_guardar_y_precargar_devuelven_la_neta_y_el_porcentaje(api: TestClient) -> None:
+    respuesta = _guardar_desp(api, LIGANTE)
+    assert respuesta.status_code == 200
+    assert respuesta.json()["precio_unitario"] == "1.32"
+    precarga = api.get(f"/v1/composicion/partidas/{DESP}").json()
+    assert precarga["tablas"]["materiales"] == [LIGANTE]
+
+
+def test_guardar_otra_vez_sin_desperdicio_borra_la_traza(api: TestClient) -> None:
+    assert _guardar_desp(api, LIGANTE).status_code == 200
+    sin = {**{k: v for k, v in LIGANTE.items() if k != "desperdicio"}, "cantidad": "0,52"}
+    assert _guardar_desp(api, sin).status_code == 200
+    precarga = api.get(f"/v1/composicion/partidas/{DESP}").json()
+    assert precarga["tablas"]["materiales"] == [{**sin, "cantidad": "0,52"}]
+
+
+def test_guardar_un_desperdicio_mal_escrito_es_422(api: TestClient) -> None:
+    respuesta = _guardar_desp(api, {**LIGANTE, "desperdicio": "cuatro"})
+    assert respuesta.status_code == 422
+    assert "el desperdicio «cuatro» no se entiende como número" in respuesta.json()["detalle"]
