@@ -9,6 +9,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import type { PartidaHallada } from "../../comun/logicaBusqueda";
 import { useAplicacion } from "../../shell/contexto";
 import { useFormularioSucio } from "../../shell/sucio";
+import { mismoDatoDeCabecera } from "./cabecera";
 import { BuscadorReferencia } from "./BuscadorReferencia";
 import { CampoDelCodigo } from "./CampoDelCodigo";
 import { CampoDeUnidad } from "../../comun/CampoDeUnidad";
@@ -183,7 +184,8 @@ export function ComponerPartida({ codigoInicial, descripcionInicial = "", nivelD
       ["unidad", p.unidad, "la unidad"],
     ] as const) {
       const actual = cabecera[campo];
-      if (actual.trim() !== "" && actual !== nuevo && actual !== delCatalogo.current[campo]) {
+      // N4: sin los bordes y por la grafía escrita, como compara el servidor (`cabecera.ts`).
+      if (actual.trim() !== "" && !mismoDatoDeCabecera(campo, actual, nuevo) && actual !== delCatalogo.current[campo]) {
         avisos.push(`Se cambió ${rotulo} «${actual}» por la del catálogo, «${nuevo}».`);
       }
       parcial[campo] = nuevo;
