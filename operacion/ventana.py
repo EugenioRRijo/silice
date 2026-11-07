@@ -116,8 +116,8 @@ def motivo_sin_ventana(
         return "la ventana propia de Sílice solo existe en Windows"
     if version_webview2(leer) is None:
         return (
-            "WebView2 de Microsoft no está instalado en este equipo (el manual de instalación "
-            "explica cómo instalarlo si quiere la ventana)"
+            "WebView2 de Microsoft no está instalado en este equipo (cómo instalarlo, en el "
+            "manual de instalación, «Si falta WebView2»)"
         )
     try:
         importar("webview")

@@ -49,20 +49,25 @@ alguien usa otra carpeta de datos por una razón especial, la variable es `SILIC
 
 ## Primer arranque
 
-Haga doble clic en «Sílice». Se abre una ventana minimizada (es el servidor: **ciérrela para
-detener Sílice**) y el navegador entra a `http://127.0.0.1:8501/app/`.
+Haga doble clic en «Sílice». Se abren la **ventana de Sílice**, con su ícono en la barra de tareas,
+y una consola minimizada: es el servidor y muestra el código de instalación la primera vez.
+**Para terminar, basta cerrar la ventana:** eso detiene Sílice, igual que cerrar la consola o usar
+el acceso «Detener Sílice». La ventana usa WebView2 de Microsoft, que ya viene en Windows 11 y en
+casi todos los Windows 10. Si el equipo no puede mostrarla, Sílice se abre en el navegador en
+`http://127.0.0.1:8501/app/` y la consola lo avisa en una línea que empieza con «AVISO»; Sílice
+funciona igual en el navegador (ver «Si falta WebView2» más abajo).
 
 Como todavía no hay cuentas, Sílice crea al arrancar un **código de instalación de un solo uso**:
 20 caracteres en grupos de cuatro (letras de la A a la Z y cifras del 2 al 7). Lo deja en tres
-sitios: en el Bloc de notas, que se abre solo esa primera vez; en la ventana del servidor (busque
-«Código de instalación»); y en el archivo `%LOCALAPPDATA%\Silice\datos\codigo_instalacion.txt`. El
-código nunca se guarda en el registro.
+sitios: en el Bloc de notas, que se abre solo esa primera vez; en la consola minimizada de Sílice
+(búsquela en la barra de tareas y busque «Código de instalación»); y en el archivo
+`%LOCALAPPDATA%\Silice\datos\codigo_instalacion.txt`. El código nunca se guarda en el registro.
 
-El navegador muestra la pantalla **Bienvenida a Sílice**. Pegue el código tal cual, escriba su
-nombre, el usuario y la contraseña (dos veces) y pulse «Crear la cuenta y entrar». Si esa misma
-cuenta va a armar presupuestos, marque «Usaré esta cuenta también para armar presupuestos». Es la
-cuenta del administrador: con ella se crean las demás cuentas en Administración. El código se borra
-al usarse y no sirve otra vez.
+La ventana de Sílice (o el navegador) muestra la pantalla **Bienvenida a Sílice**. Pegue el código
+tal cual, escriba su nombre, el usuario y la contraseña (dos veces) y pulse «Crear la cuenta y
+entrar». Si esa misma cuenta va a armar presupuestos, marque «Usaré esta cuenta también para armar
+presupuestos». Es la cuenta del administrador: con ella se crean las demás cuentas en
+Administración. El código se borra al usarse y no sirve otra vez.
 
 - La bienvenida solo funciona en el propio equipo donde está instalado Sílice, no desde otro
   equipo de la red local.
@@ -72,6 +77,33 @@ al usarse y no sirve otra vez.
   acceso de administrador» del menú Inicio de Windows. Su ventana muestra un **código de
   restablecimiento** (sirve una sola vez y vence a las 24 horas). En la pantalla de acceso pulse
   «Perdí el acceso de administrador» y úselo allí.
+
+### Abrir Sílice otra vez
+
+Si Sílice ya está abierto, hacer doble clic en «Sílice» otra vez no abre un segundo Sílice:
+trae al frente la ventana que ya está. Si el Sílice abierto se abrió en el navegador, abre otra
+pestaña del navegador en la misma dirección.
+
+La ventana recuerda el tamaño de letra y el zoom de la Hoja de una vez para otra: los guarda en
+`%LOCALAPPDATA%\Silice\datos\perfil_ventana`, junto a los datos. La sesión no se guarda: al volver
+a abrir Sílice hay que entrar otra vez con su cuenta.
+
+### Si falta WebView2
+
+La ventana de Sílice necesita **Microsoft Edge WebView2 Runtime**, un componente gratuito de
+Microsoft. Si falta, Sílice se abre en el navegador y la consola dice, en la línea «AVISO», que
+WebView2 no está instalado. Para tener la ventana:
+
+1. En un equipo con internet, abra la página de Microsoft
+   `https://developer.microsoft.com/microsoft-edge/webview2/`, sección «Download the WebView2
+   Runtime», y baje el **Evergreen Standalone Installer** de **x64** (es el instalador completo,
+   que no necesita internet en el equipo donde se instala).
+2. Lleve ese archivo al equipo de Sílice (por ejemplo, en una memoria USB) y ejecútelo. Si Windows
+   pide permiso de administrador y su cuenta no lo tiene, pídaselo a quien administra el equipo.
+3. Cierre Sílice (la consola o «Detener Sílice») y vuelva a abrirlo: ahora se abre la ventana.
+
+Si después de instalarlo Sílice sigue abriendo el navegador, la línea «AVISO» de la consola dice el
+motivo (por ejemplo, un antivirus que bloquea el componente de la ventana).
 
 ## Casos
 
@@ -155,4 +187,13 @@ de comprobar la huella y la firma como se explicó arriba.
 - **Esta base es de una versión más nueva:** instale esa versión o restaure el respaldo previo.
 - **La IP de la red local ya no existe:** Sílice arrancó solo en este equipo. Vuelva a activar la
   red local y elija la IP nueva.
-- **No abre el navegador:** abra `http://127.0.0.1:8501/app/` a mano.
+- **Prefiero el navegador:** en `%LOCALAPPDATA%\Silice\config\silice.toml`, en la tabla
+  `[interfaz]`, ponga `abrir_en = "navegador"` (o `abrir_en = "ventana"` para volver) y vuelva a
+  abrir Sílice. La consola lo recuerda con un «AVISO» en cada arranque.
+- **Se abre el navegador en vez de la ventana:** lea la línea «AVISO» de la consola; dice por qué
+  (falta WebView2, un antivirus bloquea el componente de la ventana, la ventana no cargó en 30
+  segundos o el ajuste anterior). Para WebView2, vea «Si falta WebView2».
+- **«Sílice se detuvo» en la ventana:** el servidor terminó con la ventana abierta. Cierre la ventana
+  y abra «Sílice» otra vez; si se repite, mire el registro en `%LOCALAPPDATA%\Silice
+egistros`.
+- **No abre la ventana ni el navegador:** abra `http://127.0.0.1:8501/app/` a mano.

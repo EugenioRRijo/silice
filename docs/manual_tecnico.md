@@ -745,6 +745,31 @@ prueba de humo (`instalador/humo.ps1`).
 `verificar-instalador` llegan con la Tarea 3 del plan, que la genera Eugenio). Los accesos directos del
 instalador llaman a `arrancar` y `parar` con `-E -s -B -X utf8`.
 
+### La ventana de Sílice (`arrancar`)
+
+`arrancar` presenta la interfaz en la ventana propia (`operacion/ventana.py`, el único módulo que
+importa pywebview, y tarde) o en el navegador. Manda, en este orden: `--sin-navegador` (la humo: no
+presenta nada), `--sin-ventana` (navegador, sin aviso), `[interfaz] abrir_en = "navegador"` en
+`silice.toml` (navegador, con AVISO) y, si no, lo que diga `ventana.motivo_sin_ventana()` (Windows,
+la clave `pv` de WebView2 en el registro y pywebview importable). Si la ventana falla al abrir o no
+carga en 30 s, `VentanaNoDisponible` y se abre el navegador con el motivo en el AVISO. Cerrar la
+ventana termina Uvicorn y borra `estado\servidor.json`; una segunda ejecución llama a
+`ventana.traer_al_frente(pid)` con el primer PID de `servidor.json` y, si ese proceso no tiene
+ventana «Sílice», abre el navegador.
+
+Ajustes de pywebview que no se tocan sin pasar por el diseño (§2 y §10 de
+`docs/especificaciones/2026-11-03-ventana-de-escritorio-design.md`): `gui="edgechromium"`,
+`debug=False`, `http_server=False`, `ALLOW_FILE_URLS=False`, `REMOTE_DEBUGGING_PORT=None`,
+`js_api=PuenteCerrado()` (un objeto sin ningún atributo: pywebview resuelve con `getattr`
+encadenado lo que la página pide y, con `None`, la cadena seguía por los atributos de `None`) y
+`private_mode=False` con `storage_path` en `<datos>/perfil_ventana` (`config.carpeta_perfil_ventana`;
+decisión de Eugenio del 2026-11-07), para que el tamaño de letra y el zoom de la Hoja, en
+`localStorage`, se conserven. Eso es seguro mientras `silice_sesion` siga sin `Max-Age` ni
+`Expires` (`api/sesion_web.py`, `poner_cookie`); `tests/unit/test_ventana.py` lo vigila. En
+desarrollo `data/perfil_ventana/` está en `.gitignore`. pythonnet no carga desde una carpeta de
+OneDrive (bitácora `2026-11-06-ventana-v0.md` §1.6): en un árbol de desarrollo dentro de OneDrive la
+ventana cae al navegador, que es el respaldo previsto.
+
 ## 16. Publicar una versión
 
 1. `CHANGELOG.md`: las líneas de `[Sin publicar]` pasan a `## [x.y.z] - AAAA-MM-DD`.
