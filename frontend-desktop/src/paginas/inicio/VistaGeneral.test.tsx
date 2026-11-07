@@ -713,6 +713,14 @@ describe("Vista general: «Empieza aquí» la primera vez", () => {
     expect(pedidas(RUTA_CUENTAS)).toBe(0);
   });
 
+  test("quien arma, sin obras pero con carpetas que no se pudieron leer, no lo ve: puede haber obras allí", async () => {
+    cartera = () => json({ ...SIN_OBRAS, carpetas_omitidas: 1 });
+    montar();
+    await bloque("Cartera por moneda");
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByRole("region", { name: "Empieza aquí" })).toBeNull();
+  });
+
   test("quien arma, con obras, no lo ve", async () => {
     montar();
     await bloque("Cartera por moneda");

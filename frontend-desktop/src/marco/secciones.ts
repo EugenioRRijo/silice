@@ -22,10 +22,10 @@ export const SECCIONES_DE_OBRA: readonly SeccionDef[] = [
   { id: "resumen", titulo: "Resumen", pagina: "obras", ayuda: "La obra de un vistazo: sus cifras, la versión que rige y lo pendiente." },
   { id: "presupuesto", titulo: "Presupuesto", pagina: "hoja", ayuda: "Las partidas de la obra con sus cantidades, precios y APU." },
   { id: "tramos", titulo: "Tramos", pagina: "tramos", ayuda: "Los tramos de la vía con sus cantidades de obra." },
-  { id: "archivos", titulo: "Archivos y planos", pagina: "archivos", ayuda: "Los planos y documentos de la obra." },
+  { id: "archivos", titulo: "Archivos y planos", pagina: "archivos", ayuda: "Traer las partidas de un plano o de un cómputo, con el registro de lo importado." },
   { id: "versiones", titulo: "Versiones", pagina: "versiones", ayuda: "Las versiones guardadas del presupuesto y lo que cambió en cada una." },
-  { id: "aprobaciones", titulo: "Aprobaciones", pagina: "aprobar", ayuda: "Las versiones que esperan dictamen y lo que se entregó al cliente." },
-  { id: "mercado", titulo: "Mercado", pagina: "mercado", ayuda: "Los precios del mercado para los insumos de la obra, su histórico y las cotizaciones." },
+  { id: "aprobaciones", titulo: "Aprobaciones", pagina: "aprobar", ayuda: "La versión que espera dictamen, el rastro de aprobaciones y el paquete para el cliente." },
+  { id: "mercado", titulo: "Mercado", pagina: "mercado", ayuda: "Precios del mercado de insumos y partidas, su histórico y las cotizaciones de la obra." },
   { id: "control", titulo: "Control de obra", pagina: "control", ayuda: "Lo avanzado en obra frente a lo planificado, con sus valuaciones." },
   { id: "riesgo", titulo: "Riesgo", pagina: "riesgo", ayuda: "Cuánto puede subir el presupuesto de la obra si cambian los precios." },
 ];

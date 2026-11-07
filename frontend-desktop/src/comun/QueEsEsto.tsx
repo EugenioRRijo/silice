@@ -13,8 +13,9 @@ interface Props {
 
 // Por qué existe (Tarea 4 del plan F4, baja 25): el texto largo que iba encima de cada pestaña estorbaba a quien ya sabe
 // usarla y no se perdía para quien no. Queda plegado tras «¿Qué es esto?». Lo usan las siete pestañas del Presupuesto
-// (`paginas/hoja/AyudaDePestana.tsx`) y F6 lo convertirá en el panel de ayuda de toda la obra. Se abre con clic o teclado
-// (Esc lo cierra y devuelve el foco al botón: `useDespliegue`); el panel se queda en la página, no flota, así que empuja el
+// (`paginas/hoja/AyudaDePestana.tsx`) y, desde F7, cada pantalla de la obra y de los espacios
+// (`paginas/ayuda/AyudaDeLaPantalla.tsx`). Se abre con clic o teclado (Esc lo cierra y devuelve el foco al botón:
+// `useDespliegue`); el panel se queda en la página, no flota, así que empuja el
 // contenido en vez de tapar la tabla. Plegado no está en el DOM: sus enlaces no entran en el orden de tabulación.
 export function QueEsEsto({ titulo, children }: Props): JSX.Element {
   const idPanel = useId();
