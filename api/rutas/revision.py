@@ -76,7 +76,7 @@ MENSAJE_RESULTADO = "Elija el dictamen: conforme, con observaciones o rechazado.
 MENSAJE_SOLO_PERSONA = (
     "El dictamen lo da una persona: entre con una cuenta que revisa; la clave de API no sirve."
 )
-MENSAJE_LISTA = "La lista {id} no existe en este caso."
+MENSAJE_LISTA = "La lista {id} no existe en esta carpeta."
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 SIN_CACHE = {"Cache-Control": "no-store"}  # lo recibido y su análisis no se guardan en el navegador
 ERRORES_DEL_PAQUETE = (PaqueteRechazado, JsonRechazado, ValueError)  # la clásica: `st.error(str())`

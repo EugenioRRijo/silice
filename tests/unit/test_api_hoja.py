@@ -493,7 +493,8 @@ def test_r2_proyecto_o_version_inexistente_es_404_con_los_textos_escritos() -> N
         "detalle": (f"La obra {NOMBRE_OF001!r} no tiene una versión '999': elija una de la lista.")
     }
     assert _versiones(navegador, "Z").status_code == 404
-    assert _versiones(navegador, "Z").json() == {"detalle": "La obra «Z» no existe en esta carpeta."}
+    sin_obra = {"detalle": "La obra «Z» no existe en esta carpeta."}
+    assert _versiones(navegador, "Z").json() == sin_obra
 
 
 # --- R3 y R4 -------------------------------------------------------------------------------

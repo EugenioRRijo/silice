@@ -1,8 +1,9 @@
-"""Los mensajes del servidor no dicen «este caso» (F8, C5; resto del árbitro de la tanda de detalles).
+"""Los mensajes del servidor no dicen «este caso» (F8, C5; resto del árbitro de la tanda).
 
-«Caso» es la palabra interna del archivo de una carpeta (`casos/*.db`); la persona ve «carpeta». Los textos que
-devuelven la capa de aplicación y la API (detalles de un 404, errores de validación) dicen «en esta carpeta».
-Se leen las cadenas del código con `ast` (no los comentarios): un texto nuevo con «este caso» hace fallar la prueba.
+«Caso» es la palabra interna del archivo de una carpeta (`casos/*.db`); la persona ve «carpeta».
+Los textos que devuelven la capa de aplicación y la API (detalles de un 404, errores de
+validación) dicen «en esta carpeta». Se leen las cadenas del código con `ast` (no los
+comentarios): un texto nuevo con «este caso» hace fallar la prueba.
 """
 
 from __future__ import annotations

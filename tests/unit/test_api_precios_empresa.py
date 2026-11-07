@@ -428,7 +428,8 @@ def test_solo_las_listas_de_empresa_tienen_hallazgos(_entorno) -> None:
     for lista in (base, 9999):
         r = navegador.get(f"{URL}/listas/{lista}/hallazgos", params={"fecha": EVALUACION})
         assert r.status_code == 404, r.text
-        assert r.json() == {"detalle": f"la lista {lista} no es una lista de empresa de esta carpeta"}
+        ajena = f"la lista {lista} no es una lista de empresa de esta carpeta"
+        assert r.json() == {"detalle": ajena}
 
 
 # --- el acceso --------------------------------------------------------------------------------
@@ -771,7 +772,8 @@ def test_solo_las_listas_de_empresa_se_revisan_y_el_404_no_trae_pistas(_entorno)
     for lista in (base, 987654):
         r = navegador.get(f"{URL}/listas/{lista}/atipicos")
         assert r.status_code == 404, r.text
-        assert r.json() == {"detalle": f"la lista {lista} no es una lista de empresa de esta carpeta"}
+        ajena = f"la lista {lista} no es una lista de empresa de esta carpeta"
+        assert r.json() == {"detalle": ajena}
         _sin_pistas(r)
 
 

@@ -113,7 +113,7 @@ _NOMBRE_INVALIDO = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
 class VersionInexistente(LookupError):  # noqa: N818
-    """La obra o la versión no existen en este caso (la API responde 404)."""
+    """La obra o la versión no existen en esta carpeta (la API responde 404)."""
 
 
 class VersionBloqueada(ValueError):  # noqa: N818
@@ -156,7 +156,7 @@ def version_de(sesion: Session, proyecto: str, codigo: str) -> int:
     nombre). `VersionInexistente` con el texto que se le dice a la persona si no existe."""
     obra = resolver_proyecto(sesion, proyecto)
     if obra is None:
-        raise VersionInexistente(f"La obra «{proyecto}» no existe en este caso.")
+        raise VersionInexistente(f"La obra «{proyecto}» no existe en esta carpeta.")
     id_ = sesion.scalars(
         select(models.Presupuesto.id).where(
             models.Presupuesto.proyecto_id == obra.id, models.Presupuesto.codigo == codigo
@@ -170,7 +170,7 @@ def version_de(sesion: Session, proyecto: str, codigo: str) -> int:
 def _presupuesto(sesion: Session, version_id: int) -> models.Presupuesto:
     presupuesto = sesion.get(models.Presupuesto, version_id)
     if presupuesto is None:
-        raise VersionInexistente(f"La versión n.º {version_id} no existe en este caso.")
+        raise VersionInexistente(f"La versión n.º {version_id} no existe en esta carpeta.")
     return presupuesto
 
 
@@ -181,7 +181,7 @@ def bloqueo_de_version(sesion: Session, version_id: int) -> str | None:
     presupuesto = _presupuesto(sesion, version_id)
     obra = sesion.get(models.Proyecto, presupuesto.proyecto_id)
     if obra is None:  # una versión sin obra no existe a efectos de la API
-        raise VersionInexistente(f"La versión n.º {version_id} no existe en este caso.")
+        raise VersionInexistente(f"La versión n.º {version_id} no existe en esta carpeta.")
     reciente = sesion.scalars(
         select(models.Presupuesto)
         .where(models.Presupuesto.proyecto_id == obra.id)
