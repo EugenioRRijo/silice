@@ -75,6 +75,9 @@ describe("Acerca de Sílice", () => {
     expect(screen.getByText("Versión 8; la última es la 9")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/ins_0003|caso_000|auditoria_libro|s3_paquete/);
     expect(screen.getByText("D:/datos-ficticios")).toBeInTheDocument();
+    // Revisión final del árbitro (MENOR 3): la persona ve «carpeta», no «caso».
+    expect(screen.getByText("Base de la carpeta abierta")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/caso abierto/);
     expect(screen.getByText("Planos DXF")).toBeInTheDocument();
     expect(screen.getByText("instalado")).toBeInTheDocument();
     expect(screen.getByText("no instalado")).toBeInTheDocument();

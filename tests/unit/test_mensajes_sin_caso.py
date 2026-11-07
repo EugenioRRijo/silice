@@ -55,3 +55,27 @@ def test_ninguna_cadena_del_servidor_dice_este_caso() -> None:
 def test_cada_archivo_dice_carpeta(archivo: str, esperado: str) -> None:
     textos = [t for _, t in _cadenas(RAIZ / archivo)]
     assert any(esperado in t for t in textos), archivo
+
+
+def _docstrings(ruta: Path) -> set[int]:
+    """Líneas donde empieza un docstring (de módulo, clase o función): no son mensajes."""
+    arbol = ast.parse(ruta.read_text(encoding="utf-8"), filename=str(ruta))
+    lineas = set()
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            cuerpo = nodo.body
+            if cuerpo and isinstance(cuerpo[0], ast.Expr) and isinstance(cuerpo[0].value, ast.Constant):
+                lineas.add(cuerpo[0].value.lineno)
+    return lineas
+
+
+def test_ninguna_cadena_del_servidor_dice_caso_abierto() -> None:
+    """Revisión final del árbitro (MENOR 3): «el caso abierto» es la carpeta abierta."""
+    encontradas = [
+        f"{ruta.relative_to(RAIZ).as_posix()}:{linea}: {texto.strip()[:80]}"
+        for carpeta in CARPETAS
+        for ruta in sorted((RAIZ / carpeta).rglob("*.py"))
+        for linea, texto in _cadenas(ruta)
+        if "caso abierto" in texto.lower() and linea not in _docstrings(ruta)
+    ]
+    assert encontradas == []

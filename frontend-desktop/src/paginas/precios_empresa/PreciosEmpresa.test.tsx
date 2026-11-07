@@ -171,10 +171,10 @@ describe("Precios de la empresa", () => {
   });
 
   test("un fallo al leer la carpeta se muestra con su detalle", async () => {
-    estado = () => json({ detalle: "No se pudo leer o escribir el caso abierto." }, 503);
+    estado = () => json({ detalle: "No se pudo leer o escribir la carpeta abierta." }, 503);
     montar();
     expect(await screen.findByText("No se pudo leer la carpeta")).toBeInTheDocument();
-    expect(await screen.findByText("No se pudo leer o escribir el caso abierto.")).toBeInTheDocument();
+    expect(await screen.findByText("No se pudo leer o escribir la carpeta abierta.")).toBeInTheDocument();
   });
 
   test("la sesion vencida avisa al shell", async () => {
@@ -351,11 +351,11 @@ describe("Precios de la empresa", () => {
 
   test("un error de la busqueda sale con su detalle y la sesion vencida avisa al shell", async () => {
     estado = () => json(CON_LISTA);
-    atipicos = () => json({ detalle: "No se pudo leer o escribir el caso abierto." }, 503);
+    atipicos = () => json({ detalle: "No se pudo leer o escribir la carpeta abierta." }, 503);
     const alExpirar = montar();
     const usuario = userEvent.setup();
     await usuario.click(await screen.findByRole("button", { name: BOTON_ATIPICOS }));
-    expect(await screen.findByText("No se pudo leer o escribir el caso abierto.")).toBeInTheDocument();
+    expect(await screen.findByText("No se pudo leer o escribir la carpeta abierta.")).toBeInTheDocument();
     atipicos = () => json({ detalle: "Sesion vencida." }, 401);
     await usuario.click(screen.getByRole("button", { name: BOTON_ATIPICOS }));
     await waitFor(() => expect(alExpirar).toHaveBeenCalled());

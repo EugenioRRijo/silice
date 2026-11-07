@@ -293,7 +293,7 @@ def test_un_error_de_sqlalchemy_es_503_con_el_mensaje_fijo_y_sin_sql(base, monke
     monkeypatch.setattr("api.rutas.similares.proponer_similares", _falla)
     r = _con_clave().post(RUTA, json={"descripcion": DESCRIPCION})
     assert r.status_code == 503
-    assert r.json()["detalle"] == "No se pudo leer el catálogo del caso abierto."
+    assert r.json()["detalle"] == "No se pudo leer el catálogo de la carpeta abierta."
     assert "SELECT" not in r.text
     assert "disco lleno" not in r.text
 

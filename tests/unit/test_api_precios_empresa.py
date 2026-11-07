@@ -795,7 +795,7 @@ def test_un_error_de_base_al_buscar_no_sale_con_su_sql(_entorno, monkeypatch) ->
     r = navegador.get(f"{URL}/listas/{lista}/atipicos")
     assert (r.status_code, r.json()) == (
         503,
-        {"detalle": "No se pudo leer o escribir el caso abierto."},
+        {"detalle": "No se pudo leer o escribir la carpeta abierta."},
     )
     _sin_pistas(r)
 
