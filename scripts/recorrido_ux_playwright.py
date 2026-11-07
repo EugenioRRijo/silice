@@ -343,12 +343,14 @@ def obra_para(
     obras: list[dict[str, Any]], carpeta: str | None, nombre: str | None
 ) -> dict[str, Any] | None:
     """La obra de `GET /v1/obras/todas` con que se recorre: la de esa carpeta (None, la de la
-    empresa) cuyo nombre es `nombre` o, sin nombre, la primera de la carpeta. Un nombre que no
+    empresa) cuyo nombre es `nombre` o, si ninguna se llama así, la primera cuyo nombre lo contiene
+    (como el selector de obra de antes); sin nombre, la primera de la carpeta. Un nombre que no
     está en la carpeta da `None`: no se cambia por otra obra."""
     de_la_carpeta = [o for o in obras if o.get("carpeta") == carpeta]
     if nombre is None:
         return de_la_carpeta[0] if de_la_carpeta else None
-    return next((o for o in de_la_carpeta if o.get("obra") == nombre), None)
+    exacta = next((o for o in de_la_carpeta if o.get("obra") == nombre), None)
+    return exacta or next((o for o in de_la_carpeta if nombre in str(o.get("obra", ""))), None)
 
 
 def umbral_medido(caben: dict[int, bool]) -> float | None:
