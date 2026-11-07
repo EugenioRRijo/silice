@@ -62,6 +62,15 @@ def test_subir_crea_las_dos_tablas(tmp_path: Path) -> None:
     ]
 
 
+def _instantanea(ruta: Path) -> dict:
+    motor = create_engine(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with motor.connect() as conexion:
+            return instantanea_esquema(conexion)
+    finally:
+        motor.dispose()
+
+
 def test_la_migrada_es_la_del_modelo(tmp_path: Path) -> None:
     from aplicacion.tablas_desperdicio import crear_esquema_desperdicio
 
@@ -71,10 +80,9 @@ def test_la_migrada_es_la_del_modelo(tmp_path: Path) -> None:
     motor = create_engine(f"sqlite:///{creada.as_posix()}")
     try:
         crear_esquema_desperdicio(motor)
-        with create_engine(f"sqlite:///{migrada.as_posix()}").connect() as a, motor.connect() as b:
-            de_la_migracion, del_modelo = instantanea_esquema(a), instantanea_esquema(b)
     finally:
         motor.dispose()
+    de_la_migracion, del_modelo = _instantanea(migrada), _instantanea(creada)
     for tabla in TABLAS:
         assert de_la_migracion[tabla] == del_modelo[tabla]
 

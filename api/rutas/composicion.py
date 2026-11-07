@@ -16,6 +16,13 @@ solo se traducen las tablas de texto y se arma la respuesta. Montos y decimales 
   en qué lista quedarían los precios (`lista_nueva` si el guardado la crearía) y qué insumos
   quedarían como variante con su precio en la lista y el tecleado. Los mismos 409 y 422 que
   `guardar`.
+- **Desperdicio** (F5 vial, tarea 3; `aplicacion.desperdicio`): una fila de materiales puede traer
+  `desperdicio` (porcentaje, «4» es 4 %) con la cantidad neta en `cantidad`. `evaluar`, `guardar` y
+  `prever` pasan a la composición la cantidad con desperdicio que calcula el servidor; `evaluar`
+  devuelve la leyenda de cada fila («0,52 (0,50 + 4 %)») en `desperdicios`; `guardar` deja la
+  traza en la misma transacción y la precarga devuelve la neta y el porcentaje. Una fila sin
+  desperdicio viaja igual que antes, sin la clave. Un porcentaje mal escrito es `incompleto` en
+  `evaluar` y 422 en `guardar` y `prever`, con el mensaje de la fila.
 - Ningún 422 de forma repite lo enviado (`RutaSinEco` en todo el router; deuda de la Tarea 3 que
   cierra la Tarea 4): `guardar` y `prever` dicen `MENSAJE_FORMA_PREVER` (reciben el mismo cuerpo);
   las demás, el mensaje de omisión de `RutaSinEco`.
@@ -24,11 +31,12 @@ solo se traducen las tablas de texto y se arma la respuesta. Montos y decimales 
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import date
+from dataclasses import replace
+from datetime import date, datetime
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.acceso import EDITAR
 from api.dependencias import SesionDep
@@ -48,6 +56,15 @@ from aplicacion.composicion import (
     similares_con_composicion,
     sugerencias_de_referencia,
 )
+from aplicacion.desperdicio import (
+    TrazaDesperdicio,
+    aplicar_desperdicio,
+    con_desperdicio,
+    guardar_trazas,
+    leyenda,
+    trazas_por_fila,
+    trazas_vigentes,
+)
 from aplicacion.listas_para_armar import SinListaParaArmar
 from core.contracts import Dominio, ModalidadManoObra, ResultadoAPU
 
@@ -63,11 +80,19 @@ router = APIRouter(prefix="/v1/composicion", tags=["composicion"], route_class=R
 # --- Esquemas (junto a la ruta, plan de la sesión 2b §3) ---------------------------------------
 
 
+def _vacio(valor: str) -> bool:
+    return valor == ""
+
+
 class FilaMaterial(BaseModel):
+    """`desperdicio` (F5 vial, tarea 3): el porcentaje de desperdicio, con la cantidad neta en
+    `cantidad`. Vacío no viaja en la respuesta, así una fila de siempre no cambia."""
+
     descripcion: str = ""
     unidad: str = ""
     cantidad: str = ""
     precio: str = ""
+    desperdicio: str = Field(default="", exclude_if=_vacio)
 
 
 class FilaEquipo(BaseModel):
@@ -134,6 +159,14 @@ class Contraste(BaseModel):
     dentro_de_rango: bool
 
 
+class DesperdicioDeFila(BaseModel):
+    """La cantidad con desperdicio de una fila de materiales, dicha por el servidor (F5 vial)."""
+
+    fila: int
+    descripcion: str
+    leyenda: str
+
+
 class EvaluacionRespuesta(BaseModel):
     estado: Literal["vacio", "incompleto", "valido"]
     aviso: str | None
@@ -141,6 +174,7 @@ class EvaluacionRespuesta(BaseModel):
     advertencias: list[Advertencia]
     requiere_justificacion: bool
     contraste: Contraste | None
+    desperdicios: list[DesperdicioDeFila] = []
 
 
 class OpcionesRespuesta(BaseModel):
@@ -229,9 +263,23 @@ def _desglose(resultado: ResultadoAPU) -> Desglose:
     )
 
 
-def _evaluacion(evaluacion: Evaluacion) -> EvaluacionRespuesta:
+def _materiales(
+    filas: Sequence[FilaMaterial],
+) -> tuple[list[dict[str, str]], list[TrazaDesperdicio]]:
+    """Las filas de materiales con la cantidad con desperdicio que calcula el servidor, y la traza.
+    `ComposicionInvalida` si un porcentaje está mal escrito."""
+    return aplicar_desperdicio(_filas(filas))
+
+
+def _evaluacion(
+    evaluacion: Evaluacion, desperdicios: Sequence[tuple[int, TrazaDesperdicio]] = ()
+) -> EvaluacionRespuesta:
     contraste = evaluacion.contraste
     return EvaluacionRespuesta(
+        desperdicios=[
+            DesperdicioDeFila(fila=fila, descripcion=traza.descripcion, leyenda=leyenda(traza))
+            for fila, traza in desperdicios
+        ],
         estado=evaluacion.estado,
         aviso=evaluacion.aviso,
         desglose=None if evaluacion.resultado is None else _desglose(evaluacion.resultado),
@@ -293,7 +341,20 @@ def opciones() -> OpcionesRespuesta:
 
 @router.post("/evaluar", response_model=EvaluacionRespuesta, dependencies=EDITAR)
 def evaluar(sesion: SesionDep, peticion: PeticionEvaluar) -> EvaluacionRespuesta:
-    """El desglose en vivo con sus advertencias, sin escribir (RB-2, RB-5)."""
+    """El desglose en vivo con sus advertencias, sin escribir (RB-2, RB-5). Con desperdicio, la
+    cantidad que se evalúa es la que calcula el servidor y cada fila trae su leyenda."""
+    try:
+        por_fila = trazas_por_fila(_filas(peticion.materiales))
+        materiales, _ = _materiales(peticion.materiales)
+    except ComposicionInvalida as error:
+        return EvaluacionRespuesta(
+            estado="incompleto",
+            aviso=str(error),
+            desglose=None,
+            advertencias=[],
+            requiere_justificacion=False,
+            contraste=None,
+        )
     evaluacion = evaluar_composicion(
         sesion,
         peticion.codigo,
@@ -301,18 +362,25 @@ def evaluar(sesion: SesionDep, peticion: PeticionEvaluar) -> EvaluacionRespuesta
         peticion.unidad,
         peticion.dominio,
         peticion.rendimiento,
-        _filas(peticion.materiales),
+        materiales,
         _filas(peticion.equipos),
         _filas(peticion.mano_obra),
     )
-    return _evaluacion(evaluacion)
+    return _evaluacion(evaluacion, por_fila)
 
 
 @router.get("/partidas/{codigo}", response_model=PrecargaRespuesta, dependencies=EDITAR)
 def precargar(sesion: SesionDep, codigo: str) -> PrecargaRespuesta:
     """UC-11, paso 1: las tablas de una partida existente; sin partida o sin lista vigente,
-    `existe=false` y tablas vacías (UC-10), nunca 404."""
-    return _precarga(precarga_de_partida(sesion, codigo))
+    `existe=false` y tablas vacías (UC-10), nunca 404. Los materiales con la traza de su
+    desperdicio vuelven con la cantidad neta y el porcentaje (F5 vial)."""
+    precarga = precarga_de_partida(sesion, codigo)
+    materiales, equipos, mano_obra = precarga.tablas
+    trazas = trazas_vigentes(sesion, codigo.strip()) if precarga.existe else []
+    if trazas:
+        tablas = (con_desperdicio(materiales, trazas), equipos, mano_obra)
+        precarga = replace(precarga, tablas=tablas)
+    return _precarga(precarga)
 
 
 @router.get("/referencia", response_model=list[SugerenciaRespuesta], dependencies=EDITAR)
@@ -355,8 +423,10 @@ def similares(
 @sin_eco(MENSAJE_FORMA_PREVER)
 def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
     """Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación
-    (UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe."""
+    (UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe. La traza del
+    desperdicio (F5 vial) se guarda en la misma transacción."""
     try:
+        materiales, trazas = _materiales(peticion.materiales)
         resultado = guardar_desde_tablas(
             sesion,
             peticion.codigo,
@@ -364,7 +434,7 @@ def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
             peticion.unidad,
             peticion.dominio,
             peticion.rendimiento,
-            _filas(peticion.materiales),
+            materiales,
             _filas(peticion.equipos),
             _filas(peticion.mano_obra),
             fecha=peticion.fecha,
@@ -378,6 +448,9 @@ def guardar(sesion: SesionDep, peticion: PeticionGuardar) -> GuardadoRespuesta:
     if resultado.precio_unitario is None or resultado.mensaje is None:
         sesion.rollback()
         raise HTTPException(status_code=422, detail=resultado.motivo)
+    # la hora solo fecha el rastro de la traza; no entra en ninguna cifra
+    ahora = datetime.now().replace(microsecond=0)
+    guardar_trazas(sesion, peticion.codigo.strip(), trazas, ahora=ahora)
     sesion.commit()
     return GuardadoRespuesta(
         precio_unitario=resultado.precio_unitario,
@@ -392,6 +465,7 @@ def prever(sesion: SesionDep, peticion: PeticionGuardar) -> PrevisionRespuesta:
     """Lo que haría `guardar` con el mismo cuerpo (la lista de hoy y las variantes), sin escribir
     nada: `prever_guardado` lo deshace siempre y aquí no se confirma."""
     try:
+        materiales, _ = _materiales(peticion.materiales)
         prevision = prever_guardado(
             sesion,
             peticion.codigo,
@@ -399,7 +473,7 @@ def prever(sesion: SesionDep, peticion: PeticionGuardar) -> PrevisionRespuesta:
             peticion.unidad,
             peticion.dominio,
             peticion.rendimiento,
-            _filas(peticion.materiales),
+            materiales,
             _filas(peticion.equipos),
             _filas(peticion.mano_obra),
             fecha=peticion.fecha,
