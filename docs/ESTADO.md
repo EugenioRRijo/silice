@@ -28,6 +28,7 @@ instalador con huella SHA-256 firmada.
 | #106 `feature/f6-espacios` | Rediseño F6 completo (§3) | Arbitrado y corregido; espera la prueba de Eugenio en el navegador y la fusión |
 | #107 `feature/autocompletado` | Autocompletado guiado AC1–AC4 (§3) | Árbitro xhigh: aprobado en la ronda 4; espera #105 (r6/r7) y la prueba de Eugenio |
 | `feature/tanda-detalles` | Tanda de detalles D1–D17 (§3), sobre F6 y el autocompletado unidos | Aprobada (rondas 2 y 3 del árbitro); sin PR hasta que se fusionen #106 y #107 |
+| `feature/integracion-fases` | F7 Ayuda, F8 Cierre, F5 vial y F5 ventana, sobre la tanda (§3) | Construidas en paralelo el 2026-11-06, una por árbol; espera el árbitro único y la prueba de Eugenio |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor. Ya tiene `main` unido y el experimento recongelado con acta (`docs/bitacora/2026-11-04-recongelado-experimento.md` en su rama) |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -57,6 +58,15 @@ la tanda (D17) están corregidos. `aplicacion/hoja.py`, archivo congelado del ex
 mensajes: el experimento se re-congeló con acta y autorización de Eugenio
 ([2026-11-06-recongelado-experimento.md](bitacora/2026-11-06-recongelado-experimento.md)).
 
+**F7, F8 y F5 en paralelo** (2026-11-06, decisión de Eugenio: una fase por árbol, sin árbitro por fase y un solo
+árbitro al final). F7 Ayuda: «¿Qué es esto?» en cada pantalla, guías, glosario y «Empieza aquí» (RF-185 a RF-189). F8:
+redirecciones viejas retiradas, guion del recorrido rehecho, pasada en navegador ([bitácora](bitacora/2026-11-06-f8-cierre.md)),
+front de 14,45 MB a 10,02 MB y «esta carpeta» en los mensajes. F5 vial: tareas 1 a 6 de su diseño (RF-170 a RF-178),
+salvo mostrar el desperdicio en la Hoja (`aplicacion/hoja.py` está congelado). F5 ventana: V0 a V3 (RF-180 a RF-184;
+[V0](bitacora/2026-11-06-ventana-v0.md)); V4 (humo en la CI) y V5 (prueba en el equipo de Eugenio y en el de la empresa)
+quedan pendientes. **Las decisiones de F5 son provisionales**: recomendaciones del orquestador a las preguntas de sus
+diseños, anotadas en cada especificación, que Eugenio debe ratificar.
+
 ## 4. Lo que espera a Eugenio
 
 1. Fusionar en GitHub, en este orden y con merge commit: #105 (CI verde), #106 (F6) y #107 (autocompletado), cada
@@ -85,13 +95,9 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
 1. **Tanda de detalles**: aprobada (§3); falta la prueba de Eugenio en el navegador. Queda para después: 14 mensajes del
    servidor dicen «no existe en este caso» (palabra interna «caso»; mejor «en esta carpeta»).
 2. **Autocompletado**: completo (PR #107).
-3. **F7 Ayuda**: «¿Qué es esto?» en cada sección, guías por tarea, glosario y «Empieza aquí» (con la primera entrada y el
-   primer administrador desde la interfaz).
-4. **F8 Cierre del rediseño**: retirar las redirecciones viejas; poner al día `scripts/recorrido_ux_playwright.py`, que
-   aún navega por el menú de módulos retirado (modos de pantallas, `--funcional` y `--umbrales`); pasada única en
-   navegador a 1056/1366/1920; comparación de líneas contra la línea base; el tamaño del front (14,4 MB de 15).
-5. Implementar los diseños de F5 (presupuesto vial, ventana de escritorio) cuando Eugenio responda sus preguntas; la
-   ventana exige enmendar RT-3 y RT-5, que todavía dicen Tauri.
+3. **F7, F8 y F5**: construidas (§3); faltan el árbitro único, la prueba de Eugenio, ratificar las decisiones de F5,
+   mostrar el desperdicio en la Hoja (re-congelado con acta), V4 y V5 de la ventana, y la licencia del SDK de WebView2 en
+   `LICENCIAS\`.
 
 ## 6. Auditorías en paralelo
 

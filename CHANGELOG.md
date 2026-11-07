@@ -7,6 +7,30 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **F7 Ayuda** (`docs/planes/PLAN_TANDA_DETALLES.md`, Fase 2; RF-160, RF-185 a RF-189 y RNF-30): «¿Qué es esto?» en cada
+  pantalla de la obra, de las herramientas y de Pendientes (`paginas/ayuda/AyudaDeLaPantalla.tsx`, con `QueEsEsto`);
+  en la Cuenta › Ayuda, cuatro guías por tarea, un glosario de 29 términos y «Empieza aquí», enlazables con `?tema=`; la
+  Vista general muestra «Empieza aquí» la primera vez según el papel, derivado de los datos. Una prueba exige que cada
+  texto citado entre «…» exista en la interfaz o en `aplicacion/`.
+- **F5 Presupuesto vial** (diseño `docs/especificaciones/2026-11-03-presupuesto-vial-real-design.md`, RF-170 a RF-178;
+  decisiones provisionales del 2026-11-06): seis partidas viales nuevas y dos variantes de medición (fresado en m², carpeta
+  en t); VR4 por banda de distancia (ADVERTENCIA fuera de banda); desperdicio dentro de la cantidad con su traza en
+  Componer («0,52 (0,50 + 4 %)»; la Hoja aún no lo muestra: `aplicacion/hoja.py` está congelado); perfil de libro con un
+  APU por hoja (libro ficticio construido en las pruebas; los perfiles reales viven fuera del repositorio) y su auditoría
+  contra el presupuesto (hallazgos AH1 a AH9) en `POST /v1/libros/apu-por-hoja` y en Auditoría. Migraciones aditivas
+  `caso_0021_vial_transporte` y `caso_0022_apu_desperdicio`.
+- **F5 Ventana de escritorio** (diseño `docs/especificaciones/2026-11-03-ventana-de-escritorio-design.md`, RF-180 a
+  RF-184; RT-3 y RT-5 enmendados; decisiones provisionales): Sílice abre en su ventana (pywebview 6.2.1 y pythonnet 3.2.1,
+  extra `escritorio`, solo Windows) con el navegador de respaldo y un AVISO del motivo; cerrar la ventana detiene Sílice;
+  una segunda ejecución trae al frente la ventana viva; orden `--sin-ventana` y ajuste `[interfaz] abrir_en`. Ícono de
+  Sílice (`frontend-desktop/public/silice.svg`, `operacion/silice.ico`) en la pestaña, el instalador y los accesos.
+  Verificación en `docs/bitacora/2026-11-06-ventana-v0.md`.
+- **F8 Cierre del rediseño**: se retiraron las direcciones viejas de antes de F6 (`#/pendientes`, `#/empresa/…`,
+  `#/catalogo`, `#/libros`, `#/administracion`, `#/acerca`…): llevan a la Vista general; las de la obra (`#/hoja`…) se
+  quedan. `scripts/recorrido_ux_playwright.py` recorre los espacios de F6 (modos por omisión, `--funcional` y
+  `--umbrales`, y un detector de controles sin nombre que salta lo `aria-hidden`). El front pasa de 14,45 MB a 10,02 MB
+  sin las tablas de silabeo de Univer que la hoja no usa. Los mensajes del servidor dicen «esta carpeta» y no «este
+  caso» (guardia `tests/unit/test_mensajes_sin_caso.py`). Pasada en navegador: `docs/bitacora/2026-11-06-f8-cierre.md`.
 - Quien revisa ve y abre las obras de todas las carpetas (decisión de Eugenio, 2026-11-05): la acción nueva
   `abrir_carpeta` (abrir otra carpeta, volver a la de la empresa y listar las obras de todas) la tienen arma, revisa y
   administración; `cambiar_caso` queda para crear y subir carpetas, sin revisa (`seguridad/permisos.py`). La carpeta
