@@ -570,7 +570,7 @@ def test_una_celda_lejana_que_la_dimension_no_declara_es_422(hostil: str):
     if hostil == "libro":
         libro = con_celdas(libro, "APU 1", {"A1048576": "fin ficticio"})
         esperado = (
-            "El libro «frente_ficticio.xlsx», hoja «APU 1»: tiene filas escritas más allá de la "
+            "El libro «frente_ficticio.xlsx», hoja «APU 1»: tiene filas con datos o con formato más allá de la "
             f"20.000. {SIGUE_APU}"
         )
     else:

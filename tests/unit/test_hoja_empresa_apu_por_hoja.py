@@ -399,9 +399,9 @@ def test_una_celda_lejana_que_la_dimension_no_declara_rechaza_el_libro(
     )
     assert error is not None
     donde = (
-        "tiene filas escritas más allá de la 20.000"
+        "tiene filas con datos o con formato más allá de la 20.000"
         if variante == "C"
-        else "la fila 2 tiene celdas escritas hasta la columna XFD, más allá de la CV"
+        else "la fila 2 tiene celdas con datos o con formato hasta la columna XFD, más allá de la CV"
     )
     assert str(error) == f"El libro «hostil.xlsx», hoja «{hoja}»: {donde}. {SIGUE}"
 
@@ -476,3 +476,27 @@ def test_cada_fila_llega_solo_hasta_su_ultimo_valor(monkeypatch: pytest.MonkeyPa
     medida = (len(hojas["APU 1"]), sum(len(f) for f in hojas["APU 1"]))
     assert medida == (len(esperado["APU 1"]), sum(len(f) for f in esperado["APU 1"]))
     assert hojas == esperado
+
+
+def test_el_libro_entero_tiene_un_tope_de_celdas():
+    """Revisión final del árbitro (MENOR 1): el tope por hoja no basta, porque 64 hojas en su tope
+    pasan la guardia y materializan 128 millones de celdas. El libro entero tiene su presupuesto,
+    que sale de la guardia, cuenta las celdas antes de recortar y rechaza en voz alta."""
+    assert guardia.MAX_CELDAS_LIBRO == 4_000_000
+    assert guardia.MAX_CELDAS_LIBRO >= 2 * guardia.MAX_AREA_HOJA
+    from adapters.hoja_empresa import lector_apu_por_hoja as lector
+
+    datos = libro_apu()
+    leidas = sum(len(fila) for hoja in leer_hojas(datos, "normal.xlsx").values() for fila in hoja)
+    assert leidas > 10
+    lector_tope = lector.MAX_CELDAS_LIBRO
+    try:
+        lector.MAX_CELDAS_LIBRO = 10
+        with pytest.raises(ArchivoRechazado) as error:
+            leer_hojas(datos, "grande.xlsx")
+    finally:
+        lector.MAX_CELDAS_LIBRO = lector_tope
+    assert str(error.value).startswith(
+        "El libro «grande.xlsx» tiene más de 10 celdas con datos o con formato entre sus hojas."
+    )
+
