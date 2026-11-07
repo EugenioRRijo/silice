@@ -184,6 +184,50 @@ def test_auditar_con_otro_perfil_dice_cual_uso(tmp_path: Path, monkeypatch: pyte
     assert "AH8" not in {h.codigo for h in resultado.hallazgos}  # sin tabla, nada se traduce
 
 
+# Arbitraje F5 vial, P2 (MAYOR): nadie fija `SILICE_PERFILES_LIBROS` y la pantalla no manda el
+# perfil. Por omisión, los perfiles locales viven en `<carpeta de datos>/perfiles_libros/` (la que
+# fija el lanzador con `SILICE_DATOS`; aquí, la temporal de la prueba) y un `apu_por_hoja.json`
+# allí gana al del paquete. La variable sigue valiendo y, si está, manda ella.
+
+
+def _perfil_local(carpeta: Path, **cambios) -> None:
+    crudo = json.loads(PAQUETE.read_text(encoding="utf-8"))
+    carpeta.mkdir(parents=True, exist_ok=True)
+    (carpeta / "apu_por_hoja.json").write_text(json.dumps({**crudo, **cambios}), encoding="utf-8")
+
+
+def test_sin_la_variable_el_perfil_local_vive_en_la_carpeta_de_datos(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.delenv(VARIABLE_PERFILES, raising=False)
+    monkeypatch.setenv("SILICE_DATOS", str(tmp_path))
+    _perfil_local(tmp_path / "perfiles_libros", unidades={})
+    resultado = auditar_apu_por_hoja(libro_apu(), "f.xlsx")
+    assert (resultado.perfil, resultado.origen_perfil) == ("apu_por_hoja", "local")
+    assert "AH8" not in {h.codigo for h in resultado.hallazgos}  # el local no traduce unidades
+
+
+def test_sin_perfil_local_en_la_carpeta_de_datos_vale_el_del_paquete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.delenv(VARIABLE_PERFILES, raising=False)
+    monkeypatch.setenv("SILICE_DATOS", str(tmp_path))
+    assert auditar_apu_por_hoja(libro_apu(), "f.xlsx").origen_perfil == "paquete"
+
+
+def test_la_variable_manda_sobre_la_carpeta_de_datos(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from adapters.hoja_empresa.guardia import ArchivoRechazado
+
+    monkeypatch.setenv("SILICE_DATOS", str(tmp_path / "datos"))
+    _perfil_local(tmp_path / "datos" / "perfiles_libros", unidades={})
+    _perfil_local(tmp_path / "elegida", prefijo_hoja="FICHA")
+    monkeypatch.setenv(VARIABLE_PERFILES, str(tmp_path / "elegida"))
+    with pytest.raises(ArchivoRechazado, match="«FICHA»"):
+        auditar_apu_por_hoja(libro_apu(), "f.xlsx")
+
+
 # --- un libro hostil: hojas huecas que declaran una dimensión enorme (arbitraje F5 vial, P1) -----
 #
 # Una hoja con A1 y una celda lejana (CV2000: columna 100, fila 2.000) declara la dimensión

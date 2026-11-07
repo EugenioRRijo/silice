@@ -21,6 +21,7 @@ Oráculos, ninguno sale del código bajo prueba:
 from __future__ import annotations
 
 import hashlib
+import json
 import shutil
 from collections.abc import Iterator
 from decimal import Decimal
@@ -53,6 +54,9 @@ MENSAJE_SIN_SESION = "Sesión ausente o vencida: entre de nuevo con su cuenta."
 MENSAJE_CSRF = "Falta la comprobación anti-CSRF de la sesión o no coincide."
 MENSAJE_PERMISO = "Su cuenta no tiene permiso para esta acción."
 SECRETO = "detalle-interno-que-no-debe-salir C:\\ruta\\secreta"
+PERFIL_DEL_PAQUETE = (
+    Path(__file__).resolve().parents[2] / "adapters/hoja_empresa/perfiles/apu_por_hoja.json"
+)
 
 
 # --- Ayudas ---------------------------------------------------------------------------------
@@ -505,6 +509,18 @@ def test_un_perfil_que_no_existe_es_422():
     r = _auditar(_con_clave(), data={"perfil": "no_existe"})
     assert r.status_code == 422
     assert r.json()["detalle"] == "no existe el perfil 'no_existe'"
+
+
+def test_sin_mandar_perfil_usa_el_local_de_la_carpeta_de_datos():
+    """Arbitraje F5 vial, P2: la pantalla no manda `perfil`; el `apu_por_hoja.json` de
+    `<carpeta de datos>/perfiles_libros/` (la que fija el lanzador) gana al del paquete."""
+    crudo = json.loads(PERFIL_DEL_PAQUETE.read_text(encoding="utf-8"))
+    carpeta = config.carpeta_datos() / "perfiles_libros"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    (carpeta / "apu_por_hoja.json").write_text(json.dumps(crudo), encoding="utf-8")
+    r = _auditar(_con_clave())
+    assert r.status_code == 200, r.text
+    assert (r.json()["perfil"], r.json()["origen_perfil"]) == ("apu_por_hoja", "local")
 
 
 def test_un_libro_sin_hojas_de_apu_es_422_con_el_mensaje():
