@@ -115,7 +115,7 @@ describe("qué le pasó al guardar", () => {
     expect(clasificarErrorDeGuardado(e(409, d)).clase).toBe("ausente");
   });
   test("409 de solo lectura u otro: el detalle tal cual", () => {
-    const d = "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion vigente en el catalogo.";
+    const d = "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición vigente en el catálogo.";
     expect(clasificarErrorDeGuardado(e(409, d))).toEqual({ clase: "otro", mensaje: d, version: null });
   });
   test("404 de borrador ausente (§3.1)", () => {

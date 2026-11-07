@@ -597,7 +597,7 @@ describe("Hoja de la obra: guardar versión y primera versión (3d-1)", () => {
     [403, "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."],
     [422, "El guardado no tiene la forma esperada: envíe rev (entero) y la fuente como texto de hasta 300 caracteres."],
     [422, "Escriba la fuente del cambio: por que se cambia y con que respaldo."],
-    [409, "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion vigente en el catalogo, asi que recalcularla cambiaria sus precios."],
+    [409, "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición vigente en el catálogo, así que recalcularla cambiaría sus precios."],
     [409, "No se guardó nada: la lista de precios no tiene el insumo X."],
     [503, "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro programa."],
   ])("un %s se muestra con el texto de la API y el diálogo sigue abierto con lo escrito", async (estado, detalle) => {
