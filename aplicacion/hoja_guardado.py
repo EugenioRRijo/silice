@@ -74,8 +74,8 @@ __all__ = [
 
 #: El texto de H:1849: la version tiene una partida sin composicion vigente en el catalogo.
 MENSAJE_SOLO_LECTURA = (
-    "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion vigente "
-    "en el catalogo, asi que recalcularla cambiaria sus precios."
+    "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición vigente "
+    "en el catálogo, así que recalcularla cambiaría sus precios."
 )
 CODIGO_SOLO_PRIMERA = (
     "El código se elige solo al guardar la primera versión; las siguientes siguen su numeración."
