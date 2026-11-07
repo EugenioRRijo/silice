@@ -441,8 +441,9 @@ def replicar_libro(datos: bytes, nombre: str) -> LibroVisual:
     Excel (base 1).
 
     Pasa primero por la guardia (`ArchivoRechazado`); después hace una apertura en modo normal y,
-    si hay fórmulas, otra de solo lectura con los valores guardados. Lanza `LibroDemasiadoGrande`
-    si el libro supera `MAX_CELDAS_VISUALES` celdas. Nunca modifica `datos`.
+    si hay fórmulas, otra de solo lectura con los valores guardados, con los topes de
+    `lector.filas_acotadas` (`ArchivoRechazado` si una hoja con fórmulas pasa de ellos). Lanza
+    `LibroDemasiadoGrande` si el libro supera `MAX_CELDAS_VISUALES` celdas. Nunca modifica `datos`.
     """
     verificar_archivo(datos, nombre)
     sha = hashlib.sha256(datos).hexdigest()

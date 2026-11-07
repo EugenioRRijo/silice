@@ -46,7 +46,7 @@ from adapters.hoja_empresa.guardia import (
     ArchivoRechazado,
     verificar_archivo,
 )
-from adapters.hoja_empresa.lector import _abrir, filas_acotadas
+from adapters.hoja_empresa.lector import _abrir, filas_acotadas, letra
 from adapters.hoja_empresa.modelo import (
     ApuLeido,
     Celda,
@@ -83,16 +83,6 @@ Filas = list[list[Any]]
 #: decimales. Lo que el tope no ataja (muchos renglones grandes, porcentajes enormes) lo ataja quien
 #: recalcula (`fusion.apu_por_hoja`) diciendo la hoja.
 TOPE_CIFRA = Decimal(10) ** 12
-
-
-def letra(columna: int) -> str:
-    """La letra de la columna `columna` (desde 0): 0 → A, 26 → AA."""
-    texto = ""
-    n = columna + 1
-    while n:
-        n, resto = divmod(n - 1, 26)
-        texto = chr(65 + resto) + texto
-    return texto
 
 
 def numero_de(valor: Any) -> Decimal | None:

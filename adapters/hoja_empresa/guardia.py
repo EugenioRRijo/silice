@@ -70,16 +70,17 @@ MAX_COMBINADAS = 200_000
 #: hoja real más grande declara 2 548 celdas; 2 000 000 (20 000 filas × 100 columnas) es más de lo
 #: que usa un presupuesto y mantiene acotado el recorrido de openpyxl en solo lectura.
 #: Las filas y las columnas valen también por separado (arbitraje F5/F7/F8, revisión de
-#: correcciones, P1): la `<dimension>` puede mentir, y el lector de un APU por hoja no lee de cada
-#: hoja más de `MAX_FILAS_HOJA` filas ni de `MAX_COLUMNAS_HOJA` columnas (rechaza el libro si tiene
-#: algo escrito más allá).
+#: correcciones, P1): la `<dimension>` puede mentir, y ningún recorrido en solo lectura
+#: (`lector.filas_acotadas`: el libro de la empresa, la réplica visual y el lector de un APU por
+#: hoja) lee de cada hoja más de `MAX_FILAS_HOJA` filas ni de `MAX_COLUMNAS_HOJA` columnas
+#: (rechaza el libro si tiene algo escrito más allá).
 MAX_FILAS_HOJA = 20_000
 MAX_COLUMNAS_HOJA = 100
 MAX_AREA_HOJA = MAX_FILAS_HOJA * MAX_COLUMNAS_HOJA
-#: SUPUESTO_DECLARADO (revisión final del árbitro de F5/F7/F8, MENOR 1): celdas que el lector de un
-#: APU por hoja materializa en el libro entero, contadas antes de recortar. El tope por hoja no
-#: basta: 64 hojas en su tope pasan la guardia y suman 128 millones de celdas. Dos hojas en su tope
-#: caben; la hoja real más grande declara 2 548 celdas.
+#: SUPUESTO_DECLARADO (revisión final del árbitro de F5/F7/F8, MENOR 1): celdas que cada pasada de
+#: `lector.filas_acotadas` materializa en el libro entero, contadas antes de recortar. El tope por
+#: hoja no basta: 64 hojas en su tope pasan la guardia y suman 128 millones de celdas. Dos hojas en
+#: su tope caben; la hoja real más grande declara 2 548 celdas.
 MAX_CELDAS_LIBRO = 2 * MAX_AREA_HOJA
 
 #: Bloque de lectura del barrido y solape entre bloques. El solape es mayor que la etiqueta más
@@ -115,7 +116,7 @@ def _mib(n: int) -> str:
     return f"{n / (1024 * 1024):.1f}".replace(".", ",")
 
 
-def _miles(n: int) -> str:
+def miles(n: int) -> str:
     """Entero con punto de miles, como se escribe en Venezuela (2.000.000)."""
     return f"{n:,}".replace(",", ".")
 
@@ -168,15 +169,15 @@ def _barrer(zf: zipfile.ZipFile, entradas: list[zipfile.ZipInfo], nombre: str) -
                             if combinadas > MAX_COMBINADAS:
                                 raise ArchivoRechazado(
                                     f"El archivo «{nombre}» combina más de "
-                                    f"{_miles(MAX_COMBINADAS)} celdas (celdas combinadas); un "
+                                    f"{miles(MAX_COMBINADAS)} celdas (celdas combinadas); un "
                                     "libro así bloquea la lectura. Se rechaza por seguridad: "
                                     "deshaga las combinaciones innecesarias y guárdelo de nuevo."
                                 )
                         elif area > MAX_AREA_HOJA:
                             raise ArchivoRechazado(
                                 f"El archivo «{nombre}» tiene una hoja que declara "
-                                f"{_miles(area)} celdas (rango {m[2].decode('ascii', 'replace')}); "
-                                f"el máximo es {_miles(MAX_AREA_HOJA)} por hoja. Se rechaza por "
+                                f"{miles(area)} celdas (rango {m[2].decode('ascii', 'replace')}); "
+                                f"el máximo es {miles(MAX_AREA_HOJA)} por hoja. Se rechaza por "
                                 "seguridad: borre las filas y columnas vacías del final y "
                                 "guárdelo de nuevo."
                             )

@@ -13,8 +13,8 @@ Principios:
 - **El lector no juzga.** Una celda rara (texto donde va un número, `#REF!`, vacía) no hace fallar
   la lectura: el dato se omite o vale lo que Excel usaría con `N()` (0), y las reglas lo informan.
   Solo se lanza `ArchivoRechazado`: por la guardia (F-D10), si openpyxl no puede abrir el libro, si
-  una hoja tiene algo escrito más allá de los topes de la guardia (`filas_acotadas`) o si falta la
-  hoja PRESUPUESTO.
+  una hoja tiene algo escrito más allá de los topes de la guardia (`filas_acotadas`: filas y
+  columnas por hoja, y celdas por pasada en el libro entero) o si falta la hoja PRESUPUESTO.
 
 Límites declarados:
 
@@ -49,6 +49,7 @@ from adapters.hoja_empresa.guardia import (
     MAX_COLUMNAS_HOJA,
     MAX_FILAS_HOJA,
     ArchivoRechazado,
+    miles,
     verificar_archivo,
 )
 from adapters.hoja_empresa.modelo import (
@@ -70,7 +71,7 @@ from adapters.hoja_empresa.modelo import (
 from adapters.hoja_empresa.perfil import Perfil, cargar_perfil, coincide, normalizar
 from adapters.hoja_empresa.umbrales import MEDIO_CENTAVO
 
-__all__ = ["filas_acotadas", "leer_libro"]
+__all__ = ["filas_acotadas", "leer_libro", "letra"]
 
 _CERO = Decimal(0)
 _UNO = Decimal(1)
@@ -211,16 +212,22 @@ def _abrir(datos: bytes, nombre: str, data_only: bool) -> Any:
         ) from exc
 
 
-def _miles(n: int) -> str:
-    """Un entero con punto de miles, para los mensajes: 20000 → «20.000»."""
-    return f"{n:,}".replace(",", ".")
+def letra(columna: int) -> str:
+    """La letra de la columna `columna` (desde 0): 0 → A, 26 → AA. Sin límite, a diferencia de
+    `get_column_letter` (hasta XFD): una fila hostil puede traer más celdas que Excel."""
+    texto = ""
+    n = columna + 1
+    while n:
+        n, resto = divmod(n - 1, 26)
+        texto = chr(65 + resto) + texto
+    return texto
 
 
 def _fuera_del_tope(nombre: str, hoja: str, donde: str) -> ArchivoRechazado:
     return ArchivoRechazado(
         f"El libro «{nombre}», hoja «{hoja}»: {donde}. Sílice lee de cada hoja hasta "
-        f"{_miles(MAX_FILAS_HOJA)} filas y {MAX_COLUMNAS_HOJA} columnas (de la A a la "
-        f"{_letra(MAX_COLUMNAS_HOJA)}). Se rechaza por seguridad: borre lo que sobra al final "
+        f"{miles(MAX_FILAS_HOJA)} filas y {MAX_COLUMNAS_HOJA} columnas (de la A a la "
+        f"{letra(MAX_COLUMNAS_HOJA - 1)}). Se rechaza por seguridad: borre lo que sobra al final "
         "de la hoja y guárdelo de nuevo."
     )
 
@@ -246,19 +253,19 @@ def filas_acotadas(
             raise _fuera_del_tope(
                 nombre,
                 ws.title,
-                f"tiene filas con datos o con formato más allá de la {_miles(MAX_FILAS_HOJA)}",
+                f"tiene filas con datos o con formato más allá de la {miles(MAX_FILAS_HOJA)}",
             )
         if len(fila) > MAX_COLUMNAS_HOJA:
             raise _fuera_del_tope(
                 nombre,
                 ws.title,
                 f"la fila {leidas + 1} tiene celdas con datos o con formato hasta la columna "
-                f"{_letra(len(fila))}, más allá de la {_letra(MAX_COLUMNAS_HOJA)}",
+                f"{letra(len(fila) - 1)}, más allá de la {letra(MAX_COLUMNAS_HOJA - 1)}",
             )
         cuenta[0] += len(fila)
         if cuenta[0] > tope_libro:
             raise ArchivoRechazado(
-                f"El libro «{nombre}» tiene más de {_miles(tope_libro)} celdas con datos o con "
+                f"El libro «{nombre}» tiene más de {miles(tope_libro)} celdas con datos o con "
                 "formato entre sus hojas. Se rechaza por seguridad: quite las hojas o las filas "
                 "que sobran y guárdelo de nuevo."
             )
@@ -767,8 +774,9 @@ def _gastado(h: _Hoja | None, perfil: Perfil) -> dict[int, Decimal]:
 def leer_libro(datos: bytes, nombre: str, perfil: Perfil | None = None) -> LibroLeido:
     """Lee el libro `.xlsx` de la empresa y lo devuelve como `LibroLeido`.
 
-    Lanza `ArchivoRechazado` si la guardia lo rechaza, si openpyxl no puede abrirlo o si no tiene la
-    hoja PRESUPUESTO. Cualquier otra rareza del libro se tolera (ver la cabecera del módulo).
+    Lanza `ArchivoRechazado` si la guardia lo rechaza, si openpyxl no puede abrirlo, si una hoja
+    pasa de los topes de `filas_acotadas` o si no tiene la hoja PRESUPUESTO. Cualquier otra rareza
+    del libro se tolera (ver la cabecera del módulo).
     """
     verificar_archivo(datos, nombre)
     perfil = perfil or cargar_perfil()
