@@ -116,7 +116,7 @@ export default function PaginaPreciosEmpresa() {
       <p className="cds--type-body-compact-01">{AYUDA}</p>
 
       {lectura.tipo === "cargando" && <EsqueletoPagina etiqueta="Cargando las listas de precios" />}
-      {lectura.tipo === "error" && <AvisoError error={lectura.error} titulo="No se pudo leer el caso" />}
+      {lectura.tipo === "error" && <AvisoError error={lectura.error} titulo="No se pudo leer la carpeta" />}
       {lectura.tipo === "listo" && (
         <>
           <SeccionReferencia alCargada={leer} alExpirar={expirada} />
