@@ -614,6 +614,13 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     assert "-NoNewWindow" in iniciar_ventana
     # Python con la salida en archivo la guarda en búfer: los textos del lanzador se leen cuando
     # ya terminó (`WaitForExit`), no mientras la ventana sigue abierta
+    # el puerto CDP lo da Windows (puerto 0): uno fijo puede caer en un rango reservado de
+    # Hyper-V y Chromium no lo abre sin avisar (1.ª corrida en windows-2025, ECONNREFUSED 9333)
+    assert "9333" not in texto
+    assert "PuertoLibre" in bloque
+    assert "TcpListener" in _funcion_del_humo("PuertoLibre")
+    # si CDP no responde, deja el diagnóstico: la orden de WebView2 y los puertos reservados
+    assert "msedgewebview2" in bloque and "excludedportrange" in bloque
     espera = bloque.index("WaitForExit")
     assert bloque.index("puerto de depuración") > espera
     assert bloque.index("Se cerró la ventana de Sílice") > espera
