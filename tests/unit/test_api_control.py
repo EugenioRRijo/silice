@@ -497,6 +497,7 @@ def test_un_libro_de_valuaciones_con_una_celda_lejana_es_422_sin_importar_nada(
     limpio = ob.escribir_xlsx(tmp_path / "ob_s2.xlsx").read_bytes()
     hostil = con_celdas(limpio, "Lineas", {"A1048576": "fin ficticio"}, sin_dimension=True)
     navegador, cabeceras = _arma()
+    antes = navegador.get("/v1/control/valuaciones", params=P).json()["filas"]
     respuesta = navegador.post(
         ruta,
         data={**P, "fuente": ob.FUENTE},
@@ -510,7 +511,7 @@ def test_un_libro_de_valuaciones_con_una_celda_lejana_es_422_sin_importar_nada(
         "CV). Se rechaza por seguridad: borre lo que sobra al final de la hoja y guárdelo de "
         "nuevo. No se importó nada."
     )
-    assert navegador.get("/v1/control/valuaciones", params=P).json()["filas"] == []
+    assert navegador.get("/v1/control/valuaciones", params=P).json()["filas"] == antes
 
 
 # --- cálculo: valor ganado, alertas y reproyección -------------------------------------------

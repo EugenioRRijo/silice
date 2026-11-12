@@ -189,7 +189,8 @@ def test_importar_un_presupuesto_con_una_celda_lejana_es_422_sin_escribir_nada(
 ):
     from tests.fixtures.presupuesto_tabular import escribir_presupuesto_tabular
 
-    assert cliente.post("/proyectos", json={"nombre": "Tercero hostil", "dominio": "civil"}).ok
+    creado = cliente.post("/proyectos", json={"nombre": "Tercero hostil", "dominio": "civil"})
+    assert creado.status_code == 201, creado.text
     limpio = escribir_presupuesto_tabular(tmp_path).read_bytes()
     datos = con_celdas(limpio, "APU", {"A1048576": "fin ficticio"}, sin_dimension=True)
     antes = (_contar(sesion, models.Presupuesto), _contar(sesion, models.ListaPrecios))
