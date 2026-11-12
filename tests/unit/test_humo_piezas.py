@@ -22,6 +22,7 @@ import pytest
 
 from instalador import navegador, proxy_testigo, verificar_bases
 from operacion.base_datos import preparar_base
+from seguridad import cuentas
 from tests.fixtures import bases_prueba as bp
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -356,3 +357,262 @@ def test_rangos_sin_cubre_todo_ipv4_salvo_el_bucle_local_y_la_ip_propia(
     assert cubierto == (2**32 - 2**24) - 1  # todo menos 127.0.0.0/8 y la IP propia
     assert not any(inicio <= propia <= fin for inicio, fin in tramos)
     assert not any(inicio <= _a_entero("127.0.0.1") <= fin for inicio, fin in tramos)
+
+
+def _buena_descarga() -> dict:
+    return {
+        "reclamo": 201,
+        "respaldo": 200,
+        "bajada": 200,
+        "tipo": "application/zip",
+        "disposicion": 'attachment; filename="respaldo.zip"',
+        "bytes": 256,
+        "firma": "PK",
+    }
+
+
+def test_descarga_valida_acepta_un_zip_completo() -> None:
+    assert navegador.descarga_valida(_buena_descarga()) is True
+
+
+@pytest.mark.parametrize(
+    ("campo", "valor"),
+    [
+        ("reclamo", 401),
+        ("respaldo", 403),
+        ("bajada", 404),
+        ("tipo", "text/html; charset=utf-8"),
+        ("disposicion", "inline"),
+        ("bytes", 0),
+        ("firma", "<!"),
+        ("firma", None),
+    ],
+)
+def test_descarga_valida_rechaza_cada_campo_malo(campo: str, valor: object) -> None:
+    malo = _buena_descarga()
+    malo[campo] = valor
+    assert navegador.descarga_valida(malo) is False
+
+
+class _PeticionFalsa:
+    def __init__(self, url: str) -> None:
+        self.url = url
+
+
+class _PaginaFalsa:
+    def __init__(self, url: str, resultado_eval: dict | None = None) -> None:
+        self.url = url
+        self._resultado_eval = resultado_eval
+        self._manejadores: dict[str, list] = {}
+        self.visitadas: list[str] = []
+        self.evaluaciones: list[tuple[str, dict]] = []
+
+    def on(self, evento: str, manejador) -> None:
+        self._manejadores.setdefault(evento, []).append(manejador)
+
+    def goto(self, url: str, **_kwargs) -> None:
+        self.visitadas.append(url)
+        for manejador in self._manejadores.get("request", []):
+            manejador(_PeticionFalsa(url))
+
+    def wait_for_timeout(self, _ms: int) -> None:
+        pass
+
+    def evaluate(self, guion: str, arg: dict) -> dict | None:
+        self.evaluaciones.append((guion, arg))
+        return self._resultado_eval
+
+
+class _ContextoFalso:
+    def __init__(self, pages: list[_PaginaFalsa]) -> None:
+        self.pages = pages
+
+
+class _NavegadorFalso:
+    def __init__(self, contextos: list[_ContextoFalso]) -> None:
+        self.contexts = contextos
+        self.cerrado = False
+
+    def close(self) -> None:
+        self.cerrado = True
+
+
+class _ChromiumFalso:
+    def __init__(self, navegador_falso: _NavegadorFalso) -> None:
+        self.navegador = navegador_falso
+        self.llamadas: list[tuple[str, int | None]] = []
+
+    def connect_over_cdp(self, cdp: str, timeout: int | None = None) -> _NavegadorFalso:
+        self.llamadas.append((cdp, timeout))
+        return self.navegador
+
+
+class _PlaywrightFalso:
+    def __init__(self, navegador_falso: _NavegadorFalso) -> None:
+        self.chromium = _ChromiumFalso(navegador_falso)
+
+    def __enter__(self) -> _PlaywrightFalso:
+        return self
+
+    def __exit__(self, *_args) -> None:
+        pass
+
+
+def test_recorrer_ventana_elige_pagina_app_evalua_y_no_cierra() -> None:
+    blanco = _PaginaFalsa("about:blank")
+    esperado = _buena_descarga()
+    app = _PaginaFalsa("http://127.0.0.1:8501/app/", esperado)
+    nav = _NavegadorFalso([_ContextoFalso([blanco, app])])
+    pw = _PlaywrightFalso(nav)
+
+    vistas, resultado = navegador.recorrer_ventana(
+        "http://127.0.0.1:9333",
+        "http://127.0.0.1:8501/app",
+        ["", "#/precios/catalogo"],
+        "CODIGODEPRUEBA123456",
+        abrir_playwright=lambda: pw,
+    )
+
+    assert pw.chromium.llamadas == [("http://127.0.0.1:9333", 60_000)]
+    assert blanco.visitadas == [] and blanco.evaluaciones == []
+    assert app.visitadas == [
+        "http://127.0.0.1:8501/app/",
+        "http://127.0.0.1:8501/app/#/precios/catalogo",
+    ]
+    assert vistas == app.visitadas
+    assert resultado == esperado
+    assert len(app.evaluaciones) == 1
+    guion, arg = app.evaluaciones[0]
+    assert guion == navegador.GUION_DESCARGA
+    assert arg["codigo"] == "CODIGODEPRUEBA123456"
+    assert cuentas.validar_login(arg["usuario"]) == arg["usuario"]
+    cuentas.validar_contrasena(arg["contrasena"], arg["usuario"])
+    assert not nav.cerrado
+
+
+def test_recorrer_ventana_sin_codigo_no_evalua_y_devuelve_none() -> None:
+    app = _PaginaFalsa("http://127.0.0.1:8501/app/", _buena_descarga())
+    nav = _NavegadorFalso([_ContextoFalso([app])])
+    pw = _PlaywrightFalso(nav)
+
+    vistas, resultado = navegador.recorrer_ventana(
+        "http://127.0.0.1:9333",
+        "http://127.0.0.1:8501/app",
+        [""],
+        None,
+        abrir_playwright=lambda: pw,
+    )
+
+    assert vistas == ["http://127.0.0.1:8501/app/"]
+    assert app.evaluaciones == []
+    assert resultado is None
+    assert not nav.cerrado
+
+
+def test_navegador_main_con_cdp_valida_descarga_y_limpia_codigo(
+    tmp_path: Path, monkeypatch
+) -> None:
+    llamadas: list[tuple[str, str, list[str], str | None]] = []
+    mala = {**_buena_descarga(), "firma": "NO"}
+
+    def falso_recorrer(cdp: str, url: str, paginas: list[str], codigo: str | None):
+        llamadas.append((cdp, url, paginas, codigo))
+        return ["http://127.0.0.1:8501/app/"], mala
+
+    monkeypatch.setattr(navegador, "recorrer_ventana", falso_recorrer)
+    archivo_codigo = tmp_path / "codigo.txt"
+    archivo_codigo.write_text("  ABCD2345EFGH6789IJKL \n", encoding="utf-8")
+    salida = tmp_path / "ventana.json"
+
+    rc_malo = navegador.main(
+        [
+            "--url",
+            "http://127.0.0.1:8501/app/",
+            "--cdp",
+            "http://127.0.0.1:9333",
+            "--codigo",
+            str(archivo_codigo),
+            "--salida",
+            str(salida),
+        ]
+    )
+    assert rc_malo == 1
+    assert llamadas == [
+        (
+            "http://127.0.0.1:9333",
+            "http://127.0.0.1:8501/app",
+            ["", "#/precios/catalogo", "#/precios/simulador"],
+            "ABCD2345EFGH6789IJKL",
+        )
+    ]
+    assert json.loads(salida.read_text(encoding="utf-8"))["descarga"] == mala
+
+    buena = _buena_descarga()
+    monkeypatch.setattr(
+        navegador,
+        "recorrer_ventana",
+        lambda *_args: (["http://127.0.0.1:8501/app/"], buena),
+    )
+    rc_bueno = navegador.main(
+        [
+            "--url",
+            "http://127.0.0.1:8501/app",
+            "--cdp",
+            "http://127.0.0.1:9333",
+            "--codigo",
+            str(archivo_codigo),
+            "--salida",
+            str(salida),
+        ]
+    )
+    assert rc_bueno == 0
+    assert json.loads(salida.read_text(encoding="utf-8"))["descarga"] == buena
+
+
+def test_guion_descarga_apunta_a_rutas_reales_de_la_api() -> None:
+    from api.main import app
+
+    rutas = {getattr(r, "path", None) for r in app.routes}
+    for esperada in (
+        "/v1/primer-arranque/reclamo",
+        "/v1/admin/instalacion/respaldos",
+        "/v1/admin/instalacion/respaldos/{nombre}",
+    ):
+        assert esperada in rutas
+        assert esperada.replace("/{nombre}", "") in navegador.GUION_DESCARGA
+    assert "X-Silice-CSRF" in navegador.GUION_DESCARGA
+    assert "same-origin" in navegador.GUION_DESCARGA
+
+
+def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    paso6 = texto.index("Paso '6.")
+    paso6b = texto.index("Paso '6b.")
+    paso7 = texto.index("Paso '7.")
+    assert paso6 < paso6b < paso7
+    bloque = texto[paso6b:paso7]
+    for pieza in (
+        "--cdp",
+        "codigo_instalacion.txt",
+        "CloseMainWindow",
+        "WaitForExit",
+        r"estado\servidor.json",
+        "Se cerró la ventana de Sílice",
+        "puerto de depuración",
+    ):
+        assert pieza in bloque, pieza
+    iniciar_ventana = _funcion_del_humo("IniciarVentana")
+    assert "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" in iniciar_ventana
+    # solo la hereda ese proceso: se quita en el `finally`, también si Start-Process falla
+    despues_finally = iniciar_ventana[iniciar_ventana.index("finally") :]
+    assert re.search(r"Remove-Item[^\n]*Env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", despues_finally)
+    assert "--sin-navegador" not in iniciar_ventana
+    assert "Hidden" not in iniciar_ventana
+    assert "WEBVIEW2" not in _funcion_del_humo("IniciarSilice")
+
+
+def test_workflow_instalador_asegura_webview2_antes_del_humo() -> None:
+    flujo = (RAIZ / ".github" / "workflows" / "instalador.yml").read_text(encoding="utf-8")
+    guid = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+    assert guid in flujo
+    assert flujo.index(guid) < flujo.index("Prueba de humo")
