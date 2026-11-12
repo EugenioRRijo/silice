@@ -145,6 +145,36 @@ function IniciarSilice {
     }
 }
 
+function IniciarVentana([int]$PuertoCdp, [string]$Registro) {
+    $env:HTTP_PROXY = "http://127.0.0.1:$PuertoProxy"
+    $env:HTTPS_PROXY = $env:HTTP_PROXY
+    $env:NO_PROXY = '127.0.0.1,localhost'
+    $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=$PuertoCdp"
+    try {
+        # -NoNewWindow: sin consola propia, la ventana principal del proceso es la de Sílice
+        return Start-Process -FilePath $Python -PassThru -NoNewWindow `
+            -ArgumentList ($Banderas + @('arrancar')) `
+            -WorkingDirectory $Codigo `
+            -RedirectStandardOutput "$Registro.out" -RedirectStandardError "$Registro.err"
+    } finally {
+        Remove-Item Env:HTTP_PROXY, Env:HTTPS_PROXY, Env:NO_PROXY -ErrorAction SilentlyContinue
+        Remove-Item Env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS -ErrorAction SilentlyContinue
+    }
+}
+
+function EsperarCdp([int]$Puerto, [int]$Limite = 60) {
+    $reloj = [Diagnostics.Stopwatch]::StartNew()
+    while ($reloj.Elapsed.TotalSeconds -lt $Limite) {
+        try {
+            $r = Invoke-WebRequest -Uri "http://127.0.0.1:$Puerto/json/version" `
+                -UseBasicParsing -TimeoutSec 2
+            if ($r.StatusCode -eq 200) { return [math]::Round($reloj.Elapsed.TotalSeconds, 2) }
+        } catch { }
+        Start-Sleep -Milliseconds 500
+    }
+    return $null
+}
+
 function InstalarSilencioso([string]$Exe, [string]$Registro) {
     $argumentos = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER',
         "/DIR=`"$Programa`"", "/LOG=`"$Registro`"")
@@ -193,7 +223,7 @@ $Muestreo = {
     }
 }
 
-$servidor = $null; $proxy = $null; $trabajo = $null; $ip = $null
+$servidor = $null; $ventana = $null; $proxy = $null; $trabajo = $null; $ip = $null
 try {
     Paso '1. Cortafuegos de salida y proxy testigo'
     New-NetFirewallRule -DisplayName $ReglaSalida -Direction Outbound -Action Block `
@@ -266,6 +296,34 @@ try {
     Afirmar (-not (Compare-Object $antes $despues)) 'nada se escribió en la carpeta del programa'
     $peticiones = Get-Content (Join-Path $Salida 'proxy.log') -ErrorAction SilentlyContinue
     Afirmar ((Contar $peticiones) -eq 0) 'el proxy testigo anotó 0 peticiones'
+
+    Paso '6b. Ventana de Sílice: WebView2 por CDP, sin red, primer administrador, descarga y cierre'
+    $puertoCdp = 9333
+    $regVentana = Nombre 'ventana'
+    $ventana = IniciarVentana $puertoCdp $regVentana
+    $segVentana = EsperarSalud $Url 60
+    Afirmar ($null -ne $segVentana) "la salud con ventana respondió 200 en <= 60 s (fueron $segVentana s)"
+    $segCdp = EsperarCdp $puertoCdp 60
+    Afirmar ($null -ne $segCdp) "CDP respondió en <= 60 s (fueron $segCdp s)"
+    & uv run --no-project --with playwright python $navegador --url $UrlApp `
+        --cdp "http://127.0.0.1:$puertoCdp" `
+        --codigo (Join-Path $Datos 'codigo_instalacion.txt') `
+        --salida (Join-Path $Salida 'ventana-peticiones.json')
+    Afirmar ($LASTEXITCODE -eq 0) 'la ventana no pidió nada fuera de 127.0.0.1 y bajó el respaldo'
+    $ventana.Refresh()
+    Afirmar ($ventana.MainWindowTitle -eq 'Sílice') "título de la ventana = 'Sílice' (fue '$($ventana.MainWindowTitle)')"
+    Afirmar ($ventana.CloseMainWindow()) 'CloseMainWindow() aceptó el cierre de la ventana'
+    Afirmar ($ventana.WaitForExit(30000)) 'el lanzador terminó en <= 30 s al cerrar la ventana'
+    Afirmar ($null -eq (EsperarSalud $Url 3)) 'el puerto quedó libre tras cerrar la ventana'
+    Afirmar (-not (Test-Path (Join-Path $Usuario 'estado\servidor.json'))) 'estado\servidor.json se borró'
+    # Python guarda en búfer la salida a un archivo: se lee cuando el lanzador ya terminó
+    $textoVentana = Get-Content "$regVentana.out" -Raw -Encoding utf8 -ErrorAction SilentlyContinue
+    Afirmar ($textoVentana -match 'puerto de depuración') 'el lanzador avisó que WEBVIEW2 pide un puerto de depuración'
+    Afirmar ($textoVentana -match 'Se cerró la ventana de Sílice') 'el lanzador registró «Se cerró la ventana de Sílice»'
+    $vivosVentana = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+        Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($Programa) })
+    Afirmar ($vivosVentana.Count -eq 0) 'ningún python.exe de {app} sigue vivo tras cerrar la ventana'
+    Afirmar (-not (Compare-Object $antes (ArbolDe $Programa))) 'la ventana no escribió en {app}'
 
     Paso '7. Actualización con Sílice en marcha y bases viejas sin migrar'
     $casos = Join-Path $Datos 'casos'
@@ -352,6 +410,9 @@ try {
 finally {
     if ($trabajo) { Stop-Job $trabajo -ErrorAction SilentlyContinue }
     if ($trabajo) { Remove-Job $trabajo -Force -ErrorAction SilentlyContinue }
+    if ($ventana -and -not $ventana.HasExited) {
+        Stop-Process -Id $ventana.Id -Force -ErrorAction SilentlyContinue
+    }
     if ($proxy) { Stop-Process -Id $proxy.Id -Force -ErrorAction SilentlyContinue }
     Remove-NetFirewallRule -DisplayName $ReglaSalida -ErrorAction SilentlyContinue
     Get-NetFirewallRule -DisplayName 'Silice red local*' -ErrorAction SilentlyContinue |

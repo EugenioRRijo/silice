@@ -572,7 +572,8 @@ def test_navegador_main_con_cdp_valida_descarga_y_limpia_codigo(
 def test_guion_descarga_apunta_a_rutas_reales_de_la_api() -> None:
     from api.main import app
 
-    rutas = {getattr(r, "path", None) for r in app.routes}
+    # el esquema y no `app.routes`: los routers incluidos no exponen `path` en esa lista
+    rutas = set(app.openapi()["paths"])
     for esperada in (
         "/v1/primer-arranque/reclamo",
         "/v1/admin/instalacion/respaldos",

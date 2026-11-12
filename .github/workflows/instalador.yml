@@ -172,6 +172,37 @@ jobs:
             [ref]$errores) | Out-Null
           if ($errores) { $errores | ForEach-Object { Write-Error $_ }; exit 1 }
 
+      - name: WebView2 para la ventana de la humo (el producto no descarga nada)
+        run: |
+          $cliente = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          $claves = @(
+            "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\$cliente",
+            "HKCU:\Software\Microsoft\EdgeUpdate\Clients\$cliente"
+          )
+          function VersionWebView2 {
+            foreach ($clave in $claves) {
+              $props = Get-ItemProperty -Path $clave -Name pv -ErrorAction SilentlyContinue
+              if ($props -and $props.PSObject.Properties['pv']) {
+                $pv = "$($props.pv)".Trim()
+                if ($pv -and $pv -ne '0.0.0.0') { return $pv }
+              }
+            }
+            return $null
+          }
+          $version = VersionWebView2
+          if (-not $version) {
+            $instalador = Join-Path $env:RUNNER_TEMP 'MicrosoftEdgeWebview2Setup.exe'
+            Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' `
+              -OutFile $instalador
+            Start-Process -FilePath $instalador -ArgumentList '/silent', '/install' -Wait
+            $version = VersionWebView2
+          }
+          if (-not $version) {
+            Write-Error 'No se encontró WebView2 tras instalar el runtime'
+            exit 1
+          }
+          Write-Host "WebView2 Runtime: $version"
+
       - name: Prueba de humo (asistente de IA apagado)
         run: |
           $exe = "build/salida/Silice-$env:VERSION$env:SUFIJO.exe"
