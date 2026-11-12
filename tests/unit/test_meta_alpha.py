@@ -265,3 +265,22 @@ def test_render_tabla_cuenta_las_metas_en_ok_en_la_linea_resultado():
     tabla = meta_alpha.render_tabla(filas)
 
     assert "RESULTADO: 1/2 metas OK" in tabla
+
+
+def test_imprimir_salida_no_se_cae_en_una_consola_cp1252():
+    """Antes vivia en meta_datos (`_imprimir`); ahora es la salida comun de todas las metas."""
+    import io
+
+    flujo = io.TextIOWrapper(io.BytesIO(), encoding="cp1252", newline="\n")
+    meta_alpha.imprimir_salida("D1 → OK", flujo)
+    flujo.flush()
+    assert flujo.buffer.getvalue().decode("utf-8") == "D1 → OK\n"
+
+
+def test_imprimir_salida_sin_reconfigure_escribe_igual():
+    """Un flujo sin `reconfigure` (un StringIO) recibe el texto tal cual."""
+    import io
+
+    flujo = io.StringIO()
+    meta_alpha.imprimir_salida("D1 → OK", flujo)
+    assert flujo.getvalue() == "D1 → OK\n"

@@ -27,6 +27,7 @@ from scripts.meta_alpha import (  # noqa: E402
     Meta,
     _evaluar,
     _filas_a_json,
+    imprimir_salida,
     render_tabla,
 )
 
@@ -128,10 +129,7 @@ def main(argv: list[str] | None = None) -> int:
         args.base, args.umbral_cobertura, con_cobertura=not args.sin_cobertura, metas=METAS_I6
     )
 
-    if args.json:
-        print(_filas_a_json(filas))
-    else:
-        print(render_tabla(filas))
+    imprimir_salida(_filas_a_json(filas) if args.json else render_tabla(filas))
 
     return 0 if all(fila.estado is Estado.OK for fila in filas) else 1
 

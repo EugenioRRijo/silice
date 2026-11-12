@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
+from typing import TextIO
 
 RAIZ = Path(__file__).resolve().parents[1]
 BASE_POR_DEFECTO = "sprint-0"
@@ -363,6 +364,20 @@ def _filas_a_json(filas: Sequence[Fila]) -> str:
     return json.dumps(objetos, indent=2)
 
 
+def imprimir_salida(texto: str, flujo: TextIO | None = None) -> None:
+    """Escribe `texto` en UTF-8 aunque la consola sea cp1252 (PowerShell con la salida capturada).
+
+    La tabla de `render_tabla` lleva evidencia que sale de los datos (titulos de commits, nombres
+    de pruebas, textos de los planes) y puede traer «→», «≥» o «‑», que cp1252 no tiene: `print`
+    a secas abortaria con `UnicodeEncodeError`. Toda meta imprime su tabla o su JSON por aqui.
+    """
+    flujo = sys.stdout if flujo is None else flujo
+    reconfigurar = getattr(flujo, "reconfigure", None)
+    if callable(reconfigurar):
+        reconfigurar(encoding="utf-8")
+    print(texto, file=flujo)
+
+
 # --------------------------------------------------------------------------------------
 # Orquestacion: subprocesos (pytest, ruff, git)
 # --------------------------------------------------------------------------------------
@@ -580,10 +595,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _parsear_args(argv)
     filas = _evaluar(args.base, args.umbral_cobertura, con_cobertura=not args.sin_cobertura)
 
-    if args.json:
-        print(_filas_a_json(filas))
-    else:
-        print(render_tabla(filas))
+    imprimir_salida(_filas_a_json(filas) if args.json else render_tabla(filas))
 
     return 0 if all(fila.estado is Estado.OK for fila in filas) else 1
 
