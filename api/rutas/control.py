@@ -41,6 +41,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from adapters.hoja_empresa.lector import comprobar_topes_del_libro
 from api.archivos import guardar_subida
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.esquemas import ImpuestosRespuesta, impuestos_a_respuesta
@@ -477,10 +479,21 @@ class InformeRespuesta(BaseModel):
 
 
 def _leer(archivo: UploadFile):
-    """Lee el XLSX subido; lo que no es un libro legible se rechaza como un XLSX malformado."""
+    """Lee el XLSX subido; lo que no es un libro legible se rechaza como un XLSX malformado.
+
+    Antes del lector del núcleo (`leer_tabla`, que recorre cada hoja sin tope) pasa por la
+    guardia, como toda subida de un .xlsx (F-D10), y por los topes del lector del libro conocido
+    (acta del árbitro de los topes, NOTA 7): su aviso, con lo que no se importó."""
     with tempfile.TemporaryDirectory() as carpeta:
+        ruta = guardar_subida(carpeta, archivo)
+        datos = ruta.read_bytes()
         try:
-            return logica.leer_excel(guardar_subida(carpeta, archivo))
+            verificar_archivo(datos, ruta.name)
+            comprobar_topes_del_libro(datos, ruta.name)
+        except ArchivoRechazado as error:
+            raise logica.ControlInvalido(f"{error} No se importó nada.") from None
+        try:
+            return logica.leer_excel(ruta)
         except (BadZipFile, InvalidFileException, OSError, KeyError):
             raise logica.ControlInvalido(
                 "El archivo no es un libro .xlsx legible; no se importó nada."

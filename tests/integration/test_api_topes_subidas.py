@@ -201,5 +201,6 @@ def test_importar_un_presupuesto_con_una_celda_lejana_es_422_sin_escribir_nada(
     )
     assert r.status_code == 422, r.text
     assert r.json()["detalle"] == _rechazo("tercero_hostil.xlsx", "APU", FILAS)
-    assert filas_entregadas[0] <= 20_001, f"openpyxl entregó {filas_entregadas[0]:,} filas"
+    # las hojas anteriores del formato (Datos, Presupuesto) se recorren antes: unas pocas filas más
+    assert filas_entregadas[0] <= 20_001 + 100, f"openpyxl entregó {filas_entregadas[0]:,} filas"
     assert (_contar(sesion, models.Presupuesto), _contar(sesion, models.ListaPrecios)) == antes

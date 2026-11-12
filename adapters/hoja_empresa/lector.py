@@ -71,7 +71,13 @@ from adapters.hoja_empresa.modelo import (
 from adapters.hoja_empresa.perfil import Perfil, cargar_perfil, coincide, normalizar
 from adapters.hoja_empresa.umbrales import MEDIO_CENTAVO
 
-__all__ = ["comprobar_topes_de_hoja", "filas_acotadas", "leer_libro", "letra"]
+__all__ = [
+    "comprobar_topes_de_hoja",
+    "comprobar_topes_del_libro",
+    "filas_acotadas",
+    "leer_libro",
+    "letra",
+]
 
 _CERO = Decimal(0)
 _UNO = Decimal(1)
@@ -300,6 +306,32 @@ def filas_acotadas(
             )
         leidas += 1
         yield fila
+
+
+def comprobar_topes_del_libro(datos: bytes, nombre: str) -> None:
+    """Recorre cada hoja del libro en solo lectura con los topes de `filas_acotadas` (y una sola
+    cuenta de `MAX_CELDAS_LIBRO` para el libro entero), sin guardar nada.
+
+    Es para los libros que no lee este módulo y que se recorren sin tope: las listas de precios,
+    el presupuesto de un tercero y las valuaciones subidas (`core.catalog.precios.leer_tabla`, en
+    el núcleo, que no se toca; acta del árbitro de los topes, NOTA 7). Se llama después de la
+    guardia y antes del lector del núcleo, así que un libro hostil se rechaza en décimas de
+    segundo. Solo lanza `ArchivoRechazado`: si openpyxl no lo abre, si una hoja pasa de los topes
+    (el aviso de `filas_acotadas`) o si una hoja está dañada."""
+    libro = _abrir(datos, nombre, data_only=True)
+    try:
+        cuenta = [0]
+        for ws in libro.worksheets:
+            for _ in filas_acotadas(ws, nombre, cuenta, MAX_CELDAS_LIBRO, values_only=True):
+                pass
+    except ArchivoRechazado:
+        raise
+    except Exception as exc:  # openpyxl lanza tipos muy variados ante una hoja dañada
+        raise ArchivoRechazado(
+            f"No se pudo leer el libro «{nombre}»: alguna hoja está dañada."
+        ) from exc
+    finally:
+        libro.close()
 
 
 def _celdas_reales(ws: Any, nombre: str, cuenta: list[int]) -> Iterator[Any]:
