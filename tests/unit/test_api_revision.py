@@ -689,3 +689,24 @@ def test_el_banner_de_verificacion_formatea_la_fecha_y_no_al_emisor() -> None:
         "No se alteró desde que se firmó."
     )
     assert replace(v).manifiesto == {"emitido": "2026-11-10T08:00:00"}  # el original no cambia
+
+
+def test_un_excel_externo_con_una_celda_lejana_es_422_con_el_aviso_del_lector() -> None:
+    """Acta del árbitro de los topes, NOTA 7: `leer_tabla` (núcleo) recorría la hoja sin tope;
+    sin `<dimension>`, A1048576 eran un millón de filas. Ahora la ruta la rechaza antes."""
+    from tests.fixtures.libro_apu_por_hoja import con_celdas
+
+    navegador, ficha = _rita()
+    plantilla = navegador.get("/v1/revision/plantilla").content
+    hostil = con_celdas(plantilla, "APU", {"A1048576": "fin ficticio"}, sin_dimension=True)
+    r = navegador.post(
+        "/v1/revision/excel-externo",
+        files={"presupuesto": ("externo.xlsx", hostil, XLSX)},
+        headers=protegida(ficha),
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == (
+        "El libro «externo.xlsx», hoja «APU»: tiene filas con datos o con formato más allá de la "
+        "20.000. Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la CV). Se "
+        "rechaza por seguridad: borre lo que sobra al final de la hoja y guárdelo de nuevo."
+    )

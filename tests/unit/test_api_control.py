@@ -478,9 +478,39 @@ def test_un_archivo_que_no_es_un_libro_se_rechaza_entero_con_422() -> None:
         headers=cabeceras,
     )
     assert respuesta.status_code == 422
+    # La importación pasa ahora por la guardia, como toda subida de un .xlsx (F-D10): su aviso.
     assert respuesta.json()["detalle"] == (
-        "El archivo no es un libro .xlsx legible; no se importó nada."
+        "El archivo «malo.xlsx» no es un libro .xlsx válido (está dañado o no es de Excel). No se "
+        "importó nada."
     )
+
+
+@pytest.mark.parametrize("ruta", ["/v1/control/importar/informe", "/v1/control/importar"])
+def test_un_libro_de_valuaciones_con_una_celda_lejana_es_422_sin_importar_nada(
+    ruta: str, tmp_path: Path
+) -> None:
+    """Acta del árbitro de los topes, NOTA 7: `leer_tabla` (núcleo) recorría la hoja sin tope y
+    la importación ni siquiera pasaba por la guardia. Sin `<dimension>`, A1048576 eran un millón
+    de filas; ahora se rechaza con el aviso del lector."""
+    from tests.fixtures.libro_apu_por_hoja import con_celdas
+
+    limpio = ob.escribir_xlsx(tmp_path / "ob_s2.xlsx").read_bytes()
+    hostil = con_celdas(limpio, "Lineas", {"A1048576": "fin ficticio"}, sin_dimension=True)
+    navegador, cabeceras = _arma()
+    respuesta = navegador.post(
+        ruta,
+        data={**P, "fuente": ob.FUENTE},
+        files={"archivo": ("valuaciones.xlsx", hostil, "application/octet-stream")},
+        headers=cabeceras,
+    )
+    assert respuesta.status_code == 422, respuesta.text
+    assert respuesta.json()["detalle"] == (
+        "El libro «valuaciones.xlsx», hoja «Lineas»: tiene filas con datos o con formato más allá "
+        "de la 20.000. Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a la "
+        "CV). Se rechaza por seguridad: borre lo que sobra al final de la hoja y guárdelo de "
+        "nuevo. No se importó nada."
+    )
+    assert navegador.get("/v1/control/valuaciones", params=P).json()["filas"] == []
 
 
 # --- cálculo: valor ganado, alertas y reproyección -------------------------------------------
