@@ -621,6 +621,18 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     assert "TcpListener" in _funcion_del_humo("PuertoLibre")
     # si CDP no responde, deja el diagnóstico: la orden de WebView2 y los puertos reservados
     assert "msedgewebview2" in bloque and "excludedportrange" in bloque
+    # 2.ª corrida: en el runner (administrador) WebView2 arrancó sin `--remote-debugging-port`
+    # pese a la variable; se suma la vía de política por usuario que documenta Microsoft (valor
+    # con el nombre del ejecutable), solo mientras dura el paso y quitada también en el `finally`
+    politica = r"Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments"
+    assert politica in _funcion_del_humo("PonerPoliticaCdp")
+    assert "python.exe" in _funcion_del_humo("PonerPoliticaCdp")
+    assert "Remove-ItemProperty" in _funcion_del_humo("QuitarPoliticaCdp")
+    final = texto[texto.rindex("finally {") :]
+    assert "QuitarPoliticaCdp" in final
+    assert bloque.index("PonerPoliticaCdp") < bloque.index("IniciarVentana")
+    assert bloque.index("QuitarPoliticaCdp") > bloque.index("WaitForExit")
+    assert r"Policies\Microsoft\Edge" in bloque  # diagnóstico: las políticas del runner
     espera = bloque.index("WaitForExit")
     assert bloque.index("puerto de depuración") > espera
     assert bloque.index("Se cerró la ventana de Sílice") > espera
