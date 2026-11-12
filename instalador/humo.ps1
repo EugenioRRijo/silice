@@ -162,6 +162,18 @@ function IniciarVentana([int]$PuertoCdp, [string]$Registro) {
     }
 }
 
+$PoliticaCdp = 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+function PonerPoliticaCdp([int]$PuertoCdp) {
+    # La vía de registro que documenta Microsoft para lo mismo que la variable: un valor con el
+    # nombre del ejecutable. Solo durante el paso 6b; QuitarPoliticaCdp la borra.
+    New-Item -Path $PoliticaCdp -Force | Out-Null
+    New-ItemProperty -Path $PoliticaCdp -Name 'python.exe' -PropertyType String -Force `
+        -Value "--remote-debugging-port=$PuertoCdp" | Out-Null
+}
+function QuitarPoliticaCdp {
+    Remove-ItemProperty -Path $PoliticaCdp -Name 'python.exe' -ErrorAction SilentlyContinue
+}
+
 function PuertoLibre {
     # Windows da un puerto libre fuera de los rangos reservados (Hyper-V en windows-2025): con uno
     # fijo, Chromium no abre el de depuración y no avisa.
@@ -308,6 +320,7 @@ try {
     Paso '6b. Ventana de Sílice: WebView2 por CDP, sin red, primer administrador, descarga y cierre'
     $puertoCdp = PuertoLibre
     $regVentana = Nombre 'ventana'
+    PonerPoliticaCdp $puertoCdp
     $ventana = IniciarVentana $puertoCdp $regVentana
     $segVentana = EsperarSalud $Url 60
     Afirmar ($null -ne $segVentana) "la salud con ventana respondió 200 en <= 60 s (fueron $segVentana s)"
@@ -319,6 +332,11 @@ try {
             Where-Object { $_.CommandLine -match 'remote-debugging|perfil_ventana' } |
             Select-Object -First 3 | ForEach-Object { Write-Host "  webview2: $($_.CommandLine)" }
         netsh int ipv4 show excludedportrange protocol=tcp | ForEach-Object { Write-Host "  $_" }
+        foreach ($raiz in @('HKLM:\SOFTWARE\Policies\Microsoft\Edge', 'HKCU:\Software\Policies\Microsoft\Edge')) {
+            Get-ChildItem -Path $raiz -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+                Write-Host "  politica: $($_.Name) $(($_.Property | ForEach-Object { $_ }) -join ', ')"
+            }
+        }
     }
     & uv run --no-project --with playwright python $navegador --url $UrlApp `
         --cdp "http://127.0.0.1:$puertoCdp" `
@@ -329,6 +347,7 @@ try {
     Afirmar ($ventana.MainWindowTitle -eq 'Sílice') "título de la ventana = 'Sílice' (fue '$($ventana.MainWindowTitle)')"
     Afirmar ($ventana.CloseMainWindow()) 'CloseMainWindow() aceptó el cierre de la ventana'
     Afirmar ($ventana.WaitForExit(30000)) 'el lanzador terminó en <= 30 s al cerrar la ventana'
+    QuitarPoliticaCdp
     Afirmar ($null -eq (EsperarSalud $Url 3)) 'el puerto quedó libre tras cerrar la ventana'
     Afirmar (-not (Test-Path (Join-Path $Usuario 'estado\servidor.json'))) 'estado\servidor.json se borró'
     # Python guarda en búfer la salida a un archivo: se lee cuando el lanzador ya terminó
@@ -425,6 +444,7 @@ try {
 finally {
     if ($trabajo) { Stop-Job $trabajo -ErrorAction SilentlyContinue }
     if ($trabajo) { Remove-Job $trabajo -Force -ErrorAction SilentlyContinue }
+    QuitarPoliticaCdp
     if ($ventana -and -not $ventana.HasExited) {
         Stop-Process -Id $ventana.Id -Force -ErrorAction SilentlyContinue
     }

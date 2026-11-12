@@ -625,9 +625,10 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     # pese a la variable; se suma la vía de política por usuario que documenta Microsoft (valor
     # con el nombre del ejecutable), solo mientras dura el paso y quitada también en el `finally`
     politica = r"Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments"
-    assert politica in _funcion_del_humo("PonerPoliticaCdp")
-    assert "python.exe" in _funcion_del_humo("PonerPoliticaCdp")
-    assert "Remove-ItemProperty" in _funcion_del_humo("QuitarPoliticaCdp")
+    assert f"$PoliticaCdp = 'HKCU:\\{politica}'" in texto
+    poner, quitar = _funcion_del_humo("PonerPoliticaCdp"), _funcion_del_humo("QuitarPoliticaCdp")
+    assert "$PoliticaCdp" in poner and "'python.exe'" in poner
+    assert "Remove-ItemProperty -Path $PoliticaCdp -Name 'python.exe'" in quitar
     final = texto[texto.rindex("finally {") :]
     assert "QuitarPoliticaCdp" in final
     assert bloque.index("PonerPoliticaCdp") < bloque.index("IniciarVentana")
