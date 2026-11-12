@@ -162,6 +162,14 @@ function IniciarVentana([int]$PuertoCdp, [string]$Registro) {
     }
 }
 
+function PuertoLibre {
+    # Windows da un puerto libre fuera de los rangos reservados (Hyper-V en windows-2025): con uno
+    # fijo, Chromium no abre el de depuración y no avisa.
+    $escucha = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+    $escucha.Start()
+    try { return $escucha.LocalEndpoint.Port } finally { $escucha.Stop() }
+}
+
 function EsperarCdp([int]$Puerto, [int]$Limite = 60) {
     $reloj = [Diagnostics.Stopwatch]::StartNew()
     while ($reloj.Elapsed.TotalSeconds -lt $Limite) {
@@ -298,13 +306,20 @@ try {
     Afirmar ((Contar $peticiones) -eq 0) 'el proxy testigo anotó 0 peticiones'
 
     Paso '6b. Ventana de Sílice: WebView2 por CDP, sin red, primer administrador, descarga y cierre'
-    $puertoCdp = 9333
+    $puertoCdp = PuertoLibre
     $regVentana = Nombre 'ventana'
     $ventana = IniciarVentana $puertoCdp $regVentana
     $segVentana = EsperarSalud $Url 60
     Afirmar ($null -ne $segVentana) "la salud con ventana respondió 200 en <= 60 s (fueron $segVentana s)"
     $segCdp = EsperarCdp $puertoCdp 60
-    Afirmar ($null -ne $segCdp) "CDP respondió en <= 60 s (fueron $segCdp s)"
+    Afirmar ($null -ne $segCdp) "CDP respondió en el $puertoCdp en <= 60 s (fueron $segCdp s)"
+    if ($null -eq $segCdp) {
+        # Diagnóstico: con qué orden arrancó WebView2 y qué puertos tiene reservados Windows
+        Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" |
+            Where-Object { $_.CommandLine -match 'remote-debugging|perfil_ventana' } |
+            Select-Object -First 3 | ForEach-Object { Write-Host "  webview2: $($_.CommandLine)" }
+        netsh int ipv4 show excludedportrange protocol=tcp | ForEach-Object { Write-Host "  $_" }
+    }
     & uv run --no-project --with playwright python $navegador --url $UrlApp `
         --cdp "http://127.0.0.1:$puertoCdp" `
         --codigo (Join-Path $Datos 'codigo_instalacion.txt') `
