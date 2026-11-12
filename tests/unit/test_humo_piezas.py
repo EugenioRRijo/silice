@@ -608,6 +608,14 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     assert re.search(r"Remove-Item[^\n]*Env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", despues_finally)
     assert "--sin-navegador" not in iniciar_ventana
     assert "Hidden" not in iniciar_ventana
+    # sin consola propia: con una, `MainWindowHandle` y `CloseMainWindow()` podrían ser los de la
+    # consola (Windows la atribuye al proceso) y no los de la ventana «Sílice»
+    assert "-NoNewWindow" in iniciar_ventana
+    # Python con la salida en archivo la guarda en búfer: los textos del lanzador se leen cuando
+    # ya terminó (`WaitForExit`), no mientras la ventana sigue abierta
+    espera = bloque.index("WaitForExit")
+    assert bloque.index("puerto de depuración") > espera
+    assert bloque.index("Se cerró la ventana de Sílice") > espera
     assert "WEBVIEW2" not in _funcion_del_humo("IniciarSilice")
 
 
