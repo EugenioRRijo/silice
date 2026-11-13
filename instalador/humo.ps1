@@ -102,6 +102,20 @@ function ArbolDe([string]$Carpeta) {
         ForEach-Object { '{0}|{1}' -f $_.FullName.Substring($Carpeta.Length), $_.Length }
 }
 
+function JuegosDe([string]$Carpeta) {
+    # Los juegos de respaldo con su ficha.json (operacion.respaldo): carpeta, motivo y bases
+    Get-ChildItem -LiteralPath $Carpeta -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+        $ficha = Join-Path $_.FullName 'ficha.json'
+        if (-not (Test-Path -LiteralPath $ficha)) { return }
+        $contenido = Get-Content -LiteralPath $ficha -Raw -Encoding utf8 | ConvertFrom-Json
+        [pscustomobject]@{
+            nombre = $_.Name
+            motivo = $contenido.motivo
+            archivos = @($contenido.bases | ForEach-Object { $_.archivo })
+        }
+    }
+}
+
 function AEntero([string]$Ip) {
     $b = [System.Net.IPAddress]::Parse($Ip).GetAddressBytes()
     return ([uint32]$b[0] -shl 24) + ([uint32]$b[1] -shl 16) +
@@ -369,12 +383,16 @@ try {
     Copy-Item (Join-Path $bases 'v1_0_0\demo.db') (Join-Path $casos 'v100_demo.db')
     $servidor = IniciarSilice
     Afirmar ($null -ne (EsperarSalud $Url 60)) 'Sílice arrancó antes de actualizar'
+    # El 6b dejó un juego manual en la misma carpeta (la descarga del respaldo): cuentan solo los
+    # juegos que nacen con la actualización, y entre ellos tiene que estar el de la orden migrar.
+    $juegosAntes = JuegosDe $Respaldos | ForEach-Object { $_.nombre }
     $salidaActualizacion = InstalarSilencioso $Actualizacion (Join-Path $Salida 'actualizacion.log')
     Afirmar ($salidaActualizacion -eq 0) "la actualización terminó con 0 (fue $salidaActualizacion)"
     Afirmar ($null -eq (EsperarSalud $Url 3)) 'el instalador detuvo Sílice antes de copiar'
-    $juegos = @(Get-ChildItem -LiteralPath $Respaldos -Directory -ErrorAction SilentlyContinue |
-        Where-Object { Test-Path (Join-Path $_.FullName 'ficha.json') })
-    Afirmar ($juegos.Count -ge 1) 'existe un juego de respaldo con su ficha'
+    $nuevos = @(JuegosDe $Respaldos | Where-Object { $juegosAntes -notcontains $_.nombre })
+    $migracion = @($nuevos | Where-Object {
+        $_.motivo -eq 'migracion' -and (@($_.archivos) -like '*v050_demo.db').Count -ge 1 })
+    Afirmar ($migracion.Count -eq 1) "la actualización dejó un juego nuevo de migración con la base de la 0.5.0 en su ficha ($($nuevos.Count) juegos nuevos: $(($nuevos | ForEach-Object { $_.nombre }) -join ', '))"
     & uv run python (Join-Path $Raiz 'instalador\verificar_bases.py') --casos $casos `
         --par '0.5.0:demo.db=v050_demo.db' --par '1.0.0:demo.db=v100_demo.db'
     Afirmar ($LASTEXITCODE -eq 0) 'las dos bases están en head y cuadran con su ficha'
