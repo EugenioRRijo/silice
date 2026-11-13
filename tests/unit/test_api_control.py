@@ -968,3 +968,47 @@ def test_un_fallo_de_la_base_en_las_partidas_es_503_fijo(monkeypatch: pytest.Mon
     )
     assert "SELECT" not in r.text and "secreto" not in r.text
     assert r.headers.get("cache-control") == "no-store"
+
+
+# --- ola 2 del 2026-11-13: los días por período salen del plan de la versión ----------------------
+
+
+def test_los_dias_por_periodo_se_leen_del_plan_de_la_version() -> None:
+    navegador, _ = _arma()
+    respuesta = navegador.get(
+        "/v1/control/dias-por-periodo", params={**P, "version": "OB-001"}
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    # OB-S2 se planificó en cuatro «Semana n»
+    assert respuesta.json() == {"dias": "5", "unidad": "semana", "aviso": ""}
+
+
+def test_los_dias_de_una_version_que_no_existe_son_404() -> None:
+    navegador, _ = _arma()
+    respuesta = navegador.get("/v1/control/dias-por-periodo", params={**P, "version": "OB-999"})
+    assert respuesta.status_code == 404
+    assert "OB-999" in respuesta.json()["detalle"]
+
+
+def test_sin_dias_por_periodo_la_linea_base_toma_los_del_plan(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _usar(_plantillas, "vacia", tmp_path, monkeypatch)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "version": "OB-001",
+        "desde": "2026-11-02",
+        "perspectiva": "costo",
+        "inicio": "2026-11-02",
+        "dias_por_periodo": "",
+        "feriados": "",
+        "fuente": ob.FUENTE,
+    }
+    respuesta = navegador.post("/v1/control/linea-base", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    assert "5 día(s) hábil(es) por período" in respuesta.json()["descripcion"]
+    del cuerpo["dias_por_periodo"]  # sin el campo, igual: del plan (antes era 5 fijo)
+    _usar(_plantillas, "vacia", tmp_path, monkeypatch)
+    otra = navegador.post("/v1/control/linea-base", json=cuerpo, headers=cabeceras)
+    assert otra.status_code == 200, otra.text

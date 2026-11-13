@@ -424,3 +424,26 @@ def test_la_curva_pv_ev_ac_cierra_cada_semana_hasta_el_corte(obra):
         assert punto["Periodo"] == periodo
         for serie, valor in (("PV", pv), ("EV", ev), ("AC", ac)):
             assert abs(punto[serie] - valor) <= D("0.005"), (periodo, serie)
+
+
+# --- ola 2 del 2026-11-13: los días por período salen del plan -------------------------------------
+
+
+def test_los_dias_por_periodo_se_proponen_desde_el_plan_de_la_version(obra_sin_linea_base):
+    # OB-S2 tiene un plan de cuatro «Semana n»: 5 días hábiles por período
+    propuesta = control.dias_por_periodo_del_plan(obra_sin_linea_base, ob.NOMBRE, ob.CODIGO)
+    assert (propuesta.dias, propuesta.unidad, propuesta.aviso) == (5, "semana", "")
+
+
+def test_una_version_que_no_existe_no_propone_dias(obra_sin_linea_base):
+    with pytest.raises(control.ControlInvalido, match="OB-999"):
+        control.dias_por_periodo_del_plan(obra_sin_linea_base, ob.NOMBRE, "OB-999")
+
+
+def test_sin_escribir_los_dias_la_linea_base_toma_los_del_plan(obra_sin_linea_base):
+    sesion = obra_sin_linea_base
+    control.declarar_linea_base(
+        sesion, ob.NOMBRE, ob.CODIGO, desde="2026-11-02", perspectiva="costo", inicio="2026-11-02",
+        dias_por_periodo="  ", feriados="", fuente=ob.FUENTE, responsable=ob.RESPONSABLE,
+    )  # fmt: skip
+    assert sesion.scalars(select(models.CalendarioObra)).one().dias_por_periodo == 5

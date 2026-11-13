@@ -147,6 +147,7 @@ TABLA = {
     ("POST", "/v1/control/parametros"): CONTROLAR,
     ("GET", "/v1/control/valuaciones"): CONTROLAR,
     ("GET", "/v1/control/partidas"): CONTROLAR,  # autocompletado AC2
+    ("GET", "/v1/control/dias-por-periodo"): CONTROLAR,  # ola 2: los días salen del plan
     ("POST", "/v1/control/valuaciones"): CONTROLAR,
     ("POST", "/v1/control/valuaciones/{valuacion_id}/anular"): CONTROLAR,
     ("POST", "/v1/control/costos"): CONTROLAR,
