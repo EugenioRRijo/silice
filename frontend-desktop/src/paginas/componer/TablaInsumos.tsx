@@ -8,7 +8,8 @@ import type { SugerenciaDeConsulta } from "../../comun/consulta";
 import { LARGO_MAXIMO } from "../../comun/logicaBusqueda";
 import { ErrorDeApi } from "../../api/cliente";
 import type { OpcionDeBusqueda } from "../../comun/logicaBusqueda";
-import { fechaEsVe } from "../../indicadores/formatoEsVe";
+import { leerCifra } from "../../indicadores/cifraEscrita";
+import { centesimasEsVe, fechaEsVe } from "../../indicadores/formatoEsVe";
 import { COLUMNA_DEL_PRECIO, TABLA_DE_CONSULTA, aplicarEleccion, columnasDelCatalogo } from "./autocompletado";
 import type { Conflicto, Llenado } from "./autocompletado";
 import { CampoDeUnidad } from "../../comun/CampoDeUnidad";
@@ -43,6 +44,17 @@ interface Props {
 }
 
 const AVISO_PROPIA = "Descripción propia: no viene del catálogo.";
+export const NOTA_DOS_DECIMALES =
+  "Los precios con más de dos decimales se leen con dos; al entrar en la celda se ve y se edita el número completo.";
+
+// Ola 2 (2026-11-13; bitácora `2026-11-13-ola2-front.md` §2): un precio con más de dos decimales que no tecleó la persona
+// (el de la lista convertido de Bs trae 28 cifras) se lee con dos en reposo, como una celda de Excel; al entrar en la celda
+// se ve y se edita el número completo, y es lo que viaja. Devuelve la lectura, o null si se ve tal cual. Solo texto.
+function lecturaEnReposo(valor: string): string | null {
+  const lectura = leerCifra(valor);
+  if (!("valor" in lectura) || (lectura.valor.split(".")[1] ?? "").length <= 2) return null;
+  return centesimasEsVe(lectura.valor);
+}
 
 // Que se sabe del origen de una fila: lo ultimo que se tecleo en la descripcion, la ultima que se eligio del catalogo y que
 // celdas lleno el catalogo y con que valor. La descripcion es «propia» (se avisa) si es lo tecleado y no coincide con lo
@@ -128,6 +140,8 @@ export function TablaInsumos({
     setTecleadas({});
     setDeFuera({});
   }
+  // La fila cuya celda del precio tiene el foco: esa se ve con el número completo.
+  const [precioEnEdicion, setPrecioEnEdicion] = useState<number | null>(null);
   const pedidas = useRef(new Set<string>());
   const vivo = useRef(true);
   useEffect(() => {
@@ -348,6 +362,28 @@ export function TablaInsumos({
     return texto === "" ? undefined : texto;
   };
 
+  // La lectura en reposo de la celda del precio, o null si se ve tal cual: con el foco o si lo tecleó la persona, tal cual.
+  const precioEnReposo = (indice: number, fila: Fila): string | null => {
+    const valor = fila[columnaDelPrecio] ?? "";
+    if (indice === precioEnEdicion || tecleadas[indice]?.[columnaDelPrecio] === valor) return null;
+    return lecturaEnReposo(valor);
+  };
+  const algunoEnReposo = filas.some((fila, i) => precioEnReposo(i, fila) !== null);
+
+  // Lo que pinta la celda del precio: el número completo, o su lectura con dos decimales en reposo con el completo en el
+  // `title` y en `data-valor-exacto` (el Esc del panel de Componer vuelve a ese y no a la lectura).
+  const celdaDelPrecio = (indice: number, fila: Fila) => {
+    const valor = fila[columnaDelPrecio] ?? "";
+    const enReposo = precioEnReposo(indice, fila);
+    return enReposo === null
+      ? { value: valor }
+      : {
+          value: enReposo,
+          title: `Precio exacto: ${valor}. Al entrar en la celda se ve y se edita completo.`,
+          "data-valor-exacto": valor,
+        };
+  };
+
   const esPropia = (indice: number, fila: Fila) => {
     const descripcion = fila.descripcion ?? "";
     const marca = marcaDe(indice, fila);
@@ -431,13 +467,24 @@ export function TablaInsumos({
                           alExpirar={alExpirar}
                           enCelda
                         />
+                      ) : c.clave === columnaDelPrecio ? (
+                        <CampoTexto
+                          id={`${tipo}-${i}-${c.clave}`}
+                          size="sm"
+                          labelText={nombre}
+                          hideLabel
+                          helperText={avisoDelPrecio(i, fila)}
+                          {...celdaDelPrecio(i, fila)}
+                          onChange={(e) => editar(i, c.clave, e.target.value)}
+                          onFocus={() => setPrecioEnEdicion(i)}
+                          onBlur={() => setPrecioEnEdicion((n) => (n === i ? null : n))}
+                        />
                       ) : (
                         <CampoTexto
                           id={`${tipo}-${i}-${c.clave}`}
                           size="sm"
                           labelText={nombre}
                           hideLabel
-                          helperText={c.clave === columnaDelPrecio ? avisoDelPrecio(i, fila) : undefined}
                           value={fila[c.clave] ?? ""}
                           onChange={(e) => editar(i, c.clave, e.target.value)}
                         />
@@ -460,6 +507,7 @@ export function TablaInsumos({
           </TableBody>
         </Table>
       </div>
+      {algunoEnReposo && <p className="cds--type-helper-text-01">{NOTA_DOS_DECIMALES}</p>}
       <Button kind="tertiary" size="sm" aria-label={`Agregar fila a ${titulo}`} onClick={alAgregar}>
         Agregar fila
       </Button>
