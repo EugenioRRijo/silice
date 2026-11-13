@@ -21,6 +21,7 @@ Las decisiones se **simularon** (guiones del scratchpad de la ola 2: `sim_fuente
 | 6. Control: días por período desde el plan | sí (§6) | `bbf2be11` → `d4f741c5` (y `docs/api.json` en `4ad7df10`) |
 | 7. La salida del 422 de más de 10.000 días se sigue en pantalla | sí (§7) | `9156a5ac`, `9856ba26` → `4ad7df10` |
 | 8. El selector de partida de las valuaciones ofrece cada renglón | sí (§8) | `741069ba` → `dbd78f3b` |
+| 9. `cambios_entre` ve un cambio solo de especificaciones (el `_frente` de la línea 3; pedido del orquestador) | sí (§9 bis) | `9c472730` → `b9ef6a80` |
 | Acta y congelado al día | sí (acta) | acta y `chore(experimento)` al final de la rama |
 
 ## 1. D-17: la fuente declarada de cada precio
@@ -185,6 +186,31 @@ lleven el `origen_id` del renglón: regla genérica (cualquier presupuesto con u
 propuesta: OB-A en dos renglones de 100 y 50, una valuación de 120 en el renglón 2 debe dar R13 por ese renglón (hoy
 pasa porque 120 ≤ 150); impacto: las valuaciones guardadas (columna nueva, nula para las de antes), R13/R14 y el valor
 ganado por renglón. Necesita el aval del tutor.
+
+## 9 bis. Un cambio solo en las especificaciones de un renglón es un cambio
+
+**El defecto** (pedido del orquestador): la línea 3 (`feature/libro-por-frentes`, aún no unida) guarda el frente de un
+renglón como la directiva `_frente` de sus especificaciones, y `cambios_entre` no comparaba especificaciones: en una
+versión ya guardada, poner solo frentes no habilitaba «Guardar» (y `guardar_version` devolvía `None`).
+
+**Qué se decidió.** `cambios_entre` compara las especificaciones de cada renglón de la versión (`items_base`, no los
+derivados del espacio, que ya cubre el metraje) que está antes y después: si difieren, un `CambioEditado` por renglón,
+objeto `cantidad` (el renglón: `core.budget.edicion.OBJETOS` no se toca), campo `especificaciones` y los pares
+`clave=valor` ordenados («_frente=Frente norte (ficticio)»). La interfaz ya rotula el campo «Especificaciones»
+(`comun/rotulos.ts`).
+
+**Simulación** (pruebas de `test_hoja_recongelado_2.py` y `test_aplicacion_hoja_guardado.py`, casos construidos a mano):
+
+| Caso | Hoy | A: solo `_frente` | **B: cualquier clave** |
+|---|---|---|---|
+| Se pone solo el frente de un renglón | sin cambio ✘ (no se guarda) | cambio | cambio |
+| Cambia otra especificación del renglón (una banda) | sin cambio ✘ (se pierde) | sin cambio ✘ | cambio |
+| Las mismas especificaciones | sin cambio | sin cambio | sin cambio |
+| TI-001: frente en el renglón 1, guardar y reabrir | `None` ✘ | TI-002 con el frente | TI-002 con el frente |
+
+Se elige B: las especificaciones viajan con la versión guardada (`core.budget.persistencia`) y las reglas las leen
+(VR4 la banda, VR3 el suministro), así que cualquier cambio en ellas cambia lo que se guarda; A dejaría perder los demás.
+**Revertir:** quitar `_cambios_de_especificaciones` de `cambios_entre` (re-congelado).
 
 ## 9. Gemini por `agy`
 

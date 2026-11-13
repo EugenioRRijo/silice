@@ -13,7 +13,7 @@ del 2026-11-04 en la rama del PR #100): un solo re-congelado al final, con el á
 `tests/unit/test_experimento_congelado_vigente.py` falla con «auditor cambio desde el congelado»: de las 50 rutas de
 `archivos_del_auditor` (`asistente/experimento/protocolo.json`) cambió una, `aplicacion/hoja.py`
 (`git diff --stat dcb3c0a5 HEAD` de esas rutas, del protocolo, de `mutaciones.py`, de `tests/fixtures/asistente/tareas/` y
-de `core/`: solo `aplicacion/hoja.py`, 64 líneas más y 25 menos, todas del commit `f79ad096`). Las huellas `banco` y
+de `core/`: solo `aplicacion/hoja.py`, 91 líneas más y 26 menos, de los commits `f79ad096` (puntos 1 a 4) y `b9ef6a80` (punto 9)). Las huellas `banco` y
 `protocolo` siguen iguales; solo cambia `auditor`.
 
 Cambia **solo** `asistente/experimento/congelado.json`. `mutaciones.py`, `protocolo.json` y `banco.py` no se tocan, ni las
@@ -38,13 +38,20 @@ Lo que ESTADO §5 dejó para este re-congelado (decisiones y simulaciones en
    («vértices… o más»), `cambiar_insumo` («línea»), `plan_desde_filas` («fracción», «repártala entre los períodos»),
    `_altura` («válida», «número») y `_entero` y `declarar_circuitos_desde_texto` («número», «más», «escribió»,
    «máximos»).
+5. **Punto 9, pedido del orquestador durante la ola** (la línea 3 guarda el frente de un renglón como la directiva
+   `_frente` de sus especificaciones): nuevos `_especificaciones_propias` y `_cambios_de_especificaciones`, y
+   `cambios_entre` los suma tras las cantidades: un renglón de la versión con otras especificaciones es un cambio
+   (objeto `cantidad`, campo `especificaciones`), así que poner solo frentes habilita «Guardar». Decisión simulada
+   (`_frente` solo o cualquier clave) en la bitácora de la ola 2, §9 bis.
 
 **Comprobación.** Árbol sintáctico de `hoja.py` en `dcb3c0a5` (el commit declarado en el congelado anterior) y en HEAD:
-con los textos, cambian `_altura`, `_entero`, `_enum`, `_estado_de_precio`, `_fuentes_heredadas`, `_vertices`,
+con los textos, cambian `_altura`, `_cambios_de_especificaciones`, `_entero`, `_enum`, `_especificaciones_propias`,
+`_estado_de_precio`, `_fuentes_heredadas`, `_vertices`,
 `cambiar_insumo`, `con_plan_por_rendimientos`, `declarar_circuitos_desde_texto`, `estado_de_items`, `filas_de_cierre`,
-`motivo_para_no_guardar`, `plan_desde_filas`, `precios_de_version` y dos imports; **con todas las cadenas vaciadas**
-cambian solo `_estado_de_precio`, `_fuentes_heredadas`, `precios_de_version`, `con_plan_por_rendimientos`,
-`estado_de_items` y los imports (guion `ast_diff.py` del scratchpad de la ola 2).
+`motivo_para_no_guardar`, `plan_desde_filas`, `precios_de_version`, `cambios_entre` y dos imports; **con todas las cadenas vaciadas** cambian solo `_estado_de_precio`,
+`_fuentes_heredadas`, `precios_de_version`, `con_plan_por_rendimientos`, `estado_de_items`, `cambios_entre`,
+`_especificaciones_propias`, `_cambios_de_especificaciones` y los imports (guion `ast_diff.py` del scratchpad de la
+ola 2).
 
 ## Por qué no altera lo que mide el experimento
 
@@ -52,14 +59,15 @@ cambian solo `_estado_de_precio`, `_fuentes_heredadas`, `precios_de_version`, `c
   `asistente/experimento/ejecucion.py::auditor_de_la_hoja` devuelve `hoja.elaborar_borrador(borrador).elaboracion.informe.hallazgos`.
   Ese informe lo arma `core.budget.elaborar` dentro de `elaborar_hoja`, **antes** de `estado_de_items`, que solo lee el
   informe para el Estado de la pantalla (`ResultadoHoja.estado_items`) y no lo cambia; el experimento no lee
-  `estado_items`. `precios_de_version`, `_estado_de_precio`, `con_plan_por_rendimientos` (solo
+  `estado_items`. `cambios_entre` solo lo usan guardar y la pantalla (si hay algo sin guardar); el experimento no
+guarda versiones. `precios_de_version`, `_estado_de_precio`, `con_plan_por_rendimientos` (solo
   `crear_primera_version`), `filas_de_cierre`, `motivo_para_no_guardar` y los mensajes de error no están en su camino:
   el banco construye espacios válidos con `espacio_desde_filas` y el comparador no compara el texto de `HojaInvalida`.
 - **Medido, no solo razonado.** El guion `huella_auditor.py` (scratchpad de la ola 2) corre, sin IA y sin red, la
   medición controlada del protocolo (semilla 20261011, 24 mutantes por tipo, las referencias del conjunto de
   evaluación) y calcula una huella SHA-256 de todos los hallazgos (regla, severidad, descripción, orígenes e impacto) de
   cada referencia y de cada mutante. En una exportación de `e2dfe116` (`git archive`, sin el cambio) y en esta rama con el
-  cambio da lo mismo:
+  cambio da lo mismo (medido otra vez después del punto 9, con el mismo resultado):
 
   | Medida | `e2dfe116` (congelado anterior) | Esta rama |
   |---|---|---|
@@ -79,15 +87,19 @@ cambian solo `_estado_de_precio`, `_fuentes_heredadas`, `precios_de_version`, `c
 |---|---|---|
 | `banco` | `29446b12ebf646d89ef9ccae3b597989e8787757e7fdf9a66024ff098aa3a0b2` | igual |
 | `protocolo` | `e769c50778198e0ad354409b6ad8589b344bf4c73eae9c04f715f7fc9b075bb6` | igual |
-| `auditor` | `18fc3b4ac2d0e309fb8e2f280c4cc3322336ef2af4a5ce37fb2f7d704297408a` | `a1de80205cb7731f74a2b05ac41afbb23c4262e17eb9d63e2a4f924d24037194` |
+| `auditor` | `18fc3b4ac2d0e309fb8e2f280c4cc3322336ef2af4a5ce37fb2f7d704297408a` | `1a89416653b90b11e73237e92d9315b60dd1a4f6da325b494573226914dc6d1f` |
 
-El commit declarado en el nuevo `congelado.json` es el de esta acta.
+El commit declarado en el nuevo `congelado.json` es el de esta acta (su última versión). **Historia:** un primer
+re-congelado de esta misma acta (`ee12cf3c`, huella `a1de80205cb7731f74a2b05ac41afbb23c4262e17eb9d63e2a4f924d24037194`,
+commit declarado `0063b895`) quedó superado el mismo día por el punto 9, que el orquestador pidió durante la ola; se
+re-congela una sola vez más, con esta acta enmendada.
 
 ## Cómo se re-congela y cómo se revierte
 
 `congelar(<commit de esta acta>)` de `asistente/experimento/congelado.py`, con el árbol limpio y en un commit aparte:
-`chore(experimento): segundo re-congelado con acta (2026-11-13)`. Revertir: revertir ese commit y `f79ad096` (vuelve
-`hoja.py` y su huella `18fc3b4a…`); las pruebas de `f79ad096`/`da399c05` habría que revertirlas también.
+`chore(experimento): segundo re-congelado con acta (2026-11-13)`, y otra vez tras el punto 9. Revertir: revertir los
+commits del congelado, `b9ef6a80` y `f79ad096` (vuelve `hoja.py` y su huella `18fc3b4a…`) y sus pruebas (`9c472730`,
+`da399c05`).
 
 **Nota para el PR #100.** Su rama re-congeló sobre `core/contracts/unidades.py`. Cuando se unan, la huella del auditor
 tendrá que volver a calcularse con los cambios juntos, con su acta.
