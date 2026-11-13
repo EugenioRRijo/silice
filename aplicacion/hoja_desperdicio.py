@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.orm import Session
 
 from aplicacion import hoja
+from aplicacion.cifras import BLANCOS
 from aplicacion.composicion import ComposicionInvalida
 from aplicacion.desperdicio import (
     TrazaDesperdicio,
@@ -79,7 +80,7 @@ def con_desperdicio_en_materiales(
     for numero, (linea, texto) in enumerate(
         zip(composicion.materiales, porcentajes, strict=True), start=1
     ):
-        if not texto.strip():
+        if not texto.strip(BLANCOS):  # el recorte de `aplicacion/cifras` (árbitro 13/11, M4)
             lineas.append(linea)
             continue
         try:

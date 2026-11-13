@@ -48,7 +48,6 @@ __all__ = [
     "aplicar_desperdicio",
     "cantidad_con_desperdicio",
     "con_desperdicio",
-    "desperdicios_por_fila",
     "guardar_trazas",
     "leyenda",
     "neta_y_porcentaje",
@@ -147,9 +146,11 @@ def _de_la_linea(fila: Mapping[str, str], traza: TrazaDesperdicio) -> bool:
         cantidad = cifra_escrita(texto_de_celda(fila, "cantidad"))
     except CifraInvalida:
         return False
+    # `texto_de_celda` recorta la fila; la traza de la Hoja guarda la descripción del APU tal
+    # cual, así que se recorta igual (árbitro del 2026-11-13, M3).
     return (
-        texto_de_celda(fila, "descripcion") == traza.descripcion
-        and texto_de_celda(fila, "unidad") == traza.unidad
+        texto_de_celda(fila, "descripcion") == traza.descripcion.strip()
+        and texto_de_celda(fila, "unidad") == traza.unidad.strip()
         and cantidad == traza.cantidad
     )
 
@@ -200,14 +201,6 @@ def trazas_de_las_filas(
         for indice, traza in enumerate(_emparejar(filas, trazas), start=1)
         if traza is not None
     ]
-
-
-def desperdicios_por_fila(
-    filas: Sequence[Mapping[str, str]], trazas: Sequence[TrazaDesperdicio]
-) -> list[tuple[int, str]]:
-    """El número de fila (desde 1) y la neta con su porcentaje de cada fila de materiales que tiene
-    traza, con la misma regla que `con_desperdicio` (la Hoja, F5 vial, punto 1)."""
-    return [(indice, neta_y_porcentaje(t)) for indice, t in trazas_de_las_filas(filas, trazas)]
 
 
 def guardar_trazas(
