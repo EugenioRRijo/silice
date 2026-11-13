@@ -235,9 +235,31 @@ class DeclararLineaBase(BaseModel):
     desde: str
     perspectiva: str
     inicio: str
-    dias_por_periodo: str = "5"
+    #: En blanco (o sin el campo): los del plan de la versión (ola 2 del 2026-11-13, RF-196).
+    dias_por_periodo: str = ""
     feriados: str = ""
     fuente: str
+
+
+class DiasDelPlanRespuesta(BaseModel):
+    dias: str = Field(description="Días hábiles por período que se proponen, como texto")
+    unidad: str = Field(description="dia, semana o mes; vacía si el plan no dice su unidad")
+    aviso: str = Field(description="Por qué se proponen 20 (el plan no dice su unidad); o vacío")
+
+
+@router.get("/dias-por-periodo", response_model=DiasDelPlanRespuesta)
+def dias_por_periodo(
+    sesion: SesionDep, activa: Activa, proyecto: str, version: str
+) -> DiasDelPlanRespuesta:
+    """Los días hábiles por período de la línea base, desde el plan de `version` (RF-196)."""
+    nombre = _existe(sesion, proyecto)
+    try:
+        propuesta = logica.dias_por_periodo_del_plan(sesion, nombre, version)
+    except logica.ControlInvalido as error:
+        raise HTTPException(404, str(error)) from None
+    return DiasDelPlanRespuesta(
+        dias=str(propuesta.dias), unidad=propuesta.unidad, aviso=propuesta.aviso
+    )
 
 
 class DescripcionRespuesta(BaseModel):

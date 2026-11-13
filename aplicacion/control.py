@@ -45,6 +45,7 @@ from core.budget.control import (
     precios_del_corte_de_version,
 )
 from core.budget.decision import aplicar_decision, decisiones
+from core.budget.instantanea import plan_de_version
 from core.budget.excel import TablaExportable
 from core.budget.recuperacion import Opcion, opciones
 from core.budget.valor_ganado import (
@@ -86,6 +87,10 @@ __all__ = [
     "METODOS_DE_PRECIOS",
     "PARAMETROS_EDITABLES",
     "ControlInvalido",
+    "DIAS_POR_OMISION",
+    "DiasDelPlan",
+    "dias_de_las_etiquetas",
+    "dias_por_periodo_del_plan",
     "PrecioElegido",
     "PLANTILLAS_DEL_NUCLEO",
     "catalogo_de_frases",
@@ -326,6 +331,68 @@ def partidas_de_la_linea_base(
     return partidas_de_la_version(sesion, sesion.get(models.Presupuesto, fila.presupuesto_id))
 
 
+#: Días hábiles por período que se proponen si el plan no dice su unidad: un mes de cuatro semanas
+#: de cinco días (ola 2 del 2026-11-13; los de `aplicacion.plan_rendimientos.DIAS_POR_MES`).
+DIAS_POR_OMISION = 20
+#: Los días hábiles de un período del plan por el nombre de su etiqueta («Dia n», «Semana n»,
+#: «Mes n», las de `aplicacion.plan_rendimientos`; «Día» con tilde también).
+_DIAS_DE_LA_UNIDAD = {"dia": 1, "semana": 5, "mes": 20}
+_ETIQUETA = re.compile(r"^(d[ií]a|semana|mes) [0-9]+( \([0-9]+\))?$", re.IGNORECASE)
+_PLAN_SIN_UNIDAD = (
+    "El plan de la versión no dice su unidad (sus períodos no son «Dia n», «Semana n» ni "
+    "«Mes n»): se proponen 20 días hábiles, un mes. Cámbielo si sus períodos duran otra cosa."
+)
+_SIN_PLAN = "La versión no tiene plan de trabajo: se proponen 20 días hábiles, un mes."
+
+
+@dataclass(frozen=True, slots=True)
+class DiasDelPlan:
+    """Los días hábiles por período que se proponen para la línea base, la unidad del plan de la
+    que salen («dia», «semana», «mes» o vacía si el plan no la dice) y el aviso de ese caso."""
+
+    dias: int
+    unidad: str
+    aviso: str
+
+
+def dias_de_las_etiquetas(etiquetas: Sequence[str]) -> DiasDelPlan:
+    """Los días por período de un plan por sus etiquetas: todas de la misma unidad («Dia n» 1,
+    «Semana n» 5, «Mes n» 20); si no, o sin plan, `DIAS_POR_OMISION` con su aviso.
+
+    Control cuenta cada período del plan como `dias_por_periodo` días hábiles: con 5 fijos, un plan
+    por días quedaba cinco veces más largo (ola 2 del 2026-11-13, simulación en la bitácora)."""
+    if not etiquetas:
+        return DiasDelPlan(DIAS_POR_OMISION, "", _SIN_PLAN)
+    unidades = set()
+    for etiqueta in etiquetas:
+        encontrada = _ETIQUETA.match(etiqueta.strip())
+        if encontrada is None:
+            return DiasDelPlan(DIAS_POR_OMISION, "", _PLAN_SIN_UNIDAD)
+        unidades.add(encontrada.group(1).lower().replace("í", "i"))
+    if len(unidades) != 1:
+        return DiasDelPlan(DIAS_POR_OMISION, "", _PLAN_SIN_UNIDAD)
+    unidad = unidades.pop()
+    return DiasDelPlan(_DIAS_DE_LA_UNIDAD[unidad], unidad, "")
+
+
+def _version(sesion: Session, proyecto: str, version: str) -> models.Presupuesto:
+    modelo = sesion.scalars(
+        select(models.Presupuesto)
+        .join(models.Proyecto)
+        .where(models.Proyecto.nombre == proyecto, models.Presupuesto.codigo == version)
+    ).one_or_none()
+    if modelo is None:
+        raise ControlInvalido(f"La obra no tiene la versión «{version}».")
+    return modelo
+
+
+def dias_por_periodo_del_plan(sesion: Session, proyecto: str, version: str) -> DiasDelPlan:
+    """Los días por período que se proponen para declarar la línea base sobre `version`, desde su
+    plan guardado (`dias_de_las_etiquetas`). `ControlInvalido` si la versión no existe."""
+    plan = plan_de_version(sesion, _version(sesion, proyecto, version)) or []
+    return dias_de_las_etiquetas([etiqueta for etiqueta, _ in plan])
+
+
 def declarar_linea_base(
     sesion: Session,
     proyecto: str,
@@ -340,7 +407,10 @@ def declarar_linea_base(
     responsable: str,
 ) -> None:
     """Declara la línea base de control (RF-72) desde los textos de la pantalla. Los feriados van
-    separados por comas o saltos de línea, en AAAA-MM-DD."""
+    separados por comas o saltos de línea, en AAAA-MM-DD. Sin `dias_por_periodo` (en blanco), los
+    del plan de la versión (`dias_por_periodo_del_plan`, RF-196)."""
+    if not dias_por_periodo.strip():
+        dias_por_periodo = str(dias_por_periodo_del_plan(sesion, proyecto, version).dias)
     dias = _decimal(dias_por_periodo, "dias por periodo")
     if dias != dias.to_integral_value():
         raise ControlInvalido(f"dias por periodo: {dias_por_periodo!r} debe ser un entero")
