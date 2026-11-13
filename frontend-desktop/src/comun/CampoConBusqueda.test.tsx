@@ -585,4 +585,41 @@ describe("CampoConBusqueda: en una celda (§3.7)", () => {
     fireEvent.keyDown(entrada, { key: "Escape" });
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
+
+  test("E2E-3: cerca del borde inferior de la ventana la lista se abre sobre el campo, no fuera de la vista", async () => {
+    const u = usuario();
+    const alto = window.innerHeight;
+    window.innerHeight = 900;
+    try {
+      function EnCelda() {
+        const [texto, setTexto] = useState("");
+        return (
+          <CampoConBusqueda<string>
+            id="celda"
+            etiqueta="Descripción, fila 3"
+            texto={texto}
+            alCambiarTexto={setTexto}
+            buscar={buscar}
+            alElegir={(o) => setTexto(o.valor)}
+            vacio={VACIO}
+            alExpirar={() => {}}
+            enCelda
+          />
+        );
+      }
+      render(<EnCelda />);
+      const entrada = screen.getByRole("combobox", { name: "Descripción, fila 3" });
+      // La tercera fila de la tabla, a 26 px del borde inferior de una ventana de 900 px.
+      entrada.getBoundingClientRect = () => ({ top: 842, bottom: 874, left: 40, right: 240, width: 200, height: 32, x: 40, y: 842, toJSON: () => ({}) });
+      await u.type(entrada, "tub");
+      await avanzar(300);
+      await responder(0, grupo(TRES));
+      const panel = screen.getByRole("listbox", { name: "Descripción, fila 3" }).closest(".silice-busqueda__panel") as HTMLElement;
+      expect(panel.style.top).toBe("auto");
+      expect(panel.style.bottom).toBe("58px"); // 900 - 842: el borde inferior del panel toca el borde superior del campo
+      expect(panel.style.left).toBe("40px");
+    } finally {
+      window.innerHeight = alto;
+    }
+  });
 });
