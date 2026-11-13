@@ -133,7 +133,7 @@ def test_las_trazas_se_guardan_y_manda_el_ultimo_guardado(sesion: Session):
 
 
 def _por_fila(filas, trazas) -> list[tuple[int, str]]:
-    """La fila (desde 1) y «neta + porcentaje» de cada material con traza, como la vista de la Hoja."""
+    """La fila (desde 1) y «neta + porcentaje» de cada material con traza, como en la Hoja."""
     return [(i, neta_y_porcentaje(traza)) for i, traza in trazas_de_las_filas(filas, trazas)]
 
 

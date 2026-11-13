@@ -505,7 +505,7 @@ def test_el_libro_entero_tiene_un_tope_de_celdas():
 
 
 # --- El porcentaje del pie a la izquierda de su rótulo (libro vial real, 2026-11-13) ---
-# Un libro real escribe «p | Administración (%) | … | monto»: el porcentaje a la IZQUIERDA del
+# Un libro de empresa escribe «p | Administración (%) | … | monto»: el porcentaje a la IZQUIERDA del
 # rótulo y el monto a la derecha. Leer «el primer número a la derecha» tomaba el monto por
 # porcentaje y daba un AH1 falso en cada hoja. El perfil dice de qué lado está
 # (`lado_de_los_porcentajes`, «derecha» por omisión, como el libro ficticio). Datos FICTICIOS.

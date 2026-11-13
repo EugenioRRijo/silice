@@ -13,9 +13,9 @@ financiamiento, impuesto): una guardia, un modelo y las mismas celdas citables (
   los renglones sin él y el precio unitario no cuadraría).
 - Los porcentajes del pie (prestaciones, administración, utilidad, financiamiento, impuesto) son el
   primer número a la derecha de su rótulo o, si el perfil dice `lado_de_los_porcentajes:
-  "izquierda"`, el más cercano a su izquierda (un libro real escribe «p | Administración (%) | … |
-  monto»: leer a la derecha tomaba el monto; prueba local del 2026-11-13), y se guardan como
-  fracción (250 → 2,5). Faltar la
+  "izquierda"`, el más cercano a su izquierda (un libro de empresa escribe «p | Administración
+  (%) | … | monto»: leer a la derecha tomaba el monto; prueba local del 2026-11-13), y se guardan
+  como fracción (250 → 2,5). Faltar la
   administración, la utilidad, el rendimiento o el precio unitario hace la hoja no interpretable
   (`LibroNoInterpretable`, con la hoja y el rótulo); las prestaciones, el financiamiento y el
   impuesto que falten valen 0.
