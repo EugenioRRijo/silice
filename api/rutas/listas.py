@@ -155,9 +155,14 @@ def comprobar_libro_legible(ruta: Path) -> None:
     datos = ruta.read_bytes()
     try:
         verificar_archivo(datos, ruta.name)
-        comprobar_topes_del_libro(datos, ruta.name)
     except ArchivoRechazado as error:
         raise ValueError(f"{ruta.name}: no se puede leer como libro de Excel ({error})") from error
+    try:
+        comprobar_topes_del_libro(datos, ruta.name)
+    except ArchivoRechazado as error:
+        # Su aviso ya nombra el libro, la hoja y el tope; el libro se lee, así que no se le
+        # antepone «no se puede leer» (simulación de las decisiones de los topes, 2026-11-12).
+        raise ValueError(str(error)) from error
 
 
 def _elegidos(
