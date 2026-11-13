@@ -124,3 +124,11 @@ Auditorías de Gemini de esta tanda:
 - **Hydrogen xhigh**, sobre el repositorio entero: agotó los 25 min sin responder.
 - **Hydrogen high**, sobre el diff de los topes: aprobado. Su único MENOR, un comentario de `comprobar_libro_legible`,
   está corregido.
+
+## 7. El tráfico propio de WebView2 se informa (2026-11-13)
+
+La humo con la decisión (e) encontró una conexión de WebView2 a Microsoft. Se simuló en local con cuatro variantes:
+como está, SmartScreen apagado, sin el actualizador de componentes y sin la red de fondo. Las cuatro abren una
+conexión a servicios de Microsoft. Por eso la humo informa ese tráfico en lugar de fallar, y sigue estricta con
+el `python.exe` de Sílice y con la página. Detalle en `docs/bitacora/2026-11-06-ventana-v0.md` §3.6. La excepción en
+RNF-08 y RF-98 queda por ratificar con el tutor (ESTADO §4, punto 10).

@@ -110,6 +110,11 @@ lectura sale con tildes por `aplicacion/hoja_guardado.py`, la ruta del producto;
    permiso explícito `SILICE_PERMITIR_DEPURACION_VENTANA=1`, que solo pone la humo, algo que pide el puerto de
    depuración abre el navegador en vez de la ventana; (f) el instalador de WebView2 de la CI exige el firmante
    `O=Microsoft Corporation`. Todas son reversibles y esperan su ratificación.
+   **Por ratificar con el tutor:** el runtime de WebView2 abre por su cuenta conexiones a servicios de Microsoft
+   (medido en la CI y en local, aunque se apaguen SmartScreen, el actualizador de componentes o la red de fondo;
+   [bitácora V0 §3.6](bitacora/2026-11-06-ventana-v0.md)). La humo ahora lo informa sin fallar. RNF-08 y RF-98
+   dicen «0 conexiones salientes»: hay que declarar la excepción o sacar la ventana de lo que mide RF-98, como
+   ya pasa con el navegador.
 9. Tesis: aval del tutor para el PR #100, mediciones con personas (Med) y la respuesta de la Dirección de Investigación.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
