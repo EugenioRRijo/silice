@@ -388,3 +388,32 @@ def test_el_motivo_para_no_crear_la_primera_dice_lo_primero_que_falta() -> None:
         "Escriba el responsable: quién crea esta primera versión."
     )
     assert hoja.motivo_para_no_crear_primera(lleno, "x", "y") is None
+
+
+# --- ola 2 del 2026-11-13, punto 9: un cambio solo de frente se guarda ------------------------
+
+
+def test_poner_solo_el_frente_de_un_renglon_guarda_la_version_y_el_frente_vuelve(
+    _plantillas, abrir_caso
+) -> None:
+    """La línea 3 guarda el frente como `_frente` en las especificaciones del renglón (directiva
+    construida aquí a mano, FICTICIA). Antes `cambios_entre` no lo veía: guardar no hacía nada."""
+    caso = abrir_caso(_plantillas[1])
+    abierta = caso.abrir(NOMBRE_TI001, caso_ti001.CODIGO)
+    caso.sesion.commit()
+    primero = abierta.borrador.items_base[0]
+    con_frente = replace(
+        primero, especificaciones={**primero.especificaciones, "_frente": "Frente norte (ficticio)"}
+    )
+    editado = replace(abierta.borrador, items_base=(con_frente, *abierta.borrador.items_base[1:]))
+    guardada = _guardar(caso, abierta, editado)
+    assert guardada is not None and guardada.codigo == "TI-002" and guardada.cambios == 1
+    objeto, clave, campo, _, nuevo = caso.registros(NOMBRE_TI001, "TI-002")[0][:5]
+    assert (objeto, clave, campo) == (
+        "cantidad",
+        hoja.claves_de_items(abierta.borrador.items_base)[0],
+        "especificaciones",
+    )
+    assert "_frente=Frente norte (ficticio)" in nuevo
+    reabierta = caso.abrir(NOMBRE_TI001, "TI-002")
+    assert reabierta.borrador.items_base[0].especificaciones["_frente"] == "Frente norte (ficticio)"

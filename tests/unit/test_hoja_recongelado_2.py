@@ -12,12 +12,14 @@ Datos FICTICIOS: la vivienda de `tests/fixtures/obra_vivienda.py`.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 
 import pytest
 
 from aplicacion import hoja
 from aplicacion.errores import HojaInvalida
+from core.budget.edicion import CambioEditado
 from core.contracts import ParametrosCosto, Severidad
 from core.contracts.apu import ResultadoAPU
 from core.contracts.verificacion import Hallazgo
@@ -141,3 +143,45 @@ def test_los_422_de_guardar_van_con_tildes(fuente, responsable, mensaje):
         composiciones=COMPOSICIONES,
     )  # fmt: skip
     assert hoja.motivo_para_no_guardar(base, actual, fuente, responsable) == mensaje
+
+
+# --- punto 9: un cambio solo en las especificaciones de un renglón es un cambio ------------------
+#
+# La línea 3 de la ola 2 guarda el frente de un renglón como la directiva `_frente` de sus
+# especificaciones; `cambios_entre` no lo veía y «Guardar» no se habilitaba. El caso se construye a
+# mano, sin el código de la línea 3. La simulación (`_frente` solo o cualquier clave) está en la
+# bitácora de la ola 2, §9 bis.
+
+FRENTE = "Frente norte (ficticio)"
+
+
+def _con_especificaciones(items, indice: int, **especificaciones):
+    elegido = items[indice]
+    nuevas = {**elegido.especificaciones, **especificaciones}
+    return tuple(
+        replace(i, especificaciones=nuevas) if n == indice else i for n, i in enumerate(items)
+    )
+
+
+def test_poner_solo_el_frente_de_un_renglon_es_un_cambio_y_habilita_guardar():
+    base = _borrador(*ITEMS)
+    actual = _borrador(*_con_especificaciones(ITEMS, 1, _frente=FRENTE))
+    clave = hoja.claves_de_items(ITEMS)[1]
+    assert hoja.cambios_entre(base, actual) == [
+        CambioEditado("cantidad", clave, "especificaciones", "", f"_frente={FRENTE}")
+    ]
+    assert hoja.motivo_para_no_guardar(base, actual, "acta 1", "Ana") is None
+
+
+def test_cambiar_otra_especificacion_del_renglon_tambien_es_un_cambio():
+    base = _borrador(*_con_especificaciones(ITEMS, 0, banda="0-10 km"))
+    actual = _borrador(*_con_especificaciones(ITEMS, 0, banda="10-20 km"))
+    clave = hoja.claves_de_items(ITEMS)[0]
+    assert hoja.cambios_entre(base, actual) == [
+        CambioEditado("cantidad", clave, "especificaciones", "banda=0-10 km", "banda=10-20 km")
+    ]
+
+
+def test_las_mismas_especificaciones_no_son_un_cambio():
+    con_frente = _con_especificaciones(ITEMS, 2, _frente=FRENTE)
+    assert hoja.cambios_entre(_borrador(*con_frente), _borrador(*con_frente)) == []
