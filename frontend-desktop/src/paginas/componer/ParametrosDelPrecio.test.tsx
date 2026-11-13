@@ -66,6 +66,8 @@ const VALIDA = {
   contraste: null,
 };
 const ESPERA = { timeout: 3000 };
+// Solo lo que Componer lee de la Hoja de la obra: el borrador abierto.
+const OBRA_ABIERTA = { estado: { estado: "listo", borrador: { id: "b-1" } } } as unknown as HojaDeLaObra;
 
 describe("Componer: parámetros del precio unitario (RF-200)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
@@ -109,7 +111,7 @@ describe("Componer: parámetros del precio unitario (RF-200)", () => {
       <ContextoAplicacion.Provider value={valor}>
         <MemoryRouter>
           {conObra ? (
-            <ContextoDeLaHoja.Provider value={{ id: "b-1" } as HojaDeLaObra}>{componer}</ContextoDeLaHoja.Provider>
+            <ContextoDeLaHoja.Provider value={OBRA_ABIERTA}>{componer}</ContextoDeLaHoja.Provider>
           ) : (
             componer
           )}
