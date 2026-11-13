@@ -93,13 +93,21 @@ def con_desperdicio_en_materiales(
         cantidad = cantidad_con_desperdicio(linea.cantidad, porcentaje)
         lineas.append(replace(linea, cantidad=cantidad))
         trazas.append(
-            TrazaDesperdicio(linea.descripcion, linea.unidad, linea.cantidad, porcentaje, cantidad)
+            # recortadas como las de Componer (`texto_de_celda`): unir y por_guardar las comparan
+            # con las vigentes (Argon, ronda 2 del árbitro, 2026-11-13)
+            TrazaDesperdicio(
+                linea.descripcion.strip(),
+                linea.unidad.strip(),
+                linea.cantidad,
+                porcentaje,
+                cantidad,
+            )
         )
     return replace(composicion, materiales=tuple(lineas)), tuple(trazas)
 
 
 def _clave(traza: TrazaDesperdicio) -> tuple:
-    return (traza.descripcion, traza.unidad, traza.cantidad)
+    return (traza.descripcion.strip(), traza.unidad.strip(), traza.cantidad)
 
 
 def unir(
