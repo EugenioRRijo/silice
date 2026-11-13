@@ -30,7 +30,7 @@ from fastapi.testclient import TestClient
 from api import caso_web, dependencias
 from api.main import app
 from api.rutas import hoja as rutas_hoja
-from aplicacion import hoja, hoja_borradores, hoja_edicion
+from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_guardado
 from aplicacion.errores import HojaInvalida
 from aplicacion.listas_para_armar import declarar_moneda_de_la_carpeta
 from aplicacion.plan_rendimientos import (
@@ -42,6 +42,7 @@ from aplicacion.plan_rendimientos import (
     paralelas_del_plan,
     plan_del_borrador,
     plan_por_rendimientos,
+    plan_que_cabe,
 )
 from core.budget import crear_proyecto
 from core.budget.moneda import declarar_moneda
@@ -507,3 +508,87 @@ def test_la_ruta_con_un_rev_viejo_es_409_y_con_cuadrillas_malas_422(navegador):
         {"rev": rev, "cuadrillas": {"OBRA-04": "0"}, "paralelas": [], "unidad": "dia"},
     )
     assert (malo.status_code, malo.json()["detalle"]) == (422, CUADRILLAS_INVALIDAS)
+
+
+# --- la primera versión de una obra larga (prueba de punta a punta del 2026-11-13, D-2) --------
+#
+# Un presupuesto grande no se podía guardar: el plan por días pasaba de 500 períodos y Guardar
+# respondía 422 desde otra pestaña, sin plan todavía para poner cuadrillas. Decisión simulada
+# (bitácora 2026-11-13-e2e-precios §1): la primera versión sube de unidad, días → semanas → meses
+# de 20 días hábiles, la primera que cabe, y lo dice. Datos FICTICIOS: la vivienda con OBRA-01
+# agrandada (como 60.000 m2 a 100 m2/día).
+
+AVISO_SEMANAS = (
+    "El plan por días tendría 654 períodos y la matriz admite 500: se armó por semanas "
+    "(131 períodos). Puede rehacerlo con cuadrillas en «Plan y equilibrio»."
+)
+
+
+def test_el_plan_que_cabe_de_la_vivienda_es_el_de_dias_sin_aviso():
+    plan, unidad, aviso = plan_que_cabe(ITEMS, COMPOSICIONES)
+    assert (unidad, aviso) == ("dia", "")
+    assert plan == plan_del_borrador(ITEMS, COMPOSICIONES)[0]
+
+
+def test_con_600_dias_de_una_partida_el_plan_que_cabe_va_por_semanas_y_lo_dice():
+    # OBRA-01: 2.700 ÷ 4,5 = 600 días; con las otras cinco (2 + 4 + 17,5 + 23,5 + 7 = 54) son
+    # 654 días → 654 períodos > 500; en semanas 654 ÷ 5 = 130,8 → 131
+    items = [item("OBRA-01", "2700"), *ITEMS[1:]]
+    plan, unidad, aviso = plan_que_cabe(items, COMPOSICIONES)
+    assert unidad == "semana"
+    assert [e for e, _ in plan] == [f"Semana {n}" for n in range(1, 132)]
+    assert aviso == AVISO_SEMANAS
+
+
+def test_si_tampoco_cabe_en_semanas_va_por_meses_de_20_dias_habiles():
+    # OBRA-01: 13.500 ÷ 4,5 = 3.000 días; con las otras 54, 3.054 → 3.054 ÷ 5 = 610,8 → 611
+    # semanas > 500; en meses de 20 días 3.054 ÷ 20 = 152,7 → 153
+    items = [item("OBRA-01", "13500"), *ITEMS[1:]]
+    plan, unidad, aviso = plan_que_cabe(items, COMPOSICIONES)
+    assert unidad == "mes"
+    assert [e for e, _ in plan] == [f"Mes {n}" for n in range(1, 154)]
+    assert aviso == (
+        "El plan por días tendría 3.054 períodos y la matriz admite 500: se armó por meses de 20 "
+        "días hábiles (153 períodos). Puede rehacerlo con cuadrillas en «Plan y equilibrio»."
+    )
+    # cada partida suma exactamente 1
+    for codigo in CODIGOS:
+        assert sum(_fracciones(plan, codigo).values()) == 1
+
+
+def test_si_ni_en_meses_cabe_lo_dice_con_la_salida():
+    # OBRA-01: 45.004,5 ÷ 4,5 = 10.001 días; con las otras 54, 10.055 ÷ 20 = 502,75 → 503 meses
+    with pytest.raises(PlanDemasiadoLargo) as error:
+        plan_que_cabe([item("OBRA-01", "45004.5"), *ITEMS[1:]], COMPOSICIONES)
+    assert str(error.value) == (
+        "El plan desde los rendimientos tendría 503 meses y la matriz admite 500 períodos: en "
+        "«Plan y equilibrio» cree el plan y asigne más cuadrillas a las partidas largas, y "
+        "vuelva a guardar."
+    )
+
+
+def test_la_primera_version_de_una_obra_de_600_dias_se_guarda_por_semanas_y_lo_dice(base):
+    borrador = hoja.Borrador(
+        fecha=FECHA, moneda="Bs", items_base=(item("OBRA-01", "2700"), *ITEMS[1:])
+    )
+    vivo = hoja_borradores.crear("ficha", "caso", OBRA, None, borrador, None)
+    guardado = hoja_guardado.guardar(
+        base, "ficha", vivo.id, 0, fuente="Medición en sitio", responsable=ANA
+    )
+    assert guardado.codigo == "001" and guardado.primera
+    assert guardado.mensaje.endswith(AVISO_SEMANAS)
+    abierta = hoja.abrir_version(base, Catalogo(base), OBRA, "001")
+    assert [e for e, _ in abierta.borrador.plan] == [f"Semana {n}" for n in range(1, 132)]
+    presupuesto = abierta.guardada.presupuesto
+    assert presupuesto.curva[-1].acumulado == presupuesto.total
+
+
+def test_la_primera_version_de_la_vivienda_por_el_servicio_sigue_por_dias_sin_aviso(base):
+    borrador = hoja.Borrador(fecha=FECHA, moneda="Bs", items_base=ITEMS)
+    vivo = hoja_borradores.crear("ficha", "caso", OBRA, None, borrador, None)
+    guardado = hoja_guardado.guardar(
+        base, "ficha", vivo.id, 0, fuente="Medición en sitio", responsable=ANA
+    )
+    assert guardado.mensaje.endswith("Quedó registrada su creación, con su fuente y su responsable.")
+    abierta = hoja.abrir_version(base, Catalogo(base), OBRA, "001")
+    assert [e for e, _ in abierta.borrador.plan] == _dias(58)

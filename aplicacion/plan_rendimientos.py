@@ -261,3 +261,10 @@ def plan_del_borrador(
         else:
             plan.append((_etiqueta(1, unidad), fuera))
     return plan, [d.aviso for d in lista if d.aviso]
+
+
+def plan_que_cabe(
+    items: Sequence[ItemComputo], composiciones: Mapping[str, ComposicionAPU]
+) -> tuple[list[PeriodoPlan], Unidad, str]:
+    """Pendiente (rojo de la prueba de punta a punta del 2026-11-13, D-2)."""
+    raise NotImplementedError
