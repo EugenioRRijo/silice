@@ -678,6 +678,25 @@ def test_humo_no_pisa_la_politica_de_webview2_que_ya_tuviera_el_equipo() -> None
     assert "GetValue('python.exe'" in _funcion_del_humo("ValorPoliticaCdp")
 
 
+def test_humo_muestrea_tambien_el_webview2_de_la_ventana() -> None:
+    """La red de la ventana la hace WebView2 (`msedgewebview2.exe`), no el `python.exe` de {app}:
+    el muestreo de conexiones mira también esos procesos (hijos, a cualquier profundidad, del
+    python.exe de {app}, o con el perfil de la ventana en su orden), y el paso 9 exige que los haya
+    visto (si no, «ninguna conexión» no diría nada) y que no tengan conexiones TCP ajenas."""
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    inicio = texto.index("$Muestreo = {")
+    muestreo = texto[inicio : texto.index("\n}\n", inicio)]
+    assert "msedgewebview2.exe" in muestreo
+    assert "perfil_ventana" in muestreo
+    assert "ParentProcessId" in muestreo
+    assert "$archivoWeb" in muestreo and "$archivoWeb.pids" in muestreo
+    assert "'conexiones-webview2.log'" in texto[texto.index("Paso '4.") : texto.index("Paso '5.")]
+    paso9 = texto[texto.index("Paso '9.") : texto.index("Paso '10.")]
+    assert "conexiones-webview2.log.pids" in paso9
+    assert "el muestreo vio los msedgewebview2.exe de la ventana" in paso9
+    assert "no vio conexiones TCP ajenas de WebView2" in paso9
+
+
 def test_workflow_instalador_asegura_webview2_antes_del_humo() -> None:
     flujo = (RAIZ / ".github" / "workflows" / "instalador.yml").read_text(encoding="utf-8")
     guid = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
