@@ -280,6 +280,10 @@ class PartidaDelContrato:
     codigo: str
     descripcion: str
     unidad: str
+    #: Por renglón (`renglones_de_la_version`): su número en el presupuesto (desde 1) y cuántos
+    #: renglones tiene su código. `None` en la lista por código.
+    renglon: int | None = None
+    renglones: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -318,6 +322,38 @@ def partidas_de_la_version(sesion: Session, version: models.Presupuesto) -> Part
     return PartidasDeUnaVersion(version.codigo, tuple(todas[:tope]), len(todas) > tope)
 
 
+def renglones_de_la_version(sesion: Session, version: models.Presupuesto) -> PartidasDeUnaVersion:
+    """Los renglones de una versión guardada, uno por renglón y en el orden del presupuesto, con su
+    número y cuántos renglones tiene su código (ola 2 del 2026-11-13, RF-197): un contrato que
+    repite un código en dos frentes los ofrece los dos. La valuación sigue siendo por código (el
+    núcleo suma los renglones de un código, `core.budget.valuaciones`). Misma consulta ligera y
+    mismo tope que `partidas_de_la_version`."""
+    filas = list(
+        sesion.execute(
+            select(
+                models.ItemComputo.codigo_partida,
+                models.ItemComputo.descripcion,
+                models.ItemComputo.unidad,
+            )
+            .join(
+                models.PartidaPresupuestada,
+                models.PartidaPresupuestada.item_computo_id == models.ItemComputo.id,
+            )
+            .where(models.PartidaPresupuestada.presupuesto_id == version.id)
+            .order_by(models.PartidaPresupuestada.orden)
+        )
+    )
+    por_codigo: dict[str, int] = {}
+    for codigo, _, _ in filas:
+        por_codigo[codigo] = por_codigo.get(codigo, 0) + 1
+    todas = [
+        PartidaDelContrato(codigo, descripcion, unidad, numero, por_codigo[codigo])
+        for numero, (codigo, descripcion, unidad) in enumerate(filas, start=1)
+    ]
+    tope = MAXIMO_DE_PARTIDAS_DEL_CONTRATO
+    return PartidasDeUnaVersion(version.codigo, tuple(todas[:tope]), len(todas) > tope)
+
+
 def partidas_de_la_linea_base(
     sesion: Session, proyecto: str, corte: date | None = None
 ) -> PartidasDeUnaVersion | None:
@@ -328,7 +364,7 @@ def partidas_de_la_linea_base(
     fila = linea_base_vigente(sesion, proyecto, date.max if corte is None else corte)
     if fila is None:
         return None
-    return partidas_de_la_version(sesion, sesion.get(models.Presupuesto, fila.presupuesto_id))
+    return renglones_de_la_version(sesion, sesion.get(models.Presupuesto, fila.presupuesto_id))
 
 
 #: Días hábiles por período que se proponen si el plan no dice su unidad: un mes de cuatro semanas
