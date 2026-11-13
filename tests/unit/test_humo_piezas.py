@@ -603,10 +603,9 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     ):
         assert pieza in bloque, pieza
     iniciar_ventana = _funcion_del_humo("IniciarVentana")
-    assert "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" in iniciar_ventana
-    # solo la hereda ese proceso: se quita en el `finally`, también si Start-Process falla
-    despues_finally = iniciar_ventana[iniciar_ventana.index("finally") :]
-    assert re.search(r"Remove-Item[^\n]*Env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", despues_finally)
+    # La variable de WebView2 no sirve en el proceso elevado de la humo (la ignora desde el runtime
+    # 150): el puerto lo abre solo la política de HKLM, y la variable ya no se pone en ningún sitio
+    assert "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" not in texto
     assert "--sin-navegador" not in iniciar_ventana
     assert "Hidden" not in iniciar_ventana
     # sin consola propia: con una, `MainWindowHandle` y `CloseMainWindow()` podrían ser los de la
@@ -637,6 +636,16 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     assert r"Policies\Microsoft\Edge" in bloque  # diagnóstico: las políticas del runner
     espera = bloque.index("WaitForExit")
     assert bloque.index("puerto de depuración") > espera
+    # el aviso del lanzador nombra la política que abrió el puerto (no basta «depuración»): el
+    # texto exacto sale de `operacion.ventana` y de `lanzador.arrancar`
+    from operacion import ventana
+
+    aviso = (
+        f"AVISO: La política HKEY_LOCAL_MACHINE\\{ventana.POLITICA_ARGUMENTOS_WEBVIEW2} "
+        "(valor «python.exe») pide un puerto de depuración"
+    )
+    assert f"$avisoPolitica = '{aviso}'" in bloque
+    assert bloque.index("$textoVentana.Contains($avisoPolitica)") > espera
     assert bloque.index("Se cerró la ventana de Sílice") > espera
     assert "WEBVIEW2" not in _funcion_del_humo("IniciarSilice")
 
