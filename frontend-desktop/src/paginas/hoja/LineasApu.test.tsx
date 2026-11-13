@@ -185,6 +185,17 @@ describe("Hoja de la obra: agregar y quitar líneas del APU de la versión (Tare
     await screen.findByRole("textbox", { name: "Cantidad, Materiales fila 1" });
   }
 
+  // F5 vial, punto 1: el desperdicio que manda el servidor sale en Materiales y en ningún otro rubro.
+  test("el desperdicio de la línea de materiales sale junto a su cantidad, solo en Materiales", async () => {
+    const base = vistaApu().detalle!;
+    apu = vistaApu({ detalle: { ...base, desperdicios: [{ fila: 1, texto: "0,8 + 25 %" }] } });
+    await irAApu();
+    const materiales = screen.getByRole("table", { name: /^Materiales/ });
+    expect(within(materiales).getByRole("columnheader", { name: "Neta + desperdicio" })).toBeTruthy();
+    expect(within(materiales).getByText("0,8 + 25 %")).toBeTruthy();
+    expect(screen.getAllByRole("columnheader", { name: "Neta + desperdicio" })).toHaveLength(1);
+  });
+
   const regionDeEstado = () => screen.getByRole("region", { name: "Estado del borrador" });
   const campo = (nombre: string | RegExp) => screen.getByRole("textbox", { name: nombre });
   const dialogo = () => screen.getByRole("dialog", { name: "Agregar una línea" });

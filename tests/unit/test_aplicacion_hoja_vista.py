@@ -29,6 +29,7 @@ from adapters.espacio.modelo import (
 )
 from adapters.espacio.origen import OrigenMedida, TipoOrigen
 from aplicacion import hoja, hoja_vista
+from aplicacion.desperdicio import TrazaDesperdicio
 from aplicacion.hoja_borradores import Registro
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.contracts import Severidad
@@ -765,6 +766,37 @@ def test_el_detalle_de_af_llave_trae_los_tres_rubros_de_la_composicion(_of001):
         "Ayudante N2 [1-1.2]",
     ]
     assert mano_obra.filas[0]["sueldo"] == "2,1877" and mano_obra.filas[0]["modalidad"] == "jornal"
+
+
+LLAVE = "Llave de paso de bola PVC 1/2 pulg [PLOG26]"
+
+
+def test_sin_trazas_el_detalle_no_trae_desperdicios(_of001):
+    assert hoja_vista.vista_apu(_vivo(_of001), partida="AF-LLAVE").detalle.desperdicios == ()
+
+
+def test_el_detalle_trae_la_neta_y_el_porcentaje_de_la_linea_con_traza(_of001):
+    """F5 vial, punto 1 (lo que faltaba): la Hoja muestra «0,8 + 25 %» junto a la cantidad 1 de la
+    llave (0,8 × 1,25 = 1, a mano). Las trazas se piden por el código de la partida mostrada."""
+    pedidas: list[str] = []
+
+    def trazas(codigo: str) -> list[TrazaDesperdicio]:
+        pedidas.append(codigo)
+        return [TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000"))]
+
+    d = hoja_vista.vista_apu(_vivo(_of001), partida="AF-LLAVE", trazas=trazas).detalle
+    assert pedidas == ["AF-LLAVE"]
+    assert d.desperdicios == (hoja_vista.DesperdicioDeLinea(fila=1, texto="0,8 + 25 %"),)
+    # la cantidad de la celda no cambia: sigue siendo la que calcula el núcleo
+    assert d.grupos[0].filas[0]["cantidad"] == "1"
+
+
+def test_una_traza_de_otra_cantidad_no_se_muestra(_of001):
+    def trazas(codigo: str) -> list[TrazaDesperdicio]:
+        return [TrazaDesperdicio(LLAVE, "pieza", D("1"), D("4"), D("1.04"))]
+
+    d = hoja_vista.vista_apu(_vivo(_of001), partida="AF-LLAVE", trazas=trazas).detalle
+    assert d.desperdicios == ()
 
 
 def test_los_subtotales_y_el_cierre_de_af_llave_son_la_cascada_a_mano(_of001):

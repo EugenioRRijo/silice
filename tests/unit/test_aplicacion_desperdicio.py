@@ -24,8 +24,10 @@ from aplicacion.desperdicio import (
     aplicar_desperdicio,
     cantidad_con_desperdicio,
     con_desperdicio,
+    desperdicios_por_fila,
     guardar_trazas,
     leyenda,
+    neta_y_porcentaje,
     trazas_vigentes,
 )
 from core.catalog import abrir_sesion, crear_motor
@@ -128,3 +130,24 @@ def test_las_trazas_se_guardan_y_manda_el_ultimo_guardado(sesion: Session):
     guardar_trazas(sesion, "VIA-01", [], ahora=datetime(2026, 11, 6, 10))
     sesion.commit()
     assert trazas_vigentes(sesion, "VIA-01") == []
+
+
+def test_la_neta_y_el_porcentaje_de_la_traza():
+    """Lo que la Hoja muestra junto a la cantidad: la neta y el porcentaje, sin la cantidad que
+    ya está en su celda (F5 vial, lo que faltaba del punto 1)."""
+    assert neta_y_porcentaje(TRAZA) == "0,50 + 4 %"
+    otra = TrazaDesperdicio("Pintura", "l", D("1234.5"), D("2.5"), D("1265.3625"))
+    assert neta_y_porcentaje(otra) == "1.234,5 + 2,5 %"
+
+
+def test_desperdicios_por_fila_solo_en_la_linea_de_la_traza_y_cada_traza_una_vez():
+    guardada = {"descripcion": "Ligante ficticio", "unidad": "l", "cantidad": "0,52"}
+    # filas numeradas desde 1, como en la tabla de la Hoja
+    assert desperdicios_por_fila([ARENA, guardada], [TRAZA]) == [(2, "0,50 + 4 %")]
+    # dos líneas iguales y una sola traza: solo la primera
+    assert desperdicios_por_fila([guardada, guardada], [TRAZA]) == [(1, "0,50 + 4 %")]
+    # la cantidad cambió por otro camino, o la unidad, o la descripción: nada que mostrar
+    assert desperdicios_por_fila([{**guardada, "cantidad": "0,60"}], [TRAZA]) == []
+    assert desperdicios_por_fila([{**guardada, "unidad": "kg"}], [TRAZA]) == []
+    assert desperdicios_por_fila([{**guardada, "descripcion": "Otro"}], [TRAZA]) == []
+    assert desperdicios_por_fila([guardada], []) == []
