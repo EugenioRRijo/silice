@@ -635,3 +635,102 @@ def test_un_proyecto_que_no_existe(sesion: Session) -> None:
         armar.lista_para_el_proyecto(sesion, "OBRA-99", HOY, responsable="ana")
     assert not isinstance(error.value, SinListaParaArmar)
     assert str(error.value) == "No hay ninguna obra «OBRA-99» en esta carpeta de trabajo."
+
+
+# --- crear la lista para armar desde la lista de la empresa (prueba de punta a punta, D-7) ------
+#
+# Una carpeta en USD con la lista de su empresa en USD no podía componer sin una tasa del BCV de
+# los últimos 7 días: la lista de empresa no es lista para armar (`Catalogo.lista_vigente` la
+# excluye) y las dos vías que había pasan por MaPreX en Bs. Decisión simulada (bitácora
+# 2026-11-13-e2e-precios §2): «empresa» copia esa lista, en su moneda, como lista para armar
+# global; sin conversión, no pide tasa. Datos FICTICIOS: «Empresa ficticia», precios en USD.
+
+EMPRESA = "Empresa ficticia 2026-10-05"
+
+
+def _lista_de_empresa(s: Session, moneda: str = "USD") -> models.ListaPrecios:
+    """Una lista de empresa en `moneda` sobre una base de la misma moneda, con un precio propio
+    del cemento (11,25 con su fecha y su fuente) y los demás heredados."""
+    from core.catalog.empresa import PrecioPropio, crear_lista_de_empresa
+
+    base = _lista(s, f"Base en {moneda}", moneda=moneda, alcance=models.ALCANCE_REFERENCIA)
+    cemento = s.scalars(select(models.Insumo).where(models.Insumo.codigo == "MAT-001")).one()
+    return crear_lista_de_empresa(
+        s,
+        "Empresa ficticia",
+        "J-00000000-0",
+        base,
+        [PrecioPropio(cemento.id, Decimal("11.25"), date(2026, 10, 5), "cotización 17 (ficticia)")],
+        moneda=moneda,
+        fecha=date(2026, 10, 5),
+        fuente="cotización 17 (ficticia)",
+        referencia=None,
+    )
+
+
+def test_crear_desde_la_lista_de_la_empresa_sin_tasa_la_copia_en_su_moneda(sesion: Session) -> None:
+    empresa = _lista_de_empresa(sesion)
+    armar.declarar_moneda_de_la_carpeta(sesion, "USD", responsable="ana", ahora=AHORA)
+    antes = _precios(empresa)
+
+    nueva = armar.crear_lista_para_armar(
+        sesion, desde="empresa", fecha=HOY, responsable="ana", lista_id=empresa.id
+    )
+
+    assert (nueva.nombre, nueva.moneda, nueva.fecha_vigencia) == (
+        f"{EMPRESA} al 25/10/2026",
+        "USD",
+        HOY,
+    )
+    assert nueva.origen == f"copia de la lista de la empresa «{EMPRESA}», por ana"
+    assert _precios(nueva) == antes  # sin convertir: 11,25 del cemento y los heredados
+    assert _precios(nueva)["MAT-001"] == Decimal("11.25")
+    assert armar.lista_para_armar(sesion, HOY).id == nueva.id
+    # el precio propio conserva su fecha y su fuente (el origen efectivo, copiado)
+    cemento = next(p for p in nueva.precios if p.insumo.codigo == "MAT-001")
+    origen = sesion.scalars(
+        select(models.PrecioOrigen).where(models.PrecioOrigen.precio_id == cemento.id)
+    ).one()
+    assert (origen.fuente, origen.fecha_precio) == ("cotización 17 (ficticia)", date(2026, 10, 5))
+
+
+def test_sin_moneda_declarada_la_lista_de_la_empresa_da_la_de_la_carpeta(sesion: Session) -> None:
+    empresa = _lista_de_empresa(sesion)
+    armar.crear_lista_para_armar(
+        sesion, desde="empresa", fecha=HOY, responsable="ana", lista_id=empresa.id
+    )
+    assert armar.moneda_de_la_carpeta(sesion, HOY) == "USD"
+
+
+def test_la_lista_de_la_empresa_en_otra_moneda_que_la_carpeta_no_se_copia(sesion: Session) -> None:
+    empresa = _lista_de_empresa(sesion, moneda="Bs")
+    armar.declarar_moneda_de_la_carpeta(sesion, "USD", responsable="ana", ahora=AHORA)
+    cuantas = _cuantas_listas(sesion)
+    with pytest.raises(SinListaParaArmar) as error:
+        armar.crear_lista_para_armar(
+            sesion, desde="empresa", fecha=HOY, responsable="ana", lista_id=empresa.id
+        )
+    assert str(error.value) == (
+        f"La lista de la empresa «{EMPRESA}» está en Bs y la carpeta trabaja en USD: cree la "
+        "lista de la empresa en USD."
+    )
+    assert _cuantas_listas(sesion) == cuantas
+
+
+def test_una_lista_que_no_es_de_empresa_no_se_copia_por_esta_via(sesion: Session) -> None:
+    otra = _lista(sesion, "Base", moneda="USD")
+    with pytest.raises(SinListaParaArmar) as error:
+        armar.crear_lista_para_armar(
+            sesion, desde="empresa", fecha=HOY, responsable="ana", lista_id=otra.id
+        )
+    assert str(error.value) == f"La lista n.º {otra.id} no es una lista de empresa de esta carpeta."
+    with pytest.raises(ValueError):
+        armar.crear_lista_para_armar(sesion, desde="empresa", fecha=HOY, responsable="ana")
+
+
+def test_las_listas_de_empresa_para_armar_son_las_de_la_moneda_de_la_carpeta(
+    sesion: Session,
+) -> None:
+    empresa = _lista_de_empresa(sesion)
+    armar.declarar_moneda_de_la_carpeta(sesion, "USD", responsable="ana", ahora=AHORA)
+    assert armar.listas_de_empresa_para_armar(sesion, HOY) == [(empresa.id, EMPRESA, "USD")]
