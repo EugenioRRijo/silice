@@ -215,6 +215,8 @@ TABLA = {
     ("GET", "/v1/accesos"): CUENTAS_ADM,
     # Ola 3 (S2-B): «Componer una partida» es de quien arma (`ui/paginas/componer.py`)
     ("GET", "/v1/composicion/opciones"): EDITAR,
+    # RF-200 (ola 2, 2026-11-13): los parámetros de omisión de Componer
+    ("GET", "/v1/composicion/parametros"): EDITAR,
     ("POST", "/v1/composicion/evaluar"): EDITAR,
     ("GET", "/v1/composicion/partidas/{codigo}"): EDITAR,
     ("GET", "/v1/composicion/referencia"): EDITAR,

@@ -598,9 +598,21 @@ def test_las_opciones_de_parametros_son_las_de_omision_con_su_rotulo(api: TestCl
     assert respuesta.status_code == 200
     assert respuesta.json() == {
         "campos": [
-            {"clave": "fcas", "rotulo": "FCAS (fracción: 6.00 = prestaciones del 600 %)", "valor": "6,00"},
-            {"clave": "bono_alimentacion", "rotulo": "Bono de alimentación (por obrero y día)", "valor": "1,00"},
-            {"clave": "administracion", "rotulo": "Administración (fracción del costo directo)", "valor": "0,15"},
+            {
+                "clave": "fcas",
+                "rotulo": "FCAS (fracción: 6.00 = prestaciones del 600 %)",
+                "valor": "6,00",
+            },
+            {
+                "clave": "bono_alimentacion",
+                "rotulo": "Bono de alimentación (por obrero y día)",
+                "valor": "1,00",
+            },
+            {
+                "clave": "administracion",
+                "rotulo": "Administración (fracción del costo directo)",
+                "valor": "0,15",
+            },
             {
                 "clave": "utilidad",
                 "rotulo": "Utilidad (fracción, en cascada sobre la administración)",
@@ -611,9 +623,7 @@ def test_las_opciones_de_parametros_son_las_de_omision_con_su_rotulo(api: TestCl
 
 
 def test_evaluar_con_los_parametros_de_la_obra_calcula_con_ellos(api: TestClient) -> None:
-    cuerpo = api.post(
-        "/v1/composicion/evaluar", json=_cuerpo(parametros=PARAMETROS_DE_OBRA)
-    ).json()
+    cuerpo = api.post("/v1/composicion/evaluar", json=_cuerpo(parametros=PARAMETROS_DE_OBRA)).json()
     assert cuerpo["estado"] == "valido"
     assert cuerpo["desglose"] == {
         "materiales": "7.19",
@@ -680,3 +690,17 @@ def test_prever_con_un_parametro_mal_escrito_es_422(api: TestClient) -> None:
     )
     assert respuesta.status_code == 422
     assert respuesta.json()["detalle"].startswith("Parámetros del precio unitario. Administración:")
+
+
+def test_los_parametros_no_cambian_el_contraste_ni_las_advertencias(api: TestClient) -> None:
+    """Segunda opinión de Argon (ola 2): el contraste con las reglas (Ayuda 4) compara el precio
+    anterior de la partida con el construido; si solo el construido usara los parámetros de la
+    obra, avisaría por un cambio de indirectos. Los dos siguen sobre la base de omisión."""
+    sin = api.post("/v1/composicion/evaluar", json=_cuerpo(codigo=TUBERIA)).json()
+    con = api.post(
+        "/v1/composicion/evaluar", json=_cuerpo(codigo=TUBERIA, parametros=PARAMETROS_DE_OBRA)
+    ).json()
+    assert con["desglose"]["precio_unitario"] == "10.34"
+    assert sin["desglose"]["precio_unitario"] == "10.19"
+    assert con["advertencias"] == sin["advertencias"]
+    assert con["contraste"] == sin["contraste"]

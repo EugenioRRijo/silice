@@ -3449,6 +3449,28 @@
         }
       }
     },
+    "/v1/composicion/parametros": {
+      "get": {
+        "tags": [
+          "composicion"
+        ],
+        "summary": "Parametros",
+        "description": "Los parámetros de omisión del precio unitario (NORMAS.md §4) con el rótulo de la Hoja: lo\nque Componer propone sin una obra abierta (RF-200). Con una obra, la pantalla lee los de su\nborrador (`GET /v1/hoja/borradores/{id}/vistas/parametros`).",
+        "operationId": "parametros_v1_composicion_parametros_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParametrosRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/composicion/evaluar": {
       "post": {
         "tags": [
@@ -15160,6 +15182,29 @@
         ],
         "title": "CambiosHojaRespuesta"
       },
+      "CampoDeParametro": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "rotulo",
+          "valor"
+        ],
+        "title": "CampoDeParametro"
+      },
       "CampoParametroRespuesta": {
         "properties": {
           "clave": {
@@ -23363,6 +23408,50 @@
         ],
         "title": "ParametroRespuesta"
       },
+      "ParametrosDeTexto": {
+        "properties": {
+          "fcas": {
+            "type": "string",
+            "title": "Fcas",
+            "default": ""
+          },
+          "bono_alimentacion": {
+            "type": "string",
+            "title": "Bono Alimentacion",
+            "default": ""
+          },
+          "administracion": {
+            "type": "string",
+            "title": "Administracion",
+            "default": ""
+          },
+          "utilidad": {
+            "type": "string",
+            "title": "Utilidad",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ParametrosDeTexto",
+        "description": "Los cuatro parámetros del precio unitario como se teclean (coma decimal), RF-200."
+      },
+      "ParametrosRespuesta": {
+        "properties": {
+          "campos": {
+            "items": {
+              "$ref": "#/components/schemas/CampoDeParametro"
+            },
+            "type": "array",
+            "title": "Campos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "campos"
+        ],
+        "title": "ParametrosRespuesta",
+        "description": "Los parámetros de omisión con su rótulo (la misma forma que `campos` de la vista\n`parametros` de la Hoja), RF-200."
+      },
       "ParcialRespuesta": {
         "properties": {
           "id": {
@@ -24304,6 +24393,16 @@
             "type": "string",
             "title": "Rendimiento",
             "default": ""
+          },
+          "parametros": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParametrosDeTexto"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -24311,7 +24410,7 @@
           "dominio"
         ],
         "title": "PeticionEvaluar",
-        "description": "Cabecera y tablas tal como se teclean: todo texto, vacíos permitidos."
+        "description": "Cabecera y tablas tal como se teclean: todo texto, vacíos permitidos. `parametros`\n(RF-200), si viene, es con qué se calcula el precio unitario; si no, los de omisión."
       },
       "PeticionGuardar": {
         "properties": {
@@ -24361,6 +24460,16 @@
             "type": "string",
             "title": "Rendimiento",
             "default": ""
+          },
+          "parametros": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParametrosDeTexto"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "fecha": {
             "type": "string",
