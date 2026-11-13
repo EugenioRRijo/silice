@@ -239,7 +239,7 @@ export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false 
         <Select
           id="auditoria-apu-perfil"
           labelText="Perfil del libro"
-          helperText="Dice cómo leer las hojas de APU y qué hoja del presupuesto comparar. Con un presupuesto de varios frentes, elija el del frente de este libro."
+          helperText="Dice cómo leer las hojas de APU y qué hojas del presupuesto se marcan al elegirlo."
           value={perfil ?? ""}
           onChange={(e) => setElegido(e.target.value)}
           disabled={auditando}

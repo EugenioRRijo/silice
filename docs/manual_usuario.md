@@ -1427,7 +1427,8 @@ propio bloque, «Libro con un APU por hoja», más abajo en «Inicio de auditor�
 1. En «Perfil del libro», elija cómo se lee el libro. Cada opción dice qué hoja del presupuesto compara y
    de dónde viene: «apu_por_hoja · lee la hoja PRESUPUESTO (del paquete)», o «(de esta instalación)» si
    quien administra puso un perfil propio. Con un presupuesto de varios frentes (una hoja por frente),
-   elija el del frente de este libro. Un perfil mal escrito sale con «no se puede usar:» y el motivo, y
+   las hojas se eligen al soltar el presupuesto (ver «Un presupuesto con una hoja por frente», abajo). Un
+   perfil mal escrito sale con «no se puede usar:» y el motivo, y
    no se puede elegir. Si la lista no se pudo leer, dice «No se pudo leer la lista de perfiles: se audita
    con apu_por_hoja.».
 2. Suelte el `.xlsx` de los APU en «Suelte aquí el .xlsx de los APU (una hoja por partida), o haga clic
@@ -1483,6 +1484,53 @@ más allá de la CV y usted no ve nada escrito, seleccione esas columnas o filas
 su contenido) y guarde el libro de nuevo.
 
 Nada se guarda: ni los libros ni el informe, y esta auditoría no entra en «Historial de auditorías».
+
+**Un presupuesto con una hoja por frente** (una estación, un tramo, un sector). Al soltar el libro del
+presupuesto, Sílice lee los nombres de sus hojas y los ofrece en «Hojas del presupuesto que se comparan», con
+marcadas las que lee el perfil. Marque las del frente de este libro de APU (o varias, si el libro de APU sirve a
+todos los frentes). Si el perfil lee una hoja que el libro no tiene, lo dice: «El perfil lee la hoja PRESUPUESTO,
+que este libro no tiene: marque las hojas que quiere comparar.». Con varias hojas, el precio de cada renglón se
+compara en cada hoja (AH5 dice «hoja FRENTE B») y la cantidad del APU con la **suma** de las hojas («las hojas
+FRENTE A y FRENTE B del presupuesto suman una cantidad de 450 y su APU dice 500»). Dos reglas más:
+
+| Regla | Qué dice | Severidad |
+|---|---|---|
+| AH12 | Hojas del libro de APU que no empiezan por el prefijo del perfil y no se leyeron (las nombra, hasta diez). Si alguna es un APU, revise el prefijo del perfil | Información |
+
+Si el perfil declara «Otros impuestos», esa segunda fila del pie se suma al impuesto de la hoja y AH4 dice las dos
+partes («un impuesto del 18 % (16 % y otros impuestos del 2 %)»).
+
+**Poner el perfil de un libro de la empresa.** Quien administra lo hace en «Cuenta › Empresa», bloque «Perfiles de
+los libros de la empresa»: suelte el `.json` del perfil y pulse «Poner el perfil». Sílice lo revisa entero antes de
+guardarlo y dice el motivo si está mal escrito; si ya hay uno con ese nombre, pide marcar «Reemplazar el que ya
+está con ese nombre». Al terminar dice qué hojas del presupuesto lee: «Perfil «obra_local» puesto en esta
+instalación: lee las hojas FRENTE A y FRENTE B.». El perfil se guarda solo en esta instalación.
+
+### 12.6 Llevar el libro a la Hoja y el presupuesto por frente
+
+Después de auditar el libro, quien arma lo lleva a la Hoja de la obra elegida en la barra de arriba, sin teclear:
+
+1. En «Llevar el libro a la Hoja», elija la «Moneda de los precios del libro» (Bs o USD): Sílice no la adivina y no
+   cambia la moneda de ningún precio. Sin presupuesto, puede escribir el «Frente de los renglones».
+2. Pulse «Llevar el libro a la Hoja de «…»». Cada APU entra al catálogo con sus materiales, equipos y mano de obra,
+   su rendimiento y sus precios (cada precio con su fuente: el libro y la celda, que se ve en la pestaña Precios), y
+   cada renglón del presupuesto entra a la Hoja con su cantidad y su frente (la hoja del presupuesto de donde
+   salió). Los porcentajes del libro (prestaciones, administración y utilidad) pasan a la Hoja.
+3. Sale «Se llevaron 10 renglones a la Hoja de «…», sin guardar: ábrala para revisarlos y guardar la versión.» y la
+   tabla «Partidas llevadas a la Hoja»: el código en Sílice, la hoja del libro, el P.U. del libro, el de la Hoja y
+   si «Casa» (hasta un centavo) o «No casa». Una hoja con financiamiento o con bono por renglón no casa: la
+   auditoría ya lo dijo (AH2, AH3). Debajo, los renglones que no se llevaron (sin hoja de APU o sin cantidad).
+
+El libro se lleva a una **obra sin versiones** (cree una obra nueva para el libro), para que sus precios sean los
+del libro, y su moneda debe ser la de la carpeta. Si el código de un APU ya está en el catálogo con otro APU (otro
+frente con otro precio), entra como variante «…-B». Llevar el mismo libro otra vez no duplica nada: reemplaza los
+renglones de esas hojas.
+
+**El presupuesto por frente.** En la pestaña Presupuesto de la Hoja, debajo del total, pulse «Ver el presupuesto
+por frente»: la tabla «Presupuesto por frente» da cada frente, sus renglones (y cuántos están pendientes) y su
+subtotal, y debajo el «Total general». Las cifras las calcula Sílice; los renglones sin frente van al final, en
+«Sin frente». Para poner el frente de un renglón a mano, elíjalo en «Renglón», escriba el «Frente» y pulse
+«Poner el frente» (vacío lo quita). El frente se guarda con la versión.
 
 ## 13. El asistente de IA
 
