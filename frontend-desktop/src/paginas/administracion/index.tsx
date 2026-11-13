@@ -13,18 +13,22 @@ import Empresa from "./Empresa";
 import Especialidades from "./Especialidades";
 import EmpresasRegistradas from "./EmpresasRegistradas";
 import Instalacion from "./Instalacion";
+import PerfilesDeLibros from "./PerfilesDeLibros";
 import { PESTANAS, SECCIONES_DE_ADMINISTRACION } from "./logica";
 import "./administracion.scss";
 
 type IdDePestana = (typeof PESTANAS)[number]["id"];
 type SeccionDeAdministracion = keyof typeof SECCIONES_DE_ADMINISTRACION;
 
-// Los avisos de contraste del tema van encima de los datos de la empresa, no en cada pantalla.
+// Los avisos de contraste del tema van encima de los datos de la empresa, no en cada pantalla. Debajo, los perfiles de
+// los libros de la empresa (libro por frentes, 2026-11-13), solo para quien administra la empresa.
 function EmpresaConAvisos() {
+  const { sesion } = useAplicacion();
   return (
     <>
       <AvisosDelTema />
       <Empresa />
+      {sesion.acciones.includes("administrar_empresa") && <PerfilesDeLibros />}
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem } from "@carbon/react";
+import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
 import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import { useState } from "react";
 import type { JSX } from "react";
@@ -21,6 +21,11 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 // que lee cada uno; uno mal escrito sale sin poder elegirse y con su motivo). Si la lista no se lee, se audita con el
 // de siempre (`apu_por_hoja`, sin mandar el campo) y se dice. El aviso AH11 (la hoja del presupuesto parece de otra
 // obra) sale arriba del informe, además de en la tabla.
+//
+// Libro por frentes (ola 2, línea 3, 2026-11-13): un perfil puede leer varias hojas del presupuesto (una por frente) y las
+// hojas se eligen aparte del perfil. Al elegir el libro del presupuesto se piden sus hojas (`POST /v1/libros/hojas`, solo
+// los nombres) y se marcan las del perfil que el libro tiene; lo marcado viaja como `hoja_presupuesto`, una vez por hoja.
+// Si las hojas no se pueden leer, decide el perfil (no se manda nada).
 
 interface ApuPorHoja {
   hoja: string;
@@ -57,6 +62,7 @@ export interface InformeApuPorHoja {
   origen_perfil: "paquete" | "local";
   presupuesto: string | null;
   hoja_presupuesto: string | null;
+  hojas_presupuesto?: string[];
   cumple: boolean;
   por_severidad: Record<string, number>;
   apus: ApuPorHoja[];
@@ -68,18 +74,48 @@ export interface PerfilDisponible {
   nombre: string;
   origen: "paquete" | "local";
   hoja_presupuesto: string | null;
+  hojas_presupuesto?: string[];
   motivo: string | null;
 }
 
-export function auditarApuPorHoja(libro: File, presupuesto: File | null, perfil: string | null = null): Promise<InformeApuPorHoja> {
+export function auditarApuPorHoja(
+  libro: File,
+  presupuesto: File | null,
+  perfil: string | null = null,
+  hojas: string[] = [],
+): Promise<InformeApuPorHoja> {
   const cuerpo = new FormData();
   cuerpo.append("libro", libro);
   if (presupuesto) cuerpo.append("presupuesto", presupuesto);
   if (perfil) cuerpo.append("perfil", perfil);
+  for (const hoja of hojas) cuerpo.append("hoja_presupuesto", hoja);
   return pedir<InformeApuPorHoja>("/v1/libros/apu-por-hoja", { metodo: "POST", cuerpo });
 }
 
+export async function hojasDelLibro(libro: File): Promise<string[] | null> {
+  const cuerpo = new FormData();
+  cuerpo.append("libro", libro);
+  const respuesta = await pedir<{ hojas?: unknown }>("/v1/libros/hojas", { metodo: "POST", cuerpo });
+  const hojas = respuesta.hojas;
+  return Array.isArray(hojas) && hojas.every((h) => typeof h === "string") ? hojas : null;
+}
+
+// «A», «A y B», «A, B y C».
+export function enumeradas(nombres: string[]): string {
+  return nombres.length <= 1 ? (nombres[0] ?? "") : `${nombres.slice(0, -1).join(", ")} y ${nombres[nombres.length - 1]}`;
+}
+
+const hojasDe = (p: { hoja_presupuesto: string | null; hojas_presupuesto?: string[] }): string[] =>
+  p.hojas_presupuesto && p.hojas_presupuesto.length > 0 ? p.hojas_presupuesto : p.hoja_presupuesto ? [p.hoja_presupuesto] : [];
+
+const lasHojas = (hojas: string[]) => (hojas.length === 1 ? `la hoja ${hojas[0]}` : `las hojas ${enumeradas(hojas)}`);
+
+// Las hojas se comparan como en el servidor: sin mayúsculas ni espacios de más.
+const igualada = (hoja: string) => hoja.replace(/\s+/g, " ").trim().toLocaleLowerCase("es");
+
 const POR_OMISION = "apu_por_hoja";
+// La hoja que lee el perfil de siempre cuando no se pudo leer la lista de perfiles.
+const POR_OMISION_HOJA = "PRESUPUESTO";
 const RUTA_PERFILES = "/v1/libros/perfiles-apu-por-hoja";
 const AVISO_OTRA_OBRA = "AH11";
 const origenDe = (origen: "paquete" | "local") => (origen === "local" ? "de esta instalación" : "del paquete");
@@ -87,7 +123,7 @@ const origenDe = (origen: "paquete" | "local") => (origen === "local" ? "de esta
 function textoDelPerfil(p: PerfilDisponible): string {
   return p.motivo !== null || p.hoja_presupuesto === null
     ? `${p.nombre} · no se puede usar: ${p.motivo ?? "sin hoja de presupuesto"}`
-    : `${p.nombre} · lee la hoja ${p.hoja_presupuesto} (${origenDe(p.origen)})`;
+    : `${p.nombre} · lee ${lasHojas(hojasDe(p))} (${origenDe(p.origen)})`;
 }
 
 // El perfil que se propone: el de siempre si se puede usar; si no, el primero que se pueda.
@@ -128,6 +164,30 @@ export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
   const sinLista = lista.estado !== "listo" && lista.estado !== "cargando";
   const [elegido, setElegido] = useState<string | null>(null);
   const perfil = elegido ?? (perfiles ? perfilInicial(perfiles) : null);
+  // Las hojas del libro del presupuesto (null: sin libro o no se pudieron leer) y las que la persona marcó (null: las del
+  // perfil que el libro tiene).
+  const [hojasDelPresupuesto, setHojasDelPresupuesto] = useState<string[] | null>(null);
+  const [marcadas, setMarcadas] = useState<string[] | null>(null);
+  const delPerfil = hojasDe(perfiles?.find((p) => p.nombre === perfil) ?? { hoja_presupuesto: POR_OMISION_HOJA });
+  const porOmision = (hojasDelPresupuesto ?? []).filter((h) => delPerfil.some((d) => igualada(d) === igualada(h)));
+  const hojas = hojasDelPresupuesto === null ? [] : (marcadas ?? porOmision);
+
+  async function elegirPresupuesto(archivo: File) {
+    setPresupuesto(archivo);
+    setHojasDelPresupuesto(null);
+    setMarcadas(null);
+    try {
+      setHojasDelPresupuesto(await hojasDelLibro(archivo));
+    } catch (razon) {
+      if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
+      // sin la lista de hojas decide el perfil: el error del libro lo dirá la auditoría
+    }
+  }
+
+  function marcar(hoja: string, marcada: boolean) {
+    const actuales = marcadas ?? porOmision;
+    setMarcadas(marcada ? (hojasDelPresupuesto ?? []).filter((h) => h === hoja || actuales.includes(h)) : actuales.filter((h) => h !== hoja));
+  }
 
   async function auditar() {
     if (libro === null) return;
@@ -135,7 +195,7 @@ export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
     setInforme(null);
     setAuditando(true);
     try {
-      setInforme(await auditarApuPorHoja(libro, presupuesto, perfil));
+      setInforme(await auditarApuPorHoja(libro, presupuesto, perfil, presupuesto ? hojas : []));
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
       else setError(razon);
@@ -189,9 +249,29 @@ export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
         id="auditoria-apu-presupuesto"
         etiqueta="Opcional: suelte aquí el .xlsx del presupuesto, o haga clic para elegirlo"
         extensiones={[".xlsx"]}
-        alElegir={setPresupuesto}
+        alElegir={(archivo) => void elegirPresupuesto(archivo)}
         deshabilitada={auditando}
       />
+      {hojasDelPresupuesto !== null && hojasDelPresupuesto.length > 0 && (
+        <fieldset className="cds--fieldset">
+          <legend className="cds--label">Hojas del presupuesto que se comparan</legend>
+          {porOmision.length === 0 && delPerfil.length > 0 && (
+            <p className="silice-inicio__nota cds--type-body-compact-01">
+              {`El perfil lee ${lasHojas(delPerfil)}, que este libro no tiene: marque las hojas que quiere comparar.`}
+            </p>
+          )}
+          {hojasDelPresupuesto.map((h, i) => (
+            <Checkbox
+              key={h}
+              id={`auditoria-apu-hoja-${i}`}
+              labelText={h}
+              checked={hojas.includes(h)}
+              disabled={auditando}
+              onChange={(_e, { checked }) => marcar(h, checked)}
+            />
+          ))}
+        </fieldset>
+      )}
       {/* Región viva sin el rol «status»: el de la subida de arriba es el único estado de la página. */}
       <p aria-live="polite" className="silice-inicio__nota cds--type-body-compact-01">
         {[libro ? `Libro de APU: ${libro.name}` : "", presupuesto ? `Presupuesto: ${presupuesto.name}` : ""]
@@ -212,6 +292,7 @@ export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
 
 function Informe({ informe }: { informe: InformeApuPorHoja }): JSX.Element {
   const origen = origenDe(informe.origen_perfil);
+  const leidas = hojasDe({ hoja_presupuesto: informe.hoja_presupuesto, hojas_presupuesto: informe.hojas_presupuesto });
   const otraObra = informe.hallazgos.find((h) => h.codigo === AVISO_OTRA_OBRA);
   const precios = informe.apus.map((a) => ({
     id: a.hoja,
@@ -233,7 +314,7 @@ function Informe({ informe }: { informe: InformeApuPorHoja }): JSX.Element {
       <p className="silice-inicio__nota cds--type-body-compact-01">
         {`Perfil ${informe.perfil} (${origen}) · ${informe.libro.nombre}`}
         {informe.presupuesto
-          ? ` · con ${informe.presupuesto}${informe.hoja_presupuesto ? ` (hoja ${informe.hoja_presupuesto})` : ""}`
+          ? ` · con ${informe.presupuesto}${leidas.length > 0 ? ` (${leidas.length === 1 ? "hoja" : "hojas"} ${enumeradas(leidas)})` : ""}`
           : " · sin libro de presupuesto"}
       </p>
       {otraObra && (
