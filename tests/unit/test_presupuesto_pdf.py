@@ -316,3 +316,36 @@ def test_un_control_un_sustituto_suelto_o_una_letra_que_vera_no_tiene_no_rompen_
     todo = "\n".join(_texto(pdf_en_bytes(documento)))
     assert "Tubo" in todo and "cobre" in todo and "fin" in todo
     assert "Obra Tubo" in todo
+
+
+def test_un_sustituto_suelto_en_una_celda_corta_del_apu_tampoco_rompe_el_pdf():
+    """La unidad y la modalidad del APU van como texto llano en la tabla (no como párrafo)."""
+    raro = "m\ud800x"
+    base = _documento(1)
+    (apu,) = base.apus
+    tabla = replace(apu.tablas[0], filas=(("Cemento", raro, "7,5", "10,20"),))
+    documento = replace(base, apus=(replace(apu, tablas=(tabla, *apu.tablas[1:])),))
+    assert "Cemento" in "\n".join(_texto(pdf_en_bytes(documento)))
+
+
+def test_las_cifras_del_apu_se_leen_con_coma_decimal_y_punto_de_miles(_of001):
+    """Hallazgo de Hydrogen (2026-11-13): las celdas del APU ya vienen en es-VE («1.000», «10,5»);
+    leerlas con `Decimal` daba 1 por 1.000 y dejaba «10,5» sin sus dos decimales."""
+    composicion = _of001.borrador.composiciones["AF-LLAVE"]
+    primera, *resto = composicion.materiales
+    lineas = (
+        replace(primera, cantidad=D("1000"), precio=D("1000")),
+        replace(primera, descripcion="Otra ficticia", cantidad=D("2"), precio=D("10.5")),
+        *resto,
+    )
+    borrador = replace(
+        _of001.borrador,
+        composiciones={
+            **_of001.borrador.composiciones,
+            "AF-LLAVE": replace(composicion, materiales=lineas),
+        },
+    )
+    documento = documento_de_la_hoja(_vivo(_of001, borrador), HOY, partida="AF-LLAVE")
+    filas = documento.apus[0].tablas[0].filas
+    assert filas[0][2:] == ("1.000", "1.000,00")
+    assert filas[1][2:] == ("2", "10,50")
