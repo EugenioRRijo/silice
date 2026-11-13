@@ -436,7 +436,7 @@ def test_guardar_con_otra_cabecera_sobre_una_existente_es_422_con_el_motivo(
     )
     assert respuesta.status_code == 422
     assert respuesta.json()["detalle"].startswith(
-        f"la partida {TUBERIA} ya existe con la descripcion"
+        f"la partida {TUBERIA} ya existe con la descripción"
     )
 
 
