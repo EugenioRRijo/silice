@@ -140,6 +140,7 @@ TABLA = {
     ("POST", "/v1/libros/pdf"): LEER,
     ("POST", "/v1/libros/replica"): LEER,
     ("POST", "/v1/libros/apu-por-hoja"): LEER,  # F5 vial, tarea 6
+    ("GET", "/v1/libros/perfiles-apu-por-hoja"): LEER,  # E2E-2: elegir el perfil
     ("GET", "/v1/tablero"): LEER,  # ola 4: Tablero
     ("GET", "/v1/control/linea-base"): CONTROLAR,  # ola 4: Control de obra
     ("POST", "/v1/control/linea-base"): CONTROLAR,

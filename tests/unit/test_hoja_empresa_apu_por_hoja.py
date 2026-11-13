@@ -624,3 +624,53 @@ def test_a_la_izquierda_salta_vacias_y_texto_hasta_el_numero_mas_cercano():
     fila = [3, None, 12.5, "nota", None, "Administración (%)", 123.45]
     assert _a_la_izquierda(fila, 5) == (2, D("12.5"))
     assert _a_la_izquierda([None, "Administración (%)", 9], 1) is None
+
+
+# --- E2E-2: los perfiles que se pueden elegir ------------------------------------------------
+#
+# La pantalla elige el perfil de una lista (`perfiles_apu_por_hoja`): los del paquete y los
+# locales, por nombre; uno local con el nombre de uno del paquete lo reemplaza (como al cargar); los
+# JSON de otro tipo de perfil (la plantilla conocida, sin `tipo`) no salen; uno local mal escrito
+# sale con su motivo para que quien lo escribió lo vea, y nunca una ruta del disco. Datos FICTICIOS.
+
+
+def test_la_lista_de_perfiles_del_paquete():
+    from adapters.hoja_empresa.perfil_apu_por_hoja import perfiles_apu_por_hoja
+
+    assert [
+        (p.nombre, p.origen, p.hoja_presupuesto, p.motivo) for p in perfiles_apu_por_hoja(())
+    ] == [("apu_por_hoja", "paquete", "PRESUPUESTO", None)]
+
+
+def test_la_lista_con_perfiles_locales(tmp_path: Path):
+    from adapters.hoja_empresa.perfil_apu_por_hoja import perfiles_apu_por_hoja
+
+    crudo = json.loads(
+        (
+            Path(__file__).resolve().parents[2] / "adapters/hoja_empresa/perfiles/apu_por_hoja.json"
+        ).read_text(encoding="utf-8")
+    )
+    for nombre, hoja in (("frente_b", "FRENTE B"), ("apu_por_hoja", "OBRA LOCAL")):
+        datos = {**crudo, "nombre": nombre, "presupuesto": {**crudo["presupuesto"], "hoja": hoja}}
+        (tmp_path / f"{nombre}.json").write_text(json.dumps(datos), encoding="utf-8")
+    (tmp_path / "plantilla.json").write_text(json.dumps({"nombre": "plantilla"}), encoding="utf-8")
+    (tmp_path / "roto.json").write_text("{ no es json", encoding="utf-8")
+    sin_bloques = {k: v for k, v in crudo.items() if k != "bloques"}
+    (tmp_path / "incompleto.json").write_text(
+        json.dumps({**sin_bloques, "nombre": "incompleto"}), encoding="utf-8"
+    )
+    (tmp_path / "Frente C.json").write_text(json.dumps(crudo), encoding="utf-8")
+    lista = perfiles_apu_por_hoja((tmp_path,))
+    assert [(p.nombre, p.origen, p.hoja_presupuesto) for p in lista] == [
+        ("apu_por_hoja", "local", "OBRA LOCAL"),
+        ("frente_b", "local", "FRENTE B"),
+        ("Frente C", "local", None),
+        ("incompleto", "local", None),
+        ("roto", "local", None),
+    ]
+    motivos = {p.nombre: p.motivo for p in lista}
+    assert motivos["apu_por_hoja"] is None and motivos["frente_b"] is None
+    assert motivos["incompleto"] == "perfil 'incompleto': bloques debe ser un objeto"
+    assert motivos["roto"].startswith("perfil 'roto': JSON mal formado")
+    assert motivos["Frente C"] == "nombre de perfil no válido: 'Frente C'"
+    assert not any(str(tmp_path) in (p.motivo or "") for p in lista)

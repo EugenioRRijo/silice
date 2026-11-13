@@ -442,3 +442,129 @@ def test_el_ruido_de_coma_flotante_de_la_cantidad_no_es_un_ah6():
         ("AH5", "ERROR", "PRESUPUESTO!F8"),
         ("AH7", "ADVERTENCIA", "PRESUPUESTO!A9"),
     ]
+
+
+# --- E2E-2 (prueba de punta a punta del 2026-11-13): la hoja del presupuesto de otra obra --------
+#
+# Un presupuesto de dos hojas (un frente por hoja) y un perfil local que lee la hoja del OTRO
+# frente: cada renglón se enlaza por número y antes solo salía un AH6 por renglón, sin decir que la
+# obra no coincide. Ahora AH11 (ADVERTENCIA, en el encabezado de la cantidad de esa hoja) lo dice
+# cuando, de los renglones enlazados con cantidad en los dos lados (dos o más), menos de la mitad
+# tienen la misma que su APU (decisión simulada, bitácora 2026-11-13-e2e-front). Datos FICTICIOS:
+# el libro es la obra A de la memoria; la obra B tiene los mismos renglones y precios con otras
+# cantidades (salvo los 2 viajes de la movilización).
+
+from tests.fixtures.libro_apu_por_hoja import RENGLONES  # noqa: E402
+
+
+def _presupuesto_de_dos_frentes(frente_b=None) -> bytes:
+    import io
+
+    import openpyxl
+
+    otra = {1: "1800", 2: "75", 3: "260", 5: "640"}
+    obra_b = frente_b or [(n, c, d, u, otra.get(n, q), pu) for n, c, d, u, q, pu in RENGLONES]
+    libro = openpyxl.Workbook()
+    libro.remove(libro.active)
+    for titulo, renglones in (("FRENTE A", RENGLONES), ("FRENTE B", obra_b)):
+        hoja = libro.create_sheet(titulo)
+        hoja.append(["PRESUPUESTO FICTICIO"])
+        hoja.append([])
+        hoja.append(["N°", "Código", "Descripción", "Unidad", "Cantidad", "P.U.", "Total"])
+        for numero, codigo, descripcion, unidad, cantidad, pu in renglones:
+            hoja.append([numero, codigo, descripcion, unidad, float(cantidad), float(pu), 0.0])
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
+def _frente(carpeta: Path, nombre: str, hoja: str) -> None:
+    crudo = json.loads(PAQUETE.read_text(encoding="utf-8"))
+    crudo["nombre"] = nombre
+    crudo["presupuesto"] = {**crudo["presupuesto"], "hoja": hoja}
+    carpeta.mkdir(parents=True, exist_ok=True)
+    (carpeta / f"{nombre}.json").write_text(json.dumps(crudo), encoding="utf-8")
+
+
+def _auditar_frente(carpeta: Path, perfil: str, presupuesto: bytes):
+    return auditar_apu_por_hoja(
+        libro_apu(),
+        "frente_a.xlsx",
+        presupuesto=presupuesto,
+        presupuesto_nombre="presupuesto_dos_frentes.xlsx",
+        perfil=perfil,
+        carpeta_perfiles=carpeta,
+    )
+
+
+def test_la_hoja_de_otra_obra_se_avisa(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv(VARIABLE_PERFILES, raising=False)
+    _frente(tmp_path, "frente_b", "FRENTE B")
+    resultado = _auditar_frente(tmp_path, "frente_b", _presupuesto_de_dos_frentes())
+    assert resultado.hoja_presupuesto == "FRENTE B"
+    del_presupuesto = [r for r in _resumen(resultado) if r[2].startswith("FRENTE B!")]
+    assert del_presupuesto == [
+        ("AH11", "ADVERTENCIA", "FRENTE B!E3"),
+        ("AH6", "ADVERTENCIA", "FRENTE B!E4"),
+        ("AH6", "ADVERTENCIA", "FRENTE B!E5"),
+        ("AH6", "ADVERTENCIA", "FRENTE B!E6"),
+        ("AH6", "ADVERTENCIA", "FRENTE B!E8"),
+        ("AH5", "ERROR", "FRENTE B!F8"),
+        ("AH7", "ADVERTENCIA", "FRENTE B!A9"),
+    ]
+    ah11 = next(h for h in resultado.hallazgos if h.codigo == "AH11")
+    assert ah11.descripcion == (
+        "La hoja FRENTE B del presupuesto parece de otra obra: de 5 renglones enlazados con su "
+        "APU, solo 1 tiene la misma cantidad. Revise el perfil: frente_b lee la hoja FRENTE B."
+    )
+
+
+def test_la_hoja_de_la_misma_obra_no_se_avisa(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """El frente A con su perfil: 4 de 5 renglones con la cantidad de su APU (el 3, corregido, da su
+    AH6 de siempre) y ningún AH11."""
+    monkeypatch.delenv(VARIABLE_PERFILES, raising=False)
+    _frente(tmp_path, "frente_a", "FRENTE A")
+    resultado = _auditar_frente(tmp_path, "frente_a", _presupuesto_de_dos_frentes())
+    assert resultado.hoja_presupuesto == "FRENTE A"
+    assert [r for r in _resumen(resultado) if r[2].startswith("FRENTE A!")] == [
+        ("AH6", "ADVERTENCIA", "FRENTE A!E6"),
+        ("AH5", "ERROR", "FRENTE A!F8"),
+        ("AH7", "ADVERTENCIA", "FRENTE A!A9"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("renglones", "avisa"),
+    [
+        # dos renglones enlazados, ninguno casa: otra obra
+        (
+            [(1, "VF-001", "R", "m2", "1800", "2.08"), (2, "VF-002", "T", "t-km", "75", "4.50")],
+            True,
+        ),
+        # dos enlazados, uno casa (la mitad): no
+        (
+            [(1, "VF-001", "R", "m2", "1100", "2.08"), (2, "VF-002", "T", "t-km", "120", "4.50")],
+            False,
+        ),
+        # un solo renglón enlazado, corregido: muy poco para juzgar la obra (su AH6 basta)
+        ([(1, "VF-001", "R", "m2", "1100", "2.08")], False),
+        # 2 de 5 casan (menos de la mitad): otra obra
+        (
+            [
+                (n, c, d, u, {1: "1800", 3: "260", 5: "640"}.get(n, q), pu)
+                for n, c, d, u, q, pu in RENGLONES
+            ],
+            True,
+        ),
+    ],
+)
+def test_la_frontera_del_aviso(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, renglones, avisa):
+    monkeypatch.delenv(VARIABLE_PERFILES, raising=False)
+    _frente(tmp_path, "frente_b", "FRENTE B")
+    resultado = _auditar_frente(tmp_path, "frente_b", _presupuesto_de_dos_frentes(renglones))
+    assert ("AH11" in {h.codigo for h in resultado.hallazgos}) is avisa
+
+
+def test_sin_presupuesto_no_hay_hoja(solo_apu, con_presupuesto):
+    assert solo_apu.hoja_presupuesto is None
+    assert con_presupuesto.hoja_presupuesto == "PRESUPUESTO"
