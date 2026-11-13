@@ -488,7 +488,12 @@ Haga clic en «Presupuesto» en la barra de la obra. Verá, en este orden:
    …»), «Aprobación:» con el estado de la versión y el «Total» en la moneda de la obra. Si tiene cambios,
    aparece «Descartar cambios».
 2. **La franja del paso** («Te falta:» o «Siguiente paso:»), con el único botón principal de la pantalla, y a
-   su lado **«Descargar Excel»**, que baja el presupuesto en un libro de Excel.
+   su lado **«Descargar Excel»**, que baja el presupuesto en un libro de Excel, y **«Descargar PDF»**, que
+   lo baja en un PDF para imprimir o enviar: la obra, la versión, la fecha y la moneda; cada partida con su
+   unidad, cantidad, precio unitario y total; el subtotal, el IVA y el total con IVA; y después el APU de cada
+   partida en su página (materiales, equipos y mano de obra y el cierre hasta el precio unitario). Sale lo
+   que se ve en la pantalla, también lo que aún no se guardó (el PDF lo dice), con coma decimal y punto de
+   miles.
 3. **Las pestañas**: «Partidas», «Análisis de precio (APU)», «Plan y equilibrio», «Precios», «Revisión» y
    «Ajustes de costo». En una obra de edificación con espacio aparece además, delante, «Espacio y
    metrajes».
@@ -1138,6 +1143,15 @@ En «Precios y catálogo», pestaña «Índices del BCV». Aquí se cargan la ta
 
 Cargar el mismo archivo dos veces no duplica nada.
 
+**Un índice en USD** (para el reajuste de un contrato en dólares). Debajo está «Un índice en USD». Pulse
+«Expresar un índice en USD», elija el «Índice en bolívares» (por ejemplo, el INPC) y la «Tasa del BCV»
+(venta, salvo que el contrato diga compra) y pulse «Revisar»: Sílice divide el valor de cada mes entre el
+promedio de la tasa del BCV de los días de ese mes (cada día con la última tasa publicada, que no puede tener
+más de 7 días) y muestra la cuenta del primer y del último mes y los meses a los que les faltan tasas. Si está
+bien, pulse «Guardar la serie en USD»: queda como una serie más (por ejemplo, «BCV-INPC-GENERAL-USD») que se
+cita en la cláusula del reajuste (sección 9.5). Si después se importa una revisión del índice o más tasas,
+revise y guarde otra vez.
+
 ### 9.5 Reajuste de precios (quien arma)
 
 Abra la obra y, en «Control de obra», elija la vista «Reajuste» (o busque «Reajuste de precios» con
@@ -1152,6 +1166,10 @@ debe cotejar con la Gaceta.
 3. Pestaña «2. Períodos y lo ejecutado»: los períodos y lo ejecutado, o la casilla para tomarlo de las
    valuaciones registradas.
 4. Pulse «Calcular». Puede «Guardar estudio» y «Descargar Excel».
+
+Si la obra está en USD y un componente cita un índice en bolívares, el resultado lo advierte: ese índice
+cuenta dos veces la devaluación. Exprese el índice en USD en «Índices del BCV» (sección 9.4) y cite la serie
+en USD en la cláusula.
 
 ### 9.6 Convertir la moneda de una versión (quien arma)
 
