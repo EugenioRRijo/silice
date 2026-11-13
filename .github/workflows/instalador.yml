@@ -197,7 +197,7 @@ jobs:
             # Lo bajado de internet no se ejecuta sin firma Authenticode válida de Microsoft
             $firma = Get-AuthenticodeSignature -FilePath $instalador
             if ($firma.Status -ne 'Valid' -or
-                $firma.SignerCertificate.Subject -notmatch 'Microsoft') {
+                $firma.SignerCertificate.Subject -notmatch '(^|,\s*)O=Microsoft Corporation(\s*,|$)') {
               Write-Error "Firma del instalador de WebView2: $($firma.Status) ($($firma.SignerCertificate.Subject))"
               exit 1
             }

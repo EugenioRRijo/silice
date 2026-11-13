@@ -160,8 +160,9 @@ def comprobar_libro_legible(ruta: Path) -> None:
     try:
         comprobar_topes_del_libro(datos, ruta.name)
     except ArchivoRechazado as error:
-        # Su aviso ya nombra el libro, la hoja y el tope; el libro se lee, así que no se le
-        # antepone «no se puede leer» (simulación de las decisiones de los topes, 2026-11-12).
+        # Su aviso ya se explica solo: nombra el libro y, si es un tope, la hoja y el tope (el libro
+        # se lee: no se le antepone «no se puede leer»); si una hoja está dañada, lo dice él mismo
+        # (simulación de las decisiones de los topes, 2026-11-12; auditoría de Hydrogen, MENOR).
         raise ValueError(str(error)) from error
 
 
