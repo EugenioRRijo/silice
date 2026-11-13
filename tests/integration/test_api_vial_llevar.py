@@ -70,6 +70,9 @@ SIN_APU = (
     "Las partidas "
     + ", ".join(f"«{c}»" for c in CODIGOS[:-1])
     + f" y «{CODIGOS[-1]}» no están en el catálogo: compóngalas primero en Componer."
+    # prueba de punta a punta del 2026-11-13, D2: falta el APU de los ligantes de la muestra
+    " Si el APU del riego ya trae el ligante (riego con suministro), escriba «sí» en la columna "
+    "«suministro» de esa capa de los tramos: el ligante no se deriva."
 )
 CABECERA = (
     "tramo;progresiva_ini_km;progresiva_fin_km;ancho_m;distancia_planta_km;elemento;tipo;"
