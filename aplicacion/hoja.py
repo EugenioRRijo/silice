@@ -1603,9 +1603,34 @@ def _cambios_de_cantidades(base: Borrador, actual: Borrador) -> list[CambioEdita
     ]
 
 
+def _especificaciones_propias(b: Borrador) -> dict[str, Mapping[str, str]]:
+    """Las especificaciones de cada renglon de la version (no del espacio), por su clave."""
+    sin = items_sin_escribir(b)
+    claves = claves_de_items(sin)[: len(b.items_base)]
+    return {clave: item.especificaciones for clave, item in zip(claves, sin, strict=False)}
+
+
+def _cambios_de_especificaciones(base: Borrador, actual: Borrador) -> list[CambioEditado]:
+    """Los renglones de la version que estan antes y despues con otras especificaciones (p. ej. la
+    directiva `_frente`, ola 2 del 2026-11-13): un cambio por renglon, objeto `cantidad` (el
+    renglon), campo `especificaciones` y los pares `clave=valor` ordenados."""
+    antes, despues = _especificaciones_propias(base), _especificaciones_propias(actual)
+    return [
+        CambioEditado(
+            "cantidad",
+            clave,
+            "especificaciones",
+            _pares_a_texto(sorted(antes[clave].items())),
+            _pares_a_texto(sorted(despues[clave].items())),
+        )
+        for clave in antes
+        if clave in despues and dict(antes[clave]) != dict(despues[clave])
+    ]
+
+
 def cambios_entre(base: Borrador, actual: Borrador) -> list[CambioEditado]:
     """Las celdas que cambiaron del borrador abierto (`base`) al vigente (`actual`), una por celda,
-    en el orden metraje, APU, cantidad, parametro y plan (spec §9.3).
+    en el orden metraje, APU, cantidad, especificaciones del renglon, parametro y plan (§9.3).
 
     Cada `CambioEditado` lleva objeto, clave de fila, campo y los dos valores como texto. Lo
     arma la hoja, que conoce las claves `esp_*`: `core` no las interpreta. Sin cambios, lista
@@ -1615,6 +1640,7 @@ def cambios_entre(base: Borrador, actual: Borrador) -> list[CambioEditado]:
         *_cambios_de_metraje(base.espacio, actual.espacio),
         *_cambios_de_apu(base.composiciones, actual.composiciones),
         *_cambios_de_cantidades(base, actual),
+        *_cambios_de_especificaciones(base, actual),
         *_cambios_de_parametros(base.parametros, actual.parametros),
         *_cambios_de_plan(base, actual),
     ]
