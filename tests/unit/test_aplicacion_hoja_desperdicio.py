@@ -11,6 +11,7 @@ Datos FICTICIOS. Oráculos a mano: 2 × 1,05 = 2,10; 0,50 × 1,04 = 0,52; 0,60 �
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
@@ -125,3 +126,15 @@ def test_sin_trazas_nuevas_o_iguales_a_las_vigentes_no_se_escribe_nada():
     assert por_guardar(_borrador("0.52"), {"VIA-01": (DE_COMPONER,)}, vigentes.__getitem__) == {}
     # una partida que el borrador ya no tiene (se quitó): nada
     assert por_guardar(Borrador(fecha=FECHA), {"VIA-01": (DE_LA_HOJA,)}, vigentes.__getitem__) == {}
+
+
+def test_la_traza_de_la_hoja_se_arma_recortada_como_la_de_componer():
+    """Argon, ronda 2 del árbitro (2026-11-13): la Hoja armaba la traza con la descripción y la
+    unidad del APU tal cual («Ligante ficticio », «l »); unir y por_guardar las comparaban crudas
+    con las de Componer, que vienen recortadas, y dejaban dos trazas de la misma línea."""
+    con_espacios = LineaMaterial("Ligante ficticio ", "l ", D("2"), D("3"))
+    apu = replace(APU, materiales=(ARENA, con_espacios))
+    _, trazas = con_desperdicio_en_materiales(apu, ["", "5"])
+    assert trazas == (TrazaDesperdicio("Ligante ficticio", "l", D("2"), D("5"), D("2.10")),)
+    vigente = TrazaDesperdicio("Ligante ficticio", "l", D("1"), D("110"), D("2.10"))
+    assert unir(trazas, [vigente]) == list(trazas)  # misma línea y cantidad: manda la nueva
