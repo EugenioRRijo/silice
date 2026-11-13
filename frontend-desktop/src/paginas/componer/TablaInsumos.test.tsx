@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { TablaInsumos } from "./TablaInsumos";
 
@@ -94,5 +95,71 @@ describe("TablaInsumos", () => {
     expect(alAgregar).toHaveBeenCalledOnce();
     await usuario.click(screen.getByRole("button", { name: "Borrar fila 2 de Materiales" }));
     expect(alBorrar).toHaveBeenCalledWith(1);
+  });
+});
+
+// Ola 2 (2026-11-13; bitácora `2026-11-13-ola2-front.md` §2): un precio de la lista convertido de Bs trae 28 cifras
+// (5,041157684630738522954091816) y la sugerencia lo lee «5,04 USD». La celda lo lee con dos decimales en reposo, como
+// una celda de Excel, y al entrar en ella se ve y se edita el número completo; guardar sin tocarla manda el exacto. Lo que
+// la persona teclea se ve siempre tal cual. Montos ficticios.
+describe("TablaInsumos: la celda del precio en reposo y al editarla", () => {
+  const EXACTO = "5,041157684630738522954091816";
+
+  function ConEstado({ precio, alCambiar = vi.fn() }: { precio: string; alCambiar?: (i: number, c: string, v: string) => void }) {
+    const [filas, setFilas] = useState([{ descripcion: "Cemento ficticio", unidad: "saco", cantidad: "1", precio }]);
+    return (
+      <TablaInsumos
+        tipo="materiales"
+        filas={filas}
+        modalidades={MODALIDADES}
+        alCambiar={(i, clave, valor) => {
+          alCambiar(i, clave, valor);
+          setFilas((f) => f.map((fila, j) => (j === i ? { ...fila, [clave]: valor } : fila)));
+        }}
+        alAgregar={vi.fn()}
+        alBorrar={vi.fn()}
+        alExpirar={vi.fn()}
+        alCompletar={vi.fn()}
+      />
+    );
+  }
+  const precio = () => screen.getByRole("textbox", { name: "Precio, fila 1" });
+
+  test("con más de dos decimales se lee con dos en reposo y entero al entrar; salir sin tocarla no cambia nada", async () => {
+    const usuario = userEvent.setup();
+    const alCambiar = vi.fn();
+    render(<ConEstado precio={EXACTO} alCambiar={alCambiar} />);
+    expect(precio()).toHaveValue("5,04");
+    expect(precio()).toHaveAttribute("title", `Precio exacto: ${EXACTO}. Al entrar en la celda se ve y se edita completo.`);
+    await usuario.click(precio());
+    expect(precio()).toHaveValue(EXACTO);
+    await usuario.tab();
+    expect(precio()).toHaveValue("5,04");
+    expect(alCambiar).not.toHaveBeenCalled();
+  });
+
+  test("lo que la persona teclea se ve tal cual, también en reposo", async () => {
+    const usuario = userEvent.setup();
+    render(<ConEstado precio={EXACTO} />);
+    await usuario.click(precio());
+    await usuario.clear(precio());
+    await usuario.type(precio(), "5,0411");
+    await usuario.tab();
+    expect(precio()).toHaveValue("5,0411");
+    expect(precio()).not.toHaveAttribute("title");
+  });
+
+  test("con dos decimales o menos, o con un texto que no es cifra, se ve igual en reposo", () => {
+    render(<ConEstado precio="12,5" />);
+    expect(precio()).toHaveValue("12,5");
+    expect(precio()).not.toHaveAttribute("title");
+  });
+
+  test("la nota bajo la tabla lo explica solo cuando alguna celda se lee con dos decimales", () => {
+    const { unmount } = render(<ConEstado precio={EXACTO} />);
+    expect(screen.getByText("Los precios con más de dos decimales se leen con dos; al entrar en la celda se ve y se edita el número completo.")).toBeInTheDocument();
+    unmount();
+    render(<ConEstado precio="12,50" />);
+    expect(screen.queryByText(/se leen con dos/)).not.toBeInTheDocument();
   });
 });
