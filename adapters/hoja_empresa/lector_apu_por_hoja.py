@@ -313,7 +313,7 @@ def _linea(
         depreciacion=depreciacion,
         celdas={
             campo: Celda(hoja, f"{letra(columnas[campo])}{i + 1}")
-            for campo in ("unidad", "desperdicio", "bono")
+            for campo in ("unidad", "desperdicio", "bono", "precio")
             if campo in columnas
         },
     )

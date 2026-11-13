@@ -8321,6 +8321,48 @@
         }
       }
     },
+    "/v1/hoja/libro": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Llevar Libro",
+        "description": "Audita el libro y lo lleva al borrador de la Hoja de la obra (ver la cabecera).",
+        "operationId": "llevar_libro_v1_hoja_libro_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_llevar_libro_v1_hoja_libro_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibroLlevadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores/{id}/excel": {
       "get": {
         "tags": [
@@ -14384,6 +14426,89 @@
           "fecha_descarga"
         ],
         "title": "Body_leer_v1_indices_leer_post"
+      },
+      "Body_llevar_libro_v1_hoja_libro_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Libro con un APU por hoja (.xlsx)"
+          },
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "moneda": {
+            "type": "string",
+            "enum": [
+              "Bs",
+              "USD"
+            ],
+            "title": "Moneda",
+            "description": "La moneda de los precios del libro"
+          },
+          "presupuesto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presupuesto",
+            "description": "Libro del presupuesto"
+          },
+          "perfil": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Perfil"
+          },
+          "hoja_presupuesto": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoja Presupuesto"
+          },
+          "frente": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro",
+          "proyecto",
+          "moneda"
+        ],
+        "title": "Body_llevar_libro_v1_hoja_libro_post"
       },
       "Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post": {
         "properties": {
@@ -21772,6 +21897,59 @@
         "title": "LibroAuditadoRespuesta",
         "description": "`aviso_historial` es `null` si la auditoría quedó en el historial; si no, el texto que la\npantalla muestra (la auditoría es válida igual, RF-144).\n\n`partidas_con_omision` (V-16, etiqueta del libro menor): los números de las partidas cuyo\nAPU tiene un hallazgo L4 (el costo directo del libro deja fuera componentes o no es la suma de\nellos), ordenados y sin repetir. Es el único rastro de «costos omitidos» que el auditor deja de\nforma estructurada; una lista vacía NO prueba que el libro esté completo (una partida\nentera que falta en el libro no tiene contraparte que comparar). Campo aditivo."
       },
+      "LibroLlevadoRespuesta": {
+        "properties": {
+          "borrador_id": {
+            "type": "string",
+            "title": "Borrador Id"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones"
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaDelLibroRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas"
+          },
+          "sin_apu": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sin Apu"
+          },
+          "sin_cantidad": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sin Cantidad"
+          },
+          "lista": {
+            "type": "string",
+            "title": "Lista"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "borrador_id",
+          "renglones",
+          "partidas",
+          "sin_apu",
+          "sin_cantidad",
+          "lista",
+          "moneda"
+        ],
+        "title": "LibroLlevadoRespuesta",
+        "description": "El borrador con el libro (sin guardar) y lo que se llevó."
+      },
       "LibroOrigenRespuesta": {
         "properties": {
           "nombre": {
@@ -23717,6 +23895,56 @@
           "unidad"
         ],
         "title": "PartidaDelContratoRespuesta"
+      },
+      "PartidaDelLibroRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "codigo_libro": {
+            "type": "string",
+            "title": "Codigo Libro"
+          },
+          "hoja": {
+            "type": "string",
+            "title": "Hoja"
+          },
+          "nueva": {
+            "type": "boolean",
+            "title": "Nueva"
+          },
+          "precio_impreso": {
+            "type": "string",
+            "title": "Precio Impreso"
+          },
+          "precio_hoja": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Hoja"
+          },
+          "casa": {
+            "type": "boolean",
+            "title": "Casa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "codigo_libro",
+          "hoja",
+          "nueva",
+          "precio_impreso",
+          "precio_hoja",
+          "casa"
+        ],
+        "title": "PartidaDelLibroRespuesta"
       },
       "PartidaDiferente": {
         "properties": {

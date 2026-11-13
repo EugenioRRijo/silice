@@ -98,6 +98,7 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import (
 from adapters.vial.constantes import TOLERANCIA_PRECIO
 from aplicacion.cifras import BandaIlegible, leer_banda
 from aplicacion.regla_desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
+from core.contracts.apu import ComposicionAPU, ParametrosCosto
 from core.costing.motor import calcular_apu
 from fusion.mapeo import composicion_de_apu_por_hoja
 
@@ -119,7 +120,12 @@ _INFORMADO = "informado"
 
 @dataclass(frozen=True, slots=True)
 class ApuRecalculado:
-    """Una hoja de APU: lo impreso y lo que recalcula Sílice (`None` si no es evaluable)."""
+    """Una hoja de APU: lo impreso y lo que recalcula Sílice (`None` si no es evaluable).
+
+    Libro por frentes (2026-11-13): también la composición del núcleo y sus parámetros (los mismos
+    con que se recalculó), la cantidad de la cabecera con su celda y la celda del precio de cada
+    línea en el orden canónico (materiales, equipos y mano de obra): lo que necesita quien lleva el
+    libro a la Hoja, sin volver a leerlo."""
 
     hoja: str
     numero: int | None
@@ -129,6 +135,11 @@ class ApuRecalculado:
     precio_impreso: Decimal
     precio_silice: Decimal | None
     celda_precio: str
+    composicion: ComposicionAPU | None = None
+    parametros: ParametrosCosto | None = None
+    cantidad: Decimal | None = None
+    celda_cantidad: str | None = None
+    celdas_precio: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -336,6 +347,7 @@ def _evaluar(
                         diferencia,
                     )
                 )
+    orden = (TipoInsumo.MATERIAL, TipoInsumo.EQUIPO, TipoInsumo.MANO_OBRA)
     recalculado = ApuRecalculado(
         apu.hoja,
         apu.numero,
@@ -345,6 +357,16 @@ def _evaluar(
         impreso,
         silice,
         str(celda_pu),
+        composicion=composicion,
+        parametros=parametros,
+        cantidad=apu.cantidad,
+        celda_cantidad=str(apu.celdas["cantidad"]) if "cantidad" in apu.celdas else None,
+        celdas_precio=tuple(
+            str(linea.celdas["precio"])
+            for tipo in orden
+            for linea in apu.lineas
+            if linea.tipo is tipo and "precio" in linea.celdas
+        ),
     )
     return recalculado, hallazgos, trazas
 

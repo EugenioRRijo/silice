@@ -34,6 +34,7 @@ from api import caso_web, dependencias
 from api.main import app
 from api.rutas import hoja as rutas_hoja
 from aplicacion import hoja_borradores
+from core.budget.moneda import declarar_moneda
 from core.budget.persistencia import crear_proyecto
 from core.catalog import abrir_sesion, crear_motor
 from core.contracts import Dominio
@@ -68,7 +69,8 @@ def _carpeta(ruta: Path) -> Path:
     try:
         with abrir_sesion(motor) as s:
             sembrar_vivienda(s)  # la lista «Lista Bs de prueba» y una obra con versiones
-            crear_proyecto(s, VIA, dominio=Dominio.CIVIL)  # la obra sin versiones
+            via = crear_proyecto(s, VIA, dominio=Dominio.CIVIL)  # la obra sin versiones
+            declarar_moneda(s, via, "Bs", responsable="Ana <ana>")  # la de la carpeta
             s.commit()
     finally:
         motor.dispose()
@@ -175,7 +177,7 @@ def test_el_libro_auditado_llega_a_la_hoja_sin_teclear(ana) -> None:
     ]
     assert len(filas) == 10
     assert filas[5]["clave"] == "VF-001|libro:FRENTE B!E4"
-    assert filas[0]["pu"] == "2,08"
+    assert filas[0]["pu"]["texto"] == "2.08"
 
 
 def test_cada_precio_del_libro_lleva_su_referencia(ana) -> None:
@@ -204,7 +206,9 @@ def test_otro_libro_con_un_apu_distinto_entra_como_variante(ana) -> None:
         APUS[0],
         materiales=(Material(1, "Emulsión asfáltica ficticia", "lt", "0.50", "4", "2.50"),),
     )
-    cuerpo = _llevar(ana, libro=libro_apu((primero, *APUS[1:]))).json()
+    r = _llevar(ana, libro=libro_apu((primero, *APUS[1:])))
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
     assert [(p["codigo"], p["nueva"]) for p in cuerpo["partidas"]] == [
         ("VF-001-B", True),
         ("VF-002", False),
@@ -220,11 +224,11 @@ def test_sin_presupuesto_la_cantidad_es_la_de_cada_apu_y_el_frente_el_dicho(ana)
     assert r.status_code == 200, r.text
     filas = _filas(navegador, r.json()["borrador_id"])
     assert [(f["clave"], f["cantidad"]) for f in filas] == [
-        ("VF-001|libro:APU 1!D5", "1000"),
+        ("VF-001|libro:APU 1!D5", "1.000"),
         ("VF-002|libro:APU 2!D5", "120"),
         ("VF-003|libro:APU 3!D5", "500"),
         ("VF-004|libro:APU 4!D5", "2"),
-        ("VF-005|libro:APU 5!D5", "1000"),
+        ("VF-005|libro:APU 5!D5", "1.000"),
     ]
 
 
