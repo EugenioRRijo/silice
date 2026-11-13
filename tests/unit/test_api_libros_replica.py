@@ -21,6 +21,7 @@ Oráculos, ninguno sale del código bajo prueba:
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import shutil
 from collections.abc import Iterator
@@ -237,6 +238,28 @@ def test_replica_de_un_libro_demasiado_grande_da_422_con_su_mensaje(limpio, monk
     assert r.json() == {
         "detalle": "El libro tiene más de 10 celdas con valor o formato; es demasiado grande "
         "para mostrarlo en el visor."
+    }
+
+
+def test_replica_de_una_hoja_sin_formulas_con_una_celda_lejana_da_422() -> None:
+    """Acta del árbitro de los topes, NOTA 6: la hoja no tiene fórmulas (no pasa por la lectura de
+    valores guardados) y declara solo A1; la celda lejana la rechaza igual, con el aviso del
+    lector."""
+    from openpyxl import Workbook
+
+    libro = Workbook()
+    libro.active.title = "Notas"
+    libro.active["A1"] = "nota ficticia"
+    salida = io.BytesIO()
+    libro.save(salida)
+    datos = con_celdas(salida.getvalue(), "Notas", {"A1048576": "fin ficticio"})
+    r = _replica(_con_clave(), datos, nombre="notas.xlsx")
+    assert r.status_code == 422, r.text
+    assert r.json() == {
+        "detalle": "El libro «notas.xlsx», hoja «Notas»: tiene filas con datos o con formato más "
+        "allá de la 20.000. Sílice lee de cada hoja hasta 20.000 filas y 100 columnas (de la A a "
+        "la CV). Se rechaza por seguridad: borre lo que sobra al final de la hoja y guárdelo de "
+        "nuevo."
     }
 
 

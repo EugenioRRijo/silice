@@ -823,3 +823,105 @@ def test_una_celda_lejana_en_una_hoja_con_formulas_rechaza_la_replica(
         "filas y 100 columnas (de la A a la CV). Se rechaza por seguridad: borre lo que sobra al "
         "final de la hoja y guárdelo de nuevo."
     )
+
+
+# --- entrada hostil en una hoja sin fórmulas (acta del árbitro de los topes, NOTA 6) -----------
+#
+# La réplica abre el libro en modo normal, que solo crea las celdas que existen: una celda lejana
+# no la hace recorrer nada, pero la hoja declaraba entonces un millón de filas (o 16.384 columnas)
+# al visor. Ahora una hoja sin fórmulas tiene los mismos topes que la pasada de solo lectura, con
+# el mismo aviso. A mano: la fila 20.000 y la columna CV (100) se aceptan; la 20.001 y la CW
+# (101), no. Las celdas cubiertas por una combinada y las filas con alto propio cuentan, porque el
+# visor las dibuja. Cada libro declara en su `<dimension>` solo A1, como un libro hostil: la guardia
+# solo mira esa dimensión, y así es la réplica la que rechaza.
+
+_FILAS = "tiene filas con datos o con formato más allá de la 20.000"
+
+
+def _ancha(fila: int, columna: str) -> str:
+    return (
+        f"la fila {fila} tiene celdas con datos o con formato hasta la columna {columna}, "
+        "más allá de la CV"
+    )
+
+
+def _hoja_sin_formulas(
+    valores: tuple[str, ...] = (),
+    formato: tuple[str, ...] = (),
+    alto: int | None = None,
+    combinada: str | None = None,
+) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Notas"
+    ws["A1"] = "nota ficticia"
+    for ref in valores:
+        ws[ref] = "x"
+    for ref in formato:
+        ws[ref].font = Font(bold=True)
+    if alto is not None:
+        ws.row_dimensions[alto].height = 30
+    if combinada is not None:
+        ws.merge_cells(combinada)
+    import re
+    import zipfile
+
+    salida = io.BytesIO()
+    with (
+        zipfile.ZipFile(io.BytesIO(_bytes(wb))) as origen,
+        zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as destino,
+    ):
+        for entrada in origen.infolist():
+            contenido = origen.read(entrada)
+            if entrada.filename == "xl/worksheets/sheet1.xml":
+                contenido = re.sub(rb'<dimension ref="[^"]*"', b'<dimension ref="A1"', contenido)
+            destino.writestr(entrada, contenido)
+    return salida.getvalue()
+
+
+@pytest.mark.parametrize(
+    ("libro", "donde"),
+    [
+        ({"valores": ("A20001",)}, _FILAS),
+        ({"valores": ("A1048576",)}, _FILAS),
+        ({"formato": ("A20001",)}, _FILAS),
+        ({"alto": 20001}, _FILAS),
+        ({"valores": ("CW1",)}, _ancha(1, "CW")),
+        ({"valores": ("XFD2",)}, _ancha(2, "XFD")),
+        ({"formato": ("CW7",)}, _ancha(7, "CW")),
+        ({"combinada": "A1:CW1"}, _ancha(1, "CW")),
+        # el aviso es el de la primera fila que se pasa, como en la pasada de solo lectura
+        ({"valores": ("CW5", "CX3", "A30000")}, _ancha(3, "CX")),
+        # una fila ancha más allá de la 20.000 la delata antes el tope de filas
+        ({"valores": ("CW20001",)}, _FILAS),
+    ],
+    ids=[
+        "A20001",
+        "A1048576",
+        "formato_A20001",
+        "alto_fila_20001",
+        "CW1",
+        "XFD2",
+        "formato_CW7",
+        "combinada_A1_CW1",
+        "primera_fila_ancha",
+        "ancha_tras_el_tope",
+    ],
+)
+def test_una_celda_lejana_en_una_hoja_sin_formulas_rechaza_la_replica(libro: dict, donde: str):
+    with pytest.raises(ArchivoRechazado) as error:
+        replicar_libro(_hoja_sin_formulas(**libro), NOMBRE)
+    assert str(error.value) == (
+        f"El libro «{NOMBRE}», hoja «Notas»: {donde}. Sílice lee de cada hoja hasta 20.000 "
+        "filas y 100 columnas (de la A a la CV). Se rechaza por seguridad: borre lo que sobra al "
+        "final de la hoja y guárdelo de nuevo."
+    )
+
+
+def test_una_hoja_sin_formulas_en_el_tope_exacto_se_replica():
+    """CV20000 (fila 20.000, columna 100) y el alto de la fila 20.000: dentro del tope."""
+    libro = replicar_libro(_hoja_sin_formulas(valores=("CV20000",), alto=20000), NOMBRE)
+    (hoja,) = libro.hojas
+    assert (hoja.filas, hoja.columnas) == (20_000, 100)
+    assert hoja.altos == {20_000: "30"}
+    assert [c.ref for c in hoja.celdas] == ["A1", "CV20000"]

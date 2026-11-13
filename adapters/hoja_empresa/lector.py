@@ -35,7 +35,7 @@ import io
 import re
 import warnings
 import zipfile
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from decimal import Decimal
@@ -71,7 +71,13 @@ from adapters.hoja_empresa.modelo import (
 from adapters.hoja_empresa.perfil import Perfil, cargar_perfil, coincide, normalizar
 from adapters.hoja_empresa.umbrales import MEDIO_CENTAVO
 
-__all__ = ["filas_acotadas", "leer_libro", "letra"]
+__all__ = [
+    "comprobar_topes_de_hoja",
+    "comprobar_topes_del_libro",
+    "filas_acotadas",
+    "leer_libro",
+    "letra",
+]
 
 _CERO = Decimal(0)
 _UNO = Decimal(1)
@@ -232,6 +238,43 @@ def _fuera_del_tope(nombre: str, hoja: str, donde: str) -> ArchivoRechazado:
     )
 
 
+def _filas_de_mas(nombre: str, hoja: str) -> ArchivoRechazado:
+    return _fuera_del_tope(
+        nombre, hoja, f"tiene filas con datos o con formato más allá de la {miles(MAX_FILAS_HOJA)}"
+    )
+
+
+def _fila_ancha(nombre: str, hoja: str, fila: int, columnas: int) -> ArchivoRechazado:
+    """`columnas`: la última columna de la fila, base 1."""
+    return _fuera_del_tope(
+        nombre,
+        hoja,
+        f"la fila {fila} tiene celdas con datos o con formato hasta la columna "
+        f"{letra(columnas - 1)}, más allá de la {letra(MAX_COLUMNAS_HOJA - 1)}",
+    )
+
+
+def comprobar_topes_de_hoja(nombre: str, hoja: str, celdas: Iterable[tuple[int, int]]) -> None:
+    """Los topes de `filas_acotadas` para una hoja que ya está en memoria (la réplica visual la
+    abre en modo normal, que solo crea las celdas que existen): `celdas` son sus coordenadas
+    (fila, columna), base 1, en cualquier orden.
+
+    Lanza el mismo `ArchivoRechazado` que daría `filas_acotadas` al recorrer la hoja: el de la
+    primera fila de hasta `MAX_FILAS_HOJA` más ancha que `MAX_COLUMNAS_HOJA` (con su última
+    columna) y, si no hay ninguna, el de las filas de más. Un solo recorrido de `celdas`."""
+    ultima = 0
+    anchas: dict[int, int] = {}
+    for fila, columna in celdas:
+        ultima = max(ultima, fila)
+        if fila <= MAX_FILAS_HOJA and columna > max(MAX_COLUMNAS_HOJA, anchas.get(fila, 0)):
+            anchas[fila] = columna
+    if anchas:
+        primera = min(anchas)
+        raise _fila_ancha(nombre, hoja, primera, anchas[primera])
+    if ultima > MAX_FILAS_HOJA:
+        raise _filas_de_mas(nombre, hoja)
+
+
 def filas_acotadas(
     ws: Any, nombre: str, cuenta: list[int], tope_libro: int, *, values_only: bool
 ) -> Iterator[tuple[Any, ...]]:
@@ -244,24 +287,16 @@ def filas_acotadas(
     lo sumo `MAX_FILAS_HOJA` filas y una más, la que delata que la hoja sigue, y una fila más ancha
     que `MAX_COLUMNAS_HOJA` rechaza el libro en cuanto llega. `cuenta[0]` suma las celdas
     entregadas en el libro entero (antes de recortar) y pasar de `tope_libro` también lo rechaza:
-    64 hojas en su tope pasan la guardia. Lo usan los dos lectores (este y el de un APU por hoja).
+    64 hojas en su tope pasan la guardia. Lo usan los dos lectores (este y el de un APU por hoja)
+    y la réplica visual; `comprobar_topes_de_hoja` da los mismos avisos a una hoja ya en memoria.
     """
     ws.reset_dimensions()
     leidas = 0
     for fila in ws.iter_rows(max_row=MAX_FILAS_HOJA + 1, values_only=values_only):
         if leidas == MAX_FILAS_HOJA:
-            raise _fuera_del_tope(
-                nombre,
-                ws.title,
-                f"tiene filas con datos o con formato más allá de la {miles(MAX_FILAS_HOJA)}",
-            )
+            raise _filas_de_mas(nombre, ws.title)
         if len(fila) > MAX_COLUMNAS_HOJA:
-            raise _fuera_del_tope(
-                nombre,
-                ws.title,
-                f"la fila {leidas + 1} tiene celdas con datos o con formato hasta la columna "
-                f"{letra(len(fila) - 1)}, más allá de la {letra(MAX_COLUMNAS_HOJA - 1)}",
-            )
+            raise _fila_ancha(nombre, ws.title, leidas + 1, len(fila))
         cuenta[0] += len(fila)
         if cuenta[0] > tope_libro:
             raise ArchivoRechazado(
@@ -271,6 +306,32 @@ def filas_acotadas(
             )
         leidas += 1
         yield fila
+
+
+def comprobar_topes_del_libro(datos: bytes, nombre: str) -> None:
+    """Recorre cada hoja del libro en solo lectura con los topes de `filas_acotadas` (y una sola
+    cuenta de `MAX_CELDAS_LIBRO` para el libro entero), sin guardar nada.
+
+    Es para los libros que no lee este módulo y que se recorren sin tope: las listas de precios,
+    el presupuesto de un tercero y las valuaciones subidas (`core.catalog.precios.leer_tabla`, en
+    el núcleo, que no se toca; acta del árbitro de los topes, NOTA 7). Se llama después de la
+    guardia y antes del lector del núcleo, así que un libro hostil se rechaza en décimas de
+    segundo. Solo lanza `ArchivoRechazado`: si openpyxl no lo abre, si una hoja pasa de los topes
+    (el aviso de `filas_acotadas`) o si una hoja está dañada."""
+    libro = _abrir(datos, nombre, data_only=True)
+    try:
+        cuenta = [0]
+        for ws in libro.worksheets:
+            for _ in filas_acotadas(ws, nombre, cuenta, MAX_CELDAS_LIBRO, values_only=True):
+                pass
+    except ArchivoRechazado:
+        raise
+    except Exception as exc:  # openpyxl lanza tipos muy variados ante una hoja dañada
+        raise ArchivoRechazado(
+            f"No se pudo leer el libro «{nombre}»: alguna hoja está dañada."
+        ) from exc
+    finally:
+        libro.close()
 
 
 def _celdas_reales(ws: Any, nombre: str, cuenta: list[int]) -> Iterator[Any]:
