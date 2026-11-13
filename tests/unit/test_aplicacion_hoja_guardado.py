@@ -255,8 +255,8 @@ def test_los_mensajes_de_error_al_guardar_son_los_escritos_a_mano(_plantillas, a
         "Escriba la fuente del cambio: por que se cambia y con que respaldo.",
         "Escriba la fuente del cambio: por que se cambia y con que respaldo.",
         "Escriba el responsable del cambio: quien lo hace.",
-        "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion "
-        "vigente en el catalogo, asi que recalcularla cambiaria sus precios.",
+        "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición "
+        "vigente en el catálogo, así que recalcularla cambiaría sus precios.",
     ]
 
 
