@@ -573,3 +573,110 @@ def test_guardar_un_desperdicio_mal_escrito_es_422(api: TestClient) -> None:
     respuesta = _guardar_desp(api, {**LIGANTE, "desperdicio": "cuatro"})
     assert respuesta.status_code == 422
     assert "el desperdicio «cuatro» no se entiende como número" in respuesta.json()["detalle"]
+
+
+# --- parámetros del precio unitario (RF-200, ola 2 del 2026-11-13) -----------------------------
+#
+# Componer calculaba siempre con los parámetros de omisión (FCAS 6, bono 1, adm. 0,15, util. 0,10)
+# y su precio unitario no era el de la obra. Ahora `evaluar`, `guardar` y `prever` reciben, si se
+# mandan, los cuatro parámetros como texto (coma decimal) y el servidor calcula con ellos; no se
+# guardan con la partida. Oráculo a mano con la tubería de la línea base (rendimiento 100):
+# materiales 7,19; equipos 3,30 / 100 = 0,033; mano de obra (11,50 × (1 + 5,5) + 3 × 2) / 100 =
+# 0,8075; costo directo 8,0305; con administración 8,0305 × 1,12 = 8,99416; precio unitario
+# 8,99416 × 1,15 = 10,343284.
+
+PARAMETROS_DE_OBRA = {
+    "fcas": "5,5",
+    "bono_alimentacion": "2",
+    "administracion": "0,12",
+    "utilidad": "0,15",
+}
+
+
+def test_las_opciones_de_parametros_son_las_de_omision_con_su_rotulo(api: TestClient) -> None:
+    respuesta = api.get("/v1/composicion/parametros")
+    assert respuesta.status_code == 200
+    assert respuesta.json() == {
+        "campos": [
+            {"clave": "fcas", "rotulo": "FCAS (fracción: 6.00 = prestaciones del 600 %)", "valor": "6,00"},
+            {"clave": "bono_alimentacion", "rotulo": "Bono de alimentación (por obrero y día)", "valor": "1,00"},
+            {"clave": "administracion", "rotulo": "Administración (fracción del costo directo)", "valor": "0,15"},
+            {
+                "clave": "utilidad",
+                "rotulo": "Utilidad (fracción, en cascada sobre la administración)",
+                "valor": "0,10",
+            },
+        ]
+    }
+
+
+def test_evaluar_con_los_parametros_de_la_obra_calcula_con_ellos(api: TestClient) -> None:
+    cuerpo = api.post(
+        "/v1/composicion/evaluar", json=_cuerpo(parametros=PARAMETROS_DE_OBRA)
+    ).json()
+    assert cuerpo["estado"] == "valido"
+    assert cuerpo["desglose"] == {
+        "materiales": "7.19",
+        "equipos": "0.03",
+        "mano_obra": "0.81",
+        "costo_directo": "8.03",
+        "con_administracion": "8.99",
+        "precio_unitario": "10.34",
+    }
+
+
+def test_evaluar_sin_parametros_sigue_con_los_de_omision(api: TestClient) -> None:
+    cuerpo = api.post("/v1/composicion/evaluar", json=_cuerpo()).json()
+    assert cuerpo["desglose"]["precio_unitario"] == "10.19"
+
+
+@pytest.mark.parametrize(
+    ("campo", "texto", "dice"),
+    [
+        ("utilidad", "0.15", "Utilidad: Use la coma para los decimales"),
+        ("fcas", "", "FCAS: Escriba un número"),
+        ("bono_alimentacion", "-1", "Bono de alimentación: no puede ser negativo"),
+    ],
+)
+def test_evaluar_con_un_parametro_mal_escrito_es_incompleto_y_dice_cual(
+    api: TestClient, campo: str, texto: str, dice: str
+) -> None:
+    cuerpo = api.post(
+        "/v1/composicion/evaluar",
+        json=_cuerpo(parametros={**PARAMETROS_DE_OBRA, campo: texto}),
+    ).json()
+    assert cuerpo["estado"] == "incompleto"
+    assert cuerpo["desglose"] is None
+    assert cuerpo["aviso"].startswith(f"Parámetros del precio unitario. {dice}")
+
+
+def test_guardar_con_los_parametros_de_la_obra_dice_su_precio(api: TestClient) -> None:
+    respuesta = api.post(
+        "/v1/composicion/guardar", json=_guardar_cuerpo(parametros=PARAMETROS_DE_OBRA)
+    )
+    assert respuesta.status_code == 200
+    assert respuesta.json() == {
+        "precio_unitario": "10.34",
+        "mensaje": f"Composición guardada para la partida {NUEVA}: precio unitario 10,34.",
+        "justificada": False,
+        "avisos": [],
+    }
+
+
+def test_guardar_con_un_parametro_mal_escrito_es_422_y_no_escribe(api: TestClient) -> None:
+    respuesta = api.post(
+        "/v1/composicion/guardar",
+        json=_guardar_cuerpo(parametros={**PARAMETROS_DE_OBRA, "fcas": "seis"}),
+    )
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"].startswith("Parámetros del precio unitario. FCAS:")
+    assert api.get(f"/v1/composicion/partidas/{NUEVA}").json()["existe"] is False
+
+
+def test_prever_con_un_parametro_mal_escrito_es_422(api: TestClient) -> None:
+    respuesta = api.post(
+        "/v1/composicion/prever",
+        json=_guardar_cuerpo(parametros={**PARAMETROS_DE_OBRA, "administracion": "x"}),
+    )
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"].startswith("Parámetros del precio unitario. Administración:")
