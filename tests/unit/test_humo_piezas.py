@@ -727,3 +727,16 @@ def test_humo_exige_un_juego_de_migracion_nuevo_tras_la_actualizacion() -> None:
     assert nuevos > bloque.index("InstalarSilencioso $Actualizacion")
     assert "motivo -eq 'migracion'" in bloque
     assert "v050_demo.db" in bloque[nuevos:]
+
+
+def test_workflow_exige_la_firma_de_microsoft_antes_de_ejecutar_el_instalador_de_webview2() -> None:
+    """Lo que baja de internet no se ejecuta sin firma Authenticode válida de Microsoft."""
+    flujo = (RAIZ / ".github" / "workflows" / "instalador.yml").read_text(encoding="utf-8")
+    descarga = flujo.index("MicrosoftEdgeWebview2Setup.exe")
+    ejecuta = flujo.index("Start-Process -FilePath $instalador")
+    firma = flujo.find("Get-AuthenticodeSignature -FilePath $instalador", descarga)
+    assert descarga < firma < ejecuta
+    tramo = flujo[firma:ejecuta]
+    assert "Status -ne 'Valid'" in tramo
+    assert "SignerCertificate.Subject -notmatch 'Microsoft'" in tramo
+    assert "exit 1" in tramo
