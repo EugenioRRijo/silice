@@ -131,3 +131,13 @@ def test_menos_de_dos_letras_no_busca(sesion: Session) -> None:
 def test_tabla_desconocida_es_un_error(sesion: Session) -> None:
     with pytest.raises(LookupError):
         buscar(sesion, "no_existe", "algo")
+
+
+def test_una_partida_vial_trae_su_descripcion_y_su_unidad(sesion: Session) -> None:
+    """E2E-3 (prueba de punta a punta del 2026-11-13): al elegir un código vial en Componer no se
+    llenaban la descripción ni la unidad, que solo venían dentro de la etiqueta. Ahora vienen
+    aparte, como las de `adapters.vial.constantes.PARTIDAS_VIALES`."""
+    (base,) = [
+        h for h in buscar(sesion, "partidas_viales", "c-000.000.002") if h.valor == "C-000.000.002"
+    ]
+    assert (base.descripcion, base.unidad) == ("Base granular compactada", "m3")
