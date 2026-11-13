@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "./api/cliente";
@@ -86,12 +86,20 @@ describe("App: primer arranque y recuperar acceso", () => {
     vi.unstubAllGlobals();
   });
 
+  // Ola 2 (2026-11-13; bitácora `2026-11-13-ola2-front.md` §5): escribir tecla a tecla los ~90 caracteres del formulario
+  // repinta la App entera en cada tecla (6 s por prueba sola; 11 s de media y cerca del tope de 20 s con la máquina
+  // cargada). Lo que se prueba es el reclamo, no el tecleo: cada campo se llena de una vez, como al pegar.
+  async function escribir(usuario: ReturnType<typeof userEvent.setup>, campo: HTMLElement, texto: string) {
+    await usuario.click(campo);
+    await usuario.paste(texto);
+  }
+
   async function llenarBienvenida(usuario: ReturnType<typeof userEvent.setup>) {
-    await usuario.type(await screen.findByLabelText("Código de instalación"), CODIGO);
-    await usuario.type(screen.getByLabelText("Su nombre"), "Ana Pérez");
-    await usuario.type(screen.getByLabelText("Usuario"), "admin");
-    await usuario.type(screen.getByLabelText("Contraseña"), CLAVE);
-    await usuario.type(screen.getByLabelText("Repita la contraseña"), CLAVE);
+    await escribir(usuario, await screen.findByLabelText("Código de instalación"), CODIGO);
+    await escribir(usuario, screen.getByLabelText("Su nombre"), "Ana Pérez");
+    await escribir(usuario, screen.getByLabelText("Usuario"), "admin");
+    await escribir(usuario, screen.getByLabelText("Contraseña"), CLAVE);
+    await escribir(usuario, screen.getByLabelText("Repita la contraseña"), CLAVE);
   }
 
   test("sin sesión pide GET /v1/primer-arranque y, sin cuentas, muestra la bienvenida y no «Entrar»", async () => {
@@ -104,7 +112,7 @@ describe("App: primer arranque y recuperar acceso", () => {
   });
 
   test("mientras pregunta no muestra ni «Entrar» ni la bienvenida: una sola pantalla, sin parpadeo", async () => {
-    let contestar: (r: Response) => void = () => {};
+    let contestar: ((r: Response) => void) | null = null;
     const base = fetchFalso.getMockImplementation()!;
     fetchFalso.mockImplementation(async (entrada, init) => {
       if (String(entrada) === "/v1/primer-arranque") return new Promise<Response>((r) => (contestar = r));
@@ -112,9 +120,12 @@ describe("App: primer arranque y recuperar acceso", () => {
     });
     render(<App />);
     expect(await screen.findByText("Comprobando su instalación…")).toBeInTheDocument();
+    // Ola 2 (2026-11-13): el texto se pinta antes de que el efecto haga la consulta; con la máquina cargada, contestar
+    // al verlo era contestar a nada (la consulta llegaba después y no se resolvía nunca). Se espera a que exista.
+    await waitFor(() => expect(contestar).not.toBeNull());
     expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Bienvenida a Sílice" })).not.toBeInTheDocument();
-    contestar(json({ ...estadoSinCuentas, sin_cuentas: false }));
+    contestar!(json({ ...estadoSinCuentas, sin_cuentas: false }));
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
   });
 
@@ -249,11 +260,11 @@ describe("App: primer arranque y recuperar acceso", () => {
     };
     render(<App />);
     await usuario.click(await screen.findByRole("button", { name: "Perdí el acceso de administrador" }));
-    await usuario.type(await screen.findByLabelText("Código de restablecimiento"), CODIGO);
-    await usuario.type(screen.getByLabelText("Usuario del administrador"), "admin");
-    await usuario.type(screen.getByLabelText("Su nombre"), "Ana Pérez");
-    await usuario.type(screen.getByLabelText("Contraseña nueva"), CLAVE);
-    await usuario.type(screen.getByLabelText("Repita la contraseña nueva"), CLAVE);
+    await escribir(usuario, await screen.findByLabelText("Código de restablecimiento"), CODIGO);
+    await escribir(usuario, screen.getByLabelText("Usuario del administrador"), "admin");
+    await escribir(usuario, screen.getByLabelText("Su nombre"), "Ana Pérez");
+    await escribir(usuario, screen.getByLabelText("Contraseña nueva"), CLAVE);
+    await escribir(usuario, screen.getByLabelText("Repita la contraseña nueva"), CLAVE);
     await usuario.click(screen.getByRole("button", { name: "Restablecer y entrar" }));
     expect(await screen.findByText("Ana Pérez", {}, { timeout: 5000 })).toBeInTheDocument();
     expect(recibido).toEqual([

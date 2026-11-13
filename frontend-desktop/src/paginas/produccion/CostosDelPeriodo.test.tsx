@@ -99,6 +99,14 @@ describe("Costos del período", () => {
     return screen.getByRole("dialog", { name: "Registrar un costo" });
   }
 
+  // Ola 2 (2026-11-13; bitácora `2026-11-13-ola2-front.md` §5): la fuente y el motivo son texto libre que estas pruebas no
+  // examinan letra a letra; escribirlos tecla a tecla repinta la página y su diálogo en cada tecla y, con la máquina
+  // cargada, empujaba la prueba hacia el tope de 20 s. Se llenan de una vez, como al pegar. El monto sí se teclea: es lo
+  // que se prueba.
+  async function pegar(campo: HTMLElement, texto: string) {
+    await usuario.click(campo);
+    await usuario.paste(texto);
+  }
   // La moneda no tiene valor por defecto: se elige siempre.
   async function elegirMoneda(dialogo: HTMLElement, moneda = "USD") {
     await usuario.selectOptions(within(dialogo).getByLabelText("Moneda"), moneda);
@@ -177,7 +185,7 @@ describe("Costos del período", () => {
     const dialogo = await abrirRegistro();
     await usuario.type(within(dialogo).getByLabelText("Monto"), "1.250,50");
     await elegirCentroYMoneda(dialogo);
-    await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
+    await pegar(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     await waitFor(() => expect(peticiones("POST")).toHaveLength(1));
     expect(peticiones("POST")[0].cuerpo).toEqual({
@@ -191,8 +199,10 @@ describe("Costos del período", () => {
       nota: "",
     });
     expect(peticiones("POST")[0].cuerpo).not.toHaveProperty("ahora");
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(listas()).toHaveLength(2); // recargó la lista
+    // Lo barato primero (el aviso, por su texto; ola 2): el diálogo se mira una vez, sin repetir la búsqueda por rol.
+    expect(await screen.findByText("Costo registrado.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(listas()).toHaveLength(2)); // recargó la lista
     expect(peticiones("GET")).toHaveLength(4); // y los totales
   });
 
@@ -202,7 +212,7 @@ describe("Costos del período", () => {
     const dialogo = await abrirRegistro();
     if (monto) await usuario.type(within(dialogo).getByLabelText("Monto"), monto);
     await elegirCentroYMoneda(dialogo);
-    await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
+    await pegar(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     expect(
       await within(dialogo).findByText(/^(Escriba el monto|El monto está mal escrito)/, { selector: ".cds--form-requirement" }),
@@ -216,7 +226,7 @@ describe("Costos del período", () => {
     const dialogo = await abrirRegistro();
     await usuario.type(within(dialogo).getByLabelText("Monto"), "10");
     await elegirMoneda(dialogo);
-    await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
+    await pegar(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     expect(await within(dialogo).findByText("Elija el centro del costo.")).toBeInTheDocument();
     expect(peticiones("POST")).toHaveLength(0);
@@ -228,7 +238,7 @@ describe("Costos del período", () => {
     const dialogo = await abrirRegistro();
     await elegirCentro(dialogo);
     await usuario.type(within(dialogo).getByLabelText("Monto"), "10");
-    await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
+    await pegar(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 77");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     expect(await within(dialogo).findByText("Elija la moneda del monto.")).toBeInTheDocument();
     expect(peticiones("POST")).toHaveLength(0);
@@ -268,7 +278,7 @@ describe("Costos del período", () => {
     const dialogo = await abrirRegistro();
     await usuario.type(within(dialogo).getByLabelText("Monto"), "10");
     await elegirCentroYMoneda(dialogo);
-    await usuario.type(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 1");
+    await pegar(within(dialogo).getByLabelText("Fuente (factura o recibo)"), "factura 1");
     await usuario.click(within(dialogo).getByRole("button", { name: "Registrar costo" }));
     expect(await within(dialogo).findByText(texto)).toBeInTheDocument();
     expect(dialogo).toHaveTextContent(/No se pudo registrar/);
@@ -294,13 +304,18 @@ describe("Costos del período", () => {
         { centro: "planta", moneda: "Bs", total: "800" },
       ]);
     fetchFalso.mockImplementationOnce(async () => pendiente); // la anulación queda en vuelo
-    await usuario.type(within(dialogo).getByLabelText("Motivo de la anulación"), "se cargó dos veces");
+    await pegar(within(dialogo).getByLabelText("Motivo de la anulación"), "se cargó dos veces");
     await usuario.click(within(dialogo).getByRole("button", { name: "Anular costo" }));
     await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(3)); // lista, totales y la anulación
     expect(screen.getByRole("row", { name: /Equipo/ })).toBeInTheDocument(); // sigue ahí mientras tanto
     soltar(json({ id: 10 }, 201));
-    await waitFor(() => expect(screen.queryByRole("row", { name: /Equipo/ })).not.toBeInTheDocument());
-    expect(screen.getByText("Cantera: 1.250,50 USD")).toBeInTheDocument();
+    // Ola 2 (2026-11-13; bitácora `2026-11-13-ola2-front.md` §5): se espera lo barato (el total nuevo, por su texto) y la
+    // fila se mira una sola vez. Antes `waitFor` repetía la búsqueda de la fila por su rol y su nombre, que tras cada cambio
+    // grande del DOM cuesta ~300 ms en jsdom: la espera llegaba a ~1,1 s sin carga, al borde del segundo de `waitFor`, y con
+    // la máquina cargada lo pasaba. La recarga trae la lista y los totales juntos (un solo estado), así que el total nuevo
+    // dice que la lista nueva ya está pintada.
+    expect(await screen.findByText("Cantera: 1.250,50 USD")).toBeInTheDocument();
+    expect(screen.queryByRole("row", { name: /Equipo/ })).not.toBeInTheDocument();
     const aviso = await screen.findByRole("status");
     expect(aviso).toHaveTextContent("Costo anulado.");
     // El botón que tenía el foco desapareció con su fila: el foco pasa al aviso, no a BODY.
@@ -329,7 +344,7 @@ describe("Costos del período", () => {
     await screen.findByText("Cantera: 1.550,50 USD");
     await usuario.click(within(screen.getByRole("row", { name: /Equipo/ })).getByRole("button", { name: /^Anular / }));
     const dialogo = screen.getByRole("dialog", { name: "Anular un costo" });
-    await usuario.type(within(dialogo).getByLabelText("Motivo de la anulación"), "duplicado");
+    await pegar(within(dialogo).getByLabelText("Motivo de la anulación"), "duplicado");
     await usuario.click(within(dialogo).getByRole("button", { name: "Anular costo" }));
     expect(await within(dialogo).findByText("Ese costo ya fue anulado.")).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Equipo/ })).toBeInTheDocument();
