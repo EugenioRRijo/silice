@@ -1,5 +1,5 @@
-"""El libro por frentes en la API (ola 2, línea 3, 2026-11-13; `tests/unit/test_libro_por_frentes.py`
-prueba las reglas).
+"""El libro por frentes en la API (ola 2, línea 3, 2026-11-13; las reglas las prueba
+`tests/unit/test_libro_por_frentes.py`).
 
 - `POST /v1/libros/apu-por-hoja` acepta `hoja_presupuesto` (uno o varios, aparte del perfil) y el
   informe dice todas las hojas leídas (`hojas_presupuesto`).
@@ -91,14 +91,16 @@ def test_sin_elegir_hojas_vale_la_del_perfil():
 
 
 def test_las_hojas_de_un_libro_subido():
-    r = _con_clave().post(RUTA_HOJAS, files={"libro": ("frentes.xlsx", libro_presupuesto_por_hojas())})
+    r = _con_clave().post(
+        RUTA_HOJAS, files={"libro": ("frentes.xlsx", libro_presupuesto_por_hojas())}
+    )
     assert r.status_code == 200, r.text
     assert r.json() == {"hojas": ["FRENTE A", "FRENTE B"]}
 
 
-def test_las_hojas_de_algo_que_no_es_un_xlsx_es_422():
+def test_las_hojas_de_algo_que_no_es_un_xlsx_es_415_como_en_las_demas_subidas():
     r = _con_clave().post(RUTA_HOJAS, files={"libro": ("frentes.csv", b"a;b")})
-    assert r.status_code == 422
+    assert r.status_code == 415
 
 
 def test_la_lista_de_perfiles_dice_todas_las_hojas():
@@ -168,7 +170,8 @@ def test_poner_uno_que_ya_esta_pide_reemplazar():
     assert r.json()["detalle"] == (
         "Ya hay un perfil «obra_local» en esta instalación: marque «Reemplazar» para cambiarlo."
     )
-    assert _poner(cliente, ficha, _perfil(prefijo_hoja="Partida"), reemplazar=True).status_code == 200
+    otra = _poner(cliente, ficha, _perfil(prefijo_hoja="Partida"), reemplazar=True)
+    assert otra.status_code == 200
 
 
 def test_un_perfil_mal_escrito_es_422_y_no_se_escribe():

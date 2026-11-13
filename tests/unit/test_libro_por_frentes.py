@@ -26,10 +26,10 @@ from pathlib import Path
 
 import pytest
 
+from adapters.hoja_empresa import perfil_apu_por_hoja as modulo_perfil
 from adapters.hoja_empresa.guardia import ArchivoRechazado
 from adapters.hoja_empresa.lector_apu_por_hoja import leer_libro_apu_por_hoja
 from adapters.hoja_empresa.perfil import PerfilInvalido
-from adapters.hoja_empresa import perfil_apu_por_hoja as modulo_perfil
 from adapters.hoja_empresa.perfil_apu_por_hoja import (
     VARIABLE_PERFILES,
     cargar_perfil_apu_por_hoja,
@@ -310,9 +310,9 @@ def test_muchas_hojas_sin_el_prefijo_se_cortan_a_diez():
     resultado = auditar_apu_por_hoja(libro_apu(otras=otras), "f.xlsx")
     ah12 = next(h for h in resultado.hallazgos if h.codigo == "AH12")
     assert ah12.descripcion == (
-        "12 hojas del libro no empiezan por «APU» y no se leyeron como APU: Nota 1, Nota 2, Nota 3, "
-        "Nota 4, Nota 5, Nota 6, Nota 7, Nota 8, Nota 9, Nota 10 y 2 más. Si alguna es un APU, "
-        "revise el prefijo del perfil."
+        "12 hojas del libro no empiezan por «APU» y no se leyeron como APU: Nota 1, Nota 2, "
+        "Nota 3, Nota 4, Nota 5, Nota 6, Nota 7, Nota 8, Nota 9, Nota 10 y 2 más. Si alguna es un "
+        "APU, revise el prefijo del perfil."
     )
 
 

@@ -375,8 +375,7 @@ def libro_presupuesto_por_hojas(hojas: dict[str, tuple] | None = None) -> bytes:
     if hojas is None:
         hojas = {
             titulo: tuple(
-                (n, c, d, u, str((D(q) * parte).normalize()), pu)
-                for n, c, d, u, q, pu in RENGLONES
+                (n, c, d, u, str((D(q) * parte).normalize()), pu) for n, c, d, u, q, pu in RENGLONES
             )
             for titulo, parte in (("FRENTE A", D("0.6")), ("FRENTE B", D("0.4")))
         }

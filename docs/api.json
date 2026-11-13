@@ -1558,6 +1558,48 @@
         }
       }
     },
+    "/v1/libros/hojas": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Hojas Del Libro",
+        "description": "Las hojas de un libro subido, para elegir las del presupuesto (libro por frentes, D4). Pasa\npor la guardia de siempre y no materializa ninguna celda. Nada se guarda.",
+        "operationId": "hojas_del_libro_v1_libros_hojas_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_hojas_del_libro_v1_libros_hojas_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HojasDelLibroRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/libros/apu-por-hoja": {
       "post": {
         "tags": [
@@ -5072,6 +5114,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/api__rutas__admin_empresa__AvisoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/empresa/perfiles-libros": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Poner Perfil De Libro",
+        "description": "Pone un perfil local del libro con un APU por hoja (ver la cabecera del módulo).",
+        "operationId": "poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilApuPorHojaRespuesta"
                 }
               }
             }
@@ -13677,6 +13761,21 @@
             ],
             "title": "Perfil",
             "description": "Nombre del perfil (opcional): apu_por_hoja por omisión"
+          },
+          "hoja_presupuesto": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoja Presupuesto",
+            "description": "Las hojas del presupuesto que se leen, aparte del perfil (opcional; una o varias veces, una por frente)"
           }
         },
         "type": "object",
@@ -14086,6 +14185,21 @@
         ],
         "title": "Body_excel_v1_revision_excel_post"
       },
+      "Body_hojas_del_libro_v1_libros_hojas_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Un libro .xlsx (p. ej., el del presupuesto)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro"
+        ],
+        "title": "Body_hojas_del_libro_v1_libros_hojas_post"
+      },
       "Body_importar_presupuesto_de_tercero_presupuestos_importar_post": {
         "properties": {
           "archivo": {
@@ -14270,6 +14384,27 @@
           "fecha_descarga"
         ],
         "title": "Body_leer_v1_indices_leer_post"
+      },
+      "Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post": {
+        "properties": {
+          "perfil": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Perfil",
+            "description": "El perfil del libro, un .json"
+          },
+          "reemplazar": {
+            "type": "boolean",
+            "title": "Reemplazar",
+            "description": "Reemplazar uno que ya está",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "perfil"
+        ],
+        "title": "Body_poner_perfil_de_libro_v1_admin_empresa_perfiles_libros_post"
       },
       "Body_registrar_v1_admin_empresas_registradas_post": {
         "properties": {
@@ -20650,6 +20785,23 @@
         "title": "HojaVisualRespuesta",
         "description": "Espejo de `visual.HojaVisual`. En `anchos` y `altos` la columna o la fila (base 1) va como\ntexto: las claves de un objeto JSON son texto."
       },
+      "HojasDelLibroRespuesta": {
+        "properties": {
+          "hojas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hojas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hojas"
+        ],
+        "title": "HojasDelLibroRespuesta",
+        "description": "Los nombres de las hojas de un libro, en su orden."
+      },
       "ImportacionDeObraRespuesta": {
         "properties": {
           "tipo": {
@@ -21439,6 +21591,13 @@
             ],
             "title": "Hoja Presupuesto"
           },
+          "hojas_presupuesto": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hojas Presupuesto"
+          },
           "cumple": {
             "type": "boolean",
             "title": "Cumple"
@@ -21479,6 +21638,7 @@
           "origen_perfil",
           "presupuesto",
           "hoja_presupuesto",
+          "hojas_presupuesto",
           "cumple",
           "por_severidad",
           "apus",
@@ -24160,6 +24320,13 @@
             ],
             "title": "Hoja Presupuesto"
           },
+          "hojas_presupuesto": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hojas Presupuesto"
+          },
           "motivo": {
             "anyOf": [
               {
@@ -24177,10 +24344,11 @@
           "nombre",
           "origen",
           "hoja_presupuesto",
+          "hojas_presupuesto",
           "motivo"
         ],
         "title": "PerfilApuPorHojaRespuesta",
-        "description": "Un perfil que se puede elegir: `hoja_presupuesto` es `null` y `motivo` dice por qué si el\nperfil local está mal escrito (entonces no se puede elegir)."
+        "description": "Un perfil que se puede elegir: `hoja_presupuesto` es `null` y `motivo` dice por qué si el\nperfil local está mal escrito (entonces no se puede elegir). `hojas_presupuesto` son todas las\nhojas que lee (una por frente); `hoja_presupuesto`, la primera."
       },
       "PeriodoPlanPeticion": {
         "properties": {

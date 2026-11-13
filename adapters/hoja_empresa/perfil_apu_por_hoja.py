@@ -24,6 +24,13 @@ Este adaptador no sabe dónde está la carpeta de datos (no importa `operacion`)
 a quien audita (`fusion.apu_por_hoja`), que la entrega a `carpetas_locales(por_omision=...)`.
 `SILICE_PERFILES_LIBROS`, si está, la reemplaza (arbitraje F5 vial, P2; `docs/manual_tecnico.md`,
 «Perfiles de libros locales»).
+
+**Libro por frentes** (ola 2, línea 3, 2026-11-13; decisiones simuladas en
+`docs/bitacora/2026-11-13-ola2-libro-por-frentes.md`): el presupuesto puede declarar varias hojas
+(`presupuesto.hojas`, una por frente) en vez de una (`presupuesto.hoja`); `porcentajes` admite
+`otros_impuestos`, una segunda fila de impuesto que el lector suma al impuesto; e
+`instalar_perfil_apu_por_hoja` pone un perfil local desde la interfaz (lo valida entero antes de
+escribirlo y no pisa uno que ya está sin `reemplazar`).
 """
 
 from __future__ import annotations
@@ -37,7 +44,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
-from adapters.hoja_empresa.perfil import PerfilInvalido
+from adapters.hoja_empresa.perfil import PerfilInvalido, normalizar
 
 __all__ = [
     "BLOQUES",
@@ -45,8 +52,11 @@ __all__ = [
     "Bloque",
     "PerfilApuPorHoja",
     "PerfilDisponible",
+    "PerfilYaInstalado",
+    "MAX_BYTES_PERFIL",
     "cargar_perfil_apu_por_hoja",
     "carpetas_locales",
+    "instalar_perfil_apu_por_hoja",
     "perfiles_apu_por_hoja",
 ]
 
@@ -60,6 +70,11 @@ VARIABLE_PERFILES = "SILICE_PERFILES_LIBROS"
 BLOQUES = ("materiales", "equipos", "mano_obra")
 _CABECERA = ("numero", "codigo", "descripcion", "unidad", "cantidad", "rendimiento")
 _PORCENTAJES = ("prestaciones", "administracion", "utilidad", "financiamiento", "impuesto")
+#: Una segunda fila de impuesto («Otros impuestos»), opcional: el lector la suma al impuesto.
+_PORCENTAJES_OPCIONALES = ("otros_impuestos",)
+#: SUPUESTO_DECLARADO: lo más que pesa un perfil que se pone desde la interfaz. El del paquete pesa
+#: unos 2 KiB; 64 KiB caben treinta veces y atajan un archivo que no es un perfil.
+MAX_BYTES_PERFIL = 64 * 1024
 #: De qué lado de su rótulo escribe el libro cada porcentaje del pie: «derecha» (el primer número a
 #: la derecha, como el libro ficticio) o «izquierda» (el más cercano a la izquierda: «p |
 #: Administración (%) | … | monto», prueba local del libro vial real del 2026-11-13).
@@ -99,6 +114,8 @@ class PerfilApuPorHoja:
     encabezado_presupuesto: Mapping[str, tuple[str, ...]]
     lado_de_los_porcentajes: str = "derecha"
     origen: str = "paquete"
+    #: Todas las hojas del presupuesto, una por frente; `hoja_presupuesto` es la primera.
+    hojas_presupuesto: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +128,12 @@ class PerfilDisponible:
     origen: str
     hoja_presupuesto: str | None
     motivo: str | None = None
+    hojas_presupuesto: tuple[str, ...] = ()
+
+
+class PerfilYaInstalado(Exception):  # noqa: N818 (identificadores en español, NORMAS.md §3)
+    """Ya hay un perfil local con ese nombre y no se pidió reemplazarlo; el mensaje es el que ve
+    la persona."""
 
 
 def _error(nombre: str, msg: str) -> PerfilInvalido:
@@ -186,6 +209,7 @@ def _construir(nombre: str, crudo: Any, origen: str) -> PerfilApuPorHoja:
         if not {"minimo", "maximo"} <= set(compilado.groupindex):
             raise _error(nombre, "patron_banda debe tener los grupos «minimo» y «maximo»")
     presupuesto = _dic(nombre, raiz.get("presupuesto"), "presupuesto")
+    hojas = _hojas_presupuesto(nombre, presupuesto)
     lado = raiz.get("lado_de_los_porcentajes", "derecha")
     if not isinstance(lado, str) or lado not in LADOS_DE_LOS_PORCENTAJES:
         raise _error(
@@ -198,17 +222,39 @@ def _construir(nombre: str, crudo: Any, origen: str) -> PerfilApuPorHoja:
         prefijo_hoja=_texto(nombre, raiz.get("prefijo_hoja"), "prefijo_hoja"),
         cabecera=_variantes(nombre, raiz.get("cabecera"), _CABECERA, (), "cabecera"),
         bloques=MappingProxyType(bloques),
-        porcentajes=_variantes(nombre, raiz.get("porcentajes"), _PORCENTAJES, (), "porcentajes"),
+        porcentajes=_variantes(
+            nombre, raiz.get("porcentajes"), _PORCENTAJES, _PORCENTAJES_OPCIONALES, "porcentajes"
+        ),
         precio_unitario=_textos(nombre, raiz.get("precio_unitario"), "precio_unitario"),
         unidades=MappingProxyType({str(k): v.strip() for k, v in unidades.items()}),
         patron_banda=patron,
-        hoja_presupuesto=_texto(nombre, presupuesto.get("hoja"), "presupuesto.hoja"),
+        hoja_presupuesto=hojas[0],
         encabezado_presupuesto=_variantes(
             nombre, presupuesto.get("encabezado"), _PRESUPUESTO, (), "presupuesto.encabezado"
         ),
         lado_de_los_porcentajes=lado,
         origen=origen,
+        hojas_presupuesto=hojas,
     )
+
+
+def _hojas_presupuesto(nombre: str, presupuesto: dict[str, Any]) -> tuple[str, ...]:
+    """`presupuesto.hoja` (una) o `presupuesto.hojas` (una por frente), nunca las dos; sin
+    repetir una hoja (se comparan como el lector, con `normalizar`)."""
+    if "hoja" in presupuesto and "hojas" in presupuesto:
+        raise _error(nombre, "presupuesto: declare «hoja» o «hojas», no las dos")
+    if "hojas" in presupuesto:
+        hojas = _textos(nombre, presupuesto["hojas"], "presupuesto.hojas")
+    elif "hoja" in presupuesto:
+        hojas = (_texto(nombre, presupuesto["hoja"], "presupuesto.hoja"),)
+    else:
+        raise _error(nombre, "presupuesto: falta «hoja» u «hojas»")
+    vistas: set[str] = set()
+    for hoja in hojas:
+        if normalizar(hoja) in vistas:
+            raise _error(nombre, f"presupuesto.hojas: la hoja «{hoja}» está repetida")
+        vistas.add(normalizar(hoja))
+    return hojas
 
 
 def carpetas_locales(por_omision: Path | None = None) -> tuple[Path, ...]:
@@ -267,5 +313,60 @@ def perfiles_apu_por_hoja(carpetas: Sequence[Path] | None = None) -> tuple[Perfi
             except PerfilInvalido as exc:
                 vistos[nombre] = PerfilDisponible(nombre, origen, None, str(exc))
                 continue
-            vistos[nombre] = PerfilDisponible(nombre, origen, perfil.hoja_presupuesto)
+            vistos[nombre] = _disponible(perfil)
     return tuple(sorted(vistos.values(), key=lambda p: (p.motivo is not None, p.nombre.casefold())))
+
+
+def _disponible(perfil: PerfilApuPorHoja) -> PerfilDisponible:
+    return PerfilDisponible(
+        perfil.nombre,
+        perfil.origen,
+        perfil.hoja_presupuesto,
+        hojas_presupuesto=perfil.hojas_presupuesto,
+    )
+
+
+def _carpeta_de_escritura(por_omision: Path) -> Path:
+    """Donde se escribe un perfil local: la de `SILICE_PERFILES_LIBROS` si está (la misma que se
+    lee), si no `por_omision` (la de la carpeta de datos, que pasa la API)."""
+    valor = os.environ.get(VARIABLE_PERFILES, "").strip()
+    return Path(valor) if valor else por_omision
+
+
+def instalar_perfil_apu_por_hoja(
+    datos: bytes, por_omision: Path, *, reemplazar: bool = False
+) -> PerfilDisponible:
+    """Pone el perfil `datos` (el JSON de un perfil `apu_por_hoja`) en la carpeta de perfiles
+    locales y lo devuelve como se elige (libro por frentes, D5).
+
+    Antes de escribir nada lo valida entero, con las mismas reglas que al cargarlo:
+    `PerfilInvalido` si pasa de `MAX_BYTES_PERFIL`, si no es un JSON en UTF-8, si su nombre no es
+    válido (minúsculas, cifras y «_»: el nombre del archivo sale de ahí, nunca de una ruta) o si no
+    describe un libro con un APU por hoja. `PerfilYaInstalado` si ya hay uno local con ese nombre y
+    no se pide `reemplazar`. Se escribe el archivo tal como llegó, primero en un temporal y luego
+    en su sitio (`os.replace`): no queda un perfil a medias."""
+    if len(datos) > MAX_BYTES_PERFIL:
+        raise PerfilInvalido(
+            f"El perfil pasa de {MAX_BYTES_PERFIL // 1024} KiB: no parece un perfil de libro."
+        )
+    try:
+        crudo = json.loads(datos.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise PerfilInvalido(f"El archivo no es un JSON legible: {exc}") from exc
+    if not isinstance(crudo, dict):
+        raise _error("?", "la raíz debe ser un objeto")
+    nombre = crudo.get("nombre")
+    if not isinstance(nombre, str) or not _NOMBRE.fullmatch(nombre):
+        raise PerfilInvalido(f"nombre de perfil no válido: {nombre!r}")
+    perfil = _construir(nombre, crudo, "local")
+    carpeta = _carpeta_de_escritura(por_omision)
+    destino = carpeta / f"{nombre}.json"
+    if destino.exists() and not reemplazar:
+        raise PerfilYaInstalado(
+            f"Ya hay un perfil «{nombre}» en esta instalación: marque «Reemplazar» para cambiarlo."
+        )
+    carpeta.mkdir(parents=True, exist_ok=True)
+    temporal = carpeta / f".{nombre}.json.tmp"
+    temporal.write_bytes(datos)
+    os.replace(temporal, destino)
+    return _disponible(perfil)

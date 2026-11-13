@@ -61,6 +61,13 @@ parece de otra obra (E2E-2).
 y los de `<carpeta de datos>/perfiles_libros/`, con su nombre, su origen y la hoja del presupuesto
 que leen; uno local mal escrito sale con su `motivo` y sin hoja. Nunca una ruta del disco.
 
+**Libro por frentes** (ola 2, línea 3, 2026-11-13): un perfil puede leer varias hojas del
+presupuesto (una por frente) y se dicen todas (`hojas_presupuesto`); `POST /v1/libros/apu-por-hoja`
+acepta `hoja_presupuesto` (una o varias veces) para elegir las hojas aparte del perfil, y
+`POST /v1/libros/hojas` dice las hojas de un libro subido para elegirlas (solo los nombres: no lee
+ninguna celda). Poner un perfil local desde la interfaz es de quien administra
+(`POST /v1/admin/empresa/perfiles-libros`, `api/rutas/admin_empresa.py`).
+
 `indicadores_de` vive aquí y no en `fusion/`: es aritmética de **presentación** sobre los totales
 que `fusion.proceso` ya calculó (una resta y un porcentaje en centésimas; NORMAS §2.3: «se
 redondea a dos decimales únicamente al presentar»), con los títulos y el sentido IBCS que solo usa
@@ -85,9 +92,14 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado
+from adapters.hoja_empresa.lector_apu_por_hoja import leer_hojas
 from adapters.hoja_empresa.modelo import LibroNoInterpretable
 from adapters.hoja_empresa.perfil import PerfilInvalido
-from adapters.hoja_empresa.perfil_apu_por_hoja import carpetas_locales, perfiles_apu_por_hoja
+from adapters.hoja_empresa.perfil_apu_por_hoja import (
+    PerfilDisponible,
+    carpetas_locales,
+    perfiles_apu_por_hoja,
+)
 from adapters.hoja_empresa.visual import LibroVisual, replicar_libro
 from api.dependencias import USUARIO_API, SesionDep
 from api.proteccion import LIMITE_CUERPO
@@ -315,8 +327,10 @@ class LibroApuPorHojaRespuesta(BaseModel):
     perfil: str
     origen_perfil: Literal["paquete", "local"]
     presupuesto: str | None
-    #: La hoja del libro de presupuesto que leyó el perfil (`null` sin presupuesto).
+    #: La primera hoja del libro de presupuesto que se leyó (`null` sin presupuesto).
     hoja_presupuesto: str | None
+    #: Todas las hojas leídas del presupuesto (una por frente); vacía sin presupuesto.
+    hojas_presupuesto: list[str]
     cumple: bool
     por_severidad: dict[str, int]
     apus: list[ApuPorHojaRespuesta]
@@ -856,12 +870,25 @@ def _dos_decimales(valor: Decimal) -> str:
 
 class PerfilApuPorHojaRespuesta(BaseModel):
     """Un perfil que se puede elegir: `hoja_presupuesto` es `null` y `motivo` dice por qué si el
-    perfil local está mal escrito (entonces no se puede elegir)."""
+    perfil local está mal escrito (entonces no se puede elegir). `hojas_presupuesto` son todas las
+    hojas que lee (una por frente); `hoja_presupuesto`, la primera."""
 
     nombre: str
     origen: Literal["paquete", "local"]
     hoja_presupuesto: str | None
+    hojas_presupuesto: list[str]
     motivo: str | None
+
+
+def perfil_a_respuesta(p: PerfilDisponible) -> PerfilApuPorHojaRespuesta:
+    """Un `PerfilDisponible` como lo ve la pantalla (sin ninguna ruta del disco)."""
+    return PerfilApuPorHojaRespuesta(
+        nombre=p.nombre,
+        origen="local" if p.origen == "local" else "paquete",
+        hoja_presupuesto=p.hoja_presupuesto,
+        hojas_presupuesto=list(p.hojas_presupuesto),
+        motivo=p.motivo,
+    )
 
 
 @router.get("/perfiles-apu-por-hoja", response_model=list[PerfilApuPorHojaRespuesta])
@@ -869,14 +896,31 @@ def perfiles_apu_por_hoja_ruta() -> list[PerfilApuPorHojaRespuesta]:
     """Los perfiles del libro con un APU por hoja: los locales de la instalación y los del paquete
     (E2E-2). Solo nombres y hojas: ninguna ruta del disco."""
     return [
-        PerfilApuPorHojaRespuesta(
-            nombre=p.nombre,
-            origen="local" if p.origen == "local" else "paquete",
-            hoja_presupuesto=p.hoja_presupuesto,
-            motivo=p.motivo,
-        )
+        perfil_a_respuesta(p)
         for p in perfiles_apu_por_hoja(carpetas_locales(carpeta_perfiles_libros()))
     ]
+
+
+class HojasDelLibroRespuesta(BaseModel):
+    """Los nombres de las hojas de un libro, en su orden."""
+
+    hojas: list[str]
+
+
+@router.post("/hojas", response_model=HojasDelLibroRespuesta)
+async def hojas_del_libro(
+    libro: Annotated[UploadFile, File(description="Un libro .xlsx (p. ej., el del presupuesto)")],
+) -> HojasDelLibroRespuesta:
+    """Las hojas de un libro subido, para elegir las del presupuesto (libro por frentes, D4). Pasa
+    por la guardia de siempre y no materializa ninguna celda. Nada se guarda."""
+    nombre = _nombre(libro)
+    _exigir_extension(nombre, ".xlsx", "libro")
+    datos = await _leer(libro, "libro")
+    try:
+        hojas = await run_in_threadpool(lambda: list(leer_hojas(datos, nombre, lambda _t: False)))
+    except Exception as error:  # noqa: BLE001 - frontera: nunca un 500 ni una traza al cliente
+        raise _rechazo(error, MENSAJE_LIBRO, "POST /v1/libros/hojas") from None
+    return HojasDelLibroRespuesta(hojas=hojas)
 
 
 @router.post("/apu-por-hoja", response_model=LibroApuPorHojaRespuesta)
@@ -889,6 +933,13 @@ async def auditar_apu_por_hoja_ruta(
     ] = None,
     perfil: Annotated[
         str | None, Form(description="Nombre del perfil (opcional): apu_por_hoja por omisión")
+    ] = None,
+    hoja_presupuesto: Annotated[
+        list[str] | None,
+        Form(
+            description="Las hojas del presupuesto que se leen, aparte del perfil (opcional; "
+            "una o varias veces, una por frente)"
+        ),
     ] = None,
 ) -> LibroApuPorHojaRespuesta:
     """Recalcula cada hoja del libro de APU, la compara con lo impreso y, si viene, la enlaza con
@@ -911,6 +962,7 @@ async def auditar_apu_por_hoja_ruta(
                 presupuesto_nombre=nombre_presupuesto,
                 perfil=elegido,
                 carpeta_perfiles=carpeta_perfiles_libros(),
+                hojas=tuple(hoja_presupuesto or ()),
             )
         )
     except PerfilInvalido as error:
@@ -926,6 +978,7 @@ async def auditar_apu_por_hoja_ruta(
         origen_perfil=r.origen_perfil,
         presupuesto=r.presupuesto,
         hoja_presupuesto=r.hoja_presupuesto,
+        hojas_presupuesto=list(r.hojas_presupuesto),
         cumple=not (por_severidad.get("CRITICO", 0) or por_severidad.get("ERROR", 0)),
         por_severidad=por_severidad,
         apus=[
