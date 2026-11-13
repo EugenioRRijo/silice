@@ -73,6 +73,7 @@ class ResumenEmpresa:
     desconocidos: tuple[str, ...]
     dados_de_alta: tuple[str, ...] = ()
     otra_unidad: tuple[str, ...] = ()
+    lista_id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -242,6 +243,7 @@ def crear_lista(
             tuple(leido.descripcion for leido in desconocidos),
             tuple(dados),
             tuple(avisos),
+            lista.id,
         )
 
     return _confirmar(sesion, accion)

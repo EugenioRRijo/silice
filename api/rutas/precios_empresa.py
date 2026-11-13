@@ -98,6 +98,7 @@ class MensajeRespuesta(BaseModel):
 
 
 class ListaCreadaRespuesta(BaseModel):
+    id: int
     nombre: str
     propios: int
     desconocidos: list[str]
@@ -217,7 +218,9 @@ def crear_lista(
                 )
         except ValueError as error:
             raise HTTPException(422, f"No se creó la lista: {_motivo(error)}") from None
+    assert resumen.lista_id is not None  # `crear_lista` siempre la da
     return ListaCreadaRespuesta(
+        id=resumen.lista_id,
         nombre=resumen.nombre,
         propios=resumen.propios,
         desconocidos=list(resumen.desconocidos),

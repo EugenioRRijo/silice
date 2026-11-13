@@ -137,9 +137,13 @@ describe("Precios de la empresa", () => {
     return alExpirar;
   }
 
+  // La revision del archivo (D-8) comparte el prefijo de `/listas`: solo cuenta si se la pide por su nombre.
   function llamadas(fragmento: string, metodo = "GET") {
     return fetchFalso.mock.calls.filter(
-      ([ruta, o]) => String(ruta).includes(fragmento) && (o?.method ?? "GET") === metodo,
+      ([ruta, o]) =>
+        String(ruta).includes(fragmento) &&
+        (fragmento.includes("/revision") || !String(ruta).endsWith("/revision")) &&
+        (o?.method ?? "GET") === metodo,
     );
   }
 

@@ -29,11 +29,55 @@ export interface Estado {
   listas: ListaEmpresa[];
 }
 export interface ListaCreada {
+  // El numero de la lista (para usarla como lista para armar) y, desde el 2026-11-13 (D-8), lo dado de alta y el aviso
+  // de cada fila que el catalogo tiene con otra unidad.
+  id?: number;
   nombre: string;
   propios: number;
   desconocidos: string[];
   mensaje: string;
   aviso: string | null;
+  dados_de_alta?: string[];
+  otra_unidad?: string[];
+}
+
+// `POST /v1/precios-empresa/listas/revision` (D-8): lo que la lista haria con el archivo, sin escribir nada.
+export interface InsumoNuevo {
+  tipo: string;
+  insumo: string;
+  unidad: string;
+  precio: string;
+}
+export interface Revision {
+  reconocidos: number;
+  nuevos: InsumoNuevo[];
+  otra_unidad: string[];
+}
+
+export const ROTULO_ALTA = "Dar de alta en el catálogo los insumos nuevos al crear la lista";
+export const ETIQUETA_NUEVOS = "Insumos nuevos del archivo";
+export const ETIQUETA_DADOS = "Insumos dados de alta en el catálogo";
+export const ROTULO_PARA_ARMAR = "Usarla como lista para armar";
+
+export function textoReconocidos(n: number): string {
+  return `El catálogo reconoce ${n} ${n === 1 ? "fila" : "filas"} del archivo.`;
+}
+
+export const COLUMNAS_NUEVOS: ColumnaDensa[] = [
+  { clave: "insumo", titulo: "Insumo" },
+  { clave: "tipo", titulo: "Tipo" },
+  { clave: "unidad", titulo: "Unidad" },
+  { clave: "precio", titulo: "Precio", numerica: true, presentar: formatoEsVe },
+];
+
+export function filasNuevos(nuevos: InsumoNuevo[]): FilaDensa[] {
+  return nuevos.map((n, i) => ({ id: String(i), insumo: n.insumo, tipo: n.tipo, unidad: n.unidad, precio: n.precio }));
+}
+
+export function formularioRevision(archivo: File): FormData {
+  const cuerpo = new FormData();
+  cuerpo.append("archivo", archivo);
+  return cuerpo;
 }
 export interface Hallazgos {
   columnas: string[];
@@ -50,6 +94,8 @@ export interface DatosLista {
   fuente: string;
   nombre: string;
   archivo: File | null;
+  // D-8: la confirmacion de dar de alta los insumos nuevos que la revision mostro.
+  darDeAlta?: boolean;
 }
 
 export const COLUMNAS_DESCONOCIDOS: ColumnaDensa[] = [{ clave: "insumo", titulo: "Insumo" }];
@@ -97,6 +143,7 @@ export function formularioLista(d: DatosLista): FormData {
   cuerpo.append("fuente", d.fuente);
   cuerpo.append("nombre", d.nombre);
   if (d.archivo) cuerpo.append("archivo", d.archivo);
+  if (d.darDeAlta) cuerpo.append("dar_de_alta", "true");
   return cuerpo;
 }
 

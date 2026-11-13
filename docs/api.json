@@ -21781,6 +21781,10 @@
       },
       "ListaCreadaRespuesta": {
         "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
           "nombre": {
             "type": "string",
             "title": "Nombre"
@@ -21830,6 +21834,7 @@
         },
         "type": "object",
         "required": [
+          "id",
           "nombre",
           "propios",
           "desconocidos",
