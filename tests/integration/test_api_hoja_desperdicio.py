@@ -119,3 +119,42 @@ def test_quien_revisa_lo_ve_sin_escribir_en_la_base(_caso: Path) -> None:
     antes = _volcado(_caso)
     assert _detalle("rita")["desperdicios"] == [{"fila": 1, "texto": "0,8 + 25 %"}]
     assert _volcado(_caso) == antes
+
+
+def test_tras_editar_el_apu_la_respuesta_conserva_el_desperdicio(_caso: Path) -> None:
+    """La respuesta de una edición (E6) trae la vista del APU recalculada: cambiar solo el
+    rendimiento no toca la cantidad de la llave, así que su traza sigue valiendo; cambiar la
+    cantidad de la llave sí la deja sin traza."""
+    _con_traza(_caso, TrazaDesperdicio(LLAVE, "pieza", D("0.8"), D("25"), D("1.000")))
+    navegador, ficha = con_cuenta(app, "ana")
+    abierto = navegador.post(
+        "/v1/hoja/borradores",
+        json={"proyecto": NOMBRE_OF001, "version": "001"},
+        headers=protegida(ficha),
+    )
+    assert abierto.status_code == 201, abierto.text
+    id_ = abierto.json()["id"]
+    detalle = navegador.get(
+        f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": "AF-LLAVE"}
+    ).json()["detalle"]
+    cantidades = {g["clave"]: [f["cantidad"] for f in g["filas"]] for g in detalle["grupos"]}
+
+    def editar(rev: int, rendimiento: str, materiales: list[str]):
+        return navegador.put(
+            f"/v1/hoja/borradores/{id_}/apu/AF-LLAVE",
+            json={
+                "rev": rev,
+                "rendimiento": rendimiento,
+                "materiales": materiales,
+                "equipos": cantidades["equipos"],
+                "mano_obra": cantidades["mano de obra"],
+            },
+            headers=protegida(ficha),
+        )
+
+    primera = editar(0, "25", cantidades["materiales"])
+    assert primera.status_code == 200, primera.text
+    assert primera.json()["apu"]["detalle"]["desperdicios"] == [{"fila": 1, "texto": "0,8 + 25 %"}]
+    segunda = editar(primera.json()["rev"], "25", ["2"])
+    assert segunda.status_code == 200, segunda.text
+    assert segunda.json()["apu"]["detalle"]["desperdicios"] == []
