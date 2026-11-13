@@ -29,7 +29,7 @@ import {
   rutaDeApu,
   rutaDeQuitarLinea,
   sembrarApu,
-  textoDeEstado,
+  estadosDeLaPartida,
   ubicarErrorDeApu,
 } from "./logicaApu";
 import type { EdicionDeApu, LineaApu, UbicacionDeApu } from "./logicaApu";
@@ -343,9 +343,9 @@ export function EditorDelDetalle({
         {detalle.estados.length > 0 && (
           <section className="silice-hoja__seccion">
             <h3 className="cds--type-heading-compact-01">Estado de la partida</h3>
-            {detalle.estados.map((e) => (
+            {estadosDeLaPartida(detalle.estados).map((e) => (
               <p key={e} className="cds--type-helper-text-01">
-                {textoDeEstado(e)}
+                {e}
               </p>
             ))}
           </section>

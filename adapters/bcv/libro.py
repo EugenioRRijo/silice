@@ -177,7 +177,13 @@ def abrir_libro(ruta: Path) -> Libro:
     avisos = (
         *avisos_hojas,
         *(
-            (f"{floats} celdas numericas leidas como float y llevadas a Decimal con repr",)
+            # E2E-3: dicho para quien carga el libro; el «cómo» (float de Excel llevado a Decimal
+            # con repr, sin redondear) queda en este comentario y no en el aviso.
+            (
+                f"{floats:,}".replace(",", ".")
+                + (" cifra del libro se leyó" if floats == 1 else " cifras del libro se leyeron")
+                + " con todos los decimales que guarda Excel.",
+            )
             if floats
             else ()
         ),

@@ -23,7 +23,7 @@ import { ID_DEL_TITULO } from "../hoja/useGuardadoDeLaPagina";
 import { EstadoDeLaCadena } from "./EstadoDeLaCadena";
 import { RegistroDeCambios } from "./RegistroDeCambios";
 import { RestaurarVersion } from "./RestaurarVersion";
-import { filasDeVersiones, pasoDeVersiones } from "./logica";
+import { filasDeVersiones, motivoDeVersion, pasoDeVersiones } from "./logica";
 import type { FilaDeVersion } from "./logica";
 import { TEXTOS_DE_VERSIONES as T } from "./textos";
 import "./versiones.scss";
@@ -183,7 +183,7 @@ function TablaDeVersiones({ proyecto, filas, restaurar, alAbrir, alVerCambios, a
         id: `version-${f.codigo}`,
         codigo: f.codigo,
         fecha: fechaEsVe(f.fecha),
-        motivo: f.motivo === "" ? T.elaborada : f.motivo,
+        motivo: motivoDeVersion(f),
         origen: f.origen,
         cambios: formatoEsVe(String(f.cambios)),
         estado: f.estado === null ? "" : nombreDeEstado(f.estado),

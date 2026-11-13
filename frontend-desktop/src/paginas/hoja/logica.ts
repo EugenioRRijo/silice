@@ -49,7 +49,10 @@ export interface Monto {
 export interface VersionFila {
   codigo: string;
   fecha: string;
+  // Cómo se creó, como clave del servidor («» elaborada, «edicion», «restauracion»…): se escribe con `motivoDeVersion`.
   motivo: string;
+  // Lo que escribió quien la creó (E2E-3); un servidor anterior no lo manda.
+  fuente?: string;
   origen: string;
   vigente: boolean;
   descartada: boolean;

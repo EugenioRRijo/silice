@@ -262,6 +262,7 @@ def test_r1_lista_las_versiones_de_of001_con_su_historial() -> None:
             "codigo": "001",
             "fecha": caso_of001.FECHA.isoformat(),
             "motivo": "",
+            "fuente": "",  # E2E-3: sin registro de cambios, sin fuente
             "origen": "",
             "vigente": True,
             "descartada": False,

@@ -364,6 +364,7 @@ def listar_versiones(
     try:
         encontrado = _proyecto(sesion, proyecto)
         filas = hoja.historial_de_versiones(sesion, encontrado.nombre)
+        fuentes = hoja_versiones.fuentes_de_versiones(sesion, encontrado.nombre)
         moneda = moneda_del_proyecto(sesion, encontrado)
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
@@ -371,7 +372,7 @@ def listar_versiones(
         proyecto=encontrado.nombre,
         moneda=moneda,
         por_omision=hoja_vista.version_por_omision(filas),
-        versiones=[version_a_respuesta(f) for f in filas],
+        versiones=[version_a_respuesta(f, fuentes.get(f.codigo, "")) for f in filas],
     )
 
 

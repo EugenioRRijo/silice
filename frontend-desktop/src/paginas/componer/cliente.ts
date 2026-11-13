@@ -1,5 +1,6 @@
 // Llamadas de la pagina «Componer una partida» a la API (plan de la ola 3 B, §2). Todo monto viaja como texto.
 import { pedir } from "../../api/cliente";
+import { avisarCambioDeLaCarpeta } from "../../shell/ListaDeLaCarpeta";
 import type { CarpetaRespuesta } from "../../api/tipos";
 import type { Fila, Tablas, TipoTabla } from "./tablas";
 
@@ -97,8 +98,10 @@ export function carpeta(): Promise<CarpetaRespuesta> {
 }
 
 // Crea la lista para armar de la carpeta a partir de MaPreX o convirtiendo la que tiene (con la tasa del BCV).
-export function crearListaParaArmar(desde: "maprex" | "convertir"): Promise<CarpetaRespuesta> {
-  return pedir<CarpetaRespuesta>("/v1/carpeta/lista-para-armar", { metodo: "POST", cuerpo: { desde } });
+export async function crearListaParaArmar(desde: "maprex" | "convertir"): Promise<CarpetaRespuesta> {
+  const carpeta = await pedir<CarpetaRespuesta>("/v1/carpeta/lista-para-armar", { metodo: "POST", cuerpo: { desde } });
+  avisarCambioDeLaCarpeta(); // E2E-3: la cabecera de la obra la vuelve a leer
+  return carpeta;
 }
 
 // Lo que haria `guardar` con el mismo cuerpo, sin escribir nada (`POST /v1/composicion/prever`, T3; D-MP2): la lista

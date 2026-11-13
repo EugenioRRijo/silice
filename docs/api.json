@@ -28780,6 +28780,11 @@
             "type": "string",
             "title": "Motivo"
           },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente",
+            "default": ""
+          },
           "origen": {
             "type": "string",
             "title": "Origen"

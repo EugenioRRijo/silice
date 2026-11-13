@@ -80,18 +80,22 @@ class ResumenHojaRespuesta(BaseModel):
 class VersionHojaRespuesta(BaseModel):
     codigo: str
     fecha: str
+    #: Cómo se creó (`""` elaborada, `edicion`, `restauracion`…); la pantalla lo escribe.
     motivo: str
+    #: Lo que escribió quien la creó (su registro de cambios); `""` sin registro (E2E-3).
+    fuente: str = ""
     origen: str
     vigente: bool
     descartada: bool
     cambios: int
 
 
-def version_a_respuesta(fila: FilaVersion) -> VersionHojaRespuesta:
+def version_a_respuesta(fila: FilaVersion, fuente: str = "") -> VersionHojaRespuesta:
     return VersionHojaRespuesta(
         codigo=fila.codigo,
         fecha=fila.fecha.isoformat(),
         motivo=fila.motivo,
+        fuente=fuente,
         origen=fila.origen,
         vigente=fila.vigente,
         descartada=fila.descartada,

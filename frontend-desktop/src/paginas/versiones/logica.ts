@@ -33,6 +33,23 @@ export function filasDeVersiones(
   }));
 }
 
+// E2E-3: la columna «Motivo» decía la clave del servidor («edicion», «elaborada»). Ahora dice cómo se creó, con tilde, y
+// lo que escribió quien la guardó: «Edición: Acta de obra 3». Una clave que no se conoce se muestra tal cual.
+const MOTIVOS: Record<string, string> = {
+  "": "Elaborada",
+  edicion: "Edición",
+  restauracion: "Restauración",
+  cotizacion: "Cotización",
+  revaloracion: "Revaloración",
+  conversion: "Conversión",
+};
+
+export function motivoDeVersion(f: Pick<VersionFila, "motivo" | "fuente">): string {
+  const tipo = MOTIVOS[f.motivo] ?? f.motivo;
+  const fuente = (f.fuente ?? "").trim();
+  return fuente === "" ? tipo : `${tipo}: ${fuente}`;
+}
+
 export interface PasoDeVersiones {
   texto: string;
   // «guardar» abre «Guardar versión»; null, la franja solo informa.

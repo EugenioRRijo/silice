@@ -10,7 +10,6 @@ export const TEXTOS_DE_VERSIONES = {
   sinEstados: "No se pudo leer el estado de aprobación de las versiones.",
   abierta: "abierta",
   descartada: "descartada",
-  elaborada: "elaborada",
   vigente: "Sí",
   columnas: {
     version: "Versión",
