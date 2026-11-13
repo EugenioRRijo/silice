@@ -179,15 +179,46 @@ function IniciarVentana([string]$Registro) {
 # La humo corre elevada y, desde el runtime 150, WebView2 ignora en un proceso elevado la variable
 # WEBVIEW2_* y la política de HKCU («Develop secure WebView2 apps», Microsoft): solo la de HKLM.
 $PoliticaCdp = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+$script:PoliticaPrevia = $null
+$script:TipoPrevio = 'String'
+$script:ClaveCreada = $false
+function ValorPoliticaCdp {
+    if (-not (Test-Path -Path $PoliticaCdp)) { return $null }
+    return (Get-Item -Path $PoliticaCdp).GetValue('python.exe', $null, 'DoNotExpandEnvironmentNames')
+}
 function PonerPoliticaCdp([int]$PuertoCdp) {
     # La política de máquina que documenta Microsoft para lo mismo que la variable: un valor con el
-    # nombre del ejecutable. Solo durante el paso 6b; QuitarPoliticaCdp la borra.
-    New-Item -Path $PoliticaCdp -Force | Out-Null
+    # nombre del ejecutable. Solo durante el paso 6b; QuitarPoliticaCdp deja la clave como estaba.
+    # New-Item -Force sobre una clave que ya existe la recrea vacía (borra sus otros valores y
+    # subclaves): solo se crea si falta.
+    if (-not (Test-Path -Path $PoliticaCdp)) {
+        New-Item -Path $PoliticaCdp -Force | Out-Null
+        $script:ClaveCreada = $true
+    }
+    $clave = Get-Item -Path $PoliticaCdp
+    $script:PoliticaPrevia = $clave.GetValue('python.exe', $null, 'DoNotExpandEnvironmentNames')
+    if ($null -ne $script:PoliticaPrevia) {
+        $script:TipoPrevio = [string]$clave.GetValueKind('python.exe')
+        Write-Host "  la política ya tenía un valor python.exe: se devuelve al terminar"
+    }
     New-ItemProperty -Path $PoliticaCdp -Name 'python.exe' -PropertyType String -Force `
         -Value "--remote-debugging-port=$PuertoCdp" | Out-Null
 }
 function QuitarPoliticaCdp {
+    # Idempotente: el paso 6b y el finally la llaman
+    if (-not (Test-Path -Path $PoliticaCdp)) { return }
+    if ($null -ne $script:PoliticaPrevia) {
+        New-ItemProperty -Path $PoliticaCdp -Name 'python.exe' -PropertyType $script:TipoPrevio `
+            -Force -Value $script:PoliticaPrevia | Out-Null
+        return
+    }
     Remove-ItemProperty -Path $PoliticaCdp -Name 'python.exe' -ErrorAction SilentlyContinue
+    if ($script:ClaveCreada) {
+        # La creó la humo: se va si quedó vacía (las claves padre vacías no estorban)
+        $clave = Get-Item -Path $PoliticaCdp
+        if ($clave.ValueCount -eq 0 -and $clave.SubKeyCount -eq 0) { Remove-Item -Path $PoliticaCdp }
+        $script:ClaveCreada = $false
+    }
 }
 
 function PuertoLibre {
@@ -364,6 +395,8 @@ try {
     Afirmar ($ventana.CloseMainWindow()) 'CloseMainWindow() aceptó el cierre de la ventana'
     Afirmar ($ventana.WaitForExit(30000)) 'el lanzador terminó en <= 30 s al cerrar la ventana'
     QuitarPoliticaCdp
+    $valorRestante = ValorPoliticaCdp
+    Afirmar ($script:PoliticaPrevia -eq $valorRestante) "la política de HKLM volvió a como estaba (python.exe = '$valorRestante')"
     Afirmar ($null -eq (EsperarSalud $Url 3)) 'el puerto quedó libre tras cerrar la ventana'
     Afirmar (-not (Test-Path (Join-Path $Usuario 'estado\servidor.json'))) 'estado\servidor.json se borró'
     # Python guarda en búfer la salida a un archivo: se lee cuando el lanzador ya terminó
