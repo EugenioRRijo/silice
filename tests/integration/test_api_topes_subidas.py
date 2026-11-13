@@ -143,6 +143,27 @@ def test_el_tope_de_celdas_del_libro_suma_todas_las_hojas(
     )
 
 
+def test_las_filas_de_hueco_tambien_cuentan_para_el_tope_del_libro(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Una celda en A50 hace que openpyxl entregue 49 filas vacías antes: no sumaban nada, así que
+    1.000 hojas con una celda en A20000 pasaban el tope del libro tras 20 millones de filas (12 s;
+    agente de los índices, 2026-11-12). Cada fila entregada cuenta como una celda por lo menos:
+    tres hojas de 50 filas (150) caben en un tope de 150 y no en uno de 149."""
+    libro = openpyxl.Workbook()
+    libro.active.title = "H1"
+    for hoja in (libro.active, libro.create_sheet("H2"), libro.create_sheet("H3")):
+        hoja["A50"] = "dato ficticio"
+    ruta = tmp_path / "huecos.xlsx"
+    libro.save(ruta)
+    monkeypatch.setattr(lector, "MAX_CELDAS_LIBRO", 150)
+    assert comprobar_libro_legible(ruta) is None
+    monkeypatch.setattr(lector, "MAX_CELDAS_LIBRO", 149)
+    with pytest.raises(ValueError) as error:
+        comprobar_libro_legible(ruta)
+    assert "tiene más de 149 celdas con datos o con formato entre sus hojas" in str(error.value)
+
+
 # --- por HTTP: listas de precios y presupuesto de un tercero ---------------------------------
 
 
