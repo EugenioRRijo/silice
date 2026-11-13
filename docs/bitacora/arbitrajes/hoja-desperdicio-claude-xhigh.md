@@ -25,3 +25,24 @@ cambia el comportamiento.
 | N | Tildes que quedan en `aplicacion/hoja.py` (422 de guardar) | Para el próximo re-congelado (ESTADO §5.5) |
 | N | Materiales con dos columnas más a 1366 px y en el panel lateral | Falta la pasada en el navegador (ESTADO §4) |
 | N | Dos líneas iguales, quitar el desglose con el mismo total, lectura sin cerrojo, `_a_la_izquierda` sin porcentaje, tildes en asuntos de commit | Aceptadas como están: documentadas, inocuas por el emparejado o con el mismo riesgo que ya tenía «derecha» |
+
+## Ronda 2 (2026-11-13): DEVUELTO
+
+**Juzgado:** `394c1217..4b2371d2` (hashes de antes de la reescritura): correcciones de la ronda 1, la de Gemini Argon,
+las tres líneas de la prueba de punta a punta (`docs/bitacora/2026-11-13-e2e-vial.md`, `…-e2e-precios.md`,
+`…-e2e-front.md`), el ciclo de importación y la fusión de `componer/cliente.ts`. **Veredicto:** DEVUELTO solo por el
+hallazgo 1 (datos); el código, aprobado: 1.369 pruebas de Python y 272 de vitest de lo tocado, cada commit rojo falla,
+`core/` y los 50 archivos del auditor sin cambios, `docs/api.json` idéntico a `app.openapi()`, simulaciones recalculadas y
+honestas.
+
+| # | Hallazgo | Respuesta |
+|---|---|---|
+| 1 | BLOQUEANTE (NORMAS §1): una cifra del informe real seguía en la historia, escrita como expresión regular | Historia de `b19f8e27` en adelante reescrita con `filter-branch` (sin subir); grep tolerante a separadores sobre `git log -p`: 0; ramas, árboles temporales, respaldo y reflogs borrados; ningún commit viejo alcanzable |
+| 2 | MENOR: la bitácora de la línea de front citaba hashes de antes de su primera reescritura | Todas las bitácoras con los hashes nuevos (`bf3df1a6`) |
+| 3 | MENOR: el acta y un mensaje repetían una cifra del pie atribuida a un libro real | Quitada de la historia en la misma reescritura y, en la ronda 3, también de esta fila y de un mensaje |
+| 4 | MENOR: «Usarla como lista para armar» se mostraba a quien no puede armar | Solo con `editar_hoja`; a los demás se les dice quién la crea (`f2510aaf`) |
+| 5 | MENOR: la tabla de insumos nuevos mostraba claves del servidor | «Mano de obra», «m³» (`f2510aaf`) |
+| 6 | MENOR: faltaba «Recuperación» en el motivo de Versiones | Agregado (`f2510aaf`) |
+| 7 | MENOR: CHANGELOG, ESTADO, ERS y manual de usuario sin las tres líneas | Al día, RF-190 a RF-195 (`97399b3d`) |
+| 8 | MENOR (DRY): `PREFIJO_TRAMO` definido dos veces y el origen escrito como literal | Ver la ronda 3 |
+| N | El plan «Mes n» en la pestaña del plan y en Control; VR4 depende del perfil local; AH11 relajado sin declararlo en `aae08b31` | Anotadas en ESTADO §5 para Eugenio; la de `aae08b31` queda declarada aquí |
