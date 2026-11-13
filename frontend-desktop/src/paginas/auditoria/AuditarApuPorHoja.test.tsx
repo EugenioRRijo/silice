@@ -141,9 +141,9 @@ describe("Auditar un libro con un APU por hoja", () => {
     render(<AuditarApuPorHoja alExpirar={vi.fn()} />);
     await usuario.upload(campos()[0], new File(["x"], "frente.xlsx"));
     await usuario.click(screen.getByRole("button", { name: "Auditar el libro de APU" }));
-    await screen.findByRole("table", { name: "Hallazgos del libro" });
-    const nota = screen.getAllByRole("status").find((n) => n.textContent?.includes("parece de otra obra"));
-    expect(nota).toHaveTextContent("La hoja del presupuesto parece de otra obra");
+    // Ola 2 (2026-11-13): el aviso se nombra por su título, no por todo su texto (que se leería dos veces) ni sin nombre
+    // (lo que dejó, sin declararlo, el verde `2b436af1`); el texto completo es su contenido.
+    const nota = await screen.findByRole("status", { name: "La hoja del presupuesto parece de otra obra" });
     expect(nota).toHaveTextContent(aviso);
   });
 
