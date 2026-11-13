@@ -118,7 +118,13 @@ RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
-from scripts.meta_alpha import Estado, Fila, _filas_a_json, render_tabla  # noqa: E402
+from scripts.meta_alpha import (  # noqa: E402
+    Estado,
+    Fila,
+    _filas_a_json,
+    imprimir_salida,
+    render_tabla,
+)
 
 #: Fecha de los libros (PORTADA "Julio 2026" -> último día del mes, spec F-D8). Se pasa explícita
 #: para que la corrida no dependa de cómo el lector interprete la portada.
@@ -2035,8 +2041,6 @@ def _parsear_args(argv: list[str] | None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(errors="replace")
     args = _parsear_args(argv)
     if not args.carpeta.is_dir():
         print(f"No existe la carpeta de libros: {args.carpeta}", file=sys.stderr)
@@ -2109,10 +2113,10 @@ def main(argv: list[str] | None = None) -> int:
     prohibidos = _prohibidos(args.carpeta, evaluaciones)
     filas = [Fila(f.codigo, f.titulo, f.estado, _limpiar(f.evidencia, prohibidos)) for f in filas]
     if args.json:
-        print(_filas_a_json(filas))
+        imprimir_salida(_filas_a_json(filas))
     else:
-        print(render_tabla(filas))
-        print(_limpiar(_resumen(evaluaciones, avisos, args.salida), prohibidos))
+        imprimir_salida(render_tabla(filas))
+        imprimir_salida(_limpiar(_resumen(evaluaciones, avisos, args.salida), prohibidos))
     return 1 if any(f.estado is Estado.FALLA for f in filas) else 0
 
 

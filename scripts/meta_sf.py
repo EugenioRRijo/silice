@@ -59,7 +59,13 @@ RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
-from scripts.meta_alpha import Estado, Fila, _filas_a_json, render_tabla  # noqa: E402
+from scripts.meta_alpha import (  # noqa: E402
+    Estado,
+    Fila,
+    _filas_a_json,
+    imprimir_salida,
+    render_tabla,
+)
 
 #: Fases del sprint final, en orden. Cada una agrupa las metas que arrancan en ella (spec 12.2).
 FASES: dict[str, tuple[str, ...]] = {
@@ -735,7 +741,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         codigos = [codigo for metas in FASES.values() for codigo in metas]
     filas = _evaluar_metas(codigos, args.hasta)
-    print(_filas_a_json(filas) if args.json else render_tabla(filas))
+    imprimir_salida(_filas_a_json(filas) if args.json else render_tabla(filas))
     return 0 if all(fila.estado is Estado.OK for fila in filas) else 1
 
 
