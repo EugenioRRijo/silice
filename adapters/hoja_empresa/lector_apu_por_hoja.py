@@ -12,7 +12,10 @@ financiamiento, impuesto): una guardia, un modelo y las mismas celdas citables (
   línea si trae descripción y una cantidad numérica (un filtro por la columna del número perdería
   los renglones sin él y el precio unitario no cuadraría).
 - Los porcentajes del pie (prestaciones, administración, utilidad, financiamiento, impuesto) son el
-  primer número a la derecha de su rótulo y se guardan como fracción (250 → 2,5). Faltar la
+  primer número a la derecha de su rótulo o, si el perfil dice `lado_de_los_porcentajes:
+  "izquierda"`, el más cercano a su izquierda (un libro real escribe «p | Administración (%) | … |
+  monto»: leer a la derecha tomaba el monto; prueba local del 2026-11-13), y se guardan como
+  fracción (250 → 2,5). Faltar la
   administración, la utilidad, el rendimiento o el precio unitario hace la hoja no interpretable
   (`LibroNoInterpretable`, con la hoja y el rótulo); las prestaciones, el financiamiento y el
   impuesto que falten valen 0.
@@ -24,7 +27,10 @@ financiamiento, impuesto): una guardia, un modelo y las mismas celdas citables (
   precio: `Decimal.quantize` pasaba de la precisión).
 - Las unidades se leen tal como las escribe el libro: la traducción del perfil la aplica quien
   audita (`fusion`), y cada traducción usada queda dicha en el informe.
-- `Decimal(str(v))` siempre (NORMAS §2.3). Solo valores: no hay fórmulas que leer.
+- `Decimal` desde texto siempre (NORMAS §2.3), y un `float` con 15 dígitos significativos, la
+  precisión que Excel garantiza: el valor en caché de una fórmula llega como doble (0,1 + 0,2 =
+  0.30000000000000004) y su ruido daba AH6 falsos (prueba local del 2026-11-13). Solo valores: no
+  hay fórmulas que leer.
 - **Entrada hostil** (arbitraje F5 vial, P1, y su revisión): solo se leen las hojas del prefijo del
   perfil (y, en el libro de presupuesto, la hoja del presupuesto); de cada una, a lo sumo
   `guardia.MAX_FILAS_HOJA` filas y `guardia.MAX_COLUMNAS_HOJA` columnas (las que justifica
@@ -86,10 +92,11 @@ TOPE_CIFRA = Decimal(10) ** 12
 
 
 def numero_de(valor: Any) -> Decimal | None:
-    """El `Decimal` de una celda numérica (no un booleano); `None` si no lo es."""
+    """El `Decimal` de una celda numérica (no un booleano); `None` si no lo es. Un `float` se toma
+    con 15 dígitos significativos, la precisión de Excel (sin el ruido binario del doble)."""
     if isinstance(valor, bool) or not isinstance(valor, (int, float, Decimal)):
         return None
-    numero = Decimal(str(valor))
+    numero = Decimal(format(valor, ".15g") if isinstance(valor, float) else str(valor))
     return numero if numero.is_finite() else None
 
 
@@ -184,6 +191,14 @@ def _a_la_derecha(fila: Sequence[Any], desde: int, numerico: bool) -> tuple[int,
             return j, numero_de(valor)
         if not numerico and valor is not None and _texto(valor):
             return j, valor
+    return None
+
+
+def _a_la_izquierda(fila: Sequence[Any], hasta: int) -> tuple[int, Any] | None:
+    """El número más cercano a la izquierda de la columna `hasta`."""
+    for j in range(min(hasta, len(fila)) - 1, -1, -1):
+        if numero_de(fila[j]) is not None:
+            return j, numero_de(fila[j])
     return None
 
 
@@ -334,7 +349,12 @@ def _leer_apu(hoja: str, filas: Filas, perfil: PerfilApuPorHoja) -> ApuLeido:
     porcentajes: dict[str, Decimal] = {}
     for campo, variantes in perfil.porcentajes.items():
         donde = _rotulo(filas, variantes)
-        valor = None if donde is None else _a_la_derecha(filas[donde[0]], donde[1], True)
+        if donde is None:
+            valor = None
+        elif perfil.lado_de_los_porcentajes == "izquierda":
+            valor = _a_la_izquierda(filas[donde[0]], donde[1])
+        else:
+            valor = _a_la_derecha(filas[donde[0]], donde[1], True)
         if valor is None:
             if campo in ("administracion", "utilidad"):
                 raise LibroNoInterpretable(
