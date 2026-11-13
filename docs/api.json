@@ -8279,6 +8279,66 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/pdf": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Exportar Pdf",
+        "description": "RF-213: el presupuesto del borrador vivo en PDF (encabezado, partidas, subtotal, IVA y\ntotal) y el APU de cada partida, uno por página; con `partida`, solo el de esa partida.",
+        "operationId": "exportar_pdf_v1_hoja_borradores__id__pdf_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "partida",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Partida"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El PDF del borrador.",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores/{id}/plano": {
       "post": {
         "tags": [

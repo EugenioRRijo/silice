@@ -44,6 +44,7 @@ from tests.fixtures.hoja_en_base import NOMBRE_OF001, plantilla_of001
 
 D = Decimal
 HOY = date(2026, 11, 13)
+PARAMETROS = "FCAS 6 · Bono de alimentación 5,81 · Administración 15 % · Utilidad 10 %"
 
 
 def _texto(contenido: bytes) -> list[str]:
@@ -55,7 +56,7 @@ def _renglon(n: int, descripcion: str = "") -> Renglon:
     return Renglon(
         numero=str(n),
         partida=f"FIC-{n:03d}",
-        descripcion=descripcion or f"Partida ficticia número {n}: excavación a mano",
+        descripcion=descripcion or f"Partida número {n}: excavación",
         unidad="m³",
         cantidad="1.234,5",
         precio_unitario="12.345,67",
@@ -88,7 +89,7 @@ def _documento(renglones: int = 3, grupos: tuple[Grupo, ...] | None = None) -> D
                 descripcion="Concreto f'c ≤ 250 kgf/cm² <b>&</b> curado",
                 unidad="m³",
                 rendimiento="12,5",
-                parametros="FCAS 6 · Bono de alimentación 5,81 · Administración 15 % · Utilidad 10 %",
+                parametros=PARAMETROS,
                 tablas=(
                     TablaDeApu(
                         "Materiales",
@@ -96,7 +97,9 @@ def _documento(renglones: int = 3, grupos: tuple[Grupo, ...] | None = None) -> D
                         (("Cemento gris ficticio", "saco", "7,5", "10,20"),),
                         "76,50",
                     ),
-                    TablaDeApu("Equipos", ("Descripción", "Cantidad", "Precio", "Depreciación"), (), "0,00"),
+                    TablaDeApu(
+                        "Equipos", ("Descripción", "Cantidad", "Precio", "Depreciación"), (), "0,00"
+                    ),
                 ),
                 cierre=(
                     LineaDeCierre("= Costo directo", "76,50"),
@@ -124,7 +127,7 @@ def test_el_pdf_trae_el_encabezado_las_partidas_y_los_totales_con_coma_decimal_y
         "Moneda: USD",
         "Versión 002 con 1 cambio sin guardar.",
         "FIC-002",
-        "Partida ficticia número 2: excavación a mano",
+        "Partida número 2: excavación",
         "m³",
         "1.234,5",
         "12.345,67",
@@ -148,7 +151,7 @@ def test_el_apu_va_en_su_pagina_con_sus_grupos_y_el_texto_del_usuario_no_es_marc
     # «<b>&</b>» es texto de la persona: se ve tal cual, no se interpreta como negrita
     assert "Concreto f'c ≤ 250 kgf/cm² <b>&</b> curado" in apu
     assert "Rendimiento: 12,5 m³ por día" in apu
-    assert "FCAS 6 · Bono de alimentación 5,81 · Administración 15 % · Utilidad 10 %" in apu
+    assert PARAMETROS in apu
     for esperado in ("Materiales", "Cemento gris ficticio", "7,5", "10,20", "76,50", "Equipos"):
         assert esperado in apu, esperado
     assert "Sin líneas" in apu  # Equipos vacío lo dice
@@ -156,8 +159,8 @@ def test_el_apu_va_en_su_pagina_con_sus_grupos_y_el_texto_del_usuario_no_es_marc
     assert not any("Análisis de precio unitario" in p for p in paginas[:-1])
 
 
-def test_con_ochenta_partidas_el_encabezado_de_la_tabla_se_repite_y_cada_pagina_se_numera():
-    paginas = _texto(pdf_en_bytes(replace(_documento(80), apus=())))
+def test_con_150_partidas_el_encabezado_de_la_tabla_se_repite_y_cada_pagina_se_numera():
+    paginas = _texto(pdf_en_bytes(replace(_documento(150), apus=())))
     assert len(paginas) >= 3
     for n, pagina in enumerate(paginas, start=1):
         assert f"Página {n} de {len(paginas)}" in pagina
@@ -165,14 +168,12 @@ def test_con_ochenta_partidas_el_encabezado_de_la_tabla_se_repite_y_cada_pagina_
     for pagina in paginas[:-1]:
         assert "Descripción" in pagina and "Precio unitario (USD)" in pagina
     todo = "\n".join(paginas)
-    assert all(f"FIC-{n:03d}" in todo for n in range(1, 81))
+    assert all(f"FIC-{n:03d}" in todo for n in range(1, 151))
 
 
 def test_una_descripcion_larga_se_parte_en_lineas_y_no_se_corta():
     largo = " ".join(f"palabra{n}" for n in range(60))
-    documento = replace(
-        _documento(1), grupos=(Grupo("", (_renglon(1, largo),), None),), apus=()
-    )
+    documento = replace(_documento(1), grupos=(Grupo("", (_renglon(1, largo),), None),), apus=())
     todo = " ".join(_texto(pdf_en_bytes(documento))).split()
     assert all(f"palabra{n}" in todo for n in range(60))
 
@@ -301,3 +302,17 @@ def test_el_agrupador_reparte_los_renglones_y_el_servidor_suma_cada_subtotal(_of
     numeros = [r.numero for g in documento.grupos for r in g.renglones]
     assert numeros == [str(n) for n in range(1, 31)]
     assert sin_agrupar([]) == [("", [])]
+
+
+def test_un_control_un_sustituto_suelto_o_una_letra_que_vera_no_tiene_no_rompen_el_pdf():
+    raro = "Tubo\x00 de \ud800 cobre 中 → fin"
+    base = _documento(1)
+    documento = replace(
+        base,
+        encabezado=replace(base.encabezado, obra=f"Obra {raro}"),  # también el título y el pie
+        grupos=(Grupo("", (_renglon(1, raro),), None),),
+        apus=(),
+    )
+    todo = "\n".join(_texto(pdf_en_bytes(documento)))
+    assert "Tubo" in todo and "cobre" in todo and "fin" in todo
+    assert "Obra Tubo" in todo

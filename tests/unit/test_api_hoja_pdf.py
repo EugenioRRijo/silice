@@ -1,9 +1,9 @@
 """`GET /v1/hoja/borradores/{id}/pdf`: el presupuesto del borrador vivo en PDF (RF-213).
 
-Contrato (bitácora `2026-11-13-ola2-pdf-e-indices.md` §1): sin `partida`, el presupuesto (encabezado,
-partidas, subtotal, IVA y total) y después un APU por página; con `partida`, solo el APU de esa
-partida. El mismo acceso que el Excel (X1): una cuenta con `LEER_PROYECTO` y SU borrador; la clave
-de API recibe 403; `no-store`; no escribe nada.
+Contrato (bitácora `2026-11-13-ola2-pdf-e-indices.md` §1): sin `partida`, el presupuesto
+(encabezado, partidas, subtotal, IVA y total) y después un APU por página; con `partida`, solo el
+APU de esa partida. El mismo acceso que el Excel (X1): una cuenta con `LEER_PROYECTO` y SU
+borrador; la clave de API recibe 403; `no-store`; no escribe nada.
 
 Oráculos a mano: total de OF-001 2 703,86 USD (memoria) y con administración 0,20, 2 821,42; IVA
 16 %: 432,62 y 3 136,48 (2 703,86 × 0,16 = 432,6176); AF-LLAVE PU 13,198738025 → 13,20 y 3 × PU →
@@ -106,9 +106,7 @@ def test_el_pdf_de_of001_trae_las_partidas_el_iva_y_un_apu_por_pagina(app: FastA
     respuesta = _pdf(navegador, _abrir(navegador, ficha))
     assert respuesta.status_code == 200, respuesta.text[:200]
     assert respuesta.headers["content-type"] == PDF
-    assert (
-        respuesta.headers["content-disposition"] == 'attachment; filename="presupuesto_001.pdf"'
-    )
+    assert respuesta.headers["content-disposition"] == 'attachment; filename="presupuesto_001.pdf"'
     assert respuesta.headers["cache-control"] == "no-store"
     paginas = _texto(respuesta.content)
     todo = "\n".join(paginas)
@@ -156,10 +154,7 @@ def test_con_partida_solo_va_su_apu(app: FastAPI) -> None:
     navegador, ficha = con_cuenta(app, "ana")
     respuesta = _pdf(navegador, _abrir(navegador, ficha), partida="AF-LLAVE")
     assert respuesta.status_code == 200, respuesta.text[:200]
-    assert (
-        respuesta.headers["content-disposition"]
-        == 'attachment; filename="apu_001_AF-LLAVE.pdf"'
-    )
+    assert respuesta.headers["content-disposition"] == 'attachment; filename="apu_001_AF-LLAVE.pdf"'
     paginas = _texto(respuesta.content)
     assert len(paginas) == 1
     assert "AF-LLAVE" in paginas[0] and "= Precio unitario" in paginas[0]
