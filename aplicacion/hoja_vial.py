@@ -45,7 +45,7 @@ from adapters.vial.constantes import PARTIDAS_VIALES
 from adapters.vial.derivacion import derivar_tramos
 from adapters.vial.modelo import Tramo
 from adapters.vial.reglas import ReglasViales
-from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion, vial
+from aplicacion import elaboracion, hoja, hoja_borradores, hoja_edicion, hoja_partidas, vial
 from aplicacion.listas_para_armar import lista_para_armar
 from core import models
 from core.catalog import Catalogo, CatalogoIncompleto
@@ -63,8 +63,8 @@ __all__ = [
     "sincronizar_renglones",
 ]
 
-#: Prefijo del `origen_id` de una cantidad derivada de un tramo («tramo:T1:capa:3»).
-PREFIJO_TRAMO = "tramo:"
+#: El prefijo del `origen_id` de un tramo vive en `hoja_partidas` (sin ciclo de importación).
+PREFIJO_TRAMO = hoja_partidas.PREFIJO_TRAMO
 
 
 class SinTramos(LookupError):  # noqa: N818

@@ -62,6 +62,11 @@ __all__ = [
 #: Prefijo del `origen_id` de un renglón agregado a mano: «a-mano:1», «a-mano:2»…
 PREFIJO_A_MANO = "a-mano:"
 
+#: Prefijo del `origen_id` de una cantidad derivada de un tramo («tramo:T1:capa:3»). Vive aquí, y no
+#: en `hoja_vial`, para que `hoja_vista` no cierre el ciclo `hoja_vial` → `elaboracion` →
+#: `hoja_edicion` → `hoja_vista` → `hoja_vial` (prueba de punta a punta, 2026-11-13).
+PREFIJO_TRAMO = "tramo:"
+
 SOLO_ARITMETICA = "El cálculo solo admite números y los signos + − × / y paréntesis."
 CALCULO_IMPOSIBLE = "El cálculo no se puede hacer: revise los signos y los paréntesis."
 DIVIDE_ENTRE_CERO = "El cálculo divide entre cero."

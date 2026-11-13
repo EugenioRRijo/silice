@@ -36,8 +36,12 @@ from aplicacion.cifras import texto_de_cifra
 from aplicacion.desperdicio import TrazaDesperdicio, neta_y_porcentaje, trazas_de_las_filas
 from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_desperdicio import trazas_del_borrador, unir
-from aplicacion.hoja_partidas import PREFIJO_A_MANO, calculo_tecleable, texto_llano
-from aplicacion.hoja_vial import PREFIJO_TRAMO
+from aplicacion.hoja_partidas import (
+    PREFIJO_A_MANO,
+    PREFIJO_TRAMO,
+    calculo_tecleable,
+    texto_llano,
+)
 from aplicacion.plural import plural
 from core.budget.equilibrio import PuntoEquilibrio
 from core.contracts import Severidad
