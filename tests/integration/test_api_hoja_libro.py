@@ -278,3 +278,160 @@ def test_con_la_clave_de_api_no_se_lleva() -> None:
         data={"proyecto": VIA, "moneda": "Bs"},
     )
     assert r.status_code == 403
+
+
+# --- el presupuesto agrupado por frente (paso 3) -----------------------------------------------
+#
+# `GET /v1/hoja/borradores/{id}/vistas/frentes`: el subtotal de cada frente y el total general,
+# calculados por el servidor con los totales de cada renglón (cantidad × P.U.). Oráculos a mano, con
+# los P.U. exactos de la memoria: FRENTE A = 600 × 2,0777625 + 72 × 4,1323… (= 297,528) + 270 ×
+# 0,81213 + 1,2 × 809,6 + 600 × 0,132825 = 2.814,6756; FRENTE B (el 40 %) = 1.876,4504; total
+# 4.691,126. `PUT /v1/hoja/borradores/{id}/frentes` pone el frente de un renglón a mano.
+
+
+def _frentes(navegador: TestClient, id_: str) -> dict:
+    r = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/frentes")
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def _resumen_frentes(cuerpo: dict) -> list[tuple]:
+    return [
+        (f["frente"], f["renglones"], f["pendientes"], f["total"]["texto"])
+        for f in cuerpo["frentes"]
+    ]
+
+
+def _rev(navegador: TestClient, id_: str) -> int:
+    return next(b["rev"] for b in _borradores(navegador) if b["id"] == id_)
+
+
+def _borradores(navegador: TestClient) -> list[dict]:
+    r = navegador.get("/v1/hoja/borradores")
+    assert r.status_code == 200, r.text
+    return r.json()["borradores"]
+
+
+def test_el_presupuesto_del_libro_sale_agrupado_por_frente(ana) -> None:
+    navegador, _ = ana
+    id_ = _llevar(ana).json()["borrador_id"]
+    cuerpo = _frentes(navegador, id_)
+    assert cuerpo["con_frentes"] is True
+    assert _resumen_frentes(cuerpo) == [
+        ("FRENTE A", 5, 0, "2814.68"),
+        ("FRENTE B", 5, 0, "1876.45"),
+    ]
+    assert cuerpo["total"]["texto"] == "4691.13"
+    presupuesto = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/presupuesto").json()
+    assert presupuesto["total"]["texto"] == cuerpo["total"]["texto"]
+
+
+def test_el_frente_de_un_renglon_se_pone_a_mano(ana) -> None:
+    navegador, ficha = ana
+    id_ = _llevar(ana).json()["borrador_id"]
+    r = navegador.put(
+        f"/v1/hoja/borradores/{id_}/frentes",
+        json={
+            "rev": _rev(navegador, id_),
+            "filas": [{"clave": "VF-001|libro:FRENTE A!E4", "frente": "  Estación norte "}],
+        },
+        headers=protegida(ficha),
+    )
+    assert r.status_code == 200, r.text
+    assert _resumen_frentes(r.json()["frentes"]) == [
+        ("Estación norte", 1, 0, "1246.66"),
+        ("FRENTE A", 4, 0, "1568.02"),
+        ("FRENTE B", 5, 0, "1876.45"),
+    ]
+    quitado = navegador.put(
+        f"/v1/hoja/borradores/{id_}/frentes",
+        json={
+            "rev": r.json()["rev"],
+            "filas": [{"clave": "VF-001|libro:FRENTE A!E4", "frente": ""}],
+        },
+        headers=protegida(ficha),
+    )
+    assert quitado.status_code == 200, quitado.text
+    assert _resumen_frentes(quitado.json()["frentes"])[-1] == (None, 1, 0, "1246.66")
+
+
+def test_un_renglon_que_no_esta_o_un_rev_viejo_no_cambian_nada(ana) -> None:
+    navegador, ficha = ana
+    id_ = _llevar(ana).json()["borrador_id"]
+    rev = _rev(navegador, id_)
+    otro = navegador.put(
+        f"/v1/hoja/borradores/{id_}/frentes",
+        json={"rev": rev, "filas": [{"clave": "NO-EXISTE|x", "frente": "A"}]},
+        headers=protegida(ficha),
+    )
+    assert otro.status_code == 422
+    assert otro.json()["detalle"] == (
+        "Ese renglón no está en el presupuesto o sale del espacio: vuelva a cargarlo."
+    )
+    viejo = navegador.put(
+        f"/v1/hoja/borradores/{id_}/frentes",
+        json={"rev": rev - 1, "filas": [{"clave": "VF-001|libro:FRENTE A!E4", "frente": "A"}]},
+        headers=protegida(ficha),
+    )
+    assert viejo.status_code == 409
+    assert _resumen_frentes(_frentes(navegador, id_))[0][0] == "FRENTE A"
+
+
+def test_los_frentes_se_guardan_con_la_version_y_vuelven_al_abrirla(ana) -> None:
+    navegador, ficha = ana
+    id_ = _llevar(ana).json()["borrador_id"]
+    guardado = navegador.post(
+        f"/v1/hoja/borradores/{id_}/guardar",
+        json={
+            "rev": _rev(navegador, id_),
+            "fuente": "Libro ficticio auditado",
+            "codigo": "VIA-001",
+        },
+        headers=protegida(ficha),
+    )
+    assert guardado.status_code == 200, guardado.text
+    abierto = navegador.post(
+        "/v1/hoja/borradores",
+        json={"proyecto": VIA, "version": "VIA-001"},
+        headers=protegida(ficha),
+    )
+    assert abierto.status_code == 201, abierto.text
+    cuerpo = _frentes(navegador, abierto.json()["id"])
+    assert _resumen_frentes(cuerpo) == [
+        ("FRENTE A", 5, 0, "2814.68"),
+        ("FRENTE B", 5, 0, "1876.45"),
+    ]
+
+
+def test_una_obra_sin_frentes_sale_en_un_solo_grupo(ana) -> None:
+    navegador, ficha = ana
+    abierto = navegador.post(
+        "/v1/hoja/borradores",
+        json={"proyecto": OBRA, "version": "VIV-001"},
+        headers=protegida(ficha),
+    )
+    assert abierto.status_code == 201, abierto.text
+    cuerpo = _frentes(navegador, abierto.json()["id"])
+    assert cuerpo["con_frentes"] is False
+    assert [f["frente"] for f in cuerpo["frentes"]] == [None]
+    assert cuerpo["frentes"][0]["total"] == cuerpo["total"]
+
+
+def test_quien_revisa_ve_los_frentes_pero_no_los_cambia(ana) -> None:
+    navegador, ficha = ana
+    _llevar(ana)
+    rita, ficha_rita = _entrar("rita")
+    abierto = rita.post(
+        "/v1/hoja/borradores",
+        json={"proyecto": OBRA, "version": "VIV-001"},
+        headers=protegida(ficha_rita),
+    )
+    assert abierto.status_code == 201, abierto.text
+    id_rita = abierto.json()["id"]
+    assert rita.get(f"/v1/hoja/borradores/{id_rita}/vistas/frentes").status_code == 200
+    r = rita.put(
+        f"/v1/hoja/borradores/{id_rita}/frentes",
+        json={"rev": 0, "filas": []},
+        headers=protegida(ficha_rita),
+    )
+    assert r.status_code == 403
