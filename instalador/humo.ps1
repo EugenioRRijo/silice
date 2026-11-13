@@ -271,21 +271,39 @@ function DescartesDe([string]$Registro, [string[]]$Pids) {
 }
 
 $Muestreo = {
-    param($programa, $archivo)
+    param($programa, $archivo, $archivoWeb)
+    function Anotar($Pids, [string]$Destino) {
+        $Pids | ForEach-Object { "pid $_" } | Add-Content -Path "$Destino.pids"
+        Get-NetTCPConnection -ErrorAction SilentlyContinue |
+            Where-Object { $Pids -contains $_.OwningProcess -and $_.State -ne 'Listen' } |
+            ForEach-Object {
+                $local = "$($_.LocalAddress):$($_.LocalPort)"
+                $remoto = "$($_.RemoteAddress):$($_.RemotePort)"
+                "$($_.OwningProcess) $($_.State) $local $remoto"
+            } | Add-Content -Path $Destino
+    }
     while ($true) {
-        $pids = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
-            Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($programa) } |
-            ForEach-Object { $_.ProcessId })
-        if ($pids.Count) {
-            $pids | ForEach-Object { "pid $_" } | Add-Content -Path "$archivo.pids"
-            Get-NetTCPConnection -ErrorAction SilentlyContinue |
-                Where-Object { $pids -contains $_.OwningProcess -and $_.State -ne 'Listen' } |
-                ForEach-Object {
-                    $local = "$($_.LocalAddress):$($_.LocalPort)"
-                    $remoto = "$($_.RemoteAddress):$($_.RemotePort)"
-                    "$($_.OwningProcess) $($_.State) $local $remoto"
-                } | Add-Content -Path $archivo
-        }
+        $procesos = @(Get-CimInstance Win32_Process |
+            Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine)
+        $pids = @($procesos | Where-Object {
+                $_.Name -eq 'python.exe' -and $_.ExecutablePath -and
+                $_.ExecutablePath.StartsWith($programa) } |
+            ForEach-Object { [int]$_.ProcessId })
+        # La red de la ventana la hace WebView2: los msedgewebview2.exe que cuelgan (a cualquier
+        # profundidad) del python.exe de {app}, o que llevan el perfil de la ventana en su orden.
+        $web = [System.Collections.Generic.HashSet[int]]::new()
+        $webview = @($procesos | Where-Object { $_.Name -eq 'msedgewebview2.exe' })
+        $webview | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('perfil_ventana') } |
+            ForEach-Object { [void]$web.Add([int]$_.ProcessId) }
+        do {
+            $cuantos = $web.Count
+            foreach ($p in $webview) {
+                $padre = [int]$p.ParentProcessId
+                if ($pids -contains $padre -or $web.Contains($padre)) { [void]$web.Add([int]$p.ProcessId) }
+            }
+        } while ($web.Count -ne $cuantos)
+        if ($pids.Count) { Anotar $pids $archivo }
+        if ($web.Count) { Anotar @($web) $archivoWeb }
         Start-Sleep -Seconds 1
     }
 }
@@ -330,7 +348,8 @@ try {
 
     Paso '4. Arranque, salud y puertos'
     $trabajo = Start-Job -ScriptBlock $Muestreo `
-        -ArgumentList $Programa, (Join-Path $Salida 'conexiones.log')
+        -ArgumentList $Programa, (Join-Path $Salida 'conexiones.log'),
+        (Join-Path $Salida 'conexiones-webview2.log')
     $servidor = IniciarSilice
     $segundos = EsperarSalud $Url 60
     Afirmar ($null -ne $segundos) "la salud respondió 200 en <= 60 s (fueron $segundos s)"
@@ -463,7 +482,16 @@ try {
     $propias = if ($ip) { '|' + [regex]::Escape($ip) } else { '' }
     $locales = '^(127\.0\.0\.1|::1|0\.0\.0\.0|::|\[::\]' + $propias + '):'
     $ajenas = @($conexiones | Where-Object { $_ -and ($_ -split ' ')[3] -notmatch $locales })
-    Afirmar ($ajenas.Count -eq 0) "el muestreo no vio conexiones ajenas ($($ajenas.Count))"
+    $ajenas | Select-Object -First 20 | ForEach-Object { Write-Host "  python ajena: $_" }
+    Afirmar ($ajenas.Count -eq 0) "el muestreo no vio conexiones ajenas del python.exe de {app} ($($ajenas.Count))"
+    # La ventana (6b): sus msedgewebview2.exe. Muestreo de 1 s y solo TCP: una conexión más corta
+    # o por UDP (QUIC) se le puede escapar; lo que pide la página lo cubre navegador.py por CDP.
+    $conexionesWeb = Get-Content (Join-Path $Salida 'conexiones-webview2.log') -ErrorAction SilentlyContinue
+    $muestrasWeb = Contar (Get-Content (Join-Path $Salida 'conexiones-webview2.log.pids') -ErrorAction SilentlyContinue)
+    Afirmar ($muestrasWeb -ge 1) "el muestreo vio los msedgewebview2.exe de la ventana ($muestrasWeb muestras de pid)"
+    $ajenasWeb = @($conexionesWeb | Where-Object { $_ -and ($_ -split ' ')[3] -notmatch $locales })
+    $ajenasWeb | Select-Object -First 20 | ForEach-Object { Write-Host "  webview2 ajena: $_" }
+    Afirmar ($ajenasWeb.Count -eq 0) "el muestreo no vio conexiones TCP ajenas de WebView2 de la ventana ($($ajenasWeb.Count))"
     $vistos = Get-Content (Join-Path $Salida 'conexiones.log.pids') -ErrorAction SilentlyContinue |
         ForEach-Object { ($_ -split ' ')[1] } | Sort-Object -Unique
     $descartes = DescartesDe $registroFw $vistos

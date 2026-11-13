@@ -689,7 +689,8 @@ def test_humo_muestrea_tambien_el_webview2_de_la_ventana() -> None:
     assert "msedgewebview2.exe" in muestreo
     assert "perfil_ventana" in muestreo
     assert "ParentProcessId" in muestreo
-    assert "$archivoWeb" in muestreo and "$archivoWeb.pids" in muestreo
+    # los dos archivos (conexiones y pids) los escribe la misma función para python y WebView2
+    assert "Anotar @($web) $archivoWeb" in muestreo and '"$Destino.pids"' in muestreo
     assert "'conexiones-webview2.log'" in texto[texto.index("Paso '4.") : texto.index("Paso '5.")]
     paso9 = texto[texto.index("Paso '9.") : texto.index("Paso '10.")]
     assert "conexiones-webview2.log.pids" in paso9
