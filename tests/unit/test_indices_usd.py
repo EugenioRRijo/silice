@@ -9,7 +9,8 @@ Oráculos a mano, con datos FICTICIOS:
 - febrero de 2027 (28 días): tasa 40 el 1, el 8 y el 15 (cubren del 1 al 21: 21 días) y 54 el 22
   (del 22 al 28: 7 días): promedio (21 × 40 + 7 × 54) ÷ 28 = 1.218 ÷ 28 = 43,5; con el índice en 87,
   87 ÷ 43,5 = 2.
-- tasas solo el 1 y el 15 de febrero: del 9 al 14 no hay tasa de los 7 días anteriores.
+- tasas solo el 1 y el 15 de febrero: del 9 al 14 y del 23 al 28 no hay tasa de los 7 días
+  anteriores (la del 15 cubre hasta el 22).
 """
 
 from __future__ import annotations
@@ -79,8 +80,8 @@ def test_un_mes_con_dias_sin_tasa_de_los_siete_anteriores_no_se_expresa_y_dice_c
     assert omitidos == [
         MesOmitido(
             FEB,
-            "02/2027: del 09/02/2027 al 14/02/2027 no hay tasa del BCV de los 7 días anteriores "
-            "(S1-R2)",
+            "02/2027: del 09/02/2027 al 14/02/2027, del 23/02/2027 al 28/02/2027 no hay tasa del "
+            "BCV de los 7 días anteriores (S1-R2)",
         )
     ]
 

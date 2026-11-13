@@ -5429,6 +5429,112 @@
         }
       }
     },
+    "/v1/indices/en-usd/origenes": {
+      "get": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Origenes En Usd",
+        "description": "Los índices mensuales en Bs que se pueden expresar en USD (solo su definición).",
+        "operationId": "origenes_en_usd_v1_indices_en_usd_origenes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrigenesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/indices/en-usd/ver": {
+      "post": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Ver En Usd",
+        "description": "Lo que se guardaría, con la cuenta del primer y el último mes. No escribe nada.",
+        "operationId": "ver_en_usd_v1_indices_en_usd_ver_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnUsdPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnUsdRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/indices/en-usd/confirmar": {
+      "post": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Confirmar En Usd",
+        "description": "Guarda la serie en USD si sus valores son los que se revisaron; el responsable es la\npersona de la sesión (RF-82).",
+        "operationId": "confirmar_en_usd_v1_indices_en_usd_confirmar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnUsdConfirmacion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/precios-empresa": {
       "get": {
         "tags": [
@@ -18553,6 +18659,120 @@
         ],
         "title": "EmpresaRespuesta"
       },
+      "EnUsdConfirmacion": {
+        "properties": {
+          "serie": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Serie"
+          },
+          "lado": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Lado",
+            "default": "venta"
+          },
+          "huella": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Huella"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie",
+          "huella"
+        ],
+        "title": "EnUsdConfirmacion"
+      },
+      "EnUsdPeticion": {
+        "properties": {
+          "serie": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Serie"
+          },
+          "lado": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Lado",
+            "default": "venta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie"
+        ],
+        "title": "EnUsdPeticion"
+      },
+      "EnUsdRespuesta": {
+        "properties": {
+          "serie_nueva": {
+            "type": "string",
+            "title": "Serie Nueva"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "meses": {
+            "type": "integer",
+            "title": "Meses"
+          },
+          "desde": {
+            "type": "string",
+            "title": "Desde"
+          },
+          "hasta": {
+            "type": "string",
+            "title": "Hasta"
+          },
+          "provisionales": {
+            "type": "integer",
+            "title": "Provisionales"
+          },
+          "muestra": {
+            "items": {
+              "$ref": "#/components/schemas/MesMuestra"
+            },
+            "type": "array",
+            "title": "Muestra",
+            "description": "El primer y el último mes, con su cuenta."
+          },
+          "omitidos": {
+            "items": {
+              "$ref": "#/components/schemas/MesSinUsd"
+            },
+            "type": "array",
+            "title": "Omitidos"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          },
+          "ya_guardada": {
+            "type": "boolean",
+            "title": "Ya Guardada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie_nueva",
+          "nombre",
+          "meses",
+          "desde",
+          "hasta",
+          "provisionales",
+          "muestra",
+          "omitidos",
+          "huella",
+          "ya_guardada"
+        ],
+        "title": "EnUsdRespuesta"
+      },
       "EntregaPeticion": {
         "properties": {
           "proyecto": {
@@ -22378,6 +22598,52 @@
         ],
         "title": "MensajeRespuesta"
       },
+      "MesMuestra": {
+        "properties": {
+          "mes": {
+            "type": "string",
+            "title": "Mes"
+          },
+          "indice_bs": {
+            "type": "string",
+            "title": "Indice Bs"
+          },
+          "tasa_promedio": {
+            "type": "string",
+            "title": "Tasa Promedio"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mes",
+          "indice_bs",
+          "tasa_promedio",
+          "valor"
+        ],
+        "title": "MesMuestra"
+      },
+      "MesSinUsd": {
+        "properties": {
+          "mes": {
+            "type": "string",
+            "title": "Mes"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mes",
+          "motivo"
+        ],
+        "title": "MesSinUsd"
+      },
       "Metodo": {
         "properties": {
           "valor": {
@@ -23394,6 +23660,35 @@
           "fila"
         ],
         "title": "OpcionRespuesta"
+      },
+      "OrigenesRespuesta": {
+        "properties": {
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SerieOrigen"
+            },
+            "type": "array",
+            "title": "Series"
+          },
+          "lados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Lados"
+          },
+          "lado_por_omision": {
+            "type": "string",
+            "title": "Lado Por Omision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series",
+          "lados",
+          "lado_por_omision"
+        ],
+        "title": "OrigenesRespuesta"
       },
       "ParametroRespuesta": {
         "properties": {
@@ -27007,6 +27302,29 @@
           "motivo"
         ],
         "title": "SensibleEstado"
+      },
+      "SerieOrigen": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "organismo": {
+            "type": "string",
+            "title": "Organismo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "nombre",
+          "organismo"
+        ],
+        "title": "SerieOrigen"
       },
       "SesionRespuesta": {
         "properties": {

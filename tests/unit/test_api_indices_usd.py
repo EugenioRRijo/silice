@@ -10,9 +10,9 @@ de `/v1/indices`:
   responsable es la persona de la sesión). Con otra huella, 409 y nada escrito.
 
 De punta a punta: el administrador importa por CSV el índice y las tasas FICTICIOS de
-`tests/fixtures/reajuste_usd.py`, lo expresa en USD y quien arma calcula el reajuste del contrato en
-USD citando la serie nueva: 18.000,00 USD sin la advertencia; con el índice en Bs, 34.200,00 USD y la
-advertencia con la salida. Las cuentas están escritas a mano en la fixture.
+`tests/fixtures/reajuste_usd.py`, lo expresa en USD y quien arma calcula el reajuste del contrato
+en USD citando la serie nueva: 18.000,00 USD sin la advertencia; con el índice en Bs, 34.200,00 USD
+y la advertencia con la salida. Las cuentas están escritas a mano en la fixture.
 """
 
 from __future__ import annotations
@@ -165,7 +165,7 @@ def test_ver_muestra_la_cuenta_con_coma_decimal_y_no_escribe(_entorno: Path) -> 
     assert nuevas == []
 
 
-def test_de_punta_a_punta_el_reajuste_en_usd_con_el_indice_en_usd_da_18000_sin_advertencia() -> None:
+def test_de_punta_a_punta_el_reajuste_con_el_indice_en_usd_da_18000_sin_advertencia() -> None:
     navegador, ficha = _admin_con_datos()
     huella = _ver(navegador, ficha).json()["huella"]
     confirmado = _confirmar(navegador, ficha, huella)
