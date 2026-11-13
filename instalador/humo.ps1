@@ -162,9 +162,11 @@ function IniciarVentana([int]$PuertoCdp, [string]$Registro) {
     }
 }
 
-$PoliticaCdp = 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+# La humo corre elevada y, desde el runtime 150, WebView2 ignora en un proceso elevado la variable
+# WEBVIEW2_* y la política de HKCU («Develop secure WebView2 apps», Microsoft): solo la de HKLM.
+$PoliticaCdp = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
 function PonerPoliticaCdp([int]$PuertoCdp) {
-    # La vía de registro que documenta Microsoft para lo mismo que la variable: un valor con el
+    # La política de máquina que documenta Microsoft para lo mismo que la variable: un valor con el
     # nombre del ejecutable. Solo durante el paso 6b; QuitarPoliticaCdp la borra.
     New-Item -Path $PoliticaCdp -Force | Out-Null
     New-ItemProperty -Path $PoliticaCdp -Name 'python.exe' -PropertyType String -Force `
