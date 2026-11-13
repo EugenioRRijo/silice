@@ -258,6 +258,9 @@ def arrancar(
     motivo_sin_ventana: Callable[[], str | None] = ventana.motivo_sin_ventana,
     abrir_ventana: Callable[..., Any] = ventana.abrir,
     traer_al_frente: Callable[[int], bool] = ventana.traer_al_frente,
+    fuentes_depuracion: Callable[[Mapping[str, str]], list[str]] = (
+        ventana.fuentes_puerto_depuracion
+    ),
 ) -> int:
     estado = leer_estado(entorno)
     if estado is not None:
@@ -310,14 +313,12 @@ def arrancar(
             abrir_archivo(codigo)  # el acceso directo del instalador deja esta ventana minimizada
     direccion, de_direccion = elegir_direccion(ajustes, ips())
     avisos.extend(de_direccion)
-    argumentos_webview2 = (os.environ if entorno is None else entorno).get(
-        ventana.VARIABLE_ARGUMENTOS_WEBVIEW2, ""
-    )
-    if "remote-debugging" in argumentos_webview2.lower():
+    # La variable y las políticas de WebView2 (HKLM y HKCU) que piden el puerto de depuración
+    for fuente in fuentes_depuracion(os.environ if entorno is None else entorno):
         avisos.append(
-            f"{ventana.VARIABLE_ARGUMENTOS_WEBVIEW2} pide un puerto de depuración: la ventana de "
-            "Sílice lo abrirá y cualquier programa de este equipo podría manejarla. Solo la prueba "
-            "de humo debe ponerla; si no es esa prueba, quítela."
+            f"{fuente[:1].upper()}{fuente[1:]} pide un puerto de depuración: la ventana de Sílice "
+            "lo abrirá y cualquier programa de este equipo podría manejarla. Solo la prueba de "
+            "humo debe ponerla; si no es esa prueba, quítela."
         )
     for aviso in avisos:
         logger.warning("%s", aviso)

@@ -170,6 +170,8 @@ class Escenario:
         self.en_ventana: Callable[[Callable[[], bool]], None] = lambda vivo: None
         self.al_frente: list[int] = []
         self.hay_ventana_viva = False
+        # Las políticas de WebView2 del «registro» de mentira: (raíz, nombre del valor) -> texto
+        self.politicas: dict[tuple[str, str], str] = {}
 
     def lanzar(self, orden, entorno, cwd):
         self.lanzados.append(list(orden))
@@ -205,7 +207,16 @@ class Escenario:
             motivo_sin_ventana=extra.pop("motivo_sin_ventana", self.motivo_sin_ventana),
             abrir_ventana=extra.pop("abrir_ventana", self.abrir_ventana),
             traer_al_frente=extra.pop("traer_al_frente", self.traer_al_frente),
+            fuentes_depuracion=extra.pop("fuentes_depuracion", self.fuentes_depuracion),
             **extra,
+        )
+
+    def fuentes_depuracion(self, env) -> list[str]:
+        """La función real con un registro de mentira: nunca el registro del equipo."""
+        return ventana.fuentes_puerto_depuracion(
+            env,
+            leer=lambda raiz, _clave, nombre: self.politicas.get((raiz, nombre)),
+            ejecutable="python.exe",
         )
 
     def asegurar(self, _entorno) -> bool:
@@ -806,9 +817,39 @@ def test_si_alguien_pide_el_puerto_de_depuracion_se_avisa(entorno) -> None:
     assert all("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" not in e for e in escenario.entornos)
 
 
+def test_si_la_politica_de_maquina_pide_el_puerto_de_depuracion_se_avisa_y_se_nombra(
+    entorno,
+) -> None:
+    """La humo corre elevada y abre el puerto con la política de HKLM, no con la variable (que
+    WebView2 ignora ahí): el aviso tiene que verla y decir cuál es."""
+    escenario = Escenario()
+    escenario.motivo = None
+    escenario.politicas[("HKEY_LOCAL_MACHINE", "python.exe")] = "--remote-debugging-port=50123"
+    assert escenario.correr(entorno) == 0
+    avisos = [linea for linea in escenario.salida if linea.startswith("AVISO:")]
+    politica = (
+        r"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\WebView2"
+        r"\AdditionalBrowserArguments (valor «python.exe»)"
+    )
+    assert [a for a in avisos if "depuración" in a] == [
+        f"AVISO: La política {politica} pide un puerto de depuración: la ventana de Sílice lo "
+        "abrirá y cualquier programa de este equipo podría manejarla. Solo la prueba de humo "
+        "debe ponerla; si no es esa prueba, quítela."
+    ]
+
+
+def test_sin_variable_ni_politica_no_hay_aviso_de_depuracion(entorno) -> None:
+    escenario = Escenario()
+    escenario.motivo = None
+    escenario.politicas[("HKEY_CURRENT_USER", "*")] = "--lang=es"
+    assert escenario.correr(entorno) == 0
+    assert not [linea for linea in escenario.salida if "depuración" in linea]
+
+
 def test_los_ganchos_de_la_ventana_por_omision_son_los_reales() -> None:
     parametros = inspect.signature(lanzador.arrancar).parameters
     assert parametros["abrir_ventana"].default is ventana.abrir
     assert parametros["motivo_sin_ventana"].default is ventana.motivo_sin_ventana
     assert parametros["traer_al_frente"].default is ventana.traer_al_frente
+    assert parametros["fuentes_depuracion"].default is ventana.fuentes_puerto_depuracion
     assert parametros["sin_ventana"].default is False

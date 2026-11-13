@@ -27,7 +27,7 @@ import importlib
 import logging
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -43,9 +43,19 @@ IDENTIFICADOR_APLICACION = "EugenioRijo.Silice"
 TAMANO_MINIMO = (1056, 600)
 PLAZO_CARGA_S = 30
 ICONO = Path(__file__).with_name("silice.ico")
-#: La variable propia de WebView2 con la que la prueba de humo abre el puerto de depuración (V4).
-#: Sílice nunca la pone; el entorno de Uvicorn nunca la hereda (`lanzador.entorno_hijos`).
+#: La variable propia de WebView2 que añade argumentos al navegador (y con ellos el puerto de
+#: depuración). Sílice nunca la pone; el entorno de Uvicorn nunca la hereda
+#: (`lanzador.entorno_hijos`). En un proceso elevado WebView2 la ignora (bitácora V0 §3.4).
 VARIABLE_ARGUMENTOS_WEBVIEW2 = "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"
+#: La política que hace lo mismo que la variable («CreateCoreWebView2EnvironmentWithOptions»,
+#: documentación de Microsoft): el cargador mira primero HKLM y luego HKCU, y en cada una un valor
+#: REG_SZ con el AUMID del proceso, luego con el nombre del ejecutable y luego `*`. La prueba de
+#: humo, que corre elevada, abre así el puerto de depuración (valor `python.exe` en HKLM).
+POLITICA_ARGUMENTOS_WEBVIEW2 = (
+    r"SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments"
+)
+RAICES_POLITICA_WEBVIEW2 = ("HKEY_LOCAL_MACHINE", "HKEY_CURRENT_USER")
+_PIDE_DEPURACION = "remote-debugging"
 
 #: «Detect if a WebView2 Runtime is already installed» (documentación de Microsoft, vista en V0,
 #: bitácora 2026-11-06-ventana-v0 §1.4): valor `pv` del cliente del runtime, por equipo (Windows de
@@ -83,18 +93,23 @@ class VentanaNoDisponible(Exception):  # noqa: N818 - es un motivo, no un error 
     """La ventana no se pudo abrir; el texto dice por qué (va al AVISO de la consola)."""
 
 
-def _leer_registro(raiz: str, clave: str) -> str | None:
-    """El valor `pv` de `raiz\\clave`, o `None` si no existe (o si no es Windows)."""
+def _leer_valor_registro(raiz: str, clave: str, nombre: str) -> str | None:
+    """El valor `nombre` de `raiz\\clave`, o `None` si no existe (o si no es Windows)."""
     try:
         import winreg
     except ImportError:
         return None
     try:
         with winreg.OpenKey(getattr(winreg, raiz), clave) as abierta:
-            valor, _tipo = winreg.QueryValueEx(abierta, "pv")
+            valor, _tipo = winreg.QueryValueEx(abierta, nombre)
     except OSError:
         return None
     return None if valor is None else str(valor)
+
+
+def _leer_registro(raiz: str, clave: str) -> str | None:
+    """El valor `pv` de `raiz\\clave`, o `None` si no existe (o si no es Windows)."""
+    return _leer_valor_registro(raiz, clave, "pv")
 
 
 def version_webview2(leer: Callable[[str, str], str | None] = _leer_registro) -> str | None:
@@ -103,6 +118,35 @@ def version_webview2(leer: Callable[[str, str], str | None] = _leer_registro) ->
         if valor is not None and valor.strip() not in _SIN_VERSION:
             return valor.strip()
     return None
+
+
+def nombres_de_la_politica(ejecutable: str) -> tuple[str, ...]:
+    """Los nombres de valor que mira WebView2 en la política, en su orden."""
+    return (IDENTIFICADOR_APLICACION, ejecutable, "*")
+
+
+def fuentes_puerto_depuracion(
+    entorno: Mapping[str, str],
+    *,
+    leer: Callable[[str, str, str], str | None] = _leer_valor_registro,
+    ejecutable: str | None = None,
+) -> list[str]:
+    """Qué pide a WebView2 un puerto de depuración para esta ventana, en palabras llanas: la
+    variable y cada valor de la política que lo contiene, en el orden en que los mira Microsoft.
+    Se nombran todos (la documentación no dice si la variable tapa a la política ni si HKLM tapa a
+    HKCU). Lista vacía si nada lo pide; sin `winreg` (Linux) solo cuenta la variable."""
+    ejecutable = ejecutable or Path(sys.executable).name
+    fuentes: list[str] = []
+    if _PIDE_DEPURACION in entorno.get(VARIABLE_ARGUMENTOS_WEBVIEW2, "").lower():
+        fuentes.append(f"la variable {VARIABLE_ARGUMENTOS_WEBVIEW2}")
+    for raiz in RAICES_POLITICA_WEBVIEW2:
+        for nombre in nombres_de_la_politica(ejecutable):
+            valor = leer(raiz, POLITICA_ARGUMENTOS_WEBVIEW2, nombre)
+            if valor is not None and _PIDE_DEPURACION in valor.lower():
+                fuentes.append(
+                    f"la política {raiz}\\{POLITICA_ARGUMENTOS_WEBVIEW2} (valor «{nombre}»)"
+                )
+    return fuentes
 
 
 def motivo_sin_ventana(

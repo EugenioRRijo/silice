@@ -4,6 +4,8 @@
 Eugenio). **2026-11-06:** construido V0 a V3 en `feature/f5-ventana` con las decisiones **provisionales** de §10
 (recomendaciones del orquestador, pendientes de ratificar por Eugenio); §6.1 (punto 6) y §7.3 quedan enmendados por la
 decisión 3. **2026-11-07:** Eugenio ratificó la decisión 7 de §10 (perfil de WebView2 en la carpeta de datos).
+**2026-11-12:** §7.2 (riesgo del puerto de depuración) y §7.5 (cómo abre la humo ese puerto y cómo descarga) quedan
+enmendados por lo aprendido al construir V4 (bitácora `2026-11-06-ventana-v0.md` §3.4 y §3.5).
 **Origen:** Eugenio aprobó el 2026-10-25 que, después de la auditoría, Sílice tuviera una ventana de escritorio propia en vez
 de abrirse en el navegador. Diseños y planes que esto toca: `2026-10-11-silice-s5-producto-instalador-design.md` (instalador,
 arranque, prueba de humo), `docs/planes/RUTA_SESIONES.md` (rulings RT-2, RT-3 y RT-5; sesión 5),
@@ -203,7 +205,7 @@ el respaldo hace innecesario enmendarlo.
 | Descargas o subidas que no funcionen en la ventana | Pantallas que exportan o suben quedan cojas | V0 y la humo prueban una descarga `blob:` y una subida; las descargas se encienden explícitamente |
 | Antivirus que vigila `python.exe` abriendo componentes de .NET | Bloqueo o aviso | Respaldo al navegador; anotarlo en el manual |
 | Proyecto pequeño, un solo mantenedor | Correcciones lentas | Versión fijada; el respaldo deja a Sílice usable aunque pywebview falle |
-| El puerto de depuración de WebView2 que usa la humo se colara al producto | Cualquier proceso local podría manejar la ventana | Solo lo pone la humo por variable de entorno; una prueba comprueba que `entorno_hijos` y la ventana nunca lo ponen |
+| El puerto de depuración de WebView2 que usa la humo se colara al producto | Cualquier proceso local podría manejar la ventana | ~~Solo lo pone la humo por variable de entorno; una prueba comprueba que `entorno_hijos` y la ventana nunca lo ponen~~ **Enmienda 2026-11-12:** Sílice nunca lo pide (`REMOTE_DEBUGGING_PORT = None`) y `entorno_hijos` no pasa las variables `WEBVIEW2_*` a Uvicorn. Pero el cargador de WebView2 también lo toma de fuera de Sílice: la variable `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` y la política `SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments` (primero HKLM y luego HKCU; valor con el AUMID `EugenioRijo.Silice`, con el nombre del ejecutable o `*`; Microsoft, referencia de `CreateCoreWebView2EnvironmentWithOptions`). El lanzador lee todas esas fuentes (`ventana.fuentes_puerto_depuracion`) y da un AVISO que nombra cada una que lo pide. No lo impide: quien puede escribir en HKLM ya administra el equipo |
 
 ### 7.3 Pruebas unitarias (V2)
 
@@ -231,6 +233,19 @@ depuración **solo en este paso**; conectar Playwright por CDP (lo documenta Pla
 `instalador/navegador.py`; cargar `/app/`, anotar toda petición (la lista fuera de `127.0.0.1` debe quedar vacía, como
 hoy), hacer una descarga; cerrar la ventana y afirmar que Uvicorn terminó y que `servidor.json` ya no existe. Si la imagen
 del runner no trae WebView2, el trabajo lo instala antes del paso (la CI tiene internet; el producto no lo necesita).
+
+**Enmienda 2026-11-12 (V4 construido; bitácora V0 §3.4 y §3.5).** Dos cosas cambian respecto del párrafo anterior:
+
+- **El puerto de depuración se abre por política de HKLM, no por variable.** La humo corre elevada y, desde el runtime 150,
+  WebView2 ignora en un proceso elevado la variable `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` y la política de HKCU. La humo
+  pone, solo durante el paso 6b, el valor `python.exe` en `HKLM\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments`
+  (crea la clave solo si falta y devuelve el valor previo si lo había), ya no pone la variable, y afirma que el AVISO del
+  lanzador nombra esa política (§7.2).
+- **La descarga se hace con `fetch` dentro de la ventana**, no con el diálogo «Guardar como» de pywebview:
+  `navegador.py --cdp` reclama el primer administrador y baja un respaldo con la misma cookie y la misma CSP de la
+  ventana. El diálogo de descarga queda para la prueba manual (V5). Además, el muestreo de conexiones del paso 9 mira
+  también los `msedgewebview2.exe` de la ventana, y el paso 7 exige un juego de respaldo **de migración** nuevo (el 6b deja
+  uno manual en la misma carpeta).
 
 ## 8. Si V0 sale mal
 

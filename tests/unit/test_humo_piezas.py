@@ -603,10 +603,9 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     ):
         assert pieza in bloque, pieza
     iniciar_ventana = _funcion_del_humo("IniciarVentana")
-    assert "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" in iniciar_ventana
-    # solo la hereda ese proceso: se quita en el `finally`, también si Start-Process falla
-    despues_finally = iniciar_ventana[iniciar_ventana.index("finally") :]
-    assert re.search(r"Remove-Item[^\n]*Env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", despues_finally)
+    # La variable de WebView2 no sirve en el proceso elevado de la humo (la ignora desde el runtime
+    # 150): el puerto lo abre solo la política de HKLM, y la variable ya no se pone en ningún sitio
+    assert "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" not in texto
     assert "--sin-navegador" not in iniciar_ventana
     assert "Hidden" not in iniciar_ventana
     # sin consola propia: con una, `MainWindowHandle` y `CloseMainWindow()` podrían ser los de la
@@ -637,8 +636,66 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     assert r"Policies\Microsoft\Edge" in bloque  # diagnóstico: las políticas del runner
     espera = bloque.index("WaitForExit")
     assert bloque.index("puerto de depuración") > espera
+    # el aviso del lanzador nombra la política que abrió el puerto (no basta «depuración»): el
+    # texto exacto sale de `operacion.ventana` y de `lanzador.arrancar`
+    from operacion import ventana
+
+    aviso = (
+        f"AVISO: La política HKEY_LOCAL_MACHINE\\{ventana.POLITICA_ARGUMENTOS_WEBVIEW2} "
+        "(valor «python.exe») pide un puerto de depuración"
+    )
+    assert f"$avisoPolitica = '{aviso}'" in bloque
+    assert bloque.index("$textoVentana.Contains($avisoPolitica)") > espera
     assert bloque.index("Se cerró la ventana de Sílice") > espera
     assert "WEBVIEW2" not in _funcion_del_humo("IniciarSilice")
+
+
+def test_humo_no_pisa_la_politica_de_webview2_que_ya_tuviera_el_equipo() -> None:
+    """`New-Item -Force` sobre una clave que existe la recrea vacía: borra sus otros valores y
+    subclaves. La humo la crea solo si falta, guarda un `python.exe` previo y lo devuelve al
+    quitar la suya, y afirma que la clave quedó como estaba."""
+    poner = _funcion_del_humo("PonerPoliticaCdp")
+    quitar = _funcion_del_humo("QuitarPoliticaCdp")
+    crear = re.search(
+        r"if \(-not \(Test-Path -Path \$PoliticaCdp\)\) \{\s*New-Item -Path \$PoliticaCdp -Force",
+        poner,
+    )
+    assert crear, "New-Item solo si la clave no existe"
+    assert poner.count("New-Item -Path") == 1
+    # el valor previo (y su tipo) se guarda antes de escribir el de la humo
+    assert "GetValue('python.exe'" in poner and "GetValueKind('python.exe')" in poner
+    assert poner.index("$script:PoliticaPrevia =") < poner.index("New-ItemProperty")
+    # quitar devuelve el previo si lo había y, si no, borra el valor; dos veces no rompe nada
+    assert "$script:PoliticaPrevia" in quitar
+    assert "-PropertyType $script:TipoPrevio" in quitar
+    assert "Remove-ItemProperty -Path $PoliticaCdp -Name 'python.exe'" in quitar
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    assert re.search(r"(?m)^\$script:PoliticaPrevia = \$null$", texto)
+    bloque = texto[texto.index("Paso '6b.") : texto.index("Paso '7.")]
+    quitada = bloque.index("QuitarPoliticaCdp")
+    afirmacion = bloque.index("ValorPoliticaCdp", quitada)
+    assert "la política de HKLM volvió a como estaba" in bloque[afirmacion:]
+    assert "GetValue('python.exe'" in _funcion_del_humo("ValorPoliticaCdp")
+
+
+def test_humo_muestrea_tambien_el_webview2_de_la_ventana() -> None:
+    """La red de la ventana la hace WebView2 (`msedgewebview2.exe`), no el `python.exe` de {app}:
+    el muestreo de conexiones mira también esos procesos (hijos, a cualquier profundidad, del
+    python.exe de {app}, o con el perfil de la ventana en su orden), y el paso 9 exige que los haya
+    visto (si no, «ninguna conexión» no diría nada) y que no tengan conexiones TCP ajenas."""
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    inicio = texto.index("$Muestreo = {")
+    muestreo = texto[inicio : texto.index("\n}\n", inicio)]
+    assert "msedgewebview2.exe" in muestreo
+    assert "perfil_ventana" in muestreo
+    assert "ParentProcessId" in muestreo
+    # los dos archivos (conexiones y pids) los escribe la misma función para python y WebView2
+    assert "Anotar @($web) $archivoWeb" in muestreo and '"$Destino.pids"' in muestreo
+    assert "'conexiones-webview2.log'" in texto[texto.index("Paso '4.") : texto.index("Paso '5.")]
+    paso9 = texto[texto.index("Paso '9.") : texto.index("Paso '10.")]
+    assert "conexiones-webview2.log.pids" in paso9
+    assert "el muestreo vio los msedgewebview2.exe de la ventana" in paso9
+    assert "no vio conexiones TCP ajenas de WebView2" in paso9
 
 
 def test_workflow_instalador_asegura_webview2_antes_del_humo() -> None:
@@ -646,3 +703,40 @@ def test_workflow_instalador_asegura_webview2_antes_del_humo() -> None:
     guid = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
     assert guid in flujo
     assert flujo.index(guid) < flujo.index("Prueba de humo")
+
+
+def test_humo_exige_un_juego_de_migracion_nuevo_tras_la_actualizacion() -> None:
+    """El 6b deja un juego manual en la misma carpeta (`GUION_DESCARGA` llama a `POST
+    /v1/admin/instalacion/respaldos`): «hay al menos un juego» pasaría aunque la actualización
+    no respaldara. El paso 7 anota los juegos antes de actualizar y exige uno nuevo cuya ficha
+    diga que es de la migración (`respaldo.MOTIVO_MIGRACION`) y que lleve la base de la 0.5.0."""
+    from operacion import respaldo
+
+    assert respaldo.MOTIVO_MIGRACION == "migracion"
+    assert respaldo.NOMBRE_FICHA == "ficha.json"
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    paso7, paso8 = texto.index("Paso '7."), texto.index("Paso '8.")
+    bloque = texto[paso7:paso8]
+    antes = re.search(r"\$juegosAntes = JuegosDe \$Respaldos", bloque)
+    assert antes, "anota los juegos antes de actualizar"
+    assert antes.start() < bloque.index("InstalarSilencioso $Actualizacion")
+    assert "$juegos.Count -ge 1" not in bloque
+    juegos_de = _funcion_del_humo("JuegosDe")
+    assert "ficha.json" in juegos_de and "ConvertFrom-Json" in juegos_de
+    nuevos = bloque.index("$juegosAntes -notcontains")
+    assert nuevos > bloque.index("InstalarSilencioso $Actualizacion")
+    assert "motivo -eq 'migracion'" in bloque
+    assert "v050_demo.db" in bloque[nuevos:]
+
+
+def test_workflow_exige_la_firma_de_microsoft_antes_de_ejecutar_el_instalador_de_webview2() -> None:
+    """Lo que baja de internet no se ejecuta sin firma Authenticode válida de Microsoft."""
+    flujo = (RAIZ / ".github" / "workflows" / "instalador.yml").read_text(encoding="utf-8")
+    descarga = flujo.index("MicrosoftEdgeWebview2Setup.exe")
+    ejecuta = flujo.index("Start-Process -FilePath $instalador")
+    firma = flujo.find("Get-AuthenticodeSignature -FilePath $instalador", descarga)
+    assert descarga < firma < ejecuta
+    tramo = flujo[firma:ejecuta]
+    assert "Status -ne 'Valid'" in tramo
+    assert "SignerCertificate.Subject -notmatch 'Microsoft'" in tramo
+    assert "exit 1" in tramo

@@ -194,6 +194,14 @@ jobs:
             $instalador = Join-Path $env:RUNNER_TEMP 'MicrosoftEdgeWebview2Setup.exe'
             Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' `
               -OutFile $instalador
+            # Lo bajado de internet no se ejecuta sin firma Authenticode válida de Microsoft
+            $firma = Get-AuthenticodeSignature -FilePath $instalador
+            if ($firma.Status -ne 'Valid' -or
+                $firma.SignerCertificate.Subject -notmatch 'Microsoft') {
+              Write-Error "Firma del instalador de WebView2: $($firma.Status) ($($firma.SignerCertificate.Subject))"
+              exit 1
+            }
+            Write-Host "Firma del instalador de WebView2: $($firma.SignerCertificate.Subject)"
             Start-Process -FilePath $instalador -ArgumentList '/silent', '/install' -Wait
             $version = VersionWebView2
           }
