@@ -816,9 +816,27 @@ def test_las_valuaciones_dicen_la_perspectiva_de_la_linea_base() -> None:
 
 #: Una por renglón del presupuesto, con su número y cuántos renglones tiene su código (ola 2).
 TRES_PARTIDAS = [
-    {"codigo": "OB-A", "descripcion": "Excavacion de zanja", "unidad": "m3", "renglon": 1, "renglones": 1},
-    {"codigo": "OB-B", "descripcion": "Tuberia de drenaje", "unidad": "m", "renglon": 2, "renglones": 1},
-    {"codigo": "OB-C", "descripcion": "Relleno compactado", "unidad": "m3", "renglon": 3, "renglones": 1},
+    {
+        "codigo": "OB-A",
+        "descripcion": "Excavacion de zanja",
+        "unidad": "m3",
+        "renglon": 1,
+        "renglones": 1,
+    },
+    {
+        "codigo": "OB-B",
+        "descripcion": "Tuberia de drenaje",
+        "unidad": "m",
+        "renglon": 2,
+        "renglones": 1,
+    },
+    {
+        "codigo": "OB-C",
+        "descripcion": "Relleno compactado",
+        "unidad": "m3",
+        "renglon": 3,
+        "renglones": 1,
+    },
 ]
 
 
@@ -977,9 +995,7 @@ def test_un_fallo_de_la_base_en_las_partidas_es_503_fijo(monkeypatch: pytest.Mon
 
 def test_los_dias_por_periodo_se_leen_del_plan_de_la_version() -> None:
     navegador, _ = _arma()
-    respuesta = navegador.get(
-        "/v1/control/dias-por-periodo", params={**P, "version": "OB-001"}
-    )
+    respuesta = navegador.get("/v1/control/dias-por-periodo", params={**P, "version": "OB-001"})
     assert respuesta.status_code == 200, respuesta.text
     # OB-S2 se planificó en cuatro «Semana n»
     assert respuesta.json() == {"dias": "5", "unidad": "semana", "aviso": ""}
@@ -1052,8 +1068,20 @@ def test_un_codigo_en_dos_renglones_se_ofrece_una_vez_por_renglon(tmp_path: Path
     cuerpo = _con_clave().get("/v1/control/partidas", params=P).json()
     assert cuerpo["version"] == "OB-003"
     assert cuerpo["partidas"] == [
-        {"codigo": "OB-A", "descripcion": "Excavacion de zanja", "unidad": "m3", "renglon": 1, "renglones": 2},
-        {"codigo": "OB-B", "descripcion": "Tuberia de drenaje", "unidad": "m", "renglon": 2, "renglones": 1},
+        {
+            "codigo": "OB-A",
+            "descripcion": "Excavacion de zanja",
+            "unidad": "m3",
+            "renglon": 1,
+            "renglones": 2,
+        },
+        {
+            "codigo": "OB-B",
+            "descripcion": "Tuberia de drenaje",
+            "unidad": "m",
+            "renglon": 2,
+            "renglones": 1,
+        },
         {
             "codigo": "OB-A",
             "descripcion": "Excavacion de zanja, frente 2 (ficticio)",

@@ -1,6 +1,6 @@
 """Los días hábiles por período de Control salen del plan de la versión (ola 2 del 2026-11-13).
 
-Control convierte cada período del plan en `dias_por_periodo` días hábiles (`core.budget.calendario`).
+Control cuenta cada período del plan como `dias_por_periodo` días hábiles (`core.budget`).
 Se pedían a mano con 5 por omisión: un plan por días («Dia n», el de la primera versión) quedaba
 cinco veces más largo en Control. Ahora se proponen desde las etiquetas del plan («Dia n» 1,
 «Semana n» 5, «Mes n» 20, las de `aplicacion.plan_rendimientos`) y, si el plan no dice su unidad,

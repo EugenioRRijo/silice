@@ -45,8 +45,8 @@ from core.budget.control import (
     precios_del_corte_de_version,
 )
 from core.budget.decision import aplicar_decision, decisiones
-from core.budget.instantanea import plan_de_version
 from core.budget.excel import TablaExportable
+from core.budget.instantanea import plan_de_version
 from core.budget.recuperacion import Opcion, opciones
 from core.budget.valor_ganado import (
     ParametrosControl,

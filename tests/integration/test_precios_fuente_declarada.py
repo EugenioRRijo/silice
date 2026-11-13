@@ -58,7 +58,7 @@ def sesion(tmp_path: Path) -> Iterator:
         empresa = crear_lista_de_empresa(
             s, "Empresa ficticia", "J-00000000-0", base,
             [
-                PrecioPropio(cemento.id, Decimal("99"), date(2026, 10, 30), "Cotización ficticia 17"),
+                PrecioPropio(cemento.id, Decimal("99"), date(2026, 10, 30), "Cotización 17"),
                 PrecioPropio(agua.id, Decimal("2.5"), date(2026, 10, 30), FUENTE_DE_LA_LISTA),
             ],
             moneda="Bs", fecha=date(2026, 10, 30), fuente=FUENTE_DE_LA_LISTA, referencia=None,

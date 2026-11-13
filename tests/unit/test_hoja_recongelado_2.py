@@ -1,4 +1,4 @@
-"""Lo que el segundo re-congelado del 2026-11-13 cambia en `aplicacion/hoja.py` (ESTADO §5, punto 6).
+"""Lo que el segundo re-congelado del 2026-11-13 cambia en `aplicacion/hoja.py` (ESTADO §5.6).
 
 - `estado_de_items`: un hallazgo que cita el renglón (su `origen_id`) es de ese renglón y no se
   reparte además a los demás renglones de la misma partida (E2E-3f de la prueba de punta a punta).
@@ -34,10 +34,14 @@ OTRA = item("OBRA-05", "40", 4)
 
 
 def _r1(fila: int) -> Hallazgo:
-    return Hallazgo("R1", Severidad.ADVERTENCIA, f"R1 ficticio del renglón {fila}", origen_ids=(f"FILA-{fila}",))
+    return Hallazgo(
+        "R1", Severidad.ADVERTENCIA, f"R1 ficticio del renglón {fila}", origen_ids=(f"FILA-{fila}",)
+    )
 
 
-def _informe(*hallazgos: Hallazgo, de_partida: dict[Hallazgo, str] | None = None) -> InformeAuditoria:
+def _informe(
+    *hallazgos: Hallazgo, de_partida: dict[Hallazgo, str] | None = None
+) -> InformeAuditoria:
     """El informe como lo arma el núcleo: cada renglón atribuido a su partida por su origen."""
     return InformeAuditoria(
         codigo_presupuesto="HOJA",

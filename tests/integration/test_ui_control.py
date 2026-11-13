@@ -426,7 +426,7 @@ def test_la_curva_pv_ev_ac_cierra_cada_semana_hasta_el_corte(obra):
             assert abs(punto[serie] - valor) <= D("0.005"), (periodo, serie)
 
 
-# --- ola 2 del 2026-11-13: los días por período salen del plan -------------------------------------
+# --- ola 2 del 2026-11-13: los días por período salen del plan ------------------------------------
 
 
 def test_los_dias_por_periodo_se_proponen_desde_el_plan_de_la_version(obra_sin_linea_base):
