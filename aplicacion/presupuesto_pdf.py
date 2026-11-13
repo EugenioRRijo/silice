@@ -29,7 +29,7 @@ from io import BytesIO
 from xml.sax.saxutils import escape
 
 from aplicacion import hoja_vista
-from aplicacion.cifras import texto_de_cifra
+from aplicacion.cifras import CifraInvalida, cifra_escrita, texto_de_cifra
 from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_vista import FilaDePresupuesto, Monto
 from aplicacion.impuestos import ALICUOTA_IVA, con_iva
@@ -162,12 +162,14 @@ def _porcentaje(fraccion: Decimal) -> str:
 
 
 def _celda(clave: str, texto: str) -> str:
-    """Una celda del APU: las cifras con coma decimal; los montos a dos decimales."""
+    """Una celda del APU: las cifras exactas tal cual; los montos a dos decimales. Las celdas ya
+    vienen en es-VE (`composicion.filas_desde_composicion`): se leen con `cifra_escrita`, no con
+    `Decimal`, que leería «1.000» como uno."""
     if not texto or (clave not in _EXACTAS and clave not in _MONTOS):
         return texto
     try:
-        valor = Decimal(texto)
-    except ArithmeticError:
+        valor = cifra_escrita(texto)
+    except CifraInvalida:
         return texto
     return _dinero(valor) if clave in _MONTOS else texto_de_cifra(valor)
 
