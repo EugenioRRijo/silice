@@ -7,7 +7,9 @@ Contrato (plan de montar un presupuesto, T2; diseño §5.1 y §10, D-MP1: una mo
 - `PUT /v1/carpeta/moneda` (`EDITAR_HOJA`) `{moneda: "Bs"|"USD"}` -> 200 con la misma forma; 409 si
   la carpeta ya trabaja en otra moneda (declarada o la de su lista vigente).
 - `POST /v1/carpeta/lista-para-armar` (`EDITAR_HOJA`) `{desde: "maprex"|"convertir"}` -> 201 con la
-  misma forma; 409 con el mensaje de la regla que impide crearla.
+  misma forma; 409 con el mensaje de la regla que impide crearla. Desde el 2026-11-13 (prueba de
+  punta a punta, D-7) también `{desde: "empresa", lista_id}`: copia la lista de la empresa en su
+  moneda, sin tasa; `GET` dice en `empresa` las listas de empresa de la moneda de la carpeta.
 
 Oráculos escritos a mano: los textos literales del plan y del diseño, el nombre de la lista
 («MaPreX julio 2026 en Bs al dd/mm/aaaa» con la fecha de hoy), 400 Bs ÷ 40 = 10 USD y las filas
@@ -57,7 +59,10 @@ CONVERTIR_AVISO = (
     "La lista vigente «Base» está en Bs y la carpeta trabaja en USD: conviértala antes de armar."
 )
 NADA_QUE_CONVERTIR = "La lista vigente «Base» ya está en Bs: no hay nada que convertir."
-MENSAJE_422 = "Indique la moneda (Bs o USD) o de dónde crear la lista (maprex o convertir)."
+MENSAJE_422 = (
+    "Indique la moneda (Bs o USD) o de dónde crear la lista (maprex, convertir o empresa, con "
+    "el número de la lista de la empresa)."
+)
 PRIVADO = "valor-que-nunca-debe-volver"
 NOMBRE_MAPREX_HOY = f"MaPreX julio 2026 en Bs al {HOY:%d/%m/%Y}"
 
@@ -162,6 +167,7 @@ def test_carpeta_vacia_dice_que_no_hay_moneda_ni_lista() -> None:
         "declarada": False,
         "lista": None,
         "aviso": SIN_LISTA,
+        "empresa": [],
     }
 
 
@@ -173,6 +179,7 @@ def test_con_lista_vigente_sin_declarar_la_moneda_es_la_de_la_lista(_entorno: Pa
         "declarada": False,
         "lista": {"nombre": "Base", "moneda": "Bs", "fecha": "2026-07-01", "origen": "prueba"},
         "aviso": None,
+        "empresa": [],
     }
 
 
@@ -210,6 +217,7 @@ def test_carpeta_usd_con_lista_vigente_en_bs_avisa_y_la_muestra_para_convertir(
         "declarada": True,
         "lista": {"nombre": "Base", "moneda": "Bs", "fecha": "2026-07-01", "origen": "prueba"},
         "aviso": CONVERTIR_AVISO,
+        "empresa": [],
     }
 
 
@@ -225,6 +233,7 @@ def test_ana_declara_bs_y_la_carpeta_lo_recuerda(_entorno: Path) -> None:
         "declarada": True,
         "lista": None,
         "aviso": SIN_LISTA,
+        "empresa": [],
     }
     assert navegador.get("/v1/carpeta").json()["moneda"] == "Bs"
     assert _filas(_entorno, "SELECT id, moneda, declarada_por FROM mp_carpeta") == [
@@ -473,3 +482,88 @@ def test_si_la_creacion_falla_tras_cargar_la_referencia_la_carpeta_queda_coheren
     assert _crear(navegador, ficha, "maprex").status_code == 201
     nombres = sorted(n for (n,) in _filas(_entorno, "SELECT nombre FROM lista_precios"))
     assert nombres == sorted(["MaPreX julio 2026 en Bs", NOMBRE_MAPREX_HOY])
+
+
+# --- desde la lista de la empresa (prueba de punta a punta 2026-11-13, D-7) ---------------------
+
+
+def _lista_de_empresa(ruta: Path, moneda: str = "USD") -> int:
+    """Una lista de empresa «Empresa ficticia 2026-10-05» en `moneda` con el cemento a 11,25."""
+    from core.catalog.empresa import PrecioPropio, crear_lista_de_empresa
+
+    creada: list[int] = []
+
+    def escribir(s) -> None:
+        insumo = models.Insumo(
+            codigo="MAT-001", tipo="material", descripcion="Cemento gris", unidad="saco"
+        )
+        base = models.ListaPrecios(nombre="Base", moneda=moneda, fecha_vigencia=JULIO, origen="x")
+        s.add_all([insumo, base])
+        s.flush()
+        s.add(models.ListaPreciosOrigen(lista_id=base.id, alcance=models.ALCANCE_REFERENCIA))
+        s.add(models.PrecioInsumo(lista_id=base.id, insumo_id=insumo.id, precio=Decimal("9")))
+        s.flush()
+        s.expire(base, ["precios"])
+        lista = crear_lista_de_empresa(
+            s,
+            "Empresa ficticia",
+            "J-00000000-0",
+            base,
+            [PrecioPropio(insumo.id, Decimal("11.25"), date(2026, 10, 5), "cotización ficticia")],
+            moneda=moneda,
+            fecha=date(2026, 10, 5),
+            fuente="cotización ficticia",
+            referencia=None,
+        )
+        creada.append(lista.id)
+
+    _en_el_caso(ruta, escribir)
+    return creada[0]
+
+
+def test_crear_desde_la_lista_de_la_empresa_sin_tasa_da_201_en_usd(_entorno: Path) -> None:
+    lista_id = _lista_de_empresa(_entorno)
+    _declarar_usd_en_la_base(_entorno)
+    navegador, ficha = con_cuenta(app, "ana")
+    assert navegador.get("/v1/carpeta").json()["empresa"] == [
+        {"id": lista_id, "nombre": "Empresa ficticia 2026-10-05", "moneda": "USD"}
+    ]
+    respuesta = navegador.post(
+        "/v1/carpeta/lista-para-armar",
+        json={"desde": "empresa", "lista_id": lista_id},
+        headers=protegida(ficha),
+    )
+    assert respuesta.status_code == 201, respuesta.text
+    cuerpo = respuesta.json()
+    assert cuerpo["aviso"] is None
+    assert cuerpo["lista"]["nombre"] == f"Empresa ficticia 2026-10-05 al {HOY:%d/%m/%Y}"
+    assert cuerpo["lista"]["moneda"] == "USD"
+    precios = _filas(
+        _entorno,
+        "SELECT p.precio FROM precio_insumo p JOIN lista_precios l ON l.id = p.lista_id "
+        f"WHERE l.nombre = 'Empresa ficticia 2026-10-05 al {HOY:%d/%m/%Y}'",
+    )
+    assert [Decimal(str(p)) for (p,) in precios] == [Decimal("11.25")]
+
+
+def test_crear_desde_una_lista_que_no_es_de_empresa_es_409(_entorno: Path) -> None:
+    _lista_base(_entorno, moneda="USD")
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = navegador.post(
+        "/v1/carpeta/lista-para-armar",
+        json={"desde": "empresa", "lista_id": 1},
+        headers=protegida(ficha),
+    )
+    assert respuesta.status_code == 409
+    assert (
+        respuesta.json()["detalle"] == "La lista n.º 1 no es una lista de empresa de esta carpeta."
+    )
+
+
+def test_crear_desde_la_empresa_sin_decir_la_lista_es_422(_entorno: Path) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    respuesta = navegador.post(
+        "/v1/carpeta/lista-para-armar", json={"desde": "empresa"}, headers=protegida(ficha)
+    )
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {"detalle": MENSAJE_422}

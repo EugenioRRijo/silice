@@ -66,8 +66,19 @@ describe("gruposDeConsulta con el precio a la vista", () => {
     expect(linea({ unidad: "saco", precio: "1234.5", moneda: "USD", fecha_precio: "2026-10-01" })).toEqual([
       "MAT-1",
       "saco",
-      "1.234,5 USD",
+      "1.234,50 USD",
       "lista del 01/10/2026",
+    ]);
+  });
+
+  // Prueba de punta a punta del 2026-11-13 (D-8): el precio de MaPreX convertido a USD (28 cifras) se leía con 27
+  // decimales. Se presenta con dos decimales (NORMAS §2.3); la celda sigue recibiendo el exacto (`valoresAlElegir`).
+  test("un precio convertido con muchas cifras se lee con dos decimales", () => {
+    expect(linea({ unidad: "dia", precio: "5.041157684630738522954091816", moneda: "USD", fecha_precio: "2026-11-13" })).toEqual([
+      "MAT-1",
+      "dia",
+      "5,04 USD",
+      "lista del 13/11/2026",
     ]);
   });
 

@@ -250,6 +250,7 @@ TABLA = {
     ("GET", "/v1/precios-empresa"): PRECIOS,
     ("POST", "/v1/precios-empresa/referencia"): PRECIOS,
     ("POST", "/v1/precios-empresa/listas"): PRECIOS,
+    ("POST", "/v1/precios-empresa/listas/revision"): PRECIOS,  # 2026-11-13: D-8
     ("GET", "/v1/precios-empresa/listas/{lista_id}/hallazgos"): PRECIOS,
     ("GET", "/v1/precios-empresa/listas/{lista_id}/atipicos"): PRECIOS,  # T4: atipicas
     ("GET", "/v1/admin/empresas-registradas"): EMPRESA,  # T5

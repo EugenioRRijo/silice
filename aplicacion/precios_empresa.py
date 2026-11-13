@@ -7,21 +7,30 @@ transaccion entera. Sin Streamlit, sin pandas y sin `ui.caso` (lo vigila
 RM-1: vive en `aplicacion/` y `ui/precios_empresa.py` lo reexporta. La capa de aplicacion no
 importa `scripts`, asi que los datos de la referencia MaPreX en Bs (tasa, fecha, fuente y el CSV)
 se repiten aqui; `tests/unit/test_aplicacion_precios_empresa.py` los ata a los de
-`scripts/lista_maprex_bs.py`."""
+`scripts/lista_maprex_bs.py`.
+
+2026-11-13 (prueba de punta a punta, D-8 y D-11): `revisar_archivo` dice, sin escribir, que filas
+reconoce el catalogo, cuales son insumos nuevos y cuales traen una descripcion conocida con otra
+unidad; `crear_lista(..., dar_de_alta=True)` da de alta los nuevos (la confirmacion de la persona)
+con `Catalogo.dar_de_alta_insumo` y su precio entra a la lista. Los de otra unidad no se dan de
+alta (serian un homonimo con otra unidad) y se dice la del catalogo. Una fila sin fecha o sin
+fuente toma las de la lista (las pide el formulario). `core/` no cambia: el casado de cada fila
+sigue siendo el de `precios_propios_desde`."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
 from sqlalchemy import select
 
+from aplicacion.cifras import texto_de_cifra
 from aplicacion.plural import plural
 from core import models
-from core.catalog import leer_lista_precios
+from core.catalog import Catalogo, leer_lista_precios
 from core.catalog.empresa import (
     crear_lista_de_empresa,
     crear_lista_de_referencia,
@@ -31,8 +40,10 @@ from core.catalog.empresa import (
 )
 from core.catalog.indices import tasa_aplicable
 from core.catalog.moneda import TasaDeclarada, exigir_moneda
+from core.catalog.precios import PrecioLeido
+from core.contracts.unidades import normalizar_unidad
 from core.verification.precios import reglas_precios
-from core.verification.texto import formatear_decimal
+from core.verification.texto import formatear_decimal, normalizar_texto
 
 COLUMNAS_HALLAZGOS = ("Regla", "Severidad", "Descripción", "Impacto")
 NOMBRE_REFERENCIA = "MaPreX julio 2026 en Bs"
@@ -53,12 +64,26 @@ FUENTE_TASA_MAPREX = (
 
 @dataclass(frozen=True, slots=True)
 class ResumenEmpresa:
-    """Lo que hizo `crear_lista`: el nombre de la lista, cuantos precios propios entraron y las
-    descripciones que el catalogo no conoce (UC-17 4a: se informan, no se dan de alta)."""
+    """Lo que hizo `crear_lista`: el nombre de la lista, cuantos precios propios entraron, las
+    descripciones que no entraron (UC-17 4a), las que se dieron de alta (con la confirmacion) y,
+    por fila de otra unidad, el aviso con la unidad del catalogo."""
 
     nombre: str
     propios: int
     desconocidos: tuple[str, ...]
+    dados_de_alta: tuple[str, ...] = ()
+    otra_unidad: tuple[str, ...] = ()
+    lista_id: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RevisionDelArchivo:
+    """Lo que `revisar_archivo` encontro sin escribir: cuantas filas reconoce el catalogo, las de
+    insumos nuevos (se pueden dar de alta) y el aviso de cada fila con otra unidad."""
+
+    reconocidos: int
+    nuevos: tuple[PrecioLeido, ...]
+    otra_unidad: tuple[str, ...]
 
 
 def _confirmar[T](sesion, accion: Callable[[], T]) -> T:
@@ -89,6 +114,82 @@ def cargar_referencia_maprex(sesion) -> str:
     )
 
 
+def _con_la_lista(leidos: Sequence[PrecioLeido], fecha: date, fuente: str) -> list[PrecioLeido]:
+    """D-11: la fila sin fecha o sin fuente toma la fecha y la fuente de la lista (RF-67)."""
+    return [
+        replace(leido, fecha=leido.fecha or fecha, fuente=leido.fuente.strip() or fuente.strip())
+        for leido in leidos
+    ]
+
+
+def _unidades_del_catalogo(sesion) -> dict[tuple[str, str], list[str]]:
+    """Por (tipo, descripcion normalizada), las unidades con que el catalogo tiene el insumo."""
+    unidades: dict[tuple[str, str], list[str]] = {}
+    for tipo, descripcion, unidad in sesion.execute(
+        select(models.Insumo.tipo, models.Insumo.descripcion, models.Insumo.unidad)
+    ):
+        suyas = unidades.setdefault((tipo, normalizar_texto(descripcion)), [])
+        texto = normalizar_unidad(unidad) if unidad else "sin unidad"
+        if texto not in suyas:
+            suyas.append(texto)
+    return unidades
+
+
+def _separar(sesion, desconocidos: Sequence[PrecioLeido]) -> tuple[list[PrecioLeido], list[str]]:
+    """Los desconocidos que son insumos nuevos y el aviso de los que el catalogo tiene con otra
+    unidad (no se dan de alta: serian un homonimo con otra unidad, el flujo 2b de UC-02)."""
+    unidades = _unidades_del_catalogo(sesion)
+    nuevos: list[PrecioLeido] = []
+    avisos: list[str] = []
+    for leido in desconocidos:
+        suyas = unidades.get((leido.tipo.value, normalizar_texto(leido.descripcion)))
+        if suyas is None:
+            nuevos.append(leido)
+        else:
+            avisos.append(
+                f"«{leido.descripcion}» viene en {leido.unidad or 'sin unidad'} y el catálogo lo "
+                f"tiene en {' o '.join(suyas)}: no entró; escriba en el archivo la unidad del "
+                "catálogo."
+            )
+    return nuevos, avisos
+
+
+def revisar_archivo(sesion, ruta: Path) -> RevisionDelArchivo:
+    """Lo que la lista haria con el archivo, sin escribir nada: el mismo casado de
+    `precios_propios_desde` (la fecha y la fuente no cuentan para reconocer una fila)."""
+    leidos = _con_la_lista(leer_lista_precios(ruta), date.today(), "revisión")
+    _, desconocidos = precios_propios_desde(sesion, leidos)
+    nuevos, avisos = _separar(sesion, desconocidos)
+    return RevisionDelArchivo(len(leidos) - len(desconocidos), tuple(nuevos), tuple(avisos))
+
+
+def _identidad(leido: PrecioLeido) -> tuple[str, str, str | None]:
+    """La identidad con que `Catalogo.dar_de_alta_insumo` daria de alta la fila (la unidad solo
+    cuenta en los materiales)."""
+    unidad = leido.unidad if leido.tipo is models.TipoInsumo.MATERIAL else None
+    return (leido.tipo.value, normalizar_texto(leido.descripcion), unidad)
+
+
+def _dar_de_alta(sesion, nuevos: Sequence[PrecioLeido]) -> list[str]:
+    """Da de alta cada insumo nuevo una sola vez (sin precio: su precio es el de la lista de la
+    empresa) y devuelve sus descripciones. `ValueError` antes de escribir si un mismo insumo viene
+    con dos precios."""
+    por_identidad: dict[tuple[str, str, str | None], list[PrecioLeido]] = {}
+    for leido in nuevos:
+        por_identidad.setdefault(_identidad(leido), []).append(leido)
+    for mismos in por_identidad.values():
+        precios = list(dict.fromkeys(leido.precio for leido in mismos))
+        if len(precios) > 1:
+            raise ValueError(
+                f"«{mismos[0].descripcion}» viene dos veces con precios distintos "
+                f"({' y '.join(texto_de_cifra(p) for p in precios)}): deje una fila."
+            )
+    catalogo = Catalogo(sesion)
+    for mismos in por_identidad.values():
+        catalogo.dar_de_alta_insumo(mismos[0].tipo, mismos[0].descripcion, mismos[0].unidad)
+    return [mismos[0].descripcion for mismos in por_identidad.values()]
+
+
 def crear_lista(
     sesion,
     ruta: Path,
@@ -100,18 +201,26 @@ def crear_lista(
     fecha: date,
     fuente: str,
     nombre: str,
+    dar_de_alta: bool = False,
 ) -> ResumenEmpresa:
     """UC-17 4: lee el archivo, separa los precios propios de los insumos que el catalogo no
     conoce y crea la lista de empresa sobre la base elegida. Si la base esta en otra moneda, se
-    convierte con la tasa del BCV aplicable a `fecha` (S1 §6.1). Confirma o deshace todo."""
+    convierte con la tasa del BCV aplicable a `fecha` (S1 §6.1). Con `dar_de_alta` (la
+    confirmacion de la persona, tras `revisar_archivo`) los insumos nuevos se dan de alta y su
+    precio entra a la lista; los de otra unidad nunca. Confirma o deshace todo."""
     exigir_moneda(moneda)
-    leidos = leer_lista_precios(ruta)
+    leidos = _con_la_lista(leer_lista_precios(ruta), fecha, fuente)
 
     def accion() -> ResumenEmpresa:
         base = sesion.get(models.ListaPrecios, base_id)
         if base is None:
             raise ValueError(f"la lista base {base_id} no existe en esta carpeta")
         propios, desconocidos = precios_propios_desde(sesion, leidos)
+        nuevos, avisos = _separar(sesion, desconocidos)
+        dados: list[str] = []
+        if dar_de_alta and nuevos:
+            dados = _dar_de_alta(sesion, nuevos)
+            propios, desconocidos = precios_propios_desde(sesion, leidos)
         tasa_base = None
         if base.moneda != moneda:
             tasa_base = TasaDeclarada.de_importacion(tasa_aplicable(sesion, fecha))
@@ -129,7 +238,12 @@ def crear_lista(
             tasa_base=tasa_base,
         )
         return ResumenEmpresa(
-            lista.nombre, len(propios), tuple(leido.descripcion for leido in desconocidos)
+            lista.nombre,
+            len(propios),
+            tuple(leido.descripcion for leido in desconocidos),
+            tuple(dados),
+            tuple(avisos),
+            lista.id,
         )
 
     return _confirmar(sesion, accion)

@@ -7,7 +7,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { mensajeDeError } from "../../comun/errores";
 import { nombreConFecha } from "../../shell/ListaDeLaCarpeta";
 
-export type Desde = "maprex" | "convertir";
+export type Desde = "maprex" | "convertir" | "empresa";
 
 // Comienzo del 409 de `POST /v1/carpeta/lista-para-armar` cuando la carpeta ya tiene lista para armar
 // (`MENSAJE_YA_TIENE_LISTA` de `api/rutas/carpeta.py`; lo ata `tests/unit/test_front_ya_tiene_lista.py`).
@@ -19,7 +19,7 @@ interface Props {
   creada: CarpetaRespuesta["lista"];
   creando: boolean;
   error: unknown;
-  alCrear: (desde: Desde) => void;
+  alCrear: (desde: Desde, listaId?: number) => void;
 }
 
 // Prueba en vivo 2026-10-25: la carpeta no tenia lista de precios y solo se supo al guardar, despues de llenar unos 40
@@ -76,6 +76,9 @@ export function AvisoSinLista({ carpeta, creada, creando, error, alCrear }: Prop
   // Solo hay algo que convertir si la carpeta tiene una lista en otra moneda que la suya.
   const lista = carpeta.lista;
   const convertible = lista !== null && carpeta.moneda !== null && lista.moneda !== carpeta.moneda;
+  // Prueba de punta a punta del 2026-11-13 (D-7): las listas de la empresa en la moneda de la carpeta se copian tal cual,
+  // sin tasa del BCV (`POST /v1/carpeta/lista-para-armar` `{desde: "empresa", lista_id}`).
+  const deEmpresa = carpeta.empresa ?? [];
   return (
     <div className="silice-componer__aviso">
       <InlineNotification
@@ -97,7 +100,17 @@ export function AvisoSinLista({ carpeta, creada, creando, error, alCrear }: Prop
           {`Convertir pasa los precios de «${lista.nombre}» de ${lista.moneda} a ${carpeta.moneda} con la tasa del BCV de los últimos 7 días, en una lista nueva que dirá esa tasa y su fecha.`}
         </p>
       )}
+      {deEmpresa.map((e) => (
+        <p key={e.id} className="silice-componer__nota cds--type-body-compact-01">
+          {`La lista de la empresa «${e.nombre}» se copia tal cual, en ${e.moneda}: no necesita tasa del BCV.`}
+        </p>
+      ))}
       <div className="silice-componer__acciones">
+        {deEmpresa.map((e) => (
+          <Button key={e.id} kind="primary" size="sm" disabled={creando} onClick={() => alCrear("empresa", e.id)}>
+            {`Usar la lista de la empresa «${e.nombre}»`}
+          </Button>
+        ))}
         <Button kind="secondary" size="sm" disabled={creando} onClick={() => alCrear("maprex")}>
           Crear la lista a partir de MaPreX
         </Button>

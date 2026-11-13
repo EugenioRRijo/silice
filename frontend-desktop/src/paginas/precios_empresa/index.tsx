@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem } from "@carbon/react";
+import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
 import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
@@ -37,7 +37,18 @@ import {
   rutaAtipicos,
   rutaHallazgos,
 } from "./logica";
-import type { Atipicos, Base, Estado, Hallazgos, ListaCreada, ListaEmpresa } from "./logica";
+import type { Atipicos, Base, Estado, Hallazgos, ListaCreada, ListaEmpresa, Revision } from "./logica";
+import {
+  COLUMNAS_NUEVOS,
+  ETIQUETA_DADOS,
+  ETIQUETA_NUEVOS,
+  ROTULO_ALTA,
+  ROTULO_PARA_ARMAR,
+  filasNuevos,
+  formularioRevision,
+  textoReconocidos,
+} from "./logica";
+import type { CarpetaRespuesta } from "../../api/tipos";
 import "./precios_empresa.scss";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { SeccionFcas } from "./SeccionFcas";
@@ -51,6 +62,18 @@ type Referencia =
   | { tipo: "ninguna" }
   | { tipo: "cargando" }
   | { tipo: "listo"; mensaje: string }
+  | { tipo: "error"; error: unknown };
+
+type Revisado =
+  | { tipo: "ninguna" }
+  | { tipo: "revisando" }
+  | { tipo: "listo"; revision: Revision }
+  | { tipo: "error"; error: unknown };
+
+type ParaArmar =
+  | { tipo: "ninguna" }
+  | { tipo: "enviando" }
+  | { tipo: "listo"; nombre: string }
   | { tipo: "error"; error: unknown };
 
 type Creacion =
@@ -181,17 +204,55 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
   const [nombre, setNombre] = useState("");
   const [archivo, setArchivo] = useState<File | null>(null);
   const [creacion, setCreacion] = useState<Creacion>({ tipo: "ninguna" });
+  // D-8 (2026-11-13): el archivo se revisa al elegirlo (sin escribir) y el alta de los insumos nuevos se confirma aparte.
+  const [revisado, setRevisado] = useState<Revisado>({ tipo: "ninguna" });
+  const [darDeAlta, setDarDeAlta] = useState(false);
+  const [paraArmar, setParaArmar] = useState<ParaArmar>({ tipo: "ninguna" });
+  const revisionVigente = useRef(0);
+
+  const elegir = (elegido: File | null) => {
+    setArchivo(elegido);
+    setDarDeAlta(false);
+    const numero = ++revisionVigente.current;
+    if (elegido === null) {
+      setRevisado({ tipo: "ninguna" });
+      return;
+    }
+    setRevisado({ tipo: "revisando" });
+    pedir<Revision>("/v1/precios-empresa/listas/revision", { metodo: "POST", cuerpo: formularioRevision(elegido) }).then(
+      (revision) => {
+        if (numero === revisionVigente.current) setRevisado({ tipo: "listo", revision });
+      },
+      (error: unknown) => {
+        if (numero !== revisionVigente.current) return;
+        alExpirar(error);
+        setRevisado({ tipo: "error", error });
+      },
+    );
+  };
+
+  const usarParaArmar = (listaId: number) => {
+    setParaArmar({ tipo: "enviando" });
+    pedir<CarpetaRespuesta>("/v1/carpeta/lista-para-armar", { metodo: "POST", cuerpo: { desde: "empresa", lista_id: listaId } }).then(
+      (carpeta) => setParaArmar({ tipo: "listo", nombre: carpeta.lista?.nombre ?? "" }),
+      (error: unknown) => {
+        alExpirar(error);
+        setParaArmar({ tipo: "error", error });
+      },
+    );
+  };
 
   const baseId = bases.some((b) => String(b.id) === baseElegida) ? baseElegida : String(bases[0]?.id ?? "");
 
   const crear = (evento: FormEvent) => {
     evento.preventDefault();
-    const datos = { empresa, rif, baseId, moneda, fecha, fuente, nombre, archivo };
+    const datos = { empresa, rif, baseId, moneda, fecha, fuente, nombre, archivo, darDeAlta };
     if (faltaAlgo(datos)) {
       setCreacion({ tipo: "falta" });
       return;
     }
     setCreacion({ tipo: "enviando" });
+    setParaArmar({ tipo: "ninguna" });
     pedir<ListaCreada>("/v1/precios-empresa/listas", { metodo: "POST", cuerpo: formularioLista(datos) }).then(
       (creada) => {
         setCreacion({ tipo: "listo", creada });
@@ -242,9 +303,30 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
             id="precios-empresa-archivo"
             etiqueta="Archivo de precios (CSV o XLSX): suéltelo aquí, o haga clic para elegirlo"
             extensiones={EXTENSIONES}
-            alElegir={setArchivo}
+            alElegir={elegir}
           />
           {archivo && <p className="silice-precios-empresa__nota cds--type-label-01">Archivo elegido: {archivo.name}</p>}
+          <div aria-live="polite">
+            {revisado.tipo === "revisando" && <InlineLoading description="Revisando el archivo..." status="active" />}
+            {revisado.tipo === "error" && <AvisoError error={revisado.error} titulo="No se revisó el archivo" />}
+            {revisado.tipo === "listo" && (
+              <>
+                <p className="silice-precios-empresa__nota cds--type-body-compact-01">{textoReconocidos(revisado.revision.reconocidos)}</p>
+                {revisado.revision.nuevos.length > 0 && (
+                  <>
+                    <TablaDensa etiqueta={ETIQUETA_NUEVOS} columnas={COLUMNAS_NUEVOS} filas={filasNuevos(revisado.revision.nuevos)} />
+                    <Checkbox
+                      id="precios-empresa-alta"
+                      labelText={ROTULO_ALTA}
+                      checked={darDeAlta}
+                      onChange={(_evento, { checked }) => setDarDeAlta(checked)}
+                    />
+                  </>
+                )}
+                <AvisosOtraUnidad avisos={revisado.revision.otra_unidad} />
+              </>
+            )}
+          </div>
 
           <div className="silice-precios-empresa__acciones">
             <Button type="submit" kind="primary" size="md" disabled={creacion.tipo === "enviando"}>
@@ -263,6 +345,33 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
         {creacion.tipo === "listo" && (
           <>
             <InlineNotification kind="success" role="status" title="Lista creada" subtitle={creacion.creada.mensaje} lowContrast hideCloseButton />
+            {(creacion.creada.dados_de_alta ?? []).length > 0 && (
+              <TablaDensa etiqueta={ETIQUETA_DADOS} columnas={COLUMNAS_DESCONOCIDOS} filas={filasDesconocidos(creacion.creada.dados_de_alta ?? [])} />
+            )}
+            <AvisosOtraUnidad avisos={creacion.creada.otra_unidad ?? []} />
+            {creacion.creada.id !== undefined && (
+              <div className="silice-precios-empresa__acciones">
+                <Button
+                  kind="secondary"
+                  size="md"
+                  disabled={paraArmar.tipo === "enviando" || paraArmar.tipo === "listo"}
+                  onClick={() => usarParaArmar(creacion.creada.id as number)}
+                >
+                  {ROTULO_PARA_ARMAR}
+                </Button>
+              </div>
+            )}
+            {paraArmar.tipo === "listo" && (
+              <InlineNotification
+                kind="success"
+                role="status"
+                title="Lista para armar"
+                subtitle={`Lista para armar creada: ${paraArmar.nombre}. Ya puede componer con ella.`}
+                lowContrast
+                hideCloseButton
+              />
+            )}
+            {paraArmar.tipo === "error" && <AvisoError error={paraArmar.error} titulo="No se creó la lista para armar" />}
             {creacion.creada.desconocidos.length > 0 && (
               <>
                 {creacion.creada.aviso && (
@@ -279,6 +388,22 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
         )}
       </div>
     </section>
+  );
+}
+
+// D-8: cada fila que el catalogo tiene con otra unidad no entra (seria un homonimo); se dice la unidad del catalogo.
+function AvisosOtraUnidad({ avisos }: { avisos: string[] }) {
+  if (avisos.length === 0) return null;
+  return (
+    <InlineNotification kind="warning" role="status" title="Otra unidad" lowContrast hideCloseButton>
+      <ul className="silice-precios-empresa__avisos">
+        {avisos.map((aviso) => (
+          <li key={aviso} className="cds--type-body-compact-01">
+            {aviso}
+          </li>
+        ))}
+      </ul>
+    </InlineNotification>
   );
 }
 

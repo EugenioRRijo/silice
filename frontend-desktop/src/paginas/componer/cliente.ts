@@ -96,9 +96,11 @@ export function carpeta(): Promise<CarpetaRespuesta> {
   return pedir<CarpetaRespuesta>("/v1/carpeta");
 }
 
-// Crea la lista para armar de la carpeta a partir de MaPreX o convirtiendo la que tiene (con la tasa del BCV).
-export function crearListaParaArmar(desde: "maprex" | "convertir"): Promise<CarpetaRespuesta> {
-  return pedir<CarpetaRespuesta>("/v1/carpeta/lista-para-armar", { metodo: "POST", cuerpo: { desde } });
+// Crea la lista para armar de la carpeta a partir de MaPreX, convirtiendo la que tiene (con la tasa del BCV) o copiando
+// la lista de la empresa `listaId` en su moneda (sin tasa).
+export function crearListaParaArmar(desde: "maprex" | "convertir" | "empresa", listaId?: number): Promise<CarpetaRespuesta> {
+  const cuerpo = desde === "empresa" ? { desde, lista_id: listaId } : { desde };
+  return pedir<CarpetaRespuesta>("/v1/carpeta/lista-para-armar", { metodo: "POST", cuerpo });
 }
 
 // Lo que haria `guardar` con el mismo cuerpo, sin escribir nada (`POST /v1/composicion/prever`, T3; D-MP2): la lista
