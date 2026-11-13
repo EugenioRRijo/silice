@@ -272,6 +272,9 @@ export interface VistaPlan {
   curva: Array<{ periodo: string; monto: Monto; acumulado: Monto; porcentaje: Monto }>;
   moneda: string;
   mensaje: string | null;
+  // Las partidas del presupuesto, con plan o sin él: las cuadrillas se ponen antes de hacer el plan (ola 2, 2026-11-13).
+  // Un servidor anterior no la manda: entonces son las de la matriz.
+  partidas?: string[];
 }
 
 // Prefijo con que el servidor nombra el Estado de cada fila editable (`esp_puntos:P1`).

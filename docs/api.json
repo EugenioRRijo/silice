@@ -3905,7 +3905,59 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PartidasDelContratoRespuesta"
+                  "$ref": "#/components/schemas/RenglonesDelContratoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/dias-por-periodo": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Dias Por Periodo",
+        "description": "Los días hábiles por período de la línea base, desde el plan de `version` (RF-196).",
+        "operationId": "dias_por_periodo_v1_control_dias_por_periodo_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiasDelPlanRespuesta"
                 }
               }
             }
@@ -17293,7 +17345,7 @@
           "dias_por_periodo": {
             "type": "string",
             "title": "Dias Por Periodo",
-            "default": "5"
+            "default": ""
           },
           "feriados": {
             "type": "string",
@@ -17723,6 +17775,32 @@
           "solo_lectura_insumos"
         ],
         "title": "DetalleApuRespuesta"
+      },
+      "DiasDelPlanRespuesta": {
+        "properties": {
+          "dias": {
+            "type": "string",
+            "title": "Dias",
+            "description": "Días hábiles por período que se proponen, como texto"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad",
+            "description": "dia, semana o mes; vacía si el plan no dice su unidad"
+          },
+          "aviso": {
+            "type": "string",
+            "title": "Aviso",
+            "description": "Por qué se proponen 20 (el plan no dice su unidad); o vacío"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dias",
+          "unidad",
+          "aviso"
+        ],
+        "title": "DiasDelPlanRespuesta"
       },
       "DictamenAnterior": {
         "properties": {
@@ -18238,7 +18316,8 @@
             "type": "string",
             "enum": [
               "dia",
-              "semana"
+              "semana",
+              "mes"
             ],
             "title": "Unidad"
           }
@@ -26367,6 +26446,42 @@
         "title": "RendimientosRespuesta",
         "description": "El historico completo de una partida, con dispersion y propuesta (RF-26)."
       },
+      "RenglonDelContratoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "renglon": {
+            "type": "integer",
+            "title": "Renglon",
+            "description": "El número del renglón en el presupuesto, desde 1"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones",
+            "description": "Cuántos renglones tiene ese código en el presupuesto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "unidad",
+          "renglon",
+          "renglones"
+        ],
+        "title": "RenglonDelContratoRespuesta",
+        "description": "Un renglón del presupuesto (Control, ola 2 del 2026-11-13): un código repetido en dos\nrenglones se ofrece dos veces; la valuación sigue siendo por código."
+      },
       "RenglonFcas": {
         "properties": {
           "id": {
@@ -26389,6 +26504,41 @@
           "aporte"
         ],
         "title": "RenglonFcas"
+      },
+      "RenglonesDelContratoRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "El código de la versión del contrato; vacío si no hay"
+          },
+          "aviso": {
+            "type": "string",
+            "title": "Aviso",
+            "description": "Texto fijo que explica una lista vacía",
+            "default": ""
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/RenglonDelContratoRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas",
+            "description": "Una por renglón del presupuesto, en su orden"
+          },
+          "truncada": {
+            "type": "boolean",
+            "title": "Truncada",
+            "description": "La lista se recortó al tope: que una partida no esté en ella no dice que no esté en el contrato (la interfaz no la rechaza y deja que decida el servidor)",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "partidas"
+        ],
+        "title": "RenglonesDelContratoRespuesta"
       },
       "ResolverEntrada": {
         "properties": {
@@ -29089,6 +29239,14 @@
             "type": "boolean",
             "title": "Hay Plan"
           },
+          "partidas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Partidas",
+            "description": "Las partidas del presupuesto en su orden, con plan o sin él: las cuadrillas se ponen antes de hacer el plan"
+          },
           "etiquetas": {
             "items": {
               "type": "string"
@@ -29129,6 +29287,7 @@
         "type": "object",
         "required": [
           "hay_plan",
+          "partidas",
           "etiquetas",
           "filas",
           "curva",

@@ -692,6 +692,9 @@ class VistaPlan:
     curva: tuple[PuntoDeCurvaHoja, ...]
     moneda: str
     mensaje: str | None
+    #: Las partidas del presupuesto en su orden, con plan o sin él: la pestaña pone las cuadrillas
+    #: antes de que exista un plan (ola 2 del 2026-11-13: la salida de un plan que no cabe).
+    partidas: tuple[str, ...] = ()
 
 
 def vista_plan(vivo: BorradorVivo) -> VistaPlan:
@@ -699,9 +702,9 @@ def vista_plan(vivo: BorradorVivo) -> VistaPlan:
     de inversion (periodo, monto, acumulado y % acumulado)."""
     resultado, _ = calculo(vivo)
     presupuesto = resultado.elaboracion.presupuesto
-    if vivo.borrador.plan is None:
-        return VistaPlan(False, (), (), (), presupuesto.moneda, SIN_PLAN)
     codigos = list(dict.fromkeys(p.item.codigo_partida for p in presupuesto.partidas))
+    if vivo.borrador.plan is None:
+        return VistaPlan(False, (), (), (), presupuesto.moneda, SIN_PLAN, tuple(codigos))
     etiquetas, filas = hoja.plan_como_filas(resultado.plan or (), codigos)
     textos = hoja.filas_de_curva(presupuesto)
     curva = []
@@ -725,6 +728,7 @@ def vista_plan(vivo: BorradorVivo) -> VistaPlan:
         curva=tuple(curva),
         moneda=presupuesto.moneda,
         mensaje=None,
+        partidas=tuple(codigos),
     )
 
 
