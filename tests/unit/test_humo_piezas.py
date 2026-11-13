@@ -650,6 +650,34 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     assert "WEBVIEW2" not in _funcion_del_humo("IniciarSilice")
 
 
+def test_humo_no_pisa_la_politica_de_webview2_que_ya_tuviera_el_equipo() -> None:
+    """`New-Item -Force` sobre una clave que existe la recrea vacía: borra sus otros valores y
+    subclaves. La humo la crea solo si falta, guarda un `python.exe` previo y lo devuelve al
+    quitar la suya, y afirma que la clave quedó como estaba."""
+    poner = _funcion_del_humo("PonerPoliticaCdp")
+    quitar = _funcion_del_humo("QuitarPoliticaCdp")
+    crear = re.search(
+        r"if \(-not \(Test-Path -Path \$PoliticaCdp\)\) \{\s*New-Item -Path \$PoliticaCdp -Force",
+        poner,
+    )
+    assert crear, "New-Item solo si la clave no existe"
+    assert poner.count("New-Item -Path") == 1
+    # el valor previo (y su tipo) se guarda antes de escribir el de la humo
+    assert "GetValue('python.exe'" in poner and "GetValueKind('python.exe')" in poner
+    assert poner.index("$script:PoliticaPrevia =") < poner.index("New-ItemProperty")
+    # quitar devuelve el previo si lo había y, si no, borra el valor; dos veces no rompe nada
+    assert "$script:PoliticaPrevia" in quitar
+    assert "-PropertyType $script:TipoPrevio" in quitar
+    assert "Remove-ItemProperty -Path $PoliticaCdp -Name 'python.exe'" in quitar
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    assert re.search(r"(?m)^\$script:PoliticaPrevia = \$null$", texto)
+    bloque = texto[texto.index("Paso '6b.") : texto.index("Paso '7.")]
+    quitada = bloque.index("QuitarPoliticaCdp")
+    afirmacion = bloque.index("ValorPoliticaCdp", quitada)
+    assert "la política de HKLM volvió a como estaba" in bloque[afirmacion:]
+    assert "GetValue('python.exe'" in _funcion_del_humo("ValorPoliticaCdp")
+
+
 def test_workflow_instalador_asegura_webview2_antes_del_humo() -> None:
     flujo = (RAIZ / ".github" / "workflows" / "instalador.yml").read_text(encoding="utf-8")
     guid = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
