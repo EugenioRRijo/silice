@@ -580,14 +580,15 @@ describe("Hoja de la obra: tablas editables del espacio (3c-1)", () => {
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "3" } });
     await pausa(400);
     await esperar(() => screen.getByText(/· 1 cambio sin guardar/));
-    expect(saleLaPagina()).toBe(true);
+    // el aviso se registra en un efecto pasivo, después del commit que pinta el texto
+    await esperar(() => expect(saleLaPagina()).toBe(true));
   });
 
   test("3c-F10: al abrir un borrador que ya tiene cambios, beforeunload ya avisa; y al desmontar deja de avisar", async () => {
     abierto = borrador({ cambios: 2 });
     const { unmount } = montar();
     await screen.findByText(/· 2 cambios sin guardar/);
-    expect(saleLaPagina()).toBe(true);
+    await esperar(() => expect(saleLaPagina()).toBe(true));
     unmount();
     expect(saleLaPagina()).toBe(false);
   });

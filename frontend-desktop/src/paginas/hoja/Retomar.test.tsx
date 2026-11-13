@@ -246,7 +246,10 @@ describe("Hoja de la obra: retomar el borrador y cambiar de versión (3c-3)", ()
     expect(within(estado()).getByText(/Versión 002 · 2 cambios sin guardar/)).toBeInTheDocument();
     expect(within(estado()).getByTitle("2.800,5")).toBeInTheDocument();
     expect(versionAbierta()).toBe("002");
-    expect(saleLaPagina()).toBe(true); // hay cambios sin guardar
+    // Hay cambios sin guardar. El aviso de `beforeunload` se registra en un efecto pasivo, que React vacía en un turno
+    // posterior al commit que pintó el texto: con la máquina cargada `findByRole` ve el DOM antes de que corra. Se espera
+    // a la condición (que el aviso exista), no a un plazo.
+    await esperar(() => expect(saleLaPagina()).toBe(true));
     expect(screen.queryByRole("button", { name: /Retomar borrador/ })).toBeNull();
     // Las tablas salen del borrador del servidor (no de la versión guardada).
     expect(await screen.findByRole("textbox", { name: "Largo (m), Ambientes fila 1" })).toHaveValue("2");

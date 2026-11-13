@@ -276,7 +276,13 @@ describe("TablaInsumos: autocompletado de la descripción", () => {
     await u.type(descripcion(), "Cemento gris");
     await u.tab();
     expect(screen.getByText(AVISO)).toBeInTheDocument();
+    // La búsqueda de la pausa (300 ms) termina con el campo sin foco: así pasa siempre que la máquina va lenta entre el Tab y
+    // el clic. Se espera a que haya salido, para que el orden no dependa del reloj.
+    await waitFor(() => expect(llamadas.some((l) => l.startsWith("/v1/consulta/insumos?q=Cemento+gris"))).toBe(true));
+    // Volver al campo no abre la lista por sí solo cuando la búsqueda ya terminó sin foco (solo la abre una respuesta que
+    // llega con el campo enfocado): se abre con la flecha hacia abajo, que sirve en cualquier orden (si la búsqueda sigue en vuelo, la repite).
     await u.click(descripcion());
+    await u.keyboard("{ArrowDown}");
     await u.click(await screen.findByRole("option", { name: /Cemento gris ficticio/ }));
     await waitFor(() => expect(descripcion()).toHaveValue("Cemento gris ficticio"));
     expect(screen.queryByText(AVISO)).not.toBeInTheDocument();
