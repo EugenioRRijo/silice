@@ -2,6 +2,7 @@
 // No calcula ni redondea: el impacto de cada hallazgo llega como texto con punto y solo se presenta en es-VE (D-8).
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { unidadEscrita } from "../../comun/unidades";
 
 export const TITULO = "Precios de la empresa";
 export const AYUDA =
@@ -58,6 +59,7 @@ export const ROTULO_ALTA = "Dar de alta en el catálogo los insumos nuevos al cr
 export const ETIQUETA_NUEVOS = "Insumos nuevos del archivo";
 export const ETIQUETA_DADOS = "Insumos dados de alta en el catálogo";
 export const ROTULO_PARA_ARMAR = "Usarla como lista para armar";
+export const SIN_PERMISO_PARA_ARMAR = "La lista para armar la crea quien arma el presupuesto, desde Componer.";
 
 export function textoReconocidos(n: number): string {
   return `El catálogo reconoce ${n} ${n === 1 ? "fila" : "filas"} del archivo.`;
@@ -70,8 +72,17 @@ export const COLUMNAS_NUEVOS: ColumnaDensa[] = [
   { clave: "precio", titulo: "Precio", numerica: true, presentar: formatoEsVe },
 ];
 
+// El tipo como lo dice la pantalla y la unidad como se escribe («m³»), no las claves del servidor (árbitro 13/11, M5).
+const TIPOS_DE_INSUMO: Record<string, string> = { material: "Material", equipo: "Equipo", mano_obra: "Mano de obra" };
+
 export function filasNuevos(nuevos: InsumoNuevo[]): FilaDensa[] {
-  return nuevos.map((n, i) => ({ id: String(i), insumo: n.insumo, tipo: n.tipo, unidad: n.unidad, precio: n.precio }));
+  return nuevos.map((n, i) => ({
+    id: String(i),
+    insumo: n.insumo,
+    tipo: TIPOS_DE_INSUMO[n.tipo] ?? n.tipo,
+    unidad: unidadEscrita(n.unidad),
+    precio: n.precio,
+  }));
 }
 
 export function formularioRevision(archivo: File): FormData {

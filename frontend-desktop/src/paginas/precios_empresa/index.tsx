@@ -44,6 +44,7 @@ import {
   ETIQUETA_NUEVOS,
   ROTULO_ALTA,
   ROTULO_PARA_ARMAR,
+  SIN_PERMISO_PARA_ARMAR,
   filasNuevos,
   formularioRevision,
   textoReconocidos,
@@ -195,6 +196,9 @@ function SeccionReferencia({ alCargada, alExpirar }: PropsSeccion & { alCargada:
 }
 
 function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Base[]; alCreada: () => void }) {
+  // Crear la lista para armar exige `editar_hoja` (quien arma); el administrador sin ese papel no ve el botón (árbitro
+  // 13/11, M4), como la Barra lateral.
+  const puedeArmar = useAplicacion().sesion.acciones.includes("editar_hoja");
   const [empresa, setEmpresa] = useState("");
   const [rif, setRif] = useState("");
   const [baseElegida, setBaseElegida] = useState("");
@@ -349,7 +353,10 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
               <TablaDensa etiqueta={ETIQUETA_DADOS} columnas={COLUMNAS_DESCONOCIDOS} filas={filasDesconocidos(creacion.creada.dados_de_alta ?? [])} />
             )}
             <AvisosOtraUnidad avisos={creacion.creada.otra_unidad ?? []} />
-            {creacion.creada.id !== undefined && (
+            {creacion.creada.id !== undefined && !puedeArmar && (
+              <p className="cds--type-body-compact-01">{SIN_PERMISO_PARA_ARMAR}</p>
+            )}
+            {creacion.creada.id !== undefined && puedeArmar && (
               <div className="silice-precios-empresa__acciones">
                 <Button
                   kind="secondary"

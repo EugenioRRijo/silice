@@ -42,6 +42,7 @@ const MOTIVOS: Record<string, string> = {
   cotizacion: "Cotización",
   revaloracion: "Revaloración",
   conversion: "Conversión",
+  recuperacion: "Recuperación",
 };
 
 export function motivoDeVersion(f: Pick<VersionFila, "motivo" | "fuente">): string {
