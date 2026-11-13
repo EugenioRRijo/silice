@@ -498,7 +498,12 @@ try {
     Afirmar ($muestrasWeb -ge 1) "el muestreo vio los msedgewebview2.exe de la ventana ($muestrasWeb muestras de pid)"
     $ajenasWeb = @($conexionesWeb | Where-Object { $_ -and ($_ -split ' ')[3] -notmatch $locales })
     $ajenasWeb | Select-Object -First 20 | ForEach-Object { Write-Host "  webview2 ajena: $_" }
-    Afirmar ($ajenasWeb.Count -eq 0) "el muestreo no vio conexiones TCP ajenas de WebView2 de la ventana ($($ajenasWeb.Count))"
+    # Se informa y no se afirma: el runtime de Microsoft contacta sus servicios por su cuenta (a los
+    # 24-87 s, aunque se apaguen SmartScreen, el actualizador de componentes o la red de fondo; las
+    # banderas no sirven en producción). Simulación del 2026-11-13. Lo de Sílice sigue estricto: el
+    # python.exe de {app} (arriba) y lo que pide la página (navegador.py por CDP, paso 6b).
+    Write-Host ("INFORME: WebView2 (runtime de Microsoft) abrió $($ajenasWeb.Count) conexión(es) " +
+        'TCP fuera del equipo por su cuenta; ninguna la pidió la página de Sílice')
     $vistos = Get-Content (Join-Path $Salida 'conexiones.log.pids') -ErrorAction SilentlyContinue |
         ForEach-Object { ($_ -split ' ')[1] } | Sort-Object -Unique
     $descartes = DescartesDe $registroFw $vistos
