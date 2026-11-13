@@ -62,3 +62,10 @@ anular pide el motivo y no borra la fila hasta recargar` (`CostosDelPeriodo.test
 
 `Edicion.test.tsx:590` hace `findByText(/· 2 cambios sin guardar/)` y enseguida `expect(saleLaPagina()).toBe(true)`: la misma
 carrera con el efecto de `beforeunload`. No falló en la reproducción, pero conviene darle el mismo arreglo.
+
+## Edicion.test.tsx (orquestador, mismo día)
+
+Las dos pruebas «3c-F10» comprobaban `saleLaPagina()` apenas aparecía el texto de cambios sin guardar, con el
+mismo patrón que `Retomar`: el oyente de `beforeunload` se registra en un efecto pasivo. Ahora se espera la
+condición con `esperar` (sin plazo nuevo). `npx vitest run src/paginas/hoja/Edicion.test.tsx --repeats 30`:
+`32 passed`.
