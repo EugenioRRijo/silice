@@ -53,7 +53,13 @@ arma o revisa.
 instalación y después el del paquete). Responde el informe de `fusion.apu_por_hoja`: cada hoja con
 su precio impreso y el recalculado (presentados a dos decimales por el servidor; el exacto aparte),
 los hallazgos con su `HOJA!CELDA` y la traza del desperdicio. En memoria, sin historial (el
-historial de UC-30 es del libro de la plantilla conocida). Un perfil que no existe es 422.
+historial de UC-30 es del libro de la plantilla conocida). Un perfil que no existe es 422. El
+informe dice también qué hoja del presupuesto leyó (`hoja_presupuesto`), y AH11 avisa si esa hoja
+parece de otra obra (E2E-2).
+
+**Perfiles que se pueden elegir** (E2E-2; `GET /v1/libros/perfiles-apu-por-hoja`): los del paquete
+y los de `<carpeta de datos>/perfiles_libros/`, con su nombre, su origen y la hoja del presupuesto
+que leen; uno local mal escrito sale con su `motivo` y sin hoja. Nunca una ruta del disco.
 
 `indicadores_de` vive aquí y no en `fusion/`: es aritmética de **presentación** sobre los totales
 que `fusion.proceso` ya calculó (una resta y un porcentaje en centésimas; NORMAS §2.3: «se
@@ -81,6 +87,7 @@ from starlette.concurrency import run_in_threadpool
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado
 from adapters.hoja_empresa.modelo import LibroNoInterpretable
 from adapters.hoja_empresa.perfil import PerfilInvalido
+from adapters.hoja_empresa.perfil_apu_por_hoja import carpetas_locales, perfiles_apu_por_hoja
 from adapters.hoja_empresa.visual import LibroVisual, replicar_libro
 from api.dependencias import USUARIO_API, SesionDep
 from api.proteccion import LIMITE_CUERPO
@@ -308,6 +315,8 @@ class LibroApuPorHojaRespuesta(BaseModel):
     perfil: str
     origen_perfil: Literal["paquete", "local"]
     presupuesto: str | None
+    #: La hoja del libro de presupuesto que leyó el perfil (`null` sin presupuesto).
+    hoja_presupuesto: str | None
     cumple: bool
     por_severidad: dict[str, int]
     apus: list[ApuPorHojaRespuesta]
@@ -845,6 +854,31 @@ def _dos_decimales(valor: Decimal) -> str:
     return format(valor.quantize(CENTESIMA, ROUND_HALF_UP), "f")
 
 
+class PerfilApuPorHojaRespuesta(BaseModel):
+    """Un perfil que se puede elegir: `hoja_presupuesto` es `null` y `motivo` dice por qué si el
+    perfil local está mal escrito (entonces no se puede elegir)."""
+
+    nombre: str
+    origen: Literal["paquete", "local"]
+    hoja_presupuesto: str | None
+    motivo: str | None
+
+
+@router.get("/perfiles-apu-por-hoja", response_model=list[PerfilApuPorHojaRespuesta])
+def perfiles_apu_por_hoja_ruta() -> list[PerfilApuPorHojaRespuesta]:
+    """Los perfiles del libro con un APU por hoja: los locales de la instalación y los del paquete
+    (E2E-2). Solo nombres y hojas: ninguna ruta del disco."""
+    return [
+        PerfilApuPorHojaRespuesta(
+            nombre=p.nombre,
+            origen="local" if p.origen == "local" else "paquete",
+            hoja_presupuesto=p.hoja_presupuesto,
+            motivo=p.motivo,
+        )
+        for p in perfiles_apu_por_hoja(carpetas_locales(carpeta_perfiles_libros()))
+    ]
+
+
 @router.post("/apu-por-hoja", response_model=LibroApuPorHojaRespuesta)
 async def auditar_apu_por_hoja_ruta(
     libro: Annotated[
@@ -891,6 +925,7 @@ async def auditar_apu_por_hoja_ruta(
         perfil=r.perfil,
         origen_perfil=r.origen_perfil,
         presupuesto=r.presupuesto,
+        hoja_presupuesto=r.hoja_presupuesto,
         cumple=not (por_severidad.get("CRITICO", 0) or por_severidad.get("ERROR", 0)),
         por_severidad=por_severidad,
         apus=[
