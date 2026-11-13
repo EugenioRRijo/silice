@@ -601,3 +601,26 @@ def test_un_lado_desconocido_se_rechaza_al_cargar(tmp_path: Path, lado: object):
 )
 def test_la_cifra_de_una_celda_tiene_la_precision_de_excel(valor, esperado):
     assert numero_de(valor) == esperado
+
+
+def test_un_perfil_local_sin_la_clave_lee_a_la_derecha(tmp_path: Path):
+    """Árbitro xhigh del 2026-11-13, M6: un perfil escrito antes de la clave sigue igual."""
+    crudo = json.loads(
+        (
+            Path(__file__).resolve().parents[2] / "adapters/hoja_empresa/perfiles/apu_por_hoja.json"
+        ).read_text(encoding="utf-8")
+    )
+    crudo.pop("lado_de_los_porcentajes", None)
+    (tmp_path / "viejo.json").write_text(json.dumps({**crudo, "nombre": "viejo"}), encoding="utf-8")
+    perfil = cargar_perfil_apu_por_hoja("viejo", carpetas=(tmp_path,))
+    assert perfil.lado_de_los_porcentajes == "derecha"
+
+
+def test_a_la_izquierda_salta_vacias_y_texto_hasta_el_numero_mas_cercano():
+    """Árbitro xhigh del 2026-11-13, M6: con celdas vacías o texto entre el porcentaje y su rótulo,
+    se toma el número más cercano a la izquierda (y nunca uno de la derecha)."""
+    from adapters.hoja_empresa.lector_apu_por_hoja import _a_la_izquierda
+
+    fila = [3, None, 12.5, "nota", None, "Administración (%)", 123.45]
+    assert _a_la_izquierda(fila, 5) == (2, D("12.5"))
+    assert _a_la_izquierda([None, "Administración (%)", 9], 1) is None

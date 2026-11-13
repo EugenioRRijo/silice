@@ -300,3 +300,75 @@ def test_quien_revisa_no_edita_el_desperdicio(_caso: Path) -> None:
     respuesta = _editar(navegador, ficha, id_, cantidades, 0, ["2"], ["5"])
     assert respuesta.status_code == 403, respuesta.text
     assert _volcado(_caso) == antes
+
+
+# --- Árbitro xhigh del 2026-11-13, M6: lo que comprobó con guiones, ahora en la suite ---
+
+
+def test_si_falla_la_version_no_queda_ninguna_traza_y_el_reintento_la_guarda(
+    _caso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """La traza va en la misma transacción que la versión: si el núcleo falla después de volcarla,
+    la base queda igual byte a byte; con el núcleo sano, el reintento guarda las dos."""
+    from aplicacion import hoja
+
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    editado = _editar(navegador, ficha, id_, cantidades, 0, ["2"], ["5"])
+    assert editado.status_code == 200, editado.text
+    antes = _volcado(_caso)
+    original = hoja.guardar_version
+
+    def que_falla(sesion, *args, **kwargs):
+        assert trazas_vigentes(sesion, "AF-LLAVE"), "la traza debía estar ya en la sesión"
+        raise ValueError("fallo simulado del núcleo")
+
+    monkeypatch.setattr(hoja, "guardar_version", que_falla)
+    cuerpo = {"rev": editado.json()["rev"], "fuente": "Acta ficticia"}
+    fallido = navegador.post(
+        f"/v1/hoja/borradores/{id_}/guardar", json=cuerpo, headers=protegida(ficha)
+    )
+    assert fallido.status_code == 409, fallido.text
+    assert _volcado(_caso) == antes
+    assert _trazas(_caso) == []
+    monkeypatch.setattr(hoja, "guardar_version", original)
+    guardado = navegador.post(
+        f"/v1/hoja/borradores/{id_}/guardar", json=cuerpo, headers=protegida(ficha)
+    )
+    assert guardado.status_code == 200, guardado.text
+    assert _trazas(_caso) == [TrazaDesperdicio(LLAVE, "pieza", D("2"), D("5"), D("2.10"))]
+
+
+@pytest.mark.parametrize(
+    ("texto", "error"),
+    [
+        ("1.000", "debe estar entre 0 y 100"),  # mil por ciento, con punto de miles
+        ("100", "debe estar entre 0 y 100"),
+        ("4.5", "no se entiende como número"),  # el punto no es decimal
+    ],
+)
+def test_un_porcentaje_fuera_de_rango_o_mal_escrito_es_422(
+    _caso: Path, texto: str, error: str
+) -> None:
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    respuesta = _editar(navegador, ficha, id_, cantidades, 0, ["2"], [texto])
+    assert respuesta.status_code == 422, respuesta.text
+    assert error in respuesta.json()["detalle"]
+    assert "materiales, fila 1" in respuesta.json()["detalle"]
+
+
+@pytest.mark.parametrize(
+    ("texto", "porcentaje"),
+    [("99,99", "99,99"), (" 4 ", "4"), ("-0", None), ("0,0", None), ("\ufeff", None)],
+)
+def test_porcentajes_de_frontera_que_se_aceptan(
+    _caso: Path, texto: str, porcentaje: str | None
+) -> None:
+    """«99,99» y « 4 » son desperdicio; «-0», «0,0» y un BOM solo, ninguno."""
+    navegador, ficha = con_cuenta(app, "ana")
+    id_, cantidades = _abrir(navegador, ficha)
+    respuesta = _editar(navegador, ficha, id_, cantidades, 0, ["2"], [texto])
+    assert respuesta.status_code == 200, respuesta.text
+    desperdicios = respuesta.json()["apu"]["detalle"]["desperdicios"]
+    assert [d["porcentaje"] for d in desperdicios] == ([] if porcentaje is None else [porcentaje])

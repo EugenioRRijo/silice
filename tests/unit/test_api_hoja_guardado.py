@@ -1261,3 +1261,48 @@ def test_si_se_rechaza_por_version_mas_nueva_la_transaccion_termina_y_el_bloqueo
                 otra.execute("ROLLBACK")
     finally:
         motor.dispose()
+
+
+def test_la_primera_version_guarda_la_traza_del_desperdicio(_entorno: Path) -> None:
+    """Árbitro xhigh del 2026-11-13, M6: el camino de la PRIMERA versión de un proyecto también
+    escribe la traza del desperdicio editado en la Hoja (10 % sobre el primer material)."""
+    from aplicacion.desperdicio import trazas_vigentes
+
+    _proyecto_nuevo(_entorno)
+    navegador, ficha = _ana()
+    id_ = _en_blanco_con_el_plano(navegador, ficha, _entorno)
+    vista = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/apu").json()
+    elegida = None
+    for partida in vista["partidas"]:
+        detalle = navegador.get(
+            f"/v1/hoja/borradores/{id_}/vistas/apu", params={"partida": partida["codigo"]}
+        ).json()["detalle"]
+        if detalle["grupos"][0]["filas"]:
+            elegida = detalle
+            break
+    assert elegida is not None, "ninguna partida con materiales"
+    cantidades = {g["clave"]: [f["cantidad"] for f in g["filas"]] for g in elegida["grupos"]}
+    rev = navegador.get(f"/v1/hoja/borradores/{id_}").json()["resumen"]["rev"]
+    editado = navegador.put(
+        f"/v1/hoja/borradores/{id_}/apu/{elegida['codigo']}",
+        json={
+            "rev": rev,
+            "rendimiento": elegida["rendimiento"],
+            "materiales": cantidades["materiales"],
+            "desperdicios": ["10"] + [""] * (len(cantidades["materiales"]) - 1),
+            "equipos": cantidades["equipos"],
+            "mano_obra": cantidades["mano de obra"],
+        },
+        headers=protegida(ficha),
+    )
+    assert editado.status_code == 200, editado.text
+    assert [d["porcentaje"] for d in editado.json()["apu"]["detalle"]["desperdicios"]] == ["10"]
+    guardado = _guardar(navegador, ficha, id_, editado.json()["rev"])
+    assert guardado.status_code == 200, guardado.text
+    motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            trazas = trazas_vigentes(sesion, elegida["codigo"])
+    finally:
+        motor.dispose()
+    assert [t.desperdicio_pct for t in trazas] == [Decimal("10")]
