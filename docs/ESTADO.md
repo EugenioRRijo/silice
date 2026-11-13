@@ -170,6 +170,12 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
      exacta); la celda del precio redondeada en reposo y exacta al editarla (`TablaInsumos`); el selector de partida
      de las valuaciones de Control, que ofrece un solo renglón por código; elegir la hoja del presupuesto aparte del
      perfil; `suministro` en `frontend-desktop/src/api/vial.ts` (hoy no hace falta).
+   - **Notas del árbitro (ronda 2), para Eugenio**: un plan armado por meses («Mes n») se muestra en la pestaña del
+     plan como si fuera por días y Control pide a mano los días por período (5 por omisión; un mes son 20); y la salida
+     del 422 de más de 10.000 días («cree el plan y asigne más cuadrillas») no se puede seguir desde la pantalla, que
+     pide el plan antes que las cuadrillas. VR4 lee la banda con el `patron_banda` del perfil del libro de la
+     instalación: un perfil local mal escrito apaga la lectura y deja un INFO. El verde `2b436af1` relajó, sin
+     declararlo, el nombre accesible del aviso AH11 a su texto.
    - **Funciones que faltan** (la prueba las pidió y Sílice no las tiene): importar a la Hoja el libro auditado,
      agrupar el presupuesto por frente, sacarlo en PDF, índices del BCV en USD y parámetros editables en Componer.
 

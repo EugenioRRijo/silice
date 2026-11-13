@@ -45,4 +45,4 @@ honestas.
 | 6 | MENOR: faltaba «Recuperación» en el motivo de Versiones | Agregado (`f2510aaf`) |
 | 7 | MENOR: CHANGELOG, ESTADO, ERS y manual de usuario sin las tres líneas | Al día, RF-190 a RF-195 (`97399b3d`) |
 | 8 | MENOR (DRY): `PREFIJO_TRAMO` definido dos veces y el origen escrito como literal | Ver la ronda 3 |
-| N | El plan «Mes n» en la pestaña del plan y en Control; VR4 depende del perfil local; AH11 relajado sin declararlo en `aae08b31` | Anotadas en ESTADO §5 para Eugenio; la de `aae08b31` queda declarada aquí |
+| N | El plan «Mes n» en la pestaña del plan y en Control; VR4 depende del perfil local; AH11 relajado sin declararlo en `2b436af1` | Anotadas en ESTADO §5, punto 6 (ronda 3, M3); la de `2b436af1` queda declarada aquí |

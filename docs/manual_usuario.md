@@ -1103,7 +1103,8 @@ El archivo de precios lleva las columnas `tipo`, `insumo`, `unidad` y `precio` (
 Con la lista creada, «Lista creada» dice cuántos precios entraron y, si los hubo, la tabla «Insumos dados de alta en
 el catálogo». Debajo, a quien también arma presupuestos (el papel de quien arma) le aparece «Usarla como lista para
 armar»: la copia tal cual, en su moneda y sin tasa del BCV, como lista para armar de la carpeta, si la carpeta está
-en esa moneda y todavía no tiene lista. A quien solo administra, Sílice le dice «La lista para armar la crea quien
+en esa moneda. Si la carpeta ya tenía una, la nueva pasa a ser la vigente (la de fecha más reciente): así se renuevan
+los precios con la lista de la empresa del mes. A quien solo administra, Sílice le dice «La lista para armar la crea quien
 arma el presupuesto, desde Componer.» (sección 4.3, camino 3).
 
 ### 9.3 Actualizar precios de un presupuesto (quien arma)

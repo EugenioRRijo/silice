@@ -252,7 +252,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
   celda sigue recibiendo el exacto, así que guardar sin tocarla no crea una variante del insumo.
 - **Ciclo de importación en `aplicacion/`** (2026-11-13; encontrado por la línea vial, `2026-11-13-e2e-vial.md`): importar
   `aplicacion.hoja_vial` como primer módulo fallaba por `hoja_vial` → `elaboracion` → `hoja_edicion` → `hoja_vista` →
-  `hoja_vial`. `PREFIJO_TRAMO` vive ahora en `aplicacion/hoja_partidas.py` y `hoja_vista` ya no importa `hoja_vial`;
+  `hoja_vial`. `PREFIJO_TRAMO` se define una sola vez, en `adapters/vial/modelo.py` (árbitro, ronda 2, M8), y
+  `aplicacion/hoja_partidas.py` lo reexporta para que `hoja_vista` no importe `hoja_vial`;
   `tests/unit/test_aplicacion_sin_ciclos.py` importa, en un proceso aparte, cada módulo de `aplicacion/` como el primero
   (con `aplicacion` descargada de `sys.modules` antes de cada uno).
 - **Libro con un APU por hoja, probado en local con el libro vial real** (2026-11-13;
