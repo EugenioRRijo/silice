@@ -705,9 +705,10 @@ def test_humo_muestrea_tambien_el_webview2_de_la_ventana() -> None:
     assert "conexiones-webview2.log.pids" in paso9
     assert "el muestreo vio los msedgewebview2.exe de la ventana" in paso9
     # Lo que WebView2 abre por su cuenta se informa con sus destinos y no hace fallar la humo
-    # (decisión del 2026-11-13, simulada: el runtime de Microsoft contacta sus servicios a los 24-87 s
-    # aunque se apaguen SmartScreen, el actualizador de componentes o la red de fondo; las banderas no
-    # sirven en producción). Lo de Sílice sigue siendo estricto: su python.exe y lo que pide la página.
+    # (decisión del 2026-11-13, simulada: el runtime de Microsoft contacta sus servicios a los
+    # 24-87 s aunque se apaguen SmartScreen, el actualizador de componentes o la red de fondo; las
+    # banderas no sirven en producción). Lo de Sílice sigue siendo estricto: su python.exe y lo que
+    # pide la página.
     assert "Afirmar ($ajenasWeb.Count -eq 0)" not in paso9
     assert "INFORME: WebView2 (runtime de Microsoft)" in paso9
     assert "webview2 ajena: $_" in paso9
@@ -760,8 +761,10 @@ def test_workflow_exige_la_firma_de_microsoft_antes_de_ejecutar_el_instalador_de
     # «-notmatch 'Microsoft'» dejaba pasar (decisión (f), simulada).
     regla = re.search(r"SignerCertificate\.Subject -notmatch '([^']+)'", tramo)
     assert regla, "el firmante se compara con una expresión"
+
     def acepta(sujeto: str) -> bool:
         return re.search(regla.group(1), sujeto, re.IGNORECASE) is not None
+
     reales = (
         "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
         "CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
