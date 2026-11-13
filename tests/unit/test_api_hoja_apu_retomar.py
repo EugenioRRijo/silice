@@ -582,7 +582,7 @@ def test_e7_un_insumo_que_la_lista_no_valora_o_de_otro_tipo_es_422_y_nada_cambia
     [
         (
             {"tipo": "xx"},
-            "tipo de linea 'xx' desconocido; se espera uno de ('material', 'equipo', 'mano_obra')",
+            "tipo de línea 'xx' desconocido; se espera uno de ('material', 'equipo', 'mano_obra')",
         ),
         ({"indice": 1}, "la línea 2 no existe: el grupo material tiene 1 línea"),
         (

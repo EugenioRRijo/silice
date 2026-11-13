@@ -252,9 +252,9 @@ def test_los_mensajes_de_error_al_guardar_son_los_escritos_a_mano(_plantillas, a
     ]
     assert caso.volcado() == antes  # nada se escribio
     assert mensajes == [
-        "Escriba la fuente del cambio: por que se cambia y con que respaldo.",
-        "Escriba la fuente del cambio: por que se cambia y con que respaldo.",
-        "Escriba el responsable del cambio: quien lo hace.",
+        "Escriba la fuente del cambio: por qué se cambia y con qué respaldo.",
+        "Escriba la fuente del cambio: por qué se cambia y con qué respaldo.",
+        "Escriba el responsable del cambio: quién lo hace.",
         "Esta versión está en solo lectura: alguna de sus partidas ya no tiene composición "
         "vigente en el catálogo, así que recalcularla cambiaría sus precios.",
     ]
@@ -267,10 +267,10 @@ def test_el_motivo_para_no_guardar_dice_lo_primero_que_falta() -> None:
         "No hay cambios para guardar: edite alguna celda primero."
     )
     assert hoja.motivo_para_no_guardar(base, editado, "", "y") == (
-        "Escriba la fuente del cambio: por que se cambia y con que respaldo."
+        "Escriba la fuente del cambio: por qué se cambia y con qué respaldo."
     )
     assert hoja.motivo_para_no_guardar(base, editado, "x", "") == (
-        "Escriba el responsable del cambio: quien lo hace."
+        "Escriba el responsable del cambio: quién lo hace."
     )
     assert hoja.motivo_para_no_guardar(base, editado, "x", "y") is None
 

@@ -559,7 +559,7 @@ def test_e4_un_plan_que_no_suma_1_es_422_con_el_texto_de_la_clasica_y_el_plan_no
     assert respuesta.json() == {
         "detalle": (
             "plan, partida AF-LLAVE: las fracciones suman 0,5 y deben sumar exactamente 1; "
-            "repartala entre los periodos hasta completar 1"
+            "repártala entre los períodos hasta completar 1"
         )
     }
     assert respuesta.headers["cache-control"] == "no-store"
@@ -571,7 +571,7 @@ def test_e4_un_plan_que_no_suma_1_es_422_con_el_texto_de_la_clasica_y_el_plan_no
     [
         (
             {"Dia 3": "-1", "Dia 4": "2"},
-            "plan, partida AF-LLAVE: la fraccion de Dia 3 no puede ser negativa",
+            "plan, partida AF-LLAVE: la fracción de Dia 3 no puede ser negativa",
         ),
         (
             {"Dia 3": "0.5", "Dia 4": "0,5"},

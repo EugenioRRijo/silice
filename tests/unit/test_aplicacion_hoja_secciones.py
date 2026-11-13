@@ -313,7 +313,7 @@ def test_un_plan_que_no_suma_1_dice_cuanto_suma(_of001) -> None:
         hoja.plan_desde_filas(filas, etiquetas)
     assert str(error.value) == (
         "plan, partida AF-LLAVE: las fracciones suman 0,5 y deben sumar exactamente 1; "
-        "repartala entre los periodos hasta completar 1"
+        "repártala entre los períodos hasta completar 1"
     )
 
 
@@ -322,7 +322,7 @@ def test_una_fraccion_negativa_y_una_que_no_es_numero(_of001) -> None:
     etiquetas, filas = _matriz(borrador, **{"AF-LLAVE": {"Dia 3": "-1", "Dia 4": "2"}})
     with pytest.raises(HojaInvalida) as error:
         hoja.plan_desde_filas(filas, etiquetas)
-    assert str(error.value) == "plan, partida AF-LLAVE: la fraccion de Dia 3 no puede ser negativa"
+    assert str(error.value) == "plan, partida AF-LLAVE: la fracción de Dia 3 no puede ser negativa"
     etiquetas, filas = _matriz(borrador, **{"AF-LLAVE": {"Dia 3": "0.5"}})
     with pytest.raises(HojaInvalida) as error:
         hoja.plan_desde_filas(filas, etiquetas)
@@ -381,7 +381,7 @@ def test_una_fraccion_con_ceros_de_relleno_se_dice_sin_ellos(_of001) -> None:
         hoja.plan_desde_filas(filas, etiquetas)
     assert str(error.value) == (
         "plan, partida AF-LLAVE: las fracciones suman 0,5 y deben sumar exactamente 1; "
-        "repartala entre los periodos hasta completar 1"
+        "repártala entre los períodos hasta completar 1"
     )
 
 
