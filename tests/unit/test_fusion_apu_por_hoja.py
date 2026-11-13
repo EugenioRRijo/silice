@@ -353,7 +353,8 @@ def test_las_hojas_huecas_declaradas_grandes_no_se_materializan(monkeypatch: pyt
     assert len(normal) == 2  # una lectura por libro: el de APU y el del presupuesto
     # Las hojas «Notas» no se leen; la celda lejana suma solo su fila real (A a CV): 100 celdas.
     assert hostil == [normal[0] + COLUMNAS_HASTA_CV, normal[1] + COLUMNAS_HASTA_CV]
-    assert _resumen(resultado) == _resumen(de_siempre)
+    # Las hojas que no son APU se dicen por su nombre (AH12, libro por frentes), sin leerlas.
+    assert _resumen(resultado) == [("AH12", "INFO", "Notas 1!A1"), *_resumen(de_siempre)]
 
 
 # --- la banda con punto de miles (arbitraje F5 vial, P9) ------------------------------------------

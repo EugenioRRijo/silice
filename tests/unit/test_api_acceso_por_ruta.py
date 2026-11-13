@@ -141,6 +141,7 @@ TABLA = {
     ("POST", "/v1/libros/replica"): LEER,
     ("POST", "/v1/libros/apu-por-hoja"): LEER,  # F5 vial, tarea 6
     ("GET", "/v1/libros/perfiles-apu-por-hoja"): LEER,  # E2E-2: elegir el perfil
+    ("POST", "/v1/libros/hojas"): LEER,  # libro por frentes: elegir las hojas del presupuesto
     ("GET", "/v1/tablero"): LEER,  # ola 4: Tablero
     ("GET", "/v1/control/linea-base"): CONTROLAR,  # ola 4: Control de obra
     ("POST", "/v1/control/linea-base"): CONTROLAR,
@@ -231,6 +232,7 @@ TABLA = {
     ("GET", "/v1/admin/empresa/respaldo-clave"): EMPRESA,
     ("POST", "/v1/admin/empresa/clave/retirar"): EMPRESA,
     ("POST", "/v1/admin/empresa/clave/revocar"): EMPRESA,
+    ("POST", "/v1/admin/empresa/perfiles-libros"): EMPRESA,  # libro por frentes: perfil local
     ("GET", "/v1/admin/claves-api"): RED_Y_API,
     ("POST", "/v1/admin/claves-api"): RED_Y_API,
     ("POST", "/v1/admin/claves-api/{clave_id}/revocar"): RED_Y_API,
