@@ -63,7 +63,7 @@
     "kgf": "kg",
     "t-km": "t"
   },
-  "patron_banda": "mayor de (?P<minimo>[0-9]+(?:,[0-9]+)?) km y hasta (?P<maximo>[0-9]+(?:,[0-9]+)?) km",
+  "patron_banda": "(?:mayor(?:es)?|m[aá]s) de (?P<minimo>[0-9]+(?:,[0-9]+)?) km y hasta (?P<maximo>[0-9]+(?:,[0-9]+)?) km",
   "presupuesto": {
     "hoja": "PRESUPUESTO",
     "encabezado": {

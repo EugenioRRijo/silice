@@ -19,7 +19,8 @@ TIPOS_CAPA = (
     "bacheo",
 )
 
-TIPOS_DEMARCACION = ("continua", "discontinua", "superficie")
+#: «captafaros» (prueba de punta a punta del 2026-11-13): ojos de gato solos, sin línea ni pintura.
+TIPOS_DEMARCACION = ("continua", "discontinua", "superficie", "captafaros")
 
 #: Variantes de medición de una capa (F5 vial, decisión provisional 4 del 2026-11-06): por tipo, la
 #: unidad de siempre y la otra que se admite. La de siempre se guarda como `None`.
@@ -76,6 +77,12 @@ class Capa:
       de la superficie (el área regada). Sin ella, el tramo deriva lo mismo que antes.
     - `medicion`: la unidad de la partida principal cuando no es la de siempre (`MEDICIONES`):
       «m2» para el fresado, «t» para la colocación de la carpeta. La de siempre se guarda `None`.
+
+    Prueba de punta a punta del 2026-11-13 (D2), opcional:
+
+    - `suministro`: solo de la imprimación y del riego de adherencia; el APU del riego ya trae el
+      ligante («riego con suministro»), así que no se deriva la partida del ligante y la dosis
+      deja de ser obligatoria (si está, VR3 la sigue midiendo). Sin él, la capa es la de siempre.
     """
 
     tipo: str
@@ -86,6 +93,7 @@ class Capa:
     esponjamiento: Decimal | None = None
     limpieza: bool = False
     medicion: str | None = None
+    suministro: bool = False
 
     def __post_init__(self) -> None:
         if self.tipo not in _DATOS_POR_TIPO:
@@ -98,9 +106,19 @@ class Capa:
             ("dosis", self.dosis_l_m2),
             ("asfalto", self.asfalto_pct),
         )
+        if not isinstance(self.suministro, bool):
+            raise TypeError(
+                f"el suministro de la capa {self.tipo} es sí o no, no {self.suministro!r}"
+            )
+        if self.suministro and self.tipo not in CAPAS_DE_RIEGO:
+            raise ValueError(
+                f"la capa {self.tipo} no usa suministro: solo la imprimación y el riego de "
+                "adherencia"
+            )
         for (nombre, valor), uso in zip(datos, _DATOS_POR_TIPO[self.tipo], strict=True):
             if valor is None:
-                if uso == _OBLIGATORIO:
+                # con suministro, el ligante va dentro del APU del riego: la dosis es opcional
+                if uso == _OBLIGATORIO and not (self.suministro and nombre == "dosis"):
                     raise ValueError(f"la capa {self.tipo} exige {nombre}")
                 continue
             if uso == _NO_USA:
@@ -150,9 +168,13 @@ class Demarcacion:
 
     - `superficie` (pasos peatonales, líneas de pare): `lineas` es el número de elementos iguales
       y `area_m2`, obligatoria, el área de cada uno. La cantidad es área × número.
-    - `captafaros`: solo en una línea continua o discontinua, el número de ojos de gato que
-      declara (decisión provisional 3: basta el número declarado; derivarlo de la separación es
-      otra extensión).
+    - `captafaros`: en una línea continua o discontinua, el número de ojos de gato que declara
+      (decisión provisional 3: basta el número declarado; derivarlo de la separación es otra
+      extensión).
+
+    Prueba de punta a punta del 2026-11-13 (D2): con tipo `captafaros`, ojos de gato solos sobre
+    una línea que no se pinta en esta obra: `captafaros` es el número (obligatorio) y `lineas` es
+    1; no se deriva la línea ni su pintura.
     """
 
     tipo: str
@@ -175,6 +197,13 @@ class Demarcacion:
             if self.captafaros is not None:
                 raise ValueError("la demarcación de superficie no usa captafaros: déjelos vacíos")
             return
+        if self.tipo == "captafaros":
+            if self.captafaros is None:
+                raise ValueError("la demarcación de captafaros exige el número de captafaros")
+            if self.lineas != 1:
+                raise ValueError(
+                    "la demarcación de captafaros no usa lineas: el número va en captafaros"
+                )
         if self.area_m2 is not None:
             raise ValueError(f"la demarcación {self.tipo} no usa área: déjela vacía")
         if self.captafaros is not None and (

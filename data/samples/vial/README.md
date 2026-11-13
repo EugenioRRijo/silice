@@ -46,7 +46,15 @@ Columnas, todas obligatorias en la cabecera:
     carpeta (colocación medida en masa). Vacía, la de siempre (m³ y m²).
   - `area_m2` (solo demarcación `superficie`, obligatoria allí): el área de cada elemento (paso peatonal, línea de
     pare); `lineas` es el número de elementos iguales y la cantidad, área × número, en m².
-  - `captafaros` (solo líneas continua o discontinua): el número de ojos de gato que declara la línea (entero ≥ 1).
+  - `captafaros` (líneas continua o discontinua, o demarcación `captafaros`): el número de ojos de gato (entero
+    ≥ 1). En una línea, la línea sigue dando sus metros y su pintura.
+  - Demarcación de tipo `captafaros` (prueba de punta a punta del 2026-11-13): ojos de gato solos, sobre una línea
+    que esta obra no pinta. `captafaros` obligatoria; `lineas` vacía (o 1). Da solo las unidades, sin línea ni
+    pintura.
+  - `suministro` (solo imprimación y riego de adherencia): `sí` o `no`. Con `sí`, el APU del riego ya trae el
+    ligante («riego con suministro»): no se deriva la partida del ligante y la dosis pasa a ser opcional (si se
+    escribe, VR3 sigue midiendo el residual). Vacía o `no`, la capa de siempre: dosis obligatoria y ligante
+    derivado.
   - `transporte` (del tramo: se llena en su primera fila, como `distancia_planta_km`; si se repite en otra fila,
     debe coincidir): cómo mide la obra el transporte de la mezcla. Vacía (o `t·km`), en t·km, la de siempre;
     `banda`, en toneladas, con la distancia como banda en la descripción de la partida («más de 8 km y hasta

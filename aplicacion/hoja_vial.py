@@ -12,7 +12,10 @@ renglones quedan como altas del borrador, que se guarda desde la Hoja.
 - **Llevar otra vez sincroniza** (`sincronizar_renglones`): los renglones «tramo:» se reemplazan
   por la derivación de ahora en su mismo sitio; los demás no se tocan; la cantidad escrita sobre
   una clave que sigue se conserva y la de una que desaparece se descarta.
-- **Partidas sin APU:** el 404 de `hoja_edicion.PartidaFueraDelCatalogo`, con todos los códigos.
+- **Partidas sin APU:** el 404 de `hoja_edicion.PartidaFueraDelCatalogo`, con todos los códigos
+  y, si falta el APU de un ligante o de una línea con
+  captafaros, cómo declarar en los tramos que el APU ya lo trae (`pistas_de_lo_que_falta`; prueba de
+  punta a punta del 2026-11-13, D2). Llevar sigue siendo todo o nada.
 - **Partidas que la Hoja no puede valorar:** `PartidasSinValorar` (409). La Hoja arma el APU de
   cada partida nueva desde el catálogo con la lista de la versión abierta y a la fecha del borrador
   (`hoja_edicion.cambiar_borrador` → `hoja_edicion.completar` → `hoja.completar_composiciones`) y,
@@ -38,6 +41,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from adapters.vial.constantes import PARTIDAS_VIALES
 from adapters.vial.derivacion import derivar_tramos
 from adapters.vial.modelo import Tramo
 from adapters.vial.reglas import ReglasViales
@@ -55,6 +59,7 @@ __all__ = [
     "SinTramos",
     "items_de_tramos",
     "llevar_tramos_a_la_hoja",
+    "pistas_de_lo_que_falta",
     "sincronizar_renglones",
 ]
 
@@ -75,6 +80,36 @@ class PartidasSinValorar(Exception):  # noqa: N818
     """Alguna partida de los tramos está en el catálogo, pero la Hoja no puede armar su APU con la
     lista de la versión y a su fecha: quedaría PENDIENTE (la API responde 409). El mensaje dice
     qué partidas, qué insumos faltan en qué lista, qué rendimiento falta y qué hacer."""
+
+
+_LIGANTES = {PARTIDAS_VIALES[c][0] for c in ("imprimacion_ligante", "riego_adherencia_ligante")}
+_DE_LA_LINEA = {
+    PARTIDAS_VIALES[c][0]
+    for c in ("demarcacion_continua", "demarcacion_discontinua", "pintura_demarcacion")
+}
+PISTA_SUMINISTRO = (
+    "Si el APU del riego ya trae el ligante (riego con suministro), escriba «sí» en la columna "
+    "«suministro» de esa capa de los tramos: el ligante no se deriva."
+)
+PISTA_CAPTAFAROS = (
+    "Si en la vía solo se colocan ojos de gato, sin pintar la línea, declárelos como demarcación "
+    "de tipo «captafaros»: no se derivan la línea ni su pintura."
+)
+
+
+def pistas_de_lo_que_falta(tramos: Sequence[Tramo], faltan: Sequence[str]) -> list[str]:
+    """Cómo declarar en los tramos lo que el APU ya trae, cuando falta el APU de una partida que
+    quizá no hace falta: un ligante (el riego con suministro) o la línea o la pintura de una línea
+    con captafaros (los ojos de gato solos). Prueba de punta a punta del 2026-11-13, D2."""
+    pistas = []
+    if _LIGANTES & set(faltan):
+        pistas.append(PISTA_SUMINISTRO)
+    con_captafaros = any(
+        d.tipo != "captafaros" and d.captafaros is not None for t in tramos for d in t.demarcacion
+    )
+    if con_captafaros and _DE_LA_LINEA & set(faltan):
+        pistas.append(PISTA_CAPTAFAROS)
+    return pistas
 
 
 def items_de_tramos(tramos: Sequence[Tramo]) -> list[ItemComputo]:
@@ -397,7 +432,8 @@ def llevar_tramos_a_la_hoja(
     items = items_de_tramos(tramos)
     faltan = _sin_apu(sesion, items)
     if faltan:
-        raise hoja_edicion.PartidaFueraDelCatalogo(*faltan)
+        pistas = tuple(pistas_de_lo_que_falta(tramos, faltan))
+        raise hoja_edicion.PartidaFueraDelCatalogo(*faltan, pistas=pistas)
     reglas = vial.reglas_viales(sesion, version_id, hoy=hoy)  # VR2: la receta vigente de hoy
 
     vivo, nuevo = elaboracion.borrador_de_la_obra(

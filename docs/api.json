@@ -15251,6 +15251,11 @@
               }
             ],
             "title": "Medicion"
+          },
+          "suministro": {
+            "type": "boolean",
+            "title": "Suministro",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -15336,6 +15341,11 @@
               }
             ],
             "title": "Medicion"
+          },
+          "suministro": {
+            "type": "boolean",
+            "title": "Suministro",
+            "default": false
           }
         },
         "type": "object",
