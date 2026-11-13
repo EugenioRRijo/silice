@@ -589,6 +589,8 @@ def test_la_primera_version_de_la_vivienda_por_el_servicio_sigue_por_dias_sin_av
     guardado = hoja_guardado.guardar(
         base, "ficha", vivo.id, 0, fuente="Medición en sitio", responsable=ANA
     )
-    assert guardado.mensaje.endswith("Quedó registrada su creación, con su fuente y su responsable.")
+    assert guardado.mensaje.endswith(
+        "Quedó registrada su creación, con su fuente y su responsable."
+    )
     abierta = hoja.abrir_version(base, Catalogo(base), OBRA, "001")
     assert [e for e, _ in abierta.borrador.plan] == _dias(58)

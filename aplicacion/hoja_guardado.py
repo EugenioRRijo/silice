@@ -46,12 +46,18 @@ el registro.
 borrador se escriben en esta misma transaccion, antes de la version
 (`hoja_desperdicio.guardar_con_la_version`, sin `commit`); si algo falla no queda ninguna.
 
+2026-11-13 (prueba de punta a punta, D-2): sin plan en el borrador, la primera version lleva el
+plan por rendimientos en la primera unidad que cabe en la matriz (dias, semanas o meses:
+`plan_rendimientos.plan_que_cabe`), calculado aqui antes de `crear_primera_version` (que, sin plan,
+solo lo arma por dias y con mas de 500 periodos no guardaba); si no es por dias, el mensaje lo dice.
+`aplicacion/hoja.py` (congelado) no cambia.
+
 Sin FastAPI ni Streamlit (RM-1).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -62,6 +68,7 @@ from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorVivo, RevDesactualizado
 from aplicacion.hoja_edicion import BorradorYaGuardado, SinListaDeLaObra
 from aplicacion.listas_para_armar import SinListaParaArmar, lista_para_el_proyecto
+from aplicacion.plan_rendimientos import PlanDemasiadoLargo, plan_que_cabe
 from aplicacion.plural import plural
 from core.catalog import Catalogo
 
@@ -248,6 +255,7 @@ def _primera(
             borrador = hoja.con_precios_de_la_lista(Catalogo(sesion), borrador, lista)
         except hoja.ApuSinPreciosDeLaLista as error:
             raise SinListaDeLaObra(str(error)) from None
+        borrador, aviso_del_plan = _con_plan_que_cabe(sesion, borrador, lista)
         hoja_desperdicio.guardar_con_la_version(sesion, vivo, borrador, ahora=_ahora())
         with importaciones.con_la_version(sesion, vivo):  # F4 T10: el registro viaja con la version
             guardada = hoja.crear_primera_version(
@@ -270,5 +278,30 @@ def _primera(
         cambios=guardada.cambios,
         total=total,
         primera=True,
-        mensaje=_mensaje(guardada.codigo, guardada.cambios, total, vivo.proyecto, True),
+        mensaje=" ".join(
+            parte
+            for parte in (
+                _mensaje(guardada.codigo, guardada.cambios, total, vivo.proyecto, True),
+                aviso_del_plan,
+            )
+            if parte
+        ),
     )
+
+
+def _con_plan_que_cabe(
+    sesion: Session, borrador: hoja.Borrador, lista
+) -> tuple[hoja.Borrador, str]:
+    """El borrador de la primera version con su plan y el aviso de la unidad (vacio por dias).
+
+    Con plan (el de «Plan y equilibrio»), tal cual. Sin el, las composiciones se completan como
+    las completaria `crear_primera_version` (la misma lista) para que cada partida tenga su
+    rendimiento, y el plan es el de `plan_que_cabe`. `HojaInvalida` si ni en meses cabe."""
+    if borrador.plan is not None:
+        return borrador, ""
+    borrador = hoja.completar_composiciones(Catalogo(sesion), borrador, lista=lista)
+    try:
+        plan, _, aviso = plan_que_cabe(hoja.items_elaborados(borrador), borrador.composiciones)
+    except PlanDemasiadoLargo as error:
+        raise HojaInvalida(str(error)) from None
+    return replace(borrador, plan=tuple(plan)), aviso
