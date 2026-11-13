@@ -317,6 +317,7 @@ TABLA = {
     ("POST", "/v1/hoja/borradores/{id}/partidas"): EDITAR,  # MP T9; solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/partidas/quitar"): EDITAR,  # MP T9; solo con sesion
     ("POST", "/v1/hoja/llevar"): EDITAR,  # MP T12; solo con sesion
+    ("POST", "/v1/hoja/libro"): EDITAR,  # libro por frentes: el libro auditado; solo con sesion
     ("GET", "/v1/hoja/borradores/{id}/excel"): LEER,  # T10 3e-1 (X1); ademas, solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/plano"): EDITAR,  # T10 3e-2; ademas, solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/plano/unidad"): EDITAR,  # T10 3e-2; ademas, solo con sesion
