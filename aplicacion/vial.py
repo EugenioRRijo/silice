@@ -47,19 +47,22 @@ from contextlib import AbstractContextManager, ExitStack
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from functools import partial
 from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from adapters.hoja_empresa.perfil import PerfilInvalido
+from adapters.hoja_empresa.perfil_apu_por_hoja import cargar_perfil_apu_por_hoja, carpetas_locales
 from adapters.vial.constantes import PARTIDAS_VIALES
 from adapters.vial.derivacion import derivar_tramos
 from adapters.vial.modelo import Capa, Demarcacion, Tramo
-from adapters.vial.reglas import ReglasViales
+from adapters.vial.reglas import LectorDeBanda, ReglasViales
 from adapters.vial.tabular import leer_tramos
 from aplicacion import aprobaciones
-from aplicacion.cifras import texto_de_cifra
+from aplicacion.cifras import leer_banda, texto_de_cifra
 from aplicacion.costo_propio import PREFIJO_DE_MEZCLA, descripcion_de_costo_propio
 from aplicacion.proyectos import resolver_proyecto
 from aplicacion.tablas_vial import (
@@ -70,6 +73,7 @@ from aplicacion.tablas_vial import (
 )
 from core import models
 from core.catalog import Catalogo
+from operacion.config import carpeta_perfiles_libros
 from produccion.receta import Receta, receta_vigente
 
 __all__ = [
@@ -83,6 +87,7 @@ __all__ = [
     "bloqueo_de_version",
     "cantidades_de_tramos",
     "formula_asfalto_de_receta",
+    "lector_de_banda",
     "formulas_de_trabajo",
     "guardado_de_version",
     "heredados_de",
@@ -633,8 +638,27 @@ def reglas_viales(
     tramos = tramos_de_version(sesion, version_id)
     if not tramos:
         return ()
+    lector = lector_de_banda()
     if receta is not None or codigo_ligante is not None:
-        return (ReglasViales(tramos, formula_asfalto_de_receta(receta, codigo_ligante)),)
+        formula = formula_asfalto_de_receta(receta, codigo_ligante)
+        return (ReglasViales(tramos, formula, lector_de_banda=lector),)
     dia = hoy if hoy is not None else date.today()
     formulas, sin_formula = formulas_de_trabajo(sesion, tramos, dia, instalacion)
-    return (ReglasViales(tramos, formulas=formulas, sin_formula=sin_formula),)
+    return (
+        ReglasViales(tramos, formulas=formulas, sin_formula=sin_formula, lector_de_banda=lector),
+    )
+
+
+def lector_de_banda(carpetas: Sequence[Path] | None = None) -> LectorDeBanda | None:
+    """La lectura de la banda de distancia de una descripción que VR4 usa cuando la partida no la
+    declara en su directiva: la del AH9 del libro con un APU por hoja
+    (`aplicacion.cifras.leer_banda`) con el `patron_banda` del perfil `apu_por_hoja` (el local de
+    la instalación si lo hay, o el del paquete; prueba de punta a punta del 2026-11-13, D3).
+    `carpetas` son las de los perfiles locales (por omisión, las de la instalación). `None` si el
+    perfil no se puede leer o no trae patrón: VR4 lo dice (INFO)."""
+    buscadas = carpetas_locales(carpeta_perfiles_libros()) if carpetas is None else carpetas
+    try:
+        patron = cargar_perfil_apu_por_hoja(carpetas=buscadas).patron_banda
+    except PerfilInvalido:
+        return None
+    return None if patron is None else partial(leer_banda, patron)

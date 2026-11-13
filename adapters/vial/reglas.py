@@ -22,7 +22,10 @@ conciliación, Tarea 10).
   por banda (F5 vial, tarea 2; `Tramo.transporte`), compara toneladas (ERROR si no cuadran) y la
   banda que declara la partida (directiva `_tramo_km`, «mínimo-máximo» en km: más del mínimo y
   hasta el máximo): ADVERTENCIA si la distancia del tramo cae fuera (decisión provisional 2 del
-  2026-11-06), INFO si la partida no dice su banda o el tramo no dice su distancia.
+  2026-11-06), INFO si la partida no dice su banda o el tramo no dice su distancia. Sin la
+  directiva, la banda se lee de la descripción del APU de la partida con `lector_de_banda`
+  (prueba de punta a punta del 2026-11-13, D3): `aplicacion/vial.py` le pasa la lectura del AH9
+  del libro con un APU por hoja con el patrón de su perfil; este adaptador no la importa.
 - **VR5** litros de pintura (partida en `l` con origen de una línea) por km de línea de 10 cm fuera
   de su rango; el ancho sale de `especificaciones["_ancho_linea_cm"]` o, sin él, del supuesto. Los
   km pintados son los de la partida de la línea en m; la pintura que `derivar_tramos` pone a cada
@@ -45,7 +48,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 
 from adapters.vial.constantes import (
@@ -66,6 +69,7 @@ from adapters.vial.constantes import (
 from adapters.vial.derivacion import derivar_tramos
 from adapters.vial.modelo import Tramo
 from core.contracts import ItemComputo, Presupuesto
+from core.contracts.presupuesto import PartidaPresupuestada
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
 
 __all__ = [
@@ -73,6 +77,7 @@ __all__ = [
     "ESPEC_ANCHO_LINEA_CM",
     "ESPEC_BANDA_KM",
     "ESPEC_PORCENTAJE_ASFALTO",
+    "LectorDeBanda",
     "ReglasViales",
     "auditar_vial",
 ]
@@ -86,6 +91,12 @@ ESPEC_BANDA_KM = "_tramo_km"
 #: Prefijo del `origen_id` de una cantidad derivada de un tramo («tramo:T1:capa:3»; `derivacion`).
 PREFIJO_TRAMO = "tramo:"
 _KM = re.compile(r"[0-9]+(?:[.,][0-9]+)?")
+#: Lee la banda de la descripción del APU de una partida: (mínimo, máximo) en km, `None` si no la
+#: dice, o `ValueError` con el texto para la persona si la dice con una cifra mal escrita
+#: (`aplicacion.cifras.leer_banda` atada al patrón del perfil).
+LectorDeBanda = Callable[[str], tuple[Decimal, Decimal] | None]
+#: Cómo se escribe la banda en una descripción, para el mensaje de VR4 cuando no la encuentra.
+_FORMA_DE_LA_BANDA = "mayor de 8 km y hasta 10 km"
 
 _CERO = Decimal(0)
 _MIL = Decimal(1000)
@@ -300,10 +311,71 @@ def _banda(texto: str) -> tuple[Decimal, Decimal] | None:
     return (minimo, maximo) if minimo < maximo else None
 
 
+def _banda_de_la_partida(
+    origen: str,
+    codigo: str,
+    partida: PartidaPresupuestada,
+    lector: LectorDeBanda | None,
+) -> tuple[tuple[Decimal, Decimal], str] | Hallazgo:
+    """La banda de la partida y de dónde salió («» de la directiva, « (leída de su descripción)»
+    de la descripción de su APU), o el hallazgo de por qué no se evalúa."""
+    texto = partida.item.especificaciones.get(ESPEC_BANDA_KM)
+    if texto is not None:
+        banda = _banda(texto)
+        if banda is None:
+            return _hallazgo(
+                "VR4",
+                Severidad.ADVERTENCIA,
+                origen,
+                f"{origen}: la banda de distancia {texto!r} de la partida {codigo} no se "
+                "entiende: escríbala «mínimo-máximo» en km, con el mínimo menor que el máximo",
+            )
+        return banda, ""
+    if lector is None:
+        return _hallazgo(
+            "VR4",
+            Severidad.INFO,
+            origen,
+            f"{origen}: transporte por banda no evaluable: la partida {codigo} no declara su "
+            "banda de distancia y esta revisión no lee su descripción",
+        )
+    descripcion = partida.apu.descripcion
+    try:
+        leida = lector(descripcion)
+    except ValueError as error:
+        return _hallazgo(
+            "VR4",
+            Severidad.ADVERTENCIA,
+            origen,
+            f"{origen}: la descripción de la partida {codigo} («{descripcion}») sigue la forma de "
+            f"la banda de distancia, pero {error}",
+        )
+    if leida is None:
+        return _hallazgo(
+            "VR4",
+            Severidad.INFO,
+            origen,
+            f"{origen}: transporte por banda no evaluable: la descripción de la partida {codigo} "
+            f"(«{descripcion}») no dice la banda de distancia como la lee Sílice (por ejemplo "
+            f"«{_FORMA_DE_LA_BANDA}»)",
+        )
+    minimo, maximo = leida
+    if not minimo < maximo:
+        return _hallazgo(
+            "VR4",
+            Severidad.ADVERTENCIA,
+            origen,
+            f"{origen}: la banda de distancia de la descripción de la partida {codigo} "
+            f"(«{descripcion}») no se entiende: el mínimo debe ser menor que el máximo",
+        )
+    return leida, " (leída de su descripción)"
+
+
 def _vr4_banda(
     tramos: Sequence[Tramo],
     derivados: Sequence[ItemComputo],
-    indice: dict[str, list[ItemComputo]],
+    presupuesto: Presupuesto,
+    lector: LectorDeBanda | None,
 ) -> list[Hallazgo]:
     """La banda de cada partida de transporte por banda frente a la distancia de su tramo."""
     codigo = _codigo("transporte_mezcla_banda")
@@ -314,36 +386,15 @@ def _vr4_banda(
             continue
         origen = derivado.origen_id
         distancia = distancias.get(origen.split(":")[1])
-        for item in indice.get(origen, ()):
-            if item.codigo_partida != codigo:
+        for partida in presupuesto.partidas:
+            if (partida.item.origen_id, partida.item.codigo_partida) != (origen, codigo):
                 continue
-            texto = item.especificaciones.get(ESPEC_BANDA_KM)
-            if texto is None:
-                hallazgos.append(
-                    _hallazgo(
-                        "VR4",
-                        Severidad.INFO,
-                        origen,
-                        f"{origen}: transporte por banda no evaluable: la descripción de la "
-                        f"partida {codigo} no dice la banda de distancia",
-                    )
-                )
+            leida = _banda_de_la_partida(origen, codigo, partida, lector)
+            if isinstance(leida, Hallazgo):
+                hallazgos.append(leida)
                 continue
-            banda = _banda(texto)
-            if banda is None:
-                hallazgos.append(
-                    _hallazgo(
-                        "VR4",
-                        Severidad.ADVERTENCIA,
-                        origen,
-                        f"{origen}: la banda de distancia {texto!r} de la partida {codigo} no se "
-                        "entiende: escríbala «mínimo-máximo» en km, con el mínimo menor que el "
-                        "máximo",
-                    )
-                )
-                continue
-            minimo, maximo = banda
-            rango = f"la banda de más de {_n(minimo)} km y hasta {_n(maximo)} km"
+            (minimo, maximo), de_donde = leida
+            rango = f"la banda de más de {_n(minimo)} km y hasta {_n(maximo)} km{de_donde}"
             if distancia is None:
                 hallazgos.append(
                     _hallazgo(
@@ -533,6 +584,7 @@ def auditar_vial(
     formula_asfalto_pct: Decimal | None = None,
     formulas: Mapping[str, Decimal] | None = None,
     sin_formula: Mapping[str, str] | None = None,
+    lector_de_banda: LectorDeBanda | None = None,
 ) -> list[Hallazgo]:
     """Los hallazgos VR1 a VR8 de `presupuesto` frente a `tramos`, en orden de regla y de tramo.
 
@@ -540,7 +592,8 @@ def auditar_vial(
     (5,5 es 5,5 %); `None` si no hay receta, y VR2 no se evalúa. `formulas` da la fórmula de cada
     partida de mezcla por su código (gana a `formula_asfalto_pct`) y `sin_formula`, por código, el
     motivo de que una partida no la tenga: VR2 lo declara (INFO) en cada mezcla que dice su
-    porcentaje.
+    porcentaje. `lector_de_banda` lee la banda de la descripción del APU de una partida de
+    transporte por banda que no la declara en su directiva (VR4); sin él, VR4 no la lee.
     """
     derivados = derivar_tramos(tramos)
     indice = _por_origen(presupuesto)
@@ -574,7 +627,7 @@ def auditar_vial(
             Decimal(TOLERANCIA_TRANSPORTE.valor),
             "transporte por banda",
         ),
-        *_vr4_banda(tramos, derivados, indice),
+        *_vr4_banda(tramos, derivados, presupuesto, lector_de_banda),
         *_vr5(derivados, indice),
         *_vr6(tramos),
         *_vr7(derivados, indice),
@@ -600,8 +653,10 @@ class ReglasViales(ReglaVerificacion):
         *,
         formulas: Mapping[str, Decimal] | None = None,
         sin_formula: Mapping[str, str] | None = None,
+        lector_de_banda: LectorDeBanda | None = None,
     ) -> None:
         self.tramos = tuple(tramos)
+        self.lector_de_banda = lector_de_banda
         self.formula_asfalto_pct = formula_asfalto_pct
         self.formulas = dict(formulas or {})
         self.sin_formula = dict(sin_formula or {})
@@ -613,4 +668,5 @@ class ReglasViales(ReglaVerificacion):
             formula_asfalto_pct=self.formula_asfalto_pct,
             formulas=self.formulas,
             sin_formula=self.sin_formula,
+            lector_de_banda=self.lector_de_banda,
         )

@@ -48,7 +48,6 @@ F5/F7/F8, N5): dónde viven los datos lo decide la instalación.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation, Overflow
@@ -79,7 +78,7 @@ from adapters.hoja_empresa.perfil_apu_por_hoja import (
     carpetas_locales,
 )
 from adapters.vial.constantes import TOLERANCIA_PRECIO
-from aplicacion.cifras import CifraInvalida, cifra_escrita
+from aplicacion.cifras import BandaIlegible, leer_banda
 from aplicacion.regla_desperdicio import TrazaDesperdicio, cantidad_con_desperdicio
 from core.costing.motor import calcular_apu
 from fusion.mapeo import composicion_de_apu_por_hoja
@@ -186,37 +185,27 @@ def _unidades(apu: ApuLeido, perfil: PerfilApuPorHoja) -> list[FilaHallazgo]:
     ]
 
 
-def _es_cifra(texto: str) -> bool:
-    try:
-        cifra_escrita(texto)
-    except CifraInvalida:
-        return False
-    return True
-
-
 def _banda(apu: ApuLeido, perfil: PerfilApuPorHoja) -> list[FilaHallazgo]:
     """AH9: la banda leída de la descripción con el patrón del perfil. Sus cifras se leen con la
     regla del proyecto (`aplicacion.cifras`: coma decimal, punto de miles; arbitraje F5 vial, P9):
     «1.000» es mil, y una cifra que no sigue la regla («1.5») no se adivina."""
     if perfil.patron_banda is None or "descripcion" not in apu.celdas:
         return []
-    hallado = re.search(perfil.patron_banda, apu.titulo, flags=re.IGNORECASE)
-    if hallado is None:
-        return []
-    try:
-        minimo, maximo = (cifra_escrita(hallado[g]) for g in ("minimo", "maximo"))
-    except CifraInvalida:
-        mal = next(hallado[g] for g in ("minimo", "maximo") if not _es_cifra(hallado[g]))
+    try:  # la misma lectura que VR4 de la Hoja (prueba de punta a punta del 2026-11-13)
+        banda = leer_banda(perfil.patron_banda, apu.titulo)
+    except BandaIlegible as error:
         return [
             _hallazgo(
                 "AH9",
                 "INFO",
                 apu.celdas["descripcion"],
                 f"{apu.hoja}: la descripción sigue el patrón de la banda de distancia, pero "
-                f"«{mal}» no es una cifra con coma decimal y punto de miles: Sílice no adivina la "
-                "banda.",
+                f"{error}.",
             )
         ]
+    if banda is None:
+        return []
+    minimo, maximo = banda
     en_t = perfil.unidades.get(apu.unidad, apu.unidad) == "t"
     return [
         _hallazgo(

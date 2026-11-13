@@ -3,7 +3,7 @@
 Antes VR4 solo leía la directiva `_tramo_km`, que Componer no deja declarar, y decía «la descripción
 no dice la banda» aunque la dijera. Ahora, sin directiva, lee la descripción del APU de la partida
 con el patrón del perfil del libro con un APU por hoja y la misma función que su AH9
-(`aplicacion.banda_de_distancia.leer_banda`): una sola lectura. La directiva, si está, sigue
+(`aplicacion.cifras.leer_banda`): una sola lectura. La directiva, si está, sigue
 mandando. El patrón del perfil del repositorio lee «mayor de», «mayores de» y «más de». Decisión
 simulada en `docs/bitacora/2026-11-13-e2e-vial.md` (D3). Datos FICTICIOS.
 
@@ -45,7 +45,7 @@ CON_MILES = r"mayor de (?P<minimo>[0-9.,]+) km y hasta (?P<maximo>[0-9.,]+) km"
 
 def leer_banda(patron: str, texto: str):
     # perezosa: el módulo común es lo que se prueba (en rojo no existía)
-    from aplicacion.banda_de_distancia import leer_banda as leer
+    from aplicacion.cifras import leer_banda as leer
 
     return leer(patron, texto)
 
@@ -125,7 +125,7 @@ def test_el_patron_del_perfil_lee_la_banda_escrita_en_palabras(texto: str, banda
 
 
 def test_una_cifra_mal_escrita_no_se_adivina():
-    from aplicacion.banda_de_distancia import BandaIlegible
+    from aplicacion.cifras import BandaIlegible
 
     with pytest.raises(BandaIlegible) as error:
         leer_banda(CON_MILES, "Transporte, mayor de 1.5 km y hasta 10 km")
@@ -140,10 +140,10 @@ def test_una_cifra_mal_escrita_no_se_adivina():
 
 
 def test_el_ah9_del_libro_usa_la_misma_lectura():
-    from aplicacion import banda_de_distancia
+    from aplicacion import cifras
     from fusion import apu_por_hoja
 
-    assert apu_por_hoja.leer_banda is banda_de_distancia.leer_banda
+    assert apu_por_hoja.leer_banda is cifras.leer_banda
 
 
 # --- VR4 con la descripción -----------------------------------------------------------------------
