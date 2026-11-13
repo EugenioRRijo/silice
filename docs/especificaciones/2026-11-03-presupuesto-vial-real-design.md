@@ -352,6 +352,7 @@ solo-core, nunca mezclado con estas tareas.
 | 4. Variantes de medición | Sí: fresado en m² (con espesor) y colocación de la carpeta en t, cada una con su código (`fresado_area` C-000.000.022, `carpeta_colocacion_masa` C-000.000.023) | `adapters/vial/modelo.py` (`MEDICIONES`), `derivacion.py` (`_VARIANTES`) |
 | 5. Perfiles de libros reales | Fuera del repositorio, en la carpeta de datos de la instalación: `<carpeta de datos>/perfiles_libros/` por omisión, o la carpeta de `SILICE_PERFILES_LIBROS` si está (arbitraje F5 vial, P2, 2026-11-07); el del repositorio se escribe contra un libro ficticio (`tests/fixtures/libro_apu_por_hoja.py`). Ver `docs/manual_tecnico.md`, «Perfiles de libros locales» | `adapters/hoja_empresa/perfil_apu_por_hoja.py` (`carpetas_locales`), `operacion/config.py` (`carpeta_perfiles_libros`, que la API pasa a `fusion/apu_por_hoja.py`) |
 | 6. Céntimos por redondeo por renglón | INFO que los explica | `fusion/apu_por_hoja.py`, AH1 |
+| Desperdicio editado en la Hoja (lo que faltaba del punto 1; 2026-11-13) | La edición del APU de la versión lleva la neta y el porcentaje de cada material y el servidor calcula la cantidad; la traza viaja en el borrador y se escribe al guardar la versión, unida a las vigentes de la partida (opción a; simulación y segunda opinión en [la bitácora](../bitacora/2026-11-13-desperdicio-en-la-hoja.md)). Límite: si Componer vuelve a guardar la partida, la versión deja de mostrar el desglose (nunca uno falso) | `aplicacion/hoja_desperdicio.py`, `aplicacion/hoja_edicion.py` (`editar_apu`, `desperdicios`), `aplicacion/hoja_guardado.py` |
 | Tutor 4. `kgf` en los APU de acero | Se traduce a `kg` en el perfil del importador, declarado (opción C de §8.2, no un alias del núcleo): cada hoja que lo usa lo dice con un AH8 (INFO). Anotado el 2026-11-07 (arbitraje F5 vial, P5): ya estaba construido sin figurar aquí. Si el tutor pide tratarlo como unidad propia, se quita de la tabla y la cantidad queda en `kgf` | `adapters/hoja_empresa/perfiles/apu_por_hoja.json` (`unidades`), o el perfil local de la instalación |
 
 **Decisiones de construcción** (tomadas al construir, prudentes y reversibles):
@@ -375,8 +376,7 @@ solo-core, nunca mezclado con estas tareas.
   leída de la descripción; AH10 dos hojas con el mismo número de renglón (ADVERTENCIA; el presupuesto se enlaza con la
   primera; arbitraje F5 vial, P4, 2026-11-07) (`fusion/apu_por_hoja.py`).
 
-**Lo que falta:** la Hoja todavía no muestra ni edita la neta y el porcentaje del desperdicio (punto 1, «la Hoja edita neta
-y porcentaje, nunca el producto»): Componer sí, y la traza no se muestra si la cantidad cambió por otro camino. Mostrarla en
-la pestaña APU de la Hoja es la tarea siguiente; editarla allí puede exigir tocar `aplicacion/hoja.py`, congelado por el
-experimento de la tesis (re-congelar exige acta y aval de Eugenio).
+**Lo que falta:** nada del punto 1. Desde el 2026-11-13 la pestaña APU de la Hoja muestra y edita la neta y el porcentaje
+(«la Hoja edita neta y porcentaje, nunca el producto»), sin tocar `aplicacion/hoja.py`; la traza sigue sin mostrarse si la
+cantidad cambió por otro camino (fila de arriba).
 
