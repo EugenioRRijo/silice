@@ -621,11 +621,12 @@ def test_humo_cubre_ventana_por_cdp_sin_contaminar_iniciar_silice() -> None:
     assert "TcpListener" in _funcion_del_humo("PuertoLibre")
     # si CDP no responde, deja el diagnóstico: la orden de WebView2 y los puertos reservados
     assert "msedgewebview2" in bloque and "excludedportrange" in bloque
-    # 2.ª corrida: en el runner (administrador) WebView2 arrancó sin `--remote-debugging-port`
-    # pese a la variable; se suma la vía de política por usuario que documenta Microsoft (valor
-    # con el nombre del ejecutable), solo mientras dura el paso y quitada también en el `finally`
-    politica = r"Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments"
-    assert f"$PoliticaCdp = 'HKCU:\\{politica}'" in texto
+    # 2.ª y 3.ª corrida: el runner corre ELEVADO y, desde el runtime 150, WebView2 ignora ahí la
+    # variable `WEBVIEW2_*` y la política de HKCU («Develop secure WebView2 apps», Microsoft); solo
+    # respeta la de máquina (HKLM). Valor con el nombre del ejecutable, solo mientras dura el paso
+    # y quitado también en el `finally`
+    politica = r"SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments"
+    assert f"$PoliticaCdp = 'HKLM:\\{politica}'" in texto
     poner, quitar = _funcion_del_humo("PonerPoliticaCdp"), _funcion_del_humo("QuitarPoliticaCdp")
     assert "$PoliticaCdp" in poner and "'python.exe'" in poner
     assert "Remove-ItemProperty -Path $PoliticaCdp -Name 'python.exe'" in quitar
