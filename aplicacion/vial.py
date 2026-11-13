@@ -617,7 +617,7 @@ def reglas_viales(
     hoy: date | None = None,
     instalacion: Session | None = None,
 ) -> tuple[ReglasViales, ...]:
-    """Las reglas VR1 a VR7 de la versión, para `elaborar(reglas=(*REGLAS, *reglas_viales(…)))` o
+    """Las reglas VR1 a VR8 de la versión, para `elaborar(reglas=(*REGLAS, *reglas_viales(…)))` o
     `reglas_extra` de la Hoja: sus hallazgos entran en la auditoría como los de `Espacio` (regla
     ajena a `REGLAS`, que `hallazgos_externos` vuelve a declarar). Vacío si la versión no tiene
     tramos (propios o heredados).

@@ -1210,6 +1210,7 @@ hallazgo dice su severidad: «Crítico», «Error», «Advertencia» o «Informa
 | VR5 | Los litros de pintura por kilómetro de línea, entre 29 y 44 | Advertencia |
 | VR6 | Solapes entre tramos (error) y huecos entre progresivas (advertencia) | Error o Advertencia |
 | VR7 | Que cada partida sea la que produce esa capa o línea, y en su unidad | Error |
+| VR8 | Que una partida que sale de los tramos no esté también escrita a mano (o traída de otro cómputo): se sumarían las dos. Si es la misma obra, quite el renglón que sobra; si es obra distinta, el aviso no aplica | Advertencia |
 
 Para VR2, Sílice busca la receta vigente de la mezcla y su ligante (sección 10.4). Si dice «no se sabe
 cuál es el ligante», marque «Es el ligante» en la receta.

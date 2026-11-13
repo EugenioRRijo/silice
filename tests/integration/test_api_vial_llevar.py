@@ -323,9 +323,7 @@ def test_el_riego_a_mano_y_el_llevado_de_los_tramos_dan_vr8_en_la_auditoria(ana)
 
     informe = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/auditoria").json()
     viales = [h for h in informe["hallazgos"] if h["regla"].startswith("VR")]
-    assert [(h["regla"], h["origen"]) for h in viales] == [
-        ("VR8", ["tramo:T1:capa:2", "a-mano:1"])
-    ]
+    assert [(h["regla"], h["origen"]) for h in viales] == [("VR8", ["tramo:T1:capa:2", "a-mano:1"])]
     assert "el presupuesto suma 17.520 m2" in viales[0]["descripcion"]
 
 

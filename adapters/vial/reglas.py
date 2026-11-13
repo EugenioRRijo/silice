@@ -1,4 +1,4 @@
-"""Reglas de auditoría de la especialidad vial, VR1 a VR7 (plan vial, Tarea 9).
+"""Reglas de auditoría de la especialidad vial, VR1 a VR8 (plan vial, Tarea 9).
 
 `auditar_vial(tramos, presupuesto, formula_asfalto_pct=...)` compara lo que dice el presupuesto con
 lo que dicen los tramos. Una partida del presupuesto se casa con su capa o su línea por el
@@ -31,10 +31,14 @@ conciliación, Tarea 10).
   que son los de una misma vía. Cita `tramo:<id>` de los dos.
 - **VR7** unidad de la partida incompatible con su capa o su línea, o código de partida que esa
   capa no produce (ERROR).
+- **VR8** una partida que los tramos derivan y que el presupuesto trae a la vez con origen de tramo
+  y con otro origen (a mano, de otro cómputo): se suman las dos (prueba de punta a punta del
+  2026-11-13). ADVERTENCIA, porque puede ser obra distinta (un bacheo fuera de los tramos); el
+  mensaje da las dos cantidades y sus orígenes.
 
 Severidad: VR1, VR4, VR6 (solape) y VR7 son aritmética o coherencia interna: ERROR. VR2, VR3, VR5 y
 el hueco de VR6 dependen de rangos «a cotejar» o de un tramo que puede dejarse sin intervenir:
-ADVERTENCIA. Los mensajes llevan coma decimal y punto de miles.
+ADVERTENCIA; también VR8. Los mensajes llevan coma decimal y punto de miles.
 """
 
 from __future__ import annotations
@@ -79,6 +83,8 @@ ESPEC_PORCENTAJE_ASFALTO = "_porcentaje_asfalto"
 ESPEC_ANCHO_LINEA_CM = "_ancho_linea_cm"
 #: La banda de distancia de una partida de transporte por banda, «mínimo-máximo» en km (F5 vial).
 ESPEC_BANDA_KM = "_tramo_km"
+#: Prefijo del `origen_id` de una cantidad derivada de un tramo («tramo:T1:capa:3»; `derivacion`).
+PREFIJO_TRAMO = "tramo:"
 _KM = re.compile(r"[0-9]+(?:[.,][0-9]+)?")
 
 _CERO = Decimal(0)
@@ -477,6 +483,49 @@ def _vr7(derivados: Sequence[ItemComputo], indice: dict[str, list[ItemComputo]])
     return hallazgos
 
 
+def _vr8(derivados: Sequence[ItemComputo], presupuesto: Presupuesto) -> list[Hallazgo]:
+    """Una partida que los tramos derivan y que el presupuesto trae a la vez con origen de tramo y
+    con otro origen (a mano, de otro cómputo): se suman las dos (prueba de punta a punta del
+    2026-11-13, D1). Un aviso por código, en el orden de los derivados; no se evalúa si la
+    partida solo viene de los tramos o solo de otro origen."""
+    codigos = dict.fromkeys(d.codigo_partida for d in derivados)
+    hallazgos = []
+    for codigo in codigos:
+        items = [p.item for p in presupuesto.partidas if p.item.codigo_partida == codigo]
+        de_tramos = [i for i in items if i.origen_id.startswith(PREFIJO_TRAMO)]
+        otros = [i for i in items if not i.origen_id.startswith(PREFIJO_TRAMO)]
+        if not de_tramos or not otros:
+            continue
+        clave = next(c for c, (cod, _, _) in PARTIDAS_VIALES.items() if cod == codigo)
+        _, descripcion, unidad = PARTIDAS_VIALES[clave]
+        en_tramos = sum((i.cantidad for i in de_tramos), _CERO)
+        unidades = {i.unidad for i in otros}
+        if len(unidades) == 1:
+            (de_otros,) = unidades
+            escrito = f"{_n(sum((i.cantidad for i in otros), _CERO))} {de_otros}"
+        else:
+            escrito = ", ".join(f"{_n(i.cantidad)} {i.unidad}" for i in otros)
+        suma = (
+            f"; el presupuesto suma {_n(en_tramos + sum((i.cantidad for i in otros), _CERO))} "
+            f"{unidad}"
+            if unidades == {unidad} and all(i.unidad == unidad for i in de_tramos)
+            else ""
+        )
+        origenes = (*dict.fromkeys(i.origen_id for i in de_tramos), *(i.origen_id for i in otros))
+        hallazgos.append(
+            _hallazgo(
+                "VR8",
+                Severidad.ADVERTENCIA,
+                origenes,
+                f"{codigo} ({descripcion}): {_n(en_tramos)} {unidad} vienen de los tramos "
+                f"({', '.join(dict.fromkeys(i.origen_id for i in de_tramos))}) y {escrito} de otro "
+                f"renglón ({', '.join(i.origen_id for i in otros)}){suma}. Si es la misma obra, "
+                "quite el renglón que sobra; si no, este aviso no aplica.",
+            )
+        )
+    return hallazgos
+
+
 def auditar_vial(
     tramos: Sequence[Tramo],
     presupuesto: Presupuesto,
@@ -485,7 +534,7 @@ def auditar_vial(
     formulas: Mapping[str, Decimal] | None = None,
     sin_formula: Mapping[str, str] | None = None,
 ) -> list[Hallazgo]:
-    """Los hallazgos VR1 a VR7 de `presupuesto` frente a `tramos`, en orden de regla y de tramo.
+    """Los hallazgos VR1 a VR8 de `presupuesto` frente a `tramos`, en orden de regla y de tramo.
 
     `formula_asfalto_pct` es el porcentaje de asfalto de la fórmula de trabajo, en puntos
     (5,5 es 5,5 %); `None` si no hay receta, y VR2 no se evalúa. `formulas` da la fórmula de cada
@@ -529,13 +578,14 @@ def auditar_vial(
         *_vr5(derivados, indice),
         *_vr6(tramos),
         *_vr7(derivados, indice),
+        *_vr8(derivados, presupuesto),
     ]
 
 
 class ReglasViales(ReglaVerificacion):
-    """VR1 a VR7 como regla de la auditoría: `elaborar(reglas=(*REGLAS, ReglasViales(...)))`.
+    """VR1 a VR8 como regla de la auditoría: `elaborar(reglas=(*REGLAS, ReglasViales(...)))`.
 
-    Sus hallazgos llevan `regla` «VR1»…«VR7», que no está entre las de `REGLAS`: al recargar o
+    Sus hallazgos llevan `regla` «VR1»…«VR8», que no está entre las de `REGLAS`: al recargar o
     simular, `hallazgos_externos` los distingue y los vuelve a declarar (SF-E1), como a los de
     `Espacio`.
     """
