@@ -155,11 +155,14 @@ def test_vr4_por_banda_lee_la_coma_decimal():
 
 
 def test_vr4_por_banda_info_si_la_partida_no_dice_su_banda():
+    # prueba de punta a punta del 2026-11-13, D3: sin lector de la descripción el mensaje ya no
+    # dice que la descripción «no dice la banda» (la descripción dice «mayor de 8 km y hasta 10
+    # km»); con lector, `test_vial_banda_descripcion.py`
     assert _vr4(_tramo(), _transporte(banda=None)) == [
         (
             Severidad.INFO,
-            f"tramo:B1:capa:1: transporte por banda no evaluable: la descripción de la partida "
-            f"{BANDA} no dice la banda de distancia",
+            f"tramo:B1:capa:1: transporte por banda no evaluable: la partida {BANDA} no declara "
+            "su banda de distancia y esta revisión no lee su descripción",
         )
     ]
 
