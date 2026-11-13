@@ -8363,6 +8363,108 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/vistas/frentes": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Vista Frentes",
+        "description": "El presupuesto agrupado por frente, con el cálculo del `rev` de ahora.",
+        "operationId": "vista_frentes_v1_hoja_borradores__id__vistas_frentes_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaFrentesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/frentes": {
+      "put": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Editar Frentes",
+        "description": "Pone el frente de los renglones enviados y devuelve los frentes recalculados.",
+        "operationId": "editar_frentes_v1_hoja_borradores__id__frentes_put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionFrentes"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionFrentesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores/{id}/excel": {
       "get": {
         "tags": [
@@ -18346,6 +18448,51 @@
         "title": "EdicionEspacioRespuesta",
         "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del espacio (como R5)."
       },
+      "EdicionFrentes": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "filas": {
+            "items": {
+              "$ref": "#/components/schemas/FilaDeFrente"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Filas"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "filas"
+        ],
+        "title": "EdicionFrentes"
+      },
+      "EdicionFrentesRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "frentes": {
+            "$ref": "#/components/schemas/VistaFrentesRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen",
+          "frentes"
+        ],
+        "title": "EdicionFrentesRespuesta"
+      },
       "EdicionParametros": {
         "properties": {
           "rev": {
@@ -19891,6 +20038,28 @@
         ],
         "title": "FilaDeCantidad"
       },
+      "FilaDeFrente": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Clave"
+          },
+          "frente": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Frente",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "clave"
+        ],
+        "title": "FilaDeFrente"
+      },
       "FilaDePlanCuerpo": {
         "properties": {
           "partida": {
@@ -20361,6 +20530,41 @@
           "precio"
         ],
         "title": "FilaSimuladaRespuesta"
+      },
+      "FrenteRespuesta": {
+        "properties": {
+          "frente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frente"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones"
+          },
+          "pendientes": {
+            "type": "integer",
+            "title": "Pendientes"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "frente",
+          "renglones",
+          "pendientes",
+          "total"
+        ],
+        "title": "FrenteRespuesta",
+        "description": "Un frente: su nombre (`null`: los renglones sin frente), sus renglones, los pendientes (sin\nAPU, no suman) y su subtotal."
       },
       "FusionDelPlano": {
         "properties": {
@@ -29441,6 +29645,36 @@
           "vacio_mensaje"
         ],
         "title": "VistaEspacioRespuesta"
+      },
+      "VistaFrentesRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "frentes": {
+            "items": {
+              "$ref": "#/components/schemas/FrenteRespuesta"
+            },
+            "type": "array",
+            "title": "Frentes"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "con_frentes": {
+            "type": "boolean",
+            "title": "Con Frentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "frentes",
+          "total",
+          "con_frentes"
+        ],
+        "title": "VistaFrentesRespuesta"
       },
       "VistaParametrosRespuesta": {
         "properties": {
