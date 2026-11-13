@@ -7,6 +7,15 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **V4, prueba de humo de la ventana en la CI de Windows** (`instalador/humo.ps1` paso 6b, `instalador/navegador.py --cdp`;
+  `docs/bitacora/2026-11-06-ventana-v0.md` §3.3 a §3.5): la humo abre la ventana de Sílice (WebView2) y la maneja por CDP
+  con Playwright: ninguna petición fuera de 127.0.0.1, primer administrador, respaldo bajado como `.zip` desde la ventana,
+  título y cierre limpio sin escribir en {app}. Como corre elevada, el puerto lo abre una política HKLM que se crea solo
+  si falta y se devuelve como estaba; el muestreo de conexiones mira también los `msedgewebview2.exe` de la ventana; el
+  instalador de WebView2 de la CI se ejecuta solo con firma Authenticode válida de Microsoft.
+- **Aviso del puerto de depuración por política** (`operacion/ventana.py` `fuentes_puerto_depuracion`, `lanzador.py`):
+  el lanzador avisa si la variable de WebView2 o una política HKLM/HKCU (`AdditionalBrowserArguments`, valores AUMID,
+  ejecutable y `*`) piden `--remote-debugging`, y nombra cada fuente.
 - **F7 Ayuda** (`docs/planes/PLAN_TANDA_DETALLES.md`, Fase 2; RF-160, RF-185 a RF-189 y RNF-30): «¿Qué es esto?» en cada
   pantalla de la obra, de las herramientas y de Pendientes (`paginas/ayuda/AyudaDeLaPantalla.tsx`, con `QueEsEsto`);
   en la Cuenta › Ayuda, cuatro guías por tarea, un glosario de 29 términos y «Empieza aquí», enlazables con `?tema=`; la
@@ -182,6 +191,18 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- **Topes del lector en todas las subidas de .xlsx** (2026-11-12; `docs/bitacora/2026-11-12-topes-replica-listas.md` y
+  `2026-11-12-decisiones-topes-simulacion.md`): la réplica del visor también en hojas sin fórmulas (cuentan las
+  combinadas); listas de precios, presupuestos de terceros, Excel externo, valuaciones e índices del BCV pasan por
+  `lector.comprobar_topes_del_libro` antes del lector del núcleo (que no cambia). Las valuaciones pasan además por la
+  guardia: antes, una bomba de cadenas compartidas colgaba la importación más de 120 s y un .xlsx con macros entraba. Las
+  filas de hueco cuentan para el tope del libro (mil hojas con A20000: 3 s en vez de 12 s). El rechazo por tope de una
+  lista da el aviso del lector, sin «no se puede leer».
+- **Paso 7 de la humo**: exige el juego de respaldo nuevo de la migración, no cualquiera.
+- **Pruebas intermitentes** de `Retomar`, `AutocompletadoDeInsumos` y `Edicion` (vitest): esperan el efecto en vez de
+  afirmarlo al instante (`docs/bitacora/2026-11-12-pruebas-intermitentes.md`).
+- **Metas en PowerShell**: todas las `scripts/meta_*.py` y `fusion_verificar.py` imprimen en UTF-8 aunque la consola sea
+  cp1252 (`meta_alpha.imprimir_salida`; auditoría de Antigravity, fila 4).
 - **Libros con celdas lejanas** (ESTADO §5.3, preexistente desde 1.5; árbitro xhigh 2026-11-07): la auditoría del
   libro de la empresa (`adapters/hoja_empresa/lector.py`) y la réplica del visor (`visual.py`, hojas con fórmulas)
   recorrían un millón de filas si una celda en A1048576 o en XFD no salía en la `<dimension>`: tardaban minutos. Ahora los

@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-11-07 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
+**Actualizado:** 2026-11-12 · lo mantiene el orquestador (Claude) al cerrar cada fase o al fusionar un PR.
 
 Esta página es la **única fuente del estado actual**. Los planes de la raíz y de [planes/](planes/) y
 la [bitácora](bitacora/) cuentan cómo se llegó aquí; si dicen otra cosa, manda esta página. Las cifras
@@ -30,6 +30,7 @@ instalador con huella SHA-256 firmada.
 | `feature/tanda-detalles` | Tanda de detalles D1–D17 (§3), sobre F6 y el autocompletado unidos | Aprobada (rondas 2 y 3 del árbitro); sin PR hasta que se fusionen #106 y #107 |
 | `feature/integracion-fases` | F7 Ayuda, F8 Cierre, F5 vial y F5 ventana, sobre la tanda (§3) | Construidas en paralelo el 2026-11-06, una por árbol; espera el árbitro único y la prueba de Eugenio |
 | `feature/lector-topes` | Topes de la guardia en el lector del libro conocido y en la réplica del visor (§5.3), sobre la integración | Árbitro xhigh: aprobado con condiciones, ya corregidas ([acta](bitacora/arbitrajes/lector-topes-claude-xhigh.md)); sin PR, como la integración |
+| `feature/tanda-2026-11-12` | V4 (humo de la ventana en la CI de Windows), topes del lector en todas las subidas de .xlsx, aviso del puerto de depuración por política, pruebas intermitentes y metas en UTF-8, sobre `feature/lector-topes` | Árbitro xhigh: aprobado con cambios, ya corregidos; humo verde en windows-2025 (corrida 43358266674); segunda opinión de Gemini (Hydrogen xhigh y Argon) en curso; sin PR, como la integración |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor. Ya tiene `main` unido y el experimento recongelado con acta (`docs/bitacora/2026-11-04-recongelado-experimento.md` en su rama) |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -64,8 +65,8 @@ mensajes: el experimento se re-congeló con acta y autorización de Eugenio
 redirecciones viejas retiradas, guion del recorrido rehecho, pasada en navegador ([bitácora](bitacora/2026-11-06-f8-cierre.md)),
 front de 14,45 MB a 10,02 MB y «esta carpeta» en los mensajes. F5 vial: tareas 1 a 6 de su diseño (RF-170 a RF-178),
 salvo mostrar el desperdicio en la Hoja (`aplicacion/hoja.py` está congelado). F5 ventana: V0 a V3 (RF-180 a RF-184;
-[V0](bitacora/2026-11-06-ventana-v0.md)); V4 (humo en la CI) y V5 (prueba en el equipo de Eugenio y en el de la empresa)
-quedan pendientes. **Las decisiones de F5 son provisionales**: recomendaciones del orquestador a las preguntas de sus
+[V0](bitacora/2026-11-06-ventana-v0.md)); V4 (humo en la CI) **hecha el 2026-11-12** (§3.3 a §3.5 de esa bitácora) y V5
+(prueba en el equipo de Eugenio y en el de la empresa, con el diálogo «Guardar como») pendiente. **Las decisiones de F5 son provisionales**: recomendaciones del orquestador a las preguntas de sus
 diseños, anotadas en cada especificación, que Eugenio debe ratificar; la de guardar el perfil de la ventana en la
 carpeta de datos la decidió Eugenio el 2026-11-07.
 
@@ -76,8 +77,9 @@ revisión, con 2 (el xlsx hostil por celdas reales lejanas y pruebas omitidas en
 ([r3](bitacora/arbitrajes/fases-f5-f7-f8-claude-xhigh-r3.md)) aprobó todo salvo un MAYOR de minutos (una prueba nueva
 violaba INV-052), corregido después junto con sus cuatro MENOR; todo con prueba en rojo primero; la pasada en navegador de la rama integrada (864 mediciones) no dejó defectos abiertos. El aviso de solo
 lectura sale con tildes por `aplicacion/hoja_guardado.py`, la ruta del producto; el texto sin tildes de `hoja.py`
-(congelado) no lo alcanza ningún llamador. Pruebas intermitentes con la máquina cargada (pasan solas):
-`Retomar.test.tsx` y `AutocompletadoDeInsumos.test.tsx`.
+(congelado) no lo alcanza ningún llamador. Las pruebas intermitentes con la máquina cargada (`Retomar`,
+`AutocompletadoDeInsumos` y `Edicion`) se corrigieron el 2026-11-12
+([bitácora](bitacora/2026-11-12-pruebas-intermitentes.md)).
 
 ## 4. Lo que espera a Eugenio
 
@@ -97,13 +99,15 @@ lectura sale con tildes por `aplicacion/hoja_guardado.py`, la ruta del producto;
    (2026-11-03).md» de su Escritorio, sección «No tocados».
 7. Negar en el IDE de Antigravity la lectura de `docs/auditoria` y `data/confidencial` (en su línea de comandos ya está).
 8. Revisar unas carpetas vacías que un agente dejó en `C:\c\Users\...`.
-10. Tres decisiones que dejó el árbitro de los topes del lector
-   ([acta](bitacora/arbitrajes/lector-topes-claude-xhigh.md)): (a) la réplica del visor acepta una celda lejana en una
-   hoja **sin fórmulas** (la interfaz no lo muestra, porque pide la auditoría a la vez y descarta las dos); se puede
-   rechazar también ahí con `max_row`/`max_column`, que no cuestan nada; (b) `core/catalog/precios.py` (`leer_tabla`,
-   listas de precios y presupuestos subidos) recorre sin tope: tocarlo exige expediente del núcleo, o se acota antes en
-   `api/rutas/listas.py` (`comprobar_libro_legible`) sin tocar `core/`; (c) pasar una vez, en local, los libros reales
-   por la auditoría para confirmar que ninguno tiene una hoja de más de 100 columnas.
+10. Topes del lector (2026-11-12): las tres decisiones del árbitro anterior están **resueltas**: (a) y (b) con código
+   (`feature/tanda-2026-11-12`) y (c) en local: los libros reales pasan los topes y la réplica, muy lejos del límite. Las cuatro decisiones de
+   esa rama se **simularon** y quedan como están
+   ([acta](bitacora/2026-11-12-decisiones-topes-simulacion.md)): las combinadas cuentan; las valuaciones pasan por la
+   guardia (el .xlsm se rechaza como en toda subida); se recorren todas las hojas; 20.000 filas por hoja también en las
+   listas. Eugenio puede revertir cualquiera. Quedan por decidir: (d) la báscula no acota las columnas de cada fila
+   (`produccion/conectores/bascula.py`; acotarlas con `max_col` cambia lo que se ve de un reporte ancho); (e) el aviso
+   del puerto de depuración **avisa pero no impide** abrir la ventana (podría abrir el navegador en su lugar); (f) el
+   firmante del instalador de WebView2 en la CI se compara con «Microsoft» y no con `O=Microsoft Corporation`.
 9. Tesis: aval del tutor para el PR #100, mediciones con personas (Med) y la respuesta de la Dirección de Investigación.
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
@@ -114,12 +118,13 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
 1. **Tanda de detalles**: aprobada (§3); falta la prueba de Eugenio en el navegador. Los mensajes «no existe en este
    caso» ya dicen «esta carpeta» (F8 C5; guardia `tests/unit/test_mensajes_sin_caso.py`).
 2. **Autocompletado**: completo (PR #107).
-3. **Libros con celdas lejanas: hecho** (2026-11-07, rama `feature/lector-topes`). El lector del libro conocido, la
-   réplica del visor y el lector de un APU por hoja recorren cada hoja con `lector.filas_acotadas`; un libro hostil se
-   rechaza en décimas de segundo con 422. Queda lo que el árbitro dejó para decidir (§4, punto 10).
+3. **Libros con celdas lejanas: hecho** (2026-11-07, rama `feature/lector-topes`; 2026-11-12, `feature/tanda-2026-11-12`).
+   El lector del libro conocido, la réplica del visor (con fórmulas o sin ellas), el lector de un APU por hoja y, antes
+   del núcleo, las listas, los presupuestos de terceros, el Excel externo, las valuaciones y los índices del BCV pasan por
+   los topes del lector; un libro hostil se rechaza en décimas de segundo con 422. Queda la báscula (§4, punto 10 d).
 4. **F7, F8 y F5**: construidas y corregidas tras el árbitro único (§3); faltan la prueba de Eugenio, ratificar las
    decisiones provisionales de F5, mostrar el desperdicio en la Hoja y poner tildes a dos avisos de `aplicacion/hoja.py` y
-   `composicion.py` (los dos exigen re-congelar el experimento con acta), V4 (humo de la ventana en la CI de Windows) y V5,
+   `composicion.py` (los dos exigen re-congelar el experimento con acta), V5 (V4 hecha el 2026-11-12),
    y que Eugenio confirme el texto de la licencia del SDK de WebView2 copiado de NuGet (`docs/licencias_webview2/`), y que pruebe una vez, en local, el libro vial real con el perfil de un APU por hoja (una celda
    con solo formato fuera de 20.000 × 100 rechaza el libro).
 
