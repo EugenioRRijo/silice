@@ -7,6 +7,38 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- **Prueba de punta a punta, línea vial** (2026-11-13; `docs/bitacora/2026-11-13-e2e-vial.md`, D1 a D3; RF-190 a RF-192;
+  decisiones provisionales, por ratificar): **VR8** (ADVERTENCIA) avisa cuando una partida que derivan los tramos llega
+  también de otro renglón (escrita a mano o traída de otro cómputo): dice la cantidad de cada origen y la suma, y no suma
+  si las unidades no son las mismas (`adapters/vial/reglas.py`, `_vr8`). El tramo declara **`suministro`** en la
+  imprimación o el riego cuyo APU ya trae el ligante (no se deriva el ligante y la dosis es opcional; columna opcional del
+  CSV, y un CSV o un tramo guardado de antes se leen igual) y la demarcación de tipo **`captafaros`** (ojos de gato solos:
+  solo las unidades, sin línea ni pintura); el 404 de llevar dice cómo declararlo (`hoja_vial.pistas_de_lo_que_falta`) y
+  llevar sigue siendo todo o nada. **VR4 lee la banda de distancia de la descripción del APU** cuando el renglón no la
+  declara, con la misma lectura que el AH9 (`leer_banda` pasó a `aplicacion/cifras.py`; el patrón del perfil
+  `apu_por_hoja` lee también «mayores de» y «más de»); la directiva del renglón sigue mandando y el mensaje dice de dónde
+  salió la banda.
+- **Prueba de punta a punta, línea front: elegir el perfil del libro con un APU por hoja y AH11** (2026-11-13;
+  `docs/bitacora/2026-11-13-e2e-front.md` §1, E2E-2, decisiones D1 y D2; RF-177 y RF-178 enmendados):
+  `GET /v1/libros/perfiles-apu-por-hoja` lista los perfiles del paquete y de la instalación con la hoja del presupuesto
+  que lee cada uno (uno local mal escrito sale con su motivo y sin rutas); «Auditar un libro con un APU por hoja» tiene el
+  selector «Perfil del libro» y el informe dice la hoja leída. **AH11** (ADVERTENCIA) avisa que la hoja del presupuesto
+  parece de otra obra cuando, de dos o más renglones enlazados con cantidad en los dos lados, menos de la mitad tienen la
+  de su APU.
+- **Prueba de punta a punta, línea precios: la lista para armar desde la lista de la empresa** (2026-11-13;
+  `docs/bitacora/2026-11-13-e2e-precios.md` §2, D-7; RF-194): `POST /v1/carpeta/lista-para-armar` acepta
+  `{desde: "empresa", lista_id}` y copia la lista de la empresa tal cual, en su moneda y sin tasa del BCV (409 si está en
+  otra moneda que la carpeta o no es de empresa); `GET /v1/carpeta` trae `empresa`. Componer la ofrece en «Sin lista de
+  precios para armar» («Usar la lista de la empresa «…»») y «Precios de la empresa», al crear la lista, «Usarla como lista
+  para armar», solo a quien tiene `editar_hoja` (árbitro xhigh, ronda 2, M4); a quien no, le dice que la crea quien arma,
+  desde Componer.
+- **Revisar el archivo de la lista de la empresa y dar de alta los insumos nuevos** (2026-11-13; misma bitácora §3, D-8
+  y D-11; RF-195): `POST /v1/precios-empresa/listas/revision` revisa el archivo sin escribir: cuántas filas reconoce el
+  catálogo, la tabla «Insumos nuevos del archivo» (tipo y unidad como los dice la pantalla, sin las claves del servidor;
+  ronda 2, M5) y el aviso de cada fila que el catálogo tiene con otra unidad. Los nuevos se dan de alta solo si se marca
+  «Dar de alta en el catálogo los insumos nuevos al crear la lista» (`dar_de_alta`, falso por omisión); los de otra unidad,
+  nunca; dos filas del mismo insumo nuevo con precios distintos dan 422 y no se escribe nada. Una fila sin fecha o sin
+  fuente toma las de la lista.
 - **El desperdicio en la Hoja** (2026-11-13; diseño vial real §13 y `docs/bitacora/2026-11-13-desperdicio-en-la-hoja.md`,
   decisión provisional): la pestaña APU edita en Materiales la neta y «Desperdicio (%)», el servidor calcula la cantidad
   y la muestra en «Cantidad con desperdicio»; la traza vive en el borrador y se escribe con la versión, unida a las
@@ -197,6 +229,32 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - **Deuda BLOQUEANTE del retiro de Streamlit:** una instalación nueva (sin cuentas) no puede crear su primer administrador desde la pantalla; el flujo de «primera vez» (emitir el código de instalación y reclamarlo) lo daba `ui/acceso.py` y React aún no lo tiene. Pendiente de Eugenio; no se debe empaquetar ni entregar el instalador hasta tenerlo (`docs/bitacora/2026-10-21-retiro-streamlit-cierre.md` §8).
 
 ### Corregido
+- **La primera versión de una obra larga se guarda** (2026-11-13; `docs/bitacora/2026-11-13-e2e-precios.md` §1, D-2;
+  RF-193; provisional, por ratificar): sin plan elegido, el plan por rendimientos se arma en la primera unidad que cabe en
+  la matriz de 500 períodos (días, semanas de 5 días hábiles o meses de 20) y el mensaje de guardado lo dice; si ni en
+  meses cabe, 422 con la salida en «Plan y equilibrio» (`aplicacion/plan_rendimientos.plan_que_cabe`,
+  `hoja_guardado._con_plan_que_cabe`; `aplicacion/hoja.py`, congelado, no cambia). Una obra que cabe por días guarda el
+  plan de siempre.
+- **Renglones repetidos en el envío a aprobación** (2026-11-13; `docs/bitacora/2026-11-13-e2e-front.md` §1, E2E-1 y
+  E2E-3a): cada fila se identifica por su posición y no por el código de la partida, así que dos renglones de la misma
+  partida muestran cada uno su cantidad y su total; la cantidad sale sin ceros de más (`cantidadEsVe`, la regla que ya
+  usaba Existencias).
+- **Textos de la prueba de punta a punta** (2026-11-13; misma bitácora §3, E2E-3b a E2E-3f, decisión D3): «solo hay 1 mes
+  completo» en singular (Riesgo); el aviso de Índices sin jerga; la columna «Motivo» de Versiones dice el tipo y la fuente
+  escrita («Edición: …»; `GET /v1/hoja/versiones` trae `fuente`) y «Recuperación» con tilde (ronda 2, M6); la cabecera de
+  la carpeta vuelve a leer la carpeta al crear la lista para armar; el «Estado de la partida» no repite el mismo aviso una
+  vez por renglón.
+- **Componer** (2026-11-13; misma bitácora, E2E-3g y E2E-3h, decisión D4): la lista de sugerencias de una celda se abre
+  sobre el campo si abajo no cabe y su alto no pasa del sitio que queda; elegir una partida vial pone su descripción y su
+  unidad donde estén vacías, sin pisar lo tecleado.
+- **Los precios convertidos con 27 decimales** (2026-11-13; `docs/bitacora/2026-11-13-e2e-precios.md` §3.1): la
+  sugerencia del autocompletado y el diálogo «Precios distintos a los de la lista» los leen con dos decimales y coma; la
+  celda sigue recibiendo el exacto, así que guardar sin tocarla no crea una variante del insumo.
+- **Ciclo de importación en `aplicacion/`** (2026-11-13; encontrado por la línea vial, `2026-11-13-e2e-vial.md`): importar
+  `aplicacion.hoja_vial` como primer módulo fallaba por `hoja_vial` → `elaboracion` → `hoja_edicion` → `hoja_vista` →
+  `hoja_vial`. `PREFIJO_TRAMO` vive ahora en `aplicacion/hoja_partidas.py` y `hoja_vista` ya no importa `hoja_vial`;
+  `tests/unit/test_aplicacion_sin_ciclos.py` importa, en un proceso aparte, cada módulo de `aplicacion/` como el primero
+  (con `aplicacion` descargada de `sys.modules` antes de cada uno).
 - **Libro con un APU por hoja, probado en local con el libro vial real** (2026-11-13;
   `docs/bitacora/2026-11-13-libro-vial-real-local.md`, sin datos del libro): el porcentaje del pie escrito a la izquierda
   del rótulo se tomaba por el monto (AH1 falso en cada hoja) y el valor en caché de una fórmula llegaba con ruido binario

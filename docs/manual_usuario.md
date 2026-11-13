@@ -564,7 +564,11 @@ obras.».
 Al guardar, el panel se cierra y el diálogo «Agregar partida» vuelve con la partida nueva elegida.
 
 Para guardar hace falta que la carpeta tenga su lista de precios para armar. Si no la tiene, el panel lo
-avisa en «Sin lista de precios para armar» y ofrece «Crear la lista a partir de MaPreX».
+avisa en «Sin lista de precios para armar» y ofrece «Crear la lista a partir de MaPreX». Si la empresa ya tiene
+una lista de precios en la moneda de la carpeta (sección 9.2), ofrece primero «Usar la lista de la empresa «…»», con
+el nombre de esa lista: la copia tal cual, en su moneda, y no necesita tasa del BCV. Es la salida cuando la carpeta
+está en USD y no hay una tasa del BCV de los últimos 7 días para convertir MaPreX. Creada la lista, el panel dice
+«Lista para armar creada: …» y la cabecera de la obra la muestra.
 
 Cuidado: si cierra el panel sin guardar, lo compuesto se pierde sin preguntar.
 
@@ -703,6 +707,14 @@ Cuando el borrador tiene cambios, la franja dice «Siguiente paso: Hay 3 cambios
 5. Pulse «Guardar versión».
 
 Verá «Versión guardada» y, por ejemplo, «Se guardó la versión V-005 con 3 cambios registrados.».
+
+**La primera versión de una obra larga.** Al guardar la primera versión, Sílice arma el plan de trabajo desde los
+rendimientos. El plan admite hasta 500 períodos: si por días no cabe, lo arma por semanas (de 5 días hábiles) y, si
+tampoco, por meses (de 20 días hábiles), y el mensaje de guardado lo dice, por ejemplo «El plan por días tendría 700
+períodos y la matriz admite 500: se armó por semanas (140 períodos). Puede rehacerlo con cuadrillas en «Plan y
+equilibrio».». La versión se guarda igual; si quiere el plan en otra unidad o con más cuadrillas, rehágalo en «Plan y
+equilibrio». Si ni en meses cabe, no se guarda y Sílice le pide crear el plan en «Plan y equilibrio», asignar más
+cuadrillas a las partidas largas y volver a guardar.
 
 Si alguien guardó otra versión mientras usted trabajaba, Sílice avisa «Hay una versión más nueva» y le deja
 elegir entre «Guardar de todos modos» y «Abrir la versión …».
@@ -1073,7 +1085,26 @@ lista base con sus precios encima, cada uno con su fecha y su fuente.
 
 El archivo de precios lleva las columnas `tipo`, `insumo`, `unidad` y `precio` (y, si quiere, `fecha`,
 `fuente`, `referencia`, `moneda`, `tasa`, `fecha_tasa` y `fuente_tasa`). En este archivo el decimal va con
-**punto**.
+**punto**. Una fila sin `fecha` o sin `fuente` toma la «Fecha de la lista» y la «Fuente de la lista» del formulario.
+
+**Al soltar el archivo, Sílice lo revisa sin guardar nada** («Revisando el archivo...») y dice:
+
+- cuántas filas reconoce el catálogo, por ejemplo «El catálogo reconoce 2 filas del archivo.»;
+- si trae insumos que el catálogo no tiene, la tabla «Insumos nuevos del archivo» (insumo, tipo, unidad y precio)
+  y la casilla «Dar de alta en el catálogo los insumos nuevos al crear la lista». Sin marcarla, esos insumos no
+  entran a la lista; marcada, se dan de alta al pulsar «Crear la lista de la empresa» y entran con su precio. Si el
+  archivo trae dos veces el mismo insumo nuevo con precios distintos, no se crea nada y Sílice le pide dejar una
+  sola fila;
+- en «Otra unidad», cada fila cuya descripción el catálogo ya conoce pero con otra unidad, por ejemplo «“Arena de
+  prueba” viene en saco y el catálogo lo tiene en m3: no entró; escriba en el archivo la unidad del catálogo.».
+  Esas filas nunca se dan de alta (serían otro insumo con el mismo nombre): corrija la unidad en el archivo y
+  vuelva a soltarlo.
+
+Con la lista creada, «Lista creada» dice cuántos precios entraron y, si los hubo, la tabla «Insumos dados de alta en
+el catálogo». Debajo, a quien también arma presupuestos (el papel de quien arma) le aparece «Usarla como lista para
+armar»: la copia tal cual, en su moneda y sin tasa del BCV, como lista para armar de la carpeta, si la carpeta está
+en esa moneda y todavía no tiene lista. A quien solo administra, Sílice le dice «La lista para armar la crea quien
+arma el presupuesto, desde Componer.» (sección 4.3, camino 3).
 
 ### 9.3 Actualizar precios de un presupuesto (quien arma)
 
@@ -1213,7 +1244,7 @@ hallazgo dice su severidad: «Crítico», «Error», «Advertencia» o «Informa
 | VR1 | Las toneladas de carpeta del presupuesto contra área × espesor × densidad (tolerancia 0,5 %) | Error |
 | VR2 | El porcentaje de asfalto del tramo contra la fórmula de trabajo de la receta de la planta (±0,5 puntos) | Advertencia; Información si no hay con qué comparar |
 | VR3 | El ligante residual de imprimación o riego dentro de su rango | Advertencia |
-| VR4 | Las toneladas por kilómetro del transporte contra toneladas × distancia (tolerancia 0,5 %). Si el tramo mide el transporte por `banda`: las toneladas (error si no cuadran) y si la distancia del tramo cae dentro de la banda de la partida | Error; Advertencia si la distancia cae fuera de la banda; Información si falta la banda o la distancia |
+| VR4 | Las toneladas por kilómetro del transporte contra toneladas × distancia (tolerancia 0,5 %). Si el tramo mide el transporte por `banda`: las toneladas (error si no cuadran) y si la distancia del tramo cae dentro de la banda de la partida, que Sílice lee de la descripción de su APU (por ejemplo «mayor de 8 km y hasta 10 km»; también «mayores de» o «más de») y dice de dónde la leyó | Error; Advertencia si la distancia cae fuera de la banda; Información si falta la banda o la distancia |
 | VR5 | Los litros de pintura por kilómetro de línea, entre 29 y 44 | Advertencia |
 | VR6 | Solapes entre tramos (error) y huecos entre progresivas (advertencia) | Error o Advertencia |
 | VR7 | Que cada partida sea la que produce esa capa o línea, y en su unidad | Error |

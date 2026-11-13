@@ -31,7 +31,7 @@ instalador con huella SHA-256 firmada.
 | `feature/integracion-fases` | F7 Ayuda, F8 Cierre, F5 vial y F5 ventana, sobre la tanda (§3) | Construidas en paralelo el 2026-11-06, una por árbol; espera el árbitro único y la prueba de Eugenio |
 | `feature/lector-topes` | Topes de la guardia en el lector del libro conocido y en la réplica del visor (§5.3), sobre la integración | Árbitro xhigh: aprobado con condiciones, ya corregidas ([acta](bitacora/arbitrajes/lector-topes-claude-xhigh.md)); sin PR, como la integración |
 | `feature/tanda-2026-11-12` | V4 (humo de la ventana en la CI de Windows), topes del lector en todas las subidas de .xlsx, aviso del puerto de depuración por política, pruebas intermitentes y metas en UTF-8, sobre `feature/lector-topes` | Árbitro xhigh: aprobado con cambios, ya corregidos; humo verde en windows-2025 (corridas 43358266674 y, con las decisiones (e) y (f), 43371689578); Argon y Hydrogen: aprobado (con un cambio de Argon, aplicado); decisiones (d), (e) y (f) simuladas y aplicadas (§4, punto 10); sin PR, como la integración |
-| `feature/hoja-desperdicio` | El desperdicio en la Hoja (mostrar y editar la neta y el %), tildes de dos avisos con el experimento re-congelado con acta, y el lector del libro con un APU por hoja probado en local con el libro vial real (`lado_de_los_porcentajes`, cifras con la precisión de Excel), sobre `feature/tanda-2026-11-12` | Árbitro xhigh: aprobado con cambios (0 MAYOR, 9 MENOR), corregidos en `fix/arbitro-1113`; Argon y Hydrogen medium: sus dos hallazgos verdaderos ya estaban corregidos; decisión del desperdicio simulada (por ratificar); sin PR |
+| `feature/hoja-desperdicio` | El desperdicio en la Hoja (mostrar y editar la neta y el %), tildes de dos avisos con el experimento re-congelado con acta, y el lector del libro con un APU por hoja probado en local con el libro vial real (`lado_de_los_porcentajes`, cifras con la precisión de Excel), sobre `feature/tanda-2026-11-12`. Desde el 2026-11-13, también la **prueba de punta a punta** con un presupuesto vial real, corregida en tres líneas unidas a la rama: vial (VR8, `suministro` y `captafaros`, VR4 por la descripción; [bitácora](bitacora/2026-11-13-e2e-vial.md)), plan y precios (primera versión en semanas o meses, lista para armar desde la de la empresa, revisión y alta; [bitácora](bitacora/2026-11-13-e2e-precios.md)) y front y textos (envío a aprobación, perfil del libro y AH11, textos, Componer; [bitácora](bitacora/2026-11-13-e2e-front.md)), y el ciclo de importación de `aplicacion/` | Árbitro xhigh, ronda 1: aprobado con cambios (0 MAYOR, 9 MENOR), corregidos en `fix/arbitro-1113`; Argon y Hydrogen medium: sus dos hallazgos verdaderos ya estaban corregidos. **Ronda 2** (con las tres líneas): sus hallazgos se corrigen con prueba en rojo primero (la historia, reescrita sin subir, ya no trae una cifra real; «Usarla como lista para armar» solo para quien arma, la tabla de insumos nuevos sin claves y «Recuperación», `f2510aaf`; este registro al día). **Ronda 3: pendiente.** Decisiones del desperdicio y de las tres líneas simuladas (por ratificar, §4 punto 11); sin PR |
 | #100 `feature/nucleo-alias-ton-litro` | Alias «ton»→t y «lt»/«litro»→l en el núcleo (expediente NUC-E1) | **No fusionar** sin el aval del tutor. Ya tiene `main` unido y el experimento recongelado con acta (`docs/bitacora/2026-11-04-recongelado-experimento.md` en su rama) |
 
 Los `.worktrees/` son copias de ramas de trabajo y **no** describen el programa actual. F6 vive en `.worktrees/s2m3`, el
@@ -117,6 +117,21 @@ lectura sale con tildes por `aplicacion/hoja_guardado.py`, la ruta del producto;
    dicen «0 conexiones salientes»: hay que declarar la excepción o sacar la ventana de lo que mide RF-98, como
    ya pasa con el navegador.
 9. Tesis: aval del tutor para el PR #100, mediciones con personas (Med) y la respuesta de la Dirección de Investigación.
+11. Prueba de punta a punta (2026-11-13, `feature/hoja-desperdicio`): con Eugenio ausente, cada decisión se **simuló**
+   con datos ficticios y se eligió la mejor; todas son reversibles (cada bitácora dice cómo) y esperan su ratificación.
+   - **Vial** ([bitácora](bitacora/2026-11-13-e2e-vial.md)): D1, un renglón a mano y el mismo derivado de los tramos se
+     advierten con VR8 en la auditoría (no se pregunta al llevar ni se reemplaza); D2, el tramo declara `suministro` y
+     la demarcación `captafaros`, y llevar sigue siendo todo o nada; D3, VR4 lee la banda de la descripción del APU con
+     el patrón ampliado del perfil, y Componer no pide la banda aparte.
+   - **Plan y precios** ([bitácora](bitacora/2026-11-13-e2e-precios.md)): D-2, la primera versión arma el plan por
+     días, semanas o meses (la primera unidad que cabe); D-7, una tercera vía para la lista para armar, copiar la de la
+     empresa en su moneda; D-8, el archivo se revisa antes y el alta de los insumos nuevos se confirma (los de otra
+     unidad nunca); D-11, una fila sin fecha o sin fuente toma las de la lista; §3.1, los precios convertidos se leen
+     con dos decimales y la celda guarda el exacto.
+   - **Front y textos** ([bitácora](bitacora/2026-11-13-e2e-front.md)): D1, el perfil del libro se elige de una lista
+     del servidor; D2, AH11 avisa cuando casan menos de la mitad de dos o más renglones enlazados (ADVERTENCIA); D3, el
+     «Motivo» de Versiones dice el tipo y la fuente; D4, la lista de sugerencias se abre arriba si abajo no cabe.
+   - **Con el tutor**: los expedientes de `core/` que dejó la prueba (§5, punto 6).
 
 ## 5. Trabajo técnico pendiente (orden recomendado)
 
@@ -142,6 +157,21 @@ TDD y lo audita; árbitro de Claude xhigh en cada compuerta): [planes/PLAN_TANDA
    local desde la interfaz. Las pruebas intermitentes del front con la máquina cargada `App.bienvenida` y
    `CostosDelPeriodo` (pasan solas). Las tildes que quedan en `aplicacion/hoja.py` (líneas del 422 de guardar) van en el
    próximo re-congelado.
+6. **Lo que dejó la prueba de punta a punta** (2026-11-13; §4 y §5 de cada bitácora):
+   - **Expedientes de `core/` propuestos, no aplicados** (necesitan el aval del tutor): `crear_lista_desde_archivo`
+     (`core/catalog/precios.py`) pierde la fila de un equipo o una mano de obra que trae unidad, porque casa por la
+     unidad de la fila y el catálogo los guarda sin ella, y no guarda la fecha ni la fuente de cada fila
+     ([precios §5](bitacora/2026-11-13-e2e-precios.md)); `_num` de `core/verification/reglas.py` escribe R1 con punto
+     decimal, y R6 y otros mensajes del núcleo van sin tildes ([front §4](bitacora/2026-11-13-e2e-front.md)).
+   - **Para el próximo re-congelado de `aplicacion/hoja.py`**: que `_estado_de_precio` mire la fuente declarada de
+     cada precio (D-17, que no se pudo arreglar desde la vista) y `con_plan_por_rendimientos` use `plan_que_cabe`;
+     «+ Administración» con tilde; y que `estado_de_items` no reparta por partida un hallazgo que ya cita su renglón.
+   - **Sin hacer**: la cantidad de 0,001 que se lee «0,00» en la pestaña APU (no se localizó: hace falta la celda
+     exacta); la celda del precio redondeada en reposo y exacta al editarla (`TablaInsumos`); el selector de partida
+     de las valuaciones de Control, que ofrece un solo renglón por código; elegir la hoja del presupuesto aparte del
+     perfil; `suministro` en `frontend-desktop/src/api/vial.ts` (hoy no hace falta).
+   - **Funciones que faltan** (la prueba las pidió y Sílice no las tiene): importar a la Hoja el libro auditado,
+     agrupar el presupuesto por frente, sacarlo en PDF, índices del BCV en USD y parámetros editables en Componer.
 
 ## 6. Auditorías en paralelo
 
