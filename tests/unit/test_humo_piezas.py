@@ -741,5 +741,23 @@ def test_workflow_exige_la_firma_de_microsoft_antes_de_ejecutar_el_instalador_de
     assert descarga < firma < ejecuta
     tramo = flujo[firma:ejecuta]
     assert "Status -ne 'Valid'" in tramo
-    assert "SignerCertificate.Subject -notmatch 'Microsoft'" in tramo
     assert "exit 1" in tramo
+    # La regla del firmante, aplicada (PowerShell compara sin distinguir mayúsculas). Firmantes
+    # reales leídos con Get-AuthenticodeSignature el 2026-11-12 y tres ficticios que la regla
+    # «-notmatch 'Microsoft'» dejaba pasar (decisión (f), simulada).
+    regla = re.search(r"SignerCertificate\.Subject -notmatch '([^']+)'", tramo)
+    assert regla, "el firmante se compara con una expresión"
+    def acepta(sujeto: str) -> bool:
+        return re.search(regla.group(1), sujeto, re.IGNORECASE) is not None
+    reales = (
+        "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+        "CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+    )
+    ajenos = (
+        "CN=Microsoft Rewards Partner LLC, O=Contoso Ltd, C=US",
+        "CN=Soporte, O=Microsoft Corporation Services Fake Inc, C=PA",
+        "CN=Contoso, O=Contoso, L=Microsoft Way, C=US",
+        "CN=Johannes Schindelin, O=Johannes Schindelin, S=Nordrhein-Westfalen, C=DE",
+    )
+    assert [acepta(s) for s in reales] == [True, True]
+    assert [acepta(s) for s in ajenos] == [False, False, False, False]
