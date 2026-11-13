@@ -240,6 +240,38 @@ describe("Componer en la moneda de la carpeta de trabajo", () => {
     expect(hecho.closest("[tabindex='-1']")).toHaveFocus();
   });
 
+  // Prueba de punta a punta del 2026-11-13 (D-7): una carpeta en USD con la lista de su empresa en USD armaba solo con
+  // una tasa del BCV reciente. Ahora se ofrece copiar esa lista, en su moneda, sin tasa.
+  test("con una lista de la empresa en la moneda de la carpeta ofrece usarla para armar, sin tasa", async () => {
+    const u = userEvent.setup();
+    carpeta = () =>
+      json({
+        ...SIN_LISTA_BS,
+        moneda: "USD",
+        empresa: [{ id: 7, nombre: "Empresa ficticia 2026-10-05", moneda: "USD" }],
+      });
+    crearLista = () =>
+      json(
+        { ...CREADA, moneda: "USD", lista: { ...CREADA.lista!, nombre: "Empresa ficticia 2026-10-05 al 26/10/2026", moneda: "USD" } },
+        201,
+      );
+    montar();
+    expect(
+      await screen.findByText(
+        "La lista de la empresa «Empresa ficticia 2026-10-05» se copia tal cual, en USD: no necesita tasa del BCV.",
+        {},
+        ESPERA,
+      ),
+    ).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Usar la lista de la empresa «Empresa ficticia 2026-10-05»" }));
+    await waitFor(() =>
+      expect(de("/v1/carpeta/lista-para-armar", "POST").map((l) => l.cuerpo)).toEqual([{ desde: "empresa", lista_id: 7 }]),
+    );
+    expect(
+      await screen.findByText(/Lista para armar creada: Empresa ficticia 2026-10-05 al 26\/10\/2026/, {}, ESPERA),
+    ).toBeInTheDocument();
+  });
+
   test("con la lista vigente en otra moneda ofrece también «Convertir la lista que tiene»", async () => {
     const u = userEvent.setup();
     carpeta = () => json(LISTA_EN_USD);
