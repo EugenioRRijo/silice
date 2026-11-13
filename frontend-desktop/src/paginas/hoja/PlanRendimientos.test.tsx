@@ -8,7 +8,7 @@ import { PestanaPlan } from "./PestanaPlan";
 import type { Resumen, VistaPlan } from "./logica";
 
 // Tarea 21 (MP-7): «Plan desde los rendimientos» en la pestaña Plan y curva. Contrato de la ruta:
-// `POST /v1/hoja/borradores/{id}/plan/rendimientos` con `{rev, cuadrillas: {codigo: "1"}, paralelas: [codigo], unidad: "dia" |
+// `POST /v1/hoja/borradores/{id}/plan/rendimientos` con `{rev, cuadrillas: {codigo: "1"}, paralelas: [codigo], unidad: "dia" | "mes" |
 // "semana"}` → `{rev, resumen, plan, avisos}`. Datos ficticios de la vivienda (OBRA-01 a OBRA-03); los textos de los avisos
 // son los del plan («{código} tiene cantidad 0.», «{código} no tiene rendimiento: se le asignó 1 día.»).
 configure({ asyncUtilTimeout: 5000 });
@@ -242,5 +242,37 @@ describe("Hoja: plan desde los rendimientos (Tarea 21)", () => {
     await screen.findByRole("region", { name: "Plan desde los rendimientos" });
     await userEvent.click(boton());
     await vi.waitFor(() => expect(alExpirar).toHaveBeenCalledTimes(1));
+  });
+
+  // Ola 2 (2026-11-13): la salida del 422 de una obra de más de 10.000 días («asigne más cuadrillas a las partidas largas,
+  // haga el plan desde los rendimientos por meses») se sigue en esta pantalla: sin plan ya se ven las cuadrillas.
+  test("sin plan, las cuadrillas de cada partida se ponen antes de hacer el plan, y por meses", async () => {
+    vista = { ...sinPlan(), partidas: ["OBRA-01", "OBRA-02"] };
+    montar(0);
+    const seccion = await screen.findByRole("region", { name: "Plan desde los rendimientos" });
+    const cuadrillas = within(seccion).getByRole("textbox", { name: "Cuadrillas de OBRA-02" });
+    await userEvent.clear(cuadrillas);
+    await userEvent.type(cuadrillas, "3");
+    await userEvent.click(within(seccion).getByRole("radio", { name: "Meses (20 días hábiles)" }));
+    await userEvent.click(boton());
+    expect(envios()).toEqual([{ rev: 0, cuadrillas: { "OBRA-01": "1", "OBRA-02": "3" }, paralelas: [], unidad: "mes" }]);
+  });
+
+  test("un plan armado por meses se muestra con su unidad, no como días", async () => {
+    vista = {
+      ...planPorDia(),
+      etiquetas: ["Mes 1", "Mes 2"],
+      filas: ["OBRA-01", "OBRA-02", "OBRA-03"].map((partida) => ({ partida, valores: { "Mes 1": "0,5", "Mes 2": "0,5" } })),
+      curva: [
+        { periodo: "Mes 1", monto: m("500.00"), acumulado: m("500.00"), porcentaje: m("50.00") },
+        { periodo: "Mes 2", monto: m("500.00"), acumulado: m("1000.00"), porcentaje: m("100.00") },
+      ],
+    };
+    montar();
+    const seccion = await screen.findByRole("region", { name: "Plan desde los rendimientos" });
+    expect(within(seccion).getByRole("radio", { name: "Meses (20 días hábiles)" })).toBeChecked();
+    expect(within(seccion).getByRole("radio", { name: "Días hábiles" })).not.toBeChecked();
+    const matriz = screen.getByRole("table", { name: "Plan de trabajo" });
+    expect(within(matriz).getAllByRole("columnheader").map((c) => c.textContent)).toEqual(["Partida", "Mes 1", "Mes 2"]);
   });
 });
