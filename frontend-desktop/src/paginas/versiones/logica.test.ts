@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { EstadoDeAprobacion } from "../../comun/aprobacion";
 import type { VersionFila, VersionesRespuesta } from "../hoja/logica";
-import { filasDeVersiones, pasoDeVersiones } from "./logica";
+import { filasDeVersiones, motivoDeVersion, pasoDeVersiones } from "./logica";
 import type { FilaDeVersion } from "./logica";
 
 // Tarea 6 del plan F4: la lógica pura de la sección Versiones. Datos ficticios (obra 3, VIV-001 y VIV-002); los resultados
@@ -69,6 +69,25 @@ describe("filasDeVersiones", () => {
       { ...viv001, estado: null, abierta: true, seAbre: true },
       { ...viv000, estado: null, abierta: false, seAbre: true },
     ]);
+  });
+});
+
+describe("motivoDeVersion (E2E-3: la fuente escrita, no la clave del servidor)", () => {
+  test("el tipo con tilde y, si la hay, la fuente que escribió quien la guardó", () => {
+    expect(motivoDeVersion(fila("VIV-002", true, { motivo: "edicion", fuente: "Acta de obra 3: nueva medida" }))).toBe(
+      "Edición: Acta de obra 3: nueva medida",
+    );
+    expect(motivoDeVersion(fila("VIV-001", false, { motivo: "", fuente: "Presupuesto inicial del cliente" }))).toBe(
+      "Elaborada: Presupuesto inicial del cliente",
+    );
+    expect(motivoDeVersion(fila("VIV-003", false, { motivo: "restauracion", fuente: "  " }))).toBe("Restauración");
+    expect(motivoDeVersion(fila("VIV-004", false, { motivo: "cotizacion" }))).toBe("Cotización");
+    expect(motivoDeVersion(fila("VIV-005", false, { motivo: "revaloracion" }))).toBe("Revaloración");
+    expect(motivoDeVersion(fila("VIV-006", false, { motivo: "conversion" }))).toBe("Conversión");
+  });
+
+  test("una clave que no conoce se muestra tal cual", () => {
+    expect(motivoDeVersion(fila("VIV-007", false, { motivo: "otra_cosa", fuente: "x" }))).toBe("otra_cosa: x");
   });
 });
 

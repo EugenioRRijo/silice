@@ -17,6 +17,7 @@ import {
   rutaDeInsumo,
   rutaDeInsumos,
   sembrarApu,
+  estadosDeLaPartida,
   textoDeEstado,
   ubicarErrorDeApu,
 } from "./logicaApu";
@@ -178,6 +179,22 @@ describe("el Estado de la partida", () => {
 
   test("un texto que no trae el prefijo queda igual", () => {
     expect(textoDeEstado("ERROR: algo")).toBe("ERROR: algo");
+  });
+
+  test("E2E-3: la misma partida en tres renglones no repite el mismo aviso tres veces (el servidor lo permuta)", () => {
+    // Cada renglón trae primero su propio hallazgo y después los de la partida: el mismo conjunto en otro orden.
+    const r1 = (n: number) => `R1 la cantidad del renglón ${n} es manual`;
+    expect(
+      estadosDeLaPartida([
+        `Estado de X-01|1: ADVERTENCIA: ${r1(1)}; ${r1(2)}; ${r1(3)}`,
+        `Estado de X-01|2: ADVERTENCIA: ${r1(2)}; ${r1(1)}; ${r1(3)}`,
+        `Estado de X-01|3: ADVERTENCIA: ${r1(3)}; ${r1(1)}; ${r1(2)} | ERROR: otro`,
+      ]),
+    ).toEqual([`ADVERTENCIA: ${r1(1)}; ${r1(2)}; ${r1(3)}`, `ADVERTENCIA: ${r1(3)}; ${r1(1)}; ${r1(2)} | ERROR: otro`]);
+  });
+
+  test("E2E-3: estados distintos se conservan, en su orden", () => {
+    expect(estadosDeLaPartida(["Estado de A|1: ERROR: a", "Estado de A|2: ADVERTENCIA: b"])).toEqual(["ERROR: a", "ADVERTENCIA: b"]);
   });
 });
 
