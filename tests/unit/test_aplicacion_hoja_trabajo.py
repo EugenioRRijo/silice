@@ -62,8 +62,8 @@ def test_el_cierre_de_ob_b_es_la_cascada_de_calcular_apu_a_mano():
         ("Equipos", "0.15 USD"),
         ("Mano de obra", "1.85 USD"),
         ("= Costo directo", "5.00 USD"),
-        ("+ Administracion", "0.75 USD"),  # 5,00 × 0,15
-        ("= Con administracion", "5.75 USD"),
+        ("+ Administración", "0.75 USD"),  # 5,00 × 0,15
+        ("= Con administración", "5.75 USD"),
         ("+ Utilidad", "0.58 USD"),  # 5,75 × 0,10 = 0,575: la mitad sube
         ("= Precio unitario", "6.33 USD"),  # 6,325
     ]
@@ -71,7 +71,7 @@ def test_el_cierre_de_ob_b_es_la_cascada_de_calcular_apu_a_mano():
     assert notas["Materiales"] == "completos"
     assert notas["Equipos"] == "entre el rendimiento"
     assert notas["Mano de obra"] == "FCAS 6 y bono 1, entre el rendimiento"
-    assert notas["+ Administracion"] == "15.0 % del costo directo"
+    assert notas["+ Administración"] == "15.0 % del costo directo"
     assert notas["+ Utilidad"] == "10.0 % en cascada"
 
 
@@ -81,8 +81,8 @@ def test_el_cierre_sigue_a_los_factores_y_cada_paso_suma_el_anterior():
     resultado = calcular_apu(ob.composiciones()["OB-A"], parametros)
     filas = {f["Concepto"]: f for f in hoja.filas_de_cierre(resultado, parametros, "Bs")}
     assert filas["= Costo directo"]["Monto"] == "10.00 Bs"
-    assert filas["+ Administracion"]["Monto"] == "2.00 Bs"
-    assert filas["= Con administracion"]["Monto"] == "12.00 Bs"
+    assert filas["+ Administración"]["Monto"] == "2.00 Bs"
+    assert filas["= Con administración"]["Monto"] == "12.00 Bs"
     assert filas["+ Utilidad"]["Monto"] == "3.00 Bs"
     assert filas["= Precio unitario"]["Monto"] == "15.00 Bs"
     assert filas["Materiales"]["Monto"] == "0.00 Bs"  # OB-A no lleva material

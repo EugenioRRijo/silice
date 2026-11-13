@@ -10,6 +10,15 @@ export interface PartidaDelContrato {
   codigo: string;
   descripcion: string;
   unidad: string;
+  // Control (ola 2, 2026-11-13): la lista trae cada renglón del presupuesto, con su número y cuántos renglones tiene su
+  // código; Reajuste no los trae (una por código).
+  renglon?: number;
+  renglones?: number;
+}
+
+// true si el código de `p` está en más de un renglón del presupuesto.
+export function codigoRepetido(p: PartidaDelContrato): boolean {
+  return (p.renglones ?? 1) > 1;
 }
 
 export interface PartidasDelContrato {
@@ -43,7 +52,16 @@ export function buscadorDePartidasDelContrato(partidas: PartidaDelContrato[]) {
     rotulo: ROTULO_DEL_CONTRATO,
     textoDe: (p) => `${p.codigo} ${p.descripcion}`,
     codigoDe: (p) => p.codigo,
-    opcionDe: (p) => ({ clave: `partida:${p.codigo}`, principal: p.descripcion, secundaria: [p.codigo, unidadEscrita(p.unidad)], valor: p }),
+    opcionDe: (p) => ({
+      clave: p.renglon === undefined ? `partida:${p.codigo}` : `partida:${p.codigo}:${p.renglon}`,
+      principal: p.descripcion,
+      secundaria: [
+        p.codigo,
+        unidadEscrita(p.unidad),
+        ...(codigoRepetido(p) && p.renglon !== undefined ? [`renglón ${p.renglon} del presupuesto`] : []),
+      ],
+      valor: p,
+    }),
   });
 }
 

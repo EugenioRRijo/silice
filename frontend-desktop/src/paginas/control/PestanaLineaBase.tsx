@@ -10,6 +10,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../../comun/useCarga";
+import type { Carga } from "../../comun/useCarga";
 import { leerFeriados } from "./fechas";
 import { AYUDA_CIFRAS } from "../../indicadores/cifraEscrita";
 import {
@@ -50,6 +51,25 @@ function Aviso({ exito, error }: { exito: string; error: unknown }) {
   );
 }
 
+// GET /v1/control/dias-por-periodo (ola 2, 2026-11-13, RF-196): los días hábiles de un período del plan de la versión.
+interface DiasDelPlan {
+  dias: string;
+  unidad: string;
+  aviso: string;
+}
+
+const NOMBRE_DE_LA_UNIDAD: Record<string, string> = { dia: "días", semana: "semanas", mes: "meses" };
+
+// Lo que dice el campo de los días bajo él: de dónde salen. Sin la propuesta (servidor anterior o un fallo), el servidor los
+// toma del plan al declarar si el campo queda vacío.
+function ayudaDeLosDias(carga: Carga<DiasDelPlan>): string {
+  if (carga.estado !== "listo") return "Vacío: se toman del plan de la versión al declarar.";
+  const { dias, unidad, aviso } = carga.datos;
+  if (aviso) return aviso;
+  const cuantos = dias === "1" ? "1 día hábil" : `${dias} días hábiles`;
+  return `Sale del plan de la versión, que va por ${NOMBRE_DE_LA_UNIDAD[unidad] ?? unidad}: ${cuantos} por período.`;
+}
+
 // Un servidor sin la ruta (o con otra forma) no dice nada: se propone la version mas nueva, sin avisos.
 function esAprobaciones(valor: unknown): valor is AprobacionesDeObra {
   const a = valor as Partial<AprobacionesDeObra> | null | undefined;
@@ -77,11 +97,18 @@ function Declarar({
     desde: "",
     perspectiva: "costo",
     inicio: "",
-    dias_por_periodo: "5",
+    // Vacío hasta que la persona lo escribe: mientras, manda la propuesta del plan (`diasDelPlan`).
+    dias_por_periodo: "",
     feriados: "",
     fuente: "",
   });
   const [errorFeriados, setErrorFeriados] = useState("");
+  const [diasEscritos, setDiasEscritos] = useState(false);
+  const diasDelPlan = useCarga<DiasDelPlan>(
+    v.version ? rutaDe("/v1/control/dias-por-periodo", proyecto, { version: v.version }) : null,
+    alExpirar,
+  );
+  const dias = diasEscritos ? v.dias_por_periodo : diasDelPlan.estado === "listo" ? diasDelPlan.datos.dias : "";
   const campo = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
   const estadoElegido = aprobaciones?.versiones[v.version]?.estado;
   const noAprobada = aprobaciones !== null && estadoElegido !== undefined && !ESTADOS_APROBADOS.has(estadoElegido);
@@ -91,7 +118,10 @@ function Declarar({
     setErrorFeriados("error" in lectura ? lectura.error : "");
     if ("error" in lectura) return;
     void ejecutar(async () => {
-      await pedir("/v1/control/linea-base", { metodo: "POST", cuerpo: { proyecto, ...v, feriados: lectura.feriados } });
+      await pedir("/v1/control/linea-base", {
+        metodo: "POST",
+        cuerpo: { proyecto, ...v, dias_por_periodo: dias, feriados: lectura.feriados },
+      });
       return "Línea base declarada.";
     });
   };
@@ -137,8 +167,12 @@ function Declarar({
       <CampoTexto
         id="lb-dias"
         labelText="Días hábiles por período"
-        value={v.dias_por_periodo}
-        onChange={campo("dias_por_periodo")}
+        helperText={ayudaDeLosDias(diasDelPlan)}
+        value={dias}
+        onChange={(e) => {
+          setDiasEscritos(true);
+          setV({ ...v, dias_por_periodo: e.target.value });
+        }}
       />
       <AreaTexto id="lb-feriados" labelText="Feriados (fechas como 25/12/2026, separadas por comas)" value={v.feriados} onChange={campo("feriados")} />
       <CampoTexto id="lb-fuente" labelText="Fuente de la línea base" value={v.fuente} onChange={campo("fuente")} />

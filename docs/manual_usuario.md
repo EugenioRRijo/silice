@@ -639,10 +639,14 @@ buscador «Buscar partida».
 
 - **«Plan y equilibrio».** Reparte cada partida entre los períodos del plan; cada fila debe sumar
   exactamente 1. Con «Plan desde los rendimientos», Sílice arma el plan con la cantidad y el rendimiento
-  de cada partida (elija «Cuadrillas», «En paralelo con la anterior» y los «Períodos del plan»). Debajo,
-  la «Curva de inversión» y el «Punto de equilibrio», que no se editan.
+  de cada partida (elija «Cuadrillas», «En paralelo con la anterior» y los «Períodos del plan»: «Días
+  hábiles», «Semanas (5 días hábiles)» o «Meses (20 días hábiles)»). Las cuadrillas se ponen también
+  cuando todavía no hay plan. Un plan armado por semanas o por meses se abre con esa unidad marcada.
+  Debajo, la «Curva de inversión» y el «Punto de equilibrio», que no se editan.
 - **«Precios».** De dónde sale cada precio: lista, fecha, moneda, referencia y cotización. «Detalle»
-  muestra el resto. «Buscar variaciones atípicas de precio» señala los insumos que cambiaron demasiado.
+  muestra el resto. «Sin referencia ni cotización: el precio no tiene fuente» sale solo si el precio no
+  trae referencia, ni cotización, ni una fuente declarada para él (la de su fila en la lista de la
+  empresa o la de un precio tecleado); el nombre de la lista de la que se copió no cuenta como fuente. «Buscar variaciones atípicas de precio» señala los insumos que cambiaron demasiado.
   Muestra la versión guardada, no los cambios sin guardar. El enlace «Registrar una cotización en
   Mercado» lleva a la sección 8.4.
 - **«Revisión».** El informe de auditoría del borrador, con todas las reglas: «Presupuesto … · Hallazgos:
@@ -718,8 +722,9 @@ rendimientos. El plan admite hasta 500 períodos: si por días no cabe, lo arma 
 tampoco, por meses (de 20 días hábiles), y el mensaje de guardado lo dice, por ejemplo «El plan por días tendría 700
 períodos y la matriz admite 500: se armó por semanas (140 períodos). Puede rehacerlo con cuadrillas en «Plan y
 equilibrio».». La versión se guarda igual; si quiere el plan en otra unidad o con más cuadrillas, rehágalo en «Plan y
-equilibrio». Si ni en meses cabe, no se guarda y Sílice le pide crear el plan en «Plan y equilibrio», asignar más
-cuadrillas a las partidas largas y volver a guardar.
+equilibrio». Si ni en meses cabe, no se guarda y Sílice le pide, en «Plan y equilibrio», asignar más cuadrillas a las
+partidas largas, hacer el plan desde los rendimientos por meses y volver a guardar: la tabla de cuadrillas está ahí
+aunque todavía no haya plan.
 
 Si alguien guardó otra versión mientras usted trabajaba, Sílice avisa «Hay una versión más nueva» y le deja
 elegir entre «Guardar de todos modos» y «Abrir la versión …».
@@ -1365,10 +1370,15 @@ La vista «Control» compara lo avanzado con lo planificado. Tiene seis pestaña
 1. **«Línea base».** Abra «Declarar una línea base» y llene «Versión del contrato» (propone la última
    aprobada), «Vigente desde», «Perspectiva», «Inicio de obra», «Días hábiles por período», «Feriados»
    (fechas como 25/12/2026, separadas por comas) y «Fuente de la línea base». Pulse «Declarar línea
-   base».
+   base». «Días hábiles por período» se llena solo desde el plan de la versión: 1 si va por días, 5 por
+   semanas y 20 por meses; si el plan no dice su unidad, propone 20 (un mes) y lo avisa. Puede
+   cambiarlo; si lo deja vacío, Sílice lo toma del plan al declarar.
 2. **«Valuaciones».** En «Registrar una valuación» escriba «Número», «Período desde», «Período hasta»,
    «Fecha de la valuación» e «Inspector», y una línea por partida medida («Partida», «Cantidad», «Fecha
-   de medición», «Observación» y, si hubo, «Causa del retraso»). Pulse «Registrar y controlar». También
+   de medición», «Observación» y, si hubo, «Causa del retraso»). Pulse «Registrar y controlar». Si el
+   contrato repite un código en varios renglones (el mismo trabajo en dos frentes), «Partida» ofrece cada
+   renglón con su número («renglón 3 del presupuesto»); al elegirlo se escribe el código y, si la
+   observación está vacía, «Renglón 3». La valuación se revisa por código, con la suma de sus renglones. También
    puede «Importar valuaciones de un XLSX», «Anular una valuación» o «Anotar un costo incurrido». La tabla
    muestra el subtotal, el IVA al 16 % y el total con IVA de cada valuación.
 3. **«Procura».** «Alertas de compra» y «Materiales de la obra»: cuánto se necesita, cuándo y a más
