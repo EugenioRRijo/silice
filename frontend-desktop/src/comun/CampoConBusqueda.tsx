@@ -82,6 +82,11 @@ export interface CampoConBusquedaProps<T> {
 
 const SIN_RESULTADO_AUN = "Las sugerencias aparecen bajo el campo al dejar de escribir.";
 
+// En una celda: lo mínimo que debe caber bajo el campo para abrir la lista abajo (unas cuatro opciones) y el aire que se deja
+// hasta el borde de la ventana.
+const ALTO_MINIMO_DEL_PANEL = 160;
+const MARGEN_DEL_PANEL = 8;
+
 export function CampoConBusqueda<T>({
   id,
   etiqueta,
@@ -166,7 +171,15 @@ export function CampoConBusqueda<T>({
       const destino = panel.current;
       if (!campo || !destino) return;
       const caja = campo.getBoundingClientRect();
-      destino.style.top = `${caja.bottom}px`;
+      // E2E-3: bajo un campo cerca del borde inferior la lista quedaba fuera de la ventana (y, fija, no se alcanza
+      // desplazando). Como el «flip» de Floating UI: se abre arriba si abajo no cabe lo mínimo y arriba hay más sitio; y su
+      // alto no pasa del sitio que tiene en ese lado.
+      const abajo = window.innerHeight - caja.bottom;
+      const arriba = caja.top;
+      const haciaArriba = abajo < ALTO_MINIMO_DEL_PANEL && arriba > abajo;
+      destino.style.top = haciaArriba ? "auto" : `${caja.bottom}px`;
+      destino.style.bottom = haciaArriba ? `${window.innerHeight - caja.top}px` : "auto";
+      destino.style.maxBlockSize = `min(20rem, 60vh, ${Math.max((haciaArriba ? arriba : abajo) - MARGEN_DEL_PANEL, ALTO_MINIMO_DEL_PANEL / 2)}px)`;
       destino.style.left = `${caja.left}px`;
       destino.style.minWidth = `${caja.width}px`;
     };
