@@ -242,6 +242,8 @@ export interface DetalleApu {
   metricas: { materiales: Monto; equipos: Monto; mano_obra: Monto; precio_unitario: Monto };
   estados: string[];
   solo_lectura_insumos: boolean;
+  // F5 vial, punto 1: la neta y el porcentaje de desperdicio por fila de Materiales (desde 1), escritos por el servidor.
+  desperdicios: Array<{ fila: number; texto: string }>;
 }
 
 export interface VistaApu {

@@ -16,7 +16,7 @@ Parametros, Auditoria, Precios y Trazabilidad.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal, localcontext
@@ -33,6 +33,7 @@ from adapters.espacio.modelo import (
 from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja
 from aplicacion.cifras import texto_de_cifra
+from aplicacion.desperdicio import TrazaDesperdicio, desperdicios_por_fila
 from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_partidas import PREFIJO_A_MANO, calculo_tecleable, texto_llano
 from aplicacion.hoja_vial import PREFIJO_TRAMO
@@ -513,6 +514,20 @@ class MetricasDeApu:
 
 
 @dataclass(frozen=True, slots=True)
+class DesperdicioDeLinea:
+    """La neta y el porcentaje de desperdicio de una fila de Materiales (desde 1), «0,50 + 4 %»
+    (F5 vial, punto 1). La cantidad de la fila ya los incluye: esto solo la explica."""
+
+    fila: int
+    texto: str
+
+
+#: Las trazas vigentes del desperdicio de una partida, por su código (la ruta las lee de la base
+#: del caso con `aplicacion.desperdicio.trazas_vigentes`).
+TrazasDePartida = Callable[[str], Sequence[TrazaDesperdicio]]
+
+
+@dataclass(frozen=True, slots=True)
 class DetalleDeApu:
     codigo: str
     descripcion: str
@@ -523,6 +538,7 @@ class DetalleDeApu:
     metricas: MetricasDeApu
     estados: tuple[str, ...]
     solo_lectura_insumos: bool
+    desperdicios: tuple[DesperdicioDeLinea, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -534,7 +550,12 @@ class VistaApu:
     vacio_mensaje: str | None
 
 
-def _detalle_de_apu(vivo: BorradorVivo, resultado: hoja.ResultadoHoja, codigo: str) -> DetalleDeApu:
+def _detalle_de_apu(
+    vivo: BorradorVivo,
+    resultado: hoja.ResultadoHoja,
+    codigo: str,
+    trazas: TrazasDePartida | None = None,
+) -> DetalleDeApu:
     borrador = vivo.borrador
     composicion = borrador.composiciones[codigo]
     presupuesto = resultado.elaboracion.presupuesto
@@ -581,18 +602,30 @@ def _detalle_de_apu(vivo: BorradorVivo, resultado: hoja.ResultadoHoja, codigo: s
             if fila["partida"] == codigo and fila["estado"] != hoja.TEXTO_OK
         ),
         solo_lectura_insumos=vivo.abierta is None,
+        desperdicios=tuple(
+            DesperdicioDeLinea(fila, texto)
+            for fila, texto in desperdicios_por_fila(tablas[0], trazas(codigo))
+        )
+        if trazas is not None
+        else (),
     )
 
 
 def vista_apu(
-    vivo: BorradorVivo, partida: str | None = None, buscar: str | None = None
+    vivo: BorradorVivo,
+    partida: str | None = None,
+    buscar: str | None = None,
+    trazas: TrazasDePartida | None = None,
 ) -> VistaApu:
     """La pestana APU en lectura (P:1488-1738): la lista de partidas valoradas (con su buscador),
     la seleccionada y su detalle: tres rubros con subtotal, cierre paso a paso y metricas.
 
     Sin coincidencias en el buscador se muestran todas (P:1599); una `partida` que no esta entre
     las visibles se ignora y se toma la primera (el radio de la clasica nunca queda fuera de la
-    lista, P:1604)."""
+    lista, P:1604).
+
+    Con `trazas`, el detalle trae la neta y el porcentaje de desperdicio de cada material cuya
+    descripción, unidad y cantidad son las de una traza vigente de la partida (F5 vial, punto 1)."""
     resultado, _ = calculo(vivo)
     valoradas = resultado.elaboracion.presupuesto.partidas
     codigos = list(dict.fromkeys(p.item.codigo_partida for p in valoradas))
@@ -607,7 +640,7 @@ def vista_apu(
         partidas=tuple(PartidaDeLista(c, descripciones.get(c, "")) for c in visibles),
         sin_coincidencias=sin_coincidencias,
         seleccionada=seleccionada,
-        detalle=_detalle_de_apu(vivo, resultado, seleccionada),
+        detalle=_detalle_de_apu(vivo, resultado, seleccionada, trazas),
         vacio_mensaje=None,
     )
 

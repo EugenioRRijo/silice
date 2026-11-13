@@ -142,6 +142,7 @@ from aplicacion import (
     hoja_vista,
     importaciones,
 )
+from aplicacion.desperdicio import trazas_vigentes
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorInexistente, BorradorVivo, RevDesactualizado
@@ -1102,12 +1103,21 @@ def vista_apu(
     id: IdDeBorrador,
     request: Request,
     activa: CuentaQueVe,
+    sesion: SesionDep,
     partida: Annotated[str | None, Query(max_length=500)] = None,
     buscar: Annotated[str | None, Query(max_length=500)] = None,
 ) -> VistaApuRespuesta:
     """R7: APU en lectura (lista con buscador, tres rubros, cierre). La búsqueda la hace el
-    servidor; sin coincidencias se devuelven todas las partidas."""
-    return vista_apu_a_respuesta(hoja_vista.vista_apu(_vivo(request, activa, id), partida, buscar))
+    servidor; sin coincidencias se devuelven todas las partidas. Los materiales con la traza
+    vigente de su desperdicio traen la neta y el porcentaje (F5 vial, punto 1); no escribe."""
+    vivo = _vivo(request, activa, id)
+    try:
+        vista = hoja_vista.vista_apu(
+            vivo, partida, buscar, trazas=lambda codigo: trazas_vigentes(sesion, codigo)
+        )
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    return vista_apu_a_respuesta(vista)
 
 
 @router.get("/borradores/{id}/vistas/plan", response_model=VistaPlanRespuesta)

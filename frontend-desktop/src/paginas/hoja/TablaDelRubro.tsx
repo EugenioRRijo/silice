@@ -29,6 +29,7 @@ export function TablaDelRubro({
   alRestaurar,
   alQuitar,
   alCambiarInsumo,
+  desperdicios = [],
 }: {
   grupo: GrupoApu;
   moneda: string;
@@ -44,6 +45,9 @@ export function TablaDelRubro({
   alQuitar: (linea: LineaApu) => void;
   // Abre el diálogo único de las líneas en modo «cambiar» (Tarea 8); se pinta donde se pinta «Quitar».
   alCambiarInsumo: (linea: LineaApu) => void;
+  // F5 vial, punto 1: la neta y el porcentaje de desperdicio de cada fila (desde 1) que el servidor reconoce como de su
+  // traza, ya escritos («0,50 + 4 %»). Solo los trae Materiales; la cantidad de la fila ya los incluye.
+  desperdicios?: Array<{ fila: number; texto: string }>;
 }) {
   const mover = (desde: number, paso: 1 | -1) => document.getElementById(idDeCantidad(grupo.clave, desde + paso))?.focus();
   const columnas: ColumnaDensa[] = grupo.columnas.map((c) => {
@@ -80,6 +84,22 @@ export function TablaDelRubro({
       ...(NUMERICAS.has(c.clave) ? { numerica: true } : {}),
     };
   });
+  if (desperdicios.length > 0) {
+    const porFila = new Map(desperdicios.map((d) => [d.fila, d.texto]));
+    const despues = columnas.findIndex((c) => c.clave === "cantidad") + 1;
+    columnas.splice(despues, 0, {
+      clave: "desperdicio",
+      titulo: "Neta + desperdicio",
+      ordenable: false,
+      numerica: true,
+      // Si se escribe otra cantidad, la traza ya no es de esa línea (el servidor la vuelve a mirar al aceptar el cambio).
+      celda: (f) => {
+        const n = enteroDeDigitos(f.n!);
+        const escrita = edicion.cantidades[grupo.clave]?.[n - 1] ?? f.cantidad;
+        return escrita === f.cantidad ? (porFila.get(n) ?? "") : "";
+      },
+    });
+  }
   if (quitable) {
     columnas.push({
       clave: "cambiar",

@@ -320,6 +320,14 @@ class MetricasApuRespuesta(BaseModel):
     precio_unitario: MontoHojaRespuesta
 
 
+class DesperdicioLineaRespuesta(BaseModel):
+    """La neta y el porcentaje de desperdicio de la fila `fila` (desde 1) de Materiales, «0,50 +
+    4 %» (F5 vial, punto 1); la cantidad de esa fila ya los incluye."""
+
+    fila: int
+    texto: str
+
+
 class DetalleApuRespuesta(BaseModel):
     codigo: str
     descripcion: str
@@ -330,6 +338,7 @@ class DetalleApuRespuesta(BaseModel):
     metricas: MetricasApuRespuesta
     estados: list[str]
     solo_lectura_insumos: bool
+    desperdicios: list[DesperdicioLineaRespuesta] = []
 
 
 class VistaApuRespuesta(BaseModel):

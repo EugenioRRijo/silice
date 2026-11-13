@@ -205,6 +205,7 @@ export function EditorDelDetalle({
               idDelError={idDelError}
               quitable={conLineas}
               soloLectura={!puedeEditar}
+              desperdicios={g.clave === "materiales" ? detalle.desperdicios : undefined}
               alCambiar={(indice, texto) => edicion.cambiar((previo) => cambiarCantidadDeLinea(previo, g.clave, indice, texto))}
               alRestaurar={(indice) =>
                 edicion.cambiar((previo) =>

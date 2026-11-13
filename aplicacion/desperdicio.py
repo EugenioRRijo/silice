@@ -48,8 +48,10 @@ __all__ = [
     "aplicar_desperdicio",
     "cantidad_con_desperdicio",
     "con_desperdicio",
+    "desperdicios_por_fila",
     "guardar_trazas",
     "leyenda",
+    "neta_y_porcentaje",
     "trazas_por_fila",
     "trazas_vigentes",
 ]
@@ -147,22 +149,52 @@ def _de_la_linea(fila: Mapping[str, str], traza: TrazaDesperdicio) -> bool:
     )
 
 
+def _emparejar(
+    filas: Sequence[Mapping[str, str]], trazas: Sequence[TrazaDesperdicio]
+) -> list[TrazaDesperdicio | None]:
+    """La traza de cada fila, o `None`: solo la fila cuya descripción, unidad y cantidad son las de
+    la traza, y cada traza una vez (la primera fila que la cumple)."""
+    libres = list(trazas)
+    salida: list[TrazaDesperdicio | None] = []
+    for fila in filas:
+        traza = next((t for t in libres if _de_la_linea(fila, t)), None)
+        if traza is not None:
+            libres.remove(traza)
+        salida.append(traza)
+    return salida
+
+
 def con_desperdicio(
     filas: Sequence[Mapping[str, str]], trazas: Sequence[TrazaDesperdicio]
 ) -> list[dict[str, str]]:
     """Las filas de materiales de una precarga con la neta y el porcentaje de su traza, solo en la
     fila cuya descripción, unidad y cantidad son las de la traza (cada traza, una vez)."""
-    libres = list(trazas)
     salida = []
-    for fila in filas:
+    for fila, traza in zip(filas, _emparejar(filas, trazas), strict=True):
         propia = dict(fila)
-        traza = next((t for t in libres if _de_la_linea(fila, t)), None)
         if traza is not None:
-            libres.remove(traza)
             propia["cantidad"] = texto_de_cifra(traza.cantidad_neta)
             propia[CLAVE] = texto_de_cifra(traza.desperdicio_pct)
         salida.append(propia)
     return salida
+
+
+def neta_y_porcentaje(traza: TrazaDesperdicio) -> str:
+    """«0,50 + 4 %»: la neta y el porcentaje tal como se escribieron, con coma decimal y punto de
+    miles. Es lo que la Hoja pone junto a la cantidad, que ya está en su celda."""
+    return f"{texto_de_cifra(traza.cantidad_neta)} + {texto_de_cifra(traza.desperdicio_pct)} %"
+
+
+def desperdicios_por_fila(
+    filas: Sequence[Mapping[str, str]], trazas: Sequence[TrazaDesperdicio]
+) -> list[tuple[int, str]]:
+    """El número de fila (desde 1) y la neta con su porcentaje de cada fila de materiales que tiene
+    traza, con la misma regla que `con_desperdicio` (la Hoja, F5 vial, punto 1)."""
+    return [
+        (indice, neta_y_porcentaje(traza))
+        for indice, traza in enumerate(_emparejar(filas, trazas), start=1)
+        if traza is not None
+    ]
 
 
 def guardar_trazas(
