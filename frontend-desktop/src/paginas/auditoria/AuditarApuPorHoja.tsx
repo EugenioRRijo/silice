@@ -1,4 +1,5 @@
 import { Button, Checkbox, Select, SelectItem } from "@carbon/react";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { InlineLoading, InlineNotification } from "../../comun/carbonEs";
 import { useState } from "react";
 import type { JSX } from "react";
@@ -26,6 +27,11 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 // hojas se eligen aparte del perfil. Al elegir el libro del presupuesto se piden sus hojas (`POST /v1/libros/hojas`, solo
 // los nombres) y se marcan las del perfil que el libro tiene; lo marcado viaja como `hoja_presupuesto`, una vez por hoja.
 // Si las hojas no se pueden leer, decide el perfil (no se manda nada).
+//
+// Después del informe, quien arma lleva el libro auditado a la Hoja de la obra elegida (`POST /v1/hoja/libro`): se
+// mandan otra vez los mismos libros, el perfil y las hojas con que se auditó, la obra y la moneda de los precios (la
+// declara la persona: Sílice no la adivina). El servidor dice cada partida con el P.U. del libro y el de la Hoja, ya
+// presentados, y si casan; aquí no se compara ni se calcula nada.
 
 interface ApuPorHoja {
   hoja: string;
@@ -151,14 +157,26 @@ const COLUMNAS_HALLAZGOS: ColumnaDensa[] = [
 
 interface Props {
   alExpirar: () => void;
+  // La obra elegida en la barra (su nombre) y si la cuenta puede editar su Hoja (`editar_hoja`).
+  obra?: string | null;
+  puedeLlevar?: boolean;
 }
 
-export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
+// Lo que se auditó, tal cual, para llevarlo después a la Hoja con los mismos archivos y las mismas hojas.
+interface Auditado {
+  libro: File;
+  presupuesto: File | null;
+  perfil: string | null;
+  hojas: string[];
+}
+
+export function AuditarApuPorHoja({ alExpirar, obra = null, puedeLlevar = false }: Props): JSX.Element {
   const [libro, setLibro] = useState<File | null>(null);
   const [presupuesto, setPresupuesto] = useState<File | null>(null);
   const [informe, setInforme] = useState<InformeApuPorHoja | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [auditando, setAuditando] = useState(false);
+  const [auditado, setAuditado] = useState<Auditado | null>(null);
   const lista = useCarga<PerfilDisponible[]>(RUTA_PERFILES, alExpirar);
   const perfiles = lista.estado === "listo" ? lista.datos : null;
   const sinLista = lista.estado !== "listo" && lista.estado !== "cargando";
@@ -193,9 +211,12 @@ export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
     if (libro === null) return;
     setError(null);
     setInforme(null);
+    setAuditado(null);
     setAuditando(true);
+    const enviadas = presupuesto ? hojas : [];
     try {
-      setInforme(await auditarApuPorHoja(libro, presupuesto, perfil, presupuesto ? hojas : []));
+      setInforme(await auditarApuPorHoja(libro, presupuesto, perfil, enviadas));
+      setAuditado({ libro, presupuesto, perfil, hojas: enviadas });
     } catch (razon) {
       if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
       else setError(razon);
@@ -286,6 +307,7 @@ export function AuditarApuPorHoja({ alExpirar }: Props): JSX.Element {
       </div>
       <AvisoError error={error} titulo="No se auditó el libro" />
       {informe && <Informe informe={informe} />}
+      {informe && auditado && puedeLlevar && <LlevarALaHoja auditado={auditado} obra={obra} alExpirar={alExpirar} />}
     </section>
   );
 }
@@ -344,5 +366,137 @@ function Informe({ informe }: { informe: InformeApuPorHoja }): JSX.Element {
         </ul>
       )}
     </>
+  );
+}
+
+interface PartidaLlevada {
+  codigo: string;
+  codigo_libro: string;
+  hoja: string;
+  nueva: boolean;
+  precio_impreso: string;
+  precio_hoja: string | null;
+  casa: boolean;
+}
+
+interface LibroLlevado {
+  borrador_id: string;
+  renglones: number;
+  partidas: PartidaLlevada[];
+  sin_apu: string[];
+  sin_cantidad: string[];
+  lista: string;
+  moneda: string;
+}
+
+const MONEDAS = ["Bs", "USD"] as const;
+
+const COLUMNAS_LLEVADAS: ColumnaDensa[] = [
+  { clave: "codigo", titulo: "Código en Sílice", ordenable: false },
+  { clave: "hoja", titulo: "Hoja del libro", ordenable: false },
+  { clave: "impreso", titulo: "P.U. del libro", numerica: true, ordenable: false, presentar: formatoEsVe },
+  { clave: "hoja_pu", titulo: "P.U. en la Hoja", numerica: true, ordenable: false, presentar: formatoEsVe },
+  { clave: "casa", titulo: "¿Casa?", ordenable: false },
+];
+
+function LlevarALaHoja({ auditado, obra, alExpirar }: { auditado: Auditado; obra: string | null; alExpirar: () => void }): JSX.Element {
+  const [moneda, setMoneda] = useState("");
+  const [frente, setFrente] = useState("");
+  const [llevando, setLlevando] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [llevado, setLlevado] = useState<LibroLlevado | null>(null);
+
+  if (obra === null) {
+    return <p className="silice-inicio__nota cds--type-body-compact-01">Elija una obra en la barra de arriba para llevar el libro a su Hoja.</p>;
+  }
+
+  async function llevar() {
+    if (obra === null || !moneda) return;
+    setError(null);
+    setLlevado(null);
+    setLlevando(true);
+    const cuerpo = new FormData();
+    cuerpo.append("libro", auditado.libro);
+    if (auditado.presupuesto) cuerpo.append("presupuesto", auditado.presupuesto);
+    if (auditado.perfil) cuerpo.append("perfil", auditado.perfil);
+    for (const hoja of auditado.hojas) cuerpo.append("hoja_presupuesto", hoja);
+    cuerpo.append("proyecto", obra);
+    cuerpo.append("moneda", moneda);
+    if (!auditado.presupuesto && frente.trim()) cuerpo.append("frente", frente.trim());
+    try {
+      setLlevado(await pedir<LibroLlevado>("/v1/hoja/libro", { metodo: "POST", cuerpo }));
+    } catch (razon) {
+      if (razon instanceof ErrorDeApi && razon.estado === 401) alExpirar();
+      else setError(razon);
+    } finally {
+      setLlevando(false);
+    }
+  }
+
+  const filas = (llevado?.partidas ?? []).map((p) => ({
+    id: p.codigo,
+    codigo: p.codigo === p.codigo_libro ? p.codigo : `${p.codigo} (del libro: ${p.codigo_libro})`,
+    hoja: p.hoja,
+    impreso: p.precio_impreso,
+    hoja_pu: p.precio_hoja ?? "Pendiente",
+    casa: p.casa ? "Casa" : "No casa",
+  }));
+  return (
+    <section aria-labelledby="auditoria-apu-llevar" className="silice-inicio__bloque">
+      <h3 id="auditoria-apu-llevar" className="cds--type-heading-compact-01">
+        Llevar el libro a la Hoja
+      </h3>
+      <p className="silice-inicio__nota cds--type-body-compact-01">
+        Cada APU entra al catálogo con sus materiales, equipos y mano de obra, y cada renglón del presupuesto a la Hoja de la
+        obra con su cantidad y su frente (la hoja del presupuesto). Los precios quedan con su fuente: el libro y la celda.
+        Nada se guarda como versión hasta que lo guarde en la Hoja.
+      </p>
+      <Select
+        id="auditoria-apu-moneda"
+        labelText="Moneda de los precios del libro"
+        value={moneda}
+        onChange={(e) => setMoneda(e.target.value)}
+        disabled={llevando}
+      >
+        <SelectItem value="" text="Elija la moneda" />
+        {MONEDAS.map((m) => (
+          <SelectItem key={m} value={m} text={m} />
+        ))}
+      </Select>
+      {!auditado.presupuesto && (
+        <CampoTexto
+          id="auditoria-apu-frente"
+          labelText="Frente de los renglones (opcional)"
+          value={frente}
+          onChange={(e) => setFrente(e.target.value)}
+          disabled={llevando}
+        />
+      )}
+      <div className="silice-inicio__acciones">
+        <Button kind="primary" size="md" disabled={!moneda || llevando} onClick={() => void llevar()}>
+          {`Llevar el libro a la Hoja de «${obra}»`}
+        </Button>
+        {llevando && <InlineLoading description="Llevando el libro a la Hoja..." />}
+      </div>
+      <AvisoError error={error} titulo="No se llevó el libro" />
+      {llevado && (
+        <>
+          <InlineNotification
+            kind="success"
+            role="status"
+            title={`Se llevaron ${llevado.renglones} renglones a la Hoja de «${obra}», sin guardar: ábrala para revisarlos y guardar la versión.`}
+            lowContrast
+            hideCloseButton
+          />
+          <TablaDensa etiqueta="Partidas llevadas a la Hoja" columnas={COLUMNAS_LLEVADAS} filas={filas} />
+          {llevado.sin_apu.length > 0 && (
+            <p className="silice-inicio__nota cds--type-body-compact-01">{`No se llevaron, sin hoja de APU: ${enumeradas(llevado.sin_apu)}.`}</p>
+          )}
+          {llevado.sin_cantidad.length > 0 && (
+            <p className="silice-inicio__nota cds--type-body-compact-01">{`No se llevaron, sin cantidad: ${enumeradas(llevado.sin_cantidad)}.`}</p>
+          )}
+        </>
+      )}
+    </section>
   );
 }
